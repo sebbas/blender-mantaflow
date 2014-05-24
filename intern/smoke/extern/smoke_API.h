@@ -113,6 +113,9 @@ void smoke_ensure_heat(struct FLUID_3D *fluid);
 void smoke_ensure_fire(struct FLUID_3D *fluid, struct WTURBULENCE *wt);
 void smoke_ensure_colors(struct FLUID_3D *fluid, struct WTURBULENCE *wt, float init_r, float init_g, float init_b);
 
+/*Mantaflow functions*/
+void smoke_mantaflow_read(struct FLUID_3D *fluid, char* name);
+	
 #ifdef __cplusplus
 }
 #endif

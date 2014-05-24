@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include "MANTA.h"
 
 #include "../extern/smoke_API.h"  /* to ensure valid prototypes */
 
@@ -498,3 +499,10 @@ extern "C" void smoke_ensure_colors(FLUID_3D *fluid, WTURBULENCE *wt, float init
 		wt->initColors(init_r, init_g, init_b);
 	}
 }
+
+/*MantaFlow funcs*/
+extern "C" void smoke_mantaflow_read(struct FLUID_3D *fluid, char* name)
+{
+	read_mantaflow_sim(fluid, name);
+}
+
