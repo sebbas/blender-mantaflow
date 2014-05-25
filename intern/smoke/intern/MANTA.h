@@ -60,22 +60,21 @@ extern "C" void read_mantaflow_sim(struct FLUID_3D *fluid, char* name)
         UniLegacyHeader2 head;
         gzread(gzf, &head, sizeof(UniLegacyHeader2));
 		if (!manta_check_grid_size(fluid, head.dimX, head.dimY, head.dimZ))	return;
-        // actual grid read
+        /* actual grid read*/
         gzread(gzf, fluid->_density, sizeof(float)*head.dimX*head.dimY*head.dimZ);
     }
-	// current file format
+	/* current file format*/
     else if (!strcmp(ID, "MNT2")) {
         UniHeader head;
         gzread(gzf, &head, sizeof(UniHeader));
 		if (!manta_check_grid_size(fluid, head.dimX, head.dimY, head.dimZ))	return;
-		// actual grid read
+		/* actual grid read */
         gzread(gzf,fluid->_density, sizeof(float)*head.dimX*head.dimY*head.dimZ);
     }
     gzclose(gzf);
-#	else
-    //cout << "file format not supported without zlib" << endl;
-#	endif	//zlib
+
+#	endif	/*zlib*/
 }
 
-#endif // MANTA_H
+#endif /* MANTA_H */
 
