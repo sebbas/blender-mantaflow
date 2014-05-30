@@ -37,6 +37,7 @@ enum {
 	MOD_SMOKE_HIGHRES = (1 << 1),  /* enable high resolution */
 	MOD_SMOKE_DISSOLVE = (1 << 2),  /* let smoke dissolve */
 	MOD_SMOKE_DISSOLVE_LOG = (1 << 3),  /* using 1/x for dissolve */
+	MOD_SMOKE_USE_MANTA = (1 << 4),
 
 	MOD_SMOKE_HIGH_SMOOTH = (1 << 5),  /* -- Deprecated -- */
 	MOD_SMOKE_FILE_LOAD = (1 << 6),  /* flag for file load */
