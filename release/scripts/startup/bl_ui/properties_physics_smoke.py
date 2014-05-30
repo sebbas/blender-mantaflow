@@ -325,5 +325,27 @@ class PHYSICS_PT_smoke_field_weights(PhysicButtonsPanel, Panel):
         domain = context.smoke.domain_settings
         effector_weights_ui(self, context, domain.effector_weights, 'SMOKE')
 
+class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
+    bl_label = "MantaFlow Settings"
+    bl_options = {'DEFAULT_CLOSED'}
+	
+    @classmethod
+    def poll(cls, context):
+        md = context.smoke
+        return md and (md.smoke_type == 'DOMAIN')
+	
+    def draw_header(self, context):
+        md = context.smoke.domain_settings
+        self.layout.prop(md, "use_manta", text="")
+	
+    def draw(self, context):
+        layout = self.layout
+		
+        domain = context.smoke.domain_settings
+        layout.active = domain.use_manta
+        col = layout.split()
+        col.operator("manta.make_file", text="Create Manta Setup")
+
+
 if __name__ == "__main__":  # only for live edit.
     bpy.utils.register_module(__name__)
