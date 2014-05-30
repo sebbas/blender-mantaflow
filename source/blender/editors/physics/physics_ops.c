@@ -178,6 +178,14 @@ static void operatortypes_fluid(void)
 	WM_operatortype_append(FLUID_OT_bake);
 }
 
+/********************************* manta ***********************************/
+
+static void operatortypes_manta(void)
+{
+	WM_operatortype_append(MANTA_OT_make_file);
+}
+
+
 /**************************** point cache **********************************/
 
 static void operatortypes_pointcache(void)
@@ -219,6 +227,7 @@ void ED_operatortypes_physics(void)
 	operatortypes_particle();
 	operatortypes_boids();
 	operatortypes_fluid();
+	operatortypes_manta();
 	operatortypes_pointcache();
 	operatortypes_dynamicpaint();
 }

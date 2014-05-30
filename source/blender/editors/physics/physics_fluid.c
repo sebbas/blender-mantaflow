@@ -65,6 +65,10 @@
 #include "physics_intern.h" // own include
 
 /* enable/disable overall compilation */
+/*mantaflow include*/
+#include "../../../../intern/smoke/extern/smoke_API.h"
+#include "DNA_smoke_types.h"
+
 #ifdef WITH_MOD_FLUID
 
 #include "WM_api.h"
@@ -1126,6 +1130,47 @@ void FLUID_OT_bake(wmOperatorType *ot)
 	/* api callbacks */
 	ot->invoke = fluid_bake_invoke;
 	ot->exec = fluid_bake_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+
+
+static int manta_make_file_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+{
+	Scene *scene= CTX_data_scene(C);
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+	smoke_mantaflow_write_scene_file(scene, smd);
+	/*	return OPERATOR_CANCELLED;*/
+	
+	return OPERATOR_FINISHED;
+}
+
+static int manta_make_file_exec(bContext *C, wmOperator *op)
+{
+	Scene *scene= CTX_data_scene(C);
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+	smoke_mantaflow_write_scene_file(scene, smd);
+
+	/*	return OPERATOR_CANCELLED;*/
+	
+	return OPERATOR_FINISHED;
+}
+
+
+void MANTA_OT_make_file(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Create Mantaflow File";
+	ot->description = "Create Python Script for Simulation";
+	ot->idname = "MANTA_OT_make_file";
+	
+	/* api callbacks */
+	ot->invoke = manta_make_file_invoke;
+	ot->exec = manta_make_file_exec;
 	ot->poll = ED_operator_object_active_editable;
 }
 

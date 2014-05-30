@@ -506,3 +506,8 @@ extern "C" void smoke_mantaflow_read(struct FLUID_3D *fluid, char* name)
 	read_mantaflow_sim(fluid, name);
 }
 
+extern "C" void smoke_mantaflow_write_scene_file(struct Scene *s, struct SmokeModifierData *smd)
+{
+	generate_manta_sim_file(s, smd);	
+}
+
