@@ -2,7 +2,9 @@
 #define MANTA_H
 #include "FLUID_3D.h"
 #include "zlib.h"
-
+#include "../../../source/blender/makesdna/DNA_scene_types.h"
+#include "../../../source/blender/makesdna/DNA_modifier_types.h"
+#include "../../../source/blender/makesdna/DNA_smoke_types.h"
 extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY, int dimZ)
 {
 	if (!(dimX == fluid->xRes() && dimY == fluid->yRes() && dimZ == fluid->zRes())) {
@@ -13,7 +15,7 @@ extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY
 	return true;
 }
 
-extern "C" void read_mantaflow_sim(struct FLUID_3D *fluid, char* name)
+extern "C" void read_mantaflow_sim(struct FLUID_3D *fluid, char *name)
 {
     /*! legacy headers for reading old files */
 	typedef struct {
@@ -74,6 +76,73 @@ extern "C" void read_mantaflow_sim(struct FLUID_3D *fluid, char* name)
     gzclose(gzf);
 
 #	endif	/*zlib*/
+}
+
+static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
+{
+	/*for now, simpleplume file creation
+	*create python file with 2-spaces indentation*/
+	
+	FLUID_3D *fluid = smd->domain->fluid;
+	FILE *f = fopen("manta_scene.py", "w");
+	if (f == NULL)
+	{
+		exit(1);
+	}
+	/*header*/
+	fprintf(f, "from manta import * \n");
+
+/*Data Declaration*/
+	/*Solver Resolution*/
+	fprintf(f, "res = %d \n", smd->domain->maxres);
+		/*Z axis in Blender = Y axis in Mantaflow*/
+	fprintf(f, "gs = vec3(%d, %d, %d) \n", fluid->xRes(), fluid->zRes(), fluid->yRes());
+	fprintf(f, "s = Solver(name = 'main', gridSize = gs) \n");
+	fprintf(f, "s.timestep = %f \n", smd->domain->time_scale);
+	
+/*Grids setup*/
+	fprintf(f, "flags = s.create(FlagGrid) \n");/*must always be present*/
+	fprintf(f, "vel = s.create(MACGrid) \n");
+	fprintf(f, "density = s.create(RealGrid) \n");/*smoke simulation*/
+	fprintf(f, "pressure = s.create(RealGrid) \n");/*must always be present*/
+
+/*Noise Field*/
+	fprintf(f, "noise = s.create(NoiseField) \n");
+	fprintf(f, "noise.posScale = vec3(45) \n");
+	fprintf(f, "noise.clamp = True \n");
+	fprintf(f, "noise.clampNeg = 0 \n");
+	fprintf(f, "noise.clampPos = 1 \n");
+	fprintf(f, "noise.valScale = 1 \n");
+	fprintf(f, "noise.valOffset = 0.75 \n");
+	fprintf(f, "noise.timeAnim = 0.2 \n");
+
+/*Flow setup*/
+	fprintf(f, "flags.initDomain() \n");
+	fprintf(f, "flags.fillGrid() \n");
+
+/*GUI for debugging purposes*/
+	fprintf(f, "if (GUI):\n  gui = Gui()\n  gui.show() \n");
+
+/*Inflow source - for now, using mock sphere */
+	fprintf(f, "source = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*vec3(0, 0.02, 0)) \n");
+	
+/*Flow solving stepsv, main loop*/
+	fprintf(f, "for t in xrange(%d, %d): \n", scene->r.sfra, scene->r.efra);
+	fprintf(f, "  densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5) \n");
+	fprintf(f, "  advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2) \n");
+	fprintf(f, "  advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2) \n");
+	fprintf(f, "  setWallBcs(flags=flags, vel=vel) \n");
+	fprintf(f, "  addBuoyancy(density=density, vel=vel, gravity=vec3(0,-6e-4,0), flags=flags) \n");
+	fprintf(f, "  solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True) \n");
+	fprintf(f, "  setWallBcs(flags=flags, vel=vel) \n");
+
+/*Saving output*/
+	char format_str[] = "  density.save('den%04d.uni' % t) \n";
+	fwrite(format_str, 1, sizeof(format_str)-1, f);
+	fprintf(f, "  s.step()\n");
+	fprintf(f, " \n");
+	
+	fclose(f);		
 }
 
 #endif /* MANTA_H */
