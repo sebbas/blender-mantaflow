@@ -78,6 +78,7 @@ extern "C" void read_mantaflow_sim(struct FLUID_3D *fluid, char *name)
 #	endif	/*zlib*/
 }
 
+
 static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 {
 	/*for now, simpleplume file creation
@@ -101,6 +102,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	fprintf(f, "s.timestep = %f \n", smd->domain->time_scale);
 	
 /*Grids setup*/
+/*For now, only one grid of each kind is needed*/
 	fprintf(f, "flags = s.create(FlagGrid) \n");/*must always be present*/
 	fprintf(f, "vel = s.create(MACGrid) \n");
 	fprintf(f, "density = s.create(RealGrid) \n");/*smoke simulation*/
@@ -133,7 +135,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	fprintf(f, "  advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2) \n");
 	fprintf(f, "  setWallBcs(flags=flags, vel=vel) \n");
 	fprintf(f, "  addBuoyancy(density=density, vel=vel, gravity=vec3(0,-6e-4,0), flags=flags) \n");
-	fprintf(f, "  solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True) \n");
+	fprintf(f, "  solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True openBound='%s') \n",(smd->domain->border_collisions == 2)?"N":"Y");/*2:closed border*/
 	fprintf(f, "  setWallBcs(flags=flags, vel=vel) \n");
 
 /*Saving output*/
