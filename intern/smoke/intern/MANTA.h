@@ -78,6 +78,21 @@ extern "C" void read_mantaflow_sim(struct FLUID_3D *fluid, char *name)
 #	endif	/*zlib*/
 }
 
+static void manta_gen_noise(FILE *f, bool clamp, int clampNeg, int clampPos, float valScale, float valOffset, float timeAnim)
+{
+	if (f == NULL)/*should never be here*/
+	{
+		return;
+	}
+	fprintf(f, "  noise = s.create(NoiseField) \n");
+	fprintf(f, "  noise.posScale = vec3(45) \n");
+	fprintf(f, "  noise.clamp = %s \n", (clamp)?"True":"False");
+	fprintf(f, "  noise.clampNeg = %d \n", clampNeg);
+	fprintf(f, "  noise.clampPos = %d \n", clampPos);
+	fprintf(f, "  noise.valScale = %f \n", valScale);
+	fprintf(f, "  noise.valOffset = %f \n", valOffset);
+	fprintf(f, "  noise.timeAnim = %f \n", timeAnim);
+}
 
 static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 {
@@ -109,15 +124,8 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	fprintf(f, "pressure = s.create(RealGrid) \n");/*must always be present*/
 
 /*Noise Field*/
-	fprintf(f, "noise = s.create(NoiseField) \n");
-	fprintf(f, "noise.posScale = vec3(45) \n");
-	fprintf(f, "noise.clamp = True \n");
-	fprintf(f, "noise.clampNeg = 0 \n");
-	fprintf(f, "noise.clampPos = 1 \n");
-	fprintf(f, "noise.valScale = 1 \n");
-	fprintf(f, "noise.valOffset = 0.75 \n");
-	fprintf(f, "noise.timeAnim = 0.2 \n");
-
+	manta_gen_noise(f, true, 0, 1, 1, 0.75, 0.2);
+	
 /*Flow setup*/
 	fprintf(f, "flags.initDomain() \n");
 	fprintf(f, "flags.fillGrid() \n");
@@ -135,7 +143,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	fprintf(f, "  advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2) \n");
 	fprintf(f, "  setWallBcs(flags=flags, vel=vel) \n");
 	fprintf(f, "  addBuoyancy(density=density, vel=vel, gravity=vec3(0,-6e-4,0), flags=flags) \n");
-	fprintf(f, "  solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True openBound='%s') \n",(smd->domain->border_collisions == 2)?"N":"Y");/*2:closed border*/
+	fprintf(f, "  solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, openBound='%s') \n",(smd->domain->border_collisions == 2)?"N":"Y");/*2:closed border*/
 	fprintf(f, "  setWallBcs(flags=flags, vel=vel) \n");
 
 /*Saving output*/
