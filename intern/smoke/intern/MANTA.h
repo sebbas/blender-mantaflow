@@ -135,15 +135,6 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 
 /*Noise Field*/
 	manta_gen_noise(ss, true, 0, 1, 1, 0.75, 0.2);
-/*	ss << "noise = s.create(NoiseField) \n");
-	ss << "noise.posScale = vec3(45) \n");
-	ss << "noise.clamp = True \n");
-	ss << "noise.clampNeg = 0 \n");
-	ss << "noise.clampPos = 1 \n");
-	ss << "noise.valScale = 1 \n");
-	ss << "noise.valOffset = 0.75 \n");
-	ss << "noise.timeAnim = 0.2 \n");
-*/
 	
 /*Flow setup*/
 	ss << "flags.initDomain() \n";
@@ -160,8 +151,6 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	ss << "  densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5) \n"	;
 	manta_advect_SemiLagr(ss, "  ", "flags", "vel", "density", 2);
 	manta_advect_SemiLagr(ss, "  ", "flags", "vel", "vel", 2);
-/*	ss << "  advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2) \n");*/
-/*	ss << "  advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2) \n");*/
 	ss << "  setWallBcs(flags=flags, vel=vel) \n";
 	ss << "  addBuoyancy(density=density, vel=vel, gravity=vec3(0,-6e-4,0), flags=flags) \n";
 	ss << "  solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, openBound='" << ((smd->domain->border_collisions == 2)?"N":"Y") << "') \n";/*2:closed border*/
