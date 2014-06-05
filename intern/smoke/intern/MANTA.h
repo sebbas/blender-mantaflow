@@ -96,6 +96,24 @@ static void manta_gen_noise(stringstream& ss, bool clamp, int clampNeg, int clam
 	ss << "noise.timeAnim = " << timeAnim << " \n";
 }
 
+static void manta_solve_pressure(stringstream& ss, char *flags, char *vel, char *pressure, bool useResNorms, int openBound)
+{
+	/*open:0 ; vertical : 1; closed:2*/
+	ss << "  solvePressure(flags=" << flags << ", vel=" << vel << ", pressure=" << pressure << ", useResNorm=" << (useResNorms?"True":"False") << ", openBound='";	
+	
+	if(openBound == 1) /*vertical*/
+	{
+		ss << "yY') \n";
+	}
+	else if (openBound == 0) /*open*/
+	{
+		ss << "xXyYzZ') \n";
+	}
+	else	/*also for closed bounds*/ 
+	{
+			ss << "') \n";
+	}
+}
 static void manta_advect_SemiLagr(stringstream& ss, char *indent, char *flags, char *vel, char *grid, int order)
 {
 	if((order <=1) || (indent == NULL) || (flags == NULL) || (vel == NULL) || (grid == NULL))
@@ -153,7 +171,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	manta_advect_SemiLagr(ss, "  ", "flags", "vel", "vel", 2);
 	ss << "  setWallBcs(flags=flags, vel=vel) \n";
 	ss << "  addBuoyancy(density=density, vel=vel, gravity=vec3(0,-6e-4,0), flags=flags) \n";
-	ss << "  solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, openBound='" << ((smd->domain->border_collisions == 2)?"N":"Y") << "') \n";/*2:closed border*/
+	manta_solve_pressure(ss,"flags", "vel", "pressure",true,smd->domain->border_collisions);
 	ss << "  setWallBcs(flags=flags, vel=vel) \n";
 
 /*Saving output*/
