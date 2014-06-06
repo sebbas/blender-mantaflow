@@ -81,20 +81,20 @@ extern "C" void read_mantaflow_sim(struct FLUID_3D *fluid, char *name)
 #	endif	/*zlib*/
 }
 
-static void manta_gen_noise(stringstream& ss, bool clamp, int clampNeg, int clampPos, float valScale, float valOffset, float timeAnim)
+static void manta_gen_noise(stringstream& ss, char *noise, bool clamp, int clampNeg, int clampPos, float valScale, float valOffset, float timeAnim)
 {
 	if (ss == NULL)/*should never be here*/
 	{
 		return;
 	}
-	ss << "noise = s.create(NoiseField) \n";
-	ss << "noise.posScale = vec3(45) \n";
-	ss << "noise.clamp = " << ((clamp)?"True":"False") << " \n";
-	ss << "noise.clampNeg = " << clampNeg << " \n";
-	ss << "noise.clampPos = " << clampPos << " \n";
-	ss << "noise.valScale = " << valScale << " \n";
-	ss << "noise.valOffset = " << valOffset << " \n";
-	ss << "noise.timeAnim = " << timeAnim << " \n";
+	ss << noise << " = s.create(NoiseField) \n";
+	ss << noise << ".posScale = vec3(45) \n";
+	ss << noise << ".clamp = " << ((clamp)?"True":"False") << " \n";
+	ss << noise << ".clampNeg = " << clampNeg << " \n";
+	ss << noise << ".clampPos = " << clampPos << " \n";
+	ss << noise << ".valScale = " << valScale << " \n";
+	ss << noise << ".valOffset = " << valOffset << " \n";
+	ss << noise << ".timeAnim = " << timeAnim << " \n";
 }
 
 static void manta_solve_pressure(stringstream& ss, char *flags, char *vel, char *pressure, bool useResNorms, int openBound, int solver_res)
@@ -167,7 +167,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	ss << "pressure = s.create(RealGrid) \n";/*must always be present*/
 
 /*Noise Field*/
-	manta_gen_noise(ss, true, 0, 1, 1, 0.75, 0.2);
+	manta_gen_noise(ss, "noise", true, 0, 1, 1, 0.75, 0.2);
 	
 /*Flow setup*/
 	ss << "flags.initDomain() \n";
