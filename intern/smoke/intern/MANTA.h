@@ -7,6 +7,7 @@
 #include "../../../source/blender/makesdna/DNA_smoke_types.h"
 #include <sstream>
 #include <fstream>
+
 extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY, int dimZ)
 {
 	if (!(dimX == fluid->xRes() && dimY == fluid->yRes() && dimZ == fluid->zRes())) {
@@ -96,7 +97,7 @@ static void manta_gen_noise(stringstream& ss, bool clamp, int clampNeg, int clam
 	ss << "noise.timeAnim = " << timeAnim << " \n";
 }
 
-static void manta_solve_pressure(stringstream& ss, char *flags, char *vel, char *pressure, bool useResNorms, int openBound)
+static void manta_solve_pressure(stringstream& ss, char *flags, char *vel, char *pressure, bool useResNorms, int openBound, int solver_res)
 {
 	/*open:0 ; vertical : 1; closed:2*/
 	ss << "  solvePressure(flags=" << flags << ", vel=" << vel << ", pressure=" << pressure << ", useResNorm=" << (useResNorms?"True":"False") << ", openBound='";	
@@ -107,19 +108,34 @@ static void manta_solve_pressure(stringstream& ss, char *flags, char *vel, char 
 	}
 	else if (openBound == 0) /*open*/
 	{
-		ss << "xXyYzZ') \n";
+		if(solver_res == 2)
+			ss << "xXyY') \n";
+		else
+			ss << "xXyYzZ') \n";
 	}
 	else	/*also for closed bounds*/ 
 	{
 			ss << "') \n";
 	}
 }
+
 static void manta_advect_SemiLagr(stringstream& ss, char *indent, char *flags, char *vel, char *grid, int order)
 {
 	if((order <=1) || (indent == NULL) || (flags == NULL) || (vel == NULL) || (grid == NULL))
 	{return;}
 	ss << indent << "advectSemiLagrange(flags=" << flags << ", vel=" << vel \
 	<< ", grid=" << grid << ", order=" << order << ") \n"; 
+}
+
+/*create solver, handle 2D case*/
+static void manta_create_solver(stringstream& ss, char *name, char *nick, char *grid_size_name, int x_res, int y_res, int z_res, int dim)
+{
+	if ((dim != 2) && (dim != 3))
+	{ return; }
+	if (dim == 2)
+	{ z_res = 1; }
+	ss << "gs = vec3(" << x_res << ", " << y_res << ", " << z_res << ")" << " \n";
+	ss << name << " = Solver(name = '" << nick << "', gridSize = " << grid_size_name << ", dim = " << dim << ") \n";
 }
 
 static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
@@ -140,8 +156,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	/*Solver Resolution*/
 	ss << "res = " << smd->domain->maxres << " \n";
 		/*Z axis in Blender = Y axis in Mantaflow*/
-	ss << "gs = vec3(" << fluid->xRes() << ", " << fluid->zRes() << ", " << fluid->yRes() << ")" << " \n";
-	ss << "s = Solver(name = 'main', gridSize = gs) \n";
+	manta_create_solver(ss, "s", "main", "gs", fluid->xRes(), fluid->zRes(), fluid->yRes(), smd->domain->manta_solver_res);
 	ss << "s.timestep = " << smd->domain->time_scale << " \n";
 	
 /*Grids setup*/
@@ -171,7 +186,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	manta_advect_SemiLagr(ss, "  ", "flags", "vel", "vel", 2);
 	ss << "  setWallBcs(flags=flags, vel=vel) \n";
 	ss << "  addBuoyancy(density=density, vel=vel, gravity=vec3(0,-6e-4,0), flags=flags) \n";
-	manta_solve_pressure(ss,"flags", "vel", "pressure",true,smd->domain->border_collisions);
+	manta_solve_pressure(ss,"flags", "vel", "pressure",true,smd->domain->border_collisions, smd->domain->manta_solver_res);
 	ss << "  setWallBcs(flags=flags, vel=vel) \n";
 
 /*Saving output*/
