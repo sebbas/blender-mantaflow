@@ -155,8 +155,16 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	
 	/*header*/
 	ss << "from manta import * \n";
-
+	ss << "import os, shutil, math, sys \n";
+	
 /*Data Declaration*/
+	/*Wavelets variables*/
+	ss << "upres = " << smd->domain->amplify << "\n";
+	ss << "wltStrength = " << smd->domain->strength << "\n";
+	ss << "uvs = 1" << "\n";					/*TODO:add UI*/
+	ss << "octaves = 0"<< "\n";					/*TODO:add UI*/
+	ss << "velInflow = vec3(2, 0, 0)"<< "\n";	/*TODO:add UI*/
+	
 	/*Solver Resolution*/
 	ss << "res = " << smd->domain->maxres << " \n";
 		/*Z axis in Blender = Y axis in Mantaflow*/
