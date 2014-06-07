@@ -74,12 +74,12 @@ extern "C" void read_mantaflow_sim(struct FLUID_3D *fluid, char *name)
         gzread(gzf, &head, sizeof(UniHeader));
 		if (!manta_check_grid_size(fluid, head.dimX, head.dimY, head.dimZ))	return;
 		/* actual grid read */
-        gzread(gzf,fluid->_density, sizeof(float)*head.dimX*head.dimY*head.dimZ);
+        gzread(gzf,fluid->_density, sizeof(float)*head.dimX*head.dimYmZ);
     }
     gzclose(gzf);
 
 #	endif	/*zlib*/
-}
+ = false}
 
 static void manta_gen_noise(stringstream& ss, int indent, char *noise, bool clamp, int clampNeg, int clampPos, float valScale, float valOffset, float timeAnim)
 {
@@ -92,7 +92,7 @@ static void manta_gen_noise(stringstream& ss, int indent, char *noise, bool clam
 		indentation += "  ";/*two-spaces indent*/
 	}
 	ss << indentation << noise << " = s.create(NoiseField) \n";
-	ss << indentation << noise << ".posScale = vec3(45) \n";
+	ss << indentation << noise << ".posScale = vec3(20	) \n";
 	ss << indentation << noise << ".clamp = " << ((clamp)?"True":"False") << " \n";
 	ss << indentation << noise << ".clampNeg = " << clampNeg << " \n";
 	ss << indentation << noise << ".clampPos = " << clampPos << " \n";
@@ -147,6 +147,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	/*for now, simpleplume file creation
 	*create python file with 2-spaces indentation*/
 	
+	bool wavelets = smd->domain->flags & MOD_SMOKE_HIGHRES;
 	FLUID_3D *fluid = smd->domain->fluid;
 	
 	ofstream manta_setup_file;
@@ -162,8 +163,11 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	ss << "upres = " << smd->domain->amplify << "\n";
 	ss << "wltStrength = " << smd->domain->strength << "\n";
 	ss << "uvs = 1" << "\n";					/*TODO:add UI*/
-	ss << "octaves = 0"<< "\n";					/*TODO:add UI*/
 	ss << "velInflow = vec3(2, 0, 0)"<< "\n";	/*TODO:add UI*/
+	if(smd->domain->amplify > 0)/*TODO:add UI*/
+	{	ss << "octaves = int( math.log(upres)/ math.log(2.0) + 0.5 ) \n";	}
+	else
+	{	ss << "octaves = 0"<< "\n";	}
 	
 	/*Solver Resolution*/
 	ss << "res = " << smd->domain->maxres << " \n";
@@ -173,15 +177,18 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	
 /*Grids setup*/
 /*For now, only one grid of each kind is needed*/
-	ss << "flags = s.create(FlagGrid) \n";/*must always be present*/
 	ss << "vel = s.create(MACGrid) \n";
 	ss << "density = s.create(RealGrid) \n";/*smoke simulation*/
 	ss << "pressure = s.create(RealGrid) \n";/*must always be present*/
-
+	if(wavelets){
+		ss << "energy = s.create(RealGrid) \n";
+		ss << "tempFlag  = sm.create(FlagGrid)\n";
+	}
 /*Noise Field*/
 	manta_gen_noise(ss, 0, "noise", true, 0, 1, 1, 0.75, 0.2);
 	
 /*Flow setup*/
+	ss << "flags = s.create(FlagGrid) \n";/*must always be present*/
 	ss << "flags.initDomain() \n";
 	ss << "flags.fillGrid() \n";
 
@@ -189,7 +196,10 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	ss << "if (GUI):\n  gui = Gui()\n  gui.show() \n";
 
 /*Inflow source - for now, using mock sphere */
-	ss << "source = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*vec3(0, 0.02, 0)) \n";
+	ss << "source    = sm.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.081, z=gs*vec3(0.081, 0, 0))\n";
+	ss << "sourceVel = sm.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.15 , z=gs*vec3(0.15 , 0, 0))\n";
+	ss << "obs       = sm.create(Sphere,   center=gs*vec3(0.5,0.5,0.5), radius=res*0.15)\n";
+	ss << "obs.applyToGrid(grid=flags, value=FlagObstacle)\n";
 	
 /*Flow solving stepsv, main loop*/
 	ss << "for t in xrange(" << scene->r.sfra << ", " << scene->r.efra << "): \n";
