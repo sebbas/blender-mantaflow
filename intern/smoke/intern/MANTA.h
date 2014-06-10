@@ -81,24 +81,32 @@ extern "C" void read_mantaflow_sim(struct FLUID_3D *fluid, char *name)
 #	endif	/*zlib*/
  }
 
+static void indent_ss(stringstream& ss, int indent)
+{
+	/*two-spaces indent*/
+	if (indent < 0) return;
+	std::string indentation = ""; 
+	for (size_t cnt(0); cnt < indent; ++cnt) {
+		indentation += "  ";
+	}
+	ss << indentation;
+}
+
 static void manta_gen_noise(stringstream& ss, char* solver, int indent, char *noise, int seed, bool load, bool clamp, int clampNeg, int clampPos, float valScale, float valOffset, float timeAnim)
 {
 	if (ss == NULL)/*should never be here*/
 	{
 		return;
 	}
-	std::string indentation = ""; 
-	for (size_t cnt(0); cnt < indent; ++cnt) {
-		indentation += "  ";/*two-spaces indent*/
-	}
-	ss << indentation << noise << " = "<<solver<<".create(NoiseField, fixedSeed=" << seed << ", loadFromFile="<< (load?"True":"False") <<") \n";
-	ss << indentation << noise << ".posScale = vec3(20) \n";
-	ss << indentation << noise << ".clamp = " << ((clamp)?"True":"False") << " \n";
-	ss << indentation << noise << ".clampNeg = " << clampNeg << " \n";
-	ss << indentation << noise << ".clampPos = " << clampPos << " \n";
-	ss << indentation << noise << ".valScale = " << valScale << " \n";
-	ss << indentation << noise << ".valOffset = " << valOffset << " \n";
-	ss << indentation << noise << ".timeAnim = " << timeAnim << " \n";
+	indent_ss(ss, indent);
+	ss << noise << " = "<<solver<<".create(NoiseField, fixedSeed=" << seed << ", loadFromFile="<< (load?"True":"False") <<") \n";
+	ss << noise << ".posScale = vec3(20) \n";
+	ss << noise << ".clamp = " << ((clamp)?"True":"False") << " \n";
+	ss << noise << ".clampNeg = " << clampNeg << " \n";
+	ss << noise << ".clampPos = " << clampPos << " \n";
+	ss << noise << ".valScale = " << valScale << " \n";
+	ss << noise << ".valOffset = " << valOffset << " \n";
+	ss << noise << ".timeAnim = " << timeAnim << " \n";
 }
 
 static void manta_solve_pressure(stringstream& ss, char *flags, char *vel, char *pressure, bool useResNorms, int openBound, int solver_res,float cgMaxIterFac=1.0, float cgAccuracy = 0.01)
@@ -113,27 +121,20 @@ static void manta_solve_pressure(stringstream& ss, char *flags, char *vel, char 
 	else if (openBound == 0) /*open*/
 	{
 		if(solver_res == 2)
-			ss << "xXyY'";
+			ss << "xXyY";
 		else
-			ss << "xXyYzZ'";
+			ss << "xXyYzZ";
 	}
-	else	/*also for closed bounds*/ 
-	{
-			ss << "'";
-	}
+		ss << "'";	/*empty for closed bounds*/ 
+	
 	ss << ", cgMaxIterFac=" << cgMaxIterFac << ", cgAccuracy=" << cgAccuracy << ") \n";
 }
 
 static void manta_advect_SemiLagr(stringstream& ss, int indent, char *flags, char *vel, char *grid, int order)
 {
-	if((order <=1) || (flags == NULL) || (vel == NULL) || (grid == NULL))
-	{return;}
-	std::string indentation = ""; 
-	for (size_t cnt(0); cnt < indent; ++cnt) {
-		indentation += "  ";/*two-spaces indent*/
-	}
-
-	ss << indentation << "advectSemiLagrange(flags=" << flags << ", vel=" << vel \
+	if((order <=1) || (flags == NULL) || (vel == NULL) || (grid == NULL)){return;}
+	indent_ss(ss, indent);
+	ss << "advectSemiLagrange(flags=" << flags << ", vel=" << vel \
 	<< ", grid=" << grid << ", order=" << order << ") \n"; 
 }
 
