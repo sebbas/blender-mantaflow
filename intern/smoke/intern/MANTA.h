@@ -168,7 +168,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 /*Data Declaration*/
 	/*Wavelets variables*/
 	int upres = smd->domain->amplify;
-	ss << "uvs = 1" << "\n";					/*TODO:add UI*/
+	ss << "uvs = " << smd->domain->manta_uvs_num << "\n";
 	ss << "velInflow = vec3(2, 0, 0)"<< "\n";	/*TODO:add UI*/
 	if (wavelets) {
 		ss << "upres = " << upres << "\n";

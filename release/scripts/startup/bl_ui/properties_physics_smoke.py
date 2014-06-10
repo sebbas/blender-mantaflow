@@ -343,9 +343,11 @@ class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
 		
         domain = context.smoke.domain_settings
         layout.active = domain.use_manta
-        col = layout.split()
-        col.operator("manta.make_file", text="Create Manta Setup")
+        split = layout.split()
+        split.operator("manta.make_file", text="Create Manta Setup")
+        col = split.column()
         col.prop(domain, "manta_solver_res", text="Solver Resolution")
+        col.prop(domain, "manta_uvs", text="UVs count")
 
 if __name__ == "__main__":  # only for live edit.
     bpy.utils.register_module(__name__)

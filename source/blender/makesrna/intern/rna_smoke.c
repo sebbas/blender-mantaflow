@@ -557,6 +557,13 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Solver Res", "Solver resolution(2D/3D)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
+	prop = RNA_def_property(srna, "manta_uvs", PROP_INT, PROP_NONE);
+	RNA_def_property_int_sdna(prop, NULL, "manta_uvs_num");
+	RNA_def_property_range(prop, 0, 4);
+	RNA_def_property_ui_range(prop, 0, 4, 1, -1);
+	RNA_def_property_ui_text(prop, "UVs number", "how many uv coordinate grind to use(Better not more than 2)");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
 }
 
 static void rna_def_smoke_flow_settings(BlenderRNA *brna)
