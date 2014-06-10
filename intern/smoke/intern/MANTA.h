@@ -92,7 +92,7 @@ static void indent_ss(stringstream& ss, int indent)
 	ss << indentation;
 }
 
-static void manta_gen_noise(stringstream& ss, char* solver, int indent, char *noise, int seed, bool load, bool clamp, int clampNeg, int clampPos, float valScale, float valOffset, float timeAnim)
+static void manta_gen_noise(stringstream& ss, char* solver, int indent, char *noise, int seed, bool load, bool clamp, float clampNeg, float clampPos, float valScale, float valOffset, float timeAnim)
 {
 	if (ss == NULL)/*should never be here*/
 	{
@@ -155,6 +155,13 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	*create python file with 2-spaces indentation*/
 	
 	bool wavelets = smd->domain->flags & MOD_SMOKE_HIGHRES;
+	bool noise_clamp = smd->domain->flags & MOD_SMOKE_NOISE_CLAMP; 
+	float noise_clamp_neg = smd->domain->noise_clamp_neg;
+	float noise_clamp_pos = smd->domain->noise_clamp_pos;
+	float noise_val_scale = smd->domain->noise_val_scale;
+	float noise_val_offset = smd->domain->noise_val_offset;
+	float noise_time_anim = smd->domain->noise_time_anim;
+	
 	FLUID_3D *fluid = smd->domain->fluid;
 	
 	ofstream manta_setup_file;
@@ -187,7 +194,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	ss << "s.timestep = " << smd->domain->time_scale << " \n";
 		
 /*Noise Field*/
-	manta_gen_noise(ss, "s", 0, "noise", 256, true, true, 0, 2, 1, 0.075, 0.2);
+	manta_gen_noise(ss, "s", 0, "noise", 256, true, noise_clamp, noise_clamp_neg, noise_clamp_pos, noise_val_scale, noise_val_offset, noise_time_anim);
 
 /*Inflow source - for now, using mock sphere */
 	ss << "source    = s.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.081, z=gs*vec3(0.081, 0, 0))\n";
@@ -209,7 +216,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		ss << "xl_source = xl.create(Cylinder, center=xl_gs*vec3(0.3,0.2,0.5), radius=xl_gs.x*0.081, z=xl_gs*vec3(0.081, 0, 0)) \n";
 		ss << "xl_obs    = xl.create(Sphere,   center=xl_gs*vec3(0.5,0.5,0.5), radius=xl_gs.x*0.15) \n";
 		ss << "xl_obs.applyToGrid(grid=xl_flags, value=FlagObstacle) \n";
-		manta_gen_noise(ss, "xl", 0, "xl_noise", 256, true, true, 0, 2, 1, 0.075, 0.2 * (float)upres);
+		manta_gen_noise(ss, "xl", 0, "xl_noise", 256, true, noise_clamp, noise_clamp_neg, noise_clamp_pos, noise_val_scale, noise_val_offset, noise_time_anim * (float)upres);
 	}
 /*Flow setup*/
 	ss << "flags = s.create(FlagGrid) \n";/*must always be present*/

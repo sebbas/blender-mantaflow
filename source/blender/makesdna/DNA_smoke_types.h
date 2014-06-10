@@ -42,6 +42,7 @@ enum {
 	MOD_SMOKE_HIGH_SMOOTH = (1 << 5),  /* -- Deprecated -- */
 	MOD_SMOKE_FILE_LOAD = (1 << 6),  /* flag for file load */
 	MOD_SMOKE_ADAPTIVE_DOMAIN = (1 << 7),
+	MOD_SMOKE_NOISE_CLAMP = (1 << 8), /*for mantaflow*/
 };
 
 #if (DNA_DEPRECATED_GCC_POISON == 1)
@@ -153,6 +154,13 @@ typedef struct SmokeDomainSettings {
 	/* mantaflow settings */
 	int manta_solver_res;	/*dimension of manta solver, 2d or 3d*/
 	int manta_uvs_num;		/*number of UVs, important for octaves count*/
+		/*noise settings*/
+	float noise_clamp_neg;
+	float noise_clamp_pos;
+	float noise_val_scale;
+	float noise_val_offset;
+	float noise_time_anim;
+	float mock_var;	/*not used*/
 } SmokeDomainSettings;
 
 

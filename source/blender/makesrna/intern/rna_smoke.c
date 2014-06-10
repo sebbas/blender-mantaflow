@@ -563,6 +563,46 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_range(prop, 0, 4, 1, -1);
 	RNA_def_property_ui_text(prop, "UVs number", "how many uv coordinate grind to use(Better not more than 2)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+	
+	prop = RNA_def_property(srna, "manta_clamp_noise", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_SMOKE_NOISE_CLAMP);
+	RNA_def_property_ui_text(prop, "MantaFlow", "Use Mantaflow");
+	
+	prop = RNA_def_property(srna, "noise_clamp_neg", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_float_sdna(prop, NULL, "noise_clamp_neg");
+	RNA_def_property_range(prop, 0.0, 2.0);
+	RNA_def_property_ui_range(prop, 0.0, 1.0, 1.0, 5);
+	RNA_def_property_ui_text(prop, "Clamp Negative Noise", "");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+	
+	prop = RNA_def_property(srna, "noise_clamp_pos", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_float_sdna(prop, NULL, "noise_clamp_pos");
+	RNA_def_property_range(prop, 0.0, 2.0);
+	RNA_def_property_ui_range(prop, 0.0, 1.0, 1.0, 5);
+	RNA_def_property_ui_text(prop, "Clamp Positive Noise", "");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+	
+	prop = RNA_def_property(srna, "noise_val_scale", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_float_sdna(prop, NULL, "noise_val_scale");
+	RNA_def_property_range(prop, 0.0, 2.0);
+	RNA_def_property_ui_range(prop, 0.0, 1.0, 1.0, 5);
+	RNA_def_property_ui_text(prop, "Noise Value Scale", "");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+	
+	prop = RNA_def_property(srna, "noise_val_offset", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_float_sdna(prop, NULL, "noise_val_offset");
+	RNA_def_property_range(prop, 0.0, 2.0);
+	RNA_def_property_ui_range(prop, 0.0, 1.0, 1.0, 5);
+	RNA_def_property_ui_text(prop, "Noise Value Offset", "");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+	
+	prop = RNA_def_property(srna, "noise_time_anim", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_float_sdna(prop, NULL, "noise_time_anim");
+	RNA_def_property_range(prop, 0.0, 2.0);
+	RNA_def_property_ui_range(prop, 0.0, 1.0, 1.0, 5);
+	RNA_def_property_ui_text(prop, "Noise animation time", "");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
 
 }
 
