@@ -222,7 +222,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		{
 			ss << "xl_obs = s.create(Mesh)\n";
 			ss << "xl_obs.load('manta_coll.obj')\n";
-			ss << "xl_obs.applyToGrid(grid=xl_flags, value=FlagObstacle)\n";
+			ss << "xl_obs.applyToGrid(grid=xl_flags, value=FlagObstacle,cutoff=-1)\n";
 		}
 		manta_gen_noise(ss, "xl", 0, "xl_noise", 256, true, noise_clamp, noise_clamp_neg, noise_clamp_pos, noise_val_scale, noise_val_offset, noise_time_anim * (float)upres);
 	}
@@ -235,7 +235,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	{
 		ss << "obs = s.create(Mesh)\n";
 		ss << "obs.load('manta_coll.obj')\n";
-		ss << "obs.applyToGrid(grid=flags, value=FlagObstacle)\n";
+		ss << "obs.applyToGrid(grid=flags, value=FlagObstacle, cutoff=-1)\n";
 	}
 	/*Create the array of UV grids*/
 	if(wavelets){

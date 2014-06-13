@@ -18,6 +18,7 @@
 
 # <pep8 compliant>
 import bpy
+import os
 from bpy.types import Panel
 
 from bl_ui.properties_physics_common import (point_cache_ui,
@@ -333,10 +334,21 @@ class OBJECT_OT_MantaButton(bpy.types.Operator):
         def silent_remove(filename):
             if os.path.exists(filename):
                 os.remove(filename)
+        def transform(obj, domain_obj):
+            scale_factor = domain_obj.modifiers['Smoke'].domain_settings.domain_resolution
+            for dim in range(3):
+                scale_fac = scale_factor[dim] / 2
+                obj.scale[dim] *= scale_fac / domain_obj.scale[dim]
+        def transform_back(obj, domain_obj):
+            scale_factor = domain_obj.modifiers['Smoke'].domain_settings.domain_resolution
+            for dim in range(3):
+                scale_fac = scale_factor[dim] / 2
+                obj.scale[dim] *=  domain_obj.scale[dim] / scale_fac
 		
         coll_objs = []
         flow_objs = []
         selected_before = []
+        domain = None
         for scene in bpy.data.scenes:
             for ob in scene.objects:
                 if ob.select:
@@ -348,24 +360,30 @@ class OBJECT_OT_MantaButton(bpy.types.Operator):
                             coll_objs.append(ob)
                         elif modifier.smoke_type == 'FLOW':
                             flow_objs.append(ob)
+                        elif modifier.smoke_type == 'DOMAIN':
+                            domain = ob
         silent_remove("./manta_coll.obj")
         silent_remove("./manta_flow.obj")
         if coll_objs: 
             for ob in coll_objs:
                 ob.select = True
+                transform(ob,domain)
             bpy.ops.export_scene.obj(filepath = "./manta_coll.obj", use_selection = True, use_normals = True, use_materials = False, use_triangles = True, group_by_object = True, use_nurbs=True, check_existing= False)
             for ob in coll_objs:
                 ob.select = False
+                transform_back(ob,domain)
         if flow_objs:
             for ob in flow_objs:
                 ob.select = True
+                transform(ob,domain)
             bpy.ops.export_scene.obj(filepath = "./manta_flow.obj", use_selection = True, use_normals = True, use_materials = False, use_triangles = True, group_by_object = True, use_nurbs=True, check_existing= False)
             for ob in flow_objs:
                 ob.select = False
+                transform_back(ob,domain)
         for ob in selected_before:
             ob.select = True
         bpy.ops.manta.make_file()
-        return{'FINISHED'}    
+        return{'FINISHED'}
 
 class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
     bl_label = "MantaFlow Settings"
