@@ -339,11 +339,22 @@ class OBJECT_OT_MantaButton(bpy.types.Operator):
             for dim in range(3):
                 scale_fac = scale_factor[dim] / 2
                 obj.scale[dim] *= scale_fac / domain_obj.scale[dim]
+                obj.location[dim] = (obj.location[dim] - domain_obj.location[dim])* scale_fac / domain_obj.scale[dim]
+                if dim != 1: #handle y 
+                    obj.location[dim] += scale_fac
+                else:
+                    obj.location[dim] -= scale_fac
+		
         def transform_back(obj, domain_obj):
             scale_factor = domain_obj.modifiers['Smoke'].domain_settings.domain_resolution
             for dim in range(3):
                 scale_fac = scale_factor[dim] / 2
                 obj.scale[dim] *=  domain_obj.scale[dim] / scale_fac
+                if dim != 1: #handle y
+                    obj.location[dim] -= scale_fac
+                else:
+                    obj.location[dim] += scale_fac
+                obj.location[dim] = (obj.location[dim])* domain_obj.scale[dim] / scale_fac + domain_obj.location[dim]
 		
         coll_objs = []
         flow_objs = []
