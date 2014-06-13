@@ -346,12 +346,12 @@ class OBJECT_OT_MantaButton(bpy.types.Operator):
                             flow_objs.append(ob)
         for ob in coll_objs:
             ob.select = True
-        bpy.ops.export_scene.obj(filepath = "./PR_COLL.obj", use_selection = True, use_normals = True, use_materials = False, use_triangles = True, group_by_object = True, use_nurbs=True, check_existing= False)
+        bpy.ops.export_scene.obj(filepath = "./manta_coll.obj", use_selection = True, use_normals = True, use_materials = False, use_triangles = True, group_by_object = True, use_nurbs=True, check_existing= False)
         for ob in coll_objs:
             ob.select = False
         for ob in flow_objs:
             ob.select = True
-        bpy.ops.export_scene.obj(filepath = "./PR_FLOW.obj", use_selection = True, use_normals = True, use_materials = False, use_triangles = True, group_by_object = True, use_nurbs=True, check_existing= False)
+        bpy.ops.export_scene.obj(filepath = "./manta_flow.obj", use_selection = True, use_normals = True, use_materials = False, use_triangles = True, group_by_object = True, use_nurbs=True, check_existing= False)
         for ob in flow_objs:
             ob.select = False
         for ob in selected_before:
