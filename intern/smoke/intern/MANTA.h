@@ -149,6 +149,10 @@ static void manta_create_solver(stringstream& ss, char *name, char *nick, char *
 	ss << name << " = Solver(name = '" << nick << "', gridSize = " << grid_size_name << ", dim = " << dim << ") \n";
 }
 
+inline bool file_exists (const std::string& name) {
+    return ( access( name.c_str(), F_OK ) != -1 );
+}
+
 static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 {
 	/*for now, simpleplume file creation
@@ -199,8 +203,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 /*Inflow source - for now, using mock sphere */
 	ss << "source    = s.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.081, z=gs*vec3(0.081, 0, 0))\n";
 	ss << "sourceVel = s.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.15 , z=gs*vec3(0.15 , 0, 0))\n";
-	ss << "obs       = s.create(Sphere,   center=gs*vec3(0.5,0.5,0.5), radius=res*0.15)\n";	
-
+	
 /*Wavelets: larger solver*/
 	if(wavelets && upres>0)
 	{
@@ -214,16 +217,26 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		ss << "xl_flags.fillGrid() \n";
 			
 		ss << "xl_source = xl.create(Cylinder, center=xl_gs*vec3(0.3,0.2,0.5), radius=xl_gs.x*0.081, z=xl_gs*vec3(0.081, 0, 0)) \n";
-		ss << "xl_obs    = xl.create(Sphere,   center=xl_gs*vec3(0.5,0.5,0.5), radius=xl_gs.x*0.15) \n";
-		ss << "xl_obs.applyToGrid(grid=xl_flags, value=FlagObstacle) \n";
+		/*Obstacle handling*/
+		if (file_exists("manta_coll.obj"))
+		{
+			ss << "xl_obs = s.create(Mesh)\n";
+			ss << "xl_obs.load('manta_coll.obj')\n";
+			ss << "xl_obs.applyToGrid(grid=xl_flags, value=FlagObstacle)\n";
+		}
 		manta_gen_noise(ss, "xl", 0, "xl_noise", 256, true, noise_clamp, noise_clamp_neg, noise_clamp_pos, noise_val_scale, noise_val_offset, noise_time_anim * (float)upres);
 	}
 /*Flow setup*/
 	ss << "flags = s.create(FlagGrid) \n";/*must always be present*/
 	ss << "flags.initDomain() \n";
 	ss << "flags.fillGrid() \n";
-	ss << "obs.applyToGrid(grid=flags, value=FlagObstacle)\n";
-
+	/*Obstacle handling*/
+	if (file_exists("manta_coll.obj"))
+	{
+		ss << "obs = s.create(Mesh)\n";
+		ss << "obs.load('manta_coll.obj')\n";
+		ss << "obs.applyToGrid(grid=flags, value=FlagObstacle)\n";
+	}
 	/*Create the array of UV grids*/
 	if(wavelets){
 		ss << "uv = [] \n";
