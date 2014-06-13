@@ -325,6 +325,40 @@ class PHYSICS_PT_smoke_field_weights(PhysicButtonsPanel, Panel):
         domain = context.smoke.domain_settings
         effector_weights_ui(self, context, domain.effector_weights, 'SMOKE')
 
+class OBJECT_OT_MantaButton(bpy.types.Operator):
+    bl_idname = "manta.export_scene"
+    bl_label = "Create Python Script and mesh files"
+    
+    def execute(self, context):
+        coll_objs = []
+        flow_objs = []
+        selected_before = []
+        for scene in bpy.data.scenes:
+            for ob in scene.objects:
+                if ob.select:
+                    selected_before.append(ob)
+                    ob.select = False
+                for modifier in ob.modifiers:
+                    if modifier.type == 'SMOKE':
+                        if modifier.smoke_type == 'COLLISION':
+                            coll_objs.append(ob)
+                        elif modifier.smoke_type == 'FLOW':
+                            flow_objs.append(ob)
+        for ob in coll_objs:
+            ob.select = True
+        bpy.ops.export_scene.obj(filepath = "./PR_COLL.obj", use_selection = True, use_normals = True, use_materials = False, use_triangles = True, group_by_object = True, use_nurbs=True, check_existing= False)
+        for ob in coll_objs:
+            ob.select = False
+        for ob in flow_objs:
+            ob.select = True
+        bpy.ops.export_scene.obj(filepath = "./PR_FLOW.obj", use_selection = True, use_normals = True, use_materials = False, use_triangles = True, group_by_object = True, use_nurbs=True, check_existing= False)
+        for ob in flow_objs:
+            ob.select = False
+        for ob in selected_before:
+            ob.select = True
+        bpy.ops.manta.make_file()
+        return{'FINISHED'}    
+
 class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
     bl_label = "MantaFlow Settings"
     bl_options = {'DEFAULT_CLOSED'}
@@ -344,7 +378,7 @@ class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
         domain = context.smoke.domain_settings
         layout.active = domain.use_manta
         split = layout.split()
-        split.operator("manta.make_file", text="Create Manta Setup")
+        split.operator("manta.export_scene", text="Create Manta Setup")
         col = split.column()
         col.prop(domain, "manta_solver_res", text="Solver Resolution")
         col.prop(domain, "manta_uvs", text="UVs count")
