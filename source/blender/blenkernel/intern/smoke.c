@@ -562,6 +562,14 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 
 			smd->domain->viewsettings = MOD_SMOKE_VIEW_SHOWBIG;
 			smd->domain->effector_weights = BKE_add_effector_weights(NULL);
+			
+			/*mantaflow settings*/
+			smd-> domain->manta_solver_res = 3;
+			smd->domain->noise_clamp_neg = 0;
+			smd->domain->noise_clamp_pos = 1;
+			smd->domain->noise_val_scale = 1;
+			smd->domain->noise_val_offset = 0.075;
+			smd->domain->noise_time_anim = 0.2;
 		}
 		else if (smd->type & MOD_SMOKE_TYPE_FLOW)
 		{

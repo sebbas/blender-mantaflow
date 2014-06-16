@@ -167,7 +167,6 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	float noise_time_anim = smd->domain->noise_time_anim;
 	
 	FLUID_3D *fluid = smd->domain->fluid;
-	
 	ofstream manta_setup_file;
 	manta_setup_file.open("manta_scene.py", std::fstream::trunc);
 	stringstream ss; /*setup contents*/
@@ -175,6 +174,10 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	/*header*/
 	ss << "from manta import * \n";
 	ss << "import os, shutil, math, sys \n";
+	
+	if (!file_exists("manta_flow.obj")){
+		return;
+	}
 	
 /*Data Declaration*/
 	/*Wavelets variables*/
@@ -201,8 +204,13 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	manta_gen_noise(ss, "s", 0, "noise", 256, true, noise_clamp, noise_clamp_neg, noise_clamp_pos, noise_val_scale, noise_val_offset, noise_time_anim);
 
 /*Inflow source - for now, using mock sphere */
-	ss << "source    = s.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.081, z=gs*vec3(0.081, 0, 0))\n";
-	ss << "sourceVel = s.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.15 , z=gs*vec3(0.15 , 0, 0))\n";
+	ss << "source = s.create(Mesh)\n";
+	ss << "source.load('manta_flow.obj')\n";
+	ss << "sourceVel = s.create(Mesh)\n";
+	ss << "sourceVel.load('manta_flow.obj')\n";
+
+//	ss << "source    = s.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.081, z=gs*vec3(0.081, 0, 0))\n";
+//	ss << "sourceVel = s.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.15 , z=gs*vec3(0.15 , 0, 0))\n";
 	
 /*Wavelets: larger solver*/
 	if(wavelets && upres>0)
@@ -216,7 +224,11 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		ss << "xl_flags.initDomain() \n";
 		ss << "xl_flags.fillGrid() \n";
 			
-		ss << "xl_source = xl.create(Cylinder, center=xl_gs*vec3(0.3,0.2,0.5), radius=xl_gs.x*0.081, z=xl_gs*vec3(0.081, 0, 0)) \n";
+//		ss << "xl_source = xl.create(Cylinder, center=xl_gs*vec3(0.3,0.2,0.5), radius=xl_gs.x*0.081, z=xl_gs*vec3(0.081, 0, 0)) \n";
+		ss << "xl_source = s.create(Mesh)\n";
+		ss << "xl_source.load('manta_flow.obj')\n";
+		ss << "xl_source.scale(vec3("<< upres <<", " << upres <<", " << upres << "))\n";
+
 		/*Obstacle handling*/
 		if (file_exists("manta_coll.obj"))
 		{
@@ -280,8 +292,10 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	}
 	ss << "  applyInflow=False\n";
 	ss << "  if (t>=0 and t<75):\n";
-	ss << "    densityInflow( flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5 )\n";
-	ss << "    sourceVel.applyToGrid( grid=vel , value=velInflow )\n";
+		ss << "    densityInflowMesh( flags=flags, density=density, noise=noise, mesh=source, scale=1, sigma=0.5 )\n";
+		//ss << "    densityInflow( flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5 )\n";
+		ss << "    sourceVel.applyToGrid(grid=vel , value=velInflow,cutoff = -1)\n";
+		//ss << "    sourceVel.applyToGrid( grid=vel , value=velInflow )\n";
 	ss << "    applyInflow=True\n";
 	
 	ss << "  setWallBcs(flags=flags, vel=vel) \n";
@@ -320,7 +334,8 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		ss << "  for substep in range(upres):  \n";
 		ss << "    advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=2)  \n";
 		ss << "  if (applyInflow): \n";
-		ss << "    densityInflow( flags=xl_flags, density=xl_density, noise=xl_noise, shape=xl_source, scale=1, sigma=0.5 ) \n";
+		ss << "    densityInflowMesh( flags=xl_flags, density=xl_density, noise=xl_noise, mesh=xl_source, scale=1, sigma=0.5 ) \n";
+		//ss << "    densityInflow( flags=xl_flags, density=xl_density, noise=xl_noise, shape=xl_source, scale=1, sigma=0.5 ) \n";
 		ss << "  xl.step()   \n";
 	}
 	
