@@ -153,6 +153,14 @@ inline bool file_exists (const std::string& name) {
     return ( access( name.c_str(), F_OK ) != -1 );
 }
 
+/*blender transforms obj coords to [-1,1]. This method transforms them back*/
+static void add_mesh_transform_method(stringstream& ss)
+{
+	ss << "def transform_back(obj, res):\n" <<
+	"  obj.scale(vec3(res/2, res/2, res/2))\n" <<
+	"  obj.offset(vec3(res/2, res/2, res/2))\n\n";
+}
+
 static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 {
 	/*for now, simpleplume file creation
@@ -178,7 +186,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	if (!file_exists("manta_flow.obj")){
 		return;
 	}
-	
+	add_mesh_transform_method(ss);
 /*Data Declaration*/
 	/*Wavelets variables*/
 	int upres = smd->domain->amplify;
@@ -206,9 +214,10 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 /*Inflow source - for now, using mock sphere */
 	ss << "source = s.create(Mesh)\n";
 	ss << "source.load('manta_flow.obj')\n";
+	ss << "transform_back(source, res)\n";
 	ss << "sourceVel = s.create(Mesh)\n";
 	ss << "sourceVel.load('manta_flow.obj')\n";
-
+	ss << "transform_back(sourceVel, res)\n";
 //	ss << "source    = s.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.081, z=gs*vec3(0.081, 0, 0))\n";
 //	ss << "sourceVel = s.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.15 , z=gs*vec3(0.15 , 0, 0))\n";
 	
@@ -227,13 +236,15 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 //		ss << "xl_source = xl.create(Cylinder, center=xl_gs*vec3(0.3,0.2,0.5), radius=xl_gs.x*0.081, z=xl_gs*vec3(0.081, 0, 0)) \n";
 		ss << "xl_source = s.create(Mesh)\n";
 		ss << "xl_source.load('manta_flow.obj')\n";
-		ss << "xl_source.scale(vec3("<< upres <<", " << upres <<", " << upres << "))\n";
+		ss << "transform_back(xl_source, res)\n";
+//		ss << "xl_source.scale(vec3("<< upres <<", " << upres <<", " << upres << "))\n";
 
 		/*Obstacle handling*/
 		if (file_exists("manta_coll.obj"))
 		{
 			ss << "xl_obs = s.create(Mesh)\n";
 			ss << "xl_obs.load('manta_coll.obj')\n";
+			ss << "transform_back(xl_obs, res)\n";
 			ss << "xl_obs.applyToGrid(grid=xl_flags, value=FlagObstacle,cutoff=-1)\n";
 		}
 		manta_gen_noise(ss, "xl", 0, "xl_noise", 256, true, noise_clamp, noise_clamp_neg, noise_clamp_pos, noise_val_scale, noise_val_offset, noise_time_anim * (float)upres);
@@ -247,6 +258,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	{
 		ss << "obs = s.create(Mesh)\n";
 		ss << "obs.load('manta_coll.obj')\n";
+		ss << "transform_back(obs, res)\n";
 		ss << "obs.applyToGrid(grid=flags, value=FlagObstacle, cutoff=-1)\n";
 	}
 	/*Create the array of UV grids*/
@@ -264,6 +276,10 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	ss << "pressure = s.create(RealGrid) \n";/*must always be present*/
 	ss << "energy = s.create(RealGrid) \n";
 	ss << "tempFlag  = s.create(FlagGrid)\n";
+	ss << "sdf_obs  = s.create(LevelsetGrid)\n";
+	ss << "sdf_flow  = s.create(LevelsetGrid)\n";
+	ss << "obs.meshSDF(obs, sdf_obs, 1.1)\n";
+	ss << "source.meshSDF(source, sdf_flow, 1.1)\n";
 
 	/*Wavelets noise field*/
 	if (wavelets)
