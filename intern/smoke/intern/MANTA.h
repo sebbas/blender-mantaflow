@@ -6,6 +6,7 @@
 #include "../../../source/blender/makesdna/DNA_modifier_types.h"
 #include "../../../source/blender/makesdna/DNA_smoke_types.h"
 #include <sstream>
+#include <stdlib.h>
 #include <fstream>
 
 extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY, int dimZ)
@@ -260,6 +261,8 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		ss << "obs.load('manta_coll.obj')\n";
 		ss << "transform_back(obs, res)\n";
 		ss << "obs.applyToGrid(grid=flags, value=FlagObstacle, cutoff=-1)\n";
+		ss << "sdf_obs  = s.create(LevelsetGrid)\n";
+		ss << "obs.meshSDF(obs, sdf_obs, 1.1)\n";
 	}
 	/*Create the array of UV grids*/
 	if(wavelets){
@@ -276,9 +279,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	ss << "pressure = s.create(RealGrid) \n";/*must always be present*/
 	ss << "energy = s.create(RealGrid) \n";
 	ss << "tempFlag  = s.create(FlagGrid)\n";
-	ss << "sdf_obs  = s.create(LevelsetGrid)\n";
 	ss << "sdf_flow  = s.create(LevelsetGrid)\n";
-	ss << "obs.meshSDF(obs, sdf_obs, 1.1)\n";
 	ss << "source.meshSDF(source, sdf_flow, 1.1)\n";
 
 	/*Wavelets noise field*/
@@ -316,7 +317,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	
 	ss << "  setWallBcs(flags=flags, vel=vel) \n";
 	ss << "  addBuoyancy(density=density, vel=vel, gravity=vec3(0,-6e-4,0), flags=flags) \n";
-	ss << "  vorticityConfinement( vel=vel, flags=flags, strength=0.4 ) \n";
+	ss << "  vorticityConfinement( vel=vel, flags=flags, strength=" << smd->domain->vorticity / 10. << " ) \n";
 	
 	manta_solve_pressure(ss,"flags", "vel", "pressure",true,smd->domain->border_collisions, smd->domain->manta_solver_res,1.0,0.01);
 	ss << "  setWallBcs(flags=flags, vel=vel) \n";
@@ -356,7 +357,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	}
 	
 	manta_setup_file << ss.rdbuf();
-	manta_setup_file.close();		
+	manta_setup_file.close();
 }
 
 #endif /* MANTA_H */
