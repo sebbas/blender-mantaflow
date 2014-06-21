@@ -8,6 +8,7 @@
 #include <sstream>
 #include <stdlib.h>
 #include <fstream>
+#include <pthread.h>
 
 extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY, int dimZ)
 {
@@ -160,6 +161,12 @@ static void add_mesh_transform_method(stringstream& ss)
 	ss << "def transform_back(obj, res):\n" <<
 	"  obj.scale(vec3(res/2, res/2, res/2))\n" <<
 	"  obj.offset(vec3(res/2, res/2, res/2))\n\n";
+}
+
+void *run_manta_scene(void *threadid)
+{
+	system("./manta manta_scene.py");
+	pthread_exit(NULL);
 }
 
 static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
@@ -355,9 +362,11 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		//ss << "    densityInflow( flags=xl_flags, density=xl_density, noise=xl_noise, shape=xl_source, scale=1, sigma=0.5 ) \n";
 		ss << "  xl.step()   \n";
 	}
-	
 	manta_setup_file << ss.rdbuf();
 	manta_setup_file.close();
+	pthread_t manta_thread;
+	int rc = pthread_create(&manta_thread, NULL, run_manta_scene, NULL);
+	pthread_detach(manta_thread);
 }
 
 #endif /* MANTA_H */
