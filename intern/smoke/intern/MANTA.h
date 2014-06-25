@@ -173,7 +173,6 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 {
 	/*for now, simpleplume file creation
 	*create python file with 2-spaces indentation*/
-	
 	bool wavelets = smd->domain->flags & MOD_SMOKE_HIGHRES;
 	bool noise_clamp = smd->domain->flags & MOD_SMOKE_NOISE_CLAMP; 
 	float noise_clamp_neg = smd->domain->noise_clamp_neg;
@@ -253,7 +252,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 			ss << "xl_obs = s.create(Mesh)\n";
 			ss << "xl_obs.load('manta_coll.obj')\n";
 			ss << "transform_back(xl_obs, res)\n";
-			ss << "xl_obs.applyToGrid(grid=xl_flags, value=FlagObstacle,cutoff=-1)\n";
+			ss << "xl_obs.applyToGrid(grid=xl_flags, value=FlagObstacle,cutoff=3)\n";
 		}
 		manta_gen_noise(ss, "xl", 0, "xl_noise", 256, true, noise_clamp, noise_clamp_neg, noise_clamp_pos, noise_val_scale, noise_val_offset, noise_time_anim * (float)upres);
 	}
@@ -267,7 +266,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		ss << "obs = s.create(Mesh)\n";
 		ss << "obs.load('manta_coll.obj')\n";
 		ss << "transform_back(obs, res)\n";
-		ss << "obs.applyToGrid(grid=flags, value=FlagObstacle, cutoff=-1)\n";
+		ss << "obs.applyToGrid(grid=flags, value=FlagObstacle, cutoff=3)\n";
 		ss << "sdf_obs  = s.create(LevelsetGrid)\n";
 		ss << "obs.meshSDF(obs, sdf_obs, 1.1)\n";
 	}
@@ -318,7 +317,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	ss << "  if (t>=0 and t<75):\n";
 		ss << "    densityInflowMesh( flags=flags, density=density, noise=noise, mesh=source, scale=1, sigma=0.5 )\n";
 		//ss << "    densityInflow( flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5 )\n";
-		ss << "    sourceVel.applyToGrid(grid=vel , value=velInflow,cutoff = -1)\n";
+		ss << "    sourceVel.applyToGrid(grid=vel , value=velInflow,cutoff = 3)\n";
 		//ss << "    sourceVel.applyToGrid( grid=vel , value=velInflow )\n";
 	ss << "    applyInflow=True\n";
 	
@@ -338,7 +337,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	ss << "  extrapolateSimpleFlags( flags=tempFlag, val=energy, distance=6, flagFrom=FlagFluid, flagTo=FlagObstacle )\n";
 	ss << "  computeWaveletCoeffs(energy)\n";
 /*Saving output*/
-//	ss << "  density.save('den%04d.uni' % t) \n";
+	ss << "  density.save('den%04d.uni' % t) \n";
 	ss << "  s.step()\n";
 	ss << " \n";
 	
