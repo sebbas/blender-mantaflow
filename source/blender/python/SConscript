@@ -36,6 +36,7 @@ incs = [
     '#/extern/glew/include',
     '#/intern/audaspace/intern',
     '#/intern/cycles/blender',
+    '#/extern/manta_pp',
     '../blenfont',
     '../blenkernel',
     '../blenlib',
@@ -179,6 +180,9 @@ if env['WITH_BF_REMESH']:
 
 if env['WITH_BF_SMOKE']:
     defs.append('WITH_SMOKE')
+
+if env['WITH_BF_MANTA']:
+    defs.append('WITH_MANTA')
 
 if env['WITH_BF_COLLADA']:
     defs.append('WITH_COLLADA')

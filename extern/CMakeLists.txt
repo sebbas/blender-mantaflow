@@ -30,6 +30,7 @@ add_subdirectory(colamd)
 add_subdirectory(rangetree)
 add_subdirectory(wcwidth)
 add_subdirectory(libmv)
+add_subdirectory(manta_pp)
 
 if(WITH_BULLET)
 	if(NOT WITH_SYSTEM_BULLET)

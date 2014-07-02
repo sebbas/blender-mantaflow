@@ -50,6 +50,7 @@ incs = [
     '#/intern/elbeem/extern',
     '#/intern/iksolver/extern',
     '#/intern/smoke/extern',
+    '#/extern/manta_pp',
     '#/intern/atomic',
     '../avi',
     '../blenfont',
@@ -76,6 +77,9 @@ defs = [
 
 if env['WITH_BF_SMOKE']:
     defs.append('WITH_SMOKE')
+    
+if env['WITH_BF_MANTA']:
+    defs.append('WITH_MANTA')
 
 if env['WITH_BF_FRAMESERVER']:
     defs.append('WITH_FRAMESERVER')

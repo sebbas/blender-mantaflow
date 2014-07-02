@@ -61,6 +61,7 @@ incs = [
     '#/intern/audaspace/intern',
     '#/intern/cycles/blender',
     '#/intern/smoke/extern',
+    '#/extern/manta_pp',
     '../../blenfont',
     '../../blenkernel',
     '../../blenlib',
@@ -77,6 +78,9 @@ incs = ' '.join(incs)
 
 if env['WITH_BF_SMOKE']:
     defs.append('WITH_SMOKE')
+
+if env['WITH_BF_MANTA']:
+    defs.append('WITH_MANTA')
 
 if env['WITH_BF_BULLET']:
     defs.append('WITH_BULLET')

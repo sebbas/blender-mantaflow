@@ -2693,7 +2693,13 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			printf("bad smokeModifier_init\n");
 			return;
 		}
-
+		if(smd->domain->flags & MOD_SMOKE_USE_MANTA)
+		{
+			char buff[100];
+			sprintf(buff, "./den%04d.uni", scene->r.cfra);
+			smoke_mantaflow_read(smd->domain->fluid, buff);
+			return;
+		}
 		/* try to read from cache */
 		if (BKE_ptcache_read(&pid, (float)framenr) == PTCACHE_READ_EXACT) {
 			BKE_ptcache_validate(cache, framenr);

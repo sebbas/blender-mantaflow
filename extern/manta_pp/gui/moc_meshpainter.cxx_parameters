@@ -1,0 +1,4 @@
+-DGUI=1
+-o
+/Users/pr110/Documents/WorkingOnNow/gsoc/manta/cmake/pp/source/gui/moc_meshpainter.cxx
+/Users/pr110/Documents/WorkingOnNow/gsoc/manta/cmake/pp/source/gui/meshpainter.h

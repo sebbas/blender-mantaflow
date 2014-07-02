@@ -7,6 +7,7 @@ SConscript(['colamd/SConscript'])
 SConscript(['rangetree/SConscript'])
 SConscript(['wcwidth/SConscript'])
 SConscript(['libmv/SConscript'])
+SConscript(['manta_pp/SConscript'])
 
 if env['WITH_BF_GAMEENGINE']:
     SConscript(['recastnavigation/SConscript'])

@@ -9,7 +9,8 @@
 #include <stdlib.h>
 #include <fstream>
 #include <pthread.h>
-
+#include <Python.h>
+#include "../../../extern/manta_pp/pwrapper/pymain.cpp"
 extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY, int dimZ)
 {
 	if (!(dimX == fluid->xRes() && dimY == fluid->yRes() && dimZ == fluid->zRes())) {
@@ -163,16 +164,42 @@ static void add_mesh_transform_method(stringstream& ss)
 	"  obj.offset(vec3(res/2, res/2, res/2))\n\n";
 }
 
-void *run_manta_scene(void *threadid)
+//void *run_manta_scene(void *threadid)
+void run_manta_scene()
 {
-	system("./manta manta_scene.py");
-	pthread_exit(NULL);
+	int a = Py_IsInitialized();
+	//PyInterpreterState *st = PyThreadState_GET()->interp;
+	//PyThreadState *ts = Py_NewInterpreter();
+	PyGILState_STATE mMainGilState;     
+    PyThreadState* mOldThreadState;    
+    PyThreadState* mNewThreadState;     
+    PyThreadState* mSubThreadState;     
+    PyGILState_STATE mSubGilState;      
+	mMainGilState =  PyGILState_Ensure(); 
+	mOldThreadState = PyThreadState_Get(); 
+	mNewThreadState = Py_NewInterpreter();
+	PyThreadState_Swap( mNewThreadState );
+	mSubThreadState = PyEval_SaveThread();  
+	mSubGilState = PyGILState_Ensure();     
+	
+	vector<string> args;
+	args.push_back("manta_scene.py");
+	
+	runScript(args);
+	PyGILState_Release( mSubGilState );      
+	PyEval_RestoreThread( mSubThreadState ); 
+	Py_EndInterpreter( mNewThreadState );    
+	PyThreadState_Swap( mOldThreadState );
+	PyGILState_Release( mMainGilState );     
+	//system("./manta manta_scene.py");
+//	pthread_exit(NULL);
 }
 
 static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 {
 	/*for now, simpleplume file creation
 	*create python file with 2-spaces indentation*/
+	
 	bool wavelets = smd->domain->flags & MOD_SMOKE_HIGHRES;
 	bool noise_clamp = smd->domain->flags & MOD_SMOKE_NOISE_CLAMP; 
 	float noise_clamp_neg = smd->domain->noise_clamp_neg;
@@ -189,7 +216,6 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	/*header*/
 	ss << "from manta import * \n";
 	ss << "import os, shutil, math, sys \n";
-	
 	if (!file_exists("manta_flow.obj")){
 		return;
 	}
@@ -363,9 +389,10 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	}
 	manta_setup_file << ss.rdbuf();
 	manta_setup_file.close();
-	pthread_t manta_thread;
-	int rc = pthread_create(&manta_thread, NULL, run_manta_scene, NULL);
-	pthread_detach(manta_thread);
+	run_manta_scene();
+//	pthread_t manta_thread;
+//	int rc = pthread_create(&manta_thread, NULL, run_manta_scene, NULL);
+//	pthread_detach(manta_thread);
 }
 
 #endif /* MANTA_H */

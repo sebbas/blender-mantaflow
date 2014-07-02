@@ -1,0 +1,7 @@
+#include "movingobs.h"
++MovingObstacle^ static const Pb::Register _R_$IDX$ ("MovingObstacle","MovingObstacle","PbClass"); template<> const char* Namify<MovingObstacle >::S = "MovingObstacle"; 
+>MovingObstacle^
++MovingObstacle^ static const Pb::Register _R_$IDX$ ("MovingObstacle","MovingObstacle",MovingObstacle::_W_0); 
++MovingObstacle^ static const Pb::Register _R_$IDX$ ("MovingObstacle","add",MovingObstacle::_W_1); 
++MovingObstacle^ static const Pb::Register _R_$IDX$ ("MovingObstacle","moveLinear",MovingObstacle::_W_2); 
++MovingObstacle^ static const Pb::Register _R_$IDX$ ("MovingObstacle","projectOutside",MovingObstacle::_W_3); 

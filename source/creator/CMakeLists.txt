@@ -1048,6 +1048,7 @@ endif()
 		extern_rangetree
 		extern_wcwidth
 		extern_libmv
+		extern_manta
 	)
 
 	if(WITH_COMPOSITOR)
@@ -1119,6 +1120,11 @@ endif()
 	if(WITH_BULLET AND NOT WITH_SYSTEM_BULLET)
 		list_insert_after(BLENDER_SORTED_LIBS "ge_logic_ngnetwork" "extern_bullet")
 	endif()
+
+#	if(WITH_MOD_MANTA)
+#		list(APPEND BLENDER_SORTED_LIBS extern_manta)
+#	   #list(APPEND BLENDER_LINK_LIBS extern_manta)
+#	endif()
 
 	foreach(SORTLIB ${BLENDER_SORTED_LIBS})
 		set(REMLIB ${SORTLIB})

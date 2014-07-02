@@ -53,6 +53,7 @@ set(INC
 set(INC_SYS
 	${GLEW_INCLUDE_PATH}
 	${ZLIB_INCLUDE_DIRS}
+	${PYTHON_INCLUDE_DIRS}
 )
 
 set(SRC
@@ -382,6 +383,13 @@ endif()
 
 if(WITH_MOD_SMOKE)
 	add_definitions(-DWITH_SMOKE)
+endif()
+
+if(WITH_MOD_MANTA)
+	list(APPEND INC
+		../../../extern/manta_pp
+	)
+	add_definitions(-DWITH_MANTA)
 endif()
 
 if(WITH_MOD_OCEANSIM)
