@@ -97,6 +97,13 @@ public:
 	ClassData* lookup(const std::string& name);
 	bool canConvert(ClassData* from, ClassData* to);
 	PyThreadState *state;
+	/*blender integration*/
+	PyGILState_STATE mMainGilState;     
+    PyThreadState* mOldThreadState;    
+    PyThreadState* mNewThreadState;     
+    PyThreadState* mSubThreadState;     
+    PyGILState_STATE mSubGilState;      
+
 private:
 	ClassData* getOrConstructClass(const string& name);
 	void registerBaseclasses();
@@ -400,10 +407,10 @@ void WrapperRegistry::runPreInit() {
 	// add python directories to path
 //	WrapperRegistry::instance().initModule();
 	PyObject *sys_path = NULL;
-	PyObject *sd = PyThreadState_GET()->interp->sysdict;
-    if (sd == NULL)
-        sys_path = NULL;
-    else sys_path = PyDict_GetItemString(sd, (char*)"path");
+//	PyObject *sd = PyThreadState_GET()->interp->sysdict;
+//    if (sd == NULL)
+//        sys_path = NULL;
+//    else sys_path = PyDict_GetItemString(sd, (char*)"path");
 	sys_path = PySys_GetObject("path");
 	
 	for (size_t i=0; i<mPaths.size(); i++) {
@@ -459,7 +466,7 @@ void WrapperRegistry::construct(const string& scriptname, const vector<string>& 
 	registerDummyTypes();
 	
 	// load main extension module
-	PyImport_AppendInittab((char*)gDefaultModuleName.c_str(), PyInit_Main);
+//	PyImport_AppendInittab((char*)gDefaultModuleName.c_str(), PyInit_Main);
 }
 
 inline PyObject* castPy(PyTypeObject* p) { 
@@ -587,17 +594,29 @@ PyObject* WrapperRegistry::initModule() {
 
 void setup(const std::string& filename, const std::vector<std::string>& args) {
 	WrapperRegistry::instance().construct(filename,args);
-	int a = Py_IsInitialized();
-	Py_Initialize();
-//	int b = Py_IsInitialized();
-//	PyThreadState *st = Py_NewInterpreter();
-	int c = Py_IsInitialized();
+	
+	WrapperRegistry::instance().mMainGilState =  PyGILState_Ensure(); 
+	WrapperRegistry::instance().mOldThreadState = PyThreadState_Get(); 
+	WrapperRegistry::instance().mNewThreadState = Py_NewInterpreter();
+	PyThreadState_Swap( WrapperRegistry::instance().mNewThreadState );
+	WrapperRegistry::instance().mSubThreadState = PyEval_SaveThread();  
+	WrapperRegistry::instance().mSubGilState = PyGILState_Ensure();     
+
+	PyObject * manta_module = PyInit_Main();
+	PyImport_Import(manta_module);
+	int k=0;
+
 	WrapperRegistry::instance().runPreInit();
 }
 
 void finalize() {
-	Py_Finalize();
+//	Py_Finalize();
 	//Py_EndInterpreter(WrapperRegistry::instance().state);
+	PyGILState_Release( WrapperRegistry::instance().mSubGilState );      
+	PyEval_RestoreThread( WrapperRegistry::instance().mSubThreadState ); 
+	Py_EndInterpreter( WrapperRegistry::instance().mNewThreadState );    
+	PyThreadState_Swap( WrapperRegistry::instance().mOldThreadState );
+	PyGILState_Release( WrapperRegistry::instance().mMainGilState );    
 	WrapperRegistry::instance().cleanup();
 }
 

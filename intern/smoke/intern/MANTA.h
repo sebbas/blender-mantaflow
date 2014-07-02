@@ -170,27 +170,12 @@ void run_manta_scene()
 	int a = Py_IsInitialized();
 	//PyInterpreterState *st = PyThreadState_GET()->interp;
 	//PyThreadState *ts = Py_NewInterpreter();
-	PyGILState_STATE mMainGilState;     
-    PyThreadState* mOldThreadState;    
-    PyThreadState* mNewThreadState;     
-    PyThreadState* mSubThreadState;     
-    PyGILState_STATE mSubGilState;      
-	mMainGilState =  PyGILState_Ensure(); 
-	mOldThreadState = PyThreadState_Get(); 
-	mNewThreadState = Py_NewInterpreter();
-	PyThreadState_Swap( mNewThreadState );
-	mSubThreadState = PyEval_SaveThread();  
-	mSubGilState = PyGILState_Ensure();     
-	
+		
 	vector<string> args;
 	args.push_back("manta_scene.py");
 	
 	runScript(args);
-	PyGILState_Release( mSubGilState );      
-	PyEval_RestoreThread( mSubThreadState ); 
-	Py_EndInterpreter( mNewThreadState );    
-	PyThreadState_Swap( mOldThreadState );
-	PyGILState_Release( mMainGilState );     
+	 
 	//system("./manta manta_scene.py");
 //	pthread_exit(NULL);
 }
@@ -214,7 +199,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	stringstream ss; /*setup contents*/
 	
 	/*header*/
-	ss << "from manta import * \n";
+	ss << "import manta\n";//"from manta import * \n";
 	ss << "import os, shutil, math, sys \n";
 	if (!file_exists("manta_flow.obj")){
 		return;
