@@ -983,6 +983,7 @@ endif()
 		bf_render
 		bf_python
 		bf_python_ext
+		bf_python_manta
 		bf_python_mathutils
 		bf_python_bmesh
 		bf_freestyle
@@ -1048,7 +1049,7 @@ endif()
 		extern_rangetree
 		extern_wcwidth
 		extern_libmv
-		extern_manta
+#		extern_manta
 	)
 
 	if(WITH_COMPOSITOR)

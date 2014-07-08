@@ -510,4 +510,3 @@ extern "C" void smoke_mantaflow_write_scene_file(struct Scene *s, struct SmokeMo
 {
 	generate_manta_sim_file(s, smd);	
 }
-

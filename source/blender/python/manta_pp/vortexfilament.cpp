@@ -12,10 +12,10 @@
  ******************************************************************************/
 
 #include "vortexfilament.h"
-#include "integrator.h"
-#include "interpol.h"
+#include "util/integrator.h"
+#include "util/interpol.h"
 #include "mesh.h"
-#include "quaternion.h"
+#include "util/quaternion.h"
 
 using namespace std;
 namespace Manta {

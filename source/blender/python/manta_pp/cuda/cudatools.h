@@ -17,7 +17,7 @@
 #include <cuda.h>
 #include <vector>
 #include <thrust/device_vector.h>
-#include "vectorbase.h"
+#include "../util/vectorbase.h"
 
 // *****************************************************************
 // extending float3 type

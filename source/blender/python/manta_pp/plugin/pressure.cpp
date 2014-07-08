@@ -21,7 +21,7 @@
  * Plugins for pressure correction: solve_pressure, and ghost fluid helpers
  *
  ******************************************************************************/
-#include "vectorbase.h"
+#include "../util/vectorbase.h"
 #include "../kernel.h"
 #include "../conjugategrad.h"
 

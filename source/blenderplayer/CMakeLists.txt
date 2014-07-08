@@ -125,6 +125,7 @@ endif()
 		bf_intern_guardedalloc 
 		bf_intern_memutil 
 		bf_python_ext
+		bf_python_manta
 		bf_python_mathutils
 		bf_python_bmesh
 		bf_intern_utfconv

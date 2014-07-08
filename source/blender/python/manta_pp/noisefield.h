@@ -25,8 +25,8 @@
 #ifndef _NOISEFIELD_H_
 #define _NOISEFIELD_H_
 
-#include "vectorbase.h"
-#include "manta.h"
+#include "util/vectorbase.h"
+#include "pwrapper/manta.h"
 
 namespace Manta {
 

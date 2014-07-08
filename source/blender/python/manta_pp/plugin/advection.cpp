@@ -23,7 +23,7 @@
  *
  ******************************************************************************/
 
-#include "vectorbase.h"
+#include "../util/vectorbase.h"
 #include "../grid.h"
 #include "../kernel.h"
 

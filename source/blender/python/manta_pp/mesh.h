@@ -29,9 +29,9 @@
 #define _MESH_H
 
 #include <vector>
-#include "manta.h"
+#include "pwrapper/manta.h"
 #include "grid.h"
-#include "vectorbase.h"
+#include "util/vectorbase.h"
 #include <set>
 namespace Manta {
 

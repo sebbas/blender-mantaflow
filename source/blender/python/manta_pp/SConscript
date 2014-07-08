@@ -15,4 +15,4 @@ Import('env')
 incs = env['BF_PYTHON_INC']
 env['BF_PYTHON_INC'],
 defs.append('WITH_PYTHON') 
-env.BlenderLib(libname='extern_manta', sources=env.Glob('*'), Split(incs), defs) 
+env.BlenderLib(libname='bf_python_manta', sources=env.Glob('*'), Split(incs), defs) 

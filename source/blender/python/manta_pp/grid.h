@@ -25,10 +25,10 @@
 #ifndef _GRID_H
 #define _GRID_H
 
-#include "manta.h"
-#include "vectorbase.h"
-#include "interpol.h"
-#include "interpolHigh.h"
+#include "pwrapper/manta.h"
+#include "util/vectorbase.h"
+#include "util/interpol.h"
+#include "util/interpolHigh.h"
 #include "kernel.h"
 
 namespace Manta {
@@ -227,9 +227,11 @@ class MACGrid : public Grid<Vec3> {public:
 ;
 
 //! Special functions for FlagGrid
-class FlagGrid : public Grid<int> {public:
+class FlagGrid : public Grid<int> {
+	public:
 	FlagGrid(FluidSolver* parent, int dim=3, bool show=true) :Grid<int>(parent,show){ 
-		mType = (GridType)(TypeFlags | TypeInt); } static int _W_20 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); pbPreparePlugin(0, "FlagGrid::FlagGrid" ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock); int dim = _args.getOpt<int >("dim",1,3,&_lock); bool show = _args.getOpt<bool >("show",2,true,&_lock);  obj = new FlagGrid(parent,dim,show); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"FlagGrid::FlagGrid" ); return 0; } catch(std::exception& e) { pbSetError("FlagGrid::FlagGrid",e.what()); return -1; } }
+		mType = (GridType)(TypeFlags | TypeInt); } 
+	static int _W_20 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); pbPreparePlugin(0, "FlagGrid::FlagGrid" ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock); int dim = _args.getOpt<int >("dim",1,3,&_lock); bool show = _args.getOpt<bool >("show",2,true,&_lock);  obj = new FlagGrid(parent,dim,show); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"FlagGrid::FlagGrid" ); return 0; } catch(std::exception& e) { pbSetError("FlagGrid::FlagGrid",e.what()); return -1; } }
 	
 	//! types of cells, in/outflow can be combined, e.g., TypeFluid|TypeInflow
 	enum CellType { 

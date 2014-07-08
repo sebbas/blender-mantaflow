@@ -25,8 +25,8 @@
 #ifndef _SHAPES_H
 #define _SHAPES_H
 
-#include "manta.h"
-#include "vectorbase.h"
+#include "pwrapper/manta.h"
+#include "util/vectorbase.h"
 #include "levelset.h"
 
 namespace Manta {

@@ -16,7 +16,7 @@
 #include <string>
 #include <sstream>
 #include <limits>
-#include "vectorbase.h"
+#include "../util/vectorbase.h"
 #include "structmember.h"
 #include "manta.h"
 

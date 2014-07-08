@@ -16,6 +16,8 @@
 #include "manta.h"
 #include "../general.h"
 #include "wchar.h"
+//#include "../plugin/initplugins.cpp"
+//#include "../plugin/advection.cpp"
 
 namespace Manta {
 	extern void guiMain(int argc, char* argv[]);
@@ -45,21 +47,23 @@ void runScript(vector<string>& args) {
 	
 	// Initialize extension classes and wrappers
 	srand(0);
-	PyThreadState * state = PyThreadState_GET();
 	Pb::setup(filename, args);
 		
 	// Pass through the command line arguments
 	// for Py3k compatability, convert to wstring
+	FILE* fp = fopen(filename.c_str(),"rb");
+	
 	vector<pyString> pyArgs(args.size());
 	const pyChar ** cargs = new const pyChar*  [args.size()];
 	for (size_t i=0; i<args.size(); i++) {
 		pyArgs[i] = pyString(args[i].begin(), args[i].end());
 		cargs[i] = pyArgs[i].c_str();
 	}
-	PySys_SetArgv( args.size(), (pyChar**) cargs);
 	
+	PySys_SetArgv( args.size(), (pyChar**) cargs);
+
 	// Try to load python script
-	FILE* fp = fopen(filename.c_str(),"rb");
+	/*FILE**/ fp = fopen(filename.c_str(),"rb");
 	if (fp == NULL) {
 		debMsg("Cannot open '" << filename << "'", 0);
 		Pb::finalize();

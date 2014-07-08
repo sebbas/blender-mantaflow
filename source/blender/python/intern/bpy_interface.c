@@ -82,6 +82,8 @@
 #include "../bmesh/bmesh_py_api.h"
 #include "../mathutils/mathutils.h"
 
+#include "../manta_pp/pwrapper/manta_api.h"
+
 
 /* for internal use, when starting and ending python scripts */
 
@@ -220,6 +222,7 @@ static struct _inittab bpy_internal_modules[] = {
 	{(char *)"bgl", BPyInit_bgl},
 	{(char *)"blf", BPyInit_blf},
 	{(char *)"bmesh", BPyInit_bmesh},
+	{(char *)"manta", PyInit_Main},
 	// {(char *)"bmesh.types", BPyInit_bmesh_types},
 	// {(char *)"bmesh.utils", BPyInit_bmesh_utils},
 	// {(char *)"bmesh.utils", BPyInit_bmesh_geometry},

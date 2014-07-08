@@ -10,7 +10,7 @@
 #include <fstream>
 #include <pthread.h>
 #include <Python.h>
-#include "../../../extern/manta_pp/pwrapper/pymain.cpp"
+#include "../../../source/blender/python/manta_pp/pwrapper/pymain.cpp"
 extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY, int dimZ)
 {
 	if (!(dimX == fluid->xRes() && dimY == fluid->yRes() && dimZ == fluid->zRes())) {
@@ -167,12 +167,12 @@ static void add_mesh_transform_method(stringstream& ss)
 //void *run_manta_scene(void *threadid)
 void run_manta_scene()
 {
-	int a = Py_IsInitialized();
 	//PyInterpreterState *st = PyThreadState_GET()->interp;
 	//PyThreadState *ts = Py_NewInterpreter();
 		
 	vector<string> args;
 	args.push_back("manta_scene.py");
+	//args.push_back("test_1.py");
 	
 	runScript(args);
 	 
@@ -199,7 +199,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	stringstream ss; /*setup contents*/
 	
 	/*header*/
-	ss << "import manta\n";//"from manta import * \n";
+	ss << "from manta import * \n";
 	ss << "import os, shutil, math, sys \n";
 	if (!file_exists("manta_flow.obj")){
 		return;
@@ -315,7 +315,7 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	ss << "if (GUI):\n  gui = Gui()\n  gui.show() \n";
 
 /*Flow solving stepsv, main loop*/
-	ss << "for t in xrange(" << scene->r.sfra << ", " << scene->r.efra << "): \n";
+	ss << "for t in range(" << scene->r.sfra << ", " << scene->r.efra << "): \n";
 	manta_advect_SemiLagr(ss, 1, "flags", "vel", "density", 2);
 	manta_advect_SemiLagr(ss, 1, "flags", "vel", "vel", 2);
 	

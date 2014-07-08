@@ -14,7 +14,7 @@
 #include "pythonInclude.h"
 #include <sstream>
 #include <algorithm>
-#include "vectorbase.h"
+#include "../util/vectorbase.h"
 #include "manta.h"
 #include "pconvert.h"
  

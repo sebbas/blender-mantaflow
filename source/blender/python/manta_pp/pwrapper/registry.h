@@ -13,9 +13,8 @@
 
 #ifndef _REGISTRY_H
 #define _REGISTRY_H
-
 #include <string>
-#include <vector>
+#include <vector.h>
 
 // forward declaration to minimize Python.h includes
 #ifndef PyObject_HEAD
@@ -46,7 +45,6 @@ template<class T> struct Namify {
 };
 }
 namespace Pb {
-
 // internal registry access 
 void setup(const std::string& filename, const std::vector<std::string>& args);
 void finalize();
@@ -81,6 +79,5 @@ struct Register {
 	//! register external code
 	Register(InitFunc func);
 };
-
 }
 #endif

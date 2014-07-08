@@ -91,7 +91,7 @@ levelset.cpp
 levelset.h
 levelset.h.reg
 levelset.h.reg.cpp
-#manta.h
+manta.h
 mesh.cpp
 mesh.h
 mesh.h.reg
@@ -117,8 +117,8 @@ turbulencepart.cpp
 turbulencepart.h
 turbulencepart.h.reg
 turbulencepart.h.reg.cpp
-#vortexfilament.cpp
-#vortexfilament.h
+##vortexfilament.cpp
+##vortexfilament.h
 vortexpart.cpp
 vortexpart.h
 vortexpart.h.reg
@@ -211,6 +211,7 @@ pwrapper/pymain.cpp
 pwrapper/pythonInclude.h
 pwrapper/registry.cpp
 pwrapper/registry.h
+pwrapper/manta_api.h
 
 python/defines.py.reg.cpp
 
@@ -225,4 +226,4 @@ util/vectorbase.cpp
 util/vectorbase.h
 )
 
-blender_add_lib(extern_manta "${SRC}" "${INC}" "${INC_SYS}")
+blender_add_lib(bf_python_manta "${SRC}" "${INC}" "${INC_SYS}")

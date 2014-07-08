@@ -27,9 +27,9 @@
 
 #include <vector>
 #include "grid.h"
-#include "vectorbase.h"
-#include "integrator.h"
-#include "randomstream.h"
+#include "util/vectorbase.h"
+#include "util/integrator.h"
+#include "util/randomstream.h"
 namespace Manta {
 
 // fwd decl

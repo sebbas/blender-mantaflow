@@ -23,7 +23,7 @@
  *
  ******************************************************************************/
 
-#include "vectorbase.h"
+#include "../util/vectorbase.h"
 #include "../shapes.h"
 #include "../commonkernels.h"
 #include "../noisefield.h"
