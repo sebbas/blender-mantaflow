@@ -168,7 +168,7 @@ namespace Pb {
 	}
 
 //PyMODINIT_FUNC PyInit_Main(void) {
-extern "C" PyObject *PyInit_Main(void) {
+PyObject *PyInit_Main(void) {
 		WrapperRegistry::instance().construct_lite();
 #if PY_MAJOR_VERSION >= 3
 		return WrapperRegistry::instance().initModule();   

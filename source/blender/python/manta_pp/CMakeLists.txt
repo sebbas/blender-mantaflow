@@ -212,6 +212,7 @@ pwrapper/pythonInclude.h
 pwrapper/registry.cpp
 pwrapper/registry.h
 pwrapper/manta_api.h
+pwrapper/manta_api.cpp
 
 python/defines.py.reg.cpp
 

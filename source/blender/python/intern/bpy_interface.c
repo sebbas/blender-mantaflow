@@ -222,7 +222,7 @@ static struct _inittab bpy_internal_modules[] = {
 	{(char *)"bgl", BPyInit_bgl},
 	{(char *)"blf", BPyInit_blf},
 	{(char *)"bmesh", BPyInit_bmesh},
-	{(char *)"manta", PyInit_Main},
+	{(char *)"manta", PyInit_Manta},
 	// {(char *)"bmesh.types", BPyInit_bmesh_types},
 	// {(char *)"bmesh.utils", BPyInit_bmesh_utils},
 	// {(char *)"bmesh.utils", BPyInit_bmesh_geometry},

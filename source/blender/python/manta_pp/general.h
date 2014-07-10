@@ -130,6 +130,7 @@ template<class T> inline T clamp(const T& val, const T& vmin, const T& vmax) {
 	return val;
 }
 
+	int test_test(){return 55;}
 template<class T> inline T nmod(const T& a, const T& b);
 template<> inline int nmod(const int& a, const int& b) { int c=a%b; return (c<0) ? (c+b) : c; }
 template<> inline float nmod(const float& a, const float& b) { float c=std::fmod(a,b); return (c<0) ? (c+b) : c; }

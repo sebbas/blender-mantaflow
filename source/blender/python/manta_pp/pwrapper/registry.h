@@ -44,6 +44,7 @@ template<class T> struct Namify {
 	static const char* S;
 };
 }
+
 namespace Pb {
 // internal registry access 
 void setup(const std::string& filename, const std::vector<std::string>& args);
@@ -53,6 +54,7 @@ Manta::PbClass* objFromPy(PyObject* obj);
 Manta::PbClass* createPy(const std::string& classname, const std::string& name, Manta::PbArgs& args, Manta::PbClass* parent);
 void setReference(Manta::PbClass* cls, PyObject* obj);
 PyObject* copyObject(Manta::PbClass* cls, const std::string& classname);
+PyObject *PyInit_Main(void);
 
 // callback type
 typedef void (*InitFunc)(PyObject*);
