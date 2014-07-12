@@ -38,6 +38,9 @@ set(INC_SYS
 #blender_include_dirs_sys("${PYTHON_INCLUDE_DIRS}")
 add_definitions(-DWITH_PYTHON)
 
+SET(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
+
+
 if(WITH_PYTHON_MODULE)
 	add_definitions(-DWITH_PYTHON_MODULE)
 endif()
@@ -45,6 +48,229 @@ endif()
 if(WITH_PYTHON_SAFETY)
 	add_definitions(-DWITH_PYTHON_SAFETY)
 endif()
+
+#=========================================
+#original standalone manta setup 
+#=========================================
+#SET(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
+#SET(VERBOSE 1) 
+#
+#SET(SOURCES 
+#	preprocessor/main.cpp
+#	preprocessor/code.cpp
+#	preprocessor/tokenize.cpp
+#	preprocessor/parse.cpp
+#	preprocessor/util.cpp
+#	preprocessor/merge.cpp
+#	preprocessor/codegen_python.cpp
+#	preprocessor/codegen_kernel.cpp    
+#)
+#add_executable(prep ${SOURCES})
+#if (NOT WIN32)
+#	set_target_properties(prep PROPERTIES COMPILE_FLAGS "-Wall -O2")
+#endif()
+#
+##******************************************************************************
+## Setup main project
+#
+#SET(F_LIBS "" )
+#SET(F_LIB_PATHS)
+#SET(F_LINKADD "") # additional linker flags, not a list
+#set(PP_PATH "pp")
+#SET(SILENT_SOURCES)
+#SET(EXECCMD manta)
+#
+#
+## need pre-processing
+#SET(PP_SOURCES
+#	fluidsolver.cpp
+#	conjugategrad.cpp
+#	grid.cpp
+#	levelset.cpp
+#	fastmarch.cpp
+#	shapes.cpp
+#	mesh.cpp
+#	general.cpp
+#	particle.cpp
+#	flip.cpp
+#	movingobs.cpp
+#	fileio.cpp   
+#	noisefield.cpp
+#	kernel.cpp
+#	vortexsheet.cpp
+##	vortexfilament.cpp
+#	vortexpart.cpp
+#	turbulencepart.cpp
+#	edgecollapse.cpp
+#	plugin/pressure.cpp
+#	plugin/initplugins.cpp
+#	plugin/advection.cpp
+#	plugin/extforces.cpp
+#	plugin/kepsilon.cpp
+#	plugin/meshplugins.cpp
+#	plugin/vortexplugins.cpp
+#	plugin/waveletturbulence.cpp
+#	#python/defines.py
+#)
+#
+#SET(PP_HEADERS
+#	commonkernels.h
+#	conjugategrad.h
+#	fastmarch.h
+#	fluidsolver.h
+#	grid.h
+#	mesh.h
+#	particle.h
+#	levelset.h
+#	shapes.h
+#	noisefield.h
+#	vortexsheet.h
+##	vortexfilament.h
+#	general.h
+#	kernel.h
+#	flip.h
+#	movingobs.h
+#	fileio.h
+#	edgecollapse.h
+#	vortexpart.h
+#	turbulencepart.h
+#)
+#
+## no pre-processing needed
+#set(NOPP_SOURCES
+#	pwrapper/pymain.cpp
+#	pwrapper/pclass.cpp
+#	pwrapper/pvec3.cpp
+#	pwrapper/pconvert.cpp
+#	pwrapper/registry.cpp
+#	pwrapper/manta_api.cpp
+#	util/vectorbase.cpp
+#)
+# 
+#SET(NOPP_HEADERS
+#	pwrapper/pythonInclude.h
+#	pwrapper/pclass.h
+#	pwrapper/registry.h
+#	pwrapper/pconvert.h
+#	pwrapper/manta_api.h
+#	util/integrator.h
+#	util/vectorbase.h
+#	util/quaternion.h
+#	util/interpol.h
+#	util/mcubes.h
+#	util/randomstream.h
+#	util/solvana.h    
+#)
+#
+## include dirs
+#SET(INCLUDE_PATHS
+#   pwrapper
+#   cuda
+#   util
+#   ${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source   
+#)
+#
+#list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIR})
+#list(APPEND F_LIBS ${PYTHON_LIBRARIES})
+#
+#
+##******************************************************************************
+## apply preprocessor
+#
+#set(SOURCES ${NOPP_SOURCES} ${SILENT_SOURCES})
+#list(APPEND SOURCES ${NOPP_HEADERS})
+#set(HEADERS ${NOPP_HEADERS})
+#set(PP_REGCPP)
+#set(PP_REGS)
+#set(PP_PREPD "0")
+#MESSAGE("PR_prepdebug")
+#
+#SET(PP_REGCPP
+#commonkernels.h.reg.cpp
+#conjugategrad.h.reg.cpp
+#edgecollapse.h.reg.cpp
+#fastmarch.h.reg.cpp
+#fileio.h.reg.cpp
+#flip.h.reg.cpp
+#fluidsolver.h.reg.cpp
+#general.h.reg.cpp
+#grid.h.reg.cpp
+#kernel.h.reg.cpp
+#levelset.h.reg.cpp
+#mesh.h.reg.cpp
+#movingobs.h.reg.cpp
+#noisefield.h.reg.cpp
+#particle.h.reg.cpp
+#shapes.h.reg.cpp
+#turbulencepart.h.reg.cpp
+#vortexpart.h.reg.cpp
+#vortexsheet.h.reg.cpp
+#defines.py.reg.cpp
+#)
+#
+#SET(PP_REGS
+#commonkernels.h.reg
+#conjugategrad.h.reg
+#edgecollapse.h.reg
+#fastmarch.h.reg
+#fileio.h.reg
+#flip.h.reg
+#fluidsolver.h.reg
+#general.h.reg
+#grid.h.reg
+#kernel.h.reg
+#levelset.h.reg
+#mesh.h.reg
+#movingobs.h.reg
+#noisefield.h.reg
+#particle.h.reg
+#shapes.h.reg
+#turbulencepart.h.reg
+#vortexpart.h.reg
+#vortexsheet.h.reg
+#defines.py.reg
+#)
+#MESSAGE("PR_WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}}")
+## link reg files
+#add_custom_command(OUTPUT ${PP_REGCPP}
+#				  COMMAND prep link ${PP_REGS}
+#				  DEPENDS prep ${PP_REGS}
+#				  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+#				  COMMENT "Linking reg files")
+##set_source_files_properties(${PP_REGS} ${PP_REGCPP} PROPERTIES GENERATED 1)
+#MESSAGE("PR_prepdebug2")
+#
+#list(APPEND SOURCES ${PP_SOURCES})
+#list(APPEND SOURCES ${PP_HEADERS})
+#list(APPEND SOURCES ${PP_REGCPP})
+#list(APPEND SOURCES ${PP_REGS})
+#
+#MESSAGE("PR_prepdebug3")
+#
+#
+##******************************************************************************
+## setup executable
+#
+#SET(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${F_LINKADD} ")
+#SET(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${F_LINKADD} ")
+#MESSAGE("PR_13")
+#
+#include_directories( ${INCLUDE_PATHS}) 
+#link_directories( ${F_LIB_PATHS} ) 
+#MESSAGE("PR_14")
+#
+#
+##add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY})
+##target_link_libraries( ${EXECCMD} ${F_LIBS} )
+#
+#MESSAGE("PR_15")
+#
+## debug
+#MESSAGE(STATUS "PR_DEBUG Flag-Summary - Includes: '${INCLUDE_PATHS}' | Libs: '${F_LIBS}' | LibPaths: '${F_LIB_PATHS}' ")
+#
+#=========================================
+#~~~original standalone manta setup 
+#=========================================
 
 set(SRC
 commonkernels.h
@@ -215,6 +441,7 @@ pwrapper/manta_api.h
 pwrapper/manta_api.cpp
 
 python/defines.py.reg.cpp
+python/defines.py.reg
 
 util/integrator.h
 util/interpol.h
@@ -227,4 +454,6 @@ util/vectorbase.cpp
 util/vectorbase.h
 )
 
+MESSAGE ("MANTA_SOURCES ${SOURCES} \n PATHS__:${INCLUDE_PATHS} \n SYSTEM__:${INC_SYS}")
+#blender_add_lib(bf_python_manta "${SOURCES}" "${INCLUDE_PATHS}" "${INC_SYS}")
 blender_add_lib(bf_python_manta "${SRC}" "${INC}" "${INC_SYS}")
