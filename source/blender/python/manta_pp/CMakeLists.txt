@@ -10,7 +10,7 @@
 #
 #******************************************************************************
 
-project (MantaFlow)
+#project (MantaFlow)
 cmake_minimum_required(VERSION 2.8) # 2.8 needed for CUDA
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/source/cmake/")
@@ -123,6 +123,7 @@ SET(SILENT_SOURCES)
 
 # need pre-processing
 SET(PP_SOURCES
+#	source/python/defines.py
 	source/fluidsolver.cpp
 	source/conjugategrad.cpp
 	source/grid.cpp
@@ -152,7 +153,6 @@ SET(PP_SOURCES
 	source/vortexplugins.cpp
 	source/waveletturbulence.cpp
 	
-	source/python/defines.py
 	source/test.cpp
 )
 
@@ -408,12 +408,12 @@ set(HEADERS ${NOPP_HEADERS})
 set(PP_REGCPP)
 set(PP_REGS)
 set(PP_PREPD "0")
-MESSAGE("PR_prepdebug")
+MESSAGE("PRPRPRPRPR_prepdebug")
 
 if (PREPDEBUG)
 	set(PP_PREPD "1")
 endif()
-MESSAGE("PR_prepdebug_1 BEFORE ${SOURCES}")
+#MESSAGE("PR_prepdebug_1 BEFORE ${SOURCES}")
 foreach(it ${PP_SOURCES} ${PP_HEADERS})
 	get_filename_component(CURPATH ${it} PATH)
 	get_filename_component(CUREXT ${it} EXT)
@@ -422,23 +422,27 @@ foreach(it ${PP_SOURCES} ${PP_HEADERS})
 	string(REPLACE "source/" "" INFILE ${it})
 	# preprocessor
 	add_custom_command(OUTPUT ${CURPP}
-					   COMMAND prep generate ${PP_PREPD} ${MT_TYPE} "${CMAKE_CURRENT_SOURCE_DIR}/source/" "${INFILE}" "${CURPP}"
+					   COMMAND echo Workingdir 
+					   COMMAND pwd
+					   #COMMAND ${CMAKE_BINARY_DIR}/bin/Debug/prep generate ${PP_PREPD} ${MT_TYPE} "${CMAKE_CURRENT_SOURCE_DIR}/source/" "${INFILE}" "${CURPP}"
 					   DEPENDS prep
 					   IMPLICIT_DEPENDS CXX ${it}
-					   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+					   #WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+					   )
 	if ("${CUREXT}" STREQUAL ".h" OR "${CUREXT}" STREQUAL ".py")
 		list(APPEND PP_REGS "${CURPP}.reg")
 		list(APPEND PP_REGCPP "${CURPP}.reg.cpp")
 		set_source_files_properties("${CURPP}.reg.cpp" OBJECT_DEPENDS "${CURPP}")
 	endif()
+	MESSAGE ("Buiding ${CURPP}")
 	list(APPEND SOURCES ${CURPP})
 endforeach(it)
-MESSAGE("\nPR_prepdebug_1 AFTER ${SOURCES}")
+#MESSAGE("\nPR_prepdebug_1 AFTER ${SOURCES}")
 
 
 # link reg files
 add_custom_command(OUTPUT ${PP_REGCPP}
-				  COMMAND prep link ${PP_REGS}
+				  COMMAND ${CMAKE_BINARY_DIR}/bin/Debug/prep link ${PP_REGS}
 				  DEPENDS prep ${PP_REGS}
 				  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 				  COMMENT "Linking reg files")
@@ -446,7 +450,7 @@ set_source_files_properties(${PP_REGS} ${PP_REGCPP} PROPERTIES GENERATED 1)
 MESSAGE("PR_prepdebug2")
 
 list(APPEND SOURCES ${PP_REGCPP})
-MESSAGE("\nPR_prepdebug_1 AFTER REGCPP ${SOURCES}")
+#MESSAGE("\nPR_prepdebug_1 AFTER REGCPP ${SOURCES}")
 	
 MESSAGE("PR_prepdebug3")
 
@@ -502,7 +506,7 @@ endif()
 
 #******************************************************************************
 # setup executable
-MESSAGE("\nSETTINGS EXEC ${SOURCES}")
+#MESSAGE("\nSETTINGS EXEC ${SOURCES}")
 
 # compiler flags
 IF(NOT WIN32)
