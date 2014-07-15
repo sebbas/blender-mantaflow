@@ -421,14 +421,15 @@ foreach(it ${PP_SOURCES} ${PP_HEADERS})
 	set(CURPP "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/${it}")
 	string(REPLACE "source/" "" INFILE ${it})
 	# preprocessor
-	add_custom_command(OUTPUT ${CURPP}
-					   COMMAND echo Workingdir 
-					   COMMAND pwd
-					   #COMMAND ${CMAKE_BINARY_DIR}/bin/Debug/prep generate ${PP_PREPD} ${MT_TYPE} "${CMAKE_CURRENT_SOURCE_DIR}/source/" "${INFILE}" "${CURPP}"
-					   DEPENDS prep
-					   IMPLICIT_DEPENDS CXX ${it}
-					   #WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-					   )
+	execute_process(COMMAND ${CMAKE_BINARY_DIR}/bin/Debug/prep generate ${PP_PREPD} ${MT_TYPE} "${CMAKE_CURRENT_SOURCE_DIR}/source/" "${INFILE}" "${CURPP}")
+#	add_custom_command(OUTPUT ${CURPP}
+#					   COMMAND echo Workingdir
+#					   COMMAND pwd
+#					   #COMMAND ${CMAKE_BINARY_DIR}/bin/Debug/prep generate ${PP_PREPD} ${MT_TYPE} "${CMAKE_CURRENT_SOURCE_DIR}/source/" "${INFILE}" "${CURPP}"
+#					   DEPENDS prep
+#					   IMPLICIT_DEPENDS CXX ${it}
+#					   #WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+#					   )
 	if ("${CUREXT}" STREQUAL ".h" OR "${CUREXT}" STREQUAL ".py")
 		list(APPEND PP_REGS "${CURPP}.reg")
 		list(APPEND PP_REGCPP "${CURPP}.reg.cpp")

@@ -20,7 +20,7 @@
 #  undef NOMINMAX
 #else
 #   include <sys/time.h>
-#	include "hginfo.h"
+//#	include "hginfo.h"
 #endif
 
 using namespace std;
