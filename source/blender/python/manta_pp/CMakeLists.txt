@@ -123,7 +123,6 @@ SET(SILENT_SOURCES)
 
 # need pre-processing
 SET(PP_SOURCES
-#	source/python/defines.py
 	source/fluidsolver.cpp
 	source/conjugategrad.cpp
 	source/grid.cpp
@@ -144,15 +143,15 @@ SET(PP_SOURCES
 	source/turbulencepart.cpp
 	source/edgecollapse.cpp
 	
-	source/pressure.cpp
-	source/initplugins.cpp
-	source/advection.cpp
-	source/extforces.cpp
-	source/kepsilon.cpp
-	source/meshplugins.cpp
-	source/vortexplugins.cpp
-	source/waveletturbulence.cpp
-	
+	source/plugin/pressure.cpp
+	source/plugin/initplugins.cpp
+	source/plugin/advection.cpp
+	source/plugin/extforces.cpp
+	source/plugin/kepsilon.cpp
+	source/plugin/meshplugins.cpp
+	source/plugin/vortexplugins.cpp
+	source/plugin/waveletturbulence.cpp
+	source/python/defines.py	
 	source/test.cpp
 )
 
@@ -177,7 +176,7 @@ SET(PP_HEADERS
 	source/edgecollapse.h
 	source/vortexpart.h
 	source/turbulencepart.h
-	#source/test.h    
+	#source/test.h 
 )
 
 # no pre-processing needed
@@ -409,12 +408,15 @@ set(PP_REGCPP)
 set(PP_REGS)
 set(PP_PREPD "0")
 MESSAGE("PRPRPRPRPR_prepdebug")
+MESSAGE("CMAKE_BUILD_DIR ${CMAKE_BUILD_DIR}")
+MESSAGE("BINARY_DIR ${BINARY_DIR}")
+MESSAGE("CMAKE_BINARY_DIR ${CMAKE_BINARY_DIR}")
 
 if (PREPDEBUG)
 	set(PP_PREPD "1")
 endif()
 #MESSAGE("PR_prepdebug_1 BEFORE ${SOURCES}")
-foreach(it ${PP_SOURCES} ${PP_HEADERS})
+foreach(it ${PP_HEADERS} ${PP_SOURCES})
 	get_filename_component(CURPATH ${it} PATH)
 	get_filename_component(CUREXT ${it} EXT)
 	file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/${CURPATH}")
@@ -435,22 +437,22 @@ foreach(it ${PP_SOURCES} ${PP_HEADERS})
 		list(APPEND PP_REGCPP "${CURPP}.reg.cpp")
 		set_source_files_properties("${CURPP}.reg.cpp" OBJECT_DEPENDS "${CURPP}")
 	endif()
-	MESSAGE ("Buiding ${CURPP}")
 	list(APPEND SOURCES ${CURPP})
 endforeach(it)
-#MESSAGE("\nPR_prepdebug_1 AFTER ${SOURCES}")
-
 
 # link reg files
 add_custom_command(OUTPUT ${PP_REGCPP}
-				  COMMAND ${CMAKE_BINARY_DIR}/bin/Debug/prep link ${PP_REGS}
-				  DEPENDS prep ${PP_REGS}
+				  COMMAND prep link ${PP_REGS}
+				  COMMAND echo "linking" 
+				  DEPENDS prep 
 				  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 				  COMMENT "Linking reg files")
-set_source_files_properties(${PP_REGS} ${PP_REGCPP} PROPERTIES GENERATED 1)
-MESSAGE("PR_prepdebug2")
-
+#set_source_files_properties(${PP_REGS} ${PP_REGCPP} PROPERTIES GENERATED 1)
 list(APPEND SOURCES ${PP_REGCPP})
+
+add_custom_target(run ALL
+    DEPENDS SOURCES)
+
 #MESSAGE("\nPR_prepdebug_1 AFTER REGCPP ${SOURCES}")
 	
 MESSAGE("PR_prepdebug3")
