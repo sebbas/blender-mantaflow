@@ -1,4 +1,4 @@
-/******************************************************************************
+	/******************************************************************************
  *
  * MantaFlow fluid solver framework
  * Copyright 2011 Tobias Pfaff, Nils Thuerey 
@@ -116,12 +116,12 @@ std::string buildInfoString() {
 #	endif
 
 	// repository info
-#	ifndef MANTA_HG_VERSION
-#	define MANTA_HG_VERSION "<unknown>"
-#	endif
-	infoStr << " hg "<< MANTA_HG_VERSION;
-
-	infoStr << " from "<< __DATE__<<", "<<__TIME__;
+//#	ifndef MANTA_HG_VERSION
+//#	define MANTA_HG_VERSION "<unknown>"
+//#	endif
+//	infoStr << " hg "<< MANTA_HG_VERSION;
+//
+//	infoStr << " from "<< __DATE__<<", "<<__TIME__;
 	return infoStr.str();
 }
 
