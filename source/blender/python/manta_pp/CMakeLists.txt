@@ -566,7 +566,7 @@ else()
 	else()
 	#	add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${HGINFO})
 #		list(SORT SOURCES)
-#		list(REMOVE_DUPLICATES SOURCES)
+		list(REMOVE_DUPLICATES SOURCES) #CMAKE GUI says there are duplicates, though there are none
 		blender_add_lib(${EXECCMD} "${SOURCES}" "${INCLUDE_PATHS}" "${INC_SYS}")
 	endif()
 	target_link_libraries( ${EXECCMD} ${F_LIBS} )
