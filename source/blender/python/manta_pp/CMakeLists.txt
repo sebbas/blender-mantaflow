@@ -151,7 +151,7 @@ SET(PP_SOURCES
 	source/plugin/meshplugins.cpp
 	source/plugin/vortexplugins.cpp
 	source/plugin/waveletturbulence.cpp
-	source/python/defines.py	
+	source/python/defines.py
 	source/test.cpp
 )
 
@@ -176,7 +176,7 @@ SET(PP_HEADERS
 	source/edgecollapse.h
 	source/vortexpart.h
 	source/turbulencepart.h
-	#source/test.h 
+	#source/test.h    
 )
 
 # no pre-processing needed
@@ -408,9 +408,6 @@ set(PP_REGCPP)
 set(PP_REGS)
 set(PP_PREPD "0")
 MESSAGE("PRPRPRPRPR_prepdebug")
-MESSAGE("CMAKE_BUILD_DIR ${CMAKE_BUILD_DIR}")
-MESSAGE("BINARY_DIR ${BINARY_DIR}")
-MESSAGE("CMAKE_BINARY_DIR ${CMAKE_BINARY_DIR}")
 
 if (PREPDEBUG)
 	set(PP_PREPD "1")
@@ -422,16 +419,15 @@ foreach(it ${PP_HEADERS} ${PP_SOURCES})
 	file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/${CURPATH}")
 	set(CURPP "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/${it}")
 	string(REPLACE "source/" "" INFILE ${it})
-	# preprocessor
-	execute_process(COMMAND ${CMAKE_BINARY_DIR}/bin/Debug/prep generate ${PP_PREPD} ${MT_TYPE} "${CMAKE_CURRENT_SOURCE_DIR}/source/" "${INFILE}" "${CURPP}")
-#	add_custom_command(OUTPUT ${CURPP}
-#					   COMMAND echo Workingdir
-#					   COMMAND pwd
-#					   #COMMAND ${CMAKE_BINARY_DIR}/bin/Debug/prep generate ${PP_PREPD} ${MT_TYPE} "${CMAKE_CURRENT_SOURCE_DIR}/source/" "${INFILE}" "${CURPP}"
-#					   DEPENDS prep
-#					   IMPLICIT_DEPENDS CXX ${it}
-#					   #WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-#					   )
+	# preprocessor ${CMAKE_BINARY_DIR}/bin/
+	add_custom_command(OUTPUT ${CURPP}
+					   COMMAND echo Workingdir 
+					   COMMAND pwd
+					   COMMAND prep generate ${PP_PREPD} ${MT_TYPE} "${CMAKE_CURRENT_SOURCE_DIR}/source/" "${INFILE}" "${CURPP}"
+					   DEPENDS prep
+					   IMPLICIT_DEPENDS CXX ${it}
+					   #WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+					   )
 	if ("${CUREXT}" STREQUAL ".h" OR "${CUREXT}" STREQUAL ".py")
 		list(APPEND PP_REGS "${CURPP}.reg")
 		list(APPEND PP_REGCPP "${CURPP}.reg.cpp")
@@ -440,21 +436,22 @@ foreach(it ${PP_HEADERS} ${PP_SOURCES})
 	list(APPEND SOURCES ${CURPP})
 endforeach(it)
 
+
 # link reg files
 add_custom_command(OUTPUT ${PP_REGCPP}
 				  COMMAND prep link ${PP_REGS}
-				  COMMAND echo "linking" 
-				  DEPENDS prep 
-				  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+				  DEPENDS prep $
+		#		  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 				  COMMENT "Linking reg files")
 #set_source_files_properties(${PP_REGS} ${PP_REGCPP} PROPERTIES GENERATED 1)
+MESSAGE("PR_prepdebug2")
+
 list(APPEND SOURCES ${PP_REGCPP})
+#MESSAGE("\nPR_prepdebug_1 AFTER REGCPP ${SOURCES}")
 
 add_custom_target(run ALL
-    DEPENDS SOURCES)
+    DEPENDS SOURCES)	
 
-#MESSAGE("\nPR_prepdebug_1 AFTER REGCPP ${SOURCES}")
-	
 MESSAGE("PR_prepdebug3")
 
 #******************************************************************************
