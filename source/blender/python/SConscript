@@ -80,7 +80,7 @@ env.BlenderLib( libname = 'bf_python_mathutils', sources = Split(sources), inclu
 # manta
 defs = []
 
-sources = env.Glob('manta_pp/*')
+sources = env.Glob('manta_pp/source/*')
 env.BlenderLib( libname = 'bf_python_manta', sources = Split(sources), includes = Split(incs), defines = defs, libtype = ['core','player'])
 
 

@@ -385,12 +385,12 @@ if(WITH_MOD_SMOKE)
 	add_definitions(-DWITH_SMOKE)
 endif()
 
-if(WITH_MOD_MANTA)
-	list(APPEND INC
-		../python/manta_pp
-	)
-	add_definitions(-DWITH_MANTA)
-endif()
+#if(WITH_MOD_MANTA)
+#	list(APPEND INC
+#		../python/manta_pp
+#	)
+#	add_definitions(-DWITH_MANTA)
+#endif()
 
 if(WITH_MOD_OCEANSIM)
 	add_definitions(-DWITH_OCEANSIM)

@@ -109,7 +109,8 @@ SET(SOURCES
 )
 add_executable(prep ${SOURCES})
 if (NOT WIN32)
-	set_target_properties(prep PROPERTIES COMPILE_FLAGS "-Wall -O2")
+#PR commented
+#	set_target_properties(prep PROPERTIES COMPILE_FLAGS "-Wall -O2")
 endif()
 
 #******************************************************************************
@@ -426,7 +427,7 @@ foreach(it ${PP_HEADERS} ${PP_SOURCES})
 					   COMMAND prep generate ${PP_PREPD} ${MT_TYPE} "${CMAKE_CURRENT_SOURCE_DIR}/source/" "${INFILE}" "${CURPP}"
 					   DEPENDS prep
 					   IMPLICIT_DEPENDS CXX ${it}
-					   #WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+#					   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 					   )
 	if ("${CUREXT}" STREQUAL ".h" OR "${CUREXT}" STREQUAL ".py")
 		list(APPEND PP_REGS "${CURPP}.reg")
