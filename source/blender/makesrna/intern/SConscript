@@ -61,7 +61,7 @@ incs = [
     '#/intern/audaspace/intern',
     '#/intern/cycles/blender',
     '#/intern/smoke/extern',
-    '#/extern/manta_pp',
+    '#/source//blender/python/manta_pp',
     '../../blenfont',
     '../../blenkernel',
     '../../blenlib',

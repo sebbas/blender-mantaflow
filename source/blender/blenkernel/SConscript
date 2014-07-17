@@ -50,7 +50,7 @@ incs = [
     '#/intern/elbeem/extern',
     '#/intern/iksolver/extern',
     '#/intern/smoke/extern',
-    '#/extern/manta_pp',
+    '#/source/blender/python/manta_pp',
     '#/intern/atomic',
     '../avi',
     '../blenfont',

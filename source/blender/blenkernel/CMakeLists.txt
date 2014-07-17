@@ -387,7 +387,7 @@ endif()
 
 if(WITH_MOD_MANTA)
 	list(APPEND INC
-		../../../extern/manta_pp
+		../python/manta_pp
 	)
 	add_definitions(-DWITH_MANTA)
 endif()
