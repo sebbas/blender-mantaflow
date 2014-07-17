@@ -440,10 +440,10 @@ endforeach(it)
 # link reg files
 add_custom_command(OUTPUT ${PP_REGCPP}
 				  COMMAND prep link ${PP_REGS}
-				  DEPENDS prep $
-		#		  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+				  DEPENDS prep ${PP_REGS}
+#				  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 				  COMMENT "Linking reg files")
-#set_source_files_properties(${PP_REGS} ${PP_REGCPP} PROPERTIES GENERATED 1)
+set_source_files_properties(${PP_REGS} ${PP_REGCPP} PROPERTIES GENERATED 1)
 MESSAGE("PR_prepdebug2")
 
 list(APPEND SOURCES ${PP_REGCPP})
@@ -564,8 +564,8 @@ else()
 		source_group(Generated FILES ${SOURCES} ${PP_REGISTRY} ${HEADERS})		
 	else()
 	#	add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${HGINFO})
-		list(SORT SOURCES)
-		list(REMOVE_DUPLICATES SOURCES)
+#		list(SORT SOURCES)
+#		list(REMOVE_DUPLICATES SOURCES)
 		blender_add_lib(${EXECCMD} "${SOURCES}" "${INCLUDE_PATHS}" "${INC_SYS}")
 	endif()
 	target_link_libraries( ${EXECCMD} ${F_LIBS} )
