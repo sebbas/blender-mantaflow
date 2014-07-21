@@ -18,7 +18,6 @@ SET(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
 SET(VERBOSE 1) 
 
 SET(MANTAVERSION "0.6")
-
 #******************************************************************************
 # Default paths
 # - CMake's path finder is completely useless for Qt5 + Python on Win64
@@ -146,6 +145,7 @@ SET(PP_SOURCES
 	
 	source/plugin/pressure.cpp
 	source/plugin/initplugins.cpp
+	#PR changed
 	source/plugin/advection.cpp
 	source/plugin/extforces.cpp
 	source/plugin/kepsilon.cpp
@@ -177,7 +177,9 @@ SET(PP_HEADERS
 	source/edgecollapse.h
 	source/vortexpart.h
 	source/turbulencepart.h
-	#source/test.h    
+	#source/test.h
+	#PR changed
+#	source/advection.h
 )
 
 # no pre-processing needed
@@ -241,10 +243,11 @@ if (CUDA)
 endif()
 
 # include dirs
+message("PRincluding _   ${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source")
 SET(INCLUDE_PATHS
    source/pwrapper
    source/cuda
-   source/util	
+   source/util
    ${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source   
 )
 
@@ -450,10 +453,16 @@ MESSAGE("PR_prepdebug2")
 list(APPEND SOURCES ${PP_REGCPP})
 #MESSAGE("\nPR_prepdebug_1 AFTER REGCPP ${SOURCES}")
 
-add_custom_target(run ALL
-    DEPENDS SOURCES)	
+#add_custom_target(run ALL
+#    DEPENDS SOURCES)	
 
 MESSAGE("PR_prepdebug3")
+
+#******************************************************************************
+#PR finding what is so special about GUI
+#list(APPEND INCLUDE_PATHS ${CMAKE_CURRENT_BINARY_DIR}
+#				${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/gui source/gui)
+#SET(F_LINKADD "${F_LINKADD} -framework OpenGL ")
 
 #******************************************************************************
 # QT for GUI

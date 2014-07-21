@@ -15,7 +15,7 @@
 #include "../util/vectorbase.h"
 #include "grid.h"
 #include "kernel.h"
-
+ 
 using namespace std;
 
 namespace Manta { 
