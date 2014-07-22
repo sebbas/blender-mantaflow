@@ -658,24 +658,31 @@ void setReference(Manta::PbClass* cls, PyObject* obj) {
 }
 
 Register::Register(const string& className, const string& funcName, GenericFunction func) {
+	cout<<"reg_method__"<<className<< ":::" << funcName <<  endl;
 	WrapperRegistry::instance().addMethod(className, funcName, func);
 }
 Register::Register(const string& className, const string& funcName, OperatorFunction func) {
+	cout<<"reg_oper__"<<className<< ":::" << funcName <<  endl;
 	WrapperRegistry::instance().addOperator(className, funcName, func);
 }
 Register::Register(const string& className, const string& funcName, Constructor func) {
+	cout<<"reg_constr__"<<className<< ":::" << funcName <<  endl;
 	WrapperRegistry::instance().addConstructor(className, func);
 }
 Register::Register(const string& className, const string& property, Getter getter, Setter setter) {
+	cout<<"reg_getset__"<<className<< ":::" << property <<  endl;
 	WrapperRegistry::instance().addGetSet(className, property, getter, setter);
 }
 Register::Register(const string& className, const string& pyName, const string& baseClass) {
+	cout<<"reg_class__"<<className<< ":::" << pyName <<  endl;
 	WrapperRegistry::instance().addClass(pyName, className, baseClass);
 }
 Register::Register(const string& file, const string& pythonCode) {
+	cout<<"reg_pyCode__"<<file<< ":::" << pythonCode <<  endl;
 	WrapperRegistry::instance().addPythonCode(file, pythonCode);
 }
 Register::Register(InitFunc func) { 
+	cout<<"reg_initfunc"<<  endl;
 	WrapperRegistry::instance().addExternalInitializer(func);        
 }
 
