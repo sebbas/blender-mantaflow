@@ -82,7 +82,7 @@
 #include "../bmesh/bmesh_py_api.h"
 #include "../mathutils/mathutils.h"
 
-#include "../manta_pp/source/pwrapper/manta_api.h"
+#include "../manta_pp/pwrapper/manta_api.h"
 
 
 /* for internal use, when starting and ending python scripts */

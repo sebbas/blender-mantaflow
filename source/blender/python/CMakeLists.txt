@@ -20,4 +20,5 @@ add_subdirectory(intern)
 add_subdirectory(generic)
 add_subdirectory(mathutils)
 add_subdirectory(bmesh)
+#choose "manta_pp" for preprocessed files or "manta_full" for full manta module 
 add_subdirectory(manta_pp)
