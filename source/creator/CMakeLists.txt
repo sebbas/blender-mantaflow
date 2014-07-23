@@ -983,7 +983,7 @@ endif()
 		bf_render
 		bf_python
 		bf_python_ext
-		bf_python_manta
+#		bf_python_manta #requres additional link flags
 		bf_python_mathutils
 		bf_python_bmesh
 		bf_freestyle
@@ -1145,6 +1145,11 @@ endif()
 		message(STATUS "Blender Skipping: (${REM_MSG})")
 	endif()
 	target_link_libraries(blender ${BLENDER_SORTED_LIBS})
+
+	#linking manta library
+	SET(MANTA_LINK_LIBRARIES -rdynamic -Wl,-force_load bf_python_manta ) 
+	#-Wl,--whole-archive bf_python_manta -Wl,--no-whole-archive)
+	TARGET_LINK_LIBRARIES(blender ${MANTA_LINK_LIBRARIES})
 
 	unset(SEARCHLIB)
 	unset(SORTLIB)

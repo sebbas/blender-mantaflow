@@ -24,7 +24,7 @@
 //! @defgroup PyClasses Classes exposed to Python
 
 #include "../general.h"
-#include "vectorbase.h"
+#include "../util/vectorbase.h"
 #include "registry.h"
 #include "pclass.h"
 #include "pconvert.h"

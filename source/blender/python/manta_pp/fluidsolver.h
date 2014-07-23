@@ -26,7 +26,7 @@
 #define _FLUIDSOLVER_H
 
 #include "manta.h"
-#include "vectorbase.h"
+#include "util/vectorbase.h"
 #include <vector>
 #include <map>
 

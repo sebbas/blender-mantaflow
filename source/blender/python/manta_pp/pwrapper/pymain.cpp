@@ -10,11 +10,13 @@
  * Main file
  *
  ******************************************************************************/
+#ifndef _MANTA_PYMAIN_CPP_
+#define _MANTA_PYMAIN_CPP_
 
 #include "pythonInclude.h"
 #include <stdio.h>
 #include "manta.h"
-#include "general.h"
+#include "../general.h"
 #include "wchar.h"
 
 namespace Manta {
@@ -36,11 +38,13 @@ typedef string pyString;
 //*****************************************************************************
 // main...
 
-void runScript(vector<string>& args) {
+void runMantaScript(vector<string>& args) {
 	string filename = args[0];
 	
 	// Initialize extension classes and wrappers
 	srand(0);
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+
 	Pb::setup(filename, args);
 		
 	// Pass through the command line arguments
@@ -87,7 +91,8 @@ void runScript(vector<string>& args) {
 
 	// finalize
 	Pb::finalize();
-	
+	PyGILState_Release(gilstate);
+
 	delete [] cargs;
 }
 
@@ -104,8 +109,9 @@ int manta_main(int argc,char* argv[]) {
 
 	vector<string> args;
 	for (int i=1; i<argc; i++) args.push_back(argv[i]);
-	runScript(args);
+	runMantaScript(args);
 #endif        		
 
 	return 0;
 }
+#endif

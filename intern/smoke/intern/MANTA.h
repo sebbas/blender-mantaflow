@@ -11,7 +11,10 @@
 #include <pthread.h>
 #include <Python.h>
 #include <vector>
-//#include "../../../source/blender/python/manta_pp/source/pwrapper/pymain.cpp"
+//#include "../../../source/blender/python/manta_pp/pwrapper/pymain.cpp"
+
+void runMantaScript(vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
+
 extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY, int dimZ)
 {
 	if (!(dimX == fluid->xRes() && dimY == fluid->yRes() && dimZ == fluid->zRes())) {
@@ -175,7 +178,7 @@ void run_manta_scene()
 	args.push_back("manta_scene.py");
 	//args.push_back("test_1.py");
 	
-//	runScript(args);
+	runMantaScript(args);
 	 
 	//system("./manta manta_scene.py");
 //	pthread_exit(NULL);

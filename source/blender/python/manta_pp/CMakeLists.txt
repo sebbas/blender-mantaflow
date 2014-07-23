@@ -1,127 +1,130 @@
 #add_definitions(-DGUI=1)
 
 set(INC
-	.
-	python
-	plugin
-	pwrapper
-	util
+	${CMAKE_CURRENT_SOURCE_DIR}
+	${CMAKE_CURRENT_SOURCE_DIR}/python
+	${CMAKE_CURRENT_SOURCE_DIR}/plugin
+	${CMAKE_CURRENT_SOURCE_DIR}/pwrapper
+	${CMAKE_CURRENT_SOURCE_DIR}/util
 	#gui
 )
 
 set(INC_SYS
 	${PYTHON_INCLUDE_DIRS}
 )
+
+message("MANTA_processing ${CMAKE_CURRENT_SOURCE_DIR}/commonkernels.h")
 set(SRC
 #PP SOURCES and HEADERS
-commonkernels.h
-commonkernels.h.reg
-commonkernels.h.reg.cpp
-conjugategrad.cpp
-conjugategrad.h
-conjugategrad.h.reg
-conjugategrad.h.reg.cpp
-edgecollapse.cpp
-edgecollapse.h
-edgecollapse.h.reg
-edgecollapse.h.reg.cpp
-fastmarch.cpp
-fastmarch.h
-fastmarch.h.reg
-fastmarch.h.reg.cpp
-fileio.cpp
-fileio.h
-fileio.h.reg
-fileio.h.reg.cpp
-flip.cpp
-flip.h
-flip.h.reg
-flip.h.reg.cpp
-fluidsolver.cpp
-fluidsolver.h
-fluidsolver.h.reg
-fluidsolver.h.reg.cpp
-general.cpp
-general.h
-general.h.reg
-general.h.reg.cpp
-grid.cpp
-grid.h
-grid.h.reg
-grid.h.reg.cpp
-hginfo.h
-kernel.cpp
-kernel.h
-kernel.h.reg
-kernel.h.reg.cpp
-levelset.cpp
-levelset.h
-levelset.h.reg
-levelset.h.reg.cpp
-mesh.cpp
-mesh.h
-mesh.h.reg
-mesh.h.reg.cpp
-movingobs.cpp
-movingobs.h
-movingobs.h.reg
-movingobs.h.reg.cpp
-noisefield.cpp
-noisefield.h
-noisefield.h.reg
-noisefield.h.reg.cpp
-particle.cpp
-particle.h
-particle.h.reg
-particle.h.reg.cpp
-plugin/advection.cpp
-plugin/extforces.cpp
-plugin/initplugins.cpp
-plugin/kepsilon.cpp
-plugin/meshplugins.cpp
-plugin/pressure.cpp
-plugin/vortexplugins.cpp
-plugin/waveletturbulence.cpp
-python/defines.py
-python/defines.py.reg
-python/defines.py.reg.cpp
-shapes.cpp
-shapes.h
-shapes.h.reg
-shapes.h.reg.cpp
-test.cpp
-turbulencepart.cpp
-turbulencepart.h
-turbulencepart.h.reg
-turbulencepart.h.reg.cpp
-vortexpart.cpp
-vortexpart.h
-vortexpart.h.reg
-vortexpart.h.reg.cpp
-vortexsheet.cpp
-vortexsheet.h
-vortexsheet.h.reg
-vortexsheet.h.reg.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/commonkernels.h
+${CMAKE_CURRENT_SOURCE_DIR}/commonkernels.h.reg
+${CMAKE_CURRENT_SOURCE_DIR}/commonkernels.h.reg.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/conjugategrad.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/conjugategrad.h
+${CMAKE_CURRENT_SOURCE_DIR}/conjugategrad.h.reg
+${CMAKE_CURRENT_SOURCE_DIR}/conjugategrad.h.reg.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/edgecollapse.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/edgecollapse.h
+${CMAKE_CURRENT_SOURCE_DIR}/edgecollapse.h.reg
+${CMAKE_CURRENT_SOURCE_DIR}/edgecollapse.h.reg.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/fastmarch.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/fastmarch.h
+${CMAKE_CURRENT_SOURCE_DIR}/fastmarch.h.reg
+${CMAKE_CURRENT_SOURCE_DIR}/fastmarch.h.reg.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/fileio.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/fileio.h
+${CMAKE_CURRENT_SOURCE_DIR}/fileio.h.reg
+${CMAKE_CURRENT_SOURCE_DIR}/fileio.h.reg.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/flip.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/flip.h
+${CMAKE_CURRENT_SOURCE_DIR}/flip.h.reg
+${CMAKE_CURRENT_SOURCE_DIR}/flip.h.reg.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/fluidsolver.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/fluidsolver.h
+${CMAKE_CURRENT_SOURCE_DIR}/fluidsolver.h.reg
+${CMAKE_CURRENT_SOURCE_DIR}/fluidsolver.h.reg.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/general.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/general.h
+${CMAKE_CURRENT_SOURCE_DIR}/general.h.reg
+${CMAKE_CURRENT_SOURCE_DIR}/general.h.reg.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/grid.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/grid.h
+${CMAKE_CURRENT_SOURCE_DIR}/grid.h.reg
+${CMAKE_CURRENT_SOURCE_DIR}/grid.h.reg.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/hginfo.h
+${CMAKE_CURRENT_SOURCE_DIR}/kernel.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/kernel.h
+${CMAKE_CURRENT_SOURCE_DIR}/kernel.h.reg
+${CMAKE_CURRENT_SOURCE_DIR}/kernel.h.reg.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/levelset.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/levelset.h
+${CMAKE_CURRENT_SOURCE_DIR}/levelset.h.reg
+${CMAKE_CURRENT_SOURCE_DIR}/levelset.h.reg.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/mesh.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/mesh.h
+${CMAKE_CURRENT_SOURCE_DIR}/mesh.h.reg
+${CMAKE_CURRENT_SOURCE_DIR}/mesh.h.reg.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/movingobs.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/movingobs.h
+${CMAKE_CURRENT_SOURCE_DIR}/movingobs.h.reg
+${CMAKE_CURRENT_SOURCE_DIR}/movingobs.h.reg.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/noisefield.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/noisefield.h
+${CMAKE_CURRENT_SOURCE_DIR}/noisefield.h.reg
+${CMAKE_CURRENT_SOURCE_DIR}/noisefield.h.reg.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/particle.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/particle.h
+${CMAKE_CURRENT_SOURCE_DIR}/particle.h.reg
+${CMAKE_CURRENT_SOURCE_DIR}/particle.h.reg.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/plugin/advection.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/plugin/extforces.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/plugin/initplugins.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/plugin/kepsilon.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/plugin/meshplugins.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/plugin/pressure.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/plugin/vortexplugins.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/plugin/waveletturbulence.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/python/defines.py
+${CMAKE_CURRENT_SOURCE_DIR}/python/defines.py.reg
+${CMAKE_CURRENT_SOURCE_DIR}/python/defines.py.reg.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/shapes.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/shapes.h
+${CMAKE_CURRENT_SOURCE_DIR}/shapes.h.reg
+${CMAKE_CURRENT_SOURCE_DIR}/shapes.h.reg.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/test.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/turbulencepart.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/turbulencepart.h
+${CMAKE_CURRENT_SOURCE_DIR}/turbulencepart.h.reg
+${CMAKE_CURRENT_SOURCE_DIR}/turbulencepart.h.reg.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/vortexpart.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/vortexpart.h
+${CMAKE_CURRENT_SOURCE_DIR}/vortexpart.h.reg
+${CMAKE_CURRENT_SOURCE_DIR}/vortexpart.h.reg.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/vortexsheet.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/vortexsheet.h
+${CMAKE_CURRENT_SOURCE_DIR}/vortexsheet.h.reg
+${CMAKE_CURRENT_SOURCE_DIR}/vortexsheet.h.reg.cpp
 #NOPP SOURCES
-pwrapper/pymain.cpp
-pwrapper/pclass.cpp
-pwrapper/pvec3.cpp
-pwrapper/pconvert.cpp
-pwrapper/registry.cpp
-pwrapper/pythonInclude.h
-pwrapper/pclass.h
-pwrapper/registry.h
-pwrapper/pconvert.h
-pwrapper/manta_api.cpp
-pwrapper/manta_api.h
-util/vectorbase.cpp
-util/integrator.h
-util/vectorbase.h
-util/quaternion.h
-util/interpol.h
-util/mcubes.h
-util/randomstream.h
-util/solvana.h
+${CMAKE_CURRENT_SOURCE_DIR}/pwrapper/pymain.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/pwrapper/pclass.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/pwrapper/pvec3.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/pwrapper/pconvert.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/pwrapper/registry.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/pwrapper/pythonInclude.h
+${CMAKE_CURRENT_SOURCE_DIR}/pwrapper/pclass.h
+${CMAKE_CURRENT_SOURCE_DIR}/pwrapper/registry.h
+${CMAKE_CURRENT_SOURCE_DIR}/pwrapper/pconvert.h
+${CMAKE_CURRENT_SOURCE_DIR}/pwrapper/manta_api.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/pwrapper/manta.h
+${CMAKE_CURRENT_SOURCE_DIR}/pwrapper/manta_api.h
+${CMAKE_CURRENT_SOURCE_DIR}/util/vectorbase.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/util/integrator.h
+${CMAKE_CURRENT_SOURCE_DIR}/util/vectorbase.h
+${CMAKE_CURRENT_SOURCE_DIR}/util/quaternion.h
+${CMAKE_CURRENT_SOURCE_DIR}/util/interpol.h
+${CMAKE_CURRENT_SOURCE_DIR}/util/mcubes.h
+${CMAKE_CURRENT_SOURCE_DIR}/util/randomstream.h
+${CMAKE_CURRENT_SOURCE_DIR}/util/solvana.h
 
 #gui/customctrl.cpp
 #gui/customctrl.h
@@ -152,44 +155,5 @@ util/solvana.h
 #gui/qtmain.h.reg
 #gui/qtmain.h.reg.cpp
 )
-
-#linking QT lbraries
-
-cmake_policy(SET CMP0020 NEW)
-find_package(Qt5Core QUIET)
-if (Qt5Core_FOUND)
-	message("Using Qt5")
-	find_package(Qt5Widgets REQUIRED)
-	find_package(Qt5OpenGL REQUIRED)
-
-	qt5_wrap_cpp(MOC_OUTFILES ${QT_REMAP} )
-	qt5_add_resources(QT_RES resources/res.qrc )
-	add_definitions(-DGUI=1)
-	add_definitions(${Qt5Widgets_DEFINITIONS})
-	list(APPEND INCLUDE_PATHS ${Qt5Widgets_INCLUDE_DIRS} ${Qt5OpenGL_INCLUDE_DIRS})
-	list(APPEND INC_SYS ${Qt5Widgets_LIBRARIES} ${Qt5OpenGL_LIBRARIES})
-	list(APPEND SOURCES ${MOC_OUTFILES} ${QT_RES})		
-else()
-	message("Using Qt4")
-	find_package(Qt4 REQUIRED)
-	set(QT_USE_QTOPENGL TRUE)
-
-#	qt4_wrap_cpp(MOC_OUTFILES ${QT_REMAP} )
-#	qt4_add_resources(QT_RES resources/res.qrc )
-	include(${QT_USE_FILE})
-	add_definitions(${QT_DEFINITIONS})
-	list(APPEND INC_SYS ${QT_LIBRARIES})
-	list(APPEND SOURCES ${MOC_OUTFILES} ${QT_RES})
-	endif()
-
-	if (APPLE)
-	# mac opengl framework
-#	SET(INC_SYS "${INC_SYS} -framework OpenGL ")
-	else()
-	find_package(OpenGL REQUIRED)
-	list(APPEND INC_SYS ${OPENGL_LIBRARIES})    
-	endif()
-
-
 
 blender_add_lib(bf_python_manta "${SRC}" "${INC}" "${INC_SYS}")
