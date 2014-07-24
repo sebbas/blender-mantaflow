@@ -168,8 +168,7 @@ static void add_mesh_transform_method(stringstream& ss)
 	"  obj.offset(vec3(res/2, res/2, res/2))\n\n";
 }
 
-//void *run_manta_scene(void *threadid)
-void run_manta_scene()
+void *run_manta_scene(void *threadid)
 {
 	//PyInterpreterState *st = PyThreadState_GET()->interp;
 	//PyThreadState *ts = Py_NewInterpreter();
@@ -378,10 +377,9 @@ static void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	}
 	manta_setup_file << ss.rdbuf();
 	manta_setup_file.close();
-	run_manta_scene();
-//	pthread_t manta_thread;
-//	int rc = pthread_create(&manta_thread, NULL, run_manta_scene, NULL);
-//	pthread_detach(manta_thread);
+	pthread_t manta_thread;
+	int rc = pthread_create(&manta_thread, NULL, run_manta_scene, NULL);
+	pthread_detach(manta_thread);
 }
 
 #endif /* MANTA_H */
