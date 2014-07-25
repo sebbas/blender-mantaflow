@@ -409,6 +409,10 @@ class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
         layout.active = domain.use_manta
         split = layout.split()
         split.operator("manta.export_scene", text="Create Manta Setup")
+        split = layout.split()
+        col = split.column()
+        col.prop(domain, "manta_start_frame", text="Start")
+        col.prop(domain, "manta_end_frame", text="End")
         col = split.column()
         col.prop(domain, "manta_solver_res", text="Solver Resolution")
         col.prop(domain, "manta_uvs", text="UVs count")

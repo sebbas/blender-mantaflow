@@ -557,6 +557,20 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Solver Res", "Solver resolution(2D/3D)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
+	prop = RNA_def_property(srna, "manta_start_frame", PROP_INT, PROP_NONE);
+	RNA_def_property_int_sdna(prop, NULL, "manta_start_frame");
+	RNA_def_property_range(prop, 0, 249);
+	RNA_def_property_ui_range(prop, 0, 249, 1, -1);
+	RNA_def_property_ui_text(prop, "Sim Start", "Frame from which to start simulation");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+	
+	prop = RNA_def_property(srna, "manta_end_frame", PROP_INT, PROP_NONE);
+	RNA_def_property_int_sdna(prop, NULL, "manta_end_frame");
+	RNA_def_property_range(prop, 1, 250);
+	RNA_def_property_ui_range(prop, 1, 250, 1, -1);
+	RNA_def_property_ui_text(prop, "Sim End", "Frame on which to end simulation");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+	
 	prop = RNA_def_property(srna, "manta_uvs", PROP_INT, PROP_NONE);
 	RNA_def_property_int_sdna(prop, NULL, "manta_uvs_num");
 	RNA_def_property_range(prop, 0, 4);

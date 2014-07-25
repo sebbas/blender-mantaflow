@@ -565,6 +565,8 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			
 			/*mantaflow settings*/
 			smd-> domain->manta_solver_res = 3;
+			smd-> domain->manta_start_frame = 1;
+			smd-> domain->manta_end_frame = 10;
 			smd->domain->noise_clamp_neg = 0;
 			smd->domain->noise_clamp_pos = 1;
 			smd->domain->noise_val_scale = 1;
