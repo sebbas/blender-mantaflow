@@ -13,7 +13,7 @@ set(INC_SYS
 	${PYTHON_INCLUDE_DIRS}
 )
 
-message("MANTA_processing ${CMAKE_CURRENT_SOURCE_DIR}/commonkernels.h")
+#message("MANTA_processing ${CMAKE_CURRENT_SOURCE_DIR}/commonkernels.h")
 set(SRC
 #PP SOURCES and HEADERS
 ${CMAKE_CURRENT_SOURCE_DIR}/commonkernels.h

@@ -62,6 +62,7 @@ set(SRC
 	intern/WAVELET_NOISE.h
 	intern/WTURBULENCE.h
 	intern/MANTA.h
+	intern/MANTA.cpp
 	intern/tnt/jama_eig.h
 	intern/tnt/jama_lu.h
 	intern/tnt/tnt.h
