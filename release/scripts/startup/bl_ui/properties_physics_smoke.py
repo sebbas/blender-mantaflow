@@ -405,7 +405,10 @@ class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
 		
+		#consistency check
         domain = context.smoke.domain_settings
+        #if(domain.manta_end_frame < domain.manta_start_frame):
+        #    domain.manta_end_frame = domain.manta_start_frame + 1
         layout.active = domain.use_manta
         split = layout.split()
         split.operator("manta.export_scene", text="Create Manta Setup")

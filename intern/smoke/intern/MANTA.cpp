@@ -204,7 +204,9 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	float noise_val_scale = smd->domain->noise_val_scale;
 	float noise_val_offset = smd->domain->noise_val_offset;
 	float noise_time_anim = smd->domain->noise_time_anim;
-	
+	int num_sim_frames = smd->domain->manta_end_frame - smd->domain->manta_start_frame + 1;
+	if(num_sim_frames < 1)
+		return;
 	FLUID_3D *fluid = smd->domain->fluid;
 	ofstream manta_setup_file;
 	manta_setup_file.open("manta_scene.py", std::fstream::trunc);
@@ -328,7 +330,8 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	
 	/*Flow solving stepsv, main loop*/
 	//setting 20 sim frames for now
-	ss << "for t in range(0,20): \n";		// << scene->r.sfra << ", " << scene->r.efra << "): \n";
+//	ss << "for t in range(0,20): \n";		// << scene->r.sfra << ", " << scene->r.efra << "): \n";
+	ss << "for t in range(0, " << num_sim_frames << "): \n";	
 	manta_advect_SemiLagr(ss, 1, "flags", "vel", "density", 2);
 	manta_advect_SemiLagr(ss, 1, "flags", "vel", "vel", 2);
 	

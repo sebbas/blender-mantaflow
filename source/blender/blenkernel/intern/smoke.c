@@ -2698,7 +2698,9 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		if(smd->domain->flags & MOD_SMOKE_USE_MANTA)
 		{
 			char buff[100];
-			sprintf(buff, "./den%04d.uni", scene->r.cfra);
+			if(smd->domain->manta_start_frame > scene->r.cfra)
+				return;
+			sprintf(buff, "./den%04d.uni", scene->r.cfra - smd->domain->manta_start_frame);
 			smoke_mantaflow_read(smd->domain->fluid, buff);
 			return;
 		}
