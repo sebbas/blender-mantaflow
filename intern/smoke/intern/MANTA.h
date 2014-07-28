@@ -15,6 +15,10 @@
 //#include "../../../source/blender/blenlib/BLI_fileops.h"
 //#include "../../../source/blender/python/manta_pp/pwrapper/pymain.cpp"
 
+struct manta_arg_struct {
+	std::string filepath;
+};
+
 void runMantaScript(vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
 
 extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY, int dimZ);
@@ -42,7 +46,9 @@ void manta_cache_path(char *filepath);
 //void BLI_dir_create_recursive(const char *filepath);
 void create_manta_folder();
 
-void *run_manta_scene(void *threadid);
+void *run_manta_scene_thread(void *threadid);
+
+void run_manta_scene(char * filepath);
 
 void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd);
 

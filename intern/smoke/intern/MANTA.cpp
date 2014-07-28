@@ -174,23 +174,33 @@ void create_manta_folder()
 	
 }
 
-void *run_manta_scene(void *threadid)
+void *run_manta_scene_thread(void *arguments)
 {
+	struct manta_arg_struct *args = (struct manta_arg_struct *)arguments;
 	//create_manta_folder();
 	//PyInterpreterState *st = PyThreadState_GET()->interp;
 	//PyThreadState *ts = Py_NewInterpreter();
 	
-	vector<string> args;
-	args.push_back("manta_scene.py");
+	vector<string> a;
+	a.push_back(args->filepath);
+	//a.push_back("manta_scene.py");
 	//args.push_back("test_1.py");
 	
-	runMantaScript(args);
+	runMantaScript(a);
 	
 	//system("./manta manta_scene.py");
-	//	pthread_exit(NULL);
+	pthread_exit(NULL);
+	return NULL;
 }
 
-
+void run_manta_scene(char *filepath)
+{
+	pthread_t manta_thread;
+	struct manta_arg_struct args;
+	args.filepath = filepath;
+	int rc = pthread_create(&manta_thread, NULL, run_manta_scene_thread, (void *)&args);
+	pthread_detach(manta_thread);
+}
 
 void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 {
@@ -390,9 +400,6 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	}
 	manta_setup_file << ss.rdbuf();
 	manta_setup_file.close();
-	//	create_manta_folder();
-	pthread_t manta_thread;
-	int rc = pthread_create(&manta_thread, NULL, run_manta_scene, NULL);
-	pthread_detach(manta_thread);
+	run_manta_scene("manta_scene.py");
 }
 
