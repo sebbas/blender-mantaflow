@@ -1147,7 +1147,8 @@ endif()
 	target_link_libraries(blender ${BLENDER_SORTED_LIBS})
 
 	#linking manta library
-	SET(MANTA_LINK_LIBRARIES -rdynamic -Wl,-force_load bf_python_manta ) 
+	#PR removed -Wl, -force_load 
+	SET(MANTA_LINK_LIBRARIES -force_load bf_python_manta ) 
 	#-Wl,--whole-archive bf_python_manta -Wl,--no-whole-archive)
 	TARGET_LINK_LIBRARIES(blender ${MANTA_LINK_LIBRARIES})
 
