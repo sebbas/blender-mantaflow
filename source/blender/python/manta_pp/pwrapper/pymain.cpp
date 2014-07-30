@@ -37,16 +37,21 @@ typedef string pyString;
 
 //*****************************************************************************
 // main...
-
+static bool manta_initialized = false;
 void runMantaScript(vector<string>& args) {
 	string filename = args[0];
 	
 	// Initialize extension classes and wrappers
 	srand(0);
 	PyGILState_STATE gilstate = PyGILState_Ensure();
-
-	Pb::setup(filename, args);
-		
+	debMsg("running manta init?", 0);
+	
+	if (! manta_initialized)
+	{	
+		debMsg("yes", 0);
+		Pb::setup(filename, args);
+		manta_initialized = true;
+	}	
 	// Pass through the command line arguments
 	// for Py3k compatability, convert to wstring
 	vector<pyString> pyArgs(args.size());
@@ -81,16 +86,22 @@ void runMantaScript(vector<string>& args) {
 #else
 	// for linux, use this as it produces nicer error messages
 	PyRun_SimpleFileEx(fp, filename.c_str(), 1);    
+	fclose(fp);
+	Pb::finalize();
+	Pb::setup(filename, args);
+	fp = fopen(filename.c_str(),"rb");    
+	debMsg("one more time",0);
+	PyRun_SimpleFileEx(fp, filename.c_str(), 1);    
 	fclose(fp);    
 #endif
 	
 	debMsg("Script finished.", 0);
 #ifdef GUI
-	guiWaitFinish();
+//	guiWaitFinish();
 #endif
 
 	// finalize
-	Pb::finalize();
+//	Pb::finalize();
 	PyGILState_Release(gilstate);
 
 	delete [] cargs;

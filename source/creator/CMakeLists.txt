@@ -1148,7 +1148,11 @@ endif()
 
 	#linking manta library
 	#PR removed -Wl, -force_load 
-	SET(MANTA_LINK_LIBRARIES -force_load bf_python_manta ) 
+	if(APPLE)
+		SET(MANTA_LINK_LIBRARIES -force_load bf_python_manta ) 
+	else()
+		SET(MANTA_LINK_LIBRARIES -Wl, --whole-archive -lbf_python_manta -Wl,--no-whole-archive )
+	endif()
 	#-Wl,--whole-archive bf_python_manta -Wl,--no-whole-archive)
 	TARGET_LINK_LIBRARIES(blender ${MANTA_LINK_LIBRARIES})
 

@@ -195,11 +195,17 @@ void *run_manta_scene_thread(void *arguments)
 
 void run_manta_scene(char *filepath)
 {
-	pthread_t manta_thread;
-	struct manta_arg_struct args;
-	args.filepath = filepath;
-	int rc = pthread_create(&manta_thread, NULL, run_manta_scene_thread, (void *)&args);
-	pthread_detach(manta_thread);
+	vector<string> a;
+	a.push_back(filepath);
+	//PyGILState_STATE gilstate = PyGILState_Ensure();
+	runMantaScript(a);
+	//PyGILState_Release(gilstate);
+
+//	pthread_t manta_thread;
+//	struct manta_arg_struct args;
+//	args.filepath = filepath;
+//	int rc = pthread_create(&manta_thread, NULL, run_manta_scene_thread, (void *)&args);
+//	pthread_detach(manta_thread);
 }
 
 void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
