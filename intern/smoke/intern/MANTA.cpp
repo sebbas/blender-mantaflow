@@ -347,7 +347,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	/*Flow solving stepsv, main loop*/
 	//setting 20 sim frames for now
 //	ss << "for t in range(0,20): \n";		// << scene->r.sfra << ", " << scene->r.efra << "): \n";
-	ss << "for t in range(0, " << num_sim_frames << "): \n";	
+	ss << "def sim_step(t):\n";
 	manta_advect_SemiLagr(ss, 1, "flags", "vel", "density", 2);
 	manta_advect_SemiLagr(ss, 1, "flags", "vel", "vel", 2);
 	
@@ -359,9 +359,10 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	ss << "  applyInflow=False\n";
 	ss << "  if (t>=0 and t<75):\n";
 	ss << "    source_shape.applyToGrid(grid=density, value=1)\n";
+	ss << "    sourceVel.applyToGrid(grid=vel , value=velInflow,cutoff = 3)\n";
+	
 	//ss << "    densityInflowMesh( flags=flags, density=density, noise=noise, mesh=source, scale=1, sigma=0.5 )\n";
 	//ss << "    densityInflow( flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5 )\n";
-	ss << "    sourceVel.applyToGrid(grid=vel , value=velInflow,cutoff = 3)\n";
 	//ss << "    sourceVel.applyToGrid( grid=vel , value=velInflow )\n";
 	ss << "    applyInflow=True\n";
 	
@@ -403,7 +404,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		ss << "  if (applyInflow): \n";
 		ss << "    densityInflowMesh( flags=xl_flags, density=xl_density, noise=xl_noise, mesh=xl_source, scale=1, sigma=0.5 ) \n";
 		//ss << "    densityInflow( flags=xl_flags, density=xl_density, noise=xl_noise, shape=xl_source, scale=1, sigma=0.5 ) \n";
-		ss << "  xl.step()   \n";
+//		ss << "  xl.step()   \n";
 	}
 	manta_setup_file << ss.rdbuf();
 	manta_setup_file.close();
