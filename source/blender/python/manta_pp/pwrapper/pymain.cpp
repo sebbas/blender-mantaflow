@@ -87,11 +87,11 @@ void runMantaScript(vector<string>& args) {
 	// for linux, use this as it produces nicer error messages
 	PyRun_SimpleFileEx(fp, filename.c_str(), 1);    
 	fclose(fp);
-	Pb::finalize();
-	Pb::setup(filename, args);
-	fp = fopen(filename.c_str(),"rb");    
-	debMsg("one more time",0);
-	PyRun_SimpleFileEx(fp, filename.c_str(), 1);    
+//	Pb::finalize();
+//	Pb::setup(filename, args);
+//	fp = fopen(filename.c_str(),"rb");    
+//	debMsg("one more time",0);
+//	PyRun_SimpleFileEx(fp, filename.c_str(), 1);    
 	fclose(fp);    
 #endif
 	

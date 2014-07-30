@@ -195,17 +195,17 @@ void *run_manta_scene_thread(void *arguments)
 
 void run_manta_scene(char *filepath)
 {
-	vector<string> a;
-	a.push_back(filepath);
+	//vector<string> a;
+	//a.push_back(filepath);
 	//PyGILState_STATE gilstate = PyGILState_Ensure();
-	runMantaScript(a);
+	//runMantaScript(a);
 	//PyGILState_Release(gilstate);
 
-//	pthread_t manta_thread;
-//	struct manta_arg_struct args;
-//	args.filepath = filepath;
-//	int rc = pthread_create(&manta_thread, NULL, run_manta_scene_thread, (void *)&args);
-//	pthread_detach(manta_thread);
+	pthread_t manta_thread;
+	struct manta_arg_struct args;
+	args.filepath = filepath;
+	int rc = pthread_create(&manta_thread, NULL, run_manta_scene_thread, (void *)&args);
+	pthread_detach(manta_thread);
 }
 
 void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
@@ -328,7 +328,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	ss << "tempFlag  = s.create(FlagGrid)\n";
 	ss << "sdf_flow  = s.create(LevelsetGrid)\n";
 	ss << "source.meshSDF(source, sdf_flow, 1.1)\n";
-	
+	ss << "source_shape = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*vec3(0, 0.02, 0))\n";
 	/*Wavelets noise field*/
 	if (wavelets)
 	{
@@ -358,7 +358,8 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	}
 	ss << "  applyInflow=False\n";
 	ss << "  if (t>=0 and t<75):\n";
-	ss << "    densityInflowMesh( flags=flags, density=density, noise=noise, mesh=source, scale=1, sigma=0.5 )\n";
+	ss << "    source_shape.applyToGrid(grid=density, value=1)\n";
+	//ss << "    densityInflowMesh( flags=flags, density=density, noise=noise, mesh=source, scale=1, sigma=0.5 )\n";
 	//ss << "    densityInflow( flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5 )\n";
 	ss << "    sourceVel.applyToGrid(grid=vel , value=velInflow,cutoff = 3)\n";
 	//ss << "    sourceVel.applyToGrid( grid=vel , value=velInflow )\n";
