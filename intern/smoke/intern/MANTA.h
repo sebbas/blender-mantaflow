@@ -17,6 +17,7 @@
 
 struct manta_arg_struct {
 	std::string filepath;
+	int frame_num;
 };
 
 void runMantaScript(vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
@@ -43,14 +44,20 @@ void add_mesh_transform_method(stringstream& ss);
 
 void manta_cache_path(char *filepath);
 
+static bool manta_sim_running=true;
+
 //void BLI_dir_create_recursive(const char *filepath);
 void create_manta_folder();
 
 void *run_manta_scene_thread(void *threadid);
 
+void *run_manta_sim_thread(void *threadid);
+
 void run_manta_scene(char * filepath);
 
 void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd);
+
+void manta_sim_step(int frame);
 
 #endif /* MANTA_H */
 

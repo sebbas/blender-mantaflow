@@ -86,13 +86,13 @@ void runMantaScript(vector<string>& args) {
 #else
 	// for linux, use this as it produces nicer error messages
 	PyRun_SimpleFileEx(fp, filename.c_str(), 1);    
-	for (int frame=0; frame < 4; ++frame)
-	{
-		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << frame) )->str();
-		std::string py_string_0 = string("sim_step(").append(frame_str);
-		std::string py_string_1 = py_string_0.append(")\0");
-		PyRun_SimpleString(py_string_1.c_str());
-	}
+//	for (int frame=0; frame < 4; ++frame)
+//	{
+//		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << frame) )->str();
+//		std::string py_string_0 = string("sim_step(").append(frame_str);
+//		std::string py_string_1 = py_string_0.append(")\0");
+//		PyRun_SimpleString(py_string_1.c_str());
+//	}
 	fclose(fp);    
 #endif
 	

@@ -163,6 +163,7 @@ void manta_cache_path(char *filepath)
 	char *name="manta";
 	BLI_make_file_string("/", filepath, BLI_temporary_dir(), name);
 }
+
 //void BLI_dir_create_recursive(const char *filepath);
 void create_manta_folder()
 {
@@ -195,17 +196,38 @@ void *run_manta_scene_thread(void *arguments)
 
 void run_manta_scene(char *filepath)
 {
-	//vector<string> a;
-	//a.push_back(filepath);
+	vector<string> a;
+	a.push_back(filepath);
 	//PyGILState_STATE gilstate = PyGILState_Ensure();
-	//runMantaScript(a);
+	runMantaScript(a);
 	//PyGILState_Release(gilstate);
 
 	pthread_t manta_thread;
 	struct manta_arg_struct args;
 	args.filepath = filepath;
-	int rc = pthread_create(&manta_thread, NULL, run_manta_scene_thread, (void *)&args);
+	args.frame_num = 7;
+	int rc = pthread_create(&manta_thread, NULL, run_manta_sim_thread, (void *)&args);
 	pthread_detach(manta_thread);
+}
+
+void *run_manta_sim_thread(void *arguments)
+//void manta_sim_step(int frame)
+{
+	struct manta_arg_struct *args = (struct manta_arg_struct *)arguments;
+	
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	for (int fr=0; fr<args->frame_num; ++fr) {
+		cout<< "cansimulate? "<<manta_sim_running<<endl;
+		if (! manta_sim_running)
+			break;
+		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << fr) )->str();
+		std::string py_string_0 = string("sim_step(").append(frame_str);
+		std::string py_string_1 = py_string_0.append(")\0");
+		PyRun_SimpleString(py_string_1.c_str());
+		cout<< "done"<<manta_sim_running<<endl;
+	}
+	cout<< "doubledone"<<endl;
+	PyGILState_Release(gilstate);
 }
 
 void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
@@ -409,5 +431,9 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	manta_setup_file << ss.rdbuf();
 	manta_setup_file.close();
 	run_manta_scene("manta_scene.py");
+//	for (int frame=0; frame< 20; frame++)
+//	{
+//		manta_sim_step(frame);
+//	}
 }
 
