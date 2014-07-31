@@ -387,6 +387,10 @@ class OBJECT_OT_MantaButton(bpy.types.Operator):
         for ob in selected_before:
             ob.select = True
         bpy.ops.manta.make_file()
+        # for frame_num in range(10):
+            # domain.manta_sim_frame += 1
+        bpy.ops.manta.sim_step()
+        # domain.manta_sim_frame = -1
         return{'FINISHED'}
 
 class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):

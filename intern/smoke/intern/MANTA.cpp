@@ -177,56 +177,60 @@ void create_manta_folder()
 
 void *run_manta_scene_thread(void *arguments)
 {
-	struct manta_arg_struct *args = (struct manta_arg_struct *)arguments;
-	//create_manta_folder();
-	//PyInterpreterState *st = PyThreadState_GET()->interp;
-	//PyThreadState *ts = Py_NewInterpreter();
-	
-	vector<string> a;
-	a.push_back(args->filepath);
-	//a.push_back("manta_scene.py");
-	//args.push_back("test_1.py");
-	
-	runMantaScript(a);
-	
-	//system("./manta manta_scene.py");
-	pthread_exit(NULL);
+//	struct manta_arg_struct *args = (struct manta_arg_struct *)arguments;
+//	//create_manta_folder();
+//	//PyInterpreterState *st = PyThreadState_GET()->interp;
+//	//PyThreadState *ts = Py_NewInterpreter();
+//	
+//	vector<string> a;
+//	a.push_back(args->filepath);
+//	//a.push_back("manta_scene.py");
+//	//args.push_back("test_1.py");
+//	
+//	runMantaScript(a);
+//	
+//	//system("./manta manta_scene.py");
+//	pthread_exit(NULL);
 	return NULL;
 }
 
-void run_manta_scene(char *filepath)
+void run_manta_scene(SmokeModifierData *smd)
 {
-	vector<string> a;
-	a.push_back(filepath);
-	//PyGILState_STATE gilstate = PyGILState_Ensure();
-	runMantaScript(a);
-	//PyGILState_Release(gilstate);
+//	vector<string> a;
+//	a.push_back(filepath);
+//	//PyGILState_STATE gilstate = PyGILState_Ensure();
+//	runMantaScript(a);
+//	//PyGILState_Release(gilstate);
 
-	pthread_t manta_thread;
 	struct manta_arg_struct args;
-	args.filepath = filepath;
-	args.frame_num = 7;
+//	args.filepath = filepath;
+	args.frame_num = smd->domain->manta_end_frame - smd->domain->manta_start_frame;
 	int rc = pthread_create(&manta_thread, NULL, run_manta_sim_thread, (void *)&args);
-	pthread_detach(manta_thread);
+//	pthread_join(manta_thread,NULL);
+//	pthread_detach(manta_thread);
 }
+
+void stop_manta_sim()
+{
+	pthread_cancel(manta_thread);
+}
+
 
 void *run_manta_sim_thread(void *arguments)
 //void manta_sim_step(int frame)
 {
 	struct manta_arg_struct *args = (struct manta_arg_struct *)arguments;
-	
+	int num_sim_steps = args->frame_num;
 	PyGILState_STATE gilstate = PyGILState_Ensure();
-	for (int fr=0; fr<args->frame_num; ++fr) {
-		cout<< "cansimulate? "<<manta_sim_running<<endl;
-		if (! manta_sim_running)
-			break;
+	for (int fr=0; fr< num_sim_steps; ++fr) {
 		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << fr) )->str();
 		std::string py_string_0 = string("sim_step(").append(frame_str);
 		std::string py_string_1 = py_string_0.append(")\0");
+//		std::string py_string_1 = string("sim_step()\0");
 		PyRun_SimpleString(py_string_1.c_str());
 		cout<< "done"<<manta_sim_running<<endl;
+//		frame_num ++;
 	}
-	cout<< "doubledone"<<endl;
 	PyGILState_Release(gilstate);
 }
 
@@ -370,6 +374,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	//setting 20 sim frames for now
 //	ss << "for t in range(0,20): \n";		// << scene->r.sfra << ", " << scene->r.efra << "): \n";
 	ss << "def sim_step(t):\n";
+	
 	manta_advect_SemiLagr(ss, 1, "flags", "vel", "density", 2);
 	manta_advect_SemiLagr(ss, 1, "flags", "vel", "vel", 2);
 	
@@ -430,7 +435,11 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	}
 	manta_setup_file << ss.rdbuf();
 	manta_setup_file.close();
-	run_manta_scene("manta_scene.py");
+	vector<string> a;
+	a.push_back("manta_scene.py");
+	runMantaScript(a);
+//	run_manta_scene("manta_scene.py");
+//	manta_sim_running = false;
 //	for (int frame=0; frame< 20; frame++)
 //	{
 //		manta_sim_step(frame);

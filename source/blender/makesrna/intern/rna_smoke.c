@@ -557,6 +557,13 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Solver Res", "Solver resolution(2D/3D)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
+	prop = RNA_def_property(srna, "manta_sim_frame", PROP_INT, PROP_NONE);
+	RNA_def_property_int_sdna(prop, NULL, "manta_sim_frame");
+	RNA_def_property_range(prop, -1, 250);
+	RNA_def_property_ui_range(prop, -1, 250, 1, -1);
+	RNA_def_property_ui_text(prop, "Current Simulation Frame", "-1, if not simulating");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
 	prop = RNA_def_property(srna, "manta_start_frame", PROP_INT, PROP_NONE);
 	RNA_def_property_int_sdna(prop, NULL, "manta_start_frame");
 	RNA_def_property_range(prop, 0, 249);

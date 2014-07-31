@@ -16,9 +16,11 @@
 //#include "../../../source/blender/python/manta_pp/pwrapper/pymain.cpp"
 
 struct manta_arg_struct {
-	std::string filepath;
+//	std::string filepath;
 	int frame_num;
 };
+
+static pthread_t manta_thread;
 
 void runMantaScript(vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
 
@@ -53,7 +55,9 @@ void *run_manta_scene_thread(void *threadid);
 
 void *run_manta_sim_thread(void *threadid);
 
-void run_manta_scene(char * filepath);
+void run_manta_scene(SmokeModifierData *smd);
+
+void stop_manta_sim();
 
 void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd);
 
