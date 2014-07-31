@@ -204,8 +204,9 @@ void run_manta_scene(SmokeModifierData *smd)
 
 	struct manta_arg_struct args;
 //	args.filepath = filepath;
-	args.frame_num = smd->domain->manta_end_frame - smd->domain->manta_start_frame;
-	int rc = pthread_create(&manta_thread, NULL, run_manta_sim_thread, (void *)&args);
+	args.smd = smd;
+//	args.frame_num = smd->domain->manta_end_frame - smd->domain->manta_start_frame;
+	int rc = pthread_create(&manta_thread, NULL, run_manta_sim_thread, smd);//(void *)&args);
 //	pthread_join(manta_thread,NULL);
 //	pthread_detach(manta_thread);
 }
@@ -219,10 +220,16 @@ void stop_manta_sim()
 void *run_manta_sim_thread(void *arguments)
 //void manta_sim_step(int frame)
 {
-	struct manta_arg_struct *args = (struct manta_arg_struct *)arguments;
-	int num_sim_steps = args->frame_num;
+//	struct manta_arg_struct *args = (struct manta_arg_struct *)arguments;
+//	int num_sim_steps = args->smd->domain->manta_end_frame - args->smd->domain->manta_start_frame;
+	SmokeModifierData *smd = (SmokeModifierData*)arguments;
+	int num_sim_steps = smd->domain->manta_end_frame - smd->domain->manta_start_frame;
+	smd->domain->manta_sim_frame = 0;
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	for (int fr=0; fr< num_sim_steps; ++fr) {
+		if(smd->domain->manta_sim_frame == -1)
+			break;
+		smd->domain->manta_sim_frame = fr;
 		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << fr) )->str();
 		std::string py_string_0 = string("sim_step(").append(frame_str);
 		std::string py_string_1 = py_string_0.append(")\0");

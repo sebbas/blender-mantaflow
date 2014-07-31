@@ -17,7 +17,7 @@
 
 struct manta_arg_struct {
 //	std::string filepath;
-	int frame_num;
+	SmokeModifierData *smd;
 };
 
 static pthread_t manta_thread;

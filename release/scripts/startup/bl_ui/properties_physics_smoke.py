@@ -326,8 +326,8 @@ class PHYSICS_PT_smoke_field_weights(PhysicButtonsPanel, Panel):
         domain = context.smoke.domain_settings
         effector_weights_ui(self, context, domain.effector_weights, 'SMOKE')
 
-class OBJECT_OT_MantaButton(bpy.types.Operator):
-    bl_idname = "manta.export_scene"
+class OBJECT_OT_RunMantaButton(bpy.types.Operator):
+    bl_idname = "manta_export_scene.button"
     bl_label = "Create Python Script and mesh files"
     
     def execute(self, context):
@@ -393,6 +393,15 @@ class OBJECT_OT_MantaButton(bpy.types.Operator):
         # domain.manta_sim_frame = -1
         return{'FINISHED'}
 
+class OBJECT_OT_StopMantaButton(bpy.types.Operator):
+    bl_idname = "manta_stop_sim.button"
+    bl_label = "Stop Mantaflow Simulation"
+    def execute(self, context):
+        domain = context.smoke.domain_settings
+        domain.manta_sim_frame = -1
+        # bpy.ops.manta.stop_sim()
+
+
 class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
     bl_label = "MantaFlow Settings"
     bl_options = {'DEFAULT_CLOSED'}
@@ -405,7 +414,7 @@ class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
     def draw_header(self, context):
         md = context.smoke.domain_settings
         self.layout.prop(md, "use_manta", text="")
-	
+	   
     def draw(self, context):
         layout = self.layout
 		
@@ -415,7 +424,10 @@ class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
         #    domain.manta_end_frame = domain.manta_start_frame + 1
         layout.active = domain.use_manta
         split = layout.split()
-        split.operator("manta.export_scene", text="Create Manta Setup")
+        if domain.manta_sim_frame == -1:
+            split.operator("manta_export_scene.button", text="Create Manta Setup")
+        else:
+            split.operator("manta_stop_sim.button", text="Stop Sim")
         split = layout.split()
         col = split.column()
         col.prop(domain, "manta_start_frame", text="Start")
