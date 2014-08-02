@@ -341,7 +341,7 @@ class OBJECT_OT_RunMantaButton(bpy.types.Operator):
                 obj.scale[dim] /= domain_obj.scale[dim]
                 obj.location[dim] -= domain_obj.location[dim] 
                 obj.location[dim] /= domain_obj.scale[dim]
-	
+    
         def transform_back(obj, domain_obj):
             scale_factor = domain_obj.modifiers['Smoke'].domain_settings.domain_resolution
             for dim in range(3):
@@ -400,34 +400,47 @@ class OBJECT_OT_StopMantaButton(bpy.types.Operator):
         domain = context.smoke.domain_settings
         domain.manta_sim_frame = -1
         # bpy.ops.manta.stop_sim()
+        return{'FINISHED'}
 
 
 class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
     bl_label = "MantaFlow Settings"
     bl_options = {'DEFAULT_CLOSED'}
-	
+    name = bpy.props.StringProperty(name="Test Prop", default="Unknown")
+    StringProp = bpy.props.StringProperty(name="manta_status", description="Status Of Simulation", default="Doing Nothing" )
+
     @classmethod
     def poll(cls, context):
         md = context.smoke
         return md and (md.smoke_type == 'DOMAIN')
-	
+    
     def draw_header(self, context):
         md = context.smoke.domain_settings
         self.layout.prop(md, "use_manta", text="")
-	   
+       
     def draw(self, context):
         layout = self.layout
-		
-		#consistency check
+        
+        #consistency check
         domain = context.smoke.domain_settings
         #if(domain.manta_end_frame < domain.manta_start_frame):
         #    domain.manta_end_frame = domain.manta_start_frame + 1
         layout.active = domain.use_manta
         split = layout.split()
+        #wm = bpy.context.window_manager
+        tot = domain.manta_end_frame - domain.manta_start_frame
+        #wm.progress_begin(0,tot)
         if domain.manta_sim_frame == -1:
             split.operator("manta_export_scene.button", text="Create Manta Setup")
+            split = layout.split()
+            split.label("Status:Doing Nothing")
+        #    split.prop(domain, "manta_status", text="Not Simulating:")
+        #    wm.progress_end()
         else:
             split.operator("manta_stop_sim.button", text="Stop Sim")
+            split = layout.split()
+            split.label("Status:Simulating " + str(domain.manta_sim_frame) + "/" + str(tot))
+        #    wm.progress_update(domain.manta_sim_frame)
         split = layout.split()
         col = split.column()
         col.prop(domain, "manta_start_frame", text="Start")
