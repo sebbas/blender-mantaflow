@@ -238,6 +238,8 @@ void *run_manta_sim_thread(void *arguments)
 		cout<< "done"<<manta_sim_running<<endl;
 //		frame_num ++;
 	}
+	//returning simulation state to "not simulating" aka -1
+	smd->domain->manta_sim_frame = -1;
 	PyGILState_Release(gilstate);
 }
 
@@ -416,7 +418,8 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	ss << "  extrapolateSimpleFlags( flags=tempFlag, val=energy, distance=6, flagFrom=FlagFluid, flagTo=FlagObstacle )\n";
 	ss << "  computeWaveletCoeffs(energy)\n";
 	/*Saving output*/
-	ss << "  density.save('den%04d.uni' % t) \n";
+	ss << "  density.save('den%04d_temp.uni' % t) \n";
+	ss << "  os.rename('den%04d_temp.uni' % t, 'den%04d.uni' % t) \n";
 	ss << "  s.step()\n";
 	ss << " \n";
 	
