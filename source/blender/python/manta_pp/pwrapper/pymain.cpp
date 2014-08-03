@@ -93,7 +93,9 @@ void runMantaScript(vector<string>& args) {
 //		std::string py_string_1 = py_string_0.append(")\0");
 //		PyRun_SimpleString(py_string_1.c_str());
 //	}
-	fclose(fp);    
+	if (fp != NULL){
+		fclose(fp);    
+	}
 #endif
 	
 	debMsg("Script finished.", 0);
