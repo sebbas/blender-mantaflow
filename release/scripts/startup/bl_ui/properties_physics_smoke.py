@@ -349,6 +349,9 @@ class OBJECT_OT_RunMantaButton(bpy.types.Operator):
                 obj.location[dim] *=  domain_obj.scale[dim]
                 obj.location[dim] += domain_obj.location[dim] 
 
+        def extract_force_fields(scene):
+            return [ob for ob in scene.objects if ob.field.type != None]    
+        
         coll_objs = []
         flow_objs = []
         selected_before = []
