@@ -362,6 +362,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	ss << "energy = s.create(RealGrid) \n";
 	ss << "tempFlag  = s.create(FlagGrid)\n";
 	ss << "sdf_flow  = s.create(LevelsetGrid)\n";
+//	ss << "field_source = s.create(Box, p0=vec3(0,0,0), p1=gs)\n";
 	ss << "source.meshSDF(source, sdf_flow, 1.1)\n";
 	ss << "source_shape = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*vec3(0, 0.02, 0))\n";
 	/*Wavelets noise field*/
@@ -377,7 +378,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	}
 	
 	/*GUI for debugging purposes*/
-	ss << "if (GUI):\n  gui = Gui()\n  gui.show() \n";
+//	ss << "if (GUI):\n  gui = Gui()\n  gui.show() \n";
 	
 	/*Flow solving stepsv, main loop*/
 	//setting 20 sim frames for now
@@ -394,12 +395,12 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	}
 	ss << "  applyInflow=False\n";
 	ss << "  if (t>=0 and t<75):\n";
-	ss << "    source_shape.applyToGrid(grid=density, value=1)\n";
-	ss << "    sourceVel.applyToGrid(grid=vel , value=velInflow,cutoff = 3)\n";
+	//ss << "    source_shape.applyToGrid(grid=density, value=1)\n";
 	
-	//ss << "    densityInflowMesh( flags=flags, density=density, noise=noise, mesh=source, scale=1, sigma=0.5 )\n";
-	//ss << "    densityInflow( flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5 )\n";
+	ss << "    densityInflowMesh( flags=flags, density=density, noise=noise, mesh=source, scale=1, sigma=0.5 )\n";
+	//ss << "    densityInflow( flags=flags, density=density, noise=noise, shape=source_shape, scale=1, sigma=0.5 )\n";
 	//ss << "    sourceVel.applyToGrid( grid=vel , value=velInflow )\n";
+	ss << "    sourceVel.applyToGrid(grid=vel , value=velInflow,cutoff = 3)\n";
 	ss << "    applyInflow=True\n";
 	
 	ss << "  setWallBcs(flags=flags, vel=vel) \n";
