@@ -375,7 +375,7 @@ class OBJECT_OT_RunMantaButton(bpy.types.Operator):
             for ob in coll_objs:
                 ob.select = True
                 transform(ob,domain)
-            bpy.ops.export_scene.obj(filepath = "./manta_coll.obj", use_selection = True, use_normals = True, use_materials = False, use_triangles = True, group_by_object = True, use_nurbs=True, check_existing= False)
+            bpy.ops.export_scene.obj(filepath = "./manta_coll.obj", axis_forward='Y', axis_up='Z', use_selection = True, use_normals = True, use_materials = False, use_triangles = True, group_by_object = True, use_nurbs=True, check_existing= False)
             for ob in coll_objs:
                 ob.select = False
                 transform_back(ob,domain)
@@ -383,7 +383,7 @@ class OBJECT_OT_RunMantaButton(bpy.types.Operator):
             for ob in flow_objs:
                 ob.select = True
                 transform(ob,domain)
-            bpy.ops.export_scene.obj(filepath = "./manta_flow.obj", use_selection = True, use_normals = True, use_materials = False, use_triangles = True, group_by_object = True, use_nurbs=True, check_existing= False)
+            bpy.ops.export_scene.obj(filepath = "./manta_flow.obj", axis_forward='Y', axis_up='Z', use_selection = True, use_normals = True, use_materials = False, use_triangles = True, group_by_object = True, use_nurbs=True, check_existing= False)
             for ob in flow_objs:
                 ob.select = False
                 transform_back(ob,domain)
