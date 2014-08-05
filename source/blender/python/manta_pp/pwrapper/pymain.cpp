@@ -38,12 +38,38 @@ typedef string pyString;
 //*****************************************************************************
 // main...
 static bool manta_initialized = false;
+const static string clean_code1 = "def del_var(x): \n\
+  print (\"deleting\", x) \n\
+  try:\n\
+    del x\n\
+    print (\"deleted\") \n\
+  except:\n\
+    print (\"not deleted\") \n\
+del_var(s) \n\
+del_var(uvs)\n\
+del_var(velInflow )\n\
+del_var(res)\n\
+del_var(gs) \n\
+del_var(noise) \n\
+del_var(source)\n\
+del_var(sourceVel)\n\
+del_var(flags) \n\
+del_var(vel) \n\
+del_var(density) \n\
+del_var(pressure) \n\
+del_var(energy) \n\
+del_var(tempFlag)\n\
+del_var(sdf_flow)\n\
+del_var(source_shape)";
+const static string clean_code2 = "del s; del noise;";
 void runMantaScript(vector<string>& args) {
 	string filename = args[0];
 	
 	// Initialize extension classes and wrappers
 	srand(0);
 	PyGILState_STATE gilstate = PyGILState_Ensure();
+	/*cleaning possible previous setups*/
+	PyRun_SimpleString(clean_code2.c_str());
 	debMsg("running manta init?", 0);
 	
 	if (! manta_initialized)
@@ -85,7 +111,7 @@ void runMantaScript(vector<string>& args) {
 	delete[] buf;    
 #else
 	// for linux, use this as it produces nicer error messages
-	PyRun_SimpleFileEx(fp, filename.c_str(), 1);    
+	PyRun_SimpleFileEx(fp, filename.c_str(), 0);    
 //	for (int frame=0; frame < 4; ++frame)
 //	{
 //		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << frame) )->str();

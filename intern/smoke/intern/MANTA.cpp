@@ -377,8 +377,6 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		ss << "xl_wltnoise.timeAnim = 0.1 \n";
 	}
 	
-	/*GUI for debugging purposes*/
-//	ss << "if (GUI):\n  gui = Gui()\n  gui.show() \n";
 	
 	/*Flow solving stepsv, main loop*/
 	//setting 20 sim frames for now
@@ -398,7 +396,6 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	//ss << "    source_shape.applyToGrid(grid=density, value=1)\n";
 	
 	ss << "    densityInflowMesh( flags=flags, density=density, noise=noise, mesh=source, scale=1, sigma=0.5 )\n";
-	//ss << "    densityInflow( flags=flags, density=density, noise=noise, shape=source_shape, scale=1, sigma=0.5 )\n";
 	//ss << "    sourceVel.applyToGrid( grid=vel , value=velInflow )\n";
 	ss << "    sourceVel.applyToGrid(grid=vel , value=velInflow,cutoff = 3)\n";
 	ss << "    applyInflow=True\n";
