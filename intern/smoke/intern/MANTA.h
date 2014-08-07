@@ -16,10 +16,11 @@
 //#include "../../../source/blender/python/manta_pp/pwrapper/pymain.cpp"
 
 void export_force_fields(int size_x, int size_y, int size_z, float *f_x, float*f_y, float*f_z);/*defined in pymain.cpp*/
+extern "C" void manta_write_effectors(struct Scene *s, struct SmokeModifierData *smd); /*defined in smoke_api.cpp*/
 
 struct manta_arg_struct {
-//	std::string filepath;
-	SmokeModifierData *smd;
+	Scene s;
+	SmokeModifierData smd;
 };
 
 static pthread_t manta_thread;
@@ -57,7 +58,7 @@ void *run_manta_scene_thread(void *threadid);
 
 void *run_manta_sim_thread(void *threadid);
 
-void run_manta_scene(SmokeModifierData *smd);
+void run_manta_scene(Scene *scene, SmokeModifierData *smd);
 
 void stop_manta_sim();
 

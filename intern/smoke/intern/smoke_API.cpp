@@ -520,13 +520,15 @@ extern "C" void smoke_mantaflow_write_scene_file(struct Scene *s, struct SmokeMo
 	generate_manta_sim_file(s, smd);
 }
 
-extern "C" void smoke_mantaflow_sim_step(SmokeModifierData *smd)
+extern "C" void smoke_mantaflow_sim_step(Scene *scene, SmokeModifierData *smd)
 {
-	run_manta_scene(smd);
+	run_manta_scene(scene, smd);
 }
+
 extern "C" void manta_write_effectors(struct Scene *s, struct SmokeModifierData *smd)
 {
-	/*updateeffectors function already called*/
+	assert(smd->domain->manta_obj != NULL);
+	manta_update_effectors(s, smd->domain->manta_obj, smd->domain, 0.1f);
 	FLUID_3D *fluid = smd->domain->fluid;
 	int size_x = fluid->xRes();
 	int size_y = fluid->yRes();

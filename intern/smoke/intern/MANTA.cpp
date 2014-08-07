@@ -196,19 +196,18 @@ void *run_manta_scene_thread(void *arguments)
 	return NULL;
 }
 
-void run_manta_scene(SmokeModifierData *smd)
+void run_manta_scene(Scene *s, SmokeModifierData *smd)
 {
 //	vector<string> a;
 //	a.push_back(filepath);
 //	//PyGILState_STATE gilstate = PyGILState_Ensure();
 //	runMantaScript(a);
 //	//PyGILState_Release(gilstate);
-
-	struct manta_arg_struct args;
-//	args.filepath = filepath;
-	args.smd = smd;
+	struct manta_arg_struct *args = (struct manta_arg_struct*)malloc(sizeof(struct manta_arg_struct));
+	args->smd = *smd;
+	args->s = *s;
 //	args.frame_num = smd->domain->manta_end_frame - smd->domain->manta_start_frame;
-	int rc = pthread_create(&manta_thread, NULL, run_manta_sim_thread, smd);//(void *)&args);
+	int rc = pthread_create(&manta_thread, NULL, run_manta_sim_thread, (void *)args);
 //	pthread_join(manta_thread,NULL);
 //	pthread_detach(manta_thread);
 }
@@ -222,15 +221,17 @@ void stop_manta_sim()
 void *run_manta_sim_thread(void *arguments)
 //void manta_sim_step(int frame)
 {
-//	struct manta_arg_struct *args = (struct manta_arg_struct *)arguments;
+	struct manta_arg_struct *args = (struct manta_arg_struct *)arguments;
 //	int num_sim_steps = args->smd->domain->manta_end_frame - args->smd->domain->manta_start_frame;
-	SmokeModifierData *smd = (SmokeModifierData*)arguments;
+	SmokeModifierData *smd = &args->smd;
+	Scene *s = &args->s;
 	int num_sim_steps = smd->domain->manta_end_frame - smd->domain->manta_start_frame;
 	smd->domain->manta_sim_frame = 0;
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	for (int fr=0; fr< num_sim_steps; ++fr) {
 		if(smd->domain->manta_sim_frame == -1)
 			break;
+		manta_write_effectors(s, smd);
 		smd->domain->manta_sim_frame = fr;
 		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << fr) )->str();
 		std::string py_string_0 = string("sim_step(").append(frame_str);
@@ -364,6 +365,9 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	ss << "energy = s.create(RealGrid) \n";
 	ss << "tempFlag  = s.create(FlagGrid)\n";
 	ss << "sdf_flow  = s.create(LevelsetGrid)\n";
+	ss << "forces = s.create(MACGrid)\n";
+//	ss << "forces.load('manta_forces.uni')\n";
+
 //	ss << "field_source = s.create(Box, p0=vec3(0,0,0), p1=gs)\n";
 	ss << "source.meshSDF(source, sdf_flow, 1.1)\n";
 	ss << "source_shape = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*vec3(0, 0.02, 0))\n";

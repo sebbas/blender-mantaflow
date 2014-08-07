@@ -93,6 +93,7 @@ typedef struct SmokeDomainSettings {
 	struct GPUTexture *tex_wt;
 	struct GPUTexture *tex_shadow;
 	struct GPUTexture *tex_flame;
+	struct Object *manta_obj;
 	float *shadow;
 
 	/* simulation data */

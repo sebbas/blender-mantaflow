@@ -2378,7 +2378,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 		MEM_freeN(emaps);
 }
 
-void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds, float UNUSED(dt))
+static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds, float UNUSED(dt))
 {
 	ListBase *effectors;
 	/* make sure smoke flow influence is 0.0f */
@@ -2728,6 +2728,7 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 	else if (smd->type & MOD_SMOKE_TYPE_DOMAIN)
 	{
 		SmokeDomainSettings *sds = smd->domain;
+		sds->manta_obj = ob;
 		PointCache *cache = NULL;
 		PTCacheID pid;
 		int startframe, endframe, framenr;
@@ -2766,8 +2767,6 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		}
 		if(smd->domain->flags & MOD_SMOKE_USE_MANTA)
 		{
-			manta_update_effectors(scene, ob, smd->domain, 0.1f);
-			manta_write_effectors(scene,smd);
 			char buff[100];
 			if(smd->domain->manta_start_frame > scene->r.cfra)
 				return;
