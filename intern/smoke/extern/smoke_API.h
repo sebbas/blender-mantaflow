@@ -118,6 +118,8 @@ void smoke_mantaflow_read(struct FLUID_3D *fluid, char* name);
 void smoke_mantaflow_write_scene_file(struct Scene *s, struct SmokeModifierData *smd);
 void smoke_mantaflow_sim_step(struct SmokeModifierData *smd);
 void smoke_mantaflow_stop_sim();
+void manta_write_effectors(struct Scene *s, struct SmokeModifierData *smd);
+void update_effectors(struct Scene *scene, struct Object *ob,struct SmokeDomainSettings *sds, float dt);
 #ifdef __cplusplus
 }
 #endif

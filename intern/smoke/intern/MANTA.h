@@ -15,6 +15,8 @@
 //#include "../../../source/blender/blenlib/BLI_fileops.h"
 //#include "../../../source/blender/python/manta_pp/pwrapper/pymain.cpp"
 
+void export_force_fields(int size_x, int size_y, int size_z, float *f_x, float*f_y, float*f_z);/*defined in pymain.cpp*/
+
 struct manta_arg_struct {
 //	std::string filepath;
 	SmokeModifierData *smd;

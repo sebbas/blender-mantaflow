@@ -2378,7 +2378,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 		MEM_freeN(emaps);
 }
 
-static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds, float UNUSED(dt))
+void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds, float UNUSED(dt))
 {
 	ListBase *effectors;
 	/* make sure smoke flow influence is 0.0f */
@@ -2411,8 +2411,8 @@ static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 					float voxelCenter[3] = {0, 0, 0}, vel[3] = {0, 0, 0}, retvel[3] = {0, 0, 0};
 					unsigned int index = smoke_get_index(x, sds->res[0], y, sds->res[1], z);
 
-					if (((fuel ? MAX2(density[index], fuel[index]) : density[index]) < FLT_EPSILON) || obstacle[index])
-						continue;
+//					if (((fuel ? MAX2(density[index], fuel[index]) : density[index]) < FLT_EPSILON) || obstacle[index])
+//						continue;
 
 					vel[0] = velocity_x[index];
 					vel[1] = velocity_y[index];
@@ -2698,6 +2698,8 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		}
 		if(smd->domain->flags & MOD_SMOKE_USE_MANTA)
 		{
+			update_effectors(scene, ob, smd->domain, 0.1f);
+			manta_write_effectors(scene,smd);
 			char buff[100];
 			if(smd->domain->manta_start_frame > scene->r.cfra)
 				return;

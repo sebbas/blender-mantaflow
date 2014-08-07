@@ -17,6 +17,8 @@
 #include <stdio.h>
 #include "manta.h"
 #include "../general.h"
+#include "grid.h"
+#include "fileio.h"
 #include "wchar.h"
 using namespace std;
 namespace Manta {
@@ -62,6 +64,27 @@ del_var(tempFlag)\n\
 del_var(sdf_flow)\n\
 del_var(source_shape)";
 const static string clean_code2 = "del s; del noise;";
+
+
+void export_force_fields(int size_x, int size_y, int size_z, float *f_x, float*f_y, float*f_z)
+{
+	assert(size_x>0 && size_y>0 && size_z>0);
+	FluidSolver dummy(Vec3i(size_x,size_y,size_z));
+	Grid<Vec3 > force_fields(&dummy, false);
+	for (int x=0; x < size_x; ++x)
+	{
+		for (int y=0; y < size_y; ++y)
+		{
+			for (int z=0; z < size_z; ++z)
+			{
+				force_fields.get(x, y, z) = Vec3(f_x[x],f_y[y],f_z[z]);
+			}
+		}
+	}
+	writeGridUni("s.uni", &force_fields);
+	writeGridTxt("s.txt", &force_fields);
+}
+		   
 void runMantaScript(vector<string>& args) {
 	string filename = args[0];
 	

@@ -5,6 +5,8 @@
 
 void runMantaScript(vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
 
+void export_force_fields(struct FLUID_3D *fluid);
+
 extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY, int dimZ)
 {
 	if (!(dimX == fluid->xRes() && dimY == fluid->yRes() && dimZ == fluid->zRes())) {
