@@ -366,8 +366,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	ss << "tempFlag  = s.create(FlagGrid)\n";
 	ss << "sdf_flow  = s.create(LevelsetGrid)\n";
 	ss << "forces = s.create(MACGrid)\n";
-//	ss << "forces.load('manta_forces.uni')\n";
-
+	
 //	ss << "field_source = s.create(Box, p0=vec3(0,0,0), p1=gs)\n";
 	ss << "source.meshSDF(source, sdf_flow, 1.1)\n";
 	ss << "source_shape = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*vec3(0, 0.02, 0))\n";
@@ -388,6 +387,8 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	//setting 20 sim frames for now
 //	ss << "for t in range(0,20): \n";		// << scene->r.sfra << ", " << scene->r.efra << "): \n";
 	ss << "def sim_step(t):\n";
+	ss << "  forces.load('manta_forces.uni')\n";
+	ss << "  addForceField(flags=flags, vel=vel,force=forces)\n";
 	
 	manta_advect_SemiLagr(ss, 1, "flags", "vel", "density", 2);
 	manta_advect_SemiLagr(ss, 1, "flags", "vel", "vel", 2);

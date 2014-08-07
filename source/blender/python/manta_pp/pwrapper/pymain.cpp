@@ -81,8 +81,10 @@ void export_force_fields(int size_x, int size_y, int size_z, float *f_x, float*f
 			}
 		}
 	}
-	writeGridUni("s.uni", &force_fields);
-	writeGridTxt("s.txt", &force_fields);
+	writeGridUni("manta_forces.uni", &force_fields);
+	/*rename after export successful*/
+	
+//	writeGridTxt("s.txt", &force_fields);
 }
 		   
 void runMantaScript(vector<string>& args) {
