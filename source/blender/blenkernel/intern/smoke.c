@@ -2411,8 +2411,8 @@ void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds, float 
 					float voxelCenter[3] = {0, 0, 0}, vel[3] = {0, 0, 0}, retvel[3] = {0, 0, 0};
 					unsigned int index = smoke_get_index(x, sds->res[0], y, sds->res[1], z);
 
-//					if (((fuel ? MAX2(density[index], fuel[index]) : density[index]) < FLT_EPSILON) || obstacle[index])
-//						continue;
+					if (((fuel ? MAX2(density[index], fuel[index]) : density[index]) < FLT_EPSILON) || obstacle[index])
+						continue;
 
 					vel[0] = velocity_x[index];
 					vel[1] = velocity_y[index];
@@ -2446,6 +2446,74 @@ void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds, float 
 		}
 	}
 
+	pdEndEffectors(&effectors);
+}
+
+void manta_update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds, float UNUSED(dt))
+{
+	ListBase *effectors;
+	/* make sure smoke flow influence is 0.0f */
+	sds->effector_weights->weight[PFIELD_SMOKEFLOW] = 0.0f;
+	effectors = pdInitEffectors(scene, ob, NULL, sds->effector_weights, true);
+	
+	if (effectors)
+	{
+		float *density = smoke_get_density(sds->fluid);
+		float *fuel = smoke_get_fuel(sds->fluid);
+		float *force_x = smoke_get_force_x(sds->fluid);
+		float *force_y = smoke_get_force_y(sds->fluid);
+		float *force_z = smoke_get_force_z(sds->fluid);
+		float *velocity_x = smoke_get_velocity_x(sds->fluid);
+		float *velocity_y = smoke_get_velocity_y(sds->fluid);
+		float *velocity_z = smoke_get_velocity_z(sds->fluid);
+		unsigned char *obstacle = smoke_get_obstacle(sds->fluid);
+		int x;
+		
+		// precalculate wind forces
+#pragma omp parallel for schedule(static)
+		for (x = 0; x < sds->res[0]; x++)
+		{
+			int y, z;
+			for (y = 0; y < sds->res[1]; y++)
+				for (z = 0; z < sds->res[2]; z++)
+				{
+					EffectedPoint epoint;
+					float mag;
+					float voxelCenter[3] = {0, 0, 0}, vel[3] = {0, 0, 0}, retvel[3] = {0, 0, 0};
+					unsigned int index = smoke_get_index(x, sds->res[0], y, sds->res[1], z);
+					
+					vel[0] = velocity_x[index];
+					vel[1] = velocity_y[index];
+					vel[2] = velocity_z[index];
+					
+					/* convert vel to global space */
+					mag = len_v3(vel);
+					mul_mat3_m4_v3(sds->obmat, vel);
+					normalize_v3(vel);
+					mul_v3_fl(vel, mag);
+					
+					voxelCenter[0] = sds->p0[0] + sds->cell_size[0] * ((float)(x + sds->res_min[0]) + 0.5f);
+					voxelCenter[1] = sds->p0[1] + sds->cell_size[1] * ((float)(y + sds->res_min[1]) + 0.5f);
+					voxelCenter[2] = sds->p0[2] + sds->cell_size[2] * ((float)(z + sds->res_min[2]) + 0.5f);
+					mul_m4_v3(sds->obmat, voxelCenter);
+					
+					pd_point_from_loc(scene, voxelCenter, vel, index, &epoint);
+					pdDoEffectors(effectors, NULL, sds->effector_weights, &epoint, retvel, NULL);
+					
+					/* convert retvel to local space */
+					mag = len_v3(retvel);
+					mul_mat3_m4_v3(sds->imat, retvel);
+					normalize_v3(retvel);
+					mul_v3_fl(retvel, mag);
+					
+					// TODO dg - do in force!
+					force_x[index] = min_ff(max_ff(-1.0f, retvel[0] * 0.2f), 1.0f);
+					force_y[index] = min_ff(max_ff(-1.0f, retvel[1] * 0.2f), 1.0f);
+					force_z[index] = min_ff(max_ff(-1.0f, retvel[2] * 0.2f), 1.0f);
+				}
+		}
+	}
+	
 	pdEndEffectors(&effectors);
 }
 
@@ -2698,7 +2766,7 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		}
 		if(smd->domain->flags & MOD_SMOKE_USE_MANTA)
 		{
-			update_effectors(scene, ob, smd->domain, 0.1f);
+			manta_update_effectors(scene, ob, smd->domain, 0.1f);
 			manta_write_effectors(scene,smd);
 			char buff[100];
 			if(smd->domain->manta_start_frame > scene->r.cfra)
