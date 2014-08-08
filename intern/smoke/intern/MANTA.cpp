@@ -390,6 +390,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	ss << "def sim_step(t):\n";
 	ss << "  forces.load('manta_forces.uni')\n";
 	ss << "  addForceField(flags=flags, vel=vel,force=forces)\n";
+	ss << "  addBuoyancy(density=density, vel=vel, gravity=vec3(0,0,-" <<smd->domain->beta << "), flags=flags) \n";
 	
 	manta_advect_SemiLagr(ss, 1, "flags", "vel", "density", 2);
 	manta_advect_SemiLagr(ss, 1, "flags", "vel", "vel", 2);
@@ -405,11 +406,12 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	
 	ss << "    densityInflowMesh( flags=flags, density=density, noise=noise, mesh=source, scale=1, sigma=0.5 )\n";
 	//ss << "    sourceVel.applyToGrid( grid=vel , value=velInflow )\n";
-	ss << "    sourceVel.applyToGrid(grid=vel , value=velInflow,cutoff = 3)\n";
+	//ss << "    sourceVel.applyToGrid(grid=vel , value=velInflow,cutoff = 3)\n";
+//	ss << "    source.applyToGrid(grid=vel , value=velInflow,cutoff = 3)\n";
 	ss << "    applyInflow=True\n";
 	
 	ss << "  setWallBcs(flags=flags, vel=vel) \n";
-	ss << "  addBuoyancy(density=density, vel=vel, gravity=vec3(0,-6e-4,0), flags=flags) \n";
+//	ss << "  addBuoyancy(density=density, vel=vel, gravity=vec3(0,-6e-4,0), flags=flags) \n";
 	ss << "  vorticityConfinement( vel=vel, flags=flags, strength=" << smd->domain->vorticity / 10. << " ) \n";
 	
 	manta_solve_pressure(ss,"flags", "vel", "pressure",true,smd->domain->border_collisions, smd->domain->manta_solver_res,1.0,0.01);
