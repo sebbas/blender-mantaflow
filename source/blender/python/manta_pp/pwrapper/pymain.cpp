@@ -69,6 +69,9 @@ const static string clean_code2 = "del s; del noise;";
 void export_force_fields(int size_x, int size_y, int size_z, float *f_x, float*f_y, float*f_z)
 {
 	assert(size_x>0 && size_y>0 && size_z>0);
+	assert(f_x != NULL);
+	assert(f_y != NULL);
+	assert(f_z != NULL);
 	FluidSolver dummy(Vec3i(size_x,size_y,size_z));
 	Grid<Vec3 > force_fields(&dummy, false);
 	for (int x=0; x < size_x; ++x)

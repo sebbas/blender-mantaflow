@@ -231,6 +231,7 @@ void *run_manta_sim_thread(void *arguments)
 	for (int fr=0; fr< num_sim_steps; ++fr) {
 		if(smd->domain->manta_sim_frame == -1)
 			break;
+		printf("Simulation Step");
 		manta_write_effectors(s, smd);
 		smd->domain->manta_sim_frame = fr;
 		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << fr) )->str();
