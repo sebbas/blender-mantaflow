@@ -390,7 +390,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	ss << "def sim_step(t):\n";
 	ss << "  forces.load('manta_forces.uni')\n";
 	ss << "  addForceField(flags=flags, vel=vel,force=forces)\n";
-	ss << "  addBuoyancy(density=density, vel=vel, gravity=vec3(0,0,-" <<smd->domain->beta << "), flags=flags) \n";
+	ss << "  addBuoyancy(density=density, vel=vel, gravity=vec3(0,0," << (-smd->domain->beta) << "), flags=flags) \n";
 	
 	manta_advect_SemiLagr(ss, 1, "flags", "vel", "density", 2);
 	manta_advect_SemiLagr(ss, 1, "flags", "vel", "vel", 2);
