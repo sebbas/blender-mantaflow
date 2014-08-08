@@ -262,7 +262,6 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	int num_sim_frames = smd->domain->manta_end_frame - smd->domain->manta_start_frame + 1;
 	if(num_sim_frames < 1)
 		return;
-	FLUID_3D *fluid = smd->domain->fluid;
 	ofstream manta_setup_file;
 	manta_setup_file.open("manta_scene.py", std::fstream::trunc);
 	stringstream ss; /*setup contents*/
@@ -292,7 +291,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	/*Solver Resolution*/
 	ss << "res = " << smd->domain->maxres << " \n";
 	/*Z axis in Blender = Y axis in Mantaflow*/
-	manta_create_solver(ss, "s", "main", "gs", fluid->xRes(), fluid->zRes(), fluid->yRes(), smd->domain->manta_solver_res);
+	manta_create_solver(ss, "s", "main", "gs", smd->domain->fluid->xRes(), smd->domain->fluid->zRes(), smd->domain->fluid->yRes(), smd->domain->manta_solver_res);
 	ss << "s.timestep = " << smd->domain->time_scale << " \n";
 	
 	/*Noise Field*/
@@ -311,7 +310,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	/*Wavelets: larger solver*/
 	if(wavelets && upres>0)
 	{
-		manta_create_solver(ss, "xl", "larger", "xl_gs", fluid->xRes() * upres, fluid->zRes()* upres, fluid->yRes() * upres, smd->domain->manta_solver_res);
+		manta_create_solver(ss, "xl", "larger", "xl_gs", smd->domain->fluid->xRes() * upres, smd->domain->fluid->zRes()* upres, smd->domain->fluid->yRes() * upres, smd->domain->manta_solver_res);
 		ss << "xl.timestep = " << smd->domain->time_scale << " \n";
 		
 		ss << "xl_vel = xl.create(MACGrid) \n";
