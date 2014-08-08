@@ -225,7 +225,7 @@ void *run_manta_sim_thread(void *arguments)
 //	int num_sim_steps = args->smd->domain->manta_end_frame - args->smd->domain->manta_start_frame;
 	SmokeModifierData *smd = &args->smd;
 	Scene *s = &args->s;
-	int num_sim_steps = smd->domain->manta_end_frame - smd->domain->manta_start_frame;
+	int num_sim_steps = smd->domain->manta_end_frame - smd->domain->manta_start_frame + 1;
 	smd->domain->manta_sim_frame = 0;
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	for (int fr=0; fr< num_sim_steps; ++fr) {
