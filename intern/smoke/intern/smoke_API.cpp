@@ -529,14 +529,13 @@ extern "C" void manta_write_effectors(struct Scene *s, struct SmokeModifierData 
 {
 	assert(smd->domain->manta_obj != NULL);
 	manta_update_effectors(s, smd->domain->manta_obj, smd->domain, 0.1f);
-	/*'Y' and 'Z' axes are mixed in mantaflow and Blender*/
 	int size_x = smd->domain->fluid->xRes();
-	int size_y = smd->domain->fluid->zRes();
-	int size_z = smd->domain->fluid->yRes();
+	int size_y = smd->domain->fluid->yRes();
+	int size_z = smd->domain->fluid->zRes();
 	
 	float *force_x = smoke_get_force_x(smd->domain->fluid);
-	float *force_y = smoke_get_force_z(smd->domain->fluid);
-	float *force_z = smoke_get_force_y(smd->domain->fluid);
+	float *force_y = smoke_get_force_y(smd->domain->fluid);
+	float *force_z = smoke_get_force_z(smd->domain->fluid);
 	export_force_fields(size_x, size_y, size_z, force_x, force_y, force_z);
 }
 
