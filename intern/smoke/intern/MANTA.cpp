@@ -5,8 +5,6 @@
 
 void runMantaScript(vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
 
-void export_force_fields(struct FLUID_3D *fluid);
-
 extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY, int dimZ)
 {
 	if (!(dimX == fluid->xRes() && dimY == fluid->yRes() && dimZ == fluid->zRes())) {
@@ -403,7 +401,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	ss << "  if (t>=0 and t<75):\n";
 	//ss << "    source_shape.applyToGrid(grid=density, value=1)\n";
 	
-	ss << "    densityInflowMesh( flags=flags, density=density, noise=noise, mesh=source, scale=1, sigma=0.5 )\n";
+	ss << "    densityInflowMesh( flags=flags, density=density, noise=noise, mesh=source, scale=3, sigma=0.5 )\n";
 	//ss << "    sourceVel.applyToGrid( grid=vel , value=velInflow )\n";
 	//ss << "    sourceVel.applyToGrid(grid=vel , value=velInflow,cutoff = 3)\n";
 //	ss << "    source.applyToGrid(grid=vel , value=velInflow,cutoff = 3)\n";
