@@ -63,7 +63,9 @@ del_var(energy) \n\
 del_var(tempFlag)\n\
 del_var(sdf_flow)\n\
 del_var(source_shape)";
-const static string clean_code2 = "del s; del noise;";
+const static string clean_code2 = "del s;del noise;del xl;del xl_noise;del xl_wltnoise;";
+		   //for latter full object release	
+		   //const static string clean_code2 = "del [s, noise, source, sourceVel, xl, xl_vel, xl_density, xl_flags,xl_source, xl_noise, flags, vel, density, pressure, energy, tempFlag, sdf_flow, forces, source,source_shape, xl_wltnoise]";
 
 
 void export_force_fields(int size_x, int size_y, int size_z, float *f_x, float*f_y, float*f_z)
