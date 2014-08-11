@@ -114,7 +114,7 @@ void smoke_ensure_fire(struct FLUID_3D *fluid, struct WTURBULENCE *wt);
 void smoke_ensure_colors(struct FLUID_3D *fluid, struct WTURBULENCE *wt, float init_r, float init_g, float init_b);
 
 /*Mantaflow functions*/
-void smoke_mantaflow_read(struct FLUID_3D *fluid, char* name);
+int smoke_mantaflow_read(struct FLUID_3D *fluid, char* name); //1:success, 0: no file,error
 void smoke_mantaflow_write_scene_file(struct Scene *s, struct SmokeModifierData *smd);
 void smoke_mantaflow_sim_step(struct Scene *scene, struct SmokeModifierData *smd);
 void smoke_mantaflow_stop_sim();

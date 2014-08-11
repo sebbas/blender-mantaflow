@@ -15,7 +15,7 @@ extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY
 	return true;
 }
 
-extern "C" void read_mantaflow_sim(struct FLUID_3D *fluid, char *name)
+extern "C" int read_mantaflow_sim(struct FLUID_3D *fluid, char *name)
 {
     /*! legacy headers for reading old files */
 	typedef struct {
@@ -41,7 +41,7 @@ extern "C" void read_mantaflow_sim(struct FLUID_3D *fluid, char *name)
     if (!gzf) {
 		for (int cnt(0); cnt < fluid->_totalCells; cnt++)
 			fluid->_density[cnt] = 0.0f;
-		return;
+		return 0;
 	}
 	
     char ID[5] = {0,0,0,0,0};
@@ -51,7 +51,7 @@ extern "C" void read_mantaflow_sim(struct FLUID_3D *fluid, char *name)
     if (!strcmp(ID, "DDF2")) {
         UniLegacyHeader head;
 		gzread(gzf, &head, sizeof(UniLegacyHeader));
-		if (!manta_check_grid_size(fluid, head.dimX, head.dimY, head.dimZ))	return;
+		if (!manta_check_grid_size(fluid, head.dimX, head.dimY, head.dimZ))	return 0;
         int numEl = head.dimX*head.dimY*head.dimZ;
         gzseek(gzf, numEl, SEEK_CUR);
         /* actual grid read */
@@ -61,7 +61,7 @@ extern "C" void read_mantaflow_sim(struct FLUID_3D *fluid, char *name)
     else if (!strcmp(ID, "MNT1")) {
         UniLegacyHeader2 head;
         gzread(gzf, &head, sizeof(UniLegacyHeader2));
-		if (!manta_check_grid_size(fluid, head.dimX, head.dimY, head.dimZ))	return;
+		if (!manta_check_grid_size(fluid, head.dimX, head.dimY, head.dimZ))	return 0;
         /* actual grid read*/
         gzread(gzf, fluid->_density, sizeof(float)*head.dimX*head.dimY*head.dimZ);
     }
@@ -69,13 +69,14 @@ extern "C" void read_mantaflow_sim(struct FLUID_3D *fluid, char *name)
     else if (!strcmp(ID, "MNT2")) {
         UniHeader head;
         gzread(gzf, &head, sizeof(UniHeader));
-		if (!manta_check_grid_size(fluid, head.dimX, head.dimY, head.dimZ))	return;
+		if (!manta_check_grid_size(fluid, head.dimX, head.dimY, head.dimZ))	return 0;
 		/* actual grid read */
         gzread(gzf,fluid->_density, sizeof(float)*head.dimX*head.dimY*head.dimZ);
     }
     gzclose(gzf);
-	
+	return 1;
 #	endif	/*zlib*/
+	return 0;
 }
 
 void indent_ss(stringstream& ss, int indent)

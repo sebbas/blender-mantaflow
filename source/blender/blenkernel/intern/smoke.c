@@ -2739,6 +2739,7 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		//printf("time: %d\n", scene->r.cfra);
 
 		cache = sds->point_cache[0];
+
 		BKE_ptcache_id_from_smoke(&pid, ob, smd);
 		BKE_ptcache_id_time(&pid, scene, framenr, &startframe, &endframe, &timescale);
 
@@ -2765,73 +2766,81 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			printf("bad smokeModifier_init\n");
 			return;
 		}
-		if(smd->domain->flags & MOD_SMOKE_USE_MANTA)
+		
+		if(smd->domain->flags & MOD_SMOKE_USE_MANTA)	/*load manta sim data into fluid object*/
 		{
 			char buff[100];
 			if(smd->domain->manta_start_frame > scene->r.cfra)
 				return;
 			sprintf(buff, "./den%04d.uni", scene->r.cfra - smd->domain->manta_start_frame);
-			smoke_mantaflow_read(smd->domain->fluid, buff);
-			return;
+			if (smoke_mantaflow_read(smd->domain->fluid, buff))
+			{	BKE_ptcache_write(&pid, framenr);
+			}
 		}
+		
 		/* try to read from cache */
 		if (BKE_ptcache_read(&pid, (float)framenr) == PTCACHE_READ_EXACT) {
 			BKE_ptcache_validate(cache, framenr);
 			smd->time = framenr;
 			return;
 		}
-
-		/* only calculate something when we advanced a single frame */
-		if (framenr != (int)smd->time + 1)
-			return;
-
-		/* don't simulate if viewing start frame, but scene frame is not real start frame */
-		if (framenr != scene->r.cfra)
-			return;
-
-		tstart();
-
-		/* if on second frame, write cache for first frame */
-		if ((int)smd->time == startframe && (cache->flag & PTCACHE_OUTDATED || cache->last_exact == 0)) {
-			BKE_ptcache_write(&pid, startframe);
-		}
-
-		// set new time
-		smd->time = scene->r.cfra;
-
-		/* do simulation */
-
-		// simulate the actual smoke (c++ code in intern/smoke)
-		// DG: interesting commenting this line + deactivating loading of noise files
-		if (framenr != startframe)
+		
+		if (smd->domain->flags & MOD_SMOKE_USE_MANTA)/*manta should go no further that this poin*/
 		{
-			if (sds->flags & MOD_SMOKE_DISSOLVE) {
-				/* low res dissolve */
-				smoke_dissolve(sds->fluid, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
-				/* high res dissolve */
-				if (sds->wt) {
-					smoke_dissolve_wavelet(sds->wt, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
-				}
-
-			}
-
-			step(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base, for_render);
+			return;
 		}
-
-		// create shadows before writing cache so they get stored
-		smoke_calc_transparency(sds, scene);
-
-		if (sds->wt)
-		{
-			smoke_turbulence_step(sds->wt, sds->fluid);
-		}
-
-		BKE_ptcache_validate(cache, framenr);
-		if (framenr != startframe)
-			BKE_ptcache_write(&pid, framenr);
-
-		tend();
-		// printf ( "Frame: %d, Time: %f\n\n", (int)smd->time, (float) tval() );
+		
+//		/* only calculate something when we advanced a single frame */
+//		if (framenr != (int)smd->time + 1)
+//			return;
+//
+//		/* don't simulate if viewing start frame, but scene frame is not real start frame */
+//		if (framenr != scene->r.cfra)
+//			return;
+//
+//		tstart();
+//
+//		/* if on second frame, write cache for first frame */
+//		if ((int)smd->time == startframe && (cache->flag & PTCACHE_OUTDATED || cache->last_exact == 0)) {
+//			BKE_ptcache_write(&pid, startframe);
+//		}
+//
+//		// set new time
+//		smd->time = scene->r.cfra;
+//
+//		/* do simulation */
+//
+//		// simulate the actual smoke (c++ code in intern/smoke)
+//		// DG: interesting commenting this line + deactivating loading of noise files
+//		if (framenr != startframe)
+//		{
+//			if (sds->flags & MOD_SMOKE_DISSOLVE) {
+//				/* low res dissolve */
+//				smoke_dissolve(sds->fluid, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
+//				/* high res dissolve */
+//				if (sds->wt) {
+//					smoke_dissolve_wavelet(sds->wt, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
+//				}
+//
+//			}
+//
+//			step(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base, for_render);
+//		}
+//
+//		// create shadows before writing cache so they get stored
+//		smoke_calc_transparency(sds, scene);
+//
+//		if (sds->wt)
+//		{
+//			smoke_turbulence_step(sds->wt, sds->fluid);
+//		}
+//
+//		BKE_ptcache_validate(cache, framenr);
+//		if (framenr != startframe)
+//			BKE_ptcache_write(&pid, framenr);
+//
+//		tend();
+//		// printf ( "Frame: %d, Time: %f\n\n", (int)smd->time, (float) tval() );
 	}
 }
 

@@ -501,9 +501,9 @@ extern "C" void smoke_ensure_colors(FLUID_3D *fluid, WTURBULENCE *wt, float init
 }
 
 /*MantaFlow funcs*/
-extern "C" void smoke_mantaflow_read(struct FLUID_3D *fluid, char* name)
+extern "C" int smoke_mantaflow_read(struct FLUID_3D *fluid, char* name)
 {
-	read_mantaflow_sim(fluid, name);
+	return read_mantaflow_sim(fluid, name);
 }
 
 extern "C" void smoke_mantaflow_write_scene_file(struct Scene *s, struct SmokeModifierData *smd)

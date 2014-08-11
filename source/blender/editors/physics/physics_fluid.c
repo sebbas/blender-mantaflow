@@ -1153,10 +1153,14 @@ static int manta_make_file_exec(bContext *C, wmOperator *op)
 	SmokeModifierData *smd;
 	Object * smokeDomain = CTX_data_active_object(C);
 	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+	
 	if (smd->domain->fluid == NULL)
 	{
-		smoke_reallocate_fluid(smd->domain, 0.1,smd->domain->res, 1);
-//		smd->domain->fluid = smoke_init(smd->domain->res, 0.1f, 0.1f, 0,0,0);
+		smoke_reallocate_fluid(smd->domain, smd->domain->dx, smd->domain->res, 1);
+		if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
+			smoke_reallocate_highres_fluid(smd->domain, smd->domain->dx, smd->domain->res, 1);
+		}
+		//		smd->domain->fluid = smoke_init(smd->domain->res, 0.1f, 0.1f, 0,0,0);
 	}
 	smoke_mantaflow_write_scene_file(scene, smd);
 
