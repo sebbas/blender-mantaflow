@@ -324,7 +324,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	/*Solver Resolution*/
 	ss << "res = " << smd->domain->maxres << " \n";
 	/*Z axis in Blender = Y axis in Mantaflow*/
-	manta_create_solver(ss, "s", "main", "gs", smd->domain->fluid->xRes(), smd->domain->fluid->zRes(), smd->domain->fluid->yRes(), smd->domain->manta_solver_res);
+	manta_create_solver(ss, "s", "main", "gs", smd->domain->base_res[0], smd->domain->base_res[2], smd->domain->base_res[1], smd->domain->manta_solver_res);
 	ss << "s.timestep = " << smd->domain->time_scale << " \n";
 	
 	/*Noise Field*/
