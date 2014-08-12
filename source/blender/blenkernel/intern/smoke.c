@@ -2769,12 +2769,23 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		
 		if(smd->domain->flags & MOD_SMOKE_USE_MANTA)	/*load manta sim data into fluid object*/
 		{
+			const char *density_name_format = "./den%04d.uni";
+			const char *wavelets_name_format = "./densityXL_%04d.uni";
 			char buff[100];
 			if(smd->domain->manta_start_frame > scene->r.cfra)
 				return;
-			sprintf(buff, "./den%04d.uni", scene->r.cfra - smd->domain->manta_start_frame);
-			if (smoke_mantaflow_read(smd->domain->fluid, buff))
-			{	BKE_ptcache_write(&pid, framenr);
+			sprintf(buff, density_name_format, scene->r.cfra - smd->domain->manta_start_frame);
+			bool read_density = smoke_mantaflow_read(smd->domain, buff, 0);
+			bool read_wavelets = 1;
+			if (smd->domain->flags & MOD_SMOKE_HIGHRES)
+			{
+			/*highdres*/
+				sprintf(buff, wavelets_name_format, scene->r.cfra - smd->domain->manta_start_frame);
+				read_wavelets = smoke_mantaflow_read(smd->domain, buff, 1);	
+			}
+			if(read_density && read_wavelets)
+			{	
+				BKE_ptcache_write(&pid, framenr);
 			}
 		}
 		

@@ -29,7 +29,7 @@ void runMantaScript(vector<string>& args);//defined in manta_pp/pwrapper/pymain.
 
 extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY, int dimZ);
 
-extern "C" int read_mantaflow_sim(struct FLUID_3D *fluid, char *name);
+extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, bool read_wavelets);
 
 void indent_ss(stringstream& ss, int indent);
 

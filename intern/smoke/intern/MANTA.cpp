@@ -1,5 +1,5 @@
 #include "MANTA.h"
-
+#include "WTURBULENCE.h"
 //#include "../../../source/blender/blenlib/BLI_fileops.h"
 //#include "../../../source/blender/python/manta_pp/pwrapper/pymain.cpp"
 
@@ -15,7 +15,18 @@ extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY
 	return true;
 }
 
-extern "C" int read_mantaflow_sim(struct FLUID_3D *fluid, char *name)
+extern "C" bool manta_check_wavelets_size(struct WTURBULENCE *wt, int dimX, int dimY, int dimZ)
+{
+	if (!(dimX == wt->_xResBig && dimY == wt->_yResBig && dimZ == wt->_zResBig)) {
+		for (int cnt(0); cnt < wt->_totalCellsBig; cnt++)
+			wt->_densityBig[cnt] = 0.0f;
+		return false;
+	}
+	return true;
+}
+
+//PR need SMD data here for wavelets 
+extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, bool reading_wavelets)
 {
     /*! legacy headers for reading old files */
 	typedef struct {
@@ -39,40 +50,63 @@ extern "C" int read_mantaflow_sim(struct FLUID_3D *fluid, char *name)
 #	if NO_ZLIB!=1
     gzFile gzf = gzopen(name, "rb");
     if (!gzf) {
-		for (int cnt(0); cnt < fluid->_totalCells; cnt++)
-			fluid->_density[cnt] = 0.0f;
+		if(reading_wavelets){
+			for (int cnt(0); cnt < sds->wt->_totalCellsBig; cnt++)
+				sds->wt->_densityBig[cnt] = 0.0f;
+		}
+		else{
+			for (int cnt(0); cnt < sds->fluid->_totalCells; cnt++)
+				sds->fluid->_density[cnt] = 0.0f;
+		}
 		return 0;
 	}
 	
     char ID[5] = {0,0,0,0,0};
 	gzread(gzf, ID, 4);
-	
 	/* legacy file format */
     if (!strcmp(ID, "DDF2")) {
         UniLegacyHeader head;
 		gzread(gzf, &head, sizeof(UniLegacyHeader));
-		if (!manta_check_grid_size(fluid, head.dimX, head.dimY, head.dimZ))	return 0;
         int numEl = head.dimX*head.dimY*head.dimZ;
         gzseek(gzf, numEl, SEEK_CUR);
         /* actual grid read */
-        gzread(gzf, fluid->_density, sizeof(float)*numEl);
-    } 
+        if ( ! reading_wavelets){
+			if (!manta_check_grid_size(sds->fluid, head.dimX, head.dimY, head.dimZ))	return 0;
+			gzread(gzf, sds->fluid->_density, sizeof(float)*numEl);
+		}
+		else {
+			if (!manta_check_wavelets_size(sds->wt, head.dimX, head.dimY, head.dimZ))	return 0;
+			gzread(gzf, sds->wt->_densityBig, sizeof(float)*numEl);
+    	} 
+	}
 	/* legacy file format 2 */
     else if (!strcmp(ID, "MNT1")) {
         UniLegacyHeader2 head;
         gzread(gzf, &head, sizeof(UniLegacyHeader2));
-		if (!manta_check_grid_size(fluid, head.dimX, head.dimY, head.dimZ))	return 0;
-        /* actual grid read*/
-        gzread(gzf, fluid->_density, sizeof(float)*head.dimX*head.dimY*head.dimZ);
-    }
+		/* actual grid read*/
+        if ( ! reading_wavelets){
+			if (!manta_check_grid_size(sds->fluid, head.dimX, head.dimY, head.dimZ))	return 0;
+        	gzread(gzf, sds->fluid->_density, sizeof(float)*head.dimX*head.dimY*head.dimZ);
+    	}
+		else{
+			if (!manta_check_wavelets_size(sds->wt, head.dimX, head.dimY, head.dimZ))	return 0;
+        	gzread(gzf, sds->wt->_densityBig, sizeof(float)*head.dimX*head.dimY*head.dimZ);
+    	}
+	}
 	/* current file format*/
     else if (!strcmp(ID, "MNT2")) {
         UniHeader head;
         gzread(gzf, &head, sizeof(UniHeader));
-		if (!manta_check_grid_size(fluid, head.dimX, head.dimY, head.dimZ))	return 0;
 		/* actual grid read */
-        gzread(gzf,fluid->_density, sizeof(float)*head.dimX*head.dimY*head.dimZ);
-    }
+        if ( ! reading_wavelets){
+			if (!manta_check_grid_size(sds->fluid, head.dimX, head.dimY, head.dimZ))	return 0;
+			gzread(gzf,sds->fluid->_density, sizeof(float)*head.dimX*head.dimY*head.dimZ);
+    	}
+		else{
+			if (!manta_check_wavelets_size(sds->wt, head.dimX, head.dimY, head.dimZ))	return 0;
+			gzread(gzf,sds->wt->_densityBig, sizeof(float)*head.dimX*head.dimY*head.dimZ);
+		}
+	}
     gzclose(gzf);
 	return 1;
 #	endif	/*zlib*/
@@ -446,6 +480,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		ss << "    advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=2)  \n";
 		ss << "  if (applyInflow): \n";
 		ss << "    densityInflowMesh( flags=xl_flags, density=xl_density, noise=xl_noise, mesh=xl_source, scale=1, sigma=0.5 ) \n";
+		ss << "  xl_density.save('densityXl_%04d.uni' % t)\n";
 		//ss << "    densityInflow( flags=xl_flags, density=xl_density, noise=xl_noise, shape=xl_source, scale=1, sigma=0.5 ) \n";
 //		ss << "  xl.step()   \n";
 	}
