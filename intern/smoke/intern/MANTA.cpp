@@ -422,7 +422,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		//		ss << "xl_source = xl.create(Cylinder, center=xl_gs*vec3(0.3,0.2,0.5), radius=xl_gs.x*0.081, z=xl_gs*vec3(0.081, 0, 0)) \n";
 		ss << "xl_source = s.create(Mesh)\n";
 		ss << "xl_source.load('manta_flow.obj')\n";
-		ss << "transform_back(xl_source, xl_gs)\n";
+		ss << "transform_back(xl_source, gs)\n";
 		//		ss << "xl_source.scale(vec3("<< upres <<", " << upres <<", " << upres << "))\n";
 		
 		/*Obstacle handling*/
@@ -430,7 +430,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		{
 			ss << "xl_obs = s.create(Mesh)\n";
 			ss << "xl_obs.load('manta_coll.obj')\n";
-			ss << "transform_back(xl_obs, xl_gs)\n";
+			ss << "transform_back(xl_obs, gs)\n";
 			ss << "xl_obs.applyToGrid(grid=xl_flags, value=FlagObstacle,cutoff=3)\n";
 		}
 		manta_gen_noise(ss, "xl", 0, "xl_noise", 256, true, noise_clamp, noise_clamp_neg, noise_clamp_pos, noise_val_scale, noise_val_offset, noise_time_anim * (float)upres);
