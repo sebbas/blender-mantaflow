@@ -7,6 +7,7 @@ void runMantaScript(vector<string>& args);//defined in manta_pp/pwrapper/pymain.
 
 extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY, int dimZ)
 {
+	/*Y and Z axes are swapped in manta and blender*/
 	if (!(dimX == fluid->xRes() && dimY == fluid->yRes() && dimZ == fluid->zRes())) {
 		for (int cnt(0); cnt < fluid->_totalCells; cnt++)
 			fluid->_density[cnt] = 0.0f;
@@ -17,12 +18,72 @@ extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY
 
 extern "C" bool manta_check_wavelets_size(struct WTURBULENCE *wt, int dimX, int dimY, int dimZ)
 {
+	/*Y and Z axes are swapped in manta and blender*/
 	if (!(dimX == wt->_xResBig && dimY == wt->_yResBig && dimZ == wt->_zResBig)) {
 		for (int cnt(0); cnt < wt->_totalCellsBig; cnt++)
 			wt->_densityBig[cnt] = 0.0f;
 		return false;
 	}
 	return true;
+}
+
+void read_rotated_grid(gzFile gzf, float *data, int size_x, int size_y, int size_z)
+{
+	assert(size_x > 1 && size_y > 1 && size_z > 1);
+	float* temp_data = (float*)malloc(sizeof(float) * size_x * size_y * size_z);
+//	data = (float*)malloc(sizeof(float) * size_x * size_y * size_z);
+	gzread(gzf, temp_data, sizeof(float)* size_x * size_y * size_z);
+	for (int cnt_x(0); cnt_x < size_x; ++cnt_x)
+	{
+		for (int cnt_y(0); cnt_y < size_y; ++cnt_y)
+		{
+			for (int cnt_z(0); cnt_z < size_z; ++cnt_z)
+			{
+				data[cnt_x + size_x * cnt_y + size_x*size_y * cnt_z] = temp_data[cnt_x + size_x * cnt_y + size_x*size_y * cnt_z];
+			}			
+		}
+	}
+}
+
+void wavelets_add_lowres_density(SmokeDomainSettings *sds)
+{
+	assert(sds != NULL);
+	for (int cnt_x(0); cnt_x < sds->wt->_xResBig; ++cnt_x)
+	{
+		for (int cnt_y(0); cnt_y < sds->wt->_yResBig; ++cnt_y)
+		{
+			for (int cnt_z(0); cnt_z < sds->wt->_zResBig; ++cnt_z)
+			{
+				//scale down to domain res
+				float x_sc = 1. * sds->base_res[0] * cnt_x / sds->wt->_xResBig;
+				float y_sc = 1. * sds->base_res[1] * cnt_y / sds->wt->_yResBig;
+				float z_sc = 1. * sds->base_res[2] * cnt_z / sds->wt->_zResBig;
+				//finding cells to interpolate from
+				int start_x = int(x_sc / 1);
+				int start_y = int(y_sc / 1);
+				int start_z = int(z_sc / 1);
+				int end_x = ((x_sc - start_x > 0.001) && (start_x + 1 < sds->base_res[0]))? start_x + 1: start_x;
+				int end_y = ((y_sc - start_y > 0.001) && (start_y + 1 < sds->base_res[1]))? start_y + 1: start_y;
+				int end_z = ((z_sc - start_z > 0.001) && (start_z + 1 < sds->base_res[2]))? start_z + 1: start_z;
+				//interpolation
+				float add_value = 0;
+				int cnt=0;
+				for(int x(start_x); x <= end_x; ++x)
+				{
+					for(int y(start_y); y <= end_y; ++y)
+					{
+						for(int z(start_z); z <= end_z; ++z)
+						{
+							cnt++;
+							add_value += sds->fluid->_density[x + y*sds->base_res[0] + z * sds->base_res[0]*sds->base_res[1]];	
+						}			
+					}	
+				}
+				add_value /= float(cnt);
+				sds->wt->_densityBig[cnt_x + cnt_y *sds->wt->_xResBig + cnt_z*sds->wt->_xResBig*sds->wt->_yResBig] += add_value;
+			}
+		}
+	}
 }
 
 //PR need SMD data here for wavelets 
@@ -100,11 +161,17 @@ extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, b
 		/* actual grid read */
         if ( ! reading_wavelets){
 			if (!manta_check_grid_size(sds->fluid, head.dimX, head.dimY, head.dimZ))	return 0;
-			gzread(gzf,sds->fluid->_density, sizeof(float)*head.dimX*head.dimY*head.dimZ);
+			/*Y and Z axes are swapped in manta and blender*/
+			read_rotated_grid(gzf,sds->fluid->_density,head.dimX,head.dimY,head.dimZ);
+			//gzread(gzf,sds->fluid->_density, sizeof(float)*head.dimX*head.dimY*head.dimZ);
     	}
 		else{
 			if (!manta_check_wavelets_size(sds->wt, head.dimX, head.dimY, head.dimZ))	return 0;
-			gzread(gzf,sds->wt->_densityBig, sizeof(float)*head.dimX*head.dimY*head.dimZ);
+			/*Y and Z axes are swapped in manta and blender*/
+			read_rotated_grid(gzf,sds->wt->_densityBig,head.dimX,head.dimY,head.dimZ);
+//			wavelets_add_lowres_density(sds);
+//			read_rotated_grid(gzf,sds->wt->_densityBigOld,head.dimX,head.dimY,head.dimZ);
+			//	gzread(gzf,sds->wt->_densityBig, sizeof(float)*head.dimX*head.dimY*head.dimZ);
 		}
 	}
     gzclose(gzf);
@@ -188,9 +255,9 @@ inline bool file_exists (const std::string& name) {
 /*blender transforms obj coords to [-1,1]. This method transforms them back*/
 void add_mesh_transform_method(stringstream& ss)
 {
-	ss << "def transform_back(obj, res):\n" <<
-	"  obj.scale(vec3(res/2, res/2, res/2))\n" <<
-	"  obj.offset(vec3(res/2, res/2, res/2))\n\n";
+	ss << "def transform_back(obj, gs):\n" <<
+	"  obj.scale(gs/2)\n" <<
+	"  obj.offset(gs/2)\n\n";
 }
 
 void manta_cache_path(char *filepath)
@@ -308,7 +375,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	add_mesh_transform_method(ss);
 	/*Data Declaration*/
 	/*Wavelets variables*/
-	int upres = smd->domain->amplify;
+	int upres = smd->domain->amplify+1;
 	ss << "uvs = " << smd->domain->manta_uvs_num << "\n";
 	ss << "velInflow = vec3(0, 0, 1)"<< "\n";	/*TODO:add UI*/
 	if (wavelets) {
@@ -324,7 +391,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	/*Solver Resolution*/
 	ss << "res = " << smd->domain->maxres << " \n";
 	/*Z axis in Blender = Y axis in Mantaflow*/
-	manta_create_solver(ss, "s", "main", "gs", smd->domain->base_res[0], smd->domain->base_res[2], smd->domain->base_res[1], smd->domain->manta_solver_res);
+	manta_create_solver(ss, "s", "main", "gs", smd->domain->base_res[0], smd->domain->base_res[1], smd->domain->base_res[2], smd->domain->manta_solver_res);
 	ss << "s.timestep = " << smd->domain->time_scale << " \n";
 	
 	/*Noise Field*/
@@ -333,17 +400,17 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	/*Inflow source - for now, using mock sphere */
 	ss << "source = s.create(Mesh)\n";
 	ss << "source.load('manta_flow.obj')\n";
-	ss << "transform_back(source, res)\n";
+	ss << "transform_back(source, gs)\n";
 	ss << "sourceVel = s.create(Mesh)\n";
 	ss << "sourceVel.load('manta_flow.obj')\n";
-	ss << "transform_back(sourceVel, res)\n";
+	ss << "transform_back(sourceVel, gs)\n";
 	//	ss << "source    = s.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.081, z=gs*vec3(0.081, 0, 0))\n";
 	//	ss << "sourceVel = s.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.15 , z=gs*vec3(0.15 , 0, 0))\n";
 	
 	/*Wavelets: larger solver*/
 	if(wavelets && upres>0)
 	{
-		manta_create_solver(ss, "xl", "larger", "xl_gs", smd->domain->fluid->xRes() * upres, smd->domain->fluid->zRes()* upres, smd->domain->fluid->yRes() * upres, smd->domain->manta_solver_res);
+		manta_create_solver(ss, "xl", "larger", "xl_gs", smd->domain->fluid->xRes() * upres, smd->domain->fluid->yRes()* upres, smd->domain->fluid->zRes() * upres, smd->domain->manta_solver_res);
 		ss << "xl.timestep = " << smd->domain->time_scale << " \n";
 		
 		ss << "xl_vel = xl.create(MACGrid) \n";
@@ -355,7 +422,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		//		ss << "xl_source = xl.create(Cylinder, center=xl_gs*vec3(0.3,0.2,0.5), radius=xl_gs.x*0.081, z=xl_gs*vec3(0.081, 0, 0)) \n";
 		ss << "xl_source = s.create(Mesh)\n";
 		ss << "xl_source.load('manta_flow.obj')\n";
-		ss << "transform_back(xl_source, res)\n";
+		ss << "transform_back(xl_source, xl_gs)\n";
 		//		ss << "xl_source.scale(vec3("<< upres <<", " << upres <<", " << upres << "))\n";
 		
 		/*Obstacle handling*/
@@ -363,7 +430,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		{
 			ss << "xl_obs = s.create(Mesh)\n";
 			ss << "xl_obs.load('manta_coll.obj')\n";
-			ss << "transform_back(xl_obs, res)\n";
+			ss << "transform_back(xl_obs, xl_gs)\n";
 			ss << "xl_obs.applyToGrid(grid=xl_flags, value=FlagObstacle,cutoff=3)\n";
 		}
 		manta_gen_noise(ss, "xl", 0, "xl_noise", 256, true, noise_clamp, noise_clamp_neg, noise_clamp_pos, noise_val_scale, noise_val_offset, noise_time_anim * (float)upres);
@@ -377,7 +444,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	{
 		ss << "obs = s.create(Mesh)\n";
 		ss << "obs.load('manta_coll.obj')\n";
-		ss << "transform_back(obs, res)\n";
+		ss << "transform_back(obs, gs)\n";
 		ss << "obs.applyToGrid(grid=flags, value=FlagObstacle, cutoff=3)\n";
 		ss << "sdf_obs  = s.create(LevelsetGrid)\n";
 		ss << "obs.meshSDF(obs, sdf_obs, 1.1)\n";
@@ -479,7 +546,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		ss << "  for substep in range(upres):  \n";
 		ss << "    advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=2)  \n";
 		ss << "  if (applyInflow): \n";
-		ss << "    densityInflowMesh( flags=xl_flags, density=xl_density, noise=xl_noise, mesh=xl_source, scale=1, sigma=0.5 ) \n";
+		ss << "    densityInflowMesh( flags=xl_flags, density=xl_density, noise=xl_noise, mesh=xl_source, scale=3, sigma=0.5 ) \n";
 		ss << "  xl_density.save('densityXl_%04d.uni' % t)\n";
 		//ss << "    densityInflow( flags=xl_flags, density=xl_density, noise=xl_noise, shape=xl_source, scale=1, sigma=0.5 ) \n";
 //		ss << "  xl.step()   \n";

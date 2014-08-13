@@ -19,6 +19,7 @@
 # <pep8 compliant>
 import bpy
 import os
+from copy import deepcopy
 from bpy.types import Panel
 
 from bl_ui.properties_physics_common import (point_cache_ui,
@@ -335,20 +336,62 @@ class OBJECT_OT_RunMantaButton(bpy.types.Operator):
             if os.path.exists(filename):
                 os.remove(filename)
 
+        # def transform(obj, domain_obj):
+        #     scale_factor = domain_obj.modifiers['Smoke'].domain_settings.domain_resolution
+        #     for dim in range(3):
+        #         obj.scale[dim] /= domain_obj.scale[dim]
+        #         obj.location[dim] -= domain_obj.location[dim] 
+        #         obj.location[dim] /= domain_obj.scale[dim]
+    
+        # def transform_back(obj, domain_obj):
+        #     scale_factor = domain_obj.modifiers['Smoke'].domain_settings.domain_resolution
+        #     for dim in range(3):
+        #         obj.scale[dim] *=  domain_obj.scale[dim]
+        #         obj.location[dim] *=  domain_obj.scale[dim]
+        #         obj.location[dim] += domain_obj.location[dim] 
         def transform(obj, domain_obj):
             scale_factor = domain_obj.modifiers['Smoke'].domain_settings.domain_resolution
-            for dim in range(3):
-                obj.scale[dim] /= domain_obj.scale[dim]
-                obj.location[dim] -= domain_obj.location[dim] 
-                obj.location[dim] /= domain_obj.scale[dim]
+            max_factor = max(domain_obj.scale[0],domain_obj.scale[1],domain_obj.scale[2])
+            rot_euler = deepcopy(obj.rotation_euler)
+            
+            obj.scale[0] /= domain_obj.scale[0]
+            obj.location[0] -= domain_obj.location[0] 
+            obj.location[0] /= domain_obj.scale[0]
+            obj.scale[1] /= domain_obj.scale[1]
+            obj.location[1] -= domain_obj.location[1] 
+            obj.location[1] /= domain_obj.scale[1]
+            obj.scale[2] /= domain_obj.scale[2]
+            obj.location[2] -= domain_obj.location[2] 
+            obj.location[2] /= domain_obj.scale[2]
+            
+            #obj.rotation_euler[0] = rot_euler[2]
+            #obj.rotation_euler[1] = rot_euler[1]
+            #obj.rotation_euler[2] = rot_euler[0]
+            #for axis in range(3):
+            #    obj.rotation_euler[axis] = rot_euler[axis]
+            
     
         def transform_back(obj, domain_obj):
             scale_factor = domain_obj.modifiers['Smoke'].domain_settings.domain_resolution
-            for dim in range(3):
-                obj.scale[dim] *=  domain_obj.scale[dim]
-                obj.location[dim] *=  domain_obj.scale[dim]
-                obj.location[dim] += domain_obj.location[dim] 
-
+            max_factor = max(domain_obj.scale[0],domain_obj.scale[1],domain_obj.scale[2])
+            rot_euler = deepcopy(obj.rotation_euler)
+            #for axis in range(3):
+            #    obj.rotation_euler[axis] = -rot_euler[axis]
+            #obj.rotation_euler[0] = rot_euler[2]
+            #obj.rotation_euler[1] = rot_euler[1]
+            #obj.rotation_euler[2] = rot_euler[0]
+            obj.scale[0] *=  domain_obj.scale[0]
+            obj.location[0] *=  domain_obj.scale[0]
+            obj.location[0] += domain_obj.location[0]
+            obj.scale[1] *=  domain_obj.scale[1]
+            obj.location[1] *=  domain_obj.scale[1]
+            obj.location[1] += domain_obj.location[1]
+            obj.scale[2] *=  domain_obj.scale[2]
+            obj.location[2] *=  domain_obj.scale[2]
+            obj.location[2] += domain_obj.location[2] 
+            #for axis in range(3):
+            #    obj.rotation_euler[axis] = rot_euler[axis]
+            
         def extract_force_fields(scene):
             return [ob for ob in scene.objects if ob.field.type != None]    
         
@@ -358,17 +401,18 @@ class OBJECT_OT_RunMantaButton(bpy.types.Operator):
         domain = None
         for scene in bpy.data.scenes:
             for ob in scene.objects:
-                if ob.select:
-                    selected_before.append(ob)
-                    ob.select = False
                 for modifier in ob.modifiers:
                     if modifier.type == 'SMOKE':
                         if modifier.smoke_type == 'COLLISION':
                             coll_objs.append(ob)
                         elif modifier.smoke_type == 'FLOW':
                             flow_objs.append(ob)
-                        elif modifier.smoke_type == 'DOMAIN':
+                        elif modifier.smoke_type == 'DOMAIN' and ob.select:
                             domain = ob
+                if ob.select:
+                    selected_before.append(ob)
+                    ob.select = False
+                
         silent_remove("./manta_coll.obj")
         silent_remove("./manta_flow.obj")
         if coll_objs: 
