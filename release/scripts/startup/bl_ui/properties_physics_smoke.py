@@ -349,11 +349,52 @@ class OBJECT_OT_RunMantaButton(bpy.types.Operator):
         #         obj.scale[dim] *=  domain_obj.scale[dim]
         #         obj.location[dim] *=  domain_obj.scale[dim]
         #         obj.location[dim] += domain_obj.location[dim] 
+        def transform_objgroup(obj_list, domain_obj):
+            #D.objects['Suzanne'].constraints.new('CHILD_OF')
+            #D.objects['Suzanne'].constraints['Child Of'].target = D.objects['Cube.001']
+            #scale_factor = domain_obj.modifiers['Smoke'].domain_settings.domain_resolution
+            #max_factor = max(domain_obj.scale[0],domain_obj.scale[1],domain_obj.scale[2])
+            #rot_euler = deepcopy(obj.rotation_euler)
+            old_scale = deepcopy(domain_obj.scale)
+            old_location = deepcopy(domain_obj.location)
+            #link all objects to reference
+            domain_obj.scale = (1,1,1)
+            for obj in obj_list:
+                obj.select = True
+                obj.constraints.new('CHILD_OF')
+                obj.constraints.active.target = domain_obj
+                #scale down to original size
+                #obj.location[0] -= domain_obj.location[0]
+                #obj.location[1] -= domain_obj.location[1]
+                #obj.location[2] -= domain_obj.location[2]
+                #obj.scale[0] /= domain_obj.scale[0]
+                #obj.scale[1] /= domain_obj.scale[1]
+                #obj.scale[2] /= domain_obj.scale[2]
+            #scale reference down
+            domain_obj.scale[0] /= old_scale[0]
+            #domain_obj.location[0] -= domain_obj.location[0] 
+            #domain_obj.location[0] /= domain_obj.scale[0]
+            domain_obj.scale[1] /= old_scale[1]
+            #domain_obj.location[1] -= domain_obj.location[1] 
+            #domain_obj.location[1] /= domain_obj.scale[1]
+            domain_obj.scale[2] /= old_scale[2]
+            return old_scale
+            #domain_obj.location[2] -= domain_obj.location[2] 
+            #domain_obj.location[2] /= domain_obj.scale[2]
+            #for axis in range(3):
+            #    obj.rotation_euler[axis] = rot_euler[axis]
+            #obj.rotation_euler[0] = rot_euler[2]
+            #obj.rotation_euler[1] = rot_euler[1]
+            #obj.rotation_euler[2] = rot_euler[0]
+            #for axis in range(3):
+            #    obj.rotation_euler[axis] = rot_euler[axis]
+            
         def transform(obj, domain_obj):
             scale_factor = domain_obj.modifiers['Smoke'].domain_settings.domain_resolution
             max_factor = max(domain_obj.scale[0],domain_obj.scale[1],domain_obj.scale[2])
             rot_euler = deepcopy(obj.rotation_euler)
-            
+            for axis in range(3):
+                obj.rotation_euler[axis] = 0
             obj.scale[0] /= domain_obj.scale[0]
             obj.location[0] -= domain_obj.location[0] 
             obj.location[0] /= domain_obj.scale[0]
@@ -363,14 +404,41 @@ class OBJECT_OT_RunMantaButton(bpy.types.Operator):
             obj.scale[2] /= domain_obj.scale[2]
             obj.location[2] -= domain_obj.location[2] 
             obj.location[2] /= domain_obj.scale[2]
-            
+            for axis in range(3):
+                obj.rotation_euler[axis] = rot_euler[axis]
             #obj.rotation_euler[0] = rot_euler[2]
             #obj.rotation_euler[1] = rot_euler[1]
             #obj.rotation_euler[2] = rot_euler[0]
             #for axis in range(3):
             #    obj.rotation_euler[axis] = rot_euler[axis]
             
-    
+        def transform_objgroup_back(obj_list, domain_obj, old_data):
+            #scale_factor = domain_obj.modifiers['Smoke'].domain_settings.domain_resolution
+            #max_factor = max(domain_obj.scale[0],domain_obj.scale[1],domain_obj.scale[2])
+            #rot_euler = deepcopy(obj.rotation_euler)
+            #scale domain to prev values
+            domain_obj.scale[0] =  old_data[0]
+            #obj.location[0] *=  domain_obj.scale[0]
+            #obj.location[0] += domain_obj.location[0]
+            domain_obj.scale[1] =  old_data[1]
+            #obj.location[1] *=  domain_obj.scale[1]
+            #obj.location[1] += domain_obj.location[1]
+            domain_obj.scale[2] =  old_data[2]
+            #obj.location[2] *=  domain_obj.scale[2]
+            #obj.location[2] += domain_obj.location[2] 
+            
+            #remove used constraint and deselect objects
+            for obj in obj_list:
+                obj.select = False
+                obj.constraints.remove(obj.constraints.active)
+            #for axis in range(3):
+            #    obj.rotation_euler[axis] = -rot_euler[axis]
+            #obj.rotation_euler[0] = rot_euler[2]
+            #obj.rotation_euler[1] = rot_euler[1]
+            #obj.rotation_euler[2] = rot_euler[0]
+            #for axis in range(3):
+            #    obj.rotation_euler[axis] = rot_euler[axis]
+            
         def transform_back(obj, domain_obj):
             scale_factor = domain_obj.modifiers['Smoke'].domain_settings.domain_resolution
             max_factor = max(domain_obj.scale[0],domain_obj.scale[1],domain_obj.scale[2])
@@ -416,21 +484,25 @@ class OBJECT_OT_RunMantaButton(bpy.types.Operator):
         silent_remove("./manta_coll.obj")
         silent_remove("./manta_flow.obj")
         if coll_objs: 
-            for ob in coll_objs:
-                ob.select = True
-                transform(ob,domain)
+            old_data = transform_objgroup(coll_objs, domain)
+            #for ob in coll_objs:
+            #    ob.select = True
+            #    transform(ob,domain)
             bpy.ops.export_scene.obj(filepath = "./manta_coll.obj", axis_forward='Y', axis_up='Z', use_selection = True, use_normals = True, use_materials = False, use_triangles = True, group_by_object = True, use_nurbs=True, check_existing= False)
-            for ob in coll_objs:
-                ob.select = False
-                transform_back(ob,domain)
+            transform_objgroup_back(coll_objs,domain,old_data)
+            #for ob in coll_objs:
+            #    ob.select = False
+            #    transform_back(ob,domain)
         if flow_objs:
-            for ob in flow_objs:
-                ob.select = True
-                transform(ob,domain)
+            old_data = transform_objgroup(flow_objs, domain)
+            #for ob in flow_objs:
+            #    ob.select = True
+            #    transform(ob,domain)
             bpy.ops.export_scene.obj(filepath = "./manta_flow.obj", axis_forward='Y', axis_up='Z', use_selection = True, use_normals = True, use_materials = False, use_triangles = True, group_by_object = True, use_nurbs=True, check_existing= False)
-            for ob in flow_objs:
-                ob.select = False
-                transform_back(ob,domain)
+            transform_objgroup_back(flow_objs,domain,old_data)
+            #for ob in flow_objs:
+            #    ob.select = False
+            #    transform_back(ob,domain)
         for ob in selected_before:
             ob.select = True
         bpy.ops.manta.make_file()

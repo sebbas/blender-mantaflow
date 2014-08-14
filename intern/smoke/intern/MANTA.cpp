@@ -162,16 +162,16 @@ extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, b
         if ( ! reading_wavelets){
 			if (!manta_check_grid_size(sds->fluid, head.dimX, head.dimY, head.dimZ))	return 0;
 			/*Y and Z axes are swapped in manta and blender*/
-			read_rotated_grid(gzf,sds->fluid->_density,head.dimX,head.dimY,head.dimZ);
-			//gzread(gzf,sds->fluid->_density, sizeof(float)*head.dimX*head.dimY*head.dimZ);
+//			read_rotated_grid(gzf,sds->fluid->_density,head.dimX,head.dimY,head.dimZ);
+			gzread(gzf,sds->fluid->_density, sizeof(float)*head.dimX*head.dimY*head.dimZ);
     	}
 		else{
 			if (!manta_check_wavelets_size(sds->wt, head.dimX, head.dimY, head.dimZ))	return 0;
 			/*Y and Z axes are swapped in manta and blender*/
-			read_rotated_grid(gzf,sds->wt->_densityBig,head.dimX,head.dimY,head.dimZ);
+			gzread(gzf,sds->wt->_densityBig, sizeof(float)*head.dimX*head.dimY*head.dimZ);
+//			read_rotated_grid(gzf,sds->wt->_densityBig,head.dimX,head.dimY,head.dimZ);
 //			wavelets_add_lowres_density(sds);
 //			read_rotated_grid(gzf,sds->wt->_densityBigOld,head.dimX,head.dimY,head.dimZ);
-			//	gzread(gzf,sds->wt->_densityBig, sizeof(float)*head.dimX*head.dimY*head.dimZ);
 		}
 	}
     gzclose(gzf);
@@ -391,6 +391,11 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	/*Solver Resolution*/
 	ss << "res = " << smd->domain->maxres << " \n";
 	/*Z axis in Blender = Y axis in Mantaflow*/
+//	float factor = smd->domain->maxres / max(max(smd->domain->global_size[0],smd->domain->global_size[1]), smd->domain->global_size[2]);
+//	int size_x = int(smd->domain->global_size[0] * factor);
+//	int size_y = int(smd->domain->global_size[1] * factor);
+//	int size_z = int(smd->domain->global_size[2] * factor);
+//	
 	manta_create_solver(ss, "s", "main", "gs", smd->domain->base_res[0], smd->domain->base_res[1], smd->domain->base_res[2], smd->domain->manta_solver_res);
 	ss << "s.timestep = " << smd->domain->time_scale << " \n";
 	
@@ -501,9 +506,9 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	}
 	ss << "  applyInflow=False\n";
 	ss << "  if (t>=0 and t<75):\n";
-	//ss << "    source_shape.applyToGrid(grid=density, value=1)\n";
+	ss << "    source.applyToGrid(grid=density, value=1,cutoff=7)\n";
 	
-	ss << "    densityInflowMesh( flags=flags, density=density, noise=noise, mesh=source, scale=3, sigma=0.5 )\n";
+//	ss << "    densityInflowMesh( flags=flags, density=density, noise=noise, mesh=source, scale=3, sigma=0.5 )\n";
 	//ss << "    sourceVel.applyToGrid( grid=vel , value=velInflow )\n";
 	//ss << "    sourceVel.applyToGrid(grid=vel , value=velInflow,cutoff = 3)\n";
 //	ss << "    source.applyToGrid(grid=vel , value=velInflow,cutoff = 3)\n";
