@@ -336,16 +336,16 @@ class OBJECT_OT_RunMantaButton(bpy.types.Operator):
             if os.path.exists(filename):
                 os.remove(filename)
 
+        #need these methods to account for rotated objects
         def transform_objgroup(obj_list, domain_obj):
             old_scale = deepcopy(domain_obj.scale)
-            old_location = deepcopy(domain_obj.location)
-            #link all objects to reference
+            #link all objects to new reference- domain
             domain_obj.scale = (1,1,1)
             for obj in obj_list:
                 obj.select = True
                 obj.constraints.new('CHILD_OF')
                 obj.constraints.active.target = domain_obj
-            #scale reference down
+            #scale domain down
             domain_obj.scale[0] /= old_scale[0]
             domain_obj.scale[1] /= old_scale[1]
             domain_obj.scale[2] /= old_scale[2]
@@ -359,14 +359,12 @@ class OBJECT_OT_RunMantaButton(bpy.types.Operator):
             for obj in obj_list:
                 obj.select = False
                 obj.constraints.remove(obj.constraints.active)
-            
-        def extract_force_fields(scene):
-            return [ob for ob in scene.objects if ob.field.type != None]    
         
         coll_objs = []
         flow_objs = []
         selected_before = []
         domain = None
+        #getting smoke objects
         for scene in bpy.data.scenes:
             for ob in scene.objects:
                 for modifier in ob.modifiers:
@@ -383,6 +381,7 @@ class OBJECT_OT_RunMantaButton(bpy.types.Operator):
                 
         silent_remove("./manta_coll.obj")
         silent_remove("./manta_flow.obj")
+        #exporting here
         if coll_objs: 
             old_data = transform_objgroup(coll_objs, domain)
             bpy.ops.export_scene.obj(filepath = "./manta_coll.obj", axis_forward='Y', axis_up='Z', use_selection = True, use_normals = True, use_materials = False, use_triangles = True, group_by_object = True, use_nurbs=True, check_existing= False)
@@ -402,8 +401,8 @@ class OBJECT_OT_StopMantaButton(bpy.types.Operator):
     bl_label = "Stop Mantaflow Simulation"
     def execute(self, context):
         domain = context.smoke.domain_settings
+        #setting manta_sim_frame to "stop" value 
         domain.manta_sim_frame = -1
-        # bpy.ops.manta.stop_sim()
         return{'FINISHED'}
 
 
@@ -425,26 +424,18 @@ class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
         
-        #consistency check
         domain = context.smoke.domain_settings
-        #if(domain.manta_end_frame < domain.manta_start_frame):
-        #    domain.manta_end_frame = domain.manta_start_frame + 1
         layout.active = domain.use_manta
         split = layout.split()
-        #wm = bpy.context.window_manager
         tot = domain.manta_end_frame - domain.manta_start_frame
-        #wm.progress_begin(0,tot)
         if domain.manta_sim_frame == -1:
             split.operator("manta_export_scene.button", text="Create Manta Setup")
             split = layout.split()
             split.label("Status:Doing Nothing")
-        #    split.prop(domain, "manta_status", text="Not Simulating:")
-        #    wm.progress_end()
         else:
             split.operator("manta_stop_sim.button", text="Stop Sim")
             split = layout.split()
             split.label("Status:Simulating " + str(domain.manta_sim_frame) + "/" + str(tot))
-        #    wm.progress_update(domain.manta_sim_frame)
         split = layout.split()
         col = split.column()
         col.prop(domain, "manta_start_frame", text="Start")
