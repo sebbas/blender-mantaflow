@@ -339,26 +339,38 @@ class OBJECT_OT_RunMantaButton(bpy.types.Operator):
         #need these methods to account for rotated objects
         def transform_objgroup(obj_list, domain_obj):
             old_scale = deepcopy(domain_obj.scale)
+            old_loc = deepcopy(domain_obj.location)
             #link all objects to new reference- domain
             domain_obj.scale = (1,1,1)
+            domain_obj.location = (0,0,0)
             for obj in obj_list:
                 obj.select = True
+                obj.location[0] -= old_loc[0]
+                obj.location[1] -= old_loc[1]
+                obj.location[2] -= old_loc[2]
                 obj.constraints.new('CHILD_OF')
                 obj.constraints.active.target = domain_obj
             #scale domain down
             domain_obj.scale[0] /= old_scale[0]
             domain_obj.scale[1] /= old_scale[1]
             domain_obj.scale[2] /= old_scale[2]
-            return old_scale
+            return old_scale, old_loc
             
         def transform_objgroup_back(obj_list, domain_obj, old_data):
-            domain_obj.scale[0] =  old_data[0]
-            domain_obj.scale[1] =  old_data[1]
-            domain_obj.scale[2] =  old_data[2]
+            old_scale, old_loc = old_data
+            domain_obj.scale[0] =  old_scale[0]
+            domain_obj.scale[1] =  old_scale[1]
+            domain_obj.scale[2] =  old_scale[2]
+            domain_obj.location[0] =  old_loc[0]
+            domain_obj.location[1] =  old_loc[1]
+            domain_obj.location[2] =  old_loc[2]
             #remove used constraint and deselect objects
             for obj in obj_list:
                 obj.select = False
                 obj.constraints.remove(obj.constraints.active)
+                obj.location[0] += old_loc[0]
+                obj.location[1] += old_loc[1]
+                obj.location[2] += old_loc[2]
         
         coll_objs = []
         flow_objs = []

@@ -556,9 +556,9 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		ss << "    advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=2)  \n";
 		ss << "  if (applyInflow): \n";
 		if (noise_val_scale > 0.)
-			ss << "    densityInflowMesh(flags=xl_flags, density=xl_density, mesh=source, value=1)\n";
-		else
 		ss << "    densityInflowMeshNoise( flags=xl_flags, density=xl_density, noise=xl_noise, mesh=xl_source, scale=3, sigma=0.5 ) \n";
+		else
+			ss << "    densityInflowMesh(flags=xl_flags, density=xl_density, mesh=source, value=1)\n";
 		ss << "  xl_density.save('densityXl_%04d.uni' % t)\n";
 		//ss << "    densityInflow( flags=xl_flags, density=xl_density, noise=xl_noise, shape=xl_source, scale=1, sigma=0.5 ) \n";
 //		ss << "  xl.step()   \n";
