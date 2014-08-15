@@ -570,7 +570,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd-> domain->manta_end_frame = 10;
 			smd->domain->noise_clamp_neg = 0;
 			smd->domain->noise_clamp_pos = 1;
-			smd->domain->noise_val_scale = 1;
+			smd->domain->noise_val_scale = 0.;
 			smd->domain->noise_val_offset = 0.075;
 			smd->domain->noise_time_anim = 0.2;
 		}
@@ -2767,18 +2767,38 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			return;
 		}
 		
+		if(smd->domain->flags & MOD_SMOKE_USE_MANTA)	/*load manta sim data into fluid object*/
+		{
+			const char *density_name_format = "./den%04d.uni";
+			const char *wavelets_name_format = "./densityXL_%04d.uni";
+			char buff[100];
+			if(smd->domain->manta_start_frame > scene->r.cfra)
+				return;
+			sprintf(buff, density_name_format, scene->r.cfra - smd->domain->manta_start_frame);
+			bool read_density = smoke_mantaflow_read(smd->domain, buff, 0);
+			bool read_wavelets = 1;
+			if (smd->domain->flags & MOD_SMOKE_HIGHRES)
+			{
+				/*highdres*/
+				sprintf(buff, wavelets_name_format, scene->r.cfra - smd->domain->manta_start_frame);
+				read_wavelets = smoke_mantaflow_read(smd->domain, buff, 1);	
+			}
+			//			smoke_calc_transparency(sds, scene);
+			//			return;
+			//			if(read_density && read_wavelets)
+			//			{	
+			//				BKE_ptcache_write(&pid, framenr);
+			//			}
+			return;
+		}
+		
 		/* try to read from cache */
 		if (BKE_ptcache_read(&pid, (float)framenr) == PTCACHE_READ_EXACT) {
 			BKE_ptcache_validate(cache, framenr);
 			smd->time = framenr;
 			return;
 		}
-		
-//		if (smd->domain->flags & MOD_SMOKE_USE_MANTA)/*manta should go no further that this poin*/
-//		{
-//			return;
-//		}
-		
+				
 		/* only calculate something when we advanced a single frame */
 		if (framenr != (int)smd->time + 1)
 			return;
@@ -2801,30 +2821,7 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 
 		// simulate the actual smoke (c++ code in intern/smoke)
 		// DG: interesting commenting this line + deactivating loading of noise files
-		if(smd->domain->flags & MOD_SMOKE_USE_MANTA)	/*load manta sim data into fluid object*/
-		{
-			const char *density_name_format = "./den%04d.uni";
-			const char *wavelets_name_format = "./densityXL_%04d.uni";
-			char buff[100];
-			if(smd->domain->manta_start_frame > scene->r.cfra)
-				return;
-			sprintf(buff, density_name_format, scene->r.cfra - smd->domain->manta_start_frame);
-			bool read_density = smoke_mantaflow_read(smd->domain, buff, 0);
-			bool read_wavelets = 1;
-			if (smd->domain->flags & MOD_SMOKE_HIGHRES)
-			{
-				/*highdres*/
-				sprintf(buff, wavelets_name_format, scene->r.cfra - smd->domain->manta_start_frame);
-				read_wavelets = smoke_mantaflow_read(smd->domain, buff, 1);	
-			}
-//			smoke_calc_transparency(sds, scene);
-//			return;
-			//			if(read_density && read_wavelets)
-			//			{	
-			//				BKE_ptcache_write(&pid, framenr);
-			//			}
-		}
-		else{
+		
 			if (framenr != startframe)
 			{
 				if (sds->flags & MOD_SMOKE_DISSOLVE) {
@@ -2838,7 +2835,7 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 				}
 			step(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base, for_render);
 			}
-		}
+		
 		// create shadows before writing cache so they get stored
 		smoke_calc_transparency(sds, scene);
 
