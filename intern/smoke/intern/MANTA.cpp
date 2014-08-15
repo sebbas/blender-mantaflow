@@ -506,7 +506,11 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	}
 	ss << "  applyInflow=False\n";
 	ss << "  if (t>=0 and t<75):\n";
-	ss << "    source.applyToGrid(grid=density, value=1,cutoff=7)\n";
+//	ss << "    source.applyToGrid(grid=density, value=1,cutoff=7)\n";
+	if (noise_val_scale > 0.)
+		ss << "    densityInflowMeshNoise( flags=flags, density=density, noise=noise, mesh=source, scale=3, sigma=0.5 )\n";
+	else
+		ss << "    densityInflowMesh(flags=flags, density=density, mesh=source, value=1)\n";	
 	
 //	ss << "    densityInflowMesh( flags=flags, density=density, noise=noise, mesh=source, scale=3, sigma=0.5 )\n";
 	//ss << "    sourceVel.applyToGrid( grid=vel , value=velInflow )\n";
@@ -551,7 +555,10 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		ss << "  for substep in range(upres):  \n";
 		ss << "    advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=2)  \n";
 		ss << "  if (applyInflow): \n";
-		ss << "    densityInflowMesh( flags=xl_flags, density=xl_density, noise=xl_noise, mesh=xl_source, scale=3, sigma=0.5 ) \n";
+		if (noise_val_scale > 0.)
+			ss << "    densityInflowMesh(flags=xl_flags, density=xl_density, mesh=source, value=1)\n";
+		else
+		ss << "    densityInflowMeshNoise( flags=xl_flags, density=xl_density, noise=xl_noise, mesh=xl_source, scale=3, sigma=0.5 ) \n";
 		ss << "  xl_density.save('densityXl_%04d.uni' % t)\n";
 		//ss << "    densityInflow( flags=xl_flags, density=xl_density, noise=xl_noise, shape=xl_source, scale=1, sigma=0.5 ) \n";
 //		ss << "  xl.step()   \n";
