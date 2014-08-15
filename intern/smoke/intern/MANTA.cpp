@@ -416,7 +416,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	if(wavelets && upres>0)
 	{
 		manta_create_solver(ss, "xl", "larger", "xl_gs", smd->domain->fluid->xRes() * upres, smd->domain->fluid->yRes()* upres, smd->domain->fluid->zRes() * upres, smd->domain->manta_solver_res);
-		ss << "xl.timestep = " << smd->domain->time_scale << " \n";
+		ss << "xl.timestep = " << smd->domain->time_scale * 0.2f<< " \n";
 		
 		ss << "xl_vel = xl.create(MACGrid) \n";
 		ss << "xl_density = xl.create(RealGrid) \n";/*smoke simulation*/
