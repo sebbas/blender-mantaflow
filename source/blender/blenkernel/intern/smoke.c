@@ -2804,19 +2804,17 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			const char *density_name_format = "./den%04d.uni";
 			const char *wavelets_name_format = "./densityXL_%04d.uni";
 			char buff[100];
-			if(smd->domain->manta_start_frame > scene->r.cfra)
-				return;
-			sprintf(buff, density_name_format, scene->r.cfra - smd->domain->manta_start_frame);
+//			if(smd->domain->manta_start_frame > scene->r.cfra)
+//				return;
+			sprintf(buff, density_name_format, scene->r.cfra);
 			bool read_density = smoke_mantaflow_read(smd->domain, buff, 0);
 			bool read_wavelets = 1;
 			if (smd->domain->flags & MOD_SMOKE_HIGHRES)
 			{
 				/*highdres*/
-				sprintf(buff, wavelets_name_format, scene->r.cfra - smd->domain->manta_start_frame);
+				sprintf(buff, wavelets_name_format, scene->r.cfra);
 				read_wavelets = smoke_mantaflow_read(smd->domain, buff, 1);	
 			}
-			//			smoke_calc_transparency(sds, scene);
-			//			return;
 		}else{
 			if (framenr != startframe)
 			{
