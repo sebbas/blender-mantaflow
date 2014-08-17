@@ -404,6 +404,12 @@ class OBJECT_OT_RunMantaButton(bpy.types.Operator):
             transform_objgroup_back(flow_objs,domain,old_data)
         for ob in selected_before:
             ob.select = True
+        # ds = domain.modifiers['Smoke'].domain_settings
+        # if (!global manta_solver_res_switched) and ds.manta_solver_res == 2:
+        #     #resize domain s.th. Y-axis dim corresponds to 1
+        #     scale_fac = ds.resolution_max / max(domain.scale[0],domain.scale[1],domain.scale[2])
+        #     domain.scale[1] /= scale_fac
+        #     global manta_solver_res_switched = True
         bpy.ops.manta.make_file()
         bpy.ops.manta.sim_step()
         return{'FINISHED'}

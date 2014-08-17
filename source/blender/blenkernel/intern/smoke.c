@@ -2766,31 +2766,8 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			printf("bad smokeModifier_init\n");
 			return;
 		}
-		
-		if(smd->domain->flags & MOD_SMOKE_USE_MANTA)	/*load manta sim data into fluid object*/
-		{
-			const char *density_name_format = "./den%04d.uni";
-			const char *wavelets_name_format = "./densityXL_%04d.uni";
-			char buff[100];
-			if(smd->domain->manta_start_frame > scene->r.cfra)
-				return;
-			sprintf(buff, density_name_format, scene->r.cfra - smd->domain->manta_start_frame);
-			bool read_density = smoke_mantaflow_read(smd->domain, buff, 0);
-			bool read_wavelets = 1;
-			if (smd->domain->flags & MOD_SMOKE_HIGHRES)
-			{
-				/*highdres*/
-				sprintf(buff, wavelets_name_format, scene->r.cfra - smd->domain->manta_start_frame);
-				read_wavelets = smoke_mantaflow_read(smd->domain, buff, 1);	
-			}
-			//			smoke_calc_transparency(sds, scene);
-			//			return;
-			//			if(read_density && read_wavelets)
-			//			{	
-			//				BKE_ptcache_write(&pid, framenr);
-			//			}
-			return;
-		}
+		if (framenr == startframe && smd->domain->flags & MOD_SMOKE_USE_MANTA && smd->domain->fluid)
+			smoke_mantaflow_write_scene_file(scene, smd);
 		
 		/* try to read from cache */
 		if (BKE_ptcache_read(&pid, (float)framenr) == PTCACHE_READ_EXACT) {
@@ -2821,7 +2798,26 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 
 		// simulate the actual smoke (c++ code in intern/smoke)
 		// DG: interesting commenting this line + deactivating loading of noise files
-		
+		if(smd->domain->flags & MOD_SMOKE_USE_MANTA)	/*load manta sim data into fluid object*/
+		{
+			smoke_mantaflow_sim_step(scene,smd);
+			const char *density_name_format = "./den%04d.uni";
+			const char *wavelets_name_format = "./densityXL_%04d.uni";
+			char buff[100];
+			if(smd->domain->manta_start_frame > scene->r.cfra)
+				return;
+			sprintf(buff, density_name_format, scene->r.cfra - smd->domain->manta_start_frame);
+			bool read_density = smoke_mantaflow_read(smd->domain, buff, 0);
+			bool read_wavelets = 1;
+			if (smd->domain->flags & MOD_SMOKE_HIGHRES)
+			{
+				/*highdres*/
+				sprintf(buff, wavelets_name_format, scene->r.cfra - smd->domain->manta_start_frame);
+				read_wavelets = smoke_mantaflow_read(smd->domain, buff, 1);	
+			}
+			//			smoke_calc_transparency(sds, scene);
+			//			return;
+		}else{
 			if (framenr != startframe)
 			{
 				if (sds->flags & MOD_SMOKE_DISSOLVE) {
@@ -2835,7 +2831,7 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 				}
 			step(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base, for_render);
 			}
-		
+		}
 		// create shadows before writing cache so they get stored
 		smoke_calc_transparency(sds, scene);
 

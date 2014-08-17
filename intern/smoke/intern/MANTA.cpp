@@ -169,6 +169,7 @@ extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, b
 			if (!manta_check_wavelets_size(sds->wt, head.dimX, head.dimY, head.dimZ))	return 0;
 			/*Y and Z axes are swapped in manta and blender*/
 			gzread(gzf,sds->wt->_densityBig, sizeof(float)*head.dimX*head.dimY*head.dimZ);
+			gzread(gzf,sds->wt->_densityBigOld, sizeof(float)*head.dimX*head.dimY*head.dimZ);
 //			read_rotated_grid(gzf,sds->wt->_densityBig,head.dimX,head.dimY,head.dimZ);
 //			wavelets_add_lowres_density(sds);
 //			read_rotated_grid(gzf,sds->wt->_densityBigOld,head.dimX,head.dimY,head.dimZ);
@@ -243,7 +244,7 @@ void manta_create_solver(stringstream& ss, char *name, char *nick, char *grid_si
 	if ((dim != 2) && (dim != 3))
 	{ return; }
 	if (dim == 2)
-	{ z_res = 1; }
+	{ y_res = 1; }
 	ss << grid_size_name << " = vec3(" << x_res << ", " << y_res << ", " << z_res << ")" << " \n";
 	ss << name << " = Solver(name = '" << nick << "', gridSize = " << grid_size_name << ", dim = " << dim << ") \n";
 }
@@ -298,18 +299,36 @@ void *run_manta_scene_thread(void *arguments)
 
 void run_manta_scene(Scene *s, SmokeModifierData *smd)
 {
-//	vector<string> a;
-//	a.push_back(filepath);
-//	//PyGILState_STATE gilstate = PyGILState_Ensure();
-//	runMantaScript(a);
-//	//PyGILState_Release(gilstate);
-	struct manta_arg_struct *args = (struct manta_arg_struct*)malloc(sizeof(struct manta_arg_struct));
-	args->smd = *smd;
-	args->s = *s;
-//	args.frame_num = smd->domain->manta_end_frame - smd->domain->manta_start_frame;
-	int rc = pthread_create(&manta_thread, NULL, run_manta_sim_thread, (void *)args);
-//	pthread_join(manta_thread,NULL);
-//	pthread_detach(manta_thread);
+	smd->domain->manta_sim_frame = 0;
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+//	for (int fr=0; fr< 1; ++fr)
+	int fr = s->r.cfra;
+	{
+//		if(smd->domain->manta_sim_frame == -1)
+//			break;
+		printf("Simulation Step");
+		manta_write_effectors(s, smd);
+		smd->domain->manta_sim_frame = fr;
+		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << fr) )->str();
+		std::string py_string_0 = string("sim_step(").append(frame_str);
+		std::string py_string_1 = py_string_0.append(")\0");
+		//		std::string py_string_1 = string("sim_step()\0");
+		PyRun_SimpleString(py_string_1.c_str());
+		cout<< "done"<<manta_sim_running<<endl;
+		//		frame_num ++;
+	}
+	//returning simulation state to "not simulating" aka -1
+//	smd->domain->manta_sim_frame = -1;
+//
+//	
+//	
+//	struct manta_arg_struct *args = (struct manta_arg_struct*)malloc(sizeof(struct manta_arg_struct));
+//	args->smd = *smd;
+//	args->s = *s;
+////	args.frame_num = smd->domain->manta_end_frame - smd->domain->manta_start_frame;
+//	int rc = pthread_create(&manta_thread, NULL, run_manta_sim_thread, (void *)args);
+////	pthread_join(manta_thread,NULL);
+////	pthread_detach(manta_thread);
 }
 
 void stop_manta_sim()
@@ -396,7 +415,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 //	int size_y = int(smd->domain->global_size[1] * factor);
 //	int size_z = int(smd->domain->global_size[2] * factor);
 //	
-	manta_create_solver(ss, "s", "main", "gs", smd->domain->base_res[0], smd->domain->base_res[1], smd->domain->base_res[2], smd->domain->manta_solver_res);
+	manta_create_solver(ss, "s", "main", "gs", smd->domain->fluid->xRes(), smd->domain->fluid->yRes(), smd->domain->fluid->zRes(), smd->domain->manta_solver_res);
 	ss << "s.timestep = " << smd->domain->time_scale << " \n";
 	
 	/*Noise Field*/
@@ -416,7 +435,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	if(wavelets && upres>0)
 	{
 		manta_create_solver(ss, "xl", "larger", "xl_gs", smd->domain->fluid->xRes() * upres, smd->domain->fluid->yRes()* upres, smd->domain->fluid->zRes() * upres, smd->domain->manta_solver_res);
-		ss << "xl.timestep = " << smd->domain->time_scale * 0.2f<< " \n";
+		ss << "xl.timestep = " << smd->domain->time_scale * 0.5f<< " \n";
 		
 		ss << "xl_vel = xl.create(MACGrid) \n";
 		ss << "xl_density = xl.create(RealGrid) \n";/*smoke simulation*/
