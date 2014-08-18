@@ -181,7 +181,7 @@ extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, b
 	return 0;
 }
 
-void indent_ss(stringstream& ss, int indent)
+void indent_ss(ostringstream& ss, int indent)
 {
 	/*two-spaces indent*/
 	if (indent < 0) return;
@@ -192,7 +192,7 @@ void indent_ss(stringstream& ss, int indent)
 	ss << indentation;
 }
 
-void manta_gen_noise(stringstream& ss, char* solver, int indent, char *noise, int seed, bool load, bool clamp, float clampNeg, float clampPos, float valScale, float valOffset, float timeAnim)
+void manta_gen_noise(ostringstream& ss, char* solver, int indent, char *noise, int seed, bool load, bool clamp, float clampNeg, float clampPos, float valScale, float valOffset, float timeAnim)
 {
 	if (ss == NULL)/*should never be here*/
 	{
@@ -209,7 +209,7 @@ void manta_gen_noise(stringstream& ss, char* solver, int indent, char *noise, in
 	ss << noise << ".timeAnim = " << timeAnim << " \n";
 }
 
-void manta_solve_pressure(stringstream& ss, char *flags, char *vel, char *pressure, bool useResNorms, int openBound, int solver_res,float cgMaxIterFac, float cgAccuracy)
+void manta_solve_pressure(ostringstream& ss, char *flags, char *vel, char *pressure, bool useResNorms, int openBound, int solver_res,float cgMaxIterFac, float cgAccuracy)
 {
 	/*open:0 ; vertical : 1; closed:2*/
 	ss << "  solvePressure(flags=" << flags << ", vel=" << vel << ", pressure=" << pressure << ", useResNorm=" << (useResNorms?"True":"False") << ", openBound='";	
@@ -230,7 +230,7 @@ void manta_solve_pressure(stringstream& ss, char *flags, char *vel, char *pressu
 	ss << ", cgMaxIterFac=" << cgMaxIterFac << ", cgAccuracy=" << cgAccuracy << ") \n";
 }
 
-void manta_advect_SemiLagr(stringstream& ss, int indent, char *flags, char *vel, char *grid, int order)
+void manta_advect_SemiLagr(ostringstream& ss, int indent, char *flags, char *vel, char *grid, int order)
 {
 	if((order <=1) || (flags == NULL) || (vel == NULL) || (grid == NULL)){return;}
 	indent_ss(ss, indent);
@@ -239,7 +239,7 @@ void manta_advect_SemiLagr(stringstream& ss, int indent, char *flags, char *vel,
 }
 
 /*create solver, handle 2D case*/
-void manta_create_solver(stringstream& ss, char *name, char *nick, char *grid_size_name, int x_res, int y_res, int z_res, int dim)
+void manta_create_solver(ostringstream& ss, char *name, char *nick, char *grid_size_name, int x_res, int y_res, int z_res, int dim)
 {
 	if ((dim != 2) && (dim != 3))
 	{ return; }
@@ -254,7 +254,7 @@ inline bool file_exists (const std::string& name) {
 }
 
 /*blender transforms obj coords to [-1,1]. This method transforms them back*/
-void add_mesh_transform_method(stringstream& ss)
+void add_mesh_transform_method(ostringstream& ss)
 {
 	ss << "def transform_back(obj, gs):\n" <<
 	"  obj.scale(gs/2)\n" <<
@@ -383,7 +383,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		return;
 	ofstream manta_setup_file;
 	manta_setup_file.open("manta_scene.py", std::fstream::trunc);
-	stringstream ss; /*setup contents*/
+	ostringstream ss; /*setup contents*/
 	
 	/*header*/
 	ss << "from manta import * \n";
@@ -586,7 +586,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	manta_setup_file.close();
 	vector<string> a;
 	a.push_back("manta_scene.py");
-	runMantaScript(a);
+	runMantaScript(ss.str(),a);
 //	run_manta_scene("manta_scene.py");
 //	manta_sim_running = false;
 //	for (int frame=0; frame< 20; frame++)

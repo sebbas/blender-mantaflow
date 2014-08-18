@@ -2798,7 +2798,7 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 
 		// simulate the actual smoke (c++ code in intern/smoke)
 		// DG: interesting commenting this line + deactivating loading of noise files
-		if(smd->domain->flags & MOD_SMOKE_USE_MANTA)	/*load manta sim data into fluid object*/
+		if(framenr != startframe && smd->domain->flags & MOD_SMOKE_USE_MANTA)	/*load manta sim data into fluid object*/
 		{
 			smoke_mantaflow_sim_step(scene,smd);
 			const char *density_name_format = "./den%04d.uni";

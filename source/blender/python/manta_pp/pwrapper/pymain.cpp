@@ -92,7 +92,7 @@ void export_force_fields(int size_x, int size_y, int size_z, float *f_x, float*f
 //	writeGridTxt("s.txt", &force_fields);
 }
 		   
-void runMantaScript(vector<string>& args) {
+void runMantaScript(const string& ss,vector<string>& args) {
 	string filename = args[0];
 	
 	// Initialize extension classes and wrappers
@@ -141,7 +141,10 @@ void runMantaScript(vector<string>& args) {
 	delete[] buf;    
 #else
 	// for linux, use this as it produces nicer error messages
-	PyRun_SimpleFileEx(fp, filename.c_str(), 0);    
+	string toExec = "";
+	
+	PyRun_SimpleString(ss.c_str());
+	//	PyRun_SimpleFileEx(fp, filename.c_str(), 0);    
 //	for (int frame=0; frame < 4; ++frame)
 //	{
 //		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << frame) )->str();
@@ -166,22 +169,22 @@ void runMantaScript(vector<string>& args) {
 	delete [] cargs;
 }
 
-int manta_main(int argc,char* argv[]) {
-	debMsg("Version: "<< buildInfoString() , 1);
-
-#ifdef GUI
-	guiMain(argc, argv);    
-#else
-	if (argc<=1) {
-		cerr << "Usage : Syntax is 'manta <config.py>'" << endl;  
-		return 1;
-	}
-
-	vector<string> args;
-	for (int i=1; i<argc; i++) args.push_back(argv[i]);
-	runMantaScript(args);
-#endif        		
-
-	return 0;
-}
+//int manta_main(int argc,char* argv[]) {
+//	debMsg("Version: "<< buildInfoString() , 1);
+//
+//#ifdef GUI
+//	guiMain(argc, argv);    
+//#else
+//	if (argc<=1) {
+//		cerr << "Usage : Syntax is 'manta <config.py>'" << endl;  
+//		return 1;
+//	}
+//
+//	vector<string> args;
+//	for (int i=1; i<argc; i++) args.push_back(argv[i]);
+//	runMantaScript(args);
+//#endif        		
+//
+//	return 0;
+//}
 #endif
