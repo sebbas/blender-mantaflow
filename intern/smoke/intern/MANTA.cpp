@@ -553,3 +553,51 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	runMantaScript(ss.str(),a);
 }
 
+std::string getRealValue(SmokeDomainSettings *sds, Scene *s, const std::string& varName)
+{
+	return "";
+}
+
+std::string parseLine(SmokeDomainSettings *sds, Scene *s, const string& line)
+{
+	if (line.size() == 0) return "";
+	string res = "";
+	int currPos = 0, start_del = 0, end_del = -1;
+	bool readingVar = false;
+	const char delimiter = '$';
+	while (currPos < line.size()){
+		if(line[currPos] == delimiter && ! readingVar){
+			readingVar 	= true;
+			start_del	= currPos + 1;
+			res 		+= line.substr(end_del + 1, currPos - end_del -1);
+		}
+		else if(line[currPos] == delimiter && readingVar){
+			readingVar 	= false;
+			end_del 	= currPos;
+			res 		+= getRealValue(sds,s,line.substr(start_del, currPos - start_del));
+		}
+		currPos ++;
+	}
+	res += line.substr(end_del+1, line.size()- end_del);
+	return res;
+}
+
+std::string parseFile(SmokeDomainSettings *sds, Scene *s, char *file)
+{
+	ifstream f (file);
+	ofstream of("scenario_p.py");
+	string line="";
+	if (f.is_open()){
+		while(getline(f,line)){
+			of << parseLine(sds,s,line) << "\n";
+		}
+		f.close();
+	}
+	else{
+		printf ("Error: No scenario file found");
+	}
+	of.close();
+	return "";
+}
+
+

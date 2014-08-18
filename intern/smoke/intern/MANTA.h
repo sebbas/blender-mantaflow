@@ -64,5 +64,11 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd);
 
 void manta_sim_step(int frame);
 
+std::string getRealValue(SmokeDomainSettings *sds, Scene *s, const string& varName);
+
+std::string parseLine(SmokeDomainSettings *sds, Scene *s, const string& line);
+
+std::string parseFile(SmokeDomainSettings *sds, Scene *s, char *file);
+
 #endif /* MANTA_H */
 
