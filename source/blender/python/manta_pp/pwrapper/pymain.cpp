@@ -142,8 +142,8 @@ void runMantaScript(const string& ss,vector<string>& args) {
 	// for linux, use this as it produces nicer error messages
 	string toExec = "";
 	
-	PyRun_SimpleString(ss.c_str());
-	//	PyRun_SimpleFileEx(fp, filename.c_str(), 0);    
+//	PyRun_SimpleString(ss.c_str());
+	PyRun_SimpleFileEx(fp, filename.c_str(), 0);    
 //	for (int frame=0; frame < 4; ++frame)
 //	{
 //		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << frame) )->str();

@@ -30,21 +30,21 @@ extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY
 
 extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, bool read_wavelets);
 
-void indent_ss(ostringstream& ss, int indent);
+void indent_ss(stringstream& ss, int indent);
 
-void manta_gen_noise(ostringstream& ss, char* solver, int indent, char *noise, int seed, bool load, bool clamp, float clampNeg, float clampPos, float valScale, float valOffset, float timeAnim);
+void manta_gen_noise(stringstream& ss, char* solver, int indent, char *noise, int seed, bool load, bool clamp, float clampNeg, float clampPos, float valScale, float valOffset, float timeAnim);
 
-void manta_solve_pressure(ostringstream& ss, char *flags, char *vel, char *pressure, bool useResNorms, int openBound, int solver_res,float cgMaxIterFac=1.0, float cgAccuracy = 0.01);
+void manta_solve_pressure(stringstream& ss, char *flags, char *vel, char *pressure, bool useResNorms, int openBound, int solver_res,float cgMaxIterFac=1.0, float cgAccuracy = 0.01);
 
-void manta_advect_SemiLagr(ostringstream& ss, int indent, char *flags, char *vel, char *grid, int order);
+void manta_advect_SemiLagr(stringstream& ss, int indent, char *flags, char *vel, char *grid, int order);
 
 /*create solver, handle 2D case*/
-void manta_create_solver(ostringstream& ss, char *name, char *nick, char *grid_size_name, int x_res, int y_res, int z_res, int dim);
+void manta_create_solver(stringstream& ss, char *name, char *nick, char *grid_size_name, int x_res, int y_res, int z_res, int dim);
 
 inline bool file_exists (const std::string& name);
 
 /*blender transforms obj coords to [-1,1]. This method transforms them back*/
-void add_mesh_transform_method(ostringstream& ss);
+void add_mesh_transform_method(stringstream& ss);
 
 void manta_cache_path(char *filepath);
 
@@ -64,11 +64,11 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd);
 
 void manta_sim_step(int frame);
 
-std::string getRealValue(SmokeDomainSettings *sds, Scene *s, const string& varName);
+std::string getRealValue(SmokeModifierData *sds, Scene *s, const string& varName);
 
-std::string parseLine(SmokeDomainSettings *sds, Scene *s, const string& line);
+std::string parseLine(SmokeModifierData *sds, Scene *s, const string& line);
 
-std::string parseFile(SmokeDomainSettings *sds, Scene *s, char *file);
+void parseFile(SmokeModifierData *sds, Scene *s, char *file);
 
 #endif /* MANTA_H */
 

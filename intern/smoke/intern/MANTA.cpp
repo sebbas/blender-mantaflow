@@ -177,7 +177,7 @@ extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, b
 	return 0;
 }
 
-void indent_ss(ostringstream& ss, int indent)
+void indent_ss(stringstream& ss, int indent)
 {
 	/*two-spaces indent*/
 	if (indent < 0) return;
@@ -188,7 +188,7 @@ void indent_ss(ostringstream& ss, int indent)
 	ss << indentation;
 }
 
-void manta_gen_noise(ostringstream& ss, char* solver, int indent, char *noise, int seed, bool load, bool clamp, float clampNeg, float clampPos, float valScale, float valOffset, float timeAnim)
+void manta_gen_noise(stringstream& ss, char* solver, int indent, char *noise, int seed, bool load, bool clamp, float clampNeg, float clampPos, float valScale, float valOffset, float timeAnim)
 {
 	if (ss == NULL)/*should never be here*/
 	{
@@ -205,7 +205,7 @@ void manta_gen_noise(ostringstream& ss, char* solver, int indent, char *noise, i
 	ss << noise << ".timeAnim = " << timeAnim << " \n";
 }
 
-void manta_solve_pressure(ostringstream& ss, char *flags, char *vel, char *pressure, bool useResNorms, int openBound, int solver_res,float cgMaxIterFac, float cgAccuracy)
+void manta_solve_pressure(stringstream& ss, char *flags, char *vel, char *pressure, bool useResNorms, int openBound, int solver_res,float cgMaxIterFac, float cgAccuracy)
 {
 	/*open:0 ; vertical : 1; closed:2*/
 	ss << "  solvePressure(flags=" << flags << ", vel=" << vel << ", pressure=" << pressure << ", useResNorm=" << (useResNorms?"True":"False") << ", openBound='";	
@@ -226,7 +226,7 @@ void manta_solve_pressure(ostringstream& ss, char *flags, char *vel, char *press
 	ss << ", cgMaxIterFac=" << cgMaxIterFac << ", cgAccuracy=" << cgAccuracy << ") \n";
 }
 
-void manta_advect_SemiLagr(ostringstream& ss, int indent, char *flags, char *vel, char *grid, int order)
+void manta_advect_SemiLagr(stringstream& ss, int indent, char *flags, char *vel, char *grid, int order)
 {
 	if((order <=1) || (flags == NULL) || (vel == NULL) || (grid == NULL)){return;}
 	indent_ss(ss, indent);
@@ -235,7 +235,7 @@ void manta_advect_SemiLagr(ostringstream& ss, int indent, char *flags, char *vel
 }
 
 /*create solver, handle 2D case*/
-void manta_create_solver(ostringstream& ss, char *name, char *nick, char *grid_size_name, int x_res, int y_res, int z_res, int dim)
+void manta_create_solver(stringstream& ss, char *name, char *nick, char *grid_size_name, int x_res, int y_res, int z_res, int dim)
 {
 	if ((dim != 2) && (dim != 3))
 	{ return; }
@@ -250,7 +250,7 @@ inline bool file_exists (const std::string& name) {
 }
 
 /*blender transforms obj coords to [-1,1]. This method transforms them back*/
-void add_mesh_transform_method(ostringstream& ss)
+void add_mesh_transform_method(stringstream& ss)
 {
 	ss << "def transform_back(obj, gs):\n" <<
 	"  obj.scale(gs/2)\n" <<
@@ -371,7 +371,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		return;
 	ofstream manta_setup_file;
 	manta_setup_file.open("manta_scene.py", std::fstream::trunc);
-	ostringstream ss; /*setup contents*/
+	stringstream ss; /*setup contents*/
 	
 	/*header*/
 	ss << "from manta import * \n";
@@ -544,21 +544,47 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 			ss << "    densityInflowMesh(flags=xl_flags, density=xl_density, mesh=source, value=1)\n";
 		ss << "  xl_density.save('densityXl_%04d.uni' % t)\n";
 		//ss << "    densityInflow( flags=xl_flags, density=xl_density, noise=xl_noise, shape=xl_source, scale=1, sigma=0.5 ) \n";
-//		ss << "  xl.step()   \n";
+		ss << "  xl.step()   \n";
 	}
 	manta_setup_file << ss.rdbuf();
 	manta_setup_file.close();
+//	parseFile(smd, scene, "smoke.py");
 	vector<string> a;
 	a.push_back("manta_scene.py");
-	runMantaScript(ss.str(),a);
+	runMantaScript("",a);
 }
 
-std::string getRealValue(SmokeDomainSettings *sds, Scene *s, const std::string& varName)
+std::string getRealValue(SmokeModifierData *smd, Scene *s, const std::string& varName)
 {
-	return "";
+	ostringstream ss;
+	if (varName == "UVS_CNT")
+		ss << smd->domain->manta_uvs_num ;
+	else if (varName == "UPRES")
+		ss << smd->domain->amplify+1;
+	else if (varName == "WLT_STR")
+		ss << smd->domain->strength ;
+	else if (varName == "RES")
+		ss <<  smd->domain->maxres;
+	else if (varName == "RESX")
+		ss <<  smd->domain->fluid->xRes();
+	else if (varName == "RESY")
+		ss <<  smd->domain->fluid->yRes();
+	else if (varName == "RESZ")
+		ss <<  smd->domain->fluid->zRes();
+	else if (varName == "SOLVER_DIM")
+		ss <<  smd->domain->manta_solver_res;
+	else if (varName == "NOISE_CN")
+		ss <<  smd->domain->noise_clamp_neg;
+	else if (varName == "NOISE_CP")
+		ss <<  smd->domain->noise_clamp_pos;
+	else if (varName == "NOISE_VALSCALE")
+		ss <<  smd->domain->noise_val_scale;
+	else if (varName == "NOISE_VALOFFSET")
+		ss << smd->domain->noise_val_offset;
+	return ss.str();
 }
 
-std::string parseLine(SmokeDomainSettings *sds, Scene *s, const string& line)
+std::string parseLine(SmokeModifierData *smd, Scene *s, const string& line)
 {
 	if (line.size() == 0) return "";
 	string res = "";
@@ -574,7 +600,7 @@ std::string parseLine(SmokeDomainSettings *sds, Scene *s, const string& line)
 		else if(line[currPos] == delimiter && readingVar){
 			readingVar 	= false;
 			end_del 	= currPos;
-			res 		+= getRealValue(sds,s,line.substr(start_del, currPos - start_del));
+			res 		+= getRealValue(smd,s,line.substr(start_del, currPos - start_del));
 		}
 		currPos ++;
 	}
@@ -582,14 +608,14 @@ std::string parseLine(SmokeDomainSettings *sds, Scene *s, const string& line)
 	return res;
 }
 
-std::string parseFile(SmokeDomainSettings *sds, Scene *s, char *file)
+void parseFile(SmokeModifierData *smd, Scene *s, char *file)
 {
 	ifstream f (file);
-	ofstream of("scenario_p.py");
+	ofstream of("manta_scene.py");
 	string line="";
 	if (f.is_open()){
 		while(getline(f,line)){
-			of << parseLine(sds,s,line) << "\n";
+			of << parseLine(smd,s,line) << "\n";
 		}
 		f.close();
 	}
@@ -597,7 +623,6 @@ std::string parseFile(SmokeDomainSettings *sds, Scene *s, char *file)
 		printf ("Error: No scenario file found");
 	}
 	of.close();
-	return "";
 }
 
 
