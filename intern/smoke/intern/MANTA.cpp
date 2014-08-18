@@ -11,8 +11,10 @@ extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY
 	if (!(dimX == fluid->xRes() && dimY == fluid->yRes() && dimZ == fluid->zRes())) {
 		for (int cnt(0); cnt < fluid->_totalCells; cnt++)
 			fluid->_density[cnt] = 0.0f;
+		cout<<"lowresgrid res not ok"<<endl;
 		return false;
 	}
+	cout<<"lowresgrid res ok"<<endl;
 	return true;
 }
 
@@ -22,8 +24,10 @@ extern "C" bool manta_check_wavelets_size(struct WTURBULENCE *wt, int dimX, int 
 	if (!(dimX == wt->_xResBig && dimY == wt->_yResBig && dimZ == wt->_zResBig)) {
 		for (int cnt(0); cnt < wt->_totalCellsBig; cnt++)
 			wt->_densityBig[cnt] = 0.0f;
+		cout<<"highresgrid res not ok"<<endl;
 		return false;
 	}
+	cout<<"highresgrid res ok"<<endl;
 	return true;
 }
 
@@ -43,11 +47,13 @@ void read_rotated_grid(gzFile gzf, float *data, int size_x, int size_y, int size
 			}			
 		}
 	}
+	cout<<"rotated grid read"<<endl;
 }
 
 void wavelets_add_lowres_density(SmokeDomainSettings *sds)
 {
 	assert(sds != NULL);
+	cout<<"adding lowres density to wavelets"<<endl;
 	for (int cnt_x(0); cnt_x < sds->wt->_xResBig; ++cnt_x)
 	{
 		for (int cnt_y(0); cnt_y < sds->wt->_yResBig; ++cnt_y)
@@ -84,11 +90,13 @@ void wavelets_add_lowres_density(SmokeDomainSettings *sds)
 			}
 		}
 	}
+	cout<<"done"<<endl;
 }
 
 //PR need SMD data here for wavelets 
 extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, bool reading_wavelets)
 {
+	cout<<"reading mantaflow sim from file:"<<name<<endl;
     /*! legacy headers for reading old files */
 	typedef struct {
 		int dimX, dimY, dimZ;
@@ -160,16 +168,21 @@ extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, b
         gzread(gzf, &head, sizeof(UniHeader));
 		/* actual grid read */
         if ( ! reading_wavelets){
+			cout<<"lowres"<<endl;
 			if (!manta_check_grid_size(sds->fluid, head.dimX, head.dimY, head.dimZ))	return 0;
 			/*Y and Z axes are swapped in manta and blender*/
 //			read_rotated_grid(gzf,sds->fluid->_density,head.dimX,head.dimY,head.dimZ);
+			cout<<"lowres2"<<endl;
 			gzread(gzf,sds->fluid->_density, sizeof(float)*head.dimX*head.dimY*head.dimZ);
-    	}
+    		
+		}
 		else{
 			if (!manta_check_wavelets_size(sds->wt, head.dimX, head.dimY, head.dimZ))	return 0;
 			/*Y and Z axes are swapped in manta and blender*/
+			cout<<"highres"<<endl;
 			gzread(gzf,sds->wt->_densityBig, sizeof(float)*head.dimX*head.dimY*head.dimZ);
 			gzread(gzf,sds->wt->_densityBigOld, sizeof(float)*head.dimX*head.dimY*head.dimZ);
+			cout<<"highres2"<<endl;
 //			read_rotated_grid(gzf,sds->wt->_densityBig,head.dimX,head.dimY,head.dimZ);
 //			wavelets_add_lowres_density(sds);
 //			read_rotated_grid(gzf,sds->wt->_densityBigOld,head.dimX,head.dimY,head.dimZ);

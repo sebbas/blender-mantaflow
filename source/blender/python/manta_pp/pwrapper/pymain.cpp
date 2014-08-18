@@ -100,11 +100,10 @@ void runMantaScript(const string& ss,vector<string>& args) {
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	/*cleaning possible previous setups*/
 	PyRun_SimpleString(clean_code2.c_str());
-	debMsg("running manta init?", 0);
 	
 	if (! manta_initialized)
 	{	
-		debMsg("yes", 0);
+		debMsg("running manta init?", 0);
 		Pb::setup(filename, args);
 		manta_initialized = true;
 	}	
