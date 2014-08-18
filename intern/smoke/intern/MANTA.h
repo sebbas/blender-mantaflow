@@ -12,12 +12,11 @@
 #include <Python.h>
 #include <vector>
 #include "../../../source/blender/blenlib/BLI_path_util.h"
-//#include "../../../source/blender/blenlib/BLI_fileops.h"
-//#include "../../../source/blender/python/manta_pp/pwrapper/pymain.cpp"
 
 void export_force_fields(int size_x, int size_y, int size_z, float *f_x, float*f_y, float*f_z);/*defined in pymain.cpp*/
 extern "C" void manta_write_effectors(struct Scene *s, struct SmokeModifierData *smd); /*defined in smoke_api.cpp*/
 
+/*for passing to detached thread*/
 struct manta_arg_struct {
 	Scene s;
 	SmokeModifierData smd;
@@ -51,7 +50,6 @@ void manta_cache_path(char *filepath);
 
 static bool manta_sim_running=true;
 
-//void BLI_dir_create_recursive(const char *filepath);
 void create_manta_folder();
 
 void *run_manta_scene_thread(void *threadid);

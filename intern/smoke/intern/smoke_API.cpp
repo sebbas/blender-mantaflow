@@ -508,15 +508,6 @@ extern "C" int smoke_mantaflow_read(struct SmokeDomainSettings *sds, char* name,
 
 extern "C" void smoke_mantaflow_write_scene_file(struct Scene *s, struct SmokeModifierData *smd)
 {
-//	update_effectors(s, NULL, smd->domain, 0.1f);
-//	FLUID_3D *fluid = smd->domain->fluid;
-//	int size_x = fluid->xRes();
-//	int size_y = fluid->yRes();
-//	int size_z = fluid->zRes();
-//	float *force_x = smoke_get_force_x(fluid);
-//	float *force_y = smoke_get_force_y(fluid);
-//	float *force_z = smoke_get_force_z(fluid);
-//	export_force_fields(size_x, size_y, size_z, force_x, force_y, force_z);
 	generate_manta_sim_file(s, smd);
 }
 
