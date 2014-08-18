@@ -330,6 +330,7 @@ void run_manta_scene(Scene *s, SmokeModifierData *smd)
 		cout<< "done"<<manta_sim_running<<endl;
 		//		frame_num ++;
 	}
+	PyGILState_Release(gilstate);
 	//returning simulation state to "not simulating" aka -1
 //	smd->domain->manta_sim_frame = -1;
 //
