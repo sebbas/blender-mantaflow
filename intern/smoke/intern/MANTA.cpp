@@ -293,36 +293,36 @@ void *run_manta_scene_thread(void *arguments)
 
 void run_manta_scene(Scene *s, SmokeModifierData *smd)
 {
-	smd->domain->manta_sim_frame = 0;
-	PyGILState_STATE gilstate = PyGILState_Ensure();
-//	for (int fr=0; fr< 1; ++fr)
-	int fr = s->r.cfra;
-	{
-//		if(smd->domain->manta_sim_frame == -1)
-//			break;
-		printf("Simulation Step");
-		manta_write_effectors(s, smd);
-		smd->domain->manta_sim_frame = fr;
-		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << fr) )->str();
-		std::string py_string_0 = string("sim_step(").append(frame_str);
-		std::string py_string_1 = py_string_0.append(")\0");
-		//		std::string py_string_1 = string("sim_step()\0");
-		PyRun_SimpleString(py_string_1.c_str());
-		//		frame_num ++;
-	}
-	PyGILState_Release(gilstate);
+//	smd->domain->manta_sim_frame = 0;
+//	PyGILState_STATE gilstate = PyGILState_Ensure();
+////	for (int fr=0; fr< 1; ++fr)
+//	int fr = s->r.cfra;
+//	{
+////		if(smd->domain->manta_sim_frame == -1)
+////			break;
+//		printf("Simulation Step");
+//		manta_write_effectors(s, smd);
+//		smd->domain->manta_sim_frame = fr;
+//		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << fr) )->str();
+//		std::string py_string_0 = string("sim_step(").append(frame_str);
+//		std::string py_string_1 = py_string_0.append(")\0");
+//		//		std::string py_string_1 = string("sim_step()\0");
+//		PyRun_SimpleString(py_string_1.c_str());
+//		//		frame_num ++;
+//	}
+//	PyGILState_Release(gilstate);
 	//returning simulation state to "not simulating" aka -1
 //	smd->domain->manta_sim_frame = -1;
 //
 //	
 //	
-//	struct manta_arg_struct *args = (struct manta_arg_struct*)malloc(sizeof(struct manta_arg_struct));
-//	args->smd = *smd;
-//	args->s = *s;
-////	args.frame_num = smd->domain->manta_end_frame - smd->domain->manta_start_frame;
-//	int rc = pthread_create(&manta_thread, NULL, run_manta_sim_thread, (void *)args);
-////	pthread_join(manta_thread,NULL);
-////	pthread_detach(manta_thread);
+	struct manta_arg_struct *args = (struct manta_arg_struct*)malloc(sizeof(struct manta_arg_struct));
+	args->smd = *smd;
+	args->s = *s;
+//	args.frame_num = smd->domain->manta_end_frame - smd->domain->manta_start_frame;
+	int rc = pthread_create(&manta_thread, NULL, run_manta_sim_thread, (void *)args);
+//	pthread_join(manta_thread,NULL);
+//	pthread_detach(manta_thread);
 }
 
 void stop_manta_sim()

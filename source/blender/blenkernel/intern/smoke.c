@@ -2800,7 +2800,8 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		// DG: interesting commenting this line + deactivating loading of noise files
 		if(framenr != startframe && smd->domain->flags & MOD_SMOKE_USE_MANTA)	/*load manta sim data into fluid object*/
 		{
-			smoke_mantaflow_sim_step(scene,smd);
+			/*PR: Uncomment when adding simulation from timeline*/
+			/*smoke_mantaflow_sim_step(scene,smd);*/
 			const char *density_name_format = "./den%04d.uni";
 			const char *wavelets_name_format = "./densityXL_%04d.uni";
 			char buff[100];
