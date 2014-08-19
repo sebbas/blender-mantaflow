@@ -63,6 +63,8 @@ set(SRC
 	intern/WTURBULENCE.h
 	intern/MANTA.h
 	intern/MANTA.cpp
+	intern/scenarios/smoke.h
+
 	intern/tnt/jama_eig.h
 	intern/tnt/jama_lu.h
 	intern/tnt/tnt.h

@@ -1,6 +1,6 @@
 #include "MANTA.h"
 #include "WTURBULENCE.h"
-
+#include "scenarios/smoke.h"
 void runMantaScript(vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
 
 extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY, int dimZ)
@@ -369,8 +369,8 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	int num_sim_frames = smd->domain->manta_end_frame - smd->domain->manta_start_frame + 1;
 	if(num_sim_frames < 1)
 		return;
-	ofstream manta_setup_file;
-	manta_setup_file.open("manta_scene.py", std::fstream::trunc);
+//	ofstream manta_setup_file;
+//	manta_setup_file.open("manta_scene.py", std::fstream::trunc);
 	stringstream ss; /*setup contents*/
 	
 	/*header*/
@@ -546,9 +546,9 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		//ss << "    densityInflow( flags=xl_flags, density=xl_density, noise=xl_noise, shape=xl_source, scale=1, sigma=0.5 ) \n";
 		ss << "  xl.step()   \n";
 	}
-	manta_setup_file << ss.rdbuf();
-	manta_setup_file.close();
-//	parseFile(smd, scene, "smoke.py");
+//	manta_setup_file << ss.rdbuf();
+//	manta_setup_file.close();
+	parseFile(smd, scene, smoke_setup);
 	vector<string> a;
 	a.push_back("manta_scene.py");
 	runMantaScript("",a);
@@ -608,20 +608,22 @@ std::string parseLine(SmokeModifierData *smd, Scene *s, const string& line)
 	return res;
 }
 
-void parseFile(SmokeModifierData *smd, Scene *s, char *file)
+void parseFile(SmokeModifierData *smd, Scene *s, const string & setup_string)
 {
-	ifstream f (file);
-	ofstream of("manta_scene.py");
+//	ifstream f (file);
+std::istringstream f(setup_string);
+	ofstream of;
+	of.open("manta_scene.py", std::fstream::trunc);
 	string line="";
-	if (f.is_open()){
+//	if (f.is_open()){
 		while(getline(f,line)){
 			of << parseLine(smd,s,line) << "\n";
 		}
-		f.close();
-	}
-	else{
-		printf ("Error: No scenario file found");
-	}
+//		f.close();
+//	}
+//	else{
+//		printf ("Error: No scenario file found");
+//	}
 	of.close();
 }
 

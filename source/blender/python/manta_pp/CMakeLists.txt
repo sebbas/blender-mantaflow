@@ -126,8 +126,6 @@ ${CMAKE_CURRENT_SOURCE_DIR}/util/mcubes.h
 ${CMAKE_CURRENT_SOURCE_DIR}/util/randomstream.h
 ${CMAKE_CURRENT_SOURCE_DIR}/util/solvana.h
 
-${CMAKE_CURRENT_SOURCE_DIR}/scenarios/smoke.py
-
 #gui/customctrl.cpp
 #gui/customctrl.h
 #gui/customctrl.h.reg

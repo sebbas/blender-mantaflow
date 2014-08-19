@@ -68,7 +68,7 @@ std::string getRealValue(SmokeModifierData *sds, Scene *s, const string& varName
 
 std::string parseLine(SmokeModifierData *sds, Scene *s, const string& line);
 
-void parseFile(SmokeModifierData *sds, Scene *s, char *file);
+void parseFile(SmokeModifierData *sds, Scene *s, const string& setup_string);
 
 #endif /* MANTA_H */
 
