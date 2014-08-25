@@ -2803,7 +2803,7 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			/*PR: Uncomment when adding simulation from timeline*/
 			/*smoke_mantaflow_sim_step(scene,smd);*/
 			const char *density_name_format = "./den%04d.uni";
-			const char *wavelets_name_format = "./densityXL_%04d.uni";
+			const char *wavelets_name_format = "./densityXl_%04d.uni";
 			char buff[100];
 			sprintf(buff, density_name_format, scene->r.cfra);
 			bool read_density = smoke_mantaflow_read(smd->domain, buff, 0);
