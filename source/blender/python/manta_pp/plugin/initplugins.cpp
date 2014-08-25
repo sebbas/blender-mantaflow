@@ -64,7 +64,7 @@ namespace Manta {
 	void densityInflowMeshNoise(FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, Mesh* mesh, Real scale=1.0, Real sigma=0) {
 		FluidSolver dummy(density.getSize());
 		LevelsetGrid sdf(&dummy, false);
-		mesh->meshSDF(*mesh, sdf, 1.);
+		mesh->meshSDF(*mesh, sdf, 3.);
 		KnApplyNoise(flags, density, noise, sdf, scale, sigma);
 	} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "densityInflowMeshNoise" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& density = *_args.getPtr<Grid<Real> >("density",1,&_lock); WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Mesh* mesh = _args.getPtr<Mesh >("mesh",3,&_lock); Real scale = _args.getOpt<Real >("scale",4,1.0,&_lock); Real sigma = _args.getOpt<Real >("sigma",5,0,&_lock);   _retval = getPyNone(); densityInflowMeshNoise(flags,density,noise,mesh,scale,sigma);  _args.check(); } pbFinalizePlugin(parent,"densityInflowMeshNoise" ); return _retval; } catch(std::exception& e) { pbSetError("densityInflowMeshNoise",e.what()); return 0; } } static const Pb::Register _RP_densityInflowMeshNoise ("","densityInflowMeshNoise",_W_1); 
 	//! Init still density inside mesh
@@ -72,7 +72,7 @@ namespace Manta {
 	void densityInflowMesh(FlagGrid& flags, Grid<Real>& density, Mesh* mesh, Real value=1., Real cutoff = -1, Real sigma=0) {
 		FluidSolver dummy(density.getSize());
 		LevelsetGrid sdf(&dummy, false);
-		mesh->meshSDF(*mesh, sdf, 3.,cutoff);
+		mesh->meshSDF(*mesh, sdf, 3.);
 		KnApplyDensity(flags, density, sdf, value, sigma);
 	} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "densityInflowMesh" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& density = *_args.getPtr<Grid<Real> >("density",1,&_lock); Mesh* mesh = _args.getPtr<Mesh >("mesh",2,&_lock); Real value = _args.getOpt<Real >("value",3,1.,&_lock); Real cutoff = _args.getOpt<Real >("cutoff",4,7,&_lock); Real sigma = _args.getOpt<Real >("sigma",5,2,&_lock);   _retval = getPyNone(); densityInflowMesh(flags,density,mesh,value,cutoff,sigma);  _args.check(); } pbFinalizePlugin(parent,"densityInflowMesh" ); return _retval; } catch(std::exception& e) { pbSetError("densityInflowMesh",e.what()); return 0; } } static const Pb::Register _RP_densityInflowMesh ("","densityInflowMesh",_W_2); 
 	//! sample noise field and set pdata with its values (for convenience, scale the noise values)

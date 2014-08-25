@@ -120,6 +120,8 @@ void smoke_mantaflow_sim_step(struct Scene *scene, struct SmokeModifierData *smd
 void smoke_mantaflow_stop_sim();
 void manta_write_effectors(struct Scene *s, struct SmokeModifierData *smd);
 void manta_update_effectors(struct Scene *scene, struct Object *ob,struct SmokeDomainSettings *sds, float dt);
+void manta_write_emitters(int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z,float *influence, float *vel);
+
 #ifdef __cplusplus
 }
 #endif

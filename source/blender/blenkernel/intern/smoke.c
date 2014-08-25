@@ -2221,7 +2221,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				// we got nice flow object
 				SmokeFlowSettings *sfs = smd2->flow;
 				EmissionMap *em = &emaps[flowIndex];
-
+				manta_write_emitters(em->min[0],em->min[1],em->min[2],em->max[0],em->max[1],em->max[2],sds->res[0],sds->res[1],sds->res[2], em->influence, em->velocity);
 				float *density = smoke_get_density(sds->fluid);
 				float *color_r = smoke_get_color_r(sds->fluid);
 				float *color_g = smoke_get_color_g(sds->fluid);

@@ -67,15 +67,14 @@ const static string clean_code2 = "del s;del noise;del xl;del xl_noise;del xl_wl
 		   //for latter full object release	
 		   //const static string clean_code2 = "del [s, noise, source, sourceVel, xl, xl_vel, xl_density, xl_flags,xl_source, xl_noise, flags, vel, density, pressure, energy, tempFlag, sdf_flow, forces, source,source_shape, xl_wltnoise]";
 
-
-void export_force_fields(int size_x, int size_y, int size_z, float *f_x, float*f_y, float*f_z)
+void export_fields(int size_x, int size_y, int size_z, float *f_x, float*f_y, float*f_z, char *filename)
 {
 	assert(size_x>0 && size_y>0 && size_z>0);
 	assert(f_x != NULL);
 	assert(f_y != NULL);
 	assert(f_z != NULL);
 	FluidSolver dummy(Vec3i(size_x,size_y,size_z));
-	Grid<Vec3 > force_fields(&dummy, false);
+	Grid<Vec3> force_fields(&dummy, false);
 	for (int x=0; x < size_x; ++x)
 	{
 		for (int y=0; y < size_y; ++y)
@@ -86,10 +85,52 @@ void export_force_fields(int size_x, int size_y, int size_z, float *f_x, float*f
 			}
 		}
 	}
-	writeGridUni("manta_forces.uni", &force_fields);
+	writeGridUni(filename, &force_fields);
 	/*rename after export successful*/
 	
 //	writeGridTxt("s.txt", &force_fields);
+}
+		   
+void export_em_fields(int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z, float *inf, float *vel)
+{
+//	assert(size_x>0 && size_y>0 && size_z>0);
+	assert(inf != NULL);
+//	assert(vel != NULL);
+	FluidSolver dummy(Vec3i(d_x,d_y,d_z));
+	Grid<Real> em_inf_fields(&dummy, false);
+	Grid<Vec3> em_vel_fields(&dummy, false);
+	int index(0);
+	for (int x=0; x < d_x; ++x)
+	{
+		for (int y=0; y < d_y; ++y)
+		{
+			for (int z=0; z < d_z; ++z)
+			{
+				if (x < min_x || y < min_y || z < min_z || x > max_x || y > max_y || z > max_z){
+					em_inf_fields.get(x, y, z) = 0.;
+					if(vel != NULL)	
+						em_vel_fields.get(x, y, z) = 0.;
+				}
+				else{
+					index = x + y * d_x + z * d_x * d_y;
+					em_inf_fields.get(x, y, z) = inf[index];//f_x[x],f_y[y],f_z[z]);				
+					if(vel != NULL)	
+						em_vel_fields.get(x, y, z) = Vec3(vel[index*3],vel[index*3+1],vel[index*3+2]);
+				}
+			}
+		}
+	}
+	writeGridUni("manta_em_influence.uni", &em_inf_fields);
+	writeGridTxt("manta_em_influence.txt", &em_inf_fields);
+	if (vel != NULL){
+		writeGridUni("em_vel_fields.uni", &em_vel_fields);
+		writeGridTxt("em_vel_fields.txt", &em_vel_fields);
+	}
+}
+
+void export_force_fields(int size_x, int size_y, int size_z, float *f_x, float*f_y, float*f_z)
+{
+	export_fields(size_x, size_y, size_z, f_x, f_y, f_z, "manta_forces.uni");	
 }
 		   
 void runMantaScript(const string& ss,vector<string>& args) {

@@ -369,7 +369,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	int num_sim_frames = smd->domain->manta_end_frame - smd->domain->manta_start_frame + 1;
 	if(num_sim_frames < 1)
 		return;
-//	ofstream manta_setup_file;
+	ofstream manta_setup_file;
 //	manta_setup_file.open("manta_scene.py", std::fstream::trunc);
 	stringstream ss; /*setup contents*/
 	
@@ -426,7 +426,7 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 		ss << "xl_source.load('manta_flow.obj')\n";
 		ss << "transform_back(xl_source, gs)\n";
 		
-		/*Obstacle handling*/
+		/*High-res obstacle handling*/
 		if (file_exists("manta_coll.obj"))
 		{
 			ss << "xl_obs = s.create(Mesh)\n";
@@ -548,7 +548,11 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	}
 //	manta_setup_file << ss.rdbuf();
 //	manta_setup_file.close();
-	parseFile(smd, scene, smoke_setup);
+	/*constrcting final setup*/
+	string smoke_script = smoke_setup_low + ((wavelets)?smoke_setup_high:"") + smoke_step_low + ((wavelets)?smoke_step_high:"");	
+	manta_setup_file << smoke_script ;
+	manta_setup_file.close();
+	parseFile(smd, scene, smoke_script);
 	vector<string> a;
 	a.push_back("manta_scene.py");
 	runMantaScript("",a);
@@ -581,6 +585,30 @@ std::string getRealValue(SmokeModifierData *smd, Scene *s, const std::string& va
 		ss <<  smd->domain->noise_val_scale;
 	else if (varName == "NOISE_VALOFFSET")
 		ss << smd->domain->noise_val_offset;
+	else if (varName == "NOISE_TIMEANIM")
+		ss << smd->domain->noise_time_anim;
+	else if (varName == "HRESX")
+		ss << smd->domain->wt->getResBig()[0];
+	else if (varName == "HRESY")
+		ss << smd->domain->wt->getResBig()[1];
+	else if (varName == "HRESZ")
+		ss << smd->domain->wt->getResBig()[2];
+	else if (varName == "XL_TIMESTEP")	/*add support*/
+		ss << smd->domain->noise_time_anim * smd->domain->amplify+1;/*lowres time * upres*/
+	else if (varName == "USE_WAVELETS")
+		ss << (smd->domain->flags & MOD_SMOKE_HIGHRES)?"True":"False";
+	else if (varName == "BUYO_X")
+		ss << 0.;
+	else if (varName == "BUYO_Y")
+		ss << 0.;
+	else if (varName == "BUYO_Z")
+		ss << (-smd->domain->beta);
+	else if (varName == "ADVECT_ORDER")
+		ss << 2;
+	else if (varName == "ABS_FLOW")
+		ss << (smd->flow->flags & MOD_SMOKE_FLOW_ABSOLUTE)?"True":"False";
+	else 
+		cout<< "ERROR: Unknown option:"<< varName <<endl; 
 	return ss.str();
 }
 

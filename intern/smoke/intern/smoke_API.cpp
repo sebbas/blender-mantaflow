@@ -530,6 +530,12 @@ extern "C" void manta_write_effectors(struct Scene *s, struct SmokeModifierData 
 	export_force_fields(size_x, size_y, size_z, force_x, force_y, force_z);
 }
 
+extern "C" void manta_write_emitters(int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z,float *influence, float *vel)
+{
+//	manta_update_effectors(s, smd->domain->manta_obj, smd->domain, 0.1f);
+	export_em_fields( min_x,  min_y,  min_z,  max_x,  max_y,  max_z,  d_x,  d_y,  d_z,  influence,  vel);
+}
+
 extern "C" void smoke_mantaflow_stop_sim()
 {
 	stop_manta_sim();
