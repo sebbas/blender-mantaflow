@@ -593,8 +593,10 @@ std::string getRealValue(SmokeModifierData *smd, Scene *s, const std::string& va
 		ss << smd->domain->wt->getResBig()[1];
 	else if (varName == "HRESZ")
 		ss << smd->domain->wt->getResBig()[2];
-	else if (varName == "XL_TIMESTEP")	/*add support*/
-		ss << smd->domain->noise_time_anim * smd->domain->amplify+1;/*lowres time * upres*/
+	else if (varName == "TIMESTEP")
+		ss << smd->domain->time_scale * 0.1f;
+	else if (varName == "XL_TIMESTEP")
+		ss << smd->domain->time_scale * 0.1f;
 	else if (varName == "USE_WAVELETS")
 		ss << (smd->domain->flags & MOD_SMOKE_HIGHRES)?"True":"False";
 	else if (varName == "BUYO_X")

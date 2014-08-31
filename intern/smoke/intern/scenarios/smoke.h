@@ -143,7 +143,7 @@ if $USE_WAVELETS$:\n\
 res = $RES$\n\
 gs = vec3($RESX$, $RESY$, $RESZ$) \n\
 s = Solver(name = 'main', gridSize = gs, dim = solver_dim) \n\
-s.timestep = 1 \n\
+s.timestep = $TIMESTEP$ \n\
 noise = s.create(NoiseField, fixedSeed=256, loadFromFile=True) \n\
 noise.posScale = vec3(20) \n\
 noise.clamp = False \n\
