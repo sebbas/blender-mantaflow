@@ -513,6 +513,7 @@ extern "C" void smoke_mantaflow_write_scene_file(struct Scene *s, struct SmokeMo
 
 extern "C" void smoke_mantaflow_sim_step(Scene *scene, SmokeModifierData *smd)
 {
+	cout <<"Fluid_loc: "<<smd->domain->fluid->_density <<endl;
 	run_manta_scene(scene, smd);
 }
 

@@ -26,3 +26,11 @@ Desktop.ini
 # local patches
 /*.patch
 /*.diff
+
+.gitignore
+Roman_Pogribnyi/
+Roman_Pogribnyi.tar.gz
+Archive.zip
+Roman_Pogribnyi 2/
+make_diffs.txt
+series

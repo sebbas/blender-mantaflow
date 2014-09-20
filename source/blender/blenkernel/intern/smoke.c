@@ -2766,9 +2766,9 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			printf("bad smokeModifier_init\n");
 			return;
 		}
-		if (framenr == startframe && smd->domain->flags & MOD_SMOKE_USE_MANTA && smd->domain->fluid){
-			smoke_mantaflow_write_scene_file(scene, smd);
-		}
+//		if (framenr == startframe && smd->domain->flags & MOD_SMOKE_USE_MANTA && smd->domain->fluid){
+//			smoke_mantaflow_write_scene_file(scene, smd);
+//		}
 		/* try to read from cache */
 		if (BKE_ptcache_read(&pid, (float)framenr) == PTCACHE_READ_EXACT) {
 			BKE_ptcache_validate(cache, framenr);
@@ -2798,35 +2798,36 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 
 		// simulate the actual smoke (c++ code in intern/smoke)
 		// DG: interesting commenting this line + deactivating loading of noise files
-		if(framenr != startframe && smd->domain->flags & MOD_SMOKE_USE_MANTA)	/*load manta sim data into fluid object*/
+		if (framenr != startframe)
 		{
-			/*PR: Uncomment when adding simulation from timeline*/
-			/*smoke_mantaflow_sim_step(scene,smd);*/
-			const char *density_name_format = "./den%04d.uni";
-			const char *wavelets_name_format = "./densityXl_%04d.uni";
-			char buff[100];
-			sprintf(buff, density_name_format, scene->r.cfra);
-			bool read_density = smoke_mantaflow_read(smd->domain, buff, 0);
-			bool read_wavelets = 1;
-			if (smd->domain->flags & MOD_SMOKE_HIGHRES)
-			{
-				/*highdres*/
-				sprintf(buff, wavelets_name_format, scene->r.cfra);
-				read_wavelets = smoke_mantaflow_read(smd->domain, buff, 1);	
-			}
-		}else{
-			if (framenr != startframe)
-			{
-				if (sds->flags & MOD_SMOKE_DISSOLVE) {
-					/* low res dissolve */
-					smoke_dissolve(sds->fluid, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
-					/* high res dissolve */
-					if (sds->wt) {
-						smoke_dissolve_wavelet(sds->wt, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
-					}
-
+			if (sds->flags & MOD_SMOKE_DISSOLVE) {
+				/* low res dissolve */
+				smoke_dissolve(sds->fluid, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
+				/* high res dissolve */
+				if (sds->wt) {
+					smoke_dissolve_wavelet(sds->wt, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
 				}
-			step(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base, for_render);
+				
+			}
+			//Step itself
+			if(smd->domain->flags & MOD_SMOKE_USE_MANTA){	/*load manta sim data into fluid object*/
+			
+				/*PR: Uncomment when adding simulation from timeline*/
+//				smoke_mantaflow_sim_step(scene,smd);
+				const char *density_name_format = "./den%04d.uni";
+				const char *wavelets_name_format = "./densityXl_%04d.uni";
+				char buff[100];
+				sprintf(buff, density_name_format, scene->r.cfra);
+				bool read_density = smoke_mantaflow_read(smd->domain, buff, 0);
+				bool read_wavelets = 1;
+				if (smd->domain->flags & MOD_SMOKE_HIGHRES){
+					/*highdres*/
+					sprintf(buff, wavelets_name_format, scene->r.cfra);
+					read_wavelets = smoke_mantaflow_read(smd->domain, buff, 1);	
+				}
+			}
+			else{
+				step(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base, for_render);
 			}
 		}
 		// create shadows before writing cache so they get stored

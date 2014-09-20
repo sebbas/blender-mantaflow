@@ -8,20 +8,12 @@ def transform_back(obj, gs):\n\
   obj.scale(gs/2)\n\
   obj.offset(gs/2)\n\
 \n\
-uvs = $UVS_CNT$\n\
 solver_dim = $SOLVER_DIM$\n\
-velInflow = vec3(0, 0, 1)\n\
-if $USE_WAVELETS$:\n\
-  upres = $UPRES$\n\
-  wltStrength = $WLT_STR$\n\
-  if $UPRES$ > 0:\n\
-    octaves = int( math.log(upres)/ math.log(2.0) + 0.5 ) \n\
-  else:\n\
-    octaves = 0\n\
 res = $RES$\n\
 gs = vec3($RESX$, $RESY$, $RESZ$) \n\
 s = Solver(name = 'main', gridSize = gs, dim = solver_dim) \n\
 s.timestep = 1 \n\
+\n\
 noise = s.create(NoiseField, fixedSeed=256, loadFromFile=True) \n\
 noise.posScale = vec3(20) \n\
 noise.clamp = False \n\
@@ -30,28 +22,28 @@ noise.clampPos = $NOISE_CP$\n\
 noise.valScale = $NOISE_VALSCALE$\n\
 noise.valOffset = $NOISE_VALOFFSET$\n\
 noise.timeAnim = $NOISE_TIMEANIM$ \n\
+\n\
 source = s.create(Mesh)\n\
 source.load('manta_flow.obj')\n\
 transform_back(source, gs)\n\
-sourceVel = s.create(Mesh)\n\
-sourceVel.load('manta_flow.obj')\n\
-transform_back(sourceVel, gs)\n\
 flags = s.create(FlagGrid) \n\
 flags.initDomain() \n\
 flags.fillGrid() \n\
 vel = s.create(MACGrid) \n\
 density = s.create(RealGrid) \n\
 pressure = s.create(RealGrid) \n\
-energy = s.create(RealGrid) \n\
-tempFlag  = s.create(FlagGrid)\n\
-sdf_flow  = s.create(LevelsetGrid)\n\
 forces = s.create(MACGrid)\n\
-source.meshSDF(source, sdf_flow, 1.1)\n\
-source_shape = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*vec3(0, 0.02, 0))\n\
 ";
 
 const string smoke_setup_high = "xl_gs = vec3($HRESX$, $HRESY$, $HRESZ$) \n\
 xl = Solver(name = 'larger', gridSize = xl_gs, dim = solver_dim) \n\
+if $USE_WAVELETS$:\n\
+  upres = $UPRES$\n\
+  wltStrength = $WLT_STR$\n\
+  if $UPRES$ > 0:\n\
+    octaves = int( math.log(upres)/ math.log(2.0) + 0.5 ) \n\
+  else:\n\
+    octaves = 0\n\
 if $USE_WAVELETS$ and $UPRES$ > 0:\n\
   xl.timestep = $XL_TIMESTEP$ \n\
   xl_vel = xl.create(MACGrid) \n\
@@ -77,30 +69,27 @@ if $USE_WAVELETS$ and $UPRES$ > 0:\n\
 ";
 
 const string smoke_step_low = "def sim_step(t):\n\
+  density.save('den%04d_start.txt' % t) \n\
   forces.load('manta_forces.uni')\n\
-  addForceField(flags=flags, vel=vel,force=forces)\n\
-  addBuoyancy(density=density, vel=vel, gravity=vec3($BUYO_X$,$BUYO_Y$,$BUYO_Z$), flags=flags) \n\
-  advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$) \n\
-  advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=$ADVECT_ORDER$) \n\
-  for i in range(uvs): \n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=uv[i], order=$ADVECT_ORDER$) \n\
-    updateUvWeight( resetTime=16.5 , index=i, numUvs=uvs, uv=uv[i] )\n\
-    applyInflow=False\n\
   if (t>=0 and t<75):\n\
     if noise.valScale > 0.:\n\
       densityInflowMeshNoise( flags=flags, density=density, noise=noise, mesh=source, scale=3, sigma=0.5 )\n\
     else:\n\
       densityInflowMesh(flags=flags, density=density, mesh=source, value=1)\n\
     applyInflow=True\n\
+  density.save('den%04d_1.txt' % t) \n\
+  addForceField(flags=flags, vel=vel,force=forces)\n\
+  density.save('den%04d_2.txt' % t) \n\
+  advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$) \n\
+  advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=$ADVECT_ORDER$) \n\
+  density.save('den%04d_3.txt' % t) \n\
   setWallBcs(flags=flags, vel=vel) \n\
-  vorticityConfinement( vel=vel, flags=flags, strength=0.2 ) \n\
+  addBuoyancy(density=density, vel=vel, gravity=vec3($BUYO_X$,$BUYO_Y$,$BUYO_Z$), flags=flags) \n\
   solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, openBound='xXyYzZ', cgMaxIterFac=1, cgAccuracy=0.01) \n\
   setWallBcs(flags=flags, vel=vel) \n\
-  computeEnergy(flags=flags, vel=vel, energy=energy)\n\
-  tempFlag.copyFrom(flags)\n\
-  extrapolateSimpleFlags( flags=flags, val=tempFlag, distance=2, flagFrom=FlagObstacle, flagTo=FlagFluid )\n\
-  extrapolateSimpleFlags( flags=tempFlag, val=energy, distance=6, flagFrom=FlagFluid, flagTo=FlagObstacle )\n\
-  computeWaveletCoeffs(energy)\n\
+  print(\"Writing Grid to \" + str($DENSITY_MEM$) + \" with size\" + str($DENSITY_SIZE$))\n\
+  density.save('den%04d_end.txt' % t) \n\
+  density.writeGridToMemory(memLoc = \"$DENSITY_MEM$\",sizeAllowed = \"$DENSITY_SIZE$\") \n\
   density.save('den%04d_temp.uni' % t) \n\
   os.rename('den%04d_temp.uni' % t, 'den%04d.uni' % t) \n\
   s.step()\n";
@@ -223,6 +212,8 @@ def sim_step(t):\n\
 	extrapolateSimpleFlags( flags=flags, val=tempFlag, distance=2, flagFrom=FlagObstacle, flagTo=FlagFluid )\n\
 	extrapolateSimpleFlags( flags=tempFlag, val=energy, distance=6, flagFrom=FlagFluid, flagTo=FlagObstacle )\n\
 	computeWaveletCoeffs(energy)\n\
+	print(\"Writing Grid to \" + $DENSITY_MEM$ + \"with size\" + $DENSITY_SIZE$)\n\
+	density.writeGridToMemory(memLoc = $DENSITY_MEM$,sizeAllowed = $DENSITY_SIZE$)\n\
 	density.save('den%04d_temp.uni' % t) \n\
 	os.rename('den%04d_temp.uni' % t, 'den%04d.uni' % t) \n\
 	s.step()\n\

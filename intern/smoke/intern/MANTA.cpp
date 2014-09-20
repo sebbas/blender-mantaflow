@@ -321,7 +321,7 @@ void run_manta_scene(Scene *s, SmokeModifierData *smd)
 	args->s = *s;
 //	args.frame_num = smd->domain->manta_end_frame - smd->domain->manta_start_frame;
 	int rc = pthread_create(&manta_thread, NULL, run_manta_sim_thread, (void *)args);
-//	pthread_join(manta_thread,NULL);
+	pthread_join(manta_thread,NULL);
 //	pthread_detach(manta_thread);
 }
 
@@ -344,8 +344,8 @@ void *run_manta_sim_thread(void *arguments)
 			break;
 		printf("Simulation Step");
 		manta_write_effectors(s, smd);
-		smd->domain->manta_sim_frame = fr;
-		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << fr) )->str();
+		smd->domain->manta_sim_frame = fr /*s->r.cfra*/;
+		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << fr /*s->r.cfra*/) )->str();
 		std::string py_string_0 = string("sim_step(").append(frame_str);
 		std::string py_string_1 = py_string_0.append(")\0");
 		PyRun_SimpleString(py_string_1.c_str());
@@ -358,200 +358,25 @@ void *run_manta_sim_thread(void *arguments)
 
 void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 {
-	 /*create python file with 2-spaces indentation*/
+//	 /*create python file with 2-spaces indentation*/
 	bool wavelets = smd->domain->flags & MOD_SMOKE_HIGHRES;
-	bool noise_clamp = smd->domain->flags & MOD_SMOKE_NOISE_CLAMP; 
-	float noise_clamp_neg = smd->domain->noise_clamp_neg;
-	float noise_clamp_pos = smd->domain->noise_clamp_pos;
-	float noise_val_scale = smd->domain->noise_val_scale;
-	float noise_val_offset = smd->domain->noise_val_offset;
-	float noise_time_anim = smd->domain->noise_time_anim;
-	int num_sim_frames = smd->domain->manta_end_frame - smd->domain->manta_start_frame + 1;
-	if(num_sim_frames < 1)
-		return;
-	ofstream manta_setup_file;
-//	manta_setup_file.open("manta_scene.py", std::fstream::trunc);
-	stringstream ss; /*setup contents*/
-	
-	/*header*/
-	ss << "from manta import * \n";
-	ss << "import os, shutil, math, sys \n";
-	if (!file_exists("manta_flow.obj")){
-		return;
-	}
-	add_mesh_transform_method(ss);
-	/*Data Declaration*/
-	/*Wavelets variables*/
-	int upres = smd->domain->amplify+1;
-	ss << "uvs = " << smd->domain->manta_uvs_num << "\n";
-	ss << "velInflow = vec3(0, 0, 1)"<< "\n";	/*TODO:add UI*/
-	if (wavelets) {
-		ss << "upres = " << upres << "\n";
-		ss << "wltStrength = " << smd->domain->strength << "\n";
-		if(upres > 0)/*TODO:add UI*/
-		{	ss << "octaves = int( math.log(upres)/ math.log(2.0) + 0.5 ) \n";	}
-		else
-		{	ss << "octaves = 0"<< "\n";	}
-	}
-	else upres = 0;
-	
-	/*Solver Resolution*/
-	ss << "res = " << smd->domain->maxres << " \n";
-	manta_create_solver(ss, "s", "main", "gs", smd->domain->fluid->xRes(), smd->domain->fluid->yRes(), smd->domain->fluid->zRes(), smd->domain->manta_solver_res);
-	ss << "s.timestep = " << smd->domain->time_scale << " \n";
-	
-	/*Noise Field*/
-	manta_gen_noise(ss, "s", 0, "noise", 256, true, noise_clamp, noise_clamp_neg, noise_clamp_pos, noise_val_scale, noise_val_offset, noise_time_anim);
-	
-	/*Inflow sources*/
-	ss << "source = s.create(Mesh)\n";
-	ss << "source.load('manta_flow.obj')\n";
-	ss << "transform_back(source, gs)\n";
-	ss << "sourceVel = s.create(Mesh)\n";
-	ss << "sourceVel.load('manta_flow.obj')\n";
-	ss << "transform_back(sourceVel, gs)\n";
-	
-	/*Wavelets: larger solver*/
-	if(wavelets && upres>0)
-	{
-		manta_create_solver(ss, "xl", "larger", "xl_gs", smd->domain->fluid->xRes() * upres, smd->domain->fluid->yRes()* upres, smd->domain->fluid->zRes() * upres, smd->domain->manta_solver_res);
-		ss << "xl.timestep = " << smd->domain->time_scale * 0.5f<< " \n";
-		
-		ss << "xl_vel = xl.create(MACGrid) \n";
-		ss << "xl_density = xl.create(RealGrid) \n";/*smoke simulation*/
-		ss << "xl_flags = xl.create(FlagGrid) \n";
-		ss << "xl_flags.initDomain() \n";
-		ss << "xl_flags.fillGrid() \n";		
-		ss << "xl_source = s.create(Mesh)\n";
-		ss << "xl_source.load('manta_flow.obj')\n";
-		ss << "transform_back(xl_source, gs)\n";
-		
-		/*High-res obstacle handling*/
-		if (file_exists("manta_coll.obj"))
-		{
-			ss << "xl_obs = s.create(Mesh)\n";
-			ss << "xl_obs.load('manta_coll.obj')\n";
-			ss << "transform_back(xl_obs, gs)\n";
-			ss << "xl_obs.applyToGrid(grid=xl_flags, value=FlagObstacle,cutoff=3)\n";
-		}
-		manta_gen_noise(ss, "xl", 0, "xl_noise", 256, true, noise_clamp, noise_clamp_neg, noise_clamp_pos, noise_val_scale, noise_val_offset, noise_time_anim * (float)upres);
-	}
-	/*Flow setup*/
-	ss << "flags = s.create(FlagGrid) \n";/*must always be present*/
-	ss << "flags.initDomain() \n";
-	ss << "flags.fillGrid() \n";
-	/*Obstacle handling*/
-	if (file_exists("manta_coll.obj"))
-	{
-		ss << "obs = s.create(Mesh)\n";
-		ss << "obs.load('manta_coll.obj')\n";
-		ss << "transform_back(obs, gs)\n";
-		ss << "obs.applyToGrid(grid=flags, value=FlagObstacle, cutoff=3)\n";
-		ss << "sdf_obs  = s.create(LevelsetGrid)\n";
-		ss << "obs.meshSDF(obs, sdf_obs, 1.1)\n";
-	}
-	/*Create the array of UV grids*/
-	if(wavelets){
-		ss << "uv = [] \n";
-		ss << "for i in range(uvs): \n";
-		ss << "  uvGrid = s.create(VecGrid) \n";
-		ss << "  uv.append(uvGrid) \n";
-		ss << "  resetUvGrid( uv[i] ) \n";
-	}
-	/*Grids setup*/
-	/*For now, only one grid of each kind is needed*/
-	ss << "vel = s.create(MACGrid) \n";
-	ss << "density = s.create(RealGrid) \n";/*smoke simulation*/
-	ss << "pressure = s.create(RealGrid) \n";/*must always be present*/
-	ss << "energy = s.create(RealGrid) \n";
-	ss << "tempFlag  = s.create(FlagGrid)\n";
-	ss << "sdf_flow  = s.create(LevelsetGrid)\n";
-	ss << "forces = s.create(MACGrid)\n";
-	
-	ss << "source.meshSDF(source, sdf_flow, 1.1)\n";
-	ss << "source_shape = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*vec3(0, 0.02, 0))\n";
-	/*Wavelets noise field*/
-	if (wavelets){
-		ss << "xl_wltnoise = s.create(NoiseField, loadFromFile=True) \n";
-		ss << "xl_wltnoise.posScale = vec3( int(1.0*gs.x) ) * 0.5 \n";
-		/*scale according to lowres sim , smaller numbers mean larger vortices*/
-		if (upres > 0){
-			ss << "xl_wltnoise.posScale = xl_wltnoise.posScale * " << (1./(float)upres) << ((upres == 1)?". \n":"\n");
-		}
-		ss << "xl_wltnoise.timeAnim = 0.1 \n";
-	}
-	
-	/*Flow solving steps, main loop*/
-	ss << "def sim_step(t):\n";
-	ss << "  forces.load('manta_forces.uni')\n";
-	ss << "  addForceField(flags=flags, vel=vel,force=forces)\n";
-	ss << "  addBuoyancy(density=density, vel=vel, gravity=vec3(0,0," << (-smd->domain->beta) << "), flags=flags) \n";
-	
-	manta_advect_SemiLagr(ss, 1, "flags", "vel", "density", 2);
-	manta_advect_SemiLagr(ss, 1, "flags", "vel", "vel", 2);
-	
-	if(wavelets){
-		ss << "  for i in range(uvs): \n";
-		manta_advect_SemiLagr(ss, 2, "flags", "vel", "uv[i]", 2);
-		ss << "    updateUvWeight( resetTime=16.5 , index=i, numUvs=uvs, uv=uv[i] )\n"; 
-	}
-	ss << "  applyInflow=False\n";
-	ss << "  if (t>=0 and t<75):\n";
-	if (noise_val_scale > 0.)
-		ss << "    densityInflowMeshNoise( flags=flags, density=density, noise=noise, mesh=source, scale=3, sigma=0.5 )\n";
-	else
-		ss << "    densityInflowMesh(flags=flags, density=density, mesh=source, value=1)\n";	
-	ss << "    applyInflow=True\n";
-	
-	ss << "  setWallBcs(flags=flags, vel=vel) \n";
-//	ss << "  addBuoyancy(density=density, vel=vel, gravity=vec3(0,-6e-4,0), flags=flags) \n";
-	ss << "  vorticityConfinement( vel=vel, flags=flags, strength=" << smd->domain->vorticity / 10. << " ) \n";
-	
-	manta_solve_pressure(ss,"flags", "vel", "pressure",true,smd->domain->border_collisions, smd->domain->manta_solver_res,1.0,0.01);
-	ss << "  setWallBcs(flags=flags, vel=vel) \n";
-	
-	/*determine weighting*/
-	ss << "  computeEnergy(flags=flags, vel=vel, energy=energy)\n";
-	/* mark outer obstacle region by extrapolating flags for 2 layers */
-	ss << "  tempFlag.copyFrom(flags)\n";
-	ss << "  extrapolateSimpleFlags( flags=flags, val=tempFlag, distance=2, flagFrom=FlagObstacle, flagTo=FlagFluid )\n";
-	/*now extrapolate energy weights into obstacles to fix boundary layer*/
-	ss << "  extrapolateSimpleFlags( flags=tempFlag, val=energy, distance=6, flagFrom=FlagFluid, flagTo=FlagObstacle )\n";
-	ss << "  computeWaveletCoeffs(energy)\n";
-	/*Saving output*/
-	ss << "  density.save('den%04d_temp.uni' % t) \n";
-	ss << "  os.rename('den%04d_temp.uni' % t, 'den%04d.uni' % t) \n";
-	ss << "  s.step()\n";
-	ss << " \n";
-	
-	if (wavelets && upres > 0){
-		ss << "  interpolateMACGrid( source=vel, target=xl_vel ) \n";
-		/*add all necessary octaves*/
-		ss << "  sStr = 1.0 * wltStrength  \n";
-		ss << "  sPos = 2.0  \n";
-		ss << "  for o in range(octaves): \n";
-		ss << "    for i in range(uvs): \n";
-		ss << "      uvWeight = getUvWeight(uv[i])  \n";
-		ss << "      applyNoiseVec3( flags=xl_flags, target=xl_vel, noise=xl_wltnoise, scale=sStr * uvWeight, scaleSpatial=sPos , weight=energy, uv=uv[i] ) \n";
-		ss << "    sStr *= 0.06 # magic kolmogorov factor \n";
-		ss << "    sPos *= 2.0 \n";
-		ss << "  for substep in range(upres):  \n";
-		ss << "    advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=2)  \n";
-		ss << "  if (applyInflow): \n";
-		if (noise_val_scale > 0.)
-			ss << "    densityInflowMeshNoise( flags=xl_flags, density=xl_density, noise=xl_noise, mesh=xl_source, scale=3, sigma=0.5 ) \n";
-		else
-			ss << "    densityInflowMesh(flags=xl_flags, density=xl_density, mesh=source, value=1)\n";
-		ss << "  xl_density.save('densityXl_%04d.uni' % t)\n";
-		//ss << "    densityInflow( flags=xl_flags, density=xl_density, noise=xl_noise, shape=xl_source, scale=1, sigma=0.5 ) \n";
-		ss << "  xl.step()   \n";
-	}
-//	manta_setup_file << ss.rdbuf();
-//	manta_setup_file.close();
+//	bool noise_clamp = smd->domain->flags & MOD_SMOKE_NOISE_CLAMP; 
+//	float noise_clamp_neg = smd->domain->noise_clamp_neg;
+//	float noise_clamp_pos = smd->domain->noise_clamp_pos;
+//	float noise_val_scale = smd->domain->noise_val_scale;
+//	float noise_val_offset = smd->domain->noise_val_offset;
+//	float noise_time_anim = smd->domain->noise_time_anim;
+//	int num_sim_frames = smd->domain->manta_end_frame - smd->domain->manta_start_frame + 1;
+//	if(num_sim_frames < 1)
+//		return;
+
 	/*constrcting final setup*/
 	string smoke_script = smoke_setup_low + ((wavelets)?smoke_setup_high:"") + smoke_step_low + ((wavelets)?smoke_step_high:"");	
+	ofstream manta_setup_file;
+	manta_setup_file.open("manta_scene.py", std::fstream::trunc);
 	manta_setup_file << smoke_script ;
 	manta_setup_file.close();
+
 	parseFile(smd, scene, smoke_script);
 	vector<string> a;
 	a.push_back("manta_scene.py");
@@ -609,6 +434,10 @@ std::string getRealValue(SmokeModifierData *smd, Scene *s, const std::string& va
 		ss << 2;
 	else if (varName == "ABS_FLOW")
 		ss << (smd->flow->flags & MOD_SMOKE_FLOW_ABSOLUTE)?"True":"False";
+	else if (varName == "DENSITY_MEM")
+		ss << smd->domain->fluid->_density;
+	else if (varName == "DENSITY_SIZE")
+		ss << sizeof(float) * smd->domain->total_cells;
 	else 
 		cout<< "ERROR: Unknown option:"<< varName <<endl; 
 	return ss.str();

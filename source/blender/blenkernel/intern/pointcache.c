@@ -571,6 +571,17 @@ static void ptcache_smoke_error(void *smoke_v, const char *message)
 
 #define SMOKE_CACHE_VERSION "1.04"
 
+static void writeArrToFile(char* name, float* arr, int numElements)
+{	
+	FILE *filePtr;
+	filePtr = fopen(name,"w");
+	int i=0;
+	for (i = 0; i < numElements; i++) {
+		fprintf(filePtr, "%f \n", arr[i]);
+	}
+	fclose(filePtr);
+}
+
 static int  ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 {	
 	SmokeModifierData *smd= (SmokeModifierData *)smoke_v;
@@ -584,7 +595,6 @@ static int  ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 	ptcache_file_write(pf, &sds->active_fields, 1, sizeof(int));
 	ptcache_file_write(pf, &sds->res, 3, sizeof(int));
 	ptcache_file_write(pf, &sds->dx, 1, sizeof(float));
-	
 	if (sds->fluid) {
 		size_t res = sds->res[0]*sds->res[1]*sds->res[2];
 		float dt, dx, *dens, *react, *fuel, *flame, *heat, *heatold, *vx, *vy, *vz, *r, *g, *b;
@@ -598,7 +608,13 @@ static int  ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &heatold, &vx, &vy, &vz, &r, &g, &b, &obstacles);
 
 		ptcache_file_compressed_write(pf, (unsigned char *)sds->shadow, in_len, out, mode);
+		
+			writeArrToFile("sh.txt", sds->shadow, res);
+		
 		ptcache_file_compressed_write(pf, (unsigned char *)dens, in_len, out, mode);
+
+			writeArrToFile("dens.txt", dens, res);
+
 		if (fluid_fields & SM_ACTIVE_HEAT) {
 			ptcache_file_compressed_write(pf, (unsigned char *)heat, in_len, out, mode);
 			ptcache_file_compressed_write(pf, (unsigned char *)heatold, in_len, out, mode);
@@ -614,8 +630,17 @@ static int  ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 			ptcache_file_compressed_write(pf, (unsigned char *)b, in_len, out, mode);
 		}
 		ptcache_file_compressed_write(pf, (unsigned char *)vx, in_len, out, mode);
+
+			writeArrToFile("vx.txt", vx, res);
+
 		ptcache_file_compressed_write(pf, (unsigned char *)vy, in_len, out, mode);
+		
+			writeArrToFile("vy.txt", vx, res);
+
 		ptcache_file_compressed_write(pf, (unsigned char *)vz, in_len, out, mode);
+
+			writeArrToFile("vz.txt", vx, res);
+		
 		ptcache_file_compressed_write(pf, (unsigned char *)obstacles, (unsigned int)res, out, mode);
 		ptcache_file_write(pf, &dt, 1, sizeof(float));
 		ptcache_file_write(pf, &dx, 1, sizeof(float));
