@@ -23,11 +23,11 @@
 //! @defgroup Plugins Plugins
 //! @defgroup PyClasses Classes exposed to Python
 
-#include "../general.h"
-#include "../util/vectorbase.h"
+#include "general.h"
+#include "vectorbase.h"
 #include "registry.h"
 #include "pclass.h"
 #include "pconvert.h"
-#include "../fluidsolver.h"
+#include "fluidsolver.h"
 
 #endif

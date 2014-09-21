@@ -22,7 +22,7 @@ static const uint qt_meta_data_Manta__MainWnd[] = {
        6,       // revision
        0,       // classname
        0,    0, // classinfo
-      12,   14, // methods
+      21,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -41,9 +41,18 @@ static const uint qt_meta_data_Manta__MainWnd[] = {
      127,   15,   15,   15, 0x0a,
      135,   15,   15,   15, 0x0a,
      142,   15,   15,   15, 0x0a,
-     154,  149,   15,   15, 0x0a,
-     177,  172,   15,   15, 0x0a,
-     219,  197,   15,   15, 0x0a,
+     149,   15,   15,   15, 0x0a,
+     165,  160,   15,   15, 0x0a,
+     188,  183,   15,   15, 0x0a,
+     230,  208,   15,   15, 0x0a,
+     284,   15,   15,   15, 0x0a,
+     299,   15,   15,   15, 0x0a,
+     314,   15,   15,   15, 0x0a,
+     325,   15,   15,   15, 0x0a,
+     337,   15,   15,   15, 0x0a,
+     349,   15,   15,   15, 0x0a,
+     367,   15,   15,   15, 0x0a,
+     385,   15,   15,   15, 0x0a,
 
        0        // eod
 };
@@ -52,10 +61,13 @@ static const char qt_meta_stringdata_Manta__MainWnd[] = {
     "Manta::MainWnd\0\0e,param\0painterEvent(int,int)\0"
     "e\0painterEvent(int)\0wakeMain()\0bgr\0"
     "setBackgroundMesh(Mesh*)\0killMain()\0"
-    "exitApp()\0pause()\0play()\0step()\0ctrl\0"
-    "addControl(void*)\0file\0screenshot(QString)\0"
-    "pos,p0,p1,p2,q0,q1,q2\0"
+    "exitApp()\0pause()\0play()\0step()\0"
+    "showHelp()\0ctrl\0addControl(void*)\0"
+    "file\0screenshot(QString)\0pos,p0,p1,p2,q0,q1,q2\0"
     "clickLine(QPoint,float,float,float,float,float,float)\0"
+    "nextRealGrid()\0nextVec3Grid()\0nextMesh()\0"
+    "nextParts()\0nextPdata()\0nextVec3Display()\0"
+    "nextPartDisplay()\0nextMeshDisplay()\0"
 };
 
 void Manta::MainWnd::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void **_a)
@@ -73,9 +85,18 @@ void Manta::MainWnd::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _
         case 6: _t->pause(); break;
         case 7: _t->play(); break;
         case 8: _t->step(); break;
-        case 9: _t->addControl((*reinterpret_cast< void*(*)>(_a[1]))); break;
-        case 10: _t->screenshot((*reinterpret_cast< QString(*)>(_a[1]))); break;
-        case 11: _t->clickLine((*reinterpret_cast< QPoint(*)>(_a[1])),(*reinterpret_cast< float(*)>(_a[2])),(*reinterpret_cast< float(*)>(_a[3])),(*reinterpret_cast< float(*)>(_a[4])),(*reinterpret_cast< float(*)>(_a[5])),(*reinterpret_cast< float(*)>(_a[6])),(*reinterpret_cast< float(*)>(_a[7]))); break;
+        case 9: _t->showHelp(); break;
+        case 10: _t->addControl((*reinterpret_cast< void*(*)>(_a[1]))); break;
+        case 11: _t->screenshot((*reinterpret_cast< QString(*)>(_a[1]))); break;
+        case 12: _t->clickLine((*reinterpret_cast< QPoint(*)>(_a[1])),(*reinterpret_cast< float(*)>(_a[2])),(*reinterpret_cast< float(*)>(_a[3])),(*reinterpret_cast< float(*)>(_a[4])),(*reinterpret_cast< float(*)>(_a[5])),(*reinterpret_cast< float(*)>(_a[6])),(*reinterpret_cast< float(*)>(_a[7]))); break;
+        case 13: _t->nextRealGrid(); break;
+        case 14: _t->nextVec3Grid(); break;
+        case 15: _t->nextMesh(); break;
+        case 16: _t->nextParts(); break;
+        case 17: _t->nextPdata(); break;
+        case 18: _t->nextVec3Display(); break;
+        case 19: _t->nextPartDisplay(); break;
+        case 20: _t->nextMeshDisplay(); break;
         default: ;
         }
     }
@@ -113,9 +134,9 @@ int Manta::MainWnd::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 12)
+        if (_id < 21)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 12;
+        _id -= 21;
     }
     return _id;
 }

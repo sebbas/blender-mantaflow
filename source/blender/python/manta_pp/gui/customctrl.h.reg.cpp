@@ -36,5 +36,13 @@ namespace Manta {
  static const Pb::Register _R_15 ("Gui","pause",Gui::_W_11); 
  static const Pb::Register _R_16 ("Gui","addControl",Gui::_W_12); 
  static const Pb::Register _R_17 ("Gui","screenshot",Gui::_W_13); 
+ static const Pb::Register _R_18 ("Gui","nextRealGrid",Gui::_W_14); 
+ static const Pb::Register _R_19 ("Gui","nextVec3Grid",Gui::_W_15); 
+ static const Pb::Register _R_20 ("Gui","nextParts",Gui::_W_16); 
+ static const Pb::Register _R_21 ("Gui","nextPdata",Gui::_W_17); 
+ static const Pb::Register _R_22 ("Gui","nextMesh",Gui::_W_18); 
+ static const Pb::Register _R_23 ("Gui","nextVec3Display",Gui::_W_19); 
+ static const Pb::Register _R_24 ("Gui","nextMeshDisplay",Gui::_W_20); 
+ static const Pb::Register _R_25 ("Gui","nextPartDisplay",Gui::_W_21); 
 #endif
 }

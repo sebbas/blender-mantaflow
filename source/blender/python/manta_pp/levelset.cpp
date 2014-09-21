@@ -230,7 +230,6 @@ void LevelsetGrid::reinitMarching(
 	
 	// set un initialized regions
 	SetUninitialized (fmFlags, phi, +maxTime + 1.);    
-	
 }
 
 void LevelsetGrid::initFromFlags(FlagGrid& flags, bool ignoreWalls) {

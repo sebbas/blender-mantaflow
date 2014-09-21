@@ -55,7 +55,6 @@ namespace Manta {
 	rhs(i,j,k) = set;
 }   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return rhs; } typedef Grid<Real> type1;inline MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline Grid<Real>* getArg3() { return perCellCorr; } typedef Grid<Real> type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,rhs,vel,perCellCorr,cnt,sum);  } FlagGrid& flags; Grid<Real>& rhs; MACGrid& vel; Grid<Real>* perCellCorr;  int cnt; double sum;  };
 
-
 //! Kernel: Apply velocity update from poisson equation
 
 
@@ -84,30 +83,36 @@ namespace Manta {
 	}
 }   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<Real>& getArg2() { return pressure; } typedef Grid<Real> type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,vel,pressure);  } FlagGrid& flags; MACGrid& vel; Grid<Real>& pressure;   };
 
-//! Kernel: Set matrix stencils and velocities to enable open boundaries
 
 
- struct SetOpenBound : public KernelBase { SetOpenBound(Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak, MACGrid& vel, Vector3D<bool> lowerBound, Vector3D<bool> upperBound) :  KernelBase(&A0,0) ,A0(A0),Ai(Ai),Aj(Aj),Ak(Ak),vel(vel),lowerBound(lowerBound),upperBound(upperBound)   { run(); }  inline void op(int i, int j, int k, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak, MACGrid& vel, Vector3D<bool> lowerBound, Vector3D<bool> upperBound )  {    
-	// set velocity boundary conditions
-	if (lowerBound.x && i == 0) vel(0,j,k) = vel(1,j,k);
-	if (lowerBound.y && j == 0) vel(i,0,k) = vel(i,1,k);
-	if (upperBound.x && i == maxX-1) vel(maxX-1,j,k) = vel(maxX-2,j,k);
-	if (upperBound.y && j == maxY-1) vel(i,maxY-1,k) = vel(i,maxY-2,k);
-	if(vel.is3D()) {
-		if (lowerBound.z && k == 0)      vel(i,j,0)      = vel(i,j,1);
-		if (upperBound.z && k == maxZ-1) vel(i,j,maxZ-1) = vel(i,j,maxZ-2); 
-	}
+
+
+ struct SetOpenBound : public KernelBase { SetOpenBound(Grid<Real> &A0,Grid<Real> &Ai,Grid<Real> &Aj,Grid<Real> &Ak,FlagGrid& flags,MACGrid& vel, Vector3D<bool> lo, Vector3D<bool> up) :  KernelBase(&A0,0) ,A0(A0),Ai(Ai),Aj(Aj),Ak(Ak),flags(flags),vel(vel),lo(lo),up(up)   { run(); }  inline void op(int i, int j, int k, Grid<Real> &A0,Grid<Real> &Ai,Grid<Real> &Aj,Grid<Real> &Ak,FlagGrid& flags,MACGrid& vel, Vector3D<bool> lo, Vector3D<bool> up )  {
+
+	if (!flags.isFluid(i,j,k))
+		return;
 	
-	// set matrix stencils at boundary
-	if ((lowerBound.x && i<=1) || (upperBound.x && i>=maxX-2) ||
-		(lowerBound.y && j<=1) || (upperBound.y && j>=maxY-2) ||
-		(lowerBound.z && k<=1) || (upperBound.z && k>=maxZ-2)) {
-		A0(i,j,k) = vel.is3D() ? 6.0 : 4.0;
-		Ai(i,j,k) = -1.0;
-		Aj(i,j,k) = -1.0;
-		if (vel.is3D()) Ak(i,j,k) = -1.0;
+	int b = flags.getBoundaryWidth();
+
+	// set matrix stencil in and at boundary to empty
+	if((lo.x && i <= b+1)||(up.x && i >= maxX-b-2)||(lo.y && j <= b+1)||(up.y && j >= maxY-b-2))
+		A0(i,j,k) = (flags.is3D()) ? 6. : 4.;
+	
+	if ((lo.x && i <= b)||(up.x && i >= maxX-b-2))					 Ai(i,j,k) = .0;
+	if ((lo.y && j <= b)||(up.y && j >= maxY-b-2))					 Aj(i,j,k) = .0;
+    if (flags.is3D() && ((lo.z && k <= b)||(up.z && k >= maxZ-b-2))) Ak(i,j,k) = .0;
+
+	// set velocity boundary conditions
+	if (lo.x && i == b)				vel(b,j,k) = vel(b+1,j,k);
+	if (lo.y && j == b)				vel(i,b,k) = vel(i,b+1,k);
+	if (up.x && i == maxX-b-1)		vel(maxX-b-1,j,k) = vel(maxX-b-2,j,k);
+	if (up.y && j == maxY-b-1)		vel(i,maxY-b-1,k) = vel(i,maxY-b-2,k);
+	if(flags.is3D()) {
+		if (lo.z && k == b)			vel(i,j,b) = vel(i,j,b+1);
+		if (up.z && k == maxZ-b-1)	vel(i,j,maxZ-b-1) = vel(i,j,maxZ-b-2); 
 	}
-}   inline Grid<Real>& getArg0() { return A0; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return Ai; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return Aj; } typedef Grid<Real> type2;inline Grid<Real>& getArg3() { return Ak; } typedef Grid<Real> type3;inline MACGrid& getArg4() { return vel; } typedef MACGrid type4;inline Vector3D<bool> & getArg5() { return lowerBound; } typedef Vector3D<bool>  type5;inline Vector3D<bool> & getArg6() { return upperBound; } typedef Vector3D<bool>  type6; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, A0,Ai,Aj,Ak,vel,lowerBound,upperBound);  } Grid<Real>& A0; Grid<Real>& Ai; Grid<Real>& Aj; Grid<Real>& Ak; MACGrid& vel; Vector3D<bool>  lowerBound; Vector3D<bool>  upperBound;   };
+}   inline Grid<Real> & getArg0() { return A0; } typedef Grid<Real>  type0;inline Grid<Real> & getArg1() { return Ai; } typedef Grid<Real>  type1;inline Grid<Real> & getArg2() { return Aj; } typedef Grid<Real>  type2;inline Grid<Real> & getArg3() { return Ak; } typedef Grid<Real>  type3;inline FlagGrid& getArg4() { return flags; } typedef FlagGrid type4;inline MACGrid& getArg5() { return vel; } typedef MACGrid type5;inline Vector3D<bool> & getArg6() { return lo; } typedef Vector3D<bool>  type6;inline Vector3D<bool> & getArg7() { return up; } typedef Vector3D<bool>  type7; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, A0,Ai,Aj,Ak,flags,vel,lo,up);  } Grid<Real> & A0; Grid<Real> & Ai; Grid<Real> & Aj; Grid<Real> & Ak; FlagGrid& flags; MACGrid& vel; Vector3D<bool>  lo; Vector3D<bool>  up;   };
+
 
 //! Kernel: Set matrix rhs for outflow
 
@@ -247,8 +252,7 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
 
 
 
-
-void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid<Real>* phi = 0, Grid<Real>* perCellCorr = 0, Real gfClamp = 1e-04, Real cgMaxIterFac = 1.5, Real cgAccuracy = 1e-3, string openBound = "", string outflow = "", int outflowHeight = 1, bool precondition = true, bool enforceCompatibility = false, bool useResNorm = true ) {
+void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, string openBound="", Grid<Real>* phi = 0, Grid<Real>* perCellCorr = 0, Real gfClamp = 1e-04, Real cgMaxIterFac = 1.5, Real cgAccuracy = 1e-3, string outflow = "", int outflowHeight = 1, bool precondition = true, bool enforceCompatibility = false, bool useResNorm = true ) {
 	// parse strings
 	Vector3D<bool> loOpenBound, upOpenBound, loOutflow, upOutflow;
 	convertDescToVec(openBound, loOpenBound, upOpenBound);
@@ -273,7 +277,7 @@ void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid<Rea
 		
 	// setup matrix and boundaries
 	MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak);
-	SetOpenBound (A0, Ai, Aj, Ak, vel, loOpenBound, upOpenBound);
+	SetOpenBound (A0, Ai, Aj, Ak, flags, vel, loOpenBound, upOpenBound);
 	
 	if (phi) {
 		ApplyGhostFluidDiagonal(A0, flags, *phi, gfClamp);
@@ -293,7 +297,7 @@ void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid<Rea
 	const int maxIter = (int)(cgMaxIterFac * flags.getSize().max()) * (flags.is3D() ? 1 : 4);
 	GridCgInterface *gcg;
 	if (vel.is3D())
-		gcg = new GridCg<ApplyMatrix>(pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
+		gcg = new GridCg<ApplyMatrix>  (pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
 	else
 		gcg = new GridCg<ApplyMatrix2D>(pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
 	
@@ -309,13 +313,13 @@ void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid<Rea
 	debMsg("FluidSolver::solvePressure iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
 	delete gcg;
 	
-	CorrectVelocity(flags, vel, pressure);
+	CorrectVelocity(flags, vel, pressure ); 
 	if (phi) {
 		CorrectVelocityGhostFluid (vel, flags, pressure, *phi, gfClamp);
 		// improve behavior of clamping for large time steps:
 		ReplaceClampedGhostFluidVels (vel, flags, pressure, *phi, gfClamp);
 	}
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "solvePressure" ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Real>& pressure = *_args.getPtr<Grid<Real> >("pressure",1,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",2,&_lock); Grid<Real>* phi = _args.getPtrOpt<Grid<Real> >("phi",3,0,&_lock); Grid<Real>* perCellCorr = _args.getPtrOpt<Grid<Real> >("perCellCorr",4,0,&_lock); Real gfClamp = _args.getOpt<Real >("gfClamp",5,1e-04,&_lock); Real cgMaxIterFac = _args.getOpt<Real >("cgMaxIterFac",6,1.5,&_lock); Real cgAccuracy = _args.getOpt<Real >("cgAccuracy",7,1e-3,&_lock); string openBound = _args.getOpt<string >("openBound",8,"",&_lock); string outflow = _args.getOpt<string >("outflow",9,"",&_lock); int outflowHeight = _args.getOpt<int >("outflowHeight",10,1,&_lock); bool precondition = _args.getOpt<bool >("precondition",11,true,&_lock); bool enforceCompatibility = _args.getOpt<bool >("enforceCompatibility",12,false,&_lock); bool useResNorm = _args.getOpt<bool >("useResNorm",13,true ,&_lock);   _retval = getPyNone(); solvePressure(vel,pressure,flags,phi,perCellCorr,gfClamp,cgMaxIterFac,cgAccuracy,openBound,outflow,outflowHeight,precondition,enforceCompatibility,useResNorm);  _args.check(); } pbFinalizePlugin(parent,"solvePressure" ); return _retval; } catch(std::exception& e) { pbSetError("solvePressure",e.what()); return 0; } } static const Pb::Register _RP_solvePressure ("","solvePressure",_W_0); 
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "solvePressure" ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Real>& pressure = *_args.getPtr<Grid<Real> >("pressure",1,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",2,&_lock); string openBound = _args.getOpt<string >("openBound",3,"",&_lock); Grid<Real>* phi = _args.getPtrOpt<Grid<Real> >("phi",4,0,&_lock); Grid<Real>* perCellCorr = _args.getPtrOpt<Grid<Real> >("perCellCorr",5,0,&_lock); Real gfClamp = _args.getOpt<Real >("gfClamp",6,1e-04,&_lock); Real cgMaxIterFac = _args.getOpt<Real >("cgMaxIterFac",7,1.5,&_lock); Real cgAccuracy = _args.getOpt<Real >("cgAccuracy",8,1e-3,&_lock); string outflow = _args.getOpt<string >("outflow",9,"",&_lock); int outflowHeight = _args.getOpt<int >("outflowHeight",10,1,&_lock); bool precondition = _args.getOpt<bool >("precondition",11,true,&_lock); bool enforceCompatibility = _args.getOpt<bool >("enforceCompatibility",12,false,&_lock); bool useResNorm = _args.getOpt<bool >("useResNorm",13,true ,&_lock);   _retval = getPyNone(); solvePressure(vel,pressure,flags,openBound,phi,perCellCorr,gfClamp,cgMaxIterFac,cgAccuracy,outflow,outflowHeight,precondition,enforceCompatibility,useResNorm);  _args.check(); } pbFinalizePlugin(parent,"solvePressure" ); return _retval; } catch(std::exception& e) { pbSetError("solvePressure",e.what()); return 0; } } static const Pb::Register _RP_solvePressure ("","solvePressure",_W_0); 
 
 } // end namespace
 

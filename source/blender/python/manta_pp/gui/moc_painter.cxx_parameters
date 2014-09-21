@@ -1,5 +1,5 @@
 -DDEBUG
 -DGUI=1
 -o
-/Users/pr110/Documents/WorkingOnNow/gsoc/manta/build/pp/source/gui/moc_painter.cxx
-/Users/pr110/Documents/WorkingOnNow/gsoc/manta/build/pp/source/gui/painter.h
+/Users/pr110/Documents/WorkingOnNow/gsoc/manta_git/xcode_build/pp/source/gui/moc_painter.cxx
+/Users/pr110/Documents/WorkingOnNow/gsoc/manta_git/xcode_build/pp/source/gui/painter.h

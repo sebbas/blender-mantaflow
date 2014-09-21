@@ -64,9 +64,6 @@ class ParticleBase : public PbClass {public:
 	//! add a position as potential candidate for new particle (todo, make usable from parallel threads)
 	inline void addBuffered(const Vec3& pos);
 
-	//! debug info about pdata
-	std::string debugInfoPdata();
-
 	// particle data functions
 
 	//! create a particle data object
@@ -198,8 +195,10 @@ class BasicParticleSystem : public ParticleSystem<BasicParticleData> {public:
 
 	// add particles in python
 	void addParticle(Vec3 pos) { add(BasicParticleData(pos)); } static PyObject* _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); BasicParticleSystem* pbo = dynamic_cast<BasicParticleSystem*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "BasicParticleSystem::addParticle"); PyObject *_retval = 0; { ArgLocker _lock; Vec3 pos = _args.get<Vec3 >("pos",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->addParticle(pos);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"BasicParticleSystem::addParticle"); return _retval; } catch(std::exception& e) { pbSetError("BasicParticleSystem::addParticle",e.what()); return 0; } }
- 	// dangerous, get low level access - avoid usage, only used in vortex filament advection for now
-	std::vector<BasicParticleData>& getData() { return mData; } public: PbArgs _args;}
+
+	// dangerous, get low level access - avoid usage, only used in vortex filament advection for now
+	std::vector<BasicParticleData>& getData() { return mData; }
+ 	void printParts(int start=-1, int stop=-1, bool printIndex=false); static PyObject* _W_15 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); BasicParticleSystem* pbo = dynamic_cast<BasicParticleSystem*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "BasicParticleSystem::printParts"); PyObject *_retval = 0; { ArgLocker _lock; int start = _args.getOpt<int >("start",0,-1,&_lock); int stop = _args.getOpt<int >("stop",1,-1,&_lock); bool printIndex = _args.getOpt<bool >("printIndex",2,false,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->printParts(start,stop,printIndex);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"BasicParticleSystem::printParts"); return _retval; } catch(std::exception& e) { pbSetError("BasicParticleSystem::printParts",e.what()); return 0; } }  public: PbArgs _args;}
 #define _C_BasicParticleSystem
 ;
 
@@ -224,7 +223,7 @@ public:
 };
 
 class ParticleIndexSystem : public ParticleSystem<ParticleIndexData> {public:
-	ParticleIndexSystem(FluidSolver* parent) :ParticleSystem<ParticleIndexData>(parent){} static int _W_15 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); pbPreparePlugin(0, "ParticleIndexSystem::ParticleIndexSystem" ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock);  obj = new ParticleIndexSystem(parent); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"ParticleIndexSystem::ParticleIndexSystem" ); return 0; } catch(std::exception& e) { pbSetError("ParticleIndexSystem::ParticleIndexSystem",e.what()); return -1; } };
+	ParticleIndexSystem(FluidSolver* parent) :ParticleSystem<ParticleIndexData>(parent){} static int _W_16 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); pbPreparePlugin(0, "ParticleIndexSystem::ParticleIndexSystem" ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock);  obj = new ParticleIndexSystem(parent); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"ParticleIndexSystem::ParticleIndexSystem" ); return 0; } catch(std::exception& e) { pbSetError("ParticleIndexSystem::ParticleIndexSystem",e.what()); return -1; } };
 	 	//! we only need a resize function...
 	void resize(int size) { mData.resize(size); } public: PbArgs _args;}
 #define _C_ParticleIndexSystem
@@ -237,7 +236,7 @@ class ParticleIndexSystem : public ParticleSystem<ParticleIndexData> {public:
 //! Particle set with connectivity
 
 template<class DATA, class CON> class ConnectedParticleSystem : public ParticleSystem<DATA> {public:
-	ConnectedParticleSystem(FluidSolver* parent) :ParticleSystem<DATA>(parent){} static int _W_16 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); pbPreparePlugin(0, "ConnectedParticleSystem::ConnectedParticleSystem" ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock);  obj = new ConnectedParticleSystem(parent); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"ConnectedParticleSystem::ConnectedParticleSystem" ); return 0; } catch(std::exception& e) { pbSetError("ConnectedParticleSystem::ConnectedParticleSystem",e.what()); return -1; } }
+	ConnectedParticleSystem(FluidSolver* parent) :ParticleSystem<DATA>(parent){} static int _W_17 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); pbPreparePlugin(0, "ConnectedParticleSystem::ConnectedParticleSystem" ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock);  obj = new ConnectedParticleSystem(parent); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"ConnectedParticleSystem::ConnectedParticleSystem" ); return 0; } catch(std::exception& e) { pbSetError("ConnectedParticleSystem::ConnectedParticleSystem",e.what()); return -1; } }
 	
 	// accessors
 	inline bool isSegActive(int i) { return (mSegments[i].flag & ParticleBase::PDELETE) == 0; }    
@@ -256,16 +255,17 @@ protected:
 
 //! abstract interface for particle data
 class ParticleDataBase : public PbClass {public:
-	ParticleDataBase(FluidSolver* parent); static int _W_17 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); pbPreparePlugin(0, "ParticleDataBase::ParticleDataBase" ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock);  obj = new ParticleDataBase(parent); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"ParticleDataBase::ParticleDataBase" ); return 0; } catch(std::exception& e) { pbSetError("ParticleDataBase::ParticleDataBase",e.what()); return -1; } }
+	ParticleDataBase(FluidSolver* parent); static int _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); pbPreparePlugin(0, "ParticleDataBase::ParticleDataBase" ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock);  obj = new ParticleDataBase(parent); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"ParticleDataBase::ParticleDataBase" ); return 0; } catch(std::exception& e) { pbSetError("ParticleDataBase::ParticleDataBase",e.what()); return -1; } }
 	virtual ~ParticleDataBase(); 
 
-	enum PdataType { UNKNOWN=0, DATA_INT, DATA_REAL, DATA_VEC3 };
+	// data type IDs, in line with those for grids
+	enum PdataType { TypeNone = 0, TypeReal = 1, TypeInt = 2, TypeVec3 = 4 };
 
 	// interface functions, using assert instead of pure virtual for python compatibility
-	virtual int  size() const { assertMsg( false , "Dont use, override..."); return 0; } 
-	virtual void add()        { assertMsg( false , "Dont use, override..."); return;   }
+	virtual int  getSizeSlow() const { assertMsg( false , "Dont use, override..."); return 0; } 
+	virtual void addEntry()   { assertMsg( false , "Dont use, override..."); return;   }
 	virtual ParticleDataBase* clone() { assertMsg( false , "Dont use, override..."); return NULL; }
-	virtual PdataType getType() const { assertMsg( false , "Dont use, override..."); return UNKNOWN; } 
+	virtual PdataType getType() const { assertMsg( false , "Dont use, override..."); return TypeNone; } 
 	virtual void resize(int size)     { assertMsg( false , "Dont use, override..."); return;  }
 	virtual void copyValueSlow(int from, int to) { assertMsg( false , "Dont use, override..."); return;  }
 
@@ -283,7 +283,7 @@ protected: 	ParticleBase* mpParticleSys; public: PbArgs _args;}
 //! abstract interface for particle data
 
 template<class T> class ParticleDataImpl : public ParticleDataBase {public:
-	ParticleDataImpl(FluidSolver* parent); static int _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); pbPreparePlugin(0, "ParticleDataImpl::ParticleDataImpl" ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock);  obj = new ParticleDataImpl(parent); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"ParticleDataImpl::ParticleDataImpl" ); return 0; } catch(std::exception& e) { pbSetError("ParticleDataImpl::ParticleDataImpl",e.what()); return -1; } }
+	ParticleDataImpl(FluidSolver* parent); static int _W_19 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); pbPreparePlugin(0, "ParticleDataImpl::ParticleDataImpl" ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock);  obj = new ParticleDataImpl(parent); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"ParticleDataImpl::ParticleDataImpl" ); return 0; } catch(std::exception& e) { pbSetError("ParticleDataImpl::ParticleDataImpl",e.what()); return -1; } }
 	ParticleDataImpl(FluidSolver* parent, ParticleDataImpl<T>* other);
 	virtual ~ParticleDataImpl();
 
@@ -294,26 +294,44 @@ template<class T> class ParticleDataImpl : public ParticleDataBase {public:
 	inline const T operator[](int idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
 
 	// set all values to 0, note - different from particleSystem::clear! doesnt modify size of array (has to stay in sync with parent system)
-	void clear(); static PyObject* _W_19 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::clear"); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->clear();  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::clear"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::clear",e.what()); return 0; } }
+	void clear(); static PyObject* _W_20 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::clear"); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->clear();  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::clear"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::clear",e.what()); return 0; } }
 
 	//! set grid from which to get data...
-	void setSource(Grid<T>* grid, bool isMAC=false ); static PyObject* _W_20 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::setSource"); PyObject *_retval = 0; { ArgLocker _lock; Grid<T>* grid = _args.getPtr<Grid<T> >("grid",0,&_lock); bool isMAC = _args.getOpt<bool >("isMAC",1,false ,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->setSource(grid,isMAC);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::setSource"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::setSource",e.what()); return 0; } }
+	void setSource(Grid<T>* grid, bool isMAC=false ); static PyObject* _W_21 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::setSource"); PyObject *_retval = 0; { ArgLocker _lock; Grid<T>* grid = _args.getPtr<Grid<T> >("grid",0,&_lock); bool isMAC = _args.getOpt<bool >("isMAC",1,false ,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->setSource(grid,isMAC);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::setSource"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::setSource",e.what()); return 0; } }
 
 	// particle data base interface
-	virtual int  size() const;
-	virtual void add();
+	virtual int  getSizeSlow() const;
+	virtual void addEntry();
 	virtual ParticleDataBase* clone();
 	virtual PdataType getType() const;
 	virtual void resize(int s);
 	virtual void copyValueSlow(int from, int to);
 
+	int  size() const { return mData.size(); }
+
 	// fast inlined functions for per particle operations
 	inline void copyValue(int from, int to) { get(to) = get(from); } 
 	void initNewValue(int idx, Vec3 pos);
+
+	// python interface (similar to grid data)
+	void setConst(T s); static PyObject* _W_22 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::setConst"); PyObject *_retval = 0; { ArgLocker _lock; T s = _args.get<T >("s",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->setConst(s);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::setConst"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::setConst",e.what()); return 0; } }
+	ParticleDataImpl<T>& copyFrom(const ParticleDataImpl<T>& a); static PyObject* _W_23 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::copyFrom"); PyObject *_retval = 0; { ArgLocker _lock; const ParticleDataImpl<T>& a = *_args.getPtr<ParticleDataImpl<T> >("a",0,&_lock);  pbo->_args.copy(_args);  _retval = toPy(pbo->copyFrom(a));  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::copyFrom"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::copyFrom",e.what()); return 0; } }
+	void add(const ParticleDataImpl<T>& a); static PyObject* _W_24 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::add"); PyObject *_retval = 0; { ArgLocker _lock; const ParticleDataImpl<T>& a = *_args.getPtr<ParticleDataImpl<T> >("a",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->add(a);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::add"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::add",e.what()); return 0; } }
+	void sub(const ParticleDataImpl<T>& a); static PyObject* _W_25 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::sub"); PyObject *_retval = 0; { ArgLocker _lock; const ParticleDataImpl<T>& a = *_args.getPtr<ParticleDataImpl<T> >("a",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->sub(a);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::sub"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::sub",e.what()); return 0; } }
+	void addConst(T s); static PyObject* _W_26 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::addConst"); PyObject *_retval = 0; { ArgLocker _lock; T s = _args.get<T >("s",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->addConst(s);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::addConst"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::addConst",e.what()); return 0; } }
+	void addScaled(const ParticleDataImpl<T>& a, const T& factor); static PyObject* _W_27 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::addScaled"); PyObject *_retval = 0; { ArgLocker _lock; const ParticleDataImpl<T>& a = *_args.getPtr<ParticleDataImpl<T> >("a",0,&_lock); const T& factor = *_args.getPtr<T >("factor",1,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->addScaled(a,factor);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::addScaled"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::addScaled",e.what()); return 0; } } 
+	void mult( const ParticleDataImpl<T>& a); static PyObject* _W_28 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::mult"); PyObject *_retval = 0; { ArgLocker _lock; const ParticleDataImpl<T>& a = *_args.getPtr<ParticleDataImpl<T> >("a",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->mult(a);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::mult"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::mult",e.what()); return 0; } }
+	void multConst(T s); static PyObject* _W_29 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::multConst"); PyObject *_retval = 0; { ArgLocker _lock; T s = _args.get<T >("s",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->multConst(s);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::multConst"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::multConst",e.what()); return 0; } }
+	void clamp(Real min, Real max); static PyObject* _W_30 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::clamp"); PyObject *_retval = 0; { ArgLocker _lock; Real min = _args.get<Real >("min",0,&_lock); Real max = _args.get<Real >("max",1,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->clamp(min,max);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::clamp"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::clamp",e.what()); return 0; } }
+	Real getMaxAbsValue(); static PyObject* _W_31 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::getMaxAbsValue"); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getMaxAbsValue());  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::getMaxAbsValue"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::getMaxAbsValue",e.what()); return 0; } }
+	Real getMaxValue(); static PyObject* _W_32 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::getMaxValue"); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getMaxValue());  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::getMaxValue"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::getMaxValue",e.what()); return 0; } }
+	Real getMinValue(); static PyObject* _W_33 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::getMinValue"); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getMinValue());  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::getMinValue"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::getMinValue",e.what()); return 0; } }    
+
+	void printPdata(int start=-1, int stop=-1, bool printIndex=false); static PyObject* _W_34 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::printPdata"); PyObject *_retval = 0; { ArgLocker _lock; int start = _args.getOpt<int >("start",0,-1,&_lock); int stop = _args.getOpt<int >("stop",1,-1,&_lock); bool printIndex = _args.getOpt<bool >("printIndex",2,false,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->printPdata(start,stop,printIndex);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::printPdata"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::printPdata",e.what()); return 0; } } 
 	
 	//! file io
-	void save(std::string name); static PyObject* _W_21 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::save"); PyObject *_retval = 0; { ArgLocker _lock; std::string name = _args.get<std::string >("name",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->save(name);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::save"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::save",e.what()); return 0; } }
-	void load(std::string name); static PyObject* _W_22 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::load"); PyObject *_retval = 0; { ArgLocker _lock; std::string name = _args.get<std::string >("name",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->load(name);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::load"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::load",e.what()); return 0; } }
+	void save(std::string name); static PyObject* _W_35 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::save"); PyObject *_retval = 0; { ArgLocker _lock; std::string name = _args.get<std::string >("name",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->save(name);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::save"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::save",e.what()); return 0; } }
+	void load(std::string name); static PyObject* _W_36 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleDataImpl* pbo = dynamic_cast<ParticleDataImpl*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleDataImpl::load"); PyObject *_retval = 0; { ArgLocker _lock; std::string name = _args.get<std::string >("name",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->load(name);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleDataImpl::load"); return _retval; } catch(std::exception& e) { pbSetError("ParticleDataImpl::load",e.what()); return 0; } }
 protected:
 	//! data storage
 	std::vector<T> mData; 
@@ -410,22 +428,54 @@ template <class S>  struct KnDeleteInObstacle : public KernelBase { KnDeleteInOb
 		p[idx].flag |= ParticleBase::PDELETE;
 	} 
 }   inline std::vector<S>& getArg0() { return p; } typedef std::vector<S> type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, p,flags);  } std::vector<S>& p; const FlagGrid& flags;   };
+
+// try to get closer to actual obstacle boundary
+static inline Vec3 bisectBacktracePos(const FlagGrid& flags, const Vec3& oldp, const Vec3& newp)
+{
+	Real s = 0.;
+	for(int i=1; i<5; ++i) {
+		Real ds = 1./(Real)(1<<i);
+		if (!flags.isObstacle( oldp*(1.-(s+ds)) + newp*(s+ds) )) {
+			s += ds;
+		}
+	}
+	return( oldp*(1.-(s)) + newp*(s) );
+}
+
 // at least make sure all particles are inside domain
 
-template <class S>  struct KnClampPositions : public KernelBase { KnClampPositions(std::vector<S>& p, const FlagGrid& flags) :  KernelBase(p.size()) ,p(p),flags(flags)   { run(); }  inline void op(int idx, std::vector<S>& p, const FlagGrid& flags )  {
+
+template <class S>  struct KnClampPositions : public KernelBase { KnClampPositions(std::vector<S>& p, const FlagGrid& flags, ParticleDataImpl<Vec3> *posOld = NULL) :  KernelBase(p.size()) ,p(p),flags(flags),posOld(posOld)   { run(); }  inline void op(int idx, std::vector<S>& p, const FlagGrid& flags, ParticleDataImpl<Vec3> *posOld = NULL )  {
 	if (p[idx].flag & ParticleBase::PDELETE) return;
 	if (!flags.isInBounds(p[idx].pos,0) ) {
 		p[idx].pos = clamp( p[idx].pos, Vec3(0.), toVec3(flags.getSize())-Vec3(1.) );
 	} 
-}   inline std::vector<S>& getArg0() { return p; } typedef std::vector<S> type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, p,flags);  } std::vector<S>& p; const FlagGrid& flags;   };
+	if (flags.isObstacle(p[idx].pos)) {
+		p[idx].pos = bisectBacktracePos(flags, (*posOld)[idx], p[idx].pos);
+	}
+}   inline std::vector<S>& getArg0() { return p; } typedef std::vector<S> type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline ParticleDataImpl<Vec3> * getArg2() { return posOld; } typedef ParticleDataImpl<Vec3>  type2; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, p,flags,posOld);  } std::vector<S>& p; const FlagGrid& flags; ParticleDataImpl<Vec3> * posOld;   };
 
 // advection plugin
 template<class S>
 void ParticleSystem<S>::advectInGrid(FlagGrid& flags, MACGrid& vel, int integrationMode, bool deleteInObstacle ) {
+	// position clamp requires old positions, backup
+	ParticleDataImpl<Vec3> *posOld = NULL;
+	if(!deleteInObstacle) {
+		posOld = new ParticleDataImpl<Vec3>(this->getParent());
+		posOld->resize(mData.size());
+		for(int i=0; i<mData.size();++i) (*posOld)[i] = mData[i].pos;
+	}
+
+	// update positions
 	GridAdvectKernel<S> kernel(mData, vel, flags, getParent()->getDt(), deleteInObstacle );
 	integratePointSet(kernel, integrationMode);
-	if(deleteInObstacle) KnDeleteInObstacle<S>( mData, flags);
-	else                 KnClampPositions<S>  ( mData, flags);
+
+	if(!deleteInObstacle) {
+		KnClampPositions<S>  ( mData, flags, posOld );
+		delete posOld;
+	} else {
+		KnDeleteInObstacle<S>( mData, flags);
+	}
 }
 
 
@@ -578,6 +628,7 @@ std::string ParticleSystem<S>::infoString() const {
 	s << "ParticleSys '" << getName() << "' [" << size() << " parts";
 	if(this->getNumPdata()>0) s<< " "<< this->getNumPdata()<<" pd";
 	s << "]";
+	//for(int i=0; i<(int)mPartData.size(); ++i) { sstr << i<<":" << mPartData[i]->size() <<" "; } 
 	return s.str();
 }
 	
@@ -590,7 +641,7 @@ inline void ParticleSystem<S>::checkPartIndex(int idx) const {
 }
 	
 inline void ParticleDataBase::checkPartIndex(int idx) const {
-	int mySize = this->size();
+	int mySize = this->getSizeSlow();
 	if (idx<0 || idx > mySize ) {
 		errMsg( "ParticleData " << " size " << mySize << " : index " << idx << " out of bound " );
 	}

@@ -98,7 +98,7 @@ void LockedObjPainter::nextObject() {
 template<class T>
 GridPainter<T>::GridPainter(FlagGrid** flags, QWidget* par) 
 	: LockedObjPainter(par), mMaxVal(0), mDim(0), mPlane(0), mMax(0), mLocalGrid(NULL), 
-	  mFlags(flags), mInfo(NULL), mHide(false), mHideLocal(false), mVelMode(VelDispCentered), mValScale()
+	  mFlags(flags), mInfo(NULL), mHide(false), mHideLocal(false), mDispMode(VecDispCentered), mValScale()
 {
 	mDim = 2; // Z plane
 	mPlane = 0;
@@ -136,7 +136,7 @@ void GridPainter<T>::update() {
 			emit setViewport(src->getSize());
 	}
 	
-	*mLocalGrid = *src; // copy grid data and type marker
+	mLocalGrid->copyFrom( *src ); // copy grid data and type marker
 	mLocalGrid->setName(src->getName());
 	mLocalGrid->setParent(src->getParent());    
 	mMaxVal = mLocalGrid->getMaxAbsValue();
@@ -208,6 +208,10 @@ void GridPainter<Real>::processSpecificKeyEvent(PainterEvent e, int param) {
 		mValScale[mObject] = getScale() * 0.5;
 	else if (e == EventScaleRealUp && mObject)
 		mValScale[mObject] = getScale() * 2.0;
+	else if (e == EventNextRealDisplayMode) {
+		mDispMode  = (mDispMode+1)%NumRealDispModes;
+		mHideLocal = (mDispMode==RealDispOff); 
+	}
 }
 
 template<>
@@ -218,10 +222,9 @@ void GridPainter<Vec3>::processSpecificKeyEvent(PainterEvent e, int param) {
 		mValScale[mObject] = getScale() * 0.5;
 	else if (e == EventScaleVecUp && mObject)
 		mValScale[mObject] = getScale() * 2.0;
-	else if (e == EventNextVelDisplayMode) {
-		mVelMode = (mVelMode+1)%NumVelDispModes;
-		mHideLocal = (mVelMode==VelDispOff);
-
+	else if (e == EventNextVecDisplayMode) {
+		mDispMode  = (mDispMode+1)%NumVecDispModes;
+		mHideLocal = (mDispMode==VecDispOff); 
 	}
 }
 
@@ -243,7 +246,7 @@ template<> void GridPainter<Real>::updateText() {
 		s << endl;
 	}    
 
-	if (mObject && !mHide) {
+	if (mObject && !mHide && !mHideLocal) {
 		s << "Real Grid '" << mLocalGrid->getName() << "'" << endl;
 		s << "-> Max " << fixed << setprecision(2) << mMaxVal << "  Scale " << getScale() << endl;
 	}
@@ -481,7 +484,7 @@ template<> void GridPainter<Vec3>::paint() {
 	bool mac = mLocalGrid->getType() & GridBase::TypeMAC;
 	const Real scale = getScale();
 
-	if( (mVelMode==VelDispCentered) || (mVelMode==VelDispStaggered) ) {
+	if( (mDispMode==VecDispCentered) || (mDispMode==VecDispStaggered) ) {
 
 		// regular velocity drawing mode
 		glBegin(GL_LINES);
@@ -489,7 +492,7 @@ template<> void GridPainter<Vec3>::paint() {
 		FOR_P_SLICE(mLocalGrid, mDim, mPlane) {        
 			Vec3 vel = mLocalGrid->get(p) * scale;
 			Vec3 pos (p.x+0.5, p.y+0.5, p.z+0.5);
-			if (mVelMode==VelDispCentered) {
+			if (mDispMode==VecDispCentered) {
 				if (mac) {
 					if (p.x < mLocalGrid->getSizeX()-1) 
 						vel.x = 0.5 * (vel.x + scale * mLocalGrid->get(p.x+1,p.y,p.z).x);
@@ -502,7 +505,7 @@ template<> void GridPainter<Vec3>::paint() {
 				glVertex(pos, dx);
 				glColor3f(1,1,0);
 				glVertex(pos+vel*1.2, dx);
-			} else if (mVelMode==VelDispStaggered) {
+			} else if (mDispMode==VecDispStaggered) {
 				for (int d=0; d<3; d++) {
 					if (fabs(vel[d]) < 1e-2) continue;
 					Vec3 p1(pos);
@@ -520,7 +523,7 @@ template<> void GridPainter<Vec3>::paint() {
 		}
 		glEnd();    
 	
-	} else if (mVelMode==VelDispUv) {
+	} else if (mDispMode==VecDispUv) {
 		// draw as uv coordinates , note - this will completely hide the real grid display!
 		Vec3 box[4];
 		glBegin(GL_QUADS); 

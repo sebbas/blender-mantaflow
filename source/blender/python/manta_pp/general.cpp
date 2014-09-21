@@ -89,10 +89,10 @@ ostream& operator<<(ostream& os, const MuTime& t) {
 	return os;
 }
 
+// print info about this mantaflow build, used eg by printBuildInfo in fluidsolver.cpp
 std::string buildInfoString() {
 	std::ostringstream infoStr;
 	infoStr << "mantaflow";
-	// TODO , include hg branch info
 
 	// os
 #if defined(WIN32) || defined(_WIN32)
@@ -126,11 +126,11 @@ std::string buildInfoString() {
 		infoStr << " omp";
 #	endif
 
-	// repository info
+	// repository info (git commit id)
 #	ifndef MANTA_HG_VERSION
-#	define MANTA_HG_VERSION "<unknown>"
+#	define MANTA_HG_VERSION "<unknown-commit>"
 #	endif
-	infoStr << " hg "<< MANTA_HG_VERSION;
+	infoStr << " "<< MANTA_HG_VERSION;
 
 	infoStr << " from "<< __DATE__<<", "<<__TIME__;
 	return infoStr.str();

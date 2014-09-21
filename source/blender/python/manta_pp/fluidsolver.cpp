@@ -85,18 +85,6 @@ template<> void FluidSolver::freeGridPointer<Vec3>(Vec3* ptr) {
 	mGridsVec.release(ptr);
 }
 
-void FluidSolver::pluginStart(const string& name) {
-	mLastPlugin = name;
-	mPluginTimer.get();
-}
-
-void FluidSolver::pluginStop(const string& name) {
-	if (mLastPlugin == name && name != "FluidSolver::step") {
-		MuTime diff = mPluginTimer.update();
-		mTimings.push_back(pair<string,MuTime>(name, diff));
-	}    
-}
-
 //******************************************************************************
 // FluidSolver members
 
@@ -125,29 +113,6 @@ void FluidSolver::step() {
 	mTimeTotal += mDt;
 	mFrame++;
 	updateQtGui(true, mFrame, "FluidSolver::step");
-	
-	// update timings
-	for(size_t i=0;i<mTimings.size(); i++) {
-		const string name = mTimings[i].first;
-		if (mTimingsTotal.find(name) == mTimingsTotal.end())
-			mTimingsTotal[name].second.clear();
-		mTimingsTotal[name].first++;
-		mTimingsTotal[name].second+=mTimings[i].second;
-	}
-	mTimings.clear();
-}
- 
-void FluidSolver::printTimings() {
-	MuTime total;
-	total.clear();
-	for(size_t i=0; i<mTimings.size(); i++)
-		total += mTimings[i].second;
-	
-	printf("\n-- STEP %d -----------------------------\n", mFrame);
-	for(size_t i=0; i<mTimings.size(); i++)
-		printf("[%4.1f%%] %s (%s)\n", 100.0*((Real)mTimings[i].second.time / (Real)total.time), mTimings[i].first.c_str(), mTimings[i].second.toString().c_str());
-	printf("----------------------------------------\n");
-	printf("Total : %s\n\n", total.toString().c_str());
 }
 
 void FluidSolver::printMemInfo() {
@@ -162,24 +127,11 @@ void printBuildInfo() {
 	debMsg( "Build info: "<<buildInfoString().c_str()<<" ",1);
 } static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "printBuildInfo" ); PyObject *_retval = 0; { ArgLocker _lock;   _retval = getPyNone(); printBuildInfo();  _args.check(); } pbFinalizePlugin(parent,"printBuildInfo" ); return _retval; } catch(std::exception& e) { pbSetError("printBuildInfo",e.what()); return 0; } } static const Pb::Register _RP_printBuildInfo ("","printBuildInfo",_W_0); 
 
-void FluidSolver::saveMeanTimings(string filename) {
-	ofstream ofs(filename.c_str());
-	if (!ofs.good())
-		errMsg("can't open " + filename + " as timing log");
-	ofs << "Mean timings of " << mFrame << " steps :" <<endl <<endl;
-	MuTime total;
-	total.clear();
-	for(map<string, pair<int,MuTime> >::iterator it=mTimingsTotal.begin(); it!=mTimingsTotal.end(); it++) {
-		total += it->second.second;
-	}    
-	for(map<string, pair<int,MuTime> >::iterator it=mTimingsTotal.begin(); it!=mTimingsTotal.end(); it++) {
-		ofs << it->first << ": " << it->second.second / it->second.first << endl;        
-	} 
-	ofs << endl << "Total : " << total << " (mean " << total/mFrame << ")" << endl;
-	ofs.close();
-}
- 
-}
+void setDebugLevel(int level=1) {
+	gDebugLevel = level; 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "setDebugLevel" ); PyObject *_retval = 0; { ArgLocker _lock; int level = _args.getOpt<int >("level",0,1,&_lock);   _retval = getPyNone(); setDebugLevel(level);  _args.check(); } pbFinalizePlugin(parent,"setDebugLevel" ); return _retval; } catch(std::exception& e) { pbSetError("setDebugLevel",e.what()); return 0; } } static const Pb::Register _RP_setDebugLevel ("","setDebugLevel",_W_1); 
+
+} // manta
 
 
 

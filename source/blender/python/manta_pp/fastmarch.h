@@ -84,25 +84,13 @@ public:
 	//! cell is touched by marching from source cell
 	inline void transpTouch(int x,int y,int z, Real *weights, Real time) {
 		if(!mpVal || !mpFlags->isEmpty(x,y,z)) return;
-		//if(!mpVal) return;
 		
-		T val = fmInterpolateNeighbors<GRID,T>(mpVal,x,y,z,weights); /*T(0.); 
-		if(weights[0]>0.0) val += mpVal->get(x+1, y+0, z+0) * weights[0];
-		if(weights[1]>0.0) val += mpVal->get(x-1, y+0, z+0) * weights[1];
-		if(weights[2]>0.0) val += mpVal->get(x+0, y+1, z+0) * weights[2];
-		if(weights[3]>0.0) val += mpVal->get(x+0, y-1, z+0) * weights[3];
-		if(mpVal->is3D()) {
-			if(weights[4]>0.0) val += mpVal->get(x+0, y+0, z+1) * weights[4];
-			if(weights[5]>0.0) val += mpVal->get(x+0, y+0, z-1) * weights[5];
-		}*/ 
+		T val = fmInterpolateNeighbors<GRID,T>(mpVal,x,y,z,weights); 
 
 		// set velocity components if adjacent is empty
 		if (mpFlags->isEmpty(x-1,y,z)) (*mpVal)(x,y,z).x = val.x;
 		if (mpFlags->isEmpty(x,y-1,z)) (*mpVal)(x,y,z).y = val.y;
 		if(mpVal->is3D()) { if (mpFlags->isEmpty(x,y,z-1)) (*mpVal)(x,y,z).z = val.z; }
-		//(*mpVal)(x,y,z).x = val.x;
-		//(*mpVal)(x,y,z).y = val.y;
-		//if(mpVal->is3D()) { (*mpVal)(x,y,z).z = val.z; } 
 	}; 
 
 protected:

@@ -179,4 +179,3 @@ class GridCg : public GridCgInterface {
 
 #endif 
 
-

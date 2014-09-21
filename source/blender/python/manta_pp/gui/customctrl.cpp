@@ -24,6 +24,7 @@
 
 #include "customctrl.h"
 #include "qtmain.h"
+#include "painter.h"
 
 using namespace std;
 namespace Manta {
@@ -150,8 +151,10 @@ Gui::Gui() :
 void Gui::setBackgroundMesh(Mesh* m) {
 	mGuiPtr->getWindow()->setBackground(m);
 }
-void Gui::show() {
-	mMainPtr->sendAndWait((int)MainWnd::EventGuiShow);         
+void Gui::show(bool twoD) {
+	if(twoD)
+		mMainPtr->send( (int)MainWnd::EventSet2DCam );
+	mMainPtr->sendAndWait( (int)MainWnd::EventGuiShow );
 }
 void Gui::update() { 
 	updateQtGui(true,-1,"");
@@ -164,6 +167,16 @@ void Gui::screenshot(string filename) {
 	QString s(filename.c_str());
 	QMetaObject::invokeMethod(mGuiPtr->getWindow(), "screenshot", Q_ARG(QString, s));    
 }
+
+void Gui::nextRealGrid() { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextRealGrid" ); }
+void Gui::nextVec3Grid() { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextVec3Grid" ); }
+void Gui::nextParts()    { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextParts" ); }
+void Gui::nextPdata()    { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextPdata" ); }
+void Gui::nextMesh()     { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextMesh" ); }
+
+void Gui::nextVec3Display() { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextVec3Display" ); }
+void Gui::nextPartDisplay() { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextPartDisplay" ); }
+void Gui::nextMeshDisplay() { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextMeshDisplay" ); }
 
 PbClass* Gui::addControl(PbType t) {
 	_args.add("nocheck",true);

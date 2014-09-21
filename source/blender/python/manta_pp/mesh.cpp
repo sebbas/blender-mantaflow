@@ -107,13 +107,17 @@ void Mesh::load(string name, bool append) {
 	if (name.find_last_of('.') == string::npos)
 		errMsg("file '" + name + "' does not have an extension");
 	string ext = name.substr(name.find_last_of('.'));
-	if (ext == ".obj")
+	if (ext == ".gz") // assume bobj gz
+		readBobjFile(name, this, append);
+	else if (ext == ".obj")
 		readObjFile(name, this, append);
 	else
 		errMsg("file '" + name +"' filetype not supported");
-	
-	rebuildCorners();
-	rebuildLookup();
+
+
+	// dont always rebuild...
+	//rebuildCorners();
+	//rebuildLookup();
 }
 
 void Mesh::save(string name) {
@@ -134,6 +138,14 @@ void Mesh::fromShape(Shape& shape, bool append) {
 	shape.generateMesh(this);
 }
 
+void Mesh::resizeTris(int numTris) {
+	mTris .resize(numTris );
+	rebuildChannels();
+}
+void Mesh::resizeNodes(int numNodes) {
+	mNodes.resize(numNodes);
+	rebuildChannels();
+}
 
 //! do a quick check whether a rebuild is necessary, and if yes do rebuild
 void Mesh::rebuildQuickCheck() {
@@ -179,7 +191,7 @@ void Mesh::rebuildCorners(int from, int to) {
 		}
 		if (mCorners[c].opposite < 0) {
 			// didn't find opposite
-//			errMsg("can't rebuild corners, index without an opposite");
+			errMsg("can't rebuild corners, index without an opposite");
 		}
 	}    
 	
@@ -702,8 +714,8 @@ template <class T>  struct ApplyMeshToGrid : public KernelBase { ApplyMeshToGrid
 						if (w < 0.)
 							continue;
 						samplePoint = 	mesh.getNode(i,pointA) * mult * u + 
-										mesh.getNode(i,pointB) * mult * v + 
-										mesh.getNode(i,(3 - pointA - pointB)) * mult * w;
+						mesh.getNode(i,pointB) * mult * v + 
+						mesh.getNode(i,(3 - pointA - pointB)) * mult * w;
 						samplePoints.push_back(samplePoint);
 						normal = mesh.getFaceNormal(i);
 						normals.push_back(normal);							
@@ -757,9 +769,9 @@ template <class T>  struct ApplyMeshToGrid : public KernelBase { ApplyMeshToGrid
 		int intRadius = (int)(cutoff+0.5);
 		
 		SDFKernel(srcCellStart.data(), srcPerCell.data(), 
-										 reorderPos.data(), reorderNormal.data(), 
-										 gridDev.data(), 
-										 Vec3i(gridRes.x, gridRes.y, gridRes.z), intRadius, safeRadius2, cutoff2, isigma2);
+				  reorderPos.data(), reorderNormal.data(), 
+				  gridDev.data(), 
+				  Vec3i(gridRes.x, gridRes.y, gridRes.z), intRadius, safeRadius2, cutoff2, isigma2);
 		
 		for (int i=0;i<numCells; i++)
 			levelset[i] = gridDev[i];

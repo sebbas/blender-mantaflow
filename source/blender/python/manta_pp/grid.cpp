@@ -344,7 +344,7 @@ template<class T> void Grid<T>::writeGridToMemory(const std::string& memLoc, con
 		{
 			int j = 0;
 		}
-		((T*)gridPointer)[i] = val;
+//		((T*)gridPointer)[i] = val;
 	}
 	//	memcpy(gridPointer, mData, sizeAllowed_num);
 }
