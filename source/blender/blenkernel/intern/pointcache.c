@@ -609,12 +609,12 @@ static int  ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 
 		ptcache_file_compressed_write(pf, (unsigned char *)sds->shadow, in_len, out, mode);
 		
-			writeArrToFile("sh.txt", sds->shadow, res);
-		
+		/*	writeArrToFile("sh.txt", sds->shadow, res);
+		*/
 		ptcache_file_compressed_write(pf, (unsigned char *)dens, in_len, out, mode);
 
-			writeArrToFile("dens.txt", dens, res);
-
+		/*	writeArrToFile("dens.txt", dens, res);
+*/
 		if (fluid_fields & SM_ACTIVE_HEAT) {
 			ptcache_file_compressed_write(pf, (unsigned char *)heat, in_len, out, mode);
 			ptcache_file_compressed_write(pf, (unsigned char *)heatold, in_len, out, mode);
@@ -631,16 +631,16 @@ static int  ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 		}
 		ptcache_file_compressed_write(pf, (unsigned char *)vx, in_len, out, mode);
 
-			writeArrToFile("vx.txt", vx, res);
-
+/*			writeArrToFile("vx.txt", vx, res);
+*/
 		ptcache_file_compressed_write(pf, (unsigned char *)vy, in_len, out, mode);
 		
-			writeArrToFile("vy.txt", vx, res);
-
+/*			writeArrToFile("vy.txt", vx, res);
+*/
 		ptcache_file_compressed_write(pf, (unsigned char *)vz, in_len, out, mode);
 
-			writeArrToFile("vz.txt", vx, res);
-		
+/*			writeArrToFile("vz.txt", vx, res);
+*/		
 		ptcache_file_compressed_write(pf, (unsigned char *)obstacles, (unsigned int)res, out, mode);
 		ptcache_file_write(pf, &dt, 1, sizeof(float));
 		ptcache_file_write(pf, &dx, 1, sizeof(float));
