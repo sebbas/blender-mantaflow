@@ -184,6 +184,10 @@ void smoke_reallocate_fluid(SmokeDomainSettings *sds, float dx, int res[3], int 
 	smoke_initBlenderRNA(sds->fluid, &(sds->alpha), &(sds->beta), &(sds->time_scale), &(sds->vorticity), &(sds->border_collisions),
 	                     &(sds->burning_rate), &(sds->flame_smoke), sds->flame_smoke_color, &(sds->flame_vorticity), &(sds->flame_ignition), &(sds->flame_max_temp));
 
+	/*initializing mantaflow fields*/
+	if (sds->flags & MOD_SMOKE_USE_MANTA){
+		smoke_mantaflow_write_scene_file(sds->smd);
+	}
 	/* reallocate shadow buffer */
 	if (sds->shadow)
 		MEM_freeN(sds->shadow);
@@ -2766,9 +2770,7 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			printf("bad smokeModifier_init\n");
 			return;
 		}
-//		if (framenr == startframe && smd->domain->flags & MOD_SMOKE_USE_MANTA && smd->domain->fluid){
-//			smoke_mantaflow_write_scene_file(scene, smd);
-//		}
+		
 		/* try to read from cache */
 		if (BKE_ptcache_read(&pid, (float)framenr) == PTCACHE_READ_EXACT) {
 			BKE_ptcache_validate(cache, framenr);
@@ -2801,12 +2803,12 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		if(framenr != startframe && smd->domain->flags & MOD_SMOKE_USE_MANTA)	/*load manta sim data into fluid object*/
 			{
 				/*PR: Uncomment when adding simulation from timeline*/
-				/*smoke_mantaflow_sim_step(scene,smd);*/
+				smoke_mantaflow_sim_step(scene,smd);
 				const char *density_name_format = "./den%04d.uni";
 				const char *wavelets_name_format = "./densityXl_%04d.uni";
 				char buff[100];
 				sprintf(buff, density_name_format, scene->r.cfra);
-				bool read_density = smoke_mantaflow_read(smd->domain, buff, 0);
+				bool read_density = 1;//smoke_mantaflow_read(smd->domain, buff, 0);
 				bool read_wavelets = 1;
 				if (smd->domain->flags & MOD_SMOKE_HIGHRES)
 				{

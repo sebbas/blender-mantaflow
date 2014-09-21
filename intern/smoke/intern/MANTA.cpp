@@ -339,24 +339,24 @@ void *run_manta_sim_thread(void *arguments)
 	int num_sim_steps = smd->domain->manta_end_frame - smd->domain->manta_start_frame + 1;
 	smd->domain->manta_sim_frame = 0;
 	PyGILState_STATE gilstate = PyGILState_Ensure();
-	for (int fr=0; fr< num_sim_steps; ++fr) {
-		if(smd->domain->manta_sim_frame == -1)
-			break;
+//	for (int fr=0; fr< num_sim_steps; ++fr) {
+//		if(smd->domain->manta_sim_frame == -1)
+//			break;
 		printf("Simulation Step");
 		manta_write_effectors(s, smd);
-		smd->domain->manta_sim_frame = fr /*s->r.cfra*/;
-		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << fr /*s->r.cfra*/) )->str();
+		smd->domain->manta_sim_frame = s->r.cfra;
+		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << s->r.cfra) )->str();
 		std::string py_string_0 = string("sim_step(").append(frame_str);
 		std::string py_string_1 = py_string_0.append(")\0");
 		PyRun_SimpleString(py_string_1.c_str());
 		cout<< "done"<<manta_sim_running<<endl;
-	}
+	//}
 	//returning simulation state to "not simulating" aka -1
 	smd->domain->manta_sim_frame = -1;
 	PyGILState_Release(gilstate);
 }
 
-void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
+void generate_manta_sim_file(SmokeModifierData *smd)
 {
 //	 /*create python file with 2-spaces indentation*/
 	bool wavelets = smd->domain->flags & MOD_SMOKE_HIGHRES;
@@ -377,13 +377,13 @@ void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd)
 	manta_setup_file << smoke_script ;
 	manta_setup_file.close();
 
-	parseFile(smd, scene, smoke_script);
+	parseFile(smoke_script, smd);
 	vector<string> a;
 	a.push_back("manta_scene.py");
 	runMantaScript("",a);
 }
 
-std::string getRealValue(SmokeModifierData *smd, Scene *s, const std::string& varName)
+std::string getRealValue( const std::string& varName, SmokeModifierData *smd)
 {
 	ostringstream ss;
 	if (varName == "UVS_CNT")
@@ -443,7 +443,7 @@ std::string getRealValue(SmokeModifierData *smd, Scene *s, const std::string& va
 	return ss.str();
 }
 
-std::string parseLine(SmokeModifierData *smd, Scene *s, const string& line)
+std::string parseLine(const string& line, SmokeModifierData *smd)
 {
 	if (line.size() == 0) return "";
 	string res = "";
@@ -459,7 +459,7 @@ std::string parseLine(SmokeModifierData *smd, Scene *s, const string& line)
 		else if(line[currPos] == delimiter && readingVar){
 			readingVar 	= false;
 			end_del 	= currPos;
-			res 		+= getRealValue(smd,s,line.substr(start_del, currPos - start_del));
+			res 		+= getRealValue(line.substr(start_del, currPos - start_del), smd);
 		}
 		currPos ++;
 	}
@@ -467,7 +467,7 @@ std::string parseLine(SmokeModifierData *smd, Scene *s, const string& line)
 	return res;
 }
 
-void parseFile(SmokeModifierData *smd, Scene *s, const string & setup_string)
+void parseFile(const string & setup_string, SmokeModifierData *smd)
 {
 //	ifstream f (file);
 std::istringstream f(setup_string);
@@ -476,7 +476,7 @@ std::istringstream f(setup_string);
 	string line="";
 //	if (f.is_open()){
 		while(getline(f,line)){
-			of << parseLine(smd,s,line) << "\n";
+			of << parseLine(line,smd) << "\n";
 		}
 //		f.close();
 //	}

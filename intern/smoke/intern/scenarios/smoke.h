@@ -33,6 +33,7 @@ vel = s.create(MACGrid) \n\
 density = s.create(RealGrid) \n\
 pressure = s.create(RealGrid) \n\
 forces = s.create(MACGrid)\n\
+forces.load('manta_forces.uni')\n\
 ";
 
 const string smoke_setup_high = "xl_gs = vec3($HRESX$, $HRESY$, $HRESZ$) \n\
@@ -69,29 +70,28 @@ if $USE_WAVELETS$ and $UPRES$ > 0:\n\
 ";
 
 const string smoke_step_low = "def sim_step(t):\n\
-  density.save('den%04d_start.txt' % t) \n\
-  forces.load('manta_forces.uni')\n\
+  #density.save('den%04d_start.txt' % t) \n\
   if (t>=0 and t<75):\n\
     if noise.valScale > 0.:\n\
       densityInflowMeshNoise( flags=flags, density=density, noise=noise, mesh=source, scale=3, sigma=0.5 )\n\
     else:\n\
       densityInflowMesh(flags=flags, density=density, mesh=source, value=1)\n\
     applyInflow=True\n\
-  density.save('den%04d_1.txt' % t) \n\
+  #density.save('den%04d_1.txt' % t) \n\
   addForceField(flags=flags, vel=vel,force=forces)\n\
-  density.save('den%04d_2.txt' % t) \n\
+  #density.save('den%04d_2.txt' % t) \n\
   advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$) \n\
   advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=$ADVECT_ORDER$) \n\
-  density.save('den%04d_3.txt' % t) \n\
+  #density.save('den%04d_3.txt' % t) \n\
   setWallBcs(flags=flags, vel=vel) \n\
   addBuoyancy(density=density, vel=vel, gravity=vec3($BUYO_X$,$BUYO_Y$,$BUYO_Z$), flags=flags) \n\
   solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, openBound='xXyYzZ', cgMaxIterFac=1, cgAccuracy=0.01) \n\
   setWallBcs(flags=flags, vel=vel) \n\
   print(\"Writing Grid to \" + str($DENSITY_MEM$) + \" with size\" + str($DENSITY_SIZE$))\n\
-  density.save('den%04d_end.txt' % t) \n\
-  #density.writeGridToMemory(memLoc = \"$DENSITY_MEM$\",sizeAllowed = \"$DENSITY_SIZE$\") \n\
-  density.save('den%04d_temp.uni' % t) \n\
-  os.rename('den%04d_temp.uni' % t, 'den%04d.uni' % t) \n\
+  #density.save('den%04d_end.txt' % t) \n\
+  density.writeGridToMemory(memLoc = \"$DENSITY_MEM$\",sizeAllowed = \"$DENSITY_SIZE$\") \n\
+  #density.save('den%04d_temp.uni' % t) \n\
+  #os.rename('den%04d_temp.uni' % t, 'den%04d.uni' % t) \n\
   s.step()\n";
 
 const string smoke_step_high = "  interpolateMACGrid( source=vel, target=xl_vel ) \n\

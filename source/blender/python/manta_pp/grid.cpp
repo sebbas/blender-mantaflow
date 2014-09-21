@@ -337,16 +337,7 @@ template<class T> void Grid<T>::writeGridToMemory(const std::string& memLoc, con
 	stringstream ss(memLoc);
 	void *gridPointer = NULL;
 	ss >> gridPointer;
-	T val(0.), val0(0.),val1(1.);
-	for (int i=0; i <  mSize.x * mSize.y * mSize.z; ++i) {
-		val = (T)(*this)[i];
-		if (val != val0)
-		{
-			int j = 0;
-		}
-//		((T*)gridPointer)[i] = val;
-	}
-	//	memcpy(gridPointer, mData, sizeAllowed_num);
+	memcpy(gridPointer, mData, sizeAllowed_num);
 }
 // helper functions for UV grid data (stored grid coordinates as Vec3 values, and uv weight in entry zero)
 

@@ -506,9 +506,9 @@ extern "C" int smoke_mantaflow_read(struct SmokeDomainSettings *sds, char* name,
 	return read_mantaflow_sim(sds, name, with_wavelets);
 }
 
-extern "C" void smoke_mantaflow_write_scene_file(struct Scene *s, struct SmokeModifierData *smd)
+extern "C" void smoke_mantaflow_write_scene_file(struct SmokeModifierData *smd)
 {
-	generate_manta_sim_file(s, smd);
+	generate_manta_sim_file(smd);
 }
 
 extern "C" void smoke_mantaflow_sim_step(Scene *scene, SmokeModifierData *smd)

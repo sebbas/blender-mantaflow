@@ -61,15 +61,15 @@ void run_manta_scene(Scene *scene, SmokeModifierData *smd);
 
 void stop_manta_sim();
 
-void generate_manta_sim_file(Scene *scene, SmokeModifierData *smd);
+void generate_manta_sim_file(SmokeModifierData *smd);
 
 void manta_sim_step(int frame);
 
-std::string getRealValue(SmokeModifierData *sds, Scene *s, const string& varName);
+std::string getRealValue(const string& varName, SmokeModifierData *sds);
 
-std::string parseLine(SmokeModifierData *sds, Scene *s, const string& line);
+std::string parseLine(const string& line, SmokeModifierData *sds);
 
-void parseFile(SmokeModifierData *sds, Scene *s, const string& setup_string);
+void parseFile(const string& setup_string, SmokeModifierData *sds);
 
 #endif /* MANTA_H */
 
