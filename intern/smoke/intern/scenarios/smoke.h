@@ -2,39 +2,40 @@
 using namespace std;
 const string smoke_clean = "";
 
-const string smoke_setup_low ="from manta import * \n\
-import os, shutil, math, sys \n\
+const string smoke_setup_low ="from manta import *\n\
+import os, shutil, math, sys\n\
 def transform_back(obj, gs):\n\
   obj.scale(gs/2)\n\
   obj.offset(gs/2)\n\
 \n\
-solver_dim = $SOLVER_DIM$\n\
+# solver params\n\
 res = $RES$\n\
-gs = vec3($RESX$, $RESY$, $RESZ$) \n\
-s = FluidSolver(name = 'main', gridSize = gs, dim = solver_dim) \n\
-s.timestep = 1 \n\
+gs = vec3($RESX$,$RESY$,$RESZ$)\n\
+s = FluidSolver(name='main', gridSize = gs)\n\
+s.timestep = 1.0\n\
+timings = Timings()\n\
 \n\
-noise = s.create(NoiseField, fixedSeed=256, loadFromFile=True) \n\
-noise.posScale = vec3(20) \n\
-noise.clamp = False \n\
-noise.clampNeg = $NOISE_CN$\n\
-noise.clampPos = $NOISE_CP$\n\
-noise.valScale = $NOISE_VALSCALE$\n\
-noise.valOffset = $NOISE_VALOFFSET$\n\
-noise.timeAnim = $NOISE_TIMEANIM$ \n\
+# prepare grids\n\
+flags = s.create(FlagGrid)\n\
+vel = s.create(MACGrid)\n\
+density = s.create(RealGrid)\n\
+pressure = s.create(RealGrid)\n\
+\n\
+# noise field\n\
+noise = s.create(NoiseField, loadFromFile=True)\n\
+noise.posScale = vec3(45)\n\
+noise.clamp = True\n\
+noise.clampNeg = 0\n\
+noise.clampPos = 1\n\
+noise.valScale = 1\n\
+noise.valOffset = 0.75\n\
+noise.timeAnim = 0.2\n\
+\n\
+flags.initDomain()\n\
+flags.fillGrid()\n\
 \n\
 source = s.create(Mesh)\n\
-source.load('manta_flow.obj')\n\
-transform_back(source, gs)\n\
-flags = s.create(FlagGrid) \n\
-flags.initDomain() \n\
-flags.fillGrid() \n\
-vel = s.create(MACGrid) \n\
-density = s.create(RealGrid) \n\
-pressure = s.create(RealGrid) \n\
-forces = s.create(MACGrid)\n\
-forces.load('manta_forces.uni')\n\
-";
+forces = s.create(MACGrid)\n";
 
 const string smoke_setup_high = "xl_gs = vec3($HRESX$, $HRESY$, $HRESZ$) \n\
 xl = Solver(name = 'larger', gridSize = xl_gs, dim = solver_dim) \n\
@@ -70,29 +71,50 @@ if $USE_WAVELETS$ and $UPRES$ > 0:\n\
 ";
 
 const string smoke_step_low = "def sim_step(t):\n\
-  #density.save('den%04d_start.txt' % t) \n\
-  if (t>=0 and t<75):\n\
-    if noise.valScale > 0.:\n\
-      densityInflowMeshNoise( flags=flags, density=density, noise=noise, mesh=source, scale=3, sigma=0.5 )\n\
-    else:\n\
-      densityInflowMesh(flags=flags, density=density, mesh=source, value=1)\n\
-    applyInflow=True\n\
-  #density.save('den%04d_1.txt' % t) \n\
-  addForceField(flags=flags, vel=vel,force=forces)\n\
-  #density.save('den%04d_2.txt' % t) \n\
-  advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$) \n\
-  advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=$ADVECT_ORDER$) \n\
-  #density.save('den%04d_3.txt' % t) \n\
-  setWallBcs(flags=flags, vel=vel) \n\
-  addBuoyancy(density=density, vel=vel, gravity=vec3($BUYO_X$,$BUYO_Y$,$BUYO_Z$), flags=flags) \n\
-  solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, openBound='xXyYzZ', cgMaxIterFac=1, cgAccuracy=0.01) \n\
-  setWallBcs(flags=flags, vel=vel) \n\
-  print(\"Writing Grid to \" + str($DENSITY_MEM$) + \" with size\" + str($DENSITY_SIZE$))\n\
-  #density.save('den%04d_end.txt' % t) \n\
+  source.load('manta_flow.obj')\n\
+  transform_back(source, gs)\n\
+  if noise.valScale > 0.:\n\
+    densityInflowMeshNoise( flags=flags, density=density, noise=noise, mesh=source, scale=3, sigma=0.5 )\n\
+  else:\n\
+    densityInflowMesh(flags=flags, density=density, mesh=source, value=1)\n\
+  applyInflow=True\n\
+  \n\
+  \n\
+  advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)\n\
+  advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=2, strength=1.0)\n\
+  \n\
+  setWallBcs(flags=flags, vel=vel)    \n\
+  addBuoyancy(density=density, vel=vel, gravity=vec3(0,-6e-4,0), flags=flags)\n\
+  \n\
+  solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True)\n\
+  setWallBcs(flags=flags, vel=vel)\n\
+  \n\
   density.writeGridToMemory(memLoc = \"$DENSITY_MEM$\",sizeAllowed = \"$DENSITY_SIZE$\") \n\
-  #density.save('den%04d_temp.uni' % t) \n\
-  #os.rename('den%04d_temp.uni' % t, 'den%04d.uni' % t) \n\
-  s.step()\n";
+  s.step()";
+//  #density.save('den%04d_start.txt' % t) \n\
+//  if (t>=0 and t<75):\n\
+//    densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)\n\
+//    #if noise.valScale > 0.:\n\
+//    #  densityInflowMeshNoise( flags=flags, density=density, noise=noise, mesh=source, scale=3, sigma=0.5 )\n\
+//    #else:\n\
+//    #  densityInflowMesh(flags=flags, density=density, mesh=source, value=1)\n\
+//    #applyInflow=True\n\
+//  #density.save('den%04d_1.txt' % t) \n\
+//  addForceField(flags=flags, vel=vel,force=forces)\n\
+//  #density.save('den%04d_2.txt' % t) \n\
+//  advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$) \n\
+//  advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=$ADVECT_ORDER$, strength=1.0) \n\
+//  #density.save('den%04d_3.txt' % t) \n\
+//  setWallBcs(flags=flags, vel=vel) \n\
+//  addBuoyancy(density=density, vel=vel, gravity=vec3($BUYO_X$,$BUYO_Y$,$BUYO_Z$), flags=flags) \n\
+//  solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, openBound='xXyYzZ', cgMaxIterFac=1, cgAccuracy=0.01) \n\
+//  setWallBcs(flags=flags, vel=vel) \n\
+//  print(\"Writing Grid to \" + str($DENSITY_MEM$) + \" with size\" + str($DENSITY_SIZE$))\n\
+//  #density.save('den%04d_end.txt' % t) \n\
+//  density.writeGridToMemory(memLoc = \"$DENSITY_MEM$\",sizeAllowed = \"$DENSITY_SIZE$\") \n\
+//  #density.save('den%04d_temp.uni' % t) \n\
+//  #os.rename('den%04d_temp.uni' % t, 'den%04d.uni' % t) \n\
+//  s.step()\n";
 
 const string smoke_step_high = "  interpolateMACGrid( source=vel, target=xl_vel ) \n\
   sStr = 1.0 * wltStrength  \n\
