@@ -8,6 +8,11 @@ def transform_back(obj, gs):\n\
   obj.scale(gs/2)\n\
   obj.offset(gs/2)\n\
 \n\
+def load_once(grid, file, dict):\n\
+  if grid not in dict:\n\
+    print('Loading file' + file + 'in grid')\n\
+    grid.load(file)\n\
+    dict[grid] = 1\n\
 # solver params\n\
 res = $RES$\n\
 gs = vec3($RESX$,$RESY$,$RESZ$)\n\
@@ -35,7 +40,8 @@ flags.initDomain()\n\
 flags.fillGrid()\n\
 \n\
 source = s.create(Mesh)\n\
-forces = s.create(MACGrid)\n";
+forces = s.create(MACGrid)\n\
+dict_loaded = dict()\n";
 
 const string smoke_setup_high = "xl_gs = vec3($HRESX$, $HRESY$, $HRESZ$) \n\
 xl = Solver(name = 'larger', gridSize = xl_gs, dim = solver_dim) \n\
@@ -71,8 +77,11 @@ if $USE_WAVELETS$ and $UPRES$ > 0:\n\
 ";
 
 const string smoke_step_low = "def sim_step(t):\n\
-  source.load('manta_flow.obj')\n\
-  transform_back(source, gs)\n\
+  #load_once(source,'manta_flow.obj',dict_loaded)\n\
+  if t == 2:#loading data on first sim frame only\n\
+    print('First frame: loading flows and obstacles')\n\
+    source.load('manta_flow.obj')\n\
+    transform_back(source, gs)\n\
   if noise.valScale > 0.:\n\
     densityInflowMeshNoise( flags=flags, density=density, noise=noise, mesh=source, scale=3, sigma=0.5 )\n\
   else:\n\
