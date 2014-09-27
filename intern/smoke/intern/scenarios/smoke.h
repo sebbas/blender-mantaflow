@@ -86,20 +86,19 @@ const string smoke_step_low = "def sim_step(t):\n\
   #load emission data\n\
   source_grid.load('manta_em_influence.uni')\n\
   density.add(source_grid)\n\
+  #addForceField(flags=flags, vel=vel,force=forces)\n\
   \n\
-  \n\
-  advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)\n\
-  advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=2, strength=1.0)\n\
+  advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$)\n\
+  advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=$ADVECT_ORDER$, strength=1.0)\n\
   \n\
   setWallBcs(flags=flags, vel=vel)    \n\
-  addBuoyancy(density=density, vel=vel, gravity=vec3(0,-6e-4,0), flags=flags)\n\
+  addBuoyancy(density=density, vel=vel, gravity=vec3($BUYO_X$,$BUYO_Y$,$BUYO_Z$), flags=flags)\n\
   \n\
   solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True)\n\
   setWallBcs(flags=flags, vel=vel)\n\
   \n\
   density.writeGridToMemory(memLoc = \"$DENSITY_MEM$\",sizeAllowed = \"$DENSITY_SIZE$\") \n\
   s.step()";
-//  #density.save('den%04d_start.txt' % t) \n\
 //  if (t>=0 and t<75):\n\
 //    densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)\n\
 //    #if noise.valScale > 0.:\n\
@@ -107,18 +106,14 @@ const string smoke_step_low = "def sim_step(t):\n\
 //    #else:\n\
 //    #  densityInflowMesh(flags=flags, density=density, mesh=source, value=1)\n\
 //    #applyInflow=True\n\
-//  #density.save('den%04d_1.txt' % t) \n\
 //  addForceField(flags=flags, vel=vel,force=forces)\n\
-//  #density.save('den%04d_2.txt' % t) \n\
 //  advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$) \n\
 //  advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=$ADVECT_ORDER$, strength=1.0) \n\
-//  #density.save('den%04d_3.txt' % t) \n\
 //  setWallBcs(flags=flags, vel=vel) \n\
 //  addBuoyancy(density=density, vel=vel, gravity=vec3($BUYO_X$,$BUYO_Y$,$BUYO_Z$), flags=flags) \n\
 //  solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, openBound='xXyYzZ', cgMaxIterFac=1, cgAccuracy=0.01) \n\
 //  setWallBcs(flags=flags, vel=vel) \n\
 //  print(\"Writing Grid to \" + str($DENSITY_MEM$) + \" with size\" + str($DENSITY_SIZE$))\n\
-//  #density.save('den%04d_end.txt' % t) \n\
 //  density.writeGridToMemory(memLoc = \"$DENSITY_MEM$\",sizeAllowed = \"$DENSITY_SIZE$\") \n\
 //  #density.save('den%04d_temp.uni' % t) \n\
 //  #os.rename('den%04d_temp.uni' % t, 'den%04d.uni' % t) \n\

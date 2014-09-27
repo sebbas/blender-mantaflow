@@ -91,7 +91,7 @@ void export_fields(int size_x, int size_y, int size_z, float *f_x, float*f_y, fl
 //	writeGridTxt("s.txt", &force_fields);
 }
 		   
-void export_em_fields(int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z, float *inf, float *vel)
+void export_em_fields(float flow_density, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z, float *inf, float *vel)
 {
 //	assert(size_x>0 && size_y>0 && size_z>0);
 	assert(inf != NULL);
@@ -111,7 +111,7 @@ void export_em_fields(int min_x, int min_y, int min_z, int max_x, int max_y, int
 			for (int z=0; z < em_size[2]; ++z)
 			{
 					index = x + y * em_size_x + z * em_size_xy;
-					em_inf_fields.get(x + min_x, y + min_y, z + min_z) = inf[index];//f_x[x],f_y[y],f_z[z]);				
+					em_inf_fields.get(x + min_x, y + min_y, z + min_z) = flow_density * inf[index];//f_x[x],f_y[y],f_z[z]);				
 //					if(vel != NULL)	
 //						em_vel_fields.get(x, y, z) = Vec3(vel[index*3],vel[index*3+1],vel[index*3+2]);
 			}
