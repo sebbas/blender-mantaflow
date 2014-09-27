@@ -39,6 +39,7 @@ noise.timeAnim = 0.2\n\
 flags.initDomain()\n\
 flags.fillGrid()\n\
 \n\
+source_grid = s.create(RealGrid)\n\
 source = s.create(Mesh)\n\
 forces = s.create(MACGrid)\n\
 dict_loaded = dict()\n";
@@ -82,11 +83,9 @@ const string smoke_step_low = "def sim_step(t):\n\
     print('First frame: loading flows and obstacles')\n\
     source.load('manta_flow.obj')\n\
     transform_back(source, gs)\n\
-  if noise.valScale > 0.:\n\
-    densityInflowMeshNoise( flags=flags, density=density, noise=noise, mesh=source, scale=3, sigma=0.5 )\n\
-  else:\n\
-    densityInflowMesh(flags=flags, density=density, mesh=source, value=1)\n\
-  applyInflow=True\n\
+  #load emission data\n\
+  source_grid.load('manta_em_influence.uni')\n\
+  density.add(source_grid)\n\
   \n\
   \n\
   advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)\n\

@@ -98,25 +98,22 @@ void export_em_fields(int min_x, int min_y, int min_z, int max_x, int max_y, int
 //	assert(vel != NULL);
 	FluidSolver dummy(Vec3i(d_x,d_y,d_z));
 	Grid<Real> em_inf_fields(&dummy, false);
+	em_inf_fields.clear();
 	Grid<Vec3> em_vel_fields(&dummy, false);
 	int index(0);
-	for (int x=0; x < d_x; ++x)
+	Vec3i em_size(max_x - min_x, max_y - min_y, max_z - min_z);
+	int em_size_x =em_size[0];
+	int em_size_xy = em_size[0] * em_size[1];
+	for (int x=0; x < em_size[0]; ++x)
 	{
-		for (int y=0; y < d_y; ++y)
+		for (int y=0; y < em_size[1]; ++y)
 		{
-			for (int z=0; z < d_z; ++z)
+			for (int z=0; z < em_size[2]; ++z)
 			{
-				if (x < min_x || y < min_y || z < min_z || x > max_x || y > max_y || z > max_z){
-					em_inf_fields.get(x, y, z) = 0.;
-					if(vel != NULL)	
-						em_vel_fields.get(x, y, z) = 0.;
-				}
-				else{
-					index = x + y * d_x + z * d_x * d_y;
-					em_inf_fields.get(x, y, z) = inf[index];//f_x[x],f_y[y],f_z[z]);				
-					if(vel != NULL)	
-						em_vel_fields.get(x, y, z) = Vec3(vel[index*3],vel[index*3+1],vel[index*3+2]);
-				}
+					index = x + y * em_size_x + z * em_size_xy;
+					em_inf_fields.get(x + min_x, y + min_y, z + min_z) = inf[index];//f_x[x],f_y[y],f_z[z]);				
+//					if(vel != NULL)	
+//						em_vel_fields.get(x, y, z) = Vec3(vel[index*3],vel[index*3+1],vel[index*3+2]);
 			}
 		}
 	}
