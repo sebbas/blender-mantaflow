@@ -1,7 +1,14 @@
 #include "MANTA.h"
 #include "WTURBULENCE.h"
 #include "scenarios/smoke.h"
-void runMantaScript(vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
+
+Manta_API* Manta_API::_instance = 0;
+Manta_API* Manta_API::instance(){
+	if (_instance == 0){
+		_instance = new Manta_API;
+	}
+	return _instance;
+}
 
 extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY, int dimZ)
 {
@@ -87,7 +94,7 @@ static void wavelets_add_lowres_density(SmokeDomainSettings *sds)
 //PR need SMD data here for wavelets 
 extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, bool reading_wavelets)
 {
-    /*! legacy headers for reading old files */
+    /*! l /*! legacy headers for reading old files */
 	typedef struct {
 		int dimX, dimY, dimZ;
 		int frames, elements, elementType, bytesPerElement, bytesPerFrame;
@@ -177,7 +184,8 @@ extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, b
 	return 0;
 }
 
-static void indent_ss(stringstream& ss, int indent)
+
+void Manta_API::indent_ss(stringstream& ss, int indent)
 {
 	/*two-spaces indent*/
 	if (indent < 0) return;
@@ -188,7 +196,7 @@ static void indent_ss(stringstream& ss, int indent)
 	ss << indentation;
 }
 
-static void manta_gen_noise(stringstream& ss, char* solver, int indent, char *noise, int seed, bool load, bool clamp, float clampNeg, float clampPos, float valScale, float valOffset, float timeAnim)
+void Manta_API::manta_gen_noise(stringstream& ss, char* solver, int indent, char *noise, int seed, bool load, bool clamp, float clampNeg, float clampPos, float valScale, float valOffset, float timeAnim)
 {
 	if (ss == NULL)/*should never be here*/
 	{
@@ -205,7 +213,7 @@ static void manta_gen_noise(stringstream& ss, char* solver, int indent, char *no
 	ss << noise << ".timeAnim = " << timeAnim << " \n";
 }
 
-static void manta_solve_pressure(stringstream& ss, char *flags, char *vel, char *pressure, bool useResNorms, int openBound, int solver_res,float cgMaxIterFac, float cgAccuracy)
+void Manta_API::manta_solve_pressure(stringstream& ss, char *flags, char *vel, char *pressure, bool useResNorms, int openBound, int solver_res,float cgMaxIterFac, float cgAccuracy)
 {
 	/*open:0 ; vertical : 1; closed:2*/
 	ss << "  solvePressure(flags=" << flags << ", vel=" << vel << ", pressure=" << pressure << ", useResNorm=" << (useResNorms?"True":"False") << ", openBound='";	
@@ -226,7 +234,7 @@ static void manta_solve_pressure(stringstream& ss, char *flags, char *vel, char 
 	ss << ", cgMaxIterFac=" << cgMaxIterFac << ", cgAccuracy=" << cgAccuracy << ") \n";
 }
 
-static void manta_advect_SemiLagr(stringstream& ss, int indent, char *flags, char *vel, char *grid, int order)
+void Manta_API::manta_advect_SemiLagr(stringstream& ss, int indent, char *flags, char *vel, char *grid, int order)
 {
 	if((order <=1) || (flags == NULL) || (vel == NULL) || (grid == NULL)){return;}
 	indent_ss(ss, indent);
@@ -235,7 +243,7 @@ static void manta_advect_SemiLagr(stringstream& ss, int indent, char *flags, cha
 }
 
 /*create solver, handle 2D case*/
-static void manta_create_solver(stringstream& ss, char *name, char *nick, char *grid_size_name, int x_res, int y_res, int z_res, int dim)
+void Manta_API::manta_create_solver(stringstream& ss, char *name, char *nick, char *grid_size_name, int x_res, int y_res, int z_res, int dim)
 {
 	if ((dim != 2) && (dim != 3))
 	{ return; }
@@ -250,21 +258,21 @@ inline bool file_exists (const std::string& name) {
 }
 
 /*blender transforms obj coords to [-1,1]. This method transforms them back*/
-static void add_mesh_transform_method(stringstream& ss)
+void Manta_API::add_mesh_transform_method(stringstream& ss)
 {
 	ss << "def transform_back(obj, gs):\n" <<
 	"  obj.scale(gs/2)\n" <<
 	"  obj.offset(gs/2)\n\n";
 }
 
-static void manta_cache_path(char *filepath)
+void Manta_API::manta_cache_path(char *filepath)
 {
 	char *name="manta";
 	BLI_make_file_string("/", filepath, BLI_temporary_dir(), name);
 }
 
 //void BLI_dir_create_recursive(const char *filepath);
-static void create_manta_folder()
+void Manta_API::create_manta_folder()
 {
 	char* filepath=NULL;
 	manta_cache_path(filepath);
@@ -272,7 +280,7 @@ static void create_manta_folder()
 	
 }
 
-static void *run_manta_scene_thread(void *arguments)
+void *Manta_API::run_manta_scene_thread(void *arguments)
 {
 //	struct manta_arg_struct *args = (struct manta_arg_struct *)arguments;
 //	//create_manta_folder();
@@ -291,7 +299,7 @@ static void *run_manta_scene_thread(void *arguments)
 	return NULL;
 }
 
-void run_manta_scene(Scene *s, SmokeModifierData *smd)
+void Manta_API::run_manta_scene(Scene *s, SmokeModifierData *smd)
 {
 //	smd->domain->manta_sim_frame = 0;
 //	PyGILState_STATE gilstate = PyGILState_Ensure();
@@ -326,13 +334,13 @@ void run_manta_scene(Scene *s, SmokeModifierData *smd)
 	run_manta_sim_thread((void*) args);
 }
 
-void stop_manta_sim()
+void Manta_API::stop_manta_sim()
 {
 	pthread_cancel(manta_thread);
 }
 
 
-static void run_manta_sim_thread(void *arguments)
+void Manta_API::run_manta_sim_thread(void *arguments)
 {
 	struct manta_arg_struct *args = (struct manta_arg_struct *)arguments;
 	SmokeModifierData *smd = &args->smd;
@@ -357,7 +365,7 @@ static void run_manta_sim_thread(void *arguments)
 	PyGILState_Release(gilstate);
 }
 
-void generate_manta_sim_file(SmokeModifierData *smd)
+void Manta_API::generate_manta_sim_file(SmokeModifierData *smd)
 {
 //	 /*create python file with 2-spaces indentation*/
 	bool wavelets = smd->domain->flags & MOD_SMOKE_HIGHRES;
@@ -384,7 +392,7 @@ void generate_manta_sim_file(SmokeModifierData *smd)
 	runMantaScript("",a);
 }
 
-std::string getRealValue( const std::string& varName, SmokeModifierData *smd)
+std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierData *smd)
 {
 	ostringstream ss;
 	if (varName == "UVS_CNT")
@@ -444,7 +452,7 @@ std::string getRealValue( const std::string& varName, SmokeModifierData *smd)
 	return ss.str();
 }
 
-std::string parseLine(const string& line, SmokeModifierData *smd)
+std::string Manta_API::parseLine(const string& line, SmokeModifierData *smd)
 {
 	if (line.size() == 0) return "";
 	string res = "";
@@ -468,7 +476,7 @@ std::string parseLine(const string& line, SmokeModifierData *smd)
 	return res;
 }
 
-static void parseFile(const string & setup_string, SmokeModifierData *smd)
+void Manta_API::parseFile(const string & setup_string, SmokeModifierData *smd)
 {
 //	ifstream f (file);
 std::istringstream f(setup_string);

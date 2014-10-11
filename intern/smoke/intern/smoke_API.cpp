@@ -508,13 +508,13 @@ extern "C" int smoke_mantaflow_read(struct SmokeDomainSettings *sds, char* name,
 
 extern "C" void smoke_mantaflow_write_scene_file(struct SmokeModifierData *smd)
 {
-	generate_manta_sim_file(smd);
+	Manta_API::instance()->generate_manta_sim_file(smd);
 }
 
 extern "C" void smoke_mantaflow_sim_step(Scene *scene, SmokeModifierData *smd)
 {
 	cout <<"Fluid_loc: "<<smd->domain->fluid->_density <<endl;
-	run_manta_scene(scene, smd);
+	Manta_API::instance()->run_manta_scene(scene, smd);
 }
 
 extern "C" void manta_write_effectors(struct Scene *s, struct SmokeModifierData *smd)
@@ -539,5 +539,5 @@ extern "C" void manta_write_emitters(struct SmokeFlowSettings *sfs, int min_x, i
 
 extern "C" void smoke_mantaflow_stop_sim()
 {
-	stop_manta_sim();
+	Manta_API::instance()->stop_manta_sim();
 }

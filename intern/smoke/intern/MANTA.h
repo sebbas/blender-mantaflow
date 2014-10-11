@@ -16,6 +16,7 @@
 void export_force_fields(int size_x, int size_y, int size_z, float *f_x, float*f_y, float*f_z);/*defined in pymain.cpp*/
 void export_em_fields(float flow_density, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z, float *inf, float *vel);/*defined in pymain.cpp*/
 extern "C" void manta_write_effectors(struct Scene *s, struct SmokeModifierData *smd); /*defined in smoke_api.cpp*/
+void runMantaScript(const string& ss,vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
 
 /*for passing to detached thread*/
 struct manta_arg_struct {
@@ -29,34 +30,41 @@ extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY
 
 extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, bool read_wavelets);
 
-//class Manta_API: public FLUID_3D{
+class Manta_API: public FLUID_3D{
+private:	
+	static Manta_API *_instance;
+	Manta_API() {}
+	~Manta_API() {} 	 
+	Manta_API(const Manta_API &);	 
+	Manta_API & operator=(const Manta_API &);
+public:
+	static Manta_API *instance();
 	void step(float dt, float gravity[3]);
-	void runMantaScript(const string&, vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
+//	void runMantaScript(const string&, vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
 	
+	void indent_ss(stringstream& ss, int indent);
 	
-	static void indent_ss(stringstream& ss, int indent);
+	void manta_gen_noise(stringstream& ss, char* solver, int indent, char *noise, int seed, bool load, bool clamp, float clampNeg, float clampPos, float valScale, float valOffset, float timeAnim);
 	
-	static void manta_gen_noise(stringstream& ss, char* solver, int indent, char *noise, int seed, bool load, bool clamp, float clampNeg, float clampPos, float valScale, float valOffset, float timeAnim);
+	void manta_solve_pressure(stringstream& ss, char *flags, char *vel, char *pressure, bool useResNorms, int openBound, int solver_res,float cgMaxIterFac=1.0, float cgAccuracy = 0.01);
 	
-	static void manta_solve_pressure(stringstream& ss, char *flags, char *vel, char *pressure, bool useResNorms, int openBound, int solver_res,float cgMaxIterFac=1.0, float cgAccuracy = 0.01);
-	
-	static void manta_advect_SemiLagr(stringstream& ss, int indent, char *flags, char *vel, char *grid, int order);
+	void manta_advect_SemiLagr(stringstream& ss, int indent, char *flags, char *vel, char *grid, int order);
 	
 	/*create solver, handle 2D case*/
-	static void manta_create_solver(stringstream& ss, char *name, char *nick, char *grid_size_name, int x_res, int y_res, int z_res, int dim);
+	void manta_create_solver(stringstream& ss, char *name, char *nick, char *grid_size_name, int x_res, int y_res, int z_res, int dim);
 	
 	inline bool file_exists (const std::string& name);
 	
 	/*blender transforms obj coords to [-1,1]. This method transforms them back*/
-	static void add_mesh_transform_method(stringstream& ss);
+	void add_mesh_transform_method(stringstream& ss);
 	
-	static void manta_cache_path(char *filepath);
+	void manta_cache_path(char *filepath);
 	
-	static void create_manta_folder();
+	void create_manta_folder();
 	
-	static void *run_manta_scene_thread(void *threadid);
+	void *run_manta_scene_thread(void *threadid);
 	
-	static void run_manta_sim_thread(void *threadid);
+	void run_manta_sim_thread(void *threadid);
 	
 	void run_manta_scene(Scene *scene, SmokeModifierData *smd);
 	
@@ -64,16 +72,16 @@ extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, b
 	
 	void generate_manta_sim_file(SmokeModifierData *smd);
 	
-	static void manta_sim_step(int frame);
+	void manta_sim_step(int frame);
 	
-	static std::string getRealValue(const string& varName, SmokeModifierData *sds);
+	std::string getRealValue(const string& varName, SmokeModifierData *sds);
 	
-	static std::string parseLine(const string& line, SmokeModifierData *sds);
+	std::string parseLine(const string& line, SmokeModifierData *sds);
 	
-	static void parseFile(const string& setup_string, SmokeModifierData *sds);	
+	void parseFile(const string& setup_string, SmokeModifierData *sds);	
 	
-	static pthread_t manta_thread;
-//};
+	pthread_t manta_thread;
+};
 
 
 
