@@ -23,53 +23,59 @@ struct manta_arg_struct {
 	SmokeModifierData smd;
 };
 
-static pthread_t manta_thread;
-
-void runMantaScript(const string&, vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
+static bool manta_sim_running=true;
 
 extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY, int dimZ);
 
 extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, bool read_wavelets);
 
-void indent_ss(stringstream& ss, int indent);
+//class Manta_API: public FLUID_3D{
+	void step(float dt, float gravity[3]);
+	void runMantaScript(const string&, vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
+	
+	
+	static void indent_ss(stringstream& ss, int indent);
+	
+	static void manta_gen_noise(stringstream& ss, char* solver, int indent, char *noise, int seed, bool load, bool clamp, float clampNeg, float clampPos, float valScale, float valOffset, float timeAnim);
+	
+	static void manta_solve_pressure(stringstream& ss, char *flags, char *vel, char *pressure, bool useResNorms, int openBound, int solver_res,float cgMaxIterFac=1.0, float cgAccuracy = 0.01);
+	
+	static void manta_advect_SemiLagr(stringstream& ss, int indent, char *flags, char *vel, char *grid, int order);
+	
+	/*create solver, handle 2D case*/
+	static void manta_create_solver(stringstream& ss, char *name, char *nick, char *grid_size_name, int x_res, int y_res, int z_res, int dim);
+	
+	inline bool file_exists (const std::string& name);
+	
+	/*blender transforms obj coords to [-1,1]. This method transforms them back*/
+	static void add_mesh_transform_method(stringstream& ss);
+	
+	static void manta_cache_path(char *filepath);
+	
+	static void create_manta_folder();
+	
+	static void *run_manta_scene_thread(void *threadid);
+	
+	static void run_manta_sim_thread(void *threadid);
+	
+	void run_manta_scene(Scene *scene, SmokeModifierData *smd);
+	
+	void stop_manta_sim();
+	
+	void generate_manta_sim_file(SmokeModifierData *smd);
+	
+	static void manta_sim_step(int frame);
+	
+	static std::string getRealValue(const string& varName, SmokeModifierData *sds);
+	
+	static std::string parseLine(const string& line, SmokeModifierData *sds);
+	
+	static void parseFile(const string& setup_string, SmokeModifierData *sds);	
+	
+	static pthread_t manta_thread;
+//};
 
-void manta_gen_noise(stringstream& ss, char* solver, int indent, char *noise, int seed, bool load, bool clamp, float clampNeg, float clampPos, float valScale, float valOffset, float timeAnim);
 
-void manta_solve_pressure(stringstream& ss, char *flags, char *vel, char *pressure, bool useResNorms, int openBound, int solver_res,float cgMaxIterFac=1.0, float cgAccuracy = 0.01);
-
-void manta_advect_SemiLagr(stringstream& ss, int indent, char *flags, char *vel, char *grid, int order);
-
-/*create solver, handle 2D case*/
-void manta_create_solver(stringstream& ss, char *name, char *nick, char *grid_size_name, int x_res, int y_res, int z_res, int dim);
-
-inline bool file_exists (const std::string& name);
-
-/*blender transforms obj coords to [-1,1]. This method transforms them back*/
-void add_mesh_transform_method(stringstream& ss);
-
-void manta_cache_path(char *filepath);
-
-static bool manta_sim_running=true;
-
-void create_manta_folder();
-
-void *run_manta_scene_thread(void *threadid);
-
-void *run_manta_sim_thread(void *threadid);
-
-void run_manta_scene(Scene *scene, SmokeModifierData *smd);
-
-void stop_manta_sim();
-
-void generate_manta_sim_file(SmokeModifierData *smd);
-
-void manta_sim_step(int frame);
-
-std::string getRealValue(const string& varName, SmokeModifierData *sds);
-
-std::string parseLine(const string& line, SmokeModifierData *sds);
-
-void parseFile(const string& setup_string, SmokeModifierData *sds);
 
 #endif /* MANTA_H */
 

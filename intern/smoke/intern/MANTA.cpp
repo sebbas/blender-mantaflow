@@ -43,7 +43,7 @@ void read_rotated_grid(gzFile gzf, float *data, int size_x, int size_y, int size
 	}
 }
 
-void wavelets_add_lowres_density(SmokeDomainSettings *sds)
+static void wavelets_add_lowres_density(SmokeDomainSettings *sds)
 {
 	assert(sds != NULL);
 	for (int cnt_x(0); cnt_x < sds->wt->_xResBig; ++cnt_x)
@@ -177,7 +177,7 @@ extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, b
 	return 0;
 }
 
-void indent_ss(stringstream& ss, int indent)
+static void indent_ss(stringstream& ss, int indent)
 {
 	/*two-spaces indent*/
 	if (indent < 0) return;
@@ -188,7 +188,7 @@ void indent_ss(stringstream& ss, int indent)
 	ss << indentation;
 }
 
-void manta_gen_noise(stringstream& ss, char* solver, int indent, char *noise, int seed, bool load, bool clamp, float clampNeg, float clampPos, float valScale, float valOffset, float timeAnim)
+static void manta_gen_noise(stringstream& ss, char* solver, int indent, char *noise, int seed, bool load, bool clamp, float clampNeg, float clampPos, float valScale, float valOffset, float timeAnim)
 {
 	if (ss == NULL)/*should never be here*/
 	{
@@ -205,7 +205,7 @@ void manta_gen_noise(stringstream& ss, char* solver, int indent, char *noise, in
 	ss << noise << ".timeAnim = " << timeAnim << " \n";
 }
 
-void manta_solve_pressure(stringstream& ss, char *flags, char *vel, char *pressure, bool useResNorms, int openBound, int solver_res,float cgMaxIterFac, float cgAccuracy)
+static void manta_solve_pressure(stringstream& ss, char *flags, char *vel, char *pressure, bool useResNorms, int openBound, int solver_res,float cgMaxIterFac, float cgAccuracy)
 {
 	/*open:0 ; vertical : 1; closed:2*/
 	ss << "  solvePressure(flags=" << flags << ", vel=" << vel << ", pressure=" << pressure << ", useResNorm=" << (useResNorms?"True":"False") << ", openBound='";	
@@ -226,7 +226,7 @@ void manta_solve_pressure(stringstream& ss, char *flags, char *vel, char *pressu
 	ss << ", cgMaxIterFac=" << cgMaxIterFac << ", cgAccuracy=" << cgAccuracy << ") \n";
 }
 
-void manta_advect_SemiLagr(stringstream& ss, int indent, char *flags, char *vel, char *grid, int order)
+static void manta_advect_SemiLagr(stringstream& ss, int indent, char *flags, char *vel, char *grid, int order)
 {
 	if((order <=1) || (flags == NULL) || (vel == NULL) || (grid == NULL)){return;}
 	indent_ss(ss, indent);
@@ -235,7 +235,7 @@ void manta_advect_SemiLagr(stringstream& ss, int indent, char *flags, char *vel,
 }
 
 /*create solver, handle 2D case*/
-void manta_create_solver(stringstream& ss, char *name, char *nick, char *grid_size_name, int x_res, int y_res, int z_res, int dim)
+static void manta_create_solver(stringstream& ss, char *name, char *nick, char *grid_size_name, int x_res, int y_res, int z_res, int dim)
 {
 	if ((dim != 2) && (dim != 3))
 	{ return; }
@@ -250,21 +250,21 @@ inline bool file_exists (const std::string& name) {
 }
 
 /*blender transforms obj coords to [-1,1]. This method transforms them back*/
-void add_mesh_transform_method(stringstream& ss)
+static void add_mesh_transform_method(stringstream& ss)
 {
 	ss << "def transform_back(obj, gs):\n" <<
 	"  obj.scale(gs/2)\n" <<
 	"  obj.offset(gs/2)\n\n";
 }
 
-void manta_cache_path(char *filepath)
+static void manta_cache_path(char *filepath)
 {
 	char *name="manta";
 	BLI_make_file_string("/", filepath, BLI_temporary_dir(), name);
 }
 
 //void BLI_dir_create_recursive(const char *filepath);
-void create_manta_folder()
+static void create_manta_folder()
 {
 	char* filepath=NULL;
 	manta_cache_path(filepath);
@@ -272,7 +272,7 @@ void create_manta_folder()
 	
 }
 
-void *run_manta_scene_thread(void *arguments)
+static void *run_manta_scene_thread(void *arguments)
 {
 //	struct manta_arg_struct *args = (struct manta_arg_struct *)arguments;
 //	//create_manta_folder();
@@ -320,9 +320,10 @@ void run_manta_scene(Scene *s, SmokeModifierData *smd)
 	args->smd = *smd;
 	args->s = *s;
 //	args.frame_num = smd->domain->manta_end_frame - smd->domain->manta_start_frame;
-	int rc = pthread_create(&manta_thread, NULL, run_manta_sim_thread, (void *)args);
-	pthread_join(manta_thread,NULL);
+//	int rc = pthread_create(&manta_thread, NULL, run_manta_sim_thread, (void *)args);
+//	pthread_join(manta_thread,NULL);
 //	pthread_detach(manta_thread);
+	run_manta_sim_thread((void*) args);
 }
 
 void stop_manta_sim()
@@ -331,7 +332,7 @@ void stop_manta_sim()
 }
 
 
-void *run_manta_sim_thread(void *arguments)
+static void run_manta_sim_thread(void *arguments)
 {
 	struct manta_arg_struct *args = (struct manta_arg_struct *)arguments;
 	SmokeModifierData *smd = &args->smd;
@@ -467,7 +468,7 @@ std::string parseLine(const string& line, SmokeModifierData *smd)
 	return res;
 }
 
-void parseFile(const string & setup_string, SmokeModifierData *smd)
+static void parseFile(const string & setup_string, SmokeModifierData *smd)
 {
 //	ifstream f (file);
 std::istringstream f(setup_string);
