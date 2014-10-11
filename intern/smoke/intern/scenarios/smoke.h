@@ -94,7 +94,7 @@ const string smoke_step_low = "def sim_step(t):\n\
   setWallBcs(flags=flags, vel=vel)    \n\
   addBuoyancy(density=density, vel=vel, gravity=vec3($BUYO_X$,$BUYO_Y$,$BUYO_Z$), flags=flags)\n\
   \n\
-  solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True)\n\
+  solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, openBound='xXyYzZ')\n\
   setWallBcs(flags=flags, vel=vel)\n\
   \n\
   density.writeGridToMemory(memLoc = \"$DENSITY_MEM$\",sizeAllowed = \"$DENSITY_SIZE$\") \n\

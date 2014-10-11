@@ -1567,6 +1567,7 @@ static void sample_derivedmesh(
 
 static void emit_from_derivedmesh(Object *flow_ob, SmokeDomainSettings *sds, SmokeFlowSettings *sfs, EmissionMap *em, float dt)
 {
+	clock_t start = clock();
 	if (!sfs->dm) return;
 	{
 		DerivedMesh *dm;
@@ -1704,6 +1705,10 @@ static void emit_from_derivedmesh(Object *flow_ob, SmokeDomainSettings *sds, Smo
 
 		if (vert_vel) MEM_freeN(vert_vel);
 	}
+	clock_t end = clock();
+	float seconds = (float)(end - start) / CLOCKS_PER_SEC;
+	printf("TIME FOR RECONSTRUCTING SDF: %f \n", seconds);
+	int kkk = 9;
 }
 
 /**********************************************************
