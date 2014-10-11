@@ -20,6 +20,7 @@
 #include "grid.h"
 #include "fileio.h"
 #include "wchar.h"
+#include <fstream>
 using namespace std;
 namespace Manta {
 	extern void guiMain(int argc, char* argv[]);
@@ -99,7 +100,20 @@ void export_em_fields(float flow_density, int min_x, int min_y, int min_z, int m
 	FluidSolver dummy(Vec3i(d_x,d_y,d_z));
 	Grid<Real> em_inf_fields(&dummy, false);
 	em_inf_fields.clear();
-	Grid<Vec3> em_vel_fields(&dummy, false);
+	const char* influence_name = "manta_em_influence.uni";
+//	const char* velocity_name = "em_vel_fields.uni";
+	ifstream em_file(influence_name);
+	if (em_file.good()) {
+//		em_inf_fields.load(influence_name);	
+	}
+	em_file.close();
+	
+//	Grid<Vec3> em_vel_fields(&dummy, false);
+//	ifstream vel_file(velocity_name);
+//	if (vel_file.good()) {
+//		em_vel_fields.load(velocity_name);	
+//	}
+//	vel_file.close();
 	int index(0);
 	Vec3i em_size(max_x - min_x, max_y - min_y, max_z - min_z);
 	int em_size_x =em_size[0];
@@ -111,7 +125,7 @@ void export_em_fields(float flow_density, int min_x, int min_y, int min_z, int m
 			for (int z=0; z < em_size[2]; ++z)
 			{
 					index = x + y * em_size_x + z * em_size_xy;
-					em_inf_fields.get(x + min_x, y + min_y, z + min_z) = flow_density * inf[index];//f_x[x],f_y[y],f_z[z]);				
+					em_inf_fields.get(x + min_x, y + min_y, z + min_z) += flow_density * inf[index];//f_x[x],f_y[y],f_z[z]);				
 //					if(vel != NULL)	
 //						em_vel_fields.get(x, y, z) = Vec3(vel[index*3],vel[index*3+1],vel[index*3+2]);
 			}
@@ -119,10 +133,10 @@ void export_em_fields(float flow_density, int min_x, int min_y, int min_z, int m
 	}
 	writeGridUni("manta_em_influence.uni", &em_inf_fields);
 	writeGridTxt("manta_em_influence.txt", &em_inf_fields);
-	if (vel != NULL){
-		writeGridUni("em_vel_fields.uni", &em_vel_fields);
-		writeGridTxt("em_vel_fields.txt", &em_vel_fields);
-	}
+//	if (vel != NULL){
+//		writeGridUni("em_vel_fields.uni", &em_vel_fields);
+//		writeGridTxt("em_vel_fields.txt", &em_vel_fields);
+//	}
 }
 
 void export_force_fields(int size_x, int size_y, int size_z, float *f_x, float*f_y, float*f_z)
