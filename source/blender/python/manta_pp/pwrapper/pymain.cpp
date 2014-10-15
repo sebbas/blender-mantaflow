@@ -92,11 +92,12 @@ void export_fields(int size_x, int size_y, int size_z, float *f_x, float*f_y, fl
 //	writeGridTxt("s.txt", &force_fields);
 }
 		   
-void export_em_fields(float flow_density, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z, float *inf, float *vel)
+void export_em_fields(float *em_map, float flow_density, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z, float *inf, float *vel)
 {
 //	assert(size_x>0 && size_y>0 && size_z>0);
 	assert(inf != NULL);
 //	assert(vel != NULL);
+	
 	FluidSolver dummy(Vec3i(d_x,d_y,d_z));
 	Grid<Real> em_inf_fields(&dummy, false);
 	em_inf_fields.clear();
@@ -131,6 +132,28 @@ void export_em_fields(float flow_density, int min_x, int min_y, int min_z, int m
 			}
 		}
 	}
+	/*testing grid passing to Python directly*/
+//	PyGILState_STATE gilstate = PyGILState_Ensure();
+//	PyObject *main = PyImport_AddModule("__main__"); // borrowed
+//	if (main == NULL){
+//		printf("ERROR: No Main python Module");
+//		return;
+//	}
+//	PyObject *globals = PyModule_GetDict(main); // borrowed
+//	PyObject *value = 0;
+//	em_inf_fields.registerObject(value, NULL);
+//	PyObject *test = 0;
+//	test = em_inf_fields.getPyObject();
+//	if (value == NULL){
+//		printf("ERROR: can't retrieve value");
+//		return;
+//	}
+//	if (PyDict_SetItemString(globals, "source_grid", value) < 0){
+//		printf("ERROR: Can't set value");
+//		return;
+//	}
+//	Py_DECREF(value);
+//	PyGILState_Release(gilstate);
 	writeGridUni("manta_em_influence.uni", &em_inf_fields);
 	writeGridTxt("manta_em_influence.txt", &em_inf_fields);
 //	if (vel != NULL){

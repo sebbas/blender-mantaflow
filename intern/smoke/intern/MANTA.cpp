@@ -339,6 +339,51 @@ void Manta_API::stop_manta_sim()
 	pthread_cancel(manta_thread);
 }
 
+void Manta_API::addGrid(float * data, string name, int x, int y, int z)
+{
+	std::ostringstream stringStream;
+	stringStream << "temp_" << name;
+	std::string grid_name = stringStream.str();
+	stringStream.str("");
+	stringStream << grid_name << " = s.create(RealGrid)";
+	const std::string command_1 = stringStream.str();
+	stringStream.str("");
+	stringStream << grid_name << ".readGridFromMemory("<< data << "," << x << "," << z << "," << y << ")";
+	const std::string command_2 = stringStream.str();
+	const std::string command_3 = name + ".add(" + grid_name + ")";
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	PyRun_SimpleString(command_1.c_str());
+	PyRun_SimpleString(command_2.c_str());
+	PyRun_SimpleString(command_3.c_str());
+	PyGILState_Release(gilstate);		
+}
+
+void Manta_API::addAdaptiveGrid(float * data, string name, int minX, int minY, int minZ, int maxX, int maxY, int maxZ)
+{
+	if (data == NULL)
+	{
+		cout << "NULL pointer passed to grid addAdaptiveGrid for grid " << name <<endl;
+		return;
+	}
+	std::ostringstream stringStream;
+	stringStream << "temp_" << name;
+	std::string grid_name = stringStream.str();
+	stringStream.str("");
+	stringStream << grid_name << " = s.create(RealGrid)";
+	const std::string command_1 = stringStream.str();
+	stringStream.str("");
+	stringStream << grid_name << ".readAdaptiveGridFromMemory(\'"<< data << "\',\'" << name << "\', vec3(" << minX << "," << minY << "," << minZ << 
+	"), vec3(" << maxX << "," << maxY << "," << maxZ << ") )";
+	const std::string command_2 = stringStream.str();
+	const std::string command_3 = name + ".add(" + grid_name + ")";
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	PyRun_SimpleString("print('Reading Adaptive grid from memory')");
+	PyRun_SimpleString("print (s)");
+	PyRun_SimpleString(command_1.c_str());
+	PyRun_SimpleString(command_2.c_str());
+	PyRun_SimpleString(command_3.c_str());
+	PyGILState_Release(gilstate);		
+}
 
 void Manta_API::run_manta_sim_thread(void *arguments)
 {

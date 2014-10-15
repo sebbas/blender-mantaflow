@@ -127,6 +127,14 @@ void Grid<T>::save(string name) {
 		errMsg("file '" + name +"' filetype not supported");
 }
 
+template<class T>
+void Grid<T>::loadIncrement(string name) {
+	Grid<T> temp(*this);
+	temp.load(name);
+	for(int i=0; i< mSize[0] * mSize[1] * mSize[2]; ++i){
+		mData[i] += temp[i];
+	}
+}
 //******************************************************************************
 // Grid<T> operators
 
@@ -321,7 +329,7 @@ template<class T> void Grid<T>::printGrid(int zSlice, bool printIndex) {
 }
 
 
-template<class T> void Grid<T>::writeGridToMemory(const std::string& memLoc, const string& sizeAllowed)
+template<class T> void Grid<T>::writeGridToMemory(const std::string& memLoc, const std::string& sizeAllowed)
 {
 	if (memLoc == "" ||memLoc == "0" ){
 		debMsg("Cant write grid to NULL pointer",1);
@@ -339,6 +347,53 @@ template<class T> void Grid<T>::writeGridToMemory(const std::string& memLoc, con
 	ss >> gridPointer;
 	memcpy(gridPointer, mData, sizeAllowed_num);
 }
+
+template<class T> void Grid<T>::readGridFromMemory(const std::string& memLoc, const std::string gridName, int x, int y, int z)
+{
+	if (memLoc == "" ||memLoc == "0" ){
+		debMsg("Can not write grid to NULL pointer",1);
+		return;
+	}
+	if (x != mSize.x || y != mSize.y || z != mSize.z)
+	{
+		debMsg("Can not write grid with different domain size",1);
+		return;
+	}
+	stringstream ss(memLoc);
+	void *gridPointer = NULL;
+	ss >> gridPointer;
+	memcpy(mData, gridPointer, sizeof(T) * x * y * z);
+}
+
+template<class T> void Grid<T>::readAdaptiveGridFromMemory(const std::string& memLoc, const std::string gridName, Vec3i minSize, Vec3i maxSize)
+{
+	if (memLoc == "" ||memLoc == "0" ){
+		debMsg("Can not write grid to NULL pointer",1);
+		return;
+	}
+	if (minSize.x < 0 || minSize.y < 0 || minSize.z < 0){
+		debMsg("Adaptive grid smaller than 0",1);
+		return;
+	}
+	if (maxSize.x > mSize.x || maxSize.y > mSize.y || maxSize.z > mSize.z){
+		debMsg("Adaptive grid larger than current",1);
+		return;
+	}
+	Vec3i adaptiveSize = maxSize - minSize;
+	stringstream ss(memLoc);
+	void *gridPointer = NULL;
+	ss >> gridPointer;
+	float *data_Array = (float* )gridPointer;
+	for (int x = 0; x < adaptiveSize.x; ++x){
+		for (int y = 0; y < adaptiveSize.y; ++y){
+			for (int z = 0; z < adaptiveSize.z; ++z){
+				get(x + minSize.x, y + minSize.y, z + minSize.z) = data_Array[(x) + adaptiveSize.x * (y ) + adaptiveSize.x * adaptiveSize.y * (z)];
+			}
+		}
+	}
+}
+
+
 // helper functions for UV grid data (stored grid coordinates as Vec3 values, and uv weight in entry zero)
 
 // make uv weight accesible in python

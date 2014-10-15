@@ -14,7 +14,7 @@
 #include "../../../source/blender/blenlib/BLI_path_util.h"
 
 void export_force_fields(int size_x, int size_y, int size_z, float *f_x, float*f_y, float*f_z);/*defined in pymain.cpp*/
-void export_em_fields(float flow_density, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z, float *inf, float *vel);/*defined in pymain.cpp*/
+void export_em_fields(float *em_map, float flow_density, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z, float *inf, float *vel);/*defined in pymain.cpp*/
 extern "C" void manta_write_effectors(struct Scene *s, struct SmokeModifierData *smd); /*defined in smoke_api.cpp*/
 void runMantaScript(const string& ss,vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
 
@@ -38,6 +38,7 @@ private:
 	Manta_API(const Manta_API &);	 
 	Manta_API & operator=(const Manta_API &);
 public:
+	float *_emission_map;
 	static Manta_API *instance();
 	void step(float dt, float gravity[3]);
 //	void runMantaScript(const string&, vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
@@ -81,6 +82,9 @@ public:
 	void parseFile(const string& setup_string, SmokeModifierData *sds);	
 	
 	pthread_t manta_thread;
+	
+	void addGrid(float * data,string name, int x, int y, int z);
+	static void addAdaptiveGrid(float * data, string name, int minX, int minY, int minZ, int maxX, int maxY, int maxZ);
 };
 
 

@@ -79,13 +79,15 @@ if $USE_WAVELETS$ and $UPRES$ > 0:\n\
 
 const string smoke_step_low = "def sim_step(t):\n\
   #load_once(source,'manta_flow.obj',dict_loaded)\n\
-  if t == 2:#loading data on first sim frame only\n\
-    print('First frame: loading flows and obstacles')\n\
-    source.load('manta_flow.obj')\n\
-    transform_back(source, gs)\n\
+  #if t == 2:#loading data on first sim frame only\n\
+  #  print('First frame: loading flows and obstacles')\n\
+  #  source.load('manta_flow.obj')\n\
+  #  transform_back(source, gs)\n\
+  print (\"Density \" , str(density))\n\
   #load emission data\n\
-  source_grid.load('manta_em_influence.uni')\n\
-  density.add(source_grid)\n\
+  #source_grid.load('manta_em_influence.uni')\n\
+  print (\"Source_Grid\" , str(source_grid))\n\
+  #density.add(source_grid)\n\
   #addForceField(flags=flags, vel=vel,force=forces)\n\
   \n\
   advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$)\n\
