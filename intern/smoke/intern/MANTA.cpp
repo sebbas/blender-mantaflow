@@ -345,6 +345,10 @@ string Manta_API::gridNameFromType(const string &type)
 	{
 		return "RealGrid";
 	}
+	else if (type == "Vec3")
+	{
+		return "MACGrid";	
+	}
 	else
 	{
 		cout<<"ERROR: can not create grid from type: "<< type << endl;
@@ -361,7 +365,7 @@ void Manta_API::addGrid(void * data, string name, string type, int x, int y, int
 	stringStream << grid_name << " = s.create(" << gridNameFromType(type) << ")";
 	const std::string command_1 = stringStream.str();
 	stringStream.str("");
-	stringStream << grid_name << ".readGridFromMemory("<< data << "," << x << "," << z << "," << y << ")";
+	stringStream << grid_name << ".readGridFromMemory(\'"<< data << "\',\'" << name << "\', " << x << "," << z << "," << y << ")";
 	const std::string command_2 = stringStream.str();
 	const std::string command_3 = name + ".add(" + grid_name + ")";
 	PyGILState_STATE gilstate = PyGILState_Ensure();

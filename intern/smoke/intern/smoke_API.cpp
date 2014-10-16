@@ -528,7 +528,19 @@ extern "C" void manta_write_effectors(struct Scene *s, struct SmokeModifierData 
 	float *force_x = smoke_get_force_x(smd->domain->fluid);
 	float *force_y = smoke_get_force_y(smd->domain->fluid);
 	float *force_z = smoke_get_force_z(smd->domain->fluid);
-	export_force_fields(size_x, size_y, size_z, force_x, force_y, force_z);
+//	export_force_fields(size_x, size_y, size_z, force_x, force_y, force_z);
+	/*accumulate all force fields in one grid*/
+	Vec3 * accumulated_force = (Vec3*)malloc(size_x * size_y * size_z * sizeof(Vec3));
+	long index(0);
+	for (int x(0); x < size_x; x++){
+			for (int y(0); y < size_y; y++){
+				for (int z(0); z < size_z; z++){
+					index = x + y * size_x + z * size_x * size_y;
+					accumulated_force[index] = Vec3(force_x[x], force_y[y], force_z[z]);
+				}	
+			}		
+		}
+	Manta_API::addGrid(accumulated_force, "forces", "Vec3", size_x, size_y, size_z);
 }
 
 extern "C" void manta_write_emitters(struct SmokeFlowSettings *sfs, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z,float *influence, float *vel)

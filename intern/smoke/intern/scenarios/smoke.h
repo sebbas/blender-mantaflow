@@ -88,7 +88,7 @@ const string smoke_step_low = "def sim_step(t):\n\
   #source_grid.load('manta_em_influence.uni')\n\
   print (\"Source_Grid\" , str(source_grid))\n\
   #density.add(source_grid)\n\
-  #addForceField(flags=flags, vel=vel,force=forces)\n\
+  addForceField(flags=flags, vel=vel,force=forces)\n\
   \n\
   advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$)\n\
   advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=$ADVECT_ORDER$, strength=1.0)\n\
