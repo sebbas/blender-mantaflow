@@ -339,7 +339,7 @@ void Manta_API::stop_manta_sim()
 	pthread_cancel(manta_thread);
 }
 
-void Manta_API::addGrid(float * data, string name, int x, int y, int z)
+void Manta_API::addGrid(void * data, string name, int x, int y, int z)
 {
 	std::ostringstream stringStream;
 	stringStream << "temp_" << name;
@@ -358,7 +358,7 @@ void Manta_API::addGrid(float * data, string name, int x, int y, int z)
 	PyGILState_Release(gilstate);		
 }
 
-void Manta_API::addAdaptiveGrid(float * data, string name, int minX, int minY, int minZ, int maxX, int maxY, int maxZ)
+void Manta_API::addAdaptiveGrid(void * data, string name, int minX, int minY, int minZ, int maxX, int maxY, int maxZ)
 {
 	if (data == NULL)
 	{
