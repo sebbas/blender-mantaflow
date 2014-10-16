@@ -534,7 +534,7 @@ extern "C" void manta_write_effectors(struct Scene *s, struct SmokeModifierData 
 extern "C" void manta_write_emitters(struct SmokeFlowSettings *sfs, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z,float *influence, float *vel)
 {
 //	manta_update_effectors(s, smd->domain->manta_obj, smd->domain, 0.1f);
-	Manta_API::addAdaptiveGrid(influence, "density", 
+	Manta_API::addAdaptiveGrid(influence, "density", "float",
 										   min_x, min_y, min_z, max_x, max_y, max_z);
 //	export_em_fields(Manta_API::instance()->_emission_map,sfs->density, min_x,  min_y,  min_z,  max_x,  max_y,  max_z,  d_x,  d_y,  d_z,  influence,  vel);
 }

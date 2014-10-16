@@ -83,8 +83,9 @@ public:
 	
 	pthread_t manta_thread;
 	
-	static void addGrid(void * data,string name, int x, int y, int z);
-	static void addAdaptiveGrid(void * data, string name, int minX, int minY, int minZ, int maxX, int maxY, int maxZ);
+	static string gridNameFromType(const string& type);
+	static void addGrid(void * data,string name, string type, int x, int y, int z);
+	static void addAdaptiveGrid(void * data, string name, string type,int minX, int minY, int minZ, int maxX, int maxY, int maxZ);
 };
 
 

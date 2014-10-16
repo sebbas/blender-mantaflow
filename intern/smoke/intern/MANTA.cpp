@@ -339,13 +339,26 @@ void Manta_API::stop_manta_sim()
 	pthread_cancel(manta_thread);
 }
 
-void Manta_API::addGrid(void * data, string name, int x, int y, int z)
+string Manta_API::gridNameFromType(const string &type)
+{
+	if (type == "float")
+	{
+		return "RealGrid";
+	}
+	else
+	{
+		cout<<"ERROR: can not create grid from type: "<< type << endl;
+		return "";
+	}
+}
+
+void Manta_API::addGrid(void * data, string name, string type, int x, int y, int z)
 {
 	std::ostringstream stringStream;
 	stringStream << "temp_" << name;
 	std::string grid_name = stringStream.str();
 	stringStream.str("");
-	stringStream << grid_name << " = s.create(RealGrid)";
+	stringStream << grid_name << " = s.create(" << gridNameFromType(type) << ")";
 	const std::string command_1 = stringStream.str();
 	stringStream.str("");
 	stringStream << grid_name << ".readGridFromMemory("<< data << "," << x << "," << z << "," << y << ")";
@@ -358,7 +371,7 @@ void Manta_API::addGrid(void * data, string name, int x, int y, int z)
 	PyGILState_Release(gilstate);		
 }
 
-void Manta_API::addAdaptiveGrid(void * data, string name, int minX, int minY, int minZ, int maxX, int maxY, int maxZ)
+void Manta_API::addAdaptiveGrid(void * data, string name, string type, int minX, int minY, int minZ, int maxX, int maxY, int maxZ)
 {
 	if (data == NULL)
 	{
@@ -369,7 +382,7 @@ void Manta_API::addAdaptiveGrid(void * data, string name, int minX, int minY, in
 	stringStream << "temp_" << name;
 	std::string grid_name = stringStream.str();
 	stringStream.str("");
-	stringStream << grid_name << " = s.create(RealGrid)";
+	stringStream << grid_name << " = s.create(" << gridNameFromType(type) << ")";
 	const std::string command_1 = stringStream.str();
 	stringStream.str("");
 	stringStream << grid_name << ".readAdaptiveGridFromMemory(\'"<< data << "\',\'" << name << "\', vec3(" << minX << "," << minY << "," << minZ << 
