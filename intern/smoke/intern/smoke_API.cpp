@@ -551,6 +551,11 @@ extern "C" void manta_write_emitters(struct SmokeFlowSettings *sfs, int min_x, i
 //	export_em_fields(Manta_API::instance()->_emission_map,sfs->density, min_x,  min_y,  min_z,  max_x,  max_y,  max_z,  d_x,  d_y,  d_z,  influence,  vel);
 }
 
+extern "C" void manta_export_obstacles(float * influence, int x, int y, int z)
+{
+	Manta_API::export_obstacles(influence, x, y, z);
+}
+
 extern "C" void smoke_mantaflow_stop_sim()
 {
 	Manta_API::instance()->stop_manta_sim();

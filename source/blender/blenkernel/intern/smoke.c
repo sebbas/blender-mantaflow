@@ -914,27 +914,31 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 
 	if (collobjs)
 		MEM_freeN(collobjs);
-
+	
+	float *manta_obs_sdf = (float*)malloc(sizeof(float) * sds->res[0] * sds->res[1] * sds->res[2]);
 	/* obstacle cells should not contain any velocity from the smoke simulation */
 	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
 	{
+		manta_obs_sdf[z] = 0.;
 		if (obstacles[z])
 		{
-			velxOrig[z] = 0;
-			velyOrig[z] = 0;
-			velzOrig[z] = 0;
-			density[z] = 0;
-			if (fuel) {
-				fuel[z] = 0;
-				flame[z] = 0;
-			}
-			if (r) {
-				r[z] = 0;
-				g[z] = 0;
-				b[z] = 0;
-			}
+			manta_obs_sdf[z] = 1.;
+//			velxOrig[z] = 0;
+//			velyOrig[z] = 0;
+//			velzOrig[z] = 0;
+//			density[z] = 0;
+//			if (fuel) {
+//				fuel[z] = 0;
+//				flame[z] = 0;
+//			}
+//			if (r) {
+//				r[z] = 0;
+//				g[z] = 0;
+//				b[z] = 0;
+//			}
 		}
 	}
+	manta_export_obstacles(manta_obs_sdf, sds->res[0], sds->res[1], sds->res[2]);
 }
 
 

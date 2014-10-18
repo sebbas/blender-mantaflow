@@ -410,7 +410,7 @@ void Manta_API::export_obstacles(float *data, int x, int y, int z)
 	stringStream << grid_name << " = s.create(RealGrid)";
 	const std::string command_1 = stringStream.str();
 	stringStream.str("");
-	stringStream << grid_name << ".readGridFromMemory(\'"<< data << "\',\'" << grid_name << "\', " << x << "," << y << "," << z << ")";
+	stringStream << grid_name << ".readGridFromMemory(\'"<< data << "\', " << x << "," << y << "," << z << ")";
 	const std::string command_2 = stringStream.str();
 	const std::string command_3 = grid_name + ".applyToGrid(grid = flags, value = FlagObstacle)";
 	PyGILState_STATE gilstate = PyGILState_Ensure();
