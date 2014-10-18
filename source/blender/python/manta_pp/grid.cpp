@@ -348,8 +348,9 @@ template<class T> void Grid<T>::writeGridToMemory(const std::string& memLoc, con
 	memcpy(gridPointer, mData, sizeAllowed_num);
 }
 
-template<class T> void Grid<T>::readGridFromMemory(const std::string& memLoc, const std::string& gridName, int x, int y, int z)
+template<class T> void Grid<T>::readGridFromMemory(const std::string& memLoc, int x, int y, int z)
 {
+	debMsg("Reading grid from " + memLoc,1);
 	if (memLoc == "" ||memLoc == "0" ){
 		debMsg("Can not write grid to NULL pointer",1);
 		return;
@@ -365,7 +366,7 @@ template<class T> void Grid<T>::readGridFromMemory(const std::string& memLoc, co
 	memcpy(mData, gridPointer, sizeof(T) * x * y * z);
 }
 
-template<class T> void Grid<T>::readAdaptiveGridFromMemory(const std::string& memLoc, const std::string& gridname, Vec3i minSize, Vec3i maxSize)
+template<class T> void Grid<T>::readAdaptiveGridFromMemory(const std::string& memLoc, Vec3i minSize, Vec3i maxSize)
 {
 	if (memLoc == "" ||memLoc == "0" ){
 		debMsg("Can not write grid to NULL pointer",1);
@@ -379,7 +380,7 @@ template<class T> void Grid<T>::readAdaptiveGridFromMemory(const std::string& me
 		debMsg("Adaptive grid larger than current",1);
 		return;
 	}
-	Vec3i adaptiveSize = maxSize - minSize + Vec3i(1);
+	Vec3i adaptiveSize = maxSize - minSize;
 	stringstream ss(memLoc);
 	void *gridPointer = NULL;
 	ss >> gridPointer;
@@ -387,7 +388,7 @@ template<class T> void Grid<T>::readAdaptiveGridFromMemory(const std::string& me
 	for (int x = 0; x < adaptiveSize.x; ++x){
 		for (int y = 0; y < adaptiveSize.y; ++y){
 			for (int z = 0; z < adaptiveSize.z; ++z){
-				get(x + minSize.x, y + minSize.y, z + minSize.z) = data_Array[(x + minSize.x) + adaptiveSize.x * (y + minSize.y) + adaptiveSize.x * adaptiveSize.y * (z + minSize.z)];
+				get(x + minSize.x, y + minSize.y, z + minSize.z) = data_Array[x  + adaptiveSize.x * y + adaptiveSize.x * adaptiveSize.y * z];
 			}
 		}
 	}
@@ -403,10 +404,20 @@ template<class T> void Grid<T>::readAdaptiveGridFromMemory(const std::string& me
 		(*grid)(i,j,k) = (*texture)(i,j,k) * value;
 }   inline Grid<Real> * getArg0() { return grid; } typedef Grid<Real>  type0;inline Grid<Real> * getArg1() { return texture; } typedef Grid<Real>  type1;inline Real& getArg2() { return value; } typedef Real type2;inline FlagGrid* getArg3() { return respectFlags; } typedef FlagGrid type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, grid,texture,value,respectFlags);  } Grid<Real> * grid; Grid<Real> * texture; Real value; FlagGrid* respectFlags;   };
 
+
+ struct ApplyTextureToIntGrid : public KernelBase { ApplyTextureToIntGrid(Grid<int> *grid, Grid<Real> *texture, int value, FlagGrid* respectFlags) :  KernelBase(grid,0) ,grid(grid),texture(texture),value(value),respectFlags(respectFlags)   { run(); }  inline void op(int i, int j, int k, Grid<int> *grid, Grid<Real> *texture, int value, FlagGrid* respectFlags )  {
+	if (respectFlags && respectFlags->isObstacle(i,j,k))
+		return;
+	if ((*texture)(i,j,k) > 0)
+		(*grid)(i,j,k) = value ;
+}   inline Grid<int> * getArg0() { return grid; } typedef Grid<int>  type0;inline Grid<Real> * getArg1() { return texture; } typedef Grid<Real>  type1;inline int& getArg2() { return value; } typedef int type2;inline FlagGrid* getArg3() { return respectFlags; } typedef FlagGrid type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, grid,texture,value,respectFlags);  } Grid<int> * grid; Grid<Real> * texture; int value; FlagGrid* respectFlags;   };
+
 template<class T> void Grid<T>::applyToGrid(GridBase *grid, FlagGrid* respectFlags)
 {
 	if (this->getType() & GridBase::TypeReal)
 		ApplyTextureToRealGrid((Grid<Real>*)grid, (Grid<Real>*)this, _args.get<Real>("value"), respectFlags);
+	if (this->getType() & GridBase::TypeInt)
+		ApplyTextureToIntGrid((Grid<int>*)grid, (Grid<Real>*)this, _args.get<int>("value"), respectFlags);
 }
 
 // helper functions for UV grid data (stored grid coordinates as Vec3 values, and uv weight in entry zero)

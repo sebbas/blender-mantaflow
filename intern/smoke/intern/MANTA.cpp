@@ -365,7 +365,7 @@ void Manta_API::addGrid(void * data, string name, string type, int x, int y, int
 	stringStream << grid_name << " = s.create(" << gridNameFromType(type) << ")";
 	const std::string command_1 = stringStream.str();
 	stringStream.str("");
-	stringStream << grid_name << ".readGridFromMemory(\'"<< data << "\',\'" << name << "\', " << x << "," << z << "," << y << ")";
+	stringStream << grid_name << ".readGridFromMemory(\'"<< data << "\', " << x << "," << z << "," << y << ")";
 	const std::string command_2 = stringStream.str();
 	const std::string command_3 = name + ".add(" + grid_name + ")";
 	PyGILState_STATE gilstate = PyGILState_Ensure();
@@ -389,7 +389,7 @@ void Manta_API::addAdaptiveGrid(void * data, string name, string type, int minX,
 	stringStream << grid_name << " = s.create(" << gridNameFromType(type) << ")";
 	const std::string command_1 = stringStream.str();
 	stringStream.str("");
-	stringStream << grid_name << ".readAdaptiveGridFromMemory(\'"<< data << "\',\'" << name << "\', vec3(" << minX << "," << minY << "," << minZ << 
+	stringStream << grid_name << ".readAdaptiveGridFromMemory(\'"<< data << "\', vec3(" << minX << "," << minY << "," << minZ << 
 	"), vec3(" << maxX << "," << maxY << "," << maxZ << ") )";
 	const std::string command_2 = stringStream.str();
 	const std::string command_3 = name + ".add(" + grid_name + ")";
@@ -401,6 +401,25 @@ void Manta_API::addAdaptiveGrid(void * data, string name, string type, int minX,
 	PyRun_SimpleString(command_3.c_str());
 	PyGILState_Release(gilstate);		
 }
+
+void Manta_API::export_obstacles(float *data, int x, int y, int z)
+{
+	std::ostringstream stringStream;
+	std::string grid_name = "obs_sdf";
+	stringStream.str("");
+	stringStream << grid_name << " = s.create(RealGrid)";
+	const std::string command_1 = stringStream.str();
+	stringStream.str("");
+	stringStream << grid_name << ".readGridFromMemory(\'"<< data << "\',\'" << grid_name << "\', " << x << "," << y << "," << z << ")";
+	const std::string command_2 = stringStream.str();
+	const std::string command_3 = grid_name + ".applyToGrid(grid = flags, value = FlagObstacle)";
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	PyRun_SimpleString(command_1.c_str());
+	PyRun_SimpleString(command_2.c_str());
+	PyRun_SimpleString(command_3.c_str());
+	PyGILState_Release(gilstate);		
+}
+
 
 void Manta_API::run_manta_sim_thread(void *arguments)
 {
