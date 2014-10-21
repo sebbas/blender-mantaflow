@@ -543,12 +543,15 @@ extern "C" void manta_write_effectors(struct Scene *s, struct SmokeModifierData 
 	Manta_API::addGrid(accumulated_force, "forces", "Vec3", size_x, size_y, size_z);
 }
 
-extern "C" void manta_write_emitters(struct SmokeFlowSettings *sfs, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z,float *influence, float *vel)
+extern "C" void manta_write_emitters(struct SmokeFlowSettings *sfs, bool highRes, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z,float *influence, float *vel)
 {
 //	manta_update_effectors(s, smd->domain->manta_obj, smd->domain, 0.1f);
-	Manta_API::addAdaptiveGrid(influence, "density", "float",
+	if (! highRes)
+		Manta_API::addAdaptiveGrid(influence, "density", "s", "float",
 										   min_x, min_y, min_z, max_x, max_y, max_z);
-//	export_em_fields(Manta_API::instance()->_emission_map,sfs->density, min_x,  min_y,  min_z,  max_x,  max_y,  max_z,  d_x,  d_y,  d_z,  influence,  vel);
+	else 
+		Manta_API::addAdaptiveGrid(influence, "xl_density", "xl", "float", min_x, min_y, min_z, max_x, max_y, max_z);
+	//	export_em_fields(Manta_API::instance()->_emission_map,sfs->density, min_x,  min_y,  min_z,  max_x,  max_y,  max_z,  d_x,  d_y,  d_z,  influence,  vel);
 }
 
 extern "C" void manta_export_obstacles(float * influence, int x, int y, int z)

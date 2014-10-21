@@ -17,7 +17,7 @@ def load_once(grid, file, dict):\n\
 res = $RES$\n\
 gs = vec3($RESX$,$RESY$,$RESZ$)\n\
 s = FluidSolver(name='main', gridSize = gs)\n\
-s.timestep = 1.0\n\
+s.timestep = 0.1\n\
 timings = Timings()\n\
 \n\
 # prepare grids\n\
@@ -45,7 +45,8 @@ forces = s.create(MACGrid)\n\
 dict_loaded = dict()\n";
 
 const string smoke_setup_high = "xl_gs = vec3($HRESX$, $HRESY$, $HRESZ$) \n\
-xl = Solver(name = 'larger', gridSize = xl_gs, dim = solver_dim) \n\
+xl = Solver(name = 'larger', gridSize = xl_gs) \n\
+uvs =$UVS_CNT$\n\
 if $USE_WAVELETS$:\n\
   upres = $UPRES$\n\
   wltStrength = $WLT_STR$\n\
@@ -60,9 +61,9 @@ if $USE_WAVELETS$ and $UPRES$ > 0:\n\
   xl_flags = xl.create(FlagGrid) \n\
   xl_flags.initDomain() \n\
   xl_flags.fillGrid() \n\
-  xl_source = s.create(Mesh)\n\
-  xl_source.load('manta_flow.obj')\n\
-  transform_back(xl_source, gs)\n\
+  #xl_source = s.create(Mesh)\n\
+  #xl_source.load('manta_flow.obj')\n\
+  #transform_back(xl_source, gs)\n\
   xl_noise = xl.create(NoiseField, fixedSeed=256, loadFromFile=True) \n\
   xl_noise.posScale = vec3(20) \n\
   xl_noise.clamp = False \n\
@@ -71,7 +72,7 @@ if $USE_WAVELETS$ and $UPRES$ > 0:\n\
   xl_noise.valScale = $NOISE_VALSCALE$ \n\
   xl_noise.valOffset = $NOISE_VALOFFSET$ \n\
   xl_noise.timeAnim = $NOISE_TIMEANIM$ * $UPRES$ \n\
-  xl_wltnoise = s.create(NoiseField, loadFromFile=True) \n\
+  xl_wltnoise = xl.create(NoiseField, loadFromFile=True) \n\
   xl_wltnoise.posScale = vec3( int(1.0*gs.x) ) * 0.5 \n\
   xl_wltnoise.posScale = xl_wltnoise.posScale * 0.5\n\
   xl_wltnoise.timeAnim = 0.1 \n\
@@ -100,7 +101,7 @@ const string smoke_step_low = "def sim_step(t):\n\
   setWallBcs(flags=flags, vel=vel)\n\
   \n\
   density.writeGridToMemory(memLoc = \"$DENSITY_MEM$\",sizeAllowed = \"$DENSITY_SIZE$\") \n\
-  s.step()";
+  s.step()\n";
 //  if (t>=0 and t<75):\n\
 //    densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)\n\
 //    #if noise.valScale > 0.:\n\
@@ -132,12 +133,16 @@ const string smoke_step_high = "  interpolateMACGrid( source=vel, target=xl_vel 
     sPos *= 2.0 \n\
   for substep in range(upres):  \n\
     advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=$ADVECT_ORDER$)  \n\
-  if (applyInflow): \n\
-    if noise.valScale > 0.:\n\
-      densityInflowMeshNoise( flags=xl_flags, density=xl_density, noise=xl_wltnoise, mesh=source, scale=3, sigma=0.5 )\n\
-    else:\n\
-      densityInflowMesh(flags=xl_flags, density=xl_density, mesh=source, value=1)\n\
-  xl_density.save('densityXl_%04d.uni' % t)\n\
+  #DENSITY INFLOW\n\
+  \n\
+  #if (applyInflow): \n\
+  #  if noise.valScale > 0.:\n\
+  #    densityInflowMeshNoise( flags=xl_flags, density=xl_density, noise=xl_wltnoise, mesh=source, scale=3, sigma=0.5 )\n\
+  #  else:\n\
+  #    densityInflowMesh(flags=xl_flags, density=xl_density, mesh=source, value=1)\n\
+  #DENSITY OUTPUT\n\
+  xl_density.writeGridToMemory(memLoc = \"$XL_DENSITY_MEM$\",sizeAllowed = \"$XL_DENSITY_SIZE$\") \n\
+  #xl_density.save('densityXl_%04d.uni' % t)\n\
   xl.step()\n";
 
 const string full_smoke_setup = "from manta import * \n\

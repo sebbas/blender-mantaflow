@@ -375,24 +375,24 @@ void Manta_API::addGrid(void * data, string name, string type, int x, int y, int
 	PyGILState_Release(gilstate);		
 }
 
-void Manta_API::addAdaptiveGrid(void * data, string name, string type, int minX, int minY, int minZ, int maxX, int maxY, int maxZ)
+void Manta_API::addAdaptiveGrid(void * data, string gridName, string solverName, string type, int minX, int minY, int minZ, int maxX, int maxY, int maxZ)
 {
 	if (data == NULL)
 	{
-		cout << "NULL pointer passed to grid addAdaptiveGrid for grid " << name <<endl;
+		cout << "NULL pointer passed to grid addAdaptiveGrid for grid " << gridName <<endl;
 		return;
 	}
 	std::ostringstream stringStream;
-	stringStream << "temp_" << name;
-	std::string grid_name = stringStream.str();
+	stringStream << "temp_" <<gridName;
+	std::string temp_grid_name = stringStream.str();
 	stringStream.str("");
-	stringStream << grid_name << " = s.create(" << gridNameFromType(type) << ")";
+	stringStream << temp_grid_name << " = "<< solverName << ".create(" << gridNameFromType(type) << ")";
 	const std::string command_1 = stringStream.str();
 	stringStream.str("");
-	stringStream << grid_name << ".readAdaptiveGridFromMemory(\'"<< data << "\', vec3(" << minX << "," << minY << "," << minZ << 
+	stringStream << temp_grid_name << ".readAdaptiveGridFromMemory(\'"<< data << "\', vec3(" << minX << "," << minY << "," << minZ << 
 	"), vec3(" << maxX << "," << maxY << "," << maxZ << ") )";
 	const std::string command_2 = stringStream.str();
-	const std::string command_3 = name + ".add(" + grid_name + ")";
+	const std::string command_3 = gridName + ".add(" + temp_grid_name + ")";
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	PyRun_SimpleString("print('Reading Adaptive grid from memory')");
 	PyRun_SimpleString("print (s)");
@@ -528,6 +528,10 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 		ss << smd->domain->fluid->_density;
 	else if (varName == "DENSITY_SIZE")
 		ss << sizeof(float) * smd->domain->total_cells;
+	else if (varName == "XL_DENSITY_MEM")
+		ss << smd->domain->wt->_densityBig;
+	else if (varName == "XL_DENSITY_SIZE")
+		ss << sizeof(float) * smd->domain->wt->_xResBig * smd->domain->wt->_yResBig * smd->domain->wt->_zResBig;
 	else 
 		cout<< "ERROR: Unknown option:"<< varName <<endl; 
 	return ss.str();

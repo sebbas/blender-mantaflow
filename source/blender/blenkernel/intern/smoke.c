@@ -184,8 +184,10 @@ void smoke_reallocate_fluid(SmokeDomainSettings *sds, float dx, int res[3], int 
 	smoke_initBlenderRNA(sds->fluid, &(sds->alpha), &(sds->beta), &(sds->time_scale), &(sds->vorticity), &(sds->border_collisions),
 	                     &(sds->burning_rate), &(sds->flame_smoke), sds->flame_smoke_color, &(sds->flame_vorticity), &(sds->flame_ignition), &(sds->flame_max_temp));
 
-	/*initializing mantaflow fields*/
-	if (sds->flags & MOD_SMOKE_USE_MANTA){
+	/*initializing mantaflow fields only if low-res sim
+	 if wavelets present, init in smoke_reallocate_highres_fluid
+	 */
+	if (sds->flags & MOD_SMOKE_USE_MANTA && !(sds->flags & MOD_SMOKE_HIGHRES)){
 		smoke_mantaflow_write_scene_file(sds->smd);
 	}
 	/* reallocate shadow buffer */
@@ -210,7 +212,9 @@ void smoke_reallocate_highres_fluid(SmokeDomainSettings *sds, float dx, int res[
 	BLI_lock_thread(LOCK_FFTW);
 
 	sds->wt = smoke_turbulence_init(res, sds->amplify + 1, sds->noise, BLI_temporary_dir(), use_fire, use_colors);
-
+	if (sds->flags & MOD_SMOKE_USE_MANTA){
+		smoke_mantaflow_write_scene_file(sds->smd);
+	}
 	BLI_unlock_thread(LOCK_FFTW);
 
 	sds->res_wt[0] = res[0] * (sds->amplify + 1);
@@ -915,7 +919,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	if (collobjs)
 		MEM_freeN(collobjs);
 	
-	float *manta_obs_sdf = (float*)malloc(sizeof(float) * sds->res[0] * sds->res[1] * sds->res[2]);
+	float *manta_obs_sdf = MEM_callocN(sds->res[0] * sds->res[1] * sds->res[2] * sizeof(float), "manta_obstacle_SDF");
 	/* obstacle cells should not contain any velocity from the smoke simulation */
 	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
 	{
@@ -939,6 +943,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 		}
 	}
 	manta_export_obstacles(manta_obs_sdf, sds->res[0], sds->res[1], sds->res[2]);
+	MEM_freeN(manta_obs_sdf);
 }
 
 
@@ -2234,7 +2239,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				// we got nice flow object
 				SmokeFlowSettings *sfs = smd2->flow;
 				EmissionMap *em = &emaps[flowIndex];
-				manta_write_emitters(sfs,em->min[0],em->min[1],em->min[2],em->max[0],em->max[1],em->max[2],sds->res[0],sds->res[1],sds->res[2], em->influence, em->velocity);
+				manta_write_emitters(sfs,false,em->min[0],em->min[1],em->min[2],em->max[0],em->max[1],em->max[2],sds->res[0],sds->res[1],sds->res[2], em->influence, em->velocity);
 				float *density = smoke_get_density(sds->fluid);
 				float *color_r = smoke_get_color_r(sds->fluid);
 				float *color_g = smoke_get_color_g(sds->fluid);
@@ -2260,7 +2265,9 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 
 				int ii, jj, kk, gx, gy, gz, ex, ey, ez, dx, dy, dz, block_size;
 				size_t e_index, d_index, index_big;
-
+				smoke_turbulence_get_res(sds->wt, bigres);				
+				float *manta_big_inflow_sdf = MEM_callocN(bigres[0] * bigres[1] * bigres[2] * sizeof(float), "manta_highres_inflow");
+				
 				// loop through every emission map cell
 				for (gx = em->min[0]; gx < em->max[0]; gx++)
 					for (gy = em->min[1]; gy < em->max[1]; gy++)
@@ -2373,10 +2380,13 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 											}
 											else { // inflow
 												apply_inflow_fields(sfs, interpolated_value, index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b);
+												manta_big_inflow_sdf[index_big] = interpolated_value;
 											}
 										} // hires loop
 							}  // bigdensity
 						} // low res loop
+				manta_write_emitters(sfs,true,0,0,0,bigres[0], bigres[1], bigres[2], bigres[0], bigres[1], bigres[2],manta_big_inflow_sdf, NULL);
+				MEM_freeN(manta_big_inflow_sdf);
 
 				// free emission maps
 				em_freeData(em);

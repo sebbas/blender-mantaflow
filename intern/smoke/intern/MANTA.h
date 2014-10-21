@@ -85,7 +85,7 @@ public:
 	
 	static string gridNameFromType(const string& type);
 	static void addGrid(void * data,string name, string type, int x, int y, int z);
-	static void addAdaptiveGrid(void * data, string name, string type,int minX, int minY, int minZ, int maxX, int maxY, int maxZ);
+	static void addAdaptiveGrid(void * data, string gridName, string solverName, string type,int minX, int minY, int minZ, int maxX, int maxY, int maxZ);
 	static void export_obstacles(float *data, int x, int y, int z);
 	
 };
