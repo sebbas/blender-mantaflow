@@ -942,7 +942,9 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 //			}
 		}
 	}
-	manta_export_obstacles(manta_obs_sdf, sds->res[0], sds->res[1], sds->res[2]);
+	if(sds->flags & MOD_SMOKE_USE_MANTA){
+		manta_export_obstacles(manta_obs_sdf, sds->res[0], sds->res[1], sds->res[2]);
+	}
 	MEM_freeN(manta_obs_sdf);
 }
 
@@ -2239,7 +2241,9 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				// we got nice flow object
 				SmokeFlowSettings *sfs = smd2->flow;
 				EmissionMap *em = &emaps[flowIndex];
-				manta_write_emitters(sfs,false,em->min[0],em->min[1],em->min[2],em->max[0],em->max[1],em->max[2],sds->res[0],sds->res[1],sds->res[2], em->influence, em->velocity);
+				if(sds->flags & MOD_SMOKE_USE_MANTA){
+					manta_write_emitters(sfs,false,em->min[0],em->min[1],em->min[2],em->max[0],em->max[1],em->max[2],sds->res[0],sds->res[1],sds->res[2], em->influence, em->velocity);
+				}
 				float *density = smoke_get_density(sds->fluid);
 				float *color_r = smoke_get_color_r(sds->fluid);
 				float *color_g = smoke_get_color_g(sds->fluid);
@@ -2380,12 +2384,16 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 											}
 											else { // inflow
 												apply_inflow_fields(sfs, interpolated_value, index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b);
-												manta_big_inflow_sdf[index_big] = interpolated_value;
+												if(sds->flags & MOD_SMOKE_USE_MANTA){
+													manta_big_inflow_sdf[index_big] = interpolated_value;
+												}
 											}
 										} // hires loop
 							}  // bigdensity
 						} // low res loop
-				manta_write_emitters(sfs,true,0,0,0,bigres[0], bigres[1], bigres[2], bigres[0], bigres[1], bigres[2],manta_big_inflow_sdf, NULL);
+				if((sds->flags & MOD_SMOKE_USE_MANTA) && (bigdensity)){
+					manta_write_emitters(sfs,true,0,0,0,bigres[0], bigres[1], bigres[2], bigres[0], bigres[1], bigres[2],manta_big_inflow_sdf, NULL);
+				}
 				MEM_freeN(manta_big_inflow_sdf);
 
 				// free emission maps
@@ -2615,7 +2623,7 @@ static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *
 
 		if (sds->total_cells > 1) {
 			update_effectors(scene, ob, sds, dtSubdiv); // DG TODO? problem --> uses forces instead of velocity, need to check how they need to be changed with variable dt
-			if (sds->flags && MOD_SMOKE_USE_MANTA){
+			if (sds->flags & MOD_SMOKE_USE_MANTA){
 				smoke_mantaflow_sim_step(scene,smd);
 			}
 			else{
