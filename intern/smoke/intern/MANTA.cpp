@@ -365,7 +365,7 @@ void Manta_API::addGrid(void * data, string name, string type, int x, int y, int
 	stringStream << grid_name << " = s.create(" << gridNameFromType(type) << ")";
 	const std::string command_1 = stringStream.str();
 	stringStream.str("");
-	stringStream << grid_name << ".readGridFromMemory(\'"<< data << "\', " << x << "," << z << "," << y << ")";
+	stringStream << grid_name << ".readGridFromMemory(\'"<< data << "\', " << x << "," << y << "," << z << ")";
 	const std::string command_2 = stringStream.str();
 	const std::string command_3 = name + ".add(" + grid_name + ")";
 	PyGILState_STATE gilstate = PyGILState_Ensure();
