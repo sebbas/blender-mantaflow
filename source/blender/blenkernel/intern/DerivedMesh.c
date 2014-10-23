@@ -37,12 +37,14 @@
 
 #include "DNA_cloth_types.h"
 #include "DNA_key_types.h"
+#include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_bitmap.h"
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
 #include "BLI_linklist.h"
@@ -70,11 +72,10 @@ static DerivedMesh *navmesh_dm_createNavMeshForVisualization(DerivedMesh *dm);
 
 #include "BLI_sys_types.h" /* for intptr_t support */
 
-#include "GL/glew.h"
-
 #include "GPU_buffers.h"
 #include "GPU_draw.h"
 #include "GPU_extensions.h"
+#include "GPU_glew.h"
 #include "GPU_material.h"
 
 /* very slow! enable for testing only! */
@@ -501,11 +502,36 @@ void DM_update_materials(DerivedMesh *dm, Object *ob)
 
 	dm->mat = MEM_callocN(totmat * sizeof(*dm->mat), "DerivedMesh.mat");
 
-	for (i = 1; i < totmat; i++) {
-		dm->mat[i] = give_current_material(ob, i);
+	/* we leave last material as empty - rationale here is being able to index
+	 * the materials by using the mf->mat_nr directly and leaving the last
+	 * material as NULL in case no materials exist on mesh, so indexing will not fail */
+	for (i = 0; i < totmat - 1; i++) {
+		dm->mat[i] = give_current_material(ob, i + 1);
 	}
 }
 
+MTFace *DM_paint_uvlayer_active_get(DerivedMesh *dm, int mat_nr)
+{
+	MTFace *tf_base;
+
+	BLI_assert(mat_nr < dm->totmat);
+
+	if (dm->mat[mat_nr] && dm->mat[mat_nr]->texpaintslot &&
+	    dm->mat[mat_nr]->texpaintslot[dm->mat[mat_nr]->paint_active_slot].uvname)
+	{
+		tf_base = CustomData_get_layer_named(&dm->faceData, CD_MTFACE,
+		                                     dm->mat[mat_nr]->texpaintslot[dm->mat[mat_nr]->paint_active_slot].uvname);
+		/* This can fail if we have changed the name in the UV layer list and have assigned the old name in the material
+		 * texture slot.*/
+		if (!tf_base)
+			tf_base = CustomData_get_layer(&dm->faceData, CD_MTFACE);
+	}
+	else {
+		tf_base = CustomData_get_layer(&dm->faceData, CD_MTFACE);
+	}
+
+	return tf_base;
+}
 
 void DM_to_mesh(DerivedMesh *dm, Mesh *me, Object *ob, CustomDataMask mask)
 {
@@ -615,7 +641,8 @@ void DM_to_mesh(DerivedMesh *dm, Mesh *me, Object *ob, CustomDataMask mask)
 		MEM_freeN(me->mselect);
 	}
 
-	*me = tmp;
+	/* skip the listbase */
+	MEMCPY_STRUCT_OFS(me, &tmp, id.prev);
 }
 
 void DM_to_meshkey(DerivedMesh *dm, Mesh *me, KeyBlock *kb)
@@ -1107,7 +1134,7 @@ static void weightpaint_color(unsigned char r_col[4], DMWeightColorInfo *dm_wcin
 
 static void calc_weightpaint_vert_color(
         unsigned char r_col[4],
-        MDeformVert *dv, 
+        const MDeformVert *dv,
         DMWeightColorInfo *dm_wcinfo,
         const int defbase_tot, const int defbase_act,
         const bool *defbase_sel, const int defbase_sel_tot,
@@ -1122,7 +1149,7 @@ static void calc_weightpaint_vert_color(
 		bool was_a_nonzero = false;
 		unsigned int i;
 
-		MDeformWeight *dw = dv->dw;
+		const MDeformWeight *dw = dv->dw;
 		for (i = dv->totweight; i != 0; i--, dw++) {
 			/* in multipaint, get the average if auto normalize is inactive
 			 * get the sum if it is active */
@@ -1213,14 +1240,15 @@ static void calc_weightpaint_vert_array(Object *ob, DerivedMesh *dm, int const d
 		}
 	}
 	else {
-		int col_i;
+		unsigned char col[4];
 		if (draw_flag & (CALC_WP_GROUP_USER_ACTIVE | CALC_WP_GROUP_USER_ALL)) {
-			col_i = 0;
+			copy_v3_v3_char((char *)col, dm_wcinfo->alert_color);
+			col[3] = 255;
 		}
 		else {
-			weightpaint_color((unsigned char *)&col_i, dm_wcinfo, 0.0f);
+			weightpaint_color(col, dm_wcinfo, 0.0f);
 		}
-		fill_vn_i((int *)r_wtcol_v, numVerts, col_i);
+		fill_vn_i((int *)r_wtcol_v, numVerts, *((int *)col));
 	}
 }
 
@@ -1994,9 +2022,7 @@ static void editbmesh_calc_modifiers(Scene *scene, Object *ob, BMEditMesh *em, D
 		previewmd = modifiers_getLastPreview(scene, md, required_mode);
 		/* even if the modifier doesn't need the data, to make a preview it may */
 		if (previewmd) {
-			if (do_mod_wmcol) {
-				previewmask = CD_MASK_MDEFORMVERT;
-			}
+			previewmask = CD_MASK_MDEFORMVERT;
 		}
 	}
 
@@ -2472,6 +2498,28 @@ DerivedMesh *editbmesh_get_derived_base(Object *obedit, BMEditMesh *em)
 	return getEditDerivedBMesh(em, obedit, NULL);
 }
 
+/***/
+
+/* get derived mesh from an object, using editbmesh if available. */
+DerivedMesh *object_get_derived_final(Object *ob, const bool for_render)
+{
+	Mesh *me = ob->data;
+	BMEditMesh *em = me->edit_btmesh;
+
+	if (for_render) {
+		/* TODO(sergey): use proper derived render here in the future. */
+		return ob->derivedFinal;
+	}
+
+	if (em) {
+		DerivedMesh *dm = em->derivedFinal;
+		return dm;
+	}
+
+	return ob->derivedFinal;
+}
+
+
 /* UNUSED */
 #if 0
 
@@ -2531,6 +2579,44 @@ DMCoNo *mesh_get_mapped_verts_nors(Scene *scene, Object *ob)
 }
 
 #endif
+
+/* same as above but for vert coords */
+typedef struct {
+	float (*vertexcos)[3];
+	BLI_bitmap *vertex_visit;
+} MappedUserData;
+
+static void make_vertexcos__mapFunc(void *userData, int index, const float co[3],
+                                    const float UNUSED(no_f[3]), const short UNUSED(no_s[3]))
+{
+	MappedUserData *mappedData = (MappedUserData *)userData;
+
+	if (BLI_BITMAP_TEST(mappedData->vertex_visit, index) == 0) {
+		/* we need coord from prototype vertex, not from copies,
+		 * assume they stored in the beginning of vertex array stored in DM
+		 * (mirror modifier for eg does this) */
+		copy_v3_v3(mappedData->vertexcos[index], co);
+		BLI_BITMAP_ENABLE(mappedData->vertex_visit, index);
+	}
+}
+
+void mesh_get_mapped_verts_coords(DerivedMesh *dm, float (*r_cos)[3], const int totcos)
+{
+	if (dm->foreachMappedVert) {
+		MappedUserData userData;
+		memset(r_cos, 0, sizeof(*r_cos) * totcos);
+		userData.vertexcos = r_cos;
+		userData.vertex_visit = BLI_BITMAP_NEW(totcos, "vertexcos flags");
+		dm->foreachMappedVert(dm, make_vertexcos__mapFunc, &userData, DM_FOREACH_NOP);
+		MEM_freeN(userData.vertex_visit);
+	}
+	else {
+		int i;
+		for (i = 0; i < totcos; i++) {
+			dm->getVertCo(dm, i, r_cos[i]);
+		}
+	}
+}
 
 /* ******************* GLSL ******************** */
 
@@ -3089,7 +3175,7 @@ static void navmesh_drawColored(DerivedMesh *dm)
 static void navmesh_DM_drawFacesTex(DerivedMesh *dm,
                                     DMSetDrawOptionsTex setDrawOptions,
                                     DMCompareDrawOptions compareDrawOptions,
-                                    void *userData)
+                                    void *userData, DMDrawFlag UNUSED(flag))
 {
 	(void) setDrawOptions;
 	(void) compareDrawOptions;

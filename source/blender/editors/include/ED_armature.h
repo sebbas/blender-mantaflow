@@ -123,7 +123,7 @@ void ED_armature_deselect_all(struct Object *obedit, int toggle);
 void ED_armature_deselect_all_visible(struct Object *obedit);
 
 int ED_do_pose_selectbuffer(struct Scene *scene, struct Base *base, unsigned int *buffer, 
-                            short hits, bool extend, bool deselect, bool toggle);
+                            short hits, bool extend, bool deselect, bool toggle, bool do_nearest);
 bool mouse_armature(struct bContext *C, const int mval[2], bool extend, bool deselect, bool toggle);
 int join_armature_exec(struct bContext *C, struct wmOperator *op);
 struct Bone *get_indexed_bone(struct Object *ob, int index);
@@ -133,8 +133,8 @@ EditBone *ED_armature_bone_get_mirrored(const struct ListBase *edbo, EditBone *e
 void ED_armature_sync_selection(struct ListBase *edbo);
 void ED_armature_validate_active(struct bArmature *arm);
 
-void add_primitive_bone(struct Object *obedit_arm, bool view_aligned);
-struct EditBone *ED_armature_edit_bone_add(struct bArmature *arm, const char *name);
+EditBone *ED_armature_edit_bone_add_primitive(struct Object *obedit_arm, float length, bool view_aligned);
+EditBone *ED_armature_edit_bone_add(struct bArmature *arm, const char *name);
 void ED_armature_edit_bone_remove(struct bArmature *arm, EditBone *exBone);
 
 bool ED_armature_ebone_is_child_recursive(EditBone *ebone_parent, EditBone *ebone_child);
@@ -157,9 +157,11 @@ void ED_armature_transform(struct bArmature *arm, float mat[4][4]);
 #define ARM_GROUPS_ENVELOPE 2
 #define ARM_GROUPS_AUTO     3
 
-void create_vgroups_from_armature(struct ReportList *reports, struct Scene *scene, struct Object *ob, struct Object *par, int mode, bool mirror);
+void create_vgroups_from_armature(struct ReportList *reports, struct Scene *scene, struct Object *ob,
+                                  struct Object *par, const int mode, const bool mirror);
 
-void unique_editbone_name(struct ListBase *ebones, char *name, EditBone *bone); /* if bone is already in list, pass it as param to ignore it */
+/* if bone is already in list, pass it as param to ignore it */
+void unique_editbone_name(struct ListBase *ebones, char *name, EditBone *bone);
 void ED_armature_bone_rename(struct bArmature *arm, const char *oldnamep, const char *newnamep);
 
 void undo_push_armature(struct bContext *C, const char *name);
@@ -174,7 +176,7 @@ void ED_armature_ebone_selectflag_disable(EditBone *ebone, int flag);
 /* poseobject.c */
 void ED_armature_exit_posemode(struct bContext *C, struct Base *base);
 void ED_armature_enter_posemode(struct bContext *C, struct Base *base);
-void ED_pose_deselectall(struct Object *ob, int test);
+void ED_pose_de_selectall(struct Object *ob, int select_mode, const bool ignore_visibility);
 void ED_pose_bone_select(struct Object *ob, struct bPoseChannel *pchan, bool select);
 void ED_pose_recalculate_paths(struct Scene *scene, struct Object *ob);
 struct Object *ED_pose_object_from_context(struct bContext *C);

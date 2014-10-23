@@ -142,19 +142,21 @@ static void get_seq_color3ubv(Scene *curscene, Sequence *seq, unsigned char col[
 		case SEQ_TYPE_GLOW:
 		case SEQ_TYPE_MULTICAM:
 		case SEQ_TYPE_ADJUSTMENT:
+		case SEQ_TYPE_GAUSSIAN_BLUR:
 			UI_GetThemeColor3ubv(TH_SEQ_EFFECT, col);
 
 			/* slightly offset hue to distinguish different effects */
-			if      (seq->type == SEQ_TYPE_ADD)        rgb_byte_set_hue_float_offset(col, 0.04);
-			else if (seq->type == SEQ_TYPE_SUB)        rgb_byte_set_hue_float_offset(col, 0.08);
-			else if (seq->type == SEQ_TYPE_MUL)        rgb_byte_set_hue_float_offset(col, 0.12);
-			else if (seq->type == SEQ_TYPE_ALPHAOVER)  rgb_byte_set_hue_float_offset(col, 0.16);
-			else if (seq->type == SEQ_TYPE_ALPHAUNDER) rgb_byte_set_hue_float_offset(col, 0.20);
-			else if (seq->type == SEQ_TYPE_OVERDROP)   rgb_byte_set_hue_float_offset(col, 0.24);
-			else if (seq->type == SEQ_TYPE_GLOW)       rgb_byte_set_hue_float_offset(col, 0.28);
-			else if (seq->type == SEQ_TYPE_TRANSFORM)  rgb_byte_set_hue_float_offset(col, 0.36);
-			else if (seq->type == SEQ_TYPE_MULTICAM)   rgb_byte_set_hue_float_offset(col, 0.32);
-			else if (seq->type == SEQ_TYPE_ADJUSTMENT) rgb_byte_set_hue_float_offset(col, 0.40);
+			if      (seq->type == SEQ_TYPE_ADD)           rgb_byte_set_hue_float_offset(col, 0.04);
+			else if (seq->type == SEQ_TYPE_SUB)           rgb_byte_set_hue_float_offset(col, 0.08);
+			else if (seq->type == SEQ_TYPE_MUL)           rgb_byte_set_hue_float_offset(col, 0.12);
+			else if (seq->type == SEQ_TYPE_ALPHAOVER)     rgb_byte_set_hue_float_offset(col, 0.16);
+			else if (seq->type == SEQ_TYPE_ALPHAUNDER)    rgb_byte_set_hue_float_offset(col, 0.20);
+			else if (seq->type == SEQ_TYPE_OVERDROP)      rgb_byte_set_hue_float_offset(col, 0.24);
+			else if (seq->type == SEQ_TYPE_GLOW)          rgb_byte_set_hue_float_offset(col, 0.28);
+			else if (seq->type == SEQ_TYPE_TRANSFORM)     rgb_byte_set_hue_float_offset(col, 0.36);
+			else if (seq->type == SEQ_TYPE_MULTICAM)      rgb_byte_set_hue_float_offset(col, 0.32);
+			else if (seq->type == SEQ_TYPE_ADJUSTMENT)    rgb_byte_set_hue_float_offset(col, 0.40);
+			else if (seq->type == SEQ_TYPE_GAUSSIAN_BLUR) rgb_byte_set_hue_float_offset(col, 0.42);
 			break;
 
 		case SEQ_TYPE_COLOR:
@@ -833,6 +835,9 @@ ImBuf *sequencer_ibuf_get(struct Main *bmain, Scene *scene, SpaceSeq *sseq, int 
 	short is_break = G.is_break;
 
 	render_size = sseq->render_size;
+	if (render_size == 99) {
+		render_size = 100;
+	}
 	if (render_size == 0) {
 		render_size = scene->r.size;
 	}
@@ -1233,7 +1238,7 @@ void draw_image_seq(const bContext *C, Scene *scene, ARegion *ar, SpaceSeq *sseq
 	if (sseq->flag & SEQ_SHOW_GPENCIL) {
 		if (is_imbuf) {
 			/* draw grease-pencil (image aligned) */
-			draw_gpencil_2dimage(C);
+			ED_gpencil_draw_2dimage(C);
 		}
 	}
 
@@ -1246,7 +1251,7 @@ void draw_image_seq(const bContext *C, Scene *scene, ARegion *ar, SpaceSeq *sseq
 	if (sseq->flag & SEQ_SHOW_GPENCIL) {
 		if (is_imbuf) {
 			/* draw grease-pencil (screen aligned) */
-			draw_gpencil_view2d(C, 0);
+			ED_gpencil_draw_view2d(C, 0);
 		}
 	}
 
@@ -1387,16 +1392,20 @@ static void draw_seq_strips(const bContext *C, Editing *ed, ARegion *ar)
 }
 
 static void seq_draw_sfra_efra(Scene *scene, View2D *v2d)
-{	
+{
+	const Editing *ed = BKE_sequencer_editing_get(scene, false);
+	const int frame_sta = PSFRA;
+	const int frame_end = PEFRA + 1;
+
 	glEnable(GL_BLEND);
 	
 	/* draw darkened area outside of active timeline 
 	 * frame range used is preview range or scene range */
 	UI_ThemeColorShadeAlpha(TH_BACK, -25, -100);
 
-	if (PSFRA < PEFRA + 1) {
-		glRectf(v2d->cur.xmin, v2d->cur.ymin, (float)PSFRA, v2d->cur.ymax);
-		glRectf((float)(PEFRA + 1), v2d->cur.ymin, v2d->cur.xmax, v2d->cur.ymax);
+	if (frame_sta < frame_end) {
+		glRectf(v2d->cur.xmin, v2d->cur.ymin, (float)frame_sta, v2d->cur.ymax);
+		glRectf((float)frame_end, v2d->cur.ymin, v2d->cur.xmax, v2d->cur.ymax);
 	}
 	else {
 		glRectf(v2d->cur.xmin, v2d->cur.ymin, v2d->cur.xmax, v2d->cur.ymax);
@@ -1404,9 +1413,21 @@ static void seq_draw_sfra_efra(Scene *scene, View2D *v2d)
 
 	UI_ThemeColorShade(TH_BACK, -60);
 	/* thin lines where the actual frames are */
-	fdrawline((float)PSFRA, v2d->cur.ymin, (float)PSFRA, v2d->cur.ymax);
-	fdrawline((float)(PEFRA + 1), v2d->cur.ymin, (float)(PEFRA + 1), v2d->cur.ymax);
-	
+	fdrawline(frame_sta, v2d->cur.ymin, frame_sta, v2d->cur.ymax);
+	fdrawline(frame_end, v2d->cur.ymin, frame_end, v2d->cur.ymax);
+
+	if (ed && !BLI_listbase_is_empty(&ed->metastack)) {
+		MetaStack *ms = ed->metastack.last;
+
+		glColor4ub(255, 255, 255, 8);
+		glRectf(ms->disp_range[0], v2d->cur.ymin, ms->disp_range[1], v2d->cur.ymax);
+
+		UI_ThemeColorShade(TH_BACK, -40);
+
+		fdrawline(ms->disp_range[0], v2d->cur.ymin, ms->disp_range[0], v2d->cur.ymax);
+		fdrawline(ms->disp_range[1], v2d->cur.ymin, ms->disp_range[1], v2d->cur.ymax);
+	}
+
 	glDisable(GL_BLEND);
 }
 

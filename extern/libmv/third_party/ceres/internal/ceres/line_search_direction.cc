@@ -28,8 +28,6 @@
 //
 // Author: sameeragarwal@google.com (Sameer Agarwal)
 
-#ifndef CERES_NO_LINE_SEARCH_MINIMIZER
-
 #include "ceres/line_search_direction.h"
 #include "ceres/line_search_minimizer.h"
 #include "ceres/low_rank_inverse_hessian.h"
@@ -67,7 +65,7 @@ class NonlinearConjugateGradient : public LineSearchDirection {
       case FLETCHER_REEVES:
         beta = current.gradient_squared_norm / previous.gradient_squared_norm;
         break;
-      case POLAK_RIBIRERE:
+      case POLAK_RIBIERE:
         gradient_change = current.gradient - previous.gradient;
         beta = (current.gradient.dot(gradient_change) /
                 previous.gradient_squared_norm);
@@ -372,5 +370,3 @@ LineSearchDirection::Create(const LineSearchDirection::Options& options) {
 
 }  // namespace internal
 }  // namespace ceres
-
-#endif  // CERES_NO_LINE_SEARCH_MINIMIZER

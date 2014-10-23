@@ -76,17 +76,6 @@ CCL_NAMESPACE_BEGIN
 
 #ifdef _WIN32
 
-#ifndef __KERNEL_GPU__
-
-#if defined(_MSC_VER) && (_MSC_VER < 1800)
-#  define copysignf(x, y) ((float)_copysign(x, y))
-#  define hypotf(x, y) _hypotf(x, y)
-#  define isnan(x) _isnan(x)
-#  define isfinite(x) _finite(x)
-#endif
-
-#endif
-
 #ifndef __KERNEL_OPENCL__
 
 ccl_device_inline float fmaxf(float a, float b)
@@ -622,11 +611,7 @@ ccl_device_inline bool is_zero(const float3 a)
 
 ccl_device_inline float reduce_add(const float3 a)
 {
-#ifdef __KERNEL_SSE__
 	return (a.x + a.y + a.z);
-#else
-	return (a.x + a.y + a.z);
-#endif
 }
 
 ccl_device_inline float average(const float3 a)
@@ -857,7 +842,6 @@ ccl_device_inline float4 max(float4 a, float4 b)
 ccl_device_inline float4 select(const int4& mask, const float4& a, const float4& b)
 {
 #ifdef __KERNEL_SSE__
-	/* blendv is sse4, and apparently broken on vs2008 */
 	return _mm_or_ps(_mm_and_ps(_mm_cvtepi32_ps(mask), a), _mm_andnot_ps(_mm_cvtepi32_ps(mask), b)); /* todo: avoid cvt */
 #else
 	return make_float4((mask.x)? a.x: b.x, (mask.y)? a.y: b.y, (mask.z)? a.z: b.z, (mask.w)? a.w: b.w);
@@ -1427,6 +1411,27 @@ ccl_device bool ray_quad_intersect(
 		return true;
 	
 	return false;
+}
+
+/* projections */
+ccl_device bool map_to_sphere(float *r_u, float *r_v,
+                              const float x, const float y, const float z)
+{
+	float len = sqrtf(x * x + y * y + z * z);
+	if(len > 0.0f) {
+		if(UNLIKELY(x == 0.0f && y == 0.0f)) {
+			*r_u = 0.0f;  /* othwise domain error */
+		}
+		else {
+			*r_u = (1.0f - atan2f(x, y) / M_PI_F) / 2.0f;
+		}
+		*r_v = 1.0f - safe_acosf(z / len) / M_PI_F;
+		return true;
+	}
+	else {
+		*r_v = *r_u = 0.0f; /* to avoid un-initialized variables */
+		return false;
+	}
 }
 
 CCL_NAMESPACE_END

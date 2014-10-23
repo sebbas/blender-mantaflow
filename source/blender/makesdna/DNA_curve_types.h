@@ -71,22 +71,27 @@ typedef struct Path {
 /* These two Lines with # tell makesdna this struct can be excluded. */
 #
 #
+typedef struct BevPoint {
+	float vec[3], alfa, radius, weight, offset;
+	float sina, cosa;				/* 2D Only */
+	float dir[3], tan[3], quat[4];	/* 3D Only */
+	short split_tag, dupe_tag;
+} BevPoint;
+
+/* These two Lines with # tell makesdna this struct can be excluded. */
+#
+#
 typedef struct BevList {
 	struct BevList *next, *prev;
 	int nr, dupe_nr;
 	int poly, hole;
 	int charidx;
-} BevList;
+	int *segbevcount;
+	float *seglen;
 
-/* These two Lines with # tell makesdna this struct can be excluded. */
-#
-#
-typedef struct BevPoint {
-	float vec[3], alfa, radius, weight;
-	float sina, cosa;				/* 2D Only */
-	float dir[3], tan[3], quat[4];	/* 3D Only */
-	short split_tag, dupe_tag;
-} BevPoint;
+	/* over-alloc */
+	BevPoint bevpoints[0];
+} BevList;
 
 /**
  * Keyframes on F-Curves (allows code reuse of Bezier eval code) and
@@ -288,7 +293,7 @@ typedef struct Curve {
 #define CU_PATH_RADIUS	4096 /* make use of the path radius if this is enabled (default for new curves) */
 #define CU_DEFORM_FILL	8192 /* fill 2d curve after deformation */
 #define CU_FILL_CAPS	16384 /* fill bevel caps */
-#define CU_MAP_TAPER	32768 /* map taper object to bevelled area */
+#define CU_MAP_TAPER	32768 /* map taper object to beveled area */
 
 /* twist mode */
 #define CU_TWIST_Z_UP			0

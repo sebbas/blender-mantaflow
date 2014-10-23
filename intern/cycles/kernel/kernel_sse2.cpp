@@ -34,7 +34,7 @@
 #include "kernel_globals.h"
 #include "kernel_film.h"
 #include "kernel_path.h"
-#include "kernel_displace.h"
+#include "kernel_bake.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -64,9 +64,12 @@ void kernel_cpu_sse2_convert_to_half_float(KernelGlobals *kg, uchar4 *rgba, floa
 
 /* Shader Evaluate */
 
-void kernel_cpu_sse2_shader(KernelGlobals *kg, uint4 *input, float4 *output, int type, int i)
+void kernel_cpu_sse2_shader(KernelGlobals *kg, uint4 *input, float4 *output, int type, int i, int offset, int sample)
 {
-	kernel_shader_evaluate(kg, input, output, (ShaderEvalType)type, i);
+	if(type >= SHADER_EVAL_BAKE)
+		kernel_bake_evaluate(kg, input, output, (ShaderEvalType)type, i, offset, sample);
+	else
+		kernel_shader_evaluate(kg, input, output, (ShaderEvalType)type, i, sample);
 }
 
 CCL_NAMESPACE_END

@@ -37,7 +37,7 @@ extern "C" {
 size_t  bUnit_AsString(char *str, int len_max, double value, int prec, int system, int type, bool split, bool pad);
 
 /* replace units with values, used before python button evaluation */
-int     bUnit_ReplaceString(char *str, int len_max, const char *str_prev, double scale_pref, int system, int type);
+bool bUnit_ReplaceString(char *str, int len_max, const char *str_prev, double scale_pref, int system, int type);
 
 /* make string keyboard-friendly: 10µm --> 10um */
 void bUnit_ToUnitAltName(char *str, int len_max, const char *orig_str, int system, int type);
@@ -49,7 +49,7 @@ double bUnit_ClosestScalar(double value, int system, int type);
 double bUnit_BaseScalar(int system, int type);
 
 /* return true is the unit system exists */
-int bUnit_IsValid(int system, int type);
+bool bUnit_IsValid(int system, int type);
 
 /* loop over scales, coudl add names later */
 //double bUnit_Iter(void **unit, char **name, int system, int type);
@@ -61,17 +61,19 @@ const char *bUnit_GetNameDisplay(void *usys_pt, int index);
 double      bUnit_GetScaler(void *usys_pt, int index);
 
 /* aligned with PropertyUnit */
-#define     B_UNIT_NONE 0
-#define     B_UNIT_LENGTH 1
-#define     B_UNIT_AREA 2
-#define     B_UNIT_VOLUME 3
-#define     B_UNIT_MASS 4
-#define     B_UNIT_ROTATION 5
-#define     B_UNIT_TIME 6
-#define     B_UNIT_VELOCITY 7
-#define     B_UNIT_ACCELERATION 8
-#define     B_UNIT_CAMERA 9
-#define     B_UNIT_TYPE_TOT 10
+enum {
+	B_UNIT_NONE             = 0,
+	B_UNIT_LENGTH           = 1,
+	B_UNIT_AREA             = 2,
+	B_UNIT_VOLUME           = 3,
+	B_UNIT_MASS             = 4,
+	B_UNIT_ROTATION         = 5,
+	B_UNIT_TIME             = 6,
+	B_UNIT_VELOCITY         = 7,
+	B_UNIT_ACCELERATION     = 8,
+	B_UNIT_CAMERA           = 9,
+	B_UNIT_TYPE_TOT         = 10,
+};
 
 #ifdef __cplusplus
 }

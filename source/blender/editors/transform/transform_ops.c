@@ -26,6 +26,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
@@ -49,6 +50,8 @@
 #include "UI_resources.h"
 
 #include "ED_screen.h"
+/* for USE_LOOPSLIDE_HACK only */
+#include "ED_mesh.h"
 
 #include "transform.h"
 
@@ -390,6 +393,15 @@ static int transform_modal(bContext *C, wmOperator *op, const wmEvent *event)
 	t->context = C;
 	exit_code = transformEvent(t, event);
 	t->context = NULL;
+
+	/* XXX, workaround: active needs to be calculated before transforming,
+	 * since we're not reading from 'td->center' in this case. see: T40241 */
+	if (t->tsnap.target == SCE_SNAP_TARGET_ACTIVE) {
+		/* In camera view, tsnap callback is not set (see initSnappingMode() in transfrom_snap.c, and T40348). */
+		if (t->tsnap.targetSnap && ((t->tsnap.status & TARGET_INIT) == 0)) {
+			t->tsnap.targetSnap(t);
+		}
+	}
 
 	transformApply(C, t);
 
@@ -872,6 +884,27 @@ static void TRANSFORM_OT_edge_crease(struct wmOperatorType *ot)
 	Transform_Properties(ot, P_SNAP);
 }
 
+static int edge_bevelweight_exec(bContext *C, wmOperator *op)
+{
+	Mesh *me = (Mesh *)CTX_data_edit_object(C)->data;
+
+	/* auto-enable bevel edge weight drawing, then chain to common transform code */
+	me->drawflag |= ME_DRAWBWEIGHTS;
+
+	return transform_exec(C, op);
+}
+
+static int edge_bevelweight_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+	Mesh *me = (Mesh *)CTX_data_edit_object(C)->data;
+
+	/* auto-enable bevel edge weight drawing, then chain to common transform code */
+	me->drawflag |= ME_DRAWBWEIGHTS;
+
+	return transform_invoke(C, op, event);
+}
+
+
 static void TRANSFORM_OT_edge_bevelweight(struct wmOperatorType *ot)
 {
 	/* identifiers */
@@ -881,8 +914,8 @@ static void TRANSFORM_OT_edge_bevelweight(struct wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
 
 	/* api callbacks */
-	ot->invoke = transform_invoke;
-	ot->exec   = transform_exec;
+	ot->invoke = edge_bevelweight_invoke;
+	ot->exec   = edge_bevelweight_exec;
 	ot->modal  = transform_modal;
 	ot->cancel = transform_cancel;
 	ot->poll   = ED_operator_editmesh;

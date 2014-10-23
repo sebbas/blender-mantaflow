@@ -57,6 +57,7 @@
 #include "BKE_effect.h"
 #include "BKE_global.h"
 #include "BKE_library.h"
+#include "BKE_mesh.h"
 #include "BKE_object.h"
 #include "BKE_pointcache.h"
 #include "BKE_rigidbody.h"
@@ -287,10 +288,10 @@ static rbCollisionShape *rigidbody_get_shape_trimesh_from_mesh(Object *ob)
 
 		DM_ensure_tessface(dm);
 
-		mvert   = (dm) ? dm->getVertArray(dm) : NULL;
-		totvert = (dm) ? dm->getNumVerts(dm) : 0;
-		mface   = (dm) ? dm->getTessFaceArray(dm) : NULL;
-		totface = (dm) ? dm->getNumTessFaces(dm) : 0;
+		mvert   = dm->getVertArray(dm);
+		totvert = dm->getNumVerts(dm);
+		mface   = dm->getTessFaceArray(dm);
+		totface = dm->getNumTessFaces(dm);
 
 		/* sanity checking - potential case when no data will be present */
 		if ((totvert == 0) || (totface == 0)) {
@@ -344,7 +345,7 @@ static rbCollisionShape *rigidbody_get_shape_trimesh_from_mesh(Object *ob)
 		}
 
 		/* cleanup temp data */
-		if (dm && ob->rigidbody_object->mesh_source == RBO_MESH_BASE) {
+		if (ob->rigidbody_object->mesh_source == RBO_MESH_BASE) {
 			dm->release(dm);
 		}
 	}
@@ -394,7 +395,7 @@ static void rigidbody_validate_sim_shape(Object *ob, bool rebuild)
 	}
 	mul_v3_fl(size, 0.5f);
 
-	if (ELEM3(rbo->shape, RB_SHAPE_CAPSULE, RB_SHAPE_CYLINDER, RB_SHAPE_CONE)) {
+	if (ELEM(rbo->shape, RB_SHAPE_CAPSULE, RB_SHAPE_CYLINDER, RB_SHAPE_CONE)) {
 		/* take radius as largest x/y dimension, and height as z-dimension */
 		radius = MAX2(size[0], size[1]);
 		height = size[2];
@@ -455,8 +456,186 @@ static void rigidbody_validate_sim_shape(Object *ob, bool rebuild)
 
 /* --------------------- */
 
-/* Create physics sim representation of object given RigidBody settings
- * < rebuild: even if an instance already exists, replace it
+/* helper function to calculate volume of rigidbody object */
+// TODO: allow a parameter to specify method used to calculate this?
+void BKE_rigidbody_calc_volume(Object *ob, float *r_vol)
+{
+	RigidBodyOb *rbo = ob->rigidbody_object;
+
+	float size[3]  = {1.0f, 1.0f, 1.0f};
+	float radius = 1.0f;
+	float height = 1.0f;
+
+	float volume = 0.0f;
+
+	/* if automatically determining dimensions, use the Object's boundbox
+	 *	- assume that all quadrics are standing upright on local z-axis
+	 *	- assume even distribution of mass around the Object's pivot
+	 *	  (i.e. Object pivot is centralized in boundbox)
+	 *	- boundbox gives full width
+	 */
+	// XXX: all dimensions are auto-determined now... later can add stored settings for this
+	BKE_object_dimensions_get(ob, size);
+
+	if (ELEM(rbo->shape, RB_SHAPE_CAPSULE, RB_SHAPE_CYLINDER, RB_SHAPE_CONE)) {
+		/* take radius as largest x/y dimension, and height as z-dimension */
+		radius = MAX2(size[0], size[1]) * 0.5f;
+		height = size[2];
+	}
+	else if (rbo->shape == RB_SHAPE_SPHERE) {
+		/* take radius to the the largest dimension to try and encompass everything */
+		radius = max_fff(size[0], size[1], size[2]) * 0.5f;
+	}
+
+	/* calculate volume as appropriate  */
+	switch (rbo->shape) {
+		case RB_SHAPE_BOX:
+			volume = size[0] * size[1] * size[2];
+			break;
+
+		case RB_SHAPE_SPHERE:
+			volume = 4.0f / 3.0f * (float)M_PI * radius * radius * radius;
+			break;
+
+		/* for now, assume that capsule is close enough to a cylinder... */
+		case RB_SHAPE_CAPSULE:
+		case RB_SHAPE_CYLINDER:
+			volume = (float)M_PI * radius * radius * height;
+			break;
+
+		case RB_SHAPE_CONE:
+			volume = (float)M_PI / 3.0f * radius * radius * height;
+			break;
+
+		case RB_SHAPE_CONVEXH:
+		case RB_SHAPE_TRIMESH:
+		{
+			if (ob->type == OB_MESH) {
+				DerivedMesh *dm = rigidbody_get_mesh(ob);
+				MVert *mvert;
+				MFace *mface;
+				int totvert, totface;
+				
+				/* ensure mesh validity, then grab data */
+				if (dm == NULL)
+					return;
+			
+				DM_ensure_tessface(dm);
+			
+				mvert   = dm->getVertArray(dm);
+				totvert = dm->getNumVerts(dm);
+				mface   = dm->getTessFaceArray(dm);
+				totface = dm->getNumTessFaces(dm);
+				
+				if (totvert > 0 && totface > 0) {
+					BKE_mesh_calc_volume(mvert, totvert, mface, totface, &volume, NULL);
+				}
+				
+				/* cleanup temp data */
+				if (ob->rigidbody_object->mesh_source == RBO_MESH_BASE) {
+					dm->release(dm);
+				}
+			}
+			else {
+				/* rough estimate from boundbox as fallback */
+				/* XXX could implement other types of geometry here (curves, etc.) */
+				volume = size[0] * size[1] * size[2];
+			}
+			break;
+		}
+
+#if 0 // XXX: not defined yet
+		case RB_SHAPE_COMPOUND:
+			volume = 0.0f;
+			break;
+#endif
+	}
+
+	/* return the volume calculated */
+	if (r_vol) *r_vol = volume;
+}
+
+void BKE_rigidbody_calc_center_of_mass(Object *ob, float r_com[3])
+{
+	RigidBodyOb *rbo = ob->rigidbody_object;
+
+	float size[3]  = {1.0f, 1.0f, 1.0f};
+	float height = 1.0f;
+
+	zero_v3(r_com);
+
+	/* if automatically determining dimensions, use the Object's boundbox
+	 *	- assume that all quadrics are standing upright on local z-axis
+	 *	- assume even distribution of mass around the Object's pivot
+	 *	  (i.e. Object pivot is centralized in boundbox)
+	 *	- boundbox gives full width
+	 */
+	// XXX: all dimensions are auto-determined now... later can add stored settings for this
+	BKE_object_dimensions_get(ob, size);
+
+	/* calculate volume as appropriate  */
+	switch (rbo->shape) {
+		case RB_SHAPE_BOX:
+		case RB_SHAPE_SPHERE:
+		case RB_SHAPE_CAPSULE:
+		case RB_SHAPE_CYLINDER:
+			break;
+
+		case RB_SHAPE_CONE:
+			/* take radius as largest x/y dimension, and height as z-dimension */
+			height = size[2];
+			/* cone is geometrically centered on the median,
+			 * center of mass is 1/4 up from the base
+			 */
+			r_com[2] = -0.25f * height;
+			break;
+
+		case RB_SHAPE_CONVEXH:
+		case RB_SHAPE_TRIMESH:
+		{
+			if (ob->type == OB_MESH) {
+				DerivedMesh *dm = rigidbody_get_mesh(ob);
+				MVert *mvert;
+				MFace *mface;
+				int totvert, totface;
+				
+				/* ensure mesh validity, then grab data */
+				if (dm == NULL)
+					return;
+			
+				DM_ensure_tessface(dm);
+			
+				mvert   = dm->getVertArray(dm);
+				totvert = dm->getNumVerts(dm);
+				mface   = dm->getTessFaceArray(dm);
+				totface = dm->getNumTessFaces(dm);
+				
+				if (totvert > 0 && totface > 0) {
+					BKE_mesh_calc_volume(mvert, totvert, mface, totface, NULL, r_com);
+				}
+				
+				/* cleanup temp data */
+				if (ob->rigidbody_object->mesh_source == RBO_MESH_BASE) {
+					dm->release(dm);
+				}
+			}
+			break;
+		}
+
+#if 0 // XXX: not defined yet
+		case RB_SHAPE_COMPOUND:
+			volume = 0.0f;
+			break;
+#endif
+	}
+}
+
+/* --------------------- */
+
+/**
+ * Create physics sim representation of object given RigidBody settings
+ *
+ * \param rebuild Even if an instance already exists, replace it
  */
 static void rigidbody_validate_sim_object(RigidBodyWorld *rbw, Object *ob, bool rebuild)
 {
@@ -518,8 +697,10 @@ static void rigidbody_validate_sim_object(RigidBodyWorld *rbw, Object *ob, bool 
 
 /* --------------------- */
 
-/* Create physics sim representation of constraint given rigid body constraint settings
- * < rebuild: even if an instance already exists, replace it
+/**
+ * Create physics sim representation of constraint given rigid body constraint settings
+ *
+ * \param rebuild Even if an instance already exists, replace it
  */
 static void rigidbody_validate_sim_constraint(RigidBodyWorld *rbw, Object *ob, bool rebuild)
 {
@@ -539,7 +720,7 @@ static void rigidbody_validate_sim_constraint(RigidBodyWorld *rbw, Object *ob, b
 		return;
 	}
 
-	if (ELEM4(NULL, rbc->ob1, rbc->ob1->rigidbody_object, rbc->ob2, rbc->ob2->rigidbody_object)) {
+	if (ELEM(NULL, rbc->ob1, rbc->ob1->rigidbody_object, rbc->ob2, rbc->ob2->rigidbody_object)) {
 		if (rbc->physics_constraint) {
 			RB_dworld_remove_constraint(rbw->physics_world, rbc->physics_constraint);
 			RB_constraint_delete(rbc->physics_constraint);
@@ -895,7 +1076,8 @@ RigidBodyCon *BKE_rigidbody_create_constraint(Scene *scene, Object *ob, short ty
 /* Utilities API */
 
 /* Get RigidBody world for the given scene, creating one if needed
- * < scene: Scene to find active Rigid Body world for
+ *
+ * \param scene Scene to find active Rigid Body world for
  */
 RigidBodyWorld *BKE_rigidbody_get_world(Scene *scene)
 {
@@ -1093,8 +1275,10 @@ static void rigidbody_update_sim_ob(Scene *scene, RigidBodyWorld *rbw, Object *o
 	 */
 }
 
-/* Updates and validates world, bodies and shapes.
- * < rebuild: rebuild entire simulation
+/**
+ * Updates and validates world, bodies and shapes.
+ *
+ * \param rebuild Rebuild entire simulation
  */
 static void rigidbody_update_simulation(Scene *scene, RigidBodyWorld *rbw, bool rebuild)
 {
@@ -1104,6 +1288,26 @@ static void rigidbody_update_simulation(Scene *scene, RigidBodyWorld *rbw, bool 
 	if (rebuild)
 		BKE_rigidbody_validate_sim_world(scene, rbw, true);
 	rigidbody_update_sim_world(scene, rbw);
+
+	/* XXX TODO For rebuild: remove all constraints first.
+	 * Otherwise we can end up deleting objects that are still
+	 * referenced by constraints, corrupting bullet's internal list.
+	 * 
+	 * Memory management needs redesign here, this is just a dirty workaround.
+	 */
+	if (rebuild && rbw->constraints) {
+		for (go = rbw->constraints->gobject.first; go; go = go->next) {
+			Object *ob = go->ob;
+			if (ob) {
+				RigidBodyCon *rbc = ob->rigidbody_constraint;
+				if (rbc && rbc->physics_constraint) {
+					RB_dworld_remove_constraint(rbw->physics_world, rbc->physics_constraint);
+					RB_constraint_delete(rbc->physics_constraint);
+					rbc->physics_constraint = NULL;
+				}
+			}
+		}
+	}
 
 	/* update objects */
 	for (go = rbw->group->gobject.first; go; go = go->next) {
@@ -1150,6 +1354,7 @@ static void rigidbody_update_simulation(Scene *scene, RigidBodyWorld *rbw, bool 
 			rigidbody_update_sim_ob(scene, rbw, ob, rbo);
 		}
 	}
+	
 	/* update constraints */
 	if (rbw->constraints == NULL) /* no constraints, move on */
 		return;
@@ -1386,6 +1591,8 @@ struct RigidBodyOb *BKE_rigidbody_copy_object(Object *ob) { return NULL; }
 struct RigidBodyCon *BKE_rigidbody_copy_constraint(Object *ob) { return NULL; }
 void BKE_rigidbody_relink_constraint(RigidBodyCon *rbc) {}
 void BKE_rigidbody_validate_sim_world(Scene *scene, RigidBodyWorld *rbw, bool rebuild) {}
+void BKE_rigidbody_calc_volume(Object *ob, float *r_vol) { if (r_vol) *r_vol = 0.0f; }
+void BKE_rigidbody_calc_center_of_mass(Object *ob, float r_com[3]) { zero_v3(r_com); }
 struct RigidBodyWorld *BKE_rigidbody_create_world(Scene *scene) { return NULL; }
 struct RigidBodyWorld *BKE_rigidbody_world_copy(RigidBodyWorld *rbw) { return NULL; }
 void BKE_rigidbody_world_groups_relink(struct RigidBodyWorld *rbw) {}

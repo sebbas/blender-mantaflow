@@ -39,7 +39,8 @@ incs = [
     './shader',
     './texture',
     '#/intern/guardedalloc',
-    '#/extern/glew/include',
+    env['BF_GLEW_INC'],
+    '#/intern/glew-mx',
     '../blenfont',
     '../blenkernel',
     '../blenlib',
@@ -48,12 +49,11 @@ incs = [
     '../makesdna',
     '../makesrna',
     '../render/extern/include',
-    env['BF_OPENGL_INC'],
     env['BF_ZLIB_INC'],
     ]
 incs = ' '.join(incs)
 
-defs = [] 
+defs = env['BF_GL_DEFINITIONS']
 
 if env['WITH_BF_PYTHON']:
     incs += ' ' + env['BF_PYTHON_INC']
@@ -71,6 +71,9 @@ if env['OURPLATFORM'] in ('win32-vc', 'win32-mingw', 'linuxcross', 'win64-vc', '
 if env['WITH_BF_COMPOSITOR']:
     incs += ' ../compositor '
     defs.append("WITH_COMPOSITOR")
+
+if env['WITH_BF_FREESTYLE']:
+    defs.append('WITH_FREESTYLE')
 
 env.BlenderLib ( libname = 'bf_nodes', sources = sources, includes = Split(incs), defines = defs, libtype=['core','player'], priority = [190,105] )
 env.BlenderLib ( libname = 'bf_cmpnodes', sources = cmpsources, includes = Split(incs), defines = defs, libtype=['core','player'], priority = [175,101] )

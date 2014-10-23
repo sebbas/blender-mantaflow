@@ -40,6 +40,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_utildefines.h"
+#include "BLI_stackdefines.h"
 #include "BLI_alloca.h"
 #include "BLI_math.h"
 #include "BLI_listbase.h"
@@ -726,8 +727,8 @@ static void bm_edgering_pair_interpolate(BMesh *bm, LoopPairStore *lpair,
 
 					tri_tmp = tri_array[i];
 
-					barycentric_transform(co_a, v_a->co, UNPACK3(tri_tmp), UNPACK3(tri_sta));
-					barycentric_transform(co_b, v_b->co, UNPACK3(tri_tmp), UNPACK3(tri_end));
+					transform_point_by_tri_v3(co_a, v_a->co, UNPACK3(tri_tmp), UNPACK3(tri_sta));
+					transform_point_by_tri_v3(co_b, v_b->co, UNPACK3(tri_tmp), UNPACK3(tri_end));
 
 					interp_v3_v3v3(((BMVert *)v_iter->data)->co, co_a, co_b, (float)i / (float)(resolu - 1));
 				}
@@ -919,13 +920,13 @@ static void bm_edgering_pair_order(BMesh *bm,
 		}
 		BLI_assert(node != NULL);
 
-		BLI_rotatelist_first(lb_b, node);
+		BLI_listbase_rotate_first(lb_b, node);
 
 		/* now check we are winding the same way */
 		if (bm_edgering_pair_order_is_flipped(bm, el_store_a, el_store_b)) {
 			BM_edgeloop_flip(bm, el_store_b);
 			/* re-ensure the first node */
-			BLI_rotatelist_first(lb_b, node);
+			BLI_listbase_rotate_first(lb_b, node);
 		}
 
 		/* sanity checks that we are aligned & winding now */
@@ -969,8 +970,8 @@ static void bm_edgering_pair_subdiv(BMesh *bm,
 	BMEdge *e;
 	BMFace *f;
 
-	STACK_INIT(edges_ring_arr);
-	STACK_INIT(faces_ring_arr);
+	STACK_INIT(edges_ring_arr, stack_max);
+	STACK_INIT(faces_ring_arr, stack_max);
 
 	bm_edgeloop_vert_tag(el_store_a, false);
 	bm_edgeloop_vert_tag(el_store_b, true);

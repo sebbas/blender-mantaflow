@@ -30,8 +30,9 @@ extern "C" {
 #endif
 
 struct Render;
+struct Material;
 struct FreestyleConfig;
-struct bContext;
+struct FreestyleLineStyle;
 
 extern struct Scene *freestyle_scene;
 extern float freestyle_viewpoint[3];
@@ -47,6 +48,7 @@ int FRS_is_freestyle_enabled(struct SceneRenderLayer *srl);
 void FRS_init_stroke_rendering(struct Render *re);
 struct Render *FRS_do_stroke_rendering(struct Render *re, struct SceneRenderLayer *srl, int render);
 void FRS_finish_stroke_rendering(struct Render *re);
+void FRS_free_view_map_cache(void);
 void FRS_composite_result(struct Render *re, struct SceneRenderLayer *srl, struct Render *freestyle_render);
 void FRS_exit(void);
 
@@ -56,6 +58,9 @@ void FRS_paste_active_lineset(struct FreestyleConfig *config);
 void FRS_delete_active_lineset(struct FreestyleConfig *config);
 void FRS_move_active_lineset_up(struct FreestyleConfig *config);
 void FRS_move_active_lineset_down(struct FreestyleConfig *config);
+
+/* Testing */
+struct Material *FRS_create_stroke_material(struct Main *bmain, struct FreestyleLineStyle *linestyle);
 
 #ifdef __cplusplus
 }

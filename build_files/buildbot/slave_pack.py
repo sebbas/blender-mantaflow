@@ -33,13 +33,15 @@ if len(sys.argv) < 2:
     sys.exit(1)
 
 builder = sys.argv[1]
-branch = ''
-
-if len(sys.argv) >= 3:
-    branch = sys.argv[2]
+# Never write branch if it is master.
+branch = sys.argv[2] if (len(sys.argv) >= 3 and sys.argv[2] != 'master') else ''
 
 # scons does own packaging
 if builder.find('scons') != -1:
+    python_bin = 'python'
+    if builder.find('linux') != -1:
+        python_bin = '/opt/lib/python-2.7/bin/python2.7'
+
     os.chdir('../blender.git')
     scons_options = ['BF_QUICK=slnt', 'BUILDBOT_BRANCH=' + branch, 'buildslave', 'BF_FANCY=False']
 
@@ -82,7 +84,7 @@ if builder.find('scons') != -1:
         os.system('cp %s %s' % (software_gl, install_dir))
         os.system('chmod 755 %s' % (os.path.join(install_dir, 'blender-softwaregl')))
 
-        retcode = subprocess.call(['schroot', '-c', chroot_name, '--', 'python', 'scons/scons.py'] + scons_options)
+        retcode = subprocess.call(['schroot', '-c', chroot_name, '--', python_bin, 'scons/scons.py'] + scons_options)
 
         sys.exit(retcode)
     else:
@@ -99,8 +101,6 @@ if builder.find('scons') != -1:
             scons_options.append('BF_CYCLES_CUDA_NVCC=nvcc.exe')
             if builder.find('mingw') != -1:
                 scons_options.append('BF_TOOLSET=mingw')
-            if builder.endswith('vc2012'):
-                scons_options.append('MSVS_VERSION=11.0')
             if builder.endswith('vc2013'):
                 scons_options.append('MSVS_VERSION=12.0')
                 scons_options.append('MSVC_VERSION=12.0')
@@ -113,7 +113,7 @@ if builder.find('scons') != -1:
 
             scons_options.append('BF_CONFIG=' + os.path.join(config_dir, config))
 
-        retcode = subprocess.call(['python', 'scons/scons.py'] + scons_options)
+        retcode = subprocess.call([python_bin, 'scons/scons.py'] + scons_options)
         sys.exit(retcode)
 
 # clean release directory if it already exists

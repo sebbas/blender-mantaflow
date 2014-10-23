@@ -42,6 +42,7 @@ subject to the following restrictions:
 #include "PHY_Pro.h"
 #include "KX_GameObject.h"
 #include "KX_PythonInit.h" // for KX_RasterizerDrawDebugLine
+#include "KX_BlenderSceneConverter.h"
 #include "RAS_MeshObject.h"
 #include "RAS_Polygon.h"
 #include "RAS_TexVert.h"
@@ -83,7 +84,7 @@ void DrawRasterizerLine(const float* from,const float* to,int color);
 
 // This was copied from the old KX_ConvertPhysicsObjects
 #ifdef WIN32
-#if defined(_MSC_VER) && (_MSC_VER >= 1310)
+#ifdef _MSC_VER
 //only use SIMD Hull code under Win32
 //#define TEST_HULL 1
 #ifdef TEST_HULL
@@ -295,6 +296,44 @@ public:
 
 
 
+};
+
+class BlenderVehicleRaycaster: public btDefaultVehicleRaycaster
+{
+	btDynamicsWorld*	m_dynamicsWorld;
+public:
+	BlenderVehicleRaycaster(btDynamicsWorld* world)
+		:btDefaultVehicleRaycaster(world), m_dynamicsWorld(world)
+	{
+	}
+
+	virtual void* castRay(const btVector3& from,const btVector3& to, btVehicleRaycasterResult& result)
+	{
+	//	RayResultCallback& resultCallback;
+
+		btCollisionWorld::ClosestRayResultCallback rayCallback(from,to);
+
+		// We override btDefaultVehicleRaycaster so we can set this flag, otherwise our
+		// vehicles go crazy (http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?t=9662)
+		rayCallback.m_flags |= btTriangleRaycastCallback::kF_UseSubSimplexConvexCastRaytest;
+
+		m_dynamicsWorld->rayTest(from, to, rayCallback);
+
+		if (rayCallback.hasHit())
+		{
+
+			const btRigidBody* body = btRigidBody::upcast(rayCallback.m_collisionObject);
+			if (body && body->hasContactResponse())
+			{
+				result.m_hitPointInWorld = rayCallback.m_hitPointWorld;
+				result.m_hitNormalInWorld = rayCallback.m_hitNormalWorld;
+				result.m_hitNormalInWorld.normalize();
+				result.m_distFraction = rayCallback.m_closestHitFraction;
+				return (void*)body;
+			}
+		}
+		return 0;
+	}
 };
 #endif //NEW_BULLET_VEHICLE_SUPPORT
 
@@ -837,6 +876,14 @@ void	CcdPhysicsEnvironment::ProcessFhSprings(double curTime,float interval)
 			}
 		}
 	}
+}
+
+int			CcdPhysicsEnvironment::GetDebugMode() const
+{
+	if (m_debugDrawer) {
+		return m_debugDrawer->getDebugMode();
+	}
+	return 0;
 }
 
 void		CcdPhysicsEnvironment::SetDebugMode(int debugMode)
@@ -2047,7 +2094,7 @@ void	CcdPhysicsEnvironment::SetConstraintParam(int constraintId,int param,float 
 
 			case 12: case 13: case 14: case 15: case 16: case 17:
 			{
-				//param 13-17 are for motorized springs on each of the degrees of freedom
+				//param 12-17 are for motorized springs on each of the degrees of freedom
 					btGeneric6DofSpringConstraint* genCons = (btGeneric6DofSpringConstraint*)typedConstraint;
 					int springIndex = param-12;
 					if (value0!=0.f)
@@ -2824,7 +2871,7 @@ int			CcdPhysicsEnvironment::CreateConstraint(class PHY_IPhysicsController* ctrl
 		{
 			btRaycastVehicle::btVehicleTuning* tuning = new btRaycastVehicle::btVehicleTuning();
 			btRigidBody* chassis = rb0;
-			btDefaultVehicleRaycaster* raycaster = new btDefaultVehicleRaycaster(m_dynamicsWorld);
+			btDefaultVehicleRaycaster* raycaster = new BlenderVehicleRaycaster(m_dynamicsWorld);
 			btRaycastVehicle* vehicle = new btRaycastVehicle(*tuning,chassis,raycaster);
 			WrapperVehicle* wrapperVehicle = new WrapperVehicle(vehicle,ctrl0);
 			m_wrapperVehicles.push_back(wrapperVehicle);
@@ -2998,9 +3045,17 @@ void CcdPhysicsEnvironment::ConvertObject(KX_GameObject *gameobj, RAS_MeshObject
 	CcdConstructionInfo ci;
 	class CcdShapeConstructionInfo *shapeInfo = new CcdShapeConstructionInfo();
 
-	KX_GameObject *parent = gameobj->GetParent();
-	if (parent)
+	// get Root Parent of blenderobject
+	Object *blenderparent = blenderobject->parent;
+	while (blenderparent && blenderparent->parent) {
+		blenderparent = blenderparent->parent;
+	}
+
+	KX_GameObject *parent = NULL;
+	if (blenderparent)
 	{
+		KX_BlenderSceneConverter *converter = (KX_BlenderSceneConverter*)KX_GetActiveEngine()->GetSceneConverter();
+		parent = converter->FindGameObject(blenderparent);
 		isbulletdyna = false;
 		isbulletsoftbody = false;
 		shapeprops->m_mass = 0.f;
@@ -3041,10 +3096,81 @@ void CcdPhysicsEnvironment::ConvertObject(KX_GameObject *gameobj, RAS_MeshObject
 		if (blenderobject->bsoft)
 		{
 			ci.m_margin = blenderobject->bsoft->margin;
+			ci.m_gamesoftFlag = blenderobject->bsoft->flag;
+
+			ci.m_soft_linStiff = blenderobject->bsoft->linStiff;
+			ci.m_soft_angStiff = blenderobject->bsoft->angStiff;		/* angular stiffness 0..1 */
+			ci.m_soft_volume = blenderobject->bsoft->volume;			/* volume preservation 0..1 */
+
+			ci.m_soft_viterations = blenderobject->bsoft->viterations;		/* Velocities solver iterations */
+			ci.m_soft_piterations = blenderobject->bsoft->piterations;		/* Positions solver iterations */
+			ci.m_soft_diterations = blenderobject->bsoft->diterations;		/* Drift solver iterations */
+			ci.m_soft_citerations = blenderobject->bsoft->citerations;		/* Cluster solver iterations */
+
+			ci.m_soft_kSRHR_CL = blenderobject->bsoft->kSRHR_CL;		/* Soft vs rigid hardness [0,1] (cluster only) */
+			ci.m_soft_kSKHR_CL = blenderobject->bsoft->kSKHR_CL;		/* Soft vs kinetic hardness [0,1] (cluster only) */
+			ci.m_soft_kSSHR_CL = blenderobject->bsoft->kSSHR_CL;		/* Soft vs soft hardness [0,1] (cluster only) */
+			ci.m_soft_kSR_SPLT_CL = blenderobject->bsoft->kSR_SPLT_CL;	/* Soft vs rigid impulse split [0,1] (cluster only) */
+
+			ci.m_soft_kSK_SPLT_CL = blenderobject->bsoft->kSK_SPLT_CL;	/* Soft vs rigid impulse split [0,1] (cluster only) */
+			ci.m_soft_kSS_SPLT_CL = blenderobject->bsoft->kSS_SPLT_CL;	/* Soft vs rigid impulse split [0,1] (cluster only) */
+			ci.m_soft_kVCF = blenderobject->bsoft->kVCF;			/* Velocities correction factor (Baumgarte) */
+			ci.m_soft_kDP = blenderobject->bsoft->kDP;			/* Damping coefficient [0,1] */
+
+			ci.m_soft_kDG = blenderobject->bsoft->kDG;			/* Drag coefficient [0,+inf] */
+			ci.m_soft_kLF = blenderobject->bsoft->kLF;			/* Lift coefficient [0,+inf] */
+			ci.m_soft_kPR = blenderobject->bsoft->kPR;			/* Pressure coefficient [-inf,+inf] */
+			ci.m_soft_kVC = blenderobject->bsoft->kVC;			/* Volume conversation coefficient [0,+inf] */
+
+			ci.m_soft_kDF = blenderobject->bsoft->kDF;			/* Dynamic friction coefficient [0,1] */
+			ci.m_soft_kMT = blenderobject->bsoft->kMT;			/* Pose matching coefficient [0,1] */
+			ci.m_soft_kCHR = blenderobject->bsoft->kCHR;			/* Rigid contacts hardness [0,1] */
+			ci.m_soft_kKHR = blenderobject->bsoft->kKHR;			/* Kinetic contacts hardness [0,1] */
+
+			ci.m_soft_kSHR = blenderobject->bsoft->kSHR;			/* Soft contacts hardness [0,1] */
+			ci.m_soft_kAHR = blenderobject->bsoft->kAHR;			/* Anchors hardness [0,1] */
+			ci.m_soft_collisionflags = blenderobject->bsoft->collisionflags;	/* Vertex/Face or Signed Distance Field(SDF) or Clusters, Soft versus Soft or Rigid */
+			ci.m_soft_numclusteriterations = blenderobject->bsoft->numclusteriterations;	/* number of iterations to refine collision clusters*/
+
 		}
 		else
 		{
 			ci.m_margin = 0.f;
+			ci.m_gamesoftFlag = OB_BSB_BENDING_CONSTRAINTS | OB_BSB_SHAPE_MATCHING | OB_BSB_AERO_VPOINT;
+
+			ci.m_soft_linStiff = 0.5;
+			ci.m_soft_angStiff = 1.f;	/* angular stiffness 0..1 */
+			ci.m_soft_volume = 1.f;	  /* volume preservation 0..1 */
+
+			ci.m_soft_viterations = 0;
+			ci.m_soft_piterations = 1;
+			ci.m_soft_diterations = 0;
+			ci.m_soft_citerations = 4;
+
+			ci.m_soft_kSRHR_CL = 0.1f;
+			ci.m_soft_kSKHR_CL = 1.f;
+			ci.m_soft_kSSHR_CL = 0.5;
+			ci.m_soft_kSR_SPLT_CL = 0.5f;
+
+			ci.m_soft_kSK_SPLT_CL = 0.5f;
+			ci.m_soft_kSS_SPLT_CL = 0.5f;
+			ci.m_soft_kVCF = 1;
+			ci.m_soft_kDP = 0;
+
+			ci.m_soft_kDG = 0;
+			ci.m_soft_kLF = 0;
+			ci.m_soft_kPR = 0;
+			ci.m_soft_kVC = 0;
+
+			ci.m_soft_kDF = 0.2f;
+			ci.m_soft_kMT = 0.05f;
+			ci.m_soft_kCHR = 1.0f;
+			ci.m_soft_kKHR = 0.1f;
+
+			ci.m_soft_kSHR = 1.f;
+			ci.m_soft_kAHR = 0.7f;
+			ci.m_soft_collisionflags = OB_BSB_COL_SDF_RS + OB_BSB_COL_VF_SS;
+			ci.m_soft_numclusteriterations = 16;
 		}
 	}
 	else
@@ -3056,26 +3182,25 @@ void CcdPhysicsEnvironment::ConvertObject(KX_GameObject *gameobj, RAS_MeshObject
 
 	btCollisionShape* bm = 0;
 
-	char bounds;
-	if (blenderobject->gameflag & OB_BOUNDS)
-	{
-		bounds = blenderobject->collision_boundtype;
-	}
-	else
+	char bounds = isbulletdyna ? OB_BOUND_SPHERE : OB_BOUND_TRIANGLE_MESH;
+	if (!(blenderobject->gameflag & OB_BOUNDS))
 	{
 		if (blenderobject->gameflag & OB_SOFT_BODY)
 			bounds = OB_BOUND_TRIANGLE_MESH;
 		else if (blenderobject->gameflag & OB_CHARACTER)
 			bounds = OB_BOUND_SPHERE;
-		else if (isbulletdyna)
-			bounds = OB_BOUND_SPHERE;
-		else
-			bounds = OB_BOUND_TRIANGLE_MESH;
 	}
-
-	// Can't use triangle mesh or convex hull on a non-mesh object, fall-back to sphere
-	if (ELEM(bounds, OB_BOUND_TRIANGLE_MESH, OB_BOUND_CONVEX_HULL) && blenderobject->type != OB_MESH)
-		bounds = OB_BOUND_SPHERE;
+	else
+	{
+		if (ELEM(blenderobject->collision_boundtype, OB_BOUND_CONVEX_HULL, OB_BOUND_TRIANGLE_MESH)
+		    && blenderobject->type != OB_MESH)
+		{
+			// Can't use triangle mesh or convex hull on a non-mesh object, fall-back to sphere
+			bounds = OB_BOUND_SPHERE;
+		}
+		else
+			bounds = blenderobject->collision_boundtype;
+	}
 
 	// Get bounds information
 	float bounds_center[3], bounds_extends[3];

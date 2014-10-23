@@ -25,11 +25,12 @@
 
 #include "buffers.h"
 
+#include "clew.h"
+
 #include "util_foreach.h"
 #include "util_map.h"
 #include "util_math.h"
 #include "util_md5.h"
-#include "util_opencl.h"
 #include "util_opengl.h"
 #include "util_path.h"
 #include "util_time.h"
@@ -101,7 +102,11 @@ static string opencl_kernel_build_options(const string& platform, const string *
 
 	if(opencl_kernel_use_debug())
 		build_options += "-D__KERNEL_OPENCL_DEBUG__ ";
-	
+
+#ifdef WITH_CYCLES_DEBUG
+	build_options += "-D__KERNEL_DEBUG__ ";
+#endif
+
 	return build_options;
 }
 
@@ -321,6 +326,7 @@ public:
 	cl_kernel ckFilmConvertByteKernel;
 	cl_kernel ckFilmConvertHalfFloatKernel;
 	cl_kernel ckShaderKernel;
+	cl_kernel ckBakeKernel;
 	cl_int ciErr;
 
 	typedef map<string, device_vector<uchar>*> ConstMemMap;
@@ -333,63 +339,10 @@ public:
 	bool device_initialized;
 	string platform_name;
 
-	const char *opencl_error_string(cl_int err)
-	{
-		switch (err) {
-			case CL_SUCCESS: return "Success!";
-			case CL_DEVICE_NOT_FOUND: return "Device not found.";
-			case CL_DEVICE_NOT_AVAILABLE: return "Device not available";
-			case CL_COMPILER_NOT_AVAILABLE: return "Compiler not available";
-			case CL_MEM_OBJECT_ALLOCATION_FAILURE: return "Memory object allocation failure";
-			case CL_OUT_OF_RESOURCES: return "Out of resources";
-			case CL_OUT_OF_HOST_MEMORY: return "Out of host memory";
-			case CL_PROFILING_INFO_NOT_AVAILABLE: return "Profiling information not available";
-			case CL_MEM_COPY_OVERLAP: return "Memory copy overlap";
-			case CL_IMAGE_FORMAT_MISMATCH: return "Image format mismatch";
-			case CL_IMAGE_FORMAT_NOT_SUPPORTED: return "Image format not supported";
-			case CL_BUILD_PROGRAM_FAILURE: return "Program build failure";
-			case CL_MAP_FAILURE: return "Map failure";
-			case CL_INVALID_VALUE: return "Invalid value";
-			case CL_INVALID_DEVICE_TYPE: return "Invalid device type";
-			case CL_INVALID_PLATFORM: return "Invalid platform";
-			case CL_INVALID_DEVICE: return "Invalid device";
-			case CL_INVALID_CONTEXT: return "Invalid context";
-			case CL_INVALID_QUEUE_PROPERTIES: return "Invalid queue properties";
-			case CL_INVALID_COMMAND_QUEUE: return "Invalid command queue";
-			case CL_INVALID_HOST_PTR: return "Invalid host pointer";
-			case CL_INVALID_MEM_OBJECT: return "Invalid memory object";
-			case CL_INVALID_IMAGE_FORMAT_DESCRIPTOR: return "Invalid image format descriptor";
-			case CL_INVALID_IMAGE_SIZE: return "Invalid image size";
-			case CL_INVALID_SAMPLER: return "Invalid sampler";
-			case CL_INVALID_BINARY: return "Invalid binary";
-			case CL_INVALID_BUILD_OPTIONS: return "Invalid build options";
-			case CL_INVALID_PROGRAM: return "Invalid program";
-			case CL_INVALID_PROGRAM_EXECUTABLE: return "Invalid program executable";
-			case CL_INVALID_KERNEL_NAME: return "Invalid kernel name";
-			case CL_INVALID_KERNEL_DEFINITION: return "Invalid kernel definition";
-			case CL_INVALID_KERNEL: return "Invalid kernel";
-			case CL_INVALID_ARG_INDEX: return "Invalid argument index";
-			case CL_INVALID_ARG_VALUE: return "Invalid argument value";
-			case CL_INVALID_ARG_SIZE: return "Invalid argument size";
-			case CL_INVALID_KERNEL_ARGS: return "Invalid kernel arguments";
-			case CL_INVALID_WORK_DIMENSION: return "Invalid work dimension";
-			case CL_INVALID_WORK_GROUP_SIZE: return "Invalid work group size";
-			case CL_INVALID_WORK_ITEM_SIZE: return "Invalid work item size";
-			case CL_INVALID_GLOBAL_OFFSET: return "Invalid global offset";
-			case CL_INVALID_EVENT_WAIT_LIST: return "Invalid event wait list";
-			case CL_INVALID_EVENT: return "Invalid event";
-			case CL_INVALID_OPERATION: return "Invalid operation";
-			case CL_INVALID_GL_OBJECT: return "Invalid OpenGL object";
-			case CL_INVALID_BUFFER_SIZE: return "Invalid buffer size";
-			case CL_INVALID_MIP_LEVEL: return "Invalid mip-map level";
-			default: return "Unknown";
-		}
-	}
-
 	bool opencl_error(cl_int err)
 	{
 		if(err != CL_SUCCESS) {
-			string message = string_printf("OpenCL error (%d): %s", err, opencl_error_string(err));
+			string message = string_printf("OpenCL error (%d): %s", err, clewErrorString(err));
 			if(error_msg == "")
 				error_msg = message;
 			fprintf(stderr, "%s\n", message.c_str());
@@ -411,7 +364,7 @@ public:
 		cl_int err = stmt; \
 		\
 		if(err != CL_SUCCESS) { \
-			string message = string_printf("OpenCL error: %s in %s", opencl_error_string(err), #stmt); \
+			string message = string_printf("OpenCL error: %s in %s", clewErrorString(err), #stmt); \
 			if(error_msg == "") \
 				error_msg = message; \
 			fprintf(stderr, "%s\n", message.c_str()); \
@@ -421,7 +374,7 @@ public:
 	void opencl_assert_err(cl_int err, const char* where)
 	{
 		if(err != CL_SUCCESS) {
-			string message = string_printf("OpenCL error (%d): %s in %s", err, opencl_error_string(err), where);
+			string message = string_printf("OpenCL error (%d): %s in %s", err, clewErrorString(err), where);
 			if(error_msg == "")
 				error_msg = message;
 			fprintf(stderr, "%s\n", message.c_str());
@@ -443,6 +396,7 @@ public:
 		ckFilmConvertByteKernel = NULL;
 		ckFilmConvertHalfFloatKernel = NULL;
 		ckShaderKernel = NULL;
+		ckBakeKernel = NULL;
 		null_mem = 0;
 		device_initialized = false;
 
@@ -550,7 +504,7 @@ public:
 		device_initialized = true;
 	}
 
-	static void context_notify_callback(const char *err_info,
+	static void CL_CALLBACK context_notify_callback(const char *err_info,
 		const void *private_info, size_t cb, void *user_data)
 	{
 		char name[256];
@@ -791,6 +745,10 @@ public:
 		if(opencl_error(ciErr))
 			return false;
 
+		ckBakeKernel = clCreateKernel(cpProgram, "kernel_ocl_bake", &ciErr);
+		if(opencl_error(ciErr))
+			return false;
+
 		return true;
 	}
 
@@ -840,6 +798,7 @@ public:
 		opencl_assert_err(ciErr, "clCreateBuffer");
 
 		stats.mem_alloc(size);
+		mem.device_size = size;
 	}
 
 	void mem_copy_to(device_memory& mem)
@@ -871,7 +830,8 @@ public:
 			opencl_assert(clReleaseMemObject(CL_MEM_PTR(mem.device_pointer)));
 			mem.device_pointer = 0;
 
-			stats.mem_free(mem.memory_size());
+			stats.mem_free(mem.device_size);
+			mem.device_size = 0;
 		}
 	}
 
@@ -1050,23 +1010,43 @@ public:
 		cl_int d_shader_eval_type = task.shader_eval_type;
 		cl_int d_shader_x = task.shader_x;
 		cl_int d_shader_w = task.shader_w;
+		cl_int d_offset = task.offset;
 
 		/* sample arguments */
 		cl_uint narg = 0;
 
-		opencl_assert(clSetKernelArg(ckShaderKernel, narg++, sizeof(d_data), (void*)&d_data));
-		opencl_assert(clSetKernelArg(ckShaderKernel, narg++, sizeof(d_input), (void*)&d_input));
-		opencl_assert(clSetKernelArg(ckShaderKernel, narg++, sizeof(d_output), (void*)&d_output));
+		cl_kernel kernel;
+
+		if(task.shader_eval_type >= SHADER_EVAL_BAKE)
+			kernel = ckBakeKernel;
+		else
+			kernel = ckShaderKernel;
+
+		for(int sample = 0; sample < task.num_samples; sample++) {
+
+			if(task.get_cancel())
+				break;
+
+			cl_int d_sample = sample;
+
+			opencl_assert(clSetKernelArg(kernel, narg++, sizeof(d_data), (void*)&d_data));
+			opencl_assert(clSetKernelArg(kernel, narg++, sizeof(d_input), (void*)&d_input));
+			opencl_assert(clSetKernelArg(kernel, narg++, sizeof(d_output), (void*)&d_output));
 
 #define KERNEL_TEX(type, ttype, name) \
-	set_kernel_arg_mem(ckShaderKernel, &narg, #name);
+		set_kernel_arg_mem(kernel, &narg, #name);
 #include "kernel_textures.h"
 
-		opencl_assert(clSetKernelArg(ckShaderKernel, narg++, sizeof(d_shader_eval_type), (void*)&d_shader_eval_type));
-		opencl_assert(clSetKernelArg(ckShaderKernel, narg++, sizeof(d_shader_x), (void*)&d_shader_x));
-		opencl_assert(clSetKernelArg(ckShaderKernel, narg++, sizeof(d_shader_w), (void*)&d_shader_w));
+			opencl_assert(clSetKernelArg(kernel, narg++, sizeof(d_shader_eval_type), (void*)&d_shader_eval_type));
+			opencl_assert(clSetKernelArg(kernel, narg++, sizeof(d_shader_x), (void*)&d_shader_x));
+			opencl_assert(clSetKernelArg(kernel, narg++, sizeof(d_shader_w), (void*)&d_shader_w));
+			opencl_assert(clSetKernelArg(kernel, narg++, sizeof(d_offset), (void*)&d_offset));
+			opencl_assert(clSetKernelArg(kernel, narg++, sizeof(d_sample), (void*)&d_sample));
 
-		enqueue_kernel(ckShaderKernel, task.shader_w, 1);
+			enqueue_kernel(kernel, task.shader_w, 1);
+
+			task.update_progress(NULL);
+		}
 	}
 
 	void thread_run(DeviceTask *task)
@@ -1095,7 +1075,7 @@ public:
 
 					tile.sample = sample + 1;
 
-					task->update_progress(tile);
+					task->update_progress(&tile);
 				}
 
 				task->release_tile(tile);
@@ -1111,6 +1091,11 @@ public:
 			run = function_bind(&OpenCLDevice::thread_run, device, this);
 		}
 	};
+
+	int get_split_task_count(DeviceTask& task)
+	{
+		return 1;
+	}
 
 	void task_add(DeviceTask& task)
 	{
@@ -1131,6 +1116,26 @@ public:
 Device *device_opencl_create(DeviceInfo& info, Stats &stats, bool background)
 {
 	return new OpenCLDevice(info, stats, background);
+}
+
+bool device_opencl_init(void) {
+	static bool initialized = false;
+	static bool result = false;
+
+	if (initialized)
+		return result;
+
+	initialized = true;
+
+	// OpenCL disabled for now, only works with this environment variable set
+	if(!getenv("CYCLES_OPENCL_TEST")) {
+		result = false;
+	}
+	else {
+		result = clewInit() == CLEW_SUCCESS;
+	}
+
+	return result;
 }
 
 void device_opencl_info(vector<DeviceInfo>& devices)

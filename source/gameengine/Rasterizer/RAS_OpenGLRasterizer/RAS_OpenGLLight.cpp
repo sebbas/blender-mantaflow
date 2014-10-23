@@ -25,7 +25,10 @@
  * ***** END GPL LICENSE BLOCK *****
  */
 
-#include "GL/glew.h"
+#include "glew-mx.h"
+
+#include <stdio.h>
+
 
 #include "RAS_OpenGLLight.h"
 #include "RAS_OpenGLRasterizer.h"

@@ -109,20 +109,22 @@ Nurb *add_nurbs_primitive(bContext *C, Object *obedit, float mat[4][4], int type
 {
 	static int xzproj = 0;   /* this function calls itself... */
 	ListBase *editnurb = object_editcurve_get(obedit);
-	View3D *v3d = CTX_wm_view3d(C);
 	RegionView3D *rv3d = ED_view3d_context_rv3d(C);
 	Nurb *nu = NULL;
 	BezTriple *bezt;
 	BPoint *bp;
 	Curve *cu = (Curve *)obedit->data;
 	float vec[3], zvec[3] = {0.0f, 0.0f, 1.0f};
-	float umat[4][4] = MAT4_UNITY, viewmat[4][4] = MAT4_UNITY;
+	float umat[4][4], viewmat[4][4];
 	float fac;
 	int a, b;
-	const float grid = v3d ? v3d->grid : 1.0f;
+	const float grid = 1.0f;
 	const int cutype = (type & CU_TYPE); // poly, bezier, nurbs, etc
 	const int stype = (type & CU_PRIMITIVE);
 	const int force_3d = ((Curve *)obedit->data)->flag & CU_3D; /* could be adding to an existing 3D curve */
+
+	unit_m4(umat);
+	unit_m4(viewmat);
 
 	if (rv3d) {
 		copy_m4_m4(viewmat, rv3d->viewmat);

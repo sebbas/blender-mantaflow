@@ -60,6 +60,7 @@ extern "C" {
 
 #include "FRS_freestyle.h"
 #include "RNA_access.h"
+#include "DNA_scene_types.h"
 #include "bpy_rna.h" /* pyrna_struct_CreatePyObject() */
 
 static char Freestyle_getCurrentScene___doc__[] =
@@ -77,7 +78,7 @@ static PyObject *Freestyle_getCurrentScene(PyObject *self)
 		return NULL;
 	}
 	PointerRNA ptr_scene;
-	RNA_pointer_create(NULL, &RNA_Scene, freestyle_scene, &ptr_scene);
+	RNA_pointer_create(&freestyle_scene->id, &RNA_Scene, freestyle_scene, &ptr_scene);
 	return pyrna_struct_CreatePyObject(&ptr_scene);
 }
 
@@ -138,14 +139,16 @@ static PyObject *Freestyle_blendRamp(PyObject *self, PyObject *args)
 		PyErr_SetString(PyExc_TypeError, "argument 1 is an unknown ramp blend type");
 		return NULL;
 	}
-	if (!float_array_from_PyObject(obj1, a, 3)) {
-		PyErr_SetString(PyExc_TypeError,
-		                "argument 2 must be a 3D vector (either a tuple/list of 3 elements or Vector)");
+	if (mathutils_array_parse(a, 3, 3, obj1,
+	                          "argument 2 must be a 3D vector "
+	                          "(either a tuple/list of 3 elements or Vector)") == -1)
+	{
 		return NULL;
 	}
-	if (!float_array_from_PyObject(obj2, b, 3)) {
-		PyErr_SetString(PyExc_TypeError,
-		                "argument 4 must be a 3D vector (either a tuple/list of 3 elements or Vector)");
+	if (mathutils_array_parse(b, 3, 3, obj2,
+	                          "argument 4 must be a 3D vector "
+	                          "(either a tuple/list of 3 elements or Vector)") == -1)
+	{
 		return NULL;
 	}
 	ramp_blend(type, a, fac, b);

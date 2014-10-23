@@ -595,7 +595,9 @@ KX_GameObject* KX_Scene::AddNodeReplicaObject(class SG_IObject* node, class CVal
 void KX_Scene::ReplicateLogic(KX_GameObject* newobj)
 {
 	/* add properties to debug list, for added objects and DupliGroups */
-	AddObjectDebugProperties(newobj);
+	if (KX_GetActiveEngine()->GetAutoAddDebugProperties()) {
+		AddObjectDebugProperties(newobj);
+	}
 	// also relink the controller to sensors/actuators
 	SCA_ControllerList& controllers = newobj->GetControllers();
 	//SCA_SensorList&     sensors     = newobj->GetSensors();
@@ -1005,7 +1007,7 @@ int KX_Scene::NewRemoveObject(class CValue* gameobj)
 	int ret;
 	KX_GameObject* newobj = (KX_GameObject*) gameobj;
 
-	/* remove property to debug list */
+	/* remove property from debug list */
 	RemoveObjectDebugProperties(newobj);
 
 	/* Invalidate the python reference, since the object may exist in script lists
@@ -1038,6 +1040,7 @@ int KX_Scene::NewRemoveObject(class CValue* gameobj)
 		 !(itc==controllers.end());itc++)
 	{
 		m_logicmgr->RemoveController(*itc);
+		(*itc)->ReParent(NULL);
 	}
 
 	SCA_ActuatorList& actuators = newobj->GetActuators();
@@ -1166,8 +1169,6 @@ void KX_Scene::ReplaceMesh(class CValue* obj,void* meshobj, bool use_gfx, bool u
 #ifdef WITH_BULLET
 			bool bHasSoftBody = (!parentobj && (blendobj->gameflag & OB_SOFT_BODY));
 #endif
-			bool releaseParent = true;
-
 			
 			if (oldblendobj==NULL) {
 				if (bHasModifier || bHasShapeKey || bHasDvert || bHasArmature) {
@@ -1187,9 +1188,8 @@ void KX_Scene::ReplaceMesh(class CValue* obj,void* meshobj, bool use_gfx, bool u
 						oldblendobj, blendobj,
 						mesh,
 						true,
-						static_cast<BL_ArmatureObject*>( parentobj )
+						static_cast<BL_ArmatureObject*>( parentobj->AddRef() )
 					);
-					releaseParent= false;
 					modifierDeformer->LoadShapeDrivers(parentobj);
 				}
 				else
@@ -1215,9 +1215,8 @@ void KX_Scene::ReplaceMesh(class CValue* obj,void* meshobj, bool use_gfx, bool u
 						mesh,
 						true,
 						true,
-						static_cast<BL_ArmatureObject*>( parentobj )
+						static_cast<BL_ArmatureObject*>( parentobj->AddRef() )
 					);
-					releaseParent= false;
 					shapeDeformer->LoadShapeDrivers(parentobj);
 				}
 				else
@@ -1241,9 +1240,8 @@ void KX_Scene::ReplaceMesh(class CValue* obj,void* meshobj, bool use_gfx, bool u
 					mesh,
 					true,
 					true,
-					static_cast<BL_ArmatureObject*>( parentobj )
+					static_cast<BL_ArmatureObject*>( parentobj->AddRef() )
 				);
-				releaseParent= false;
 				newobj->SetDeformer(skinDeformer);
 			}
 			else if (bHasDvert)
@@ -1260,10 +1258,6 @@ void KX_Scene::ReplaceMesh(class CValue* obj,void* meshobj, bool use_gfx, bool u
 				newobj->SetDeformer(softdeformer);
 			}
 #endif
-
-			// release parent reference if its not being used 
-			if ( releaseParent && parentobj)
-				parentobj->Release();
 		}
 	}
 
@@ -1354,17 +1348,6 @@ void KX_Scene::SetCameraOnTop(KX_Camera* cam)
 	} else {
 		m_cameras.remove(cam);
 		m_cameras.push_back(cam);
-	}
-}
-
-
-void KX_Scene::UpdateMeshTransformations()
-{
-	// do this incrementally in the future
-	for (int i = 0; i < m_objectlist->GetCount(); i++)
-	{
-		KX_GameObject* gameobj = (KX_GameObject*)m_objectlist->GetValue(i);
-		gameobj->GetOpenGLMatrix();
 	}
 }
 
@@ -1548,6 +1531,9 @@ void KX_Scene::CalculateVisibleMeshes(RAS_IRasterizer* rasty,KX_Camera* cam, int
 			MarkVisible(rasty, static_cast<KX_GameObject*>(m_objectlist->GetValue(i)), cam, layer);
 		}
 	}
+
+	// Now that we know visible meshes, update LoDs
+	UpdateObjectLods();
 }
 
 // logic stuff
@@ -1591,7 +1577,7 @@ void KX_Scene::AddAnimatedObject(CValue* gameobj)
 
 static void update_anim_thread_func(TaskPool *pool, void *taskdata, int UNUSED(threadid))
 {
-	KX_GameObject *gameobj, *child;
+	KX_GameObject *gameobj, *child, *parent;
 	CListValue *children;
 	bool needs_update;
 	double curtime = *(double*)BLI_task_pool_userdata(pool);
@@ -1635,8 +1621,11 @@ static void update_anim_thread_func(TaskPool *pool, void *taskdata, int UNUSED(t
 	if (needs_update) {
 		gameobj->UpdateActionManager(curtime);
 		children = gameobj->GetChildren();
+		parent = gameobj->GetParent();
 
-		if (gameobj->GetDeformer())
+		// Only do deformers here if they are not parented to an armature, otherwise the armature will
+		// handle updating its children
+		if (gameobj->GetDeformer() && (!parent || (parent && parent->GetGameObjectType() != SCA_IObject::OBJ_ARMATURE)))
 			gameobj->GetDeformer()->Update();
 
 		for (int j=0; j<children->GetCount(); ++j) {
@@ -1653,6 +1642,20 @@ static void update_anim_thread_func(TaskPool *pool, void *taskdata, int UNUSED(t
 
 void KX_Scene::UpdateAnimations(double curtime)
 {
+	KX_KetsjiEngine *engine = KX_GetActiveEngine();
+
+	if (engine->GetRestrictAnimationFPS())
+	{
+		// Handle the animations independently of the logic time step
+		double anim_timestep = 1.0 / GetAnimationFPS();
+		if (curtime - m_previousAnimTime < anim_timestep)
+			return;
+
+		// Sanity/debug print to make sure we're actually going at the fps we want (should be close to anim_timestep)
+		// printf("Anim fps: %f\n", 1.0/(m_clockTime - m_previousAnimTime));
+		m_previousAnimTime = curtime;
+	}
+
 	TaskPool *pool = BLI_task_pool_create(KX_GetActiveEngine()->GetTaskScheduler(), &curtime);
 
 	for (int i=0; i<m_animatedlist->GetCount(); ++i) {
@@ -2024,7 +2027,11 @@ bool KX_Scene::MergeScene(KX_Scene *other)
 	{
 		KX_GameObject* gameobj = (KX_GameObject*)other->GetObjectList()->GetValue(i);
 		MergeScene_GameObject(gameobj, this, other);
-		AddObjectDebugProperties(gameobj); // add properties to debug list for LibLoad objects
+
+		/* add properties to debug list for LibLoad objects */
+		if (KX_GetActiveEngine()->GetAutoAddDebugProperties()) {
+			AddObjectDebugProperties(gameobj);
+		}
 
 		gameobj->UpdateBuckets(false); /* only for active objects */
 	}
@@ -2497,16 +2504,18 @@ KX_PYMETHODDEF_DOC(KX_Scene, restart,
 
 KX_PYMETHODDEF_DOC(KX_Scene, replace,
 				   "replace(newScene)\n"
-				   "Replaces this scene with another one.\n")
+                   "Replaces this scene with another one.\n"
+                   "Return True if the new scene exists and scheduled for replacement, False otherwise.\n")
 {
 	char* name;
 	
 	if (!PyArg_ParseTuple(args, "s:replace", &name))
 		return NULL;
 	
-	KX_GetActiveEngine()->ReplaceScene(m_sceneName, name);
+    if (KX_GetActiveEngine()->ReplaceScene(m_sceneName, name))
+        Py_RETURN_TRUE;
 	
-	Py_RETURN_NONE;
+    Py_RETURN_FALSE;
 }
 
 KX_PYMETHODDEF_DOC(KX_Scene, suspend,

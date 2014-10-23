@@ -62,6 +62,7 @@
 #include "BKE_object.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
+#include "BKE_screen.h"
 #include "BKE_tracking.h"
 
 #include "UI_interface.h"
@@ -86,7 +87,7 @@
 /* Context Wrangling... */
 
 /* Get pointer to active Grease Pencil datablock, and an RNA-pointer to trace back to whatever owns it */
-bGPdata **gpencil_data_get_pointers(const bContext *C, PointerRNA *ptr)
+bGPdata **ED_gpencil_data_get_pointers(const bContext *C, PointerRNA *ptr)
 {
 	ID *screen_id = (ID *)CTX_wm_screen(C);
 	Scene *scene = CTX_data_scene(C);
@@ -180,21 +181,21 @@ bGPdata **gpencil_data_get_pointers(const bContext *C, PointerRNA *ptr)
 }
 
 /* Get the active Grease Pencil datablock */
-bGPdata *gpencil_data_get_active(const bContext *C)
+bGPdata *ED_gpencil_data_get_active(const bContext *C)
 {
-	bGPdata **gpd_ptr = gpencil_data_get_pointers(C, NULL);
+	bGPdata **gpd_ptr = ED_gpencil_data_get_pointers(C, NULL);
 	return (gpd_ptr) ? *(gpd_ptr) : NULL;
 }
 
-/* needed for offscreen rendering */
-bGPdata *gpencil_data_get_active_v3d(Scene *scene)
+bGPdata *ED_gpencil_data_get_active_v3d(Scene *scene, View3D *v3d)
 {
 	Base *base = scene->basact;
 	bGPdata *gpd = NULL;
 	/* We have to make sure active object is actually visible and selected, else we must use default scene gpd,
-	 * to be consistent with gpencil_data_get_active's behavior.
+	 * to be consistent with ED_gpencil_data_get_active's behavior.
 	 */
-	if (base && (scene->lay & base->lay) && (base->object->flag & SELECT)) {
+
+	if (base && TESTBASE(v3d, base)) {
 		gpd = base->object->gpd;
 	}
 	return gpd ? gpd : scene->gpd;
@@ -207,7 +208,7 @@ bGPdata *gpencil_data_get_active_v3d(Scene *scene)
 static int gp_add_poll(bContext *C)
 {
 	/* the base line we have is that we have somewhere to add Grease Pencil data */
-	return gpencil_data_get_pointers(C, NULL) != NULL;
+	return ED_gpencil_data_get_pointers(C, NULL) != NULL;
 }
 
 /* ******************* Add New Data ************************ */
@@ -215,7 +216,7 @@ static int gp_add_poll(bContext *C)
 /* add new datablock - wrapper around API */
 static int gp_data_add_exec(bContext *C, wmOperator *op)
 {
-	bGPdata **gpd_ptr = gpencil_data_get_pointers(C, NULL);
+	bGPdata **gpd_ptr = ED_gpencil_data_get_pointers(C, NULL);
 
 	if (gpd_ptr == NULL) {
 		BKE_report(op->reports, RPT_ERROR, "Nowhere for grease pencil data to go");
@@ -253,7 +254,7 @@ void GPENCIL_OT_data_add(wmOperatorType *ot)
 /* poll callback for adding data/layers - special */
 static int gp_data_unlink_poll(bContext *C)
 {
-	bGPdata **gpd_ptr = gpencil_data_get_pointers(C, NULL);
+	bGPdata **gpd_ptr = ED_gpencil_data_get_pointers(C, NULL);
 
 	/* if we have access to some active data, make sure there's a datablock before enabling this */
 	return (gpd_ptr && *gpd_ptr);
@@ -263,7 +264,7 @@ static int gp_data_unlink_poll(bContext *C)
 /* unlink datablock - wrapper around API */
 static int gp_data_unlink_exec(bContext *C, wmOperator *op)
 {
-	bGPdata **gpd_ptr = gpencil_data_get_pointers(C, NULL);
+	bGPdata **gpd_ptr = ED_gpencil_data_get_pointers(C, NULL);
 
 	if (gpd_ptr == NULL) {
 		BKE_report(op->reports, RPT_ERROR, "Nowhere for grease pencil data to go");
@@ -301,7 +302,7 @@ void GPENCIL_OT_data_unlink(wmOperatorType *ot)
 /* add new layer - wrapper around API */
 static int gp_layer_add_exec(bContext *C, wmOperator *op)
 {
-	bGPdata **gpd_ptr = gpencil_data_get_pointers(C, NULL);
+	bGPdata **gpd_ptr = ED_gpencil_data_get_pointers(C, NULL);
 
 	/* if there's no existing Grease-Pencil data there, add some */
 	if (gpd_ptr == NULL) {
@@ -337,7 +338,7 @@ void GPENCIL_OT_layer_add(wmOperatorType *ot)
 
 static int gp_actframe_delete_poll(bContext *C)
 {
-	bGPdata *gpd = gpencil_data_get_active(C);
+	bGPdata *gpd = ED_gpencil_data_get_active(C);
 	bGPDlayer *gpl = gpencil_layer_getactive(gpd);
 
 	/* only if there's an active layer with an active frame */
@@ -348,7 +349,7 @@ static int gp_actframe_delete_poll(bContext *C)
 static int gp_actframe_delete_exec(bContext *C, wmOperator *op)
 {
 	Scene *scene = CTX_data_scene(C);
-	bGPdata *gpd = gpencil_data_get_active(C);
+	bGPdata *gpd = ED_gpencil_data_get_active(C);
 	bGPDlayer *gpl = gpencil_layer_getactive(gpd);
 	bGPDframe *gpf = gpencil_layer_getframe(gpl, CFRA, 0);
 
@@ -1399,6 +1400,7 @@ static void gp_layer_to_curve(bContext *C, ReportList *reports, bGPdata *gpd, bG
                               const bool norm_weights, const float rad_fac, const bool link_strokes, tGpTimingData *gtd)
 {
 	struct Main *bmain = CTX_data_main(C);
+	View3D *v3d = CTX_wm_view3d(C);  /* may be NULL */
 	Scene *scene = CTX_data_scene(C);
 	bGPDframe *gpf = gpencil_layer_getframe(gpl, CFRA, 0);
 	bGPDstroke *gps, *prev_gps = NULL;
@@ -1412,7 +1414,7 @@ static void gp_layer_to_curve(bContext *C, ReportList *reports, bGPdata *gpd, bG
 	rctf subrect, *subrect_ptr = NULL;
 
 	/* error checking */
-	if (ELEM3(NULL, gpd, gpl, gpf))
+	if (ELEM(NULL, gpd, gpl, gpf))
 		return;
 
 	/* only convert if there are any strokes on this layer's frame to convert */
@@ -1493,7 +1495,7 @@ static void gp_layer_to_curve(bContext *C, ReportList *reports, bGPdata *gpd, bG
 	}
 
 	/* set the layer and select */
-	base_new->lay  = ob->lay  = base_orig ? base_orig->lay : scene->lay;
+	base_new->lay  = ob->lay  = base_orig ? base_orig->lay : BKE_screen_view3d_layer_active(v3d, scene);
 	base_new->flag = ob->flag = base_new->flag | SELECT;
 }
 
@@ -1559,7 +1561,7 @@ static void gp_convert_set_end_frame(struct Main *UNUSED(main), struct Scene *UN
 
 static int gp_convert_poll(bContext *C)
 {
-	bGPdata *gpd = gpencil_data_get_active(C);
+	bGPdata *gpd = ED_gpencil_data_get_active(C);
 	bGPDlayer *gpl = NULL;
 	bGPDframe *gpf = NULL;
 	ScrArea *sa = CTX_wm_area(C);
@@ -1578,7 +1580,7 @@ static int gp_convert_poll(bContext *C)
 static int gp_convert_layer_exec(bContext *C, wmOperator *op)
 {
 	PropertyRNA *prop = RNA_struct_find_property(op->ptr, "use_timing_data");
-	bGPdata *gpd = gpencil_data_get_active(C);
+	bGPdata *gpd = ED_gpencil_data_get_active(C);
 	bGPDlayer *gpl = gpencil_layer_getactive(gpd);
 	Scene *scene = CTX_data_scene(C);
 	const int mode = RNA_enum_get(op->ptr, "type");

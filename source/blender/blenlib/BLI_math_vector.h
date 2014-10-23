@@ -65,6 +65,7 @@ MINLINE void swap_v4_v4(float a[4], float b[4]);
 MINLINE void copy_v2_v2_char(char r[2], const char a[2]);
 MINLINE void copy_v3_v3_char(char r[3], const char a[3]);
 MINLINE void copy_v4_v4_char(char r[4], const char a[4]);
+
 /* short */
 MINLINE void copy_v2_v2_short(short r[2], const short a[2]);
 MINLINE void copy_v3_v3_short(short r[3], const short a[3]);
@@ -231,6 +232,7 @@ MINLINE bool equals_v3v3(const float a[3], const float b[3])  ATTR_WARN_UNUSED_R
 MINLINE bool compare_v2v2(const float a[2], const float b[2], const float limit)  ATTR_WARN_UNUSED_RESULT;
 MINLINE bool compare_v3v3(const float a[3], const float b[3], const float limit)  ATTR_WARN_UNUSED_RESULT;
 MINLINE bool compare_len_v3v3(const float a[3], const float b[3], const float limit)  ATTR_WARN_UNUSED_RESULT;
+MINLINE bool compare_len_squared_v3v3(const float a[3], const float b[3], const float limit)  ATTR_WARN_UNUSED_RESULT;
 
 MINLINE bool compare_v4v4(const float a[4], const float b[4], const float limit)  ATTR_WARN_UNUSED_RESULT;
 MINLINE bool equals_v4v4(const float a[4], const float b[4])  ATTR_WARN_UNUSED_RESULT;
@@ -251,6 +253,7 @@ float angle_v3v3v3(const float a[3], const float b[3], const float c[3]) ATTR_WA
 float cos_v3v3v3(const float p1[3], const float p2[3], const float p3[3]) ATTR_WARN_UNUSED_RESULT;
 float angle_normalized_v3v3(const float v1[3], const float v2[3]) ATTR_WARN_UNUSED_RESULT;
 float angle_on_axis_v3v3v3_v3(const float v1[3], const float v2[3], const float v3[3], const float axis[3]) ATTR_WARN_UNUSED_RESULT;
+float angle_signed_on_axis_v3v3v3_v3(const float v1[3], const float v2[3], const float v3[3], const float axis[3]) ATTR_WARN_UNUSED_RESULT;
 void angle_tri_v3(float angles[3], const float v1[3], const float v2[3], const float v3[3]);
 void angle_quad_v3(float angles[4], const float v1[3], const float v2[3], const float v3[3], const float v4[3]);
 void angle_poly_v3(float *angles, const float *verts[3], int len);
@@ -263,7 +266,7 @@ void project_v3_plane(float v[3], const float n[3], const float p[3]);
 void reflect_v3_v3v3(float r[3], const float v[3], const float n[3]);
 void ortho_basis_v3v3_v3(float r_n1[3], float r_n2[3], const float n[3]);
 void ortho_v3_v3(float p[3], const float v[3]);
-void ortho_v2_v2(float p[3], const float v[3]);
+void ortho_v2_v2(float p[2], const float v[2]);
 void bisect_v3_v3v3v3(float r[3], const float a[3], const float b[3], const float c[3]);
 void rotate_v3_v3v3fl(float v[3], const float p[3], const float axis[3], const float angle);
 void rotate_normalized_v3_v3v3fl(float v[3], const float p[3], const float axis[3], const float angle);

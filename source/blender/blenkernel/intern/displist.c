@@ -71,8 +71,6 @@ void BKE_displist_elem_free(DispList *dl)
 		if (dl->verts) MEM_freeN(dl->verts);
 		if (dl->nors) MEM_freeN(dl->nors);
 		if (dl->index) MEM_freeN(dl->index);
-		if (dl->col1) MEM_freeN(dl->col1);
-		if (dl->col2) MEM_freeN(dl->col2);
 		if (dl->bevelSplitFlag) MEM_freeN(dl->bevelSplitFlag);
 		MEM_freeN(dl);
 	}
@@ -124,7 +122,7 @@ bool BKE_displist_has_faces(ListBase *lb)
 	DispList *dl;
 
 	for (dl = lb->first; dl; dl = dl->next) {
-		if (ELEM3(dl->type, DL_INDEX3, DL_INDEX4, DL_SURF)) {
+		if (ELEM(dl->type, DL_INDEX3, DL_INDEX4, DL_SURF)) {
 			return true;
 		}
 	}
@@ -145,8 +143,6 @@ void BKE_displist_copy(ListBase *lbn, ListBase *lb)
 		dln->verts = MEM_dupallocN(dl->verts);
 		dln->nors = MEM_dupallocN(dl->nors);
 		dln->index = MEM_dupallocN(dl->index);
-		dln->col1 = MEM_dupallocN(dl->col1);
-		dln->col2 = MEM_dupallocN(dl->col2);
 
 		if (dl->bevelSplitFlag)
 			dln->bevelSplitFlag = MEM_dupallocN(dl->bevelSplitFlag);
@@ -347,7 +343,7 @@ static void curve_to_displist(Curve *cu, ListBase *nubase, ListBase *dispbase,
 
 				dl = MEM_callocN(sizeof(DispList), "makeDispListbez");
 				/* len+1 because of 'forward_diff_bezier' function */
-				dl->verts = MEM_callocN((len + 1) * 3 * sizeof(float), "dlverts");
+				dl->verts = MEM_mallocN((len + 1) * sizeof(float[3]), "dlverts");
 				BLI_addtail(dispbase, dl);
 				dl->parts = 1;
 				dl->nr = len;
@@ -401,7 +397,7 @@ static void curve_to_displist(Curve *cu, ListBase *nubase, ListBase *dispbase,
 				len = (resolu * SEGMENTSU(nu));
 
 				dl = MEM_callocN(sizeof(DispList), "makeDispListsurf");
-				dl->verts = MEM_callocN(len * 3 * sizeof(float), "dlverts");
+				dl->verts = MEM_mallocN(len * sizeof(float[3]), "dlverts");
 				BLI_addtail(dispbase, dl);
 				dl->parts = 1;
 
@@ -418,7 +414,7 @@ static void curve_to_displist(Curve *cu, ListBase *nubase, ListBase *dispbase,
 			else if (nu->type == CU_POLY) {
 				len = nu->pntsu;
 				dl = MEM_callocN(sizeof(DispList), "makeDispListpoly");
-				dl->verts = MEM_callocN(len * 3 * sizeof(float), "dlverts");
+				dl->verts = MEM_mallocN(len * sizeof(float[3]), "dlverts");
 				BLI_addtail(dispbase, dl);
 				dl->parts = 1;
 				dl->nr = len;
@@ -657,8 +653,8 @@ static void curve_to_filledpoly(Curve *cu, ListBase *UNUSED(nurb), ListBase *dis
 		bevels_to_filledpoly(cu, dispbase);
 	}
 	else {
-		/* TODO, investigate passing zup instead of NULL */
-		BKE_displist_fill(dispbase, dispbase, NULL, false);
+		const float z_up[3] = {0.0f, 0.0f, 1.0f};
+		BKE_displist_fill(dispbase, dispbase, z_up, false);
 	}
 }
 
@@ -719,21 +715,20 @@ void BKE_displist_make_mball(EvaluationContext *eval_ctx, Scene *scene, Object *
 	if (!ob || ob->type != OB_MBALL)
 		return;
 
-	if (ob->curve_cache) {
-		BKE_displist_free(&(ob->curve_cache->disp));
-	}
-	else {
-		ob->curve_cache = MEM_callocN(sizeof(CurveCache), "CurveCache for MBall");
-	}
-
-	if (ob->type == OB_MBALL) {
-		if (ob == BKE_mball_basis_find(scene, ob)) {
-			BKE_mball_polygonize(eval_ctx, scene, ob, &ob->curve_cache->disp);
-			BKE_mball_texspace_calc(ob);
-
-			object_deform_mball(ob, &ob->curve_cache->disp);
+	if (ob == BKE_mball_basis_find(scene, ob)) {
+		if (ob->curve_cache) {
+			BKE_displist_free(&(ob->curve_cache->disp));
+		}
+		else {
+			ob->curve_cache = MEM_callocN(sizeof(CurveCache), "CurveCache for MBall");
 		}
 
+		BKE_mball_polygonize(eval_ctx, scene, ob, &ob->curve_cache->disp);
+		BKE_mball_texspace_calc(ob);
+
+		object_deform_mball(ob, &ob->curve_cache->disp);
+
+		/* NOP for MBALLs anyway... */
 		boundbox_displist_object(ob);
 	}
 }
@@ -771,7 +766,7 @@ static ModifierData *curve_get_tessellate_point(Scene *scene, Object *ob,
 		if (mti->type == eModifierTypeType_Constructive)
 			return pretessellatePoint;
 
-		if (ELEM3(md->type, eModifierType_Hook, eModifierType_Softbody, eModifierType_MeshDeform)) {
+		if (ELEM(md->type, eModifierType_Hook, eModifierType_Softbody, eModifierType_MeshDeform)) {
 			pretessellatePoint = md;
 
 			/* this modifiers are moving point of tessellation automatically
@@ -1227,7 +1222,7 @@ void BKE_displist_make_surf(Scene *scene, Object *ob, ListBase *dispbase,
 				len = SEGMENTSU(nu) * resolu;
 
 				dl = MEM_callocN(sizeof(DispList), "makeDispListsurf");
-				dl->verts = MEM_callocN(len * 3 * sizeof(float), "dlverts");
+				dl->verts = MEM_mallocN(len * sizeof(float[3]), "dlverts");
 
 				BLI_addtail(dispbase, dl);
 				dl->parts = 1;
@@ -1249,7 +1244,7 @@ void BKE_displist_make_surf(Scene *scene, Object *ob, ListBase *dispbase,
 				len = (nu->pntsu * resolu) * (nu->pntsv * resolv);
 
 				dl = MEM_callocN(sizeof(DispList), "makeDispListsurf");
-				dl->verts = MEM_callocN(len * 3 * sizeof(float), "dlverts");
+				dl->verts = MEM_mallocN(len * sizeof(float[3]), "dlverts");
 				BLI_addtail(dispbase, dl);
 
 				dl->col = nu->mat_nr;
@@ -1276,6 +1271,7 @@ void BKE_displist_make_surf(Scene *scene, Object *ob, ListBase *dispbase,
 	}
 
 	if (!for_orco) {
+		BKE_nurbList_duplicate(&ob->curve_cache->deformed_nurbs, &nubase);
 		curve_calc_modifiers_post(scene, ob, &nubase, dispbase, r_dm_final,
 		                          for_render, use_render_resolution);
 	}
@@ -1344,7 +1340,7 @@ static void fillBevelCap(Nurb *nu, DispList *dlb, float *prev_fp, ListBase *disp
 	DispList *dl;
 
 	dl = MEM_callocN(sizeof(DispList), "makeDispListbev2");
-	dl->verts = MEM_mallocN(3 * sizeof(float) * dlb->nr, "dlverts");
+	dl->verts = MEM_mallocN(sizeof(float[3]) * dlb->nr, "dlverts");
 	memcpy(dl->verts, prev_fp, 3 * sizeof(float) * dlb->nr);
 
 	dl->type = DL_POLY;
@@ -1361,47 +1357,85 @@ static void fillBevelCap(Nurb *nu, DispList *dlb, float *prev_fp, ListBase *disp
 	BLI_addtail(dispbase, dl);
 }
 
-
-static void calc_bevfac_spline_mapping(BevList *bl, float bevfac, float spline_length, const float *bevp_array,
-                                       int *r_bev, float *r_blend)
+static void calc_bevfac_segment_mapping(BevList *bl, float bevfac, float spline_length, int *r_bev, float *r_blend)
 {
-	float len = 0.0f;
-	int i;
-	for (i = 0; i < bl->nr; i++) {
-		*r_bev = i;
-		*r_blend = (bevfac * spline_length - len) / bevp_array[i];
-		if (len + bevp_array[i] > bevfac * spline_length) {
+	float normlen, normsum = 0.0f;
+	float *seglen = bl->seglen;
+	int *segbevcount = bl->segbevcount;
+	int bevcount = 0, nr = bl->nr;
+
+	float bev_fl = bevfac * (bl->nr - 1);
+	*r_bev = (int)bev_fl;
+
+	while (bevcount < nr - 1) {
+		normlen = *seglen / spline_length;
+		if (normsum + normlen > bevfac) {
+			bev_fl = bevcount + (bevfac - normsum) / normlen * *segbevcount;
+			*r_bev = (int) bev_fl;
+			*r_blend = bev_fl - *r_bev;
 			break;
 		}
-		len += bevp_array[i];
+		normsum += normlen;
+		bevcount += *segbevcount;
+		segbevcount++;
+		seglen++;
 	}
 }
 
-static void calc_bevfac_mapping(Curve *cu, BevList *bl, int *r_start, float *r_firstblend, int *r_steps, float *r_lastblend)
+static void calc_bevfac_spline_mapping(BevList *bl, float bevfac,
+                                       float spline_length,
+                                       int *r_bev, float *r_blend)
 {
-	BevPoint *bevp, *bevl;
-	float l, startf, endf, tmpf = 0.0, sum = 0.0, total_length = 0.0f;
-	float *bevp_array = NULL;
-	float *segments = NULL;
-	int end = 0, i, j, segcount = (int)(bl->nr / cu->resolu);
+	const float len_target = bevfac * spline_length;
+	BevPoint *bevp = bl->bevpoints;
+	float len_next = 0.0f, len = 0.0f;
+	int i = 0, nr = bl->nr;
 
-	if ((cu->bevfac1_mapping != CU_BEVFAC_MAP_RESOLU) ||
-	    (cu->bevfac2_mapping != CU_BEVFAC_MAP_RESOLU))
-	{
-		bevp_array = MEM_mallocN(sizeof(*bevp_array) * (bl->nr - 1), "bevp_dists");
-		segments = MEM_callocN(sizeof(*segments) * segcount, "bevp_segmentlengths");
-		bevp = (BevPoint *)(bl + 1);
+	while (nr--) {
 		bevp++;
-		for (i = 1, j = 0; i < bl->nr; bevp++, i++) {
-			sum = 0.0f;
-			bevl = bevp - 1;
-			bevp_array[i - 1] = len_v3v3(bevp->vec, bevl->vec);
-			total_length += bevp_array[i - 1];
-			tmpf += bevp_array[i - 1];
-			if ((i % cu->resolu) == 0 || (bl->nr - 1) == i) {
-				segments[j++] = tmpf;
-				tmpf = 0.0f;
-			}
+		len_next = len + bevp->offset;
+		if (len_next > len_target) {
+			break;
+		}
+		len = len_next;
+		i++;
+	}
+
+	*r_bev = i;
+	*r_blend = (len_target - len) / bevp->offset;
+}
+
+static void calc_bevfac_mapping_default(BevList *bl,
+                                        int *r_start, float *r_firstblend,
+                                        int *r_steps, float *r_lastblend)
+{
+	*r_start = 0;
+	*r_steps = bl->nr;
+	*r_firstblend = 1.0f;
+	*r_lastblend = 1.0f;
+}
+
+static void calc_bevfac_mapping(Curve *cu, BevList *bl, Nurb *nu,
+        int *r_start, float *r_firstblend, int *r_steps, float *r_lastblend)
+{
+	float tmpf, total_length = 0.0f;
+	int end = 0, i;
+
+	if ((BKE_nurb_check_valid_u(nu) == false) ||
+	    /* not essential, but skips unnecessary calculation */
+	    (min_ff(cu->bevfac1, cu->bevfac2) == 0.0f &&
+	     max_ff(cu->bevfac1, cu->bevfac2) == 1.0f))
+	{
+		calc_bevfac_mapping_default(bl, r_start, r_firstblend, r_steps, r_lastblend);
+		return;
+	}
+
+	if (ELEM(cu->bevfac1_mapping,
+	         CU_BEVFAC_MAP_SEGMENT,
+	         CU_BEVFAC_MAP_SPLINE))
+	{
+		for (i = 0; i < SEGMENTSU(nu); i++) {
+			total_length += bl->seglen[i];
 		}
 	}
 
@@ -1410,36 +1444,23 @@ static void calc_bevfac_mapping(Curve *cu, BevList *bl, int *r_start, float *r_f
 		{
 			const float start_fl = cu->bevfac1 * (bl->nr - 1);
 			*r_start = (int)start_fl;
-
 			*r_firstblend = 1.0f - (start_fl - (*r_start));
 			break;
 		}
 		case CU_BEVFAC_MAP_SEGMENT:
 		{
-			const float start_fl = cu->bevfac1 * (bl->nr - 1);
-			*r_start = (int)start_fl;
-
-			for (i = 0; i < segcount; i++) {
-				l = segments[i] / total_length;
-				if (sum + l > cu->bevfac1) {
-					startf = i * cu->resolu + (cu->bevfac1 - sum) / l * cu->resolu;
-					*r_start = (int) startf;
-					*r_firstblend = 1.0f - (startf - *r_start);
-					break;
-				}
-				sum += l;
-			}
+			calc_bevfac_segment_mapping(bl, cu->bevfac1, total_length, r_start, r_firstblend);
+			*r_firstblend = 1.0f - *r_firstblend;
 			break;
 		}
 		case CU_BEVFAC_MAP_SPLINE:
 		{
-			calc_bevfac_spline_mapping(bl, cu->bevfac1, total_length, bevp_array, r_start, r_firstblend);
+			calc_bevfac_spline_mapping(bl, cu->bevfac1, total_length, r_start, r_firstblend);
 			*r_firstblend = 1.0f - *r_firstblend;
 			break;
 		}
 	}
 
-	sum = 0.0f;
 	switch (cu->bevfac2_mapping) {
 		case CU_BEVFAC_MAP_RESOLU:
 		{
@@ -1452,32 +1473,19 @@ static void calc_bevfac_mapping(Curve *cu, BevList *bl, int *r_start, float *r_f
 		}
 		case CU_BEVFAC_MAP_SEGMENT:
 		{
-			const float end_fl = cu->bevfac2 * (bl->nr - 1);
-			end = (int)end_fl;
-
+			calc_bevfac_segment_mapping(bl, cu->bevfac2, total_length, &end, r_lastblend);
 			*r_steps = end - *r_start + 2;
-			for (i = 0; i < segcount; i++) {
-				l = segments[i] / total_length;
-				if (sum + l > cu->bevfac2) {
-					endf = i * cu->resolu + (cu->bevfac2 - sum) / l * cu->resolu;
-					end = (int)endf;
-					*r_lastblend = (endf - end);
-					*r_steps = end - *r_start + 2;
-					break;
-				}
-				sum += l;
-			}
 			break;
 		}
 		case CU_BEVFAC_MAP_SPLINE:
 		{
-			calc_bevfac_spline_mapping(bl, cu->bevfac2, total_length, bevp_array, &end, r_lastblend);
+			calc_bevfac_spline_mapping(bl, cu->bevfac2, total_length, &end, r_lastblend);
 			*r_steps = end - *r_start + 2;
 			break;
 		}
 	}
 
-	if (end < *r_start) {
+	if (end < *r_start || (end == *r_start && *r_lastblend < 1.0f - *r_firstblend )) {
 		SWAP(int, *r_start, end);
 		tmpf = *r_lastblend;
 		*r_lastblend = 1.0f - *r_firstblend;
@@ -1489,13 +1497,6 @@ static void calc_bevfac_mapping(Curve *cu, BevList *bl, int *r_start, float *r_f
 		*r_steps = bl->nr - *r_start;
 		*r_lastblend = 1.0f;
 	}
-
-	if (bevp_array) {
-		MEM_freeN(bevp_array);
-	}
-	if (segments) {
-		MEM_freeN(segments);
-	}
 }
 
 static void do_makeDispListCurveTypes(Scene *scene, Object *ob, ListBase *dispbase,
@@ -1505,7 +1506,7 @@ static void do_makeDispListCurveTypes(Scene *scene, Object *ob, ListBase *dispba
 	Curve *cu = ob->data;
 
 	/* we do allow duplis... this is only displist on curve level */
-	if (!ELEM3(ob->type, OB_SURF, OB_CURVE, OB_FONT)) return;
+	if (!ELEM(ob->type, OB_SURF, OB_CURVE, OB_FONT)) return;
 
 	if (ob->type == OB_SURF) {
 		BKE_displist_make_surf(scene, ob, dispbase, r_dm_final, for_render, for_orco, use_render_resolution);
@@ -1514,7 +1515,7 @@ static void do_makeDispListCurveTypes(Scene *scene, Object *ob, ListBase *dispba
 		ListBase dlbev;
 		ListBase nubase = {NULL, NULL};
 
-		BLI_freelistN(&(ob->curve_cache->bev));
+		BKE_curve_bevelList_free(&ob->curve_cache->bev);
 
 		/* We only re-evlauate path if evaluation is not happening for orco.
 		 * If the calculation happens for orco, we should never free data which
@@ -1552,15 +1553,15 @@ static void do_makeDispListCurveTypes(Scene *scene, Object *ob, ListBase *dispba
 			for (; bl && nu; bl = bl->next, nu = nu->next) {
 				DispList *dl;
 				float *data;
-				BevPoint *bevp;
 				int a;
 
 				if (bl->nr) { /* blank bevel lists can happen */
 
 					/* exception handling; curve without bevel or extrude, with width correction */
 					if (BLI_listbase_is_empty(&dlbev)) {
+						BevPoint *bevp;
 						dl = MEM_callocN(sizeof(DispList), "makeDispListbev");
-						dl->verts = MEM_callocN(3 * sizeof(float) * bl->nr, "dlverts");
+						dl->verts = MEM_mallocN(sizeof(float[3]) * bl->nr, "dlverts");
 						BLI_addtail(dispbase, dl);
 
 						if (bl->poly != -1) dl->type = DL_POLY;
@@ -1578,7 +1579,7 @@ static void do_makeDispListCurveTypes(Scene *scene, Object *ob, ListBase *dispba
 						dl->rt = nu->flag & ~CU_2D;
 
 						a = dl->nr;
-						bevp = (BevPoint *)(bl + 1);
+						bevp = bl->bevpoints;
 						data = dl->verts;
 						while (a--) {
 							data[0] = bevp->vec[0] + widfac * bevp->sina;
@@ -1597,13 +1598,25 @@ static void do_makeDispListCurveTypes(Scene *scene, Object *ob, ListBase *dispba
 						float firstblend = 0.0f, lastblend = 0.0f;
 						int i, start, steps;
 
-						calc_bevfac_mapping(cu, bl, &start, &firstblend, &steps, &lastblend);
+						if (nu->flagu & CU_NURB_CYCLIC) {
+							calc_bevfac_mapping_default(bl,
+							                            &start, &firstblend, &steps, &lastblend);
+						}
+						else {
+							if (fabsf(cu->bevfac2 - cu->bevfac1) < FLT_EPSILON) {
+								continue;
+							}
+
+							calc_bevfac_mapping(cu, bl, nu, &start, &firstblend, &steps, &lastblend);
+						}
 
 						for (dlb = dlbev.first; dlb; dlb = dlb->next) {
+							BevPoint *bevp_first, *bevp_last;
+							BevPoint *bevp;
 
 							/* for each part of the bevel use a separate displblock */
 							dl = MEM_callocN(sizeof(DispList), "makeDispListbev1");
-							dl->verts = data = MEM_callocN(3 * sizeof(float) * dlb->nr * steps, "dlverts");
+							dl->verts = data = MEM_mallocN(sizeof(float[3]) * dlb->nr * steps, "dlverts");
 							BLI_addtail(dispbase, dl);
 
 							dl->type = DL_SURF;
@@ -1621,11 +1634,13 @@ static void do_makeDispListCurveTypes(Scene *scene, Object *ob, ListBase *dispba
 							/* CU_2D conflicts with R_NOPUNOFLIP */
 							dl->rt = nu->flag & ~CU_2D;
 
-							dl->bevelSplitFlag = MEM_callocN(sizeof(*dl->col2) * ((steps + 0x1F) >> 5),
+							dl->bevelSplitFlag = MEM_callocN(sizeof(*dl->bevelSplitFlag) * ((steps + 0x1F) >> 5),
 							                                 "bevelSplitFlag");
 
 							/* for each point of poly make a bevel piece */
-							bevp = (BevPoint *)(bl + 1) + start;
+							bevp_first =  bl->bevpoints;
+							bevp_last  = &bl->bevpoints[bl->nr - 1];
+							bevp       = &bl->bevpoints[start];
 							for (i = start, a = 0; a < steps; i++, bevp++, a++) {
 								float fac = 1.0;
 								float *cur_data = data;
@@ -1664,12 +1679,15 @@ static void do_makeDispListCurveTypes(Scene *scene, Object *ob, ListBase *dispba
 								}
 
 								/* rotate bevel piece and write in data */
-								if (a == 0)
+								if ((a == 0) && (bevp != bevp_last)) {
 									rotateBevelPiece(cu, bevp, bevp + 1, dlb, 1.0f - firstblend, widfac, fac, &data);
-								else if (a == steps - 1)
+								}
+								else if ((a == steps - 1) && (bevp != bevp_first) ) {
 									rotateBevelPiece(cu, bevp, bevp - 1, dlb, 1.0f - lastblend, widfac, fac, &data);
-								else
+								}
+								else {
 									rotateBevelPiece(cu, bevp, NULL, dlb, 0.0f, widfac, fac, &data);
+								}
 
 								if (cu->bevobj && (cu->flag & CU_FILL_CAPS) && !(nu->flagu & CU_NURB_CYCLIC)) {
 									if (a == 1) {
@@ -1712,8 +1730,10 @@ static void do_makeDispListCurveTypes(Scene *scene, Object *ob, ListBase *dispba
 			}
 		}
 
-		if (!for_orco)
+		if (!for_orco) {
+			BKE_nurbList_duplicate(&ob->curve_cache->deformed_nurbs, &nubase);
 			curve_calc_modifiers_post(scene, ob, &nubase, dispbase, r_dm_final, for_render, use_render_resolution);
+		}
 
 		if (cu->flag & CU_DEFORM_FILL && !ob->derivedFinal) {
 			curve_to_filledpoly(cu, &nubase, dispbase);
@@ -1730,7 +1750,7 @@ void BKE_displist_make_curveTypes(Scene *scene, Object *ob, const bool for_orco)
 	/* The same check for duplis as in do_makeDispListCurveTypes.
 	 * Happens when curve used for constraint/bevel was converted to mesh.
 	 * check there is still needed for render displist and orco displists. */
-	if (!ELEM3(ob->type, OB_SURF, OB_CURVE, OB_FONT))
+	if (!ELEM(ob->type, OB_SURF, OB_CURVE, OB_FONT))
 		return;
 
 	BKE_object_free_derived_caches(ob);
@@ -1747,10 +1767,11 @@ void BKE_displist_make_curveTypes(Scene *scene, Object *ob, const bool for_orco)
 }
 
 void BKE_displist_make_curveTypes_forRender(Scene *scene, Object *ob, ListBase *dispbase,
-                                      DerivedMesh **r_dm_final, const bool for_orco, const bool use_render_resolution)
+                                            DerivedMesh **r_dm_final, const bool for_orco,
+                                            const bool use_render_resolution)
 {
 	if (ob->curve_cache == NULL) {
-		ob->curve_cache = MEM_callocN(sizeof(CurveCache), "CurveCache for MBall");
+		ob->curve_cache = MEM_callocN(sizeof(CurveCache), "CurveCache for Curve");
 	}
 
 	do_makeDispListCurveTypes(scene, ob, dispbase, r_dm_final, true, for_orco, use_render_resolution);
@@ -1759,7 +1780,7 @@ void BKE_displist_make_curveTypes_forRender(Scene *scene, Object *ob, ListBase *
 void BKE_displist_make_curveTypes_forOrco(struct Scene *scene, struct Object *ob, struct ListBase *dispbase)
 {
 	if (ob->curve_cache == NULL) {
-		ob->curve_cache = MEM_callocN(sizeof(CurveCache), "CurveCache for MBall");
+		ob->curve_cache = MEM_callocN(sizeof(CurveCache), "CurveCache for Curve");
 	}
 
 	do_makeDispListCurveTypes(scene, ob, dispbase, NULL, 1, 1, 1);
@@ -1814,8 +1835,8 @@ void BKE_displist_minmax(ListBase *dispbase, float min[3], float max[3])
 /* this is confusing, there's also min_max_object, appplying the obmat... */
 static void boundbox_displist_object(Object *ob)
 {
-	if (ELEM3(ob->type, OB_CURVE, OB_SURF, OB_FONT)) {
-		/* Curver's BB is already calculated as a part of modifier stack,
+	if (ELEM(ob->type, OB_CURVE, OB_SURF, OB_FONT)) {
+		/* Curve's BB is already calculated as a part of modifier stack,
 		 * here we only calculate object BB based on final display list.
 		 */
 

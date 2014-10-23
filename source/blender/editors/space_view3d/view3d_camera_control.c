@@ -31,9 +31,9 @@
  *
  * Typical view-control usage:
  *
- * - aquire a view-control (#ED_view3d_control_aquire).
+ * - acquire a view-control (#ED_view3d_control_acquire).
  * - modify ``rv3d->ofs``, ``rv3d->viewquat``.
- * - update the view data (#ED_view3d_control_aquire) - within a loop which draws the viewport.
+ * - update the view data (#ED_view3d_control_acquire) - within a loop which draws the viewport.
  * - finish and release the view-control (#ED_view3d_control_release),
  *   either keeping the current view or restoring the initial view.
  *
@@ -138,7 +138,7 @@ Object *ED_view3d_cameracontrol_object_get(View3DCameraControl *vctrl)
  * Creates a #View3DControl handle and sets up
  * the view for first-person style navigation.
  */
-struct View3DCameraControl *ED_view3d_cameracontrol_aquire(
+struct View3DCameraControl *ED_view3d_cameracontrol_acquire(
         Scene *scene, View3D *v3d, RegionView3D *rv3d,
         const bool use_parent_root)
 {
@@ -272,28 +272,8 @@ void ED_view3d_cameracontrol_update(
 	}
 
 	/* record the motion */
-	if (use_autokey && autokeyframe_cfra_can_key(scene, id_key)) {
-		ListBase dsources = {NULL, NULL};
-
-		/* add data-source override for the camera object */
-		ANIM_relative_keyingset_add_source(&dsources, id_key, NULL, NULL);
-
-		/* insert keyframes
-		 * 1) on the first frame
-		 * 2) on each subsequent frame
-		 *    TODO: need to check in future that frame changed before doing this
-		 */
-		if (do_rotate) {
-			struct KeyingSet *ks = ANIM_builtin_keyingset_get_named(NULL, ANIM_KS_ROTATION_ID);
-			ANIM_apply_keyingset(C, &dsources, NULL, ks, MODIFYKEY_MODE_INSERT, (float)CFRA);
-		}
-		if (do_translate) {
-			struct KeyingSet *ks = ANIM_builtin_keyingset_get_named(NULL, ANIM_KS_LOCATION_ID);
-			ANIM_apply_keyingset(C, &dsources, NULL, ks, MODIFYKEY_MODE_INSERT, (float)CFRA);
-		}
-
-		/* free temp data */
-		BLI_freelistN(&dsources);
+	if (use_autokey) {
+		ED_view3d_camera_autokey(scene, id_key, C, do_rotate, do_translate);
 	}
 }
 
@@ -302,7 +282,7 @@ void ED_view3d_cameracontrol_update(
  * Release view control.
  *
  * \param restore  Sets the view state to the values that were set
- *                 before #ED_view3d_control_aquire was called.
+ *                 before #ED_view3d_control_acquire was called.
  */
 void ED_view3d_cameracontrol_release(
         View3DCameraControl *vctrl,

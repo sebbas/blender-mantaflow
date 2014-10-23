@@ -2,7 +2,11 @@
 
 Import('env')
 
-SConscript(['glew/SConscript'])
+if env['WITH_BF_GLEW_ES']:
+    SConscript(['glew-es/SConscript'])
+else:
+    SConscript(['glew/SConscript'])
+
 SConscript(['colamd/SConscript'])
 SConscript(['rangetree/SConscript'])
 SConscript(['wcwidth/SConscript'])
@@ -20,6 +24,10 @@ if env['WITH_BF_ELTOPO']:
 
 if env['WITH_BF_BULLET']:
     SConscript(['bullet2/src/SConscript'])
+
+if env['WITH_BF_COMPOSITOR'] or env['WITH_BF_CYCLES']:
+    SConscript (['clew/SConscript'])
+    SConscript (['cuew/SConscript'])
 
 if env['WITH_BF_OPENJPEG'] and env['BF_OPENJPEG_LIB'] == '':
     SConscript(['libopenjpeg/SConscript'])

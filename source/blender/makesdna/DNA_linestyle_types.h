@@ -42,9 +42,12 @@
 /* texco (also in DNA_material_types.h) */
 #define TEXCO_STROKE	16 /* actually it's UV */
 
+struct AnimData;
 struct ColorBand;
 struct CurveMapping;
 struct MTex;
+struct Object;
+struct bNodeTree;
 
 typedef struct LineStyleModifier {
 	struct LineStyleModifier *next, *prev;
@@ -196,6 +199,11 @@ typedef struct LineStyleThicknessModifier_DistanceFromObject {
 #define LS_MODIFIER_MATERIAL_SPEC_B      8
 #define LS_MODIFIER_MATERIAL_SPEC_HARD   9
 #define LS_MODIFIER_MATERIAL_ALPHA      10
+#define LS_MODIFIER_MATERIAL_LINE       11
+#define LS_MODIFIER_MATERIAL_LINE_R     12
+#define LS_MODIFIER_MATERIAL_LINE_G     13
+#define LS_MODIFIER_MATERIAL_LINE_B     14
+#define LS_MODIFIER_MATERIAL_LINE_A     15
 
 typedef struct LineStyleColorModifier_Material {
 	struct LineStyleModifier modifier;
@@ -380,6 +388,7 @@ typedef struct LineStyleThicknessModifier_Calligraphy {
 #define LS_NO_SORTING         (1 << 11)
 #define LS_REVERSE_ORDER      (1 << 12)  /* for sorting */
 #define LS_TEXTURE            (1 << 13)
+#define LS_CHAIN_COUNT        (1 << 14)
 
 /* FreestyleLineStyle::chaining */
 #define LS_CHAINING_PLAIN    1
@@ -399,6 +408,8 @@ typedef struct LineStyleThicknessModifier_Calligraphy {
 /* FreestyleLineStyle::sort_key */
 #define LS_SORT_KEY_DISTANCE_FROM_CAMERA  1
 #define LS_SORT_KEY_2D_LENGTH             2
+#define LS_SORT_KEY_PROJECTED_X           3
+#define LS_SORT_KEY_PROJECTED_Y           4
 
 /* FreestyleLineStyle::integration_type */
 #define LS_INTEGRATION_MEAN   1
@@ -421,13 +432,14 @@ typedef struct FreestyleLineStyle {
 	float split_length;
 	float min_angle, max_angle; /* in radians, for splitting */
 	float min_length, max_length;
+	unsigned int chain_count;
 	unsigned short split_dash1, split_gap1;
 	unsigned short split_dash2, split_gap2;
 	unsigned short split_dash3, split_gap3;
 	int sort_key, integration_type;
- 	float texstep;
+	float texstep;
 	short texact, pr_texture;
-	short use_nodes, pad;
+	short use_nodes, pad[3];
 	unsigned short dash1, gap1, dash2, gap2, dash3, gap3;
 	int panel; /* for UI */
 

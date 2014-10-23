@@ -231,7 +231,7 @@ int KX_LightObject::pyattr_set_distance(void *self_v, const KX_PYATTRIBUTE_DEF *
 		else if (val > 5000.f)
 			val = 5000.f;
 
-		self->m_lightobj->m_energy = val;
+		self->m_lightobj->m_distance = val;
 		return PY_SET_ATTR_SUCCESS;
 	}
 
@@ -242,7 +242,7 @@ int KX_LightObject::pyattr_set_distance(void *self_v, const KX_PYATTRIBUTE_DEF *
 PyObject *KX_LightObject::pyattr_get_color(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef)
 {
 	KX_LightObject* self = static_cast<KX_LightObject*>(self_v);
-	return Py_BuildValue("[fff]", self->m_lightobj->m_color[0], self->m_lightobj->m_color[1], self->m_lightobj->m_color[1]);
+	return Py_BuildValue("[fff]", self->m_lightobj->m_color[0], self->m_lightobj->m_color[1], self->m_lightobj->m_color[2]);
 }
 
 int KX_LightObject::pyattr_set_color(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value)

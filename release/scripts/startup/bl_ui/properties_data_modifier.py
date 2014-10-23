@@ -127,6 +127,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "width")
         col.prop(md, "segments")
         col.prop(md, "profile")
+        col.prop(md, "material")
 
         col = split.column()
         col.prop(md, "use_only_vertices")
@@ -817,6 +818,9 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "use_even_offset")
         col.prop(md, "use_quality_normals")
         col.prop(md, "use_rim")
+        col_rim = col.column()
+        col_rim.active = md.use_rim
+        col_rim.prop(md, "use_rim_only")
 
         col.separator()
 

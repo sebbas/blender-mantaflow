@@ -111,10 +111,13 @@ void wm_event_free(wmEvent *event)
 	if (event->customdata) {
 		if (event->customdatafree) {
 			/* note: pointer to listbase struct elsewhere */
-			if (event->custom == EVT_DATA_LISTBASE)
-				BLI_freelistN(event->customdata);
-			else
+			if (event->custom == EVT_DATA_DRAGDROP) {
+				ListBase *lb = event->customdata;
+				WM_drag_free_list(lb);
+			}
+			else {
 				MEM_freeN(event->customdata);
+			}
 		}
 	}
 
@@ -289,7 +292,7 @@ void wm_event_do_notifiers(bContext *C)
 						do_anim = true;
 				}
 			}
-			if (ELEM5(note->category, NC_SCENE, NC_OBJECT, NC_GEOM, NC_SCENE, NC_WM)) {
+			if (ELEM(note->category, NC_SCENE, NC_OBJECT, NC_GEOM, NC_SCENE, NC_WM)) {
 				ED_info_stats_clear(win->screen->scene);
 				WM_event_add_notifier(C, NC_SPACE | ND_SPACE_INFO, NULL);
 			}
@@ -393,13 +396,17 @@ static int wm_handler_ui_call(bContext *C, wmEventHandler *handler, wmEvent *eve
 	ARegion *region = CTX_wm_region(C);
 	ARegion *menu = CTX_wm_menu(C);
 	static bool do_wheel_ui = true;
-	const bool is_wheel = ELEM3(event->type, WHEELUPMOUSE, WHEELDOWNMOUSE, MOUSEPAN);
+	const bool is_wheel = ELEM(event->type, WHEELUPMOUSE, WHEELDOWNMOUSE, MOUSEPAN);
 	int retval;
 	
 	/* UI code doesn't handle return values - it just always returns break. 
 	 * to make the DBL_CLICK conversion work, we just don't send this to UI, except mouse clicks */
-	if (event->type != LEFTMOUSE && event->val == KM_DBL_CLICK)
+	if (((handler->flag & WM_HANDLER_ACCEPT_DBL_CLICK) == 0) &&
+	    (event->type != LEFTMOUSE) &&
+	    (event->val == KM_DBL_CLICK))
+	{
 		return WM_HANDLER_CONTINUE;
+	}
 	
 	/* UI is quite aggressive with swallowing events, like scrollwheel */
 	/* I realize this is not extremely nice code... when UI gets keymaps it can be maybe smarter */
@@ -759,7 +766,7 @@ static int wm_operator_exec_notest(bContext *C, wmOperator *op)
 /**
  * for running operators with frozen context (modal handlers, menus)
  *
- * \param store, Store settings for re-use.
+ * \param store Store settings for re-use.
  *
  * warning: do not use this within an operator to call its self! [#29537] */
 int WM_operator_call_ex(bContext *C, wmOperator *op,
@@ -1261,11 +1268,17 @@ static int wm_operator_call_internal(bContext *C, wmOperatorType *ot, PointerRNA
 
 
 /* invokes operator in context */
+int WM_operator_name_call_ptr(bContext *C, wmOperatorType *ot, short context, PointerRNA *properties)
+{
+	BLI_assert(ot == WM_operatortype_find(ot->idname, true));
+	return wm_operator_call_internal(C, ot, properties, NULL, context, false);
+}
 int WM_operator_name_call(bContext *C, const char *opstring, short context, PointerRNA *properties)
 {
 	wmOperatorType *ot = WM_operatortype_find(opstring, 0);
-	if (ot)
-		return wm_operator_call_internal(C, ot, properties, NULL, context, false);
+	if (ot) {
+		return WM_operator_name_call_ptr(C, ot, context, properties);
+	}
 
 	return 0;
 }
@@ -1544,7 +1557,7 @@ static int wm_handler_operator_call(bContext *C, ListBase *handlers, wmEventHand
 		wmOperatorType *ot = op->type;
 
 		if (!wm_operator_check_locked_interface(C, ot)) {
-			/* Interface is locked and pperator is not allowed to run,
+			/* Interface is locked and operator is not allowed to run,
 			 * nothing to do in this case.
 			 */
 		}
@@ -1721,10 +1734,6 @@ static int wm_handler_fileselect_do(bContext *C, ListBase *handlers, wmEventHand
 				if (handler->op->type->flag & OPTYPE_UNDO && CTX_wm_manager(C) == wm)
 					wm->op_undo_depth--;
 
-				if (retval & OPERATOR_FINISHED)
-					if (G.debug & G_DEBUG_WM)
-						wm_operator_print(C, handler->op);
-
 				/* XXX check this carefully, CTX_wm_manager(C) == wm is a bit hackish */
 				if (CTX_wm_manager(C) == wm && wm->op_undo_depth == 0)
 					if (handler->op->type->flag & OPTYPE_UNDO)
@@ -1753,6 +1762,9 @@ static int wm_handler_fileselect_do(bContext *C, ListBase *handlers, wmEventHand
 					CTX_wm_area_set(C, area_prev);
 					CTX_wm_region_set(C, ar_prev);
 				}
+
+				/* for WM_operator_pystring only, custom report handling is done above */
+				wm_operator_reports(C, handler->op, retval, true);
 
 				if (retval & OPERATOR_FINISHED) {
 					WM_operator_last_properties_store(handler->op);
@@ -1929,17 +1941,17 @@ static int wm_handlers_do_intern(bContext *C, wmEvent *event, ListBase *handlers
 					wmDropBox *drop = handler->dropboxes->first;
 					for (; drop; drop = drop->next) {
 						/* other drop custom types allowed */
-						if (event->custom == EVT_DATA_LISTBASE) {
+						if (event->custom == EVT_DATA_DRAGDROP) {
 							ListBase *lb = (ListBase *)event->customdata;
 							wmDrag *drag;
 							
 							for (drag = lb->first; drag; drag = drag->next) {
 								if (drop->poll(C, drag, event)) {
-									
 									drop->copy(drag, drop);
 									
 									/* free the drags before calling operator */
-									BLI_freelistN(event->customdata);
+									WM_drag_free_list(lb);
+
 									event->customdata = NULL;
 									event->custom = 0;
 									
@@ -2005,7 +2017,7 @@ static int wm_handlers_do(bContext *C, wmEvent *event, ListBase *handlers)
 	if (CTX_wm_window(C) == NULL)
 		return action;
 
-	if (!ELEM3(event->type, MOUSEMOVE, INBETWEEN_MOUSEMOVE, EVENT_NONE) && !ISTIMER(event->type)) {
+	if (!ELEM(event->type, MOUSEMOVE, INBETWEEN_MOUSEMOVE, EVENT_NONE) && !ISTIMER(event->type)) {
 
 		/* test for CLICK events */
 		if (wm_action_not_handled(action)) {
@@ -2141,10 +2153,12 @@ static void wm_event_drag_test(wmWindowManager *wm, wmWindow *win, wmEvent *even
 		return;
 	}
 	
-	if (event->type == MOUSEMOVE)
+	if (event->type == MOUSEMOVE || ISKEYMODIFIER(event->type)) {
 		win->screen->do_draw_drag = true;
+	}
 	else if (event->type == ESCKEY) {
-		BLI_freelistN(&wm->drags);
+		WM_drag_free_list(&wm->drags);
+
 		win->screen->do_draw_drag = true;
 	}
 	else if (event->type == LEFTMOUSE && event->val == KM_RELEASE) {
@@ -2156,7 +2170,7 @@ static void wm_event_drag_test(wmWindowManager *wm, wmWindow *win, wmEvent *even
 				MEM_freeN(event->customdata);
 		}
 		
-		event->custom = EVT_DATA_LISTBASE;
+		event->custom = EVT_DATA_DRAGDROP;
 		event->customdata = &wm->drags;
 		event->customdatafree = 1;
 		
@@ -2172,6 +2186,23 @@ static void wm_event_drag_test(wmWindowManager *wm, wmWindow *win, wmEvent *even
 		if (win->drawmethod == USER_DRAW_OVERLAP)
 			win->screen->do_draw = true;
 	
+}
+
+/* filter out all events of the pie that spawned the last pie unless it's a release event */
+static bool wm_event_pie_filter(wmWindow *win, wmEvent *event)
+{
+	if (win->lock_pie_event && win->lock_pie_event == event->type) {
+		if (event->val == KM_RELEASE) {
+			win->lock_pie_event = EVENT_NONE;
+			return false;
+		}
+		else {
+			return true;
+		}
+	}
+	else {
+		return false;
+	}
 }
 
 /* called in main loop */
@@ -2237,9 +2268,21 @@ void wm_event_do_handlers(bContext *C)
 				WM_event_print(event);
 			}
 #endif
-			
+
+			/* take care of pie event filter */
+			if (wm_event_pie_filter(win, event)) {
+#ifndef NDEBUG
+				if (G.debug & (G_DEBUG_HANDLERS | G_DEBUG_EVENTS) && !ELEM(event->type, MOUSEMOVE, INBETWEEN_MOUSEMOVE)) {
+					printf("\n%s: event filtered due to pie button pressed\n", __func__);
+				}
+#endif
+				BLI_remlink(&win->queue, event);
+				wm_event_free(event);
+				continue;
+			}
+
 			CTX_wm_window_set(C, win);
-			
+
 			/* we let modal handlers get active area/region, also wm_paintcursor_test needs it */
 			CTX_wm_area_set(C, area_event_inside(C, &event->x));
 			CTX_wm_region_set(C, region_event_inside(C, &event->x));
@@ -2248,6 +2291,7 @@ void wm_event_do_handlers(bContext *C)
 			wm_window_make_drawable(wm, win);
 			
 			wm_region_mouse_co(C, event);
+
 
 			/* first we do priority handlers, modal + some limited keymaps */
 			action |= wm_handlers_do(C, event, &win->modalhandlers);
@@ -2290,10 +2334,12 @@ void wm_event_do_handlers(bContext *C)
 									/* call even on non mouse events, since the */
 									wm_region_mouse_co(C, event);
 
-									/* does polls for drop regions and checks uibuts */
-									/* need to be here to make sure region context is true */
-									if (ELEM(event->type, MOUSEMOVE, EVT_DROP)) {
-										wm_drags_check_ops(C, event);
+									if (!BLI_listbase_is_empty(&wm->drags)) {
+										/* does polls for drop regions and checks uibuts */
+										/* need to be here to make sure region context is true */
+										if (ELEM(event->type, MOUSEMOVE, EVT_DROP) || ISKEYMODIFIER(event->type)) {
+											wm_drags_check_ops(C, event);
+										}
 									}
 									
 									action |= wm_handlers_do(C, event, &ar->handlers);
@@ -2548,12 +2594,14 @@ void WM_event_remove_keymap_handler(ListBase *handlers, wmKeyMap *keymap)
 	}
 }
 
-wmEventHandler *WM_event_add_ui_handler(const bContext *C, ListBase *handlers,
-                                        wmUIHandlerFunc func, wmUIHandlerRemoveFunc remove, void *userdata)
+wmEventHandler *WM_event_add_ui_handler(
+        const bContext *C, ListBase *handlers,
+        wmUIHandlerFunc ui_handle, wmUIHandlerRemoveFunc ui_remove,
+        void *userdata, const bool accept_dbl_click)
 {
 	wmEventHandler *handler = MEM_callocN(sizeof(wmEventHandler), "event ui handler");
-	handler->ui_handle = func;
-	handler->ui_remove = remove;
+	handler->ui_handle = ui_handle;
+	handler->ui_remove = ui_remove;
 	handler->ui_userdata = userdata;
 	if (C) {
 		handler->ui_area    = CTX_wm_area(C);
@@ -2566,6 +2614,9 @@ wmEventHandler *WM_event_add_ui_handler(const bContext *C, ListBase *handlers,
 		handler->ui_menu    = NULL;
 	}
 
+	if (accept_dbl_click) {
+		handler->flag |= WM_HANDLER_ACCEPT_DBL_CLICK;
+	}
 	
 	BLI_addhead(handlers, handler);
 	
@@ -2573,13 +2624,18 @@ wmEventHandler *WM_event_add_ui_handler(const bContext *C, ListBase *handlers,
 }
 
 /* set "postpone" for win->modalhandlers, this is in a running for () loop in wm_handlers_do() */
-void WM_event_remove_ui_handler(ListBase *handlers,
-                                wmUIHandlerFunc func, wmUIHandlerRemoveFunc remove, void *userdata, const bool postpone)
+void WM_event_remove_ui_handler(
+        ListBase *handlers,
+        wmUIHandlerFunc ui_handle, wmUIHandlerRemoveFunc ui_remove,
+        void *userdata, const bool postpone)
 {
 	wmEventHandler *handler;
 	
 	for (handler = handlers->first; handler; handler = handler->next) {
-		if (handler->ui_handle == func && handler->ui_remove == remove && handler->ui_userdata == userdata) {
+		if ((handler->ui_handle == ui_handle) &&
+		    (handler->ui_remove == ui_remove) &&
+		    (handler->ui_userdata == userdata))
+		{
 			/* handlers will be freed in wm_handlers_do() */
 			if (postpone) {
 				handler->flag |= WM_HANDLER_DO_FREE;
@@ -2593,15 +2649,18 @@ void WM_event_remove_ui_handler(ListBase *handlers,
 	}
 }
 
-void WM_event_free_ui_handler_all(bContext *C, ListBase *handlers,
-                                  wmUIHandlerFunc func, wmUIHandlerRemoveFunc remove)
+void WM_event_free_ui_handler_all(
+        bContext *C, ListBase *handlers,
+        wmUIHandlerFunc ui_handle, wmUIHandlerRemoveFunc ui_remove)
 {
 	wmEventHandler *handler, *handler_next;
 
 	for (handler = handlers->first; handler; handler = handler_next) {
 		handler_next = handler->next;
-		if (handler->ui_handle == func && handler->ui_remove == remove) {
-			remove(C, handler->ui_userdata);
+		if ((handler->ui_handle == ui_handle) &&
+		    (handler->ui_remove == ui_remove))
+		{
+			ui_remove(C, handler->ui_userdata);
 			BLI_remlink(handlers, handler);
 			wm_event_free_handler(handler);
 		}
@@ -2677,7 +2736,7 @@ bool WM_modal_tweak_exit(const wmEvent *event, int tweak_event)
 		else {
 			/* if the initial event wasn't a tweak event then
 			 * ignore USER_RELEASECONFIRM setting: see [#26756] */
-			if (ELEM3(tweak_event, EVT_TWEAK_L, EVT_TWEAK_M, EVT_TWEAK_R) == 0) {
+			if (ELEM(tweak_event, EVT_TWEAK_L, EVT_TWEAK_M, EVT_TWEAK_R) == 0) {
 				return 1;
 			}
 		}
@@ -3338,7 +3397,7 @@ void WM_set_locked_interface(wmWindowManager *wm, bool lock)
 	 *
 	 * TODO(sergey): Make it different locked states, so different jobs
 	 *               could lock different areas of blender and allow
-	 *               interation with others?
+	 *               interaction with others?
 	 */
 	BKE_spacedata_draw_locks(lock);
 }
@@ -3386,5 +3445,40 @@ void WM_event_ndof_to_quat(const struct wmNDOFMotionData *ndof, float q[4])
 	angle = WM_event_ndof_to_axis_angle(ndof, axis);
 	axis_angle_to_quat(q, axis, angle);
 }
+
+/* if this is a tablet event, return tablet pressure and set *pen_flip
+ * to 1 if the eraser tool is being used, 0 otherwise */
+float WM_event_tablet_data(const wmEvent *event, int *pen_flip, float tilt[2])
+{
+	int erasor = 0;
+	float pressure = 1;
+
+	if (tilt)
+		zero_v2(tilt);
+
+	if (event->tablet_data) {
+		wmTabletData *wmtab = event->tablet_data;
+
+		erasor = (wmtab->Active == EVT_TABLET_ERASER);
+		if (wmtab->Active != EVT_TABLET_NONE) {
+			pressure = wmtab->Pressure;
+			if (tilt) {
+				tilt[0] = wmtab->Xtilt;
+				tilt[1] = wmtab->Ytilt;
+			}
+		}
+	}
+
+	if (pen_flip)
+		(*pen_flip) = erasor;
+
+	return pressure;
+}
+
+bool WM_event_is_tablet(const struct wmEvent *event)
+{
+	return (event->tablet_data) ? true : false;
+}
+
 
 /** \} */

@@ -1,9 +1,8 @@
 import bpy
-from mathutils import Vector
 from bpy_extras import view3d_utils
 
 
-def main(context, event, ray_max=10000.0):
+def main(context, event, ray_max=1000.0):
     """Run this function on left mouse, execute the ray cast"""
     # get the context arguments
     scene = context.scene
@@ -14,6 +13,11 @@ def main(context, event, ray_max=10000.0):
     # get the ray from the viewport and mouse
     view_vector = view3d_utils.region_2d_to_vector_3d(region, rv3d, coord)
     ray_origin = view3d_utils.region_2d_to_origin_3d(region, rv3d, coord)
+
+    if rv3d.view_perspective == 'ORTHO':
+        # move ortho origin back
+        ray_origin = ray_origin - (view_vector * (ray_max / 2.0))
+
     ray_target = ray_origin + (view_vector * ray_max)
 
     def visible_objects_and_duplis():
@@ -106,4 +110,3 @@ def unregister():
 
 if __name__ == "__main__":
     register()
-

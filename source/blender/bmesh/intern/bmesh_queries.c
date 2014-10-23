@@ -36,6 +36,7 @@
 #include "BLI_math.h"
 #include "BLI_alloca.h"
 #include "BLI_linklist.h"
+#include "BLI_stackdefines.h"
 
 #include "bmesh.h"
 #include "intern/bmesh_private.h"
@@ -182,10 +183,32 @@ BMLoop *BM_loop_other_vert_loop(BMLoop *l, BMVert *v)
 }
 
 /**
+ * Check if verts share a face.
+ */
+bool BM_vert_pair_share_face_check(
+        BMVert *v_a, BMVert *v_b)
+{
+	if (v_a->e && v_b->e) {
+		BMIter iter;
+		BMFace *f;
+
+		BM_ITER_ELEM (f, &iter, v_a, BM_FACES_OF_VERT) {
+			if (BM_vert_in_face(f, v_b)) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+/**
  * Given 2 verts, find the smallest face they share and give back both loops.
  */
-BMFace *BM_vert_pair_share_face(BMVert *v_a, BMVert *v_b,
-                                BMLoop **r_l_a, BMLoop **r_l_b)
+BMFace *BM_vert_pair_share_face_by_len(
+        BMVert *v_a, BMVert *v_b,
+        BMLoop **r_l_a, BMLoop **r_l_b,
+        const bool allow_adjacent)
 {
 	BMLoop *l_cur_a = NULL, *l_cur_b = NULL;
 	BMFace *f_cur = NULL;
@@ -197,7 +220,7 @@ BMFace *BM_vert_pair_share_face(BMVert *v_a, BMVert *v_b,
 		BM_ITER_ELEM (l_a, &iter, v_a, BM_LOOPS_OF_VERT) {
 			if ((f_cur == NULL) || (l_a->f->len < f_cur->len)) {
 				l_b = BM_face_vert_share_loop(l_a->f, v_b);
-				if (l_b) {
+				if (l_b && (allow_adjacent || !BM_loop_is_adjacent(l_a, l_b))) {
 					f_cur = l_a->f;
 					l_cur_a = l_a;
 					l_cur_b = l_b;
@@ -206,11 +229,79 @@ BMFace *BM_vert_pair_share_face(BMVert *v_a, BMVert *v_b,
 		}
 	}
 
-	if (r_l_a) *r_l_a = l_cur_a;
-	if (r_l_b) *r_l_b = l_cur_b;
+	*r_l_a = l_cur_a;
+	*r_l_b = l_cur_b;
 
 	return f_cur;
 }
+
+static float bm_face_calc_split_dot(BMLoop *l_a, BMLoop *l_b)
+{
+	float no[2][3];
+
+	if ((BM_face_calc_normal_subset(l_a, l_b, no[0]) != 0.0f) &&
+	    (BM_face_calc_normal_subset(l_b, l_a, no[1]) != 0.0f))
+	{
+		return dot_v3v3(no[0], no[1]);
+	}
+	else {
+		return -1.0f;
+	}
+}
+
+/**
+ * Given 2 verts, find a face they share that has the lowest angle across these verts and give back both loops.
+ *
+ * This can be better then #BM_vert_pair_share_face_by_len because concave splits are ranked lowest.
+ */
+BMFace *BM_vert_pair_share_face_by_angle(
+        BMVert *v_a, BMVert *v_b,
+        BMLoop **r_l_a, BMLoop **r_l_b,
+        const bool allow_adjacent)
+{
+	BMLoop *l_cur_a = NULL, *l_cur_b = NULL;
+	BMFace *f_cur = NULL;
+
+	if (v_a->e && v_b->e) {
+		BMIter iter;
+		BMLoop *l_a, *l_b;
+		float dot_best = -1.0f;
+
+		BM_ITER_ELEM (l_a, &iter, v_a, BM_LOOPS_OF_VERT) {
+			l_b = BM_face_vert_share_loop(l_a->f, v_b);
+			if (l_b && (allow_adjacent || !BM_loop_is_adjacent(l_a, l_b))) {
+
+				if (f_cur == NULL) {
+					f_cur = l_a->f;
+					l_cur_a = l_a;
+					l_cur_b = l_b;
+				}
+				else {
+					/* avoid expensive calculations if we only ever find one face */
+					float dot;
+					if (dot_best == -1.0f) {
+						dot_best = bm_face_calc_split_dot(l_cur_a, l_cur_b);
+					}
+
+					dot = bm_face_calc_split_dot(l_a, l_b);
+					if (dot > dot_best) {
+						dot_best = dot;
+
+						f_cur = l_a->f;
+						l_cur_a = l_a;
+						l_cur_b = l_b;
+					}
+				}
+			}
+		}
+	}
+
+	*r_l_a = l_cur_a;
+	*r_l_b = l_cur_b;
+
+	return f_cur;
+}
+
 
 /**
  * Get the first loop of a vert. Uses the same initialization code for the first loop of the
@@ -220,7 +311,7 @@ BMLoop *BM_vert_find_first_loop(BMVert *v)
 {
 	BMEdge *e;
 
-	if (!v || !v->e)
+	if (!v->e)
 		return NULL;
 
 	e = bmesh_disk_faceedge_find_first(v->e, v);
@@ -585,6 +676,19 @@ bool BM_edge_loop_pair(BMEdge *e, BMLoop **r_la, BMLoop **r_lb)
 		*r_lb = NULL;
 		return false;
 	}
+}
+
+/**
+ * Fast alternative to ``(BM_vert_edge_count(v) == 2)``
+ */
+bool BM_vert_is_edge_pair(BMVert *v)
+{
+	BMEdge *e = v->e;
+	if (e) {
+		const BMDiskLink *dl = bmesh_disk_edge_link_from_vert(e, v);
+		return (dl->next == dl->prev);
+	}
+	return false;
 }
 
 /**
@@ -1984,7 +2088,7 @@ int BM_mesh_calc_face_groups(BMesh *bm, int *r_groups_array, int (**r_group_inde
 	BMFace *f;
 	int i;
 
-	STACK_INIT(group_array);
+	STACK_INIT(group_array, bm->totface);
 
 	BLI_assert(((htype_step & ~(BM_VERT | BM_EDGE)) == 0) && (htype_step != 0));
 
@@ -2012,7 +2116,7 @@ int BM_mesh_calc_face_groups(BMesh *bm, int *r_groups_array, int (**r_group_inde
 
 		BLI_assert(tot_touch < tot_faces);
 
-		STACK_INIT(stack);
+		STACK_INIT(stack, tot_faces);
 
 		BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
 			if (BM_elem_flag_test(f, BM_ELEM_TAG) == false) {
@@ -2140,7 +2244,7 @@ int BM_mesh_calc_edge_groups(BMesh *bm, int *r_groups_array, int (**r_group_inde
 	BMEdge *e;
 	int i;
 
-	STACK_INIT(group_array);
+	STACK_INIT(group_array, bm->totface);
 
 	/* init the array */
 	BM_ITER_MESH_INDEX (e, &iter, bm, BM_EDGES_OF_MESH, i) {
@@ -2166,7 +2270,7 @@ int BM_mesh_calc_edge_groups(BMesh *bm, int *r_groups_array, int (**r_group_inde
 
 		BLI_assert(tot_touch < tot_edges);
 
-		STACK_INIT(stack);
+		STACK_INIT(stack, tot_edges);
 
 		BM_ITER_MESH (e, &iter, bm, BM_EDGES_OF_MESH) {
 			if (BM_elem_flag_test(e, BM_ELEM_TAG) == false) {

@@ -14,6 +14,21 @@ import sys
 Variables = SCons.Variables
 BoolVariable = SCons.Variables.BoolVariable
 
+def get_command_output(*popenargs, **kwargs):
+    if hasattr(subprocess, "check_output"):
+        return subprocess.check_output(*popenargs, **kwargs)
+    if 'stdout' in kwargs:
+        raise ValueError('stdout argument not allowed, it will be overridden.')
+    process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+    output, unused_err = process.communicate()
+    retcode = process.poll()
+    if retcode:
+        cmd = kwargs.get("args")
+        if cmd is None:
+            cmd = popenargs[0]
+        raise subprocess.CalledProcessError(retcode, cmd)
+    return output
+
 def get_version():
     import re
 
@@ -56,7 +71,14 @@ def get_version():
     raise Exception("%s: missing version string" % fname)
 
 def get_hash():
-    build_hash = os.popen('git rev-parse --short HEAD').read().strip()
+    try:
+        build_hash = get_command_output(['git', 'rev-parse', '--short', 'HEAD']).strip()
+    except OSError:
+        build_hash = None
+        print("WARNING: could not use git to retrieve current Blender repository hash...")
+    except subprocess.CalledProcessError as e:
+        build_hash = None
+        print("WARNING: git errored while retrieving current Blender repository hash (%d)..." % e.returncode)
     if build_hash == '' or build_hash == None:
         build_hash = 'UNKNOWN'
 
@@ -114,6 +136,8 @@ def validate_arguments(args, bc):
             'WITH_BF_QUICKTIME', 'BF_QUICKTIME', 'BF_QUICKTIME_INC', 'BF_QUICKTIME_LIB', 'BF_QUICKTIME_LIBPATH',
             'WITH_BF_FFTW3', 'BF_FFTW3', 'BF_FFTW3_INC', 'BF_FFTW3_LIB', 'BF_FFTW3_LIBPATH', 'WITH_BF_STATICFFTW3', 'BF_FFTW3_LIB_STATIC',
             'WITH_BF_STATICOPENGL', 'BF_OPENGL', 'BF_OPENGL_INC', 'BF_OPENGL_LIB', 'BF_OPENGL_LIBPATH', 'BF_OPENGL_LIB_STATIC',
+            'WITH_BF_EGL', 'WITH_BF_GLEW_ES', 'BF_GLEW_INC', 'WITH_BF_GL_PROFILE_CORE', 'WITH_BF_GL_PROFILE_COMPAT', 'WITH_BF_GL_PROFILE_ES20',
+
             'WITH_BF_COLLADA', 'BF_COLLADA', 'BF_COLLADA_INC', 'BF_COLLADA_LIB', 'BF_OPENCOLLADA', 'BF_OPENCOLLADA_INC', 'BF_OPENCOLLADA_LIB', 'BF_OPENCOLLADA_LIBPATH', 'BF_PCRE', 'BF_PCRE_LIB', 'BF_PCRE_LIBPATH', 'BF_EXPAT', 'BF_EXPAT_LIB', 'BF_EXPAT_LIBPATH',
             'WITH_BF_STATICOPENCOLLADA', 'BF_OPENCOLLADA_LIB_STATIC',
             'WITH_BF_PLAYER',
@@ -155,7 +179,7 @@ def validate_arguments(args, bc):
             'WITH_BF_OIIO', 'WITH_BF_STATICOIIO', 'BF_OIIO', 'BF_OIIO_INC', 'BF_OIIO_LIB', 'BF_OIIO_LIB_STATIC', 'BF_OIIO_LIBPATH',
             'WITH_BF_OCIO', 'WITH_BF_STATICOCIO', 'BF_OCIO', 'BF_OCIO_INC', 'BF_OCIO_LIB', 'BF_OCIO_LIB_STATIC', 'BF_OCIO_LIBPATH',
             'WITH_BF_BOOST', 'WITH_BF_STATICBOOST', 'BF_BOOST', 'BF_BOOST_INC', 'BF_BOOST_LIB', 'BF_BOOST_LIB_INTERNATIONAL', 'BF_BOOST_LIB_STATIC', 'BF_BOOST_LIBPATH',
-            'WITH_BF_LIBMV',
+            'WITH_BF_LIBMV', 'WITH_BF_LIBMV_SCHUR_SPECIALIZATIONS',
             'WITH_BF_CYCLES_OSL', 'WITH_BF_STATICOSL', 'BF_OSL', 'BF_OSL_INC', 'BF_OSL_LIB', 'BF_OSL_LIBPATH', 'BF_OSL_LIB_STATIC', 'BF_OSL_COMPILER',
             'WITH_BF_LLVM', 'WITH_BF_STATICLLVM', 'BF_LLVM', 'BF_LLVM_LIB', 'BF_LLVM_LIBPATH', 'BF_LLVM_LIB_STATIC', 'BF_PROGRAM_LINKFLAGS'
             ]
@@ -164,6 +188,7 @@ def validate_arguments(args, bc):
     opts_list_split = [
             'BF_PYTHON_LINKFLAGS',
             'BF_OPENGL_LINKFLAGS',
+            'BF_GL_DEFINITIONS',
             'CFLAGS', 'CCFLAGS', 'CXXFLAGS', 'CPPFLAGS',
             'REL_CFLAGS', 'REL_CCFLAGS', 'REL_CXXFLAGS',
             'BGE_CXXFLAGS',
@@ -171,7 +196,8 @@ def validate_arguments(args, bc):
             'BF_DEBUG_CFLAGS', 'BF_DEBUG_CCFLAGS', 'BF_DEBUG_CXXFLAGS',
             'C_WARN', 'CC_WARN', 'CXX_WARN',
             'LLIBS', 'PLATFORM_LINKFLAGS', 'MACOSX_ARCHITECTURE', 'MACOSX_SDK', 'XCODE_CUR_VER', 'C_COMPILER_ID',
-            'BF_CYCLES_CUDA_BINARIES_ARCH', 'BF_PROGRAM_LINKFLAGS', 'MACOSX_DEPLOYMENT_TARGET'
+            'BF_CYCLES_CUDA_BINARIES_ARCH', 'BF_PROGRAM_LINKFLAGS', 'MACOSX_DEPLOYMENT_TARGET',
+            'WITH_BF_CYCLES_DEBUG'
     ]
 
 
@@ -441,6 +467,18 @@ def read_opts(env, cfg, args):
         ('BF_OPENGL_LIB_STATIC', 'OpenGL static libraries', ''),
         ('BF_OPENGL_LINKFLAGS', 'OpenGL link flags', ''),
 
+        (BoolVariable('WITH_BF_GLEW_MX', '', True)),
+        (BoolVariable('WITH_BF_GLEW_ES', '', False)),
+        (BoolVariable('WITH_BF_GL_EGL', '', False)),
+        (BoolVariable('WITH_BF_GL_PROFILE_COMPAT', '', True)),
+        (BoolVariable('WITH_BF_GL_PROFILE_CORE', '', False)),
+        (BoolVariable('WITH_BF_GL_PROFILE_ES20', '', False)),
+        (BoolVariable('WITH_BF_GL_ANGLE', '', False)),
+        ('BF_GL_DEFINITIONS', '', []),
+        ('BF_GLEW_INC', '', ''),
+    ) # end of opts.AddVariables()
+
+    localopts.AddVariables(
         (BoolVariable('WITH_BF_COLLADA', 'Build COLLADA import/export module if true', False)),
         (BoolVariable('WITH_BF_STATICOPENCOLLADA', 'Staticly link to OpenCollada', False)),
         ('BF_COLLADA', 'COLLADA base path', ''),
@@ -536,6 +574,7 @@ def read_opts(env, cfg, args):
         (BoolVariable('WITH_BF_LZMA', 'Enable best LZMA pointcache compression', True)),
 
         (BoolVariable('WITH_BF_LIBMV', 'Enable libmv structure from motion library', True)),
+        (BoolVariable('WITH_BF_LIBMV_SCHUR_SPECIALIZATIONS', 'Enable fixed-size schur specializations', True)),
 
         (BoolVariable('WITH_BF_COMPOSITOR', 'Enable the tile based nodal compositor', True)),
     ) # end of opts.AddOptions()
@@ -565,6 +604,7 @@ def read_opts(env, cfg, args):
         ('BF_CYCLES_CUDA_NVCC', 'CUDA nvcc compiler path', ''),
         ('BF_CYCLES_CUDA_ENV', 'preset environement nvcc will execute in', ''),
         ('BF_CYCLES_CUDA_BINARIES_ARCH', 'CUDA architectures to compile binaries for', []),
+        (BoolVariable('WITH_BF_CYCLES_DEBUG', 'Build Cycles engine with extra debugging capabilities', False)),
 
         (BoolVariable('WITH_BF_OIIO', 'Build with OpenImageIO', False)),
         (BoolVariable('WITH_BF_STATICOIIO', 'Statically link to OpenImageIO', False)),
@@ -682,10 +722,6 @@ def buildslave(target=None, source=None, env=None):
     if platform == 'darwin':
         platform = 'OSX-' + env['MACOSX_DEPLOYMENT_TARGET'] + '-' + env['MACOSX_ARCHITECTURE']
 
-    if env['MSVC_VERSION'] == '11.0':
-        platform = env['OURPLATFORM'] + '11'
-    if env['MSVC_VERSION'] == '12.0':
-        platform = env['OURPLATFORM'] + '12'
 
     branch = env['BUILDBOT_BRANCH']
 

@@ -34,27 +34,19 @@
 extern "C" {
 #endif
 
+#include "BLI_compiler_attrs.h"
+
 /********************************* Init **************************************/
 
-#define MAT4_UNITY  {      \
-	{ 1.0, 0.0, 0.0, 0.0}, \
-	{ 0.0, 1.0, 0.0, 0.0}, \
-	{ 0.0, 0.0, 1.0, 0.0}, \
-	{ 0.0, 0.0, 0.0, 1.0}  \
-}
-
-#define MAT3_UNITY  { \
-	{ 1.0, 0.0, 0.0}, \
-	{ 0.0, 1.0, 0.0}, \
-	{ 0.0, 0.0, 1.0}  \
-}
-
+void zero_m2(float R[2][2]);
 void zero_m3(float R[3][3]);
 void zero_m4(float R[4][4]);
 
+void unit_m2(float R[2][2]);
 void unit_m3(float R[3][3]);
 void unit_m4(float R[4][4]);
 
+void copy_m2_m2(float R[2][2], float A[2][2]);
 void copy_m3_m3(float R[3][3], float A[3][3]);
 void copy_m4_m4(float R[4][4], float A[4][4]);
 void copy_m3_m4(float R[3][3], float A[4][4]);
@@ -80,12 +72,33 @@ void mul_m4_m4m3(float R[4][4], float A[4][4], float B[3][3]);
 void mul_m4_m4m4(float R[4][4], float A[4][4], float B[4][4]);
 void mul_m3_m3m4(float R[3][3], float A[4][4], float B[3][3]);
 
-void mul_serie_m3(float R[3][3],
-                  float M1[3][3], float M2[3][3], float M3[3][3], float M4[3][3],
-                  float M5[3][3], float M6[3][3], float M7[3][3], float M8[3][3]);
-void mul_serie_m4(float R[4][4],
-                  float M1[4][4], float M2[4][4], float M3[4][4], float M4[4][4],
-                  float M5[4][4], float M6[4][4], float M7[4][4], float M8[4][4]);
+/* mul_m3_series */
+void _va_mul_m3_series_3(float R[3][3], float M1[3][3], float M2[3][3]) ATTR_NONNULL();
+void _va_mul_m3_series_4(float R[3][3], float M1[3][3], float M2[3][3], float M3[3][3]) ATTR_NONNULL();
+void _va_mul_m3_series_5(float R[3][3], float M1[3][3], float M2[3][3], float M3[3][3], float M4[3][3]) ATTR_NONNULL();
+void _va_mul_m3_series_6(float R[3][3], float M1[3][3], float M2[3][3], float M3[3][3], float M4[3][3],
+                         float M5[3][3]) ATTR_NONNULL();
+void _va_mul_m3_series_7(float R[3][3], float M1[3][3], float M2[3][3], float M3[3][3], float M4[3][3],
+                         float M5[3][3], float M6[3][3]) ATTR_NONNULL();
+void _va_mul_m3_series_8(float R[3][3], float M1[3][3], float M2[3][3], float M3[3][3], float M4[3][3],
+                         float M5[3][3], float M6[3][3], float M7[3][3]) ATTR_NONNULL();
+void _va_mul_m3_series_9(float R[3][3], float M1[3][3], float M2[3][3], float M3[3][3], float M4[3][3],
+                         float M5[3][3], float M6[3][3], float M7[3][3], float M8[3][3]) ATTR_NONNULL();
+/* mul_m4_series */
+void _va_mul_m4_series_3(float R[4][4], float M1[4][4], float M2[4][4]) ATTR_NONNULL();
+void _va_mul_m4_series_4(float R[4][4], float M1[4][4], float M2[4][4], float M3[4][4]) ATTR_NONNULL();
+void _va_mul_m4_series_5(float R[4][4], float M1[4][4], float M2[4][4], float M3[4][4], float M4[4][4]) ATTR_NONNULL();
+void _va_mul_m4_series_6(float R[4][4], float M1[4][4], float M2[4][4], float M3[4][4], float M4[4][4],
+                        float M5[4][4]) ATTR_NONNULL();
+void _va_mul_m4_series_7(float R[4][4], float M1[4][4], float M2[4][4], float M3[4][4], float M4[4][4],
+                         float M5[4][4], float M6[4][4]) ATTR_NONNULL();
+void _va_mul_m4_series_8(float R[4][4], float M1[4][4], float M2[4][4], float M3[4][4], float M4[4][4],
+                         float M5[4][4], float M6[4][4], float M7[4][4]) ATTR_NONNULL();
+void _va_mul_m4_series_9(float R[4][4], float M1[4][4], float M2[4][4], float M3[4][4], float M4[4][4],
+                         float M5[4][4], float M6[4][4], float M7[4][4], float M8[4][4]) ATTR_NONNULL();
+
+#define mul_m3_series(...) VA_NARGS_CALL_OVERLOAD(_va_mul_m3_series_, __VA_ARGS__)
+#define mul_m4_series(...) VA_NARGS_CALL_OVERLOAD(_va_mul_m4_series_, __VA_ARGS__)
 
 void mul_m4_v3(float M[4][4], float r[3]);
 void mul_v3_m4v3(float r[3], float M[4][4], const float v[3]);
@@ -96,6 +109,7 @@ void mul_mat3_m4_v3(float M[4][4], float r[3]);
 void mul_m4_v4(float M[4][4], float r[4]);
 void mul_v4_m4v4(float r[4], float M[4][4], const float v[4]);
 void mul_project_m4_v3(float M[4][4], float vec[3]);
+void mul_v3_project_m4_v3(float r[3], float mat[4][4], const float vec[3]);
 void mul_v2_project_m4_v3(float r[2], float M[4][4], const float vec[3]);
 
 void mul_m3_v2(float m[3][3], float r[2]);
@@ -110,6 +124,9 @@ void mul_m3_v3_double(float M[3][3], double r[3]);
 void mul_m3_fl(float R[3][3], float f);
 void mul_m4_fl(float R[4][4], float f);
 void mul_mat3_m4_fl(float R[4][4], float f);
+
+void negate_m3(float R[4][4]);
+void negate_m4(float R[4][4]);
 
 bool invert_m3_ex(float m[3][3], const float epsilon);
 bool invert_m3_m3_ex(float m1[3][3], float m2[3][3], const float epsilon);
@@ -145,6 +162,7 @@ bool is_orthonormal_m3(float mat[3][3]);
 bool is_orthonormal_m4(float mat[4][4]);
 
 bool is_uniform_scaled_m3(float mat[3][3]);
+bool is_uniform_scaled_m4(float m[4][4]);
 
 void adjoint_m2_m2(float R[2][2], float A[2][2]);
 void adjoint_m3_m3(float R[3][3], float A[3][3]);
@@ -209,6 +227,22 @@ bool is_negative_m4(float mat[4][4]);
 
 bool is_zero_m3(float mat[3][3]);
 bool is_zero_m4(float mat[4][4]);
+
+/* SpaceTransform helper */
+typedef struct SpaceTransform {
+	float local2target[4][4];
+	float target2local[4][4];
+
+} SpaceTransform;
+
+void BLI_space_transform_from_matrices(struct SpaceTransform *data, float local[4][4], float target[4][4]);
+void BLI_space_transform_apply(const struct SpaceTransform *data, float co[3]);
+void BLI_space_transform_invert(const struct SpaceTransform *data, float co[3]);
+void BLI_space_transform_apply_normal(const struct SpaceTransform *data, float no[3]);
+void BLI_space_transform_invert_normal(const struct SpaceTransform *data, float no[3]);
+
+#define BLI_SPACE_TRANSFORM_SETUP(data, local, target) \
+	BLI_space_transform_from_matrices((data), (local)->obmat, (target)->obmat)
 
 /*********************************** Other ***********************************/
 

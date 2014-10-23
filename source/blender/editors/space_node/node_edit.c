@@ -640,11 +640,11 @@ void ED_node_set_active(Main *bmain, bNodeTree *ntree, bNode *node)
 		/* tree specific activate calls */
 		if (ntree->type == NTREE_SHADER) {
 			/* when we select a material, active texture is cleared, for buttons */
-			if (node->id && ELEM3(GS(node->id->name), ID_MA, ID_LA, ID_WO))
+			if (node->id && ELEM(GS(node->id->name), ID_MA, ID_LA, ID_WO))
 				nodeClearActiveID(ntree, ID_TE);
 			
-			if (ELEM4(node->type, SH_NODE_OUTPUT, SH_NODE_OUTPUT_MATERIAL,
-			          SH_NODE_OUTPUT_WORLD, SH_NODE_OUTPUT_LAMP))
+			if (ELEM(node->type, SH_NODE_OUTPUT, SH_NODE_OUTPUT_MATERIAL,
+			         SH_NODE_OUTPUT_WORLD, SH_NODE_OUTPUT_LAMP, SH_NODE_OUTPUT_LINESTYLE))
 			{
 				bNode *tnode;
 				
@@ -695,7 +695,12 @@ void ED_node_set_active(Main *bmain, bNodeTree *ntree, bNode *node)
 				for (scene = bmain->scene.first; scene; scene = scene->id.next) {
 					if (scene->nodetree && scene->use_nodes && ntreeHasTree(scene->nodetree, ntree)) {
 						if (node->id == NULL || node->id == (ID *)scene) {
+							int num_layers = BLI_countlist(&scene->r.layers);
 							scene->r.actlay = node->custom1;
+							/* Clamp the value, because it might have come from a different
+							 * scene which could have more render layers than new one.
+							 */
+							scene->r.actlay = min_ff(scene->r.actlay, num_layers - 1);
 						}
 					}
 				}
@@ -2477,14 +2482,6 @@ static int viewer_border_exec(bContext *C, wmOperator *op)
 				btree->flag &= ~NTREE_VIEWER_BORDER;
 			}
 			else {
-				if (ibuf->rect)
-					memset(ibuf->rect, 0, 4 * ibuf->x * ibuf->y);
-
-				if (ibuf->rect_float)
-					memset(ibuf->rect_float, 0, 4 * ibuf->x * ibuf->y * sizeof(float));
-
-				ibuf->userflags |= IB_DISPLAY_BUFFER_INVALID;
-
 				btree->flag |= NTREE_VIEWER_BORDER;
 			}
 
@@ -2520,4 +2517,31 @@ void NODE_OT_viewer_border(wmOperatorType *ot)
 
 	/* properties */
 	WM_operator_properties_gesture_border(ot, true);
+}
+
+static int clear_viewer_border_exec(bContext *C, wmOperator *UNUSED(op))
+{
+	SpaceNode *snode = CTX_wm_space_node(C);
+	bNodeTree *btree = snode->nodetree;
+
+	btree->flag &= ~NTREE_VIEWER_BORDER;
+	snode_notify(C, snode);
+	WM_event_add_notifier(C, NC_NODE | ND_DISPLAY, NULL);
+
+	return OPERATOR_FINISHED;
+}
+
+void NODE_OT_clear_viewer_border(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Clear Viewer Border";
+	ot->description = "Clear the boundaries for viewer operations";
+	ot->idname = "NODE_OT_clear_viewer_border";
+
+	/* api callbacks */
+	ot->exec = clear_viewer_border_exec;
+	ot->poll = composite_node_active;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }

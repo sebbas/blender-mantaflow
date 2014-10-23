@@ -126,7 +126,7 @@ void OSLRenderServices::thread_init(KernelGlobals *kernel_globals_, OSL::Texture
 	osl_ts = osl_ts_;
 }
 
-bool OSLRenderServices::get_matrix(OSL::Matrix44 &result, OSL::TransformationPtr xform, float time)
+bool OSLRenderServices::get_matrix(OSL::ShaderGlobals *sg, OSL::Matrix44 &result, OSL::TransformationPtr xform, float time)
 {
 	/* this is only used for shader and object space, we don't really have
 	 * a concept of shader space, so we just use object space for both. */
@@ -156,7 +156,7 @@ bool OSLRenderServices::get_matrix(OSL::Matrix44 &result, OSL::TransformationPtr
 	return false;
 }
 
-bool OSLRenderServices::get_inverse_matrix(OSL::Matrix44 &result, OSL::TransformationPtr xform, float time)
+bool OSLRenderServices::get_inverse_matrix(OSL::ShaderGlobals *sg, OSL::Matrix44 &result, OSL::TransformationPtr xform, float time)
 {
 	/* this is only used for shader and object space, we don't really have
 	 * a concept of shader space, so we just use object space for both. */
@@ -186,7 +186,7 @@ bool OSLRenderServices::get_inverse_matrix(OSL::Matrix44 &result, OSL::Transform
 	return false;
 }
 
-bool OSLRenderServices::get_matrix(OSL::Matrix44 &result, ustring from, float time)
+bool OSLRenderServices::get_matrix(OSL::ShaderGlobals *sg, OSL::Matrix44 &result, ustring from, float time)
 {
 	KernelGlobals *kg = kernel_globals;
 
@@ -218,7 +218,7 @@ bool OSLRenderServices::get_matrix(OSL::Matrix44 &result, ustring from, float ti
 	return false;
 }
 
-bool OSLRenderServices::get_inverse_matrix(OSL::Matrix44 &result, ustring to, float time)
+bool OSLRenderServices::get_inverse_matrix(OSL::ShaderGlobals *sg, OSL::Matrix44 &result, ustring to, float time)
 {
 	KernelGlobals *kg = kernel_globals;
 
@@ -250,7 +250,7 @@ bool OSLRenderServices::get_inverse_matrix(OSL::Matrix44 &result, ustring to, fl
 	return false;
 }
 
-bool OSLRenderServices::get_matrix(OSL::Matrix44 &result, OSL::TransformationPtr xform)
+bool OSLRenderServices::get_matrix(OSL::ShaderGlobals *sg, OSL::Matrix44 &result, OSL::TransformationPtr xform)
 {
 	/* this is only used for shader and object space, we don't really have
 	 * a concept of shader space, so we just use object space for both. */
@@ -275,7 +275,7 @@ bool OSLRenderServices::get_matrix(OSL::Matrix44 &result, OSL::TransformationPtr
 	return false;
 }
 
-bool OSLRenderServices::get_inverse_matrix(OSL::Matrix44 &result, OSL::TransformationPtr xform)
+bool OSLRenderServices::get_inverse_matrix(OSL::ShaderGlobals *sg, OSL::Matrix44 &result, OSL::TransformationPtr xform)
 {
 	/* this is only used for shader and object space, we don't really have
 	 * a concept of shader space, so we just use object space for both. */
@@ -300,7 +300,7 @@ bool OSLRenderServices::get_inverse_matrix(OSL::Matrix44 &result, OSL::Transform
 	return false;
 }
 
-bool OSLRenderServices::get_matrix(OSL::Matrix44 &result, ustring from)
+bool OSLRenderServices::get_matrix(OSL::ShaderGlobals *sg, OSL::Matrix44 &result, ustring from)
 {
 	KernelGlobals *kg = kernel_globals;
 
@@ -328,7 +328,7 @@ bool OSLRenderServices::get_matrix(OSL::Matrix44 &result, ustring from)
 	return false;
 }
 
-bool OSLRenderServices::get_inverse_matrix(OSL::Matrix44 &result, ustring to)
+bool OSLRenderServices::get_inverse_matrix(OSL::ShaderGlobals *sg, OSL::Matrix44 &result, ustring to)
 {
 	KernelGlobals *kg = kernel_globals;
 	
@@ -356,7 +356,7 @@ bool OSLRenderServices::get_inverse_matrix(OSL::Matrix44 &result, ustring to)
 	return false;
 }
 
-bool OSLRenderServices::get_array_attribute(void *renderstate, bool derivatives, 
+bool OSLRenderServices::get_array_attribute(OSL::ShaderGlobals *sg, bool derivatives, 
                                             ustring object, TypeDesc type, ustring name,
                                             int index, void *val)
 {
@@ -479,7 +479,7 @@ static bool set_attribute_int(int i, TypeDesc type, bool derivatives, void *val)
 
 static bool set_attribute_string(ustring str, TypeDesc type, bool derivatives, void *val)
 {
-	if(type.basetype == TypeDesc::INT && type.aggregate == TypeDesc::SCALAR && type.arraylen == 0) {
+	if(type.basetype == TypeDesc::STRING && type.aggregate == TypeDesc::SCALAR && type.arraylen == 0) {
 		ustring *sval = (ustring *)val;
 		sval[0] = str;
 
@@ -718,7 +718,7 @@ bool OSLRenderServices::get_background_attribute(KernelGlobals *kg, ShaderData *
 		return set_attribute_int(f, type, derivatives, val);
 	}
 	else if (name == u_path_transparent_depth) {
-		/* Ray Depth */
+		/* Transparent Ray Depth */
 		int f = sd->transparent_depth;
 		return set_attribute_int(f, type, derivatives, val);
 	}
@@ -751,14 +751,22 @@ bool OSLRenderServices::get_background_attribute(KernelGlobals *kg, ShaderData *
 		return false;
 }
 
-bool OSLRenderServices::get_attribute(void *renderstate, bool derivatives, ustring object_name,
+bool OSLRenderServices::get_attribute(OSL::ShaderGlobals *sg, bool derivatives, ustring object_name,
                                       TypeDesc type, ustring name, void *val)
 {
-	ShaderData *sd = (ShaderData *)renderstate;
+	if (sg->renderstate == NULL)
+		return false;
+
+	ShaderData *sd = (ShaderData *)(sg->renderstate);
+	return get_attribute(sd, derivatives, object_name, type, name, val);
+}
+
+bool OSLRenderServices::get_attribute(ShaderData *sd, bool derivatives, ustring object_name,
+                                      TypeDesc type, ustring name, void *val)
+{
 	KernelGlobals *kg = sd->osl_globals;
 	bool is_curve;
 	int object;
-	// int prim;
 
 	/* lookup of attribute on another object */
 	if (object_name != u_empty) {
@@ -768,12 +776,10 @@ bool OSLRenderServices::get_attribute(void *renderstate, bool derivatives, ustri
 			return false;
 
 		object = it->second;
-		// prim = PRIM_NONE;
 		is_curve = false;
 	}
 	else {
 		object = sd->object;
-		// prim = sd->prim;
 		is_curve = (sd->type & PRIMITIVE_ALL_CURVE) != 0;
 
 		if (object == OBJECT_NONE)
@@ -815,12 +821,12 @@ bool OSLRenderServices::get_attribute(void *renderstate, bool derivatives, ustri
 }
 
 bool OSLRenderServices::get_userdata(bool derivatives, ustring name, TypeDesc type, 
-                                     void *renderstate, void *val)
+                                     OSL::ShaderGlobals *sg, void *val)
 {
 	return false; /* disabled by lockgeom */
 }
 
-bool OSLRenderServices::has_userdata(ustring name, TypeDesc type, void *renderstate)
+bool OSLRenderServices::has_userdata(ustring name, TypeDesc type, OSL::ShaderGlobals *sg)
 {
 	return false; /* never called by OSL */
 }
@@ -871,14 +877,30 @@ bool OSLRenderServices::texture(ustring filename, TextureOpt &options,
 		return true;
 	}
 #endif
+	bool status;
 
-	OSLThreadData *tdata = kg->osl_tdata;
-	OIIO::TextureSystem::Perthread *thread_info = tdata->oiio_thread_info;
+	if(filename[0] == '@' && filename.find('.') == -1) {
+        int slot = atoi(filename.c_str() + 1);
+		float4 rgba = kernel_tex_image_interp(slot, s, 1.0f - t);
 
-	OIIO::TextureSystem::TextureHandle *th = ts->get_texture_handle(filename, thread_info);
+		result[0] = rgba[0];
+		if(options.nchannels > 1)
+			result[1] = rgba[1];
+		if(options.nchannels > 2)
+			result[2] = rgba[2];
+		if(options.nchannels > 3)
+			result[3] = rgba[3];
+		status = true;
+	}
+	else {
+		OSLThreadData *tdata = kg->osl_tdata;
+		OIIO::TextureSystem::Perthread *thread_info = tdata->oiio_thread_info;
 
-	bool status = ts->texture(th, thread_info,
-	                          options, s, t, dsdx, dtdx, dsdy, dtdy, result);
+		OIIO::TextureSystem::TextureHandle *th = ts->get_texture_handle(filename, thread_info);
+
+		status = ts->texture(th, thread_info,
+		                     options, s, t, dsdx, dtdx, dsdy, dtdy, result);
+	}
 
 	if(!status) {
 		if(options.nchannels == 3 || options.nchannels == 4) {
@@ -953,7 +975,7 @@ bool OSLRenderServices::environment(ustring filename, TextureOpt &options,
 	return status;
 }
 
-bool OSLRenderServices::get_texture_info(ustring filename, int subimage,
+bool OSLRenderServices::get_texture_info(OSL::ShaderGlobals *sg, ustring filename, int subimage,
                                          ustring dataname,
                                          TypeDesc datatype, void *data)
 {
@@ -996,7 +1018,7 @@ bool OSLRenderServices::trace(TraceOpt &options, OSL::ShaderGlobals *sg,
 
 	ray.P = TO_FLOAT3(P);
 	ray.D = TO_FLOAT3(R);
-	ray.t = (options.maxdist == 1.0e30)? FLT_MAX: options.maxdist - options.mindist;
+	ray.t = (options.maxdist == 1.0e30f)? FLT_MAX: options.maxdist - options.mindist;
 	ray.time = sd->time;
 
 	if(options.mindist == 0.0f) {
@@ -1025,11 +1047,7 @@ bool OSLRenderServices::trace(TraceOpt &options, OSL::ShaderGlobals *sg,
 	tracedata->sd.osl_globals = sd->osl_globals;
 
 	/* raytrace */
-#ifdef __HAIR__
 	return scene_intersect(sd->osl_globals, &ray, PATH_RAY_ALL_VISIBILITY, &tracedata->isect, NULL, 0.0f, 0.0f);
-#else
-	return scene_intersect(sd->osl_globals, &ray, PATH_RAY_ALL_VISIBILITY, &tracedata->isect);
-#endif
 }
 
 

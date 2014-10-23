@@ -139,7 +139,7 @@ float dot_qtqt(const float q1[4], const float q2[4])
 
 void invert_qt(float q[4])
 {
-	float f = dot_qtqt(q, q);
+	const float f = dot_qtqt(q, q);
 
 	if (f == 0.0f)
 		return;
@@ -366,7 +366,7 @@ void mat3_to_quat_is_ok(float q[4], float wmat[3][3])
 	mul_m3_v3(matn, mat[0]);
 
 	/* and align x-axes */
-	angle = (float)(0.5 * atan2(mat[0][1], mat[0][0]));
+	angle = 0.5f * atan2f(mat[0][1], mat[0][0]);
 
 	co = cosf(angle);
 	si = sinf(angle);
@@ -380,9 +380,8 @@ void mat3_to_quat_is_ok(float q[4], float wmat[3][3])
 
 float normalize_qt(float q[4])
 {
-	float len;
+	const float len = sqrtf(dot_qtqt(q, q));
 
-	len = sqrtf(dot_qtqt(q, q));
 	if (len != 0.0f) {
 		mul_qt_fl(q, 1.0f / len);
 	}
@@ -520,7 +519,7 @@ float angle_qtqt(const float q1[4], const float q2[4])
 
 void vec_to_quat(float q[4], const float vec[3], short axis, const short upflag)
 {
-	const float eps = 0.0001f;
+	const float eps = 1e-4f;
 	float nor[3], tvec[3];
 	float angle, si, co, len;
 
@@ -669,7 +668,7 @@ void QuatInterpolW(float *result, float quat1[4], float quat2[4], float t)
  */
 void interp_dot_slerp(const float t, const float cosom, float r_w[2])
 {
-	const float eps = 0.0001f;
+	const float eps = 1e-4f;
 
 	BLI_assert(IN_RANGE_INCL(cosom, -1.0001f, 1.0001f));
 
@@ -766,7 +765,7 @@ void tri_to_quat_ex(float quat[4], const float v1[3], const float v2[3], const f
 	vec[2] = 0.0f;
 	normalize_v3(vec);
 
-	angle = (float)(0.5 * atan2(vec[1], vec[0]));
+	angle = 0.5f * atan2f(vec[1], vec[0]);
 	co = cosf(angle);
 	si = sinf(angle);
 	q2[0] = co;
@@ -783,9 +782,8 @@ void tri_to_quat_ex(float quat[4], const float v1[3], const float v2[3], const f
 float tri_to_quat(float quat[4], const float v1[3], const float v2[3], const float v3[3])
 {
 	float vec[3];
-	float len;
+	const float len = normal_tri_v3(vec, v1, v2, v3);
 
-	len = normal_tri_v3(vec, v1, v2, v3);
 	tri_to_quat_ex(quat, v1, v2, v3, vec);
 	return len;
 }
@@ -872,8 +870,8 @@ void eulO_to_axis_angle(float axis[3], float *angle, const float eul[3], const s
  * This takes the angle with sin/cos applied so we can avoid calculating it in some cases.
  *
  * \param axis rotation axis (must be normalized).
- * \param co cos(angle)
- * \param si sin(angle)
+ * \param angle_sin sin(angle)
+ * \param angle_cos cos(angle)
  */
 void axis_angle_normalized_to_mat3_ex(float mat[3][3], const float axis[3],
                                       const float angle_sin, const float angle_cos)
@@ -1088,25 +1086,24 @@ static void mat3_to_eul2(float tmat[3][3], float eul1[3], float eul2[3])
 
 	mat3_to_quat(quat, tmat);
 	quat_to_mat3(mat, quat);
-	copy_m3_m3(mat, tmat);
-	normalize_m3(mat);
+	normalize_m3_m3(mat, tmat);
 
-	cy = sqrtf(mat[0][0] * mat[0][0] + mat[0][1] * mat[0][1]);
+	cy = hypotf(mat[0][0], mat[0][1]);
 
 	if (cy > 16.0f * FLT_EPSILON) {
 
-		eul1[0] = (float)atan2(mat[1][2], mat[2][2]);
-		eul1[1] = (float)atan2(-mat[0][2], cy);
-		eul1[2] = (float)atan2(mat[0][1], mat[0][0]);
+		eul1[0] = atan2f(mat[1][2], mat[2][2]);
+		eul1[1] = atan2f(-mat[0][2], cy);
+		eul1[2] = atan2f(mat[0][1], mat[0][0]);
 
-		eul2[0] = (float)atan2(-mat[1][2], -mat[2][2]);
-		eul2[1] = (float)atan2(-mat[0][2], -cy);
-		eul2[2] = (float)atan2(-mat[0][1], -mat[0][0]);
+		eul2[0] = atan2f(-mat[1][2], -mat[2][2]);
+		eul2[1] = atan2f(-mat[0][2], -cy);
+		eul2[2] = atan2f(-mat[0][1], -mat[0][0]);
 
 	}
 	else {
-		eul1[0] = (float)atan2(-mat[2][1], mat[1][1]);
-		eul1[1] = (float)atan2(-mat[0][2], cy);
+		eul1[0] = atan2f(-mat[2][1], mat[1][1]);
+		eul1[1] = atan2f(-mat[0][2], cy);
 		eul1[2] = 0.0f;
 
 		copy_v3_v3(eul2, eul1);
@@ -1380,44 +1377,38 @@ void eulO_to_mat3(float M[3][3], const float e[3], const short order)
 }
 
 /* returns two euler calculation methods, so we can pick the best */
-static void mat3_to_eulo2(float M[3][3], float e1[3], float e2[3], const short order)
+static void mat3_to_eulo2(float M[3][3], float eul1[3], float eul2[3], const short order)
 {
 	const RotOrderInfo *R = GET_ROTATIONORDER_INFO(order);
 	short i = R->axis[0], j = R->axis[1], k = R->axis[2];
-	float m[3][3];
-	double cy;
+	float mat[3][3];
+	float cy;
 
 	/* process the matrix first */
-	copy_m3_m3(m, M);
-	normalize_m3(m);
+	normalize_m3_m3(mat, M);
 
-	cy = sqrt(m[i][i] * m[i][i] + m[i][j] * m[i][j]);
+	cy = hypotf(mat[i][i], mat[i][j]);
 
-	if (cy > 16.0 * (double)FLT_EPSILON) {
-		e1[i] = atan2f(m[j][k], m[k][k]);
-		e1[j] = atan2f(-m[i][k], (float)cy);
-		e1[k] = atan2f(m[i][j], m[i][i]);
+	if (cy > 16.0f * FLT_EPSILON) {
+		eul1[i] = atan2f(mat[j][k], mat[k][k]);
+		eul1[j] = atan2f(-mat[i][k], cy);
+		eul1[k] = atan2f(mat[i][j], mat[i][i]);
 
-		e2[i] = atan2f(-m[j][k], -m[k][k]);
-		e2[j] = atan2f(-m[i][k], (float)-cy);
-		e2[k] = atan2f(-m[i][j], -m[i][i]);
+		eul2[i] = atan2f(-mat[j][k], -mat[k][k]);
+		eul2[j] = atan2f(-mat[i][k], -cy);
+		eul2[k] = atan2f(-mat[i][j], -mat[i][i]);
 	}
 	else {
-		e1[i] = atan2f(-m[k][j], m[j][j]);
-		e1[j] = atan2f(-m[i][k], (float)cy);
-		e1[k] = 0;
+		eul1[i] = atan2f(-mat[k][j], mat[j][j]);
+		eul1[j] = atan2f(-mat[i][k], cy);
+		eul1[k] = 0;
 
-		copy_v3_v3(e2, e1);
+		copy_v3_v3(eul2, eul1);
 	}
 
 	if (R->parity) {
-		e1[0] = -e1[0];
-		e1[1] = -e1[1];
-		e1[2] = -e1[2];
-
-		e2[0] = -e2[0];
-		e2[1] = -e2[1];
-		e2[2] = -e2[2];
+		negate_v3(eul1);
+		negate_v3(eul2);
 	}
 }
 
@@ -1613,7 +1604,7 @@ void mat4_to_dquat(DualQuat *dq, float basemat[4][4], float mat[4][4])
 		mul_m4_m4m4(S, baseRinv, baseRS);
 
 		/* set scaling part */
-		mul_serie_m4(dq->scale, basemat, S, baseinv, NULL, NULL, NULL, NULL, NULL);
+		mul_m4_series(dq->scale, basemat, S, baseinv);
 		dq->scale_weight = 1.0f;
 	}
 	else {
@@ -1665,7 +1656,7 @@ void add_weighted_dq_dq(DualQuat *dqsum, const DualQuat *dq, float weight)
 
 	/* make sure we interpolate quats in the right direction */
 	if (dot_qtqt(dq->quat, dqsum->quat) < 0) {
-		flipped = 1;
+		flipped = true;
 		weight = -weight;
 	}
 
@@ -1696,7 +1687,7 @@ void add_weighted_dq_dq(DualQuat *dqsum, const DualQuat *dq, float weight)
 
 void normalize_dq(DualQuat *dq, float totweight)
 {
-	float scale = 1.0f / totweight;
+	const float scale = 1.0f / totweight;
 
 	mul_qt_fl(dq->quat, scale);
 	mul_qt_fl(dq->trans, scale);

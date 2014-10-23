@@ -50,6 +50,7 @@ void sequencer_operatortypes(void)
 {
 	/* sequencer_edit.c */
 	WM_operatortype_append(SEQUENCER_OT_cut);
+	WM_operatortype_append(SEQUENCER_OT_trim);
 	WM_operatortype_append(SEQUENCER_OT_mute);
 	WM_operatortype_append(SEQUENCER_OT_unmute);
 	WM_operatortype_append(SEQUENCER_OT_lock);
@@ -237,12 +238,12 @@ void sequencer_keymap(wmKeyConfig *keyconf)
 	kmi = WM_keymap_add_item(keymap, "SEQUENCER_OT_select", SELECTMOUSE, KM_PRESS, 0, 0);
 	RNA_boolean_set(kmi->ptr, "extend", false);
 	RNA_boolean_set(kmi->ptr, "linked_handle", false);
-	RNA_boolean_set(kmi->ptr, "left_right", false);
+	RNA_enum_set(kmi->ptr, "left_right", SEQ_SELECT_LR_NONE);
 	RNA_boolean_set(kmi->ptr, "linked_time", false);
 	kmi = WM_keymap_add_item(keymap, "SEQUENCER_OT_select", SELECTMOUSE, KM_PRESS, KM_SHIFT, 0);
 	RNA_boolean_set(kmi->ptr, "extend", true);
 	RNA_boolean_set(kmi->ptr, "linked_handle", false);
-	RNA_boolean_set(kmi->ptr, "left_right", false);
+	RNA_enum_set(kmi->ptr, "left_right", SEQ_SELECT_LR_NONE);
 	RNA_boolean_set(kmi->ptr, "linked_time", false);
 
 
@@ -275,27 +276,27 @@ void sequencer_keymap(wmKeyConfig *keyconf)
 	kmi = WM_keymap_add_item(keymap, "SEQUENCER_OT_select", SELECTMOUSE, KM_PRESS, KM_ALT, 0);
 	RNA_boolean_set(kmi->ptr, "extend", false);
 	RNA_boolean_set(kmi->ptr, "linked_handle", true);
-	RNA_boolean_set(kmi->ptr, "left_right", false);
+	RNA_enum_set(kmi->ptr, "left_right", SEQ_SELECT_LR_NONE);
 	RNA_boolean_set(kmi->ptr, "linked_time", false);
 
 	kmi = WM_keymap_add_item(keymap, "SEQUENCER_OT_select", SELECTMOUSE, KM_PRESS, KM_SHIFT | KM_ALT, 0);
 	RNA_boolean_set(kmi->ptr, "extend", true);
 	RNA_boolean_set(kmi->ptr, "linked_handle", true);
-	RNA_boolean_set(kmi->ptr, "left_right", false);
+	RNA_enum_set(kmi->ptr, "left_right", SEQ_SELECT_LR_NONE);
 	RNA_boolean_set(kmi->ptr, "linked_time", false);
 
 	/* match action editor */
 	kmi = WM_keymap_add_item(keymap, "SEQUENCER_OT_select", SELECTMOUSE, KM_PRESS, KM_CTRL, 0);
 	RNA_boolean_set(kmi->ptr, "extend", false);
 	RNA_boolean_set(kmi->ptr, "linked_handle", false);
-	RNA_boolean_set(kmi->ptr, "left_right", true);     /* grr, these conflict - only use left_right if not over an active seq */
+	RNA_enum_set(kmi->ptr, "left_right", SEQ_SELECT_LR_MOUSE);     /* grr, these conflict - only use left_right if not over an active seq */
 	RNA_boolean_set(kmi->ptr, "linked_time", true);
 	/* adjusted since 2.4 */
 
 	kmi = WM_keymap_add_item(keymap, "SEQUENCER_OT_select", SELECTMOUSE, KM_PRESS, KM_SHIFT | KM_CTRL, 0);
 	RNA_boolean_set(kmi->ptr, "extend", true);
 	RNA_boolean_set(kmi->ptr, "linked_handle", false);
-	RNA_boolean_set(kmi->ptr, "left_right", false);
+	RNA_enum_set(kmi->ptr, "left_right", SEQ_SELECT_LR_NONE);
 	RNA_boolean_set(kmi->ptr, "linked_time", true);
 
 	WM_keymap_add_item(keymap, "SEQUENCER_OT_select_more", PADPLUSKEY, KM_PRESS, KM_CTRL, 0);
@@ -315,6 +316,8 @@ void sequencer_keymap(wmKeyConfig *keyconf)
 	WM_keymap_add_menu(keymap, "SEQUENCER_MT_add", AKEY, KM_PRESS, KM_SHIFT, 0);
 
 	WM_keymap_add_menu(keymap, "SEQUENCER_MT_change", CKEY, KM_PRESS, 0, 0);
+
+	WM_keymap_add_item(keymap, "SEQUENCER_OT_trim", TKEY, KM_PRESS, 0, 0);
 
 	kmi = WM_keymap_add_item(keymap, "WM_OT_context_set_int", OKEY, KM_PRESS, 0, 0);
 	RNA_string_set(kmi->ptr, "data_path", "scene.sequence_editor.overlay_frame");

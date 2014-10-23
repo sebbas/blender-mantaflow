@@ -20,7 +20,7 @@
  *
  * The Original Code is: all of this file.
  *
- * Contributor(s): none yet.
+ * Contributor(s): Maarten Gribnau, Jason Wilkins
  *
  * ***** END GPL LICENSE BLOCK *****
  */
@@ -42,20 +42,11 @@
 
 @class CocoaWindow;
 @class CocoaOpenGLView;
+@class NSCursor;
+@class NSScreen;
 
 class GHOST_SystemCocoa;
 
-/**
- * Window on Mac OSX/Cocoa.
- * Carbon windows have a size widget in the lower right corner of the window.
- * To force it to be visible, the height of the client rectangle is reduced so
- * that applications do not draw in that area. GHOST will manage that area
- * which is called the gutter.
- * When OpenGL contexts are active, GHOST will use AGL_BUFFER_RECT to prevent
- * OpenGL drawing outside the reduced client rectangle.
- * \author	Maarten Gribnau
- * \date	May 23, 2001
- */
 class GHOST_WindowCocoa : public GHOST_Window {
 public:
 	/**
@@ -126,7 +117,7 @@ public:
 	/**
 	 * Returns the client rectangle dimensions.
 	 * The left and top members of the rectangle are always zero.
-	 * \param bounds The bounding rectangle of the cleient area of the window.
+	 * \param bounds The bounding rectangle of the client area of the window.
 	 */
 	virtual void getClientBounds(GHOST_Rect& bounds) const;
 
@@ -220,28 +211,8 @@ public:
 	 */
 	virtual GHOST_TSuccess setOrder(GHOST_TWindowOrder order);
 
-	/**
-	 * Swaps front and back buffers of a window.
-	 * \return	A boolean success indicator.
-	 */
-	virtual GHOST_TSuccess swapBuffers();
-
-	/**
-	 * Updates the drawing context of this window. Needed
-	 * whenever the window is changed.
-	 * \return Indication of success.
-	 */
-	GHOST_TSuccess updateDrawingContext();
-
-	/**
-	 * Activates the drawing context of this window.
-	 * \return	A boolean success indicator.
-	 */
-	virtual GHOST_TSuccess activateDrawingContext();
-
 	virtual void loadCursor(bool visible, GHOST_TStandardCursor cursor) const;
     
-
 	const GHOST_TabletData *GetTabletData()
 	{
 		return &m_tablet;
@@ -278,19 +249,13 @@ public:
 	bool getImmediateDraw(void) const { return m_immediateDraw; }
 	
 protected:
-	/**
-	 * Tries to install a rendering context in this window.
-	 * \param type	The type of rendering context installed.
-	 * \return Indication as to whether installation has succeeded.
-	 */
-	virtual GHOST_TSuccess installDrawingContext(GHOST_TDrawingContextType type);
 
 	/**
-	 * Removes the current drawing context.
-	 * \return Indication as to whether removal has succeeded.
+	 * \param type	The type of rendering context create.
+	 * \return Indication of success.
 	 */
-	virtual GHOST_TSuccess removeDrawingContext();
-    
+	virtual GHOST_Context *newDrawingContext(GHOST_TDrawingContextType type);
+
 	/**
 	 * Invalidates the contents of this window.
 	 * \return Indication of success.
@@ -330,15 +295,9 @@ protected:
 	/** The openGL view */
 	CocoaOpenGLView *m_openGLView; 
 
-	/** The opgnGL drawing context */
-	NSOpenGLContext *m_openGLContext;
-	
 	/** The mother SystemCocoa class to send events */
 	GHOST_SystemCocoa *m_systemCocoa;
-			
-	/** The first created OpenGL context (for sharing display lists) */
-	static NSOpenGLContext *s_firstOpenGLcontext;
-	
+
 	NSCursor *m_customCursor;
 
 	GHOST_TabletData m_tablet;
@@ -349,4 +308,3 @@ protected:
 };
 
 #endif // __GHOST_WINDOWCOCOA_H__
-

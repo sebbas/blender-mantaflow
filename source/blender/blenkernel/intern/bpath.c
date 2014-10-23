@@ -94,7 +94,8 @@ static bool checkMissingFiles_visit_cb(void *userdata, char *UNUSED(path_dst), c
 /* high level function */
 void BKE_bpath_missing_files_check(Main *bmain, ReportList *reports)
 {
-	BKE_bpath_traverse_main(bmain, checkMissingFiles_visit_cb, BKE_BPATH_TRAVERSE_ABS, reports);
+	BKE_bpath_traverse_main(bmain, checkMissingFiles_visit_cb,
+	                        BKE_BPATH_TRAVERSE_ABS | BKE_BPATH_TRAVERSE_SKIP_PACKED, reports);
 }
 
 typedef struct BPathRemap_Data {
@@ -106,7 +107,7 @@ typedef struct BPathRemap_Data {
 	int count_failed;
 } BPathRemap_Data;
 
-static bool makeFilesRelative_visit_cb(void *userdata, char *path_dst, const char *path_src)
+static bool bpath_relative_convert_visit_cb(void *userdata, char *path_dst, const char *path_src)
 {
 	BPathRemap_Data *data = (BPathRemap_Data *)userdata;
 
@@ -132,6 +133,7 @@ static bool makeFilesRelative_visit_cb(void *userdata, char *path_dst, const cha
 void BKE_bpath_relative_convert(Main *bmain, const char *basedir, ReportList *reports)
 {
 	BPathRemap_Data data = {NULL};
+	const int flag = BKE_BPATH_TRAVERSE_SKIP_LIBRARY;
 
 	if (basedir[0] == '\0') {
 		printf("%s: basedir='', this is a bug\n", __func__);
@@ -141,14 +143,14 @@ void BKE_bpath_relative_convert(Main *bmain, const char *basedir, ReportList *re
 	data.basedir = basedir;
 	data.reports = reports;
 
-	BKE_bpath_traverse_main(bmain, makeFilesRelative_visit_cb, 0, (void *)&data);
+	BKE_bpath_traverse_main(bmain, bpath_relative_convert_visit_cb, flag, (void *)&data);
 
 	BKE_reportf(reports, data.count_failed ? RPT_WARNING : RPT_INFO,
 	            "Total files %d | Changed %d | Failed %d",
 	            data.count_tot, data.count_changed, data.count_failed);
 }
 
-static bool makeFilesAbsolute_visit_cb(void *userdata, char *path_dst, const char *path_src)
+static bool bpath_absolute_convert_visit_cb(void *userdata, char *path_dst, const char *path_src)
 {
 	BPathRemap_Data *data = (BPathRemap_Data *)userdata;
 
@@ -175,6 +177,7 @@ static bool makeFilesAbsolute_visit_cb(void *userdata, char *path_dst, const cha
 void BKE_bpath_absolute_convert(Main *bmain, const char *basedir, ReportList *reports)
 {
 	BPathRemap_Data data = {NULL};
+	const int flag = BKE_BPATH_TRAVERSE_SKIP_LIBRARY;
 
 	if (basedir[0] == '\0') {
 		printf("%s: basedir='', this is a bug\n", __func__);
@@ -184,7 +187,7 @@ void BKE_bpath_absolute_convert(Main *bmain, const char *basedir, ReportList *re
 	data.basedir = basedir;
 	data.reports = reports;
 
-	BKE_bpath_traverse_main(bmain, makeFilesAbsolute_visit_cb, 0, (void *)&data);
+	BKE_bpath_traverse_main(bmain, bpath_absolute_convert_visit_cb, flag, (void *)&data);
 
 	BKE_reportf(reports, data.count_failed ? RPT_WARNING : RPT_INFO,
 	            "Total files %d | Changed %d | Failed %d",
@@ -210,7 +213,7 @@ static int findFileRecursive(char *filename_new,
 	/* file searching stuff */
 	DIR *dir;
 	struct dirent *de;
-	struct stat status;
+	BLI_stat_t status;
 	char path[FILE_MAX];
 	int size;
 	bool found = false;
@@ -421,7 +424,7 @@ void BKE_bpath_traverse_id(Main *bmain, ID *id, BPathVisitor visit_cb, const int
 			Image *ima;
 			ima = (Image *)id;
 			if (ima->packedfile == NULL || (flag & BKE_BPATH_TRAVERSE_SKIP_PACKED) == 0) {
-				if (ELEM3(ima->source, IMA_SRC_FILE, IMA_SRC_MOVIE, IMA_SRC_SEQUENCE)) {
+				if (ELEM(ima->source, IMA_SRC_FILE, IMA_SRC_MOVIE, IMA_SRC_SEQUENCE)) {
 					if (rewrite_path_fixed(ima->name, visit_cb, absbase, bpath_user_data)) {
 						if (!ima->packedfile) {
 							BKE_image_signal(ima, NULL, IMA_SIGNAL_RELOAD);
@@ -695,7 +698,7 @@ bool BKE_bpath_relocate_visitor(void *pathbase_v, char *path_dst, const char *pa
 /* -------------------------------------------------------------------- */
 /**
  * Backup/Restore/Free functions,
- * \note These functions assume the data won't chane order.
+ * \note These functions assume the data won't change order.
  */
 
 struct PathStore {

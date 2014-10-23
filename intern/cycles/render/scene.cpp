@@ -61,7 +61,7 @@ Scene::Scene(const SceneParams& params_, const DeviceInfo& device_info_)
 	if(device_info_.type == DEVICE_CPU)
 		shader_manager = ShaderManager::create(this, params.shadingsystem);
 	else
-		shader_manager = ShaderManager::create(this, SceneParams::SVM);
+		shader_manager = ShaderManager::create(this, SHADINGSYSTEM_SVM);
 
 	/* Extended image limits for CPU and GPUs */
 	image_manager->set_extended_image_limits(device_info_);
@@ -109,6 +109,8 @@ void Scene::free_memory(bool final)
 
 		if(!params.persistent_data || final)
 			image_manager->device_free(device, &dscene);
+		else
+			image_manager->device_free_builtin(device, &dscene);
 
 		lookup_tables->device_free(device, &dscene);
 	}
@@ -139,7 +141,7 @@ void Scene::device_update(Device *device_, Progress& progress)
 	 * the different managers, using data computed by previous managers.
 	 *
 	 * - Image manager uploads images used by shaders.
-	 * - Camera may be used for adapative subdivison.
+	 * - Camera may be used for adaptive subdivision.
 	 * - Displacement shader must have all shader data available.
 	 * - Light manager needs lookup tables and final mesh data to compute emission CDF.
 	 * - Film needs light manager to run for use_light_visibility
@@ -163,13 +165,18 @@ void Scene::device_update(Device *device_, Progress& progress)
 
 	if(progress.get_cancel()) return;
 
-	progress.set_status("Updating Camera");
-	camera->device_update(device, &dscene, this);
+	progress.set_status("Updating Objects");
+	object_manager->device_update(device, &dscene, this, progress);
 
 	if(progress.get_cancel()) return;
 
-	progress.set_status("Updating Objects");
-	object_manager->device_update(device, &dscene, this, progress);
+	progress.set_status("Updating Meshes");
+	mesh_manager->device_update(device, &dscene, this, progress);
+
+	if(progress.get_cancel()) return;
+
+	progress.set_status("Updating Objects Flags");
+	object_manager->device_update_flags(device, &dscene, this, progress);
 
 	if(progress.get_cancel()) return;
 
@@ -183,8 +190,9 @@ void Scene::device_update(Device *device_, Progress& progress)
 
 	if(progress.get_cancel()) return;
 
-	progress.set_status("Updating Meshes");
-	mesh_manager->device_update(device, &dscene, this, progress);
+	/* TODO(sergey): Make sure camera is not needed above. */
+	progress.set_status("Updating Camera");
+	camera->device_update(device, &dscene, this);
 
 	if(progress.get_cancel()) return;
 
@@ -269,7 +277,8 @@ bool Scene::need_reset()
 		|| shader_manager->need_update
 		|| particle_system_manager->need_update
 		|| curve_system_manager->need_update
-		|| bake_manager->need_update);
+		|| bake_manager->need_update
+		|| film->need_update);
 }
 
 void Scene::reset()
@@ -282,6 +291,11 @@ void Scene::reset()
 	film->tag_update(this);
 	background->tag_update(this);
 	integrator->tag_update(this);
+	object_manager->tag_update(this);
+	mesh_manager->tag_update(this);
+	light_manager->tag_update(this);
+	particle_system_manager->tag_update(this);
+	curve_system_manager->tag_update(this);
 }
 
 void Scene::device_free()

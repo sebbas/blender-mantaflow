@@ -58,6 +58,7 @@
 #include "BKE_linestyle.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
+#include "BKE_paint.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_texture.h"
@@ -102,8 +103,15 @@ static int material_slot_add_exec(bContext *C, wmOperator *UNUSED(op))
 
 	if (!ob)
 		return OPERATOR_CANCELLED;
-
+	
 	object_add_material_slot(ob);
+
+	if (ob->mode & OB_MODE_TEXTURE_PAINT) {
+		Scene *scene = CTX_data_scene(C);
+		BKE_paint_proj_mesh_data_check(scene, ob, NULL, NULL, NULL, NULL);
+		WM_event_add_notifier(C, NC_SCENE | ND_TOOLSETTINGS, NULL);
+	}
+	
 	WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
 	WM_event_add_notifier(C, NC_OBJECT | ND_OB_SHADING, ob);
 	WM_event_add_notifier(C, NC_MATERIAL | ND_SHADING_PREVIEW, ob);
@@ -138,8 +146,15 @@ static int material_slot_remove_exec(bContext *C, wmOperator *op)
 		BKE_report(op->reports, RPT_ERROR, "Unable to remove material slot in edit mode");
 		return OPERATOR_CANCELLED;
 	}
-
+	
 	object_remove_material_slot(ob);
+
+	if (ob->mode & OB_MODE_TEXTURE_PAINT) {
+		Scene *scene = CTX_data_scene(C);
+		BKE_paint_proj_mesh_data_check(scene, ob, NULL, NULL, NULL, NULL);
+		WM_event_add_notifier(C, NC_SCENE | ND_TOOLSETTINGS, NULL);
+	}
+	
 	DAG_id_tag_update(&ob->id, OB_RECALC_DATA);
 	WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
 	WM_event_add_notifier(C, NC_OBJECT | ND_OB_SHADING, ob);
@@ -449,6 +464,14 @@ static int new_texture_exec(bContext *C, wmOperator *UNUSED(op))
 		 * pointer se also increases user, so this compensates it */
 		tex->id.us--;
 
+		if (ptr.id.data && GS(((ID *)ptr.id.data)->name) == ID_MA &&
+		    RNA_property_pointer_get(&ptr, prop).id.data == NULL)
+		{
+			/* In case we are assigning new texture to a material, and active slot was empty, reset 'use' flag. */
+			Material *ma = (Material *)ptr.id.data;
+			ma->septex &= ~(1 << ma->texact);
+		}
+
 		RNA_id_pointer_create(&tex->id, &idptr);
 		RNA_property_pointer_set(&ptr, prop, idptr);
 		RNA_property_update(C, &ptr, prop);
@@ -590,7 +613,7 @@ void SCENE_OT_render_layer_remove(wmOperatorType *ot)
 static bool freestyle_linestyle_check_report(FreestyleLineSet *lineset, ReportList *reports)
 {
 	if (!lineset) {
-		BKE_report(reports, RPT_ERROR, "No active lineset and associated line style to add the modifier to");
+		BKE_report(reports, RPT_ERROR, "No active lineset and associated line style to manipulate the modifier");
 		return false;
 	}
 	if (!lineset->linestyle) {
@@ -644,6 +667,7 @@ static int freestyle_module_remove_exec(bContext *C, wmOperator *UNUSED(op))
 
 	BKE_freestyle_module_delete(&srl->freestyleConfig, module);
 
+	DAG_id_tag_update(&scene->id, 0);
 	WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
 
 	return OPERATOR_FINISHED;
@@ -678,6 +702,7 @@ static int freestyle_module_move_exec(bContext *C, wmOperator *op)
 	else {
 		BKE_freestyle_module_move_down(&srl->freestyleConfig, module);
 	}
+	DAG_id_tag_update(&scene->id, 0);
 	WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
 
 	return OPERATOR_FINISHED;
@@ -714,6 +739,7 @@ static int freestyle_lineset_add_exec(bContext *C, wmOperator *UNUSED(op))
 
 	BKE_freestyle_lineset_add(&srl->freestyleConfig, NULL);
 
+	DAG_id_tag_update(&scene->id, 0);
 	WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
 
 	return OPERATOR_FINISHED;
@@ -752,8 +778,6 @@ static int freestyle_lineset_copy_exec(bContext *C, wmOperator *UNUSED(op))
 
 	FRS_copy_active_lineset(&srl->freestyleConfig);
 
-	WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
-
 	return OPERATOR_FINISHED;
 }
 
@@ -779,6 +803,7 @@ static int freestyle_lineset_paste_exec(bContext *C, wmOperator *UNUSED(op))
 
 	FRS_paste_active_lineset(&srl->freestyleConfig);
 
+	DAG_id_tag_update(&scene->id, 0);
 	WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
 
 	return OPERATOR_FINISHED;
@@ -806,6 +831,7 @@ static int freestyle_lineset_remove_exec(bContext *C, wmOperator *UNUSED(op))
 
 	FRS_delete_active_lineset(&srl->freestyleConfig);
 
+	DAG_id_tag_update(&scene->id, 0);
 	WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
 
 	return OPERATOR_FINISHED;
@@ -838,6 +864,7 @@ static int freestyle_lineset_move_exec(bContext *C, wmOperator *op)
 	else {
 		FRS_move_active_lineset_down(&srl->freestyleConfig);
 	}
+	DAG_id_tag_update(&scene->id, 0);
 	WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
 
 	return OPERATOR_FINISHED;
@@ -879,13 +906,13 @@ static int freestyle_linestyle_new_exec(bContext *C, wmOperator *op)
 	}
 	if (lineset->linestyle) {
 		lineset->linestyle->id.us--;
-		lineset->linestyle = BKE_copy_linestyle(lineset->linestyle);
+		lineset->linestyle = BKE_linestyle_copy(lineset->linestyle);
 	}
 	else {
-		lineset->linestyle = BKE_new_linestyle("LineStyle", NULL);
+		lineset->linestyle = BKE_linestyle_new("LineStyle", NULL);
 	}
-
-	WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
+	DAG_id_tag_update(&lineset->linestyle->id, 0);
+	WM_event_add_notifier(C, NC_LINESTYLE, lineset->linestyle);
 
 	return OPERATOR_FINISHED;
 }
@@ -916,11 +943,12 @@ static int freestyle_color_modifier_add_exec(bContext *C, wmOperator *op)
 		return OPERATOR_CANCELLED;
 	}
 
-	if (BKE_add_linestyle_color_modifier(lineset->linestyle, type) == NULL) {
+	if (BKE_linestyle_color_modifier_add(lineset->linestyle, NULL, type) == NULL) {
 		BKE_report(op->reports, RPT_ERROR, "Unknown line color modifier type");
 		return OPERATOR_CANCELLED;
 	}
-	WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
+	DAG_id_tag_update(&lineset->linestyle->id, 0);
+	WM_event_add_notifier(C, NC_LINESTYLE, lineset->linestyle);
 
 	return OPERATOR_FINISHED;
 }
@@ -955,11 +983,12 @@ static int freestyle_alpha_modifier_add_exec(bContext *C, wmOperator *op)
 		return OPERATOR_CANCELLED;
 	}
 
-	if (BKE_add_linestyle_alpha_modifier(lineset->linestyle, type) == NULL) {
+	if (BKE_linestyle_alpha_modifier_add(lineset->linestyle, NULL, type) == NULL) {
 		BKE_report(op->reports, RPT_ERROR, "Unknown alpha transparency modifier type");
 		return OPERATOR_CANCELLED;
 	}
-	WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
+	DAG_id_tag_update(&lineset->linestyle->id, 0);
+	WM_event_add_notifier(C, NC_LINESTYLE, lineset->linestyle);
 
 	return OPERATOR_FINISHED;
 }
@@ -994,11 +1023,12 @@ static int freestyle_thickness_modifier_add_exec(bContext *C, wmOperator *op)
 		return OPERATOR_CANCELLED;
 	}
 
-	if (BKE_add_linestyle_thickness_modifier(lineset->linestyle, type) == NULL) {
+	if (BKE_linestyle_thickness_modifier_add(lineset->linestyle, NULL, type) == NULL) {
 		BKE_report(op->reports, RPT_ERROR, "Unknown line thickness modifier type");
 		return OPERATOR_CANCELLED;
 	}
-	WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
+	DAG_id_tag_update(&lineset->linestyle->id, 0);
+	WM_event_add_notifier(C, NC_LINESTYLE, lineset->linestyle);
 
 	return OPERATOR_FINISHED;
 }
@@ -1033,11 +1063,12 @@ static int freestyle_geometry_modifier_add_exec(bContext *C, wmOperator *op)
 		return OPERATOR_CANCELLED;
 	}
 
-	if (BKE_add_linestyle_geometry_modifier(lineset->linestyle, type) == NULL) {
+	if (BKE_linestyle_geometry_modifier_add(lineset->linestyle, NULL, type) == NULL) {
 		BKE_report(op->reports, RPT_ERROR, "Unknown stroke geometry modifier type");
 		return OPERATOR_CANCELLED;
 	}
-	WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
+	DAG_id_tag_update(&lineset->linestyle->id, 0);
+	WM_event_add_notifier(C, NC_LINESTYLE, lineset->linestyle);
 
 	return OPERATOR_FINISHED;
 }
@@ -1088,22 +1119,23 @@ static int freestyle_modifier_remove_exec(bContext *C, wmOperator *op)
 
 	switch (freestyle_get_modifier_type(&ptr)) {
 		case LS_MODIFIER_TYPE_COLOR:
-			BKE_remove_linestyle_color_modifier(lineset->linestyle, modifier);
+			BKE_linestyle_color_modifier_remove(lineset->linestyle, modifier);
 			break;
 		case LS_MODIFIER_TYPE_ALPHA:
-			BKE_remove_linestyle_alpha_modifier(lineset->linestyle, modifier);
+			BKE_linestyle_alpha_modifier_remove(lineset->linestyle, modifier);
 			break;
 		case LS_MODIFIER_TYPE_THICKNESS:
-			BKE_remove_linestyle_thickness_modifier(lineset->linestyle, modifier);
+			BKE_linestyle_thickness_modifier_remove(lineset->linestyle, modifier);
 			break;
 		case LS_MODIFIER_TYPE_GEOMETRY:
-			BKE_remove_linestyle_geometry_modifier(lineset->linestyle, modifier);
+			BKE_linestyle_geometry_modifier_remove(lineset->linestyle, modifier);
 			break;
 		default:
 			BKE_report(op->reports, RPT_ERROR, "The object the data pointer refers to is not a valid modifier");
 			return OPERATOR_CANCELLED;
 	}
-	WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
+	DAG_id_tag_update(&lineset->linestyle->id, 0);
+	WM_event_add_notifier(C, NC_LINESTYLE, lineset->linestyle);
 
 	return OPERATOR_FINISHED;
 }
@@ -1137,22 +1169,23 @@ static int freestyle_modifier_copy_exec(bContext *C, wmOperator *op)
 
 	switch (freestyle_get_modifier_type(&ptr)) {
 		case LS_MODIFIER_TYPE_COLOR:
-			BKE_copy_linestyle_color_modifier(lineset->linestyle, modifier);
+			BKE_linestyle_color_modifier_copy(lineset->linestyle, modifier);
 			break;
 		case LS_MODIFIER_TYPE_ALPHA:
-			BKE_copy_linestyle_alpha_modifier(lineset->linestyle, modifier);
+			BKE_linestyle_alpha_modifier_copy(lineset->linestyle, modifier);
 			break;
 		case LS_MODIFIER_TYPE_THICKNESS:
-			BKE_copy_linestyle_thickness_modifier(lineset->linestyle, modifier);
+			BKE_linestyle_thickness_modifier_copy(lineset->linestyle, modifier);
 			break;
 		case LS_MODIFIER_TYPE_GEOMETRY:
-			BKE_copy_linestyle_geometry_modifier(lineset->linestyle, modifier);
+			BKE_linestyle_geometry_modifier_copy(lineset->linestyle, modifier);
 			break;
 		default:
 			BKE_report(op->reports, RPT_ERROR, "The object the data pointer refers to is not a valid modifier");
 			return OPERATOR_CANCELLED;
 	}
-	WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
+	DAG_id_tag_update(&lineset->linestyle->id, 0);
+	WM_event_add_notifier(C, NC_LINESTYLE, lineset->linestyle);
 
 	return OPERATOR_FINISHED;
 }
@@ -1187,22 +1220,23 @@ static int freestyle_modifier_move_exec(bContext *C, wmOperator *op)
 
 	switch (freestyle_get_modifier_type(&ptr)) {
 		case LS_MODIFIER_TYPE_COLOR:
-			BKE_move_linestyle_color_modifier(lineset->linestyle, modifier, dir);
+			BKE_linestyle_color_modifier_move(lineset->linestyle, modifier, dir);
 			break;
 		case LS_MODIFIER_TYPE_ALPHA:
-			BKE_move_linestyle_alpha_modifier(lineset->linestyle, modifier, dir);
+			BKE_linestyle_alpha_modifier_move(lineset->linestyle, modifier, dir);
 			break;
 		case LS_MODIFIER_TYPE_THICKNESS:
-			BKE_move_linestyle_thickness_modifier(lineset->linestyle, modifier, dir);
+			BKE_linestyle_thickness_modifier_move(lineset->linestyle, modifier, dir);
 			break;
 		case LS_MODIFIER_TYPE_GEOMETRY:
-			BKE_move_linestyle_geometry_modifier(lineset->linestyle, modifier, dir);
+			BKE_linestyle_geometry_modifier_move(lineset->linestyle, modifier, dir);
 			break;
 		default:
 			BKE_report(op->reports, RPT_ERROR, "The object the data pointer refers to is not a valid modifier");
 			return OPERATOR_CANCELLED;
 	}
-	WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
+	DAG_id_tag_update(&lineset->linestyle->id, 0);
+	WM_event_add_notifier(C, NC_LINESTYLE, lineset->linestyle);
 
 	return OPERATOR_FINISHED;
 }
@@ -1229,6 +1263,36 @@ void SCENE_OT_freestyle_modifier_move(wmOperatorType *ot)
 
 	/* props */
 	RNA_def_enum(ot->srna, "direction", direction_items, 0, "Direction", "Direction to move, UP or DOWN");
+}
+
+static int freestyle_stroke_material_create_exec(bContext *C, wmOperator *op)
+{
+	Main *bmain = CTX_data_main(C);
+	Scene *scene = CTX_data_scene(C);
+	FreestyleLineStyle *linestyle = BKE_linestyle_active_from_scene(scene);
+
+	if (!linestyle) {
+		BKE_report(op->reports, RPT_ERROR, "No active line style in the current scene");
+		return OPERATOR_CANCELLED;
+	}
+
+	FRS_create_stroke_material(bmain, linestyle);
+
+	return OPERATOR_FINISHED;
+}
+
+void SCENE_OT_freestyle_stroke_material_create(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Create Freestyle Stroke Material";
+	ot->idname = "SCENE_OT_freestyle_stroke_material_create";
+	ot->description = "Create Freestyle stroke material for testing";
+
+	/* api callbacks */
+	ot->exec = freestyle_stroke_material_create_exec;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
 #endif /* WITH_FREESTYLE */

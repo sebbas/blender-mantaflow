@@ -38,7 +38,7 @@ extern "C" {
 #include "COM_MemoryProxy.h"
 #include "COM_SocketReader.h"
 
-#include "OCL_opencl.h"
+#include "clew.h"
 
 using std::list;
 using std::min;
@@ -287,6 +287,8 @@ public:
 	virtual bool isPreviewOperation() const { return false; }
 	virtual bool isFileOutputOperation() const { return false; }
 	virtual bool isProxyOperation() const { return false; }
+	
+	virtual bool useDatatypeConversion() const { return true; }
 	
 	inline bool isBreaked() const {
 		return this->m_btree->test_break(this->m_btree->tbh);

@@ -73,12 +73,12 @@ private:
 	/* Internal helper functions */
 
 	/**
-	 * Initiailize XDND and all related X atoms
+	 * Initialize XDND and all related X atoms
 	 */
 	void Initialize(void);
 
 	/**
-	 * Uninitiailize XDND and all related X atoms
+	 * Uninitialize XDND and all related X atoms
 	 */
 	void Uninitialize(void);
 
@@ -101,7 +101,7 @@ private:
 	/**
 	 * Fully decode file URL (i.e. converts "file:///a%20b/test" to "/a b/test")
 	 * \param fileUrl - file path URL to be fully decoded
-	 * \return decoded file path (resutl shold be free-d)
+	 * \return decoded file path (resutl should be free-d)
 	 */
 	char *FileUrlDecode(char *fileUrl);
 

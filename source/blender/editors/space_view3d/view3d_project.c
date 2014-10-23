@@ -277,7 +277,7 @@ eV3DProjStatus ED_view3d_project_float_object(const ARegion *ar, const float co[
  * *************************************************** */
 
 /**
- * Caculate a depth value from \a co, use with #ED_view3d_win_to_delta
+ * Calculate a depth value from \a co, use with #ED_view3d_win_to_delta
  */
 float ED_view3d_calc_zfac(const RegionView3D *rv3d, const float co[3], bool *r_flip)
 {
@@ -315,22 +315,27 @@ static void view3d_win_to_ray_segment(const ARegion *ar, View3D *v3d, const floa
 
 	if (rv3d->is_persp) {
 		copy_v3_v3(r_ray_co, rv3d->viewinv[3]);
-
-		start_offset = v3d->near;
-		end_offset = v3d->far;
 	}
 	else {
-		float vec[4];
-		vec[0] = 2.0f * mval[0] / ar->winx - 1;
-		vec[1] = 2.0f * mval[1] / ar->winy - 1;
-		vec[2] = 0.0f;
-		vec[3] = 1.0f;
+		r_ray_co[0] = 2.0f * mval[0] / ar->winx - 1.0f;
+		r_ray_co[1] = 2.0f * mval[1] / ar->winy - 1.0f;
 
-		mul_m4_v4(rv3d->persinv, vec);
-		copy_v3_v3(r_ray_co, vec);
+		if (rv3d->persp == RV3D_CAMOB) {
+			r_ray_co[2] = -1.0f;
+		}
+		else {
+			r_ray_co[2] = 0.0f;
+		}
 
-		start_offset = -1000.0f;
-		end_offset = 1000.0f;
+		mul_project_m4_v3(rv3d->persinv, r_ray_co);
+	}
+
+	if ((rv3d->is_persp == false) && (rv3d->persp != RV3D_CAMOB)) {
+		end_offset = v3d->far / 2.0f;
+		start_offset = -end_offset;
+	}
+	else {
+		ED_view3d_clip_range_get(v3d, rv3d, &start_offset, &end_offset, false);
 	}
 
 	if (r_ray_start) {
@@ -388,7 +393,7 @@ bool ED_view3d_win_to_ray_ex(const ARegion *ar, View3D *v3d, const float mval[2]
  * \param ar The region (used for the window width and height).
  * \param v3d The 3d viewport (used for near clipping value).
  * \param mval The area relative 2d location (such as event->mval, converted into float[2]).
- * \param r_ray_co The world-space point where the ray intersects the window plane.
+ * \param r_ray_start The world-space point where the ray intersects the window plane.
  * \param r_ray_normal The normalized world-space direction of towards mval.
  * \param do_clip Optionally clip the start of the ray by the view clipping planes.
  * \return success, false if the ray is totally clipped.

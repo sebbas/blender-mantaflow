@@ -1,4 +1,3 @@
-
 ###########################################################################
 # GLUT
 
@@ -8,13 +7,17 @@ if(WITH_CYCLES_STANDALONE AND WITH_CYCLES_STANDALONE_GUI)
 	find_package(GLUT)
 	message(STATUS "GLUT_FOUND=${GLUT_FOUND}")
 
-	include_directories(${GLUT_INCLUDE_DIR})
+	include_directories(
+		SYSTEM
+		${GLUT_INCLUDE_DIR}
+	)
 endif()
 
-if(WITH_SYSTEM_GLEW)
-	set(CYCLES_GLEW_LIBRARY ${GLEW_LIBRARY})
-else()
-	set(CYCLES_GLEW_LIBRARY extern_glew)
+###########################################################################
+# GLEW
+
+if(WITH_CYCLES_STANDALONE AND WITH_CYCLES_STANDALONE_GUI)
+	set(CYCLES_APP_GLEW_LIBRARY ${BLENDER_GLEW_LIBRARIES})
 endif()
 
 ###########################################################################
@@ -29,4 +32,3 @@ if(WITH_CYCLES_CUDA_BINARIES)
 		set(WITH_CYCLES_CUDA_BINARIES OFF)
 	endif()
 endif()
-

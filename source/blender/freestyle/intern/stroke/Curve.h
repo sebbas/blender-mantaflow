@@ -95,7 +95,7 @@ public: // Implementation of Interface0D
 	}
 
 	/*!  Returns the 3D point. */ 
-	virtual Vec3f getPoint3D() const
+	virtual Vec3r getPoint3D() const
 	{
 		return _Point3d;
 	}
@@ -119,9 +119,9 @@ public: // Implementation of Interface0D
 	}
 
 	/*!  Returns the 2D point. */ 
-	virtual Vec2f getPoint2D() const
+	virtual Vec2r getPoint2D() const
 	{
-		return Vec2f((float)_Point2d.x(), (float)_Point2d.y());
+		return Vec2r(_Point2d.x(), _Point2d.y());
 	}
 
 	virtual FEdge *getFEdge(Interface0D& inter);
@@ -340,6 +340,10 @@ public:
 
 	real curvatureFredo() const;
 	Vec2d directionFredo() const;
+#endif
+
+#ifdef WITH_CXX_GUARDEDALLOC
+	MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:CurvePoint")
 #endif
 };
 
@@ -586,6 +590,10 @@ public:
 	 *  At each iteration a virtual temporary CurvePoint is created.
 	 */
 	virtual Interface0DIterator pointsEnd(float t = 0.0f);
+
+#ifdef WITH_CXX_GUARDEDALLOC
+	MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:Curve")
+#endif
 };
 
 } /* namespace Freestyle */

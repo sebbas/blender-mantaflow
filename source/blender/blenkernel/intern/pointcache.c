@@ -51,7 +51,6 @@
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
 #include "BLI_system.h"
-#include BLI_SYSTEM_PID_H
 
 #include "BLF_translation.h"
 
@@ -86,17 +85,17 @@
 
 #ifdef WITH_LZO
 #include "minilzo.h"
-#else
-/* used for non-lzo cases */
-#define LZO_OUT_LEN(size)     ((size) + (size) / 16 + 64 + 3)
+#define LZO_HEAP_ALLOC(var,size) \
+	lzo_align_t __LZO_MMODEL var [ ((size) + (sizeof(lzo_align_t) - 1)) / sizeof(lzo_align_t) ]
 #endif
+
+#define LZO_OUT_LEN(size)     ((size) + (size) / 16 + 64 + 3)
 
 #ifdef WITH_LZMA
 #include "LzmaLib.h"
 #endif
 
 /* needed for directory lookup */
-/* untitled blend's need getpid for a unique name */
 #ifndef WIN32
 #  include <dirent.h>
 #else
@@ -1491,7 +1490,7 @@ static int ptcache_path(PTCacheID *pid, char *filename)
 	
 	/* use the temp path. this is weak but better then not using point cache at all */
 	/* temporary directory is assumed to exist and ALWAYS has a trailing slash */
-	BLI_snprintf(filename, MAX_PTCACHE_PATH, "%s"PTCACHE_PATH"%d", BLI_temporary_dir(), abs(getpid()));
+	BLI_snprintf(filename, MAX_PTCACHE_PATH, "%s"PTCACHE_PATH, BLI_temp_dir_session());
 	
 	return BLI_add_slash(filename); /* new strlen() */
 }

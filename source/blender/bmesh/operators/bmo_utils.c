@@ -63,7 +63,7 @@ void bmo_transform_exec(BMesh *UNUSED(bm), BMOperator *op)
 
 	if (!is_zero_m4(mat_space)) {
 		invert_m4_m4(imat_space, mat_space);
-		mul_serie_m4(mat, imat_space, mat, mat_space, NULL, NULL, NULL, NULL, NULL);
+		mul_m4_series(mat, imat_space, mat, mat_space);
 	}
 
 	BMO_ITER (v, &iter, op->slots_in, "verts", BM_VERT) {
@@ -291,6 +291,7 @@ void bmo_smooth_vert_exec(BMesh *UNUSED(bm), BMOperator *op)
 	BMEdge *e;
 	float (*cos)[3] = MEM_mallocN(sizeof(*cos) * BMO_slot_buffer_count(op->slots_in, "verts"), __func__);
 	float *co, *co2, clip_dist = BMO_slot_float_get(op->slots_in, "clip_dist");
+	const float fac = BMO_slot_float_get(op->slots_in, "factor");
 	int i, j, clipx, clipy, clipz;
 	int xaxis, yaxis, zaxis;
 	
@@ -322,7 +323,7 @@ void bmo_smooth_vert_exec(BMesh *UNUSED(bm), BMOperator *op)
 		}
 
 		mul_v3_fl(co, 1.0f / (float)j);
-		mid_v3_v3v3(co, co, v->co);
+		interp_v3_v3v3(co, v->co, co, fac);
 
 		if (clipx && fabsf(v->co[0]) <= clip_dist)
 			co[0] = 0.0f;

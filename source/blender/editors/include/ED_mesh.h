@@ -119,7 +119,7 @@ void EDBM_mesh_reveal(struct BMEditMesh *em);
 
 void EDBM_update_generic(struct BMEditMesh *em, const bool do_tessface, const bool is_destructive);
 
-struct UvElementMap *BM_uv_element_map_create(struct BMesh *em, const bool selected, const bool do_islands);
+struct UvElementMap *BM_uv_element_map_create(struct BMesh *bm, const bool selected, const bool do_islands);
 void                 BM_uv_element_map_free(struct UvElementMap *vmap);
 struct UvElement    *BM_uv_element_get(struct UvElementMap *map, struct BMFace *efa, struct BMLoop *l);
 
@@ -264,7 +264,6 @@ void ED_mesh_faces_remove(struct Mesh *mesh, struct ReportList *reports, int cou
 void ED_mesh_edges_remove(struct Mesh *mesh, struct ReportList *reports, int count);
 void ED_mesh_vertices_remove(struct Mesh *mesh, struct ReportList *reports, int count);
 
-void ED_mesh_transform(struct Mesh *me, float mat[4][4]);
 void ED_mesh_calc_tessface(struct Mesh *mesh);
 void ED_mesh_update(struct Mesh *mesh, struct bContext *C, int calc_edges, int calc_tessface);
 

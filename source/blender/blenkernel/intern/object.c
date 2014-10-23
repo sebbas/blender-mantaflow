@@ -42,6 +42,7 @@
 #include "DNA_constraint_types.h"
 #include "DNA_group_types.h"
 #include "DNA_key_types.h"
+#include "DNA_lamp_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_material_types.h"
 #include "DNA_meta_types.h"
@@ -180,10 +181,11 @@ void BKE_object_free_curve_cache(Object *ob)
 {
 	if (ob->curve_cache) {
 		BKE_displist_free(&ob->curve_cache->disp);
-		BLI_freelistN(&ob->curve_cache->bev);
+		BKE_curve_bevelList_free(&ob->curve_cache->bev);
 		if (ob->curve_cache->path) {
 			free_path(ob->curve_cache->path);
 		}
+		BKE_nurbList_free(&ob->curve_cache->deformed_nurbs);
 		MEM_freeN(ob->curve_cache);
 		ob->curve_cache = NULL;
 	}
@@ -246,7 +248,7 @@ void BKE_object_link_modifiers(struct Object *ob_dst, struct Object *ob_src)
 	ModifierData *md;
 	BKE_object_free_modifiers(ob_dst);
 
-	if (!ELEM5(ob_dst->type, OB_MESH, OB_CURVE, OB_SURF, OB_FONT, OB_LATTICE)) {
+	if (!ELEM(ob_dst->type, OB_MESH, OB_CURVE, OB_SURF, OB_FONT, OB_LATTICE)) {
 		/* only objects listed above can have modifiers and linking them to objects
 		 * which doesn't have modifiers stack is quite silly */
 		return;
@@ -255,11 +257,11 @@ void BKE_object_link_modifiers(struct Object *ob_dst, struct Object *ob_src)
 	for (md = ob_src->modifiers.first; md; md = md->next) {
 		ModifierData *nmd = NULL;
 
-		if (ELEM4(md->type,
-		          eModifierType_Hook,
-		          eModifierType_Softbody,
-		          eModifierType_ParticleInstance,
-		          eModifierType_Collision))
+		if (ELEM(md->type,
+		         eModifierType_Hook,
+		         eModifierType_Softbody,
+		         eModifierType_ParticleInstance,
+		         eModifierType_Collision))
 		{
 			continue;
 		}
@@ -296,7 +298,7 @@ void BKE_object_free_derived_caches(Object *ob)
 			me->bb->flag |= BOUNDBOX_DIRTY;
 		}
 	}
-	else if (ELEM3(ob->type, OB_SURF, OB_CURVE, OB_FONT)) {
+	else if (ELEM(ob->type, OB_SURF, OB_CURVE, OB_FONT)) {
 		Curve *cu = ob->data;
 
 		if (cu->bb) {
@@ -320,18 +322,7 @@ void BKE_object_free_derived_caches(Object *ob)
 		ob->derivedDeform = NULL;
 	}
 	
-	if (ob->curve_cache) {
-		BKE_displist_free(&ob->curve_cache->disp);
-		BLI_freelistN(&ob->curve_cache->bev);
-		if (ob->curve_cache->path) {
-			free_path(ob->curve_cache->path);
-			ob->curve_cache->path = NULL;
-		}
-
-		/* Signal for viewport to run DAG workarounds. */
-		MEM_freeN(ob->curve_cache);
-		ob->curve_cache = NULL;
-	}
+	BKE_object_free_curve_cache(ob);
 }
 
 /* do not free object itself */
@@ -408,7 +399,7 @@ void BKE_object_free_ex(Object *ob, bool do_id_user)
 
 	/* Free runtime curves data. */
 	if (ob->curve_cache) {
-		BLI_freelistN(&ob->curve_cache->bev);
+		BKE_curve_bevelList_free(&ob->curve_cache->bev);
 		if (ob->curve_cache->path)
 			free_path(ob->curve_cache->path);
 		MEM_freeN(ob->curve_cache);
@@ -709,7 +700,7 @@ void BKE_object_unlink(Object *ob)
 				     lineset; lineset = lineset->next)
 				{
 					if (lineset->linestyle) {
-						BKE_unlink_linestyle_target_object(lineset->linestyle, ob);
+						BKE_linestyle_target_object_unlink(lineset->linestyle, ob);
 					}
 				}
 			}
@@ -873,9 +864,9 @@ bool BKE_object_is_in_wpaint_select_vert(Object *ob)
 {
 	if (ob->type == OB_MESH) {
 		Mesh *me = ob->data;
-		return ( (ob->mode & OB_MODE_WEIGHT_PAINT) &&
-		         (me->edit_btmesh == NULL) &&
-		         (ME_EDIT_PAINT_SEL_MODE(me) == SCE_SELECT_VERTEX) );
+		return ((ob->mode & OB_MODE_WEIGHT_PAINT) &&
+		        (me->edit_btmesh == NULL) &&
+		        (ME_EDIT_PAINT_SEL_MODE(me) == SCE_SELECT_VERTEX));
 	}
 
 	return false;
@@ -977,7 +968,7 @@ Object *BKE_object_add_only_object(Main *bmain, int type, const char *name)
 	ob->empty_drawtype = OB_PLAINAXES;
 	ob->empty_drawsize = 1.0;
 
-	if (ELEM3(type, OB_LAMP, OB_CAMERA, OB_SPEAKER)) {
+	if (ELEM(type, OB_LAMP, OB_CAMERA, OB_SPEAKER)) {
 		ob->trackflag = OB_NEGZ;
 		ob->upflag = OB_POSY;
 	}
@@ -1066,10 +1057,10 @@ void BKE_object_lod_add(Object *ob)
 	BLI_addtail(&ob->lodlevels, lod);
 }
 
-static int lod_cmp(void *a, void *b)
+static int lod_cmp(const void *a, const void *b)
 {
-	LodLevel *loda = (LodLevel *)a;
-	LodLevel *lodb = (LodLevel *)b;
+	const LodLevel *loda = a;
+	const LodLevel *lodb = b;
 
 	if (loda->distance < lodb->distance) return -1;
 	return loda->distance > lodb->distance;
@@ -1125,7 +1116,7 @@ static LodLevel *lod_level_select(Object *ob, const float camera_position[3])
 	}
 	else {
 		/* check for lower LoD */
-		while (current->next && dist_sq > (current->next->distance * current->next->distance)) {
+		while (current->next && dist_sq > SQUARE(current->next->distance)) {
 			current = current->next;
 		}
 	}
@@ -1479,7 +1470,7 @@ Object *BKE_object_copy_ex(Main *bmain, Object *ob, bool copy_caches)
 	defgroup_copy_list(&obn->defbase, &ob->defbase);
 	BKE_constraints_copy(&obn->constraints, &ob->constraints, true);
 
-	obn->mode = 0;
+	obn->mode = OB_MODE_OBJECT;
 	obn->sculpt = NULL;
 
 	/* increase user numbers */
@@ -1526,6 +1517,18 @@ Object *BKE_object_copy(Object *ob)
 	return BKE_object_copy_ex(G.main, ob, false);
 }
 
+static void extern_local_object__modifiersForeachIDLink(
+        void *UNUSED(userData), Object *UNUSED(ob),
+        ID **idpoin)
+{
+	if (*idpoin) {
+		/* intentionally omit ID_OB */
+		if (ELEM(GS((*idpoin)->name), ID_IM, ID_TE)) {
+			id_lib_extern(*idpoin);
+		}
+	}
+}
+
 static void extern_local_object(Object *ob)
 {
 	ParticleSystem *psys;
@@ -1539,6 +1542,8 @@ static void extern_local_object(Object *ob)
 
 	for (psys = ob->particlesystem.first; psys; psys = psys->next)
 		id_lib_extern((ID *)psys->part);
+
+	modifiers_foreachIDLink(ob, extern_local_object__modifiersForeachIDLink, NULL);
 }
 
 void BKE_object_make_local(Object *ob)
@@ -1778,6 +1783,55 @@ void BKE_object_make_proxy(Object *ob, Object *target, Object *gob)
 	ob->dt = target->dt;
 }
 
+/**
+ * Use with newly created objects to set their size
+ * (used to apply scene-scale).
+ */
+void BKE_object_obdata_size_init(struct Object *ob, const float size)
+{
+	/* apply radius as a scale to types that support it */
+	switch (ob->type) {
+		case OB_EMPTY:
+		{
+			ob->empty_drawsize *= size;
+			break;
+		}
+		case OB_FONT:
+		{
+			Curve *cu = ob->data;
+			cu->fsize *= size;
+			break;
+		}
+		case OB_CAMERA:
+		{
+			Camera *cam = ob->data;
+			cam->drawsize *= size;
+			break;
+		}
+		case OB_LAMP:
+		{
+			Lamp *lamp = ob->data;
+			lamp->dist *= size;
+			lamp->area_size  *= size;
+			lamp->area_sizey *= size;
+			lamp->area_sizez *= size;
+			break;
+		}
+		/* Only lattice (not mesh, curve, mball...),
+		 * because its got data when newly added */
+		case OB_LATTICE:
+		{
+			struct Lattice *lt = ob->data;
+			float mat[4][4];
+
+			unit_m4(mat);
+			scale_m4_fl(mat, size);
+
+			BKE_lattice_transform(lt, (float (*)[4])mat, false);
+			break;
+		}
+	}
+}
 
 /* *************** CALC ****************** */
 
@@ -1978,7 +2032,7 @@ static void ob_parcurve(Scene *scene, Object *ob, Object *par, float mat[4][4])
 	unit_m4(mat);
 	
 	cu = par->data;
-	if (ELEM3(NULL, par->curve_cache, par->curve_cache->path, par->curve_cache->path->data)) /* only happens on reload file, but violates depsgraph still... fix! */
+	if (ELEM(NULL, par->curve_cache, par->curve_cache->path, par->curve_cache->path->data)) /* only happens on reload file, but violates depsgraph still... fix! */
 		BKE_displist_make_curveTypes(scene, par, 0);
 	if (par->curve_cache->path == NULL) return;
 	
@@ -1994,17 +2048,20 @@ static void ob_parcurve(Scene *scene, Object *ob, Object *par, float mat[4][4])
 		 * we divide the curvetime calculated in the previous step by the length of the path, to get a time
 		 * factor, which then gets clamped to lie within 0.0 - 1.0 range
 		 */
-		if (IS_EQF(cu->pathlen, 0.0f) == 0)
+		if (cu->pathlen) {
 			ctime = cu->ctime / cu->pathlen;
-		else
+		}
+		else {
 			ctime = cu->ctime;
+		}
 
 		CLAMP(ctime, 0.0f, 1.0f);
 	}
 	else {
 		ctime = BKE_scene_frame_get(scene);
-		if (IS_EQF(cu->pathlen, 0.0f) == 0)
+		if (cu->pathlen) {
 			ctime /= cu->pathlen;
+		}
 		
 		CLAMP(ctime, 0.0f, 1.0f);
 	}
@@ -2152,8 +2209,18 @@ static void give_parvert(Object *par, int nr, float vec[3])
 		}
 	}
 	else if (ELEM(par->type, OB_CURVE, OB_SURF)) {
-		Curve *cu       = par->data;
-		ListBase *nurb  = BKE_curve_nurbs_get(cu);
+		ListBase *nurb;
+
+		/* Unless there's some weird depsgraph failure the cache should exist. */
+		BLI_assert(par->curve_cache != NULL);
+
+		if (par->curve_cache->deformed_nurbs.first != NULL) {
+			nurb = &par->curve_cache->deformed_nurbs;
+		}
+		else {
+			Curve *cu = par->data;
+			nurb = BKE_curve_nurbs_get(cu);
+		}
 
 		BKE_nurbList_index_get_co(nurb, nr, vec);
 	}
@@ -2289,7 +2356,7 @@ static bool where_is_object_parslow(Object *ob, float obmat[4][4], float slowmat
 	int a;
 
 	/* include framerate */
-	fac1 = (1.0f / (1.0f + fabsf(ob->sf)) );
+	fac1 = (1.0f / (1.0f + fabsf(ob->sf)));
 	if (fac1 >= 1.0f) return 0;
 	fac2 = 1.0f - fac1;
 
@@ -2466,6 +2533,20 @@ void BKE_boundbox_init_from_minmax(BoundBox *bb, const float min[3], const float
 	bb->vec[1][2] = bb->vec[2][2] = bb->vec[5][2] = bb->vec[6][2] = max[2];
 }
 
+void BKE_boundbox_calc_center_aabb(const BoundBox *bb, float r_cent[3])
+{
+	r_cent[0] = 0.5f * (bb->vec[0][0] + bb->vec[4][0]);
+	r_cent[1] = 0.5f * (bb->vec[0][1] + bb->vec[2][1]);
+	r_cent[2] = 0.5f * (bb->vec[0][2] + bb->vec[1][2]);
+}
+
+void BKE_boundbox_calc_size_aabb(const BoundBox *bb, float r_size[3])
+{
+	r_size[0] = 0.5f * fabsf(bb->vec[0][0] - bb->vec[4][0]);
+	r_size[1] = 0.5f * fabsf(bb->vec[0][1] - bb->vec[2][1]);
+	r_size[2] = 0.5f * fabsf(bb->vec[0][2] - bb->vec[1][2]);
+}
+
 BoundBox *BKE_object_boundbox_get(Object *ob)
 {
 	BoundBox *bb = NULL;
@@ -2473,7 +2554,7 @@ BoundBox *BKE_object_boundbox_get(Object *ob)
 	if (ob->type == OB_MESH) {
 		bb = BKE_mesh_boundbox_get(ob);
 	}
-	else if (ELEM3(ob->type, OB_CURVE, OB_SURF, OB_FONT)) {
+	else if (ELEM(ob->type, OB_CURVE, OB_SURF, OB_FONT)) {
 		bb = BKE_curve_boundbox_get(ob);
 	}
 	else if (ob->type == OB_MBALL) {
@@ -2483,7 +2564,7 @@ BoundBox *BKE_object_boundbox_get(Object *ob)
 }
 
 /* used to temporally disable/enable boundbox */
-void BKE_object_boundbox_flag(Object *ob, int flag, int set)
+void BKE_object_boundbox_flag(Object *ob, int flag, const bool set)
 {
 	BoundBox *bb = BKE_object_boundbox_get(ob);
 	if (bb) {
@@ -2907,6 +2988,12 @@ void BKE_object_handle_update_ex(EvaluationContext *eval_ctx,
 				{
 					BMEditMesh *em = (ob == scene->obedit) ? BKE_editmesh_from_object(ob) : NULL;
 					uint64_t data_mask = scene->customdata_mask | CD_MASK_BAREMESH;
+#ifdef WITH_FREESTYLE
+					/* make sure Freestyle edge/face marks appear in DM for render (see T40315) */
+					if (eval_ctx->mode != DAG_EVAL_VIEWPORT) {
+						data_mask |= CD_MASK_FREESTYLE_EDGE | CD_MASK_FREESTYLE_FACE;
+					}
+#endif
 					if (em) {
 						makeDerivedMesh(scene, ob, em,  data_mask, 0); /* was CD_MASK_BAREMESH */
 					}
@@ -2969,7 +3056,7 @@ void BKE_object_handle_update_ex(EvaluationContext *eval_ctx,
 				lamp_drivers_update(scene, ob->data, ctime);
 			
 			/* particles */
-			if (ob->particlesystem.first) {
+			if (ob != scene->obedit && ob->particlesystem.first) {
 				ParticleSystem *tpsys, *psys;
 				DerivedMesh *dm;
 				ob->transflag &= ~OB_DUPLIPARTS;
@@ -2983,7 +3070,7 @@ void BKE_object_handle_update_ex(EvaluationContext *eval_ctx,
 
 					if (psys_check_enabled(ob, psys)) {
 						/* check use of dupli objects here */
-						if (psys->part && (psys->part->draw_as == PART_DRAW_REND || eval_ctx->for_render) &&
+						if (psys->part && (psys->part->draw_as == PART_DRAW_REND || eval_ctx->mode == DAG_EVAL_RENDER) &&
 						    ((psys->part->ren_as == PART_DRAW_OB && psys->part->dup_ob) ||
 						     (psys->part->ren_as == PART_DRAW_GR && psys->part->dup_group)))
 						{
@@ -3003,7 +3090,7 @@ void BKE_object_handle_update_ex(EvaluationContext *eval_ctx,
 						psys = psys->next;
 				}
 
-				if (eval_ctx->for_render && ob->transflag & OB_DUPLIPARTS) {
+				if (eval_ctx->mode == DAG_EVAL_RENDER && ob->transflag & OB_DUPLIPARTS) {
 					/* this is to make sure we get render level duplis in groups:
 					 * the derivedmesh must be created before init_render_mesh,
 					 * since object_duplilist does dupliparticles before that */
@@ -3120,8 +3207,10 @@ int BKE_object_obdata_texspace_get(Object *ob, short **r_texflag, float **r_loc,
  * Test a bounding box for ray intersection
  * assumes the ray is already local to the boundbox space
  */
-bool BKE_boundbox_ray_hit_check(struct BoundBox *bb, const float ray_start[3], const float ray_normal[3],
-                                float *r_lambda)
+bool BKE_boundbox_ray_hit_check(
+        const struct BoundBox *bb,
+        const float ray_start[3], const float ray_normal[3],
+        float *r_lambda)
 {
 	const int triangle_indexes[12][3] = {
 	    {0, 1, 2}, {0, 2, 3},
@@ -3153,9 +3242,9 @@ bool BKE_boundbox_ray_hit_check(struct BoundBox *bb, const float ray_start[3], c
 	return result;
 }
 
-static int pc_cmp(void *a, void *b)
+static int pc_cmp(const void *a, const void *b)
 {
-	LinkData *ad = a, *bd = b;
+	const LinkData *ad = a, *bd = b;
 	if (GET_INT_FROM_POINTER(ad->data) > GET_INT_FROM_POINTER(bd->data))
 		return 1;
 	else return 0;
@@ -3383,6 +3472,9 @@ int BKE_object_is_deform_modified(Scene *scene, Object *ob)
 	ModifierData *md;
 	VirtualModifierData virtualModifierData;
 	int flag = 0;
+
+	if (BKE_key_from_object(ob))
+		flag |= eModifierMode_Realtime | eModifierMode_Render;
 
 	/* cloth */
 	for (md = modifiers_getVirtualModifierList(ob, &virtualModifierData);

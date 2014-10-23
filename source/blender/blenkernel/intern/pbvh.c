@@ -50,6 +50,15 @@
 
 #define STACK_FIXED_DEPTH   100
 
+/* Setting zero so we can catch bugs in OpenMP/PBVH. */
+#ifdef _OPENMP
+#  ifdef DEBUG
+#    define PBVH_OMP_LIMIT 0
+#  else
+#    define PBVH_OMP_LIMIT 8
+#  endif
+#endif
+
 typedef struct PBVHStack {
 	PBVHNode *node;
 	int revisiting;
@@ -251,12 +260,12 @@ static int map_insert_vert(PBVH *bvh, GHash *map,
 
 	if (value_p == NULL) {
 		void *value;
-		if (BLI_BITMAP_GET(bvh->vert_bitmap, vertex)) {
+		if (BLI_BITMAP_TEST(bvh->vert_bitmap, vertex)) {
 			value = SET_INT_IN_POINTER(~(*face_verts));
 			++(*face_verts);
 		}
 		else {
-			BLI_BITMAP_SET(bvh->vert_bitmap, vertex);
+			BLI_BITMAP_ENABLE(bvh->vert_bitmap, vertex);
 			value = SET_INT_IN_POINTER(*uniq_verts);
 			++(*uniq_verts);
 		}
@@ -410,7 +419,7 @@ static void build_leaf(PBVH *bvh, int node_index, BBC *prim_bbc,
 }
 
 /* Return zero if all primitives in the node can be drawn with the
- * same material (including flat/smooth shading), non-zerootherwise */
+ * same material (including flat/smooth shading), non-zero otherwise */
 static int leaf_needs_material_split(PBVH *bvh, int offset, int count)
 {
 	int i, prim;
@@ -965,7 +974,7 @@ static void pbvh_update_normals(PBVH *bvh, PBVHNode **nodes,
 	 *   can only update vertices marked with ME_VERT_PBVH_UPDATE.
 	 */
 
-#pragma omp parallel for private(n) schedule(static)
+#pragma omp parallel for private(n) schedule(static) if (totnode > PBVH_OMP_LIMIT)
 	for (n = 0; n < totnode; n++) {
 		PBVHNode *node = nodes[n];
 
@@ -1009,7 +1018,7 @@ static void pbvh_update_normals(PBVH *bvh, PBVHNode **nodes,
 		}
 	}
 
-#pragma omp parallel for private(n) schedule(static)
+#pragma omp parallel for private(n) schedule(static) if (totnode > PBVH_OMP_LIMIT)
 	for (n = 0; n < totnode; n++) {
 		PBVHNode *node = nodes[n];
 
@@ -1046,7 +1055,7 @@ void pbvh_update_BB_redraw(PBVH *bvh, PBVHNode **nodes, int totnode, int flag)
 	int n;
 
 	/* update BB, redraw flag */
-#pragma omp parallel for private(n) schedule(static)
+#pragma omp parallel for private(n) schedule(static) if (totnode > PBVH_OMP_LIMIT)
 	for (n = 0; n < totnode; n++) {
 		PBVHNode *node = nodes[n];
 
@@ -1329,6 +1338,12 @@ void BKE_pbvh_node_mark_redraw(PBVHNode *node)
 	node->flag |= PBVH_UpdateDrawBuffers | PBVH_UpdateRedraw;
 }
 
+void BKE_pbvh_node_mark_normals_update(PBVHNode *node)
+{
+	node->flag |= PBVH_UpdateNormals;
+}
+
+
 void BKE_pbvh_node_fully_hidden_set(PBVHNode *node, int fully_hidden)
 {
 	BLI_assert(node->flag & PBVH_Leaf);
@@ -1418,7 +1433,7 @@ void BKE_pbvh_node_get_proxies(PBVHNode *node, PBVHProxyNode **proxies, int *pro
 
 typedef struct {
 	IsectRayAABBData ray;
-	int original;
+	bool original;
 } RaycastData;
 
 static bool ray_aabb_intersect(PBVHNode *node, void *data_v)
@@ -1434,9 +1449,10 @@ static bool ray_aabb_intersect(PBVHNode *node, void *data_v)
 	return isect_ray_aabb(&rcd->ray, bb_min, bb_max, &node->tmin);
 }
 
-void BKE_pbvh_raycast(PBVH *bvh, BKE_pbvh_HitOccludedCallback cb, void *data,
-                      const float ray_start[3], const float ray_normal[3],
-                      int original)
+void BKE_pbvh_raycast(
+        PBVH *bvh, BKE_pbvh_HitOccludedCallback cb, void *data,
+        const float ray_start[3], const float ray_normal[3],
+        bool original)
 {
 	RaycastData rcd;
 
@@ -1629,7 +1645,7 @@ void BKE_pbvh_raycast_project_ray_root (PBVH *bvh, bool original, float ray_star
 }
 
 
-//#include <GL/glew.h>
+//#include "GPU_glew.h"
 
 typedef struct {
 	DMSetMaterial setMaterial;

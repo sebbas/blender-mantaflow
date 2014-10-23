@@ -24,7 +24,7 @@
  * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blendlib/intern/timecode.c
+/** \file blender/blenlib/intern/timecode.c
  *  \ingroup blendlib
  *
  * Time-Code string formatting
@@ -33,6 +33,7 @@
 #include <stdio.h>
 
 
+#include "BLI_utildefines.h"
 #include "BLI_string.h"
 #include "BLI_math.h"
 

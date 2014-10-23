@@ -33,8 +33,6 @@
 
 /* Part of the code copied from elbeem fluid library, copyright by Nils Thuerey */
 
-#include <GL/glew.h>
-
 #include "MEM_guardedalloc.h"
 
 #include <float.h>
@@ -83,6 +81,8 @@
 #include "BKE_texture.h"
 
 #include "RE_shader_ext.h"
+
+#include "GPU_glew.h"
 
 /* UNUSED so far, may be enabled later */
 /* #define USE_SMOKE_COLLISION_DM */
@@ -211,7 +211,7 @@ void smoke_reallocate_highres_fluid(SmokeDomainSettings *sds, float dx, int res[
 	/* smoke_turbulence_init uses non-threadsafe functions from fftw3 lib (like fftw_plan & co). */
 	BLI_lock_thread(LOCK_FFTW);
 
-	sds->wt = smoke_turbulence_init(res, sds->amplify + 1, sds->noise, BLI_temporary_dir(), use_fire, use_colors);
+	sds->wt = smoke_turbulence_init(res, sds->amplify + 1, sds->noise, BLI_temp_dir_session(), use_fire, use_colors);
 	if (sds->flags & MOD_SMOKE_USE_MANTA){
 		smoke_mantaflow_write_scene_file(sds->smd);
 	}
@@ -1579,8 +1579,7 @@ static void sample_derivedmesh(
 static void emit_from_derivedmesh(Object *flow_ob, SmokeDomainSettings *sds, SmokeFlowSettings *sfs, EmissionMap *em, float dt)
 {
 	clock_t start = clock();
-	if (!sfs->dm) return;
-	{
+	if (sfs->dm) {
 		DerivedMesh *dm;
 		int defgrp_index = sfs->vgroup_density - 1;
 		MDeformVert *dvert = NULL;
@@ -1711,10 +1710,16 @@ static void emit_from_derivedmesh(Object *flow_ob, SmokeDomainSettings *sds, Smo
 		free_bvhtree_from_mesh(&treeData);
 		/* restore original mverts */
 		CustomData_set_layer(&dm->vertData, CD_MVERT, mvert_orig);
-		if (mvert)
-			MEM_freeN(mvert);
 
-		if (vert_vel) MEM_freeN(vert_vel);
+		if (mvert) {
+			MEM_freeN(mvert);
+		}
+		if (vert_vel) {
+			MEM_freeN(vert_vel);
+		}
+
+		dm->needsFree = 1;
+		dm->release(dm);
 	}
 	clock_t end = clock();
 	float seconds = (float)(end - start) / CLOCKS_PER_SEC;

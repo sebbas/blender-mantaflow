@@ -112,7 +112,7 @@ static BLI_bitmap *multires_mdisps_upsample_hidden(BLI_bitmap *lo_hidden,
 
                                                    /* assumed to be at hi_level (or
                                                     *  null) */
-                                                   BLI_bitmap *prev_hidden)
+                                                   const BLI_bitmap *prev_hidden)
 {
 	BLI_bitmap *subd;
 	int hi_gridsize = BKE_ccg_gridsize(hi_level);
@@ -126,7 +126,7 @@ static BLI_bitmap *multires_mdisps_upsample_hidden(BLI_bitmap *lo_hidden,
 	if (lo_level == hi_level)
 		return MEM_dupallocN(lo_hidden);
 
-	subd = BLI_BITMAP_NEW(hi_gridsize * hi_gridsize, "MDisps.hidden upsample");
+	subd = BLI_BITMAP_NEW(SQUARE(hi_gridsize), "MDisps.hidden upsample");
 
 	factor = BKE_ccg_factor(lo_level, hi_level);
 	offset = 1 << (hi_level - lo_level - 1);
@@ -134,7 +134,7 @@ static BLI_bitmap *multires_mdisps_upsample_hidden(BLI_bitmap *lo_hidden,
 	/* low-res blocks */
 	for (yl = 0; yl < lo_gridsize; yl++) {
 		for (xl = 0; xl < lo_gridsize; xl++) {
-			int lo_val = BLI_BITMAP_GET(lo_hidden, yl * lo_gridsize + xl);
+			int lo_val = BLI_BITMAP_TEST(lo_hidden, yl * lo_gridsize + xl);
 
 			/* high-res blocks */
 			for (yo = -offset; yo <= offset; yo++) {
@@ -153,13 +153,15 @@ static BLI_bitmap *multires_mdisps_upsample_hidden(BLI_bitmap *lo_hidden,
 						/* If prev_hidden is available, copy it to
 						 * subd, except when the equivalent element in
 						 * lo_hidden is different */
-						if (lo_val != prev_hidden[hi_ndx])
-							BLI_BITMAP_MODIFY(subd, hi_ndx, lo_val);
-						else
-							BLI_BITMAP_MODIFY(subd, hi_ndx, prev_hidden[hi_ndx]);
+						if (lo_val != prev_hidden[hi_ndx]) {
+							BLI_BITMAP_SET(subd, hi_ndx, lo_val);
+						}
+						else {
+							BLI_BITMAP_SET(subd, hi_ndx, prev_hidden[hi_ndx]);
+						}
 					}
 					else {
-						BLI_BITMAP_MODIFY(subd, hi_ndx, lo_val);
+						BLI_BITMAP_SET(subd, hi_ndx, lo_val);
 					}
 				}
 			}
@@ -180,17 +182,15 @@ static BLI_bitmap *multires_mdisps_downsample_hidden(BLI_bitmap *old_hidden,
 
 	BLI_assert(new_level <= old_level);
 	factor = BKE_ccg_factor(new_level, old_level);
-	new_hidden = BLI_BITMAP_NEW(new_gridsize * new_gridsize,
-	                            "downsample hidden");
-
+	new_hidden = BLI_BITMAP_NEW(SQUARE(new_gridsize), "downsample hidden");
 
 
 	for (y = 0; y < new_gridsize; y++) {
 		for (x = 0; x < new_gridsize; x++) {
-			old_value = BLI_BITMAP_GET(old_hidden,
+			old_value = BLI_BITMAP_TEST(old_hidden,
 			                           factor * y * old_gridsize + x * factor);
 			
-			BLI_BITMAP_MODIFY(new_hidden, y * new_gridsize + x, old_value);
+			BLI_BITMAP_SET(new_hidden, y * new_gridsize + x, old_value);
 		}
 	}
 
@@ -248,15 +248,15 @@ static MDisps *multires_mdisps_initialize_hidden(Mesh *me, int level)
 	MDisps *mdisps = CustomData_add_layer(&me->ldata, CD_MDISPS,
 	                                      CD_CALLOC, NULL, me->totloop);
 	int gridsize = BKE_ccg_gridsize(level);
-	int gridarea = gridsize * gridsize;
-	int i, j, k;
+	int gridarea = SQUARE(gridsize);
+	int i, j;
 	
 	for (i = 0; i < me->totpoly; i++) {
-		int hide = 0;
+		bool hide = false;
 
 		for (j = 0; j < me->mpoly[i].totloop; j++) {
 			if (me->mvert[me->mloop[me->mpoly[i].loopstart + j].v].flag & ME_HIDE) {
-				hide = 1;
+				hide = true;
 				break;
 			}
 		}
@@ -270,9 +270,7 @@ static MDisps *multires_mdisps_initialize_hidden(Mesh *me, int level)
 			BLI_assert(!md->hidden);
 
 			md->hidden = BLI_BITMAP_NEW(gridarea, "MDisps.hidden initialize");
-
-			for (k = 0; k < gridarea; k++)
-				BLI_BITMAP_SET(md->hidden, k);
+			BLI_BITMAP_SET_ALL(md->hidden, true, gridarea);
 		}
 	}
 
@@ -286,7 +284,7 @@ DerivedMesh *get_multires_dm(Scene *scene, MultiresModifierData *mmd, Object *ob
 	DerivedMesh *tdm = mesh_get_derived_deform(scene, ob, CD_MASK_BAREMESH);
 	DerivedMesh *dm;
 
-	dm = mti->applyModifier(md, ob, tdm, MOD_APPLY_USECACHE);
+	dm = mti->applyModifier(md, ob, tdm, MOD_APPLY_USECACHE | MOD_APPLY_IGNORE_SIMPLIFY);
 	if (dm == tdm) {
 		dm = CDDM_copy(tdm);
 	}
@@ -338,12 +336,15 @@ MultiresModifierData *get_multires_modifier(Scene *scene, Object *ob, bool use_f
 	return mmd;
 }
 
-static int multires_get_level(Object *ob, MultiresModifierData *mmd, int render)
+static int multires_get_level(Object *ob, MultiresModifierData *mmd,
+                              bool render, bool ignore_simplify)
 {
 	if (render)
 		return (mmd->modifier.scene) ? get_render_subsurf_level(&mmd->modifier.scene->r, mmd->renderlvl) : mmd->renderlvl;
 	else if (ob->mode == OB_MODE_SCULPT)
 		return mmd->sculptlvl;
+	else if (ignore_simplify)
+		return mmd->lvl;
 	else
 		return (mmd->modifier.scene) ? get_render_subsurf_level(&mmd->modifier.scene->r, mmd->lvl) : mmd->lvl;
 }
@@ -433,7 +434,7 @@ int multiresModifier_reshapeFromDeformMod(Scene *scene, MultiresModifierData *mm
 	int numVerts, result;
 	float (*deformedVerts)[3];
 
-	if (multires_get_level(ob, mmd, 0) == 0)
+	if (multires_get_level(ob, mmd, false, true) == 0)
 		return 0;
 
 	/* Create DerivedMesh for deformation modifier */
@@ -596,7 +597,7 @@ static void multires_grid_paint_mask_downsample(GridPaintMask *gpm, int level)
 {
 	if (level < gpm->level) {
 		int gridsize = BKE_ccg_gridsize(level);
-		float *data = MEM_callocN(sizeof(float) * gridsize * gridsize,
+		float *data = MEM_callocN(sizeof(float) * SQUARE(gridsize),
 		                          "multires_grid_paint_mask_downsample");
 		int x, y;
 
@@ -682,7 +683,7 @@ static void multires_del_higher(MultiresModifierData *mmd, Object *ob, int lvl)
 void multiresModifier_del_levels(MultiresModifierData *mmd, Object *ob, int direction)
 {
 	Mesh *me = BKE_mesh_from_object(ob);
-	int lvl = multires_get_level(ob, mmd, 0);
+	int lvl = multires_get_level(ob, mmd, false, true);
 	int levels = mmd->totlvl - lvl;
 	MDisps *mdisps;
 
@@ -1431,7 +1432,9 @@ DerivedMesh *multires_make_derived_from_derived(DerivedMesh *dm,
 	CCGDerivedMesh *ccgdm = NULL;
 	CCGElem **gridData, **subGridData;
 	CCGKey key;
-	int lvl = multires_get_level(ob, mmd, (flags & MULTIRES_USE_RENDER_PARAMS));
+	const bool render = (flags & MULTIRES_USE_RENDER_PARAMS) != 0;
+	const bool ignore_simplify = (flags & MULTIRES_IGNORE_SIMPLIFY) != 0;
+	int lvl = multires_get_level(ob, mmd, render, ignore_simplify);
 	int i, gridSize, numGrids;
 
 	if (lvl == 0)

@@ -34,11 +34,13 @@ incs = [
     '#intern/container',
     '#intern/guardedalloc',
     '#intern/string',
-    '#extern/glew/include',
+    env['BF_GLEW_INC'],
+    '#/intern/glew-mx',
     '#intern/moto/include',
     '#source/blender/blenkernel',
     '#source/blender/blenlib',
     '#source/blender/makesdna',
+    '#source/gameengine/Converter',
     '#source/gameengine/Expressions',
     '#source/gameengine/GameLogic',
     '#source/gameengine/Ketsji',
@@ -50,7 +52,7 @@ incs = ' '.join(incs)
 
 incs += ' ' + env['BF_BULLET_INC']
 
-defs = []
+defs = env['BF_GL_DEFINITIONS']
 
 if env['WITH_BF_PYTHON']:
     incs += ' ' + env['BF_PYTHON_INC']

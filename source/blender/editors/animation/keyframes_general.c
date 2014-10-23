@@ -408,8 +408,8 @@ void sample_fcurve(FCurve *fcu)
 				 * keyframes while sampling will affect the outcome...
 				 *	- only start sampling+adding from index=1, so that we don't overwrite original keyframe
 				 */
-				range = (int)(ceil(end->vec[1][0] - start->vec[1][0]) );
-				sfra = (int)(floor(start->vec[1][0]) );
+				range = (int)(ceil(end->vec[1][0] - start->vec[1][0]));
+				sfra = (int)(floor(start->vec[1][0]));
 				
 				if (range) {
 					value_cache = MEM_callocN(sizeof(TempFrameValCache) * range, "IcuFrameValCache");
@@ -732,9 +732,9 @@ static void paste_animedit_keys_fcurve(FCurve *fcu, tAnimCopybufItem *aci, float
 		bezt->vec[2][0] += offset;
 		
 		/* insert the keyframe
-		 * NOTE: no special flags here for now
+		 * NOTE: we do not want to inherit handles from existing keyframes in this case!
 		 */
-		insert_bezt_fcurve(fcu, bezt, 0); 
+		insert_bezt_fcurve(fcu, bezt, INSERTKEY_OVERWRITE_FULL);
 		
 		/* un-apply offset from src beztriple after copying */
 		bezt->vec[0][0] -= offset;
@@ -763,8 +763,10 @@ EnumPropertyItem keyframe_paste_merge_items[] = {
 	{0, NULL, 0, NULL, NULL}};
 
 
-/* This function pastes data from the keyframes copy/paste buffer 
- * > return status code is whether the method FAILED to do anything
+/**
+ * This function pastes data from the keyframes copy/paste buffer
+ *
+ * \return Status code is whether the method FAILED to do anything
  */
 short paste_animedit_keys(bAnimContext *ac, ListBase *anim_data,
                           const eKeyPasteOffset offset_mode, const eKeyMergeMode merge_mode)
@@ -857,6 +859,8 @@ short paste_animedit_keys(bAnimContext *ac, ListBase *anim_data,
 					totmatch++;
 					paste_animedit_keys_fcurve(fcu, aci, offset, merge_mode);
 				}
+
+				ale->update |= ANIM_UPDATE_DEFAULT;
 			}
 			
 			/* don't continue if some fcurves were pasted */
@@ -865,6 +869,8 @@ short paste_animedit_keys(bAnimContext *ac, ListBase *anim_data,
 		}
 	}
 	
+	ANIM_animdata_update(ac, anim_data);
+
 	return 0;
 }
 

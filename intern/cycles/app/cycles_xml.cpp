@@ -304,7 +304,8 @@ static void xml_read_integrator(const XMLReadState& state, pugi::xml_node node)
 	xml_read_int(&integrator->volume_max_steps, node, "volume_max_steps");
 	
 	/* Various Settings */
-	xml_read_bool(&integrator->no_caustics, node, "no_caustics");
+	xml_read_bool(&integrator->caustics_reflective, node, "caustics_reflective");
+	xml_read_bool(&integrator->caustics_refractive, node, "caustics_refractive");
 	xml_read_float(&integrator->filter_glossy, node, "filter_glossy");
 	
 	xml_read_int(&integrator->seed, node, "seed");
@@ -329,6 +330,7 @@ static void xml_read_camera(const XMLReadState& state, pugi::xml_node node)
 	xml_read_float(&cam->aperturesize, node, "aperturesize"); // 0.5*focallength/fstop
 	xml_read_float(&cam->focaldistance, node, "focaldistance");
 	xml_read_float(&cam->shuttertime, node, "shuttertime");
+	xml_read_float(&cam->aperture_ratio, node, "aperture_ratio");
 
 	if(xml_equal_string(node, "type", "orthographic"))
 		cam->type = CAMERA_ORTHOGRAPHIC;
@@ -509,8 +511,10 @@ static void xml_read_shader_graph(const XMLReadState& state, Shader *shader, pug
 		else if(string_iequals(node.name(), "mapping")) {
 			snode = new MappingNode();
 		}
-		else if(string_iequals(node.name(), "ward_bsdf")) {
-			snode = new WardBsdfNode();
+		else if(string_iequals(node.name(), "anisotropic_bsdf")) {
+			AnisotropicBsdfNode *aniso = new AnisotropicBsdfNode();
+			xml_read_enum(&aniso->distribution, AnisotropicBsdfNode::distribution_enum, node, "distribution");
+			snode = aniso;
 		}
 		else if(string_iequals(node.name(), "diffuse_bsdf")) {
 			snode = new DiffuseBsdfNode();
@@ -550,9 +554,7 @@ static void xml_read_shader_graph(const XMLReadState& state, Shader *shader, pug
 			snode = hair;
 		}
 		else if(string_iequals(node.name(), "emission")) {
-			EmissionNode *emission = new EmissionNode();
-			xml_read_bool(&emission->total_power, node, "total_power");
-			snode = emission;
+			snode = new EmissionNode();
 		}
 		else if(string_iequals(node.name(), "ambient_occlusion")) {
 			snode = new AmbientOcclusionNode();
@@ -633,6 +635,12 @@ static void xml_read_shader_graph(const XMLReadState& state, Shader *shader, pug
 			snode = new CombineHSVNode();
 		}
 		else if(string_iequals(node.name(), "separate_hsv")) {
+			snode = new SeparateHSVNode();
+		}
+		else if(string_iequals(node.name(), "combine_xyz")) {
+			snode = new CombineHSVNode();
+		}
+		else if(string_iequals(node.name(), "separate_xyz")) {
 			snode = new SeparateHSVNode();
 		}
 		else if(string_iequals(node.name(), "hsv")) {

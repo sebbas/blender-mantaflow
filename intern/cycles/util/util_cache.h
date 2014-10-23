@@ -25,7 +25,7 @@
  * again into the appropriate data structures.
  *
  * This way we do not need to accurately track changes, compare dates and
- * invalidate cache entries, at the cost of exta computation. If everything
+ * invalidate cache entries, at the cost of extra computation. If everything
  * is stored in a global cache, computations can perhaps even be shared between
  * different scenes where it may be hard to detect duplicate work.
  */
@@ -96,54 +96,70 @@ public:
 		buffers.push_back(buffer);
 	}
 
-	template<typename T> void read(array<T>& data)
+	template<typename T> bool read(array<T>& data)
 	{
 		size_t size;
 
 		if(!fread(&size, sizeof(size), 1, f)) {
 			fprintf(stderr, "Failed to read vector size from cache.\n");
-			return;
+			return false;
 		}
 
 		if(!size)
-			return;
+			return false;
 
 		data.resize(size/sizeof(T));
 
 		if(!fread(&data[0], size, 1, f)) {
 			fprintf(stderr, "Failed to read vector data from cache (%lu).\n", (unsigned long)size);
-			return;
+			return false;
 		}
+		return true;
 	}
 
-	void read(int& data)
+	bool read(int& data)
 	{
 		size_t size;
 
-		if(!fread(&size, sizeof(size), 1, f))
+		if(!fread(&size, sizeof(size), 1, f)) {
 			fprintf(stderr, "Failed to read int size from cache.\n");
-		if(!fread(&data, sizeof(data), 1, f))
+			return false;
+		}
+		if(!fread(&data, sizeof(data), 1, f)) {
 			fprintf(stderr, "Failed to read int from cache.\n");
+			return false;
+		}
+		return true;
 	}
 
-	void read(float& data)
+	bool read(float& data)
 	{
 		size_t size;
 
-		if(!fread(&size, sizeof(size), 1, f))
+		if(!fread(&size, sizeof(size), 1, f)) {
 			fprintf(stderr, "Failed to read float size from cache.\n");
-		if(!fread(&data, sizeof(data), 1, f))
+			return false;
+		}
+		if(!fread(&data, sizeof(data), 1, f)) {
 			fprintf(stderr, "Failed to read float from cache.\n");
+			return false;
+		}
+		return true;
 	}
 
-	void read(size_t& data)
+	bool read(size_t& data)
 	{
 		size_t size;
 
-		if(!fread(&size, sizeof(size), 1, f))
+		if(!fread(&size, sizeof(size), 1, f)) {
 			fprintf(stderr, "Failed to read size_t size from cache.\n");
-		if(!fread(&data, sizeof(data), 1, f))
+			return false;
+		}
+		if(!fread(&data, sizeof(data), 1, f)) {
 			fprintf(stderr, "Failed to read size_t from cache.\n");
+			return false;
+		}
+		return true;
 	}
 };
 

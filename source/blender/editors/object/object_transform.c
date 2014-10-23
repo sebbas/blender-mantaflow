@@ -385,7 +385,7 @@ static int apply_objects_internal(bContext *C, ReportList *reports, bool apply_l
 	/* first check if we can execute */
 	CTX_DATA_BEGIN (C, Object *, ob, selected_editable_objects)
 	{
-		if (ELEM6(ob->type, OB_MESH, OB_ARMATURE, OB_LATTICE, OB_MBALL, OB_CURVE, OB_SURF)) {
+		if (ELEM(ob->type, OB_MESH, OB_ARMATURE, OB_LATTICE, OB_MBALL, OB_CURVE, OB_SURF)) {
 			ID *obdata = ob->data;
 			if (ID_REAL_USERS(obdata) > 1) {
 				BKE_reportf(reports, RPT_ERROR,
@@ -472,27 +472,12 @@ static int apply_objects_internal(bContext *C, ReportList *reports, bool apply_l
 		/* apply to object data */
 		if (ob->type == OB_MESH) {
 			Mesh *me = ob->data;
-			MVert *mvert;
-			int a;
 
 			if (apply_scale)
 				multiresModifier_scale_disp(scene, ob);
 			
 			/* adjust data */
-			mvert = me->mvert;
-			for (a = 0; a < me->totvert; a++, mvert++)
-				mul_m4_v3(mat, mvert->co);
-			
-			if (me->key) {
-				KeyBlock *kb;
-				
-				for (kb = me->key->block.first; kb; kb = kb->next) {
-					float *fp = kb->data;
-					
-					for (a = 0; a < kb->totelem; a++, fp += 3)
-						mul_m4_v3(mat, fp);
-				}
-			}
+			BKE_mesh_transform(me, mat, true);
 			
 			/* update normals */
 			BKE_mesh_calc_normals(me);
@@ -502,45 +487,17 @@ static int apply_objects_internal(bContext *C, ReportList *reports, bool apply_l
 		}
 		else if (ob->type == OB_LATTICE) {
 			Lattice *lt = ob->data;
-			BPoint *bp = lt->def;
-			int a = lt->pntsu * lt->pntsv * lt->pntsw;
-			
-			while (a--) {
-				mul_m4_v3(mat, bp->vec);
-				bp++;
-			}
+
+			BKE_lattice_transform(lt, mat, true);
 		}
 		else if (ob->type == OB_MBALL) {
 			MetaBall *mb = ob->data;
-			ED_mball_transform(mb, mat);
+			BKE_mball_transform(mb, mat);
 		}
 		else if (ELEM(ob->type, OB_CURVE, OB_SURF)) {
 			Curve *cu = ob->data;
-
-			Nurb *nu;
-			BPoint *bp;
-			BezTriple *bezt;
-			int a;
-
 			scale = mat3_to_scale(rsmat);
-
-			for (nu = cu->nurb.first; nu; nu = nu->next) {
-				if (nu->type == CU_BEZIER) {
-					a = nu->pntsu;
-					for (bezt = nu->bezt; a--; bezt++) {
-						mul_m4_v3(mat, bezt->vec[0]);
-						mul_m4_v3(mat, bezt->vec[1]);
-						mul_m4_v3(mat, bezt->vec[2]);
-						bezt->radius *= scale;
-					}
-					BKE_nurb_handles_calc(nu);
-				}
-				else {
-					a = nu->pntsu * nu->pntsv;
-					for (bp = nu->bp; a--; bp++)
-						mul_m4_v3(mat, bp->vec);
-				}
-			}
+			BKE_curve_transform_ex(cu, mat, true, scale);
 		}
 		else if (ob->type == OB_CAMERA) {
 			MovieClip *clip = BKE_object_movieclip_get(scene, ob, false);
@@ -784,7 +741,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
 	}
 
 	if (ctx_ob_act) {
-		BLI_rotatelist_first(&ctx_data_list, (LinkData *)ctx_ob_act);
+		BLI_listbase_rotate_first(&ctx_data_list, (LinkData *)ctx_ob_act);
 	}
 
 	for (tob = bmain->object.first; tob; tob = tob->id.next) {
@@ -1017,7 +974,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
 						DAG_id_tag_update(&ob_other->id, OB_RECALC_OB | OB_RECALC_DATA);
 
 						copy_v3_v3(centn, cent);
-						mul_mat3_m4_v3(ob_other->obmat, centn); /* ommit translation part */
+						mul_mat3_m4_v3(ob_other->obmat, centn); /* omit translation part */
 						add_v3_v3(ob_other->loc, centn);
 
 						BKE_object_where_is_calc(scene, ob_other);

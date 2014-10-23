@@ -48,17 +48,21 @@
 
 #include "BKE_colortools.h"
 #include "BKE_context.h"
+#include "BKE_depsgraph.h"
+#include "BKE_DerivedMesh.h"
 #include "BKE_icons.h"
 #include "BKE_image.h"
 #include "BKE_global.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_packedFile.h"
+#include "BKE_paint.h"
 #include "BKE_report.h"
 #include "BKE_screen.h"
 #include "BKE_sound.h"
 
 #include "GPU_draw.h"
+#include "GPU_buffers.h"
 
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
@@ -72,6 +76,7 @@
 #include "RNA_enum_types.h"
 
 #include "ED_image.h"
+#include "ED_paint.h"
 #include "ED_render.h"
 #include "ED_screen.h"
 #include "ED_space_api.h"
@@ -88,7 +93,6 @@
 #include "PIL_time.h"
 
 #include "image_intern.h"
-#include "ED_sculpt.h"
 
 /******************** view navigation utilities *********************/
 
@@ -564,6 +568,8 @@ static void image_view_zoom_cancel(bContext *C, wmOperator *op)
 
 void IMAGE_OT_view_zoom(wmOperatorType *ot)
 {
+	PropertyRNA *prop;
+
 	/* identifiers */
 	ot->name = "View Zoom";
 	ot->idname = "IMAGE_OT_view_zoom";
@@ -580,8 +586,9 @@ void IMAGE_OT_view_zoom(wmOperatorType *ot)
 	ot->flag = OPTYPE_BLOCKING | OPTYPE_LOCK_BYPASS;
 	
 	/* properties */
-	RNA_def_float(ot->srna, "factor", 0.0f, -FLT_MAX, FLT_MAX,
-	              "Factor", "Zoom factor, values higher than 1.0 zoom in, lower values zoom out", -FLT_MAX, FLT_MAX);
+	prop = RNA_def_float(ot->srna, "factor", 0.0f, -FLT_MAX, FLT_MAX, "Factor",
+	                     "Zoom factor, values higher than 1.0 zoom in, lower values zoom out", -FLT_MAX, FLT_MAX);
+	RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
 /********************** NDOF operator *********************/
@@ -799,6 +806,8 @@ static int image_view_zoom_in_invoke(bContext *C, wmOperator *op, const wmEvent 
 
 void IMAGE_OT_view_zoom_in(wmOperatorType *ot)
 {
+	PropertyRNA *prop;
+
 	/* identifiers */
 	ot->name = "View Zoom In";
 	ot->idname = "IMAGE_OT_view_zoom_in";
@@ -813,7 +822,9 @@ void IMAGE_OT_view_zoom_in(wmOperatorType *ot)
 	ot->flag = OPTYPE_LOCK_BYPASS;
 
 	/* properties */
-	RNA_def_float_vector(ot->srna, "location", 2, NULL, -FLT_MAX, FLT_MAX, "Location", "Cursor location in screen coordinates", -10.0f, 10.0f);
+	prop = RNA_def_float_vector(ot->srna, "location", 2, NULL, -FLT_MAX, FLT_MAX,
+	                            "Location", "Cursor location in screen coordinates", -10.0f, 10.0f);
+	RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
 static int image_view_zoom_out_exec(bContext *C, wmOperator *op)
@@ -844,6 +855,8 @@ static int image_view_zoom_out_invoke(bContext *C, wmOperator *op, const wmEvent
 
 void IMAGE_OT_view_zoom_out(wmOperatorType *ot)
 {
+	PropertyRNA *prop;
+
 	/* identifiers */
 	ot->name = "View Zoom Out";
 	ot->idname = "IMAGE_OT_view_zoom_out";
@@ -858,7 +871,9 @@ void IMAGE_OT_view_zoom_out(wmOperatorType *ot)
 	ot->flag = OPTYPE_LOCK_BYPASS;
 
 	/* properties */
-	RNA_def_float_vector(ot->srna, "location", 2, NULL, -FLT_MAX, FLT_MAX, "Location", "Cursor location in screen coordinates", -10.0f, 10.0f);
+	prop = RNA_def_float_vector(ot->srna, "location", 2, NULL, -FLT_MAX, FLT_MAX,
+	                            "Location", "Cursor location in screen coordinates", -10.0f, 10.0f);
+	RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
 /********************** view zoom ratio operator *********************/
@@ -942,10 +957,10 @@ static void image_open_cancel(bContext *UNUSED(C), wmOperator *op)
 }
 
 /**
- * @brief Get a list of frames from the list of image files matching the first file name sequence pattern
- * @param ptr [in] the RNA pointer containing the "directory" entry and "files" collection
- * @param frames [out] the list of frame numbers found in the files matching the first one by name
- * @param path [out] the full path of the first file in the list of image files
+ * \brief Get a list of frames from the list of image files matching the first file name sequence pattern
+ * \param ptr [in] the RNA pointer containing the "directory" entry and "files" collection
+ * \param frames [out] the list of frame numbers found in the files matching the first one by name
+ * \param path [out] the full path of the first file in the list of image files
  */
 static void image_sequence_get_frames(PointerRNA *ptr, ListBase *frames, char *path, const size_t maxlen)
 {
@@ -989,10 +1004,10 @@ static void image_sequence_get_frames(PointerRNA *ptr, ListBase *frames, char *p
 	RNA_END
 }
 
-static int image_cmp_frame(void *a, void *b)
+static int image_cmp_frame(const void *a, const void *b)
 {
-	ImageFrame *frame_a = (ImageFrame *)a;
-	ImageFrame *frame_b = (ImageFrame *)b;
+	const ImageFrame *frame_a = a;
+	const ImageFrame *frame_b = b;
 
 	if (frame_a->framenr < frame_b->framenr) return -1;
 	if (frame_a->framenr > frame_b->framenr) return 1;
@@ -1000,10 +1015,10 @@ static int image_cmp_frame(void *a, void *b)
 }
 
 /**
- * @brief Return the start (offset) and the length of the sequence of continuous frames in the list of frames
- * @param frames [in] the list of frame numbers, as a side-effect the list is sorted
- * @param ofs [out] offest, the first frame number in the sequence
- * @return the number of continuos frames in the sequence
+ * \brief Return the start (offset) and the length of the sequence of continuous frames in the list of frames
+ * \param frames [in] the list of frame numbers, as a side-effect the list is sorted
+ * \param ofs [out] offest, the first frame number in the sequence
+ * \return the number of contiguous frames in the sequence
  */
 static int image_sequence_get_len(ListBase *frames, int *ofs)
 {
@@ -1040,16 +1055,17 @@ static int image_open_exec(bContext *C, wmOperator *op)
 
 	const bool is_relative_path = RNA_boolean_get(op->ptr, "relative_path");
 
-	if (RNA_struct_property_is_set(op->ptr, "files") && RNA_struct_property_is_set(op->ptr, "directory")) {	
+	RNA_string_get(op->ptr, "filepath", path);
+
+	if (!IMB_isanim(path) && RNA_struct_property_is_set(op->ptr, "files") &&
+	    RNA_struct_property_is_set(op->ptr, "directory"))
+	{
 		ListBase frames;
 
 		BLI_listbase_clear(&frames);
 		image_sequence_get_frames(op->ptr, &frames, path, sizeof(path));
 		frame_seq_len = image_sequence_get_len(&frames, &frame_ofs);
 		BLI_freelistN(&frames);
-	}
-	else {
-		RNA_string_get(op->ptr, "filepath", path);
 	}
 
 	errno = 0;
@@ -1381,7 +1397,7 @@ static int save_image_options_init(SaveImageOptions *simopts, SpaceImage *sima, 
 		/* sanitize all settings */
 
 		/* unlikely but just in case */
-		if (ELEM3(simopts->im_format.planes, R_IMF_PLANES_BW, R_IMF_PLANES_RGB, R_IMF_PLANES_RGBA) == 0) {
+		if (ELEM(simopts->im_format.planes, R_IMF_PLANES_BW, R_IMF_PLANES_RGB, R_IMF_PLANES_RGBA) == 0) {
 			simopts->im_format.planes = R_IMF_PLANES_RGBA;
 		}
 
@@ -1483,9 +1499,12 @@ static bool save_image_doit(bContext *C, SpaceImage *sima, wmOperator *op, SaveI
 		}
 		else {
 			/* TODO, better solution, if a 24bit image is painted onto it may contain alpha */
-			if (ibuf->userflags & IB_BITMAPDIRTY) { /* it has been painted onto */
+			if ((simopts->im_format.planes == R_IMF_PLANES_RGBA) &&
+			    /* it has been painted onto */
+			    (ibuf->userflags & IB_BITMAPDIRTY))
+			{
 				/* checks each pixel, not ideal */
-				ibuf->planes = BKE_imbuf_alpha_test(ibuf) ? 32 : 24;
+				ibuf->planes = BKE_imbuf_alpha_test(ibuf) ? R_IMF_PLANES_RGBA : R_IMF_PLANES_RGB;
 			}
 		}
 
@@ -1865,6 +1884,7 @@ static int image_reload_exec(bContext *C, wmOperator *UNUSED(op))
 	
 	// XXX other users?
 	BKE_image_signal(ima, (sima) ? &sima->iuser : NULL, IMA_SIGNAL_RELOAD);
+	DAG_id_tag_update(&ima->id, 0);
 
 	WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, ima);
 	
@@ -1888,6 +1908,12 @@ void IMAGE_OT_reload(wmOperatorType *ot)
 /********************** new image operator *********************/
 #define IMA_DEF_NAME N_("Untitled")
 
+enum {
+	GEN_CONTEXT_NONE = 0,
+	GEN_CONTEXT_PAINT_CANVAS = 1,
+	GEN_CONTEXT_PAINT_STENCIL = 2
+};
+
 static int image_new_exec(bContext *C, wmOperator *op)
 {
 	SpaceImage *sima;
@@ -1901,6 +1927,7 @@ static int image_new_exec(bContext *C, wmOperator *op)
 	char *name = _name;
 	float color[4];
 	int width, height, floatbuf, gen_type, alpha;
+	int gen_context;
 
 	/* retrieve state */
 	sima = CTX_wm_space_image(C);
@@ -1920,7 +1947,8 @@ static int image_new_exec(bContext *C, wmOperator *op)
 	gen_type = RNA_enum_get(op->ptr, "generated_type");
 	RNA_float_get_array(op->ptr, "color", color);
 	alpha = RNA_boolean_get(op->ptr, "alpha");
-	
+	gen_context = RNA_enum_get(op->ptr, "gen_context");
+
 	if (!alpha)
 		color[3] = 1.0f;
 
@@ -1943,6 +1971,40 @@ static int image_new_exec(bContext *C, wmOperator *op)
 	}
 	else if (sima) {
 		ED_space_image_set(sima, scene, obedit, ima);
+	}
+	else if (gen_context == GEN_CONTEXT_PAINT_CANVAS) {
+		bScreen *sc;
+		Object *ob = CTX_data_active_object(C);
+		
+		GPU_drawobject_free(ob->derivedFinal);	
+		if (scene->toolsettings->imapaint.canvas)
+			id_us_min(&scene->toolsettings->imapaint.canvas->id);
+		scene->toolsettings->imapaint.canvas = ima;
+		
+		for (sc = bmain->screen.first; sc; sc = sc->id.next) {
+			ScrArea *sa;
+			for (sa = sc->areabase.first; sa; sa = sa->next) {
+				SpaceLink *sl;
+				for (sl = sa->spacedata.first; sl; sl = sl->next) {
+					if (sl->spacetype == SPACE_IMAGE) {
+						SpaceImage *sima = (SpaceImage *)sl;
+						
+						if (!sima->pin)
+							ED_space_image_set(sima, scene, scene->obedit, ima);
+					}
+				}
+			}
+		}
+		BKE_paint_proj_mesh_data_check(scene, ob, NULL, NULL, NULL, NULL);
+		WM_event_add_notifier(C, NC_SCENE | ND_TOOLSETTINGS, NULL);
+	}
+	else if (gen_context == GEN_CONTEXT_PAINT_STENCIL) {
+		Object *ob = CTX_data_active_object(C);
+		if (scene->toolsettings->imapaint.stencil)
+			id_us_min(&scene->toolsettings->imapaint.stencil->id);
+		scene->toolsettings->imapaint.stencil = ima;
+		BKE_paint_proj_mesh_data_check(scene, ob, NULL, NULL, NULL, NULL);	
+		WM_event_add_notifier(C, NC_SCENE | ND_TOOLSETTINGS, NULL);		
 	}
 	else {
 		Tex *tex = CTX_data_pointer_get_type(C, "texture", &RNA_Texture).data;
@@ -1974,6 +2036,13 @@ void IMAGE_OT_new(wmOperatorType *ot)
 {
 	PropertyRNA *prop;
 	static float default_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+
+	static EnumPropertyItem gen_context_items[] = {
+		{GEN_CONTEXT_NONE, "NONE", 0, "None", ""},
+		{GEN_CONTEXT_PAINT_CANVAS, "PAINT_CANVAS", 0, "Paint Canvas", ""},
+	    {GEN_CONTEXT_PAINT_STENCIL, "PAINT_STENCIL", 0, "Paint Stencil", ""},
+		{0, NULL, 0, NULL, NULL}
+	};
 	
 	/* identifiers */
 	ot->name = "New Image";
@@ -2000,6 +2069,9 @@ void IMAGE_OT_new(wmOperatorType *ot)
 	RNA_def_enum(ot->srna, "generated_type", image_generated_type_items, IMA_GENTYPE_BLANK,
 	             "Generated Type", "Fill the image with a grid for UV map testing");
 	RNA_def_boolean(ot->srna, "float", 0, "32 bit Float", "Create image with 32 bit floating point bit depth");
+	prop = RNA_def_enum(ot->srna, "gen_context", gen_context_items, 0, "Gen Context", "Generation context");
+	RNA_def_property_flag(prop, PROP_HIDDEN);
+
 }
 
 #undef IMA_DEF_NAME
@@ -2034,7 +2106,7 @@ static int image_invert_exec(bContext *C, wmOperator *op)
 
 	if (support_undo) {
 		ED_undo_paint_push_begin(UNDO_PAINT_IMAGE, op->type->name,
-		                         ED_image_undo_restore, ED_image_undo_free);
+		                         ED_image_undo_restore, ED_image_undo_free, NULL);
 		/* not strictly needed, because we only imapaint_dirty_region to invalidate all tiles
 		 * but better do this right in case someone copies this for a tool that uses partial redraw better */
 		ED_imapaint_clear_partial_redraw();
@@ -2458,11 +2530,12 @@ static void image_sample_apply(bContext *C, wmOperator *op, const wmEvent *event
 				int point = RNA_enum_get(op->ptr, "point");
 
 				if (point == 1) {
-					curvemapping_set_black_white(curve_mapping, NULL, info->colfp);
+					curvemapping_set_black_white(curve_mapping, NULL, info->linearcol);
 				}
 				else if (point == 0) {
-					curvemapping_set_black_white(curve_mapping, info->colfp, NULL);
+					curvemapping_set_black_white(curve_mapping, info->linearcol, NULL);
 				}
+				WM_event_add_notifier(C, NC_WINDOW, NULL);
 			}
 		}
 
@@ -2995,4 +3068,121 @@ void IMAGE_OT_change_frame(wmOperatorType *ot)
 
 	/* rna */
 	RNA_def_int(ot->srna, "frame", 0, MINAFRAME, MAXFRAME, "Frame", "", MINAFRAME, MAXFRAME);
+}
+
+/* Reload cached render results... */
+/* goes over all scenes, reads render layers */
+static int image_read_renderlayers_exec(bContext *C, wmOperator *UNUSED(op))
+{
+	Scene *scene = CTX_data_scene(C);
+	SpaceImage *sima = CTX_wm_space_image(C);
+	Image *ima;
+
+	ima = BKE_image_verify_viewer(IMA_TYPE_R_RESULT, "Render Result");
+	if (sima->image == NULL) {
+		ED_space_image_set(sima, scene, NULL, ima);
+	}
+
+	RE_ReadRenderResult(scene, scene);
+
+	WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, ima);
+	return OPERATOR_FINISHED;
+}
+
+void IMAGE_OT_read_renderlayers(wmOperatorType *ot)
+{
+	ot->name = "Read Render Layers";
+	ot->idname = "IMAGE_OT_read_renderlayers";
+	ot->description = "Read all the current scene's render layers from cache, as needed";
+
+	ot->poll = space_image_main_area_poll;
+	ot->exec = image_read_renderlayers_exec;
+
+	/* flags */
+	ot->flag = 0;
+}
+
+/* ********************* Render border operator ****************** */
+
+static int render_border_exec(bContext *C, wmOperator *op)
+{
+	ARegion *ar = CTX_wm_region(C);
+	Scene *scene = CTX_data_scene(C);
+	rctf border;
+
+	/* get rectangle from operator */
+	WM_operator_properties_border_to_rctf(op, &border);
+	UI_view2d_region_to_view_rctf(&ar->v2d, &border, &border);
+
+	/* actually set border */
+	CLAMP(border.xmin, 0.0f, 1.0f);
+	CLAMP(border.ymin, 0.0f, 1.0f);
+	CLAMP(border.xmax, 0.0f, 1.0f);
+	CLAMP(border.ymax, 0.0f, 1.0f);
+	scene->r.border = border;
+
+	/* drawing a border surrounding the entire camera view switches off border rendering
+	 * or the border covers no pixels */
+	if ((border.xmin <= 0.0f && border.xmax >= 1.0f &&
+	     border.ymin <= 0.0f && border.ymax >= 1.0f) ||
+	    (border.xmin == border.xmax || border.ymin == border.ymax))
+	{
+		scene->r.mode &= ~R_BORDER;
+	}
+	else {
+		scene->r.mode |= R_BORDER;
+	}
+
+	WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+	return OPERATOR_FINISHED;
+
+}
+
+void IMAGE_OT_render_border(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Render Border";
+	ot->description = "Set the boundaries of the border render and enable border render";
+	ot->idname = "IMAGE_OT_render_border";
+
+	/* api callbacks */
+	ot->invoke = WM_border_select_invoke;
+	ot->exec = render_border_exec;
+	ot->modal = WM_border_select_modal;
+	ot->cancel = WM_border_select_cancel;
+	ot->poll = image_cycle_render_slot_poll;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+	/* rna */
+	WM_operator_properties_border(ot);
+}
+
+/* ********************* Clear render border operator ****************** */
+
+static int clear_render_border_exec(bContext *C, wmOperator *UNUSED(op))
+{
+	Scene *scene = CTX_data_scene(C);
+	scene->r.mode &= ~R_BORDER;
+	WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+	BLI_rctf_init(&scene->r.border, 0.0f, 1.0f, 0.0f, 1.0f);
+	return OPERATOR_FINISHED;
+
+}
+
+void IMAGE_OT_clear_render_border(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Render Border";
+	ot->description = "Clear the boundaries of the border render and disable border render";
+	ot->idname = "IMAGE_OT_clear_render_border";
+
+	/* api callbacks */
+	ot->exec = clear_render_border_exec;
+	ot->poll = image_cycle_render_slot_poll;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }

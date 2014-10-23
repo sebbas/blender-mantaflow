@@ -25,10 +25,12 @@
 ARGS=$( \
 getopt \
 -o s:i:t:h \
---long source:,install:,tmp:,threads:,help,no-sudo,with-all,with-opencollada,ver-ocio:,ver-oiio:,ver-llvm:,ver-osl:,\
+--long source:,install:,tmp:,info:,threads:,help,no-sudo,with-all,with-opencollada,\
+ver-ocio:,ver-oiio:,ver-llvm:,ver-osl:,\
 force-all,force-python,force-numpy,force-boost,force-ocio,force-oiio,force-llvm,force-osl,force-opencollada,\
-force-ffmpeg,skip-python,skip-numpy,skip-boost,skip-ocio,skip-oiio,skip-llvm,skip-osl,skip-ffmpeg,\
-skip-opencollada,required-numpy,libyaml-cpp-ver: \
+force-ffmpeg,\
+skip-python,skip-numpy,skip-boost,skip-ocio,skip-openexr,skip-oiio,skip-llvm,skip-osl,skip-ffmpeg,skip-opencollada,\
+required-numpy: \
 -- "$@" \
 )
 
@@ -38,6 +40,7 @@ SRC="$HOME/src/blender-deps"
 INST="/opt/lib"
 TMP="/tmp"
 CWD=$PWD
+INFO_PATH=$CWD
 
 # Do not install some optional, potentially conflicting libs by default...
 WITH_ALL=false
@@ -74,10 +77,13 @@ ARGUMENTS_INFO="\"COMMAND LINE ARGUMENTS:
     --tmp=<path>
         Use a specific temp path (defaults to '\$TMP').
 
+    --info=<path>
+        Use a specific info path (to store BUILD_NOTES.txt, defaults to '\$INFO_PATH').
+
     -t n, --threads=n
         Use a specific number of threads when building the libraries (auto-detected as '\$THREADS').
 
-    --no_sudo
+    --no-sudo
         Disable use of sudo (this script won't be able to do much though, will just print needed packages...).
 
     --with-all
@@ -143,7 +149,6 @@ ARGUMENTS_INFO="\"COMMAND LINE ARGUMENTS:
           (i.e. if there is no available and satisfactory package)!
         * If the “force-rebuilt” library is a dependency of others, it will force the rebuild
           of those libraries too (e.g. --force-boost will also rebuild oiio and osl...).
-        * Do not forget --with-osl if you built it and still want it!
 
     --skip-python
         Unconditionally skip Python installation/building.
@@ -177,11 +182,7 @@ ARGUMENTS_INFO="\"COMMAND LINE ARGUMENTS:
 
     --required-numpy
         Use this in case your distro features a valid python package, but no matching Numpy one.
-        It will force compilation of both python and numpy
-
-    --libyaml-cpp-ver=<ver>
-        Ubuntu hack: you may have to force installation of a non-defaut version of libyaml-cpp
-        (e.g. ocio in trusty uses 0.3, while default version is 0.5... *sigh*)\""
+        It will force compilation of both python and numpy\""
 
 ##### Main Vars #####
 
@@ -203,12 +204,10 @@ BOOST_VERSION_MIN="1.49"
 BOOST_FORCE_REBUILD=false
 BOOST_SKIP=false
 
-OCIO_VERSION="1.0.7"
+OCIO_VERSION="1.0.9"
 OCIO_VERSION_MIN="1.0"
 OCIO_FORCE_REBUILD=false
 OCIO_SKIP=false
-LIBYAML_CPP_VER_DEFINED=false
-LIBYAML_CPP_VER="0.0"
 
 OPENEXR_VERSION="2.1.0"
 OPENEXR_VERSION_MIN="2.0.1"
@@ -217,19 +216,19 @@ OPENEXR_FORCE_REBUILD=false
 OPENEXR_SKIP=false
 _with_built_openexr=false
 
-OIIO_VERSION="1.4.0"
+OIIO_VERSION="1.4.11"
 OIIO_VERSION_MIN="1.4.0"
 OIIO_FORCE_REBUILD=false
 OIIO_SKIP=false
 
-LLVM_VERSION="3.3"
-LLVM_VERSION_MIN="3.3"
+LLVM_VERSION="3.4"
+LLVM_VERSION_MIN="3.4"
 LLVM_VERSION_FOUND=""
 LLVM_FORCE_REBUILD=false
 LLVM_SKIP=false
 
 # OSL needs to be compiled for now!
-OSL_VERSION="1.4.0"
+OSL_VERSION="1.5.0"
 OSL_VERSION_MIN=$OSL_VERSION
 OSL_FORCE_REBUILD=false
 OSL_SKIP=false
@@ -239,8 +238,8 @@ OPENCOLLADA_VERSION="1.3"
 OPENCOLLADA_FORCE_REBUILD=false
 OPENCOLLADA_SKIP=false
 
-FFMPEG_VERSION="2.1.4"
-FFMPEG_VERSION_MIN="0.7.6"
+FFMPEG_VERSION="2.1.5"
+FFMPEG_VERSION_MIN="2.1.5"
 FFMPEG_FORCE_REBUILD=false
 FFMPEG_SKIP=false
 _ffmpeg_list_sep=";"
@@ -326,6 +325,9 @@ while true; do
     ;;
     --tmp)
       TMP="$2"; shift; shift; continue
+    ;;
+    --info)
+      INFO_PATH="$2"; shift; shift; continue
     ;;
     -t|--threads)
       THREADS="$2"; shift; shift; continue
@@ -454,9 +456,6 @@ while true; do
     --required-numpy)
       NUMPY_REQUIRED=true; shift; continue
     ;;
-    --libyaml-cpp-ver)
-      LIBYAML_CPP_VER_DEFINED=true; LIBYAML_CPP_VER="$2"; shift; shift; continue
-    ;;
     --)
       # no more arguments to parse
       break
@@ -472,40 +471,63 @@ while true; do
   esac
 done
 
-if $WITH_ALL; then
+if [ $WITH_ALL == true -a $OPENCOLLADA_SKIP == false ]; then
   WITH_OPENCOLLADA=true
 fi
 
 
+
 # This has to be done here, because user might force some versions...
-PYTHON_SOURCE="http://python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tgz"
-NUMPY_SOURCE="http://sourceforge.net/projects/numpy/files/NumPy/$NUMPY_VERSION/numpy-$NUMPY_VERSION.tar.gz"
+PYTHON_SOURCE=( "http://python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tgz" )
+NUMPY_SOURCE=( "http://sourceforge.net/projects/numpy/files/NumPy/$NUMPY_VERSION/numpy-$NUMPY_VERSION.tar.gz" )
 _boost_version_nodots=`echo "$BOOST_VERSION" | sed -r 's/\./_/g'`
-BOOST_SOURCE="http://sourceforge.net/projects/boost/files/boost/$BOOST_VERSION/boost_$_boost_version_nodots.tar.bz2/download"
+BOOST_SOURCE=( "http://sourceforge.net/projects/boost/files/boost/$BOOST_VERSION/boost_$_boost_version_nodots.tar.bz2/download" )
 
-OCIO_SOURCE="https://github.com/imageworks/OpenColorIO/tarball/v$OCIO_VERSION"
-#OPENEXR_SOURCE="http://download.savannah.nongnu.org/releases/openexr/openexr-$OPENEXR_VERSION.tar.gz"
-OPENEXR_SOURCE="https://github.com/mont29/openexr.git"
+OCIO_SOURCE=( "https://github.com/imageworks/OpenColorIO/tarball/v$OCIO_VERSION" )
+
+#OPENEXR_SOURCE=( "http://download.savannah.nongnu.org/releases/openexr/openexr-$OPENEXR_VERSION.tar.gz" )
+OPENEXR_SOURCE=( "https://github.com/mont29/openexr.git" )
 OPENEXR_REPO_UID="2787aa1cf652d244ed45ae124eb1553f6cff11ee"
-ILMBASE_SOURCE="http://download.savannah.nongnu.org/releases/openexr/ilmbase-$ILMBASE_VERSION.tar.gz"
+ILMBASE_SOURCE=( "http://download.savannah.nongnu.org/releases/openexr/ilmbase-$ILMBASE_VERSION.tar.gz" )
 
-#OIIO_SOURCE="https://github.com/OpenImageIO/oiio/archive/Release-$OIIO_VERSION.tar.gz"
-OIIO_SOURCE="https://github.com/mont29/oiio.git"
-OIIO_REPO_UID="99113d12619c90cf44721195a759674ea61f02b1"
+#OIIO_SOURCE=( "https://github.com/OpenImageIO/oiio/archive/Release-$OIIO_VERSION.tar.gz" )
+OIIO_SOURCE=( "https://github.com/OpenImageIO/oiio.git" )
+OIIO_REPO_UID="c9e67275a0b248ead96152f6d2221cc0c0f278a4"
 
-LLVM_SOURCE="http://llvm.org/releases/$LLVM_VERSION/llvm-$LLVM_VERSION.src.tar.gz"
-LLVM_CLANG_SOURCE="http://llvm.org/releases/$LLVM_VERSION/clang-$LLVM_VERSION.src.tar.gz"
-#OSL_SOURCE="https://github.com/imageworks/OpenShadingLanguage/archive/Release-$OSL_VERSION.tar.gz"
-#OSL_SOURCE="https://github.com/mont29/OpenShadingLanguage.git"
-OSL_SOURCE="https://github.com/imageworks/OpenShadingLanguage.git"
-OSL_REPO_UID="4abd672ed3979e5e965323201a5ba5ab802a76a9"
+LLVM_SOURCE=( "http://llvm.org/releases/$LLVM_VERSION/llvm-$LLVM_VERSION.src.tar.gz" )
+LLVM_CLANG_SOURCE=( "http://llvm.org/releases/$LLVM_VERSION/clang-$LLVM_VERSION.src.tar.gz" "http://llvm.org/releases/$LLVM_VERSION/cfe-$LLVM_VERSION.src.tar.gz" )
+#OSL_SOURCE=( "https://github.com/imageworks/OpenShadingLanguage/archive/Release-$OSL_VERSION.tar.gz" )
+#OSL_SOURCE=( "https://github.com/imageworks/OpenShadingLanguage.git" )
+OSL_SOURCE=( "https://github.com/mont29/OpenShadingLanguage.git" )
+OSL_REPO_UID="85179714e1bc69cd25ecb6bb711c1a156685d395"
 
-OPENCOLLADA_SOURCE="https://github.com/KhronosGroup/OpenCOLLADA.git"
+OPENCOLLADA_SOURCE=( "https://github.com/KhronosGroup/OpenCOLLADA.git" )
 OPENCOLLADA_REPO_UID="18da7f4109a8eafaa290a33f5550501cc4c8bae8"
-FFMPEG_SOURCE="http://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.bz2"
+FFMPEG_SOURCE=( "http://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.bz2" )
 
 
 ##### Generic Helpers #####
+
+# Check return code of wget for success...
+download() {
+  declare -a sources=("${!1}")
+  sources_count=${#sources[@]}
+  error=1
+
+  for (( i=0; $i < $sources_count; i++ ))
+  do
+    wget -c ${sources[$i]} -O $2
+    if [ $? -eq 0 ]; then
+      error=0
+      break
+    fi
+  done
+
+  if [ $error -eq 1 ]; then
+    ERROR "wget could not find $1, or could not write it to $2, exiting"
+    exit 1
+  fi
+}
 
 # Return 0 if $1 = $2 (i.e. 1.01.0 = 1.1, but 1.1.1 != 1.1), else 1.
 # $1 and $2 should be version numbers made of numbers only.
@@ -684,7 +706,7 @@ compile_Python() {
 
     if [ ! -d $_src ]; then
       mkdir -p $SRC
-      wget -c $PYTHON_SOURCE -O $_src.tgz
+      download PYTHON_SOURCE[@] $_src.tgz
 
       INFO "Unpacking Python-$PYTHON_VERSION"
       tar -C $SRC -xf $_src.tgz
@@ -749,7 +771,7 @@ compile_Numpy() {
 
     if [ ! -d $_src ]; then
       mkdir -p $SRC
-      wget -c $NUMPY_SOURCE -O $_src.tar.gz
+      download NUMPY_SOURCE[@] $_src.tar.gz
 
       INFO "Unpacking Numpy-$NUMPY_VERSION"
       tar -C $SRC -xf $_src.tar.gz
@@ -815,7 +837,7 @@ compile_Boost() {
     if [ ! -d $_src ]; then
       INFO "Downloading Boost-$BOOST_VERSION"
       mkdir -p $SRC
-      wget -c $BOOST_SOURCE -O $_src.tar.bz2
+      download BOOST_SOURCE[@] $_src.tar.bz2
       tar -C $SRC --transform "s,(.*/?)boost_1_[^/]+(.*),\1boost-$BOOST_VERSION\2,x" -xf $_src.tar.bz2
     fi
 
@@ -879,7 +901,7 @@ compile_OCIO() {
     if [ ! -d $_src ]; then
       INFO "Downloading OpenColorIO-$OCIO_VERSION"
       mkdir -p $SRC
-      wget -c $OCIO_SOURCE -O $_src.tar.gz
+      download OCIO_SOURCE[@] $_src.tar.gz
 
       INFO "Unpacking OpenColorIO-$OCIO_VERSION"
       tar -C $SRC --transform "s,(.*/?)imageworks-OpenColorIO[^/]*(.*),\1OpenColorIO-$OCIO_VERSION\2,x" \
@@ -953,12 +975,11 @@ clean_ILMBASE() {
 
 compile_ILMBASE() {
   # To be changed each time we make edits that would modify the compiled result!
-  ilmbase_magic=8
+  ilmbase_magic=9
   _init_ilmbase
 
   # Clean install if needed!
   magic_compile_check ilmbase-$ILMBASE_VERSION $ilmbase_magic
-
   if [ $? -eq 1 -o $OPENEXR_FORCE_REBUILD == true ]; then
     clean_ILMBASE
     rm -rf $_openexr_inst
@@ -975,7 +996,7 @@ compile_ILMBASE() {
     if [ ! -d $_src ]; then
       INFO "Downloading ILMBase-$ILMBASE_VERSION"
       mkdir -p $SRC
-      wget -c $ILMBASE_SOURCE -O $_src.tar.gz
+      download ILMBASE_SOURCE[@] $_src.tar.gz
 
       INFO "Unpacking ILMBase-$ILMBASE_VERSION"
       tar -C $SRC --transform "s,(.*/?)ilmbase-[^/]*(.*),\1ILMBase-$ILMBASE_VERSION\2,x" \
@@ -1040,7 +1061,7 @@ clean_OPENEXR() {
 
 compile_OPENEXR() {
   # To be changed each time we make edits that would modify the compiled result!
-  openexr_magic=12
+  openexr_magic=13
 
   # Clean install if needed!
   magic_compile_check openexr-$OPENEXR_VERSION $openexr_magic
@@ -1067,13 +1088,13 @@ compile_OPENEXR() {
       INFO "Downloading OpenEXR-$OPENEXR_VERSION"
       mkdir -p $SRC
 
-#      wget -c $OPENEXR_SOURCE -O $_src.tar.gz
+#      download OPENEXR_SOURCE[@] $_src.tar.gz
 
 #      INFO "Unpacking OpenEXR-$OPENEXR_VERSION"
 #      tar -C $SRC --transform "s,(.*/?)openexr[^/]*(.*),\1OpenEXR-$OPENEXR_VERSION\2,x" \
 #          -xf $_src.tar.gz
 
-      git clone $OPENEXR_SOURCE $_src
+      git clone ${OPENEXR_SOURCE[0]} $_src
 
     fi
 
@@ -1169,13 +1190,13 @@ compile_OIIO() {
 
     if [ ! -d $_src ]; then
       mkdir -p $SRC
-#      wget -c $OIIO_SOURCE -O "$_src.tar.gz"
+      #download OIIO_SOURCE[@] "$_src.tar.gz"
+#
+      #INFO "Unpacking OpenImageIO-$OIIO_VERSION"
+      #tar -C $SRC --transform "s,(.*/?)oiio-Release-[^/]*(.*),\1OpenImageIO-$OIIO_VERSION\2,x" \
+          #-xf $_src.tar.gz
 
-#      INFO "Unpacking OpenImageIO-$OIIO_VERSION"
-#      tar -C $SRC --transform "s,(.*/?)oiio-Release-[^/]*(.*),\1OpenImageIO-$OIIO_VERSION\2,x" \
-#          -xf $_src.tar.gz
-
-      git clone $OIIO_SOURCE $_src
+      git clone ${OIIO_SOURCE[0]} $_src
 
     fi
 
@@ -1292,15 +1313,16 @@ compile_LLVM() {
 
     if [ ! -d $_src -o true ]; then
       mkdir -p $SRC
-      wget -c $LLVM_SOURCE -O "$_src.tar.gz"
-      wget -c $LLVM_CLANG_SOURCE -O "$_src_clang.tar.gz"
+      download LLVM_SOURCE[@] "$_src.tar.gz"
+      download LLVM_CLANG_SOURCE[@] "$_src_clang.tar.gz"
 
       INFO "Unpacking LLVM-$LLVM_VERSION"
       tar -C $SRC --transform "s,([^/]*/?)llvm-[^/]*(.*),\1LLVM-$LLVM_VERSION\2,x" \
           -xf $_src.tar.gz
       INFO "Unpacking CLANG-$LLVM_VERSION to $_src/tools/clang"
+      # Stupid clang guys renamed 'clang' to 'cfe' for now handle both cases... :(
       tar -C $_src/tools \
-          --transform "s,([^/]*/?)clang-[^/]*(.*),\1clang\2,x" \
+          --transform "s,([^/]*/?)(clang|cfe)-[^/]*(.*),\1clang\3,x" \
           -xf $_src_clang.tar.gz
 
       cd $_src
@@ -1400,13 +1422,13 @@ compile_OSL() {
     if [ ! -d $_src ]; then
       mkdir -p $SRC
 
-#      wget -c $OSL_SOURCE -O "$_src.tar.gz"
+      #download OSL_SOURCE[@] "$_src.tar.gz"
 
-#      INFO "Unpacking OpenShadingLanguage-$OSL_VERSION"
-#      tar -C $SRC --transform "s,(.*/?)OpenShadingLanguage-[^/]*(.*),\1OpenShadingLanguage-$OSL_VERSION\2,x" \
-#          -xf $_src.tar.gz
+      #INFO "Unpacking OpenShadingLanguage-$OSL_VERSION"
+      #tar -C $SRC --transform "s,(.*/?)OpenShadingLanguage-[^/]*(.*),\1OpenShadingLanguage-$OSL_VERSION\2,x" \
+          #-xf $_src.tar.gz
 
-      git clone $OSL_SOURCE $_src
+      git clone ${OSL_SOURCE[0]} $_src
 
     fi
 
@@ -1437,6 +1459,7 @@ compile_OSL() {
     cmake_d="$cmake_d -D ILMBASE_VERSION=$ILMBASE_VERSION"
 
     if [ $_with_built_openexr == true ]; then
+      INFO "ILMBASE_HOME=$INST/openexr"
       cmake_d="$cmake_d -D ILMBASE_HOME=$INST/openexr"
     fi
 
@@ -1591,7 +1614,7 @@ compile_FFmpeg() {
     if [ ! -d $_src ]; then
       INFO "Downloading ffmpeg-$FFMPEG_VERSION"
       mkdir -p $SRC
-      wget -c $FFMPEG_SOURCE -O "$_src.tar.bz2"
+      download FFMPEG_SOURCE[@] "$_src.tar.bz2"
 
       INFO "Unpacking ffmpeg-$FFMPEG_VERSION"
       tar -C $SRC -xf $_src.tar.bz2
@@ -1681,7 +1704,7 @@ check_package_DEB() {
 }
 
 check_package_installed_DEB() {
-  r=`dpkg -s $1 | grep -c '$1'`
+  r=`dpkg-query -W -f='${Status}' $1 | grep -c "install ok"`
 
   if [ $r -ge 1 ]; then
     return 0
@@ -1728,11 +1751,6 @@ install_DEB() {
   PRINT ""
   INFO "Installing dependencies for DEB-based distribution"
   PRINT ""
-  WARNING "Beware of recent Ubuntu/Debian!!!"
-  PRINT "Ubuntu 14.4 and Debian Jessie come with a default libyaml-cpp in 0.5 version, while their ocio package still"
-  PRINT "uses the 0.3 version. You have to use '--libyaml-cpp-ver=0.3' option (else Blender will builds with 0.5,"
-  PRINT "and break when using packaged ocio)..."
-  PRINT ""
   PRINT "`eval _echo "$COMMON_INFO"`"
   PRINT ""
 
@@ -1778,7 +1796,7 @@ install_DEB() {
   _packages="gawk cmake cmake-curses-gui scons build-essential libjpeg-dev libpng-dev \
              libfreetype6-dev libx11-dev libxi-dev wget libsqlite3-dev libbz2-dev \
              libncurses5-dev libssl-dev liblzma-dev libreadline-dev $OPENJPEG_DEV \
-             libopenal-dev libglew-dev yasm $THEORA_DEV $VORBIS_DEV $OGG_DEV \
+             libopenal-dev libglew-dev libglewmx-dev yasm $THEORA_DEV $VORBIS_DEV $OGG_DEV \
              libsdl1.2-dev libfftw3-dev patch bzip2 libxml2-dev libtinyxml-dev"
 
   OPENJPEG_USE=true
@@ -1846,7 +1864,7 @@ install_DEB() {
     # Only install jack if jack2 is not already installed!
     JACK="libjack-dev"
     JACK2="libjack-jackd2-dev"
-    check_package_installed_DEB JACK2
+    check_package_installed_DEB $JACK2
     if [ $? -eq 0 ]; then
       _packages="$_packages $JACK2"
     else
@@ -1969,13 +1987,14 @@ install_DEB() {
   if $OCIO_SKIP; then
     WARNING "Skipping OpenColorIO installation, as requested..."
   else
-    check_package_version_ge_DEB libopencolorio-dev $OCIO_VERSION_MIN
-    if [ $? -eq 0 ]; then
-      install_packages_DEB libopencolorio-dev
-      clean_OCIO
-    else
+    # XXX Always force build of own OCIO, until linux distro guys update their package to default libyaml-cpp ver (0.5)!
+    #check_package_version_ge_DEB libopencolorio-dev $OCIO_VERSION_MIN
+    #if [ $? -eq 0 ]; then
+      #install_packages_DEB libopencolorio-dev
+      #clean_OCIO
+    #else
       compile_OCIO
-    fi
+    #fi
   fi
 
   PRINT ""
@@ -2403,13 +2422,14 @@ install_RPM() {
   if $OCIO_SKIP; then
     WARNING "Skipping OpenColorIO installation, as requested..."
   else
-    check_package_version_ge_RPM OpenColorIO-devel $OCIO_VERSION_MIN
-    if [ $? -eq 0 ]; then
-      install_packages_RPM OpenColorIO-devel
-      clean_OCIO
-    else
+    # XXX Always force build of own OCIO, until linux distro guys update their package to default libyaml-cpp ver (0.5)!
+    #check_package_version_ge_RPM OpenColorIO-devel $OCIO_VERSION_MIN
+    #if [ $? -eq 0 ]; then
+      #install_packages_RPM OpenColorIO-devel
+      #clean_OCIO
+    #else
       compile_OCIO
-    fi
+    #fi
   fi
 
   PRINT ""
@@ -2712,14 +2732,15 @@ install_ARCH() {
   if $OCIO_SKIP; then
     WARNING "Skipping OpenColorIO installation, as requested..."
   else
-    check_package_version_ge_ARCH opencolorio $OCIO_VERSION_MIN
-    if [ $? -eq 0 ]; then
-      install_packages_ARCH opencolorio yaml-cpp tinyxml
-      clean_OCIO
-    else
+    # XXX Always force build of own OCIO, until linux distro guys update their package to default libyaml-cpp ver (0.5)!
+    #check_package_version_ge_ARCH opencolorio $OCIO_VERSION_MIN
+    #if [ $? -eq 0 ]; then
+      #install_packages_ARCH opencolorio yaml-cpp tinyxml
+      #clean_OCIO
+    #else
       install_packages_ARCH yaml-cpp tinyxml
       compile_OCIO
-    fi
+    #fi
   fi
 
   PRINT ""
@@ -3087,9 +3108,9 @@ else
   exit 1
 fi
 
-print_info | tee BUILD_NOTES.txt
+print_info | tee $INFO_PATH/BUILD_NOTES.txt
 PRINT ""
-PRINT "This information has been written to BUILD_NOTES.txt"
+PRINT "This information has been written to $INFO_PATH/BUILD_NOTES.txt"
 PRINT ""
 
 # Switch back to user language.

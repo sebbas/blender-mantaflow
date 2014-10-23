@@ -217,6 +217,10 @@ void BKE_sequence_clipboard_pointers_free(struct Sequence *seq);
 void BKE_sequence_clipboard_pointers_store(struct Sequence *seq);
 void BKE_sequence_clipboard_pointers_restore(struct Sequence *seq, struct Main *bmain);
 
+void BKE_sequencer_base_clipboard_pointers_free(struct ListBase *seqbase);
+void BKE_sequencer_base_clipboard_pointers_store(struct ListBase *seqbase);
+void BKE_sequencer_base_clipboard_pointers_restore(struct ListBase *seqbase, struct Main *bmain);
+
 void BKE_sequence_free(struct Scene *scene, struct Sequence *seq);
 const char *BKE_sequence_give_name(struct Sequence *seq);
 void BKE_sequence_calc(struct Scene *scene, struct Sequence *seq);
@@ -308,7 +312,7 @@ void BKE_sequencer_offset_animdata(struct Scene *scene, struct Sequence *seq, in
 void BKE_sequencer_dupe_animdata(struct Scene *scene, const char *name_src, const char *name_dst);
 bool BKE_sequence_base_shuffle(struct ListBase *seqbasep, struct Sequence *test, struct Scene *evil_scene);
 bool BKE_sequence_base_shuffle_time(ListBase *seqbasep, struct Scene *evil_scene);
-bool BKE_sequence_base_isolated_sel_check(struct ListBase *seqbase);
+bool BKE_sequence_base_isolated_sel_check(struct ListBase *seqbase, bool one_only);
 void BKE_sequencer_free_imbuf(struct Scene *scene, struct ListBase *seqbasep, bool for_render);
 struct Sequence *BKE_sequence_dupli_recursive(struct Scene *scene, struct Scene *scene_to, struct Sequence *seq, int dupe_flag);
 int BKE_sequence_swap(struct Sequence *seq_a, struct Sequence *seq_b, const char **error_str);
@@ -326,7 +330,9 @@ void BKE_sequencer_update_sound(struct Scene *scene, struct bSound *sound);
 void BKE_sequencer_refresh_sound_length(struct Scene *scene);
 
 void BKE_sequence_base_unique_name_recursive(ListBase *seqbasep, struct Sequence *seq);
-void BKE_sequence_base_dupli_recursive(struct Scene *scene, struct Scene *scene_to, ListBase *nseqbase, ListBase *seqbase, int dupe_flag);
+void BKE_sequence_base_dupli_recursive(
+        struct Scene *scene, struct Scene *scene_to, ListBase *nseqbase, ListBase *seqbase,
+        int dupe_flag);
 bool BKE_sequence_is_valid_check(struct Sequence *seq);
 
 void BKE_sequencer_clear_scene_in_allseqs(struct Main *bmain, struct Scene *sce);
@@ -340,11 +346,14 @@ typedef struct SeqLoadInfo {
 	int channel;
 	int flag;   /* use sound, replace sel */
 	int type;
-	int tot_success;
-	int tot_error;
 	int len;        /* only for image strips */
 	char path[1024]; /* 1024 = FILE_MAX */
+
+	/* return values */
 	char name[64];
+	struct Sequence *seq_sound;  /* for movie's */
+	int tot_success;
+	int tot_error;
 } SeqLoadInfo;
 
 /* SeqLoadInfo.flag */

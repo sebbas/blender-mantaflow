@@ -75,36 +75,39 @@ void _bli_array_grow_func(void **arr_p, const void *arr_static,
  * switching to dynamic heap allocation */
 #define BLI_array_staticdeclare(arr, maxstatic)                               \
 	int   _##arr##_count = 0;                                                 \
-	char  _##arr##_static[maxstatic * sizeof(arr)]
+	char  _##arr##_static[maxstatic * sizeof(*(arr))]
 
 /* this returns the logical size of the array, not including buffering. */
-#define BLI_array_count(arr) _##arr##_count
+#define BLI_array_count(arr) ((void)0, _##arr##_count)
 
 /* Grow the array by a fixed number of items.
  *
  * Allow for a large 'num' value when the new size is more than double
  * to allocate the exact sized array. */
-#define BLI_array_grow_items(arr, num)  ((                                    \
+#define BLI_array_reserve(arr, num)  (void)(                                  \
 	(((void *)(arr) == NULL) &&                                               \
 	 ((void *)(_##arr##_static) != NULL) &&                                   \
 	/* don't add _##arr##_count below because it must be zero */              \
-	 (_bli_array_totalsize_static(arr) >= _##arr##_count + num)) ?            \
+	 (_bli_array_totalsize_static(arr) >= _##arr##_count + (num))) ?          \
 	/* we have an empty array and a static var big enough */                  \
 	(void)(arr = (void *)_##arr##_static)                                     \
 	    :                                                                     \
 	/* use existing static array or allocate */                               \
-	(LIKELY(_bli_array_totalsize(arr) >= _##arr##_count + num) ?              \
+	(LIKELY(_bli_array_totalsize(arr) >= _##arr##_count + (num)) ?            \
 	 (void)0 /* do nothing */ :                                               \
 	 _bli_array_grow_func((void **)&(arr), _##arr##_static,                   \
 	                       sizeof(*(arr)), _##arr##_count, num,               \
-	                       "BLI_array." #arr),                                \
-	 (void)0)  /* msvc2008 needs this */                                      \
-	),                                                                        \
-	/* increment the array count, all conditions above are accounted for. */  \
-	(_##arr##_count += num))
+	                       "BLI_array." #arr))                                \
+	)
+
 
 /* returns length of array */
-#define BLI_array_grow_one(arr)  BLI_array_grow_items(arr, 1)
+
+#define BLI_array_grow_items(arr, num) \
+	(BLI_array_reserve(arr, num), (_##arr##_count += num))
+
+#define BLI_array_grow_one(arr) \
+	BLI_array_grow_items(arr, 1)
 
 
 /* appends an item to the array. */
@@ -121,9 +124,9 @@ void _bli_array_grow_func(void **arr_p, const void *arr_static,
 	(&arr[_##arr##_count - 1])                                                \
 )
 
-#define BLI_array_reserve(arr, num)                                           \
-	BLI_array_grow_items(arr, num), (void)(_##arr##_count -= (num))
-
+/* appends (grows) & returns a pointer to the uninitialized memory */
+#define BLI_array_append_ret(arr) \
+	(BLI_array_reserve(arr, 1), &arr[(_##arr##_count++)])
 
 #define BLI_array_free(arr)                                                   \
 	if (arr && (char *)arr != _##arr##_static) {                              \
@@ -144,7 +147,7 @@ void _bli_array_grow_func(void **arr_p, const void *arr_static,
 
 /* set the count of the array, doesn't actually increase the allocated array
  * size.  don't use this unless you know what you're doing. */
-#define BLI_array_length_set(arr, count)                                      \
+#define BLI_array_count_set(arr, count)                                      \
 	{ _##arr##_count = (count); }(void)0
 
 /* only to prevent unused warnings */
@@ -182,5 +185,8 @@ void _bli_array_wrap(void *arr, unsigned int arr_len, size_t arr_stride, int dir
 #define BLI_array_wrap(arr, arr_len, dir) \
 	_bli_array_wrap(arr, arr_len, sizeof(*(arr)), dir)
 
+int _bli_array_findindex(const void *arr, unsigned int arr_len, size_t arr_stride, const void *p);
+#define BLI_array_findindex(arr, arr_len, p) \
+	_bli_array_findindex(arr, arr_len, sizeof(*(arr)), p)
 
 #endif  /* __BLI_ARRAY_H__ */

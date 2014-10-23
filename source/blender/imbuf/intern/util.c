@@ -187,7 +187,7 @@ int IMB_ispic_type(const char *name)
 
 	unsigned char buf[HEADER_SIZE];
 	ImFileType *type;
-	struct stat st;
+	BLI_stat_t st;
 	int fp;
 
 	if (UTIL_DEBUG) printf("IMB_ispic_name: loading %s\n", name);
@@ -253,10 +253,6 @@ static int isqtime(const char *name)
 #endif
 
 #ifdef WITH_FFMPEG
-
-#if defined(_MSC_VER) && _MSC_VER < 1800
-#define va_copy(dst, src) ((dst) = (src))
-#endif
 
 /* BLI_vsnprintf in ffmpeg_log_callback() causes invalid warning */
 #ifdef __GNUC__
@@ -391,7 +387,7 @@ static int isredcode(const char *filename)
 int imb_get_anim_type(const char *name)
 {
 	int type;
-	struct stat st;
+	BLI_stat_t st;
 
 	if (UTIL_DEBUG) printf("in getanimtype: %s\n", name);
 

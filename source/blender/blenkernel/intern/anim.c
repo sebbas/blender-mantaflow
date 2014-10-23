@@ -125,12 +125,13 @@ void animviz_free_motionpath(bMotionPath *mpath)
 
 /* ------------------- */
 
-/* Setup motion paths for the given data
- * - Only used when explicitly calculating paths on bones which may/may not be consider already
+/**
+ * Setup motion paths for the given data.
+ * \note Only used when explicitly calculating paths on bones which may/may not be consider already
  *
- * < scene: current scene (for frame ranges, etc.)
- * < ob: object to add paths for (must be provided)
- * < pchan: posechannel to add paths for (optional; if not provided, object-paths are assumed)
+ * \param scene Current scene (for frame ranges, etc.)
+ * \param ob Object to add paths for (must be provided)
+ * \param pchan Posechannel to add paths for (optional; if not provided, object-paths are assumed)
  */
 bMotionPath *animviz_verify_motionpaths(ReportList *reports, Scene *scene, Object *ob, bPoseChannel *pchan)
 {
@@ -512,7 +513,7 @@ void calc_curvepath(Object *ob, ListBase *nurbs)
 	dist = (float *)MEM_mallocN(sizeof(float) * (tot + 1), "calcpathdist");
 
 	/* all lengths in *dist */
-	bevp = bevpfirst = (BevPoint *)(bl + 1);
+	bevp = bevpfirst = bl->bevpoints;
 	fp = dist;
 	*fp = 0.0f;
 	for (a = 0; a < tot; a++) {

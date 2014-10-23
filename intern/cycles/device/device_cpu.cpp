@@ -17,6 +17,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* So ImathMath is included before our kernel_cpu_compat. */
+#ifdef WITH_OSL
+#  include <OSL/oslexec.h>
+#endif
+
 #include "device.h"
 #include "device_intern.h"
 
@@ -62,6 +67,7 @@ public:
 		system_cpu_support_sse3();
 		system_cpu_support_sse41();
 		system_cpu_support_avx();
+		system_cpu_support_avx2();
 	}
 
 	~CPUDevice()
@@ -72,8 +78,8 @@ public:
 	void mem_alloc(device_memory& mem, MemoryType type)
 	{
 		mem.device_pointer = mem.data_pointer;
-
-		stats.mem_alloc(mem.memory_size());
+		mem.device_size = mem.memory_size();
+		stats.mem_alloc(mem.device_size);
 	}
 
 	void mem_copy_to(device_memory& mem)
@@ -93,9 +99,11 @@ public:
 
 	void mem_free(device_memory& mem)
 	{
-		mem.device_pointer = 0;
-
-		stats.mem_free(mem.memory_size());
+		if(mem.device_pointer) {
+			mem.device_pointer = 0;
+			stats.mem_free(mem.device_size);
+			mem.device_size = 0;
+		}
 	}
 
 	void const_copy_to(const char *name, void *host, size_t size)
@@ -107,15 +115,17 @@ public:
 	{
 		kernel_tex_copy(&kernel_globals, name, mem.data_pointer, mem.data_width, mem.data_height, mem.data_depth, interpolation);
 		mem.device_pointer = mem.data_pointer;
-
-		stats.mem_alloc(mem.memory_size());
+		mem.device_size = mem.memory_size();
+		stats.mem_alloc(mem.device_size);
 	}
 
 	void tex_free(device_memory& mem)
 	{
-		mem.device_pointer = 0;
-
-		stats.mem_free(mem.memory_size());
+		if(mem.device_pointer) {
+			mem.device_pointer = 0;
+			stats.mem_free(mem.device_size);
+			mem.device_size = 0;
+		}
 	}
 
 	void *osl_memory()
@@ -167,6 +177,28 @@ public:
 			int start_sample = tile.start_sample;
 			int end_sample = tile.start_sample + tile.num_samples;
 
+#ifdef WITH_CYCLES_OPTIMIZED_KERNEL_AVX2
+			if(system_cpu_support_avx2()) {
+				for(int sample = start_sample; sample < end_sample; sample++) {
+					if (task.get_cancel() || task_pool.canceled()) {
+						if(task.need_finish_queue == false)
+							break;
+					}
+
+					for(int y = tile.y; y < tile.y + tile.h; y++) {
+						for(int x = tile.x; x < tile.x + tile.w; x++) {
+							kernel_cpu_avx2_path_trace(&kg, render_buffer, rng_state,
+													  sample, x, y, tile.offset, tile.stride);
+						}
+					}
+
+					tile.sample = sample + 1;
+
+					task.update_progress(&tile);
+				}
+			}
+			else
+#endif
 #ifdef WITH_CYCLES_OPTIMIZED_KERNEL_AVX
 			if(system_cpu_support_avx()) {
 				for(int sample = start_sample; sample < end_sample; sample++) {
@@ -184,7 +216,7 @@ public:
 
 					tile.sample = sample + 1;
 
-					task.update_progress(tile);
+					task.update_progress(&tile);
 				}
 			}
 			else
@@ -206,7 +238,7 @@ public:
 
 					tile.sample = sample + 1;
 
-					task.update_progress(tile);
+					task.update_progress(&tile);
 				}
 			}
 			else
@@ -228,7 +260,7 @@ public:
 
 					tile.sample = sample + 1;
 
-					task.update_progress(tile);
+					task.update_progress(&tile);
 				}
 			}
 			else
@@ -250,7 +282,7 @@ public:
 
 					tile.sample = sample + 1;
 
-					task.update_progress(tile);
+					task.update_progress(&tile);
 				}
 			}
 			else
@@ -271,7 +303,7 @@ public:
 
 					tile.sample = sample + 1;
 
-					task.update_progress(tile);
+					task.update_progress(&tile);
 				}
 			}
 
@@ -293,6 +325,15 @@ public:
 		float sample_scale = 1.0f/(task.sample + 1);
 
 		if(task.rgba_half) {
+#ifdef WITH_CYCLES_OPTIMIZED_KERNEL_AVX2
+			if(system_cpu_support_avx2()) {
+				for(int y = task.y; y < task.y + task.h; y++)
+					for(int x = task.x; x < task.x + task.w; x++)
+						kernel_cpu_avx2_convert_to_half_float(&kernel_globals, (uchar4*)task.rgba_half, (float*)task.buffer,
+															 sample_scale, x, y, task.offset, task.stride);
+			}
+			else
+#endif
 #ifdef WITH_CYCLES_OPTIMIZED_KERNEL_AVX
 			if(system_cpu_support_avx()) {
 				for(int y = task.y; y < task.y + task.h; y++)
@@ -337,6 +378,15 @@ public:
 			}
 		}
 		else {
+#ifdef WITH_CYCLES_OPTIMIZED_KERNEL_AVX2
+			if(system_cpu_support_avx2()) {
+				for(int y = task.y; y < task.y + task.h; y++)
+					for(int x = task.x; x < task.x + task.w; x++)
+						kernel_cpu_avx2_convert_to_byte(&kernel_globals, (uchar4*)task.rgba_byte, (float*)task.buffer,
+													   sample_scale, x, y, task.offset, task.stride);
+			}
+			else
+#endif
 #ifdef WITH_CYCLES_OPTIMIZED_KERNEL_AVX
 			if(system_cpu_support_avx()) {
 				for(int y = task.y; y < task.y + task.h; y++)
@@ -390,56 +440,91 @@ public:
 		OSLShader::thread_init(&kg, &kernel_globals, &osl_globals);
 #endif
 
-#ifdef WITH_CYCLES_OPTIMIZED_KERNEL_AVX
-		if(system_cpu_support_avx()) {
-			for(int x = task.shader_x; x < task.shader_x + task.shader_w; x++) {
-				kernel_cpu_avx_shader(&kg, (uint4*)task.shader_input, (float4*)task.shader_output, task.shader_eval_type, x);
+#ifdef WITH_CYCLES_OPTIMIZED_KERNEL_AVX2
+		if(system_cpu_support_avx2()) {
+			for(int sample = 0; sample < task.num_samples; sample++) {
+				for(int x = task.shader_x; x < task.shader_x + task.shader_w; x++)
+					kernel_cpu_avx2_shader(&kg, (uint4*)task.shader_input, (float4*)task.shader_output,
+					    task.shader_eval_type, x, task.offset, sample);
 
 				if(task.get_cancel() || task_pool.canceled())
 					break;
+
+				task.update_progress(NULL);
+			}
+		}
+		else
+#endif
+#ifdef WITH_CYCLES_OPTIMIZED_KERNEL_AVX
+		if(system_cpu_support_avx()) {
+			for(int sample = 0; sample < task.num_samples; sample++) {
+				for(int x = task.shader_x; x < task.shader_x + task.shader_w; x++)
+					kernel_cpu_avx_shader(&kg, (uint4*)task.shader_input, (float4*)task.shader_output,
+					    task.shader_eval_type, x, task.offset, sample);
+
+				if(task.get_cancel() || task_pool.canceled())
+					break;
+
+				task.update_progress(NULL);
 			}
 		}
 		else
 #endif
 #ifdef WITH_CYCLES_OPTIMIZED_KERNEL_SSE41			
 		if(system_cpu_support_sse41()) {
-			for(int x = task.shader_x; x < task.shader_x + task.shader_w; x++) {
-				kernel_cpu_sse41_shader(&kg, (uint4*)task.shader_input, (float4*)task.shader_output, task.shader_eval_type, x);
+			for(int sample = 0; sample < task.num_samples; sample++) {
+				for(int x = task.shader_x; x < task.shader_x + task.shader_w; x++)
+					kernel_cpu_sse41_shader(&kg, (uint4*)task.shader_input, (float4*)task.shader_output,
+					    task.shader_eval_type, x, task.offset, sample);
 
 				if(task.get_cancel() || task_pool.canceled())
 					break;
+
+				task.update_progress(NULL);
 			}
 		}
 		else
 #endif
 #ifdef WITH_CYCLES_OPTIMIZED_KERNEL_SSE3
 		if(system_cpu_support_sse3()) {
-			for(int x = task.shader_x; x < task.shader_x + task.shader_w; x++) {
-				kernel_cpu_sse3_shader(&kg, (uint4*)task.shader_input, (float4*)task.shader_output, task.shader_eval_type, x);
+			for(int sample = 0; sample < task.num_samples; sample++) {
+				for(int x = task.shader_x; x < task.shader_x + task.shader_w; x++)
+					kernel_cpu_sse3_shader(&kg, (uint4*)task.shader_input, (float4*)task.shader_output,
+					    task.shader_eval_type, x, task.offset, sample);
 
 				if(task.get_cancel() || task_pool.canceled())
 					break;
+
+				task.update_progress(NULL);
 			}
 		}
 		else
 #endif
 #ifdef WITH_CYCLES_OPTIMIZED_KERNEL_SSE2
 		if(system_cpu_support_sse2()) {
-			for(int x = task.shader_x; x < task.shader_x + task.shader_w; x++) {
-				kernel_cpu_sse2_shader(&kg, (uint4*)task.shader_input, (float4*)task.shader_output, task.shader_eval_type, x);
+			for(int sample = 0; sample < task.num_samples; sample++) {
+				for(int x = task.shader_x; x < task.shader_x + task.shader_w; x++)
+					kernel_cpu_sse2_shader(&kg, (uint4*)task.shader_input, (float4*)task.shader_output,
+					    task.shader_eval_type, x, task.offset, sample);
 
 				if(task.get_cancel() || task_pool.canceled())
 					break;
+
+				task.update_progress(NULL);
 			}
 		}
 		else
 #endif
 		{
-			for(int x = task.shader_x; x < task.shader_x + task.shader_w; x++) {
-				kernel_cpu_shader(&kg, (uint4*)task.shader_input, (float4*)task.shader_output, task.shader_eval_type, x);
+			for(int sample = 0; sample < task.num_samples; sample++) {
+				for(int x = task.shader_x; x < task.shader_x + task.shader_w; x++)
+					kernel_cpu_shader(&kg, (uint4*)task.shader_input, (float4*)task.shader_output,
+					    task.shader_eval_type, x, task.offset, sample);
 
 				if(task.get_cancel() || task_pool.canceled())
 					break;
+
+				task.update_progress(NULL);
 			}
 		}
 
@@ -448,11 +533,23 @@ public:
 #endif
 	}
 
+	int get_split_task_count(DeviceTask& task)
+	{
+		if (task.type == DeviceTask::SHADER)
+			return task.get_subtask_count(TaskScheduler::num_threads(), 256);
+		else
+			return task.get_subtask_count(TaskScheduler::num_threads());
+	}
+
 	void task_add(DeviceTask& task)
 	{
 		/* split task into smaller ones */
 		list<DeviceTask> tasks;
-		task.split(tasks, TaskScheduler::num_threads());
+
+		if(task.type == DeviceTask::SHADER)
+			task.split(tasks, TaskScheduler::num_threads(), 256);
+		else
+			task.split(tasks, TaskScheduler::num_threads());
 
 		foreach(DeviceTask& task, tasks)
 			task_pool.push(new CPUDeviceTask(this, task));

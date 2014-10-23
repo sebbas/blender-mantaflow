@@ -32,6 +32,7 @@
 #include "BLI_rand.h"
 #include "BLI_array.h"
 #include "BLI_noise.h"
+#include "BLI_stack.h"
 
 #include "BKE_customdata.h"
 
@@ -140,12 +141,18 @@ static BMEdge *connect_smallest_face(BMesh *bm, BMVert *v_a, BMVert *v_b, BMFace
 
 	/* this isn't the best thing in the world.  it doesn't handle cases where there's
 	 * multiple faces yet.  that might require a convexity test to figure out which
-	 * face is "best" and who knows what for non-manifold conditions. */
-	f = BM_vert_pair_share_face(v_a, v_b, &l_a, &l_b);
+	 * face is "best" and who knows what for non-manifold conditions.
+	 *
+	 * note: we allow adjacent here, since theres no chance this happens.
+	 */
+	f = BM_vert_pair_share_face_by_len(v_a, v_b, &l_a, &l_b, true);
+
 
 	if (f) {
 		BMFace *f_new;
 		BMLoop *l_new;
+
+		BLI_assert(!BM_loop_is_adjacent(l_a, l_b));
 
 		f_new = BM_face_split(bm, f, l_a, l_b, &l_new, NULL, false);
 		
@@ -159,14 +166,11 @@ static BMEdge *connect_smallest_face(BMesh *bm, BMVert *v_a, BMVert *v_b, BMFace
 static void alter_co(BMVert *v, BMEdge *UNUSED(origed), const SubDParams *params, float perc,
                      BMVert *vsta, BMVert *vend)
 {
-	float tvec[3], prev_co[3], fac;
+	float tvec[3], fac;
 	float *co = BM_ELEM_CD_GET_VOID_P(v, params->shape_info.cd_vert_shape_offset_tmp);
 	int i;
-	
-	BM_vert_normal_update_all(v);
 
 	copy_v3_v3(co, v->co);
-	copy_v3_v3(prev_co, co);
 
 	if (UNLIKELY(params->use_sphere)) { /* subdivide sphere */
 		normalize_v3(co);
@@ -230,7 +234,7 @@ static void alter_co(BMVert *v, BMEdge *UNUSED(origed), const SubDParams *params
 	 * this by getting the normals and coords for each shape key and
 	 * re-calculate the smooth value for each but this is quite involved.
 	 * for now its ok to simply apply the difference IMHO - campbell */
-	sub_v3_v3v3(tvec, prev_co, co);
+	sub_v3_v3v3(tvec, v->co, co);
 
 	if (params->shape_info.totlayer > 1) {
 		/* skip the last layer since its the temp */
@@ -749,7 +753,7 @@ static const SubDPattern *patterns[] = {
 	NULL,
 };
 
-#define PATTERNS_TOT  (sizeof(patterns) / sizeof(void *))
+#define PATTERNS_TOT  ARRAY_SIZE(patterns)
 
 typedef struct SubDFaceData {
 	BMVert *start;
@@ -763,8 +767,7 @@ void bmo_subdivide_edges_exec(BMesh *bm, BMOperator *op)
 	BMOpSlot *einput;
 	const SubDPattern *pat;
 	SubDParams params;
-	SubDFaceData *facedata = NULL;
-	BLI_array_declare(facedata);
+	BLI_Stack *facedata;
 	BMIter viter, fiter, liter;
 	BMVert *v, **verts = NULL;
 	BMEdge *edge;
@@ -779,7 +782,7 @@ void bmo_subdivide_edges_exec(BMesh *bm, BMOperator *op)
 	BLI_array_declare(verts);
 	float smooth, fractal, along_normal;
 	bool use_sphere, use_single_edge, use_grid_fill, use_only_quads;
-	int cornertype, seed, i, j, matched, a, b, numcuts, totesel, smooth_falloff;
+	int cornertype, seed, i, j, a, b, numcuts, totesel, smooth_falloff;
 	
 	BMO_slot_buffer_flag_enable(bm, op->slots_in, "edges", BM_EDGE, SUBD_SPLIT);
 	
@@ -872,9 +875,12 @@ void bmo_subdivide_edges_exec(BMesh *bm, BMOperator *op)
 	                     BM_EDGE, EDGE_PERCENT);
 
 
+	facedata = BLI_stack_new(sizeof(SubDFaceData), __func__);
+
 	BM_ITER_MESH (face, &fiter, bm, BM_FACES_OF_MESH) {
 		BMEdge *e1 = NULL, *e2 = NULL;
 		float vec1[3], vec2[3];
+		bool matched = false;
 
 		/* skip non-quads if requested */
 		if (use_only_quads && face->len != 4)
@@ -887,8 +893,6 @@ void bmo_subdivide_edges_exec(BMesh *bm, BMOperator *op)
 
 		BLI_array_grow_items(edges, face->len);
 		BLI_array_grow_items(verts, face->len);
-
-		matched = 0;
 
 		totesel = 0;
 		BM_ITER_ELEM_INDEX (l_new, &liter, face, BM_LOOPS_OF_FACE, i) {
@@ -927,12 +931,13 @@ void bmo_subdivide_edges_exec(BMesh *bm, BMOperator *op)
 					}
 				}
 				if (matched) {
-					BLI_array_grow_one(facedata);
-					b = BLI_array_count(facedata) - 1;
-					facedata[b].pat = pat;
-					facedata[b].start = verts[i];
-					facedata[b].face = face;
-					facedata[b].totedgesel = totesel;
+					SubDFaceData *fd;
+
+					fd = BLI_stack_push_r(facedata);
+					fd->pat = pat;
+					fd->start = verts[i];
+					fd->face = face;
+					fd->totedgesel = totesel;
 					BMO_elem_flag_enable(bm, face, SUBD_SPLIT);
 					break;
 				}
@@ -963,15 +968,15 @@ void bmo_subdivide_edges_exec(BMesh *bm, BMOperator *op)
 					}
 				}
 				if (matched) {
-					BLI_array_grow_one(facedata);
-					j = BLI_array_count(facedata) - 1;
+					SubDFaceData *fd;
 
 					BMO_elem_flag_enable(bm, face, SUBD_SPLIT);
 
-					facedata[j].pat = pat;
-					facedata[j].start = verts[a];
-					facedata[j].face = face;
-					facedata[j].totedgesel = totesel;
+					fd = BLI_stack_push_r(facedata);
+					fd->pat = pat;
+					fd->start = verts[a];
+					fd->face = face;
+					fd->totedgesel = totesel;
 					break;
 				}
 			}
@@ -979,16 +984,16 @@ void bmo_subdivide_edges_exec(BMesh *bm, BMOperator *op)
 		}
 		
 		if (!matched && totesel) {
-			BLI_array_grow_one(facedata);
-			j = BLI_array_count(facedata) - 1;
+			SubDFaceData *fd;
 			
 			BMO_elem_flag_enable(bm, face, SUBD_SPLIT);
 
 			/* must initialize all members here */
-			facedata[j].start = NULL;
-			facedata[j].pat = NULL;
-			facedata[j].totedgesel = totesel;
-			facedata[j].face = face;
+			fd = BLI_stack_push_r(facedata);
+			fd->start = NULL;
+			fd->pat = NULL;
+			fd->totedgesel = totesel;
+			fd->face = face;
 		}
 	}
 
@@ -1006,16 +1011,17 @@ void bmo_subdivide_edges_exec(BMesh *bm, BMOperator *op)
 		copy_v3_v3(v->co, co);
 	}
 
-	i = 0;
-	for (i = 0; i < BLI_array_count(facedata); i++) {
-		face = facedata[i].face;
+	for (; !BLI_stack_is_empty(facedata); BLI_stack_discard(facedata)) {
+		SubDFaceData *fd = BLI_stack_peek(facedata);
+
+		face = fd->face;
 
 		/* figure out which pattern to use */
 		BLI_array_empty(verts);
 
-		pat = facedata[i].pat;
+		pat = fd->pat;
 
-		if (!pat && facedata[i].totedgesel == 2) {
+		if (!pat && fd->totedgesel == 2) {
 			int vlen;
 			
 			/* ok, no pattern.  we still may be able to do something */
@@ -1107,7 +1113,7 @@ void bmo_subdivide_edges_exec(BMesh *bm, BMOperator *op)
 			 * - concave corner of an ngon.
 			 * - 2 edges being used in 2+ ngons.
 			 */
-//			BM_face_legal_splits(face, loops_split, BLI_array_count(loops_split));
+//			BM_face_splits_check_legal(bm, face, loops_split, BLI_array_count(loops_split));
 
 			for (j = 0; j < BLI_array_count(loops_split); j++) {
 				if (loops_split[j][0]) {
@@ -1128,7 +1134,7 @@ void bmo_subdivide_edges_exec(BMesh *bm, BMOperator *op)
 
 		a = 0;
 		BM_ITER_ELEM_INDEX (l_new, &liter, face, BM_LOOPS_OF_FACE, j) {
-			if (l_new->v == facedata[i].start) {
+			if (l_new->v == fd->start) {
 				a = j + 1;
 				break;
 			}
@@ -1153,7 +1159,7 @@ void bmo_subdivide_edges_exec(BMesh *bm, BMOperator *op)
 
 	BM_data_layer_free_n(bm, &bm->vdata, CD_SHAPEKEY, params.shape_info.tmpkey);
 	
-	if (facedata) BLI_array_free(facedata);
+	BLI_stack_free(facedata);
 	if (edges) BLI_array_free(edges);
 	if (verts) BLI_array_free(verts);
 	BLI_array_free(loops_split);

@@ -41,6 +41,7 @@
 #include "BLI_math.h"
 #include "BLI_kdopbvh.h"
 #include "BLI_utildefines.h"
+#include "BLI_math_color.h"
 
 #include "DNA_key_types.h"
 #include "DNA_object_types.h"
@@ -145,12 +146,12 @@ void init_tex_mapping(TexMapping *texmap)
 		if (texmap->type == TEXMAP_TYPE_TEXTURE) {
 			/* to transform a texture, the inverse transform needs
 			 * to be applied to the texture coordinate */
-			mul_serie_m4(texmap->mat, tmat, rmat, smat, 0, 0, 0, 0, 0);
+			mul_m4_series(texmap->mat, tmat, rmat, smat);
 			invert_m4(texmap->mat);
 		}
 		else if (texmap->type == TEXMAP_TYPE_POINT) {
 			/* forward transform */
-			mul_serie_m4(texmap->mat, tmat, rmat, smat, 0, 0, 0, 0, 0);
+			mul_m4_series(texmap->mat, tmat, rmat, smat);
 		}
 		else if (texmap->type == TEXMAP_TYPE_VECTOR) {
 			/* no translation for vectors */
@@ -237,7 +238,7 @@ void init_colorband(ColorBand *coba, bool rangetype)
 	}
 	
 	coba->tot = 2;
-	
+	coba->color_mode = COLBAND_BLEND_RGB;
 }
 
 ColorBand *add_colorband(bool rangetype)
@@ -252,106 +253,209 @@ ColorBand *add_colorband(bool rangetype)
 
 /* ------------------------------------------------------------------------- */
 
+static float colorband_hue_interp(
+        const int ipotype_hue,
+        const float mfac, const float fac,
+        float h1, float h2)
+{
+	float h_interp;
+	int mode = 0;
+
+#define HUE_INTERP(h_a, h_b) ((mfac * (h_a)) + (fac * (h_b)))
+#define HUE_MOD(h) (((h) < 1.0f) ? (h) : (h) - 1.0f)
+
+	h1 = HUE_MOD(h1);
+	h2 = HUE_MOD(h2);
+
+	BLI_assert(h1 >= 0.0f && h1 < 1.0f);
+	BLI_assert(h2 >= 0.0f && h2 < 1.0f);
+
+	switch (ipotype_hue) {
+		case COLBAND_HUE_NEAR:
+		{
+			if      ((h1 < h2) && (h2 - h1) > +0.5f) mode = 1;
+			else if ((h1 > h2) && (h2 - h1) < -0.5f) mode = 2;
+			else                                     mode = 0;
+			break;
+		}
+		case COLBAND_HUE_FAR:
+		{
+			if      ((h1 < h2) && (h2 - h1) < +0.5f) mode = 1;
+			else if ((h1 > h2) && (h2 - h1) > -0.5f) mode = 2;
+			else                                     mode = 0;
+			break;
+		}
+		case COLBAND_HUE_CCW:
+		{
+			if (h1 > h2) mode = 2;
+			else         mode = 0;
+			break;
+		}
+		case COLBAND_HUE_CW:
+		{
+			if (h1 < h2) mode = 1;
+			else         mode = 0;
+			break;
+		}
+	}
+
+	switch (mode) {
+		case 0:
+			h_interp = HUE_INTERP(h1, h2);
+			break;
+		case 1:
+			h_interp = HUE_INTERP(h1 + 1.0f, h2);
+			h_interp = HUE_MOD(h_interp);
+			break;
+		case 2:
+			h_interp = HUE_INTERP(h1, h2 + 1.0f);
+			h_interp = HUE_MOD(h_interp);
+			break;
+	}
+
+	BLI_assert(h_interp >= 0.0f && h_interp < 1.0f);
+
+#undef HUE_INTERP
+#undef HUE_MOD
+
+	return h_interp;
+}
+
 bool do_colorband(const ColorBand *coba, float in, float out[4])
 {
 	const CBData *cbd1, *cbd2, *cbd0, *cbd3;
-	float fac, mfac, t[4];
+	float fac;
+	int ipotype;
 	int a;
 	
 	if (coba == NULL || coba->tot == 0) return 0;
 	
 	cbd1 = coba->data;
+
+	ipotype = (coba->color_mode == COLBAND_BLEND_RGB) ? coba->ipotype : COLBAND_INTERP_LINEAR;
+
 	if (coba->tot == 1) {
 		out[0] = cbd1->r;
 		out[1] = cbd1->g;
 		out[2] = cbd1->b;
 		out[3] = cbd1->a;
 	}
+	else if ((in <= cbd1->pos) && ELEM(ipotype, COLBAND_INTERP_LINEAR, COLBAND_INTERP_EASE)) {
+		out[0] = cbd1->r;
+		out[1] = cbd1->g;
+		out[2] = cbd1->b;
+		out[3] = cbd1->a;
+	}
 	else {
-		if (in <= cbd1->pos && coba->ipotype < 2) {
+		CBData left, right;
+
+		/* we're looking for first pos > in */
+		for (a = 0; a < coba->tot; a++, cbd1++) if (cbd1->pos > in) break;
+
+		if (a == coba->tot) {
+			cbd2 = cbd1 - 1;
+			right = *cbd2;
+			right.pos = 1.0f;
+			cbd1 = &right;
+		}
+		else if (a == 0) {
+			left = *cbd1;
+			left.pos = 0.0f;
+			cbd2 = &left;
+		}
+		else {
+			cbd2 = cbd1 - 1;
+		}
+
+		if ((in >= cbd1->pos) && ELEM(ipotype, COLBAND_INTERP_LINEAR, COLBAND_INTERP_EASE)) {
 			out[0] = cbd1->r;
 			out[1] = cbd1->g;
 			out[2] = cbd1->b;
 			out[3] = cbd1->a;
 		}
 		else {
-			CBData left, right;
-			
-			/* we're looking for first pos > in */
-			for (a = 0; a < coba->tot; a++, cbd1++) if (cbd1->pos > in) break;
-				
-			if (a == coba->tot) {
-				cbd2 = cbd1 - 1;
-				right = *cbd2;
-				right.pos = 1.0f;
-				cbd1 = &right;
-			}
-			else if (a == 0) {
-				left = *cbd1;
-				left.pos = 0.0f;
-				cbd2 = &left;
-			}
-			else {
-				cbd2 = cbd1 - 1;
-			}
-			
-			if (in >= cbd1->pos && coba->ipotype < 2) {
-				out[0] = cbd1->r;
-				out[1] = cbd1->g;
-				out[2] = cbd1->b;
-				out[3] = cbd1->a;
-			}
-			else {
-		
-				if (cbd2->pos != cbd1->pos)
-					fac = (in - cbd1->pos) / (cbd2->pos - cbd1->pos);
-				else {
-					/* was setting to 0.0 in 2.56 & previous, but this
-					 * is incorrect for the last element, see [#26732] */
-					fac = (a != coba->tot) ? 0.0f : 1.0f;
-				}
-				
-				if (coba->ipotype == 4) {
-					/* constant */
-					out[0] = cbd2->r;
-					out[1] = cbd2->g;
-					out[2] = cbd2->b;
-					out[3] = cbd2->a;
-					return 1;
-				}
-				
-				if (coba->ipotype >= 2) {
-					/* ipo from right to left: 3 2 1 0 */
-					
-					if (a >= coba->tot - 1) cbd0 = cbd1;
-					else cbd0 = cbd1 + 1;
-					if (a < 2) cbd3 = cbd2;
-					else cbd3 = cbd2 - 1;
-					
-					CLAMP(fac, 0.0f, 1.0f);
-					
-					if (coba->ipotype == 3)
-						key_curve_position_weights(fac, t, KEY_CARDINAL);
-					else
-						key_curve_position_weights(fac, t, KEY_BSPLINE);
 
-					out[0] = t[3] * cbd3->r + t[2] * cbd2->r + t[1] * cbd1->r + t[0] * cbd0->r;
-					out[1] = t[3] * cbd3->g + t[2] * cbd2->g + t[1] * cbd1->g + t[0] * cbd0->g;
-					out[2] = t[3] * cbd3->b + t[2] * cbd2->b + t[1] * cbd1->b + t[0] * cbd0->b;
-					out[3] = t[3] * cbd3->a + t[2] * cbd2->a + t[1] * cbd1->a + t[0] * cbd0->a;
-					CLAMP(out[0], 0.0f, 1.0f);
-					CLAMP(out[1], 0.0f, 1.0f);
-					CLAMP(out[2], 0.0f, 1.0f);
-					CLAMP(out[3], 0.0f, 1.0f);
+			if (cbd2->pos != cbd1->pos) {
+				fac = (in - cbd1->pos) / (cbd2->pos - cbd1->pos);
+			}
+			else {
+				/* was setting to 0.0 in 2.56 & previous, but this
+				 * is incorrect for the last element, see [#26732] */
+				fac = (a != coba->tot) ? 0.0f : 1.0f;
+			}
+
+			if (ipotype == COLBAND_INTERP_CONSTANT) {
+				/* constant */
+				out[0] = cbd2->r;
+				out[1] = cbd2->g;
+				out[2] = cbd2->b;
+				out[3] = cbd2->a;
+			}
+			else if (ipotype >= COLBAND_INTERP_B_SPLINE) {
+				/* ipo from right to left: 3 2 1 0 */
+				float t[4];
+
+				if (a >= coba->tot - 1) cbd0 = cbd1;
+				else cbd0 = cbd1 + 1;
+				if (a < 2) cbd3 = cbd2;
+				else cbd3 = cbd2 - 1;
+
+				CLAMP(fac, 0.0f, 1.0f);
+
+				if (ipotype == COLBAND_INTERP_CARDINAL) {
+					key_curve_position_weights(fac, t, KEY_CARDINAL);
 				}
 				else {
-				
-					if (coba->ipotype == 1) { /* EASE */
-						mfac = fac * fac;
-						fac = 3.0f * mfac - 2.0f * mfac * fac;
-					}
-					mfac = 1.0f - fac;
-					
+					key_curve_position_weights(fac, t, KEY_BSPLINE);
+				}
+
+				out[0] = t[3] * cbd3->r + t[2] * cbd2->r + t[1] * cbd1->r + t[0] * cbd0->r;
+				out[1] = t[3] * cbd3->g + t[2] * cbd2->g + t[1] * cbd1->g + t[0] * cbd0->g;
+				out[2] = t[3] * cbd3->b + t[2] * cbd2->b + t[1] * cbd1->b + t[0] * cbd0->b;
+				out[3] = t[3] * cbd3->a + t[2] * cbd2->a + t[1] * cbd1->a + t[0] * cbd0->a;
+				CLAMP(out[0], 0.0f, 1.0f);
+				CLAMP(out[1], 0.0f, 1.0f);
+				CLAMP(out[2], 0.0f, 1.0f);
+				CLAMP(out[3], 0.0f, 1.0f);
+			}
+			else {
+				float mfac;
+
+				if (ipotype == COLBAND_INTERP_EASE) {
+					mfac = fac * fac;
+					fac = 3.0f * mfac - 2.0f * mfac * fac;
+				}
+
+				mfac = 1.0f - fac;
+
+				if (UNLIKELY(coba->color_mode == COLBAND_BLEND_HSV)) {
+					float col1[3], col2[3];
+
+					rgb_to_hsv_v(&cbd1->r, col1);
+					rgb_to_hsv_v(&cbd2->r, col2);
+
+					out[0] = colorband_hue_interp(coba->ipotype_hue, mfac, fac, col1[0], col2[0]);
+					out[1] = mfac * col1[1] + fac * col2[1];
+					out[2] = mfac * col1[2] + fac * col2[2];
+					out[3] = mfac * cbd1->a + fac * cbd2->a;
+
+					hsv_to_rgb_v(out, out);
+				}
+				else if (UNLIKELY(coba->color_mode == COLBAND_BLEND_HSL)) {
+					float col1[3], col2[3];
+
+					rgb_to_hsl_v(&cbd1->r, col1);
+					rgb_to_hsl_v(&cbd2->r, col2);
+
+					out[0] = colorband_hue_interp(coba->ipotype_hue, mfac, fac, col1[0], col2[0]);
+					out[1] = mfac * col1[1] + fac * col2[1];
+					out[2] = mfac * col1[2] + fac * col2[2];
+					out[3] = mfac * cbd1->a + fac * cbd2->a;
+
+					hsl_to_rgb_v(out, out);
+				}
+				else {
+					/* COLBAND_BLEND_RGB */
 					out[0] = mfac * cbd1->r + fac * cbd2->r;
 					out[1] = mfac * cbd1->g + fac * cbd2->g;
 					out[2] = mfac * cbd1->b + fac * cbd2->b;
@@ -408,19 +512,18 @@ CBData *colorband_element_add(struct ColorBand *coba, float position)
 	if (coba->tot == MAXCOLORBAND) {
 		return NULL;
 	}
-	else if (coba->tot > 0) {
+	else {
 		CBData *xnew;
-		float col[4];
-
-		do_colorband(coba, position, col);
 
 		xnew = &coba->data[coba->tot];
 		xnew->pos = position;
 
-		xnew->r = col[0];
-		xnew->g = col[1];
-		xnew->b = col[2];
-		xnew->a = col[3];
+		if (coba->tot != 0) {
+			do_colorband(coba, position, &xnew->r);
+		}
+		else {
+			zero_v4(&xnew->r);
+		}
 	}
 
 	coba->tot++;
@@ -474,7 +577,8 @@ void BKE_texture_free(Tex *tex)
 
 void default_tex(Tex *tex)
 {
-	tex->type = TEX_CLOUDS;
+	tex->type = TEX_IMAGE;
+	tex->ima = NULL;
 	tex->stype = 0;
 	tex->flag = TEX_CHECKER_ODD;
 	tex->imaflag = TEX_INTERPOL | TEX_MIPMAP | TEX_USEALPHA;
@@ -592,7 +696,7 @@ Tex *add_texture(Main *bmain, const char *name)
 
 void default_mtex(MTex *mtex)
 {
-	mtex->texco = TEXCO_ORCO;
+	mtex->texco = TEXCO_UV;
 	mtex->mapto = MAP_COL;
 	mtex->object = NULL;
 	mtex->projx = PROJ_X;
@@ -705,6 +809,10 @@ MTex *add_mtex_id(ID *id, int slot)
 		MEM_freeN(mtex_ar[slot]);
 		mtex_ar[slot] = NULL;
 	}
+	else if (GS(id->name) == ID_MA) {
+		/* Reset this slot's ON/OFF toggle, for materials, when slot was empty. */
+		((Material *)id)->septex &= ~(1 << slot);
+	}
 
 	mtex_ar[slot] = add_mtex();
 
@@ -743,8 +851,7 @@ Tex *localize_texture(Tex *tex)
 {
 	Tex *texn;
 	
-	texn = BKE_libblock_copy(&tex->id);
-	BLI_remlink(&G.main->tex, texn);
+	texn = BKE_libblock_copy_nolib(&tex->id, false);
 	
 	/* image texture: BKE_texture_free also doesn't decrease */
 	
@@ -1174,8 +1281,11 @@ void set_current_material_texture(Material *ma, Tex *newtex)
 		id_us_min(&tex->id);
 
 		if (newtex) {
-			if (!ma->mtex[act])
+			if (!ma->mtex[act]) {
 				ma->mtex[act] = add_mtex();
+				/* Reset this slot's ON/OFF toggle, for materials, when slot was empty. */
+				ma->septex &= ~(1 << act);
+			}
 			
 			ma->mtex[act]->tex = newtex;
 			id_us_plus(&newtex->id);

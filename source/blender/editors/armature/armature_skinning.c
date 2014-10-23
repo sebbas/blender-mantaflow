@@ -180,15 +180,6 @@ static int dgroup_skinnable_cb(Object *ob, Bone *bone, void *datap)
 	return 0;
 }
 
-static void add_vgroups__mapFunc(void *userData, int index, const float co[3],
-                                 const float UNUSED(no_f[3]), const short UNUSED(no_s[3]))
-{
-	/* DerivedMesh mapFunc for getting final coords in weight paint mode */
-
-	float (*verts)[3] = userData;
-	copy_v3_v3(verts[index], co);
-}
-
 static void envelope_bone_weighting(Object *ob, Mesh *mesh, float (*verts)[3], int numbones, Bone **bonelist,
                                     bDeformGroup **dgrouplist, bDeformGroup **dgroupflip,
                                     float (*root)[3], float (*tip)[3], const int *selected, float scale)
@@ -200,10 +191,22 @@ static void envelope_bone_weighting(Object *ob, Mesh *mesh, float (*verts)[3], i
 	float distance;
 	int i, iflip, j;
 	bool use_topology = (mesh->editflag & ME_EDIT_MIRROR_TOPO) != 0;
+	bool use_mask = false;
+
+	if ((ob->mode & OB_MODE_WEIGHT_PAINT) &&
+	    (mesh->editflag & (ME_EDIT_PAINT_FACE_SEL | ME_EDIT_PAINT_VERT_SEL)))
+	{
+		use_mask = true;
+	}
 
 	/* for each vertex in the mesh */
 	for (i = 0; i < mesh->totvert; i++) {
-		iflip = (dgroupflip) ? mesh_get_x_mirror_vert(ob, i, use_topology) : 0;
+
+		if (use_mask && !(mesh->mvert[i].flag & SELECT)) {
+			continue;
+		}
+
+		iflip = (dgroupflip) ? mesh_get_x_mirror_vert(ob, i, use_topology) : -1;
 		
 		/* for each skinnable bone */
 		for (j = 0; j < numbones; ++j) {
@@ -224,7 +227,7 @@ static void envelope_bone_weighting(Object *ob, Mesh *mesh, float (*verts)[3], i
 				ED_vgroup_vert_remove(ob, dgroup, i);
 			
 			/* do same for mirror */
-			if (dgroupflip && dgroupflip[j] && iflip >= 0) {
+			if (dgroupflip && dgroupflip[j] && iflip != -1) {
 				if (distance != 0.0f)
 					ED_vgroup_vert_add(ob, dgroupflip[j], iflip, distance,
 					                   WEIGHT_REPLACE);
@@ -235,7 +238,8 @@ static void envelope_bone_weighting(Object *ob, Mesh *mesh, float (*verts)[3], i
 	}
 }
 
-static void add_verts_to_dgroups(ReportList *reports, Scene *scene, Object *ob, Object *par, int heat, bool mirror)
+static void add_verts_to_dgroups(ReportList *reports, Scene *scene, Object *ob, Object *par,
+                                 int heat, const bool mirror)
 {
 	/* This functions implements the automatic computation of vertex group
 	 * weights, either through envelopes or using a heat equilibrium.
@@ -362,7 +366,7 @@ static void add_verts_to_dgroups(ReportList *reports, Scene *scene, Object *ob, 
 		DerivedMesh *dm = mesh_get_derived_final(scene, ob, CD_MASK_BAREMESH);
 		
 		if (dm->foreachMappedVert) {
-			dm->foreachMappedVert(dm, add_vgroups__mapFunc, (void *)verts, DM_FOREACH_NOP);
+			mesh_get_mapped_verts_coords(dm, verts, mesh->totvert);
 			vertsfilled = 1;
 		}
 		
@@ -415,7 +419,8 @@ static void add_verts_to_dgroups(ReportList *reports, Scene *scene, Object *ob, 
 	MEM_freeN(verts);
 }
 
-void create_vgroups_from_armature(ReportList *reports, Scene *scene, Object *ob, Object *par, int mode, bool mirror)
+void create_vgroups_from_armature(ReportList *reports, Scene *scene, Object *ob, Object *par,
+                                  const int mode, const bool mirror)
 {
 	/* Lets try to create some vertex groups 
 	 * based on the bones of the parent armature.
@@ -436,7 +441,7 @@ void create_vgroups_from_armature(ReportList *reports, Scene *scene, Object *ob,
 			ED_vgroup_data_clamp_range(ob->data, defbase_tot);
 		}
 	}
-	else if (mode == ARM_GROUPS_ENVELOPE || mode == ARM_GROUPS_AUTO) {
+	else if (ELEM(mode, ARM_GROUPS_ENVELOPE, ARM_GROUPS_AUTO)) {
 		/* Traverse the bone list, trying to create vertex groups 
 		 * that are populated with the vertices for which the
 		 * bone is closest.

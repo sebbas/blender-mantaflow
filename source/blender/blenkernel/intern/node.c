@@ -174,7 +174,7 @@ static void node_set_typeinfo(const struct bContext *C, bNodeTree *ntree, bNode 
 {
 	/* for nodes saved in older versions storage can get lost, make undefined then */
 	if (node->flag & NODE_INIT) {
-		if (typeinfo->storagename[0] && !node->storage)
+		if (typeinfo && typeinfo->storagename[0] && !node->storage)
 			typeinfo = NULL;
 	}
 	
@@ -1205,13 +1205,13 @@ static bNodeTree *ntreeCopyTree_internal(bNodeTree *ntree, Main *bmain, bool do_
 	return newtree;
 }
 
-bNodeTree *ntreeCopyTree_ex(bNodeTree *ntree, const bool do_id_user)
+bNodeTree *ntreeCopyTree_ex(bNodeTree *ntree, Main *bmain, const bool do_id_user)
 {
-	return ntreeCopyTree_internal(ntree, G.main, do_id_user, true, true);
+	return ntreeCopyTree_internal(ntree, bmain, do_id_user, true, true);
 }
 bNodeTree *ntreeCopyTree(bNodeTree *ntree)
 {
-	return ntreeCopyTree_ex(ntree, true);
+	return ntreeCopyTree_ex(ntree, G.main, true);
 }
 
 /* use when duplicating scenes */
@@ -1777,7 +1777,7 @@ void ntreeFreeTree_ex(bNodeTree *ntree, const bool do_id_user)
 		if (tntree == ntree)
 			break;
 	if (tntree == NULL) {
-		BKE_libblock_free_data(&ntree->id);
+		BKE_libblock_free_data(G.main, &ntree->id);
 	}
 }
 /* same as ntreeFreeTree_ex but always manage users */
@@ -2682,16 +2682,12 @@ static unsigned int node_instance_hash_key(const void *key)
 	return ((const bNodeInstanceKey *)key)->value;
 }
 
-static int node_instance_hash_key_cmp(const void *a, const void *b)
+static bool node_instance_hash_key_cmp(const void *a, const void *b)
 {
 	unsigned int value_a = ((const bNodeInstanceKey *)a)->value;
 	unsigned int value_b = ((const bNodeInstanceKey *)b)->value;
-	if (value_a == value_b)
-		return 0;
-	else if (value_a < value_b)
-		return -1;
-	else
-		return 1;
+
+	return (value_a != value_b);
 }
 
 bNodeInstanceHash *BKE_node_instance_hash_new(const char *info)
@@ -3406,6 +3402,7 @@ static void registerCompositNodes(void)
 	register_node_type_cmp_inpaint();
 	register_node_type_cmp_despeckle();
 	register_node_type_cmp_defocus();
+	register_node_type_cmp_sunbeams();
 	
 	register_node_type_cmp_valtorgb();
 	register_node_type_cmp_rgbtobw();
@@ -3495,6 +3492,8 @@ static void registerShaderNodes(void)
 	register_node_type_sh_combrgb();
 	register_node_type_sh_sephsv();
 	register_node_type_sh_combhsv();
+	register_node_type_sh_sepxyz();
+	register_node_type_sh_combxyz();
 	register_node_type_sh_hue_sat();
 
 	register_node_type_sh_attribute();
@@ -3526,10 +3525,12 @@ static void registerShaderNodes(void)
 	register_node_type_sh_mix_shader();
 	register_node_type_sh_add_shader();
 	register_node_type_sh_uvmap();
+	register_node_type_sh_uvalongstroke();
 
 	register_node_type_sh_output_lamp();
 	register_node_type_sh_output_material();
 	register_node_type_sh_output_world();
+	register_node_type_sh_output_linestyle();
 
 	register_node_type_sh_tex_image();
 	register_node_type_sh_tex_environment();

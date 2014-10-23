@@ -47,6 +47,7 @@
 #include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_mesh.h"
+#include "BKE_paint.h"
 #include "BKE_report.h"
 #include "BKE_editmesh.h"
 
@@ -502,6 +503,12 @@ static int mesh_uv_texture_add_exec(bContext *C, wmOperator *UNUSED(op))
 	if (ED_mesh_uv_texture_add(me, NULL, true) == -1)
 		return OPERATOR_CANCELLED;
 
+	if (ob->mode & OB_MODE_TEXTURE_PAINT) {
+		Scene *scene = CTX_data_scene(C);
+		BKE_paint_proj_mesh_data_check(scene, ob, NULL, NULL, NULL, NULL);
+		WM_event_add_notifier(C, NC_SCENE | ND_TOOLSETTINGS, NULL);
+	}
+	
 	return OPERATOR_FINISHED;
 }
 
@@ -622,6 +629,12 @@ static int mesh_uv_texture_remove_exec(bContext *C, wmOperator *UNUSED(op))
 	if (!ED_mesh_uv_texture_remove_active(me))
 		return OPERATOR_CANCELLED;
 
+	if (ob->mode & OB_MODE_TEXTURE_PAINT) {
+		Scene *scene = CTX_data_scene(C);
+		BKE_paint_proj_mesh_data_check(scene, ob, NULL, NULL, NULL, NULL);
+		WM_event_add_notifier(C, NC_SCENE | ND_TOOLSETTINGS, NULL);
+	}
+	
 	return OPERATOR_FINISHED;
 }
 
@@ -878,17 +891,6 @@ static void mesh_add_verts(Mesh *mesh, int len)
 
 	/* set final vertex list size */
 	mesh->totvert = totvert;
-}
-
-void ED_mesh_transform(Mesh *me, float mat[4][4])
-{
-	int i;
-	MVert *mvert = me->mvert;
-
-	for (i = 0; i < me->totvert; i++, mvert++)
-		mul_m4_v3(mat, mvert->co);
-
-	/* don't update normals, caller can do this explicitly */
 }
 
 static void mesh_add_edges(Mesh *mesh, int len)

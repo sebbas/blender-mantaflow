@@ -112,6 +112,10 @@ void MESH_OT_screw(struct wmOperatorType *ot);
 /* *** editmesh_inset.c *** */
 void MESH_OT_inset(struct wmOperatorType *ot);
 
+/* *** editmesh_intersect.c *** */
+void MESH_OT_intersect(struct wmOperatorType *ot);
+void MESH_OT_face_split_by_edges(struct wmOperatorType *ot);
+
 
 /* *** editmesh_knife.c *** */
 void MESH_OT_knife_tool(struct wmOperatorType *ot);
@@ -128,10 +132,12 @@ void MESH_OT_loopcut(struct wmOperatorType *ot);
 
 /* *** editmesh_rip.c *** */
 void MESH_OT_rip(struct wmOperatorType *ot);
+void MESH_OT_rip_edge(struct wmOperatorType *ot);
 
 
 /* *** editmesh_select.c *** */
 void MESH_OT_select_similar(struct wmOperatorType *ot);
+void MESH_OT_select_similar_region(struct wmOperatorType *ot);
 void MESH_OT_select_mode(struct wmOperatorType *ot);
 void MESH_OT_loop_multi_select(struct wmOperatorType *ot);
 void MESH_OT_loop_select(struct wmOperatorType *ot);

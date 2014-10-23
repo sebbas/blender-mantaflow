@@ -25,6 +25,7 @@
 #include "BPy_Interface0DIterator.h"
 
 #include "../BPy_Convert.h"
+#include "../BPy_Interface1D.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,9 +71,10 @@ static int convert_nested_it(PyObject *obj, void *v)
 static int Interface0DIterator_init(BPy_Interface0DIterator *self, PyObject *args, PyObject *kwds)
 {
 	static const char *kwlist_1[] = {"it", NULL};
-	static const char *kwlist_2[] = {"brother", NULL};
+	static const char *kwlist_2[] = {"inter", NULL};
+	static const char *kwlist_3[] = {"brother", NULL};
 	Interface0DIteratorNested *nested_it;
-	PyObject *brother;
+	PyObject *brother, *inter;
 
 	if (PyArg_ParseTupleAndKeywords(args, kwds, "O&", (char **)kwlist_1, convert_nested_it, &nested_it)) {
 		self->if0D_it = new Interface0DIterator(nested_it->copy());
@@ -80,7 +82,14 @@ static int Interface0DIterator_init(BPy_Interface0DIterator *self, PyObject *arg
 		self->reversed = false;
 	}
 	else if (PyErr_Clear(),
-	         PyArg_ParseTupleAndKeywords(args, kwds, "O!", (char **)kwlist_2, &Interface0DIterator_Type, &brother))
+	         PyArg_ParseTupleAndKeywords(args, kwds, "O!", (char **)kwlist_2, &Interface1D_Type, &inter))
+	{
+		self->if0D_it = new Interface0DIterator(((BPy_Interface1D *)inter)->if1D->verticesBegin());
+		self->at_start = true;
+		self->reversed = false;
+	}
+	else if (PyErr_Clear(),
+	         PyArg_ParseTupleAndKeywords(args, kwds, "O!", (char **)kwlist_3, &Interface0DIterator_Type, &brother))
 	{
 		self->if0D_it = new Interface0DIterator(*(((BPy_Interface0DIterator *)brother)->if0D_it));
 		self->at_start = ((BPy_Interface0DIterator *)brother)->at_start;
@@ -115,14 +124,15 @@ static PyObject *Interface0DIterator_iternext(BPy_Interface0DIterator *self)
 			PyErr_SetNone(PyExc_StopIteration);
 			return NULL;
 		}
-		if (self->at_start)
+		else if (self->at_start) {
 			self->at_start = false;
+		}
+		else if (self->if0D_it->atLast()) {
+			PyErr_SetNone(PyExc_StopIteration);
+			return NULL;
+		}
 		else {
 			self->if0D_it->increment();
-			if (self->if0D_it->isEnd()) {
-				PyErr_SetNone(PyExc_StopIteration);
-				return NULL;
-			}
 		}
 	}
 	Interface0D *if0D = self->if0D_it->operator->();
@@ -132,9 +142,12 @@ static PyObject *Interface0DIterator_iternext(BPy_Interface0DIterator *self)
 /*----------------------Interface0DIterator get/setters ----------------------------*/
 
 PyDoc_STRVAR(Interface0DIterator_object_doc,
-"The Interface0D object currently pointed to by this iterator.\n"
+"The 0D object currently pointed to by this iterator.  Note that the object\n"
+"may be an instance of an Interface0D subclass. For example if the iterator\n"
+"has been created from the `vertices_begin()` method of the :class:`Stroke`\n"
+"class, the .object property refers to a :class:`StrokeVertex` object.\n"
 "\n"
-":type: :class:`Interface0D`");
+":type: :class:`Interface0D` or one of its subclasses.");
 
 static PyObject *Interface0DIterator_object_get(BPy_Interface0DIterator *self, void *UNUSED(closure))
 {
@@ -165,11 +178,24 @@ static PyObject *Interface0DIterator_u_get(BPy_Interface0DIterator *self, void *
 	return PyFloat_FromDouble(self->if0D_it->u());
 }
 
+PyDoc_STRVAR(Interface0DIterator_at_last_doc,
+"True if the interator points to the last valid element.\n"
+"For its counterpart (pointing to the first valid element), use it.is_begin.\n"
+"\n"
+":type: bool");
+
+static PyObject *Interface0DIterator_at_last_get(BPy_Interface0DIterator *self, void *UNUSED(closure))
+{
+	return PyBool_from_bool(self->if0D_it->atLast());
+}
+
 static PyGetSetDef BPy_Interface0DIterator_getseters[] = {
 	{(char *)"object", (getter)Interface0DIterator_object_get, (setter)NULL,
 	                   (char *)Interface0DIterator_object_doc, NULL},
 	{(char *)"t", (getter)Interface0DIterator_t_get, (setter)NULL, (char *)Interface0DIterator_t_doc, NULL},
 	{(char *)"u", (getter)Interface0DIterator_u_get, (setter)NULL, (char *)Interface0DIterator_u_doc, NULL},
+	{(char *)"at_last", (getter)Interface0DIterator_at_last_get, (setter)NULL,
+	                    (char *)Interface0DIterator_at_last_doc, NULL},
 	{NULL, NULL, NULL, NULL, NULL}  /* Sentinel */
 };
 

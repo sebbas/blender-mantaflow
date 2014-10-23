@@ -36,8 +36,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "PIL_time.h"
-
 #include "BLI_threads.h"
 #include "BLI_rand.h"
 #include "BLI_math.h"
@@ -97,15 +95,20 @@ void BLI_rng_srandom(RNG *rng, unsigned int seed)
 	BLI_rng_seed(rng, seed + hash[seed & 255]);
 }
 
-int BLI_rng_get_int(RNG *rng)
+BLI_INLINE void rng_step(RNG *rng)
 {
 	rng->X = (MULTIPLIER * rng->X + ADDEND) & MASK;
+}
+
+int BLI_rng_get_int(RNG *rng)
+{
+	rng_step(rng);
 	return (int) (rng->X >> 17);
 }
 
 unsigned int BLI_rng_get_uint(RNG *rng)
 {
-	rng->X = (MULTIPLIER * rng->X + ADDEND) & MASK;
+	rng_step(rng);
 	return (unsigned int) (rng->X >> 17);
 }
 
@@ -117,6 +120,13 @@ double BLI_rng_get_double(RNG *rng)
 float BLI_rng_get_float(RNG *rng)
 {
 	return (float) BLI_rng_get_int(rng) / 0x80000000;
+}
+
+void BLI_rng_get_float_unit_v2(RNG *rng, float v[2])
+{
+	float a = (float)(M_PI * 2.0) * BLI_rng_get_float(rng);
+	v[0] = cosf(a);
+	v[1] = sinf(a);
 }
 
 void BLI_rng_get_float_unit_v3(RNG *rng, float v[3])
@@ -162,10 +172,9 @@ void BLI_rng_shuffle_array(RNG *rng, void *data, unsigned int elem_size_i, unsig
 
 void BLI_rng_skip(RNG *rng, int n)
 {
-	int i;
-
-	for (i = 0; i < n; i++)
-		BLI_rng_get_int(rng);
+	while (n--) {
+		rng_step(rng);
+	}
 }
 
 /***/
@@ -234,5 +243,31 @@ int BLI_thread_rand(int thread)
 float BLI_thread_frand(int thread)
 {
 	return BLI_rng_get_float(&rng_tab[thread]);
+}
+
+struct RNG_THREAD_ARRAY {
+	RNG rng_tab[BLENDER_MAX_THREADS];
+};
+
+RNG_THREAD_ARRAY *BLI_rng_threaded_new(void)
+{
+	unsigned int i;
+	RNG_THREAD_ARRAY *rngarr = MEM_mallocN(sizeof(RNG_THREAD_ARRAY), "random_array");
+	
+	for (i = 0; i < BLENDER_MAX_THREADS; i++) {
+		BLI_rng_srandom(&rngarr->rng_tab[i], (unsigned int)clock());
+	}
+	
+	return rngarr;
+}
+
+void BLI_rng_threaded_free(struct RNG_THREAD_ARRAY *rngarr)
+{
+	MEM_freeN(rngarr);
+}
+
+int BLI_rng_thread_rand(RNG_THREAD_ARRAY *rngarr, int thread)
+{
+	return BLI_rng_get_int(&rngarr->rng_tab[thread]);
 }
 

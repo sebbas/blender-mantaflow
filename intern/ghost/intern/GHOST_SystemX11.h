@@ -34,7 +34,6 @@
 #define __GHOST_SYSTEMX11_H__
 
 #include <X11/Xlib.h>
-#include <GL/glx.h>
 
 #include "GHOST_System.h"
 #include "../GHOST_Types.h"
@@ -355,6 +354,10 @@ private:
 	/* to prevent multiple warp, we store the time of the last warp event
 	 *  and stop accumulating all events generated before that */
 	Time m_last_warp;
+
+	/* detect autorepeat glitch */
+	unsigned int m_last_release_keycode;
+	Time m_last_release_time;
 
 	/**
 	 * Return the ghost window associated with the

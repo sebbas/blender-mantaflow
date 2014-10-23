@@ -70,18 +70,24 @@ void carve_getRescaleMinMax(const carve::mesh::MeshSet<3> *left,
                             carve::geom3d::Vector *min,
                             carve::geom3d::Vector *max);
 
-bool carve_unionIntersections(carve::csg::CSG *csg,
-                              carve::mesh::MeshSet<3> **left_r,
-                              carve::mesh::MeshSet<3> **right_r);
+typedef void (*UnionIntersectionsCallback) (const carve::mesh::MeshSet<3> *left,
+                                            const carve::mesh::MeshSet<3> *right,
+                                            void *userdata);
 
-bool carve_checkPolyPlanarAndGetNormal(const std::vector<carve::geom3d::Vector> &vertices,
+void carve_unionIntersections(carve::csg::CSG *csg,
+                              carve::mesh::MeshSet<3> **left_r,
+                              carve::mesh::MeshSet<3> **right_r,
+                              UnionIntersectionsCallback callback,
+                              void *user_data);
+
+bool carve_checkPolyPlanarAndGetNormal(const std::vector<carve::mesh::MeshSet<3>::vertex_t> &vertex_storage,
                                        const int verts_per_poly,
                                        const int *verts_of_poly,
                                        carve::math::Matrix3 *axis_matrix_r);
 
 int carve_triangulatePoly(struct ImportMeshData *import_data,
                           CarveMeshImporter *mesh_importer,
-                          const std::vector<carve::geom3d::Vector> &vertices,
+                          const std::vector<carve::mesh::MeshSet<3>::vertex_t> &vertex_storage,
                           const int verts_per_poly,
                           const int *verts_of_poly,
                           const carve::math::Matrix3 &axis_matrix,

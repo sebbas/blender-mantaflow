@@ -139,9 +139,11 @@ static void rna_Mesh_calc_smooth_groups(Mesh *mesh, int use_bitflags, int *r_pol
 	                    r_group_total, use_bitflags);
 }
 
-static void rna_Mesh_transform(Mesh *mesh, float *mat)
+static void rna_Mesh_transform(Mesh *mesh, float *mat, int shape_keys)
 {
-	ED_mesh_transform(mesh, (float (*)[4])mat);
+	BKE_mesh_transform(mesh, (float (*)[4])mat, shape_keys);
+
+	DAG_id_tag_update(&mesh->id, 0);
 }
 
 #else
@@ -155,6 +157,7 @@ void RNA_api_mesh(StructRNA *srna)
 	RNA_def_function_ui_description(func, "Transform mesh vertices by a matrix");
 	parm = RNA_def_float_matrix(func, "matrix", 4, 4, NULL, 0.0f, 0.0f, "", "Matrix", 0.0f, 0.0f);
 	RNA_def_property_flag(parm, PROP_REQUIRED);
+	RNA_def_boolean(func, "shape_keys", 0, "", "Transform Shape Keys");
 
 	func = RNA_def_function(srna, "calc_normals", "BKE_mesh_calc_normals");
 	RNA_def_function_ui_description(func, "Calculate vertex normals");
@@ -206,9 +209,15 @@ void RNA_api_mesh(StructRNA *srna)
 	RNA_def_function_return(func, parm);
 
 	func = RNA_def_function(srna, "validate", "BKE_mesh_validate");
-	RNA_def_function_ui_description(func, "validate geometry, return True when the mesh has had "
+	RNA_def_function_ui_description(func, "Validate geometry, return True when the mesh has had "
 	                                "invalid geometry corrected/removed");
 	RNA_def_boolean(func, "verbose", 0, "Verbose", "Output information about the errors found");
+	parm = RNA_def_boolean(func, "result", 0, "Result", "");
+	RNA_def_function_return(func, parm);
+
+	func = RNA_def_function(srna, "validate_material_indices", "BKE_mesh_validate_material_indices");
+	RNA_def_function_ui_description(func, "Validate material indices of polygons, return True when the mesh has had "
+	                                "invalid indices corrected (to default 0)");
 	parm = RNA_def_boolean(func, "result", 0, "Result", "");
 	RNA_def_function_return(func, parm);
 }

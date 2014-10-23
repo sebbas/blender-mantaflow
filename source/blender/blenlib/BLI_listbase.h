@@ -67,17 +67,19 @@ void *BLI_poptail(ListBase *listbase) ATTR_NONNULL(1);
 void BLI_addhead(struct ListBase *listbase, void *vlink) ATTR_NONNULL(1);
 void BLI_insertlinkbefore(struct ListBase *listbase, void *vnextlink, void *vnewlink) ATTR_NONNULL(1);
 void BLI_insertlinkafter(struct ListBase *listbase, void *vprevlink, void *vnewlink) ATTR_NONNULL(1);
-void BLI_sortlist(struct ListBase *listbase, int (*cmp)(void *, void *)) ATTR_NONNULL(1, 2);
-void BLI_sortlist_r(ListBase *listbase, void *thunk, int (*cmp)(void *, void *, void *)) ATTR_NONNULL(1, 3);
+void BLI_sortlist(struct ListBase *listbase, int (*cmp)(const void *, const void *)) ATTR_NONNULL(1, 2);
+void BLI_sortlist_r(ListBase *listbase, void *thunk, int (*cmp)(void *, const void *, const void *)) ATTR_NONNULL(1, 3);
 void BLI_freelist(struct ListBase *listbase) ATTR_NONNULL(1);
 int BLI_countlist(const struct ListBase *listbase) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
 void BLI_freelinkN(struct ListBase *listbase, void *vlink) ATTR_NONNULL(1);
 
+void BLI_listbase_swaplinks(struct ListBase *listbase, void *vlinka, void *vlinkb) ATTR_NONNULL(1, 2);
+
 void BLI_movelisttolist(struct ListBase *dst, struct ListBase *src) ATTR_NONNULL(1, 2);
 void BLI_duplicatelist(struct ListBase *dst, const struct ListBase *src) ATTR_NONNULL(1, 2);
-void BLI_reverselist(struct ListBase *lb) ATTR_NONNULL(1);
-void BLI_rotatelist_first(struct ListBase *lb, void *vlink) ATTR_NONNULL(1, 2);
-void BLI_rotatelist_last(struct ListBase *lb, void *vlink) ATTR_NONNULL(1, 2);
+void BLI_listbase_reverse(struct ListBase *lb) ATTR_NONNULL(1);
+void BLI_listbase_rotate_first(struct ListBase *lb, void *vlink) ATTR_NONNULL(1, 2);
+void BLI_listbase_rotate_last(struct ListBase *lb, void *vlink) ATTR_NONNULL(1, 2);
 
 /**
  * Utility functions to avoid first/last references inline all over.
@@ -95,27 +97,27 @@ struct LinkData *BLI_genericNodeN(void *data);
  *
  * \code{.c}
  *
- * LISTBASE_CIRCULAR_FORWARD_BEGIN (listbase, item, item_init) {
+ * BLI_LISTBASE_CIRCULAR_FORWARD_BEGIN (listbase, item, item_init) {
  *     ...operate on marker...
  * }
- * LISTBASE_CIRCULAR_FORWARD_END (listbase, item, item_init);
+ * BLI_LISTBASE_CIRCULAR_FORWARD_END (listbase, item, item_init);
  *
  * \endcode
  */
-#define LISTBASE_CIRCULAR_FORWARD_BEGIN(lb, lb_iter, lb_init) \
+#define BLI_LISTBASE_CIRCULAR_FORWARD_BEGIN(lb, lb_iter, lb_init) \
 if ((lb)->first && (lb_init || (lb_init = (lb)->first))) { \
 	lb_iter = lb_init; \
 	do {
-#define LISTBASE_CIRCULAR_FORWARD_END(lb, lb_iter, lb_init) \
+#define BLI_LISTBASE_CIRCULAR_FORWARD_END(lb, lb_iter, lb_init) \
 	} while ((lb_iter  = (lb_iter)->next ? (lb_iter)->next : (lb)->first), \
 	         (lb_iter != lb_init)); \
 }
 
-#define LISTBASE_CIRCULAR_BACKWARD_BEGIN(lb, lb_iter, lb_init) \
+#define BLI_LISTBASE_CIRCULAR_BACKWARD_BEGIN(lb, lb_iter, lb_init) \
 if ((lb)->last && (lb_init || (lb_init = (lb)->last))) { \
 	lb_iter = lb_init; \
 	do {
-#define LISTBASE_CIRCULAR_BACKWARD_END(lb, lb_iter, lb_init) \
+#define BLI_LISTBASE_CIRCULAR_BACKWARD_END(lb, lb_iter, lb_init) \
 	} while ((lb_iter  = (lb_iter)->prev ? (lb_iter)->prev : (lb)->last), \
 	         (lb_iter != lb_init)); \
 }

@@ -40,12 +40,12 @@
 #include <string>
 
 #include "ceres/internal/port.h"
+#include "ceres/internal/disable_warnings.h"
 
 namespace ceres {
 
 // Basic integer types. These typedefs are in the Ceres namespace to avoid
 // conflicts with other packages having similar typedefs.
-typedef short int16;
 typedef int   int32;
 
 // Argument type used in interfaces that can optionally take ownership
@@ -150,8 +150,14 @@ enum SparseLinearAlgebraLibraryType {
   // minimum degree ordering.
   SUITE_SPARSE,
 
-  // A lightweight replacment for SuiteSparse.
-  CX_SPARSE
+  // A lightweight replacment for SuiteSparse, which does not require
+  // a LAPACK/BLAS implementation. Consequently, its performance is
+  // also a bit lower than SuiteSparse.
+  CX_SPARSE,
+
+  // Eigen's sparse linear algebra routines. In particular Ceres uses
+  // the Simplicial LDLT routines.
+  EIGEN_SPARSE
 };
 
 enum DenseLinearAlgebraLibraryType {
@@ -247,7 +253,7 @@ enum LineSearchDirectionType {
 // details see Numerical Optimization by Nocedal & Wright.
 enum NonlinearConjugateGradientType {
   FLETCHER_REEVES,
-  POLAK_RIBIRERE,
+  POLAK_RIBIERE,
   HESTENES_STIEFEL,
 };
 
@@ -306,7 +312,7 @@ enum TerminationType {
   // by the user was satisfied.
   //
   // 1.  (new_cost - old_cost) < function_tolerance * old_cost;
-  // 2.  max_i |gradient_i| < gradient_tolerance * max_i|initial_gradient_i|
+  // 2.  max_i |gradient_i| < gradient_tolerance
   // 3.  |step|_2 <= parameter_tolerance * ( |x|_2 +  parameter_tolerance)
   //
   // The user's parameter blocks will be updated with the solution.
@@ -379,9 +385,9 @@ enum DumpFormatType {
   TEXTFILE
 };
 
-// For SizedCostFunction and AutoDiffCostFunction, DYNAMIC can be specified for
-// the number of residuals. If specified, then the number of residuas for that
-// cost function can vary at runtime.
+// For SizedCostFunction and AutoDiffCostFunction, DYNAMIC can be
+// specified for the number of residuals. If specified, then the
+// number of residuas for that cost function can vary at runtime.
 enum DimensionType {
   DYNAMIC = -1
 };
@@ -399,75 +405,83 @@ enum LineSearchInterpolationType {
 
 enum CovarianceAlgorithmType {
   DENSE_SVD,
-  SPARSE_CHOLESKY,
-  SPARSE_QR
+  SUITE_SPARSE_QR,
+  EIGEN_SPARSE_QR
 };
 
-const char* LinearSolverTypeToString(LinearSolverType type);
-bool StringToLinearSolverType(string value, LinearSolverType* type);
+CERES_EXPORT const char* LinearSolverTypeToString(
+    LinearSolverType type);
+CERES_EXPORT bool StringToLinearSolverType(string value,
+                                           LinearSolverType* type);
 
-const char* PreconditionerTypeToString(PreconditionerType type);
-bool StringToPreconditionerType(string value, PreconditionerType* type);
+CERES_EXPORT const char* PreconditionerTypeToString(PreconditionerType type);
+CERES_EXPORT bool StringToPreconditionerType(string value,
+                                             PreconditionerType* type);
 
-const char* VisibilityClusteringTypeToString(VisibilityClusteringType type);
-bool StringToVisibilityClusteringType(string value,
+CERES_EXPORT const char* VisibilityClusteringTypeToString(
+    VisibilityClusteringType type);
+CERES_EXPORT bool StringToVisibilityClusteringType(string value,
                                       VisibilityClusteringType* type);
 
-const char* SparseLinearAlgebraLibraryTypeToString(
+CERES_EXPORT const char* SparseLinearAlgebraLibraryTypeToString(
     SparseLinearAlgebraLibraryType type);
-bool StringToSparseLinearAlgebraLibraryType(
+CERES_EXPORT bool StringToSparseLinearAlgebraLibraryType(
     string value,
     SparseLinearAlgebraLibraryType* type);
 
-const char* DenseLinearAlgebraLibraryTypeToString(
+CERES_EXPORT const char* DenseLinearAlgebraLibraryTypeToString(
     DenseLinearAlgebraLibraryType type);
-bool StringToDenseLinearAlgebraLibraryType(
+CERES_EXPORT bool StringToDenseLinearAlgebraLibraryType(
     string value,
     DenseLinearAlgebraLibraryType* type);
 
-const char* TrustRegionStrategyTypeToString(TrustRegionStrategyType type);
-bool StringToTrustRegionStrategyType(string value,
+CERES_EXPORT const char* TrustRegionStrategyTypeToString(
+    TrustRegionStrategyType type);
+CERES_EXPORT bool StringToTrustRegionStrategyType(string value,
                                      TrustRegionStrategyType* type);
 
-const char* DoglegTypeToString(DoglegType type);
-bool StringToDoglegType(string value, DoglegType* type);
+CERES_EXPORT const char* DoglegTypeToString(DoglegType type);
+CERES_EXPORT bool StringToDoglegType(string value, DoglegType* type);
 
-const char* MinimizerTypeToString(MinimizerType type);
-bool StringToMinimizerType(string value, MinimizerType* type);
+CERES_EXPORT const char* MinimizerTypeToString(MinimizerType type);
+CERES_EXPORT bool StringToMinimizerType(string value, MinimizerType* type);
 
-const char* LineSearchDirectionTypeToString(LineSearchDirectionType type);
-bool StringToLineSearchDirectionType(string value,
+CERES_EXPORT const char* LineSearchDirectionTypeToString(
+    LineSearchDirectionType type);
+CERES_EXPORT bool StringToLineSearchDirectionType(string value,
                                      LineSearchDirectionType* type);
 
-const char* LineSearchTypeToString(LineSearchType type);
-bool StringToLineSearchType(string value, LineSearchType* type);
+CERES_EXPORT const char* LineSearchTypeToString(LineSearchType type);
+CERES_EXPORT bool StringToLineSearchType(string value, LineSearchType* type);
 
-const char* NonlinearConjugateGradientTypeToString(
+CERES_EXPORT const char* NonlinearConjugateGradientTypeToString(
     NonlinearConjugateGradientType type);
-bool StringToNonlinearConjugateGradientType(
+CERES_EXPORT bool StringToNonlinearConjugateGradientType(
     string value,
     NonlinearConjugateGradientType* type);
 
-const char* LineSearchInterpolationTypeToString(
+CERES_EXPORT const char* LineSearchInterpolationTypeToString(
     LineSearchInterpolationType type);
-bool StringToLineSearchInterpolationType(
+CERES_EXPORT bool StringToLineSearchInterpolationType(
     string value,
     LineSearchInterpolationType* type);
 
-const char* CovarianceAlgorithmTypeToString(
+CERES_EXPORT const char* CovarianceAlgorithmTypeToString(
     CovarianceAlgorithmType type);
-bool StringToCovarianceAlgorithmType(
+CERES_EXPORT bool StringToCovarianceAlgorithmType(
     string value,
     CovarianceAlgorithmType* type);
 
-const char* TerminationTypeToString(TerminationType type);
+CERES_EXPORT const char* TerminationTypeToString(TerminationType type);
 
-bool IsSchurType(LinearSolverType type);
-bool IsSparseLinearAlgebraLibraryTypeAvailable(
+CERES_EXPORT bool IsSchurType(LinearSolverType type);
+CERES_EXPORT bool IsSparseLinearAlgebraLibraryTypeAvailable(
     SparseLinearAlgebraLibraryType type);
-bool IsDenseLinearAlgebraLibraryTypeAvailable(
+CERES_EXPORT bool IsDenseLinearAlgebraLibraryTypeAvailable(
     DenseLinearAlgebraLibraryType type);
 
 }  // namespace ceres
+
+#include "ceres/internal/reenable_warnings.h"
 
 #endif  // CERES_PUBLIC_TYPES_H_

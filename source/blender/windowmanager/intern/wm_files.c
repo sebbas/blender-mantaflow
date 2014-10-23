@@ -171,6 +171,28 @@ static void wm_window_match_init(bContext *C, ListBase *wmlist)
 #endif
 }
 
+static void wm_window_substitute_old(wmWindowManager *wm, wmWindow *oldwin, wmWindow *win)
+{
+	win->ghostwin = oldwin->ghostwin;
+	win->active = oldwin->active;
+	if (win->active)
+		wm->winactive = win;
+
+	if (!G.background) /* file loading in background mode still calls this */
+		GHOST_SetWindowUserData(win->ghostwin, win);    /* pointer back */
+
+	oldwin->ghostwin = NULL;
+
+	win->eventstate = oldwin->eventstate;
+	oldwin->eventstate = NULL;
+
+	/* ensure proper screen rescaling */
+	win->sizex = oldwin->sizex;
+	win->sizey = oldwin->sizey;
+	win->posx = oldwin->posx;
+	win->posy = oldwin->posy;
+}
+
 /* match old WM with new, 4 cases:
  * 1- no current wm, no read wm: make new default
  * 2- no current wm, but read wm: that's OK, do nothing
@@ -224,6 +246,8 @@ static void wm_window_match_do(bContext *C, ListBase *oldwmlist)
 			ED_screens_initialize(G.main->wm.first);
 		}
 		else {
+			bool has_match = false;
+
 			/* what if old was 3, and loaded 1? */
 			/* this code could move to setup_appdata */
 			oldwm = oldwmlist->first;
@@ -243,33 +267,27 @@ static void wm_window_match_do(bContext *C, ListBase *oldwmlist)
 			/* ensure making new keymaps and set space types */
 			wm->initialized = 0;
 			wm->winactive = NULL;
-			
+
 			/* only first wm in list has ghostwins */
 			for (win = wm->windows.first; win; win = win->next) {
 				for (oldwin = oldwm->windows.first; oldwin; oldwin = oldwin->next) {
-					
+
 					if (oldwin->winid == win->winid) {
-						win->ghostwin = oldwin->ghostwin;
-						win->active = oldwin->active;
-						if (win->active)
-							wm->winactive = win;
+						has_match = true;
 
-						if (!G.background) /* file loading in background mode still calls this */
-							GHOST_SetWindowUserData(win->ghostwin, win);    /* pointer back */
-
-						oldwin->ghostwin = NULL;
-						
-						win->eventstate = oldwin->eventstate;
-						oldwin->eventstate = NULL;
-						
-						/* ensure proper screen rescaling */
-						win->sizex = oldwin->sizex;
-						win->sizey = oldwin->sizey;
-						win->posx = oldwin->posx;
-						win->posy = oldwin->posy;
+						wm_window_substitute_old(wm, oldwin, win);
 					}
 				}
 			}
+
+			/* make sure at least one window is kept open so we don't lose the context, check T42303 */
+			if (!has_match) {
+				oldwin = oldwm->windows.first;
+				win = wm->windows.first;
+
+				wm_window_substitute_old(wm, oldwin, win);
+			}
+
 			wm_close_and_free_all(C, oldwmlist);
 		}
 	}
@@ -278,11 +296,13 @@ static void wm_window_match_do(bContext *C, ListBase *oldwmlist)
 /* in case UserDef was read, we re-initialize all, and do versioning */
 static void wm_init_userdef(bContext *C, const bool from_memory)
 {
+	Main *bmain = CTX_data_main(C);
+
 	/* versioning is here */
 	UI_init_userdef();
 	
 	MEM_CacheLimiter_set_maximum(((size_t)U.memcachelimit) * 1024 * 1024);
-	sound_init(CTX_data_main(C));
+	sound_init(bmain);
 
 	/* needed so loading a file from the command line respects user-pref [#26156] */
 	BKE_BIT_TEST_SET(G.fileflags, U.flag & USER_FILENOUI, G_FILE_NO_UI);
@@ -295,11 +315,11 @@ static void wm_init_userdef(bContext *C, const bool from_memory)
 
 	/* avoid re-saving for every small change to our prefs, allow overrides */
 	if (from_memory) {
-		UI_init_userdef_factory();
+		BLO_update_defaults_userpref_blend();
 	}
 
 	/* update tempdir from user preferences */
-	BLI_init_temporary_dir(U.tempdir);
+	BLI_temp_dir_init(U.tempdir);
 
 	BKE_userdef_state();
 }
@@ -457,6 +477,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 #endif
 
 		/* important to do before NULL'ing the context */
+		BLI_callback_exec(CTX_data_main(C), NULL, BLI_CB_EVT_VERSION_UPDATE);
 		BLI_callback_exec(CTX_data_main(C), NULL, BLI_CB_EVT_LOAD_POST);
 
 		if (!G.background) {
@@ -591,7 +612,7 @@ int wm_homefile_read(bContext *C, ReportList *reports, bool from_memory, const c
 		if (BLI_listbase_is_empty(&wmbase)) {
 			wm_clear_default_size(C);
 		}
-		BLI_init_temporary_dir(U.tempdir);
+		BLI_temp_dir_init(U.tempdir);
 
 #ifdef WITH_PYTHON_SECURITY
 		/* use alternative setting for security nuts
@@ -648,6 +669,7 @@ int wm_homefile_read(bContext *C, ReportList *reports, bool from_memory, const c
 #endif
 
 	/* important to do before NULL'ing the context */
+	BLI_callback_exec(CTX_data_main(C), NULL, BLI_CB_EVT_VERSION_UPDATE);
 	BLI_callback_exec(CTX_data_main(C), NULL, BLI_CB_EVT_LOAD_POST);
 
 	WM_event_add_notifier(C, NC_WM | ND_FILEREAD, NULL);
@@ -1058,14 +1080,14 @@ void wm_autosave_location(char *filepath)
 	 * BLI_make_file_string will create string that has it most likely on C:\
 	 * through get_default_root().
 	 * If there is no C:\tmp autosave fails. */
-	if (!BLI_exists(BLI_temporary_dir())) {
+	if (!BLI_exists(BLI_temp_dir_base())) {
 		savedir = BLI_get_folder_create(BLENDER_USER_AUTOSAVE, NULL);
 		BLI_make_file_string("/", filepath, savedir, pidstr);
 		return;
 	}
 #endif
 
-	BLI_make_file_string("/", filepath, BLI_temporary_dir(), pidstr);
+	BLI_make_file_string("/", filepath, BLI_temp_dir_base(), pidstr);
 }
 
 void WM_autosave_init(wmWindowManager *wm)
@@ -1129,7 +1151,7 @@ void wm_autosave_delete(void)
 
 	if (BLI_exists(filename)) {
 		char str[FILE_MAX];
-		BLI_make_file_string("/", str, BLI_temporary_dir(), BLENDER_QUIT_FILE);
+		BLI_make_file_string("/", str, BLI_temp_dir_base(), BLENDER_QUIT_FILE);
 
 		/* if global undo; remove tempsave, otherwise rename */
 		if (U.uiflag & USER_GLOBALUNDO) BLI_delete(filename, false, false);

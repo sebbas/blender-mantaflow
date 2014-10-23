@@ -587,7 +587,7 @@ void ui_draw_but_WAVEFORM(ARegion *ar, uiBut *but, uiWidgetColors *UNUSED(wcol),
 	int i, c;
 	float w, w3, h, alpha, yofs;
 	GLint scissor[4];
-	float colors[3][3] = MAT3_UNITY;
+	float colors[3][3];
 	float colorsycc[3][3] = {{1, 0, 1}, {1, 1, 0}, {0, 1, 1}};
 	float colors_alpha[3][3], colorsycc_alpha[3][3]; /* colors  pre multiplied by alpha for speed up */
 	float min, max;
@@ -609,6 +609,8 @@ void ui_draw_but_WAVEFORM(ARegion *ar, uiBut *but, uiWidgetColors *UNUSED(wcol),
 	/* log scale for alpha */
 	alpha = scopes->wavefrm_alpha * scopes->wavefrm_alpha;
 	
+	unit_m3(colors);
+
 	for (c = 0; c < 3; c++) {
 		for (i = 0; i < 3; i++) {
 			colors_alpha[c][i] = colors[c][i] * alpha;
@@ -693,11 +695,11 @@ void ui_draw_but_WAVEFORM(ARegion *ar, uiBut *but, uiWidgetColors *UNUSED(wcol),
 		}
 
 		/* RGB / YCC (3 channels) */
-		else if (ELEM4(scopes->wavefrm_mode,
-		               SCOPES_WAVEFRM_RGB,
-		               SCOPES_WAVEFRM_YCC_601,
-		               SCOPES_WAVEFRM_YCC_709,
-		               SCOPES_WAVEFRM_YCC_JPEG))
+		else if (ELEM(scopes->wavefrm_mode,
+		              SCOPES_WAVEFRM_RGB,
+		              SCOPES_WAVEFRM_YCC_601,
+		              SCOPES_WAVEFRM_YCC_709,
+		              SCOPES_WAVEFRM_YCC_JPEG))
 		{
 			int rgb = (scopes->wavefrm_mode == SCOPES_WAVEFRM_RGB);
 			
@@ -1026,13 +1028,13 @@ static void ui_draw_colorband_handle(
 	if (active)
 		glColor3ub(196, 196, 196);
 	else
-		glColor3ub(128, 128, 128);
+		glColor3ub(96, 96, 96);
 	ui_draw_colorband_handle_tri(x, y1 + height, half_width, half_width, true);
 
 	if (active)
 		glColor3ub(255, 255, 255);
 	else
-		glColor3ub(196, 196, 196);
+		glColor3ub(128, 128, 128);
 	ui_draw_colorband_handle_tri_hlight(x, y1 + height - 1, (half_width - 1), (half_width - 1));
 
 	glColor3ub(0, 0, 0);
@@ -1149,9 +1151,11 @@ void ui_draw_but_COLORBAND(uiBut *but, uiWidgetColors *UNUSED(wcol), const rcti 
 	}
 
 	/* layer: active handle */
-	cbd = &coba->data[coba->cur];
-	pos = x1 + cbd->pos * (sizex - 1) + 1;
-	ui_draw_colorband_handle(rect, pos, &cbd->r, display, true);
+	if (coba->tot != 0) {
+		cbd = &coba->data[coba->cur];
+		pos = x1 + cbd->pos * (sizex - 1) + 1;
+		ui_draw_colorband_handle(rect, pos, &cbd->r, display, true);
+	}
 }
 
 void ui_draw_but_NORMAL(uiBut *but, uiWidgetColors *wcol, const rcti *rect)
@@ -1324,9 +1328,9 @@ void ui_draw_but_CURVE(ARegion *ar, uiBut *but, uiWidgetColors *wcol, const rcti
 		float col[3] = {0.0f, 0.0f, 0.0f}; /* dummy arg */
 
 		grid.xmin = rect->xmin + zoomx * (-offsx);
-		grid.xmax = rect->xmax + zoomx * (-offsx);
+		grid.xmax = grid.xmin + zoomx;
 		grid.ymin = rect->ymin + zoomy * (-offsy);
-		grid.ymax = rect->ymax + zoomy * (-offsy);
+		grid.ymax = grid.ymin + zoomy;
 
 		ui_draw_gradient(&grid, col, UI_GRAD_H, 1.0f);
 

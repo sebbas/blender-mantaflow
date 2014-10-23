@@ -56,7 +56,7 @@ static void recount_totsels(BMesh *bm)
 	tots[1] = &bm->totedgesel;
 	tots[2] = &bm->totfacesel;
 
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(static) if (bm->totvert + bm->totedge + bm->totface >= BM_OMP_LIMIT)
 	for (i = 0; i < 3; i++) {
 		BMIter iter;
 		BMElem *ele;
@@ -537,7 +537,7 @@ void BM_mesh_select_mode_set(BMesh *bm, int selectmode)
  * counts number of elements with flag enabled/disabled
  */
 static int bm_mesh_flag_count(BMesh *bm, const char htype, const char hflag,
-                              const short respecthide, const bool test_for_enabled)
+                              const bool respecthide, const bool test_for_enabled)
 {
 	BMElem *ele;
 	BMIter iter;
@@ -864,7 +864,9 @@ void BM_select_history_validate(BMesh *bm)
 	}
 }
 
-/* utility function */
+/**
+ * Get the active mesh element (with active-face fallback).
+ */
 bool BM_select_history_active_get(BMesh *bm, BMEditSelection *ese)
 {
 	BMEditSelection *ese_last = bm->selected.last;
@@ -887,7 +889,8 @@ bool BM_select_history_active_get(BMesh *bm, BMEditSelection *ese)
 			ese->htype = ese_last->htype;
 		}
 	}
-	else if (efa) { /* no */
+	else if (efa) {
+		/* no edit-selection, fallback to active face */
 		ese->ele   = (BMElem *)efa;
 		ese->htype = BM_FACE;
 	}
@@ -897,6 +900,27 @@ bool BM_select_history_active_get(BMesh *bm, BMEditSelection *ese)
 	}
 
 	return true;
+}
+
+/**
+ * Return a map from BMVert/Edge/Face -> BMEditSelection
+ */
+GHash *BM_select_history_map_create(BMesh *bm)
+{
+	BMEditSelection *ese;
+	GHash *map;
+
+	if (BLI_listbase_is_empty(&bm->selected)) {
+		return NULL;
+	}
+
+	map = BLI_ghash_ptr_new(__func__);
+
+	for (ese = bm->selected.first; ese; ese = ese->next) {
+		BLI_ghash_insert(map, ese->ele, ese);
+	}
+
+	return map;
 }
 
 void BM_mesh_elem_hflag_disable_test(BMesh *bm, const char htype, const char hflag,
@@ -926,7 +950,7 @@ void BM_mesh_elem_hflag_disable_test(BMesh *bm, const char htype, const char hfl
 		/* fast path for deselect all, avoid topology loops
 		 * since we know all will be de-selected anyway. */
 
-#pragma omp parallel for schedule(dynamic) if (bm->totvert + bm->totedge + bm->totface >= BM_OMP_LIMIT)
+#pragma omp parallel for schedule(static) if (bm->totvert + bm->totedge + bm->totface >= BM_OMP_LIMIT)
 		for (i = 0; i < 3; i++) {
 			BMIter iter;
 			BMElem *ele;

@@ -658,30 +658,6 @@ static void rna_NodeTree_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *p
 {
 	bNodeTree *ntree = (bNodeTree *)ptr->id.data;
 
-	/* when using border, make it so no old data from outside of
-	 * border is hanging around
-	 * ideally shouldn't be in RNA callback, but how to teach
-	 * compo to only clear frame when border usage is actually
-	 * toggling
-	 */
-	if (ntree->flag & NTREE_VIEWER_BORDER) {
-		Image *ima = BKE_image_verify_viewer(IMA_TYPE_COMPOSITE, "Viewer Node");
-		void *lock;
-		ImBuf *ibuf = BKE_image_acquire_ibuf(ima, NULL, &lock);
-
-		if (ibuf) {
-			if (ibuf->rect)
-				memset(ibuf->rect, 0, 4 * ibuf->x * ibuf->y);
-
-			if (ibuf->rect_float)
-				memset(ibuf->rect_float, 0, 4 * ibuf->x * ibuf->y * sizeof(float));
-
-			ibuf->userflags |= IB_DISPLAY_BUFFER_INVALID;
-		}
-
-		BKE_image_release_ibuf(ima, ibuf, lock);
-	}
-
 	WM_main_add_notifier(NC_NODE | NA_EDITED, NULL);
 	WM_main_add_notifier(NC_SCENE | ND_NODES, &ntree->id);
 
@@ -2946,9 +2922,24 @@ static EnumPropertyItem node_ycc_items[] = {
 };
 
 static EnumPropertyItem node_glossy_items[] = {
-	{SHD_GLOSSY_SHARP,    "SHARP",    0, "Sharp",    ""},
-	{SHD_GLOSSY_BECKMANN, "BECKMANN", 0, "Beckmann", ""},
-	{SHD_GLOSSY_GGX,      "GGX",      0, "GGX",      ""},
+	{SHD_GLOSSY_SHARP,             "SHARP",             0, "Sharp",    ""},
+	{SHD_GLOSSY_BECKMANN,          "BECKMANN",          0, "Beckmann", ""},
+	{SHD_GLOSSY_GGX,               "GGX",               0, "GGX",      ""},
+	{SHD_GLOSSY_ASHIKHMIN_SHIRLEY, "ASHIKHMIN_SHIRLEY", 0, "Ashikhmin-Shirley", ""},
+	{0, NULL, 0, NULL, NULL}
+};
+
+static EnumPropertyItem node_anisotropic_items[] = {
+	{SHD_GLOSSY_BECKMANN,          "BECKMANN",          0, "Beckmann", ""},
+	{SHD_GLOSSY_GGX,               "GGX",               0, "GGX",      ""},
+	{SHD_GLOSSY_ASHIKHMIN_SHIRLEY, "ASHIKHMIN_SHIRLEY", 0, "Ashikhmin-Shirley", ""},
+	{0, NULL, 0, NULL, NULL}
+};
+
+static EnumPropertyItem node_glass_items[] = {
+	{SHD_GLOSSY_SHARP,             "SHARP",             0, "Sharp",    ""},
+	{SHD_GLOSSY_BECKMANN,          "BECKMANN",          0, "Beckmann", ""},
+	{SHD_GLOSSY_GGX,               "GGX",               0, "GGX",      ""},
 	{0, NULL, 0, NULL, NULL}
 };
 
@@ -3179,6 +3170,12 @@ static void def_sh_output(StructRNA *srna)
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", NODE_DO_OUTPUT);
 	RNA_def_property_ui_text(prop, "Active Output", "True if this node is used as the active output");
 	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
+static void def_sh_output_linestyle(StructRNA *srna)
+{
+	def_sh_output(srna);
+	def_mix_rgb(srna);
 }
 
 static void def_sh_material(StructRNA *srna)
@@ -3699,6 +3696,28 @@ static void def_glossy(StructRNA *srna)
 	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
+static void def_glass(StructRNA *srna)
+{
+	PropertyRNA *prop;
+	
+	prop = RNA_def_property(srna, "distribution", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "custom1");
+	RNA_def_property_enum_items(prop, node_glass_items);
+	RNA_def_property_ui_text(prop, "Distribution", "");
+	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
+static void def_anisotropic(StructRNA *srna)
+{
+	PropertyRNA *prop;
+	
+	prop = RNA_def_property(srna, "distribution", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "custom1");
+	RNA_def_property_enum_items(prop, node_anisotropic_items);
+	RNA_def_property_ui_text(prop, "Distribution", "");
+	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
 static void def_toon(StructRNA *srna)
 {
 	PropertyRNA *prop;
@@ -3747,6 +3766,16 @@ static void def_sh_uvmap(StructRNA *srna)
 	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
 	RNA_def_struct_sdna_from(srna, "bNode", NULL);
+}
+
+static void def_sh_uvalongstroke(StructRNA *srna)
+{
+	PropertyRNA *prop;
+
+	prop = RNA_def_property(srna, "use_tips", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "custom1", 1);
+	RNA_def_property_ui_text(prop, "Use Tips", "Lower half of the texture is for tips of the stroke");
+	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
 static void def_sh_normal_map(StructRNA *srna)
@@ -6171,6 +6200,27 @@ static void def_cmp_planetrackdeform(StructRNA *srna)
 	prop = RNA_def_property(srna, "plane_track_name", PROP_STRING, PROP_NONE);
 	RNA_def_property_string_sdna(prop, NULL, "plane_track_name");
 	RNA_def_property_ui_text(prop, "Plane Track", "");
+	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
+static void def_cmp_sunbeams(StructRNA *srna)
+{
+	PropertyRNA *prop;
+
+	RNA_def_struct_sdna_from(srna, "NodeSunBeams", "storage");
+
+	prop = RNA_def_property(srna, "source", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_float_sdna(prop, NULL, "source");
+	RNA_def_property_range(prop, -100.0f, 100.0f);
+	RNA_def_property_ui_range(prop, -10.0f, 10.0f, 10, 3);
+	RNA_def_property_ui_text(prop, "Source", "Source point of rays as a factor of the image width & height");
+	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+	prop = RNA_def_property(srna, "ray_length", PROP_FLOAT, PROP_UNSIGNED);
+	RNA_def_property_float_sdna(prop, NULL, "ray_length");
+	RNA_def_property_range(prop, 0.0f, 100.0f);
+	RNA_def_property_ui_range(prop, 0.0f, 1.0f, 10, 3);
+	RNA_def_property_ui_text(prop, "Ray Length", "Length of rays as a factor of the image size");
 	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 

@@ -41,6 +41,9 @@
 #ifndef CERES_INTERNAL_CANONICAL_VIEWS_CLUSTERING_H_
 #define CERES_INTERNAL_CANONICAL_VIEWS_CLUSTERING_H_
 
+// This include must come before any #ifndef check on Ceres compile options.
+#include "ceres/internal/port.h"
+
 #ifndef CERES_NO_SUITESPARSE
 
 #include <vector>
@@ -98,7 +101,7 @@ struct CanonicalViewsClusteringOptions;
 // cluster. In this case they are assigned to a cluster with id = -1;
 void ComputeCanonicalViewsClustering(
     const CanonicalViewsClusteringOptions& options,
-    const Graph<int>& graph,
+    const WeightedGraph<int>& graph,
     vector<int>* centers,
     HashMap<int, int>* membership);
 

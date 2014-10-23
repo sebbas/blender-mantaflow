@@ -87,7 +87,7 @@ public:
 
 	/**
 	 * Returns pointer to the full-screen window.
-	 * \return	The fll-screen window (0 if not in full-screen).
+	 * \return	The full-screen window (NULL if not in full-screen).
 	 */
 	virtual GHOST_IWindow *getFullScreenWindow(void) const;
 
@@ -121,7 +121,7 @@ public:
 
 	/**
 	 * Set this window to be inactive (not receiving events).
-	 * \param window The window to decativate.
+	 * \param window The window to deactivate.
 	 */
 	virtual void setWindowInactive(const GHOST_IWindow *window);
 	

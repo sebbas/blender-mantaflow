@@ -68,6 +68,7 @@ set(SRC
 	bpy_rna_callback.c
 	bpy_traceback.c
 	bpy_util.c
+	bpy_utils_units.c
 	stubs.c
 
 	gpu.h
@@ -91,6 +92,7 @@ set(SRC
 	bpy_rna_callback.h
 	bpy_traceback.h
 	bpy_util.h
+	bpy_utils_units.h
 	../BPY_extern.h
 )
 
@@ -262,5 +264,6 @@ if(WITH_PLAYER)
 	add_definitions(-DWITH_PLAYER)
 endif()
 
+add_definitions(${GL_DEFINITIONS})
 
 blender_add_lib(bf_python "${SRC}" "${INC}" "${INC_SYS}")

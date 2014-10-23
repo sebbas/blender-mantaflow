@@ -192,7 +192,7 @@ struct Render
 	RenderData r;
 	World wrld;
 	struct Object *camera_override;
-	unsigned int lay;
+	unsigned int lay, layer_override;
 	
 	ListBase parts;
 	
@@ -240,7 +240,7 @@ struct Render
 	ListBase volumes;
 
 #ifdef WITH_FREESTYLE
-	struct Main freestyle_bmain;
+	struct Main *freestyle_bmain;
 	ListBase freestyle_renders;
 #endif
 
@@ -595,7 +595,9 @@ typedef struct LampRen {
 	float imat[3][3];
 	float spottexfac;
 	float sh_invcampos[3], sh_zfac;	/* sh_= spothalo */
-	
+
+	float lampmat[4][4];	/* worls space lamp matrix, used for scene rotation */
+
 	float mat[3][3];	/* 3x3 part from lampmat x viewmat */
 	float area[8][3], areasize;
 	

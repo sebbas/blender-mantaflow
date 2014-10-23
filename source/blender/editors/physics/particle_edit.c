@@ -319,7 +319,7 @@ void PE_hide_keys_time(Scene *scene, PTCacheEdit *edit, float cfra)
 	if (pset->flag & PE_FADE_TIME && pset->selectmode==SCE_SELECT_POINT) {
 		LOOP_POINTS {
 			LOOP_KEYS {
-				if (fabs(cfra-*key->time) < pset->fade_frames)
+				if (fabsf(cfra - *key->time) < pset->fade_frames)
 					key->flag &= ~PEK_HIDE;
 				else {
 					key->flag |= PEK_HIDE;
@@ -463,7 +463,7 @@ static bool key_inside_circle(PEData *data, float rad, const float co[3], float 
 
 	dx= data->mval[0] - screen_co[0];
 	dy= data->mval[1] - screen_co[1];
-	dist= sqrt(dx*dx + dy*dy);
+	dist = sqrtf(dx * dx + dy * dy);
 
 	if (dist > rad)
 		return 0;
@@ -616,7 +616,10 @@ static void foreach_mouse_hit_key(PEData *data, ForKeyMatFunc func, int selected
 	ParticleSystemModifierData *psmd = NULL;
 	ParticleEditSettings *pset= PE_settings(data->scene);
 	POINT_P; KEY_K;
-	float mat[4][4] = MAT4_UNITY, imat[4][4] = MAT4_UNITY;
+	float mat[4][4], imat[4][4];
+
+	unit_m4(mat);
+	unit_m4(imat);
 
 	if (edit->psys)
 		psmd= psys_get_modifier(data->ob, edit->psys);
@@ -1585,6 +1588,87 @@ void PARTICLE_OT_select_tips(wmOperatorType *ot)
 	WM_operator_properties_select_action(ot, SEL_SELECT);
 }
 
+/*********************** select random operator ************************/
+
+enum { RAN_HAIR, RAN_POINTS };
+
+static EnumPropertyItem select_random_type_items[] = {
+	{RAN_HAIR, "HAIR", 0, "Hair", ""},
+	{RAN_POINTS, "POINTS", 0, "Points", ""},
+	{0, NULL, 0, NULL, NULL}
+};
+
+static int select_random_exec(bContext *C, wmOperator *op)
+{
+	PEData data;
+	int type;
+	Scene *scene;
+	Object *ob;
+
+	/* used by LOOP_VISIBLE_POINTS, LOOP_VISIBLE_KEYS and LOOP_KEYS */
+	PTCacheEdit *edit;
+	PTCacheEditPoint *point;
+	PTCacheEditKey *key;
+	int p;
+	int k;
+
+	const float randf = RNA_float_get (op->ptr, "percent") / 100.0f;
+
+	type = RNA_enum_get(op->ptr, "type");
+
+	PE_set_data(C, &data);
+	data.select_action = SEL_SELECT;
+	scene = CTX_data_scene(C);
+	ob = CTX_data_active_object(C);
+	edit = PE_get_current(scene, ob);
+
+	switch (type) {
+		case RAN_HAIR:
+			LOOP_VISIBLE_POINTS {
+				int flag = (BLI_frand() < randf) ? SEL_SELECT : SEL_DESELECT;
+				LOOP_KEYS {
+					select_action_apply (point, key, flag);
+				}
+			}
+			break;
+		case RAN_POINTS:
+			LOOP_VISIBLE_POINTS {
+				LOOP_VISIBLE_KEYS {
+					int flag = (BLI_frand() < randf) ? SEL_SELECT : SEL_DESELECT;
+					select_action_apply (point, key, flag);
+				}
+			}
+			break;
+	}
+
+	PE_update_selection(data.scene, data.ob, 1);
+	WM_event_add_notifier(C, NC_OBJECT|ND_PARTICLE|NA_SELECTED, data.ob);
+
+	return OPERATOR_FINISHED;
+}
+
+void PARTICLE_OT_select_random(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Select Random";
+	ot->idname = "PARTICLE_OT_select_random";
+	ot->description = "Select a randomly distributed set of hair or points";
+
+	/* api callbacks */
+	ot->exec = select_random_exec;
+	ot->poll = PE_poll;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER|OPTYPE_UNDO;
+
+	/* properties */
+	RNA_def_float_percentage (ot->srna, "percent", 50.0f, 0.0f, 100.0f, "Percent",
+                           "Percentage (mean) of elements in randomly selected set",
+                           0.0f, 100.0f);
+	ot->prop = RNA_def_enum (ot->srna, "type", select_random_type_items, RAN_HAIR,
+                           "Type", "Select either hair or points");
+}
+
 /************************ select linked operator ************************/
 
 static int select_linked_exec(bContext *C, wmOperator *op)
@@ -1710,10 +1794,12 @@ int PE_lasso_select(bContext *C, const int mcords[][2], const short moves, bool 
 	ParticleSystem *psys = edit->psys;
 	ParticleSystemModifierData *psmd = psys_get_modifier(ob, psys);
 	POINT_P; KEY_K;
-	float co[3], mat[4][4] = MAT4_UNITY;
+	float co[3], mat[4][4];
 	int screen_co[2];
 
 	PEData data;
+
+	unit_m4(mat);
 
 	if (!PE_start_edit(edit))
 		return OPERATOR_CANCELLED;
@@ -2927,7 +3013,7 @@ static void brush_cut(PEData *data, int pa_index)
 			d= dv * rad2 - d*d;
 
 			if (d > 0.0f) {
-				d= sqrt(d);
+				d= sqrtf(d);
 
 				cut_time= -(v0*xo0 + v1*xo1 + d);
 
@@ -3482,7 +3568,7 @@ static int brush_add(PEData *data, short number)
 			}
 			
 			pa->size= 1.0f;
-			initialize_particle(pa);
+			initialize_particle(&sim, pa);
 			reset_particle(&sim, pa, 0.0, 1.0);
 			point->flag |= PEP_EDIT_RECALC;
 			if (pe_x_mirror(ob))
@@ -3673,7 +3759,7 @@ static void brush_edit_apply(bContext *C, wmOperator *op, PointerRNA *itemptr)
 		pset->flag &= ~PE_LOCK_FIRST;
 
 	if (((pset->brushtype == PE_BRUSH_ADD) ?
-	     (sqrt(dx * dx + dy * dy) > pset->brush[PE_BRUSH_ADD].step) : (dx != 0 || dy != 0)) || bedit->first)
+	     (sqrtf(dx * dx + dy * dy) > pset->brush[PE_BRUSH_ADD].step) : (dx != 0 || dy != 0)) || bedit->first)
 	{
 		PEData data= bedit->data;
 

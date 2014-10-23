@@ -75,6 +75,9 @@ struct ImBuf;
 struct bNodeTree;
 struct bNode;
 struct bNodeSocket;
+struct wmDropBox;
+struct wmDrag;
+struct wmEvent;
 
 typedef struct uiBut uiBut;
 typedef struct uiBlock uiBlock;
@@ -99,6 +102,7 @@ typedef struct uiLayout uiLayout;
 #define UI_EMBOSSN      1   /* Nothing, only icon and/or text */
 #define UI_EMBOSSP      2   /* Pulldown menu style */
 #define UI_EMBOSST      3   /* Table */
+#define UI_EMBOSSR      4   /* Pie Menu */
 
 /* uiBlock->direction */
 #define UI_DIRECTION       (UI_TOP | UI_DOWN | UI_LEFT | UI_RIGHT)
@@ -134,6 +138,7 @@ typedef struct uiLayout uiLayout;
 /* block->flag bits 14-17 are identical to but->drawflag bits */
 
 #define UI_BLOCK_LIST_ITEM   (1 << 19)
+#define UI_BLOCK_RADIAL      (1 << 20)
 
 /* uiPopupBlockHandle->menuretval */
 #define UI_RETURN_CANCEL     (1 << 0)   /* cancel all menus cascading */
@@ -175,6 +180,7 @@ enum {
 	UI_BUT_DRAG_MULTI    = (1 << 25),  /* edit this button as well as the active button (not just dragging) */
 	UI_BUT_SCA_LINK_GREY = (1 << 26),  /* used to flag if sca links shoud be grey out */
 	UI_BUT_HAS_SEP_CHAR  = (1 << 27),  /* but->str contains UI_SEP_CHAR, used for key shortcuts */
+	UI_BUT_TIP_FORCE     = (1 << 28),  /* force show tooltips when holding option/alt if U's USER_TOOLTIPS is off */
 };
 
 #define UI_PANEL_WIDTH          340
@@ -288,6 +294,8 @@ typedef enum {
 #define UI_GRAD_V_ALT   9
 #define UI_GRAD_L_ALT   10
 
+#define UI_PALETTE_COLOR 20
+
 /* Drawing
  *
  * Functions to draw various shapes, taking theme settings into account.
@@ -353,6 +361,17 @@ struct uiLayout *uiPupMenuLayout(uiPopupMenu *head);
 void uiPupMenuReports(struct bContext *C, struct ReportList *reports) ATTR_NONNULL();
 bool uiPupMenuInvoke(struct bContext *C, const char *idname, struct ReportList *reports) ATTR_NONNULL(1, 2);
 
+/* Pie menus */
+typedef struct uiPieMenu uiPieMenu;
+
+void uiPieMenuInvoke(struct bContext *C, const char *idname, const struct wmEvent *event);
+void uiPieOperatorEnumInvoke(struct bContext *C, const char *title, const char *opname,
+                             const char *propname, const struct wmEvent *event);
+void uiPieEnumInvoke(struct bContext *C, const char *title, const char *path, const struct wmEvent *event);
+
+struct uiPieMenu *uiPieMenuBegin(struct bContext *C, const char *title, int icon, const struct wmEvent *event) ATTR_NONNULL();
+void uiPieMenuEnd(struct bContext *C, uiPieMenu *pie);
+struct uiLayout *uiPieMenuLayout(struct uiPieMenu *pie);
 /* Popup Blocks
  *
  * Functions used to create popup blocks. These are like popup menus
@@ -380,8 +399,10 @@ void uiPupBlockClose(struct bContext *C, uiBlock *block);
  * */
 
 uiBlock *uiBeginBlock(const struct bContext *C, struct ARegion *region, const char *name, short dt);
+void uiEndBlock_ex(const struct bContext *C, uiBlock *block, const int xy[2]);
 void uiEndBlock(const struct bContext *C, uiBlock *block);
 void uiDrawBlock(const struct bContext *C, struct uiBlock *block);
+void uiBlockUpdateFromOld(const struct bContext *C, struct uiBlock *block);
 
 uiBlock *uiGetBlock(const char *name, struct ARegion *ar);
 
@@ -408,7 +429,8 @@ typedef enum {
 	UI_BLOCK_BOUNDS_TEXT,
 	UI_BLOCK_BOUNDS_POPUP_MOUSE,
 	UI_BLOCK_BOUNDS_POPUP_MENU,
-	UI_BLOCK_BOUNDS_POPUP_CENTER
+	UI_BLOCK_BOUNDS_POPUP_CENTER,
+	UI_BLOCK_BOUNDS_PIE_CENTER,
 } eBlockBoundsCalc;
 
 void uiBoundsBlock(struct uiBlock *block, int addval);
@@ -435,6 +457,7 @@ void    uiButSetDragValue(uiBut *but);
 void    uiButSetDragImage(uiBut *but, const char *path, int icon, struct ImBuf *ima, float scale);
 
 bool    UI_but_active_drop_name(struct bContext *C);
+bool    UI_but_active_drop_color(struct bContext *C);
 
 void    uiButSetFlag(uiBut *but, int flag);
 void    uiButClearFlag(uiBut *but, int flag);
@@ -695,7 +718,7 @@ void                       UI_panel_category_draw_all(struct ARegion *ar, const 
  * as screen/ if ED_KEYMAP_UI is set, or internally in popup functions. */
 
 void UI_add_region_handlers(struct ListBase *handlers);
-void UI_add_popup_handlers(struct bContext *C, struct ListBase *handlers, uiPopupBlockHandle *popup);
+void UI_add_popup_handlers(struct bContext *C, struct ListBase *handlers, uiPopupBlockHandle *popup, const bool accept_dbl_click);
 void UI_remove_popup_handlers(struct ListBase *handlers, uiPopupBlockHandle *popup);
 void UI_remove_popup_handlers_all(struct bContext *C, struct ListBase *handlers);
 
@@ -706,7 +729,6 @@ void UI_remove_popup_handlers_all(struct bContext *C, struct ListBase *handlers)
 
 void UI_init(void);
 void UI_init_userdef(void);
-void UI_init_userdef_factory(void);
 void UI_reinit_font(void);
 void UI_exit(void);
 
@@ -728,6 +750,7 @@ void UI_exit(void);
 #define UI_LAYOUT_HEADER        1
 #define UI_LAYOUT_MENU          2
 #define UI_LAYOUT_TOOLBAR       3
+#define UI_LAYOUT_PIEMENU       4
 
 #define UI_UNIT_X               ((void)0, U.widget_unit)
 #define UI_UNIT_Y               ((void)0, U.widget_unit)
@@ -818,8 +841,8 @@ uiLayout *uiLayoutListBox(uiLayout *layout, struct uiList *ui_list, struct Point
 uiLayout *uiLayoutAbsolute(uiLayout *layout, int align);
 uiLayout *uiLayoutSplit(uiLayout *layout, float percentage, int align);
 uiLayout *uiLayoutOverlap(uiLayout *layout);
-
 uiBlock *uiLayoutAbsoluteBlock(uiLayout *layout);
+uiLayout *uiLayoutRadial(uiLayout *layout);
 
 /* templates */
 void uiTemplateHeader(uiLayout *layout, struct bContext *C);
@@ -842,8 +865,10 @@ void uiTemplateIconView(uiLayout *layout, struct PointerRNA *ptr, const char *pr
 void uiTemplateHistogram(uiLayout *layout, struct PointerRNA *ptr, const char *propname);
 void uiTemplateWaveform(uiLayout *layout, struct PointerRNA *ptr, const char *propname);
 void uiTemplateVectorscope(uiLayout *layout, struct PointerRNA *ptr, const char *propname);
-void uiTemplateCurveMapping(uiLayout *layout, struct PointerRNA *ptr, const char *propname, int type, int levels, int brush);
+void uiTemplateCurveMapping(uiLayout *layout, struct PointerRNA *ptr, const char *propname, int type,
+                            int levels, int brush, int neg_slope);
 void uiTemplateColorPicker(uiLayout *layout, struct PointerRNA *ptr, const char *propname, int value_slider, int lock, int lock_luminosity, int cubic);
+void uiTemplatePalette(uiLayout *layout, struct PointerRNA *ptr, const char *propname, int color);
 void uiTemplateLayers(uiLayout *layout, struct PointerRNA *ptr, const char *propname,
                       PointerRNA *used_ptr, const char *used_propname, int active_layer);
 void uiTemplateGameStates(uiLayout *layout, struct PointerRNA *ptr, const char *propname,
@@ -913,7 +938,14 @@ void uiItemMenuEnumO(uiLayout *layout, struct bContext *C, const char *opname, c
 void uiItemMenuEnumR(uiLayout *layout, struct PointerRNA *ptr, const char *propname, const char *name, int icon);
 
 /* UI Operators */
+typedef struct uiDragColorHandle {
+	float color[3];
+	bool gamma_corrected;
+} uiDragColorHandle;
+
 void UI_buttons_operatortypes(void);
+void UI_drop_color_copy(struct wmDrag *drag, struct wmDropBox *drop);
+int UI_drop_color_poll(struct bContext *C, struct wmDrag *drag, const struct wmEvent *event);
 
 /* Helpers for Operators */
 uiBut *uiContextActiveButton(const struct bContext *C);

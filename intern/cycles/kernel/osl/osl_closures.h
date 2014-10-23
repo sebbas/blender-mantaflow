@@ -48,12 +48,8 @@ OSL::ClosureParam *closure_holdout_params();
 OSL::ClosureParam *closure_ambient_occlusion_params();
 OSL::ClosureParam *closure_bsdf_diffuse_ramp_params();
 OSL::ClosureParam *closure_bsdf_phong_ramp_params();
-OSL::ClosureParam *closure_westin_backscatter_params();
-OSL::ClosureParam *closure_westin_sheen_params();
 OSL::ClosureParam *closure_bssrdf_cubic_params();
 OSL::ClosureParam *closure_bssrdf_gaussian_params();
-OSL::ClosureParam *closure_bssrdf_cubic_extended_params();
-OSL::ClosureParam *closure_bssrdf_gaussian_extended_params();
 OSL::ClosureParam *closure_henyey_greenstein_volume_params();
 
 void closure_emission_prepare(OSL::RendererServices *, int id, void *data);
@@ -62,8 +58,6 @@ void closure_holdout_prepare(OSL::RendererServices *, int id, void *data);
 void closure_ambient_occlusion_prepare(OSL::RendererServices *, int id, void *data);
 void closure_bsdf_diffuse_ramp_prepare(OSL::RendererServices *, int id, void *data);
 void closure_bsdf_phong_ramp_prepare(OSL::RendererServices *, int id, void *data);
-void closure_westin_backscatter_prepare(OSL::RendererServices *, int id, void *data);
-void closure_westin_sheen_prepare(OSL::RendererServices *, int id, void *data);
 void closure_bssrdf_cubic_prepare(OSL::RendererServices *, int id, void *data);
 void closure_bssrdf_gaussian_prepare(OSL::RendererServices *, int id, void *data);
 void closure_henyey_greenstein_volume_prepare(OSL::RendererServices *, int id, void *data);
@@ -149,17 +143,18 @@ public: \
 \
 	void blur(float roughness) \
 	{ \
-		bsdf_##svmlower##_blur(&sc, roughness); \
 	} \
 \
 	float3 eval_reflect(const float3 &omega_out, const float3 &omega_in, float& pdf) const \
 	{ \
-		return bsdf_##svmlower##_eval_reflect(&sc, omega_out, omega_in, &pdf); \
+		pdf = 0; \
+		return make_float3(0, 0, 0); \
 	} \
 \
 	float3 eval_transmit(const float3 &omega_out, const float3 &omega_in, float& pdf) const \
 	{ \
-		return bsdf_##svmlower##_eval_transmit(&sc, omega_out, omega_in, &pdf); \
+		pdf = 0; \
+		return make_float3(0, 0, 0); \
 	} \
 \
 	int sample(const float3 &Ng, \
@@ -168,8 +163,8 @@ public: \
 	           float3 &omega_in, float3 &domega_in_dx, float3 &domega_in_dy, \
 	           float &pdf, float3 &eval) const \
 	{ \
-		return bsdf_##svmlower##_sample(&sc, Ng, omega_out, domega_out_dx, domega_out_dy, \
-			randu, randv, &eval, &omega_in, &domega_in_dx, &domega_in_dy, &pdf); \
+		pdf = 0; \
+		return LABEL_NONE; \
 	} \
 }; \
 \

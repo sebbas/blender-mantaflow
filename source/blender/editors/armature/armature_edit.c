@@ -70,7 +70,7 @@ void ED_armature_apply_transform(Object *ob, float mat[4][4])
 	/* Put the armature into editmode */
 	ED_armature_to_edit(arm);
 
-	/* Transform the bones*/
+	/* Transform the bones */
 	ED_armature_transform_bones(arm, mat);
 
 	/* Turn the list into an armature */
@@ -100,7 +100,7 @@ void ED_armature_transform_bones(struct bArmature *arm, float mat[4][4])
 		mul_m4_v3(mat, ebone->head);
 		mul_m4_v3(mat, ebone->tail);
 
-		/* apply the transfiormed roll back */
+		/* apply the transformed roll back */
 		mat3_to_vec_roll(tmat, NULL, &ebone->roll);
 		
 		ebone->rad_head *= scale;
@@ -190,7 +190,7 @@ void ED_armature_origin_set(Scene *scene, Object *ob, float cursor[3], int cente
 
 	/* Adjust object location for new centerpoint */
 	if (centermode && obedit == NULL) {
-		mul_mat3_m4_v3(ob->obmat, cent); /* ommit translation part */
+		mul_mat3_m4_v3(ob->obmat, cent); /* omit translation part */
 		add_v3_v3(ob->loc, cent);
 	}
 }
@@ -209,17 +209,12 @@ float ED_rollBoneToVector(EditBone *bone, const float align_axis[3], const bool 
 
 	sub_v3_v3v3(nor, bone->tail, bone->head);
 
-	/* if tail == head! */
-	if (is_zero_v3(nor)) {
+	/* If tail == head or the bone is aligned with the axis... */
+	if (normalize_v3(nor) <= FLT_EPSILON || (fabsf(dot_v3v3(align_axis, nor)) >= (1.0f - FLT_EPSILON))) {
 		return roll;
 	}
 
-	vec_roll_to_mat3(nor, 0.0f, mat);
-
-	/* check the bone isn't aligned with the axis */
-	if (dot_v3v3(align_axis, mat[2]) >= (1.0f - FLT_EPSILON)) {
-		return roll;
-	}
+	vec_roll_to_mat3_normalized(nor, 0.0f, mat);
 
 	/* project the new_up_axis along the normal */
 	project_v3_v3v3(vec, align_axis, nor);
@@ -301,7 +296,9 @@ static int armature_calc_roll_exec(bContext *C, wmOperator *op)
 				float cursor_rel[3];
 				sub_v3_v3v3(cursor_rel, cursor_local, ebone->head);
 				if (axis_flip) negate_v3(cursor_rel);
-				ebone->roll = ED_rollBoneToVector(ebone, cursor_rel, axis_only);
+				if (normalize_v3(cursor_rel) != 0.0f) {
+					ebone->roll = ED_rollBoneToVector(ebone, cursor_rel, axis_only);
+				}
 			}
 		}
 	}
@@ -405,7 +402,7 @@ static int armature_calc_roll_exec(bContext *C, wmOperator *op)
 	}
 	
 	/* note, notifier might evolve */
-	WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
+	WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, ob);
 	
 	return OPERATOR_FINISHED;
 }
@@ -1136,7 +1133,7 @@ static int armature_align_bones_exec(bContext *C, wmOperator *op)
 	}
 
 	/* note, notifier might evolve */
-	WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, ob);
+	WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, ob);
 	
 	return OPERATOR_FINISHED;
 }
@@ -1348,7 +1345,9 @@ static int armature_reveal_exec(bContext *C, wmOperator *UNUSED(op))
 	for (ebone = arm->edbo->first; ebone; ebone = ebone->next) {
 		if (arm->layer & ebone->layer) {
 			if (ebone->flag & BONE_HIDDEN_A) {
-				ebone->flag |= (BONE_TIPSEL | BONE_SELECTED | BONE_ROOTSEL);
+				if (!(ebone->flag & BONE_UNSELECTABLE)) {
+					ebone->flag |= (BONE_TIPSEL | BONE_SELECTED | BONE_ROOTSEL);
+				}
 				ebone->flag &= ~BONE_HIDDEN_A;
 			}
 		}

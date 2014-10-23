@@ -51,18 +51,23 @@
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
+#include "DNA_space_types.h"
 #include "DNA_texture_types.h"
 #include "DNA_world_types.h"
 
 #include "BKE_animsys.h"
 #include "BKE_action.h"
+#include "BKE_context.h"
 #include "BKE_depsgraph.h"
 #include "BKE_fcurve.h"
 #include "BKE_nla.h"
 #include "BKE_global.h"
 #include "BKE_main.h"
+#include "BKE_material.h"
 #include "BKE_library.h"
 #include "BKE_report.h"
+#include "BKE_texture.h"
 
 #include "RNA_access.h"
 
@@ -244,7 +249,7 @@ void BKE_free_animdata(ID *id)
 	}
 }
 
-/* Freeing -------------------------------------------- */
+/* Copying -------------------------------------------- */
 
 /* Make a copy of the given AnimData - to be used when copying datablocks */
 AnimData *BKE_copy_animdata(AnimData *adt, const bool do_action)
@@ -381,10 +386,12 @@ void BKE_relink_animdata(AnimData *adt)
 
 /* Sub-ID Regrouping ------------------------------------------- */
 
-/* helper heuristic for determining if a path is compatible with the basepath 
- * < path: (str) full RNA-path from some data (usually an F-Curve) to compare
- * < basepath: (str) shorter path fragment to look for
- * > returns (bool) whether there is a match
+/**
+ * Helper heuristic for determining if a path is compatible with the basepath
+ *
+ * \param path Full RNA-path from some data (usually an F-Curve) to compare
+ * \param basepath Shorter path fragment to look for
+ * \return Whether there is a match
  */
 static bool animpath_matches_basepath(const char path[], const char basepath[])
 {
@@ -403,7 +410,7 @@ void action_move_fcurves_by_basepath(bAction *srcAct, bAction *dstAct, const cha
 	FCurve *fcu, *fcn = NULL;
 	
 	/* sanity checks */
-	if (ELEM3(NULL, srcAct, dstAct, basepath)) {
+	if (ELEM(NULL, srcAct, dstAct, basepath)) {
 		if (G.debug & G_DEBUG) {
 			printf("ERROR: action_partition_fcurves_by_basepath(%p, %p, %p) has insufficient info to work with\n",
 			       (void *)srcAct, (void *)dstAct, (void *)basepath);
@@ -547,6 +554,74 @@ void BKE_animdata_separate_by_basepath(ID *srcID, ID *dstID, ListBase *basepaths
 			}
 		}
 	}
+}
+
+/**
+ * Temporary wrapper for driver operators for buttons to make it easier to create
+ * such drivers by rerouting all paths through the active object instead so that
+ * they will get picked up by the dependency system.
+ *
+ * \param C Context pointer - for getting active data
+ * \param[in,out] ptr RNA pointer for property's datablock. May be modified as result of path remapping.
+ * \param prop RNA definition of property to add for
+ * \return MEM_alloc'd string representing the path to the property from the given #PointerRNA
+ */
+char *BKE_animdata_driver_path_hack(bContext *C, PointerRNA *ptr, PropertyRNA *prop, char *base_path)
+{
+	ID *id = (ID *)ptr->id.data;
+	ScrArea *sa = CTX_wm_area(C);
+
+	/* get standard path which may be extended */
+	char *basepath = base_path ? base_path : RNA_path_from_ID_to_property(ptr, prop);
+	char *path = basepath; /* in case no remapping is needed */
+
+	/* Remapping will only be performed in the Properties Editor, as only this
+	 * restricts the subspace of options to the 'active' data (a manageable state)
+	 */
+	/* TODO: watch out for pinned context? */
+	if ((sa) && (sa->spacetype == SPACE_BUTS)) {
+		Object *ob = CTX_data_active_object(C);
+
+		if (ob && id) {
+			/* only id-types which can be remapped to go through objects should be considered */
+			switch (GS(id->name)) {
+				case ID_TE: /* textures */
+				{
+					Material *ma = give_current_material(ob, ob->actcol);
+					Tex *tex = give_current_material_texture(ma);
+
+					/* assumes: texture will only be shown if it is active material's active texture it's ok */
+					if ((ID *)tex == id) {
+						char name_esc_ma[(sizeof(ma->id.name) - 2) * 2];
+						char name_esc_tex[(sizeof(tex->id.name) - 2) * 2];
+
+						BLI_strescape(name_esc_ma, ma->id.name + 2, sizeof(name_esc_ma));
+						BLI_strescape(name_esc_tex, tex->id.name + 2, sizeof(name_esc_tex));
+
+						/* create new path */
+						// TODO: use RNA path functions to construct step by step instead?
+						// FIXME: maybe this isn't even needed anymore...
+						path = BLI_sprintfN("material_slots[\"%s\"].material.texture_slots[\"%s\"].texture.%s",
+						                    name_esc_ma, name_esc_tex, basepath);
+
+						/* free old one */
+						if (basepath != base_path)
+							MEM_freeN(basepath);
+					}
+					break;
+				}
+			}
+
+			/* fix RNA pointer, as we've now changed the ID root by changing the paths */
+			if (basepath != path) {
+				/* rebase provided pointer so that it starts from object... */
+				RNA_pointer_create(&ob->id, ptr->type, ptr->data, ptr);
+			}
+		}
+	}
+
+	/* the path should now have been corrected for use */
+	return path;
 }
 
 /* Path Validation -------------------------------------------- */
@@ -984,8 +1059,8 @@ void BKE_all_animdata_fix_paths_rename(ID *ref_id, const char *prefix, const cha
 		AnimData *adt = BKE_animdata_from_id(id); \
 		NtId_Type *ntp = (NtId_Type *)id; \
 		if (ntp->nodetree) { \
-			AnimData *adt2 = BKE_animdata_from_id((ID *)ntp); \
-			BKE_animdata_fix_paths_rename((ID *)ntp, adt2, ref_id, prefix, oldName, newName, 0, 0, 1); \
+			AnimData *adt2 = BKE_animdata_from_id((ID *)ntp->nodetree); \
+			BKE_animdata_fix_paths_rename((ID *)ntp->nodetree, adt2, ref_id, prefix, oldName, newName, 0, 0, 1); \
 		} \
 		BKE_animdata_fix_paths_rename(id, adt, ref_id, prefix, oldName, newName, 0, 0, 1); \
 	} (void)0
@@ -1060,7 +1135,7 @@ KS_Path *BKE_keyingset_find_path(KeyingSet *ks, ID *id, const char group_name[],
 	KS_Path *ksp;
 	
 	/* sanity checks */
-	if (ELEM3(NULL, ks, rna_path, id))
+	if (ELEM(NULL, ks, rna_path, id))
 		return NULL;
 	
 	/* loop over paths in the current KeyingSet, finding the first one where all settings match 
@@ -1166,7 +1241,7 @@ KS_Path *BKE_keyingset_add_path(KeyingSet *ks, ID *id, const char group_name[], 
 	
 	/* just copy path info */
 	/* TODO: should array index be checked too? */
-	ksp->rna_path = BLI_strdupn(rna_path, strlen(rna_path));
+	ksp->rna_path = BLI_strdup(rna_path);
 	ksp->array_index = array_index;
 	
 	/* store flags */
@@ -2232,9 +2307,12 @@ void nladata_flush_channels(ListBase *channels)
 
 /* ---------------------- */
 
-/* NLA Evaluation function - values are calculated and stored in temporary "NlaEvalChannels" 
- * ! This is exported so that keyframing code can use this for make use of it for anim layers support
- * > echannels: (list<NlaEvalChannels>) evaluation channels with calculated values
+/**
+ * NLA Evaluation function - values are calculated and stored in temporary "NlaEvalChannels"
+ *
+ * \note This is exported so that keyframing code can use this for make use of it for anim layers support
+ *
+ * \param[out] echannels Evaluation channels with calculated values
  */
 static void animsys_evaluate_nla(ListBase *echannels, PointerRNA *ptr, AnimData *adt, float ctime)
 {
@@ -2333,6 +2411,17 @@ static void animsys_evaluate_nla(ListBase *echannels, PointerRNA *ptr, AnimData 
 		
 	/* 3. free temporary evaluation data that's not used elsewhere */
 	BLI_freelistN(&estrips);
+
+	/* Tag ID as updated so render engines will recognize changes in data
+	 * which is animated but doesn't have actions.
+	 */
+	if (ptr->id.data != NULL) {
+		ID *id = ptr->id.data;
+		if (!(id->flag & LIB_ANIM_NO_RECALC)) {
+			id->flag |= LIB_ID_RECALC;
+			DAG_id_type_tag(G.main, GS(id->name));
+		}
+	}
 }
 
 /* NLA Evaluation function (mostly for use through do_animdata) 
@@ -2387,7 +2476,7 @@ static void animsys_evaluate_overrides(PointerRNA *ptr, AnimData *adt)
 
 /* Overview of how this system works:
  *	1) Depsgraph sorts data as necessary, so that data is in an order that means 
- *		that all dependencies are resolved before dependants.
+ *		that all dependencies are resolved before dependents.
  *	2) All normal animation is evaluated, so that drivers have some basis values to
  *		work with
  *		a.	NLA stacks are done first, as the Active Actions act as 'tweaking' tracks

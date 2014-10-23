@@ -48,6 +48,7 @@
 #include "ceres/internal/macros.h"
 #include "ceres/internal/port.h"
 #include "ceres/types.h"
+#include "ceres/internal/disable_warnings.h"
 
 namespace ceres {
 
@@ -60,7 +61,7 @@ namespace ceres {
 // code inheriting from this class is expected to set these two members with the
 // corresponding accessors. This information will be verified by the Problem
 // when added with AddResidualBlock().
-class CostFunction {
+class CERES_EXPORT CostFunction {
  public:
   CostFunction() : num_residuals_(0) {}
 
@@ -105,8 +106,7 @@ class CostFunction {
   // the constraints, then returning false whenever the constraints
   // are not satisfied will prevent the solver from moving into the
   // infeasible region. This is not a very sophisticated mechanism for
-  // enforcing constraints, but is often good enough for things like
-  // non-negativity constraints.
+  // enforcing constraints, but is often good enough.
   //
   // Note that it is important that the initial values of the
   // parameter block must be feasible, otherwise the solver will
@@ -141,5 +141,7 @@ class CostFunction {
 };
 
 }  // namespace ceres
+
+#include "ceres/internal/reenable_warnings.h"
 
 #endif  // CERES_PUBLIC_COST_FUNCTION_H_

@@ -151,7 +151,7 @@ extern void GHOST_GetMainDisplayDimensions(GHOST_SystemHandle systemhandle,
 /**
  * Returns the dimensions of all displays combine
  * (the current workspace).
- * No need to worrky about overlapping monitors.
+ * No need to worry about overlapping monitors.
  * \param systemhandle The handle to the system
  * \param width A pointer the width gets put in
  * \param height A pointer the height gets put in
@@ -401,13 +401,13 @@ extern GHOST_TSuccess GHOST_SetCursorPosition(GHOST_SystemHandle systemhandle,
  * do this automatically.
  * \param windowhandle The handle to the window
  * \param mode The new grab state of the cursor.
- * \param bounds The grab ragion (optional) - left,top,right,bottom
+ * \param bounds The grab region (optional) - left,top,right,bottom
  * \param mouse_ungrab_xy XY for new mouse location (optional) - x,y
  * \return Indication of success.
  */
 extern GHOST_TSuccess GHOST_SetCursorGrab(GHOST_WindowHandle windowhandle,
                                           GHOST_TGrabCursorMode mode,
-                                          int bounds[4], int mouse_ungrab_xy[2]);
+                                          int bounds[4], const int mouse_ungrab_xy[2]);
 
 /***************************************************************************************
  * Access to mouse button and keyboard states.
@@ -674,9 +674,17 @@ extern GHOST_TSuccess GHOST_SetSwapInterval(GHOST_WindowHandle windowhandle, int
 
 /**
  * Gets the current swap interval for swapBuffers.
- * \return An integer.
+ * \param windowhandle The handle to the window
+ * \param intervalOut pointer to location to return swap interval (left untouched if there is an error)
+ * \return A boolean success indicator of if swap interval was successfully read.
  */
-extern int GHOST_GetSwapInterval(GHOST_WindowHandle windowhandle);
+extern GHOST_TSuccess GHOST_GetSwapInterval(GHOST_WindowHandle windowhandle, int* intervalOut);
+
+/**
+ * Gets the current swap interval for swapBuffers.
+ * \return Number of AA Samples (0 if there is no multisample buffer)
+ */
+extern GHOST_TUns16 GHOST_GetNumOfAASamples(GHOST_WindowHandle windowhandle);
 
 /**
  * Activates the drawing context of this window.
@@ -751,7 +759,7 @@ extern GHOST_TSuccess GHOST_IsEmptyRectangle(GHOST_RectangleHandle rectanglehand
 
 /**
  * Returns whether this rectangle is valid.
- * Valid rectangles are rectangles that have m_l <= m_r and m_t <= m_b. Thus, emapty rectangles are valid.
+ * Valid rectangles are rectangles that have m_l <= m_r and m_t <= m_b. Thus, empty rectangles are valid.
  * \param rectanglehandle The handle to the rectangle
  * \return intean value (true == valid rectangle)
  */
@@ -845,7 +853,7 @@ extern GHOST_TSuccess GHOST_ClipRectangle(GHOST_RectangleHandle rectanglehandle,
                                           GHOST_RectangleHandle anotherrectanglehandle);
 
 /**
- * Return the data from the clipboad
+ * Return the data from the clipboard
  * \param selection Boolean to return the selection instead, X11 only feature.
  * \return clipboard data
  */

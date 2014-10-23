@@ -60,7 +60,7 @@ typedef struct bScreen {
 	int redraws_flag;					/* user-setting for which editors get redrawn during anim playback (used to be time->redraws) */
 	int pad1;
 	
-	short full;							/* temp screen for image render display or fileselect */
+	short state;						/* temp screen for image render display or fileselect */
 	short temp;							/* temp screen in a temp window, don't save (like user prefs) */
 	short winid;						/* winid from WM, starts with 1 */
 	short do_draw;						/* notifier for drawing edges */
@@ -247,7 +247,8 @@ typedef struct ARegion {
 	short do_draw_overlay;		/* private, cached notifier events */
 	short swap;					/* private, indicator to survive swap-exchange */
 	short overlap;				/* private, set for indicate drawing overlapped */
-	short pad[2];
+	short flagfullscreen;		/* temporary copy of flag settings for clean fullscreen */
+	short pad;
 	
 	struct ARegionType *type;	/* callbacks for this region type */
 	
@@ -271,12 +272,12 @@ typedef struct ARegion {
 // #define WIN_EQUAL		3  // UNUSED
 
 /* area->flag */
-#define HEADER_NO_PULLDOWN		1
-#define AREA_FLAG_DRAWJOINTO	2
-#define AREA_FLAG_DRAWJOINFROM	4
-#define AREA_TEMP_INFO			8
-#define AREA_FLAG_DRAWSPLIT_H	16
-#define AREA_FLAG_DRAWSPLIT_V	32
+#define HEADER_NO_PULLDOWN      (1 << 0)
+#define AREA_FLAG_DRAWJOINTO    (1 << 1)
+#define AREA_FLAG_DRAWJOINFROM  (1 << 2)
+#define AREA_TEMP_INFO          (1 << 3)
+#define AREA_FLAG_DRAWSPLIT_H   (1 << 4)
+#define AREA_FLAG_DRAWSPLIT_V   (1 << 5)
 
 #define EDGEWIDTH	1
 #define AREAGRID	4
@@ -287,9 +288,12 @@ typedef struct ARegion {
 #define HEADERDOWN	1
 #define HEADERTOP	2
 
-/* screen->full */
-#define SCREENNORMAL	0
-#define SCREENFULL		1
+/* screen->state */
+enum {
+	SCREENNORMAL     = 0,
+	SCREENMAXIMIZED  = 1, /* one editor taking over the screen */
+	SCREENFULL       = 2, /* one editor taking over the screen with no bare-minimum UI elements */
+};
 
 /* Panel->flag */
 enum {
@@ -314,6 +318,9 @@ enum {
 /* paneltype flag */
 #define PNL_DEFAULT_CLOSED		1
 #define PNL_NO_HEADER			2
+
+/* Fallback panel category (only for old scripts which need updating) */
+#define PNL_CATEGORY_FALLBACK "Misc"
 
 /* uiList layout_type */
 enum {
@@ -383,6 +390,6 @@ enum {
 #define RGN_DRAW			1
 #define RGN_DRAW_PARTIAL	2
 #define RGN_DRAWING			4
-
+#define RGN_DRAW_REFRESH_UI	8  /* re-create uiBlock's where possible */
 #endif
 

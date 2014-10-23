@@ -138,6 +138,10 @@ void ED_node_tag_update_id(ID *id)
 		DAG_id_tag_update(id, 0);
 		WM_main_add_notifier(NC_TEXTURE | ND_NODES, id);
 	}
+	else if (id == &ntree->id) {
+		/* node groups */
+		DAG_id_tag_update(id, 0);
+	}
 }
 
 void ED_node_tag_update_nodetree(Main *bmain, bNodeTree *ntree)
@@ -1341,7 +1345,7 @@ void drawnodespace(const bContext *C, ARegion *ar)
 		
 		if (snode->flag & SNODE_SHOW_GPENCIL) {
 			/* draw grease-pencil ('canvas' strokes) */
-			draw_gpencil_view2d(C, true);
+			ED_gpencil_draw_view2d(C, true);
 		}
 	}
 	else {
@@ -1360,7 +1364,7 @@ void drawnodespace(const bContext *C, ARegion *ar)
 	if (snode->treepath.last) {
 		if (snode->flag & SNODE_SHOW_GPENCIL) {
 			/* draw grease-pencil (screen strokes, and also paintbuffer) */
-			draw_gpencil_view2d(C, false);
+			ED_gpencil_draw_view2d(C, false);
 		}
 	}
 

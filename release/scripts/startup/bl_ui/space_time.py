@@ -145,7 +145,8 @@ class TIME_MT_view(Menu):
         layout.separator()
 
         layout.operator("screen.area_dupli")
-        layout.operator("screen.screen_full_area")
+        layout.operator("screen.screen_full_area", text="Toggle Maximize Area")
+        layout.operator("screen.screen_full_area").use_hide_panels = True
 
 
 class TIME_MT_cache(Menu):
@@ -176,8 +177,11 @@ class TIME_MT_frame(Menu):
     def draw(self, context):
         layout = self.layout
 
-        layout.operator("time.start_frame_set")
+        layout.operator("anim.previewrange_clear")
+        layout.operator("anim.previewrange_set")
+        layout.separator()
         layout.operator("time.end_frame_set")
+        layout.operator("time.start_frame_set")
 
         layout.separator()
 

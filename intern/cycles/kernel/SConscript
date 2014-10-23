@@ -30,6 +30,7 @@ import subprocess
 import sys
 import os
 import Blender as B
+import btools
 
 def normpath(path):
     return os.path.abspath(os.path.normpath(path))
@@ -64,49 +65,56 @@ if env['WITH_BF_CYCLES_CUDA_BINARIES']:
     closure_dir = os.path.join(source_dir, "../closure")
 
     # get CUDA version
-    nvcc_pipe = subprocess.Popen([nvcc, "--version"],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-    output, erroroutput = nvcc_pipe.communicate()
+    output = btools.get_command_output([nvcc, "--version"])
     cuda_major_minor = re.findall(r'release (\d+).(\d+)', output)[0]
     cuda_version = int(cuda_major_minor[0])*10 + int(cuda_major_minor[1])
 
-    if cuda_version != 60:
-        print("CUDA version %d.%d detected, build may succeed but only CUDA 6.0 is officially supported." % (cuda_version/10, cuda_version%10))
+    if cuda_version != 65:
+        print("CUDA version %d.%d detected, build may succeed but only CUDA 6.5 is officially supported." % (cuda_version/10, cuda_version%10))
 
     # nvcc flags
     nvcc_flags = "-m%s" % (bits)
-    nvcc_flags += " --cubin --ptxas-options=\"-v\""
+    nvcc_flags += " --cubin --ptxas-options=\"-v\" --use_fast_math"
     nvcc_flags += " -D__KERNEL_CUDA_VERSION__=%d" % (cuda_version)
     nvcc_flags += " -DCCL_NAMESPACE_BEGIN= -DCCL_NAMESPACE_END= -DNVCC"
     nvcc_flags += " -I \"%s\" -I \"%s\" -I \"%s\" -I \"%s\"" % (util_dir, svm_dir, geom_dir, closure_dir)
+
+    if env['WITH_BF_CYCLES_DEBUG']:
+        nvcc_flags += " -D__KERNEL_DEBUG__"
 
     # dependencies
     dependencies = ['kernel.cu'] + kernel.Glob('*.h') + kernel.Glob('../util/*.h') + kernel.Glob('svm/*.h') + kernel.Glob('geom/*.h') + kernel.Glob('closure/*.h')
     last_cubin_file = None
 
+    configs = (("kernel_%s.cubin", ''),
+               ("kernel_experimental_%s.cubin", ' -D__KERNEL_CUDA_EXPERIMENTAL__'))
+
     # add command for each cuda architecture
     for arch in cuda_archs:
-        if cuda_version < 60 and arch == "sm_50":
-            print("Can't build kernel for CUDA sm_50 architecture, skipping")
-            continue
+        for config in configs:
+            # TODO(sergey): Use dict instead ocouple in order to increase readability?
+            name = config[0]
+            extra_flags = config[1]
 
-        cubin_file = os.path.join(build_dir, "kernel_%s.cubin" % arch)
+            cubin_file = os.path.join(build_dir, name % arch)
+            current_flags = nvcc_flags + extra_flags
 
-        if env['BF_CYCLES_CUDA_ENV']:
-            MS_SDK = "C:\\Program Files\\Microsoft SDKs\\Windows\\v7.1\\Bin\\SetEnv.cmd"
-            command = "\"%s\" & \"%s\" -arch=%s %s \"%s\" -o \"%s\"" % (MS_SDK, nvcc, arch, nvcc_flags, kernel_file, cubin_file)
-        else:
-            command = "\"%s\" -arch=%s %s \"%s\" -o \"%s\"" % (nvcc, arch, nvcc_flags, kernel_file, cubin_file)
+            if env['BF_CYCLES_CUDA_ENV']:
+                MS_SDK = "C:\\Program Files\\Microsoft SDKs\\Windows\\v7.1\\Bin\\SetEnv.cmd"
+                command = "\"%s\" & \"%s\" -arch=%s %s \"%s\" -o \"%s\"" % (MS_SDK, nvcc, arch, current_flags, kernel_file, cubin_file)
+            else:
+                command = "\"%s\" -arch=%s %s \"%s\" -o \"%s\"" % (nvcc, arch, current_flags, kernel_file, cubin_file)
 
-        kernel.Command(cubin_file, 'kernel.cu', command)
-        kernel.Depends(cubin_file, dependencies)
+            kernel.Command(cubin_file, 'kernel.cu', command)
+            kernel.Depends(cubin_file, dependencies)
 
-        kernel_binaries.append(cubin_file)
-        
-        if not env['WITH_BF_CYCLES_CUDA_THREADED_COMPILE']:
-            # trick to compile one kernel at a time to reduce memory usage
-            if last_cubin_file:
-                kernel.Depends(cubin_file, last_cubin_file)
-            last_cubin_file = cubin_file
+            kernel_binaries.append(cubin_file)
+
+            if not env['WITH_BF_CYCLES_CUDA_THREADED_COMPILE']:
+                # trick to compile one kernel at a time to reduce memory usage
+                if last_cubin_file:
+                    kernel.Depends(cubin_file, last_cubin_file)
+                last_cubin_file = cubin_file
 
 Return('kernel_binaries')
 

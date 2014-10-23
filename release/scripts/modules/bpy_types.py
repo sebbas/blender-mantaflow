@@ -140,6 +140,16 @@ class WindowManager(bpy_types.ID):
         finally:
             self.pupmenu_end__internal(popup)
 
+    def popup_menu_pie(self, event, draw_func, title="", icon='NONE'):
+        import bpy
+        pie = self.piemenu_begin__internal(title, icon, event)
+
+        if pie:
+            try:
+                draw_func(pie, bpy.context)
+            finally:
+                self.piemenu_end__internal(pie)
+
 
 class _GenericBone:
     """
@@ -685,7 +695,7 @@ class _GenericUI:
         draw_funcs = cls._dyn_ui_initialize()
         try:
             draw_funcs.remove(draw_func)
-        except:
+        except ValueError:
             pass
 
 

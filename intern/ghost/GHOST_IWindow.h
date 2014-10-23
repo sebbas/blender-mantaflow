@@ -46,13 +46,12 @@
  * \see GHOST_ISystem#createWindow
  *
  * There are two coordinate systems:
- * <ul>
- * <li>The screen coordinate system. The origin of the screen is located in the
- * upper left corner of the screen.</li>
- * <li>The client rectangle coordinate system. The client rectangle of a window
- * is the area that is drawable by the application (excluding title bars etc.).
- * </li>
- * </ul>
+ *
+ * - The screen coordinate system. The origin of the screen is located in the
+ *   upper left corner of the screen.</li>
+ * - The client rectangle coordinate system. The client rectangle of a window
+ *   is the area that is drawable by the application (excluding title bars etc.).
+ *
  * \author  Maarten Gribnau
  * \date    May 31, 2001
  */
@@ -213,9 +212,17 @@ public:
 
 	/**
 	 * Gets the current swap interval for swapBuffers.
-	 * \return An integer.
+	 * \param windowhandle The handle to the window
+	 * \param intervalOut pointer to location to return swap interval (left untouched if there is an error)
+	 * \return A boolean success indicator of if swap interval was successfully read.
 	 */
-	virtual int getSwapInterval() = 0;
+	virtual GHOST_TSuccess getSwapInterval(int& intervalOut) = 0;
+
+	/**
+	 * Gets the current swap interval for swapBuffers.
+	 * \return Number of AA Samples (0 if there is no multisample buffer)
+	 */
+	virtual GHOST_TUns16 getNumOfAASamples() = 0;
 
 	/**
 	 * Activates the drawing context of this window.

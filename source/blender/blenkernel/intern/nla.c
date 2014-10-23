@@ -157,8 +157,10 @@ void free_nladata(ListBase *tracks)
 
 /* Copying ------------------------------------------- */
 
-/* Copy NLA strip 
- * < use_same_action: if true, the existing action is used (instead of being duplicated)
+/**
+ * Copy NLA strip
+ *
+ * \param use_same_action When true, the existing action is used (instead of being duplicated)
  */
 NlaStrip *copy_nlastrip(NlaStrip *strip, const bool use_same_action)
 {
@@ -428,7 +430,7 @@ static float nlastrip_get_frame_actionclip(NlaStrip *strip, float cframe, short 
 			return (strip->end + (strip->actstart * scale - cframe)) / scale;
 		}
 		else { /* if (mode == NLATIME_CONVERT_EVAL) */
-			if (IS_EQF(cframe, strip->end) && IS_EQF(strip->repeat, ((int)strip->repeat))) {
+			if (IS_EQF((float)cframe, strip->end) && IS_EQF(strip->repeat, floorf(strip->repeat))) {
 				/* this case prevents the motion snapping back to the first frame at the end of the strip 
 				 * by catching the case where repeats is a whole number, which means that the end of the strip
 				 * could also be interpreted as the end of the start of a repeat
@@ -451,7 +453,7 @@ static float nlastrip_get_frame_actionclip(NlaStrip *strip, float cframe, short 
 			return strip->actstart + (cframe - strip->start) / scale;
 		}
 		else { /* if (mode == NLATIME_CONVERT_EVAL) */
-			if (IS_EQF(cframe, strip->end) && IS_EQF(strip->repeat, ((int)strip->repeat))) {
+			if (IS_EQF(cframe, strip->end) && IS_EQF(strip->repeat, floorf(strip->repeat))) {
 				/* this case prevents the motion snapping back to the first frame at the end of the strip 
 				 * by catching the case where repeats is a whole number, which means that the end of the strip
 				 * could also be interpreted as the end of the start of a repeat
@@ -1635,7 +1637,7 @@ bool BKE_nla_tweakmode_enter(AnimData *adt)
 		}
 	}
 	
-	if (ELEM3(NULL, activeTrack, activeStrip, activeStrip->act)) {
+	if (ELEM(NULL, activeTrack, activeStrip, activeStrip->act)) {
 		if (G.debug & G_DEBUG) {
 			printf("NLA tweakmode enter - neither active requirement found\n");
 			printf("\tactiveTrack = %p, activeStrip = %p\n", (void *)activeTrack, (void *)activeStrip);
@@ -1742,7 +1744,7 @@ static void UNUSED_FUNCTION(BKE_nla_bake) (Scene *scene, ID *UNUSED(id), AnimDat
 	 *	1) Scene and AnimData must be provided 
 	 *	2) there must be tracks to merge...
 	 */
-	if (ELEM3(NULL, scene, adt, adt->nla_tracks.first))
+	if (ELEM(NULL, scene, adt, adt->nla_tracks.first))
 		return;
 	
 	/* if animdata currently has an action, 'push down' this onto the stack first */

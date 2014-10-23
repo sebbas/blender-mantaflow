@@ -153,7 +153,7 @@ static void blf_glyph_cache_texture(FontBLF *font, GlyphCacheBLF *gc)
 	/* move the index. */
 	gc->cur_tex++;
 
-	if (gc->cur_tex >= gc->ntex) {
+	if (UNLIKELY(gc->cur_tex >= gc->ntex)) {
 		gc->ntex *= 2;
 		gc->textures = (GLuint *)MEM_reallocN((void *)gc->textures, sizeof(GLuint) * gc->ntex);
 	}
@@ -279,6 +279,7 @@ GlyphBLF *blf_glyph_add(FontBLF *font, unsigned int index, unsigned int c)
 	}
 
 	g->advance = ((float)slot->advance.x) / 64.0f;
+	g->advance_i = (int)g->advance;
 	g->pos_x = (float)slot->bitmap_left;
 	g->pos_y = (float)slot->bitmap_top;
 	g->pitch = slot->bitmap.pitch;
@@ -378,7 +379,7 @@ static void blf_texture3_draw(const float shadow_col[4], float uv[2][2], float x
 
 static void blf_glyph_calc_rect(rctf *rect, GlyphBLF *g, float x, float y)
 {
-	rect->xmin = (float)floor(x + g->pos_x);
+	rect->xmin = floorf(x + g->pos_x);
 	rect->xmax = rect->xmin + (float)g->width;
 	rect->ymin = y + g->pos_y;
 	rect->ymax = y + g->pos_y - (float)g->height;

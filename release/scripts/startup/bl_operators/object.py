@@ -249,9 +249,9 @@ class SubdivisionSet(Operator):
                 if mod.type == 'MULTIRES':
                     if not relative:
                         if level > mod.total_levels:
-                           sub = level - mod.total_levels
-                           for i in range (0, sub):
-                               bpy.ops.object.multires_subdivide(modifier="Multires")
+                            sub = level - mod.total_levels
+                            for i in range (0, sub):
+                                bpy.ops.object.multires_subdivide(modifier="Multires")
 
                         if obj.mode == 'SCULPT':
                             if mod.sculpt_levels != level:
@@ -366,6 +366,11 @@ class ShapeTransfer(Operator):
         orig_coords = me_cos(me.shape_keys.key_blocks[0].data)
 
         for ob_other in objects:
+            if ob_other.type != 'MESH':
+                self.report({'WARNING'},
+                            ("Skipping '%s', "
+                             "not a mesh") % ob_other.name)
+                continue
             me_other = ob_other.data
             if len(me_other.vertices) != len(me.vertices):
                 self.report({'WARNING'},
@@ -770,22 +775,15 @@ class DupliOffsetFromCursor(Operator):
     bl_label = "Set Offset From Cursor"
     bl_options = {'REGISTER', 'UNDO'}
 
-    group = IntProperty(
-            name="Group",
-            description="Group index to set offset for",
-            default=0,
-            )
-
     @classmethod
     def poll(cls, context):
         return (context.active_object is not None)
 
     def execute(self, context):
         scene = context.scene
-        ob = context.active_object
-        group = self.group
+        group = context.group
 
-        ob.users_group[group].dupli_offset = scene.cursor_location
+        group.dupli_offset = scene.cursor_location
 
         return {'FINISHED'}
 

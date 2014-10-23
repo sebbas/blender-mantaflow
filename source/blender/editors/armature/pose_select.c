@@ -45,6 +45,7 @@
 #include "BKE_context.h"
 #include "BKE_depsgraph.h"
 #include "BKE_object.h"
+#include "BKE_report.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -68,6 +69,29 @@
 
 /* ***************** Pose Select Utilities ********************* */
 
+/* Note: SEL_TOGGLE is assumed to have already been handled! */
+static void pose_do_bone_select(bPoseChannel *pchan, const int select_mode)
+{
+	/* select pchan only if selectable, but deselect works always */
+	switch (select_mode) {
+		case SEL_SELECT:
+			if (!(pchan->bone->flag & BONE_UNSELECTABLE))
+				pchan->bone->flag |= BONE_SELECTED;
+			break;
+		case SEL_DESELECT:
+			pchan->bone->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
+			break;
+		case SEL_INVERT:
+			if (pchan->bone->flag & BONE_SELECTED) {
+				pchan->bone->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
+			}
+			else if (!(pchan->bone->flag & BONE_UNSELECTABLE)) {
+				pchan->bone->flag |= BONE_SELECTED;
+			}
+			break;
+	}
+}
+
 /* Utility method for changing the selection status of a bone */
 void ED_pose_bone_select(Object *ob, bPoseChannel *pchan, bool select)
 {
@@ -75,7 +99,7 @@ void ED_pose_bone_select(Object *ob, bPoseChannel *pchan, bool select)
 
 	/* sanity checks */
 	// XXX: actually, we can probably still get away with no object - at most we have no updates
-	if (ELEM4(NULL, ob, ob->pose, pchan, pchan->bone))
+	if (ELEM(NULL, ob, ob->pose, pchan, pchan->bone))
 		return;
 	
 	arm = ob->data;
@@ -109,14 +133,14 @@ void ED_pose_bone_select(Object *ob, bPoseChannel *pchan, bool select)
 /* called from editview.c, for mode-less pose selection */
 /* assumes scene obact and basact is still on old situation */
 int ED_do_pose_selectbuffer(Scene *scene, Base *base, unsigned int *buffer, short hits,
-                            bool extend, bool deselect, bool toggle)
+                            bool extend, bool deselect, bool toggle, bool do_nearest)
 {
 	Object *ob = base->object;
 	Bone *nearBone;
 	
 	if (!ob || !ob->pose) return 0;
 
-	nearBone = get_bone_from_selectbuffer(scene, base, buffer, hits, 1);
+	nearBone = get_bone_from_selectbuffer(scene, base, buffer, hits, 1, do_nearest);
 	
 	/* if the bone cannot be affected, don't do anything */
 	if ((nearBone) && !(nearBone->flag & BONE_UNSELECTABLE)) {
@@ -138,7 +162,7 @@ int ED_do_pose_selectbuffer(Scene *scene, Base *base, unsigned int *buffer, shor
 		}
 
 		if (!extend && !deselect && !toggle) {
-			ED_pose_deselectall(ob, 0);
+			ED_pose_de_selectall(ob, SEL_DESELECT, true);
 			nearBone->flag |= (BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
 			arm->act_bone = nearBone;
 		}
@@ -190,16 +214,12 @@ int ED_do_pose_selectbuffer(Scene *scene, Base *base, unsigned int *buffer, shor
 	return nearBone != NULL;
 }
 
-/* test==0: deselect all
- * test==1: swap select (apply to all the opposite of current situation) 
- * test==2: only clear active tag
- * test==3: swap select (no test / inverse selection status of all independently)
- */
-void ED_pose_deselectall(Object *ob, int test)
+/* 'select_mode' is usual SEL_SELECT/SEL_DESELECT/SEL_TOGGLE/SEL_INVERT.
+ * When true, 'ignore_visibility' makes this func also affect invisible bones (hidden or on hidden layers). */
+void ED_pose_de_selectall(Object *ob, int select_mode, const bool ignore_visibility)
 {
 	bArmature *arm = ob->data;
 	bPoseChannel *pchan;
-	int selectmode = 0;
 	
 	/* we call this from outliner too */
 	if (ob->pose == NULL) {
@@ -207,31 +227,23 @@ void ED_pose_deselectall(Object *ob, int test)
 	}
 	
 	/*	Determine if we're selecting or deselecting	*/
-	if (test == 1) {
+	if (select_mode == SEL_TOGGLE) {
+		select_mode = SEL_SELECT;
 		for (pchan = ob->pose->chanbase.first; pchan; pchan = pchan->next) {
-			if (PBONE_VISIBLE(arm, pchan->bone)) {
-				if (pchan->bone->flag & BONE_SELECTED)
+			if (ignore_visibility || PBONE_VISIBLE(arm, pchan->bone)) {
+				if (pchan->bone->flag & BONE_SELECTED) {
+					select_mode = SEL_DESELECT;
 					break;
+				}
 			}
 		}
-		
-		if (pchan == NULL)
-			selectmode = 1;
 	}
-	else if (test == 2)
-		selectmode = 2;
 	
-	/*	Set the flags accordingly	*/
+	/* Set the flags accordingly */
 	for (pchan = ob->pose->chanbase.first; pchan; pchan = pchan->next) {
 		/* ignore the pchan if it isn't visible or if its selection cannot be changed */
-		if ((pchan->bone->layer & arm->layer) && !(pchan->bone->flag & (BONE_HIDDEN_P | BONE_UNSELECTABLE))) {
-			if (test == 3) {
-				pchan->bone->flag ^= (BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
-			}
-			else {
-				if (selectmode == 0) pchan->bone->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
-				else if (selectmode == 1) pchan->bone->flag |= BONE_SELECTED;
-			}
+		if (ignore_visibility || PBONE_VISIBLE(arm, pchan->bone)) {
+			pose_do_bone_select(pchan, select_mode);
 		}
 	}
 }
@@ -242,7 +254,7 @@ static void selectconnected_posebonechildren(Object *ob, Bone *bone, int extend)
 {
 	Bone *curBone;
 	
-	/* stop when unconnected child is encontered, or when unselectable bone is encountered */
+	/* stop when unconnected child is encountered, or when unselectable bone is encountered */
 	if (!(bone->flag & BONE_CONNECTED) || (bone->flag & BONE_UNSELECTABLE))
 		return;
 	
@@ -352,24 +364,7 @@ static int pose_de_select_all_exec(bContext *C, wmOperator *op)
 	/*	Set the flags */
 	CTX_DATA_BEGIN(C, bPoseChannel *, pchan, visible_pose_bones)
 	{
-		/* select pchan only if selectable, but deselect works always */
-		switch (action) {
-			case SEL_SELECT:
-				if ((pchan->bone->flag & BONE_UNSELECTABLE) == 0)
-					pchan->bone->flag |= BONE_SELECTED;
-				break;
-			case SEL_DESELECT:
-				pchan->bone->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
-				break;
-			case SEL_INVERT:
-				if (pchan->bone->flag & BONE_SELECTED) {
-					pchan->bone->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
-				}
-				else if ((pchan->bone->flag & BONE_UNSELECTABLE) == 0) {
-					pchan->bone->flag |= BONE_SELECTED;
-				}
-				break;
-		}
+		pose_do_bone_select(pchan, action);
 	}
 	CTX_DATA_END;
 
@@ -627,6 +622,13 @@ void POSE_OT_select_hierarchy(wmOperatorType *ot)
 
 /* -------------------------------------- */
 
+/* modes for select same */
+typedef enum ePose_SelectSame_Mode {
+	POSE_SEL_SAME_LAYER      = 0,
+	POSE_SEL_SAME_GROUP      = 1,
+	POSE_SEL_SAME_KEYINGSET  = 2,
+} ePose_SelectSame_Mode;
+
 static bool pose_select_same_group(bContext *C, Object *ob, bool extend)
 {
 	bArmature *arm = (ob) ? ob->data : NULL;
@@ -636,7 +638,7 @@ static bool pose_select_same_group(bContext *C, Object *ob, bool extend)
 	bool changed = false, tagged = false;
 	
 	/* sanity checks */
-	if (ELEM3(NULL, ob, pose, arm))
+	if (ELEM(NULL, ob, pose, arm))
 		return 0;
 		
 	/* count the number of groups */
@@ -693,7 +695,7 @@ static bool pose_select_same_layer(bContext *C, Object *ob, bool extend)
 	bool changed = false;
 	int layers = 0;
 	
-	if (ELEM3(NULL, ob, pose, arm))
+	if (ELEM(NULL, ob, pose, arm))
 		return 0;
 	
 	/* figure out what bones are selected */
@@ -725,7 +727,7 @@ static bool pose_select_same_layer(bContext *C, Object *ob, bool extend)
 	return changed;
 }
 
-static bool pose_select_same_keyingset(bContext *C, Object *ob, bool extend)
+static bool pose_select_same_keyingset(bContext *C, ReportList *reports, Object *ob, bool extend)
 {
 	KeyingSet *ks = ANIM_scene_get_active_keyingset(CTX_data_scene(C));
 	KS_Path *ksp;
@@ -735,11 +737,26 @@ static bool pose_select_same_keyingset(bContext *C, Object *ob, bool extend)
 	bool changed = false;
 	
 	/* sanity checks: validate Keying Set and object */
-	if ((ks == NULL) || (ANIM_validate_keyingset(C, NULL, ks) != 0))
-		return 0;
+	if (ks == NULL) {
+		BKE_report(reports, RPT_ERROR, "No active Keying Set to use");
+		return false;
+	}
+	else if (ANIM_validate_keyingset(C, NULL, ks) != 0) {
+		if (ks->paths.first == NULL) {
+			if ((ks->flag & KEYINGSET_ABSOLUTE) == 0) {
+				BKE_report(reports, RPT_ERROR, 
+				           "Use another Keying Set, as the active one depends on the currently "
+				           "selected items or cannot find any targets due to unsuitable context");
+			}
+			else {
+				BKE_report(reports, RPT_ERROR, "Keying Set does not contain any paths");
+			}
+		}
+		return false;
+	}
 		
-	if (ELEM3(NULL, ob, pose, arm))
-		return 0;
+	if (ELEM(NULL, ob, pose, arm))
+		return false;
 		
 	/* if not extending selection, deselect all selected first */
 	if (extend == false) {
@@ -785,6 +802,7 @@ static int pose_select_grouped_exec(bContext *C, wmOperator *op)
 {
 	Object *ob = BKE_object_pose_armature_get(CTX_data_active_object(C));
 	bArmature *arm = (bArmature *)ob->data;
+	const ePose_SelectSame_Mode type = RNA_enum_get(op->ptr, "type");
 	const bool extend = RNA_boolean_get(op->ptr, "extend");
 	bool changed = false;
 	
@@ -792,18 +810,22 @@ static int pose_select_grouped_exec(bContext *C, wmOperator *op)
 	if (ob->pose == NULL)
 		return OPERATOR_CANCELLED;
 		
-	/* selection types 
-	 * NOTE: for the order of these, see the enum in POSE_OT_select_grouped()
-	 */
-	switch (RNA_enum_get(op->ptr, "type")) {
-		case 1: /* group */
+	/* selection types */
+	switch (type) {
+		case POSE_SEL_SAME_LAYER: /* layer */
+			changed = pose_select_same_layer(C, ob, extend);
+			break;
+		
+		case POSE_SEL_SAME_GROUP: /* group */
 			changed = pose_select_same_group(C, ob, extend);
 			break;
-		case 2: /* Keying Set */
-			changed = pose_select_same_keyingset(C, ob, extend);
+			
+		case POSE_SEL_SAME_KEYINGSET: /* Keying Set */
+			changed = pose_select_same_keyingset(C, op->reports, ob, extend);
 			break;
-		default: /* layer */
-			changed = pose_select_same_layer(C, ob, extend);
+		
+		default:
+			printf("pose_select_grouped() - Unknown selection type %d\n", type);
 			break;
 	}
 	
@@ -825,9 +847,9 @@ static int pose_select_grouped_exec(bContext *C, wmOperator *op)
 void POSE_OT_select_grouped(wmOperatorType *ot)
 {
 	static EnumPropertyItem prop_select_grouped_types[] = {
-		{0, "LAYER", 0, "Layer", "Shared layers"},
-		{1, "GROUP", 0, "Group", "Shared group"},
-		{2, "KEYINGSET", 0, "Keying Set", "All bones affected by active Keying Set"},
+		{POSE_SEL_SAME_LAYER, "LAYER", 0, "Layer", "Shared layers"},
+		{POSE_SEL_SAME_GROUP, "GROUP", 0, "Group", "Shared group"},
+		{POSE_SEL_SAME_KEYINGSET, "KEYINGSET", 0, "Keying Set", "All bones affected by active Keying Set"},
 		{0, NULL, 0, NULL, NULL}
 	};
 

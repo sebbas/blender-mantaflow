@@ -89,7 +89,8 @@ class NLA_MT_view(Menu):
 
         layout.separator()
         layout.operator("screen.area_dupli")
-        layout.operator("screen.screen_full_area")
+        layout.operator("screen.screen_full_area", text="Toggle Maximize Area")
+        layout.operator("screen.screen_full_area").use_hide_panels = True
 
 
 class NLA_MT_select(Menu):
@@ -158,6 +159,7 @@ class NLA_MT_edit(Menu):
         # TODO: this really belongs more in a "channel" (or better, "track") menu
         layout.separator()
         layout.operator_menu_enum("anim.channels_move", "direction", text="Track Ordering...")
+        layout.operator("anim.channels_clean_empty")
 
         layout.separator()
         # TODO: names of these tools for 'tweak-mode' need changing?

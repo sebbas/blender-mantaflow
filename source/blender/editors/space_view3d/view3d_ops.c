@@ -77,7 +77,7 @@ static int view3d_copybuffer_exec(bContext *C, wmOperator *op)
 	}
 	CTX_DATA_END;
 	
-	BLI_make_file_string("/", str, BLI_temporary_dir(), "copybuffer.blend");
+	BLI_make_file_string("/", str, BLI_temp_dir_base(), "copybuffer.blend");
 	BKE_copybuffer_save(str, op->reports);
 	
 	BKE_report(op->reports, RPT_INFO, "Copied selected objects to buffer");
@@ -102,7 +102,7 @@ static int view3d_pastebuffer_exec(bContext *C, wmOperator *op)
 {
 	char str[FILE_MAX];
 
-	BLI_make_file_string("/", str, BLI_temporary_dir(), "copybuffer.blend");
+	BLI_make_file_string("/", str, BLI_temp_dir_base(), "copybuffer.blend");
 	if (BKE_copybuffer_paste(C, str, op->reports)) {
 		WM_event_add_notifier(C, NC_WINDOW, NULL);
 
@@ -296,8 +296,8 @@ void view3d_keymap(wmKeyConfig *keyconf)
 	RNA_enum_set(WM_keymap_add_item(keymap, "VIEW3D_OT_view_pan", PAD4, KM_PRESS, KM_CTRL, 0)->ptr, "type", V3D_VIEW_PANLEFT);
 	RNA_enum_set(WM_keymap_add_item(keymap, "VIEW3D_OT_view_pan", PAD6, KM_PRESS, KM_CTRL, 0)->ptr, "type", V3D_VIEW_PANRIGHT);
 	RNA_enum_set(WM_keymap_add_item(keymap, "VIEW3D_OT_view_pan", PAD8, KM_PRESS, KM_CTRL, 0)->ptr, "type", V3D_VIEW_PANUP);
-	RNA_float_set(WM_keymap_add_item(keymap, "VIEW3D_OT_view_roll", PAD4, KM_PRESS, KM_SHIFT, 0)->ptr, "angle", M_PI / -12);
-	RNA_float_set(WM_keymap_add_item(keymap, "VIEW3D_OT_view_roll", PAD6, KM_PRESS, KM_SHIFT, 0)->ptr, "angle", M_PI / 12);
+	RNA_enum_set(WM_keymap_add_item(keymap, "VIEW3D_OT_view_roll", PAD4, KM_PRESS, KM_SHIFT, 0)->ptr, "type", V3D_VIEW_STEPLEFT);
+	RNA_enum_set(WM_keymap_add_item(keymap, "VIEW3D_OT_view_roll", PAD6, KM_PRESS, KM_SHIFT, 0)->ptr, "type", V3D_VIEW_STEPRIGHT);
 
 	RNA_enum_set(WM_keymap_add_item(keymap, "VIEW3D_OT_view_pan", WHEELUPMOUSE, KM_PRESS, KM_CTRL, 0)->ptr, "type", V3D_VIEW_PANRIGHT);
 	RNA_enum_set(WM_keymap_add_item(keymap, "VIEW3D_OT_view_pan", WHEELDOWNMOUSE, KM_PRESS, KM_CTRL, 0)->ptr, "type", V3D_VIEW_PANLEFT);
@@ -309,8 +309,8 @@ void view3d_keymap(wmKeyConfig *keyconf)
 	RNA_enum_set(WM_keymap_add_item(keymap, "VIEW3D_OT_view_orbit", WHEELUPMOUSE, KM_PRESS, KM_SHIFT | KM_ALT, 0)->ptr, "type", V3D_VIEW_STEPUP);
 	RNA_enum_set(WM_keymap_add_item(keymap, "VIEW3D_OT_view_orbit", WHEELDOWNMOUSE, KM_PRESS, KM_SHIFT | KM_ALT, 0)->ptr, "type", V3D_VIEW_STEPDOWN);
 	
-	RNA_float_set(WM_keymap_add_item(keymap, "VIEW3D_OT_view_roll", WHEELUPMOUSE, KM_PRESS, KM_CTRL | KM_SHIFT, 0)->ptr, "angle", M_PI / -12);
-	RNA_float_set(WM_keymap_add_item(keymap, "VIEW3D_OT_view_roll", WHEELDOWNMOUSE, KM_PRESS, KM_CTRL | KM_SHIFT, 0)->ptr, "angle", M_PI / 12);
+	RNA_enum_set(WM_keymap_add_item(keymap, "VIEW3D_OT_view_roll", WHEELUPMOUSE, KM_PRESS, KM_CTRL | KM_SHIFT, 0)->ptr, "type", V3D_VIEW_STEPLEFT);
+	RNA_enum_set(WM_keymap_add_item(keymap, "VIEW3D_OT_view_roll", WHEELDOWNMOUSE, KM_PRESS, KM_CTRL | KM_SHIFT, 0)->ptr, "type", V3D_VIEW_STEPRIGHT);
 
 	/* active aligned, replaces '*' key in 2.4x */
 	kmi = WM_keymap_add_item(keymap, "VIEW3D_OT_viewnumpad", PAD1, KM_PRESS, KM_SHIFT, 0);

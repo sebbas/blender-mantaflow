@@ -88,6 +88,12 @@ BF_JPEG_INC = '${BF_JPEG}/include'
 BF_JPEG_LIB = 'jpeg'
 BF_JPEG_LIBPATH = '${BF_JPEG}/lib'
 
+WITH_BF_OPENJPEG = True
+BF_OPENJPEG = '#extern/libopenjpeg'
+BF_OPENJPEG_LIB = ''
+BF_OPENJPEG_INC = '${BF_OPENJPEG}'
+BF_OPENJPEG_LIBPATH='${BF_OPENJPEG}/lib'
+
 WITH_BF_PNG = True
 BF_PNG = LIBDIR + '/png'
 BF_PNG_INC = '${BF_PNG}/include'
@@ -148,7 +154,7 @@ BF_COLLADA_INC = '${BF_COLLADA}'
 BF_COLLADA_LIB = 'bf_collada'
 BF_OPENCOLLADA = LIBDIR + '/opencollada'
 BF_OPENCOLLADA_INC = '${BF_OPENCOLLADA}/include'
-BF_OPENCOLLADA_LIB = 'OpenCOLLADASaxFrameworkLoader OpenCOLLADAFramework OpenCOLLADABaseUtils OpenCOLLADAStreamWriter MathMLSolver GeneratedSaxParser UTF xml2 buffer ftoa'
+BF_OPENCOLLADA_LIB = 'OpenCOLLADASaxFrameworkLoader OpenCOLLADAFramework OpenCOLLADABaseUtils OpenCOLLADAStreamWriter MathMLSolver GeneratedSaxParser xml2 buffer ftoa'
 BF_OPENCOLLADA_LIBPATH = LIBDIR + '/opencollada'
 BF_PCRE = LIBDIR + '/opencollada'
 BF_PCRE_LIB = 'pcre'
@@ -175,7 +181,7 @@ WITH_BF_LLVM = True
 BF_LLVM = LIBDIR + '/llvm'
 BF_LLVM_LIB = 'LLVMBitReader LLVMJIT LLVMipo LLVMVectorize LLVMBitWriter LLVMX86CodeGen LLVMX86Desc LLVMX86Info LLVMX86AsmPrinter ' + \
     'LLVMX86Utils LLVMSelectionDAG LLVMCodeGen LLVMScalarOpts LLVMInstCombine LLVMTransformUtils LLVMipa LLVMAnalysis LLVMExecutionEngine ' + \
-    'LLVMTarget LLVMMC LLVMCore LLVMSupport'
+    'LLVMTarget LLVMMC LLVMCore LLVMSupport LLVMObject'
 BF_LLVM_LIBPATH = '${BF_LLVM}/lib'
 
 WITH_BF_OIIO = True
@@ -231,7 +237,7 @@ LLIBS = ['stdc++']
 
 REL_CFLAGS = []
 REL_CXXFLAGS = []
-REL_CCFLAGS = ['-DNDEBUG', '-O2']
+REL_CCFLAGS = ['-O2']
 
 CC_WARN = ['-Wall']
 C_WARN = ['-Wno-char-subscripts', '-Wpointer-arith', '-Wcast-align', '-Wdeclaration-after-statement', '-Wno-unknown-pragmas', '-Wstrict-prototypes']
@@ -247,7 +253,7 @@ BF_PROFILE_LINKFLAGS = ['-pg']
 BF_PROFILE = False
 
 BF_DEBUG = False
-BF_DEBUG_CCFLAGS = ['-g', '-D_DEBUG']
+BF_DEBUG_CCFLAGS = ['-g']
 
 #############################################################################
 ###################           Output directories           ##################

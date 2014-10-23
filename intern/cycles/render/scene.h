@@ -18,6 +18,7 @@
 #define __SCENE_H__
 
 #include "image.h"
+#include "shader.h"
 
 #include "device_memory.h"
 
@@ -68,7 +69,7 @@ public:
 	device_vector<uint> prim_object;
 
 	/* mesh */
-	device_vector<float4> tri_normal;
+	device_vector<uint> tri_shader;
 	device_vector<float4> tri_vnormal;
 	device_vector<float4> tri_vindex;
 	device_vector<float4> tri_verts;
@@ -84,6 +85,7 @@ public:
 	device_vector<uint4> attributes_map;
 	device_vector<float> attributes_float;
 	device_vector<float4> attributes_float3;
+	device_vector<uchar4> attributes_uchar4;
 
 	/* lights */
 	device_vector<float4> light_distribution;
@@ -120,7 +122,7 @@ public:
 
 class SceneParams {
 public:
-	enum { OSL, SVM } shadingsystem;
+	ShadingSystem shadingsystem;
 	enum BVHType { BVH_DYNAMIC, BVH_STATIC } bvh_type;
 	bool use_bvh_cache;
 	bool use_bvh_spatial_split;
@@ -129,7 +131,7 @@ public:
 
 	SceneParams()
 	{
-		shadingsystem = SVM;
+		shadingsystem = SHADINGSYSTEM_SVM;
 		bvh_type = BVH_DYNAMIC;
 		use_bvh_cache = false;
 		use_bvh_spatial_split = false;

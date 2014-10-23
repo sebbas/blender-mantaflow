@@ -35,6 +35,9 @@
 #ifndef CERES_INTERNAL_VISIBILITY_H_
 #define CERES_INTERNAL_VISIBILITY_H_
 
+// This include must come before any #ifndef check on Ceres compile options.
+#include "ceres/internal/port.h"
+
 #ifndef CERES_NO_SUITESPARSE
 
 #include <set>
@@ -69,9 +72,10 @@ void ComputeVisibility(const CompressedRowBlockStructure& block_structure,
 // matrix/Schur complement matrix obtained by eliminating the e_blocks
 // from the normal equations.
 //
-// Caller acquires ownership of the returned Graph pointer
+// Caller acquires ownership of the returned WeightedGraph pointer
 // (heap-allocated).
-Graph<int>* CreateSchurComplementGraph(const vector<set<int> >& visibility);
+WeightedGraph<int>* CreateSchurComplementGraph(
+    const vector<set<int> >& visibility);
 
 }  // namespace internal
 }  // namespace ceres

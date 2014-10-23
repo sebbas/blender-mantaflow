@@ -37,112 +37,38 @@
 
 void hsv_to_rgb(float h, float s, float v, float *r, float *g, float *b)
 {
-	if (s != 0.0f) {
-		float i, f, p;
-		h = (h - floorf(h)) * 6.0f;
+	float nr, ng, nb;
 
-		i = floorf(h);
-		f = h - i;
+	nr =        fabsf(h * 6.0f - 3.0f) - 1.0f;
+	ng = 2.0f - fabsf(h * 6.0f - 2.0f);
+	nb = 2.0f - fabsf(h * 6.0f - 4.0f);
 
-		/* avoid computing q/t when not needed */
-		p = (v * (1.0f - s));
-#define q   (v * (1.0f - (s * f)))
-#define t   (v * (1.0f - (s * (1.0f - f))))
+	CLAMP(nr, 0.0f, 1.0f);
+	CLAMP(nb, 0.0f, 1.0f);
+	CLAMP(ng, 0.0f, 1.0f);
 
-		/* faster to compare floats then int conversion */
-		if (i < 1.0f) {
-			*r = v;
-			*g = t;
-			*b = p;
-		}
-		else if (i < 2.0f) {
-			*r = q;
-			*g = v;
-			*b = p;
-		}
-		else if (i < 3.0f) {
-			*r = p;
-			*g = v;
-			*b = t;
-		}
-		else if (i < 4.0f) {
-			*r = p;
-			*g = q;
-			*b = v;
-		}
-		else if (i < 5.0f) {
-			*r = t;
-			*g = p;
-			*b = v;
-		}
-		else {
-			*r = v;
-			*g = p;
-			*b = q;
-		}
-
-#undef q
-#undef t
-
-	}
-	else {
-		*r = v;
-		*g = v;
-		*b = v;
-	}
+	*r = ((nr - 1.0f) * s + 1.0f) * v;
+	*g = ((ng - 1.0f) * s + 1.0f) * v;
+	*b = ((nb - 1.0f) * s + 1.0f) * v;
 }
 
-/* HSL to rgb conversion from https://en.wikipedia.org/wiki/HSL_and_HSV */
 void hsl_to_rgb(float h, float s, float l, float *r, float *g, float *b)
 {
-	float i, f, c;
-	h = (h - floorf(h)) * 6.0f;
-	c = (l > 0.5f) ? (2.0f * (1.0f - l) * s) : (2.0f * l * s);
-	i = floorf(h);
-	f = h - i;
+	float nr, ng, nb, chroma;
 
-#define x2 (c * f)
-#define x1 (c * (1.0f - f))
+	nr =        fabsf(h * 6.0f - 3.0f) - 1.0f;
+	ng = 2.0f - fabsf(h * 6.0f - 2.0f);
+	nb = 2.0f - fabsf(h * 6.0f - 4.0f);
 
-	/* faster to compare floats then int conversion */
-	if (i < 1.0f) {
-		*r = c;
-		*g = x2;
-		*b = 0;
-	}
-	else if (i < 2.0f) {
-		*r = x1;
-		*g = c;
-		*b = 0;
-	}
-	else if (i < 3.0f) {
-		*r = 0;
-		*g = c;
-		*b = x2;
-	}
-	else if (i < 4.0f) {
-		*r = 0;
-		*g = x1;
-		*b = c;
-	}
-	else if (i < 5.0f) {
-		*r = x2;
-		*g = 0;
-		*b = c;
-	}
-	else {
-		*r = c;
-		*g = 0;
-		*b = x1;
-	}
+	CLAMP(nr, 0.0f, 1.0f);
+	CLAMP(nb, 0.0f, 1.0f);
+	CLAMP(ng, 0.0f, 1.0f);
 
-#undef x1
-#undef x2
+	chroma = (1.0f - fabsf(2.0f * l - 1.0f)) * s;
 
-	f = l - 0.5f * c;
-	*r += f;
-	*g += f;
-	*b += f;
+	*r = (nr - 0.5f) * chroma + l;
+	*g = (ng - 0.5f) * chroma + l;
+	*b = (nb - 0.5f) * chroma + l;
 }
 
 /* convenience function for now */
@@ -152,9 +78,9 @@ void hsv_to_rgb_v(const float hsv[3], float r_rgb[3])
 }
 
 /* convenience function for now */
-void hsl_to_rgb_v(const float hcl[3], float r_rgb[3])
+void hsl_to_rgb_v(const float hsl[3], float r_rgb[3])
 {
-	hsl_to_rgb(hcl[0], hcl[1], hcl[2], &r_rgb[0], &r_rgb[1], &r_rgb[2]);
+	hsl_to_rgb(hsl[0], hsl[1], hsl[2], &r_rgb[0], &r_rgb[1], &r_rgb[2]);
 }
 
 void rgb_to_yuv(float r, float g, float b, float *ly, float *lu, float *lv)
@@ -187,7 +113,7 @@ void yuv_to_rgb(float y, float u, float v, float *lr, float *lg, float *lb)
 void rgb_to_ycc(float r, float g, float b, float *ly, float *lcb, float *lcr, int colorspace)
 {
 	float sr, sg, sb;
-	float y = 128.f, cr = 128.f, cb = 128.f;
+	float y = 128.0f, cr = 128.0f, cb = 128.0f;
 
 	sr = 255.0f * r;
 	sg = 255.0f * g;
@@ -226,7 +152,7 @@ void rgb_to_ycc(float r, float g, float b, float *ly, float *lcb, float *lcr, in
 /* FIXME comment above must be wrong because BLI_YCC_ITU_BT601 y 16.0 cr 16.0 -> r -0.7009 */
 void ycc_to_rgb(float y, float cb, float cr, float *lr, float *lg, float *lb, int colorspace)
 {
-	float r = 128.f, g = 128.f, b = 128.f;
+	float r = 128.0f, g = 128.0f, b = 128.0f;
 
 	switch (colorspace) {
 		case BLI_YCC_ITU_BT601:
@@ -284,57 +210,26 @@ void hex_to_rgb(char *hexcol, float *r, float *g, float *b)
 
 void rgb_to_hsv(float r, float g, float b, float *lh, float *ls, float *lv)
 {
-	float h, s, v;
-	float cmax, cmin;
+	float k = 0.0f;
+	float chroma;
+	float min_gb;
 
-	cmax = r;
-	cmin = r;
-	cmax = (g > cmax ? g : cmax);
-	cmin = (g < cmin ? g : cmin);
-	cmax = (b > cmax ? b : cmax);
-	cmin = (b < cmin ? b : cmin);
-
-	v = cmax; /* value */
-	if (cmax != 0.0f) {
-		float cdelta;
-
-		cdelta = cmax - cmin;
-		s = cdelta / cmax;
-
-		if (s != 0.0f) {
-			float rc, gc, bc;
-
-			rc = (cmax - r) / cdelta;
-			gc = (cmax - g) / cdelta;
-			bc = (cmax - b) / cdelta;
-
-			if (r == cmax) {
-				h = bc - gc;
-				if (h < 0.0f) {
-					h += 6.0f;
-				}
-			}
-			else if (g == cmax) {
-				h = 2.0f + rc - bc;
-			}
-			else {
-				h = 4.0f + gc - rc;
-			}
-
-			h *= (1.0f / 6.0f);
-		}
-		else {
-			h = 0.0f;
-		}
+	if (g < b) {
+		SWAP(float, g, b);
+		k = -1.0f;
 	}
-	else {
-		h = 0.0f;
-		s = 0.0f;
+	min_gb = b;
+	if (r < g) {
+		SWAP(float, r, g);
+		k = -2.0f / 6.0f - k;
+		min_gb = min_ff(g, b);
 	}
 
-	*lh = h;
-	*ls = s;
-	*lv = v;
+	chroma = r - min_gb;
+
+	*lh = fabsf(k + (g - b) / (6.0f * chroma + 1e-20f));
+	*ls = chroma / (r + 1e-20f);
+	*lv = r;
 }
 
 /* convenience function for now */
@@ -374,8 +269,8 @@ void rgb_to_hsl(float r, float g, float b, float *lh, float *ls, float *ll)
 
 void rgb_to_hsl_compat(float r, float g, float b, float *lh, float *ls, float *ll)
 {
-	float orig_s = *ls;
-	float orig_h = *lh;
+	const float orig_s = *ls;
+	const float orig_h = *lh;
 
 	rgb_to_hsl(r, g, b, lh, ls, ll);
 
@@ -407,8 +302,8 @@ void rgb_to_hsl_v(const float rgb[3], float r_hsl[3])
 
 void rgb_to_hsv_compat(float r, float g, float b, float *lh, float *ls, float *lv)
 {
-	float orig_h = *lh;
-	float orig_s = *ls;
+	const float orig_h = *lh;
+	const float orig_s = *ls;
 
 	rgb_to_hsv(r, g, b, lh, ls, lv);
 
@@ -703,11 +598,12 @@ static float index_to_float(const unsigned short i)
 
 void BLI_init_srgb_conversion(void)
 {
-	static int initialized = 0;
+	static bool initialized = false;
 	unsigned int i, b;
 
-	if (initialized) return;
-	initialized = 1;
+	if (initialized)
+		return;
+	initialized = true;
 
 	/* Fill in the lookup table to convert floats to bytes: */
 	for (i = 0; i < 0x10000; i++) {
@@ -736,6 +632,9 @@ static float inverse_srgb_companding(float v)
 	}
 }
 
+/**
+ * \note Does sRGB to linear conversion
+ */
 void rgb_to_xyz(float r, float g, float b, float *x, float *y, float *z)
 {
 	r = inverse_srgb_companding(r) * 100.0f;
@@ -762,13 +661,13 @@ static float xyz_to_lab_component(float v)
 
 void xyz_to_lab(float x, float y, float z, float *l, float *a, float *b)
 {
-	float xr = x / 95.047f;
-	float yr = y / 100.0f;
-	float zr = z / 108.883f;
+	const float xr = x / 95.047f;
+	const float yr = y / 100.0f;
+	const float zr = z / 108.883f;
 
-	float fx = xyz_to_lab_component(xr);
-	float fy = xyz_to_lab_component(yr);
-	float fz = xyz_to_lab_component(zr);
+	const float fx = xyz_to_lab_component(xr);
+	const float fy = xyz_to_lab_component(yr);
+	const float fz = xyz_to_lab_component(zr);
 
 	*l = 116.0f * fy - 16.0f;
 	*a = 500.0f * (fx - fy);

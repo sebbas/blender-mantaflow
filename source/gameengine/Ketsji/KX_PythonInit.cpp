@@ -30,7 +30,7 @@
  *  \ingroup ketsji
  */
 
-#include "GL/glew.h"
+#include "glew-mx.h"
 
 #ifdef _MSC_VER
 #  pragma warning (disable:4786)
@@ -87,6 +87,8 @@ extern "C" {
 #include "KX_SCA_DynamicActuator.h"
 #include "KX_SteeringActuator.h"
 #include "KX_NavMeshObject.h"
+#include "KX_MouseActuator.h"
+#include "KX_TrackToActuator.h"
 
 #include "SCA_IInputDevice.h"
 #include "SCA_PropertySensor.h"
@@ -199,7 +201,16 @@ static PyObject *gp_OrigPythonSysModules= NULL;
 //#define KX_MACRO_addToDict(dict, name) PyDict_SetItemString(dict, #name, PyLong_FromLong(SCA_IInputDevice::KX_##name))
 //#define KX_MACRO_addToDict(dict, name) PyDict_SetItemString(dict, #name, item=PyLong_FromLong(name)); Py_DECREF(item)
 /* For the defines for types from logic bricks, we do stuff explicitly... */
-#define KX_MACRO_addTypesToDict(dict, name, name2) PyDict_SetItemString(dict, #name, item=PyLong_FromLong(name2)); Py_DECREF(item)
+#define KX_MACRO_addTypesToDict(dict, name, value) KX_MACRO_addTypesToDict_fn(dict, #name, value)
+static void KX_MACRO_addTypesToDict_fn(PyObject *dict, const char *name, long value)
+{
+	PyObject *item;
+
+	item = PyLong_FromLong(value);
+	PyDict_SetItemString(dict, name, item);
+	Py_DECREF(item);
+}
+
 
 
 // temporarily python stuff, will be put in another place later !
@@ -246,7 +257,7 @@ static PyObject *gPyExpandPath(PyObject *, PyObject *args)
 
 	BLI_strncpy(expanded, filename, FILE_MAX);
 	BLI_path_abs(expanded, gp_GamePythonPath);
-	return PyUnicode_DecodeFSDefault(expanded);
+	return PyC_UnicodeFromByte(expanded);
 }
 
 static char gPyStartGame_doc[] =
@@ -535,7 +546,7 @@ static PyObject *gPyGetBlendFileList(PyObject *, PyObject *args)
 	
 	while ((dirp = readdir(dp)) != NULL) {
 		if (BLI_testextensie(dirp->d_name, ".blend")) {
-			value= PyUnicode_DecodeFSDefault(dirp->d_name);
+			value = PyC_UnicodeFromByte(dirp->d_name);
 			PyList_Append(list, value);
 			Py_DECREF(value);
 		}
@@ -1385,8 +1396,75 @@ static PyObject *gPySetVsync(PyObject *, PyObject *args)
 
 static PyObject *gPyGetVsync(PyObject *)
 {
-	return PyLong_FromLong(gp_Canvas->GetSwapInterval());
+	int interval = 0;
+	gp_Canvas->GetSwapInterval(interval);
+	return PyLong_FromLong(interval);
 }
+
+static PyObject *gPyShowFramerate(PyObject *, PyObject *args)
+{
+	int visible;
+	if (!PyArg_ParseTuple(args,"i:showFramerate",&visible))
+		return NULL;
+
+	if (visible && gp_KetsjiEngine)
+		gp_KetsjiEngine->SetShowFramerate(true);
+	else
+		gp_KetsjiEngine->SetShowFramerate(false);
+
+	Py_RETURN_NONE;
+}
+
+static PyObject *gPyShowProfile(PyObject *, PyObject *args)
+{
+	int visible;
+	if (!PyArg_ParseTuple(args,"i:showProfile",&visible))
+		return NULL;
+
+	if (visible && gp_KetsjiEngine)
+		gp_KetsjiEngine->SetShowProfile(true);
+	else
+		gp_KetsjiEngine->SetShowProfile(false);
+
+	Py_RETURN_NONE;
+}
+
+static PyObject *gPyShowProperties(PyObject *, PyObject *args)
+{
+	int visible;
+	if (!PyArg_ParseTuple(args,"i:showProperties",&visible))
+		return NULL;
+
+	if (visible && gp_KetsjiEngine)
+		gp_KetsjiEngine->SetShowProperties(true);
+	else
+		gp_KetsjiEngine->SetShowProperties(false);
+
+	Py_RETURN_NONE;
+}
+
+static PyObject *gPyAutoDebugList(PyObject *, PyObject *args)
+{
+	int add;
+	if (!PyArg_ParseTuple(args,"i:autoAddProperties",&add))
+		return NULL;
+
+	if (add && gp_KetsjiEngine)
+		gp_KetsjiEngine->SetAutoAddDebugProperties(true);
+	else
+		gp_KetsjiEngine->SetAutoAddDebugProperties(false);
+
+	Py_RETURN_NONE;
+}
+
+static PyObject *gPyClearDebugList(PyObject *)
+{
+	if (gp_KetsjiScene)
+		gp_KetsjiScene->RemoveAllDebugProperties();
+
+	Py_RETURN_NONE;
+}
+
 
 static struct PyMethodDef rasterizer_methods[] = {
 	{"getWindowWidth",(PyCFunction) gPyGetWindowWidth,
@@ -1435,6 +1513,11 @@ static struct PyMethodDef rasterizer_methods[] = {
 	{"getMipmapping", (PyCFunction) gPyGetMipmapping, METH_NOARGS, ""},
 	{"setVsync", (PyCFunction) gPySetVsync, METH_VARARGS, ""},
 	{"getVsync", (PyCFunction) gPyGetVsync, METH_NOARGS, ""},
+	{"showFramerate",(PyCFunction) gPyShowFramerate, METH_VARARGS, "show or hide the framerate"},
+	{"showProfile",(PyCFunction) gPyShowProfile, METH_VARARGS, "show or hide the profile"},
+	{"showProperties",(PyCFunction) gPyShowProperties, METH_VARARGS, "show or hide the debug properties"},
+	{"autoDebugList",(PyCFunction) gPyAutoDebugList, METH_VARARGS, "enable or disable auto adding debug properties to the debug  list"},
+	{"clearDebugList",(PyCFunction) gPyClearDebugList, METH_NOARGS, "clears the debug property list"},
 	{ NULL, (PyCFunction) NULL, 0, NULL }
 };
 
@@ -1538,6 +1621,8 @@ PyObject *initGameLogic(KX_KetsjiEngine *engine, KX_Scene* scene) // quick hack 
 	KX_MACRO_addTypesToDict(d, KX_PROPSENSOR_INTERVAL,   SCA_PropertySensor::KX_PROPSENSOR_INTERVAL);
 	KX_MACRO_addTypesToDict(d, KX_PROPSENSOR_CHANGED,    SCA_PropertySensor::KX_PROPSENSOR_CHANGED);
 	KX_MACRO_addTypesToDict(d, KX_PROPSENSOR_EXPRESSION, SCA_PropertySensor::KX_PROPSENSOR_EXPRESSION);
+	KX_MACRO_addTypesToDict(d, KX_PROPSENSOR_LESSTHAN,   SCA_PropertySensor::KX_PROPSENSOR_LESSTHAN);
+	KX_MACRO_addTypesToDict(d, KX_PROPSENSOR_GREATERTHAN, SCA_PropertySensor::KX_PROPSENSOR_GREATERTHAN);
 
 	/* 3. Constraint actuator                                                  */
 	KX_MACRO_addTypesToDict(d, KX_CONSTRAINTACT_LOCX, KX_ConstraintActuator::KX_ACT_CONSTRAINT_LOCX);
@@ -1681,6 +1766,17 @@ PyObject *initGameLogic(KX_KetsjiEngine *engine, KX_Scene* scene) // quick hack 
 	KX_MACRO_addTypesToDict(d, KX_RAY_AXIS_NEG_Y, KX_RaySensor::KX_RAY_AXIS_NEG_Y);
 	KX_MACRO_addTypesToDict(d, KX_RAY_AXIS_NEG_Z, KX_RaySensor::KX_RAY_AXIS_NEG_Z);
 
+	/* TrackTo Actuator */
+	KX_MACRO_addTypesToDict(d, KX_TRACK_UPAXIS_POS_X, KX_TrackToActuator::KX_TRACK_UPAXIS_POS_X);
+	KX_MACRO_addTypesToDict(d, KX_TRACK_UPAXIS_POS_Y, KX_TrackToActuator::KX_TRACK_UPAXIS_POS_Y);
+	KX_MACRO_addTypesToDict(d, KX_TRACK_UPAXIS_POS_Z, KX_TrackToActuator::KX_TRACK_UPAXIS_POS_Z);
+	KX_MACRO_addTypesToDict(d, KX_TRACK_TRAXIS_POS_X, KX_TrackToActuator::KX_TRACK_TRAXIS_POS_X);
+	KX_MACRO_addTypesToDict(d, KX_TRACK_TRAXIS_POS_Y, KX_TrackToActuator::KX_TRACK_TRAXIS_POS_Y);
+	KX_MACRO_addTypesToDict(d, KX_TRACK_TRAXIS_POS_Z, KX_TrackToActuator::KX_TRACK_TRAXIS_POS_Z);
+	KX_MACRO_addTypesToDict(d, KX_TRACK_TRAXIS_NEG_X, KX_TrackToActuator::KX_TRACK_TRAXIS_NEG_X);
+	KX_MACRO_addTypesToDict(d, KX_TRACK_TRAXIS_NEG_Y, KX_TrackToActuator::KX_TRACK_TRAXIS_NEG_Y);
+	KX_MACRO_addTypesToDict(d, KX_TRACK_TRAXIS_NEG_Z, KX_TrackToActuator::KX_TRACK_TRAXIS_NEG_Z);
+
 	/* Dynamic actuator */
 	KX_MACRO_addTypesToDict(d, KX_DYN_RESTORE_DYNAMICS, KX_SCA_DynamicActuator::KX_DYN_RESTORE_DYNAMICS);
 	KX_MACRO_addTypesToDict(d, KX_DYN_DISABLE_DYNAMICS, KX_SCA_DynamicActuator::KX_DYN_DISABLE_DYNAMICS);
@@ -1818,6 +1914,12 @@ PyObject *initGameLogic(KX_KetsjiEngine *engine, KX_Scene* scene) // quick hack 
 	KX_MACRO_addTypesToDict(d, KX_ACTION_BLEND_BLEND, BL_Action::ACT_BLEND_BLEND);
 	KX_MACRO_addTypesToDict(d, KX_ACTION_BLEND_ADD, BL_Action::ACT_BLEND_ADD);
 
+	/* Mouse Actuator object axis*/
+	KX_MACRO_addTypesToDict(d, KX_ACT_MOUSE_OBJECT_AXIS_X, KX_MouseActuator::KX_ACT_MOUSE_OBJECT_AXIS_X);
+	KX_MACRO_addTypesToDict(d, KX_ACT_MOUSE_OBJECT_AXIS_Y, KX_MouseActuator::KX_ACT_MOUSE_OBJECT_AXIS_Y);
+	KX_MACRO_addTypesToDict(d, KX_ACT_MOUSE_OBJECT_AXIS_Z, KX_MouseActuator::KX_ACT_MOUSE_OBJECT_AXIS_Z);
+
+
 	// Check for errors
 	if (PyErr_Occurred())
 	{
@@ -1874,7 +1976,7 @@ static void initPySysObjects__append(PyObject *sys_path, const char *filename)
 	BLI_split_dir_part(filename, expanded, sizeof(expanded)); /* get the dir part of filename only */
 	BLI_path_abs(expanded, gp_GamePythonPath); /* filename from lib->filename is (always?) absolute, so this may not be needed but it wont hurt */
 	BLI_cleanup_file(gp_GamePythonPath, expanded); /* Don't use BLI_cleanup_dir because it adds a slash - BREAKS WIN32 ONLY */
-	item= PyUnicode_DecodeFSDefault(expanded);
+	item = PyC_UnicodeFromByte(expanded);
 	
 //	printf("SysPath - '%s', '%s', '%s'\n", expanded, filename, gp_GamePythonPath);
 	
@@ -1949,10 +2051,10 @@ void removeImportMain(struct Main *maggie)
 
 // Copied from bpy_interface.c
 static struct _inittab bge_internal_modules[] = {
-	{(char *)"mathutils", PyInit_mathutils},
-	{(char *)"bgl", BPyInit_bgl},
-	{(char *)"blf", BPyInit_blf},
-	{(char *)"aud", AUD_initPython},
+	{"mathutils", PyInit_mathutils},
+	{"bgl", BPyInit_bgl},
+	{"blf", BPyInit_blf},
+	{"aud", AUD_initPython},
 	{NULL, NULL}
 };
 
@@ -2179,7 +2281,6 @@ PyObject *initRasterizer(RAS_IRasterizer* rasty,RAS_ICanvas* canvas)
 
 	PyObject *m;
 	PyObject *d;
-	PyObject *item;
 
 	/* Use existing module where possible
 	 * be careful not to init any runtime vars after this */
@@ -2309,7 +2410,6 @@ PyObject *initGameKeys()
 {
 	PyObject *m;
 	PyObject *d;
-	PyObject *item;
 	
 	/* Use existing module where possible */
 	m = PyImport_ImportModule( "GameKeys" );

@@ -285,8 +285,8 @@ extern void bpy_bm_generic_invalidate(struct BPy_BMGeneric *self);
 typedef bool (*BMElemFilterFunc)(BMElem *, void *user_data);
 
 /* defines */
-#define BM_ELEM_CD_SET_INT(ele, offset, f) \
-	{ assert(offset != -1); *((int *)((char *)(ele)->head.data + (offset))) = (f); } (void)0
+#define BM_ELEM_CD_SET_INT(ele, offset, f) { CHECK_TYPE_NONCONST(ele); \
+	assert(offset != -1); *((int *)((char *)(ele)->head.data + (offset))) = (f); } (void)0
 
 #define BM_ELEM_CD_GET_INT(ele, offset) \
 	(assert(offset != -1), *((int *)((char *)(ele)->head.data + (offset))))
@@ -294,8 +294,8 @@ typedef bool (*BMElemFilterFunc)(BMElem *, void *user_data);
 #define BM_ELEM_CD_GET_VOID_P(ele, offset) \
 	(assert(offset != -1), (void *)((char *)(ele)->head.data + (offset)))
 
-#define BM_ELEM_CD_SET_FLOAT(ele, offset, f) \
-	{ assert(offset != -1); *((float *)((char *)(ele)->head.data + (offset))) = (f); } (void)0
+#define BM_ELEM_CD_SET_FLOAT(ele, offset, f) { CHECK_TYPE_NONCONST(ele); \
+	assert(offset != -1); *((float *)((char *)(ele)->head.data + (offset))) = (f); } (void)0
 
 #define BM_ELEM_CD_GET_FLOAT(ele, offset) \
 	(assert(offset != -1), *((float *)((char *)(ele)->head.data + (offset))))
@@ -310,6 +310,15 @@ typedef bool (*BMElemFilterFunc)(BMElem *, void *user_data);
 #else
 #  define BM_FACE_FIRST_LOOP(p) ((p)->l_first)
 #endif
+
+#define BM_DISK_EDGE_NEXT(e, v)  ( \
+	CHECK_TYPE_INLINE(e, BMEdge *), CHECK_TYPE_INLINE(v, BMVert *), \
+	BLI_assert(BM_vert_in_edge(e, v)), \
+	(((&e->v1_disk_link)[v == e->v2]).next))
+#define BM_DISK_EDGE_PREV(e, v)  ( \
+	CHECK_TYPE_INLINE(e, BMEdge *), CHECK_TYPE_INLINE(v, BMVert *), \
+	BLI_assert(BM_vert_in_edge(e, v)), \
+	(((&e->v1_disk_link)[v == e->v2]).prev))
 
 /**
  * size to use for stack arrays when dealing with NGons,

@@ -67,6 +67,7 @@ static unsigned int erot_gsetutil_hash(const void *ptr)
 	return BLI_ghashutil_inthash_v4(&e_state->v1);
 }
 #endif
+#if 0
 static int erot_gsetutil_cmp(const void *a, const void *b)
 {
 	const EdRotState *e_state_a = (const EdRotState *)a;
@@ -81,10 +82,10 @@ static int erot_gsetutil_cmp(const void *a, const void *b)
 	else if (e_state_a->f2 > e_state_b->f2) return  1;
 	else                                    return  0;
 }
-
+#endif
 static GSet *erot_gset_new(void)
 {
-	return BLI_gset_new(BLI_ghashutil_inthash_v4_p, erot_gsetutil_cmp, __func__);
+	return BLI_gset_new(BLI_ghashutil_inthash_v4_p, BLI_ghashutil_inthash_v4_cmp, __func__);
 }
 
 /* ensure v0 is smaller */
@@ -142,10 +143,10 @@ static float bm_edge_calc_rotate_beauty__area(
 			float axis_mat[3][3];
 
 			// printf("%p %p %p %p - %p %p\n", v1, v2, v3, v4, e->l->f, e->l->radial_next->f);
-			BLI_assert((ELEM3(v1, v2, v3, v4) == false) &&
-			           (ELEM3(v2, v1, v3, v4) == false) &&
-			           (ELEM3(v3, v1, v2, v4) == false) &&
-			           (ELEM3(v4, v1, v2, v3) == false));
+			BLI_assert((ELEM(v1, v2, v3, v4) == false) &&
+			           (ELEM(v2, v1, v3, v4) == false) &&
+			           (ELEM(v3, v1, v2, v4) == false) &&
+			           (ELEM(v4, v1, v2, v3) == false));
 
 			is_zero_a = (normal_tri_v3(no_a, v2, v3, v4) <= FLT_EPSILON);
 			is_zero_b = (normal_tri_v3(no_b, v2, v4, v1) <= FLT_EPSILON);

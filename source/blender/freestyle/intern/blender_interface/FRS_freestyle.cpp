@@ -31,6 +31,8 @@
 #include "../application/AppView.h"
 #include "../application/Controller.h"
 
+#include "BlenderStrokeRenderer.h"
+
 using namespace std;
 using namespace Freestyle;
 
@@ -41,6 +43,7 @@ extern "C" {
 #include "DNA_camera_types.h"
 #include "DNA_freestyle_types.h"
 #include "DNA_group_types.h"
+#include "DNA_material_types.h"
 #include "DNA_text_types.h"
 
 #include "BKE_freestyle.h"
@@ -84,8 +87,6 @@ int freestyle_viewport[4];
 // current scene
 Scene *freestyle_scene;
 
-static string default_module_path;
-
 static void load_post_callback(struct Main *main, struct ID *id, void *arg)
 {
 	lineset_copied = false;
@@ -114,9 +115,6 @@ void FRS_initialize()
 	controller->Clear();
 	freestyle_scene = NULL;
 	lineset_copied = false;
-
-	default_module_path = pathconfig->getProjectDir() + Config::DIR_SEP + "style_modules" +
-	                      Config::DIR_SEP + "contour.py";
 
 	BLI_callback_add(&load_post_callback_funcstore, BLI_CB_EVT_LOAD_POST);
 
@@ -476,6 +474,9 @@ static void prepare(Main *bmain, Render *re, SceneRenderLayer *srl)
 		cout << "  Z = " << (z ? "enabled" : "disabled") << endl;
 	}
 
+	if (controller->hitViewMapCache())
+		return;
+
 	// compute view map
 	re->i.infostr = "Freestyle: View map creation";
 	re->stats_draw(re->sdh, &re->i);
@@ -582,7 +583,7 @@ void FRS_init_stroke_rendering(Render *re)
 
 Render *FRS_do_stroke_rendering(Render *re, SceneRenderLayer *srl, int render)
 {
-	Main bmain = {0};
+	Main *freestyle_bmain = re->freestyle_bmain;
 	Render *freestyle_render = NULL;
 	Text *text, *next_text;
 
@@ -591,6 +592,7 @@ Render *FRS_do_stroke_rendering(Render *re, SceneRenderLayer *srl, int render)
 
 	RenderMonitor monitor(re);
 	controller->setRenderMonitor(&monitor);
+	controller->setViewMapCache((srl->freestyleConfig.flags & FREESTYLE_VIEW_MAP_CACHE) ? true : false);
 
 	if (G.debug & G_DEBUG_FREESTYLE) {
 		cout << endl;
@@ -604,40 +606,40 @@ Render *FRS_do_stroke_rendering(Render *re, SceneRenderLayer *srl, int render)
 	//   - add style modules
 	//   - set parameters
 	//   - compute view map
-	prepare(&bmain, re, srl);
+	prepare(freestyle_bmain, re, srl);
 
 	if (re->test_break(re->tbh)) {
 		controller->CloseFile();
 		if (G.debug & G_DEBUG_FREESTYLE) {
 			cout << "Break" << endl;
 		}
-		return NULL;
 	}
+	else {
+		// render and composite Freestyle result
+		if (controller->_ViewMap) {
+			// render strokes
+			re->i.infostr = "Freestyle: Stroke rendering";
+			re->stats_draw(re->sdh, &re->i);
+			re->i.infostr = NULL;
+			freestyle_scene = re->scene;
+			controller->DrawStrokes();
+			freestyle_render = controller->RenderStrokes(re, true);
+			controller->CloseFile();
+			freestyle_scene = NULL;
 
-	// render and composite Freestyle result
-	if (controller->_ViewMap) {
-		// render strokes
-		re->i.infostr = "Freestyle: Stroke rendering";
-		re->stats_draw(re->sdh, &re->i);
-		re->i.infostr = NULL;
-		freestyle_scene = re->scene;
-		controller->DrawStrokes();
-		freestyle_render = controller->RenderStrokes(re, true);
-		controller->CloseFile();
-		freestyle_scene = NULL;
-
-		// composite result
-		FRS_composite_result(re, srl, freestyle_render);
-		RE_FreeRenderResult(freestyle_render->result);
-		freestyle_render->result = NULL;
+			// composite result
+			FRS_composite_result(re, srl, freestyle_render);
+			RE_FreeRenderResult(freestyle_render->result);
+			freestyle_render->result = NULL;
+		}
 	}
 
 	// Free temp main (currently only text blocks are stored there)
-	for (text = (Text *) bmain.text.first; text; text = next_text) {
+	for (text = (Text *)freestyle_bmain->text.first; text; text = next_text) {
 		next_text = (Text *) text->id.next;
 
-		BKE_text_unlink(&bmain, text);
-		BKE_libblock_free(&bmain, text);
+		BKE_text_unlink(freestyle_bmain, text);
+		BKE_libblock_free(freestyle_bmain, text);
 	}
 
 	return freestyle_render;
@@ -647,6 +649,17 @@ void FRS_finish_stroke_rendering(Render *re)
 {
 	// clear canvas
 	controller->Clear();
+}
+
+void FRS_free_view_map_cache(void)
+{
+	// free cache
+	controller->DeleteViewMap(true);
+#if 0
+	if (G.debug & G_DEBUG_FREESTYLE) {
+		printf("View map cache freed\n");
+	}
+#endif
 }
 
 //=======================================================
@@ -733,6 +746,16 @@ void FRS_move_active_lineset_down(FreestyleConfig *config)
 		BLI_remlink(&config->linesets, lineset);
 		BLI_insertlinkafter(&config->linesets, lineset->next, lineset);
 	}
+}
+
+// Testing
+
+Material *FRS_create_stroke_material(Main *bmain, struct FreestyleLineStyle *linestyle)
+{
+	bNodeTree *nt = (linestyle->use_nodes) ? linestyle->nodetree : NULL;
+	Material *ma = BlenderStrokeRenderer::GetStrokeShader(bmain, nt, true);
+	ma->id.us = 0;
+	return ma;
 }
 
 } // extern "C"

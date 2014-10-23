@@ -60,11 +60,14 @@ EnumPropertyItem id_type_items[] = {
 	{ID_LI, "LIBRARY", ICON_LIBRARY_DATA_DIRECT, "Library", ""},
 	{ID_LS, "LINESTYLE", ICON_LINE_DATA, "Line Style", ""},
 	{ID_LT, "LATTICE", ICON_LATTICE_DATA, "Lattice", ""},
+	{ID_MSK, "MASK", ICON_MOD_MASK, "Mask", ""},
 	{ID_MA, "MATERIAL", ICON_MATERIAL_DATA, "Material", ""},
 	{ID_MB, "META", ICON_META_DATA, "MetaBall", ""},
 	{ID_ME, "MESH", ICON_MESH_DATA, "Mesh", ""},
 	{ID_NT, "NODETREE", ICON_NODETREE, "NodeTree", ""},
 	{ID_OB, "OBJECT", ICON_OBJECT_DATA, "Object", ""},
+	{ID_PC, "PAINTCURVE", ICON_CURVE_BEZCURVE, "Paint Curve", ""},
+	{ID_PAL, "PALETTE", ICON_COLOR, "Palette", ""},
 	{ID_PA, "PARTICLE", ICON_PARTICLE_DATA, "Particle", ""},
 	{ID_SCE, "SCENE", ICON_SCENE_DATA, "Scene", ""},
 	{ID_SCR, "SCREEN", ICON_SPLITSCREEN, "Screen", ""},
@@ -153,6 +156,8 @@ short RNA_type_to_ID_code(StructRNA *type)
 	if (RNA_struct_is_a(type, &RNA_WindowManager)) return ID_WM;
 	if (RNA_struct_is_a(type, &RNA_MovieClip)) return ID_MC;
 	if (RNA_struct_is_a(type, &RNA_Mask)) return ID_MSK;
+	if (RNA_struct_is_a(type, &RNA_Palette)) return ID_PAL;
+	if (RNA_struct_is_a(type, &RNA_PaintCurve)) return ID_PC;
 
 	return 0;
 }
@@ -190,6 +195,9 @@ StructRNA *ID_code_to_RNA_type(short idcode)
 		case ID_WM: return &RNA_WindowManager;
 		case ID_MC: return &RNA_MovieClip;
 		case ID_MSK: return &RNA_Mask;
+		case ID_PAL: return &RNA_Palette;
+		case ID_PC: return &RNA_PaintCurve;
+
 		default: return &RNA_ID;
 	}
 }
@@ -620,6 +628,10 @@ static void rna_def_library(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "parent", PROP_POINTER, PROP_NONE);
 	RNA_def_property_struct_type(prop, "Library");
 	RNA_def_property_ui_text(prop, "Parent", "");
+
+	prop = RNA_def_property(srna, "packed_file", PROP_POINTER, PROP_NONE);
+	RNA_def_property_pointer_sdna(prop, NULL, "packedfile");
+	RNA_def_property_ui_text(prop, "Packed File", "");
 }
 void RNA_def_ID(BlenderRNA *brna)
 {

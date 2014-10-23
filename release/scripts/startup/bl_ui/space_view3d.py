@@ -421,7 +421,8 @@ class VIEW3D_MT_view(Menu):
 
         layout.operator("screen.area_dupli")
         layout.operator("screen.region_quadview")
-        layout.operator("screen.screen_full_area")
+        layout.operator("screen.screen_full_area", text="Toggle Maximize Area")
+        layout.operator("screen.screen_full_area").use_hide_panels = True
 
 
 class VIEW3D_MT_view_navigation(Menu):
@@ -477,7 +478,7 @@ class VIEW3D_MT_view_align(Menu):
 
 
 class VIEW3D_MT_view_align_selected(Menu):
-    bl_label = "Align View to Selected"
+    bl_label = "Align View to Active"
 
     def draw(self, context):
         layout = self.layout
@@ -604,8 +605,25 @@ class VIEW3D_MT_select_particle(Menu):
 
         layout.separator()
 
+        layout.operator("particle.select_random")
+
+        layout.separator()
+
         layout.operator("particle.select_roots", text="Roots")
         layout.operator("particle.select_tips", text="Tips")
+
+
+class VIEW3D_MT_edit_mesh_select_similar(Menu):
+    bl_label = "Select Similar"
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.operator_enum("mesh.select_similar", "type")
+
+        layout.separator()
+
+        layout.operator("mesh.select_similar_region", text="Face Regions")
 
 
 class VIEW3D_MT_select_edit_mesh(Menu):
@@ -647,7 +665,7 @@ class VIEW3D_MT_select_edit_mesh(Menu):
         layout.separator()
 
         # other ...
-        layout.operator_menu_enum("mesh.select_similar", "type", text="Similar")
+        layout.menu("VIEW3D_MT_edit_mesh_select_similar")
         layout.operator("mesh.select_ungrouped", text="Ungrouped Verts")
 
         layout.separator()
@@ -662,8 +680,8 @@ class VIEW3D_MT_select_edit_mesh(Menu):
 
         layout.operator("mesh.select_linked", text="Linked")
         layout.operator("mesh.shortest_path_select", text="Shortest Path")
-        layout.operator("mesh.loop_multi_select", text="Edge Loop").ring = False
-        layout.operator("mesh.loop_multi_select", text="Edge Ring").ring = True
+        layout.operator("mesh.loop_multi_select", text="Edge Loops").ring = False
+        layout.operator("mesh.loop_multi_select", text="Edge Rings").ring = True
 
         layout.separator()
 
@@ -1424,6 +1442,8 @@ class VIEW3D_MT_brush(Menu):
         ups = context.tool_settings.unified_paint_settings
         layout.prop(ups, "use_unified_size", text="Unified Size")
         layout.prop(ups, "use_unified_strength", text="Unified Strength")
+        if context.image_paint_object or context.vertex_paint_object:
+            layout.prop(ups, "use_unified_color", text="Unified Color")
         layout.separator()
 
         # brush paint modes
@@ -1707,6 +1727,10 @@ class VIEW3D_MT_particle_specials(Menu):
             layout.separator()
             layout.operator("particle.select_roots")
             layout.operator("particle.select_tips")
+
+            layout.separator()
+
+            layout.operator("particle.select_random")
 
             layout.separator()
 
@@ -2160,6 +2184,7 @@ class VIEW3D_MT_edit_mesh_vertices(Menu):
         layout.operator("mesh.merge")
         layout.operator("mesh.rip_move")
         layout.operator("mesh.rip_move_fill")
+        layout.operator("mesh.rip_edge_move")
         layout.operator("mesh.split")
         layout.operator_menu_enum("mesh.separate", "type")
         layout.operator("mesh.vert_connect", text="Connect")
@@ -2197,7 +2222,6 @@ class VIEW3D_MT_edit_mesh_edges(Menu):
         layout = self.layout
 
         with_freestyle = bpy.app.build_options.freestyle
-        scene = context.scene
 
         layout.operator_context = 'INVOKE_REGION_WIN'
 
@@ -2222,7 +2246,7 @@ class VIEW3D_MT_edit_mesh_edges(Menu):
 
         layout.separator()
 
-        if with_freestyle and not scene.render.use_shading_nodes:
+        if with_freestyle:
             layout.operator("mesh.mark_freestyle_edge").clear = False
             layout.operator("mesh.mark_freestyle_edge", text="Clear Freestyle Edge").clear = True
             layout.separator()
@@ -2239,8 +2263,8 @@ class VIEW3D_MT_edit_mesh_edges(Menu):
         layout.separator()
 
         layout.operator("transform.edge_slide")
-        layout.operator("mesh.loop_multi_select", text="Edge Loop").ring = False
-        layout.operator("mesh.loop_multi_select", text="Edge Ring").ring = True
+        layout.operator("mesh.loop_multi_select", text="Edge Loops").ring = False
+        layout.operator("mesh.loop_multi_select", text="Edge Rings").ring = True
         layout.operator("mesh.loop_to_region")
         layout.operator("mesh.region_to_loop")
 
@@ -2253,7 +2277,6 @@ class VIEW3D_MT_edit_mesh_faces(Menu):
         layout = self.layout
 
         with_freestyle = bpy.app.build_options.freestyle
-        scene = context.scene
 
         layout.operator_context = 'INVOKE_REGION_WIN'
 
@@ -2265,11 +2288,12 @@ class VIEW3D_MT_edit_mesh_faces(Menu):
         layout.operator("mesh.inset")
         layout.operator("mesh.bevel").vertex_only = False
         layout.operator("mesh.solidify")
+        layout.operator("mesh.intersect")
         layout.operator("mesh.wireframe")
 
         layout.separator()
 
-        if with_freestyle and not scene.render.use_shading_nodes:
+        if with_freestyle:
             layout.operator("mesh.mark_freestyle_face").clear = False
             layout.operator("mesh.mark_freestyle_face", text="Clear Freestyle Face").clear = True
             layout.separator()
@@ -2277,11 +2301,14 @@ class VIEW3D_MT_edit_mesh_faces(Menu):
         layout.operator("mesh.poke")
         layout.operator("mesh.quads_convert_to_tris")
         layout.operator("mesh.tris_convert_to_quads")
+        layout.operator("mesh.face_split_by_edges")
 
         layout.separator()
 
         layout.operator("mesh.faces_shade_smooth")
         layout.operator("mesh.faces_shade_flat")
+
+        layout.operator("mesh.normals_make_consistent", text="Recalculate Normals")
 
         layout.separator()
 
@@ -2346,7 +2373,7 @@ class VIEW3D_MT_edit_mesh_delete(Menu):
         layout.separator()
 
         layout.operator("mesh.edge_collapse")
-        layout.operator("mesh.delete_edgeloop", text="Edge Loop")
+        layout.operator("mesh.delete_edgeloop", text="Edge Loops")
 
 
 class VIEW3D_MT_edit_mesh_showhide(ShowHideMenu, Menu):
@@ -2481,32 +2508,32 @@ class VIEW3D_MT_edit_text_chars(Menu):
     def draw(self, context):
         layout = self.layout
 
-        layout.operator("font.text_insert", text="Copyright|Alt C").text = "\u00A9"
-        layout.operator("font.text_insert", text="Registered Trademark|Alt R").text = "\u00AE"
+        layout.operator("font.text_insert", text="Copyright").text = "\u00A9"
+        layout.operator("font.text_insert", text="Registered Trademark").text = "\u00AE"
 
         layout.separator()
 
-        layout.operator("font.text_insert", text="Degree Sign|Alt G").text = "\u00B0"
-        layout.operator("font.text_insert", text="Multiplication Sign|Alt x").text = "\u00D7"
-        layout.operator("font.text_insert", text="Circle|Alt .").text = "\u008A"
-        layout.operator("font.text_insert", text="Superscript 1|Alt 1").text = "\u00B9"
-        layout.operator("font.text_insert", text="Superscript 2|Alt 2").text = "\u00B2"
-        layout.operator("font.text_insert", text="Superscript 3|Alt 3").text = "\u00B3"
-        layout.operator("font.text_insert", text="Double >>|Alt >").text = "\u00BB"
-        layout.operator("font.text_insert", text="Double <<|Alt <").text = "\u00AB"
-        layout.operator("font.text_insert", text="Promillage|Alt %").text = "\u2030"
+        layout.operator("font.text_insert", text="Degree Sign").text = "\u00B0"
+        layout.operator("font.text_insert", text="Multiplication Sign").text = "\u00D7"
+        layout.operator("font.text_insert", text="Circle").text = "\u008A"
+        layout.operator("font.text_insert", text="Superscript 1").text = "\u00B9"
+        layout.operator("font.text_insert", text="Superscript 2").text = "\u00B2"
+        layout.operator("font.text_insert", text="Superscript 3").text = "\u00B3"
+        layout.operator("font.text_insert", text="Double >>").text = "\u00BB"
+        layout.operator("font.text_insert", text="Double <<").text = "\u00AB"
+        layout.operator("font.text_insert", text="Promillage").text = "\u2030"
 
         layout.separator()
 
-        layout.operator("font.text_insert", text="Dutch Florin|Alt F").text = "\u00A4"
-        layout.operator("font.text_insert", text="British Pound|Alt L").text = "\u00A3"
-        layout.operator("font.text_insert", text="Japanese Yen|Alt Y").text = "\u00A5"
+        layout.operator("font.text_insert", text="Dutch Florin").text = "\u00A4"
+        layout.operator("font.text_insert", text="British Pound").text = "\u00A3"
+        layout.operator("font.text_insert", text="Japanese Yen").text = "\u00A5"
 
         layout.separator()
 
-        layout.operator("font.text_insert", text="German S|Alt S").text = "\u00DF"
-        layout.operator("font.text_insert", text="Spanish Question Mark|Alt ?").text = "\u00BF"
-        layout.operator("font.text_insert", text="Spanish Exclamation Mark|Alt !").text = "\u00A1"
+        layout.operator("font.text_insert", text="German S").text = "\u00DF"
+        layout.operator("font.text_insert", text="Spanish Question Mark").text = "\u00BF"
+        layout.operator("font.text_insert", text="Spanish Exclamation Mark").text = "\u00A1"
 
 
 class VIEW3D_MT_edit_meta(Menu):
@@ -2932,7 +2959,7 @@ class VIEW3D_PT_view3d_meshdisplay(Panel):
             col.prop(mesh, "show_edge_seams", text="Seams")
         col.prop(mesh, "show_edge_sharp", text="Sharp", text_ctxt=i18n_contexts.plural)
         col.prop(mesh, "show_edge_bevel_weight", text="Bevel")
-        if with_freestyle and not scene.render.use_shading_nodes:
+        if with_freestyle:
             col.prop(mesh, "show_freestyle_edge_marks", text="Edge Marks")
             col.prop(mesh, "show_freestyle_face_marks", text="Face Marks")
 
@@ -2943,12 +2970,12 @@ class VIEW3D_PT_view3d_meshdisplay(Panel):
         row = col.row(align=True)
 
         row.prop(mesh, "show_normal_vertex", text="", icon='VERTEXSEL')
-        row.prop(mesh, "show_normal_loop", text="", icon='VERTEXSEL')
+        row.prop(mesh, "show_normal_loop", text="", icon='LOOPSEL')
         row.prop(mesh, "show_normal_face", text="", icon='FACESEL')
 
         sub = row.row(align=True)
         sub.active = mesh.show_normal_vertex or mesh.show_normal_face or mesh.show_normal_loop
-        sub.prop(context.scene.tool_settings, "normal_size", text="Size")
+        sub.prop(scene.tool_settings, "normal_size", text="Size")
 
         col.separator()
         split = layout.split()
@@ -3223,10 +3250,12 @@ class VIEW3D_PT_context_properties(Panel):
 
     @classmethod
     def poll(cls, context):
+        import rna_prop_ui
         member = cls._active_context_member(context)
+
         if member:
-            context_member = getattr(context, member)
-            return context_member and context_member.keys()
+            context_member, member = rna_prop_ui.rna_idprop_context_value(context, member, object)
+            return context_member and rna_prop_ui.rna_idprop_has_properties(context_member)
 
         return False
 

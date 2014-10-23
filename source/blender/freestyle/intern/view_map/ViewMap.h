@@ -236,6 +236,9 @@ public:
 	/* connects a FEdge to the graph trough a SVertex */
 	//FEdge *Connect(FEdge *ioEdge, SVertex *ioVertex);
 
+	/* Clean temporary FEdges created by chaining */
+	virtual void Clean();
+
 #ifdef WITH_CXX_GUARDEDALLOC
 	MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:ViewMap")
 #endif
@@ -369,7 +372,6 @@ public:
 #ifdef WITH_CXX_GUARDEDALLOC
 	MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:ViewVertex")
 #endif
-
 };
 
 /**********************************/
@@ -419,7 +421,7 @@ public: // Implementation of Interface0D
 	}
 
 	/*! Returns the 3D point. */
-	virtual Vec3f getPoint3D() const
+	virtual Vec3r getPoint3D() const
 	{
 		cerr << "Warning: getPoint3D() undefined for this point" << endl;
 		return _FrontSVertex->getPoint3D();
@@ -443,7 +445,7 @@ public: // Implementation of Interface0D
 	}
 
 	/*! Returns the 2D point. */
-	virtual Vec2f getPoint2D() const
+	virtual Vec2r getPoint2D() const
 	{
 		return _FrontSVertex->getPoint2D();
 	}
@@ -642,7 +644,6 @@ public:
 #ifdef WITH_CXX_GUARDEDALLOC
 	MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:TVertex")
 #endif
-
 };
 
 
@@ -692,7 +693,7 @@ public: // Implementation of Interface0D
 	}
 
 	/*!  Returns the 3D point. */
-	virtual Vec3f getPoint3D() const
+	virtual Vec3r getPoint3D() const
 	{
 		return _SVertex->getPoint3D();
 	}
@@ -716,7 +717,7 @@ public: // Implementation of Interface0D
 	}
 
 	/*! Returns the 2D point. */
-	virtual Vec2f getPoint2D() const
+	virtual Vec2r getPoint2D() const
 	{
 		return _SVertex->getPoint2D();
 	}
@@ -859,7 +860,6 @@ public:
 #ifdef WITH_CXX_GUARDEDALLOC
 	MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:NonTVertex")
 #endif
-
 };
 
 /**********************************/
@@ -1379,7 +1379,6 @@ public:
 #ifdef WITH_CXX_GUARDEDALLOC
 	MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:ViewEdge")
 #endif
-
 };
 
 

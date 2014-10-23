@@ -55,6 +55,7 @@
 #include <X11/Xatom.h>
 #include <X11/keysym.h>
 #include <X11/XKBlib.h> /* allow detectable autorepeate */
+#include <X11/Xutil.h>
 
 #ifdef WITH_XF86KEYSYM
 #include <X11/XF86keysym.h>
@@ -85,9 +86,9 @@ using namespace std;
 
 GHOST_SystemX11::
 GHOST_SystemX11(
-    ) :
-	GHOST_System(),
-	m_start_time(0)
+        )
+    : GHOST_System(),
+      m_start_time(0)
 {
 	m_display = XOpenDisplay(NULL);
 	
@@ -140,6 +141,8 @@ GHOST_SystemX11(
 #undef GHOST_INTERN_ATOM
 
 	m_last_warp = 0;
+	m_last_release_keycode = 0;
+	m_last_release_time = 0;
 
 	/* compute the initial time */
 	timeval tv;
@@ -243,7 +246,7 @@ getMainDisplayDimensions(
 {
 	if (m_display) {
 		/* note, for this to work as documented,
-		 * we would need to use Xinerama check r54370 for code that did thia,
+		 * we would need to use Xinerama check r54370 for code that did this,
 		 * we've since removed since its not worth the extra dep - campbell */
 		getAllDisplayDimensions(width, height);
 	}
@@ -525,6 +528,16 @@ processEvents(
 				continue;
 			}
 #endif
+			/* when using autorepeat, some keypress events can actually come *after* the
+			 * last keyrelease. The next code takes care of that */
+			if (xevent.type == KeyRelease) {
+				m_last_release_keycode = xevent.xkey.keycode;
+				m_last_release_time = xevent.xkey.time;
+			}
+			else if (xevent.type == KeyPress) {
+				if ((xevent.xkey.keycode == m_last_release_keycode) && ((xevent.xkey.time <= m_last_release_time)))
+					continue;
+			}
 
 			processEvent(&xevent);
 			anyProcessed = true;
@@ -658,7 +671,7 @@ GHOST_SystemX11::processEvent(XEvent *xe)
 #ifdef WITH_X11_XINPUT
 	/* Proximity-Out Events are not reliable, if the tablet is active - check on each event
 	 * this adds a little overhead but only while the tablet is in use.
-	 * in the futire we could have a ghost call window->CheckTabletProximity()
+	 * in the future we could have a ghost call window->CheckTabletProximity()
 	 * but for now enough parts of the code are checking 'Active'
 	 * - campbell */
 	if (window->GetTabletData()->Active != GHOST_kTabletModeNone) {
@@ -1239,7 +1252,7 @@ getModifierKeys(
 
 	XQueryKeymap(m_display, (char *)m_keyboard_vector);
 
-	/* now translate key symobols into keycodes and
+	/* now translate key symbols into keycodes and
 	 * test with vector. */
 
 	const static KeyCode shift_l = XKeysymToKeycode(m_display, XK_Shift_L);

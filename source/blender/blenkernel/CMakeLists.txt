@@ -38,6 +38,7 @@ set(INC
 	../nodes
 	../render/extern/include
 	../../../intern/guardedalloc
+	../../../intern/glew-mx
 	../../../intern/iksolver/extern
 	../../../intern/memutil
 	../../../intern/mikktspace
@@ -79,8 +80,8 @@ set(SRC
 	intern/colortools.c
 	intern/constraint.c
 	intern/context.c
-        intern/crazyspace.c
-        intern/curve.c
+	intern/crazyspace.c
+	intern/curve.c
 	intern/customdata.c
 	intern/customdata_file.c
 	intern/deform.c
@@ -193,7 +194,7 @@ set(SRC
 	BKE_colortools.h
 	BKE_constraint.h
 	BKE_context.h
-        BKE_crazyspace.h
+	BKE_crazyspace.h
 	BKE_curve.h
 	BKE_customdata.h
 	BKE_customdata_file.h
@@ -273,7 +274,7 @@ set(SRC
 	intern/pbvh_intern.h
 )
 
-add_definitions(-DGLEW_STATIC)
+add_definitions(${GL_DEFINITIONS})
 
 if(WITH_AUDASPACE)
 	list(APPEND INC
@@ -306,6 +307,10 @@ endif()
 
 if(WITH_IMAGE_TIFF)
 	add_definitions(-DWITH_TIFF)
+endif()
+
+if(WITH_OPENIMAGEIO)
+	add_definitions(-DWITH_OPENIMAGEIO)
 endif()
 
 if(WITH_IMAGE_OPENJPEG)

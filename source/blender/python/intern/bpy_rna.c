@@ -604,18 +604,34 @@ PyObject *pyrna_math_object_from_array(PointerRNA *ptr, PropertyRNA *prop)
 #ifdef USE_MATHUTILS
 	int subtype, totdim;
 	int len;
-	bool is_thick;
 	const int flag = RNA_property_flag(prop);
+	const int type = RNA_property_type(prop);
+	const bool is_thick = (flag & PROP_THICK_WRAP) != 0;
 
 	/* disallow dynamic sized arrays to be wrapped since the size could change
 	 * to a size mathutils does not support */
-	if ((RNA_property_type(prop) != PROP_FLOAT) || (flag & PROP_DYNAMIC))
+	if (flag & PROP_DYNAMIC) {
 		return NULL;
+	}
 
 	len = RNA_property_array_length(ptr, prop);
+	if (type == PROP_FLOAT) {
+		/* pass */
+	}
+	else if (type == PROP_INT) {
+		if (is_thick) {
+			goto thick_wrap_slice;
+		}
+		else {
+			return NULL;
+		}
+	}
+	else {
+		return NULL;
+	}
+
 	subtype = RNA_property_subtype(prop);
 	totdim = RNA_property_array_dimension(ptr, prop, NULL);
-	is_thick = (flag & PROP_THICK_WRAP) != 0;
 
 	if (totdim == 1 || (totdim == 2 && subtype == PROP_MATRIX)) {
 		if (!is_thick)
@@ -712,6 +728,7 @@ PyObject *pyrna_math_object_from_array(PointerRNA *ptr, PropertyRNA *prop)
 		if (is_thick) {
 			/* this is an array we cant reference (since its not thin wrappable)
 			 * and cannot be coerced into a mathutils type, so return as a list */
+thick_wrap_slice:
 			ret = pyrna_prop_array_subscript_slice(NULL, ptr, prop, 0, len, len);
 		}
 		else {
@@ -1363,7 +1380,7 @@ PyObject *pyrna_prop_to_py(PointerRNA *ptr, PropertyRNA *prop)
 			if (subtype == PROP_BYTESTRING) {
 				ret = PyBytes_FromStringAndSize(buf, buf_len);
 			}
-			else if (ELEM3(subtype, PROP_FILEPATH, PROP_DIRPATH, PROP_FILENAME)) {
+			else if (ELEM(subtype, PROP_FILEPATH, PROP_DIRPATH, PROP_FILENAME)) {
 				ret = PyC_UnicodeFromByteAndSize(buf, buf_len);
 			}
 			else {
@@ -1629,7 +1646,7 @@ static int pyrna_py_to_prop(PointerRNA *ptr, PropertyRNA *prop, void *data, PyOb
 					/* Unicode String */
 #ifdef USE_STRING_COERCE
 					PyObject *value_coerce = NULL;
-					if (ELEM3(subtype, PROP_FILEPATH, PROP_DIRPATH, PROP_FILENAME)) {
+					if (ELEM(subtype, PROP_FILEPATH, PROP_DIRPATH, PROP_FILENAME)) {
 						/* TODO, get size */
 						param = PyC_UnicodeAsByte(value, &value_coerce);
 					}
@@ -2312,11 +2329,10 @@ static PyObject *pyrna_prop_array_subscript_slice(BPy_PropertyArrayRNA *self, Po
 	int count, totdim;
 	PyObject *tuple;
 
-	PYRNA_PROP_CHECK_OBJ((BPy_PropertyRNA *)self);
+	/* isn't needed, internal use only */
+	// PYRNA_PROP_CHECK_OBJ((BPy_PropertyRNA *)self);
 
 	tuple = PyTuple_New(stop - start);
-
-	/* PYRNA_PROP_CHECK_OBJ(self); isn't needed, internal use only */
 
 	totdim = RNA_property_array_dimension(ptr, prop, NULL);
 
@@ -2903,7 +2919,7 @@ static int pyrna_struct_contains(BPy_StructRNA *self, PyObject *value)
 }
 
 static PySequenceMethods pyrna_prop_array_as_sequence = {
-	(lenfunc)pyrna_prop_array_length,       /* Cant set the len otherwise it can evaluate as false */
+	(lenfunc)pyrna_prop_array_length,
 	NULL,       /* sq_concat */
 	NULL,       /* sq_repeat */
 	(ssizeargfunc)pyrna_prop_array_subscript_int, /* sq_item */ /* Only set this so PySequence_Check() returns True */
@@ -2916,7 +2932,7 @@ static PySequenceMethods pyrna_prop_array_as_sequence = {
 };
 
 static PySequenceMethods pyrna_prop_collection_as_sequence = {
-	(lenfunc)pyrna_prop_collection_length,      /* Cant set the len otherwise it can evaluate as false */
+	(lenfunc)pyrna_prop_collection_length,
 	NULL,       /* sq_concat */
 	NULL,       /* sq_repeat */
 	(ssizeargfunc)pyrna_prop_collection_subscript_int, /* sq_item */ /* Only set this so PySequence_Check() returns True */
@@ -4894,7 +4910,7 @@ static PyObject *pyrna_param_to_py(PointerRNA *ptr, PropertyRNA *prop, void *dat
 				if (subtype == PROP_BYTESTRING) {
 					ret = PyBytes_FromString(data_ch);
 				}
-				else if (ELEM3(subtype, PROP_FILEPATH, PROP_DIRPATH, PROP_FILENAME)) {
+				else if (ELEM(subtype, PROP_FILEPATH, PROP_DIRPATH, PROP_FILENAME)) {
 					ret = PyC_UnicodeFromByte(data_ch);
 				}
 				else {
@@ -6255,7 +6271,7 @@ static PyObject *pyrna_srna_Subtype(StructRNA *srna)
 
 		/* always use O not N when calling, N causes refcount errors */
 #if 0
-		newclass = PyObject_CallFunction(metaclass, (char *)"s(O) {sss()}",
+		newclass = PyObject_CallFunction(metaclass, "s(O) {sss()}",
 		                                 idname, py_base, "__module__", "bpy.types", "__slots__");
 #else
 		{

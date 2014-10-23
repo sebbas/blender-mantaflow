@@ -64,7 +64,7 @@ static char idp_size_table[] = {
 /** \name IDP Array API
  * \{ */
 
-#define GETPROP(prop, i) (((IDProperty *)(prop)->data.pointer) + (i))
+#define GETPROP(prop, i) &(IDP_IDPArray(prop)[i])
 
 /* --------- property array type -------------*/
 
@@ -251,7 +251,7 @@ void IDP_ResizeArray(IDProperty *prop, int newlen)
 	 * The growth pattern is:  0, 4, 8, 16, 25, 35, 46, 58, 72, 88, ...
 	 */
 	newsize = newlen;
-	newsize = (newsize >> 3) + (newsize < 9 ? 3 : 6) + newsize;\
+	newsize = (newsize >> 3) + (newsize < 9 ? 3 : 6) + newsize;
 
 	if (is_grow == false)
 		idp_resize_group_array(prop, newlen, prop->data.pointer);
@@ -821,7 +821,7 @@ bool IDP_EqualsProperties_ex(IDProperty *prop1, IDProperty *prop2, const bool is
 		case IDP_INT:
 			return (IDP_Int(prop1) == IDP_Int(prop2));
 		case IDP_FLOAT:
-#ifdef DEBUG
+#if !defined(NDEBUG) && defined(WITH_PYTHON)
 			{
 				float p1 = IDP_Float(prop1);
 				float p2 = IDP_Float(prop2);

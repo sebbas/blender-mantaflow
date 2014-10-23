@@ -76,7 +76,7 @@ extern "C" {
 	extern size_t (*MEM_allocN_len)(const void *vmemh) ATTR_WARN_UNUSED_RESULT;
 
 	/**
-	 * Release memory previously allocatred by this module. 
+	 * Release memory previously allocated by this module.
 	 */
 	extern void (*MEM_freeN)(void *vmemh);
 
@@ -120,6 +120,12 @@ extern "C" {
 	extern void *(*MEM_mallocN)(size_t len, const char *str) /* ATTR_MALLOC */ ATTR_WARN_UNUSED_RESULT ATTR_ALLOC_SIZE(1) ATTR_NONNULL(2);
 
 	/**
+	 * Allocate an aligned block of memory of size len, with tag name str. The
+	 * name must be a static, because only a pointer to it is stored !
+	 * */
+	extern void *(*MEM_mallocN_aligned)(size_t len, size_t alignment, const char *str) /* ATTR_MALLOC */ ATTR_WARN_UNUSED_RESULT ATTR_ALLOC_SIZE(1) ATTR_NONNULL(3);
+
+	/**
 	 * Same as callocN, clears memory and uses mmap (disk cached) if supported.
 	 * Can be free'd with MEM_freeN as usual.
 	 * */
@@ -159,9 +165,9 @@ extern "C" {
 	 * Memory usage stats
 	 * - MEM_get_memory_in_use is all memory
 	 * - MEM_get_mapped_memory_in_use is a subset of all memory */
-	extern uintptr_t (*MEM_get_memory_in_use)(void);
+	extern size_t (*MEM_get_memory_in_use)(void);
 	/** Get mapped memory usage. */
-	extern uintptr_t (*MEM_get_mapped_memory_in_use)(void);
+	extern size_t (*MEM_get_mapped_memory_in_use)(void);
 	/** Get amount of memory blocks in use. */
 	extern unsigned int (*MEM_get_memory_blocks_in_use)(void);
 

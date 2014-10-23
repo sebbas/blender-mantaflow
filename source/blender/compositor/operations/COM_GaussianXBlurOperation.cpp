@@ -21,6 +21,7 @@
  */
 
 #include "COM_GaussianXBlurOperation.h"
+#include "COM_OpenCLDevice.h"
 #include "BLI_math.h"
 #include "MEM_guardedalloc.h"
 
@@ -31,6 +32,9 @@ extern "C" {
 GaussianXBlurOperation::GaussianXBlurOperation() : BlurBaseOperation(COM_DT_COLOR)
 {
 	this->m_gausstab = NULL;
+#ifdef __SSE2__
+	this->m_gausstab_sse = NULL;
+#endif
 	this->m_filtersize = 0;
 }
 
@@ -54,8 +58,14 @@ void GaussianXBlurOperation::initExecution()
 	if (this->m_sizeavailable) {
 		float rad = max_ff(m_size * m_data.sizex, 0.0f);
 		m_filtersize = min_ii(ceil(rad), MAX_GAUSSTAB_RADIUS);
-		
+
+		/* TODO(sergey): De-duplicate with the case below and Y blur. */
 		this->m_gausstab = BlurBaseOperation::make_gausstab(rad, m_filtersize);
+#ifdef __SSE2__
+		this->m_gausstab_sse = BlurBaseOperation::convert_gausstab_sse(this->m_gausstab,
+		                                                               rad,
+		                                                               m_filtersize);
+#endif
 	}
 }
 
@@ -65,8 +75,13 @@ void GaussianXBlurOperation::updateGauss()
 		updateSize();
 		float rad = max_ff(m_size * m_data.sizex, 0.0f);
 		m_filtersize = min_ii(ceil(rad), MAX_GAUSSTAB_RADIUS);
-		
+
 		this->m_gausstab = BlurBaseOperation::make_gausstab(rad, m_filtersize);
+#ifdef __SSE2__
+		this->m_gausstab_sse = BlurBaseOperation::convert_gausstab_sse(this->m_gausstab,
+		                                                               rad,
+		                                                               m_filtersize);
+#endif
 	}
 }
 
@@ -88,22 +103,68 @@ void GaussianXBlurOperation::executePixel(float output[4], int x, int y, void *d
 	int step = getStep();
 	int offsetadd = getOffsetAdd();
 	int bufferindex = ((xmin - bufferstartx) * 4) + ((ymin - bufferstarty) * 4 * bufferwidth);
+
+#ifdef __SSE2__
+	__m128 accum_r = _mm_load_ps(color_accum);
+	for (int nx = xmin, index = (xmin - x) + this->m_filtersize; nx < xmax; nx += step, index += step) {
+		__m128 reg_a = _mm_load_ps(&buffer[bufferindex]);
+		reg_a = _mm_mul_ps(reg_a, this->m_gausstab_sse[index]);
+		accum_r = _mm_add_ps(accum_r, reg_a);
+		multiplier_accum += this->m_gausstab[index];
+		bufferindex += offsetadd;
+	}
+	_mm_store_ps(color_accum, accum_r);
+#else
 	for (int nx = xmin, index = (xmin - x) + this->m_filtersize; nx < xmax; nx += step, index += step) {
 		const float multiplier = this->m_gausstab[index];
 		madd_v4_v4fl(color_accum, &buffer[bufferindex], multiplier);
 		multiplier_accum += multiplier;
 		bufferindex += offsetadd;
 	}
+#endif
 	mul_v4_v4fl(output, color_accum, 1.0f / multiplier_accum);
+}
+
+void GaussianXBlurOperation::executeOpenCL(OpenCLDevice *device,
+                                           MemoryBuffer *outputMemoryBuffer, cl_mem clOutputBuffer,
+                                           MemoryBuffer **inputMemoryBuffers, list<cl_mem> *clMemToCleanUp,
+                                           list<cl_kernel> *clKernelsToCleanUp)
+{
+	cl_kernel gaussianXBlurOperationKernel = device->COM_clCreateKernel("gaussianXBlurOperationKernel", NULL);
+	cl_int filter_size = this->m_filtersize;
+
+	cl_mem gausstab = clCreateBuffer(device->getContext(),
+	                                 CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
+	                                 sizeof(float) * (this->m_filtersize * 2 + 1),
+	                                 this->m_gausstab,
+	                                 NULL);
+
+	device->COM_clAttachMemoryBufferToKernelParameter(gaussianXBlurOperationKernel, 0, 1, clMemToCleanUp, inputMemoryBuffers, this->m_inputProgram);
+	device->COM_clAttachOutputMemoryBufferToKernelParameter(gaussianXBlurOperationKernel, 2, clOutputBuffer);
+	device->COM_clAttachMemoryBufferOffsetToKernelParameter(gaussianXBlurOperationKernel, 3, outputMemoryBuffer);
+	clSetKernelArg(gaussianXBlurOperationKernel, 4, sizeof(cl_int), &filter_size);
+	device->COM_clAttachSizeToKernelParameter(gaussianXBlurOperationKernel, 5, this);
+	clSetKernelArg(gaussianXBlurOperationKernel, 6, sizeof(cl_mem), &gausstab);
+
+	device->COM_clEnqueueRange(gaussianXBlurOperationKernel, outputMemoryBuffer, 7, this);
+
+	clReleaseMemObject(gausstab);
 }
 
 void GaussianXBlurOperation::deinitExecution()
 {
 	BlurBaseOperation::deinitExecution();
+
 	if (this->m_gausstab) {
 		MEM_freeN(this->m_gausstab);
 		this->m_gausstab = NULL;
 	}
+#ifdef __SSE2__
+	if (this->m_gausstab_sse) {
+		MEM_freeN(this->m_gausstab_sse);
+		this->m_gausstab_sse = NULL;
+	}
+#endif
 
 	deinitMutex();
 }

@@ -458,7 +458,8 @@ enum {
 	SLIDE_ACTION_NONE    = 0,
 	SLIDE_ACTION_POINT   = 1,
 	SLIDE_ACTION_HANDLE  = 2,
-	SLIDE_ACTION_FEATHER = 3
+	SLIDE_ACTION_FEATHER = 3,
+	SLIDE_ACTION_SPLINE  = 4
 };
 
 typedef struct SlidePointData {
@@ -496,6 +497,108 @@ typedef struct SlidePointData {
 	float prev_feather_coord[2];
 	float weight, weight_scalar;
 } SlidePointData;
+
+static void mask_point_undistort_pos(SpaceClip *sc, float r_co[2], const float co[2])
+{
+	BKE_mask_coord_to_movieclip(sc->clip, &sc->user, r_co, co);
+	ED_clip_point_undistorted_pos(sc, r_co, r_co);
+	BKE_mask_coord_from_movieclip(sc->clip, &sc->user, r_co, r_co);
+}
+
+static bool spline_under_mouse_get(const bContext *C,
+                                   Mask *mask, const float co[2],
+                                   MaskLayer **mask_layer_r,
+                                   MaskSpline **mask_spline_r)
+{
+	const float threshold = 19.0f;
+	ScrArea *sa = CTX_wm_area(C);
+	SpaceClip *sc = CTX_wm_space_clip(C);
+	MaskLayer *mask_layer;
+	int width, height;
+	float pixel_co[2];
+	float closest_dist_squared;
+	MaskLayer *closest_layer = NULL;
+	MaskSpline *closest_spline = NULL;
+	bool undistort = false;
+	*mask_layer_r = NULL;
+	*mask_spline_r = NULL;
+	ED_mask_get_size(sa, &width, &height);
+	pixel_co[0] = co[0] * width;
+	pixel_co[1] = co[1] * height;
+	if (sc != NULL) {
+		undistort = (sc->clip != NULL) &&
+		            (sc->user.render_flag & MCLIP_PROXY_RENDER_UNDISTORT) != 0;
+	}
+	for (mask_layer = mask->masklayers.first;
+	     mask_layer != NULL;
+	     mask_layer = mask_layer->next)
+	{
+		MaskSpline *spline;
+		if (mask_layer->restrictflag & MASK_RESTRICT_SELECT) {
+			continue;
+		}
+
+		for (spline = mask_layer->splines.first;
+		     spline != NULL;
+		     spline = spline->next)
+		{
+			MaskSplinePoint *points_array;
+			float min[2], max[2], center[2];
+			float dist_squared;
+			int i;
+			float max_bb_side;
+			if ((spline->flag & SELECT) == 0) {
+				continue;
+			}
+
+			points_array = BKE_mask_spline_point_array(spline);
+			INIT_MINMAX2(min, max);
+			for (i = 0; i < spline->tot_point; i++) {
+				MaskSplinePoint *point_deform = &points_array[i];
+				BezTriple *bezt = &point_deform->bezt;
+
+				float vert[2];
+
+				copy_v2_v2(vert, bezt->vec[1]);
+
+				if (undistort) {
+					mask_point_undistort_pos(sc, vert, vert);
+				}
+
+				minmax_v2v2_v2(min, max, vert);
+			}
+
+			center[0] = (min[0] + max[0]) / 2.0f * width;
+			center[1] = (min[1] + max[1]) / 2.0f * height;
+			dist_squared = len_squared_v2v2(pixel_co, center);
+			max_bb_side = min_ff((max[0] - min[0]) * width, (max[1] - min[1]) * height);
+			if (dist_squared <= max_bb_side * max_bb_side * 0.5f &&
+			    (closest_spline == NULL || dist_squared < closest_dist_squared))
+			{
+				closest_layer = mask_layer;
+				closest_spline = spline;
+				closest_dist_squared = dist_squared;
+			}
+		}
+	}
+	if (closest_dist_squared < SQUARE(threshold) && closest_spline != NULL) {
+		float diff_score;
+		if (ED_mask_find_nearest_diff_point(C, mask, co, threshold,
+		                                    false, NULL, true, false,
+		                                    NULL, NULL, NULL, NULL,
+		                                    &diff_score))
+		{
+			if (SQUARE(diff_score) < closest_dist_squared) {
+				return false;
+			}
+		}
+
+		*mask_layer_r = closest_layer;
+		*mask_spline_r = closest_spline;
+		return true;
+	}
+	return false;
+}
 
 static bool slide_point_check_initial_feather(MaskSpline *spline)
 {
@@ -607,9 +710,14 @@ static void *slide_point_customdata(bContext *C, wmOperator *op, const wmEvent *
 		point = cv_point;
 	}
 
-	if (action != SLIDE_ACTION_NONE) {
-		select_sliding_point(mask, masklay, spline, point, which_handle);
+	if (action == SLIDE_ACTION_NONE) {
+		if (spline_under_mouse_get(C, mask, co, &masklay, &spline)) {
+			action = SLIDE_ACTION_SPLINE;
+			point = NULL;
+		}
+	}
 
+	if (action != SLIDE_ACTION_NONE) {
 		customdata = MEM_callocN(sizeof(SlidePointData), "mask slide point data");
 		customdata->event_invoke_type = event->type;
 		customdata->mask = mask;
@@ -621,12 +729,14 @@ static void *slide_point_customdata(bContext *C, wmOperator *op, const wmEvent *
 		customdata->action = action;
 		customdata->uw = uw;
 
-		customdata->old_h1 = point->bezt.h1;
-		customdata->old_h2 = point->bezt.h2;
-
 		customdata->is_sliding_new_point = RNA_boolean_get(op->ptr, "is_new_point");
 
-		check_sliding_handle_type(point, which_handle);
+		if (customdata->action != SLIDE_ACTION_SPLINE) {
+			customdata->old_h1 = point->bezt.h1;
+			customdata->old_h2 = point->bezt.h2;
+			select_sliding_point(mask, masklay, spline, point, which_handle);
+			check_sliding_handle_type(point, which_handle);
+		}
 
 		if (uw) {
 			float co_uw[2];
@@ -639,7 +749,7 @@ static void *slide_point_customdata(bContext *C, wmOperator *op, const wmEvent *
 
 			madd_v2_v2v2fl(customdata->prev_feather_coord, co_uw, customdata->no, uw->w * weight_scalar);
 		}
-		else {
+		else if (customdata->action != SLIDE_ACTION_SPLINE) {
 			BezTriple *bezt = &point->bezt;
 
 			customdata->weight = bezt->weight;
@@ -653,10 +763,12 @@ static void *slide_point_customdata(bContext *C, wmOperator *op, const wmEvent *
 			customdata->is_initial_feather = slide_point_check_initial_feather(spline);
 		}
 
-		copy_m3_m3(customdata->vec, point->bezt.vec);
-		if (which_handle != MASK_WHICH_HANDLE_NONE) {
-			BKE_mask_point_handle(point, which_handle, customdata->orig_handle_coord);
-			copy_v2_v2(customdata->prev_handle_coord, customdata->orig_handle_coord);
+		if (customdata->action != SLIDE_ACTION_SPLINE) {
+			copy_m3_m3(customdata->vec, point->bezt.vec);
+			if (which_handle != MASK_WHICH_HANDLE_NONE) {
+				BKE_mask_point_handle(point, which_handle, customdata->orig_handle_coord);
+				copy_v2_v2(customdata->prev_handle_coord, customdata->orig_handle_coord);
+			}
 		}
 		customdata->which_handle = which_handle;
 
@@ -738,7 +850,7 @@ static void cancel_slide_point(SlidePointData *data)
 			else
 				data->point->bezt.weight = data->weight;
 		}
-		else {
+		else if (data->action != SLIDE_ACTION_SPLINE) {
 			copy_m3_m3(data->point->bezt.vec, data->vec);
 			data->point->bezt.h1 = data->old_h1;
 			data->point->bezt.h2 = data->old_h2;
@@ -935,6 +1047,20 @@ static int slide_point_modal(bContext *C, wmOperator *op, const wmEvent *event)
 					copy_v2_v2(data->prev_feather_coord, offco);
 				}
 			}
+			else if (data->action == SLIDE_ACTION_SPLINE) {
+				int i;
+
+				if (data->orig_spline == NULL) {
+					data->orig_spline = BKE_mask_spline_copy(data->spline);
+				}
+
+				for (i = 0; i < data->spline->tot_point; i++) {
+					MaskSplinePoint *point = &data->spline->points[i];
+					add_v2_v2(point->bezt.vec[0], delta);
+					add_v2_v2(point->bezt.vec[1], delta);
+					add_v2_v2(point->bezt.vec[2], delta);
+				}
+			}
 
 			WM_event_add_notifier(C, NC_MASK | NA_EDITED, data->mask);
 			DAG_id_tag_update(&data->mask->id, 0);
@@ -970,8 +1096,12 @@ static int slide_point_modal(bContext *C, wmOperator *op, const wmEvent *event)
 				free_slide_point_data(op->customdata); /* keep this last! */
 				return OPERATOR_FINISHED;
 			}
-
-			break;
+			else if (event->type != data->event_invoke_type && event->val == KM_PRESS) {
+				/* pass to ESCKEY */
+			}
+			else {
+				break;
+			}
 
 		case ESCKEY:
 			cancel_slide_point(op->customdata);
@@ -1046,7 +1176,7 @@ static bool slide_spline_curvature_check(bContext *C, const wmEvent *event)
 {
 	Mask *mask = CTX_data_edit_mask(C);
 	float co[2];
-	const float threshold = 19;
+	const float threshold = 19.0f;
 
 	ED_mask_mouse_pos(CTX_wm_area(C), CTX_wm_region(C), event->mval, co);
 
@@ -1064,7 +1194,7 @@ static bool slide_spline_curvature_check(bContext *C, const wmEvent *event)
 static SlideSplineCurvatureData *slide_spline_curvature_customdata(
 	bContext *C, const wmEvent *event)
 {
-	const float threshold = 19;
+	const float threshold = 19.0f;
 
 	Mask *mask = CTX_data_edit_mask(C);
 	SlideSplineCurvatureData *slide_data;
@@ -1077,8 +1207,9 @@ static SlideSplineCurvatureData *slide_spline_curvature_customdata(
 	ED_mask_mouse_pos(CTX_wm_area(C), CTX_wm_region(C), event->mval, co);
 
 	if (!ED_mask_find_nearest_diff_point(C, mask, co, threshold, false,
+	                                     NULL, true, false,
 	                                     &mask_layer, &spline, &point, &u,
-	                                     NULL, true, false))
+	                                     NULL))
 	{
 		return NULL;
 	}
@@ -2015,6 +2146,8 @@ static int mask_layer_move_exec(bContext *C, wmOperator *op)
 		mask->masklay_act++;
 	}
 
+	WM_event_add_notifier(C, NC_MASK | NA_EDITED, mask);
+
 	return OPERATOR_FINISHED;
 }
 
@@ -2075,6 +2208,8 @@ static int mask_duplicate_exec(bContext *C, wmOperator *UNUSED(op))
 					point++;
 				}
 				if (end >= start) {
+					int tot_point;
+					int tot_point_shape_start;
 					MaskSpline *new_spline = BKE_mask_spline_add(mask_layer);
 					MaskSplinePoint *new_point;
 					int b;
@@ -2098,15 +2233,29 @@ static int mask_duplicate_exec(bContext *C, wmOperator *UNUSED(op))
 					memcpy(new_spline->points, spline->points + start,
 					       new_spline->tot_point * sizeof(MaskSplinePoint));
 
+					tot_point = new_spline->tot_point;
+
+					/* animation requires points added one by one */
+					if (mask_layer->splines_shapes.first) {
+						new_spline->tot_point = 0;
+						tot_point_shape_start = BKE_mask_layer_shape_spline_to_index(mask_layer, new_spline);
+					}
+
 					/* Select points and duplicate their UWs (if needed). */
 					for (b = 0, new_point = new_spline->points;
-					     b < new_spline->tot_point;
+					     b < tot_point;
 					     b++, new_point++)
 					{
 						if (new_point->uw) {
 							new_point->uw = MEM_dupallocN(new_point->uw);
 						}
 						BKE_mask_point_select_set(new_point, true);
+
+
+						if (mask_layer->splines_shapes.first) {
+							new_spline->tot_point++;
+							BKE_mask_layer_shape_changed_add(mask_layer, tot_point_shape_start + b, true, false);
+						}
 					}
 
 					/* Clear cyclic flag if we didn't copy the whole spline. */
@@ -2158,6 +2307,10 @@ static int copy_splines_exec(bContext *C, wmOperator *UNUSED(op))
 	Mask *mask = CTX_data_edit_mask(C);
 	MaskLayer *mask_layer = BKE_mask_layer_active(mask);
 
+	if (mask_layer == NULL) {
+		return OPERATOR_CANCELLED;
+	}
+
 	BKE_mask_clipboard_copy_from_layer(mask_layer);
 
 	return OPERATOR_FINISHED;
@@ -2194,6 +2347,10 @@ static int paste_splines_exec(bContext *C, wmOperator *UNUSED(op))
 	Scene *scene = CTX_data_scene(C);
 	Mask *mask = CTX_data_edit_mask(C);
 	MaskLayer *mask_layer = BKE_mask_layer_active(mask);
+
+	if (mask_layer == NULL) {
+		mask_layer = BKE_mask_layer_new(mask, "");
+	}
 
 	BKE_mask_clipboard_paste_to_layer(CTX_data_main(C), mask_layer);
 

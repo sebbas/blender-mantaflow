@@ -34,6 +34,8 @@
 /* allow readfile to use deprecated functionality */
 #define DNA_DEPRECATED_ALLOW
 
+#include "DNA_brush_types.h"
+#include "DNA_cloth_types.h"
 #include "DNA_constraint_types.h"
 #include "DNA_sdna_types.h"
 #include "DNA_space_types.h"
@@ -41,7 +43,9 @@
 #include "DNA_object_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_modifier_types.h"
+#include "DNA_particle_types.h"
 #include "DNA_linestyle_types.h"
+#include "DNA_actuator_types.h"
 
 #include "DNA_genfile.h"
 
@@ -106,6 +110,19 @@ static void do_version_constraints_radians_degrees_270_5(ListBase *lb)
 				copy_v3_v3(data->to_min_scale, data->to_min);
 				copy_v3_v3(data->to_max_scale, data->to_max);
 			}
+		}
+	}
+}
+
+static void do_version_constraints_stretch_to_limits(ListBase *lb)
+{
+	bConstraint *con;
+
+	for (con = lb->first; con; con = con->next) {
+		if (con->type == CONSTRAINT_TYPE_STRETCHTO) {
+			bStretchToConstraint *data = (bStretchToConstraint *)con->data;
+			data->bulge_min = 1.0f;
+			data->bulge_max = 1.0f;
 		}
 	}
 }
@@ -251,32 +268,171 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *main)
 		}
 	}
 
-	if (!DNA_struct_elem_find(fd->filesdna, "Material", "int", "mode2")) {
-		Material *ma;
+	if (!MAIN_VERSION_ATLEAST(main, 271, 0)) {
+		if (!DNA_struct_elem_find(fd->filesdna, "Material", "int", "mode2")) {
+			Material *ma;
 
-		for (ma = main->mat.first; ma; ma = ma->id.next)
-			ma->mode2 = MA_CASTSHADOW;
+			for (ma = main->mat.first; ma; ma = ma->id.next)
+				ma->mode2 = MA_CASTSHADOW;
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "RenderData", "BakeData", "bake")) {
+			Scene *sce;
+
+			for (sce = main->scene.first; sce; sce = sce->id.next) {
+				sce->r.bake.flag = R_BAKE_CLEAR;
+				sce->r.bake.width = 512;
+				sce->r.bake.height = 512;
+				sce->r.bake.margin = 16;
+				sce->r.bake.normal_space = R_BAKE_SPACE_TANGENT;
+				sce->r.bake.normal_swizzle[0] = R_BAKE_POSX;
+				sce->r.bake.normal_swizzle[1] = R_BAKE_POSY;
+				sce->r.bake.normal_swizzle[2] = R_BAKE_POSZ;
+				BLI_strncpy(sce->r.bake.filepath, U.renderdir, sizeof(sce->r.bake.filepath));
+
+				sce->r.bake.im_format.planes = R_IMF_PLANES_RGBA;
+				sce->r.bake.im_format.imtype = R_IMF_IMTYPE_PNG;
+				sce->r.bake.im_format.depth = R_IMF_CHAN_DEPTH_8;
+				sce->r.bake.im_format.quality = 90;
+				sce->r.bake.im_format.compress = 15;
+			}
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "FreestyleLineStyle", "float", "texstep")) {
+			FreestyleLineStyle *linestyle;
+
+			for (linestyle = main->linestyle.first; linestyle; linestyle = linestyle->id.next) {
+				linestyle->flag |= LS_TEXTURE;
+				linestyle->texstep = 1.0;
+			}
+		}
+
+		{
+			Scene *scene;
+			for (scene = main->scene.first; scene; scene = scene->id.next) {
+				int num_layers = BLI_countlist(&scene->r.layers);
+				scene->r.actlay = min_ff(scene->r.actlay, num_layers - 1);
+			}
+		}
 	}
 
-	if (!DNA_struct_elem_find(fd->filesdna, "RenderData", "BakeData", "bake")) {
-		Scene *sce;
+	if (!MAIN_VERSION_ATLEAST(main, 271, 1)) {
+		if (!DNA_struct_elem_find(fd->filesdna, "Material", "float", "line_col[4]")) {
+			Material *mat;
 
-		for (sce = main->scene.first; sce; sce = sce->id.next) {
-			sce->r.bake.flag = R_BAKE_CLEAR;
-			sce->r.bake.width = 512;
-			sce->r.bake.height = 512;
-			sce->r.bake.margin = 16;
-			sce->r.bake.normal_space = R_BAKE_SPACE_TANGENT;
-			sce->r.bake.normal_swizzle[0] = R_BAKE_POSX;
-			sce->r.bake.normal_swizzle[1] = R_BAKE_POSY;
-			sce->r.bake.normal_swizzle[2] = R_BAKE_POSZ;
-			BLI_strncpy(sce->r.bake.filepath, U.renderdir, sizeof(sce->r.bake.filepath));
+			for (mat = main->mat.first; mat; mat = mat->id.next) {
+				mat->line_col[0] = mat->line_col[1] = mat->line_col[2] = 0.0f;
+				mat->line_col[3] = mat->alpha;
+			}
+		}
 
-			sce->r.bake.im_format.planes = R_IMF_PLANES_RGBA;
-			sce->r.bake.im_format.imtype = R_IMF_IMTYPE_PNG;
-			sce->r.bake.im_format.depth = R_IMF_CHAN_DEPTH_8;
-			sce->r.bake.im_format.quality = 90;
-			sce->r.bake.im_format.compress = 15;
+		if (!DNA_struct_elem_find(fd->filesdna, "RenderData", "int", "preview_start_resolution")) {
+			Scene *scene;
+			for (scene = main->scene.first; scene; scene = scene->id.next) {
+				scene->r.preview_start_resolution = 64;
+			}
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(main, 271, 2)) {
+		/* init up & track axis property of trackto actuators */
+		Object *ob;
+
+		for (ob = main->object.first; ob; ob = ob->id.next) {
+			bActuator *act;
+			for (act = ob->actuators.first; act; act = act->next) {
+				if (act->type == ACT_EDIT_OBJECT) {
+					bEditObjectActuator *eoact = act->data;
+					eoact->trackflag = ob->trackflag;
+					/* if trackflag is pointing +-Z axis then upflag should point Y axis.
+					 * Rest of trackflag cases, upflag should be point z axis */
+					if ((ob->trackflag == OB_POSZ) || (ob->trackflag == OB_NEGZ)) {
+						eoact->upflag = 1;
+					}
+					else {
+						eoact->upflag = 2;
+					}
+				}
+			}
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(main, 271, 3)) {
+		Brush *br;
+
+		for (br = main->brush.first; br; br = br->id.next) {
+			br->fill_threshold = 0.2f;
+		}
+
+		if (!DNA_struct_elem_find(fd->filesdna, "BevelModifierData", "int", "mat")) {
+			Object *ob;
+			for (ob = main->object.first; ob; ob = ob->id.next) {
+				ModifierData *md;
+
+				for (md = ob->modifiers.first; md; md = md->next) {
+					if (md->type == eModifierType_Bevel) {
+						BevelModifierData *bmd = (BevelModifierData *)md;
+						bmd->mat = -1;
+					}
+				}
+			}
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(main, 271, 6)) {
+		Object *ob;
+		for (ob = main->object.first; ob; ob = ob->id.next) {
+			ModifierData *md;
+
+			for (md = ob->modifiers.first; md; md = md->next) {
+				if (md->type == eModifierType_ParticleSystem) {
+					ParticleSystemModifierData *pmd = (ParticleSystemModifierData *)md;
+					if (pmd->psys && pmd->psys->clmd) {
+						pmd->psys->clmd->sim_parms->vel_damping = 1.0f;
+					}
+				}
+			}
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(main, 272, 0)) {
+		if (!DNA_struct_elem_find(fd->filesdna, "RenderData", "int", "preview_start_resolution")) {
+			Scene *scene;
+			for (scene = main->scene.first; scene; scene = scene->id.next) {
+				scene->r.preview_start_resolution = 64;
+			}
+		}
+	}
+	
+	if (!MAIN_VERSION_ATLEAST(main, 272, 1)) {
+		Brush *br;
+		for (br = main->brush.first; br; br = br->id.next) {
+			if ((br->ob_mode & OB_MODE_SCULPT) && ELEM(br->sculpt_tool, SCULPT_TOOL_GRAB, SCULPT_TOOL_SNAKE_HOOK))
+				br->alpha = 1.0f;
+		}
+	}
+
+	if (!DNA_struct_elem_find(fd->filesdna, "Image", "float", "gen_color")) {
+		Image *image;
+		for (image = main->image.first; image != NULL; image = image->id.next) {
+			image->gen_color[3] = 1.0f;
+		}
+	}
+
+	if (!DNA_struct_elem_find(fd->filesdna, "bStretchToConstraint", "float", "bulge_min")) {
+		Object *ob;
+
+		/* Update Transform constraint (again :|). */
+		for (ob = main->object.first; ob; ob = ob->id.next) {
+			do_version_constraints_stretch_to_limits(&ob->constraints);
+
+			if (ob->pose) {
+				/* Bones constraints! */
+				bPoseChannel *pchan;
+				for (pchan = ob->pose->chanbase.first; pchan; pchan = pchan->next) {
+					do_version_constraints_stretch_to_limits(&pchan->constraints);
+				}
+			}
 		}
 	}
 }

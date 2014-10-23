@@ -56,6 +56,7 @@ struct bContext;
 struct bPoseChannel;
 struct bScreen;
 struct bglMats;
+struct rctf;
 struct rcti;
 struct wmOperator;
 struct wmOperatorType;
@@ -84,6 +85,7 @@ typedef struct ViewDepths {
 
 float *ED_view3d_cursor3d_get(struct Scene *scene, struct View3D *v3d);
 void   ED_view3d_cursor3d_position(struct bContext *C, float fp[3], const int mval[2]);
+void   ED_view3d_cursor3d_update(struct bContext *C, const int mval[2]);
 
 struct Camera *ED_view3d_camera_data_get(struct View3D *v3d, struct RegionView3D *rv3d);
 
@@ -217,7 +219,8 @@ void ED_view3d_unproject(struct bglMats *mats, float out[3], const float x, cons
 /* end */
 
 
-
+void ED_view3d_dist_range_get(struct View3D *v3d,
+                              float r_dist_range[2]);
 bool ED_view3d_clip_range_get(struct View3D *v3d, struct RegionView3D *rv3d,
                               float *r_clipsta, float *r_clipend, const bool use_ortho_factor);
 bool ED_view3d_viewplane_get(struct View3D *v3d, struct RegionView3D *rv3d, int winxi, int winyi,
@@ -269,7 +272,7 @@ bool ED_view3d_autodist_depth_seg(struct ARegion *ar, const int mval_sta[2], con
 
 /* select */
 #define MAXPICKBUF      10000
-short view3d_opengl_select(struct ViewContext *vc, unsigned int *buffer, unsigned int bufsize, rcti *input);
+short view3d_opengl_select(struct ViewContext *vc, unsigned int *buffer, unsigned int bufsize, const struct rcti *input, bool do_nearest);
 
 /* view3d_select.c */
 float ED_view3d_select_dist_px(void);
@@ -332,6 +335,13 @@ void ED_view3d_camera_lock_init(struct View3D *v3d, struct RegionView3D *rv3d);
 /* copy the view to the camera, return true if */
 bool ED_view3d_camera_lock_sync(struct View3D *v3d, struct RegionView3D *rv3d);
 
+bool ED_view3d_camera_autokey(
+        struct Scene *scene, struct ID *id_key,
+        struct bContext *C, const bool do_rotate, const bool do_translate);
+bool ED_view3d_camera_lock_autokey(
+        struct View3D *v3d, struct RegionView3D *rv3d,
+        struct bContext *C, const bool do_rotate, const bool do_translate);
+
 void ED_view3D_lock_clear(struct View3D *v3d);
 
 struct BGpic *ED_view3D_background_image_new(struct View3D *v3d);
@@ -340,13 +350,14 @@ void ED_view3D_background_image_clear(struct View3D *v3d);
 
 #define VIEW3D_MARGIN 1.4f
 #define VIEW3D_DIST_FALLBACK 1.0f
+
 float ED_view3d_offset_distance(float mat[4][4], const float ofs[3], const float dist_fallback);
 void  ED_view3d_distance_set(struct RegionView3D *rv3d, const float dist);
 
 float ED_scene_grid_scale(struct Scene *scene, const char **grid_unit);
 float ED_view3d_grid_scale(struct Scene *scene, struct View3D *v3d, const char **grid_unit);
 
-void ED_scene_draw_fps(struct Scene *scene, struct rcti *rect);
+void ED_scene_draw_fps(struct Scene *scene, const struct rcti *rect);
 
 /* view matrix properties utilities */
 /* unused */
@@ -357,6 +368,6 @@ void ED_view3d_operator_properties_viewmat_get(struct wmOperator *op, int *winx,
 #endif
 
 /* render */
-void ED_view3d_shade_update(struct Main *bmain, struct View3D *v3d, struct ScrArea *sa);
+void ED_view3d_shade_update(struct Main *bmain, struct Scene *scene, struct View3D *v3d, struct ScrArea *sa);
 
 #endif /* __ED_VIEW3D_H__ */

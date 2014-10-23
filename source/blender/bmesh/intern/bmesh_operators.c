@@ -54,13 +54,13 @@ static const char *bmo_error_messages[] = {
 	N_("Could not connect vertices"),
 	N_("Could not traverse mesh"),
 	N_("Could not dissolve faces"),
-	N_("Could not dissolve vertices"),
 	N_("Tessellation error"),
 	N_("Cannot deal with non-manifold geometry"),
 	N_("Invalid selection"),
 	N_("Internal mesh error"),
 };
 
+BLI_STATIC_ASSERT(ARRAY_SIZE(bmo_error_messages) + 1 == BMERR_TOTAL, "message mismatch");
 
 /* operator slot type information - size of one element of the type given. */
 const int BMO_OPSLOT_TYPEINFO[BMO_OP_SLOT_TOTAL_TYPES] = {
@@ -591,7 +591,7 @@ void BMO_mesh_flag_disable_all(BMesh *bm, BMOperator *UNUSED(op), const char hty
 	BMElemF *ele;
 	int i;
 
-#pragma omp parallel for schedule(dynamic) if (bm->totvert + bm->totedge + bm->totface >= BM_OMP_LIMIT)
+#pragma omp parallel for schedule(static) if (bm->totvert + bm->totedge + bm->totface >= BM_OMP_LIMIT)
 	for (i = 0; i < 3; i++) {
 		if (htype & flag_types[i]) {
 			BMIter iter;
@@ -605,7 +605,8 @@ void BMO_mesh_flag_disable_all(BMesh *bm, BMOperator *UNUSED(op), const char hty
 void BMO_mesh_selected_remap(BMesh *bm,
                              BMOpSlot *slot_vert_map,
                              BMOpSlot *slot_edge_map,
-                             BMOpSlot *slot_face_map)
+                             BMOpSlot *slot_face_map,
+                             const bool check_select)
 {
 	if (bm->selected.first) {
 		BMEditSelection *ese, *ese_next;
@@ -623,7 +624,7 @@ void BMO_mesh_selected_remap(BMesh *bm,
 			ese->ele = BMO_slot_map_elem_get(slot_elem_map, ese->ele);
 
 			if (UNLIKELY((ese->ele == NULL) ||
-			             (BM_elem_flag_test(ese->ele, BM_ELEM_SELECT) == false)))
+			             (check_select && (BM_elem_flag_test(ese->ele, BM_ELEM_SELECT) == false))))
 			{
 				BLI_remlink(&bm->selected, ese);
 				MEM_freeN(ese);
@@ -764,6 +765,9 @@ void BMO_slot_buffer_from_all(BMesh *bm, BMOperator *op, BMOpSlot slot_args[BMO_
 	BMOpSlot *output = BMO_slot_get(slot_args, slot_name);
 	int totelement = 0, i = 0;
 	
+	BLI_assert(output->slot_type == BMO_OP_SLOT_ELEMENT_BUF);
+	BLI_assert(((output->slot_subtype.elem & BM_ALL_NOLOOP) & htype) == htype);
+
 	if (htype & BM_VERT) totelement += bm->totvert;
 	if (htype & BM_EDGE) totelement += bm->totedge;
 	if (htype & BM_FACE) totelement += bm->totface;
@@ -811,7 +815,11 @@ static void bmo_slot_buffer_from_hflag(BMesh *bm, BMOperator *op, BMOpSlot slot_
 {
 	BMOpSlot *output = BMO_slot_get(slot_args, slot_name);
 	int totelement = 0, i = 0;
-	const int respecthide = (op->flag & BMO_FLAG_RESPECT_HIDE) != 0;
+	const bool respecthide = ((op->flag & BMO_FLAG_RESPECT_HIDE) != 0) && ((hflag & BM_ELEM_HIDDEN) == 0);
+
+	BLI_assert(output->slot_type == BMO_OP_SLOT_ELEMENT_BUF);
+	BLI_assert(((output->slot_subtype.elem & BM_ALL_NOLOOP) & htype) == htype);
+	BLI_assert((output->slot_subtype.elem & BMO_OP_SLOT_SUBTYPE_ELEM_IS_SINGLE) == 0);
 
 	if (test_for_enabled)
 		totelement = BM_mesh_elem_hflag_count_enabled(bm, htype, hflag, respecthide);
@@ -951,13 +959,14 @@ static void bmo_slot_buffer_from_flag(BMesh *bm, BMOperator *op,
 
 	BLI_assert(op->slots_in == slot_args || op->slots_out == slot_args);
 
+	BLI_assert(slot->slot_type == BMO_OP_SLOT_ELEMENT_BUF);
+	BLI_assert(((slot->slot_subtype.elem & BM_ALL_NOLOOP) & htype) == htype);
+	BLI_assert((slot->slot_subtype.elem & BMO_OP_SLOT_SUBTYPE_ELEM_IS_SINGLE) == 0);
+
 	if (test_for_enabled)
 		totelement = BMO_mesh_enabled_flag_count(bm, htype, oflag);
 	else
 		totelement = BMO_mesh_disabled_flag_count(bm, htype, oflag);
-
-	BLI_assert(slot->slot_type == BMO_OP_SLOT_ELEMENT_BUF);
-	BLI_assert(((slot->slot_subtype.elem & BM_ALL_NOLOOP) & htype) == htype);
 
 	if (totelement) {
 		BMIter iter;
@@ -1034,6 +1043,7 @@ void BMO_slot_buffer_hflag_enable(BMesh *bm,
 
 	BLI_assert(slot->slot_type == BMO_OP_SLOT_ELEMENT_BUF);
 	BLI_assert(((slot->slot_subtype.elem & BM_ALL_NOLOOP) & htype) == htype);
+	BLI_assert((slot->slot_subtype.elem & BMO_OP_SLOT_SUBTYPE_ELEM_IS_SINGLE) == 0);
 
 	for (i = 0; i < slot->len; i++, data++) {
 		if (!(htype & (*data)->head.htype))
@@ -1654,7 +1664,6 @@ bool BMO_op_vinitf(BMesh *bm, BMOperator *op, const int flag, const char *_fmt, 
 	char slot_name[64] = {0};
 	int i, type;
 	bool noslot, state;
-	char htype;
 
 
 	/* basic useful info to help find where bmop formatting strings fail */
@@ -1729,9 +1738,8 @@ bool BMO_op_vinitf(BMesh *bm, BMOperator *op, const int flag, const char *_fmt, 
 					break;
 				case 'm':
 				{
-					int size, c;
-
-					c = NEXT_CHAR(fmt);
+					int size;
+					const char c = NEXT_CHAR(fmt);
 					fmt++;
 
 					if      (c == '3') size = 3;
@@ -1800,22 +1808,23 @@ bool BMO_op_vinitf(BMesh *bm, BMOperator *op, const int flag, const char *_fmt, 
 						BMO_slot_float_set(op->slots_in, slot_name, va_arg(vlist, double));
 					}
 					else {
-						bool stop = false;
+						char htype = 0;
 
-						htype = 0;
 						while (1) {
-							switch (NEXT_CHAR(fmt)) {
-								case 'f': htype |= BM_FACE; break;
-								case 'e': htype |= BM_EDGE; break;
-								case 'v': htype |= BM_VERT; break;
-								default:
-									stop = true;
-									break;
-							}
-							if (stop) {
+							char htype_set;
+							const char c = NEXT_CHAR(fmt);
+							if      (c == 'f') htype_set = BM_FACE;
+							else if (c == 'e') htype_set = BM_EDGE;
+							else if (c == 'v') htype_set = BM_VERT;
+							else {
 								break;
 							}
 
+							if (UNLIKELY(htype & htype_set)) {
+								GOTO_ERROR("htype duplicated");
+							}
+
+							htype |= htype_set;
 							fmt++;
 						}
 

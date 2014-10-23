@@ -256,6 +256,12 @@ void blo_reportf_wrap(ReportList *reports, ReportType type, const char *format, 
 	}
 }
 
+/* for reporting linking messages */
+static const char *library_parent_filepath(Library *lib)
+{
+	return lib->parent ? lib->parent->filepath : "<direct>";
+}
+
 static OldNewMap *oldnewmap_new(void) 
 {
 	OldNewMap *onm= MEM_callocN(sizeof(*onm), "OldNewMap");
@@ -434,8 +440,7 @@ void blo_join_main(ListBase *mainlist)
 	while ((tojoin = mainl->next)) {
 		add_main_to_main(mainl, tojoin);
 		BLI_remlink(mainlist, tojoin);
-		MEM_freeN(tojoin->eval_ctx);
-		MEM_freeN(tojoin);
+		BKE_main_free(tojoin);
 	}
 }
 
@@ -1824,6 +1829,7 @@ static void lib_link_brush(FileData *fd, Main *main)
 			brush->mtex.tex = newlibadr_us(fd, brush->id.lib, brush->mtex.tex);
 			brush->mask_mtex.tex = newlibadr_us(fd, brush->id.lib, brush->mask_mtex.tex);
 			brush->clone.image = newlibadr_us(fd, brush->id.lib, brush->clone.image);
+			brush->paint_curve = newlibadr_us(fd, brush->id.lib, brush->paint_curve);
 		}
 	}
 }
@@ -1834,6 +1840,8 @@ static void direct_link_brush(FileData *fd, Brush *brush)
 
 	/* fallof curve */
 	brush->curve = newdataadr(fd, brush->curve);
+	brush->gradient = newdataadr(fd, brush->gradient);
+
 	if (brush->curve)
 		direct_link_curvemapping(fd, brush->curve);
 	else
@@ -1842,6 +1850,44 @@ static void direct_link_brush(FileData *fd, Brush *brush)
 	brush->preview = NULL;
 	brush->icon_imbuf = NULL;
 }
+
+/* ************ READ Palette *************** */
+static void lib_link_palette(FileData *UNUSED(fd), Main *main)
+{
+	Palette *palette;
+
+	/* only link ID pointers */
+	for (palette = main->palettes.first; palette; palette = palette->id.next) {
+		if (palette->id.flag & LIB_NEED_LINK) {
+			palette->id.flag -= LIB_NEED_LINK;
+		}
+	}
+}
+
+static void direct_link_palette(FileData *fd, Palette *palette)
+{
+	/* palette itself has been read */
+	link_list(fd, &palette->colors);
+	BLI_listbase_clear(&palette->deleted);
+}
+
+static void lib_link_paint_curve(FileData *UNUSED(fd), Main *main)
+{
+	PaintCurve *pc;
+
+	/* only link ID pointers */
+	for (pc = main->paintcurves.first; pc; pc = pc->id.next) {
+		if (pc->id.flag & LIB_NEED_LINK) {
+			pc->id.flag -= LIB_NEED_LINK;
+		}
+	}
+}
+
+static void direct_link_paint_curve(FileData *fd, PaintCurve *pc)
+{
+	pc->points = newdataadr(fd, pc->points);
+}
+
 
 static void direct_link_script(FileData *UNUSED(fd), Script *script)
 {
@@ -2664,9 +2710,9 @@ static void direct_link_nodetree(FileData *fd, bNodeTree *ntree)
 				}
 			}
 			else if (ntree->type==NTREE_COMPOSIT) {
-				if (ELEM4(node->type, CMP_NODE_TIME, CMP_NODE_CURVE_VEC, CMP_NODE_CURVE_RGB, CMP_NODE_HUECORRECT))
+				if (ELEM(node->type, CMP_NODE_TIME, CMP_NODE_CURVE_VEC, CMP_NODE_CURVE_RGB, CMP_NODE_HUECORRECT))
 					direct_link_curvemapping(fd, node->storage);
-				else if (ELEM3(node->type, CMP_NODE_IMAGE, CMP_NODE_VIEWER, CMP_NODE_SPLITVIEWER))
+				else if (ELEM(node->type, CMP_NODE_IMAGE, CMP_NODE_VIEWER, CMP_NODE_SPLITVIEWER))
 					((ImageUser *)node->storage)->ok = 1;
 			}
 			else if ( ntree->type==NTREE_TEXTURE) {
@@ -3265,7 +3311,7 @@ static void direct_link_image(FileData *fd, Image *ima)
 {
 	/* for undo system, pointers could be restored */
 	if (fd->imamap)
-		ima->cache = newmclipadr(fd, ima->cache);
+		ima->cache = newimaadr(fd, ima->cache);
 	else
 		ima->cache = NULL;
 
@@ -3516,7 +3562,8 @@ static void direct_link_material(FileData *fd, Material *ma)
 	for (a = 0; a < MAX_MTEX; a++) {
 		ma->mtex[a] = newdataadr(fd, ma->mtex[a]);
 	}
-	
+	ma->texpaintslot = NULL;
+
 	ma->ramp_col = newdataadr(fd, ma->ramp_col);
 	ma->ramp_spec = newdataadr(fd, ma->ramp_spec);
 	
@@ -4450,6 +4497,9 @@ static void lib_link_object(FileData *fd, Main *main)
 					steeringa->target = newlibadr(fd, ob->id.lib, steeringa->target);
 					steeringa->navmesh = newlibadr(fd, ob->id.lib, steeringa->navmesh);
 				}
+				else if(act->type == ACT_MOUSE) {
+					/* bMouseActuator *moa= act->data; */
+				}
 			}
 			
 			{
@@ -5056,6 +5106,7 @@ static void link_paint(FileData *fd, Scene *sce, Paint *p)
 {
 	if (p) {
 		p->brush = newlibadr_us(fd, sce->id.lib, p->brush);
+		p->palette = newlibadr_us(fd, sce->id.lib, p->palette);
 		p->paint_cursor = NULL;
 	}
 }
@@ -5104,6 +5155,18 @@ static void lib_link_scene(FileData *fd, Main *main)
 				sce->toolsettings->sculpt->gravity_object =
 						newlibadr_us(fd, sce->id.lib, sce->toolsettings->sculpt->gravity_object);
 
+			if (sce->toolsettings->imapaint.stencil)
+				sce->toolsettings->imapaint.stencil =
+				        newlibadr_us(fd, sce->id.lib, sce->toolsettings->imapaint.stencil);
+
+			if (sce->toolsettings->imapaint.clone)
+				sce->toolsettings->imapaint.clone =
+				        newlibadr_us(fd, sce->id.lib, sce->toolsettings->imapaint.clone);
+
+			if (sce->toolsettings->imapaint.canvas)
+				sce->toolsettings->imapaint.canvas =
+				        newlibadr_us(fd, sce->id.lib, sce->toolsettings->imapaint.canvas);
+			
 			sce->toolsettings->skgen_template = newlibadr(fd, sce->id.lib, sce->toolsettings->skgen_template);
 			
 			for (base = sce->base.first; base; base = next) {
@@ -5308,6 +5371,8 @@ static void direct_link_scene(FileData *fd, Scene *sce)
 		
 		sce->toolsettings->imapaint.paintcursor = NULL;
 		sce->toolsettings->particle.paintcursor = NULL;
+		sce->toolsettings->particle.scene = NULL;
+		sce->toolsettings->particle.object = NULL;
 
 		/* in rare cases this is needed, see [#33806] */
 		if (sce->toolsettings->vpaint) {
@@ -5352,7 +5417,7 @@ static void direct_link_scene(FileData *fd, Scene *sce)
 			if (seq->strip && seq->strip->done==0) {
 				seq->strip->done = true;
 				
-				if (ELEM4(seq->type, SEQ_TYPE_IMAGE, SEQ_TYPE_MOVIE, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD)) {
+				if (ELEM(seq->type, SEQ_TYPE_IMAGE, SEQ_TYPE_MOVIE, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD)) {
 					seq->strip->stripdata = newdataadr(fd, seq->strip->stripdata);
 				}
 				else {
@@ -5786,9 +5851,9 @@ static void lib_link_screen(FileData *fd, Main *main)
 
 /* how to handle user count on pointer restore */
 typedef enum ePointerUserMode {
-	USER_IGNORE,	/* ignore user count */
-	USER_ONE,		/* ensure at least one user (fake also counts) */
-	USER_REAL		/* ensure at least one real user (fake user ignored) */
+	USER_IGNORE = 0,  /* ignore user count */
+	USER_ONE    = 1,  /* ensure at least one user (fake also counts) */
+	USER_REAL   = 2,  /* ensure at least one real user (fake user ignored) */
 } ePointerUserMode;
 
 static bool restore_pointer(ID *id, ID *newid, ePointerUserMode user)
@@ -5813,9 +5878,9 @@ static bool restore_pointer(ID *id, ID *newid, ePointerUserMode user)
  * Only for undo files, or to restore a screen after reading without UI...
  *
  * user
- * - 0: no usercount change
- * - 1: ensure a user
- * - 2: ensure a real user (even if a fake one is set)
+ * - USER_IGNORE: no usercount change
+ * - USER_ONE: ensure a user
+ * - USER_REAL: ensure a real user (even if a fake one is set)
  */
 static void *restore_pointer_by_name(Main *mainp, ID *id, ePointerUserMode user)
 {
@@ -5912,8 +5977,12 @@ void blo_lib_link_screen_restore(Main *newmain, bScreen *curscreen, Scene *cursc
 					v3d->ob_centre = restore_pointer_by_name(newmain, (ID *)v3d->ob_centre, USER_ONE);
 					
 					for (bgpic= v3d->bgpicbase.first; bgpic; bgpic= bgpic->next) {
-						bgpic->ima = restore_pointer_by_name(newmain, (ID *)bgpic->ima, USER_ONE);
-						bgpic->clip = restore_pointer_by_name(newmain, (ID *)bgpic->clip, USER_ONE);
+						if ((bgpic->ima = restore_pointer_by_name(newmain, (ID *)bgpic->ima, USER_IGNORE))) {
+							id_us_plus((ID *)bgpic->ima);
+						}
+						if ((bgpic->clip = restore_pointer_by_name(newmain, (ID *)bgpic->clip, USER_IGNORE))) {
+							id_us_plus((ID *)bgpic->clip);
+						}
 					}
 					if (v3d->localvd) {
 						/*Base *base;*/
@@ -6175,7 +6244,6 @@ static void direct_link_region(FileData *fd, ARegion *ar, int spacetype)
 
 				rv3d->depths = NULL;
 				rv3d->gpuoffscreen = NULL;
-				rv3d->ri = NULL;
 				rv3d->render_engine = NULL;
 				rv3d->sms = NULL;
 				rv3d->smooth_timer = NULL;
@@ -6287,6 +6355,9 @@ static bool direct_link_screen(FileData *fd, bScreen *sc)
 		else if (sa->spacetype == SPACE_VIEW3D)
 			blo_do_versions_view3d_split_250(sa->spacedata.first, &sa->regionbase);
 		
+		/* incase we set above */
+		sa->butspacetype = sa->spacetype;
+
 		for (sl = sa->spacedata.first; sl; sl = sl->next) {
 			link_list(fd, &(sl->regionbase));
 
@@ -7135,6 +7206,8 @@ static const char *dataname(short id_code)
 		case ID_NT: return "Data from NT";
 		case ID_BR: return "Data from BR";
 		case ID_PA: return "Data from PA";
+		case ID_PAL: return "Data from PAL";
+		case ID_PC: return "Data from PCRV";
 		case ID_GD: return "Data from GD";
 		case ID_WM: return "Data from WM";
 		case ID_MC: return "Data from MC";
@@ -7320,6 +7393,12 @@ static BHead *read_libblock(FileData *fd, Main *main, BHead *bhead, int flag, ID
 		case ID_LS:
 			direct_link_linestyle(fd, (FreestyleLineStyle *)id);
 			break;
+		case ID_PAL:
+			direct_link_palette(fd, (Palette *)id);
+			break;
+		case ID_PC:
+			direct_link_paint_curve(fd, (PaintCurve *)id);
+			break;
 	}
 	
 	oldnewmap_free_unused(fd->datamap);
@@ -7484,8 +7563,9 @@ static void lib_link_all(FileData *fd, Main *main)
 	/* No load UI for undo memfiles */
 	if (fd->memfile == NULL) {
 		lib_link_windowmanager(fd, main);
-		lib_link_screen(fd, main);
 	}
+	/* DO NOT skip screens here, 3Dview may contains pointers to other ID data (like bgpic)! See T41411. */
+	lib_link_screen(fd, main);
 	lib_link_scene(fd, main);
 	lib_link_object(fd, main);
 	lib_link_curve(fd, main);
@@ -7508,6 +7588,8 @@ static void lib_link_all(FileData *fd, Main *main)
 	lib_link_vfont(fd, main);
 	lib_link_nodetree(fd, main);	/* has to be done after scene/materials, this will verify group nodes */
 	lib_link_brush(fd, main);
+	lib_link_palette(fd, main);
+	lib_link_paint_curve(fd, main);
 	lib_link_particlesettings(fd, main);
 	lib_link_movieclip(fd, main);
 	lib_link_mask(fd, main);
@@ -8047,6 +8129,7 @@ static void expand_brush(FileData *fd, Main *mainvar, Brush *brush)
 	expand_doit(fd, mainvar, brush->mtex.tex);
 	expand_doit(fd, mainvar, brush->mask_mtex.tex);
 	expand_doit(fd, mainvar, brush->clone.image);
+	expand_doit(fd, mainvar, brush->paint_curve);
 }
 
 static void expand_material(FileData *fd, Main *mainvar, Material *ma)
@@ -8918,13 +9001,13 @@ static ID *append_named_part_ex(const bContext *C, Main *mainl, FileData *fd, co
 			
 			ob = (Object *)id;
 			
-			/* link at active layer (view3d->lay if in context, else scene->lay */
+			/* link at active layer (view3d if available in context, else scene one */
 			if ((flag & FILE_ACTIVELAY)) {
 				View3D *v3d = CTX_wm_view3d(C);
-				ob->lay = v3d ? v3d->layact : scene->lay;
+				ob->lay = BKE_screen_view3d_layer_active(v3d, scene);
 			}
 			
-			ob->mode = 0;
+			ob->mode = OB_MODE_OBJECT;
 			base->lay = ob->lay;
 			base->object = ob;
 			ob->id.us++;
@@ -9142,8 +9225,10 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
 					if (mainptr->curlib->packedfile) {
 						PackedFile *pf = mainptr->curlib->packedfile;
 						
-						blo_reportf_wrap(basefd->reports, RPT_INFO, TIP_("Read packed library:  '%s'"),
-						                 mainptr->curlib->name);
+						blo_reportf_wrap(
+						        basefd->reports, RPT_INFO, TIP_("Read packed library:  '%s', parent '%s'"),
+						        mainptr->curlib->name,
+						        library_parent_filepath(mainptr->curlib));
 						fd = blo_openblendermemory(pf->data, pf->size, basefd->reports);
 						
 						
@@ -9151,8 +9236,11 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
 						BLI_strncpy(fd->relabase, mainptr->curlib->filepath, sizeof(fd->relabase));
 					}
 					else {
-						blo_reportf_wrap(basefd->reports, RPT_INFO, TIP_("Read library:  '%s', '%s'"),
-						                 mainptr->curlib->filepath, mainptr->curlib->name);
+						blo_reportf_wrap(
+						        basefd->reports, RPT_INFO, TIP_("Read library:  '%s', '%s', parent '%s'"),
+						        mainptr->curlib->filepath,
+						        mainptr->curlib->name,
+						        library_parent_filepath(mainptr->curlib));
 						fd = blo_openblenderfile(mainptr->curlib->filepath, basefd->reports);
 					}
 					/* allow typing in a new lib path */
@@ -9223,10 +9311,13 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
 								
 								append_id_part(fd, mainptr, id, &realid);
 								if (!realid) {
-									blo_reportf_wrap(fd->reports, RPT_WARNING,
-									                 TIP_("LIB ERROR: %s: '%s' missing from '%s'"),
-									                 BKE_idcode_to_name(GS(id->name)),
-									                 id->name + 2, mainptr->curlib->filepath);
+									blo_reportf_wrap(
+									        fd->reports, RPT_WARNING,
+									        TIP_("LIB ERROR: %s: '%s' missing from '%s', parent '%s'"),
+									        BKE_idcode_to_name(GS(id->name)),
+									        id->name + 2,
+									        mainptr->curlib->filepath,
+									        library_parent_filepath(mainptr->curlib));
 								}
 								
 								change_idid_adr(mainlist, basefd, id, realid);
@@ -9255,9 +9346,13 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
 				idn = id->next;
 				if (id->flag & LIB_READ) {
 					BLI_remlink(lbarray[a], id);
-					blo_reportf_wrap(basefd->reports, RPT_WARNING,
-					                 TIP_("LIB ERROR: %s: '%s' unread lib block missing from '%s'"),
-					                 BKE_idcode_to_name(GS(id->name)), id->name + 2, mainptr->curlib->filepath);
+					blo_reportf_wrap(
+					        basefd->reports, RPT_WARNING,
+					        TIP_("LIB ERROR: %s: '%s' unread lib block missing from '%s', parent '%s'"),
+					        BKE_idcode_to_name(GS(id->name)),
+					        id->name + 2,
+					        mainptr->curlib->filepath,
+					        library_parent_filepath(mainptr->curlib));
 					change_idid_adr(mainlist, basefd, id, NULL);
 					
 					MEM_freeN(id);

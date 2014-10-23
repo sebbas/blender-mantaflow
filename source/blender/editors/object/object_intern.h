@@ -72,6 +72,7 @@ void OBJECT_OT_make_links_scene(struct wmOperatorType *ot);
 void OBJECT_OT_make_links_data(struct wmOperatorType *ot);
 void OBJECT_OT_move_to_layer(struct wmOperatorType *ot);
 void OBJECT_OT_drop_named_material(struct wmOperatorType *ot);
+void OBJECT_OT_unlink_data(struct wmOperatorType *ot);
 
 /* object_edit.c */
 void OBJECT_OT_mode_set(struct wmOperatorType *ot);
@@ -251,6 +252,8 @@ void OBJECT_OT_shape_key_move(struct wmOperatorType *ot);
 void OBJECT_OT_group_add(struct wmOperatorType *ot);
 void OBJECT_OT_group_link(struct wmOperatorType *ot);
 void OBJECT_OT_group_remove(struct wmOperatorType *ot);
+void OBJECT_OT_group_unlink(struct wmOperatorType *ot);
+void OBJECT_OT_grouped_select(struct wmOperatorType *ot);
 
 /* object_bake.c */
 void OBJECT_OT_bake_image(wmOperatorType *ot);

@@ -54,6 +54,8 @@
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
+#include "BLO_writefile.h"
+
 #include "BKE_blender.h"
 #include "BKE_context.h"
 #include "BKE_screen.h"
@@ -110,6 +112,7 @@
 #include "GPU_buffers.h"
 #include "GPU_extensions.h"
 #include "GPU_draw.h"
+#include "GPU_init_exit.h"
 
 #include "BKE_depsgraph.h"
 #include "BKE_sound.h"
@@ -117,11 +120,17 @@
 
 static void wm_init_reports(bContext *C)
 {
-	BKE_reports_init(CTX_wm_reports(C), RPT_STORE);
+	ReportList *reports = CTX_wm_reports(C);
+
+	BLI_assert(!reports || BLI_listbase_is_empty(&reports->list));
+
+	BKE_reports_init(reports, RPT_STORE);
 }
 static void wm_free_reports(bContext *C)
 {
-	BKE_reports_clear(CTX_wm_reports(C));
+	ReportList *reports = CTX_wm_reports(C);
+
+	BKE_reports_clear(reports);
 }
 
 bool wm_start_with_console = false; /* used in creator.c */
@@ -181,13 +190,16 @@ void WM_init(bContext *C, int argc, const char **argv)
 	(void)argv; /* unused */
 #endif
 
+	ED_spacemacros_init();
+
 	if (!G.background && !wm_start_with_console)
 		GHOST_toggleConsole(3);
 
 	wm_init_reports(C); /* reports cant be initialized before the wm */
 
 	if (!G.background) {
-		GPU_extensions_init();
+		GPU_init();
+
 		GPU_set_mipmap(!(U.gameflags & USER_DISABLE_MIPMAP));
 		GPU_set_anisotropic(U.anisotropic_filter);
 		GPU_set_gpu_mipmapping(U.use_gpu_mipmap);
@@ -230,6 +242,7 @@ void WM_init(bContext *C, int argc, const char **argv)
 		 *
 		 * unlikely any handlers are set but its possible,
 		 * note that recovering the last session does its own callbacks. */
+		BLI_callback_exec(CTX_data_main(C), NULL, BLI_CB_EVT_VERSION_UPDATE);
 		BLI_callback_exec(CTX_data_main(C), NULL, BLI_CB_EVT_LOAD_POST);
 	}
 }
@@ -295,7 +308,7 @@ bool WM_init_game(bContext *C)
 
 		/* full screen the area */
 		if (!sa->full) {
-			ED_screen_full_toggle(C, win, sa);
+			ED_screen_state_toggle(C, win, sa, SCREENMAXIMIZED);
 		}
 
 		/* Fullscreen */
@@ -398,11 +411,18 @@ void WM_exit_ext(bContext *C, const bool do_python)
 			if ((U.uiflag2 & USER_KEEP_SESSION) || BKE_undo_valid(NULL)) {
 				/* save the undo state as quit.blend */
 				char filename[FILE_MAX];
-				
-				BLI_make_file_string("/", filename, BLI_temporary_dir(), BLENDER_QUIT_FILE);
+				bool has_edited;
+				int fileflags = G.fileflags & ~(G_FILE_COMPRESS | G_FILE_AUTOPLAY | G_FILE_LOCK | G_FILE_SIGN | G_FILE_HISTORY);
 
-				if (BKE_undo_save_file(filename))
+				BLI_make_file_string("/", filename, BLI_temp_dir_base(), BLENDER_QUIT_FILE);
+
+				has_edited = ED_editors_flush_edits(C, false);
+
+				if ((has_edited && BLO_write_file(CTX_data_main(C), filename, fileflags, NULL, NULL)) ||
+				    BKE_undo_save_file(filename))
+				{
 					printf("Saved session recovery to '%s'\n", filename);
+				}
 			}
 		}
 		
@@ -490,9 +510,12 @@ void WM_exit_ext(bContext *C, const bool do_python)
 	(void)do_python;
 #endif
 
-	GPU_global_buffer_pool_free();
-	GPU_free_unused_buffers();
-	GPU_extensions_exit();
+	if (!G.background) {
+		GPU_global_buffer_pool_free();
+		GPU_free_unused_buffers();
+
+		GPU_exit();
+	}
 
 	BKE_reset_undo(); 
 	
@@ -519,6 +542,8 @@ void WM_exit_ext(bContext *C, const bool do_python)
 		MEM_printmemlist();
 	}
 	wm_autosave_delete();
+
+	BLI_temp_dir_session_purge();
 }
 
 void WM_exit(bContext *C)

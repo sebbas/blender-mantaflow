@@ -54,6 +54,9 @@ public:
 	float fisheye_fov;
 	float fisheye_lens;
 
+	/* anamorphic lens bokeh */
+	float aperture_ratio;
+
 	/* sensor */
 	float sensorwidth;
 	float sensorheight;
@@ -113,6 +116,9 @@ public:
 	bool modified(const Camera& cam);
 	bool motion_modified(const Camera& cam);
 	void tag_update();
+
+	BoundBox viewplane_bounds_get();
+	float3 transform_raster_to_world(float raster_x, float raster_y);
 };
 
 CCL_NAMESPACE_END

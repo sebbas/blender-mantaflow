@@ -86,6 +86,9 @@ short find_material_index(struct Object *ob, struct Material *ma);
 bool object_add_material_slot(struct Object *ob);
 bool object_remove_material_slot(struct Object *ob);
 
+void BKE_texpaint_slot_refresh_cache(struct Scene *scene, struct Material *ma);
+void BKE_texpaint_slots_refresh_object(struct Scene *scene, struct Object *ob);
+
 /* rna api */
 void BKE_material_resize_id(struct ID *id, short totcol, bool do_id_user);
 void BKE_material_append_id(struct ID *id, struct Material *ma);

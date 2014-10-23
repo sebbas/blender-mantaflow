@@ -84,6 +84,7 @@ struct wmOperatorType;
 struct wmKeyConfig;
 
 void SEQUENCER_OT_cut(struct wmOperatorType *ot);
+void SEQUENCER_OT_trim(struct wmOperatorType *ot);
 void SEQUENCER_OT_mute(struct wmOperatorType *ot);
 void SEQUENCER_OT_unmute(struct wmOperatorType *ot);
 void SEQUENCER_OT_lock(struct wmOperatorType *ot);
@@ -163,6 +164,13 @@ enum {
 enum {
 	SEQ_SELECTED,
 	SEQ_UNSELECTED
+};
+
+enum {
+	SEQ_SELECT_LR_NONE = 0,
+	SEQ_SELECT_LR_MOUSE,
+	SEQ_SELECT_LR_LEFT,
+	SEQ_SELECT_LR_RIGHT	
 };
 
 /* defines used internally */

@@ -74,7 +74,7 @@ PyDoc_STRVAR(Operators_select_doc,
 "   condition.\n"
 "\n"
 "   :arg pred: The predicate expressing this condition.\n"
-"   :type pred: UnaryPredicate1D");
+"   :type pred: :class:`UnaryPredicate1D`");
 
 static PyObject *Operators_select(BPy_Operators *self, PyObject *args, PyObject *kwds)
 {
@@ -372,7 +372,7 @@ PyDoc_STRVAR(Operators_recursive_split_doc,
 "      condition.  This predicate is evaluated for each curve before it\n"
 "      actually gets split.  If pred_1d(chain) is true, the curve won't be\n"
 "      split anymore.\n"
-"   :type pred: :class:`UnaryPredicate1D`\n"
+"   :type pred_1d: :class:`UnaryPredicate1D`\n"
 "   :arg sampling: The resolution used to sample the chain for the\n"
 "      predicates evaluation. (The chain is not actually resampled, a\n"
 "      virtual point only progresses along the curve using this\n"
@@ -404,7 +404,7 @@ PyDoc_STRVAR(Operators_recursive_split_doc,
 "      condition. This predicate is evaluated for each curve before it\n"
 "      actually gets split.  If pred_1d(chain) is true, the curve won't be\n"
 "      split anymore.\n"
-"   :type pred: :class:`UnaryPredicate1D`\n"
+"   :type pred_1d: :class:`UnaryPredicate1D`\n"
 "   :arg sampling: The resolution used to sample the chain for the\n"
 "      predicates evaluation. (The chain is not actually resampled; a\n"
 "      virtual point only progresses along the curve using this\n"
@@ -484,7 +484,7 @@ PyDoc_STRVAR(Operators_sort_doc,
 "   comparison predicate given as argument.\n"
 "\n"
 "   :arg pred: The binary predicate used for the comparison.\n"
-"   :type pred: BinaryPredicate1D");
+"   :type pred: :class:`BinaryPredicate1D`");
 
 static PyObject *Operators_sort(BPy_Operators *self, PyObject *args, PyObject *kwds)
 {
@@ -515,7 +515,7 @@ PyDoc_STRVAR(Operators_create_doc,
 "      transform as a stroke.\n"
 "   :type pred: :class:`UnaryPredicate1D`\n"
 "   :arg shaders: The list of shaders used to shade the strokes.\n"
-"   :type shaders: List of StrokeShader objects");
+"   :type shaders: list of :class:`StrokeShader` objects");
 
 static PyObject *Operators_create(BPy_Operators *self, PyObject *args, PyObject *kwds)
 {
@@ -543,6 +543,30 @@ static PyObject *Operators_create(BPy_Operators *self, PyObject *args, PyObject 
 	if (Operators::create(*(((BPy_UnaryPredicate1D *)obj1)->up1D), shaders) < 0) {
 		if (!PyErr_Occurred())
 			PyErr_SetString(PyExc_RuntimeError, "Operators.create() failed");
+		return NULL;
+	}
+	Py_RETURN_NONE;
+}
+
+PyDoc_STRVAR(Operators_reset_doc,
+".. staticmethod:: reset(delete_strokes=True)\n"
+"\n"
+"   Resets the line stylization process to the initial state.  The results of\n"
+"   stroke creation are accumulated if **delete_strokes** is set to False.\n"
+"\n"
+"   :arg delete_strokes: Delete the strokes that are currently stored.\n"
+"   :type delete_strokes: bool\n");
+
+static PyObject *Operators_reset(BPy_Operators *self, PyObject *args, PyObject *kwds)
+{
+	static const char *kwlist[] = {"delete_strokes", NULL};
+	PyObject *obj1 = 0;
+	if (PyArg_ParseTupleAndKeywords(args, kwds, "|O!", (char **)kwlist, &PyBool_Type, &obj1)) {
+		// true is the default
+		Operators::reset(obj1 ? bool_from_PyBool(obj1) : true);
+	}
+	else {
+		PyErr_SetString(PyExc_RuntimeError, "Operators.reset() failed");
 		return NULL;
 	}
 	Py_RETURN_NONE;
@@ -671,6 +695,7 @@ static PyMethodDef BPy_Operators_methods[] = {
 	                    Operators_recursive_split_doc},
 	{"sort", (PyCFunction) Operators_sort, METH_VARARGS | METH_KEYWORDS | METH_STATIC, Operators_sort_doc},
 	{"create", (PyCFunction) Operators_create, METH_VARARGS | METH_KEYWORDS | METH_STATIC, Operators_create_doc},
+	{"reset", (PyCFunction) Operators_reset, METH_VARARGS | METH_KEYWORDS | METH_STATIC, Operators_reset_doc},
 	{"get_viewedge_from_index", (PyCFunction) Operators_get_viewedge_from_index,
 	                            METH_VARARGS | METH_KEYWORDS | METH_STATIC, Operators_get_viewedge_from_index_doc},
 	{"get_chain_from_index", (PyCFunction) Operators_get_chain_from_index, METH_VARARGS | METH_KEYWORDS | METH_STATIC,

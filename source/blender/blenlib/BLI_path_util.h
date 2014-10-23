@@ -97,6 +97,7 @@ void BLI_join_dirfile(char *__restrict string, const size_t maxlen,
                       const char *__restrict dir, const char *__restrict file) ATTR_NONNULL();
 const char *BLI_path_basename(const char *path) ATTR_NONNULL() ATTR_WARN_UNUSED_RESULT;
 
+#if 0
 typedef enum bli_rebase_state {
 	BLI_REBASE_NO_SRCDIR = 0,
 	BLI_REBASE_OK        = 1,
@@ -104,11 +105,13 @@ typedef enum bli_rebase_state {
 } bli_rebase_state;
 
 int BLI_rebase_path(char *abs, size_t abs_len, char *rel, size_t rel_len, const char *base_dir, const char *src_dir, const char *dest_dir);
+#endif
 
 const char *BLI_last_slash(const char *string) ATTR_NONNULL() ATTR_WARN_UNUSED_RESULT;
 int         BLI_add_slash(char *string) ATTR_NONNULL();
 void        BLI_del_slash(char *string) ATTR_NONNULL();
 const char *BLI_first_slash(const char *string) ATTR_NONNULL() ATTR_WARN_UNUSED_RESULT;
+void        BLI_path_native_slash(char *path) ATTR_NONNULL();
 
 void BLI_getlastdir(const char *dir, char *last, const size_t maxlen);
 bool BLI_testextensie(const char *str, const char *ext) ATTR_NONNULL() ATTR_WARN_UNUSED_RESULT;
@@ -125,9 +128,6 @@ void BLI_newname(char *name, int add);
 int BLI_stringdec(const char *string, char *head, char *start, unsigned short *numlen);
 void BLI_stringenc(char *string, const char *head, const char *tail, unsigned short numlen, int pic);
 int BLI_split_name_num(char *left, int *nr, const char *name, const char delim);
-
-/* make sure path separators conform to system one */
-void BLI_clean(char *path) ATTR_NONNULL();
 
 /**
  * dir can be any input, like from buttons, and this function
@@ -189,12 +189,14 @@ void BLI_char_switch(char *string, char from, char to) ATTR_NONNULL();
 void BLI_init_program_path(const char *argv0);
 /* Initialize path to temporary directory.
  * NOTE: On Window userdir will be set to the temporary directory! */
-void BLI_init_temporary_dir(char *userdir);
+void BLI_temp_dir_init(char *userdir);
 
 const char *BLI_program_path(void);
 const char *BLI_program_dir(void);
-const char *BLI_temporary_dir(void);
+const char *BLI_temp_dir_session(void);
+const char *BLI_temp_dir_base(void);
 void BLI_system_temporary_dir(char *dir);
+void BLI_temp_dir_session_purge(void);
 
 #ifdef WITH_ICONV
 void BLI_string_to_utf8(char *original, char *utf_8, const char *code);

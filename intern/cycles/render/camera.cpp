@@ -15,10 +15,13 @@
  */
 
 #include "camera.h"
+#include "mesh.h"
+#include "object.h"
 #include "scene.h"
 
 #include "device.h"
 
+#include "util_foreach.h"
 #include "util_vector.h"
 
 CCL_NAMESPACE_BEGIN
@@ -37,6 +40,8 @@ Camera::Camera()
 	motion.pre = transform_identity();
 	motion.post = transform_identity();
 	use_motion = false;
+
+	aperture_ratio = 1.0f;
 
 	type = CAMERA_PERSPECTIVE;
 	panorama_type = PANORAMA_EQUIRECTANGULAR;
@@ -241,6 +246,9 @@ void Camera::device_update(Device *device, DeviceScene *dscene, Scene *scene)
 	/* type */
 	kcam->type = type;
 
+	/* anamorphic lens bokeh */
+	kcam->inv_aperture_ratio = 1.0f / aperture_ratio;
+
 	/* panorama */
 	kcam->panorama_type = panorama_type;
 	kcam->fisheye_fov = fisheye_fov;
@@ -265,6 +273,20 @@ void Camera::device_update(Device *device, DeviceScene *dscene, Scene *scene)
 
 	need_device_update = false;
 	previous_need_motion = need_motion;
+
+	/* Camera in volume. */
+	kcam->is_inside_volume = 0;
+	BoundBox viewplane_boundbox = viewplane_bounds_get();
+	for(size_t i = 0; i < scene->objects.size(); ++i) {
+		Object *object = scene->objects[i];
+		if(object->mesh->has_volume &&
+		   viewplane_boundbox.intersects(object->bounds))
+		{
+			/* TODO(sergey): Consider adding more grained check. */
+			kcam->is_inside_volume = 1;
+			break;
+		}
+	}
 }
 
 void Camera::device_free(Device *device, DeviceScene *dscene)
@@ -291,6 +313,7 @@ bool Camera::modified(const Camera& cam)
 		(viewplane == cam.viewplane) &&
 		(border == cam.border) &&
 		(matrix == cam.matrix) &&
+		(aperture_ratio == cam.aperture_ratio) &&
 		(panorama_type == cam.panorama_type) &&
 		(fisheye_fov == cam.fisheye_fov) &&
 		(fisheye_lens == cam.fisheye_lens));
@@ -305,6 +328,63 @@ bool Camera::motion_modified(const Camera& cam)
 void Camera::tag_update()
 {
 	need_update = true;
+}
+
+float3 Camera::transform_raster_to_world(float raster_x, float raster_y)
+{
+	float3 D, P;
+	if(type == CAMERA_PERSPECTIVE) {
+		D = transform_perspective(&rastertocamera,
+		                          make_float3(raster_x, raster_y, 0.0f));
+		P = make_float3(0.0f, 0.0f, 0.0f);
+		/* TODO(sergey): Aperture support? */
+		P = transform_point(&cameratoworld, P);
+		D = normalize(transform_direction(&cameratoworld, D));
+		/* TODO(sergey): Clipping is conditional in kernel, and hence it could
+		 * be mistakes in here, currently leading to wrong camera-in-volume
+		 * detection.
+		 */
+		P += nearclip * D;
+	}
+	else if (type == CAMERA_ORTHOGRAPHIC) {
+		D = make_float3(0.0f, 0.0f, 1.0f);
+		/* TODO(sergey): Aperture support? */
+		P = transform_perspective(&rastertocamera,
+		                          make_float3(raster_x, raster_y, 0.0f));
+		P = transform_point(&cameratoworld, P);
+		D = normalize(transform_direction(&cameratoworld, D));
+	}
+	else {
+		assert(!"unsupported camera type");
+	}
+	return P;
+}
+
+BoundBox Camera::viewplane_bounds_get()
+{
+	/* TODO(sergey): This is all rather stupid, but is there a way to perform
+	 * checks we need in a more clear and smart fasion?
+	 */
+	BoundBox bounds = BoundBox::empty;
+
+	if(type == CAMERA_PANORAMA) {
+		bounds.grow(make_float3(cameratoworld.w.x,
+		                        cameratoworld.w.y,
+		                        cameratoworld.w.z));
+	}
+	else {
+		bounds.grow(transform_raster_to_world(0.0f, 0.0f));
+		bounds.grow(transform_raster_to_world(0.0f, (float)height));
+		bounds.grow(transform_raster_to_world((float)width, (float)height));
+		bounds.grow(transform_raster_to_world((float)width, 0.0f));
+		if(type == CAMERA_PERSPECTIVE) {
+			/* Center point has the most distancei in local Z axis,
+			 * use it to construct bounding box/
+			 */
+			bounds.grow(transform_raster_to_world(0.5f*width, 0.5f*height));
+		}
+	}
+	return bounds;
 }
 
 CCL_NAMESPACE_END

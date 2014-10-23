@@ -103,7 +103,7 @@ static int Interface0D_init(BPy_Interface0D *self, PyObject *args, PyObject *kwd
 	if (!PyArg_ParseTupleAndKeywords(args, kwds, "", (char **)kwlist))
 		return -1;
 	self->if0D = new Interface0D();
-	self->borrowed = 0;
+	self->borrowed = false;
 	return 0;
 }
 
@@ -165,7 +165,7 @@ static PyObject *Interface0D_name_get(BPy_Interface0D *self, void *UNUSED(closur
 PyDoc_STRVAR(Interface0D_point_3d_doc,
 "The 3D point of this 0D element.\n"
 "\n"
-":type: mathutils.Vector");
+":type: :class:`mathutils.Vector`");
 
 static PyObject *Interface0D_point_3d_get(BPy_Interface0D *self, void *UNUSED(closure))
 {
@@ -217,7 +217,7 @@ static PyObject *Interface0D_projected_z_get(BPy_Interface0D *self, void *UNUSED
 PyDoc_STRVAR(Interface0D_point_2d_doc,
 "The 2D point of this 0D element.\n"
 "\n"
-":type: mathutils.Vector");
+":type: :class:`mathutils.Vector`");
 
 static PyObject *Interface0D_point_2d_get(BPy_Interface0D *self, void *UNUSED(closure))
 {

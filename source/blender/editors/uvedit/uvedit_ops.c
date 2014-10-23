@@ -137,21 +137,24 @@ static bool is_image_texture_node(bNode *node)
 }
 
 bool ED_object_get_active_image(Object *ob, int mat_nr,
-                                Image **r_ima, ImageUser **r_iuser, bNode **r_node)
+                                Image **r_ima, ImageUser **r_iuser, bNode **r_node, bNodeTree **r_ntree)
 {
 	Material *ma = give_current_material(ob, mat_nr);
-	bNode *node = (ma && ma->use_nodes) ? nodeGetActiveTexture(ma->nodetree) : NULL;
+	bNodeTree *ntree = (ma && ma->use_nodes) ? ma->nodetree : NULL;
+	bNode *node = (ntree) ? nodeGetActiveTexture(ntree) : NULL;
 
 	if (node && is_image_texture_node(node)) {
 		if (r_ima) *r_ima = (Image *)node->id;
 		if (r_iuser) *r_iuser = NULL;
 		if (r_node) *r_node = node;
+		if (r_ntree) *r_ntree = ntree;
 		return true;
 	}
 	
 	if (r_ima) *r_ima = NULL;
 	if (r_iuser) *r_iuser = NULL;
 	if (r_node) *r_node = node;
+	if (r_ntree) *r_ntree = ntree;
 
 	return false;
 }
@@ -3026,14 +3029,15 @@ static void UV_OT_circle_select(wmOperatorType *ot)
 	/* properties */
 	RNA_def_int(ot->srna, "x", 0, INT_MIN, INT_MAX, "X", "", INT_MIN, INT_MAX);
 	RNA_def_int(ot->srna, "y", 0, INT_MIN, INT_MAX, "Y", "", INT_MIN, INT_MAX);
-	RNA_def_int(ot->srna, "radius", 0, INT_MIN, INT_MAX, "Radius", "", INT_MIN, INT_MAX);
+	RNA_def_int(ot->srna, "radius", 1, 1, INT_MAX, "Radius", "", 1, INT_MAX);
 	RNA_def_int(ot->srna, "gesture_mode", 0, INT_MIN, INT_MAX, "Gesture Mode", "", INT_MIN, INT_MAX);
 }
 
 
 /* ******************** lasso select operator **************** */
 
-static bool do_lasso_select_mesh_uv(bContext *C, const int mcords[][2], short moves, const bool select)
+static bool do_lasso_select_mesh_uv(bContext *C, const int mcords[][2], short moves,
+                                    const bool select, const bool extend)
 {
 	SpaceImage *sima = CTX_wm_space_image(C);
 	Image *ima = CTX_data_edit_image(C);
@@ -3059,6 +3063,10 @@ static bool do_lasso_select_mesh_uv(bContext *C, const int mcords[][2], short mo
 	rcti rect;
 
 	BLI_lasso_boundbox(&rect, mcords, moves);
+
+	if (!extend && select) {
+		uv_select_all_perform(scene, ima, em, SEL_DESELECT);
+	}
 
 	if (use_face_center) { /* Face Center Sel */
 		BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
@@ -3122,11 +3130,12 @@ static int uv_lasso_select_exec(bContext *C, wmOperator *op)
 	const int (*mcords)[2] = WM_gesture_lasso_path_to_array(C, op, &mcords_tot);
 
 	if (mcords) {
-		bool select;
+		bool select, extend;
 		bool changed;
 
 		select = !RNA_boolean_get(op->ptr, "deselect");
-		changed = do_lasso_select_mesh_uv(C, mcords, mcords_tot, select);
+		extend = RNA_boolean_get(op->ptr, "extend");
+		changed = do_lasso_select_mesh_uv(C, mcords, mcords_tot, select, extend);
 
 		MEM_freeN((void *)mcords);
 
@@ -3827,7 +3836,8 @@ static void UV_OT_reveal(wmOperatorType *ot)
 static int uv_set_2d_cursor_poll(bContext *C)
 {
 	return ED_operator_uvedit_space_image(C) ||
-	       ED_space_image_maskedit_poll(C);
+	       ED_space_image_maskedit_poll(C) ||
+	       ED_space_image_paint_curve(C);
 }
 
 static int uv_set_2d_cursor_exec(bContext *C, wmOperator *op)

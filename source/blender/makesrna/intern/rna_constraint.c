@@ -351,7 +351,7 @@ static void rna_ActionConstraint_minmax_range(PointerRNA *ptr, float *min, float
 	bActionConstraint *acon = (bActionConstraint *)con->data;
 
 	/* 0, 1, 2 = magic numbers for rotX, rotY, rotZ */
-	if (ELEM3(acon->type, 0, 1, 2)) {
+	if (ELEM(acon->type, 0, 1, 2)) {
 		*min = -180.0f;
 		*max = 180.0f;
 	}
@@ -662,6 +662,7 @@ static void rna_def_constraint_kinematic(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "pole_angle", PROP_FLOAT, PROP_ANGLE);
 	RNA_def_property_float_sdna(prop, NULL, "poleangle");
 	RNA_def_property_range(prop, -M_PI, M_PI);
+	RNA_def_property_ui_range(prop, -M_PI, M_PI, 10, 4);
 	RNA_def_property_ui_text(prop, "Pole Angle", "Pole rotation offset");
 	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
@@ -1363,6 +1364,31 @@ static void rna_def_constraint_stretch_to(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "bulge", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 100.f);
 	RNA_def_property_ui_text(prop, "Volume Variation", "Factor between volume variation and stretching");
+	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+
+	prop = RNA_def_property(srna, "use_bulge_min", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", STRETCHTOCON_USE_BULGE_MIN);
+	RNA_def_property_ui_text(prop, "Use Volume Variation Minimum", "Use lower limit for volume variation");
+	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+
+	prop = RNA_def_property(srna, "use_bulge_max", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", STRETCHTOCON_USE_BULGE_MAX);
+	RNA_def_property_ui_text(prop, "Use Volume Variation Maximum", "Use upper limit for volume variation");
+	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+
+	prop = RNA_def_property(srna, "bulge_min", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 1.0f);
+	RNA_def_property_ui_text(prop, "Volume Variation Minimum", "Minimum volume stretching factor");
+	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+
+	prop = RNA_def_property(srna, "bulge_max", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 1.0, 100.0f);
+	RNA_def_property_ui_text(prop, "Volume Variation Maximum", "Maximum volume stretching factor");
+	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+
+	prop = RNA_def_property(srna, "bulge_smooth", PROP_FLOAT, PROP_FACTOR);
+	RNA_def_property_range(prop, 0.0, 1.0f);
+	RNA_def_property_ui_text(prop, "Volume Variation Smoothness", "");
 	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 }
 
@@ -2451,6 +2477,12 @@ static void rna_def_constraint_follow_track(BlenderRNA *brna)
 	RNA_def_property_enum_items(prop, frame_method_items);
 	RNA_def_property_ui_text(prop, "Frame Method", "How the footage fits in the camera frame");
 	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_dependency_update");
+
+	/* use undistortion */
+	prop = RNA_def_property(srna, "use_undistorted_position", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", FOLLOWTRACK_USE_UNDISTORTION);
+	RNA_def_property_ui_text(prop, "Undistort", "Parent to undistorted position of 2D track");
+	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 }
 
 static void rna_def_constraint_camera_solver(BlenderRNA *brna)

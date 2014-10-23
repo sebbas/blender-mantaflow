@@ -527,7 +527,76 @@ class WM_OT_context_menu_enum(Operator):
 
         context.window_manager.popup_menu(draw_func=draw_cb, title=prop.name, icon=prop.icon)
 
-        return {'PASS_THROUGH'}
+        return {'FINISHED'}
+
+
+class WM_OT_context_pie_enum(Operator):
+    bl_idname = "wm.context_pie_enum"
+    bl_label = "Context Enum Pie"
+    bl_options = {'UNDO', 'INTERNAL'}
+    data_path = rna_path_prop
+
+    def invoke(self, context, event):
+        wm = context.window_manager
+        data_path = self.data_path
+        value = context_path_validate(context, data_path)
+
+        if value is Ellipsis:
+            return {'PASS_THROUGH'}
+
+        base_path, prop_string = data_path.rsplit(".", 1)
+        value_base = context_path_validate(context, base_path)
+        prop = value_base.bl_rna.properties[prop_string]
+
+        def draw_cb(self, context):
+            layout = self.layout
+            layout.prop(value_base, prop_string, expand=True)
+
+        wm.popup_menu_pie(draw_func=draw_cb, title=prop.name, icon=prop.icon, event=event)
+
+        return {'FINISHED'}
+
+
+class WM_OT_operator_pie_enum(Operator):
+    bl_idname = "wm.operator_pie_enum"
+    bl_label = "Operator Enum Pie"
+    bl_options = {'UNDO', 'INTERNAL'}
+    data_path = StringProperty(
+            name="Operator",
+            description="Operator name (in python as string)",
+            maxlen=1024,
+            )
+    prop_string = StringProperty(
+            name="Property",
+            description="Property name (as a string)",
+            maxlen=1024,
+            )
+
+    def invoke(self, context, event):
+        wm = context.window_manager
+
+        data_path = self.data_path
+        prop_string = self.prop_string
+
+        # same as eval("bpy.ops." + data_path)
+        op_mod_str, ob_id_str = data_path.split(".", 1)
+        op = getattr(getattr(bpy.ops, op_mod_str), ob_id_str)
+        del op_mod_str, ob_id_str
+
+        try:
+            op_rna = op.get_rna()
+        except KeyError:
+            self.report({'ERROR'}, "Operator not found: bpy.ops.%s" % data_path)
+            return {'CANCELLED'}
+
+        def draw_cb(self, context):
+            layout = self.layout
+            pie = layout.menu_pie()
+            pie.operator_enum(data_path, prop_string)
+
+        wm.popup_menu_pie(draw_func=draw_cb, title=op_rna.bl_rna.name, event=event)
+
+        return {'FINISHED'}
 
 
 class WM_OT_context_set_id(Operator):
@@ -802,13 +871,14 @@ class WM_OT_path_open(Operator):
         if sys.platform[:3] == "win":
             os.startfile(filepath)
         elif sys.platform == "darwin":
-            subprocess.Popen(["open", filepath])
+            subprocess.check_call(["open", filepath])
         else:
             try:
-                subprocess.Popen(["xdg-open", filepath])
-            except OSError:
+                subprocess.check_call(["xdg-open", filepath])
+            except:
                 # xdg-open *should* be supported by recent Gnome, KDE, Xfce
-                pass
+                import traceback
+                traceback.print_exc()
 
         return {'FINISHED'}
 
@@ -1032,13 +1102,13 @@ rna_property = StringProperty(
 
 rna_min = FloatProperty(
         name="Min",
-        default=0.0,
+        default=-10000.0,
         precision=3,
         )
 
 rna_max = FloatProperty(
         name="Max",
-        default=1.0,
+        default=10000.0,
         precision=3,
         )
 
@@ -1864,7 +1934,6 @@ class WM_OT_addon_install(Operator):
             try:
                 os.makedirs(path_addons, exist_ok=True)
             except:
-                import traceback
                 traceback.print_exc()
 
         # Check if we are installing from a target path,
@@ -1882,7 +1951,7 @@ class WM_OT_addon_install(Operator):
 
         addons_old = {mod.__name__ for mod in addon_utils.modules()}
 
-        #check to see if the file is in compressed format (.zip)
+        # check to see if the file is in compressed format (.zip)
         if zipfile.is_zipfile(pyfile):
             try:
                 file_to_extract = zipfile.ZipFile(pyfile, 'r')
@@ -1915,7 +1984,7 @@ class WM_OT_addon_install(Operator):
                 self.report({'WARNING'}, "File already installed to %r\n" % path_dest)
                 return {'CANCELLED'}
 
-            #if not compressed file just copy into the addon path
+            # if not compressed file just copy into the addon path
             try:
                 shutil.copyfile(pyfile, path_dest)
 

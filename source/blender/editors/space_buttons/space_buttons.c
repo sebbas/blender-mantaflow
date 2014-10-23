@@ -233,6 +233,10 @@ static void buttons_area_listener(bScreen *UNUSED(sc), ScrArea *sa, wmNotifier *
 					buttons_area_redraw(sa, BCONTEXT_RENDER);
 					buttons_area_redraw(sa, BCONTEXT_RENDER_LAYER);
 					break;
+				case ND_WORLD:
+					buttons_area_redraw(sa, BCONTEXT_WORLD);
+					sbuts->preview = 1;
+					break;
 				case ND_FRAME:
 					/* any buttons area can have animated properties so redraw all */
 					ED_area_tag_redraw(sa);
@@ -358,7 +362,7 @@ static void buttons_area_listener(bScreen *UNUSED(sc), ScrArea *sa, wmNotifier *
 		case NC_ANIMATION:
 			switch (wmn->data) {
 				case ND_KEYFRAME:
-					if (wmn->action == NA_EDITED)
+					if (ELEM(wmn->action, NA_EDITED, NA_ADDED, NA_REMOVED))
 						ED_area_tag_redraw(sa);
 					break;
 			}

@@ -48,7 +48,7 @@ extern "C"
 {
 
 // The following prevents a linking error in debug mode for MSVC using the libs in CVS
-#if defined(WITH_OPENEXR) && defined(_WIN32) && defined(_DEBUG) && !defined(__MINGW32__) && !defined(__CYGWIN__)
+#if defined(WITH_OPENEXR) && defined(_WIN32) && defined(DEBUG) && !defined(__MINGW32__)
 _CRTIMP void __cdecl _invalid_parameter_noinfo(void)
 {
 }
@@ -270,6 +270,10 @@ typedef struct _RGBAZ RGBAZ;
 extern "C"
 {
 
+/**
+ * Test presence of OpenEXR file.
+ * \param mem pointer to loaded OpenEXR bitstream
+ */
 int imb_is_a_openexr(unsigned char *mem)
 {
 	return Imf::isImfMagic((const char *)mem);
@@ -892,7 +896,7 @@ static int imb_exr_split_channel_name(ExrChannel *echan, char *layname, char *pa
 		echan->chan_id = name[0];
 		layname[0] = '\0';
 
-		if (ELEM4(name[0], 'R', 'G', 'B', 'A'))
+		if (ELEM(name[0], 'R', 'G', 'B', 'A'))
 			strcpy(passname, "Combined");
 		else if (name[0] == 'Z')
 			strcpy(passname, "Depth");
@@ -923,9 +927,9 @@ static int imb_exr_split_channel_name(ExrChannel *echan, char *layname, char *pa
 			 *
 			 * Here we do some magic to distinguish such cases.
 			 */
-			if (ELEM3(token[1], 'X', 'Y', 'Z') ||
-			    ELEM3(token[1], 'R', 'G', 'B') ||
-			    ELEM3(token[1], 'U', 'V', 'A'))
+			if (ELEM(token[1], 'X', 'Y', 'Z') ||
+			    ELEM(token[1], 'R', 'G', 'B') ||
+			    ELEM(token[1], 'U', 'V', 'A'))
 			{
 				echan->chan_id = token[1];
 				ok = true;
@@ -1120,6 +1124,27 @@ static const char *exr_rgba_channelname(InputFile *file, const char *chan)
 	return chan;
 }
 
+static bool exr_has_rgb(InputFile *file)
+{
+	return file->header().channels().findChannel("R") != NULL &&
+	       file->header().channels().findChannel("G") != NULL &&
+	       file->header().channels().findChannel("B") != NULL;
+}
+
+static bool exr_has_luma(InputFile *file)
+{
+	/* Y channel is the luma and should always present fir luma space images,
+	 * optionally it could be also channels for chromas called BY and RY.
+	 */
+	return file->header().channels().findChannel("Y") != NULL;
+}
+
+static bool exr_has_chroma(InputFile *file)
+{
+	return file->header().channels().findChannel("BY") != NULL &&
+	       file->header().channels().findChannel("RY") != NULL;
+}
+
 static int exr_has_zbuffer(InputFile *file)
 {
 	return !(file->header().channels().findChannel("Z") == NULL);
@@ -1215,6 +1240,8 @@ struct ImBuf *imb_load_openexr(unsigned char *mem, size_t size, int flags, char 
 					}
 				}
 				else {
+					const bool has_rgb = exr_has_rgb(file);
+					const bool has_luma = exr_has_luma(file);
 					FrameBuffer frameBuffer;
 					float *first;
 					int xstride = sizeof(float) * 4;
@@ -1227,12 +1254,22 @@ struct ImBuf *imb_load_openexr(unsigned char *mem, size_t size, int flags, char 
 					/* but, since we read y-flipped (negative y stride) we move to last scanline */
 					first += 4 * (height - 1) * width;
 
-					frameBuffer.insert(exr_rgba_channelname(file, "R"),
-					                   Slice(Imf::FLOAT,  (char *) first, xstride, ystride));
-					frameBuffer.insert(exr_rgba_channelname(file, "G"),
-					                   Slice(Imf::FLOAT,  (char *) (first + 1), xstride, ystride));
-					frameBuffer.insert(exr_rgba_channelname(file, "B"),
-					                   Slice(Imf::FLOAT,  (char *) (first + 2), xstride, ystride));
+					if (has_rgb) {
+						frameBuffer.insert(exr_rgba_channelname(file, "R"),
+						                   Slice(Imf::FLOAT,  (char *) first, xstride, ystride));
+						frameBuffer.insert(exr_rgba_channelname(file, "G"),
+						                   Slice(Imf::FLOAT,  (char *) (first + 1), xstride, ystride));
+						frameBuffer.insert(exr_rgba_channelname(file, "B"),
+						                   Slice(Imf::FLOAT,  (char *) (first + 2), xstride, ystride));
+					}
+					else if (has_luma) {
+						frameBuffer.insert(exr_rgba_channelname(file, "Y"),
+						                   Slice(Imf::FLOAT,  (char *) first, xstride, ystride));
+						frameBuffer.insert(exr_rgba_channelname(file, "BY"),
+						                   Slice(Imf::FLOAT,  (char *) (first + 1), xstride, ystride, 1, 1, 0.5f));
+						frameBuffer.insert(exr_rgba_channelname(file, "RY"),
+						                   Slice(Imf::FLOAT,  (char *) (first + 2), xstride, ystride, 1, 1, 0.5f));
+					}
 
 					/* 1.0 is fill value, this still needs to be assigned even when (is_alpha == 0) */
 					frameBuffer.insert(exr_rgba_channelname(file, "A"),
@@ -1259,6 +1296,24 @@ struct ImBuf *imb_load_openexr(unsigned char *mem, size_t size, int flags, char 
 					//
 					// if (flag & IM_rect)
 					//     IMB_rect_from_float(ibuf);
+
+					if (!has_rgb && has_luma) {
+						size_t a;
+						if (exr_has_chroma(file)) {
+							for (a = 0; a < (size_t) ibuf->x * ibuf->y; ++a) {
+								float *color = ibuf->rect_float + a * 4;
+								ycc_to_rgb(color[0] * 255.0f, color[1] * 255.0f, color[2] * 255.0f,
+								           &color[0], &color[1], &color[2],
+								           BLI_YCC_ITU_BT709);
+							}
+						}
+						else {
+							for (a = 0; a < (size_t) ibuf->x * ibuf->y; ++a) {
+								float *color = ibuf->rect_float + a * 4;
+								color[1] = color[2] = color[0];
+							}
+						}
+					}
 
 					/* file is no longer needed */
 					delete file;

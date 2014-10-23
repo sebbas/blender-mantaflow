@@ -67,6 +67,16 @@ class NODE_HT_header(Header):
                 if snode_id:
                     row.prop(snode_id, "use_nodes")
 
+            if scene.render.use_shading_nodes and snode.shader_type == 'LINESTYLE':
+                rl = context.scene.render.layers.active
+                lineset = rl.freestyle_settings.linesets.active
+                if lineset is not None:
+                    row = layout.row()
+                    row.enabled = not snode.pin
+                    row.template_ID(lineset, "linestyle", new="scene.freestyle_linestyle_new")
+                    if snode_id:
+                        row.prop(snode_id, "use_nodes")
+
         elif snode.tree_type == 'TextureNodeTree':
             layout.prop(snode, "texture_type", text="", expand=True)
 
@@ -170,7 +180,8 @@ class NODE_MT_view(Menu):
         layout.separator()
 
         layout.operator("screen.area_dupli")
-        layout.operator("screen.screen_full_area")
+        layout.operator("screen.screen_full_area", text="Toggle Maximize Area")
+        layout.operator("screen.screen_full_area").use_hide_panels = True
 
 
 class NODE_MT_select(Menu):
@@ -190,7 +201,7 @@ class NODE_MT_select(Menu):
 
         layout.separator()
 
-        layout.operator("node.select_same_type")
+        layout.operator("node.select_grouped")
         layout.operator("node.select_same_type_step").prev = True
         layout.operator("node.select_same_type_step").prev = False
 

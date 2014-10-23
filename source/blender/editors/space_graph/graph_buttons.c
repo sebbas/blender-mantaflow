@@ -47,6 +47,7 @@
 #include "BLF_translation.h"
 
 #include "BKE_context.h"
+#include "BKE_curve.h"
 #include "BKE_depsgraph.h"
 #include "BKE_fcurve.h"
 #include "BKE_main.h"
@@ -226,15 +227,13 @@ static short get_active_fcurve_keyframe_edit(FCurve *fcu, BezTriple **bezt, BezT
 }
 
 /* update callback for active keyframe properties - base updates stuff */
-static void graphedit_activekey_update_cb(bContext *C, void *fcu_ptr, void *UNUSED(bezt_ptr))
+static void graphedit_activekey_update_cb(bContext *UNUSED(C), void *fcu_ptr, void *UNUSED(bezt_ptr))
 {
-	SpaceIpo *sipo = CTX_wm_space_graph(C);
-	const short use_handle = !(sipo->flag & SIPO_NOHANDLES);
 	FCurve *fcu = (FCurve *)fcu_ptr;
 	
 	/* make sure F-Curve and its handles are still valid after this editing */
 	sort_time_fcurve(fcu);
-	testhandles_fcurve(fcu, use_handle);
+	calchandles_fcurve(fcu);
 }
 
 /* update callback for active keyframe properties - handle-editing wrapper */
@@ -250,6 +249,9 @@ static void graphedit_activekey_handles_cb(bContext *C, void *fcu_ptr, void *bez
 		bezt->h1 = HD_ALIGN;
 		bezt->h2 = HD_ALIGN;
 	}
+	else {
+		BKE_nurb_bezt_handle_test(bezt, true);
+	}
 	
 	/* now call standard updates */
 	graphedit_activekey_update_cb(C, fcu_ptr, bezt_ptr);
@@ -259,6 +261,24 @@ static void graphedit_activekey_handles_cb(bContext *C, void *fcu_ptr, void *bez
  * NOTE: we cannot just do graphedit_activekey_handles_cb() due to "order of computation"
  *       weirdness (see calchandleNurb_intern() and T39911)
  */
+static void graphedit_activekey_left_handle_coord_cb(bContext *C, void *fcu_ptr, void *bezt_ptr)
+{
+	BezTriple *bezt = (BezTriple *)bezt_ptr;
+
+	const char f1 = bezt->f1;
+	const char f3 = bezt->f3;
+
+	bezt->f1 |= SELECT;
+	bezt->f3 &= ~SELECT;
+
+	/* perform normal updates NOW */
+	graphedit_activekey_handles_cb(C, fcu_ptr, bezt_ptr);
+
+	/* restore selection state so that no-one notices this hack */
+	bezt->f1 = f1;
+	bezt->f3 = f3;
+}
+
 static void graphedit_activekey_right_handle_coord_cb(bContext *C, void *fcu_ptr, void *bezt_ptr)
 {
 	BezTriple *bezt = (BezTriple *)bezt_ptr;
@@ -270,8 +290,8 @@ static void graphedit_activekey_right_handle_coord_cb(bContext *C, void *fcu_ptr
 	/* temporarily make it so that only the right handle is selected, so that updates go correctly 
 	 * (i.e. it now acts as if we've just transforming the vert when it is selected by itself)
 	 */
-	bezt->f1 = 0;
-	bezt->f3 = 1;
+	bezt->f1 &= ~SELECT;
+	bezt->f3 |= SELECT;
 	
 	/* perform normal updates NOW */
 	graphedit_activekey_handles_cb(C, fcu_ptr, bezt_ptr);
@@ -362,11 +382,11 @@ static void graph_panel_key_properties(const bContext *C, Panel *pa)
 			
 			but = uiDefButR(block, NUM, B_REDR, "X:", 0, 0, UI_UNIT_X, UI_UNIT_Y,
 			                &bezt_ptr, "handle_left", 0, 0, 0, -1, -1, NULL);
-			uiButSetFunc(but, graphedit_activekey_handles_cb, fcu, bezt);
+			uiButSetFunc(but, graphedit_activekey_left_handle_coord_cb, fcu, bezt);
 			
 			but = uiDefButR(block, NUM, B_REDR, "Y:", 0, 0, UI_UNIT_X, UI_UNIT_Y,
 			                &bezt_ptr, "handle_left", 1, 0, 0, -1, -1, NULL);
-			uiButSetFunc(but, graphedit_activekey_handles_cb, fcu, bezt);
+			uiButSetFunc(but, graphedit_activekey_left_handle_coord_cb, fcu, bezt);
 			uiButSetUnitType(but, unit);
 			
 			/* XXX: with label? */
@@ -540,7 +560,7 @@ static void graph_panel_driverVar__rotDiff(uiLayout *layout, ID *id, DriverVar *
 	uiLayoutSetRedAlert(col, (dtar->flag & DTAR_FLAG_INVALID)); /* XXX: per field... */
 	uiTemplateAnyID(col, &dtar_ptr, "id", "id_type", IFACE_("Bone 1:"));
 	
-	if (dtar->id && ob1->pose) {
+	if (dtar->id && GS(dtar->id->name) == ID_OB && ob1->pose) {
 		PointerRNA tar_ptr;
 		
 		RNA_pointer_create(dtar->id, &RNA_Pose, ob1->pose, &tar_ptr);
@@ -551,7 +571,7 @@ static void graph_panel_driverVar__rotDiff(uiLayout *layout, ID *id, DriverVar *
 	uiLayoutSetRedAlert(col, (dtar2->flag & DTAR_FLAG_INVALID)); /* XXX: per field... */
 	uiTemplateAnyID(col, &dtar2_ptr, "id", "id_type", IFACE_("Bone 2:"));
 		
-	if (dtar2->id && ob2->pose) {
+	if (dtar2->id && GS(dtar2->id->name) == ID_OB && ob2->pose) {
 		PointerRNA tar_ptr;
 		
 		RNA_pointer_create(dtar2->id, &RNA_Pose, ob2->pose, &tar_ptr);
@@ -578,7 +598,7 @@ static void graph_panel_driverVar__locDiff(uiLayout *layout, ID *id, DriverVar *
 	uiLayoutSetRedAlert(col, (dtar->flag & DTAR_FLAG_INVALID)); /* XXX: per field... */
 	uiTemplateAnyID(col, &dtar_ptr, "id", "id_type", IFACE_("Ob/Bone 1:"));
 		
-	if (dtar->id && ob1->pose) {
+	if (dtar->id && GS(dtar->id->name) == ID_OB && ob1->pose) {
 		PointerRNA tar_ptr;
 		
 		RNA_pointer_create(dtar->id, &RNA_Pose, ob1->pose, &tar_ptr);
@@ -592,7 +612,7 @@ static void graph_panel_driverVar__locDiff(uiLayout *layout, ID *id, DriverVar *
 	uiLayoutSetRedAlert(col, (dtar2->flag & DTAR_FLAG_INVALID)); /* XXX: per field... */
 	uiTemplateAnyID(col, &dtar2_ptr, "id", "id_type", IFACE_("Ob/Bone 2:"));
 		
-	if (dtar2->id && ob2->pose) {
+	if (dtar2->id && GS(dtar2->id->name) == ID_OB && ob2->pose) {
 		PointerRNA tar_ptr;
 		
 		RNA_pointer_create(dtar2->id, &RNA_Pose, ob2->pose, &tar_ptr);
@@ -619,7 +639,7 @@ static void graph_panel_driverVar__transChan(uiLayout *layout, ID *id, DriverVar
 	uiLayoutSetRedAlert(col, (dtar->flag & DTAR_FLAG_INVALID)); /* XXX: per field... */
 	uiTemplateAnyID(col, &dtar_ptr, "id", "id_type", IFACE_("Ob/Bone:"));
 		
-	if (dtar->id && ob->pose) {
+	if (dtar->id && GS(dtar->id->name) == ID_OB && ob->pose) {
 		PointerRNA tar_ptr;
 		
 		RNA_pointer_create(dtar->id, &RNA_Pose, ob->pose, &tar_ptr);

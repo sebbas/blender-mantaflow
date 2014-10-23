@@ -284,10 +284,14 @@ typedef struct bFollowPathConstraint {
 /* Stretch to constraint */
 typedef struct bStretchToConstraint {
 	struct Object		*tar;
+	int			flag;
 	int			volmode; 
-	int         plane;
+	int			plane;
 	float		orglength;
 	float		bulge;
+	float		bulge_min;
+	float		bulge_max;
+	float		bulge_smooth;
 	char		subtarget[64];	/* MAX_ID_NAME-2 */
 } bStretchToConstraint;
 
@@ -796,7 +800,8 @@ typedef enum ePivotConstraint_Flag {
 
 typedef enum eFollowTrack_Flags {
 	FOLLOWTRACK_ACTIVECLIP	= (1<<0),
-	FOLLOWTRACK_USE_3D_POSITION	= (1<<1)
+	FOLLOWTRACK_USE_3D_POSITION	= (1<<1),
+	FOLLOWTRACK_USE_UNDISTORTION	= (1<<2)
 } eFollowTrack_Flags;
 
 typedef enum eFollowTrack_FrameMethod {
@@ -818,6 +823,12 @@ typedef enum eObjectSolver_Flags {
 /* Rigid-Body Constraint */
 #define CONSTRAINT_DRAW_PIVOT 0x40
 #define 	CONSTRAINT_DISABLE_LINKED_COLLISION 0x80
+
+/* ObjectSolver Constraint -> flag */
+typedef enum eStretchTo_Flags {
+	STRETCHTOCON_USE_BULGE_MIN = (1 << 0),
+	STRETCHTOCON_USE_BULGE_MAX = (1 << 1),
+} eStretchTo_Flags;
 
 /* important: these defines need to match up with PHY_DynamicTypes headerfile */
 #define 	CONSTRAINT_RB_BALL		1

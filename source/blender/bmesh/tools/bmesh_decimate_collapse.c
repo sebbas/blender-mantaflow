@@ -312,11 +312,13 @@ static bool bm_decim_triangulate_begin(BMesh *bm)
 
 		l_iter = l_first = BM_FACE_FIRST_LOOP(f);
 		do {
-			BM_elem_index_set(l_iter, -1);
+			BM_elem_index_set(l_iter, -1);  /* set_dirty */
 		} while ((l_iter = l_iter->next) != l_first);
 
 		// has_quad |= (f->len == 4)
 	}
+
+	bm->elem_index_dirty |= BM_LOOP;
 
 	/* adding new faces as we loop over faces
 	 * is normally best avoided, however in this case its not so bad because any face touched twice
@@ -366,8 +368,8 @@ static bool bm_decim_triangulate_begin(BMesh *bm)
 					/* since we just split theres only ever 2 loops */
 					BLI_assert(BM_edge_is_manifold(l_new->e));
 
-					BM_elem_index_set(l_new, f_index);
-					BM_elem_index_set(l_new->radial_next, f_index);
+					BM_elem_index_set(l_new, f_index);  /* set_dirty */
+					BM_elem_index_set(l_new->radial_next, f_index);  /* set_dirty */
 
 					BM_face_normal_update(f);
 					BM_face_normal_update(f_new);
@@ -412,10 +414,10 @@ static void bm_decim_triangulate_end(BMesh *bm)
 								BM_vert_in_edge(e, l_b->next->v) ? l_b->prev->v : l_b->next->v,
 							};
 
-							BLI_assert(ELEM3(vquad[0], vquad[1], vquad[2], vquad[3]) == false);
-							BLI_assert(ELEM3(vquad[1], vquad[0], vquad[2], vquad[3]) == false);
-							BLI_assert(ELEM3(vquad[2], vquad[1], vquad[0], vquad[3]) == false);
-							BLI_assert(ELEM3(vquad[3], vquad[1], vquad[2], vquad[0]) == false);
+							BLI_assert(ELEM(vquad[0], vquad[1], vquad[2], vquad[3]) == false);
+							BLI_assert(ELEM(vquad[1], vquad[0], vquad[2], vquad[3]) == false);
+							BLI_assert(ELEM(vquad[2], vquad[1], vquad[0], vquad[3]) == false);
+							BLI_assert(ELEM(vquad[3], vquad[1], vquad[2], vquad[0]) == false);
 
 							if (is_quad_convex_v3(vquad[0]->co, vquad[1]->co, vquad[2]->co, vquad[3]->co)) {
 								/* highly unlikely to fail, but prevents possible double-ups */

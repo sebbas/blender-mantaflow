@@ -62,6 +62,7 @@
 #include "DNA_meshdata_types.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_math_vector.h"
 #include "BLI_threads.h"
 #include "BLI_timecode.h"  /* for stamp timecode format */
 #include "BLI_utildefines.h"
@@ -120,12 +121,12 @@ static unsigned int imagecache_hashhash(const void *key_v)
 	return key->index;
 }
 
-static int imagecache_hashcmp(const void *a_v, const void *b_v)
+static bool imagecache_hashcmp(const void *a_v, const void *b_v)
 {
 	const ImageCacheKey *a = (ImageCacheKey *) a_v;
 	const ImageCacheKey *b = (ImageCacheKey *) b_v;
 
-	return a->index - b->index;
+	return (a->index != b->index);
 }
 
 static void imagecache_keydata(void *userkey, int *framenr, int *proxy, int *render_flags)
@@ -248,7 +249,7 @@ void BKE_image_de_interlace(Image *ima, int odd)
 
 /* ***************** ALLOC & FREE, DATA MANAGING *************** */
 
-static void image_free_cahced_frames(Image *image)
+static void image_free_cached_frames(Image *image)
 {
 	if (image->cache) {
 		IMB_moviecache_free(image->cache);
@@ -256,9 +257,13 @@ static void image_free_cahced_frames(Image *image)
 	}
 }
 
-static void image_free_buffers(Image *ima)
+/**
+ * Simply free the image data from memory,
+ * on display the image can load again (except for render buffers).
+ */
+void BKE_image_free_buffers(Image *ima)
 {
-	image_free_cahced_frames(ima);
+	image_free_cached_frames(ima);
 
 	if (ima->anim) IMB_free_anim(ima->anim);
 	ima->anim = NULL;
@@ -278,7 +283,7 @@ void BKE_image_free(Image *ima)
 {
 	int a;
 
-	image_free_buffers(ima);
+	BKE_image_free_buffers(ima);
 	if (ima->packedfile) {
 		freePackedFile(ima->packedfile);
 		ima->packedfile = NULL;
@@ -361,6 +366,7 @@ Image *BKE_image_copy(Main *bmain, Image *ima)
 	nima->gen_x = ima->gen_x;
 	nima->gen_y = ima->gen_y;
 	nima->gen_type = ima->gen_type;
+	copy_v4_v4(nima->gen_color, ima->gen_color);
 
 	nima->animspeed = ima->animspeed;
 
@@ -765,6 +771,7 @@ Image *BKE_image_add_generated(Main *bmain, unsigned int width, unsigned int hei
 		ima->gen_type = gen_type;
 		ima->gen_flag |= (floatbuf ? IMA_GEN_FLOAT : 0);
 		ima->gen_depth = depth;
+		copy_v4_v4(ima->gen_color, color);
 
 		ibuf = add_ibuf_size(width, height, ima->name, depth, floatbuf, gen_type, color, &ima->colorspace_settings);
 		image_assign_ibuf(ima, ibuf, IMA_NO_INDEX, 0);
@@ -835,8 +842,7 @@ void BKE_image_memorypack(Image *ima)
 
 void BKE_image_tag_time(Image *ima)
 {
-	if (ima)
-		ima->lastused = (int)PIL_check_seconds_timer();
+	ima->lastused = (int)PIL_check_seconds_timer();
 }
 
 #if 0
@@ -853,43 +859,6 @@ static void tag_all_images_time()
 	}
 }
 #endif
-
-void free_old_images(void)
-{
-	Image *ima;
-	static int lasttime = 0;
-	int ctime = (int)PIL_check_seconds_timer();
-
-	/*
-	 * Run garbage collector once for every collecting period of time
-	 * if textimeout is 0, that's the option to NOT run the collector
-	 */
-	if (U.textimeout == 0 || ctime % U.texcollectrate || ctime == lasttime)
-		return;
-
-	/* of course not! */
-	if (G.is_rendering)
-		return;
-
-	lasttime = ctime;
-
-	ima = G.main->image.first;
-	while (ima) {
-		if ((ima->flag & IMA_NOCOLLECT) == 0 && ctime - ima->lastused > U.textimeout) {
-			/* If it's in GL memory, deallocate and set time tag to current time
-			 * This gives textures a "second chance" to be used before dying. */
-			if (ima->bindcode || ima->repbind) {
-				GPU_free_image(ima);
-				ima->lastused = ctime;
-			}
-			/* Otherwise, just kill the buffers */
-			else {
-				image_free_buffers(ima);
-			}
-		}
-		ima = ima->id.next;
-	}
-}
 
 static uintptr_t image_mem_size(Image *image)
 {
@@ -1291,7 +1260,7 @@ static bool do_add_image_extension(char *string, const char imtype, const ImageF
 			extension = extension_test;
 	}
 #endif
-	else if (ELEM5(imtype, R_IMF_IMTYPE_PNG, R_IMF_IMTYPE_FFMPEG, R_IMF_IMTYPE_H264, R_IMF_IMTYPE_THEORA, R_IMF_IMTYPE_XVID)) {
+	else if (ELEM(imtype, R_IMF_IMTYPE_PNG, R_IMF_IMTYPE_FFMPEG, R_IMF_IMTYPE_H264, R_IMF_IMTYPE_THEORA, R_IMF_IMTYPE_XVID)) {
 		if (!BLI_testextensie(string, extension_test = ".png"))
 			extension = extension_test;
 	}
@@ -1934,7 +1903,7 @@ int BKE_imbuf_write(ImBuf *ibuf, const char *name, ImageFormatData *imf)
 		ibuf->ftype = RADHDR;
 	}
 #endif
-	else if (ELEM5(imtype, R_IMF_IMTYPE_PNG, R_IMF_IMTYPE_FFMPEG, R_IMF_IMTYPE_H264, R_IMF_IMTYPE_THEORA, R_IMF_IMTYPE_XVID)) {
+	else if (ELEM(imtype, R_IMF_IMTYPE_PNG, R_IMF_IMTYPE_FFMPEG, R_IMF_IMTYPE_H264, R_IMF_IMTYPE_THEORA, R_IMF_IMTYPE_XVID)) {
 		ibuf->ftype = PNG;
 
 		if (imtype == R_IMF_IMTYPE_PNG) {
@@ -2057,7 +2026,7 @@ int BKE_imbuf_write(ImBuf *ibuf, const char *name, ImageFormatData *imf)
 	return(ok);
 }
 
-/* same as BKE_imbuf_write() but crappy workaround not to perminantly modify
+/* same as BKE_imbuf_write() but crappy workaround not to permanently modify
  * _some_, values in the imbuf */
 int BKE_imbuf_write_as(ImBuf *ibuf, const char *name, ImageFormatData *imf,
                        const bool save_copy)
@@ -2251,7 +2220,7 @@ void BKE_image_signal(Image *ima, ImageUser *iuser, int signal)
 
 	switch (signal) {
 		case IMA_SIGNAL_FREE:
-			image_free_buffers(ima);
+			BKE_image_free_buffers(ima);
 			if (iuser)
 				iuser->ok = 1;
 			break;
@@ -2283,7 +2252,7 @@ void BKE_image_signal(Image *ima, ImageUser *iuser, int signal)
 #if 0
 			/* force reload on first use, but not for multilayer, that makes nodes and buttons in ui drawing fail */
 			if (ima->type != IMA_TYPE_MULTILAYER)
-				image_free_buffers(ima);
+				BKE_image_free_buffers(ima);
 #else
 			/* image buffers for non-sequence multilayer will share buffers with RenderResult,
 			 * however sequence multilayer will own buffers. Such logic makes switching from
@@ -2292,7 +2261,7 @@ void BKE_image_signal(Image *ima, ImageUser *iuser, int signal)
 			 * are nicely detecting anyway, but freeing buffers always here makes multilayer
 			 * sequences behave stable
 			 */
-			image_free_buffers(ima);
+			BKE_image_free_buffers(ima);
 #endif
 
 			ima->ok = 1;
@@ -2311,14 +2280,14 @@ void BKE_image_signal(Image *ima, ImageUser *iuser, int signal)
 				if (pf) {
 					freePackedFile(ima->packedfile);
 					ima->packedfile = pf;
-					image_free_buffers(ima);
+					BKE_image_free_buffers(ima);
 				}
 				else {
 					printf("ERROR: Image not available. Keeping packed image\n");
 				}
 			}
 			else
-				image_free_buffers(ima);
+				BKE_image_free_buffers(ima);
 
 			if (iuser)
 				iuser->ok = 1;
@@ -2336,7 +2305,7 @@ void BKE_image_signal(Image *ima, ImageUser *iuser, int signal)
 			}
 			break;
 		case IMA_SIGNAL_COLORMANAGE:
-			image_free_buffers(ima);
+			BKE_image_free_buffers(ima);
 
 			ima->ok = 1;
 
@@ -2474,7 +2443,7 @@ static void image_initialize_after_load(Image *ima, ImBuf *ibuf)
 		else de_interlace_ng(ibuf);
 	}
 	/* timer */
-	ima->lastused = clock() / CLOCKS_PER_SEC;
+	BKE_image_tag_time(ima);
 
 	ima->ok = IMA_OK_LOADED;
 
@@ -2560,7 +2529,7 @@ static ImBuf *image_load_sequence_multilayer(Image *ima, ImageUser *iuser, int f
 			 * need to ensure there's no image buffers are hanging around
 			 * with dead links after freeing the render result.
 			 */
-			image_free_cahced_frames(ima);
+			image_free_cached_frames(ima);
 			RE_FreeRenderResult(ima->rr);
 			ima->rr = NULL;
 		}
@@ -2656,7 +2625,7 @@ static ImBuf *image_load_image_file(Image *ima, ImageUser *iuser, int cfra)
 	int assign = 0, flag;
 
 	/* always ensure clean ima */
-	image_free_buffers(ima);
+	BKE_image_free_buffers(ima);
 
 	/* is there a PackedFile with this image ? */
 	if (ima->packedfile) {
@@ -3030,7 +2999,6 @@ BLI_INLINE bool image_quick_test(Image *ima, ImageUser *iuser)
 static ImBuf *image_acquire_ibuf(Image *ima, ImageUser *iuser, void **lock_r)
 {
 	ImBuf *ibuf = NULL;
-	float color[] = {0, 0, 0, 1};
 	int frame = 0, index = 0;
 
 	if (lock_r)
@@ -3075,7 +3043,7 @@ static ImBuf *image_acquire_ibuf(Image *ima, ImageUser *iuser, void **lock_r)
 			if (ima->gen_y == 0) ima->gen_y = 1024;
 			if (ima->gen_depth == 0) ima->gen_depth = 24;
 			ibuf = add_ibuf_size(ima->gen_x, ima->gen_y, ima->name, ima->gen_depth, (ima->gen_flag & IMA_GEN_FLOAT) != 0, ima->gen_type,
-			                     color, &ima->colorspace_settings);
+			                     ima->gen_color, &ima->colorspace_settings);
 			image_assign_ibuf(ima, ibuf, IMA_NO_INDEX, 0);
 			ima->ok = IMA_OK_LOADED;
 		}

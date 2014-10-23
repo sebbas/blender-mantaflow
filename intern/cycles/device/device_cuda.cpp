@@ -23,7 +23,7 @@
 
 #include "buffers.h"
 
-#include "util_cuda.h"
+#include "cuew.h"
 #include "util_debug.h"
 #include "util_map.h"
 #include "util_opengl.h"
@@ -41,14 +41,11 @@ public:
 	CUdevice cuDevice;
 	CUcontext cuContext;
 	CUmodule cuModule;
-	CUstream cuStream;
-	CUevent tileDone;
 	map<device_ptr, bool> tex_interp_map;
 	int cuDevId;
 	int cuDevArchitecture;
 	bool first_error;
 	bool use_texture_storage;
-	unsigned int target_update_frequency;
 
 	struct PixelMem {
 		GLuint cuPBO;
@@ -64,53 +61,10 @@ public:
 		return (CUdeviceptr)mem;
 	}
 
-	static const char *cuda_error_string(CUresult result)
+	static bool have_precompiled_kernels()
 	{
-		switch(result) {
-			case CUDA_SUCCESS: return "No errors";
-			case CUDA_ERROR_INVALID_VALUE: return "Invalid value";
-			case CUDA_ERROR_OUT_OF_MEMORY: return "Out of memory";
-			case CUDA_ERROR_NOT_INITIALIZED: return "Driver not initialized";
-			case CUDA_ERROR_DEINITIALIZED: return "Driver deinitialized";
-
-			case CUDA_ERROR_NO_DEVICE: return "No CUDA-capable device available";
-			case CUDA_ERROR_INVALID_DEVICE: return "Invalid device";
-
-			case CUDA_ERROR_INVALID_IMAGE: return "Invalid kernel image";
-			case CUDA_ERROR_INVALID_CONTEXT: return "Invalid context";
-			case CUDA_ERROR_CONTEXT_ALREADY_CURRENT: return "Context already current";
-			case CUDA_ERROR_MAP_FAILED: return "Map failed";
-			case CUDA_ERROR_UNMAP_FAILED: return "Unmap failed";
-			case CUDA_ERROR_ARRAY_IS_MAPPED: return "Array is mapped";
-			case CUDA_ERROR_ALREADY_MAPPED: return "Already mapped";
-			case CUDA_ERROR_NO_BINARY_FOR_GPU: return "No binary for GPU";
-			case CUDA_ERROR_ALREADY_ACQUIRED: return "Already acquired";
-			case CUDA_ERROR_NOT_MAPPED: return "Not mapped";
-			case CUDA_ERROR_NOT_MAPPED_AS_ARRAY: return "Mapped resource not available for access as an array";
-			case CUDA_ERROR_NOT_MAPPED_AS_POINTER: return "Mapped resource not available for access as a pointer";
-			case CUDA_ERROR_ECC_UNCORRECTABLE: return "Uncorrectable ECC error detected";
-			case CUDA_ERROR_UNSUPPORTED_LIMIT: return "CUlimit not supported by device";
-
-			case CUDA_ERROR_INVALID_SOURCE: return "Invalid source";
-			case CUDA_ERROR_FILE_NOT_FOUND: return "File not found";
-			case CUDA_ERROR_SHARED_OBJECT_SYMBOL_NOT_FOUND: return "Link to a shared object failed to resolve";
-			case CUDA_ERROR_SHARED_OBJECT_INIT_FAILED: return "Shared object initialization failed";
-
-			case CUDA_ERROR_INVALID_HANDLE: return "Invalid handle";
-
-			case CUDA_ERROR_NOT_FOUND: return "Not found";
-
-			case CUDA_ERROR_NOT_READY: return "CUDA not ready";
-
-			case CUDA_ERROR_LAUNCH_FAILED: return "Launch failed";
-			case CUDA_ERROR_LAUNCH_OUT_OF_RESOURCES: return "Launch exceeded resources";
-			case CUDA_ERROR_LAUNCH_TIMEOUT: return "Launch exceeded timeout";
-			case CUDA_ERROR_LAUNCH_INCOMPATIBLE_TEXTURING: return "Launch with incompatible texturing";
-
-			case CUDA_ERROR_UNKNOWN: return "Unknown error";
-
-			default: return "Unknown CUDA error value";
-		}
+		string cubins_path = path_get("lib");
+		return path_exists(cubins_path);
 	}
 
 /*#ifdef NDEBUG
@@ -132,7 +86,7 @@ public:
 		CUresult result = stmt; \
 		\
 		if(result != CUDA_SUCCESS) { \
-			string message = string_printf("CUDA error: %s in %s", cuda_error_string(result), #stmt); \
+			string message = string_printf("CUDA error: %s in %s", cuewErrorString(result), #stmt); \
 			if(error_msg == "") \
 				error_msg = message; \
 			fprintf(stderr, "%s\n", message.c_str()); \
@@ -146,7 +100,7 @@ public:
 		if(result == CUDA_SUCCESS)
 			return false;
 
-		string message = string_printf("CUDA error at %s: %s", stmt.c_str(), cuda_error_string(result));
+		string message = string_printf("CUDA error at %s: %s", stmt.c_str(), cuewErrorString(result));
 		if(error_msg == "")
 			error_msg = message;
 		fprintf(stderr, "%s\n", message.c_str());
@@ -180,8 +134,6 @@ public:
 		first_error = true;
 		background = background_;
 		use_texture_storage = true;
-		/* we try an update / sync every 1000 ms */
-		target_update_frequency = 1000;
 
 		cuDevId = info.num;
 		cuDevice = 0;
@@ -212,9 +164,6 @@ public:
 		if(cuda_error_(result, "cuCtxCreate"))
 			return;
 
-		cuda_assert(cuStreamCreate(&cuStream, 0));
-		cuda_assert(cuEventCreate(&tileDone, 0x1));
-
 		int major, minor;
 		cuDeviceComputeCapability(&major, &minor, cuDevId);
 		cuDevArchitecture = major*100 + minor*10;
@@ -231,12 +180,10 @@ public:
 	{
 		task_pool.stop();
 
-		cuda_assert(cuEventDestroy(tileDone));
-		cuda_assert(cuStreamDestroy(cuStream));
 		cuda_assert(cuCtxDestroy(cuContext));
 	}
 
-	bool support_device(bool experimental, bool branched)
+	bool support_device(bool experimental)
 	{
 		int major, minor;
 		cuDeviceComputeCapability(&major, &minor, cuDevId);
@@ -250,14 +197,22 @@ public:
 		return true;
 	}
 
-	string compile_kernel()
+	string compile_kernel(bool experimental)
 	{
 		/* compute cubin name */
 		int major, minor;
 		cuDeviceComputeCapability(&major, &minor, cuDevId);
+		
+		/* workaround to make sm_52 cards work, until we bundle kernel */
+		if(major == 5 && minor == 2)
+			minor = 0;
 
 		/* attempt to use kernel provided with blender */
-		string cubin = path_get(string_printf("lib/kernel_sm_%d%d.cubin", major, minor));
+		string cubin;
+		if(experimental)
+			cubin = path_get(string_printf("lib/kernel_experimental_sm_%d%d.cubin", major, minor));
+		else
+			cubin = path_get(string_printf("lib/kernel_sm_%d%d.cubin", major, minor));
 		if(path_exists(cubin))
 			return cubin;
 
@@ -265,7 +220,10 @@ public:
 		string kernel_path = path_get("kernel");
 		string md5 = path_files_md5_hash(kernel_path);
 
-		cubin = string_printf("cycles_kernel_sm%d%d_%s.cubin", major, minor, md5.c_str());
+		if(experimental)
+			cubin = string_printf("cycles_kernel_experimental_sm%d%d_%s.cubin", major, minor, md5.c_str());
+		else
+			cubin = string_printf("cycles_kernel_sm%d%d_%s.cubin", major, minor, md5.c_str());
 		cubin = path_user_get(path_join("cache", cubin));
 
 		/* if exists already, use it */
@@ -273,7 +231,7 @@ public:
 			return cubin;
 
 #ifdef _WIN32
-		if(cuHavePrecompiledKernels()) {
+		if(have_precompiled_kernels()) {
 			if(major < 2)
 				cuda_error_message(string_printf("CUDA device requires compute capability 2.0 or up, found %d.%d. Your GPU is not supported.", major, minor));
 			else
@@ -283,25 +241,25 @@ public:
 #endif
 
 		/* if not, find CUDA compiler */
-		string nvcc = cuCompilerPath();
+		const char *nvcc = cuewCompilerPath();
 
-		if(nvcc == "") {
+		if(nvcc == NULL) {
 			cuda_error_message("CUDA nvcc compiler not found. Install CUDA toolkit in default location.");
 			return "";
 		}
 
-		int cuda_version = cuCompilerVersion();
+		int cuda_version = cuewCompilerVersion();
 
 		if(cuda_version == 0) {
 			cuda_error_message("CUDA nvcc compiler version could not be parsed.");
 			return "";
 		}
-		if(cuda_version < 50) {
-			printf("Unsupported CUDA version %d.%d detected, you need CUDA 6.0.\n", cuda_version/10, cuda_version%10);
+		if(cuda_version < 60) {
+			printf("Unsupported CUDA version %d.%d detected, you need CUDA 6.5.\n", cuda_version/10, cuda_version%10);
 			return "";
 		}
-		else if(cuda_version != 60)
-			printf("CUDA version %d.%d detected, build may succeed but only CUDA 6.0 is officially supported.\n", cuda_version/10, cuda_version%10);
+		else if(cuda_version != 65)
+			printf("CUDA version %d.%d detected, build may succeed but only CUDA 6.5 is officially supported.\n", cuda_version/10, cuda_version%10);
 
 		/* compile */
 		string kernel = path_join(kernel_path, "kernel.cu");
@@ -315,7 +273,14 @@ public:
 
 		string command = string_printf("\"%s\" -arch=sm_%d%d -m%d --cubin \"%s\" "
 			"-o \"%s\" --ptxas-options=\"-v\" -I\"%s\" -DNVCC -D__KERNEL_CUDA_VERSION__=%d",
-			nvcc.c_str(), major, minor, machine, kernel.c_str(), cubin.c_str(), include.c_str(), cuda_version);
+			nvcc, major, minor, machine, kernel.c_str(), cubin.c_str(), include.c_str(), cuda_version);
+		
+		if(experimental)
+			command += " -D__KERNEL_CUDA_EXPERIMENTAL__";
+
+#ifdef WITH_CYCLES_DEBUG
+		command += " -D__KERNEL_DEBUG__";
+#endif
 
 		printf("%s\n", command.c_str());
 
@@ -342,11 +307,11 @@ public:
 			return false;
 		
 		/* check if GPU is supported */
-		if(!support_device(experimental, false))
+		if(!support_device(experimental))
 			return false;
 
 		/* get kernel */
-		string cubin = compile_kernel();
+		string cubin = compile_kernel(experimental);
 
 		if(cubin == "")
 			return false;
@@ -377,6 +342,7 @@ public:
 		size_t size = mem.memory_size();
 		cuda_assert(cuMemAlloc(&device_pointer, size));
 		mem.device_pointer = (device_ptr)device_pointer;
+		mem.device_size = size;
 		stats.mem_alloc(size);
 		cuda_pop_context();
 	}
@@ -397,7 +363,7 @@ public:
 		cuda_push_context();
 		if(mem.device_pointer) {
 			cuda_assert(cuMemcpyDtoH((uchar*)mem.data_pointer + offset,
-			                         (CUdeviceptr)((uchar*)mem.device_pointer + offset), size));
+			                         (CUdeviceptr)(mem.device_pointer + offset), size));
 		}
 		else {
 			memset((char*)mem.data_pointer + offset, 0, size);
@@ -424,7 +390,8 @@ public:
 
 			mem.device_pointer = 0;
 
-			stats.mem_free(mem.memory_size());
+			stats.mem_free(mem.device_size);
+			mem.device_size = 0;
 		}
 	}
 
@@ -516,6 +483,7 @@ public:
 				cuda_assert(cuTexRefSetFlags(texref, CU_TRSF_NORMALIZED_COORDINATES));
 
 				mem.device_pointer = (device_ptr)handle;
+				mem.device_size = size;
 
 				stats.mem_alloc(size);
 			}
@@ -583,7 +551,8 @@ public:
 				tex_interp_map.erase(tex_interp_map.find(mem.device_pointer));
 				mem.device_pointer = 0;
 
-				stats.mem_free(mem.memory_size());
+				stats.mem_free(mem.device_size);
+				mem.device_size = 0;
 			}
 			else {
 				tex_interp_map.erase(tex_interp_map.find(mem.device_pointer));
@@ -604,7 +573,7 @@ public:
 		CUdeviceptr d_rng_state = cuda_device_ptr(rtile.rng_state);
 
 		/* get kernel function */
-		if(branched && support_device(true, branched)) {
+		if(branched) {
 			cuda_assert(cuModuleGetFunction(&cuPathTrace, cuModule, "kernel_cuda_branched_path_trace"));
 		}
 		else {
@@ -613,40 +582,17 @@ public:
 
 		if(have_error())
 			return;
-	
+
 		/* pass in parameters */
-		int offset = 0;
-		
-		cuda_assert(cuParamSetv(cuPathTrace, offset, &d_buffer, sizeof(d_buffer)));
-		offset += sizeof(d_buffer);
-
-		cuda_assert(cuParamSetv(cuPathTrace, offset, &d_rng_state, sizeof(d_rng_state)));
-		offset += sizeof(d_rng_state);
-
-		offset = align_up(offset, __alignof(sample));
-
-		cuda_assert(cuParamSeti(cuPathTrace, offset, sample));
-		offset += sizeof(sample);
-
-		cuda_assert(cuParamSeti(cuPathTrace, offset, rtile.x));
-		offset += sizeof(rtile.x);
-
-		cuda_assert(cuParamSeti(cuPathTrace, offset, rtile.y));
-		offset += sizeof(rtile.y);
-
-		cuda_assert(cuParamSeti(cuPathTrace, offset, rtile.w));
-		offset += sizeof(rtile.w);
-
-		cuda_assert(cuParamSeti(cuPathTrace, offset, rtile.h));
-		offset += sizeof(rtile.h);
-
-		cuda_assert(cuParamSeti(cuPathTrace, offset, rtile.offset));
-		offset += sizeof(rtile.offset);
-
-		cuda_assert(cuParamSeti(cuPathTrace, offset, rtile.stride));
-		offset += sizeof(rtile.stride);
-
-		cuda_assert(cuParamSetSize(cuPathTrace, offset));
+		void *args[] = {&d_buffer,
+						 &d_rng_state,
+						 &sample,
+						 &rtile.x,
+						 &rtile.y,
+						 &rtile.w,
+						 &rtile.h,
+						 &rtile.offset,
+						 &rtile.stride};
 
 		/* launch kernel */
 		int threads_per_block;
@@ -664,16 +610,13 @@ public:
 		int yblocks = (rtile.h + ythreads - 1)/ythreads;
 
 		cuda_assert(cuFuncSetCacheConfig(cuPathTrace, CU_FUNC_CACHE_PREFER_L1));
-		cuda_assert(cuFuncSetBlockShape(cuPathTrace, xthreads, ythreads, 1));
 
-		if(info.display_device) {
-			/* don't use async for device used for display, locks up UI too much */
-			cuda_assert(cuLaunchGrid(cuPathTrace, xblocks, yblocks));
-			cuda_assert(cuCtxSynchronize());
-		}
-		else {
-			cuda_assert(cuLaunchGridAsync(cuPathTrace, xblocks, yblocks, cuStream));
-		}
+		cuda_assert(cuLaunchKernel(cuPathTrace,
+								   xblocks , yblocks, 1, /* blocks */
+								   xthreads, ythreads, 1, /* threads */
+								   0, 0, args, 0));
+
+		cuda_assert(cuCtxSynchronize());
 
 		cuda_pop_context();
 	}
@@ -697,40 +640,19 @@ public:
 			cuda_assert(cuModuleGetFunction(&cuFilmConvert, cuModule, "kernel_cuda_convert_to_byte"));
 		}
 
-		/* pass in parameters */
-		int offset = 0;
-
-		cuda_assert(cuParamSetv(cuFilmConvert, offset, &d_rgba, sizeof(d_rgba)));
-		offset += sizeof(d_rgba);
-		
-		cuda_assert(cuParamSetv(cuFilmConvert, offset, &d_buffer, sizeof(d_buffer)));
-		offset += sizeof(d_buffer);
 
 		float sample_scale = 1.0f/(task.sample + 1);
-		offset = align_up(offset, __alignof(sample_scale));
 
-		cuda_assert(cuParamSetf(cuFilmConvert, offset, sample_scale));
-		offset += sizeof(sample_scale);
-
-		cuda_assert(cuParamSeti(cuFilmConvert, offset, task.x));
-		offset += sizeof(task.x);
-
-		cuda_assert(cuParamSeti(cuFilmConvert, offset, task.y));
-		offset += sizeof(task.y);
-
-		cuda_assert(cuParamSeti(cuFilmConvert, offset, task.w));
-		offset += sizeof(task.w);
-
-		cuda_assert(cuParamSeti(cuFilmConvert, offset, task.h));
-		offset += sizeof(task.h);
-
-		cuda_assert(cuParamSeti(cuFilmConvert, offset, task.offset));
-		offset += sizeof(task.offset);
-
-		cuda_assert(cuParamSeti(cuFilmConvert, offset, task.stride));
-		offset += sizeof(task.stride);
-
-		cuda_assert(cuParamSetSize(cuFilmConvert, offset));
+		/* pass in parameters */
+		void *args[] = {&d_rgba,
+						 &d_buffer,
+						 &sample_scale,
+						 &task.x,
+						 &task.y,
+						 &task.w,
+						 &task.h,
+						 &task.offset,
+						 &task.stride};
 
 		/* launch kernel */
 		int threads_per_block;
@@ -742,8 +664,11 @@ public:
 		int yblocks = (task.h + ythreads - 1)/ythreads;
 
 		cuda_assert(cuFuncSetCacheConfig(cuFilmConvert, CU_FUNC_CACHE_PREFER_L1));
-		cuda_assert(cuFuncSetBlockShape(cuFilmConvert, xthreads, ythreads, 1));
-		cuda_assert(cuLaunchGrid(cuFilmConvert, xblocks, yblocks));
+
+		cuda_assert(cuLaunchKernel(cuFilmConvert,
+								   xblocks , yblocks, 1, /* blocks */
+								   xthreads, ythreads, 1, /* threads */
+								   0, 0, args, 0));
 
 		unmap_pixels((rgba_byte)? rgba_byte: rgba_half);
 
@@ -762,49 +687,54 @@ public:
 		CUdeviceptr d_output = cuda_device_ptr(task.shader_output);
 
 		/* get kernel function */
-		cuda_assert(cuModuleGetFunction(&cuShader, cuModule, "kernel_cuda_shader"));
+		if(task.shader_eval_type >= SHADER_EVAL_BAKE) {
+			cuda_assert(cuModuleGetFunction(&cuShader, cuModule, "kernel_cuda_bake"));
+		}
+		else {
+			cuda_assert(cuModuleGetFunction(&cuShader, cuModule, "kernel_cuda_shader"));
+		}
 
 		/* do tasks in smaller chunks, so we can cancel it */
 		const int shader_chunk_size = 65536;
 		const int start = task.shader_x;
 		const int end = task.shader_x + task.shader_w;
+		int offset = task.offset;
 
-		for(int shader_x = start; shader_x < end; shader_x += shader_chunk_size) {
-			if(task.get_cancel())
-				break;
+		bool canceled = false;
+		for(int sample = 0; sample < task.num_samples && !canceled; sample++) {
+			for(int shader_x = start; shader_x < end; shader_x += shader_chunk_size) {
+				int shader_w = min(shader_chunk_size, end - shader_x);
 
-			/* pass in parameters */
-			int offset = 0;
+				/* pass in parameters */
+				void *args[] = {&d_input,
+								 &d_output,
+								 &task.shader_eval_type,
+								 &shader_x,
+								 &shader_w,
+								 &offset,
+								 &sample};
 
-			cuda_assert(cuParamSetv(cuShader, offset, &d_input, sizeof(d_input)));
-			offset += sizeof(d_input);
+				/* launch kernel */
+				int threads_per_block;
+				cuda_assert(cuFuncGetAttribute(&threads_per_block, CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK, cuShader));
 
-			cuda_assert(cuParamSetv(cuShader, offset, &d_output, sizeof(d_output)));
-			offset += sizeof(d_output);
+				int xblocks = (shader_w + threads_per_block - 1)/threads_per_block;
 
-			int shader_eval_type = task.shader_eval_type;
-			offset = align_up(offset, __alignof(shader_eval_type));
+				cuda_assert(cuFuncSetCacheConfig(cuShader, CU_FUNC_CACHE_PREFER_L1));
+				cuda_assert(cuLaunchKernel(cuShader,
+										   xblocks , 1, 1, /* blocks */
+										   threads_per_block, 1, 1, /* threads */
+										   0, 0, args, 0));
 
-			cuda_assert(cuParamSeti(cuShader, offset, task.shader_eval_type));
-			offset += sizeof(task.shader_eval_type);
+				cuda_assert(cuCtxSynchronize());
 
-			cuda_assert(cuParamSeti(cuShader, offset, shader_x));
-			offset += sizeof(shader_x);
+				if(task.get_cancel()) {
+					canceled = false;
+					break;
+				}
+			}
 
-			cuda_assert(cuParamSetSize(cuShader, offset));
-
-			/* launch kernel */
-			int threads_per_block;
-			cuda_assert(cuFuncGetAttribute(&threads_per_block, CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK, cuShader));
-
-			int shader_w = min(shader_chunk_size, end - shader_x);
-			int xblocks = (shader_w + threads_per_block - 1)/threads_per_block;
-
-			cuda_assert(cuFuncSetCacheConfig(cuShader, CU_FUNC_CACHE_PREFER_L1));
-			cuda_assert(cuFuncSetBlockShape(cuShader, threads_per_block, 1, 1));
-			cuda_assert(cuLaunchGrid(cuShader, xblocks, 1));
-
-			cuda_assert(cuCtxSynchronize());
+			task.update_progress(NULL);
 		}
 
 		cuda_pop_context();
@@ -872,7 +802,8 @@ public:
 				mem.device_pointer = pmem.cuTexId;
 				pixel_mem_map[mem.device_pointer] = pmem;
 
-				stats.mem_alloc(mem.memory_size());
+				mem.device_size = mem.memory_size();
+				stats.mem_alloc(mem.device_size);
 
 				return;
 			}
@@ -929,7 +860,8 @@ public:
 				pixel_mem_map.erase(pixel_mem_map.find(mem.device_pointer));
 				mem.device_pointer = 0;
 
-				stats.mem_free(mem.memory_size());
+				stats.mem_free(mem.device_size);
+				mem.device_size = 0;
 
 				return;
 			}
@@ -946,7 +878,7 @@ public:
 
 			cuda_push_context();
 
-			/* for multi devices, this assumes the ineffecient method that we allocate
+			/* for multi devices, this assumes the inefficient method that we allocate
 			 * all pixels on the device even though we only render to a subset */
 			size_t offset = 4*y*w;
 
@@ -1024,10 +956,6 @@ public:
 				int start_sample = tile.start_sample;
 				int end_sample = tile.start_sample + tile.num_samples;
 
-				boost::posix_time::ptime start_time(boost::posix_time::microsec_clock::local_time());
-				boost::posix_time::ptime last_time = start_time;
-				int sync_sample = 10;
-
 				for(int sample = start_sample; sample < end_sample; sample++) {
 					if (task->get_cancel()) {
 						if(task->need_finish_queue == false)
@@ -1037,28 +965,8 @@ public:
 					path_trace(tile, sample, branched);
 
 					tile.sample = sample + 1;
-					task->update_progress(tile);
 
-					if(!info.display_device && sample == sync_sample) {
-						cuda_push_context();
-						cuda_assert(cuEventRecord(tileDone, cuStream));
-						cuda_assert(cuEventSynchronize(tileDone));
-
-						/* Do some time keeping to find out if we need to sync less */
-						boost::posix_time::ptime current_time(boost::posix_time::microsec_clock::local_time());
-						boost::posix_time::time_duration sample_duration = current_time - last_time;
-
-						long msec = sample_duration.total_milliseconds();
-						float scaling_factor = (float)target_update_frequency / (float)msec;
-
-						/* sync at earliest next sample and probably later */
-						sync_sample = (sample + 1) + sync_sample * (int)ceil(scaling_factor);
-
-						sync_sample = min(end_sample - 1, sync_sample); // make sure we sync the last sample always
-
-						last_time = current_time;
-						cuda_pop_context();
-					}
+					task->update_progress(&tile);
 				}
 
 				task->release_tile(tile);
@@ -1081,6 +989,11 @@ public:
 			run = function_bind(&CUDADevice::thread_run, device, this);
 		}
 	};
+
+	int get_split_task_count(DeviceTask& task)
+	{
+		return 1;
+	}
 
 	void task_add(DeviceTask& task)
 	{
@@ -1108,6 +1021,28 @@ public:
 	}
 };
 
+bool device_cuda_init(void)
+{
+	static bool initialized = false;
+	static bool result = false;
+
+	if (initialized)
+		return result;
+
+	initialized = true;
+
+	if (cuewInit() == CUEW_SUCCESS) {
+		if(CUDADevice::have_precompiled_kernels())
+			result = true;
+#ifndef _WIN32
+		else if(cuewCompilerPath() != NULL)
+			result = true;
+#endif
+	}
+
+	return result;
+}
+
 Device *device_cuda_create(DeviceInfo& info, Stats &stats, bool background)
 {
 	return new CUDADevice(info, stats, background);
@@ -1121,13 +1056,13 @@ void device_cuda_info(vector<DeviceInfo>& devices)
 	result = cuInit(0);
 	if(result != CUDA_SUCCESS) {
 		if(result != CUDA_ERROR_NO_DEVICE)
-			fprintf(stderr, "CUDA cuInit: %s\n", CUDADevice::cuda_error_string(result));
+			fprintf(stderr, "CUDA cuInit: %s\n", cuewErrorString(result));
 		return;
 	}
 
 	result = cuDeviceGetCount(&count);
 	if(result != CUDA_SUCCESS) {
-		fprintf(stderr, "CUDA cuDeviceGetCount: %s\n", CUDADevice::cuda_error_string(result));
+		fprintf(stderr, "CUDA cuDeviceGetCount: %s\n", cuewErrorString(result));
 		return;
 	}
 	

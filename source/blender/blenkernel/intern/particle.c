@@ -656,7 +656,7 @@ static float psys_render_projected_area(ParticleSystem *psys, const float center
 	}
 
 	/* screen space radius */
-	radius = sqrt(area / (float)M_PI);
+	radius = sqrtf(area / (float)M_PI);
 
 	/* make smaller using fallof once over screen edge */
 	*viewport = 1.0f;
@@ -917,8 +917,8 @@ int psys_render_simplify_distribution(ParticleThreadContext *ctx, int tot)
 			elem->scalemax = (lambda + t < 1.0f) ? 1.0f / lambda : 1.0f / (1.0f - elem->t * elem->t / t);
 			elem->scalemin = (lambda + t < 1.0f) ? 0.0f : elem->scalemax * (1.0f - elem->t / t);
 
-			elem->scalemin = sqrt(elem->scalemin);
-			elem->scalemax = sqrt(elem->scalemax);
+			elem->scalemin = sqrtf(elem->scalemin);
+			elem->scalemax = sqrtf(elem->scalemax);
 
 			/* clamp scaling */
 			scaleclamp = (float)min_ii(elem->totchild, 10);
@@ -939,8 +939,8 @@ int psys_render_simplify_distribution(ParticleThreadContext *ctx, int tot)
 		}
 
 		elem->lambda = lambda;
-		elem->scalemin = sqrt(elem->scalemin);
-		elem->scalemax = sqrt(elem->scalemax);
+		elem->scalemin = sqrtf(elem->scalemin);
+		elem->scalemax = sqrtf(elem->scalemax);
 		elem->curchild = 0;
 	}
 
@@ -1657,11 +1657,14 @@ int psys_particle_dm_face_lookup(Object *ob, DerivedMesh *dm, int index, const f
 		index_mp_to_orig = NULL;
 	}
 
+	totface = dm->getNumTessFaces(dm);
+	if (!totface) {
+		return DMCACHE_NOTFOUND;
+	}
+
 	mpoly = dm->getPolyArray(dm);
 	osface = dm->getTessFaceDataArray(dm, CD_ORIGSPACE);
 
-	totface = dm->getNumTessFaces(dm);
-	
 	if (osface == NULL || index_mf_to_mpoly == NULL) {
 		/* Assume we don't need osface data */
 		if (index < totface) {
@@ -1907,7 +1910,7 @@ void psys_particle_on_emitter(ParticleSystemModifierData *psmd, int from, int in
                               float fuv[4], float foffset, float vec[3], float nor[3], float utan[3], float vtan[3],
                               float orco[3], float ornor[3])
 {
-	if (psmd) {
+	if (psmd && psmd->dm) {
 		if (psmd->psys->part->distr == PART_DISTR_GRID && psmd->psys->part->from != PART_FROM_VERT) {
 			if (vec)
 				copy_v3_v3(vec, fuv);
@@ -1947,10 +1950,10 @@ static void do_kink(ParticleKey *state, ParticleKey *par, float *par_rot, float 
 	t = time * freq * (float)M_PI;
 	
 	if (smooth_start) {
-		dt = fabs(t);
+		dt = fabsf(t);
 		/* smooth the beginning of kink */
 		CLAMP(dt, 0.f, (float)M_PI);
-		dt = sin(dt / 2.f);
+		dt = sinf(dt / 2.f);
 	}
 
 	if (type != PART_KINK_RADIAL) {
@@ -2011,12 +2014,12 @@ static void do_kink(ParticleKey *state, ParticleKey *par, float *par_rot, float 
 				madd_v3_v3fl(result, proj, flat);
 			}
 
-			madd_v3_v3fl(result, par_vec, -amplitude * (float)sin(t));
+			madd_v3_v3fl(result, par_vec, -amplitude * sinf(t));
 			break;
 		}
 		case PART_KINK_WAVE:
 		{
-			madd_v3_v3fl(result, kink, amplitude * (float)sin(t));
+			madd_v3_v3fl(result, kink, amplitude * sinf(t));
 
 			if (flat > 0.f) {
 				float proj[3];
@@ -2051,22 +2054,22 @@ static void do_kink(ParticleKey *state, ParticleKey *par, float *par_rot, float 
 			if (inp_y > 0.5f) {
 				copy_v3_v3(state_co, y_vec);
 
-				mul_v3_fl(y_vec, amplitude * (float)cos(t));
-				mul_v3_fl(z_vec, amplitude / 2.f * (float)sin(2.f * t));
+				mul_v3_fl(y_vec, amplitude * cosf(t));
+				mul_v3_fl(z_vec, amplitude / 2.f * sinf(2.f * t));
 			}
 			else if (inp_z > 0.0f) {
-				mul_v3_v3fl(state_co, z_vec, (float)sin((float)M_PI / 3.f));
+				mul_v3_v3fl(state_co, z_vec, sinf((float)M_PI / 3.f));
 				madd_v3_v3fl(state_co, y_vec, -0.5f);
 
-				mul_v3_fl(y_vec, -amplitude * (float)cos(t + (float)M_PI / 3.f));
-				mul_v3_fl(z_vec, amplitude / 2.f * (float)cos(2.f * t + (float)M_PI / 6.f));
+				mul_v3_fl(y_vec, -amplitude * cosf(t + (float)M_PI / 3.f));
+				mul_v3_fl(z_vec, amplitude / 2.f * cosf(2.f * t + (float)M_PI / 6.f));
 			}
 			else {
-				mul_v3_v3fl(state_co, z_vec, -(float)sin((float)M_PI / 3.f));
+				mul_v3_v3fl(state_co, z_vec, -sinf((float)M_PI / 3.f));
 				madd_v3_v3fl(state_co, y_vec, -0.5f);
 
-				mul_v3_fl(y_vec, amplitude * (float)-sin(t + (float)M_PI / 6.f));
-				mul_v3_fl(z_vec, amplitude / 2.f * (float)-sin(2.f * t + (float)M_PI / 3.f));
+				mul_v3_fl(y_vec, amplitude * -sinf(t + (float)M_PI / 6.f));
+				mul_v3_fl(z_vec, amplitude / 2.f * -sinf(2.f * t + (float)M_PI / 3.f));
 			}
 
 			mul_v3_fl(state_co, amplitude);
@@ -2268,8 +2271,11 @@ static void do_rough(float *loc, float mat[4][4], float t, float fac, float size
 	float rough[3];
 	float rco[3];
 
-	if (thres != 0.0f)
-		if ((float)fabs((float)(-1.5f + loc[0] + loc[1] + loc[2])) < 1.5f * thres) return;
+	if (thres != 0.0f) {
+		if (fabsf((float)(-1.5f + loc[0] + loc[1] + loc[2])) < 1.5f * thres) {
+			return;
+		}
+	}
 
 	copy_v3_v3(rco, loc);
 	mul_v3_fl(rco, t);
@@ -2666,6 +2672,9 @@ static void psys_thread_create_path(ParticleThread *thread, struct ChildParticle
 		/* get the original coordinates (orco) for texture usage */
 		cpa_from = part->from;
 		cpa_num = pa->num;
+		/* XXX hack to avoid messed up particle num and subsequent crash (#40733) */
+		if (cpa_num > ctx->sim.psmd->dm->getNumTessFaces(ctx->sim.psmd->dm))
+			cpa_num = 0;
 		cpa_fuv = pa->fuv;
 
 		psys_particle_on_emitter(ctx->sim.psmd, cpa_from, cpa_num, DMCACHE_ISCHILD, cpa_fuv, pa->foffset, co, ornor, 0, 0, orco, 0);
@@ -3887,6 +3896,8 @@ static void get_cpa_texture(DerivedMesh *dm, ParticleSystem *psys, ParticleSetti
 }
 void psys_get_texture(ParticleSimulationData *sim, ParticleData *pa, ParticleTexture *ptex, int event, float cfra)
 {
+	Object *ob = sim->ob;
+	Mesh *me = (Mesh *)ob->data;
 	ParticleSettings *part = sim->psys->part;
 	MTex **mtexp = part->mtex;
 	MTex *mtex;
@@ -3926,6 +3937,14 @@ void psys_get_texture(ParticleSimulationData *sim, ParticleData *pa, ParticleTex
 				/* no break, failed to get uv's, so let's try orco's */
 				case TEXCO_ORCO:
 					psys_particle_on_emitter(sim->psmd, sim->psys->part->from, pa->num, pa->num_dmcache, pa->fuv, pa->foffset, co, 0, 0, 0, texvec, 0);
+					
+					if (me->bb == NULL || (me->bb->flag & BOUNDBOX_DIRTY)) {
+						BKE_mesh_texspace_calc(me);
+					}
+					sub_v3_v3(texvec, me->loc);
+					if (me->size[0] != 0.0f) texvec[0] /= me->size[0];
+					if (me->size[1] != 0.0f) texvec[1] /= me->size[1];
+					if (me->size[2] != 0.0f) texvec[2] /= me->size[2];
 					break;
 				case TEXCO_PARTICLE:
 					/* texture coordinates in range [-1, 1] */
@@ -4551,8 +4570,8 @@ void psys_get_dupli_path_transform(ParticleSimulationData *sim, ParticleData *pa
 		normalize_v3(nor);
 
 		/* make sure that we get a proper side vector */
-		if (fabs(dot_v3v3(nor, vec)) > 0.999999) {
-			if (fabs(dot_v3v3(nor, xvec)) > 0.999999) {
+		if (fabsf(dot_v3v3(nor, vec)) > 0.999999) {
+			if (fabsf(dot_v3v3(nor, xvec)) > 0.999999) {
 				nor[0] = 0.0f;
 				nor[1] = 1.0f;
 				nor[2] = 0.0f;
@@ -4660,12 +4679,12 @@ void psys_make_billboard(ParticleBillboardData *bb, float xvec[3], float yvec[3]
 	copy_v3_v3(tvec, xvec);
 	copy_v3_v3(tvec2, yvec);
 
-	mul_v3_fl(xvec, cos(bb->tilt * (float)M_PI));
-	mul_v3_fl(tvec2, sin(bb->tilt * (float)M_PI));
+	mul_v3_fl(xvec, cosf(bb->tilt * (float)M_PI));
+	mul_v3_fl(tvec2, sinf(bb->tilt * (float)M_PI));
 	add_v3_v3(xvec, tvec2);
 
-	mul_v3_fl(yvec, cos(bb->tilt * (float)M_PI));
-	mul_v3_fl(tvec, -sin(bb->tilt * (float)M_PI));
+	mul_v3_fl(yvec, cosf(bb->tilt * (float)M_PI));
+	mul_v3_fl(tvec, -sinf(bb->tilt * (float)M_PI));
 	add_v3_v3(yvec, tvec);
 
 	mul_v3_fl(xvec, bb->size[0]);

@@ -46,7 +46,7 @@ rm -rf $tmp
 sources=`find ./include ./internal -type f -iname '*.cc' -or -iname '*.cpp' -or -iname '*.c' | sed -r 's/^\.\//\t/' | \
   grep -v -E 'schur_eliminator_[0-9]_[0-9d]_[0-9d].cc' | \
   grep -v -E 'partitioned_matrix_view_[0-9]_[0-9d]_[0-9d].cc' | sort -d`
-generated_sources=`find ./include ./internal -type f -iname '*.cc' -or -iname '*.cpp' -or -iname '*.c' | sed -r 's/^\.\//#\t\t/' | \
+generated_sources=`find ./include ./internal -type f -iname '*.cc' -or -iname '*.cpp' -or -iname '*.c' | sed -r 's/^\.\//\t\t/' | \
   grep -E 'schur_eliminator_[0-9]_[0-9d]_[0-9d].cc|partitioned_matrix_view_[0-9]_[0-9d]_[0-9d].cc' | sort -d`
 headers=`find ./include ./internal -type f -iname '*.h' | sed -r 's/^\.\//\t/' | sort -d`
 
@@ -123,6 +123,7 @@ set(INC
 	.
 	include
 	internal
+	config
 	../gflags
 	../../
 )
@@ -137,11 +138,13 @@ ${sources}
 ${headers}
 )
 
-#if(FALSE)
-#	list(APPEND SRC
+if(WITH_LIBMV_SCHUR_SPECIALIZATIONS)
+	list(APPEND SRC
 ${generated_sources}
-#	)
-#endif()
+	)
+else()
+	add_definitions(-DCERES_RESTRICT_SCHUR_SPECIALIZATION)
+endif()
 
 if(WIN32)
 	list(APPEND INC
@@ -164,7 +167,6 @@ add_definitions(
 	-DCERES_NO_SUITESPARSE
 	-DCERES_NO_CXSPARSE
 	-DCERES_NO_LAPACK
-	-DCERES_RESTRICT_SCHUR_SPECIALIZATION
 	-DCERES_HAVE_RWLOCK
 )
 
@@ -208,56 +210,50 @@ cat > SConscript << EOF
 import sys
 import os
 
-from unordered_map import test_unordered_map
-
 Import('env')
 
 src = []
 defs = []
 
 $src
-src += env.Glob('internal/ceres/generated/schur_eliminator_d_d_d.cc')
-src += env.Glob('internal/ceres/generated/partitioned_matrix_view_d_d_d.cc')
-#src += env.Glob('internal/ceres/generated/*.cc')
+if env['WITH_BF_LIBMV_SCHUR_SPECIALIZATIONS']:
+    src += env.Glob('internal/ceres/generated/*.cc')
+else:
+    src += env.Glob('internal/ceres/generated/schur_eliminator_d_d_d.cc')
+    src += env.Glob('internal/ceres/generated/partitioned_matrix_view_d_d_d.cc')
+    defs.append('CERES_RESTRICT_SCHUR_SPECIALIZATION')
 
 defs.append('CERES_HAVE_PTHREAD')
 defs.append('CERES_NO_SUITESPARSE')
 defs.append('CERES_NO_CXSPARSE')
 defs.append('CERES_NO_LAPACK')
-defs.append('CERES_RESTRICT_SCHUR_SPECIALIZATION')
 defs.append('CERES_HAVE_RWLOCK')
 
 if env['WITH_BF_OPENMP']:
     defs.append('CERES_USE_OPENMP')
 
-def define_unordered_map(conf):
-    found, namespace, include_prefix = test_unordered_map(conf)
-    if found:
-        if not include_prefix:
-            if namespace == 'std':
-                defs.append('CERES_STD_UNORDERED_MAP')
-                return True
-            elif namespace == 'std::tr1':
-                defs.append('CERES_STD_UNORDERED_MAP_IN_TR1_NAMESPACE')
-                return True
-        else:
-            if namespace == 'std::tr1':
-                defs.append('CERES_TR1_UNORDERED_MAP')
-                return True
-    return False
-
-conf = Configure(env)
-if not define_unordered_map(conf):
+if env['WITH_UNORDERED_MAP_SUPPORT']:
+    if env['UNORDERED_MAP_HEADER'] == 'unordered_map':
+        if env['UNORDERED_MAP_NAMESPACE'] == 'std':
+            defs.append('CERES_STD_UNORDERED_MAP')
+        elif env['UNORDERED_MAP_NAMESPACE'] == 'std::tr1':
+            defs.append('CERES_STD_UNORDERED_MAP_IN_TR1_NAMESPACE')
+    elif env['UNORDERED_MAP_NAMESPACE'] == 'std::tr1':
+        defs.append('CERES_TR1_UNORDERED_MAP')
+else:
     print("-- Replacing unordered_map/set with map/set (warning: slower!)")
     defs.append('CERES_NO_UNORDERED_MAP')
-env = conf.Finish()
 
-incs = '. ../../ ../../../Eigen3 ./include ./internal ../gflags'
+if not env['WITH_SHARED_PTR_SUPPORT']:
+    print("-- Unable to find shared_ptr which is required for compilation.")
+    exit(1)
 
-# work around broken hashtable in 10.5 SDK
-if env['OURPLATFORM'] == 'darwin' and env['WITH_BF_BOOST']:
-    incs += ' ' + env['BF_BOOST_INC']
-    defs.append('CERES_HASH_BOOST')
+if env['SHARED_PTR_HEADER'] == 'tr1/memory':
+    defs.append('CERES_TR1_MEMORY_HEADER')
+if env['SHARED_PTR_NAMESPACE'] == 'std::tr1':
+    defs.append('CERES_TR1_SHARED_PTR')
+
+incs = '. ../../ ../../../Eigen3 ./include ./internal ../gflags ./config'
 
 if env['OURPLATFORM'] in ('win32-vc', 'win32-mingw', 'linuxcross', 'win64-vc', 'win64-mingw'):
     if env['OURPLATFORM'] in ('win32-vc', 'win64-vc'):

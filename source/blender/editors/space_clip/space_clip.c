@@ -754,6 +754,10 @@ static void clip_keymap(struct wmKeyConfig *keyconf)
 	RNA_string_set(kmi->ptr, "data_path", "space_data.pivot_point");
 	RNA_string_set(kmi->ptr, "value", "INDIVIDUAL_ORIGINS");
 
+	/* Copy-paste */
+	WM_keymap_add_item(keymap, "CLIP_OT_copy_tracks", CKEY, KM_PRESS, KM_CTRL, 0);
+	WM_keymap_add_item(keymap, "CLIP_OT_paste_tracks", VKEY, KM_PRESS, KM_CTRL, 0);
+
 	/* ******** Hotkeys avalaible for preview region only ******** */
 
 	keymap = WM_keymap_find(keyconf, "Clip Graph Editor", SPACE_CLIP, 0);
@@ -846,7 +850,7 @@ static int clip_context(const bContext *C, const char *member, bContextDataResul
 static int clip_drop_poll(bContext *UNUSED(C), wmDrag *drag, const wmEvent *UNUSED(event))
 {
 	if (drag->type == WM_DRAG_PATH)
-		if (ELEM4(drag->icon, 0, ICON_FILE_IMAGE, ICON_FILE_MOVIE, ICON_FILE_BLANK)) /* rule might not work? */
+		if (ELEM(drag->icon, 0, ICON_FILE_IMAGE, ICON_FILE_MOVIE, ICON_FILE_BLANK)) /* rule might not work? */
 			return true;
 
 	return false;

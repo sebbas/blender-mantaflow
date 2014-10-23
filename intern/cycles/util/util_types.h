@@ -33,14 +33,17 @@
 
 #ifndef __KERNEL_GPU__
 
-#define ccl_device static inline
+#  ifdef NDEBUG
+#    define ccl_device static inline
+#  else
+#    define ccl_device static
+#  endif
 #define ccl_device_noinline static
 #define ccl_global
 #define ccl_constant
 #define __KERNEL_WITH_SSE_ALIGN__
 
 #if defined(_WIN32) && !defined(FREE_WINDOWS)
-
 #define ccl_device_inline static __forceinline
 #define ccl_align(...) __declspec(align(__VA_ARGS__))
 #ifdef __KERNEL_64_BIT__
@@ -50,7 +53,12 @@
 #define ccl_try_align(...) /* not support for function arguments (error C2719) */
 #endif
 #define ccl_may_alias
-#define ccl_always_inline __forceinline
+#  ifdef NDEBUG
+#    define ccl_always_inline __forceinline
+#  else
+#    define ccl_always_inline
+#  endif
+#define ccl_maybe_unused
 
 #else
 
@@ -62,6 +70,7 @@
 #define ccl_try_align(...) __attribute__((aligned(__VA_ARGS__)))
 #define ccl_may_alias __attribute__((__may_alias__))
 #define ccl_always_inline __attribute__((always_inline))
+#define ccl_maybe_unused __attribute__((used))
 
 #endif
 
@@ -456,7 +465,6 @@ enum InterpolationType {
 	INTERPOLATION_SMART = 3,
 };
 
-
 /* macros */
 
 /* hints for branch prediction, only use in code that runs a _lot_ */
@@ -473,14 +481,14 @@ enum InterpolationType {
  * ... the compiler optimizes away the temp var */
 #ifdef __GNUC__
 #define CHECK_TYPE(var, type)  {  \
-	__typeof(var) *__tmp;         \
+	typeof(var) *__tmp;         \
 	__tmp = (type *)NULL;         \
 	(void)__tmp;                  \
 } (void)0
 
 #define CHECK_TYPE_PAIR(var_a, var_b)  {  \
-	__typeof(var_a) *__tmp;               \
-	__tmp = (__typeof(var_b) *)NULL;      \
+	typeof(var_a) *__tmp;                 \
+	__tmp = (typeof(var_b) *)NULL;        \
 	(void)__tmp;                          \
 } (void)0
 #else

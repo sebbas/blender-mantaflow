@@ -23,7 +23,7 @@
 
 #include "kernel_film.h"
 #include "kernel_path.h"
-#include "kernel_displace.h"
+#include "kernel_bake.h"
 
 __kernel void kernel_ocl_path_trace(
 	ccl_constant KernelData *data,
@@ -115,7 +115,7 @@ __kernel void kernel_ocl_shader(
 	ccl_global type *name,
 #include "kernel_textures.h"
 
-	int type, int sx, int sw)
+	int type, int sx, int sw, int offset, int sample)
 {
 	KernelGlobals kglobals, *kg = &kglobals;
 
@@ -128,6 +128,31 @@ __kernel void kernel_ocl_shader(
 	int x = sx + get_global_id(0);
 
 	if(x < sx + sw)
-		kernel_shader_evaluate(kg, input, output, (ShaderEvalType)type, x);
+		kernel_shader_evaluate(kg, input, output, (ShaderEvalType)type, x, sample);
+}
+
+__kernel void kernel_ocl_bake(
+	ccl_constant KernelData *data,
+	ccl_global uint4 *input,
+	ccl_global float4 *output,
+
+#define KERNEL_TEX(type, ttype, name) \
+	ccl_global type *name,
+#include "kernel_textures.h"
+
+	int type, int sx, int sw, int offset, int sample)
+{
+	KernelGlobals kglobals, *kg = &kglobals;
+
+	kg->data = data;
+
+#define KERNEL_TEX(type, ttype, name) \
+	kg->name = name;
+#include "kernel_textures.h"
+
+	int x = sx + get_global_id(0);
+
+	if(x < sx + sw)
+		kernel_bake_evaluate(kg, input, output, (ShaderEvalType)type, x, offset, sample);
 }
 

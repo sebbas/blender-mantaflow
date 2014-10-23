@@ -1,687 +1,673 @@
-commit 15bf0d5018dfe432ef67e726b248efcf3b58bc4f
-Author: Sergey Sharybin <sergey.vfx@gmail.com>
-Date:   Mon Jan 13 20:38:28 2014 +0600
-
-    Code cleanup: fix no previous declaration warnings
-    
-    Move internally used functions to an anonymous namespace,
-    
-    Change-Id: I84c98facf901e64771d131b088e20e2c033cab70
-
-commit 80a53eebfd28bfc032cedbf7852d5c56eb1d5af5
+commit 0435246de5f45e69b2c97d244ed61bedd340215a
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Thu Jan 9 12:40:54 2014 -0800
+Date:   Wed Oct 8 18:12:53 2014 -0700
 
-    Faster LBFGS.
+    Add seene to users.rst
     
-    1. Use column major storage for the various matrices used by
-    LowRankInverseHessian. Since all the operations are on columns.
-    
-    2. Use a circular buffer to keep track of history of the LBFGS updates
-    so that an update does not require copying the entire history. This
-    makes the updates O(1) rather than O(rank).
-    
-    The implementation has been checked against the denoising code
-    where it gives numerically identical results. The overhead of the
-    LBFGS code is now near negligible as compared to the gradient evaluation.
-    
-    On a sample problem
-    
-    before 1050ms after: 630ms
-    
-    Change-Id: I537ba506ac35fc4960b304c10d923a8dea2ae031
+    Change-Id: If40726775a3d4b234b6e10517fe9943d122a3384
 
-commit f55780063620e7a3dcfe7e018d6488bf6a5b29da
+commit fdf32b315f39553639f0becf078ad4eec763a10e
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Wed Jan 8 10:43:31 2014 -0800
+Date:   Wed Oct 8 16:04:32 2014 -0700
 
-    Reduce logging verbosity.
+    Fix some errant tabs.
     
-    When user specifies Solver::Options::logging_type = SILENT,
-    ensure that the minimizer does not log anything.
-    
-    Change-Id: I94e34dae504881ab36d4a66e6adb7a19a227363e
+    Change-Id: Iaf1906eaade49467ba282656cf0a10879d258b1f
 
-commit 85561eee951c91e578984c6d3eecf0073acabb64
+commit 6768b3586a027bb850c0a50e2a27380f5d80142a
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Tue Jan 7 22:22:14 2014 -0800
+Date:   Wed Oct 8 12:48:16 2014 -0700
 
-    Use int32 for parameter block sizes.
+    Minor cleanups in preparation for a release.
     
-    CostFunction now uses int32 instead of int16
-    to store the size of its parameter blocks.
+    1. Fix the release script to ignore the version.h checking.
+    2. Fix some ceres documentation formatting errors.
     
-    This is an API breaking change.
-    
-    Change-Id: I032ea583bc7ea4b3009be25d23a3be143749c73e
+    Change-Id: I3fd6b85e771b242f463d6a36c3efd8d691f9242f
 
-commit a7fda3317b1a97702750bea96ac3ef3d1a2afb49
+commit 7b6bd1cd31aa0b8cb7fb97600c1b9999846e3152
+Author: Sameer Agarwal <sameeragarwal@google.com>
+Date:   Thu Oct 2 16:16:26 2014 -0700
+
+    Documentation update.
+    
+    1. Complete restructuring of the documentation to account for
+       GradientProblemSolver.
+    2. Update the version history to account for changes since 1.9.0.
+    3. Add links and document the various examples that ship with ceres.
+    4. Documentation for GradientProblem GradientProblemSolver.
+    
+    Change-Id: If3a18f2850cbc98be1bc34435e9ea468785b8b27
+
+commit b7d321f505e936b6c09aeb43ae3f7b1252388a95
+Author: Sameer Agarwal <sameeragarwal@google.com>
+Date:   Fri Oct 3 15:47:59 2014 -0700
+
+    Relax the warning/error handing in GCC.
+    
+    Thanks to Matthew Woehlke for suggesting this.
+    
+    Change-Id: Iae754465c086b0841a7816df1a36781371d0dc9a
+
+commit 94c6e7d27b5d48d81ab54ed9cdcbc55c3c099311
+Author: Sameer Agarwal <sameeragarwal@google.com>
+Date:   Wed Oct 1 15:55:13 2014 -0700
+
+    Improve multithreading when using inner iterations.
+    
+    Inner iterations by default would use problems where the evaluator
+    was configured to use exactly one thread for doing the evaluation.
+    This is fine when there are multiple inner iteration problems
+    being executed concurrently, but every now and then there are
+    problem decompositions where there is just one parameter block
+    in the current independent set and it touches every single
+    residual block. In such cases it is essential that the evaluator
+    be configured to use multiple threads.
+    
+    We now pay attention to the size of the independent set and
+    dynamically configure the number of threads being used by the
+    outer loop and the evaluator loop.
+    
+    Thanks to William Rucklidge for reporting this issue and providing
+    a test problem to debug.
+    
+    Change-Id: Iaff9a4ab6d2658cf7b61ea213575d23aab604e3b
+
+commit 9e11cd16d09403b9270e621e839d5948b6a74b8d
+Author: Sameer Agarwal <sameeragarwal@google.com>
+Date:   Mon Sep 29 14:27:58 2014 -0700
+
+    Faster  BlockRandomAccessSparseMatrix::SymmetricRightMultiply.
+    
+    Trade a small amount of memory to improve the cache coherency of
+    the SymmetricRightMultiply operation.
+    
+    The resulting code leads to a 10-20% speedup in the linear solver
+    end to end.
+    
+    Change-Id: I8ab2fe152099e849b211b5b19e4ef9f03d8e7f1c
+
+commit 46b8461fd010c1e7ffce6bb2bdf8a84b659d5e09
+Author: Sameer Agarwal <sameeragarwal@google.com>
+Date:   Mon Sep 29 15:10:58 2014 -0700
+
+    Various minor fixes from William Rucklidge.
+    
+    Change-Id: Ibe731d5db374ad8ee148d62a9fdd8d726b607a3f
+
+commit b44cfdef25f6bf0917a23b3fd65cce38aa6a3362
+Author: Sameer Agarwal <sameeragarwal@google.com>
+Date:   Mon Sep 29 07:53:54 2014 -0700
+
+    Let ITERATIVE_SCHUR use an explicit Schur Complement matrix.
+    
+    Up till now ITERATIVE_SCHUR evaluates matrix-vector products
+    between the Schur complement and a vector implicitly by exploiting
+    the algebraic expression for the Schur complement.
+    
+    This cost of this evaluation scales with the number of non-zeros
+    in the Jacobian.
+    
+    For small to medium sized problems there is a sweet spot where
+    computing the Schur complement is cheap enough that it is much
+    more efficient to explicitly compute it and use it for evaluating
+    the matrix-vector products.
+    
+    This changes implements support for an explicit Schur complement
+    in ITERATIVE_SCHUR in combination with the SCHUR_JACOBI preconditioner.
+    
+    API wise a new bool Solver::Options::use_explicit_schur_complement
+    has been added.
+    
+    The implementation extends the SparseSchurComplementSolver to use
+    Conjugate Gradients.
+    
+    Example speedup:
+    
+    use_explicit_schur_complement = false
+    
+    Time (in seconds):
+    Preprocessor                            0.585
+    
+      Residual evaluation                   0.319
+      Jacobian evaluation                   1.590
+      Linear solver                        25.685
+    Minimizer                              27.990
+    
+    Postprocessor                           0.010
+    Total                                  28.585
+    
+    use_explicit_schur_complement = true
+    
+    Time (in seconds):
+    Preprocessor                            0.638
+    
+      Residual evaluation                   0.318
+      Jacobian evaluation                   1.507
+      Linear solver                         5.930
+    Minimizer                               8.144
+    
+    Postprocessor                           0.010
+    Total                                   8.791
+    
+    Which indicates an end-to-end speedup of more than 3x, with the linear
+    solver being sped up by > 4x.
+    
+    The idea to explore this optimization was inspired by the recent paper:
+    
+    Mining structure fragments for smart bundle adjustment
+    L. Carlone, P. Alcantarilla, H. Chiu, K. Zsolt, F. Dellaert
+    British Machine Vision Conference, 2014
+    
+    which uses a more complicated algorithm to compute parts of the
+    Schur complement to speed up the matrix-vector product.
+    
+    Change-Id: I95324af0ab351faa1600f5204039a1d2a64ae61d
+
+commit 4ad91490827f2ebebcc70d17e63ef653bf06fd0d
+Author: Sameer Agarwal <sameeragarwal@google.com>
+Date:   Wed Sep 24 23:54:18 2014 -0700
+
+    Simplify the Block Jacobi and Schur Jacobi preconditioners.
+    
+    1. Extend the implementation of BlockRandomAccessDiagonalMatrix
+    by adding Invert and RightMultiply methods.
+    
+    2. Simplify the implementation of the Schur Jacobi preconditioner
+    using these new methods.
+    
+    3. Replace the custom storage used inside Block Jacobi preconditioner
+    with BlockRandomAccessDiagonalMatrix and simplify its implementation
+    too.
+    
+    Change-Id: I9d4888b35f0f228c08244abbdda5298b3ce9c466
+
+commit 8f7be1036b853addc33224d97b92412b5a1281b6
+Author: Sameer Agarwal <sameeragarwal@google.com>
+Date:   Mon Sep 29 08:13:35 2014 -0700
+
+    Fix a formatting error TrustRegionMinimizer logging.
+    
+    Change-Id: Iad1873c51eece46c3fdee1356d154367cfd7925e
+
+commit c99872d48e322662ea19efb9010a62b7432687ae
+Author: Sameer Agarwal <sameeragarwal@google.com>
+Date:   Wed Sep 24 21:30:02 2014 -0700
+
+    Add BlockRandomAccessSparseMatrix::SymmetricRightMultiply.
+    
+    Change-Id: Ib06a22a209b4c985ba218162dfb6bf46bd93169e
+
+commit d3ecd18625ba260e0d00912a305a448b566acc59
+Author: Sameer Agarwal <sameeragarwal@google.com>
+Date:   Tue Sep 23 10:12:42 2014 -0700
+
+    Add an explicit include for local_parameterization.h
+    
+    Thanks to cooordz for reporting this.
+    
+    Change-Id: I7d345404e362a94ff1eb433ad6b9dcc4960ba76d
+
+commit 5dd76869cf45122c79579423f09e0de08cf04092
 Author: Alex Stewart <alexs.mac@gmail.com>
-Date:   Mon Jan 6 10:25:42 2014 +0000
+Date:   Fri Sep 19 16:08:25 2014 +0100
 
-    Fix typos in error messages in line search config checks.
+    Fix unused-function warning with Eigen < 3.2.2.
     
-    Change-Id: I3ae2ae58328e996598e3e32c12869d2b10109ef7
+    - CreateBlockJacobian() is only ever used when Eigen >= 3.2.2 is
+      detected, but was previously defined whenever CERES_USE_EIGEN_SPARSE
+      was defined with no check on the Eigen version.
+    - This resulted in an unused-function compile warning that became an
+      error due to -Werror, preventing compilation when using Eigen < 3.2.2.
+    
+    Change-Id: I24628ff329f14b087ece66bf2626bdc0de4ba224
 
-commit f695322eb8c5ff118f0d27f68d46d557338e5db1
+commit 820cb7b14831aa03eca1e8186000cebfdf0a42f3
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Sat Jan 4 14:28:23 2014 -0800
+Date:   Wed Sep 17 09:46:08 2014 -0700
 
-    Remove a compilation warning on windows.
+    Add solver_utils.cc to Android.mk
     
-    Only define NOMINMAX if it is not already defined.
-    
-    Thanks to Pierre Moulon for this fix.
-    
-    Change-Id: Ia5dc0f5ff2afe10e4c7e97a57f54297d82052b21
+    Change-Id: I358522971711280f4362a1fa39b1568160e21e63
 
-commit b811041d78d80518db153ef3030bcbdbaf80df8d
-Author: Sergey Sharybin <sergey.vfx@gmail.com>
-Date:   Thu Jan 2 15:19:17 2014 +0600
-
-    Code cleanup: fix no previous declaration warnings
-    
-    Moved some internally used functions into an anonymous namespace.
-    
-    Change-Id: Ie82df61b0608abac79ccc9f7b14e7f7e04ab733d
-
-commit f14f6bf9b7d3fbd2cab939cf4ad615b317e93c83
+commit 092b94970a073f8b47179d96160226fc19095898
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Thu Dec 26 09:50:45 2013 -0800
+Date:   Fri Sep 5 11:56:29 2014 -0700
 
-    Speed up SPARSE_NORMAL_CHOLESKY when using CX_SPARSE.
+    Add GradientProblem and GradientProblemSolver.
     
-    When using sparse cholesky factorization to solve the linear
-    least squares problem:
+    The line search minimizer in Ceres does not require that the
+    problems that is solving is a sum of squares. Over the past
+    year there have been multiple requests to expose this algorithm
+    on its own so that it can be used to solve unconstrained
+    non-linear minimization problems on its own.
     
-      Ax = b
+    With this change, a new optimization problem called
+    GradientProblem is introduced which is basically a thin
+    wrapper around a user defined functor that evaluates cost
+    and gradients (FirstOrderFunction) and an optional LocalParameterization.
     
-    There are two sources of computational complexity.
+    Corresponding to it, a GradientProblemSolver and its associated
+    options and summary structs are introduced too.
     
-    1. Computing H = A'A
-    2. Computing the sparse Cholesky factorization of H.
+    An example that uses the new API to find the minimum of Rosenbrock's
+    function is also added.
     
-    Doing 1. using CX_SPARSE is particularly expensive, as it uses
-    a generic cs_multiply function which computes the structure of
-    the matrix H everytime, reallocates memory and does not take
-    advantage of the fact that the matrix being computed is a symmetric
-    outer product.
-    
-    This change adds a custom symmetric outer product algorithm for
-    CompressedRowSparseMatrix.
-    
-    It has a symbolic phase, where it computes the sparsity structure
-    of the output matrix and a "program" which allows the actual
-    multiplication routine to determine exactly which entry in the
-    values array each term in the product contributes to.
-    
-    With these two bits of information, the outer product H = A'A
-    can be computed extremely fast without any reasoning about
-    the structure of H.
-    
-    Further gains in efficiency are made by exploiting the block
-    structure of A.
-    
-    With this change, SPARSE_NORMAL_CHOLESKY with CX_SPARSE as the
-    backend results in > 300% speedup for some problems.
-    
-    The symbolic analysis phase of the solver is a bit more expensive
-    now but the increased cost is made up in 3-4 iterations.
-    
-    Change-Id: I5e4a72b4d03ba41b378a2634330bc22b299c0f12
+    Change-Id: I42bf687540da25de991e9bdb00e321239244e8b4
 
-commit d79f886eb87cb064e19eb12c1ad3d45bbed92198
+commit 6c45d6b891aac01489b478a021f99081c61792cb
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Mon Dec 30 07:39:10 2013 -0800
+Date:   Thu Sep 11 07:48:30 2014 -0700
 
-    Refactor line search error checking code.
+    Add more inspection methods to Problem.
     
-    Move the error checking code into its own function
-    so that it can be used in upcoming changes.
+    Problem::GetCostFunctionForResidualBlock
+    Problem::GetLossFunctionForResidualBlock
     
-    Change-Id: Icf348e5a8bbe8f8b663f04fb8cfc9a2149b12f22
+    are added, so that users do not have to maintain this mapping
+    outside the Problem.
+    
+    Change-Id: I38356dfa094b2c7eec90651dafeaf3a33c5f5f56
 
-commit 2b16b0080b6e673eaaf9ed478c9e971d9fcd65de
+commit 6ad9b8e2ae66c9009441d0f9304486ec8dfa9a6a
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Fri Dec 20 15:22:26 2013 -0800
+Date:   Tue Sep 9 14:29:28 2014 -0700
 
-    CompressedRowSparseMatrix::AppendRows and DeleteRows bugfix.
+    Ignore row/column blocks structure when using dynamic sparsity
     
-    CompressedRowSparseMatrix can store the row and column block structure
-    but the AppendRows and DeleteRows methods did not pay attention to them.
-    This meant that it was possible to get to a CompressedRowSparseMatrix
-    whose block structure did not match the contents of the matrix.
+    The row/column blocks can be huge when using dynamic sparsity. This
+    can result in very large memory usage when augmenting the jacobian
+    with the LM diagonal.
     
-    This change fixes this problem.
+    Thanks to Mingsong Dou for reporting this.
     
-    Change-Id: I1b3c807fc03d8c049ee20511e2bc62806d211b81
+    Change-Id: I6aa140ceefa98389ae17958f89ca76e0c76f95b8
 
-commit 27bb4a8589c47a65b5ea2c01872a903043d0ef74
+commit 7e43460d42e20be1ba13121655dbbfd0d1c751ae
+Author: Martin Baeuml <baeuml@gmail.com>
+Date:   Mon Sep 8 16:49:06 2014 +0200
+
+    Fix a few typos in the documentation.
+    
+    Change-Id: I541db56b2b81ae758e233ce850d78c3cbb4b6fa3
+
+commit 1aef66eeae7042902655a11b0d6a1a32900abb7b
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Wed Dec 18 13:06:58 2013 -0800
+Date:   Sun Sep 7 21:18:44 2014 -0700
 
-    Handle empty problems consistently.
+    Remove errant space.
     
-    Until now Ceres was inconsistent in the way it handled a solve
-    call on an "empty" Problem. If the problem did not contain
-    any residual or parameter blocks, it failed. However, if after
-    constructing the reduced program, the problem was found to not
-    contain any modifiable parameter blocks, it was considered a valid
-    problem which had a constant objective function value.
-    
-    When creating problems automatically, it is often the case that
-    an empty problem is a corner case. This change makes handling this
-    corner case consistent with the rest of Ceres logic.
-    
-    Change-Id: Ia9da09fbf5d5cd7eae6b39a92c1976b8645db9fe
+    Change-Id: Iedc06960417a9b938d57f623b4beb87a98e3d081
 
-commit dcee120bac04911bf01d8365bddca87c74ce2af9
+commit 89080ab153a33008782759187fa8e9af7d2f83f1
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Sat Dec 7 21:48:56 2013 -0800
+Date:   Sat Sep 6 21:13:48 2014 -0700
 
-    Consolidate SolverTerminationType enum.
+    Add LocalParameterization::MultiplyByJacobian.
     
-    1. Rename SolverTerminationType to TerminationType.
-    2. Consolidate the enum as
-      a. CONVERGENCE - subsumes FUNCTION_TOLERANCE, PARAMETER_TOLERANCE and GRADIENT_TOLERANCE
-      b. NO_CONVERGENCE
-      c. FAILURE - captures all kinds of failures including DID_NOT_RUN.
-      d. USER_SUCCESS
-      e. USER_FAILURE
-    3. Solver::Summary::error is renamed to be Solver::Summary::message, to both
-    reduce confusion as well as capture its true meaning.
+    This is needed to efficiently support LocalParameterization objects
+    in GradientProblemSolver.
     
-    Change-Id: I27a382e66e67f5a4750d0ee914d941f6b53c326d
+    Change-Id: Ic7b715b8be694b099dc95d6707a67474297533e6
 
-commit d1cf320bb4f032cb14b20114a29ce2d867307492
-Author: Sergey Sharybin <sergey.vfx@gmail.com>
-Date:   Thu Nov 28 23:11:11 2013 +0600
-
-    Made collections port compatible with MSVC2008
-    
-    The issue was caused by the fact that in this version
-    of MSVC unordered_map class is defined in <unordered_map>
-    header file, but this file declares the class int std::tr1
-    namespace.
-    
-    This confused existing assumption that if there's an
-    existing <unordered_map> file then class is declared
-    in std namespace.
-    
-    Added an extra check to CMake which detects whether
-    it's std or std::tr1 which actually contains class
-    of unordered_map.
-    
-    Change-Id: Ic5cf41913895a6ce8e791cc7602d7cf5492c34de
-
-commit 324eccb5f6ce2a1a0061ec9f3c40778a029a2d97
+commit d76da16f49d419ae3664ca1bdc2286c1ea78ebed
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Tue Dec 3 09:28:14 2013 -0800
+Date:   Sun Sep 7 18:42:49 2014 -0700
 
-    Restore the state of the Problem after a call to Evaluate.
+    Move some routines to solver_utils.h/cc
     
-    Calling Problem::Evaluate mutates the state of the parameter blocks.
-    In particular, depending on the set and order of parameter blocks
-    passed to the evaluate call, it will change the internal indexing
-    used by the Program object used by ProblemImpl. This needs to be
-    undone before Evaluate returns, otherwise the Problem object
-    is in an invalid state.
+    This moves a couple of routines from solver.cc into solver_utils.h/cc
+    so that they can also be used by the upcoming GradientProblemSolver.
     
-    To help with testing and debugging in the future, a new method
-    Program::IsValid has been added which checks whether the problem
-    has its parameter and residual blocks in the right state.
-    
-    Thanks to Stefan Leutenegger for reporting this.
-    
-    Change-Id: I209b486a31433f0cbb58b570047649eca6d42b56
+    Change-Id: I627b32ad3dc639422aacde78a8e391459d947e99
 
-commit 3b1ad31a1fe89fe0bd78e1fffdf22d47d43faaf5
+commit cbf03ac292a0c0e9e6b7fcc1b08b67e95965922f
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Mon Dec 2 15:43:20 2013 -0800
+Date:   Sat Sep 6 21:07:08 2014 -0700
 
-    Fix build breakage on old versions of SuiteSparse.
+    Make LineSearchMinimizer consistent with TrustRegionMinimizer.
     
-    Change-Id: I2a061615fc374abef2ed323c298359002a6fc5f1
-
-commit 5fd480692b0a0c87e2af2f5a8754042a14f5f089
-Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Mon Dec 2 12:16:53 2013 -0800
-
-    Add more documentation to the linear solver enums.
+    Change the logic for how IterationSummary objects are added to
+    Summary::iterations to match the one in TrustRegionMinimizer.
     
-    Change-Id: Id57f76f73fa38043c0b6729972b1de8578ad7ede
+    Change-Id: I57851ad8294e58f83b9115cca9c24695d86ee92a
 
-commit d73acd035359886dfa1c5762b01c6f6449edcab8
+commit f04c32319751e1efd610acd3699bca0a6dd6c6d1
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Mon Dec 2 12:02:03 2013 -0800
+Date:   Sat Sep 6 21:05:41 2014 -0700
+
+    Fix some obsolete documentation in CostFunction::Evaluate
+    
+    Change-Id: I1d7ee5c596fbf6a4d886dce5b989c8eb18af2dce
+
+commit 9263547c02a1807532b159c217e7acd124d3db10
+Author: Johannes Schönberger <hannesschoenberger@gmail.com>
+Date:   Sat Sep 6 17:26:15 2014 -0400
+
+    Fix CG solver options for ITERATIVE_SCHUR, which did not copy min_num_iterations
+    
+    Change-Id: If31bc53b49ec20426fd438b79b8fa1f69d11e861
+
+commit b41f048256d1a8184cbe874b5a96dffa7fa4630d
+Author: Martin Baeuml <baeuml@gmail.com>
+Date:   Fri Sep 5 15:03:32 2014 +0200
+
+    Remove obsolete include of numeric_diff_functor.h.
+    
+    numeric_diff_functor.h was removed and does not exist anymore.
+    
+    Change-Id: I07bf04bf81142551e867b95b83a0653e11cad54c
+
+commit b7fb6056a717cc3c372cfb7115c527ee8bc05ddb
+Author: Sameer Agarwal <sameeragarwal@google.com>
+Date:   Wed Sep 3 11:19:02 2014 -0700
+
+    Remove NumericDiffFunctor.
+    
+    Its API was broken, and its implementation was an unnecessary
+    layer of abstraction over CostFunctionToFunctor.
+    
+    Change-Id: I18fc261fc6a3620b51a9eeb4dde0af03d753af69
+
+commit 175fa8ff09049110a8509409f60cee5fd52cdbe6
+Author: Sameer Agarwal <sameeragarwal@google.com>
+Date:   Tue Sep 2 06:49:08 2014 -0700
+
+    CostFunctionToFunctor allows dynamic number of residuals.
+    
+    The code itself was perfectly capable of handling residuals, but there
+    was an overly strict runtime check that had to be removed.
+    
+    Thanks to Domink Reitzle for reporting this.
+    
+    Change-Id: I6a6d000a7c5203dd5945a61b4caeda1b8aeb09c9
+
+commit 70ace0d5a5601901288974fcf27919754260cf0e
+Author: Johannes Schönberger <hannesschoenberger@gmail.com>
+Date:   Sat Aug 30 15:52:34 2014 -0400
+
+    Fix max. linear solver iterations in ConjugateGradientsSolver
+    
+    Change-Id: Ice0cef46441dbc1c121eeb42113667a46c96936f
+
+commit c5d8d0680250f5eb554577d30d28fc805b03fab9
+Author: Sameer Agarwal <sameeragarwal@google.com>
+Date:   Fri Aug 29 20:31:19 2014 -0700
+
+    Fix a unused function error with Eigen version 3.2.1 or less.
+    
+    Thanks to Johannes Schoenberger  for reporting this.
+    
+    Change-Id: Ie17d28f2a68734a978a8c95007724bc4055de43a
+
+commit 0e1cc2a55488e4cf381833baaa3531c02ce9d69e
+Author: Sameer Agarwal <sameeragarwal@google.com>
+Date:   Fri Aug 29 09:16:56 2014 -0700
+
+    Fix the build on Eigen version 3.2.1 and older.
+    
+    Change-Id: I18f5cb5d42113737d7b8f78a67acee28bd5b3e08
+
+commit 5f96c62b56222f27e606f2246a8a16b6942af8d1
+Author: Sameer Agarwal <sameeragarwal@google.com>
+Date:   Thu Aug 28 23:06:17 2014 -0700
+
+    Add Block AMD ordering for SPARSE_SCHUR + EIGEN_SPARSE.
+    
+    Ordering routines for the Schur complement when using EIGEN_SPARSE.
+    Also integration into SchurComplementSolver.
+    
+    Part of this CL is also a refactoring of the block jacobian matrix
+    construction.
+    
+    Change-Id: I11d665cc7d4867c64190e6fed1118f4d2e13d59b
+
+commit 7344626c04d19ca1dc4871c377c4422c744b1bca
+Author: Sameer Agarwal <sameeragarwal@google.com>
+Date:   Thu Aug 28 22:03:09 2014 -0700
+
+    Let EIGEN_SPARSE + SPARSE_NORMAL_CHOLESKY use block AMD.
+    
+    Modify SparseNormalCholeskySolver to use a pre-ordered Jacobian
+    matrix.
+    
+    Change-Id: Ib4d725d7a2d7bb94ea76dbb3a9b172784dbc8ea0
+
+commit 9f7032369ea4e432f0fb507cb6d2209741ee6946
+Author: Sameer Agarwal <sameeragarwal@google.com>
+Date:   Thu Aug 28 21:46:43 2014 -0700
+
+    Block AMD for SparseNormalCholesky + EIGEN_SPARSE.
+    
+    This is just the reordering routine. The integration with
+    SparseNormalCholesky shall happen in a subsequent CL.
+    
+    Change-Id: I39ddc32aa66b11c368faf75404850fa0ae0d2b3a
+
+commit b9331cd4077100d645be22a912d5743eeda72878
+Author: Sameer Agarwal <sameeragarwal@google.com>
+Date:   Thu Aug 28 14:42:27 2014 -0700
+
+    Cleanup reorder_program.cc
+    
+    Program::SetParameterOffsetsAndIndex() was being called willy nilly.
+    Now the invariant is that any function that actually reorders the
+    program, updates the offsets and indices.
+    
+    Also the logic around handling EIGEN_SPARSE has been simplified in
+    anticipation of the block AMD code that is forthcoming.
+    
+    Last but not the least, num_eliminate_blocks, which is a rather
+    cryptic name to begin with has been replaced by the more meaningful
+    size_of_first_elimination_group.
+    
+    Change-Id: I77e684f699a93b53e76aa406d64f40f8704df813
+
+commit 79491a3f4a3939a3cce4644da7a998b7782b963a
+Author: Sameer Agarwal <sameeragarwal@google.com>
+Date:   Thu Aug 28 13:57:50 2014 -0700
+
+    Solver::FullReport now reports build config.
+    
+    The header of Summary::FullReport now looks like
+    
+    Solver Summary (v 1.10.0-suitesparse-cxsparse-lapack-no_openmp)
+    
+                                         Original                  Reduced
+    Parameter blocks                        22122                    22122
+    Parameters                              66462                    66462
+    Residual blocks                         83718                    83718
+    Residual                               167436                   167436
+    
+    Change-Id: Id1b81bbf90ba412d19e2dd3687eeb9d372b72c1b
+
+commit 48068c753e91d77f6c96ef2d529a27ef8ee3947c
+Author: Sameer Agarwal <sameeragarwal@google.com>
+Date:   Thu Aug 28 13:03:40 2014 -0700
 
     Lint cleanup from William Rucklidge.
     
-    Change-Id: I8abcfd369f41b895ce746a21a35f250fe05c39d1
+    Change-Id: Ie0e0aa58440be7a4f67dcd633dbb6f1bb0c051a8
 
-commit 3faac6a28cec4c99c41421d3f585f3786be443b3
+commit 6a51b135e6298e8ba44a58cc2b54a170ab61a82f
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Thu Nov 28 07:13:26 2013 -0800
+Date:   Thu Aug 28 10:48:29 2014 -0700
 
-    More lint cleanups and breakage fixes.
+    Fix solver_test.cc
     
-    The previous CL was a premature submit due to lack of coffee.
+    When Eigen is not installed, Solver::IsValid was not detecting
+    it correctly.
     
-    Change-Id: Id425d0ef332f569a954f0413e6b1ae6087f40f30
+    Change-Id: Id285a84d829a9e20bc5de663adfca66ac31e08f3
 
-commit ed92366592a951041bd0367c24006101ef7b6286
+commit 62a8d64453ee41dae56710a4eead3fadf2fe1a4e
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Thu Nov 28 06:50:43 2013 -0800
+Date:   Wed Aug 27 22:54:00 2014 -0700
 
-    Lint cleanup from William Rucklidge.
+    Expand check for lack of a sparse linear algebra library.
     
-    Change-Id: I745810f5496a1b93263b20ff140f8883da61995e
-
-commit 34b6359f39884683f2bbf06c93040afd42ae135d
-Author: Sergey Sharybin <sergey.vfx@gmail.com>
-Date:   Thu Nov 28 18:51:34 2013 +0600
-
-    Fix compilation error after recent enum rename in 33e01b9
+    The LinearSolver factory was creating a NULL linear solver
+    if only Eigen's sparse linear algebra backend was available.
     
-    Change-Id: I920aa4754df6b013e86f0e77c61338d7a80e7f45
+    Thanks to Michael Samples and Domink Reitzle for reporting this.
+    
+    Change-Id: I35e3a6c0fd0da2a31934adb5dfe4cad29577cc73
 
-commit 33e01b9c5e1416fe29c55ac0332cdca21c053c83
+commit 12eb389b4ec4113a2260c1a192a1d3f8d1b6a2d3
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Wed Nov 27 10:24:03 2013 -0800
+Date:   Wed Aug 27 22:18:33 2014 -0700
 
-    Rename LinearSolverTerminationType enums.
+    Fix Eigen Row/ColMajor bug in NumericDiffCostFunction.
     
-    This increases clarity, drops redundant enums and makes things
-    cleaner all around.
+    If the parameter block size is 1, asking Eigen to create
+    a row-major matrix triggers a compile time error. Previously
+    we were handling the case where the number of rows in the
+    jacobian block was known statically, but the problem is present
+    when the nummber of rows is dynamic.
     
-    Change-Id: I761f195ddf17ea6bd8e4e55bf5a72863660c4c3b
+    This CL fixes this problem.
+    
+    Thanks to Dominik Reitzle for reporting this.
+    
+    Change-Id: I99c3eec3558e66ebf4efa51c4dee8ce292ffe0c1
 
-commit 068437eb89d495d905465544ccd442efef457b04
-Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Wed Nov 27 07:05:57 2013 -0800
-
-    Pipe minimizer termination messages to Solver::Summary.
-    
-    All minimizer termination messages are now available as
-    Solver::Summary::error.
-    
-    This is part of the ongoing refactoring or
-    
-    Change-Id: I4514c3c042645bbd1471bcde9bd3dbf81d9ee8b0
-
-commit 89a592f410fb6f80c03dea84b6b9f1a10bea36c1
-Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Tue Nov 26 11:35:49 2013 -0800
-
-    LinearSolver::Summary::status -> LinearSolver::Summary::message.
-    
-    And a bunch of minor lint cleanups as they showed up.
-    
-    Change-Id: I430a6b05710923c72daf6a5df4dfcd16fbf44b3a
-
-commit b16e118b96c55451c0d8556f3c5b52ad36b69cac
-Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Mon Nov 25 05:47:43 2013 -0800
-
-    Better error checking and reporting for linear solvers.
-    
-    A lot of error checking cruft has accumulated over the years
-    in the various linear solvers. This change makes the error reporting
-    more robust and consistent across the various solvers.
-    
-    Preconditioners are not covered by this change and will be the
-    subject of a future change.
-    
-    Change-Id: Ibeb2572a1e67758953dde8d12e3abc6d1df9052d
-
-commit 5794d41be2d8d6a67dcdfe607e66050f0ac04c55
-Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Mon Nov 25 13:37:02 2013 -0800
-
-    Remove overzealous checks in Summary::FullReport.
-    
-    Thanks to sebi.koch@gmail.com for reporting this.
-    
-    Change-Id: I1ba9b375e5cf66639e292ba37b34a90446f13162
-
-commit 40ef90304ac200bb948549e8e3748e487d27dc53
+commit 6c25185bb1643d8d0f3d8e1a7b82a058156aa869
 Author: Alex Stewart <alexs.mac@gmail.com>
-Date:   Mon Nov 25 16:36:40 2013 +0000
+Date:   Thu Aug 28 16:07:51 2014 +0100
 
-    Adding VLOG output to line search.
+    Fix crash in Covariance if # threads > 1 requested without OpenMP.
     
-    - Previously line search was sparse in terms of debug orientated VLOG
-      output which made debugging failure cases difficult.
+    - Previously if options.num_threads > 1 was given to Covariance compiled
+      without OpenMP, a CHECK() would be triggered in program_evalutor.
     
-    Change-Id: Idfabf74d2b3f7b8256f79dff8c6b7fcdc2fcf4d3
+    Change-Id: Iaade4f5ed5326b0c59a7014c750c41ee026e1124
 
-commit 1284a5141426597f3ca1e29ae8548c9b4c43c9c1
+commit 6f89d850fb4ace0104abccf467c4fe37ad378b79
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Sun Nov 24 15:09:43 2013 -0800
+Date:   Wed Aug 27 11:51:50 2014 -0700
 
-    Use explicit formula to solve quadratic polynomials.
+    Further build breakage fixes.
     
-    polynomial.cc implements a companion matrix base method for solving
-    polynomials. This is both expensive and numerically sensitive.
+    1. Allow the minimum number of linear solver iterations to be zero.
+    2. Fix conjugate gradients solver's iteration loop to be sane again.
     
-    This change adds a quadratic equation solver. Instead of using the
-    usual quadratic formula, it uses the formula suggested by BKP Horn
-    for improved numerical stability.
-    
-    Change-Id: I476933ce010d81db992f1c580d2fb23a4457eb3e
+    Change-Id: I8594815fec940c2b30e28eb58ec5d8baacf13dae
 
-commit a9334d67d7973c0f56e65f12ae897dd53504ef0d
+commit dd596d0f0d6d08951efc2c11a639b546db2080c6
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Wed Nov 20 10:12:23 2013 -0800
+Date:   Wed Aug 27 11:26:50 2014 -0700
 
-    Fix constant parameter handling in inner iterations.
+    Fix the broken build.
     
-    There was a bug in the way RemoveFixedBlocksFromProgram was working.
-    It only removed the constant parameter blocks from the
-    linear_solver_ordering, it was not even aware of the
-    inner_iteration_ordering.
-    
-    This change fixes this bug. The code for RemoveFixedBlocksFromProgram
-    is also cleaned up and made more readable and the test have been updated.
-    
-    Thanks to Mikael Persson for reporting this.
-    
-    Change-Id: I454fa89f9b6f4f6320b02d5235e6f322cc15ff51
+    Change-Id: I083cf1cca1bf4cca956193022d450364e73f833a
 
-commit 331ff090dcae7096cea50144047b71cab2d3e819
-Author: Alex Stewart <alexs.mac@gmail.com>
-Date:   Mon Nov 25 13:44:53 2013 +0000
-
-    Downgrading log status of BFGS secant condition messages.
-    
-    - These messages were originally VLOG(2) and were mistakenly upgraded to
-      WARNINGs when the tolerances were reduced.
-    
-    Change-Id: I89dee666a09bc82cfa89b793dc0907268662f95e
-
-commit 9697a08a2bf29531671526b49df73bfbc0d7d237
-Author: Alex Stewart <alexs.mac@gmail.com>
-Date:   Sat Nov 23 10:03:37 2013 +0000
-
-    Defining CERES_FOUND in addition to Ceres_FOUND in CeresConfig.
-    
-    - Previously we relied on FindPackage() to define Ceres_FOUND when
-      find_package(Ceres) was called.
-    - This is fine, but users might legitimately expect the variable to be
-      CERES_FOUND given the form of CERES_INCLUDE_DIRS/LIBRARIES.
-    - As there is an inconsistency in the CMake recommended names when
-      FindPackage() is called in Module vs Config form, we now explicltly
-      define both.
-    
-    Change-Id: I54bce9aa112b684d26b60a9ae4d11eb7925a6ee5
-
-commit 66e15b41d80b155f333f099a0278d50312cdaa15
+commit d906afae22b05b9b9a9a2657924f4c0bf1a9b5ea
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Fri Nov 22 07:59:23 2013 -0800
+Date:   Mon Aug 25 22:32:38 2014 -0700
 
-    Lint cleanup from Jim Roseborough.
+    A number of bug fixes.
     
-    Change-Id: I6ddbf5c3d66595d27f7967a309768e5f5dd7e1fd
+    1. Fix a build breakage in graph_test.
+    2. Respect Solver::Options::min_num_linear_solver_iterations in
+       conjugate_gradients_solver.cc
+    
+    Thanks to Johannes Schönberger for reporting these.
+    
+    Change-Id: Ib32e3929bf5d92dd576ae5b53d4d88797095136e
 
-commit 79bde35f29291cf464b59f3dc2dd9f1fa88776a9
+commit dab955928c6d0942d6acc5b5f1c4c11260d0767d
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Thu Nov 21 21:33:51 2013 -0800
+Date:   Sun Aug 17 13:14:50 2014 -0700
 
-    SuiteSparse errors do not cause a fatal crash.
+    Add an unweighted graph.
     
-    1. Move LinearSolverTerminationType to ceres::internal.
-    2. Add FATAL_ERROR as a new enum to LinearSolverTerminationType.
-    3. Pipe SuiteSparse errors via a LinearSolverTerminationType so
-       to distinguish between fatal and non-fatal errors.
-    4. Update levenberg marquardt and dogleg strategies to deal
-       with FATAL_ERROR.
-    5. Update trust_region_minimizer to terminate when FATAL_ERROR
-       is encountered.
-    6. Remove SuiteSparse::SolveCholesky as it screws up the error
-       handling.
-    7. Fix all clients calling SuiteSparse to handle the result of
-       SuiteSparse::Cholesky correctly.
-    8. Remove fatal failures in SuiteSparse when symbolic factorization
-       fails.
-    9. Fix all clients of SuiteSparse to deal with null symbolic factors.
+    Rename Graph -> WeightedGraph.
+    Add a new Graph class, which is cheaper to construct and
+    work with if the weights are not needed.
     
-    This is a temporary fix to deal with some production problems. A more
-    extensive cleanup and testing regime will be put in place in a
-    subsequent CL.
+    This cuts down the cost of building the Hessian graph
+    significantly.
     
-    Change-Id: I1f60d539799dd95db7ecc340911e261fa4824f92
+    Change-Id: Id0cfc81dd2c0bb5ff8f63a1b55aa133c53c0c869
 
-commit a674e0f8534ea6948f70a72fe9718e07b3d039ff
+commit a0c282adbd268c2ad82551fab31fe1cf8d0c4282
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Thu Nov 21 22:12:15 2013 -0800
+Date:   Sun Aug 24 22:19:03 2014 -0700
 
-    Fix corrector_test.cc.
+    Add EIGEN_STRONG_INLINE annotation to jet.h
     
-    Fix two death tests dealing with the sign of the gradient.
+    This improves performance when using MSVC on Windows. On GCC
+    there will be no effect.
     
-    Change-Id: Ic91d54a64cc509307c94fce6d1fca083078936e2
+    Change-Id: I555a81ff6823c2855d64773073f75af50c48d716
 
-commit a8006af3110e98d64fb369e958fc00ec88d771a3
-Author: Alex Stewart <alexs.mac@gmail.com>
-Date:   Wed Nov 20 19:56:06 2013 +0000
+commit 20de0a7793c574e964350a623446136889f74632
+Author: Björn Piltz <bjornpiltz@gmail.com>
+Date:   Mon Aug 25 17:05:54 2014 +0200
 
-    Adding threads libraries to exported dependencies if using OpenMP.
+    Fixed Malformed regex
     
-    - Previously we were only adding the flags to the link flags for the
-      Ceres project, which resulted in them not being exported. Thus
-      projects importing Ceres (if using OpenMP) would have to manually
-      specify them in addition to CERES_LIBRARIES.
+    I got the following error with MSVC:
+    Syntax error at index 9 in simple regular expression "NumGroups()": '(' is unsupported.
     
-    Change-Id: If0354cc07e84dbebfc870a8862e1a8ca64659791
+    Change-Id: Id1952831d81d3eb5d73bbed8c311914c4c8ab51f
 
-commit 6c0d96424e2c27326757936a3738f9efc37c6c24
+commit ccf8aea988269841d84d746e52164d5056c67a10
+Author: Björn Piltz <bjornpiltz@gmail.com>
+Date:   Mon Aug 25 16:16:01 2014 +0200
+
+    Fixed MSVC error C2124: divide or mod by zero
+    
+    Alternatively, if quiet_NaN is not available on all platforms a workaround would be:
+        volatile double zero = 0.0;
+        double x = 1.0/zero;
+    The 'volatile' is needed to shut up "warning C4723: potential divide by 0".
+    
+    Change-Id: If2bbdab8540595aa2e0079e1eb6b6fed6d4a6ef7
+
+commit 8de27be218d42b282d7f15867733ad07058b0887
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Wed Nov 20 11:52:01 2013 -0800
+Date:   Tue Aug 19 08:22:40 2014 -0700
 
-    Minor documentation fix.
+    Fix a bug in TrustRegionPreprocessor
     
-    Thanks to Satya Mallick.
+    TrustRegionPreprocessor was not setting Minimizer::Options::is_constrained.
+    This meant that the line search for bounds constraints was not being
+    invoked for bounds constrained problems.
     
-    Change-Id: I556f1c141bf16739d54450351b0f29fd4ea40014
+    And some minor lint cleanup.
+    
+    Change-Id: I18852cfaf1b33fd90b7d8c196f2063c128126658
 
-commit 7747bb0e6b0e54366933ed75c1bcafe6a1109c3d
+commit 1745dd615b3897a3ef9896acfdba67eee1739bf4
 Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Wed Nov 20 11:29:22 2013 -0800
+Date:   Thu Jun 5 21:30:13 2014 -0700
 
-    Minor corrections to the documentation.
+    Refactor SolverImpl.
     
-    Thanks to Satya Mallick for reporting these.
+    Replace SolverImpl with
     
-    Change-Id: Ia52e08a7e21d5247dc475cfbf10bf57265aa118f
-
-commit 3fca2c4b2fae9abcaa9611f2bd3885ce6b11963b
-Author: Alex Stewart <alexs.mac@gmail.com>
-Date:   Mon Nov 18 10:26:49 2013 +0000
-
-    Decreasing update threshold for BFGS as per L-BFGS.
+     a. A minimizer specific preprocessor class.
+     b. A generic Solve function inside solver.cc
+     c. Presummarize and Postsummarize functions to handle
+        updates to the summary object.
     
-    - Improves performance of BFGS on NIST, as per L-BFGS.
-    - Adding explanation of origin and purpose of Secant condition
-      tolerance check for Hessian update in (L)BFGS.
+    The existing SolverImpl class was a mixture of the above three
+    things and was increasingly complicated code to follow. This change,
+    breaks it into its three separate constituents, with the aims of
+    better separation of concerns and thus better testability and
+    reliability.
     
-    Change-Id: If57b9957d31d8629c772c19a069e1e56e727b350
-
-commit 54fcbf893852272ba2158d6a56572a2eb3ccc41f
-Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Tue Nov 19 10:12:05 2013 -0800
-
-    Relax the requirements on loss functiond derivatives.
+    The call to Solver::Solve() now consists of
     
-    We now require that the first derivative of the loss function
-    be positive only if the second derivative is non-zero. This is
-    because when the second derivative is non-positive, we do not use
-    the second order correction suggested by BANS and instead use
-    a simpler first order strategy which does not use a division by
-    the gradient of the loss function.
+    1. Presummarize - summarize the given state of the problem and solver
+       options.
+    2. Preprocess - Setup everything that is needed to call the minimizer.
+       This includes, removing redundant parameter and residual blocks,
+       setting up the reordering for the linear solver, creating the
+       linear solver, evaluator, inner iteration minimizer etc.
+    3. Minimize.
+    4. Post summarize - summarize the result of the preprocessing and the
+       solve.
     
-    Change-Id: I3d65713f152611998e196ff389a7081acfdfd8c1
-
-commit db98425b94c9eff9b125bf4a854545162e8c1aec
-Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Fri Nov 15 14:14:09 2013 -0800
-
-    Small bugfix to logging.h from Scott Ettinger.
-    
-    Change-Id: Ie6d51e7883adf36c6fc7a78ff95afab6a78e488b
-
-commit 4d0e626b55f36ab8f44a4acc8157b85cfecd4673
-Author: Alex Stewart <alexs.mac@gmail.com>
-Date:   Fri Nov 15 13:53:44 2013 +0000
-
-    Fixing gflags HINTS variable names (adding missing “_DIR”).
-    
-    - The HINTS variables for gflags were incorrectly used as
-      GFLAGS_[INCLUDE/LIBRARY]_HINTS when they should have been
-      GFLAGS_[INCLUDE/LIBRARY]_DIR_HINTS as per the docs.
-    - Also removing a completed TODO in the main CMakeLists.
-    - Updating method of extracting current directory in CeresConfig.cmake
-      to avoid use of CMAKE_CURRENT_LIST_DIR, which was not present in
-      CMake =< v2.8.3.
-    
-    Change-Id: I42ae696e3b785febe48688d912f0f343e8947cb0
-
-commit bf4c1b76e4926c738fc805e9ff4be0ed584d9eee
-Author: Alex Stewart <alexs.mac@gmail.com>
-Date:   Thu Nov 14 21:27:20 2013 +0000
-
-    Decreasing threshold at which L-BFGS Hessian is updated.
-    
-    - Decreasing threshold at which L-BFGS Hessian is updated from 1e-10
-      to 1e-14 results in a very significant improvement in NIST scores
-      (43 -> 53 for CUBIC).
-    - Adding comment in FindPolynomialRoots() explaining why behaviour
-      is correct.
-    
-    Change-Id: If668e087e7a86d29659aa74e8528b192b604c841
-
-commit 7124c3474cd201134c3a3350b46aca468f1edafa
-Author: Alex Stewart <alexs.mac@gmail.com>
-Date:   Thu Nov 7 16:10:02 2013 +0000
-
-    Fixes for some line search bugs & corner cases.
-    
-    - Increase precision of numeric values output in error messages to
-      allow for easier debugging.
-    - Ensure termination after Wolfe search bracketing phase if bracket
-      width has been shrunk to below tolerance.
-    - Cleaned up return value for BracketingPhase(), now false iff
-      optimisation should stop, true otherwise.
-    - Fix bug whereby we would mark a step size as satisfying the Wolfe
-      conditions when it did not due to numerical issues in the cost
-      function.
-    - Adding explanation of a subtlety in which a zoom could still be
-      acceptably invoked with bracket_low.f > bracket_high.f.
-    - Replacing hard check of a pre-condition of ZoomPhase() with a
-      conditional return if not satisfied to address issue whereby a
-      bracket could be incorrectly identified due to inconsistent values
-      & gradients returned from the cost function.
-    - Adding missing check for step size validity in line search minimizer.
-    - Adding ToDebugString() for FunctionSample.
-    
-    Change-Id: Iad98e635749877f80c079ebad126bf022d82232d
-
-commit 54fc9423673886ac9ed3fe329a80f07544aeea70
-Author: Alex Stewart <alexs.mac@gmail.com>
-Date:   Thu Nov 14 11:42:00 2013 +0000
-
-    Removing incorrect specialisation of install dirs on Windows.
-    
-    - Previously on Windows the leaf include & lib install directories
-      passed to CeresConfig.cmake.in when configured where capitalised on
-      Windows.
-    - This capitalisation was incorrect, as the actual paths used are
-      specified in the install() statements and are always in the standard
-      lower-case form.
-    - This likely did not cause any issues previously as although NTFS is
-      case sensitive, the Win32 API is not, and most applications access
-      files through the Win32 API, and are thus not case-sensitive.
-    
-    Change-Id: I335b6e2d10a1c64f320c2a1a68eeda1b22344e73
-
-commit fcbbb11e37386097b1427dc3aa89f264d6951ded
-Author: Alex Stewart <alexs.mac@gmail.com>
-Date:   Wed Nov 13 22:22:30 2013 +0000
-
-    Ensure build paths for dependencies are searched in FindPackage(Ceres)
-    
-    - Append to hint locations used by FindPackage scripts for public
-      dependencies (glog & Eigen) the locations of the dependencies when
-      Ceres was built.
-    - This means that the user should not have to supply them again when
-      using find_package(Ceres) even if they are installed in a
-      non-standard location.
-    
-    Change-Id: I9550de91025ba47f01f1ea3c3fefe80fe38d14ff
-
-commit 7899e45d378f589a67ad8e042bf6a7cb7e15df00
-Author: Alex Stewart <alexs.mac@gmail.com>
-Date:   Wed Nov 13 21:08:27 2013 +0000
-
-    Fixing a documentation typo, DIRS -> DIR in HINTS variables.
-    
-    Change-Id: I42b75a5e0b8a451c3a43ab29d0c14856e4b86ab8
-
-commit 1a041c35b780e60c3b497eb096b72ad20f47960e
-Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Tue Nov 12 14:17:52 2013 -0800
-
-    Update to 1.8.0.
-    
-    Change-Id: Id42e594f03e3575d06e18c1ef66df64f43d86839
-
-commit 36b26139296060511718b3ef0da03a52706db481
-Author: Alex Stewart <alexs.mac@gmail.com>
-Date:   Thu Nov 7 16:57:36 2013 +0000
-
-    Fix ordering of ParseCommandLineFlags() & InitGoogleTest() for Windows.
-    
-    - On Windows gtest passes additional non-gflags command line flags
-      for death-tests, to avoid gflags invoking an error for these flags
-      InitGoogleTest() must be called before ParseCommandLineFlags() to
-      handle and remove them before gflags parses the remaining flags.
-    
-    Change-Id: I0c705ecd3aa029b70a2589b592e6a2c192745c0e
-
-commit 8c155d51fab099ee7bf64f4bdbfeda82881925a5
-Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Fri Nov 8 08:04:44 2013 -0800
-
-    Speed up the application of robust loss functions.
-    
-    Since we added special handling for the case for rho[2] < 0,
-    the bulk of CorrectJacobian is pointless in the common case.
-    So add a simple one dimensional loop which rescales the Jacobian.
-    This speeds up this method immensely.
-    
-    The robustification of a Jacobian gets speeded up by > 50%.
-    
-    Change-Id: I97c4e897ccbb5521c053e1fb931c5d0d32f542c7
-
-commit 58792dc8ee0e4b56331f33f753f1b1932c5c2960
-Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Wed Nov 6 09:42:46 2013 -0800
-
-    Update to 1.8.0rc2.
-    
-    Change-Id: Ifbf5312377bf1791a29aefd3edc3a765999c5824
-
-commit af04d7f18740faf452e9171af530aa1bdead44bb
-Author: Sameer Agarwal <sameeragarwal@google.com>
-Date:   Tue Nov 5 13:47:30 2013 -0800
-
-    Remove DCHECK_GE checks from fixed_array.h
-    
-    This triggers -Wtype-limits warnings on comparisons
-    which are always true, since the test being done is
-    n >= 0, where n is of type size_t, which is always
-    true.
-    
-    This causes problems when compiling Ceres on linux
-    with miniglog.
-    
-    Change-Id: Ia1d1d1483e03469c71fde029b62ca6d84e9b27e0
+    Change-Id: I80f35cfc9f2cbf78f1df4aceace27075779d8a3a

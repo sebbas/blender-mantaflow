@@ -45,6 +45,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
+#include "BKE_depsgraph.h"
 #include "BKE_DerivedMesh.h"
 #include "BKE_icons.h"
 #include "BKE_main.h"
@@ -473,15 +474,22 @@ static void image_changed(Main *bmain, Image *ima)
 			texture_changed(bmain, tex);
 }
 
-static void scene_changed(Main *bmain, Scene *UNUSED(scene))
+static void scene_changed(Main *bmain, Scene *scene)
 {
 	Object *ob;
 	Material *ma;
 
 	/* glsl */
-	for (ob = bmain->object.first; ob; ob = ob->id.next)
+	for (ob = bmain->object.first; ob; ob = ob->id.next) {
 		if (ob->gpulamp.first)
 			GPU_lamp_free(ob);
+		
+		if (ob->mode & OB_MODE_TEXTURE_PAINT) {
+			BKE_texpaint_slots_refresh_object(scene, ob);
+			BKE_paint_proj_mesh_data_check(scene, ob, NULL, NULL, NULL, NULL);
+			GPU_drawobject_free(ob->derivedFinal);			
+		}
+	}
 
 	for (ma = bmain->mat.first; ma; ma = ma->id.next)
 		if (ma->gpumaterial.first)

@@ -1558,9 +1558,23 @@ KeyBlock *BKE_keyblock_add(Key *key, const char *name)
 KeyBlock *BKE_keyblock_add_ctime(Key *key, const char *name, const bool do_force)
 {
 	KeyBlock *kb = BKE_keyblock_add(key, name);
+	const float cpos = key->ctime / 100.0f;
 
+	/* In case of absolute keys, there is no point in adding more than one key with the same pos.
+	 * Hence only set new keybloc pos to current time if none previous one already use it.
+	 * Now at least people just adding absolute keys without touching to ctime
+	 * won't have to systematically use retiming func (and have ordering issues, too). See T39897.
+	 */
+	if (!do_force && (key->type != KEY_RELATIVE)) {
+		KeyBlock *it_kb;
+		for (it_kb = key->block.first; it_kb; it_kb = it_kb->next) {
+			if (it_kb->pos == cpos) {
+				return kb;
+			}
+		}
+	}
 	if (do_force || (key->type != KEY_RELATIVE)) {
-		kb->pos = key->ctime / 100.0f;
+		kb->pos = cpos;
 		BKE_key_sort(key);
 	}
 
@@ -2040,4 +2054,92 @@ void BKE_key_convert_from_offset(Object *ob, KeyBlock *kb, float (*ofs)[3])
 			nu = nu->next;
 		}
 	}
+}
+
+/* ==========================================================*/
+
+/** Move shape key from org_index to new_index. Safe, clamps index to valid range, updates reference keys,
+ * the object's active shape index, the 'frame' value in case of absolute keys, etc.
+ * Note indices are expected in real values (not 'fake' shapenr +1 ones).
+ *
+ * \param org_index if < 0, current object's active shape will be used as skey to move.
+ * \return true if something was done, else false.
+ */
+bool BKE_keyblock_move(Object *ob, int org_index, int new_index)
+{
+	Key *key = BKE_key_from_object(ob);
+	KeyBlock *kb;
+	const int act_index = ob->shapenr - 1;
+	const int totkey = key->totkey;
+	int i;
+	bool rev, in_range = false;
+
+	if (org_index < 0) {
+		org_index = act_index;
+	}
+
+	CLAMP(new_index, 0, key->totkey - 1);
+	CLAMP(org_index, 0, key->totkey - 1);
+
+	if (new_index == org_index) {
+		return false;
+	}
+
+	rev = ((new_index - org_index) < 0) ? true : false;
+
+	/* We swap 'org' element with its previous/next neighbor (depending on direction of the move) repeatedly,
+	 * until we reach final position.
+	 * This allows us to only loop on the list once! */
+	for (kb = (rev ? key->block.last : key->block.first), i = (rev ? totkey - 1 : 0);
+	     kb;
+	     kb = (rev ? kb->prev : kb->next), rev ? i-- : i++)
+	{
+		if (i == org_index) {
+			in_range = true;  /* Start list items swapping... */
+		}
+		else if (i == new_index) {
+			in_range = false;  /* End list items swapping. */
+		}
+
+		if (in_range) {
+			KeyBlock *other_kb = rev ? kb->prev : kb->next;
+
+			/* Swap with previous/next list item. */
+			BLI_listbase_swaplinks(&key->block, kb, other_kb);
+
+			/* Swap absolute positions. */
+			SWAP(float, kb->pos, other_kb->pos);
+
+			kb = other_kb;
+		}
+
+		/* Adjust relative indices, this has to be done on the whole list! */
+		if (kb->relative == org_index) {
+			kb->relative = new_index;
+		}
+		else if (kb->relative < org_index && kb->relative >= new_index) {
+			/* remove after, insert before this index */
+			kb->relative++;
+		}
+		else if (kb->relative > org_index && kb->relative <= new_index) {
+			/* remove before, insert after this index */
+			kb->relative--;
+		}
+	}
+
+	/* Need to update active shape number if it's affected, same principle as for relative indices above. */
+	if (org_index == act_index) {
+		ob->shapenr = new_index + 1;
+	}
+	else if (act_index < org_index && act_index >= new_index) {
+		ob->shapenr++;
+	}
+	else if (act_index > org_index && act_index <= new_index) {
+		ob->shapenr--;
+	}
+
+	/* First key is always refkey, matches interface and BKE_key_sort */
+	key->refkey = key->block.first;
+
+	return true;
 }

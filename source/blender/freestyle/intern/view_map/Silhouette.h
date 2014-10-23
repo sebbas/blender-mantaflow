@@ -103,7 +103,7 @@ public: // Implementation of Interface0D
 	}
 
 	/*!  Returns the 3D point. */ 
-	virtual Vec3f getPoint3D() const
+	virtual Vec3r getPoint3D() const
 	{
 		return _Point3D;
 	}
@@ -127,9 +127,9 @@ public: // Implementation of Interface0D
 	}
 
 	/*!  Returns the 2D point. */ 
-	virtual Vec2f getPoint2D() const
+	virtual Vec2r getPoint2D() const
 	{
-		return Vec2f((float)_Point2D.x(), (float)_Point2D.y());
+		return Vec2r(_Point2D.x(), _Point2D.y());
 	}
 
 	/*! Returns the FEdge that lies between this Svertex and the Interface0D given as argument. */
@@ -378,6 +378,17 @@ public:
 		_FEdges.push_back(iFEdge);
 	}
 
+	/*! Remove an FEdge from the list of edges emanating from this SVertex. */
+	inline void RemoveFEdge(FEdge *iFEdge)
+	{
+		for (vector<FEdge *>::iterator fe = _FEdges.begin(), fend = _FEdges.end(); fe != fend; fe++) {
+			if (iFEdge == (*fe)) {
+				_FEdges.erase(fe);
+				break;
+			}
+		}
+	}
+
 	/* replaces edge 1 by edge 2 in the list of edges */
 	inline void Replace(FEdge *e1, FEdge *e2)
 	{
@@ -440,6 +451,10 @@ public:
 	inline Vec3r curvature2d_as_vector() const;
 	/*! angle in radians */
 	inline real curvature2d_as_angle() const;
+#endif
+
+#ifdef WITH_CXX_GUARDEDALLOC
+	MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:SVertex")
 #endif
 };
 
@@ -518,6 +533,8 @@ protected:
 
 	bool _isInImage;
 
+	bool _isTemporary;
+
 public:
 	/*! A field that can be used by the user to store any data.
 	 *  This field must be reseted afterwards using ResetUserData().
@@ -538,6 +555,7 @@ public:
 		_occludeeEmpty = true;
 		_isSmooth = false;
 		_isInImage = true;
+		_isTemporary = false;
 	}
 
 	/*! Builds an FEdge going from vA to vB. */
@@ -554,6 +572,7 @@ public:
 		_occludeeEmpty = true;
 		_isSmooth = false;
 		_isInImage = true;
+		_isTemporary = false;
 	}
 
 	/*! Copy constructor */
@@ -573,6 +592,7 @@ public:
 		_occludeeEmpty = iBrother._occludeeEmpty;
 		_isSmooth = iBrother._isSmooth;
 		_isInImage = iBrother._isInImage;
+		_isTemporary = iBrother._isTemporary;
 		iBrother.userdata = this;
 		userdata = 0;
 	}
@@ -708,6 +728,11 @@ public:
 		return _isInImage;
 	}
 
+	inline bool isTemporary() const
+	{
+		return _isTemporary;
+	}
+
 	/* modifiers */
 	/*! Sets the first SVertex. */
 	inline void setVertexA(SVertex *vA)
@@ -801,6 +826,11 @@ public:
 	inline void setIsInImage (bool iFlag)
 	{
 		_isInImage = iFlag;
+	}
+
+	inline void setTemporary(bool iFlag)
+	{
+		_isTemporary = iFlag;
 	}
 
 	/* checks whether two FEdge have a common vertex.
@@ -931,6 +961,10 @@ public:
 	 *    The sampling with which we want to iterate over points of this FEdge.
 	 */
 	virtual inline Interface0DIterator pointsEnd(float t = 0.0f);
+
+#ifdef WITH_CXX_GUARDEDALLOC
+	MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:FEdge")
+#endif
 };
 
 //
@@ -1241,6 +1275,10 @@ public:
 	{
 		_bFaceMark = iFaceMark;
 	}
+
+#ifdef WITH_CXX_GUARDEDALLOC
+	MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:FEdgeSharp")
+#endif
 };
 
 /*! Class defining a smooth edge. This kind of edge typically runs across a face of the input mesh. It can be
@@ -1353,6 +1391,10 @@ public:
 	{
 		_FrsMaterialIndex = i;
 	}
+
+#ifdef WITH_CXX_GUARDEDALLOC
+	MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:FEdgeSmooth")
+#endif
 };
 
 

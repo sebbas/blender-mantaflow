@@ -525,8 +525,6 @@ public:
 	/*! Retrieves the list of edges in CW order */
 	inline void RetrieveCWOrderedEdges(vector<WEdge*>& oEdges);
 
-	/*! returns the vector between the two vertices */
-	Vec3r getVec3r ();
 	WOEdge *twin ();
 	WOEdge *getPrevOnFace();
 
@@ -1297,7 +1295,9 @@ protected:
 class WingedEdge
 {
 public:
-	WingedEdge() {}
+	WingedEdge() {
+		_numFaces = 0;
+	}
 
 	~WingedEdge()
 	{
@@ -1309,11 +1309,13 @@ public:
 		for (vector<WShape *>::iterator it = _wshapes.begin(); it != _wshapes.end(); it++)
 			delete *it;
 		_wshapes.clear();
+		_numFaces = 0;
 	}
 
 	void addWShape(WShape *wshape)
 	{
 		_wshapes.push_back(wshape);
+		_numFaces += wshape->GetFaceList().size();
 	}
 
 	vector<WShape *>& getWShapes()
@@ -1321,8 +1323,14 @@ public:
 		return _wshapes;
 	}
 
+	unsigned getNumFaces()
+	{
+		return _numFaces;
+	}
+
 private:
 	vector<WShape *> _wshapes;
+	unsigned _numFaces;
 
 #ifdef WITH_CXX_GUARDEDALLOC
 	MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:WingedEdge")

@@ -267,16 +267,79 @@ static void cleanup_textline(TextLine *tl)
 	tl->len += txt_extended_ascii_as_utf8(&tl->line);
 }
 
+/**
+ * used for load and reload (unlike txt_insert_buf)
+ * assumes all fields are empty
+ */
+static void text_from_buf(Text *text, const unsigned char *buffer, const int len)
+{
+	int i, llen;
+
+	BLI_assert(BLI_listbase_is_empty(&text->lines));
+
+	text->nlines = 0;
+	llen = 0;
+	for (i = 0; i < len; i++) {
+		if (buffer[i] == '\n') {
+			TextLine *tmp;
+
+			tmp = (TextLine *) MEM_mallocN(sizeof(TextLine), "textline");
+			tmp->line = (char *) MEM_mallocN(llen + 1, "textline_string");
+			tmp->format = NULL;
+
+			if (llen) memcpy(tmp->line, &buffer[i - llen], llen);
+			tmp->line[llen] = 0;
+			tmp->len = llen;
+
+			cleanup_textline(tmp);
+
+			BLI_addtail(&text->lines, tmp);
+			text->nlines++;
+
+			llen = 0;
+			continue;
+		}
+		llen++;
+	}
+
+	/* create new line in cases:
+	 * - rest of line (if last line in file hasn't got \n terminator).
+	 *   in this case content of such line would be used to fill text line buffer
+	 * - file is empty. in this case new line is needed to start editing from.
+	 * - last characted in buffer is \n. in this case new line is needed to
+	 *   deal with newline at end of file. (see [#28087]) (sergey) */
+	if (llen != 0 || text->nlines == 0 || buffer[len - 1] == '\n') {
+		TextLine *tmp;
+
+		tmp = (TextLine *) MEM_mallocN(sizeof(TextLine), "textline");
+		tmp->line = (char *) MEM_mallocN(llen + 1, "textline_string");
+		tmp->format = NULL;
+
+		if (llen) memcpy(tmp->line, &buffer[i - llen], llen);
+
+		tmp->line[llen] = 0;
+		tmp->len = llen;
+
+		cleanup_textline(tmp);
+
+		BLI_addtail(&text->lines, tmp);
+		text->nlines++;
+	}
+
+	text->curl = text->sell = text->lines.first;
+	text->curc = text->selc = 0;
+}
+
 int BKE_text_reload(Text *text)
 {
 	FILE *fp;
-	int i, llen, len;
+	int len;
 	unsigned char *buffer;
 	TextLine *tmp;
 	char str[FILE_MAX];
-	struct stat st;
+	BLI_stat_t st;
 
-	if (!text || !text->name) return 0;
+	if (!text->name) return 0;
 	
 	BLI_strncpy(str, text->name, FILE_MAX);
 	BLI_path_abs(str, G.main->name);
@@ -299,13 +362,12 @@ int BKE_text_reload(Text *text)
 	/* clear undo buffer */
 	MEM_freeN(text->undo_buf);
 	init_undo_text(text);
-	
+
 	fseek(fp, 0L, SEEK_END);
 	len = ftell(fp);
 	fseek(fp, 0L, SEEK_SET);
 
-	text->undo_pos = -1;
-	
+
 	buffer = MEM_mallocN(len, "text_buffer");
 	// under windows fread can return less then len bytes because
 	// of CR stripping
@@ -313,51 +375,11 @@ int BKE_text_reload(Text *text)
 
 	fclose(fp);
 
-	stat(str, &st);
+	BLI_stat(str, &st);
 	text->mtime = st.st_mtime;
-	
-	text->nlines = 0;
-	llen = 0;
-	for (i = 0; i < len; i++) {
-		if (buffer[i] == '\n') {
-			tmp = (TextLine *) MEM_mallocN(sizeof(TextLine), "textline");
-			tmp->line = (char *) MEM_mallocN(llen + 1, "textline_string");
-			tmp->format = NULL;
 
-			if (llen) memcpy(tmp->line, &buffer[i - llen], llen);
-			tmp->line[llen] = 0;
-			tmp->len = llen;
-				
-			cleanup_textline(tmp);
+	text_from_buf(text, buffer, len);
 
-			BLI_addtail(&text->lines, tmp);
-			text->nlines++;
-				
-			llen = 0;
-			continue;
-		}
-		llen++;
-	}
-
-	if (llen != 0 || text->nlines == 0) {
-		tmp = (TextLine *) MEM_mallocN(sizeof(TextLine), "textline");
-		tmp->line = (char *) MEM_mallocN(llen + 1, "textline_string");
-		tmp->format = NULL;
-		
-		if (llen) memcpy(tmp->line, &buffer[i - llen], llen);
-
-		tmp->line[llen] = 0;
-		tmp->len = llen;
-		
-		cleanup_textline(tmp);
-
-		BLI_addtail(&text->lines, tmp);
-		text->nlines++;
-	}
-	
-	text->curl = text->sell = text->lines.first;
-	text->curc = text->selc = 0;
-	
 	MEM_freeN(buffer);
 	return 1;
 }
@@ -365,12 +387,11 @@ int BKE_text_reload(Text *text)
 Text *BKE_text_load_ex(Main *bmain, const char *file, const char *relpath, const bool is_internal)
 {
 	FILE *fp;
-	int i, llen, len;
+	int len;
 	unsigned char *buffer;
-	TextLine *tmp;
 	Text *ta;
 	char str[FILE_MAX];
-	struct stat st;
+	BLI_stat_t st;
 
 	BLI_strncpy(str, file, FILE_MAX);
 	if (relpath) /* can be NULL (bg mode) */
@@ -388,10 +409,6 @@ Text *BKE_text_load_ex(Main *bmain, const char *file, const char *relpath, const
 	if ((U.flag & USER_TXT_TABSTOSPACES_DISABLE) == 0)
 		ta->flags = TXT_TABSTOSPACES;
 
-	fseek(fp, 0L, SEEK_END);
-	len = ftell(fp);
-	fseek(fp, 0L, SEEK_SET);
-
 	if (is_internal == false) {
 		ta->name = MEM_mallocN(strlen(file) + 1, "text_name");
 		strcpy(ta->name, file);
@@ -400,7 +417,12 @@ Text *BKE_text_load_ex(Main *bmain, const char *file, const char *relpath, const
 		ta->flags |= TXT_ISMEM | TXT_ISDIRTY;
 	}
 
+	/* clear undo buffer */
 	init_undo_text(ta);
+
+	fseek(fp, 0L, SEEK_END);
+	len = ftell(fp);
+	fseek(fp, 0L, SEEK_SET);
 	
 	buffer = MEM_mallocN(len, "text_buffer");
 	// under windows fread can return less then len bytes because
@@ -409,56 +431,10 @@ Text *BKE_text_load_ex(Main *bmain, const char *file, const char *relpath, const
 
 	fclose(fp);
 
-	stat(str, &st);
+	BLI_stat(str, &st);
 	ta->mtime = st.st_mtime;
 	
-	ta->nlines = 0;
-	llen = 0;
-	for (i = 0; i < len; i++) {
-		if (buffer[i] == '\n') {
-			tmp = (TextLine *) MEM_mallocN(sizeof(TextLine), "textline");
-			tmp->line = (char *) MEM_mallocN(llen + 1, "textline_string");
-			tmp->format = NULL;
-
-			if (llen) memcpy(tmp->line, &buffer[i - llen], llen);
-			tmp->line[llen] = 0;
-			tmp->len = llen;
-			
-			cleanup_textline(tmp);
-
-			BLI_addtail(&ta->lines, tmp);
-			ta->nlines++;
-				
-			llen = 0;
-			continue;
-		}
-		llen++;
-	}
-
-	/* create new line in cases:
-	 * - rest of line (if last line in file hasn't got \n terminator).
-	 *   in this case content of such line would be used to fill text line buffer
-	 * - file is empty. in this case new line is needed to start editing from.
-	 * - last characted in buffer is \n. in this case new line is needed to
-	 *   deal with newline at end of file. (see [#28087]) (sergey) */
-	if (llen != 0 || ta->nlines == 0 || buffer[len - 1] == '\n') {
-		tmp = (TextLine *) MEM_mallocN(sizeof(TextLine), "textline");
-		tmp->line = (char *) MEM_mallocN(llen + 1, "textline_string");
-		tmp->format = NULL;
-		
-		if (llen) memcpy(tmp->line, &buffer[i - llen], llen);
-
-		tmp->line[llen] = 0;
-		tmp->len = llen;
-		
-		cleanup_textline(tmp);
-
-		BLI_addtail(&ta->lines, tmp);
-		ta->nlines++;
-	}
-	
-	ta->curl = ta->sell = ta->lines.first;
-	ta->curc = ta->selc = 0;
+	text_from_buf(ta, buffer, len);
 	
 	MEM_freeN(buffer);
 
@@ -667,11 +643,11 @@ void BKE_text_write(Text *text, const char *str) /* called directly from rna */
 
 int BKE_text_file_modified_check(Text *text)
 {
-	struct stat st;
+	BLI_stat_t st;
 	int result;
 	char file[FILE_MAX];
 
-	if (!text || !text->name)
+	if (!text->name)
 		return 0;
 
 	BLI_strncpy(file, text->name, FILE_MAX);
@@ -696,11 +672,11 @@ int BKE_text_file_modified_check(Text *text)
 
 void BKE_text_file_modified_ignore(Text *text)
 {
-	struct stat st;
+	BLI_stat_t st;
 	int result;
 	char file[FILE_MAX];
 
-	if (!text || !text->name) return;
+	if (!text->name) return;
 
 	BLI_strncpy(file, text->name, FILE_MAX);
 	BLI_path_abs(file, G.main->name);
@@ -766,9 +742,7 @@ static TextLine *txt_new_linen(const char *str, int n)
 void txt_clean_text(Text *text)
 {	
 	TextLine **top, **bot;
-	
-	if (!text) return;
-	
+
 	if (!text->lines.first) {
 		if (text->lines.last) text->lines.first = text->lines.last;
 		else text->lines.first = text->lines.last = txt_new_line(NULL);
@@ -907,8 +881,7 @@ void txt_move_up(Text *text, const bool sel)
 {
 	TextLine **linep;
 	int *charp;
-	
-	if (!text) return;
+
 	if (sel) txt_curs_sel(text, &linep, &charp);
 	else { txt_pop_first(text); txt_curs_cur(text, &linep, &charp); }
 	if (!*linep) return;
@@ -930,8 +903,7 @@ void txt_move_down(Text *text, const bool sel)
 {
 	TextLine **linep;
 	int *charp;
-	
-	if (!text) return;
+
 	if (sel) txt_curs_sel(text, &linep, &charp);
 	else { txt_pop_last(text); txt_curs_cur(text, &linep, &charp); }
 	if (!*linep) return;
@@ -953,8 +925,7 @@ void txt_move_left(Text *text, const bool sel)
 	TextLine **linep;
 	int *charp;
 	int tabsize = 0, i = 0;
-	
-	if (!text) return;
+
 	if (sel) txt_curs_sel(text, &linep, &charp);
 	else { txt_pop_first(text); txt_curs_cur(text, &linep, &charp); }
 	if (!*linep) return;
@@ -998,8 +969,7 @@ void txt_move_right(Text *text, const bool sel)
 	TextLine **linep;
 	int *charp, i;
 	bool do_tab = false;
-	
-	if (!text) return;
+
 	if (sel) txt_curs_sel(text, &linep, &charp);
 	else { txt_pop_last(text); txt_curs_cur(text, &linep, &charp); }
 	if (!*linep) return;
@@ -1040,8 +1010,7 @@ void txt_jump_left(Text *text, const bool sel, const bool use_init_step)
 {
 	TextLine **linep;
 	int *charp;
-	
-	if (!text) return;
+
 	if (sel) txt_curs_sel(text, &linep, &charp);
 	else { txt_pop_first(text); txt_curs_cur(text, &linep, &charp); }
 	if (!*linep) return;
@@ -1057,8 +1026,7 @@ void txt_jump_right(Text *text, const bool sel, const bool use_init_step)
 {
 	TextLine **linep;
 	int *charp;
-	
-	if (!text) return;
+
 	if (sel) txt_curs_sel(text, &linep, &charp);
 	else { txt_pop_last(text); txt_curs_cur(text, &linep, &charp); }
 	if (!*linep) return;
@@ -1074,8 +1042,7 @@ void txt_move_bol(Text *text, const bool sel)
 {
 	TextLine **linep;
 	int *charp;
-	
-	if (!text) return;
+
 	if (sel) txt_curs_sel(text, &linep, &charp);
 	else txt_curs_cur(text, &linep, &charp);
 	if (!*linep) return;
@@ -1089,8 +1056,7 @@ void txt_move_eol(Text *text, const bool sel)
 {
 	TextLine **linep;
 	int *charp;
-	
-	if (!text) return;
+
 	if (sel) txt_curs_sel(text, &linep, &charp);
 	else txt_curs_cur(text, &linep, &charp);
 	if (!*linep) return;
@@ -1104,8 +1070,7 @@ void txt_move_bof(Text *text, const bool sel)
 {
 	TextLine **linep;
 	int *charp;
-	
-	if (!text) return;
+
 	if (sel) txt_curs_sel(text, &linep, &charp);
 	else txt_curs_cur(text, &linep, &charp);
 	if (!*linep) return;
@@ -1120,8 +1085,7 @@ void txt_move_eof(Text *text, const bool sel)
 {
 	TextLine **linep;
 	int *charp;
-	
-	if (!text) return;
+
 	if (sel) txt_curs_sel(text, &linep, &charp);
 	else txt_curs_cur(text, &linep, &charp);
 	if (!*linep) return;
@@ -1143,8 +1107,7 @@ void txt_move_to(Text *text, unsigned int line, unsigned int ch, const bool sel)
 	TextLine **linep;
 	int *charp;
 	unsigned int i;
-	
-	if (!text) return;
+
 	if (sel) txt_curs_sel(text, &linep, &charp);
 	else txt_curs_cur(text, &linep, &charp);
 	if (!*linep) return;
@@ -1181,7 +1144,6 @@ static void txt_curs_swap(Text *text)
 
 static void txt_pop_first(Text *text)
 {
-			
 	if (txt_get_span(text->curl, text->sell) < 0 ||
 	    (text->curl == text->sell && text->curc > text->selc))
 	{
@@ -1210,7 +1172,6 @@ void txt_pop_sel(Text *text)
 
 void txt_order_cursors(Text *text, const bool reverse)
 {
-	if (!text) return;
 	if (!text->curl) return;
 	if (!text->sell) return;
 	
@@ -1240,8 +1201,7 @@ static void txt_delete_sel(Text *text)
 {
 	TextLine *tmpl;
 	char *buf;
-	
-	if (!text) return;
+
 	if (!text->curl) return;
 	if (!text->sell) return;
 
@@ -1277,8 +1237,6 @@ static void txt_delete_sel(Text *text)
 
 void txt_sel_all(Text *text)
 {
-	if (!text) return;
-
 	text->curl = text->lines.first;
 	text->curc = 0;
 	
@@ -1286,9 +1244,21 @@ void txt_sel_all(Text *text)
 	text->selc = text->sell->len;
 }
 
+/**
+ * Reverse of #txt_pop_sel
+ * Clears the selection and ensures the cursor is located
+ * at the selection (where the cursor is visually while editing).
+ */
+void txt_sel_clear(Text *text)
+{
+	if (text->sell) {
+		text->curl = text->sell;
+		text->curc = text->selc;
+	}
+}
+
 void txt_sel_line(Text *text)
 {
-	if (!text) return;
 	if (!text->curl) return;
 	
 	text->curc = 0;
@@ -1306,8 +1276,7 @@ char *txt_to_buf(Text *text)
 	TextLine *tmp, *linef, *linel;
 	int charf, charl;
 	char *buf;
-	
-	if (!text) return NULL;
+
 	if (!text->curl) return NULL;
 	if (!text->sell) return NULL;
 	if (!text->lines.first) return NULL;
@@ -1369,7 +1338,7 @@ int txt_find_string(Text *text, const char *findstr, int wrap, int match_case)
 	TextLine *tl, *startl;
 	const char *s = NULL;
 
-	if (!text || !text->curl || !text->sell) return 0;
+	if (!text->curl || !text->sell) return 0;
 	
 	txt_order_cursors(text, false);
 
@@ -1409,8 +1378,7 @@ char *txt_sel_to_buf(Text *text)
 	int length = 0;
 	TextLine *tmp, *linef, *linel;
 	int charf, charl;
-	
-	if (!text) return NULL;
+
 	if (!text->curl) return NULL;
 	if (!text->sell) return NULL;
 	
@@ -1491,7 +1459,6 @@ void txt_insert_buf(Text *text, const char *in_buffer)
 	TextLine *add;
 	char *buffer;
 
-	if (!text) return;
 	if (!in_buffer) return;
 
 	txt_delete_sel(text);
@@ -2373,8 +2340,7 @@ void txt_split_curline(Text *text)
 {
 	TextLine *ins;
 	char *left, *right;
-	
-	if (!text) return;
+
 	if (!text->curl) return;
 
 	txt_delete_sel(text);
@@ -2416,7 +2382,6 @@ void txt_split_curline(Text *text)
 
 static void txt_delete_line(Text *text, TextLine *line)
 {
-	if (!text) return;
 	if (!text->curl) return;
 
 	BLI_remlink(&text->lines, line);
@@ -2433,8 +2398,6 @@ static void txt_delete_line(Text *text, TextLine *line)
 static void txt_combine_lines(Text *text, TextLine *linea, TextLine *lineb)
 {
 	char *tmp, *s;
-
-	if (!text) return;
 	
 	if (!linea || !lineb) return;
 
@@ -2458,7 +2421,7 @@ void txt_duplicate_line(Text *text)
 {
 	TextLine *textline;
 	
-	if (!text || !text->curl) return;
+	if (!text->curl) return;
 	
 	if (text->curl == text->sell) {
 		textline = txt_new_line(text->curl->line);
@@ -2474,8 +2437,7 @@ void txt_duplicate_line(Text *text)
 void txt_delete_char(Text *text) 
 {
 	unsigned int c = '\n';
-	
-	if (!text) return;
+
 	if (!text->curl) return;
 
 	if (txt_has_sel(text)) { /* deleting a selection */
@@ -2518,7 +2480,6 @@ void txt_backspace_char(Text *text)
 {
 	unsigned int c = '\n';
 	
-	if (!text) return;
 	if (!text->curl) return;
 	
 	if (txt_has_sel(text)) { /* deleting a selection */
@@ -2582,8 +2543,7 @@ static bool txt_add_char_intern(Text *text, unsigned int add, bool replace_tabs)
 {
 	char *tmp, ch[BLI_UTF8_MAX];
 	size_t add_len;
-	
-	if (!text) return 0;
+
 	if (!text->curl) return 0;
 
 	if (add == '\n') {
@@ -2642,8 +2602,7 @@ bool txt_replace_char(Text *text, unsigned int add)
 	unsigned int del;
 	size_t del_size = 0, add_size;
 	char ch[BLI_UTF8_MAX];
-	
-	if (!text) return 0;
+
 	if (!text->curl) return 0;
 
 	/* If text is selected or we're at the end of the line just use txt_add_char */
@@ -2697,7 +2656,7 @@ void txt_indent(Text *text)
 	/* hardcoded: TXT_TABSIZE = 4 spaces: */
 	int spaceslen = TXT_TABSIZE;
 
-	if (ELEM3(NULL, text, text->curl, text->sell)) {
+	if (ELEM(NULL, text->curl, text->sell)) {
 		return;
 	}
 
@@ -2764,7 +2723,7 @@ void txt_unindent(Text *text)
 	/* hardcoded: TXT_TABSIZE = 4 spaces: */
 	int spaceslen = TXT_TABSIZE;
 
-	if (ELEM3(NULL, text, text->curl, text->sell)) {
+	if (ELEM(NULL, text->curl, text->sell)) {
 		return;
 	}
 
@@ -2817,8 +2776,7 @@ void txt_comment(Text *text)
 	int len, num;
 	char *tmp;
 	char add = '#';
-	
-	if (!text) return;
+
 	if (!text->curl) return;
 	if (!text->sell) return;  // Need to change this need to check if only one line is selected to more than one
 
@@ -2865,8 +2823,7 @@ void txt_uncomment(Text *text)
 {
 	int num = 0;
 	char remove = '#';
-	
-	if (!text) return;
+
 	if (!text->curl) return;
 	if (!text->sell) return;
 
@@ -2912,7 +2869,7 @@ void txt_move_lines(struct Text *text, const int direction)
 
 	BLI_assert(ELEM(direction, TXT_MOVE_LINE_UP, TXT_MOVE_LINE_DOWN));
 
-	if (!text || !text->curl || !text->sell) return;
+	if (!text->curl || !text->sell) return;
 	
 	txt_order_cursors(text, false);
 
@@ -2945,6 +2902,7 @@ int txt_setcurr_tab_spaces(Text *text, int space)
 	const char *comm = "#";
 	const char indent = (text->flags & TXT_TABSTOSPACES) ? ' ' : '\t';
 	static const char *back_words[] = {"return", "break", "continue", "pass", "yield", NULL};
+
 	if (!text->curl) return 0;
 
 	while (text->curl->line[i] == indent) {

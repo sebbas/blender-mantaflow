@@ -67,12 +67,12 @@ typedef struct bNodeListItem {
 	struct bNode *node;
 } bNodeListItem;
 
-static int sort_nodes_locx(void *a, void *b)
+static int sort_nodes_locx(const void *a, const void *b)
 {
-	bNodeListItem *nli1 = (bNodeListItem *)a;
-	bNodeListItem *nli2 = (bNodeListItem *)b;
-	bNode *node1 = nli1->node;
-	bNode *node2 = nli2->node;
+	const bNodeListItem *nli1 = a;
+	const bNodeListItem *nli2 = b;
+	const bNode *node1 = nli1->node;
+	const bNode *node2 = nli2->node;
 
 	if (node1->locx > node2->locx)
 		return 1;
@@ -461,7 +461,7 @@ static bNodeSocket *node_find_linkable_socket(bNodeTree *ntree, bNode *node, bNo
 		
 		sock = cur->next ? cur->next : first; /* wrap around the list end */
 		while (sock != cur) {
-			if (node_link_socket_match(sock, cur)) {
+			if (!nodeSocketIsHidden(sock) && node_link_socket_match(sock, cur)) {
 				int link_count = node_count_links(ntree, sock);
 				/* take +1 into account since we would add a new link */
 				if (link_count + 1 <= sock->limit)
@@ -490,7 +490,6 @@ static void node_remove_extra_links(SpaceNode *snode, bNodeLink *link, bool use_
 			if (new_from && new_from != from) {
 				/* redirect existing link */
 				tlink->fromsock = new_from;
-				new_from->flag &= ~SOCK_HIDDEN;
 			}
 			else if (!new_from) {
 				/* no possible replacement, remove tlink */
@@ -504,7 +503,6 @@ static void node_remove_extra_links(SpaceNode *snode, bNodeLink *link, bool use_
 			if (new_to && new_to != to) {
 				/* redirect existing link */
 				tlink->tosock = new_to;
-				new_to->flag &= ~SOCK_HIDDEN;
 			}
 			else if (!new_to) {
 				/* no possible replacement, remove tlink */

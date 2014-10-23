@@ -40,7 +40,7 @@
 #  pragma warning (disable:4786)
 #endif
 
-#include "GL/glew.h"
+#include "glew-mx.h"
 
 #include "KX_BlenderCanvas.h"
 #include "KX_BlenderKeyboardDevice.h"
@@ -67,6 +67,7 @@
 
 
 extern "C" {
+	#include "DNA_object_types.h"
 	#include "DNA_view3d_types.h"
 	#include "DNA_screen_types.h"
 	#include "DNA_userdef_types.h"
@@ -91,6 +92,11 @@ extern "C" {
 
 	#include "../../blender/windowmanager/WM_types.h"
 	#include "../../blender/windowmanager/wm_window.h"
+
+/* avoid more includes (not used by BGE) */
+typedef void * wmUIHandlerFunc;
+typedef void * wmUIHandlerRemoveFunc;
+
 	#include "../../blender/windowmanager/wm_event_system.h"
 }
 
@@ -181,6 +187,8 @@ static int BL_KetsjiNextFrame(KX_KetsjiEngine *ketsjiengine, bContext *C, wmWind
 	return exitrequested;
 }
 
+
+#ifdef WITH_PYTHON
 static struct BL_KetsjiNextFrameState {
 	class KX_KetsjiEngine* ketsjiengine;
 	struct bContext *C;
@@ -205,6 +213,8 @@ static int BL_KetsjiPyNextFrame(void *state0)
 		state->mousedevice, 
 		state->draw_letterbox);
 }
+#endif
+
 
 extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *cam_frame, int always_use_expand_framing)
 {
@@ -273,6 +283,10 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 		bool mouse_state = startscene->gm.flag & GAME_SHOW_MOUSE;
 		bool restrictAnimFPS = startscene->gm.flag & GAME_RESTRICT_ANIM_UPDATES;
 
+		short drawtype = v3d->drawtype;
+		
+		/* we do not support material mode in game engine, force change to texture mode */
+		if (drawtype == OB_MATERIAL) drawtype = OB_TEXTURE;
 		if (animation_record) usefixed= false; /* override since you don't want to run full-speed for sim recording */
 
 		// create the canvas and rasterizer
@@ -285,7 +299,8 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 			canvas->SetMouseState(RAS_ICanvas::MOUSE_INVISIBLE);
 
 		// Setup vsync
-		int previous_vsync = canvas->GetSwapInterval();
+		int previous_vsync = 0;
+		canvas->GetSwapInterval(previous_vsync);
 		if (startscene->gm.vsync == VSYNC_ADAPTIVE)
 			canvas->SetSwapInterval(-1);
 		else
@@ -361,7 +376,7 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 			camzoom = 2.0;
 		}
 
-		rasterizer->SetDrawingMode(v3d->drawtype);
+		rasterizer->SetDrawingMode(drawtype);
 		ketsjiengine->SetCameraZoom(camzoom);
 		
 		// if we got an exitcode 3 (KX_EXIT_REQUEST_START_OTHER_GAME) load a different file

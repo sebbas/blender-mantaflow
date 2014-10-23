@@ -29,7 +29,7 @@
 #include "RAS_MaterialBucket.h"
 #include "RAS_IPolygonMaterial.h"
 
-#include "GL/glew.h"
+#include "glew-mx.h"
 #include "GPU_draw.h"
 #include "GPU_extensions.h"
 #include "GPU_material.h"
@@ -247,7 +247,7 @@ void RAS_StorageIM::IndexPrimitivesInternal(RAS_MeshSlot& ms, bool multi)
 			//ms.m_pDerivedMesh->drawMappedFacesTex(ms.m_pDerivedMesh, CheckTexfaceDM, mcol);
 			current_blmat_nr = current_polymat->GetMaterialIndex();
 			current_image = current_polymat->GetBlenderImage();
-			ms.m_pDerivedMesh->drawFacesTex(ms.m_pDerivedMesh, CheckTexDM, NULL, NULL);
+			ms.m_pDerivedMesh->drawFacesTex(ms.m_pDerivedMesh, CheckTexDM, NULL, NULL, DM_DRAW_USE_ACTIVE_UV);
 		}
 		return;
 	}

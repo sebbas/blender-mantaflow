@@ -128,7 +128,7 @@ struct ImBuf;
 #define OPTYPE_UNDO			2	/* do undo push after after */
 #define OPTYPE_BLOCKING		4	/* let blender grab all input from the WM (X11) */
 #define OPTYPE_MACRO		8
-#define OPTYPE_GRAB_POINTER	16	/* */
+#define OPTYPE_GRAB_POINTER	16	/* grabs the cursor and optionally enables continuous cursor wrapping */
 #define OPTYPE_PRESET		32	/* show preset menu */
 #define OPTYPE_INTERNAL		64	/* some operators are mainly for internal use
 								 * and don't make sense to be accessed from the
@@ -190,9 +190,6 @@ enum {
 #define WM_UI_HANDLER_CONTINUE	0
 #define WM_UI_HANDLER_BREAK		1
 
-typedef int (*wmUIHandlerFunc)(struct bContext *C, const struct wmEvent *event, void *userdata);
-typedef void (*wmUIHandlerRemoveFunc)(struct bContext *C, void *userdata);
-
 /* ************** Notifiers ****************** */
 
 typedef struct wmNotifier {
@@ -252,6 +249,7 @@ typedef struct wmNotifier {
 #define ND_DATACHANGED		(3<<16)
 #define ND_HISTORY			(4<<16)
 #define ND_JOB				(5<<16)
+#define ND_UNDO				(6<<16)
 
 	/* NC_SCREEN screen */
 #define ND_SCREENBROWSE		(1<<16)
@@ -600,6 +598,12 @@ typedef struct wmReport {
 #define WM_DRAG_PATH	2
 #define WM_DRAG_NAME	3
 #define WM_DRAG_VALUE	4
+#define WM_DRAG_COLOR	5
+
+typedef enum wmDragFlags {
+	WM_DRAG_NOP         = 0,
+	WM_DRAG_FREE_DATA   = 1,
+} wmDragFlags;
 
 /* note: structs need not exported? */
 
@@ -616,6 +620,7 @@ typedef struct wmDrag {
 	int sx, sy;
 	
 	char opname[200]; /* if set, draws operator name*/
+	unsigned int flags;
 } wmDrag;
 
 /* dropboxes are like keymaps, part of the screen/area/region definition */

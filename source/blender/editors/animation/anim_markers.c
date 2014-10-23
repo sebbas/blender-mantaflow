@@ -115,12 +115,15 @@ ListBase *ED_animcontext_get_markers(const bAnimContext *ac)
 
 /* --------------------------------- */
 
-/* Apply some transformation to markers after the fact 
- * < markers: list of markers to affect - this may or may not be the scene markers list, so don't assume anything
- * < scene: current scene (for getting current frame)
- * < mode: (TfmMode) transform mode that this transform is for
- * < value: from the transform code, this is t->vec[0] (which is delta transform for grab/extend, and scale factor for scale)
- * < side: (B/L/R) for 'extend' functionality, which side of current frame to use
+/**
+ * Apply some transformation to markers after the fact
+ *
+ * \param markers List of markers to affect - this may or may not be the scene markers list, so don't assume anything
+ * \param scene Current scene (for getting current frame)
+ * \param mode (TfmMode) transform mode that this transform is for
+ * \param value From the transform code, this is ``t->vec[0]``
+ * (which is delta transform for grab/extend, and scale factor for scale)
+ * \param side (B/L/R) for 'extend' functionality, which side of current frame to use
  */
 int ED_markers_post_apply_transform(ListBase *markers, Scene *scene, int mode, float value, char side)
 {
@@ -201,7 +204,7 @@ void ED_markers_get_minmax(ListBase *markers, short sel, float *first, float *la
 	
 	/* sanity check */
 	//printf("markers = %p -  %p, %p\n", markers, markers->first, markers->last);
-	if (ELEM3(NULL, markers, markers->first, markers->last)) {
+	if (ELEM(NULL, markers, markers->first, markers->last)) {
 		*first = 0.0f;
 		*last = 0.0f;
 		return;
@@ -472,13 +475,14 @@ static int ed_markers_poll_markers_exist(bContext *C)
  
 /* ------------------------ */ 
 
-/* Second-tier invoke() callback that performs context validation before running the  
+/**
+ * Second-tier invoke() callback that performs context validation before running the
  * "custom"/third-tier invoke() callback supplied as the last arg (which would normally
  * be the operator's invoke() callback elsewhere)
  *
- * < invoke_func: (fn(bContext *, wmOperator *, wmEvent *)=int) "standard" invoke function
- *			that operator would otherwise have used. If NULL, the operator's standard
- *			exec() callback will be called instead in the appropriate places.
+ * \param invoke_func "standard" invoke function that operator would otherwise have used.
+ * If NULL, the operator's standard exec()
+ * callback will be called instead in the appropriate places.
  */
 static int ed_markers_opwrap_invoke_custom(bContext *C, wmOperator *op, const wmEvent *event,
                                            int (*invoke_func)(bContext *, wmOperator *, const wmEvent *))
@@ -600,24 +604,88 @@ typedef struct MarkerMove {
 	NumInput num;
 } MarkerMove;
 
+static bool ed_marker_move_use_time(MarkerMove *mm)
+{
+	if (((mm->slink->spacetype == SPACE_TIME) && !(((SpaceTime *)mm->slink)->flag & TIME_DRAWFRAMES)) ||
+	    ((mm->slink->spacetype == SPACE_SEQ) && !(((SpaceSeq *)mm->slink)->flag & SEQ_DRAWFRAMES)) ||
+	    ((mm->slink->spacetype == SPACE_ACTION) && (((SpaceAction *)mm->slink)->flag & SACTION_DRAWTIME)) ||
+	    ((mm->slink->spacetype == SPACE_IPO) && !(((SpaceIpo *)mm->slink)->flag & SIPO_DRAWTIME)) ||
+	    ((mm->slink->spacetype == SPACE_NLA) && !(((SpaceNla *)mm->slink)->flag & SNLA_DRAWTIME)))
+	{
+		return true;
+	}
+
+	return false;
+}
+
+static void ed_marker_move_update_header(bContext *C, wmOperator *op)
+{
+	Scene *scene = CTX_data_scene(C);
+	MarkerMove *mm = op->customdata;
+	TimeMarker *marker, *selmarker = NULL;
+	const int offs = RNA_int_get(op->ptr, "frames");
+	char str[256];
+	char str_offs[NUM_STR_REP_LEN];
+	int totmark;
+	const bool use_time = ed_marker_move_use_time(mm);
+
+	for (totmark = 0, marker = mm->markers->first; marker; marker = marker->next) {
+		if (marker->flag & SELECT) {
+			selmarker = marker;
+			totmark++;
+		}
+	}
+
+	if (hasNumInput(&mm->num)) {
+		outputNumInput(&mm->num, str_offs, &scene->unit);
+	}
+	else if (use_time) {
+		BLI_snprintf(str_offs, sizeof(str_offs), "%.2f", FRA2TIME(offs));
+	}
+	else {
+		BLI_snprintf(str_offs, sizeof(str_offs), "%d", offs);
+	}
+
+	if (totmark == 1 && selmarker) {
+		/* we print current marker value */
+		if (use_time) {
+			BLI_snprintf(str, sizeof(str), "Marker %.2f offset %s", FRA2TIME(selmarker->frame), str_offs);
+		}
+		else {
+			BLI_snprintf(str, sizeof(str), "Marker %d offset %s", selmarker->frame, str_offs);
+		}
+	}
+	else {
+		BLI_snprintf(str, sizeof(str), "Marker offset %s", str_offs);
+	}
+
+	ED_area_headerprint(CTX_wm_area(C), str);
+}
+
 /* copy selection to temp buffer */
 /* return 0 if not OK */
-static int ed_marker_move_init(bContext *C, wmOperator *op)
+static bool ed_marker_move_init(bContext *C, wmOperator *op)
 {
 	Scene *scene = CTX_data_scene(C);
 	ListBase *markers = ED_context_get_markers(C);
 	MarkerMove *mm;
 	TimeMarker *marker;
-	int totmark = 0;
-	int a;
+	int a, totmark;
 
-	if (markers == NULL) return 0;
-	
-	for (marker = markers->first; marker; marker = marker->next)
-		if (marker->flag & SELECT) totmark++;
-	
-	if (totmark == 0) return 0;
-	
+	if (markers == NULL) {
+		return false;
+	}
+
+	for (totmark = 0, marker = markers->first; marker; marker = marker->next) {
+		if (marker->flag & SELECT) {
+			totmark++;
+		}
+	}
+
+	if (totmark == 0) {
+		return false;
+	}
+
 	op->customdata = mm = MEM_callocN(sizeof(MarkerMove), "Markermove");
 	mm->slink = CTX_wm_space_data(C);
 	mm->markers = markers;
@@ -628,16 +696,16 @@ static int ed_marker_move_init(bContext *C, wmOperator *op)
 	mm->num.val_flag[0] |= NUM_NO_FRACTION;
 	mm->num.unit_sys = scene->unit.system;
 	/* No time unit supporting frames currently... */
-	mm->num.unit_type[0] = B_UNIT_NONE;
-	
+	mm->num.unit_type[0] = ed_marker_move_use_time(mm) ? B_UNIT_TIME : B_UNIT_NONE;
+
 	for (a = 0, marker = markers->first; marker; marker = marker->next) {
 		if (marker->flag & SELECT) {
 			mm->oldframe[a] = marker->frame;
 			a++;
 		}
 	}
-	
-	return 1;
+
+	return true;
 }
 
 /* free stuff */
@@ -668,7 +736,9 @@ static int ed_marker_move_invoke(bContext *C, wmOperator *op, const wmEvent *eve
 		
 		/* reset frs delta */
 		RNA_int_set(op->ptr, "frames", 0);
-		
+
+		ed_marker_move_update_header(C, op);
+
 		return OPERATOR_RUNNING_MODAL;
 	}
 	
@@ -722,138 +792,88 @@ static void ed_marker_move_cancel(bContext *C, wmOperator *op)
 	ed_marker_move_exit(C, op);
 }
 
-
-
 static int ed_marker_move_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
 	Scene *scene = CTX_data_scene(C);
 	MarkerMove *mm = op->customdata;
 	View2D *v2d = UI_view2d_fromcontext(C);
-	TimeMarker *marker, *selmarker = NULL;
-	char str[256];
-		
-	switch (event->type) {
-		case ESCKEY:
-			ed_marker_move_cancel(C, op);
-			return OPERATOR_CANCELLED;
-		case RIGHTMOUSE:
-			/* press = user manually demands transform to be canceled */
-			if (event->val == KM_PRESS) {
+	const bool has_numinput = hasNumInput(&mm->num);
+	const bool use_time = ed_marker_move_use_time(mm);
+
+	/* Modal numinput active, try to handle numeric inputs first... */
+	if (event->val == KM_PRESS && has_numinput && handleNumInput(C, &mm->num, event)) {
+		float value = (float)RNA_int_get(op->ptr, "frames");
+
+		applyNumInput(&mm->num, &value);
+		if (use_time) {
+			value = TIME2FRA(value);
+		}
+
+		RNA_int_set(op->ptr, "frames", (int)value);
+		ed_marker_move_apply(C, op);
+		ed_marker_move_update_header(C, op);
+	}
+	else {
+		bool handled = false;
+		switch (event->type) {
+			case ESCKEY:
 				ed_marker_move_cancel(C, op);
 				return OPERATOR_CANCELLED;
-			}
-		/* else continue; <--- see if release event should be caught for tweak-end */
-		
-		case RETKEY:
-		case PADENTER:
-		case LEFTMOUSE:
-		case MIDDLEMOUSE:
-			if (WM_modal_tweak_exit(event, mm->event_type)) {
-				ed_marker_move_exit(C, op);
-				WM_event_add_notifier(C, NC_SCENE | ND_MARKERS, NULL);
-				WM_event_add_notifier(C, NC_ANIMATION | ND_MARKERS, NULL);
-				return OPERATOR_FINISHED;
-			}
-			break;
-		case MOUSEMOVE:
-		{
-			float dx, fac;
+			case RIGHTMOUSE:
+				/* press = user manually demands transform to be canceled */
+				if (event->val == KM_PRESS) {
+					ed_marker_move_cancel(C, op);
+					return OPERATOR_CANCELLED;
+				}
+			/* else continue; <--- see if release event should be caught for tweak-end */
 
-			if (hasNumInput(&mm->num))
+			case RETKEY:
+			case PADENTER:
+			case LEFTMOUSE:
+			case MIDDLEMOUSE:
+				if (WM_modal_tweak_exit(event, mm->event_type)) {
+					ed_marker_move_exit(C, op);
+					WM_event_add_notifier(C, NC_SCENE | ND_MARKERS, NULL);
+					WM_event_add_notifier(C, NC_ANIMATION | ND_MARKERS, NULL);
+					return OPERATOR_FINISHED;
+				}
 				break;
-			
-			dx = BLI_rctf_size_x(&v2d->cur) / BLI_rcti_size_x(&v2d->mask);
-			
-			if (event->x != mm->evtx) {   /* XXX maybe init for first time */
-				int a, offs, totmark = 0;
-				
-				mm->evtx = event->x;
-				
-				fac = ((float)(event->x - mm->firstx) * dx);
-				
-				if (mm->slink->spacetype == SPACE_TIME) 
-					apply_keyb_grid(event->shift, event->ctrl, &fac, 0.0, FPS, 0.1 * FPS, 0);
-				else
-					apply_keyb_grid(event->shift, event->ctrl, &fac, 0.0, 1.0, 0.1, 0 /*was: U.flag & USER_AUTOGRABGRID*/);
-				
-				offs = (int)fac;
-				RNA_int_set(op->ptr, "frames", offs);
-				ed_marker_move_apply(C, op);
-				
-				/* cruft below is for header print */
-				for (a = 0, marker = mm->markers->first; marker; marker = marker->next) {
-					if (marker->flag & SELECT) {
-						selmarker = marker;
-						a++; totmark++;
-					}
-				}
-				
-				if (totmark == 1) {
-					/* we print current marker value */
-					if (mm->slink->spacetype == SPACE_TIME) {
-						SpaceTime *stime = (SpaceTime *)mm->slink;
-						if (stime->flag & TIME_DRAWFRAMES) 
-							BLI_snprintf(str, sizeof(str), "Marker %d offset %d", selmarker->frame, offs);
-						else 
-							BLI_snprintf(str, sizeof(str), "Marker %.2f offset %.2f", FRA2TIME(selmarker->frame), FRA2TIME(offs));
-					}
-					else if (mm->slink->spacetype == SPACE_ACTION) {
-						SpaceAction *saction = (SpaceAction *)mm->slink;
-						if (saction->flag & SACTION_DRAWTIME)
-							BLI_snprintf(str, sizeof(str), "Marker %.2f offset %.2f", FRA2TIME(selmarker->frame), FRA2TIME(offs));
+			case MOUSEMOVE:
+				if (!has_numinput) {
+					float dx;
+
+					dx = BLI_rctf_size_x(&v2d->cur) / BLI_rcti_size_x(&v2d->mask);
+
+					if (event->x != mm->evtx) {   /* XXX maybe init for first time */
+						float fac;
+
+						mm->evtx = event->x;
+						fac = ((float)(event->x - mm->firstx) * dx);
+
+						if (mm->slink->spacetype == SPACE_TIME)
+							apply_keyb_grid(event->shift, event->ctrl, &fac, 0.0, FPS, 0.1 * FPS, 0);
 						else
-							BLI_snprintf(str, sizeof(str), "Marker %.2f offset %.2f", (double)(selmarker->frame), (double)(offs));
-					}
-					else {
-						BLI_snprintf(str, sizeof(str), "Marker %.2f offset %.2f", (double)(selmarker->frame), (double)(offs));
-					}
-				}
-				else {
-					/* we only print the offset */
-					if (mm->slink->spacetype == SPACE_TIME) {
-						SpaceTime *stime = (SpaceTime *)mm->slink;
-						if (stime->flag & TIME_DRAWFRAMES) 
-							BLI_snprintf(str, sizeof(str), "Marker offset %d ", offs);
-						else 
-							BLI_snprintf(str, sizeof(str), "Marker offset %.2f ", FRA2TIME(offs));
-					}
-					else if (mm->slink->spacetype == SPACE_ACTION) {
-						SpaceAction *saction = (SpaceAction *)mm->slink;
-						if (saction->flag & SACTION_DRAWTIME)
-							BLI_snprintf(str, sizeof(str), "Marker offset %.2f ", FRA2TIME(offs));
-						else
-							BLI_snprintf(str, sizeof(str), "Marker offset %.2f ", (double)(offs));
-					}
-					else {
-						BLI_snprintf(str, sizeof(str), "Marker offset %.2f ", (double)(offs));
+							apply_keyb_grid(event->shift, event->ctrl, &fac, 0.0, 1.0, 0.1, 0 /*was: U.flag & USER_AUTOGRABGRID*/);
+
+						RNA_int_set(op->ptr, "frames", (int)fac);
+						ed_marker_move_apply(C, op);
+						ed_marker_move_update_header(C, op);
 					}
 				}
-				
-				ED_area_headerprint(CTX_wm_area(C), str);
-			}
-			break;
+				break;
 		}
-	}
 
-	if (event->val == KM_PRESS) {
-		if (handleNumInput(C, &mm->num, event)) {
-			char str_tx[NUM_STR_REP_LEN];
-			float value = RNA_int_get(op->ptr, "frames");
+		if (!handled && event->val == KM_PRESS && handleNumInput(C, &mm->num, event)) {
+			float value = (float)RNA_int_get(op->ptr, "frames");
+
 			applyNumInput(&mm->num, &value);
-
-			if (hasNumInput(&mm->num)) {
-				outputNumInput(&mm->num, str_tx);
-			}
-			else {
-				BLI_snprintf(str_tx, sizeof(str_tx), "%d", (int)value);
+			if (use_time) {
+				value = TIME2FRA(value);
 			}
 
-			RNA_int_set(op->ptr, "frames", value);
+			RNA_int_set(op->ptr, "frames", (int)value);
 			ed_marker_move_apply(C, op);
-			// ed_marker_header_update(C, op, str, (int)value);
-			// strcat(str, str_tx);
-			BLI_snprintf(str, sizeof(str), "Marker offset %s", str_tx);
-			ED_area_headerprint(CTX_wm_area(C), str);
+			ed_marker_move_update_header(C, op);
 		}
 	}
 
@@ -1008,14 +1028,14 @@ static void select_timeline_marker_frame(ListBase *markers, int frame, bool exte
 		}
 	}
 
-	LISTBASE_CIRCULAR_FORWARD_BEGIN (markers, marker, marker_first) {
+	BLI_LISTBASE_CIRCULAR_FORWARD_BEGIN (markers, marker, marker_first) {
 		/* this way a not-extend select will allways give 1 selected marker */
 		if (marker->frame == frame) {
 			marker->flag ^= SELECT;
 			break;
 		}
 	}
-	LISTBASE_CIRCULAR_FORWARD_END (markers, marker, marker_first);
+	BLI_LISTBASE_CIRCULAR_FORWARD_END (markers, marker, marker_first);
 }
 
 static int ed_marker_select(bContext *C, const wmEvent *event, bool extend, bool camera)

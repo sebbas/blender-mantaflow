@@ -31,11 +31,13 @@
 #ifndef CERES_INTERNAL_CXSPARSE_H_
 #define CERES_INTERNAL_CXSPARSE_H_
 
+// This include must come before any #ifndef check on Ceres compile options.
+#include "ceres/internal/port.h"
+
 #ifndef CERES_NO_CXSPARSE
 
 #include <vector>
 #include "cs.h"
-#include "ceres/internal/port.h"
 
 namespace ceres {
 namespace internal {
@@ -127,9 +129,13 @@ class CXSparse {
 
 #else  // CERES_NO_CXSPARSE
 
-class CXSparse {};
 typedef void cs_dis;
 
+class CXSparse {
+ public:
+  void Free(void*) {};
+
+};
 #endif  // CERES_NO_CXSPARSE
 
 #endif  // CERES_INTERNAL_CXSPARSE_H_

@@ -72,6 +72,7 @@ MINLINE float plane_point_side_v3(const float plane[4], const float co[3]);
 /********************************* Volume **********************************/
 
 float volume_tetrahedron_v3(const float v1[3], const float v2[3], const float v3[3], const float v4[3]);
+float volume_tetrahedron_signed_v3(const float v1[3], const float v2[3], const float v3[3], const float v4[3]);
 
 bool is_quad_convex_v3(const float v1[3], const float v2[3], const float v3[3], const float v4[3]);
 bool is_quad_convex_v2(const float v1[2], const float v2[2], const float v3[2], const float v4[2]);
@@ -85,8 +86,11 @@ float dist_squared_to_line_segment_v2(const float p[2], const float l1[2], const
 float         dist_to_line_segment_v2(const float p[2], const float l1[2], const float l2[2]);
 void closest_to_line_segment_v2(float r_close[2], const float p[2], const float l1[2], const float l2[2]);
 
-float dist_squared_to_plane_v3(const float p[3], const float plane[4]);
-float dist_to_plane_v3(const float p[3], const float plane[4]);
+float dist_signed_squared_to_plane_v3(const float p[3], const float plane[4]);
+float        dist_squared_to_plane_v3(const float p[3], const float plane[4]);
+float dist_signed_to_plane_v3(const float p[3], const float plane[4]);
+float        dist_to_plane_v3(const float p[3], const float plane[4]);
+
 float dist_squared_to_line_segment_v3(const float p[3], const float l1[3], const float l2[3]);
 float         dist_to_line_segment_v3(const float p[3], const float l1[3], const float l2[3]);
 float dist_squared_to_line_v3(const float p[3], const float l1[3], const float l2[3]);
@@ -126,9 +130,14 @@ int isect_line_sphere_v2(const float l1[2], const float l2[2], const float sp[2]
 int isect_seg_seg_v2_point(const float v1[2], const float v2[2], const float v3[2], const float v4[2], float vi[2]);
 bool isect_seg_seg_v2(const float v1[2], const float v2[2], const float v3[2], const float v4[2]);
 
-int isect_line_line_v3(const float v1[3], const float v2[3],
-                       const float v3[3], const float v4[3],
-                       float i1[3], float i2[3]);
+int isect_line_line_epsilon_v3(
+        const float v1[3], const float v2[3],
+        const float v3[3], const float v4[3], float i1[3], float i2[3],
+        const float epsilon);
+int isect_line_line_v3(
+        const float v1[3], const float v2[3],
+        const float v3[3], const float v4[3],
+        float i1[3], float i2[3]);
 bool isect_line_line_strict_v3(const float v1[3], const float v2[3],
                                const float v3[3], const float v4[3],
                                float vi[3], float *r_lambda);
@@ -168,6 +177,8 @@ int  isect_point_tri_v2(const float pt[2], const float v1[2], const float v2[2],
 bool isect_point_tri_v2_cw(const float pt[2], const float v1[2], const float v2[2], const float v3[2]);
 int  isect_point_tri_v2_int(const int x1, const int y1, const int x2, const int y2, const int a, const int b);
 bool isect_point_tri_prism_v3(const float p[3], const float v1[3], const float v2[3], const float v3[3]);
+bool isect_point_tri_v3(const float p[3], const float v1[3], const float v2[3], const float v3[3],
+                        float r_vi[3]);
 
 /* axis-aligned bounding box */
 bool isect_aabb_aabb_v3(const float min1[3], const float max1[3], const float min2[3], const float max2[3]);
@@ -209,9 +220,14 @@ void interp_cubic_v3(float x[3], float v[3],
 
 int interp_sparse_array(float *array, const int list_size, const float invalid);
 
-void barycentric_transform(float pt_tar[3], float const pt_src[3],
-                           const float tri_tar_p1[3], const float tri_tar_p2[3], const float tri_tar_p3[3],
-                           const float tri_src_p1[3], const float tri_src_p2[3], const float tri_src_p3[3]);
+void transform_point_by_tri_v3(
+        float pt_tar[3], float const pt_src[3],
+        const float tri_tar_p1[3], const float tri_tar_p2[3], const float tri_tar_p3[3],
+        const float tri_src_p1[3], const float tri_src_p2[3], const float tri_src_p3[3]);
+void transform_point_by_seg_v3(
+        float p_dst[3], const float p_src[3],
+        const float l_dst_p1[3], const float l_dst_p2[3],
+        const float l_src_p1[3], const float l_src_p2[3]);
 
 void barycentric_weights_v2(const float v1[2], const float v2[2], const float v3[2],
                             const float co[2], float w[3]);
@@ -259,17 +275,22 @@ void map_to_sphere(float *r_u, float *r_v, const float x, const float y, const f
 
 /********************************** Normals **********************************/
 
-void accumulate_vertex_normals(float n1[3], float n2[3], float n3[3],
-                               float n4[3], const float f_no[3], const float co1[3], const float co2[3],
-                               const float co3[3], const float co4[3]);
+void accumulate_vertex_normals(
+        float n1[3], float n2[3], float n3[3], float n4[3],
+        const float f_no[3],
+        const float co1[3], const float co2[3], const float co3[3], const float co4[3]);
 
-void accumulate_vertex_normals_poly(float **vertnos, const float polyno[3],
-                                    const float **vertcos, float vdiffs[][3], const int nverts);
+void accumulate_vertex_normals_poly(
+        float **vertnos, const float polyno[3],
+        const float **vertcos, float vdiffs[][3], const int nverts);
 
 /********************************* Tangents **********************************/
 
-void tangent_from_uv(float uv1[2], float uv2[2], float uv3[2],
-                     float co1[3], float co2[3], float co3[3], float n[3], float tang[3]);
+void tangent_from_uv(
+        const float uv1[2], const float uv2[2], const float uv3[2],
+        const float co1[3], const float co2[3], const float co3[3],
+        const float n[3],
+        float r_tang[3]);
 
 /******************************** Vector Clouds ******************************/
 

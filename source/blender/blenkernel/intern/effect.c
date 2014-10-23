@@ -630,8 +630,7 @@ int get_effector_data(EffectorCache *eff, EffectorData *efd, EffectedPoint *poin
 	}
 	else {
 		/* use center of object for distance calculus */
-		Object *ob = eff->ob;
-		Object obcopy = *ob;
+		const Object *ob = eff->ob;
 
 		/* use z-axis as normal*/
 		normalize_v3_v3(efd->nor, ob->obmat[2]);
@@ -653,8 +652,6 @@ int get_effector_data(EffectorCache *eff, EffectorData *efd, EffectedPoint *poin
 
 		if (real_velocity)
 			copy_v3_v3(efd->vel, eff->velocity);
-
-		*eff->ob = obcopy;
 
 		efd->size = 0.0f;
 
@@ -875,7 +872,7 @@ static void do_physical_effector(EffectorCache *eff, EffectorData *efd, Effected
 		case PFIELD_HARMONIC:
 			mul_v3_fl(force, -strength * efd->falloff);
 			copy_v3_v3(temp, point->vel);
-			mul_v3_fl(temp, -damp * 2.0f * (float)sqrt(fabs(strength)) * point->vel_to_sec);
+			mul_v3_fl(temp, -damp * 2.0f * sqrtf(fabsf(strength)) * point->vel_to_sec);
 			add_v3_v3(force, temp);
 			break;
 		case PFIELD_CHARGE:
@@ -935,7 +932,7 @@ static void do_physical_effector(EffectorCache *eff, EffectorData *efd, Effected
 	if (pd->flag & PFIELD_DO_LOCATION) {
 		madd_v3_v3fl(total_force, force, 1.0f/point->vel_to_sec);
 
-		if (ELEM3(pd->forcefield, PFIELD_HARMONIC, PFIELD_DRAG, PFIELD_SMOKEFLOW)==0 && pd->f_flow != 0.0f) {
+		if (ELEM(pd->forcefield, PFIELD_HARMONIC, PFIELD_DRAG, PFIELD_SMOKEFLOW)==0 && pd->f_flow != 0.0f) {
 			madd_v3_v3fl(total_force, point->vel, -pd->f_flow * efd->falloff);
 		}
 	}

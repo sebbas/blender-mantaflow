@@ -150,7 +150,7 @@ static int StrokeVertex_init(BPy_StrokeVertex *self, PyObject *args, PyObject *k
 	}
 	self->py_cp.cp = self->sv;
 	self->py_cp.py_if0D.if0D = self->sv;
-	self->py_cp.py_if0D.borrowed = 0;
+	self->py_cp.py_if0D.borrowed = false;
 	return 0;
 }
 
@@ -226,7 +226,7 @@ void StrokeVertex_mathutils_register_callback()
 PyDoc_STRVAR(StrokeVertex_attribute_doc,
 "StrokeAttribute for this StrokeVertex.\n"
 "\n"
-":type: StrokeAttribute");
+":type: :class:`StrokeAttribute`");
 
 static PyObject *StrokeVertex_attribute_get(BPy_StrokeVertex *self, void *UNUSED(closure))
 {
@@ -267,7 +267,7 @@ static int StrokeVertex_curvilinear_abscissa_set(BPy_StrokeVertex *self, PyObjec
 PyDoc_STRVAR(StrokeVertex_point_doc,
 "2D point coordinates.\n"
 "\n"
-":type: mathutils.Vector");
+":type: :class:`mathutils.Vector`");
 
 static PyObject *StrokeVertex_point_get(BPy_StrokeVertex *self, void *UNUSED(closure))
 {
@@ -277,8 +277,9 @@ static PyObject *StrokeVertex_point_get(BPy_StrokeVertex *self, void *UNUSED(clo
 static int StrokeVertex_point_set(BPy_StrokeVertex *self, PyObject *value, void *UNUSED(closure))
 {
 	float v[2];
-	if (!float_array_from_PyObject(value, v, 2)) {
-		PyErr_SetString(PyExc_ValueError, "value must be a 2-dimensional vector");
+	if (mathutils_array_parse(v, 2, 2, value,
+	                          "value must be a 2-dimensional vector") == -1)
+	{
 		return -1;
 	}
 	self->sv->setX(v[0]);

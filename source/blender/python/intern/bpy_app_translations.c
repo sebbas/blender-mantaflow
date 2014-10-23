@@ -86,16 +86,15 @@ static unsigned int _ghashutil_keyhash(const void *ptr)
 	return hash ^ BLI_ghashutil_strhash(key->msgid);
 }
 
-static int _ghashutil_keycmp(const void *a, const void *b)
+static bool _ghashutil_keycmp(const void *a, const void *b)
 {
 	const GHashKey *A = a;
 	const GHashKey *B = b;
 
 	/* Note: comparing msgid first, most of the time it will be enough! */
-	int cmp = BLI_ghashutil_strcmp(A->msgid, B->msgid);
-	if (cmp == 0)
+	if (BLI_ghashutil_strcmp(A->msgid, B->msgid) == false)
 		return BLI_ghashutil_strcmp(A->msgctxt, B->msgctxt);
-	return cmp;
+	return true;  /* true means they are not equal! */
 }
 
 static void _ghashutil_keyfree(void *ptr)
@@ -390,13 +389,13 @@ static BLF_i18n_contexts_descriptor _contexts[] = BLF_I18NCONTEXTS_DESC;
  * This allows us to avoid many handwriting, and above all, to keep all context definition stuff in BLF_translation.h!
  */
 static PyStructSequence_Field
-app_translations_contexts_fields[sizeof(_contexts) / sizeof(BLF_i18n_contexts_descriptor)] = {{NULL}};
+app_translations_contexts_fields[ARRAY_SIZE(_contexts)] = {{NULL}};
 
 static PyStructSequence_Desc app_translations_contexts_desc = {
 	(char *)"bpy.app.translations.contexts",     /* name */
 	(char *)"This named tuple contains all pre-defined translation contexts",    /* doc */
 	app_translations_contexts_fields,    /* fields */
-	(sizeof(app_translations_contexts_fields) / sizeof(PyStructSequence_Field)) - 1
+	ARRAY_SIZE(app_translations_contexts_fields) - 1
 };
 
 static PyObject *app_translations_contexts_make(void)

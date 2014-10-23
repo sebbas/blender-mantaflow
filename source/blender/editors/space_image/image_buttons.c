@@ -284,10 +284,10 @@ static void image_panel_preview(ScrArea *sa, short cntrl)   // IMAGE_HANDLER_PRE
 
 /* ********************* callbacks for standard image buttons *************** */
 
-static void ui_imageuser_slot_menu(bContext *UNUSED(C), uiLayout *layout, void *render_slot_p)
+static void ui_imageuser_slot_menu(bContext *UNUSED(C), uiLayout *layout, void *image_p)
 {
 	uiBlock *block = uiLayoutGetBlock(layout);
-	short *render_slot = render_slot_p;
+	Image *image = image_p;
 	int slot;
 
 	uiDefBut(block, LABEL, 0, IFACE_("Slot"),
@@ -296,10 +296,15 @@ static void ui_imageuser_slot_menu(bContext *UNUSED(C), uiLayout *layout, void *
 
 	slot = IMA_MAX_RENDER_SLOT;
 	while (slot--) {
-		char str[32];
-		BLI_snprintf(str, sizeof(str), IFACE_("Slot %d"), slot + 1);
+		char str[64];
+		if (image->render_slots[slot].name[0] != '\0') {
+			BLI_strncpy(str, image->render_slots[slot].name, sizeof(str));
+		}
+		else {
+			BLI_snprintf(str, sizeof(str), IFACE_("Slot %d"), slot + 1);
+		}
 		uiDefButS(block, BUTM, B_NOP, str, 0, 0,
-		          UI_UNIT_X * 5, UI_UNIT_X, render_slot, (float) slot, 0.0, 0, -1, "");
+		          UI_UNIT_X * 5, UI_UNIT_X, &image->render_slot, (float) slot, 0.0, 0, -1, "");
 	}
 }
 
@@ -320,12 +325,20 @@ static void ui_imageuser_layer_menu(bContext *UNUSED(C), uiLayout *layout, void 
 {
 	void **rnd_data = rnd_pt;
 	uiBlock *block = uiLayoutGetBlock(layout);
-	RenderResult *rr = rnd_data[0];
+	Image *image = rnd_data[0];
 	ImageUser *iuser = rnd_data[1];
+	Scene *scene = iuser->scene;
+	RenderResult *rr;
 	RenderLayer *rl;
 	RenderLayer rl_fake = {NULL};
 	const char *fake_name;
 	int nr;
+
+	/* may have been freed since drawing */
+	rr = BKE_image_acquire_renderresult(scene, image);
+	if (UNLIKELY(rr == NULL)) {
+		return;
+	}
 
 	uiBlockSetCurLayout(block, layout);
 	uiLayoutColumn(layout, false);
@@ -355,6 +368,8 @@ final:
 	}
 
 	BLI_assert(nr == -1);
+
+	BKE_image_release_renderresult(scene, image);
 }
 
 static const char *ui_imageuser_pass_fake_name(RenderLayer *rl)
@@ -369,16 +384,27 @@ static const char *ui_imageuser_pass_fake_name(RenderLayer *rl)
 
 static void ui_imageuser_pass_menu(bContext *UNUSED(C), uiLayout *layout, void *ptrpair_p)
 {
-	void **ptrpair = ptrpair_p;
+	void **rnd_data = ptrpair_p;
 	uiBlock *block = uiLayoutGetBlock(layout);
-	// RenderResult *rr = ptrpair[0];
-	ImageUser *iuser = ptrpair[1];
-	/* rl==NULL means composite result */
-	RenderLayer *rl = ptrpair[2];
+	Image *image = rnd_data[0];
+	ImageUser *iuser = rnd_data[1];
+	/* (rpass_index == -1) means composite result */
+	const int rpass_index = GET_INT_FROM_POINTER(rnd_data[2]);
+	Scene *scene = iuser->scene;
+	RenderResult *rr;
+	RenderLayer *rl;
 	RenderPass rpass_fake = {NULL};
 	RenderPass *rpass;
 	const char *fake_name;
 	int nr;
+
+	/* may have been freed since drawing */
+	rr = BKE_image_acquire_renderresult(scene, image);
+	if (UNLIKELY(rr == NULL)) {
+		return;
+	}
+
+	rl = BLI_findlink(&rr->layers, rpass_index);
 
 	uiBlockSetCurLayout(block, layout);
 	uiLayoutColumn(layout, false);
@@ -410,6 +436,8 @@ final:
 	}
 
 	BLI_assert(nr == -1);
+
+	BKE_image_release_renderresult(scene, image);
 }
 
 /* 5 layer button callbacks... */
@@ -492,7 +520,7 @@ static void image_user_change(bContext *C, void *iuser_v, void *unused)
 }
 #endif
 
-static void uiblock_layer_pass_buttons(uiLayout *layout, RenderResult *rr, ImageUser *iuser, int w, short *render_slot)
+static void uiblock_layer_pass_buttons(uiLayout *layout, Image *image, RenderResult *rr, ImageUser *iuser, int w, short *render_slot)
 {
 	static void *rnd_pt[3];  /* XXX, workaround */
 	uiBlock *block = uiLayoutGetBlock(layout);
@@ -509,26 +537,33 @@ static void uiblock_layer_pass_buttons(uiLayout *layout, RenderResult *rr, Image
 	wmenu2 = (3 * w) / 5;
 	wmenu3 = (3 * w) / 6;
 	
-	rnd_pt[0] = rr;
+	rnd_pt[0] = image;
 	rnd_pt[1] = iuser;
 	rnd_pt[2] = NULL;
 
 	/* menu buts */
 	if (render_slot) {
 		char str[64];
-		BLI_snprintf(str, sizeof(str), IFACE_("Slot %d"), *render_slot + 1);
-		but = uiDefMenuBut(block, ui_imageuser_slot_menu, render_slot, str, 0, 0, wmenu1, UI_UNIT_Y, TIP_("Select Slot"));
+		if (image->render_slots[*render_slot].name[0] != '\0') {
+			BLI_strncpy(str, image->render_slots[*render_slot].name, sizeof(str));
+		}
+		else {
+			BLI_snprintf(str, sizeof(str), IFACE_("Slot %d"), *render_slot + 1);
+		}
+		but = uiDefMenuBut(block, ui_imageuser_slot_menu, image, str, 0, 0, wmenu1, UI_UNIT_Y, TIP_("Select Slot"));
 		uiButSetFunc(but, image_multi_cb, rr, iuser);
 		uiButSetMenuFromPulldown(but);
 	}
 
 	if (rr) {
 		RenderPass *rpass;
+		int rpass_index;
 
 		/* layer */
 		fake_name = ui_imageuser_layer_fake_name(rr);
-		rl = BLI_findlink(&rr->layers, iuser->layer  - (fake_name ? 1 : 0));
-		rnd_pt[2] = rl;
+		rpass_index = iuser->layer  - (fake_name ? 1 : 0);
+		rl = BLI_findlink(&rr->layers, rpass_index);
+		rnd_pt[2] = SET_INT_IN_POINTER(rpass_index);
 
 		display_name = rl ? rl->name : (fake_name ? fake_name : "");
 		but = uiDefMenuBut(block, ui_imageuser_layer_menu, rnd_pt, display_name, 0, 0, wmenu2, UI_UNIT_Y, TIP_("Select Layer"));
@@ -547,7 +582,7 @@ static void uiblock_layer_pass_buttons(uiLayout *layout, RenderResult *rr, Image
 	}
 }
 
-static void uiblock_layer_pass_arrow_buttons(uiLayout *layout, RenderResult *rr, ImageUser *iuser, short *render_slot)
+static void uiblock_layer_pass_arrow_buttons(uiLayout *layout, Image *image, RenderResult *rr, ImageUser *iuser, short *render_slot)
 {
 	uiBlock *block = uiLayoutGetBlock(layout);
 	uiLayout *row;
@@ -569,7 +604,7 @@ static void uiblock_layer_pass_arrow_buttons(uiLayout *layout, RenderResult *rr,
 	but = uiDefIconBut(block, BUT, 0, ICON_TRIA_RIGHT,  0, 0, 0.90f * UI_UNIT_X, UI_UNIT_Y, NULL, 0, 0, 0, 0, TIP_("Next Layer"));
 	uiButSetFunc(but, image_multi_inclay_cb, rr, iuser);
 
-	uiblock_layer_pass_buttons(row, rr, iuser, 230 * dpi_fac, render_slot);
+	uiblock_layer_pass_buttons(row, image, rr, iuser, 230 * dpi_fac, render_slot);
 
 	/* decrease, increase arrows */
 	but = uiDefIconBut(block, BUT, 0, ICON_TRIA_LEFT,   0, 0, 0.85f * UI_UNIT_X, UI_UNIT_Y, NULL, 0, 0, 0, 0, TIP_("Previous Pass"));
@@ -691,7 +726,7 @@ void uiTemplateImage(uiLayout *layout, bContext *C, PointerRNA *ptr, const char 
 
 				/* use BKE_image_acquire_renderresult  so we get the correct slot in the menu */
 				rr = BKE_image_acquire_renderresult(scene, ima);
-				uiblock_layer_pass_arrow_buttons(layout, rr, iuser, &ima->render_slot);
+				uiblock_layer_pass_arrow_buttons(layout, ima, rr, iuser, &ima->render_slot);
 				BKE_image_release_renderresult(scene, ima);
 			}
 		}
@@ -724,7 +759,7 @@ void uiTemplateImage(uiLayout *layout, bContext *C, PointerRNA *ptr, const char 
 
 			/* multilayer? */
 			if (ima->type == IMA_TYPE_MULTILAYER && ima->rr) {
-				uiblock_layer_pass_arrow_buttons(layout, ima->rr, iuser, NULL);
+				uiblock_layer_pass_arrow_buttons(layout, ima, ima->rr, iuser, NULL);
 			}
 			else if (ima->source != IMA_SRC_GENERATED) {
 				if (compact == 0) {
@@ -809,6 +844,10 @@ void uiTemplateImage(uiLayout *layout, bContext *C, PointerRNA *ptr, const char 
 				uiItemR(col, &imaptr, "use_generated_float", 0, NULL, ICON_NONE);
 
 				uiItemR(split, &imaptr, "generated_type", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+
+				if (ima->gen_type == IMA_GENTYPE_BLANK) {
+					uiItemR(layout, &imaptr, "generated_color", 0, NULL, ICON_NONE);
+				}
 			}
 
 		}
@@ -843,14 +882,14 @@ void uiTemplateImageSettings(uiLayout *layout, PointerRNA *imfptr, int color_man
 	uiItemR(sub, imfptr, "color_mode", UI_ITEM_R_EXPAND, IFACE_("Color"), ICON_NONE);
 
 	/* only display depth setting if multiple depths can be used */
-	if ((ELEM7(depth_ok,
-	           R_IMF_CHAN_DEPTH_1,
-	           R_IMF_CHAN_DEPTH_8,
-	           R_IMF_CHAN_DEPTH_10,
-	           R_IMF_CHAN_DEPTH_12,
-	           R_IMF_CHAN_DEPTH_16,
-	           R_IMF_CHAN_DEPTH_24,
-	           R_IMF_CHAN_DEPTH_32)) == 0)
+	if ((ELEM(depth_ok,
+	          R_IMF_CHAN_DEPTH_1,
+	          R_IMF_CHAN_DEPTH_8,
+	          R_IMF_CHAN_DEPTH_10,
+	          R_IMF_CHAN_DEPTH_12,
+	          R_IMF_CHAN_DEPTH_16,
+	          R_IMF_CHAN_DEPTH_24,
+	          R_IMF_CHAN_DEPTH_32)) == 0)
 	{
 		row = uiLayoutRow(col, false);
 
@@ -933,7 +972,7 @@ void uiTemplateImageLayers(uiLayout *layout, bContext *C, Image *ima, ImageUser 
 
 		/* use BKE_image_acquire_renderresult  so we get the correct slot in the menu */
 		rr = BKE_image_acquire_renderresult(scene, ima);
-		uiblock_layer_pass_buttons(layout, rr, iuser, 160 * dpi_fac, (ima->type == IMA_TYPE_R_RESULT) ? &ima->render_slot : NULL);
+		uiblock_layer_pass_buttons(layout, ima, rr, iuser, 160 * dpi_fac, (ima->type == IMA_TYPE_R_RESULT) ? &ima->render_slot : NULL);
 		BKE_image_release_renderresult(scene, ima);
 	}
 }
@@ -947,8 +986,8 @@ void image_buttons_register(ARegionType *art)
 	strcpy(pt->idname, "IMAGE_PT_gpencil");
 	strcpy(pt->label, N_("Grease Pencil"));
 	strcpy(pt->translation_context, BLF_I18NCONTEXT_DEFAULT_BPYRNA);
-	pt->draw_header = gpencil_panel_standard_header;
-	pt->draw = gpencil_panel_standard;
+	pt->draw_header = ED_gpencil_panel_standard_header;
+	pt->draw = ED_gpencil_panel_standard;
 	BLI_strncpy(pt->category, category, BLI_strlen_utf8(category));
 	BLI_addtail(&art->paneltypes, pt);
 }

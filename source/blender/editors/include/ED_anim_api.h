@@ -111,11 +111,12 @@ typedef struct bAnimListElem {
 	struct bAnimListElem *next, *prev;
 	
 	void    *data;          /* source data this elem represents */
-	int     type;           /* one of the ANIMTYPE_* values */
+	int     type;           /* (eAnim_ChannelType) one of the ANIMTYPE_* values */
 	int     flag;           /* copy of elem's flags for quick access */
-	int     index;          /* for un-named data, the index of the data in it's collection */
+	int     index;          /* for un-named data, the index of the data in its collection */
 	
-	short   datatype;       /* type of motion data to expect */
+	short   update;         /* (eAnim_Update_Flags)  tag the element for updating */
+	short   datatype;       /* (eAnim_KeyType) type of motion data to expect */
 	void   *key_data;       /* motion data - mostly F-Curves, but can be other types too */
 	
 	
@@ -188,6 +189,20 @@ typedef enum eAnim_KeyType {
 	ALE_ACT,            /* Action summary */
 	ALE_GROUP           /* Action Group summary */
 } eAnim_KeyType;
+
+/* Flags for specifying the types of updates (i.e. recalculation/refreshing) that
+ * needs to be performed to the data contained in a channel following editing.
+ * For use with ANIM_animdata_update()
+ */
+typedef enum eAnim_Update_Flags {
+	ANIM_UPDATE_DEPS        = (1 << 0),  /* referenced data and dependencies get refreshed */
+	ANIM_UPDATE_ORDER       = (1 << 1),  /* keyframes need to be sorted */
+	ANIM_UPDATE_HANDLES     = (1 << 2),  /* recalculate handles */
+} eAnim_Update_Flags;
+
+/* used for most tools which change keyframes (flushed by ANIM_animdata_update) */
+#define ANIM_UPDATE_DEFAULT (ANIM_UPDATE_DEPS | ANIM_UPDATE_ORDER | ANIM_UPDATE_HANDLES)
+#define ANIM_UPDATE_DEFAULT_NOHANDLES (ANIM_UPDATE_DEFAULT & ~ANIM_UPDATE_HANDLES)
 
 /* ----------------- Filtering -------------------- */
 
@@ -343,7 +358,7 @@ typedef enum eAnimFilter_Flags {
 /* Obtain list of filtered Animation channels to operate on.
  * Returns the number of channels in the list
  */
-size_t ANIM_animdata_filter(bAnimContext *ac, ListBase *anim_data, int filter_mode, void *data, short datatype);
+size_t ANIM_animdata_filter(bAnimContext *ac, ListBase *anim_data, eAnimFilter_Flags filter_mode, void *data, eAnimCont_Types datatype);
 
 /* Obtain current anim-data context from Blender Context info.
  * Returns whether the operation was successful. 
@@ -355,6 +370,11 @@ bool ANIM_animdata_get_context(const struct bContext *C, bAnimContext *ac);
  * Returns whether the operation was successful.
  */
 bool ANIM_animdata_context_getdata(bAnimContext *ac);
+
+/* Acts on bAnimListElem eAnim_Update_Flags */
+void ANIM_animdata_update(bAnimContext *ac, ListBase *anim_data);
+
+void ANIM_animdata_freelist(ListBase *anim_data);
 
 /* ************************************************ */
 /* ANIMATION CHANNELS LIST */
@@ -447,13 +467,13 @@ void ANIM_channel_draw_widgets(struct bContext *C, bAnimContext *ac, bAnimListEl
  *
  *  - setting: eAnimChannel_Settings
  */
-short ANIM_channel_setting_get(bAnimContext *ac, bAnimListElem *ale, int setting);
+short ANIM_channel_setting_get(bAnimContext *ac, bAnimListElem *ale, eAnimChannel_Settings setting);
 
 /* Change value of some setting for a channel 
  *	- setting: eAnimChannel_Settings
  *	- mode: eAnimChannels_SetFlag
  */
-void ANIM_channel_setting_set(bAnimContext *ac, bAnimListElem *ale, int setting, short mode);
+void ANIM_channel_setting_set(bAnimContext *ac, bAnimListElem *ale, eAnimChannel_Settings setting, eAnimChannels_SetFlag mode);
 
 
 /* Flush visibility (for Graph Editor) changes up/down hierarchy for changes in the given setting 
@@ -465,14 +485,14 @@ void ANIM_channel_setting_set(bAnimContext *ac, bAnimListElem *ale, int setting,
  *	- setting: type of setting to set
  *	- on: whether the visibility setting has been enabled or disabled 
  */
-void ANIM_flush_setting_anim_channels(bAnimContext *ac, ListBase *anim_data, bAnimListElem *ale_setting, int setting, short mode);
+void ANIM_flush_setting_anim_channels(bAnimContext *ac, ListBase *anim_data, bAnimListElem *ale_setting, eAnimChannel_Settings setting, eAnimChannels_SetFlag mode);
 
 
 /* Deselect all animation channels */
-void ANIM_deselect_anim_channels(bAnimContext *ac, void *data, short datatype, short test, short sel);
+void ANIM_deselect_anim_channels(bAnimContext *ac, void *data, eAnimCont_Types datatype, bool test, eAnimChannels_SetFlag sel);
 
 /* Set the 'active' channel of type channel_type, in the given action */
-void ANIM_set_active_channel(bAnimContext *ac, void *data, short datatype, int filter, void *channel_data, short channel_type);
+void ANIM_set_active_channel(bAnimContext *ac, void *data, eAnimCont_Types datatype, eAnimFilter_Flags filter, void *channel_data, eAnim_ChannelType channel_type);
 
 
 /* Delete the F-Curve from the given AnimData block (if possible), as appropriate according to animation context */

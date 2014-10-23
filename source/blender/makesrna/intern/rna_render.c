@@ -71,6 +71,9 @@ EnumPropertyItem render_pass_type_items[] = {
 	{SCE_PASS_SUBSURFACE_DIRECT, "SUBSURFACE_DIRECT", 0, "Subsurface Direct", ""},
 	{SCE_PASS_SUBSURFACE_INDIRECT, "SUBSURFACE_INDIRECT", 0, "Subsurface Indirect", ""},
 	{SCE_PASS_SUBSURFACE_COLOR, "SUBSURFACE_COLOR", 0, "Subsurface Color", ""},
+#ifdef WITH_CYCLES_DEBUG
+	{SCE_PASS_DEBUG, "DEBUG", 0, "Pass used for render engine debugging", ""},
+#endif
 	{0, NULL, 0, NULL, NULL}
 };
 
@@ -492,6 +495,13 @@ static void rna_def_render_engine(BlenderRNA *brna)
 	prop = RNA_def_string(func, "info", NULL, 0, "Info", "");
 	RNA_def_property_flag(prop, PROP_REQUIRED);
 
+	func = RNA_def_function(srna, "frame_set", "RE_engine_frame_set");
+	RNA_def_function_ui_description(func, "Evaluate scene at a different frame (for motion blur)");
+	prop = RNA_def_int(func, "frame", 0, INT_MIN, INT_MAX, "Frame", "", INT_MIN, INT_MAX);
+	RNA_def_property_flag(prop, PROP_REQUIRED);
+	prop = RNA_def_float(func, "subframe", 0.0f, 0.0f, 1.0f, "Subframe", "", 0.0f, 1.0f);
+	RNA_def_property_flag(prop, PROP_REQUIRED);
+
 	func = RNA_def_function(srna, "update_progress", "RE_engine_update_progress");
 	RNA_def_function_ui_description(func, "Update progress percentage of render");
 	prop = RNA_def_float(func, "progress", 0, 0.0f, 1.0f, "", "Percentage of render that's done", 0.0f, 1.0f);
@@ -537,6 +547,10 @@ static void rna_def_render_engine(BlenderRNA *brna)
 	RNA_def_property_pointer_sdna(prop, NULL, "camera_override");
 	RNA_def_property_struct_type(prop, "Object");
 
+	prop = RNA_def_property(srna, "layer_override", PROP_BOOLEAN, PROP_LAYER_MEMBER);
+	RNA_def_property_boolean_sdna(prop, NULL, "layer_override", 1);
+	RNA_def_property_array(prop, 20);
+
 	prop = RNA_def_property(srna, "tile_x", PROP_INT, PROP_UNSIGNED);
 	RNA_def_property_int_sdna(prop, NULL, "tile_x");
 	prop = RNA_def_property(srna, "tile_y", PROP_INT, PROP_UNSIGNED);
@@ -571,6 +585,10 @@ static void rna_def_render_engine(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "bl_use_preview", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "type->flag", RE_USE_PREVIEW);
+	RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
+
+	prop = RNA_def_property(srna, "bl_use_texture_preview", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "type->flag", RE_USE_TEXTURE_PREVIEW);
 	RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
 
 	prop = RNA_def_property(srna, "bl_use_postprocess", PROP_BOOLEAN, PROP_NONE);
@@ -672,6 +690,11 @@ static void rna_def_render_pass(BlenderRNA *brna)
 	StructRNA *srna;
 	PropertyRNA *prop;
 
+	static EnumPropertyItem render_pass_debug_type_items[] = {
+		{RENDER_PASS_DEBUG_BVH_TRAVERSAL_STEPS, "BVH_TRAVERSAL_STEPS", 0, "BVH Traversal Steps", ""},
+		{0, NULL, 0, NULL, NULL}
+	};
+
 	srna = RNA_def_struct(brna, "RenderPass", NULL);
 	RNA_def_struct_ui_text(srna, "Render Pass", "");
 
@@ -700,6 +723,11 @@ static void rna_def_render_pass(BlenderRNA *brna)
 	RNA_def_property_multi_array(prop, 2, NULL);
 	RNA_def_property_dynamic_array_funcs(prop, "rna_RenderPass_rect_get_length");
 	RNA_def_property_float_funcs(prop, "rna_RenderPass_rect_get", "rna_RenderPass_rect_set", NULL);
+
+	prop = RNA_def_property(srna, "debug_type", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "debug_type");
+	RNA_def_property_enum_items(prop, render_pass_debug_type_items);
+	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
 	RNA_define_verify_sdna(1);
 }

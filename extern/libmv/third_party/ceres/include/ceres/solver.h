@@ -1,5 +1,5 @@
 // Ceres Solver - A fast non-linear least squares minimizer
-// Copyright 2010, 2011, 2012 Google Inc. All rights reserved.
+// Copyright 2014 Google Inc. All rights reserved.
 // http://code.google.com/p/ceres-solver/
 //
 // Redistribution and use in source and binary forms, with or without
@@ -40,13 +40,14 @@
 #include "ceres/iteration_callback.h"
 #include "ceres/ordered_groups.h"
 #include "ceres/types.h"
+#include "ceres/internal/disable_warnings.h"
 
 namespace ceres {
 
 class Problem;
 
 // Interface for non-linear least squares solvers.
-class Solver {
+class CERES_EXPORT Solver {
  public:
   virtual ~Solver();
 
@@ -55,7 +56,7 @@ class Solver {
   // problems; however, better performance is often obtainable with tweaking.
   //
   // The constants are defined inside types.h
-  struct Options {
+  struct CERES_EXPORT Options {
     // Default constructor that sets up a generic sparse problem.
     Options() {
       minimizer_type = TRUST_REGION;
@@ -91,7 +92,7 @@ class Solver {
       gradient_tolerance = 1e-10;
       parameter_tolerance = 1e-8;
 
-#if defined(CERES_NO_SUITESPARSE) && defined(CERES_NO_CXSPARSE)
+#if defined(CERES_NO_SUITESPARSE) && defined(CERES_NO_CXSPARSE) && !defined(CERES_ENABLE_LGPL_CODE)
       linear_solver_type = DENSE_QR;
 #else
       linear_solver_type = SPARSE_NORMAL_CHOLESKY;
@@ -100,22 +101,32 @@ class Solver {
       preconditioner_type = JACOBI;
       visibility_clustering_type = CANONICAL_VIEWS;
       dense_linear_algebra_library_type = EIGEN;
+
+      // Choose a default sparse linear algebra library in the order:
+      //
+      //   SUITE_SPARSE > CX_SPARSE > EIGEN_SPARSE
+#if !defined(CERES_NO_SUITESPARSE)
       sparse_linear_algebra_library_type = SUITE_SPARSE;
-#if defined(CERES_NO_SUITESPARSE) && !defined(CERES_NO_CXSPARSE)
+#else
+  #if !defined(CERES_NO_CXSPARSE)
       sparse_linear_algebra_library_type = CX_SPARSE;
+  #else
+    #if defined(CERES_USE_EIGEN_SPARSE)
+      sparse_linear_algebra_library_type = EIGEN_SPARSE;
+    #endif
+  #endif
 #endif
 
-
       num_linear_solver_threads = 1;
-      linear_solver_ordering = NULL;
+      use_explicit_schur_complement = false;
       use_postordering = false;
-      min_linear_solver_iterations = 1;
+      dynamic_sparsity = false;
+      min_linear_solver_iterations = 0;
       max_linear_solver_iterations = 500;
       eta = 1e-1;
       jacobi_scaling = true;
       use_inner_iterations = false;
       inner_iteration_tolerance = 1e-3;
-      inner_iteration_ordering = NULL;
       logging_type = PER_MINIMIZER_ITERATION;
       minimizer_progress_to_stdout = false;
       trust_region_problem_dump_directory = "/tmp";
@@ -126,7 +137,11 @@ class Solver {
       update_state_every_iteration = false;
     }
 
-    ~Options();
+    // Returns true if the options struct has a valid
+    // configuration. Returns false otherwise, and fills in *error
+    // with a message describing the problem.
+    bool IsValid(string* error) const;
+
     // Minimizer options ----------------------------------------
 
     // Ceres supports the two major families of optimization strategies -
@@ -367,7 +382,7 @@ class Solver {
 
     // Minimizer terminates when
     //
-    //   max_i |gradient_i| < gradient_tolerance * max_i|initial_gradient_i|
+    //   max_i |x - Project(Plus(x, -g(x))| < gradient_tolerance
     //
     // This value should typically be 1e-4 * function_tolerance.
     double gradient_tolerance;
@@ -480,10 +495,30 @@ class Solver {
     // the parameter blocks into two groups, one for the points and one
     // for the cameras, where the group containing the points has an id
     // smaller than the group containing cameras.
+    shared_ptr<ParameterBlockOrdering> linear_solver_ordering;
+
+    // Use an explicitly computed Schur complement matrix with
+    // ITERATIVE_SCHUR.
     //
-    // Once assigned, Solver::Options owns this pointer and will
-    // deallocate the memory when destroyed.
-    ParameterBlockOrdering* linear_solver_ordering;
+    // By default this option is disabled and ITERATIVE_SCHUR
+    // evaluates evaluates matrix-vector products between the Schur
+    // complement and a vector implicitly by exploiting the algebraic
+    // expression for the Schur complement.
+    //
+    // The cost of this evaluation scales with the number of non-zeros
+    // in the Jacobian.
+    //
+    // For small to medium sized problems there is a sweet spot where
+    // computing the Schur complement is cheap enough that it is much
+    // more efficient to explicitly compute it and use it for evaluating
+    // the matrix-vector products.
+    //
+    // Enabling this option tells ITERATIVE_SCHUR to use an explicitly
+    // computed Schur complement.
+    //
+    // NOTE: This option can only be used with the SCHUR_JACOBI
+    // preconditioner.
+    bool use_explicit_schur_complement;
 
     // Sparse Cholesky factorization algorithms use a fill-reducing
     // ordering to permute the columns of the Jacobian matrix. There
@@ -505,6 +540,21 @@ class Solver {
     // performance at the expense of an extra copy of the Jacobian
     // matrix. Setting use_postordering to true enables this tradeoff.
     bool use_postordering;
+
+    // Some non-linear least squares problems are symbolically dense but
+    // numerically sparse. i.e. at any given state only a small number
+    // of jacobian entries are non-zero, but the position and number of
+    // non-zeros is different depending on the state. For these problems
+    // it can be useful to factorize the sparse jacobian at each solver
+    // iteration instead of including all of the zero entries in a single
+    // general factorization.
+    //
+    // If your problem does not have this property (or you do not know),
+    // then it is probably best to keep this false, otherwise it will
+    // likely lead to worse performance.
+
+    // This settings affects the SPARSE_NORMAL_CHOLESKY solver.
+    bool dynamic_sparsity;
 
     // Some non-linear least squares problems have additional
     // structure in the way the parameter blocks interact that it is
@@ -576,7 +626,7 @@ class Solver {
     //    the lower numbered groups are optimized before the higher
     //    number groups. Each group must be an independent set. Not
     //    all parameter blocks need to be present in the ordering.
-    ParameterBlockOrdering* inner_iteration_ordering;
+    shared_ptr<ParameterBlockOrdering> inner_iteration_ordering;
 
     // Generally speaking, inner iterations make significant progress
     // in the early stages of the solve and then their contribution
@@ -697,13 +747,9 @@ class Solver {
     //
     // The solver does NOT take ownership of these pointers.
     vector<IterationCallback*> callbacks;
-
-    // If non-empty, a summary of the execution of the solver is
-    // recorded to this file.
-    string solver_log;
   };
 
-  struct Summary {
+  struct CERES_EXPORT Summary {
     Summary();
 
     // A brief one line description of the state of the solver after
@@ -888,9 +934,15 @@ class Solver {
     // parameter blocks.
     vector<int> inner_iteration_ordering_used;
 
-    //  Type of preconditioner used for solving the trust region
-    //  step. Only meaningful when an iterative linear solver is used.
-    PreconditionerType preconditioner_type;
+    // Type of the preconditioner requested by the user.
+    PreconditionerType preconditioner_type_given;
+
+    // Type of the preconditioner actually used. This may be different
+    // from linear_solver_type_given if Ceres determines that the
+    // problem structure is not compatible with the linear solver
+    // requested or if the linear solver requested by the user is not
+    // available.
+    PreconditionerType preconditioner_type_used;
 
     // Type of clustering algorithm used for visibility based
     // preconditioning. Only meaningful when the preconditioner_type
@@ -941,10 +993,12 @@ class Solver {
 };
 
 // Helper function which avoids going through the interface.
-void Solve(const Solver::Options& options,
+CERES_EXPORT void Solve(const Solver::Options& options,
            Problem* problem,
            Solver::Summary* summary);
 
 }  // namespace ceres
+
+#include "ceres/internal/reenable_warnings.h"
 
 #endif  // CERES_PUBLIC_SOLVER_H_

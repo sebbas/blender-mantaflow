@@ -47,6 +47,11 @@ endif()
 
 cmake_minimum_required(VERSION 2.8)
 
+if(NOT (${CMAKE_VERSION} VERSION_LESS 3.0))
+	# keep until CMake-3.0 is min requirement
+	cmake_policy(SET CMP0043 OLD)
+endif()
+
 if(NOT EXECUTABLE_OUTPUT_PATH)
 	set(FIRST_RUN "TRUE")
 endif()
@@ -104,6 +109,7 @@ enable_testing()
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin CACHE INTERNAL "" FORCE)
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib CACHE INTERNAL "" FORCE)
+set(TESTS_OUTPUT_DIR ${EXECUTABLE_OUTPUT_PATH}/tests CACHE INTERNAL "" FORCE)
 
 #-----------------------------------------------------------------------------
 # Set default config options
@@ -130,6 +136,11 @@ if(APPLE)
 endif()
 
 option(WITH_BUILDINFO     "Include extra build details (only disable for development & faster builds)" ON)
+if(${CMAKE_VERSION} VERSION_LESS 2.8.8)
+	# add_library OBJECT arg unsupported
+	set(WITH_BUILDINFO OFF)
+endif()
+
 option(WITH_IK_ITASC      "Enable ITASC IK solver (only disable for development & for incompatible C++ compilers)" ON)
 option(WITH_IK_SOLVER     "Enable Legacy IK solver (only disable for development)" ON)
 option(WITH_FFTW3         "Enable FFTW3 support (Used for smoke and audio effects)" ON)
@@ -159,14 +170,22 @@ mark_as_advanced(WITH_AUDASPACE)
 option(WITH_OPENMP        "Enable OpenMP (has to be supported by the compiler)" ON)
 
 if(UNIX AND NOT APPLE)
-	option(WITH_X11_XINPUT "Enable X11 Xinput (tablet support and unicode input)"	ON)
-	option(WITH_X11_XF86VMODE "Enable X11 video mode switching"	ON)
-	option(WITH_SYSTEM_GLEW "Use GLEW OpenGL wrapper library provided by the operating system" ON)
+	set(WITH_X11 ON)
+endif()
 
-	option(WITH_GHOST_XDND   "Enable drag'n'drop support on X11 using XDND protocol" ON)
+if(WITH_X11)
+	option(WITH_X11_XINPUT    "Enable X11 Xinput (tablet support and unicode input)"  ON)
+	option(WITH_X11_XF86VMODE "Enable X11 video mode switching"                       ON)
+	option(WITH_GHOST_XDND    "Enable drag'n'drop support on X11 using XDND protocol" ON)
+endif()
+
+if(UNIX AND NOT APPLE)
+	option(WITH_SYSTEM_GLEW "Use GLEW OpenGL wrapper library provided by the operating system" ON)
+	option(WITH_SYSTEM_GLES "Use OpenGL ES library provided by the operating system"           ON)
 else()
 	# not an option for other OS's
 	set(WITH_SYSTEM_GLEW OFF)
+	set(WITH_SYSTEM_GLES OFF)
 endif()
 
 
@@ -234,6 +253,7 @@ option(WITH_LZMA          "Enable best LZMA compression, (used for pointcache)" 
 
 # Camera/motion tracking
 option(WITH_LIBMV         "Enable libmv structure from motion library" ON)
+option(WITH_LIBMV_SCHUR_SPECIALIZATIONS "Enable fixed-size schur specializations." ON)
 
 # Freestyle
 option(WITH_FREESTYLE     "Enable Freestyle (advanced edges rendering)" ON)
@@ -252,11 +272,15 @@ if(UNIX AND NOT APPLE)
 endif()
 option(WITH_PYTHON_INSTALL       "Copy system python into the blender install folder" ON)
 option(WITH_PYTHON_INSTALL_NUMPY "Copy system numpy into the blender install folder"  ON)
-set(PYTHON_NUMPY_PATH            "" CACHE PATH "Python to python site-packages or dist-packages containing 'numpy' module")
+set(PYTHON_NUMPY_PATH            "" CACHE PATH "Path to python site-packages or dist-packages containing 'numpy' module")
 mark_as_advanced(PYTHON_NUMPY_PATH)
+option(WITH_CPU_SSE              "Enable SIMD instruction if they're detected on the host machine" ON)
+mark_as_advanced(WITH_CPU_SSE)
 
 if(UNIX AND NOT APPLE)
 	option(WITH_PYTHON_INSTALL_REQUESTS "Copy system requests into the blender install folder" ON)
+	set(PYTHON_REQUESTS_PATH "" CACHE PATH "Path to python site-packages or dist-packages containing 'requests' module")
+	mark_as_advanced(PYTHON_REQUESTS_PATH)
 endif()
 
 # Cycles
@@ -268,10 +292,18 @@ option(WITH_CYCLES_CUDA_BINARIES	"Build cycles CUDA binaries" OFF)
 set(CYCLES_CUDA_BINARIES_ARCH sm_20 sm_21 sm_30 sm_35 sm_50 CACHE STRING "CUDA architectures to build binaries for")
 mark_as_advanced(CYCLES_CUDA_BINARIES_ARCH)
 unset(PLATFORM_DEFAULT)
+option(WITH_CYCLES_LOGGING	"Build cycles with logging support" OFF)
+option(WITH_CYCLES_DEBUG	"Build cycles with with extra debug capabilties" OFF)
+mark_as_advanced(WITH_CYCLES_LOGGING)
+mark_as_advanced(WITH_CYCLES_DEBUG)
 
 # LLVM
 option(WITH_LLVM					"Use LLVM" OFF)
-option(LLVM_STATIC					"Link with LLVM static libraries" ON)
+if(APPLE)
+	option(LLVM_STATIC					"Link with LLVM static libraries" ON) # we prefer static llvm build on Apple, dyn build possible though
+else()
+	option(LLVM_STATIC					"Link with LLVM static libraries" OFF)
+endif()
 mark_as_advanced(LLVM_STATIC)
 
 # disable for now, but plan to support on all platforms eventually
@@ -296,9 +328,50 @@ if(CMAKE_COMPILER_IS_GNUCC)
 	mark_as_advanced(WITH_GCC_MUDFLAP)
 endif()
 
+# Unit testsing
+option(WITH_GTESTS "Enable GTest unit testing" OFF)
+
+# OpenGL
+
+option(WITH_GLEW_MX             "Support multiple GLEW contexts (experimental)"                                                                     OFF )
+option(WITH_GLEW_ES             "Switches to experimental copy of GLEW that has support for OpenGL ES. (temporary option for development purposes)" OFF)
+option(WITH_GL_EGL              "Use the EGL OpenGL system library instead of the platform specific OpenGL system library (CGL, glX, or WGL)"       OFF)
+option(WITH_GL_PROFILE_COMPAT   "Support using the OpenGL 'compatibility' profile. (deprecated)"                                                    ON )
+option(WITH_GL_PROFILE_CORE     "Support using the OpenGL 3.2+ 'core' profile."                                                                     OFF)
+option(WITH_GL_PROFILE_ES20     "Support using OpenGL ES 2.0. (thru either EGL or the AGL/WGL/XGL 'es20' profile)"                                  OFF)
+
+mark_as_advanced(
+	WITH_GLEW_MX
+	WITH_GLEW_ES
+	WITH_GL_EGL
+	WITH_GL_PROFILE_COMPAT
+	WITH_GL_PROFILE_CORE
+	WITH_GL_PROFILE_ES20
+)
+
+if (WITH_GL_PROFILE_COMPAT)
+	set(WITH_GLU ON)
+else()
+	set(WITH_GLU OFF)
+endif()
+
+if(WIN32)
+	option(WITH_GL_ANGLE "Link with the ANGLE library, an OpenGL ES 2.0 implementation based on Direct3D, instead of the system OpenGL library." OFF)
+	mark_as_advanced(WITH_GL_ANGLE)
+endif()
+
+if(WITH_GLEW_ES AND WITH_SYSTEM_GLEW)
+	message(WARNING Ignoring WITH_SYSTEM_GLEW and using WITH_GLEW_ES)
+	set(WITH_SYSTEM_GLEW OFF)
+endif()
+
+# Apple
+
 if(APPLE)
-	cmake_minimum_required(VERSION 2.8.8)
-	cmake_policy(VERSION 2.8.8)
+	if(${CMAKE_VERSION} VERSION_LESS 3.0) # else breaks setting CMP0043 policy
+		cmake_minimum_required(VERSION 2.8.8)
+		cmake_policy(VERSION 2.8.8)
+	endif()
 
 	if(NOT CMAKE_OSX_ARCHITECTURES)
 		set(CMAKE_OSX_ARCHITECTURES x86_64 CACHE STRING
@@ -307,7 +380,11 @@ if(APPLE)
 	endif()
 	
 	execute_process(COMMAND uname -r OUTPUT_VARIABLE MAC_SYS) # check for actual system-version
-	if(${MAC_SYS} MATCHES 13)
+	if(${MAC_SYS} MATCHES 14)
+		set(OSX_SYSTEM 10.10)
+		# throw an error here, older cmake cannot handle 2 digit subversion!
+		cmake_minimum_required(VERSION 3.0.0)
+	elseif(${MAC_SYS} MATCHES 13)
 		set(OSX_SYSTEM 10.9)
 	elseif(${MAC_SYS} MATCHES 12)
 		set(OSX_SYSTEM 10.8)
@@ -488,12 +565,19 @@ if(WITH_INSTALL_PORTABLE)
 endif()
 
 if(WITH_GHOST_SDL OR WITH_HEADLESS)
-	set(WITH_GHOST_XDND OFF)
+	set(WITH_X11           OFF)
+	set(WITH_X11_XINPUT    OFF)
 	set(WITH_X11_XF86VMODE OFF)
-	set(WITH_X11_XINPUT OFF)
+	set(WITH_GHOST_XDND    OFF)
 endif()
 
-TEST_SSE_SUPPORT(COMPILER_SSE_FLAG COMPILER_SSE2_FLAG)
+if(WITH_CPU_SSE)
+	TEST_SSE_SUPPORT(COMPILER_SSE_FLAG COMPILER_SSE2_FLAG)
+else()
+	message(STATUS "SSE and SSE2 optimizations are DISABLED!")
+	set(COMPILER_SSE_FLAG)
+	set(COMPILER_SSE2_FLAG)
+endif()
 
 TEST_STDBOOL_SUPPORT()
 if(HAVE_STDBOOL_H)
@@ -571,6 +655,35 @@ set(PLATFORM_LINKFLAGS_DEBUG "")
 
 #-----------------------------------------------------------------------------
 #Platform specifics
+
+if(WITH_X11)
+	find_package(X11 REQUIRED)
+
+	find_path(X11_XF86keysym_INCLUDE_PATH X11/XF86keysym.h ${X11_INC_SEARCH_PATH})
+	mark_as_advanced(X11_XF86keysym_INCLUDE_PATH)
+
+	list(APPEND PLATFORM_LINKLIBS ${X11_X11_LIB})
+
+	if(WITH_X11_XINPUT)
+		if(X11_Xinput_LIB)
+			list(APPEND PLATFORM_LINKLIBS ${X11_Xinput_LIB})
+		else()
+			set(WITH_X11_XINPUT OFF)
+		endif()
+	endif()
+
+	if(WITH_X11_XF86VMODE)
+		# XXX, why dont cmake make this available?
+		find_library(X11_Xxf86vmode_LIB Xxf86vm   ${X11_LIB_SEARCH_PATH})
+		mark_as_advanced(X11_Xxf86vmode_LIB)
+		if(X11_Xxf86vmode_LIB)
+			list(APPEND PLATFORM_LINKLIBS ${X11_Xxf86vmode_LIB})
+		else()
+			set(WITH_X11_XF86VMODE OFF)
+		endif()
+	endif()
+
+endif()
 
 if(UNIX AND NOT APPLE)
 	macro(find_package_wrapper)
@@ -677,7 +790,6 @@ if(UNIX AND NOT APPLE)
 
 		mark_as_advanced(FFMPEG_LIBRARIES)
 		set(FFMPEG_LIBPATH ${FFMPEG}/lib)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__STDC_CONSTANT_MACROS")
 	endif()
 
 	if(WITH_FFTW3)
@@ -878,34 +990,7 @@ if(UNIX AND NOT APPLE)
 	endif()
 
 	# OpenSuse needs lutil, ArchLinux not, for now keep, can avoid by using --as-needed
-	set(PLATFORM_LINKLIBS "-lutil -lc -lm -lpthread")
-
-	if((NOT WITH_HEADLESS) AND (NOT WITH_GHOST_SDL))
-		find_package(X11 REQUIRED)
-		find_path(X11_XF86keysym_INCLUDE_PATH X11/XF86keysym.h ${X11_INC_SEARCH_PATH})
-		mark_as_advanced(X11_XF86keysym_INCLUDE_PATH)
-
-		set(PLATFORM_LINKLIBS "${PLATFORM_LINKLIBS} ${X11_X11_LIB}")
-
-		if(WITH_X11_XINPUT)
-			if(X11_Xinput_LIB)
-				set(PLATFORM_LINKLIBS "${PLATFORM_LINKLIBS} ${X11_Xinput_LIB}")
-			else()
-				set(WITH_X11_XINPUT OFF)
-			endif()
-		endif()
-
-		if(WITH_X11_XF86VMODE)
-			# XXX, why dont cmake make this available?
-			FIND_LIBRARY(X11_Xxf86vmode_LIB Xxf86vm   ${X11_LIB_SEARCH_PATH})
-			mark_as_advanced(X11_Xxf86vmode_LIB)
-			if(X11_Xxf86vmode_LIB)
-				set(PLATFORM_LINKLIBS "${PLATFORM_LINKLIBS} ${X11_Xxf86vmode_LIB}")
-			else()
-				set(WITH_X11_XF86VMODE OFF)
-			endif()
-		endif()
-	endif()
+	list(APPEND PLATFORM_LINKLIBS -lutil -lc -lm -lpthread)
 
 	if(CMAKE_SYSTEM_NAME MATCHES "Linux")
 		if(NOT WITH_PYTHON_MODULE)
@@ -916,6 +1001,9 @@ if(UNIX AND NOT APPLE)
 	endif()
 
 	set(PLATFORM_LINKFLAGS "${PLATFORM_LINKFLAGS} -pthread")
+	if(CMAKE_DL_LIBS)
+		list(APPEND PLATFORM_LINKLIBS ${CMAKE_DL_LIBS})
+	endif()
 
 	# lfs on glibc, all compilers should use
 	add_definitions(-D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE)
@@ -959,12 +1047,12 @@ elseif(WIN32)
 
 	if(MSVC)
 
-		set(PLATFORM_LINKLIBS ws2_32 vfw32 winmm kernel32 user32 gdi32 comdlg32 advapi32 shfolder shell32 ole32 oleaut32 uuid psapi)
+		# needed for some MSVC installations
+		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SAFESEH:NO")
+		set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /SAFESEH:NO")
+		set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} /SAFESEH:NO")
 
-		# MSVC11 SDL is not hard linked to dxguid.lib
-		if(MSVC11 AND WITH_SDL)
-			set(PLATFORM_LINKLIBS ${PLATFORM_LINKLIBS} dxguid)
-		endif()
+		list(APPEND PLATFORM_LINKLIBS ws2_32 vfw32 winmm kernel32 user32 gdi32 comdlg32 advapi32 shfolder shell32 ole32 oleaut32 uuid psapi)
 
 		add_definitions(
 			-D_CRT_NONSTDC_NO_DEPRECATE
@@ -985,6 +1073,8 @@ elseif(WIN32)
 				add_definitions(-D_WIN32_WINNT=0x600)
 			endif()
 		endif()
+
+		add_definitions(-DOIIO_STATIC_BUILD)
 
 		set(CMAKE_CXX_FLAGS "/nologo /J /Gd /EHsc /MP" CACHE STRING "MSVC MT C++ flags " FORCE)
 		set(CMAKE_C_FLAGS   "/nologo /J /Gd /MP"       CACHE STRING "MSVC MT C++ flags " FORCE)
@@ -1040,7 +1130,7 @@ elseif(WIN32)
 			set(PLATFORM_LINKFLAGS "/MACHINE:IX86 /LARGEADDRESSAWARE ${PLATFORM_LINKFLAGS}")
 		endif()
 
-		set(PLATFORM_LINKFLAGS_DEBUG "/NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:libc.lib")
+		set(PLATFORM_LINKFLAGS_DEBUG "/IGNORE:4099 /NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:libc.lib")
 
 		if(NOT DEFINED LIBDIR)
 			# Setup 64bit and 64bit windows systems
@@ -1054,9 +1144,6 @@ elseif(WIN32)
 			if(MSVC12)
 				message(STATUS "Visual C++ 2013 detected.")
 				set(LIBDIR ${LIBDIR_BASE}_vc12)
-			elseif(MSVC11)
-				message(STATUS "Visual C++ 2012 detected.")
-				set(LIBDIR ${LIBDIR_BASE}_vc11)
 			else()
 				set(LIBDIR ${LIBDIR_BASE})
 			endif()
@@ -1077,7 +1164,7 @@ elseif(WIN32)
 		set(ZLIB_INCLUDE_DIR ${LIBDIR}/zlib/include)
 		set(ZLIB_LIBRARY ${LIBDIR}/zlib/lib/libz_st.lib)
 		set(ZLIB_DIR ${LIBDIR}/zlib)
-		find_package(zlib) # we want to find before finding things that depend on it like png
+		#find_package(zlib) # we want to find before finding things that depend on it like png
 
 
 		find_package(png)
@@ -1086,11 +1173,11 @@ elseif(WIN32)
 			message(WARNING "Using HARDCODED libpng locations")
 			set(PNG_LIBRARIES libpng)
 			set(PNG "${LIBDIR}/png")
-			set(PNG_INCLUDE_DIR "${PNG}/include")
+			set(PNG_INCLUDE_DIRS "${PNG}/include")
 			set(PNG_LIBPATH ${PNG}/lib) # not cmake defined
 		endif()
 
-		if(MSVC90)
+		if(MSVC)
 			set(JPEG_NAMES ${JPEG_NAMES} libjpeg)
 		endif()
 		find_package(jpeg REQUIRED)
@@ -1134,8 +1221,12 @@ elseif(WIN32)
 				${OPENCOLLADA}/lib/opencollada/xml.lib
 				${OPENCOLLADA}/lib/opencollada/buffer.lib
 				${OPENCOLLADA}/lib/opencollada/ftoa.lib
-				${OPENCOLLADA}/lib/opencollada/UTF.lib
 			)
+
+			if(NOT WITH_LLVM)
+				list(APPEND OPENCOLLADA_LIBRARIES ${OPENCOLLADA}/lib/opencollada/UTF.lib)
+			endif()
+
 			set(PCRE_LIBRARIES
 				${OPENCOLLADA}/lib/opencollada/pcre.lib
 			)
@@ -1149,14 +1240,8 @@ elseif(WIN32)
 			find_package(FFMPEG)
 			if(NOT FFMPEG_FOUND)
 				message(WARNING "Using HARDCODED ffmpeg locations")
-				# MSVC11 FFMPEG libs are newer
-				if(MSVC11)
-					set(FFMPEG_LIBRARY_VERSION 54)
-					set(FFMPEG_LIBRARY_VERSION_AVU 52)
-				else()
-					set(FFMPEG_LIBRARY_VERSION 55)
-					set(FFMPEG_LIBRARY_VERSION_AVU 52)
-				endif()
+				set(FFMPEG_LIBRARY_VERSION 55)
+				set(FFMPEG_LIBRARY_VERSION_AVU 52)
 				set(FFMPEG_LIBRARIES
 					${LIBDIR}/ffmpeg/lib/avcodec-${FFMPEG_LIBRARY_VERSION}.lib
 					${LIBDIR}/ffmpeg/lib/avformat-${FFMPEG_LIBRARY_VERSION}.lib
@@ -1177,13 +1262,23 @@ elseif(WIN32)
 			set(OPENEXR_INCLUDE_DIR ${OPENEXR}/include)
 			set(OPENEXR_INCLUDE_DIRS ${OPENEXR}/include/OpenEXR)
 			set(OPENEXR_LIBPATH ${OPENEXR}/lib)
-			set(OPENEXR_LIBRARIES
-				${OPENEXR_LIBPATH}/Iex.lib
-				${OPENEXR_LIBPATH}/Half.lib
-				${OPENEXR_LIBPATH}/IlmImf.lib
-				${OPENEXR_LIBPATH}/Imath.lib
-				${OPENEXR_LIBPATH}/IlmThread.lib
-			)
+			if(MSVC12)
+				set(OPENEXR_LIBRARIES
+					${OPENEXR_LIBPATH}/Iex-2_1.lib
+					${OPENEXR_LIBPATH}/Half.lib
+					${OPENEXR_LIBPATH}/IlmImf-2_1.lib
+					${OPENEXR_LIBPATH}/Imath-2_1.lib
+					${OPENEXR_LIBPATH}/IlmThread-2_1.lib
+				)
+			else()
+				set(OPENEXR_LIBRARIES
+					${OPENEXR_LIBPATH}/Iex.lib
+					${OPENEXR_LIBPATH}/Half.lib
+					${OPENEXR_LIBPATH}/IlmImf.lib
+					${OPENEXR_LIBPATH}/Imath.lib
+					${OPENEXR_LIBPATH}/IlmThread.lib
+				)
+			endif()
 			endif(NOT OPENEXR_FOUND)
 		endif()
 
@@ -1228,6 +1323,9 @@ elseif(WIN32)
 			if(WITH_INTERNATIONAL)
 				list(APPEND boost_extra_libs locale)
 			endif(WITH_INTERNATIONAL)
+			set(Boost_USE_STATIC_RUNTIME ON) # prefix lib
+			set(Boost_USE_MULTITHREADED ON) # suffix -mt
+			set(Boost_USE_STATIC_LIBS ON) # suffix -s
 			find_package(Boost COMPONENTS date_time filesystem thread regex system ${boost_extra_libs})
 			IF(NOT Boost_FOUND)
 				message(WARNING "USING HARDCODED boost locations")
@@ -1237,10 +1335,6 @@ elseif(WIN32)
 					set(BOOST_LIBPATH ${BOOST}/lib)
 					set(BOOST_POSTFIX "vc120-mt-s-1_55.lib")
 					set(BOOST_DEBUG_POSTFIX "vc120-mt-sgd-1_55.lib")
-				elseif(MSVC11)
-					set(BOOST_LIBPATH ${BOOST}/lib)
-					set(BOOST_POSTFIX "vc110-mt-s-1_53.lib")
-					set(BOOST_DEBUG_POSTFIX "vc110-mt-sgd-1_53.lib")
 				else()
 					set(BOOST_LIBPATH ${BOOST}/lib)
 					set(BOOST_POSTFIX "vc90-mt-s-1_49.lib")
@@ -1275,7 +1369,9 @@ elseif(WIN32)
 			find_package(OpenImageIO)
 			set(OPENIMAGEIO ${LIBDIR}/openimageio)
 			set(OPENIMAGEIO_INCLUDE_DIRS ${OPENIMAGEIO}/include)
-			set(OPENIMAGEIO_LIBRARIES optimized OpenImageIO debug OpenImageIO_d)
+			set(OIIO_OPTIMIZED optimized OpenImageIO optimized OpenImageIO_Util)
+			set(OIIO_DEBUG debug OpenImageIO_d debug OpenImageIO_Util_d)
+			set(OPENIMAGEIO_LIBRARIES ${OIIO_OPTIMIZED} ${OIIO_DEBUG})
 			set(OPENIMAGEIO_LIBPATH ${OPENIMAGEIO}/lib)
 			set(OPENIMAGEIO_DEFINITIONS "-DUSE_TBB=0")
 		endif()
@@ -1352,12 +1448,12 @@ elseif(WIN32)
 			endif()
 		endif()
 		
-		set(PLATFORM_LINKLIBS "-lshell32 -lshfolder -lgdi32 -lmsvcrt -lwinmm -lmingw32 -lm -lws2_32 -lz -lstdc++ -lole32 -luuid -lwsock32 -lpsapi")
+		list(APPEND PLATFORM_LINKLIBS -lshell32 -lshfolder -lgdi32 -lmsvcrt -lwinmm -lmingw32 -lm -lws2_32 -lz -lstdc++ -lole32 -luuid -lwsock32 -lpsapi)
 		set(PLATFORM_CFLAGS "-pipe -funsigned-char -fno-strict-aliasing")
 
 		if(WITH_MINGW64)
 			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
-			set(PLATFORM_LINKLIBS "${PLATFORM_LINKLIBS} -lpthread")
+			list(APPEND PLATFORM_LINKLIBS -lpthread)
 			
 			add_definitions(-DFREE_WINDOWS64 -DMS_WIN64)
 		endif()
@@ -1367,7 +1463,7 @@ elseif(WIN32)
 		add_definitions(-DFREE_WINDOWS)
 
 		set(PNG "${LIBDIR}/png")
-		set(PNG_INCLUDE_DIR "${PNG}/include")
+		set(PNG_INCLUDE_DIRS "${PNG}/include")
 		set(PNG_LIBPATH ${PNG}/lib) # not cmake defined
 
 		if(WITH_MINGW64)
@@ -1532,7 +1628,7 @@ elseif(WIN32)
 				LLVMX86Utils LLVMipa
 				LLVMipo LLVMCore)
 			# imagehelp is needed by LLVM 3.1 on MinGW, check lib\Support\Windows\Signals.inc
-			set(PLATFORM_LINKLIBS "${PLATFORM_LINKLIBS} -limagehlp")
+			list(APPEND PLATFORM_LINKLIBS -limagehlp)
 		endif()
 		
 		if(WITH_OPENCOLORIO)
@@ -1559,7 +1655,7 @@ elseif(WIN32)
 		set(OPENAL ${LIBDIR}/openal)
 		set(OPENALDIR ${LIBDIR}/openal)
 		set(OPENAL_INCLUDE_DIR ${OPENAL}/include)
-		if(MSVC11 OR MSVC12)
+		if(MSVC12)
 			set(OPENAL_LIBRARY openal32)
 		else()
 			set(OPENAL_LIBRARY wrap_oal)
@@ -1705,7 +1801,6 @@ elseif(APPLE)
 		set(FFMPEG_INCLUDE_DIRS ${FFMPEG}/include)
 		set(FFMPEG_LIBRARIES avcodec avdevice avformat avutil mp3lame swscale x264 xvidcore theora theoradec theoraenc vorbis vorbisenc vorbisfile ogg)
 		set(FFMPEG_LIBPATH ${FFMPEG}/lib)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__STDC_CONSTANT_MACROS")
 	endif()
 
 	find_library(SYSTEMSTUBS_LIBRARY
@@ -1715,9 +1810,9 @@ elseif(APPLE)
 	)
 	mark_as_advanced(SYSTEMSTUBS_LIBRARY)
 	if(SYSTEMSTUBS_LIBRARY)
-		set(PLATFORM_LINKLIBS stdc++ SystemStubs)
+		list(APPEND PLATFORM_LINKLIBS stdc++ SystemStubs)
 	else()
-		set(PLATFORM_LINKLIBS stdc++)
+		list(APPEND PLATFORM_LINKLIBS stdc++)
 	endif()
 
 	set(PLATFORM_CFLAGS "-pipe -funsigned-char")
@@ -1768,7 +1863,11 @@ elseif(APPLE)
 		)
 
 		set(OPENCOLLADA_LIBPATH ${OPENCOLLADA}/lib)
-		set(OPENCOLLADA_LIBRARIES "OpenCOLLADASaxFrameworkLoader -lOpenCOLLADAFramework -lOpenCOLLADABaseUtils -lOpenCOLLADAStreamWriter -lMathMLSolver -lGeneratedSaxParser -lUTF -lxml2 -lbuffer -lftoa")
+		set(OPENCOLLADA_LIBRARIES "OpenCOLLADASaxFrameworkLoader -lOpenCOLLADAFramework -lOpenCOLLADABaseUtils -lOpenCOLLADAStreamWriter -lMathMLSolver -lGeneratedSaxParser -lxml2 -lbuffer -lftoa")
+		# Use UTF functions from collada if LLVM is not enabled
+		if(NOT WITH_LLVM)
+			set(OPENCOLLADA_LIBRARIES "${OPENCOLLADA_LIBRARIES} -lUTF")
+		endif()
 		# pcre is bundled with openCollada
 		#set(PCRE ${LIBDIR}/pcre)
 		#set(PCRE_LIBPATH ${PCRE}/lib)
@@ -1787,7 +1886,7 @@ elseif(APPLE)
 	endif()
 
 	set(PNG "${LIBDIR}/png")
-	set(PNG_INCLUDE_DIR "${PNG}/include")
+	set(PNG_INCLUDE_DIRS "${PNG}/include")
 	set(PNG_LIBPATH ${PNG}/lib)
 
 	set(JPEG "${LIBDIR}/jpeg")
@@ -1841,7 +1940,7 @@ elseif(APPLE)
 
 	if(WITH_LLVM)
 		set(LLVM_DIRECTORY ${LIBDIR}/llvm CACHE PATH	"Path to the LLVM installation")
-		set(LLVM_VERSION "3.1" CACHE STRING	"Version of LLVM to use")
+		set(LLVM_VERSION "3.4" CACHE STRING	"Version of LLVM to use")
 		if(EXISTS "${LLVM_DIRECTORY}/bin/llvm-config")
 			set(LLVM_CONFIG "${LLVM_DIRECTORY}/bin/llvm-config")
 		else()
@@ -1869,6 +1968,8 @@ elseif(APPLE)
 				                OUTPUT_VARIABLE LLVM_LIBRARY
 				                OUTPUT_STRIP_TRAILING_WHITESPACE)
 				string(REPLACE " " ";" LLVM_LIBRARY ${LLVM_LIBRARY})
+			else()
+				set(PLATFORM_LINKFLAGS "${PLATFORM_LINKFLAGS} -lLLVM-3.4")
 			endif()
 		else()
 			message(FATAL_ERROR "LLVM not found.")
@@ -1893,16 +1994,24 @@ elseif(APPLE)
 		endif()
 	endif()
 	
-	if(WITH_OPENMP AND CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS '3.4')
-		set(OPENMP_FOUND ON)
-		set(OpenMP_C_FLAGS "-fopenmp" CACHE STRING "C compiler flags for OpenMP parallization" FORCE)
-		set(OpenMP_CXX_FLAGS "-fopenmp" CACHE STRING "C++ compiler flags for OpenMP parallization" FORCE)
-		include_directories(${LIBDIR}/openmp/include)
-		LINK_DIRECTORIES(${LIBDIR}/openmp/lib)
-		execute_process(COMMAND ditto -arch ${CMAKE_OSX_ARCHITECTURES} ${LIBDIR}/openmp/lib/libiomp5.dylib ${CMAKE_BINARY_DIR}/bin/libiomp5.dylib) # for intermediate binaries, lib id is @loader_path
-	else()
-		set(OpenMP_C_FLAGS "" CACHE STRING "C compiler flags for OpenMP parallization" FORCE) # unset
-		set(OpenMP_CXX_FLAGS "" CACHE STRING "C++ compiler flags for OpenMP parallization" FORCE) # unset
+	if(WITH_OPENMP)
+		execute_process(COMMAND ${CMAKE_C_COMPILER} --version OUTPUT_VARIABLE COMPILER_VENDOR)
+		string(SUBSTRING "${COMPILER_VENDOR}" 0 5 VENDOR_NAME) # truncate output
+		if(${VENDOR_NAME} MATCHES "Apple") # Apple does not support OpenMP reliable with gcc and not with clang
+			set(WITH_OPENMP OFF)
+		else() # vanilla gcc or clang_omp support OpenMP
+			message(STATUS "Using special OpenMP enabled compiler !") # letting find_package(OpenMP) module work for gcc
+			if(CMAKE_C_COMPILER_ID MATCHES "Clang") # clang-omp in darwin libs
+				set(OPENMP_FOUND ON)
+				set(OpenMP_C_FLAGS "-fopenmp" CACHE STRING "C compiler flags for OpenMP parallization" FORCE)
+				set(OpenMP_CXX_FLAGS "-fopenmp" CACHE STRING "C++ compiler flags for OpenMP parallization" FORCE)
+				include_directories(${LIBDIR}/openmp/include)
+				link_directories(${LIBDIR}/openmp/lib)
+				# This is a workaround for our helperbinaries ( datatoc, masgfmt, ... ),
+				# They are linked also to omp lib, so we need it in builddir for runtime exexcution, TODO: remove all unneeded dependencies from these
+				execute_process(COMMAND ditto -arch ${CMAKE_OSX_ARCHITECTURES} ${LIBDIR}/openmp/lib/libiomp5.dylib ${CMAKE_BINARY_DIR}/bin/libiomp5.dylib) # for intermediate binaries, lib id @loader_path
+			endif()
+		endif()
 	endif()
 
 	set(EXETYPE MACOSX_BUNDLE)
@@ -1925,6 +2034,8 @@ elseif(APPLE)
 		# Xcode 5 is always using CLANG, which has too low template depth of 128 for libmv
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=1024")
 	endif()
+	# Get rid of eventually clashes, we export some symbols explicite as local
+	set(PLATFORM_LINKFLAGS "${PLATFORM_LINKFLAGS} -Xlinker -unexported_symbols_list -Xlinker ${CMAKE_SOURCE_DIR}/source/creator/osx_locals.map")
 endif()
 
 #-----------------------------------------------------------------------------
@@ -2021,10 +2132,123 @@ endif()
 
 #-----------------------------------------------------------------------------
 # Configure OpenGL.
+
 find_package(OpenGL)
 blender_include_dirs_sys("${OPENGL_INCLUDE_DIR}")
-# unset(OPENGL_LIBRARIES CACHE) # not compat with older cmake
-# unset(OPENGL_xmesa_INCLUDE_DIR CACHE) # not compat with older cmake
+
+if(WITH_GLU)
+	list(APPEND BLENDER_GL_LIBRARIES "${OPENGL_glu_LIBRARY}")
+	list(APPEND GL_DEFINITIONS -DWITH_GLU)
+endif()
+
+if(WITH_SYSTEM_GLES)
+	find_package_wrapper(OpenGLES)
+endif()
+
+if(WITH_GL_PROFILE_COMPAT OR WITH_GL_PROFILE_CORE)
+	list(APPEND BLENDER_GL_LIBRARIES "${OPENGL_gl_LIBRARY}")
+
+elseif(WITH_GL_PROFILE_ES20)
+	if(WITH_SYSTEM_GLES)
+		if(NOT OPENGLES_LIBRARY)
+			message(FATAL_ERROR "Unable to find OpenGL ES libraries.  Install them or disable WITH_SYSTEM_GLES.")
+		endif()
+
+		list(APPEND BLENDER_GL_LIBRARIES OPENGLES_LIBRARY)
+
+	else()
+		set(OPENGLES_LIBRARY "" CACHE FILEPATH "OpenGL ES 2.0 library file")
+		mark_as_advanced(OPENGLES_LIBRARY)
+
+		list(APPEND BLENDER_GL_LIBRARIES "${OPENGLES_LIBRARY}")
+
+		if (NOT OPENGLES_LIBRARY)
+			message(FATAL_ERROR "To compile WITH_GL_EGL you need to set OPENGLES_LIBRARY to the file path of an OpenGL ES 2.0 library.")
+		endif()
+
+	endif()
+
+	if(WIN32)
+		# Setup paths to files needed to install and redistribute Windows Blender with OpenGL ES
+
+		set(OPENGLES_DLL "" CACHE FILEPATH "OpenGL ES 2.0 redistributable DLL file")
+		mark_as_advanced(OPENGLES_DLL)
+
+		if(NOT OPENGLES_DLL)
+			message(FATAL_ERROR "To compile WITH_GL_PROFILE_ES20 you need to set OPENGLES_DLL to the file path of an OpenGL ES 2.0 runtime dynamic link library (DLL).")
+		endif()
+
+		if(WITH_GL_ANGLE)
+			list(APPEND GL_DEFINITIONS -DWITH_ANGLE)
+
+			set(D3DCOMPILER_DLL "" CACHE FILEPATH "Direct3D Compiler redistributable DLL file (needed by ANGLE)")
+
+			get_filename_component(D3DCOMPILER_FILENAME "${D3DCOMPILER_DLL}" NAME)
+			list(APPEND GL_DEFINITIONS "-DD3DCOMPILER=\"\\\"${D3DCOMPILER_FILENAME}\\\"\"")
+
+			mark_as_advanced(D3DCOMPILER_DLL)
+
+			if (D3DCOMPILER_DLL STREQUAL "")
+				message(FATAL_ERROR "To compile WITH_GL_ANGLE you need to set D3DCOMPILER_DLL to the file path of a copy of the DirectX redistributable DLL file: D3DCompiler_46.dll")
+			endif()
+
+		endif()
+
+	endif()
+
+endif()
+
+if(WITH_GL_EGL)
+	list(APPEND GL_DEFINITIONS -DWITH_GL_EGL)
+
+	if(WITH_SYSTEM_GLES)
+		if(NOT OPENGLES_EGL_LIBRARY)
+			message(FATAL_ERROR "Unable to find OpenGL ES libraries.  Install them or disable WITH_SYSTEM_GLES.")
+		endif()
+
+		list(APPEND BLENDER_GL_LIBRARIES OPENGLES_EGL_LIBRARY)
+
+	else()
+		set(OPENGLES_EGL_LIBRARY "" CACHE FILEPATH "EGL library file")
+		mark_as_advanced(OPENGLES_EGL_LIBRARY)
+
+		list(APPEND BLENDER_GL_LIBRARIES "${OPENGLES_LIBRARY}" "${OPENGLES_EGL_LIBRARY}")
+
+		if (NOT OPENGLES_EGL_LIBRARY)
+			message(FATAL_ERROR "To compile WITH_GL_EGL you need to set OPENGLES_EGL_LIBRARY to the file path of an EGL library.")
+		endif()
+
+	endif()
+
+	if(WIN32)
+		# Setup paths to files needed to install and redistribute Windows Blender with OpenGL ES
+
+		set(OPENGLES_EGL_DLL "" CACHE FILEPATH "EGL redistributable DLL file")
+		mark_as_advanced(OPENGLES_EGL_DLL)
+
+		if(NOT OPENGLES_EGL_DLL)
+			message(FATAL_ERROR "To compile WITH_GL_EGL you need to set OPENGLES_EGL_DLL to the file path of an EGL runtime dynamic link library (DLL).")
+		endif()
+
+	endif()
+
+endif()
+
+if(WITH_GL_PROFILE_COMPAT)
+	list(APPEND GL_DEFINITIONS -DWITH_GL_PROFILE_COMPAT)
+endif()
+
+if(WITH_GL_PROFILE_CORE)
+	list(APPEND GL_DEFINITIONS -DWITH_GL_PROFILE_CORE)
+endif()
+
+if(WITH_GL_PROFILE_ES20)
+	list(APPEND GL_DEFINITIONS -DWITH_GL_PROFILE_ES20)
+endif()
+
+if(WITH_GL_EGL)
+	list(APPEND GL_DEFINITIONS -DWITH_EGL)
+endif()
 
 #-----------------------------------------------------------------------------
 # Configure OpenMP.
@@ -2033,10 +2257,6 @@ if(WITH_OPENMP)
 	if(OPENMP_FOUND)
 		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-
-		if(APPLE AND ${CMAKE_GENERATOR} MATCHES "Xcode")
-			set(CMAKE_XCODE_ATTRIBUTE_ENABLE_OPENMP_SUPPORT "YES")
-		endif()
 	else()
 		set(WITH_OPENMP OFF)
 	endif()
@@ -2050,22 +2270,76 @@ endif()
 #-----------------------------------------------------------------------------
 # Configure GLEW
 
+if(WITH_GLEW_MX)
+	list(APPEND GL_DEFINITIONS -DWITH_GLEW_MX)
+endif()
+
 if(WITH_SYSTEM_GLEW)
 	find_package(GLEW)
 
+	# Note: There is an assumption here that the system GLEW is not a static library.
+
 	if(NOT GLEW_FOUND)
-		message(FATAL_ERROR "GLEW is required to build blender, install it or disable WITH_SYSTEM_GLEW")
+		message(FATAL_ERROR "GLEW is required to build Blender. Install it or disable WITH_SYSTEM_GLEW.")
 	endif()
 
-	mark_as_advanced(
-		GLEW_LIBRARY
-		GLEW_INCLUDE_PATH
-	)
+	if(WITH_GLEW_MX)
+		set(BLENDER_GLEW_LIBRARIES ${GLEW_MX_LIBRARY})
+	else()
+		set(BLENDER_GLEW_LIBRARIES ${GLEW_LIBRARY})
+	endif()
 else()
-	# set(GLEW_LIBRARY "")  # unused
-	set(GLEW_INCLUDE_PATH "${CMAKE_SOURCE_DIR}/extern/glew/include")
+	if(WITH_GLEW_ES)
+		set(GLEW_INCLUDE_PATH "${CMAKE_SOURCE_DIR}/extern/glew-es/include")
+
+		list(APPEND GL_DEFINITIONS -DGLEW_STATIC -DWITH_GLEW_ES)
+
+		# These definitions remove APIs from glew.h, making GLEW smaller, and catching unguarded API usage
+		if(NOT WITH_GL_PROFILE_ES20)
+			# No ES functions are needed
+			list(APPEND GL_DEFINITIONS -DGLEW_NO_ES)
+		elseif(NOT (WITH_GL_PROFILE_CORE OR WITH_GL_PROFILE_COMPAT))
+			# ES is enabled, but the other functions are all disabled
+			list(APPEND GL_DEFINITIONS -DGLEW_ES_ONLY)
+		endif()
+
+		if(WITH_GL_PROFILE_ES20)
+			if(WITH_GL_EGL)
+				list(APPEND GL_DEFINITIONS -DGLEW_USE_LIB_ES20)
+			endif()
+
+			# ToDo: This is an experiment to eliminate ES 1 symbols,
+			# GLEW doesn't really properly provide this level of control
+			# (for example, without modification it eliminates too many symbols)
+			# so there are lots of modifications to GLEW to make this work,
+			# and no attempt to make it work beyond Blender at this point.
+			list(APPEND GL_DEFINITIONS -DGL_ES_VERSION_1_0=0 -DGL_ES_VERSION_CL_1_1=0 -DGL_ES_VERSION_CM_1_1=0)
+		endif()
+
+		if(WITH_GL_EGL)
+			list(APPEND GL_DEFINITIONS -DGLEW_INC_EGL)
+		endif()
+
+		set(BLENDER_GLEW_LIBRARIES extern_glew_es bf_intern_glew_mx)
+
+	else()
+		set(GLEW_INCLUDE_PATH "${CMAKE_SOURCE_DIR}/extern/glew/include")
+
+		list(APPEND GL_DEFINITIONS -DGLEW_STATIC)
+
+		# This won't affect the non-experimental glew library, 
+		# but is used for conditional compilation elsewhere.
+		list(APPEND GL_DEFINITIONS -DGLEW_NO_ES)
+
+		set(BLENDER_GLEW_LIBRARIES extern_glew)
+
+	endif()
+
 endif()
 
+if(NOT WITH_GLU)
+	list(APPEND GL_DEFINITIONS -DGLEW_NO_GLU)
+endif()
 
 #-----------------------------------------------------------------------------
 # Configure Bullet
@@ -2189,6 +2463,10 @@ if(CMAKE_COMPILER_IS_GNUCC)
 
 elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
 
+	if(APPLE AND WITH_OPENMP) # we need the Intel omp lib linked here to not fail all tests due presence of -fopenmp !
+		set(CMAKE_REQUIRED_FLAGS "-L${LIBDIR}/openmp/lib -liomp5") # these are only used for the checks
+	endif()
+
 	# strange, clang complains these are not supported, but then yses them.
 	ADD_CHECK_C_COMPILER_FLAG(C_WARNINGS C_WARN_ALL -Wall)
 #	ADD_CHECK_C_COMPILER_FLAG(C_WARNINGS C_WARN_ERROR_DECLARATION_AFTER_STATEMENT -Werror=declaration-after-statement)
@@ -2262,62 +2540,13 @@ if(WITH_PYTHON)
 	if(WIN32)
 		# pass, we have this in an archive to extract
 	elseif(WITH_PYTHON_INSTALL AND WITH_PYTHON_INSTALL_NUMPY)
-		# set but invalid
-		# -- disabled until we make numpy bundled with blender - campbell
-		if((NOT ${PYTHON_NUMPY_PATH} STREQUAL "") AND (NOT ${PYTHON_NUMPY_PATH} MATCHES NOTFOUND))
-#			if(NOT EXISTS "${PYTHON_NUMPY_PATH}/numpy")
-#				message(WARNING "PYTHON_NUMPY_PATH is invalid, numpy not found in '${PYTHON_NUMPY_PATH}' "
-#				                "WITH_PYTHON_INSTALL_NUMPY option will be ignored when installing python")
-#				set(WITH_PYTHON_INSTALL_NUMPY OFF)
-#			endif()
-		# not set, so initialize
-		else()
-			string(REPLACE "." ";" _PY_VER_SPLIT "${PYTHON_VERSION}")
-			list(GET _PY_VER_SPLIT 0 _PY_VER_MAJOR)
-
-			# re-cache
-			unset(PYTHON_NUMPY_PATH CACHE)
-			find_path(PYTHON_NUMPY_PATH
-			  NAMES
-			    numpy
-			  HINTS
-			    "${PYTHON_LIBPATH}/python${PYTHON_VERSION}/"
-			    "${PYTHON_LIBPATH}/python${_PY_VER_MAJOR}/"
-			  PATH_SUFFIXES
-			    site-packages
-			    dist-packages
-			   NO_DEFAULT_PATH
-			)
-
-			if(NOT EXISTS "${PYTHON_NUMPY_PATH}")
-				message(WARNING "'numpy' path could not be found in:\n"
-				                "'${PYTHON_LIBPATH}/python${PYTHON_VERSION}/site-packages/numpy', "
-				                "'${PYTHON_LIBPATH}/python${_PY_VER_MAJOR}/site-packages/numpy', "
-				                "'${PYTHON_LIBPATH}/python${PYTHON_VERSION}/dist-packages/numpy', "
-				                "'${PYTHON_LIBPATH}/python${_PY_VER_MAJOR}/dist-packages/numpy', "
-				                "WITH_PYTHON_INSTALL_NUMPY option will be ignored when installing python")
-				set(WITH_PYTHON_INSTALL_NUMPY OFF)
-			else()
-				message(STATUS "numpy found at '${PYTHON_NUMPY_PATH}'")
-			endif()
-
-			unset(_PY_VER_SPLIT)
-			unset(_PY_VER_MAJOR)
-		endif()
+		find_python_package(numpy)
 	endif()
 
 	if(WIN32 OR APPLE)
 		# pass, we have this in lib/python/site-packages
 	elseif(WITH_PYTHON_INSTALL_REQUESTS)
-		if(NOT EXISTS ${PYTHON_LIBPATH}/python${PYTHON_VERSION}/site-packages/requests)
-			# gets annoying otherwise...
-			if(FIRST_RUN)
-				message(WARNING "'requests' path could not be found in:\n"
-				                "'${PYTHON_LIBPATH}/python${PYTHON_VERSION}/site-packages/requests'\n"
-				                "WITH_PYTHON_INSTALL_REQUESTS option will be ignored when installing python")
-			endif()
-			set(WITH_PYTHON_INSTALL_REQUESTS OFF)
-		endif()
+		find_python_package(requests)
 	endif()
 endif()
 
@@ -2369,12 +2598,21 @@ endif()
 #-----------------------------------------------------------------------------
 # Libraries
 
+if(WITH_GTESTS)
+	include(GTestTesting)
+endif()
+
 if(WITH_BLENDER OR WITH_PLAYER)
-	add_subdirectory(source)
 	add_subdirectory(intern)
 	add_subdirectory(extern)
+
+	# source after intern and extern to gather all
+	# internal and external library information first, for test linking
+	add_subdirectory(source)
 elseif(WITH_CYCLES_STANDALONE)
 	add_subdirectory(intern/cycles)
+	add_subdirectory(extern/clew)
+	add_subdirectory(extern/cuew)
 	if(NOT WITH_SYSTEM_GLEW)
 		add_subdirectory(extern/glew)
 	endif()
@@ -2392,6 +2630,12 @@ endif()
 if(WITH_PLAYER)
 	add_subdirectory(source/blenderplayer)
 endif()
+
+
+#-----------------------------------------------------------------------------
+# Testing
+add_subdirectory(tests)
+
 
 #-----------------------------------------------------------------------------
 # CPack for generating packages
@@ -2490,6 +2734,17 @@ if(FIRST_RUN)
 	info_cfg_option(WITH_MOD_REMESH)
 	info_cfg_option(WITH_MOD_FLUID)
 	info_cfg_option(WITH_MOD_OCEANSIM)
+
+	info_cfg_text("OpenGL:")
+	info_cfg_option(WITH_GLEW_ES)
+	info_cfg_option(WITH_GLU)
+	info_cfg_option(WITH_GL_EGL)
+	info_cfg_option(WITH_GL_PROFILE_COMPAT)
+	info_cfg_option(WITH_GL_PROFILE_CORE)
+	info_cfg_option(WITH_GL_PROFILE_ES20)
+	if(WIN32)
+		info_cfg_option(WITH_GL_ANGLE)
+	endif()
 
 	info_cfg_text("Other:")
 	info_cfg_option(WITH_OPENNL)

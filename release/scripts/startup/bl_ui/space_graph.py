@@ -118,7 +118,8 @@ class GRAPH_MT_view(Menu):
 
         layout.separator()
         layout.operator("screen.area_dupli")
-        layout.operator("screen.screen_full_area")
+        layout.operator("screen.screen_full_area", text="Toggle Maximize Area")
+        layout.operator("screen.screen_full_area").use_hide_panels = True
 
 
 class GRAPH_MT_select(Menu):
@@ -214,8 +215,8 @@ class GRAPH_MT_key(Menu):
         layout.operator_menu_enum("graph.mirror", "type", text="Mirror")
 
         layout.separator()
-        layout.operator("graph.keyframe_insert")
-        layout.operator("graph.fmodifier_add")
+        layout.operator_menu_enum("graph.keyframe_insert", "type")
+        layout.operator_menu_enum("graph.fmodifier_add", "type")
         layout.operator("graph.sound_bake")
 
         layout.separator()

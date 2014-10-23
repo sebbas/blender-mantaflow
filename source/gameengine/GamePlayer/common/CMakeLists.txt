@@ -47,6 +47,7 @@ set(INC
 	../../../blender/makesdna
 	../../../../intern/container
 	../../../../intern/ghost
+	../../../../intern/glew-mx
 	../../../../intern/guardedalloc
 	../../../../intern/string
 )
@@ -55,7 +56,7 @@ set(INC_SYS
 	../../../../intern/moto/include
 	${GLEW_INCLUDE_PATH}
 	${PYTHON_INCLUDE_DIRS}
-	${PNG_INCLUDE_DIR}
+	${PNG_INCLUDE_DIRS}
 	${ZLIB_INCLUDE_DIRS}
 )
 
@@ -69,6 +70,6 @@ set(SRC
 	GPC_MouseDevice.h
 )
 
-add_definitions(-DGLEW_STATIC)
+add_definitions(${GL_DEFINITIONS})
 
 blender_add_lib_nolist(ge_player_common "${SRC}" "${INC}" "${INC_SYS}")

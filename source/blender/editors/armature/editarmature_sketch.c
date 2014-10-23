@@ -53,6 +53,8 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
+#include "GPU_select.h"
+
 typedef int (*GestureDetectFct)(bContext *, SK_Gesture *, SK_Sketch *);
 typedef void (*GestureApplyFct)(bContext *, SK_Gesture *, SK_Sketch *);
 
@@ -493,7 +495,7 @@ static void sk_drawStroke(SK_Stroke *stk, int id, float color[3], int start, int
 	gluQuadricNormals(quad, GLU_SMOOTH);
 
 	if (id != -1) {
-		glLoadName(id);
+		GPU_select_load_id(id);
 
 		for (i = 0; i < stk->nb_points; i++) {
 			glPushMatrix();
@@ -1490,9 +1492,9 @@ static int sk_getSelfIntersections(bContext *C, ListBase *list, SK_Stroke *gestu
 	return added;
 }
 
-static int cmpIntersections(void *i1, void *i2)
+static int cmpIntersections(const void *i1, const void *i2)
 {
-	SK_Intersection *isect1 = i1, *isect2 = i2;
+	const SK_Intersection *isect1 = i1, *isect2 = i2;
 
 	if (isect1->stroke == isect2->stroke) {
 		if (isect1->before < isect2->before) {
@@ -1969,7 +1971,7 @@ static int sk_selectStroke(bContext *C, SK_Sketch *sketch, const int mval[2], in
 	rect.ymin = mval[1] - 5;
 	rect.ymax = mval[1] + 5;
 
-	hits = view3d_opengl_select(&vc, buffer, MAXPICKBUF, &rect);
+	hits = view3d_opengl_select(&vc, buffer, MAXPICKBUF, &rect, true);
 
 	if (hits > 0) {
 		int besthitresult = -1;
@@ -2032,7 +2034,7 @@ static void sk_drawSketch(Scene *scene, View3D *UNUSED(v3d), SK_Sketch *sketch, 
 			sk_drawStroke(stk, id, NULL, -1, -1);
 		}
 
-		glLoadName(-1);
+		GPU_select_load_id(-1);
 	}
 	else {
 		float selected_rgb[3] = {1, 0, 0};

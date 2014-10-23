@@ -32,6 +32,7 @@
 #include "Operators.h"
 #include "Canvas.h"
 #include "Stroke.h"
+#include "StrokeIterators.h"
 #include "CurveIterators.h"
 
 #include "BKE_global.h"
@@ -1092,20 +1093,20 @@ static Stroke *createStroke(Interface1D& inter)
 	if (hasSingularity) {
 		// Try to address singular points such that the distance between two subsequent vertices
 		// are smaller than epsilon.
-		Interface0DIterator v = stroke->verticesBegin();
-		Interface0DIterator vnext = v;
+		StrokeInternal::StrokeVertexIterator v = stroke->strokeVerticesBegin();
+		StrokeInternal::StrokeVertexIterator vnext = v;
 		++vnext;
-		Vec2r next((*v).getPoint2D());
+		Vec2r next((*v).getPoint());
 		while (!vnext.isEnd()) {
 			current = next;
-			next = (*vnext).getPoint2D();
+			next = (*vnext).getPoint();
 			if ((next - current).norm() < 1.0e-6) {
-				Interface0DIterator vprevious = v;
+				StrokeInternal::StrokeVertexIterator vprevious = v;
 				if (!vprevious.isBegin())
 					--vprevious;
 
 				// collect a set of overlapping vertices
-				std::vector<Interface0D *> overlapping_vertices;
+				std::vector<StrokeVertex *> overlapping_vertices;
 				overlapping_vertices.push_back(&(*v));
 				do {
 					overlapping_vertices.push_back(&(*vnext));
@@ -1114,17 +1115,17 @@ static Stroke *createStroke(Interface1D& inter)
 					++vnext;
 					if (vnext.isEnd())
 						break;
-					next = (*vnext).getPoint2D();
+					next = (*vnext).getPoint();
 				} while ((next - current).norm() < 1.0e-6);
 
 				Vec2r target;
 				bool reverse;
 				if (!vnext.isEnd()) {
-					target = (*vnext).getPoint2D();
+					target = (*vnext).getPoint();
 					reverse = false;
 				}
 				else if (!vprevious.isBegin()) {
-					target = (*vprevious).getPoint2D();
+					target = (*vprevious).getPoint();
 					reverse = true;
 				}
 				else {
@@ -1132,7 +1133,7 @@ static Stroke *createStroke(Interface1D& inter)
 					delete stroke;
 					return NULL;
 				}
-				current = overlapping_vertices.front()->getPoint2D();
+				current = overlapping_vertices.front()->getPoint();
 				Vec2r dir(target - current);
 				real dist = dir.norm();
 				real len = 1.0e-3; // default offset length
@@ -1144,19 +1145,18 @@ static Stroke *createStroke(Interface1D& inter)
 				Vec2r offset(dir * len);
 				// add the offset to the overlapping vertices
 				StrokeVertex *sv;
-				std::vector<Interface0D *>::iterator it = overlapping_vertices.begin();
+				std::vector<StrokeVertex *>::iterator it = overlapping_vertices.begin();
 				if (!reverse) {
-					for (int n = 1; n < nvert; n++) {
-						sv = dynamic_cast<StrokeVertex*>(*it);
-						sv->setPoint(sv->getPoint() + offset * n);
+					for (int n = 0; n < nvert; n++) {
+						sv = (*it);
+						sv->setPoint(sv->getPoint() + offset * (n + 1));
 						++it;
 					}
 				}
 				else {
-					int last = nvert - 1;
-					for (int n = 0; n < last; n++) {
-						sv = dynamic_cast<StrokeVertex*>(*it);
-						sv->setPoint(sv->getPoint() + offset * (last - n));
+					for (int n = 0; n < nvert; n++) {
+						sv = (*it);
+						sv->setPoint(sv->getPoint() + offset * (nvert - n));
 						++it;
 					}
 				}
@@ -1242,7 +1242,7 @@ error:
 	return -1;
 }
 
-void Operators::reset()
+void Operators::reset(bool removeStrokes)
 {
 	ViewMap *vm = ViewMap::getInstance();
 	if (!vm) {
@@ -1253,11 +1253,7 @@ void Operators::reset()
 	for (I1DContainer::iterator it = _current_chains_set.begin(); it != _current_chains_set.end(); ++it)
 		delete *it;
 	_current_chains_set.clear();
-#if 0
-	_current_view_edges_set.insert(_current_view_edges_set.begin(),
-	vm->ViewEdges().begin(),
-	vm->ViewEdges().end());
-#else
+
 	ViewMap::viewedges_container& vedges = vm->ViewEdges();
 	ViewMap::viewedges_container::iterator ve = vedges.begin(), veend = vedges.end();
 	for (; ve != veend; ++ve) {
@@ -1265,9 +1261,9 @@ void Operators::reset()
 			continue;
 		_current_view_edges_set.push_back(*ve);
 	}
-#endif
 	_current_set = &_current_view_edges_set;
-	_current_strokes_set.clear();
+	if (removeStrokes)
+		_current_strokes_set.clear();
 }
 
 } /* namespace Freestyle */

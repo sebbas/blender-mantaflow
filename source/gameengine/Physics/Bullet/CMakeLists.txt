@@ -29,6 +29,7 @@ remove_strict_flags()
 set(INC
 	.
 	../common
+	../../Converter
 	../../Expressions
 	../../GameLogic
 	../../Ketsji
@@ -39,6 +40,7 @@ set(INC
 	../../../blender/makesdna
 	../../../../intern/container
 	../../../../intern/guardedalloc
+	../../../../intern/glew-mx
 	../../../../intern/string
 )
 
@@ -64,5 +66,7 @@ if(WITH_BULLET)
 	)
 	add_definitions(-DWITH_BULLET)
 endif()
+
+add_definitions(${GL_DEFINITIONS})
 
 blender_add_lib(ge_phys_bullet "${SRC}" "${INC}" "${INC_SYS}")

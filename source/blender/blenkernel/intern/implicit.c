@@ -1236,7 +1236,7 @@ DO_INLINE void cloth_calc_spring_force(ClothModifierData *clmd, ClothSpring *s, 
 	sub_v3_v3v3(extent, X[s->kl], X[s->ij]);
 	sub_v3_v3v3(vel, V[s->kl], V[s->ij]);
 	dot = dot_v3v3(extent, extent);
-	length = sqrt(dot);
+	length = sqrtf(dot);
 	
 	s->flags &= ~CLOTH_SPRING_FLAG_NEEDED;
 	
@@ -1432,7 +1432,7 @@ static void hair_velocity_smoothing(ClothModifierData *clmd, lfVector *lF, lfVec
 	float smoothfac = 2.0f * clmd->sim_parms->velocity_smooth;
 	float collfac = 2.0f * clmd->sim_parms->collider_friction;
 	unsigned int	v = 0;
-	unsigned int	i = 0;
+	int	            i = 0;
 	int				j = 0;
 	int				k = 0;
 
@@ -1804,6 +1804,7 @@ static int UNUSED_FUNCTION(cloth_calc_helper_forces)(Object *UNUSED(ob), ClothMo
 	
 	return 1;
 }
+
 int implicit_solver(Object *ob, float frame, ClothModifierData *clmd, ListBase *effectors)
 {
 	unsigned int i=0;
@@ -1888,10 +1889,8 @@ int implicit_solver(Object *ob, float frame, ClothModifierData *clmd, ListBase *
 			//if (do_extra_solve)
 			//	cloth_calc_helper_forces(ob, clmd, initial_cos, step/clmd->sim_parms->timescale, dt/clmd->sim_parms->timescale);
 			
-			for (i = 0; i < numverts; i++) {
-
-				if (do_extra_solve) {
-					
+			if (do_extra_solve) {
+				for (i = 0; i < numverts; i++) {				
 					if ((clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_GOAL) && (verts [i].flags & CLOTH_VERT_FLAG_PINNED))
 						continue;
 

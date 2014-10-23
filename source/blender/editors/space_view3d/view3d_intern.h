@@ -177,8 +177,8 @@ void draw_mesh_paint(View3D *v3d, RegionView3D *rv3d,
 
 /* view3d_draw.c */
 void view3d_main_area_draw(const struct bContext *C, struct ARegion *ar);
-void draw_depth(Scene *scene, struct ARegion *ar, View3D *v3d, int (*func)(void *), bool alphaoverride);
-void draw_depth_gpencil(Scene *scene, ARegion *ar, View3D *v3d);
+void ED_view3d_draw_depth(Scene *scene, struct ARegion *ar, View3D *v3d, bool alphaoverride);
+void ED_view3d_draw_depth_gpencil(Scene *scene, ARegion *ar, View3D *v3d);
 void ED_view3d_after_add(ListBase *lb, Base *base, const short dflag);
 
 void circf(float x, float y, float rad);
@@ -218,7 +218,7 @@ void ED_view3d_smooth_view(
         const float *ofs, const float *quat, const float *dist, const float *lens,
         const int smooth_viewtx);
 
-void view3d_winmatrix_set(ARegion *ar, View3D *v3d, rctf *rect);
+void view3d_winmatrix_set(ARegion *ar, View3D *v3d, const rctf *rect);
 void view3d_viewmatrix_set(Scene *scene, View3D *v3d, RegionView3D *rv3d);
 
 void fly_modal_keymap(struct wmKeyConfig *keyconf);
@@ -233,7 +233,7 @@ void VIEW3D_OT_properties(struct wmOperatorType *ot);
 void view3d_buttons_register(struct ARegionType *art);
 
 /* view3d_camera_control.c */
-struct View3DCameraControl *ED_view3d_cameracontrol_aquire(
+struct View3DCameraControl *ED_view3d_cameracontrol_acquire(
         Scene *scene, View3D *v3d, RegionView3D *rv3d,
         const bool use_parent_root);
 void ED_view3d_cameracontrol_update(
@@ -285,7 +285,7 @@ void draw_smoke_heat(struct SmokeDomainSettings *domain, struct Object *ob);
 
 /* workaround for trivial but noticeable camera bug caused by imprecision
  * between view border calculation in 2D/3D space, workaround for bug [#28037].
- * without this deifne we get the old behavior which is to try and align them
+ * without this define we get the old behavior which is to try and align them
  * both which _mostly_ works fine, but when the camera moves beyond ~1000 in
  * any direction it starts to fail */
 #define VIEW3D_CAMERA_BORDER_HACK

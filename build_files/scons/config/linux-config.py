@@ -1,4 +1,4 @@
-from Modules.FindPython import FindPython
+from FindPython import FindPython
 
 py = FindPython()
 
@@ -197,7 +197,7 @@ BF_BOOST = '/usr'
 BF_BOOST_INC = '${BF_BOOST}/include'
 BF_BOOST_LIB = 'boost_filesystem boost_regex boost_system boost_thread boost_date_time'
 BF_BOOST_LIB_STATIC = '${BF_BOOST_LIBPATH}/libboost_filesystem.a ${BF_BOOST_LIBPATH}/libboost_date_time.a ' + \
-    '${BF_BOOST_LIBPATH}/libboost_regex.a ${BF_BOOST_LIBPATH}/libboost_locale.a ${BF_BOOST_LIBPATH}/libboost_system.a' + \
+    '${BF_BOOST_LIBPATH}/libboost_regex.a ${BF_BOOST_LIBPATH}/libboost_locale.a ${BF_BOOST_LIBPATH}/libboost_system.a ' + \
     '${BF_BOOST_LIBPATH}/libboost_thread.a'
 BF_BOOST_LIB_INTERNATIONAL = 'boost_locale'
 BF_BOOST_LIBPATH = '${BF_BOOST}/lib'
@@ -241,7 +241,7 @@ if WITH_BF_FFMPEG:
     CXXFLAGS += ['-D__STDC_CONSTANT_MACROS', ]
 REL_CFLAGS = []
 REL_CXXFLAGS = []
-REL_CCFLAGS = ['-DNDEBUG', '-O2']
+REL_CCFLAGS = ['-O2']
 
 C_WARN = ['-Wno-char-subscripts', '-Wdeclaration-after-statement', '-Wunused-parameter', '-Wstrict-prototypes', '-Werror=declaration-after-statement', '-Werror=implicit-function-declaration', '-Werror=return-type']
 CC_WARN = ['-Wall']
@@ -254,7 +254,7 @@ BF_PROFILE_CCFLAGS = ['-pg','-g']
 BF_PROFILE_LINKFLAGS = ['-pg']
 
 BF_DEBUG = False
-BF_DEBUG_CCFLAGS = ['-g', '-D_DEBUG']
+BF_DEBUG_CCFLAGS = ['-g']
 
 BF_BUILDDIR = '../build/linux'
 BF_INSTALLDIR='../install/linux'

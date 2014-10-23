@@ -28,6 +28,9 @@
 //
 // Author: sameeragarwal@google.com (Sameer Agarwal)
 
+// This include must come before any #ifndef check on Ceres compile options.
+#include "ceres/internal/port.h"
+
 #ifndef CERES_NO_SUITESPARSE
 
 #include "ceres/single_linkage_clustering.h"
@@ -41,7 +44,7 @@ namespace internal {
 
 int ComputeSingleLinkageClustering(
     const SingleLinkageClusteringOptions& options,
-    const Graph<int>& graph,
+    const WeightedGraph<int>& graph,
     HashMap<int, int>* membership) {
   CHECK_NOTNULL(membership)->clear();
 

@@ -86,9 +86,8 @@ ccl_device void shader_setup_from_ray(KernelGlobals *kg, ShaderData *sd,
 #endif
 	if(sd->type & PRIMITIVE_TRIANGLE) {
 		/* static triangle */
-		float4 Ns = kernel_tex_fetch(__tri_normal, sd->prim);
-		float3 Ng = make_float3(Ns.x, Ns.y, Ns.z);
-		sd->shader = __float_as_int(Ns.w);
+		float3 Ng = triangle_normal(kg, sd);
+		sd->shader =  kernel_tex_fetch(__tri_shader, sd->prim);
 
 		/* vectors */
 		sd->P = triangle_refine(kg, sd, isect, ray);
@@ -166,9 +165,8 @@ ccl_device_inline void shader_setup_from_subsurface(KernelGlobals *kg, ShaderDat
 
 	/* fetch triangle data */
 	if(sd->type == PRIMITIVE_TRIANGLE) {
-		float4 Ns = kernel_tex_fetch(__tri_normal, sd->prim);
-		float3 Ng = make_float3(Ns.x, Ns.y, Ns.z);
-		sd->shader = __float_as_int(Ns.w);
+		float3 Ng = triangle_normal(kg, sd);
+		sd->shader =  kernel_tex_fetch(__tri_shader, sd->prim);
 
 		/* static triangle */
 		sd->P = triangle_refine_subsurface(kg, sd, isect, ray);
@@ -342,7 +340,7 @@ ccl_device void shader_setup_from_displace(KernelGlobals *kg, ShaderData *sd,
 	float3 P, Ng, I = make_float3(0.0f, 0.0f, 0.0f);
 	int shader;
 
-	triangle_point_normal(kg, prim, u, v, &P, &Ng, &shader);
+	triangle_point_normal(kg, object, prim, u, v, &P, &Ng, &shader);
 
 	/* force smooth shading for displacement */
 	shader |= SHADER_SMOOTH_NORMAL;
@@ -609,6 +607,9 @@ ccl_device void shader_bsdf_blur(KernelGlobals *kg, ShaderData *sd, float roughn
 
 ccl_device float3 shader_bsdf_transparency(KernelGlobals *kg, ShaderData *sd)
 {
+	if(sd->flag & SD_HAS_ONLY_VOLUME)
+		return make_float3(1.0f, 1.0f, 1.0f);
+
 	float3 eval = make_float3(0.0f, 0.0f, 0.0f);
 
 	for(int i = 0; i< sd->num_closure; i++) {
@@ -797,8 +798,8 @@ ccl_device void shader_eval_surface(KernelGlobals *kg, ShaderData *sd,
 #ifdef __SVM__
 		svm_eval_nodes(kg, sd, SHADER_TYPE_SURFACE, path_flag);
 #else
-		sd->closure.weight = make_float3(0.8f, 0.8f, 0.8f);
-		sd->closure.N = sd->N;
+		sd->closure->weight = make_float3(0.8f, 0.8f, 0.8f);
+		sd->closure->N = sd->N;
 		sd->flag |= bsdf_diffuse_setup(&sd->closure);
 #endif
 	}
@@ -857,7 +858,7 @@ ccl_device_inline void _shader_volume_phase_multi_eval(const ShaderData *sd, con
 
 			if(phase_pdf != 0.0f) {
 				bsdf_eval_accum(result_eval, sc->type, eval);
-				sum_pdf += phase_pdf;
+				sum_pdf += phase_pdf*sc->sample_weight;
 			}
 
 			sum_sample_weight += sc->sample_weight;
@@ -1025,8 +1026,7 @@ ccl_device bool shader_transparent_shadow(KernelGlobals *kg, Intersection *isect
 #ifdef __HAIR__
 	if(kernel_tex_fetch(__prim_type, isect->prim) & PRIMITIVE_ALL_TRIANGLE) {
 #endif
-		float4 Ns = kernel_tex_fetch(__tri_normal, prim);
-		shader = __float_as_int(Ns.w);
+		shader = kernel_tex_fetch(__tri_shader, prim);
 #ifdef __HAIR__
 	}
 	else {

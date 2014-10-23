@@ -26,8 +26,11 @@ Desktop.ini
 # local patches
 /*.patch
 /*.diff
-
-.gitignore
+# in-source doc-gen
+/doc/doxygen/html/
+/doc/python_api/sphinx-in-tmp/
+/doc/python_api/sphinx-in/
+/doc/python_api/sphinx-out/.gitignore
 Roman_Pogribnyi/
 Roman_Pogribnyi.tar.gz
 Archive.zip

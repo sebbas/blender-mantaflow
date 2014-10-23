@@ -462,10 +462,13 @@ static void text_cursor(wmWindow *win, ScrArea *sa, ARegion *ar)
 
 static int text_drop_poll(bContext *UNUSED(C), wmDrag *drag, const wmEvent *UNUSED(event))
 {
-	if (drag->type == WM_DRAG_PATH)
-		if (ELEM(drag->icon, ICON_FILE_SCRIPT, ICON_FILE_BLANK))    /* rule might not work? */
-			return 1;
-	return 0;
+	if (drag->type == WM_DRAG_PATH) {
+		/* rule might not work? */
+		if (ELEM(drag->icon, ICON_FILE_SCRIPT, ICON_FILE_TEXT, ICON_FILE_BLANK)) {
+			return true;
+		}
+	}
+	return false;
 }
 
 static void text_drop_copy(wmDrag *drag, wmDropBox *drop)
@@ -484,7 +487,13 @@ static int text_drop_paste_poll(bContext *UNUSED(C), wmDrag *drag, const wmEvent
 
 static void text_drop_paste(wmDrag *drag, wmDropBox *drop)
 {
-	RNA_string_set(drop->ptr, "text", ((ID *)drag->poin)->name + 2);
+	char *text;
+	ID *id = drag->poin;
+
+	/* copy drag path to properties */
+	text = RNA_path_full_ID_py(id);
+	RNA_string_set(drop->ptr, "text", text);
+	MEM_freeN(text);
 }
 
 /* this region dropbox definition */

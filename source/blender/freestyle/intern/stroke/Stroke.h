@@ -45,6 +45,8 @@
 
 extern "C" {
 #include "DNA_material_types.h"
+
+struct bNodeTree;
 }
 
 #ifndef MAX_MTEX
@@ -375,14 +377,14 @@ public:
 		return _Point2d[1];
 	}
 
-	/*! Returns the 2D point coordinates as a Vec2d */
-	Vec2f getPoint ()
+	/*! Returns the 2D point coordinates as a Vec2r */
+	inline Vec2r getPoint() const
 	{
-		return Vec2f((float)point2d()[0], (float)point2d()[1]);
+		return getPoint2D();
 	}
 
 	/*! Returns the ith 2D point coordinate (i=0 or 1)*/
-	inline real  operator[](const int i) const
+	inline real operator[](const int i) const
 	{
 		return _Point2d[i];
 	}
@@ -438,7 +440,7 @@ public:
 	}
 
 	/*! sets the 2D x and y values */
-	inline void setPoint(const Vec2f& p)
+	inline void setPoint(const Vec2r& p)
 	{
 		_Point2d[0] = p[0];
 		_Point2d[1] = p[1];
@@ -472,6 +474,10 @@ public:
 
 	/* interface definition */
 	/* inherited */
+
+#ifdef WITH_CXX_GUARDEDALLOC
+	MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:StrokeVertex")
+#endif
 };
 
 
@@ -541,9 +547,9 @@ private:
 	MediumType _mediumType;
 	unsigned int _textureId;
 	MTex *_mtex[MAX_MTEX];
+	bNodeTree *_nodeTree;
 	bool _tips;
 	Vec2r _extremityOrientations[2]; // the orientations of the first and last extermity
-	StrokeRep *_rep;
 
 public:
 	/*! default constructor */
@@ -588,7 +594,7 @@ public:
 	 *  \param iNPoints
 	 *    The number of vertices we eventually want in our stroke.
 	 */
-	void Resample(int iNPoints);
+	int Resample(int iNPoints);
 
 	/*! Resampling method.
 	 *  Resamples the curve with a given sampling.
@@ -596,7 +602,7 @@ public:
 	 *  \param iSampling
 	 *    The new sampling value.  
 	 */
-	void Resample(float iSampling);
+	int Resample(float iSampling);
 
     /*! Removes all vertices from the Stroke.
      */
@@ -653,10 +659,16 @@ public:
 		return _mtex[idx];
 	}
 
+	/*! Return the shader node tree to define textures. */
+	inline bNodeTree *getNodeTree()
+	{
+		return _nodeTree;
+	}
+
 	/*! Returns true if this Stroke has textures assigned, false otherwise. */
 	inline bool hasTex() const
 	{
-		return _mtex[0] != NULL;
+		return (_mtex[0] != NULL) || _nodeTree;
 	}
 
 	/*! Returns true if this Stroke uses a texture with tips, false otherwise. */
@@ -767,6 +779,12 @@ public:
 		return -1; /* no free slots */
 	}
 
+	/*! assigns a node tree (of new shading nodes) to define textures. */
+	inline void setNodeTree(bNodeTree *iNodeTree)
+	{
+		_nodeTree = iNodeTree;
+	}
+
 	/*! sets the flag telling whether this stroke is using a texture with tips or not. */
 	inline void setTips(bool iTips)
 	{
@@ -848,6 +866,10 @@ public:
 
 	virtual Interface0DIterator pointsBegin(float t = 0.0f);
 	virtual Interface0DIterator pointsEnd(float t = 0.0f);
+
+#ifdef WITH_CXX_GUARDEDALLOC
+	MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:Stroke")
+#endif
 };
 
 

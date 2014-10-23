@@ -33,6 +33,8 @@
 #ifndef CERES_INTERNAL_SUITESPARSE_H_
 #define CERES_INTERNAL_SUITESPARSE_H_
 
+// This include must come before any #ifndef check on Ceres compile options.
+#include "ceres/internal/port.h"
 
 #ifndef CERES_NO_SUITESPARSE
 
@@ -281,8 +283,23 @@ class SuiteSparse {
 
 #else  // CERES_NO_SUITESPARSE
 
-class SuiteSparse {};
 typedef void cholmod_factor;
+
+class SuiteSparse {
+ public:
+  // Defining this static function even when SuiteSparse is not
+  // available, allows client code to check for the presence of CAMD
+  // without checking for the absence of the CERES_NO_CAMD symbol.
+  //
+  // This is safer because the symbol maybe missing due to a user
+  // accidently not including suitesparse.h in their code when
+  // checking for the symbol.
+  static bool IsConstrainedApproximateMinimumDegreeOrderingAvailable() {
+    return false;
+  }
+
+  void Free(void*) {};
+};
 
 #endif  // CERES_NO_SUITESPARSE
 

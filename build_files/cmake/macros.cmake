@@ -284,8 +284,7 @@ macro(setup_liblinks
 	set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${PLATFORM_LINKFLAGS_DEBUG}")
 
 	target_link_libraries(${target}
-			${OPENGL_gl_LIBRARY}
-			${OPENGL_glu_LIBRARY}
+			${BLENDER_GL_LIBRARIES}
 			${PNG_LIBRARIES}
 			${ZLIB_LIBRARIES}
 			${FREETYPE_LIBRARY})
@@ -305,7 +304,7 @@ macro(setup_liblinks
 	endif()
 
 	if(WITH_SYSTEM_GLEW)
-		target_link_libraries(${target} ${GLEW_LIBRARY})
+		target_link_libraries(${target} ${BLENDER_GLEW_LIBRARIES})
 	endif()
 	if(WITH_BULLET AND WITH_SYSTEM_BULLET)
 		target_link_libraries(${target} ${BULLET_LIBRARIES})
@@ -359,9 +358,12 @@ macro(setup_liblinks
 	endif()
 	if(WITH_CODEC_FFMPEG)
 
-		# Strange!, without this ffmpeg gives linking errors (on linux)
-		# even though its linked above
-		target_link_libraries(${target} ${OPENGL_glu_LIBRARY})
+		# Strange! Without this ffmpeg gives linking errors (on linux),
+		# even though it's linked above.
+		# XXX: Does FFMPEG depend on GLU?
+		if(WITH_GLU)
+			target_link_libraries(${target} ${OPENGL_glu_LIBRARY})
+		endif()
 
 		target_link_libraries(${target} ${FFMPEG_LIBRARIES})
 	endif()
@@ -411,6 +413,251 @@ macro(setup_liblinks
 	endif()
 
 	target_link_libraries(${target} ${PLATFORM_LINKLIBS} ${CMAKE_DL_LIBS})
+
+	# We put CLEW and CUEW here because OPENSUBDIV_LIBRARIES dpeends on them..
+	if(WITH_CYCLES OR WITH_COMPOSITOR OR WITH_OPENSUBDIV)
+		target_link_libraries(${target} "extern_clew")
+		target_link_libraries(${target} "extern_cuew")
+	endif()
+endmacro()
+
+macro(SETUP_BLENDER_SORTED_LIBS)
+	get_property(BLENDER_LINK_LIBS GLOBAL PROPERTY BLENDER_LINK_LIBS)
+
+	list(APPEND BLENDER_LINK_LIBS
+		bf_windowmanager
+		bf_render
+	)
+
+	if(WITH_MOD_FLUID)
+		list(APPEND BLENDER_LINK_LIBS bf_intern_elbeem)
+	endif()
+
+	if(WITH_CYCLES)
+		list(APPEND BLENDER_LINK_LIBS
+			cycles_render
+			cycles_bvh
+			cycles_device
+			cycles_kernel
+			cycles_util
+			cycles_subd)
+		if(WITH_CYCLES_OSL)
+			list(APPEND BLENDER_LINK_LIBS cycles_kernel_osl)
+		endif()
+	endif()
+
+	# Sort libraries
+	set(BLENDER_SORTED_LIBS
+		bf_windowmanager
+
+		bf_editor_space_api
+		bf_editor_space_action
+		bf_editor_space_buttons
+		bf_editor_space_console
+		bf_editor_space_file
+		bf_editor_space_graph
+		bf_editor_space_image
+		bf_editor_space_info
+		bf_editor_space_logic
+		bf_editor_space_nla
+		bf_editor_space_node
+		bf_editor_space_outliner
+		bf_editor_space_script
+		bf_editor_space_sequencer
+		bf_editor_space_text
+		bf_editor_space_time
+		bf_editor_space_userpref
+		bf_editor_space_view3d
+		bf_editor_space_clip
+
+		bf_editor_transform
+		bf_editor_util
+		bf_editor_uvedit
+		bf_editor_curve
+		bf_editor_gpencil
+		bf_editor_interface
+		bf_editor_mesh
+		bf_editor_metaball
+		bf_editor_object
+		bf_editor_armature
+		bf_editor_physics
+		bf_editor_render
+		bf_editor_screen
+		bf_editor_sculpt_paint
+		bf_editor_sound
+		bf_editor_animation
+		bf_editor_datafiles
+		bf_editor_mask
+		bf_editor_io
+
+		bf_render
+		bf_python
+		bf_python_ext
+		bf_python_mathutils
+		bf_python_bmesh
+		bf_freestyle
+		bf_ikplugin
+		bf_modifiers
+		bf_bmesh
+		bf_blenkernel
+		bf_nodes
+		bf_rna
+		bf_gpu
+		bf_blenloader
+		bf_imbuf
+		bf_blenlib
+		bf_intern_ghost
+		bf_intern_string
+		bf_avi
+		bf_imbuf_cineon
+		bf_imbuf_openexr
+		bf_imbuf_openimageio
+		bf_imbuf_dds
+		bf_collada
+		bf_intern_elbeem
+		bf_intern_memutil
+		bf_intern_guardedalloc
+		bf_intern_ctr
+		bf_intern_utfconv
+		ge_blen_routines
+		ge_converter
+		ge_phys_dummy
+		ge_phys_bullet
+		bf_intern_smoke
+		extern_minilzo
+		extern_lzma
+		extern_colamd
+		ge_logic_ketsji
+		extern_recastnavigation
+		ge_logic
+		ge_rasterizer
+		ge_oglrasterizer
+		ge_logic_expressions
+		ge_scenegraph
+		ge_logic_network
+		ge_logic_ngnetwork
+		ge_logic_loopbacknetwork
+		bf_intern_moto
+		extern_openjpeg
+		extern_redcode
+		ge_videotex
+		bf_dna
+		bf_blenfont
+		bf_intern_audaspace
+		bf_intern_mikktspace
+		bf_intern_dualcon
+		bf_intern_cycles
+		cycles_render
+		cycles_bvh
+		cycles_device
+		cycles_kernel
+		cycles_util
+		cycles_subd
+		bf_intern_raskter
+		bf_intern_opencolorio
+		extern_rangetree
+		extern_wcwidth
+		extern_libmv
+		extern_glog
+
+		bf_intern_glew_mx
+	)
+
+	if(WITH_COMPOSITOR)
+		# added for opencl compositor
+		list_insert_before(BLENDER_SORTED_LIBS "bf_blenkernel" "bf_compositor")
+		list_insert_after(BLENDER_SORTED_LIBS "bf_compositor" "bf_intern_opencl")
+	endif()
+
+	if(WITH_LIBMV)
+		list(APPEND BLENDER_SORTED_LIBS extern_ceres)
+	endif()
+
+	if(WITH_MOD_CLOTH_ELTOPO)
+		list(APPEND BLENDER_SORTED_LIBS extern_eltopo)
+	endif()
+
+	if(NOT WITH_SYSTEM_GLEW)
+		list(APPEND BLENDER_SORTED_LIBS ${BLENDER_GLEW_LIBRARIES})
+	endif()
+
+	if(WITH_BINRELOC)
+		list(APPEND BLENDER_SORTED_LIBS extern_binreloc)
+	endif()
+
+	if(WITH_CXX_GUARDEDALLOC)
+		list(APPEND BLENDER_SORTED_LIBS bf_intern_guardedalloc_cpp)
+	endif()
+
+	if(WITH_IK_SOLVER)
+		list_insert_after(BLENDER_SORTED_LIBS "bf_intern_elbeem" "bf_intern_iksolver")
+	endif()
+
+	if(WITH_IK_ITASC)
+		list(APPEND BLENDER_SORTED_LIBS bf_intern_itasc)
+	endif()
+
+	if(WITH_CODEC_QUICKTIME)
+		list(APPEND BLENDER_SORTED_LIBS bf_quicktime)
+	endif()
+
+	if(WITH_INPUT_NDOF)
+		list(APPEND BLENDER_SORTED_LIBS bf_intern_ghostndof3dconnexion)
+	endif()
+	
+	if(WITH_MOD_BOOLEAN)
+		list(APPEND BLENDER_SORTED_LIBS extern_carve)
+	endif()
+
+	if(WITH_GHOST_XDND)
+		list(APPEND BLENDER_SORTED_LIBS extern_xdnd)
+	endif()
+
+	if(WITH_CYCLES_OSL)
+		list_insert_after(BLENDER_SORTED_LIBS "cycles_kernel" "cycles_kernel_osl")
+	endif()
+
+	if(WITH_INTERNATIONAL)
+		list(APPEND BLENDER_SORTED_LIBS bf_intern_locale)
+	endif()
+
+	if(WITH_OPENNL)
+		list_insert_after(BLENDER_SORTED_LIBS "bf_render" "bf_intern_opennl")
+	endif()
+
+	if(WITH_BULLET)
+		list_insert_after(BLENDER_SORTED_LIBS "bf_blenkernel" "bf_intern_rigidbody")
+	endif()
+
+	if(WITH_BULLET AND NOT WITH_SYSTEM_BULLET)
+		list_insert_after(BLENDER_SORTED_LIBS "ge_logic_ngnetwork" "extern_bullet")
+	endif()
+
+	foreach(SORTLIB ${BLENDER_SORTED_LIBS})
+		set(REMLIB ${SORTLIB})
+		foreach(SEARCHLIB ${BLENDER_LINK_LIBS})
+			if(${SEARCHLIB} STREQUAL ${SORTLIB})
+				set(REMLIB "")
+			endif()
+		endforeach()
+		if(REMLIB)
+			# message(STATUS "Removing library ${REMLIB} from blender linking because: not configured")
+			list(APPEND REM_MSG ${REMLIB})
+			list(REMOVE_ITEM BLENDER_SORTED_LIBS ${REMLIB})
+		endif()
+	endforeach()
+	if(REM_MSG)
+		list(SORT REM_MSG)
+		message(STATUS "Blender Skipping: (${REM_MSG})")
+	endif()
+
+	unset(SEARCHLIB)
+	unset(SORTLIB)
+	unset(REMLIB)
+	unset(REM_MSG)
+
+	# for top-level tests
+	set_property(GLOBAL PROPERTY BLENDER_SORTED_LIBS_PROP ${BLENDER_SORTED_LIBS})
 endmacro()
 
 macro(TEST_SSE_SUPPORT
@@ -475,6 +722,8 @@ macro(TEST_SSE_SUPPORT
 endmacro()
 
 macro(TEST_STDBOOL_SUPPORT)
+	include(CheckCSourceRuns)
+
 	# This program will compile correctly if and only if
 	# this C compiler supports C99 stdbool.
 	check_c_source_runs("
@@ -550,6 +799,78 @@ macro(TEST_UNORDERED_MAP_SUPPORT)
 			set(UNORDERED_MAP_NAMESPACE "std::tr1")
 		else()
 			message(STATUS "Unable to find <unordered_map> or <tr1/unordered_map>. ")
+		endif()
+	endif()
+endmacro()
+
+macro(TEST_SHARED_PTR_SUPPORT)
+	# This check are coming from Ceres library.
+	#
+	# Find shared pointer header and namespace.
+	#
+	# This module defines the following variables:
+	#
+	# SHARED_PTR_FOUND: TRUE if shared_ptr found.
+	# SHARED_PTR_TR1_MEMORY_HEADER: True if <tr1/memory> header is to be used
+	# for the shared_ptr object, otherwise use <memory>.
+	# SHARED_PTR_TR1_NAMESPACE: TRUE if shared_ptr is defined in std::tr1 namespace,
+	# otherwise it's assumed to be defined in std namespace.
+
+	include(CheckIncludeFileCXX)
+	set(SHARED_PTR_FOUND FALSE)
+	CHECK_INCLUDE_FILE_CXX(memory HAVE_STD_MEMORY_HEADER)
+	if(HAVE_STD_MEMORY_HEADER)
+		# Finding the memory header doesn't mean that shared_ptr is in std
+		# namespace.
+		#
+		# In particular, MSVC 2008 has shared_ptr declared in std::tr1.  In
+		# order to support this, we do an extra check to see which namespace
+		# should be used.
+		include(CheckCXXSourceCompiles)
+		CHECK_CXX_SOURCE_COMPILES("#include <memory>
+		                           int main() {
+		                             std::shared_ptr<int> int_ptr;
+		                             return 0;
+		                           }"
+		                          HAVE_SHARED_PTR_IN_STD_NAMESPACE)
+
+		if(HAVE_SHARED_PTR_IN_STD_NAMESPACE)
+			message("-- Found shared_ptr in std namespace using <memory> header.")
+			set(SHARED_PTR_FOUND TRUE)
+		else()
+			CHECK_CXX_SOURCE_COMPILES("#include <memory>
+			                           int main() {
+			                           std::tr1::shared_ptr<int> int_ptr;
+			                           return 0;
+			                           }"
+			                          HAVE_SHARED_PTR_IN_TR1_NAMESPACE)
+			if(HAVE_SHARED_PTR_IN_TR1_NAMESPACE)
+				message("-- Found shared_ptr in std::tr1 namespace using <memory> header.")
+				set(SHARED_PTR_TR1_NAMESPACE TRUE)
+				set(SHARED_PTR_FOUND TRUE)
+			endif()
+		endif()
+	endif()
+
+	if(NOT SHARED_PTR_FOUND)
+		# Further, gcc defines shared_ptr in std::tr1 namespace and
+		# <tr1/memory> is to be included for this. And what makes things
+		# even more tricky is that gcc does have <memory> header, so
+		# all the checks above wouldn't find shared_ptr.
+		CHECK_INCLUDE_FILE_CXX("tr1/memory" HAVE_TR1_MEMORY_HEADER)
+		if(HAVE_TR1_MEMORY_HEADER)
+			CHECK_CXX_SOURCE_COMPILES("#include <tr1/memory>
+			                           int main() {
+			                           std::tr1::shared_ptr<int> int_ptr;
+			                           return 0;
+			                           }"
+			                           HAVE_SHARED_PTR_IN_TR1_NAMESPACE_FROM_TR1_MEMORY_HEADER)
+			if(HAVE_SHARED_PTR_IN_TR1_NAMESPACE_FROM_TR1_MEMORY_HEADER)
+				message("-- Found shared_ptr in std::tr1 namespace using <tr1/memory> header.")
+				set(SHARED_PTR_TR1_MEMORY_HEADER TRUE)
+				set(SHARED_PTR_TR1_NAMESPACE TRUE)
+				set(SHARED_PTR_FOUND TRUE)
+			endif()
 		endif()
 	endif()
 endmacro()
@@ -1006,7 +1327,7 @@ macro(msgfmt_simple
 		OUTPUT  ${_file_to}
 		COMMAND ${CMAKE_COMMAND} -E make_directory ${_file_to_path}
 		COMMAND ${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/msgfmt ${_file_from} ${_file_to}
-		DEPENDS msgfmt)
+		DEPENDS msgfmt ${_file_from})
 
 	set_source_files_properties(${_file_to} PROPERTIES GENERATED TRUE)
 
@@ -1014,4 +1335,55 @@ macro(msgfmt_simple
 	unset(_file_from)
 	unset(_file_to)
 	unset(_file_to_path)
+endmacro()
+
+macro(find_python_package
+      package)
+
+	string(TOUPPER ${package} _upper_package)
+
+	# set but invalid
+	if((NOT ${PYTHON_${_upper_package}_PATH} STREQUAL "") AND
+	   (NOT ${PYTHON_${_upper_package}_PATH} MATCHES NOTFOUND))
+#		if(NOT EXISTS "${PYTHON_${_upper_package}_PATH}/${package}")
+#			message(WARNING "PYTHON_${_upper_package}_PATH is invalid, ${package} not found in '${PYTHON_${_upper_package}_PATH}' "
+#			                "WITH_PYTHON_INSTALL_${_upper_package} option will be ignored when installing python")
+#			set(WITH_PYTHON_INSTALL${_upper_package} OFF)
+#		endif()
+	# not set, so initialize
+	else()
+		string(REPLACE "." ";" _PY_VER_SPLIT "${PYTHON_VERSION}")
+		list(GET _PY_VER_SPLIT 0 _PY_VER_MAJOR)
+
+		# re-cache
+		unset(PYTHON_${_upper_package}_PATH CACHE)
+		find_path(PYTHON_${_upper_package}_PATH
+		  NAMES
+		    ${package}
+		  HINTS
+		    "${PYTHON_LIBPATH}/python${PYTHON_VERSION}/"
+		    "${PYTHON_LIBPATH}/python${_PY_VER_MAJOR}/"
+		  PATH_SUFFIXES
+		    site-packages
+		    dist-packages
+		   NO_DEFAULT_PATH
+		)
+
+		 if(NOT EXISTS "${PYTHON_${_upper_package}_PATH}")
+			message(WARNING "'${package}' path could not be found in:\n"
+			                "'${PYTHON_LIBPATH}/python${PYTHON_VERSION}/site-packages/${package}', "
+			                "'${PYTHON_LIBPATH}/python${_PY_VER_MAJOR}/site-packages/${package}', "
+			                "'${PYTHON_LIBPATH}/python${PYTHON_VERSION}/dist-packages/${package}', "
+			                "'${PYTHON_LIBPATH}/python${_PY_VER_MAJOR}/dist-packages/${package}', "
+			                "WITH_PYTHON_INSTALL_${_upper_package} option will be ignored when installing python")
+			set(WITH_PYTHON_INSTALL_${_upper_package} OFF)
+		else()
+			message(STATUS "${package} found at '${PYTHON_${_upper_package}_PATH}'")
+		endif()
+
+		unset(_PY_VER_SPLIT)
+		unset(_PY_VER_MAJOR)
+	  endif()
+
+	  unset(_upper_package)
 endmacro()

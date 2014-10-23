@@ -50,7 +50,7 @@ void BM_mesh_elem_index_validate(BMesh *bm, const char *location, const char *fu
                                  const char *msg_a, const char *msg_b);
 
 #ifndef NDEBUG
-bool BM_mesh_elem_table_check(BMesh *em);
+bool BM_mesh_elem_table_check(BMesh *bm);
 #endif
 
 void           BM_mesh_elem_table_ensure(BMesh *bm, const char htype);
@@ -69,7 +69,11 @@ BMFace *BM_face_at_index_find(BMesh *bm, const int index);
 
 int  BM_mesh_elem_count(BMesh *bm, const char htype);
 
-void BM_mesh_remap(BMesh *bm, unsigned int *vert_idx, unsigned int *edge_idx, unsigned int *face_idx);
+void BM_mesh_remap(
+        BMesh *bm,
+        const unsigned int *vert_idx,
+        const unsigned int *edge_idx,
+        const unsigned int *face_idx);
 
 typedef struct BMAllocTemplate {
 	int totvert, totedge, totloop, totface;

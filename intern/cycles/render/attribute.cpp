@@ -69,6 +69,15 @@ void Attribute::add(const float& f)
 		buffer.push_back(data[i]);
 }
 
+void Attribute::add(const uchar4& f)
+{
+	char *data = (char*)&f;
+	size_t size = sizeof(f);
+
+	for(size_t i = 0; i < size; i++)
+		buffer.push_back(data[i]);
+}
+
 void Attribute::add(const float3& f)
 {
 	char *data = (char*)&f;
@@ -136,6 +145,7 @@ size_t Attribute::element_size(int numverts, int numtris, int numsteps, int numc
 			size = numtris;
 			break;
 		case ATTR_ELEMENT_CORNER:
+		case ATTR_ELEMENT_CORNER_BYTE:
 			size = numtris*3;
 			break;
 		case ATTR_ELEMENT_CURVE:
@@ -263,11 +273,19 @@ Attribute *AttributeSet::add(ustring name, TypeDesc type, AttributeElement eleme
 		remove(name);
 	}
 
-	attributes.push_back(Attribute());
+#if __cplusplus >= 201103L
+	attributes.emplace_back();
 	attr = &attributes.back();
-
 	attr->set(name, type, element);
-	
+#else
+	{
+		Attribute attr_temp;
+		attr_temp.set(name, type, element);
+		attributes.push_back(attr_temp);
+		attr = &attributes.back();
+	}
+#endif
+
 	/* this is weak .. */
 	if(triangle_mesh)
 		attr->reserve(triangle_mesh->verts.size(), triangle_mesh->triangles.size(), triangle_mesh->motion_steps, 0, 0, resize);

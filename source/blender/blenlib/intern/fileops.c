@@ -48,10 +48,10 @@
 #  include <io.h>
 #  include "BLI_winstuff.h"
 #  include "BLI_callbacks.h"
+#  include "BLI_fileops_types.h"
 #  include "utf_winfunc.h"
 #  include "utfconv.h"
 #else
-#  include <unistd.h> // for read close
 #  include <sys/param.h>
 #  include <dirent.h>
 #  include <unistd.h>
@@ -66,7 +66,7 @@
 #include "BLI_fileops.h"
 #include "BLI_sys_types.h" // for intptr_t support
 
-
+#if 0  /* UNUSED */
 /* gzip the file in from and write it to "to". 
  * return -1 if zlib fails, -2 if the originating file does not exist
  * note: will remove the "from" file
@@ -111,6 +111,7 @@ int BLI_file_gzip(const char *from, const char *to)
 
 	return rval;
 }
+#endif
 
 /* gzip the file in from_file and write it to memory to_mem, at most size bytes.
  * return the unziped size
@@ -284,26 +285,72 @@ int   BLI_access(const char *filename, int mode)
 	return uaccess(filename, mode);
 }
 
-int BLI_delete(const char *file, bool dir, bool recursive)
+static bool delete_unique(const char *path, const bool dir)
 {
-	int err;
-	
-	UTF16_ENCODE(file);
+	bool err;
 
-	if (recursive) {
-		callLocalErrorCallBack("Recursive delete is unsupported on Windows");
-		err = 1;
-	}
-	else if (dir) {
-		err = !RemoveDirectoryW(file_16);
+	UTF16_ENCODE(path);
+
+	if (dir) {
+		err = !RemoveDirectoryW(path_16);
 		if (err) printf("Unable to remove directory");
 	}
 	else {
-		err = !DeleteFileW(file_16);
+		err = !DeleteFileW(path_16);
 		if (err) callLocalErrorCallBack("Unable to delete file");
 	}
 
-	UTF16_UN_ENCODE(file);
+	UTF16_UN_ENCODE(path);
+
+	return err;
+}
+
+static bool delete_recursive(const char *dir)
+{
+	struct direntry *filelist, *fl;
+	bool err = false;
+	unsigned int nbr, i;
+
+	i = nbr = BLI_dir_contents(dir, &filelist);
+	fl = filelist;
+	while (i--) {
+		char file[8];
+		BLI_split_file_part(fl->path, file, sizeof(file));
+		if (STREQ(file, ".") || STREQ(file, "..")) {
+			/* Skip! */
+		}
+		else if (S_ISDIR(fl->type)) {
+			if (delete_recursive(fl->path)) {
+				err = true;
+			}
+		}
+		else {
+			if (delete_unique(fl->path, false)) {
+				err = true;
+			}
+		}
+		++fl;
+	}
+
+	if (!err && delete_unique(dir, true)) {
+		err = true;
+	}
+
+	BLI_free_filelist(filelist, nbr);
+
+	return err;
+}
+
+int BLI_delete(const char *file, bool dir, bool recursive)
+{
+	int err;
+
+	if (recursive) {
+		err = delete_recursive(file);
+	}
+	else {
+		err = delete_unique(file, dir);
+	}
 
 	return err;
 }
@@ -635,21 +682,15 @@ int   BLI_access(const char *filename, int mode)
  */
 int BLI_delete(const char *file, bool dir, bool recursive)
 {
-	if (strchr(file, '"')) {
-		printf("Error: not deleted file %s because of quote!\n", file);
+	if (recursive) {
+		return recursive_operation(file, NULL, NULL, delete_single_file, delete_callback_post);
+	}
+	else if (dir) {
+		return rmdir(file);
 	}
 	else {
-		if (recursive) {
-			return recursive_operation(file, NULL, NULL, delete_single_file, delete_callback_post);
-		}
-		else if (dir) {
-			return rmdir(file);
-		}
-		else {
-			return remove(file); //BLI_snprintf(str, sizeof(str), "/bin/rm -f \"%s\"", file);
-		}
+		return remove(file);
 	}
-	return -1;
 }
 
 /**

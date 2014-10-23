@@ -2277,7 +2277,7 @@ static void set_axis(Scene *scene,  Object *ob, MovieClip *clip, MovieTrackingOb
 			copy_v3_v3(lmat[3], obmat[3]);
 			invert_m4_m4(ilmat, lmat);
 
-			mul_serie_m4(mat, lmat, mat, ilmat, obmat, NULL, NULL, NULL, NULL);
+			mul_m4_series(mat, lmat, mat, ilmat, obmat);
 		}
 		else {
 			mul_m4_m4m4(mat, obmat, mat);
@@ -2996,7 +2996,7 @@ void CLIP_OT_detect_features(wmOperatorType *ot)
 	/* properties */
 	RNA_def_enum(ot->srna, "placement", placement_items, 0, "Placement", "Placement for detected features");
 	RNA_def_int(ot->srna, "margin", 16, 0, INT_MAX, "Margin", "Only features further than margin pixels from the image edges are considered", 0, 300);
-	RNA_def_float(ot->srna, "threshold", 1.0f, 0.0001f, FLT_MAX, "Threshold", "Threshold level to consider feature good enough for tracking", 0.0001f, FLT_MAX);
+	RNA_def_float(ot->srna, "threshold", 0.5f, 0.0001f, FLT_MAX, "Threshold", "Threshold level to consider feature good enough for tracking", 0.0001f, FLT_MAX);
 	RNA_def_int(ot->srna, "min_distance", 120, 0, INT_MAX, "Distance", "Minimal distance accepted between two features", 0, 300);
 }
 
@@ -3811,7 +3811,9 @@ static int paste_tracks_exec(bContext *C, wmOperator *UNUSED(op))
 	MovieClip *clip = ED_space_clip_get_clip(sc);
 	MovieTracking *tracking = &clip->tracking;
 	MovieTrackingObject *object = BKE_tracking_object_get_active(tracking);
+	ListBase *tracks_base = BKE_tracking_object_get_tracks(tracking, object);
 
+	BKE_tracking_tracks_deselect_all(tracks_base);
 	BKE_tracking_clipboard_paste_tracks(tracking, object);
 
 	WM_event_add_notifier(C, NC_MOVIECLIP | NA_EDITED, clip);

@@ -53,9 +53,13 @@ if builder.find('cmake') != -1:
     retcode = subprocess.call(['make', '-s', '-j4', 'install'])
     sys.exit(retcode)
 else:
+    python_bin = 'python'
+    if builder.find('linux') != -1:
+        python_bin = '/opt/lib/python-2.7/bin/python2.7'
+
     # scons
     os.chdir(blender_dir)
-    scons_cmd = ['python', 'scons/scons.py']
+    scons_cmd = [python_bin, 'scons/scons.py']
     scons_options = ['BF_FANCY=False']
 
     # We're using the same rules as release builder, so tweak
@@ -144,13 +148,11 @@ else:
             scons_options.append('BF_CYCLES_CUDA_NVCC=nvcc.exe')
             if builder.find('mingw') != -1:
                 scons_options.append('BF_TOOLSET=mingw')
-            if builder.endswith('vc2012'):
-                scons_options.append('MSVS_VERSION=11.0')
             if builder.endswith('vc2013'):
                 scons_options.append('MSVS_VERSION=12.0')
                 scons_options.append('MSVC_VERSION=12.0')
                 scons_options.append('WITH_BF_CYCLES_CUDA_BINARIES=1')
-                scons_options.append('BF_CYCLES_CUDA_NVCC=nvcc')
+                scons_options.append('BF_CYCLES_CUDA_NVCC=nvcc.exe')
             scons_options.append('BF_NUMJOBS=1')
 
         elif builder.find('mac') != -1:
@@ -166,10 +168,6 @@ else:
                 os.makedirs(install_dir)
             if builder.endswith('vc2013'):
                 dlls = ('msvcp120.dll', 'msvcr120.dll', 'vcomp120.dll')
-            elif builder.endswith('vc2012'):
-                dlls = ('msvcp110.dll', 'msvcr110.dll', 'vcomp110.dll')
-            else:
-                dlls = ('msvcm90.dll', 'msvcp90.dll', 'msvcr90.dll', 'vcomp90.dll', 'Microsoft.VC90.CRT.manifest', 'Microsoft.VC90.OpenMP.manifest')
             if builder.find('win64') == -1:
                 dlls_path = '..\\..\\..\\redist\\x86'
             else:
@@ -177,6 +175,6 @@ else:
             for dll in dlls:
                 shutil.copyfile(os.path.join(dlls_path, dll), os.path.join(install_dir, dll))
 
-        retcode = subprocess.call(['python', 'scons/scons.py'] + scons_options)
+        retcode = subprocess.call([python_bin, 'scons/scons.py'] + scons_options)
 
         sys.exit(retcode)

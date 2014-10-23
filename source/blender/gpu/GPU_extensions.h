@@ -55,8 +55,6 @@ typedef struct GPUShader GPUShader;
 /* GPU extensions support */
 
 void GPU_extensions_disable(void);
-void GPU_extensions_init(void); /* call this before running any of the functions below */
-void GPU_extensions_exit(void);
 int GPU_print_error(const char *str);
 
 int GPU_glsl_support(void);
@@ -117,6 +115,9 @@ GPUTexture *GPU_texture_create_vsm_shadow_map(int size, char err_out[256]);
 GPUTexture *GPU_texture_from_blender(struct Image *ima,
 	struct ImageUser *iuser, bool is_data, double time, int mipmap);
 GPUTexture *GPU_texture_from_preview(struct PreviewImage *prv, int mipmap);
+void GPU_invalid_tex_init(void);
+void GPU_invalid_tex_bind(int mode);
+void GPU_invalid_tex_free(void);
 
 void GPU_texture_free(GPUTexture *tex);
 

@@ -54,7 +54,7 @@ static void bm_data_interp_from_elem(CustomData *data_layer, BMElem *ele1, BMEle
 				/* do nothing */
 			}
 			else {
-				CustomData_bmesh_free_block_data(data_layer, &ele_dst->head.data);
+				CustomData_bmesh_free_block_data(data_layer, ele_dst->head.data);
 				CustomData_bmesh_copy_data(data_layer, data_layer, ele1->head.data, &ele_dst->head.data);
 			}
 		}
@@ -63,7 +63,7 @@ static void bm_data_interp_from_elem(CustomData *data_layer, BMElem *ele1, BMEle
 				/* do nothing */
 			}
 			else {
-				CustomData_bmesh_free_block_data(data_layer, &ele_dst->head.data);
+				CustomData_bmesh_free_block_data(data_layer, ele_dst->head.data);
 				CustomData_bmesh_copy_data(data_layer, data_layer, ele2->head.data, &ele_dst->head.data);
 			}
 		}
@@ -397,8 +397,8 @@ static float bm_loop_flip_equotion(float mat[2][2], float b[2], const float targ
 	return mat[0][0] * mat[1][1] - mat[0][1] * mat[1][0];
 }
 
-static void bm_loop_flip_disp(float source_axis_x[3], float source_axis_y[3],
-                                 float target_axis_x[3], float target_axis_y[3], float disp[3])
+static void bm_loop_flip_disp(const float source_axis_x[3], const float source_axis_y[3],
+                              const float target_axis_x[3], const float target_axis_y[3], float disp[3])
 {
 	float vx[3], vy[3], coord[3];
 	float n[3], vec[3];

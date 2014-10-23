@@ -289,6 +289,8 @@ protected:
 	double				m_suspendedtime;
 	double				m_suspendeddelta;
 
+	double				m_previousAnimTime; //the last time animations were updated
+
 	struct Scene* m_blenderScene;
 
 	RAS_2DFilterManager m_filtermanager;
@@ -524,7 +526,6 @@ public:
 	void SetWorldInfo(class KX_WorldInfo* wi);
 	KX_WorldInfo* GetWorldInfo();
 	void CalculateVisibleMeshes(RAS_IRasterizer* rasty, KX_Camera *cam, int layer=0);
-	void UpdateMeshTransformations();
 	KX_Camera* GetpCamera();
 	NG_NetworkDeviceInterface* GetNetworkDeviceInterface();
 	NG_NetworkScene* GetNetworkScene();

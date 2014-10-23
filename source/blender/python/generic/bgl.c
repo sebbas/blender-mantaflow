@@ -33,7 +33,7 @@
 #include <Python.h>
 
 #include "bgl.h" /*This must come first */
-#include <GL/glew.h>
+#include "GPU_glew.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_utildefines.h"
@@ -301,7 +301,7 @@ static PyObject *Buffer_new(PyTypeObject *UNUSED(type), PyObject *args, PyObject
 	if (!PyArg_ParseTuple(args, "iO|O: bgl.Buffer", &type, &length_ob, &init)) {
 		return NULL;
 	}
-	if (!ELEM5(type, GL_BYTE, GL_SHORT, GL_INT, GL_FLOAT, GL_DOUBLE)) {
+	if (!ELEM(type, GL_BYTE, GL_SHORT, GL_INT, GL_FLOAT, GL_DOUBLE)) {
 		PyErr_SetString(PyExc_AttributeError,
 		                "invalid first argument type, should be one of "
 		                "GL_BYTE, GL_SHORT, GL_INT, GL_FLOAT or GL_DOUBLE");
@@ -1381,10 +1381,16 @@ static struct PyModuleDef BGL_module_def = {
 	NULL,  /* m_free */
 };
 
+static void expp_addconst_int(PyObject *dict, const char *name, int value)
+{
+	PyObject *item;
+	PyDict_SetItemString(dict, name, item = PyLong_FromLong(value));
+	Py_DECREF(item);
+}
 
 PyObject *BPyInit_bgl(void)
 {
-	PyObject *submodule, *dict, *item;
+	PyObject *submodule, *dict;
 	submodule = PyModule_Create(&BGL_module_def);
 	dict = PyModule_GetDict(submodule);
 
@@ -1394,11 +1400,7 @@ PyObject *BPyInit_bgl(void)
 	PyModule_AddObject(submodule, "Buffer", (PyObject *)&BGL_bufferType);
 	Py_INCREF((PyObject *)&BGL_bufferType);
 
-#define EXPP_ADDCONST(x) PyDict_SetItemString(dict, #x, item = PyLong_FromLong((int)x)); Py_DECREF(item)
-
-/* So, for example:
- * EXPP_ADDCONST(GL_CURRENT_BIT) becomes
- * PyDict_SetItemString(dict, "GL_CURRENT_BIT", item = PyLong_FromLong(GL_CURRENT_BIT)); Py_DECREF(item) */
+#define EXPP_ADDCONST(x) expp_addconst_int(dict, #x, x)
 
 	EXPP_ADDCONST(GL_CURRENT_BIT);
 	EXPP_ADDCONST(GL_POINT_BIT);
@@ -1896,8 +1898,19 @@ PyObject *BPyInit_bgl(void)
 	EXPP_ADDCONST(GL_TEXTURE7);
 	EXPP_ADDCONST(GL_TEXTURE8);
 
+	EXPP_ADDCONST(GL_MAX_TEXTURE_UNITS);
+	
 	EXPP_ADDCONST(GL_DEPTH_COMPONENT32);
 	EXPP_ADDCONST(GL_TEXTURE_COMPARE_MODE);
+
+	EXPP_ADDCONST(GL_MAX_VARYING_FLOATS);
+	EXPP_ADDCONST(GL_MAX_VERTEX_ATTRIBS);	
+	EXPP_ADDCONST(GL_MAX_VARYING_FLOATS);
+	EXPP_ADDCONST(GL_MAX_VERTEX_UNIFORM_COMPONENTS);
+	EXPP_ADDCONST(GL_MAX_FRAGMENT_UNIFORM_COMPONENTS);
+	EXPP_ADDCONST(GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS);
+	EXPP_ADDCONST(GL_MAX_TEXTURE_IMAGE_UNITS);
+	EXPP_ADDCONST(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS);
 
 	return submodule;
 }

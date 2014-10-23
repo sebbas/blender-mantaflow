@@ -178,6 +178,23 @@ void Problem::SetParameterization(
   problem_impl_->SetParameterization(values, local_parameterization);
 }
 
+const LocalParameterization* Problem::GetParameterization(
+    double* values) const {
+  return problem_impl_->GetParameterization(values);
+}
+
+void Problem::SetParameterLowerBound(double* values,
+                                     int index,
+                                     double lower_bound) {
+  problem_impl_->SetParameterLowerBound(values, index, lower_bound);
+}
+
+void Problem::SetParameterUpperBound(double* values,
+                                     int index,
+                                     double upper_bound) {
+  problem_impl_->SetParameterUpperBound(values, index, upper_bound);
+}
+
 bool Problem::Evaluate(const EvaluateOptions& evaluate_options,
                        double* cost,
                        vector<double>* residuals,
@@ -214,6 +231,10 @@ int Problem::ParameterBlockLocalSize(const double* parameter_block) const {
   return problem_impl_->ParameterBlockLocalSize(parameter_block);
 };
 
+bool Problem::HasParameterBlock(const double* values) const {
+  return problem_impl_->HasParameterBlock(values);
+}
+
 void Problem::GetParameterBlocks(vector<double*>* parameter_blocks) const {
   problem_impl_->GetParameterBlocks(parameter_blocks);
 }
@@ -228,6 +249,16 @@ void Problem::GetParameterBlocksForResidualBlock(
     vector<double*>* parameter_blocks) const {
   problem_impl_->GetParameterBlocksForResidualBlock(residual_block,
                                                     parameter_blocks);
+}
+
+const CostFunction* Problem::GetCostFunctionForResidualBlock(
+    const ResidualBlockId residual_block) const {
+  return problem_impl_->GetCostFunctionForResidualBlock(residual_block);
+}
+
+const LossFunction* Problem::GetLossFunctionForResidualBlock(
+    const ResidualBlockId residual_block) const {
+  return problem_impl_->GetLossFunctionForResidualBlock(residual_block);
 }
 
 void Problem::GetResidualBlocksForParameterBlock(

@@ -36,7 +36,7 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "GL/glew.h"
+#include "GPU_glew.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -46,11 +46,13 @@
 #include "BLI_ghash.h"
 #include "BLI_threads.h"
 
+#include "DNA_material_types.h"
 #include "DNA_meshdata_types.h"
 
 #include "BKE_ccg.h"
 #include "BKE_DerivedMesh.h"
 #include "BKE_paint.h"
+#include "BKE_material.h"
 #include "BKE_pbvh.h"
 
 #include "DNA_userdef_types.h"
@@ -61,14 +63,17 @@
 #include "bmesh.h"
 
 typedef enum {
-	GPU_BUFFER_VERTEX_STATE = 1,
-	GPU_BUFFER_NORMAL_STATE = 2,
-	GPU_BUFFER_TEXCOORD_STATE = 4,
-	GPU_BUFFER_COLOR_STATE = 8,
-	GPU_BUFFER_ELEMENT_STATE = 16,
+	GPU_BUFFER_VERTEX_STATE = (1 << 0),
+	GPU_BUFFER_NORMAL_STATE = (1 << 1),
+	GPU_BUFFER_TEXCOORD_UNIT_0_STATE = (1 << 2),
+	GPU_BUFFER_TEXCOORD_UNIT_2_STATE = (1 << 3),
+	GPU_BUFFER_COLOR_STATE = (1 << 4),
+	GPU_BUFFER_ELEMENT_STATE = (1 << 5),
 } GPUBufferState;
 
 #define MAX_GPU_ATTRIB_DATA 32
+
+#define BUFFER_OFFSET(n) ((GLubyte *)NULL + (n))
 
 /* -1 - undefined, 0 - vertex arrays, 1 - VBOs */
 static int useVBOs = -1;
@@ -611,7 +616,7 @@ static GPUBuffer *gpu_buffer_setup(DerivedMesh *dm, GPUDrawObject *object,
 	}
 
 	mat_orig_to_new = MEM_mallocN(sizeof(*mat_orig_to_new) * dm->totmat,
-                                  "GPU_buffer_setup.mat_orig_to_new");
+	                              "GPU_buffer_setup.mat_orig_to_new");
 	cur_index_per_mat = MEM_mallocN(sizeof(int) * object->totmaterial,
 	                                "GPU_buffer_setup.cur_index_per_mat");
 	for (i = 0; i < object->totmaterial; i++) {
@@ -836,6 +841,61 @@ static void GPU_buffer_copy_uv(DerivedMesh *dm, float *varray, int *index, int *
 	}
 }
 
+
+static void GPU_buffer_copy_uv_texpaint(DerivedMesh *dm, float *varray, int *index, int *mat_orig_to_new, void *UNUSED(user))
+{
+	int start;
+	int i, totface;
+
+	int totmaterial = dm->totmat;
+	MTFace **mtface_base;
+	MTFace *stencil_base;
+	int stencil;
+	MFace *mf;
+
+	/* should have been checked for before, reassert */
+	BLI_assert(DM_get_tessface_data_layer(dm, CD_MTFACE));
+	mf = dm->getTessFaceArray(dm);
+	mtface_base = MEM_mallocN(totmaterial * sizeof(*mtface_base), "texslots");
+
+	for (i = 0; i < totmaterial; i++) {
+		mtface_base[i] = DM_paint_uvlayer_active_get(dm, i);
+	}
+
+	stencil = CustomData_get_stencil_layer(&dm->faceData, CD_MTFACE);
+	stencil_base = CustomData_get_layer_n(&dm->faceData, CD_MTFACE, stencil);
+
+	totface = dm->getNumTessFaces(dm);
+
+	for (i = 0; i < totface; i++, mf++) {
+		int mat_i = mf->mat_nr;
+		start = index[mat_orig_to_new[mat_i]];
+
+		/* v1 v2 v3 */
+		copy_v2_v2(&varray[start], mtface_base[mat_i][i].uv[0]);
+		copy_v2_v2(&varray[start + 2], stencil_base[i].uv[0]);
+		copy_v2_v2(&varray[start + 4], mtface_base[mat_i][i].uv[1]);
+		copy_v2_v2(&varray[start + 6], stencil_base[i].uv[1]);
+		copy_v2_v2(&varray[start + 8], mtface_base[mat_i][i].uv[2]);
+		copy_v2_v2(&varray[start + 10], stencil_base[i].uv[2]);
+		index[mat_orig_to_new[mat_i]] += 12;
+
+		if (mf->v4) {
+			/* v3 v4 v1 */
+			copy_v2_v2(&varray[start + 12], mtface_base[mat_i][i].uv[2]);
+			copy_v2_v2(&varray[start + 14], stencil_base[i].uv[2]);
+			copy_v2_v2(&varray[start + 16], mtface_base[mat_i][i].uv[3]);
+			copy_v2_v2(&varray[start + 18], stencil_base[i].uv[3]);
+			copy_v2_v2(&varray[start + 20], mtface_base[mat_i][i].uv[0]);
+			copy_v2_v2(&varray[start + 22], stencil_base[i].uv[0]);
+			index[mat_orig_to_new[mat_i]] += 12;
+		}
+	}
+
+	MEM_freeN(mtface_base);
+}
+
+
 static void copy_mcol_uc3(unsigned char *v, unsigned char *col)
 {
 	v[0] = col[3];
@@ -925,6 +985,7 @@ typedef enum {
 	GPU_BUFFER_NORMAL,
 	GPU_BUFFER_COLOR,
 	GPU_BUFFER_UV,
+	GPU_BUFFER_UV_TEXPAINT,
 	GPU_BUFFER_EDGE,
 	GPU_BUFFER_UVEDGE,
 } GPUBufferType;
@@ -940,6 +1001,7 @@ const GPUBufferTypeSettings gpu_buffer_type_settings[] = {
 	{GPU_buffer_copy_normal, GL_ARRAY_BUFFER_ARB, 3},
 	{GPU_buffer_copy_mcol, GL_ARRAY_BUFFER_ARB, 3},
 	{GPU_buffer_copy_uv, GL_ARRAY_BUFFER_ARB, 2},
+    {GPU_buffer_copy_uv_texpaint, GL_ARRAY_BUFFER_ARB, 4},
 	{GPU_buffer_copy_edge, GL_ELEMENT_ARRAY_BUFFER_ARB, 2},
 	{GPU_buffer_copy_uvedge, GL_ELEMENT_ARRAY_BUFFER_ARB, 4}
 };
@@ -955,6 +1017,8 @@ static GPUBuffer **gpu_drawobject_buffer_from_type(GPUDrawObject *gdo, GPUBuffer
 		case GPU_BUFFER_COLOR:
 			return &gdo->colors;
 		case GPU_BUFFER_UV:
+			return &gdo->uv;
+		case GPU_BUFFER_UV_TEXPAINT:
 			return &gdo->uv;
 		case GPU_BUFFER_EDGE:
 			return &gdo->edges;
@@ -977,6 +1041,8 @@ static int gpu_buffer_size_from_type(DerivedMesh *dm, GPUBufferType type)
 			return sizeof(char) * 3 * dm->drawObject->tot_triangle_point;
 		case GPU_BUFFER_UV:
 			return sizeof(float) * 2 * dm->drawObject->tot_triangle_point;
+		case GPU_BUFFER_UV_TEXPAINT:
+			return sizeof(float) * 4 * dm->drawObject->tot_triangle_point;
 		case GPU_BUFFER_EDGE:
 			return sizeof(int) * 2 * dm->drawObject->totedge;
 		case GPU_BUFFER_UVEDGE:
@@ -1005,7 +1071,7 @@ static GPUBuffer *gpu_buffer_setup_type(DerivedMesh *dm, GPUBufferType type)
 		if (!(user_data = DM_get_tessface_data_layer(dm, dm->drawObject->colType)))
 			return NULL;
 	}
-	else if (type == GPU_BUFFER_UV) {
+	else if (ELEM(type, GPU_BUFFER_UV, GPU_BUFFER_UV_TEXPAINT)) {
 		if (!DM_get_tessface_data_layer(dm, CD_MTFACE))
 			return NULL;
 	}
@@ -1081,8 +1147,34 @@ void GPU_uv_setup(DerivedMesh *dm)
 		glTexCoordPointer(2, GL_FLOAT, 0, dm->drawObject->uv->pointer);
 	}
 
-	GLStates |= GPU_BUFFER_TEXCOORD_STATE;
+	GLStates |= GPU_BUFFER_TEXCOORD_UNIT_0_STATE;
 }
+
+void GPU_texpaint_uv_setup(DerivedMesh *dm)
+{
+	if (!gpu_buffer_setup_common(dm, GPU_BUFFER_UV_TEXPAINT))
+		return;
+
+	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+	if (useVBOs) {
+		glBindBufferARB(GL_ARRAY_BUFFER_ARB, dm->drawObject->uv->id);
+		glTexCoordPointer(2, GL_FLOAT, 4 * sizeof(float), 0);
+		glClientActiveTexture(GL_TEXTURE2);
+		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+		glTexCoordPointer(2, GL_FLOAT, 4 * sizeof(float), BUFFER_OFFSET(2 * sizeof(float)));
+		glClientActiveTexture(GL_TEXTURE0);
+	}
+	else {
+		glTexCoordPointer(2, GL_FLOAT, 4 * sizeof(float), dm->drawObject->uv->pointer);
+		glClientActiveTexture(GL_TEXTURE2);
+		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+		glTexCoordPointer(2, GL_FLOAT, 4 * sizeof(float), (char *)dm->drawObject->uv->pointer + 2 * sizeof(float));
+		glClientActiveTexture(GL_TEXTURE0);
+	}
+
+	GLStates |= GPU_BUFFER_TEXCOORD_UNIT_0_STATE | GPU_BUFFER_TEXCOORD_UNIT_2_STATE;
+}
+
 
 void GPU_color_setup(DerivedMesh *dm, int colType)
 {
@@ -1241,8 +1333,13 @@ void GPU_buffer_unbind(void)
 		glDisableClientState(GL_VERTEX_ARRAY);
 	if (GLStates & GPU_BUFFER_NORMAL_STATE)
 		glDisableClientState(GL_NORMAL_ARRAY);
-	if (GLStates & GPU_BUFFER_TEXCOORD_STATE)
+	if (GLStates & GPU_BUFFER_TEXCOORD_UNIT_0_STATE)
 		glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+	if (GLStates & GPU_BUFFER_TEXCOORD_UNIT_2_STATE) {
+		glClientActiveTexture(GL_TEXTURE2);
+		glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+		glClientActiveTexture(GL_TEXTURE0);
+	}
 	if (GLStates & GPU_BUFFER_COLOR_STATE)
 		glDisableClientState(GL_COLOR_ARRAY);
 	if (GLStates & GPU_BUFFER_ELEMENT_STATE) {
@@ -1251,8 +1348,8 @@ void GPU_buffer_unbind(void)
 		}
 	}
 	GLStates &= ~(GPU_BUFFER_VERTEX_STATE | GPU_BUFFER_NORMAL_STATE |
-	              GPU_BUFFER_TEXCOORD_STATE | GPU_BUFFER_COLOR_STATE |
-	              GPU_BUFFER_ELEMENT_STATE);
+	              GPU_BUFFER_TEXCOORD_UNIT_0_STATE | GPU_BUFFER_TEXCOORD_UNIT_2_STATE |
+	              GPU_BUFFER_COLOR_STATE | GPU_BUFFER_ELEMENT_STATE);
 
 	for (i = 0; i < MAX_GPU_ATTRIB_DATA; i++) {
 		if (attribData[i].index != -1) {
@@ -2577,11 +2674,17 @@ bool GPU_pbvh_buffers_diffuse_changed(GPU_PBVH_Buffers *buffers, GSet *bm_faces,
 	}
 	else if (buffers->use_bmesh) {
 		/* due to dynamc nature of dyntopo, only get first material */
-		GSetIterator gs_iter;
-		BMFace *f;
-		BLI_gsetIterator_init(&gs_iter, bm_faces);
-		f = BLI_gsetIterator_getKey(&gs_iter);
-		GPU_material_diffuse_get(f->mat_nr + 1, diffuse_color);
+		if (BLI_gset_size(bm_faces) > 0) {
+			GSetIterator gs_iter;
+			BMFace *f;
+
+			BLI_gsetIterator_init(&gs_iter, bm_faces);
+			f = BLI_gsetIterator_getKey(&gs_iter);
+			GPU_material_diffuse_get(f->mat_nr + 1, diffuse_color);
+		}
+		else {
+			return false;
+		}
 	}
 	else {
 		const DMFlagMat *flags = &buffers->grid_flag_mats[buffers->grid_indices[0]];
@@ -2589,9 +2692,7 @@ bool GPU_pbvh_buffers_diffuse_changed(GPU_PBVH_Buffers *buffers, GSet *bm_faces,
 		GPU_material_diffuse_get(flags->mat_nr + 1, diffuse_color);
 	}
 
-	return diffuse_color[0] != buffers->diffuse_color[0] ||
-	       diffuse_color[1] != buffers->diffuse_color[1] ||
-	       diffuse_color[2] != buffers->diffuse_color[2];
+	return !equals_v3v3(diffuse_color, buffers->diffuse_color);
 }
 
 /* release a GPU_PBVH_Buffers id;

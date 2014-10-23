@@ -60,6 +60,7 @@ void    ED_region_init(struct bContext *C, struct ARegion *ar);
 void    ED_region_tag_redraw(struct ARegion *ar);
 void    ED_region_tag_redraw_partial(struct ARegion *ar, struct rcti *rct);
 void    ED_region_tag_redraw_overlay(struct ARegion *ar);
+void    ED_region_tag_refresh_ui(struct ARegion *ar);
 void    ED_region_panels_init(struct wmWindowManager *wm, struct ARegion *ar);
 void    ED_region_panels(const struct bContext *C, struct ARegion *ar, int vertical, const char *context, int contextnr);
 void    ED_region_header_init(struct ARegion *ar);
@@ -109,7 +110,7 @@ void    ED_screen_animation_timer_update(struct bScreen *screen, int redraws, in
 ScrArea *ED_screen_full_newspace(struct bContext *C, ScrArea *sa, int type);
 void    ED_screen_full_prevspace(struct bContext *C, ScrArea *sa);
 void    ED_screen_full_restore(struct bContext *C, ScrArea *sa);
-struct ScrArea *ED_screen_full_toggle(struct bContext *C, struct wmWindow *win, struct ScrArea *sa);
+struct ScrArea *ED_screen_state_toggle(struct bContext *C, struct wmWindow *win, struct ScrArea *sa, const short state);
 void    ED_screens_header_tools_menu_create(struct bContext *C, struct uiLayout *layout, void *arg);
 
 /* anim */

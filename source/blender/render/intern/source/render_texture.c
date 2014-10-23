@@ -85,7 +85,18 @@
 extern struct Render R;
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+static RNG_THREAD_ARRAY *random_tex_array;
 
+
+void RE_init_texture_rng(void)
+{
+	random_tex_array = BLI_rng_threaded_new();
+}
+
+void RE_exit_texture_rng(void)
+{
+	BLI_rng_threaded_free(random_tex_array);
+}
 
 
 static void init_render_texture(Render *re, Tex *tex)
@@ -212,10 +223,10 @@ static int blend(Tex *tex, const float texvec[3], TexResult *texres)
 		texres->tin= (2.0f+x+y)/4.0f;
 	}
 	else if (tex->stype==TEX_RAD) { /* radial */
-		texres->tin= (atan2(y, x) / (2*M_PI) + 0.5);
+		texres->tin = (atan2f(y, x) / (2 * M_PI) + 0.5f);
 	}
 	else {  /* sphere TEX_SPHERE */
-		texres->tin= 1.0-sqrt(x*x+	y*y+texvec[2]*texvec[2]);
+		texres->tin = 1.0 - sqrtf(x * x + y * y + texvec[2] * texvec[2]);
 		if (texres->tin<0.0f) texres->tin= 0.0f;
 		if (tex->stype==TEX_HALO) texres->tin*= texres->tin;  /* halo */
 	}
@@ -266,8 +277,8 @@ static int clouds(Tex *tex, const float texvec[3], TexResult *texres)
 /* creates a sine wave */
 static float tex_sin(float a)
 {
-	a = 0.5 + 0.5*sin(a);
-		
+	a = 0.5 + 0.5 * sinf(a);
+
 	return a;
 }
 
@@ -366,10 +377,10 @@ static float marble_int(Tex *tex, float x, float y, float z)
 	if (mt>=TEX_SOFT) {  /* TEX_SOFT always true */
 		mi = waveform[wf](mi);
 		if (mt==TEX_SHARP) {
-			mi = sqrt(mi);
+			mi = sqrtf(mi);
 		}
 		else if (mt==TEX_SHARPER) {
-			mi = sqrt(sqrt(mi));
+			mi = sqrtf(sqrtf(mi));
 		}
 	}
 
@@ -408,41 +419,41 @@ static int magic(Tex *tex, const float texvec[3], TexResult *texres)
 	n= tex->noisedepth;
 	turb= tex->turbul/5.0f;
 
-	x=  sin( ( texvec[0]+texvec[1]+texvec[2])*5.0f );
-	y=  cos( (-texvec[0]+texvec[1]-texvec[2])*5.0f );
-	z= -cos( (-texvec[0]-texvec[1]+texvec[2])*5.0f );
+	x =  sinf(( texvec[0] + texvec[1] + texvec[2]) * 5.0f);
+	y =  cosf((-texvec[0] + texvec[1] - texvec[2]) * 5.0f);
+	z = -cosf((-texvec[0] - texvec[1] + texvec[2]) * 5.0f);
 	if (n>0) {
 		x*= turb;
 		y*= turb;
 		z*= turb;
-		y= -cos(x-y+z);
+		y= -cosf(x-y+z);
 		y*= turb;
 		if (n>1) {
-			x= cos(x-y-z);
+			x= cosf(x-y-z);
 			x*= turb;
 			if (n>2) {
-				z= sin(-x-y-z);
+				z= sinf(-x-y-z);
 				z*= turb;
 				if (n>3) {
-					x= -cos(-x+y-z);
+					x= -cosf(-x+y-z);
 					x*= turb;
 					if (n>4) {
-						y= -sin(-x+y+z);
+						y= -sinf(-x+y+z);
 						y*= turb;
 						if (n>5) {
-							y= -cos(-x+y+z);
+							y= -cosf(-x+y+z);
 							y*= turb;
 							if (n>6) {
-								x= cos(x+y+z);
+								x= cosf(x+y+z);
 								x*= turb;
 								if (n>7) {
-									z= sin(x+y-z);
+									z= sinf(x+y-z);
 									z*= turb;
 									if (n>8) {
-										x= -cos(-x-y+z);
+										x= -cosf(-x-y+z);
 										x*= turb;
 										if (n>9) {
-											y= -sin(x-y+z);
+											y= -sinf(x-y+z);
 											y*= turb;
 										}
 									}
@@ -709,19 +720,22 @@ static float voronoiTex(Tex *tex, const float texvec[3], TexResult *texres)
 
 /* ------------------------------------------------------------------------- */
 
-static int texnoise(Tex *tex, TexResult *texres)
+static int texnoise(Tex *tex, TexResult *texres, int thread)
 {
 	float div=3.0;
-	int val, ran, loop;
+	int val, ran, loop, shift = 29;
 	
-	ran= BLI_rand();
-	val= (ran & 3);
+	ran=  BLI_rng_thread_rand(random_tex_array, thread);
 	
 	loop= tex->noisedepth;
+
+	/* start from top bits since they have more variance */
+	val= ((ran >> shift) & 3);
+	
 	while (loop--) {
-		ran= (ran>>2);
-		val*= (ran & 3);
-		div*= 3.0f;
+		shift -= 2;		
+		val *= ((ran >> shift) & 3);
+		div *= 3.0f;
 	}
 	
 	texres->tin= ((float)val)/div;
@@ -1127,12 +1141,14 @@ static int multitex(Tex *tex, float texvec[3], float dxt[3], float dyt[3], int o
 				retval = stucci(tex, texvec, texres);
 				break;
 			case TEX_NOISE:
-				retval = texnoise(tex, texres);
+				retval = texnoise(tex, texres, thread);
 				break;
 			case TEX_IMAGE:
 				if (osatex) retval = imagewraposa(tex, tex->ima, NULL, texvec, dxt, dyt, texres, pool);
 				else        retval = imagewrap(tex, tex->ima, NULL, texvec, texres, pool);
-				BKE_image_tag_time(tex->ima); /* tag image as having being used */
+				if (tex->ima) {
+					BKE_image_tag_time(tex->ima);
+				}
 				break;
 			case TEX_ENVMAP:
 				retval = envmaptex(tex, texvec, dxt, dyt, osatex, texres, pool);
@@ -2346,8 +2362,8 @@ void do_material_tex(ShadeInput *shi, Render *re)
 						copy_v3_v3(texres.nor, &texres.tr);
 					}
 					else {
-						float co_nor= 0.5*cos(texres.tin-0.5f);
-						float si= 0.5*sin(texres.tin-0.5f);
+						float co_nor= 0.5f * cosf(texres.tin - 0.5f);
+						float si = 0.5f * sinf(texres.tin - 0.5f);
 						float f1, f2;
 
 						f1= shi->vn[0];
@@ -3394,8 +3410,11 @@ void do_lamp_tex(LampRen *la, const float lavec[3], ShadeInput *shi, float col_r
 				col[0]= texres.tr*la->energy;
 				col[1]= texres.tg*la->energy;
 				col[2]= texres.tb*la->energy;
-				
-				texture_rgb_blend(col_r, col, col_r, texres.tin, mtex->colfac, mtex->blendtype);
+
+				if (effect & LA_SHAD_TEX)
+					texture_rgb_blend(col_r, col, col_r, texres.tin, mtex->shadowfac, mtex->blendtype);
+				else
+					texture_rgb_blend(col_r, col, col_r, texres.tin, mtex->colfac, mtex->blendtype);
 			}
 		}
 	}
@@ -3562,7 +3581,7 @@ Material *RE_init_sample_material(Material *orig_mat, Scene *scene)
 
 			/* depending of material type, strip non-compatible mapping modes */
 			if (mat->material_type == MA_TYPE_SURFACE) {
-				if (!ELEM4(mtex->texco, TEXCO_ORCO, TEXCO_OBJECT, TEXCO_GLOB, TEXCO_UV)) {
+				if (!ELEM(mtex->texco, TEXCO_ORCO, TEXCO_OBJECT, TEXCO_GLOB, TEXCO_UV)) {
 					/* ignore this texture */
 					mtex->texco = 0;
 					continue;
@@ -3571,7 +3590,7 @@ Material *RE_init_sample_material(Material *orig_mat, Scene *scene)
 				mtex->mapto = (mtex->mapto & MAP_COL) | (mtex->mapto & MAP_ALPHA);
 			}
 			else if (mat->material_type == MA_TYPE_VOLUME) {
-				if (!ELEM3(mtex->texco, TEXCO_OBJECT, TEXCO_ORCO, TEXCO_GLOB)) {
+				if (!ELEM(mtex->texco, TEXCO_OBJECT, TEXCO_ORCO, TEXCO_GLOB)) {
 					/* ignore */
 					mtex->texco = 0;
 					continue;
