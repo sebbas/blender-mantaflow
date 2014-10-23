@@ -17,7 +17,7 @@ typedef string pyString;
 //#ifdef __cplusplus
 extern "C" {
 //#endif
-PyObject * PyInit_Manta(void)
+PyObject * BPyInit_manta(void)
 {
 	return Pb::PyInit_Main_Obj();
 }
