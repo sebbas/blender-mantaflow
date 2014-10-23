@@ -26,6 +26,7 @@
 set(INC
 	intern
 	../memutil
+	../../source/blender/blenlib
 )
 
 set(INC_SYS
