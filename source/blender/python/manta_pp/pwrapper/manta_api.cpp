@@ -14,14 +14,7 @@ typedef char pyChar;
 typedef string pyString;
 #endif
 
-//#ifdef __cplusplus
-extern "C" {
-//#endif
-PyObject * BPyInit_manta(void)
+PyObject * PyInit_Manta(void)
 {
 	return Pb::PyInit_Main_Obj();
 }
-	
-//#ifdef __cplusplus
-}
-//#endif
