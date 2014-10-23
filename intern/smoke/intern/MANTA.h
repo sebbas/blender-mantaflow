@@ -13,7 +13,10 @@
 #include <vector>
 
 #include "BLI_path_util.h"
+
+#ifdef WIN32
 #include "BLI_winstuff.h"
+#endif
 
 void export_force_fields(int size_x, int size_y, int size_z, float *f_x, float*f_y, float*f_z);/*defined in pymain.cpp*/
 void export_em_fields(float *em_map, float flow_density, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z, float *inf, float *vel);/*defined in pymain.cpp*/
