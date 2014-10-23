@@ -54,6 +54,7 @@
 #include "BKE_object.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
+#include "BKE_smoke.h"
 
 #include "LBM_fluidsim.h"
 

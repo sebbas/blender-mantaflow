@@ -268,7 +268,7 @@ void Manta_API::add_mesh_transform_method(stringstream& ss)
 void Manta_API::manta_cache_path(char *filepath)
 {
 	char *name="manta";
-	BLI_make_file_string("/", filepath, BLI_temporary_dir(), name);
+	BLI_make_file_string("/", filepath, BLI_temp_dir_session(), name);
 }
 
 //void BLI_dir_create_recursive(const char *filepath);
