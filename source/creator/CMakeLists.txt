@@ -958,6 +958,12 @@ add_dependencies(blender makesdna)
 
 setup_blender_sorted_libs()
 
+# -----------------------------------------------------------------------------
+# Mantaflow Force linking
+SET(MANTA_LINK_LIBRARIES -rdynamic -Wl,-force_load bf_python_manta) 
+message("Connecting:" bf_python_manta)
+target_link_libraries(blender ${MANTA_LINK_LIBRARIES})
+
 target_link_libraries(blender ${BLENDER_SORTED_LIBS})
 
 setup_liblinks(blender)
