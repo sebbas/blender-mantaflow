@@ -2274,9 +2274,11 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 
 				int ii, jj, kk, gx, gy, gz, ex, ey, ez, dx, dy, dz, block_size;
 				size_t e_index, d_index, index_big;
-				smoke_turbulence_get_res(sds->wt, bigres);				
-				float *manta_big_inflow_sdf = MEM_callocN(bigres[0] * bigres[1] * bigres[2] * sizeof(float), "manta_highres_inflow");
-				
+				float *manta_big_inflow_sdf;
+				if ((sds->flags & MOD_SMOKE_USE_MANTA) && (bigdensity)){
+					smoke_turbulence_get_res(sds->wt, bigres);				
+					manta_big_inflow_sdf = MEM_callocN(bigres[0] * bigres[1] * bigres[2] * sizeof(float), "manta_highres_inflow");
+				}
 				// loop through every emission map cell
 				for (gx = em->min[0]; gx < em->max[0]; gx++)
 					for (gy = em->min[1]; gy < em->max[1]; gy++)
@@ -2398,9 +2400,9 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 						} // low res loop
 				if((sds->flags & MOD_SMOKE_USE_MANTA) && (bigdensity)){
 					manta_write_emitters(sfs,true,0,0,0,bigres[0], bigres[1], bigres[2], bigres[0], bigres[1], bigres[2],manta_big_inflow_sdf, NULL);
+					MEM_freeN(manta_big_inflow_sdf);
 				}
-				MEM_freeN(manta_big_inflow_sdf);
-
+				
 				// free emission maps
 				em_freeData(em);
 
