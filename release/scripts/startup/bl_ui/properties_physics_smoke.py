@@ -204,13 +204,13 @@ class PHYSICS_PT_smoke_adaptive_domain(PhysicButtonsPanel, Panel):
         md = context.smoke.domain_settings
 
         self.layout.prop(md, "use_adaptive_domain", text="")
-
+		
     def draw(self, context):
         layout = self.layout
 
         domain = context.smoke.domain_settings
         layout.active = domain.use_adaptive_domain
-
+		
         split = layout.split()
         split.enabled = (not domain.point_cache.is_baked)
 
@@ -446,18 +446,18 @@ class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
         layout.active = domain.use_manta
         split = layout.split()
         tot = domain.manta_end_frame - domain.manta_start_frame
-        if domain.manta_sim_frame == -1:
-            split.operator("manta_export_scene.button", text="Create Manta Setup")
-            split = layout.split()
-            split.label("Status:Doing Nothing")
-        else:
-            split.operator("manta_stop_sim.button", text="Stop Sim")
-            split = layout.split()
-            split.label("Status:Simulating " + str(domain.manta_sim_frame) + "/" + str(tot))
-        split = layout.split()
-        col = split.column()
-        col.prop(domain, "manta_start_frame", text="Start")
-        col.prop(domain, "manta_end_frame", text="End")
+#        if domain.manta_sim_frame == -1:
+#            split.operator("manta_export_scene.button", text="Create Manta Setup")
+#            split = layout.split()
+#            split.label("Status:Doing Nothing")
+#        else:
+#            split.operator("manta_stop_sim.button", text="Stop Sim")
+#            split = layout.split()
+#            split.label("Status:Simulating " + str(domain.manta_sim_frame) + "/" + str(tot))
+#        split = layout.split()
+#        col = split.column()
+#        col.prop(domain, "manta_start_frame", text="Start")
+#        col.prop(domain, "manta_end_frame", text="End")
         col = split.column()
         col.prop(domain, "manta_solver_res", text="Solver Resolution")
         col.prop(domain, "manta_uvs", text="UVs count")
