@@ -41,29 +41,29 @@ typedef string pyString;
 //*****************************************************************************
 // main...
 static bool manta_initialized = false;
-const static string clean_code1 = "def del_var(x): \n\
-  print (\"deleting\", x) \n\
-  try:\n\
-    del x\n\
-    print (\"deleted\") \n\
-  except:\n\
-    print (\"not deleted\") \n\
-del_var(s) \n\
-del_var(uvs)\n\
-del_var(velInflow )\n\
-del_var(res)\n\
-del_var(gs) \n\
-del_var(noise) \n\
-del_var(source)\n\
-del_var(sourceVel)\n\
-del_var(flags) \n\
-del_var(vel) \n\
-del_var(density) \n\
-del_var(pressure) \n\
-del_var(energy) \n\
-del_var(tempFlag)\n\
-del_var(sdf_flow)\n\
-del_var(source_shape)";
+//def del_var(x):\n\
+//  if globals().has_key(x):\n\
+//    del x \n\
+//  except NameError as e:\n\
+print (\'not deleted\') \n\
+
+const string clean_code1 = "\n\
+if 's' in globals() : del s \n\
+if 'uvs' in globals() : del uvs \n\
+if 'velInflow' in globals() : del velInflow  \n\
+if 'res' in globals() : del res \n\
+if 'gs' in globals() : del gs \n\
+if 'noise' in globals() : del noise \n\
+if 'source' in globals() : del source \n\
+if 'sourceVel' in globals() : del sourceVel \n\
+if 'flags' in globals() : del flags \n\
+if 'vel' in globals() : del vel \n\
+if 'density' in globals() : del density \n\
+if 'pressure' in globals() : del pressure \n\
+if 'energy' in globals() : del energy \n\
+if 'tempFlag' in globals() : del tempFlag \n\
+if 'sdf_flow' in globals() : del sdf_flow \n\
+if 'source_shape' in globals() : del source_shape\n";
 const static string clean_code2 = "del s;del noise;del xl;del xl_noise;del xl_wltnoise;";
 		   //for latter full object release	
 		   //const static string clean_code2 = "del [s, noise, source, sourceVel, xl, xl_vel, xl_density, xl_flags,xl_source, xl_noise, flags, vel, density, pressure, energy, tempFlag, sdf_flow, forces, source,source_shape, xl_wltnoise]";
@@ -174,7 +174,7 @@ void runMantaScript(const string& ss,vector<string>& args) {
 	srand(0);
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	/*cleaning possible previous setups*/
-	PyRun_SimpleString(clean_code2.c_str());
+	PyRun_SimpleString(clean_code1.c_str());
 	
 	if (! manta_initialized)
 	{	
