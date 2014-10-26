@@ -35,6 +35,7 @@
 extern "C" {
 #endif
 
+#ifndef USE_MANTA	/*old Blender Solver*/
 struct FLUID_3D;
 
 // low res
@@ -70,14 +71,11 @@ unsigned char *smoke_get_obstacle(struct FLUID_3D *fluid);
 
 size_t smoke_get_index(int x, int max_x, int y, int max_y, int z);
 size_t smoke_get_index2d(int x, int max_x, int y);
-
 void smoke_dissolve(struct FLUID_3D *fluid, int speed, int log);
-
 // wavelet turbulence functions
 struct WTURBULENCE *smoke_turbulence_init(int *res, int amplify, int noisetype, const char *noisefile_path, int use_fire, int use_colors);
 void smoke_turbulence_free(struct WTURBULENCE *wt);
 void smoke_turbulence_step(struct WTURBULENCE *wt, struct FLUID_3D *fluid);
-
 float *smoke_turbulence_get_density(struct WTURBULENCE *wt);
 float *smoke_turbulence_get_color_r(struct WTURBULENCE *wt);
 float *smoke_turbulence_get_color_g(struct WTURBULENCE *wt);
@@ -92,27 +90,103 @@ int smoke_turbulence_get_cells(struct WTURBULENCE *wt);
 void smoke_turbulence_set_noise(struct WTURBULENCE *wt, int type, const char *noisefile_path);
 void smoke_initWaveletBlenderRNA(struct WTURBULENCE *wt, float *strength);
 void smoke_dissolve_wavelet(struct WTURBULENCE *wt, int speed, int log);
-
 /* export */
 void smoke_export(struct FLUID_3D *fluid, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, float **heatold,
 				  float **vx, float **vy, float **vz, float **r, float **g, float **b, unsigned char **obstacles);
 void smoke_turbulence_export(struct WTURBULENCE *wt, float **dens, float **react, float **flame, float **fuel,
 							 float **r, float **g, float **b, float **tcu, float **tcv, float **tcw);
-
 /* flame spectrum */
 void flame_get_spectrum(unsigned char *spec, int width, float t1, float t2);
-
 /* data fields */
 int smoke_has_heat(struct FLUID_3D *fluid);
 int smoke_has_fuel(struct FLUID_3D *fluid);
 int smoke_has_colors(struct FLUID_3D *fluid);
 int smoke_turbulence_has_fuel(struct WTURBULENCE *wt);
 int smoke_turbulence_has_colors(struct WTURBULENCE *wt);
-
 void smoke_ensure_heat(struct FLUID_3D *fluid);
 void smoke_ensure_fire(struct FLUID_3D *fluid, struct WTURBULENCE *wt);
 void smoke_ensure_colors(struct FLUID_3D *fluid, struct WTURBULENCE *wt, float init_r, float init_g, float init_b);
 
+
+	
+#else /*		using Mantaflow structures		*/
+	struct Manta_API;
+	struct Manta_API *smoke_init(int *res, float dx, float dtdef, int use_heat, int use_fire, int use_colors);
+	void smoke_free(struct Manta_API *fluid);
+	
+	void smoke_initBlenderRNA(struct Manta_API *fluid, float *alpha, float *beta, float *dt_factor, float *vorticity, int *border_colli, float *burning_rate,
+							  float *flame_smoke, float *flame_smoke_color, float *flame_vorticity, float *flame_ignition_temp, float *flame_max_temp);
+	void smoke_step(struct Manta_API *fluid, float gravity[3], float dtSubdiv);
+	
+	float *smoke_get_density(struct Manta_API *fluid);
+	float *smoke_get_flame(struct Manta_API *fluid);
+	float *smoke_get_fuel(struct Manta_API *fluid);
+	float *smoke_get_react(struct Manta_API *fluid);
+	float *smoke_get_color_r(struct Manta_API *fluid);
+	float *smoke_get_color_g(struct Manta_API *fluid);
+	float *smoke_get_color_b(struct Manta_API *fluid);
+	void smoke_get_rgba(struct Manta_API *fluid, float *data, int sequential);
+	void smoke_get_rgba_from_density(struct Manta_API *fluid, float color[3], float *data, int sequential);
+	float *smoke_get_heat(struct Manta_API *fluid);
+	float *smoke_get_velocity_x(struct Manta_API *fluid);
+	float *smoke_get_velocity_y(struct Manta_API *fluid);
+	float *smoke_get_velocity_z(struct Manta_API *fluid);
+	
+	/* Moving obstacle velocity provided by blender */
+	void smoke_get_ob_velocity(struct Manta_API *fluid, float **x, float **y, float **z);
+	
+	float *smoke_get_force_x(struct Manta_API *fluid);
+	float *smoke_get_force_y(struct Manta_API *fluid);
+	float *smoke_get_force_z(struct Manta_API *fluid);
+	
+	unsigned char *smoke_get_obstacle(struct Manta_API *fluid);
+	
+	size_t smoke_get_index(int x, int max_x, int y, int max_y, int z);
+	size_t smoke_get_index2d(int x, int max_x, int y);
+	
+	void smoke_dissolve(struct Manta_API *fluid, int speed, int log);
+	
+	// wavelet turbulence functions
+	struct WTURBULENCE *smoke_turbulence_init(int *res, int amplify, int noisetype, const char *noisefile_path, int use_fire, int use_colors);
+	void smoke_turbulence_free(struct WTURBULENCE *wt);
+	void smoke_turbulence_step(struct WTURBULENCE *wt, struct Manta_API *fluid);
+	
+	float *smoke_turbulence_get_density(struct WTURBULENCE *wt);
+	float *smoke_turbulence_get_color_r(struct WTURBULENCE *wt);
+	float *smoke_turbulence_get_color_g(struct WTURBULENCE *wt);
+	float *smoke_turbulence_get_color_b(struct WTURBULENCE *wt);
+	void smoke_turbulence_get_rgba(struct WTURBULENCE *wt, float *data, int sequential);
+	void smoke_turbulence_get_rgba_from_density(struct WTURBULENCE *wt, float color[3], float *data, int sequential);
+	float *smoke_turbulence_get_flame(struct WTURBULENCE *wt);
+	float *smoke_turbulence_get_fuel(struct WTURBULENCE *wt);
+	float *smoke_turbulence_get_react(struct WTURBULENCE *wt);
+	void smoke_turbulence_get_res(struct WTURBULENCE *wt, int *res);
+	int smoke_turbulence_get_cells(struct WTURBULENCE *wt);
+	void smoke_turbulence_set_noise(struct WTURBULENCE *wt, int type, const char *noisefile_path);
+	void smoke_initWaveletBlenderRNA(struct WTURBULENCE *wt, float *strength);
+	void smoke_dissolve_wavelet(struct WTURBULENCE *wt, int speed, int log);
+	
+	/* export */
+	void smoke_export(struct Manta_API *fluid, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, float **heatold,
+					  float **vx, float **vy, float **vz, float **r, float **g, float **b, unsigned char **obstacles);
+	void smoke_turbulence_export(struct WTURBULENCE *wt, float **dens, float **react, float **flame, float **fuel,
+								 float **r, float **g, float **b, float **tcu, float **tcv, float **tcw);
+	
+	/* flame spectrum */
+	void flame_get_spectrum(unsigned char *spec, int width, float t1, float t2);
+	
+	/* data fields */
+	int smoke_has_heat(struct Manta_API *fluid);
+	int smoke_has_fuel(struct Manta_API *fluid);
+	int smoke_has_colors(struct Manta_API *fluid);
+	int smoke_turbulence_has_fuel(struct WTURBULENCE *wt);
+	int smoke_turbulence_has_colors(struct WTURBULENCE *wt);
+	
+	void smoke_ensure_heat(struct Manta_API *fluid);
+	void smoke_ensure_fire(struct Manta_API *fluid, struct WTURBULENCE *wt);
+	void smoke_ensure_colors(struct Manta_API *fluid, struct WTURBULENCE *wt, float init_r, float init_g, float init_b);
+#endif /*USE_MANTA*/
+	
 /*Mantaflow functions*/
 int smoke_mantaflow_read(struct SmokeDomainSettings *sds, char* name, bool with_wavelets); //1:success, 0: no file,error
 void smoke_mantaflow_write_scene_file(struct SmokeModifierData *smd);
