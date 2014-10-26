@@ -25,6 +25,7 @@
 +Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","readGridFromMemory",Grid<$CT$>::_W_20); 
 +Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","readAdaptiveGridFromMemory",Grid<$CT$>::_W_21); 
 +Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","applyToGrid",Grid<$CT$>::_W_22); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getDataPointer",Grid<$CT$>::_W_23); 
 >Grid^int
 &static const Pb::Register _R_$IDX$ ("Grid<int>","IntGrid","");
 >Grid^Real
@@ -34,12 +35,12 @@
 +MACGrid^ static const Pb::Register _R_$IDX$ ("MACGrid","MACGrid","Grid<$BT$>"); template<> const char* Namify<MACGrid >::S = "MACGrid"; 
 >MACGrid^
 @MACGrid^^Grid^Vec3
-+MACGrid^ static const Pb::Register _R_$IDX$ ("MACGrid","MACGrid",MACGrid::_W_23); 
++MACGrid^ static const Pb::Register _R_$IDX$ ("MACGrid","MACGrid",MACGrid::_W_24); 
 +FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","FlagGrid","Grid<$BT$>"); template<> const char* Namify<FlagGrid >::S = "FlagGrid"; 
 >FlagGrid^
 @FlagGrid^^Grid^int
-+FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","FlagGrid",FlagGrid::_W_24); 
-+FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","initDomain",FlagGrid::_W_25); 
-+FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","initBoundaries",FlagGrid::_W_26); 
-+FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","updateFromLevelset",FlagGrid::_W_27); 
-+FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","fillGrid",FlagGrid::_W_28); 
++FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","FlagGrid",FlagGrid::_W_25); 
++FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","initDomain",FlagGrid::_W_26); 
++FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","initBoundaries",FlagGrid::_W_27); 
++FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","updateFromLevelset",FlagGrid::_W_28); 
++FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","fillGrid",FlagGrid::_W_29); 

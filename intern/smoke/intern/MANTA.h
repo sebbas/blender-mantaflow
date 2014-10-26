@@ -43,7 +43,10 @@ private:
 	Manta_API(const Manta_API &);	 
 	Manta_API & operator=(const Manta_API &);
 public:
-	float *_emission_map;
+	/*Data fields*/
+	float *density;
+	
+	
 	static Manta_API *instance();
 	void step(float dt, float gravity[3]);
 //	void runMantaScript(const string&, vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
@@ -93,6 +96,7 @@ public:
 	static void addAdaptiveGrid(void * data, string gridName, string solverName, string type,int minX, int minY, int minZ, int maxX, int maxY, int maxZ);
 	static void export_obstacles(float *data, int x, int y, int z);
 	
+	std::string getGridPointer(string gridName, string solverName);
 };
 
 

@@ -394,6 +394,13 @@ template<class T> void Grid<T>::readAdaptiveGridFromMemory(const std::string& me
 	}
 }
 
+template<class T> std::string Grid<T>::getDataPointer()
+{
+	ostringstream ss;
+	ss << mData ;
+	return ss.str();
+}
+
 //! Kernel: Apply a texture to a grid, setting texture(ijk)*value where texture(ijk) > 0
 //note: can not use template kernel here, because of Blender classes 
 

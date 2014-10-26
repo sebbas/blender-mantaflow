@@ -438,6 +438,8 @@ void Manta_API::run_manta_sim_thread(void *arguments)
 		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << s->r.cfra) )->str();
 		std::string py_string_0 = string("sim_step(").append(frame_str);
 		std::string py_string_1 = py_string_0.append(")\0");
+	cout << "Debug C++: densityPointer:" << Manta_API::getGridPointer("density", "s")<<endl;
+		PyRun_SimpleString("print ('pyhton density pointer:' + density.getDataPointer())");
 		PyRun_SimpleString(py_string_1.c_str());
 		cout<< "done"<<manta_sim_running<<endl;
 	//}
@@ -580,4 +582,30 @@ std::istringstream f(setup_string);
 	of.close();
 }
 
-
+string Manta_API::getGridPointer(std::string gridName, std::string solverName)
+{
+	if ((gridName == "") && (solverName == "")){
+		return "";
+	}
+#ifdef WITH_MANTA
+	cout << "MANTA_DEFINED_________" << endl;
+#else
+	cout << "MANTA_NOT_DEFINED_________" << endl;
+#endif
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	PyObject *main = PyImport_AddModule("__main__");
+	if (main == NULL){cout << "null" << 1 << endl;}
+    PyObject *globals = PyModule_GetDict(main);
+    if (globals == NULL){cout << "null" << 12 << endl;}
+    PyObject *grid_object = PyDict_GetItemString(globals, gridName.c_str());
+    if (grid_object == NULL){cout << "null" << 13 << endl;}
+    PyObject* func = PyObject_GetAttrString(grid_object,(char*)"getDataPointer");
+    if (func == NULL){cout << "null" << 14 << endl;}
+    PyObject* retured_value = PyObject_CallObject(func, NULL);
+	PyObject* encoded = PyUnicode_AsUTF8String(retured_value);
+	if (retured_value == NULL){cout << "null" << 15 << endl;}
+	std::string res = strdup(PyBytes_AsString(encoded));
+	cout << "RESRES" << res << "___" << endl;
+	PyGILState_Release(gilstate);		
+	return res;
+}
