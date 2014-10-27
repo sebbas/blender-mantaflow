@@ -464,15 +464,15 @@ void Manta_API::generate_manta_sim_file(SmokeModifierData *smd)
 
 	/*constrcting final setup*/
 	string smoke_script = smoke_setup_low + ((wavelets)?smoke_setup_high:"") + smoke_step_low + ((wavelets)?smoke_step_high:"");	
-	ofstream manta_setup_file;
-	manta_setup_file.open("manta_scene.py", std::fstream::trunc);
-	manta_setup_file << smoke_script ;
-	manta_setup_file.close();
+//	ofstream manta_setup_file;
+//	manta_setup_file.open("manta_scene.py", std::fstream::trunc);
+//	manta_setup_file << smoke_script ;
+//	manta_setup_file.close();
 
-	parseFile(smoke_script, smd);
+	std::string final_script = parseScript(smoke_script, smd);
 	vector<string> a;
 	a.push_back("manta_scene.py");
-	runMantaScript("",a);
+	runMantaScript(final_script,a);
 	updatePointers();
 }
 
@@ -564,23 +564,26 @@ std::string Manta_API::parseLine(const string& line, SmokeModifierData *smd)
 	return res;
 }
 
-void Manta_API::parseFile(const string & setup_string, SmokeModifierData *smd)
+std::string Manta_API::parseScript(const string & setup_string, SmokeModifierData *smd)
 {
 //	ifstream f (file);
-std::istringstream f(setup_string);
-	ofstream of;
-	of.open("manta_scene.py", std::fstream::trunc);
+	std::istringstream f(setup_string);
+//	ofstream of; /*PR: for Debug*/
+	ostringstream res;
+//	of.open("manta_scene.py", std::fstream::trunc);
 	string line="";
 //	if (f.is_open()){
 		while(getline(f,line)){
-			of << parseLine(line,smd) << "\n";
+//			of << parseLine(line,smd) << "\n";
+			res << parseLine(line,smd) << "\n"; 
 		}
 //		f.close();
 //	}
 //	else{
 //		printf ("Error: No scenario file found");
 //	}
-	of.close();
+//	of.close();
+	return res.str();
 }
 
 string Manta_API::getGridPointer(std::string gridName, std::string solverName)

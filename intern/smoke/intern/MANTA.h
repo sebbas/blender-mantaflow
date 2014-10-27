@@ -115,7 +115,7 @@ public:
 	
 	std::string parseLine(const string& line, SmokeModifierData *sds);
 	
-	void parseFile(const string& setup_string, SmokeModifierData *sds);	
+	std::string parseScript(const string& setup_string, SmokeModifierData *sds);	
 	
 	pthread_t manta_thread;
 	

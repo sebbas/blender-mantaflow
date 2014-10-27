@@ -193,12 +193,12 @@ void runMantaScript(const string& ss,vector<string>& args) {
 	PySys_SetArgv( args.size(), (pyChar**) cargs);
 	
 	// Try to load python script
-	FILE* fp = fopen(filename.c_str(),"rb");
-	if (fp == NULL) {
-		debMsg("Cannot open '" << filename << "'", 0);
-		Pb::finalize();
-		return;
-	}
+//	FILE* fp = fopen(filename.c_str(),"rb");
+//	if (fp == NULL) {
+//		debMsg("Cannot open '" << filename << "'", 0);
+//		Pb::finalize();
+//		return;
+//	}
 	
 	// Run the python script file
 	debMsg("Loading script '" << filename << "'", 0);
@@ -217,8 +217,8 @@ void runMantaScript(const string& ss,vector<string>& args) {
 	// for linux, use this as it produces nicer error messages
 	string toExec = "";
 	
-//	PyRun_SimpleString(ss.c_str());
-	PyRun_SimpleFileEx(fp, filename.c_str(), 0);    
+	PyRun_SimpleString(ss.c_str());
+//	PyRun_SimpleFileEx(fp, filename.c_str(), 0);    
 //	for (int frame=0; frame < 4; ++frame)
 //	{
 //		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << frame) )->str();
@@ -226,9 +226,9 @@ void runMantaScript(const string& ss,vector<string>& args) {
 //		std::string py_string_1 = py_string_0.append(")\0");
 //		PyRun_SimpleString(py_string_1.c_str());
 //	}
-	if (fp != NULL){
-		fclose(fp);    
-	}
+//	if (fp != NULL){
+//		fclose(fp);    
+//	}
 #endif
 	
 	debMsg("Script finished.", 0);
