@@ -35,6 +35,8 @@
 extern "C" {
 #endif
 
+	
+#define USE_MANTA
 #ifndef USE_MANTA	/*old Blender Solver*/
 struct FLUID_3D;
 

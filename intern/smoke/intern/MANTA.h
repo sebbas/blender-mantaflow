@@ -35,18 +35,46 @@ extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY
 
 extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, bool read_wavelets);
 
-class Manta_API: public FLUID_3D{
+class Manta_API{
 private:	
 	static Manta_API *_instance;
 	Manta_API() {}
-	~Manta_API() {} 	 
 	Manta_API(const Manta_API &);	 
 	Manta_API & operator=(const Manta_API &);
 public:
-	/*Data fields*/
-	float *density;
+	~Manta_API() {} 	 
+	Manta_API(int *res, float dx, float dtdef, int init_heat, int init_fire, int init_colors);
+	void initBlenderRNA(float *alpha, float *beta, float *dt_factor, float *vorticity, int *border_colli, float *burning_rate,
+						float *flame_smoke, float *flame_smoke_color, float *flame_vorticity, float *ignition_temp, float *max_temp);
+	int _totalCells;
+	int _xRes, _yRes, _zRes;
+	float _res;
+	int _slabSize;
+	float _dt,_dx;
+	float* _density;
+	float* _xVelocity;
+	float* _yVelocity;
+	float* _zVelocity;
+	float* _xVelocityOb;
+	float* _yVelocityOb;
+	float* _zVelocityOb;
+	float* _xForce;
+	float* _yForce;
+	float* _zForce;
+	float *_alpha; // for the buoyancy density term <-- as pointer to get blender RNA in here
+	float *_beta; // was _buoyancy <-- as pointer to get blender RNA in here
 	
+	float *_dtFactor;
+	float *_vorticityRNA;	// RNA-pointer.
+	int *_borderColli; // border collision rules <-- as pointer to get blender RNA in here
+	float *_burning_rate; // RNA pointer
+	float *_flame_smoke; // RNA pointer
+	float *_flame_smoke_color; // RNA pointer
+	float *_flame_vorticity; // RNA pointer
+	float *_ignition_temp; // RNA pointer
+	float *_max_temp; // RNA pointer
 	
+	unsigned char*  _obstacles; /* only used (useful) for static obstacles like domain */
 	static Manta_API *instance();
 	void step(float dt, float gravity[3]);
 //	void runMantaScript(const string&, vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
@@ -97,6 +125,7 @@ public:
 	static void export_obstacles(float *data, int x, int y, int z);
 	
 	std::string getGridPointer(string gridName, string solverName);
+	void updatePointers();
 };
 
 

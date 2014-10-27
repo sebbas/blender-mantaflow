@@ -115,17 +115,17 @@ extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, b
 	
 #	if NO_ZLIB!=1
     gzFile gzf = gzopen(name, "rb");
-    if (!gzf) {
-		if(reading_wavelets){
-			for (int cnt(0); cnt < sds->wt->_totalCellsBig; cnt++)
-				sds->wt->_densityBig[cnt] = 0.0f;
-		}
-		else{
-			for (int cnt(0); cnt < sds->fluid->_totalCells; cnt++)
-				sds->fluid->_density[cnt] = 0.0f;
-		}
-		return 0;
-	}
+//    if (!gzf) {
+//		if(reading_wavelets){
+//			for (int cnt(0); cnt < sds->wt->_totalCellsBig; cnt++)
+//				sds->wt->_densityBig[cnt] = 0.0f;
+//		}
+//		else{
+//			for (int cnt(0); cnt < sds->fluid->_totalCells; cnt++)
+//				sds->fluid->_density[cnt] = 0.0f;
+//		}
+//		return 0;
+//	}
 	
     char ID[5] = {0,0,0,0,0};
 	gzread(gzf, ID, 4);
@@ -137,7 +137,7 @@ extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, b
         gzseek(gzf, numEl, SEEK_CUR);
         /* actual grid read */
         if ( ! reading_wavelets){
-			if (!manta_check_grid_size(sds->fluid, head.dimX, head.dimY, head.dimZ))	return 0;
+//			if (!manta_check_grid_size(sds->fluid, head.dimX, head.dimY, head.dimZ))	return 0;
 			gzread(gzf, sds->fluid->_density, sizeof(float)*numEl);
 		}
 		else {
@@ -151,7 +151,7 @@ extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, b
         gzread(gzf, &head, sizeof(UniLegacyHeader2));
 		/* actual grid read*/
         if ( ! reading_wavelets){
-			if (!manta_check_grid_size(sds->fluid, head.dimX, head.dimY, head.dimZ))	return 0;
+//			if (!manta_check_grid_size(sds->fluid, head.dimX, head.dimY, head.dimZ))	return 0;
         	gzread(gzf, sds->fluid->_density, sizeof(float)*head.dimX*head.dimY*head.dimZ);
     	}
 		else{
@@ -165,7 +165,7 @@ extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, b
         gzread(gzf, &head, sizeof(UniHeader));
 		/* actual grid read */
         if ( ! reading_wavelets){
-			if (!manta_check_grid_size(sds->fluid, head.dimX, head.dimY, head.dimZ))	return 0;
+//			if (!manta_check_grid_size(sds->fluid, head.dimX, head.dimY, head.dimZ))	return 0;
 			/*Y and Z axes are swapped in manta and blender*/
 			gzread(gzf,sds->fluid->_density, sizeof(float)*head.dimX*head.dimY*head.dimZ);
     		
@@ -473,6 +473,7 @@ void Manta_API::generate_manta_sim_file(SmokeModifierData *smd)
 	vector<string> a;
 	a.push_back("manta_scene.py");
 	runMantaScript("",a);
+	updatePointers();
 }
 
 std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierData *smd)
@@ -487,11 +488,11 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 	else if (varName == "RES")
 		ss <<  smd->domain->maxres;
 	else if (varName == "RESX")
-		ss <<  smd->domain->fluid->xRes();
+		ss <<  smd->domain->fluid->_xRes;
 	else if (varName == "RESY")
-		ss <<  smd->domain->fluid->yRes();
+		ss <<  smd->domain->fluid->_yRes;
 	else if (varName == "RESZ")
-		ss <<  smd->domain->fluid->zRes();
+		ss <<  smd->domain->fluid->_zRes;
 	else if (varName == "SOLVER_DIM")
 		ss <<  smd->domain->manta_solver_res;
 	else if (varName == "NOISE_CN")
@@ -608,4 +609,141 @@ string Manta_API::getGridPointer(std::string gridName, std::string solverName)
 	cout << "RESRES" << res << "___" << endl;
 	PyGILState_Release(gilstate);		
 	return res;
+}
+
+// init direct access functions from blender
+void Manta_API::initBlenderRNA(float *alpha, float *beta, float *dt_factor, float *vorticity, int *borderCollision, float *burning_rate,
+							  float *flame_smoke, float *flame_smoke_color, float *flame_vorticity, float *flame_ignition_temp, float *flame_max_temp)
+{
+	_alpha = alpha;
+	_beta = beta;
+	_dtFactor = dt_factor;
+	_vorticityRNA = vorticity;
+	_borderColli = borderCollision;
+	_burning_rate = burning_rate;
+	_flame_smoke = flame_smoke;
+	_flame_smoke_color = flame_smoke_color;
+	_flame_vorticity = flame_vorticity;
+	_ignition_temp = flame_ignition_temp;
+	_max_temp = flame_max_temp;
+}
+
+
+void Manta_API::updatePointers()
+{
+	stringstream ss(getGridPointer("density", "s"));
+	void *gridPointer = NULL;
+	ss >> gridPointer;
+	_density = (float* )gridPointer;
+
+}
+Manta_API::Manta_API(int *res, float dx, float dtdef, int init_heat, int init_fire, int init_colors): _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
+{
+	/*Here, we assume Python script has initalized the solver and all fields*/	
+	
+	//	// set simulation consts
+	_dt = dtdef;	// just in case. set in step from a RNA factor
+	_dx = dx;
+	_totalCells   = _xRes * _yRes * _zRes;
+	_slabSize = _xRes * _yRes;
+
+//	
+//	_iterations = 100;
+//	_tempAmb = 0; 
+//	_heatDiffusion = 1e-3;
+//	_totalTime = 0.0f;
+//	_totalSteps = 0;
+//	_res = Vec3Int(_xRes,_yRes,_zRes);
+//	_maxRes = MAX3(_xRes, _yRes, _zRes);
+//	
+//	// initialize wavelet turbulence
+//	/*
+//	 if(amplify)
+//	 _wTurbulence = new WTURBULENCE(_res[0],_res[1],_res[2], amplify, noisetype);
+//	 else
+//	 _wTurbulence = NULL;
+//	 */
+//	
+//	// scale the constants according to the refinement of the grid
+//	if (!dx)
+//		_dx = 1.0f / (float)_maxRes;
+//	else
+//		_dx = dx;
+//	_constantScaling = 64.0f / _maxRes;
+//	_constantScaling = (_constantScaling < 1.0f) ? 1.0f : _constantScaling;
+//	_vorticityEps = 2.0f / _constantScaling; // Just in case set a default value
+//	
+//	// allocate arrays
+	_xVelocity    = new float[_totalCells];
+	_yVelocity    = new float[_totalCells];
+	_zVelocity    = new float[_totalCells];
+	_xVelocityOb  = new float[_totalCells];
+	_yVelocityOb  = new float[_totalCells];
+	_zVelocityOb  = new float[_totalCells];
+//	_xVelocityOld = new float[_totalCells];
+//	_yVelocityOld = new float[_totalCells];
+//	_zVelocityOld = new float[_totalCells];
+	_xForce       = new float[_totalCells];
+	_yForce       = new float[_totalCells];
+	_zForce       = new float[_totalCells];
+	_density      = new float[_totalCells];
+//	_densityOld   = new float[_totalCells];
+	_obstacles    = new unsigned char[_totalCells]; // set 0 at end of step
+//	
+//	// For threaded version:
+//	_xVelocityTemp = new float[_totalCells];
+//	_yVelocityTemp = new float[_totalCells];
+//	_zVelocityTemp = new float[_totalCells];
+//	_densityTemp   = new float[_totalCells];
+//	
+//	// DG TODO: check if alloc went fine
+//	
+	for (int x = 0; x < _totalCells; x++)
+	{
+		_density[x]      = 0.0f;
+//		_densityOld[x]   = 0.0f;
+		_xVelocity[x]    = 0.0f;
+		_yVelocity[x]    = 0.0f;
+		_zVelocity[x]    = 0.0f;
+		_xVelocityOb[x]  = 0.0f;
+		_yVelocityOb[x]  = 0.0f;
+		_zVelocityOb[x]  = 0.0f;
+//		_xVelocityOld[x] = 0.0f;
+//		_yVelocityOld[x] = 0.0f;
+//		_zVelocityOld[x] = 0.0f;
+		_xForce[x]       = 0.0f;
+		_yForce[x]       = 0.0f;
+		_zForce[x]       = 0.0f;
+		_obstacles[x]    = false;
+	}
+//	
+//	/* heat */
+//	_heat = _heatOld = _heatTemp = NULL;
+//	if (init_heat) {
+//		initHeat();
+//	}
+//	// Fire simulation
+//	_flame = _fuel = _fuelTemp = _fuelOld = NULL;
+//	_react = _reactTemp = _reactOld = NULL;
+//	if (init_fire) {
+//		initFire();
+//	}
+//	// Smoke color
+//	_color_r = _color_rOld = _color_rTemp = NULL;
+//	_color_g = _color_gOld = _color_gTemp = NULL;
+//	_color_b = _color_bOld = _color_bTemp = NULL;
+//	if (init_colors) {
+//		initColors(0.0f, 0.0f, 0.0f);
+//	}
+//	
+//	// boundary conditions of the fluid domain
+//	// set default values -> vertically non-colliding
+//	_domainBcFront = true;
+//	_domainBcTop = false;
+//	_domainBcLeft = true;
+//	_domainBcBack = _domainBcFront;
+//	_domainBcBottom = _domainBcTop;
+//	_domainBcRight	= _domainBcLeft;
+//	
+//	_colloPrev = 1;	// default value
 }
