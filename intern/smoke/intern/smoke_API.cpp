@@ -986,7 +986,6 @@ extern "C" void smoke_mantaflow_sim_step(Scene *scene, SmokeModifierData *smd)
 extern "C" void manta_write_effectors(struct Scene *s, struct SmokeModifierData *smd)
 {
 	assert(smd->domain->manta_obj != NULL);
-	manta_update_effectors(s, smd->domain->manta_obj, smd->domain, 0.1f);
 	int size_x = smd->domain->fluid->_xRes;
 	int size_y = smd->domain->fluid->_yRes;
 	int size_z = smd->domain->fluid->_zRes;

@@ -42,7 +42,7 @@ private:
 	Manta_API(const Manta_API &);	 
 	Manta_API & operator=(const Manta_API &);
 public:
-	~Manta_API() {} 	 
+	~Manta_API();	 
 	Manta_API(int *res, float dx, float dtdef, int init_heat, int init_fire, int init_colors);
 	void initBlenderRNA(float *alpha, float *beta, float *dt_factor, float *vorticity, int *border_colli, float *burning_rate,
 						float *flame_smoke, float *flame_smoke_color, float *flame_vorticity, float *ignition_temp, float *max_temp);

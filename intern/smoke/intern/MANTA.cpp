@@ -640,6 +640,7 @@ void Manta_API::updatePointers()
 	_density = (float* )gridPointer;
 
 }
+
 Manta_API::Manta_API(int *res, float dx, float dtdef, int init_heat, int init_fire, int init_colors): _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 {
 	/*Here, we assume Python script has initalized the solver and all fields*/	
@@ -749,4 +750,51 @@ Manta_API::Manta_API(int *res, float dx, float dtdef, int init_heat, int init_fi
 //	_domainBcRight	= _domainBcLeft;
 //	
 //	_colloPrev = 1;	// default value
+}
+
+Manta_API::~Manta_API()
+{
+	if (_xVelocity) delete[] _xVelocity;
+	if (_yVelocity) delete[] _yVelocity;
+	if (_zVelocity) delete[] _zVelocity;
+	if (_xVelocityOb) delete[] _xVelocityOb;
+	if (_yVelocityOb) delete[] _yVelocityOb;
+	if (_zVelocityOb) delete[] _zVelocityOb;
+//	if (_xVelocityOld) delete[] _xVelocityOld;
+//	if (_yVelocityOld) delete[] _yVelocityOld;
+//	if (_zVelocityOld) delete[] _zVelocityOld;
+	if (_xForce) delete[] _xForce;
+	if (_yForce) delete[] _yForce;
+	if (_zForce) delete[] _zForce;
+	if (_density) delete[] _density;
+//	if (_densityOld) delete[] _densityOld;
+//	if (_heat) delete[] _heat;
+//	if (_heatOld) delete[] _heatOld;
+	if (_obstacles) delete[] _obstacles;
+	
+//	if (_xVelocityTemp) delete[] _xVelocityTemp;
+//	if (_yVelocityTemp) delete[] _yVelocityTemp;
+//	if (_zVelocityTemp) delete[] _zVelocityTemp;
+//	if (_densityTemp) delete[] _densityTemp;
+//	if (_heatTemp) delete[] _heatTemp;
+	
+//	if (_flame) delete[] _flame;
+//	if (_fuel) delete[] _fuel;
+//	if (_fuelTemp) delete[] _fuelTemp;
+//	if (_fuelOld) delete[] _fuelOld;
+//	if (_react) delete[] _react;
+//	if (_reactTemp) delete[] _reactTemp;
+//	if (_reactOld) delete[] _reactOld;
+//	
+//	if (_color_r) delete[] _color_r;
+//	if (_color_rOld) delete[] _color_rOld;
+//	if (_color_rTemp) delete[] _color_rTemp;
+//	if (_color_g) delete[] _color_g;
+//	if (_color_gOld) delete[] _color_gOld;
+//	if (_color_gTemp) delete[] _color_gTemp;
+//	if (_color_b) delete[] _color_b;
+//	if (_color_bOld) delete[] _color_bOld;
+//	if (_color_bTemp) delete[] _color_bTemp;
+	
+    // printf("deleted fluid\n");
 }
