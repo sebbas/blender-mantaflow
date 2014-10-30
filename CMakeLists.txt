@@ -2363,7 +2363,9 @@ endif()
 
 #-----------------------------------------------------------------------------
 # Configure mantaflow.
-
+if(WITH_MOD_MANTA)
+	add_definitions(-DWITH_MANTA)
+endif()
 
 #if(WITH_MOD_MANTA)
 #	message("including manta")

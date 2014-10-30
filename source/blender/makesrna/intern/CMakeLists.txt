@@ -236,6 +236,10 @@ if(WITH_MOD_SMOKE)
 	add_definitions(-DWITH_SMOKE)
 endif()
 
+if(WITH_MOD_MANTA)
+	add_definitions(-DWITH_MANTA)
+endif()
+
 if(WITH_MOD_OCEANSIM)
 	add_definitions(-DWITH_OCEANSIM)
 endif()

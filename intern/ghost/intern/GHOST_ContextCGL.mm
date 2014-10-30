@@ -195,7 +195,7 @@ static void makeAttribList(
 #if defined(__ppc__) || defined(__ppc64__)
 		attribs.push_back(kCGLRendererAppleSWID);
 #else
-		attribs.push_back(kCGLRendererGenericFloatID);
+	//	attribs.push_back(kCGLRendererGenericFloatID);
 #endif
 	}
 	else {

@@ -42,11 +42,15 @@
 
 
 
-#define USE_MANTA
-#ifdef USE_MANTA			
+#ifdef WITH_MANTA			
 
 extern "C" Manta_API *smoke_init(int *res, float dx, float dtdef, int use_heat, int use_fire, int use_colors, struct SmokeDomainSettings *sds)
 {
+#ifdef WITH_MANTA
+	cout << "smoke-MANTA_DEFINED_________" << endl;
+#else
+	cout << "smoke-MANTA_NOT_DEFINED_________" << endl;
+#endif
 	Manta_API *fluid = new Manta_API(res, dx, dtdef, use_heat, use_fire, use_colors,sds);
 	return fluid;
 }

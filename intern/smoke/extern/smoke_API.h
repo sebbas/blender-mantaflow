@@ -36,8 +36,7 @@ extern "C" {
 #endif
 
 	
-#define USE_MANTA
-#ifndef USE_MANTA	/*old Blender Solver*/
+#ifndef WITH_MANTA	/*old Blender Solver*/
 struct FLUID_3D;
 
 // low res
@@ -187,7 +186,7 @@ void smoke_ensure_colors(struct FLUID_3D *fluid, struct WTURBULENCE *wt, float i
 	void smoke_ensure_heat(struct Manta_API *fluid);
 	void smoke_ensure_fire(struct Manta_API *fluid, struct WTURBULENCE *wt);
 	void smoke_ensure_colors(struct Manta_API *fluid, struct WTURBULENCE *wt, float init_r, float init_g, float init_b);
-#endif /*USE_MANTA*/
+#endif /*WITH_MANTA*/
 	
 /*Mantaflow functions*/
 int smoke_mantaflow_read(struct SmokeDomainSettings *sds, char* name, bool with_wavelets); //1:success, 0: no file,error
