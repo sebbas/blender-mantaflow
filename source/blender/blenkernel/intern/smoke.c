@@ -182,16 +182,13 @@ void smoke_reallocate_fluid(SmokeDomainSettings *sds, float dx, int res[3], int 
 		sds->fluid = NULL;
 		return;
 	}
-	sds->fluid = smoke_init(res, dx, DT_DEFAULT, use_heat, use_fire, use_colors);
+	sds->fluid = smoke_init(res, dx, DT_DEFAULT, use_heat, use_fire, use_colors, sds);
 	smoke_initBlenderRNA(sds->fluid, &(sds->alpha), &(sds->beta), &(sds->time_scale), &(sds->vorticity), &(sds->border_collisions),
 	                     &(sds->burning_rate), &(sds->flame_smoke), sds->flame_smoke_color, &(sds->flame_vorticity), &(sds->flame_ignition), &(sds->flame_max_temp));
 
 	/*initializing mantaflow fields only if low-res sim
 	 if wavelets present, init in smoke_reallocate_highres_fluid
 	 */
-	if (sds->flags & MOD_SMOKE_USE_MANTA && !(sds->flags & MOD_SMOKE_HIGHRES)){
-		smoke_mantaflow_write_scene_file(sds->smd);
-	}
 	/* reallocate shadow buffer */
 	if (sds->shadow)
 		MEM_freeN(sds->shadow);
@@ -932,7 +929,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 //			velxOrig[z] = 0;
 //			velyOrig[z] = 0;
 //			velzOrig[z] = 0;
-//			density[z] = 0;
+			density[z] = 0;
 //			if (fuel) {
 //				fuel[z] = 0;
 //				flame[z] = 0;
@@ -943,9 +940,6 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 //				b[z] = 0;
 //			}
 		}
-	}
-	if(sds->flags & MOD_SMOKE_USE_MANTA){
-		manta_export_obstacles(manta_obs_sdf, sds->res[0], sds->res[1], sds->res[2]);
 	}
 	MEM_freeN(manta_obs_sdf);
 }
@@ -2248,9 +2242,6 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				// we got nice flow object
 				SmokeFlowSettings *sfs = smd2->flow;
 				EmissionMap *em = &emaps[flowIndex];
-				if(sds->flags & MOD_SMOKE_USE_MANTA){
-					manta_write_emitters(sfs,false,em->min[0],em->min[1],em->min[2],em->max[0],em->max[1],em->max[2],sds->res[0],sds->res[1],sds->res[2], em->influence, em->velocity);
-				}
 				float *density = smoke_get_density(sds->fluid);
 				float *color_r = smoke_get_color_r(sds->fluid);
 				float *color_g = smoke_get_color_g(sds->fluid);
@@ -2634,7 +2625,7 @@ static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *
 		if (sds->total_cells > 1) {
 			update_effectors(scene, ob, sds, dtSubdiv); // DG TODO? problem --> uses forces instead of velocity, need to check how they need to be changed with variable dt
 			if (sds->flags & MOD_SMOKE_USE_MANTA){
-				smoke_mantaflow_sim_step(scene,smd);
+				smoke_mantaflow_sim_step(sds->fluid);
 			}
 			else{
 				smoke_step(sds->fluid, gravity, dtSubdiv);
@@ -2860,7 +2851,6 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		{
 			smoke_turbulence_step(sds->wt, sds->fluid);
 		}
-
 		BKE_ptcache_validate(cache, framenr);
 		if (framenr != startframe)
 			BKE_ptcache_write(&pid, framenr);

@@ -20,7 +20,7 @@
 
 void export_force_fields(int size_x, int size_y, int size_z, float *f_x, float*f_y, float*f_z);/*defined in pymain.cpp*/
 void export_em_fields(float *em_map, float flow_density, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z, float *inf, float *vel);/*defined in pymain.cpp*/
-extern "C" void manta_write_effectors(struct Scene *s, struct SmokeModifierData *smd); /*defined in smoke_api.cpp*/
+extern "C" void manta_write_effectors(struct Manta_API *fluid); /*defined in smoke_api.cpp*/
 void runMantaScript(const string& ss,vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
 
 /*for passing to detached thread*/
@@ -37,13 +37,12 @@ extern "C" int read_mantaflow_sim(struct SmokeDomainSettings *sds, char *name, b
 
 class Manta_API{
 private:	
-	static Manta_API *_instance;
 	Manta_API() {}
 	Manta_API(const Manta_API &);	 
 	Manta_API & operator=(const Manta_API &);
 public:
 	~Manta_API();	 
-	Manta_API(int *res, float dx, float dtdef, int init_heat, int init_fire, int init_colors);
+	Manta_API(int *res, float dx, float dtdef, int init_heat, int init_fire, int init_colors, struct SmokeDomainSettings *sds);
 	void initBlenderRNA(float *alpha, float *beta, float *dt_factor, float *vorticity, int *border_colli, float *burning_rate,
 						float *flame_smoke, float *flame_smoke_color, float *flame_vorticity, float *ignition_temp, float *max_temp);
 	int _totalCells;
@@ -75,7 +74,6 @@ public:
 	float *_max_temp; // RNA pointer
 	
 	unsigned char*  _obstacles; /* only used (useful) for static obstacles like domain */
-	static Manta_API *instance();
 	void step(float dt, float gravity[3]);
 //	void runMantaScript(const string&, vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
 	
@@ -101,9 +99,9 @@ public:
 	
 	void *run_manta_scene_thread(void *threadid);
 	
-	void run_manta_sim_thread(void *threadid);
+	void run_manta_sim_thread(Manta_API *fluid);
 	
-	void run_manta_scene(Scene *scene, SmokeModifierData *smd);
+	void run_manta_scene(Manta_API * fluid);
 	
 	void stop_manta_sim();
 	

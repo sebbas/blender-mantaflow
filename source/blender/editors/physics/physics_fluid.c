@@ -1190,7 +1190,7 @@ static int manta_sim_step_invoke(bContext *C, wmOperator *op, const wmEvent *UNU
 	SmokeModifierData *smd;
 	Object * smokeDomain = CTX_data_active_object(C);
 	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
-	smoke_mantaflow_sim_step(scene,smd);
+	smoke_mantaflow_sim_step(smd->domain->fluid);
 	/*	return OPERATOR_CANCELLED;*/
 	
 	return OPERATOR_FINISHED;
@@ -1202,7 +1202,7 @@ static int manta_sim_step_exec(bContext *C, wmOperator *op)
 	SmokeModifierData *smd;
 	Object * smokeDomain = CTX_data_active_object(C);
 	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
-	smoke_mantaflow_sim_step(scene,smd);
+	smoke_mantaflow_sim_step(smd->domain->fluid);
 	
 	/*	return OPERATOR_CANCELLED;*/
 	
@@ -1226,10 +1226,10 @@ void MANTA_OT_sim_step(wmOperatorType *ot)
 static int manta_stop_sim_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
 //	Scene *scene= CTX_data_scene(C);
-//	SmokeModifierData *smd;
-//	Object * smokeDomain = CTX_data_active_object(C);
-//	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
-	smoke_mantaflow_stop_sim();
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+	smoke_mantaflow_stop_sim(smd->domain->fluid);
 	/*	return OPERATOR_CANCELLED;*/
 	
 	return OPERATOR_FINISHED;
@@ -1238,10 +1238,10 @@ static int manta_stop_sim_invoke(bContext *C, wmOperator *op, const wmEvent *UNU
 static int manta_stop_sim_exec(bContext *C, wmOperator *op)
 {
 //	Scene *scene= CTX_data_scene(C);
-//	SmokeModifierData *smd;
-//	Object * smokeDomain = CTX_data_active_object(C);
-//	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
-	smoke_mantaflow_stop_sim();
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+	smoke_mantaflow_stop_sim(smd->domain->fluid);
 	
 	/*	return OPERATOR_CANCELLED;*/
 	

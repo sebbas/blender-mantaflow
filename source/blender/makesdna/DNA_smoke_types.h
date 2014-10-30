@@ -89,6 +89,7 @@ typedef struct SmokeSolvers{
 	
 }SmokeSolvers;
 
+#define USE_MANTA
 #ifndef USE_MANTA /*Use old SDS with FLUID_3D object*/
 typedef struct SmokeDomainSettings {
 	struct SmokeModifierData *smd; /* for fast RNA access */

@@ -2,14 +2,6 @@
 #include "WTURBULENCE.h"
 #include "scenarios/smoke.h"
 
-Manta_API* Manta_API::_instance = 0;
-Manta_API* Manta_API::instance(){
-	if (_instance == 0){
-		_instance = new Manta_API;
-	}
-	return _instance;
-}
-
 extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY, int dimZ)
 {
 	/*Y and Z axes are swapped in manta and blender*/
@@ -299,7 +291,7 @@ void *Manta_API::run_manta_scene_thread(void *arguments)
 	return NULL;
 }
 
-void Manta_API::run_manta_scene(Scene *s, SmokeModifierData *smd)
+void Manta_API::run_manta_scene(Manta_API * fluid)
 {
 //	smd->domain->manta_sim_frame = 0;
 //	PyGILState_STATE gilstate = PyGILState_Ensure();
@@ -324,14 +316,11 @@ void Manta_API::run_manta_scene(Scene *s, SmokeModifierData *smd)
 //
 //	
 //	
-	struct manta_arg_struct *args = (struct manta_arg_struct*)malloc(sizeof(struct manta_arg_struct));
-	args->smd = *smd;
-	args->s = *s;
 //	args.frame_num = smd->domain->manta_end_frame - smd->domain->manta_start_frame;
 //	int rc = pthread_create(&manta_thread, NULL, run_manta_sim_thread, (void *)args);
 //	pthread_join(manta_thread,NULL);
 //	pthread_detach(manta_thread);
-	run_manta_sim_thread((void*) args);
+	run_manta_sim_thread(fluid);
 }
 
 void Manta_API::stop_manta_sim()
@@ -421,21 +410,16 @@ void Manta_API::export_obstacles(float *data, int x, int y, int z)
 }
 
 
-void Manta_API::run_manta_sim_thread(void *arguments)
+void Manta_API::run_manta_sim_thread(Manta_API *fluid)
 {
-	struct manta_arg_struct *args = (struct manta_arg_struct *)arguments;
-	SmokeModifierData *smd = &args->smd;
-	Scene *s = &args->s;
-	int num_sim_steps = smd->domain->manta_end_frame - smd->domain->manta_start_frame + 1;
-	smd->domain->manta_sim_frame = 0;
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 //	for (int fr=0; fr< num_sim_steps; ++fr) {
 //		if(smd->domain->manta_sim_frame == -1)
 //			break;
 		printf("Simulation Step");
-		manta_write_effectors(s, smd);
-		smd->domain->manta_sim_frame = s->r.cfra;
-		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << s->r.cfra) )->str();
+		int sim_frame = 1;
+		manta_write_effectors(fluid);
+		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << sim_frame) )->str();
 		std::string py_string_0 = string("sim_step(").append(frame_str);
 		std::string py_string_1 = py_string_0.append(")\0");
 	cout << "Debug C++: densityPointer:" << Manta_API::getGridPointer("density", "s")<<endl;
@@ -444,8 +428,8 @@ void Manta_API::run_manta_sim_thread(void *arguments)
 		cout<< "done"<<manta_sim_running<<endl;
 	//}
 	//returning simulation state to "not simulating" aka -1
-	smd->domain->manta_sim_frame = -1;
 	PyGILState_Release(gilstate);
+	updatePointers();
 }
 
 void Manta_API::generate_manta_sim_file(SmokeModifierData *smd)
@@ -591,11 +575,13 @@ string Manta_API::getGridPointer(std::string gridName, std::string solverName)
 	if ((gridName == "") && (solverName == "")){
 		return "";
 	}
+	cout << "pointer to grid " << gridName << endl; 
 #ifdef WITH_MANTA
 	cout << "MANTA_DEFINED_________" << endl;
 #else
 	cout << "MANTA_NOT_DEFINED_________" << endl;
 #endif
+	
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	PyObject *main = PyImport_AddModule("__main__");
 	if (main == NULL){cout << "null" << 1 << endl;}
@@ -641,7 +627,7 @@ void Manta_API::updatePointers()
 
 }
 
-Manta_API::Manta_API(int *res, float dx, float dtdef, int init_heat, int init_fire, int init_colors): _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
+Manta_API::Manta_API(int *res, float dx, float dtdef, int init_heat, int init_fire, int init_colors,SmokeDomainSettings *sds): _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 {
 	/*Here, we assume Python script has initalized the solver and all fields*/	
 	
@@ -690,7 +676,7 @@ Manta_API::Manta_API(int *res, float dx, float dtdef, int init_heat, int init_fi
 	_xForce       = new float[_totalCells];
 	_yForce       = new float[_totalCells];
 	_zForce       = new float[_totalCells];
-	_density      = new float[_totalCells];
+	_density      = NULL ; //new float[_totalCells];
 //	_densityOld   = new float[_totalCells];
 	_obstacles    = new unsigned char[_totalCells]; // set 0 at end of step
 //	
@@ -704,7 +690,6 @@ Manta_API::Manta_API(int *res, float dx, float dtdef, int init_heat, int init_fi
 //	
 	for (int x = 0; x < _totalCells; x++)
 	{
-		_density[x]      = 0.0f;
 //		_densityOld[x]   = 0.0f;
 		_xVelocity[x]    = 0.0f;
 		_yVelocity[x]    = 0.0f;
@@ -750,6 +735,9 @@ Manta_API::Manta_API(int *res, float dx, float dtdef, int init_heat, int init_fi
 //	_domainBcRight	= _domainBcLeft;
 //	
 //	_colloPrev = 1;	// default value
+	
+	sds->fluid = this;
+	generate_manta_sim_file(sds->smd);
 }
 
 Manta_API::~Manta_API()

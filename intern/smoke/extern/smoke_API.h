@@ -113,7 +113,7 @@ void smoke_ensure_colors(struct FLUID_3D *fluid, struct WTURBULENCE *wt, float i
 	
 #else /*		using Mantaflow structures		*/
 	struct Manta_API;
-	struct Manta_API *smoke_init(int *res, float dx, float dtdef, int use_heat, int use_fire, int use_colors);
+	struct Manta_API *smoke_init(int *res, float dx, float dtdef, int use_heat, int use_fire, int use_colors, struct SmokeDomainSettings *sds);
 	void smoke_free(struct Manta_API *fluid);
 	
 	void smoke_initBlenderRNA(struct Manta_API *fluid, float *alpha, float *beta, float *dt_factor, float *vorticity, int *border_colli, float *burning_rate,
@@ -192,9 +192,10 @@ void smoke_ensure_colors(struct FLUID_3D *fluid, struct WTURBULENCE *wt, float i
 /*Mantaflow functions*/
 int smoke_mantaflow_read(struct SmokeDomainSettings *sds, char* name, bool with_wavelets); //1:success, 0: no file,error
 void smoke_mantaflow_write_scene_file(struct SmokeModifierData *smd);
-void smoke_mantaflow_sim_step(struct Scene *scene, struct SmokeModifierData *smd);
-void smoke_mantaflow_stop_sim();
-void manta_write_effectors(struct Scene *s, struct SmokeModifierData *smd);
+void smoke_mantaflow_sim_step(struct Manta_API *fluid);
+//void smoke_mantaflow_sim_step(struct Scene *scene, struct SmokeModifierData *smd);
+void smoke_mantaflow_stop_sim(struct Manta_API *fluid);
+void manta_write_effectors(struct Manta_API *fluid);
 void manta_update_effectors(struct Scene *scene, struct Object *ob,struct SmokeDomainSettings *sds, float dt);
 void manta_write_emitters(struct SmokeFlowSettings *sfs, bool highRes, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z,float *influence, float *vel);	
 void manta_export_obstacles(float * influence, int x, int y, int z);

@@ -79,15 +79,15 @@ if $USE_WAVELETS$ and $UPRES$ > 0:\n\
 ";
 
 const string smoke_step_low = "def sim_step(t):\n\
+  print ('Step:' + str(t))\n\
   #load_once(source,'manta_flow.obj',dict_loaded)\n\
   #if t == 2:#loading data on first sim frame only\n\
   #  print('First frame: loading flows and obstacles')\n\
   #  source.load('manta_flow.obj')\n\
   #  transform_back(source, gs)\n\
-  print (\"Density \" , str(density))\n\
+  print (\"Density \" , str(density), str(density.getDataPointer()))\n\
   #load emission data\n\
   #source_grid.load('manta_em_influence.uni')\n\
-  print (\"Source_Grid\" , str(source_grid))\n\
   #density.add(source_grid)\n\
   addForceField(flags=flags, vel=vel,force=forces)\n\
   \n\
@@ -100,7 +100,6 @@ const string smoke_step_low = "def sim_step(t):\n\
   solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, openBound='xXyYzZ')\n\
   setWallBcs(flags=flags, vel=vel)\n\
   \n\
-  density.writeGridToMemory(memLoc = \"$DENSITY_MEM$\",sizeAllowed = \"$DENSITY_SIZE$\") \n\
   s.step()\n";
 //  if (t>=0 and t<75):\n\
 //    densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)\n\

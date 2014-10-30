@@ -42,17 +42,18 @@
 
 
 
-
+#define USE_MANTA
 #ifdef USE_MANTA			
 
-extern "C" Manta_API *smoke_init(int *res, float dx, float dtdef, int use_heat, int use_fire, int use_colors)
+extern "C" Manta_API *smoke_init(int *res, float dx, float dtdef, int use_heat, int use_fire, int use_colors, struct SmokeDomainSettings *sds)
 {
-	Manta_API *fluid = new Manta_API(res, dx, dtdef, use_heat, use_fire, use_colors);
+	Manta_API *fluid = new Manta_API(res, dx, dtdef, use_heat, use_fire, use_colors,sds);
 	return fluid;
 }
 
 extern "C" void smoke_step(Manta_API *fluid, float gravity[3], float dtSubdiv)
 {
+	smoke_mantaflow_sim_step(fluid);
 	
 //	if (fluid->_fuel) {
 //		fluid->processBurn(fluid->_fuel, fluid->_density, fluid->_react, fluid->_flame, fluid->_heat,
@@ -974,25 +975,35 @@ extern "C" int smoke_mantaflow_read(struct SmokeDomainSettings *sds, char* name,
 
 extern "C" void smoke_mantaflow_write_scene_file(struct SmokeModifierData *smd)
 {
-	Manta_API::instance()->generate_manta_sim_file(smd);
+	smd->domain->fluid->generate_manta_sim_file(smd);
 }
 
-extern "C" void smoke_mantaflow_sim_step(Scene *scene, SmokeModifierData *smd)
+//extern "C" void smoke_mantaflow_sim_step(Scene *scene, SmokeModifierData *smd)
+//{
+//	cout <<"Fluid_loc: "<<smd->domain->fluid->_density <<endl;
+//	Manta_API::instance()->run_manta_scene(scene, smd);
+//}
+
+extern "C" void smoke_mantaflow_sim_step(Manta_API *fluid)
 {
-	cout <<"Fluid_loc: "<<smd->domain->fluid->_density <<endl;
-	Manta_API::instance()->run_manta_scene(scene, smd);
+	if (fluid == NULL){
+		cout<< "ERROR: empty manta_API object when stepping smoke simulation" << endl;
+		return;
+	}
+	cout <<"Fluid_loc: "<<fluid->_density <<endl;
+	fluid->run_manta_sim_thread(fluid);
 }
 
-extern "C" void manta_write_effectors(struct Scene *s, struct SmokeModifierData *smd)
+
+extern "C" void manta_write_effectors(struct Manta_API *fluid)
 {
-	assert(smd->domain->manta_obj != NULL);
-	int size_x = smd->domain->fluid->_xRes;
-	int size_y = smd->domain->fluid->_yRes;
-	int size_z = smd->domain->fluid->_zRes;
+	int size_x = fluid->_xRes;
+	int size_y = fluid->_yRes;
+	int size_z = fluid->_zRes;
 	
-	float *force_x = smoke_get_force_x(smd->domain->fluid);
-	float *force_y = smoke_get_force_y(smd->domain->fluid);
-	float *force_z = smoke_get_force_z(smd->domain->fluid);
+	float *force_x = smoke_get_force_x(fluid);
+	float *force_y = smoke_get_force_y(fluid);
+	float *force_z = smoke_get_force_z(fluid);
 //	export_force_fields(size_x, size_y, size_z, force_x, force_y, force_z);
 	/*accumulate all force fields in one grid*/
 	Vec3 * accumulated_force = (Vec3*)malloc(size_x * size_y * size_z * sizeof(Vec3));
@@ -1021,10 +1032,18 @@ extern "C" void manta_write_emitters(struct SmokeFlowSettings *sfs, bool highRes
 
 extern "C" void manta_export_obstacles(float * influence, int x, int y, int z)
 {
+	if (influence == NULL){
+		cout<< "ERROR: empty influence object when exporting smoke obstacles" << endl;
+		return;
+	}
 	Manta_API::export_obstacles(influence, x, y, z);
 }
 
-extern "C" void smoke_mantaflow_stop_sim()
+extern "C" void smoke_mantaflow_stop_sim(struct Manta_API * fluid)
 {
-	Manta_API::instance()->stop_manta_sim();
+	if (fluid == NULL){
+		cout<< "ERROR: empty manta_API object when stopping smoke simulation" << endl;
+		return;
+	}
+	fluid->stop_manta_sim();
 }
