@@ -84,7 +84,9 @@ extern "C" void smoke_initBlenderRNA(Manta_API *fluid, float *alpha, float *beta
 
 extern "C" void smoke_initWaveletBlenderRNA(WTURBULENCE *wt, float *strength)
 {
+	//PR: TODO
 	wt->initBlenderRNA(strength);
+	
 }
 
 static void data_dissolve(float *density, float *heat, float *r, float *g, float *b, int total_cells, int speed, int log)
@@ -187,18 +189,18 @@ extern "C" void smoke_turbulence_export(WTURBULENCE *wt, float **dens, float **r
 		return;
 	
 	*dens = wt->_densityBig;
-	if(fuel)
-		*fuel = wt->_fuelBig;
-	if(react)
-		*react = wt->_reactBig;
-	if(flame)
-		*flame = wt->_flameBig;
-	if(r)
-		*r = wt->_color_rBig;
-	if(g)
-		*g = wt->_color_gBig;
-	if(b)
-		*b = wt->_color_bBig;
+//	if(fuel)
+//		*fuel = wt->_fuelBig;
+//	if(react)
+//		*react = wt->_reactBig;
+//	if(flame)
+//		*flame = wt->_flameBig;
+//	if(r)
+//		*r = wt->_color_rBig;
+//	if(g)
+//		*g = wt->_color_gBig;
+//	if(b)
+//		*b = wt->_color_bBig;
 	*tcu = wt->_tcU;
 	*tcv = wt->_tcV;
 	*tcw = wt->_tcW;
@@ -415,7 +417,6 @@ extern "C" void smoke_get_ob_velocity(Manta_API *fluid, float **x, float **y, fl
 
 extern "C" void smoke_turbulence_set_noise(WTURBULENCE *wt, int type, const char *noisefile_path)
 {
-	wt->setNoise(type, noisefile_path);
 }
 
 extern "C" void flame_get_spectrum(unsigned char *spec, int width, float t1, float t2)
@@ -979,7 +980,7 @@ extern "C" int smoke_mantaflow_read(struct SmokeDomainSettings *sds, char* name,
 
 extern "C" void smoke_mantaflow_write_scene_file(struct SmokeModifierData *smd)
 {
-	smd->domain->fluid->generate_manta_sim_file(smd);
+	smd->domain->fluid->generate_manta_sim_file_lowRes(smd);
 }
 
 //extern "C" void smoke_mantaflow_sim_step(Scene *scene, SmokeModifierData *smd)

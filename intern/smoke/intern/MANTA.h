@@ -105,7 +105,8 @@ public:
 	
 	void stop_manta_sim();
 	
-	void generate_manta_sim_file(SmokeModifierData *smd);
+	void generate_manta_sim_file_lowRes(SmokeModifierData *smd);
+	void generate_manta_sim_file_highRes(SmokeModifierData *smd);
 	
 	void manta_sim_step(int frame);
 	

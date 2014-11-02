@@ -78,7 +78,7 @@ if $USE_WAVELETS$ and $UPRES$ > 0:\n\
   xl_wltnoise.timeAnim = 0.1 \n\
 ";
 
-const string smoke_step_low = "def sim_step(t):\n\
+const string smoke_step_low = "def sim_step_low(t):\n\
   print ('Step:' + str(t))\n\
   #load_once(source,'manta_flow.obj',dict_loaded)\n\
   #if t == 2:#loading data on first sim frame only\n\
@@ -121,7 +121,8 @@ const string smoke_step_low = "def sim_step(t):\n\
 //  #os.rename('den%04d_temp.uni' % t, 'den%04d.uni' % t) \n\
 //  s.step()\n";
 
-const string smoke_step_high = "  interpolateMACGrid( source=vel, target=xl_vel ) \n\
+const string smoke_step_high = "def sim_step_high(t):\n\
+  interpolateMACGrid( source=vel, target=xl_vel ) \n\
   sStr = 1.0 * wltStrength  \n\
   sPos = 2.0  \n\
   for o in range(octaves): \n\

@@ -420,7 +420,7 @@ void Manta_API::run_manta_sim_thread(Manta_API *fluid)
 		int sim_frame = 1;
 		manta_write_effectors(fluid);
 		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << sim_frame) )->str();
-		std::string py_string_0 = string("sim_step(").append(frame_str);
+		std::string py_string_0 = string("sim_step_low(").append(frame_str);
 		std::string py_string_1 = py_string_0.append(")\0");
 	cout << "Debug C++: densityPointer:" << Manta_API::getGridPointer("density", "s")<<endl;
 		PyRun_SimpleString("print ('pyhton density pointer:' + density.getDataPointer())");
@@ -432,31 +432,24 @@ void Manta_API::run_manta_sim_thread(Manta_API *fluid)
 	updatePointers();
 }
 
-void Manta_API::generate_manta_sim_file(SmokeModifierData *smd)
+void Manta_API::generate_manta_sim_file_lowRes(SmokeModifierData *smd)
 {
-//	 /*create python file with 2-spaces indentation*/
-	bool wavelets = smd->domain->flags & MOD_SMOKE_HIGHRES;
-//	bool noise_clamp = smd->domain->flags & MOD_SMOKE_NOISE_CLAMP; 
-//	float noise_clamp_neg = smd->domain->noise_clamp_neg;
-//	float noise_clamp_pos = smd->domain->noise_clamp_pos;
-//	float noise_val_scale = smd->domain->noise_val_scale;
-//	float noise_val_offset = smd->domain->noise_val_offset;
-//	float noise_time_anim = smd->domain->noise_time_anim;
-//	int num_sim_frames = smd->domain->manta_end_frame - smd->domain->manta_start_frame + 1;
-//	if(num_sim_frames < 1)
-//		return;
-
-	/*constrcting final setup*/
-	string smoke_script = smoke_setup_low + ((wavelets)?smoke_setup_high:"") + smoke_step_low + ((wavelets)?smoke_step_high:"");	
-//	ofstream manta_setup_file;
-//	manta_setup_file.open("manta_scene.py", std::fstream::trunc);
-//	manta_setup_file << smoke_script ;
-//	manta_setup_file.close();
+	string smoke_script = smoke_setup_low  + smoke_step_low ;	
 
 	std::string final_script = parseScript(smoke_script, smd);
 	vector<string> a;
 	a.push_back("manta_scene.py");
-	runMantaScript(final_script,a);
+	runMantaScript(final_script,a); /*need this to delete previous solvers and grids*/
+	updatePointers();
+}
+
+void Manta_API::generate_manta_sim_file_highRes(SmokeModifierData *smd)
+{
+	string smoke_script = smoke_setup_high + smoke_step_high;		
+	std::string final_script = parseScript(smoke_script, smd);
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	PyRun_SimpleString(final_script.c_str());
+	PyGILState_Release(gilstate);
 	updatePointers();
 }
 
@@ -737,7 +730,7 @@ Manta_API::Manta_API(int *res, float dx, float dtdef, int init_heat, int init_fi
 //	_colloPrev = 1;	// default value
 	
 	sds->fluid = this;
-	generate_manta_sim_file(sds->smd);
+	generate_manta_sim_file_lowRes(sds->smd);
 }
 
 Manta_API::~Manta_API()
