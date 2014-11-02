@@ -48,6 +48,8 @@
 // 2^ {-5/6}
 static const float persistence = 0.56123f;
 
+#ifndef WITH_MANTA  /*old WTurbulence Solver*/
+
 //////////////////////////////////////////////////////////////////////
 // constructor
 //////////////////////////////////////////////////////////////////////
@@ -1196,3 +1198,144 @@ void WTURBULENCE::stepTurbulenceFull(float dtOrg, float* xvel, float* yvel, floa
   
   _totalStepsBig++;
 }
+
+
+
+
+
+
+#else						 /*USING MANTAFLOW WTURBULENCE*/
+
+WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int noisetype, const char *noisefile_path, int init_fire, int init_colors)
+{
+	// if noise magnitude is below this threshold, its contribution
+	// is negilgible, so stop evaluating new octaves
+	_cullingThreshold = 1e-3;
+	
+	// factor by which to increase the simulation resolution
+	_amplify = amplify;
+	
+	// manually adjust the overall amount of turbulence
+	// DG - RNA-fied _strength = 2.;
+	
+	// add the corresponding octaves of noise
+	_octaves = (int)(log((float)_amplify) / log(2.0f) + 0.5f); // XXX DEBUG/ TODO: int casting correct? - dg
+	
+	// noise resolution
+	_xResBig = _amplify * xResSm;
+	_yResBig = _amplify * yResSm;
+	_zResBig = _amplify * zResSm;
+	_resBig = Vec3Int(_xResBig, _yResBig, _zResBig);
+	_invResBig = Vec3(1.0f/(float)_resBig[0], 1.0f/(float)_resBig[1], 1.0f/(float)_resBig[2]);
+	_slabSizeBig = _xResBig*_yResBig;
+	_totalCellsBig = _slabSizeBig * _zResBig;
+	
+	// original / small resolution
+	_xResSm = xResSm;
+	_yResSm = yResSm;
+	_zResSm = zResSm;
+	_resSm = Vec3Int(xResSm, yResSm, zResSm);
+	_invResSm = Vec3(1.0f/(float)_resSm[0], 1.0f/(float)_resSm[1], 1.0f/(float)_resSm[2] );
+	_slabSizeSm = _xResSm*_yResSm;
+	_totalCellsSm = _slabSizeSm * _zResSm;
+	
+	// allocate high resolution density field
+	_totalStepsBig = 0;
+	_densityBig = new float[_totalCellsBig];
+	_densityBigOld = new float[_totalCellsBig];
+	
+	for(int i = 0; i < _totalCellsBig; i++) {
+		_densityBig[i] = 
+		_densityBigOld[i] = 0.;
+	}
+	
+	/* fire */
+	_flameBig = _fuelBig = _fuelBigOld = NULL;
+	_reactBig = _reactBigOld = NULL;
+	if (init_fire) {
+		initFire();
+	}
+	/* colors */
+	_color_rBig = _color_rBigOld = NULL;
+	_color_gBig = _color_gBigOld = NULL;
+	_color_bBig = _color_bBigOld = NULL;
+	if (init_colors) {
+		initColors(0.0f, 0.0f, 0.0f);
+	}
+	
+	// allocate & init texture coordinates
+	_tcU = new float[_totalCellsSm];
+	_tcV = new float[_totalCellsSm];
+	_tcW = new float[_totalCellsSm];
+	_tcTemp = new float[_totalCellsSm];
+	
+	// map all 
+	const float dx = 1.0f/(float)(_resSm[0]);
+	const float dy = 1.0f/(float)(_resSm[1]);
+	const float dz = 1.0f/(float)(_resSm[2]);
+	int index = 0;
+	for (int z = 0; z < _zResSm; z++) 
+		for (int y = 0; y < _yResSm; y++) 
+			for (int x = 0; x < _xResSm; x++, index++)
+			{
+				_tcU[index] = x*dx;
+				_tcV[index] = y*dy;
+				_tcW[index] = z*dz;
+				_tcTemp[index] = 0.;
+			}
+	
+	// noise tiles
+	_noiseTile = new float[noiseTileSize * noiseTileSize * noiseTileSize];
+	setNoise(noisetype, noisefile_path);
+}
+/// destructor
+WTURBULENCE::~WTURBULENCE()
+{
+	delete[] _densityBig;
+	delete[] _densityBigOld;
+	if (_flameBig) delete[] _flameBig;
+	if (_fuelBig) delete[] _fuelBig;
+	if (_fuelBigOld) delete[] _fuelBigOld;
+	if (_reactBig) delete[] _reactBig;
+	if (_reactBigOld) delete[] _reactBigOld;
+	
+	if (_color_rBig) delete[] _color_rBig;
+	if (_color_rBigOld) delete[] _color_rBigOld;
+	if (_color_gBig) delete[] _color_gBig;
+	if (_color_gBigOld) delete[] _color_gBigOld;
+	if (_color_bBig) delete[] _color_bBig;
+	if (_color_bBigOld) delete[] _color_bBigOld;
+	
+	delete[] _tcU;
+	delete[] _tcV;
+	delete[] _tcW;
+	delete[] _tcTemp;
+	
+	delete[] _noiseTile;
+}
+
+void WTURBULENCE::initFire(){}
+void WTURBULENCE::initColors(float init_r, float init_g, float init_b){}
+
+void WTURBULENCE::setNoise(int type, const char *noisefile_path){}
+void WTURBULENCE::initBlenderRNA(float *strength){}
+
+// step more readable version -- no rotation correction
+void WTURBULENCE::stepTurbulenceReadable(float dt, float* xvel, float* yvel, float* zvel, unsigned char *obstacles){}
+
+// step more complete version -- include rotation correction
+// and use OpenMP if available
+void WTURBULENCE::stepTurbulenceFull(float dt, float* xvel, float* yvel, float* zvel, unsigned char *obstacles){}
+
+// texcoord functions
+void WTURBULENCE::advectTextureCoordinates(float dtOrg, float* xvel, float* yvel, float* zvel, float *tempBig1, float *tempBig2){}
+void WTURBULENCE::resetTextureCoordinates(float *_eigMin, float *_eigMax){}
+
+void WTURBULENCE::computeEnergy(float *energy, float* xvel, float* yvel, float* zvel, unsigned char *obstacles){}
+
+void WTURBULENCE::computeEigenvalues(float *_eigMin, float *_eigMax){}
+void WTURBULENCE::decomposeEnergy(float *energy, float *_highFreqEnergy){}
+Vec3 WTURBULENCE::WVelocity(Vec3 p){return Vec3(0.);}
+Vec3 WTURBULENCE::WVelocityWithJacobian(Vec3 p, float* xUnwarped, float* yUnwarped, float* zUnwarped){return Vec3(0.);}
+
+#endif
