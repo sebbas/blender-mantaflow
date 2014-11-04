@@ -74,7 +74,7 @@ size_t smoke_get_index(int x, int max_x, int y, int max_y, int z);
 size_t smoke_get_index2d(int x, int max_x, int y);
 void smoke_dissolve(struct FLUID_3D *fluid, int speed, int log);
 // wavelet turbulence functions
-struct WTURBULENCE *smoke_turbulence_init(int *res, int amplify, int noisetype, const char *noisefile_path, int use_fire, int use_colors);
+struct WTURBULENCE *smoke_turbulence_init(int *res, int amplify, int noisetype, const char *noisefile_path, int use_fire, int use_colors,struct SmokeDomainSettings *sds);
 void smoke_turbulence_free(struct WTURBULENCE *wt);
 void smoke_turbulence_step(struct WTURBULENCE *wt, struct FLUID_3D *fluid);
 float *smoke_turbulence_get_density(struct WTURBULENCE *wt);
@@ -148,7 +148,7 @@ void smoke_ensure_colors(struct FLUID_3D *fluid, struct WTURBULENCE *wt, float i
 	void smoke_dissolve(struct Manta_API *fluid, int speed, int log);
 	
 	// wavelet turbulence functions
-	struct WTURBULENCE *smoke_turbulence_init(int *res, int amplify, int noisetype, const char *noisefile_path, int use_fire, int use_colors);
+	struct WTURBULENCE *smoke_turbulence_init(int *res, int amplify, int noisetype, const char *noisefile_path, int use_fire, int use_colors,struct SmokeDomainSettings *sds);
 	void smoke_turbulence_free(struct WTURBULENCE *wt);
 	void smoke_turbulence_step(struct WTURBULENCE *wt, struct Manta_API *fluid);
 	

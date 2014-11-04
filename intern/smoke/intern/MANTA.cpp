@@ -293,34 +293,7 @@ void *Manta_API::run_manta_scene_thread(void *arguments)
 
 void Manta_API::run_manta_scene(Manta_API * fluid)
 {
-//	smd->domain->manta_sim_frame = 0;
-//	PyGILState_STATE gilstate = PyGILState_Ensure();
-////	for (int fr=0; fr< 1; ++fr)
-//	int fr = s->r.cfra;
-//	{
-////		if(smd->domain->manta_sim_frame == -1)
-////			break;
-//		printf("Simulation Step");
-//		manta_write_effectors(s, smd);
-//		smd->domain->manta_sim_frame = fr;
-//		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << fr) )->str();
-//		std::string py_string_0 = string("sim_step(").append(frame_str);
-//		std::string py_string_1 = py_string_0.append(")\0");
-//		//		std::string py_string_1 = string("sim_step()\0");
-//		PyRun_SimpleString(py_string_1.c_str());
-//		//		frame_num ++;
-//	}
-//	PyGILState_Release(gilstate);
-	//returning simulation state to "not simulating" aka -1
-//	smd->domain->manta_sim_frame = -1;
-//
-//	
-//	
-//	args.frame_num = smd->domain->manta_end_frame - smd->domain->manta_start_frame;
-//	int rc = pthread_create(&manta_thread, NULL, run_manta_sim_thread, (void *)args);
-//	pthread_join(manta_thread,NULL);
-//	pthread_detach(manta_thread);
-	run_manta_sim_thread(fluid);
+	run_manta_sim_lowRes(fluid);
 }
 
 void Manta_API::stop_manta_sim()
@@ -409,28 +382,38 @@ void Manta_API::export_obstacles(float *data, int x, int y, int z)
 	PyGILState_Release(gilstate);		
 }
 
-
-void Manta_API::run_manta_sim_thread(Manta_API *fluid)
+void Manta_API::run_manta_sim_lowRes(Manta_API *fluid)
 {
 	PyGILState_STATE gilstate = PyGILState_Ensure();
-//	for (int fr=0; fr< num_sim_steps; ++fr) {
-//		if(smd->domain->manta_sim_frame == -1)
-//			break;
-		printf("Simulation Step");
-		int sim_frame = 1;
-		manta_write_effectors(fluid);
-		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << sim_frame) )->str();
-		std::string py_string_0 = string("sim_step_low(").append(frame_str);
-		std::string py_string_1 = py_string_0.append(")\0");
+	int sim_frame = 1;
+	manta_write_effectors(fluid);
+	std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << sim_frame) )->str();
+	std::string py_string_0 = string("sim_step_low(").append(frame_str);
+	std::string py_string_1 = py_string_0.append(")\0");
 	cout << "Debug C++: densityPointer:" << Manta_API::getGridPointer("density", "s")<<endl;
-		PyRun_SimpleString("print ('pyhton density pointer:' + density.getDataPointer())");
-		PyRun_SimpleString(py_string_1.c_str());
-		cout<< "done"<<manta_sim_running<<endl;
-	//}
-	//returning simulation state to "not simulating" aka -1
+	PyRun_SimpleString("print ('pyhton density pointer:' + density.getDataPointer())");
+	PyRun_SimpleString(py_string_1.c_str());
+	cout<< "done"<<manta_sim_running<<endl;
 	PyGILState_Release(gilstate);
 	updatePointers();
 }
+
+void Manta_API::run_manta_sim_highRes(WTURBULENCE *wt)
+{
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	int sim_frame = 1;
+//	manta_write_effectors(fluid);
+	std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << sim_frame) )->str();
+	std::string py_string_0 = string("sim_step_high(").append(frame_str);
+	std::string py_string_1 = py_string_0.append(")\0");
+	cout << "Debug C++: densityPointer:" << Manta_API::getGridPointer("density", "s")<<endl;
+	PyRun_SimpleString("print ('pyhton density pointer:' + density.getDataPointer())");
+	PyRun_SimpleString(py_string_1.c_str());
+	cout<< "done"<<manta_sim_running<<endl;
+	PyGILState_Release(gilstate);
+	updateHighResPointers(wt);
+}
+
 
 void Manta_API::generate_manta_sim_file_lowRes(SmokeModifierData *smd)
 {
@@ -450,7 +433,6 @@ void Manta_API::generate_manta_sim_file_highRes(SmokeModifierData *smd)
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	PyRun_SimpleString(final_script.c_str());
 	PyGILState_Release(gilstate);
-	updatePointers();
 }
 
 std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierData *smd)
@@ -617,7 +599,16 @@ void Manta_API::updatePointers()
 	void *gridPointer = NULL;
 	ss >> gridPointer;
 	_density = (float* )gridPointer;
+	ss.str("");
+}
 
+void Manta_API::updateHighResPointers(WTURBULENCE *wt)
+{
+	stringstream ss(getGridPointer("xl_density", "xl"));
+	void *gridPointer = NULL;
+	ss >> gridPointer;
+	wt->_densityBig = (float* )gridPointer;
+	ss.str("");
 }
 
 Manta_API::Manta_API(int *res, float dx, float dtdef, int init_heat, int init_fire, int init_colors,SmokeDomainSettings *sds): _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)

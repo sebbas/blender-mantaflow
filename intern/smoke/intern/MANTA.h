@@ -99,22 +99,23 @@ public:
 	
 	void *run_manta_scene_thread(void *threadid);
 	
-	void run_manta_sim_thread(Manta_API *fluid);
+	void run_manta_sim_lowRes(Manta_API *fluid);
+	void run_manta_sim_highRes(WTURBULENCE *wt);
 	
 	void run_manta_scene(Manta_API * fluid);
 	
 	void stop_manta_sim();
 	
 	void generate_manta_sim_file_lowRes(SmokeModifierData *smd);
-	void generate_manta_sim_file_highRes(SmokeModifierData *smd);
+	static void generate_manta_sim_file_highRes(SmokeModifierData *smd);
 	
 	void manta_sim_step(int frame);
 	
-	std::string getRealValue(const string& varName, SmokeModifierData *sds);
+	static std::string getRealValue(const string& varName, SmokeModifierData *sds);
 	
-	std::string parseLine(const string& line, SmokeModifierData *sds);
+	static std::string parseLine(const string& line, SmokeModifierData *sds);
 	
-	std::string parseScript(const string& setup_string, SmokeModifierData *sds);	
+	static std::string parseScript(const string& setup_string, SmokeModifierData *sds);	
 	
 	pthread_t manta_thread;
 	
@@ -125,6 +126,7 @@ public:
 	
 	std::string getGridPointer(string gridName, string solverName);
 	void updatePointers();
+	void updateHighResPointers(WTURBULENCE *wt);
 };
 
 

@@ -48,6 +48,10 @@
 // 2^ {-5/6}
 static const float persistence = 0.56123f;
 
+#ifdef WITH_MANTA
+#include "MANTA.h"
+#endif
+
 #ifndef WITH_MANTA  /*old WTurbulence Solver*/
 
 //////////////////////////////////////////////////////////////////////
@@ -1206,7 +1210,7 @@ void WTURBULENCE::stepTurbulenceFull(float dtOrg, float* xvel, float* yvel, floa
 
 #else						 /*USING MANTAFLOW WTURBULENCE*/
 
-WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int noisetype, const char *noisefile_path, int init_fire, int init_colors)
+WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int noisetype, const char *noisefile_path, int init_fire, int init_colors,SmokeDomainSettings *sds)
 {
 	// if noise magnitude is below this threshold, its contribution
 	// is negilgible, so stop evaluating new octaves

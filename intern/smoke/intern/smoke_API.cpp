@@ -68,6 +68,7 @@ extern "C" void smoke_step(Manta_API *fluid, float gravity[3], float dtSubdiv)
 
 extern "C" void smoke_turbulence_step(WTURBULENCE *wt, Manta_API *fluid)
 {
+	fluid->run_manta_sim_highRes(wt);
 //	if (wt->_fuelBig) {
 //		fluid->processBurn(wt->_fuelBig, wt->_densityBig, wt->_reactBig, wt->_flameBig, 0,
 //						   wt->_color_rBig, wt->_color_gBig, wt->_color_bBig, wt->_totalCellsBig, fluid->_dt);
@@ -477,12 +478,17 @@ extern "C" void smoke_ensure_colors(Manta_API *fluid, WTURBULENCE *wt, float ini
 //	}
 }
 
-extern "C" WTURBULENCE *smoke_turbulence_init(int *res, int amplify, int noisetype, const char *noisefile_path, int use_fire, int use_colors)
+extern "C" WTURBULENCE *smoke_turbulence_init(int *res, int amplify, int noisetype, const char *noisefile_path, int use_fire, int use_colors,struct SmokeDomainSettings *sds)
 {
-	if (amplify)
-		return new WTURBULENCE(res[0],res[1],res[2], amplify, noisetype, noisefile_path, use_fire, use_colors);
+	WTURBULENCE *wtur = NULL;
+	if (amplify){
+		wtur =  new WTURBULENCE(res[0],res[1],res[2], amplify, noisetype, noisefile_path, use_fire, use_colors, sds);
+		sds->wt = wtur;
+		Manta_API::generate_manta_sim_file_highRes(sds->smd);
+		return wtur;
+	}
 	else 
-		return NULL;
+		return wtur;
 }
 
 extern "C" void smoke_free(Manta_API *fluid)
@@ -515,10 +521,10 @@ extern "C" FLUID_3D *smoke_init(int *res, float dx, float dtdef, int use_heat, i
 	return fluid;
 }
 
-extern "C" WTURBULENCE *smoke_turbulence_init(int *res, int amplify, int noisetype, const char *noisefile_path, int use_fire, int use_colors)
+extern "C" WTURBULENCE *smoke_turbulence_init(int *res, int amplify, int noisetype, const char *noisefile_path, int use_fire, int use_colors,struct SmokeDomainSettings *sds)
 {
 	if (amplify)
-		return new WTURBULENCE(res[0],res[1],res[2], amplify, noisetype, noisefile_path, use_fire, use_colors);
+		return new WTURBULENCE(res[0],res[1],res[2], amplify, noisetype, noisefile_path, use_fire, use_colors,sds);
 	else 
 		return NULL;
 }
@@ -996,7 +1002,7 @@ extern "C" void smoke_mantaflow_sim_step(Manta_API *fluid)
 		return;
 	}
 	cout <<"Fluid_loc: "<<fluid->_density <<endl;
-	fluid->run_manta_sim_thread(fluid);
+	fluid->run_manta_sim_lowRes(fluid);
 }
 
 

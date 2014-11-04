@@ -209,10 +209,7 @@ void smoke_reallocate_highres_fluid(SmokeDomainSettings *sds, float dx, int res[
 	/* smoke_turbulence_init uses non-threadsafe functions from fftw3 lib (like fftw_plan & co). */
 	BLI_lock_thread(LOCK_FFTW);
 
-	sds->wt = smoke_turbulence_init(res, sds->amplify + 1, sds->noise, BLI_temp_dir_session(), use_fire, use_colors);
-	if (sds->flags & MOD_SMOKE_USE_MANTA){
-		smoke_mantaflow_write_scene_file(sds->smd);
-	}
+	sds->wt = smoke_turbulence_init(res, sds->amplify + 1, sds->noise, BLI_temp_dir_session(), use_fire, use_colors, sds);
 	BLI_unlock_thread(LOCK_FFTW);
 
 	sds->res_wt[0] = res[0] * (sds->amplify + 1);
@@ -2391,7 +2388,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 							}  // bigdensity
 						} // low res loop
 				if((sds->flags & MOD_SMOKE_USE_MANTA) && (bigdensity)){
-					manta_write_emitters(sfs,true,0,0,0,bigres[0], bigres[1], bigres[2], bigres[0], bigres[1], bigres[2],manta_big_inflow_sdf, NULL);
+//					manta_write_emitters(sfs,true,0,0,0,bigres[0], bigres[1], bigres[2], bigres[0], bigres[1], bigres[2],manta_big_inflow_sdf, NULL);
 					MEM_freeN(manta_big_inflow_sdf);
 				}
 				

@@ -133,16 +133,7 @@ const string smoke_step_high = "def sim_step_high(t):\n\
     sPos *= 2.0 \n\
   for substep in range(upres):  \n\
     advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=$ADVECT_ORDER$)  \n\
-  #DENSITY INFLOW\n\
-  \n\
-  #if (applyInflow): \n\
-  #  if noise.valScale > 0.:\n\
-  #    densityInflowMeshNoise( flags=xl_flags, density=xl_density, noise=xl_wltnoise, mesh=source, scale=3, sigma=0.5 )\n\
-  #  else:\n\
-  #    densityInflowMesh(flags=xl_flags, density=xl_density, mesh=source, value=1)\n\
-  #DENSITY OUTPUT\n\
-  xl_density.writeGridToMemory(memLoc = \"$XL_DENSITY_MEM$\",sizeAllowed = \"$XL_DENSITY_SIZE$\") \n\
-  #xl_density.save('densityXl_%04d.uni' % t)\n\
+\n\
   xl.step()\n";
 
 const string full_smoke_setup = "from manta import * \n\
