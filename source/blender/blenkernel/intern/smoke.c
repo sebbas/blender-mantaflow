@@ -181,7 +181,7 @@ void smoke_reallocate_fluid(SmokeDomainSettings *sds, float dx, int res[3], int 
 		sds->fluid = NULL;
 		return;
 	}
-	sds->fluid = smoke_init(res, dx, DT_DEFAULT, use_heat, use_fire, use_colors, sds);
+	sds->fluid = smoke_init(res, dx, DT_DEFAULT, use_heat, use_fire, use_colors, sds->smd);
 	smoke_initBlenderRNA(sds->fluid, &(sds->alpha), &(sds->beta), &(sds->time_scale), &(sds->vorticity), &(sds->border_collisions),
 	                     &(sds->burning_rate), &(sds->flame_smoke), sds->flame_smoke_color, &(sds->flame_vorticity), &(sds->flame_ignition), &(sds->flame_max_temp));
 

@@ -89,7 +89,6 @@ typedef struct SmokeSolvers{
 	
 }SmokeSolvers;
 
-#ifndef WITH_MANTA /*Use old SDS with FLUID_3D object*/
 typedef struct SmokeDomainSettings {
 	struct SmokeModifierData *smd; /* for fast RNA access */
 	struct FLUID_3D *fluid;
@@ -176,96 +175,6 @@ typedef struct SmokeDomainSettings {
 	float mock_var;	/*not used*/
 //	float mock_var2;	/*not used*/
 } SmokeDomainSettings;
-
-#else /*Use SDS with Mantaflow Object*/ 
-typedef struct SmokeDomainSettings {
-	struct SmokeModifierData *smd; /* for fast RNA access */
-	struct Manta_API *fluid;
-void *fluid_mutex;
-struct Group *fluid_group;
-struct Group *eff_group; // UNUSED
-struct Group *coll_group; // collision objects group
-struct WTURBULENCE *wt; // WTURBULENCE object, if active
-struct GPUTexture *tex;
-struct GPUTexture *tex_wt;
-struct GPUTexture *tex_shadow;
-struct GPUTexture *tex_flame;
-struct Object *manta_obj;
-float *shadow;
-
-/* simulation data */
-float p0[3]; /* start point of BB in local space (includes sub-cell shift for adaptive domain)*/
-float p1[3]; /* end point of BB in local space */
-float dp0[3]; /* difference from object center to grid start point */
-float cell_size[3]; /* size of simulation cell in local space */
-float global_size[3]; /* global size of domain axises */
-float prev_loc[3];
-int shift[3]; /* current domain shift in simulation cells */
-float shift_f[3]; /* exact domain shift */
-float obj_shift_f[3]; /* how much object has shifted since previous smoke frame (used to "lock" domain while drawing) */
-float imat[4][4]; /* domain object imat */
-float obmat[4][4]; /* domain obmat */
-
-int base_res[3]; /* initial "non-adapted" resolution */
-int res_min[3]; /* cell min */
-int res_max[3]; /* cell max */
-int res[3]; /* data resolution (res_max-res_min) */
-int total_cells;
-float dx; /* 1.0f / res */
-float scale; /* largest domain size */
-
-/* user settings */
-int adapt_margin;
-int adapt_res;
-float adapt_threshold;
-
-float alpha;
-float beta;
-int amplify; /* wavelet amplification */
-int maxres; /* longest axis on the BB gets this resolution assigned */
-int flags; /* show up-res or low res, etc */
-int viewsettings;
-short noise; /* noise type: wave, curl, anisotropic */
-short diss_percent; 
-int diss_speed;/* in frames */
-float strength;
-int res_wt[3];
-float dx_wt;
-int cache_comp;
-int cache_high_comp;
-
-/* Smoke uses only one cache from now on (index [0]), but keeping the array for now for reading old files. */
-struct PointCache *point_cache[2];	/* definition is in DNA_object_force.h */
-struct ListBase ptcaches[2];
-struct EffectorWeights *effector_weights;
-int border_collisions;	/* How domain border collisions are handled */
-float time_scale;
-float vorticity;
-int active_fields;
-float active_color[3]; /* monitor color situation of simulation */
-int highres_sampling;
-
-/* flame parameters */
-float burning_rate, flame_smoke, flame_vorticity;
-float flame_ignition, flame_max_temp;
-float flame_smoke_color[3];
-/* mantaflow settings */
-int manta_solver_res;	/*dimension of manta solver, 2d or 3d*/
-int manta_start_frame;
-int manta_end_frame;
-int manta_uvs_num;		/*number of UVs, important for octaves count*/
-/*noise settings*/
-float noise_clamp_neg;
-float noise_clamp_pos;
-float noise_val_scale;
-float noise_val_offset;
-float noise_time_anim;
-int manta_sim_frame;/*current simulation frame number. If not simulating-> manta_sim_frame == -1*/
-float mock_var;	/*not used*/
-//	float mock_var2;	/*not used*/
-} SmokeDomainSettings;
-
-#endif
 
 /* inflow / outflow */
 

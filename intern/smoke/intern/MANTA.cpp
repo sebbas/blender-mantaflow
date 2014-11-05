@@ -293,7 +293,6 @@ void *Manta_API::run_manta_scene_thread(void *arguments)
 
 void Manta_API::run_manta_scene(Manta_API * fluid)
 {
-	run_manta_sim_lowRes(fluid);
 }
 
 void Manta_API::stop_manta_sim()
@@ -382,22 +381,6 @@ void Manta_API::export_obstacles(float *data, int x, int y, int z)
 	PyGILState_Release(gilstate);		
 }
 
-void Manta_API::run_manta_sim_lowRes(Manta_API *fluid)
-{
-	PyGILState_STATE gilstate = PyGILState_Ensure();
-	int sim_frame = 1;
-	manta_write_effectors(fluid);
-	std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << sim_frame) )->str();
-	std::string py_string_0 = string("sim_step_low(").append(frame_str);
-	std::string py_string_1 = py_string_0.append(")\0");
-	cout << "Debug C++: densityPointer:" << Manta_API::getGridPointer("density", "s")<<endl;
-	PyRun_SimpleString("print ('pyhton density pointer:' + density.getDataPointer())");
-	PyRun_SimpleString(py_string_1.c_str());
-	cout<< "done"<<manta_sim_running<<endl;
-	PyGILState_Release(gilstate);
-	updatePointers();
-}
-
 void Manta_API::run_manta_sim_highRes(WTURBULENCE *wt)
 {
 	PyGILState_STATE gilstate = PyGILState_Ensure();
@@ -412,18 +395,6 @@ void Manta_API::run_manta_sim_highRes(WTURBULENCE *wt)
 	cout<< "done"<<manta_sim_running<<endl;
 	PyGILState_Release(gilstate);
 	updateHighResPointers(wt);
-}
-
-
-void Manta_API::generate_manta_sim_file_lowRes(SmokeModifierData *smd)
-{
-	string smoke_script = smoke_setup_low  + smoke_step_low ;	
-
-	std::string final_script = parseScript(smoke_script, smd);
-	vector<string> a;
-	a.push_back("manta_scene.py");
-	runMantaScript(final_script,a); /*need this to delete previous solvers and grids*/
-	updatePointers();
 }
 
 void Manta_API::generate_manta_sim_file_highRes(SmokeModifierData *smd)
@@ -593,12 +564,12 @@ void Manta_API::initBlenderRNA(float *alpha, float *beta, float *dt_factor, floa
 }
 
 
-void Manta_API::updatePointers()
+void Manta_API::updatePointers(FLUID_3D *fluid)
 {
 	stringstream ss(getGridPointer("density", "s"));
 	void *gridPointer = NULL;
 	ss >> gridPointer;
-	_density = (float* )gridPointer;
+	fluid->_density = (float* )gridPointer;
 	ss.str("");
 }
 
@@ -720,7 +691,7 @@ Manta_API::Manta_API(int *res, float dx, float dtdef, int init_heat, int init_fi
 //	
 //	_colloPrev = 1;	// default value
 	
-	sds->fluid = this;
+//	sds->fluid = this;
 	generate_manta_sim_file_lowRes(sds->smd);
 }
 

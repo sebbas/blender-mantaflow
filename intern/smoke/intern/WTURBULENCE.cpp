@@ -1291,6 +1291,8 @@ WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int no
 	// noise tiles
 	_noiseTile = new float[noiseTileSize * noiseTileSize * noiseTileSize];
 	setNoise(noisetype, noisefile_path);
+	sds->smd->domain->wt = this;
+	Manta_API::generate_manta_sim_file_highRes(sds->smd);
 }
 /// destructor
 WTURBULENCE::~WTURBULENCE()
@@ -1325,11 +1327,31 @@ void WTURBULENCE::setNoise(int type, const char *noisefile_path){}
 void WTURBULENCE::initBlenderRNA(float *strength){}
 
 // step more readable version -- no rotation correction
-void WTURBULENCE::stepTurbulenceReadable(float dt, float* xvel, float* yvel, float* zvel, unsigned char *obstacles){}
+void WTURBULENCE::stepTurbulenceReadable(float dt, float* xvel, float* yvel, float* zvel, unsigned char *obstacles){
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	int sim_frame = 1;
+	//	manta_write_effectors(fluid);
+	std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << sim_frame) )->str();
+	std::string py_string_0 = string("sim_step_high(").append(frame_str);
+	std::string py_string_1 = py_string_0.append(")\0");
+	PyRun_SimpleString(py_string_1.c_str());
+	PyGILState_Release(gilstate);
+	Manta_API::updateHighResPointers(this);
+}
 
 // step more complete version -- include rotation correction
 // and use OpenMP if available
-void WTURBULENCE::stepTurbulenceFull(float dt, float* xvel, float* yvel, float* zvel, unsigned char *obstacles){}
+void WTURBULENCE::stepTurbulenceFull(float dt, float* xvel, float* yvel, float* zvel, unsigned char *obstacles){
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	int sim_frame = 1;
+	//	manta_write_effectors(fluid);
+	std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << sim_frame) )->str();
+	std::string py_string_0 = string("sim_step_high(").append(frame_str);
+	std::string py_string_1 = py_string_0.append(")\0");
+	PyRun_SimpleString(py_string_1.c_str());
+	PyGILState_Release(gilstate);
+	Manta_API::updateHighResPointers(this);
+}
 
 // texcoord functions
 void WTURBULENCE::advectTextureCoordinates(float dtOrg, float* xvel, float* yvel, float* zvel, float *tempBig1, float *tempBig2){}

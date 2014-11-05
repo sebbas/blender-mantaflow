@@ -35,11 +35,14 @@
 #include <zlib.h>
 
 #include "float.h"
+#include "MANTA.h"
+#include "scenarios/smoke.h"
 
 #if PARALLEL==1
 #include <omp.h>
 #endif // PARALLEL 
 
+#ifndef WITH_MANTA
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -1641,3 +1644,310 @@ void FLUID_3D::processBurn(float *fuel, float *smoke, float *react, float *flame
 		}
 	}
 }
+/*===============================================================================================*/
+/*===============================================================================================*/
+#else /*USING MANTAFLOW STRUCTURES*/
+/*===============================================================================================*/
+/*===============================================================================================*/
+
+FLUID_3D::FLUID_3D(int *res, float dx, float dtdef, int init_heat, int init_fire, int init_colors, SmokeModifierData *smd) :
+_xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
+{
+	// set simulation consts
+	_dt = dtdef;	// just in case. set in step from a RNA factor
+	
+	_iterations = 100;
+	_tempAmb = 0; 
+	_heatDiffusion = 1e-3;
+	_totalTime = 0.0f;
+	_totalSteps = 0;
+	_res = Vec3Int(_xRes,_yRes,_zRes);
+	_maxRes = MAX3(_xRes, _yRes, _zRes);
+	
+	// initialize wavelet turbulence
+	/*
+	 if(amplify)
+	 _wTurbulence = new WTURBULENCE(_res[0],_res[1],_res[2], amplify, noisetype);
+	 else
+	 _wTurbulence = NULL;
+	 */
+	
+	// scale the constants according to the refinement of the grid
+	if (!dx)
+		_dx = 1.0f / (float)_maxRes;
+	else
+		_dx = dx;
+	_constantScaling = 64.0f / _maxRes;
+	_constantScaling = (_constantScaling < 1.0f) ? 1.0f : _constantScaling;
+	_vorticityEps = 2.0f / _constantScaling; // Just in case set a default value
+	
+	// allocate arrays
+	_totalCells   = _xRes * _yRes * _zRes;
+	_slabSize = _xRes * _yRes;
+	_xVelocity    = new float[_totalCells];
+	_yVelocity    = new float[_totalCells];
+	_zVelocity    = new float[_totalCells];
+	_xVelocityOb  = new float[_totalCells];
+	_yVelocityOb  = new float[_totalCells];
+	_zVelocityOb  = new float[_totalCells];
+	_xVelocityOld = new float[_totalCells];
+	_yVelocityOld = new float[_totalCells];
+	_zVelocityOld = new float[_totalCells];
+	_xForce       = new float[_totalCells];
+	_yForce       = new float[_totalCells];
+	_zForce       = new float[_totalCells];
+	_density      = new float[_totalCells];
+	_densityOld   = new float[_totalCells];
+	_obstacles    = new unsigned char[_totalCells]; // set 0 at end of step
+	
+	// For threaded version:
+	_xVelocityTemp = new float[_totalCells];
+	_yVelocityTemp = new float[_totalCells];
+	_zVelocityTemp = new float[_totalCells];
+	_densityTemp   = new float[_totalCells];
+	
+	// DG TODO: check if alloc went fine
+	
+	for (int x = 0; x < _totalCells; x++)
+	{
+		_density[x]      = 0.0f;
+		_densityOld[x]   = 0.0f;
+		_xVelocity[x]    = 0.0f;
+		_yVelocity[x]    = 0.0f;
+		_zVelocity[x]    = 0.0f;
+		_xVelocityOb[x]  = 0.0f;
+		_yVelocityOb[x]  = 0.0f;
+		_zVelocityOb[x]  = 0.0f;
+		_xVelocityOld[x] = 0.0f;
+		_yVelocityOld[x] = 0.0f;
+		_zVelocityOld[x] = 0.0f;
+		_xForce[x]       = 0.0f;
+		_yForce[x]       = 0.0f;
+		_zForce[x]       = 0.0f;
+		_obstacles[x]    = false;
+	}
+	
+	/* heat */
+	_heat = _heatOld = _heatTemp = NULL;
+	if (init_heat) {
+		initHeat();
+	}
+	// Fire simulation
+	_flame = _fuel = _fuelTemp = _fuelOld = NULL;
+	_react = _reactTemp = _reactOld = NULL;
+	if (init_fire) {
+		initFire();
+	}
+	// Smoke color
+	_color_r = _color_rOld = _color_rTemp = NULL;
+	_color_g = _color_gOld = _color_gTemp = NULL;
+	_color_b = _color_bOld = _color_bTemp = NULL;
+	if (init_colors) {
+		initColors(0.0f, 0.0f, 0.0f);
+	}
+	
+	// boundary conditions of the fluid domain
+	// set default values -> vertically non-colliding
+	_domainBcFront = true;
+	_domainBcTop = false;
+	_domainBcLeft = true;
+	_domainBcBack = _domainBcFront;
+	_domainBcBottom = _domainBcTop;
+	_domainBcRight	= _domainBcLeft;
+	
+	_colloPrev = 1;	// default value
+	
+	string smoke_script = smoke_setup_low  + smoke_step_low;
+	smd->domain->fluid = this;
+	std::string final_script = Manta_API::parseScript(smoke_script, smd);
+	vector<string> a;
+	a.push_back("manta_scene.py");
+	runMantaScript(final_script,a); /*need this to delete previous solvers and grids*/
+	Manta_API::updatePointers(this);
+
+}
+
+void FLUID_3D::initHeat()
+{
+	
+}
+
+void FLUID_3D::initFire()
+{
+
+}
+
+void FLUID_3D::initColors(float init_r, float init_g, float init_b)
+{
+
+}
+
+void FLUID_3D::setBorderObstacles()
+{
+	
+}
+
+FLUID_3D::~FLUID_3D()
+{
+	if (_xVelocity) delete[] _xVelocity;
+	if (_yVelocity) delete[] _yVelocity;
+	if (_zVelocity) delete[] _zVelocity;
+	if (_xVelocityOb) delete[] _xVelocityOb;
+	if (_yVelocityOb) delete[] _yVelocityOb;
+	if (_zVelocityOb) delete[] _zVelocityOb;
+	if (_xVelocityOld) delete[] _xVelocityOld;
+	if (_yVelocityOld) delete[] _yVelocityOld;
+	if (_zVelocityOld) delete[] _zVelocityOld;
+	if (_xForce) delete[] _xForce;
+	if (_yForce) delete[] _yForce;
+	if (_zForce) delete[] _zForce;
+	if (_density) delete[] _density;
+	if (_densityOld) delete[] _densityOld;
+	if (_heat) delete[] _heat;
+	if (_heatOld) delete[] _heatOld;
+	if (_obstacles) delete[] _obstacles;
+	
+	if (_xVelocityTemp) delete[] _xVelocityTemp;
+	if (_yVelocityTemp) delete[] _yVelocityTemp;
+	if (_zVelocityTemp) delete[] _zVelocityTemp;
+	if (_densityTemp) delete[] _densityTemp;
+	if (_heatTemp) delete[] _heatTemp;
+	
+	if (_flame) delete[] _flame;
+	if (_fuel) delete[] _fuel;
+	if (_fuelTemp) delete[] _fuelTemp;
+	if (_fuelOld) delete[] _fuelOld;
+	if (_react) delete[] _react;
+	if (_reactTemp) delete[] _reactTemp;
+	if (_reactOld) delete[] _reactOld;
+	
+	if (_color_r) delete[] _color_r;
+	if (_color_rOld) delete[] _color_rOld;
+	if (_color_rTemp) delete[] _color_rTemp;
+	if (_color_g) delete[] _color_g;
+	if (_color_gOld) delete[] _color_gOld;
+	if (_color_gTemp) delete[] _color_gTemp;
+	if (_color_b) delete[] _color_b;
+	if (_color_bOld) delete[] _color_bOld;
+	if (_color_bTemp) delete[] _color_bTemp;
+	
+    // printf("deleted fluid\n");
+}
+
+// init direct access functions from blender
+void FLUID_3D::initBlenderRNA(float *alpha, float *beta, float *dt_factor, float *vorticity, int *borderCollision, float *burning_rate,
+							  float *flame_smoke, float *flame_smoke_color, float *flame_vorticity, float *flame_ignition_temp, float *flame_max_temp)
+{
+	_alpha = alpha;
+	_beta = beta;
+	_dtFactor = dt_factor;
+	_vorticityRNA = vorticity;
+	_borderColli = borderCollision;
+	_burning_rate = burning_rate;
+	_flame_smoke = flame_smoke;
+	_flame_smoke_color = flame_smoke_color;
+	_flame_vorticity = flame_vorticity;
+	_ignition_temp = flame_ignition_temp;
+	_max_temp = flame_max_temp;
+}
+
+//////////////////////////////////////////////////////////////////////
+// step simulation once
+//////////////////////////////////////////////////////////////////////
+void FLUID_3D::step(float dt, float gravity[3])
+{
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	int sim_frame = 1;
+	//	manta_write_effectors(fluid);
+	std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << sim_frame) )->str();
+	std::string py_string_0 = string("sim_step_low(").append(frame_str);
+	std::string py_string_1 = py_string_0.append(")\0");
+	cout << "Debug C++: densityPointer:" << Manta_API::getGridPointer("density", "s")<<endl;
+	PyRun_SimpleString("print ('pyhton density pointer:' + density.getDataPointer())");
+	PyRun_SimpleString(py_string_1.c_str());
+	cout<< "done"<<manta_sim_running<<endl;
+	PyGILState_Release(gilstate);
+	Manta_API::updatePointers(this);
+}
+
+
+// Set border collision model from RNA setting
+
+void FLUID_3D::setBorderCollisions() {
+}
+
+void FLUID_3D::artificialDampingSL(int zBegin, int zEnd) {	
+}
+
+void FLUID_3D::artificialDampingExactSL(int pos) {
+}
+
+void FLUID_3D::copyBorderAll(float* field, int zBegin, int zEnd)
+{
+
+}
+
+void FLUID_3D::wipeBoundaries(int zBegin, int zEnd)
+{
+}
+
+void FLUID_3D::wipeBoundariesSL(int zBegin, int zEnd)
+{
+	
+}
+
+void FLUID_3D::addForce(int zBegin, int zEnd)
+{
+}
+
+void FLUID_3D::project()
+{
+
+}
+
+void FLUID_3D::setObstacleVelocity(int zBegin, int zEnd)
+{
+}
+
+void FLUID_3D::diffuseHeat()
+{
+}
+
+void FLUID_3D::addObstacle(OBSTACLE* obstacle)
+{
+}
+
+void FLUID_3D::setObstaclePressure(float *_pressure, int zBegin, int zEnd)
+{
+}
+
+void FLUID_3D::setObstacleBoundaries(float *_pressure, int zBegin, int zEnd)
+{
+}
+
+void FLUID_3D::addBuoyancy(float *heat, float *density, float gravity[3], int zBegin, int zEnd)
+{
+}
+
+void FLUID_3D::addVorticity(int zBegin, int zEnd)
+{
+}
+
+
+void FLUID_3D::advectMacCormackBegin(int zBegin, int zEnd)
+{
+}
+
+void FLUID_3D::advectMacCormackEnd1(int zBegin, int zEnd)
+{
+}
+
+void FLUID_3D::advectMacCormackEnd2(int zBegin, int zEnd)
+{
+}
+
+
+void FLUID_3D::processBurn(float *fuel, float *smoke, float *react, float *flame, float *heat,
+						   float *r, float *g, float *b, int total_cells, float dt)
+{}
+#endif /*WITH_MANTA*/

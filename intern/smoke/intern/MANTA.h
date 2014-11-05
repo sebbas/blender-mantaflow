@@ -20,7 +20,7 @@
 
 void export_force_fields(int size_x, int size_y, int size_z, float *f_x, float*f_y, float*f_z);/*defined in pymain.cpp*/
 void export_em_fields(float *em_map, float flow_density, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z, float *inf, float *vel);/*defined in pymain.cpp*/
-extern "C" void manta_write_effectors(struct Manta_API *fluid); /*defined in smoke_api.cpp*/
+extern "C" void manta_write_effectors(struct FLUID_3D *fluid); /*defined in smoke_api.cpp*/
 void runMantaScript(const string& ss,vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
 
 /*for passing to detached thread*/
@@ -99,14 +99,12 @@ public:
 	
 	void *run_manta_scene_thread(void *threadid);
 	
-	void run_manta_sim_lowRes(Manta_API *fluid);
 	void run_manta_sim_highRes(WTURBULENCE *wt);
 	
 	void run_manta_scene(Manta_API * fluid);
 	
 	void stop_manta_sim();
 	
-	void generate_manta_sim_file_lowRes(SmokeModifierData *smd);
 	static void generate_manta_sim_file_highRes(SmokeModifierData *smd);
 	
 	void manta_sim_step(int frame);
@@ -124,9 +122,9 @@ public:
 	static void addAdaptiveGrid(void * data, string gridName, string solverName, string type,int minX, int minY, int minZ, int maxX, int maxY, int maxZ);
 	static void export_obstacles(float *data, int x, int y, int z);
 	
-	std::string getGridPointer(string gridName, string solverName);
-	void updatePointers();
-	void updateHighResPointers(WTURBULENCE *wt);
+	static std::string getGridPointer(string gridName, string solverName);
+	static void updatePointers(FLUID_3D *fluid);
+	static void updateHighResPointers(WTURBULENCE *wt);
 };
 
 

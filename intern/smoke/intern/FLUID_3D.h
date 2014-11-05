@@ -46,7 +46,7 @@ struct WTURBULENCE;
 struct FLUID_3D  
 {
 	public:
-		FLUID_3D(int *res, float dx, float dtdef, int init_heat, int init_fire, int init_colors);
+		FLUID_3D(int *res, float dx, float dtdef, int init_heat, int init_fire, int init_colors, struct SmokeModifierData *smd);
 		FLUID_3D() {};
 		virtual ~FLUID_3D();
 
