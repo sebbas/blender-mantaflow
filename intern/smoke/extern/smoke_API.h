@@ -110,7 +110,6 @@ void smoke_ensure_colors(struct FLUID_3D *fluid, struct WTURBULENCE *wt, float i
 
 	/*Mantaflow functions*/
 int smoke_mantaflow_read(struct SmokeDomainSettings *sds, char* name, bool with_wavelets); //1:success, 0: no file,error
-//void smoke_mantaflow_sim_step(struct Scene *scene, struct SmokeModifierData *smd);
 void smoke_mantaflow_stop_sim(struct Manta_API *fluid);
 void manta_write_effectors(struct FLUID_3D *fluid);
 void manta_update_effectors(struct Scene *scene, struct Object *ob,struct SmokeDomainSettings *sds, float dt);

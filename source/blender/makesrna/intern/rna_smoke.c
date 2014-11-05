@@ -100,8 +100,6 @@ static void rna_Smoke_reset_dependency(Main *bmain, Scene *scene, PointerRNA *pt
 static void rna_Smoke_manta_write_settings(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
 	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
-	if (settings->flags & MOD_SMOKE_USE_MANTA)
-		smoke_mantaflow_write_scene_file(settings->smd);
 	rna_Smoke_reset(bmain,scene,ptr);
 }
 

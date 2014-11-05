@@ -1245,11 +1245,10 @@ WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int no
 	
 	// allocate high resolution density field
 	_totalStepsBig = 0;
-	_densityBig = new float[_totalCellsBig];
+	_densityBig = NULL;
 	_densityBigOld = new float[_totalCellsBig];
 	
 	for(int i = 0; i < _totalCellsBig; i++) {
-		_densityBig[i] = 
 		_densityBigOld[i] = 0.;
 	}
 	
@@ -1293,6 +1292,7 @@ WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int no
 	setNoise(noisetype, noisefile_path);
 	sds->smd->domain->wt = this;
 	Manta_API::generate_manta_sim_file_highRes(sds->smd);
+	Manta_API::updateHighResPointers(this);
 }
 /// destructor
 WTURBULENCE::~WTURBULENCE()

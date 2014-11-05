@@ -1696,7 +1696,7 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	_xForce       = new float[_totalCells];
 	_yForce       = new float[_totalCells];
 	_zForce       = new float[_totalCells];
-	_density      = new float[_totalCells];
+	_density      = NULL;
 	_densityOld   = new float[_totalCells];
 	_obstacles    = new unsigned char[_totalCells]; // set 0 at end of step
 	
@@ -1710,7 +1710,6 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	
 	for (int x = 0; x < _totalCells; x++)
 	{
-		_density[x]      = 0.0f;
 		_densityOld[x]   = 0.0f;
 		_xVelocity[x]    = 0.0f;
 		_yVelocity[x]    = 0.0f;

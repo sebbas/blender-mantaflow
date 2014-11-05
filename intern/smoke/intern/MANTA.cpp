@@ -692,7 +692,7 @@ Manta_API::Manta_API(int *res, float dx, float dtdef, int init_heat, int init_fi
 //	_colloPrev = 1;	// default value
 	
 //	sds->fluid = this;
-	generate_manta_sim_file_lowRes(sds->smd);
+//	generate_manta_sim_file_lowRes(sds->smd);
 }
 
 Manta_API::~Manta_API()

@@ -2620,12 +2620,8 @@ static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *
 
 		if (sds->total_cells > 1) {
 			update_effectors(scene, ob, sds, dtSubdiv); // DG TODO? problem --> uses forces instead of velocity, need to check how they need to be changed with variable dt
-			if (sds->flags & MOD_SMOKE_USE_MANTA){
-				smoke_mantaflow_sim_step(sds->fluid);
-			}
-			else{
 				smoke_step(sds->fluid, gravity, dtSubdiv);
-			}
+			
 		}
 	}
 }
