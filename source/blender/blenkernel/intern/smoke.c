@@ -930,11 +930,11 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 //				fuel[z] = 0;
 //				flame[z] = 0;
 //			}
-//			if (r) {
-//				r[z] = 0;
-//				g[z] = 0;
-//				b[z] = 0;
-//			}
+			if (r) {
+				r[z] = 0;
+				g[z] = 0;
+				b[z] = 0;
+			}
 		}
 	}
 	MEM_freeN(manta_obs_sdf);

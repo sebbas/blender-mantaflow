@@ -1741,7 +1741,9 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	_color_r = _color_rOld = _color_rTemp = NULL;
 	_color_g = _color_gOld = _color_gTemp = NULL;
 	_color_b = _color_bOld = _color_bTemp = NULL;
+	using_colors = false;
 	if (init_colors) {
+		using_colors =true;
 		initColors(0.0f, 0.0f, 0.0f);
 	}
 	
@@ -1762,8 +1764,7 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	vector<string> a;
 	a.push_back("manta_scene.py");
 	runMantaScript(final_script,a); /*need this to delete previous solvers and grids*/
-	Manta_API::updatePointers(this);
-
+	Manta_API::updatePointers(this, using_colors);
 }
 
 void FLUID_3D::initHeat()
@@ -1778,7 +1779,18 @@ void FLUID_3D::initFire()
 
 void FLUID_3D::initColors(float init_r, float init_g, float init_b)
 {
-
+	if (!_color_r){
+		using_colors = true;
+		PyGILState_STATE gilstate = PyGILState_Ensure();
+		stringstream ss;
+		ss << "manta_color_r = " << init_r << endl;
+		ss << "manta_color_g = " << init_g << endl;
+		ss << "manta_color_b = " << init_b << endl;
+		PyRun_SimpleString(ss.str().c_str());
+		PyRun_SimpleString(smoke_init_colors_low.c_str());
+		PyGILState_Release(gilstate);
+		Manta_API::updatePointers(this, true);
+	}
 }
 
 void FLUID_3D::setBorderObstacles()
@@ -1861,12 +1873,10 @@ void FLUID_3D::step(float dt, float gravity[3])
 	std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << sim_frame) )->str();
 	std::string py_string_0 = string("sim_step_low(").append(frame_str);
 	std::string py_string_1 = py_string_0.append(")\0");
-	cout << "Debug C++: densityPointer:" << Manta_API::getGridPointer("density", "s")<<endl;
-	PyRun_SimpleString("print ('pyhton density pointer:' + density.getDataPointer())");
 	PyRun_SimpleString(py_string_1.c_str());
 	cout<< "done"<<manta_sim_running<<endl;
 	PyGILState_Release(gilstate);
-	Manta_API::updatePointers(this);
+	Manta_API::updatePointers(this,using_colors);
 }
 
 

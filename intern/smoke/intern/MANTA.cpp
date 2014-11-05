@@ -394,7 +394,7 @@ void Manta_API::run_manta_sim_highRes(WTURBULENCE *wt)
 	PyRun_SimpleString(py_string_1.c_str());
 	cout<< "done"<<manta_sim_running<<endl;
 	PyGILState_Release(gilstate);
-	updateHighResPointers(wt);
+	updateHighResPointers(wt,false);
 }
 
 void Manta_API::generate_manta_sim_file_highRes(SmokeModifierData *smd)
@@ -530,16 +530,16 @@ string Manta_API::getGridPointer(std::string gridName, std::string solverName)
 	
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	PyObject *main = PyImport_AddModule("__main__");
-	if (main == NULL){cout << "null" << 1 << endl;}
+	if (main == NULL){cout << "null" << 1 << endl;return "";}
     PyObject *globals = PyModule_GetDict(main);
-    if (globals == NULL){cout << "null" << 12 << endl;}
+    if (globals == NULL){cout << "null" << 12 << endl;return "";}
     PyObject *grid_object = PyDict_GetItemString(globals, gridName.c_str());
-    if (grid_object == NULL){cout << "null" << 13 << endl;}
+    if (grid_object == NULL){cout << "null" << 13 << endl;return "";}
     PyObject* func = PyObject_GetAttrString(grid_object,(char*)"getDataPointer");
-    if (func == NULL){cout << "null" << 14 << endl;}
+    if (func == NULL){cout << "null" << 14 << endl;return "";}
     PyObject* retured_value = PyObject_CallObject(func, NULL);
 	PyObject* encoded = PyUnicode_AsUTF8String(retured_value);
-	if (retured_value == NULL){cout << "null" << 15 << endl;}
+	if (retured_value == NULL){cout << "null" << 15 << endl;return "";}
 	std::string res = strdup(PyBytes_AsString(encoded));
 	cout << "RESRES" << res << "___" << endl;
 	PyGILState_Release(gilstate);		
@@ -563,23 +563,36 @@ void Manta_API::initBlenderRNA(float *alpha, float *beta, float *dt_factor, floa
 	_max_temp = flame_max_temp;
 }
 
-
-void Manta_API::updatePointers(FLUID_3D *fluid)
-{
-	stringstream ss(getGridPointer("density", "s"));
+void * Manta_API::pointerFromString(const std::string& s){
+	stringstream ss(s);
 	void *gridPointer = NULL;
 	ss >> gridPointer;
-	fluid->_density = (float* )gridPointer;
-	ss.str("");
+	return gridPointer;
 }
 
-void Manta_API::updateHighResPointers(WTURBULENCE *wt)
+
+void Manta_API::updatePointers(FLUID_3D *fluid, bool updateColor)
 {
-	stringstream ss(getGridPointer("xl_density", "xl"));
-	void *gridPointer = NULL;
-	ss >> gridPointer;
-	wt->_densityBig = (float* )gridPointer;
-	ss.str("");
+	fluid->_density = (float* )pointerFromString(getGridPointer("density", "s"));
+	if (updateColor){
+		cout<< "POINTER FOR R_LOW" << fluid->_color_r<< endl;
+		fluid->_color_r = (float* )pointerFromString(getGridPointer("color_r_low", "s"));
+		cout<< "POINTER FOR R_LOW" << fluid->_color_r<< endl;
+		fluid->_color_g = (float* )pointerFromString(getGridPointer("color_g_low", "s"));
+		fluid->_color_b = (float* )pointerFromString(getGridPointer("color_b_low", "s"));
+	}
+}
+
+void Manta_API::updateHighResPointers(WTURBULENCE *wt, bool updateColor)
+{
+	wt->_densityBig = (float* )pointerFromString(getGridPointer("xl_density", "xl"));;
+	if (updateColor){
+		cout<< "POINTER FOR R_HIGH" << wt->_color_rBig << endl;
+		wt->_color_rBig = (float* )pointerFromString(getGridPointer("color_r_high", "xl"));
+		cout<< "POINTER FOR R_HIGH" << wt->_color_rBig << endl;
+		wt->_color_gBig = (float* )pointerFromString(getGridPointer("color_g_high", "xl"));
+		wt->_color_bBig = (float* )pointerFromString(getGridPointer("color_b_high", "xl"));
+	}
 }
 
 Manta_API::Manta_API(int *res, float dx, float dtdef, int init_heat, int init_fire, int init_colors,SmokeDomainSettings *sds): _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)

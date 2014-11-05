@@ -42,7 +42,8 @@ flags.fillGrid()\n\
 source_grid = s.create(RealGrid)\n\
 source = s.create(Mesh)\n\
 forces = s.create(MACGrid)\n\
-dict_loaded = dict()\n";
+dict_loaded = dict()\n\
+manta_using_colors = False\n";
 
 const string smoke_setup_high = "xl_gs = vec3($HRESX$, $HRESY$, $HRESZ$) \n\
 xl = Solver(name = 'larger', gridSize = xl_gs) \n\
@@ -78,6 +79,46 @@ if $USE_WAVELETS$ and $UPRES$ > 0:\n\
   xl_wltnoise.timeAnim = 0.1 \n\
 ";
 
+const string smoke_init_colors_low = "print(\"INitializing Colors\")\n\
+color_r_low = s.create(RealGrid)\n\
+color_g_low = s.create(RealGrid)\n\
+color_b_low = s.create(RealGrid)\n\
+color_r_low.add(density) \n\
+color_r_low.multConst(manta_color_r) \n\
+\n\
+color_g_low.add(density) \n\
+color_g_low.multConst(manta_color_g) \n\
+\n\
+color_b_low.add(density) \n\
+color_b_low.multConst(manta_color_b) \n\
+manta_using_colors = True\n";
+
+const string smoke_del_colors_low = "\n\
+del color_r_low \n\
+del color_g_low \n\
+del color_b_low \n\
+manta_using_colors = False";
+
+const string smoke_init_colors_high = "print(\"INitializing Colors highres\")\n\
+color_r_high = xl.create(RealGrid)\n\
+color_g_high = xl.create(RealGrid)\n\
+color_b_high = xl.create(RealGrid)\n\
+color_r_high.add(xl_density) \n\
+color_r_high.multConst(manta_color_r) \n\
+\n\
+color_g_high.add(xl_density) \n\
+color_g_high.multConst(manta_color_g) \n\
+\n\
+color_b_high.add(xl_density) \n\
+color_b_high.multConst(manta_color_b) \n\
+manta_using_colors = True\n";
+
+const string smoke_del_colors_high = "\n\
+del color_r_high \n\
+del color_g_high \n\
+del color_b_high \n\
+manta_using_colors = False";
+
 const string smoke_step_low = "def sim_step_low(t):\n\
   print ('Step:' + str(t))\n\
   #load_once(source,'manta_flow.obj',dict_loaded)\n\
@@ -91,6 +132,10 @@ const string smoke_step_low = "def sim_step_low(t):\n\
   #density.add(source_grid)\n\
   addForceField(flags=flags, vel=vel,force=forces)\n\
   \n\
+  if manta_using_colors:\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=color_r_low, order=$ADVECT_ORDER$)\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=color_g_low, order=$ADVECT_ORDER$)\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=color_b_low, order=$ADVECT_ORDER$)\n\
   advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$)\n\
   advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=$ADVECT_ORDER$, strength=1.0)\n\
   \n\

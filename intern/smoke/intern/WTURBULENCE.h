@@ -128,7 +128,8 @@ struct WTURBULENCE
 		float* _color_gBigOld;
 		float* _color_bBig;
 		float* _color_bBigOld;
-
+		bool using_colors;
+	
 		// texture coordinates for noise
 		float* _tcU;
 		float* _tcV;

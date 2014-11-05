@@ -37,6 +37,7 @@
 #include "SPHERE.h"
 #include <zlib.h>
 #include <math.h>
+#include "scenarios/smoke.h"
 
 // needed to access static advection functions
 #include "FLUID_3D.h"
@@ -1262,7 +1263,9 @@ WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int no
 	_color_rBig = _color_rBigOld = NULL;
 	_color_gBig = _color_gBigOld = NULL;
 	_color_bBig = _color_bBigOld = NULL;
+	using_colors = false;
 	if (init_colors) {
+		using_colors = true;
 		initColors(0.0f, 0.0f, 0.0f);
 	}
 	
@@ -1292,7 +1295,7 @@ WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int no
 	setNoise(noisetype, noisefile_path);
 	sds->smd->domain->wt = this;
 	Manta_API::generate_manta_sim_file_highRes(sds->smd);
-	Manta_API::updateHighResPointers(this);
+	Manta_API::updateHighResPointers(this,using_colors);
 }
 /// destructor
 WTURBULENCE::~WTURBULENCE()
@@ -1321,7 +1324,21 @@ WTURBULENCE::~WTURBULENCE()
 }
 
 void WTURBULENCE::initFire(){}
-void WTURBULENCE::initColors(float init_r, float init_g, float init_b){}
+void WTURBULENCE::initColors(float init_r, float init_g, float init_b)
+{
+	if (!_color_rBig){
+		using_colors = true;
+		PyGILState_STATE gilstate = PyGILState_Ensure();
+		stringstream ss;
+		ss << "manta_color_r = " << init_r << endl;
+		ss << "manta_color_g = " << init_g << endl;
+		ss << "manta_color_b = " << init_b << endl;
+		PyRun_SimpleString(ss.str().c_str());
+		PyRun_SimpleString(smoke_init_colors_high.c_str());
+		PyGILState_Release(gilstate);
+		Manta_API::updateHighResPointers(this,true);
+	}
+}
 
 void WTURBULENCE::setNoise(int type, const char *noisefile_path){}
 void WTURBULENCE::initBlenderRNA(float *strength){}
@@ -1336,7 +1353,7 @@ void WTURBULENCE::stepTurbulenceReadable(float dt, float* xvel, float* yvel, flo
 	std::string py_string_1 = py_string_0.append(")\0");
 	PyRun_SimpleString(py_string_1.c_str());
 	PyGILState_Release(gilstate);
-	Manta_API::updateHighResPointers(this);
+	Manta_API::updateHighResPointers(this,using_colors);
 }
 
 // step more complete version -- include rotation correction
@@ -1350,7 +1367,7 @@ void WTURBULENCE::stepTurbulenceFull(float dt, float* xvel, float* yvel, float* 
 	std::string py_string_1 = py_string_0.append(")\0");
 	PyRun_SimpleString(py_string_1.c_str());
 	PyGILState_Release(gilstate);
-	Manta_API::updateHighResPointers(this);
+	Manta_API::updateHighResPointers(this,using_colors);
 }
 
 // texcoord functions

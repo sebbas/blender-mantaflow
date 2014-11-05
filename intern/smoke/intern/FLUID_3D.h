@@ -139,6 +139,7 @@ struct FLUID_3D
 		float *_color_b;
 		float *_color_bOld;
 		float *_color_bTemp;
+		bool using_colors;
 
 
 		// CG fields
