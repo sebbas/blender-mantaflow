@@ -536,6 +536,7 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	
 	/* heat */
 	_heat = _heatOld = _heatTemp = NULL;
+	using_heat = false;
 	if (init_heat) {
 		initHeat();
 	}
@@ -551,7 +552,6 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	_color_b = _color_bOld = _color_bTemp = NULL;
 	using_colors = false;
 	if (init_colors) {
-		using_colors =true;
 		initColors(0.0f, 0.0f, 0.0f);
 	}
 	
@@ -578,18 +578,17 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 void FLUID_3D::initHeat()
 {
 	if (!_heat) {
-		_heat         = new float[_totalCells];
+		_heat         = NULL;
 		_heatOld      = new float[_totalCells];
 		_heatTemp      = new float[_totalCells];
 		
 		for (int x = 0; x < _totalCells; x++)
 		{
-			_heat[x]         = 0.0f;
 			_heatOld[x]      = 0.0f;
 		}
 		using_heat = true;
 		PyGILState_STATE gilstate = PyGILState_Ensure();
-//		PyRun_SimpleString("heat_low = s.create(RealGrid)");
+		PyRun_SimpleString(smoke_init_heat_low.c_str());
 		PyGILState_Release(gilstate);
 		Manta_API::updatePointers(this, using_colors);
 	}
@@ -627,9 +626,7 @@ FLUID_3D::~FLUID_3D()
 	if (_xForce) delete[] _xForce;
 	if (_yForce) delete[] _yForce;
 	if (_zForce) delete[] _zForce;
-	if (_density) delete[] _density;
 	if (_densityOld) delete[] _densityOld;
-	if (_heat) delete[] _heat;
 	if (_heatOld) delete[] _heatOld;
 	if (_obstacles) delete[] _obstacles;
 	
@@ -685,8 +682,7 @@ void FLUID_3D::step(float dt, float gravity[3])
 		// BLender computes heat buoyancy, not yet impl. in Manta
 	Manta_API::updatePointers(this,using_colors);
 	diffuseHeat();
-	addBuoyancy(_heat, _density, gravity, 0, _zRes); 
-//	SWAP_POINTERS(_heat, _heatOld);
+
 	int sim_frame = 1;
 	manta_write_effectors(this);
 	PyGILState_STATE gilstate = PyGILState_Ensure();

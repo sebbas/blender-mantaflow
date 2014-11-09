@@ -43,7 +43,8 @@ source_grid = s.create(RealGrid)\n\
 source = s.create(Mesh)\n\
 forces = s.create(MACGrid)\n\
 dict_loaded = dict()\n\
-manta_using_colors = False\n";
+manta_using_colors = False\n\
+manta_using_heat = False\n";
 
 const string smoke_setup_high = "xl_gs = vec3($HRESX$, $HRESY$, $HRESZ$) \n\
 xl = Solver(name = 'larger', gridSize = xl_gs) \n\
@@ -113,6 +114,10 @@ color_b_high.add(xl_density) \n\
 color_b_high.multConst(manta_color_b) \n\
 manta_using_colors = True\n";
 
+const string smoke_init_heat_low = "print(\"INitializing heat lowres\")\n\
+heat_low = s.create(RealGrid)\n\
+manta_using_heat = True\n";
+
 const string smoke_del_colors_high = "\n\
 del color_r_high \n\
 del color_g_high \n\
@@ -121,6 +126,8 @@ manta_using_colors = False";
 
 const string smoke_step_low = "def sim_step_low(t):\n\
   print ('Step:' + str(t))\n\
+  if \"abc123\" in globals():\n\
+    print (abc123)\n\
   #load_once(source,'manta_flow.obj',dict_loaded)\n\
   #if t == 2:#loading data on first sim frame only\n\
   #  print('First frame: loading flows and obstacles')\n\
@@ -130,7 +137,6 @@ const string smoke_step_low = "def sim_step_low(t):\n\
   #load emission data\n\
   #source_grid.load('manta_em_influence.uni')\n\
   #density.add(source_grid)\n\
-  addForceField(flags=flags, vel=vel,force=forces)\n\
   \n\
   if manta_using_colors:\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_r_low, order=$ADVECT_ORDER$)\n\
@@ -140,7 +146,12 @@ const string smoke_step_low = "def sim_step_low(t):\n\
   advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=$ADVECT_ORDER$, strength=1.0)\n\
   \n\
   setWallBcs(flags=flags, vel=vel)    \n\
-  addBuoyancy(density=density, vel=vel, gravity=vec3($BUYO_X$,$BUYO_Y$,$BUYO_Z$), flags=flags)\n\
+      #buoyancy calculated in Blender, from _heat fields\n\
+  #addBuoyancy(density=density, vel=vel, gravity=vec3($BUYO_X$,$BUYO_Y$,$BUYO_Z$), flags=flags)\n\
+  if manta_using_heat:\n\
+    addHeatBuoyancy(density=density, densCoeff = $ALPHA$, vel=vel, gravity=$GRAVITY$, flags=flags, heat = heat_low, heatCoeff = $BETA$*10)\n\
+  #vorticityConfinement( vel=vel, flags=flags, strength=0.2 ) \n\
+  addForceField(flags=flags, vel=vel,force=forces)\n\
   \n\
   solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, openBound='xXyYzZ')\n\
   setWallBcs(flags=flags, vel=vel)\n\

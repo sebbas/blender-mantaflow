@@ -367,7 +367,7 @@ void Manta_API::addAdaptiveGrid(void * data, string gridName, string solverName,
 void Manta_API::export_obstacles(float *data, int x, int y, int z)
 {
 	if (data == NULL){
-		cout << "NULL passed to grid export_obstacles " << gridName <<endl;  return;
+		cout << "NULL passed to grid export_obstacles " <<endl;  return;
 	}
 	std::ostringstream stringStream;
 	std::string grid_name = "obs_sdf";
@@ -460,8 +460,14 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 		ss << 0.;
 	else if (varName == "BUYO_Z")
 		ss << (-smd->domain->beta);
+	else if (varName == "ALPHA")
+		ss << (-smd->domain->alpha);
+	else if (varName == "BETA")
+		ss << (-smd->domain->beta);
 	else if (varName == "ADVECT_ORDER")
 		ss << 2;
+	else if (varName == "GRAVITY")
+		ss << "vec3(0,0,-0.981)";
 	else if (varName == "ABS_FLOW")
 		ss << (smd->flow->flags & MOD_SMOKE_FLOW_ABSOLUTE)?"True":"False";
 	else if (varName == "DENSITY_MEM")
@@ -575,12 +581,17 @@ void * Manta_API::pointerFromString(const std::string& s){
 void Manta_API::updatePointers(FLUID_3D *fluid, bool updateColor)
 {
 	fluid->_density = (float* )pointerFromString(getGridPointer("density", "s"));
-	if (updateColor){
+	if (fluid->using_colors){
 		cout<< "POINTER FOR R_LOW" << fluid->_color_r<< endl;
 		fluid->_color_r = (float* )pointerFromString(getGridPointer("color_r_low", "s"));
 		cout<< "POINTER FOR R_LOW" << fluid->_color_r<< endl;
 		fluid->_color_g = (float* )pointerFromString(getGridPointer("color_g_low", "s"));
 		fluid->_color_b = (float* )pointerFromString(getGridPointer("color_b_low", "s"));
+	}
+	if(fluid->using_heat){
+		cout<< "Updating Heat" << fluid->_heat<< endl;
+		fluid->_heat = (float* )pointerFromString(getGridPointer("heat_low", "s"));
+		cout<< "Updating Heat" << fluid->_heat<< endl;
 	}
 }
 
