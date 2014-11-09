@@ -112,6 +112,7 @@ struct FLUID_3D
 		float* _zForce;
 		unsigned char*  _obstacles; /* only used (useful) for static obstacles like domain boundaries */
 		unsigned char*  _obstaclesAnim;
+		bool using_heat;
 
 		// Required for proper threading:
 		float* _xVelocityTemp;
