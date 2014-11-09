@@ -319,6 +319,7 @@ string Manta_API::gridNameFromType(const string &type)
 
 void Manta_API::addGrid(void * data, string name, string type, int x, int y, int z)
 {
+	if (data == NULL || name == "" || gridNameFromType(type) == "") return;
 	std::ostringstream stringStream;
 	stringStream << "temp_" << name;
 	std::string grid_name = stringStream.str();
@@ -338,9 +339,9 @@ void Manta_API::addGrid(void * data, string name, string type, int x, int y, int
 
 void Manta_API::addAdaptiveGrid(void * data, string gridName, string solverName, string type, int minX, int minY, int minZ, int maxX, int maxY, int maxZ)
 {
-	if (data == NULL)
+	if (data == NULL || gridName == "" || gridNameFromType(type) == "") return;
 	{
-		cout << "NULL pointer passed to grid addAdaptiveGrid for grid " << gridName <<endl;
+		cout << "NULL values passed to grid addAdaptiveGrid for grid " << gridName <<endl;
 		return;
 	}
 	std::ostringstream stringStream;
@@ -365,6 +366,9 @@ void Manta_API::addAdaptiveGrid(void * data, string gridName, string solverName,
 
 void Manta_API::export_obstacles(float *data, int x, int y, int z)
 {
+	if (data == NULL){
+		cout << "NULL passed to grid export_obstacles " << gridName <<endl;  return;
+	}
 	std::ostringstream stringStream;
 	std::string grid_name = "obs_sdf";
 	stringStream.str("");
@@ -383,6 +387,9 @@ void Manta_API::export_obstacles(float *data, int x, int y, int z)
 
 void Manta_API::run_manta_sim_highRes(WTURBULENCE *wt)
 {
+	if (wt == NULL){		
+		cout << "ERROR: cannot run wt step, wt object is NULL " <<endl;  return;
+	}
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	int sim_frame = 1;
 //	manta_write_effectors(fluid);
@@ -521,12 +528,6 @@ string Manta_API::getGridPointer(std::string gridName, std::string solverName)
 	if ((gridName == "") && (solverName == "")){
 		return "";
 	}
-	cout << "pointer to grid " << gridName << endl; 
-#ifdef WITH_MANTA
-	cout << "MANTA_DEFINED_________" << endl;
-#else
-	cout << "MANTA_NOT_DEFINED_________" << endl;
-#endif
 	
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	PyObject *main = PyImport_AddModule("__main__");
@@ -541,7 +542,7 @@ string Manta_API::getGridPointer(std::string gridName, std::string solverName)
 	PyObject* encoded = PyUnicode_AsUTF8String(retured_value);
 	if (retured_value == NULL){cout << "null" << 15 << endl;return "";}
 	std::string res = strdup(PyBytes_AsString(encoded));
-	cout << "RESRES" << res << "___" << endl;
+	cout << "Pointer on "<< gridName << " " << res << endl;
 	PyGILState_Release(gilstate);		
 	return res;
 }
