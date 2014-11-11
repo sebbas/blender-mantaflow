@@ -23,7 +23,7 @@ timings = Timings()\n\
 # prepare grids\n\
 flags = s.create(FlagGrid)\n\
 vel = s.create(MACGrid)\n\
-density = s.create(RealGrid)\n\
+density = s.create(LevelsetGrid)\n\
 pressure = s.create(RealGrid)\n\
 \n\
 # noise field\n\
@@ -44,7 +44,9 @@ source = s.create(Mesh)\n\
 forces = s.create(MACGrid)\n\
 dict_loaded = dict()\n\
 manta_using_colors = False\n\
-manta_using_heat = False\n";
+manta_using_heat = False\n\
+low_flags_updated = False\n\
+";
 
 const string smoke_setup_high = "xl_gs = vec3($HRESX$, $HRESY$, $HRESZ$) \n\
 xl = Solver(name = 'larger', gridSize = xl_gs) \n\
@@ -124,6 +126,7 @@ del color_g_high \n\
 del color_b_high \n\
 manta_using_colors = False";
 
+
 const string smoke_step_low = "def sim_step_low(t):\n\
   print ('Step:' + str(t))\n\
   if \"abc123\" in globals():\n\
@@ -153,7 +156,7 @@ const string smoke_step_low = "def sim_step_low(t):\n\
   #vorticityConfinement( vel=vel, flags=flags, strength=0.2 ) \n\
   addForceField(flags=flags, vel=vel,force=forces)\n\
   \n\
-  solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, openBound='xXyYzZ')\n\
+  solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, openBound='$BOUNDCONDITIONS$')\n\
   setWallBcs(flags=flags, vel=vel)\n\
   \n\
   s.step()\n";
@@ -176,6 +179,35 @@ const string smoke_step_low = "def sim_step_low(t):\n\
 //  #density.save('den%04d_temp.uni' % t) \n\
 //  #os.rename('den%04d_temp.uni' % t, 'den%04d.uni' % t) \n\
 //  s.step()\n";
+
+const string liquid_step_low = "def sim_step_low(t):\n\
+#update flags form density on first step\n\
+  density.multConst(-1.)\n\
+  print (manta_using_colors)\n\
+  global low_flags_updated\n\
+  if not low_flags_updated:\n\
+    print ('Updating Flags from Levelset on startup!')\n\
+    flags.updateFromLevelset(density)\n\
+  low_flags_updated = True \n\
+  density.reinitMarching(flags=flags, velTransport=vel)\n\
+  accuracy = 5e-5\n\
+  advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)\n\
+  flags.updateFromLevelset(density)\n\
+  \n\
+  advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)\n\
+  addGravity(flags=flags, vel=vel, gravity=vec3(0,0,-0.981))\n\
+  \n\
+  # print current maximal velocity\n\
+  maxvel = vel.getMaxValue()\n\
+  print ('Current max velocity %f ' % maxvel)\n\
+  \n\
+  # pressure solve\n\
+  setWallBcs(flags=flags, vel=vel)\n\
+  solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy, useResNorm=False) \n\
+  setWallBcs(flags=flags, vel=vel)\n\
+  s.step()\n\
+  density.multConst(-1.)\n\
+";
 
 const string smoke_step_high = "def sim_step_high(t):\n\
   interpolateMACGrid( source=vel, target=xl_vel ) \n\

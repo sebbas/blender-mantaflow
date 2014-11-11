@@ -566,7 +566,11 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	
 	_colloPrev = 1;	// default value
 	
-	string smoke_script = smoke_setup_low  + smoke_step_low;
+	string smoke_script = "";
+	if (smd->domain->flags & MOD_SMOKE_MANTA_USE_LIQUID)
+		smoke_script = smoke_setup_low  + liquid_step_low;
+	else
+		smoke_script = smoke_setup_low  + smoke_step_low;
 	smd->domain->fluid = this;
 	std::string final_script = Manta_API::parseScript(smoke_script, smd);
 	vector<string> a;

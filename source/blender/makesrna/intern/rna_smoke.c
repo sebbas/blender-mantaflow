@@ -571,6 +571,11 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "MantaFlow", "Use Mantaflow");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_manta_write_settings");
 	
+	prop = RNA_def_property(srna, "use_manta_liquid", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_SMOKE_MANTA_USE_LIQUID);
+	RNA_def_property_ui_text(prop, "MantaFlow Liquid", "Use Mantaflow liquid");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+	
 	prop = RNA_def_property(srna, "manta_solver_res", PROP_INT, PROP_NONE);
 	RNA_def_property_int_sdna(prop, NULL, "manta_solver_res");
 	RNA_def_property_range(prop, 2, 3);

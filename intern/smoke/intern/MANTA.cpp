@@ -466,6 +466,11 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 		ss << (-smd->domain->beta);
 	else if (varName == "ADVECT_ORDER")
 		ss << 2;
+	else if (varName == "BOUNDCONDITIONS"){
+		if(smd->domain->border_collisions == SM_BORDER_OPEN) ss << "xXyYz";
+		else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "xXyYz";
+		else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "xXyYzZ";
+	}
 	else if (varName == "GRAVITY")
 		ss << "vec3(0,0,-0.981)";
 	else if (varName == "ABS_FLOW")

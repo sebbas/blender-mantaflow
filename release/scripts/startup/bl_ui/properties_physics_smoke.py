@@ -445,6 +445,7 @@ class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
         domain = context.smoke.domain_settings
         layout.active = domain.use_manta
         split = layout.split()
+        split.prop(domain, "use_manta_liquid", text="Liquid")
         tot = domain.manta_end_frame - domain.manta_start_frame
         if domain.manta_sim_frame == -1:
             split.operator("manta_export_scene.button", text="Create Manta Setup")

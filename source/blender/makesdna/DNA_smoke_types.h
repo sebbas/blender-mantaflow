@@ -43,6 +43,7 @@ enum {
 	MOD_SMOKE_FILE_LOAD = (1 << 6),  /* flag for file load */
 	MOD_SMOKE_ADAPTIVE_DOMAIN = (1 << 7),
 	MOD_SMOKE_NOISE_CLAMP = (1 << 8), /*for mantaflow*/
+	MOD_SMOKE_MANTA_USE_LIQUID = (1 << 9),/*enable liquid simulation*/
 };
 
 #if (DNA_DEPRECATED_GCC_POISON == 1)
