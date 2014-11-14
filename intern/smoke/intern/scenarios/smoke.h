@@ -221,6 +221,10 @@ const string smoke_step_high = "def sim_step_high(t):\n\
     sPos *= 2.0 \n\
   for substep in range(upres):  \n\
     advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=$ADVECT_ORDER$)  \n\
+    if manta_using_colors:\n\
+      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=color_r_high, order=$ADVECT_ORDER$)\n\
+      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=color_g_high, order=$ADVECT_ORDER$)\n\
+      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=color_b_high, order=$ADVECT_ORDER$)\n\
 \n\
   xl.step()\n";
 
