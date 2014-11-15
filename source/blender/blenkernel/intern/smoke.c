@@ -864,6 +864,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 
 	unsigned int collIndex;
 	unsigned char *obstacles = smoke_get_obstacle(sds->fluid);
+	int *manta_obstacles = smoke_get_manta_flags(sds->fluid);
 	float *velx = NULL;
 	float *vely = NULL;
 	float *velz = NULL;
@@ -922,6 +923,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 		if (obstacles[z])
 		{
 			manta_obs_sdf[z] = 1.;
+			manta_obstacles[z] = 2;/*manta obstacle flag*/
 //			velxOrig[z] = 0;
 //			velyOrig[z] = 0;
 //			velzOrig[z] = 0;

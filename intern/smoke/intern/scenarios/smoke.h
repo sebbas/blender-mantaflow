@@ -153,7 +153,8 @@ const string smoke_step_low = "def sim_step_low(t):\n\
   #addBuoyancy(density=density, vel=vel, gravity=vec3($BUYO_X$,$BUYO_Y$,$BUYO_Z$), flags=flags)\n\
   if manta_using_heat:\n\
     addHeatBuoyancy(density=density, densCoeff = $ALPHA$, vel=vel, gravity=$GRAVITY$, flags=flags, heat = heat_low, heatCoeff = $BETA$*10)\n\
-  #vorticityConfinement( vel=vel, flags=flags, strength=0.2 ) \n\
+  if $VORTICITY$ > 0.01:\n\
+    vorticityConfinement( vel=vel, flags=flags, strength=$VORTICITY$ ) \n\
   addForceField(flags=flags, vel=vel,force=forces)\n\
   \n\
   solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, openBound='$BOUNDCONDITIONS$')\n\

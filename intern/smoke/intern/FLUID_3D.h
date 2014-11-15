@@ -142,7 +142,7 @@ struct FLUID_3D
 		float *_color_bTemp;
 		bool using_colors;
 
-
+		int *_manta_flags;
 		// CG fields
 		int _iterations;
 

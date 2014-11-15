@@ -39,6 +39,10 @@
 
 #include "../extern/smoke_API.h"  /* to ensure valid prototypes */
 
+extern "C" int *smoke_get_manta_flags(struct FLUID_3D *fluid){
+	return fluid->_manta_flags;
+}
+
 extern "C" FLUID_3D *smoke_init(int *res, float dx, float dtdef, int use_heat, int use_fire, int use_colors, struct SmokeModifierData *smd )
 {
 	FLUID_3D *fluid = new FLUID_3D(res, dx, dtdef, use_heat, use_fire, use_colors,smd);

@@ -466,7 +466,10 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 		ss << (-smd->domain->beta);
 	else if (varName == "ADVECT_ORDER")
 		ss << 2;
-	else if (varName == "BOUNDCONDITIONS"){
+	else if (varName == "VORTICITY"){
+		cout << "Vorticity :" << smd->domain->vorticity / smd->domain->fluid->_constantScaling << endl;	
+		ss << smd->domain->vorticity / smd->domain->fluid->_constantScaling;
+	}else if (varName == "BOUNDCONDITIONS"){
 		if(smd->domain->border_collisions == SM_BORDER_OPEN) ss << "xXyYz";
 		else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "xXyYz";
 		else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "xXyYzZ";
@@ -586,6 +589,7 @@ void * Manta_API::pointerFromString(const std::string& s){
 void Manta_API::updatePointers(FLUID_3D *fluid, bool updateColor)
 {
 	fluid->_density = (float* )pointerFromString(getGridPointer("density", "s"));
+	fluid->_manta_flags = (int* )pointerFromString(getGridPointer("flags", "s"));
 	if (fluid->using_colors){
 		cout<< "POINTER FOR R_LOW" << fluid->_color_r<< endl;
 		fluid->_color_r = (float* )pointerFromString(getGridPointer("color_r_low", "s"));

@@ -514,6 +514,8 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	_zVelocityTemp = new float[_totalCells];
 	_densityTemp   = new float[_totalCells];
 	
+	//initializing manta flag grids
+	_manta_flags = NULL;
 	// DG TODO: check if alloc went fine
 	
 	for (int x = 0; x < _totalCells; x++)
