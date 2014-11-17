@@ -65,9 +65,6 @@ if $USE_WAVELETS$ and $UPRES$ > 0:\n\
   xl_flags = xl.create(FlagGrid) \n\
   xl_flags.initDomain() \n\
   xl_flags.fillGrid() \n\
-  #xl_source = s.create(Mesh)\n\
-  #xl_source.load('manta_flow.obj')\n\
-  #transform_back(xl_source, gs)\n\
   xl_noise = xl.create(NoiseField, fixedSeed=256, loadFromFile=True) \n\
   xl_noise.posScale = vec3(20) \n\
   xl_noise.clamp = False \n\
@@ -128,19 +125,6 @@ manta_using_colors = False";
 
 
 const string smoke_step_low = "def sim_step_low(t):\n\
-  print ('Step:' + str(t))\n\
-  if \"abc123\" in globals():\n\
-    print (abc123)\n\
-  #load_once(source,'manta_flow.obj',dict_loaded)\n\
-  #if t == 2:#loading data on first sim frame only\n\
-  #  print('First frame: loading flows and obstacles')\n\
-  #  source.load('manta_flow.obj')\n\
-  #  transform_back(source, gs)\n\
-  print (\"Density \" , str(density), str(density.getDataPointer()))\n\
-  #load emission data\n\
-  #source_grid.load('manta_em_influence.uni')\n\
-  #density.add(source_grid)\n\
-  \n\
   if manta_using_colors:\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_r_low, order=$ADVECT_ORDER$)\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_g_low, order=$ADVECT_ORDER$)\n\
@@ -150,7 +134,6 @@ const string smoke_step_low = "def sim_step_low(t):\n\
   \n\
   setWallBcs(flags=flags, vel=vel)    \n\
       #buoyancy calculated in Blender, from _heat fields\n\
-  #addBuoyancy(density=density, vel=vel, gravity=vec3($BUYO_X$,$BUYO_Y$,$BUYO_Z$), flags=flags)\n\
   if manta_using_heat:\n\
     addHeatBuoyancy(density=density, densCoeff = $ALPHA$, vel=vel, gravity=$GRAVITY$, flags=flags, heat = heat_low, heatCoeff = $BETA$*10)\n\
   if $VORTICITY$ > 0.01:\n\
@@ -161,28 +144,10 @@ const string smoke_step_low = "def sim_step_low(t):\n\
   setWallBcs(flags=flags, vel=vel)\n\
   \n\
   s.step()\n";
-//  if (t>=0 and t<75):\n\
-//    densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)\n\
-//    #if noise.valScale > 0.:\n\
-//    #  densityInflowMeshNoise( flags=flags, density=density, noise=noise, mesh=source, scale=3, sigma=0.5 )\n\
-//    #else:\n\
-//    #  densityInflowMesh(flags=flags, density=density, mesh=source, value=1)\n\
-//    #applyInflow=True\n\
-//  addForceField(flags=flags, vel=vel,force=forces)\n\
-//  advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$) \n\
-//  advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=$ADVECT_ORDER$, strength=1.0) \n\
-//  setWallBcs(flags=flags, vel=vel) \n\
-//  addBuoyancy(density=density, vel=vel, gravity=vec3($BUYO_X$,$BUYO_Y$,$BUYO_Z$), flags=flags) \n\
-//  solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, openBound='xXyYzZ', cgMaxIterFac=1, cgAccuracy=0.01) \n\
-//  setWallBcs(flags=flags, vel=vel) \n\
-//  print(\"Writing Grid to \" + str($DENSITY_MEM$) + \" with size\" + str($DENSITY_SIZE$))\n\
-//  density.writeGridToMemory(memLoc = \"$DENSITY_MEM$\",sizeAllowed = \"$DENSITY_SIZE$\") \n\
-//  #density.save('den%04d_temp.uni' % t) \n\
-//  #os.rename('den%04d_temp.uni' % t, 'den%04d.uni' % t) \n\
-//  s.step()\n";
 
 const string liquid_step_low = "def sim_step_low(t):\n\
 #update flags form density on first step\n\
+  setWallBcs(flags=flags, vel=vel)\n\
   density.multConst(-1.)\n\
   print (manta_using_colors)\n\
   global low_flags_updated\n\
@@ -192,6 +157,7 @@ const string liquid_step_low = "def sim_step_low(t):\n\
   low_flags_updated = True \n\
   density.reinitMarching(flags=flags, velTransport=vel)\n\
   accuracy = 5e-5\n\
+  setWallBcs(flags=flags, vel=vel)\n\
   advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)\n\
   flags.updateFromLevelset(density)\n\
   \n\
