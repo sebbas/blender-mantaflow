@@ -37,7 +37,8 @@
 #include "float.h"
 #include "MANTA.h"
 #include "scenarios/smoke.h"
-
+#include <iostream>
+#include <fstream>
 #if PARALLEL==1
 #include <omp.h>
 #endif // PARALLEL 
@@ -505,6 +506,7 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	_yForce       = new float[_totalCells];
 	_zForce       = new float[_totalCells];
 	_density      = NULL;
+	_manta_inflow = NULL;
 	_densityOld   = new float[_totalCells];
 	_obstacles    = new unsigned char[_totalCells]; // set 0 at end of step
 	
@@ -575,6 +577,10 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 		smoke_script = smoke_setup_low  + smoke_step_low;
 	smd->domain->fluid = this;
 	std::string final_script = Manta_API::parseScript(smoke_script, smd);
+	ofstream myfile;
+	myfile.open ("manta_scene.py");
+	myfile << final_script;
+	myfile.close();
 	vector<string> a;
 	a.push_back("manta_scene.py");
 	runMantaScript(final_script,a); /*need this to delete previous solvers and grids*/
@@ -687,7 +693,7 @@ void FLUID_3D::step(float dt, float gravity[3])
 {
 		// BLender computes heat buoyancy, not yet impl. in Manta
 	Manta_API::updatePointers(this,using_colors);
-	diffuseHeat();
+//	diffuseHeat();
 
 	int sim_frame = 1;
 	manta_write_effectors(this);

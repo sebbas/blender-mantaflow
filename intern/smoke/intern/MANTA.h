@@ -127,6 +127,7 @@ public:
 	static std::string getGridPointer(string gridName, string solverName);
 	static void updatePointers(FLUID_3D *fluid, bool updateColor);
 	static void updateHighResPointers(WTURBULENCE *wt,bool updateColor);
+	static void manta_export_grids(SmokeModifierData *smd);
 };
 
 

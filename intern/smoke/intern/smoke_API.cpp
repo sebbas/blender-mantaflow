@@ -79,6 +79,12 @@ extern "C" size_t smoke_get_index2d(int x, int max_x, int y /*, int max_y, int z
 	return x + y * max_x;
 }
 
+extern "C" void smoke_manta_export(SmokeModifierData *smd)
+{
+	if (!smd) return;
+	Manta_API::manta_export_grids(smd);
+}
+
 extern "C" void smoke_step(FLUID_3D *fluid, float gravity[3], float dtSubdiv)
 {
 	if (fluid->_fuel) {
@@ -228,6 +234,11 @@ extern "C" void smoke_turbulence_export(WTURBULENCE *wt, float **dens, float **r
 extern "C" float *smoke_get_density(FLUID_3D *fluid)
 {
 	return fluid->_density;
+}
+
+extern "C" float *smoke_get_inflow_grid(FLUID_3D *fluid)
+{
+	return fluid->_manta_inflow;
 }
 
 extern "C" float *smoke_get_fuel(FLUID_3D *fluid)

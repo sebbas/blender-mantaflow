@@ -540,7 +540,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->alpha = -0.001;
 			smd->domain->beta = 0.1;
 			smd->domain->time_scale = 1.0;
-			smd->domain->vorticity = 2.0;
+			smd->domain->vorticity = 0.01;
 			smd->domain->border_collisions = SM_BORDER_OPEN; // open domain
 			smd->domain->flags = MOD_SMOKE_DISSOLVE_LOG;
 			smd->domain->highres_sampling = SM_HRES_FULLSAMPLE;
@@ -2241,6 +2241,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				SmokeFlowSettings *sfs = smd2->flow;
 				EmissionMap *em = &emaps[flowIndex];
 				float *density = smoke_get_density(sds->fluid);
+				float *inflow_grid = smoke_get_inflow_grid(sds->fluid);
 				float *color_r = smoke_get_color_r(sds->fluid);
 				float *color_g = smoke_get_color_g(sds->fluid);
 				float *color_b = smoke_get_color_b(sds->fluid);
@@ -2290,10 +2291,12 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 							if (dx < 0 || dy < 0 || dz < 0 || dx >= sds->res[0] || dy >= sds->res[1] || dz >= sds->res[2]) continue;
 
 							if (sfs->type == MOD_SMOKE_FLOW_TYPE_OUTFLOW) { // outflow
+								apply_outflow_fields(d_index, inflow_grid, heat, fuel, react, color_r, color_g, color_b);
 								apply_outflow_fields(d_index, density, heat, fuel, react, color_r, color_g, color_b);
 							}
 							else { // inflow
 								apply_inflow_fields(sfs, emission_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b);
+								apply_inflow_fields(sfs, emission_map[e_index], d_index, inflow_grid, heat, fuel, react, color_r, color_g, color_b);
 
 								/* initial velocity */
 								if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY) {

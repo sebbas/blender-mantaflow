@@ -39,7 +39,7 @@ noise.timeAnim = 0.2\n\
 flags.initDomain()\n\
 flags.fillGrid()\n\
 \n\
-source_grid = s.create(RealGrid)\n\
+inflow_grid = s.create(LevelsetGrid)\n\
 source = s.create(Mesh)\n\
 forces = s.create(MACGrid)\n\
 dict_loaded = dict()\n\
@@ -123,8 +123,35 @@ del color_g_high \n\
 del color_b_high \n\
 manta_using_colors = False";
 
+const string smoke_export_low = "\n\
+density.save('density.uni')\n\
+flags.save('flags.uni')\n\
+inflow_grid.save('inflow.uni')\n\
+forces.save('forces.uni')\n\
+print('Grids exported')";
 
-const string smoke_step_low = "def sim_step_low(t):\n\
+const string standalone = "\
+if (GUI):\n\
+  gui =Gui()\n\
+  gui.show()\n\
+\n\
+for step in range(100):\n\
+  sim_step_low(step, True)\n";
+
+const string smoke_step_low = "def sim_step_low(t, standalone = False):\n\
+  #applying inflow\n\
+  if standalone and t==0:\n\
+    density.load('density.uni')\n\
+    flags.load('flags.uni')\n\
+    forces.load('forces.uni')\n\
+  if standalone:\n\
+    inflow_grid.load('inflow.uni')\n\
+    inflow_grid.multConst(0.1)\n\
+    density.add(inflow_grid)\n\
+  if manta_using_heat:\n\
+    addHeatBuoyancy(density=density, densCoeff = 0.001, vel=vel, gravity=vec3(0,0,-0.981), flags=flags, heat = heat_low, heatCoeff = -0.1*10)\n\
+  else:\n\
+    addBuoyancy(density=density, vel=vel, gravity=vec3(0,0,-0.01), flags=flags)\n\
   if manta_using_colors:\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_r_low, order=$ADVECT_ORDER$)\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_g_low, order=$ADVECT_ORDER$)\n\
@@ -133,9 +160,6 @@ const string smoke_step_low = "def sim_step_low(t):\n\
   advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=$ADVECT_ORDER$, strength=1.0)\n\
   \n\
   setWallBcs(flags=flags, vel=vel)    \n\
-      #buoyancy calculated in Blender, from _heat fields\n\
-  if manta_using_heat:\n\
-    addHeatBuoyancy(density=density, densCoeff = $ALPHA$, vel=vel, gravity=$GRAVITY$, flags=flags, heat = heat_low, heatCoeff = $BETA$*10)\n\
   if $VORTICITY$ > 0.01:\n\
     vorticityConfinement( vel=vel, flags=flags, strength=$VORTICITY$ ) \n\
   addForceField(flags=flags, vel=vel,force=forces)\n\
@@ -155,9 +179,8 @@ const string liquid_step_low = "def sim_step_low(t):\n\
     print ('Updating Flags from Levelset on startup!')\n\
     flags.updateFromLevelset(density)\n\
   low_flags_updated = True \n\
-  density.reinitMarching(flags=flags, velTransport=vel)\n\
-  accuracy = 5e-5\n\
   setWallBcs(flags=flags, vel=vel)\n\
+  density.reinitMarching(flags=flags, velTransport=vel)\n\
   advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)\n\
   flags.updateFromLevelset(density)\n\
   \n\
@@ -170,7 +193,7 @@ const string liquid_step_low = "def sim_step_low(t):\n\
   \n\
   # pressure solve\n\
   setWallBcs(flags=flags, vel=vel)\n\
-  solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy, useResNorm=False) \n\
+  solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, useResNorm=True) \n\
   setWallBcs(flags=flags, vel=vel)\n\
   s.step()\n\
   density.multConst(-1.)\n\

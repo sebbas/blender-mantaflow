@@ -263,38 +263,6 @@ void Manta_API::manta_cache_path(char *filepath)
 	BLI_make_file_string("/", filepath, BLI_temp_dir_session(), name);
 }
 
-//void BLI_dir_create_recursive(const char *filepath);
-void Manta_API::create_manta_folder()
-{
-	char* filepath=NULL;
-	manta_cache_path(filepath);
-	//BLI_dir_create_recursive(filepath);
-	
-}
-
-void *Manta_API::run_manta_scene_thread(void *arguments)
-{
-//	struct manta_arg_struct *args = (struct manta_arg_struct *)arguments;
-//	//create_manta_folder();
-//	//PyInterpreterState *st = PyThreadState_GET()->interp;
-//	//PyThreadState *ts = Py_NewInterpreter();
-//	
-//	vector<string> a;
-//	a.push_back(args->filepath);
-//	//a.push_back("manta_scene.py");
-//	//args.push_back("test_1.py");
-//	
-//	runMantaScript(a);
-//	
-//	//system("./manta manta_scene.py");
-//	pthread_exit(NULL);
-	return NULL;
-}
-
-void Manta_API::run_manta_scene(Manta_API * fluid)
-{
-}
-
 void Manta_API::stop_manta_sim()
 {
 	pthread_cancel(manta_thread);
@@ -517,24 +485,30 @@ std::string Manta_API::parseLine(const string& line, SmokeModifierData *smd)
 
 std::string Manta_API::parseScript(const string & setup_string, SmokeModifierData *smd)
 {
-//	ifstream f (file);
 	std::istringstream f(setup_string);
-//	ofstream of; /*PR: for Debug*/
 	ostringstream res;
-//	of.open("manta_scene.py", std::fstream::trunc);
 	string line="";
-//	if (f.is_open()){
-		while(getline(f,line)){
-//			of << parseLine(line,smd) << "\n";
-			res << parseLine(line,smd) << "\n"; 
-		}
-//		f.close();
-//	}
-//	else{
-//		printf ("Error: No scenario file found");
-//	}
-//	of.close();
+	while(getline(f,line)){
+		res << parseLine(line,smd) << "\n"; 
+	}
 	return res.str();
+}
+
+void Manta_API::manta_export_grids(SmokeModifierData *smd){
+	std::string smoke_script;
+	if (smd->domain->flags & MOD_SMOKE_MANTA_USE_LIQUID)
+		smoke_script = smoke_setup_low  + liquid_step_low;
+	else
+		smoke_script = smoke_setup_low  + smoke_step_low;
+	std::string final_script = Manta_API::parseScript(smoke_script, smd) + standalone;
+	ofstream myfile;
+	myfile.open ("manta_scene.py");
+	myfile << final_script;
+	myfile.close();
+	
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	PyRun_SimpleString(smoke_export_low.c_str());
+	PyGILState_Release(gilstate);
 }
 
 string Manta_API::getGridPointer(std::string gridName, std::string solverName)
@@ -590,6 +564,7 @@ void Manta_API::updatePointers(FLUID_3D *fluid, bool updateColor)
 {
 	fluid->_density = (float* )pointerFromString(getGridPointer("density", "s"));
 	fluid->_manta_flags = (int* )pointerFromString(getGridPointer("flags", "s"));
+	fluid->_manta_inflow = (float* )pointerFromString(getGridPointer("inflow_grid", "s"));
 	if (fluid->using_colors){
 		cout<< "POINTER FOR R_LOW" << fluid->_color_r<< endl;
 		fluid->_color_r = (float* )pointerFromString(getGridPointer("color_r_low", "s"));
@@ -616,162 +591,3 @@ void Manta_API::updateHighResPointers(WTURBULENCE *wt, bool updateColor)
 	}
 }
 
-Manta_API::Manta_API(int *res, float dx, float dtdef, int init_heat, int init_fire, int init_colors,SmokeDomainSettings *sds): _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
-{
-	/*Here, we assume Python script has initalized the solver and all fields*/	
-	
-	//	// set simulation consts
-	_dt = dtdef;	// just in case. set in step from a RNA factor
-	_dx = dx;
-	_totalCells   = _xRes * _yRes * _zRes;
-	_slabSize = _xRes * _yRes;
-
-//	
-//	_iterations = 100;
-//	_tempAmb = 0; 
-//	_heatDiffusion = 1e-3;
-//	_totalTime = 0.0f;
-//	_totalSteps = 0;
-//	_res = Vec3Int(_xRes,_yRes,_zRes);
-//	_maxRes = MAX3(_xRes, _yRes, _zRes);
-//	
-//	// initialize wavelet turbulence
-//	/*
-//	 if(amplify)
-//	 _wTurbulence = new WTURBULENCE(_res[0],_res[1],_res[2], amplify, noisetype);
-//	 else
-//	 _wTurbulence = NULL;
-//	 */
-//	
-//	// scale the constants according to the refinement of the grid
-//	if (!dx)
-//		_dx = 1.0f / (float)_maxRes;
-//	else
-//		_dx = dx;
-//	_constantScaling = 64.0f / _maxRes;
-//	_constantScaling = (_constantScaling < 1.0f) ? 1.0f : _constantScaling;
-//	_vorticityEps = 2.0f / _constantScaling; // Just in case set a default value
-//	
-//	// allocate arrays
-	_xVelocity    = new float[_totalCells];
-	_yVelocity    = new float[_totalCells];
-	_zVelocity    = new float[_totalCells];
-	_xVelocityOb  = new float[_totalCells];
-	_yVelocityOb  = new float[_totalCells];
-	_zVelocityOb  = new float[_totalCells];
-//	_xVelocityOld = new float[_totalCells];
-//	_yVelocityOld = new float[_totalCells];
-//	_zVelocityOld = new float[_totalCells];
-	_xForce       = new float[_totalCells];
-	_yForce       = new float[_totalCells];
-	_zForce       = new float[_totalCells];
-	_density      = NULL ; //new float[_totalCells];
-//	_densityOld   = new float[_totalCells];
-	_obstacles    = new unsigned char[_totalCells]; // set 0 at end of step
-//	
-//	// For threaded version:
-//	_xVelocityTemp = new float[_totalCells];
-//	_yVelocityTemp = new float[_totalCells];
-//	_zVelocityTemp = new float[_totalCells];
-//	_densityTemp   = new float[_totalCells];
-//	
-//	// DG TODO: check if alloc went fine
-//	
-	for (int x = 0; x < _totalCells; x++)
-	{
-//		_densityOld[x]   = 0.0f;
-		_xVelocity[x]    = 0.0f;
-		_yVelocity[x]    = 0.0f;
-		_zVelocity[x]    = 0.0f;
-		_xVelocityOb[x]  = 0.0f;
-		_yVelocityOb[x]  = 0.0f;
-		_zVelocityOb[x]  = 0.0f;
-//		_xVelocityOld[x] = 0.0f;
-//		_yVelocityOld[x] = 0.0f;
-//		_zVelocityOld[x] = 0.0f;
-		_xForce[x]       = 0.0f;
-		_yForce[x]       = 0.0f;
-		_zForce[x]       = 0.0f;
-		_obstacles[x]    = false;
-	}
-//	
-//	/* heat */
-//	_heat = _heatOld = _heatTemp = NULL;
-//	if (init_heat) {
-//		initHeat();
-//	}
-//	// Fire simulation
-//	_flame = _fuel = _fuelTemp = _fuelOld = NULL;
-//	_react = _reactTemp = _reactOld = NULL;
-//	if (init_fire) {
-//		initFire();
-//	}
-//	// Smoke color
-//	_color_r = _color_rOld = _color_rTemp = NULL;
-//	_color_g = _color_gOld = _color_gTemp = NULL;
-//	_color_b = _color_bOld = _color_bTemp = NULL;
-//	if (init_colors) {
-//		initColors(0.0f, 0.0f, 0.0f);
-//	}
-//	
-//	// boundary conditions of the fluid domain
-//	// set default values -> vertically non-colliding
-//	_domainBcFront = true;
-//	_domainBcTop = false;
-//	_domainBcLeft = true;
-//	_domainBcBack = _domainBcFront;
-//	_domainBcBottom = _domainBcTop;
-//	_domainBcRight	= _domainBcLeft;
-//	
-//	_colloPrev = 1;	// default value
-	
-//	sds->fluid = this;
-//	generate_manta_sim_file_lowRes(sds->smd);
-}
-
-Manta_API::~Manta_API()
-{
-	if (_xVelocity) delete[] _xVelocity;
-	if (_yVelocity) delete[] _yVelocity;
-	if (_zVelocity) delete[] _zVelocity;
-	if (_xVelocityOb) delete[] _xVelocityOb;
-	if (_yVelocityOb) delete[] _yVelocityOb;
-	if (_zVelocityOb) delete[] _zVelocityOb;
-//	if (_xVelocityOld) delete[] _xVelocityOld;
-//	if (_yVelocityOld) delete[] _yVelocityOld;
-//	if (_zVelocityOld) delete[] _zVelocityOld;
-	if (_xForce) delete[] _xForce;
-	if (_yForce) delete[] _yForce;
-	if (_zForce) delete[] _zForce;
-	if (_density) delete[] _density;
-//	if (_densityOld) delete[] _densityOld;
-//	if (_heat) delete[] _heat;
-//	if (_heatOld) delete[] _heatOld;
-	if (_obstacles) delete[] _obstacles;
-	
-//	if (_xVelocityTemp) delete[] _xVelocityTemp;
-//	if (_yVelocityTemp) delete[] _yVelocityTemp;
-//	if (_zVelocityTemp) delete[] _zVelocityTemp;
-//	if (_densityTemp) delete[] _densityTemp;
-//	if (_heatTemp) delete[] _heatTemp;
-	
-//	if (_flame) delete[] _flame;
-//	if (_fuel) delete[] _fuel;
-//	if (_fuelTemp) delete[] _fuelTemp;
-//	if (_fuelOld) delete[] _fuelOld;
-//	if (_react) delete[] _react;
-//	if (_reactTemp) delete[] _reactTemp;
-//	if (_reactOld) delete[] _reactOld;
-//	
-//	if (_color_r) delete[] _color_r;
-//	if (_color_rOld) delete[] _color_rOld;
-//	if (_color_rTemp) delete[] _color_rTemp;
-//	if (_color_g) delete[] _color_g;
-//	if (_color_gOld) delete[] _color_gOld;
-//	if (_color_gTemp) delete[] _color_gTemp;
-//	if (_color_b) delete[] _color_b;
-//	if (_color_bOld) delete[] _color_bOld;
-//	if (_color_bTemp) delete[] _color_bTemp;
-	
-    // printf("deleted fluid\n");
-}

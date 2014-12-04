@@ -68,6 +68,7 @@
 /* enable/disable overall compilation */
 /*mantaflow include*/
 #include "../../../../intern/smoke/extern/smoke_API.h"
+//#include "../../blenkernel/intern/smoke.c"
 #include "DNA_smoke_types.h"
 
 #ifdef WITH_MOD_FLUID
@@ -78,7 +79,6 @@
 #include "DNA_mesh_types.h"
 
 #include "PIL_time.h"
-
 
 static float get_fluid_viscosity(FluidsimSettings *settings)
 {
@@ -1160,7 +1160,10 @@ static int manta_make_file_exec(bContext *C, wmOperator *op)
 		if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
 			smoke_reallocate_highres_fluid(smd->domain, smd->domain->dx, smd->domain->res, 1);
 		}
-		//		smd->domain->fluid = smoke_init(smd->domain->res, 0.1f, 0.1f, 0,0,0);
+	}
+	if (smd->domain->fluid)
+	{
+		smoke_manta_export(smd);
 	}
 	
 	/*	return OPERATOR_CANCELLED;*/
