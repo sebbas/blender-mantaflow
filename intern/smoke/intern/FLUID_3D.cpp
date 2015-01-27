@@ -505,7 +505,19 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	_xForce       = new float[_totalCells];
 	_yForce       = new float[_totalCells];
 	_zForce       = new float[_totalCells];
-	_density      = NULL;
+	/*if two-dimentional, insert manta sim into blender _density field */
+	if (smd->domain->manta_solver_res == 2){
+		_density  = new float[_totalCells];
+		_manta_flags = new int[_totalCells];
+		manta_resoution = 2;
+		_yLocation = _yRes / 2;
+	}
+	else{
+		_density  = NULL;
+		_manta_flags = NULL;
+		manta_resoution = 3;
+		_yLocation = -1;
+	}
 	_manta_inflow = NULL;
 	_densityOld   = new float[_totalCells];
 	_obstacles    = new unsigned char[_totalCells]; // set 0 at end of step
@@ -517,7 +529,6 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	_densityTemp   = new float[_totalCells];
 	
 	//initializing manta flag grids
-	_manta_flags = NULL;
 	// DG TODO: check if alloc went fine
 	
 	for (int x = 0; x < _totalCells; x++)
@@ -578,6 +589,7 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	smd->domain->fluid = this;
 	std::string final_script = Manta_API::parseScript(smoke_script, smd);
 	ofstream myfile;
+	cout<< "INITIALIZING SMOKE" << endl;
 	myfile.open ("manta_scene.py");
 	myfile << final_script;
 	myfile.close();

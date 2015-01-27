@@ -576,6 +576,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->noise_val_scale = 0.;
 			smd->domain->noise_val_offset = 0.075;
 			smd->domain->noise_time_anim = 0.2;
+			BLI_make_file_string("/", smd->domain->_manta_filepath, BLI_temp_dir_base(), "manta_scene.py");
 		}
 		else if (smd->type & MOD_SMOKE_TYPE_FLOW)
 		{
@@ -917,7 +918,8 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	
 	float *manta_obs_sdf = MEM_callocN(sds->res[0] * sds->res[1] * sds->res[2] * sizeof(float), "manta_obstacle_SDF");
 	/* obstacle cells should not contain any velocity from the smoke simulation */
-	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
+	int loopLimit = (sds->manta_solver_res == 3)?sds->res[0] * sds->res[1] * sds->res[2]:sds->res[0] * sds->res[2]; 
+	for (z = 0; z < loopLimit; z++)
 	{
 		manta_obs_sdf[z] = 0.;
 		if (obstacles[z])
@@ -2296,8 +2298,16 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 							}
 							else { // inflow
 								apply_inflow_fields(sfs, emission_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b);
-								apply_inflow_fields(sfs, emission_map[e_index], d_index, inflow_grid, heat, fuel, react, color_r, color_g, color_b);
-
+								if(sds->manta_solver_res == 3){
+									apply_inflow_fields(sfs, emission_map[e_index], d_index, inflow_grid, heat, fuel, react, color_r, color_g, color_b);
+								}
+								else{ /*2D solver*/
+									int cell_cnt;
+									for (cell_cnt=0; cell_cnt< sds->res_max[0] * sds->res_max[2]-1; ++cell_cnt ){
+										int step = (sds->res_max[1]/2) + cell_cnt * sds->res_max[1];
+										inflow_grid[cell_cnt] = density[step];
+									}
+								}
 								/* initial velocity */
 								if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY) {
 									velocity_x[d_index] = ADD_IF_LOWER(velocity_x[d_index], velocity_map[e_index * 3]);

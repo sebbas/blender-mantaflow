@@ -429,7 +429,7 @@ class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
     bl_options = {'DEFAULT_CLOSED'}
     name = bpy.props.StringProperty(name="Test Prop", default="Unknown")
     StringProp = bpy.props.StringProperty(name="manta_status", description="Status Of Simulation", default="Doing Nothing" )
-
+#    filepath = StringProperty(subtype='FILE_PATH',)
     @classmethod
     def poll(cls, context):
         md = context.smoke
@@ -437,28 +437,17 @@ class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
     
     def draw_header(self, context):
         md = context.smoke.domain_settings
-        self.layout.prop(md, "use_manta", text="")
-       
+        
     def draw(self, context):
         layout = self.layout
         
         domain = context.smoke.domain_settings
-        layout.active = domain.use_manta
         split = layout.split()
         split.prop(domain, "use_manta_liquid", text="Liquid")
-        tot = domain.manta_end_frame - domain.manta_start_frame
-        if domain.manta_sim_frame == -1:
-            split.operator("manta_export_scene.button", text="Create Manta Setup")
-            split = layout.split()
-            split.label("Status:Doing Nothing")
-        else:
-            split.operator("manta_stop_sim.button", text="Stop Sim")
-            split = layout.split()
-            split.label("Status:Simulating " + str(domain.manta_sim_frame) + "/" + str(tot))
+        split.operator("manta_export_scene.button", text="Create Manta Setup")
         split = layout.split()
-        col = split.column()
-        col.prop(domain, "manta_start_frame", text="Start")
-        col.prop(domain, "manta_end_frame", text="End")
+        split.prop(domain, "manta_filepath")
+        split = layout.split()
         col = split.column()
         col.prop(domain, "manta_solver_res", text="Solver Resolution")
         col.prop(domain, "manta_uvs", text="UVs count")

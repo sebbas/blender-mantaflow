@@ -118,6 +118,8 @@ typedef struct SmokeDomainSettings {
 	float imat[4][4]; /* domain object imat */
 	float obmat[4][4]; /* domain obmat */
 
+	char _manta_filepath[1024]; /* FILE_MAX */
+
 	int base_res[3]; /* initial "non-adapted" resolution */
 	int res_min[3]; /* cell min */
 	int res_max[3]; /* cell max */

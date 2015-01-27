@@ -68,6 +68,9 @@ float *smoke_get_force_y(struct FLUID_3D *fluid);
 float *smoke_get_force_z(struct FLUID_3D *fluid);
 	
 int *smoke_get_manta_flags(struct FLUID_3D *fluid);
+float *smoke_get_inflow_grid(struct FLUID_3D *fluid);
+void smoke_manta_export(struct SmokeModifierData *smd);
+
 unsigned char *smoke_get_obstacle(struct FLUID_3D *fluid);
 
 size_t smoke_get_index(int x, int max_x, int y, int max_y, int z);

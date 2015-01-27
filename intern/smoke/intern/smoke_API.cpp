@@ -533,10 +533,12 @@ extern "C" void manta_write_effectors(struct FLUID_3D *fluid)
 	float *force_y = smoke_get_force_y(fluid);
 	float *force_z = smoke_get_force_z(fluid);
 //	export_force_fields(size_x, size_y, size_z, force_x, force_y, force_z);
-	/*accumulate all force fields in one grid*/
-	Vec3 * accumulated_force = (Vec3*)malloc(size_x * size_y * size_z * sizeof(Vec3));
-	long index(0);
-	for (int x(0); x < size_x; x++){
+	/*accumulate all force fields in one grid*/	
+	Vec3 * accumulated_force = NULL;
+	if (fluid->manta_resoution == 3){
+		accumulated_force = (Vec3*)malloc(size_x * size_y * size_z * sizeof(Vec3));
+		long index(0);
+		for (int x(0); x < size_x; x++){
 			for (int y(0); y < size_y; y++){
 				for (int z(0); z < size_z; z++){
 					index = x + y * size_x + z * size_x * size_y;
@@ -544,6 +546,20 @@ extern "C" void manta_write_effectors(struct FLUID_3D *fluid)
 				}	
 			}		
 		}
+	}
+	else if (fluid->manta_resoution == 2){
+		accumulated_force = (Vec3*)malloc(size_x * size_z * sizeof(Vec3));
+		int step(0);
+		for (int cnt(0); cnt < size_x * size_z; ++cnt){
+			step = (fluid->yRes()/2) + cnt * fluid->yRes();
+			accumulated_force[step] = Vec3(force_x[cnt], force_z[cnt], force_y[cnt]);
+		}
+		size_y = 1;
+	}
+	else{
+		cout << "ERROR: Manta solver resoltion is neither 2 nor 3; Cannot write forces"<<endl;
+		return;
+	}
 	Manta_API::addGrid(accumulated_force, "forces", "Vec3", size_x, size_y, size_z);
 }
 

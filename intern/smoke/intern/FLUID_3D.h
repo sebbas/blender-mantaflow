@@ -114,6 +114,8 @@ struct FLUID_3D
 		unsigned char*  _obstaclesAnim;
 		float* _manta_inflow;
 		bool using_heat;
+		int manta_resoution;
+		int _yLocation;/*at which Y-coordinate store the information*/
 
 		// Required for proper threading:
 		float* _xVelocityTemp;

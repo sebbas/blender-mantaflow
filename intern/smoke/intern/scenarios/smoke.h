@@ -15,8 +15,12 @@ def load_once(grid, file, dict):\n\
     dict[grid] = 1\n\
 # solver params\n\
 res = $RES$\n\
+solver_dim = $SOLVER_DIM$\n\
 gs = vec3($RESX$,$RESY$,$RESZ$)\n\
-s = FluidSolver(name='main', gridSize = gs)\n\
+boundConditions = '$BOUNDCONDITIONS$'\n\
+if solver_dim == 2:\n\
+  gs.z = 1\n\
+s = FluidSolver(name='main', gridSize = gs, dim = $SOLVER_DIM$)\n\
 s.timestep = 0.1\n\
 timings = Timings()\n\
 \n\
@@ -124,10 +128,11 @@ del color_b_high \n\
 manta_using_colors = False";
 
 const string smoke_export_low = "\n\
-density.save('density.uni')\n\
-flags.save('flags.uni')\n\
-inflow_grid.save('inflow.uni')\n\
-forces.save('forces.uni')\n\
+import os\n\
+density.save(os.path.join('$MANTA_EXPORT_PATH$','density.uni'))\n\
+flags.save(os.path.join('$MANTA_EXPORT_PATH$','flags.uni'))\n\
+inflow_grid.save(os.path.join('$MANTA_EXPORT_PATH$','inflow.uni'))\n\
+forces.save(os.path.join('$MANTA_EXPORT_PATH$','forces.uni'))\n\
 print('Grids exported')";
 
 const string standalone = "\
@@ -148,6 +153,8 @@ const string smoke_step_low = "def sim_step_low(t, standalone = False):\n\
     inflow_grid.load('inflow.uni')\n\
     inflow_grid.multConst(0.1)\n\
     density.add(inflow_grid)\n\
+  elif solver_dim == 2:\n\
+    density.add(inflow_grid)\n\
   if manta_using_heat:\n\
     addHeatBuoyancy(density=density, densCoeff = 0.001, vel=vel, gravity=vec3(0,0,-0.981), flags=flags, heat = heat_low, heatCoeff = -0.1*10)\n\
   else:\n\
@@ -156,15 +163,22 @@ const string smoke_step_low = "def sim_step_low(t, standalone = False):\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_r_low, order=$ADVECT_ORDER$)\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_g_low, order=$ADVECT_ORDER$)\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_b_low, order=$ADVECT_ORDER$)\n\
+  print ('Advecting density')\n\
   advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$)\n\
+  print ('Advecting velocity')\n\
   advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=$ADVECT_ORDER$, strength=1.0)\n\
   \n\
+  print ('Walls')\n\
   setWallBcs(flags=flags, vel=vel)    \n\
+  print ('vorticity')\n\
   if $VORTICITY$ > 0.01:\n\
     vorticityConfinement( vel=vel, flags=flags, strength=$VORTICITY$ ) \n\
+  print ('forcefield')\n\
   addForceField(flags=flags, vel=vel,force=forces)\n\
   \n\
-  solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, openBound='$BOUNDCONDITIONS$')\n\
+  print ('pressure')\n\
+  solvePressure(flags=flags, vel=vel, pressure=pressure, openBound=boundConditions)\n\
+  print ('walls')\n\
   setWallBcs(flags=flags, vel=vel)\n\
   \n\
   s.step()\n";

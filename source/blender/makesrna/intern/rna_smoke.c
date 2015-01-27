@@ -571,6 +571,12 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "MantaFlow", "Use Mantaflow");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_manta_write_settings");
 	
+	prop = RNA_def_property(srna, "manta_filepath", PROP_STRING, PROP_FILEPATH);
+	RNA_def_property_string_sdna(prop, NULL, "_manta_filepath");
+	RNA_def_property_ui_text(prop, "Output Path",
+	                         "Directory/name to save Mantaflow scene for further simulations");
+//	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_manta_write_settings");
+	
 	prop = RNA_def_property(srna, "use_manta_liquid", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_SMOKE_MANTA_USE_LIQUID);
 	RNA_def_property_ui_text(prop, "MantaFlow Liquid", "Use Mantaflow liquid");

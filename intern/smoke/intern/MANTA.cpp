@@ -288,6 +288,7 @@ string Manta_API::gridNameFromType(const string &type)
 void Manta_API::addGrid(void * data, string name, string type, int x, int y, int z)
 {
 	if (data == NULL || name == "" || gridNameFromType(type) == "") return;
+	cout << "Adding Grid:" << name<<endl; 
 	std::ostringstream stringStream;
 	stringStream << "temp_" << name;
 	std::string grid_name = stringStream.str();
@@ -295,6 +296,7 @@ void Manta_API::addGrid(void * data, string name, string type, int x, int y, int
 	stringStream << grid_name << " = s.create(" << gridNameFromType(type) << ")";
 	const std::string command_1 = stringStream.str();
 	stringStream.str("");
+
 	stringStream << grid_name << ".readGridFromMemory(\'"<< data << "\', " << x << "," << y << "," << z << ")";
 	const std::string command_2 = stringStream.str();
 	const std::string command_3 = name + ".add(" + grid_name + ")";
@@ -343,6 +345,7 @@ void Manta_API::export_obstacles(float *data, int x, int y, int z)
 	stringStream << grid_name << " = s.create(RealGrid)";
 	const std::string command_1 = stringStream.str();
 	stringStream.str("");
+	cout<<"Exporting obstacles"<<endl;
 	stringStream << grid_name << ".readGridFromMemory(\'"<< data << "\', " << x << "," << y << "," << z << ")";
 	const std::string command_2 = stringStream.str();
 	const std::string command_3 = grid_name + ".applyToGrid(grid = flags, value = FlagObstacle)";
@@ -434,13 +437,24 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 		ss << (-smd->domain->beta);
 	else if (varName == "ADVECT_ORDER")
 		ss << 2;
+	else if (varName == "MANTA_EXPORT_PATH"){
+		char parent_dir[1024];
+		BLI_split_dir_part(smd->domain->_manta_filepath, parent_dir, sizeof(parent_dir));
+		ss << parent_dir;
+	}
 	else if (varName == "VORTICITY"){
 		cout << "Vorticity :" << smd->domain->vorticity / smd->domain->fluid->_constantScaling << endl;	
 		ss << smd->domain->vorticity / smd->domain->fluid->_constantScaling;
 	}else if (varName == "BOUNDCONDITIONS"){
-		if(smd->domain->border_collisions == SM_BORDER_OPEN) ss << "xXyYz";
-		else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "xXyYz";
-		else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "xXyYzZ";
+		if(smd->domain->border_collisions == SM_BORDER_OPEN) ss << "xXyY";
+		else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "xXyY";
+		else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "xXyY";
+		
+		if (smd->domain->manta_solver_res == 3){
+			if(smd->domain->border_collisions == SM_BORDER_OPEN) ss << "z";
+			else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "z";
+			else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "zZ";
+		}
 	}
 	else if (varName == "GRAVITY")
 		ss << "vec3(0,0,-0.981)";
@@ -502,12 +516,12 @@ void Manta_API::manta_export_grids(SmokeModifierData *smd){
 		smoke_script = smoke_setup_low  + smoke_step_low;
 	std::string final_script = Manta_API::parseScript(smoke_script, smd) + standalone;
 	ofstream myfile;
-	myfile.open ("manta_scene.py");
+	myfile.open (smd->domain->_manta_filepath);
 	myfile << final_script;
 	myfile.close();
 	
 	PyGILState_STATE gilstate = PyGILState_Ensure();
-	PyRun_SimpleString(smoke_export_low.c_str());
+	PyRun_SimpleString(Manta_API::parseScript(smoke_export_low,smd).c_str());
 	PyGILState_Release(gilstate);
 }
 
@@ -562,9 +576,36 @@ void * Manta_API::pointerFromString(const std::string& s){
 
 void Manta_API::updatePointers(FLUID_3D *fluid, bool updateColor)
 {
-	fluid->_density = (float* )pointerFromString(getGridPointer("density", "s"));
-	fluid->_manta_flags = (int* )pointerFromString(getGridPointer("flags", "s"));
+	/*in 2D case, we want to copy in the Z-axis field that is in the middle of X and Y axes */
+	//x + y * max_x + z * max_x*max_y
+//	int position_to_copy_from(0 + (fluid->xRes()/2) * fluid->xRes() + (fluid->zRes()/2) * fluid->xRes()*fluid->yRes());
+//	float *whereToCopy = &fluid->_density[position_to_copy_from]; 
+	if (fluid->manta_resoution == 2)
+	{
+		float* manta_fluid_density = (float* )pointerFromString(getGridPointer("density", "s")); 
+		int* manta_fluid_flags = (int* )pointerFromString(getGridPointer("flags", "s"));
+		if (fluid->_density != NULL){
+			for (int cnt(0); cnt < fluid->xRes() * fluid->yRes() * fluid->zRes(); ++cnt){
+				fluid->_density[cnt] = 0.;
+				fluid->_manta_flags[cnt] = 2;
+			}
+		}
+		int step = 0;
+		for (int cnt(0); cnt < fluid->xRes() * fluid->zRes()-1; ++cnt){
+			assert(fluid->_yLocation != -1);
+			step = (fluid->_yLocation) + cnt * fluid->yRes();
+			fluid->_density[step] = manta_fluid_density[cnt];
+			fluid->_manta_flags[step] = manta_fluid_flags[cnt];
+		}		
+	}
+	else{
+		fluid->_density = (float* )pointerFromString(getGridPointer("density", "s"));	
+		fluid->_manta_flags = (int* )pointerFromString(getGridPointer("flags", "s"));
+	}
+//	fluid->_density = (float* )pointerFromString(getGridPointer("density", "s"));
+	
 	fluid->_manta_inflow = (float* )pointerFromString(getGridPointer("inflow_grid", "s"));
+	if (fluid-> manta_resoution == 2){return;}
 	if (fluid->using_colors){
 		cout<< "POINTER FOR R_LOW" << fluid->_color_r<< endl;
 		fluid->_color_r = (float* )pointerFromString(getGridPointer("color_r_low", "s"));
