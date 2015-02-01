@@ -2304,7 +2304,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 								else{ /*2D solver*/
 									int cell_cnt;
 									for (cell_cnt=0; cell_cnt< sds->res_max[0] * sds->res_max[2]-1; ++cell_cnt ){
-										int step = (sds->res_max[1]/2) + cell_cnt * sds->res_max[1];
+										int step = cell_index_3D(cell_cnt, sds->res_max[0], sds->res_max[1], sds->res_max[2]);
 										inflow_grid[cell_cnt] = density[step];
 									}
 								}
