@@ -285,7 +285,7 @@ string Manta_API::gridNameFromType(const string &type)
 	}
 }
 
-void Manta_API::addGrid(void * data, string name, string type, int x, int y, int z)
+void Manta_API::addGrid(void * data, string name, string type, int x, int y, int z, bool is2D = false)
 {
 	if (data == NULL || name == "" || gridNameFromType(type) == "") return;
 	cout << "Adding Grid:" << name<<endl; 
@@ -296,8 +296,13 @@ void Manta_API::addGrid(void * data, string name, string type, int x, int y, int
 	stringStream << grid_name << " = s.create(" << gridNameFromType(type) << ")";
 	const std::string command_1 = stringStream.str();
 	stringStream.str("");
-
-	stringStream << grid_name << ".readGridFromMemory(\'"<< data << "\', " << x << "," << y << "," << z << ")";
+	if (is2D){
+		/*for 2D case, Y and Z axes are switched, Y axis is '1' for Mantaflow*/
+		stringStream << grid_name << ".readGridFromMemory(\'"<< data << "\', " << x << "," << z << "," << 1 << ")";
+	}
+	else{
+		stringStream << grid_name << ".readGridFromMemory(\'"<< data << "\', " << x << "," << y << "," << z << ")";
+	}
 	const std::string command_2 = stringStream.str();
 	const std::string command_3 = name + ".add(" + grid_name + ")";
 	PyGILState_STATE gilstate = PyGILState_Ensure();
@@ -307,7 +312,7 @@ void Manta_API::addGrid(void * data, string name, string type, int x, int y, int
 	PyGILState_Release(gilstate);		
 }
 
-void Manta_API::addAdaptiveGrid(void * data, string gridName, string solverName, string type, int minX, int minY, int minZ, int maxX, int maxY, int maxZ)
+void Manta_API::addAdaptiveGrid(void * data, string gridName, string solverName, string type, int minX, int minY, int minZ, int maxX, int maxY, int maxZ, bool is2D = false)
 {
 	if (data == NULL || gridName == "" || gridNameFromType(type) == "") return;
 	{
@@ -321,8 +326,15 @@ void Manta_API::addAdaptiveGrid(void * data, string gridName, string solverName,
 	stringStream << temp_grid_name << " = "<< solverName << ".create(" << gridNameFromType(type) << ")";
 	const std::string command_1 = stringStream.str();
 	stringStream.str("");
-	stringStream << temp_grid_name << ".readAdaptiveGridFromMemory(\'"<< data << "\', vec3(" << minX << "," << minY << "," << minZ << 
-	"), vec3(" << maxX << "," << maxY << "," << maxZ << ") )";
+	
+	if (is2D){
+		stringStream << temp_grid_name << ".readAdaptiveGridFromMemory(\'"<< data << "\', vec3(" << minX << "," << minZ << "," << 1 << 
+		"), vec3(" << maxX << "," << maxZ << "," << 1 << ") )";
+	}
+	else{
+		stringStream << temp_grid_name << ".readAdaptiveGridFromMemory(\'"<< data << "\', vec3(" << minX << "," << minY << "," << minZ << 
+		"), vec3(" << maxX << "," << maxY << "," << maxZ << ") )";
+	}
 	const std::string command_2 = stringStream.str();
 	const std::string command_3 = gridName + ".add(" + temp_grid_name + ")";
 	PyGILState_STATE gilstate = PyGILState_Ensure();
@@ -334,7 +346,7 @@ void Manta_API::addAdaptiveGrid(void * data, string gridName, string solverName,
 	PyGILState_Release(gilstate);		
 }
 
-void Manta_API::export_obstacles(float *data, int x, int y, int z)
+void Manta_API::export_obstacles(float *data, int x, int y, int z, bool is2D = false)
 {
 	if (data == NULL){
 		cout << "NULL passed to grid export_obstacles " <<endl;  return;
@@ -346,7 +358,12 @@ void Manta_API::export_obstacles(float *data, int x, int y, int z)
 	const std::string command_1 = stringStream.str();
 	stringStream.str("");
 	cout<<"Exporting obstacles"<<endl;
-	stringStream << grid_name << ".readGridFromMemory(\'"<< data << "\', " << x << "," << y << "," << z << ")";
+	if (is2D){
+		stringStream << grid_name << ".readGridFromMemory(\'"<< data << "\', " << x << "," << z << "," << 1 << ")";
+	}
+	else{
+		stringStream << grid_name << ".readGridFromMemory(\'"<< data << "\', " << x << "," << y << "," << z << ")";
+	}
 	const std::string command_2 = stringStream.str();
 	const std::string command_3 = grid_name + ".applyToGrid(grid = flags, value = FlagObstacle)";
 	PyGILState_STATE gilstate = PyGILState_Ensure();
@@ -387,6 +404,7 @@ void Manta_API::generate_manta_sim_file_highRes(SmokeModifierData *smd)
 std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierData *smd)
 {
 	ostringstream ss;
+	bool is2D = smd->domain->fluid->manta_resoution == 2;
 	if (varName == "UVS_CNT")
 		ss << smd->domain->manta_uvs_num ;
 	else if (varName == "UPRES")
@@ -397,10 +415,15 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 		ss <<  smd->domain->maxres;
 	else if (varName == "RESX")
 		ss <<  smd->domain->fluid->_xRes;
+	
 	else if (varName == "RESY")
-		ss <<  smd->domain->fluid->_yRes;
+		if (is2D){	ss <<  smd->domain->fluid->_zRes;}
+		else{ 		ss <<  smd->domain->fluid->_yRes;}
+	
 	else if (varName == "RESZ")
-		ss <<  smd->domain->fluid->_zRes;
+		if (is2D){	ss << 1;}
+		else{ 		ss << smd->domain->fluid->_zRes;}
+	
 	else if (varName == "SOLVER_DIM")
 		ss <<  smd->domain->manta_solver_res;
 	else if (varName == "NOISE_CN")
@@ -416,9 +439,13 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 	else if (varName == "HRESX")
 		ss << smd->domain->wt->getResBig()[0];
 	else if (varName == "HRESY")
-		ss << smd->domain->wt->getResBig()[1];
+		if (is2D){	ss << smd->domain->wt->getResBig()[2];}
+		else{ 		ss << smd->domain->wt->getResBig()[1];}
+
 	else if (varName == "HRESZ")
-		ss << smd->domain->wt->getResBig()[2];
+		if (is2D){	ss << 1;}
+		else{ 		ss << smd->domain->wt->getResBig()[2];}
+
 	else if (varName == "TIMESTEP")
 		ss << smd->domain->time_scale * 0.1f;
 	else if (varName == "XL_TIMESTEP")
@@ -593,7 +620,12 @@ void Manta_API::updatePointers(FLUID_3D *fluid, bool updateColor)
 		int step = 0;
 		for (int cnt(0); cnt < fluid->xRes() * fluid->zRes()-1; ++cnt){
 			assert(fluid->_yLocation != -1);
-			step = (fluid->_yLocation) + cnt * fluid->yRes();
+			step = int(fluid->_yRes * 0.5) * fluid->_xRes + 
+					(cnt % (fluid->_xRes)) + 
+					int(cnt/(fluid->_xRes)) * fluid->_xRes * fluid->_yRes;
+			if ((step < 0) || (step > fluid->_totalCells)){
+				cout << "UpdatePointers: step is larger tahn cell dim" << step << endl;
+			}
 			fluid->_density[step] = manta_fluid_density[cnt];
 			fluid->_manta_flags[step] = manta_fluid_flags[cnt];
 		}		

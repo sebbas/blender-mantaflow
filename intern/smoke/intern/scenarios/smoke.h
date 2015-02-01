@@ -31,14 +31,14 @@ density = s.create(LevelsetGrid)\n\
 pressure = s.create(RealGrid)\n\
 \n\
 # noise field\n\
-noise = s.create(NoiseField, loadFromFile=True)\n\
-noise.posScale = vec3(45)\n\
-noise.clamp = True\n\
-noise.clampNeg = 0\n\
-noise.clampPos = 1\n\
-noise.valScale = 1\n\
-noise.valOffset = 0.75\n\
-noise.timeAnim = 0.2\n\
+#noise = s.create(NoiseField, loadFromFile=True)\n\
+#noise.posScale = vec3(45)\n\
+#noise.clamp = True\n\
+#noise.clampNeg = 0\n\
+#noise.clampPos = 1\n\
+#noise.valScale = 1\n\
+#noise.valOffset = 0.75\n\
+#noise.timeAnim = 0.2\n\
 \n\
 flags.initDomain()\n\
 flags.fillGrid()\n\
@@ -145,20 +145,25 @@ for step in range(100):\n\
 
 const string smoke_step_low = "def sim_step_low(t, standalone = False):\n\
   #applying inflow\n\
-  if standalone and t==0:\n\
-    density.load('density.uni')\n\
-    flags.load('flags.uni')\n\
-    forces.load('forces.uni')\n\
-  if standalone:\n\
-    inflow_grid.load('inflow.uni')\n\
-    inflow_grid.multConst(0.1)\n\
-    density.add(inflow_grid)\n\
-  elif solver_dim == 2:\n\
+  #if standalone and t==0:\n\
+  #  density.load('density.uni')\n\
+  #  flags.load('flags.uni')\n\
+  #  forces.load('forces.uni')\n\
+  #if standalone:\n\
+  #  inflow_grid.load('inflow.uni')\n\
+  #  inflow_grid.multConst(0.1)\n\
+  #  density.add(inflow_grid)\n\
+  #elif solver_dim == 2:\n\
+  #  density.add(inflow_grid)\n\
+  print ('Simulating frame ' + str(t))\n\
+  if not standalone and t == 1 and solver_dim == 2:\n\
     density.add(inflow_grid)\n\
   if manta_using_heat:\n\
-    addHeatBuoyancy(density=density, densCoeff = 0.001, vel=vel, gravity=vec3(0,0,-0.981), flags=flags, heat = heat_low, heatCoeff = -0.1*10)\n\
+    gravity=vec3(0,0,-0.0981) if solver_dim==3 else vec3(0,-0.0981,0)\n\
+    addHeatBuoyancy(density=density, densCoeff = 0.001, vel=vel, gravity=gravity, flags=flags, heat = heat_low, heatCoeff = -0.1*10)\n\
   else:\n\
-    addBuoyancy(density=density, vel=vel, gravity=vec3(0,0,-0.01), flags=flags)\n\
+    gravity=vec3(0,0,-0.01) if solver_dim==3 else vec3(0,-0.01,0)\n\
+    addBuoyancy(density=density, vel=vel, gravity=gravity, flags=flags)\n\
   if manta_using_colors:\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_r_low, order=$ADVECT_ORDER$)\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_g_low, order=$ADVECT_ORDER$)\n\

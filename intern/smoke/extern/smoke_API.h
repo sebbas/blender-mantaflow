@@ -119,6 +119,7 @@ void manta_write_effectors(struct FLUID_3D *fluid);
 void manta_update_effectors(struct Scene *scene, struct Object *ob,struct SmokeDomainSettings *sds, float dt);
 void manta_write_emitters(struct SmokeFlowSettings *sfs, bool highRes, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z,float *influence, float *vel);	
 void manta_export_obstacles(float * influence, int x, int y, int z);
+	int cell_index_3D(int index_2d,int sizex,int sizey, int sizez); /*For 2D sims only: transforms 2D manta cell index into 3D Blender index*/
 #ifdef __cplusplus
 }
 #endif
