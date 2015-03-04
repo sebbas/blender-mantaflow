@@ -704,11 +704,11 @@ void FLUID_3D::initBlenderRNA(float *alpha, float *beta, float *dt_factor, float
 void FLUID_3D::step(float dt, float gravity[3])
 {
 		// BLender computes heat buoyancy, not yet impl. in Manta
+	manta_write_effectors(this);
 	Manta_API::updatePointers(this,using_colors);
 //	diffuseHeat();
 
 	int sim_frame = 1;
-	manta_write_effectors(this);
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << sim_frame) )->str();
 	std::string py_string_0 = string("sim_step_low(").append(frame_str);

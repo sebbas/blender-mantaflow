@@ -180,6 +180,7 @@ const string smoke_step_low = "def sim_step_low(t, standalone = False):\n\
     vorticityConfinement( vel=vel, flags=flags, strength=$VORTICITY$ ) \n\
   print ('forcefield')\n\
   addForceField(flags=flags, vel=vel,force=forces)\n\
+  forces.clear()\n\
   \n\
   print ('pressure')\n\
   solvePressure(flags=flags, vel=vel, pressure=pressure, openBound=boundConditions)\n\

@@ -36,7 +36,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "MANTA.h"
-
+#include "../../../source/blender/python/manta_pp/util/vectorbase.h"
 #include "../extern/smoke_API.h"  /* to ensure valid prototypes */
 
 extern "C" int *smoke_get_manta_flags(struct FLUID_3D *fluid){
@@ -534,25 +534,26 @@ extern "C" void manta_write_effectors(struct FLUID_3D *fluid)
 	float *force_z = smoke_get_force_z(fluid);
 //	export_force_fields(size_x, size_y, size_z, force_x, force_y, force_z);
 	/*accumulate all force fields in one grid*/	
-	Vec3 * accumulated_force = NULL;
+	Manta::Vec3 * accumulated_force = NULL;
+	long index(0);
 	if (fluid->manta_resoution == 3){
-		accumulated_force = (Vec3*)malloc(size_x * size_y * size_z * sizeof(Vec3));
-		long index(0);
-		for (int x(0); x < size_x; x++){
-			for (int y(0); y < size_y; y++){
-				for (int z(0); z < size_z; z++){
-					index = x + y * size_x + z * size_x * size_y;
-					accumulated_force[index] = Vec3(force_x[x], force_y[y], force_z[z]);
+		accumulated_force = (Manta::Vec3*)calloc(size_x * size_y * size_z , sizeof(Manta::Vec3));
+			for (int z(0); z < size_z; z++){
+				for (int y(0); y < size_y; y++){
+					for (int x(0); x < size_x; x++){
+					index = smoke_get_index(x, size_x, y, size_y, z);
+					accumulated_force[index] = Manta::Vec3(force_x[index], force_y[index], force_z[index]);
 				}	
 			}		
 		}
 	}
 	else if (fluid->manta_resoution == 2){
-		accumulated_force = (Vec3*)malloc(size_x * size_z * sizeof(Vec3));
+		accumulated_force = (Manta::Vec3*)malloc(size_x * size_z * sizeof(Manta::Vec3));
 		int step(0);
 		for (int x(0); x < size_x; x++){
 				for (int z(0); z < size_z; z++){
-					accumulated_force[x + z * size_x] = Vec3(force_x[x], force_z[z], 0.0);
+					index = smoke_get_index(x, size_x, size_y/2, size_y, z);
+					accumulated_force[x + z * size_x] = Manta::Vec3(force_x[index], force_z[index], 0.0);
 				}	
 		}
 	}
@@ -560,6 +561,8 @@ extern "C" void manta_write_effectors(struct FLUID_3D *fluid)
 		cout << "ERROR: Manta solver resoltion is neither 2 nor 3; Cannot write forces"<<endl;
 		return;
 	}
+	
+	
 	bool is2D = (fluid->manta_resoution == 2);
 	Manta_API::addGrid(accumulated_force, "forces", "Vec3", size_x, size_y, size_z, is2D);
 }

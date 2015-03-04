@@ -2452,11 +2452,8 @@ static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 					float mag;
 					float voxelCenter[3] = {0, 0, 0}, vel[3] = {0, 0, 0}, retvel[3] = {0, 0, 0};
 					unsigned int index = smoke_get_index(x, sds->res[0], y, sds->res[1], z);
-
-#ifndef WITH_MANTA
 					if (((fuel ? MAX2(density[index], fuel[index]) : density[index]) < FLT_EPSILON) || obstacle[index])
 						continue;
-#endif
 					vel[0] = velocity_x[index];
 					vel[1] = velocity_y[index];
 					vel[2] = velocity_z[index];
