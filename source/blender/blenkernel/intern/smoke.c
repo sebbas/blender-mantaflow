@@ -2301,14 +2301,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 								if(sds->manta_solver_res == 3){
 									apply_inflow_fields(sfs, emission_map[e_index], d_index, inflow_grid, heat, fuel, react, color_r, color_g, color_b);
 								}
-								else{ /*2D solver*/
-									int cell_cnt;
-									for (cell_cnt=0; cell_cnt< sds->res_max[0] * sds->res_max[2]-1; ++cell_cnt ){
-										int step = cell_index_3D(cell_cnt, sds->res_max[0], sds->res_max[1], sds->res_max[2]);
-										inflow_grid[cell_cnt] = density[step];
-									}
-								}
-								/* initial velocity */
+																/* initial velocity */
 								if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY) {
 									velocity_x[d_index] = ADD_IF_LOWER(velocity_x[d_index], velocity_map[e_index * 3]);
 									velocity_y[d_index] = ADD_IF_LOWER(velocity_y[d_index], velocity_map[e_index * 3 + 1]);
@@ -2402,6 +2395,19 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 										} // hires loop
 							}  // bigdensity
 						} // low res loop
+
+				{ /*2D solver*/
+					int cnty;
+					int cntz;
+					int step;
+					for ( cnty=0;cnty<sds->res_max[1]; ++cnty)
+						for( cntz=0;cntz<sds->res_max[2]; ++cntz)
+						{
+							step = sds->res_max[0]/2 + cnty * sds->res_max[0] + cntz * sds->res_max[0]*sds->res_max[1]; 
+							inflow_grid[cnty + cntz*sds->res_max[0]] = density[step];
+						}
+				}
+
 				if((sds->flags & MOD_SMOKE_USE_MANTA) && (bigdensity)){
 //					manta_write_emitters(sfs,true,0,0,0,bigres[0], bigres[1], bigres[2], bigres[0], bigres[1], bigres[2],manta_big_inflow_sdf, NULL);
 					MEM_freeN(manta_big_inflow_sdf);

@@ -603,6 +603,7 @@ void * Manta_API::pointerFromString(const std::string& s){
 
 void Manta_API::updatePointers(FLUID_3D *fluid, bool updateColor)
 {
+	//blender_to_manta: whether we copy data from blender density/velocity field to mantaflow or the other way around
 	/*in 2D case, we want to copy in the Z-axis field that is in the middle of X and Y axes */
 	//x + y * max_x + z * max_x*max_y
 //	int position_to_copy_from(0 + (fluid->xRes()/2) * fluid->xRes() + (fluid->zRes()/2) * fluid->xRes()*fluid->yRes());
@@ -618,17 +619,16 @@ void Manta_API::updatePointers(FLUID_3D *fluid, bool updateColor)
 			}
 		}
 		int step = 0;
-		for (int cnt(0); cnt < fluid->xRes() * fluid->zRes()-1; ++cnt){
-			assert(fluid->_yLocation != -1);
-			step = int(fluid->_yRes * 0.5) * fluid->_xRes + 
-					(cnt % (fluid->_xRes)) + 
-					int(cnt/(fluid->_xRes)) * fluid->_xRes * fluid->_yRes;
-			if ((step < 0) || (step > fluid->_totalCells)){
-				cout << "UpdatePointers: step is larger tahn cell dim" << step << endl;
-			}
-			fluid->_density[step] = manta_fluid_density[cnt];
-			fluid->_manta_flags[step] = manta_fluid_flags[cnt];
-		}		
+		for (int cnty(0);cnty<fluid->yRes(); ++cnty)
+			for(int cntz(0);cntz<fluid->zRes(); ++cntz)
+			{
+				step = fluid->xRes() + cnty * fluid->xRes() + cntz * fluid->xRes()*fluid->yRes(); 
+				if ((step < 0) || (step > fluid->_totalCells)){
+					cout << "UpdatePointers: step is larger tahn cell dim" << step << endl;
+				}
+				fluid->_density[step] = manta_fluid_density[cnty + cntz*fluid->xRes()];
+				fluid->_manta_flags[step] = manta_fluid_flags[cnty + cntz*fluid->xRes()];
+			}		
 	}
 	else{
 		fluid->_density = (float* )pointerFromString(getGridPointer("density", "s"));	
