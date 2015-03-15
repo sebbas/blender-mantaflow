@@ -210,7 +210,7 @@ void smoke_reallocate_highres_fluid(SmokeDomainSettings *sds, float dx, int res[
 	/* smoke_turbulence_init uses non-threadsafe functions from fftw3 lib (like fftw_plan & co). */
 	BLI_lock_thread(LOCK_FFTW);
 
-	sds->wt = smoke_turbulence_init(res, sds->amplify + 1, sds->noise, BKE_tempdir_session(), use_fire, use_colors);
+	sds->wt = smoke_turbulence_init(res, sds->amplify + 1, sds->noise, BKE_tempdir_session(), use_fire, use_colors, sds);
 
 	BLI_unlock_thread(LOCK_FFTW);
 
@@ -578,7 +578,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->noise_val_scale = 0.;
 			smd->domain->noise_val_offset = 0.075;
 			smd->domain->noise_time_anim = 0.2;
-			BLI_make_file_string("/", smd->domain->_manta_filepath, BLI_temp_dir_base(), "manta_scene.py");
+			BLI_make_file_string("/", smd->domain->_manta_filepath, BKE_tempdir_base(), "manta_scene.py");
 		}
 		else if (smd->type & MOD_SMOKE_TYPE_FLOW)
 		{

@@ -257,12 +257,6 @@ void Manta_API::add_mesh_transform_method(stringstream& ss)
 	"  obj.offset(gs/2)\n\n";
 }
 
-void Manta_API::manta_cache_path(char *filepath)
-{
-	char *name="manta";
-	BLI_make_file_string("/", filepath, BLI_temp_dir_session(), name);
-}
-
 void Manta_API::stop_manta_sim()
 {
 	pthread_cancel(manta_thread);
