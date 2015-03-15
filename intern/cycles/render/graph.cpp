@@ -11,7 +11,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License
+ * limitations under the License.
  */
 
 #include "attribute.h"
@@ -227,6 +227,21 @@ void ShaderGraph::disconnect(ShaderInput *to)
 	from->links.erase(remove(from->links.begin(), from->links.end(), to), from->links.end());
 }
 
+void ShaderGraph::relink(vector<ShaderInput*> inputs, vector<ShaderInput*> outputs, ShaderOutput *output)
+{
+	/* Remove nodes and re-link if output isn't NULL. */
+	foreach(ShaderInput *sock, inputs) {
+		if(sock->link)
+			disconnect(sock);
+	}
+
+	foreach(ShaderInput *sock, outputs) {
+		disconnect(sock);
+		if(output)
+			connect(output, sock);
+	}
+}
+
 void ShaderGraph::finalize(bool do_bump, bool do_osl)
 {
 	/* before compiling, the shader graph may undergo a number of modifications.
@@ -374,6 +389,21 @@ void ShaderGraph::remove_unneeded_nodes()
 			removed[proxy->id] = true;
 			any_node_removed = true;
 		}
+		else if(node->special_type == SHADER_SPECIAL_TYPE_BACKGROUND) {
+			BackgroundNode *bg = static_cast<BackgroundNode*>(node);
+
+			if(bg->outputs[0]->links.size()) {
+				/* Black color or zero strength, remove node */
+				if((!bg->inputs[0]->link && bg->inputs[0]->value == make_float3(0.0f, 0.0f, 0.0f)) ||
+				   (!bg->inputs[1]->link && bg->inputs[1]->value.x == 0.0f)) {
+					vector<ShaderInput*> inputs = bg->outputs[0]->links;
+
+					relink(bg->inputs, inputs, NULL);
+					removed[bg->id] = true;
+					any_node_removed = true;
+				}
+			}
+		}
 		else if(node->special_type == SHADER_SPECIAL_TYPE_MIX_CLOSURE) {
 			MixClosureNode *mix = static_cast<MixClosureNode*>(node);
 
@@ -382,15 +412,7 @@ void ShaderGraph::remove_unneeded_nodes()
 				ShaderOutput *output = mix->inputs[1]->link;
 				vector<ShaderInput*> inputs = mix->outputs[0]->links;
 
-				foreach(ShaderInput *sock, mix->inputs)
-					if(sock->link)
-						disconnect(sock);
-
-				foreach(ShaderInput *input, inputs) {
-					disconnect(input);
-					if(output)
-						connect(output, input);
-				}
+				relink(mix->inputs, inputs, output);
 				removed[mix->id] = true;
 				any_node_removed = true;
 			}
@@ -403,15 +425,7 @@ void ShaderGraph::remove_unneeded_nodes()
 					ShaderOutput *output = mix->inputs[1]->link;
 					vector<ShaderInput*> inputs = mix->outputs[0]->links;
 
-					foreach(ShaderInput *sock, mix->inputs)
-						if(sock->link)
-							disconnect(sock);
-
-					foreach(ShaderInput *input, inputs) {
-						disconnect(input);
-						if(output)
-							connect(output, input);
-					}
+					relink(mix->inputs, inputs, output);
 					removed[mix->id] = true;
 					any_node_removed = true;
 				}
@@ -419,16 +433,8 @@ void ShaderGraph::remove_unneeded_nodes()
 				else if(mix->inputs[0]->value.x == 1.0f) {
 					ShaderOutput *output = mix->inputs[2]->link;
 					vector<ShaderInput*> inputs = mix->outputs[0]->links;
-					
-					foreach(ShaderInput *sock, mix->inputs)
-						if(sock->link)
-							disconnect(sock);
 
-					foreach(ShaderInput *input, inputs) {
-						disconnect(input);
-						if(output)
-							connect(output, input);
-					}
+					relink(mix->inputs, inputs, output);
 					removed[mix->id] = true;
 					any_node_removed = true;
 				}
@@ -445,15 +451,7 @@ void ShaderGraph::remove_unneeded_nodes()
 					ShaderOutput *output = mix->inputs[1]->link;
 					vector<ShaderInput*> inputs = mix->outputs[0]->links;
 
-					foreach(ShaderInput *sock, mix->inputs)
-						if(sock->link)
-							disconnect(sock);
-
-					foreach(ShaderInput *input, inputs) {
-						disconnect(input);
-						if(output)
-							connect(output, input);
-					}
+					relink(mix->inputs, inputs, output);
 					removed[mix->id] = true;
 					any_node_removed = true;
 				}
@@ -462,15 +460,7 @@ void ShaderGraph::remove_unneeded_nodes()
 					ShaderOutput *output = mix->inputs[2]->link;
 					vector<ShaderInput*> inputs = mix->outputs[0]->links;
 
-					foreach(ShaderInput *sock, mix->inputs)
-						if(sock->link)
-							disconnect(sock);
-
-					foreach(ShaderInput *input, inputs) {
-						disconnect(input);
-						if(output)
-							connect(output, input);
-					}
+					relink(mix->inputs, inputs, output);
 					removed[mix->id] = true;
 					any_node_removed = true;
 				}
@@ -519,7 +509,7 @@ void ShaderGraph::break_cycles(ShaderNode *node, vector<bool>& visited, vector<b
 
 void ShaderGraph::clean()
 {
-	/* remove proxy and unnecessary mix nodes */
+	/* remove proxy and unnecessary nodes */
 	remove_unneeded_nodes();
 
 	/* we do two things here: find cycles and break them, and remove unused
@@ -684,7 +674,7 @@ void ShaderGraph::bump_from_displacement()
 	 * different shifted coordinates.
 	 *
 	 * these 3 displacement values are then fed into the bump node, which will
-	 * output the the perturbed normal. */
+	 * output the perturbed normal. */
 
 	ShaderInput *displacement_in = output()->input("Displacement");
 
@@ -844,7 +834,7 @@ void ShaderGraph::dump_graph(const char *filename)
 		return;
 	}
 
-	fprintf(fd, "digraph dependencygraph {\n");
+	fprintf(fd, "digraph shader_graph {\n");
 	fprintf(fd, "ranksep=1.5\n");
 	fprintf(fd, "splines=false\n");
 

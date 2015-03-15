@@ -165,6 +165,13 @@ enum {
 	WM_INIT_KEYMAP = (1<<1),
 };
 
+/* IME is win32 only! */
+#ifndef WIN32
+#  ifdef __GNUC__
+#    define ime_data ime_data __attribute__ ((deprecated))
+#  endif
+#endif
+
 /* the savable part, rest of data is local in ghostwinlay */
 typedef struct wmWindow {
 	struct wmWindow *next, *prev;
@@ -197,6 +204,10 @@ typedef struct wmWindow {
 
 	struct wmGesture *tweak;      /* internal for wm_operators.c */
 
+	/* Input Method Editor data - complex character input (esp. for asian character input)
+	 * Currently WIN32, runtime-only data */
+	struct wmIMEData *ime_data;
+
 	int drawmethod, drawfail;     /* internal for wm_draw.c only */
 	void *drawdata;               /* internal for wm_draw.c only */
 
@@ -207,6 +218,10 @@ typedef struct wmWindow {
 	ListBase subwindows;          /* opengl stuff for sub windows, see notes in wm_subwindow.c */
 	ListBase gesture;             /* gesture stuff */
 } wmWindow;
+
+#ifdef ime_data
+#  undef ime_data
+#endif
 
 /* These two Lines with # tell makesdna this struct can be excluded. */
 /* should be something like DNA_EXCLUDE 
@@ -352,13 +367,22 @@ enum {
 	OPERATOR_RUNNING_MODAL  = (1 << 0),
 	OPERATOR_CANCELLED      = (1 << 1),
 	OPERATOR_FINISHED       = (1 << 2),
-/* add this flag if the event should pass through */
+	/* add this flag if the event should pass through */
 	OPERATOR_PASS_THROUGH   = (1 << 3),
-/* in case operator got executed outside WM code... like via fileselect */
+	/* in case operator got executed outside WM code... like via fileselect */
 	OPERATOR_HANDLED        = (1 << 4),
+	/* used for operators that act indirectly (eg. popup menu)
+	 * note: this isn't great design (using operators to trigger UI) avoid where possible. */
+	OPERATOR_INTERFACE      = (1 << 5),
 };
-#define OPERATOR_FLAGS_ALL    (OPERATOR_RUNNING_MODAL | OPERATOR_CANCELLED | OPERATOR_FINISHED | \
-                               OPERATOR_PASS_THROUGH | OPERATOR_HANDLED)
+#define OPERATOR_FLAGS_ALL ( \
+	OPERATOR_RUNNING_MODAL | \
+	OPERATOR_CANCELLED | \
+	OPERATOR_FINISHED | \
+	OPERATOR_PASS_THROUGH | \
+	OPERATOR_HANDLED | \
+	OPERATOR_INTERFACE | \
+	0)
 
 /* sanity checks for debug mode only */
 #define OPERATOR_RETVAL_CHECK(ret) (void)ret, BLI_assert(ret != 0 && (ret & OPERATOR_FLAGS_ALL) == ret)

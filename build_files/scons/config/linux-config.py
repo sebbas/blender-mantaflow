@@ -144,7 +144,7 @@ BF_REDCODE_LIB = ''
 BF_REDCODE_INC = '${BF_REDCODE}/../' #C files request "libredcode/format.h" which is in "#extern/libredcode/format.h", stupid but compiles for now.
 BF_REDCODE_LIBPATH='${BF_REDCODE}/lib'
 
-# Mesa Libs should go here if your using them as well....
+# Mesa Libs should go here if you're using them as well....
 WITH_BF_STATICOPENGL = False
 BF_OPENGL = '/usr'
 BF_OPENGL_INC = '${BF_OPENGL}/include'
@@ -262,6 +262,6 @@ BF_INSTALLDIR='../install/linux'
 #Link against pthread
 PLATFORM_LINKFLAGS = ['-pthread']
 
-#Fix for LLVM conflict with Mesa llvmpipe
-if WITH_BF_LLVM:
-    PLATFORM_LINKFLAGS += ['-Wl,--version-script=source/creator/blender.map']
+#Fix for LLVM conflict with Mesa llvmpipe, SDL dynload also requires symbols to be hidden.
+# TODO(sergey): Move this to SConstruct, so we can have this line depended on user config.
+PLATFORM_LINKFLAGS += ['-Wl,--version-script=source/creator/blender.map']

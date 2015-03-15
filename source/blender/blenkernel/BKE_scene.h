@@ -39,6 +39,7 @@ extern "C" {
 
 struct AviCodecData;
 struct Base;
+struct DisplaySafeAreas;
 struct EvaluationContext;
 struct bglMats;
 struct Main;
@@ -110,7 +111,7 @@ char *BKE_scene_find_marker_name(struct Scene *scene, int frame);
 char *BKE_scene_find_last_marker_name(struct Scene *scene, int frame);
 
 /* checks for cycle, returns 1 if it's all OK */
-int BKE_scene_validate_setscene(struct Main *bmain, struct Scene *sce);
+bool BKE_scene_validate_setscene(struct Main *bmain, struct Scene *sce);
 
 float BKE_scene_frame_get(struct Scene *scene);
 float BKE_scene_frame_get_from_ctime(struct Scene *scene, const float frame);
@@ -131,7 +132,9 @@ int get_render_shadow_samples(struct RenderData *r, int samples);
 float get_render_aosss_error(struct RenderData *r, float error);
 
 bool BKE_scene_use_new_shading_nodes(struct Scene *scene);
+
 bool BKE_scene_uses_blender_internal(struct Scene *scene);
+bool BKE_scene_uses_blender_game(struct Scene *scene);
 
 void BKE_scene_disable_color_management(struct Scene *scene);
 bool BKE_scene_check_color_management_enabled(const struct Scene *scene);

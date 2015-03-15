@@ -35,13 +35,13 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BKE_appdir.h"
 #include "BLI_utildefines.h"
 #include "BLI_listbase.h"
-#include "BLI_md5.h"
+#include "BLI_hash_md5.h"
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
-#include "BLI_system.h"
 #include "BLI_threads.h"
 
 #include "BKE_image.h"
@@ -94,6 +94,8 @@ void render_result_free(RenderResult *res)
 		MEM_freeN(res->rectf);
 	if (res->text)
 		MEM_freeN(res->text);
+	if (res->error)
+		MEM_freeN(res->error);
 	
 	MEM_freeN(res);
 }
@@ -307,97 +309,97 @@ static const char *get_pass_name(int passtype, int channel)
 static int passtype_from_name(const char *str)
 {
 	
-	if (strcmp(str, "Combined") == 0)
+	if (STREQ(str, "Combined"))
 		return SCE_PASS_COMBINED;
 
-	if (strcmp(str, "Depth") == 0)
+	if (STREQ(str, "Depth"))
 		return SCE_PASS_Z;
 
-	if (strcmp(str, "Vector") == 0)
+	if (STREQ(str, "Vector"))
 		return SCE_PASS_VECTOR;
 
-	if (strcmp(str, "Normal") == 0)
+	if (STREQ(str, "Normal"))
 		return SCE_PASS_NORMAL;
 
-	if (strcmp(str, "UV") == 0)
+	if (STREQ(str, "UV"))
 		return SCE_PASS_UV;
 
-	if (strcmp(str, "Color") == 0)
+	if (STREQ(str, "Color"))
 		return SCE_PASS_RGBA;
 
-	if (strcmp(str, "Emit") == 0)
+	if (STREQ(str, "Emit"))
 		return SCE_PASS_EMIT;
 
-	if (strcmp(str, "Diffuse") == 0)
+	if (STREQ(str, "Diffuse"))
 		return SCE_PASS_DIFFUSE;
 
-	if (strcmp(str, "Spec") == 0)
+	if (STREQ(str, "Spec"))
 		return SCE_PASS_SPEC;
 
-	if (strcmp(str, "Shadow") == 0)
+	if (STREQ(str, "Shadow"))
 		return SCE_PASS_SHADOW;
 	
-	if (strcmp(str, "AO") == 0)
+	if (STREQ(str, "AO"))
 		return SCE_PASS_AO;
 
-	if (strcmp(str, "Env") == 0)
+	if (STREQ(str, "Env"))
 		return SCE_PASS_ENVIRONMENT;
 
-	if (strcmp(str, "Indirect") == 0)
+	if (STREQ(str, "Indirect"))
 		return SCE_PASS_INDIRECT;
 
-	if (strcmp(str, "Reflect") == 0)
+	if (STREQ(str, "Reflect"))
 		return SCE_PASS_REFLECT;
 
-	if (strcmp(str, "Refract") == 0)
+	if (STREQ(str, "Refract"))
 		return SCE_PASS_REFRACT;
 
-	if (strcmp(str, "IndexOB") == 0)
+	if (STREQ(str, "IndexOB"))
 		return SCE_PASS_INDEXOB;
 
-	if (strcmp(str, "IndexMA") == 0)
+	if (STREQ(str, "IndexMA"))
 		return SCE_PASS_INDEXMA;
 
-	if (strcmp(str, "Mist") == 0)
+	if (STREQ(str, "Mist"))
 		return SCE_PASS_MIST;
 	
-	if (strcmp(str, "RayHits") == 0)
+	if (STREQ(str, "RayHits"))
 		return SCE_PASS_RAYHITS;
 
-	if (strcmp(str, "DiffDir") == 0)
+	if (STREQ(str, "DiffDir"))
 		return SCE_PASS_DIFFUSE_DIRECT;
 
-	if (strcmp(str, "DiffInd") == 0)
+	if (STREQ(str, "DiffInd"))
 		return SCE_PASS_DIFFUSE_INDIRECT;
 
-	if (strcmp(str, "DiffCol") == 0)
+	if (STREQ(str, "DiffCol"))
 		return SCE_PASS_DIFFUSE_COLOR;
 
-	if (strcmp(str, "GlossDir") == 0)
+	if (STREQ(str, "GlossDir"))
 		return SCE_PASS_GLOSSY_DIRECT;
 
-	if (strcmp(str, "GlossInd") == 0)
+	if (STREQ(str, "GlossInd"))
 		return SCE_PASS_GLOSSY_INDIRECT;
 
-	if (strcmp(str, "GlossCol") == 0)
+	if (STREQ(str, "GlossCol"))
 		return SCE_PASS_GLOSSY_COLOR;
 
-	if (strcmp(str, "TransDir") == 0)
+	if (STREQ(str, "TransDir"))
 		return SCE_PASS_TRANSM_DIRECT;
 
-	if (strcmp(str, "TransInd") == 0)
+	if (STREQ(str, "TransInd"))
 		return SCE_PASS_TRANSM_INDIRECT;
 
-	if (strcmp(str, "TransCol") == 0)
+	if (STREQ(str, "TransCol"))
 		return SCE_PASS_TRANSM_COLOR;
 		
-	if (strcmp(str, "SubsurfaceDir") == 0)
+	if (STREQ(str, "SubsurfaceDir"))
 		return SCE_PASS_SUBSURFACE_DIRECT;
 
-	if (strcmp(str, "SubsurfaceInd") == 0)
+	if (STREQ(str, "SubsurfaceInd"))
 		return SCE_PASS_SUBSURFACE_INDIRECT;
 
-	if (strcmp(str, "SubsurfaceCol") == 0)
+	if (STREQ(str, "SubsurfaceCol"))
 		return SCE_PASS_SUBSURFACE_COLOR;
 
 	return 0;
@@ -507,7 +509,7 @@ RenderResult *render_result_new(Render *re, rcti *partrct, int crop, int savebuf
 	for (nr = 0, srl = re->r.layers.first; srl; srl = srl->next, nr++) {
 
 		if (layername && layername[0])
-			if (strcmp(srl->name, layername) != 0)
+			if (!STREQ(srl->name, layername))
 				continue;
 
 		if (re->r.scemode & R_SINGLE_LAYER) {
@@ -609,7 +611,7 @@ RenderResult *render_result_new(Render *re, rcti *partrct, int crop, int savebuf
 			render_layer_add_pass(rr, rl, 3, SCE_PASS_SUBSURFACE_COLOR);
 
 #ifdef WITH_CYCLES_DEBUG
-		if(BKE_scene_use_new_shading_nodes(re->scene)) {
+		if (BKE_scene_use_new_shading_nodes(re->scene)) {
 			render_layer_add_debug_pass(rr, rl, 1, SCE_PASS_DEBUG,
 			        RENDER_PASS_DEBUG_BVH_TRAVERSAL_STEPS);
 		}
@@ -1072,7 +1074,10 @@ void render_result_exr_file_path(Scene *scene, const char *layname, int sample, 
 		BLI_snprintf(name, sizeof(name), "%s_%s_%s%d.exr", fi, scene->id.name + 2, layname, sample);
 	}
 
-	BLI_make_file_string("/", filepath, BLI_temp_dir_session(), name);
+	/* Make name safe for paths, see T43275. */
+	BLI_filename_make_safe(name);
+
+	BLI_make_file_string("/", filepath, BKE_tempdir_session(), name);
 }
 
 /* only for temp buffer, makes exact copy of render result */
@@ -1160,17 +1165,17 @@ static void render_result_exr_file_cache_path(Scene *sce, const char *root, char
 	if (G.main->name[0]) {
 		BLI_split_dirfile(G.main->name, dirname, filename, sizeof(dirname), sizeof(filename));
 		BLI_replace_extension(filename, sizeof(filename), "");  /* strip '.blend' */
-		md5_buffer(G.main->name, strlen(G.main->name), path_digest);
+		BLI_hash_md5_buffer(G.main->name, strlen(G.main->name), path_digest);
 	}
 	else {
-		BLI_strncpy(dirname, BLI_temp_dir_base(), sizeof(dirname));
+		BLI_strncpy(dirname, BKE_tempdir_base(), sizeof(dirname));
 		BLI_strncpy(filename, "UNSAVED", sizeof(filename));
 	}
-	md5_to_hexdigest(path_digest, path_hexdigest);
+	BLI_hash_md5_to_hexdigest(path_digest, path_hexdigest);
 
 	/* Default to *non-volatile* tmp dir. */
 	if (*root == '\0') {
-		root = BLI_temp_dir_base();
+		root = BKE_tempdir_base();
 	}
 
 	BLI_snprintf(filename_full, sizeof(filename_full), "cached_RR_%s_%s_%s.exr",

@@ -27,7 +27,6 @@
  *  \ingroup render
  */
 
-
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
@@ -50,24 +49,17 @@
 
 #include "BKE_node.h"
 
-
-#include "PIL_time.h"
-
 #include "render_result.h"
 #include "render_types.h"
-#include "renderpipeline.h"
 #include "rendercore.h"
 #include "renderdatabase.h"
-#include "pixelblending.h"
 #include "pixelshading.h"
 #include "shading.h"
-#include "texture.h"
 #include "volumetric.h"
 
 #include "rayintersection.h"
 #include "rayobject.h"
 #include "raycounter.h"
-
 
 #define RAY_TRA		1
 #define RAY_INSIDE	2
@@ -1281,7 +1273,7 @@ static float get_avg_speed(ShadeInput *shi)
 	post_x = (shi->winspeed[2] == PASS_VECTOR_MAX)?0.0f:shi->winspeed[2];
 	post_y = (shi->winspeed[3] == PASS_VECTOR_MAX)?0.0f:shi->winspeed[3];
 	
-	speedavg = (sqrtf(pre_x * pre_x + pre_y * pre_y) + sqrtf(post_x * post_x + post_y * post_y)) / 2.0;
+	speedavg = (sqrtf(pre_x * pre_x + pre_y * pre_y) + sqrtf(post_x * post_x + post_y * post_y)) / 2.0f;
 	
 	return speedavg;
 }
@@ -1299,7 +1291,7 @@ static void trace_refract(float col[4], ShadeInput *shi, ShadeResult *shr)
 	float v_refract[3], v_refract_new[3];
 	float sampcol[4], colsq[4];
 	
-	float blur = powf(1.0f - shi->mat->gloss_tra, 3);
+	float blur = pow3f(1.0f - shi->mat->gloss_tra);
 	short max_samples = shi->mat->samp_gloss_tra;
 	float adapt_thresh = shi->mat->adapt_thresh_tra;
 	
@@ -1400,7 +1392,7 @@ static void trace_reflect(float col[3], ShadeInput *shi, ShadeResult *shr, float
 	float v_nor_new[3], v_reflect[3];
 	float sampcol[4], colsq[4];
 		
-	float blur = powf(1.0f - shi->mat->gloss_mir, 3);
+	float blur = pow3f(1.0f - shi->mat->gloss_mir);
 	short max_samples = shi->mat->samp_gloss_mir;
 	float adapt_thresh = shi->mat->adapt_thresh_mir;
 	float aniso = 1.0f - shi->mat->aniso_gloss_mir;
@@ -1562,7 +1554,7 @@ void ray_trace(ShadeInput *shi, ShadeResult *shr)
 			}
 			
 			if (shi->combinedflag & SCE_PASS_REFLECT) {
-				/* values in shr->spec can be greater then 1.0.
+				/* values in shr->spec can be greater than 1.0.
 				 * In this case the mircol uses a zero blending factor, so ignoring it is ok.
 				 * Fixes bug #18837 - when the spec is higher then 1.0,
 				 * diff can become a negative color - Campbell  */

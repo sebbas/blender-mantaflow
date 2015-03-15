@@ -356,6 +356,7 @@ float wm_window_pixelsize(wmWindow *win)
 static void wm_window_add_ghostwindow(wmWindowManager *wm, const char *title, wmWindow *win)
 {
 	GHOST_WindowHandle ghostwin;
+	GHOST_GLSettings glSettings = {0};
 	static int multisamples = -1;
 	int scr_w, scr_h, posy;
 	
@@ -363,7 +364,12 @@ static void wm_window_add_ghostwindow(wmWindowManager *wm, const char *title, wm
 	 * mix it, either all windows have it, or none (tested in OSX opengl) */
 	if (multisamples == -1)
 		multisamples = U.ogl_multisamples;
-	
+
+	glSettings.numOfAASamples = multisamples;
+
+	if (!(U.uiflag2 & USER_OPENGL_NO_WARN_SUPPORT))
+		glSettings.flags |= GHOST_glWarnSupport;
+
 	wm_get_screensize(&scr_w, &scr_h);
 	posy = (scr_h - win->posy - win->sizey);
 	
@@ -371,8 +377,7 @@ static void wm_window_add_ghostwindow(wmWindowManager *wm, const char *title, wm
 	                              win->posx, posy, win->sizex, win->sizey,
 	                              (GHOST_TWindowState)win->windowstate,
 	                              GHOST_kDrawingContextTypeOpenGL,
-	                              0 /* no stereo */,
-	                              multisamples /* AA */);
+	                              glSettings);
 	
 	if (ghostwin) {
 		GHOST_RectangleHandle bounds;
@@ -1524,3 +1529,21 @@ bool WM_window_is_fullscreen(wmWindow *win)
 	return win->windowstate == GHOST_kWindowStateFullScreen;
 }
 
+
+#ifdef WITH_INPUT_IME
+/* note: keep in mind wm_window_IME_begin is also used to reposition the IME window */
+void wm_window_IME_begin(wmWindow *win, int x, int y, int w, int h, bool complete)
+{
+	BLI_assert(win);
+
+	GHOST_BeginIME(win->ghostwin, x, win->sizey - y, w, h, complete);
+}
+
+void wm_window_IME_end(wmWindow *win)
+{
+	BLI_assert(win && win->ime_data);
+
+	GHOST_EndIME(win->ghostwin);
+	win->ime_data = NULL;
+}
+#endif  /* WITH_INPUT_IME */

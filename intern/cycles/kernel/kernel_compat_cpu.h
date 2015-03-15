@@ -11,7 +11,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License
+ * limitations under the License.
  */
 
 #ifndef __KERNEL_COMPAT_CPU_H__
@@ -19,16 +19,25 @@
 
 #define __KERNEL_CPU__
 
+/* Release kernel has too much false-positive maybe-uninitialized warnings,
+ * which makes it possible to miss actual warnings.
+ */
+#if defined(__GNUC__) && defined(NDEBUG)
+#  pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+
 #include "util_debug.h"
 #include "util_math.h"
 #include "util_simd.h"
 #include "util_half.h"
 #include "util_types.h"
 
-/* On 64bit linux single precision exponent is really slow comparing to the
- * double precision version, even with float<->double conversion involved.
+/* On x86_64, versions of glibc < 2.16 have an issue where expf is
+ * much slower than the double version.  This was fixed in glibc 2.16.
  */
-#if !defined(__KERNEL_GPU__) && defined(__linux__) && defined(__x86_64__)
+#if !defined(__KERNEL_GPU__)  && defined(__x86_64__) && defined(__x86_64__) && \
+     defined(__GNU_LIBRARY__) && defined(__GLIBC__ ) && defined(__GLIBC_MINOR__) && \
+     (__GLIBC__ <= 2 && __GLIBC_MINOR__ < 16)
 #  define expf(x) ((float)exp((double)(x)))
 #endif
 
@@ -50,7 +59,7 @@ template<typename T> struct texture  {
 		return data[index];
 	}
 
-#if 0
+#ifdef __KERNEL_SSE2__
 	ccl_always_inline ssef fetch_ssef(int index)
 	{
 		kernel_assert(index >= 0 && index < width);
@@ -69,6 +78,14 @@ template<typename T> struct texture  {
 };
 
 template<typename T> struct texture_image  {
+#define SET_CUBIC_SPLINE_WEIGHTS(u, t) \
+	{ \
+		u[0] = (((-1.0f/6.0f)* t + 0.5f) * t - 0.5f) * t + (1.0f/6.0f); \
+		u[1] =  ((      0.5f * t - 1.0f) * t       ) * t + (2.0f/3.0f); \
+		u[2] =  ((     -0.5f * t + 0.5f) * t + 0.5f) * t + (1.0f/6.0f); \
+		u[3] = (1.0f / 6.0f) * t * t * t; \
+	} (void)0
+
 	ccl_always_inline float4 read(float4 r)
 	{
 		return r;
@@ -121,7 +138,7 @@ template<typename T> struct texture_image  {
 			}
 			return read(data[ix + iy*width]);
 		}
-		else {
+		else if(interpolation == INTERPOLATION_LINEAR) {
 			float tx = frac(x*(float)width - 0.5f, &ix);
 			float ty = frac(y*(float)height - 0.5f, &iy);
 
@@ -146,6 +163,62 @@ template<typename T> struct texture_image  {
 			r += ty*tx*read(data[nix + niy*width]);
 
 			return r;
+		}
+		else {
+			/* Tricubic b-spline interpolation. */
+			const float tx = frac(x*(float)width - 0.5f, &ix);
+			const float ty = frac(y*(float)height - 0.5f, &iy);
+			int pix, piy, nnix, nniy;
+			if(periodic) {
+				ix = wrap_periodic(ix, width);
+				iy = wrap_periodic(iy, height);
+
+				pix = wrap_periodic(ix-1, width);
+				piy = wrap_periodic(iy-1, height);
+
+				nix = wrap_periodic(ix+1, width);
+				niy = wrap_periodic(iy+1, height);
+
+				nnix = wrap_periodic(ix+2, width);
+				nniy = wrap_periodic(iy+2, height);
+			}
+			else {
+				ix = wrap_clamp(ix, width);
+				iy = wrap_clamp(iy, height);
+
+				pix = wrap_clamp(ix-1, width);
+				piy = wrap_clamp(iy-1, height);
+
+				nix = wrap_clamp(ix+1, width);
+				niy = wrap_clamp(iy+1, height);
+
+				nnix = wrap_clamp(ix+2, width);
+				nniy = wrap_clamp(iy+2, height);
+			}
+			const int xc[4] = {pix, ix, nix, nnix};
+			const int yc[4] = {width * piy,
+			                   width * iy,
+			                   width * niy,
+			                   width * nniy};
+			float u[4], v[4];
+			/* Some helper macro to keep code reasonable size,
+			 * let compiler to inline all the matrix multiplications.
+			 */
+#define DATA(x, y) (read(data[xc[x] + yc[y]]))
+#define TERM(col) \
+			(v[col] * (u[0] * DATA(0, col) + \
+			           u[1] * DATA(1, col) + \
+			           u[2] * DATA(2, col) + \
+			           u[3] * DATA(3, col)))
+
+			SET_CUBIC_SPLINE_WEIGHTS(u, tx);
+			SET_CUBIC_SPLINE_WEIGHTS(v, ty);
+
+			/* Actual interpolation. */
+			return TERM(0) + TERM(1) + TERM(2) + TERM(3);
+
+#undef TERM
+#undef DATA
 		}
 	}
 
@@ -275,13 +348,6 @@ template<typename T> struct texture_image  {
 			/* Some helper macro to keep code reasonable size,
 			 * let compiler to inline all the matrix multiplications.
 			 */
-#define SET_SPLINE_WEIGHTS(u, t) \
-			{ \
-				u[0] = (((-1.0f/6.0f)* t + 0.5f) * t - 0.5f) * t + (1.0f/6.0f); \
-				u[1] =  ((      0.5f * t - 1.0f) * t       ) * t + (2.0f/3.0f); \
-				u[2] =  ((     -0.5f * t + 0.5f) * t + 0.5f) * t + (1.0f/6.0f); \
-				u[3] = (1.0f / 6.0f) * t * t * t; \
-			} (void)0
 #define DATA(x, y, z) (read(data[xc[x] + yc[y] + zc[z]]))
 #define COL_TERM(col, row) \
 			(v[col] * (u[0] * DATA(0, col, row) + \
@@ -294,9 +360,9 @@ template<typename T> struct texture_image  {
 			           COL_TERM(2, row) + \
 			           COL_TERM(3, row)))
 
-			SET_SPLINE_WEIGHTS(u, tx);
-			SET_SPLINE_WEIGHTS(v, ty);
-			SET_SPLINE_WEIGHTS(w, tz);
+			SET_CUBIC_SPLINE_WEIGHTS(u, tx);
+			SET_CUBIC_SPLINE_WEIGHTS(v, ty);
+			SET_CUBIC_SPLINE_WEIGHTS(w, tz);
 
 			/* Actual interpolation. */
 			return ROW_TERM(0) + ROW_TERM(1) + ROW_TERM(2) + ROW_TERM(3);
@@ -304,7 +370,6 @@ template<typename T> struct texture_image  {
 #undef COL_TERM
 #undef ROW_TERM
 #undef DATA
-#undef SET_SPLINE_WEIGHTS
 		}
 	}
 
@@ -318,6 +383,7 @@ template<typename T> struct texture_image  {
 	T *data;
 	int interpolation;
 	int width, height, depth;
+#undef SET_CUBIC_SPLINE_WEIGHTS
 };
 
 typedef texture<float4> texture_float4;
@@ -341,6 +407,34 @@ typedef texture_image<uchar4> texture_image_uchar4;
 #define kernel_tex_image_interp_3d_ex(tex, x, y, z, interpolation) ((tex < MAX_FLOAT_IMAGES) ? kg->texture_float_images[tex].interp_3d_ex(x, y, z, interpolation) : kg->texture_byte_images[tex - MAX_FLOAT_IMAGES].interp_3d_ex(x, y, z, interpolation))
 
 #define kernel_data (kg->__data)
+
+#ifdef __KERNEL_SSE2__
+typedef vector3<sseb> sse3b;
+typedef vector3<ssef> sse3f;
+typedef vector3<ssei> sse3i;
+
+ccl_device_inline void print_sse3b(const char *label, sse3b& a)
+{
+	print_sseb(label, a.x);
+	print_sseb(label, a.y);
+	print_sseb(label, a.z);
+}
+
+ccl_device_inline void print_sse3f(const char *label, sse3f& a)
+{
+	print_ssef(label, a.x);
+	print_ssef(label, a.y);
+	print_ssef(label, a.z);
+}
+
+ccl_device_inline void print_sse3i(const char *label, sse3i& a)
+{
+	print_ssei(label, a.x);
+	print_ssei(label, a.y);
+	print_ssei(label, a.z);
+}
+
+#endif
 
 CCL_NAMESPACE_END
 

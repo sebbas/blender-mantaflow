@@ -152,7 +152,7 @@ elseif(APPLE AND NOT WITH_X11)
 		intern/GHOST_WindowCocoa.h
 	)
 
-	if (NOT WITH_GL_EGL)
+	if(NOT WITH_GL_EGL)
 		list(APPEND SRC
 			intern/GHOST_ContextCGL.mm
 
@@ -192,7 +192,7 @@ elseif(WITH_X11)
 		intern/GHOST_WindowX11.h
 	)
 
-	if (NOT WITH_GL_EGL)
+	if(NOT WITH_GL_EGL)
 		list(APPEND SRC
 			intern/GHOST_ContextGLX.cpp
 
@@ -272,11 +272,21 @@ elseif(WIN32)
 		intern/GHOST_TaskbarWin32.h
 	)
 
-	if (NOT WITH_GL_EGL)
+	if(NOT WITH_GL_EGL)
 		list(APPEND SRC
 			intern/GHOST_ContextWGL.cpp
 				
 			intern/GHOST_ContextWGL.h
+		)
+	endif()
+
+	if(WITH_INPUT_IME)
+		add_definitions(-DWITH_INPUT_IME)
+
+		list(APPEND SRC
+			intern/GHOST_ImeWin32.cpp
+
+			intern/GHOST_ImeWin32.h
 		)
 	endif()
 

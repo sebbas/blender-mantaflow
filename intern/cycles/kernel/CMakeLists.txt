@@ -91,6 +91,7 @@ set(SRC_SVM_HEADERS
 	svm/svm_magic.h
 	svm/svm_mapping.h
 	svm/svm_math.h
+	svm/svm_math_util.h
 	svm/svm_mix.h
 	svm/svm_musgrave.h
 	svm/svm_noise.h
@@ -122,7 +123,13 @@ set(SRC_GEOM_HEADERS
 	geom/geom_motion_triangle.h
 	geom/geom_object.h
 	geom/geom_primitive.h
+	geom/geom_qbvh.h
+	geom/geom_qbvh_shadow.h
+	geom/geom_qbvh_subsurface.h
+	geom/geom_qbvh_traversal.h
+	geom/geom_qbvh_volume.h
 	geom/geom_triangle.h
+	geom/geom_triangle_intersect.h
 	geom/geom_volume.h
 )
 
@@ -130,6 +137,7 @@ set(SRC_UTIL_HEADERS
 	../util/util_color.h
 	../util/util_half.h
 	../util/util_math.h
+	../util/util_math_fast.h
 	../util/util_transform.h
 	../util/util_types.h
 )
@@ -235,17 +243,26 @@ if(CXX_HAS_SSE)
 		kernel_sse2.cpp
 		kernel_sse3.cpp
 		kernel_sse41.cpp
-		kernel_avx.cpp
-		kernel_avx2.cpp
 	)
 
 	set_source_files_properties(kernel_sse2.cpp PROPERTIES COMPILE_FLAGS "${CYCLES_SSE2_KERNEL_FLAGS}")
 	set_source_files_properties(kernel_sse3.cpp PROPERTIES COMPILE_FLAGS "${CYCLES_SSE3_KERNEL_FLAGS}")
 	set_source_files_properties(kernel_sse41.cpp PROPERTIES COMPILE_FLAGS "${CYCLES_SSE41_KERNEL_FLAGS}")
-	set_source_files_properties(kernel_avx.cpp PROPERTIES COMPILE_FLAGS "${CYCLES_AVX_KERNEL_FLAGS}")
-	set_source_files_properties(kernel_avx2.cpp PROPERTIES COMPILE_FLAGS "${CYCLES_AVX2_KERNEL_FLAGS}")
 endif()
 
+if(CXX_HAS_AVX)
+	list(APPEND SRC
+		kernel_avx.cpp
+	)
+	set_source_files_properties(kernel_avx.cpp PROPERTIES COMPILE_FLAGS "${CYCLES_AVX_KERNEL_FLAGS}")
+endif()
+
+if(CXX_HAS_AVX2)
+	list(APPEND SRC
+		kernel_avx2.cpp
+	)
+	set_source_files_properties(kernel_avx2.cpp PROPERTIES COMPILE_FLAGS "${CYCLES_AVX2_KERNEL_FLAGS}")
+endif()
 
 add_library(cycles_kernel ${SRC} ${SRC_HEADERS} ${SRC_CLOSURE_HEADERS} ${SRC_SVM_HEADERS} ${SRC_GEOM_HEADERS})
 

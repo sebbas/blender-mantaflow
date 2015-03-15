@@ -414,6 +414,16 @@ void BKE_mesh_update_customdata_pointers(Mesh *me, const bool do_ensure_tess_cd)
 	me->mloopuv = CustomData_get_layer(&me->ldata, CD_MLOOPUV);
 }
 
+bool BKE_mesh_has_custom_loop_normals(Mesh *me)
+{
+	if (me->edit_btmesh) {
+		return CustomData_has_layer(&me->edit_btmesh->bm->ldata, CD_CUSTOMLOOPNORMAL);
+	}
+	else {
+		return CustomData_has_layer(&me->ldata, CD_CUSTOMLOOPNORMAL);
+	}
+}
+
 /* Note: unlinking is called when me->id.us is 0, question remains how
  * much unlinking of Library data in Mesh should be done... probably
  * we need a more generic method, like the expand() functions in
@@ -562,6 +572,10 @@ Mesh *BKE_mesh_copy_ex(Main *bmain, Mesh *me)
 	men->key = BKE_key_copy(me->key);
 	if (men->key) men->key->from = (ID *)men;
 
+	if (me->id.lib) {
+		BKE_id_lib_local_paths(bmain, me->id.lib, &men->id);
+	}
+
 	return men;
 }
 
@@ -699,7 +713,7 @@ bool BKE_mesh_uv_cdlayer_rename_index(Mesh *me, const int poly_index, const int 
 	}
 
 	/* Loop until we do have exactly the same name for all layers! */
-	for (i = 1; (strcmp(cdlp->name, cdlu->name) != 0 || (cdlf && strcmp(cdlp->name, cdlf->name) != 0)); i++) {
+	for (i = 1; !STREQ(cdlp->name, cdlu->name) || (cdlf && !STREQ(cdlp->name, cdlf->name)); i++) {
 		switch (i % step) {
 			case 0:
 				BLI_strncpy(cdlp->name, cdlu->name, sizeof(cdlp->name));
@@ -1487,7 +1501,7 @@ void BKE_mesh_from_nurbs_displist(Object *ob, ListBase *dispbase, const bool use
 	}
 	else {
 		me = BKE_mesh_add(G.main, "Mesh");
-		DM_to_mesh(dm, me, ob, CD_MASK_MESH);
+		DM_to_mesh(dm, me, ob, CD_MASK_MESH, false);
 	}
 
 	me->totcol = cu->totcol;
@@ -2242,8 +2256,7 @@ Mesh *BKE_mesh_new_from_object(
 					dm = mesh_create_derived_view(sce, ob, mask);
 
 				tmpmesh = BKE_mesh_add(bmain, "Mesh");
-				DM_to_mesh(dm, tmpmesh, ob, mask);
-				dm->release(dm);
+				DM_to_mesh(dm, tmpmesh, ob, mask, true);
 			}
 
 			/* BKE_mesh_add/copy gives us a user count we don't need */

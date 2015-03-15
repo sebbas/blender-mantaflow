@@ -43,6 +43,7 @@ set(SRC
 	operators/bmo_bisect_plane.c
 	operators/bmo_bridge.c
 	operators/bmo_connect.c
+	operators/bmo_connect_concave.c
 	operators/bmo_connect_nonplanar.c
 	operators/bmo_connect_pair.c
 	operators/bmo_create.c
@@ -74,6 +75,8 @@ set(SRC
 	operators/bmo_utils.c
 	operators/bmo_wireframe.c
 
+	intern/bmesh_callback_generic.c
+	intern/bmesh_callback_generic.h
 	intern/bmesh_construct.c
 	intern/bmesh_construct.h
 	intern/bmesh_core.c

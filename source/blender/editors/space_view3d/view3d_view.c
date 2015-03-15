@@ -37,9 +37,7 @@
 
 #include "BLI_math.h"
 #include "BLI_rect.h"
-#include "BLI_listbase.h"
 #include "BLI_utildefines.h"
-#include "BLI_callbacks.h"
 
 #include "BKE_anim.h"
 #include "BKE_action.h"
@@ -55,7 +53,6 @@
 #include "BIF_gl.h"
 #include "BIF_glutil.h"
 
-#include "GPU_draw.h"
 #include "GPU_select.h"
 
 #include "WM_api.h"
@@ -64,14 +61,16 @@
 #include "ED_screen.h"
 #include "ED_armature.h"
 
-#include "RE_engine.h"
 
 #ifdef WITH_GAMEENGINE
-#include "BL_System.h"
+#  include "BLI_listbase.h"
+#  include "BLI_callbacks.h"
+
+#  include "GPU_draw.h"
+
+#  include "BL_System.h"
 #endif
 
-#include "RNA_access.h"
-#include "RNA_define.h"
 
 #include "view3d_intern.h"  /* own include */
 
@@ -356,6 +355,7 @@ static int view3d_smoothview_invoke(bContext *C, wmOperator *UNUSED(op), const w
 			view3d_smooth_view_state_restore(&sms->dst, v3d, rv3d);
 
 			ED_view3d_camera_lock_sync(v3d, rv3d);
+			ED_view3d_camera_lock_autokey(v3d, rv3d, C, true, true);
 		}
 		
 		if ((rv3d->viewlock & RV3D_LOCKED) == 0) {
@@ -382,6 +382,10 @@ static int view3d_smoothview_invoke(bContext *C, wmOperator *UNUSED(op), const w
 		v3d->lens  = sms->dst.lens * step + sms->src.lens * step_inv;
 
 		ED_view3d_camera_lock_sync(v3d, rv3d);
+		if (ED_screen_animation_playing(CTX_wm_manager(C))) {
+			ED_view3d_camera_lock_autokey(v3d, rv3d, C, true, true);
+		}
+
 	}
 	
 	if (rv3d->viewlock & RV3D_BOXVIEW)
@@ -492,25 +496,21 @@ static int view3d_camera_to_view_selected_exec(bContext *C, wmOperator *op)
 	Object *camera_ob = v3d ? v3d->camera : scene->camera;
 
 	float r_co[3]; /* the new location to apply */
+	float r_scale; /* only for ortho cameras */
 
 	if (camera_ob == NULL) {
 		BKE_report(op->reports, RPT_ERROR, "No active camera");
 		return OPERATOR_CANCELLED;
 	}
-	else if (camera_ob->type != OB_CAMERA) {
-		BKE_report(op->reports, RPT_ERROR, "Object not a camera");
-		return OPERATOR_CANCELLED;
-	}
-	else if (((Camera *)camera_ob->data)->type == R_ORTHO) {
-		BKE_report(op->reports, RPT_ERROR, "Orthographic cameras not supported");
-		return OPERATOR_CANCELLED;
-	}
 
 	/* this function does all the important stuff */
-	if (BKE_camera_view_frame_fit_to_scene(scene, v3d, camera_ob, r_co)) {
-
+	if (BKE_camera_view_frame_fit_to_scene(scene, v3d, camera_ob, r_co, &r_scale)) {
 		ObjectTfmProtectedChannels obtfm;
 		float obmat_new[4][4];
+
+		if ((camera_ob->type == OB_CAMERA) && (((Camera *)camera_ob->data)->type == CAM_ORTHO)) {
+			((Camera *)camera_ob->data)->ortho_scale = r_scale;
+		}
 
 		copy_m4_m4(obmat_new, camera_ob->obmat);
 		copy_v3_v3(obmat_new[3], r_co);
@@ -609,6 +609,20 @@ void VIEW3D_OT_object_as_camera(wmOperatorType *ot)
 
 /* ********************************** */
 
+void ED_view3d_clipping_calc_from_boundbox(float clip[4][4], const BoundBox *bb, const bool is_flip)
+{
+	int val;
+
+	for (val = 0; val < 4; val++) {
+		normal_tri_v3(clip[val], bb->vec[val], bb->vec[val == 3 ? 0 : val + 1], bb->vec[val + 4]);
+		if (UNLIKELY(is_flip)) {
+			negate_v3(clip[val]);
+		}
+
+		clip[val][3] = -dot_v3v3(clip[val], bb->vec[val]);
+	}
+}
+
 void ED_view3d_clipping_calc(BoundBox *bb, float planes[4][4], bglMats *mats, const rcti *rect)
 {
 	float modelview[4][4];
@@ -644,16 +658,7 @@ void ED_view3d_clipping_calc(BoundBox *bb, float planes[4][4], bglMats *mats, co
 		((float *)modelview)[a] = mats->modelview[a];
 	flip_sign = is_negative_m4(modelview);
 
-	/* then plane equations */
-	for (val = 0; val < 4; val++) {
-
-		normal_tri_v3(planes[val], bb->vec[val], bb->vec[val == 3 ? 0 : val + 1], bb->vec[val + 4]);
-
-		if (flip_sign)
-			negate_v3(planes[val]);
-
-		planes[val][3] = -dot_v3v3(planes[val], bb->vec[val]);
-	}
+	ED_view3d_clipping_calc_from_boundbox(planes, bb, flip_sign);
 }
 
 static bool view3d_boundbox_clip_m4(const BoundBox *bb, float persmatob[4][4])
@@ -890,6 +895,21 @@ char ED_view3d_lock_view_from_index(int index)
 	}
 
 }
+
+char ED_view3d_axis_view_opposite(char view)
+{
+	switch (view) {
+		case RV3D_VIEW_FRONT:   return RV3D_VIEW_BACK;
+		case RV3D_VIEW_BACK:    return RV3D_VIEW_FRONT;
+		case RV3D_VIEW_LEFT:    return RV3D_VIEW_RIGHT;
+		case RV3D_VIEW_RIGHT:   return RV3D_VIEW_LEFT;
+		case RV3D_VIEW_TOP:     return RV3D_VIEW_BOTTOM;
+		case RV3D_VIEW_BOTTOM:  return RV3D_VIEW_TOP;
+	}
+
+	return RV3D_VIEW_USER;
+}
+
 
 bool ED_view3d_lock(RegionView3D *rv3d)
 {
@@ -1543,16 +1563,20 @@ static void game_set_commmandline_options(GameData *gm)
 
 static int game_engine_poll(bContext *C)
 {
+	bScreen *screen;
 	/* we need a context and area to launch BGE
 	 * it's a temporary solution to avoid crash at load time
 	 * if we try to auto run the BGE. Ideally we want the
 	 * context to be set as soon as we load the file. */
 
 	if (CTX_wm_window(C) == NULL) return 0;
-	if (CTX_wm_screen(C) == NULL) return 0;
+	if ((screen = CTX_wm_screen(C)) == NULL) return 0;
 	if (CTX_wm_area(C) == NULL) return 0;
 
 	if (CTX_data_mode_enum(C) != CTX_MODE_OBJECT)
+		return 0;
+
+	if (!BKE_scene_uses_blender_game(screen->scene))
 		return 0;
 
 	return 1;

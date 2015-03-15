@@ -281,7 +281,7 @@ static int map_insert_vert(PBVH *bvh, GHash *map,
 /* Find vertices used by the faces in this node and update the draw buffers */
 static void build_mesh_leaf_node(PBVH *bvh, PBVHNode *node)
 {
-	GHashIterator *iter;
+	GHashIterator gh_iter;
 	GHash *map;
 	int i, j, totface;
 	bool has_visible = false;
@@ -314,21 +314,16 @@ static void build_mesh_leaf_node(PBVH *bvh, PBVHNode *node)
 	                                 "bvh node vert indices");
 
 	/* Build the vertex list, unique verts first */
-	for (iter = BLI_ghashIterator_new(map), i = 0;
-	     BLI_ghashIterator_done(iter) == false;
-	     BLI_ghashIterator_step(iter), ++i)
-	{
-		void *value = BLI_ghashIterator_getValue(iter);
+	GHASH_ITER (gh_iter, map) {
+		void *value = BLI_ghashIterator_getValue(&gh_iter);
 		int ndx = GET_INT_FROM_POINTER(value);
 
 		if (ndx < 0)
 			ndx = -ndx + node->uniq_verts - 1;
 
 		node->vert_indices[ndx] =
-		    GET_INT_FROM_POINTER(BLI_ghashIterator_getKey(iter));
+		        GET_INT_FROM_POINTER(BLI_ghashIterator_getKey(&gh_iter));
 	}
-
-	BLI_ghashIterator_free(iter);
 
 	for (i = 0; i < totface; ++i) {
 		MFace *f = bvh->faces + node->prim_indices[i];
@@ -943,7 +938,7 @@ static bool update_search_cb(PBVHNode *node, void *data_v)
 	if (node->flag & PBVH_Leaf)
 		return (node->flag & flag) != 0;
 
-	return 1;
+	return true;
 }
 
 static void pbvh_update_normals(PBVH *bvh, PBVHNode **nodes,
@@ -1474,10 +1469,10 @@ bool ray_face_intersection(const float ray_start[3],
 	    (t3 && isect_ray_tri_epsilon_v3(ray_start, ray_normal, t0, t2, t3, &dist, NULL, 0.1f) && dist < *fdist))
 	{
 		*fdist = dist;
-		return 1;
+		return true;
 	}
 	else {
-		return 0;
+		return false;
 	}
 }
 

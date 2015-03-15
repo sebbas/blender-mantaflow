@@ -78,8 +78,6 @@
 #include "DNA_scene_types.h"
 #include "DNA_mesh_types.h"
 
-#include "PIL_time.h"
-
 static float get_fluid_viscosity(FluidsimSettings *settings)
 {
 	return (1.0f/powf(10.0f, settings->viscosityExponent)) * settings->viscosityValue;

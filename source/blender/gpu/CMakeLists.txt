@@ -54,17 +54,36 @@ set(SRC
 	intern/gpu_material.c
 	intern/gpu_simple_shader.c
 	intern/gpu_select.c
+	intern/gpu_compositing.c
+	intern/gpu_debug.c
+
+	shaders/gpu_shader_fx_lib.glsl
+	shaders/gpu_shader_fx_ssao_frag.glsl
+	shaders/gpu_shader_fx_dof_frag.glsl
+	shaders/gpu_shader_fx_dof_vert.glsl
+	shaders/gpu_shader_fx_vert.glsl
+	shaders/gpu_shader_material.glsl
+	shaders/gpu_shader_sep_gaussian_blur_frag.glsl
+	shaders/gpu_shader_sep_gaussian_blur_vert.glsl
+	shaders/gpu_shader_simple_frag.glsl
+	shaders/gpu_shader_simple_vert.glsl
+	shaders/gpu_shader_vertex.glsl
+	shaders/gpu_shader_vsm_store_frag.glsl
+	shaders/gpu_shader_vsm_store_vert.glsl
+	shaders/gpu_shader_fx_depth_resolve.glsl
 
 	GPU_buffers.h
 	GPU_draw.h
+	GPU_debug.h
 	GPU_extensions.h
 	GPU_glew.h
 	GPU_init_exit.h
 	GPU_material.h
 	GPU_simple_shader.h
 	GPU_select.h
+	GPU_compositing.h
 	intern/gpu_codegen.h
-	intern/gpu_extensions_private.h
+	intern/gpu_private.h
 )
 
 data_to_c_simple(shaders/gpu_shader_material.glsl SRC)
@@ -73,8 +92,15 @@ data_to_c_simple(shaders/gpu_shader_sep_gaussian_blur_vert.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_simple_frag.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_simple_vert.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_vertex.glsl SRC)
+data_to_c_simple(shaders/gpu_shader_vertex_world.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_vsm_store_frag.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_vsm_store_vert.glsl SRC)
+data_to_c_simple(shaders/gpu_shader_fx_vert.glsl SRC)
+data_to_c_simple(shaders/gpu_shader_fx_ssao_frag.glsl SRC)
+data_to_c_simple(shaders/gpu_shader_fx_dof_frag.glsl SRC)
+data_to_c_simple(shaders/gpu_shader_fx_dof_vert.glsl SRC)
+data_to_c_simple(shaders/gpu_shader_fx_depth_resolve.glsl SRC)
+data_to_c_simple(shaders/gpu_shader_fx_lib.glsl SRC)
 
 if(WITH_GAMEENGINE)
 	add_definitions(-DWITH_GAMEENGINE)

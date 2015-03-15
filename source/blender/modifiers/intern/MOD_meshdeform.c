@@ -40,8 +40,6 @@
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 
-#include "BLF_translation.h"
-
 #include "BKE_cdderivedmesh.h"
 #include "BKE_global.h"
 #include "BKE_modifier.h"
@@ -84,9 +82,16 @@ static void copyData(ModifierData *md, ModifierData *target)
 	MeshDeformModifierData *mmd = (MeshDeformModifierData *) md;
 	MeshDeformModifierData *tmmd = (MeshDeformModifierData *) target;
 
-	tmmd->gridsize = mmd->gridsize;
-	tmmd->flag = mmd->flag;
-	tmmd->object = mmd->object;
+	*tmmd = *mmd;
+
+	if (mmd->bindinfluences) tmmd->bindinfluences = MEM_dupallocN(mmd->bindinfluences);
+	if (mmd->bindoffsets) tmmd->bindoffsets = MEM_dupallocN(mmd->bindoffsets);
+	if (mmd->bindcagecos) tmmd->bindcagecos = MEM_dupallocN(mmd->bindcagecos);
+	if (mmd->dyngrid) tmmd->dyngrid = MEM_dupallocN(mmd->dyngrid);
+	if (mmd->dyninfluences) tmmd->dyninfluences = MEM_dupallocN(mmd->dyninfluences);
+	if (mmd->dynverts) tmmd->dynverts = MEM_dupallocN(mmd->dynverts);
+	if (mmd->bindweights) tmmd->dynverts = MEM_dupallocN(mmd->bindweights);  /* deprecated */
+	if (mmd->bindcos) tmmd->dynverts = MEM_dupallocN(mmd->bindcos);  /* deprecated */
 }
 
 static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
@@ -118,6 +123,7 @@ static void foreachObjectLink(
 }
 
 static void updateDepgraph(ModifierData *md, DagForest *forest,
+                           struct Main *UNUSED(bmain),
                            struct Scene *UNUSED(scene),
                            Object *UNUSED(ob),
                            DagNode *obNode)
@@ -213,17 +219,16 @@ typedef struct MeshdeformUserdata {
 	float (*vertexCos)[3];
 	float (*cagemat)[4];
 	float (*icagemat)[3];
-	SpinLock lock;
 } MeshdeformUserdata;
 
-static void meshdeform_vert_task(void *userdata, int iter)
+static void meshdeform_vert_task(void * userdata, int iter)
 {
 	MeshdeformUserdata *data = userdata;
 	/*const*/ MeshDeformModifierData *mmd = data->mmd;
 	const MDeformVert *dvert = data->dvert;
 	const int defgrp_index = data->defgrp_index;
 	const int *offsets = mmd->bindoffsets;
-	const MDefInfluence *influences = influences = mmd->bindinfluences;
+	const MDefInfluence *influences = mmd->bindinfluences;
 	/*const*/ float (*dco)[3] = data->dco;
 	float (*vertexCos)[3] = data->vertexCos;
 	float co[3];
@@ -265,12 +270,10 @@ static void meshdeform_vert_task(void *userdata, int iter)
 	if (totweight > 0.0f) {
 		mul_v3_fl(co, fac / totweight);
 		mul_m3_v3(data->icagemat, co);
-		BLI_spin_lock(&data->lock);
 		if (G.debug_value != 527)
 			add_v3_v3(vertexCos[iter], co);
 		else
 			copy_v3_v3(vertexCos[iter], co);
-		BLI_spin_unlock(&data->lock);
 	}
 }
 
@@ -395,13 +398,9 @@ static void meshdeformModifier_do(
 	data.vertexCos = vertexCos;
 	data.cagemat = cagemat;
 	data.icagemat = icagemat;
-	BLI_spin_init(&data.lock);
 
 	/* Do deformation. */
 	BLI_task_parallel_range(0, totvert, &data, meshdeform_vert_task);
-
-	/* Uninitialize user dtaa used by the task system. */
-	BLI_spin_end(&data.lock);
 
 	/* release cage derivedmesh */
 	MEM_freeN(dco);

@@ -319,13 +319,9 @@ static void bm_subdivide_multicut(BMesh *bm, BMEdge *edge, const SubDParams *par
 	for (i = 0; i < numcuts; i++) {
 		v = subdivideedgenum(bm, eed, &e_tmp, i, params->numcuts, params, &e_new, vsta, vend);
 
-		BMO_elem_flag_enable(bm, v, SUBD_SPLIT);
-		BMO_elem_flag_enable(bm, eed, SUBD_SPLIT);
-		BMO_elem_flag_enable(bm, e_new, SUBD_SPLIT);
-
-		BMO_elem_flag_enable(bm, v, ELE_SPLIT);
-		BMO_elem_flag_enable(bm, eed, ELE_SPLIT);
-		BMO_elem_flag_enable(bm, e_new, SUBD_SPLIT);
+		BMO_elem_flag_enable(bm, v, SUBD_SPLIT | ELE_SPLIT);
+		BMO_elem_flag_enable(bm, eed, SUBD_SPLIT | ELE_SPLIT);
+		BMO_elem_flag_enable(bm, e_new, SUBD_SPLIT | ELE_SPLIT);
 
 		BM_CHECK_ELEMENT(v);
 		if (v->e) BM_CHECK_ELEMENT(v->e);
@@ -802,13 +798,13 @@ void bmo_subdivide_edges_exec(BMesh *bm, BMOperator *op)
 	patterns[1] = NULL;
 	/* straight cut is patterns[1] == NULL */
 	switch (cornertype) {
-		case SUBD_PATH:
+		case SUBD_CORNER_PATH:
 			patterns[1] = &quad_2edge_path;
 			break;
-		case SUBD_INNERVERT:
+		case SUBD_CORNER_INNERVERT:
 			patterns[1] = &quad_2edge_innervert;
 			break;
-		case SUBD_FAN:
+		case SUBD_CORNER_FAN:
 			patterns[1] = &quad_2edge_fan;
 			break;
 	}
@@ -1082,7 +1078,7 @@ void bmo_subdivide_edges_exec(BMesh *bm, BMOperator *op)
 					BMIter other_fiter;
 					BM_ITER_ELEM (other_loop, &other_fiter, loops[a]->v, BM_LOOPS_OF_VERT) {
 						if (other_loop->f != face) {
-							if (BM_vert_in_face(other_loop->f, loops[b]->v)) {
+							if (BM_vert_in_face(loops[b]->v, other_loop->f)) {
 								/* we assume that these verts are not making an edge in the face */
 								BLI_assert(other_loop->prev->v != loops[a]->v);
 								BLI_assert(other_loop->next->v != loops[a]->v);

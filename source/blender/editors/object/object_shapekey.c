@@ -75,10 +75,10 @@
 
 /*********************** add shape key ***********************/
 
-static void ED_object_shape_key_add(bContext *C, Scene *scene, Object *ob, const bool from_mix)
+static void ED_object_shape_key_add(bContext *C, Object *ob, const bool from_mix)
 {
 	KeyBlock *kb;
-	if ((kb = BKE_object_insert_shape_key(scene, ob, NULL, from_mix))) {
+	if ((kb = BKE_object_insert_shape_key(ob, NULL, from_mix))) {
 		Key *key = BKE_key_from_object(ob);
 		/* for absolute shape keys, new keys may not be added last */
 		ob->shapenr = BLI_findindex(&key->block, kb) + 1;
@@ -133,14 +133,14 @@ static bool ED_object_shape_key_remove(Main *bmain, Object *ob)
 				/* apply new basis key on original data */
 				switch (ob->type) {
 					case OB_MESH:
-						BKE_key_convert_to_mesh(key->refkey, ob->data);
+						BKE_keyblock_convert_to_mesh(key->refkey, ob->data);
 						break;
 					case OB_CURVE:
 					case OB_SURF:
-						BKE_key_convert_to_curve(key->refkey, ob->data, BKE_curve_nurbs_get(ob->data));
+						BKE_keyblock_convert_to_curve(key->refkey, ob->data, BKE_curve_nurbs_get(ob->data));
 						break;
 					case OB_LATTICE:
-						BKE_key_convert_to_lattice(key->refkey, ob->data);
+						BKE_keyblock_convert_to_lattice(key->refkey, ob->data);
 						break;
 				}
 			}
@@ -320,11 +320,10 @@ static int shape_key_poll(bContext *C)
 
 static int shape_key_add_exec(bContext *C, wmOperator *op)
 {
-	Scene *scene = CTX_data_scene(C);
 	Object *ob = ED_object_context(C);
 	const bool from_mix = RNA_boolean_get(op->ptr, "from_mix");
 
-	ED_object_shape_key_add(C, scene, ob, from_mix);
+	ED_object_shape_key_add(C, ob, from_mix);
 
 	return OPERATOR_FINISHED;
 }
@@ -379,7 +378,6 @@ void OBJECT_OT_shape_key_remove(wmOperatorType *ot)
 	ot->description = "Remove shape key from the object";
 	
 	/* api callbacks */
-	ot->poll = shape_key_mode_poll;
 	ot->poll = shape_key_mode_exists_poll;
 	ot->exec = shape_key_remove_exec;
 

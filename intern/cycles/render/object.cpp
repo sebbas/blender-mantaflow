@@ -11,7 +11,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License
+ * limitations under the License.
  */
 
 #include "device.h"
@@ -221,6 +221,7 @@ vector<float> Object::motion_times()
 ObjectManager::ObjectManager()
 {
 	need_update = true;
+	need_flags_update = true;
 }
 
 ObjectManager::~ObjectManager()
@@ -318,6 +319,9 @@ void ObjectManager::device_update_transforms(Device *device, DeviceScene *dscene
 				mtfm_pre = mtfm_pre * itfm;
 				mtfm_post = mtfm_post * itfm;
 			}
+			else {
+				flag |= SD_OBJECT_HAS_VERTEX_MOTION;
+			}
 
 			memcpy(&objects_vector[i*OBJECT_VECTOR_SIZE+0], &mtfm_pre, sizeof(float4)*3);
 			memcpy(&objects_vector[i*OBJECT_VECTOR_SIZE+3], &mtfm_post, sizeof(float4)*3);
@@ -401,10 +405,11 @@ void ObjectManager::device_update(Device *device, DeviceScene *dscene, Scene *sc
 void ObjectManager::device_update_flags(Device *device, DeviceScene *dscene,
                                         Scene *scene, Progress& progress)
 {
-	if(!need_update)
+	if(!need_update && !need_flags_update)
 		return;
 
 	need_update = false;
+	need_flags_update = false;
 
 	if(scene->objects.size() == 0)
 		return;
@@ -423,6 +428,9 @@ void ObjectManager::device_update_flags(Device *device, DeviceScene *dscene,
 	foreach(Object *object, scene->objects) {
 		if(object->mesh->has_volume) {
 			object_flag[object_index] |= SD_OBJECT_HAS_VOLUME;
+		}
+		else {
+			object_flag[object_index] &= ~SD_OBJECT_HAS_VOLUME;
 		}
 
 		foreach(Object *volume_object, volume_objects) {

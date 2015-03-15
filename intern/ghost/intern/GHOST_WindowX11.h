@@ -35,6 +35,7 @@
 
 #include "GHOST_Window.h"
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 // For tablets
 #ifdef WITH_X11_XINPUT
 #  include <X11/extensions/XInput.h>
@@ -232,7 +233,7 @@ protected:
 	 * \param type	The type of rendering context create.
 	 * \return Indication of success.
 	 */
-	virtual GHOST_Context *newDrawingContext(GHOST_TDrawingContextType type);
+	GHOST_Context *newDrawingContext(GHOST_TDrawingContextType type);
 
 	/**
 	 * Sets the cursor visibility on the window using
@@ -319,6 +320,8 @@ private:
 	
 	Window m_window;
 	Display *m_display;
+	XVisualInfo *m_visualInfo;
+
 	GHOST_TWindowState m_normal_state;
 
 	/** A pointer to the typed system class. */

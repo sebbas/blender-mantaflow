@@ -51,9 +51,9 @@
 }))
 
 #else
-#  define CHECK_TYPE(var, type)
-#  define CHECK_TYPE_PAIR(var_a, var_b)
-#  define CHECK_TYPE_PAIR_INLINE(var_a, var_b) (void)0
+#  define CHECK_TYPE(var, type)  { EXPR_NOP(var); }(void)0
+#  define CHECK_TYPE_PAIR(var_a, var_b)  { (EXPR_NOP(var_a), EXPR_NOP(var_b)); }(void)0
+#  define CHECK_TYPE_PAIR_INLINE(var_a, var_b)  (EXPR_NOP(var_a), EXPR_NOP(var_b))
 #endif
 
 /* can be used in simple macros */
@@ -66,22 +66,27 @@
 	((void)(((type)0) != (0 ? (val) : ((type)0))))
 #endif
 
-#define CHECK_TYPE_NONCONST(var)  {      \
-	void *non_const = 0 ? (var) : NULL;  \
-	(void)non_const;                     \
-} (void)0
+#if defined(__GNUC__) || defined(__clang__)
+#  define CHECK_TYPE_NONCONST(var) __extension__ ({ \
+	void *non_const = 0 ? (var) : NULL; \
+	(void)non_const; \
+})
+#else
+#  define CHECK_TYPE_NONCONST(var) EXPR_NOP(var)
+#endif
+
 
 /**
  * CHECK_TYPE_ANY: handy macro, eg:
  * ``CHECK_TYPE_ANY(var, Foo *, Bar *, Baz *)``
  *
  * excuse ridiculously long generated args.
- * <pre>
+ * \code{.py}
  * for i in range(63):
  *     args = [(chr(ord('a') + (c % 26)) + (chr(ord('0') + (c // 26)))) for c in range(i + 1)]
  *     print("#define _VA_CHECK_TYPE_ANY%d(v, %s) \\" % (i + 2, ", ".join(args)))
  *     print("    ((void)_Generic((v), %s))" % (": 0, ".join(args) + ": 0"))
- * </pre>
+ * \endcode
  */
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
 

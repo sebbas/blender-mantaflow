@@ -41,11 +41,11 @@
 #include "DNA_world_types.h"
 #include "DNA_windowmanager_types.h"
 
+#include "BLI_listbase.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
-#include "BKE_depsgraph.h"
 #include "BKE_DerivedMesh.h"
 #include "BKE_icons.h"
 #include "BKE_main.h"
@@ -85,7 +85,11 @@ void ED_render_scene_update(Main *bmain, Scene *scene, int updated)
 	/* don't call this recursively for frame updates */
 	if (recursive_check)
 		return;
-	
+
+	/* Do not call if no WM available, see T42688. */
+	if (BLI_listbase_is_empty(&bmain->wm))
+		return;
+
 	recursive_check = true;
 
 	C = CTX_create();
@@ -276,7 +280,7 @@ static void material_changed(Main *bmain, Material *ma)
 
 	/* glsl */
 	if (ma->gpumaterial.first)
-		GPU_material_free(ma);
+		GPU_material_free(&ma->gpumaterial);
 
 	/* find node materials using this */
 	for (parent = bmain->mat.first; parent; parent = parent->id.next) {
@@ -290,7 +294,7 @@ static void material_changed(Main *bmain, Material *ma)
 		BKE_icon_changed(BKE_icon_getid(&parent->id));
 
 		if (parent->gpumaterial.first)
-			GPU_material_free(parent);
+			GPU_material_free(&parent->gpumaterial);
 	}
 
 	/* find if we have a scene with textured display */
@@ -336,10 +340,10 @@ static void lamp_changed(Main *bmain, Lamp *la)
 
 	for (ma = bmain->mat.first; ma; ma = ma->id.next)
 		if (ma->gpumaterial.first)
-			GPU_material_free(ma);
+			GPU_material_free(&ma->gpumaterial);
 
 	if (defmaterial.gpumaterial.first)
-		GPU_material_free(&defmaterial);
+		GPU_material_free(&defmaterial.gpumaterial);
 }
 
 static int material_uses_texture(Material *ma, Tex *tex)
@@ -377,7 +381,7 @@ static void texture_changed(Main *bmain, Tex *tex)
 		BKE_icon_changed(BKE_icon_getid(&ma->id));
 
 		if (ma->gpumaterial.first)
-			GPU_material_free(ma);
+			GPU_material_free(&ma->gpumaterial);
 	}
 
 	/* find lamps */
@@ -406,6 +410,9 @@ static void texture_changed(Main *bmain, Tex *tex)
 		}
 
 		BKE_icon_changed(BKE_icon_getid(&wo->id));
+		
+		if (wo->gpumaterial.first)
+			GPU_material_free(&wo->gpumaterial);		
 	}
 
 	/* find compositing nodes */
@@ -451,14 +458,17 @@ static void world_changed(Main *bmain, World *wo)
 
 	/* icons */
 	BKE_icon_changed(BKE_icon_getid(&wo->id));
-
+	
 	/* glsl */
 	for (ma = bmain->mat.first; ma; ma = ma->id.next)
 		if (ma->gpumaterial.first)
-			GPU_material_free(ma);
+			GPU_material_free(&ma->gpumaterial);
 
 	if (defmaterial.gpumaterial.first)
-		GPU_material_free(&defmaterial);
+		GPU_material_free(&defmaterial.gpumaterial);
+	
+	if (wo->gpumaterial.first)
+		GPU_material_free(&wo->gpumaterial);
 }
 
 static void image_changed(Main *bmain, Image *ima)
@@ -478,6 +488,7 @@ static void scene_changed(Main *bmain, Scene *scene)
 {
 	Object *ob;
 	Material *ma;
+	World *wo;
 
 	/* glsl */
 	for (ob = bmain->object.first; ob; ob = ob->id.next) {
@@ -487,16 +498,20 @@ static void scene_changed(Main *bmain, Scene *scene)
 		if (ob->mode & OB_MODE_TEXTURE_PAINT) {
 			BKE_texpaint_slots_refresh_object(scene, ob);
 			BKE_paint_proj_mesh_data_check(scene, ob, NULL, NULL, NULL, NULL);
-			GPU_drawobject_free(ob->derivedFinal);			
+			GPU_drawobject_free(ob->derivedFinal);
 		}
 	}
 
 	for (ma = bmain->mat.first; ma; ma = ma->id.next)
 		if (ma->gpumaterial.first)
-			GPU_material_free(ma);
+			GPU_material_free(&ma->gpumaterial);
 
+	for (wo = bmain->world.first; wo; wo = wo->id.next)
+		if (wo->gpumaterial.first)
+			GPU_material_free(&wo->gpumaterial);
+	
 	if (defmaterial.gpumaterial.first)
-		GPU_material_free(&defmaterial);
+		GPU_material_free(&defmaterial.gpumaterial);
 }
 
 void ED_render_id_flush_update(Main *bmain, ID *id)
@@ -538,7 +553,7 @@ void ED_render_id_flush_update(Main *bmain, ID *id)
 
 void ED_render_internal_init(void)
 {
-	RenderEngineType *ret = RE_engines_find("BLENDER_RENDER");
+	RenderEngineType *ret = RE_engines_find(RE_engine_id_BLENDER_RENDER);
 	
 	ret->view_update = render_view3d_update;
 	ret->view_draw = render_view3d_draw;

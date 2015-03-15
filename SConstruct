@@ -218,6 +218,8 @@ else:
 if not env['BF_FANCY']:
     B.bc.disable()
 
+if env['WITH_BF_SDL_DYNLOAD']:
+    env['BF_SDL_INC'] = '#extern/sdlew/include/SDL2'
 
 # remove install dir so old and new files are not mixed.
 # NOTE: only do the scripts directory for now, otherwise is too disruptive for developers
@@ -265,6 +267,7 @@ if 'blenderlite' in B.targets:
     target_env_defs['WITH_BF_BOOLEAN'] = False
     target_env_defs['WITH_BF_REMESH'] = False
     target_env_defs['WITH_BF_PYTHON'] = False
+    target_env_defs['WITH_BF_IME'] = False
     target_env_defs['WITH_BF_3DMOUSE'] = False
     target_env_defs['WITH_BF_LIBMV'] = False
     target_env_defs['WITH_BF_FREESTYLE'] = False
@@ -421,6 +424,9 @@ if env['OURPLATFORM']=='darwin':
             env.Append(LINKFLAGS=['-F/Library/Frameworks','-Xlinker','-weak_framework','-Xlinker','Jackmp'])
             print B.bc.OKGREEN + "Using Jack"
 
+    if env['WITH_BF_SDL']:
+        env.Append(LINKFLAGS=['-lazy_framework','ForceFeedback'])
+
     if env['WITH_BF_QUICKTIME'] == 1:
         env['PLATFORM_LINKFLAGS'] = env['PLATFORM_LINKFLAGS']+['-framework','QTKit']
 
@@ -474,6 +480,13 @@ if env['WITH_BF_OPENMP'] == 1:
                 env['CCFLAGS'].append('-openmp')
             else:
                 env.Append(CCFLAGS=['-fopenmp'])
+
+if env['WITH_BF_CPP11']:
+    if env['OURPLATFORM'] in ('win32-vc', 'win64-vc'):
+        # Nothing special is needed, C++11 features are available by default.
+        pass
+    else:
+        env['CXXFLAGS'].append('-std=c++11')
 
 #check for additional debug libnames
 
@@ -753,8 +766,15 @@ if B.targets != ['cudakernels']:
     data_to_c_simple("source/blender/gpu/shaders/gpu_shader_sep_gaussian_blur_frag.glsl")
     data_to_c_simple("source/blender/gpu/shaders/gpu_shader_sep_gaussian_blur_vert.glsl")
     data_to_c_simple("source/blender/gpu/shaders/gpu_shader_vertex.glsl")
+    data_to_c_simple("source/blender/gpu/shaders/gpu_shader_vertex_world.glsl")
     data_to_c_simple("source/blender/gpu/shaders/gpu_shader_vsm_store_frag.glsl")
     data_to_c_simple("source/blender/gpu/shaders/gpu_shader_vsm_store_vert.glsl")
+    data_to_c_simple("source/blender/gpu/shaders/gpu_shader_fx_ssao_frag.glsl")
+    data_to_c_simple("source/blender/gpu/shaders/gpu_shader_fx_dof_frag.glsl")
+    data_to_c_simple("source/blender/gpu/shaders/gpu_shader_fx_dof_vert.glsl")
+    data_to_c_simple("source/blender/gpu/shaders/gpu_shader_fx_lib.glsl")
+    data_to_c_simple("source/blender/gpu/shaders/gpu_shader_fx_depth_resolve.glsl")
+    data_to_c_simple("source/blender/gpu/shaders/gpu_shader_fx_vert.glsl")
     data_to_c_simple("intern/opencolorio/gpu_shader_display_transform.glsl")
 
     # --- blender ---
@@ -856,9 +876,11 @@ if B.targets != ['cudakernels']:
     from FindUnorderedMap import FindUnorderedMap
 
     conf = Configure(env)
+    old_linkflags = conf.env['LINKFLAGS']
     conf.env.Append(LINKFLAGS=env['PLATFORM_LINKFLAGS'])
     FindSharedPtr(conf)
     FindUnorderedMap(conf)
+    conf.env['LINKFLAGS'] = old_linkflags
     env = conf.Finish()
 
 # End of auto configuration
@@ -1002,6 +1024,7 @@ if env['OURPLATFORM']!='darwin':
             source.append('intern/cycles/util/util_color.h')
             source.append('intern/cycles/util/util_half.h')
             source.append('intern/cycles/util/util_math.h')
+            source.append('intern/cycles/util/util_math_fast.h')
             source.append('intern/cycles/util/util_transform.h')
             source.append('intern/cycles/util/util_types.h')
             scriptinstall.append(env.Install(dir=dir,source=source))
@@ -1152,8 +1175,36 @@ if env['OURPLATFORM']=='linuxcross':
 textlist = []
 texttargetlist = []
 for tp, tn, tf in os.walk('release/text'):
+    tf.remove("readme.html")
     for f in tf:
         textlist.append(tp+os.sep+f)
+
+def readme_version_patch():
+    readme_src = "release/text/readme.html"
+    readme_dst = os.path.abspath(os.path.normpath(os.path.join(env['BF_BUILDDIR'], "readme.html")))
+
+    if not os.path.exists(readme_dst) or (os.path.getmtime(readme_dst) < os.path.getmtime(readme_src)):
+        f = open(readme_src, "r")
+        data = f.read()
+        f.close()
+
+        data = data.replace("BLENDER_VERSION", VERSION)
+        f = open(readme_dst, "w")
+        f.write(data)
+        f.close()
+
+    textlist.append(readme_dst)
+
+readme_version_patch()
+del readme_version_patch
+
+
+'''Command(
+    "release/text/readme.html"
+
+    )
+Command("file.out", "file.in", Copy(env['BF_INSTALLDIR'], "release/text/readme.html"))
+'''
 
 # Font licenses
 textlist.append('release/datafiles/LICENSE-bfont.ttf.txt')
@@ -1181,7 +1232,7 @@ if env['OURPLATFORM'] in ('win32-vc', 'win32-mingw', 'win64-vc', 'linuxcross'):
         dllsources += ['${BF_PTHREADS_LIBPATH}/${BF_PTHREADS_LIB}.dll']
 
     if env['WITH_BF_SDL']:
-        dllsources.append('${BF_SDL_LIBPATH}/SDL.dll')
+        dllsources.append('${BF_SDL_LIBPATH}/SDL2.dll')
 
     if env['WITH_BF_PYTHON']:
         if env['BF_DEBUG']:
@@ -1200,7 +1251,6 @@ if env['OURPLATFORM'] in ('win32-vc', 'win32-mingw', 'win64-vc', 'linuxcross'):
 
     if env['WITH_BF_OPENAL']:
         dllsources.append('${LCGDIR}/openal/lib/OpenAL32.dll')
-        dllsources.append('${LCGDIR}/openal/lib/wrap_oal.dll')
 
     if env['WITH_BF_SNDFILE']:
         dllsources.append('${LCGDIR}/sndfile/lib/libsndfile-1.dll')

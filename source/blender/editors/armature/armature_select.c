@@ -174,7 +174,6 @@ void *get_nearest_bone(bContext *C, short findunsel, int x, int y)
 	rect.xmin = rect.xmax = x;
 	rect.ymin = rect.ymax = y;
 	
-	glInitNames();
 	hits = view3d_opengl_select(&vc, buffer, MAXPICKBUF, &rect, true);
 
 	if (hits > 0)
@@ -254,7 +253,7 @@ static int armature_select_linked_invoke(bContext *C, wmOperator *op, const wmEv
 
 static int armature_select_linked_poll(bContext *C)
 {
-	return (ED_operator_view3d_active(C) && ED_operator_editarmature(C) );
+	return (ED_operator_view3d_active(C) && ED_operator_editarmature(C));
 }
 
 void ARMATURE_OT_select_linked(wmOperatorType *ot)
@@ -288,11 +287,9 @@ static EditBone *get_nearest_editbonepoint(ViewContext *vc, const int mval[2],
 	rcti rect;
 	unsigned int buffer[MAXPICKBUF];
 	unsigned int hitresult, besthitresult = BONESEL_NOSEL;
-	int i, mindep = 4;
+	int i, mindep = 5;
 	short hits;
 
-	glInitNames();
-	
 	/* find the bone after the current active bone, so as to bump up its chances in selection.
 	 * this way overlapping bones will cycle selection state as with objects. */
 	if (ebone_next_act &&
@@ -345,16 +342,16 @@ static EditBone *get_nearest_editbonepoint(ViewContext *vc, const int mval[2],
 								dep = 2;
 						}
 						else {
-							dep = 2;
+							dep = 1;
 						}
 					}
 					else {
 						/* bone found */
 						if (findunsel) {
 							if ((ebone->flag & BONE_SELECTED) == 0)
-								dep = 2;
-							else
 								dep = 3;
+							else
+								dep = 4;
 						}
 						else {
 							dep = 3;
@@ -485,7 +482,9 @@ bool mouse_armature(bContext *C, const int mval[2], bool extend, bool deselect, 
 
 	view3d_set_viewcontext(C, &vc);
 	
-	BIF_sk_selectStroke(C, mval, extend);
+	if (BIF_sk_selectStroke(C, mval, extend)) {
+		return true;
+	}
 	
 	nearBone = get_nearest_editbonepoint(&vc, mval, arm->edbo, 1, &selmask);
 	if (nearBone) {

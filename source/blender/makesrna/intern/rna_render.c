@@ -38,7 +38,6 @@
 
 #include "RE_engine.h"
 #include "RE_pipeline.h"
-#include "RE_engine.h"
 
 
 EnumPropertyItem render_pass_type_items[] = {
@@ -268,7 +267,7 @@ static StructRNA *rna_RenderEngine_register(Main *bmain, ReportList *reports, vo
 
 	/* check if we have registered this engine type before, and remove it */
 	for (et = R_engines.first; et; et = et->next) {
-		if (strcmp(et->idname, dummyet.idname) == 0) {
+		if (STREQ(et->idname, dummyet.idname)) {
 			if (et->ext.srna)
 				rna_RenderEngine_unregister(bmain, et->ext.srna);
 			break;
@@ -517,6 +516,11 @@ static void rna_def_render_engine(BlenderRNA *brna)
 	RNA_def_function_ui_description(func, "Report info, warning or error messages");
 	prop = RNA_def_enum_flag(func, "type", wm_report_items, 0, "Type", "");
 	RNA_def_property_flag(prop, PROP_REQUIRED);
+	prop = RNA_def_string(func, "message", NULL, 0, "Report Message", "");
+	RNA_def_property_flag(prop, PROP_REQUIRED);
+
+	func = RNA_def_function(srna, "error_set", "RE_engine_set_error_message");
+	RNA_def_function_ui_description(func, "Set error message displaying after the render is finished");
 	prop = RNA_def_string(func, "message", NULL, 0, "Report Message", "");
 	RNA_def_property_flag(prop, PROP_REQUIRED);
 

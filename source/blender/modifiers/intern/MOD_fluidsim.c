@@ -45,7 +45,6 @@
 
 #include "depsgraph_private.h"
 
-#include "MOD_util.h"
 #include "MOD_fluidsim_util.h"
 #include "MEM_guardedalloc.h"
 
@@ -98,7 +97,8 @@ static DerivedMesh *applyModifier(ModifierData *md, Object *ob,
 }
 
 static void updateDepgraph(
-        ModifierData *md, DagForest *forest, Scene *scene,
+        ModifierData *md, DagForest *forest,
+        struct Main *UNUSED(bmain), Scene *scene,
         Object *ob, DagNode *obNode)
 {
 	FluidsimModifierData *fluidmd = (FluidsimModifierData *) md;

@@ -193,7 +193,7 @@ static int rna_Image_file_format_get(PointerRNA *ptr)
 {
 	Image *image = (Image *)ptr->data;
 	ImBuf *ibuf = BKE_image_acquire_ibuf(image, NULL, NULL);
-	int imtype = BKE_ftype_to_imtype(ibuf ? ibuf->ftype : 0);
+	int imtype = BKE_image_ftype_to_imtype(ibuf ? ibuf->ftype : 0);
 
 	BKE_image_release_ibuf(image, ibuf, NULL);
 
@@ -204,7 +204,7 @@ static void rna_Image_file_format_set(PointerRNA *ptr, int value)
 {
 	Image *image = (Image *)ptr->data;
 	if (BKE_imtype_is_movie(value) == 0) { /* should be able to throw an error here */
-		int ftype = BKE_imtype_to_ftype(value);
+		int ftype = BKE_image_imtype_to_ftype(value);
 		BKE_image_file_format_set(image, ftype);
 	}
 }
@@ -292,11 +292,21 @@ static int rna_Image_depth_get(PointerRNA *ptr)
 
 static int rna_Image_frame_duration_get(PointerRNA *ptr)
 {
-	Image *im = (Image *)ptr->data;
+	Image *ima = ptr->id.data;
+	int duration = 1;
 
-	if (im->anim)
-		return IMB_anim_get_duration(im->anim, IMB_TC_RECORD_RUN);
-	return 1;
+	if (!ima->anim) {
+		/* acquire ensures ima->anim is set, if possible! */
+		void *lock;
+		ImBuf *ibuf = BKE_image_acquire_ibuf(ima, NULL, &lock);
+		BKE_image_release_ibuf(ima, ibuf, lock);
+	}
+
+	if (ima->anim) {
+		duration = IMB_anim_get_duration(ima->anim, IMB_TC_RECORD_RUN);
+	}
+
+	return duration;
 }
 
 static int rna_Image_pixels_get_length(PointerRNA *ptr, int length[RNA_MAX_ARRAY_DIMENSION])
@@ -630,6 +640,11 @@ static void rna_def_image(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Use Alpha", "Use the alpha channel information from the image or make image fully opaque");
 	RNA_def_property_update(prop, NC_IMAGE | ND_DISPLAY, "rna_Image_colormanage_update");
 
+	prop = RNA_def_property(srna, "use_deinterlace", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", IMA_DEINTERLACE);
+	RNA_def_property_ui_text(prop, "Deinterlace", "Deinterlace movie file on load");
+	RNA_def_property_update(prop, NC_IMAGE | ND_DISPLAY, "rna_Image_reload_update");
+
 	prop = RNA_def_property(srna, "is_dirty", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_funcs(prop, "rna_Image_dirty_get", NULL);
 	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
@@ -665,7 +680,7 @@ static void rna_def_image(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_IMAGE | ND_DISPLAY, "rna_Image_generated_update");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
-	prop = RNA_def_property(srna, "generated_color", PROP_FLOAT, PROP_COLOR);
+	prop = RNA_def_property(srna, "generated_color", PROP_FLOAT, PROP_COLOR_GAMMA);
 	RNA_def_property_float_sdna(prop, NULL, "gen_color");
 	RNA_def_property_array(prop, 4);
 	RNA_def_property_ui_text(prop, "Color", "Fill color for the generated image");
@@ -694,13 +709,13 @@ static void rna_def_image(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "frame_start", PROP_INT, PROP_NONE);
 	RNA_def_property_int_sdna(prop, NULL, "twsta");
-	RNA_def_property_range(prop, 0, 128);
+	RNA_def_property_range(prop, 0, 255);
 	RNA_def_property_ui_text(prop, "Animation Start", "Start frame of an animated texture");
 	RNA_def_property_update(prop, NC_IMAGE | ND_DISPLAY, "rna_Image_animated_update");
 
 	prop = RNA_def_property(srna, "frame_end", PROP_INT, PROP_NONE);
 	RNA_def_property_int_sdna(prop, NULL, "twend");
-	RNA_def_property_range(prop, 0, 128);
+	RNA_def_property_range(prop, 0, 255);
 	RNA_def_property_ui_text(prop, "Animation End", "End frame of an animated texture");
 	RNA_def_property_update(prop, NC_IMAGE | ND_DISPLAY, "rna_Image_animated_update");
 

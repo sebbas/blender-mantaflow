@@ -95,7 +95,7 @@ static void console_scrollback_limit(SpaceConsole *sc)
 	
 	if (U.scrollback < 32) U.scrollback = 256;  // XXX - save in user defaults
 	
-	for (tot = BLI_countlist(&sc->scrollback); tot > U.scrollback; tot--)
+	for (tot = BLI_listbase_count(&sc->scrollback); tot > U.scrollback; tot--)
 		console_scrollback_free(sc, sc->scrollback.first);
 }
 
@@ -107,7 +107,7 @@ static ConsoleLine *console_history_find(SpaceConsole *sc, const char *str, Cons
 		if (cl == cl_ignore)
 			continue;
 
-		if (strcmp(str, cl->line) == 0)
+		if (STREQ(str, cl->line))
 			return cl;
 	}
 
@@ -136,7 +136,7 @@ static void console_lb_debug__internal(ListBase *lb)
 {
 	ConsoleLine *cl;
 
-	printf("%d: ", BLI_countlist(lb));
+	printf("%d: ", BLI_listbase_count(lb));
 	for (cl = lb->first; cl; cl = cl->next)
 		printf("<%s> ", cl->line);
 	printf("\n");
@@ -722,7 +722,7 @@ static int console_history_cycle_exec(bContext *C, wmOperator *op)
 	if (ci->prev) {
 		ConsoleLine *ci_prev = (ConsoleLine *)ci->prev;
 
-		if (strcmp(ci->line, ci_prev->line) == 0)
+		if (STREQ(ci->line, ci_prev->line))
 			console_history_free(sc, ci_prev);
 	}
 
@@ -791,7 +791,7 @@ static int console_history_append_exec(bContext *C, wmOperator *op)
 		while ((cl = console_history_find(sc, ci->line, ci)))
 			console_history_free(sc, cl);
 
-		if (strcmp(str, ci->line) == 0) {
+		if (STREQ(str, ci->line)) {
 			MEM_freeN(str);
 			return OPERATOR_FINISHED;
 		}

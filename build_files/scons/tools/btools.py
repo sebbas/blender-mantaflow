@@ -108,7 +108,7 @@ def validate_arguments(args, bc):
     opts_list = [
             'WITH_BF_FREESTYLE', 'WITH_BF_PYTHON', 'WITH_BF_PYTHON_SAFETY', 'WITH_BF_PYTHON_SECURITY', 'BF_PYTHON', 'BF_PYTHON_VERSION', 'BF_PYTHON_INC', 'BF_PYTHON_BINARY', 'BF_PYTHON_LIB', 'BF_PYTHON_LIBPATH', 'BF_PYTHON_LIBPATH_ARCH', 'WITH_BF_STATICPYTHON', 'WITH_OSX_STATICPYTHON', 'BF_PYTHON_LIB_STATIC', 'BF_PYTHON_DLL', 'BF_PYTHON_ABI_FLAGS',
             'WITH_BF_OPENAL', 'BF_OPENAL', 'BF_OPENAL_INC', 'BF_OPENAL_LIB', 'BF_OPENAL_LIBPATH', 'WITH_BF_STATICOPENAL', 'BF_OPENAL_LIB_STATIC',
-            'WITH_BF_SDL', 'BF_SDL', 'BF_SDL_INC', 'BF_SDL_LIB', 'BF_SDL_LIBPATH',
+            'WITH_BF_SDL', 'BF_SDL', 'BF_SDL_INC', 'BF_SDL_LIB', 'BF_SDL_LIBPATH', 'WITH_BF_SDL_DYNLOAD',
             'WITH_BF_JACK', 'BF_JACK', 'BF_JACK_INC', 'BF_JACK_LIB', 'BF_JACK_LIBPATH', 'WITH_BF_JACK_DYNLOAD',
             'WITH_BF_SNDFILE', 'BF_SNDFILE', 'BF_SNDFILE_INC', 'BF_SNDFILE_LIB', 'BF_SNDFILE_LIBPATH', 'WITH_BF_STATICSNDFILE', 'BF_SNDFILE_LIB_STATIC',
             'BF_PTHREADS', 'BF_PTHREADS_INC', 'BF_PTHREADS_LIB', 'BF_PTHREADS_LIBPATH',
@@ -137,6 +137,7 @@ def validate_arguments(args, bc):
             'WITH_BF_FFTW3', 'BF_FFTW3', 'BF_FFTW3_INC', 'BF_FFTW3_LIB', 'BF_FFTW3_LIBPATH', 'WITH_BF_STATICFFTW3', 'BF_FFTW3_LIB_STATIC',
             'WITH_BF_STATICOPENGL', 'BF_OPENGL', 'BF_OPENGL_INC', 'BF_OPENGL_LIB', 'BF_OPENGL_LIBPATH', 'BF_OPENGL_LIB_STATIC',
             'WITH_BF_EGL', 'WITH_BF_GLEW_ES', 'BF_GLEW_INC', 'WITH_BF_GL_PROFILE_CORE', 'WITH_BF_GL_PROFILE_COMPAT', 'WITH_BF_GL_PROFILE_ES20',
+            'WITH_BF_GLEW_MX', 'WITH_BF_GL_EGL', 'WITH_BF_GL_ANGLE',
 
             'WITH_BF_COLLADA', 'BF_COLLADA', 'BF_COLLADA_INC', 'BF_COLLADA_LIB', 'BF_OPENCOLLADA', 'BF_OPENCOLLADA_INC', 'BF_OPENCOLLADA_LIB', 'BF_OPENCOLLADA_LIBPATH', 'BF_PCRE', 'BF_PCRE_LIB', 'BF_PCRE_LIBPATH', 'BF_EXPAT', 'BF_EXPAT_LIB', 'BF_EXPAT_LIBPATH',
             'WITH_BF_STATICOPENCOLLADA', 'BF_OPENCOLLADA_LIB_STATIC',
@@ -174,6 +175,7 @@ def validate_arguments(args, bc):
             'WITH_BF_CXX_GUARDEDALLOC',
             'WITH_BF_JEMALLOC', 'WITH_BF_STATICJEMALLOC', 'BF_JEMALLOC', 'BF_JEMALLOC_INC', 'BF_JEMALLOC_LIBPATH', 'BF_JEMALLOC_LIB', 'BF_JEMALLOC_LIB_STATIC',
             'BUILDBOT_BRANCH',
+            'WITH_BF_IME',
             'WITH_BF_3DMOUSE', 'WITH_BF_STATIC3DMOUSE', 'BF_3DMOUSE', 'BF_3DMOUSE_INC', 'BF_3DMOUSE_LIB', 'BF_3DMOUSE_LIBPATH', 'BF_3DMOUSE_LIB_STATIC',
             'WITH_BF_CYCLES', 'WITH_BF_CYCLES_CUDA_BINARIES', 'BF_CYCLES_CUDA_NVCC', 'BF_CYCLES_CUDA_NVCC', 'WITH_BF_CYCLES_CUDA_THREADED_COMPILE', 'BF_CYCLES_CUDA_ENV',
             'WITH_BF_OIIO', 'WITH_BF_STATICOIIO', 'BF_OIIO', 'BF_OIIO_INC', 'BF_OIIO_LIB', 'BF_OIIO_LIB_STATIC', 'BF_OIIO_LIBPATH',
@@ -197,7 +199,8 @@ def validate_arguments(args, bc):
             'C_WARN', 'CC_WARN', 'CXX_WARN',
             'LLIBS', 'PLATFORM_LINKFLAGS', 'MACOSX_ARCHITECTURE', 'MACOSX_SDK', 'XCODE_CUR_VER', 'C_COMPILER_ID',
             'BF_CYCLES_CUDA_BINARIES_ARCH', 'BF_PROGRAM_LINKFLAGS', 'MACOSX_DEPLOYMENT_TARGET',
-            'WITH_BF_CYCLES_DEBUG'
+            'WITH_BF_CYCLES_DEBUG', 'WITH_BF_CYCLES_LOGGING',
+            'WITH_BF_CPP11'
     ]
 
 
@@ -301,6 +304,7 @@ def read_opts(env, cfg, args):
         ('BF_SDL_INC', 'SDL include path', ''),
         ('BF_SDL_LIB', 'SDL library', ''),
         ('BF_SDL_LIBPATH', 'SDL library path', ''),
+        (BoolVariable('WITH_BF_SDL_DYNLOAD', 'Enable runtime dynamic SDL libraries loading (works only on Linux)', False)),
 
         (BoolVariable('WITH_BF_JACK', 'Enable jack support if true', True)),
         ('BF_JACK', 'jack base path', ''),
@@ -467,7 +471,7 @@ def read_opts(env, cfg, args):
         ('BF_OPENGL_LIB_STATIC', 'OpenGL static libraries', ''),
         ('BF_OPENGL_LINKFLAGS', 'OpenGL link flags', ''),
 
-        (BoolVariable('WITH_BF_GLEW_MX', '', True)),
+        (BoolVariable('WITH_BF_GLEW_MX', '', False)),
         (BoolVariable('WITH_BF_GLEW_ES', '', False)),
         (BoolVariable('WITH_BF_GL_EGL', '', False)),
         (BoolVariable('WITH_BF_GL_PROFILE_COMPAT', '', True)),
@@ -506,6 +510,8 @@ def read_opts(env, cfg, args):
 
         (BoolVariable('WITH_BF_PLAYER', 'Build blenderplayer if true', False)),
         (BoolVariable('WITH_BF_NOBLENDER', 'Do not build blender if true', False)),
+
+        (BoolVariable('WITH_BF_IME', 'Enable Input Method Editor (IME) for complex Asian character input', False)),
 
         (BoolVariable('WITH_BF_3DMOUSE', 'Build blender with support of 3D mouses', False)),
         (BoolVariable('WITH_BF_STATIC3DMOUSE', 'Staticly link to 3d mouse library', False)),
@@ -605,6 +611,7 @@ def read_opts(env, cfg, args):
         ('BF_CYCLES_CUDA_ENV', 'preset environement nvcc will execute in', ''),
         ('BF_CYCLES_CUDA_BINARIES_ARCH', 'CUDA architectures to compile binaries for', []),
         (BoolVariable('WITH_BF_CYCLES_DEBUG', 'Build Cycles engine with extra debugging capabilities', False)),
+        (BoolVariable('WITH_BF_CYCLES_LOGGING', 'Build Cycles engine with logging support', True)),
 
         (BoolVariable('WITH_BF_OIIO', 'Build with OpenImageIO', False)),
         (BoolVariable('WITH_BF_STATICOIIO', 'Statically link to OpenImageIO', False)),
@@ -649,7 +656,9 @@ def read_opts(env, cfg, args):
         ('BF_LLVM_LIBPATH', 'LLVM library path', ''),
         ('BF_LLVM_LIB_STATIC', 'LLVM static library', ''),
 
-        ('BF_PROGRAM_LINKFLAGS', 'Link flags applied only to final binaries (blender and blenderplayer, not makesrna/makesdna)', '')
+        ('BF_PROGRAM_LINKFLAGS', 'Link flags applied only to final binaries (blender and blenderplayer, not makesrna/makesdna)', ''),
+
+        (BoolVariable('WITH_BF_CPP11', '"Build with C++11 standard enabled, for development use only!', False)),
     ) # end of opts.AddOptions()
 
     return localopts

@@ -75,7 +75,7 @@ public:
 	/**
 	 * Destructor.
 	 */
-	virtual ~GHOST_SystemX11();
+	~GHOST_SystemX11();
 
 
 	GHOST_TSuccess
@@ -151,9 +151,8 @@ public:
 	    GHOST_TUns32 height,
 	    GHOST_TWindowState state,
 	    GHOST_TDrawingContextType type,
-	    const bool stereoVisual,
+	    GHOST_GLSettings glSettings,
 	    const bool exclusive = false,
-	    const GHOST_TUns16 numOfAASamples = 0,
 	    const GHOST_TEmbedderWindowID parentWindow = 0
 	    );
 
@@ -286,6 +285,12 @@ public:
 		int MotionEvent;
 		int ProxInEvent;
 		int ProxOutEvent;
+		int PressEvent;
+
+		int MotionEventEraser;
+		int ProxInEventEraser;
+		int ProxOutEventEraser;
+		int PressEventEraser;
 
 		int PressureLevels;
 		int XtiltLevels, YtiltLevels;

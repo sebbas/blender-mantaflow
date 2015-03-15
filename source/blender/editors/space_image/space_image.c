@@ -33,6 +33,7 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_image_types.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -355,7 +356,7 @@ static void image_keymap(struct wmKeyConfig *keyconf)
 static int image_drop_poll(bContext *UNUSED(C), wmDrag *drag, const wmEvent *UNUSED(event))
 {
 	if (drag->type == WM_DRAG_PATH)
-		if (ELEM(drag->icon, 0, ICON_FILE_IMAGE, ICON_FILE_BLANK)) /* rule might not work? */
+		if (ELEM(drag->icon, 0, ICON_FILE_IMAGE, ICON_FILE_MOVIE, ICON_FILE_BLANK)) /* rule might not work? */
 			return 1;
 	return 0;
 }
@@ -692,7 +693,7 @@ static void image_main_area_draw(const bContext *C, ARegion *ar)
 	/* put scene context variable in iuser */
 	if (sima->image && sima->image->type == IMA_TYPE_R_RESULT) {
 		/* for render result, try to use the currently rendering scene */
-		Scene *render_scene = ED_render_job_get_scene(C);
+		Scene *render_scene = ED_render_job_get_current_scene(C);
 		if (render_scene)
 			sima->iuser.scene = render_scene;
 		else
@@ -712,7 +713,7 @@ static void image_main_area_draw(const bContext *C, ARegion *ar)
 
 	ED_region_draw_cb_draw(C, ar, REGION_DRAW_PRE_VIEW);
 
-	draw_uvedit_main(sima, ar, scene, obedit, obact);
+	ED_uvedit_draw_main(sima, ar, scene, obedit, obact);
 
 	/* check for mask (delay draw) */
 	if (ED_space_image_show_uvedit(sima, obedit)) {
@@ -772,12 +773,12 @@ static void image_main_area_draw(const bContext *C, ARegion *ar)
 		                    NULL, C);
 
 		UI_view2d_view_ortho(v2d);
-		draw_image_cursor(ar, sima->cursor);
+		ED_image_draw_cursor(ar, sima->cursor);
 		UI_view2d_view_restore(C);
 	}
 	else if (curve) {
 		UI_view2d_view_ortho(v2d);
-		draw_image_cursor(ar, sima->cursor);
+		ED_image_draw_cursor(ar, sima->cursor);
 		UI_view2d_view_restore(C);
 	}
 
@@ -791,17 +792,27 @@ static void image_main_area_draw(const bContext *C, ARegion *ar)
 #endif
 }
 
-static void image_main_area_listener(bScreen *UNUSED(sc), ScrArea *UNUSED(sa), ARegion *ar, wmNotifier *wmn)
+static void image_main_area_listener(bScreen *UNUSED(sc), ScrArea *sa, ARegion *ar, wmNotifier *wmn)
 {
 	/* context changes */
 	switch (wmn->category) {
 		case NC_GPENCIL:
-			if (wmn->action == NA_EDITED)
+			if (ELEM(wmn->action, NA_EDITED, NA_SELECTED))
+				ED_region_tag_redraw(ar);
+			else if (wmn->data & ND_GPENCIL_EDITMODE)
 				ED_region_tag_redraw(ar);
 			break;
 		case NC_IMAGE:
 			if (wmn->action == NA_PAINTING)
 				ED_region_tag_redraw(ar);
+			break;
+		case NC_MATERIAL:
+			if (wmn->data == ND_SHADING_LINKS) {
+				SpaceImage *sima = sa->spacedata.first;
+
+				if (sima->iuser.scene && (sima->iuser.scene->toolsettings->uv_flag & UV_SHOW_SAME_IMAGE))
+					ED_region_tag_redraw(ar);
+			}
 			break;
 	}
 }
@@ -851,6 +862,10 @@ static void image_buttons_area_listener(bScreen *UNUSED(sc), ScrArea *UNUSED(sa)
 		case NC_NODE:
 			ED_region_tag_redraw(ar);
 			break;
+		case NC_GPENCIL:
+			if (ELEM(wmn->action, NA_EDITED, NA_SELECTED))
+				ED_region_tag_redraw(ar);
+			break;
 	}
 }
 
@@ -884,9 +899,9 @@ static void image_tools_area_draw(const bContext *C, ARegion *ar)
 				BKE_histogram_update_sample_line(&sima->sample_line_hist, ibuf, &scene->view_settings, &scene->display_settings);
 			}
 			if (sima->image->flag & IMA_VIEW_AS_RENDER)
-				scopes_update(&sima->scopes, ibuf, &scene->view_settings, &scene->display_settings);
+				ED_space_image_scopes_update(C, sima, ibuf, true);
 			else
-				scopes_update(&sima->scopes, ibuf, NULL, &scene->display_settings);
+				ED_space_image_scopes_update(C, sima, ibuf, false);
 		}
 	}
 	ED_space_image_release_buffer(sima, ibuf, lock);
@@ -899,7 +914,7 @@ static void image_tools_area_listener(bScreen *UNUSED(sc), ScrArea *UNUSED(sa), 
 	/* context changes */
 	switch (wmn->category) {
 		case NC_GPENCIL:
-			if (wmn->data == ND_DATA)
+			if (wmn->data == ND_DATA || ELEM(wmn->action, NA_EDITED, NA_SELECTED))
 				ED_region_tag_redraw(ar);
 			break;
 		case NC_BRUSH:

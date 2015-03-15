@@ -40,9 +40,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "IMB_imbuf_types.h"
-#include "IMB_imbuf.h"
-
 #include "DNA_scene_types.h"
 #include "DNA_userdef_types.h"
 #include "DNA_windowmanager_types.h"
@@ -68,6 +65,7 @@
 #include "BKE_report.h"
 
 #include "BKE_addon.h"
+#include "BKE_appdir.h"
 #include "BKE_sequencer.h" /* free seq clipboard */
 #include "BKE_material.h" /* clear_matcopybuf */
 #include "BKE_tracking.h" /* free tracking clipboard */
@@ -98,6 +96,7 @@
 #include "wm_window.h"
 
 #include "ED_armature.h"
+#include "ED_gpencil.h"
 #include "ED_keyframing.h"
 #include "ED_node.h"
 #include "ED_render.h"
@@ -110,7 +109,6 @@
 #include "BLF_translation.h"
 
 #include "GPU_buffers.h"
-#include "GPU_extensions.h"
 #include "GPU_draw.h"
 #include "GPU_init_exit.h"
 
@@ -172,6 +170,8 @@ void WM_init(bContext *C, int argc, const char **argv)
 	
 	BLF_lang_set(NULL);
 
+	ED_spacemacros_init();
+
 	/* note: there is a bug where python needs initializing before loading the
 	 * startup.blend because it may contain PyDrivers. It also needs to be after
 	 * initializing space types and other internal data.
@@ -189,8 +189,6 @@ void WM_init(bContext *C, int argc, const char **argv)
 	(void)argc; /* unused */
 	(void)argv; /* unused */
 #endif
-
-	ED_spacemacros_init();
 
 	if (!G.background && !wm_start_with_console)
 		GHOST_toggleConsole(3);
@@ -219,7 +217,7 @@ void WM_init(bContext *C, int argc, const char **argv)
 	/* allow a path of "", this is what happens when making a new file */
 #if 0
 	if (G.main->name[0] == 0)
-		BLI_make_file_string("/", G.main->name, BLI_getDefaultDocumentFolder(), "untitled.blend");
+		BLI_make_file_string("/", G.main->name, BKE_appdir_folder_default(), "untitled.blend");
 #endif
 
 	BLI_strncpy(G.lib, G.main->name, FILE_MAX);
@@ -414,7 +412,7 @@ void WM_exit_ext(bContext *C, const bool do_python)
 				bool has_edited;
 				int fileflags = G.fileflags & ~(G_FILE_COMPRESS | G_FILE_AUTOPLAY | G_FILE_LOCK | G_FILE_SIGN | G_FILE_HISTORY);
 
-				BLI_make_file_string("/", filename, BLI_temp_dir_base(), BLENDER_QUIT_FILE);
+				BLI_make_file_string("/", filename, BKE_tempdir_base(), BLENDER_QUIT_FILE);
 
 				has_edited = ED_editors_flush_edits(C, false);
 
@@ -478,6 +476,7 @@ void WM_exit_ext(bContext *C, const bool do_python)
 	free_anim_copybuf();
 	free_anim_drivers_copybuf();
 	free_fmodifiers_copybuf();
+	ED_gpencil_strokes_copybuf_free();
 	ED_clipboard_posebuf_free();
 	BKE_node_clipboard_clear();
 
@@ -538,12 +537,15 @@ void WM_exit_ext(bContext *C, const bool do_python)
 	BLI_threadapi_exit();
 
 	if (MEM_get_memory_blocks_in_use() != 0) {
-		printf("Error: Not freed memory blocks: %d\n", MEM_get_memory_blocks_in_use());
+		size_t mem_in_use = MEM_get_memory_in_use() + MEM_get_memory_in_use();
+		printf("Error: Not freed memory blocks: %d, total unfreed memory %f MB\n",
+		       MEM_get_memory_blocks_in_use(),
+		       (double)mem_in_use / 1024 / 1024);
 		MEM_printmemlist();
 	}
 	wm_autosave_delete();
 
-	BLI_temp_dir_session_purge();
+	BKE_tempdir_session_purge();
 }
 
 void WM_exit(bContext *C)

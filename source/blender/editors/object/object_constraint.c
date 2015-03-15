@@ -233,7 +233,7 @@ static void set_constraint_nth_target(bConstraint *con, Object *target, const ch
 	
 	if (cti && cti->get_constraint_targets) {
 		cti->get_constraint_targets(con, &targets);
-		num_targets = BLI_countlist(&targets);
+		num_targets = BLI_listbase_count(&targets);
 		
 		if (index < 0) {
 			if (abs(index) < num_targets)
@@ -471,7 +471,7 @@ static void test_constraints(Object *owner, bPoseChannel *pchan)
 								/* TODO: clear subtarget? */
 								curcon->flag |= CONSTRAINT_DISABLE;
 							}
-							else if (strcmp(pchan->name, ct->subtarget) == 0) {
+							else if (STREQ(pchan->name, ct->subtarget)) {
 								/* cannot target self */
 								ct->subtarget[0] = '\0';
 								curcon->flag |= CONSTRAINT_DISABLE;
@@ -1165,7 +1165,17 @@ void ED_object_constraint_dependency_update(Main *bmain, Object *ob)
 {
 	ED_object_constraint_update(ob);
 
-	if (ob->pose) ob->pose->flag |= POSE_RECALC;    // checks & sorts pose channels
+	if (ob->pose) {
+		ob->pose->flag |= POSE_RECALC;    /* Checks & sort pose channels. */
+		if (ob->proxy && ob->adt) {
+			/* We need to make use of ugly POSE_ANIMATION_WORKAROUND here too, else anim data are not reloaded
+			 * after calling `BKE_pose_rebuild()`, which causes T43872.
+			 * Note that this is a bit wide here, since we cannot be sure whether there are some locked proxy bones
+			 * or not...
+			 * XXX Temp hack until new depsgraph hopefully solves this. */
+			ob->adt->recalc |= ADT_RECALC_ANIM;
+		}
+	}
 	DAG_relations_tag_update(bmain);
 }
 
@@ -1182,19 +1192,12 @@ static int constraint_delete_exec(bContext *C, wmOperator *UNUSED(op))
 	Object *ob = ptr.id.data;
 	bConstraint *con = ptr.data;
 	ListBase *lb = get_constraint_lb(ob, con, NULL);
-	const bool is_ik = ELEM(con->type, CONSTRAINT_TYPE_KINEMATIC, CONSTRAINT_TYPE_SPLINEIK);
 
 	/* free the constraint */
-	if (BKE_constraint_remove(lb, con)) {
+	if (BKE_constraint_remove_ex(lb, ob, con, true)) {
 		/* there's no active constraint now, so make sure this is the case */
-		BKE_constraints_active_set(lb, NULL);
-		
+		BKE_constraints_active_set(&ob->constraints, NULL);
 		ED_object_constraint_update(ob); /* needed to set the flags on posebones correctly */
-		
-		/* ITASC needs to be rebuilt once a constraint is removed [#26920] */
-		if (is_ik) {
-			BIK_clear_data(ob->pose);
-		}
 		
 		/* notifiers */
 		WM_event_add_notifier(C, NC_OBJECT | ND_CONSTRAINT | NA_REMOVED, ob);
@@ -1399,6 +1402,8 @@ static int pose_constraint_copy_exec(bContext *C, wmOperator *op)
 {
 	Main *bmain = CTX_data_main(C);
 	bPoseChannel *pchan = CTX_data_active_pose_bone(C);
+	ListBase lb;
+	CollectionPointerLink *link;
 	
 	/* don't do anything if bone doesn't exist or doesn't have any constraints */
 	if (ELEM(NULL, pchan, pchan->constraints.first)) {
@@ -1407,16 +1412,22 @@ static int pose_constraint_copy_exec(bContext *C, wmOperator *op)
 	}
 	
 	/* copy all constraints from active posebone to all selected posebones */
-	CTX_DATA_BEGIN (C, bPoseChannel *, chan, selected_pose_bones)
-	{
+	CTX_data_selected_pose_bones(C, &lb);
+	for (link = lb.first; link; link = link->next) {
+		Object *ob = link->ptr.id.data;
+		bPoseChannel *chan = link->ptr.data;
+		
 		/* if we're not handling the object we're copying from, copy all constraints over */
 		if (pchan != chan) {
 			BKE_constraints_copy(&chan->constraints, &pchan->constraints, true);
 			/* update flags (need to add here, not just copy) */
 			chan->constflag |= pchan->constflag;
+			
+			ob->pose->flag |= POSE_RECALC;
+			DAG_id_tag_update((ID *)ob, OB_RECALC_DATA);
 		}
 	}
-	CTX_DATA_END;
+	BLI_freelistN(&lb);
 	
 	/* force depsgraph to get recalculated since new relationships added */
 	DAG_relations_tag_update(bmain);
@@ -1724,6 +1735,12 @@ static int constraint_add_exec(bContext *C, wmOperator *op, Object *ob, ListBase
 	
 	if ((ob->type == OB_ARMATURE) && (pchan)) {
 		ob->pose->flag |= POSE_RECALC;  /* sort pose channels */
+		if (BKE_constraints_proxylocked_owner(ob, pchan) && ob->adt) {
+			/* We need to make use of ugly POSE_ANIMATION_WORKAROUND here too, else anim data are not reloaded
+			 * after calling `BKE_pose_rebuild()`, which causes T43872.
+			 * XXX Temp hack until new depsgraph hopefully solves this. */
+			ob->adt->recalc |= ADT_RECALC_ANIM;
+		}
 		DAG_id_tag_update(&ob->id, OB_RECALC_DATA | OB_RECALC_OB);
 	}
 	else
@@ -1889,8 +1906,8 @@ static int pose_ik_add_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED
 	}
 	
 	/* prepare popup menu to choose targetting options */
-	pup = uiPupMenuBegin(C, IFACE_("Add IK"), ICON_NONE);
-	layout = uiPupMenuLayout(pup);
+	pup = UI_popup_menu_begin(C, IFACE_("Add IK"), ICON_NONE);
+	layout = UI_popup_menu_layout(pup);
 	
 	/* the type of targets we'll set determines the menu entries to show... */
 	if (get_new_constraint_target(C, CONSTRAINT_TYPE_KINEMATIC, &tar_ob, &tar_pchan, 0)) {
@@ -1909,9 +1926,9 @@ static int pose_ik_add_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED
 	}
 	
 	/* finish building the menu, and process it (should result in calling self again) */
-	uiPupMenuEnd(C, pup);
+	UI_popup_menu_end(C, pup);
 	
-	return OPERATOR_CANCELLED;
+	return OPERATOR_INTERFACE;
 }
 
 /* call constraint_add_exec() to add the IK constraint */

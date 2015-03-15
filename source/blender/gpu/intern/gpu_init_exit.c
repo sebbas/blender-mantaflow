@@ -31,10 +31,9 @@
 
 #include "BLI_sys_types.h"
 #include "GPU_init_exit.h"  /* interface */
-#include "GPU_extensions.h"  /* library */
 
 #include "intern/gpu_codegen.h"
-#include "intern/gpu_extensions_private.h"
+#include "intern/gpu_private.h"
 
 /**
  * although the order of initialization and shutdown should not matter
@@ -54,12 +53,15 @@ void GPU_init(void)
 	gpu_extensions_init(); /* must come first */
 
 	gpu_codegen_init();
+
+	GPU_DEBUG_INIT();
 }
 
 
 
 void GPU_exit(void)
 {
+	GPU_DEBUG_EXIT();
 	gpu_codegen_exit();
 
 	gpu_extensions_exit(); /* must come last */

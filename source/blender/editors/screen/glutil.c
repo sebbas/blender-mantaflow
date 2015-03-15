@@ -45,7 +45,6 @@
 #include "BIF_gl.h"
 #include "BIF_glutil.h"
 
-#include "GPU_extensions.h"
 
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf_types.h"
@@ -840,7 +839,7 @@ void gla2DDrawTranslatePt(gla2DDrawInfo *di, float wo_x, float wo_y, int *r_sc_x
 }
 
 /**
- * Translate the \a world point from world coordiantes into screen space.
+ * Translate the \a world point from world coordinates into screen space.
  */
 void gla2DDrawTranslatePtv(gla2DDrawInfo *di, float world[2], int screen_r[2])
 {
@@ -849,7 +848,7 @@ void gla2DDrawTranslatePtv(gla2DDrawInfo *di, float world[2], int screen_r[2])
 }
 
 /**
- * Restores the previous OpenGL state and free's the auxilary gla data.
+ * Restores the previous OpenGL state and frees the auxiliary gla data.
  */
 void glaEnd2DDraw(gla2DDrawInfo *di)
 {
@@ -1137,9 +1136,9 @@ void glaDrawImBuf_glsl_ctx(const bContext *C, ImBuf *ibuf, float x, float y, int
 
 void cpack(unsigned int x)
 {
-	glColor3ub( ( (x)        & 0xFF),
-	            (((x) >>  8) & 0xFF),
-	            (((x) >> 16) & 0xFF) );
+	glColor3ub(( (x)        & 0xFF),
+	           (((x) >>  8) & 0xFF),
+	           (((x) >> 16) & 0xFF));
 }
 
 void glaDrawBorderCorners(const rcti *border, float zoomx, float zoomy)

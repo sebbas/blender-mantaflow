@@ -426,7 +426,7 @@ static int load_tex_cursor(Brush *br, ViewContext *vc, float zoom)
 				len = sqrtf(x * x + y * y);
 
 				if (len <= 1) {
-					float avg = BKE_brush_curve_strength_clamp(br, len, 1.0f);  /* Falloff curve */
+					float avg = BKE_brush_curve_strength(br, len, 1.0f);  /* Falloff curve */
 
 					buffer[index] = 255 - (GLubyte)(255 * avg);
 
@@ -595,7 +595,7 @@ static void paint_draw_tex_overlay(UnifiedPaintSettings *ups, Brush *brush,
 		if (mtex->brush_map_mode == MTEX_MAP_MODE_VIEW) {
 			/* brush rotation */
 			glTranslatef(0.5, 0.5, 0);
-			glRotatef((double)RAD2DEGF(ups->brush_rotation),
+			glRotatef((double)RAD2DEGF((primary) ? ups->brush_rotation : ups->brush_rotation_sec),
 			          0.0, 0.0, 1.0);
 			glTranslatef(-0.5f, -0.5f, 0);
 
@@ -652,16 +652,12 @@ static void paint_draw_tex_overlay(UnifiedPaintSettings *ups, Brush *brush,
 		}
 
 		/* set quad color. Colored overlay does not get blending */
-		if (col)
-			glColor4f(1.0,
-				      1.0,
-				      1.0,
-				      overlay_alpha / 100.0f);
-		else
-			glColor4f(U.sculpt_paint_overlay_col[0],
-				      U.sculpt_paint_overlay_col[1],
-				      U.sculpt_paint_overlay_col[2],
-				      overlay_alpha / 100.0f);
+		if (col) {
+			glColor4f(1.0, 1.0, 1.0, overlay_alpha / 100.0f);
+		}
+		else {
+			glColor4f(UNPACK3(U.sculpt_paint_overlay_col), overlay_alpha / 100.0f);
+		}
 
 		/* draw textured quad */
 		glBegin(GL_QUADS);
@@ -786,7 +782,7 @@ static void paint_draw_alpha_overlay(UnifiedPaintSettings *ups, Brush *brush,
 			paint_draw_cursor_overlay(ups, brush, vc, x, y, zoom);
 	}
 	else {
-		if (!(flags & PAINT_OVERLAY_OVERRIDE_PRIMARY))
+		if (!(flags & PAINT_OVERLAY_OVERRIDE_PRIMARY) && (mode != PAINT_WEIGHT))
 			paint_draw_tex_overlay(ups, brush, vc, x, y, zoom, false, true);
 		if (!(flags & PAINT_OVERLAY_OVERRIDE_CURSOR))
 			paint_draw_cursor_overlay(ups, brush, vc, x, y, zoom);
@@ -1000,9 +996,7 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 	/* don't calculate rake angles while a stroke is active because the rake variables are global and
 	 * we may get interference with the stroke itself. For line strokes, such interference is visible */
 	if (!ups->stroke_active) {
-		if (brush->flag & BRUSH_RAKE)
-			/* here, translation contains the mouse coordinates. */
-			paint_calculate_rake_rotation(ups, translation);
+		paint_calculate_rake_rotation(ups, brush, translation);
 	}
 
 	/* draw overlay */

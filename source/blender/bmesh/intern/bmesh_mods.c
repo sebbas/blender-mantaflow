@@ -902,7 +902,9 @@ bool BM_face_split_edgenet(
 							if (l_first == NULL) {
 								mul_v2_m3v3(co, axis_mat, v->co);
 								interp_weights_poly_v2(w, cos_2d, f->len, co);
-								CustomData_bmesh_interp(&bm->ldata, blocks, w, NULL, f->len, l_iter->head.data);
+								CustomData_bmesh_interp(
+								        &bm->ldata, (const void **)blocks,
+								        w, NULL, f->len, l_iter->head.data);
 								l_first = l_iter;
 							}
 							else {
@@ -1010,7 +1012,7 @@ BMEdge *BM_vert_collapse_faces(BMesh *bm, BMEdge *e_kill, BMVert *v_kill, float 
 		l_iter = e_kill->l;
 		do {
 			if (l_iter->v == tv && l_iter->next->v == v_kill) {
-				void *src[2];
+				const void *src[2];
 				BMLoop *tvloop = l_iter;
 				BMLoop *kvloop = l_iter->next;
 
@@ -1149,7 +1151,7 @@ BMEdge *BM_vert_collapse_edge(BMesh *bm, BMEdge *e_kill, BMVert *v_kill,
  * </pre>
  *
  * \param e  The edge to split.
- * \param v  One of the vertices in \a e and defines the the "from" end of the splitting operation,
+ * \param v  One of the vertices in \a e and defines the "from" end of the splitting operation,
  * the new vertex will be \a fac of the way from \a v to the other end.
  * \param r_e  The newly created edge.
  * \return  The new vertex.

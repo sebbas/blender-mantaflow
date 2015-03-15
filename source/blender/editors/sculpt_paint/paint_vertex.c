@@ -66,8 +66,6 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-#include "GPU_buffers.h"
-
 #include "ED_armature.h"
 #include "ED_object.h"
 #include "ED_mesh.h"
@@ -382,12 +380,12 @@ static int wpaint_mirror_vgroup_ensure(Object *ob, const int vgroup_active)
 		mirrdef = defgroup_name_index(ob, name_flip);
 		if (mirrdef == -1) {
 			if (BKE_defgroup_new(ob, name_flip)) {
-				mirrdef = BLI_countlist(&ob->defbase) - 1;
+				mirrdef = BLI_listbase_count(&ob->defbase) - 1;
 			}
 		}
 
 		/* curdef should never be NULL unless this is
-		 * a  lamp and ED_vgroup_add_name fails */
+		 * a  lamp and BKE_object_defgroup_add_name fails */
 		return mirrdef;
 	}
 
@@ -937,7 +935,7 @@ static float calc_vp_strength_col_dl(VPaint *vp, ViewContext *vc, const float co
 			else {
 				factor = 1.0f;
 			}
-			return factor * BKE_brush_curve_strength_clamp(brush, dist, brush_size_pressure);
+			return factor * BKE_brush_curve_strength(brush, dist, brush_size_pressure);
 		}
 	}
 	if (rgba)
@@ -1177,7 +1175,7 @@ static EnumPropertyItem *weight_paint_sample_enum_itemf(bContext *C, PointerRNA 
 			me = BKE_mesh_from_object(vc.obact);
 
 			if (me && me->dvert && vc.v3d && vc.rv3d && vc.obact->defbase.first) {
-				const int defbase_tot = BLI_countlist(&vc.obact->defbase);
+				const int defbase_tot = BLI_listbase_count(&vc.obact->defbase);
 				const int use_vert_sel = (me->editflag & ME_EDIT_PAINT_VERT_SEL) != 0;
 				int *groups = MEM_callocN(defbase_tot * sizeof(int), "groups");
 				bool found = false;
@@ -1577,8 +1575,8 @@ static void enforce_locks(MDeformVert *odv, MDeformVert *ndv,
 			change_status[i] = 1; /* can be altered while redistributing */
 		}
 	}
-	/* if there was any change, redistribute it */
-	if (total_changed) {
+	/* if there was any change, and somewhere to redistribute it, do it */
+	if (total_changed && total_valid) {
 		/* auto normalize will allow weights to temporarily go above 1 in redistribution */
 		if (vgroup_validmap && total_changed < 0 && total_valid) {
 			totchange_allowed = total_valid;
@@ -1742,7 +1740,8 @@ static int apply_mp_locks_normalize(Mesh *me, const WeightPaintInfo *wpi,
 	}
 	clamp_weights(dv);
 
-	enforce_locks(&dv_test, dv, wpi->defbase_tot, wpi->defbase_sel, wpi->lock_flags, wpi->vgroup_validmap, wpi->do_auto_normalize, wpi->do_multipaint);
+	enforce_locks(&dv_test, dv, wpi->defbase_tot, wpi->defbase_sel, wpi->lock_flags, wpi->vgroup_validmap,
+	              wpi->do_auto_normalize, wpi->do_multipaint);
 
 	if (wpi->do_auto_normalize) {
 		/* XXX - should we pass the active group? - currently '-1' */
@@ -2074,7 +2073,7 @@ static int wpaint_mode_toggle_exec(bContext *C, wmOperator *op)
 
 		paint_cursor_start(C, weight_paint_poll);
 
-		BKE_paint_init(&wp->paint, PAINT_CURSOR_WEIGHT_PAINT);
+		BKE_paint_init(&scene->toolsettings->unified_paint_settings, &wp->paint, PAINT_CURSOR_WEIGHT_PAINT);
 
 		/* weight paint specific */
 		ED_mesh_mirror_spatial_table(ob, NULL, NULL, 's');
@@ -2159,7 +2158,7 @@ static bool wpaint_ensure_data(bContext *C, wmOperator *op)
 
 	/* if nothing was added yet, we make dverts and a vertex deform group */
 	if (!me->dvert) {
-		ED_vgroup_data_create(&me->id);
+		BKE_object_defgroup_data_create(&me->id);
 		WM_event_add_notifier(C, NC_GEOM | ND_DATA, me);
 	}
 
@@ -2174,7 +2173,7 @@ static bool wpaint_ensure_data(bContext *C, wmOperator *op)
 				if (pchan) {
 					bDeformGroup *dg = defgroup_find_name(ob, pchan->name);
 					if (dg == NULL) {
-						dg = ED_vgroup_add_name(ob, pchan->name);  /* sets actdef */
+						dg = BKE_object_defgroup_add_name(ob, pchan->name);  /* sets actdef */
 					}
 					else {
 						int actdef = 1 + BLI_findindex(&ob->defbase, dg);
@@ -2186,7 +2185,7 @@ static bool wpaint_ensure_data(bContext *C, wmOperator *op)
 		}
 	}
 	if (BLI_listbase_is_empty(&ob->defbase)) {
-		ED_vgroup_add(ob);
+		BKE_object_defgroup_add(ob);
 	}
 
 	/* ensure we don't try paint onto an invalid group */
@@ -2235,10 +2234,10 @@ static bool wpaint_stroke_test_start(bContext *C, wmOperator *op, const float UN
 
 	/* set up auto-normalize, and generate map for detecting which
 	 * vgroups affect deform bones */
-	wpd->defbase_tot = BLI_countlist(&ob->defbase);
-	wpd->lock_flags = BKE_objdef_lock_flags_get(ob, wpd->defbase_tot);
+	wpd->defbase_tot = BLI_listbase_count(&ob->defbase);
+	wpd->lock_flags = BKE_object_defgroup_lock_flags_get(ob, wpd->defbase_tot);
 	if (ts->auto_normalize || ts->multipaint || wpd->lock_flags) {
-		wpd->vgroup_validmap = BKE_objdef_validmap_get(ob, wpd->defbase_tot);
+		wpd->vgroup_validmap = BKE_object_defgroup_validmap_get(ob, wpd->defbase_tot);
 	}
 
 	/* painting on subsurfs should give correct points too, this returns me->totvert amount */
@@ -2318,7 +2317,7 @@ static void wpaint_stroke_update_step(bContext *C, struct PaintStroke *stroke, P
 
 	/* *** setup WeightPaintInfo - pass onto do_weight_paint_vertex *** */
 	wpi.defbase_tot =        wpd->defbase_tot;
-	wpi.defbase_sel = BKE_objdef_selected_get(ob, wpi.defbase_tot, &wpi.defbase_tot_sel);
+	wpi.defbase_sel = BKE_object_defgroup_selected_get(ob, wpi.defbase_tot, &wpi.defbase_tot_sel);
 	if (wpi.defbase_tot_sel == 0 && ob->actdef > 0) {
 		wpi.defbase_tot_sel = 1;
 	}
@@ -2682,7 +2681,7 @@ static int vpaint_mode_toggle_exec(bContext *C, wmOperator *op)
 		
 		paint_cursor_start(C, vertex_paint_poll);
 
-		BKE_paint_init(&vp->paint, PAINT_CURSOR_VERTEX_PAINT);
+		BKE_paint_init(&scene->toolsettings->unified_paint_settings, &vp->paint, PAINT_CURSOR_VERTEX_PAINT);
 	}
 	
 	/* update modifier stack for mapping requirements */
@@ -3024,7 +3023,7 @@ static void vpaint_stroke_update_step(bContext *C, struct PaintStroke *stroke, P
 		 * avoid this if we can! */
 		DAG_id_tag_update(ob->data, 0);
 	}
-	else if (!GPU_buffer_legacy(ob->derivedFinal)) {
+	else {
 		/* If using new VBO drawing, mark mcol as dirty to force colors gpu buffer refresh! */
 		ob->derivedFinal->dirty |= DM_DIRTY_MCOL_UPDATE_DRAW;
 	}
@@ -3217,7 +3216,7 @@ static void gradientVert_update(DMGradient_userData *grad_data, int index)
 	/* no need to clamp 'alpha' yet */
 
 	/* adjust weight */
-	alpha = BKE_brush_curve_strength_clamp(grad_data->brush, alpha, 1.0f);
+	alpha = BKE_brush_curve_strength(grad_data->brush, alpha, 1.0f);
 
 	if (alpha != 0.0f) {
 		MDeformVert *dv = &me->dvert[index];

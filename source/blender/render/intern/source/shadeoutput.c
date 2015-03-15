@@ -47,9 +47,7 @@
 
 /* local include */
 #include "occlusion.h"
-#include "renderpipeline.h"
 #include "render_types.h"
-#include "pixelblending.h"
 #include "rendercore.h"
 #include "shadbuf.h"
 #include "sss.h"
@@ -2066,7 +2064,7 @@ float RE_lamp_get_data(ShadeInput *shi, Object *lamp_obj, float col[4], float lv
 		if (R.r.scemode & R_BUTS_PREVIEW) {
 			for (go = R.lights.first; go; go = go->next) {
 				/* "Lamp.002" is main key light of material preview */
-				if (strcmp(go->ob->id.name + 2, "Lamp.002") == 0)
+				if (STREQ(go->ob->id.name + 2, "Lamp.002"))
 					return lamp_get_data_internal(shi, go, col, lv, dist, shadow);
 			}
 			return 0.0f;

@@ -75,9 +75,10 @@ GHOST_ContextCGL::GHOST_ContextCGL(
 GHOST_ContextCGL::~GHOST_ContextCGL()
 {
 	if (m_openGLContext != nil) {
-		if (m_openGLContext == [NSOpenGLContext currentContext])
+		if (m_openGLContext == [NSOpenGLContext currentContext]) {
 			[NSOpenGLContext clearCurrentContext];
 			[m_openGLView clearGLContext];
+		}
 
 		if (m_openGLContext != s_sharedOpenGLContext || s_sharedCount == 1) {
 			assert(s_sharedCount > 0);
@@ -192,11 +193,8 @@ static void makeAttribList(
 	 * Maybe a command line flag is better... */
 	if (getenv("BLENDER_SOFTWAREGL")) {
 		attribs.push_back(NSOpenGLPFARendererID);
-#if defined(__ppc__) || defined(__ppc64__)
-		attribs.push_back(kCGLRendererAppleSWID);
-#else
-	//	attribs.push_back(kCGLRendererGenericFloatID);
-#endif
+
+		attribs.push_back(kCGLRendererGenericFloatID);
 	}
 	else {
 		attribs.push_back(NSOpenGLPFAAccelerated);

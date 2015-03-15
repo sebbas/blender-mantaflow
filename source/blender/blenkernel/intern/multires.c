@@ -1600,7 +1600,7 @@ void multires_load_old_250(Mesh *me)
 			int nvert = mf->v4 ? 4 : 3;
 			int totdisp = mdisps[i].totdisp / nvert;
 			
-			for (j = 0; j < mf->v4 ? 4 : 3; j++, k++) {
+			for (j = 0; j < nvert; j++, k++) {
 				mdisps2[k].disps = MEM_callocN(sizeof(float) * 3 * totdisp, "multires disp in conversion");
 				mdisps2[k].totdisp = totdisp;
 				mdisps2[k].level = mdisps[i].level;
@@ -1641,7 +1641,8 @@ void multires_free(Multires *mr)
 			lvl = lvl->next;
 		}
 
-		MEM_freeN(mr->verts);
+		/* mr->verts may be NULL when loading old files, see direct_link_mesh() in readfile.c, and T43560. */
+		MEM_SAFE_FREE(mr->verts);
 
 		BLI_freelistN(&mr->levels);
 

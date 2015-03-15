@@ -646,8 +646,8 @@ ccl_device_inline bool bvh_curve_intersect(KernelGlobals *kg, Intersection *isec
 	float4 P_curve[2];
 
 	if(type & PRIMITIVE_CURVE) {
-		P_curve[0]= kernel_tex_fetch(__curve_keys, k0);
-		P_curve[1]= kernel_tex_fetch(__curve_keys, k1);
+		P_curve[0] = kernel_tex_fetch(__curve_keys, k0);
+		P_curve[1] = kernel_tex_fetch(__curve_keys, k1);
 	}
 	else {
 		int fobject = (object == OBJECT_NONE)? kernel_tex_fetch(__prim_object, curveAddr): object;
@@ -709,7 +709,7 @@ ccl_device_inline bool bvh_curve_intersect(KernelGlobals *kg, Intersection *isec
 	const ssef sphere_dif1 = (dif + dif_second) * 0.5f;
 	const ssef dir = load4f(direction);
 	const ssef sphere_b_tmp = dot3_splat(dir, sphere_dif1);
-	const ssef sphere_dif2 = nmsub(sphere_b_tmp, dir, sphere_dif1);
+	const ssef sphere_dif2 = nmadd(sphere_b_tmp, dir, sphere_dif1);
 #endif
 
 	float mr = max(r1, r2);

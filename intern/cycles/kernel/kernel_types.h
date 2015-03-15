@@ -11,7 +11,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License
+ * limitations under the License.
  */
 
 #ifndef __KERNEL_TYPES_H__
@@ -29,7 +29,7 @@ CCL_NAMESPACE_BEGIN
 /* constants */
 #define OBJECT_SIZE 		11
 #define OBJECT_VECTOR_SIZE	6
-#define LIGHT_SIZE			4
+#define LIGHT_SIZE			5
 #define FILTER_TABLE_SIZE	256
 #define RAMP_TABLE_SIZE		256
 #define PARTICLE_SIZE 		5
@@ -57,6 +57,9 @@ CCL_NAMESPACE_BEGIN
 
 /* device capabilities */
 #ifdef __KERNEL_CPU__
+#ifdef __KERNEL_SSE2__
+#  define __QBVH__
+#endif
 #define __KERNEL_SHADING__
 #define __KERNEL_ADV_SHADING__
 #define __BRANCHED_PATH__
@@ -478,7 +481,12 @@ typedef enum PrimitiveType {
 	PRIMITIVE_ALL_TRIANGLE = (PRIMITIVE_TRIANGLE|PRIMITIVE_MOTION_TRIANGLE),
 	PRIMITIVE_ALL_CURVE = (PRIMITIVE_CURVE|PRIMITIVE_MOTION_CURVE),
 	PRIMITIVE_ALL_MOTION = (PRIMITIVE_MOTION_TRIANGLE|PRIMITIVE_MOTION_CURVE),
-	PRIMITIVE_ALL = (PRIMITIVE_ALL_TRIANGLE|PRIMITIVE_ALL_CURVE)
+	PRIMITIVE_ALL = (PRIMITIVE_ALL_TRIANGLE|PRIMITIVE_ALL_CURVE),
+
+	/* Total number of different primitives.
+	 * NOTE: This is an actual value, not a bitflag.
+	 */
+	PRIMITIVE_NUM_TOTAL = 4,
 } PrimitiveType;
 
 #define PRIMITIVE_PACK_SEGMENT(type, segment) ((segment << 16) | type)
@@ -526,6 +534,7 @@ typedef enum AttributeStandard {
 	ATTR_STD_VOLUME_FLAME,
 	ATTR_STD_VOLUME_HEAT,
 	ATTR_STD_VOLUME_VELOCITY,
+	ATTR_STD_POINTINESS,
 	ATTR_STD_NUM,
 
 	ATTR_STD_NOT_FOUND = ~0
@@ -539,34 +548,25 @@ typedef enum AttributeStandard {
 #define MAX_CLOSURE 1
 #endif
 
-/* TODO(sergey): This is rather nasty bug happening in here, which
- * could be simply a compilers bug for which we can't find a generic
- * platform independent workaround. Also even if it's a compiler
- * issue, it's not so simple to upgrade the compiler in the release
- * environment for linux and doing it so closer to the release is
- * rather a risky business.
- *
- * For this release it's probably safer to stick with such a rather
- * dirty solution, and look for a cleaner fix during the next release
- * cycle.
+/* This struct is to be 16 bytes aligned, we also keep some extra precautions:
+ * - All the float3 members are in the beginning of the struct, so compiler
+ *   does not put own padding trying to align this members.
+ * - We make sure OSL pointer is also 16 bytes aligned.
  */
 typedef struct ShaderClosure {
-	ClosureType type;
 	float3 weight;
-#ifndef __APPLE__
+	float3 N;
+	float3 T;
+
+	ClosureType type;
 	float sample_weight;
-#endif
 	float data0;
 	float data1;
 	float data2;
+	int pad1, pad2, pad3;
 
-	float3 N;
-	float3 T;
-#ifdef __APPLE__
-	float sample_weight;
-#endif
 #ifdef __OSL__
-	void *prim;
+	void *prim, *pad4;
 #endif
 } ShaderClosure;
 
@@ -595,33 +595,32 @@ enum ShaderDataFlag {
 	SD_EMISSION       = (1 << 1),   /* have emissive closure? */
 	SD_BSDF           = (1 << 2),   /* have bsdf closure? */
 	SD_BSDF_HAS_EVAL  = (1 << 3),   /* have non-singular bsdf closure? */
-	SD_PHASE_HAS_EVAL = (1 << 3),   /* have non-singular phase closure? */
-	SD_BSDF_GLOSSY    = (1 << 4),   /* have glossy bsdf */
-	SD_BSSRDF         = (1 << 5),   /* have bssrdf */
-	SD_HOLDOUT        = (1 << 6),   /* have holdout closure? */
-	SD_ABSORPTION     = (1 << 7),   /* have volume absorption closure? */
-	SD_SCATTER        = (1 << 8),   /* have volume phase closure? */
-	SD_AO             = (1 << 9),   /* have ao closure? */
-	SD_TRANSPARENT    = (1 << 10),  /* have transparent closure? */
+	SD_BSSRDF         = (1 << 4),   /* have bssrdf */
+	SD_HOLDOUT        = (1 << 5),   /* have holdout closure? */
+	SD_ABSORPTION     = (1 << 6),   /* have volume absorption closure? */
+	SD_SCATTER        = (1 << 7),   /* have volume phase closure? */
+	SD_AO             = (1 << 8),   /* have ao closure? */
+	SD_TRANSPARENT    = (1 << 9),  /* have transparent closure? */
 
-	SD_CLOSURE_FLAGS = (SD_EMISSION|SD_BSDF|SD_BSDF_HAS_EVAL|SD_BSDF_GLOSSY|
-	                    SD_BSSRDF|SD_HOLDOUT|SD_ABSORPTION|SD_SCATTER|SD_AO),
+	SD_CLOSURE_FLAGS = (SD_EMISSION|SD_BSDF|SD_BSDF_HAS_EVAL|SD_BSSRDF|
+	                    SD_HOLDOUT|SD_ABSORPTION|SD_SCATTER|SD_AO),
 
 	/* shader flags */
-	SD_USE_MIS                = (1 << 11),  /* direct light sample */
-	SD_HAS_TRANSPARENT_SHADOW = (1 << 12),  /* has transparent shadow */
-	SD_HAS_VOLUME             = (1 << 13),  /* has volume shader */
-	SD_HAS_ONLY_VOLUME        = (1 << 14),  /* has only volume shader, no surface */
-	SD_HETEROGENEOUS_VOLUME   = (1 << 15),  /* has heterogeneous volume */
-	SD_HAS_BSSRDF_BUMP        = (1 << 16),  /* bssrdf normal uses bump */
-	SD_VOLUME_EQUIANGULAR     = (1 << 17),  /* use equiangular sampling */
-	SD_VOLUME_MIS             = (1 << 18),  /* use multiple importance sampling */
-	SD_VOLUME_CUBIC           = (1 << 19),  /* use cubic interpolation for voxels */
+	SD_USE_MIS                = (1 << 10),  /* direct light sample */
+	SD_HAS_TRANSPARENT_SHADOW = (1 << 11),  /* has transparent shadow */
+	SD_HAS_VOLUME             = (1 << 12),  /* has volume shader */
+	SD_HAS_ONLY_VOLUME        = (1 << 13),  /* has only volume shader, no surface */
+	SD_HETEROGENEOUS_VOLUME   = (1 << 14),  /* has heterogeneous volume */
+	SD_HAS_BSSRDF_BUMP        = (1 << 15),  /* bssrdf normal uses bump */
+	SD_VOLUME_EQUIANGULAR     = (1 << 16),  /* use equiangular sampling */
+	SD_VOLUME_MIS             = (1 << 17),  /* use multiple importance sampling */
+	SD_VOLUME_CUBIC           = (1 << 18),  /* use cubic interpolation for voxels */
+	SD_HAS_BUMP               = (1 << 19),  /* has data connected to the displacement input */
 
 	SD_SHADER_FLAGS = (SD_USE_MIS|SD_HAS_TRANSPARENT_SHADOW|SD_HAS_VOLUME|
 	                   SD_HAS_ONLY_VOLUME|SD_HETEROGENEOUS_VOLUME|
 	                   SD_HAS_BSSRDF_BUMP|SD_VOLUME_EQUIANGULAR|SD_VOLUME_MIS|
-	                   SD_VOLUME_CUBIC),
+	                   SD_VOLUME_CUBIC|SD_HAS_BUMP),
 
 	/* object flags */
 	SD_HOLDOUT_MASK             = (1 << 20),  /* holdout for camera rays */
@@ -630,6 +629,7 @@ enum ShaderDataFlag {
 	SD_NEGATIVE_SCALE_APPLIED   = (1 << 23),  /* vertices have negative scale applied */
 	SD_OBJECT_HAS_VOLUME        = (1 << 24),  /* object has a volume shader */
 	SD_OBJECT_INTERSECTS_VOLUME = (1 << 25),  /* object intersects AABB of an object with volume shader */
+	SD_OBJECT_HAS_VERTEX_MOTION = (1 << 26),  /* has position for motion vertices */
 
 	SD_OBJECT_FLAGS = (SD_HOLDOUT_MASK|SD_OBJECT_MOTION|SD_TRANSFORM_APPLIED|
 	                   SD_NEGATIVE_SCALE_APPLIED|SD_OBJECT_HAS_VOLUME|
@@ -767,6 +767,7 @@ typedef struct KernelCamera {
 	int panorama_type;
 	float fisheye_fov;
 	float fisheye_lens;
+	float4 equirectangular_range;
 
 	/* matrices */
 	Transform cameratoworld;
@@ -955,8 +956,8 @@ typedef struct KernelBVH {
 	int have_motion;
 	int have_curves;
 	int have_instancing;
-
-	int pad1, pad2, pad3;
+	int use_qbvh;
+	int pad1, pad2;
 } KernelBVH;
 
 typedef enum CurveFlag {
@@ -996,7 +997,7 @@ typedef struct KernelData {
 
 #ifdef __KERNEL_DEBUG__
 typedef struct DebugData {
-	// Total number of BVH node travesal steps and primitives intersections
+	// Total number of BVH node traversal steps and primitives intersections
 	// for the camera rays.
 	int num_bvh_traversal_steps;
 } DebugData;

@@ -11,7 +11,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License
+ * limitations under the License.
  */
 
 #ifndef __OBJECT_H__
@@ -70,6 +70,7 @@ public:
 class ObjectManager {
 public:
 	bool need_update;
+	bool need_flags_update;
 
 	ObjectManager();
 	~ObjectManager();

@@ -1439,7 +1439,7 @@ void ED_screen_set_subwinactive(bContext *C, wmEvent *event)
 				/* this used to be a notifier, but needs to be done immediate
 				 * because it can undo setting the right button as active due
 				 * to delayed notifier handling */
-				uiFreeActiveButtons(C, win->screen);
+				UI_screen_free_active_but(C, win->screen);
 			}
 			else
 				region_cursor_set(win, scr->subwinactive, false);
@@ -1748,6 +1748,13 @@ ScrArea *ED_screen_full_newspace(bContext *C, ScrArea *sa, int type)
 		}
 	}
 	
+	if (sa && (sa->spacetype != type)) {
+		newsa->flag |= AREA_FLAG_TEMP_TYPE;
+	}
+	else {
+		newsa->flag &= ~AREA_FLAG_TEMP_TYPE;
+	}
+
 	ED_area_newspace(C, newsa, type);
 	
 	return newsa;
@@ -1755,12 +1762,28 @@ ScrArea *ED_screen_full_newspace(bContext *C, ScrArea *sa, int type)
 
 void ED_screen_full_prevspace(bContext *C, ScrArea *sa)
 {
-	wmWindow *win = CTX_wm_window(C);
+	if (sa->flag & AREA_FLAG_STACKED_FULLSCREEN) {
+		/* stacked fullscreen -> only go back to previous screen and don't toggle out of fullscreen */
+		ED_area_prevspace(C, sa);
+	}
+	else {
+		ED_screen_restore_temp_type(C, sa);
+	}
+}
 
-	ED_area_prevspace(C, sa);
-	
-	if (sa->full)
-		ED_screen_state_toggle(C, win, sa, SCREENMAXIMIZED);
+void ED_screen_restore_temp_type(bContext *C, ScrArea *sa)
+{
+	/* incase nether functions below run */
+	ED_area_tag_redraw(sa);
+
+	if (sa->flag & AREA_FLAG_TEMP_TYPE) {
+		ED_area_prevspace(C, sa);
+		sa->flag &= ~AREA_FLAG_TEMP_TYPE;
+	}
+
+	if (sa->full) {
+		ED_screen_state_toggle(C, CTX_wm_window(C), sa, SCREENMAXIMIZED);
+	}
 }
 
 /* restore a screen / area back to default operation, after temp fullscreen modes */
@@ -1771,30 +1794,18 @@ void ED_screen_full_restore(bContext *C, ScrArea *sa)
 	bScreen *screen = CTX_wm_screen(C);
 	short state = (screen ? screen->state : SCREENMAXIMIZED);
 	
-	/* if fullscreen area has a secondary space (such as a file browser or fullscreen render 
-	 * overlaid on top of a existing setup) then return to the previous space */
+	/* if fullscreen area has a temporary space (such as a file browser or fullscreen render
+	 * overlaid on top of an existing setup) then return to the previous space */
 	
 	if (sl->next) {
-		/* specific checks for space types */
-
-		/* Special check added for non-render image window (back from fullscreen through "Back to Previous" button) */
-		if (sl->spacetype == SPACE_IMAGE) {
-			SpaceImage *sima = sa->spacedata.first;
-
-			if (sima->flag & (SI_PREVSPACE | SI_FULLWINDOW)) {
-				sima->flag &= ~SI_PREVSPACE;
-				sima->flag &= ~SI_FULLWINDOW;
-				ED_screen_full_prevspace(C, sa);
-			}
-			else
-				ED_screen_state_toggle(C, win, sa, state);
-		}
-		else if (sl->spacetype == SPACE_FILE) {
+		if (sa->flag & AREA_FLAG_TEMP_TYPE) {
 			ED_screen_full_prevspace(C, sa);
 		}
 		else {
 			ED_screen_state_toggle(C, win, sa, state);
 		}
+
+		sa->flag &= ~AREA_FLAG_TEMP_TYPE;
 	}
 	/* otherwise just tile the area again */
 	else {
@@ -1813,7 +1824,7 @@ ScrArea *ED_screen_state_toggle(bContext *C, wmWindow *win, ScrArea *sa, const s
 		 * switching screens with tooltip open because region and tooltip
 		 * are no longer in the same screen */
 		for (ar = sa->regionbase.first; ar; ar = ar->next)
-			uiFreeBlocks(C, &ar->uiblocks);
+			UI_blocklist_free(C, &ar->uiblocks);
 
 		/* prevent hanging header prints */
 		ED_area_headerprint(sa, NULL);
@@ -1857,6 +1868,11 @@ ScrArea *ED_screen_state_toggle(bContext *C, wmWindow *win, ScrArea *sa, const s
 		BKE_screen_free(oldscreen);
 		BKE_libblock_free(CTX_data_main(C), oldscreen);
 
+		/* After we've restored back to SCREENNORMAL, we have to wait with
+		 * screen handling as it uses the area coords which aren't updated yet.
+		 * Without doing so, the screen handling gets wrong area coords,
+		 * which in worst case can lead to crashes (see T43139) */
+		sc->skip_handling = true;
 	}
 	else {
 		/* change from SCREENNORMAL to new state */
@@ -1869,6 +1885,7 @@ ScrArea *ED_screen_state_toggle(bContext *C, wmWindow *win, ScrArea *sa, const s
 		BLI_snprintf(newname, sizeof(newname), "%s-%s", oldscreen->id.name + 2, "nonnormal");
 		sc = ED_screen_add(win, oldscreen->scene, newname);
 		sc->state = state;
+		sc->redraws_flag = oldscreen->redraws_flag;
 
 		/* timer */
 		sc->animtimer = oldscreen->animtimer;
@@ -2077,7 +2094,7 @@ void ED_update_for_newframe(Main *bmain, Scene *scene, int UNUSED(mute))
 	/* this function applies the changes too */
 	BKE_scene_update_for_newframe(bmain->eval_ctx, bmain, scene, layers);
 	
-	//if ( (CFRA>1) && (!mute) && (scene->r.audio.flag & AUDIO_SCRUB)) 
+	//if ((CFRA > 1) && (!mute) && (scene->r.audio.flag & AUDIO_SCRUB))
 	//	audiostream_scrub( CFRA );
 	
 	/* 3d window, preview */

@@ -183,7 +183,7 @@ int rna_ActionGroup_is_custom_colorset_get(PointerRNA *ptr)
 {
 	bActionGroup *grp = ptr->data;
 	
-	return (bool)(grp->customCol < 0);
+	return (grp->customCol < 0);
 }
 
 static void rna_BoneGroup_name_set(PointerRNA *ptr, const char *value)
@@ -258,7 +258,7 @@ static void rna_PoseChannel_rotation_axis_angle_set(PointerRNA *ptr, const float
 	
 	/* for now, assume that rotation mode is axis-angle */
 	pchan->rotAngle = value[0];
-	copy_v3_v3(pchan->rotAxis, (float *)&value[1]);
+	copy_v3_v3(pchan->rotAxis, &value[1]);
 	
 	/* TODO: validate axis? */
 }
@@ -421,7 +421,7 @@ static void rna_PoseChannel_bone_group_index_range(PointerRNA *ptr, int *min, in
 	bPose *pose = (ob) ? ob->pose : NULL;
 	
 	*min = 0;
-	*max = pose ? max_ii(0, BLI_countlist(&pose->agroups) - 1) : 0;
+	*max = pose ? max_ii(0, BLI_listbase_count(&pose->agroups) - 1) : 0;
 }
 
 static PointerRNA rna_Pose_active_bone_group_get(PointerRNA *ptr)
@@ -454,7 +454,7 @@ static void rna_Pose_active_bone_group_index_range(PointerRNA *ptr, int *min, in
 	bPose *pose = (bPose *)ptr->data;
 
 	*min = 0;
-	*max = max_ii(0, BLI_countlist(&pose->agroups) - 1);
+	*max = max_ii(0, BLI_listbase_count(&pose->agroups) - 1);
 }
 
 #if 0
