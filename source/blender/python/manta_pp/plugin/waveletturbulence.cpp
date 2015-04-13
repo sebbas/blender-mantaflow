@@ -32,6 +32,55 @@ using namespace std;
 
 namespace Manta {
 
+//*****************************************************************************
+
+// first some fairly generic interpolation functions for grids with multiple sizes
+
+
+void interpolateGrid( Grid<Real>& target, Grid<Real>& source , Vec3 scale=Vec3(1.), Vec3 offset=Vec3(0.), int orderSpace=1 ) {
+	Vec3 sourceFactor = calcGridSizeFactor( source.getSize(), target.getSize() );
+
+	// a brief note on a mantaflow specialty: the target grid has to be the first argument here!
+	// the parent fluidsolver object is taken from the first grid, and it determines the size of the
+	// loop for the kernel call. as we're writing into target, it's important to loop exactly over
+	// all cells of the target grid... (note, when calling the plugin in python, it doesnt matter anymore).
+
+	// sourceFactor offset necessary to shift eval points by half a small cell width
+	knInterpolateGridTempl<Real>(target, source, sourceFactor*scale, sourceFactor*0.5 + offset, orderSpace);
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "interpolateGrid" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& target = *_args.getPtr<Grid<Real> >("target",0,&_lock); Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",1,&_lock); Vec3 scale = _args.getOpt<Vec3 >("scale",2,Vec3(1.),&_lock); Vec3 offset = _args.getOpt<Vec3 >("offset",3,Vec3(0.),&_lock); int orderSpace = _args.getOpt<int >("orderSpace",4,1 ,&_lock);   _retval = getPyNone(); interpolateGrid(target,source,scale,offset,orderSpace);  _args.check(); } pbFinalizePlugin(parent,"interpolateGrid" ); return _retval; } catch(std::exception& e) { pbSetError("interpolateGrid",e.what()); return 0; } } static const Pb::Register _RP_interpolateGrid ("","interpolateGrid",_W_0); 
+
+
+void interpolateGridVec3( Grid<Vec3>& target, Grid<Vec3>& source , Vec3 scale=Vec3(1.), Vec3 offset=Vec3(0.), int orderSpace=1 ) {
+	Vec3 sourceFactor = calcGridSizeFactor( source.getSize(), target.getSize() );
+	knInterpolateGridTempl<Vec3>(target, source, sourceFactor*scale, sourceFactor*0.5 + offset, orderSpace); 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "interpolateGridVec3" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",0,&_lock); Grid<Vec3>& source = *_args.getPtr<Grid<Vec3> >("source",1,&_lock); Vec3 scale = _args.getOpt<Vec3 >("scale",2,Vec3(1.),&_lock); Vec3 offset = _args.getOpt<Vec3 >("offset",3,Vec3(0.),&_lock); int orderSpace = _args.getOpt<int >("orderSpace",4,1 ,&_lock);   _retval = getPyNone(); interpolateGridVec3(target,source,scale,offset,orderSpace);  _args.check(); } pbFinalizePlugin(parent,"interpolateGridVec3" ); return _retval; } catch(std::exception& e) { pbSetError("interpolateGridVec3",e.what()); return 0; } } static const Pb::Register _RP_interpolateGridVec3 ("","interpolateGridVec3",_W_1); 
+
+
+//!interpolate a mac velocity grid from one size to another size
+
+
+ struct KnInterpolateMACGrid : public KernelBase { KnInterpolateMACGrid(MACGrid& target, MACGrid& source, const Vec3& sourceFactor, const Vec3& off, int orderSpace) :  KernelBase(&target,0) ,target(target),source(source),sourceFactor(sourceFactor),off(off),orderSpace(orderSpace)   { run(); }  inline void op(int i, int j, int k, MACGrid& target, MACGrid& source, const Vec3& sourceFactor, const Vec3& off, int orderSpace )  {
+	Vec3 pos = Vec3(i,j,k) * sourceFactor + off;
+
+	Real vx = source.getInterpolatedHi(pos - Vec3(0.5,0,0), orderSpace)[0];
+	Real vy = source.getInterpolatedHi(pos - Vec3(0,0.5,0), orderSpace)[1];
+	Real vz = 0.f;
+	if(source.is3D()) vz = source.getInterpolatedHi(pos - Vec3(0,0,0.5), orderSpace)[2];
+
+	target(i,j,k) = Vec3(vx,vy,vz);
+}   inline MACGrid& getArg0() { return target; } typedef MACGrid type0;inline MACGrid& getArg1() { return source; } typedef MACGrid type1;inline const Vec3& getArg2() { return sourceFactor; } typedef Vec3 type2;inline const Vec3& getArg3() { return off; } typedef Vec3 type3;inline int& getArg4() { return orderSpace; } typedef int type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, target,source,sourceFactor,off,orderSpace);  } MACGrid& target; MACGrid& source; const Vec3& sourceFactor; const Vec3& off; int orderSpace;   };
+
+
+void interpolateMACGrid(MACGrid& target, MACGrid& source, Vec3 scale=Vec3(1.), Vec3 offset=Vec3(0.), int orderSpace=1) {
+	Vec3 sourceFactor = calcGridSizeFactor( source.getSize(), target.getSize() );
+
+	// see interpolateGrid for why the target grid needs to come first in the parameters!  
+	KnInterpolateMACGrid(target, source, sourceFactor*scale, sourceFactor*0.5 + offset, orderSpace);
+} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "interpolateMACGrid" ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& target = *_args.getPtr<MACGrid >("target",0,&_lock); MACGrid& source = *_args.getPtr<MACGrid >("source",1,&_lock); Vec3 scale = _args.getOpt<Vec3 >("scale",2,Vec3(1.),&_lock); Vec3 offset = _args.getOpt<Vec3 >("offset",3,Vec3(0.),&_lock); int orderSpace = _args.getOpt<int >("orderSpace",4,1,&_lock);   _retval = getPyNone(); interpolateMACGrid(target,source,scale,offset,orderSpace);  _args.check(); } pbFinalizePlugin(parent,"interpolateMACGrid" ); return _retval; } catch(std::exception& e) { pbSetError("interpolateMACGrid",e.what()); return 0; } } static const Pb::Register _RP_interpolateMACGrid ("","interpolateMACGrid",_W_2); 
+
+
+
+//*****************************************************************************
 
 //! Apply vector noise to grid, this is a simplified version - no position scaling or UVs
 
@@ -48,7 +97,7 @@ namespace Manta {
 void applySimpleNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, Real scale=1.0 , Grid<Real>* weight=NULL ) {
 	// note - passing a MAC grid here is slightly inaccurate, we should evaluate each component separately
 	knApplySimpleNoiseVec(flags, target, noise, scale , weight );
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "applySimpleNoiseVec3" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock); WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Real scale = _args.getOpt<Real >("scale",3,1.0 ,&_lock); Grid<Real>* weight = _args.getPtrOpt<Grid<Real> >("weight",4,NULL ,&_lock);   _retval = getPyNone(); applySimpleNoiseVec3(flags,target,noise,scale,weight);  _args.check(); } pbFinalizePlugin(parent,"applySimpleNoiseVec3" ); return _retval; } catch(std::exception& e) { pbSetError("applySimpleNoiseVec3",e.what()); return 0; } } static const Pb::Register _RP_applySimpleNoiseVec3 ("","applySimpleNoiseVec3",_W_0); 
+} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "applySimpleNoiseVec3" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock); WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Real scale = _args.getOpt<Real >("scale",3,1.0 ,&_lock); Grid<Real>* weight = _args.getPtrOpt<Grid<Real> >("weight",4,NULL ,&_lock);   _retval = getPyNone(); applySimpleNoiseVec3(flags,target,noise,scale,weight);  _args.check(); } pbFinalizePlugin(parent,"applySimpleNoiseVec3" ); return _retval; } catch(std::exception& e) { pbSetError("applySimpleNoiseVec3",e.what()); return 0; } } static const Pb::Register _RP_applySimpleNoiseVec3 ("","applySimpleNoiseVec3",_W_3); 
 
 
 //! Simple noise for a real grid , follows applySimpleNoiseVec3
@@ -65,7 +114,7 @@ void applySimpleNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField
 
 void applySimpleNoiseReal(FlagGrid& flags, Grid<Real>& target, WaveletNoiseField& noise, Real scale=1.0 , Grid<Real>* weight=NULL ) {
 	knApplySimpleNoiseReal(flags, target, noise, scale , weight );
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "applySimpleNoiseReal" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& target = *_args.getPtr<Grid<Real> >("target",1,&_lock); WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Real scale = _args.getOpt<Real >("scale",3,1.0 ,&_lock); Grid<Real>* weight = _args.getPtrOpt<Grid<Real> >("weight",4,NULL ,&_lock);   _retval = getPyNone(); applySimpleNoiseReal(flags,target,noise,scale,weight);  _args.check(); } pbFinalizePlugin(parent,"applySimpleNoiseReal" ); return _retval; } catch(std::exception& e) { pbSetError("applySimpleNoiseReal",e.what()); return 0; } } static const Pb::Register _RP_applySimpleNoiseReal ("","applySimpleNoiseReal",_W_1); 
+} static PyObject* _W_4 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "applySimpleNoiseReal" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& target = *_args.getPtr<Grid<Real> >("target",1,&_lock); WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Real scale = _args.getOpt<Real >("scale",3,1.0 ,&_lock); Grid<Real>* weight = _args.getPtrOpt<Grid<Real> >("weight",4,NULL ,&_lock);   _retval = getPyNone(); applySimpleNoiseReal(flags,target,noise,scale,weight);  _args.check(); } pbFinalizePlugin(parent,"applySimpleNoiseReal" ); return _retval; } catch(std::exception& e) { pbSetError("applySimpleNoiseReal",e.what()); return 0; } } static const Pb::Register _RP_applySimpleNoiseReal ("","applySimpleNoiseReal",_W_4); 
 
 
 
@@ -124,7 +173,7 @@ void applyNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& nois
 
 	// note - passing a MAC grid here is slightly inaccurate, we should evaluate each component separately
 	knApplyNoiseVec(flags, target, noise, scale, scaleSpatial, weight , uv,uvInterpol,sourceFactor );
-} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "applyNoiseVec3" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock); WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Real scale = _args.getOpt<Real >("scale",3,1.0 ,&_lock); Real scaleSpatial = _args.getOpt<Real >("scaleSpatial",4,1.0 ,&_lock); Grid<Real>* weight = _args.getPtrOpt<Grid<Real> >("weight",5,NULL ,&_lock); Grid<Vec3>* uv = _args.getPtrOpt<Grid<Vec3> >("uv",6,NULL ,&_lock);   _retval = getPyNone(); applyNoiseVec3(flags,target,noise,scale,scaleSpatial,weight,uv);  _args.check(); } pbFinalizePlugin(parent,"applyNoiseVec3" ); return _retval; } catch(std::exception& e) { pbSetError("applyNoiseVec3",e.what()); return 0; } } static const Pb::Register _RP_applyNoiseVec3 ("","applyNoiseVec3",_W_2); 
+} static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "applyNoiseVec3" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock); WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Real scale = _args.getOpt<Real >("scale",3,1.0 ,&_lock); Real scaleSpatial = _args.getOpt<Real >("scaleSpatial",4,1.0 ,&_lock); Grid<Real>* weight = _args.getPtrOpt<Grid<Real> >("weight",5,NULL ,&_lock); Grid<Vec3>* uv = _args.getPtrOpt<Grid<Vec3> >("uv",6,NULL ,&_lock);   _retval = getPyNone(); applyNoiseVec3(flags,target,noise,scale,scaleSpatial,weight,uv);  _args.check(); } pbFinalizePlugin(parent,"applyNoiseVec3" ); return _retval; } catch(std::exception& e) { pbSetError("applyNoiseVec3",e.what()); return 0; } } static const Pb::Register _RP_applyNoiseVec3 ("","applyNoiseVec3",_W_5); 
 
 
 
@@ -143,60 +192,14 @@ void applyNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& nois
 
 void computeEnergy( FlagGrid& flags, MACGrid& vel, Grid<Real>& energy ) {
 	KnApplyComputeEnergy( flags, vel, energy );
-} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "computeEnergy" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); Grid<Real>& energy = *_args.getPtr<Grid<Real> >("energy",2,&_lock);   _retval = getPyNone(); computeEnergy(flags,vel,energy);  _args.check(); } pbFinalizePlugin(parent,"computeEnergy" ); return _retval; } catch(std::exception& e) { pbSetError("computeEnergy",e.what()); return 0; } } static const Pb::Register _RP_computeEnergy ("","computeEnergy",_W_3); 
+} static PyObject* _W_6 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "computeEnergy" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); Grid<Real>& energy = *_args.getPtr<Grid<Real> >("energy",2,&_lock);   _retval = getPyNone(); computeEnergy(flags,vel,energy);  _args.check(); } pbFinalizePlugin(parent,"computeEnergy" ); return _retval; } catch(std::exception& e) { pbSetError("computeEnergy",e.what()); return 0; } } static const Pb::Register _RP_computeEnergy ("","computeEnergy",_W_6); 
 
-
-
-//!interpolate grid from one size to another size
-
-
- struct KnInterpolateGrid : public KernelBase { KnInterpolateGrid(Grid<Real>& target, Grid<Real>& source, const Vec3& sourceFactor) :  KernelBase(&target,0) ,target(target),source(source),sourceFactor(sourceFactor)   { run(); }  inline void op(int i, int j, int k, Grid<Real>& target, Grid<Real>& source, const Vec3& sourceFactor )  {
-	Vec3 pos = Vec3(i,j,k) * sourceFactor;
-	if(!source.is3D()) pos[2] = 0; // allow 2d -> 3d
-	target(i,j,k) = source.getInterpolated(pos);
-}   inline Grid<Real>& getArg0() { return target; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return source; } typedef Grid<Real> type1;inline const Vec3& getArg2() { return sourceFactor; } typedef Vec3 type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, target,source,sourceFactor);  } Grid<Real>& target; Grid<Real>& source; const Vec3& sourceFactor;   };
-
-
-void interpolateGrid( Grid<Real>& target, Grid<Real>& source ) {
-	Vec3 sourceFactor = calcGridSizeFactor( source.getSize(), target.getSize() );
-
-	// a brief note on a mantaflow specialty: the target grid has to be the first argument here!
-	// the parent fluidsolver object is taken from the first grid, and it determines the size of the
-	// loop for the kernel call. as we're writing into target, it's important to loop exactly over
-	// all cells of the target grid... (note, when calling the plugin in python, it doesnt matter anymore).
-
-	KnInterpolateGrid(target, source, sourceFactor);
-} static PyObject* _W_4 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "interpolateGrid" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& target = *_args.getPtr<Grid<Real> >("target",0,&_lock); Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",1,&_lock);   _retval = getPyNone(); interpolateGrid(target,source);  _args.check(); } pbFinalizePlugin(parent,"interpolateGrid" ); return _retval; } catch(std::exception& e) { pbSetError("interpolateGrid",e.what()); return 0; } } static const Pb::Register _RP_interpolateGrid ("","interpolateGrid",_W_4); 
-
-
-//!interpolate a mac velocity grid from one size to another size
-
-
- struct KnInterpolateMACGrid : public KernelBase { KnInterpolateMACGrid(MACGrid& target, MACGrid& source, const Vec3& sourceFactor) :  KernelBase(&target,0) ,target(target),source(source),sourceFactor(sourceFactor)   { run(); }  inline void op(int i, int j, int k, MACGrid& target, MACGrid& source, const Vec3& sourceFactor )  {
-	Vec3 pos = Vec3(i,j,k) * sourceFactor;
-
-	Real vx = source.getInterpolated(pos - Vec3(0.5,0,0))[0];
-	Real vy = source.getInterpolated(pos - Vec3(0,0.5,0))[1];
-	Real vz = 0.f;
-	if(source.is3D()) vz = source.getInterpolated(pos - Vec3(0,0,0.5))[2];
-
-	target(i,j,k) = Vec3(vx,vy,vz);
-}   inline MACGrid& getArg0() { return target; } typedef MACGrid type0;inline MACGrid& getArg1() { return source; } typedef MACGrid type1;inline const Vec3& getArg2() { return sourceFactor; } typedef Vec3 type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, target,source,sourceFactor);  } MACGrid& target; MACGrid& source; const Vec3& sourceFactor;   };
-
-
-void interpolateMACGrid(MACGrid& target, MACGrid& source) {
-	Vec3 sourceFactor = calcGridSizeFactor( source.getSize(), target.getSize() );
-
-	// see interpolateGrid for why the target grid needs to come first in the parameters!
-
-	KnInterpolateMACGrid(target, source, sourceFactor);
-} static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "interpolateMACGrid" ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& target = *_args.getPtr<MACGrid >("target",0,&_lock); MACGrid& source = *_args.getPtr<MACGrid >("source",1,&_lock);   _retval = getPyNone(); interpolateMACGrid(target,source);  _args.check(); } pbFinalizePlugin(parent,"interpolateMACGrid" ); return _retval; } catch(std::exception& e) { pbSetError("interpolateMACGrid",e.what()); return 0; } } static const Pb::Register _RP_interpolateMACGrid ("","interpolateMACGrid",_W_5); 
 
 
 void computeWaveletCoeffs(Grid<Real>& input) {
 	Grid<Real> temp1(input.getParent()), temp2(input.getParent());
 	WaveletNoiseField::computeCoefficients(input, temp1, temp2);
-} static PyObject* _W_6 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "computeWaveletCoeffs" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& input = *_args.getPtr<Grid<Real> >("input",0,&_lock);   _retval = getPyNone(); computeWaveletCoeffs(input);  _args.check(); } pbFinalizePlugin(parent,"computeWaveletCoeffs" ); return _retval; } catch(std::exception& e) { pbSetError("computeWaveletCoeffs",e.what()); return 0; } } static const Pb::Register _RP_computeWaveletCoeffs ("","computeWaveletCoeffs",_W_6); 
+} static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "computeWaveletCoeffs" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& input = *_args.getPtr<Grid<Real> >("input",0,&_lock);   _retval = getPyNone(); computeWaveletCoeffs(input);  _args.check(); } pbFinalizePlugin(parent,"computeWaveletCoeffs" ); return _retval; } catch(std::exception& e) { pbSetError("computeWaveletCoeffs",e.what()); return 0; } } static const Pb::Register _RP_computeWaveletCoeffs ("","computeWaveletCoeffs",_W_7); 
 
 // note - alomst the same as for vorticity confinement
 void computeVorticity(MACGrid& vel, Grid<Vec3>& vorticity, Grid<Real>* norm) {
@@ -204,7 +207,7 @@ void computeVorticity(MACGrid& vel, Grid<Vec3>& vorticity, Grid<Real>* norm) {
 	GetCentered(velCenter, vel);
 	CurlOp(velCenter, vorticity);
 	if(norm) GridNorm( *norm, vorticity);
-} static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "computeVorticity" ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Vec3>& vorticity = *_args.getPtr<Grid<Vec3> >("vorticity",1,&_lock); Grid<Real>* norm = _args.getPtr<Grid<Real> >("norm",2,&_lock);   _retval = getPyNone(); computeVorticity(vel,vorticity,norm);  _args.check(); } pbFinalizePlugin(parent,"computeVorticity" ); return _retval; } catch(std::exception& e) { pbSetError("computeVorticity",e.what()); return 0; } } static const Pb::Register _RP_computeVorticity ("","computeVorticity",_W_7); 
+} static PyObject* _W_8 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "computeVorticity" ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Vec3>& vorticity = *_args.getPtr<Grid<Vec3> >("vorticity",1,&_lock); Grid<Real>* norm = _args.getPtr<Grid<Real> >("norm",2,&_lock);   _retval = getPyNone(); computeVorticity(vel,vorticity,norm);  _args.check(); } pbFinalizePlugin(parent,"computeVorticity" ); return _retval; } catch(std::exception& e) { pbSetError("computeVorticity",e.what()); return 0; } } static const Pb::Register _RP_computeVorticity ("","computeVorticity",_W_8); 
 
 // note - very similar to KnComputeProductionStrain, but for use as wavelet turb weighting
 
@@ -231,7 +234,7 @@ void computeStrainRateMag(MACGrid& vel, Grid<Real>& mag) {
 	Grid<Vec3> velCenter(vel.getParent());
 	GetCentered(velCenter, vel);
 	KnComputeStrainRateMag(vel, velCenter, mag);
-} static PyObject* _W_8 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "computeStrainRateMag" ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Real>& mag = *_args.getPtr<Grid<Real> >("mag",1,&_lock);   _retval = getPyNone(); computeStrainRateMag(vel,mag);  _args.check(); } pbFinalizePlugin(parent,"computeStrainRateMag" ); return _retval; } catch(std::exception& e) { pbSetError("computeStrainRateMag",e.what()); return 0; } } static const Pb::Register _RP_computeStrainRateMag ("","computeStrainRateMag",_W_8); 
+} static PyObject* _W_9 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "computeStrainRateMag" ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Real>& mag = *_args.getPtr<Grid<Real> >("mag",1,&_lock);   _retval = getPyNone(); computeStrainRateMag(vel,mag);  _args.check(); } pbFinalizePlugin(parent,"computeStrainRateMag" ); return _retval; } catch(std::exception& e) { pbSetError("computeStrainRateMag",e.what()); return 0; } } static const Pb::Register _RP_computeStrainRateMag ("","computeStrainRateMag",_W_9); 
 
 
 // extrapolate a real grid into a flagged region (based on initial flags)
@@ -302,7 +305,7 @@ void extrapolateSimpleFlags(FlagGrid& flags, GridBase* val, int distance = 4, in
 	}
 	else
 		errMsg("extrapolateSimpleFlags: Grid Type is not supported (only int, Real, Vec3)");    
-} static PyObject* _W_9 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "extrapolateSimpleFlags" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); GridBase* val = _args.getPtr<GridBase >("val",1,&_lock); int distance = _args.getOpt<int >("distance",2,4,&_lock); int flagFrom = _args.getOpt<int >("flagFrom",3,FlagGrid::TypeFluid,&_lock); int flagTo = _args.getOpt<int >("flagTo",4,FlagGrid::TypeObstacle ,&_lock);   _retval = getPyNone(); extrapolateSimpleFlags(flags,val,distance,flagFrom,flagTo);  _args.check(); } pbFinalizePlugin(parent,"extrapolateSimpleFlags" ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateSimpleFlags",e.what()); return 0; } } static const Pb::Register _RP_extrapolateSimpleFlags ("","extrapolateSimpleFlags",_W_9); 
+} static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "extrapolateSimpleFlags" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); GridBase* val = _args.getPtr<GridBase >("val",1,&_lock); int distance = _args.getOpt<int >("distance",2,4,&_lock); int flagFrom = _args.getOpt<int >("flagFrom",3,FlagGrid::TypeFluid,&_lock); int flagTo = _args.getOpt<int >("flagTo",4,FlagGrid::TypeObstacle ,&_lock);   _retval = getPyNone(); extrapolateSimpleFlags(flags,val,distance,flagFrom,flagTo);  _args.check(); } pbFinalizePlugin(parent,"extrapolateSimpleFlags" ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateSimpleFlags",e.what()); return 0; } } static const Pb::Register _RP_extrapolateSimpleFlags ("","extrapolateSimpleFlags",_W_10); 
 
 } // namespace
 

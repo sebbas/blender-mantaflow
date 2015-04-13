@@ -289,7 +289,7 @@ void VICintegration(VortexSheetMesh& mesh, Real sigma, Grid<Vec3>& vel, FlagGrid
 		const int maxIter = (int)(cgMaxIterFac * vel.getSize().max());    
 		GridCgInterface *gcg = new GridCg<ApplyMatrix>(solution, rhs, residual, search, flags, temp1, &A0, &Ai, &Aj, &Ak );
 		gcg->setAccuracy(cgAccuracy); 
-		gcg->setUseResNorm(true);
+		gcg->setUseL2Norm(true);
 		gcg->setPreconditioner( (GridCgInterface::PreconditionType)precondition, &pca0, &pca1, &pca2, &pca3); 
 		
 		// iterations
@@ -321,4 +321,5 @@ void densityFromLevelset(LevelsetGrid& phi, Grid<Real>& density, Real value=1.0,
 } static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "densityFromLevelset" ); PyObject *_retval = 0; { ArgLocker _lock; LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",0,&_lock); Grid<Real>& density = *_args.getPtr<Grid<Real> >("density",1,&_lock); Real value = _args.getOpt<Real >("value",2,1.0,&_lock); Real sigma = _args.getOpt<Real >("sigma",3,1.0,&_lock);   _retval = getPyNone(); densityFromLevelset(phi,density,value,sigma);  _args.check(); } pbFinalizePlugin(parent,"densityFromLevelset" ); return _retval; } catch(std::exception& e) { pbSetError("densityFromLevelset",e.what()); return 0; } } static const Pb::Register _RP_densityFromLevelset ("","densityFromLevelset",_W_7); 
 
 } // namespace
+
 

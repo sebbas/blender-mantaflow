@@ -130,6 +130,8 @@ ${CMAKE_CURRENT_SOURCE_DIR}/util/interpolHigh.h
 ${CMAKE_CURRENT_SOURCE_DIR}/util/mcubes.h
 ${CMAKE_CURRENT_SOURCE_DIR}/util/randomstream.h
 ${CMAKE_CURRENT_SOURCE_DIR}/util/solvana.h
+${CMAKE_CURRENT_SOURCE_DIR}/util/simpleimage.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/util/simpleimage.h
 )
 list(REMOVE_DUPLICATES "SRC")
 list_assert_duplicates("${SRC}")

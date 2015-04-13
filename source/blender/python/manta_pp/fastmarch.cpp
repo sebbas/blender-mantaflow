@@ -170,6 +170,7 @@ void FastMarch<COMP,TDIR>::addToList(const Vec3i& p, const Vec3i& src) {
 	// update field
 	mFmFlags[idx] = FlagIsOnHeap;
 	mLevelset[idx] = ttime;
+	// debug info std::cout<<"set "<< idx <<","<< ttime <<"\n";
 	
 	if (mVelTransport.isInitialized())
 		mVelTransport.transpTouch(p.x, p.y, p.z, mWeights, ttime);
@@ -406,6 +407,7 @@ void extrapolateMACSimple(FlagGrid& flags, MACGrid& vel, int distance = 4, Level
 		vel(p)[c] = avgVel / nbs;
 	}
 }   inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline Grid<Vec3>& getArg1() { return weight; } typedef Grid<Vec3> type1;inline int& getArg2() { return distance; } typedef int type2;inline const int& getArg3() { return d; } typedef int type3;inline const int& getArg4() { return c; } typedef int type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, vel,weight,distance,d,c);  } MACGrid& vel; Grid<Vec3>& weight; int distance; const int d; const int c;   };
+
 // same as extrapolateMACSimple, but uses weight vec3 grid instead of flags to check
 // for valid values (to be used in combination with mapPartsToMAC)
 // note - the weight grid values are destroyed! the function is necessary due to discrepancies
@@ -432,6 +434,120 @@ void extrapolateMACFromWeight( MACGrid& vel, Grid<Vec3>& weight, int distance = 
 
 	}
 } static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "extrapolateMACFromWeight" ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Vec3>& weight = *_args.getPtr<Grid<Vec3> >("weight",1,&_lock); int distance = _args.getOpt<int >("distance",2,2,&_lock);   _retval = getPyNone(); extrapolateMACFromWeight(vel,weight,distance);  _args.check(); } pbFinalizePlugin(parent,"extrapolateMACFromWeight" ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateMACFromWeight",e.what()); return 0; } } static const Pb::Register _RP_extrapolateMACFromWeight ("","extrapolateMACFromWeight",_W_1); 
+
+// simple extrapolation functions for levelsets
+
+static const Vec3i nb[6] = { 
+	Vec3i(1 ,0,0), Vec3i(-1,0,0),
+	Vec3i(0,1 ,0), Vec3i(0,-1,0),
+	Vec3i(0,0,1 ), Vec3i(0,0,-1) };
+
+// larger neighborhood (>1 dx away)
+static const Vec3i nbExt2d[4] = { 
+	Vec3i(1, 1,0), Vec3i(-1, 1,0),
+	Vec3i(1,-1,0), Vec3i(-1,-1,0) };
+
+
+
+template <class S>  struct knExtrapolateLsSimple : public KernelBase { knExtrapolateLsSimple(Grid<S>& val, int distance , Grid<int>& tmp , const int d , S direction ) :  KernelBase(&val,1) ,val(val),distance(distance),tmp(tmp),d(d),direction(direction)   { run(); }  inline void op(int i, int j, int k, Grid<S>& val, int distance , Grid<int>& tmp , const int d , S direction  )  {
+	const int dim = (val.is3D() ? 3:2); 
+	if (tmp(i,j,k) != 0) return;
+
+	// copy from initialized neighbors
+	Vec3i p(i,j,k);
+	int   nbs = 0;
+	S     avg(0.);
+	for (int n=0; n<2*dim; ++n) {
+		if (tmp(p+nb[n]) == d) {
+			avg += val(p+nb[n]);
+			nbs++;
+		}
+	}
+
+	if(nbs>0) {
+		tmp(p) = d+1;
+		val(p) = avg / nbs + direction;
+	} 
+}   inline Grid<S>& getArg0() { return val; } typedef Grid<S> type0;inline int& getArg1() { return distance; } typedef int type1;inline Grid<int>& getArg2() { return tmp; } typedef Grid<int> type2;inline const int& getArg3() { return d; } typedef int type3;inline S& getArg4() { return direction; } typedef S type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, val,distance,tmp,d,direction);  } Grid<S>& val; int distance; Grid<int>& tmp; const int d; S direction;   };
+
+
+
+
+template <class S>  struct knSetRemaining : public KernelBase { knSetRemaining(Grid<S>& phi, Grid<int>& tmp, S distance ) :  KernelBase(&phi,1) ,phi(phi),tmp(tmp),distance(distance)   { run(); }  inline void op(int i, int j, int k, Grid<S>& phi, Grid<int>& tmp, S distance  )  {
+	if (tmp(i,j,k) != 0) return;
+	phi(i,j,k) = distance;
+}   inline Grid<S>& getArg0() { return phi; } typedef Grid<S> type0;inline Grid<int>& getArg1() { return tmp; } typedef Grid<int> type1;inline S& getArg2() { return distance; } typedef S type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, phi,tmp,distance);  } Grid<S>& phi; Grid<int>& tmp; S distance;   };
+
+
+void extrapolateLsSimple(Grid<Real>& phi, int distance = 4, bool inside=false ) {
+	Grid<int> tmp( phi.getParent() );
+	tmp.clear();
+	const int dim = (phi.is3D() ? 3:2);
+
+	// by default, march outside
+	Real direction = 1.;
+	if(!inside) { 
+		// mark all inside
+		FOR_IJK_BND(phi,1) {
+			if ( phi(i,j,k) < 0. ) { tmp(i,j,k) = 1; }
+		} 
+	} else {
+		direction = -1.;
+		FOR_IJK_BND(phi,1) {
+			if ( phi(i,j,k) > 0. ) { tmp(i,j,k) = 1; }
+		} 
+	}
+	// + first layer around
+	FOR_IJK_BND(phi,1) {
+		Vec3i p(i,j,k);
+		if ( tmp(p) ) continue;
+		for (int n=0; n<2*dim; ++n) {
+			if (tmp(p+nb[n])==1) {
+				tmp(i,j,k) = 2; n=2*dim;
+			}
+		}
+	} 
+
+	// extrapolate for distance
+	for(int d=2; d<1+distance; ++d) {
+		knExtrapolateLsSimple<Real>(phi, distance, tmp, d, direction );
+	} 
+
+	// set all remaining cells to max
+	knSetRemaining<Real>(phi, tmp, Real(direction * (distance+2)) );
+} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "extrapolateLsSimple" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& phi = *_args.getPtr<Grid<Real> >("phi",0,&_lock); int distance = _args.getOpt<int >("distance",1,4,&_lock); bool inside = _args.getOpt<bool >("inside",2,false ,&_lock);   _retval = getPyNone(); extrapolateLsSimple(phi,distance,inside);  _args.check(); } pbFinalizePlugin(parent,"extrapolateLsSimple" ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateLsSimple",e.what()); return 0; } } static const Pb::Register _RP_extrapolateLsSimple ("","extrapolateLsSimple",_W_2); 
+
+// extrapolate centered vec3 values from marked fluid cells
+
+void extrapolateVec3Simple(Grid<Vec3>& vel, Grid<Real>& phi, int distance = 4) {
+	Grid<int> tmp( vel.getParent() );
+	tmp.clear();
+	const int dim = (vel.is3D() ? 3:2);
+
+	// mark all inside
+	FOR_IJK_BND(vel,1) {
+		if ( phi(i,j,k) < 0. ) { tmp(i,j,k) = 1; }
+	} 
+	// + first layer outside
+	FOR_IJK_BND(vel,1) {
+		Vec3i p(i,j,k);
+		if ( tmp(p) ) continue;
+		for (int n=0; n<2*dim; ++n) {
+			if (tmp(p+nb[n])==1) {
+				tmp(i,j,k) = 2; n=2*dim;
+			}
+		}
+	} 
+
+	for(int d=2; d<1+distance; ++d) {
+		knExtrapolateLsSimple<Vec3>(vel, distance, tmp, d, Vec3(0.) );
+	} 
+	knSetRemaining<Vec3>(vel, tmp, Vec3(0.) );
+} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "extrapolateVec3Simple" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& vel = *_args.getPtr<Grid<Vec3> >("vel",0,&_lock); Grid<Real>& phi = *_args.getPtr<Grid<Real> >("phi",1,&_lock); int distance = _args.getOpt<int >("distance",2,4,&_lock);   _retval = getPyNone(); extrapolateVec3Simple(vel,phi,distance);  _args.check(); } pbFinalizePlugin(parent,"extrapolateVec3Simple" ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateVec3Simple",e.what()); return 0; } } static const Pb::Register _RP_extrapolateVec3Simple ("","extrapolateVec3Simple",_W_3); 
+
+
+
+
 
 } // namespace
 

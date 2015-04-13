@@ -8,5 +8,5 @@
 +Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","advectInGrid",Mesh::_W_4); 
 +Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","scale",Mesh::_W_5); 
 +Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","offset",Mesh::_W_6); 
-+Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","meshSDF",Mesh::_W_7); 
-+Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","applyToGrid",Mesh::_W_8); 
++Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","computeLevelset",Mesh::_W_7); 
++Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","applyMeshToGrid",Mesh::_W_8); 

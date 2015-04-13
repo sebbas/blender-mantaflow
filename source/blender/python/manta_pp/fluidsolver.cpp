@@ -89,7 +89,9 @@ template<> void FluidSolver::freeGridPointer<Vec3>(Vec3* ptr) {
 // FluidSolver members
 
 FluidSolver::FluidSolver(Vec3i gridsize, int dim)
-	: PbClass(this), mDt(1.0), mGridSize(gridsize), mDim(dim),  mTimeTotal(0.), mScale(1.0), mFrame(0)
+	: PbClass(this), mDt(1.0), mTimeTotal(0.), mFrame(0), 
+	  mCflCond(1000), mDtMin(1.), mDtMax(1.), mFrameLength(1.),
+	  mGridSize(gridsize), mDim(dim) , mTimePerFrame(0.), mLockDt(false), mAdaptDt(true)
 {    
 	assertMsg(dim==2 || dim==3, "Can only create 2D and 3D solvers");
 	assertMsg(dim!=2 || gridsize.z == 1, "Trying to create 2D solver with size.z != 1");
@@ -106,12 +108,29 @@ PbClass* FluidSolver::create(PbType t, PbTypeVec T, const string& name) {
 	if (t.str() == "")
 		errMsg("Need to specify object type. Use e.g. Solver.create(FlagGrid, ...) or Solver.create(type=FlagGrid, ...)");
 	
-	return PbClass::createPyObject(t.str() + T.str(), name, _args, this);
+	PbClass* ret = PbClass::createPyObject(t.str() + T.str(), name, _args, this);
+	//_args.check(); // NT_DEBUG , todo add here ...
+	return ret;
 }
 
 void FluidSolver::step() {
-	mTimeTotal += mDt;
-	mFrame++;
+	// update simulation time
+	if(!mAdaptDt) {
+		mTimeTotal += mDt;
+		mFrame++;
+	} else {
+		// adaptive time stepping on (use eps to prevent roundoff errors)
+		mTimePerFrame += mDt;
+		if( (mTimePerFrame+VECTOR_EPSILON) >mFrameLength) {
+			mFrame++;
+
+			// re-calc total time, prevent drift...
+			mTimeTotal = (double)mFrame * mFrameLength;
+			mTimePerFrame = 0.;
+			mLockDt = false;
+		}
+	}
+
 	updateQtGui(true, mFrame, "FluidSolver::step");
 }
 
@@ -123,13 +142,37 @@ void FluidSolver::printMemInfo() {
 	printf("%s\n", msg.str().c_str() );
 }
 
-void printBuildInfo() {
-	debMsg( "Build info: "<<buildInfoString().c_str()<<" ",1);
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "printBuildInfo" ); PyObject *_retval = 0; { ArgLocker _lock;   _retval = getPyNone(); printBuildInfo();  _args.check(); } pbFinalizePlugin(parent,"printBuildInfo" ); return _retval; } catch(std::exception& e) { pbSetError("printBuildInfo",e.what()); return 0; } } static const Pb::Register _RP_printBuildInfo ("","printBuildInfo",_W_0); 
+std::string printBuildInfo() {
+	string infoString = buildInfoString();
+	debMsg( "Build info: "<<infoString.c_str()<<" ",1);
+	return infoString;
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "printBuildInfo" ); PyObject *_retval = 0; { ArgLocker _lock;   _retval = toPy(printBuildInfo());  _args.check(); } pbFinalizePlugin(parent,"printBuildInfo" ); return _retval; } catch(std::exception& e) { pbSetError("printBuildInfo",e.what()); return 0; } } static const Pb::Register _RP_printBuildInfo ("","printBuildInfo",_W_0); 
 
 void setDebugLevel(int level=1) {
 	gDebugLevel = level; 
 } static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "setDebugLevel" ); PyObject *_retval = 0; { ArgLocker _lock; int level = _args.getOpt<int >("level",0,1,&_lock);   _retval = getPyNone(); setDebugLevel(level);  _args.check(); } pbFinalizePlugin(parent,"setDebugLevel" ); return _retval; } catch(std::exception& e) { pbSetError("setDebugLevel",e.what()); return 0; } } static const Pb::Register _RP_setDebugLevel ("","setDebugLevel",_W_1); 
+
+void FluidSolver::adaptTimestep(Real maxVel)
+{
+	if (!mLockDt) {
+		// calculate current timestep from maxvel, clamp range
+		mDt = std::max( std::min( (Real)(mCflCond/(maxVel+1e-05)), mDtMax) , mDtMin );
+		if( (mTimePerFrame+mDt*1.05) > mFrameLength ) {
+			// within 5% of full step? add epsilon to prevent roundoff errors...
+			mDt = ( mFrameLength - mTimePerFrame ) + 1e-04;
+		}
+		else if ( (mTimePerFrame+mDt + mDtMin) > mFrameLength || (mTimePerFrame+(mDt*1.25)) > mFrameLength ) {
+			// avoid tiny timesteps and strongly varying ones, do 2 medium size ones if necessary...
+			mDt = (mFrameLength-mTimePerFrame+ 1e-04)*0.5;
+			mLockDt = true;
+		}
+	}
+	debMsg( "Frame "<<mFrame<<" current max vel: "<<maxVel<<" , dt: "<<mDt<<", "<<mTimePerFrame<<"/"<<mFrameLength<<" lock:"<<mLockDt , 1);
+	mAdaptDt = true;
+
+	// sanity check
+	assertMsg( (mDt > (mDtMin/2.) ) , "Invalid dt encountered! Shouldnt happen..." );
+}
 
 } // manta
 

@@ -27,6 +27,7 @@
 #include "commonkernels.h"
 #include "particle.h"
 #include "noisefield.h"
+#include "simpleimage.h"
 #include "mesh.h"
 
 using namespace std;
@@ -45,23 +46,6 @@ namespace Manta {
 		density(i,j,k) = target;
 }   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return density; } typedef Grid<Real> type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Grid<Real>& getArg3() { return sdf; } typedef Grid<Real> type3;inline Real& getArg4() { return scale; } typedef Real type4;inline Real& getArg5() { return sigma; } typedef Real type5; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, flags,density,noise,sdf,scale,sigma);  } FlagGrid& flags; Grid<Real>& density; WaveletNoiseField& noise; Grid<Real>& sdf; Real scale; Real sigma;   };
 
-
-
- struct KnApplyDensity : public KernelBase { KnApplyDensity(FlagGrid& flags, Grid<Real>& density, Grid<Real>& sdf, Real value, Real sigma) :  KernelBase(&flags,0) ,flags(flags),density(density),sdf(sdf),value(value),sigma(sigma)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& density, Grid<Real>& sdf, Real value, Real sigma )  {
-	if (!flags.isFluid(i,j,k) || sdf(i,j,k) > sigma) return;
-	density(i,j,k) = value;
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return density; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return sdf; } typedef Grid<Real> type2;inline Real& getArg3() { return value; } typedef Real type3;inline Real& getArg4() { return sigma; } typedef Real type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, flags,density,sdf,value,sigma);  } FlagGrid& flags; Grid<Real>& density; Grid<Real>& sdf; Real value; Real sigma;   };
-
-
-
- struct KnApplyEmission : public KernelBase { KnApplyEmission(FlagGrid& flags, Grid<Real>& density, Grid<Real>& emission, bool isAbsolute) :  KernelBase(&flags,0) ,flags(flags),density(density),emission(emission),isAbsolute(isAbsolute)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& density, Grid<Real>& emission, bool isAbsolute )  {
-	if (!flags.isFluid(i,j,k) || emission(i,j,k) == 0.) return;
-	if (isAbsolute)
-		density(i,j,k) = emission(i,j,k);
-	else
-		density(i,j,k) += emission(i,j,k);
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return density; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return emission; } typedef Grid<Real> type2;inline bool& getArg3() { return isAbsolute; } typedef bool type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, flags,density,emission,isAbsolute);  } FlagGrid& flags; Grid<Real>& density; Grid<Real>& emission; bool isAbsolute;   };
-
 //! Init noise-modulated density inside shape
 
 void densityInflow(FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, Shape* shape, Real scale=1.0, Real sigma=0) {
@@ -69,30 +53,6 @@ void densityInflow(FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& nois
 	KnApplyNoise(flags, density, noise, sdf, scale, sigma);
 } static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "densityInflow" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& density = *_args.getPtr<Grid<Real> >("density",1,&_lock); WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Shape* shape = _args.getPtr<Shape >("shape",3,&_lock); Real scale = _args.getOpt<Real >("scale",4,1.0,&_lock); Real sigma = _args.getOpt<Real >("sigma",5,0,&_lock);   _retval = getPyNone(); densityInflow(flags,density,noise,shape,scale,sigma);  _args.check(); } pbFinalizePlugin(parent,"densityInflow" ); return _retval; } catch(std::exception& e) { pbSetError("densityInflow",e.what()); return 0; } } static const Pb::Register _RP_densityInflow ("","densityInflow",_W_0); 
 
-	
-//! Init noise-modulated density inside mesh
-
-void densityInflowMeshNoise(FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, Mesh* mesh, Real scale=1.0, Real sigma=0) {
-	FluidSolver dummy(density.getSize());
-	LevelsetGrid sdf(&dummy, false);
-	mesh->meshSDF(*mesh, sdf, 1.);
-	KnApplyNoise(flags, density, noise, sdf, scale, sigma);
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "densityInflowMeshNoise" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& density = *_args.getPtr<Grid<Real> >("density",1,&_lock); WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Mesh* mesh = _args.getPtr<Mesh >("mesh",3,&_lock); Real scale = _args.getOpt<Real >("scale",4,1.0,&_lock); Real sigma = _args.getOpt<Real >("sigma",5,0,&_lock);   _retval = getPyNone(); densityInflowMeshNoise(flags,density,noise,mesh,scale,sigma);  _args.check(); } pbFinalizePlugin(parent,"densityInflowMeshNoise" ); return _retval; } catch(std::exception& e) { pbSetError("densityInflowMeshNoise",e.what()); return 0; } } static const Pb::Register _RP_densityInflowMeshNoise ("","densityInflowMeshNoise",_W_1); 
-//! Init still density inside mesh
-
-void densityInflowMesh(FlagGrid& flags, Grid<Real>& density, Mesh* mesh, Real value=1., Real cutoff = 7, Real sigma=0) {
-	FluidSolver dummy(density.getSize());
-	LevelsetGrid sdf(&dummy, false);
-	mesh->meshSDF(*mesh, sdf, 2.,cutoff);
-	KnApplyDensity(flags, density, sdf, value, sigma);
-} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "densityInflowMesh" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& density = *_args.getPtr<Grid<Real> >("density",1,&_lock); Mesh* mesh = _args.getPtr<Mesh >("mesh",2,&_lock); Real value = _args.getOpt<Real >("value",3,1.,&_lock); Real cutoff = _args.getOpt<Real >("cutoff",4,7,&_lock); Real sigma = _args.getOpt<Real >("sigma",5,0,&_lock);   _retval = getPyNone(); densityInflowMesh(flags,density,mesh,value,cutoff,sigma);  _args.check(); } pbFinalizePlugin(parent,"densityInflowMesh" ); return _retval; } catch(std::exception& e) { pbSetError("densityInflowMesh",e.what()); return 0; } } static const Pb::Register _RP_densityInflowMesh ("","densityInflowMesh",_W_2); 
-//! Add emission values
-//isAbsolute: whether to add emission values to existing, or replace
-
-void applyEmission(FlagGrid& flags, Grid<Real>& density, Grid<Real>& emission, bool isAbsolute) {
-	FluidSolver dummy(density.getSize());
-	KnApplyEmission(flags, density, emission, isAbsolute);
-} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "applyEmission" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& density = *_args.getPtr<Grid<Real> >("density",1,&_lock); Grid<Real>& emission = *_args.getPtr<Grid<Real> >("emission",2,&_lock); bool isAbsolute = _args.get<bool >("isAbsolute",3,&_lock);   _retval = getPyNone(); applyEmission(flags,density,emission,isAbsolute);  _args.check(); } pbFinalizePlugin(parent,"applyEmission" ); return _retval; } catch(std::exception& e) { pbSetError("applyEmission",e.what()); return 0; } } static const Pb::Register _RP_applyEmission ("","applyEmission",_W_3); 
 //! sample noise field and set pdata with its values (for convenience, scale the noise values)
 
 template <class T>  struct knSetPdataNoise : public KernelBase { knSetPdataNoise(BasicParticleSystem& parts, ParticleDataImpl<T>& pdata, WaveletNoiseField& noise, Real scale) :  KernelBase(parts.size()) ,parts(parts),pdata(pdata),noise(noise),scale(scale)   { run(); }  inline void op(int idx, BasicParticleSystem& parts, ParticleDataImpl<T>& pdata, WaveletNoiseField& noise, Real scale )  {
@@ -102,9 +62,9 @@ template <class T>  struct knSetPdataNoise : public KernelBase { knSetPdataNoise
 template <class T>  struct knSetPdataNoiseVec : public KernelBase { knSetPdataNoiseVec(BasicParticleSystem& parts, ParticleDataImpl<T>& pdata, WaveletNoiseField& noise, Real scale) :  KernelBase(parts.size()) ,parts(parts),pdata(pdata),noise(noise),scale(scale)   { run(); }  inline void op(int idx, BasicParticleSystem& parts, ParticleDataImpl<T>& pdata, WaveletNoiseField& noise, Real scale )  {
 	pdata[idx] = noise.evaluateVec( parts.getPos(idx) ) * scale;
 }   inline BasicParticleSystem& getArg0() { return parts; } typedef BasicParticleSystem type0;inline ParticleDataImpl<T>& getArg1() { return pdata; } typedef ParticleDataImpl<T> type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Real& getArg3() { return scale; } typedef Real type3; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, parts,pdata,noise,scale);  } BasicParticleSystem& parts; ParticleDataImpl<T>& pdata; WaveletNoiseField& noise; Real scale;   };
-void setNoisePdata(BasicParticleSystem& parts, ParticleDataImpl<Real>& pd, WaveletNoiseField& noise, Real scale=1.) { knSetPdataNoise<Real>(parts, pd,noise,scale); } static PyObject* _W_4 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "setNoisePdata" ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); ParticleDataImpl<Real>& pd = *_args.getPtr<ParticleDataImpl<Real> >("pd",1,&_lock); WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Real scale = _args.getOpt<Real >("scale",3,1.,&_lock);   _retval = getPyNone(); setNoisePdata(parts,pd,noise,scale);  _args.check(); } pbFinalizePlugin(parent,"setNoisePdata" ); return _retval; } catch(std::exception& e) { pbSetError("setNoisePdata",e.what()); return 0; } } static const Pb::Register _RP_setNoisePdata ("","setNoisePdata",_W_4); 
-void setNoisePdataVec3(BasicParticleSystem& parts, ParticleDataImpl<Vec3>& pd, WaveletNoiseField& noise, Real scale=1.) { knSetPdataNoiseVec<Vec3>(parts, pd,noise,scale); } static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "setNoisePdataVec3" ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); ParticleDataImpl<Vec3>& pd = *_args.getPtr<ParticleDataImpl<Vec3> >("pd",1,&_lock); WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Real scale = _args.getOpt<Real >("scale",3,1.,&_lock);   _retval = getPyNone(); setNoisePdataVec3(parts,pd,noise,scale);  _args.check(); } pbFinalizePlugin(parent,"setNoisePdataVec3" ); return _retval; } catch(std::exception& e) { pbSetError("setNoisePdataVec3",e.what()); return 0; } } static const Pb::Register _RP_setNoisePdataVec3 ("","setNoisePdataVec3",_W_5); 
-void setNoisePdataInt(BasicParticleSystem& parts, ParticleDataImpl<int >& pd, WaveletNoiseField& noise, Real scale=1.) { knSetPdataNoise<int> (parts, pd,noise,scale); } static PyObject* _W_6 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "setNoisePdataInt" ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); ParticleDataImpl<int >& pd = *_args.getPtr<ParticleDataImpl<int > >("pd",1,&_lock); WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Real scale = _args.getOpt<Real >("scale",3,1.,&_lock);   _retval = getPyNone(); setNoisePdataInt(parts,pd,noise,scale);  _args.check(); } pbFinalizePlugin(parent,"setNoisePdataInt" ); return _retval; } catch(std::exception& e) { pbSetError("setNoisePdataInt",e.what()); return 0; } } static const Pb::Register _RP_setNoisePdataInt ("","setNoisePdataInt",_W_6); 
+void setNoisePdata(BasicParticleSystem& parts, ParticleDataImpl<Real>& pd, WaveletNoiseField& noise, Real scale=1.) { knSetPdataNoise<Real>(parts, pd,noise,scale); } static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "setNoisePdata" ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); ParticleDataImpl<Real>& pd = *_args.getPtr<ParticleDataImpl<Real> >("pd",1,&_lock); WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Real scale = _args.getOpt<Real >("scale",3,1.,&_lock);   _retval = getPyNone(); setNoisePdata(parts,pd,noise,scale);  _args.check(); } pbFinalizePlugin(parent,"setNoisePdata" ); return _retval; } catch(std::exception& e) { pbSetError("setNoisePdata",e.what()); return 0; } } static const Pb::Register _RP_setNoisePdata ("","setNoisePdata",_W_1); 
+void setNoisePdataVec3(BasicParticleSystem& parts, ParticleDataImpl<Vec3>& pd, WaveletNoiseField& noise, Real scale=1.) { knSetPdataNoiseVec<Vec3>(parts, pd,noise,scale); } static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "setNoisePdataVec3" ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); ParticleDataImpl<Vec3>& pd = *_args.getPtr<ParticleDataImpl<Vec3> >("pd",1,&_lock); WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Real scale = _args.getOpt<Real >("scale",3,1.,&_lock);   _retval = getPyNone(); setNoisePdataVec3(parts,pd,noise,scale);  _args.check(); } pbFinalizePlugin(parent,"setNoisePdataVec3" ); return _retval; } catch(std::exception& e) { pbSetError("setNoisePdataVec3",e.what()); return 0; } } static const Pb::Register _RP_setNoisePdataVec3 ("","setNoisePdataVec3",_W_2); 
+void setNoisePdataInt(BasicParticleSystem& parts, ParticleDataImpl<int >& pd, WaveletNoiseField& noise, Real scale=1.) { knSetPdataNoise<int> (parts, pd,noise,scale); } static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "setNoisePdataInt" ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); ParticleDataImpl<int >& pd = *_args.getPtr<ParticleDataImpl<int > >("pd",1,&_lock); WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Real scale = _args.getOpt<Real >("scale",3,1.,&_lock);   _retval = getPyNone(); setNoisePdataInt(parts,pd,noise,scale);  _args.check(); } pbFinalizePlugin(parent,"setNoisePdataInt" ); return _retval; } catch(std::exception& e) { pbSetError("setNoisePdataInt",e.what()); return 0; } } static const Pb::Register _RP_setNoisePdataInt ("","setNoisePdataInt",_W_3); 
 
 //! SDF gradient from obstacle flags
 Grid<Vec3> obstacleGradient(FlagGrid& flags) {
@@ -129,7 +89,7 @@ Grid<Vec3> obstacleGradient(FlagGrid& flags) {
 	}
 	
 	return gradient;
-} static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "obstacleGradient" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock);   _retval = toPy(obstacleGradient(flags));  _args.check(); } pbFinalizePlugin(parent,"obstacleGradient" ); return _retval; } catch(std::exception& e) { pbSetError("obstacleGradient",e.what()); return 0; } } static const Pb::Register _RP_obstacleGradient ("","obstacleGradient",_W_7); 
+} static PyObject* _W_4 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "obstacleGradient" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock);   _retval = toPy(obstacleGradient(flags));  _args.check(); } pbFinalizePlugin(parent,"obstacleGradient" ); return _retval; } catch(std::exception& e) { pbSetError("obstacleGradient",e.what()); return 0; } } static const Pb::Register _RP_obstacleGradient ("","obstacleGradient",_W_4); 
 
 LevelsetGrid obstacleLevelset(FlagGrid& flags) {
    LevelsetGrid levelset(flags.getParent(),false);
@@ -142,7 +102,239 @@ LevelsetGrid obstacleLevelset(FlagGrid& flags) {
 	levelset.reinitMarching(flags, 6.0, 0, true, false, FlagGrid::TypeReserved);
 
 	return levelset;
-} static PyObject* _W_8 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "obstacleLevelset" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock);   _retval = toPy(obstacleLevelset(flags));  _args.check(); } pbFinalizePlugin(parent,"obstacleLevelset" ); return _retval; } catch(std::exception& e) { pbSetError("obstacleLevelset",e.what()); return 0; } } static const Pb::Register _RP_obstacleLevelset ("","obstacleLevelset",_W_8);     
+} static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "obstacleLevelset" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock);   _retval = toPy(obstacleLevelset(flags));  _args.check(); } pbFinalizePlugin(parent,"obstacleLevelset" ); return _retval; } catch(std::exception& e) { pbSetError("obstacleLevelset",e.what()); return 0; } } static const Pb::Register _RP_obstacleLevelset ("","obstacleLevelset",_W_5);     
+
+
+//*****************************************************************************
+// blender init functions 
+
+
+
+ struct KnApplyEmission : public KernelBase { KnApplyEmission(FlagGrid& flags, Grid<Real>& density, Grid<Real>& emission, bool isAbsolute) :  KernelBase(&flags,0) ,flags(flags),density(density),emission(emission),isAbsolute(isAbsolute)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& density, Grid<Real>& emission, bool isAbsolute )  {
+	if (!flags.isFluid(i,j,k) || emission(i,j,k) == 0.) return;
+	if (isAbsolute)
+		density(i,j,k) = emission(i,j,k);
+	else
+		density(i,j,k) += emission(i,j,k);
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return density; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return emission; } typedef Grid<Real> type2;inline bool& getArg3() { return isAbsolute; } typedef bool type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, flags,density,emission,isAbsolute);  } FlagGrid& flags; Grid<Real>& density; Grid<Real>& emission; bool isAbsolute;   };
+
+//! Add emission values
+//isAbsolute: whether to add emission values to existing, or replace
+void applyEmission(FlagGrid& flags, Grid<Real>& density, Grid<Real>& emission, bool isAbsolute) {
+	KnApplyEmission(flags, density, emission, isAbsolute);
+} static PyObject* _W_6 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "applyEmission" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& density = *_args.getPtr<Grid<Real> >("density",1,&_lock); Grid<Real>& emission = *_args.getPtr<Grid<Real> >("emission",2,&_lock); bool isAbsolute = _args.get<bool >("isAbsolute",3,&_lock);   _retval = getPyNone(); applyEmission(flags,density,emission,isAbsolute);  _args.check(); } pbFinalizePlugin(parent,"applyEmission" ); return _retval; } catch(std::exception& e) { pbSetError("applyEmission",e.what()); return 0; } } static const Pb::Register _RP_applyEmission ("","applyEmission",_W_6); 
+
+// blender init functions for meshes
+
+
+
+ struct KnApplyDensity : public KernelBase { KnApplyDensity(FlagGrid& flags, Grid<Real>& density, Grid<Real>& sdf, Real value, Real sigma) :  KernelBase(&flags,0) ,flags(flags),density(density),sdf(sdf),value(value),sigma(sigma)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& density, Grid<Real>& sdf, Real value, Real sigma )  {
+	if (!flags.isFluid(i,j,k) || sdf(i,j,k) > sigma) return;
+	density(i,j,k) = value;
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return density; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return sdf; } typedef Grid<Real> type2;inline Real& getArg3() { return value; } typedef Real type3;inline Real& getArg4() { return sigma; } typedef Real type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, flags,density,sdf,value,sigma);  } FlagGrid& flags; Grid<Real>& density; Grid<Real>& sdf; Real value; Real sigma;   };
+//! Init noise-modulated density inside mesh
+
+void densityInflowMeshNoise(FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, Mesh* mesh, Real scale=1.0, Real sigma=0) {
+	LevelsetGrid sdf(density.getParent(), false);
+	mesh->computeLevelset(sdf, 1.);
+	KnApplyNoise(flags, density, noise, sdf, scale, sigma);
+} static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "densityInflowMeshNoise" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& density = *_args.getPtr<Grid<Real> >("density",1,&_lock); WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Mesh* mesh = _args.getPtr<Mesh >("mesh",3,&_lock); Real scale = _args.getOpt<Real >("scale",4,1.0,&_lock); Real sigma = _args.getOpt<Real >("sigma",5,0,&_lock);   _retval = getPyNone(); densityInflowMeshNoise(flags,density,noise,mesh,scale,sigma);  _args.check(); } pbFinalizePlugin(parent,"densityInflowMeshNoise" ); return _retval; } catch(std::exception& e) { pbSetError("densityInflowMeshNoise",e.what()); return 0; } } static const Pb::Register _RP_densityInflowMeshNoise ("","densityInflowMeshNoise",_W_7); 
+
+//! Init constant density inside mesh
+
+void densityInflowMesh(FlagGrid& flags, Grid<Real>& density, Mesh* mesh, Real value=1., Real cutoff = 7, Real sigma=0) {
+	LevelsetGrid sdf(density.getParent(), false);
+	mesh->computeLevelset(sdf, 2., cutoff);
+	KnApplyDensity(flags, density, sdf, value, sigma);
+} static PyObject* _W_8 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "densityInflowMesh" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& density = *_args.getPtr<Grid<Real> >("density",1,&_lock); Mesh* mesh = _args.getPtr<Mesh >("mesh",2,&_lock); Real value = _args.getOpt<Real >("value",3,1.,&_lock); Real cutoff = _args.getOpt<Real >("cutoff",4,7,&_lock); Real sigma = _args.getOpt<Real >("sigma",5,0,&_lock);   _retval = getPyNone(); densityInflowMesh(flags,density,mesh,value,cutoff,sigma);  _args.check(); } pbFinalizePlugin(parent,"densityInflowMesh" ); return _retval; } catch(std::exception& e) { pbSetError("densityInflowMesh",e.what()); return 0; } } static const Pb::Register _RP_densityInflowMesh ("","densityInflowMesh",_W_8); 
+
+
+//*****************************************************************************
+
+//! check for symmetry , optionally enfore by copying
+
+void checkSymmetry( Grid<Real>& a, Grid<Real>* err=NULL, bool symmetrize=false, int axis=0, int bound=0) {
+	const int c  = axis; 
+	const int s = a.getSize()[c];
+	FOR_IJK(a) { 
+		Vec3i idx(i,j,k), mdx(i,j,k);
+		mdx[c] = s-1-idx[c];
+		if( bound>0 && ((!a.isInBounds(idx,bound)) || (!a.isInBounds(mdx,bound))) ) continue;
+
+		if(err) (*err)(idx) = fabs( (double)(a(idx) - a(mdx) ) ); 
+		if(symmetrize && (idx[c]<s/2)) {
+			a(idx) = a(mdx);
+		}
+	}
+} static PyObject* _W_9 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "checkSymmetry" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& a = *_args.getPtr<Grid<Real> >("a",0,&_lock); Grid<Real>* err = _args.getPtrOpt<Grid<Real> >("err",1,NULL,&_lock); bool symmetrize = _args.getOpt<bool >("symmetrize",2,false,&_lock); int axis = _args.getOpt<int >("axis",3,0,&_lock); int bound = _args.getOpt<int >("bound",4,0,&_lock);   _retval = getPyNone(); checkSymmetry(a,err,symmetrize,axis,bound);  _args.check(); } pbFinalizePlugin(parent,"checkSymmetry" ); return _retval; } catch(std::exception& e) { pbSetError("checkSymmetry",e.what()); return 0; } } static const Pb::Register _RP_checkSymmetry ("","checkSymmetry",_W_9); 
+//! check for symmetry , mac grid version
+
+
+void checkSymmetryVec3( Grid<Vec3>& a, Grid<Real>* err=NULL, bool symmetrize=false , int axis=0, int bound=0, int disable=0) {
+	if(err) err->setConst(0.);
+
+	// each dimension is measured separately for flexibility (could be combined)
+	const int c  = axis;
+	const int o1 = (c+1)%3;
+	const int o2 = (c+2)%3;
+
+	// x
+	if(! (disable&1) ) {
+		const int s = a.getSize()[c]+1; 
+		FOR_IJK(a) { 
+			Vec3i idx(i,j,k), mdx(i,j,k);
+			mdx[c] = s-1-idx[c]; 
+			if(mdx[c] >= a.getSize()[c]) continue; 
+			if( bound>0 && ((!a.isInBounds(idx,bound)) || (!a.isInBounds(mdx,bound))) ) continue;
+
+			// special case: center "line" of values , should be zero!
+			if(mdx[c] == idx[c] ) {
+				if(err) (*err)(idx) += fabs( (double)( a(idx)[c] ) ); 
+				if(symmetrize) a(idx)[c] = 0.;
+				continue; 
+			}
+
+			// note - the a(mdx) component needs to be inverted here!
+			if(err) (*err)(idx) += fabs( (double)( a(idx)[c]- (a(mdx)[c]*-1.) ) ); 
+			if(symmetrize && (idx[c]<s/2)) {
+				a(idx)[c] = a(mdx)[c] * -1.;
+			}
+		}
+	}
+
+	// y
+	if(! (disable&2) ) {
+		const int s = a.getSize()[c];
+		FOR_IJK(a) { 
+			Vec3i idx(i,j,k), mdx(i,j,k);
+			mdx[c] = s-1-idx[c]; 
+			if( bound>0 && ((!a.isInBounds(idx,bound)) || (!a.isInBounds(mdx,bound))) ) continue;
+
+			if(err) (*err)(idx) += fabs( (double)( a(idx)[o1]-a(mdx)[o1] ) ); 
+			if(symmetrize && (idx[c]<s/2)) {
+				a(idx)[o1] = a(mdx)[o1];
+			}
+		}
+	} 
+
+	// z
+	if(! (disable&4) ) {
+		const int s = a.getSize()[c];
+		FOR_IJK(a) { 
+			Vec3i idx(i,j,k), mdx(i,j,k);
+			mdx[c] = s-1-idx[c]; 
+			if( bound>0 && ((!a.isInBounds(idx,bound)) || (!a.isInBounds(mdx,bound))) ) continue;
+
+			if(err) (*err)(idx) += fabs( (double)( a(idx)[o2]-a(mdx)[o2] ) ); 
+			if(symmetrize && (idx[c]<s/2)) {
+				a(idx)[o2] = a(mdx)[o2];
+			}
+		}
+	} 
+
+} static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "checkSymmetryVec3" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& a = *_args.getPtr<Grid<Vec3> >("a",0,&_lock); Grid<Real>* err = _args.getPtrOpt<Grid<Real> >("err",1,NULL,&_lock); bool symmetrize = _args.getOpt<bool >("symmetrize",2,false ,&_lock); int axis = _args.getOpt<int >("axis",3,0,&_lock); int bound = _args.getOpt<int >("bound",4,0,&_lock); int disable = _args.getOpt<int >("disable",5,0,&_lock);   _retval = getPyNone(); checkSymmetryVec3(a,err,symmetrize,axis,bound,disable);  _args.check(); } pbFinalizePlugin(parent,"checkSymmetryVec3" ); return _retval; } catch(std::exception& e) { pbSetError("checkSymmetryVec3",e.what()); return 0; } } static const Pb::Register _RP_checkSymmetryVec3 ("","checkSymmetryVec3",_W_10); 
+
+
+//! project data onto a plane, and write ppm
+
+void projectPpmOut( Grid<Real>& val, string name, int axis=2, Real scale=1.) {
+	const int c  = axis; 
+	const int o1 = (c+1)%3;
+	const int o2 = (c+2)%3;
+
+	SimpleImage img;
+	img.init( val.getSize()[o1],  val.getSize()[o2] );
+	Real s = 1. / (Real)val.getSize()[c];
+
+	FOR_IJK(val) { 
+		Vec3i idx(i,j,k); 
+		//if(idx[c]==val.getSize()[c]/2) img( idx[o1], idx[o2] ) = val(idx); 
+		img( idx[o1], idx[o2] ) += s * val(idx);
+	}
+	img.mapRange( 1./scale );
+	img.writePpm( name );
+} static PyObject* _W_11 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "projectPpmOut" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& val = *_args.getPtr<Grid<Real> >("val",0,&_lock); string name = _args.get<string >("name",1,&_lock); int axis = _args.getOpt<int >("axis",2,2,&_lock); Real scale = _args.getOpt<Real >("scale",3,1.,&_lock);   _retval = getPyNone(); projectPpmOut(val,name,axis,scale);  _args.check(); } pbFinalizePlugin(parent,"projectPpmOut" ); return _retval; } catch(std::exception& e) { pbSetError("projectPpmOut",e.what()); return 0; } } static const Pb::Register _RP_projectPpmOut ("","projectPpmOut",_W_11); 
+
+
+
+ struct KnPrecompLight : public KernelBase { KnPrecompLight(Grid<Real>& density, Grid<Real>& L, Vec3 light = Vec3(1,1,1) ) :  KernelBase(&density,0) ,density(density),L(L),light(light)   { run(); }  inline void op(int i, int j, int k, Grid<Real>& density, Grid<Real>& L, Vec3 light = Vec3(1,1,1)  )  {
+	Vec3 n = getGradient( density, i,j,k ) * -1.; 
+	normalize(n);
+
+	Real d = dot( light, n );
+	L(i,j,k) = d;
+}   inline Grid<Real>& getArg0() { return density; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return L; } typedef Grid<Real> type1;inline Vec3& getArg2() { return light; } typedef Vec3 type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, density,L,light);  } Grid<Real>& density; Grid<Real>& L; Vec3 light;   };
+
+// simple shading with pre-computed gradient
+static inline void shadeCell(Vec3& dst, int shadeMode, Real src, Real light, int depthPos, Real depthInv) 
+{	
+	switch(shadeMode) {
+
+	case 1: {
+		// surfaces
+		Vec3 ambient = Vec3(0.1,0.1,0.1);
+		Vec3 diffuse = Vec3(0.9,0.9,0.9); 
+		Real alpha = src; 
+
+		// different color for depth?
+		diffuse[0] *= ((Real)depthPos * depthInv) * 0.7 + 0.3;
+		diffuse[1] *= ((Real)depthPos * depthInv) * 0.7 + 0.3;
+
+		Vec3 col = ambient + diffuse * light; 
+
+		//img( 0+i, j ) = (1.-alpha) * img( 0+i, j ) + alpha * col;
+		dst = (1.-alpha) * dst + alpha * col;
+		} break;
+
+	default: {
+		// volumetrics / smoke
+		dst += depthInv * Vec3(src,src,src);
+		} break;
+
+	}
+}
+
+//! output shaded (all 3 axes at once for 3D)
+//! shading modes: 0 smoke, 1 surfaces
+
+void projectPpmFull( Grid<Real>& val, string name, int shadeMode=0, Real scale=1.) {
+	Vec3i s  = val.getSize();
+	Vec3  si = Vec3( 1. / (Real)s[0], 1. / (Real)s[1], 1. / (Real)s[2] );
+
+	SimpleImage img;
+	int imgSx = s[0];
+	if(val.is3D()) imgSx += s[2]+s[0]; // mult views in 3D
+	img.init( imgSx, std::max(s[0], std::max( s[1],s[2])) );
+
+	// precompute lighting
+	Grid<Real> L(val);
+	KnPrecompLight( val, L , Vec3(1,1,1) );
+
+	FOR_IJK(val) { 
+		Vec3i idx(i,j,k);
+		// img( 0+i, j ) += si[2] * val(idx); // averaging
+		shadeCell( img( 0+i, j ) , shadeMode, val(idx), L(idx), k, si[2]);
+	}
+
+	if( val.is3D() ) {
+
+	FOR_IJK(val) { 
+		Vec3i idx(i,j,k);
+		//img( s[0]+k, j ) += si[0] * val(idx);
+		shadeCell( img( s[0]+k, j ) , shadeMode, val(idx), L(idx), i, si[0]);
+	}
+
+	FOR_IJK(val) { 
+		Vec3i idx(i,j,k);
+		//img( s[0]+s[2]+i, k ) += si[1] * val(idx);
+		shadeCell( img( s[0]+s[2]+i, k ) , shadeMode, val(idx), L(idx), j, si[1]);
+	}
+
+	} // 3d
+
+	img.mapRange( 1./scale );
+	img.writePpm( name );
+} static PyObject* _W_12 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "projectPpmFull" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& val = *_args.getPtr<Grid<Real> >("val",0,&_lock); string name = _args.get<string >("name",1,&_lock); int shadeMode = _args.getOpt<int >("shadeMode",2,0,&_lock); Real scale = _args.getOpt<Real >("scale",3,1.,&_lock);   _retval = getPyNone(); projectPpmFull(val,name,shadeMode,scale);  _args.check(); } pbFinalizePlugin(parent,"projectPpmFull" ); return _retval; } catch(std::exception& e) { pbSetError("projectPpmFull",e.what()); return 0; } } static const Pb::Register _RP_projectPpmFull ("","projectPpmFull",_W_12); 
 
 // helper functions for pdata operator tests
 
@@ -154,7 +346,7 @@ void addTestParts( BasicParticleSystem& parts, int num) {
 
 	parts.doCompress();
 	parts.insertBufferedParticles();
-} static PyObject* _W_9 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "addTestParts" ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); int num = _args.get<int >("num",1,&_lock);   _retval = getPyNone(); addTestParts(parts,num);  _args.check(); } pbFinalizePlugin(parent,"addTestParts" ); return _retval; } catch(std::exception& e) { pbSetError("addTestParts",e.what()); return 0; } } static const Pb::Register _RP_addTestParts ("","addTestParts",_W_9); 
+} static PyObject* _W_13 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "addTestParts" ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); int num = _args.get<int >("num",1,&_lock);   _retval = getPyNone(); addTestParts(parts,num);  _args.check(); } pbFinalizePlugin(parent,"addTestParts" ); return _retval; } catch(std::exception& e) { pbSetError("addTestParts",e.what()); return 0; } } static const Pb::Register _RP_addTestParts ("","addTestParts",_W_13); 
 
 // calculate the difference between two pdata fields (note - slow!, not parallelized)
 
@@ -162,7 +354,7 @@ Real pdataMaxDiff( ParticleDataBase* a, ParticleDataBase* b ) {
 	double maxVal = 0.;
 	//debMsg(" PD "<< a->getType()<<"  as"<<a->getSizeSlow()<<"  bs"<<b->getSizeSlow() , 1);
 	assertMsg(a->getType()     == b->getType()    , "pdataMaxDiff problem - different pdata types!");
-	assertMsg(a->getSizeSlow() == b->getSizeSlow(), "pdataMaxDiff  problem -different pdata sizes!");
+	assertMsg(a->getSizeSlow() == b->getSizeSlow(), "pdataMaxDiff problem - different pdata sizes!");
 	
 	if (a->getType() & ParticleDataBase::TypeReal) 
 	{
@@ -193,7 +385,7 @@ Real pdataMaxDiff( ParticleDataBase* a, ParticleDataBase* b ) {
 	}
 
 	return maxVal;
-} static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "pdataMaxDiff" ); PyObject *_retval = 0; { ArgLocker _lock; ParticleDataBase* a = _args.getPtr<ParticleDataBase >("a",0,&_lock); ParticleDataBase* b = _args.getPtr<ParticleDataBase >("b",1,&_lock);   _retval = toPy(pdataMaxDiff(a,b));  _args.check(); } pbFinalizePlugin(parent,"pdataMaxDiff" ); return _retval; } catch(std::exception& e) { pbSetError("pdataMaxDiff",e.what()); return 0; } } static const Pb::Register _RP_pdataMaxDiff ("","pdataMaxDiff",_W_10); 
+} static PyObject* _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "pdataMaxDiff" ); PyObject *_retval = 0; { ArgLocker _lock; ParticleDataBase* a = _args.getPtr<ParticleDataBase >("a",0,&_lock); ParticleDataBase* b = _args.getPtr<ParticleDataBase >("b",1,&_lock);   _retval = toPy(pdataMaxDiff(a,b));  _args.check(); } pbFinalizePlugin(parent,"pdataMaxDiff" ); return _retval; } catch(std::exception& e) { pbSetError("pdataMaxDiff",e.what()); return 0; } } static const Pb::Register _RP_pdataMaxDiff ("","pdataMaxDiff",_W_14); 
 
 } // namespace
 

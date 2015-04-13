@@ -24,12 +24,14 @@ template<> const Vector3D<float> Vector3D<float>::Zero( 0.f, 0.f, 0.f );
 template<> const Vector3D<double> Vector3D<double>::Zero( 0., 0., 0. );
 template<> const Vector3D<float> Vector3D<float>::Invalid( numeric_limits<float>::quiet_NaN(), numeric_limits<float>::quiet_NaN(), numeric_limits<float>::quiet_NaN() );
 template<> const Vector3D<double> Vector3D<double>::Invalid( numeric_limits<double>::quiet_NaN(), numeric_limits<double>::quiet_NaN(), numeric_limits<double>::quiet_NaN() );
-//template<> const Vector3D<int> Vector3D<int>::Invalid( -1, -1, -1 );
 template<> bool Vector3D<float>::isValid() const { return !c_isnan(x) && !c_isnan(y) && !c_isnan(z); }
 template<> bool Vector3D<double>::isValid() const { return !c_isnan(x) && !c_isnan(y) && !c_isnan(z); }
-//template<> bool Vector3D<int>::isValid() const { return x!=-1 || y!=-1 || z!=-1; }
 
-
-
+//! Specialization for readable ints
+template<> std::string Vector3D<int>::toString() const {
+	char buf[256];
+	snprintf ( buf,256,"[%d,%d,%d]", ( *this ) [0], ( *this ) [1], ( *this ) [2] );
+	return std::string ( buf );
+}
 
 }

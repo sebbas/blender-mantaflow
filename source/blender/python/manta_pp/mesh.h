@@ -30,12 +30,13 @@
 
 #include <vector>
 #include "manta.h"
-#include "grid.h"
 #include "vectorbase.h"
 #include <set>
 namespace Manta {
 
 // fwd decl
+class GridBase;
+class LevelsetGrid;
 class FlagGrid;
 class MACGrid;
 class Shape;
@@ -127,40 +128,6 @@ struct OneRing {
     std::set<int> nodes;
     std::set<int> tris;
 };
-	
-/*!adapted from Cudatools.h
-*/
-struct CVec3Ptr {
-	float *x, *y, *z; 
-	inline Vec3 get(int i) const { return Vec3(x[i],y[i],z[i]); };
-	inline void set(int i, const Vec3& v) { x[i]=v.x; y[i]=v.y; z[i]=v.z; };
-};
-
-struct CVec3Array {    
-	CVec3Array(int sz) {
-		x.resize(sz);
-		y.resize(sz);
-		z.resize(sz);        
-	}    
-	CVec3Array(const std::vector<Vec3>& v) {
-		x.resize(v.size());
-		y.resize(v.size());
-		z.resize(v.size());
-		for (size_t i=0; i<v.size(); i++) {
-			x[i] = v[i].x;
-			y[i] = v[i].y;
-			z[i] = v[i].z;
-		}
-	}
-	CVec3Ptr data() {
-		CVec3Ptr a = { x.data(), y.data(), z.data()};
-		return a;
-	}
-	inline const Vec3 operator[](int idx) const { return Vec3((Real)x[idx], (Real)y[idx], (Real)z[idx]); }
-	inline void set(int idx, const Vec3& v) { x[idx] = v.x; y[idx] = v.y; z[idx] = v.z; }	
-	inline int size() { return x.size(); }    
-	std::vector<float> x, y, z;
-};
 
 //! Triangle mesh class
 /*! note: this is only a temporary solution, details are bound to change
@@ -187,6 +154,10 @@ class Mesh : public PbClass {public:
     void advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode); static PyObject* _W_4 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); Mesh* pbo = dynamic_cast<Mesh*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "Mesh::advectInGrid"); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flaggrid = *_args.getPtr<FlagGrid >("flaggrid",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); int integrationMode = _args.get<int >("integrationMode",2,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->advectInGrid(flaggrid,vel,integrationMode);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"Mesh::advectInGrid"); return _retval; } catch(std::exception& e) { pbSetError("Mesh::advectInGrid",e.what()); return 0; } }
     void scale(Vec3 s); static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); Mesh* pbo = dynamic_cast<Mesh*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "Mesh::scale"); PyObject *_retval = 0; { ArgLocker _lock; Vec3 s = _args.get<Vec3 >("s",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->scale(s);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"Mesh::scale"); return _retval; } catch(std::exception& e) { pbSetError("Mesh::scale",e.what()); return 0; } }
     void offset(Vec3 o); static PyObject* _W_6 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); Mesh* pbo = dynamic_cast<Mesh*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "Mesh::offset"); PyObject *_retval = 0; { ArgLocker _lock; Vec3 o = _args.get<Vec3 >("o",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->offset(o);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"Mesh::offset"); return _retval; } catch(std::exception& e) { pbSetError("Mesh::offset",e.what()); return 0; } }
+
+	void computeLevelset(LevelsetGrid& levelset, Real sigma, Real cutoff=-1.); static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); Mesh* pbo = dynamic_cast<Mesh*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "Mesh::computeLevelset"); PyObject *_retval = 0; { ArgLocker _lock; LevelsetGrid& levelset = *_args.getPtr<LevelsetGrid >("levelset",0,&_lock); Real sigma = _args.get<Real >("sigma",1,&_lock); Real cutoff = _args.getOpt<Real >("cutoff",2,-1.,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->computeLevelset(levelset,sigma,cutoff);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"Mesh::computeLevelset"); return _retval; } catch(std::exception& e) { pbSetError("Mesh::computeLevelset",e.what()); return 0; } }
+	//! map mesh to grid with sdf
+	void applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags=0, Real cutoff=-1.); static PyObject* _W_8 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); Mesh* pbo = dynamic_cast<Mesh*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "Mesh::applyMeshToGrid"); PyObject *_retval = 0; { ArgLocker _lock; GridBase* grid = _args.getPtr<GridBase >("grid",0,&_lock); FlagGrid* respectFlags = _args.getPtrOpt<FlagGrid >("respectFlags",1,0,&_lock); Real cutoff = _args.getOpt<Real >("cutoff",2,-1.,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->applyMeshToGrid(grid,respectFlags,cutoff);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"Mesh::applyMeshToGrid"); return _retval; } catch(std::exception& e) { pbSetError("Mesh::applyMeshToGrid",e.what()); return 0; } }
     
     // ops
     Mesh& operator=(const Mesh& o);
@@ -235,9 +206,6 @@ class Mesh : public PbClass {public:
     
     void addTriChannel(TriChannel* c) { mTriChannels.push_back(c); rebuildChannels(); }
     void addNodeChannel(NodeChannel* c) { mNodeChannels.push_back(c); rebuildChannels(); }
-	void SDFKernel(const int* partStart, const int* partLen, CVec3Ptr pos, CVec3Ptr normal, float* sdf, Vec3i gridRes, int intRadius, float safeRadius2, float cutoff2, float isigma2);
-	void meshSDF(Mesh& mesh, LevelsetGrid& levelset, float sigma, float cutoff=-1); static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); Mesh* pbo = dynamic_cast<Mesh*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "Mesh::meshSDF"); PyObject *_retval = 0; { ArgLocker _lock; Mesh& mesh = *_args.getPtr<Mesh >("mesh",0,&_lock); LevelsetGrid& levelset = *_args.getPtr<LevelsetGrid >("levelset",1,&_lock); float sigma = _args.get<float >("sigma",2,&_lock); float cutoff = _args.getOpt<float >("cutoff",3,-1,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->meshSDF(mesh,levelset,sigma,cutoff);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"Mesh::meshSDF"); return _retval; } catch(std::exception& e) { pbSetError("Mesh::meshSDF",e.what()); return 0; } }
-	void applyToGrid(GridBase* grid, FlagGrid* respectFlags=0, float cutoff=-1); static PyObject* _W_8 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); Mesh* pbo = dynamic_cast<Mesh*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "Mesh::applyToGrid"); PyObject *_retval = 0; { ArgLocker _lock; GridBase* grid = _args.getPtr<GridBase >("grid",0,&_lock); FlagGrid* respectFlags = _args.getPtrOpt<FlagGrid >("respectFlags",1,0,&_lock); float cutoff = _args.getOpt<float >("cutoff",2,-1,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->applyToGrid(grid,respectFlags,cutoff);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"Mesh::applyToGrid"); return _retval; } catch(std::exception& e) { pbSetError("Mesh::applyToGrid",e.what()); return 0; } }
 
 protected:    
     void rebuildChannels();

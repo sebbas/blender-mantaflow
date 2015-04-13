@@ -20,7 +20,7 @@ namespace Manta {
  static const Pb::Register _R_5 ("Mesh","advectInGrid",Mesh::_W_4); 
  static const Pb::Register _R_6 ("Mesh","scale",Mesh::_W_5); 
  static const Pb::Register _R_7 ("Mesh","offset",Mesh::_W_6); 
- static const Pb::Register _R_8 ("Mesh","meshSDF",Mesh::_W_7); 
- static const Pb::Register _R_9 ("Mesh","applyToGrid",Mesh::_W_8); 
+ static const Pb::Register _R_8 ("Mesh","computeLevelset",Mesh::_W_7); 
+ static const Pb::Register _R_9 ("Mesh","applyMeshToGrid",Mesh::_W_8); 
 #endif
 }

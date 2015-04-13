@@ -149,7 +149,6 @@ void cgSolveWE(FlagGrid& flags, Grid<Real>& ut, Grid<Real>& utm1, Grid<Real>& ou
 		gcg = new GridCg<ApplyMatrix2D>(out, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
 	
 	gcg->setAccuracy( cgAccuracy ); 
-	gcg->setUseResNorm( true );
 
 	// optional preconditioning
 	//gcg->setPreconditioner( precondition ? GridCgInterface::PC_mICP : GridCgInterface::PC_None, &pca0, &pca1, &pca2, &pca3);

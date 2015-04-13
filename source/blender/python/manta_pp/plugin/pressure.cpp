@@ -32,7 +32,7 @@ namespace Manta {
 
 
 
- struct MakeRhs : public KernelBase { MakeRhs(FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, Grid<Real>* perCellCorr) :  KernelBase(&flags,1) ,flags(flags),rhs(rhs),vel(vel),perCellCorr(perCellCorr) ,cnt(0),sum(0)  { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, Grid<Real>* perCellCorr ,int& cnt,double& sum)  {
+ struct MakeRhs : public KernelBase { MakeRhs(FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, Grid<Real>* perCellCorr, MACGrid* fractions) :  KernelBase(&flags,1) ,flags(flags),rhs(rhs),vel(vel),perCellCorr(perCellCorr),fractions(fractions) ,cnt(0),sum(0)  { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, Grid<Real>* perCellCorr, MACGrid* fractions ,int& cnt,double& sum)  {
 	if (!flags.isFluid(i,j,k)) {
 		rhs(i,j,k) = 0;
 		return;
@@ -40,9 +40,16 @@ namespace Manta {
 	   
 	// compute divergence 
 	// no flag checks: assumes vel at obstacle interfaces is set to zero
-	Real set =          vel(i,j,k).x - vel(i+1,j,k).x + 
-						vel(i,j,k).y - vel(i,j+1,k).y; 
-	if(vel.is3D()) set+=vel(i,j,k).z - vel(i,j,k+1).z;
+	Real set(0);
+	if(!fractions) {
+		set =               vel(i,j,k).x - vel(i+1,j,k).x + 
+				 			vel(i,j,k).y - vel(i,j+1,k).y; 
+		if(vel.is3D()) set+=vel(i,j,k).z - vel(i,j,k+1).z;
+	}else{
+		set =               fractions->get(i,j,k).x*vel(i,j,k).x - fractions->get(i+1,j,k).x*vel(i+1,j,k).x + 
+							fractions->get(i,j,k).y*vel(i,j,k).y - fractions->get(i,j+1,k).y*vel(i,j+1,k).y; 
+		if(vel.is3D()) set+=fractions->get(i,j,k).z*vel(i,j,k).z - fractions->get(i,j,k+1).z*vel(i,j,k+1).z;
+	}
 	
 	// per cell divergence correction
 	if(perCellCorr) 
@@ -53,7 +60,7 @@ namespace Manta {
 	cnt++;
 	
 	rhs(i,j,k) = set;
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return rhs; } typedef Grid<Real> type1;inline MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline Grid<Real>* getArg3() { return perCellCorr; } typedef Grid<Real> type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,rhs,vel,perCellCorr,cnt,sum);  } FlagGrid& flags; Grid<Real>& rhs; MACGrid& vel; Grid<Real>* perCellCorr;  int cnt; double sum;  };
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return rhs; } typedef Grid<Real> type1;inline MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline Grid<Real>* getArg3() { return perCellCorr; } typedef Grid<Real> type3;inline MACGrid* getArg4() { return fractions; } typedef MACGrid type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,rhs,vel,perCellCorr,fractions,cnt,sum);  } FlagGrid& flags; Grid<Real>& rhs; MACGrid& vel; Grid<Real>* perCellCorr; MACGrid* fractions;  int cnt; double sum;  };
 
 //! Kernel: Apply velocity update from poisson equation
 
@@ -86,7 +93,6 @@ namespace Manta {
 
 
 
-
  struct SetOpenBound : public KernelBase { SetOpenBound(Grid<Real> &A0,Grid<Real> &Ai,Grid<Real> &Aj,Grid<Real> &Ak,FlagGrid& flags,MACGrid& vel, Vector3D<bool> lo, Vector3D<bool> up) :  KernelBase(&A0,0) ,A0(A0),Ai(Ai),Aj(Aj),Ak(Ak),flags(flags),vel(vel),lo(lo),up(up)   { run(); }  inline void op(int i, int j, int k, Grid<Real> &A0,Grid<Real> &Ai,Grid<Real> &Aj,Grid<Real> &Ak,FlagGrid& flags,MACGrid& vel, Vector3D<bool> lo, Vector3D<bool> up )  {
 
 	if (!flags.isFluid(i,j,k))
@@ -100,7 +106,7 @@ namespace Manta {
 	
 	if ((lo.x && i <= b)||(up.x && i >= maxX-b-2))					 Ai(i,j,k) = .0;
 	if ((lo.y && j <= b)||(up.y && j >= maxY-b-2))					 Aj(i,j,k) = .0;
-    if (flags.is3D() && ((lo.z && k <= b)||(up.z && k >= maxZ-b-2))) Ak(i,j,k) = .0;
+	if (flags.is3D() && ((lo.z && k <= b)||(up.z && k >= maxZ-b-2))) Ak(i,j,k) = .0;
 
 	// set velocity boundary conditions
 	if (lo.x && i == b)				vel(b,j,k) = vel(b+1,j,k);
@@ -224,6 +230,11 @@ inline static Real ghostFluidWasClamped(int idx, int offset, const Grid<Real> &p
 	}
 }   inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline const Grid<Real> & getArg2() { return pressure; } typedef Grid<Real>  type2;inline const Grid<Real> & getArg3() { return phi; } typedef Grid<Real>  type3;inline Real& getArg4() { return gfClamp; } typedef Real type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, vel,flags,pressure,phi,gfClamp);  } MACGrid& vel; FlagGrid& flags; const Grid<Real> & pressure; const Grid<Real> & phi; Real gfClamp;   };
 
+//! Kernel: Compute min value of Real grid
+
+ struct CountEmptyCells : public KernelBase { CountEmptyCells(FlagGrid& flags) :  KernelBase(&flags,0) ,flags(flags) ,numEmpty(0)  { run(); }  inline void op(int idx, FlagGrid& flags ,int& numEmpty)  {
+	if (flags.isEmpty(idx) ) numEmpty++;
+}   inline operator int () { return numEmpty; } inline int  & getRet() { return numEmpty; }  inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, flags,numEmpty);  } FlagGrid& flags;  int numEmpty;  };
 
 // *****************************************************************************
 // Main pressure solve
@@ -240,6 +251,38 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
 	}
 }
 
+ struct KnupdateFractions : public KernelBase { KnupdateFractions(FlagGrid& flags, Grid<Real>& phi, MACGrid& fractions) :  KernelBase(&flags,1) ,flags(flags),phi(phi),fractions(fractions)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& phi, MACGrid& fractions )  {
+
+	fractions(i,j,k).x = fractions(i,j,k).y = fractions(i,j,k).z = static_cast<float>(flags(i,j,k) & 1);
+
+	Real tmp = 0.;
+	tmp = fabs((phi(i,j,k) + phi(i-1,j,k))/2.);
+    if(tmp < 1.0 && !((phi(i,j,k)<0) == (phi(i-1,j,k)<0)) ) {
+    	fractions(i,j,k).x = tmp;
+    }else if( (flags(i-1,j,k) == 2 && flags(i,j,k) == 1) || (flags(i,j,k) == 2 && flags(i-1,j,k) == 1)) {
+		fractions(i,j,k).x = 0.;
+    }
+    tmp = fabs((phi(i,j,k) + phi(i,j-1,k))/2.);
+    if(tmp < 1.0 && !((phi(i,j,k)<0) == (phi(i,j-1,k)<0)) ) {
+    	fractions(i,j,k).y = tmp;
+    }else if( (flags(i,j-1,k) == 2 && flags(i,j,k) == 1) || (flags(i,j,k) == 2 && flags(i,j-1,k) == 1)) {
+		fractions(i,j,k).y = 0.;
+    }
+    if(flags.is3D()) {
+	    tmp = fabs((phi(i,j,k) + phi(i,j,k-1))/2.);
+	    if(tmp < 1.0 && !((phi(i,j,k)<0) == (phi(i,j,k-1)<0)) ) {
+	    	fractions(i,j,k).z = tmp;
+	    }else if( (flags(i,j,k-1) == 2 && flags(i,j,k) == 1) || (flags(i,j,k) == 2 && flags(i,j,k-1) == 1)) {
+			fractions(i,j,k).z = 0.;
+	    }
+	}
+
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return phi; } typedef Grid<Real> type1;inline MACGrid& getArg2() { return fractions; } typedef MACGrid type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,phi,fractions);  } FlagGrid& flags; Grid<Real>& phi; MACGrid& fractions;   };
+
+void updateFractions(FlagGrid& flags, Grid<Real>& phi, MACGrid& fractions) {
+	KnupdateFractions(flags, phi, fractions);
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "updateFractions" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& phi = *_args.getPtr<Grid<Real> >("phi",1,&_lock); MACGrid& fractions = *_args.getPtr<MACGrid >("fractions",2,&_lock);   _retval = getPyNone(); updateFractions(flags,phi,fractions);  _args.check(); } pbFinalizePlugin(parent,"updateFractions" ); return _retval; } catch(std::exception& e) { pbSetError("updateFractions",e.what()); return 0; } } static const Pb::Register _RP_updateFractions ("","updateFractions",_W_0); 
+
 //! Perform pressure projection of the velocity grid
 
 
@@ -252,7 +295,9 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
 
 
 
-void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, string openBound="", Grid<Real>* phi = 0, Grid<Real>* perCellCorr = 0, Real gfClamp = 1e-04, Real cgMaxIterFac = 1.5, Real cgAccuracy = 1e-3, string outflow = "", int outflowHeight = 1, bool precondition = true, bool enforceCompatibility = false, bool useResNorm = true ) {
+
+
+void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, string openBound="", Grid<Real>* phi = 0, Grid<Real>* perCellCorr = 0, MACGrid* fractions = 0, Real gfClamp = 1e-04, Real cgMaxIterFac = 1.5, Real cgAccuracy = 1e-3, string outflow = "", int outflowHeight = 1, bool precondition = true, bool enforceCompatibility = false, bool useL2Norm = false, Grid<Real>* retRhs = NULL ) {
 	// parse strings
 	Vector3D<bool> loOpenBound, upOpenBound, loOutflow, upOutflow;
 	convertDescToVec(openBound, loOpenBound, upOpenBound);
@@ -276,7 +321,8 @@ void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, string o
 	Grid<Real> pca3(parent);
 		
 	// setup matrix and boundaries
-	MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak);
+	MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak, fractions);
+
 	SetOpenBound (A0, Ai, Aj, Ak, flags, vel, loOpenBound, upOpenBound);
 	
 	if (phi) {
@@ -284,7 +330,7 @@ void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, string o
 	}
 	
 	// compute divergence and init right hand side
-	MakeRhs kernMakeRhs (flags, rhs, vel, perCellCorr);
+	MakeRhs kernMakeRhs (flags, rhs, vel, perCellCorr, fractions);
 	
 	if (!outflow.empty())
 		SetOutflow (rhs, loOutflow, upOutflow, outflowHeight);
@@ -292,6 +338,23 @@ void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, string o
 	if (enforceCompatibility)
 		rhs += (Real)(-kernMakeRhs.sum / (Real)kernMakeRhs.cnt);
 	
+	// check whether we need to fix some pressure value...
+	int fixPidx = -1;
+	int numEmpty = CountEmptyCells(flags);
+	if(numEmpty==0) {
+		FOR_IJK_BND(flags,1) {
+			if(flags.isFluid(i,j,k)) {
+				fixPidx = flags.index(i,j,k);
+				break;
+			}
+		}
+		//debMsg("No empty cells! Fixing pressure of cell "<<fixPidx<<" to zero",1);
+	}
+	if(fixPidx>=0) {
+		flags[fixPidx] |= FlagGrid::TypeZeroPressure;
+		rhs[fixPidx] = 0.; 
+	}
+
 	// CG setup
 	// note: the last factor increases the max iterations for 2d, which right now can't use a preconditioner 
 	const int maxIter = (int)(cgMaxIterFac * flags.getSize().max()) * (flags.is3D() ? 1 : 4);
@@ -302,7 +365,7 @@ void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, string o
 		gcg = new GridCg<ApplyMatrix2D>(pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
 	
 	gcg->setAccuracy( cgAccuracy ); 
-	gcg->setUseResNorm( useResNorm );
+	gcg->setUseL2Norm( useL2Norm );
 
 	// optional preconditioning
 	gcg->setPreconditioner( precondition ? GridCgInterface::PC_mICP : GridCgInterface::PC_None, &pca0, &pca1, &pca2, &pca3);
@@ -319,7 +382,15 @@ void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, string o
 		// improve behavior of clamping for large time steps:
 		ReplaceClampedGhostFluidVels (vel, flags, pressure, *phi, gfClamp);
 	}
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "solvePressure" ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Real>& pressure = *_args.getPtr<Grid<Real> >("pressure",1,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",2,&_lock); string openBound = _args.getOpt<string >("openBound",3,"",&_lock); Grid<Real>* phi = _args.getPtrOpt<Grid<Real> >("phi",4,0,&_lock); Grid<Real>* perCellCorr = _args.getPtrOpt<Grid<Real> >("perCellCorr",5,0,&_lock); Real gfClamp = _args.getOpt<Real >("gfClamp",6,1e-04,&_lock); Real cgMaxIterFac = _args.getOpt<Real >("cgMaxIterFac",7,1.5,&_lock); Real cgAccuracy = _args.getOpt<Real >("cgAccuracy",8,1e-3,&_lock); string outflow = _args.getOpt<string >("outflow",9,"",&_lock); int outflowHeight = _args.getOpt<int >("outflowHeight",10,1,&_lock); bool precondition = _args.getOpt<bool >("precondition",11,true,&_lock); bool enforceCompatibility = _args.getOpt<bool >("enforceCompatibility",12,false,&_lock); bool useResNorm = _args.getOpt<bool >("useResNorm",13,true ,&_lock);   _retval = getPyNone(); solvePressure(vel,pressure,flags,openBound,phi,perCellCorr,gfClamp,cgMaxIterFac,cgAccuracy,outflow,outflowHeight,precondition,enforceCompatibility,useResNorm);  _args.check(); } pbFinalizePlugin(parent,"solvePressure" ); return _retval; } catch(std::exception& e) { pbSetError("solvePressure",e.what()); return 0; } } static const Pb::Register _RP_solvePressure ("","solvePressure",_W_0); 
+
+	if(fixPidx>=0)
+		flags[fixPidx] &= ~FlagGrid::TypeZeroPressure;
+
+	// optionally , return RHS
+	if(retRhs) {
+		retRhs->copyFrom( rhs );
+	}
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "solvePressure" ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Real>& pressure = *_args.getPtr<Grid<Real> >("pressure",1,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",2,&_lock); string openBound = _args.getOpt<string >("openBound",3,"",&_lock); Grid<Real>* phi = _args.getPtrOpt<Grid<Real> >("phi",4,0,&_lock); Grid<Real>* perCellCorr = _args.getPtrOpt<Grid<Real> >("perCellCorr",5,0,&_lock); MACGrid* fractions = _args.getPtrOpt<MACGrid >("fractions",6,0,&_lock); Real gfClamp = _args.getOpt<Real >("gfClamp",7,1e-04,&_lock); Real cgMaxIterFac = _args.getOpt<Real >("cgMaxIterFac",8,1.5,&_lock); Real cgAccuracy = _args.getOpt<Real >("cgAccuracy",9,1e-3,&_lock); string outflow = _args.getOpt<string >("outflow",10,"",&_lock); int outflowHeight = _args.getOpt<int >("outflowHeight",11,1,&_lock); bool precondition = _args.getOpt<bool >("precondition",12,true,&_lock); bool enforceCompatibility = _args.getOpt<bool >("enforceCompatibility",13,false,&_lock); bool useL2Norm = _args.getOpt<bool >("useL2Norm",14,false,&_lock); Grid<Real>* retRhs = _args.getPtrOpt<Grid<Real> >("retRhs",15,NULL ,&_lock);   _retval = getPyNone(); solvePressure(vel,pressure,flags,openBound,phi,perCellCorr,fractions,gfClamp,cgMaxIterFac,cgAccuracy,outflow,outflowHeight,precondition,enforceCompatibility,useL2Norm,retRhs);  _args.check(); } pbFinalizePlugin(parent,"solvePressure" ); return _retval; } catch(std::exception& e) { pbSetError("solvePressure",e.what()); return 0; } } static const Pb::Register _RP_solvePressure ("","solvePressure",_W_1); 
 
 } // end namespace
 
