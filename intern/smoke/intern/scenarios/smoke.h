@@ -21,7 +21,7 @@ boundConditions = '$BOUNDCONDITIONS$'\n\
 if solver_dim == 2:\n\
   gs.z = 1\n\
 s = FluidSolver(name='main', gridSize = gs, dim = $SOLVER_DIM$)\n\
-s.timestep = 0.1\n\
+s.timestep = $TIMESTEP$\n\
 timings = Timings()\n\
 \n\
 # prepare grids\n\
@@ -160,9 +160,9 @@ const string smoke_step_low = "def sim_step_low(t, standalone = False):\n\
     density.add(inflow_grid)\n\
   if manta_using_heat:\n\
     gravity=vec3(0,0,-0.0981) if solver_dim==3 else vec3(0,-0.0981,0)\n\
-    addHeatBuoyancy(density=density, densCoeff = 0.001, vel=vel, gravity=gravity, flags=flags, heat = heat_low, heatCoeff = -0.1*10)\n\
+    addHeatBuoyancy(density=density, densCoeff = $ALPHA$, vel=vel, gravity=gravity, flags=flags, heat = heat_low, heatCoeff = $BETA$*10)\n\
   else:\n\
-    gravity=vec3(0,0,-0.01) if solver_dim==3 else vec3(0,-0.01,0)\n\
+    gravity=vec3(0,0,-0.01 * $ALPHA$) if solver_dim==3 else vec3(0,-0.01* $ALPHA$,0)\n\
     addBuoyancy(density=density, vel=vel, gravity=gravity, flags=flags)\n\
   if manta_using_colors:\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_r_low, order=$ADVECT_ORDER$)\n\
