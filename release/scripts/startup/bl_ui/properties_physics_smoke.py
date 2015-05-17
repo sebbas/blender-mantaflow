@@ -392,17 +392,17 @@ class OBJECT_OT_RunMantaButton(bpy.types.Operator):
                 if ob.select:
                     selected_before.append(ob)
                     ob.select = False
-                
-        silent_remove("./manta_coll.obj")
-        silent_remove("./manta_flow.obj")
+        manta_filepath = os.path.dirname(context.smoke.domain_settings.manta_filepath)
+        silent_remove(os.path.join(manta_filepath, "manta_coll.obj"))
+        silent_remove(os.path.join(manta_filepath, "manta_flow.obj"))
         #exporting here
         if coll_objs: 
             old_data = transform_objgroup(coll_objs, domain)
-            bpy.ops.export_scene.obj(filepath = "./manta_coll.obj", axis_forward='Y', axis_up='Z', use_selection = True, use_normals = True, use_materials = False, use_triangles = True, group_by_object = True, use_nurbs=True, check_existing= False)
+            bpy.ops.export_scene.obj(filepath = os.path.join(manta_filepath, "manta_coll.obj"), axis_forward='Y', axis_up='Z', use_selection = True, use_normals = True, use_materials = False, use_triangles = True, group_by_object = True, use_nurbs=True, check_existing= False)
             transform_objgroup_back(coll_objs,domain,old_data)
         if flow_objs:
             old_data = transform_objgroup(flow_objs, domain)
-            bpy.ops.export_scene.obj(filepath = "./manta_flow.obj", axis_forward='Y', axis_up='Z', use_selection = True, use_normals = True, use_materials = False, use_triangles = True, group_by_object = True, use_nurbs=True, check_existing= False)
+            bpy.ops.export_scene.obj(filepath = os.path.join(manta_filepath, "manta_flow.obj"), axis_forward='Y', axis_up='Z', use_selection = True, use_normals = True, use_materials = False, use_triangles = True, group_by_object = True, use_nurbs=True, check_existing= False)
             transform_objgroup_back(flow_objs,domain,old_data)
         for ob in selected_before:
             ob.select = True
