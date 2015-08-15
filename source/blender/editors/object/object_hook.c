@@ -254,7 +254,7 @@ static int return_editcurve_indexar(
 	}
 	if (totvert == 0) return 0;
 	
-	*r_indexar = index = MEM_mallocN(4 * totvert, "hook indexar");
+	*r_indexar = index = MEM_mallocN(sizeof(*index) * totvert, "hook indexar");
 	*r_tot = totvert;
 	nr = 0;
 	zero_v3(r_cent);
@@ -448,11 +448,12 @@ static Object *add_hook_object_new(Main *bmain, Scene *scene, Object *obedit)
 	Base *base, *basedit;
 	Object *ob;
 
-	ob = BKE_object_add(bmain, scene, OB_EMPTY);
+	ob = BKE_object_add(bmain, scene, OB_EMPTY, NULL);
 	
 	basedit = BKE_scene_base_find(scene, obedit);
-	base = BKE_scene_base_find(scene, ob);
+	base = scene->basact;
 	base->lay = ob->lay = obedit->lay;
+	BLI_assert(scene->basact->object == ob);
 	
 	/* icky, BKE_object_add sets new base as active.
 	 * so set it back to the original edit object */

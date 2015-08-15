@@ -132,6 +132,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col = split.column()
         col.prop(md, "use_only_vertices")
         col.prop(md, "use_clamp_overlap")
+        col.prop(md, "loop_slide")
 
         layout.label(text="Limit Method:")
         layout.row().prop(md, "limit_method", expand=True)
@@ -262,24 +263,37 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         row.prop(md, "decimate_type", expand=True)
 
         if decimate_type == 'COLLAPSE':
+            has_vgroup = bool(md.vertex_group)
             layout.prop(md, "ratio")
 
             split = layout.split()
-            row = split.row(align=True)
+
+            col = split.column()
+            row = col.row(align=True)
             row.prop_search(md, "vertex_group", ob, "vertex_groups", text="")
             row.prop(md, "invert_vertex_group", text="", icon='ARROW_LEFTRIGHT')
 
-            split.prop(md, "use_collapse_triangulate")
+            layout_info = col
+
+            col = split.column()
+            row = col.row()
+            row.active = has_vgroup
+            row.prop(md, "vertex_group_factor")
+
+            col.prop(md, "use_collapse_triangulate")
+
         elif decimate_type == 'UNSUBDIV':
             layout.prop(md, "iterations")
+            layout_info = layout
         else:  # decimate_type == 'DISSOLVE':
             layout.prop(md, "angle_limit")
             layout.prop(md, "use_dissolve_boundaries")
             layout.label("Delimit:")
             row = layout.row()
             row.prop(md, "delimit")
+            layout_info = layout
 
-        layout.label(text=iface_("Face Count: %d") % md.face_count, translate=False)
+        layout_info.label(text=iface_("Faces: %d") % md.face_count, translate=False)
 
     def DISPLACE(self, layout, ob, md):
         has_texture = (md.texture is not None)
@@ -860,6 +874,8 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.label(text="Options:")
         col.prop(md, "use_subsurf_uv")
         col.prop(md, "show_only_control_edges")
+        if hasattr(md, "use_opensubdiv"):
+            col.prop(md, "use_opensubdiv")
 
     def SURFACE(self, layout, ob, md):
         layout.label(text="Settings are inside the Physics tab")
@@ -1131,13 +1147,15 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         self.vertex_weight_mask(layout, ob, md)
 
     def SKIN(self, layout, ob, md):
-        layout.operator("object.skin_armature_create", text="Create Armature")
+        row = layout.row()
+        row.operator("object.skin_armature_create", text="Create Armature")
+        row.operator("mesh.customdata_skin_add")
 
         layout.separator()
 
-        col = layout.column(align=True)
-        col.prop(md, "branch_smoothing")
-        col.prop(md, "use_smooth_shade")
+        row = layout.row(align=True)
+        row.prop(md, "branch_smoothing")
+        row.prop(md, "use_smooth_shade")
 
         split = layout.split()
 
@@ -1384,7 +1402,32 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         row.prop_search(md, "vertex_group", ob, "vertex_groups", text="")
         sub = row.row(align=True)
         sub.active = has_vgroup
-        sub.prop(md, "use_invert_vertex_group", text="", icon='ARROW_LEFTRIGHT')
+        sub.prop(md, "invert_vertex_group", text="", icon='ARROW_LEFTRIGHT')
+
+    def CORRECTIVE_SMOOTH(self, layout, ob, md):
+        is_bind = md.is_bind
+
+        layout.prop(md, "factor", text="Factor")
+        layout.prop(md, "iterations")
+
+        row = layout.row()
+        row.prop(md, "smooth_type")
+
+        split = layout.split()
+
+        col = split.column()
+        col.label(text="Vertex Group:")
+        row = col.row(align=True)
+        row.prop_search(md, "vertex_group", ob, "vertex_groups", text="")
+        row.prop(md, "invert_vertex_group", text="", icon='ARROW_LEFTRIGHT')
+
+        col = split.column()
+        col.prop(md, "use_only_smooth")
+        col.prop(md, "use_pin_boundary")
+
+        layout.prop(md, "rest_source")
+        if md.rest_source == 'BIND':
+            layout.operator("object.correctivesmooth_bind", text="Unbind" if is_bind else "Bind")
 
 
 if __name__ == "__main__":  # only for live edit.

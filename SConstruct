@@ -471,6 +471,14 @@ if env['OURPLATFORM']=='darwin':
 ###################  End Automatic configuration for OSX   ##################
 #############################################################################
 
+if env['OURPLATFORM'] == 'linux' and not env['C_COMPILER_ID']:
+    command = ["%s"%env['CC'], "--version"]
+    line = btools.get_command_output(command)
+    if line.startswith('gcc'):
+        env['C_COMPILER_ID'] = 'gcc'
+    elif 'clang' in line[0]:
+        env['C_COMPILER_ID'] = 'clang'
+
 if env['WITH_BF_OPENMP'] == 1:
         if env['OURPLATFORM'] in ('win32-vc', 'win64-vc'):
                 env['CCFLAGS'].append('/openmp')
@@ -507,6 +515,10 @@ if env['WITH_BF_STATICCXX']:
     else:
         print '\tcould not remove stdc++ library from LLIBS, WITH_BF_STATICCXX may not work for your platform'
 
+# audaspace is needed for the game engine
+if not env['WITH_BF_AUDASPACE']:
+    env['WITH_BF_GAMEENGINE'] = False
+
 # check target for blenderplayer. Set WITH_BF_PLAYER if found on cmdline
 if 'blenderplayer' in B.targets:
     env['WITH_BF_PLAYER'] = True
@@ -533,12 +545,24 @@ else:
     env['CPPFLAGS'].append('-D__LITTLE_ENDIAN__')
 
 # TODO, make optional (as with CMake)
-env['CPPFLAGS'].append('-DWITH_AUDASPACE')
 env['CPPFLAGS'].append('-DWITH_AVI')
 env['CPPFLAGS'].append('-DWITH_OPENNL')
 
 if env['OURPLATFORM'] not in ('win32-vc', 'win64-vc'):
     env['CPPFLAGS'].append('-DHAVE_STDBOOL_H')
+
+# Audaspace
+
+if env['WITH_BF_AUDASPACE']:
+    env['BF_AUDASPACE_C_INC'] = '#intern/audaspace/intern'
+    env['BF_AUDASPACE_PY_INC'] = '#intern/audaspace/intern'
+    env['BF_AUDASPACE_DEF'] = ['WITH_AUDASPACE']
+    env['BF_AUDASPACE_DEF'].append('AUD_DEVICE_H="<AUD_C-API.h>"')
+    env['BF_AUDASPACE_DEF'].append('AUD_SPECIAL_H="<AUD_C-API.h>"')
+    env['BF_AUDASPACE_DEF'].append('AUD_SOUND_H="<AUD_C-API.h>"')
+    env['BF_AUDASPACE_DEF'].append('AUD_HANDLE_H="<AUD_C-API.h>"')
+    env['BF_AUDASPACE_DEF'].append('AUD_SEQUENCE_H="<AUD_C-API.h>"')
+    env['BF_AUDASPACE_DEF'].append('AUD_TYPES_H="<AUD_Space.h>"')
 
 # OpenGL
 
@@ -759,6 +783,11 @@ if B.targets != ['cudakernels']:
     data_to_c_simple("release/datafiles/preview_cycles.blend")
 
     # --- glsl ---
+    data_to_c_simple("source/blender/gpu/shaders/gpu_shader_geometry.glsl")
+
+    data_to_c_simple("source/blender/gpu/shaders/gpu_program_smoke_frag.glsl")
+    data_to_c_simple("source/blender/gpu/shaders/gpu_program_smoke_color_frag.glsl")
+
     data_to_c_simple("source/blender/gpu/shaders/gpu_shader_simple_frag.glsl")
     data_to_c_simple("source/blender/gpu/shaders/gpu_shader_simple_vert.glsl")
     data_to_c_simple("source/blender/gpu/shaders/gpu_shader_material.glsl")
@@ -772,10 +801,14 @@ if B.targets != ['cudakernels']:
     data_to_c_simple("source/blender/gpu/shaders/gpu_shader_fx_ssao_frag.glsl")
     data_to_c_simple("source/blender/gpu/shaders/gpu_shader_fx_dof_frag.glsl")
     data_to_c_simple("source/blender/gpu/shaders/gpu_shader_fx_dof_vert.glsl")
+    data_to_c_simple("source/blender/gpu/shaders/gpu_shader_fx_dof_hq_frag.glsl")
+    data_to_c_simple("source/blender/gpu/shaders/gpu_shader_fx_dof_hq_vert.glsl")
+    data_to_c_simple("source/blender/gpu/shaders/gpu_shader_fx_dof_hq_geo.glsl")
     data_to_c_simple("source/blender/gpu/shaders/gpu_shader_fx_lib.glsl")
     data_to_c_simple("source/blender/gpu/shaders/gpu_shader_fx_depth_resolve.glsl")
     data_to_c_simple("source/blender/gpu/shaders/gpu_shader_fx_vert.glsl")
     data_to_c_simple("intern/opencolorio/gpu_shader_display_transform.glsl")
+    data_to_c_simple("intern/opensubdiv/gpu_shader_opensubd_display.glsl")
 
     # --- blender ---
     data_to_c_simple("release/datafiles/bfont.pfb")
@@ -869,19 +902,21 @@ B.init_lib_dict()
 
 ##### END SETUP ##########
 
-if B.targets != ['cudakernels']:
-    # Put all auto configuration run-time tests here
+## Auto-configuration run-time tests
 
-    from FindSharedPtr import FindSharedPtr
-    from FindUnorderedMap import FindUnorderedMap
+from FindSharedPtr import FindSharedPtr
+from FindUnorderedMap import FindUnorderedMap
 
-    conf = Configure(env)
-    old_linkflags = conf.env['LINKFLAGS']
-    conf.env.Append(LINKFLAGS=env['PLATFORM_LINKFLAGS'])
-    FindSharedPtr(conf)
-    FindUnorderedMap(conf)
-    conf.env['LINKFLAGS'] = old_linkflags
-    env = conf.Finish()
+conf = Configure(env)
+old_linkflags = conf.env['LINKFLAGS']
+conf.env.Append(LINKFLAGS=env['PLATFORM_LINKFLAGS'])
+
+# Put all tests here
+FindSharedPtr(conf)
+FindUnorderedMap(conf)
+
+conf.env['LINKFLAGS'] = old_linkflags
+env = conf.Finish()
 
 # End of auto configuration
 
@@ -1013,14 +1048,16 @@ if env['OURPLATFORM']!='darwin':
             dir=os.path.join(env['BF_INSTALLDIR'], VERSION, 'scripts', 'addons','cycles', 'kernel')
             source=os.listdir('intern/cycles/kernel')
             if '__pycache__' in source: source.remove('__pycache__')
-            source.remove('kernel.cpp')
             source.remove('CMakeLists.txt')
+            source.remove('SConscript')
             source.remove('svm')
             source.remove('closure')
             source.remove('geom')
             source.remove('shaders')
             source.remove('osl')
+            source.remove('split')
             source=['intern/cycles/kernel/'+s for s in source]
+            source.append('intern/cycles/util/util_atomic.h')
             source.append('intern/cycles/util/util_color.h')
             source.append('intern/cycles/util/util_half.h')
             source.append('intern/cycles/util/util_math.h')
@@ -1045,6 +1082,12 @@ if env['OURPLATFORM']!='darwin':
             source=os.listdir('intern/cycles/kernel/geom')
             if '__pycache__' in source: source.remove('__pycache__')
             source=['intern/cycles/kernel/geom/'+s for s in source]
+            scriptinstall.append(env.Install(dir=dir,source=source))
+            # split
+            dir=os.path.join(env['BF_INSTALLDIR'], VERSION, 'scripts', 'addons','cycles', 'kernel', 'split')
+            source=os.listdir('intern/cycles/kernel/split')
+            if '__pycache__' in source: source.remove('__pycache__')
+            source=['intern/cycles/kernel/split/'+s for s in source]
             scriptinstall.append(env.Install(dir=dir,source=source))
 
             # licenses
@@ -1276,6 +1319,15 @@ if env['OURPLATFORM'] in ('win32-vc', 'win32-mingw', 'win64-vc', 'linuxcross'):
 
     windlls = env.Install(dir=env['BF_INSTALLDIR'], source = dllsources)
     allinstall += windlls
+
+    # TODO(sergey): For unti we've got better way to deal with python binary
+    if env['WITH_BF_PYTHON']:
+        py_target = os.path.join(env['BF_INSTALLDIR'], VERSION, 'python', 'bin')
+        if env['BF_DEBUG']:
+            allinstall += env.Install(dir=py_target, source = ['${BF_PYTHON_LIBPATH}/${BF_PYTHON_DLL}_d.dll'])
+        else:
+            allinstall += env.Install(dir=py_target, source = ['${BF_PYTHON_LIBPATH}/${BF_PYTHON_DLL}.dll'])
+
 
 if env['OURPLATFORM'] == 'win64-mingw':
     dllsources = []

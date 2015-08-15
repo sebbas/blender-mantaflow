@@ -55,6 +55,11 @@ void BakeData::set(int i, int prim, float uv[2], float dudx, float dudy, float d
 	m_dvdy[i] = dvdy;
 }
 
+void BakeData::set_null(int i)
+{
+	m_primitive[i] = -1;
+}
+
 int BakeData::object()
 {
 	return m_object;
@@ -221,7 +226,10 @@ bool BakeManager::bake(Device *device, DeviceScene *dscene, Scene *scene, Progre
 	return true;
 }
 
-void BakeManager::device_update(Device *device, DeviceScene *dscene, Scene *scene, Progress& progress)
+void BakeManager::device_update(Device * /*device*/,
+                                DeviceScene * /*dscene*/,
+                                Scene * /*scene*/,
+                                Progress& progress)
 {
 	if(!need_update)
 		return;
@@ -231,7 +239,7 @@ void BakeManager::device_update(Device *device, DeviceScene *dscene, Scene *scen
 	need_update = false;
 }
 
-void BakeManager::device_free(Device *device, DeviceScene *dscene)
+void BakeManager::device_free(Device * /*device*/, DeviceScene * /*dscene*/)
 {
 }
 

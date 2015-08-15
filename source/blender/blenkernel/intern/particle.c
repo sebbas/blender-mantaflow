@@ -103,6 +103,8 @@ void psys_init_rng(void)
 
 static void get_child_modifier_parameters(ParticleSettings *part, ParticleThreadContext *ctx,
                                           ChildParticle *cpa, short cpa_from, int cpa_num, float *cpa_fuv, float *orco, ParticleTexture *ptex);
+static void get_cpa_texture(DerivedMesh *dm, ParticleSystem *psys, ParticleSettings *part, ParticleData *par,
+							int child_index, int face_index, const float fw[4], float *orco, ParticleTexture *ptex, int event, float cfra);
 extern void do_child_modifiers(ParticleSimulationData *sim,
                                ParticleTexture *ptex, const float par_co[3], const float par_vel[3], const float par_rot[4], const float par_orco[3],
                                ChildParticle *cpa, const float orco[3], float mat[4][4], ParticleKey *state, float t);
@@ -373,7 +375,7 @@ void BKE_particlesettings_free(ParticleSettings *part)
 {
 	MTex *mtex;
 	int a;
-	BKE_free_animdata(&part->id);
+	BKE_animdata_free(&part->id);
 	
 	if (part->clumpcurve)
 		curvemapping_free(part->clumpcurve);
@@ -1943,9 +1945,11 @@ float *psys_cache_vgroup(DerivedMesh *dm, ParticleSystem *psys, int vgroup)
 }
 void psys_find_parents(ParticleSimulationData *sim)
 {
+	ParticleSystem *psys = sim->psys;
 	ParticleSettings *part = sim->psys->part;
 	KDTree *tree;
 	ChildParticle *cpa;
+	ParticleTexture ptex;
 	int p, totparent, totchild = sim->psys->totchild;
 	float co[3], orco[3];
 	int from = PART_FROM_FACE;
@@ -1963,7 +1967,13 @@ void psys_find_parents(ParticleSimulationData *sim)
 
 	for (p = 0, cpa = sim->psys->child; p < totparent; p++, cpa++) {
 		psys_particle_on_emitter(sim->psmd, from, cpa->num, DMCACHE_ISCHILD, cpa->fuv, cpa->foffset, co, 0, 0, 0, orco, 0);
-		BLI_kdtree_insert(tree, p, orco);
+
+		/* Check if particle doesn't exist because of texture influence. Insert only existing particles into kdtree. */
+		get_cpa_texture(sim->psmd->dm, psys, part, psys->particles + cpa->pa[0], p, cpa->num, cpa->fuv, orco, &ptex, PAMAP_DENS | PAMAP_CHILD, psys->cfra);
+
+		if (ptex.exist >= psys_frand(psys, p + 24)) {
+			BLI_kdtree_insert(tree, p, orco);
+		}
 	}
 
 	BLI_kdtree_balance(tree);
@@ -1990,7 +2000,7 @@ static bool psys_thread_context_init_path(ParticleThreadContext *ctx, ParticleSi
 	if (psys_in_edit_mode(scene, psys)) {
 		ParticleEditSettings *pset = &scene->toolsettings->particle;
 
-		if (psys->renderdata == 0 && (psys->edit == NULL || pset->flag & PE_DRAW_PART) == 0)
+		if ((psys->renderdata == 0 && G.is_rendering == 0) && (psys->edit == NULL || pset->flag & PE_DRAW_PART) == 0)
 			totchild = 0;
 
 		segments = 1 << pset->draw_step;
@@ -2006,7 +2016,7 @@ static bool psys_thread_context_init_path(ParticleThreadContext *ctx, ParticleSi
 		between = 1;
 	}
 
-	if (psys->renderdata)
+	if (psys->renderdata || G.is_rendering)
 		segments = 1 << part->ren_step;
 	else {
 		totchild = (int)((float)totchild * (float)part->disp / 100.0f);
@@ -2273,17 +2283,28 @@ static void psys_thread_create_path(ParticleTask *task, struct ChildParticle *cp
 		ParticleCacheKey *par = NULL;
 		float par_co[3];
 		float par_orco[3];
-		
+
 		if (ctx->totparent) {
 			if (i >= ctx->totparent) {
 				pa = &psys->particles[cpa->parent];
 				/* this is now threadsafe, virtual parents are calculated before rest of children */
+				BLI_assert(cpa->parent < psys->totchildcache);
 				par = cache[cpa->parent];
 			}
 		}
 		else if (cpa->parent >= 0) {
 			pa = &psys->particles[cpa->parent];
 			par = pcache[cpa->parent];
+
+			/* If particle is unexisting, try to pick a viable parent from particles used for interpolation. */
+			for (k = 0; k < 4 && pa && (pa->flag & PARS_UNEXIST); k++) {
+				if (cpa->pa[k] >= 0) {
+					pa = &psys->particles[cpa->pa[k]];
+					par = pcache[cpa->pa[k]];
+				}
+			}
+
+			if (pa->flag & PARS_UNEXIST) pa = NULL;
 		}
 		
 		if (pa) {
@@ -2315,6 +2336,7 @@ static void exec_child_path_cache(TaskPool *UNUSED(pool), void *taskdata, int UN
 
 	cpa = psys->child + task->begin;
 	for (i = task->begin; i < task->end; ++i, ++cpa) {
+		BLI_assert(i < psys->totchildcache);
 		psys_thread_create_path(task, cpa, cache[i], i);
 	}
 }
@@ -2353,7 +2375,7 @@ void psys_cache_child_paths(ParticleSimulationData *sim, float cfra, int editupd
 	
 	/* cache parent paths */
 	ctx.parent_pass = 1;
-	psys_tasks_create(&ctx, totparent, &tasks_parent, &numtasks_parent);
+	psys_tasks_create(&ctx, 0, totparent, &tasks_parent, &numtasks_parent);
 	for (i = 0; i < numtasks_parent; ++i) {
 		ParticleTask *task = &tasks_parent[i];
 		
@@ -2364,7 +2386,7 @@ void psys_cache_child_paths(ParticleSimulationData *sim, float cfra, int editupd
 	
 	/* cache child paths */
 	ctx.parent_pass = 0;
-	psys_tasks_create(&ctx, totchild, &tasks_child, &numtasks_child);
+	psys_tasks_create(&ctx, totparent, totchild, &tasks_child, &numtasks_child);
 	for (i = 0; i < numtasks_child; ++i) {
 		ParticleTask *task = &tasks_child[i];
 		
@@ -2448,7 +2470,7 @@ void psys_cache_paths(ParticleSimulationData *sim, float cfra)
 	float prev_tangent[3] = {0.0f, 0.0f, 0.0f}, hairmat[4][4];
 	float rotmat[3][3];
 	int k;
-	int segments = (int)pow(2.0, (double)(psys->renderdata ? part->ren_step : part->draw_step));
+	int segments = (int)pow(2.0, (double)((psys->renderdata || G.is_rendering) ? part->ren_step : part->draw_step));
 	int totpart = psys->totpart;
 	float length, vec[3];
 	float *vg_effector = NULL;

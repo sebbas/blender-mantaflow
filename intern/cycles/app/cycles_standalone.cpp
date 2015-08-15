@@ -21,6 +21,7 @@
 #include "device.h"
 #include "scene.h"
 #include "session.h"
+#include "integrator.h"
 
 #include "util_args.h"
 #include "util_foreach.h"
@@ -124,7 +125,7 @@ static void scene_init()
 	xml_read_file(options.scene, options.filepath.c_str());
 
 	/* Camera width/height override? */
-	if (!(options.width == 0 || options.height == 0)) {
+	if(!(options.width == 0 || options.height == 0)) {
 		options.scene->camera->width = options.width;
 		options.scene->camera->height = options.height;
 	}
@@ -272,6 +273,7 @@ static void keyboard(unsigned char key)
 	else if(key == 'i')
 		options.interactive = !(options.interactive);
 
+	/* Navigation */
 	else if(options.interactive && (key == 'w' || key == 'a' || key == 's' || key == 'd')) {
 		Transform matrix = options.session->scene->camera->matrix;
 		float3 translate;
@@ -291,6 +293,25 @@ static void keyboard(unsigned char key)
 		options.session->scene->camera->matrix = matrix;
 		options.session->scene->camera->need_update = true;
 		options.session->scene->camera->need_device_update = true;
+
+		options.session->reset(session_buffer_params(), options.session_params.samples);
+	}
+
+	/* Set Max Bounces */
+	else if(options.interactive && (key == '0' || key == '1' || key == '2' || key == '3')) {
+		int bounce;
+		switch(key) {
+			case '0': bounce = 0; break;
+			case '1': bounce = 1; break;
+			case '2': bounce = 2; break;
+			case '3': bounce = 3; break;
+			default: bounce = 0; break;
+		}
+
+		options.session->scene->integrator->max_bounce = bounce;
+
+		/* Update and Reset */
+		options.session->scene->integrator->need_update = true;
 
 		options.session->reset(session_buffer_params(), options.session_params.samples);
 	}
@@ -367,7 +388,7 @@ static void options_parse(int argc, const char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	if (debug) {
+	if(debug) {
 		util_logging_start();
 		util_logging_verbosity_set(verbosity);
 	}
@@ -377,7 +398,8 @@ static void options_parse(int argc, const char **argv)
 		printf("Devices:\n");
 
 		foreach(DeviceInfo& info, devices) {
-			printf("    %s%s\n",
+			printf("    %-10s%s%s\n",
+				Device::string_from_type(info.type).c_str(),
 				info.description.c_str(),
 				(info.display_device)? " (display)": "");
 		}

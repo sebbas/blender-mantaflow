@@ -33,7 +33,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_blenlib.h"
+#include "BLI_listbase.h"
+#include "BLI_rect.h"
+#include "BLI_timecode.h"
 #include "BLI_math.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
@@ -48,6 +50,7 @@
 #include "DNA_userdef_types.h"
 
 #include "BKE_blender.h"
+#include "BKE_camera.h"
 #include "BKE_context.h"
 #include "BKE_colortools.h"
 #include "BKE_depsgraph.h"
@@ -116,7 +119,7 @@ typedef struct RenderJob {
 } RenderJob;
 
 /* called inside thread! */
-static void image_buffer_rect_update(RenderJob *rj, RenderResult *rr, ImBuf *ibuf, ImageUser *iuser, volatile rcti *renrect)
+static void image_buffer_rect_update(RenderJob *rj, RenderResult *rr, ImBuf *ibuf, ImageUser *iuser, volatile rcti *renrect, const char *viewname)
 {
 	Scene *scene = rj->scene;
 	const float *rectf = NULL;
@@ -187,12 +190,16 @@ static void image_buffer_rect_update(RenderJob *rj, RenderResult *rr, ImBuf *ibu
 	 *                                              - sergey -
 	 */
 	/* TODO(sergey): Need to check has_combined here? */
-	if (iuser->pass == 0) {
+	if (iuser->passtype == SCE_PASS_COMBINED) {
+		RenderView *rv;
+		size_t view_id = BKE_scene_multiview_view_id_get(&scene->r, viewname);
+		rv = RE_RenderViewGetById(rr, view_id);
+
 		/* find current float rect for display, first case is after composite... still weak */
-		if (rr->rectf)
-			rectf = rr->rectf;
+		if (rv->rectf)
+			rectf = rv->rectf;
 		else {
-			if (rr->rect32) {
+			if (rv->rect32) {
 				/* special case, currently only happens with sequencer rendering,
 				 * which updates the whole frame, so we can only mark display buffer
 				 * as invalid here (sergey)
@@ -201,8 +208,8 @@ static void image_buffer_rect_update(RenderJob *rj, RenderResult *rr, ImBuf *ibu
 				return;
 			}
 			else {
-				if (rr->renlay == NULL || rr->renlay->rectf == NULL) return;
-				rectf = rr->renlay->rectf;
+				if (rr->renlay == NULL) return;
+				rectf = RE_RenderLayerGetPass(rr->renlay, SCE_PASS_COMBINED, viewname);
 			}
 		}
 		if (rectf == NULL) return;
@@ -369,7 +376,7 @@ static void make_renderinfo_string(const RenderStats *rs,
 	spos += sprintf(spos, IFACE_("Frame:%d "), (scene->r.cfra));
 
 	/* previous and elapsed time */
-	BLI_timestr(rs->lastframetime, info_time_str, sizeof(info_time_str));
+	BLI_timecode_string_from_time_simple(info_time_str, sizeof(info_time_str), rs->lastframetime);
 
 	if (rs->infostr && rs->infostr[0]) {
 		if (rs->lastframetime != 0.0)
@@ -377,7 +384,7 @@ static void make_renderinfo_string(const RenderStats *rs,
 		else
 			spos += sprintf(spos, "| ");
 
-		BLI_timestr(PIL_check_seconds_timer() - rs->starttime, info_time_str, sizeof(info_time_str));
+		BLI_timecode_string_from_time_simple(info_time_str, sizeof(info_time_str), PIL_check_seconds_timer() - rs->starttime);
 	}
 	else
 		spos += sprintf(spos, "| ");
@@ -518,7 +525,6 @@ static void render_image_update_pass_and_layer(RenderJob *rj, RenderResult *rr, 
 			}
 		}
 
-		iuser->pass = sima->iuser.pass;
 		iuser->layer = sima->iuser.layer;
 
 		RE_ReleaseResult(rj->re);
@@ -531,6 +537,7 @@ static void image_rect_update(void *rjv, RenderResult *rr, volatile rcti *renrec
 	Image *ima = rj->image;
 	ImBuf *ibuf;
 	void *lock;
+	const char *viewname = RE_GetActiveRenderView(rj->re);
 
 	/* only update if we are displaying the slot being rendered */
 	if (ima->render_slot != ima->last_render_slot) {
@@ -563,7 +570,7 @@ static void image_rect_update(void *rjv, RenderResult *rr, volatile rcti *renrec
 		    ibuf->channels == 1 ||
 		    U.image_draw_method != IMAGE_DRAW_METHOD_GLSL)
 		{
-			image_buffer_rect_update(rj, rr, ibuf, &rj->iuser, renrect);
+			image_buffer_rect_update(rj, rr, ibuf, &rj->iuser, renrect, viewname);
 		}
 		
 		/* make jobs timer to send notifier */
@@ -785,13 +792,13 @@ static void clean_viewport_memory(Main *bmain, Scene *scene, int renderlay)
 		if ((base->lay & renderlay) == 0) {
 			continue;
 		}
-
 		if (RE_allow_render_generic_object(base->object)) {
 			base->object->id.flag &= ~LIB_DOIT;
 		}
 	}
 
-	for (object = bmain->object.first; object; object = object->id.next) {
+	for (SETLOOPER(scene, sce_iter, base)) {
+		object = base->object;
 		if ((object->id.flag & LIB_DOIT) == 0) {
 			continue;
 		}
@@ -891,6 +898,7 @@ static int screen_render_invoke(bContext *C, wmOperator *op, const wmEvent *even
 	rj->write_still = is_write_still && !is_animation;
 	rj->iuser.scene = scene;
 	rj->iuser.ok = 1;
+	rj->iuser.passtype = SCE_PASS_COMBINED;
 	rj->reports = op->reports;
 	rj->orig_layer = 0;
 	rj->last_layer = 0;
@@ -1227,10 +1235,10 @@ static void render_view3d_startjob(void *customdata, short *stop, short *do_upda
 	if ((update_flag & (PR_UPDATE_RENDERSIZE | PR_UPDATE_DATABASE)) || rstats->convertdone == 0) {
 		RenderData rdata;
 
-		/* no osa, blur, seq, layers, etc for preview render */
+		/* no osa, blur, seq, layers, savebuffer etc for preview render */
 		rdata = rp->scene->r;
 		rdata.mode &= ~(R_OSA | R_MBLUR | R_BORDER | R_PANORAMA);
-		rdata.scemode &= ~(R_DOSEQ | R_DOCOMP | R_FREE_IMAGE);
+		rdata.scemode &= ~(R_DOSEQ | R_DOCOMP | R_FREE_IMAGE | R_EXR_TILE_FILE | R_FULL_SAMPLE);
 		rdata.scemode |= R_VIEWPORT_PREVIEW;
 
 		/* we do use layers, but only active */
@@ -1487,7 +1495,8 @@ void render_view3d_draw(RenderEngine *engine, const bContext *C)
 		if (re == NULL) return;
 	}
 	
-	RE_AcquireResultImage(re, &rres);
+	/* Viewport render preview doesn't support multiview, view hardcoded to 0 */
+	RE_AcquireResultImage(re, &rres, 0);
 	
 	if (rres.rectf) {
 		RegionView3D *rv3d = CTX_wm_region_view3d(C);

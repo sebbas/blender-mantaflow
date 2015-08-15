@@ -242,8 +242,16 @@ static void create_mesh_volume_attribute(BL::Object b_ob, Mesh *mesh, ImageManag
 	bool animated = false;
 
 	volume_data->manager = image_manager;
-	volume_data->slot = image_manager->add_image(Attribute::standard_name(std),
-		b_ob.ptr.data, animated, frame, is_float, is_linear, INTERPOLATION_LINEAR, true);
+	volume_data->slot = image_manager->add_image(
+	        Attribute::standard_name(std),
+	        b_ob.ptr.data,
+	        animated,
+	        frame,
+	        is_float,
+	        is_linear,
+	        INTERPOLATION_LINEAR,
+	        EXTENSION_REPEAT,
+	        true);
 }
 
 static void create_mesh_volume_attributes(Scene *scene, BL::Object b_ob, Mesh *mesh, float frame)
@@ -302,7 +310,7 @@ static void attr_create_uv_map(Scene *scene,
                                BL::Mesh b_mesh,
                                const vector<int>& nverts)
 {
-	if (b_mesh.tessface_uv_textures.length() != 0) {
+	if(b_mesh.tessface_uv_textures.length() != 0) {
 		BL::Mesh::tessface_uv_textures_iterator l;
 
 		for(b_mesh.tessface_uv_textures.begin(l); l != b_mesh.tessface_uv_textures.end(); ++l) {
@@ -324,15 +332,15 @@ static void attr_create_uv_map(Scene *scene,
 				size_t i = 0;
 
 				for(l->data.begin(t); t != l->data.end(); ++t, ++i) {
-					fdata[0] =  get_float3(t->uv1());
-					fdata[1] =  get_float3(t->uv2());
-					fdata[2] =  get_float3(t->uv3());
+					fdata[0] = get_float3(t->uv1());
+					fdata[1] = get_float3(t->uv2());
+					fdata[2] = get_float3(t->uv3());
 					fdata += 3;
 
 					if(nverts[i] == 4) {
-						fdata[0] =  get_float3(t->uv1());
-						fdata[1] =  get_float3(t->uv3());
-						fdata[2] =  get_float3(t->uv4());
+						fdata[0] = get_float3(t->uv1());
+						fdata[1] = get_float3(t->uv3());
+						fdata[2] = get_float3(t->uv4());
 						fdata += 3;
 					}
 				}
@@ -621,7 +629,13 @@ Mesh *BlenderSync::sync_mesh(BL::Object b_ob, bool object_updated, bool hide_tri
 	}
 	
 	/* test if we need to sync */
-	bool use_mesh_geometry = render_layer.use_surfaces || render_layer.use_hair;
+	int requested_geometry_flags = Mesh::GEOMETRY_NONE;
+	if(render_layer.use_surfaces) {
+		requested_geometry_flags |= Mesh::GEOMETRY_TRIANGLES;
+	}
+	if(render_layer.use_hair) {
+		requested_geometry_flags |= Mesh::GEOMETRY_CURVES;
+	}
 	Mesh *mesh;
 
 	if(!mesh_map.sync(&mesh, key)) {
@@ -630,7 +644,7 @@ Mesh *BlenderSync::sync_mesh(BL::Object b_ob, bool object_updated, bool hide_tri
 		/* test if shaders changed, these can be object level so mesh
 		 * does not get tagged for recalc */
 		else if(mesh->used_shaders != used_shaders);
-		else if(use_mesh_geometry != mesh->geometry_synced);
+		else if(requested_geometry_flags != mesh->geometry_flags);
 		else {
 			/* even if not tagged for recalc, we may need to sync anyway
 			 * because the shader needs different mesh attributes */
@@ -664,7 +678,7 @@ Mesh *BlenderSync::sync_mesh(BL::Object b_ob, bool object_updated, bool hide_tri
 	mesh->used_shaders = used_shaders;
 	mesh->name = ustring(b_ob_data.name().c_str());
 
-	if(use_mesh_geometry) {
+	if(requested_geometry_flags != Mesh::GEOMETRY_NONE) {
 		/* mesh objects does have special handle in the dependency graph,
 		 * they're ensured to have properly updated.
 		 *
@@ -697,8 +711,8 @@ Mesh *BlenderSync::sync_mesh(BL::Object b_ob, bool object_updated, bool hide_tri
 			/* free derived mesh */
 			b_data.meshes.remove(b_mesh);
 		}
-		mesh->geometry_synced = true;
 	}
+	mesh->geometry_flags = requested_geometry_flags;
 
 	/* displacement method */
 	if(cmesh.data) {

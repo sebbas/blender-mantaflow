@@ -62,8 +62,7 @@ void VariableSizeBokehBlurOperation::initExecution()
 #endif
 	QualityStepHelper::initExecution(COM_QH_INCREASE);
 }
-struct VariableSizeBokehBlurTileData
-{
+struct VariableSizeBokehBlurTileData {
 	MemoryBuffer *color;
 	MemoryBuffer *bokeh;
 	MemoryBuffer *size;
@@ -89,7 +88,7 @@ void *VariableSizeBokehBlurOperation::initializeTileData(rcti *rect)
 	return data;
 }
 
-void VariableSizeBokehBlurOperation::deinitializeTileData(rcti *rect, void *data)
+void VariableSizeBokehBlurOperation::deinitializeTileData(rcti * /*rect*/, void *data)
 {
 	VariableSizeBokehBlurTileData *result = (VariableSizeBokehBlurTileData *)data;
 	delete result;
@@ -187,7 +186,7 @@ void VariableSizeBokehBlurOperation::executePixel(float output[4], int x, int y,
 void VariableSizeBokehBlurOperation::executeOpenCL(OpenCLDevice *device,
                                        MemoryBuffer *outputMemoryBuffer, cl_mem clOutputBuffer, 
                                        MemoryBuffer **inputMemoryBuffers, list<cl_mem> *clMemToCleanUp, 
-                                       list<cl_kernel> *clKernelsToCleanUp) 
+                                       list<cl_kernel> * /*clKernelsToCleanUp*/)
 {
 	cl_kernel defocusKernel = device->COM_clCreateKernel("defocusKernel", NULL);
 

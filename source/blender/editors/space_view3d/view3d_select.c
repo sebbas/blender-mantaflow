@@ -725,7 +725,7 @@ static void do_lasso_select_meshobject__doSelectVert(void *userData, MVert *mv, 
 }
 static void do_lasso_select_paintvert(ViewContext *vc, const int mcords[][2], short moves, bool extend, bool select)
 {
-	const int use_zbuf = (vc->v3d->flag & V3D_ZBUF_SELECT);
+	const bool use_zbuf = (vc->v3d->flag & V3D_ZBUF_SELECT) != 0;
 	Object *ob = vc->obact;
 	Mesh *me = ob->data;
 	rcti rect;
@@ -1641,39 +1641,48 @@ static void do_paintvert_box_select__doSelectVert(void *userData, MVert *mv, con
 }
 static int do_paintvert_box_select(ViewContext *vc, rcti *rect, bool select, bool extend)
 {
-	const int use_zbuf = (vc->v3d->flag & V3D_ZBUF_SELECT);
+	const bool use_zbuf = (vc->v3d->flag & V3D_ZBUF_SELECT) != 0;
 	Mesh *me;
 	MVert *mvert;
 	struct ImBuf *ibuf;
 	unsigned int *rt;
 	int a, index;
 	char *selar;
-	int sx = BLI_rcti_size_x(rect) + 1;
-	int sy = BLI_rcti_size_y(rect) + 1;
+	const int size[2] = {
+	    BLI_rcti_size_x(rect) + 1,
+	    BLI_rcti_size_y(rect) + 1};
 
 	me = vc->obact->data;
 
-	if (me == NULL || me->totvert == 0 || sx * sy <= 0)
+	if ((me == NULL) || (me->totvert == 0) || (size[0] * size[1] <= 0)) {
 		return OPERATOR_CANCELLED;
-
+	}
 
 	if (extend == false && select)
 		paintvert_deselect_all_visible(vc->obact, SEL_DESELECT, false);
 
 	if (use_zbuf) {
 		selar = MEM_callocN(me->totvert + 1, "selar");
-		view3d_validate_backbuf(vc);
+		ED_view3d_backbuf_validate(vc);
 
-		ibuf = IMB_allocImBuf(sx, sy, 32, IB_rect);
+		ibuf = IMB_allocImBuf(size[0], size[1], 32, IB_rect);
 		rt = ibuf->rect;
-		glReadPixels(rect->xmin + vc->ar->winrct.xmin,  rect->ymin + vc->ar->winrct.ymin, sx, sy, GL_RGBA, GL_UNSIGNED_BYTE,  ibuf->rect);
-		if (ENDIAN_ORDER == B_ENDIAN) IMB_convert_rgba_to_abgr(ibuf);
+		glReadPixels(
+		        rect->xmin + vc->ar->winrct.xmin,
+		        rect->ymin + vc->ar->winrct.ymin,
+		        size[0], size[1], GL_RGBA, GL_UNSIGNED_BYTE,  ibuf->rect);
+		if (ENDIAN_ORDER == B_ENDIAN) {
+			IMB_convert_rgba_to_abgr(ibuf);
+		}
+		WM_framebuffer_to_index_array(ibuf->rect, size[0] * size[1]);
 
-		a = sx * sy;
+		a = size[0] * size[1];
 		while (a--) {
 			if (*rt) {
-				index = WM_framebuffer_to_index(*rt);
-				if (index <= me->totvert) selar[index] = 1;
+				index = *rt;
+				if (index <= me->totvert) {
+					selar[index] = 1;
+				}
 			}
 			rt++;
 		}
@@ -2185,7 +2194,7 @@ void VIEW3D_OT_select_border(wmOperatorType *ot)
 static bool mouse_weight_paint_vertex_select(bContext *C, const int mval[2], bool extend, bool deselect, bool toggle, Object *obact)
 {
 	View3D *v3d = CTX_wm_view3d(C);
-	const int use_zbuf = (v3d->flag & V3D_ZBUF_SELECT);
+	const bool use_zbuf = (v3d->flag & V3D_ZBUF_SELECT) != 0;
 
 	Mesh *me = obact->data; /* already checked for NULL */
 	unsigned int index = 0;
@@ -2453,7 +2462,7 @@ static void paint_vertsel_circle_select_doSelectVert(void *userData, MVert *mv, 
 }
 static void paint_vertsel_circle_select(ViewContext *vc, const bool select, const int mval[2], float rad)
 {
-	const int use_zbuf = (vc->v3d->flag & V3D_ZBUF_SELECT);
+	const bool use_zbuf = (vc->v3d->flag & V3D_ZBUF_SELECT) != 0;
 	Object *ob = vc->obact;
 	Mesh *me = ob->data;
 	bool bbsel;

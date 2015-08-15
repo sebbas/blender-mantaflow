@@ -48,7 +48,6 @@
 #include <stddef.h>
 
 #include "DNA_object_types.h"
-#include "DNA_scene_types.h"
 
 #include "BKE_animsys.h"
 #include "BKE_depsgraph.h"
@@ -89,7 +88,7 @@ static void rna_ShapeKey_name_set(PointerRNA *ptr, const char *value)
 	}
 	
 	/* fix all the animation data which may link to this */
-	BKE_all_animdata_fix_paths_rename(NULL, "key_blocks", oldname, kb->name);
+	BKE_animdata_fix_paths_rename_all(NULL, "key_blocks", oldname, kb->name);
 }
 
 static float rna_ShapeKey_frame_get(PointerRNA *ptr)

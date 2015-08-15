@@ -157,7 +157,10 @@ void file_draw_buttons(const bContext *C, ARegion *ar)
 
 	/* Text input fields for directory and file. */
 	if (available_w > 0) {
+		const struct direntry *file = sfile->files ? filelist_file(sfile->files, params->active_file) : NULL;
 		int overwrite_alert = file_draw_check_exists(sfile);
+		const bool is_active_dir = file && file->path && BLI_is_dir(file->path);
+
 		/* callbacks for operator check functions */
 		UI_block_func_set(block, file_draw_check_cb, NULL, NULL);
 
@@ -178,7 +181,8 @@ void file_draw_buttons(const bContext *C, ARegion *ar)
 		if ((params->flag & FILE_DIRSEL_ONLY) == 0) {
 			but = uiDefBut(block, UI_BTYPE_TEXT, -1, "",
 			               min_x, line2_y, line2_w - chan_offs, btn_h,
-			               params->file, 0.0, (float)FILE_MAXFILE, 0, 0,
+			               is_active_dir ? (char *)"" : params->file,
+			               0.0, (float)FILE_MAXFILE, 0, 0,
 			               TIP_(overwrite_alert ? N_("File name, overwrite existing") : N_("File name")));
 			UI_but_func_complete_set(but, autocomplete_file, NULL);
 			UI_but_flag_enable(but, UI_BUT_NO_UTF8);
@@ -216,8 +220,12 @@ void file_draw_buttons(const bContext *C, ARegion *ar)
 	
 	/* Execute / cancel buttons. */
 	if (loadbutton) {
-		/* params->title is already translated! */
-		uiDefButO(block, UI_BTYPE_BUT, "FILE_OT_execute", WM_OP_EXEC_REGION_WIN, params->title,
+		const struct direntry *file = filelist_file(sfile->files, params->active_file);
+		const char *str_exec = (file && file->path && BLI_is_dir(file->path)) ?
+		                        /* params->title is already translated! */
+		                        IFACE_("Open Directory") : params->title;
+
+		uiDefButO(block, UI_BTYPE_BUT, "FILE_OT_execute", WM_OP_EXEC_REGION_WIN, str_exec,
 		          max_x - loadbutton, line1_y, loadbutton, btn_h, "");
 		uiDefButO(block, UI_BTYPE_BUT, "FILE_OT_cancel", WM_OP_EXEC_REGION_WIN, IFACE_("Cancel"),
 		          max_x - loadbutton, line2_y, loadbutton, btn_h, "");
@@ -274,7 +282,7 @@ static int get_file_icon(struct direntry *file)
 		return ICON_FILE_BLANK;
 }
 
-static void file_draw_icon(uiBlock *block, char *path, int sx, int sy, int icon, int width, int height, bool drag)
+static void file_draw_icon(uiBlock *block, const char *path, int sx, int sy, int icon, int width, int height, bool drag)
 {
 	uiBut *but;
 	int x, y;
@@ -288,29 +296,36 @@ static void file_draw_icon(uiBlock *block, char *path, int sx, int sy, int icon,
 	but = uiDefIconBut(block, UI_BTYPE_LABEL, 0, icon, x, y, width, height, NULL, 0.0f, 0.0f, 0.0f, 0.0f, "");
 
 	if (drag) {
-		UI_but_drag_set_path(but, path);
+		UI_but_drag_set_path(but, path, false);
 	}
 }
 
 
 static void file_draw_string(int sx, int sy, const char *string, float width, int height, short align)
 {
-	uiStyle *style = UI_style_get();
-	uiFontStyle fs = style->widgetlabel;
+	uiStyle *style;
+	uiFontStyle fs;
 	rcti rect;
 	char fname[FILE_MAXFILE];
+
+	if (string[0] == '\0') {
+		return;
+	}
+
+	style = UI_style_get();
+	fs = style->widgetlabel;
 
 	fs.align = align;
 
 	BLI_strncpy(fname, string, FILE_MAXFILE);
-	file_shorten_string(fname, width + 1.0f, 0);
+	UI_text_clip_middle_ex(&fs, fname, width, UI_DPI_ICON_SIZE, sizeof(fname), '\0');
 
 	/* no text clipping needed, UI_fontstyle_draw does it but is a bit too strict (for buttons it works) */
 	rect.xmin = sx;
-	rect.xmax = (int)(sx + ceil(width + 4.0f));
+	rect.xmax = (int)(sx + ceil(width + 5.0f / UI_DPI_FAC));
 	rect.ymin = sy - height;
 	rect.ymax = sy;
-	
+
 	UI_fontstyle_draw(&fs, &rect, fname);
 }
 
@@ -323,35 +338,40 @@ void file_calc_previews(const bContext *C, ARegion *ar)
 	UI_view2d_totRect_set(v2d, sfile->layout->width, sfile->layout->height);
 }
 
-static void file_draw_preview(uiBlock *block, struct direntry *file, int sx, int sy, ImBuf *imb, FileLayout *layout, bool dropshadow, bool drag)
+static void file_draw_preview(uiBlock *block, struct direntry *file, int sx, int sy, ImBuf *imb, FileLayout *layout, bool is_icon, bool drag)
 {
 	uiBut *but;
 	float fx, fy;
 	float dx, dy;
 	int xco, yco;
+	float ui_imbx, ui_imby;
 	float scaledx, scaledy;
 	float scale;
 	int ex, ey;
+	bool use_dropshadow = !is_icon && (file->flags & FILE_TYPE_IMAGE);
 
 	BLI_assert(imb != NULL);
 
-	if ((imb->x * UI_DPI_FAC > layout->prv_w) ||
-	    (imb->y * UI_DPI_FAC > layout->prv_h))
+	ui_imbx = imb->x * UI_DPI_FAC;
+	ui_imby = imb->y * UI_DPI_FAC;
+	/* Unlike thumbnails, icons are not scaled up. */
+	if (((ui_imbx > layout->prv_w) || (ui_imby > layout->prv_h)) ||
+	    (!is_icon && ((ui_imbx < layout->prv_w) || (ui_imby < layout->prv_h))))
 	{
 		if (imb->x > imb->y) {
 			scaledx = (float)layout->prv_w;
-			scaledy =  ( (float)imb->y / (float)imb->x) * layout->prv_w;
+			scaledy = ((float)imb->y / (float)imb->x) * layout->prv_w;
 			scale = scaledx / imb->x;
 		}
 		else {
 			scaledy = (float)layout->prv_h;
-			scaledx =  ( (float)imb->x / (float)imb->y) * layout->prv_h;
+			scaledx = ((float)imb->x / (float)imb->y) * layout->prv_h;
 			scale = scaledy / imb->y;
 		}
 	}
 	else {
-		scaledx = (float)imb->x * UI_DPI_FAC;
-		scaledy = (float)imb->y * UI_DPI_FAC;
+		scaledx = ui_imbx;
+		scaledy = ui_imby;
 		scale = UI_DPI_FAC;
 	}
 
@@ -367,17 +387,23 @@ static void file_draw_preview(uiBlock *block, struct direntry *file, int sx, int
 	glBlendFunc(GL_SRC_ALPHA,  GL_ONE_MINUS_SRC_ALPHA);
 
 	/* shadow */
-	if (dropshadow)
+	if (use_dropshadow) {
 		UI_draw_box_shadow(220, (float)xco, (float)yco, (float)(xco + ex), (float)(yco + ey));
+	}
 
 	glEnable(GL_BLEND);
 
 	/* the image */
-	glColor4f(1.0, 1.0, 1.0, 1.0);
+	if (!is_icon && file->flags & FILE_TYPE_FTFONT) {
+		UI_ThemeColor(TH_TEXT);
+	}
+	else {
+		glColor4f(1.0, 1.0, 1.0, 1.0);
+	}
 	glaDrawPixelsTexScaled((float)xco, (float)yco, imb->x, imb->y, GL_RGBA, GL_UNSIGNED_BYTE, GL_NEAREST, imb->rect, scale, scale);
 
 	/* border */
-	if (dropshadow) {
+	if (use_dropshadow) {
 		glColor4f(0.0f, 0.0f, 0.0f, 0.4f);
 		fdrawbox((float)xco, (float)yco, (float)(xco + ex), (float)(yco + ey));
 	}
@@ -385,7 +411,7 @@ static void file_draw_preview(uiBlock *block, struct direntry *file, int sx, int
 	/* dragregion */
 	if (drag) {
 		but = uiDefBut(block, UI_BTYPE_LABEL, 0, "", xco, yco, ex, ey, NULL, 0.0, 0.0, 0, 0, "");
-		UI_but_drag_set_image(but, file->path, get_file_icon(file), imb, scale);
+		UI_but_drag_set_image(but, file->path, get_file_icon(file), imb, scale, false);
 	}
 
 	glDisable(GL_BLEND);
@@ -402,6 +428,7 @@ static void renamebutton_cb(bContext *C, void *UNUSED(arg1), char *oldname)
 
 	BLI_make_file_string(G.main->name, orgname, sfile->params->dir, oldname);
 	BLI_strncpy(filename, sfile->params->renameedit, sizeof(filename));
+	BLI_filename_make_safe(filename);
 	BLI_make_file_string(G.main->name, newname, sfile->params->dir, filename);
 
 	if (!STREQ(orgname, newname)) {
@@ -525,14 +552,12 @@ void file_draw_list(const bContext *C, ARegion *ar)
 
 
 		if (!(file->selflag & FILE_SEL_EDITING)) {
-			if ((params->active_file == i) || (file->selflag & FILE_SEL_HIGHLIGHTED) || (file->selflag & FILE_SEL_SELECTED)) {
+			if ((params->highlight_file == i) || (file->selflag & FILE_SEL_HIGHLIGHTED) || (file->selflag & FILE_SEL_SELECTED)) {
 				int colorid = (file->selflag & FILE_SEL_SELECTED) ? TH_HILITE : TH_BACK;
-				int shade = (params->active_file == i) || (file->selflag & FILE_SEL_HIGHLIGHTED) ? 20 : 0;
+				int shade = (params->highlight_file == i) || (file->selflag & FILE_SEL_HIGHLIGHTED) ? 35 : 0;
 
-				/* readonly files (".." and ".") must not be drawn as selected - set color back to normal */
-				if (FILENAME_IS_CURRPAR(file->relname)) {
-					colorid = TH_BACK;
-				}
+				BLI_assert(i > 0 || FILENAME_IS_CURRPAR(file->relname));
+
 				draw_tile(sx, sy - 1, layout->tile_w + 4, sfile->layout->tile_h + layout->tile_border_y, colorid, shade);
 			}
 		}
@@ -549,7 +574,7 @@ void file_draw_list(const bContext *C, ARegion *ar)
 				is_icon = 1;
 			}
 
-			file_draw_preview(block, file, sx, sy, imb, layout, !is_icon && (file->flags & FILE_TYPE_IMAGE), do_drag);
+			file_draw_preview(block, file, sx, sy, imb, layout, is_icon, do_drag);
 		}
 		else {
 			file_draw_icon(block, file->path, sx, sy - (UI_UNIT_Y / 6), get_file_icon(file), ICON_DEFAULT_WIDTH_SCALE, ICON_DEFAULT_HEIGHT_SCALE, do_drag);

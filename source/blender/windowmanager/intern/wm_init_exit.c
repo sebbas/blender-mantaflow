@@ -58,9 +58,10 @@
 #include "BKE_screen.h"
 #include "BKE_DerivedMesh.h"
 #include "BKE_global.h"
+#include "BKE_icons.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
-#include "BKE_mball.h"
+#include "BKE_mball_tessellate.h"
 #include "BKE_node.h"
 #include "BKE_report.h"
 
@@ -116,6 +117,10 @@
 #include "BKE_sound.h"
 #include "COM_compositor.h"
 
+#ifdef WITH_OPENSUBDIV
+#  include "opensubdiv_capi.h"
+#endif
+
 static void wm_init_reports(bContext *C)
 {
 	ReportList *reports = CTX_wm_reports(C);
@@ -149,9 +154,11 @@ void WM_init(bContext *C, int argc, const char **argv)
 	WM_menutype_init();
 	WM_uilisttype_init();
 
-	set_free_windowmanager_cb(wm_close_and_free);   /* library.c */
-	set_free_notifier_reference_cb(WM_main_remove_notifier_reference);   /* library.c */
-	set_blender_test_break_cb(wm_window_testbreak); /* blender.c */
+	BKE_library_callback_free_window_manager_set(wm_close_and_free);   /* library.c */
+	BKE_library_callback_free_notifier_reference_set(WM_main_remove_notifier_reference);   /* library.c */
+	BKE_library_callback_free_editor_id_reference_set(WM_main_remove_editor_id_reference);   /* library.c */
+	BKE_blender_callback_test_break_set(wm_window_testbreak); /* blender.c */
+	BKE_spacedata_callback_id_unref_set(ED_spacedata_id_unref); /* screen.c */
 	DAG_editors_update_cb(ED_render_id_flush_update, ED_render_scene_update); /* depsgraph.c */
 	
 	ED_spacetypes_init();   /* editors/space_api/spacetype.c */
@@ -168,7 +175,30 @@ void WM_init(bContext *C, int argc, const char **argv)
 	/* get the default database, plus a wm */
 	wm_homefile_read(C, NULL, G.factory_startup, NULL);
 	
+
 	BLF_lang_set(NULL);
+
+	if (!G.background) {
+		/* sets 3D mouse deadzone */
+		WM_ndof_deadzone_set(U.ndof_deadzone);
+
+		GPU_init();
+
+		GPU_set_mipmap(!(U.gameflags & USER_DISABLE_MIPMAP));
+		GPU_set_linear_mipmap(true);
+		GPU_set_anisotropic(U.anisotropic_filter);
+		GPU_set_gpu_mipmapping(U.use_gpu_mipmap);
+
+		UI_init();
+	}
+	else {
+		/* Note: Currently only inits icons, which we now want in background mode too
+		 * (scripts could use those in background processing...).
+		 * In case we do more later, we may need to pass a 'background' flag.
+		 * Called from 'UI_init' above */
+		BKE_icons_init(1);
+	}
+
 
 	ED_spacemacros_init();
 
@@ -195,24 +225,12 @@ void WM_init(bContext *C, int argc, const char **argv)
 
 	wm_init_reports(C); /* reports cant be initialized before the wm */
 
-	if (!G.background) {
-		GPU_init();
-
-		GPU_set_mipmap(!(U.gameflags & USER_DISABLE_MIPMAP));
-		GPU_set_anisotropic(U.anisotropic_filter);
-		GPU_set_gpu_mipmapping(U.use_gpu_mipmap);
-
-		UI_init();
-	}
-	
 	clear_matcopybuf();
 	ED_render_clear_mtex_copybuf();
 
 	// glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		
-	ED_preview_init_dbase();
-	
-	wm_read_history();
+
+	wm_history_file_read();
 
 	/* allow a path of "", this is what happens when making a new file */
 #if 0
@@ -327,7 +345,7 @@ bool WM_init_game(bContext *C)
 
 		WM_operator_name_call(C, "VIEW3D_OT_game_start", WM_OP_EXEC_DEFAULT, NULL);
 
-		sound_exit();
+		BKE_sound_exit();
 
 		return true;
 	}
@@ -397,7 +415,7 @@ void WM_exit_ext(bContext *C, const bool do_python)
 {
 	wmWindowManager *wm = C ? CTX_wm_manager(C) : NULL;
 
-	sound_exit();
+	BKE_sound_exit();
 
 	/* first wrap up running stuff, we assume only the active WM is running */
 	/* modal handlers are on window level freed, others too? */
@@ -406,11 +424,11 @@ void WM_exit_ext(bContext *C, const bool do_python)
 		wmWindow *win;
 
 		if (!G.background) {
-			if ((U.uiflag2 & USER_KEEP_SESSION) || BKE_undo_valid(NULL)) {
+			if ((U.uiflag2 & USER_KEEP_SESSION) || BKE_undo_is_valid(NULL)) {
 				/* save the undo state as quit.blend */
 				char filename[FILE_MAX];
 				bool has_edited;
-				int fileflags = G.fileflags & ~(G_FILE_COMPRESS | G_FILE_AUTOPLAY | G_FILE_LOCK | G_FILE_SIGN | G_FILE_HISTORY);
+				int fileflags = G.fileflags & ~(G_FILE_COMPRESS | G_FILE_AUTOPLAY | G_FILE_HISTORY);
 
 				BLI_make_file_string("/", filename, BKE_tempdir_base(), BLENDER_QUIT_FILE);
 
@@ -509,6 +527,10 @@ void WM_exit_ext(bContext *C, const bool do_python)
 	(void)do_python;
 #endif
 
+#ifdef WITH_OPENSUBDIV
+	openSubdiv_cleanup();
+#endif
+
 	if (!G.background) {
 		GPU_global_buffer_pool_free();
 		GPU_free_unused_buffers();
@@ -516,7 +538,7 @@ void WM_exit_ext(bContext *C, const bool do_python)
 		GPU_exit();
 	}
 
-	BKE_reset_undo(); 
+	BKE_undo_reset();
 	
 	ED_file_exit(); /* for fsmenu */
 
@@ -538,7 +560,7 @@ void WM_exit_ext(bContext *C, const bool do_python)
 
 	if (MEM_get_memory_blocks_in_use() != 0) {
 		size_t mem_in_use = MEM_get_memory_in_use() + MEM_get_memory_in_use();
-		printf("Error: Not freed memory blocks: %d, total unfreed memory %f MB\n",
+		printf("Error: Not freed memory blocks: %u, total unfreed memory %f MB\n",
 		       MEM_get_memory_blocks_in_use(),
 		       (double)mem_in_use / 1024 / 1024);
 		MEM_printmemlist();

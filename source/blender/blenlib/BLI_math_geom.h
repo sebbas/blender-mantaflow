@@ -102,6 +102,12 @@ float        dist_squared_to_plane_v3(const float p[3], const float plane[4]);
 float dist_signed_to_plane_v3(const float p[3], const float plane[4]);
 float        dist_to_plane_v3(const float p[3], const float plane[4]);
 
+/* plane3 versions */
+float dist_signed_squared_to_plane3_v3(const float p[3], const float plane[4]);
+float        dist_squared_to_plane3_v3(const float p[3], const float plane[4]);
+float dist_signed_to_plane3_v3(const float p[3], const float plane[4]);
+float        dist_to_plane3_v3(const float p[3], const float plane[4]);
+
 float dist_squared_to_line_segment_v3(const float p[3], const float l1[3], const float l2[3]);
 float         dist_to_line_segment_v3(const float p[3], const float l1[3], const float l2[3]);
 float dist_squared_to_line_v3(const float p[3], const float l1[3], const float l2[3]);
@@ -137,12 +143,12 @@ void limit_dist_v3(float v1[3], float v2[3], const float dist);
 #define ISECT_LINE_LINE_EXACT        1
 #define ISECT_LINE_LINE_CROSS        2
 
-int isect_line_line_v2_point(const float v1[2], const float v2[2], const float v3[2], const float v4[2], float vi[2]);
+int isect_line_line_v2_point(const float v0[2], const float v1[2], const float v2[2], const float v3[2], float r_vi[2]);
 int isect_line_line_v2(const float a1[2], const float a2[2], const float b1[2], const float b2[2]);
 int isect_line_line_v2_int(const int a1[2], const int a2[2], const int b1[2], const int b2[2]);
 int isect_line_sphere_v3(const float l1[3], const float l2[3], const float sp[3], const float r, float r_p1[3], float r_p2[3]);
 int isect_line_sphere_v2(const float l1[2], const float l2[2], const float sp[2], const float r, float r_p1[2], float r_p2[2]);
-int isect_seg_seg_v2_point(const float v1[2], const float v2[2], const float v3[2], const float v4[2], float vi[2]);
+int isect_seg_seg_v2_point(const float v0[2], const float v1[2], const float v2[2], const float v3[2], float vi[2]);
 bool isect_seg_seg_v2(const float v1[2], const float v2[2], const float v3[2], const float v4[2]);
 
 int isect_line_line_epsilon_v3(
@@ -181,6 +187,11 @@ bool isect_ray_tri_threshold_v3(const float p1[3], const float d[3],
                                 const float v0[3], const float v1[3], const float v2[3], float *r_lambda, float r_uv[2], const float threshold);
 bool isect_ray_tri_epsilon_v3(const float p1[3], const float d[3],
                               const float v0[3], const float v1[3], const float v2[3], float *r_lambda, float r_uv[2], const float epsilon);
+bool isect_tri_tri_epsilon_v3(
+        const float t_a0[3], const float t_a1[3], const float t_a2[3],
+        const float t_b0[3], const float t_b1[3], const float t_b2[3],
+        float r_i1[3], float r_i2[3],
+        const float epsilon);
 
 /* point in polygon */
 bool isect_point_poly_v2(const float pt[2], const float verts[][2], const unsigned int nr, const bool use_holes);
@@ -259,6 +270,7 @@ void resolve_tri_uv_v3(float r_uv[2], const float st[3], const float st0[3], con
 void resolve_quad_uv_v2(float r_uv[2], const float st[2], const float st0[2], const float st1[2], const float st2[2], const float st3[2]);
 void resolve_quad_uv_v2_deriv(float r_uv[2], float r_deriv[2][2],
                               const float st[2], const float st0[2], const float st1[2], const float st2[2], const float st3[2]);
+float resolve_quad_u_v2(const float st[2], const float st0[2], const float st1[2], const float st2[2], const float st3[2]);
 
 /* use to find the point of a UV on a face */
 void interp_bilinear_quad_v3(float data[4][3], float u, float v, float res[3]);
@@ -292,6 +304,11 @@ void map_to_tube(float *r_u, float *r_v, const float x, const float y, const flo
 void map_to_sphere(float *r_u, float *r_v, const float x, const float y, const float z);
 
 /********************************** Normals **********************************/
+
+void accumulate_vertex_normals_tri(
+        float n1[3], float n2[3], float n3[3],
+        const float f_no[3],
+        const float co1[3], const float co2[3], const float co3[3]);
 
 void accumulate_vertex_normals(
         float n1[3], float n2[3], float n3[3], float n4[3],
@@ -344,6 +361,7 @@ bool form_factor_visible_quad(const float p[3], const float n[3],
 float form_factor_hemi_poly(float p[3], float n[3],
                             float v1[3], float v2[3], float v3[3], float v4[3]);
 
+void axis_dominant_v3_to_m3_negate(float r_mat[3][3], const float normal[3]);
 void  axis_dominant_v3_to_m3(float r_mat[3][3], const float normal[3]);
 
 MINLINE void  axis_dominant_v3(int *r_axis_a, int *r_axis_b, const float axis[3]);

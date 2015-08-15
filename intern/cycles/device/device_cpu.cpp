@@ -19,6 +19,15 @@
 
 /* So ImathMath is included before our kernel_cpu_compat. */
 #ifdef WITH_OSL
+#  if defined(_MSC_VER)
+/* Prevent OSL from polluting the context with weird macros from windows.h.
+ * TODO(sergey): Ideally it's only enough to have class/struct declarations in
+ * the header and skip header include here.
+ */
+#    define NOGDI
+#    define NOMINMAX
+#    define WIN32_LEAN_AND_MEAN
+#  endif
 #  include <OSL/oslexec.h>
 #endif
 
@@ -38,6 +47,7 @@
 #include "util_debug.h"
 #include "util_foreach.h"
 #include "util_function.h"
+#include "util_logging.h"
 #include "util_opengl.h"
 #include "util_progress.h"
 #include "util_system.h"
@@ -75,19 +85,21 @@ public:
 		task_pool.stop();
 	}
 
-	void mem_alloc(device_memory& mem, MemoryType type)
+	void mem_alloc(device_memory& mem, MemoryType /*type*/)
 	{
 		mem.device_pointer = mem.data_pointer;
 		mem.device_size = mem.memory_size();
 		stats.mem_alloc(mem.device_size);
 	}
 
-	void mem_copy_to(device_memory& mem)
+	void mem_copy_to(device_memory& /*mem*/)
 	{
 		/* no-op */
 	}
 
-	void mem_copy_from(device_memory& mem, int y, int w, int h, int elem)
+	void mem_copy_from(device_memory& /*mem*/,
+	                   int /*y*/, int /*w*/, int /*h*/,
+	                   int /*elem*/)
 	{
 		/* no-op */
 	}
@@ -111,9 +123,20 @@ public:
 		kernel_const_copy(&kernel_globals, name, host, size);
 	}
 
-	void tex_alloc(const char *name, device_memory& mem, InterpolationType interpolation, bool periodic)
+	void tex_alloc(const char *name,
+	               device_memory& mem,
+	               InterpolationType interpolation,
+	               ExtensionType extension)
 	{
-		kernel_tex_copy(&kernel_globals, name, mem.data_pointer, mem.data_width, mem.data_height, mem.data_depth, interpolation);
+		VLOG(1) << "Texture allocate: " << name << ", " << mem.memory_size() << " bytes.";
+		kernel_tex_copy(&kernel_globals,
+		                name,
+		                mem.data_pointer,
+		                mem.data_width,
+		                mem.data_height,
+		                mem.data_depth,
+		                interpolation,
+		                extension);
 		mem.device_pointer = mem.data_pointer;
 		mem.device_size = mem.memory_size();
 		stats.mem_alloc(mem.device_size);
@@ -207,7 +230,7 @@ public:
 			int end_sample = tile.start_sample + tile.num_samples;
 
 			for(int sample = start_sample; sample < end_sample; sample++) {
-				if (task.get_cancel() || task_pool.canceled()) {
+				if(task.get_cancel() || task_pool.canceled()) {
 					if(task.need_finish_queue == false)
 						break;
 				}
@@ -368,7 +391,7 @@ public:
 
 	int get_split_task_count(DeviceTask& task)
 	{
-		if (task.type == DeviceTask::SHADER)
+		if(task.type == DeviceTask::SHADER)
 			return task.get_subtask_count(TaskScheduler::num_threads(), 256);
 		else
 			return task.get_subtask_count(TaskScheduler::num_threads());

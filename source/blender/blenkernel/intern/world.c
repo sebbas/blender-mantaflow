@@ -63,7 +63,7 @@ void BKE_world_free_ex(World *wrld, bool do_id_user)
 	}
 	BKE_previewimg_free(&wrld->preview);
 
-	BKE_free_animdata((ID *)wrld);
+	BKE_animdata_free((ID *)wrld);
 
 	/* is no lib link block, but world extension */
 	if (wrld->nodetree) {
@@ -74,7 +74,7 @@ void BKE_world_free_ex(World *wrld, bool do_id_user)
 	if (wrld->gpumaterial.first)
 		GPU_material_free(&wrld->gpumaterial);
 	
-	BKE_icon_delete((struct ID *)wrld);
+	BKE_icon_id_delete((struct ID *)wrld);
 	wrld->id.icon_id = 0;
 }
 

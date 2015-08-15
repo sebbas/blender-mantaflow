@@ -59,7 +59,7 @@
 #include "BLI_threads.h"
 #endif
 
-void modifier_init_texture(Scene *scene, Tex *tex)
+void modifier_init_texture(const Scene *scene, Tex *tex)
 {
 	if (!tex)
 		return;
@@ -306,5 +306,6 @@ void modifier_type_init(ModifierTypeInfo *types[])
 	INIT_TYPE(Wireframe);
 	INIT_TYPE(DataTransfer);
 	INIT_TYPE(NormalEdit);
+	INIT_TYPE(CorrectiveSmooth);
 #undef INIT_TYPE
 }

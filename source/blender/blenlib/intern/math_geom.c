@@ -442,6 +442,22 @@ float dist_squared_to_plane_v3(const float pt[3], const float plane[4])
 	return len_sq * (fac * fac);
 }
 
+float dist_signed_squared_to_plane3_v3(const float pt[3], const float plane[3])
+{
+	const float len_sq = len_squared_v3(plane);
+	const float side = dot_v3v3(plane, pt);  /* only difference with 'plane[4]' version */
+	const float fac = side / len_sq;
+	return copysignf(len_sq * (fac * fac), side);
+}
+float dist_squared_to_plane3_v3(const float pt[3], const float plane[3])
+{
+	const float len_sq = len_squared_v3(plane);
+	const float side = dot_v3v3(plane, pt);  /* only difference with 'plane[4]' version */
+	const float fac = side / len_sq;
+	/* only difference to code above - no 'copysignf' */
+	return len_sq * (fac * fac);
+}
+
 /**
  * Return the signed distance from the point to the plane.
  */
@@ -455,6 +471,18 @@ float dist_signed_to_plane_v3(const float pt[3], const float plane[4])
 float dist_to_plane_v3(const float pt[3], const float plane[4])
 {
 	return fabsf(dist_signed_to_plane_v3(pt, plane));
+}
+
+float dist_signed_to_plane3_v3(const float pt[3], const float plane[3])
+{
+	const float len_sq = len_squared_v3(plane);
+	const float side = dot_v3v3(plane, pt);  /* only difference with 'plane[4]' version */
+	const float fac = side / len_sq;
+	return sqrtf(len_sq) * fac;
+}
+float dist_to_plane3_v3(const float pt[3], const float plane[3])
+{
+	return fabsf(dist_signed_to_plane3_v3(pt, plane));
 }
 
 /* distance v1 to line-piece l1-l2 in 3D */
@@ -514,9 +542,10 @@ float dist_signed_squared_to_corner_v3v3v3(
         const float axis_ref[3])
 {
 	float dir_a[3], dir_b[3];
-	float plane_a[4], plane_b[4];
+	float plane_a[3], plane_b[3];
 	float dist_a, dist_b;
 	float axis[3];
+	float s_p_v2[3];
 	bool flip = false;
 
 	sub_v3_v3v3(dir_a, v1, v2);
@@ -537,16 +566,20 @@ float dist_signed_squared_to_corner_v3v3v3(
 	cross_v3_v3v3(plane_b, axis, dir_b);
 
 #if 0
-	plane_from_point_normal_v3(plane_a, center, l1);
-	plane_from_point_normal_v3(plane_b, center, l2);
-#else
-	/* do inline */
-	plane_a[3] = -dot_v3v3(plane_a, v2);
-	plane_b[3] = -dot_v3v3(plane_b, v2);
-#endif
+	plane_from_point_normal_v3(plane_a, v2, plane_a);
+	plane_from_point_normal_v3(plane_b, v2, plane_b);
 
 	dist_a = dist_signed_squared_to_plane_v3(p, plane_a);
 	dist_b = dist_signed_squared_to_plane_v3(p, plane_b);
+#else
+	/* calculate without he planes 4th component to avoid float precision issues */
+	sub_v3_v3v3(s_p_v2, p, v2);
+
+	dist_a = dist_signed_squared_to_plane3_v3(s_p_v2, plane_a);
+	dist_b = dist_signed_squared_to_plane3_v3(s_p_v2, plane_b);
+#endif
+
+
 
 	if (flip) {
 		return min_ff(dist_a, dist_b);
@@ -660,19 +693,28 @@ int isect_line_line_v2_int(const int v1[2], const int v2[2], const int v3[2], co
 }
 
 /* intersect Line-Line, floats - gives intersection point */
-int isect_line_line_v2_point(const float v1[2], const float v2[2], const float v3[2], const float v4[2], float vi[2])
+int isect_line_line_v2_point(const float v0[2], const float v1[2], const float v2[2], const float v3[2], float r_vi[2])
 {
+	float s10[2], s32[2];
 	float div;
 
-	div = (v2[0] - v1[0]) * (v4[1] - v3[1]) - (v2[1] - v1[1]) * (v4[0] - v3[0]);
-	if (div == 0.0f) return ISECT_LINE_LINE_COLINEAR;
+	sub_v2_v2v2(s10, v1, v0);
+	sub_v2_v2v2(s32, v3, v2);
 
-	vi[0] = ((v3[0] - v4[0]) * (v1[0] * v2[1] - v1[1] * v2[0]) - (v1[0] - v2[0]) * (v3[0] * v4[1] - v3[1] * v4[0])) / div;
-	vi[1] = ((v3[1] - v4[1]) * (v1[0] * v2[1] - v1[1] * v2[0]) - (v1[1] - v2[1]) * (v3[0] * v4[1] - v3[1] * v4[0])) / div;
+	div = cross_v2v2(s10, s32);
+	if (div != 0.0f) {
+		const float u = cross_v2v2(v1, v0);
+		const float v = cross_v2v2(v3, v2);
 
-	return ISECT_LINE_LINE_CROSS;
+		r_vi[0] = ((s32[0] * u) - (s10[0] * v)) / div;
+		r_vi[1] = ((s32[1] * u) - (s10[1] * v)) / div;
+
+		return ISECT_LINE_LINE_CROSS;
+	}
+	else {
+		return ISECT_LINE_LINE_COLINEAR;
+	}
 }
-
 
 /* intersect Line-Line, floats */
 int isect_line_line_v2(const float v1[2], const float v2[2], const float v3[2], const float v4[2])
@@ -697,37 +739,73 @@ int isect_line_line_v2(const float v1[2], const float v2[2], const float v3[2], 
  *  -1: collinear
  *   1: intersection
  */
-int isect_seg_seg_v2_point(const float v1[2], const float v2[2], const float v3[2], const float v4[2], float vi[2])
+int isect_seg_seg_v2_point(const float v0[2], const float v1[2], const float v2[2], const float v3[2], float r_vi[2])
 {
-	float a1, a2, b1, b2, c1, c2, d;
-	float u, v;
+	float s10[2], s32[2], s30[2], d;
 	const float eps = 1e-6f;
 	const float eps_sq = eps * eps;
 
-	a1 = v2[0] - v1[0];
-	b1 = v4[0] - v3[0];
-	c1 = v1[0] - v4[0];
+	sub_v2_v2v2(s10, v1, v0);
+	sub_v2_v2v2(s32, v3, v2);
+	sub_v2_v2v2(s30, v3, v0);
 
-	a2 = v2[1] - v1[1];
-	b2 = v4[1] - v3[1];
-	c2 = v1[1] - v4[1];
+	d = cross_v2v2(s10, s32);
 
-	d = a1 * b2 - a2 * b1;
+	if (d != 0) {
+		float u, v;
 
-	if (d == 0) {
-		if (a1 * c2 - a2 * c1 == 0.0f && b1 * c2 - b2 * c1 == 0.0f) { /* equal lines */
-			float a[2], b[2], c[2];
-			float u2;
+		u = cross_v2v2(s30, s32) / d;
+		v = cross_v2v2(s10, s30) / d;
 
-			if (equals_v2v2(v1, v2)) {
-				if (len_squared_v2v2(v3, v4) > eps_sq) {
+		if ((u >= -eps && u <= 1.0f + eps) &&
+		    (v >= -eps && v <= 1.0f + eps))
+		{
+			/* intersection */
+			float vi_test[2];
+			float s_vi_v2[2];
+
+			madd_v2_v2v2fl(vi_test, v0, s10, u);
+
+			/* When 'd' approaches zero, float precision lets non-overlapping co-linear segments
+			 * detect as an intersection. So re-calculate 'v' to ensure the point overlaps both.
+			 * see T45123 */
+
+			/* inline since we have most vars already */
+#if 0
+			v = line_point_factor_v2(ix_test, v2, v3);
+#else
+			sub_v2_v2v2(s_vi_v2, vi_test, v2);
+			v = (dot_v2v2(s32, s_vi_v2) / dot_v2v2(s32, s32));
+#endif
+			if (v >= -eps && v <= 1.0f + eps) {
+				copy_v2_v2(r_vi, vi_test);
+				return 1;
+			}
+		}
+
+		/* out of segment intersection */
+		return -1;
+	}
+	else {
+		if ((cross_v2v2(s10, s30) == 0.0f) &&
+		    (cross_v2v2(s32, s30) == 0.0f))
+		{
+			/* equal lines */
+			float s20[2];
+			float u_a, u_b;
+
+			if (equals_v2v2(v0, v1)) {
+				if (len_squared_v2v2(v2, v3) > eps_sq) {
 					/* use non-point segment as basis */
+					SWAP(const float *, v0, v2);
 					SWAP(const float *, v1, v3);
-					SWAP(const float *, v2, v4);
+
+					sub_v2_v2v2(s10, v1, v0);
+					sub_v2_v2v2(s30, v3, v0);
 				}
 				else { /* both of segments are points */
-					if (equals_v2v2(v1, v3)) { /* points are equal */
-						copy_v2_v2(vi, v1);
+					if (equals_v2v2(v0, v2)) { /* points are equal */
+						copy_v2_v2(r_vi, v0);
 						return 1;
 					}
 
@@ -736,19 +814,21 @@ int isect_seg_seg_v2_point(const float v1[2], const float v2[2], const float v3[
 				}
 			}
 
-			sub_v2_v2v2(a, v3, v1);
-			sub_v2_v2v2(b, v2, v1);
-			sub_v2_v2v2(c, v2, v1);
-			u = dot_v2v2(a, b) / dot_v2v2(c, c);
+			sub_v2_v2v2(s20, v2, v0);
 
-			sub_v2_v2v2(a, v4, v1);
-			u2 = dot_v2v2(a, b) / dot_v2v2(c, c);
+			u_a = dot_v2v2(s20, s10) / dot_v2v2(s10, s10);
+			u_b = dot_v2v2(s30, s10) / dot_v2v2(s10, s10);
 
-			if (u > u2) SWAP(float, u, u2);
+			if (u_a > u_b)
+				SWAP(float, u_a, u_b);
 
-			if (u > 1.0f + eps || u2 < -eps) return -1;  /* non-ovlerlapping segments */
-			else if (max_ff(0.0f, u) == min_ff(1.0f, u2)) { /* one common point: can return result */
-				interp_v2_v2v2(vi, v1, v2, max_ff(0, u));
+			if (u_a > 1.0f + eps || u_b < -eps) {
+				/* non-overlapping segments */
+				return -1;
+			}
+			else if (max_ff(0.0f, u_a) == min_ff(1.0f, u_b)) {
+				/* one common point: can return result */
+				madd_v2_v2v2fl(r_vi, v0, s10, max_ff(0, u_a));
 				return 1;
 			}
 		}
@@ -756,22 +836,13 @@ int isect_seg_seg_v2_point(const float v1[2], const float v2[2], const float v3[
 		/* lines are collinear */
 		return -1;
 	}
-
-	u = (c2 * b1 - b2 * c1) / d;
-	v = (c1 * a2 - a1 * c2) / d;
-
-	if (u >= -eps && u <= 1.0f + eps && v >= -eps && v <= 1.0f + eps) { /* intersection */
-		interp_v2_v2v2(vi, v1, v2, u);
-		return 1;
-	}
-
-	/* out of segment intersection */
-	return -1;
 }
 
 bool isect_seg_seg_v2(const float v1[2], const float v2[2], const float v3[2], const float v4[2])
 {
-#define CCW(A, B, C) ((C[1] - A[1]) * (B[0] - A[0]) > (B[1]-A[1]) * (C[0]-A[0]))
+#define CCW(A, B, C) \
+	((C[1] - A[1]) * (B[0] - A[0]) > \
+	 (B[1] - A[1]) * (C[0] - A[0]))
 
 	return CCW(v1, v3, v4) != CCW(v2, v3, v4) && CCW(v1, v2, v3) != CCW(v1, v2, v4);
 
@@ -1404,6 +1475,84 @@ bool isect_plane_plane_v3(float r_isect_co[3], float r_isect_no[3],
 	return isect_line_plane_v3(r_isect_co, plane_a_co, plane_a_co_other, plane_b_co, plane_b_no);
 }
 
+/**
+ * Intersect two triangles.
+ *
+ * \param r_i1, r_i2: Optional arguments to retrieve the overlapping edge between the 2 triangles.
+ * \return true when the triangles intersect.
+ *
+ * \note intersections between coplanar triangles are currently undetected.
+ */
+bool isect_tri_tri_epsilon_v3(
+        const float t_a0[3], const float t_a1[3], const float t_a2[3],
+        const float t_b0[3], const float t_b1[3], const float t_b2[3],
+        float r_i1[3], float r_i2[3],
+        const float epsilon)
+{
+	const float *tri_pair[2][3] = {{t_a0, t_a1, t_a2}, {t_b0, t_b1, t_b2}};
+	float no_a[3], no_b[3];
+	float isect_co[3], isect_no[3];
+
+	BLI_assert((r_i1 != NULL) == (r_i2 != NULL));
+
+	normal_tri_v3(no_a, UNPACK3(tri_pair[0]));
+	normal_tri_v3(no_b, UNPACK3(tri_pair[1]));
+
+	if (isect_plane_plane_v3(isect_co, isect_no, t_a0, no_a, t_b0, no_b)) {
+		float isect_co_other[3];
+		struct {
+			float min, max;
+		} range[2] = {{FLT_MAX, -FLT_MAX}, {FLT_MAX, -FLT_MAX}};
+		int t;
+
+		add_v3_v3v3(isect_co_other, isect_co, isect_no);
+
+		/* For both triangles, find the overlap with the line defined by (isect_co, isect_co_other).
+		 * When the ranges overlap we know the triangles do too. */
+		for (t = 0; t < 2; t++) {
+			int j, j_prev;
+
+			for (j = 0, j_prev = 2; j < 3; j_prev = j++) {
+				/* intersection point on the line intersecting both planes */
+				float ix_span[3];
+				/* intersection point on the triangles edge */
+				float ix_tri[3];
+
+				if (isect_line_line_epsilon_v3(
+				        isect_co, isect_co_other,
+				        tri_pair[t][j], tri_pair[t][j_prev],
+				        ix_span, ix_tri,
+				        epsilon) == 2)
+				{
+					const float edge_fac = line_point_factor_v3(ix_tri, tri_pair[t][j], tri_pair[t][j_prev]);
+					if (edge_fac >= -epsilon && edge_fac <= 1.0f + epsilon) {
+						const float span_fac = dist_signed_squared_to_plane3_v3(ix_tri, isect_no);
+						range[t].min = min_ff(range[t].min, span_fac);
+						range[t].max = max_ff(range[t].max, span_fac);
+					}
+				}
+			}
+
+			if (range[t].min == FLT_MAX) {
+				return false;
+			}
+		}
+
+		if (((range[0].min > range[1].max) ||
+		     (range[0].max < range[1].min)) == 0)
+		{
+			if (r_i1 && r_i2) {
+				project_plane_v3_v3v3(isect_co, isect_co, isect_no);
+				madd_v3_v3v3fl(r_i1, isect_co, isect_no, sqrtf_signed(max_ff(range[0].min, range[1].min)));
+				madd_v3_v3v3fl(r_i2, isect_co, isect_no, sqrtf_signed(min_ff(range[0].max, range[1].max)));
+			}
+
+			return true;
+		}
+	}
+
+	return false;
+}
 
 /* Adapted from the paper by Kasper Fauerby */
 
@@ -2337,7 +2486,26 @@ void axis_dominant_v3_to_m3(float r_mat[3][3], const float normal[3])
 	transpose_m3(r_mat);
 
 	BLI_assert(!is_negative_m3(r_mat));
-	BLI_assert(fabsf(dot_m3_v3_row_z(r_mat, normal) - 1.0f) < BLI_ASSERT_UNIT_EPSILON);
+	BLI_assert((fabsf(dot_m3_v3_row_z(r_mat, normal) - 1.0f) < BLI_ASSERT_UNIT_EPSILON) || is_zero_v3(normal));
+}
+
+/**
+ * Same as axis_dominant_v3_to_m3, but flips the normal
+ */
+void axis_dominant_v3_to_m3_negate(float r_mat[3][3], const float normal[3])
+{
+	BLI_ASSERT_UNIT_V3(normal);
+
+	negate_v3_v3(r_mat[2], normal);
+	ortho_basis_v3v3_v3(r_mat[0], r_mat[1], r_mat[2]);
+
+	BLI_ASSERT_UNIT_V3(r_mat[0]);
+	BLI_ASSERT_UNIT_V3(r_mat[1]);
+
+	transpose_m3(r_mat);
+
+	BLI_assert(!is_negative_m3(r_mat));
+	BLI_assert((dot_m3_v3_row_z(r_mat, normal) < BLI_ASSERT_UNIT_EPSILON) || is_zero_v3(normal));
 }
 
 /****************************** Interpolation ********************************/
@@ -3101,6 +3269,43 @@ void resolve_quad_uv_v2_deriv(float r_uv[2], float r_deriv[2][2],
 	}
 }
 
+/* a version of resolve_quad_uv_v2 that only calculates the 'u' */
+float resolve_quad_u_v2(
+        const float st[2],
+        const float st0[2], const float st1[2], const float st2[2], const float st3[2])
+{
+	const double signed_area = (st0[0] * st1[1] - st0[1] * st1[0]) + (st1[0] * st2[1] - st1[1] * st2[0]) +
+	                           (st2[0] * st3[1] - st2[1] * st3[0]) + (st3[0] * st0[1] - st3[1] * st0[0]);
+
+	/* X is 2D cross product (determinant)
+	 * A = (p0 - p) X (p0 - p3)*/
+	const double a = (st0[0] - st[0]) * (st0[1] - st3[1]) - (st0[1] - st[1]) * (st0[0] - st3[0]);
+
+	/* B = ( (p0 - p) X (p1 - p2) + (p1 - p) X (p0 - p3) ) / 2 */
+	const double b = 0.5 * (double)(((st0[0] - st[0]) * (st1[1] - st2[1]) - (st0[1] - st[1]) * (st1[0] - st2[0])) +
+	                                ((st1[0] - st[0]) * (st0[1] - st3[1]) - (st1[1] - st[1]) * (st0[0] - st3[0])));
+
+	/* C = (p1-p) X (p1-p2) */
+	const double fC = (st1[0] - st[0]) * (st1[1] - st2[1]) - (st1[1] - st[1]) * (st1[0] - st2[0]);
+	double denom = a - 2 * b + fC;
+
+	if (IS_ZERO(denom) != 0) {
+		const double fDen = a - fC;
+		if (IS_ZERO(fDen) == 0)
+			return (float)(a / fDen);
+		else
+			return 0.0f;
+	}
+	else {
+		const double desc_sq = b * b - a * fC;
+		const double desc = sqrt(desc_sq < 0.0 ? 0.0 : desc_sq);
+		const double s = signed_area > 0 ? (-1.0) : 1.0;
+
+		return (float)(((a - b) + s * desc) / denom);
+	}
+}
+
+
 #undef IS_ZERO
 
 /* reverse of the functions above */
@@ -3430,6 +3635,40 @@ void map_to_sphere(float *r_u, float *r_v, const float x, const float y, const f
 }
 
 /********************************* Normals **********************************/
+
+void accumulate_vertex_normals_tri(
+        float n1[3], float n2[3], float n3[3],
+        const float f_no[3],
+        const float co1[3], const float co2[3], const float co3[3])
+{
+	float vdiffs[3][3];
+	const int nverts = 3;
+
+	/* compute normalized edge vectors */
+	sub_v3_v3v3(vdiffs[0], co2, co1);
+	sub_v3_v3v3(vdiffs[1], co3, co2);
+	sub_v3_v3v3(vdiffs[2], co1, co3);
+
+	normalize_v3(vdiffs[0]);
+	normalize_v3(vdiffs[1]);
+	normalize_v3(vdiffs[2]);
+
+	/* accumulate angle weighted face normal */
+	{
+		float *vn[] = {n1, n2, n3};
+		const float *prev_edge = vdiffs[nverts - 1];
+		int i;
+
+		for (i = 0; i < nverts; i++) {
+			const float *cur_edge = vdiffs[i];
+			const float fac = saacos(-dot_v3v3(cur_edge, prev_edge));
+
+			/* accumulate */
+			madd_v3_v3fl(vn[i], f_no, fac);
+			prev_edge = cur_edge;
+		}
+	}
+}
 
 void accumulate_vertex_normals(
         float n1[3], float n2[3], float n3[3], float n4[3],

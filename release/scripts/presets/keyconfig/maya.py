@@ -698,10 +698,10 @@ kmi.properties.level = 5
 km = kc.keymaps.new('Knife Tool Modal Map', space_type='EMPTY', region_type='WINDOW', modal=True)
 
 kmi = km.keymap_items.new_modal('CANCEL', 'ESC', 'ANY', any=True)
+kmi = km.keymap_items.new_modal('ADD_CUT', 'LEFTMOUSE', 'ANY')
 kmi = km.keymap_items.new_modal('PANNING', 'LEFTMOUSE', 'ANY', alt=True)
 kmi = km.keymap_items.new_modal('PANNING', 'MIDDLEMOUSE', 'ANY', alt=True)
 kmi = km.keymap_items.new_modal('PANNING', 'RIGHTMOUSE', 'ANY', alt=True)
-kmi = km.keymap_items.new_modal('ADD_CUT', 'LEFTMOUSE', 'PRESS', any=True)
 kmi = km.keymap_items.new_modal('CANCEL', 'RIGHTMOUSE', 'ANY')
 kmi = km.keymap_items.new_modal('CONFIRM', 'RET', 'PRESS', any=True)
 kmi = km.keymap_items.new_modal('CONFIRM', 'NUMPAD_ENTER', 'PRESS', any=True)
@@ -1137,8 +1137,6 @@ kmi = km.keymap_items.new('anim.channels_move', 'PAGE_UP', 'PRESS', shift=True)
 kmi.properties.direction = 'TOP'
 kmi = km.keymap_items.new('anim.channels_move', 'PAGE_DOWN', 'PRESS', shift=True)
 kmi.properties.direction = 'BOTTOM'
-kmi = km.keymap_items.new('anim.channels_visibility_set', 'V', 'PRESS')
-kmi = km.keymap_items.new('anim.channels_visibility_toggle', 'V', 'PRESS', shift=True)
 
 # Map UV Editor
 km = kc.keymaps.new('UV Editor', space_type='EMPTY', region_type='WINDOW', modal=False)
@@ -1499,11 +1497,9 @@ kmi = km.keymap_items.new('node.group_edit', 'TAB', 'PRESS')
 kmi = km.keymap_items.new('node.read_renderlayers', 'R', 'PRESS', ctrl=True)
 kmi = km.keymap_items.new('node.read_fullsamplelayers', 'R', 'PRESS', shift=True)
 kmi = km.keymap_items.new('node.render_changed', 'Z', 'PRESS')
-kmi = km.keymap_items.new('transform.translate', 'W', 'PRESS')
-kmi = km.keymap_items.new('transform.translate', 'EVT_TWEAK_A', 'ANY')
-kmi.properties.release_confirm = True
-kmi = km.keymap_items.new('transform.translate', 'EVT_TWEAK_S', 'ANY')
-kmi.properties.release_confirm = True
+kmi = km.keymap_items.new('node.translate_attach', 'W', 'PRESS')
+kmi = km.keymap_items.new('node.translate_attach', 'EVT_TWEAK_A', 'ANY')
+kmi = km.keymap_items.new('node.translate_attach', 'EVT_TWEAK_S', 'ANY')
 kmi = km.keymap_items.new('transform.rotate', 'E', 'PRESS')
 kmi = km.keymap_items.new('transform.resize', 'R', 'PRESS')
 kmi = km.keymap_items.new('node.move_detach_links', 'D', 'PRESS', alt=True)

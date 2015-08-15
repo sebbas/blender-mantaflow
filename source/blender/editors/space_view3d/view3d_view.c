@@ -49,6 +49,7 @@
 #include "BKE_main.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
+#include "BKE_screen.h"
 
 #include "BIF_gl.h"
 #include "BIF_glutil.h"
@@ -688,7 +689,7 @@ static bool view3d_boundbox_clip_m4(const BoundBox *bb, float persmatob[4][4])
 	return false;
 }
 
-bool ED_view3d_boundbox_clip_ex(RegionView3D *rv3d, const BoundBox *bb, float obmat[4][4])
+bool ED_view3d_boundbox_clip_ex(const RegionView3D *rv3d, const BoundBox *bb, float obmat[4][4])
 {
 	/* return 1: draw */
 
@@ -697,7 +698,7 @@ bool ED_view3d_boundbox_clip_ex(RegionView3D *rv3d, const BoundBox *bb, float ob
 	if (bb == NULL) return true;
 	if (bb->flag & BOUNDBOX_DISABLED) return true;
 
-	mul_m4_m4m4(persmatob, rv3d->persmat, obmat);
+	mul_m4_m4m4(persmatob, (float(*)[4])rv3d->persmat, obmat);
 
 	return view3d_boundbox_clip_m4(bb, persmatob);
 }
@@ -710,7 +711,7 @@ bool ED_view3d_boundbox_clip(RegionView3D *rv3d, const BoundBox *bb)
 	return view3d_boundbox_clip_m4(bb, rv3d->persmatob);
 }
 
-float ED_view3d_depth_read_cached(ViewContext *vc, int x, int y)
+float ED_view3d_depth_read_cached(const ViewContext *vc, int x, int y)
 {
 	ViewDepths *vd = vc->rv3d->depths;
 		
@@ -729,16 +730,19 @@ void ED_view3d_depth_tag_update(RegionView3D *rv3d)
 		rv3d->depths->damaged = true;
 }
 
-void ED_view3d_dist_range_get(struct View3D *v3d,
-                              float r_dist_range[2])
+void ED_view3d_dist_range_get(
+        const View3D *v3d,
+        float r_dist_range[2])
 {
 	r_dist_range[0] = v3d->grid * 0.001f;
 	r_dist_range[1] = v3d->far * 10.0f;
 }
 
 /* copies logic of get_view3d_viewplane(), keep in sync */
-bool ED_view3d_clip_range_get(View3D *v3d, RegionView3D *rv3d, float *r_clipsta, float *r_clipend,
-                              const bool use_ortho_factor)
+bool ED_view3d_clip_range_get(
+        const View3D *v3d, const RegionView3D *rv3d,
+        float *r_clipsta, float *r_clipend,
+        const bool use_ortho_factor)
 {
 	CameraParams params;
 
@@ -758,8 +762,9 @@ bool ED_view3d_clip_range_get(View3D *v3d, RegionView3D *rv3d, float *r_clipsta,
 }
 
 /* also exposed in previewrender.c */
-bool ED_view3d_viewplane_get(View3D *v3d, RegionView3D *rv3d, int winx, int winy,
-                             rctf *r_viewplane, float *r_clipsta, float *r_clipend, float *r_pixsize)
+bool ED_view3d_viewplane_get(
+        const View3D *v3d, const RegionView3D *rv3d, int winx, int winy,
+        rctf *r_viewplane, float *r_clipsta, float *r_clipend, float *r_pixsize)
 {
 	CameraParams params;
 
@@ -780,7 +785,13 @@ bool ED_view3d_viewplane_get(View3D *v3d, RegionView3D *rv3d, int winx, int winy
  */
 void ED_view3d_polygon_offset(const RegionView3D *rv3d, const float dist)
 {
-	float viewdist = rv3d->dist;
+	float viewdist;
+
+	if (rv3d->rflag & RV3D_ZOFFSET_DISABLED) {
+		return;
+	}
+
+	viewdist = rv3d->dist;
 
 	/* special exception for ortho camera (viewdist isnt used for perspective cameras) */
 	if (dist != 0.0f) {
@@ -797,7 +808,7 @@ void ED_view3d_polygon_offset(const RegionView3D *rv3d, const float dist)
 /**
  * \param rect optional for picking (can be NULL).
  */
-void view3d_winmatrix_set(ARegion *ar, View3D *v3d, const rctf *rect)
+void view3d_winmatrix_set(ARegion *ar, const View3D *v3d, const rctf *rect)
 {
 	RegionView3D *rv3d = ar->regiondata;
 	rctf viewplane;
@@ -917,7 +928,7 @@ bool ED_view3d_lock(RegionView3D *rv3d)
 }
 
 /* don't set windows active in here, is used by renderwin too */
-void view3d_viewmatrix_set(Scene *scene, View3D *v3d, RegionView3D *rv3d)
+void view3d_viewmatrix_set(Scene *scene, const View3D *v3d, RegionView3D *rv3d)
 {
 	if (rv3d->persp == RV3D_CAMOB) {      /* obs/camera */
 		if (v3d->camera) {
@@ -956,7 +967,7 @@ void view3d_viewmatrix_set(Scene *scene, View3D *v3d, RegionView3D *rv3d)
 		}
 		else if (v3d->ob_centre_cursor) {
 			float vec[3];
-			copy_v3_v3(vec, ED_view3d_cursor3d_get(scene, v3d));
+			copy_v3_v3(vec, ED_view3d_cursor3d_get(scene, (View3D *)v3d));
 			translate_m4(rv3d->viewmat, -vec[0], -vec[1], -vec[2]);
 			use_lock_ofs = true;
 		}
@@ -1214,7 +1225,7 @@ static bool view3d_localview_init(
 	View3D *v3d = sa->spacedata.first;
 	Base *base;
 	float min[3], max[3], box[3], mid[3];
-	float size = 0.0f, size_persp = 0.0f, size_ortho = 0.0f;
+	float size = 0.0f;
 	unsigned int locallay;
 	bool ok = false;
 
@@ -1252,13 +1263,6 @@ static bool view3d_localview_init(
 
 		sub_v3_v3v3(box, max, min);
 		size = max_fff(box[0], box[1], box[2]);
-
-		/* do not zoom closer than the near clipping plane */
-		size = max_ff(size, v3d->near * 1.5f);
-
-		/* perspective size (we always switch out of camera view so no need to use its lens size) */
-		size_persp = ED_view3d_radius_to_persp_dist(focallength_to_fov(v3d->lens, DEFAULT_SENSOR_WIDTH), size / 2.0f) * VIEW3D_MARGIN;
-		size_ortho = ED_view3d_radius_to_ortho_dist(v3d->lens, size / 2.0f) * VIEW3D_MARGIN;
 	}
 	
 	if (ok == true) {
@@ -1275,6 +1279,7 @@ static bool view3d_localview_init(
 		for (ar = sa->regionbase.first; ar; ar = ar->next) {
 			if (ar->regiontype == RGN_TYPE_WINDOW) {
 				RegionView3D *rv3d = ar->regiondata;
+				bool ok_dist = true;
 
 				/* new view values */
 				Object *camera_old = NULL;
@@ -1290,25 +1295,24 @@ static bool view3d_localview_init(
 					camera_old = v3d->camera;
 				}
 
-				/* perspective should be a bit farther away to look nice */
-				if (rv3d->persp != RV3D_ORTHO) {
-					dist_new = size_persp;
-				}
-				else {
-					dist_new = size_ortho;
+				if (rv3d->persp == RV3D_ORTHO) {
+					if (size < 0.0001f) {
+						ok_dist = false;
+					}
 				}
 
-				/* correction for window aspect ratio */
-				if (ar->winy > 2 && ar->winx > 2) {
-					float asp = (float)ar->winx / (float)ar->winy;
-					if (asp < 1.0f) asp = 1.0f / asp;
-					dist_new *= asp;
+				if (ok_dist) {
+					dist_new = ED_view3d_radius_to_dist(v3d, ar, rv3d->persp, true, (size / 2) * VIEW3D_MARGIN);
+					if (rv3d->persp == RV3D_PERSP) {
+						/* don't zoom closer than the near clipping plane */
+						dist_new = max_ff(dist_new, v3d->near * 1.5f);
+					}
 				}
 
 				ED_view3d_smooth_view_ex(
 				        wm, win, sa,
 				        v3d, ar, camera_old, NULL,
-				        ofs_new, NULL, &dist_new, NULL,
+				        ofs_new, NULL, ok_dist ? &dist_new : NULL, NULL,
 				        smooth_viewtx);
 			}
 		}
@@ -1571,7 +1575,6 @@ static int game_engine_poll(bContext *C)
 
 	if (CTX_wm_window(C) == NULL) return 0;
 	if ((screen = CTX_wm_screen(C)) == NULL) return 0;
-	if (CTX_wm_area(C) == NULL) return 0;
 
 	if (CTX_data_mode_enum(C) != CTX_MODE_OBJECT)
 		return 0;
@@ -1589,20 +1592,18 @@ bool ED_view3d_context_activate(bContext *C)
 	ARegion *ar;
 
 	/* sa can be NULL when called from python */
-	if (sa == NULL || sa->spacetype != SPACE_VIEW3D)
-		for (sa = sc->areabase.first; sa; sa = sa->next)
-			if (sa->spacetype == SPACE_VIEW3D)
-				break;
+	if (sa == NULL || sa->spacetype != SPACE_VIEW3D) {
+		sa = BKE_screen_find_big_area(sc, SPACE_VIEW3D, 0);
+	}
 
-	if (!sa)
+	if (sa == NULL) {
 		return false;
+	}
 	
-	for (ar = sa->regionbase.first; ar; ar = ar->next)
-		if (ar->regiontype == RGN_TYPE_WINDOW)
-			break;
-	
-	if (!ar)
+	ar = BKE_area_find_region_active_win(sa);
+	if (ar == NULL) {
 		return false;
+	}
 	
 	/* bad context switch .. */
 	CTX_wm_area_set(C, sa);
@@ -1715,19 +1716,114 @@ void VIEW3D_OT_game_start(wmOperatorType *ot)
 
 /* ************************************** */
 
-float ED_view3d_pixel_size(RegionView3D *rv3d, const float co[3])
+float ED_view3d_pixel_size(const RegionView3D *rv3d, const float co[3])
 {
-	return mul_project_m4_v3_zfac(rv3d->persmat, co) * rv3d->pixsize * U.pixelsize;
+	return mul_project_m4_v3_zfac((float(*)[4])rv3d->persmat, co) * rv3d->pixsize * U.pixelsize;
 }
 
-float ED_view3d_radius_to_persp_dist(const float angle, const float radius)
+float ED_view3d_radius_to_dist_persp(const float angle, const float radius)
 {
-	return (radius / 2.0f) * fabsf(1.0f / cosf((((float)M_PI) - angle) / 2.0f));
+	return radius * (1.0f / tanf(angle / 2.0f));
 }
 
-float ED_view3d_radius_to_ortho_dist(const float lens, const float radius)
+float ED_view3d_radius_to_dist_ortho(const float lens, const float radius)
 {
 	return radius / (DEFAULT_SENSOR_WIDTH / lens);
+}
+
+/**
+ * Return a new RegionView3D.dist value to fit the \a radius.
+ *
+ * \note Depth isn't taken into account, this will fit a flat plane exactly,
+ * but points towards the view (with a perspective projection),
+ * may be within the radius but outside the view. eg:
+ *
+ * <pre>
+ *           +
+ * pt --> + /^ radius
+ *         / |
+ *        /  |
+ * view  +   +
+ *        \  |
+ *         \ |
+ *          \|
+ *           +
+ * </pre>
+ *
+ * \param ar  Can be NULL if \a use_aspect is false.
+ * \param persp  Allow the caller to tell what kind of perspective to use (ortho/view/camera)
+ * \param use_aspect  Increase the distance to account for non 1:1 view aspect.
+ * \param radius  The radius will be fitted exactly, typically pre-scaled by a margin (#VIEW3D_MARGIN).
+ */
+float ED_view3d_radius_to_dist(
+        const View3D *v3d, const ARegion *ar,
+        const char persp, const bool use_aspect,
+        const float radius)
+{
+	float dist;
+
+	BLI_assert(ELEM(persp, RV3D_ORTHO, RV3D_PERSP, RV3D_CAMOB));
+	BLI_assert((persp != RV3D_CAMOB) || v3d->camera);
+
+	if (persp == RV3D_ORTHO) {
+		dist = ED_view3d_radius_to_dist_ortho(v3d->lens, radius);
+	}
+	else {
+		float lens, sensor_size, zoom;
+		float angle;
+
+		if (persp == RV3D_CAMOB) {
+			CameraParams params;
+			BKE_camera_params_init(&params);
+			params.clipsta = v3d->near;
+			params.clipend = v3d->far;
+			BKE_camera_params_from_object(&params, v3d->camera);
+
+			lens = params.lens;
+			sensor_size = BKE_camera_sensor_size(params.sensor_fit, params.sensor_x, params.sensor_y);
+
+			/* ignore 'rv3d->camzoom' because we wan't to fit to the cameras frame */
+			zoom = CAMERA_PARAM_ZOOM_INIT_CAMOB;
+		}
+		else {
+			lens = v3d->lens;
+			sensor_size = DEFAULT_SENSOR_WIDTH;
+			zoom = CAMERA_PARAM_ZOOM_INIT_PERSP;
+		}
+
+		angle = focallength_to_fov(lens, sensor_size);
+
+		/* zoom influences lens, correct this by scaling the angle as a distance (by the zoom-level) */
+		angle = atanf(tanf(angle / 2.0f) * zoom) * 2.0f;
+
+		dist = ED_view3d_radius_to_dist_persp(angle, radius);
+	}
+
+	if (use_aspect) {
+		const RegionView3D *rv3d = ar->regiondata;
+
+		float winx, winy;
+
+		if (persp == RV3D_CAMOB) {
+			/* camera frame x/y in pixels */
+			winx = ar->winx / rv3d->viewcamtexcofac[0];
+			winy = ar->winy / rv3d->viewcamtexcofac[1];
+		}
+		else {
+			winx = ar->winx;
+			winy = ar->winy;
+		}
+
+		if (winx && winy) {
+			float aspect = winx / winy;
+			if (aspect < 1.0f) {
+				aspect = 1.0f / aspect;
+			}
+			dist *= aspect;
+		}
+	}
+
+	return dist;
 }
 
 /* view matrix properties utilities */

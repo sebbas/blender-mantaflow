@@ -54,13 +54,13 @@ struct Heap {
 
 /* internal functions */
 
-#define HEAP_PARENT(i) ((i - 1) >> 1)
-#define HEAP_LEFT(i)   ((i << 1) + 1)
-#define HEAP_RIGHT(i)  ((i << 1) + 2)
-#define HEAP_COMPARE(a, b) (a->value < b->value)
+#define HEAP_PARENT(i) (((i) - 1) >> 1)
+#define HEAP_LEFT(i)   (((i) << 1) + 1)
+#define HEAP_RIGHT(i)  (((i) << 1) + 2)
+#define HEAP_COMPARE(a, b) ((a)->value < (b)->value)
 
 #if 0  /* UNUSED */
-#define HEAP_EQUALS(a, b) (a->value == b->value)
+#define HEAP_EQUALS(a, b) ((a)->value == (b)->value)
 #endif
 
 BLI_INLINE void heap_swap(Heap *heap, const unsigned int i, const unsigned int j)
@@ -183,8 +183,8 @@ HeapNode *BLI_heap_insert(Heap *heap, float value, void *ptr)
 		node = (HeapNode *)BLI_memarena_alloc(heap->arena, sizeof(*node));
 	}
 
-	node->value = value;
 	node->ptr = ptr;
+	node->value = value;
 	node->index = heap->size;
 
 	heap->tree[node->index] = node;

@@ -47,8 +47,7 @@
 
 #include "../generic/python_utildefines.h"
 
-typedef struct
-{
+typedef struct {
 	PyObject_HEAD
 	/* The string used to separate context from actual message in PY_TRANSLATE RNA props. */
 	const char *context_separator;
@@ -821,3 +820,12 @@ PyObject *BPY_app_translations_struct(void)
 
 	return ret;
 }
+
+void BPY_app_translations_end(void)
+{
+	/* Incase the object remains in a module's namespace, see T44127. */
+#ifdef WITH_INTERNATIONAL
+	_clear_translations_cache();
+#endif
+}
+

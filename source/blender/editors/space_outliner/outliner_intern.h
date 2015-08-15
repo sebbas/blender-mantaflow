@@ -36,12 +36,10 @@
 
 /* internal exports only */
 
-struct wmWindowManager;
 struct wmOperatorType;
 struct TreeStoreElem;
 struct bContext;
 struct Scene;
-struct ARegion;
 struct ID;
 struct Object;
 
@@ -58,6 +56,11 @@ typedef struct TreeElement {
 	void *directdata;          // Armature Bones, Base, Sequence, Strip...
 	PointerRNA rnaptr;         // RNA Pointer
 }  TreeElement;
+
+#define TREESTORE_ID_TYPE(_id) \
+	(ELEM(GS((_id)->name), ID_SCE, ID_LI, ID_OB, ID_ME, ID_CU, ID_MB, ID_MA, ID_TE, ID_IM, ID_LT, ID_LA, ID_CA) || \
+	 ELEM(GS((_id)->name), ID_KE, ID_WO, ID_SPK, ID_GR, ID_AR, ID_AC, ID_BR, ID_PA, ID_GD, ID_LS) || \
+	 ELEM(GS((_id)->name), ID_SCR, ID_WM, ID_TXT))  /* Only in 'blendfile' mode ... :/ */
 
 /* TreeElement->flag */
 #define TE_ACTIVE       1
@@ -246,6 +249,7 @@ void OUTLINER_OT_group_link(struct wmOperatorType *ot);
 /* outliner_tools.c ---------------------------------------------- */
 
 void OUTLINER_OT_operation(struct wmOperatorType *ot);
+void OUTLINER_OT_scene_operation(struct wmOperatorType *ot);
 void OUTLINER_OT_object_operation(struct wmOperatorType *ot);
 void OUTLINER_OT_group_operation(struct wmOperatorType *ot);
 void OUTLINER_OT_id_operation(struct wmOperatorType *ot);

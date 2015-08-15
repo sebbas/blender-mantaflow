@@ -38,11 +38,10 @@ struct GSet;
 struct ImBuf;
 struct Main;
 struct Mask;
-struct MovieClip;
 struct Scene;
 struct Sequence;
 struct SequenceModifierData;
-struct Strip;
+struct Stereo3dFormat;
 struct StripElem;
 struct bSound;
 
@@ -101,6 +100,7 @@ typedef struct SeqRenderData {
 	float motion_blur_shutter;
 	bool skip_cache;
 	bool is_proxy_render;
+	size_t view_id;
 } SeqRenderData;
 
 void BKE_sequencer_new_render_data(
@@ -225,6 +225,7 @@ void BKE_sequencer_base_clipboard_pointers_store(struct ListBase *seqbase);
 void BKE_sequencer_base_clipboard_pointers_restore(struct ListBase *seqbase, struct Main *bmain);
 
 void BKE_sequence_free(struct Scene *scene, struct Sequence *seq);
+void BKE_sequence_free_anim(struct Sequence *seq);
 const char *BKE_sequence_give_name(struct Sequence *seq);
 void BKE_sequence_calc(struct Scene *scene, struct Sequence *seq);
 void BKE_sequence_calc_disp(struct Scene *scene, struct Sequence *seq);
@@ -237,7 +238,7 @@ struct StripElem *BKE_sequencer_give_stripelem(struct Sequence *seq, int cfra);
 void BKE_sequencer_update_changed_seq_and_deps(struct Scene *scene, struct Sequence *changed_seq, int len_change, int ibuf_change);
 bool BKE_sequencer_input_have_to_preprocess(const SeqRenderData *context, struct Sequence *seq, float cfra);
 
-struct SeqIndexBuildContext *BKE_sequencer_proxy_rebuild_context(struct Main *bmain, struct Scene *scene, struct Sequence *seq, struct GSet *file_list);
+void BKE_sequencer_proxy_rebuild_context(struct Main *bmain, struct Scene *scene, struct Sequence *seq, struct GSet *file_list, ListBase *queue);
 void BKE_sequencer_proxy_rebuild(struct SeqIndexBuildContext *context, short *stop, short *do_update, float *progress);
 void BKE_sequencer_proxy_rebuild_finish(struct SeqIndexBuildContext *context, bool stop);
 
@@ -295,7 +296,7 @@ int BKE_sequence_effect_get_supports_mask(int seq_type);
  * Sequencer editing functions
  * **********************************************************************
  */
-   
+
 /* for transform but also could use elsewhere */
 int BKE_sequence_tx_get_final_left(struct Sequence *seq, bool metaclip);
 int BKE_sequence_tx_get_final_right(struct Sequence *seq, bool metaclip);
@@ -357,6 +358,10 @@ typedef struct SeqLoadInfo {
 	int len;        /* only for image strips */
 	char path[1024]; /* 1024 = FILE_MAX */
 
+	/* multiview */
+	char views_format;
+	struct Stereo3dFormat *stereo3d_format;
+
 	/* return values */
 	char name[64];
 	struct Sequence *seq_sound;  /* for movie's */
@@ -401,7 +406,7 @@ struct Sequence *BKE_sequencer_add_sound_strip(struct bContext *C, ListBase *seq
 struct Sequence *BKE_sequencer_add_movie_strip(struct bContext *C, ListBase *seqbasep, struct SeqLoadInfo *seq_load);
 
 /* view3d draw callback, run when not in background view */
-typedef struct ImBuf *(*SequencerDrawView)(struct Scene *, struct Object *, int, int, unsigned int, int, bool, bool, bool, int, char[256]);
+typedef struct ImBuf *(*SequencerDrawView)(struct Scene *, struct Object *, int, int, unsigned int, int, bool, bool, bool, int, const char *, char[256]);
 extern SequencerDrawView sequencer_view3d_cb;
 
 /* copy/paste */
@@ -435,7 +440,7 @@ typedef struct SequenceModifierTypeInfo {
 	void (*apply) (struct SequenceModifierData *smd, struct ImBuf *ibuf, struct ImBuf *mask);
 } SequenceModifierTypeInfo;
 
-struct SequenceModifierTypeInfo *BKE_sequence_modifier_type_info_get(int type);
+const struct SequenceModifierTypeInfo *BKE_sequence_modifier_type_info_get(int type);
 
 struct SequenceModifierData *BKE_sequence_modifier_new(struct Sequence *seq, const char *name, int type);
 bool BKE_sequence_modifier_remove(struct Sequence *seq, struct SequenceModifierData *smd);
@@ -449,7 +454,9 @@ void BKE_sequence_modifier_list_copy(struct Sequence *seqn, struct Sequence *seq
 int BKE_sequence_supports_modifiers(struct Sequence *seq);
 
 /* internal filters */
-struct ImBuf *BKE_sequencer_render_mask_input(const SeqRenderData *context, int mask_input_type, struct Sequence *mask_sequence, struct Mask *mask_id, int cfra, bool make_float);
+struct ImBuf *BKE_sequencer_render_mask_input(
+        const SeqRenderData *context, int mask_input_type, struct Sequence *mask_sequence, struct Mask *mask_id,
+        int cfra, int fra_offset, bool make_float);
 void BKE_sequencer_color_balance_apply(struct StripColorBalance *cb, struct ImBuf *ibuf, float mul, bool make_float, struct ImBuf *mask_input);
 
 #endif  /* __BKE_SEQUENCER_H__ */

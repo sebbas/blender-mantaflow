@@ -57,7 +57,8 @@ typedef struct {
 
 typedef enum {
 	GHOST_glStereoVisual = (1 << 0),
-	GHOST_glWarnSupport  = (1 << 1)
+	GHOST_glWarnSupport  = (1 << 1),
+	GHOST_glDebugContext = (1 << 2),
 } GHOST_GLFlags;
 
 
@@ -126,12 +127,8 @@ typedef enum {
 	GHOST_kWindowStateMinimized,
 	GHOST_kWindowStateFullScreen,
 	GHOST_kWindowStateEmbedded,
-	GHOST_kWindowState8Normal = 8,
-	GHOST_kWindowState8Maximized,
-	GHOST_kWindowState8Minimized,
-	GHOST_kWindowState8FullScreen,
-	GHOST_kWindowStateModified,
-	GHOST_kWindowStateUnModified
+	// GHOST_kWindowStateModified,
+	// GHOST_kWindowStateUnModified,
 } GHOST_TWindowState;
 
 

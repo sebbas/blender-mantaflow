@@ -70,8 +70,9 @@
 
 #include "interface_intern.h"
 
-#define MENU_TOP            8
+#define MENU_TOP			(int)(8 * UI_DPI_FAC)
 #define MENU_PADDING		(int)(0.2f * UI_UNIT_Y)
+#define MENU_BORDER			(int)(0.3f * U.widget_unit)
 
 static int rna_property_enum_step(const bContext *C, PointerRNA *ptr, PropertyRNA *prop, int direction)
 {
@@ -179,9 +180,10 @@ typedef struct uiTooltipData {
 BLI_STATIC_ASSERT(UI_TIP_LC_MAX == UI_TIP_LC_ALERT + 1, "invalid lc-max");
 BLI_STATIC_ASSERT(sizeof(((uiTooltipData *)NULL)->format[0]) <= sizeof(int), "oversize");
 
-static void rgb_tint(float col[3],
-                     float h, float h_strength,
-                     float v, float v_strength)
+static void rgb_tint(
+        float col[3],
+        float h, float h_strength,
+        float v, float v_strength)
 {
 	float col_hsv_from[3];
 	float col_hsv_to[3];
@@ -241,10 +243,10 @@ static void ui_tooltip_region_draw_cb(const bContext *UNUSED(C), ARegion *ar)
 	/* tone_fg = rgb_to_grayscale(main_color); */
 
 	/* mix the colors */
-	rgb_tint(value_color,  0.0f, 0.0f, tone_bg, 0.2f);  /* light grey */
+	rgb_tint(value_color,  0.0f, 0.0f, tone_bg, 0.2f);  /* light gray */
 	rgb_tint(active_color, 0.6f, 0.2f, tone_bg, 0.2f);  /* light blue */
-	rgb_tint(normal_color, 0.0f, 0.0f, tone_bg, 0.4f);  /* grey       */
-	rgb_tint(python_color, 0.0f, 0.0f, tone_bg, 0.5f);  /* dark grey  */
+	rgb_tint(normal_color, 0.0f, 0.0f, tone_bg, 0.4f);  /* gray       */
+	rgb_tint(python_color, 0.0f, 0.0f, tone_bg, 0.5f);  /* dark gray  */
 	rgb_tint(alert_color,  0.0f, 0.8f, tone_bg, 0.1f);  /* red        */
 
 	/* draw text */
@@ -261,7 +263,7 @@ static void ui_tooltip_region_draw_cb(const bContext *UNUSED(C), ARegion *ar)
 
 			/* override text-style */
 			fstyle_header.shadow = 1;
-			fstyle_header.shadowcolor = rgb_to_luma(tip_colors[UI_TIP_LC_MAIN]);
+			fstyle_header.shadowcolor = rgb_to_grayscale(tip_colors[UI_TIP_LC_MAIN]);
 			fstyle_header.shadx = fstyle_header.shady = 0;
 			fstyle_header.shadowalpha = 1.0f;
 
@@ -394,7 +396,7 @@ ARegion *ui_tooltip_create(bContext *C, ARegion *butregion, uiBut *but)
 		data->totline++;
 	}
 
-	if (ELEM(but->type, UI_BTYPE_TEXT, UI_BTYPE_SEARCH_MENU, UI_BTYPE_SEARCH_MENU_UNLINK)) {
+	if (ELEM(but->type, UI_BTYPE_TEXT, UI_BTYPE_SEARCH_MENU)) {
 		/* better not show the value of a password */
 		if ((but->rnaprop && (RNA_property_subtype(but->rnaprop) == PROP_PASSWORD)) == 0) {
 			/* full string */
@@ -815,7 +817,7 @@ static void ui_searchbox_select(bContext *C, ARegion *ar, uiBut *but, int step)
 		}
 		else {
 			/* only let users step into an 'unset' state for unlink buttons */
-			data->active = (but->type == UI_BTYPE_SEARCH_MENU_UNLINK) ? -1 : 0;
+			data->active = (but->flag & UI_BUT_SEARCH_UNLINK) ? -1 : 0;
 		}
 	}
 	
@@ -826,8 +828,8 @@ static void ui_searchbox_butrect(rcti *r_rect, uiSearchboxData *data, int itemnr
 {
 	/* thumbnail preview */
 	if (data->preview) {
-		int butw =  BLI_rcti_size_x(&data->bbox)                 / data->prv_cols;
-		int buth = (BLI_rcti_size_y(&data->bbox) - 2 * MENU_TOP) / data->prv_rows;
+		int butw = (BLI_rcti_size_x(&data->bbox) - 2 * MENU_BORDER) / data->prv_cols;
+		int buth = (BLI_rcti_size_y(&data->bbox) - 2 * MENU_BORDER) / data->prv_rows;
 		int row, col;
 		
 		*r_rect = data->bbox;
@@ -835,10 +837,10 @@ static void ui_searchbox_butrect(rcti *r_rect, uiSearchboxData *data, int itemnr
 		col = itemnr % data->prv_cols;
 		row = itemnr / data->prv_cols;
 		
-		r_rect->xmin += col * butw;
+		r_rect->xmin += MENU_BORDER + (col * butw);
 		r_rect->xmax = r_rect->xmin + butw;
 		
-		r_rect->ymax = data->bbox.ymax - MENU_TOP - (row * buth);
+		r_rect->ymax -= MENU_BORDER + (row * buth);
 		r_rect->ymin = r_rect->ymax - buth;
 	}
 	/* list view */
@@ -886,7 +888,7 @@ bool ui_searchbox_apply(uiBut *but, ARegion *ar)
 
 		return true;
 	}
-	else if (but->type == UI_BTYPE_SEARCH_MENU_UNLINK) {
+	else if (but->flag & UI_BUT_SEARCH_UNLINK) {
 		/* It is valid for _UNLINK flavor to have no active element (it's a valid way to unlink). */
 		but->editstr[0] = '\0';
 
@@ -1044,14 +1046,8 @@ static void ui_searchbox_region_draw_cb(const bContext *UNUSED(C), ARegion *ar)
 				ui_searchbox_butrect(&rect, data, a);
 				
 				/* widget itself */
-				if (data->preview) {
-					ui_draw_preview_item(&data->fstyle, &rect, data->items.names[a], data->items.icons[a],
-					                     (a == data->active) ? UI_ACTIVE : 0);
-				}
-				else {
-					ui_draw_menu_item(&data->fstyle, &rect, data->items.names[a], data->items.icons[a],
-					                  (a == data->active) ? UI_ACTIVE : 0, data->use_sep);
-				}
+				ui_draw_preview_item(&data->fstyle, &rect, data->items.names[a], data->items.icons[a],
+				                     (a == data->active) ? UI_ACTIVE : 0);
 			}
 			
 			/* indicate more */
@@ -1123,6 +1119,7 @@ ARegion *ui_searchbox_create(bContext *C, ARegion *butregion, uiBut *but)
 	float aspect = but->block->aspect;
 	rctf rect_fl;
 	rcti rect_i;
+	const int margin = UI_POPUP_MARGIN;
 	int winx /*, winy */, ofsx, ofsy;
 	int i;
 	
@@ -1164,7 +1161,7 @@ ARegion *ui_searchbox_create(bContext *C, ARegion *butregion, uiBut *but)
 	
 	/* compute position */
 	if (but->block->flag & UI_BLOCK_SEARCH_MENU) {
-		const int margin = UI_POPUP_MARGIN;
+		const int search_but_h = BLI_rctf_size_y(&but->rect) + 10;
 		/* this case is search menu inside other menu */
 		/* we copy region size */
 
@@ -1173,21 +1170,19 @@ ARegion *ui_searchbox_create(bContext *C, ARegion *butregion, uiBut *but)
 		/* widget rect, in region coords */
 		data->bbox.xmin = margin;
 		data->bbox.xmax = BLI_rcti_size_x(&ar->winrct) - margin;
-		/* Do not use shadow width for height, gives insane margin with big shadows, and issue T41548 with small ones */
-		data->bbox.ymin = 8 * UI_DPI_FAC;
-		data->bbox.ymax = BLI_rcti_size_y(&ar->winrct) - 8 * UI_DPI_FAC;
+		data->bbox.ymin = margin;
+		data->bbox.ymax = BLI_rcti_size_y(&ar->winrct) - margin;
 		
 		/* check if button is lower half */
 		if (but->rect.ymax < BLI_rctf_cent_y(&but->block->rect)) {
-			data->bbox.ymin += BLI_rctf_size_y(&but->rect);
+			data->bbox.ymin += search_but_h;
 		}
 		else {
-			data->bbox.ymax -= BLI_rctf_size_y(&but->rect);
+			data->bbox.ymax -= search_but_h;
 		}
 	}
 	else {
 		const int searchbox_width = UI_searchbox_size_x();
-		const int margin = UI_POPUP_MARGIN;
 
 		rect_fl.xmin = but->rect.xmin - 5;   /* align text with button */
 		rect_fl.xmax = but->rect.xmax + 5;   /* symmetrical */
@@ -1426,7 +1421,8 @@ static void ui_block_position(wmWindow *window, ARegion *butregion, uiBut *but, 
 		if (down || top) {
 			if (dir1 == UI_DIR_UP   && top == 0)  dir1 = UI_DIR_DOWN;
 			if (dir1 == UI_DIR_DOWN && down == 0) dir1 = UI_DIR_UP;
-			if (dir2 == UI_DIR_UP   && top == 0)  dir2 = UI_DIR_DOWN;
+			BLI_assert(dir2 != UI_DIR_UP);
+//			if (dir2 == UI_DIR_UP   && top == 0)  dir2 = UI_DIR_DOWN;
 			if (dir2 == UI_DIR_DOWN && down == 0) dir2 = UI_DIR_UP;
 		}
 
@@ -1638,7 +1634,7 @@ static void ui_popup_block_remove(bContext *C, uiPopupBlockHandle *handle)
 }
 
 /**
- * Called for creatign new popups and refreshing existing ones.
+ * Called for creating new popups and refreshing existing ones.
  */
 uiBlock *ui_popup_block_refresh(
         bContext *C, uiPopupBlockHandle *handle,
@@ -1684,13 +1680,8 @@ uiBlock *ui_popup_block_refresh(
 	ar->regiondata = handle;
 
 	/* set UI_BLOCK_NUMSELECT before UI_block_end() so we get alphanumeric keys assigned */
-	if (but) {
-		if (but->type == UI_BTYPE_PULLDOWN) {
-			block->flag |= UI_BLOCK_NUMSELECT;
-		}
-	}
-	else {
-		block->flag |= UI_BLOCK_POPUP | UI_BLOCK_NUMSELECT;
+	if (but == NULL) {
+		block->flag |= UI_BLOCK_POPUP;
 	}
 
 	block->flag |= UI_BLOCK_LOOP;
@@ -1808,9 +1799,10 @@ uiBlock *ui_popup_block_refresh(
 	return block;
 }
 
-uiPopupBlockHandle *ui_popup_block_create(bContext *C, ARegion *butregion, uiBut *but,
-                                          uiBlockCreateFunc create_func, uiBlockHandleCreateFunc handle_create_func,
-                                          void *arg)
+uiPopupBlockHandle *ui_popup_block_create(
+        bContext *C, ARegion *butregion, uiBut *but,
+        uiBlockCreateFunc create_func, uiBlockHandleCreateFunc handle_create_func,
+        void *arg)
 {
 	wmWindow *window = CTX_wm_window(C);
 	static ARegionType type;
@@ -2571,8 +2563,9 @@ static uiBlock *ui_block_func_POPUP(bContext *C, uiPopupBlockHandle *handle, voi
 	return pup->block;
 }
 
-uiPopupBlockHandle *ui_popup_menu_create(bContext *C, ARegion *butregion, uiBut *but,
-                                         uiMenuCreateFunc menu_func, void *arg)
+uiPopupBlockHandle *ui_popup_menu_create(
+        bContext *C, ARegion *butregion, uiBut *but,
+        uiMenuCreateFunc menu_func, void *arg)
 {
 	wmWindow *window = CTX_wm_window(C);
 	uiStyle *style = UI_style_get_dpi();
@@ -2619,7 +2612,7 @@ uiPopupBlockHandle *ui_popup_menu_create(bContext *C, ARegion *butregion, uiBut 
 	if (!but) {
 		handle->popup = true;
 
-		UI_popup_handlers_add(C, &window->modalhandlers, handle, false);
+		UI_popup_handlers_add(C, &window->modalhandlers, handle, 0);
 		WM_event_add_mousemove(C);
 	}
 	
@@ -2681,7 +2674,7 @@ void UI_popup_menu_end(bContext *C, uiPopupMenu *pup)
 	menu = ui_popup_block_create(C, NULL, NULL, NULL, ui_block_func_POPUP, pup);
 	menu->popup = true;
 	
-	UI_popup_handlers_add(C, &window->modalhandlers, menu, false);
+	UI_popup_handlers_add(C, &window->modalhandlers, menu, 0);
 	WM_event_add_mousemove(C);
 	
 	MEM_freeN(pup);
@@ -2807,7 +2800,9 @@ void UI_pie_menu_end(bContext *C, uiPieMenu *pie)
 	menu->popup = true;
 	menu->towardstime = PIL_check_seconds_timer();
 
-	UI_popup_handlers_add(C, &window->modalhandlers, menu, true);
+	UI_popup_handlers_add(
+	        C, &window->modalhandlers,
+	        menu, WM_HANDLER_ACCEPT_DBL_CLICK);
 	WM_event_add_mousemove(C);
 
 	MEM_freeN(pie);
@@ -2850,8 +2845,9 @@ int UI_pie_menu_invoke(struct bContext *C, const char *idname, const wmEvent *ev
 	return OPERATOR_INTERFACE;
 }
 
-int UI_pie_menu_invoke_from_operator_enum(struct bContext *C, const char *title, const char *opname,
-                            const char *propname, const wmEvent *event)
+int UI_pie_menu_invoke_from_operator_enum(
+        struct bContext *C, const char *title, const char *opname,
+        const char *propname, const wmEvent *event)
 {
 	uiPieMenu *pie;
 	uiLayout *layout;
@@ -2867,8 +2863,9 @@ int UI_pie_menu_invoke_from_operator_enum(struct bContext *C, const char *title,
 	return OPERATOR_INTERFACE;
 }
 
-int UI_pie_menu_invoke_from_rna_enum(struct bContext *C, const char *title, const char *path,
-                    const wmEvent *event)
+int UI_pie_menu_invoke_from_rna_enum(
+        struct bContext *C, const char *title, const char *path,
+        const wmEvent *event)
 {
 	PointerRNA ctx_ptr;
 	PointerRNA r_ptr;
@@ -2997,7 +2994,7 @@ void UI_popup_block_invoke_ex(bContext *C, uiBlockCreateFunc func, void *arg, co
 	handle->optype = (opname) ? WM_operatortype_find(opname, 0) : NULL;
 	handle->opcontext = opcontext;
 	
-	UI_popup_handlers_add(C, &window->modalhandlers, handle, false);
+	UI_popup_handlers_add(C, &window->modalhandlers, handle, 0);
 	WM_event_add_mousemove(C);
 }
 
@@ -3020,7 +3017,7 @@ void UI_popup_block_ex(bContext *C, uiBlockCreateFunc func, uiBlockHandleFunc po
 	handle->cancel_func = cancel_func;
 	// handle->opcontext = opcontext;
 	
-	UI_popup_handlers_add(C, &window->modalhandlers, handle, false);
+	UI_popup_handlers_add(C, &window->modalhandlers, handle, 0);
 	WM_event_add_mousemove(C);
 }
 
@@ -3039,17 +3036,15 @@ void uiPupBlockOperator(bContext *C, uiBlockCreateFunc func, wmOperator *op, int
 	handle->cancel_func = confirm_cancel_operator;
 	handle->opcontext = opcontext;
 	
-	UI_popup_handlers_add(C, &window->modalhandlers, handle);
+	UI_popup_handlers_add(C, &window->modalhandlers, handle, 0);
 	WM_event_add_mousemove(C);
 }
 #endif
 
-void UI_popup_block_close(bContext *C, uiBlock *block)
+void UI_popup_block_close(bContext *C, wmWindow *win, uiBlock *block)
 {
+	/* if loading new .blend while popup is open, window will be NULL */
 	if (block->handle) {
-		wmWindow *win = CTX_wm_window(C);
-
-		/* if loading new .blend while popup is open, window will be NULL */
 		if (win) {
 			UI_popup_handlers_remove(&win->modalhandlers, block->handle);
 			ui_popup_block_free(C, block->handle);

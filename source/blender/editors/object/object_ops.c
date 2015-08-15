@@ -144,6 +144,7 @@ void ED_operatortypes_object(void)
 	WM_operatortype_append(OBJECT_OT_skin_radii_equalize);
 	WM_operatortype_append(OBJECT_OT_skin_armature_create);
 
+	WM_operatortype_append(OBJECT_OT_correctivesmooth_bind);
 	WM_operatortype_append(OBJECT_OT_meshdeform_bind);
 	WM_operatortype_append(OBJECT_OT_explode_refresh);
 	WM_operatortype_append(OBJECT_OT_ocean_bake);
@@ -185,7 +186,7 @@ void ED_operatortypes_object(void)
 	WM_operatortype_append(OBJECT_OT_vertex_group_fix);
 	WM_operatortype_append(OBJECT_OT_vertex_group_invert);
 	WM_operatortype_append(OBJECT_OT_vertex_group_levels);
-	WM_operatortype_append(OBJECT_OT_vertex_group_blend);
+	WM_operatortype_append(OBJECT_OT_vertex_group_smooth);
 	WM_operatortype_append(OBJECT_OT_vertex_group_clean);
 	WM_operatortype_append(OBJECT_OT_vertex_group_quantize);
 	WM_operatortype_append(OBJECT_OT_vertex_group_limit_total);
@@ -199,12 +200,13 @@ void ED_operatortypes_object(void)
 	WM_operatortype_append(OBJECT_OT_vertex_weight_normalize_active_vertex);
 	WM_operatortype_append(OBJECT_OT_vertex_weight_copy);
 
-	WM_operatortype_append(OBJECT_OT_vertex_warp);
+	WM_operatortype_append(TRANSFORM_OT_vertex_warp);
 
 	WM_operatortype_append(OBJECT_OT_game_property_new);
 	WM_operatortype_append(OBJECT_OT_game_property_remove);
 	WM_operatortype_append(OBJECT_OT_game_property_copy);
 	WM_operatortype_append(OBJECT_OT_game_property_clear);
+	WM_operatortype_append(OBJECT_OT_game_property_move);
 	WM_operatortype_append(OBJECT_OT_logic_bricks_copy);
 	WM_operatortype_append(OBJECT_OT_game_physics_copy);
 
@@ -247,7 +249,7 @@ void ED_operatortypes_object(void)
 	WM_operatortype_append(OBJECT_OT_lod_add);
 	WM_operatortype_append(OBJECT_OT_lod_remove);
 
-	WM_operatortype_append(OBJECT_OT_vertex_random);
+	WM_operatortype_append(TRANSFORM_OT_vertex_random);
 
 	WM_operatortype_append(OBJECT_OT_data_transfer);
 	WM_operatortype_append(OBJECT_OT_datalayout_transfer);

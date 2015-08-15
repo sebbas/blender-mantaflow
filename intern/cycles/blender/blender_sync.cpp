@@ -36,6 +36,7 @@
 #include "util_debug.h"
 #include "util_foreach.h"
 #include "util_opengl.h"
+#include "util_hash.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -111,7 +112,7 @@ bool BlenderSync::sync_recalc()
 		
 		if(b_ob->is_updated_data()) {
 			BL::Object::particle_systems_iterator b_psys;
-			for (b_ob->particle_systems.begin(b_psys); b_psys != b_ob->particle_systems.end(); ++b_psys)
+			for(b_ob->particle_systems.begin(b_psys); b_psys != b_ob->particle_systems.end(); ++b_psys)
 				particle_system_map.set_recalc(*b_ob);
 		}
 	}
@@ -144,18 +145,28 @@ bool BlenderSync::sync_recalc()
 	return recalc;
 }
 
-void BlenderSync::sync_data(BL::SpaceView3D b_v3d, BL::Object b_override, void **python_thread_state, const char *layer)
+void BlenderSync::sync_data(BL::RenderSettings b_render,
+                            BL::SpaceView3D b_v3d,
+                            BL::Object b_override,
+                            int width, int height,
+                            void **python_thread_state,
+                            const char *layer)
 {
 	sync_render_layers(b_v3d, layer);
 	sync_integrator();
 	sync_film();
 	sync_shaders();
+	sync_images();
 	sync_curve_settings();
 
 	mesh_synced.clear(); /* use for objects and motion sync */
 
 	sync_objects(b_v3d);
-	sync_motion(b_v3d, b_override, python_thread_state);
+	sync_motion(b_render,
+	            b_v3d,
+	            b_override,
+	            width, height,
+	            python_thread_state);
 
 	mesh_synced.clear();
 }
@@ -194,6 +205,9 @@ void BlenderSync::sync_integrator()
 	integrator->filter_glossy = get_float(cscene, "blur_glossy");
 
 	integrator->seed = get_int(cscene, "seed");
+	if(get_boolean(cscene, "use_animated_seed"))
+		integrator->seed = hash_int_2d(b_scene.frame_current(), get_int(cscene, "seed"));
+
 	integrator->sampling_pattern = (SamplingPattern)RNA_enum_get(&cscene, "sampling_pattern");
 
 	integrator->layer_flag = render_layer.layer;
@@ -357,6 +371,39 @@ void BlenderSync::sync_render_layers(BL::SpaceView3D b_v3d, const char *layer)
 		}
 
 		first_layer = false;
+	}
+}
+
+/* Images */
+void BlenderSync::sync_images()
+{
+	/* Sync is a convention for this API, but currently it frees unused buffers. */
+
+	const bool is_interface_locked = b_engine.render() &&
+	                                 b_engine.render().use_lock_interface();
+	if(is_interface_locked == false && BlenderSession::headless == false) {
+		/* If interface is not locked, it's possible image is needed for
+		 * the display.
+		 */
+		return;
+	}
+	/* Free buffers used by images which are not needed for render. */
+	BL::BlendData::images_iterator b_image;
+	for(b_data.images.begin(b_image);
+	    b_image != b_data.images.end();
+	    ++b_image)
+	{
+		/* TODO(sergey): Consider making it an utility function to check
+		 * whether image is considered builtin.
+		 */
+		const bool is_builtin = b_image->packed_file() ||
+		                        b_image->source() == BL::Image::source_GENERATED ||
+		                        b_image->source() == BL::Image::source_MOVIE ||
+		                        b_engine.is_preview();
+		if(is_builtin == false) {
+			b_image->buffers_free();
+		}
+		/* TODO(sergey): Free builtin images not used by any shader. */
 	}
 }
 

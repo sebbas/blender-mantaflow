@@ -23,8 +23,6 @@
 #
 # ***** END GPL LICENSE BLOCK *****
 
-# XXX allowing blenkernel and RNA includes in blenlib is a hack,
-# but needed in a few places atm (bpath.c for instance)
 set(INC
 	.
 	# ../blenkernel  # dont add this back!
@@ -32,6 +30,7 @@ set(INC
 	../../../intern/guardedalloc
 	../../../intern/atomic
 	../../../extern/wcwidth
+	../../../extern/Eigen3
 )
 
 set(INC_SYS
@@ -44,6 +43,7 @@ set(SRC
 	intern/BLI_array.c
 	intern/BLI_dial.c
 	intern/BLI_dynstr.c
+	intern/BLI_filelist.c
 	intern/BLI_ghash.c
 	intern/BLI_heap.c
 	intern/BLI_kdopbvh.c
@@ -71,9 +71,11 @@ set(SRC
 	intern/hash_mm2a.c
 	intern/jitter.c
 	intern/lasso.c
+	intern/list_sort_impl.h
 	intern/listbase.c
 	intern/math_base.c
 	intern/math_base_inline.c
+	intern/math_bits_inline.c
 	intern/math_color.c
 	intern/math_color_blend_inline.c
 	intern/math_color_inline.c
@@ -82,6 +84,8 @@ set(SRC
 	intern/math_interp.c
 	intern/math_matrix.c
 	intern/math_rotation.c
+	intern/math_solvers.c
+	intern/math_statistics.c
 	intern/math_vector.c
 	intern/math_vector_inline.c
 	intern/noise.c
@@ -153,6 +157,7 @@ set(SRC
 	BLI_listbase.h
 	BLI_math.h
 	BLI_math_base.h
+	BLI_math_bits.h
 	BLI_math_color.h
 	BLI_math_color_blend.h
 	BLI_math_geom.h
@@ -160,6 +165,8 @@ set(SRC
 	BLI_math_interp.h
 	BLI_math_matrix.h
 	BLI_math_rotation.h
+	BLI_math_solvers.h
+	BLI_math_statistics.h
 	BLI_math_vector.h
 	BLI_memarena.h
 	BLI_mempool.h
@@ -205,10 +212,15 @@ if(WIN32)
 	)
 endif()
 
-blender_add_lib(bf_blenlib "${SRC}" "${INC}" "${INC_SYS}")
+# no need to compile object files for inline headers.
+set_source_files_properties(
+	intern/math_base_inline.c
+	intern/math_bits_inline.c
+	intern/math_color_blend_inline.c
+	intern/math_color_inline.c
+	intern/math_geom_inline.c
+	intern/math_vector_inline.c
+	PROPERTIES HEADER_FILE_ONLY TRUE
+)
 
-if(MSVC)
-	# Quiet warning about inline math library files that do not export symbols.
-	# (normally you'd exclude from project, but we still want to see the files in MSVC)
-	set_target_properties(bf_blenlib PROPERTIES STATIC_LIBRARY_FLAGS /ignore:4221)
-endif()
+blender_add_lib(bf_blenlib "${SRC}" "${INC}" "${INC_SYS}")

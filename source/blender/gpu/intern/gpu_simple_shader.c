@@ -151,7 +151,9 @@ static GPUShader *gpu_simple_shader(int options)
 		shader = GPU_shader_create(
 			datatoc_gpu_shader_simple_vert_glsl,
 			datatoc_gpu_shader_simple_frag_glsl,
-			NULL, defines);
+			NULL,
+			NULL,
+			defines, 0, 0, 0);
 		
 		if (shader) {
 			/* set texture map to first texture unit */

@@ -24,10 +24,11 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/.git/)
 	include(FindGit)
 	if(GIT_FOUND)
 		message(STATUS "-- Found Git: ${GIT_EXECUTABLE}")
-		execute_process(COMMAND git rev-parse --short @{u}
+		execute_process(COMMAND git rev-parse --short HEAD
 		                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		                OUTPUT_VARIABLE MY_WC_HASH
-		                OUTPUT_STRIP_TRAILING_WHITESPACE)
+		                OUTPUT_STRIP_TRAILING_WHITESPACE
+		                ERROR_QUIET)
 	endif()
 endif()
 set(BUILD_REV ${MY_WC_HASH})
@@ -110,4 +111,10 @@ elseif(UNIX)
 		"${PROJECT_NAME}-${BLENDER_VERSION}-${BUILD_REV}-${PACKAGE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}"
 		"tar.bz2")
 endif()
+
+unset(MAJOR_VERSION)
+unset(MINOR_VERSION)
+unset(PATCH_VERSION)
+
+unset(BUILD_REV)
 

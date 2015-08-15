@@ -229,7 +229,7 @@ static void draw_fcurve_vertices_handles(FCurve *fcu, SpaceIpo *sipo, View2D *v2
 		 * Also, need to take into account whether the keyframe was selected
 		 * if a Graph Editor option to only show handles of selected keys is on.
 		 */
-		if (!sel_handle_only || BEZSELECTED(bezt)) {
+		if (!sel_handle_only || BEZT_ISSEL_ANY(bezt)) {
 			if ((!prevbezt && (bezt->ipo == BEZT_IPO_BEZ)) || (prevbezt && (prevbezt->ipo == BEZT_IPO_BEZ))) {
 				if ((bezt->f1 & SELECT) == sel) /* && v2d->cur.xmin < bezt->vec[0][0] < v2d->cur.xmax)*/
 					draw_fcurve_handle_control(bezt->vec[0][0], bezt->vec[0][1], xscale, yscale, hsize);
@@ -345,7 +345,7 @@ static void draw_fcurve_handles(SpaceIpo *sipo, FCurve *fcu)
 			 * check that keyframe is selected
 			 */
 			if (sipo->flag & SIPO_SELVHANDLESONLY) {
-				if (BEZSELECTED(bezt) == 0)
+				if (BEZT_ISSEL_ANY(bezt) == 0)
 					continue;
 			}
 			
@@ -481,7 +481,7 @@ static void draw_fcurve_curve(bAnimContext *ac, ID *id, FCurve *fcu, View2D *v2d
 	ChannelDriver *driver;
 	float samplefreq;
 	float stime, etime;
-	float unitFac;
+	float unitFac, offset;
 	float dx, dy;
 	short mapping_flag = ANIM_get_normalization_flags(ac);
 	int i, n;
@@ -498,7 +498,7 @@ static void draw_fcurve_curve(bAnimContext *ac, ID *id, FCurve *fcu, View2D *v2d
 	fcu->driver = NULL;
 	
 	/* compute unit correction factor */
-	unitFac = ANIM_unit_mapping_get_factor(ac->scene, id, fcu, mapping_flag);
+	unitFac = ANIM_unit_mapping_get_factor(ac->scene, id, fcu, mapping_flag, &offset);
 	
 	/* Note about sampling frequency:
 	 *  Ideally, this is chosen such that we have 1-2 pixels = 1 segment
@@ -550,7 +550,7 @@ static void draw_fcurve_curve(bAnimContext *ac, ID *id, FCurve *fcu, View2D *v2d
 	n = (etime - stime) / samplefreq + 0.5f;
 	for (i = 0; i <= n; i++) {
 		float ctime = stime + i * samplefreq;
-		glVertex2f(ctime, evaluate_fcurve(fcu, ctime) * unitFac);
+		glVertex2f(ctime, (evaluate_fcurve(fcu, ctime) + offset) * unitFac);
 	}
 	
 	glEnd();
@@ -566,13 +566,14 @@ static void draw_fcurve_curve_samples(bAnimContext *ac, ID *id, FCurve *fcu, Vie
 	FPoint *fpt = prevfpt + 1;
 	float fac, v[2];
 	int b = fcu->totvert - 1;
-	float unit_scale;
+	float unit_scale, offset;
 	short mapping_flag = ANIM_get_normalization_flags(ac);
 
 	/* apply unit mapping */
 	glPushMatrix();
-	unit_scale = ANIM_unit_mapping_get_factor(ac->scene, id, fcu, mapping_flag);
+	unit_scale = ANIM_unit_mapping_get_factor(ac->scene, id, fcu, mapping_flag, &offset);
 	glScalef(1.0f, unit_scale, 1.0f);
+	glTranslatef(0.0f, offset, 0.0f);
 
 	glBegin(GL_LINE_STRIP);
 	
@@ -665,14 +666,15 @@ static void draw_fcurve_curve_bezts(bAnimContext *ac, ID *id, FCurve *fcu, View2
 	float fac = 0.0f;
 	int b = fcu->totvert - 1;
 	int resol;
-	float unit_scale;
+	float unit_scale, offset;
 	short mapping_flag = ANIM_get_normalization_flags(ac);
 	
 	/* apply unit mapping */
 	glPushMatrix();
-	unit_scale = ANIM_unit_mapping_get_factor(ac->scene, id, fcu, mapping_flag);
+	unit_scale = ANIM_unit_mapping_get_factor(ac->scene, id, fcu, mapping_flag, &offset);
 	glScalef(1.0f, unit_scale, 1.0f);
-	
+	glTranslatef(0.0f, offset, 0.0f);
+
 	glBegin(GL_LINE_STRIP);
 	
 	/* extrapolate to left? */
@@ -826,7 +828,8 @@ static void graph_draw_driver_debug(bAnimContext *ac, ID *id, FCurve *fcu)
 	ChannelDriver *driver = fcu->driver;
 	View2D *v2d = &ac->ar->v2d;
 	short mapping_flag = ANIM_get_normalization_flags(ac);
-	float unitfac = ANIM_unit_mapping_get_factor(ac->scene, id, fcu, mapping_flag);
+	float offset;
+	float unitfac = ANIM_unit_mapping_get_factor(ac->scene, id, fcu, mapping_flag, &offset);
 	
 	/* for now, only show when debugging driver... */
 	//if ((driver->flag & DRIVER_FLAG_SHOWDEBUG) == 0)
@@ -850,10 +853,10 @@ static void graph_draw_driver_debug(bAnimContext *ac, ID *id, FCurve *fcu)
 		glBegin(GL_LINES);
 		{
 			t = v2d->cur.xmin;
-			glVertex2f(t, t * unitfac);
+			glVertex2f(t, (t + offset) * unitfac);
 			
 			t = v2d->cur.xmax;
-			glVertex2f(t, t * unitfac); 
+			glVertex2f(t, (t + offset) * unitfac);
 		}
 		glEnd();
 		
@@ -1067,10 +1070,12 @@ void graph_draw_curves(bAnimContext *ac, SpaceIpo *sipo, ARegion *ar, View2DGrid
 			}
 			else if (((fcu->bezt) || (fcu->fpt)) && (fcu->totvert)) {
 				short mapping_flag = ANIM_get_normalization_flags(ac);
-				float unit_scale = ANIM_unit_mapping_get_factor(ac->scene, ale->id, fcu, mapping_flag);
+				float offset;
+				float unit_scale = ANIM_unit_mapping_get_factor(ac->scene, ale->id, fcu, mapping_flag, &offset);
 
 				glPushMatrix();
 				glScalef(1.0f, unit_scale, 1.0f);
+				glTranslatef(0.0f, offset, 0.0f);
 
 				if (fcu->bezt) {
 					bool do_handles = draw_fcurve_handles_check(sipo, fcu);
@@ -1137,6 +1142,8 @@ void graph_draw_channel_names(bContext *C, bAnimContext *ac, ARegion *ar)
 	
 	/* loop through channels, and set up drawing depending on their type  */
 	{   /* first pass: just the standard GL-drawing for backdrop + text */
+		size_t channel_index = 0;
+		
 		y = (float)ACHANNEL_FIRST;
 		
 		for (ale = anim_data.first, i = 0; ale; ale = ale->next, i++) {
@@ -1148,11 +1155,12 @@ void graph_draw_channel_names(bContext *C, bAnimContext *ac, ARegion *ar)
 			    IN_RANGE(ymaxc, v2d->cur.ymin, v2d->cur.ymax) )
 			{
 				/* draw all channels using standard channel-drawing API */
-				ANIM_channel_draw(ac, ale, yminc, ymaxc);
+				ANIM_channel_draw(ac, ale, yminc, ymaxc, channel_index);
 			}
 			
 			/* adjust y-position for next one */
 			y -= ACHANNEL_STEP;
+			channel_index++;
 		}
 	}
 	{   /* second pass: widgets */

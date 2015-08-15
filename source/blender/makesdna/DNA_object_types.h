@@ -48,7 +48,6 @@ struct Ipo;
 struct BoundBox;
 struct Path;
 struct Material;
-struct bConstraintChannel;
 struct PartDeflect;
 struct SoftBody;
 struct FluidsimSettings;
@@ -109,7 +108,8 @@ typedef struct LodLevel {
 	struct LodLevel *next, *prev;
 	struct Object *source;
 	int flags;
-	float distance;
+	float distance, pad;
+	int obhysteresis;
 } LodLevel;
 
 typedef struct Object {
@@ -191,7 +191,9 @@ typedef struct Object {
 	/* dupli-frame settings */
 	int dupon, dupoff, dupsta, dupend;
 
-	int pad;
+	/* did last modifier stack generation need mapping support? */
+	char lastNeedMapping;  /* bool */
+	char pad[3];
 
 	/* during realtime */
 
@@ -213,6 +215,8 @@ typedef struct Object {
 	float margin;
 	float max_vel; /* clamp the maximum velocity 0.0 is disabled */
 	float min_vel; /* clamp the minimum velocity 0.0 is disabled */
+	float max_angvel; /* clamp the maximum angular velocity, 0.0 is disabled */
+	float min_angvel; /* clamp the minimum angular velocity, 0.0 is disabled */
 	float obstacleRad;
 	
 	/* "Character" physics properties */
@@ -292,6 +296,8 @@ typedef struct Object {
 
 	ListBase lodlevels;		/* contains data for levels of detail */
 	LodLevel *currentlod;
+
+	struct PreviewImage *preview;
 } Object;
 
 /* Warning, this is not used anymore because hooks are now modifiers */
@@ -377,8 +383,10 @@ enum {
 enum {
 	PARTYPE       = (1 << 4) - 1,
 	PAROBJECT     = 0,
-	PARCURVE      = 1,
-	PARKEY        = 2,
+#ifdef DNA_DEPRECATED
+	PARCURVE      = 1,  /* Deprecated. */
+#endif
+	PARKEY        = 2,  /* XXX Unused, deprecated? */
 
 	PARSKEL       = 4,
 	PARVERT1      = 5,
@@ -397,7 +405,7 @@ enum {
 	OB_DUPLIVERTS       = 1 << 4,
 	OB_DUPLIROT         = 1 << 5,
 	OB_DUPLINOSPEED     = 1 << 6,
-/*	OB_POWERTRACK       = 1 << 7,*/ /*UNUSED*/
+	OB_DUPLICALCDERIVED = 1 << 7, /* runtime, calculate derivedmesh for dupli before it's used */
 	OB_DUPLIGROUP       = 1 << 8,
 	OB_DUPLIFACES       = 1 << 9,
 	OB_DUPLIFACES_SCALE = 1 << 10,
@@ -484,6 +492,7 @@ enum {
 enum {
 	OB_LOD_USE_MESH		= 1 << 0,
 	OB_LOD_USE_MAT		= 1 << 1,
+	OB_LOD_USE_HYST		= 1 << 2,
 };
 
 
@@ -529,7 +538,7 @@ enum {
 #define OB_MAX_STATES       30
 
 /* collision masks */
-#define OB_MAX_COL_MASKS    8
+#define OB_MAX_COL_MASKS    16
 
 /* ob->gameflag */
 enum {

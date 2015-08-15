@@ -90,6 +90,7 @@
 #include "BKE_modifier.h"
 #include "BKE_scene.h"
 #include "BKE_bvhutils.h"
+#include "BKE_depsgraph.h"
 
 #include "PIL_time.h"
 
@@ -297,7 +298,7 @@ int psys_get_child_number(Scene *scene, ParticleSystem *psys)
 	else
 		nbr= psys->part->child_nbr;
 
-	return get_render_child_particle_number(&scene->r, nbr);
+	return get_render_child_particle_number(&scene->r, nbr, psys->renderdata != NULL);
 }
 
 int psys_get_tot_child(Scene *scene, ParticleSystem *psys)
@@ -448,24 +449,24 @@ BLI_INLINE int ceil_ii(int a, int b)
 	return (a + b - 1) / b;
 }
 
-void psys_tasks_create(ParticleThreadContext *ctx, int totpart, ParticleTask **r_tasks, int *r_numtasks)
+void psys_tasks_create(ParticleThreadContext *ctx, int startpart, int endpart, ParticleTask **r_tasks, int *r_numtasks)
 {
 	ParticleTask *tasks;
-	int numtasks = ceil_ii(totpart, MAX_PARTICLES_PER_TASK);
-	float particles_per_task = (float)totpart / (float)numtasks, p, pnext;
+	int numtasks = ceil_ii((endpart - startpart), MAX_PARTICLES_PER_TASK);
+	float particles_per_task = (float)(endpart - startpart) / (float)numtasks, p, pnext;
 	int i;
 	
 	tasks = MEM_callocN(sizeof(ParticleTask) * numtasks, "ParticleThread");
 	*r_numtasks = numtasks;
 	*r_tasks = tasks;
 	
-	p = 0.0f;
+	p = (float)startpart;
 	for (i = 0; i < numtasks; i++, p = pnext) {
 		pnext = p + particles_per_task;
 		
 		tasks[i].ctx = ctx;
 		tasks[i].begin = (int)p;
-		tasks[i].end = min_ii((int)pnext, totpart);
+		tasks[i].end = min_ii((int)pnext, endpart);
 	}
 }
 
@@ -554,7 +555,32 @@ void initialize_particle(ParticleSimulationData *sim, ParticleData *pa)
 	/* usage other than straight after distribute has to handle this index by itself - jahka*/
 	//pa->num_dmcache = DMCACHE_NOTFOUND; /* assume we don't have a derived mesh face */
 }
+
 static void initialize_all_particles(ParticleSimulationData *sim)
+{
+	ParticleSystem *psys = sim->psys;
+	ParticleSettings *part = psys->part;
+	/* Grid distributionsets UNEXIST flag, need to take care of
+	 * it here because later this flag is being reset.
+	 *
+	 * We can't do it for any distribution, because it'll then
+	 * conflict with texture influence, which does not free
+	 * unexisting particles and only sets flag.
+	 *
+	 * It's not so bad, because only grid distribution sets
+	 * UNEXIST flag.
+	 */
+	const bool emit_from_volume_grid = (part->distr == PART_DISTR_GRID) &&
+	                                   (!ELEM(part->from, PART_FROM_VERT, PART_FROM_CHILD));
+	PARTICLE_P;
+	LOOP_PARTICLES {
+		if (!(emit_from_volume_grid && (pa->flag & PARS_UNEXIST) != 0)) {
+			initialize_particle(sim, pa);
+		}
+	}
+}
+
+static void free_unexisting_particles(ParticleSimulationData *sim)
 {
 	ParticleSystem *psys = sim->psys;
 	PARTICLE_P;
@@ -562,14 +588,11 @@ static void initialize_all_particles(ParticleSimulationData *sim)
 	psys->totunexist = 0;
 
 	LOOP_PARTICLES {
-		if ((pa->flag & PARS_UNEXIST)==0)
-			initialize_particle(sim, pa);
-
-		if (pa->flag & PARS_UNEXIST)
+		if (pa->flag & PARS_UNEXIST) {
 			psys->totunexist++;
+		}
 	}
 
-	/* Free unexisting particles. */
 	if (psys->totpart && psys->totunexist == psys->totpart) {
 		if (psys->particles->boid)
 			MEM_freeN(psys->particles->boid);
@@ -601,8 +624,9 @@ static void initialize_all_particles(ParticleSimulationData *sim)
 		if (psys->particles->boid) {
 			BoidParticle *newboids = MEM_callocN(psys->totpart * sizeof(BoidParticle), "boid particles");
 
-			LOOP_PARTICLES
+			LOOP_PARTICLES {
 				pa->boid = newboids++;
+			}
 
 		}
 	}
@@ -2453,10 +2477,6 @@ static int collision_sphere_to_edges(ParticleCollision *col, float radius, Parti
 	int i;
 
 	for (i=0; i<3; i++) {
-		/* in case of a quad, no need to check "edge" that goes through face twice */
-		if ((pce->x[3] && i==2))
-			continue;
-
 		cur = edge+i;
 		cur->x[0] = pce->x[i]; cur->x[1] = pce->x[(i+1)%3];
 		cur->v[0] = pce->v[i]; cur->v[1] = pce->v[(i+1)%3];
@@ -2500,10 +2520,6 @@ static int collision_sphere_to_verts(ParticleCollision *col, float radius, Parti
 	int i;
 
 	for (i=0; i<3; i++) {
-		/* in case of quad, only check one vert the first time */
-		if (pce->x[3] && i != 1)
-			continue;
-
 		cur = vert+i;
 		cur->x[0] = pce->x[i];
 		cur->v[0] = pce->v[i];
@@ -2531,21 +2547,19 @@ void BKE_psys_collision_neartest_cb(void *userdata, int index, const BVHTreeRay 
 {
 	ParticleCollision *col = (ParticleCollision *) userdata;
 	ParticleCollisionElement pce;
-	MFace *face = col->md->mfaces + index;
+	const MVertTri *vt = &col->md->tri[index];
 	MVert *x = col->md->x;
 	MVert *v = col->md->current_v;
 	float t = hit->dist/col->original_ray_length;
 	int collision = 0;
 
-	pce.x[0] = x[face->v1].co;
-	pce.x[1] = x[face->v2].co;
-	pce.x[2] = x[face->v3].co;
-	pce.x[3] = face->v4 ? x[face->v4].co : NULL;
+	pce.x[0] = x[vt->tri[0]].co;
+	pce.x[1] = x[vt->tri[1]].co;
+	pce.x[2] = x[vt->tri[2]].co;
 
-	pce.v[0] = v[face->v1].co;
-	pce.v[1] = v[face->v2].co;
-	pce.v[2] = v[face->v3].co;
-	pce.v[3] = face->v4 ? v[face->v4].co : NULL;
+	pce.v[0] = v[vt->tri[0]].co;
+	pce.v[1] = v[vt->tri[1]].co;
+	pce.v[2] = v[vt->tri[2]].co;
 
 	pce.tot = 3;
 	pce.inside = 0;
@@ -2555,31 +2569,20 @@ void BKE_psys_collision_neartest_cb(void *userdata, int index, const BVHTreeRay 
 	if (col->hit == col->current && col->pce.index == index && col->pce.tot == 3)
 		return;
 
-	do {
-		collision = collision_sphere_to_tri(col, ray->radius, &pce, &t);
-		if (col->pce.inside == 0) {
-			collision += collision_sphere_to_edges(col, ray->radius, &pce, &t);
-			collision += collision_sphere_to_verts(col, ray->radius, &pce, &t);
-		}
+	collision = collision_sphere_to_tri(col, ray->radius, &pce, &t);
+	if (col->pce.inside == 0) {
+		collision += collision_sphere_to_edges(col, ray->radius, &pce, &t);
+		collision += collision_sphere_to_verts(col, ray->radius, &pce, &t);
+	}
 
-		if (collision) {
-			hit->dist = col->original_ray_length * t;
-			hit->index = index;
-				
-			collision_point_velocity(&col->pce);
+	if (collision) {
+		hit->dist = col->original_ray_length * t;
+		hit->index = index;
 
-			col->hit = col->current;
-		}
+		collision_point_velocity(&col->pce);
 
-		pce.x[1] = pce.x[2];
-		pce.x[2] = pce.x[3];
-		pce.x[3] = NULL;
-
-		pce.v[1] = pce.v[2];
-		pce.v[2] = pce.v[3];
-		pce.v[3] = NULL;
-
-	} while (pce.x[2]);
+		col->hit = col->current;
+	}
 }
 static int collision_detect(ParticleData *pa, ParticleCollision *col, BVHTreeRayHit *hit, ListBase *colliders)
 {
@@ -3790,6 +3793,7 @@ static void system_step(ParticleSimulationData *sim, float cfra)
 		initialize_all_particles(sim);
 		/* reset only just created particles (on startframe all particles are recreated) */
 		reset_all_particles(sim, 0.0, cfra, oldtotpart);
+		free_unexisting_particles(sim);
 
 		if (psys->fluid_springs) {
 			MEM_freeN(psys->fluid_springs);
@@ -4136,6 +4140,7 @@ void particle_system_update(Scene *scene, Object *ob, ParticleSystem *psys)
 				{
 					PARTICLE_P;
 					float disp = psys_get_current_display_percentage(psys);
+					bool free_unexisting = false;
 
 					/* Particles without dynamics haven't been reset yet because they don't use pointcache */
 					if (psys->recalc & PSYS_RECALC_RESET)
@@ -4145,6 +4150,7 @@ void particle_system_update(Scene *scene, Object *ob, ParticleSystem *psys)
 						free_keyed_keys(psys);
 						distribute_particles(&sim, part->from);
 						initialize_all_particles(&sim);
+						free_unexisting = true;
 
 						/* flag for possible explode modifiers after this system */
 						sim.psmd->flag |= eParticleSystemFlag_Pars;
@@ -4162,6 +4168,10 @@ void particle_system_update(Scene *scene, Object *ob, ParticleSystem *psys)
 						else
 							pa->flag &= ~PARS_NO_DISP;
 					}
+
+					/* free unexisting after reseting particles */
+					if (free_unexisting)
+						free_unexisting_particles(&sim);
 
 					if (part->phystype == PART_PHYS_KEYED) {
 						psys_count_keyed_targets(&sim);
@@ -4195,3 +4205,13 @@ void particle_system_update(Scene *scene, Object *ob, ParticleSystem *psys)
 		invert_m4_m4(psys->imat, ob->obmat);
 }
 
+/* **** Depsgraph evaluation **** */
+
+void BKE_particle_system_eval(EvaluationContext *UNUSED(eval_ctx),
+                              Object *ob,
+                              ParticleSystem *psys)
+{
+	if (G.debug & G_DEBUG_DEPSGRAPH) {
+		printf("%s on %s:%s\n", __func__, ob->id.name, psys->name);
+	}
+}

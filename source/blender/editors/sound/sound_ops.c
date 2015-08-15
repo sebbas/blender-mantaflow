@@ -51,6 +51,7 @@
 #include "BKE_global.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
+#include "BKE_library.h"
 #include "BKE_packedFile.h"
 #include "BKE_scene.h"
 #include "BKE_sound.h"
@@ -66,7 +67,7 @@
 #include "WM_types.h"
 
 #ifdef WITH_AUDASPACE
-#  include "AUD_C-API.h"
+#  include AUD_SPECIAL_H
 #endif
 
 #include "ED_sound.h"
@@ -100,13 +101,14 @@ static int sound_open_exec(bContext *C, wmOperator *op)
 	Main *bmain = CTX_data_main(C);
 
 	RNA_string_get(op->ptr, "filepath", path);
-	sound = sound_new_file(bmain, path);
+	sound = BKE_sound_new_file(bmain, path);
 
 	if (!op->customdata)
 		sound_open_init(C, op);
 
-	if (sound == NULL || sound->playback_handle == NULL) {
+	if (sound->playback_handle == NULL) {
 		if (op->customdata) MEM_freeN(op->customdata);
+		BKE_libblock_free(bmain, sound);
 		BKE_report(op->reports, RPT_ERROR, "Unsupported audio format");
 		return OPERATOR_CANCELLED;
 	}
@@ -114,7 +116,7 @@ static int sound_open_exec(bContext *C, wmOperator *op)
 	info = AUD_getInfo(sound->playback_handle);
 
 	if (info.specs.channels == AUD_CHANNELS_INVALID) {
-		sound_delete(bmain, sound);
+		BKE_sound_delete(bmain, sound);
 		if (op->customdata) MEM_freeN(op->customdata);
 		BKE_report(op->reports, RPT_ERROR, "Unsupported audio format");
 		return OPERATOR_CANCELLED;
@@ -122,11 +124,11 @@ static int sound_open_exec(bContext *C, wmOperator *op)
 
 	if (RNA_boolean_get(op->ptr, "mono")) {
 		sound->flags |= SOUND_FLAGS_MONO;
-		sound_load(bmain, sound);
+		BKE_sound_load(bmain, sound);
 	}
 
 	if (RNA_boolean_get(op->ptr, "cache")) {
-		sound_cache(sound);
+		BKE_sound_cache(sound);
 	}
 
 	/* hook into UI */
@@ -690,7 +692,7 @@ static int sound_pack_exec(bContext *C, wmOperator *op)
 		return OPERATOR_CANCELLED;
 
 	sound->packedfile = newPackedFile(op->reports, sound->name, ID_BLEND_PATH(bmain, &sound->id));
-	sound_load(bmain, sound);
+	BKE_sound_load(bmain, sound);
 
 	return OPERATOR_FINISHED;
 }

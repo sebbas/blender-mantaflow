@@ -116,7 +116,11 @@
 #include "wm_window.h"
 #include "wm_event_system.h"
 
-static void write_history(void);
+static RecentFile *wm_file_history_find(const char *filepath);
+static void wm_history_file_free(RecentFile *recent);
+static void wm_history_file_update(void);
+static void wm_history_file_write(void);
+
 
 /* To be able to read files without windows closing, opening, moving
  * we try to prepare for worst case:
@@ -301,7 +305,7 @@ static void wm_init_userdef(bContext *C, const bool from_memory)
 	UI_init_userdef();
 	
 	MEM_CacheLimiter_set_maximum(((size_t)U.memcachelimit) * 1024 * 1024);
-	sound_init(bmain);
+	BKE_sound_init(bmain);
 
 	/* needed so loading a file from the command line respects user-pref [#26156] */
 	BKE_BIT_TEST_SET(G.fileflags, U.flag & USER_FILENOUI, G_FILE_NO_UI);
@@ -398,6 +402,8 @@ void WM_file_autoexec_init(const char *filepath)
 
 bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 {
+	/* assume automated tasks with background, don't write recent file list */
+	const bool do_history = (G.background == false) && (CTX_wm_manager(C)->op_undo_depth == 0);
 	bool success = false;
 	int retval;
 
@@ -419,9 +425,6 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 	if (retval == BKE_READ_EXOTIC_OK_BLEND) {
 		int G_f = G.f;
 		ListBase wmbase;
-
-		/* assume automated tasks with background, don't write recent file list */
-		const bool do_history = (G.background == false) && (CTX_wm_manager(C)->op_undo_depth == 0);
 
 		/* put aside screens to match with persistent windows later */
 		/* also exit screens and editors */
@@ -457,7 +460,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 		
 		if (retval != BKE_READ_FILE_FAIL) {
 			if (do_history) {
-				write_history();
+				wm_history_file_update();
 			}
 		}
 
@@ -506,13 +509,13 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 		}
 #endif
 
-		BKE_reset_undo();
-		BKE_write_undo(C, "original");  /* save current state */
+		BKE_undo_reset();
+		BKE_undo_write(C, "original");  /* save current state */
 
 		success = true;
 	}
 	else if (retval == BKE_READ_EXOTIC_OK_OTHER)
-		BKE_write_undo(C, "Import file");
+		BKE_undo_write(C, "Import file");
 	else if (retval == BKE_READ_EXOTIC_FAIL_OPEN) {
 		BKE_reportf(reports, RPT_ERROR, "Cannot read file '%s': %s", filepath,
 		            errno ? strerror(errno) : TIP_("unable to open the file"));
@@ -526,6 +529,18 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 	else {
 		BKE_reportf(reports, RPT_ERROR, "Unknown error loading '%s'", filepath);
 		BLI_assert(!"invalid 'retval'");
+	}
+
+
+	if (success == false) {
+		/* remove from recent files list */
+		if (do_history) {
+			RecentFile *recent = wm_file_history_find(filepath);
+			if (recent) {
+				wm_history_file_free(recent);
+				wm_history_file_write();
+			}
+		}
 	}
 
 	WM_cursor_wait(0);
@@ -660,8 +675,8 @@ int wm_homefile_read(bContext *C, ReportList *reports, bool from_memory, const c
 //	refresh_interface_font();
 	
 //	undo_editmode_clear();
-	BKE_reset_undo();
-	BKE_write_undo(C, "original");  /* save current state */
+	BKE_undo_reset();
+	BKE_undo_write(C, "original");  /* save current state */
 
 	ED_editors_init(C);
 	DAG_on_visible_update(CTX_data_main(C), true);
@@ -691,10 +706,10 @@ int wm_homefile_read(bContext *C, ReportList *reports, bool from_memory, const c
 	return true;
 }
 
-int wm_history_read_exec(bContext *UNUSED(C), wmOperator *UNUSED(op))
+int wm_history_file_read_exec(bContext *UNUSED(C), wmOperator *UNUSED(op))
 {
 	ED_file_read_bookmarks();
-	wm_read_history();
+	wm_history_file_read();
 	return OPERATOR_FINISHED;
 }
 
@@ -725,7 +740,10 @@ int wm_homefile_read_exec(bContext *C, wmOperator *op)
 	return wm_homefile_read(C, op->reports, from_memory, filepath) ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
-void wm_read_history(void)
+/** \name WM History File API
+ * \{ */
+
+void wm_history_file_read(void)
 {
 	char name[FILE_MAX];
 	LinkNode *l, *lines;
@@ -745,7 +763,8 @@ void wm_read_history(void)
 	/* read list of recent opened files from recent-files.txt to memory */
 	for (l = lines, num = 0; l && (num < U.recent_files); l = l->next) {
 		line = l->link;
-		if (line[0] && BLI_exists(line)) {
+		/* don't check if files exist, causes slow startup for remote/external drives */
+		if (line[0]) {
 			recent = (RecentFile *)MEM_mallocN(sizeof(RecentFile), "RecentFile");
 			BLI_addtail(&(G.recent_files), recent);
 			recent->filepath = BLI_strdup(line);
@@ -756,18 +775,35 @@ void wm_read_history(void)
 	BLI_file_free_lines(lines);
 }
 
-static void write_history(void)
+static RecentFile *wm_history_file_new(const char *filepath)
 {
-	struct RecentFile *recent, *next_recent;
-	char name[FILE_MAX];
-	const char *user_config_dir;
-	FILE *fp;
-	int i;
+	RecentFile *recent = MEM_mallocN(sizeof(RecentFile), "RecentFile");
+	recent->filepath = BLI_strdup(filepath);
+	return recent;
+}
 
-	/* no write history for recovered startup files */
-	if (G.main->name[0] == 0)
-		return;
-	
+static void wm_history_file_free(RecentFile *recent)
+{
+	BLI_assert(BLI_findindex(&G.recent_files, recent) != -1);
+	MEM_freeN(recent->filepath);
+	BLI_freelinkN(&G.recent_files, recent);
+}
+
+static RecentFile *wm_file_history_find(const char *filepath)
+{
+	return BLI_findstring_ptr(&G.recent_files, filepath, offsetof(RecentFile, filepath));
+}
+
+/**
+ * Write #BLENDER_HISTORY_FILE as-is, without checking the environment
+ * (thats handled by #wm_history_file_update).
+ */
+static void wm_history_file_write(void)
+{
+	const char *user_config_dir;
+	char name[FILE_MAX];
+	FILE *fp;
+
 	/* will be NULL in background mode */
 	user_config_dir = BKE_appdir_folder_id_create(BLENDER_USER_CONFIG, NULL);
 	if (!user_config_dir)
@@ -775,41 +811,57 @@ static void write_history(void)
 
 	BLI_make_file_string("/", name, user_config_dir, BLENDER_HISTORY_FILE);
 
+	fp = BLI_fopen(name, "w");
+	if (fp) {
+		struct RecentFile *recent;
+		for (recent = G.recent_files.first; recent; recent = recent->next) {
+			fprintf(fp, "%s\n", recent->filepath);
+		}
+		fclose(fp);
+	}
+}
+
+/**
+ * Run after saving a file to refresh the #BLENDER_HISTORY_FILE list.
+ */
+static void wm_history_file_update(void)
+{
+	RecentFile *recent;
+
+	/* no write history for recovered startup files */
+	if (G.main->name[0] == 0)
+		return;
+
 	recent = G.recent_files.first;
 	/* refresh recent-files.txt of recent opened files, when current file was changed */
 	if (!(recent) || (BLI_path_cmp(recent->filepath, G.main->name) != 0)) {
-		fp = BLI_fopen(name, "w");
-		if (fp) {
-			/* add current file to the beginning of list */
-			recent = (RecentFile *)MEM_mallocN(sizeof(RecentFile), "RecentFile");
-			recent->filepath = BLI_strdup(G.main->name);
-			BLI_addhead(&(G.recent_files), recent);
-			/* write current file to recent-files.txt */
-			fprintf(fp, "%s\n", recent->filepath);
-			recent = recent->next;
-			i = 1;
-			/* write rest of recent opened files to recent-files.txt */
-			while ((i < U.recent_files) && (recent)) {
-				/* this prevents to have duplicities in list */
-				if (BLI_path_cmp(recent->filepath, G.main->name) != 0) {
-					fprintf(fp, "%s\n", recent->filepath);
-					recent = recent->next;
-				}
-				else {
-					next_recent = recent->next;
-					MEM_freeN(recent->filepath);
-					BLI_freelinkN(&(G.recent_files), recent);
-					recent = next_recent;
-				}
-				i++;
-			}
-			fclose(fp);
+
+		recent = wm_file_history_find(G.main->name);
+		if (recent) {
+			BLI_remlink(&G.recent_files, recent);
 		}
+		else {
+			RecentFile *recent_next;
+			for (recent = BLI_findlink(&G.recent_files, U.recent_files - 1); recent; recent = recent_next) {
+				recent_next = recent->next;
+				wm_history_file_free(recent);
+			}
+			recent = wm_history_file_new(G.main->name);
+		}
+
+		/* add current file to the beginning of list */
+		BLI_addhead(&(G.recent_files), recent);
+
+		/* write current file to recent-files.txt */
+		wm_history_file_write();
 
 		/* also update most recent files on System */
 		GHOST_addToSystemRecentFiles(G.main->name);
 	}
 }
+
+/** \} */
+
 
 /* screen can be NULL */
 static ImBuf *blend_file_thumb(Scene *scene, bScreen *screen, int **thumb_pt)
@@ -846,11 +898,11 @@ static ImBuf *blend_file_thumb(Scene *scene, bScreen *screen, int **thumb_pt)
 	if (scene->camera) {
 		ibuf = ED_view3d_draw_offscreen_imbuf_simple(scene, scene->camera,
 		                                             BLEN_THUMB_SIZE * 2, BLEN_THUMB_SIZE * 2,
-		                                             IB_rect, OB_SOLID, false, false, false, R_ALPHAPREMUL, err_out);
+		                                             IB_rect, OB_SOLID, false, false, false, R_ALPHAPREMUL, NULL, err_out);
 	}
 	else {
 		ibuf = ED_view3d_draw_offscreen_imbuf(scene, v3d, ar, BLEN_THUMB_SIZE * 2, BLEN_THUMB_SIZE * 2,
-		                                      IB_rect, false, R_ALPHAPREMUL, err_out);
+		                                      IB_rect, false, R_ALPHAPREMUL, NULL, err_out);
 	}
 
 	if (ibuf) {
@@ -860,7 +912,7 @@ static ImBuf *blend_file_thumb(Scene *scene, bScreen *screen, int **thumb_pt)
 		IMB_scaleImBuf(ibuf, BLEN_THUMB_SIZE, BLEN_THUMB_SIZE);
 
 		/* add pretty overlay */
-		IMB_overlayblend_thumb(ibuf->rect, ibuf->x, ibuf->y, aspect);
+		IMB_thumb_overlay_blend(ibuf->rect, ibuf->x, ibuf->y, aspect);
 		
 		/* first write into thumb buffer */
 		thumb = MEM_mallocN(((2 + (BLEN_THUMB_SIZE * BLEN_THUMB_SIZE))) * sizeof(int), "write_file thumb");
@@ -951,7 +1003,7 @@ int wm_file_write(bContext *C, const char *filepath, int fileflags, ReportList *
 	/* operator now handles overwrite checks */
 
 	if (G.fileflags & G_AUTOPACK) {
-		packAll(G.main, reports);
+		packAll(G.main, reports, false);
 	}
 
 	/* don't forget not to return without! */
@@ -983,7 +1035,7 @@ int wm_file_write(bContext *C, const char *filepath, int fileflags, ReportList *
 
 		/* prevent background mode scripts from clobbering history */
 		if (!G.background) {
-			write_history();
+			wm_history_file_update();
 		}
 
 		BLI_callback_exec(G.main, NULL, BLI_CB_EVT_SAVE_POST);
@@ -991,7 +1043,7 @@ int wm_file_write(bContext *C, const char *filepath, int fileflags, ReportList *
 		/* run this function after because the file cant be written before the blend is */
 		if (ibuf_thumb) {
 			IMB_thumb_delete(filepath, THB_FAIL); /* without this a failed thumb overrides */
-			ibuf_thumb = IMB_thumb_create(filepath, THB_NORMAL, THB_SOURCE_BLEND, ibuf_thumb);
+			ibuf_thumb = IMB_thumb_create(filepath, THB_LARGE, THB_SOURCE_BLEND, ibuf_thumb);
 			IMB_freeImBuf(ibuf_thumb);
 		}
 
@@ -1035,7 +1087,7 @@ int wm_homefile_write_exec(bContext *C, wmOperator *op)
 	ED_editors_flush_edits(C, false);
 
 	/*  force save as regular blend file */
-	fileflags = G.fileflags & ~(G_FILE_COMPRESS | G_FILE_AUTOPLAY | G_FILE_LOCK | G_FILE_SIGN | G_FILE_HISTORY);
+	fileflags = G.fileflags & ~(G_FILE_COMPRESS | G_FILE_AUTOPLAY | G_FILE_HISTORY);
 
 	if (BLO_write_file(CTX_data_main(C), filepath, fileflags | G_FILE_USERPREFS, op->reports, NULL) == 0) {
 		printf("fail\n");
@@ -1086,7 +1138,7 @@ void wm_autosave_location(char *filepath)
 	if (G.main && G.relbase_valid) {
 		const char *basename = BLI_path_basename(G.main->name);
 		int len = strlen(basename) - 6;
-		BLI_snprintf(path, sizeof(path), "%.*s-%d.blend", len, basename, pid);
+		BLI_snprintf(path, sizeof(path), "%.*s.blend", len, basename);
 	}
 	else {
 		BLI_snprintf(path, sizeof(path), "%d.blend", pid);
@@ -1137,8 +1189,6 @@ void wm_autosave_timer(const bContext *C, wmWindowManager *wm, wmTimer *UNUSED(w
 		}
 	}
 
-	ED_editors_flush_edits(C, false);
-
 	wm_autosave_location(filepath);
 
 	if (U.uiflag & USER_GLOBALUNDO) {
@@ -1147,7 +1197,9 @@ void wm_autosave_timer(const bContext *C, wmWindowManager *wm, wmTimer *UNUSED(w
 	}
 	else {
 		/*  save as regular blend file */
-		int fileflags = G.fileflags & ~(G_FILE_COMPRESS | G_FILE_AUTOPLAY | G_FILE_LOCK | G_FILE_SIGN | G_FILE_HISTORY);
+		int fileflags = G.fileflags & ~(G_FILE_COMPRESS | G_FILE_AUTOPLAY | G_FILE_HISTORY);
+
+		ED_editors_flush_edits(C, false);
 
 		/* no error reporting to console */
 		BLO_write_file(CTX_data_main(C), filepath, fileflags, NULL, NULL);

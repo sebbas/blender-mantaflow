@@ -32,11 +32,8 @@
 #define __GRAPH_INTERN_H__
 
 struct bContext;
-struct wmWindowManager;
 struct bAnimContext;
 struct bAnimListElem;
-struct FCurve;
-struct FModifier;
 struct SpaceIpo;
 struct ScrArea;
 struct ARegion;
@@ -94,6 +91,7 @@ void get_graph_keyframe_extents(struct bAnimContext *ac, float *xmin, float *xma
 void GRAPH_OT_previewrange_set(struct wmOperatorType *ot);
 void GRAPH_OT_view_all(struct wmOperatorType *ot);
 void GRAPH_OT_view_selected(struct wmOperatorType *ot);
+void GRAPH_OT_view_frame(struct wmOperatorType *ot);
 
 void GRAPH_OT_click_insert(struct wmOperatorType *ot);
 void GRAPH_OT_keyframe_insert(struct wmOperatorType *ot);

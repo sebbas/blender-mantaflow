@@ -12,6 +12,7 @@ SConscript(['rangetree/SConscript'])
 SConscript(['wcwidth/SConscript'])
 SConscript(['libmv/SConscript'])
 #SConscript(['manta_pp/SConscript'])
+SConscript(['Eigen3/SConscript'])
 
 if env['WITH_BF_GAMEENGINE']:
     SConscript(['recastnavigation/SConscript'])
@@ -25,7 +26,7 @@ if env['WITH_BF_ELTOPO']:
 if env['WITH_BF_BULLET']:
     SConscript(['bullet2/src/SConscript'])
 
-if env['WITH_BF_COMPOSITOR'] or env['WITH_BF_CYCLES']:
+if env['WITH_BF_COMPOSITOR'] or env['WITH_BF_CYCLES'] or env['WITH_BF_OPENSUBDIV']:
     SConscript (['clew/SConscript'])
     SConscript (['cuew/SConscript'])
 

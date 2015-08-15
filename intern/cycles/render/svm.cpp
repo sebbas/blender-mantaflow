@@ -24,6 +24,7 @@
 #include "svm.h"
 
 #include "util_debug.h"
+#include "util_logging.h"
 #include "util_foreach.h"
 #include "util_progress.h"
 
@@ -39,12 +40,14 @@ SVMShaderManager::~SVMShaderManager()
 {
 }
 
-void SVMShaderManager::reset(Scene *scene)
+void SVMShaderManager::reset(Scene * /*scene*/)
 {
 }
 
 void SVMShaderManager::device_update(Device *device, DeviceScene *dscene, Scene *scene, Progress& progress)
 {
+	VLOG(1) << "Total " << scene->shaders.size() << " shaders.";
+
 	if(!need_update)
 		return;
 
@@ -354,7 +357,7 @@ uint SVMCompiler::attribute(AttributeStandard std)
 	return shader_manager->get_attribute_id(std);
 }
 
-bool SVMCompiler::node_skip_input(ShaderNode *node, ShaderInput *input)
+bool SVMCompiler::node_skip_input(ShaderNode * /*node*/, ShaderInput *input)
 {
 	/* nasty exception .. */
 	if(current_type == SHADER_TYPE_DISPLACEMENT && input->link && input->link->parent->name == ustring("bump"))
@@ -389,10 +392,6 @@ void SVMCompiler::generate_node(ShaderNode *node, set<ShaderNode*>& done)
 		if(node->has_spatial_varying())
 			current_shader->has_heterogeneous_volume = true;
 	}
-
-	/* detect if we have a blackbody converter, to prepare lookup table */
-	if(node->has_converter_blackbody())
-		current_shader->has_converter_blackbody = true;
 
 	if(node->has_object_dependency()) {
 		current_shader->has_object_dependency = true;
@@ -713,7 +712,6 @@ void SVMCompiler::compile(Shader *shader, vector<int4>& global_svm_nodes, int in
 	shader->has_surface_transparent = false;
 	shader->has_surface_bssrdf = false;
 	shader->has_bssrdf_bump = false;
-	shader->has_converter_blackbody = false;
 	shader->has_volume = false;
 	shader->has_displacement = false;
 	shader->has_heterogeneous_volume = false;

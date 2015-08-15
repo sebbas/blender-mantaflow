@@ -241,7 +241,7 @@ static void rna_Constraint_name_set(PointerRNA *ptr, const char *value)
 	}
 	
 	/* fix all the animation data which may link to this */
-	BKE_all_animdata_fix_paths_rename(NULL, "constraints", oldname, con->name);
+	BKE_animdata_fix_paths_rename_all(NULL, "constraints", oldname, con->name);
 }
 
 static char *rna_Constraint_path(PointerRNA *ptr)
@@ -271,12 +271,12 @@ static char *rna_Constraint_path(PointerRNA *ptr)
 
 static void rna_Constraint_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
 {
-	ED_object_constraint_update(ptr->id.data);
+	ED_object_constraint_tag_update(ptr->id.data, ptr->data);
 }
 
 static void rna_Constraint_dependency_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
-	ED_object_constraint_dependency_update(bmain, ptr->id.data);
+	ED_object_constraint_dependency_tag_update(bmain, ptr->id.data, ptr->data);
 }
 
 static void rna_Constraint_influence_update(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -323,7 +323,7 @@ static EnumPropertyItem *rna_Constraint_target_space_itemf(bContext *UNUSED(C), 
                                                            PropertyRNA *UNUSED(prop), bool *UNUSED(r_free))
 {
 	bConstraint *con = (bConstraint *)ptr->data;
-	bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(con);
+	const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(con);
 	ListBase targets = {NULL, NULL};
 	bConstraintTarget *ct;
 	
@@ -1357,7 +1357,8 @@ static void rna_def_constraint_stretch_to(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "rest_length", PROP_FLOAT, PROP_DISTANCE);
 	RNA_def_property_float_sdna(prop, NULL, "orglength");
-	RNA_def_property_range(prop, 0.0, 100.f);
+	RNA_def_property_range(prop, 0.0, 1000.f);
+	RNA_def_property_ui_range(prop, 0, 100.0f, 10, RNA_TRANSLATION_PREC_DEFAULT);
 	RNA_def_property_ui_text(prop, "Original Length", "Length at rest position");
 	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 

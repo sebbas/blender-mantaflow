@@ -59,7 +59,7 @@
 #include "BKE_library.h"
 
 #ifdef WITH_AUDASPACE
-#  include "AUD_C-API.h"
+#  include AUD_SPECIAL_H
 #endif
 
 #include "RNA_access.h"
@@ -535,9 +535,14 @@ float BKE_nla_tweakedit_remap(AnimData *adt, float cframe, short mode)
 	/* if the active-strip info has been stored already, access this, otherwise look this up
 	 * and store for (very probable) future usage
 	 */
+	if (adt->act_track == NULL) {
+		if (adt->actstrip)
+			adt->act_track = BKE_nlatrack_find_tweaked(adt);
+		else
+			adt->act_track = BKE_nlatrack_find_active(&adt->nla_tracks);
+	}
 	if (adt->actstrip == NULL) {
-		NlaTrack *nlt = BKE_nlatrack_find_active(&adt->nla_tracks);
-		adt->actstrip = BKE_nlastrip_find_active(nlt);
+		adt->actstrip = BKE_nlastrip_find_active(adt->act_track);
 	}
 	strip = adt->actstrip;
 	
@@ -923,6 +928,39 @@ NlaTrack *BKE_nlatrack_find_active(ListBase *tracks)
 	}
 	
 	/* none found */
+	return NULL;
+}
+
+/* Get the NLA Track that the active action/action strip comes from,
+ * since this info is not stored in AnimData. It also isn't as simple
+ * as just using the active track, since multiple tracks may have been
+ * entered at the same time.
+ */
+NlaTrack *BKE_nlatrack_find_tweaked(AnimData *adt)
+{
+	NlaTrack *nlt;
+	
+	/* sanity check */
+	if (adt == NULL)
+		return NULL;
+	
+	/* Since the track itself gets disabled, we want the first disabled... */
+	for (nlt = adt->nla_tracks.first; nlt; nlt = nlt->next) {
+		if (nlt->flag & (NLATRACK_ACTIVE | NLATRACK_DISABLED)) {
+			/* For good measure, make sure that strip actually exists there */
+			if (BLI_findindex(&nlt->strips, adt->actstrip) != -1) {
+				return nlt;
+			}
+			else if (G.debug & G_DEBUG) {
+				printf("%s: Active strip (%p, %s) not in NLA track found (%p, %s)\n",
+				       __func__, 
+				       adt->actstrip, (adt->actstrip) ? adt->actstrip->name : "<None>",
+				       nlt,           nlt->name);
+			}
+		}
+	}
+	
+	/* Not found! */
 	return NULL;
 }
 
@@ -1584,6 +1622,12 @@ bool BKE_nla_action_stash(AnimData *adt)
 	nlt = add_nlatrack(adt, prev_track);
 	BLI_assert(nlt != NULL);
 	
+	/* we need to ensure that if there wasn't any previous instance, it must go to tbe bottom of the stack */
+	if (prev_track == NULL) {
+		BLI_remlink(&adt->nla_tracks, nlt);
+		BLI_addhead(&adt->nla_tracks, nlt);
+	}
+	
 	BLI_strncpy(nlt->name, STASH_TRACK_NAME, sizeof(nlt->name));
 	BLI_uniquename(&adt->nla_tracks, nlt, STASH_TRACK_NAME, '.', offsetof(NlaTrack, name), sizeof(nlt->name));
 	
@@ -1604,6 +1648,12 @@ bool BKE_nla_action_stash(AnimData *adt)
 	 */
 	nlt->flag = (NLATRACK_MUTED | NLATRACK_PROTECTED);
 	strip->flag &= ~(NLASTRIP_FLAG_SELECT | NLASTRIP_FLAG_ACTIVE);
+	
+	/* also mark the strip for auto syncing the length, so that the strips accurately
+	 * reflect the length of the action
+	 * XXX: we could do with some extra flags here to prevent repeats/scaling options from working!
+	 */
+	strip->flag |= NLASTRIP_FLAG_SYNC_LENGTH;
 	
 	/* succeeded */
 	return true;
@@ -1756,6 +1806,7 @@ bool BKE_nla_tweakmode_enter(AnimData *adt)
 	 */
 	adt->tmpact = adt->action;
 	adt->action = activeStrip->act;
+	adt->act_track = activeTrack;
 	adt->actstrip = activeStrip;
 	id_us_plus(&activeStrip->act->id);
 	adt->flag |= ADT_NLA_EDIT_ON;
@@ -1815,6 +1866,7 @@ void BKE_nla_tweakmode_exit(AnimData *adt)
 	if (adt->action) adt->action->id.us--;
 	adt->action = adt->tmpact;
 	adt->tmpact = NULL;
+	adt->act_track = NULL;
 	adt->actstrip = NULL;
 	adt->flag &= ~ADT_NLA_EDIT_ON;
 }

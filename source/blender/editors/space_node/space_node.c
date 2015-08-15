@@ -203,12 +203,10 @@ void ED_node_tree_path_get_fixedbuf(SpaceNode *snode, char *value, int max_lengt
 	value[0] = '\0';
 	for (path = snode->treepath.first, i = 0; path; path = path->next, ++i) {
 		if (i == 0) {
-			BLI_strncpy(value, path->node_name, max_length);
-			size = strlen(path->node_name);
+			size = BLI_strncpy_rlen(value, path->node_name, max_length);
 		}
 		else {
-			BLI_snprintf(value, max_length, "/%s", path->node_name);
-			size = strlen(path->node_name) + 1;
+			size = BLI_snprintf_rlen(value, max_length, "/%s", path->node_name);
 		}
 		max_length -= size;
 		if (max_length <= 0)
@@ -600,7 +598,7 @@ static void node_buttons_area_init(wmWindowManager *wm, ARegion *ar)
 
 static void node_buttons_area_draw(const bContext *C, ARegion *ar)
 {
-	ED_region_panels(C, ar, 1, NULL, -1);
+	ED_region_panels(C, ar, NULL, -1, true);
 }
 
 /* add handlers, stuff you only do once or on area/region changes */
@@ -616,7 +614,7 @@ static void node_toolbar_area_init(wmWindowManager *wm, ARegion *ar)
 
 static void node_toolbar_area_draw(const bContext *C, ARegion *ar)
 {
-	ED_region_panels(C, ar, 1, NULL, -1);
+	ED_region_panels(C, ar, NULL, -1, true);
 }
 
 static void node_cursor(wmWindow *win, ScrArea *sa, ARegion *ar)

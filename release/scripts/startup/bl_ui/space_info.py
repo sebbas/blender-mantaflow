@@ -203,6 +203,12 @@ class INFO_MT_file_previews(Menu):
         layout = self.layout
 
         layout.operator("wm.previews_ensure")
+        layout.operator("wm.previews_batch_generate")
+
+        layout.separator()
+
+        layout.operator("wm.previews_clear")
+        layout.operator("wm.previews_batch_clear")
 
 
 class INFO_MT_game(Menu):
@@ -281,6 +287,10 @@ class INFO_MT_window(Menu):
         if sys.platform[:3] == "win":
             layout.separator()
             layout.operator("wm.console_toggle", icon='CONSOLE')
+
+        if context.scene.render.use_multiview:
+            layout.separator()
+            layout.operator("wm.set_stereo_3d", icon='CAMERA_STEREO')
 
 
 class INFO_MT_help(Menu):

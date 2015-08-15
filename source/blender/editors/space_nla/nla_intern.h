@@ -83,7 +83,7 @@ enum eNlaEdit_Snap_Mode {
 
 /* --- */
 
-bool nlaedit_disable_tweakmode(bAnimContext *ac);
+bool nlaedit_disable_tweakmode(bAnimContext *ac, bool do_solo);
 
 void NLA_OT_tweakmode_enter(wmOperatorType *ot);
 void NLA_OT_tweakmode_exit(wmOperatorType *ot);
@@ -137,6 +137,7 @@ bool nlaedit_add_tracks_empty(bAnimContext *ac);
 void NLA_OT_channels_click(wmOperatorType *ot);
 
 void NLA_OT_action_pushdown(wmOperatorType *ot);
+void NLA_OT_action_unlink(wmOperatorType *ot);
 
 void NLA_OT_tracks_add(wmOperatorType *ot);
 void NLA_OT_tracks_delete(wmOperatorType *ot);

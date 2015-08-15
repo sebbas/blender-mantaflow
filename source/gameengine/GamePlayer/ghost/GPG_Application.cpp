@@ -100,9 +100,7 @@ extern "C"
 #include "GHOST_Rect.h"
 
 #ifdef WITH_AUDASPACE
-#  include "AUD_C-API.h"
-#  include "AUD_I3DDevice.h"
-#  include "AUD_IDevice.h"
+#  include AUD_DEVICE_H
 #endif
 
 static void frameTimerProc(GHOST_ITimerTask* task, GHOST_TUns64 time);
@@ -636,7 +634,7 @@ bool GPG_Application::initEngine(GHOST_IWindow* window, const int stereoMode)
 		if (!m_networkdevice)
 			goto initFailed;
 			
-		sound_init(m_maggie);
+		BKE_sound_init(m_maggie);
 
 		// create a ketsjisystem (only needed for timing and stuff)
 		m_kxsystem = new GPG_System (m_system);
@@ -672,7 +670,7 @@ bool GPG_Application::initEngine(GHOST_IWindow* window, const int stereoMode)
 
 	return m_engineInitialized;
 initFailed:
-	sound_exit();
+	BKE_sound_exit();
 	delete m_kxsystem;
 	delete m_networkdevice;
 	delete m_mouse;
@@ -746,13 +744,10 @@ bool GPG_Application::startEngine(void)
 			m_ketsjiengine->InitDome(m_startScene->gm.dome.res, m_startScene->gm.dome.mode, m_startScene->gm.dome.angle, m_startScene->gm.dome.resbuf, m_startScene->gm.dome.tilt, m_startScene->gm.dome.warptext);
 
 		// initialize 3D Audio Settings
-		AUD_I3DDevice* dev = AUD_get3DDevice();
-		if (dev)
-		{
-			dev->setSpeedOfSound(m_startScene->audio.speed_of_sound);
-			dev->setDopplerFactor(m_startScene->audio.doppler_factor);
-			dev->setDistanceModel(AUD_DistanceModel(m_startScene->audio.distance_model));
-		}
+		AUD_Device* device = BKE_sound_get_device();
+		AUD_Device_setSpeedOfSound(device, m_startScene->audio.speed_of_sound);
+		AUD_Device_setDopplerFactor(device, m_startScene->audio.doppler_factor);
+		AUD_Device_setDistanceModel(device, AUD_DistanceModel(m_startScene->audio.distance_model));
 
 #ifdef WITH_PYTHON
 		// Set the GameLogic.globalDict from marshal'd data, so we can
@@ -847,7 +842,7 @@ void GPG_Application::exitEngine()
 	if (!m_engineInitialized)
 		return;
 
-	sound_exit();
+	BKE_sound_exit();
 	if (m_ketsjiengine)
 	{
 		stopEngine();

@@ -36,6 +36,7 @@ struct MEdge;
 struct MPoly;
 struct MLoop;
 struct MLoopUV;
+struct MLoopTri;
 
 /* map from uv vertex to face (for select linked, stitch, uv suburf) */
 
@@ -102,7 +103,8 @@ typedef struct MeshElemMap {
 /* mapping */
 UvVertMap *BKE_mesh_uv_vert_map_create(
         struct MPoly *mpoly, struct MLoop *mloop, struct MLoopUV *mloopuv,
-        unsigned int totpoly, unsigned int totvert, int selected, float *limit);
+        unsigned int totpoly, unsigned int totvert,
+        const float limit[2], const bool selected, const bool use_winding);
 UvMapVert *BKE_mesh_uv_vert_map_get_vert(UvVertMap *vmap, unsigned int v);
 void       BKE_mesh_uv_vert_map_free(UvVertMap *vmap);
 
@@ -126,7 +128,10 @@ void BKE_mesh_origindex_map_create(
         MeshElemMap **r_map, int **r_mem,
         const int totorig,
         const int *final_origindex, const int totfinal);
-
+void BKE_mesh_origindex_map_create_looptri(
+        MeshElemMap **r_map, int **r_mem,
+        const struct MPoly *mpoly, const int mpoly_num,
+        const struct MLoopTri *looptri, const int looptri_num);
 
 /* islands */
 
@@ -196,6 +201,16 @@ int *BKE_mesh_calc_smoothgroups(
      (_mf->v2 == _v) ? 1 :                                                  \
      (_mf->v3 == _v) ? 2 :                                                  \
      (_mf->v4 && _mf->v4 == _v) ? 3 : -1)                                   \
+    )
+
+/* use on looptri vertex values */
+#define BKE_MESH_TESSTRI_VINDEX_ORDER(_tri, _v)  (                          \
+    (CHECK_TYPE_ANY(_tri, unsigned int *, int *, int[3],                    \
+                          const unsigned int *, const int *, const int[3]), \
+     CHECK_TYPE_ANY(_v, unsigned int, const unsigned int, int, const int)), \
+    (((_tri)[0] == _v) ? 0 :                                                \
+     ((_tri)[1] == _v) ? 1 :                                                \
+     ((_tri)[2] == _v) ? 2 : -1)                                            \
     )
 
 #endif  /* __BKE_MESH_MAPPING_H__ */

@@ -15,7 +15,7 @@ varying vec4 uvcoordsvar;
 /* ssao_params.x : pixel scale for the ssao radious */
 /* ssao_params.y : factor for the ssao darkening */
 uniform vec4 ssao_params;
-uniform vec4 ssao_sample_params;
+uniform vec3 ssao_sample_params;
 uniform vec4 ssao_color;
 
 /* store the view space vectors for the corners of the view frustum here.
@@ -23,10 +23,18 @@ uniform vec4 ssao_color;
  * see http://www.derschmale.com/2014/01/26/reconstructing-positions-from-the-depth-buffer */
 uniform vec4 viewvecs[3];
 
+vec3 calculate_view_space_normal(in vec3 viewposition)
+{
+	vec3 normal = cross(normalize(dFdx(viewposition)),
+	                    ssao_params.w * normalize(dFdy(viewposition)));
+	normalize(normal);
+	return normal;
+}
+
 float calculate_ssao_factor(float depth)
 {
 	/* take the normalized ray direction here */
-	vec2 rotX = texture2D(jitter_tex, uvcoordsvar.xy * ssao_sample_params.zw).rg;
+	vec2 rotX = texture2D(jitter_tex, uvcoordsvar.xy * ssao_sample_params.yz).rg;
 	vec2 rotY = vec2(-rotX.y, rotX.x);
 
 	/* occlusion is zero in full depth */

@@ -51,6 +51,8 @@
 #  include <Python.h>
 
 extern "C" {
+	#  include "BLI_utildefines.h"
+	#  include "python_utildefines.h"
 	#  include "bpy_internal_import.h"  /* from the blender python api, but we want to import text too! */
 	#  include "py_capi_utils.h"
 	#  include "mathutils.h" // 'mathutils' module copied here so the blenderlayer can use.
@@ -59,7 +61,7 @@ extern "C" {
 
 	#  include "marshal.h" /* python header for loading/saving dicts */
 }
-#include "AUD_PyInit.h"
+#include "../../../../intern/audaspace/intern/AUD_PyInit.h"
 
 #endif  /* WITH_PYTHON */
 
@@ -110,8 +112,8 @@ extern "C" {
 #include "RAS_2DFilterManager.h"
 #include "MT_Vector3.h"
 #include "MT_Point3.h"
-#include "ListValue.h"
-#include "InputParser.h"
+#include "EXP_ListValue.h"
+#include "EXP_InputParser.h"
 #include "KX_Scene.h"
 
 #include "NG_NetworkScene.h" //Needed for sendMessage()
@@ -121,7 +123,7 @@ extern "C" {
 
 #include "KX_PyMath.h"
 
-#include "PyObjectPlus.h"
+#include "EXP_PyObjectPlus.h"
 
 #include "KX_PythonInitTypes.h" 
 
@@ -136,6 +138,7 @@ extern "C" {
 #include "BKE_global.h"
 #include "BKE_library.h"
 #include "BKE_appdir.h"
+#include "BKE_blender.h"
 #include "BLI_blenlib.h"
 #include "GPU_material.h"
 #include "MEM_guardedalloc.h"
@@ -183,17 +186,17 @@ class KX_KetsjiEngine* KX_GetActiveEngine()
 }
 
 /* why is this in python? */
-void	KX_RasterizerDrawDebugLine(const MT_Vector3& from,const MT_Vector3& to,const MT_Vector3& color)
+void KX_RasterizerDrawDebugLine(const MT_Vector3& from,const MT_Vector3& to,const MT_Vector3& color)
 {
 	if (gp_Rasterizer)
-		gp_Rasterizer->DrawDebugLine(from,to,color);
+		gp_Rasterizer->DrawDebugLine(gp_KetsjiScene, from, to, color);
 }
 
 void KX_RasterizerDrawDebugCircle(const MT_Vector3& center, const MT_Scalar radius, const MT_Vector3& color,
                                   const MT_Vector3& normal, int nsector)
 {
 	if (gp_Rasterizer)
-		gp_Rasterizer->DrawDebugCircle(center, radius, color, normal, nsector);
+		gp_Rasterizer->DrawDebugCircle(gp_KetsjiScene, center, radius, color, normal, nsector);
 }
 
 #ifdef WITH_PYTHON
@@ -218,7 +221,7 @@ static void KX_MACRO_addTypesToDict_fn(PyObject *dict, const char *name, long va
 
 
 // temporarily python stuff, will be put in another place later !
-#include "KX_Python.h"
+#include "EXP_Python.h"
 #include "SCA_PythonController.h"
 // List of methods defined in the module
 
@@ -354,7 +357,7 @@ static PyObject *gPyLoadGlobalDict(PyObject *)
 {
 	char marshal_path[512];
 	char *marshal_buffer = NULL;
-	size_t marshal_length;
+	int marshal_length;
 	FILE *fp = NULL;
 	int result;
 
@@ -365,7 +368,12 @@ static PyObject *gPyLoadGlobalDict(PyObject *)
 	if (fp) {
 		// obtain file size:
 		fseek (fp, 0, SEEK_END);
-		marshal_length = (size_t)ftell(fp);
+		marshal_length = ftell(fp);
+		if (marshal_length == -1) {
+			printf("Warning: could not read position of '%s'\n", marshal_path);
+			fclose(fp);
+			Py_RETURN_NONE;
+		}
 		rewind(fp);
 
 		marshal_buffer = (char*)malloc (sizeof(char)*marshal_length);
@@ -1029,108 +1037,21 @@ static PyObject *gPyGetStereoEye(PyObject *, PyObject *, PyObject *)
 
 static PyObject *gPySetBackgroundColor(PyObject *, PyObject *value)
 {
-	
 	MT_Vector4 vec;
 	if (!PyVecTo(value, vec))
 		return NULL;
-	
-	if (gp_Canvas)
-	{
-		gp_Rasterizer->SetBackColor((float)vec[0], (float)vec[1], (float)vec[2], (float)vec[3]);
-	}
 
 	KX_WorldInfo *wi = gp_KetsjiScene->GetWorldInfo();
-	if (wi->hasWorld())
-		wi->setBackColor((float)vec[0], (float)vec[1], (float)vec[2]);
-
-	Py_RETURN_NONE;
-}
-
-
-
-static PyObject *gPySetMistColor(PyObject *, PyObject *value)
-{
-	
-	MT_Vector3 vec;
-	if (!PyVecTo(value, vec))
-		return NULL;
-	
-	if (!gp_Rasterizer) {
-		PyErr_SetString(PyExc_RuntimeError, "Rasterizer.setMistColor(color), Rasterizer not available");
+	if (!wi->hasWorld()) {
+		PyErr_SetString(PyExc_RuntimeError, "bge.render.SetBackgroundColor(color), World not available");
 		return NULL;
 	}
-	gp_Rasterizer->SetFogColor((float)vec[0], (float)vec[1], (float)vec[2]);
-	
+
+	ShowDeprecationWarning("setBackgroundColor()", "KX_WorldInfo.background_color");
+	wi->setBackColor((float)vec[0], (float)vec[1], (float)vec[2]);
+
 	Py_RETURN_NONE;
 }
-
-static PyObject *gPyDisableMist(PyObject *)
-{
-	
-	if (!gp_Rasterizer) {
-		PyErr_SetString(PyExc_RuntimeError, "Rasterizer.setMistColor(color), Rasterizer not available");
-		return NULL;
-	}
-	gp_Rasterizer->DisableFog();
-	
-	Py_RETURN_NONE;
-}
-
-static PyObject *gPySetMistStart(PyObject *, PyObject *args)
-{
-
-	float miststart;
-	if (!PyArg_ParseTuple(args,"f:setMistStart",&miststart))
-		return NULL;
-	
-	if (!gp_Rasterizer) {
-		PyErr_SetString(PyExc_RuntimeError, "Rasterizer.setMistStart(float), Rasterizer not available");
-		return NULL;
-	}
-	
-	gp_Rasterizer->SetFogStart(miststart);
-	
-	Py_RETURN_NONE;
-}
-
-
-
-static PyObject *gPySetMistEnd(PyObject *, PyObject *args)
-{
-
-	float mistend;
-	if (!PyArg_ParseTuple(args,"f:setMistEnd",&mistend))
-		return NULL;
-	
-	if (!gp_Rasterizer) {
-		PyErr_SetString(PyExc_RuntimeError, "Rasterizer.setMistEnd(float), Rasterizer not available");
-		return NULL;
-	}
-	
-	gp_Rasterizer->SetFogEnd(mistend);
-	
-	Py_RETURN_NONE;
-}
-
-
-static PyObject *gPySetAmbientColor(PyObject *, PyObject *value)
-{
-	
-	MT_Vector3 vec;
-	if (!PyVecTo(value, vec))
-		return NULL;
-	
-	if (!gp_Rasterizer) {
-		PyErr_SetString(PyExc_RuntimeError, "Rasterizer.setAmbientColor(color), Rasterizer not available");
-		return NULL;
-	}
-	gp_Rasterizer->SetAmbientColor((float)vec[0], (float)vec[1], (float)vec[2]);
-	
-	Py_RETURN_NONE;
-}
-
-
-
 
 static PyObject *gPyMakeScreenshot(PyObject *, PyObject *args)
 {
@@ -1217,10 +1138,6 @@ static PyObject *gPySetGLSLMaterialSetting(PyObject *,
 	else
 		gs->glslflag |= flag;
 
-	/* temporarily store the glsl settings in the scene for the GLSL materials */
-	GameData *gm= &(gp_KetsjiScene->GetBlenderScene()->gm);
-	gm->flag = gs->glslflag;
-
 	/* display lists and GLSL materials need to be remade */
 	if (sceneflag != gs->glslflag) {
 		GPU_materials_free();
@@ -1228,11 +1145,14 @@ static PyObject *gPySetGLSLMaterialSetting(PyObject *,
 			KX_SceneList *scenes = gp_KetsjiEngine->CurrentScenes();
 			KX_SceneList::iterator it;
 
-			for (it=scenes->begin(); it!=scenes->end(); it++)
+			for (it=scenes->begin(); it!=scenes->end(); it++) {
+				// temporarily store the glsl settings in the scene for the GLSL materials
+				(*it)->GetBlenderScene()->gm.flag = gs->glslflag;
 				if ((*it)->GetBucketManager()) {
 					(*it)->GetBucketManager()->ReleaseDisplayLists();
 					(*it)->GetBucketManager()->ReleaseMaterials();
 				}
+			}
 		}
 	}
 
@@ -1345,7 +1265,7 @@ static PyObject *gPyDrawLine(PyObject *, PyObject *args)
 	if (!PyVecTo(ob_color, color))
 		return NULL;
 
-	gp_Rasterizer->DrawDebugLine(from,to,color);
+	gp_Rasterizer->DrawDebugLine(gp_KetsjiScene, from, to, color);
 	
 	Py_RETURN_NONE;
 }
@@ -1490,6 +1410,21 @@ static PyObject *gPyClearDebugList(PyObject *)
 	Py_RETURN_NONE;
 }
 
+static PyObject *gPyGetDisplayDimensions(PyObject *)
+{
+	PyObject *result;
+	int width, height;
+
+	gp_Canvas->GetDisplayDimensions(width, height);
+
+	result = PyTuple_New(2);
+	PyTuple_SET_ITEMS(result,
+	        PyLong_FromLong(width),
+	        PyLong_FromLong(height));
+
+	return result;
+}
+
 PyDoc_STRVAR(Rasterizer_module_documentation,
 "This is the Python API for the game engine of Rasterizer"
 );
@@ -1508,11 +1443,6 @@ static struct PyMethodDef rasterizer_methods[] = {
 	{"setMousePosition",(PyCFunction) gPySetMousePosition,
 	 METH_VARARGS, "setMousePosition(int x,int y)"},
 	{"setBackgroundColor",(PyCFunction)gPySetBackgroundColor,METH_O,"set Background Color (rgb)"},
-	{"setAmbientColor",(PyCFunction)gPySetAmbientColor,METH_O,"set Ambient Color (rgb)"},
-	{"disableMist",(PyCFunction)gPyDisableMist,METH_NOARGS,"turn off mist"},
-	{"setMistColor",(PyCFunction)gPySetMistColor,METH_O,"set Mist Color (rgb)"},
-	{"setMistStart",(PyCFunction)gPySetMistStart,METH_VARARGS,"set Mist Start(rgb)"},
-	{"setMistEnd",(PyCFunction)gPySetMistEnd,METH_VARARGS,"set Mist End(rgb)"},
 	{"enableMotionBlur",(PyCFunction)gPyEnableMotionBlur,METH_VARARGS,"enable motion blur"},
 	{"disableMotionBlur",(PyCFunction)gPyDisableMotionBlur,METH_NOARGS,"disable motion blur"},
 
@@ -1538,6 +1468,8 @@ static struct PyMethodDef rasterizer_methods[] = {
 	{"setWindowSize", (PyCFunction) gPySetWindowSize, METH_VARARGS, ""},
 	{"setFullScreen", (PyCFunction) gPySetFullScreen, METH_O, ""},
 	{"getFullScreen", (PyCFunction) gPyGetFullScreen, METH_NOARGS, ""},
+	{"getDisplayDimensions", (PyCFunction) gPyGetDisplayDimensions, METH_NOARGS,
+	 "Get the actual dimensions, in pixels, of the physical display (e.g., the monitor)."},
 	{"setMipmapping", (PyCFunction) gPySetMipmapping, METH_VARARGS, ""},
 	{"getMipmapping", (PyCFunction) gPyGetMipmapping, METH_NOARGS, ""},
 	{"setVsync", (PyCFunction) gPySetVsync, METH_VARARGS, ""},
@@ -2088,32 +2020,49 @@ PyMODINIT_FUNC initBGE(void)
 	PyObject *mod;
 	PyObject *submodule;
 	PyObject *sys_modules = PyThreadState_GET()->interp->modules;
+	const char *mod_full;
 
 	mod = PyModule_Create(&BGE_module_def);
 
-	PyModule_AddObject(mod, "constraints", (submodule = initConstraintPythonBinding()));
-	PyDict_SetItemString(sys_modules, PyModule_GetName(submodule), submodule);
+	/* skip "bge." */
+#define SUBMOD (mod_full + 4)
+
+	mod_full = "bge.app";
+	PyModule_AddObject(mod, SUBMOD, (submodule = initApplicationPythonBinding()));
+	PyDict_SetItemString(sys_modules, mod_full, submodule);
 	Py_INCREF(submodule);
 
-	PyModule_AddObject(mod, "events", (submodule = initGameKeysPythonBinding()));
-	PyDict_SetItemString(sys_modules, PyModule_GetName(submodule), submodule);
+	mod_full = "bge.constraints";
+	PyModule_AddObject(mod, SUBMOD, (submodule = initConstraintPythonBinding()));
+	PyDict_SetItemString(sys_modules, mod_full, submodule);
 	Py_INCREF(submodule);
 
-	PyModule_AddObject(mod, "logic", (submodule = initGameLogicPythonBinding()));
-	PyDict_SetItemString(sys_modules, PyModule_GetName(submodule), submodule);
+	mod_full = "bge.events";
+	PyModule_AddObject(mod, SUBMOD, (submodule = initGameKeysPythonBinding()));
+	PyDict_SetItemString(sys_modules, mod_full, submodule);
 	Py_INCREF(submodule);
 
-	PyModule_AddObject(mod, "render", (submodule = initRasterizerPythonBinding()));
-	PyDict_SetItemString(sys_modules, PyModule_GetName(submodule), submodule);
+	mod_full = "bge.logic";
+	PyModule_AddObject(mod, SUBMOD, (submodule = initGameLogicPythonBinding()));
+	PyDict_SetItemString(sys_modules, mod_full, submodule);
 	Py_INCREF(submodule);
 
-	PyModule_AddObject(mod, "texture", (submodule = initVideoTexturePythonBinding()));
-	PyDict_SetItemString(sys_modules, PyModule_GetName(submodule), submodule);
+	mod_full = "bge.render";
+	PyModule_AddObject(mod, SUBMOD, (submodule = initRasterizerPythonBinding()));
+	PyDict_SetItemString(sys_modules, mod_full, submodule);
 	Py_INCREF(submodule);
 
-	PyModule_AddObject(mod, "types", (submodule = initGameTypesPythonBinding()));
-	PyDict_SetItemString(sys_modules, PyModule_GetName(submodule), submodule);
+	mod_full = "bge.texture";
+	PyModule_AddObject(mod, SUBMOD, (submodule = initVideoTexturePythonBinding()));
+	PyDict_SetItemString(sys_modules, mod_full, submodule);
 	Py_INCREF(submodule);
+
+	mod_full = "bge.types";
+	PyModule_AddObject(mod, SUBMOD, (submodule = initGameTypesPythonBinding()));
+	PyDict_SetItemString(sys_modules, mod_full, submodule);
+	Py_INCREF(submodule);
+
+#undef SUBMOD
 
 	return mod;
 }
@@ -2149,14 +2098,14 @@ PyObject *initGamePlayerPythonScripting(Main *maggie, int argc, char** argv)
 	Py_SetProgramName(program_path_wchar);
 
 	/* Update, Py3.3 resolves attempting to parse non-existing header */
-	#if 0
+#if 0
 	/* Python 3.2 now looks for '2.xx/python/include/python3.2d/pyconfig.h' to
 	 * parse from the 'sysconfig' module which is used by 'site',
 	 * so for now disable site. alternatively we could copy the file. */
 	if (py_path_bundle != NULL) {
 		Py_NoSiteFlag = 1; /* inhibits the automatic importing of 'site' */
 	}
-	#endif
+#endif
 
 	Py_FrozenFlag = 1;
 
@@ -2605,6 +2554,77 @@ PyMODINIT_FUNC initGameKeysPythonBinding()
 
 	return m;
 }
+
+
+
+/* ------------------------------------------------------------------------- */
+/* Application: application values that remain unchanged during runtime       */
+/* ------------------------------------------------------------------------- */
+
+PyDoc_STRVAR(Application_module_documentation,
+	"This module contains application values that remain unchanged during runtime."
+	);
+
+static struct PyModuleDef Application_module_def = {
+	PyModuleDef_HEAD_INIT,
+	"bge.app",  /* m_name */
+	Application_module_documentation,  /* m_doc */
+	0,  /* m_size */
+	NULL,  /* m_methods */
+	0,  /* m_reload */
+	0,  /* m_traverse */
+	0,  /* m_clear */
+	0,  /* m_free */
+};
+
+PyMODINIT_FUNC initApplicationPythonBinding()
+{
+	PyObject *m;
+	PyObject *d;
+
+	m = PyModule_Create(&Application_module_def);
+	
+	// Add some symbolic constants to the module
+	d = PyModule_GetDict(m);
+
+	PyDict_SetItemString(d, "version", Py_BuildValue("(iii)",
+		BLENDER_VERSION / 100, BLENDER_VERSION % 100, BLENDER_SUBVERSION));
+	PyDict_SetItemString(d, "version_string", PyUnicode_FromFormat("%d.%02d (sub %d)",
+		BLENDER_VERSION / 100, BLENDER_VERSION % 100, BLENDER_SUBVERSION));
+	PyDict_SetItemString(d, "version_char", PyUnicode_FromString(
+		STRINGIFY(BLENDER_VERSION_CHAR)));
+
+	PyDict_SetItemString(d, "has_texture_ffmpeg",
+#ifdef WITH_FFMPEG
+		Py_True
+#else
+		Py_False
+#endif
+	);
+	PyDict_SetItemString(d, "has_joystick",
+#ifdef WITH_SDL
+		Py_True
+#else
+		Py_False
+#endif
+	);
+	PyDict_SetItemString(d, "has_physics",
+#ifdef WITH_BULLET
+		Py_True
+#else
+		Py_False
+#endif
+	);
+
+	// Check for errors
+	if (PyErr_Occurred()) {
+		PyErr_Print();
+		PyErr_Clear();
+	}
+
+	return m;
+}
+
 
 // utility function for loading and saving the globalDict
 int saveGamePythonConfig( char **marshal_buffer)

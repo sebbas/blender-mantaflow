@@ -41,7 +41,6 @@ struct SpaceLink;
 struct ARegion;
 struct ARegionType;
 struct PanelType;
-struct HeaderType;
 struct Scene;
 struct uiLayout;
 struct wmTimer;
@@ -69,7 +68,8 @@ typedef struct bScreen {
 	char do_draw_drag;					/* notifier for dragging draw. */
 	char swap;							/* indicator to survive swap-exchange systems */
 	char skip_handling;					/* set to delay screen handling after switching back from maximized area */
-	char pad[7];
+	char scrubbing;						/* set when scrubbing to avoid some costly updates */
+	char pad[6];
 	
 	short mainwin;						/* screensize subwindow, for screenedges and global menus */
 	short subwinactive;					/* active subwindow */
@@ -282,6 +282,8 @@ enum {
 	AREA_FLAG_TEMP_TYPE          = (1 << 6),
 	/* for temporary fullscreens (file browser, image editor render) that are opened above user set fullscreens */
 	AREA_FLAG_STACKED_FULLSCREEN = (1 << 7),
+	/* update action zones (even if the mouse is not intersecting them) */
+	AREA_FLAG_ACTIONZONES_UPDATE = (1 << 8),
 };
 
 #define EDGEWIDTH	1
@@ -373,6 +375,8 @@ enum {
 	RGN_TYPE_TOOL_PROPS = 6,
 	RGN_TYPE_PREVIEW = 7
 };
+/* use for function args */
+#define RGN_TYPE_ANY -1
 
 /* region alignment */
 #define RGN_ALIGN_NONE		0

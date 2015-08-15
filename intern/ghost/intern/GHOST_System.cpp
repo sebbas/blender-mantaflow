@@ -169,7 +169,7 @@ GHOST_TSuccess GHOST_System::beginFullScreen(const GHOST_DisplaySetting& setting
 }
 
 
-GHOST_TSuccess GHOST_System::updateFullScreen(const GHOST_DisplaySetting& setting, GHOST_IWindow **window)
+GHOST_TSuccess GHOST_System::updateFullScreen(const GHOST_DisplaySetting& setting, GHOST_IWindow ** /*window*/)
 {
 	GHOST_TSuccess success = GHOST_kFailure;
 	GHOST_ASSERT(m_windowManager, "GHOST_System::updateFullScreen(): invalid window manager");
@@ -295,6 +295,15 @@ GHOST_TSuccess GHOST_System::getButtonState(GHOST_TButtonMask mask, bool& isDown
 	return success;
 }
 
+void GHOST_System::setNDOFDeadZone(float deadzone)
+{
+#ifdef WITH_INPUT_NDOF
+	this->m_ndofManager->setDeadZone(deadzone);
+#else
+	(void)deadzone;
+#endif
+}
+
 GHOST_TSuccess GHOST_System::init()
 {
 	m_timerManager = new GHOST_TimerManager();
@@ -371,7 +380,7 @@ GHOST_TSuccess GHOST_System::createFullScreenWindow(GHOST_Window **window, const
 }
 
 
-int GHOST_System::confirmQuit(GHOST_IWindow *window) const
+int GHOST_System::confirmQuit(GHOST_IWindow * /*window*/) const
 {
 	return 1;
 }

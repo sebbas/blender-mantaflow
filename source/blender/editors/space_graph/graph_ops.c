@@ -87,8 +87,9 @@ static void graphview_cursor_apply(bContext *C, wmOperator *op)
 	 * NOTE: sync this part of the code with ANIM_OT_change_frame
 	 */
 	CFRA = RNA_int_get(op->ptr, "frame");
+	FRAMENUMBER_MIN_CLAMP(CFRA);
 	SUBFRA = 0.f;
-	sound_seek_scene(bmain, scene);
+	BKE_sound_seek_scene(bmain, scene);
 	
 	/* set the cursor value */
 	sipo->cursorVal = RNA_float_get(op->ptr, "value");
@@ -138,6 +139,7 @@ static void graphview_cursor_setprops(bContext *C, wmOperator *op, const wmEvent
 /* Modal Operator init */
 static int graphview_cursor_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
+	bScreen *screen = CTX_wm_screen(C);
 	/* Change to frame that mouse is over before adding modal handler,
 	 * as user could click on a single frame (jump to frame) as well as
 	 * click-dragging over a range (modal scrubbing).
@@ -147,6 +149,9 @@ static int graphview_cursor_invoke(bContext *C, wmOperator *op, const wmEvent *e
 	/* apply these changes first */
 	graphview_cursor_apply(C, op);
 	
+	if (screen)
+		screen->scrubbing = true;
+
 	/* add temp handler */
 	WM_event_add_modal_handler(C, op);
 	return OPERATOR_RUNNING_MODAL;
@@ -155,9 +160,12 @@ static int graphview_cursor_invoke(bContext *C, wmOperator *op, const wmEvent *e
 /* Modal event handling of cursor changing */
 static int graphview_cursor_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
+	bScreen *screen = CTX_wm_screen(C);
 	/* execute the events */
 	switch (event->type) {
 		case ESCKEY:
+			if (screen)
+				screen->scrubbing = false;
 			return OPERATOR_FINISHED;
 		
 		case MOUSEMOVE:
@@ -172,8 +180,11 @@ static int graphview_cursor_modal(bContext *C, wmOperator *op, const wmEvent *ev
 			/* we check for either mouse-button to end, as checking for ACTIONMOUSE (which is used to init 
 			 * the modal op) doesn't work for some reason
 			 */
-			if (event->val == KM_RELEASE)
+			if (event->val == KM_RELEASE) {
+				if (screen)
+					screen->scrubbing = false;
 				return OPERATOR_FINISHED;
+			}
 			break;
 	}
 
@@ -380,6 +391,7 @@ void graphedit_operatortypes(void)
 	WM_operatortype_append(GRAPH_OT_view_all);
 	WM_operatortype_append(GRAPH_OT_view_selected);
 	WM_operatortype_append(GRAPH_OT_properties);
+	WM_operatortype_append(GRAPH_OT_view_frame);
 	
 	WM_operatortype_append(GRAPH_OT_ghost_curves_create);
 	WM_operatortype_append(GRAPH_OT_ghost_curves_clear);
@@ -440,6 +452,7 @@ void ED_operatormacros_graph(void)
 	WM_operatortype_macro_define(ot, "GRAPH_OT_duplicate");
 	otmacro = WM_operatortype_macro_define(ot, "TRANSFORM_OT_transform");
 	RNA_enum_set(otmacro->ptr, "mode", TFM_TIME_DUPLICATE);
+	RNA_enum_set(otmacro->ptr, "proportional", PROP_EDIT_OFF);
 }
 
 
@@ -562,15 +575,14 @@ static void graphedit_keymap_keyframes(wmKeyConfig *keyconf, wmKeyMap *keymap)
 	WM_keymap_add_item(keymap, "GRAPH_OT_easing_type", EKEY, KM_PRESS, KM_CTRL, 0);
 	
 	/* destructive */
-	WM_keymap_add_item(keymap, "GRAPH_OT_clean", OKEY, KM_PRESS, 0, 0);
 	WM_keymap_add_item(keymap, "GRAPH_OT_smooth", OKEY, KM_PRESS, KM_ALT, 0);
 	WM_keymap_add_item(keymap, "GRAPH_OT_sample", OKEY, KM_PRESS, KM_SHIFT, 0);
 	
 	WM_keymap_add_item(keymap, "GRAPH_OT_bake", CKEY, KM_PRESS, KM_ALT, 0);
 	
-	WM_keymap_add_item(keymap, "GRAPH_OT_delete", XKEY, KM_PRESS, 0, 0);
-	WM_keymap_add_item(keymap, "GRAPH_OT_delete", DELKEY, KM_PRESS, 0, 0);
-	
+	WM_keymap_add_menu(keymap, "GRAPH_MT_delete", XKEY, KM_PRESS, 0, 0);
+	WM_keymap_add_menu(keymap, "GRAPH_MT_delete", DELKEY, KM_PRESS, 0, 0);
+
 	WM_keymap_add_item(keymap, "GRAPH_OT_duplicate_move", DKEY, KM_PRESS, KM_SHIFT, 0);
 	
 	/* insertkey */
@@ -594,7 +606,8 @@ static void graphedit_keymap_keyframes(wmKeyConfig *keyconf, wmKeyMap *keymap)
 	WM_keymap_add_item(keymap, "GRAPH_OT_view_all", HOMEKEY, KM_PRESS, 0, 0);
 	WM_keymap_add_item(keymap, "GRAPH_OT_view_all", NDOF_BUTTON_FIT, KM_PRESS, 0, 0);
 	WM_keymap_add_item(keymap, "GRAPH_OT_view_selected", PADPERIOD, KM_PRESS, 0, 0);
-	
+	WM_keymap_add_item(keymap, "GRAPH_OT_view_frame", PAD0, KM_PRESS, 0, 0);
+
 	/* F-Modifiers */
 	kmi = WM_keymap_add_item(keymap, "GRAPH_OT_fmodifier_add", MKEY, KM_PRESS, KM_CTRL | KM_SHIFT, 0);
 	RNA_boolean_set(kmi->ptr, "only_active", false);
@@ -608,6 +621,9 @@ static void graphedit_keymap_keyframes(wmKeyConfig *keyconf, wmKeyMap *keymap)
 	/* transform system */
 	transform_keymap_for_space(keyconf, keymap, SPACE_IPO);
 	
+	kmi = WM_keymap_add_item(keymap, "WM_OT_context_toggle", OKEY, KM_PRESS, 0, 0);
+	RNA_string_set(kmi->ptr, "data_path", "tool_settings.use_proportional_fcurve");
+
 	/* pivot point settings */
 	kmi = WM_keymap_add_item(keymap, "WM_OT_context_set_enum", COMMAKEY, KM_PRESS, 0, 0);
 	RNA_string_set(kmi->ptr, "data_path", "space_data.pivot_point");

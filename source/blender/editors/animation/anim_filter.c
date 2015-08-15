@@ -423,6 +423,7 @@ bool ANIM_animdata_get_context(const bContext *C, bAnimContext *ac)
  *  - adtOk: line or block of code to execute for AnimData-blocks case (usually ANIMDATA_ADD_ANIMDATA)
  *  - nlaOk: line or block of code to execute for NLA tracks+strips case
  *  - driversOk: line or block of code to execute for Drivers case
+ *  - nlaKeysOk: line or block of code for NLA Strip Keyframes case
  *  - keysOk: line or block of code for Keyframes case
  *
  * The checks for the various cases are as follows:
@@ -433,9 +434,10 @@ bool ANIM_animdata_get_context(const bContext *C, bAnimContext *ac)
  *		converted to a new NLA strip, and the filtering options allow this
  *	2C) allow non-animated datablocks to be included so that datablocks can be added
  *	3) drivers: include drivers from animdata block (for Drivers mode in Graph Editor)
- *	4) normal keyframes: only when there is an active action
+ *  4A) nla strip keyframes: these are the per-strip controls for time and influence
+ *	4B) normal keyframes: only when there is an active action
  */
-#define ANIMDATA_FILTER_CASES(id, adtOk, nlaOk, driversOk, keysOk) \
+#define ANIMDATA_FILTER_CASES(id, adtOk, nlaOk, driversOk, nlaKeysOk, keysOk) \
 	{ \
 		if ((id)->adt) { \
 			if (!(filter_mode & ANIMFILTER_CURVE_VISIBLE) || !((id)->adt->flag & ADT_CURVES_NOT_VISIBLE)) { \
@@ -456,6 +458,9 @@ bool ANIM_animdata_get_context(const bContext *C, bAnimContext *ac)
 					} \
 				} \
 				else { \
+					if (ANIMDATA_HAS_NLA(id)) { \
+						nlaKeysOk \
+					} \
 					if (ANIMDATA_HAS_KEYS(id)) { \
 						keysOk \
 					} \
@@ -786,6 +791,16 @@ static bAnimListElem *make_new_animlistelem(void *data, short datatype, ID *owne
 				ale->adt = BKE_animdata_from_id(data);
 				break;
 			}
+			case ANIMTYPE_NLACONTROLS:
+			{
+				AnimData *adt = (AnimData *)data;
+				
+				ale->flag = adt->flag;
+				
+				ale->key_data = NULL;
+				ale->datatype = ALE_NONE;
+				break;
+			}
 			case ANIMTYPE_GROUP:
 			{
 				bActionGroup *agrp = (bActionGroup *)data;
@@ -887,7 +902,7 @@ static bAnimListElem *make_new_animlistelem(void *data, short datatype, ID *owne
 static bool skip_fcurve_selected_data(bDopeSheet *ads, FCurve *fcu, ID *owner_id, int filter_mode)
 {
 	/* hidden items should be skipped if we only care about visible data, but we aren't interested in hidden stuff */
-	short skip_hidden = (filter_mode & ANIMFILTER_DATA_VISIBLE) && !(ads->filterflag & ADS_FILTER_INCL_HIDDEN);
+	const bool skip_hidden = (filter_mode & ANIMFILTER_DATA_VISIBLE) && !(ads->filterflag & ADS_FILTER_INCL_HIDDEN);
 	
 	if (GS(owner_id->name) == ID_OB) {
 		Object *ob = (Object *)owner_id;
@@ -977,7 +992,7 @@ static bool skip_fcurve_selected_data(bDopeSheet *ads, FCurve *fcu, ID *owner_id
 static bool skip_fcurve_with_name(bDopeSheet *ads, FCurve *fcu, ID *owner_id)
 {
 	bAnimListElem ale_dummy = {NULL};
-	bAnimChannelType *acf;
+	const bAnimChannelType *acf;
 	
 	/* create a dummy wrapper for the F-Curve */
 	ale_dummy.type = ANIMTYPE_FCURVE;
@@ -1286,7 +1301,7 @@ static size_t animfilter_nla(bAnimContext *UNUSED(ac), ListBase *anim_data, bDop
 		 *	- active track should still get shown though (even though it has disabled flag set)
 		 */
 		// FIXME: the channels after should still get drawn, just 'differently', and after an active-action channel
-		if ((adt->flag & ADT_NLA_EDIT_ON) && (nlt->flag & NLATRACK_DISABLED) && !(nlt->flag & NLATRACK_ACTIVE))
+		if ((adt->flag & ADT_NLA_EDIT_ON) && (nlt->flag & NLATRACK_DISABLED) && (adt->act_track != nlt))
 			continue;
 		
 		/* only work with this channel and its subchannels if it is editable */
@@ -1295,6 +1310,30 @@ static size_t animfilter_nla(bAnimContext *UNUSED(ac), ListBase *anim_data, bDop
 			if (ANIMCHANNEL_SELOK(SEL_NLT(nlt))) {
 				/* only include if this track is active */
 				if (!(filter_mode & ANIMFILTER_ACTIVE) || (nlt->flag & NLATRACK_ACTIVE)) {
+					/* name based filtering... */
+					if (((ads) && (ads->filterflag & ADS_FILTER_BY_FCU_NAME)) && (owner_id)) {
+						bool track_ok = false, strip_ok = false;
+						
+						/* check if the name of the track, or the strips it has are ok... */
+						track_ok = BLI_strcasestr(nlt->name, ads->searchstr);
+						
+						if (track_ok == false) {
+							NlaStrip *strip;
+							for (strip = nlt->strips.first; strip; strip = strip->next) {
+								if (BLI_strcasestr(strip->name, ads->searchstr)) {
+									strip_ok = true;
+									break;
+								}
+							}
+						}
+						
+						/* skip if both fail this test... */
+						if (!track_ok && !strip_ok) {
+							continue;
+						}
+					}
+					
+					/* add the track now that it has passed all our tests */
 					ANIMCHANNEL_NEW_CHANNEL(nlt, ANIMTYPE_NLATRACK, owner_id);
 				}
 			}
@@ -1302,6 +1341,80 @@ static size_t animfilter_nla(bAnimContext *UNUSED(ac), ListBase *anim_data, bDop
 	}
 	
 	/* return the number of items added to the list */
+	return items;
+}
+
+/* Include the control FCurves per NLA Strip in the channel list
+ * NOTE: This is includes the expander too...
+ */
+static size_t animfilter_nla_controls(ListBase *anim_data, bDopeSheet *ads, AnimData *adt, int filter_mode, ID *owner_id)
+{
+	ListBase tmp_data = {NULL, NULL};
+	size_t tmp_items = 0;
+	size_t items = 0;
+	
+	/* add control curves from each NLA strip... */
+	/* NOTE: ANIMTYPE_FCURVES are created here, to avoid duplicating the code needed */
+	BEGIN_ANIMFILTER_SUBCHANNELS(((adt->flag & ADT_NLA_SKEYS_COLLAPSED) == 0))
+	{
+		NlaTrack *nlt;
+		NlaStrip *strip;
+		
+		/* for now, we only go one level deep - so controls on grouped FCurves are not handled */
+		for (nlt = adt->nla_tracks.first; nlt; nlt = nlt->next) {
+			for (strip = nlt->strips.first; strip; strip = strip->next) {
+				ListBase strip_curves = {NULL, NULL};
+				size_t strip_items = 0;
+				
+				/* create the raw items */
+				strip_items += animfilter_fcurves(&strip_curves, ads, strip->fcurves.first, NULL, filter_mode, owner_id);
+				
+				/* change their types and add extra data
+				 * - There is no point making a separate copy of animfilter_fcurves for this now/yet,
+				 *   unless we later get per-element control curves for other stuff too
+				 */
+				if (strip_items) {
+					bAnimListElem *ale, *ale_n = NULL;
+					
+					for (ale = strip_curves.first; ale; ale = ale_n) {
+						ale_n = ale->next;
+						
+						/* change the type to being a FCurve for editing NLA strip controls */
+						BLI_assert(ale->type == ANIMTYPE_FCURVE);
+						
+						ale->type = ANIMTYPE_NLACURVE;
+						ale->owner = strip;
+						
+						ale->adt  = NULL; /* XXX: This way, there are no problems with time mapping errors */
+					}
+				}
+				
+				/* add strip curves to the set of channels inside the group being collected */
+				BLI_movelisttolist(&tmp_data, &strip_curves);
+				BLI_assert(BLI_listbase_is_empty(&strip_curves));
+				tmp_items += strip_items;
+			}
+		}
+	}
+	END_ANIMFILTER_SUBCHANNELS;
+	
+	/* did we find anything? */
+	if (tmp_items) {
+		/* add the expander as a channel first */
+		if (filter_mode & ANIMFILTER_LIST_CHANNELS) {
+			/* currently these channels cannot be selected, so they should be skipped */
+			if ((filter_mode & (ANIMFILTER_SEL | ANIMFILTER_UNSEL)) == 0) {
+				ANIMCHANNEL_NEW_CHANNEL(adt, ANIMTYPE_NLACONTROLS, owner_id);
+			}
+		}
+		
+		/* now add the list of collected channels */
+		BLI_movelisttolist(anim_data, &tmp_data);
+		BLI_assert(BLI_listbase_is_empty(&tmp_data));
+		items += tmp_items;
+	}
+	
+	/* return the numebr of items added to the list */
 	return items;
 }
 
@@ -1331,6 +1444,9 @@ static size_t animfilter_block_data(bAnimContext *ac, ListBase *anim_data, bDope
 			},
 			{ /* Drivers */
 				items += animfilter_fcurves(anim_data, ads, adt->drivers.first, NULL, filter_mode, id);
+			},
+			{ /* NLA Control Keyframes */
+				items += animfilter_nla_controls(anim_data, ads, adt, filter_mode, id);
 			},
 			{ /* Keyframes */
 				items += animfilter_action(ac, anim_data, ads, adt->action, filter_mode, id);
@@ -2214,6 +2330,7 @@ static size_t animdata_filter_ds_obanim(bAnimContext *ac, ListBase *anim_data, b
 			cdata = adt;
 			expanded = EXPANDED_DRVD(adt);
 		},
+		{ /* NLA Strip Controls - no dedicated channel for now (XXX) */ },
 		{ /* Keyframes */
 			type = ANIMTYPE_FILLACTD;
 			cdata = adt->action;
@@ -2385,6 +2502,7 @@ static size_t animdata_filter_ds_scene(bAnimContext *ac, ListBase *anim_data, bD
 			cdata = adt;
 			expanded = EXPANDED_DRVD(adt);
 		},
+		{ /* NLA Strip Controls - no dedicated channel for now (XXX) */ },
 		{ /* Keyframes */
 			type = ANIMTYPE_FILLACTD;
 			cdata = adt->action;
@@ -2804,7 +2922,7 @@ size_t ANIM_animdata_filter(bAnimContext *ac, ListBase *anim_data, eAnimFilter_F
 			/* unhandled */
 			default:
 			{
-				printf("ANIM_animdata_filter() - Invalid datatype argument %d\n", datatype);
+				printf("ANIM_animdata_filter() - Invalid datatype argument %u\n", datatype);
 				break;
 			}
 		}

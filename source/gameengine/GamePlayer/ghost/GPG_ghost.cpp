@@ -74,6 +74,7 @@ extern "C"
 #include "BKE_report.h"
 #include "BKE_library.h"
 #include "BKE_modifier.h"
+#include "BKE_material.h"
 #include "BKE_text.h"
 #include "BKE_sound.h"
 
@@ -517,9 +518,12 @@ int main(int argc, char** argv)
 	// enable fast mipmap generation
 	U.use_gpu_mipmap = 1;
 
-	sound_init_once();
+	BKE_sound_init_once();
 
-	set_free_windowmanager_cb(wm_free);
+	// Initialize a default material for meshes without materials.
+	init_def_material();
+
+	BKE_library_callback_free_window_manager_set(wm_free);
 
 	/* if running blenderplayer the last argument can't be parsed since it has to be the filename. else it is bundled */
 	isBlenderPlayer = !BLO_is_a_runtime(argv[0]);
@@ -595,7 +599,7 @@ int main(int argc, char** argv)
 				i++;
 				G.debug |= G_DEBUG;
 				MEM_set_memory_debug();
-#ifdef DEBUG
+#ifndef NDEBUG
 				BLI_mempool_set_memory_debug();
 #endif
 				break;

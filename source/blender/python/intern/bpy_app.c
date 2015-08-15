@@ -50,6 +50,10 @@
 #include "BKE_blender.h"
 #include "BKE_global.h"
 
+#include "DNA_ID.h"
+
+#include "UI_interface_icons.h"
+
 #include "../generic/py_capi_utils.h"
 #include "../generic/python_utildefines.h"
 
@@ -220,6 +224,33 @@ static int bpy_app_debug_set(PyObject *UNUSED(self), PyObject *value, void *clos
 	return 0;
 }
 
+
+
+PyDoc_STRVAR(bpy_app_binary_path_python_doc,
+"String, the path to the python executable (read-only)"
+);
+static PyObject *bpy_app_binary_path_python_get(PyObject *UNUSED(self), void *UNUSED(closure))
+{
+	/* refcount is held in BlenderAppType.tp_dict */
+	static PyObject *ret = NULL;
+
+	if (ret == NULL) {
+		/* only run once */
+		char fullpath[1024];
+		BKE_appdir_program_python_search(
+		        fullpath, sizeof(fullpath),
+		        PY_MAJOR_VERSION, PY_MINOR_VERSION);
+		ret = PyC_UnicodeFromByte(fullpath);
+		PyDict_SetItemString(BlenderAppType.tp_dict, "binary_path_python", ret);
+	}
+	else {
+		Py_INCREF(ret);
+	}
+
+	return ret;
+
+}
+
 PyDoc_STRVAR(bpy_app_debug_value_doc,
 "Int, number which can be set to non-zero values for testing purposes"
 );
@@ -271,6 +302,14 @@ static PyObject *bpy_app_driver_dict_get(PyObject *UNUSED(self), void *UNUSED(cl
 	return Py_INCREF_RET(bpy_pydriver_Dict);
 }
 
+PyDoc_STRVAR(bpy_app_preview_render_size_doc,
+"Reference size for icon/preview renders (read-only)"
+);
+static PyObject *bpy_app_preview_render_size_get(PyObject *UNUSED(self), void *closure)
+{
+	return PyLong_FromLong((long)UI_preview_render_size(GET_INT_FROM_POINTER(closure)));
+}
+
 static PyObject *bpy_app_autoexec_fail_message_get(PyObject *UNUSED(self), void *UNUSED(closure))
 {
 	return PyC_UnicodeFromByte(G.autoexec_fail);
@@ -287,10 +326,16 @@ static PyGetSetDef bpy_app_getsets[] = {
 	{(char *)"debug_wm",        bpy_app_debug_get, bpy_app_debug_set, (char *)bpy_app_debug_doc, (void *)G_DEBUG_WM},
 	{(char *)"debug_depsgraph", bpy_app_debug_get, bpy_app_debug_set, (char *)bpy_app_debug_doc, (void *)G_DEBUG_DEPSGRAPH},
 	{(char *)"debug_simdata",   bpy_app_debug_get, bpy_app_debug_set, (char *)bpy_app_debug_doc, (void *)G_DEBUG_SIMDATA},
+	{(char *)"debug_gpumem",    bpy_app_debug_get, bpy_app_debug_set, (char *)bpy_app_debug_doc, (void *)G_DEBUG_GPU_MEM},
+
+	{(char *)"binary_path_python", bpy_app_binary_path_python_get, NULL, (char *)bpy_app_binary_path_python_doc, NULL},
 
 	{(char *)"debug_value", bpy_app_debug_value_get, bpy_app_debug_value_set, (char *)bpy_app_debug_value_doc, NULL},
 	{(char *)"tempdir", bpy_app_tempdir_get, NULL, (char *)bpy_app_tempdir_doc, NULL},
 	{(char *)"driver_namespace", bpy_app_driver_dict_get, NULL, (char *)bpy_app_driver_dict_doc, NULL},
+
+    {(char *)"render_icon_size", bpy_app_preview_render_size_get, NULL, (char *)bpy_app_preview_render_size_doc, (void *)ICON_SIZE_ICON},
+    {(char *)"render_preview_size", bpy_app_preview_render_size_get, NULL, (char *)bpy_app_preview_render_size_doc, (void *)ICON_SIZE_PREVIEW},
 
 	/* security */
 	{(char *)"autoexec_fail", bpy_app_global_flag_get, NULL, NULL, (void *)G_SCRIPT_AUTOEXEC_FAIL},

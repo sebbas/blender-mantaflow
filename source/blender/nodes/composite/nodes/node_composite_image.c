@@ -39,6 +39,10 @@
 #include "BKE_global.h"
 #include "BKE_main.h"
 
+#ifdef WITH_CYCLES_DEBUG
+#  include "RE_pipeline.h"
+#endif
+
 /* **************** IMAGE (and RenderResult, multilayer image) ******************** */
 
 static bNodeSocketTemplate cmp_node_rlayers_out[] = {
@@ -73,6 +77,9 @@ static bNodeSocketTemplate cmp_node_rlayers_out[] = {
 	{	SOCK_RGBA, 0, N_("Subsurface Direct"),		0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
 	{	SOCK_RGBA, 0, N_("Subsurface Indirect"),	0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
 	{	SOCK_RGBA, 0, N_("Subsurface Color"),		0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+#ifdef WITH_CYCLES_DEBUG
+	{	SOCK_RGBA, 0, N_("Debug"),					0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+#endif
 	{	-1, 0, ""	}
 };
 
@@ -160,6 +167,10 @@ static void cmp_node_image_add_render_pass_outputs(bNodeTree *ntree, bNode *node
 		cmp_node_image_add_render_pass_output(ntree, node, SCE_PASS_SUBSURFACE_INDIRECT, RRES_OUT_SUBSURFACE_INDIRECT);
 	if (passflag & SCE_PASS_SUBSURFACE_COLOR)
 		cmp_node_image_add_render_pass_output(ntree, node, SCE_PASS_SUBSURFACE_COLOR, RRES_OUT_SUBSURFACE_COLOR);
+
+#ifdef WITH_CYCLES_DEBUG
+	cmp_node_image_add_render_pass_output(ntree, node, SCE_PASS_DEBUG, RRES_OUT_DEBUG);
+#endif
 }
 
 static void cmp_node_image_add_multilayer_outputs(bNodeTree *ntree, bNode *node, RenderLayer *rl)
@@ -168,14 +179,21 @@ static void cmp_node_image_add_multilayer_outputs(bNodeTree *ntree, bNode *node,
 	NodeImageLayer *sockdata;
 	RenderPass *rpass;
 	int index;
+	int passflag = 0;
 	for (rpass = rl->passes.first, index = 0; rpass; rpass = rpass->next, ++index) {
 		int type;
 		if (rpass->channels == 1)
 			type = SOCK_FLOAT;
 		else
 			type = SOCK_RGBA;
-		
-		sock = nodeAddStaticSocket(ntree, node, SOCK_OUT, type, PROP_NONE, rpass->name, rpass->name);
+
+		/* we only need one socket per type */
+		if (passflag & rpass->passtype)
+			continue;
+
+		passflag |= rpass->passtype;
+
+		sock = nodeAddStaticSocket(ntree, node, SOCK_OUT, type, PROP_NONE, rpass->internal_name, rpass->internal_name);
 		/* extra socket info */
 		sockdata = MEM_callocN(sizeof(NodeImageLayer), "node image layer");
 		sock->storage = sockdata;
@@ -183,7 +201,7 @@ static void cmp_node_image_add_multilayer_outputs(bNodeTree *ntree, bNode *node,
 		sockdata->pass_index = index;
 		sockdata->pass_flag = rpass->passtype;
 
-		if (STREQ(rpass->chan_id, "RGBA")) {
+		if (rpass->passtype == SCE_PASS_COMBINED) {
 			sock = nodeAddStaticSocket(ntree, node, SOCK_OUT, SOCK_FLOAT, PROP_NONE, "Alpha", "Alpha");
 			sockdata = MEM_callocN(sizeof(NodeImageLayer), "node image layer");
 			sock->storage = sockdata;
@@ -373,8 +391,12 @@ void register_node_type_cmp_image(void)
 static void set_output_visible(bNode *node, int passflag, int index, int pass)
 {
 	bNodeSocket *sock = BLI_findlink(&node->outputs, index);
+	bool pass_enabled = ((passflag & pass) != 0);
+#ifdef WITH_CYCLES_DEBUG
+	pass_enabled |= (pass == SCE_PASS_DEBUG);
+#endif
 	/* clear the SOCK_HIDDEN flag as well, in case a socket was hidden before */
-	if (passflag & pass)
+	if (pass_enabled)
 		sock->flag &= ~(SOCK_HIDDEN | SOCK_UNAVAIL);
 	else
 		sock->flag |= SOCK_UNAVAIL;
@@ -433,6 +455,10 @@ void node_cmp_rlayers_force_hidden_passes(bNode *node)
 	set_output_visible(node, passflag, RRES_OUT_SUBSURFACE_DIRECT,      SCE_PASS_SUBSURFACE_DIRECT);
 	set_output_visible(node, passflag, RRES_OUT_SUBSURFACE_INDIRECT,    SCE_PASS_SUBSURFACE_INDIRECT);
 	set_output_visible(node, passflag, RRES_OUT_SUBSURFACE_COLOR,       SCE_PASS_SUBSURFACE_COLOR);
+
+#ifdef WITH_CYCLES_DEBUG
+	set_output_visible(node, passflag, RRES_OUT_DEBUG, SCE_PASS_DEBUG);
+#endif
 }
 
 static void node_composit_init_rlayers(const bContext *C, PointerRNA *ptr)

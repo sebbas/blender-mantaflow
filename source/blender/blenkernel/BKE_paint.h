@@ -37,12 +37,12 @@ struct BMesh;
 struct BMFace;
 struct Brush;
 struct CurveMapping;
-struct MDisps;
 struct MeshElemMap;
 struct GridPaintMask;
 struct Main;
+struct MLoop;
+struct MLoopTri;
 struct MFace;
-struct MultireModifierData;
 struct MVert;
 struct Object;
 struct Paint;
@@ -57,7 +57,6 @@ struct StrokeCache;
 struct Tex;
 struct ImagePool;
 struct UnifiedPaintSettings;
-struct wmOperator;
 
 enum OverlayFlags;
 
@@ -103,7 +102,7 @@ struct Palette      *BKE_palette_add(struct Main *bmain, const char *name);
 struct PaletteColor *BKE_palette_color_add(struct Palette *palette);
 bool                 BKE_palette_is_empty(const struct Palette *palette);
 void                 BKE_palette_color_remove(struct Palette *palette, struct PaletteColor *color);
-void                 BKE_palette_cleanup(struct Palette *palette);
+void                 BKE_palette_clear(struct Palette *palette);
 
 /* paint curves */
 struct PaintCurve *BKE_paint_curve_add(struct Main *bmain, const char *name);
@@ -123,6 +122,7 @@ void BKE_paint_brush_set(struct Paint *paint, struct Brush *br);
 struct Palette *BKE_paint_palette(struct Paint *paint);
 void BKE_paint_palette_set(struct Paint *p, struct Palette *palette);
 void BKE_paint_curve_set(struct Brush *br, struct PaintCurve *pc);
+void BKE_paint_curve_clamp_endpoint_add_index(struct PaintCurve *pc, const int add_index);
 
 void BKE_paint_data_warning(struct ReportList *reports, bool uvs, bool mat, bool tex, bool stencil);
 bool BKE_paint_proj_mesh_data_check(struct Scene *scene, struct Object *ob, bool *uvs, bool *mat, bool *tex, bool *stencil);
@@ -135,7 +135,7 @@ bool BKE_paint_select_vert_test(struct Object *ob);
 bool BKE_paint_select_elem_test(struct Object *ob);
 
 /* partial visibility */
-bool paint_is_face_hidden(const struct MFace *f, const struct MVert *mvert);
+bool paint_is_face_hidden(const struct MLoopTri *lt, const struct MVert *mvert, const struct MLoop *mloop);
 bool paint_is_grid_face_hidden(const unsigned int *grid_hidden,
                                int gridsize, int x, int y);
 bool paint_is_bmesh_face_hidden(struct BMFace *f);
@@ -146,6 +146,7 @@ float paint_grid_paint_mask(const struct GridPaintMask *gpm, unsigned level,
 
 /* stroke related */
 void paint_calculate_rake_rotation(struct UnifiedPaintSettings *ups, struct Brush *brush, const float mouse_pos[2]);
+void paint_update_brush_rake_rotation(struct UnifiedPaintSettings *ups, struct Brush *brush, float rotation);
 
 void BKE_paint_stroke_get_average(struct Scene *scene, struct Object *ob, float stroke[3]);
 
@@ -158,7 +159,6 @@ typedef struct SculptSession {
 	struct MPoly *mpoly;
 	struct MLoop *mloop;
 	int totvert, totpoly;
-	float (*face_normals)[3];
 	struct KeyBlock *kb;
 	float *vmask;
 	
@@ -197,8 +197,8 @@ typedef struct SculptSession {
 	struct StrokeCache *cache;
 } SculptSession;
 
-void BKE_free_sculptsession(struct Object *ob);
-void BKE_free_sculptsession_deformMats(struct SculptSession *ss);
+void BKE_sculptsession_free(struct Object *ob);
+void BKE_sculptsession_free_deformMats(struct SculptSession *ss);
 void BKE_sculptsession_bm_to_me(struct Object *ob, bool reorder);
 void BKE_sculptsession_bm_to_me_for_render(struct Object *object);
 void BKE_sculpt_update_mesh_elements(struct Scene *scene, struct Sculpt *sd, struct Object *ob,

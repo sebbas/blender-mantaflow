@@ -45,10 +45,8 @@ struct ParticleSystemModifierData;
 struct ParticleSystem;
 struct ParticleKey;
 struct ParticleSettings;
-struct HairKey;
 
 struct Main;
-struct Group;
 struct Object;
 struct Scene;
 struct DerivedMesh;
@@ -57,12 +55,10 @@ struct MTFace;
 struct MCol;
 struct MFace;
 struct MVert;
-struct IpoCurve;
 struct LatticeDeformData;
 struct LinkNode;
 struct KDTree;
 struct RNG;
-struct SurfaceModifierData;
 struct BVHTreeRay;
 struct BVHTreeRayHit; 
 struct EdgeHash;
@@ -183,7 +179,7 @@ typedef struct ParticleBillboardData {
 
 typedef struct ParticleCollisionElement {
 	/* pointers to original data */
-	float *x[4], *v[4];
+	float *x[3], *v[3];
 
 	/* values interpolated from original data*/
 	float x0[3], x1[3], x2[3], p[3];
@@ -361,7 +357,7 @@ void psys_get_dupli_path_transform(struct ParticleSimulationData *sim, struct Pa
 
 void psys_thread_context_init(struct ParticleThreadContext *ctx, struct ParticleSimulationData *sim);
 void psys_thread_context_free(struct ParticleThreadContext *ctx);
-void psys_tasks_create(struct ParticleThreadContext *ctx, int totpart, struct ParticleTask **r_tasks, int *r_numtasks);
+void psys_tasks_create(struct ParticleThreadContext *ctx, int startpart, int endpart, struct ParticleTask **r_tasks, int *r_numtasks);
 void psys_tasks_free(struct ParticleTask *tasks, int numtasks);
 
 void psys_make_billboard(ParticleBillboardData *bb, float xvec[3], float yvec[3], float zvec[3], float center[3]);
@@ -462,5 +458,13 @@ typedef struct ParticleRenderData {
 /* index_dmcache */
 #define DMCACHE_NOTFOUND    -1
 #define DMCACHE_ISCHILD     -2
+
+/* **** Depsgraph evaluation **** */
+
+struct EvaluationContext;
+
+void BKE_particle_system_eval(struct EvaluationContext *eval_ctx,
+                              struct Object *ob,
+                              struct ParticleSystem *psys);
 
 #endif

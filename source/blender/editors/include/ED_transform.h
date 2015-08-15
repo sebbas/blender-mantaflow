@@ -35,17 +35,14 @@
 /* ******************* Registration Function ********************** */
 
 struct ARegion;
-struct EnumPropertyItem;
 struct ListBase;
 struct Object;
 struct View3D;
 struct bContext;
-struct uiLayout;
 struct wmEvent;
 struct wmKeyConfig;
 struct wmKeyMap;
 struct wmOperatorType;
-struct wmWindowManager;
 
 void transform_keymap_for_space(struct wmKeyConfig *keyconf, struct wmKeyMap *keymap, int spaceid);
 void transform_operatortypes(void);
@@ -86,7 +83,8 @@ enum TfmMode {
 	TFM_ALIGN,
 	TFM_EDGE_SLIDE,
 	TFM_VERT_SLIDE,
-	TFM_SEQ_SLIDE
+	TFM_SEQ_SLIDE,
+	TFM_BONE_ENVELOPE_DIST,
 };
 
 /* TRANSFORM CONTEXTS */
@@ -109,7 +107,6 @@ enum TfmMode {
 bool calculateTransformCenter(struct bContext *C, int centerMode, float cent3d[3], float cent2d[2]);
 
 struct TransInfo;
-struct ScrArea;
 struct Base;
 struct Scene;
 struct Object;

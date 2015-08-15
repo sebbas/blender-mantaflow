@@ -36,6 +36,7 @@
 #include "util_map.h"
 #include "util_param.h"
 #include "util_string.h"
+#include "util_thread.h"
 #include "util_types.h"
 
 CCL_NAMESPACE_BEGIN
@@ -103,7 +104,6 @@ public:
 	bool has_volume;
 	bool has_displacement;
 	bool has_surface_bssrdf;
-	bool has_converter_blackbody;
 	bool has_bssrdf_bump;
 	bool has_heterogeneous_volume;
 	bool has_object_dependency;
@@ -165,17 +165,25 @@ public:
 	 * have any shader assigned explicitly */
 	static void add_default(Scene *scene);
 
+	/* Selective nodes compilation. */
+	void get_requested_features(Scene *scene,
+	                            int& max_group,
+	                            int& features);
+
 protected:
 	ShaderManager();
 
 	typedef unordered_map<ustring, uint, ustringHash> AttributeIDMap;
 	AttributeIDMap unique_attribute_id;
 
-	vector<float> blackbody_table;
-	vector<float> beckmann_table;
+	thread_mutex lookup_table_mutex;
+	static vector<float> beckmann_table;
 
-	size_t blackbody_table_offset;
 	size_t beckmann_table_offset;
+
+	void get_requested_graph_features(ShaderGraph *graph,
+	                                  int& max_group,
+	                                  int& features);
 };
 
 CCL_NAMESPACE_END

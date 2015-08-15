@@ -28,6 +28,7 @@ set(INC
 	../blenfont
 	../blenlib
 	../blenloader
+	../depsgraph
 	../gpu
 	../ikplugin
 	../imbuf
@@ -61,6 +62,10 @@ set(INC_SYS
 
 set(SRC
 	intern/CCGSubSurf.c
+	intern/CCGSubSurf_legacy.c
+	intern/CCGSubSurf_opensubdiv.c
+	intern/CCGSubSurf_opensubdiv_converter.c
+	intern/CCGSubSurf_util.c
 	intern/DerivedMesh.c
 	intern/action.c
 	intern/addon.c
@@ -68,6 +73,7 @@ set(SRC
 	intern/anim_sys.c
 	intern/appdir.c
 	intern/armature.c
+	intern/armature_update.c
 	intern/autoexec.c
 	intern/blender.c
 	intern/bmfont.c
@@ -120,6 +126,7 @@ set(SRC
 	intern/mask_rasterize.c
 	intern/material.c
 	intern/mball.c
+	intern/mball_tessellate.c
 	intern/mesh.c
 	intern/mesh_evaluate.c
 	intern/mesh_mapping.c
@@ -134,7 +141,9 @@ set(SRC
 	intern/object.c
 	intern/object_deform.c
 	intern/object_dupli.c
+	intern/object_update.c
 	intern/ocean.c
+	intern/outliner_treehash.c
 	intern/packedFile.c
 	intern/paint.c
 	intern/particle.c
@@ -172,7 +181,6 @@ set(SRC
 	intern/tracking_solver.c
 	intern/tracking_stabilize.c
 	intern/tracking_util.c
-	intern/treehash.c
 	intern/unit.c
 	intern/world.c
 	intern/writeavi.c
@@ -211,6 +219,8 @@ set(SRC
 	BKE_depsgraph.h
 	BKE_displist.h
 	BKE_dynamicpaint.h
+	BKE_editmesh.h
+	BKE_editmesh_bvh.h
 	BKE_effect.h
 	BKE_fcurve.h
 	BKE_fluidsim.h
@@ -234,6 +244,7 @@ set(SRC
 	BKE_mask.h
 	BKE_material.h
 	BKE_mball.h
+	BKE_mball_tessellate.h
 	BKE_mesh.h
 	BKE_mesh_mapping.h
 	BKE_mesh_remap.h
@@ -245,6 +256,7 @@ set(SRC
 	BKE_object.h
 	BKE_object_deform.h
 	BKE_ocean.h
+	BKE_outliner_treehash.h
 	BKE_packedFile.h
 	BKE_paint.h
 	BKE_particle.h
@@ -265,12 +277,9 @@ set(SRC
 	BKE_speaker.h
 	BKE_subsurf.h
 	BKE_suggestions.h
-	BKE_editmesh.h
-	BKE_editmesh_bvh.h
 	BKE_text.h
 	BKE_texture.h
 	BKE_tracking.h
-	BKE_treehash.h
 	BKE_unit.h
 	BKE_utildefines.h
 	BKE_world.h
@@ -281,6 +290,8 @@ set(SRC
 	nla_private.h
 	tracking_private.h
 	intern/CCGSubSurf.h
+	intern/CCGSubSurf_inline.h
+	intern/CCGSubSurf_intern.h
 	intern/pbvh_intern.h
 	intern/data_transfer_intern.h
 )
@@ -301,10 +312,11 @@ if(WIN32)
 endif()
 
 if(WITH_AUDASPACE)
-	list(APPEND INC
-		../../../intern/audaspace/intern
+	add_definitions(${AUDASPACE_DEFINITIONS})
+
+	list(APPEND INC_SYS
+		${AUDASPACE_C_INCLUDE_DIRS}
 	)
-	add_definitions(-DWITH_AUDASPACE)
 endif()
 
 if(WITH_BULLET)
@@ -463,6 +475,20 @@ if(WITH_LIBMV)
 	add_definitions(-DWITH_LIBMV)
 endif()
 
+if(WITH_LIBMV_WERROR)
+	if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
+		set_source_files_properties(intern/tracking.c
+		                            intern/tracking_auto.c
+		                            intern/tracking_detect.c
+		                            intern/tracking_plane_tracker.c
+		                            intern/tracking_region_tracker.c
+		                            intern/tracking_solver.c
+		                            intern/tracking_stabilize.c
+		                            intern/tracking_util.c
+		                            PROPERTIES COMPILE_FLAGS -Werror)
+	endif()
+endif()
+
 if(WITH_FFTW3)
 	list(APPEND INC_SYS
 		${FFTW3_INCLUDE_DIRS}
@@ -478,9 +504,31 @@ if(WITH_FREESTYLE)
 	add_definitions(-DWITH_FREESTYLE)
 endif()
 
+if(WITH_OPENSUBDIV)
+	add_definitions(-DWITH_OPENSUBDIV)
+	list(APPEND INC_SYS
+		../../../intern/opensubdiv
+		${OPENSUBDIV_INCLUDE_DIRS}
+	)
+	if(WITH_SUBSURF_WERROR)
+		if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
+			set_source_files_properties(intern/CCGSubSurf.c
+			                            intern/CCGSubSurf_legacy.c
+			                            intern/CCGSubSurf_opensubdiv.c
+			                            intern/CCGSubSurf_opensubdiv_converter.c
+			                            intern/CCGSubSurf_util.c
+			                            PROPERTIES COMPILE_FLAGS -Werror)
+		endif()
+	endif()
+endif()
+
 ## Warnings as errors, this is too strict!
 #if(MSVC)
 #	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /WX")
 #endif()
+
+if(WITH_LEGACY_DEPSGRAPH)
+	add_definitions(-DWITH_LEGACY_DEPSGRAPH)
+endif()
 
 blender_add_lib(bf_blenkernel "${SRC}" "${INC}" "${INC_SYS}")

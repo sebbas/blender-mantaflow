@@ -88,7 +88,8 @@ public:
 	    GHOST_TDrawingContextType type = GHOST_kDrawingContextTypeNone,
 	    const bool stereoVisual = false,
 	    const bool exclusive = false,
-	    const GHOST_TUns16 numOfAASamples = 0
+	    const GHOST_TUns16 numOfAASamples = 0,
+	    const bool is_debug = false
 	    );
 
 	bool
@@ -247,7 +248,6 @@ protected:
 	/**
 	 * Sets the cursor grab on the window using
 	 * native window system calls.
-	 * \param warp	Only used when grab is enabled, hides the mouse and allows dragging outside the screen.
 	 */
 	GHOST_TSuccess
 	setWindowCursorGrab(
@@ -327,8 +327,6 @@ private:
 	/** A pointer to the typed system class. */
 	GHOST_SystemX11 *m_system;
 
-	bool m_valid_setup;
-
 	/** Used to concatenate calls to invalidate() on this window. */
 	bool m_invalid_window;
 
@@ -355,6 +353,9 @@ private:
 #if defined(WITH_X11_XINPUT) && defined(X_HAVE_UTF8_STRING)
 	XIC m_xic;
 #endif
+
+	bool m_valid_setup;
+	bool m_is_debug_context;
 
 	void icccmSetState(int state);
 	int icccmGetState() const;

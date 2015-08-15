@@ -547,7 +547,7 @@ bool BKE_tracking_track_has_enabled_marker_at_frame(MovieTrackingTrack *track, i
  * - If action is TRACK_CLEAR_UPTO path from the beginning up to
  *   ref_frame-1 will be clear.
  *
- * - If action is TRACK_CLEAR_ALL only mareker at frame ref_frame will remain.
+ * - If action is TRACK_CLEAR_ALL only marker at frame ref_frame will remain.
  *
  * NOTE: frame number should be in clip space, not scene space
  */
@@ -730,7 +730,7 @@ MovieTrackingTrack *BKE_tracking_track_get_named(MovieTracking *tracking, MovieT
 	return NULL;
 }
 
-MovieTrackingTrack *BKE_tracking_track_get_indexed(MovieTracking *tracking, int tracknr, ListBase **tracksbase_r)
+MovieTrackingTrack *BKE_tracking_track_get_indexed(MovieTracking *tracking, int tracknr, ListBase **r_tracksbase)
 {
 	MovieTrackingObject *object;
 	int cur = 1;
@@ -743,7 +743,7 @@ MovieTrackingTrack *BKE_tracking_track_get_indexed(MovieTracking *tracking, int 
 		while (track) {
 			if (track->flag & TRACK_HAS_BUNDLE) {
 				if (cur == tracknr) {
-					*tracksbase_r = tracksbase;
+					*r_tracksbase = tracksbase;
 					return track;
 				}
 
@@ -756,7 +756,7 @@ MovieTrackingTrack *BKE_tracking_track_get_indexed(MovieTracking *tracking, int 
 		object = object->next;
 	}
 
-	*tracksbase_r = NULL;
+	*r_tracksbase = NULL;
 
 	return NULL;
 }
@@ -1302,6 +1302,95 @@ void BKE_tracking_plane_tracks_deselect_all(ListBase *plane_tracks_base)
 	}
 }
 
+bool BKE_tracking_plane_track_has_point_track(MovieTrackingPlaneTrack *plane_track,
+                                              MovieTrackingTrack *track)
+{
+	int i;
+	for (i = 0; i < plane_track->point_tracksnr; i++) {
+		if (plane_track->point_tracks[i] == track) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool BKE_tracking_plane_track_remove_point_track(MovieTrackingPlaneTrack *plane_track,
+                                                 MovieTrackingTrack *track)
+{
+	int i, track_index;
+	MovieTrackingTrack **new_point_tracks;
+
+	if (plane_track->point_tracksnr <= 4) {
+		return false;
+	}
+
+	new_point_tracks = MEM_mallocN(sizeof(*new_point_tracks) * (plane_track->point_tracksnr - 1),
+	                               "new point tracks array");
+
+	for (i = 0, track_index = 0; i < plane_track->point_tracksnr; i++) {
+		if (plane_track->point_tracks[i] != track) {
+			new_point_tracks[track_index++] = plane_track->point_tracks[i];
+		}
+	}
+
+	MEM_freeN(plane_track->point_tracks);
+	plane_track->point_tracks = new_point_tracks;
+	plane_track->point_tracksnr--;
+
+	return true;
+}
+
+void BKE_tracking_plane_tracks_remove_point_track(MovieTracking *tracking,
+                                                  MovieTrackingTrack *track)
+{
+	MovieTrackingPlaneTrack *plane_track, *next_plane_track;
+	ListBase *plane_tracks_base = BKE_tracking_get_active_plane_tracks(tracking);
+	for (plane_track = plane_tracks_base->first;
+	     plane_track;
+	     plane_track = next_plane_track)
+	{
+		next_plane_track = plane_track->next;
+		if (BKE_tracking_plane_track_has_point_track(plane_track, track)) {
+			if (!BKE_tracking_plane_track_remove_point_track(plane_track, track)) {
+				/* Delete planes with less than 3 point tracks in it. */
+				BKE_tracking_plane_track_free(plane_track);
+				BLI_freelinkN(plane_tracks_base, plane_track);
+			}
+		}
+	}
+}
+
+void BKE_tracking_plane_track_replace_point_track(MovieTrackingPlaneTrack *plane_track,
+                                                  MovieTrackingTrack *old_track,
+                                                  MovieTrackingTrack *new_track)
+{
+	int i;
+	for (i = 0; i < plane_track->point_tracksnr; i++) {
+		if (plane_track->point_tracks[i] == old_track) {
+			plane_track->point_tracks[i] = new_track;
+			break;
+		}
+	}
+}
+
+void BKE_tracking_plane_tracks_replace_point_track(MovieTracking *tracking,
+                                                   MovieTrackingTrack *old_track,
+                                                   MovieTrackingTrack *new_track)
+{
+	MovieTrackingPlaneTrack *plane_track;
+	ListBase *plane_tracks_base = BKE_tracking_get_active_plane_tracks(tracking);
+	for (plane_track = plane_tracks_base->first;
+	     plane_track;
+	     plane_track = plane_track->next)
+	{
+		if (BKE_tracking_plane_track_has_point_track(plane_track, old_track)) {
+			BKE_tracking_plane_track_replace_point_track(plane_track,
+			                                             old_track,
+			                                             new_track);
+		}
+	}
+}
+
 /*********************** Plane Marker *************************/
 
 MovieTrackingPlaneMarker *BKE_tracking_plane_marker_insert(MovieTrackingPlaneTrack *plane_track,
@@ -1733,7 +1822,7 @@ MovieReconstructedCamera *BKE_tracking_camera_get_reconstructed(MovieTracking *t
 }
 
 void BKE_tracking_camera_get_reconstructed_interpolate(MovieTracking *tracking, MovieTrackingObject *object,
-                                                       int framenr, float mat[4][4])
+                                                       float framenr, float mat[4][4])
 {
 	MovieTrackingReconstruction *reconstruction;
 	MovieReconstructedCamera *cameras;
@@ -1741,17 +1830,15 @@ void BKE_tracking_camera_get_reconstructed_interpolate(MovieTracking *tracking, 
 
 	reconstruction = BKE_tracking_object_get_reconstruction(tracking, object);
 	cameras = reconstruction->cameras;
-	a = reconstructed_camera_index_get(reconstruction, framenr, true);
+	a = reconstructed_camera_index_get(reconstruction, (int)framenr, true);
 
 	if (a == -1) {
 		unit_m4(mat);
-
 		return;
 	}
 
-	if (cameras[a].framenr != framenr && a > 0 && a < reconstruction->camnr - 1) {
+	if (cameras[a].framenr != framenr && a < reconstruction->camnr - 1) {
 		float t = ((float)framenr - cameras[a].framenr) / (cameras[a + 1].framenr - cameras[a].framenr);
-
 		blend_m4_m4m4(mat, cameras[a].mat, cameras[a + 1].mat, t);
 	}
 	else {

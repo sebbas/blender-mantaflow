@@ -44,12 +44,12 @@ public:
 		substatus = "";
 		sync_status = "";
 		sync_substatus = "";
-		update_cb = NULL;
+		update_cb = function_null;
 		cancel = false;
 		cancel_message = "";
 		error = false;
 		error_message = "";
-		cancel_cb = NULL;
+		cancel_cb = function_null;
 	}
 
 	Progress(Progress& progress)
@@ -110,7 +110,7 @@ public:
 		return cancel_message;
 	}
 
-	void set_cancel_callback(boost::function<void(void)> function)
+	void set_cancel_callback(function<void(void)> function)
 	{
 		cancel_cb = function;
 	}
@@ -171,6 +171,12 @@ public:
 		total_time_ = (total_time > 0.0)? total_time: 0.0;
 		render_time_ = (render_time > 0.0)? render_time: 0.0;
 		tile_time_ = tile_time;
+	}
+
+	void get_time(double& total_time_, double& render_time_)
+	{
+		total_time_ = (total_time > 0.0)? total_time: 0.0;
+		render_time_ = (render_time > 0.0)? render_time: 0.0;
 	}
 
 	void reset_sample()
@@ -275,7 +281,7 @@ public:
 		}
 	}
 
-	void set_update_callback(boost::function<void(void)> function)
+	void set_update_callback(function<void(void)> function)
 	{
 		update_cb = function;
 	}
@@ -283,8 +289,8 @@ public:
 protected:
 	thread_mutex progress_mutex;
 	thread_mutex update_mutex;
-	boost::function<void(void)> update_cb;
-	boost::function<void(void)> cancel_cb;
+	function<void(void)> update_cb;
+	function<void(void)> cancel_cb;
 
 	int tile;    /* counter for rendered tiles */
 	int sample;  /* counter of rendered samples, global for all tiles */

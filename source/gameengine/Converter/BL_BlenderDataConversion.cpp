@@ -98,7 +98,7 @@
 #include "BLI_utildefines.h"
 #include "BLI_listbase.h"
 
-#include "BlenderWorldInfo.h"
+#include "KX_WorldInfo.h"
 
 #include "KX_KetsjiEngine.h"
 #include "KX_BlenderSceneConverter.h"
@@ -872,10 +872,10 @@ static bool ConvertMaterial(
 		material->matname	=(mat->id.name);
 
 	if (tface) {
-		material->tface		= *tface;
+		ME_MTEXFACE_CPY(&material->mtexpoly, tface);
 	}
 	else {
-		memset(&material->tface, 0, sizeof(material->tface));
+		memset(&material->mtexpoly, 0, sizeof(material->mtexpoly));
 	}
 	material->material	= mat;
 	return true;
@@ -959,8 +959,16 @@ RAS_MeshObject* BL_ConvertMesh(Mesh* mesh, Object* blenderobj, KX_Scene* scene, 
 	int totface = dm->getNumTessFaces(dm);
 	const char *tfaceName = "";
 
+	/* needs to be rewritten for loopdata */
 	if (tface) {
-		DM_add_tangent_layer(dm);
+		if (CustomData_get_layer_index(&dm->faceData, CD_TANGENT) == -1) {
+			bool generate_data = false;
+			if (CustomData_get_layer_index(&dm->loopData, CD_TANGENT) == -1) {
+				DM_add_tangent_layer(dm);
+				generate_data = true;
+			}
+			DM_generate_tangent_tessface_data(dm, generate_data);
+		}
 		tangent = (float(*)[4])dm->getTessFaceDataArray(dm, CD_TANGENT);
 	}
 
@@ -995,7 +1003,6 @@ RAS_MeshObject* BL_ConvertMesh(Mesh* mesh, Object* blenderobj, KX_Scene* scene, 
 	meshobj->m_sharedvertex_map.resize(totvert);
 
 	Material* ma = 0;
-	bool collider = true;
 	MT_Point2 uvs[4][RAS_TexVert::MAX_UNIT];
 	unsigned int rgb[4] = {0};
 
@@ -1065,29 +1072,19 @@ RAS_MeshObject* BL_ConvertMesh(Mesh* mesh, Object* blenderobj, KX_Scene* scene, 
 		else
 			ma = mesh->mat ? mesh->mat[mface->mat_nr]:NULL;
 
-		/* ckeck for texface since texface _only_ is used as a fallback */
-		if (ma == NULL && tface == NULL) {
+		// Check for blender material
+		if (ma == NULL) {
 			ma= &defmaterial;
 		}
 
 		{
-			bool visible = true;
-			bool twoside = false;
 
 			RAS_MaterialBucket* bucket = material_from_mesh(ma, mface, tface, mcol, layers, lightlayer, rgb, uvs, tfaceName, scene, converter);
 
 			// set render flags
-			if (ma)
-			{
-				visible = ((ma->game.flag & GEMAT_INVISIBLE)==0);
-				twoside = ((ma->game.flag  & GEMAT_BACKCULL)==0);
-				collider = ((ma->game.flag & GEMAT_NOPHYSICS)==0);
-			}
-			else {
-				visible = true;
-				twoside = false;
-				collider = true;
-			}
+			bool visible = ((ma->game.flag & GEMAT_INVISIBLE)==0);
+			bool twoside = ((ma->game.flag  & GEMAT_BACKCULL)==0);
+			bool collider = ((ma->game.flag & GEMAT_NOPHYSICS)==0);
 
 			/* mark face as flat, so vertices are split */
 			bool flat = (mface->flag & ME_SMOOTH) == 0;
@@ -1211,7 +1208,9 @@ static PHY_ShapeProps *CreateShapePropsFromBlenderObject(struct Object* blendero
 //	velocity clamping XXX
 	shapeProps->m_clamp_vel_min = blenderobject->min_vel;
 	shapeProps->m_clamp_vel_max = blenderobject->max_vel;
-	
+	shapeProps->m_clamp_angvel_min = blenderobject->min_angvel;
+	shapeProps->m_clamp_angvel_max = blenderobject->max_angvel;
+
 //  Character physics properties
 	shapeProps->m_step_height = blenderobject->step_height;
 	shapeProps->m_jump_speed = blenderobject->jump_speed;
@@ -1347,8 +1346,8 @@ static void BL_CreatePhysicsObjectNew(KX_GameObject* gameobj,
 	if (!(blenderobject->gameflag & OB_COLLISION)) {
 		// Respond to all collisions so that Near sensors work on No Collision
 		// objects.
-		gameobj->SetUserCollisionGroup(0xff);
-		gameobj->SetUserCollisionMask(0xff);
+		gameobj->SetUserCollisionGroup(0xffff);
+		gameobj->SetUserCollisionMask(0xffff);
 		return;
 	}
 
@@ -1399,16 +1398,6 @@ static void BL_CreatePhysicsObjectNew(KX_GameObject* gameobj,
 	// should we record animation for this object?
 	if ((blenderobject->gameflag & OB_RECORD_ANIMATION) != 0)
 		gameobj->SetRecordAnimation(true);
-
-	// store materialname in auxinfo, needed for touchsensors
-	if (meshobj)
-	{
-		const STR_String& matname=meshobj->GetMaterialName(0);
-		gameobj->getClientInfo()->m_auxilary_info = (matname.Length() ? (void*)(matname.ReadPtr()+2) : NULL);
-	} else
-	{
-		gameobj->getClientInfo()->m_auxilary_info = 0;
-	}
 
 	delete shapeprops;
 	delete smmaterial;
@@ -1470,7 +1459,7 @@ static KX_LightObject *gamelight_from_blamp(Object *ob, Lamp *la, unsigned int l
 static KX_Camera *gamecamera_from_bcamera(Object *ob, KX_Scene *kxscene, KX_BlenderSceneConverter *converter)
 {
 	Camera* ca = static_cast<Camera*>(ob->data);
-	RAS_CameraData camdata(ca->lens, ca->ortho_scale, ca->sensor_x, ca->sensor_y, ca->sensor_fit, ca->clipsta, ca->clipend, ca->type == CAM_PERSP, ca->YF_dofdist);
+	RAS_CameraData camdata(ca->lens, ca->ortho_scale, ca->sensor_x, ca->sensor_y, ca->sensor_fit, ca->shiftx, ca->shifty, ca->clipsta, ca->clipend, ca->type == CAM_PERSP, ca->YF_dofdist);
 	KX_Camera *gamecamera;
 	
 	gamecamera= new KX_Camera(kxscene, KX_Scene::m_callbacks, camdata);
@@ -1553,6 +1542,10 @@ static KX_GameObject *gameobject_from_blenderobject(
 					lodmatob = lod->source;
 				}
 				gameobj->AddLodMesh(BL_ConvertMesh(lodmesh, lodmatob, kxscene, converter, libloading));
+			}
+			if (blenderscene->gm.lodflag & SCE_LOD_USE_HYST) {
+				kxscene->SetLodHysteresis(true);
+				kxscene->SetLodHysteresisValue(blenderscene->gm.scehysteresis);
 			}
 		}
 	
@@ -1647,7 +1640,7 @@ static KX_GameObject *gameobject_from_blenderobject(
 
 	case OB_FONT:
 	{
-		bool do_color_management = !(blenderscene->gm.flag & GAME_GLSL_NO_COLOR_MANAGEMENT);
+		bool do_color_management = BKE_scene_check_color_management_enabled(blenderscene);
 		/* font objects have no bounding box */
 		gameobj = new KX_FontObject(kxscene,KX_Scene::m_callbacks, rendertools, ob, do_color_management);
 
@@ -1727,6 +1720,18 @@ static void UNUSED_FUNCTION(print_active_constraints2)(Object *ob) //not used, u
 	}
 }
 
+// Copy base layer to object layer like in BKE_scene_set_background
+static void blenderSceneSetBackground(Scene *blenderscene)
+{
+	Scene *it;
+	Base *base;
+
+	for (SETLOOPER(blenderscene, it, base)) {
+		base->object->lay = base->lay;
+		base->object->flag = base->flag;
+	}
+}
+
 static KX_GameObject* getGameOb(STR_String busc,CListValue* sumolist)
 {
 
@@ -1739,6 +1744,16 @@ static KX_GameObject* getGameOb(STR_String busc,CListValue* sumolist)
 	
 	return 0;
 
+}
+
+static bool bl_isConstraintInList(KX_GameObject *gameobj, set<KX_GameObject*> convertedlist)
+{
+	set<KX_GameObject*>::iterator gobit;
+	for (gobit = convertedlist.begin(); gobit != convertedlist.end(); gobit++) {
+		if ((*gobit)->GetName() == gameobj->GetName())
+			return true;
+	}
+	return false;
 }
 
 /* helper for BL_ConvertBlenderObjects, avoids code duplication
@@ -1900,6 +1915,12 @@ void BL_ConvertBlenderObjects(struct Main* maggie,
 	// is not in a separate thread.
 	BL_Texture::GetMaxUnits();
 
+	/* We have to ensure that group definitions are only converted once
+	 * push all converted group members to this set.
+	 * This will happen when a group instance is made from a linked group instance
+	 * and both are on the active layer. */
+	set<KX_GameObject*> convertedlist;
+
 	if (alwaysUseExpandFraming) {
 		frame_type = RAS_FrameSettings::e_frame_extend;
 		aspect_width = canvas->GetWidth();
@@ -1963,6 +1984,9 @@ void BL_ConvertBlenderObjects(struct Main* maggie,
 	}
 
 	SetDefaultLightMode(blenderscene);
+
+	blenderSceneSetBackground(blenderscene);
+
 	// Let's support scene set.
 	// Beware of name conflict in linked data, it will not crash but will create confusion
 	// in Python scripting and in certain actuators (replace mesh). Linked scene *should* have
@@ -2030,6 +2054,11 @@ void BL_ConvertBlenderObjects(struct Main* maggie,
 														rendertools, 
 														converter,
 														libloading);
+
+						/* Insert object to the constraint game object list
+						 * so we can check later if there is a instance in the scene or
+						 * an instance and its actual group definition. */
+						convertedlist.insert((KX_GameObject*)gameobj->AddRef());
 
 						bool isInActiveLayer = false;
 						if (gameobj)
@@ -2158,8 +2187,6 @@ void BL_ConvertBlenderObjects(struct Main* maggie,
 			case PARSKEL: // skinned - ignore
 				break;
 			case PAROBJECT:
-			case PARCURVE:
-			case PARKEY:
 			case PARVERT3:
 			default:
 				// unhandled
@@ -2270,97 +2297,60 @@ void BL_ConvertBlenderObjects(struct Main* maggie,
 	// create physics joints
 	for (i=0;i<sumolist->GetCount();i++)
 	{
-		KX_GameObject* gameobj = (KX_GameObject*) sumolist->GetValue(i);
-		struct Object* blenderobject = gameobj->GetBlenderObject();
-		ListBase *conlist;
+		PHY_IPhysicsEnvironment *physEnv = kxscene->GetPhysicsEnvironment();
+		KX_GameObject *gameobj = (KX_GameObject *)sumolist->GetValue(i);
+		struct Object *blenderobject = gameobj->GetBlenderObject();
+		ListBase *conlist = get_active_constraints2(blenderobject);
 		bConstraint *curcon;
 
-		if ((gameobj->GetLayer()&activeLayerBitInfo)==0)
+		if (!conlist)
 			continue;
 
-		conlist = get_active_constraints2(blenderobject);
-		if (conlist) {
-			for (curcon = (bConstraint *)conlist->first; curcon; curcon = (bConstraint *)curcon->next) {
-				if (curcon->type==CONSTRAINT_TYPE_RIGIDBODYJOINT) {
+		for (curcon = (bConstraint *)conlist->first; curcon; curcon = (bConstraint *)curcon->next) {
+			if (curcon->type != CONSTRAINT_TYPE_RIGIDBODYJOINT)
+				continue;
 
-					bRigidBodyJointConstraint *dat=(bRigidBodyJointConstraint *)curcon->data;
+			bRigidBodyJointConstraint *dat = (bRigidBodyJointConstraint *)curcon->data;
+					
+			/* Skip if no target or a child object is selected or constraints are deactivated */
+			if (!dat->tar || dat->child || (curcon->flag & CONSTRAINT_OFF))
+				continue;
 
-					if (!dat->child && !(curcon->flag & CONSTRAINT_OFF)) {
+			/* Store constraints of grouped and instanced objects for all layers */
+			gameobj->AddConstraint(dat);
 
-						PHY_IPhysicsController* physctr2 = 0;
+			/** if it's during libload we only add constraints in the object but
+			 * doesn't create it. Constraint will be replicated later in scene->MergeScene
+			 */
+			if (libloading)
+				continue;
 
-						if (dat->tar) {
-							KX_GameObject *gotar=getGameOb(dat->tar->id.name+2,sumolist);
-							if (gotar && ((gotar->GetLayer()&activeLayerBitInfo)!=0) && gotar->GetPhysicsController())
-								physctr2 = gotar->GetPhysicsController();
-						}
+			/* Skipped already converted constraints. 
+			 * This will happen when a group instance is made from a linked group instance
+			 * and both are on the active layer. */
+			if (bl_isConstraintInList(gameobj, convertedlist))
+				continue;
 
-						if (gameobj->GetPhysicsController()) {
-							PHY_IPhysicsController* physctrl = gameobj->GetPhysicsController();
-							//we need to pass a full constraint frame, not just axis
+			KX_GameObject *gotar = getGameOb(dat->tar->id.name + 2, sumolist);
 
-							//localConstraintFrameBasis
-							MT_Matrix3x3 localCFrame(MT_Vector3(dat->axX,dat->axY,dat->axZ));
-							MT_Vector3 axis0 = localCFrame.getColumn(0);
-							MT_Vector3 axis1 = localCFrame.getColumn(1);
-							MT_Vector3 axis2 = localCFrame.getColumn(2);
-
-							int constraintId = kxscene->GetPhysicsEnvironment()->CreateConstraint(physctrl,physctr2,(PHY_ConstraintType)dat->type,(float)dat->pivX,
-								(float)dat->pivY,(float)dat->pivZ,
-								(float)axis0.x(),(float)axis0.y(),(float)axis0.z(),
-								(float)axis1.x(),(float)axis1.y(),(float)axis1.z(),
-								(float)axis2.x(),(float)axis2.y(),(float)axis2.z(),dat->flag);
-							if (constraintId) {
-								//if it is a generic 6DOF constraint, set all the limits accordingly
-								if (dat->type == PHY_GENERIC_6DOF_CONSTRAINT) {
-									int dof;
-									int dofbit=1;
-									for (dof=0;dof<6;dof++) {
-										if (dat->flag & dofbit) {
-											kxscene->GetPhysicsEnvironment()->SetConstraintParam(constraintId,dof,dat->minLimit[dof],dat->maxLimit[dof]);
-										} else {
-											//minLimit > maxLimit means free(disabled limit) for this degree of freedom
-											kxscene->GetPhysicsEnvironment()->SetConstraintParam(constraintId,dof,1,-1);
-										}
-										dofbit<<=1;
-									}
-								} else if (dat->type == PHY_CONE_TWIST_CONSTRAINT) {
-									int dof;
-									int dofbit = 1<<3; // bitflag use_angular_limit_x
-
-									for (dof=3;dof<6;dof++) {
-										if (dat->flag & dofbit) {
-											kxscene->GetPhysicsEnvironment()->SetConstraintParam(constraintId,dof,dat->minLimit[dof],dat->maxLimit[dof]);
-										} else {
-											//maxLimit < 0 means free(disabled limit) for this degree of freedom
-											kxscene->GetPhysicsEnvironment()->SetConstraintParam(constraintId,dof,1,-1);
-										}
-										dofbit<<=1;
-									}
-								} else if (dat->type == PHY_LINEHINGE_CONSTRAINT) {
-									int dof = 3; // dof for angular x
-									int dofbit = 1<<3; // bitflag use_angular_limit_x
-
-									if (dat->flag & dofbit) {
-										kxscene->GetPhysicsEnvironment()->SetConstraintParam(constraintId,dof,
-												dat->minLimit[dof],dat->maxLimit[dof]);
-									} else {
-										//minLimit > maxLimit means free(disabled limit) for this degree of freedom
-										kxscene->GetPhysicsEnvironment()->SetConstraintParam(constraintId,dof,1,-1);
-									}
-								}
-							}
-						}
-					}
-				}
+			if (gotar && (gotar->GetLayer()&activeLayerBitInfo) && gotar->GetPhysicsController() &&
+				(gameobj->GetLayer()&activeLayerBitInfo) && gameobj->GetPhysicsController())
+			{
+				physEnv->SetupObjectConstraints(gameobj, gotar, dat);
 			}
 		}
 	}
 
+	/* cleanup converted set of group objects */
+	set<KX_GameObject*>::iterator gobit;
+	for (gobit = convertedlist.begin(); gobit != convertedlist.end(); gobit++)
+		(*gobit)->Release();
+		
+	convertedlist.clear();
 	sumolist->Release();
 
 	// convert world
-	KX_WorldInfo* worldinfo = new BlenderWorldInfo(blenderscene, blenderscene->world);
+	KX_WorldInfo* worldinfo = new KX_WorldInfo(blenderscene, blenderscene->world);
 	converter->RegisterWorldInfo(worldinfo);
 	kxscene->SetWorldInfo(worldinfo);
 

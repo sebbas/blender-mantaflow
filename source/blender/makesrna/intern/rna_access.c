@@ -1622,7 +1622,7 @@ bool RNA_property_animateable(PointerRNA *ptr, PropertyRNA *prop)
 bool RNA_property_animated(PointerRNA *ptr, PropertyRNA *prop)
 {
 	int len = 1, index;
-	bool driven;
+	bool driven, special;
 
 	if (!prop)
 		return false;
@@ -1631,7 +1631,7 @@ bool RNA_property_animated(PointerRNA *ptr, PropertyRNA *prop)
 		len = RNA_property_array_length(ptr, prop);
 
 	for (index = 0; index < len; index++) {
-		if (rna_get_fcurve(ptr, prop, index, NULL, NULL, &driven))
+		if (rna_get_fcurve(ptr, prop, index, NULL, NULL, &driven, &special))
 			return true;
 	}
 
@@ -1692,6 +1692,15 @@ static void rna_property_update(bContext *C, Main *bmain, Scene *scene, PointerR
 		 * not especially nice  */
 		DAG_id_tag_update(ptr->id.data, OB_RECALC_OB | OB_RECALC_DATA | OB_RECALC_TIME);
 		WM_main_add_notifier(NC_WINDOW, NULL);
+		/* Not nice as well, but the only way to make sure material preview
+		 * is updated with custom nodes.
+		 */
+		if ((prop->flag & PROP_IDPROPERTY) != 0 &&
+		    (ptr->id.data != NULL) &&
+		    (GS(((ID *)ptr->id.data)->name) == ID_NT))
+		{
+			WM_main_add_notifier(NC_MATERIAL | ND_SHADING, NULL);
+		}
 	}
 }
 
@@ -6517,6 +6526,12 @@ bool RNA_property_copy(PointerRNA *ptr, PointerRNA *fromptr, PropertyRNA *prop, 
 		/* In case of IDProperty, we have to find the *real* idprop of ptr,
 		 * since prop in this case is just a fake wrapper around actual IDProp data, and not a 'real' PropertyRNA. */
 		prop = (PropertyRNA *)rna_idproperty_find(ptr, ((IDProperty *)fromprop)->name);
+
+		/* its possible the custom-prop doesn't exist on this datablock */
+		if (prop == NULL) {
+			return false;
+		}
+
 		/* Even though currently we now prop will always be the 'fromprop', this might not be the case in the future. */
 		if (prop == fromprop) {
 			fromprop = (PropertyRNA *)rna_idproperty_find(fromptr, ((IDProperty *)prop)->name);

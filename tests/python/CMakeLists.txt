@@ -120,7 +120,7 @@ add_test(export_obj_cube ${TEST_BLENDER_EXE}
 	--run={'FINISHED'}&bpy.ops.export_scene.obj\(filepath='${TEST_OUT_DIR}/export_obj_cube.obj',use_selection=False\)
 	--md5_source=${TEST_OUT_DIR}/export_obj_cube.obj
 	--md5_source=${TEST_OUT_DIR}/export_obj_cube.mtl
-	--md5=70bdc394c2726203ad26c085176e3484 --md5_method=FILE
+	--md5=e776c6f8e9e0afba346e85bcd10b8e99 --md5_method=FILE
 )
 
 add_test(export_obj_nurbs ${TEST_BLENDER_EXE}
@@ -393,6 +393,12 @@ if(WITH_CYCLES)
 			${CMAKE_CURRENT_LIST_DIR}/cycles_render_tests.py
 			-blender "${TEST_BLENDER_EXE_BARE}"
 			-testdir "${TEST_SRC_DIR}/cycles/ctests/reports"
+			-idiff "${OPENIMAGEIO_IDIFF}"
+		)
+		add_test(cycles_render_test
+			${CMAKE_CURRENT_LIST_DIR}/cycles_render_tests.py
+			-blender "${TEST_BLENDER_EXE_BARE}"
+			-testdir "${TEST_SRC_DIR}/cycles/ctests/render"
 			-idiff "${OPENIMAGEIO_IDIFF}"
 		)
 		add_test(cycles_shaders_test

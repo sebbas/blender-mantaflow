@@ -84,6 +84,7 @@ class IMAGE_MT_view(Menu):
             layout.prop(toolsettings, "show_uv_local_view")
 
         layout.prop(uv, "show_other_objects")
+        layout.prop(uv, "show_metadata")
         if paint.brush and (context.image_paint_object or sima.mode == 'PAINT'):
             layout.prop(uv, "show_texpaint")
             layout.prop(toolsettings, "show_uv_local_view", text="Show same material")
@@ -106,6 +107,7 @@ class IMAGE_MT_view(Menu):
             layout.operator("image.view_selected")
 
         layout.operator("image.view_all")
+        layout.operator("image.view_all", text="View Fit").fit_view = True
 
         layout.separator()
 
@@ -127,6 +129,7 @@ class IMAGE_MT_select(Menu):
 
         layout.operator("uv.select_border").pinned = False
         layout.operator("uv.select_border", text="Border Select Pinned").pinned = True
+        layout.operator("uv.circle_select")
 
         layout.separator()
 
@@ -335,7 +338,8 @@ class IMAGE_MT_uvs(Menu):
         layout.operator("uv.average_islands_scale")
         layout.operator("uv.minimize_stretch")
         layout.operator("uv.stitch")
-        layout.operator("uv.mark_seam")
+        layout.operator("uv.mark_seam").clear = False
+        layout.operator("uv.mark_seam", text="Clear Seam").clear = True
         layout.operator("uv.seams_from_islands")
         layout.operator("mesh.faces_mirror_uv")
 
@@ -458,6 +462,10 @@ class IMAGE_HT_header(Header):
             layout.prop_search(mesh.uv_textures, "active", mesh, "uv_textures", text="")
 
         if ima:
+            if ima.is_stereo_3d:
+                row = layout.row()
+                row.prop(sima, "show_stereo_3d", text="")
+
             # layers
             layout.template_image_layers(ima, iuser)
 
@@ -566,7 +574,7 @@ class IMAGE_PT_image_properties(Panel):
         sima = context.space_data
         iuser = sima.image_user
 
-        layout.template_image(sima, "image", iuser)
+        layout.template_image(sima, "image", iuser, multiview=True)
 
 
 class IMAGE_PT_game_properties(Panel):
@@ -625,6 +633,8 @@ class IMAGE_PT_view_properties(Panel):
 
         sima = context.space_data
         ima = sima.image
+
+        show_render = sima.show_render
         show_uvedit = sima.show_uvedit
         show_maskedit = sima.show_maskedit
         uvedit = sima.uv_editor
@@ -669,7 +679,7 @@ class IMAGE_PT_view_properties(Panel):
             sub.active = uvedit.show_stretch
             sub.row().prop(uvedit, "draw_stretch_type", expand=True)
 
-        if ima:
+        if show_render and ima:
             layout.separator()
             render_slot = ima.render_slots.active
             layout.prop(render_slot, "name", text="Slot Name")
@@ -910,6 +920,24 @@ class IMAGE_PT_paint_curve(BrushButtonsPanel, Panel):
         row.operator("brush.curve_preset", icon='NOCURVE', text="").shape = 'MAX'
 
 
+class VIEW3D_PT_tools_imagepaint_symmetry(BrushButtonsPanel, Panel):
+    bl_category = "Tools"
+    bl_context = "imagepaint"
+    bl_label = "Tiling"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+
+        toolsettings = context.tool_settings
+        ipaint = toolsettings.image_paint
+
+        col = layout.column(align=True)
+        row = col.row(align=True)
+        row.prop(ipaint, "tile_x", text="X", toggle=True)
+        row.prop(ipaint, "tile_y", text="Y", toggle=True)
+ 
+
 class IMAGE_PT_tools_brush_appearance(BrushButtonsPanel, Panel):
     bl_label = "Appearance"
     bl_options = {'DEFAULT_CLOSED'}
@@ -953,10 +981,6 @@ class IMAGE_PT_tools_paint_options(BrushButtonsPanel, Panel):
         ups = toolsettings.unified_paint_settings
 
         col = layout.column(align=True)
-
-        col.prop(brush, "use_wrap")
-        col.separator()
-
         col.label(text="Unified Settings:")
         row = col.row()
         row.prop(ups, "use_unified_size", text="Size")
@@ -1051,10 +1075,10 @@ class ImageScopesPanel:
         if not (sima and sima.image):
             return False
         # scopes are not updated in paint modes, hide
-        if sima.mode in {'PAINT'}:
+        if sima.mode == 'PAINT':
             return False
         ob = context.active_object
-        if ob and ob.mode in {'TEXTURE_PAINT'}:
+        if ob and ob.mode in {'TEXTURE_PAINT', 'EDIT'}:
             return False
         return True
 

@@ -60,7 +60,8 @@ if(EXISTS ${SOURCE_DIR}/.git)
 			execute_process(COMMAND git log HEAD..@{u}
 			                WORKING_DIRECTORY ${SOURCE_DIR}
 			                OUTPUT_VARIABLE _git_below_check
-			                OUTPUT_STRIP_TRAILING_WHITESPACE)
+			                OUTPUT_STRIP_TRAILING_WHITESPACE
+			                ERROR_QUIET)
 			if(NOT _git_below_check STREQUAL "")
 				# If there're commits between HEAD and upstream this means
 				# that we're reset-ed to older revision. Use it's hash then.
@@ -96,6 +97,10 @@ if(EXISTS ${SOURCE_DIR}/.git)
 		                WORKING_DIRECTORY ${SOURCE_DIR}
 		                OUTPUT_VARIABLE MY_WC_COMMIT_TIMESTAMP
 		                OUTPUT_STRIP_TRAILING_WHITESPACE)
+		# May fail in rare cases
+		if(MY_WC_COMMIT_TIMESTAMP STREQUAL "")
+			set(MY_WC_COMMIT_TIMESTAMP 0)
+		endif()
 
 		# Update GIT index before getting dirty files
 		execute_process(COMMAND git update-index -q --refresh

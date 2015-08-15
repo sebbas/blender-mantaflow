@@ -375,7 +375,9 @@ typedef enum ePose_Flags {
 	/* set by BKE_pose_rebuild to give a chance to the IK solver to rebuild IK tree */
 	POSE_WAS_REBUILT = (1 << 5),
 	/* set by game_copy_pose to indicate that this pose is used in the game engine */
-	POSE_GAME_ENGINE = (1 << 6)
+	POSE_GAME_ENGINE = (1 << 6),
+	/* pose constraint flags needs to be updated */
+	POSE_CONSTRAINTS_NEED_UPDATE_FLAGS = (1 << 7),
 } ePose_Flags;
 
 /* IK Solvers ------------------------------------ */
@@ -469,6 +471,9 @@ typedef enum eActionGroup_Flag {
 	AGRP_NOTVISIBLE = (1 << 5),
 	/* for UI (Graph Editor), sub-channels are shown */
 	AGRP_EXPANDED_G = (1 << 6),
+
+	/* sub channel modifiers off */
+	AGRP_MODIFIERS_OFF = (1 << 7),
 	
 	AGRP_TEMP       = (1 << 30),
 	AGRP_MOVED      = (1 << 31)

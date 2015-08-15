@@ -44,15 +44,19 @@ class FILEBROWSER_HT_header(Header):
         row.separator()
 
         row = layout.row(align=True)
-        layout.operator_context = "EXEC_DEFAULT"
+        layout.operator_context = 'EXEC_DEFAULT'
         row.operator("file.directory_new", icon='NEWFOLDER')
 
-        layout.operator_context = "INVOKE_DEFAULT"
+        layout.operator_context = 'INVOKE_DEFAULT'
         params = st.params
 
         # can be None when save/reload with a file selector open
         if params:
             layout.prop(params, "display_type", expand=True, text="")
+
+            if params.display_type == 'FILE_IMGDISPLAY':
+                layout.prop(params, "thumbnail_size", text="")
+
             layout.prop(params, "sort_method", expand=True, text="")
 
             layout.prop(params, "show_hidden", text="", icon='FILE_HIDDEN')
@@ -84,7 +88,7 @@ class FILEBROWSER_HT_header(Header):
 class FILEBROWSER_UL_dir(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         direntry = item
-        space = context.space_data
+        # space = context.space_data
         icon = 'NONE'
         if active_propname == "system_folders_active":
             icon = 'DISK_DRIVE'
@@ -99,12 +103,12 @@ class FILEBROWSER_UL_dir(bpy.types.UIList):
             row = layout.row(align=True)
             row.enabled = direntry.is_valid
             # Non-editable entries would show grayed-out, which is bad in this specific case, so switch to mere label.
-            if direntry.is_property_readonly('name'):
+            if direntry.is_property_readonly("name"):
                 row.label(text=direntry.name, icon=icon)
             else:
                 row.prop(direntry, "name", text="", emboss=False, icon=icon)
 
-        elif self.layout_type in {'GRID'}:
+        elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
             layout.prop(direntry, "path", text="")
 
@@ -123,6 +127,7 @@ class FILEBROWSER_PT_system_folders(Panel):
             row = layout.row()
             row.template_list("FILEBROWSER_UL_dir", "system_folders", space, "system_folders",
                               space, "system_folders_active", item_dyntip_propname="path", rows=1, maxrows=10)
+
 
 class FILEBROWSER_PT_system_bookmarks(Panel):
     bl_space_type = 'FILE_BROWSER'

@@ -34,7 +34,7 @@
 #ifndef __SCA_IOBJECT_H__
 #define __SCA_IOBJECT_H__
 
-#include "Value.h"
+#include "EXP_Value.h"
 #include <vector>
 
 class SCA_IObject;
@@ -221,7 +221,7 @@ public:
 		OBJ_ARMATURE=0,
 		OBJ_CAMERA=1,
 		OBJ_LIGHT=2,
-		OBJ_FONT=3,
+		OBJ_TEXT=3
 	} ObjectTypes;
 
 };

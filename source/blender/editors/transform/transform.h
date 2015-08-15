@@ -39,9 +39,6 @@
 
 #include "DNA_listBase.h"
 
-#include "BLI_smallhash.h"
-#include "BKE_editmesh.h"
-
 /* ************************** Types ***************************** */
 
 struct TransInfo;
@@ -84,6 +81,7 @@ typedef struct TransSnap {
 	bool	project;
 	bool	snap_self;
 	bool	peel;
+	bool	snap_spatial_grid;
 	short  	status;
 	float	snapPoint[3]; /* snapping from this point */
 	float	snapTarget[3]; /* to this point */
@@ -107,8 +105,6 @@ typedef struct TransCon {
 	float mtx[3][3];     /* Matrix of the Constraint space                                            */
 	float imtx[3][3];    /* Inverse Matrix of the Constraint space                                    */
 	float pmtx[3][3];    /* Projection Constraint Matrix (same as imtx with some axis == 0)           */
-	float center[3];     /* transformation center to define where to draw the view widget
-	                      * ALWAYS in global space. Unlike the transformation center                  */
 	int   imval[2];	     /* initial mouse value for visual calculation                                */
 	                     /* the one in TransInfo is not garanty to stay the same (Rotates change it)  */
 	int   mode;          /* Mode flags of the Constraint                                              */
@@ -216,10 +212,10 @@ typedef struct TransDataEdgeSlideVert {
 
 	float edge_len;
 
-	struct BMVert *v_a, *v_b;
+	struct BMVert *v_side[2];
 
 	/* add origvert.co to get the original locations */
-	float dir_a[3], dir_b[3];
+	float dir_side[2][3];
 
 	int loop_nr;
 } TransDataEdgeSlideVert;
@@ -239,6 +235,10 @@ typedef struct SlideOrigData {
 	/* array size of 'layer_math_map_num'
 	 * maps TransDataVertSlideVert.cd_group index to absolute CustomData layer index */
 	int *layer_math_map;
+
+	/* array of slide vert data especially for mirror verts */
+	TransDataGenericSlideVert *sv_mirror;
+	int totsv_mirror;
 } SlideOrigData;
 
 typedef struct EdgeSlideData {
@@ -256,19 +256,20 @@ typedef struct EdgeSlideData {
 	bool flipped_vtx;
 
 	int curr_sv_index;
+
+	/** when un-clamped - use this index: #TransDataEdgeSlideVert.dir_side */
+	int curr_side_unclamp;
 } EdgeSlideData;
 
 
 typedef struct TransDataVertSlideVert {
 	/* TransDataGenericSlideVert */
-	BMVert *v;
+	struct BMVert *v;
 	struct LinkNode **cd_loop_groups;
 	float   co_orig_3d[3];
 	/* end generic */
 
-	float   co_orig_2d[2];
 	float (*co_link_orig_3d)[3];
-	float (*co_link_orig_2d)[2];
 	int     co_link_tot;
 	int     co_link_curr;
 } TransDataVertSlideVert;
@@ -287,6 +288,9 @@ typedef struct VertSlideData {
 	bool flipped_vtx;
 
 	int curr_sv_index;
+
+	/* result of ED_view3d_ob_project_mat_get */
+	float proj_mat[4][4];
 } VertSlideData;
 
 typedef struct BoneInitData {
@@ -356,12 +360,16 @@ typedef struct TransInfo {
 	eRedrawFlag redraw;         /* redraw flag                          */
 	float		prop_size;		/* proportional circle radius           */
 	char		proptext[20];	/* proportional falloff text			*/
-	float       center[3];      /* center of transformation             */
+	float       aspect[3];      /* spaces using non 1:1 aspect, (uv's, f-curve, movie-clip... etc)
+	                             * use for conversion and snapping. */
+	float       center[3];      /* center of transformation (in local-space) */
+	float       center_global[3];  /* center of transformation (in global-space) */
 	float       center2d[2];    /* center in screen coordinates         */
 	int         imval[2];       /* initial mouse position               */
 	short		event_type;		/* event->type used to invoke transform */
 	short       idx_max;		/* maximum index on the input vector	*/
 	float		snap[3];		/* Snapping Gears						*/
+	float		snap_spatial[3]; /* Spatial snapping gears(even when rotating, scaling... etc) */
 	char		frame_side;		/* Mouse side of the cfra, 'L', 'R' or 'B' */
 
 	float		viewmat[4][4];	/* copy from G.vd, prevents feedback,   */
@@ -541,6 +549,7 @@ void transformApply(struct bContext *C, TransInfo *t);
 int  transformEnd(struct bContext *C, TransInfo *t);
 
 void setTransformViewMatrices(TransInfo *t);
+void setTransformViewAspect(TransInfo *t, float r_aspect[3]);
 void convertViewVec(TransInfo *t, float r_vec[3], int dx, int dy);
 void projectIntViewEx(TransInfo *t, const float vec[3], int adr[2], const eV3DProjTest flag);
 void projectIntView(TransInfo *t, const float vec[3], int adr[2]);
@@ -626,7 +635,7 @@ typedef enum {
 void snapGridIncrement(TransInfo *t, float *val);
 void snapGridIncrementAction(TransInfo *t, float *val, GearsType action);
 
-int snapSequenceBounds(TransInfo *t, const int mval[2]);
+void snapSequenceBounds(TransInfo *t, const int mval[2]);
 
 bool activeSnap(TransInfo *t);
 bool validSnap(TransInfo *t);
@@ -690,6 +699,7 @@ void restoreTransObjects(TransInfo *t);
 void recalcData(TransInfo *t);
 
 void calculateCenter2D(TransInfo *t);
+void calculateCenterGlobal(TransInfo *t);
 
 void calculateCenter(TransInfo *t);
 
@@ -704,6 +714,8 @@ bool calculateCenterActive(TransInfo *t, bool select_only, float r_center[3]);
 void calculatePropRatio(TransInfo *t);
 
 void getViewVector(TransInfo *t, float coord[3], float vec[3]);
+
+void transform_data_ext_rotate(TransData *td, float mat[3][3], bool use_drot);
 
 /*********************** Transform Orientations ******************************/
 

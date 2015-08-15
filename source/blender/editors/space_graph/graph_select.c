@@ -272,7 +272,8 @@ static void borderselect_graphkeys(
 	for (ale = anim_data.first; ale; ale = ale->next) {
 		AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 		FCurve *fcu = (FCurve *)ale->key_data;
-		float unit_scale = ANIM_unit_mapping_get_factor(ac->scene, ale->id, fcu, mapping_flag);
+		float offset;
+		float unit_scale = ANIM_unit_mapping_get_factor(ac->scene, ale->id, fcu, mapping_flag, &offset);
 
 		/* apply NLA mapping to all the keyframes, since it's easier than trying to
 		 * guess when a callback might use something different
@@ -282,8 +283,8 @@ static void borderselect_graphkeys(
 
 		scaled_rectf.xmin = rectf.xmin;
 		scaled_rectf.xmax = rectf.xmax;
-		scaled_rectf.ymin = rectf.ymin / unit_scale;
-		scaled_rectf.ymax = rectf.ymax / unit_scale;
+		scaled_rectf.ymin = rectf.ymin / unit_scale - offset;
+		scaled_rectf.ymax = rectf.ymax / unit_scale - offset;
 
 		/* set horizontal range (if applicable) 
 		 * NOTE: these values are only used for x-range and y-range but not region 
@@ -1089,6 +1090,8 @@ typedef struct tNearestVertInfo {
 	short hpoint;       /* the handle index that we hit (eHandleIndex) */
 	short sel;          /* whether the handle is selected or not */
 	int dist;           /* distance from mouse to vert */
+	
+	eAnim_ChannelType ctype; /* type of animation channel this FCurve comes from */
 } tNearestVertInfo;
 
 /* Tags for the type of graph vert that we have */
@@ -1109,15 +1112,15 @@ typedef enum eGraphVertIndex {
 static bool fcurve_handle_sel_check(SpaceIpo *sipo, BezTriple *bezt)
 {
 	if (sipo->flag & SIPO_NOHANDLES) return 0;
-	if ((sipo->flag & SIPO_SELVHANDLESONLY) && BEZSELECTED(bezt) == 0) return 0;
+	if ((sipo->flag & SIPO_SELVHANDLESONLY) && BEZT_ISSEL_ANY(bezt) == 0) return 0;
 	return 1;
 }
 
 /* check if the given vertex is within bounds or not */
 // TODO: should we return if we hit something?
 static void nearest_fcurve_vert_store(
-        ListBase *matches, View2D *v2d, FCurve *fcu,
-        BezTriple *bezt, FPoint *fpt, short hpoint, const int mval[2], float unit_scale)
+        ListBase *matches, View2D *v2d, FCurve *fcu, eAnim_ChannelType ctype,
+        BezTriple *bezt, FPoint *fpt, short hpoint, const int mval[2], float unit_scale, float offset)
 {
 	/* Keyframes or Samples? */
 	if (bezt) {
@@ -1129,7 +1132,7 @@ static void nearest_fcurve_vert_store(
 		 *  'vec' matrix
 		 */
 		if (UI_view2d_view_to_region_clip(v2d,
-		                                  bezt->vec[hpoint + 1][0], bezt->vec[hpoint + 1][1] * unit_scale,
+		                                  bezt->vec[hpoint + 1][0], (bezt->vec[hpoint + 1][1] + offset) * unit_scale,
 		                                  &screen_co[0], &screen_co[1]) &&
 		    /* check if distance from mouse cursor to vert in screen space is within tolerance */
 		    ((dist = len_v2v2_int(mval, screen_co)) <= GVERTSEL_TOL))
@@ -1140,7 +1143,7 @@ static void nearest_fcurve_vert_store(
 			/* if there is already a point for the F-Curve, check if this point is closer than that was */
 			if ((nvi) && (nvi->fcu == fcu)) {
 				/* replace if we are closer, or if equal and that one wasn't selected but we are... */
-				if ((nvi->dist > dist) || ((nvi->sel == 0) && BEZSELECTED(bezt)))
+				if ((nvi->dist > dist) || ((nvi->sel == 0) && BEZT_ISSEL_ANY(bezt)))
 					replace = 1;
 			}
 			/* add new if not replacing... */
@@ -1149,11 +1152,13 @@ static void nearest_fcurve_vert_store(
 			
 			/* store values */
 			nvi->fcu = fcu;
+			nvi->ctype = ctype;
+			
 			nvi->bezt = bezt;
 			nvi->hpoint = hpoint;
 			nvi->dist = dist;
 			
-			nvi->sel = BEZSELECTED(bezt); // XXX... should this use the individual verts instead?
+			nvi->sel = BEZT_ISSEL_ANY(bezt); // XXX... should this use the individual verts instead?
 			
 			/* add to list of matches if appropriate... */
 			if (replace == 0)
@@ -1189,30 +1194,31 @@ static void get_nearest_fcurve_verts_list(bAnimContext *ac, const int mval[2], L
 	for (ale = anim_data.first; ale; ale = ale->next) {
 		FCurve *fcu = (FCurve *)ale->key_data;
 		AnimData *adt = ANIM_nla_mapping_get(ac, ale);
-		float unit_scale = ANIM_unit_mapping_get_factor(ac->scene, ale->id, fcu, mapping_flag);
-
+		float offset;
+		float unit_scale = ANIM_unit_mapping_get_factor(ac->scene, ale->id, fcu, mapping_flag, &offset);
+		
 		/* apply NLA mapping to all the keyframes */
 		if (adt)
 			ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, 0, 0);
-
+		
 		if (fcu->bezt) {
 			BezTriple *bezt1 = fcu->bezt, *prevbezt = NULL;
 			int i;
 			
 			for (i = 0; i < fcu->totvert; i++, prevbezt = bezt1, bezt1++) {
 				/* keyframe */
-				nearest_fcurve_vert_store(matches, v2d, fcu, bezt1, NULL, NEAREST_HANDLE_KEY, mval, unit_scale);
+				nearest_fcurve_vert_store(matches, v2d, fcu, ale->type, bezt1, NULL, NEAREST_HANDLE_KEY, mval, unit_scale, offset);
 				
 				/* handles - only do them if they're visible */
 				if (fcurve_handle_sel_check(sipo, bezt1) && (fcu->totvert > 1)) {
 					/* first handle only visible if previous segment had handles */
 					if ((!prevbezt && (bezt1->ipo == BEZT_IPO_BEZ)) || (prevbezt && (prevbezt->ipo == BEZT_IPO_BEZ))) {
-						nearest_fcurve_vert_store(matches, v2d, fcu, bezt1, NULL, NEAREST_HANDLE_LEFT, mval, unit_scale);
+						nearest_fcurve_vert_store(matches, v2d, fcu, ale->type, bezt1, NULL, NEAREST_HANDLE_LEFT, mval, unit_scale, offset);
 					}
 					
 					/* second handle only visible if this segment is bezier */
 					if (bezt1->ipo == BEZT_IPO_BEZ) {
-						nearest_fcurve_vert_store(matches, v2d, fcu, bezt1, NULL, NEAREST_HANDLE_RIGHT, mval, unit_scale);
+						nearest_fcurve_vert_store(matches, v2d, fcu, ale->type, bezt1, NULL, NEAREST_HANDLE_RIGHT, mval, unit_scale, offset);
 					}
 				}
 			}
@@ -1332,11 +1338,11 @@ static void mouse_graph_keys(bAnimContext *ac, const int mval[2], short select_m
 			if (select_mode == SELECT_INVERT) {
 				/* keyframe - invert select of all */
 				if (nvi->hpoint == NEAREST_HANDLE_KEY) {
-					if (BEZSELECTED(bezt)) {
-						BEZ_DESEL(bezt);
+					if (BEZT_ISSEL_ANY(bezt)) {
+						BEZT_DESEL_ALL(bezt);
 					}
 					else {
-						BEZ_SEL(bezt);
+						BEZT_SEL_ALL(bezt);
 					}
 				}
 				
@@ -1353,7 +1359,7 @@ static void mouse_graph_keys(bAnimContext *ac, const int mval[2], short select_m
 			else {
 				/* if the keyframe was clicked on, select all verts of given beztriple */
 				if (nvi->hpoint == NEAREST_HANDLE_KEY) {
-					BEZ_SEL(bezt);
+					BEZT_SEL_ALL(bezt);
 				}
 				/* otherwise, select the handle that applied */
 				else if (nvi->hpoint == NEAREST_HANDLE_LEFT) 
@@ -1387,7 +1393,7 @@ static void mouse_graph_keys(bAnimContext *ac, const int mval[2], short select_m
 			/* take selection status from item that got hit, to prevent flip/flop on channel 
 			 * selection status when shift-selecting (i.e. "SELECT_INVERT") points
 			 */
-			if (BEZSELECTED(bezt))
+			if (BEZT_ISSEL_ANY(bezt))
 				nvi->fcu->flag |= FCURVE_SELECTED;
 			else
 				nvi->fcu->flag &= ~FCURVE_SELECTED;
@@ -1405,7 +1411,7 @@ static void mouse_graph_keys(bAnimContext *ac, const int mval[2], short select_m
 	/* needs to be called with (sipo->flag & SIPO_SELCUVERTSONLY) otherwise the active flag won't be set [#26452] */
 	if (nvi->fcu->flag & FCURVE_SELECTED) {
 		int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_NODUPLIS);
-		ANIM_set_active_channel(ac, ac->data, ac->datatype, filter, nvi->fcu, ANIMTYPE_FCURVE);
+		ANIM_set_active_channel(ac, ac->data, ac->datatype, filter, nvi->fcu, nvi->ctype);
 	}
 
 	/* free temp sample data for filtering */

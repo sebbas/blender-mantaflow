@@ -57,10 +57,16 @@ set(SRC
 	intern/gpu_compositing.c
 	intern/gpu_debug.c
 
+	shaders/gpu_program_smoke_frag.glsl
+	shaders/gpu_program_smoke_color_frag.glsl
+
 	shaders/gpu_shader_fx_lib.glsl
 	shaders/gpu_shader_fx_ssao_frag.glsl
 	shaders/gpu_shader_fx_dof_frag.glsl
 	shaders/gpu_shader_fx_dof_vert.glsl
+	shaders/gpu_shader_fx_dof_hq_frag.glsl
+	shaders/gpu_shader_fx_dof_hq_vert.glsl
+	shaders/gpu_shader_fx_dof_hq_geo.glsl
 	shaders/gpu_shader_fx_vert.glsl
 	shaders/gpu_shader_material.glsl
 	shaders/gpu_shader_sep_gaussian_blur_frag.glsl
@@ -86,6 +92,9 @@ set(SRC
 	intern/gpu_private.h
 )
 
+data_to_c_simple(shaders/gpu_shader_geometry.glsl SRC)
+data_to_c_simple(shaders/gpu_program_smoke_frag.glsl SRC)
+data_to_c_simple(shaders/gpu_program_smoke_color_frag.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_material.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_sep_gaussian_blur_frag.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_sep_gaussian_blur_vert.glsl SRC)
@@ -99,6 +108,9 @@ data_to_c_simple(shaders/gpu_shader_fx_vert.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_fx_ssao_frag.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_fx_dof_frag.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_fx_dof_vert.glsl SRC)
+data_to_c_simple(shaders/gpu_shader_fx_dof_hq_frag.glsl SRC)
+data_to_c_simple(shaders/gpu_shader_fx_dof_hq_vert.glsl SRC)
+data_to_c_simple(shaders/gpu_shader_fx_dof_hq_geo.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_fx_depth_resolve.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_fx_lib.glsl SRC)
 
@@ -116,6 +128,9 @@ if(WITH_IMAGE_DDS)
 	add_definitions(-DWITH_DDS)
 endif()
 
+if(WITH_OPENSUBDIV)
+	add_definitions(-DWITH_OPENSUBDIV)
+endif()
 
 blender_add_lib(bf_gpu "${SRC}" "${INC}" "${INC_SYS}")
 

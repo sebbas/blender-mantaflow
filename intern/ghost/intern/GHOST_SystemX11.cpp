@@ -280,10 +280,8 @@ getAllDisplayDimensions(
  * \param	height	The height the window.
  * \param	state	The state of the window when opened.
  * \param	type	The type of drawing context installed in this window.
- * \param	stereoVisual	Stereo visual for quad buffered stereo.
- * \param	exclusive	Use to show the window ontop and ignore others
- *						(used fullscreen).
- * \param	numOfAASamples	Number of samples used for AA (zero if no AA)
+ * \param glSettings: Misc OpenGL settings.
+ * \param exclusive: Use to show the window ontop and ignore others (used fullscreen).
  * \param	parentWindow    Parent (embedder) window
  * \return	The new window (or 0 if creation failed).
  */
@@ -308,7 +306,7 @@ createWindow(const STR_String& title,
 	                             left, top, width, height,
 	                             state, parentWindow, type,
 	                             ((glSettings.flags & GHOST_glStereoVisual) != 0), exclusive,
-	                             glSettings.numOfAASamples);
+	                             glSettings.numOfAASamples, (glSettings.flags & GHOST_glDebugContext) != 0);
 
 	if (window) {
 		/* Both are now handle in GHOST_WindowX11.cpp
@@ -329,7 +327,7 @@ createWindow(const STR_String& title,
 }
 
 #if defined(WITH_X11_XINPUT) && defined(X_HAVE_UTF8_STRING)
-static void destroyIMCallback(XIM xim, XPointer ptr, XPointer data)
+static void destroyIMCallback(XIM /*xim*/, XPointer ptr, XPointer /*data*/)
 {
 	GHOST_PRINT("XIM server died\n");
 
@@ -1882,7 +1880,7 @@ GHOST_TSuccess GHOST_SystemX11::pushDragDropEvent(GHOST_TEventType eventType,
  * Basically it will not crash blender now if you have a X device that
  * is configured but not plugged in.
  */
-int GHOST_X11_ApplicationErrorHandler(Display *display, XErrorEvent *theEvent)
+int GHOST_X11_ApplicationErrorHandler(Display * /*display*/, XErrorEvent *theEvent)
 {
 	fprintf(stderr, "Ignoring Xlib error: error code %d request code %d\n",
 	        theEvent->error_code, theEvent->request_code);
@@ -1891,7 +1889,7 @@ int GHOST_X11_ApplicationErrorHandler(Display *display, XErrorEvent *theEvent)
 	return 0;
 }
 
-int GHOST_X11_ApplicationIOErrorHandler(Display *display)
+int GHOST_X11_ApplicationIOErrorHandler(Display * /*display*/)
 {
 	fprintf(stderr, "Ignoring Xlib error: error IO\n");
 

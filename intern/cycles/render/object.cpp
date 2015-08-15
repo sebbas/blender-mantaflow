@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "camera.h"
 #include "device.h"
 #include "light.h"
 #include "mesh.h"
@@ -23,6 +24,7 @@
 #include "scene.h"
 
 #include "util_foreach.h"
+#include "util_logging.h"
 #include "util_map.h"
 #include "util_progress.h"
 #include "util_vector.h"
@@ -104,11 +106,11 @@ void Object::apply_transform(bool apply_to_motion)
 		if(apply_to_motion) {
 			Attribute *attr = mesh->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
 
-			if (attr) {
+			if(attr) {
 				size_t steps_size = mesh->verts.size() * (mesh->motion_steps - 1);
 				float3 *vert_steps = attr->data_float3();
 
-				for (size_t i = 0; i < steps_size; i++)
+				for(size_t i = 0; i < steps_size; i++)
 					vert_steps[i] = transform_point(&tfm, vert_steps[i]);
 			}
 
@@ -119,7 +121,7 @@ void Object::apply_transform(bool apply_to_motion)
 				size_t steps_size = mesh->verts.size() * (mesh->motion_steps - 1);
 				float3 *normal_steps = attr_N->data_float3();
 
-				for (size_t i = 0; i < steps_size; i++)
+				for(size_t i = 0; i < steps_size; i++)
 					normal_steps[i] = normalize(transform_direction(&ntfm, normal_steps[i]));
 			}
 		}
@@ -146,12 +148,12 @@ void Object::apply_transform(bool apply_to_motion)
 		if(apply_to_motion) {
 			Attribute *curve_attr = mesh->curve_attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
 
-			if (curve_attr) {
+			if(curve_attr) {
 				/* apply transform to motion curve keys */
 				size_t steps_size = mesh->curve_keys.size() * (mesh->motion_steps - 1);
 				float4 *key_steps = curve_attr->data_float4();
 
-				for (size_t i = 0; i < steps_size; i++) {
+				for(size_t i = 0; i < steps_size; i++) {
 					float3 co = transform_point(&tfm, float4_to_float3(key_steps[i]));
 					float radius = key_steps[i].w * scalar;
 
@@ -191,6 +193,7 @@ void Object::tag_update(Scene *scene)
 		}
 	}
 
+	scene->camera->need_flags_update = true;
 	scene->curve_system_manager->need_update = true;
 	scene->mesh_manager->need_update = true;
 	scene->object_manager->need_update = true;
@@ -377,6 +380,8 @@ void ObjectManager::device_update_transforms(Device *device, DeviceScene *dscene
 
 void ObjectManager::device_update(Device *device, DeviceScene *dscene, Scene *scene, Progress& progress)
 {
+	VLOG(1) << "Total " << scene->objects.size() << " objects.";
+
 	if(!need_update)
 		return;
 	
@@ -402,8 +407,11 @@ void ObjectManager::device_update(Device *device, DeviceScene *dscene, Scene *sc
 	}
 }
 
-void ObjectManager::device_update_flags(Device *device, DeviceScene *dscene,
-                                        Scene *scene, Progress& progress)
+void ObjectManager::device_update_flags(Device *device,
+                                        DeviceScene *dscene,
+                                        Scene *scene,
+                                        Progress& /*progress*/,
+                                        bool bounds_valid)
 {
 	if(!need_update && !need_flags_update)
 		return;
@@ -418,9 +426,13 @@ void ObjectManager::device_update_flags(Device *device, DeviceScene *dscene,
 	uint *object_flag = dscene->object_flag.get_data();
 
 	vector<Object *> volume_objects;
+	bool has_volume_objects = false;
 	foreach(Object *object, scene->objects) {
 		if(object->mesh->has_volume) {
-			volume_objects.push_back(object);
+			if(bounds_valid) {
+				volume_objects.push_back(object);
+			}
+			has_volume_objects = true;
 		}
 	}
 
@@ -433,14 +445,22 @@ void ObjectManager::device_update_flags(Device *device, DeviceScene *dscene,
 			object_flag[object_index] &= ~SD_OBJECT_HAS_VOLUME;
 		}
 
-		foreach(Object *volume_object, volume_objects) {
-			if(object == volume_object) {
-				continue;
+		if(bounds_valid) {
+			foreach(Object *volume_object, volume_objects) {
+				if(object == volume_object) {
+					continue;
+				}
+				if(object->bounds.intersects(volume_object->bounds)) {
+					object_flag[object_index] |= SD_OBJECT_INTERSECTS_VOLUME;
+					break;
+				}
 			}
-			if(object->bounds.intersects(volume_object->bounds)) {
-				object_flag[object_index] |= SD_OBJECT_INTERSECTS_VOLUME;
-				break;
-			}
+		}
+		else if(has_volume_objects) {
+			/* Not really valid, but can't make more reliable in the case
+			 * of bounds not being up to date.
+			 */
+			object_flag[object_index] |= SD_OBJECT_INTERSECTS_VOLUME;
 		}
 		++object_index;
 	}
@@ -474,6 +494,7 @@ void ObjectManager::apply_static_transforms(DeviceScene *dscene, Scene *scene, u
 	bool apply_to_motion = need_motion != Scene::MOTION_PASS;
 #else
 	bool motion_blur = false;
+	bool apply_to_motion = false;
 #endif
 	int i = 0;
 	bool have_instancing = false;
@@ -491,7 +512,9 @@ void ObjectManager::apply_static_transforms(DeviceScene *dscene, Scene *scene, u
 
 	/* apply transforms for objects with single user meshes */
 	foreach(Object *object, scene->objects) {
-		if(mesh_users[object->mesh] == 1) {
+		if(mesh_users[object->mesh] == 1 &&
+		   object->mesh->displacement_method == Mesh::DISPLACE_BUMP)
+		{
 			if(!(motion_blur && object->use_motion)) {
 				if(!object->mesh->transform_applied) {
 					object->apply_transform(apply_to_motion);

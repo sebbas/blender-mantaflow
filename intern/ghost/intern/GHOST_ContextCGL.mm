@@ -206,6 +206,9 @@ static void makeAttribList(
 	attribs.push_back(NSOpenGLPFADepthSize);
 	attribs.push_back((NSOpenGLPixelFormatAttribute) 32);
 
+	attribs.push_back(NSOpenGLPFAAccumSize);
+	attribs.push_back((NSOpenGLPixelFormatAttribute) 32);
+
 	if (stereoVisual)
 		attribs.push_back(NSOpenGLPFAStereo);
 
@@ -293,14 +296,16 @@ GHOST_TSuccess GHOST_ContextCGL::initializeDrawingContext()
 
 	[m_openGLView setPixelFormat:pixelFormat];
 
-	m_openGLContext = [[NSOpenGLContext alloc] initWithFormat:pixelFormat shareContext:s_sharedOpenGLContext];
+	m_openGLContext = [[NSOpenGLContext alloc] initWithFormat:pixelFormat shareContext:s_sharedOpenGLContext]; // +1 refCount to pixelFormat
 
 	if (m_openGLContext == nil)
 		goto error;
 
 	if (s_sharedCount == 0)
 		s_sharedOpenGLContext = m_openGLContext;
-
+	
+	[pixelFormat release]; // -1 refCount to pixelFormat
+	
 	s_sharedCount++;
 
 #ifdef GHOST_MULTITHREADED_OPENGL
@@ -333,6 +338,7 @@ GHOST_TSuccess GHOST_ContextCGL::initializeDrawingContext()
 error:
 
 	[m_openGLView setOpenGLContext:prev_openGLContext];
+	[pixelFormat release];
 
 	[pool drain];
 

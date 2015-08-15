@@ -29,8 +29,6 @@
  *  \ingroup edobj
  */
 
-#include "MEM_guardedalloc.h"
-
 #include "DNA_mesh_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
@@ -59,7 +57,6 @@
 #include "ED_object.h"
 
 #include "UI_interface.h"
-#include "UI_resources.h"
 
 #include "object_intern.h"
 
@@ -325,12 +322,14 @@ static bool data_transfer_exec_is_object_valid(
 static int data_transfer_exec(bContext *C, wmOperator *op)
 {
 	Scene *scene = CTX_data_scene(C);
-	Object *ob_src = CTX_data_active_object(C);
+	Object *ob_src = ED_object_active_context(C);
 
 	ListBase ctx_objects;
 	CollectionPointerLink *ctx_ob_dst;
 
 	bool changed = false;
+
+	const bool is_frozen = RNA_boolean_get(op->ptr, "use_freeze");
 
 	const bool reverse_transfer = RNA_boolean_get(op->ptr, "use_reverse_transfer");
 
@@ -342,6 +341,7 @@ static int data_transfer_exec(bContext *C, wmOperator *op)
 	const int map_loop_mode = RNA_enum_get(op->ptr, "loop_mapping");
 	const int map_poly_mode = RNA_enum_get(op->ptr, "poly_mapping");
 
+	const bool use_auto_transform = RNA_boolean_get(op->ptr, "use_auto_transform");
 	const bool use_object_transform = RNA_boolean_get(op->ptr, "use_object_transform");
 	const bool use_max_distance = RNA_boolean_get(op->ptr, "use_max_distance");
 	const float max_distance = use_max_distance ? RNA_float_get(op->ptr, "max_distance") : FLT_MAX;
@@ -358,7 +358,13 @@ static int data_transfer_exec(bContext *C, wmOperator *op)
 	const float mix_factor = RNA_float_get(op->ptr, "mix_factor");
 
 	SpaceTransform space_transform_data;
-	SpaceTransform *space_transform = use_object_transform ? &space_transform_data : NULL;
+	SpaceTransform *space_transform = (use_object_transform && !use_auto_transform) ? &space_transform_data : NULL;
+
+	if (is_frozen) {
+		BKE_report(op->reports, RPT_INFO,
+		           "Operator is frozen, changes to its settings won't take effect until you unfreeze it");
+		return OPERATOR_FINISHED;
+	}
 
 	if (reverse_transfer && ((ID *)(ob_src->data))->lib) {
 		/* Do not transfer to linked data, not supported. */
@@ -387,7 +393,8 @@ static int data_transfer_exec(bContext *C, wmOperator *op)
 			if (BKE_object_data_transfer_mesh(
 			        scene, ob_src, ob_dst, data_type, use_create,
 			        map_vert_mode, map_edge_mode, map_loop_mode, map_poly_mode,
-			        space_transform, max_distance, ray_radius, islands_precision,
+			        space_transform, use_auto_transform,
+			        max_distance, ray_radius, islands_precision,
 			        layers_select_src, layers_select_dst,
 			        mix_mode, mix_factor, NULL, false, op->reports))
 			{
@@ -419,7 +426,7 @@ static int data_transfer_exec(bContext *C, wmOperator *op)
 /* Note this context poll is only really partial, it cannot check for all possible invalid cases. */
 static int data_transfer_poll(bContext *C)
 {
-	Object *ob = ED_object_context(C);
+	Object *ob = ED_object_active_context(C);
 	ID *data = (ob) ? ob->data : NULL;
 	return (ob && ob->type == OB_MESH && data);
 }
@@ -431,9 +438,13 @@ static bool data_transfer_draw_check_prop(PointerRNA *ptr, PropertyRNA *prop)
 
 	const char *prop_id = RNA_property_identifier(prop);
 	const int data_type = RNA_enum_get(ptr, "data_type");
+	bool use_auto_transform = false;
 	bool use_max_distance = false;
 	bool use_modifier = false;
 
+	if ((prop_other = RNA_struct_find_property(ptr, "use_auto_transform"))) {
+		use_auto_transform = RNA_property_boolean_get(ptr, prop_other);
+	}
 	if ((prop_other = RNA_struct_find_property(ptr, "use_max_distance"))) {
 		use_max_distance = RNA_property_boolean_get(ptr, prop_other);
 	}
@@ -450,6 +461,9 @@ static bool data_transfer_draw_check_prop(PointerRNA *ptr, PropertyRNA *prop)
 		return false;
 	}
 
+	if (STREQ(prop_id, "use_object_transform") && use_auto_transform) {
+		return false;
+	}
 	if (STREQ(prop_id, "max_distance") && !use_max_distance) {
 		return false;
 	}
@@ -518,6 +532,10 @@ void OBJECT_OT_data_transfer(wmOperatorType *ot)
 	                       "Transfer from selected objects to active one");
 	RNA_def_property_flag(prop, PROP_HIDDEN);
 
+	RNA_def_boolean(ot->srna, "use_freeze", false, "Freeze Operator",
+	                "Prevent changes to settings to re-run the operator, "
+	                "handy to change several things at once with heavy geometry");
+
 	/* Data type to transfer. */
 	ot->prop = RNA_def_enum(ot->srna, "data_type", DT_layer_items, 0, "Data Type", "Which data to transfer");
 	RNA_def_boolean(ot->srna, "use_create", true, "Create Data", "Add data layers on destination meshes if needed");
@@ -533,8 +551,11 @@ void OBJECT_OT_data_transfer(wmOperatorType *ot)
 	             "Method used to map source faces to destination ones");
 
 	/* Mapping options and filtering. */
+	RNA_def_boolean(ot->srna, "use_auto_transform", false, "Auto Transform",
+	                "Automatically compute transformation to get the best possible match between source and "
+	                "destination meshes (WARNING: results will never be as good as manual matching of objects)");
 	RNA_def_boolean(ot->srna, "use_object_transform", true, "Object Transform",
-	                "Evaluate source and destination meshes in their respective object spaces");
+	                "Evaluate source and destination meshes in global space");
 	RNA_def_boolean(ot->srna, "use_max_distance", false, "Only Neighbor Geometry",
 	                "Source elements must be closer than given distance from destination one");
 	prop = RNA_def_float(ot->srna, "max_distance", 1.0f, 0.0f, FLT_MAX, "Max Distance",

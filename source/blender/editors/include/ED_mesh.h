@@ -40,39 +40,27 @@ struct View3D;
 struct ARegion;
 struct bContext;
 struct wmOperator;
-struct wmWindowManager;
 struct wmKeyConfig;
 struct ReportList;
-struct EditSelection;
 struct ViewContext;
 struct bDeformGroup;
-struct MDeformWeight;
 struct MDeformVert;
 struct Scene;
 struct Mesh;
-struct MFace;
-struct MEdge;
-struct MVert;
-struct MCol;
 struct UvVertMap;
 struct UvMapVert;
-struct CustomData;
 struct BMEditMesh;
-struct BMEditSelection;
 struct BMesh;
 struct BMVert;
 struct BMLoop;
 struct BMBVHTree;
-struct MLoopCol;
 struct BMEdge;
 struct BMFace;
 struct UvVertMap;
 struct UvMapVert;
 struct ToolSettings;
-struct Material;
 struct Object;
 struct rcti;
-struct MeshStatVis;
 
 /* editmesh_utils.c */
 void           EDBM_verts_mirror_cache_begin_ex(struct BMEditMesh *em, const int axis,
@@ -119,7 +107,9 @@ void EDBM_mesh_reveal(struct BMEditMesh *em);
 
 void EDBM_update_generic(struct BMEditMesh *em, const bool do_tessface, const bool is_destructive);
 
-struct UvElementMap *BM_uv_element_map_create(struct BMesh *bm, const bool selected, const bool do_islands);
+struct UvElementMap *BM_uv_element_map_create(
+        struct BMesh *bm,
+        const bool selected, const bool use_winding, const bool do_islands);
 void                 BM_uv_element_map_free(struct UvElementMap *vmap);
 struct UvElement    *BM_uv_element_get(struct UvElementMap *map, struct BMFace *efa, struct BMLoop *l);
 
@@ -128,7 +118,9 @@ struct MTexPoly *EDBM_mtexpoly_active_get(struct BMEditMesh *em, struct BMFace *
 
 void              BM_uv_vert_map_free(struct UvVertMap *vmap);
 struct UvMapVert *BM_uv_vert_map_at_index(struct UvVertMap *vmap, unsigned int v);
-struct UvVertMap *BM_uv_vert_map_create(struct BMesh *bm, bool use_select, const float limit[2]);
+struct UvVertMap *BM_uv_vert_map_create(
+        struct BMesh *bm,
+        const float limit[2], const bool use_select, const bool use_winding);
 
 void EDBM_flag_enable_all(struct BMEditMesh *em, const char hflag);
 void EDBM_flag_disable_all(struct BMEditMesh *em, const char hflag);
@@ -149,9 +141,27 @@ bool EDBM_backbuf_border_mask_init(struct ViewContext *vc, const int mcords[][2]
                                    short xmin, short ymin, short xmax, short ymax);
 bool EDBM_backbuf_circle_init(struct ViewContext *vc, short xs, short ys, short rads);
 
-struct BMVert *EDBM_vert_find_nearest(struct ViewContext *vc, float *r_dist, const bool sel, const bool strict);
-struct BMEdge *EDBM_edge_find_nearest(struct ViewContext *vc, float *r_dist);
-struct BMFace *EDBM_face_find_nearest(struct ViewContext *vc, float *r_dist);
+struct BMVert *EDBM_vert_find_nearest_ex(
+        struct ViewContext *vc, float *r_dist,
+        const bool use_select_bias, bool use_cycle);
+struct BMVert *EDBM_vert_find_nearest(
+        struct ViewContext *vc, float *r_dist);
+
+struct BMEdge *EDBM_edge_find_nearest_ex(
+        struct ViewContext *vc, float *r_dist,
+        float *r_dist_center,
+        const bool use_select_bias, const bool use_cycle,
+        struct BMEdge **r_eed_zbuf);
+struct BMEdge *EDBM_edge_find_nearest(
+        struct ViewContext *vc, float *r_dist);
+
+struct BMFace *EDBM_face_find_nearest_ex(
+        struct ViewContext *vc, float *r_dist,
+        float *r_dist_center,
+        const bool use_select_bias, const bool use_cycle,
+        struct BMFace **r_efa_zbuf);
+struct BMFace *EDBM_face_find_nearest(
+        struct ViewContext *vc, float *r_dist);
 
 bool EDBM_select_pick(struct bContext *C, const int mval[2], bool extend, bool deselect, bool toggle);
 
@@ -233,6 +243,11 @@ void                 ED_vgroup_parray_mirror_assign(struct Object *ob,
 void                 ED_vgroup_parray_remove_zero(struct MDeformVert **dvert_array, const int dvert_tot,
                                                   const bool *vgroup_validmap, const int vgroup_tot,
                                                   const float epsilon, const bool keep_single);
+void                 ED_vgroup_parray_to_weight_array(const struct MDeformVert **dvert_array, const int dvert_tot,
+                                                      float *dvert_weights, const int def_nr);
+void                 ED_vgroup_parray_from_weight_array(struct MDeformVert **dvert_array, const int dvert_tot,
+                                                        const float *dvert_weights, const int def_nr,
+                                                        const bool remove_zero);
 void                 ED_vgroup_mirror(struct Object *ob,
                                       const bool mirror_weights, const bool flip_vgroups,
                                       const bool all_vgroups, const bool use_topology,

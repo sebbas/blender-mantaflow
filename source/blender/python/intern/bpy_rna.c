@@ -53,10 +53,6 @@
 #include "bpy_intern_string.h"
 
 #ifdef USE_PYRNA_INVALIDATE_WEAKREF
-#  include "MEM_guardedalloc.h"
-#endif
-
-#ifdef USE_PYRNA_INVALIDATE_WEAKREF
 #  include "BLI_ghash.h"
 #endif
 
@@ -177,7 +173,7 @@ static GHash *id_weakref_pool_get(ID *id)
 	if (weakinfo_hash == NULL) {
 		/* we're using a ghash as a set, could use libHX's HXMAP_SINGULAR but would be an extra dep. */
 		weakinfo_hash = BLI_ghash_ptr_new("rna_id");
-		BLI_ghash_insert(id_weakref_pool, (void *)id, weakinfo_hash);
+		BLI_ghash_insert(id_weakref_pool, id, weakinfo_hash);
 	}
 
 	return weakinfo_hash;
@@ -203,7 +199,7 @@ static void id_weakref_pool_add(ID *id, BPy_DummyPointerRNA *pyrna)
 	Py_DECREF(weakref_cb_py); /* function owned by the weakref now */
 
 	/* important to add at the end, since first removal looks at the end */
-	BLI_ghash_insert(weakinfo_hash, (void *)weakref, id); /* using a hash table as a set, all 'id's are the same */
+	BLI_ghash_insert(weakinfo_hash, weakref, id); /* using a hash table as a set, all 'id's are the same */
 	/* weakinfo_hash owns the weakref */
 
 }
@@ -1830,25 +1826,23 @@ static int pyrna_py_to_prop(PointerRNA *ptr, PropertyRNA *prop, void *data, PyOb
 							RNA_property_pointer_set(ptr, prop, param->ptr);
 						}
 						else {
-							PointerRNA tmp;
-							RNA_pointer_create(NULL, ptr_type, NULL, &tmp);
-							PyErr_Format(PyExc_TypeError,
-							             "%.200s %.200s.%.200s expected a %.200s type. not %.200s",
-							             error_prefix, RNA_struct_identifier(ptr->type),
-							             RNA_property_identifier(prop), RNA_struct_identifier(tmp.type),
-							             RNA_struct_identifier(param->ptr.type));
-							Py_XDECREF(value_new); return -1;
+							raise_error = true;
 						}
 					}
 
 					if (raise_error) {
-						PointerRNA tmp;
-						RNA_pointer_create(NULL, ptr_type, NULL, &tmp);
-						PyErr_Format(PyExc_TypeError,
-						             "%.200s %.200s.%.200s expected a %.200s type, not %.200s",
-						             error_prefix, RNA_struct_identifier(ptr->type),
-						             RNA_property_identifier(prop), RNA_struct_identifier(tmp.type),
-						             RNA_struct_identifier(param->ptr.type));
+						if (pyrna_struct_validity_check(param) == -1) {
+							/* error set */
+						}
+						else {
+							PointerRNA tmp;
+							RNA_pointer_create(NULL, ptr_type, NULL, &tmp);
+							PyErr_Format(PyExc_TypeError,
+							             "%.200s %.200s.%.200s expected a %.200s type, not %.200s",
+							             error_prefix, RNA_struct_identifier(ptr->type),
+							             RNA_property_identifier(prop), RNA_struct_identifier(tmp.type),
+							             RNA_struct_identifier(param->ptr.type));
+						}
 						Py_XDECREF(value_new); return -1;
 					}
 				}
@@ -2643,6 +2637,7 @@ static int prop_subscript_ass_array_slice(PointerRNA *ptr, PropertyRNA *prop,
                                           int start, int stop, int length, PyObject *value_orig)
 {
 	PyObject *value;
+	PyObject **value_items;
 	int count;
 	void *values_alloc = NULL;
 	int ret = 0;
@@ -2664,6 +2659,7 @@ static int prop_subscript_ass_array_slice(PointerRNA *ptr, PropertyRNA *prop,
 		return -1;
 	}
 
+	value_items = PySequence_Fast_ITEMS(value);
 	switch (RNA_property_type(prop)) {
 		case PROP_FLOAT:
 		{
@@ -2679,7 +2675,7 @@ static int prop_subscript_ass_array_slice(PointerRNA *ptr, PropertyRNA *prop,
 				RNA_property_float_get_array(ptr, prop, values);
 
 			for (count = start; count < stop; count++) {
-				fval = PyFloat_AsDouble(PySequence_Fast_GET_ITEM(value, count - start));
+				fval = PyFloat_AsDouble(value_items[count - start]);
 				CLAMP(fval, min, max);
 				values[count] = fval;
 			}
@@ -2699,7 +2695,7 @@ static int prop_subscript_ass_array_slice(PointerRNA *ptr, PropertyRNA *prop,
 				RNA_property_boolean_get_array(ptr, prop, values);
 
 			for (count = start; count < stop; count++)
-				values[count] = PyLong_AsLong(PySequence_Fast_GET_ITEM(value, count - start));
+				values[count] = PyLong_AsLong(value_items[count - start]);
 
 			if (PyErr_Occurred()) ret = -1;
 			else                  RNA_property_boolean_set_array(ptr, prop, values);
@@ -2720,7 +2716,7 @@ static int prop_subscript_ass_array_slice(PointerRNA *ptr, PropertyRNA *prop,
 				RNA_property_int_get_array(ptr, prop, values);
 
 			for (count = start; count < stop; count++) {
-				ival = PyLong_AsLong(PySequence_Fast_GET_ITEM(value, count - start));
+				ival = PyLong_AsLong(value_items[count - start]);
 				CLAMP(ival, min, max);
 				values[count] = ival;
 			}
@@ -3361,7 +3357,7 @@ static PyObject *pyrna_prop_path_from_id(BPy_PropertyRNA *self)
 PyDoc_STRVAR(pyrna_prop_as_bytes_doc,
 ".. method:: as_bytes()\n"
 "\n"
-"   Returns this string property as a byte rather then a python string.\n"
+"   Returns this string property as a byte rather than a python string.\n"
 "\n"
 "   :return: The string as bytes.\n"
 "   :rtype: bytes\n"
@@ -5241,7 +5237,7 @@ static PyObject *pyrna_func_call(BPy_FunctionRNA *self, PyObject *args, PyObject
 		good_args_str = BLI_dynstr_get_cstring(good_args);
 
 		PyErr_Format(PyExc_TypeError,
-		             "%.200s.%.200s(): was called with invalid keyword arguments(s) (%s), expected (%s)",
+		             "%.200s.%.200s(): was called with invalid keyword argument(s) (%s), expected (%s)",
 		             RNA_struct_identifier(self_ptr->type), RNA_function_identifier(self_func),
 		             bad_args_str, good_args_str);
 
@@ -7452,8 +7448,14 @@ static void bpy_class_free(void *pyob_ptr)
 	PyGILState_Release(gilstate);
 }
 
+/**
+ * \note This isn't essential to run on startup, since subtypes will lazy initialize.
+ * But keep running in debug mode so we get immediate notification of bad class hierarchy
+ * or any errors in "bpy_types.py" at load time, so errors don't go unnoticed.
+ */
 void pyrna_alloc_types(void)
 {
+#ifdef DEBUG
 	PyGILState_STATE gilstate;
 
 	PointerRNA ptr;
@@ -7481,6 +7483,7 @@ void pyrna_alloc_types(void)
 	RNA_PROP_END;
 
 	PyGILState_Release(gilstate);
+#endif  /* DEBUG */
 }
 
 

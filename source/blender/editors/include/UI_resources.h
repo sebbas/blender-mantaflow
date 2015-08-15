@@ -294,14 +294,16 @@ enum {
 	TH_INFO_DEBUG_TEXT,
 	TH_VIEW_OVERLAY,
 	
-	TH_V3D_CLIPPING_BORDER
+	TH_V3D_CLIPPING_BORDER,
+
+	TH_METADATA_BG,
+	TH_METADATA_TEXT
 };
 /* XXX WARNING: previous is saved in file, so do not change order! */
 
 /* specific defines per space should have higher define values */
 
 struct bTheme;
-struct PointerRNA;
 
 struct bThemeState {
 	struct bTheme *theme;

@@ -38,7 +38,6 @@ extern "C" {
 #include "BLI_compiler_attrs.h"
 
 struct ListBase;
-struct direntry;
 
 #ifdef WIN32
 #define SEP '\\'
@@ -79,6 +78,11 @@ void        BLI_del_slash(char *string) ATTR_NONNULL();
 const char *BLI_first_slash(const char *string) ATTR_NONNULL() ATTR_WARN_UNUSED_RESULT;
 void        BLI_path_native_slash(char *path) ATTR_NONNULL();
 
+#ifdef _WIN32
+bool BLI_path_program_extensions_add_win32(char *name, const size_t maxlen);
+#endif
+bool BLI_path_program_search(char *fullname, const size_t maxlen, const char *name);
+
 void BLI_getlastdir(const char *dir, char *last, const size_t maxlen);
 bool BLI_testextensie(const char *str, const char *ext) ATTR_NONNULL() ATTR_WARN_UNUSED_RESULT;
 bool BLI_testextensie_n(const char *str, ...) ATTR_NONNULL(1) ATTR_SENTINEL(0);
@@ -108,7 +112,8 @@ void BLI_cleanup_dir(const char *relabase, char *dir) ATTR_NONNULL(2);
 /* doesn't touch trailing slash */
 void BLI_cleanup_path(const char *relabase, char *path) ATTR_NONNULL(2);
 
-void BLI_filename_make_safe(char *fname) ATTR_NONNULL(1);
+bool BLI_filename_make_safe(char *fname) ATTR_NONNULL(1);
+bool BLI_path_make_safe(char *path) ATTR_NONNULL(1);
 
 /* go back one directory */
 bool BLI_parent_dir(char *path) ATTR_NONNULL();
@@ -128,6 +133,8 @@ bool BLI_parent_dir(char *path) ATTR_NONNULL();
 bool BLI_path_abs(char *path, const char *basepath)  ATTR_NONNULL();
 bool BLI_path_frame(char *path, int frame, int digits) ATTR_NONNULL();
 bool BLI_path_frame_range(char *path, int sta, int end, int digits) ATTR_NONNULL();
+bool BLI_path_frame_get(char *path, int *r_frame, int *numdigits) ATTR_NONNULL();
+void BLI_path_frame_strip(char *path, bool setsharp, char *ext) ATTR_NONNULL();
 bool BLI_path_frame_check_chars(const char *path) ATTR_NONNULL();
 bool BLI_path_cwd(char *path) ATTR_NONNULL();
 void BLI_path_rel(char *file, const char *relfile) ATTR_NONNULL();
@@ -150,8 +157,6 @@ bool BLI_path_suffix(char *string, size_t maxlen, const char *suffix, const char
 #  define BLI_path_cmp strcmp
 #  define BLI_path_ncmp strncmp
 #endif
-
-void BLI_char_switch(char *string, char from, char to) ATTR_NONNULL();
 
 #ifdef WITH_ICONV
 void BLI_string_to_utf8(char *original, char *utf_8, const char *code);

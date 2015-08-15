@@ -338,6 +338,9 @@ typedef struct ThemeSpace {
 
 	char paint_curve_pivot[4];
 	char paint_curve_handle[4];
+
+	char metadatabg[4];
+	char metadatatext[4];
 } ThemeSpace;
 
 
@@ -462,7 +465,8 @@ typedef struct UserDef {
 
 	int scrollback; /* console scrollback limit */
 	int dpi;		/* range 48-128? */
-	char pad2[2];
+	char node_margin; /* node insert offset (aka auto-offset) margin, but might be useful for later stuff as well */
+	char pad2;
 	short transopts;
 	short menuthreshold1, menuthreshold2;
 	
@@ -487,8 +491,9 @@ typedef struct UserDef {
 	short dragthreshold;
 	int memcachelimit;
 	int prefetchframes;
+	float pad_rot_angle; /* control the rotation step of the view when PAD2, PAD4, PAD6&PAD8 is use */
 	short frameserverport;
-	short pad_rot_angle;	/* control the rotation step of the view when PAD2, PAD4, PAD6&PAD8 is use */
+	short pad4;
 	short obcenter_dia;
 	short rvisize;			/* rotating view icon size */
 	short rvibright;		/* rotating view icon brightness */
@@ -500,7 +505,10 @@ typedef struct UserDef {
 	char  ipo_new;			/* interpolation mode for newly added F-Curves */
 	char  keyhandles_new;	/* handle types for newly added keyframes */
 	char  gpu_select_method;
-	char  pad1;
+	char  view_frame_type;
+
+	int view_frame_keyframes; /* number of keyframes to zoom around current frame */
+	float view_frame_seconds; /* seconds to zoom around current frame */
 
 	short scrcastfps;		/* frame rate for screencast to be played back */
 	short scrcastwait;		/* milliseconds between screencast snapshots */
@@ -511,6 +519,7 @@ typedef struct UserDef {
 
 	float ndof_sensitivity;	/* overall sensitivity of 3D mouse */
 	float ndof_orbit_sensitivity;
+	float ndof_deadzone; /* deadzone of 3D mouse */
 	int ndof_flag;			/* flags for 3D mouse */
 
 	short ogl_multisamples;	/* amount of samples for OpenGL FSA, if zero no FSA */
@@ -553,6 +562,9 @@ typedef struct UserDef {
 	short pie_menu_threshold;     /* pie menu distance from center before a direction is set */
 
 	struct WalkNavigation walk_navigation;
+
+	short opensubdiv_compute_type;
+	char pad5[6];
 } UserDef;
 
 extern UserDef U; /* from blenkernel blender.c */
@@ -682,6 +694,13 @@ typedef enum eAutokey_Mode {
 	AUTOKEY_MODE_NORMAL    = 3,
 	AUTOKEY_MODE_EDITKEYS  = 5
 } eAutokey_Mode;
+
+/* Zoom to frame mode */
+typedef enum eZoomFrame_Mode {
+	ZOOM_FRAME_MODE_KEEP_RANGE = 0,
+	ZOOM_FRAME_MODE_SECONDS = 1,
+	ZOOM_FRAME_MODE_KEYFRAMES = 2
+} eZoomFrame_Mode;
 
 /* Auto-Keying flag
  * U.autokey_flag (not strictly used when autokeying only - is also used when keyframing these days)
@@ -867,6 +886,16 @@ typedef enum eUserpref_VirtualPixel {
 	VIRTUAL_PIXEL_NATIVE = 0,
 	VIRTUAL_PIXEL_DOUBLE = 1,
 } eUserpref_VirtualPixel;
+
+typedef enum eOpensubdiv_Computee_Type {
+	USER_OPENSUBDIV_COMPUTE_NONE = 0,
+	USER_OPENSUBDIV_COMPUTE_CPU = 1,
+	USER_OPENSUBDIV_COMPUTE_OPENMP = 2,
+	USER_OPENSUBDIV_COMPUTE_OPENCL = 3,
+	USER_OPENSUBDIV_COMPUTE_CUDA = 4,
+	USER_OPENSUBDIV_COMPUTE_GLSL_TRANSFORM_FEEDBACK = 5,
+	USER_OPENSUBDIV_COMPUTE_GLSL_COMPUTE = 6,
+} eOpensubdiv_Computee_Type;
 
 #ifdef __cplusplus
 }

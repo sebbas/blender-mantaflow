@@ -92,8 +92,10 @@ bDeformGroup *defgroup_duplicate(bDeformGroup *ingroup)
 {
 	bDeformGroup *outgroup;
 
-	if (!ingroup)
+	if (!ingroup) {
+		BLI_assert(0);
 		return NULL;
+	}
 
 	outgroup = MEM_callocN(sizeof(bDeformGroup), "copy deformGroup");
 
@@ -649,7 +651,7 @@ void BKE_deform_flip_side_name(char name[MAX_VGROUP_NAME], const char from_name[
 	BLI_strncpy(prefix, name, sizeof(prefix));
 
 	/* first case; separator . - _ with extensions r R l L  */
-	if (is_char_sep(name[len - 2])) {
+	if ((len > 1) && is_char_sep(name[len - 2])) {
 		is_set = true;
 		switch (name[len - 1]) {
 			case 'l':
@@ -770,6 +772,9 @@ MDeformWeight *defvert_find_index(const MDeformVert *dvert, const int defgroup)
 			}
 		}
 	}
+	else {
+		BLI_assert(0);
+	}
 
 	return NULL;
 }
@@ -781,8 +786,10 @@ MDeformWeight *defvert_verify_index(MDeformVert *dvert, const int defgroup)
 	MDeformWeight *dw_new;
 
 	/* do this check always, this function is used to check for it */
-	if (!dvert || defgroup < 0)
+	if (!dvert || defgroup < 0) {
+		BLI_assert(0);
 		return NULL;
+	}
 
 	dw_new = defvert_find_index(dvert, defgroup);
 	if (dw_new)
@@ -813,8 +820,10 @@ void defvert_add_index_notest(MDeformVert *dvert, int defgroup, const float weig
 	MDeformWeight *dw_new;
 
 	/* do this check always, this function is used to check for it */
-	if (!dvert || defgroup < 0)
+	if (!dvert || defgroup < 0) {
+		BLI_assert(0);
 		return;
+	}
 
 	dw_new = MEM_callocN(sizeof(MDeformWeight) * (dvert->totweight + 1), "defvert_add_to group, new deformWeight");
 	if (dvert->dw) {
@@ -834,7 +843,6 @@ void defvert_add_index_notest(MDeformVert *dvert, int defgroup, const float weig
 void defvert_remove_group(MDeformVert *dvert, MDeformWeight *dw)
 {
 	if (dvert && dw) {
-		MDeformWeight *dw_new;
 		int i = dw - dvert->dw;
 
 		/* Security check! */
@@ -847,20 +855,13 @@ void defvert_remove_group(MDeformVert *dvert, MDeformWeight *dw)
 		 * this deform weight, and reshuffle the others.
 		 */
 		if (dvert->totweight) {
-			dw_new = MEM_mallocN(sizeof(MDeformWeight) * (dvert->totweight), __func__);
-			if (dvert->dw) {
-#if 1           /* since we don't care about order, swap this with the last, save a memcpy */
-				if (i != dvert->totweight) {
-					dvert->dw[i] = dvert->dw[dvert->totweight];
-				}
-				memcpy(dw_new, dvert->dw, sizeof(MDeformWeight) * dvert->totweight);
-#else
-				memcpy(dw_new, dvert->dw, sizeof(MDeformWeight) * i);
-				memcpy(dw_new + i, dvert->dw + i + 1, sizeof(MDeformWeight) * (dvert->totweight - i));
-#endif
-				MEM_freeN(dvert->dw);
+			BLI_assert(dvert->dw != NULL);
+
+			if (i != dvert->totweight) {
+				dvert->dw[i] = dvert->dw[dvert->totweight];
 			}
-			dvert->dw = dw_new;
+
+			dvert->dw = MEM_reallocN(dvert->dw, sizeof(MDeformWeight) * dvert->totweight);
 		}
 		else {
 			/* If there are no other deform weights left then just remove this one. */
@@ -982,7 +983,7 @@ void BKE_defvert_extract_vgroup_to_vertweights(
 		}
 	}
 	else {
-		fill_vn_fl(r_weights, invert_vgroup ? 1.0f : 0.0f, num_verts);
+		copy_vn_fl(r_weights, num_verts, invert_vgroup ? 1.0f : 0.0f);
 	}
 }
 
@@ -1008,7 +1009,7 @@ void BKE_defvert_extract_vgroup_to_edgeweights(
 		MEM_freeN(tmp_weights);
 	}
 	else {
-		fill_vn_fl(r_weights, 0.0f, num_edges);
+		copy_vn_fl(r_weights, num_edges, 0.0f);
 	}
 }
 
@@ -1031,7 +1032,7 @@ void BKE_defvert_extract_vgroup_to_loopweights(
 		MEM_freeN(tmp_weights);
 	}
 	else {
-		fill_vn_fl(r_weights, 0.0f, num_loops);
+		copy_vn_fl(r_weights, num_loops, 0.0f);
 	}
 }
 
@@ -1060,7 +1061,7 @@ void BKE_defvert_extract_vgroup_to_polyweights(
 		MEM_freeN(tmp_weights);
 	}
 	else {
-		fill_vn_fl(r_weights, 0.0f, num_polys);
+		copy_vn_fl(r_weights, num_polys, 0.0f);
 	}
 }
 

@@ -107,7 +107,7 @@ static void change_frame_apply(bContext *C, wmOperator *op)
 	SUBFRA = 0.0f;
 	
 	/* do updates */
-	sound_seek_scene(bmain, scene);
+	BKE_sound_seek_scene(bmain, scene);
 	WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
 }
 
@@ -147,18 +147,34 @@ static int frame_from_event(bContext *C, const wmEvent *event)
 static void change_frame_seq_preview_begin(bContext *C, const wmEvent *event)
 {
 	ScrArea *sa = CTX_wm_area(C);
+	bScreen *screen = CTX_wm_screen(C);
 	if (sa && sa->spacetype == SPACE_SEQ) {
 		SpaceSeq *sseq = sa->spacedata.first;
 		if (ED_space_sequencer_check_show_strip(sseq)) {
 			ED_sequencer_special_preview_set(C, event->mval);
 		}
 	}
+	if (screen)
+		screen->scrubbing = true;
 }
+
 static void change_frame_seq_preview_end(bContext *C)
 {
+	bScreen *screen = CTX_wm_screen(C);
+	bool notify = false;
+
+	if (screen->scrubbing) {
+		screen->scrubbing = false;
+		notify = true;
+	}
+
 	if (ED_sequencer_special_preview_get() != NULL) {
-		Scene *scene = CTX_data_scene(C);
 		ED_sequencer_special_preview_clear();
+		notify = true;
+	}
+
+	if (notify) {
+		Scene *scene = CTX_data_scene(C);
 		WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
 	}
 }
@@ -247,7 +263,7 @@ static void ANIM_OT_change_frame(wmOperatorType *ot)
 	ot->poll = change_frame_poll;
 	
 	/* flags */
-	ot->flag = OPTYPE_BLOCKING | OPTYPE_UNDO | OPTYPE_GRAB_POINTER;
+	ot->flag = OPTYPE_BLOCKING | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR;
 
 	/* rna */
 	ot->prop = RNA_def_int(ot->srna, "frame", 0, MINAFRAME, MAXFRAME, "Frame", "", MINAFRAME, MAXFRAME);

@@ -103,8 +103,8 @@ static void brush_defaults(Brush *brush)
 	brush->jitter = 0.0f;
 
 	/* BRUSH TEXTURE SETTINGS */
-	default_mtex(&brush->mtex);
-	default_mtex(&brush->mask_mtex);
+	BKE_texture_mtex_default(&brush->mtex);
+	BKE_texture_mtex_default(&brush->mask_mtex);
 
 	brush->texture_sample_bias = 0; /* value to added to texture samples */
 	brush->texture_overlay_alpha = 33;
@@ -297,7 +297,6 @@ void BKE_brush_debug_print_state(Brush *br)
 
 	/* br->flag */
 	BR_TEST_FLAG(BRUSH_AIRBRUSH);
-	BR_TEST_FLAG(BRUSH_TORUS);
 	BR_TEST_FLAG(BRUSH_ALPHA_PRESSURE);
 	BR_TEST_FLAG(BRUSH_SIZE_PRESSURE);
 	BR_TEST_FLAG(BRUSH_JITTER_PRESSURE);
@@ -469,7 +468,7 @@ int BKE_brush_texture_set_nr(Brush *brush, int nr)
 	idtest = (ID *)BLI_findlink(&G.main->tex, nr - 1);
 	if (idtest == NULL) { /* new tex */
 		if (id) idtest = (ID *)BKE_texture_copy((Tex *)id);
-		else idtest = (ID *)add_texture(G.main, "Tex");
+		else idtest = (ID *)BKE_texture_add(G.main, "Tex");
 		idtest->us--;
 	}
 	if (idtest != id) {
@@ -782,13 +781,13 @@ float BKE_brush_sample_masktex(const Scene *scene, Brush *br,
  * inconsistency. */
 
 
-float *BKE_brush_color_get(const struct Scene *scene, struct Brush *brush)
+const float *BKE_brush_color_get(const struct Scene *scene, const struct Brush *brush)
 {
 	UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
 	return (ups->flag & UNIFIED_PAINT_COLOR) ? ups->rgb : brush->rgb;
 }
 
-float *BKE_brush_secondary_color_get(const struct Scene *scene, struct Brush *brush)
+const float *BKE_brush_secondary_color_get(const struct Scene *scene, const struct Brush *brush)
 {
 	UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
 	return (ups->flag & UNIFIED_PAINT_COLOR) ? ups->secondary_rgb : brush->secondary_rgb;
@@ -819,7 +818,7 @@ void BKE_brush_size_set(Scene *scene, Brush *brush, int size)
 		brush->size = size;
 }
 
-int BKE_brush_size_get(const Scene *scene, Brush *brush)
+int BKE_brush_size_get(const Scene *scene, const Brush *brush)
 {
 	UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
 	int size = (ups->flag & UNIFIED_PAINT_SIZE) ? ups->size : brush->size;
@@ -827,7 +826,7 @@ int BKE_brush_size_get(const Scene *scene, Brush *brush)
 	return (int)((float)size * U.pixelsize);
 }
 
-int BKE_brush_use_locked_size(const Scene *scene, Brush *brush)
+int BKE_brush_use_locked_size(const Scene *scene, const Brush *brush)
 {
 	const short us_flag = scene->toolsettings->unified_paint_settings.flag;
 
@@ -836,7 +835,7 @@ int BKE_brush_use_locked_size(const Scene *scene, Brush *brush)
 	       (brush->flag & BRUSH_LOCK_SIZE);
 }
 
-int BKE_brush_use_size_pressure(const Scene *scene, Brush *brush)
+int BKE_brush_use_size_pressure(const Scene *scene, const Brush *brush)
 {
 	const short us_flag = scene->toolsettings->unified_paint_settings.flag;
 
@@ -845,7 +844,7 @@ int BKE_brush_use_size_pressure(const Scene *scene, Brush *brush)
 	       (brush->flag & BRUSH_SIZE_PRESSURE);
 }
 
-int BKE_brush_use_alpha_pressure(const Scene *scene, Brush *brush)
+int BKE_brush_use_alpha_pressure(const Scene *scene, const Brush *brush)
 {
 	const short us_flag = scene->toolsettings->unified_paint_settings.flag;
 
@@ -864,7 +863,7 @@ void BKE_brush_unprojected_radius_set(Scene *scene, Brush *brush, float unprojec
 		brush->unprojected_radius = unprojected_radius;
 }
 
-float BKE_brush_unprojected_radius_get(const Scene *scene, Brush *brush)
+float BKE_brush_unprojected_radius_get(const Scene *scene, const Brush *brush)
 {
 	UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
 
@@ -883,14 +882,14 @@ void BKE_brush_alpha_set(Scene *scene, Brush *brush, float alpha)
 		brush->alpha = alpha;
 }
 
-float BKE_brush_alpha_get(const Scene *scene, Brush *brush)
+float BKE_brush_alpha_get(const Scene *scene, const Brush *brush)
 {
 	UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
 
 	return (ups->flag & UNIFIED_PAINT_ALPHA) ? ups->alpha : brush->alpha;
 }
 
-float BKE_brush_weight_get(const Scene *scene, Brush *brush)
+float BKE_brush_weight_get(const Scene *scene, const Brush *brush)
 {
 	UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
 
@@ -920,9 +919,10 @@ void BKE_brush_scale_unprojected_radius(float *unprojected_radius,
 }
 
 /* scale brush size to reflect a change in the brush's unprojected radius */
-void BKE_brush_scale_size(int *r_brush_size,
-                          float new_unprojected_radius,
-                          float old_unprojected_radius)
+void BKE_brush_scale_size(
+        int *r_brush_size,
+        float new_unprojected_radius,
+        float old_unprojected_radius)
 {
 	float scale = new_unprojected_radius;
 	/* avoid division by zero */
@@ -970,7 +970,7 @@ void BKE_brush_randomize_texture_coords(UnifiedPaintSettings *ups, bool mask)
 	}
 }
 
-/* Uses the brush curve control to find a strength value between 0 and 1 */
+/* Uses the brush curve control to find a strength value */
 float BKE_brush_curve_strength(Brush *br, float p, const float len)
 {
 	float strength;
@@ -979,6 +979,15 @@ float BKE_brush_curve_strength(Brush *br, float p, const float len)
 	else p = p / len;
 
 	strength = curvemapping_evaluateF(br->curve, 0, p);
+
+	return strength;
+}
+
+
+/* Uses the brush curve control to find a strength value between 0 and 1 */
+float BKE_brush_curve_strength_clamped(Brush *br, float p, const float len)
+{
+	float strength = BKE_brush_curve_strength(br, p, len);
 
 	CLAMP(strength, 0.0f, 1.0f);
 
@@ -1041,7 +1050,7 @@ struct ImBuf *BKE_brush_gen_radial_control_imbuf(Brush *br, bool secondary)
 	for (i = 0; i < side; ++i) {
 		for (j = 0; j < side; ++j) {
 			float magn = sqrtf(pow2f(i - half) + pow2f(j - half));
-			im->rect_float[i * side + j] = BKE_brush_curve_strength(br, magn, half);
+			im->rect_float[i * side + j] = BKE_brush_curve_strength_clamped(br, magn, half);
 		}
 	}
 

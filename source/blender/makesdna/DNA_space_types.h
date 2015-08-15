@@ -50,28 +50,21 @@
 struct ID;
 struct Text;
 struct Script;
-struct bSound;
-struct ImBuf;
 struct Image;
 struct Scopes;
 struct Histogram;
 struct SpaceIpo;
-struct BlendHandle;
 struct bNodeTree;
-struct uiBlock;
 struct FileList;
 struct bGPdata;
 struct bDopeSheet;
 struct FileSelectParams;
 struct FileLayout;
-struct bScreen;
-struct Scene;
 struct wmOperator;
 struct wmTimer;
 struct MovieClip;
 struct MovieClipScopes;
 struct Mask;
-struct GHash;
 struct BLI_mempool;
 
 
@@ -297,10 +290,13 @@ typedef enum eSpaceOutliner_Mode {
 
 /* SpaceOops->storeflag */
 typedef enum eSpaceOutliner_StoreFlag {
-	/* rebuild tree */
+	/* cleanup tree */
 	SO_TREESTORE_CLEANUP    = (1 << 0),
 	/* if set, it allows redraws. gets set for some allqueue events */
 	SO_TREESTORE_REDRAW     = (1 << 1),
+	/* rebuild the tree, similar to cleanup,
+	 * but defer a call to BKE_outliner_treehash_rebuild_from_treestore instead */
+	SO_TREESTORE_REBUILD    = (1 << 2),
 } eSpaceOutliner_StoreFlag;
 
 /* outliner search flags (SpaceOops->search_flags) */
@@ -507,6 +503,9 @@ typedef struct SpaceSeq {
 	struct bGPdata *gpd;        /* grease-pencil data */
 
 	struct SequencerScopes scopes;  /* different scoped displayed in space */
+
+	char multiview_eye;				/* multiview current eye - for internal use */
+	char pad2[7];
 } SpaceSeq;
 
 
@@ -538,6 +537,7 @@ typedef enum eSpaceSeq_Flag {
 	SEQ_ALL_WAVEFORMS           = (1 << 7), /* draw all waveforms */
 	SEQ_NO_WAVEFORMS            = (1 << 8), /* draw no waveforms */
 	SEQ_SHOW_SAFE_CENTER        = (1 << 9),
+	SEQ_SHOW_METADATA           = (1 << 10),
 } eSpaceSeq_Flag;
 
 /* sseq->view */
@@ -558,8 +558,7 @@ typedef enum eSpaceSeq_Proxy_RenderSize {
 	SEQ_PROXY_RENDER_SIZE_FULL      = 100
 } eSpaceSeq_Proxy_RenderSize;
 
-typedef struct MaskSpaceInfo
-{
+typedef struct MaskSpaceInfo {
 	/* **** mask editing **** */
 	struct Mask *mask;
 	/* draw options */
@@ -592,9 +591,12 @@ typedef struct FileSelectParams {
 
 	char filter_search[64];  /* text items' name must match to be shown. */
 
-	int active_file;
+	int active_file;    /* active file used for keyboard navigation */
+	int highlight_file; /* file under cursor */
 	int sel_first;
 	int sel_last;
+	unsigned short thumbnail_size;
+	short pad;
 
 	/* short */
 	short type; /* XXXXX for now store type here, should be moved to the operator */
@@ -717,7 +719,7 @@ typedef enum eFileSel_File_Types {
 	FILE_TYPE_FTFONT            = (1 << 7),
 	FILE_TYPE_SOUND             = (1 << 8),
 	FILE_TYPE_TEXT              = (1 << 9),
-	FILE_TYPE_MOVIE_ICON        = (1 << 10), /* movie file that preview can't load */
+	/* 1 << 10 was FILE_TYPE_MOVIE_ICON, got rid of this so free slot for future type... */
 	FILE_TYPE_FOLDER            = (1 << 11), /* represents folders for filtering */
 	FILE_TYPE_BTX               = (1 << 12),
 	FILE_TYPE_COLLADA           = (1 << 13),
@@ -839,6 +841,7 @@ typedef enum eSpaceImage_Flag {
 	SI_COLOR_CORRECTION   = (1 << 24),
 
 	SI_NO_DRAW_TEXPAINT   = (1 << 25),
+	SI_DRAW_METADATA      = (1 << 26)
 } eSpaceImage_Flag;
 
 /* Text Editor ============================================ */
@@ -982,12 +985,17 @@ typedef struct SpaceNode {
 	int treetype DNA_DEPRECATED; /* treetype: as same nodetree->type */
 	int pad3;
 	
-	short texfrom;      /* texfrom object, world or brush */
-	short shaderfrom;   /* shader from object or world */
-	short recalc;       /* currently on 0/1, for auto compo */
-	short pad4;
-	ListBase linkdrag;  /* temporary data for modal linking operator */
-	
+	short texfrom;       /* texfrom object, world or brush */
+	short shaderfrom;    /* shader from object or world */
+	short recalc;        /* currently on 0/1, for auto compo */
+
+	char insert_ofs_dir; /* direction for offsetting nodes on insertion */
+	char pad4;
+
+	ListBase linkdrag;   /* temporary data for modal linking operator */
+	/* XXX hack for translate_attach op-macros to pass data from transform op to insert_offset op */
+	struct NodeInsertOfsData *iofsd; /* temporary data for node insert offset (in UI called Auto-offset) */
+
 	struct bGPdata *gpd;        /* grease-pencil data */
 } SpaceNode;
 
@@ -1003,8 +1011,9 @@ typedef enum eSpaceNode_Flag {
 	SNODE_AUTO_RENDER    = (1 << 5),
 	SNODE_SHOW_HIGHLIGHT = (1 << 6),
 //	SNODE_USE_HIDDEN_PREVIEW = (1 << 10), DNA_DEPRECATED December2013 
-	SNODE_NEW_SHADERS = (1 << 11),
+	SNODE_NEW_SHADERS    = (1 << 11),
 	SNODE_PIN            = (1 << 12),
+	SNODE_SKIP_INSOFFSET = (1 << 13), /* automatically offset following nodes in a chain on insertion */
 } eSpaceNode_Flag;
 
 /* snode->texfrom */
@@ -1021,6 +1030,12 @@ typedef enum eSpaceNode_ShaderFrom {
 	SNODE_SHADER_WORLD = 1,
 	SNODE_SHADER_LINESTYLE = 2,
 } eSpaceNode_ShaderFrom;
+
+/* snode->insert_ofs_dir */
+enum {
+	SNODE_INSERTOFS_DIR_RIGHT = 0,
+	SNODE_INSERTOFS_DIR_LEFT  = 1,
+};
 
 /* Game Logic Editor ===================================== */
 
@@ -1162,6 +1177,7 @@ typedef enum eSpaceClip_Flag {
 	SC_SHOW_GRAPH_SEL_ONLY      = (1 << 19),
 	SC_SHOW_GRAPH_HIDDEN        = (1 << 20),
 	SC_SHOW_GRAPH_TRACKS_ERROR  = (1 << 21),
+	SC_SHOW_METADATA            = (1 << 22),
 } eSpaceClip_Flag;
 
 /* SpaceClip->mode */
@@ -1200,10 +1216,13 @@ typedef enum eSpace_Type {
 	SPACE_INFO     = 7,
 	SPACE_SEQ      = 8,
 	SPACE_TEXT     = 9,
+#ifdef DNA_DEPRECATED
 	SPACE_IMASEL   = 10, /* deprecated */
 	SPACE_SOUND    = 11, /* Deprecated */
+#endif
 	SPACE_ACTION   = 12,
 	SPACE_NLA      = 13,
+	/* TODO: fully deprecate */
 	SPACE_SCRIPT   = 14, /* Deprecated */
 	SPACE_TIME     = 15,
 	SPACE_NODE     = 16,
@@ -1218,10 +1237,6 @@ typedef enum eSpace_Type {
 /* use for function args */
 #define SPACE_TYPE_ANY -1
 
-// TODO: SPACE_SCRIPT
-#if (DNA_DEPRECATED_GCC_POISON == 1)
-#pragma GCC poison SPACE_IMASEL SPACE_SOUND
-#endif
 
 #define IMG_SIZE_FALLBACK 256
 

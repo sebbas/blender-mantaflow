@@ -1064,8 +1064,8 @@ void BKE_object_data_transfer_layout(
 bool BKE_object_data_transfer_dm(
         Scene *scene, Object *ob_src, Object *ob_dst, DerivedMesh *dm_dst, const int data_types, bool use_create,
         const int map_vert_mode, const int map_edge_mode, const int map_loop_mode, const int map_poly_mode,
-        SpaceTransform *space_transform, const float max_distance, const float ray_radius,
-        const float islands_handling_precision,
+        SpaceTransform *space_transform, const bool auto_transform,
+        const float max_distance, const float ray_radius, const float islands_handling_precision,
         const int fromlayers_select[DT_MULTILAYER_INDEX_MAX], const int tolayers_select[DT_MULTILAYER_INDEX_MAX],
         const int mix_mode, const float mix_factor, const char *vgroup_name, const bool invert_vgroup,
         ReportList *reports)
@@ -1075,6 +1075,8 @@ bool BKE_object_data_transfer_dm(
 #define LDATA 2
 #define PDATA 3
 #define DATAMAX 4
+
+	SpaceTransform auto_space_transform;
 
 	DerivedMesh *dm_src;
 	Mesh *me_dst, *me_src;
@@ -1126,6 +1128,17 @@ bool BKE_object_data_transfer_dm(
 		return changed;
 	}
 
+	if (auto_transform) {
+		MVert *verts_dst = dm_dst ? dm_dst->getVertArray(dm_dst) : me_dst->mvert;
+		const int num_verts_dst = dm_dst ? dm_dst->getNumVerts(dm_dst) : me_dst->totvert;
+
+		if (space_transform == NULL) {
+			space_transform = &auto_space_transform;
+		}
+
+		BKE_mesh_remap_find_best_match_from_dm(verts_dst, num_verts_dst, dm_src, space_transform);
+	}
+
 	/* Check all possible data types.
 	 * Note item mappings and dest mix weights are cached. */
 	for (i = 0; i < DT_TYPE_MAX; i++) {
@@ -1157,12 +1170,20 @@ bool BKE_object_data_transfer_dm(
 			const int num_verts_dst = dm_dst ? dm_dst->getNumVerts(dm_dst) : me_dst->totvert;
 
 			if (!geom_map_init[VDATA]) {
-				if ((map_vert_mode == MREMAP_MODE_TOPOLOGY) && (num_verts_dst != dm_src->getNumVerts(dm_src))) {
+				const int num_verts_src = dm_src->getNumVerts(dm_src);
+
+				if ((map_vert_mode == MREMAP_MODE_TOPOLOGY) && (num_verts_dst != num_verts_src)) {
 					BKE_report(reports, RPT_ERROR,
 					           "Source and destination meshes do not have the same amount of vertices, "
 					           "'Topology' mapping cannot be used in this case");
 					return changed;
 				}
+				if (ELEM(0, num_verts_dst, num_verts_src)) {
+					BKE_report(reports, RPT_ERROR,
+					           "Source or destination meshes do not have any vertices, cannot transfer vertex data");
+					return changed;
+				}
+
 				BKE_mesh_remap_calc_verts_from_dm(
 				        map_vert_mode, space_transform, max_distance, ray_radius,
 				        verts_dst, num_verts_dst, dirty_nors_dst, dm_src, &geom_map[VDATA]);
@@ -1197,12 +1218,20 @@ bool BKE_object_data_transfer_dm(
 			const int num_edges_dst = dm_dst ? dm_dst->getNumEdges(dm_dst) : me_dst->totedge;
 
 			if (!geom_map_init[EDATA]) {
-				if ((map_edge_mode == MREMAP_MODE_TOPOLOGY) && (num_edges_dst != dm_src->getNumEdges(dm_src))) {
+				const int num_edges_src = dm_src->getNumEdges(dm_src);
+
+				if ((map_edge_mode == MREMAP_MODE_TOPOLOGY) && (num_edges_dst != num_edges_src)) {
 					BKE_report(reports, RPT_ERROR,
 					           "Source and destination meshes do not have the same amount of edges, "
 					           "'Topology' mapping cannot be used in this case");
 					return changed;
 				}
+				if (ELEM(0, num_edges_dst, num_edges_src)) {
+					BKE_report(reports, RPT_ERROR,
+					           "Source or destination meshes do not have any edges, cannot transfer edge data");
+					return changed;
+				}
+
 				BKE_mesh_remap_calc_edges_from_dm(
 				        map_edge_mode, space_transform, max_distance, ray_radius,
 				        verts_dst, num_verts_dst, edges_dst, num_edges_dst, dirty_nors_dst,
@@ -1248,12 +1277,20 @@ bool BKE_object_data_transfer_dm(
 			MeshRemapIslandsCalc island_callback = data_transfer_get_loop_islands_generator(cddata_type);
 
 			if (!geom_map_init[LDATA]) {
-				if ((map_loop_mode == MREMAP_MODE_TOPOLOGY) && (num_loops_dst != dm_src->getNumLoops(dm_src))) {
+				const int num_loops_src = dm_src->getNumLoops(dm_src);
+
+				if ((map_loop_mode == MREMAP_MODE_TOPOLOGY) && (num_loops_dst != num_loops_src)) {
 					BKE_report(reports, RPT_ERROR,
 					           "Source and destination meshes do not have the same amount of face corners, "
 					           "'Topology' mapping cannot be used in this case");
 					return changed;
 				}
+				if (ELEM(0, num_loops_dst, num_loops_src)) {
+					BKE_report(reports, RPT_ERROR,
+					           "Source or destination meshes do not have any polygons, cannot transfer loop data");
+					return changed;
+				}
+
 				BKE_mesh_remap_calc_loops_from_dm(
 				        map_loop_mode, space_transform, max_distance, ray_radius,
 				        verts_dst, num_verts_dst, edges_dst, num_edges_dst,
@@ -1298,12 +1335,20 @@ bool BKE_object_data_transfer_dm(
 			CustomData *pdata_dst = dm_dst ? dm_dst->getPolyDataLayout(dm_dst) : &me_dst->pdata;
 
 			if (!geom_map_init[PDATA]) {
-				if ((map_poly_mode == MREMAP_MODE_TOPOLOGY) && (num_polys_dst != dm_src->getNumPolys(dm_src))) {
+				const int num_polys_src = dm_src->getNumPolys(dm_src);
+
+				if ((map_poly_mode == MREMAP_MODE_TOPOLOGY) && (num_polys_dst != num_polys_src)) {
 					BKE_report(reports, RPT_ERROR,
 					           "Source and destination meshes do not have the same amount of faces, "
 					           "'Topology' mapping cannot be used in this case");
 					return changed;
 				}
+				if (ELEM(0, num_polys_dst, num_polys_src)) {
+					BKE_report(reports, RPT_ERROR,
+					           "Source or destination meshes do not have any polygons, cannot transfer poly data");
+					return changed;
+				}
+
 				BKE_mesh_remap_calc_polys_from_dm(
 				        map_poly_mode, space_transform, max_distance, ray_radius,
 				        verts_dst, num_verts_dst, loops_dst, num_loops_dst,
@@ -1356,15 +1401,17 @@ bool BKE_object_data_transfer_dm(
 bool BKE_object_data_transfer_mesh(
         Scene *scene, Object *ob_src, Object *ob_dst, const int data_types, const bool use_create,
         const int map_vert_mode, const int map_edge_mode, const int map_loop_mode, const int map_poly_mode,
-        SpaceTransform *space_transform, const float max_distance, const float ray_radius,
-        const float islands_handling_precision,
+        SpaceTransform *space_transform, const bool auto_transform,
+        const float max_distance, const float ray_radius, const float islands_handling_precision,
         const int fromlayers_select[DT_MULTILAYER_INDEX_MAX], const int tolayers_select[DT_MULTILAYER_INDEX_MAX],
         const int mix_mode, const float mix_factor, const char *vgroup_name, const bool invert_vgroup,
         ReportList *reports)
 {
 	return BKE_object_data_transfer_dm(
 	        scene, ob_src, ob_dst, NULL, data_types, use_create,
-	        map_vert_mode, map_edge_mode, map_loop_mode, map_poly_mode, space_transform,
-	        max_distance, ray_radius, islands_handling_precision, fromlayers_select, tolayers_select,
+	        map_vert_mode, map_edge_mode, map_loop_mode, map_poly_mode,
+	        space_transform, auto_transform,
+	        max_distance, ray_radius, islands_handling_precision,
+	        fromlayers_select, tolayers_select,
 	        mix_mode, mix_factor, vgroup_name, invert_vgroup, reports);
 }

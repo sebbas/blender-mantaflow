@@ -41,6 +41,7 @@ set(INC
 	../render/intern/include
 	../../../extern/clew/include
 	../../../intern/guardedalloc
+	../../../intern/atomic
 )
 
 set(INC_SYS
@@ -119,6 +120,8 @@ set(SRC
 	nodes/COM_TimeNode.h
 	nodes/COM_SwitchNode.cpp
 	nodes/COM_SwitchNode.h
+	nodes/COM_SwitchViewNode.cpp
+	nodes/COM_SwitchViewNode.h
 	nodes/COM_MovieClipNode.cpp
 	nodes/COM_MovieClipNode.h
 	nodes/COM_OutputFileNode.cpp
@@ -370,6 +373,8 @@ set(SRC
 	operations/COM_CompositorOperation.cpp
 	operations/COM_OutputFileOperation.h
 	operations/COM_OutputFileOperation.cpp
+	operations/COM_OutputFileMultiViewOperation.h
+	operations/COM_OutputFileMultiViewOperation.cpp
 	operations/COM_ViewerOperation.h
 	operations/COM_ViewerOperation.cpp
 	operations/COM_PreviewOperation.h
@@ -535,9 +540,19 @@ set(SRC
 list(APPEND INC
 	${CMAKE_CURRENT_BINARY_DIR}/operations
 )
+
+if(WITH_COMPOSITOR_WERROR)
+	ADD_CHECK_C_COMPILER_FLAG(CMAKE_C_FLAGS C_WERROR -Werror)
+	ADD_CHECK_CXX_COMPILER_FLAG(CMAKE_CXX_FLAGS C_WERROR -Werror)
+endif()
+
 data_to_c(${CMAKE_CURRENT_SOURCE_DIR}/operations/COM_OpenCLKernels.cl
           ${CMAKE_CURRENT_BINARY_DIR}/operations/COM_OpenCLKernels.cl.h SRC)
 
 add_definitions(-DCL_USE_DEPRECATED_OPENCL_1_1_APIS)
+
+if(WITH_CYCLES AND WITH_CYCLES_DEBUG)
+	add_definitions(-DWITH_CYCLES_DEBUG)
+endif()
 
 blender_add_lib(bf_compositor "${SRC}" "${INC}" "${INC_SYS}")

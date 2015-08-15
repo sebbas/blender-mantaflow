@@ -153,6 +153,18 @@ void geom(vec3 co, vec3 nor, mat4 viewinvmat, vec3 attorco, vec2 attuv, vec4 att
 	frontback = (gl_FrontFacing)? 1.0: 0.0;
 }
 
+void particle_info(vec4 sprops, vec3 loc, vec3 vel, vec3 avel, out float index, out float age, out float life_time, out vec3 location, out float size, out vec3 velocity, out vec3 angular_velocity)
+{
+    index = sprops.x;
+    age = sprops.y;
+    life_time = sprops.z;
+    size = sprops.w;
+
+    location = loc;
+    velocity = vel;
+    angular_velocity = avel;
+}
+
 void mapping(vec3 vec, mat4 mat, vec3 minvec, vec3 maxvec, float domin, float domax, out vec3 outvec)
 {
 	outvec = (mat * vec4(vec, 1.0)).xyz;
@@ -698,22 +710,7 @@ void mix_linear(float fac, vec4 col1, vec4 col2, out vec4 outcol)
 {
 	fac = clamp(fac, 0.0, 1.0);
 
-	outcol = col1;
-
-	if(col2.r > 0.5)
-		outcol.r= col1.r + fac*(2.0*(col2.r - 0.5));
-	else
-		outcol.r= col1.r + fac*(2.0*(col2.r) - 1.0);
-
-	if(col2.g > 0.5)
-		outcol.g= col1.g + fac*(2.0*(col2.g - 0.5));
-	else
-		outcol.g= col1.g + fac*(2.0*(col2.g) - 1.0);
-
-	if(col2.b > 0.5)
-		outcol.b= col1.b + fac*(2.0*(col2.b - 0.5));
-	else
-		outcol.b= col1.b + fac*(2.0*(col2.b) - 1.0);
+	outcol = col1 + fac*(2.0*(col2 - vec4(0.5)));
 }
 
 void valtorgb(float fac, sampler2D colormap, out vec4 outcol, out float outalpha)
@@ -2114,18 +2111,23 @@ void shade_exposure_correct(vec3 col, float linfac, float logfac, out vec3 outco
 	outcol = linfac*(1.0 - exp(col*logfac));
 }
 
-void shade_mist_factor(vec3 co, float miststa, float mistdist, float misttype, float misi, out float outfac)
+void shade_mist_factor(vec3 co, float enable, float miststa, float mistdist, float misttype, float misi, out float outfac)
 {
-	float fac, zcor;
+	if(enable == 1.0) {
+		float fac, zcor;
 
-	zcor = (gl_ProjectionMatrix[3][3] == 0.0)? length(co): -co[2];
-	
-	fac = clamp((zcor-miststa)/mistdist, 0.0, 1.0);
-	if(misttype == 0.0) fac *= fac;
-	else if(misttype == 1.0);
-	else fac = sqrt(fac);
+		zcor = (gl_ProjectionMatrix[3][3] == 0.0)? length(co): -co[2];
+		
+		fac = clamp((zcor - miststa) / mistdist, 0.0, 1.0);
+		if(misttype == 0.0) fac *= fac;
+		else if(misttype == 1.0);
+		else fac = sqrt(fac);
 
-	outfac = 1.0 - (1.0-fac)*(1.0-misi);
+		outfac = 1.0 - (1.0 - fac) * (1.0 - misi);
+	}
+	else {
+		outfac = 0.0;
+	}
 }
 
 void shade_world_mix(vec3 hor, vec4 col, out vec4 outcol)
@@ -2256,6 +2258,16 @@ void node_subsurface_scattering(vec4 color, float scale, vec3 radius, float shar
 }
 
 void node_bsdf_hair(vec4 color, float offset, float roughnessu, float roughnessv, out vec4 result)
+{
+	result = color;
+}
+
+void node_bsdf_refraction(vec4 color, float roughness, float ior, vec3 N, out vec4 result)
+{
+	node_bsdf_diffuse(color, 0.0, N, result);
+}
+
+void node_ambient_occlusion(vec4 color, out vec4 result)
 {
 	result = color;
 }
@@ -2591,6 +2603,7 @@ void material_preview_matcap(vec4 color, sampler2D ima, vec4 N, vec4 mask, out v
 	vec3 normal;
 	vec2 tex;
 	
+#ifndef USE_OPENSUBDIV
 	/* remap to 0.0 - 1.0 range. This is done because OpenGL 2.0 clamps colors 
 	 * between shader stages and we want the full range of the normal */
 	normal = vec3(2.0, 2.0, 2.0) * vec3(N.x, N.y, N.z) - vec3(1.0, 1.0, 1.0);
@@ -2598,6 +2611,10 @@ void material_preview_matcap(vec4 color, sampler2D ima, vec4 N, vec4 mask, out v
 		normal.z = 0.0;
 	}
 	normal = normalize(normal);
+#else
+	normal = inpt.v.normal;
+	mask = vec4(1.0, 1.0, 1.0, 1.0);
+#endif
 
 	tex.x = 0.5 + 0.49 * normal.x;
 	tex.y = 0.5 + 0.49 * normal.y;

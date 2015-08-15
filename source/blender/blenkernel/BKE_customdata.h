@@ -46,7 +46,6 @@ extern "C" {
 struct BMesh;
 struct ID;
 struct CustomData;
-struct CustomDataLayer;
 typedef uint64_t CustomDataMask;
 
 /*a data type large enough to hold 1 element from any customdata layer type*/
@@ -344,6 +343,9 @@ void CustomData_to_bmesh_block(const struct CustomData *source,
 void CustomData_from_bmesh_block(const struct CustomData *source, 
                                  struct CustomData *dest, void *src_block, int dest_index);
 
+void CustomData_file_write_prepare(
+        struct CustomData *data,
+        struct CustomDataLayer **r_write_layers, struct CustomDataLayer *write_layers_buff, size_t write_layers_size);
 
 /* query info over types */
 void CustomData_file_write_info(int type, const char **structname, int *structnum);

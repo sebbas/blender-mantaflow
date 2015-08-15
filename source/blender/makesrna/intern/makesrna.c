@@ -503,7 +503,7 @@ static void rna_float_print(FILE *f, float num)
 {
 	if (num == -FLT_MAX) fprintf(f, "-FLT_MAX");
 	else if (num == FLT_MAX) fprintf(f, "FLT_MAX");
-	else if ((int)num == num) fprintf(f, "%.1ff", num);
+	else if ((int64_t)num == num) fprintf(f, "%.1ff", num);
 	else fprintf(f, "%.10ff", num);
 }
 
@@ -936,7 +936,7 @@ static char *rna_def_property_set_func(FILE *f, StructRNA *srna, PropertyRNA *pr
 
 					if (dp->dnaarraylength == 1) {
 						if (prop->type == PROP_BOOLEAN && dp->booleanbit) {
-							fprintf(f, "		if (%svalues[i]) data->%s |= (%d<<i);\n",
+							fprintf(f, "		if (%svalues[i]) data->%s |= (%du << i);\n",
 							        (dp->booleannegative) ? "!" : "", dp->dnaname, dp->booleanbit);
 							fprintf(f, "		else data->%s &= ~(%du << i);\n", dp->dnaname, dp->booleanbit);
 						}
@@ -2027,7 +2027,8 @@ static void rna_def_struct_function_call_impl_cpp(FILE *f, StructRNA *srna, Func
 
 	if ((func->flag & FUNC_NO_SELF) == 0) {
 		WRITE_COMMA;
-		if (dsrna->dnaname) fprintf(f, "(::%s *) this->ptr.data", dsrna->dnaname);
+		if (dsrna->dnafromprop) fprintf(f, "(::%s *) this->ptr.data", dsrna->dnafromname);
+		else if (dsrna->dnaname) fprintf(f, "(::%s *) this->ptr.data", dsrna->dnaname);
 		else fprintf(f, "(::%s *) this->ptr.data", srna->identifier);
 	}
 	else if (func->flag & FUNC_USE_SELF_TYPE) {
@@ -2222,7 +2223,8 @@ static void rna_def_function_funcs(FILE *f, StructDefRNA *dsrna, FunctionDefRNA 
 	}
 
 	if ((func->flag & FUNC_NO_SELF) == 0) {
-		if (dsrna->dnaname) fprintf(f, "\tstruct %s *_self;\n", dsrna->dnaname);
+		if (dsrna->dnafromprop) fprintf(f, "\tstruct %s *_self;\n", dsrna->dnafromname);
+		else if (dsrna->dnaname) fprintf(f, "\tstruct %s *_self;\n", dsrna->dnaname);
 		else fprintf(f, "\tstruct %s *_self;\n", srna->identifier);
 	}
 	else if (func->flag & FUNC_USE_SELF_TYPE) {
@@ -2274,7 +2276,8 @@ static void rna_def_function_funcs(FILE *f, StructDefRNA *dsrna, FunctionDefRNA 
 	}
 	
 	if ((func->flag & FUNC_NO_SELF) == 0) {
-		if (dsrna->dnaname) fprintf(f, "\t_self = (struct %s *)_ptr->data;\n", dsrna->dnaname);
+		if (dsrna->dnafromprop) fprintf(f, "\t_self = (struct %s *)_ptr->data;\n", dsrna->dnafromname);
+		else if (dsrna->dnaname) fprintf(f, "\t_self = (struct %s *)_ptr->data;\n", dsrna->dnaname);
 		else fprintf(f, "\t_self = (struct %s *)_ptr->data;\n", srna->identifier);
 	}
 	else if (func->flag & FUNC_USE_SELF_TYPE) {
@@ -2675,7 +2678,8 @@ static void rna_generate_static_parameter_prototypes(FILE *f, StructRNA *srna, F
 
 	if ((func->flag & FUNC_NO_SELF) == 0) {
 		if (!first) fprintf(f, ", ");
-		if (dsrna->dnaname) fprintf(f, "struct %s *_self", dsrna->dnaname);
+		if (dsrna->dnafromprop) fprintf(f, "struct %s *_self", dsrna->dnafromname);
+		else if (dsrna->dnaname) fprintf(f, "struct %s *_self", dsrna->dnaname);
 		else fprintf(f, "struct %s *_self", srna->identifier);
 		first = 0;
 	}
@@ -3289,6 +3293,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
 	{"rna_context.c", NULL, RNA_def_context},
 	{"rna_controller.c", "rna_controller_api.c", RNA_def_controller},
 	{"rna_curve.c", "rna_curve_api.c", RNA_def_curve},
+	{"rna_depsgraph.c", NULL, RNA_def_depsgraph},
 	{"rna_dynamicpaint.c", NULL, RNA_def_dynamic_paint},
 	{"rna_fcurve.c", "rna_fcurve_api.c", RNA_def_fcurve},
 	{"rna_fluidsim.c", NULL, RNA_def_fluidsim},
@@ -3309,6 +3314,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
 	{"rna_object.c", "rna_object_api.c", RNA_def_object},
 	{"rna_object_force.c", NULL, RNA_def_object_force},
 	{"rna_packedfile.c", NULL, RNA_def_packedfile},
+	{"rna_palette.c", NULL, RNA_def_palette},
 	{"rna_particle.c", NULL, RNA_def_particle},
 	{"rna_pose.c", "rna_pose_api.c", RNA_def_pose},
 	{"rna_property.c", NULL, RNA_def_gameproperty},
@@ -3762,7 +3768,7 @@ static const char *cpp_classes = ""
 "\n"
 "class DefaultCollectionFunctions {\n"
 "public:\n"
-"	DefaultCollectionFunctions(const PointerRNA &p) {}\n"
+"	DefaultCollectionFunctions(const PointerRNA & /*p*/) {}\n"
 "};\n"
 "\n"
 "\n";

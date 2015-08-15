@@ -206,7 +206,7 @@ static void clip_scopes_tag_refresh(ScrArea *sa)
 	if (sc->mode != SC_MODE_TRACKING)
 		return;
 
-	/* only while proeprties are visible */
+	/* only while properties are visible */
 	for (ar = sa->regionbase.first; ar; ar = ar->next) {
 		if (ar->regiontype == RGN_TYPE_UI && ar->flag & RGN_FLAG_HIDDEN)
 			return;
@@ -1445,7 +1445,7 @@ static void clip_tools_area_init(wmWindowManager *wm, ARegion *ar)
 
 static void clip_tools_area_draw(const bContext *C, ARegion *ar)
 {
-	ED_region_panels(C, ar, 1, NULL, -1);
+	ED_region_panels(C, ar, NULL, -1, true);
 }
 
 /****************** tool properties region ******************/
@@ -1492,7 +1492,7 @@ static void clip_properties_area_draw(const bContext *C, ARegion *ar)
 
 	BKE_movieclip_update_scopes(sc->clip, &sc->user, &sc->scopes);
 
-	ED_region_panels(C, ar, 1, NULL, -1);
+	ED_region_panels(C, ar, NULL, -1, true);
 }
 
 static void clip_properties_area_listener(bScreen *UNUSED(sc), ScrArea *UNUSED(sa), ARegion *ar, wmNotifier *wmn)

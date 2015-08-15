@@ -175,6 +175,15 @@ ccl_device_inline float clamp(float a, float mn, float mx)
 
 #endif
 
+#ifndef __KERNEL_CUDA__
+
+ccl_device_inline float saturate(float a)
+{
+	return clamp(a, 0.0f, 1.0f);
+}
+
+#endif
+
 ccl_device_inline int float_to_int(float f)
 {
 	return (int)f;
@@ -1438,10 +1447,9 @@ ccl_device bool ray_triangle_intersect_uv(
 	return true;
 }
 
-ccl_device bool ray_quad_intersect(
-	float3 ray_P, float3 ray_D, float ray_t,
-	float3 quad_P, float3 quad_u, float3 quad_v,
-	float3 *isect_P, float *isect_t)
+ccl_device bool ray_quad_intersect(float3 ray_P, float3 ray_D, float ray_t,
+                                   float3 quad_P, float3 quad_u, float3 quad_v,
+                                   float3 *isect_P, float *isect_t)
 {
 	float3 v0 = quad_P - quad_u*0.5f - quad_v*0.5f;
 	float3 v1 = quad_P + quad_u*0.5f - quad_v*0.5f;
@@ -1461,9 +1469,9 @@ ccl_device_inline float2 map_to_tube(const float3 co)
 {
 	float len, u, v;
 	len = sqrtf(co.x * co.x + co.y * co.y);
-	if (len > 0.0f) {
+	if(len > 0.0f) {
 		u = (1.0f - (atan2f(co.x / len, co.y / len) / M_PI_F)) * 0.5f;
-		v = (co.x + 1.0f) * 0.5f;
+		v = (co.z + 1.0f) * 0.5f;
 	}
 	else {
 		u = v = 0.0f;

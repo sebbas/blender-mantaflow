@@ -263,7 +263,7 @@ static void setup_app_data(bContext *C, BlendFileData *bfd, const char *filepath
 		/* but use new Scene pointer */
 		curscene = bfd->curscene;
 
-		track_undo_scene = (mode == LOAD_UNDO && curscreen && bfd->main->wm.first);
+		track_undo_scene = (mode == LOAD_UNDO && curscreen && curscene && bfd->main->wm.first);
 
 		if (curscene == NULL) curscene = bfd->main->scene.first;
 		/* empty file, we add a scene to make Blender work */
@@ -283,13 +283,17 @@ static void setup_app_data(bContext *C, BlendFileData *bfd, const char *filepath
 
 		/* clear_global will free G.main, here we can still restore pointers */
 		blo_lib_link_screen_restore(bfd->main, curscreen, curscene);
-		curscene = curscreen->scene;
+		/* curscreen might not be set when loading without ui (see T44217) so only re-assign if available */
+		if (curscreen) {
+			curscene = curscreen->scene;
+		}
 
 		if (track_undo_scene) {
 			wmWindowManager *wm = bfd->main->wm.first;
 			if (wm_scene_is_visible(wm, bfd->curscene) == false) {
 				curscene = bfd->curscene;
 				curscreen->scene = curscene;
+				BKE_screen_view3d_scene_sync(curscreen);
 			}
 		}
 	}
@@ -305,8 +309,6 @@ static void setup_app_data(bContext *C, BlendFileData *bfd, const char *filepath
 
 	CTX_data_main_set(C, G.main);
 
-	sound_init_main(G.main);
-	
 	if (bfd->user) {
 		
 		/* only here free userdef themes... */
@@ -619,7 +621,7 @@ int BKE_write_file_userdef(const char *filepath, ReportList *reports)
 
 static void (*blender_test_break_cb)(void) = NULL;
 
-void set_blender_test_break_cb(void (*func)(void))
+void BKE_blender_callback_test_break_set(void (*func)(void))
 {
 	blender_test_break_cb = func;
 }
@@ -683,7 +685,7 @@ static int read_undosave(bContext *C, UndoElem *uel)
 }
 
 /* name can be a dynamic string */
-void BKE_write_undo(bContext *C, const char *name)
+void BKE_undo_write(bContext *C, const char *name)
 {
 	uintptr_t maxmem, totmem, memused;
 	int nr /*, success */ /* UNUSED */;
@@ -701,7 +703,7 @@ void BKE_write_undo(bContext *C, const char *name)
 	while (undobase.last != curundo) {
 		uel = undobase.last;
 		BLI_remlink(&undobase, uel);
-		BLO_free_memfile(&uel->memfile);
+		BLO_memfile_free(&uel->memfile);
 		MEM_freeN(uel);
 	}
 	
@@ -723,7 +725,7 @@ void BKE_write_undo(bContext *C, const char *name)
 			UndoElem *first = undobase.first;
 			BLI_remlink(&undobase, first);
 			/* the merge is because of compression */
-			BLO_merge_memfile(&first->memfile, &first->next->memfile);
+			BLO_memfile_merge(&first->memfile, &first->next->memfile);
 			MEM_freeN(first);
 		}
 	}
@@ -778,7 +780,7 @@ void BKE_write_undo(bContext *C, const char *name)
 				UndoElem *first = undobase.first;
 				BLI_remlink(&undobase, first);
 				/* the merge is because of compression */
-				BLO_merge_memfile(&first->memfile, &first->next->memfile);
+				BLO_memfile_merge(&first->memfile, &first->next->memfile);
 				MEM_freeN(first);
 			}
 		}
@@ -817,13 +819,13 @@ void BKE_undo_step(bContext *C, int step)
 	}
 }
 
-void BKE_reset_undo(void)
+void BKE_undo_reset(void)
 {
 	UndoElem *uel;
 	
 	uel = undobase.first;
 	while (uel) {
-		BLO_free_memfile(&uel->memfile);
+		BLO_memfile_free(&uel->memfile);
 		uel = uel->next;
 	}
 	
@@ -850,7 +852,7 @@ void BKE_undo_name(bContext *C, const char *name)
 }
 
 /* name optional */
-int BKE_undo_valid(const char *name)
+bool BKE_undo_is_valid(const char *name)
 {
 	if (name) {
 		UndoElem *uel = BLI_rfindstring(&undobase, name, offsetof(UndoElem, name));
@@ -862,15 +864,16 @@ int BKE_undo_valid(const char *name)
 
 /* get name of undo item, return null if no item with this index */
 /* if active pointer, set it to 1 if true */
-const char *BKE_undo_get_name(int nr, int *active)
+const char *BKE_undo_get_name(int nr, bool *r_active)
 {
 	UndoElem *uel = BLI_findlink(&undobase, nr);
 	
-	if (active) *active = 0;
+	if (r_active) *r_active = false;
 	
 	if (uel) {
-		if (active && uel == curundo)
-			*active = 1;
+		if (r_active && (uel == curundo)) {
+			*r_active = true;
+		}
 		return uel->name;
 	}
 	return NULL;
@@ -936,15 +939,16 @@ bool BKE_undo_save_file(const char *filename)
 }
 
 /* sets curscene */
-Main *BKE_undo_get_main(Scene **scene)
+Main *BKE_undo_get_main(Scene **r_scene)
 {
 	Main *mainp = NULL;
 	BlendFileData *bfd = BLO_read_from_memfile(G.main, G.main->name, &curundo->memfile, NULL);
 	
 	if (bfd) {
 		mainp = bfd->main;
-		if (scene)
-			*scene = bfd->curscene;
+		if (r_scene) {
+			*r_scene = bfd->curscene;
+		}
 		
 		MEM_freeN(bfd);
 	}

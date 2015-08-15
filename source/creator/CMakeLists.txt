@@ -31,6 +31,7 @@ blender_include_dirs(
 	../blender/blenlib
 	../blender/blenkernel
 	../blender/blenloader
+	../blender/depsgraph
 	../blender/editors/include
 	../blender/makesrna
 	../blender/imbuf
@@ -164,20 +165,27 @@ if(WITH_BUILDINFO)
 	#       except when used as an include path.
 
 	# include the output directory, where the buildinfo.h file is generated
-	include_directories(${CMAKE_BINARY_DIR}/source/creator)
+	include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
+
+	# XXX, "_buildinfo.h" is used twice here,
+	# because we rely on that file being detected as missing
+	# every build so that the real header "buildinfo.h" is updated.
+	#
+	# Keep this until we find a better way to resolve!
 
 	# a custom target that is always built
 	add_custom_target(buildinfo ALL
-		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/buildinfo.h)
+		DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/_buildinfo.h)
 
-	# creates svnheader.h using cmake script
-	add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/buildinfo.h
+	# creates buildinfo.h using cmake script
+	add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/_buildinfo.h
 		COMMAND ${CMAKE_COMMAND}
 		-DSOURCE_DIR=${CMAKE_SOURCE_DIR}
 		-P ${CMAKE_SOURCE_DIR}/build_files/cmake/buildinfo.cmake)
 
 	# buildinfo.h is a generated file
-	set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/buildinfo.h
+	set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/buildinfo.h
 		PROPERTIES GENERATED TRUE
 		HEADER_FILE_ONLY TRUE)
 
@@ -239,28 +247,13 @@ if(WITH_BUILDINFO)
 	add_dependencies(blender buildinfo)
 endif()
 
-# Post build steps for bundling/packaging.
-
-function(install_text_files_patch path)
-	install(
-		CODE
-		"
-		set(DATA_FILE \"${path}/readme.html\")
-		file(READ \"\${DATA_FILE}\" DATA_SRC)
-		string(REGEX REPLACE \"BLENDER_VERSION\" \"${BLENDER_VERSION}\" DATA_DST \"\${DATA_SRC}\")
-		file(WRITE \"\${DATA_FILE}\" \"\${DATA_DST}\")
-		unset(DATA_FILE)
-		unset(DATA_SRC)
-		unset(DATA_DST)
-		"
-	)
-endfunction()
 
 set(BLENDER_TEXT_FILES
 	${CMAKE_SOURCE_DIR}/release/text/GPL-license.txt
 	${CMAKE_SOURCE_DIR}/release/text/Python-license.txt
 	${CMAKE_SOURCE_DIR}/release/text/copyright.txt
-	${CMAKE_SOURCE_DIR}/release/text/readme.html
+	# generate this file
+	# ${CMAKE_SOURCE_DIR}/release/text/readme.html
 	${CMAKE_SOURCE_DIR}/release/datafiles/LICENSE-bfont.ttf.txt
 )
 
@@ -276,11 +269,15 @@ endif()
 # Platform Specific Var: TARGETDIR_VER
 
 if(UNIX AND NOT APPLE)
-	if(WITH_INSTALL_PORTABLE)
-		set(TARGETDIR_VER ${BLENDER_VERSION})
+	if(WITH_PYTHON_MODULE)
+		if(WITH_INSTALL_PORTABLE)
+			set(TARGETDIR_VER ${BLENDER_VERSION})
+		else()
+			set(TARGETDIR_VER ${PYTHON_SITE_PACKAGES}/${BLENDER_VERSION})
+		endif()
 	else()
-		if(WITH_PYTHON_MODULE)
-			set(TARGETDIR_VER ${PYTHON_LIBPATH}/python${PYTHON_VERSION}/site-packages/${BLENDER_VERSION})
+		if(WITH_INSTALL_PORTABLE)
+			set(TARGETDIR_VER ${BLENDER_VERSION})
 		else()
 			set(TARGETDIR_VER share/blender/${BLENDER_VERSION})
 		endif()
@@ -422,22 +419,31 @@ if(UNIX AND NOT APPLE)
 	endif()
 
 	# there are a few differences between portable and system install
-	if(WITH_INSTALL_PORTABLE)
-		if(WITH_PYTHON_MODULE)
-			# pass
+	if(WITH_PYTHON_MODULE)
+		if(WITH_INSTALL_PORTABLE)
+			install(
+				TARGETS blender
+				DESTINATION "."
+			)
 		else()
-			if(WITH_DOC_MANPAGE)
-				install(
-					FILES ${CMAKE_CURRENT_BINARY_DIR}/blender.1
-					DESTINATION "."
-				)
-			endif()
+			install(
+				TARGETS blender
+				LIBRARY DESTINATION ${PYTHON_SITE_PACKAGES}
+			)
 		endif()
+		# none of the other files are needed currently
+	elseif(WITH_INSTALL_PORTABLE)
 		install(
 			TARGETS blender
 			DESTINATION "."
 		)
 
+		if(WITH_DOC_MANPAGE)
+			install(
+				FILES ${CMAKE_CURRENT_BINARY_DIR}/blender.1
+				DESTINATION "."
+			)
+		endif()
 		install(
 			FILES
 				${CMAKE_SOURCE_DIR}/release/freedesktop/blender.desktop
@@ -452,26 +458,18 @@ if(UNIX AND NOT APPLE)
 		)
 
 		set(BLENDER_TEXT_FILES_DESTINATION ".")
-
 	else()
 		# main blender binary
-		if(WITH_PYTHON_MODULE)
+		install(
+			TARGETS blender
+			DESTINATION bin
+		)
+		if(WITH_DOC_MANPAGE)
+			# manpage only with 'blender' binary
 			install(
-				TARGETS blender
-				LIBRARY	DESTINATION ${PYTHON_LIBPATH}/python${PYTHON_VERSION}/site-packages
+				FILES ${CMAKE_CURRENT_BINARY_DIR}/blender.1
+				DESTINATION share/man/man1
 			)
-		else()
-			install(
-				TARGETS blender
-				DESTINATION bin
-			)
-			if(WITH_DOC_MANPAGE)
-				# manpage only with 'blender' binary
-				install(
-					FILES ${CMAKE_CURRENT_BINARY_DIR}/blender.1
-					DESTINATION share/man/man1
-				)
-			endif()
 		endif()
 
 		# misc files
@@ -503,6 +501,12 @@ if(UNIX AND NOT APPLE)
 
 	if(WITH_PYTHON)
 		if(WITH_PYTHON_INSTALL)
+
+			install(
+				FILES ${PYTHON_EXECUTABLE}
+				DESTINATION ${TARGETDIR_VER}/python/bin
+			)
+
 			# on some platforms (like openSUSE) Python is linked
 			# to be used from lib64 folder.
 			# determine this from Python's libraries path
@@ -653,9 +657,9 @@ elseif(WIN32)
 
 				execute_process(
 					COMMAND \${CMAKE_COMMAND} -E make_directory
-					        \"\${CMAKE_INSTALL_PREFIX}/${BLENDER_VERSION}/python/lib\"
+					        \"\${CMAKE_INSTALL_PREFIX}/${BLENDER_VERSION}/python\"
 					COMMAND \${CMAKE_COMMAND} -E
-					        chdir \"\${CMAKE_INSTALL_PREFIX}/${BLENDER_VERSION}/python/lib\"
+					        chdir \"\${CMAKE_INSTALL_PREFIX}/${BLENDER_VERSION}/python\"
 					        \${CMAKE_COMMAND} -E
 					        tar xzfv \"\${PYTHON_ZIP}\"
 				)
@@ -682,6 +686,19 @@ elseif(WIN32)
 				install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${BLENDER_VERSION}/python/lib/site-packages/numpy
 						DESTINATION ${BLENDER_VERSION}/python/lib/site-packages)
 			endif()
+
+
+			# TODO(sergey): For unti we've got better way to deal with python binary
+			install(
+				FILES ${LIBDIR}/python/lib/python${_PYTHON_VERSION_NO_DOTS}.dll
+				DESTINATION ${BLENDER_VERSION}/python/bin
+				CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
+			)
+			install(
+				FILES ${LIBDIR}/python/lib/python${_PYTHON_VERSION_NO_DOTS}_d.dll
+				DESTINATION ${BLENDER_VERSION}/python/bin
+				CONFIGURATIONS Debug
+			)
 		endif()
 
 		unset(_PYTHON_VERSION_NO_DOTS)
@@ -777,6 +794,16 @@ elseif(WIN32)
 			DESTINATION "."
 		)
 	endif()
+	
+	if(WITH_SYSTEM_AUDASPACE)
+		install(
+			FILES
+				${LIBDIR}/audaspace/lib/audaspace.dll
+				${LIBDIR}/audaspace/lib/audaspace-c.dll
+				${LIBDIR}/audaspace/lib/audaspace-py.dll
+			DESTINATION "."
+		)
+	endif()
 
 	if(NOT CMAKE_CL_64)
 		install(
@@ -853,7 +880,7 @@ elseif(APPLE)
 	)
 
 	# install release and app files
-	set(BLENDER_TEXT_FILES_DESTINATION blender.app/Contents)
+	set(BLENDER_TEXT_FILES_DESTINATION ".")
 
 	install(
 		FILES ${OSX_APP_SOURCEDIR}/Contents/PkgInfo
@@ -869,6 +896,11 @@ elseif(APPLE)
 		install(
 			FILES ${LIBDIR}/openmp/lib/libiomp5.dylib
 			DESTINATION blender.app/Contents/Resources/lib/
+		)
+		install(
+			FILES ${LIBDIR}/openmp/LICENSE.txt
+			DESTINATION "."
+			RENAME LICENSE-libiomp5.txt
 		)
 	endif()
 
@@ -893,9 +925,10 @@ elseif(APPLE)
 
 		add_custom_command(
 			OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/python
-			COMMAND rm -rf ${CMAKE_CURRENT_BINARY_DIR}/python/
-			COMMAND mkdir ${CMAKE_CURRENT_BINARY_DIR}/python/
-			COMMAND unzip -q ${LIBDIR}/release/${PYTHON_ZIP} -d ${CMAKE_CURRENT_BINARY_DIR}/python/
+			COMMAND ${CMAKE_COMMAND} -E remove_directory "${CMAKE_CURRENT_BINARY_DIR}/python/"
+			COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/python/"
+			COMMAND ${CMAKE_COMMAND} -E chdir "${CMAKE_CURRENT_BINARY_DIR}/python/"
+			        ${CMAKE_COMMAND} -E tar xzfv "${LIBDIR}/release/${PYTHON_ZIP}"
 			DEPENDS ${LIBDIR}/release/${PYTHON_ZIP})
 
 		add_dependencies(blender extractpyzip)
@@ -952,9 +985,10 @@ elseif(APPLE)
 		if(WITH_PYTHON AND NOT WITH_PYTHON_FRAMEWORK)
 			add_custom_command(
 				OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/python
-				COMMAND rm -rf ${CMAKE_CURRENT_BINARY_DIR}/python/
-				COMMAND mkdir ${CMAKE_CURRENT_BINARY_DIR}/python/
-				COMMAND unzip -q ${LIBDIR}/release/${PYTHON_ZIP} -d ${CMAKE_CURRENT_BINARY_DIR}/python/
+				COMMAND ${CMAKE_COMMAND} -E remove_directory "${CMAKE_CURRENT_BINARY_DIR}/python/"
+				COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/python/"
+				COMMAND ${CMAKE_COMMAND} -E chdir "${CMAKE_CURRENT_BINARY_DIR}/python/"
+				        ${CMAKE_COMMAND} -E tar xzfv "${LIBDIR}/release/${PYTHON_ZIP}"
 				DEPENDS ${LIBDIR}/release/${PYTHON_ZIP})
 
 			# copy extracted python files
@@ -972,12 +1006,25 @@ endif()
 # Generic Install, for all targets
 
 if(DEFINED BLENDER_TEXT_FILES_DESTINATION)
+
+	install(
+		CODE
+		"
+		file(READ \"${CMAKE_SOURCE_DIR}/release/text/readme.html\" DATA_SRC)
+		string(REGEX REPLACE \"BLENDER_VERSION\" \"${BLENDER_VERSION}\" DATA_DST \"\${DATA_SRC}\")
+		file(WRITE \"\${CMAKE_BINARY_DIR}/release/text/readme.html\" \"\${DATA_DST}\")
+		unset(DATA_SRC)
+		unset(DATA_DST)
+		"
+	)
+	list(APPEND BLENDER_TEXT_FILES
+		${CMAKE_BINARY_DIR}/release/text/readme.html
+	)
+
 	install(
 		FILES ${BLENDER_TEXT_FILES}
 		DESTINATION "${BLENDER_TEXT_FILES_DESTINATION}"
 	)
-
-	install_text_files_patch("\${CMAKE_INSTALL_PREFIX}/${BLENDER_TEXT_FILES_DESTINATION}")
 endif()
 
 # install more files specified elsewhere

@@ -360,7 +360,7 @@ ccl_device float fast_log2f(float x)
 {
 	/* NOTE: clamp to avoid special cases and make result "safe" from large
 	 * negative values/nans. */
-	clamp(x, FLT_MIN, FLT_MAX);
+	x = clamp(x, FLT_MIN, FLT_MAX);
 	unsigned bits = __float_as_uint(x);
 	int exponent = (int)(bits >> 23) - 127;
 	float f = __uint_as_float((bits & 0x007FFFFF) | 0x3f800000) - 1.0f;
@@ -402,7 +402,7 @@ ccl_device float fast_logb(float x)
 {
 	/* Don't bother with denormals. */
 	x = fabsf(x);
-	clamp(x, FLT_MIN, FLT_MAX);
+	x = clamp(x, FLT_MIN, FLT_MAX);
 	unsigned bits = __float_as_uint(x);
 	return (int)(bits >> 23) - 127;
 }
@@ -410,7 +410,7 @@ ccl_device float fast_logb(float x)
 ccl_device float fast_exp2f(float x)
 {
 	/* Clamp to safe range for final addition. */
-	clamp(x, -126.0f, 126.0f);
+	x = clamp(x, -126.0f, 126.0f);
 	/* Range reduction. */
 	int m = (int)x; x -= m;
 	x = 1.0f - (1.0f - x); /* Crush denormals (does not affect max ulps!). */
@@ -539,7 +539,7 @@ ccl_device float fast_safe_powf(float x, float y)
  * bsdf_microfaset.h.
  */
 
-ccl_device float fast_erff(float x)
+ccl_device_inline float fast_erff(float x)
 {
 	/* Examined 1082130433 values of erff on [0,4]: 1.93715e-06 max error. */
 	/* Abramowitz and Stegun, 7.1.28. */
@@ -570,7 +570,7 @@ ccl_device_inline float fast_erfcf(float x)
 	return 1.0f - fast_erff(x);
 }
 
-ccl_device float fast_ierff(float x)
+ccl_device_inline float fast_ierff(float x)
 {
 	/* From: Approximating the erfinv function by Mike Giles. */
 	/* To avoid trouble at the limit, clamp input to 1-eps. */

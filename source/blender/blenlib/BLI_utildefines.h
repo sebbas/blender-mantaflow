@@ -252,7 +252,7 @@ extern "C" {
 #define FTOCHAR(val) ((CHECK_TYPE_INLINE(val, float)), \
 		(char)(((val) <= 0.0f) ? 0 : (((val) > (1.0f - 0.5f / 255.0f)) ? 255 : ((255.0f * (val)) + 0.5f))))
 #define FTOUSHORT(val) ((CHECK_TYPE_INLINE(val, float)), \
-		((val >= 1.0f - 0.5f / 65535) ? 65535 : (val <= 0.0f) ? 0 : (unsigned short)(val * 65535.0f + 0.5f)))
+		(unsigned short)((val >= 1.0f - 0.5f / 65535) ? 65535 : (val <= 0.0f) ? 0 : (val * 65535.0f + 0.5f)))
 #define USHORTTOUCHAR(val) ((unsigned char)(((val) >= 65535 - 128) ? 255 : ((val) + 128) >> 8))
 #define F3TOCHAR3(v2, v1) {                                                   \
 		(v1)[0] = FTOCHAR((v2[0]));                                           \
@@ -406,7 +406,7 @@ extern "C" {
 	CHECK_TYPE_INLINE(a, float), CHECK_TYPE_INLINE(b, float), \
 	((fabsf((float)((a) - (b))) >= (float) FLT_EPSILON) ? false : true))
 
-#define IS_EQT(a, b, c) ((a > b) ? (((a - b) <= c) ? 1 : 0) : ((((b - a) <= c) ? 1 : 0)))
+#define IS_EQT(a, b, c) ((a > b) ? ((((a) - (b)) <= c) ? 1 : 0) : (((((b) - (a)) <= c) ? 1 : 0)))
 #define IN_RANGE(a, b, c) ((b < c) ? ((b < a && a < c) ? 1 : 0) : ((c < a && a < b) ? 1 : 0))
 #define IN_RANGE_INCL(a, b, c) ((b < c) ? ((b <= a && a <= c) ? 1 : 0) : ((c <= a && a <= b) ? 1 : 0))
 
@@ -421,7 +421,7 @@ extern "C" {
 
 /* array helpers */
 #define ARRAY_LAST_ITEM(arr_start, arr_dtype, tot) \
-	(arr_dtype *)((char *)arr_start + (sizeof(*((arr_dtype *)NULL)) * (size_t)(tot - 1)))
+	(arr_dtype *)((char *)(arr_start) + (sizeof(*((arr_dtype *)NULL)) * (size_t)(tot - 1)))
 
 #define ARRAY_HAS_ITEM(arr_item, arr_start, tot)  ( \
 	CHECK_TYPE_PAIR_INLINE(arr_start, arr_item), \
@@ -435,7 +435,7 @@ extern "C" {
 	} (void)0
 
 /* assuming a static array */
-#if defined(__GNUC__) && !defined(__cplusplus)
+#if defined(__GNUC__) && !defined(__cplusplus) && !defined(__clang__)
 #  define ARRAY_SIZE(arr) \
 	((sizeof(struct {int isnt_array : ((const void *)&(arr) == &(arr)[0]);}) * 0) + \
 	 (sizeof(arr) / sizeof(*(arr))))
@@ -483,24 +483,34 @@ extern "C" {
 
 #if defined(__GNUC__) || defined(__clang__)
 #define POINTER_OFFSET(v, ofs) \
-	((typeof(v))((char *)(v) + ofs))
+	((typeof(v))((char *)(v) + (ofs)))
 #else
 #define POINTER_OFFSET(v, ofs) \
-	((void *)((char *)(v) + ofs))
+	((void *)((char *)(v) + (ofs)))
 #endif
 
 /* Like offsetof(typeof(), member), for non-gcc compilers */
 #define OFFSETOF_STRUCT(_struct, _member) \
 	((((char *)&((_struct)->_member)) - ((char *)(_struct))) + sizeof((_struct)->_member))
 
-/* memcpy, skipping the first part of a struct,
- * ensures 'struct_dst' isn't const and that the offset can be computed at compile time */
+/**
+ * memcpy helper, skipping the first part of a struct,
+ * ensures 'struct_dst' isn't const and the offset can be computed at compile time.
+ * This isn't inclusive, the value of \a member isn't copied.
+ */
 #define MEMCPY_STRUCT_OFS(struct_dst, struct_src, member)  { \
 	CHECK_TYPE_NONCONST(struct_dst); \
 	((void)(struct_dst == struct_src), \
 	 memcpy((char *)(struct_dst)  + OFFSETOF_STRUCT(struct_dst, member), \
 	        (char *)(struct_src)  + OFFSETOF_STRUCT(struct_dst, member), \
 	        sizeof(*(struct_dst)) - OFFSETOF_STRUCT(struct_dst, member))); \
+} (void)0
+
+#define MEMSET_STRUCT_OFS(struct_var, value, member)  { \
+	CHECK_TYPE_NONCONST(struct_var); \
+	memset((char *)(struct_var)  + OFFSETOF_STRUCT(struct_var, member), \
+	       value, \
+	       sizeof(*(struct_var)) - OFFSETOF_STRUCT(struct_var, member)); \
 } (void)0
 
 /* Warning-free macros for storing ints in pointers. Use these _only_

@@ -22,7 +22,7 @@
  *  \ingroup ketsji
  */
 
-#include "PyObjectPlus.h"
+#include "EXP_PyObjectPlus.h"
 
 #include "KX_VehicleWrapper.h"
 #include "PHY_IPhysicsEnvironment.h"
@@ -54,19 +54,20 @@ KX_VehicleWrapper::~KX_VehicleWrapper()
 #ifdef WITH_PYTHON
 
 
-static bool raise_exc_wheel(PHY_IVehicle* vehicle, int i, const char *method)
+static bool raise_exc_wheel(PHY_IVehicle *vehicle, int i, const char *method)
 {
-	if ( i < 0 || i >= vehicle->GetNumWheels() ) {
+	if (i < 0 || i >= vehicle->GetNumWheels()) {
 		PyErr_Format(PyExc_ValueError,
-		             "%s(...): wheel index %d out of range (0 to %d).", method, i, vehicle->GetNumWheels()-1);
-		return -1;
-	} else {
-		return 0;
+		             "%s(...): wheel index %d out of range (0 to %d).", method, i, vehicle->GetNumWheels() - 1);
+		return true;
+	}
+	else {
+		return false;
 	}
 }
 
 #define WHEEL_INDEX_CHECK_OR_RETURN(i, method) \
-	if (raise_exc_wheel(m_vehicle, i, method) == -1) { return NULL; } (void)0
+	if (raise_exc_wheel(m_vehicle, i, method)) {return NULL;} (void)0
 
 
 PyObject *KX_VehicleWrapper::PyAddWheel(PyObject *args)
@@ -86,8 +87,6 @@ PyObject *KX_VehicleWrapper::PyAddWheel(PyObject *args)
 
 		if (gameOb->GetSGNode())
 		{
-			PHY_IMotionState* motionState = new KX_MotionState(gameOb->GetSGNode());
-			
 			MT_Vector3 attachPos,attachDir,attachAxle;
 			if(!PyVecTo(pylistPos,attachPos)) {
 				PyErr_SetString(PyExc_AttributeError,
@@ -114,6 +113,7 @@ PyObject *KX_VehicleWrapper::PyAddWheel(PyObject *args)
 				return NULL;
 			}
 
+			PHY_IMotionState *motionState = new KX_MotionState(gameOb->GetSGNode());
 			m_vehicle->AddWheel(motionState,attachPos,attachDir,attachAxle,suspensionRestLength,wheelRadius,hasSteering);
 		}
 		
