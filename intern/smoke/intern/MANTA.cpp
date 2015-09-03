@@ -282,23 +282,35 @@ string Manta_API::gridNameFromType(const string &type)
 void Manta_API::addGrid(void * data, string name, string type, int x, int y, int z, bool is2D = false)
 {
 	if (data == NULL || name == "" || gridNameFromType(type) == "") return;
-	cout << "Adding Grid:" << name<<endl; 
+	cout << "Adding Grid:" << name << endl;
 	std::ostringstream stringStream;
+	
+	/* Temporary gridname */
 	stringStream << "temp_" << name;
 	std::string grid_name = stringStream.str();
+	
+	/* Generate command that sets up grid variable */
 	stringStream.str("");
 	stringStream << grid_name << " = s.create(" << gridNameFromType(type) << ")";
 	const std::string command_1 = stringStream.str();
+
+	/* Generate command that makes the grid read in the data */
 	stringStream.str("");
-	if (is2D){
-		/*for 2D case, Y and Z axes are switched, Y axis is '1' for Mantaflow*/
+	if (is2D)
+	{
+		/* For 2D case, Y and Z axes are switched, Y axis is '1' for Mantaflow */
 		stringStream << grid_name << ".readGridFromMemory(\'"<< data << "\', " << x << "," << z << "," << 1 << ")";
 	}
-	else{
+	else
+	{
 		stringStream << grid_name << ".readGridFromMemory(\'"<< data << "\', " << x << "," << y << "," << z << ")";
 	}
 	const std::string command_2 = stringStream.str();
+	
+	/* Generate command that temp grid to our 'real' grid */
 	const std::string command_3 = name + ".add(" + grid_name + ")";
+	
+	/* Execute all commands */
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	PyRun_SimpleString(command_1.c_str());
 	PyRun_SimpleString(command_2.c_str());
@@ -619,13 +631,13 @@ void Manta_API::updatePointers(FLUID_3D *fluid, bool updateColor)
 			{
 				step = fluid->xRes() + cnty * fluid->xRes() + cntz * fluid->xRes()*fluid->yRes(); 
 				if ((step < 0) || (step > fluid->_totalCells)){
-					cout << "UpdatePointers: step is larger tahn cell dim" << step << endl;
+					cout << "UpdatePointers: step is larger than cell dim" << step << endl;
 				}
 				fluid->_density[step] = manta_fluid_density[cnty + cntz*fluid->xRes()];
 				fluid->_manta_flags[step] = manta_fluid_flags[cnty + cntz*fluid->xRes()];
 			}		
 	}
-	else{
+	else {
 		cout << '3D'<<endl;
 		fluid->_density = (float* )pointerFromString(getGridPointer("density", "s"));	
 		fluid->_manta_flags = (int* )pointerFromString(getGridPointer("flags", "s"));

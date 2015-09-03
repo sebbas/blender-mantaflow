@@ -4,6 +4,7 @@ const string smoke_clean = "";
 
 const string smoke_setup_low ="from manta import *\n\
 import os, shutil, math, sys\n\
+\n\
 def transform_back(obj, gs):\n\
   obj.scale(gs/2)\n\
   obj.offset(gs/2)\n\
@@ -13,6 +14,7 @@ def load_once(grid, file, dict):\n\
     print('Loading file' + file + 'in grid')\n\
     grid.load(file)\n\
     dict[grid] = 1\n\
+\n\
 # solver params\n\
 res = $RES$\n\
 solver_dim = $SOLVER_DIM$\n\
@@ -83,7 +85,7 @@ if $USE_WAVELETS$ and $UPRES$ > 0:\n\
   xl_wltnoise.timeAnim = 0.1 \n\
 ";
 
-const string smoke_init_colors_low = "print(\"INitializing Colors\")\n\
+const string smoke_init_colors_low = "print(\"Initializing Colors\")\n\
 color_r_low = s.create(RealGrid)\n\
 color_g_low = s.create(RealGrid)\n\
 color_b_low = s.create(RealGrid)\n\
@@ -103,7 +105,7 @@ del color_g_low \n\
 del color_b_low \n\
 manta_using_colors = False";
 
-const string smoke_init_colors_high = "print(\"INitializing Colors highres\")\n\
+const string smoke_init_colors_high = "print(\"Initializing Colors highres\")\n\
 color_r_high = xl.create(RealGrid)\n\
 color_g_high = xl.create(RealGrid)\n\
 color_b_high = xl.create(RealGrid)\n\
@@ -117,7 +119,7 @@ color_b_high.add(xl_density) \n\
 color_b_high.multConst(manta_color_b) \n\
 manta_using_colors = True\n";
 
-const string smoke_init_heat_low = "print(\"INitializing heat lowres\")\n\
+const string smoke_init_heat_low = "print(\"Initializing heat lowres\")\n\
 heat_low = s.create(RealGrid)\n\
 manta_using_heat = True\n";
 
@@ -190,7 +192,7 @@ const string smoke_step_low = "def sim_step_low(t, standalone = False):\n\
   s.step()\n";
 
 const string liquid_step_low = "def sim_step_low(t):\n\
-#update flags form density on first step\n\
+#update flags from density on first step\n\
   setWallBcs(flags=flags, vel=vel)\n\
   density.multConst(-1.)\n\
   print (manta_using_colors)\n\

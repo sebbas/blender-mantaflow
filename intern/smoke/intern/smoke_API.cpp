@@ -45,14 +45,14 @@ extern "C" int *smoke_get_manta_flags(struct FLUID_3D *fluid){
 
 extern "C" FLUID_3D *smoke_init(int *res, float dx, float dtdef, int use_heat, int use_fire, int use_colors, struct SmokeModifierData *smd )
 {
-	FLUID_3D *fluid = new FLUID_3D(res, dx, dtdef, use_heat, use_fire, use_colors,smd);
+	FLUID_3D *fluid = new FLUID_3D(res, dx, dtdef, use_heat, use_fire, use_colors, smd);
 	return fluid;
 }
 
 extern "C" WTURBULENCE *smoke_turbulence_init(int *res, int amplify, int noisetype, const char *noisefile_path, int use_fire, int use_colors,struct SmokeDomainSettings *sds)
 {
 	if (amplify)
-		return new WTURBULENCE(res[0],res[1],res[2], amplify, noisetype, noisefile_path, use_fire, use_colors,sds);
+		return new WTURBULENCE(res[0],res[1],res[2], amplify, noisetype, noisefile_path, use_fire, use_colors, sds);
 	else 
 		return NULL;
 }

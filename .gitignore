@@ -19,6 +19,9 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 
+# mac-osx
+.DS_Store
+
 # commonly used paths in blender
 /blender.bin
 /user-config.py
@@ -31,9 +34,3 @@ Desktop.ini
 /doc/python_api/sphinx-in-tmp/
 /doc/python_api/sphinx-in/
 /doc/python_api/sphinx-out/.gitignore
-Roman_Pogribnyi/
-Roman_Pogribnyi.tar.gz
-Archive.zip
-Roman_Pogribnyi 2/
-make_diffs.txt
-series
