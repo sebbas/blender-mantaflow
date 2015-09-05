@@ -701,6 +701,25 @@ void FLUID_3D::initColors(float init_r, float init_g, float init_b)
 void FLUID_3D::initFire()
 {
 	if (!_flame) {
+		_flame		= new float[_totalCells];
+		_fuel		= new float[_totalCells];
+		_fuelTemp	= new float[_totalCells];
+		_fuelOld	= new float[_totalCells];
+		_react		= new float[_totalCells];
+		_reactTemp	= new float[_totalCells];
+		_reactOld	= new float[_totalCells];
+		
+		for (int x = 0; x < _totalCells; x++)
+		{
+			_flame[x]		= 0.0f;
+			_fuel[x]		= 0.0f;
+			_fuelTemp[x]	= 0.0f;
+			_fuelOld[x]		= 0.0f;
+			_react[x]		= 0.0f;
+			_reactTemp[x]	= 0.0f;
+			_reactOld[x]	= 0.0f;
+		}
+
 		using_fire = true;
 		PyGILState_STATE gilstate = PyGILState_Ensure();
 		PyRun_SimpleString(smoke_init_fire_low.c_str());
@@ -784,66 +803,19 @@ void FLUID_3D::step(float dt, float gravity[3])
 void FLUID_3D::processBurn(float *fuel, float *smoke, float *react, float *heat,
 						   float *r, float *g, float *b, int total_cells, float dt)
 {
-	float burning_rate = *_burning_rate;
-	float flame_smoke = *_flame_smoke;
-	float ignition_point = *_ignition_temp;
-	float temp_max = *_max_temp;
-	
-	for (int index = 0; index < total_cells; index++)
-	{
-		float orig_fuel = fuel[index];
-		float orig_smoke = smoke[index];
-		float smoke_emit = 0.0f;
-		float flame = 0.0f;
 
-		/* process fuel */
-		fuel[index] -= burning_rate * dt;
-		if (fuel[index] < 0.0f) fuel[index] = 0.0f;
-		/* process reaction coordinate */
-		if (orig_fuel > FLT_EPSILON) {
-			react[index] *= fuel[index]/orig_fuel;
-			flame = pow(react[index], 0.5f);
-		}
-		else {
-			react[index] = 0.0f;
-		}
-		
-		/* emit smoke based on fuel burn rate and "flame_smoke" factor */
-		smoke_emit = (orig_fuel < 1.0f) ? (1.0f - orig_fuel)*0.5f : 0.0f;
-		smoke_emit = (smoke_emit + 0.5f) * (orig_fuel-fuel[index]) * 0.1f * flame_smoke;
-		smoke[index] += smoke_emit;
-		CLAMP(smoke[index], 0.0f, 1.0f);
-
-		/* set fluid temperature from the flame temperature profile */
-		if (heat && flame)
-			heat[index] = (1.0f - flame)*ignition_point + flame*temp_max;
-
-		/* mix new color */
-		if (r && smoke_emit > FLT_EPSILON) {
-			float smoke_factor = smoke[index]/(orig_smoke+smoke_emit);
-			r[index] = (r[index] + _flame_smoke_color[0] * smoke_emit) * smoke_factor;
-			g[index] = (g[index] + _flame_smoke_color[1] * smoke_emit) * smoke_factor;
-			b[index] = (b[index] + _flame_smoke_color[2] * smoke_emit) * smoke_factor;
-		}
-	}
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	PyRun_SimpleString(fire_process_burn.c_str());
+	PyGILState_Release(gilstate);
+	Manta_API::updatePointers(this, true);
 }
 
 void FLUID_3D::updateFlame(float *react, float *flame, int total_cells)
 {
-	for (int index = 0; index < total_cells; index++)
-	{
-		/* model flame temperature curve from the reaction coordinate (fuel)
-		 *	TODO: Would probably be best to get rid of whole "flame" data field.
-		 *		 Currently it's just sqrt mirror of reaction coordinate, and therefore
-		 *		 basically just waste of memory and disk space...
-		 */
-		if (react[index]>0.0f) {
-			/* do a smooth falloff for rest of the values */
-			flame[index] = pow(react[index], 0.5f);
-		}
-		else
-			flame[index] = 0.0f;
-	}
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	PyRun_SimpleString(fire_update_flame.c_str());
+	PyGILState_Release(gilstate);
+	Manta_API::updatePointers(this, true);
 }
 
 #endif /*WITH_MANTA*/
@@ -907,8 +879,6 @@ void FLUID_3D::setBorderObstacles()
 		}
 }
 
-
-
 // Set border collision model from RNA setting
 
 void FLUID_3D::setBorderCollisions() {
@@ -953,7 +923,6 @@ void FLUID_3D::setBorderCollisions() {
 // helper function to dampen co-located grid artifacts of given arrays in intervals
 // (only needed for velocity, strength (w) depends on testcase...
 //////////////////////////////////////////////////////////////////////
-
 
 void FLUID_3D::artificialDampingSL(int zBegin, int zEnd) {
 	const float w = 0.9;
@@ -1008,8 +977,6 @@ void FLUID_3D::artificialDampingSL(int zBegin, int zEnd) {
 		
 	}
 }
-
-
 
 void FLUID_3D::artificialDampingExactSL(int pos) {
 	const float w = 0.9;
@@ -1703,7 +1670,6 @@ void FLUID_3D::addBuoyancy(float *heat, float *density, float gravity[3], int zB
 			}
 }
 
-
 //////////////////////////////////////////////////////////////////////
 // add vorticity to the force field
 //////////////////////////////////////////////////////////////////////
@@ -1879,7 +1845,6 @@ void FLUID_3D::addVorticity(int zBegin, int zEnd)
 	if (_zVorticity) delete[] _zVorticity;
 	if (_vorticity) delete[] _vorticity;
 }
-
 
 void FLUID_3D::advectMacCormackBegin(int zBegin, int zEnd)
 {

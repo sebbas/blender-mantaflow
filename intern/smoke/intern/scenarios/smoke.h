@@ -144,6 +144,12 @@ inflow_grid.save(os.path.join('$MANTA_EXPORT_PATH$','inflow.uni'))\n\
 forces.save(os.path.join('$MANTA_EXPORT_PATH$','forces.uni'))\n\
 print('Grids exported')";
 
+const string fire_process_burn = "\n\
+processBurn(fuel=fuel_low, density=density, react=react_low, heat=heat_low, red=color_r_low, green=color_g_low, blue=color_b_low)";
+
+const string fire_update_flame = "\n\
+updateFlame(react=react_low, flame=flame_low)";
+
 const string standalone = "\
 if (GUI):\n\
   gui=Gui()\n\
@@ -181,8 +187,6 @@ const string smoke_step_low = "def sim_step_low(t, standalone = False):\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_b_low, order=$ADVECT_ORDER$)\n\
   print ('Advecting fire grids')\n\
   if manta_using_fire:\n\
-    print ('Advecting fire grids')\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=flame_low, order=$ADVECT_ORDER$)\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=fuel_low, order=$ADVECT_ORDER$)\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=react_low, order=$ADVECT_ORDER$)\n\
   print ('Advecting density')\n\

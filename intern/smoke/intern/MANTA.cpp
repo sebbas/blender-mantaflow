@@ -659,7 +659,9 @@ void Manta_API::updatePointers(FLUID_3D *fluid, bool updateColor)
 		cout<< "Updating Heat" << fluid->_heat<< endl;
 	}
 	if (fluid->using_fire) {
-		// TODO
+		fluid->_flame = (float* )pointerFromString(getGridPointer("flame_low", "s"));
+		fluid->_fuel = (float* )pointerFromString(getGridPointer("fuel_low", "s"));
+		fluid->_react = (float* )pointerFromString(getGridPointer("react_low", "s"));
 	}
 }
 

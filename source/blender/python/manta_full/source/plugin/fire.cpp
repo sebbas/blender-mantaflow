@@ -15,8 +15,6 @@
 #include <float.h>
 #include "vectorbase.h"
 #include "grid.h"
-#include "shapes.h"
-#include "blenderHelper.h"
 
 using namespace std;
 
@@ -26,8 +24,8 @@ namespace Manta {
 const Real burningRate = 0.75;
 const Real flameSmoke = 1.0;
 const Real flameVorticity = 0.5;
-const Real flameIgnition = 1.25;
-const Real flameMaxTemp = 1.75;
+const Real ignitionPoint = 1.25;
+const Real tempMax = 1.75;
 const Vec3 flameSmokeColor = Vec3(0.7f, 0.7f, 0.7f);
 
 // default flow values
@@ -46,9 +44,9 @@ const bool withSmoke = true;
 const bool withFire = true;
 
 KERNEL (bnd=1)
-void KnProcessBurn(FlagGrid& flags,
+void KnProcessBurn(//FlagGrid& flags,
 				   Grid<Real>& fuel,
-				   Grid<Real>& density,
+				   LevelsetGrid& density,
 				   Grid<Real>& react,
 				   Grid<Real>& heat,
 				   Grid<Real>& red,
@@ -61,8 +59,8 @@ void KnProcessBurn(FlagGrid& flags,
 				   float dt,
 				   Vec3 flameSmokeColor)
 {
-	if (flags.isFluid(i,j,k))
-	{
+	//if (flags.isFluid(i,j,k))
+	//{
 		// Save initial values
 		float origFuel = fuel(i,j,k);
 		float origSmoke = density(i,j,k);
@@ -107,7 +105,7 @@ void KnProcessBurn(FlagGrid& flags,
 			green(i,j,k) = (green(i,j,k) + flameSmokeColor.y * smokeEmit) * smokeFactor;
 			blue(i,j,k) = (blue(i,j,k) + flameSmokeColor.z * smokeEmit) * smokeFactor;
 		}
-	}
+	//}
 }
 
 KERNEL (bnd=1)
@@ -119,24 +117,21 @@ void KnUpdateFlame(Grid<Real>& react, Grid<Real>& flame)
 		flame(i,j,k) = 0.0f;
 }
 
-PYTHON void KnProcessBurn()
+PYTHON void processBurn(Grid<Real>& fuel,
+						  Grid<Real>& density,
+						  Grid<Real>& react,
+						  Grid<Real>& heat,
+						  Grid<Real>& red,
+						  Grid<Real>& green,
+						  Grid<Real>& blue)
 {
-	KnProcessBurn(FlagGrid& flags,
-				   Grid<Real>& fuel,
-				   Grid<Real>& density,
-				   Grid<Real>& react,
-				   Grid<Real>& heat,
-				   Grid<Real>& red,
-				   Grid<Real>& green,
-				   Grid<Real>& blue,
-				   float burningRate,
-				   float flameSmoke,
-				   float ignitionPoint,
-				   float tempMax,
-				   float dt,
-				   Vec3 flameSmokeColor);
+	KnProcessBurn(fuel, density, react, heat, red, green, blue, burningRate,
+		flameSmoke, ignitionPoint, tempMax, dtDefault, flameSmokeColor);
 }
 
-
+PYTHON void updateFlame(Grid<Real>& react, Grid<Real>& flame)
+{
+	KnUpdateFlame(react, flame);
+}
 
 } // namespace
