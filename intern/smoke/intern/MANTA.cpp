@@ -307,7 +307,7 @@ void Manta_API::addGrid(void * data, string name, string type, int x, int y, int
 	}
 	const std::string command_2 = stringStream.str();
 	
-	/* Generate command that temp grid to our 'real' grid */
+	/* Generate command that maps temp grid to our 'real' grid */
 	const std::string command_3 = name + ".add(" + grid_name + ")";
 	
 	/* Execute all commands */
@@ -653,10 +653,13 @@ void Manta_API::updatePointers(FLUID_3D *fluid, bool updateColor)
 		fluid->_color_g = (float* )pointerFromString(getGridPointer("color_g_low", "s"));
 		fluid->_color_b = (float* )pointerFromString(getGridPointer("color_b_low", "s"));
 	}
-	if(fluid->using_heat){
+	if (fluid->using_heat) {
 		cout<< "Updating Heat" << fluid->_heat<< endl;
 		fluid->_heat = (float* )pointerFromString(getGridPointer("heat_low", "s"));
 		cout<< "Updating Heat" << fluid->_heat<< endl;
+	}
+	if (fluid->using_fire) {
+		// TODO
 	}
 }
 

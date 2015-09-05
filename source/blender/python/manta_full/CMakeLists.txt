@@ -153,6 +153,7 @@ SET(PP_SOURCES
 	source/plugin/vortexplugins.cpp
 	source/plugin/waveletturbulence.cpp
 	source/python/defines.py
+	source/python/fire.cpp
 	source/test.cpp
 )
 

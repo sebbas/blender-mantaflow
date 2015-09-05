@@ -51,6 +51,7 @@ forces = s.create(MACGrid)\n\
 dict_loaded = dict()\n\
 manta_using_colors = False\n\
 manta_using_heat = False\n\
+manta_using_fire = False\n\
 low_flags_updated = False\n\
 ";
 
@@ -85,7 +86,7 @@ if $USE_WAVELETS$ and $UPRES$ > 0:\n\
   xl_wltnoise.timeAnim = 0.1 \n\
 ";
 
-const string smoke_init_colors_low = "print(\"Initializing Colors\")\n\
+const string smoke_init_colors_low = "print(\"Initializing colors\")\n\
 color_r_low = s.create(RealGrid)\n\
 color_g_low = s.create(RealGrid)\n\
 color_b_low = s.create(RealGrid)\n\
@@ -105,7 +106,7 @@ del color_g_low \n\
 del color_b_low \n\
 manta_using_colors = False";
 
-const string smoke_init_colors_high = "print(\"Initializing Colors highres\")\n\
+const string smoke_init_colors_high = "print(\"Initializing colors highres\")\n\
 color_r_high = xl.create(RealGrid)\n\
 color_g_high = xl.create(RealGrid)\n\
 color_b_high = xl.create(RealGrid)\n\
@@ -123,6 +124,12 @@ const string smoke_init_heat_low = "print(\"Initializing heat lowres\")\n\
 heat_low = s.create(RealGrid)\n\
 manta_using_heat = True\n";
 
+const string smoke_init_fire_low = "print(\"Initializing fire lowres\")\n\
+flame_low = s.create(RealGrid)\n\
+fuel_low = s.create(RealGrid)\n\
+react_low = s.create(RealGrid)\n\
+manta_using_fire = True\n";
+
 const string smoke_del_colors_high = "\n\
 del color_r_high \n\
 del color_g_high \n\
@@ -139,24 +146,25 @@ print('Grids exported')";
 
 const string standalone = "\
 if (GUI):\n\
-  gui =Gui()\n\
+  gui=Gui()\n\
   gui.show()\n\
+  gui.pause()\n\
 \n\
 for step in range(100):\n\
   sim_step_low(step, True)\n";
 
 const string smoke_step_low = "def sim_step_low(t, standalone = False):\n\
   #applying inflow\n\
-  #if standalone and t==0:\n\
-  #  density.load('density.uni')\n\
-  #  flags.load('flags.uni')\n\
-  #  forces.load('forces.uni')\n\
-  #if standalone:\n\
-  #  inflow_grid.load('inflow.uni')\n\
-  #  inflow_grid.multConst(0.1)\n\
-  #  density.add(inflow_grid)\n\
-  #elif solver_dim == 2:\n\
-  #  density.add(inflow_grid)\n\
+  if standalone and t==0:\n\
+    density.load(os.path.join('$MANTA_EXPORT_PATH$','density.uni'))\n\
+    flags.load(os.path.join('$MANTA_EXPORT_PATH$','flags.uni'))\n\
+    forces.load(os.path.join('$MANTA_EXPORT_PATH$','forces.uni'))\n\
+  if standalone:\n\
+    inflow_grid.load(os.path.join('$MANTA_EXPORT_PATH$','inflow.uni'))\n\
+    inflow_grid.multConst(0.1)\n\
+    density.add(inflow_grid)\n\
+  elif solver_dim == 2:\n\
+    density.add(inflow_grid)\n\
   print ('Simulating frame ' + str(t))\n\
   if not standalone and t == 1 and solver_dim == 2:\n\
     density.add(inflow_grid)\n\
@@ -166,17 +174,24 @@ const string smoke_step_low = "def sim_step_low(t, standalone = False):\n\
   else:\n\
     gravity=vec3(0,0,-0.01 * $ALPHA$) if solver_dim==3 else vec3(0,-0.01* $ALPHA$,0)\n\
     addBuoyancy(density=density, vel=vel, gravity=gravity, flags=flags)\n\
+  print ('Advecting colors')\n\
   if manta_using_colors:\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_r_low, order=$ADVECT_ORDER$)\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_g_low, order=$ADVECT_ORDER$)\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_b_low, order=$ADVECT_ORDER$)\n\
+  print ('Advecting fire grids')\n\
+  if manta_using_fire:\n\
+    print ('Advecting fire grids')\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=flame_low, order=$ADVECT_ORDER$)\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=fuel_low, order=$ADVECT_ORDER$)\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=react_low, order=$ADVECT_ORDER$)\n\
   print ('Advecting density')\n\
   advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$)\n\
   print ('Advecting velocity')\n\
   advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=$ADVECT_ORDER$, strength=1.0)\n\
   \n\
   print ('Walls')\n\
-  setWallBcs(flags=flags, vel=vel)    \n\
+  setWallBcs(flags=flags, vel=vel)\n\
   print ('vorticity')\n\
   if $VORTICITY$ > 0.01:\n\
     vorticityConfinement( vel=vel, flags=flags, strength=$VORTICITY$ ) \n\
@@ -243,19 +258,19 @@ const string smoke_step_high = "def sim_step_high(t):\n\
 const string full_smoke_setup = "from manta import * \n\
 import os, shutil, math, sys \n\
 def transform_back(obj, gs):\n\
-	obj.scale(gs/2)\n\
-	obj.offset(gs/2)\n\
+  obj.scale(gs/2)\n\
+  obj.offset(gs/2)\n\
 \n\
 uvs = $UVS_CNT$\n\
 solver_dim = $SOLVER_DIM$\n\
 velInflow = vec3(0, 0, 1)\n\
 if $USE_WAVELETS$:\n\
-	upres = $UPRES$\n\
-	wltStrength = $WLT_STR$\n\
-	if $UPRES$ > 0:\n\
-		octaves = int( math.log(upres)/ math.log(2.0) + 0.5 ) \n\
-	else:\n\
-		octaves = 0\n\
+  upres = $UPRES$\n\
+  wltStrength = $WLT_STR$\n\
+  if $UPRES$ > 0:\n\
+    octaves = int( math.log(upres)/ math.log(2.0) + 0.5 ) \n\
+  else:\n\
+    octaves = 0\n\
 res = $RES$\n\
 gs = vec3($RESX$, $RESY$, $RESZ$) \n\
 s = Solver(name = 'main', gridSize = gs, dim = solver_dim) \n\
@@ -277,31 +292,31 @@ transform_back(sourceVel, gs)\n\
 xl_gs = vec3($HRESX$, $HRESY$, $HRESZ$) \n\
 xl = Solver(name = 'larger', gridSize = xl_gs, dim = solver_dim) \n\
 if $USE_WAVELETS$ and $UPRES$ > 0:\n\
-	xl.timestep = $XL_TIMESTEP$ \n\
-	xl_vel = xl.create(MACGrid) \n\
-	xl_density = xl.create(RealGrid) \n\
-	xl_flags = xl.create(FlagGrid) \n\
-	xl_flags.initDomain() \n\
-	xl_flags.fillGrid() \n\
-	xl_source = s.create(Mesh)\n\
-	xl_source.load('manta_flow.obj')\n\
-	transform_back(xl_source, gs)\n\
-	xl_noise = xl.create(NoiseField, fixedSeed=256, loadFromFile=True) \n\
-	xl_noise.posScale = vec3(20) \n\
-	xl_noise.clamp = False \n\
-	xl_noise.clampNeg = $NOISE_CN$ \n\
-	xl_noise.clampPos = $NOISE_CP$ \n\
-	xl_noise.valScale = $NOISE_VALSCALE$ \n\
-	xl_noise.valOffset = $NOISE_VALOFFSET$ \n\
-	xl_noise.timeAnim = $NOISE_TIMEANIM$ * $UPRES$ \n\
+  xl.timestep = $XL_TIMESTEP$ \n\
+  xl_vel = xl.create(MACGrid) \n\
+  xl_density = xl.create(RealGrid) \n\
+  xl_flags = xl.create(FlagGrid) \n\
+  xl_flags.initDomain() \n\
+  xl_flags.fillGrid() \n\
+  xl_source = s.create(Mesh)\n\
+  xl_source.load('manta_flow.obj')\n\
+  transform_back(xl_source, gs)\n\
+  xl_noise = xl.create(NoiseField, fixedSeed=256, loadFromFile=True) \n\
+  xl_noise.posScale = vec3(20) \n\
+  xl_noise.clamp = False \n\
+  xl_noise.clampNeg = $NOISE_CN$ \n\
+  xl_noise.clampPos = $NOISE_CP$ \n\
+  xl_noise.valScale = $NOISE_VALSCALE$ \n\
+  xl_noise.valOffset = $NOISE_VALOFFSET$ \n\
+  xl_noise.timeAnim = $NOISE_TIMEANIM$ * $UPRES$ \n\
 flags = s.create(FlagGrid) \n\
 flags.initDomain() \n\
 flags.fillGrid() \n\
 uv = [] \n\
 for i in range(uvs): \n\
-	uvGrid = s.create(VecGrid) \n\
-	uv.append(uvGrid) \n\
-	resetUvGrid( uv[i] ) \n\
+  uvGrid = s.create(VecGrid) \n\
+  uv.append(uvGrid) \n\
+  resetUvGrid( uv[i] ) \n\
 vel = s.create(MACGrid) \n\
 density = s.create(RealGrid) \n\
 pressure = s.create(RealGrid) \n\
@@ -318,46 +333,46 @@ xl_wltnoise.timeAnim = 0.1 \n\
 \n\
 \n\
 def sim_step(t):\n\
-	forces.load('manta_forces.uni')\n\
-	addForceField(flags=flags, vel=vel,force=forces)\n\
-	addBuoyancy(density=density, vel=vel, gravity=vec3($BUYO_X$,$BUYO_Y$,$BUYO_Z$), flags=flags) \n\
-	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$) \n\
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=$ADVECT_ORDER$) \n\
-	for i in range(uvs): \n\
-		advectSemiLagrange(flags=flags, vel=vel, grid=uv[i], order=$ADVECT_ORDER$) \n\
-		updateUvWeight( resetTime=16.5 , index=i, numUvs=uvs, uv=uv[i] )\n\
-	applyInflow=False\n\
-	if (t>=0 and t<75):\n\
-		densityInflowMesh(flags=flags, density=density, mesh=source, value=1)\n\
-		applyInflow=True\n\
-	setWallBcs(flags=flags, vel=vel) \n\
-	vorticityConfinement( vel=vel, flags=flags, strength=0.2 ) \n\
-	solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, openBound='xXyYzZ', cgMaxIterFac=1, cgAccuracy=0.01) \n\
-	setWallBcs(flags=flags, vel=vel) \n\
-	computeEnergy(flags=flags, vel=vel, energy=energy)\n\
-	tempFlag.copyFrom(flags)\n\
-	extrapolateSimpleFlags( flags=flags, val=tempFlag, distance=2, flagFrom=FlagObstacle, flagTo=FlagFluid )\n\
-	extrapolateSimpleFlags( flags=tempFlag, val=energy, distance=6, flagFrom=FlagFluid, flagTo=FlagObstacle )\n\
-	computeWaveletCoeffs(energy)\n\
-	print(\"Writing Grid to \" + $DENSITY_MEM$ + \"with size\" + $DENSITY_SIZE$)\n\
-	density.writeGridToMemory(memLoc = $DENSITY_MEM$,sizeAllowed = $DENSITY_SIZE$)\n\
-	density.save('den%04d_temp.uni' % t) \n\
-	os.rename('den%04d_temp.uni' % t, 'den%04d.uni' % t) \n\
-	s.step()\n\
-	\n\
-	interpolateMACGrid( source=vel, target=xl_vel ) \n\
-	sStr = 1.0 * wltStrength  \n\
-	sPos = 2.0  \n\
-	for o in range(octaves): \n\
-		for i in range(uvs): \n\
-			uvWeight = getUvWeight(uv[i])  \n\
-			applyNoiseVec3( flags=xl_flags, target=xl_vel, noise=xl_wltnoise, scale=sStr * uvWeight, scaleSpatial=sPos , weight=energy, uv=uv[i] ) \n\
-		sStr *= 0.06 # magic kolmogorov factor \n\
-		sPos *= 2.0 \n\
-	for substep in range(upres):  \n\
-		advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=$ADVECT_ORDER$)  \n\
-	if (applyInflow): \n\
-		densityInflowMesh(flags=xl_flags, density=xl_density, mesh=source, value=1)\n\
-	xl_density.save('densityXl_%04d.uni' % t)\n\
-	xl.step()\n\
+  forces.load('manta_forces.uni')\n\
+  addForceField(flags=flags, vel=vel,force=forces)\n\
+  addBuoyancy(density=density, vel=vel, gravity=vec3($BUYO_X$,$BUYO_Y$,$BUYO_Z$), flags=flags) \n\
+  advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$) \n\
+  advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=$ADVECT_ORDER$) \n\
+  for i in range(uvs): \n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=uv[i], order=$ADVECT_ORDER$) \n\
+    updateUvWeight( resetTime=16.5 , index=i, numUvs=uvs, uv=uv[i] )\n\
+  applyInflow=False\n\
+  if (t>=0 and t<75):\n\
+    densityInflowMesh(flags=flags, density=density, mesh=source, value=1)\n\
+    applyInflow=True\n\
+  setWallBcs(flags=flags, vel=vel) \n\
+  vorticityConfinement( vel=vel, flags=flags, strength=0.2 ) \n\
+  solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, openBound='xXyYzZ', cgMaxIterFac=1, cgAccuracy=0.01) \n\
+  setWallBcs(flags=flags, vel=vel) \n\
+  computeEnergy(flags=flags, vel=vel, energy=energy)\n\
+  tempFlag.copyFrom(flags)\n\
+  extrapolateSimpleFlags( flags=flags, val=tempFlag, distance=2, flagFrom=FlagObstacle, flagTo=FlagFluid )\n\
+  extrapolateSimpleFlags( flags=tempFlag, val=energy, distance=6, flagFrom=FlagFluid, flagTo=FlagObstacle )\n\
+  computeWaveletCoeffs(energy)\n\
+  print(\"Writing Grid to \" + $DENSITY_MEM$ + \"with size\" + $DENSITY_SIZE$)\n\
+  density.writeGridToMemory(memLoc = $DENSITY_MEM$,sizeAllowed = $DENSITY_SIZE$)\n\
+  density.save('den%04d_temp.uni' % t) \n\
+  os.rename('den%04d_temp.uni' % t, 'den%04d.uni' % t) \n\
+  s.step()\n\
+  \n\
+  interpolateMACGrid( source=vel, target=xl_vel ) \n\
+  sStr = 1.0 * wltStrength  \n\
+  sPos = 2.0  \n\
+  for o in range(octaves): \n\
+    for i in range(uvs): \n\
+      uvWeight = getUvWeight(uv[i])  \n\
+      applyNoiseVec3( flags=xl_flags, target=xl_vel, noise=xl_wltnoise, scale=sStr * uvWeight, scaleSpatial=sPos , weight=energy, uv=uv[i] ) \n\
+    sStr *= 0.06 # magic kolmogorov factor \n\
+    sPos *= 2.0 \n\
+  for substep in range(upres):  \n\
+    advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=$ADVECT_ORDER$)  \n\
+  if (applyInflow): \n\
+    densityInflowMesh(flags=xl_flags, density=xl_density, mesh=source, value=1)\n\
+  xl_density.save('densityXl_%04d.uni' % t)\n\
+  xl.step()\n\
 ";

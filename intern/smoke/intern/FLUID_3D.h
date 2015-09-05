@@ -132,6 +132,7 @@ struct FLUID_3D
 		float *_react;
 		float *_reactTemp;
 		float *_reactOld;
+		bool using_fire;
 
 		// smoke color
 		float *_color_r;

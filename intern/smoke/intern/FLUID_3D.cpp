@@ -196,6 +196,29 @@ void FLUID_3D::initColors(float init_r, float init_g, float init_b)
 	}
 }
 
+void FLUID_3D::initFire()
+{
+	if (!_flame) {
+		_flame		= new float[_totalCells];
+		_fuel		= new float[_totalCells];
+		_fuelTemp	= new float[_totalCells];
+		_fuelOld	= new float[_totalCells];
+		_react		= new float[_totalCells];
+		_reactTemp	= new float[_totalCells];
+		_reactOld	= new float[_totalCells];
+		
+		for (int x = 0; x < _totalCells; x++)
+		{
+			_flame[x]		= 0.0f;
+			_fuel[x]		= 0.0f;
+			_fuelTemp[x]	= 0.0f;
+			_fuelOld[x]		= 0.0f;
+			_react[x]		= 0.0f;
+			_reactTemp[x]	= 0.0f;
+			_reactOld[x]	= 0.0f;
+		}
+	}
+}
 
 FLUID_3D::~FLUID_3D()
 {
@@ -242,23 +265,6 @@ FLUID_3D::~FLUID_3D()
 	if (_color_bTemp) delete[] _color_bTemp;
 
     // printf("deleted fluid\n");
-}
-
-// init direct access functions from blender
-void FLUID_3D::initBlenderRNA(float *alpha, float *beta, float *dt_factor, float *vorticity, int *borderCollision, float *burning_rate,
-							  float *flame_smoke, float *flame_smoke_color, float *flame_vorticity, float *flame_ignition_temp, float *flame_max_temp)
-{
-	_alpha = alpha;
-	_beta = beta;
-	_dtFactor = dt_factor;
-	_vorticityRNA = vorticity;
-	_borderColli = borderCollision;
-	_burning_rate = burning_rate;
-	_flame_smoke = flame_smoke;
-	_flame_smoke_color = flame_smoke_color;
-	_flame_vorticity = flame_vorticity;
-	_ignition_temp = flame_ignition_temp;
-	_max_temp = flame_max_temp;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -453,6 +459,71 @@ void FLUID_3D::step(float dt, float gravity[3])
 
 }
 
+void FLUID_3D::processBurn(float *fuel, float *smoke, float *react, float *heat,
+						   float *r, float *g, float *b, int total_cells, float dt)
+{
+	float burning_rate = *_burning_rate;
+	float flame_smoke = *_flame_smoke;
+	float ignition_point = *_ignition_temp;
+	float temp_max = *_max_temp;
+	
+	for (int index = 0; index < total_cells; index++)
+	{
+		float orig_fuel = fuel[index];
+		float orig_smoke = smoke[index];
+		float smoke_emit = 0.0f;
+		float flame = 0.0f;
+
+		/* process fuel */
+		fuel[index] -= burning_rate * dt;
+		if (fuel[index] < 0.0f) fuel[index] = 0.0f;
+		/* process reaction coordinate */
+		if (orig_fuel > FLT_EPSILON) {
+			react[index] *= fuel[index]/orig_fuel;
+			flame = pow(react[index], 0.5f);
+		}
+		else {
+			react[index] = 0.0f;
+		}
+		
+		/* emit smoke based on fuel burn rate and "flame_smoke" factor */
+		smoke_emit = (orig_fuel < 1.0f) ? (1.0f - orig_fuel)*0.5f : 0.0f;
+		smoke_emit = (smoke_emit + 0.5f) * (orig_fuel-fuel[index]) * 0.1f * flame_smoke;
+		smoke[index] += smoke_emit;
+		CLAMP(smoke[index], 0.0f, 1.0f);
+
+		/* set fluid temperature from the flame temperature profile */
+		if (heat && flame)
+			heat[index] = (1.0f - flame)*ignition_point + flame*temp_max;
+
+		/* mix new color */
+		if (r && smoke_emit > FLT_EPSILON) {
+			float smoke_factor = smoke[index]/(orig_smoke+smoke_emit);
+			r[index] = (r[index] + _flame_smoke_color[0] * smoke_emit) * smoke_factor;
+			g[index] = (g[index] + _flame_smoke_color[1] * smoke_emit) * smoke_factor;
+			b[index] = (b[index] + _flame_smoke_color[2] * smoke_emit) * smoke_factor;
+		}
+	}
+}
+
+void FLUID_3D::updateFlame(float *react, float *flame, int total_cells)
+{
+	for (int index = 0; index < total_cells; index++)
+	{
+		/* model flame temperature curve from the reaction coordinate (fuel)
+		 *	TODO: Would probably be best to get rid of whole "flame" data field.
+		 *		 Currently it's just sqrt mirror of reaction coordinate, and therefore
+		 *		 basically just waste of memory and disk space...
+		 */
+		if (react[index]>0.0f) {
+			/* do a smooth falloff for rest of the values */
+			flame[index] = pow(react[index], 0.5f);
+		}
+		else
+			flame[index] = 0.0f;
+	}
+}
+
 /*===============================================================================================*/
 /*===============================================================================================*/
 #else /*USING MANTAFLOW STRUCTURES*/
@@ -558,6 +629,7 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	// Fire simulation
 	_flame = _fuel = _fuelTemp = _fuelOld = NULL;
 	_react = _reactTemp = _reactOld = NULL;
+	using_fire = false;
 	if (init_fire) {
 		initFire();
 	}
@@ -602,14 +674,6 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 void FLUID_3D::initHeat()
 {
 	if (!_heat) {
-		_heat         = NULL;
-		_heatOld      = new float[_totalCells];
-		_heatTemp      = new float[_totalCells];
-		
-		for (int x = 0; x < _totalCells; x++)
-		{
-			_heatOld[x]      = 0.0f;
-		}
 		using_heat = true;
 		PyGILState_STATE gilstate = PyGILState_Ensure();
 		PyRun_SimpleString(smoke_init_heat_low.c_str());
@@ -618,10 +682,9 @@ void FLUID_3D::initHeat()
 	}
 }
 
-
 void FLUID_3D::initColors(float init_r, float init_g, float init_b)
 {
-	if (!_color_r){
+	if (!_color_r) {
 		using_colors = true;
 		PyGILState_STATE gilstate = PyGILState_Ensure();
 		stringstream ss;
@@ -635,6 +698,16 @@ void FLUID_3D::initColors(float init_r, float init_g, float init_b)
 	}
 }
 
+void FLUID_3D::initFire()
+{
+	if (!_flame) {
+		using_fire = true;
+		PyGILState_STATE gilstate = PyGILState_Ensure();
+		PyRun_SimpleString(smoke_init_fire_low.c_str());
+		PyGILState_Release(gilstate);
+		Manta_API::updatePointers(this, true);
+	}
+}
 
 FLUID_3D::~FLUID_3D()
 {
@@ -681,29 +754,12 @@ FLUID_3D::~FLUID_3D()
     // printf("deleted fluid\n");
 }
 
-// init direct access functions from blender
-void FLUID_3D::initBlenderRNA(float *alpha, float *beta, float *dt_factor, float *vorticity, int *borderCollision, float *burning_rate,
-							  float *flame_smoke, float *flame_smoke_color, float *flame_vorticity, float *flame_ignition_temp, float *flame_max_temp)
-{
-	_alpha = alpha;
-	_beta = beta;
-	_dtFactor = dt_factor;
-	_vorticityRNA = vorticity;
-	_borderColli = borderCollision;
-	_burning_rate = burning_rate;
-	_flame_smoke = flame_smoke;
-	_flame_smoke_color = flame_smoke_color;
-	_flame_vorticity = flame_vorticity;
-	_ignition_temp = flame_ignition_temp;
-	_max_temp = flame_max_temp;
-}
-
 //////////////////////////////////////////////////////////////////////
 // step simulation once
 //////////////////////////////////////////////////////////////////////
 void FLUID_3D::step(float dt, float gravity[3])
 {
-		// BLender computes heat buoyancy, not yet impl. in Manta
+	// Blender computes heat buoyancy, not yet impl. in Manta
 	manta_write_effectors(this);
 	Manta_API::updatePointers(this,using_colors);
 //	diffuseHeat();
@@ -724,32 +780,90 @@ void FLUID_3D::step(float dt, float gravity[3])
 	}
 
 }
-#endif /*WITH_MANTA*/
 
-void FLUID_3D::initFire()
+void FLUID_3D::processBurn(float *fuel, float *smoke, float *react, float *heat,
+						   float *r, float *g, float *b, int total_cells, float dt)
 {
-	if (!_flame) {
-		_flame		= new float[_totalCells];
-		_fuel		= new float[_totalCells];
-		_fuelTemp	= new float[_totalCells];
-		_fuelOld	= new float[_totalCells];
-		_react		= new float[_totalCells];
-		_reactTemp	= new float[_totalCells];
-		_reactOld	= new float[_totalCells];
+	float burning_rate = *_burning_rate;
+	float flame_smoke = *_flame_smoke;
+	float ignition_point = *_ignition_temp;
+	float temp_max = *_max_temp;
+	
+	for (int index = 0; index < total_cells; index++)
+	{
+		float orig_fuel = fuel[index];
+		float orig_smoke = smoke[index];
+		float smoke_emit = 0.0f;
+		float flame = 0.0f;
+
+		/* process fuel */
+		fuel[index] -= burning_rate * dt;
+		if (fuel[index] < 0.0f) fuel[index] = 0.0f;
+		/* process reaction coordinate */
+		if (orig_fuel > FLT_EPSILON) {
+			react[index] *= fuel[index]/orig_fuel;
+			flame = pow(react[index], 0.5f);
+		}
+		else {
+			react[index] = 0.0f;
+		}
 		
-		for (int x = 0; x < _totalCells; x++)
-		{
-			_flame[x]		= 0.0f;
-			_fuel[x]		= 0.0f;
-			_fuelTemp[x]	= 0.0f;
-			_fuelOld[x]		= 0.0f;
-			_react[x]		= 0.0f;
-			_reactTemp[x]	= 0.0f;
-			_reactOld[x]	= 0.0f;
+		/* emit smoke based on fuel burn rate and "flame_smoke" factor */
+		smoke_emit = (orig_fuel < 1.0f) ? (1.0f - orig_fuel)*0.5f : 0.0f;
+		smoke_emit = (smoke_emit + 0.5f) * (orig_fuel-fuel[index]) * 0.1f * flame_smoke;
+		smoke[index] += smoke_emit;
+		CLAMP(smoke[index], 0.0f, 1.0f);
+
+		/* set fluid temperature from the flame temperature profile */
+		if (heat && flame)
+			heat[index] = (1.0f - flame)*ignition_point + flame*temp_max;
+
+		/* mix new color */
+		if (r && smoke_emit > FLT_EPSILON) {
+			float smoke_factor = smoke[index]/(orig_smoke+smoke_emit);
+			r[index] = (r[index] + _flame_smoke_color[0] * smoke_emit) * smoke_factor;
+			g[index] = (g[index] + _flame_smoke_color[1] * smoke_emit) * smoke_factor;
+			b[index] = (b[index] + _flame_smoke_color[2] * smoke_emit) * smoke_factor;
 		}
 	}
 }
 
+void FLUID_3D::updateFlame(float *react, float *flame, int total_cells)
+{
+	for (int index = 0; index < total_cells; index++)
+	{
+		/* model flame temperature curve from the reaction coordinate (fuel)
+		 *	TODO: Would probably be best to get rid of whole "flame" data field.
+		 *		 Currently it's just sqrt mirror of reaction coordinate, and therefore
+		 *		 basically just waste of memory and disk space...
+		 */
+		if (react[index]>0.0f) {
+			/* do a smooth falloff for rest of the values */
+			flame[index] = pow(react[index], 0.5f);
+		}
+		else
+			flame[index] = 0.0f;
+	}
+}
+
+#endif /*WITH_MANTA*/
+
+// init direct access functions from blender
+void FLUID_3D::initBlenderRNA(float *alpha, float *beta, float *dt_factor, float *vorticity, int *borderCollision, float *burning_rate,
+							  float *flame_smoke, float *flame_smoke_color, float *flame_vorticity, float *flame_ignition_temp, float *flame_max_temp)
+{
+	_alpha = alpha;
+	_beta = beta;
+	_dtFactor = dt_factor;
+	_vorticityRNA = vorticity;
+	_borderColli = borderCollision;
+	_burning_rate = burning_rate;
+	_flame_smoke = flame_smoke;
+	_flame_smoke_color = flame_smoke_color;
+	_flame_vorticity = flame_vorticity;
+	_ignition_temp = flame_ignition_temp;
+	_max_temp = flame_max_temp;
+}
 
 void FLUID_3D::setBorderObstacles()
 {
@@ -1866,68 +1980,3 @@ void FLUID_3D::advectMacCormackEnd2(int zBegin, int zEnd)
 	}
 }
 
-
-void FLUID_3D::processBurn(float *fuel, float *smoke, float *react, float *heat,
-						   float *r, float *g, float *b, int total_cells, float dt)
-{
-	float burning_rate = *_burning_rate;
-	float flame_smoke = *_flame_smoke;
-	float ignition_point = *_ignition_temp;
-	float temp_max = *_max_temp;
-	
-	for (int index = 0; index < total_cells; index++)
-	{
-		float orig_fuel = fuel[index];
-		float orig_smoke = smoke[index];
-		float smoke_emit = 0.0f;
-		float flame = 0.0f;
-
-		/* process fuel */
-		fuel[index] -= burning_rate * dt;
-		if (fuel[index] < 0.0f) fuel[index] = 0.0f;
-		/* process reaction coordinate */
-		if (orig_fuel > FLT_EPSILON) {
-			react[index] *= fuel[index]/orig_fuel;
-			flame = pow(react[index], 0.5f);
-		}
-		else {
-			react[index] = 0.0f;
-		}
-		
-		/* emit smoke based on fuel burn rate and "flame_smoke" factor */
-		smoke_emit = (orig_fuel < 1.0f) ? (1.0f - orig_fuel)*0.5f : 0.0f;
-		smoke_emit = (smoke_emit + 0.5f) * (orig_fuel-fuel[index]) * 0.1f * flame_smoke;
-		smoke[index] += smoke_emit;
-		CLAMP(smoke[index], 0.0f, 1.0f);
-
-		/* set fluid temperature from the flame temperature profile */
-		if (heat && flame)
-			heat[index] = (1.0f - flame)*ignition_point + flame*temp_max;
-
-		/* mix new color */
-		if (r && smoke_emit > FLT_EPSILON) {
-			float smoke_factor = smoke[index]/(orig_smoke+smoke_emit);
-			r[index] = (r[index] + _flame_smoke_color[0] * smoke_emit) * smoke_factor;
-			g[index] = (g[index] + _flame_smoke_color[1] * smoke_emit) * smoke_factor;
-			b[index] = (b[index] + _flame_smoke_color[2] * smoke_emit) * smoke_factor;
-		}
-	}
-}
-
-void FLUID_3D::updateFlame(float *react, float *flame, int total_cells)
-{
-	for (int index = 0; index < total_cells; index++)
-	{
-		/* model flame temperature curve from the reaction coordinate (fuel)
-		 *	TODO: Would probably be best to get rid of whole "flame" data field.
-		 *		 Currently it's just sqrt mirror of reaction coordinate, and therefore
-		 *		 basically just waste of memory and disk space...
-		 */
-		if (react[index]>0.0f) {
-			/* do a smooth falloff for rest of the values */
-			flame[index] = pow(react[index], 0.5f);
-		}
-		else
-			flame[index] = 0.0f;
-	}
-}
