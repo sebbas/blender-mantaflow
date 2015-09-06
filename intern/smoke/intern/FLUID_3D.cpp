@@ -784,6 +784,9 @@ void FLUID_3D::step(float dt, float gravity[3])
 void FLUID_3D::processBurn(float *fuel, float *smoke, float *react, float *heat,
 						   float *r, float *g, float *b, int total_cells, float dt)
 {
+	// Need to make sure that color grids are initialized as they are needed in processBurn
+	initColors(0.0f, 0.0f, 0.0f);
+	
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	PyRun_SimpleString(fire_process_burn.c_str());
 	PyGILState_Release(gilstate);
