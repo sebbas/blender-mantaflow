@@ -701,25 +701,6 @@ void FLUID_3D::initColors(float init_r, float init_g, float init_b)
 void FLUID_3D::initFire()
 {
 	if (!_flame) {
-		_flame		= new float[_totalCells];
-		_fuel		= new float[_totalCells];
-		_fuelTemp	= new float[_totalCells];
-		_fuelOld	= new float[_totalCells];
-		_react		= new float[_totalCells];
-		_reactTemp	= new float[_totalCells];
-		_reactOld	= new float[_totalCells];
-		
-		for (int x = 0; x < _totalCells; x++)
-		{
-			_flame[x]		= 0.0f;
-			_fuel[x]		= 0.0f;
-			_fuelTemp[x]	= 0.0f;
-			_fuelOld[x]		= 0.0f;
-			_react[x]		= 0.0f;
-			_reactTemp[x]	= 0.0f;
-			_reactOld[x]	= 0.0f;
-		}
-
 		using_fire = true;
 		PyGILState_STATE gilstate = PyGILState_Ensure();
 		PyRun_SimpleString(smoke_init_fire_low.c_str());

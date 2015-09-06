@@ -15,6 +15,7 @@
 #include <float.h>
 #include "vectorbase.h"
 #include "grid.h"
+#include "levelset.h"
 
 using namespace std;
 
@@ -44,9 +45,8 @@ const bool withSmoke = true;
 const bool withFire = true;
 
 KERNEL (bnd=1)
-void KnProcessBurn(//FlagGrid& flags,
-				   Grid<Real>& fuel,
-				   LevelsetGrid& density,
+void KnProcessBurn(Grid<Real>& fuel,
+				   Grid<Real>& density,
 				   Grid<Real>& react,
 				   Grid<Real>& heat,
 				   Grid<Real>& red,
@@ -59,53 +59,50 @@ void KnProcessBurn(//FlagGrid& flags,
 				   float dt,
 				   Vec3 flameSmokeColor)
 {
-	//if (flags.isFluid(i,j,k))
-	//{
-		// Save initial values
-		float origFuel = fuel(i,j,k);
-		float origSmoke = density(i,j,k);
-		float smokeEmit = 0.0f;
-		float flame = 0.0f;
-		
-		// Process fuel
-		fuel(i,j,k) -= burningRate * dt;
-		if (fuel(i,j,k) < 0.0f)
-		{
-			fuel(i,j,k) = 0.0f;
-		}
-		
-		// Process reaction coordinate
-		if (origFuel > FLT_EPSILON)
-		{
-			react(i,j,k) *= fuel(i,j,k) / origFuel;
-			flame = pow(react(i,j,k), 0.5f);
-		}
-		else
-		{
-			react(i,j,k) = 0.0f;
-		}
-		
-		// Set fluid temperature based on fuel burn rate and "flameSmoke" factor
-		smokeEmit = (origFuel < 1.0f) ? (1.0f - origFuel) * 0.5f : 0.0f;
-		smokeEmit = (smokeEmit + 0.5f) * (origFuel - fuel(i,j,k)) * 0.1f * flameSmoke;
-		density(i,j,k) += smokeEmit;
-		clamp(density(i,j,k), 0.0f, 1.0f);
-		
-		// Set fluid temperature from the flame temperature profile
-		if (/*heat(i,j,k) &&*/ flame)
-		{
-			heat(i,j,k) = (1.0f - flame) * ignitionPoint + flame * tempMax;
-		}
-		
-		// Mix new color
-		if (smokeEmit > FLT_EPSILON)
-		{
-			float smokeFactor = density(i,j,k) / (origSmoke + smokeEmit);
-			red(i,j,k) = (red(i,j,k) + flameSmokeColor.x * smokeEmit) * smokeFactor;
-			green(i,j,k) = (green(i,j,k) + flameSmokeColor.y * smokeEmit) * smokeFactor;
-			blue(i,j,k) = (blue(i,j,k) + flameSmokeColor.z * smokeEmit) * smokeFactor;
-		}
-	//}
+	// Save initial values
+	float origFuel = fuel(i,j,k);
+	float origSmoke = density(i,j,k);
+	float smokeEmit = 0.0f;
+	float flame = 0.0f;
+	
+	// Process fuel
+	fuel(i,j,k) -= burningRate * dt;
+	if (fuel(i,j,k) < 0.0f)
+	{
+		fuel(i,j,k) = 0.0f;
+	}
+	
+	// Process reaction coordinate
+	if (origFuel > __FLT_EPSILON__)
+	{
+		react(i,j,k) *= fuel(i,j,k) / origFuel;
+		flame = pow(react(i,j,k), 0.5f);
+	}
+	else
+	{
+		react(i,j,k) = 0.0f;
+	}
+	
+	// Set fluid temperature based on fuel burn rate and "flameSmoke" factor
+	smokeEmit = (origFuel < 1.0f) ? (1.0f - origFuel) * 0.5f : 0.0f;
+	smokeEmit = (smokeEmit + 0.5f) * (origFuel - fuel(i,j,k)) * 0.1f * flameSmoke;
+	density(i,j,k) += smokeEmit;
+	clamp(density(i,j,k), 0.0f, 1.0f);
+	
+	// Set fluid temperature from the flame temperature profile
+	if (/*heat(i,j,k) &&*/ flame)
+	{
+		heat(i,j,k) = (1.0f - flame) * ignitionPoint + flame * tempMax;
+	}
+	
+	// Mix new color
+	if (smokeEmit > __FLT_EPSILON__)
+	{
+		float smokeFactor = density(i,j,k) / (origSmoke + smokeEmit);
+		red(i,j,k) = (red(i,j,k) + flameSmokeColor.x * smokeEmit) * smokeFactor;
+		green(i,j,k) = (green(i,j,k) + flameSmokeColor.y * smokeEmit) * smokeFactor;
+		blue(i,j,k) = (blue(i,j,k) + flameSmokeColor.z * smokeEmit) * smokeFactor;
+	}
 }
 
 KERNEL (bnd=1)
@@ -118,15 +115,15 @@ void KnUpdateFlame(Grid<Real>& react, Grid<Real>& flame)
 }
 
 PYTHON void processBurn(Grid<Real>& fuel,
-						  Grid<Real>& density,
-						  Grid<Real>& react,
-						  Grid<Real>& heat,
-						  Grid<Real>& red,
-						  Grid<Real>& green,
-						  Grid<Real>& blue)
+						Grid<Real>& density,
+						Grid<Real>& react,
+						Grid<Real>& heat,
+						Grid<Real>& red,
+						Grid<Real>& green,
+						Grid<Real>& blue)
 {
 	KnProcessBurn(fuel, density, react, heat, red, green, blue, burningRate,
-		flameSmoke, ignitionPoint, tempMax, dtDefault, flameSmokeColor);
+				  flameSmoke, ignitionPoint, tempMax, dtDefault, flameSmokeColor);
 }
 
 PYTHON void updateFlame(Grid<Real>& react, Grid<Real>& flame)
