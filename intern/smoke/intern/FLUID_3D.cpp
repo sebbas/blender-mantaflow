@@ -784,7 +784,6 @@ void FLUID_3D::step(float dt, float gravity[3])
 void FLUID_3D::processBurn(float *fuel, float *smoke, float *react, float *heat,
 						   float *r, float *g, float *b, int total_cells, float dt)
 {
-
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	PyRun_SimpleString(fire_process_burn.c_str());
 	PyGILState_Release(gilstate);

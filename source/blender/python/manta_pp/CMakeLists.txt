@@ -75,6 +75,7 @@ ${CMAKE_CURRENT_SOURCE_DIR}/particle.h.reg
 ${CMAKE_CURRENT_SOURCE_DIR}/particle.h.reg.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/plugin/advection.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/plugin/extforces.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/plugin/fire.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/plugin/flip.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/plugin/initplugins.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/plugin/kepsilon.cpp

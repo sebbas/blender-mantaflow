@@ -620,7 +620,7 @@ void Manta_API::updatePointers(FLUID_3D *fluid, bool updateColor)
 		float* manta_fluid_density = (float* )pointerFromString(getGridPointer("density", "s")); 
 		int* manta_fluid_flags = (int* )pointerFromString(getGridPointer("flags", "s"));
 		if (fluid->_density != NULL){
-			for (int cnt(0); cnt < fluid->xRes() * fluid->yRes() * fluid->zRes(); ++cnt){
+			for (int cnt(0); cnt < fluid->xRes() * fluid->yRes() * fluid->zRes(); ++cnt) {
 				fluid->_density[cnt] = 0.;
 				fluid->_manta_flags[cnt] = 2;
 			}
@@ -646,7 +646,7 @@ void Manta_API::updatePointers(FLUID_3D *fluid, bool updateColor)
 	
 	fluid->_manta_inflow = (float* )pointerFromString(getGridPointer("inflow_grid", "s"));
 	if (fluid-> manta_resoution == 2){return;}
-	if (fluid->using_colors){
+	if (fluid->using_colors) {
 		cout<< "POINTER FOR R_LOW" << fluid->_color_r<< endl;
 		fluid->_color_r = (float* )pointerFromString(getGridPointer("color_r_low", "s"));
 		cout<< "POINTER FOR R_LOW" << fluid->_color_r<< endl;
