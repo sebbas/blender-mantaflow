@@ -1204,12 +1204,9 @@ void WTURBULENCE::stepTurbulenceFull(float dtOrg, float* xvel, float* yvel, floa
   _totalStepsBig++;
 }
 
-
-
-
-
-
-#else						 /*USING MANTAFLOW WTURBULENCE*/
+//////////////////////////////////////////////////////////////////////
+#else /*USING MANTAFLOW WTURBULENCE*/
+//////////////////////////////////////////////////////////////////////
 
 WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int noisetype, const char *noisefile_path, int init_fire, int init_colors,SmokeDomainSettings *sds)
 {
@@ -1256,6 +1253,7 @@ WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int no
 	/* fire */
 	_flameBig = _fuelBig = _fuelBigOld = NULL;
 	_reactBig = _reactBigOld = NULL;
+	using_fire = false;
 	if (init_fire) {
 		initFire();
 	}
@@ -1265,7 +1263,6 @@ WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int no
 	_color_bBig = _color_bBigOld = NULL;
 	using_colors = false;
 	if (init_colors) {
-		using_colors = true;
 		initColors(0.0f, 0.0f, 0.0f);
 	}
 	
@@ -1297,6 +1294,7 @@ WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int no
 	Manta_API::generate_manta_sim_file_highRes(sds->smd);
 	Manta_API::updateHighResPointers(this,using_colors);
 }
+
 /// destructor
 WTURBULENCE::~WTURBULENCE()
 {
@@ -1323,10 +1321,22 @@ WTURBULENCE::~WTURBULENCE()
 	delete[] _noiseTile;
 }
 
-void WTURBULENCE::initFire(){}
+void WTURBULENCE::initFire()
+{
+	if (!_flameBig) {
+		initColors(0.0f, 0.0f, 0.0f);
+
+		using_fire = true;
+		PyGILState_STATE gilstate = PyGILState_Ensure();
+		PyRun_SimpleString(smoke_init_fire_high.c_str());
+		PyGILState_Release(gilstate);
+		Manta_API::updateHighResPointers(this, true);
+	}
+}
+
 void WTURBULENCE::initColors(float init_r, float init_g, float init_b)
 {
-	if (!_color_rBig){
+	if (!_color_rBig) {
 		using_colors = true;
 		PyGILState_STATE gilstate = PyGILState_Ensure();
 		stringstream ss;
@@ -1340,11 +1350,15 @@ void WTURBULENCE::initColors(float init_r, float init_g, float init_b)
 	}
 }
 
-void WTURBULENCE::setNoise(int type, const char *noisefile_path){}
-void WTURBULENCE::initBlenderRNA(float *strength){}
+void WTURBULENCE::setNoise(int type, const char *noisefile_path)
+{}
+
+void WTURBULENCE::initBlenderRNA(float *strength)
+{}
 
 // step more readable version -- no rotation correction
-void WTURBULENCE::stepTurbulenceReadable(float dt, float* xvel, float* yvel, float* zvel, unsigned char *obstacles){
+void WTURBULENCE::stepTurbulenceReadable(float dt, float* xvel, float* yvel, float* zvel, unsigned char *obstacles)
+{
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	int sim_frame = 1;
 	//	manta_write_effectors(fluid);
@@ -1358,7 +1372,8 @@ void WTURBULENCE::stepTurbulenceReadable(float dt, float* xvel, float* yvel, flo
 
 // step more complete version -- include rotation correction
 // and use OpenMP if available
-void WTURBULENCE::stepTurbulenceFull(float dt, float* xvel, float* yvel, float* zvel, unsigned char *obstacles){
+void WTURBULENCE::stepTurbulenceFull(float dt, float* xvel, float* yvel, float* zvel, unsigned char *obstacles)
+{
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	int sim_frame = 1;
 	//	manta_write_effectors(fluid);
@@ -1371,14 +1386,26 @@ void WTURBULENCE::stepTurbulenceFull(float dt, float* xvel, float* yvel, float* 
 }
 
 // texcoord functions
-void WTURBULENCE::advectTextureCoordinates(float dtOrg, float* xvel, float* yvel, float* zvel, float *tempBig1, float *tempBig2){}
-void WTURBULENCE::resetTextureCoordinates(float *_eigMin, float *_eigMax){}
+void WTURBULENCE::advectTextureCoordinates(float dtOrg, float* xvel, float* yvel, float* zvel, float *tempBig1, float *tempBig2)
+{}
 
-void WTURBULENCE::computeEnergy(float *energy, float* xvel, float* yvel, float* zvel, unsigned char *obstacles){}
+void WTURBULENCE::resetTextureCoordinates(float *_eigMin, float *_eigMax)
+{}
 
-void WTURBULENCE::computeEigenvalues(float *_eigMin, float *_eigMax){}
-void WTURBULENCE::decomposeEnergy(float *energy, float *_highFreqEnergy){}
-Vec3 WTURBULENCE::WVelocity(Vec3 p){return Vec3(0.);}
-Vec3 WTURBULENCE::WVelocityWithJacobian(Vec3 p, float* xUnwarped, float* yUnwarped, float* zUnwarped){return Vec3(0.);}
+void WTURBULENCE::computeEnergy(float *energy, float* xvel, float* yvel, float* zvel, unsigned char *obstacles)
+{}
+
+void WTURBULENCE::computeEigenvalues(float *_eigMin, float *_eigMax)
+{}
+
+void WTURBULENCE::decomposeEnergy(float *energy, float *_highFreqEnergy)
+{
+}
+
+Vec3 WTURBULENCE::WVelocity(Vec3 p)
+{return Vec3(0.);}
+
+Vec3 WTURBULENCE::WVelocityWithJacobian(Vec3 p, float* xUnwarped, float* yUnwarped, float* zUnwarped)
+{return Vec3(0.);}
 
 #endif

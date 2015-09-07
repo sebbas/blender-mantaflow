@@ -121,6 +121,7 @@ struct WTURBULENCE
 		float* _fuelBigOld;
 		float* _reactBig;
 		float* _reactBigOld;
+		bool using_fire;
 
 		float* _color_rBig;
 		float* _color_rBigOld;

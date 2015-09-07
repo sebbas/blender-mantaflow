@@ -642,14 +642,11 @@ void Manta_API::updatePointers(FLUID_3D *fluid, bool updateColor)
 		fluid->_density = (float* )pointerFromString(getGridPointer("density", "s"));	
 		fluid->_manta_flags = (int* )pointerFromString(getGridPointer("flags", "s"));
 	}
-//	fluid->_density = (float* )pointerFromString(getGridPointer("density", "s"));
 	
 	fluid->_manta_inflow = (float* )pointerFromString(getGridPointer("inflow_grid", "s"));
 	if (fluid-> manta_resoution == 2){return;}
 	if (fluid->using_colors) {
-		cout<< "POINTER FOR R_LOW" << fluid->_color_r<< endl;
 		fluid->_color_r = (float* )pointerFromString(getGridPointer("color_r_low", "s"));
-		cout<< "POINTER FOR R_LOW" << fluid->_color_r<< endl;
 		fluid->_color_g = (float* )pointerFromString(getGridPointer("color_g_low", "s"));
 		fluid->_color_b = (float* )pointerFromString(getGridPointer("color_b_low", "s"));
 	}
@@ -669,11 +666,14 @@ void Manta_API::updateHighResPointers(WTURBULENCE *wt, bool updateColor)
 {
 	wt->_densityBig = (float* )pointerFromString(getGridPointer("xl_density", "xl"));;
 	if (updateColor){
-		cout<< "POINTER FOR R_HIGH" << wt->_color_rBig << endl;
 		wt->_color_rBig = (float* )pointerFromString(getGridPointer("color_r_high", "xl"));
-		cout<< "POINTER FOR R_HIGH" << wt->_color_rBig << endl;
 		wt->_color_gBig = (float* )pointerFromString(getGridPointer("color_g_high", "xl"));
 		wt->_color_bBig = (float* )pointerFromString(getGridPointer("color_b_high", "xl"));
+	}
+	if (wt->using_fire) {
+		wt->_flameBig = (float* )pointerFromString(getGridPointer("flame_high", "xl"));
+		wt->_fuelBig = (float* )pointerFromString(getGridPointer("fuel_high", "xl"));
+		wt->_reactBig = (float* )pointerFromString(getGridPointer("react_high", "xl"));
 	}
 }
 

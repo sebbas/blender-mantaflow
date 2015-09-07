@@ -130,6 +130,12 @@ fuel_low = s.create(RealGrid)\n\
 react_low = s.create(RealGrid)\n\
 manta_using_fire = True\n";
 
+const string smoke_init_fire_high = "print(\"Initializing fire highres\")\n\
+flame_high = xl.create(RealGrid)\n\
+fuel_high = xl.create(RealGrid)\n\
+react_high = xl.create(RealGrid)\n\
+manta_using_fire = True\n";
+
 const string smoke_del_colors_high = "\n\
 del color_r_high \n\
 del color_g_high \n\
@@ -157,7 +163,8 @@ if (GUI):\n\
   gui.pause()\n\
 \n\
 for step in range(100):\n\
-  sim_step_low(step, True)\n";
+  sim_step_low(step, True)\n\
+";
 
 const string smoke_step_low = "def sim_step_low(t, standalone = False):\n\
   #applying inflow\n\
@@ -180,13 +187,13 @@ const string smoke_step_low = "def sim_step_low(t, standalone = False):\n\
   else:\n\
     gravity=vec3(0,0,-0.01 * $ALPHA$) if solver_dim==3 else vec3(0,-0.01* $ALPHA$,0)\n\
     addBuoyancy(density=density, vel=vel, gravity=gravity, flags=flags)\n\
-  print ('Advecting colors')\n\
   if manta_using_colors:\n\
+    print ('Advecting colors')\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_r_low, order=$ADVECT_ORDER$)\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_g_low, order=$ADVECT_ORDER$)\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_b_low, order=$ADVECT_ORDER$)\n\
-  print ('Advecting fire grids')\n\
   if manta_using_fire:\n\
+    print ('Advecting fire')\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=fuel_low, order=$ADVECT_ORDER$)\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=react_low, order=$ADVECT_ORDER$)\n\
   print ('Advecting density')\n\
@@ -196,19 +203,20 @@ const string smoke_step_low = "def sim_step_low(t, standalone = False):\n\
   \n\
   print ('Walls')\n\
   setWallBcs(flags=flags, vel=vel)\n\
-  print ('vorticity')\n\
+  print ('Vorticity')\n\
   if $VORTICITY$ > 0.01:\n\
     vorticityConfinement( vel=vel, flags=flags, strength=$VORTICITY$ ) \n\
   print ('forcefield')\n\
   addForceField(flags=flags, vel=vel,force=forces)\n\
   forces.clear()\n\
   \n\
-  print ('pressure')\n\
+  print ('Pressure')\n\
   solvePressure(flags=flags, vel=vel, pressure=pressure, openBound=boundConditions)\n\
   print ('walls')\n\
   setWallBcs(flags=flags, vel=vel)\n\
   \n\
-  s.step()\n";
+  s.step()\n\
+";
 
 const string liquid_step_low = "def sim_step_low(t):\n\
 #update flags from density on first step\n\
@@ -252,12 +260,15 @@ const string smoke_step_high = "def sim_step_high(t):\n\
     sPos *= 2.0 \n\
   for substep in range(upres):  \n\
     advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=$ADVECT_ORDER$)  \n\
-    if manta_using_colors:\n\
+    if manta_using_colors: \n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=color_r_high, order=$ADVECT_ORDER$)\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=color_g_high, order=$ADVECT_ORDER$)\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=color_b_high, order=$ADVECT_ORDER$)\n\
-\n\
-  xl.step()\n";
+    if manta_using_fire: \n\
+      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=fuel_high, order=$ADVECT_ORDER$)\n\
+      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=react_high, order=$ADVECT_ORDER$)\n\
+  xl.step()\n\
+";
 
 const string full_smoke_setup = "from manta import * \n\
 import os, shutil, math, sys \n\
@@ -380,3 +391,4 @@ def sim_step(t):\n\
   xl_density.save('densityXl_%04d.uni' % t)\n\
   xl.step()\n\
 ";
+
