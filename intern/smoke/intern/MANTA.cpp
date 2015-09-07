@@ -390,12 +390,10 @@ void Manta_API::run_manta_sim_highRes(WTURBULENCE *wt)
 	std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << sim_frame) )->str();
 	std::string py_string_0 = string("sim_step_high(").append(frame_str);
 	std::string py_string_1 = py_string_0.append(")\0");
-	cout << "Debug C++: densityPointer:" << Manta_API::getGridPointer("density", "s")<<endl;
 	PyRun_SimpleString("print ('pyhton density pointer:' + density.getDataPointer())");
 	PyRun_SimpleString(py_string_1.c_str());
-	cout<< "done"<<manta_sim_running<<endl;
 	PyGILState_Release(gilstate);
-	updateHighResPointers(wt,false);
+	updateHighResPointers(wt/*,false*/);
 }
 
 void Manta_API::generate_manta_sim_file_highRes(SmokeModifierData *smd)
@@ -607,7 +605,7 @@ void * Manta_API::pointerFromString(const std::string& s){
 }
 
 
-void Manta_API::updatePointers(FLUID_3D *fluid, bool updateColor)
+void Manta_API::updatePointers(FLUID_3D *fluid)
 {
 	//blender_to_manta: whether we copy data from blender density/velocity field to mantaflow or the other way around
 	/*in 2D case, we want to copy in the Z-axis field that is in the middle of X and Y axes */
@@ -651,9 +649,7 @@ void Manta_API::updatePointers(FLUID_3D *fluid, bool updateColor)
 		fluid->_color_b = (float* )pointerFromString(getGridPointer("color_b_low", "s"));
 	}
 	if (fluid->using_heat) {
-		cout<< "Updating Heat" << fluid->_heat<< endl;
 		fluid->_heat = (float* )pointerFromString(getGridPointer("heat_low", "s"));
-		cout<< "Updating Heat" << fluid->_heat<< endl;
 	}
 	if (fluid->using_fire) {
 		fluid->_flame = (float* )pointerFromString(getGridPointer("flame_low", "s"));
@@ -662,10 +658,10 @@ void Manta_API::updatePointers(FLUID_3D *fluid, bool updateColor)
 	}
 }
 
-void Manta_API::updateHighResPointers(WTURBULENCE *wt, bool updateColor)
+void Manta_API::updateHighResPointers(WTURBULENCE *wt)
 {
 	wt->_densityBig = (float* )pointerFromString(getGridPointer("xl_density", "xl"));;
-	if (updateColor){
+	if (wt->using_colors){
 		wt->_color_rBig = (float* )pointerFromString(getGridPointer("color_r_high", "xl"));
 		wt->_color_gBig = (float* )pointerFromString(getGridPointer("color_g_high", "xl"));
 		wt->_color_bBig = (float* )pointerFromString(getGridPointer("color_b_high", "xl"));

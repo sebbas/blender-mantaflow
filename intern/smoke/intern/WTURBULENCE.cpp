@@ -1292,7 +1292,7 @@ WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int no
 	setNoise(noisetype, noisefile_path);
 	sds->smd->domain->wt = this;
 	Manta_API::generate_manta_sim_file_highRes(sds->smd);
-	Manta_API::updateHighResPointers(this,using_colors);
+	Manta_API::updateHighResPointers(this);
 }
 
 /// destructor
@@ -1330,7 +1330,7 @@ void WTURBULENCE::initFire()
 		PyGILState_STATE gilstate = PyGILState_Ensure();
 		PyRun_SimpleString(smoke_init_fire_high.c_str());
 		PyGILState_Release(gilstate);
-		Manta_API::updateHighResPointers(this, true);
+		Manta_API::updateHighResPointers(this);
 	}
 }
 
@@ -1346,7 +1346,7 @@ void WTURBULENCE::initColors(float init_r, float init_g, float init_b)
 		PyRun_SimpleString(ss.str().c_str());
 		PyRun_SimpleString(smoke_init_colors_high.c_str());
 		PyGILState_Release(gilstate);
-		Manta_API::updateHighResPointers(this,true);
+		Manta_API::updateHighResPointers(this);
 	}
 }
 
@@ -1367,7 +1367,7 @@ void WTURBULENCE::stepTurbulenceReadable(float dt, float* xvel, float* yvel, flo
 	std::string py_string_1 = py_string_0.append(")\0");
 	PyRun_SimpleString(py_string_1.c_str());
 	PyGILState_Release(gilstate);
-	Manta_API::updateHighResPointers(this,using_colors);
+	Manta_API::updateHighResPointers(this);
 }
 
 // step more complete version -- include rotation correction
@@ -1382,7 +1382,7 @@ void WTURBULENCE::stepTurbulenceFull(float dt, float* xvel, float* yvel, float* 
 	std::string py_string_1 = py_string_0.append(")\0");
 	PyRun_SimpleString(py_string_1.c_str());
 	PyGILState_Release(gilstate);
-	Manta_API::updateHighResPointers(this,using_colors);
+	Manta_API::updateHighResPointers(this);
 }
 
 // texcoord functions

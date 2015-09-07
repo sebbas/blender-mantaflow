@@ -666,7 +666,7 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	vector<string> a;
 	a.push_back("manta_scene.py");
 	runMantaScript(final_script,a); /*need this to delete previous solvers and grids*/
-	Manta_API::updatePointers(this, using_colors);
+	Manta_API::updatePointers(this);
 }
 
 void FLUID_3D::initHeat()
@@ -676,7 +676,7 @@ void FLUID_3D::initHeat()
 		PyGILState_STATE gilstate = PyGILState_Ensure();
 		PyRun_SimpleString(smoke_init_heat_low.c_str());
 		PyGILState_Release(gilstate);
-		Manta_API::updatePointers(this, using_colors);
+		Manta_API::updatePointers(this);
 	}
 }
 
@@ -692,7 +692,7 @@ void FLUID_3D::initColors(float init_r, float init_g, float init_b)
 		PyRun_SimpleString(ss.str().c_str());
 		PyRun_SimpleString(smoke_init_colors_low.c_str());
 		PyGILState_Release(gilstate);
-		Manta_API::updatePointers(this, true);
+		Manta_API::updatePointers(this);
 	}
 }
 
@@ -703,7 +703,7 @@ void FLUID_3D::initFire()
 		PyGILState_STATE gilstate = PyGILState_Ensure();
 		PyRun_SimpleString(smoke_init_fire_low.c_str());
 		PyGILState_Release(gilstate);
-		Manta_API::updatePointers(this, true);
+		Manta_API::updatePointers(this);
 	}
 }
 
@@ -759,7 +759,7 @@ void FLUID_3D::step(float dt, float gravity[3])
 {
 	// Blender computes heat buoyancy, not yet impl. in Manta
 	manta_write_effectors(this);
-	Manta_API::updatePointers(this,using_colors);
+	Manta_API::updatePointers(this);
 //	diffuseHeat();
 
 	int sim_frame = 1;
@@ -770,7 +770,7 @@ void FLUID_3D::step(float dt, float gravity[3])
 	PyRun_SimpleString(py_string_1.c_str());
 	cout<< "done"<<manta_sim_running<<endl;
 	PyGILState_Release(gilstate);
-	Manta_API::updatePointers(this,using_colors);
+	Manta_API::updatePointers(this);
 
 	for (int i = 0; i < _totalCells; i++)
 	{
@@ -788,7 +788,7 @@ void FLUID_3D::processBurn(float *fuel, float *smoke, float *react, float *heat,
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	PyRun_SimpleString(fire_process_burn.c_str());
 	PyGILState_Release(gilstate);
-	Manta_API::updatePointers(this, true);
+	Manta_API::updatePointers(this);
 }
 
 void FLUID_3D::updateFlame(float *react, float *flame, int total_cells)
@@ -796,7 +796,7 @@ void FLUID_3D::updateFlame(float *react, float *flame, int total_cells)
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	PyRun_SimpleString(fire_update_flame.c_str());
 	PyGILState_Release(gilstate);
-	Manta_API::updatePointers(this, true);
+	Manta_API::updatePointers(this);
 }
 
 #endif /*WITH_MANTA*/
