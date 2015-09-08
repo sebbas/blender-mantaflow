@@ -760,7 +760,6 @@ void FLUID_3D::step(float dt, float gravity[3])
 	// Blender computes heat buoyancy, not yet impl. in Manta
 	manta_write_effectors(this);
 	Manta_API::updatePointers(this);
-//	diffuseHeat();
 
 	int sim_frame = 1;
 	PyGILState_STATE gilstate = PyGILState_Ensure();
@@ -786,7 +785,7 @@ void FLUID_3D::processBurn(float *fuel, float *smoke, float *react, float *heat,
 	initColors(0.0f, 0.0f, 0.0f);
 	
 	PyGILState_STATE gilstate = PyGILState_Ensure();
-	PyRun_SimpleString(fire_process_burn.c_str());
+	PyRun_SimpleString(fire_process_burn_low.c_str());
 	PyGILState_Release(gilstate);
 	Manta_API::updatePointers(this);
 }
@@ -794,7 +793,7 @@ void FLUID_3D::processBurn(float *fuel, float *smoke, float *react, float *heat,
 void FLUID_3D::updateFlame(float *react, float *flame, int total_cells)
 {
 	PyGILState_STATE gilstate = PyGILState_Ensure();
-	PyRun_SimpleString(fire_update_flame.c_str());
+	PyRun_SimpleString(fire_update_flame_low.c_str());
 	PyGILState_Release(gilstate);
 	Manta_API::updatePointers(this);
 }

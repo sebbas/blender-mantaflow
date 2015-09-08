@@ -124,6 +124,10 @@ const string smoke_init_heat_low = "print(\"Initializing heat lowres\")\n\
 heat_low = s.create(RealGrid)\n\
 manta_using_heat = True\n";
 
+const string smoke_init_heat_high = "print(\"Initializing heat highres\")\n\
+heat_high = xl.create(RealGrid)\n\
+manta_using_heat = True\n";
+
 const string smoke_init_fire_low = "print(\"Initializing fire lowres\")\n\
 flame_low = s.create(RealGrid)\n\
 fuel_low = s.create(RealGrid)\n\
@@ -150,11 +154,17 @@ inflow_grid.save(os.path.join('$MANTA_EXPORT_PATH$','inflow.uni'))\n\
 forces.save(os.path.join('$MANTA_EXPORT_PATH$','forces.uni'))\n\
 print('Grids exported')";
 
-const string fire_process_burn = "\n\
+const string fire_process_burn_low = "\n\
 processBurn(fuel=fuel_low, density=density, react=react_low, heat=heat_low, red=color_r_low, green=color_g_low, blue=color_b_low)";
 
-const string fire_update_flame = "\n\
+const string fire_process_burn_high = "\n\
+processBurn(fuel=fuel_high, density=xl_density, react=react_high, heat=heat_high, red=color_r_high, green=color_g_high, blue=color_b_high)";
+
+const string fire_update_flame_low = "\n\
 updateFlame(react=react_low, flame=flame_low)";
+
+const string fire_update_flame_high = "\n\
+updateFlame(react=react_high, flame=flame_high)";
 
 const string standalone = "\
 if (GUI):\n\

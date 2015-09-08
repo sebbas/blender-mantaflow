@@ -1250,6 +1250,9 @@ WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int no
 		_densityBigOld[i] = 0.;
 	}
 	
+	/*heat*/
+	initHeat();
+	
 	/* fire */
 	_flameBig = _fuelBig = _fuelBigOld = NULL;
 	_reactBig = _reactBigOld = NULL;
@@ -1321,17 +1324,12 @@ WTURBULENCE::~WTURBULENCE()
 	delete[] _noiseTile;
 }
 
-void WTURBULENCE::initFire()
+// Added heat grid as processBurn in smoke.h needs an initialized heat grid
+void WTURBULENCE::initHeat()
 {
-	if (!_flameBig) {
-		initColors(0.0f, 0.0f, 0.0f);
-
-		using_fire = true;
-		PyGILState_STATE gilstate = PyGILState_Ensure();
-		PyRun_SimpleString(smoke_init_fire_high.c_str());
-		PyGILState_Release(gilstate);
-		Manta_API::updateHighResPointers(this);
-	}
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	PyRun_SimpleString(smoke_init_heat_high.c_str());
+	PyGILState_Release(gilstate);
 }
 
 void WTURBULENCE::initColors(float init_r, float init_g, float init_b)
@@ -1345,6 +1343,17 @@ void WTURBULENCE::initColors(float init_r, float init_g, float init_b)
 		ss << "manta_color_b = " << init_b << endl;
 		PyRun_SimpleString(ss.str().c_str());
 		PyRun_SimpleString(smoke_init_colors_high.c_str());
+		PyGILState_Release(gilstate);
+		Manta_API::updateHighResPointers(this);
+	}
+}
+
+void WTURBULENCE::initFire()
+{
+	if (!_flameBig) {
+		using_fire = true;
+		PyGILState_STATE gilstate = PyGILState_Ensure();
+		PyRun_SimpleString(smoke_init_fire_high.c_str());
 		PyGILState_Release(gilstate);
 		Manta_API::updateHighResPointers(this);
 	}
@@ -1372,7 +1381,7 @@ void WTURBULENCE::stepTurbulenceReadable(float dt, float* xvel, float* yvel, flo
 
 // step more complete version -- include rotation correction
 // and use OpenMP if available
-void WTURBULENCE::stepTurbulenceFull(float dt, float* xvel, float* yvel, float* zvel, unsigned char *obstacles)
+void WTURBULENCE::stepTurbulenceFull(float dt, float *xvel, float *yvel, float *zvel, unsigned char *obstacles)
 {
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	int sim_frame = 1;
@@ -1407,5 +1416,24 @@ Vec3 WTURBULENCE::WVelocity(Vec3 p)
 
 Vec3 WTURBULENCE::WVelocityWithJacobian(Vec3 p, float* xUnwarped, float* yUnwarped, float* zUnwarped)
 {return Vec3(0.);}
+
+void WTURBULENCE::processBurn()
+{
+	// Need to make sure that color grids are initialized as they are needed in processBurn
+	initColors(0.0f, 0.0f, 0.0f);
+	
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	PyRun_SimpleString(fire_process_burn_high.c_str());
+	PyGILState_Release(gilstate);
+	Manta_API::updateHighResPointers(this);
+}
+
+void WTURBULENCE::updateFlame()
+{
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	PyRun_SimpleString(fire_update_flame_high.c_str());
+	PyGILState_Release(gilstate);
+	Manta_API::updateHighResPointers(this);
+}
 
 #endif

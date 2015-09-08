@@ -98,6 +98,7 @@ extern "C" void smoke_step(FLUID_3D *fluid, float gravity[3], float dtSubdiv)
 	}
 }
 
+#ifndef WITH_MANTA
 extern "C" void smoke_turbulence_step(WTURBULENCE *wt, FLUID_3D *fluid)
 {
 	if (wt->_fuelBig) {
@@ -110,6 +111,21 @@ extern "C" void smoke_turbulence_step(WTURBULENCE *wt, FLUID_3D *fluid)
 		fluid->updateFlame(wt->_reactBig, wt->_flameBig, wt->_totalCellsBig);
 	}
 }
+//////////////////////////////////////////////////////////////////////
+#else /*USING MANTAFLOW STRUCTURES*/
+//////////////////////////////////////////////////////////////////////
+extern "C" void smoke_turbulence_step(WTURBULENCE *wt, FLUID_3D *fluid)
+{
+	if (wt->_fuelBig) {
+		wt->processBurn();
+	}
+	wt->stepTurbulenceFull(fluid->_dt/fluid->_dx, fluid->_xVelocity, fluid->_yVelocity, fluid->_zVelocity, fluid->_obstacles);
+
+	if (wt->_fuelBig) {
+		wt->updateFlame();
+	}
+}
+#endif /*WITH MANTA*/
 
 extern "C" void smoke_initBlenderRNA(FLUID_3D *fluid, float *alpha, float *beta, float *dt_factor, float *vorticity, int *border_colli, float *burning_rate,
 									 float *flame_smoke, float *flame_smoke_color, float *flame_vorticity, float *flame_ignition_temp, float *flame_max_temp)
