@@ -183,11 +183,11 @@ for step in range(100):\n\
 const string smoke_step_low = "def sim_step_low(t, standalone = False):\n\
   #applying inflow\n\
   if standalone and t==0:\n\
-    density.load(os.path.join('$MANTA_EXPORT_PATH$','density.uni'))\n\
-    flags.load(os.path.join('$MANTA_EXPORT_PATH$','flags.uni'))\n\
-    forces.load(os.path.join('$MANTA_EXPORT_PATH$','forces.uni'))\n\
+    density.load('$MANTA_EXPORT_PATH$density.uni')\n\
+    flags.load('$MANTA_EXPORT_PATH$flags.uni')\n\
+    forces.load('$MANTA_EXPORT_PATH$forces.uni')\n\
   if standalone:\n\
-    inflow_grid.load(os.path.join('$MANTA_EXPORT_PATH$','inflow.uni'))\n\
+    inflow_grid.load('$MANTA_EXPORT_PATH$inflow.uni')\n\
     inflow_grid.multConst(0.1)\n\
     density.add(inflow_grid)\n\
   elif solver_dim == 2:\n\
