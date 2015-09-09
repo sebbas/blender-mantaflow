@@ -445,11 +445,9 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 	else if (varName == "HRESY")
 		if (is2D){	ss << smd->domain->wt->getResBig()[2];}
 		else{ 		ss << smd->domain->wt->getResBig()[1];}
-
 	else if (varName == "HRESZ")
 		if (is2D){	ss << 1;}
 		else{ 		ss << smd->domain->wt->getResBig()[2];}
-
 	else if (varName == "TIMESTEP")
 		ss << smd->domain->time_scale * 0.1f;
 	else if (varName == "XL_TIMESTEP")
@@ -499,6 +497,22 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 		ss << smd->domain->wt->_densityBig;
 	else if (varName == "XL_DENSITY_SIZE")
 		ss << sizeof(float) * smd->domain->wt->_xResBig * smd->domain->wt->_yResBig * smd->domain->wt->_zResBig;
+	else if (varName == "BURNING_RATE")
+		ss << smd->domain->fluid->_burning_rate;
+	else if (varName == "FLAME_SMOKE")
+		ss << smd->domain->fluid->_flame_smoke;
+	else if (varName == "IGNITION_TEMP")
+		ss << smd->domain->fluid->_ignition_temp;
+	else if (varName == "MAX_TEMP")
+		ss << smd->domain->fluid->_max_temp;
+	else if (varName == "DT")
+		ss << smd->domain->fluid->_dt;
+	else if (varName == "FLAME_SMOKE_COLOR_X")
+		ss << smd->domain->fluid->_flame_smoke_color[0];
+	else if (varName == "FLAME_SMOKE_COLOR_Y")
+		ss << smd->domain->fluid->_flame_smoke_color[1];
+	else if (varName == "FLAME_SMOKE_COLOR_Z")
+		ss << smd->domain->fluid->_flame_smoke_color[2];
 	else 
 		cout<< "ERROR: Unknown option:"<< varName <<endl; 
 	return ss.str();

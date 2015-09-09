@@ -147,11 +147,8 @@ struct WTURBULENCE
 		void computeEigenvalues(float *_eigMin, float *_eigMax);
 		void decomposeEnergy(float *energy, float *_highFreqEnergy);
 	
-		void processBurn(); // Mantaflow
+		void processBurn(float *burningRate, float *flameSmoke, float *ignitionTemp, float *maxTemp, float dt, float *flameSmokeColor); // Mantaflow
 		void updateFlame(); // Mantaflow
-		void initHeat(); // Mantaflow
-
-
 };
 
 #endif // WTURBULENCE_H

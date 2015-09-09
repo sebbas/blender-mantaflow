@@ -1250,9 +1250,6 @@ WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int no
 		_densityBigOld[i] = 0.;
 	}
 	
-	/*heat*/
-	initHeat();
-	
 	/* fire */
 	_flameBig = _fuelBig = _fuelBigOld = NULL;
 	_reactBig = _reactBigOld = NULL;
@@ -1322,14 +1319,6 @@ WTURBULENCE::~WTURBULENCE()
 	delete[] _tcTemp;
 	
 	delete[] _noiseTile;
-}
-
-// Added heat grid as processBurn in smoke.h needs an initialized heat grid
-void WTURBULENCE::initHeat()
-{
-	PyGILState_STATE gilstate = PyGILState_Ensure();
-	PyRun_SimpleString(smoke_init_heat_high.c_str());
-	PyGILState_Release(gilstate);
 }
 
 void WTURBULENCE::initColors(float init_r, float init_g, float init_b)
@@ -1417,12 +1406,20 @@ Vec3 WTURBULENCE::WVelocity(Vec3 p)
 Vec3 WTURBULENCE::WVelocityWithJacobian(Vec3 p, float* xUnwarped, float* yUnwarped, float* zUnwarped)
 {return Vec3(0.);}
 
-void WTURBULENCE::processBurn()
+void WTURBULENCE::processBurn(float *burningRate, float *flameSmoke, float *ignitionTemp, float *maxTemp, float dt, float *flameSmokeColor)
 {
 	// Need to make sure that color grids are initialized as they are needed in processBurn
 	initColors(0.0f, 0.0f, 0.0f);
-	
+
 	PyGILState_STATE gilstate = PyGILState_Ensure();
+	stringstream ss;
+	ss << "burning_rate = " << *burningRate << endl;
+	ss << "flame_smoke = " << *flameSmoke << endl;
+	ss << "ignition_temp = " << *ignitionTemp << endl;
+	ss << "max_temp = " << *maxTemp << endl;
+	ss << "dt = " << dt << endl;
+	ss << "flame_smoke_color = vec3(" << flameSmokeColor[0] << "," << flameSmokeColor[1] << "," << flameSmokeColor[2] << ")" << endl;
+	PyRun_SimpleString(ss.str().c_str());
 	PyRun_SimpleString(fire_process_burn_high.c_str());
 	PyGILState_Release(gilstate);
 	Manta_API::updateHighResPointers(this);

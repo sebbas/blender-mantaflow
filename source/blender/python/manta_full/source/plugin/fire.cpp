@@ -11,59 +11,34 @@
  *
  ******************************************************************************/
 
-#include <stdio.h>
-#include <float.h>
-#include "vectorbase.h"
+#include "general.h"
 #include "grid.h"
-#include "levelset.h"
+#include "vectorbase.h"
 
 using namespace std;
 
 namespace Manta {
-	
-// default domain values
-const Real burningRate = 0.75;
-const Real flameSmoke = 1.0;
-const Real flameVorticity = 0.5;
-const Real ignitionPoint = 1.25;
-const Real tempMax = 1.75;
-const Vec3 flameSmokeColor = Vec3(0.7f, 0.7f, 0.7f);
-
-// default flow values
-const Real flowDensity = 1.0;
-const Real flowFuelAmount = 1.0;
-const Real flowTemp = 1.0;
-const Real flowVolumeDensity = 0.0;
-const Real flowSurfaceDistance = 1.5;
-const Vec3 flowColor = Vec3(0.7f, 0.7f, 0.7f);
-	
-// other default values
-const Real dtDefault = 0.1;
-const Real fps = 24.0;
-const int absoluteFlow = 1;
-const bool withSmoke = true;
-const bool withFire = true;
 
 KERNEL (bnd=1)
 void KnProcessBurn(Grid<Real>& fuel,
 				   Grid<Real>& density,
 				   Grid<Real>& react,
-				   Grid<Real>& heat,
 				   Grid<Real>& red,
 				   Grid<Real>& green,
 				   Grid<Real>& blue,
-				   float burningRate,
-				   float flameSmoke,
-				   float ignitionPoint,
-				   float tempMax,
-				   float dt,
+				   Grid<Real>* heat,
+				   Real burningRate,
+				   Real flameSmoke,
+				   Real ignitionTemp,
+				   Real maxTemp,
+				   Real dt,
 				   Vec3 flameSmokeColor)
 {
 	// Save initial values
-	float origFuel = fuel(i,j,k);
-	float origSmoke = density(i,j,k);
-	float smokeEmit = 0.0f;
-	float flame = 0.0f;
+	Real origFuel = fuel(i,j,k);
+	Real origSmoke = density(i,j,k);
+	Real smokeEmit = 0.0f;
+	Real flame = 0.0f;
 	
 	// Process fuel
 	fuel(i,j,k) -= burningRate * dt;
@@ -84,15 +59,15 @@ void KnProcessBurn(Grid<Real>& fuel,
 	}
 	
 	// Set fluid temperature based on fuel burn rate and "flameSmoke" factor
-	smokeEmit = (origFuel < 1.0f) ? (1.0f - origFuel) * 0.5f : 0.0f;
+	smokeEmit = (origFuel < 1.0f) ? (1.0 - origFuel) * 0.5f : 0.0f;
 	smokeEmit = (smokeEmit + 0.5f) * (origFuel - fuel(i,j,k)) * 0.1f * flameSmoke;
 	density(i,j,k) += smokeEmit;
 	clamp(density(i,j,k), 0.0f, 1.0f);
 	
 	// Set fluid temperature from the flame temperature profile
-	if (/*heat(i,j,k) &&*/ flame)
+	if (heat && flame)
 	{
-		heat(i,j,k) = (1.0f - flame) * ignitionPoint + flame * tempMax;
+		(*heat)(i,j,k) = (1.0f - flame) * ignitionTemp + flame * maxTemp;
 	}
 	
 	// Mix new color
@@ -117,13 +92,19 @@ void KnUpdateFlame(Grid<Real>& react, Grid<Real>& flame)
 PYTHON void processBurn(Grid<Real>& fuel,
 						Grid<Real>& density,
 						Grid<Real>& react,
-						Grid<Real>& heat,
 						Grid<Real>& red,
 						Grid<Real>& green,
-						Grid<Real>& blue)
+						Grid<Real>& blue,
+						Grid<Real>* heat = NULL,
+						Real burningRate = 0.75f,
+						Real flameSmoke = 1.0f,
+						Real ignitionTemp = 1.25f,
+						Real maxTemp = 1.75f,
+						Real dt = 0.1f,
+						Vec3 flameSmokeColor = Vec3(0.7f, 0.7f, 0.7f))
 {
-	KnProcessBurn(fuel, density, react, heat, red, green, blue, burningRate,
-				  flameSmoke, ignitionPoint, tempMax, dtDefault, flameSmokeColor);
+	KnProcessBurn(fuel, density, react, red, green, blue, heat, burningRate,
+				  flameSmoke, ignitionTemp, maxTemp, dt, flameSmokeColor);
 }
 
 PYTHON void updateFlame(Grid<Real>& react, Grid<Real>& flame)

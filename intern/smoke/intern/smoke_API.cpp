@@ -117,7 +117,7 @@ extern "C" void smoke_turbulence_step(WTURBULENCE *wt, FLUID_3D *fluid)
 extern "C" void smoke_turbulence_step(WTURBULENCE *wt, FLUID_3D *fluid)
 {
 	if (wt->_fuelBig) {
-		wt->processBurn();
+		wt->processBurn(fluid->_burning_rate, fluid->_flame_smoke, fluid->_ignition_temp, fluid->_max_temp, fluid->_dt, fluid->_flame_smoke_color);
 	}
 	wt->stepTurbulenceFull(fluid->_dt/fluid->_dx, fluid->_xVelocity, fluid->_yVelocity, fluid->_zVelocity, fluid->_obstacles);
 

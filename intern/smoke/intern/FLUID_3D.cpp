@@ -783,8 +783,16 @@ void FLUID_3D::processBurn(float *fuel, float *smoke, float *react, float *heat,
 {
 	// Need to make sure that color grids are initialized as they are needed in processBurn
 	initColors(0.0f, 0.0f, 0.0f);
-	
+
 	PyGILState_STATE gilstate = PyGILState_Ensure();
+	stringstream ss;
+	ss << "burning_rate = " << *_burning_rate << endl;
+	ss << "flame_smoke = " << *_flame_smoke << endl;
+	ss << "ignition_temp = " << *_ignition_temp << endl;
+	ss << "max_temp = " << *_max_temp << endl;
+	ss << "dt = " << _dt << endl;
+	ss << "flame_smoke_color = vec3(" << _flame_smoke_color[0] << "," << _flame_smoke_color[1] << "," << _flame_smoke_color[2] << ")" << endl;
+	PyRun_SimpleString(ss.str().c_str());
 	PyRun_SimpleString(fire_process_burn_low.c_str());
 	PyGILState_Release(gilstate);
 	Manta_API::updatePointers(this);
