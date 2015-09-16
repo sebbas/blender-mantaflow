@@ -282,7 +282,7 @@ string Manta_API::gridNameFromType(const string &type)
 void Manta_API::addGrid(void * data, string name, string type, int x, int y, int z, bool is2D = false)
 {
 	if (data == NULL || name == "" || gridNameFromType(type) == "") return;
-	cout << "Adding Grid:" << name << endl;
+	//cout << "Adding Grid:" << name << endl;
 	std::ostringstream stringStream;
 	
 	/* Temporary gridname */
@@ -421,12 +421,12 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 		ss <<  smd->domain->fluid->_xRes;
 	
 	else if (varName == "RESY")
-		if (is2D){	ss <<  smd->domain->fluid->_zRes;}
+		if (is2D) {	ss <<  smd->domain->fluid->_zRes;}
 		else{ 		ss <<  smd->domain->fluid->_yRes;}
 	
 	else if (varName == "RESZ")
 		if (is2D){	ss << 1;}
-		else{ 		ss << smd->domain->fluid->_zRes;}
+		else { 		ss << smd->domain->fluid->_zRes;}
 	
 	else if (varName == "SOLVER_DIM")
 		ss <<  smd->domain->manta_solver_res;
@@ -447,13 +447,13 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 		else{ 		ss << smd->domain->wt->getResBig()[1];}
 	else if (varName == "HRESZ")
 		if (is2D){	ss << 1;}
-		else{ 		ss << smd->domain->wt->getResBig()[2];}
+		else { 		ss << smd->domain->wt->getResBig()[2];}
 	else if (varName == "TIMESTEP")
 		ss << smd->domain->time_scale * 0.1f;
 	else if (varName == "XL_TIMESTEP")
 		ss << smd->domain->time_scale * 0.1f;
 	else if (varName == "USE_WAVELETS")
-		ss << (smd->domain->flags & MOD_SMOKE_HIGHRES)?"True":"False";
+		ss << (smd->domain->flags & MOD_SMOKE_HIGHRES) ? "True" : "False";
 	else if (varName == "BUYO_X")
 		ss << 0.;
 	else if (varName == "BUYO_Y")
@@ -466,15 +466,13 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 		ss << (-smd->domain->beta);
 	else if (varName == "ADVECT_ORDER")
 		ss << 2;
-	else if (varName == "MANTA_EXPORT_PATH"){
+	else if (varName == "MANTA_EXPORT_PATH") {
 		char parent_dir[1024];
 		BLI_split_dir_part(smd->domain->_manta_filepath, parent_dir, sizeof(parent_dir));
 		ss << parent_dir;
-	}
-	else if (varName == "VORTICITY"){
-		cout << "Vorticity :" << smd->domain->vorticity / smd->domain->fluid->_constantScaling << endl;	
+	} else if (varName == "VORTICITY"){
 		ss << smd->domain->vorticity / smd->domain->fluid->_constantScaling;
-	}else if (varName == "BOUNDCONDITIONS"){
+	} else if (varName == "BOUNDCONDITIONS"){
 		if(smd->domain->border_collisions == SM_BORDER_OPEN) ss << "xXyY";
 		else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "xXyY";
 		else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "xXyY";
@@ -514,7 +512,7 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 	else if (varName == "FLAME_SMOKE_COLOR_Z")
 		ss << smd->domain->fluid->_flame_smoke_color[2];
 	else 
-		cout<< "ERROR: Unknown option:"<< varName <<endl; 
+		cout << "ERROR: Unknown option:" << varName <<endl;
 	return ss.str();
 }
 
@@ -575,7 +573,7 @@ string Manta_API::getGridPointer(std::string gridName, std::string solverName)
 	if ((gridName == "") && (solverName == "")){
 		return "";
 	}
-	cout << "getting grid pointer " << gridName<< " , " << solverName <<endl;
+	//cout << "getting grid pointer " << gridName<< " , " << solverName <<endl;
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	PyObject *main = PyImport_AddModule("__main__");
 	if (main == NULL){cout << "null" << 1 << endl;return "";}
@@ -589,7 +587,7 @@ string Manta_API::getGridPointer(std::string gridName, std::string solverName)
 	PyObject* encoded = PyUnicode_AsUTF8String(retured_value);
 	if (retured_value == NULL){cout << "null" << 15 << endl;return "";}
 	std::string res = strdup(PyBytes_AsString(encoded));
-	cout << "Pointer on "<< gridName << " " << res << endl;
+	//cout << "Pointer on "<< gridName << " " << res << endl;
 	PyGILState_Release(gilstate);		
 	return res;
 }
@@ -626,9 +624,10 @@ void Manta_API::updatePointers(FLUID_3D *fluid)
 	//x + y * max_x + z * max_x*max_y
 //	int position_to_copy_from(0 + (fluid->xRes()/2) * fluid->xRes() + (fluid->zRes()/2) * fluid->xRes()*fluid->yRes());
 //	float *whereToCopy = &fluid->_density[position_to_copy_from];
-	cout << 'updating pointers'<<endl;
+	//cout << 'Updating pointers' << endl;
 	if (fluid->manta_resoution == 2)
 	{
+		//cout << '2D' << endl;
 		float* manta_fluid_density = (float* )pointerFromString(getGridPointer("density", "s")); 
 		int* manta_fluid_flags = (int* )pointerFromString(getGridPointer("flags", "s"));
 		if (fluid->_density != NULL){
@@ -650,13 +649,13 @@ void Manta_API::updatePointers(FLUID_3D *fluid)
 			}		
 	}
 	else {
-		cout << '3D'<<endl;
+		//cout << '3D' << endl;
 		fluid->_density = (float* )pointerFromString(getGridPointer("density", "s"));	
 		fluid->_manta_flags = (int* )pointerFromString(getGridPointer("flags", "s"));
 	}
 	
 	fluid->_manta_inflow = (float* )pointerFromString(getGridPointer("inflow_grid", "s"));
-	if (fluid-> manta_resoution == 2){return;}
+	if (fluid-> manta_resoution == 2) {return;}
 	if (fluid->using_colors) {
 		fluid->_color_r = (float* )pointerFromString(getGridPointer("color_r_low", "s"));
 		fluid->_color_g = (float* )pointerFromString(getGridPointer("color_g_low", "s"));
@@ -675,7 +674,7 @@ void Manta_API::updatePointers(FLUID_3D *fluid)
 void Manta_API::updateHighResPointers(WTURBULENCE *wt)
 {
 	wt->_densityBig = (float* )pointerFromString(getGridPointer("xl_density", "xl"));;
-	if (wt->using_colors){
+	if (wt->using_colors) {
 		wt->_color_rBig = (float* )pointerFromString(getGridPointer("color_r_high", "xl"));
 		wt->_color_gBig = (float* )pointerFromString(getGridPointer("color_g_high", "xl"));
 		wt->_color_bBig = (float* )pointerFromString(getGridPointer("color_b_high", "xl"));

@@ -767,7 +767,6 @@ void FLUID_3D::step(float dt, float gravity[3])
 	std::string py_string_0 = string("sim_step_low(").append(frame_str);
 	std::string py_string_1 = py_string_0.append(")\0");
 	PyRun_SimpleString(py_string_1.c_str());
-	cout<< "done"<<manta_sim_running<<endl;
 	PyGILState_Release(gilstate);
 	Manta_API::updatePointers(this);
 
