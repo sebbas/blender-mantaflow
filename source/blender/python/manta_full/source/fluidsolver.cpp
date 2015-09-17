@@ -19,13 +19,6 @@
 using namespace std;
 namespace Manta {
 
-#ifdef GUI
-	// defined in qtmain.cpp
-	extern void updateQtGui(bool full, int frame, const std::string& curPlugin);
-#else
-	inline void updateQtGui(bool full, int frame, const std::string& curPlugin) {}
-#endif
-
 //******************************************************************************
 // Gridstorage-related members
 
@@ -74,23 +67,13 @@ template<> void FluidSolver::freeGridPointer<Vec3>(Vec3* ptr) {
 	mGridsVec.release(ptr);
 }
 
-void FluidSolver::pluginStart(const string& name) {
-	mLastPlugin = name;
-	mPluginTimer.get();
-}
-
-void FluidSolver::pluginStop(const string& name) {
-	if (mLastPlugin == name && name != "FluidSolver::step") {
-		MuTime diff = mPluginTimer.update();
-		mTimings.push_back(pair<string,MuTime>(name, diff));
-	}    
-}
-
 //******************************************************************************
 // FluidSolver members
 
 FluidSolver::FluidSolver(Vec3i gridsize, int dim)
-	: PbClass(this), mDt(1.0), mGridSize(gridsize), mDim(dim),  mTimeTotal(0.), mScale(1.0), mFrame(0)
+	: PbClass(this), mDt(1.0), mTimeTotal(0.), mFrame(0), 
+	  mCflCond(1000), mDtMin(1.), mDtMax(1.), mFrameLength(1.),
+	  mGridSize(gridsize), mDim(dim) , mTimePerFrame(0.), mLockDt(false), mAdaptDt(true)
 {    
 	assertMsg(dim==2 || dim==3, "Can only create 2D and 3D solvers");
 	assertMsg(dim!=2 || gridsize.z == 1, "Trying to create 2D solver with size.z != 1");
@@ -107,36 +90,29 @@ PbClass* FluidSolver::create(PbType t, PbTypeVec T, const string& name) {
 	if (t.str() == "")
 		errMsg("Need to specify object type. Use e.g. Solver.create(FlagGrid, ...) or Solver.create(type=FlagGrid, ...)");
 	
-	return PbClass::createPyObject(t.str() + T.str(), name, _args, this);
+	PbClass* ret = PbClass::createPyObject(t.str() + T.str(), name, _args, this);
+	return ret;
 }
 
 void FluidSolver::step() {
-	mTimeTotal += mDt;
-	mFrame++;
-	updateQtGui(true, mFrame, "FluidSolver::step");
-	
-	// update timings
-	for(size_t i=0;i<mTimings.size(); i++) {
-		const string name = mTimings[i].first;
-		if (mTimingsTotal.find(name) == mTimingsTotal.end())
-			mTimingsTotal[name].second.clear();
-		mTimingsTotal[name].first++;
-		mTimingsTotal[name].second+=mTimings[i].second;
+	// update simulation time
+	if(!mAdaptDt) {
+		mTimeTotal += mDt;
+		mFrame++;
+	} else {
+		// adaptive time stepping on (use eps to prevent roundoff errors)
+		mTimePerFrame += mDt;
+		if( (mTimePerFrame+VECTOR_EPSILON) >mFrameLength) {
+			mFrame++;
+
+			// re-calc total time, prevent drift...
+			mTimeTotal = (double)mFrame * mFrameLength;
+			mTimePerFrame = 0.;
+			mLockDt = false;
+		}
 	}
-	mTimings.clear();
-}
- 
-void FluidSolver::printTimings() {
-	MuTime total;
-	total.clear();
-	for(size_t i=0; i<mTimings.size(); i++)
-		total += mTimings[i].second;
-	
-	printf("\n-- STEP %d -----------------------------\n", mFrame);
-	for(size_t i=0; i<mTimings.size(); i++)
-		printf("[%4.1f%%] %s (%s)\n", 100.0*((Real)mTimings[i].second.time / (Real)total.time), mTimings[i].first.c_str(), mTimings[i].second.toString().c_str());
-	printf("----------------------------------------\n");
-	printf("Total : %s\n\n", total.toString().c_str());
+
+	updateQtGui(true, mFrame,mTimeTotal, "FluidSolver::step");
 }
 
 void FluidSolver::printMemInfo() {
@@ -147,26 +123,37 @@ void FluidSolver::printMemInfo() {
 	printf("%s\n", msg.str().c_str() );
 }
 
-PYTHON() void printBuildInfo() {
-	debMsg( "Build info: "<<buildInfoString().c_str()<<" ",1);
+PYTHON() std::string printBuildInfo() {
+	string infoString = buildInfoString();
+	debMsg( "Build info: "<<infoString.c_str()<<" ",1);
+	return infoString;
 }
 
-void FluidSolver::saveMeanTimings(string filename) {
-	ofstream ofs(filename.c_str());
-	if (!ofs.good())
-		errMsg("can't open " + filename + " as timing log");
-	ofs << "Mean timings of " << mFrame << " steps :" <<endl <<endl;
-	MuTime total;
-	total.clear();
-	for(map<string, pair<int,MuTime> >::iterator it=mTimingsTotal.begin(); it!=mTimingsTotal.end(); it++) {
-		total += it->second.second;
-	}    
-	for(map<string, pair<int,MuTime> >::iterator it=mTimingsTotal.begin(); it!=mTimingsTotal.end(); it++) {
-		ofs << it->first << ": " << it->second.second / it->second.first << endl;        
-	} 
-	ofs << endl << "Total : " << total << " (mean " << total/mFrame << ")" << endl;
-	ofs.close();
+PYTHON() void setDebugLevel(int level=1) {
+	gDebugLevel = level; 
 }
- 
+
+void FluidSolver::adaptTimestep(Real maxVel)
+{
+	if (!mLockDt) {
+		// calculate current timestep from maxvel, clamp range
+		mDt = std::max( std::min( (Real)(mCflCond/(maxVel+1e-05)), mDtMax) , mDtMin );
+		if( (mTimePerFrame+mDt*1.05) > mFrameLength ) {
+			// within 5% of full step? add epsilon to prevent roundoff errors...
+			mDt = ( mFrameLength - mTimePerFrame ) + 1e-04;
+		}
+		else if ( (mTimePerFrame+mDt + mDtMin) > mFrameLength || (mTimePerFrame+(mDt*1.25)) > mFrameLength ) {
+			// avoid tiny timesteps and strongly varying ones, do 2 medium size ones if necessary...
+			mDt = (mFrameLength-mTimePerFrame+ 1e-04)*0.5;
+			mLockDt = true;
+		}
+	}
+	debMsg( "Frame "<<mFrame<<" current max vel: "<<maxVel<<" , dt: "<<mDt<<", "<<mTimePerFrame<<"/"<<mFrameLength<<" lock:"<<mLockDt , 1);
+	mAdaptDt = true;
+
+	// sanity check
+	assertMsg( (mDt > (mDtMin/2.) ) , "Invalid dt encountered! Shouldnt happen..." );
 }
+
+} // manta
 

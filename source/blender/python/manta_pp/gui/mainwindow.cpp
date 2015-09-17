@@ -9,6 +9,7 @@
 
 
 
+#line 1 "/home/user/Developer/mantaflowgit/source/gui/mainwindow.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -43,7 +44,7 @@ MainWnd::MainWnd() : QMainWindow(0), mPaused(true), mRequestPause(false), mReque
 {
 	// Frame info label
 	mInfo = new QLabel;
-	setStep(0);
+	setStep(0,0.);
 	
 	// register GL widget
 	mGlWidget = new GLWidget();
@@ -146,9 +147,9 @@ void MainWnd::addControl(void* ctrl) {
 	control->init(mPainterLayout);
 }
 
-void MainWnd::setStep(int f) {
+void MainWnd::setStep(int f, float time) {
 	std::stringstream s;
-	s << "Simulation step " << f;
+	s << "Simulation frame " << f <<", time "<<time; 
 	mInfo->setText(s.str().c_str());
 }
 
@@ -177,11 +178,13 @@ bool MainWnd::event(QEvent* e) {
 	}
 	else if (e->type() == (QEvent::Type)EventStepUpdate) {        
 		if (!mRequestClose) {
-			if (mRequestPause)
+			if (mRequestPause) {
 				emit painterEvent(Painter::UpdateFull);
-			else
+				mGlWidget->updateGL();
+			} else {
 				emit painterEvent(Painter::UpdateStep);
-			mGlWidget->updateGL();
+				// redraw not necessary? old: mGlWidget->updateGL();
+			}
 		}
 		emit wakeMain();
 		return true;
@@ -303,6 +306,20 @@ void MainWnd::nextPartDisplay() {
 }
 void MainWnd::nextMeshDisplay() {
 	emit painterEvent(Painter::EventMeshMode); 
+}
+void MainWnd::toggleHideGrids() {
+	emit painterEvent(Painter::EventToggleGridDisplay); 
+}
+void MainWnd::setCamPos(float x, float y, float z) {
+	mGlWidget->setCamPos( Vec3(x, y, z) );
+}
+void MainWnd::setCamRot(float x, float y, float z) {
+	mGlWidget->setCamRot( Vec3(x, y, z) );
+}
+void MainWnd::windowSize(int w, int h) {
+	mGlWidget->setMinimumSize( w,h );
+	mGlWidget->setMaximumSize( w,h );
+	mGlWidget->resize( w,h );
 }
 
 MainWnd::~MainWnd() {

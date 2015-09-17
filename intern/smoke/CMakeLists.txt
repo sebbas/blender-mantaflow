@@ -27,6 +27,9 @@ set(INC
 	intern
 	../memutil
 	../../source/blender/blenlib
+	../../source/blender/python/manta_pp
+	../../source/blender/python/manta_pp/util/
+	extern
 )
 
 set(INC_SYS

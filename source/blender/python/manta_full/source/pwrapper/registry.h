@@ -58,7 +58,7 @@ PyObject* copyObject(Manta::PbClass* cls, const std::string& classname);
 
 // callback type
 typedef void (*InitFunc)(PyObject*);
-PyObject *PyInit_Main_Obj(void);
+extern "C" PyObject *PyInit_Main_Obj(void);
 typedef PyObject* (*GenericFunction)(PyObject* self, PyObject* args, PyObject* kwds);
 typedef PyObject* (*OperatorFunction)(PyObject* self, PyObject* o);
 typedef int (*Constructor)(PyObject* self, PyObject* args, PyObject* kwds);

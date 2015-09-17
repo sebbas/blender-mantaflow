@@ -36,8 +36,12 @@ namespace Manta {
  static const Pb::Register _R_15 ("Shape","setCenter",Shape::_W_6); 
  static const Pb::Register _R_16 ("Shape","getExtent",Shape::_W_7); 
 #endif
+#ifdef _C_Slope
+ static const Pb::Register _R_17 ("Slope","Slope","Shape"); template<> const char* Namify<Slope >::S = "Slope"; 
+ static const Pb::Register _R_18 ("Slope","Slope",Slope::_W_14); 
+#endif
 #ifdef _C_Sphere
- static const Pb::Register _R_17 ("Sphere","Sphere","Shape"); template<> const char* Namify<Sphere >::S = "Sphere"; 
- static const Pb::Register _R_18 ("Sphere","Sphere",Sphere::_W_10); 
+ static const Pb::Register _R_19 ("Sphere","Sphere","Shape"); template<> const char* Namify<Sphere >::S = "Sphere"; 
+ static const Pb::Register _R_20 ("Sphere","Sphere",Sphere::_W_10); 
 #endif
 }

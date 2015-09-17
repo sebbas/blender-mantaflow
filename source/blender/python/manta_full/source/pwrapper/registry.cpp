@@ -20,7 +20,7 @@ using namespace std;
 const string gDefaultModuleName = "manta";
 
 namespace Pb {
-//PR FULL MANTA
+
 //******************************************************************************
 // Custom object definition
 
@@ -90,14 +90,12 @@ public:
 	void addPythonCode(const std::string& file, const std::string& code);
 	PyObject* createPyObject(const std::string& classname, const std::string& name, Manta::PbArgs& args, Manta::PbClass *parent);
 	void construct(const std::string& scriptname, const vector<string>& args);
-	void construct_lite();
 	void cleanup();
 	void renameObjects();
 	void runPreInit();
 	PyObject* initModule();
 	ClassData* lookup(const std::string& name);
 	bool canConvert(ClassData* from, ClassData* to);
-	void addScriptData(const std::string& scriptname, const vector<string>& args);
 private:
 	ClassData* getOrConstructClass(const string& name);
 	void registerBaseclasses();
@@ -157,29 +155,17 @@ int cbDisableConstructor(PyObject* self, PyObject* args, PyObject* kwds) {
 	return -1;
 }
 
-
 PyMODINIT_FUNC PyInit_Main(void) {
 #if PY_MAJOR_VERSION >= 3
-	WrapperRegistry::instance().construct_lite();
 	return WrapperRegistry::instance().initModule();   
 #else
-	WrapperRegistry::instance().construct_lite();
 	WrapperRegistry::instance().initModule();   
 #endif
 }
 
-PyMODINIT_FUNC PyInit_Main_Link(void) {
-#if PY_MAJOR_VERSION >= 3
-	return PyInit_Main();   
-#else
-	PyInit_Main();
-#endif
-
-}
-
 PyObject *PyInit_Main_Obj(void)
 {
-	return PyInit_Main();	
+	return PyInit_Main();
 }
 
 //******************************************************
@@ -389,7 +375,7 @@ void WrapperRegistry::addConstants(PyObject* module) {
 	for (int i=0; i<(int)args.size(); i++)
 		PyList_SET_ITEM(list,i,Manta::toPy(args[i]));
 	PyModule_AddObject(module, "args", list);
-	PyModule_AddObject(module,"CUDA",Manta::toPy(mScriptName));
+	PyModule_AddObject(module,"SCENEFILE",Manta::toPy(mScriptName));
 
 	// expose compile flags
 #ifdef CUDA
@@ -411,6 +397,11 @@ void WrapperRegistry::addConstants(PyObject* module) {
 	PyModule_AddObject(module,"GUI",Manta::toPy<bool>(true));
 #else
 	PyModule_AddObject(module,"GUI",Manta::toPy<bool>(false));
+#endif
+#if FLOATINGPOINT_PRECISION==2
+	PyModule_AddObject(module,"DOUBLEPRECISION",Manta::toPy<bool>(true));
+#else
+	PyModule_AddObject(module,"DOUBLEPRECISION",Manta::toPy<bool>(false));
 #endif
 }
 
@@ -470,19 +461,8 @@ void WrapperRegistry::construct(const string& scriptname, const vector<string>& 
 	registerDummyTypes();
 	
 	// load main extension module
-	PyImport_AppendInittab((char*)gDefaultModuleName.c_str(), PyInit_Main);
+	PyImport_AppendInittab(gDefaultModuleName.c_str(), PyInit_Main);
 }
-void WrapperRegistry::addScriptData(const std::string &scriptname, const vector<string> &args)
-{
-	mScriptName = scriptname;
-	this->args = args;
-}
-	
-void WrapperRegistry::construct_lite() {
-		registerBaseclasses();
-		registerMeta();
-		registerDummyTypes();
-}	
 
 inline PyObject* castPy(PyTypeObject* p) { 
 	return reinterpret_cast<PyObject*>(static_cast<void*>(p)); 
@@ -608,14 +588,13 @@ PyObject* WrapperRegistry::initModule() {
 // Register members and exposed functions
 
 void setup(const std::string& filename, const std::vector<std::string>& args) {
-//	WrapperRegistry::instance().construct(filename,args);
-//	Py_Initialize();
-	WrapperRegistry::instance().addScriptData(filename, args);
+	WrapperRegistry::instance().construct(filename,args);
+	Py_Initialize();
 	WrapperRegistry::instance().runPreInit();
 }
 
 void finalize() {
-//	Py_Finalize();
+	Py_Finalize();
 	WrapperRegistry::instance().cleanup();
 }
 

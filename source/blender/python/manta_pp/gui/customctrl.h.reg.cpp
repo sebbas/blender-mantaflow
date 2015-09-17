@@ -44,5 +44,9 @@ namespace Manta {
  static const Pb::Register _R_23 ("Gui","nextVec3Display",Gui::_W_19); 
  static const Pb::Register _R_24 ("Gui","nextMeshDisplay",Gui::_W_20); 
  static const Pb::Register _R_25 ("Gui","nextPartDisplay",Gui::_W_21); 
+ static const Pb::Register _R_26 ("Gui","toggleHideGrids",Gui::_W_22); 
+ static const Pb::Register _R_27 ("Gui","setCamPos",Gui::_W_23); 
+ static const Pb::Register _R_28 ("Gui","setCamRot",Gui::_W_24); 
+ static const Pb::Register _R_29 ("Gui","windowSize",Gui::_W_25); 
 #endif
 }

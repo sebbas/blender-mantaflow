@@ -9,6 +9,7 @@
 
 
 
+#line 1 "/home/user/Developer/mantaflowgit/source/gui/customctrl.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -27,6 +28,7 @@
 #include "painter.h"
 
 using namespace std;
+
 namespace Manta {
 	
 // *****************************************************************************
@@ -140,7 +142,6 @@ void TextCheckbox::set(bool v) {
 // **************************************************************************************
 // GUI class
 
-void updateQtGui(bool full, int frame, const std::string& curPlugin);
 extern MainThread* gMainThread;
 extern GuiThread* gGuiThread;
 
@@ -157,7 +158,7 @@ void Gui::show(bool twoD) {
 	mMainPtr->sendAndWait( (int)MainWnd::EventGuiShow );
 }
 void Gui::update() { 
-	updateQtGui(true,-1,"");
+	updateQtGui(true, -1,-1., "");
 }
 void Gui::pause() {
 	mMainPtr->sendAndWait((int)MainWnd::EventFullUpdate);         
@@ -177,6 +178,18 @@ void Gui::nextMesh()     { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "next
 void Gui::nextVec3Display() { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextVec3Display" ); }
 void Gui::nextPartDisplay() { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextPartDisplay" ); }
 void Gui::nextMeshDisplay() { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextMeshDisplay" ); }
+
+void Gui::toggleHideGrids() { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "toggleHideGrids" ); }
+
+void Gui::setCamPos(float x, float y, float z) {
+	QMetaObject::invokeMethod(mGuiPtr->getWindow(), "setCamPos", Q_ARG(float, x), Q_ARG(float, y), Q_ARG(float, z));    
+}
+void Gui::setCamRot(float x, float y, float z) {
+	QMetaObject::invokeMethod(mGuiPtr->getWindow(), "setCamRot", Q_ARG(float, x), Q_ARG(float, y), Q_ARG(float, z));    
+}
+void Gui::windowSize(int w, int h) {
+	QMetaObject::invokeMethod(mGuiPtr->getWindow(), "windowSize", Q_ARG(int, w), Q_ARG(int, h));    
+}
 
 PbClass* Gui::addControl(PbType t) {
 	_args.add("nocheck",true);

@@ -9,6 +9,7 @@
 
 
 
+#line 1 "/home/user/Developer/mantaflowgit/source/plugin/flip.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework 
@@ -33,9 +34,9 @@ namespace Manta {
 
 
 
-
 // init
 
+//! note - this is a simplified version , sampleLevelsetWithParticles has more functionality
 
 
 void sampleFlagsWithParticles( FlagGrid& flags, BasicParticleSystem& parts, int discretization, Real randomness ) {
@@ -44,8 +45,6 @@ void sampleFlagsWithParticles( FlagGrid& flags, BasicParticleSystem& parts, int 
 	Vec3 disp (1.0 / discretization, 1.0 / discretization, 1.0/discretization);
 	RandomStream mRand(9832);
  
-	//clear(); 
-
 	FOR_IJK_BND(flags, 0) {
 		if ( flags.isObstacle(i,j,k) ) continue;
 		if ( flags.isFluid(i,j,k) ) {
@@ -56,15 +55,20 @@ void sampleFlagsWithParticles( FlagGrid& flags, BasicParticleSystem& parts, int 
 				Vec3 subpos = pos + disp * Vec3(0.5+di, 0.5+dj, 0.5+dk);
 				subpos += jlen * (Vec3(1,1,1) - 2.0 * mRand.getVec3());
 				if(!is3D) subpos[2] = 0.5; 
-				parts.add( BasicParticleData(subpos) );
+				parts.addBuffered( subpos);
 			}
 		}
 	}
+	parts.insertBufferedParticles();
 } static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "sampleFlagsWithParticles" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",1,&_lock); int discretization = _args.get<int >("discretization",2,&_lock); Real randomness = _args.get<Real >("randomness",3,&_lock);   _retval = getPyNone(); sampleFlagsWithParticles(flags,parts,discretization,randomness);  _args.check(); } pbFinalizePlugin(parent,"sampleFlagsWithParticles" ); return _retval; } catch(std::exception& e) { pbSetError("sampleFlagsWithParticles",e.what()); return 0; } } static const Pb::Register _RP_sampleFlagsWithParticles ("","sampleFlagsWithParticles",_W_0); 
 
+//! sample a level set with particles, use reset to clear the particle buffer,
+//! and skipEmpty for a continuous inflow (in the latter case, only empty cells will
+//! be re-filled once they empty when calling sampleLevelsetWithParticles during 
+//! the main loop).
 
 
-void sampleLevelsetWithParticles( LevelsetGrid& phi, FlagGrid& flags, BasicParticleSystem& parts, int discretization, Real randomness, bool reset=false ) {
+void sampleLevelsetWithParticles( LevelsetGrid& phi, FlagGrid& flags, BasicParticleSystem& parts, int discretization, Real randomness, bool reset=false, bool refillEmpty=false ) {
 	bool is3D = phi.is3D();
 	Real jlen = randomness / discretization;
 	Vec3 disp (1.0 / discretization, 1.0 / discretization, 1.0/discretization);
@@ -77,6 +81,7 @@ void sampleLevelsetWithParticles( LevelsetGrid& phi, FlagGrid& flags, BasicParti
 
 	FOR_IJK_BND(phi, 0) {
 		if ( flags.isObstacle(i,j,k) ) continue;
+		if ( refillEmpty && flags.isFluid(i,j,k) ) continue;
 		if ( phi(i,j,k) < 1.733 ) {
 			Vec3 pos (i,j,k);
 			for (int dk=0; dk<(is3D ? discretization : 1); dk++)
@@ -86,19 +91,39 @@ void sampleLevelsetWithParticles( LevelsetGrid& phi, FlagGrid& flags, BasicParti
 				subpos += jlen * (Vec3(1,1,1) - 2.0 * mRand.getVec3());
 				if(!is3D) subpos[2] = 0.5; 
 				if( phi.getInterpolated(subpos) > 0. ) continue; 
-				parts.add( BasicParticleData(subpos) );
+				parts.addBuffered( subpos);
 			}
 		}
 	}
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "sampleLevelsetWithParticles" ); PyObject *_retval = 0; { ArgLocker _lock; LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",0,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",2,&_lock); int discretization = _args.get<int >("discretization",3,&_lock); Real randomness = _args.get<Real >("randomness",4,&_lock); bool reset = _args.getOpt<bool >("reset",5,false ,&_lock);   _retval = getPyNone(); sampleLevelsetWithParticles(phi,flags,parts,discretization,randomness,reset);  _args.check(); } pbFinalizePlugin(parent,"sampleLevelsetWithParticles" ); return _retval; } catch(std::exception& e) { pbSetError("sampleLevelsetWithParticles",e.what()); return 0; } } static const Pb::Register _RP_sampleLevelsetWithParticles ("","sampleLevelsetWithParticles",_W_1); 
 
-void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags) {
-	// remove all fluid cells
-	FOR_IJK(flags) {
-		if (flags.isFluid(i,j,k)) {
-			flags(i,j,k) = (flags(i,j,k) | FlagGrid::TypeEmpty) & ~FlagGrid::TypeFluid;
-		}
+	parts.insertBufferedParticles();
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "sampleLevelsetWithParticles" ); PyObject *_retval = 0; { ArgLocker _lock; LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",0,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",2,&_lock); int discretization = _args.get<int >("discretization",3,&_lock); Real randomness = _args.get<Real >("randomness",4,&_lock); bool reset = _args.getOpt<bool >("reset",5,false,&_lock); bool refillEmpty = _args.getOpt<bool >("refillEmpty",6,false ,&_lock);   _retval = getPyNone(); sampleLevelsetWithParticles(phi,flags,parts,discretization,randomness,reset,refillEmpty);  _args.check(); } pbFinalizePlugin(parent,"sampleLevelsetWithParticles" ); return _retval; } catch(std::exception& e) { pbSetError("sampleLevelsetWithParticles",e.what()); return 0; } } static const Pb::Register _RP_sampleLevelsetWithParticles ("","sampleLevelsetWithParticles",_W_1); 
+
+//! mark fluid cells and helpers
+ struct knClearFluidFLags : public KernelBase { knClearFluidFLags(FlagGrid& flags, int dummy=0) :  KernelBase(&flags,0) ,flags(flags),dummy(dummy)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, int dummy=0 )  {
+	if (flags.isFluid(i,j,k)) {
+		flags(i,j,k) = (flags(i,j,k) | FlagGrid::TypeEmpty) & ~FlagGrid::TypeFluid;
 	}
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline int& getArg1() { return dummy; } typedef int type1; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, flags,dummy);  } FlagGrid& flags; int dummy;   };
+
+ struct knSetNbObstacle : public KernelBase { knSetNbObstacle(FlagGrid& flags, Grid<Real>* phiObs) :  KernelBase(&flags,1) ,flags(flags),phiObs(phiObs)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>* phiObs )  {
+	if ( (*phiObs)(i,j,k)>0. ) return;
+	if (flags.isEmpty(i,j,k)) {
+		bool set=false;
+		if( (flags.isFluid(i-1,j,k)) && (flags.isObstacle(i+1,j,k)) ) set=true;
+		if( (flags.isFluid(i+1,j,k)) && (flags.isObstacle(i-1,j,k)) ) set=true;
+		if( (flags.isFluid(i,j-1,k)) && (flags.isObstacle(i,j+1,k)) ) set=true;
+		if( (flags.isFluid(i,j+1,k)) && (flags.isObstacle(i,j-1,k)) ) set=true;
+		if(flags.is3D()) {
+		if( (flags.isFluid(i,j,k-1)) && (flags.isObstacle(i,j,k+1)) ) set=true;
+		if( (flags.isFluid(i,j,k+1)) && (flags.isObstacle(i,j,k-1)) ) set=true;
+		}
+		if(set) flags(i,j,k) = (flags(i,j,k) | FlagGrid::TypeFluid) & ~FlagGrid::TypeEmpty;
+	}
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>* getArg1() { return phiObs; } typedef Grid<Real> type1; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,phiObs);  } FlagGrid& flags; Grid<Real>* phiObs;   };
+void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags, Grid<Real>* phiObs = NULL) {
+	// remove all fluid cells
+	knClearFluidFLags(flags, 0);
 	
 	// mark all particles in flaggrid as fluid
 	for(int idx=0;idx<parts.size();idx++) {
@@ -107,12 +132,16 @@ void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags) {
 		if (flags.isInBounds(p) && flags.isEmpty(p))
 			flags(p) = (flags(p) | FlagGrid::TypeFluid) & ~FlagGrid::TypeEmpty;
 	}
-} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "markFluidCells" ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock);   _retval = getPyNone(); markFluidCells(parts,flags);  _args.check(); } pbFinalizePlugin(parent,"markFluidCells" ); return _retval; } catch(std::exception& e) { pbSetError("markFluidCells",e.what()); return 0; } } static const Pb::Register _RP_markFluidCells ("","markFluidCells",_W_2); 
+
+	// special for second order obstacle BCs, check empty cells in boundary region
+	if(phiObs) knSetNbObstacle( flags, phiObs );
+} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "markFluidCells" ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); Grid<Real>* phiObs = _args.getPtrOpt<Grid<Real> >("phiObs",2,NULL,&_lock);   _retval = getPyNone(); markFluidCells(parts,flags,phiObs);  _args.check(); } pbFinalizePlugin(parent,"markFluidCells" ); return _retval; } catch(std::exception& e) { pbSetError("markFluidCells",e.what()); return 0; } } static const Pb::Register _RP_markFluidCells ("","markFluidCells",_W_2); 
 
 // for testing purposes only...
 void testInitGridWithPos(Grid<Real>& grid) {
 	FOR_IJK(grid) { grid(i,j,k) = norm( Vec3(i,j,k) ); }
 } static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "testInitGridWithPos" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& grid = *_args.getPtr<Grid<Real> >("grid",0,&_lock);   _retval = getPyNone(); testInitGridWithPos(grid);  _args.check(); } pbFinalizePlugin(parent,"testInitGridWithPos" ); return _retval; } catch(std::exception& e) { pbSetError("testInitGridWithPos",e.what()); return 0; } } static const Pb::Register _RP_testInitGridWithPos ("","testInitGridWithPos",_W_3); 
+
 
 
 //! helper to calculate particle radius factor to cover the diagonal of a cell in 2d/3d
@@ -121,9 +150,11 @@ inline Real calculateRadiusFactor(Grid<Real>& grid, Real factor) {
 } 
 
 //! re-sample particles based on an input levelset 
+// optionally skip seeding new particles in "exclude" SDF
 
 
-void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& flags, int minParticles, int maxParticles, LevelsetGrid& phi, Real radiusFactor=1. , Real narrowBand=-1. ) {
+
+void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& flags, int minParticles, int maxParticles, LevelsetGrid& phi, Real radiusFactor=1. , Real narrowBand=-1. , Grid<Real>* exclude=NULL ) {
 	// which levelset to use as threshold
 	const Real SURFACE_LS = -1.0 * calculateRadiusFactor(phi, radiusFactor);
 	Grid<int> tmp( vel.getParent() );
@@ -162,6 +193,7 @@ void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& flags, in
 		// skip cells near surface
 		if (phi(i,j,k) > SURFACE_LS) continue;
 		if( narrowBand>0. && phi(i,j,k) < -narrowBand ) { continue; }
+		if( exclude && ( (*exclude)(i,j,k) < 0.) ) { continue; }
 
 		if (flags.isFluid(i,j,k) && cnt < minParticles) {
 			for (int m=cnt; m < minParticles; m++) { 
@@ -174,7 +206,7 @@ void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& flags, in
 
 	parts.doCompress();
 	parts.insertBufferedParticles();
-} static PyObject* _W_4 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "adjustNumber" ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",2,&_lock); int minParticles = _args.get<int >("minParticles",3,&_lock); int maxParticles = _args.get<int >("maxParticles",4,&_lock); LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",5,&_lock); Real radiusFactor = _args.getOpt<Real >("radiusFactor",6,1. ,&_lock); Real narrowBand = _args.getOpt<Real >("narrowBand",7,-1. ,&_lock);   _retval = getPyNone(); adjustNumber(parts,vel,flags,minParticles,maxParticles,phi,radiusFactor,narrowBand);  _args.check(); } pbFinalizePlugin(parent,"adjustNumber" ); return _retval; } catch(std::exception& e) { pbSetError("adjustNumber",e.what()); return 0; } } static const Pb::Register _RP_adjustNumber ("","adjustNumber",_W_4); 
+} static PyObject* _W_4 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "adjustNumber" ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",2,&_lock); int minParticles = _args.get<int >("minParticles",3,&_lock); int maxParticles = _args.get<int >("maxParticles",4,&_lock); LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",5,&_lock); Real radiusFactor = _args.getOpt<Real >("radiusFactor",6,1. ,&_lock); Real narrowBand = _args.getOpt<Real >("narrowBand",7,-1. ,&_lock); Grid<Real>* exclude = _args.getPtrOpt<Grid<Real> >("exclude",8,NULL ,&_lock);   _retval = getPyNone(); adjustNumber(parts,vel,flags,minParticles,maxParticles,phi,radiusFactor,narrowBand,exclude);  _args.check(); } pbFinalizePlugin(parent,"adjustNumber" ); return _retval; } catch(std::exception& e) { pbSetError("adjustNumber",e.what()); return 0; } } static const Pb::Register _RP_adjustNumber ("","adjustNumber",_W_4); 
 
 // simple and slow helper conversion to show contents of int grids like a real grid in the ui
 // (use eg to quickly display contents of the particle-index grid)
@@ -378,6 +410,24 @@ void averagedParticleLevelset( BasicParticleSystem& parts, ParticleIndexSystem& 
 
 
 
+ struct knPushOutofObs : public KernelBase { knPushOutofObs(BasicParticleSystem& parts, FlagGrid& flags, Grid<Real>& phiObs, Real shift=0.05, Real thresh=0.) :  KernelBase(parts.size()) ,parts(parts),flags(flags),phiObs(phiObs),shift(shift),thresh(thresh)   { run(); }  inline void op(int idx, BasicParticleSystem& parts, FlagGrid& flags, Grid<Real>& phiObs, Real shift=0.05, Real thresh=0. )  {
+	if (!parts.isActive(idx)) return;
+	Vec3i p = toVec3i( parts.getPos(idx) );
+
+	if (!flags.isInBounds(p)) return;
+	Real v = phiObs.getInterpolated(parts.getPos(idx));
+	if(v < thresh) {
+		Vec3 grad = getGradient( phiObs, p.x,p.y,p.z );
+		if( normalize(grad) < VECTOR_EPSILON ) return;
+		parts.setPos(idx, parts.getPos(idx) + shift * grad );
+	}
+}   inline BasicParticleSystem& getArg0() { return parts; } typedef BasicParticleSystem type0;inline FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline Grid<Real>& getArg2() { return phiObs; } typedef Grid<Real> type2;inline Real& getArg3() { return shift; } typedef Real type3;inline Real& getArg4() { return thresh; } typedef Real type4; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, parts,flags,phiObs,shift,thresh);  } BasicParticleSystem& parts; FlagGrid& flags; Grid<Real>& phiObs; Real shift; Real thresh;   };
+//! slightly push particles out of obstacle levelset
+void pushOutofObs(BasicParticleSystem& parts, FlagGrid& flags, Grid<Real>& phiObs, Real shift=0.05, Real thresh=0.) {
+	knPushOutofObs(parts, flags, phiObs, shift, thresh);
+} static PyObject* _W_9 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "pushOutofObs" ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); Grid<Real>& phiObs = *_args.getPtr<Grid<Real> >("phiObs",2,&_lock); Real shift = _args.getOpt<Real >("shift",3,0.05,&_lock); Real thresh = _args.getOpt<Real >("thresh",4,0.,&_lock);   _retval = getPyNone(); pushOutofObs(parts,flags,phiObs,shift,thresh);  _args.check(); } pbFinalizePlugin(parent,"pushOutofObs" ); return _retval; } catch(std::exception& e) { pbSetError("pushOutofObs",e.what()); return 0; } } static const Pb::Register _RP_pushOutofObs ("","pushOutofObs",_W_9); 
+
+
 //******************************************************************************
 // grid interpolation functions
 
@@ -432,7 +482,7 @@ void mapPartsToMAC( FlagGrid& flags, MACGrid& vel , MACGrid& velOld , BasicParti
 	// store original state
 	velOld.copyFrom( vel );
 	if(freeTmp) delete weight;
-} static PyObject* _W_9 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "mapPartsToMAC" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); MACGrid& velOld = *_args.getPtr<MACGrid >("velOld",2,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",3,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",4,&_lock); Grid<Vec3>* weight = _args.getPtrOpt<Grid<Vec3> >("weight",5,NULL ,&_lock);   _retval = getPyNone(); mapPartsToMAC(flags,vel,velOld,parts,partVel,weight);  _args.check(); } pbFinalizePlugin(parent,"mapPartsToMAC" ); return _retval; } catch(std::exception& e) { pbSetError("mapPartsToMAC",e.what()); return 0; } } static const Pb::Register _RP_mapPartsToMAC ("","mapPartsToMAC",_W_9); 
+} static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "mapPartsToMAC" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); MACGrid& velOld = *_args.getPtr<MACGrid >("velOld",2,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",3,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",4,&_lock); Grid<Vec3>* weight = _args.getPtrOpt<Grid<Vec3> >("weight",5,NULL ,&_lock);   _retval = getPyNone(); mapPartsToMAC(flags,vel,velOld,parts,partVel,weight);  _args.check(); } pbFinalizePlugin(parent,"mapPartsToMAC" ); return _retval; } catch(std::exception& e) { pbSetError("mapPartsToMAC",e.what()); return 0; } } static const Pb::Register _RP_mapPartsToMAC ("","mapPartsToMAC",_W_10); 
 
 
  struct knCombineVels : public KernelBase { knCombineVels(MACGrid& vel, Grid<Vec3>& w, MACGrid& combineVel ) :  KernelBase(&vel,0) ,vel(vel),w(w),combineVel(combineVel)   { run(); }  inline void op(int idx, MACGrid& vel, Grid<Vec3>& w, MACGrid& combineVel  )  {
@@ -442,7 +492,7 @@ void mapPartsToMAC( FlagGrid& flags, MACGrid& vel , MACGrid& velOld , BasicParti
 
 void combineGridVel( MACGrid& vel, Grid<Vec3>& weight, MACGrid& combineVel ) {
 	knCombineVels(vel, weight, combineVel);
-} static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "combineGridVel" ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Vec3>& weight = *_args.getPtr<Grid<Vec3> >("weight",1,&_lock); MACGrid& combineVel = *_args.getPtr<MACGrid >("combineVel",2,&_lock);   _retval = getPyNone(); combineGridVel(vel,weight,combineVel);  _args.check(); } pbFinalizePlugin(parent,"combineGridVel" ); return _retval; } catch(std::exception& e) { pbSetError("combineGridVel",e.what()); return 0; } } static const Pb::Register _RP_combineGridVel ("","combineGridVel",_W_10); 
+} static PyObject* _W_11 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "combineGridVel" ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Vec3>& weight = *_args.getPtr<Grid<Vec3> >("weight",1,&_lock); MACGrid& combineVel = *_args.getPtr<MACGrid >("combineVel",2,&_lock);   _retval = getPyNone(); combineGridVel(vel,weight,combineVel);  _args.check(); } pbFinalizePlugin(parent,"combineGridVel" ); return _retval; } catch(std::exception& e) { pbSetError("combineGridVel",e.what()); return 0; } } static const Pb::Register _RP_combineGridVel ("","combineGridVel",_W_11); 
 
 
 
@@ -464,12 +514,12 @@ void mapLinearRealHelper( FlagGrid& flags, Grid<T>& target ,
 
 void mapPartsToGrid( FlagGrid& flags, Grid<Real>& target , BasicParticleSystem& parts , ParticleDataImpl<Real>& source ) {
 	mapLinearRealHelper<Real>(flags,target,parts,source);
-} static PyObject* _W_11 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "mapPartsToGrid" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& target = *_args.getPtr<Grid<Real> >("target",1,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",2,&_lock); ParticleDataImpl<Real>& source = *_args.getPtr<ParticleDataImpl<Real> >("source",3,&_lock);   _retval = getPyNone(); mapPartsToGrid(flags,target,parts,source);  _args.check(); } pbFinalizePlugin(parent,"mapPartsToGrid" ); return _retval; } catch(std::exception& e) { pbSetError("mapPartsToGrid",e.what()); return 0; } } static const Pb::Register _RP_mapPartsToGrid ("","mapPartsToGrid",_W_11); 
+} static PyObject* _W_12 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "mapPartsToGrid" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& target = *_args.getPtr<Grid<Real> >("target",1,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",2,&_lock); ParticleDataImpl<Real>& source = *_args.getPtr<ParticleDataImpl<Real> >("source",3,&_lock);   _retval = getPyNone(); mapPartsToGrid(flags,target,parts,source);  _args.check(); } pbFinalizePlugin(parent,"mapPartsToGrid" ); return _retval; } catch(std::exception& e) { pbSetError("mapPartsToGrid",e.what()); return 0; } } static const Pb::Register _RP_mapPartsToGrid ("","mapPartsToGrid",_W_12); 
 void mapPartsToGridVec3( FlagGrid& flags, Grid<Vec3>& target , BasicParticleSystem& parts , ParticleDataImpl<Vec3>& source ) {
 	mapLinearRealHelper<Vec3>(flags,target,parts,source);
-} static PyObject* _W_12 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "mapPartsToGridVec3" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",2,&_lock); ParticleDataImpl<Vec3>& source = *_args.getPtr<ParticleDataImpl<Vec3> >("source",3,&_lock);   _retval = getPyNone(); mapPartsToGridVec3(flags,target,parts,source);  _args.check(); } pbFinalizePlugin(parent,"mapPartsToGridVec3" ); return _retval; } catch(std::exception& e) { pbSetError("mapPartsToGridVec3",e.what()); return 0; } } static const Pb::Register _RP_mapPartsToGridVec3 ("","mapPartsToGridVec3",_W_12); 
+} static PyObject* _W_13 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "mapPartsToGridVec3" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",2,&_lock); ParticleDataImpl<Vec3>& source = *_args.getPtr<ParticleDataImpl<Vec3> >("source",3,&_lock);   _retval = getPyNone(); mapPartsToGridVec3(flags,target,parts,source);  _args.check(); } pbFinalizePlugin(parent,"mapPartsToGridVec3" ); return _retval; } catch(std::exception& e) { pbSetError("mapPartsToGridVec3",e.what()); return 0; } } static const Pb::Register _RP_mapPartsToGridVec3 ("","mapPartsToGridVec3",_W_13); 
 // integers need "max" mode, not yet implemented
-//PYTHON void mapPartsToGridInt ( FlagGrid& flags, Grid<int >& target , BasicParticleSystem& parts , ParticleDataImpl<int >& source ) {
+//PYTHON() void mapPartsToGridInt ( FlagGrid& flags, Grid<int >& target , BasicParticleSystem& parts , ParticleDataImpl<int >& source ) {
 //	mapLinearRealHelper<int >(flags,target,parts,source);
 //}
 
@@ -481,10 +531,10 @@ template <class T>  struct knMapFromGrid : public KernelBase { knMapFromGrid( Ba
 }   inline BasicParticleSystem& getArg0() { return p; } typedef BasicParticleSystem type0;inline Grid<T>& getArg1() { return gsrc; } typedef Grid<T> type1;inline ParticleDataImpl<T>& getArg2() { return target; } typedef ParticleDataImpl<T> type2; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, p,gsrc,target);  } BasicParticleSystem& p; Grid<T>& gsrc; ParticleDataImpl<T>& target;   }; 
 void mapGridToParts( Grid<Real>& source , BasicParticleSystem& parts , ParticleDataImpl<Real>& target ) {
 	knMapFromGrid<Real>(parts, source, target);
-} static PyObject* _W_13 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "mapGridToParts" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",0,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",1,&_lock); ParticleDataImpl<Real>& target = *_args.getPtr<ParticleDataImpl<Real> >("target",2,&_lock);   _retval = getPyNone(); mapGridToParts(source,parts,target);  _args.check(); } pbFinalizePlugin(parent,"mapGridToParts" ); return _retval; } catch(std::exception& e) { pbSetError("mapGridToParts",e.what()); return 0; } } static const Pb::Register _RP_mapGridToParts ("","mapGridToParts",_W_13); 
+} static PyObject* _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "mapGridToParts" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",0,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",1,&_lock); ParticleDataImpl<Real>& target = *_args.getPtr<ParticleDataImpl<Real> >("target",2,&_lock);   _retval = getPyNone(); mapGridToParts(source,parts,target);  _args.check(); } pbFinalizePlugin(parent,"mapGridToParts" ); return _retval; } catch(std::exception& e) { pbSetError("mapGridToParts",e.what()); return 0; } } static const Pb::Register _RP_mapGridToParts ("","mapGridToParts",_W_14); 
 void mapGridToPartsVec3( Grid<Vec3>& source , BasicParticleSystem& parts , ParticleDataImpl<Vec3>& target ) {
 	knMapFromGrid<Vec3>(parts, source, target);
-} static PyObject* _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "mapGridToPartsVec3" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& source = *_args.getPtr<Grid<Vec3> >("source",0,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",1,&_lock); ParticleDataImpl<Vec3>& target = *_args.getPtr<ParticleDataImpl<Vec3> >("target",2,&_lock);   _retval = getPyNone(); mapGridToPartsVec3(source,parts,target);  _args.check(); } pbFinalizePlugin(parent,"mapGridToPartsVec3" ); return _retval; } catch(std::exception& e) { pbSetError("mapGridToPartsVec3",e.what()); return 0; } } static const Pb::Register _RP_mapGridToPartsVec3 ("","mapGridToPartsVec3",_W_14); 
+} static PyObject* _W_15 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "mapGridToPartsVec3" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& source = *_args.getPtr<Grid<Vec3> >("source",0,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",1,&_lock); ParticleDataImpl<Vec3>& target = *_args.getPtr<ParticleDataImpl<Vec3> >("target",2,&_lock);   _retval = getPyNone(); mapGridToPartsVec3(source,parts,target);  _args.check(); } pbFinalizePlugin(parent,"mapGridToPartsVec3" ); return _retval; } catch(std::exception& e) { pbSetError("mapGridToPartsVec3",e.what()); return 0; } } static const Pb::Register _RP_mapGridToPartsVec3 ("","mapGridToPartsVec3",_W_15); 
 
 
 // Get velocities from grid
@@ -499,7 +549,7 @@ void mapGridToPartsVec3( Grid<Vec3>& source , BasicParticleSystem& parts , Parti
 
 void mapMACToParts(FlagGrid& flags, MACGrid& vel , BasicParticleSystem& parts , ParticleDataImpl<Vec3>& partVel ) {
 	knMapLinearMACGridToVec3_PIC( parts, flags, vel, partVel );
-} static PyObject* _W_15 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "mapMACToParts" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",2,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",3,&_lock);   _retval = getPyNone(); mapMACToParts(flags,vel,parts,partVel);  _args.check(); } pbFinalizePlugin(parent,"mapMACToParts" ); return _retval; } catch(std::exception& e) { pbSetError("mapMACToParts",e.what()); return 0; } } static const Pb::Register _RP_mapMACToParts ("","mapMACToParts",_W_15); 
+} static PyObject* _W_16 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "mapMACToParts" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",2,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",3,&_lock);   _retval = getPyNone(); mapMACToParts(flags,vel,parts,partVel);  _args.check(); } pbFinalizePlugin(parent,"mapMACToParts" ); return _retval; } catch(std::exception& e) { pbSetError("mapMACToParts",e.what()); return 0; } } static const Pb::Register _RP_mapMACToParts ("","mapMACToParts",_W_16); 
 
 // with flip delta interpolation 
 
@@ -514,7 +564,7 @@ void mapMACToParts(FlagGrid& flags, MACGrid& vel , BasicParticleSystem& parts , 
 
 void flipVelocityUpdate(FlagGrid& flags, MACGrid& vel , MACGrid& velOld , BasicParticleSystem& parts , ParticleDataImpl<Vec3>& partVel , Real flipRatio ) {
 	knMapLinearMACGridToVec3_FLIP( parts, flags, vel, velOld, partVel, flipRatio );
-} static PyObject* _W_16 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "flipVelocityUpdate" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); MACGrid& velOld = *_args.getPtr<MACGrid >("velOld",2,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",3,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",4,&_lock); Real flipRatio = _args.get<Real >("flipRatio",5,&_lock);   _retval = getPyNone(); flipVelocityUpdate(flags,vel,velOld,parts,partVel,flipRatio);  _args.check(); } pbFinalizePlugin(parent,"flipVelocityUpdate" ); return _retval; } catch(std::exception& e) { pbSetError("flipVelocityUpdate",e.what()); return 0; } } static const Pb::Register _RP_flipVelocityUpdate ("","flipVelocityUpdate",_W_16); 
+} static PyObject* _W_17 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "flipVelocityUpdate" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); MACGrid& velOld = *_args.getPtr<MACGrid >("velOld",2,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",3,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",4,&_lock); Real flipRatio = _args.get<Real >("flipRatio",5,&_lock);   _retval = getPyNone(); flipVelocityUpdate(flags,vel,velOld,parts,partVel,flipRatio);  _args.check(); } pbFinalizePlugin(parent,"flipVelocityUpdate" ); return _retval; } catch(std::exception& e) { pbSetError("flipVelocityUpdate",e.what()); return 0; } } static const Pb::Register _RP_flipVelocityUpdate ("","flipVelocityUpdate",_W_17); 
 
 
 } // namespace

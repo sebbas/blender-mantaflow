@@ -337,19 +337,12 @@ FluidSolver* PbArgs::obtainParent() {
 	FluidSolver* solver = getPtrOpt<FluidSolver>("solver",-1,NULL);
 	if (solver != 0) return solver;
 	
-	// previous versions returned NULL for different parent solvers of args in the following two loops
-	// NULL pointer for solvers is not allowed anymore (unless explicitly specified with "noparent" keyword)
-	// thus, these checks are disabled for now - future version should also explicitly
-	// allow/disallow multiple solver parents...
-
 	for(map<string, DataElement>::iterator it = mData.begin(); it != mData.end(); it++) {
 		PbClass* obj = Pb::objFromPy(it->second.obj);
 
 		if (obj) {
 			if (solver == NULL) 
 				solver = obj->getParent();
-			//else if (solver != obj->getParent()) 
-				//return NULL;
 		}
 	}
 	for(vector<DataElement>::iterator it = mLinData.begin(); it != mLinData.end(); it++) {
@@ -358,14 +351,9 @@ FluidSolver* PbArgs::obtainParent() {
 		if (obj) {
 			if (solver == NULL) 
 				solver = obj->getParent();
-			//else if (solver != obj->getParent())
-				//return NULL;
 		}
 	}
 	
-	// allow plugins without solver
-	if (!solver)
-		errMsg("Solver cannot be deduced from arguments, specify using argument 'solver=xxx'");
 	return solver;    
 }
 

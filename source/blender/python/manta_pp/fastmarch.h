@@ -9,6 +9,7 @@
 
 
 
+#line 1 "/home/user/Developer/mantaflowgit/source/fastmarch.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -147,8 +148,7 @@ public:
 
 	enum SpecialValues { FlagInited = 1, FlagIsOnHeap = 2};
 
-	FastMarch(FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& levelset, Real maxTime, 
-			MACGrid* velTransport = NULL, Grid<Real>* velMag = NULL); 
+	FastMarch(FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& levelset, Real maxTime, MACGrid* velTransport = NULL);
 	~FastMarch() {}
 	
 	//! advect level set function with given velocity */
@@ -173,7 +173,6 @@ protected:
 	
 	//! velocity extrpolation
 	FmValueTransportVec3<MACGrid     , Vec3> mVelTransport;
-	FmValueTransportScalar<Grid<Real>, Real> mMagTransport;
 	
 	//! maximal time to march for
 	Real mMaxTime;

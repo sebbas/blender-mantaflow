@@ -9,6 +9,7 @@
 
 
 
+#line 1 "/home/user/Developer/mantaflowgit/source/gui/mainwindow.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -52,7 +53,7 @@ public:
 	void setPauseStatus(bool v);
 	void stepReset(bool fullUpdate) { if (mStep == 1 || (mStep == 2 && fullUpdate)) {mRequestPause = true; mStep = 0;} }
 	void requestClose() { mRequestClose =true; }
-	void setStep(int f);
+	void setStep(int f, float time);
 	void setBackground(Mesh *m) { emit setBackgroundMesh(m); }
 
 public slots:
@@ -72,6 +73,11 @@ public slots:
 	void nextVec3Display();
 	void nextPartDisplay();
 	void nextMeshDisplay();
+	void toggleHideGrids();
+
+	void setCamPos(float x, float y, float z);
+	void setCamRot(float x, float y, float z);
+	void windowSize(int w, int h);
 	
 signals:
 	void painterEvent(int e, int param=0);    

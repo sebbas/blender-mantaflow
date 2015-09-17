@@ -9,6 +9,7 @@
 
 
 
+#line 1 "/home/user/Developer/mantaflowgit/source/plugin/vortexplugins.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework

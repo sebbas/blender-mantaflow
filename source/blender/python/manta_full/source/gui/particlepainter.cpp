@@ -17,7 +17,6 @@
 #include <iomanip>
 #include <QtOpenGL>
 #include "vortexpart.h"
-//#include "vortexfilament.h"
 #include "turbulencepart.h"
 
 using namespace std;
@@ -167,126 +166,6 @@ void ParticlePainter::paint() {
 		
 	} else if(mLocal->getType() == ParticleBase::PARTICLE) {
 		paintBasicSys();
-#if 0
-		BasicParticleSystem* bp = (BasicParticleSystem*) mLocal;
-
-		// draw other particle data, if available
-		int pdataId = mMode % (bp->getNumPdata() + 2);
-		std::ostringstream infoStr;
-		bool drewPoints = false;
-
-		if( pdataId==0 ) {
-			// dont draw any points
-			infoStr << "Off\n";
-			drewPoints = true;
-		} else if( pdataId==1 ) {
-			// dont draw data, only flags with center below
-			infoStr << "Drawing center & flags\n";
-		} else if (bp->getNumPdata() > 0)  {
-			int pdNum = pdataId-2; // start at 0
-			ParticleDataBase* pdb = bp->getPdata(pdNum);
-
-			switch (pdb->getType() ) {
-
-			case ParticleDataBase::DATA_REAL: {
-				ParticleDataImpl<Real>* pdi = dynamic_cast<ParticleDataImpl<Real>*>(pdb);
-				if(!pdi) break;
-				mHavePdata = true;
-				drewPoints = true;
-				glPointSize(1.5);
-				glBegin(GL_POINTS); 
-				for(int i=0; i<(int)bp->size(); i++) {
-					if (!bp->isActive(i)) continue;
-					Vec3 pos = (*bp)[i].pos; 
-					if (pos[dim] < plane || pos[dim] > plane + 1.0f) continue;
-					mMaxVal = std::max( pdi->get(i), mMaxVal );
-					Real val = pdi->get(i) * scale;
-					glColor3f(0,val,0);
-					glVertex(pos, dx); 
-				}   
-				glEnd();
-				infoStr << "Pdata '"<<pdi->getName()<<"' #"<<pdNum<<", real\n";
-				} break;
-
-			case ParticleDataBase::DATA_INT: {
-				ParticleDataImpl<int>* pdi = dynamic_cast<ParticleDataImpl<int>*>(pdb);
-				if(!pdi) break;
-				mHavePdata = true;
-				drewPoints = true;
-				glPointSize(1.5);
-				glBegin(GL_POINTS); 
-				for(int i=0; i<(int)bp->size(); i++) {
-					if (!bp->isActive(i)) continue;
-					Vec3 pos = (*bp)[i].pos; 
-					if (pos[dim] < plane || pos[dim] > plane + 1.0f) continue;
-					Real val = pdi->get(i);
-					mMaxVal = std::max( val, mMaxVal );
-					val *= scale;
-					glColor3f(0,val,0);
-					glVertex(pos, dx); 
-				}   
-				glEnd();
-				infoStr << "Pdata '"<<pdi->getName()<<"' #"<<pdNum<<", int\n";
-				} break;
-
-			case ParticleDataBase::DATA_VEC3: {
-				ParticleDataImpl<Vec3>* pdi = dynamic_cast<ParticleDataImpl<Vec3>*>(pdb);
-				if(!pdi) break;
-				mHavePdata = true;
-				glBegin(GL_LINES); 
-				for(int i=0; i<(int)bp->size(); i++) {
-					if (!bp->isActive(i)) continue;
-					Vec3 pos = (*bp)[i].pos; 
-					if (pos[dim] < plane || pos[dim] > plane + 1.0f) continue;
-					mMaxVal = std::max( norm(pdi->get(i)), mMaxVal );
-					Vec3 val = pdi->get(i) * scale;
-					glColor3f(0.5,0.0,0);
-					glVertex(pos, dx); 
-					pos += val;
-					glColor3f(0.5,1.0,0);
-					glVertex(pos, dx); 
-				}   
-				glEnd();
-				infoStr << "Pdata '"<<pdi->getName()<<"' #"<<pdNum<<", vec3\n";
-				} break;
-
-			default: {
-					// skip...
-				} break;
-			}
-		}
-
-		mPdataInfo = infoStr.str(); 
-		// enforce refresh upon change
-		if(mLastPdata!=pdataId) {
-			mLastPdata = pdataId;
-			updateText();
-		}
-
-		// otherwise draw center
-		if(!drewPoints) {
-			glPointSize(1.5);
-			glBegin(GL_POINTS);
-
-			for(int i=0; i<(int)bp->size(); i++) {
-				Vec3 pos = (*bp)[i].pos;
-				if (pos[dim] < plane || pos[dim] > plane + 1.0f) continue;
-				
-				if(!bp->isActive(i) ) {
-					glColor3f(1.0, 0., 0.); // deleted, red
-				} else if(bp->getStatus(i) & ParticleBase::PNEW ) {
-					glColor3f(0.0, 1.0, 0.); // new, greem
-				} else {
-					glColor3f(0, 0.0, 1.0); // regular, blue
-				}
-				glVertex(pos, dx);
-				
-			}   
-			glEnd();
-		}
-		
-		// draw basic part sys done
-#endif
 	}
 
 	glPointSize(1.0);
@@ -322,7 +201,7 @@ void ParticlePainter::paintBasicSys() {
 
 		switch (pdb->getType() ) {
 
-		case ParticleDataBase::DATA_REAL: {
+		case ParticleDataBase::TypeReal: {
 			ParticleDataImpl<Real>* pdi = dynamic_cast<ParticleDataImpl<Real>*>(pdb);
 			if(!pdi) break;
 			mHavePdata = true;
@@ -342,7 +221,7 @@ void ParticlePainter::paintBasicSys() {
 			infoStr << "Pdata '"<<pdi->getName()<<"' #"<<pdNum<<", real\n";
 			} break;
 
-		case ParticleDataBase::DATA_INT: {
+		case ParticleDataBase::TypeInt: {
 			ParticleDataImpl<int>* pdi = dynamic_cast<ParticleDataImpl<int>*>(pdb);
 			if(!pdi) break;
 			mHavePdata = true;
@@ -363,13 +242,13 @@ void ParticlePainter::paintBasicSys() {
 			infoStr << "Pdata '"<<pdi->getName()<<"' #"<<pdNum<<", int\n";
 			} break;
 
-		case ParticleDataBase::DATA_VEC3: { 
+		case ParticleDataBase::TypeVec3: { 
 			ParticleDataImpl<Vec3>* pdi = dynamic_cast<ParticleDataImpl<Vec3>*>(pdb);
 			if(!pdi) break;
 			mHavePdata = true;
 
 			// particle vector data can be drawn in different ways...
-			mDisplayMode = mDisplayMode%2;
+			mDisplayMode = mDisplayMode%3;
 
 			switch(mDisplayMode) {
 			case 0: // lines
@@ -409,6 +288,27 @@ void ParticlePainter::paintBasicSys() {
 				glEnd();
 				drewPoints = true;
 				break;
+			case 2:
+				glClear(GL_DEPTH_BUFFER_BIT);
+				glEnable(GL_DEPTH_TEST); 
+
+				// colored by magnitude all
+				glPointSize(2.0);
+				glBegin(GL_POINTS); 
+				for(int i=0; i<(int)bp->size(); i++) {
+					if (!bp->isActive(i)) continue;
+					Vec3 pos = (*bp)[i].pos; 
+					mMaxVal = std::max( norm(pdi->get(i)), mMaxVal );
+					Vec3 val = Vec3( norm( pdi->get(i) * scale ) );
+					val[2] += 0.5; // base blue
+					for(int c=0; c<3; ++c) val[c] = std::min( (Real)val[c], (Real)1.);
+
+					glColor3f(val[0],val[1],val[2]);
+					glVertex(pos, dx); 
+				}   
+				glEnd();
+				drewPoints = true;
+				break;
 			}
 
 			infoStr << "Pdata '"<<pdi->getName()<<"' #"<<pdNum<<", vec3\n";
@@ -439,9 +339,10 @@ void ParticlePainter::paintBasicSys() {
 			if(!bp->isActive(i) ) {
 				glColor3f(1.0, 0., 0.); // deleted, red
 			} else if(bp->getStatus(i) & ParticleBase::PNEW ) {
-				glColor3f(0.0, 1.0, 0.); // new, greem
+				glColor3f(0.0, 1.0, 0.); // new, green
 			} else {
-				glColor3f(0, 0.0, 1.0); // regular, blue
+				//glColor3f(0, 0.0, 1.0); // regular, blue
+				glColor3f(1.0, 1.0, 1.0); // regular, white - hi contrast
 			}
 			glVertex(pos, dx);
 			

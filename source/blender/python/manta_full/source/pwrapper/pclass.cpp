@@ -15,6 +15,7 @@
 #include "structmember.h"
 #include "manta.h"
 #include "general.h"
+#include "timing.h"
 
 using namespace std;
 namespace Manta {
@@ -22,21 +23,12 @@ namespace Manta {
 //******************************************************************************
 // Free functions
 
-#ifdef GUI
-	extern void updateQtGui(bool full, int frame, const std::string& curPlugin);
-#else
-	inline void updateQtGui(bool full, int frame, const std::string& curPlugin) {}
-#endif
-
 void pbPreparePlugin(FluidSolver* parent, const string& name) {
-	if (parent)
-		parent->pluginStart(name);
+    TimingData::instance().start(parent, name);
 }
 
 void pbFinalizePlugin(FluidSolver *parent, const string& name) {
-	if (parent) {
-		parent->pluginStop(name);
-	}
+    TimingData::instance().stop(parent, name);
 	
 	// GUI update, also print name of parent if there's more than one
 	std::ostringstream msg;
@@ -45,8 +37,9 @@ void pbFinalizePlugin(FluidSolver *parent, const string& name) {
 		if(parent && (parent->getNumInstances()>0) )  msg << parent->getName() << string(".");
 		msg << name;
 	}
-	updateQtGui(false, 0, msg.str() );
+	updateQtGui(false, 0,0., msg.str() );
 	
+	debMsg(name<<" done", 2);
 	// name unnamed PbClass Objects from var name
 	PbClass::renameObjects();
 }

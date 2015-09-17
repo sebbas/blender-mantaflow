@@ -9,6 +9,7 @@
 
 
 
+#line 1 "/home/user/Developer/mantaflowgit/source/particle.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -145,7 +146,7 @@ template<class S> class ParticleSystem : public ParticleBase {public:
 	void clear(); static PyObject* _W_8 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleSystem* pbo = dynamic_cast<ParticleSystem*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleSystem::clear"); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->clear();  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleSystem::clear"); return _retval; } catch(std::exception& e) { pbSetError("ParticleSystem::clear",e.what()); return 0; } }
 			
 	//! Advect particle in grid velocity field
-	void advectInGrid(FlagGrid& flags, MACGrid& vel, int integrationMode, bool deleteInObstacle=true ); static PyObject* _W_9 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleSystem* pbo = dynamic_cast<ParticleSystem*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleSystem::advectInGrid"); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); int integrationMode = _args.get<int >("integrationMode",2,&_lock); bool deleteInObstacle = _args.getOpt<bool >("deleteInObstacle",3,true ,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->advectInGrid(flags,vel,integrationMode,deleteInObstacle);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleSystem::advectInGrid"); return _retval; } catch(std::exception& e) { pbSetError("ParticleSystem::advectInGrid",e.what()); return 0; } }
+	void advectInGrid(FlagGrid& flags, MACGrid& vel, int integrationMode, bool deleteInObstacle=true, bool stopInObstacle=true ); static PyObject* _W_9 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleSystem* pbo = dynamic_cast<ParticleSystem*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleSystem::advectInGrid"); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); int integrationMode = _args.get<int >("integrationMode",2,&_lock); bool deleteInObstacle = _args.getOpt<bool >("deleteInObstacle",3,true,&_lock); bool stopInObstacle = _args.getOpt<bool >("stopInObstacle",4,true ,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->advectInGrid(flags,vel,integrationMode,deleteInObstacle,stopInObstacle);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleSystem::advectInGrid"); return _retval; } catch(std::exception& e) { pbSetError("ParticleSystem::advectInGrid",e.what()); return 0; } }
 	
 	//! Project particles outside obstacles
 	void projectOutside(Grid<Vec3>& gradient); static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); ParticleSystem* pbo = dynamic_cast<ParticleSystem*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "ParticleSystem::projectOutside"); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& gradient = *_args.getPtr<Grid<Vec3> >("gradient",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->projectOutside(gradient);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"ParticleSystem::projectOutside"); return _retval; } catch(std::exception& e) { pbSetError("ParticleSystem::projectOutside",e.what()); return 0; } }
@@ -404,20 +405,24 @@ void ParticleSystem<S>::transformPositions( Vec3i dimOld, Vec3i dimNew )
 
 
 
-template <class S>  struct GridAdvectKernel : public KernelBase { GridAdvectKernel(std::vector<S>& p, const MACGrid& vel, const FlagGrid& flags, Real dt, bool deleteInObstacle ) :  KernelBase(p.size()) ,p(p),vel(vel),flags(flags),dt(dt),deleteInObstacle(deleteInObstacle) ,u((size))  { run(); }  inline void op(int idx, std::vector<S>& p, const MACGrid& vel, const FlagGrid& flags, Real dt, bool deleteInObstacle  ,std::vector<Vec3> & u)  {
+template <class S>  struct GridAdvectKernel : public KernelBase { GridAdvectKernel(std::vector<S>& p, const MACGrid& vel, const FlagGrid& flags, Real dt, bool deleteInObstacle, bool stopInObstacle ) :  KernelBase(p.size()) ,p(p),vel(vel),flags(flags),dt(dt),deleteInObstacle(deleteInObstacle),stopInObstacle(stopInObstacle) ,u((size))  { run(); }  inline void op(int idx, std::vector<S>& p, const MACGrid& vel, const FlagGrid& flags, Real dt, bool deleteInObstacle, bool stopInObstacle  ,std::vector<Vec3> & u)  {
 	if (p[idx].flag & ParticleBase::PDELETE) {
-		u[idx] =_0;
-	} else if (!flags.isInBounds(p[idx].pos,1) || flags.isObstacle(p[idx].pos)) {
-		u[idx] = _0;
-
-		// for simple tracer particles, its convenient to delete particles right away
-		// for other sim types, eg flip, we can try to fix positions later on
-		if(deleteInObstacle) 
-			p[idx].flag |= ParticleBase::PDELETE;
-	} else {
-		u[idx] = vel.getInterpolated(p[idx].pos) * dt;
+		u[idx] =_0; return;
+	} 
+	// special handling
+	if(deleteInObstacle || stopInObstacle) {
+		if (!flags.isInBounds(p[idx].pos, 1) || flags.isObstacle(p[idx].pos) ) {
+			if(stopInObstacle)
+				u[idx] = _0; 
+			// for simple tracer particles, its convenient to delete particles right away
+			// for other sim types, eg flip, we can try to fix positions later on
+			if(deleteInObstacle) 
+				p[idx].flag |= ParticleBase::PDELETE; 
+			return;
+		} 
 	}
-}   inline operator std::vector<Vec3> () { return u; } inline std::vector<Vec3>  & getRet() { return u; }  inline std::vector<S>& getArg0() { return p; } typedef std::vector<S> type0;inline const MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline const FlagGrid& getArg2() { return flags; } typedef FlagGrid type2;inline Real& getArg3() { return dt; } typedef Real type3;inline bool& getArg4() { return deleteInObstacle; } typedef bool type4; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, p,vel,flags,dt,deleteInObstacle,u);  } std::vector<S>& p; const MACGrid& vel; const FlagGrid& flags; Real dt; bool deleteInObstacle;  std::vector<Vec3>  u;  };;
+	u[idx] = vel.getInterpolated(p[idx].pos) * dt;
+}   inline operator std::vector<Vec3> () { return u; } inline std::vector<Vec3>  & getRet() { return u; }  inline std::vector<S>& getArg0() { return p; } typedef std::vector<S> type0;inline const MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline const FlagGrid& getArg2() { return flags; } typedef FlagGrid type2;inline Real& getArg3() { return dt; } typedef Real type3;inline bool& getArg4() { return deleteInObstacle; } typedef bool type4;inline bool& getArg5() { return stopInObstacle; } typedef bool type5; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, p,vel,flags,dt,deleteInObstacle,stopInObstacle,u);  } std::vector<S>& p; const MACGrid& vel; const FlagGrid& flags; Real dt; bool deleteInObstacle; bool stopInObstacle;  std::vector<Vec3>  u;  };;
 
 // final check after advection to make sure particles haven't escaped
 // (similar to particle advection kernel)
@@ -445,19 +450,19 @@ static inline Vec3 bisectBacktracePos(const FlagGrid& flags, const Vec3& oldp, c
 // at least make sure all particles are inside domain
 
 
-template <class S>  struct KnClampPositions : public KernelBase { KnClampPositions(std::vector<S>& p, const FlagGrid& flags, ParticleDataImpl<Vec3> *posOld = NULL) :  KernelBase(p.size()) ,p(p),flags(flags),posOld(posOld)   { run(); }  inline void op(int idx, std::vector<S>& p, const FlagGrid& flags, ParticleDataImpl<Vec3> *posOld = NULL )  {
+template <class S>  struct KnClampPositions : public KernelBase { KnClampPositions(std::vector<S>& p, const FlagGrid& flags, ParticleDataImpl<Vec3> *posOld = NULL, bool stopInObstacle=true) :  KernelBase(p.size()) ,p(p),flags(flags),posOld(posOld),stopInObstacle(stopInObstacle)   { run(); }  inline void op(int idx, std::vector<S>& p, const FlagGrid& flags, ParticleDataImpl<Vec3> *posOld = NULL, bool stopInObstacle=true )  {
 	if (p[idx].flag & ParticleBase::PDELETE) return;
 	if (!flags.isInBounds(p[idx].pos,0) ) {
 		p[idx].pos = clamp( p[idx].pos, Vec3(0.), toVec3(flags.getSize())-Vec3(1.) );
 	} 
-	if (flags.isObstacle(p[idx].pos)) {
+	if (stopInObstacle && (flags.isObstacle(p[idx].pos)) ) {
 		p[idx].pos = bisectBacktracePos(flags, (*posOld)[idx], p[idx].pos);
 	}
-}   inline std::vector<S>& getArg0() { return p; } typedef std::vector<S> type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline ParticleDataImpl<Vec3> * getArg2() { return posOld; } typedef ParticleDataImpl<Vec3>  type2; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, p,flags,posOld);  } std::vector<S>& p; const FlagGrid& flags; ParticleDataImpl<Vec3> * posOld;   };
+}   inline std::vector<S>& getArg0() { return p; } typedef std::vector<S> type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline ParticleDataImpl<Vec3> * getArg2() { return posOld; } typedef ParticleDataImpl<Vec3>  type2;inline bool& getArg3() { return stopInObstacle; } typedef bool type3; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, p,flags,posOld,stopInObstacle);  } std::vector<S>& p; const FlagGrid& flags; ParticleDataImpl<Vec3> * posOld; bool stopInObstacle;   };
 
 // advection plugin
 template<class S>
-void ParticleSystem<S>::advectInGrid(FlagGrid& flags, MACGrid& vel, int integrationMode, bool deleteInObstacle ) {
+void ParticleSystem<S>::advectInGrid(FlagGrid& flags, MACGrid& vel, int integrationMode, bool deleteInObstacle, bool stopInObstacle ) {
 	// position clamp requires old positions, backup
 	ParticleDataImpl<Vec3> *posOld = NULL;
 	if(!deleteInObstacle) {
@@ -467,11 +472,11 @@ void ParticleSystem<S>::advectInGrid(FlagGrid& flags, MACGrid& vel, int integrat
 	}
 
 	// update positions
-	GridAdvectKernel<S> kernel(mData, vel, flags, getParent()->getDt(), deleteInObstacle );
+	GridAdvectKernel<S> kernel(mData, vel, flags, getParent()->getDt(), deleteInObstacle, stopInObstacle );
 	integratePointSet(kernel, integrationMode);
 
 	if(!deleteInObstacle) {
-		KnClampPositions<S>  ( mData, flags, posOld );
+		KnClampPositions<S>  ( mData, flags, posOld , stopInObstacle );
 		delete posOld;
 	} else {
 		KnDeleteInObstacle<S>( mData, flags);

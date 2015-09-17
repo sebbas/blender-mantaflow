@@ -1,0 +1,4 @@
+-DGUI=1
+-o
+/home/user/Developer/mantaflowgit/build/pp/source/gui/moc_mainwindow.cpp
+/home/user/Developer/mantaflowgit/build/pp/source/gui/mainwindow.h

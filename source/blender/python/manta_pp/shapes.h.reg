@@ -23,3 +23,6 @@
 +Cylinder^ static const Pb::Register _R_$IDX$ ("Cylinder","Cylinder",Cylinder::_W_11); 
 +Cylinder^ static const Pb::Register _R_$IDX$ ("Cylinder","setRadius",Cylinder::_W_12); 
 +Cylinder^ static const Pb::Register _R_$IDX$ ("Cylinder","setZ",Cylinder::_W_13); 
++Slope^ static const Pb::Register _R_$IDX$ ("Slope","Slope","Shape"); template<> const char* Namify<Slope >::S = "Slope"; 
+>Slope^
++Slope^ static const Pb::Register _R_$IDX$ ("Slope","Slope",Slope::_W_14); 

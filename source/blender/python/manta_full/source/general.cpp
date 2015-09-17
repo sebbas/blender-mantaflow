@@ -1,15 +1,34 @@
-	/******************************************************************************
+/******************************************************************************
  *
  * MantaFlow fluid solver framework
- * Copyright 2011 Tobias Pfaff, Nils Thuerey 
+ * Copyright 2015 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
  * GNU General Public License (GPL) 
  * http://www.gnu.org/licenses
  *
- * Globally used macros and functions                 
+ * Globally used macros and functions (e.g. time measurements),
+ * and doxygen documentation collection.
  *
  ******************************************************************************/
+
+
+/*! \mainpage Welcome to mantaflow!
+ *
+ *  Here you can find the auto-generated documentation of the mantaflow framework.
+ *
+ *  One of the most useful parts is probably the list of python functions, classes and the C++ kernels.
+ *  Those can be found found in the ''Modules'' section. For python functions the parameters (e.g. Grids, Real or int values)
+ *  are automatically transferred to and from python. Thus, this list is a good reference how to call the functions used in the
+ *  example scenes.
+ * 
+ */
+
+// Define plugin documentation group
+// all kernels, plugin functions and classes will automatically be added to this group
+//! @defgroup Plugins Functions callable from Python
+//! @defgroup PyClasses Classes exposed to Python
+//! @defgroup Kernels Computation Kernels
 
 #include "general.h"
 #if defined(WIN32) || defined(_WIN32)
@@ -20,7 +39,7 @@
 #  undef NOMINMAX
 #else
 #   include <sys/time.h>
-//#	include "hginfo.h"
+#	include "hginfo.h"
 #endif
 
 using namespace std;
@@ -78,10 +97,10 @@ ostream& operator<<(ostream& os, const MuTime& t) {
 	return os;
 }
 
+// print info about this mantaflow build, used eg by printBuildInfo in fluidsolver.cpp
 std::string buildInfoString() {
 	std::ostringstream infoStr;
 	infoStr << "mantaflow";
-	// TODO , include hg branch info
 
 	// os
 #if defined(WIN32) || defined(_WIN32)
@@ -115,13 +134,13 @@ std::string buildInfoString() {
 		infoStr << " omp";
 #	endif
 
-	// repository info
-//#	ifndef MANTA_HG_VERSION
-//#	define MANTA_HG_VERSION "<unknown>"
-//#	endif
-//	infoStr << " hg "<< MANTA_HG_VERSION;
-//
-//	infoStr << " from "<< __DATE__<<", "<<__TIME__;
+	// repository info (git commit id)
+#	ifndef MANTA_HG_VERSION
+#	define MANTA_HG_VERSION "<unknown-commit>"
+#	endif
+	infoStr << " "<< MANTA_HG_VERSION;
+
+	infoStr << " from "<< __DATE__<<", "<<__TIME__;
 	return infoStr.str();
 }
 

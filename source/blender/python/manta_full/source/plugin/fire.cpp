@@ -89,7 +89,7 @@ void KnUpdateFlame(Grid<Real>& react, Grid<Real>& flame)
 		flame(i,j,k) = 0.0f;
 }
 
-PYTHON void processBurn(Grid<Real>& fuel,
+PYTHON() void processBurn(Grid<Real>& fuel,
 						Grid<Real>& density,
 						Grid<Real>& react,
 						Grid<Real>& red,
@@ -107,7 +107,7 @@ PYTHON void processBurn(Grid<Real>& fuel,
 				  flameSmoke, ignitionTemp, maxTemp, dt, flameSmokeColor);
 }
 
-PYTHON void updateFlame(Grid<Real>& react, Grid<Real>& flame)
+PYTHON() void updateFlame(Grid<Real>& react, Grid<Real>& flame)
 {
 	KnUpdateFlame(react, flame);
 }

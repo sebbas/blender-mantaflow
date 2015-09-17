@@ -27,11 +27,12 @@ using namespace std;
 
 namespace Manta {
 
-MainWnd::MainWnd() : QMainWindow(0), mPaused(true), mRequestPause(false), mRequestClose(false), mStep(0)
+MainWnd::MainWnd() : QMainWindow(0), mPaused(true), mRequestPause(false), mRequestClose(false), mStep(0),
+						mKbwScene(0), mKbwView(0), mKbwPixmap(0), mMenuBar(0)
 {
 	// Frame info label
 	mInfo = new QLabel;
-	setFrame(0);
+	setStep(0,0.);
 	
 	// register GL widget
 	mGlWidget = new GLWidget();
@@ -83,11 +84,37 @@ MainWnd::MainWnd() : QMainWindow(0), mPaused(true), mRequestPause(false), mReque
 	/*QAction* a = new QAction(this);
 	a->setText( "Quit" );
 	connect(a, SIGNAL(triggered()), SLOT(close()) );
-	menuBar()->addMenu( "File" )->addAction( a );        */
+	mMenuBar = menuBar()->addMenu( "File" );
+	mMenuBar->addAction( a ); */
+
+	// keyboard info window, show on demand
+    mKbwScene = new QGraphicsScene(); 
+    mKbwView = new QGraphicsView(mKbwScene);
+    mKbwPixmap = new QGraphicsPixmapItem(QPixmap(":/keyboard.png"));
+    mKbwScene->addItem(mKbwPixmap);
+	mKbwView->hide(); 
+
+	mAcHelp = toolbar->addAction(QIcon(":/help.png"),"Help");
+	mAcHelp->setStatusTip("Help");
+	connect(mAcHelp, SIGNAL(triggered()), SLOT(showHelp()));
 	
+	// start...
 	mGlWidget->setFocus();
 	this->raise();
 	this->activateWindow();
+
+	/*
+	// MLE 2014-07-05 added
+	// move gui window to upper left corner and resize window to screen size
+	QRect rc = frameGeometry();
+    QRect rcDesktop = QApplication::desktop()->frameGeometry();
+    rc.setLeft(rcDesktop.left());
+    rc.setTop(rcDesktop.top());
+    rc.setRight(rcDesktop.right());
+    rc.setBottom(rcDesktop.bottom());
+    move(rc.topLeft());
+    resize(rc.size());
+	*/
 
 	// uncomment to start  paused
 	//emit pause();
@@ -108,9 +135,9 @@ void MainWnd::addControl(void* ctrl) {
 	control->init(mPainterLayout);
 }
 
-void MainWnd::setFrame(int f) {
+void MainWnd::setStep(int f, float time) {
 	std::stringstream s;
-	s << "Simulation frame " << f;
+	s << "Simulation frame " << f <<", time "<<time; 
 	mInfo->setText(s.str().c_str());
 }
 
@@ -139,11 +166,13 @@ bool MainWnd::event(QEvent* e) {
 	}
 	else if (e->type() == (QEvent::Type)EventStepUpdate) {        
 		if (!mRequestClose) {
-			if (mRequestPause)
+			if (mRequestPause) {
 				emit painterEvent(Painter::UpdateFull);
-			else
+				mGlWidget->updateGL();
+			} else {
 				emit painterEvent(Painter::UpdateStep);
-			mGlWidget->updateGL();
+				// redraw not necessary? old: mGlWidget->updateGL();
+			}
 		}
 		emit wakeMain();
 		return true;
@@ -155,6 +184,10 @@ bool MainWnd::event(QEvent* e) {
 		}
 		mRequestClose = true;
 		emit wakeMain();
+		return true;
+	}
+	else if (e->type() == (QEvent::Type)EventSet2DCam) {        
+		mGlWidget->setCamPos( Vec3(0, 0, -1.3) );
 		return true;
 	}
 	else if (e->type() == (QEvent::Type)EventInstantKill) {        
@@ -206,6 +239,8 @@ void MainWnd::keyPressEvent(QKeyEvent* e) {
 			mStep = (e->modifiers() & Qt::ShiftModifier) ? 1 : 2;                
 		} else
 			emit pause();
+	} else if (e->key() == Qt::Key_H) {
+		emit showHelp();
 	} else { 
 		mGlWidget->keyPressEvent(e); // let gl widget take care of keyboard shortcuts
 		//QMainWindow::keyPressEvent(e);
@@ -230,6 +265,49 @@ void MainWnd::play() {
 void MainWnd::step() {
 	mStep = 2;
 	mRequestPause = false;
+}
+
+void MainWnd::showHelp() {
+	mKbwView->show();
+}
+
+void MainWnd::nextRealGrid() {
+	emit painterEvent(Painter::EventNextReal); 
+}
+void MainWnd::nextVec3Grid() {
+	emit painterEvent(Painter::EventNextVec); 
+}
+void MainWnd::nextMesh() {
+	emit painterEvent(Painter::EventNextMesh); 
+}
+void MainWnd::nextParts() {
+	emit painterEvent(Painter::EventNextSystem); 
+}
+void MainWnd::nextPdata() {
+	emit painterEvent(Painter::EventToggleParticles); 
+}
+void MainWnd::nextVec3Display() {
+	emit painterEvent(Painter::EventNextVecDisplayMode); 
+}
+void MainWnd::nextPartDisplay() {
+	emit painterEvent(Painter::EventNextParticleDisplayMode); 
+}
+void MainWnd::nextMeshDisplay() {
+	emit painterEvent(Painter::EventMeshMode); 
+}
+void MainWnd::toggleHideGrids() {
+	emit painterEvent(Painter::EventToggleGridDisplay); 
+}
+void MainWnd::setCamPos(float x, float y, float z) {
+	mGlWidget->setCamPos( Vec3(x, y, z) );
+}
+void MainWnd::setCamRot(float x, float y, float z) {
+	mGlWidget->setCamRot( Vec3(x, y, z) );
+}
+void MainWnd::windowSize(int w, int h) {
+	mGlWidget->setMinimumSize( w,h );
+	mGlWidget->setMaximumSize( w,h );
+	mGlWidget->resize( w,h );
 }
 
 MainWnd::~MainWnd() {

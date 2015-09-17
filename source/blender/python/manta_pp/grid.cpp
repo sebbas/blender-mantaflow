@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/pr110/Documents/WorkingOnNow/gsoc/mantaflow-manta-c110e265d468/source/grid.cpp"
+#line 1 "/home/user/Developer/mantaflowgit/source/grid.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -128,14 +128,6 @@ void Grid<T>::save(string name) {
 		errMsg("file '" + name +"' filetype not supported");
 }
 
-template<class T>
-void Grid<T>::loadIncrement(string name) {
-	Grid<T> temp(*this);
-	temp.load(name);
-	for(int i=0; i< mSize[0] * mSize[1] * mSize[2]; ++i){
-		mData[i] += temp[i];
-	}
-}
 //******************************************************************************
 // Grid<T> operators
 
@@ -261,6 +253,27 @@ template<> Real Grid<int>::getMaxAbs() {
 	int amax = CompMaxInt (*this);
 	return max( fabs((Real)amin), fabs((Real)amax));
 }
+template<class T> void Grid<T>::readGridFromMemory(const std::string& memLoc, int x, int y, int z) {
+	debMsg("Reading grid from " + memLoc,1);
+	if (memLoc == "" ||memLoc == "0" ){
+		debMsg("Can not write grid to NULL pointer",1);
+		return;
+	}
+	if (x != mSize.x || y != mSize.y || z != mSize.z)
+	{
+		debMsg("Can not write grid with different domain size",1);
+		return;
+	}
+	stringstream ss(memLoc);
+	void *gridPointer = NULL;
+	ss >> gridPointer;
+	memcpy(mData, gridPointer, sizeof(T) * x * y * z);
+}
+template<class T> std::string Grid<T>::getDataPointer() {
+	ostringstream ss;
+	ss << mData ;
+	return ss.str();
+}
 
 // compute maximal diference of two cells in the grid
 // used for testing system
@@ -341,100 +354,6 @@ void swapComponents(Grid<Vec3>& vel, int c1=0, int c2=1, int c3=2) {
 	}
 } static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "swapComponents" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& vel = *_args.getPtr<Grid<Vec3> >("vel",0,&_lock); int c1 = _args.getOpt<int >("c1",1,0,&_lock); int c2 = _args.getOpt<int >("c2",2,1,&_lock); int c3 = _args.getOpt<int >("c3",3,2,&_lock);   _retval = getPyNone(); swapComponents(vel,c1,c2,c3);  _args.check(); } pbFinalizePlugin(parent,"swapComponents" ); return _retval; } catch(std::exception& e) { pbSetError("swapComponents",e.what()); return 0; } } static const Pb::Register _RP_swapComponents ("","swapComponents",_W_7); 
 
-template<class T> void Grid<T>::writeGridToMemory(const std::string& memLoc, const std::string& sizeAllowed)
-{
-	if (memLoc == "" ||memLoc == "0" ){
-		debMsg("Cant write grid to NULL pointer",1);
-		return;
-	}
-	istringstream iss(sizeAllowed);
-    size_t sizeAllowed_num;
-    iss >> sizeAllowed_num;
-	if (sizeof(T) * mSize.x * mSize.y * mSize.z != sizeAllowed_num){
-		debMsg("Cant write grid with incompatible size",1);
-		return;
-	}
-	stringstream ss(memLoc);
-	void *gridPointer = NULL;
-	ss >> gridPointer;
-	memcpy(gridPointer, mData, sizeAllowed_num);
-}
-
-template<class T> void Grid<T>::readGridFromMemory(const std::string& memLoc, int x, int y, int z)
-{
-	debMsg("Reading grid from " + memLoc,1);
-	if (memLoc == "" ||memLoc == "0" ){
-		debMsg("Can not write grid to NULL pointer",1);
-		return;
-	}
-	if (x != mSize.x || y != mSize.y || z != mSize.z)
-	{
-		debMsg("Can not write grid with different domain size",1);
-		return;
-	}
-	stringstream ss(memLoc);
-	void *gridPointer = NULL;
-	ss >> gridPointer;
-	memcpy(mData, gridPointer, sizeof(T) * x * y * z);
-}
-
-template<class T> void Grid<T>::readAdaptiveGridFromMemory(const std::string& memLoc, Vec3i minSize, Vec3i maxSize)
-{
-	if (memLoc == "" ||memLoc == "0" ){
-		debMsg("Can not write grid to NULL pointer",1);
-		return;
-	}
-	if (minSize.x < 0 || minSize.y < 0 || minSize.z < 0){
-		debMsg("Adaptive grid smaller than 0",1);
-		return;
-	}
-	if (maxSize.x > mSize.x || maxSize.y > mSize.y || maxSize.z > mSize.z){
-		debMsg("Adaptive grid larger than current",1);
-		return;
-	}
-	Vec3i adaptiveSize = maxSize - minSize;
-	stringstream ss(memLoc);
-	void *gridPointer = NULL;
-	ss >> gridPointer;
-	float *data_Array = (float* )gridPointer;
-	for (int x = 0; x < adaptiveSize.x; ++x){
-		for (int y = 0; y < adaptiveSize.y; ++y){
-			for (int z = 0; z < adaptiveSize.z; ++z){
-				get(x + minSize.x, y + minSize.y, z + minSize.z) = data_Array[x  + adaptiveSize.x * y + adaptiveSize.x * adaptiveSize.y * z];
-			}
-		}
-	}
-}
-//! Kernel: Apply a texture to a grid, setting texture(ijk)*value where texture(ijk) > 0
-//note: can not use template kernel here, because of Blender classes 
-
- struct ApplyTextureToRealGrid : public KernelBase { ApplyTextureToRealGrid(Grid<Real> *grid, Grid<Real> *texture, Real value, FlagGrid* respectFlags) :  KernelBase(grid,0) ,grid(grid),texture(texture),value(value),respectFlags(respectFlags)   { run(); }  inline void op(int i, int j, int k, Grid<Real> *grid, Grid<Real> *texture, Real value, FlagGrid* respectFlags )  {
-	if (respectFlags && respectFlags->isObstacle(i,j,k))
-		return;
-	if ((*texture)(i,j,k) > 0)
-		(*grid)(i,j,k) = (*texture)(i,j,k) * value;
-}   inline Grid<Real> * getArg0() { return grid; } typedef Grid<Real>  type0;inline Grid<Real> * getArg1() { return texture; } typedef Grid<Real>  type1;inline Real& getArg2() { return value; } typedef Real type2;inline FlagGrid* getArg3() { return respectFlags; } typedef FlagGrid type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, grid,texture,value,respectFlags);  } Grid<Real> * grid; Grid<Real> * texture; Real value; FlagGrid* respectFlags;   };   
-
- struct ApplyTextureToIntGrid : public KernelBase { ApplyTextureToIntGrid(Grid<int> *grid, Grid<Real> *texture, int value, FlagGrid* respectFlags) :  KernelBase(grid,0) ,grid(grid),texture(texture),value(value),respectFlags(respectFlags)   { run(); }  inline void op(int i, int j, int k, Grid<int> *grid, Grid<Real> *texture, int value, FlagGrid* respectFlags )  {
-	if (respectFlags && respectFlags->isObstacle(i,j,k))
-		return;
-	if ((*texture)(i,j,k) > 0)
-		(*grid)(i,j,k) = value ;
-}   inline Grid<int> * getArg0() { return grid; } typedef Grid<int>  type0;inline Grid<Real> * getArg1() { return texture; } typedef Grid<Real>  type1;inline int& getArg2() { return value; } typedef int type2;inline FlagGrid* getArg3() { return respectFlags; } typedef FlagGrid type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, grid,texture,value,respectFlags);  } Grid<int> * grid; Grid<Real> * texture; int value; FlagGrid* respectFlags;   };
-
-template<class T> void Grid<T>::applyToGrid(GridBase *grid, FlagGrid* respectFlags)
-{
-	if (this->getType() & GridBase::TypeReal)
-		ApplyTextureToRealGrid((Grid<Real>*)grid, (Grid<Real>*)this, _args.get<Real>("value"), respectFlags);
-	if (this->getType() & GridBase::TypeInt)
-		ApplyTextureToIntGrid((Grid<int>*)grid, (Grid<Real>*)this, _args.get<int>("value"), respectFlags);
-}
-template<class T> std::string Grid<T>::getDataPointer()
-{
-	ostringstream ss;
-	ss << mData ;
-	return ss.str();
-}
 // helper functions for UV grid data (stored grid coordinates as Vec3 values, and uv weight in entry zero)
 
 // make uv weight accesible in python
@@ -553,23 +472,169 @@ Real getGridAvg(Grid<Real>& source, FlagGrid* flags=NULL) {
 	return sum;
 } static PyObject* _W_11 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "getGridAvg" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",0,&_lock); FlagGrid* flags = _args.getPtrOpt<FlagGrid >("flags",1,NULL,&_lock);   _retval = toPy(getGridAvg(source,flags));  _args.check(); } pbFinalizePlugin(parent,"getGridAvg" ); return _retval; } catch(std::exception& e) { pbSetError("getGridAvg",e.what()); return 0; } } static const Pb::Register _RP_getGridAvg ("","getGridAvg",_W_11); 
 
+//! transfer data between real and vec3 grids
+
+ struct knGetComponent : public KernelBase { knGetComponent(Grid<Vec3>& source, Grid<Real>& target, int component) :  KernelBase(&source,0) ,source(source),target(target),component(component)   { run(); }  inline void op(int idx, Grid<Vec3>& source, Grid<Real>& target, int component )  { 
+	target[idx] = source[idx][component]; 
+}   inline Grid<Vec3>& getArg0() { return source; } typedef Grid<Vec3> type0;inline Grid<Real>& getArg1() { return target; } typedef Grid<Real> type1;inline int& getArg2() { return component; } typedef int type2; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, source,target,component);  } Grid<Vec3>& source; Grid<Real>& target; int component;   };
+void getComponent(Grid<Vec3>& source, Grid<Real>& target, int component) { knGetComponent(source, target, component); } static PyObject* _W_12 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "getComponent" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& source = *_args.getPtr<Grid<Vec3> >("source",0,&_lock); Grid<Real>& target = *_args.getPtr<Grid<Real> >("target",1,&_lock); int component = _args.get<int >("component",2,&_lock);   _retval = getPyNone(); getComponent(source,target,component);  _args.check(); } pbFinalizePlugin(parent,"getComponent" ); return _retval; } catch(std::exception& e) { pbSetError("getComponent",e.what()); return 0; } } static const Pb::Register _RP_getComponent ("","getComponent",_W_12); 
+
+ struct knSetComponent : public KernelBase { knSetComponent(Grid<Real>& source, Grid<Vec3>& target, int component) :  KernelBase(&source,0) ,source(source),target(target),component(component)   { run(); }  inline void op(int idx, Grid<Real>& source, Grid<Vec3>& target, int component )  { 
+	target[idx][component] = source[idx]; 
+}   inline Grid<Real>& getArg0() { return source; } typedef Grid<Real> type0;inline Grid<Vec3>& getArg1() { return target; } typedef Grid<Vec3> type1;inline int& getArg2() { return component; } typedef int type2; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, source,target,component);  } Grid<Real>& source; Grid<Vec3>& target; int component;   };
+void setComponent(Grid<Real>& source, Grid<Vec3>& target, int component) { knSetComponent(source, target, component); } static PyObject* _W_13 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "setComponent" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock); int component = _args.get<int >("component",2,&_lock);   _retval = getPyNone(); setComponent(source,target,component);  _args.check(); } pbFinalizePlugin(parent,"setComponent" ); return _retval; } catch(std::exception& e) { pbSetError("setComponent",e.what()); return 0; } } static const Pb::Register _RP_setComponent ("","setComponent",_W_13); 
 
 //******************************************************************************
 // Specialization classes
 
-void FlagGrid::initDomain(int boundaryWidth) {
-	FOR_IDX(*this)
-		mData[idx] = TypeEmpty;
-	initBoundaries(boundaryWidth);
-	mBoundaryWidth = boundaryWidth;
+void FlagGrid::InitMinXWall(const int &boundaryWidth, Grid<Real>& phiWalls) {
+	const int w = boundaryWidth;
+	FOR_IJK(phiWalls) {
+		phiWalls(i,j,k) = std::min(i - w - .5, (double)phiWalls(i,j,k));
+	}
 }
 
-void FlagGrid::initBoundaries(int boundaryWidth) {
+void FlagGrid::InitMaxXWall(const int &boundaryWidth, Grid<Real>& phiWalls) {
+	const int w = boundaryWidth;
+	FOR_IJK(phiWalls) {
+		phiWalls(i,j,k) = std::min(mSize.x-i-1.5-w, (double)phiWalls(i,j,k));
+	}
+}
+
+void FlagGrid::InitMinYWall(const int &boundaryWidth, Grid<Real>& phiWalls) {
+	const int w = boundaryWidth;
+	FOR_IJK(phiWalls) {
+		phiWalls(i,j,k) = std::min(j - w - .5, (double)phiWalls(i,j,k));
+	}
+}
+
+void FlagGrid::InitMaxYWall(const int &boundaryWidth, Grid<Real>& phiWalls) {
+	const int w = boundaryWidth;
+	FOR_IJK(phiWalls) {
+		phiWalls(i,j,k) = std::min(mSize.y-j-1.5-w, (double)phiWalls(i,j,k));
+	}
+}
+
+void FlagGrid::InitMinZWall(const int &boundaryWidth, Grid<Real>& phiWalls) {
+	const int w = boundaryWidth;
+	FOR_IJK(phiWalls) {
+		phiWalls(i,j,k) = std::min(k - w - .5, (double)phiWalls(i,j,k));
+	}
+}
+
+void FlagGrid::InitMaxZWall(const int &boundaryWidth, Grid<Real>& phiWalls) {
+	const int w = boundaryWidth;
+	FOR_IJK(phiWalls) {
+		phiWalls(i,j,k) = std::min(mSize.z-k-1.5-w, (double)phiWalls(i,j,k));
+	}
+}
+
+void FlagGrid::initDomain( const int &boundaryWidth
+	                     , const string &wall    
+						 , const string &open    
+						 , const string &inflow  
+						 , const string &outflow
+						 , Grid<Real>* phiWalls ) {
+	
+	int  types[6] = {0};
+	bool set  [6] = {false};
+
+	if(phiWalls) phiWalls->setConst(1000000000);
+
+	for (char i = 0; i<6; ++i) {
+		//min x-direction
+		if(!set[0]) {
+			if(open[i]=='x')         {types[0] = TypeOpen;set[0] = true;}
+			else if(inflow[i]=='x')  {types[0] = TypeInflow;set[0] = true;}
+			else if(outflow[i]=='x') {types[0] = TypeOutflow;set[0] = true;}
+			else if(wall[i]=='x') {
+				types[0]    = TypeObstacle;
+				if(phiWalls) InitMinXWall(boundaryWidth, *phiWalls);
+				set[0] = true;
+			}			
+		}
+		//max x-direction
+		if(!set[1]) {
+			if(open[i]=='X')         {types[1] = TypeOpen;set[1] = true;}
+			else if(inflow[i]=='X')  {types[1] = TypeInflow;set[1] = true;}
+			else if(outflow[i]=='X') {types[1] = TypeOutflow;set[1] = true;}
+			else if(wall[i]=='X')  {
+				types[1]    = TypeObstacle;
+				if(phiWalls) InitMaxXWall(boundaryWidth, *phiWalls);
+				set[1] = true;
+			}			
+		}
+		//min y-direction
+		if(!set[2]) {
+			if(open[i]=='y')         {types[2] = TypeOpen;set[2] = true;}
+			else if(inflow[i]=='y')  {types[2] = TypeInflow;set[2] = true;}
+			else if(outflow[i]=='y') {types[2] = TypeOutflow;set[2] = true;}
+			else if(wall[i]=='y') {
+				types[2]    = TypeObstacle;
+				if(phiWalls) InitMinYWall(boundaryWidth, *phiWalls);
+				set[2] = true;
+			}			
+		}
+		//max y-direction
+		if(!set[3]) {
+			if(open[i]=='Y')         {types[3] = TypeOpen;set[3] = true;}
+			else if(inflow[i]=='Y')  {types[3] = TypeInflow;set[3] = true;}
+			else if(outflow[i]=='Y') {types[3] = TypeOutflow;set[3] = true;}
+			else if(wall[i]=='Y') {
+				types[3]    = TypeObstacle;
+				if(phiWalls) InitMaxYWall(boundaryWidth, *phiWalls);
+				set[3] = true;
+			}			
+		}
+		if(this->is3D()) {
+		//min z-direction
+			if(!set[4]) {
+				if(open[i]=='z')         {types[4] = TypeOpen;set[4] = true;}
+				else if(inflow[i]=='z')  {types[4] = TypeInflow;set[4] = true;}
+				else if(outflow[i]=='z') {types[4] = TypeOutflow;set[4] = true;}
+				else if(wall[i]=='z') {
+					types[4]    = TypeObstacle;
+					if(phiWalls) InitMinZWall(boundaryWidth, *phiWalls);
+					set[4] = true;
+				}				
+			}
+			//max z-direction
+			if(!set[5]) {
+				if(open[i]=='Z')         {types[5] = TypeOpen;set[5] = true;}
+				else if(inflow[i]=='Z')  {types[5] = TypeInflow;set[5] = true;}
+				else if(outflow[i]=='Z') {types[5] = TypeOutflow;set[5] = true;}
+				else if(wall[i]=='Z') {
+					types[5]    = TypeObstacle;
+					if(phiWalls) InitMaxZWall(boundaryWidth, *phiWalls);
+					set[5] = true;
+				}				
+			}
+		}
+	}
+
+	FOR_IDX(*this)
+		mData[idx] = TypeEmpty;
+		initBoundaries(boundaryWidth, types);
+	
+}
+
+void FlagGrid::initBoundaries(const int &boundaryWidth, const int *types) {
 	const int w = boundaryWidth;
 	FOR_IJK(*this) {
-		bool bnd = (i<=w || i>=mSize.x-1-w || j<=w || j>=mSize.y-1-w || (is3D() && (k<=w || k>=mSize.z-1-w)));
-		if (bnd) 
-			mData[index(i,j,k)] = TypeObstacle;
+		bool bnd = (i <= w);
+		if (bnd) mData[index(i,j,k)] = types[0];
+		bnd = (i >= mSize.x-1-w);
+		if (bnd) mData[index(i,j,k)] = types[1];
+		bnd = (j <= w);
+		if (bnd) mData[index(i,j,k)] = types[2];
+		bnd = (j >= mSize.y-1-w);
+		if (bnd) mData[index(i,j,k)] = types[3];
+		if(is3D()) {
+			bnd = (k <= w);
+			if (bnd) mData[index(i,j,k)] = types[4];
+			bnd = (k >= mSize.z-1-w);
+			if (bnd) mData[index(i,j,k)] = types[5];
+		}
 	}
 }
 
@@ -587,7 +652,7 @@ void FlagGrid::updateFromLevelset(LevelsetGrid& levelset) {
 
 void FlagGrid::fillGrid(int type) {
 	FOR_IDX(*this) {
-		if ((mData[idx] & TypeObstacle)==0)
+		if ((mData[idx] & TypeObstacle)==0 && (mData[idx] & TypeInflow)==0&& (mData[idx] & TypeOutflow)==0&& (mData[idx] & TypeOpen)==0)
 			mData[idx] = (mData[idx] & ~(TypeEmpty | TypeFluid)) | type;
 	}
 }
@@ -603,7 +668,7 @@ template class Grid<Vec3>;
 // enable in grid.h
 
 #if ENABLE_GRID_TEST_DATATYPE==1
-// NT_DEBUG ?  template<> const char* Namify<nbVector>::S = "TestDatatype";
+// todo fix, missing:  template<> const char* Namify<nbVector>::S = "TestDatatype";
 
 template<> Real Grid<nbVector>::getMin() { return 0.; }
 template<> Real Grid<nbVector>::getMax() { return 0.; }
@@ -613,7 +678,7 @@ template<> Real Grid<nbVector>::getMaxAbs()      { return 0.; }
 
 void nbvecTestOp(Grid<nbVector> &target) {
 	knNbvecTestKernel nbvecTest(target); 
-} static PyObject* _W_12 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "nbvecTestOp" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<nbVector> & target = *_args.getPtr<Grid<nbVector>  >("target",0,&_lock);   _retval = getPyNone(); nbvecTestOp(target);  _args.check(); } pbFinalizePlugin(parent,"nbvecTestOp" ); return _retval; } catch(std::exception& e) { pbSetError("nbvecTestOp",e.what()); return 0; } } static const Pb::Register _RP_nbvecTestOp ("","nbvecTestOp",_W_12); 
+} static PyObject* _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "nbvecTestOp" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<nbVector> & target = *_args.getPtr<Grid<nbVector>  >("target",0,&_lock);   _retval = getPyNone(); nbvecTestOp(target);  _args.check(); } pbFinalizePlugin(parent,"nbvecTestOp" ); return _retval; } catch(std::exception& e) { pbSetError("nbvecTestOp",e.what()); return 0; } } static const Pb::Register _RP_nbvecTestOp ("","nbvecTestOp",_W_14); 
 
 // instantiate test datatype , not really required for simulations, mostly here for demonstration purposes
 template class Grid<nbVector>;

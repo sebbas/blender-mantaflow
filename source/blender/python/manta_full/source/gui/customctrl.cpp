@@ -13,8 +13,10 @@
 
 #include "customctrl.h"
 #include "qtmain.h"
+#include "painter.h"
 
 using namespace std;
+
 namespace Manta {
 	
 // *****************************************************************************
@@ -128,7 +130,6 @@ void TextCheckbox::set(bool v) {
 // **************************************************************************************
 // GUI class
 
-void updateQtGui(bool full, int frame, const std::string& curPlugin);
 extern MainThread* gMainThread;
 extern GuiThread* gGuiThread;
 
@@ -139,11 +140,13 @@ Gui::Gui() :
 void Gui::setBackgroundMesh(Mesh* m) {
 	mGuiPtr->getWindow()->setBackground(m);
 }
-void Gui::show() {
-	mMainPtr->sendAndWait((int)MainWnd::EventGuiShow);         
+void Gui::show(bool twoD) {
+	if(twoD)
+		mMainPtr->send( (int)MainWnd::EventSet2DCam );
+	mMainPtr->sendAndWait( (int)MainWnd::EventGuiShow );
 }
 void Gui::update() { 
-	updateQtGui(true,-1,"");
+	updateQtGui(true, -1,-1., "");
 }
 void Gui::pause() {
 	mMainPtr->sendAndWait((int)MainWnd::EventFullUpdate);         
@@ -152,6 +155,28 @@ void Gui::pause() {
 void Gui::screenshot(string filename) {
 	QString s(filename.c_str());
 	QMetaObject::invokeMethod(mGuiPtr->getWindow(), "screenshot", Q_ARG(QString, s));    
+}
+
+void Gui::nextRealGrid() { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextRealGrid" ); }
+void Gui::nextVec3Grid() { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextVec3Grid" ); }
+void Gui::nextParts()    { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextParts" ); }
+void Gui::nextPdata()    { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextPdata" ); }
+void Gui::nextMesh()     { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextMesh" ); }
+
+void Gui::nextVec3Display() { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextVec3Display" ); }
+void Gui::nextPartDisplay() { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextPartDisplay" ); }
+void Gui::nextMeshDisplay() { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextMeshDisplay" ); }
+
+void Gui::toggleHideGrids() { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "toggleHideGrids" ); }
+
+void Gui::setCamPos(float x, float y, float z) {
+	QMetaObject::invokeMethod(mGuiPtr->getWindow(), "setCamPos", Q_ARG(float, x), Q_ARG(float, y), Q_ARG(float, z));    
+}
+void Gui::setCamRot(float x, float y, float z) {
+	QMetaObject::invokeMethod(mGuiPtr->getWindow(), "setCamRot", Q_ARG(float, x), Q_ARG(float, y), Q_ARG(float, z));    
+}
+void Gui::windowSize(int w, int h) {
+	QMetaObject::invokeMethod(mGuiPtr->getWindow(), "windowSize", Q_ARG(int, w), Q_ARG(int, h));    
 }
 
 PbClass* Gui::addControl(PbType t) {

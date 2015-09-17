@@ -9,6 +9,7 @@
 
 
 
+#line 1 "/home/user/Developer/mantaflowgit/source/gui/particlepainter.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework

@@ -2,29 +2,31 @@
 #
 # MantaFlow fluid solver framework
 #
-# Copyright 2011-2014 Tobias Pfaff, Nils Thuerey 
+# Copyright 2011-2015 Tobias Pfaff, Nils Thuerey
 #
 # This program is free software, distributed under the terms of the
-# GNU General Public License (GPL) 
+# GNU General Public License (GPL)
 # http://www.gnu.org/licenses
 #
 #******************************************************************************
 
-#project (MantaFlow)
+project (MantaFlow)
 cmake_minimum_required(VERSION 2.8) # 2.8 needed for CUDA
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/source/cmake/")
 SET(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
-SET(VERBOSE 1) 
+SET(VERBOSE 1)
 
 SET(MANTAVERSION "0.6")
+
 #******************************************************************************
 # Default paths
 # - CMake's path finder is completely useless for Qt5 + Python on Win64
+# - allow override from command line on OsX, eg use "cmake ..  -DCMAKE_PREFIX_PATH=/Users/someone/qt5.2.1/5.2.1/clang_64/
 
 IF(WIN32)
-	set(WIN_QT_PATH "C:/Qt/Qt5.2.1/5.2.1/msvc2012_64_opengl") # qt5/win64
-	# set(WIN_QT_PATH "C:/Qt/4.8.6") # qt4/win32
+	#set(WIN_QT_PATH "C:/Qt/5.3/msvc2013_64_opengl")
+	set(WIN_QT_PATH "C:/Qt/5.3/msvc2012_opengl") # qt5/win64
 	set(WIN_PYTHON_PATH "C:/Python34")
 	set(WIN_PYTHON_VERSION "34")
 	set(CMAKE_LIBRARY_PATH "C:/Program Files (x86)/Windows Kits/8.0/Lib/win8/um/x64")
@@ -32,14 +34,17 @@ IF(WIN32)
 ENDIF()
 
 IF(APPLE)
-	SET(CMAKE_PREFIX_PATH "/usr/local/Cellar/qt5/5.2.1/") #  mac/homebrew
+	IF(NOT CMAKE_PREFIX_PATH)
+		SET(CMAKE_PREFIX_PATH "/usr/local/Cellar/qt5/5.4.2/") #  mac/homebrew
+		#SET(CMAKE_PREFIX_PATH "/home/myname/qt/5.5/clang_64") #  other...
+	ENDIF()
 ENDIF()
 
 #******************************************************************************
 # setup default params
 
-IF(NOT CMAKE_BUILD_TYPE) 
-	SET(CMAKE_BUILD_TYPE "Debug") 
+IF(NOT CMAKE_BUILD_TYPE)
+	SET(CMAKE_BUILD_TYPE "Release")
 ELSE()
 	MESSAGE("Build-type: '${CMAKE_BUILD_TYPE}'")
 ENDIF()
@@ -49,9 +54,10 @@ OPTION(DEBUG "Enable debug compilation" OFF)
 OPTION(GUI "Compile with GUI (requires QT)" OFF)
 OPTION(TBB "Use multi-thread kernels using Intels TBB" OFF)
 OPTION(OPENMP "Use multi-thread kernels using OpenMP" OFF)
-OPTION(CUDA "Compile with CUDA plugins" OFF)
 OPTION(PREPDEBUG "Debug generated files" OFF) # This will beautify generated files, and link to them for compiler errors instead of the original sources
 OPTION(DOUBLEPRECISION "Compile with double floating point precision" OFF)
+# CUDA is deprecated, and not tested - enable at own risk...
+#OPTION(CUDA "Compile with CUDA plugins" OFF)
 
 #check consistency of MT options
 set(MT OFF)
@@ -71,7 +77,7 @@ endif()
 # make sure debug settings match...
 IF(NOT DEBUG)
 	IF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-		SET(DEBUG 1) 
+		SET(DEBUG 1)
 	ENDIF()
 ENDIF()
 IF(DEBUG)
@@ -86,9 +92,9 @@ MESSAGE(STATUS "Options - "
 	" -DTBB='${TBB}' "
 	" -DOPENMP='${OPENMP}' "
 	" -DPREPDEBUG='${PREPDEBUG}' "
-	" -DCUDA='${CUDA}' "
 	" -DDOUBLEPRECISION='${DOUBLEPRECISION}' "
 	)
+# " -DCUDA='${CUDA}' "
 MESSAGE(STATUS "Multithreading type : ${MT_TYPE}")
 MESSAGE(STATUS "")
 
@@ -96,7 +102,7 @@ MESSAGE(STATUS "")
 # Pre-processor
 
 # compile prep
-SET(SOURCES 
+SET(SOURCES
 	source/preprocessor/main.cpp
 	source/preprocessor/code.cpp
 	source/preprocessor/tokenize.cpp
@@ -104,12 +110,11 @@ SET(SOURCES
 	source/preprocessor/util.cpp
 	source/preprocessor/merge.cpp
 	source/preprocessor/codegen_python.cpp
-	source/preprocessor/codegen_kernel.cpp    
+	source/preprocessor/codegen_kernel.cpp
 )
 add_executable(prep ${SOURCES})
 if (NOT WIN32)
-#PR commented
-#	set_target_properties(prep PROPERTIES COMPILE_FLAGS "-Wall -O2")
+	set_target_properties(prep PROPERTIES COMPILE_FLAGS "-Wall -O2")
 endif()
 
 #******************************************************************************
@@ -132,27 +137,26 @@ SET(PP_SOURCES
 	source/mesh.cpp
 	source/general.cpp
 	source/particle.cpp
-	source/flip.cpp
 	source/movingobs.cpp
-	source/fileio.cpp   
+	source/fileio.cpp
 	source/noisefield.cpp
 	source/kernel.cpp
 	source/vortexsheet.cpp
-	#source/vortexfilament.cpp
 	source/vortexpart.cpp
 	source/turbulencepart.cpp
+	source/timing.cpp
 	source/edgecollapse.cpp
-	
-	source/plugin/pressure.cpp
-	source/plugin/initplugins.cpp
-	#PR changed
 	source/plugin/advection.cpp
 	source/plugin/extforces.cpp
+	source/plugin/fire.cpp
+	source/plugin/flip.cpp
 	source/plugin/kepsilon.cpp
+	source/plugin/initplugins.cpp
 	source/plugin/meshplugins.cpp
+	source/plugin/pressure.cpp
 	source/plugin/vortexplugins.cpp
 	source/plugin/waveletturbulence.cpp
-	source/plugin/fire.cpp
+	source/plugin/waves.cpp
 	source/python/defines.py
 	source/test.cpp
 )
@@ -169,18 +173,14 @@ SET(PP_HEADERS
 	source/shapes.h
 	source/noisefield.h
 	source/vortexsheet.h
-	#source/vortexfilament.h
 	source/general.h
 	source/kernel.h
-	source/flip.h
+	source/timing.h
 	source/movingobs.h
 	source/fileio.h
 	source/edgecollapse.h
 	source/vortexpart.h
 	source/turbulencepart.h
-	#source/test.h
-	#PR changed
-#	source/advection.h
 )
 
 # no pre-processing needed
@@ -191,9 +191,9 @@ set(NOPP_SOURCES
 	source/pwrapper/pconvert.cpp
 	source/pwrapper/registry.cpp
 	source/util/vectorbase.cpp
-	source/pwrapper/manta_api.cpp
+	source/util/simpleimage.cpp
 )
- 
+
 SET(NOPP_HEADERS
 	source/pwrapper/pythonInclude.h
 	source/pwrapper/pclass.h
@@ -205,18 +205,17 @@ SET(NOPP_HEADERS
 	source/util/interpol.h
 	source/util/mcubes.h
 	source/util/randomstream.h
-	source/util/solvana.h    
-	source/pwrapper/manta_api.h
+	source/util/solvana.h
 )
 
 if (GUI)
 	# need QT preprocessor
-	set(QT_HEADERS 
+	set(QT_HEADERS
 		source/gui/mainwindow.h
 		source/gui/glwidget.h
 		source/gui/painter.h
 		source/gui/meshpainter.h
-		source/gui/qtmain.h 
+		source/gui/qtmain.h
 		source/gui/customctrl.h
 		source/gui/particlepainter.h
 	)
@@ -236,7 +235,7 @@ endif()
 
 # CUDA sources
 if (CUDA)
-	list(APPEND PP_SOURCES 
+	list(APPEND PP_SOURCES
 		source/cuda/meshtools.cu
 		source/cuda/buoyancy.cu
 		source/cuda/particle.cu
@@ -244,19 +243,16 @@ if (CUDA)
 endif()
 
 # include dirs
-message("PRincluding _   ${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source")
 SET(INCLUDE_PATHS
-   source/pwrapper
-   source/cuda
-   source/util
-   ${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source  
-   #PR added  
-   ${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/plugin  
+	source/pwrapper
+	source/cuda
+	source/util
+	${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
 )
 
 # Multithreading
 if(MT)
-	add_definitions( -DMT)    
+	add_definitions( -DMT)
 	if(TBB)
 		# Intel TBB
 		add_definitions( -DTBB)
@@ -269,17 +265,17 @@ if(MT)
 		endif()
 		if (WIN32)
 			find_package(TBB REQUIRED)
-			list(APPEND INCLUDE_PATHS ${TBB_INCLUDE_DIRS})    
+			list(APPEND INCLUDE_PATHS ${TBB_INCLUDE_DIRS})
 			list(APPEND F_LIB_PATHS ${TBB_LIBRARY_DIRS})
 		elseif(APPLE)
 			find_package(TBB REQUIRED)
-			list(APPEND INCLUDE_PATHS ${TBB_INCLUDE_DIRS})    
+			list(APPEND INCLUDE_PATHS ${TBB_INCLUDE_DIRS})
 			list(APPEND F_LIB_PATHS ${TBB_LIBRARY_DIRS})
 		endif()
 	else()
 		# OpenMP
 		add_definitions( -DOPENMP )
-		
+
 		if (WIN32)
 			add_definitions( /openmp)
 		else()
@@ -301,7 +297,7 @@ if(DOXYGEN_FOUND)
 		set(CURDX "${DX_PATH}/${it}")
 		string(REPLACE "/" "_" TGT ${CURDX})
 		string(REPLACE "source/" "" INFILE ${it})
-		add_custom_command(OUTPUT ${TGT} 
+		add_custom_command(OUTPUT ${TGT}
 						COMMAND prep docgen "0" ${MT_TYPE} "${CMAKE_CURRENT_SOURCE_DIR}/source/" "${INFILE}" "${CURDX}"
 						DEPENDS prep
 						IMPLICIT_DEPENDS CXX ${it}
@@ -310,7 +306,7 @@ if(DOXYGEN_FOUND)
 	endforeach(it)
 
 	configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY)
-	add_custom_target(doc 
+	add_custom_target(doc
 		${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
 		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 		DEPENDS ${TGLIST}
@@ -324,24 +320,14 @@ endif(DOXYGEN_FOUND)
 # Link libraries
 
 # Python
-#find_package(PythonLibs QUIET)
-#if((NOT PYTHONLIBS_FOUND) AND WIN32)
-#	set(PYTHON_INCLUDE_DIR "${WIN_PYTHON_PATH}/include")
-#	set(PYTHON_LIBRARY "${WIN_PYTHON_PATH}/libs/python${WIN_PYTHON_VERSION}.lib")	
-#endif()
-#find_package(PythonLibs REQUIRED)
-#list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIRS})
-#list(APPEND F_LIBS ${PYTHON_LIBRARIES})
-
-#PR PYTHON
-set(PYTHON_VERSION 3.4)
-set(PYTHON_INCLUDE_DIR "/Library/Frameworks/Python.framework/Versions/${PYTHON_VERSION}/include/python${PYTHON_VERSION}m")
-set(PYTHON_BINARY "/Library/Frameworks/Python.framework/Versions/${PYTHON_VERSION}/bin/python${PYTHON_VERSION}")
-#set(PYTHON_LIBRARY python${PYTHON_VERSION})
-set(PYTHON_LIBPATH "/Library/Frameworks/Python.framework/Versions/${PYTHON_VERSION}/lib/python${PYTHON_VERSION}/config-${PYTHON_VERSION}m")
-#set(PYTHON_LINKFLAGS "-u _PyMac_Error -framework Python")  # won't  build with this enabled
+set(Python_ADDITIONAL_VERSIONS 3.4)
+find_package(PythonLibs QUIET)
+if((NOT PYTHONLIBS_FOUND) AND WIN32)
+	set(PYTHON_INCLUDE_DIR "${WIN_PYTHON_PATH}/include")
+	set(PYTHON_LIBRARY "${WIN_PYTHON_PATH}/libs/python${WIN_PYTHON_VERSION}.lib")
+endif()
 find_package(PythonLibs REQUIRED)
-list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIR})
+list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIRS})
 list(APPEND F_LIBS ${PYTHON_LIBRARIES})
 
 # Z compression
@@ -350,15 +336,15 @@ if (1)
 	set(ZLIB_SRC adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c gzwrite.c
 				 inflate.c infback.c inftrees.c inffast.c trees.c uncompr.c zutil.c)
 	foreach(it ${ZLIB_SRC})
-		list(APPEND SILENT_SOURCES dependencies/zlib-1.2.8/${it})
-		
-	set(ZLIB_ADDFLAGS "")	
-	if(NOT WIN32)
-		set(ZLIB_ADDFLAGS "-Wno-implicit-function-declaration")
-	endif()
+		list(APPEND SILENT_SOURCES dependencies/zlib-1.2.8/${it}) 
 	endforeach(it)
-	  set_source_files_properties(${SILENT_SOURCES} PROPERTIES COMPILE_FLAGS "${ZLIB_ADDFLAGS}")	
-	  
+
+	set(ZLIB_ADDFLAGS "-Dverbose=-1")
+	if(NOT WIN32)
+		set(ZLIB_ADDFLAGS "-Wno-implicit-function-declaration -Dverbose=-1")
+	endif()
+	set_source_files_properties(${SILENT_SOURCES} PROPERTIES COMPILE_FLAGS "${ZLIB_ADDFLAGS}")
+
 	list(APPEND INCLUDE_PATHS dependencies/zlib-1.2.8)
 else()
 	include(FindZLIB)
@@ -383,10 +369,10 @@ if(CUDA)
 		if(DEBUG)
 			set(CUDA_NVCC_FLAGS --pre-include;/usr/local/include/undef_atomics_int128.h;-g;-DDEBUG;-keep;--maxrregcount=31;--compiler-options;-Wall)
 		else()
-			 #set(CUDA_NVCC_FLAGS -ccbin;gcc-4.5;--use_fast_math;-arch=sm_20;-DNDEBUG;--compiler-options;-Wall;-O3)       
-			 set(CUDA_NVCC_FLAGS --pre-include;/usr/local/include/undef_atomics_int128.h;--use_fast_math;-DNDEBUG;--compiler-options;-Wall;-O3)       
-		endif()    
-	endif()  
+			 #set(CUDA_NVCC_FLAGS -ccbin;gcc-4.5;--use_fast_math;-arch=sm_20;-DNDEBUG;--compiler-options;-Wall;-O3)
+			 set(CUDA_NVCC_FLAGS --pre-include;/usr/local/include/undef_atomics_int128.h;--use_fast_math;-DNDEBUG;--compiler-options;-Wall;-O3)
+		endif()
+	endif()
 endif()
 
 # increase FP precision?
@@ -396,9 +382,8 @@ endif()
 
 
 #******************************************************************************
-# generate repository info
+# generate repository info (note, names are for mercurial, but works for git)
 
-# TEST! NT_DEBUG 
 set(HGINFO "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/hginfo.h")
 MESSAGE(STATUS "Hg info target header ${HGINFO}")
 add_custom_command(OUTPUT ${HGINFO}
@@ -414,58 +399,43 @@ set(HEADERS ${NOPP_HEADERS})
 set(PP_REGCPP)
 set(PP_REGS)
 set(PP_PREPD "0")
-MESSAGE("PRPRPRPRPR_prepdebug")
-
 if (PREPDEBUG)
 	set(PP_PREPD "1")
 endif()
-#MESSAGE("PR_prepdebug_1 BEFORE ${SOURCES}")
-foreach(it ${PP_HEADERS} ${PP_SOURCES})
+foreach(it ${PP_SOURCES} ${PP_HEADERS})
 	get_filename_component(CURPATH ${it} PATH)
 	get_filename_component(CUREXT ${it} EXT)
 	file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/${CURPATH}")
 	set(CURPP "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/${it}")
 	string(REPLACE "source/" "" INFILE ${it})
-	# preprocessor ${CMAKE_BINARY_DIR}/bin/
-	add_custom_command(OUTPUT ${CURPP}
-					   COMMAND echo Workingdir 
-					   COMMAND pwd
-					   COMMAND prep generate ${PP_PREPD} ${MT_TYPE} "${CMAKE_CURRENT_SOURCE_DIR}/source/" "${INFILE}" "${CURPP}"
-					   DEPENDS prep
-					   IMPLICIT_DEPENDS CXX ${it}
-#					   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-					   )
+
+	set(OUTFILES "${CURPP}")
 	if ("${CUREXT}" STREQUAL ".h" OR "${CUREXT}" STREQUAL ".py")
 		list(APPEND PP_REGS "${CURPP}.reg")
 		list(APPEND PP_REGCPP "${CURPP}.reg.cpp")
 		set_source_files_properties("${CURPP}.reg.cpp" OBJECT_DEPENDS "${CURPP}")
+		list(APPEND OUTFILES "${CURPP}.reg")
 	endif()
+
+	# preprocessor
+	add_custom_command(OUTPUT ${OUTFILES}
+					COMMAND prep generate ${PP_PREPD} ${MT_TYPE} "${CMAKE_CURRENT_SOURCE_DIR}/source/" "${INFILE}" "${CURPP}"
+					DEPENDS prep
+					IMPLICIT_DEPENDS CXX ${it}
+					WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+	set_source_files_properties(${OUTFILES} PROPERTIES GENERATED 1)
 	list(APPEND SOURCES ${CURPP})
 endforeach(it)
 
-
 # link reg files
 add_custom_command(OUTPUT ${PP_REGCPP}
-				  COMMAND prep link ${PP_REGS}
-				  DEPENDS prep ${PP_REGS}
-#				  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-				  COMMENT "Linking reg files")
-set_source_files_properties(${PP_REGS} ${PP_REGCPP} PROPERTIES GENERATED 1)
-MESSAGE("PR_prepdebug2")
-
+				COMMAND prep link ${PP_REGS}
+				DEPENDS prep ${PP_REGS}
+				WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+				COMMENT "Linking reg files")
+set_source_files_properties(${PP_REGCPP} PROPERTIES GENERATED 1)
 list(APPEND SOURCES ${PP_REGCPP})
-#MESSAGE("\nPR_prepdebug_1 AFTER REGCPP ${SOURCES}")
-
-#add_custom_target(run ALL
-#    DEPENDS SOURCES)	
-
-MESSAGE("PR_prepdebug3")
-
-#******************************************************************************
-#PR finding what is so special about GUI
-#list(APPEND INCLUDE_PATHS ${CMAKE_CURRENT_BINARY_DIR}
-#				${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/gui source/gui)
-#SET(F_LINKADD "${F_LINKADD} -framework OpenGL ")
 
 #******************************************************************************
 # QT for GUI
@@ -479,24 +449,23 @@ if(GUI)
 	add_definitions(-DGUI=1)
 	list(APPEND INCLUDE_PATHS ${CMAKE_CURRENT_BINARY_DIR}
 				${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/gui source/gui)
-	
+
 	cmake_policy(SET CMP0020 NEW)
 	find_package(Qt5Core QUIET)
 	if (Qt5Core_FOUND)
 		message("Using Qt5")
 		find_package(Qt5Widgets REQUIRED)
 		find_package(Qt5OpenGL REQUIRED)
-	
+
 		qt5_wrap_cpp(MOC_OUTFILES ${QT_REMAP} )
 		qt5_add_resources(QT_RES resources/res.qrc )
 		add_definitions(-DGUI=1)
 		add_definitions(${Qt5Widgets_DEFINITIONS})
 		list(APPEND INCLUDE_PATHS ${Qt5Widgets_INCLUDE_DIRS} ${Qt5OpenGL_INCLUDE_DIRS})
 		list(APPEND F_LIBS ${Qt5Widgets_LIBRARIES} ${Qt5OpenGL_LIBRARIES})
-		list(APPEND SOURCES ${MOC_OUTFILES} ${QT_RES})		
+		list(APPEND SOURCES ${MOC_OUTFILES} ${QT_RES})
 	else()
-		message("Using Qt4")
-#		set(QT_QMAKE_EXECUTABLE /usr/bin/qmake-4.8)
+		message("No Qt5 found (recommended!), trying to use Qt4")
 		find_package(Qt4 REQUIRED)
 		set(QT_USE_QTOPENGL TRUE)
 
@@ -513,13 +482,12 @@ if(GUI)
 		SET(F_LINKADD "${F_LINKADD} -framework OpenGL ")
 	else()
 		find_package(OpenGL REQUIRED)
-		list(APPEND F_LIBS ${OPENGL_LIBRARIES})    
+		list(APPEND F_LIBS ${OPENGL_LIBRARIES})
 	endif()
 endif()
 
 #******************************************************************************
 # setup executable
-#MESSAGE("\nSETTINGS EXEC ${SOURCES}")
 
 # compiler flags
 IF(NOT WIN32)
@@ -528,9 +496,9 @@ IF(NOT WIN32)
 		add_definitions( -O0 -fno-inline )
 		# additional c++ warning
 		SET(CMAKE_CXX_FLAGS_DEBUG " -ggdb  -Wall")
-		
+
 		# stricter: no optimizations and inlining, comment out if needed...
-		#SET(CMAKE_CXX_FLAGS_DEBUG " -O0 -fno-inline ${CMAKE_CXX_FLAGS_DEBUG}   ")              
+		#SET(CMAKE_CXX_FLAGS_DEBUG " -O0 -fno-inline ${CMAKE_CXX_FLAGS_DEBUG}   ")
 	ELSE()
 		# non-debug, optimized version
 		add_definitions( -O3 -Wall)
@@ -538,32 +506,27 @@ IF(NOT WIN32)
 ELSE()
 	# get rid of some MSVC warnings
 	add_definitions( /wd4018 /wd4146 /wd4800 )
-	
+
 	# for zlib
 	add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
 	add_definitions(-D_CRT_NONSTDC_NO_DEPRECATE)
-	
+
 	# unsigned to signed conversions
 	add_definitions( /wd4267 )
 	# double <> single precision
 	add_definitions( /wd4244 /wd4305 )
-	# disable warnings for unsecure functions 
-	add_definitions( /D "_CRT_SECURE_NO_WARNINGS" )	
+	# disable warnings for unsecure functions
+	add_definitions( /D "_CRT_SECURE_NO_WARNINGS" )
 ENDIF()
-MESSAGE("PR_11")
-#SET(EXECCMD manta)
-SET(EXECCMD bf_python_manta)
-MESSAGE("PR_12")
+
+SET(EXECCMD manta)
 
 SET(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${F_LINKADD} ")
 SET(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${F_LINKADD} ")
-MESSAGE("PR_13 including parths: ${INCLUDE_PATHS}")
 
 include_directories( ${INCLUDE_PATHS})
+link_directories( ${F_LIB_PATHS} )
 
-link_directories( ${F_LIB_PATHS} ) 
-MESSAGE("PR_14")
-#list(REMOVE_DUPLICATES SOURCES)
 if(CUDA)
 	#cuda_include_directories(pp/source/cuda)
 	cuda_add_executable( ${EXECCMD} ${SOURCES} ${PP_REGISTRY})
@@ -572,27 +535,21 @@ if(CUDA)
 else()
 	if (WIN32)
 		# make nice folders for Visual Studio
-		set_source_files_properties(${PP_SOURCES} ${PP_HEADERS} ${NOPP_HEADERS} PROPERTIES HEADER_FILE_ONLY TRUE) 
-#		add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${PP_SOURCES} ${PP_HEADERS})
-		blender_add_lib(${EXECCMD} "${SOURCES}" "${INCLUDE_PATHS}" "${INC_SYS}")
-		source_group(Generated FILES ${SOURCES} ${PP_REGISTRY} ${HEADERS})		
+		set_source_files_properties(${PP_SOURCES} ${PP_HEADERS} ${NOPP_HEADERS} PROPERTIES HEADER_FILE_ONLY TRUE)
+		add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${PP_SOURCES} ${PP_HEADERS})
+		source_group(Generated FILES ${SOURCES} ${PP_REGISTRY} ${HEADERS})
 	else()
-	#	add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${HGINFO})
-#		list(SORT SOURCES)
-		list(REMOVE_DUPLICATES SOURCES) #CMAKE GUI says there are duplicates, though there are none
-		blender_add_lib(${EXECCMD} "${SOURCES}" "${INCLUDE_PATHS}" "${INC_SYS}")
+		add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${HGINFO})
 	endif()
 	target_link_libraries( ${EXECCMD} ${F_LIBS} )
 endif()
-MESSAGE("PR_15")
 
-
-if(WIN32)
-	# add no-build target to create nice MSVC folder
-	add_custom_target(SourceFiles SOURCES ${PP_SOURCES} ${PP_HEADERS} ${QT_SOURCES} ${QT_HEADERS} ${NOPP_HEADERS} ${NOPP_SOURCES})
-	source_group(Headers FILES ${PP_HEADERS} ${NOPP_HEADERS} ${QT_HEADERS})
-	source_group(Sources FILES ${PP_SOURCES} ${NOPP_SOURCES} ${QT_SOURCES})	
-endif()
+# old - add no-build target to create nice MSVC folder
+#if(WIN32)
+#	add_custom_target(SourceFiles SOURCES ${PP_SOURCES} ${PP_HEADERS} ${QT_SOURCES} ${QT_HEADERS} ${NOPP_HEADERS} ${NOPP_SOURCES})
+#	source_group(Headers FILES ${PP_HEADERS} ${NOPP_HEADERS} ${QT_HEADERS})
+#	source_group(Sources FILES ${PP_SOURCES} ${NOPP_SOURCES} ${QT_SOURCES})
+#endif()
 
 # debug
 MESSAGE(STATUS "DEBUG Flag-Summary - Includes: '${INCLUDE_PATHS}' | Libs: '${F_LIBS}' | LibPaths: '${F_LIB_PATHS}' ")

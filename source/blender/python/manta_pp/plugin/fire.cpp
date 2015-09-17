@@ -9,7 +9,7 @@
 
 
 
-
+#line 1 "/home/user/Developer/mantaflowgit/source/plugin/fire.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -125,4 +125,5 @@ void updateFlame(Grid<Real>& react, Grid<Real>& flame) {
 } static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "updateFlame" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& react = *_args.getPtr<Grid<Real> >("react",0,&_lock); Grid<Real>& flame = *_args.getPtr<Grid<Real> >("flame",1,&_lock);   _retval = getPyNone(); updateFlame(react,flame);  _args.check(); } pbFinalizePlugin(parent,"updateFlame" ); return _retval; } catch(std::exception& e) { pbSetError("updateFlame",e.what()); return 0; } } static const Pb::Register _RP_updateFlame ("","updateFlame",_W_1); 
 
 } // namespace
+
 

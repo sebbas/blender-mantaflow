@@ -18,6 +18,7 @@
 #include "grid.h"
 #include "kernel.h"
 
+
 namespace Manta { 
 
 static const bool CG_DEBUG = false;
@@ -27,7 +28,7 @@ class GridCgInterface {
 	public:
 		enum PreconditionType { PC_None=0, PC_ICP, PC_mICP };
 		
-		GridCgInterface() : mUseResNorm(true) {};
+		GridCgInterface() : mUseL2Norm(true) {};
 		virtual ~GridCgInterface() {};
 
 		// solving functions
@@ -44,12 +45,12 @@ class GridCgInterface {
 		virtual void setAccuracy(Real set) = 0;
 		virtual Real getAccuracy() const = 0;
 
-		void setUseResNorm(bool set) { mUseResNorm = set; }
+		void setUseL2Norm(bool set) { mUseL2Norm = set; }
 
 	protected:
 
-		// use norm of residual, or max value for threshold?
-		bool mUseResNorm; 
+		// use l2 norm of residualfor threshold? (otherwise uses max norm)
+		bool mUseL2Norm; 
 };
 
 
@@ -111,10 +112,13 @@ KERNEL(idx)
 void ApplyMatrix (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src, 
 				  Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak)
 {
+	if (flags[idx] & FlagGrid::TypeZeroPressure) { 
+		dst[idx]=0.; return; 
+	} 
 	if (!flags.isFluid(idx)) {
-		dst[idx] = src[idx];
-		return;
+		dst[idx] = src[idx]; return;
 	}    
+
 	dst[idx] =  src[idx] * A0[idx]
 				+ src[idx-X] * Ai[idx-X]
 				+ src[idx+X] * Ai[idx]
@@ -131,10 +135,14 @@ void ApplyMatrix2D (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src,
 {
 	unusedParameter(Ak); // only there for parameter compatibility with ApplyMatrix
 	
+	if (flags[idx] & FlagGrid::TypeZeroPressure) { 
+		dst[idx]=0.; return; 
+	}
+
 	if (!flags.isFluid(idx)) {
-		dst[idx] = src[idx];
-		return;
+		dst[idx] = src[idx]; return;
 	}    
+
 	dst[idx] =  src[idx] * A0[idx]
 				+ src[idx-X] * Ai[idx-X]
 				+ src[idx+X] * Ai[idx]
@@ -144,21 +152,35 @@ void ApplyMatrix2D (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src,
 
 //! Kernel: Construct the matrix for the poisson equation
 KERNEL (bnd=1) 
-void MakeLaplaceMatrix(FlagGrid& flags, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak) {
+void MakeLaplaceMatrix(FlagGrid& flags, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak, MACGrid* fractions = 0) {
 	if (!flags.isFluid(i,j,k))
 		return;
 	
-	// center
-	if (!flags.isObstacle(i-1,j,k)) A0(i,j,k) += 1.;
-	if (!flags.isObstacle(i+1,j,k)) A0(i,j,k) += 1.;
-	if (!flags.isObstacle(i,j-1,k)) A0(i,j,k) += 1.;
-	if (!flags.isObstacle(i,j+1,k)) A0(i,j,k) += 1.;
-	if (flags.is3D() && !flags.isObstacle(i,j,k-1)) A0(i,j,k) += 1.;
-	if (flags.is3D() && !flags.isObstacle(i,j,k+1)) A0(i,j,k) += 1.;
-	
-	if (flags.isFluid(i+1,j,k)) Ai(i,j,k) = -1.;
-	if (flags.isFluid(i,j+1,k)) Aj(i,j,k) = -1.;
-	if (flags.is3D() && flags.isFluid(i,j,k+1)) Ak(i,j,k) = -1.;    
+	if(fractions) {
+		A0(i,j,k) += fractions->get(i,j,k).x;
+		A0(i,j,k) += fractions->get(i+1,j,k).x;
+		A0(i,j,k) += fractions->get(i,j,k).y;
+		A0(i,j,k) += fractions->get(i,j+1,k).y;
+		if (flags.is3D()) A0(i,j,k) += fractions->get(i,j,k).z;
+		if (flags.is3D()) A0(i,j,k) += fractions->get(i,j,k+1).z;
+
+		Ai(i,j,k) = -fractions->get(i+1,j,k).x;
+		Aj(i,j,k) = -fractions->get(i,j+1,k).y;
+		if (flags.is3D()) Ak(i,j,k) = -fractions->get(i,j,k+1).z;
+	}else{
+		// center
+		if (!flags.isObstacle(i-1,j,k)) A0(i,j,k) += 1.;
+		if (!flags.isObstacle(i+1,j,k)) A0(i,j,k) += 1.;
+		if (!flags.isObstacle(i,j-1,k)) A0(i,j,k) += 1.;
+		if (!flags.isObstacle(i,j+1,k)) A0(i,j,k) += 1.;
+		if (flags.is3D() && !flags.isObstacle(i,j,k-1)) A0(i,j,k) += 1.;
+		if (flags.is3D() && !flags.isObstacle(i,j,k+1)) A0(i,j,k) += 1.;
+		
+		if (flags.isFluid(i+1,j,k)) Ai(i,j,k) = -1.;
+		if (flags.isFluid(i,j+1,k)) Aj(i,j,k) = -1.;
+		if (flags.is3D() && flags.isFluid(i,j,k+1)) Ak(i,j,k) = -1.;
+	}
+
 }
 
 

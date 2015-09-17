@@ -21,14 +21,11 @@ using namespace std;
 namespace Manta {
 	
 template<class COMP, int TDIR>
-FastMarch<COMP,TDIR>::FastMarch(FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& levelset, Real maxTime, 
-		MACGrid* velTransport, Grid<Real>* velMag )
+FastMarch<COMP,TDIR>::FastMarch(FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& levelset, Real maxTime, MACGrid* velTransport )
 	: mLevelset(levelset), mFlags(flags), mFmFlags(fmFlags)
 {
 	if (velTransport)
 		mVelTransport.initMarching(velTransport, &flags);
-	if (velMag)
-		mMagTransport.initMarching(velMag, &flags);
 	
 	mMaxTime = maxTime * TDIR;
 }
@@ -159,11 +156,10 @@ void FastMarch<COMP,TDIR>::addToList(const Vec3i& p, const Vec3i& src) {
 	// update field
 	mFmFlags[idx] = FlagIsOnHeap;
 	mLevelset[idx] = ttime;
+	// debug info std::cout<<"set "<< idx <<","<< ttime <<"\n";
 	
 	if (mVelTransport.isInitialized())
 		mVelTransport.transpTouch(p.x, p.y, p.z, mWeights, ttime);
-	if (mMagTransport.isInitialized())
-		mMagTransport.transpTouch(p.x, p.y, p.z, mWeights, ttime);
 
 	// the following adds entries to the heap of active cells
 	// current: (!found) , previous: always add, might lead to duplicate
@@ -220,7 +216,8 @@ void FastMarch<COMP,TDIR>::performMarching() {
 	}
 	
 	// set boundary for plain array
-	SetLevelsetBoundaries setls(mLevelset);
+	SetLevelsetBoundaries setls(mLevelset); 
+	setls.getArg0(); // get rid of compiler warning...
 }
 
 // explicit instantiation
@@ -332,7 +329,10 @@ void knUnprojectNormalComp (FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, Re
 }
 // a simple extrapolation step , used for cases where there's no levelset
 // (note, less accurate than fast marching extrapolation!)
-PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 4, LevelsetGrid* phiObs=NULL ) 
+// into obstacle is a special mode for second order obstable boundaries (extrapolating
+// only fluid velocities, not those at obstacles)
+PYTHON() void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 4, 
+		LevelsetGrid* phiObs=NULL , bool intoObs = false ) 
 {
 	Grid<int> tmp( flags.getParent() );
 	int dim = (flags.is3D() ? 3:2);
@@ -342,16 +342,19 @@ PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 
 		dir[c] = 1;
 		tmp.clear();
 
-		// remove all fluid cells
+		// remove all fluid cells (not touching obstacles)
 		FOR_IJK_BND(flags,1) {
 			Vec3i p(i,j,k);
-			if (flags.isFluid(p) || flags.isFluid(p-dir) ) {
-				tmp(p) = 1;
+			bool mark = false;
+			if(!intoObs) {
+				if( flags.isFluid(p) || flags.isFluid(p-dir) ) mark = true;
+			} else {
+				if( (flags.isFluid(p) || flags.isFluid(p-dir) ) && 
+					(!flags.isObstacle(p)) && (!flags.isObstacle(p-dir)) ) mark = true;
 			}
-		}
 
-		// debug init! , enable for testing only - set varying velocities inside
-		//FOR_IJK_BND(flags,1) { if (tmp(i,j,k) == 0) continue; vel(i,j,k)[c] = (i+j+k+c+1.)*0.1; }
+			if(mark) tmp(p) = 1;
+		}
 		
 		// extrapolate for distance
 		for(int d=1; d<1+distance; ++d) {
@@ -394,12 +397,13 @@ void knExtrapolateMACFromWeight ( MACGrid& vel, Grid<Vec3>& weight, int distance
 		vel(p)[c] = avgVel / nbs;
 	}
 }
+
 // same as extrapolateMACSimple, but uses weight vec3 grid instead of flags to check
 // for valid values (to be used in combination with mapPartsToMAC)
 // note - the weight grid values are destroyed! the function is necessary due to discrepancies
 // between velocity mapping on surface-levelset / fluid-flag creation. With this
 // extrapolation we make sure the fluid region is covered by initial velocities
-PYTHON void extrapolateMACFromWeight ( MACGrid& vel, Grid<Vec3>& weight, int distance = 2) 
+PYTHON() void extrapolateMACFromWeight ( MACGrid& vel, Grid<Vec3>& weight, int distance = 2) 
 {
 	const int dim = (vel.is3D() ? 3:2);
 
@@ -420,5 +424,119 @@ PYTHON void extrapolateMACFromWeight ( MACGrid& vel, Grid<Vec3>& weight, int dis
 
 	}
 }
+
+// simple extrapolation functions for levelsets
+
+static const Vec3i nb[6] = { 
+	Vec3i(1 ,0,0), Vec3i(-1,0,0),
+	Vec3i(0,1 ,0), Vec3i(0,-1,0),
+	Vec3i(0,0,1 ), Vec3i(0,0,-1) };
+
+// larger neighborhood (>1 dx away)
+static const Vec3i nbExt2d[4] = { 
+	Vec3i(1, 1,0), Vec3i(-1, 1,0),
+	Vec3i(1,-1,0), Vec3i(-1,-1,0) };
+
+KERNEL(bnd=1) template<class S>
+void knExtrapolateLsSimple (Grid<S>& val, int distance , Grid<int>& tmp , const int d , S direction )
+{
+	const int dim = (val.is3D() ? 3:2); 
+	if (tmp(i,j,k) != 0) return;
+
+	// copy from initialized neighbors
+	Vec3i p(i,j,k);
+	int   nbs = 0;
+	S     avg(0.);
+	for (int n=0; n<2*dim; ++n) {
+		if (tmp(p+nb[n]) == d) {
+			avg += val(p+nb[n]);
+			nbs++;
+		}
+	}
+
+	if(nbs>0) {
+		tmp(p) = d+1;
+		val(p) = avg / nbs + direction;
+	} 
+}
+
+
+KERNEL(bnd=1) template<class S>
+void knSetRemaining (Grid<S>& phi, Grid<int>& tmp, S distance )
+{
+	if (tmp(i,j,k) != 0) return;
+	phi(i,j,k) = distance;
+}
+
+PYTHON() void extrapolateLsSimple (Grid<Real>& phi, int distance = 4, bool inside=false )
+{
+	Grid<int> tmp( phi.getParent() );
+	tmp.clear();
+	const int dim = (phi.is3D() ? 3:2);
+
+	// by default, march outside
+	Real direction = 1.;
+	if(!inside) { 
+		// mark all inside
+		FOR_IJK_BND(phi,1) {
+			if ( phi(i,j,k) < 0. ) { tmp(i,j,k) = 1; }
+		} 
+	} else {
+		direction = -1.;
+		FOR_IJK_BND(phi,1) {
+			if ( phi(i,j,k) > 0. ) { tmp(i,j,k) = 1; }
+		} 
+	}
+	// + first layer around
+	FOR_IJK_BND(phi,1) {
+		Vec3i p(i,j,k);
+		if ( tmp(p) ) continue;
+		for (int n=0; n<2*dim; ++n) {
+			if (tmp(p+nb[n])==1) {
+				tmp(i,j,k) = 2; n=2*dim;
+			}
+		}
+	} 
+
+	// extrapolate for distance
+	for(int d=2; d<1+distance; ++d) {
+		knExtrapolateLsSimple<Real>(phi, distance, tmp, d, direction );
+	} 
+
+	// set all remaining cells to max
+	knSetRemaining<Real>(phi, tmp, Real(direction * (distance+2)) );
+}
+
+// extrapolate centered vec3 values from marked fluid cells
+PYTHON() void extrapolateVec3Simple (Grid<Vec3>& vel, Grid<Real>& phi, int distance = 4)
+{
+	Grid<int> tmp( vel.getParent() );
+	tmp.clear();
+	const int dim = (vel.is3D() ? 3:2);
+
+	// mark all inside
+	FOR_IJK_BND(vel,1) {
+		if ( phi(i,j,k) < 0. ) { tmp(i,j,k) = 1; }
+	} 
+	// + first layer outside
+	FOR_IJK_BND(vel,1) {
+		Vec3i p(i,j,k);
+		if ( tmp(p) ) continue;
+		for (int n=0; n<2*dim; ++n) {
+			if (tmp(p+nb[n])==1) {
+				tmp(i,j,k) = 2; n=2*dim;
+			}
+		}
+	} 
+
+	for(int d=2; d<1+distance; ++d) {
+		knExtrapolateLsSimple<Vec3>(vel, distance, tmp, d, Vec3(0.) );
+	} 
+	knSetRemaining<Vec3>(vel, tmp, Vec3(0.) );
+}
+
+
+
+
 
 } // namespace

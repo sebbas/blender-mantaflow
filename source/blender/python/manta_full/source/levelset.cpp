@@ -32,10 +32,15 @@ KERNEL(bnd=1)
 void InitFmIn (FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& phi, bool ignoreWalls, int obstacleType) {
 	const int idx = flags.index(i,j,k);
 	const Real v = phi[idx];
-	if (v>=0 && (!ignoreWalls || (flags[idx] & obstacleType) == 0))
-		fmFlags[idx] = FlagInited;
-	else
-		fmFlags[idx] = 0;
+	if (ignoreWalls) {
+		if (v>=0. && ((flags[idx] & obstacleType) == 0) )
+			fmFlags[idx] = FlagInited;
+		else
+			fmFlags[idx] = 0;
+	} else {
+		if (v>=0) fmFlags[idx] = FlagInited;
+		else      fmFlags[idx] = 0;
+	}
 }
 
 KERNEL(bnd=1) 
@@ -48,43 +53,36 @@ void InitFmOut (FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& phi, bool ign
 			fmFlags[idx] = 0;
 			phi[idx] = 0;
 		}
-	}
-	else
+	} else {
 		fmFlags[idx] = (v<0) ? FlagInited : 0;
+	}
 }
 
 KERNEL(bnd=1) 
-void SetUninitialized (Grid<int>& fmFlags, LevelsetGrid& phi, const Real val) {
-	if (fmFlags(i,j,k) != FlagInited)
-		phi(i,j,k) = val;
+void SetUninitialized (Grid<int>& flags, Grid<int>& fmFlags, LevelsetGrid& phi, const Real val, int ignoreWalls, int obstacleType) {
+	if(ignoreWalls) {
+		if ( (fmFlags(i,j,k) != FlagInited) && ((flags(i,j,k) & obstacleType) == 0) ) {
+			phi(i,j,k) = val; }
+	} else {
+		if ( (fmFlags(i,j,k) != FlagInited) ) phi(i,j,k) = val;
+	}
 }
 
 template<bool inward>
 inline bool isAtInterface(Grid<int>& fmFlags, LevelsetGrid& phi, const Vec3i& p) {
 	// check for interface
-	for (int nb=0; nb<6; nb++) {
+	int max = phi.is3D() ? 6 : 4;
+	for (int nb=0; nb<max; nb++) {
 		const Vec3i pn(p + neighbors[nb]);
 		if (!fmFlags.isInBounds(pn)) continue;
 		
 		if (fmFlags(pn) != FlagInited) continue;
-		if ((inward && phi(pn) >= 0) || 
-			(!inward && phi(pn) < 0)) return true;
+		if (( inward && phi(pn) >= 0.) || 
+			(!inward && phi(pn) <  0.)) return true;
 	}
 	return false;
 }
 
-// helper function to compute normal
-inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
-	if (i > data.getSizeX()-2) i= data.getSizeX()-2;
-	if (j > data.getSizeY()-2) j= data.getSizeY()-2;
-	if (k > data.getSizeZ()-2) k= data.getSizeZ()-2;
-	if (i < 1) i = 1;
-	if (j < 1) j = 1;
-	if (k < 1) k = 1;
-	return Vec3( data(i+1,j  ,k  ) - data(i-1,j  ,k  ) ,
-				 data(i  ,j+1,k  ) - data(i  ,j-1,k  ) ,
-				 data(i  ,j  ,k+1) - data(i  ,j  ,k-1) );
-}
 
 //************************************************************************
 // Levelset class def
@@ -102,32 +100,33 @@ Real LevelsetGrid::invalidTimeValue() {
 //! Kernel: perform levelset union
 KERNEL(idx) void KnJoin(Grid<Real>& a, const Grid<Real>& b) {
 	a[idx] = min(a[idx], b[idx]);
-}
+} 
+void LevelsetGrid::join(const LevelsetGrid& o) { KnJoin(*this, o); }
 
-void LevelsetGrid::join(const LevelsetGrid& o) {
-	KnJoin(*this, o);
-}
+//! subtract b, note does not preserve SDF!
+KERNEL(idx) void KnSubtract(Grid<Real>& a, const Grid<Real>& b) {
+	if(b[idx]<0.) a[idx] = b[idx] * -1.;
+} 
+void LevelsetGrid::subtract(const LevelsetGrid& o) { KnSubtract(*this, o); }
 
 //! re-init levelset and extrapolate velocities (in & out)
 //  note - uses flags to identify border (could also be done based on ls values)
 void LevelsetGrid::reinitMarching(
 		FlagGrid& flags, Real maxTime, MACGrid* velTransport,
-		bool ignoreWalls, bool correctOuterLayer, int obstacleType
-		, Grid<Real>* normSpeed )
+		bool ignoreWalls, bool correctOuterLayer, int obstacleType )
 {
 	const int dim = (is3D() ? 3 : 2);
 	
 	Grid<int> fmFlags(mParent);
 	LevelsetGrid& phi = *this;
-
-	FastMarch<FmHeapEntryIn,  -1> marchIn (flags, fmFlags, phi, maxTime, NULL, NULL);
+	FastMarch<FmHeapEntryIn,  -1> marchIn (flags, fmFlags, phi, maxTime, NULL);
 	
 	// march inside
 	InitFmIn (flags, fmFlags, phi, ignoreWalls, obstacleType);
 	
 	FOR_IJK_BND(flags, 1) {
 		if (fmFlags(i,j,k) == FlagInited) continue;
-		if ((flags(i,j,k) & obstacleType) != 0) continue;
+		if (ignoreWalls && ((flags(i,j,k) & obstacleType) != 0)) continue;
 		const Vec3i p(i,j,k);
 				
 		if(isAtInterface<true>(fmFlags, phi, p)) {
@@ -137,10 +136,10 @@ void LevelsetGrid::reinitMarching(
 			// add neighbors that are not at the interface
 			for (int nb=0; nb<2*dim; nb++) {
 				const Vec3i pn(p + neighbors[nb]); // index always valid due to bnd=1                
-				if ((flags.get(pn) & obstacleType) != 0) continue;
+				if (ignoreWalls && ((flags.get(pn) & obstacleType) != 0)) continue;
 				
 				// check neighbors of neighbor
-				if (phi(pn) < 0 && !isAtInterface<true>(fmFlags, phi, pn)) {
+				if (phi(pn) < 0. && !isAtInterface<true>(fmFlags, phi, pn)) {
 					marchIn.addToList(pn, p); 
 				}
 			}            
@@ -152,27 +151,18 @@ void LevelsetGrid::reinitMarching(
 	// now march out...    
 	
 	// set un initialized regions
-	SetUninitialized (fmFlags, phi, -maxTime - 1.); 
+	SetUninitialized (flags, fmFlags, phi, -maxTime - 1., ignoreWalls, obstacleType); 
 
 	InitFmOut (flags, fmFlags, phi, ignoreWalls, obstacleType);
 	
-	FastMarch<FmHeapEntryOut, +1> marchOut(flags, fmFlags, phi, maxTime, velTransport, normSpeed);
+	FastMarch<FmHeapEntryOut, +1> marchOut(flags, fmFlags, phi, maxTime, velTransport );
 
-	// NT_DEBUG
-	if(normSpeed && velTransport) {
-		FOR_IJK_BND(flags, 1) {
-			Vec3 vel  = velTransport->getCentered(i,j,k);
-			Vec3 norm = getNormal(phi, i,j,k);  normalize(norm);
-			(*normSpeed)(i,j,k) = dot( norm , vel );
-		}
-	}
-	
 	// by default, correctOuterLayer is on
 	if (correctOuterLayer) {
 		// normal version, inwards march is done, now add all outside values (0..2] to list
 		// note, this might move the interface a bit! but keeps a nice signed distance field...        
 		FOR_IJK_BND(flags, 1) {
-			if ((flags(i,j,k) & obstacleType) != 0) continue;
+			if (ignoreWalls && ((flags(i,j,k) & obstacleType) != 0)) continue;
 			const Vec3i p(i,j,k);
 			
 			// check nbs
@@ -180,7 +170,7 @@ void LevelsetGrid::reinitMarching(
 				const Vec3i pn(p + neighbors[nb]); // index always valid due to bnd=1                
 				
 				if (fmFlags(pn) != FlagInited) continue;
-				if ((flags.get(pn) & obstacleType) != 0) continue;
+				if (ignoreWalls && ((flags.get(pn) & obstacleType)) != 0) continue;
 				
 				const Real nbPhi = phi(pn);
 				
@@ -193,7 +183,7 @@ void LevelsetGrid::reinitMarching(
 		// alternative version, keep interface, do not distort outer cells
 		// add all ouside values, but not those at the IF layer
 		FOR_IJK_BND(flags, 1) {
-			if ((flags(i,j,k) & obstacleType) != 0) continue;
+			if (ignoreWalls && ((flags(i,j,k) & obstacleType) != 0)) continue;
 			
 			// only look at ouside values
 			const Vec3i p(i,j,k);
@@ -206,20 +196,20 @@ void LevelsetGrid::reinitMarching(
 				// add neighbors that are not at the interface
 				for (int nb=0; nb<2*dim; nb++) {
 					const Vec3i pn(p + neighbors[nb]); // index always valid due to bnd=1                
-					if ((flags.get(pn) & obstacleType) != 0) continue;
+					if (ignoreWalls && ((flags.get(pn) & obstacleType) != 0)) continue;
 				
 					// check neighbors of neighbor
-					if (phi(pn) > 0 && !isAtInterface<false>(fmFlags, phi, pn))
+					if (phi(pn) > 0. && !isAtInterface<false>(fmFlags, phi, pn)) {
 						marchOut.addToList(pn, p);
+					}
 				}            
 			}
 		}
 	}    
 	marchOut.performMarching();
-	
+
 	// set un initialized regions
-	SetUninitialized (fmFlags, phi, +maxTime + 1.);    
-	
+	SetUninitialized (flags, fmFlags, phi, +maxTime + 1., ignoreWalls, obstacleType);    
 }
 
 void LevelsetGrid::initFromFlags(FlagGrid& flags, bool ignoreWalls) {
@@ -229,21 +219,6 @@ void LevelsetGrid::initFromFlags(FlagGrid& flags, bool ignoreWalls) {
 		else
 			mData[idx] = 0.5;
 	}
-}
-
-// note - the following functions are experimental, might be removed at some point NT_DEBUG
-KERNEL(idx) void knGridRemapLsMask (Grid<Real>& me, Real min, Real max, Real fac) { 
-	me[idx] = (clamp(me[idx], min, max) - min) * fac; 
-
-	// now we have 0..1 range, convert to hat around 1/2
-	me[idx] = me[idx] * 2.;
-	if(me[idx]>1.0) me[idx] = 2. - me[idx];
-}
-// remap min/max range to hat function around (min+max)/2
-PYTHON void remapLsMask(Grid<Real>& phi, Real min, Real max) {
-	Real fac = 0.;
-	if ( fabs(max-min) > VECTOR_EPSILON ) fac = 1. / (max-min);
-	knGridRemapLsMask(phi, min, max, fac);
 }
 
 //! run marching cubes to create a mesh for the 0-levelset
@@ -304,8 +279,8 @@ void LevelsetGrid::createMesh(Mesh& mesh) {
 					Node vertex;
 					vertex.pos = p1 + (p2-p1)*mu;
 					vertex.normal = getNormalized( 
-										getNormal( *this, i+cubieOffsetX[e1], j+cubieOffsetY[e1], k+cubieOffsetZ[e1]) * (1.0-mu) +
-										getNormal( *this, i+cubieOffsetX[e2], j+cubieOffsetY[e2], k+cubieOffsetZ[e2]) * (    mu)) ;
+										getGradient( *this, i+cubieOffsetX[e1], j+cubieOffsetY[e1], k+cubieOffsetZ[e1]) * (1.0-mu) +
+										getGradient( *this, i+cubieOffsetX[e2], j+cubieOffsetY[e2], k+cubieOffsetZ[e2]) * (    mu)) ;
 					
 					triIndices[e] = mesh.addNode(vertex) + 1;
 					

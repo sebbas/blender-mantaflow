@@ -29,3 +29,7 @@
 +Gui^ static const Pb::Register _R_$IDX$ ("Gui","nextVec3Display",Gui::_W_19); 
 +Gui^ static const Pb::Register _R_$IDX$ ("Gui","nextMeshDisplay",Gui::_W_20); 
 +Gui^ static const Pb::Register _R_$IDX$ ("Gui","nextPartDisplay",Gui::_W_21); 
++Gui^ static const Pb::Register _R_$IDX$ ("Gui","toggleHideGrids",Gui::_W_22); 
++Gui^ static const Pb::Register _R_$IDX$ ("Gui","setCamPos",Gui::_W_23); 
++Gui^ static const Pb::Register _R_$IDX$ ("Gui","setCamRot",Gui::_W_24); 
++Gui^ static const Pb::Register _R_$IDX$ ("Gui","windowSize",Gui::_W_25); 

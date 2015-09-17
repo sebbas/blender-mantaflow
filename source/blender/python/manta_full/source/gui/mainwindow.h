@@ -15,6 +15,7 @@
 #define _MAINWINDOW_H_
 
 #include <QMainWindow>
+#include <QMenuBar>
 #include "glwidget.h"
 #include "customctrl.h"
 #include "painter.h"
@@ -27,7 +28,8 @@ class MainWnd : public QMainWindow
 {
 Q_OBJECT
 public:    
-	enum EventType { EventFullUpdate = QEvent::User, EventGuiShow, EventStepUpdate, EventFinalUpdate, EventInstantKill };
+	enum EventType { EventFullUpdate = QEvent::User, EventGuiShow, 
+		EventStepUpdate, EventFinalUpdate, EventInstantKill, EventSet2DCam };
 	
 	MainWnd();
 	virtual ~MainWnd();
@@ -39,16 +41,31 @@ public:
 	void setPauseStatus(bool v);
 	void stepReset(bool fullUpdate) { if (mStep == 1 || (mStep == 2 && fullUpdate)) {mRequestPause = true; mStep = 0;} }
 	void requestClose() { mRequestClose =true; }
-	void setFrame(int f);
+	void setStep(int f, float time);
 	void setBackground(Mesh *m) { emit setBackgroundMesh(m); }
-	
+
 public slots:
 	void pause();
 	void play();
 	void step();
+	void showHelp();
 	void addControl(void* ctrl);
 	void screenshot(QString file);
 	void clickLine(QPoint pos, float p0, float p1,float p2, float q0, float q1, float q2);
+	
+	void nextRealGrid();
+	void nextVec3Grid();
+	void nextMesh();
+	void nextParts();
+	void nextPdata();
+	void nextVec3Display();
+	void nextPartDisplay();
+	void nextMeshDisplay();
+	void toggleHideGrids();
+
+	void setCamPos(float x, float y, float z);
+	void setCamRot(float x, float y, float z);
+	void windowSize(int w, int h);
 	
 signals:
 	void painterEvent(int e, int param=0);    
@@ -60,12 +77,20 @@ signals:
 protected:
 	bool mPaused, mRequestPause, mRequestClose;
 	int mStep;
-	GLWidget* mGlWidget;
-	QAction* mAcPlay, *mAcPause;
+	GLWidget *mGlWidget;
+	QAction *mAcPlay, *mAcPause;
 	std::vector<Painter*> mPainter;
 	std::vector<CustomControl*> mCtrls;
 	QLabel* mInfo;
 	QVBoxLayout* mPainterLayout;
+
+	// keyboard info window
+	QAction *mAcHelp;
+    QGraphicsScene      *mKbwScene;
+    QGraphicsView       *mKbwView;
+    QGraphicsPixmapItem *mKbwPixmap;
+
+	QMenu *mMenuBar;
 };
 
 }

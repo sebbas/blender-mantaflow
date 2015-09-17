@@ -20,20 +20,27 @@ namespace Manta {
 //! Kernel: Construct the right-hand side of the poisson equation
 KERNEL(bnd=1, reduce=+) returns(int cnt=0) returns(double sum=0)
 void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, 
-			  Grid<Real>* perCellCorr) 
+			  Grid<Real>* perCellCorr, MACGrid* fractions)
 {
 	if (!flags.isFluid(i,j,k)) {
 		rhs(i,j,k) = 0;
 		return;
 	}
-	   
+
 	// compute divergence 
 	// no flag checks: assumes vel at obstacle interfaces is set to zero
-	Real set =          vel(i,j,k).x - vel(i+1,j,k).x + 
-						vel(i,j,k).y - vel(i,j+1,k).y; 
-	if(vel.is3D()) set+=vel(i,j,k).z - vel(i,j,k+1).z;
+	Real set(0);
+	if(!fractions) {
+		set =               vel(i,j,k).x - vel(i+1,j,k).x + 
+				 			vel(i,j,k).y - vel(i,j+1,k).y; 
+		if(vel.is3D()) set+=vel(i,j,k).z - vel(i,j,k+1).z;
+	}else{
+		set =               (*fractions)(i,j,k).x * vel(i,j,k).x - (*fractions)(i+1,j,k).x * vel(i+1,j,k).x + 
+							(*fractions)(i,j,k).y * vel(i,j,k).y - (*fractions)(i,j+1,k).y * vel(i,j+1,k).y; 
+		if(vel.is3D()) set+=(*fractions)(i,j,k).z * vel(i,j,k).z - (*fractions)(i,j,k+1).z * vel(i,j,k+1).z;
+	}
 	
-	// per cell divergence correction
+	// per cell divergence correction (optional)
 	if(perCellCorr) 
 		set += perCellCorr->get(i,j,k);
 	
@@ -43,7 +50,6 @@ void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel,
 	
 	rhs(i,j,k) = set;
 }
-
 
 //! Kernel: Apply velocity update from poisson equation
 KERNEL(bnd=1) 
@@ -60,7 +66,7 @@ void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure)
 		if (flags.isEmpty(i,j-1,k)) vel[idx].y -= pressure[idx];
 		if (flags.is3D() && flags.isEmpty(i,j,k-1)) vel[idx].z -= pressure[idx];
 	}
-	else if (flags.isEmpty(idx))
+	else if (flags.isEmpty(idx)&&!flags.isOutflow(idx)) // don't change velocities in outflow cells
 	{
 		if (flags.isFluid(i-1,j,k)) vel[idx].x += pressure(i-1,j,k);
 		else                        vel[idx].x  = 0.f;
@@ -72,41 +78,6 @@ void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure)
 		}
 	}
 }
-
-//! Kernel: Set matrix stencils and velocities to enable open boundaries
-KERNEL void SetOpenBound(Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak, MACGrid& vel,
-						 Vector3D<bool> lowerBound, Vector3D<bool> upperBound)
-{    
-	// set velocity boundary conditions
-	if (lowerBound.x && i == 0) vel(0,j,k) = vel(1,j,k);
-	if (lowerBound.y && j == 0) vel(i,0,k) = vel(i,1,k);
-	if (upperBound.x && i == maxX-1) vel(maxX-1,j,k) = vel(maxX-2,j,k);
-	if (upperBound.y && j == maxY-1) vel(i,maxY-1,k) = vel(i,maxY-2,k);
-	if(vel.is3D()) {
-		if (lowerBound.z && k == 0)      vel(i,j,0)      = vel(i,j,1);
-		if (upperBound.z && k == maxZ-1) vel(i,j,maxZ-1) = vel(i,j,maxZ-2); 
-	}
-	
-	// set matrix stencils at boundary
-	if ((lowerBound.x && i<=1) || (upperBound.x && i>=maxX-2) ||
-		(lowerBound.y && j<=1) || (upperBound.y && j>=maxY-2) ||
-		(lowerBound.z && k<=1) || (upperBound.z && k>=maxZ-2)) {
-		A0(i,j,k) = vel.is3D() ? 6.0 : 4.0;
-		Ai(i,j,k) = -1.0;
-		Aj(i,j,k) = -1.0;
-		if (vel.is3D()) Ak(i,j,k) = -1.0;
-	}
-}
-
-//! Kernel: Set matrix rhs for outflow
-KERNEL void SetOutflow (Grid<Real>& rhs, Vector3D<bool> lowerBound, Vector3D<bool> upperBound, int height)
-{
-	if ((lowerBound.x && i < height) || (upperBound.x && i >= maxX-1-height) ||
-		(lowerBound.y && j < height) || (upperBound.y && j >= maxY-1-height) ||
-		(lowerBound.z && k < height) || (upperBound.z && k >= maxZ-1-height))
-		rhs(i,j,k) = 0;
-}
-
 
 // *****************************************************************************
 // Ghost fluid helpers
@@ -157,7 +128,7 @@ void CorrectVelocityGhostFluid(MACGrid &vel, const FlagGrid &flags, const Grid<R
 		if (flags.isEmpty(i,j-1,k)) vel[idx][1] += pressure[idx] * ghostFluidHelper(idx, -Y, phi, gfClamp);
 		if (flags.is3D() && flags.isEmpty(i,j,k-1)) vel[idx][2] += pressure[idx] * ghostFluidHelper(idx, -Z, phi, gfClamp);
 	}
-	else if (flags.isEmpty(idx))
+	else if (flags.isEmpty(idx)&&!flags.isOutflow(idx)) // do not change velocities in outflow cells
 	{
 		if (flags.isFluid(i-1,j,k)) vel[idx][0] -= pressure(i-1,j,k) * ghostFluidHelper(idx-X, +X, phi, gfClamp);
 		else                        vel[idx].x  = 0.f;
@@ -186,65 +157,48 @@ void ReplaceClampedGhostFluidVels(MACGrid &vel, FlagGrid &flags,
 {
 	const int X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
 	const int idx = flags.index(i,j,k);
-	if (flags.isFluid(idx))
-	{
-		if( (flags.isEmpty(i-1,j,k)) && (ghostFluidWasClamped(idx, -X, phi, gfClamp)) )
-			vel[idx-X][0] = vel[idx][0];
-		if( (flags.isEmpty(i,j-1,k)) && (ghostFluidWasClamped(idx, -Y, phi, gfClamp)) )
-			vel[idx-Y][1] = vel[idx][1];
-		if( flags.is3D() && 
-		   (flags.isEmpty(i,j,k-1)) && (ghostFluidWasClamped(idx, -Z, phi, gfClamp)) )
-			vel[idx-Z][2] = vel[idx][2];
-	}
-	else if (flags.isEmpty(idx))
-	{
-		if( (i>-1) && (flags.isFluid(i-1,j,k)) && ( ghostFluidWasClamped(idx-X, +X, phi, gfClamp) ) )
-			vel[idx][0] = vel[idx-X][0];
-		if( (j>-1) && (flags.isFluid(i,j-1,k)) && ( ghostFluidWasClamped(idx-Y, +Y, phi, gfClamp) ) )
-			vel[idx][1] = vel[idx-Y][1];
-		if( flags.is3D() &&
-		  ( (k>-1) && (flags.isFluid(i,j,k-1)) && ( ghostFluidWasClamped(idx-Z, +Z, phi, gfClamp) ) ))
-			vel[idx][2] = vel[idx-Z][2];
-	}
+	if (!flags.isEmpty(idx)) return;
+
+	if( (flags.isFluid(i-1,j,k)) && ( ghostFluidWasClamped(idx-X, +X, phi, gfClamp) ) )
+		vel[idx][0] = vel[idx-X][0];
+	if( (flags.isFluid(i,j-1,k)) && ( ghostFluidWasClamped(idx-Y, +Y, phi, gfClamp) ) )
+		vel[idx][1] = vel[idx-Y][1];
+	if( flags.is3D() &&
+	  ( (flags.isFluid(i,j,k-1)) && ( ghostFluidWasClamped(idx-Z, +Z, phi, gfClamp) ) ))
+		vel[idx][2] = vel[idx-Z][2];
+
+	if( (flags.isFluid(i+1,j,k)) && ( ghostFluidWasClamped(idx+X, -X, phi, gfClamp)) )
+		vel[idx][0] = vel[idx+X][0];
+	if( (flags.isFluid(i,j+1,k)) && ( ghostFluidWasClamped(idx+Y, -Y, phi, gfClamp)) )
+		vel[idx][1] = vel[idx+Y][1];
+	if( flags.is3D() && 
+	   (flags.isFluid(i,j,k+1))  && ( ghostFluidWasClamped(idx+Z, -Z, phi, gfClamp)) )
+		vel[idx][2] = vel[idx+Z][2];
 }
 
+//! Kernel: Compute min value of Real grid
+KERNEL(idx, reduce=+) returns(int numEmpty=0)
+int CountEmptyCells(FlagGrid& flags) {
+	if (flags.isEmpty(idx) ) numEmpty++;
+}
 
 // *****************************************************************************
 // Main pressure solve
 
-inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bool>& up) {
-	for(size_t i=0; i<desc.size(); i++) {
-		if (desc[i] == 'x') lo.x = true;
-		else if (desc[i] == 'y') lo.y = true;
-		else if (desc[i] == 'z') lo.z = true;
-		else if (desc[i] == 'X') up.x = true;
-		else if (desc[i] == 'Y') up.y = true;
-		else if (desc[i] == 'Z') up.z = true;
-		else errMsg("invalid character in boundary description string. Only [xyzXYZ] allowed.");
-	}
-}
-
 //! Perform pressure projection of the velocity grid
-PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
-					 Grid<Real>* phi = 0, 
-					 Grid<Real>* perCellCorr = 0, 
-					 Real gfClamp = 1e-04, 
-					 Real cgMaxIterFac = 1.5,
-					 Real cgAccuracy = 1e-3,
-					 string openBound = "",
-					 string outflow = "",
-					 int outflowHeight = 1,
-					 bool precondition = true,
-					 bool enforceCompatibility = false,
-					 bool useResNorm = true )
+PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
+                     Grid<Real>* phi = 0, 
+                     Grid<Real>* perCellCorr = 0,
+                     MACGrid* fractions = 0,
+                     Real gfClamp = 1e-04,
+                     Real cgMaxIterFac = 1.5,
+                     Real cgAccuracy = 1e-3,
+                     bool precondition = true,
+                     bool enforceCompatibility = false,
+                     bool useL2Norm = false, 
+                     bool zeroPressureFixing = false, 
+					 Grid<Real>* retRhs = NULL )
 {
-	// parse strings
-	Vector3D<bool> loOpenBound, upOpenBound, loOutflow, upOutflow;
-	convertDescToVec(openBound, loOpenBound, upOpenBound);
-	convertDescToVec(outflow, loOutflow, upOutflow);
-	if (vel.is2D() && (loOpenBound.z || upOpenBound.z))
-		errMsg("open boundaries for z specified for 2D grid");
-	
 	// reserve temp grids
 	FluidSolver* parent = flags.getParent();
 	Grid<Real> rhs(parent);
@@ -260,34 +214,54 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 	Grid<Real> pca2(parent);
 	Grid<Real> pca3(parent);
 		
-	// setup matrix and boundaries
-	MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak);
-	SetOpenBound (A0, Ai, Aj, Ak, vel, loOpenBound, upOpenBound);
-	
+	// setup matrix and boundaries 
+	MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak, fractions);
+
 	if (phi) {
 		ApplyGhostFluidDiagonal(A0, flags, *phi, gfClamp);
 	}
 	
 	// compute divergence and init right hand side
-	MakeRhs kernMakeRhs (flags, rhs, vel, perCellCorr);
-	
-	if (!outflow.empty())
-		SetOutflow (rhs, loOutflow, upOutflow, outflowHeight);
+	MakeRhs kernMakeRhs (flags, rhs, vel, perCellCorr, fractions);
 	
 	if (enforceCompatibility)
 		rhs += (Real)(-kernMakeRhs.sum / (Real)kernMakeRhs.cnt);
 	
+	// check whether we need to fix some pressure value...
+	// (manually enable, or automatically for high accuracy, can cause asymmetries otherwise)
+	int fixPidx = -1;
+	if(zeroPressureFixing || cgAccuracy<1e-07) 
+	{
+		if(FLOATINGPOINT_PRECISION==1) debMsg("Warning - high CG accuracy with single-precision floating point accuracy might not converge...", 2);
+
+		int numEmpty = CountEmptyCells(flags);
+		if(numEmpty==0) {
+			FOR_IJK_BND(flags,1) {
+				if(flags.isFluid(i,j,k)) {
+					fixPidx = flags.index(i,j,k);
+					break;
+				}
+			}
+			//debMsg("No empty cells! Fixing pressure of cell "<<fixPidx<<" to zero",1);
+		}
+		if(fixPidx>=0) {
+			flags[fixPidx] |= FlagGrid::TypeZeroPressure;
+			rhs[fixPidx] = 0.; 
+			debMsg("Pinning pressure of cell "<<fixPidx<<" to zero", 2);
+		}
+	}
+
 	// CG setup
 	// note: the last factor increases the max iterations for 2d, which right now can't use a preconditioner 
 	const int maxIter = (int)(cgMaxIterFac * flags.getSize().max()) * (flags.is3D() ? 1 : 4);
 	GridCgInterface *gcg;
 	if (vel.is3D())
-		gcg = new GridCg<ApplyMatrix>(pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
+		gcg = new GridCg<ApplyMatrix>  (pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
 	else
 		gcg = new GridCg<ApplyMatrix2D>(pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
 	
 	gcg->setAccuracy( cgAccuracy ); 
-	gcg->setUseResNorm( useResNorm );
+	gcg->setUseL2Norm( useL2Norm );
 
 	// optional preconditioning
 	gcg->setPreconditioner( precondition ? GridCgInterface::PC_mICP : GridCgInterface::PC_None, &pca0, &pca1, &pca2, &pca3);
@@ -298,11 +272,19 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 	debMsg("FluidSolver::solvePressure iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
 	delete gcg;
 	
-	CorrectVelocity(flags, vel, pressure);
+	CorrectVelocity(flags, vel, pressure ); 
 	if (phi) {
 		CorrectVelocityGhostFluid (vel, flags, pressure, *phi, gfClamp);
 		// improve behavior of clamping for large time steps:
 		ReplaceClampedGhostFluidVels (vel, flags, pressure, *phi, gfClamp);
+	}
+
+	if(fixPidx>=0)
+		flags[fixPidx] &= ~FlagGrid::TypeZeroPressure;
+
+	// optionally , return RHS
+	if(retRhs) {
+		retRhs->copyFrom( rhs );
 	}
 }
 

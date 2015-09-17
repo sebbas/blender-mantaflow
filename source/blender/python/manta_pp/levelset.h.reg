@@ -6,4 +6,5 @@
 +LevelsetGrid^ static const Pb::Register _R_$IDX$ ("LevelsetGrid","reinitMarching",LevelsetGrid::_W_1); 
 +LevelsetGrid^ static const Pb::Register _R_$IDX$ ("LevelsetGrid","createMesh",LevelsetGrid::_W_2); 
 +LevelsetGrid^ static const Pb::Register _R_$IDX$ ("LevelsetGrid","join",LevelsetGrid::_W_3); 
-+LevelsetGrid^ static const Pb::Register _R_$IDX$ ("LevelsetGrid","initFromFlags",LevelsetGrid::_W_4); 
++LevelsetGrid^ static const Pb::Register _R_$IDX$ ("LevelsetGrid","subtract",LevelsetGrid::_W_4); 
++LevelsetGrid^ static const Pb::Register _R_$IDX$ ("LevelsetGrid","initFromFlags",LevelsetGrid::_W_5); 

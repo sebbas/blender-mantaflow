@@ -1747,11 +1747,9 @@ static void emit_from_derivedmesh(Object *flow_ob, SmokeDomainSettings *sds, Smo
 		dm->release(dm);
 	}
 	
-	#if 0
 	clock_t end = clock();
 	float seconds = (float)(end - start) / CLOCKS_PER_SEC;
 	printf("TIME FOR RECONSTRUCTING SDF: %f \n", seconds);
-	#endif
 }
 
 /**********************************************************

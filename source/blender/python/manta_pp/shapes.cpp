@@ -9,6 +9,7 @@
 
 
 
+#line 1 "/home/user/Developer/mantaflowgit/source/shapes.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -185,6 +186,7 @@ void Box::generateMesh(Mesh* mesh) {
 		Real mx = max(p.x-p2.x, p1.x-p.x);
 		Real my = max(p.y-p2.y, p1.y-p.y);
 		Real mz = max(p.z-p2.z, p1.z-p.z);
+		if(!phi.is3D()) mz = mx; // skip for 2d...
 		phi(i,j,k) = max(mx,max(my,mz));
 	} else if (p.y <= p2.y && p.y >= p1.y && p.z <= p2.z && p.z >= p1.z) {
 		// outside plane X
@@ -387,6 +389,83 @@ void Cylinder::generateMesh(Mesh* mesh) {
 }   inline Grid<Real>& getArg0() { return phi; } typedef Grid<Real> type0;inline Vec3& getArg1() { return center; } typedef Vec3 type1;inline Real& getArg2() { return radius; } typedef Real type2;inline Vec3& getArg3() { return zaxis; } typedef Vec3 type3;inline Real& getArg4() { return maxz; } typedef Real type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, phi,center,radius,zaxis,maxz);  } Grid<Real>& phi; Vec3 center; Real radius; Vec3 zaxis; Real maxz;   };
 void Cylinder::generateLevelset(Grid<Real>& phi) {
 	CylinderSDF(phi, mCenter, mRadius, mZDir, mZ);
+}
+
+Slope::Slope(FluidSolver* parent, Real anglexy, Real angleyz, Real origin, Vec3 gs)
+	: Shape(parent), mAnglexy(anglexy), mAngleyz(angleyz), mOrigin(origin), mGs(gs)
+{
+	mType = TypeSlope;
+}
+
+void Slope::generateMesh(Mesh* mesh) {
+
+	const int oldtri = mesh->numTris();
+
+	Vec3 v1(0.,mOrigin,0.);
+	mesh->addNode(Node(v1));
+
+	Real dy1 = mGs.z * std::tan(mAngleyz);
+	Vec3 v2(0., mOrigin - dy1, mGs.z);
+	mesh->addNode(Node(v2));
+
+	Real dy2 = mGs.x * std::tan(mAnglexy);
+	Vec3 v3(mGs.x, v2.y - dy2, mGs.z);
+	mesh->addNode(Node(v3));
+
+	Vec3 v4(mGs.x, mOrigin - dy2, 0.);
+	mesh->addNode(Node(v4));
+
+	mesh->addTri(Triangle(0, 1, 2));
+	mesh->addTri(Triangle(2, 3, 0));
+
+	mesh->rebuildCorners(oldtri, -1);
+	mesh->rebuildLookup(oldtri,-1);
+
+}
+
+bool Slope::isInside(const Vec3& pos) const {
+
+	const Real alpha = -mAnglexy * M_PI / 180.;
+	const Real beta  = -mAngleyz * M_PI / 180.;
+
+	Vec3 n(0,1,0);
+
+	n.x = std::sin(alpha)*std::cos(beta);
+	n.y = std::cos(alpha)*std::cos(beta);
+	n.z = std::sin(beta);
+
+	normalize(n);
+
+	const Real fac = std::sqrt(n.x*n.x + n.y*n.y + n.z*n.z);
+
+	return ((n.x*(double)pos.x + n.y*(double)pos.y + n.z*(double)pos.z - mOrigin) / fac) <= 0.;
+
+
+}
+
+ struct SlopeSDF : public KernelBase { SlopeSDF(const Vec3 &n, Grid<Real> &phiObs, const Real &fac, const Real &origin) :  KernelBase(&phiObs,0) ,n(n),phiObs(phiObs),fac(fac),origin(origin)   { run(); }  inline void op(int i, int j, int k, const Vec3 &n, Grid<Real> &phiObs, const Real &fac, const Real &origin )  {
+
+	phiObs(i,j,k) = (n.x*(double)i + n.y*(double)j + n.z*(double)k - origin) * fac;
+
+}   inline const Vec3& getArg0() { return n; } typedef Vec3 type0;inline Grid<Real> & getArg1() { return phiObs; } typedef Grid<Real>  type1;inline const Real& getArg2() { return fac; } typedef Real type2;inline const Real& getArg3() { return origin; } typedef Real type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, n,phiObs,fac,origin);  } const Vec3& n; Grid<Real> & phiObs; const Real& fac; const Real& origin;   };
+
+void Slope::generateLevelset(Grid<Real>& phi) {
+
+	const Real alpha = -mAnglexy * M_PI / 180.;
+	const Real beta  = -mAngleyz * M_PI / 180.;
+
+	Vec3 n(0,1,0);
+
+	n.x = std::sin(alpha)*std::cos(beta);
+	n.y = std::cos(alpha)*std::cos(beta);
+	n.z = std::sin(beta);
+
+	normalize(n);
+
+	const Real fac = 1. / std::sqrt(n.x*n.x + n.y*n.y + n.z*n.z);
+
+	SlopeSDF(n, phi, fac, mOrigin);
+
 }
 
 } //namespace

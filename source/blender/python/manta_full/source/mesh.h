@@ -19,12 +19,13 @@
 
 #include <vector>
 #include "manta.h"
-#include "grid.h"
 #include "vectorbase.h"
 #include <set>
 namespace Manta {
 
 // fwd decl
+class GridBase;
+class LevelsetGrid;
 class FlagGrid;
 class MACGrid;
 class Shape;
@@ -116,47 +117,13 @@ struct OneRing {
     std::set<int> nodes;
     std::set<int> tris;
 };
-	
-/*!adapted from Cudatools.h
-*/
-struct CVec3Ptr {
-	float *x, *y, *z; 
-	inline Vec3 get(int i) const { return Vec3(x[i],y[i],z[i]); };
-	inline void set(int i, const Vec3& v) { x[i]=v.x; y[i]=v.y; z[i]=v.z; };
-};
-
-struct CVec3Array {    
-	CVec3Array(int sz) {
-		x.resize(sz);
-		y.resize(sz);
-		z.resize(sz);        
-	}    
-	CVec3Array(const std::vector<Vec3>& v) {
-		x.resize(v.size());
-		y.resize(v.size());
-		z.resize(v.size());
-		for (size_t i=0; i<v.size(); i++) {
-			x[i] = v[i].x;
-			y[i] = v[i].y;
-			z[i] = v[i].z;
-		}
-	}
-	CVec3Ptr data() {
-		CVec3Ptr a = { x.data(), y.data(), z.data()};
-		return a;
-	}
-	inline const Vec3 operator[](int idx) const { return Vec3((Real)x[idx], (Real)y[idx], (Real)z[idx]); }
-	inline void set(int idx, const Vec3& v) { x[idx] = v.x; y[idx] = v.y; z[idx] = v.z; }	
-	inline int size() { return x.size(); }    
-	std::vector<float> x, y, z;
-};
 
 //! Triangle mesh class
 /*! note: this is only a temporary solution, details are bound to change
           long term goal is integration with Split&Merge code by Wojtan et al.*/
-PYTHON class Mesh : public PbClass {
+PYTHON() class Mesh : public PbClass {
 public:
-    PYTHON Mesh(FluidSolver* parent);
+    PYTHON() Mesh(FluidSolver* parent);
     virtual ~Mesh();
     virtual Mesh* clone();
     
@@ -171,12 +138,16 @@ public:
     void computeVertexNormals();
     
     // plugins
-    PYTHON void load (std::string name, bool append = false);
-    PYTHON void fromShape (Shape& shape, bool append = false);
-    PYTHON void save (std::string name);
-    PYTHON void advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode);
-    PYTHON void scale(Vec3 s);
-    PYTHON void offset(Vec3 o);
+    PYTHON() void load (std::string name, bool append = false);
+    PYTHON() void fromShape (Shape& shape, bool append = false);
+    PYTHON() void save (std::string name);
+    PYTHON() void advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode);
+    PYTHON() void scale(Vec3 s);
+    PYTHON() void offset(Vec3 o);
+
+	PYTHON() void computeLevelset(LevelsetGrid& levelset, Real sigma, Real cutoff=-1.);
+	//! map mesh to grid with sdf
+	PYTHON() void applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags=0, Real cutoff=-1.);
     
     // ops
     Mesh& operator=(const Mesh& o);
@@ -193,6 +164,10 @@ public:
     inline Corner& corners(int c) { return mCorners[c]; }
     inline NodeChannel* nodeChannel(int i) { return mNodeChannels[i]; }
     inline TriChannel* triChannel(int i) { return mTriChannels[i]; }
+
+	// allocate memory (eg upon load)
+	void resizeTris(int numTris);
+	void resizeNodes(int numNodes);
     
     inline bool isNodeFixed(int n) { return mNodes[n].flags & NfFixed; }
     inline bool isTriangleFixed(int t) { return (mNodes[mTris[t].c[0]].flags & NfFixed) || (mNodes[mTris[t].c[1]].flags & NfFixed) || (mNodes[mTris[t].c[2]].flags & NfFixed); }
@@ -221,9 +196,6 @@ public:
     
     void addTriChannel(TriChannel* c) { mTriChannels.push_back(c); rebuildChannels(); }
     void addNodeChannel(NodeChannel* c) { mNodeChannels.push_back(c); rebuildChannels(); }
-	void SDFKernel(const int* partStart, const int* partLen, CVec3Ptr pos, CVec3Ptr normal, float* sdf, Vec3i gridRes, int intRadius, float safeRadius2, float cutoff2, float isigma2);
-	PYTHON void meshSDF(Mesh& mesh, LevelsetGrid& levelset, float sigma, float cutoff=-1);
-	PYTHON void applyToGrid(GridBase* grid, FlagGrid* respectFlags=0, float cutoff=-1);
 
 protected:    
     void rebuildChannels();

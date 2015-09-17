@@ -9,6 +9,7 @@
 
 
 
+#line 1 "/home/user/Developer/mantaflowgit/source/fastmarch.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -32,14 +33,11 @@ using namespace std;
 namespace Manta {
 	
 template<class COMP, int TDIR>
-FastMarch<COMP,TDIR>::FastMarch(FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& levelset, Real maxTime, 
-		MACGrid* velTransport, Grid<Real>* velMag )
+FastMarch<COMP,TDIR>::FastMarch(FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& levelset, Real maxTime, MACGrid* velTransport )
 	: mLevelset(levelset), mFlags(flags), mFmFlags(fmFlags)
 {
 	if (velTransport)
 		mVelTransport.initMarching(velTransport, &flags);
-	if (velMag)
-		mMagTransport.initMarching(velMag, &flags);
 	
 	mMaxTime = maxTime * TDIR;
 }
@@ -174,8 +172,6 @@ void FastMarch<COMP,TDIR>::addToList(const Vec3i& p, const Vec3i& src) {
 	
 	if (mVelTransport.isInitialized())
 		mVelTransport.transpTouch(p.x, p.y, p.z, mWeights, ttime);
-	if (mMagTransport.isInitialized())
-		mMagTransport.transpTouch(p.x, p.y, p.z, mWeights, ttime);
 
 	// the following adds entries to the heap of active cells
 	// current: (!found) , previous: always add, might lead to duplicate
@@ -345,8 +341,11 @@ inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
 }   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline LevelsetGrid& getArg2() { return phi; } typedef LevelsetGrid type2;inline Real& getArg3() { return maxDist; } typedef Real type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,vel,phi,maxDist);  } FlagGrid& flags; MACGrid& vel; LevelsetGrid& phi; Real maxDist;   };
 // a simple extrapolation step , used for cases where there's no levelset
 // (note, less accurate than fast marching extrapolation!)
+// into obstacle is a special mode for second order obstable boundaries (extrapolating
+// only fluid velocities, not those at obstacles)
 
-void extrapolateMACSimple(FlagGrid& flags, MACGrid& vel, int distance = 4, LevelsetGrid* phiObs=NULL ) {
+
+void extrapolateMACSimple(FlagGrid& flags, MACGrid& vel, int distance = 4, LevelsetGrid* phiObs=NULL , bool intoObs = false ) {
 	Grid<int> tmp( flags.getParent() );
 	int dim = (flags.is3D() ? 3:2);
 
@@ -355,16 +354,19 @@ void extrapolateMACSimple(FlagGrid& flags, MACGrid& vel, int distance = 4, Level
 		dir[c] = 1;
 		tmp.clear();
 
-		// remove all fluid cells
+		// remove all fluid cells (not touching obstacles)
 		FOR_IJK_BND(flags,1) {
 			Vec3i p(i,j,k);
-			if (flags.isFluid(p) || flags.isFluid(p-dir) ) {
-				tmp(p) = 1;
+			bool mark = false;
+			if(!intoObs) {
+				if( flags.isFluid(p) || flags.isFluid(p-dir) ) mark = true;
+			} else {
+				if( (flags.isFluid(p) || flags.isFluid(p-dir) ) && 
+					(!flags.isObstacle(p)) && (!flags.isObstacle(p-dir)) ) mark = true;
 			}
-		}
 
-		// debug init! , enable for testing only - set varying velocities inside
-		//FOR_IJK_BND(flags,1) { if (tmp(i,j,k) == 0) continue; vel(i,j,k)[c] = (i+j+k+c+1.)*0.1; }
+			if(mark) tmp(p) = 1;
+		}
 		
 		// extrapolate for distance
 		for(int d=1; d<1+distance; ++d) {
@@ -378,7 +380,7 @@ void extrapolateMACSimple(FlagGrid& flags, MACGrid& vel, int distance = 4, Level
 
 	// copy tangential values into sides
 	knExtrapolateIntoBnd(flags, vel);
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "extrapolateMACSimple" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); int distance = _args.getOpt<int >("distance",2,4,&_lock); LevelsetGrid* phiObs = _args.getPtrOpt<LevelsetGrid >("phiObs",3,NULL ,&_lock);   _retval = getPyNone(); extrapolateMACSimple(flags,vel,distance,phiObs);  _args.check(); } pbFinalizePlugin(parent,"extrapolateMACSimple" ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateMACSimple",e.what()); return 0; } } static const Pb::Register _RP_extrapolateMACSimple ("","extrapolateMACSimple",_W_0); 
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "extrapolateMACSimple" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); int distance = _args.getOpt<int >("distance",2,4,&_lock); LevelsetGrid* phiObs = _args.getPtrOpt<LevelsetGrid >("phiObs",3,NULL ,&_lock); bool intoObs = _args.getOpt<bool >("intoObs",4,false ,&_lock);   _retval = getPyNone(); extrapolateMACSimple(flags,vel,distance,phiObs,intoObs);  _args.check(); } pbFinalizePlugin(parent,"extrapolateMACSimple" ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateMACSimple",e.what()); return 0; } } static const Pb::Register _RP_extrapolateMACSimple ("","extrapolateMACSimple",_W_0); 
 
 
 

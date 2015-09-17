@@ -16,7 +16,6 @@
 #include "manta.h"
 #include "general.h"
 #include "wchar.h"
-#include "pymain.h"
 
 namespace Manta {
 	extern void guiMain(int argc, char* argv[]);
@@ -77,7 +76,7 @@ void runScript(vector<string>& args) {
 	delete[] buf;    
 #else
 	// for linux, use this as it produces nicer error messages
-	PyRun_SimpleFileEx(fp, filename.c_str(), 1);    
+	PyRun_SimpleFileEx(fp, filename.c_str(), 0);  
 	fclose(fp);    
 #endif
 	
@@ -92,7 +91,7 @@ void runScript(vector<string>& args) {
 	delete [] cargs;
 }
 
-int manta_main(int argc,char* argv[]) {
+int main(int argc,char* argv[]) {
 	debMsg("Version: "<< buildInfoString() , 1);
 
 #ifdef GUI

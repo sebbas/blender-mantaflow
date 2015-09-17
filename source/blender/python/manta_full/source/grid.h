@@ -24,11 +24,11 @@ namespace Manta {
 class LevelsetGrid;
 	
 //! Base class for all grids
-PYTHON class GridBase : public PbClass {
+PYTHON() class GridBase : public PbClass {
 public:
 	enum GridType { TypeNone = 0, TypeReal = 1, TypeInt = 2, TypeVec3 = 4, TypeMAC = 8, TypeLevelset = 16, TypeFlags = 32 };
 		
-	PYTHON GridBase(FluidSolver* parent);
+	PYTHON() GridBase(FluidSolver* parent);
 	
 	//! Get the grids X dimension
 	inline int getSizeX() const { return mSize.x; }
@@ -83,11 +83,11 @@ protected:
 };
 
 //! Grid class
-PYTHON template<class T>
+PYTHON() template<class T>
 class Grid : public GridBase {
 public:
 	//! init new grid, values are set to zero
-	PYTHON Grid(FluidSolver* parent, bool show = true);
+	PYTHON() Grid(FluidSolver* parent, bool show = true);
 	//! create new & copy content from another grid
 	Grid(const Grid<T>& a);
 	//! return memory to solver
@@ -95,11 +95,11 @@ public:
 	
 	typedef T BASETYPE;
 	
-	PYTHON void save(std::string name);
-	PYTHON void load(std::string name);
+	PYTHON() void save(std::string name);
+	PYTHON() void load(std::string name);
 	
 	//! set all cells to zero
-	PYTHON void clear();
+	PYTHON() void clear();
 	
 	//! all kinds of access functions, use grid(), grid[] or grid.get()
 	//! access data
@@ -128,21 +128,66 @@ public:
 	inline const T operator[](int idx) const       { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
 	
 	// interpolated access
-	inline T getInterpolated(const Vec3& pos) const { return interpol<T>(mData, mSize, mStrideZ, pos); }
+	inline T    getInterpolated(const Vec3& pos) const { return interpol<T>(mData, mSize, mStrideZ, pos); }
 	inline void setInterpolated(const Vec3& pos, const T& val, Grid<Real>& sumBuffer) const { setInterpol<T>(mData, mSize, mStrideZ, pos, val, &sumBuffer[0]); }
-	// higher order interpolation
-	inline T getInterpolated(const Vec3& pos, int order) const { 
+	// higher order interpolation (1=linear, 2=cubic)
+	inline T getInterpolatedHi(const Vec3& pos, int order) const { 
 		switch(order) {
-		case 2: return interpolCubic<T>(mData, mSize, mStrideZ, pos); 
-		default: 
-			// default / fallback
-			assertMsg(false, "Unknown interpolation order "<<order);
-		case 1: 
-			return interpol<T>(mData, mSize, mStrideZ, pos); 
-		}
+		case 1:  return interpol     <T>(mData, mSize, mStrideZ, pos); 
+		case 2:  return interpolCubic<T>(mData, mSize, mStrideZ, pos); 
+		default: assertMsg(false, "Unknown interpolation order "<<order); }
 	}
 	
-	// operators
+	// assignment / copy
+
+	//! warning - do not use "=" for grids in python, this copies the reference! not the grid content...
+	//Grid<T>& operator=(const Grid<T>& a);
+	//! copy content from other grid (use this one instead of operator= !)
+	PYTHON() Grid<T>& copyFrom(const Grid<T>& a); // { *this = a; }
+
+	// helper functions to work with grids in scene files 
+
+	//! add/subtract other grid
+	PYTHON() void add(const Grid<T>& a);
+	PYTHON() void sub(const Grid<T>& a);
+	//! set all cells to constant value
+	PYTHON() void setConst(T s);
+	//! add constant to all grid cells
+	PYTHON() void addConst(T s);
+	//! add scaled other grid to current one (note, only "Real" factor, "T" type not supported here!)
+	PYTHON() void addScaled(const Grid<T>& a, const T& factor); 
+	//! multiply contents of grid
+	PYTHON() void mult( const Grid<T>& a);
+	//! multiply each cell by a constant scalar value
+	PYTHON() void multConst(T s);
+	//! clamp content to range (for vec3, clamps each component separately)
+	PYTHON() void clamp(Real min, Real max);
+	
+	// common compound operators
+	//! get absolute max value in grid 
+	PYTHON() Real getMaxAbs();
+	//! get max value in grid 
+	PYTHON() Real getMax();
+	//! get min value in grid 
+	PYTHON() Real getMin();    
+	//! set all boundary cells to constant value (Dirichlet)
+	PYTHON() void setBound(T value, int boundaryWidth=1);
+	//! set all boundary cells to last inner value (Neumann)
+	PYTHON() void setBoundNeumann(int boundaryWidth=1);
+
+	//! for compatibility, old names:
+	PYTHON() Real getMaxAbsValue() { return getMaxAbs(); }
+	PYTHON() Real getMaxValue()    { return getMax(); }
+	PYTHON() Real getMinValue()    { return getMin(); }
+
+	//! for Blender Mantaflow API
+	PYTHON() void readGridFromMemory(const std::string& memLoc, int x, int y, int z);
+	PYTHON() std::string getDataPointer();
+
+	//! debugging helper, print grid from python
+	PYTHON() void printGrid(int zSlice=-1,  bool printIndex=false); 
+
+	// c++ only operators
 	template<class S> Grid<T>& operator+=(const Grid<S>& a);
 	template<class S> Grid<T>& operator+=(const S& a);
 	template<class S> Grid<T>& operator-=(const Grid<S>& a);
@@ -151,58 +196,24 @@ public:
 	template<class S> Grid<T>& operator*=(const S& a);
 	template<class S> Grid<T>& operator/=(const Grid<S>& a);
 	template<class S> Grid<T>& operator/=(const S& a);
-	Grid<T>& operator=(const Grid<T>& a);
 	Grid<T>& safeDivide(const Grid<T>& a);    
-
-	// python helper functions to work with grids in scene files 
-	// note - unfortunately setConstant function has to be external! here only e.g. set to Real would work...
-	// see setConstant, setConstantVec3, setConstantInt in grid.cpp for details
-
-	//! add/subtract other grid
-	PYTHON void add(const Grid<T>& a);
-	PYTHON void sub(const Grid<T>& a);
-	//! set content to added/subtracted values of other two grids
-	PYTHON void setAdd(const Grid<T>& a, const Grid<T>& b);
-	PYTHON void setSub(const Grid<T>& a, const Grid<T>& b);
-	//! add real constant to all grid cells
-	PYTHON void addConstReal(Real s);
-	//! multiply contents of grid
-	PYTHON void multiply( const Grid<T>& b);
-	//! multiply each cell by a constant scalar value
-	PYTHON void multiplyConstReal(Real s);
-	//! add scaled other grid to current one (note, only "Real" factor, "T" type not supported here!)
-	PYTHON void addScaledReal(const Grid<T>& b, const Real& factor); 
-	//! copy content from other grid (use this one instead of operator= !)
-	PYTHON void copyFrom(const Grid<T>& a) { *this = a; }
-	//! clamp content to range (for vec3, clamps each component separately)
-	PYTHON void clamp(Real min, Real max);
 	
-	// common compound operators
-	//! get absolute max value in grid 
-	PYTHON Real getMaxAbsValue();
-	//! get max value in grid 
-	PYTHON Real getMaxValue();
-	//! get min value in grid 
-	PYTHON Real getMinValue();    
 	//! Swap data with another grid (no actual data is moved)
 	void swap(Grid<T>& other);
 
-	//! debugging helper, print grid from python
-	PYTHON void printGrid(int zSlice=-1,  bool printIndex=false); 
-	
 protected:
 	T* mData;
 };
 
 // Python doesn't know about templates: explicit aliases needed
-PYTHON alias Grid<int>  IntGrid;
-PYTHON alias Grid<Real> RealGrid;
-PYTHON alias Grid<Vec3> VecGrid;
+PYTHON() alias Grid<int>  IntGrid;
+PYTHON() alias Grid<Real> RealGrid;
+PYTHON() alias Grid<Vec3> VecGrid;
 
 //! Special function for staggered grids
-PYTHON class MACGrid : public Grid<Vec3> {
+PYTHON() class MACGrid : public Grid<Vec3> {
 public:
-	PYTHON MACGrid(FluidSolver* parent, bool show=true) : Grid<Vec3>(parent, show) { 
+	PYTHON() MACGrid(FluidSolver* parent, bool show=true) : Grid<Vec3>(parent, show) { 
 		mType = (GridType)(TypeMAC | TypeVec3); }
 	
 	// specialized functions for interpolating MAC information
@@ -211,30 +222,46 @@ public:
 	inline Vec3 getAtMACX(int i, int j, int k) const;
 	inline Vec3 getAtMACY(int i, int j, int k) const;
 	inline Vec3 getAtMACZ(int i, int j, int k) const;
-	template<int comp> inline Real getInterpolatedComponent(Vec3 pos) const { return interpolComponent<comp>(mData, mSize, mStrideZ, pos); }
+	// interpolation
 	inline Vec3 getInterpolated(const Vec3& pos) const { return interpolMAC(mData, mSize, mStrideZ, pos); }
 	inline void setInterpolated(const Vec3& pos, const Vec3& val, Vec3* tmp) { return setInterpolMAC(mData, mSize, mStrideZ, pos, val, tmp); }
+	inline Vec3 getInterpolatedHi(const Vec3& pos, int order) const { 
+		switch(order) {
+		case 1:  return interpolMAC     (mData, mSize, mStrideZ, pos); 
+		case 2:  return interpolCubicMAC(mData, mSize, mStrideZ, pos); 
+		default: assertMsg(false, "Unknown interpolation order "<<order); }
+	}
+	// specials for mac grid:
+	template<int comp> inline Real getInterpolatedComponent(Vec3 pos) const { return interpolComponent<comp>(mData, mSize, mStrideZ, pos); }
+	template<int comp> inline Real getInterpolatedComponentHi(const Vec3& pos, int order) const { 
+		switch(order) {
+		case 1:  return interpolComponent<comp>(mData, mSize, mStrideZ, pos); 
+		case 2:  return interpolCubicMAC(mData, mSize, mStrideZ, pos)[comp];  // warning - not yet optimized
+		default: assertMsg(false, "Unknown interpolation order "<<order); }
+	}
 	
 protected:
 };
 
 //! Special functions for FlagGrid
-PYTHON class FlagGrid : public Grid<int> {
+PYTHON() class FlagGrid : public Grid<int> {
 public:
-	PYTHON FlagGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<int>(parent, show) { 
+	PYTHON() FlagGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<int>(parent, show) { 
 		mType = (GridType)(TypeFlags | TypeInt); }
 	
 	//! types of cells, in/outflow can be combined, e.g., TypeFluid|TypeInflow
 	enum CellType { 
-		TypeNone = 0,
-		TypeFluid = 1,
+		TypeNone     = 0,
+		TypeFluid    = 1,
 		TypeObstacle = 2,
-		TypeEmpty = 4,
-		TypeInflow = 8,
-		TypeOutflow = 16,
-		TypeStick = 128,
-		TypeReserved = 256
+		TypeEmpty    = 4,
+		TypeInflow   = 8,
+		TypeOutflow  = 16,
+		TypeOpen     = 32,
+		TypeStick    = 128,
+		TypeReserved = 256,
 		// 2^10 - 2^14 reserved for moving obstacles
+		TypeZeroPressure = (1<<15) 
 	};
 		
 	//! access for particles
@@ -257,17 +284,44 @@ public:
 	inline bool isEmpty(int i, int j, int k) const { return get(i,j,k) & TypeEmpty; }
 	inline bool isEmpty(const Vec3i& pos) const { return get(pos) & TypeEmpty; }
 	inline bool isEmpty(const Vec3& pos) const { return getAt(pos) & TypeEmpty; }
+	inline bool isOutflow(int idx) const { return get(idx) & TypeOutflow; }
+	inline bool isOutflow(int i, int j, int k) const { return get(i, j, k) & TypeOutflow; }
+	inline bool isOutflow(const Vec3i& pos) const { return get(pos) & TypeOutflow; }
+	inline bool isOutflow(const Vec3& pos) const { return getAt(pos) & TypeOutflow; }
+	inline bool isOpen(int idx) const { return get(idx) & TypeOpen; }
+	inline bool isOpen(int i, int j, int k) const { return get(i, j, k) & TypeOpen; }
+	inline bool isOpen(const Vec3i& pos) const { return get(pos) & TypeOpen; }
+	inline bool isOpen(const Vec3& pos) const { return getAt(pos) & TypeOpen; }
 	inline bool isStick(int idx) const { return get(idx) & TypeStick; }
 	inline bool isStick(int i, int j, int k) const { return get(i,j,k) & TypeStick; }
 	inline bool isStick(const Vec3i& pos) const { return get(pos) & TypeStick; }
 	inline bool isStick(const Vec3& pos) const { return getAt(pos) & TypeStick; }
 	
+	void InitMinXWall(const int &boundaryWidth, Grid<Real>& phiWalls);
+	void InitMaxXWall(const int &boundaryWidth, Grid<Real>& phiWalls);
+	void InitMinYWall(const int &boundaryWidth, Grid<Real>& phiWalls);
+	void InitMaxYWall(const int &boundaryWidth, Grid<Real>& phiWalls);
+	void InitMinZWall(const int &boundaryWidth, Grid<Real>& phiWalls);
+	void InitMaxZWall(const int &boundaryWidth, Grid<Real>& phiWalls);
 	// Python callables
-	PYTHON void initDomain(int boundaryWidth=0);
-	PYTHON void initBoundaries(int boundaryWidth=0);
-	PYTHON void updateFromLevelset(LevelsetGrid& levelset);    
-	PYTHON void fillGrid(int type=TypeFluid);
+	PYTHON() void initDomain( const int &boundaryWidth   = 0 
+						  , const std::string &wall    = "xXyYzZ"
+						  , const std::string &open    = "      "
+						  , const std::string &inflow  = "      "
+						  , const std::string &outflow = "      "
+						  , Grid<Real>* phiWalls       = 0x00 );
+
+	void initBoundaries( const int &boundaryWidth, const int *types );
+
+	PYTHON() void updateFromLevelset(LevelsetGrid& levelset);    
+	PYTHON() void fillGrid(int type=TypeFluid);
+
 };
+
+//! helper to compute grid conversion factor between local coordinates of two grids
+inline Vec3 calcGridSizeFactor(Vec3i s1, Vec3i s2) {
+	return Vec3( Real(s1[0])/s2[0], Real(s1[1])/s2[1], Real(s1[2])/s2[2] );
+}
 
 
 //******************************************************************************
@@ -276,6 +330,7 @@ public:
 // the code below is meant only as an example for a grid with a more complex data type
 // and illustrates which functions need to be implemented; it's not needed
 // to run any simulations in mantaflow!
+
 #define ENABLE_GRID_TEST_DATATYPE 0
 
 #if ENABLE_GRID_TEST_DATATYPE==1
@@ -286,7 +341,13 @@ class nbVector : public nbVectorBaseType {
 		inline nbVector() : nbVectorBaseType() {};
 		inline ~nbVector() {};
 
+		// grid operators require certain functions
+		inline nbVector(Real v) : nbVectorBaseType() { this->push_back( (int)v ); };
+
 		inline const nbVector& operator+= ( const nbVector &v1 ) {
+			assertMsg(false,"Never call!"); return *this; 
+		}
+		inline const nbVector& operator-= ( const nbVector &v1 ) {
 			assertMsg(false,"Never call!"); return *this; 
 		}
 		inline const nbVector& operator*= ( const nbVector &v1 ) {
@@ -302,6 +363,9 @@ template<> inline void FluidSolver::freeGridPointer<nbVector>(nbVector* ptr) {
 }
 
 inline nbVector operator+ ( const nbVector &v1, const nbVector &v2 ) {
+	assertMsg(false,"Never call!"); return nbVector(); 
+}
+inline nbVector operator- ( const nbVector &v1, const nbVector &v2 ) {
 	assertMsg(false,"Never call!"); return nbVector(); 
 }
 inline nbVector operator* ( const nbVector &v1, const nbVector &v2 ) {
@@ -320,16 +384,18 @@ template<> inline nbVector safeDivide<nbVector>(const nbVector &a, const nbVecto
 	assertMsg(false,"Never call!"); return nbVector(); 
 }
 
-// make data type known to python
-// python keyword changed here, because the preprocessor does not yet parse #ifdefs correctly
-PYT HON alias Grid<nbVector> TestDataGrid;
-#endif // ENABLE_GRID_TEST_DATATYPE
-
-
-//! helper to compute grid conversion factor between local coordinates of two grids
-inline Vec3 calcGridSizeFactor(Vec3i s1, Vec3i s2) {
-	return Vec3( Real(s1[0])/s2[0], Real(s1[1])/s2[1], Real(s1[2])/s2[2] );
+std::ostream& operator<< ( std::ostream& os, const nbVectorBaseType& i ) {
+	os << " nbVectorBaseType NYI ";
+	return os;
 }
+
+// make data type known to python
+// (python keyword changed here, because the preprocessor does not yet parse #ifdefs correctly)
+PY THON alias Grid<nbVector> TestDataGrid;
+// ? PY THON alias nbVector TestDatatype;
+
+#endif // end ENABLE_GRID_TEST_DATATYPE
+
 
 
 //******************************************************************************
@@ -421,15 +487,14 @@ inline Vec3 MACGrid::getAtMACZ(int i, int j, int k) const {
 	return v;
 }
 
-KERNEL(idx) template<class T, class S> void gridAdd (Grid<T>& me, const Grid<S>& other)  { me[idx] += other[idx]; }
-KERNEL(idx) template<class T, class S> void gridSub (Grid<T>& me, const Grid<S>& other)  { me[idx] -= other[idx]; }
+KERNEL(idx) template<class T, class S> void gridAdd  (Grid<T>& me, const Grid<S>& other) { me[idx] += other[idx]; }
+KERNEL(idx) template<class T, class S> void gridSub  (Grid<T>& me, const Grid<S>& other) { me[idx] -= other[idx]; }
 KERNEL(idx) template<class T, class S> void gridMult (Grid<T>& me, const Grid<S>& other) { me[idx] *= other[idx]; }
-KERNEL(idx) template<class T, class S> void gridDiv (Grid<T>& me, const Grid<S>& other)  { me[idx] /= other[idx]; }
+KERNEL(idx) template<class T, class S> void gridDiv  (Grid<T>& me, const Grid<S>& other) { me[idx] /= other[idx]; }
 KERNEL(idx) template<class T, class S> void gridAddScalar (Grid<T>& me, const S& other)  { me[idx] += other; }
-KERNEL(idx) template<class T, class S> void gridMultScalar (Grid<T>& me, const S& other) { me[idx] *= other; }
+KERNEL(idx) template<class T, class S> void gridMultScalar(Grid<T>& me, const S& other)  { me[idx] *= other; }
 KERNEL(idx) template<class T, class S> void gridScaledAdd (Grid<T>& me, const Grid<T>& other, const S& factor) { me[idx] += factor * other[idx]; }
 
-KERNEL(idx) template<class T> void gridAdd2 (Grid<T>& me, const Grid<T>& a, const Grid<T>& b) { me[idx] = a[idx] + b[idx]; }
 KERNEL(idx) template<class T> void gridSafeDiv (Grid<T>& me, const Grid<T>& other) { me[idx] = safeDivide(me[idx], other[idx]); }
 KERNEL(idx) template<class T> void gridSetConst(Grid<T>& grid, T value) { grid[idx] = value; }
 
@@ -467,6 +532,42 @@ template<class T> template<class S> Grid<T>& Grid<T>::operator/= (const S& a) {
 	return *this;
 }
 
+
+//******************************************************************************
+// Other helper functions
+
+// compute gradient of a scalar grid
+inline Vec3 getGradient(const Grid<Real>& data, int i, int j, int k) {
+	Vec3 v;
+
+	if (i > data.getSizeX()-2) i= data.getSizeX()-2;
+	if (j > data.getSizeY()-2) j= data.getSizeY()-2;
+	if (i < 1) i = 1;
+	if (j < 1) j = 1;
+	v = Vec3( data(i+1,j  ,k  ) - data(i-1,j  ,k  ) ,
+			  data(i  ,j+1,k  ) - data(i  ,j-1,k  ) , 0. );
+
+	if(data.is3D()) {
+		if (k > data.getSizeZ()-2) k= data.getSizeZ()-2;
+		if (k < 1) k = 1;
+		v[2]= data(i  ,j  ,k+1) - data(i  ,j  ,k-1);
+	} 
+
+	return v;
+}
+
+// interpolate grid from one size to another size
+KERNEL() template<class S>
+void knInterpolateGridTempl(Grid<S>& target, Grid<S>& source, const Vec3& sourceFactor , Vec3 offset, int orderSpace=1 ) {
+	Vec3 pos = Vec3(i,j,k) * sourceFactor + offset;
+	if(!source.is3D()) pos[2] = 0; // allow 2d -> 3d
+	target(i,j,k) = source.getInterpolatedHi(pos, orderSpace);
+} 
+// template glue code - choose interpolation based on template arguments
+template<class GRID>
+void interpolGridTempl( GRID& target, GRID& source ) {
+		errMsg("interpolGridTempl - Only valid for specific instantiations");
+}
 
 
 } //namespace

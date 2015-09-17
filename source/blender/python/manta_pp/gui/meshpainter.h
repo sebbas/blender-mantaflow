@@ -9,6 +9,7 @@
 
 
 
+#line 1 "/home/user/Developer/mantaflowgit/source/gui/meshpainter.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework

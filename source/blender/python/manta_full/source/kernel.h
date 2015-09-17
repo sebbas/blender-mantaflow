@@ -47,7 +47,10 @@ class ParticleBase;
 
 #define FOR_IJK(grid) FOR_IJK_BND(grid, 0)
 			   
+#define FOR_PARTS(parts) \
+	for(int idx=0, total=(parts).size(); idx<total; idx++)
 	
+//! Basic data structure for kernel data, initialized based on kernel type (e.g. single, idx, etc).
 struct KernelBase {
 	int maxX, maxY, maxZ, minZ;
 	int X, Y, Z;
@@ -72,9 +75,6 @@ struct KernelBase {
 
 } // namespace
 
-// Define plugin documentation group
-// all kernels will automatically be added to this group
-/*! @defgroup Kernels Computation Kernels
- */
+// all kernels will automatically be added to the "Kernels" group in doxygen
 
 #endif

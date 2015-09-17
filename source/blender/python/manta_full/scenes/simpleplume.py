@@ -11,6 +11,7 @@ res = 64
 gs = vec3(res,1.5*res,res)
 s = FluidSolver(name='main', gridSize = gs)
 s.timestep = 1.0
+timings = Timings()
 
 # prepare grids
 flags = s.create(FlagGrid)
@@ -43,7 +44,7 @@ for t in range(250):
 		densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)
 		
 	# optionally, enforce inflow velocity
-	#source.applyToGrid(grid=vel, value=velInflow)
+	#source.applyToGrid(grid=vel, value=vec3(0.1,0,0))
 
 	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
 	advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=2, strength=1.0)
@@ -51,11 +52,10 @@ for t in range(250):
 	setWallBcs(flags=flags, vel=vel)    
 	addBuoyancy(density=density, vel=vel, gravity=vec3(0,-6e-4,0), flags=flags)
 	
-	solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True)
-	setWallBcs(flags=flags, vel=vel)
-	#density.save('den%04d.uni' % t)
-	
-	s.printTimings()    
+	solvePressure( flags=flags, vel=vel, pressure=pressure )
+
+	#density.save('den%04d.uni' % t) 
+	timings.display()
 	s.step()
 
 

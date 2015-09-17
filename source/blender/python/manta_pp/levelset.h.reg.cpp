@@ -17,6 +17,7 @@ namespace Manta {
  static const Pb::Register _R_2 ("LevelsetGrid","reinitMarching",LevelsetGrid::_W_1); 
  static const Pb::Register _R_3 ("LevelsetGrid","createMesh",LevelsetGrid::_W_2); 
  static const Pb::Register _R_4 ("LevelsetGrid","join",LevelsetGrid::_W_3); 
- static const Pb::Register _R_5 ("LevelsetGrid","initFromFlags",LevelsetGrid::_W_4); 
+ static const Pb::Register _R_5 ("LevelsetGrid","subtract",LevelsetGrid::_W_4); 
+ static const Pb::Register _R_6 ("LevelsetGrid","initFromFlags",LevelsetGrid::_W_5); 
 #endif
 }

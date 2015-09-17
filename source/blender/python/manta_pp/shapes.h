@@ -9,6 +9,7 @@
 
 
 
+#line 1 "/home/user/Developer/mantaflowgit/source/shapes.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -36,7 +37,7 @@ class Mesh;
 	
 //! Base class for all shapes
 class Shape : public PbClass {public:
-	enum GridType { TypeNone = 0, TypeBox = 1, TypeSphere = 2, TypeCylinder };
+	enum GridType { TypeNone = 0, TypeBox = 1, TypeSphere = 2, TypeCylinder = 3, TypeSlope = 4 };
 	
 	Shape(FluidSolver* parent); static int _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); pbPreparePlugin(0, "Shape::Shape" ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock);  obj = new Shape(parent); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"Shape::Shape" ); return 0; } catch(std::exception& e) { pbSetError("Shape::Shape",e.what()); return -1; } }
 	
@@ -134,7 +135,30 @@ protected:
 #define _C_Cylinder
 ;
 
-	
+//! Slope shape
+// generates a levelset based on a plane
+// plane is specified by two angles and an offset on the y axis in (offset vector would be ( 0, offset, 0) )
+// the two angles are specified in degrees, between: y-axis and x-axis 
+//                                                   y-axis and z-axis
+class Slope : public Shape {public:
+	Slope(FluidSolver* parent, Real anglexy, Real angleyz, Real origin, Vec3 gs); static int _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); pbPreparePlugin(0, "Slope::Slope" ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock); Real anglexy = _args.get<Real >("anglexy",1,&_lock); Real angleyz = _args.get<Real >("angleyz",2,&_lock); Real origin = _args.get<Real >("origin",3,&_lock); Vec3 gs = _args.get<Vec3 >("gs",4,&_lock);  obj = new Slope(parent,anglexy,angleyz,origin,gs); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"Slope::Slope" ); return 0; } catch(std::exception& e) { pbSetError("Slope::Slope",e.what()); return -1; } }
+
+	virtual void setOrigin (const Real& origin)  { mOrigin=origin; }
+	virtual void setAnglexy(const Real& anglexy) { mAnglexy=anglexy; }
+	virtual void setAngleyz(const Real& angleyz) { mAnglexy=angleyz; }
+
+	inline Real getOrigin()   const { return mOrigin; }
+	inline Real getmAnglexy() const { return mAnglexy; }
+	inline Real getmAngleyz() const { return mAngleyz; }
+	virtual bool isInside(const Vec3& pos) const;
+	virtual void generateMesh(Mesh* mesh);
+	virtual void generateLevelset(Grid<Real>& phi);
+
+protected:
+	Real mAnglexy, mAngleyz;
+	Real mOrigin; 	Vec3 mGs; public: PbArgs _args;}
+#define _C_Slope
+;
 
 } //namespace
 #endif

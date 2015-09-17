@@ -573,7 +573,7 @@ string Manta_API::getGridPointer(std::string gridName, std::string solverName)
 	if ((gridName == "") && (solverName == "")){
 		return "";
 	}
-	//cout << "getting grid pointer " << gridName<< " , " << solverName <<endl;
+	cout << "getting grid pointer " << gridName<< " , " << solverName <<endl;
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	PyObject *main = PyImport_AddModule("__main__");
 	if (main == NULL){cout << "null" << 1 << endl;return "";}
@@ -587,7 +587,7 @@ string Manta_API::getGridPointer(std::string gridName, std::string solverName)
 	PyObject* encoded = PyUnicode_AsUTF8String(retured_value);
 	if (retured_value == NULL){cout << "null" << 15 << endl;return "";}
 	std::string res = strdup(PyBytes_AsString(encoded));
-	//cout << "Pointer on "<< gridName << " " << res << endl;
+	cout << "Pointer on "<< gridName << " " << res << endl;
 	PyGILState_Release(gilstate);		
 	return res;
 }
@@ -624,10 +624,10 @@ void Manta_API::updatePointers(FLUID_3D *fluid)
 	//x + y * max_x + z * max_x*max_y
 //	int position_to_copy_from(0 + (fluid->xRes()/2) * fluid->xRes() + (fluid->zRes()/2) * fluid->xRes()*fluid->yRes());
 //	float *whereToCopy = &fluid->_density[position_to_copy_from];
-	//cout << 'Updating pointers' << endl;
+	cout << "Updating pointers" << endl;
 	if (fluid->manta_resoution == 2)
 	{
-		//cout << '2D' << endl;
+		cout << "2D" << endl;
 		float* manta_fluid_density = (float* )pointerFromString(getGridPointer("density", "s")); 
 		int* manta_fluid_flags = (int* )pointerFromString(getGridPointer("flags", "s"));
 		if (fluid->_density != NULL){
@@ -649,7 +649,7 @@ void Manta_API::updatePointers(FLUID_3D *fluid)
 			}		
 	}
 	else {
-		//cout << '3D' << endl;
+		cout << "3D" << endl;
 		fluid->_density = (float* )pointerFromString(getGridPointer("density", "s"));	
 		fluid->_manta_flags = (int* )pointerFromString(getGridPointer("flags", "s"));
 	}

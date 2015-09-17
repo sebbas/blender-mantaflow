@@ -36,8 +36,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include "MANTA.h"
-#include "../../../source/blender/python/manta_pp/util/vectorbase.h"
-#include "../extern/smoke_API.h"  /* to ensure valid prototypes */
+#include "vectorbase.h" /* mantaflow */
+#include "smoke_API.h"  /* to ensure valid prototypes */
 
 extern "C" int *smoke_get_manta_flags(struct FLUID_3D *fluid){
 	return fluid->_manta_flags;

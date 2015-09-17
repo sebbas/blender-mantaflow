@@ -28,13 +28,16 @@ public:
 	~GLWidget();
 	
 	QSize minimumSizeHint() const;
-	 QSize sizeHint() const;
+	QSize sizeHint() const;
 	 
-	 void mousePressEvent(QMouseEvent *e);
-	 void mouseMoveEvent(QMouseEvent *e);
-	 void mouseReleaseEvent(QMouseEvent *e);
-	 void wheelEvent(QWheelEvent *e);     
-	 void screenshot(QString file);
+	void mousePressEvent(QMouseEvent *e);
+	void mouseMoveEvent(QMouseEvent *e);
+	void mouseReleaseEvent(QMouseEvent *e);
+	void wheelEvent(QWheelEvent *e);     
+	void screenshot(QString file);
+
+	void setCamPos(Vec3 pos) { mCamPos = pos; }
+	void setCamRot(Vec3 pos) { mRotX = pos.x; mRotY = pos.y; }
 
 public slots:
 	void setViewport(const Vec3i& gridsize);
@@ -56,15 +59,15 @@ protected:
 	
 	enum MoveDir { None = 0, MoveLeft, MoveRight, MoveUp, MoveDown, MoveIn, MoveOut, MoveDirNum };
 	
-	bool mMoveState[MoveDirNum];
-	bool mMoveFast;
+	bool  mMoveState[MoveDirNum];
+	bool  mMoveFast;
 	QPoint mAnchor, mDownPos;
-	Vec3 mCamPos;
+	Vec3  mCamPos;
 	float mRotX, mRotY;
 	Vec3i mGridsize;
-	int mPlaneDim, mPlane;
+	int   mPlaneDim, mPlane;
 	
-	int mScreenshotNumber;
+	int   mScreenshotNumber;
 };
 
 } // namespace
