@@ -1,0 +1,4 @@
+-DGUI=1
+-o
+/home/user/Developer/mantaflowgit/build/pp/source/gui/moc_qtmain.cpp
+/home/user/Developer/mantaflowgit/build/pp/source/gui/qtmain.h

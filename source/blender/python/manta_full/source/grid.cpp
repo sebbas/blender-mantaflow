@@ -241,6 +241,23 @@ template<> Real Grid<int>::getMaxAbs() {
 	int amax = CompMaxInt (*this);
 	return max( fabs((Real)amin), fabs((Real)amax));
 }
+template<class T> void Grid<T>::writeGridToMemory(const std::string& memLoc, const std::string& sizeAllowed) {
+	if (memLoc == "" ||memLoc == "0" ){
+		debMsg("Cant write grid to NULL pointer",1);
+		return;
+	}
+	istringstream iss(sizeAllowed);
+    size_t sizeAllowed_num;
+    iss >> sizeAllowed_num;
+	if (sizeof(T) * mSize.x * mSize.y * mSize.z != sizeAllowed_num){
+		debMsg("Cant write grid with incompatible size",1);
+		return;
+	}
+	stringstream ss(memLoc);
+	void *gridPointer = NULL;
+	ss >> gridPointer;
+	memcpy(gridPointer, mData, sizeAllowed_num);
+}
 template<class T> void Grid<T>::readGridFromMemory(const std::string& memLoc, int x, int y, int z) {
 	debMsg("Reading grid from " + memLoc,1);
 	if (memLoc == "" ||memLoc == "0" ){
@@ -256,6 +273,32 @@ template<class T> void Grid<T>::readGridFromMemory(const std::string& memLoc, in
 	void *gridPointer = NULL;
 	ss >> gridPointer;
 	memcpy(mData, gridPointer, sizeof(T) * x * y * z);
+}
+template<class T> void Grid<T>::readAdaptiveGridFromMemory(const std::string& memLoc, Vec3i minSize, Vec3i maxSize) {
+	if (memLoc == "" ||memLoc == "0" ){
+		debMsg("Can not write grid to NULL pointer",1);
+		return;
+	}
+	if (minSize.x < 0 || minSize.y < 0 || minSize.z < 0){
+		debMsg("Adaptive grid smaller than 0",1);
+		return;
+	}
+	if (maxSize.x > mSize.x || maxSize.y > mSize.y || maxSize.z > mSize.z){
+		debMsg("Adaptive grid larger than current",1);
+		return;
+	}
+	Vec3i adaptiveSize = maxSize - minSize;
+	stringstream ss(memLoc);
+	void *gridPointer = NULL;
+	ss >> gridPointer;
+	float *data_Array = (float* )gridPointer;
+	for (int x = 0; x < adaptiveSize.x; ++x){
+		for (int y = 0; y < adaptiveSize.y; ++y){
+			for (int z = 0; z < adaptiveSize.z; ++z){
+				get(x + minSize.x, y + minSize.y, z + minSize.z) = data_Array[x  + adaptiveSize.x * y + adaptiveSize.x * adaptiveSize.y * z];
+			}
+		}
+	}
 }
 template<class T> std::string Grid<T>::getDataPointer() {
 	ostringstream ss;

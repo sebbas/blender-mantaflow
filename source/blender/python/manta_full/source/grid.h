@@ -181,7 +181,9 @@ public:
 	PYTHON() Real getMinValue()    { return getMin(); }
 
 	//! for Blender Mantaflow API
+	PYTHON() void writeGridToMemory(const std::string& memLoc, const std::string& sizeAllowed);
 	PYTHON() void readGridFromMemory(const std::string& memLoc, int x, int y, int z);
+	PYTHON() void readAdaptiveGridFromMemory(const std::string& memLoc, Vec3i minSize, Vec3i maxSize);
 	PYTHON() std::string getDataPointer();
 
 	//! debugging helper, print grid from python

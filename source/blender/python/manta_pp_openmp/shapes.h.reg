@@ -1,0 +1,28 @@
+#include "shapes.h"
++Shape^ static const Pb::Register _R_$IDX$ ("Shape","Shape","PbClass"); template<> const char* Namify<Shape >::S = "Shape"; 
+>Shape^
++Shape^ static const Pb::Register _R_$IDX$ ("Shape","Shape",Shape::_W_0); 
++Shape^ static const Pb::Register _R_$IDX$ ("Shape","applyToGrid",Shape::_W_1); 
++Shape^ static const Pb::Register _R_$IDX$ ("Shape","applyToGridSmooth",Shape::_W_2); 
++Shape^ static const Pb::Register _R_$IDX$ ("Shape","computeLevelset",Shape::_W_3); 
++Shape^ static const Pb::Register _R_$IDX$ ("Shape","collideMesh",Shape::_W_4); 
++Shape^ static const Pb::Register _R_$IDX$ ("Shape","getCenter",Shape::_W_5); 
++Shape^ static const Pb::Register _R_$IDX$ ("Shape","setCenter",Shape::_W_6); 
++Shape^ static const Pb::Register _R_$IDX$ ("Shape","getExtent",Shape::_W_7); 
++NullShape^ static const Pb::Register _R_$IDX$ ("NullShape","NullShape","Shape"); template<> const char* Namify<NullShape >::S = "NullShape"; 
+>NullShape^
++NullShape^ static const Pb::Register _R_$IDX$ ("NullShape","NullShape",NullShape::_W_8); 
++Box^ static const Pb::Register _R_$IDX$ ("Box","Box","Shape"); template<> const char* Namify<Box >::S = "Box"; 
+>Box^
++Box^ static const Pb::Register _R_$IDX$ ("Box","Box",Box::_W_9); 
++Sphere^ static const Pb::Register _R_$IDX$ ("Sphere","Sphere","Shape"); template<> const char* Namify<Sphere >::S = "Sphere"; 
+>Sphere^
++Sphere^ static const Pb::Register _R_$IDX$ ("Sphere","Sphere",Sphere::_W_10); 
++Cylinder^ static const Pb::Register _R_$IDX$ ("Cylinder","Cylinder","Shape"); template<> const char* Namify<Cylinder >::S = "Cylinder"; 
+>Cylinder^
++Cylinder^ static const Pb::Register _R_$IDX$ ("Cylinder","Cylinder",Cylinder::_W_11); 
++Cylinder^ static const Pb::Register _R_$IDX$ ("Cylinder","setRadius",Cylinder::_W_12); 
++Cylinder^ static const Pb::Register _R_$IDX$ ("Cylinder","setZ",Cylinder::_W_13); 
++Slope^ static const Pb::Register _R_$IDX$ ("Slope","Slope","Shape"); template<> const char* Namify<Slope >::S = "Slope"; 
+>Slope^
++Slope^ static const Pb::Register _R_$IDX$ ("Slope","Slope",Slope::_W_14); 
