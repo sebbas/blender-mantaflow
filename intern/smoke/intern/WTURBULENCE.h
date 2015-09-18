@@ -36,7 +36,11 @@ struct WTURBULENCE
 {
 	public:
 		// both config files can be NULL, altCfg might override values from noiseCfg
-		WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int noisetype, const char *noisefile_path, int init_fire, int init_colors,struct SmokeDomainSettings *sds);
+		#ifndef WITH_MANTA
+		WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int noisetype, const char *noisefile_path, int init_fire, int init_colors);
+		#else
+		WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int noisetype, const char *noisefile_path, int init_fire, int init_colors, struct SmokeDomainSettings *sds);
+		#endif
 
 		/// destructor
 		virtual ~WTURBULENCE();

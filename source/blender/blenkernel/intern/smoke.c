@@ -183,7 +183,13 @@ void smoke_reallocate_fluid(SmokeDomainSettings *sds, float dx, int res[3], int 
 		sds->fluid = NULL;
 		return;
 	}
-	sds->fluid = smoke_init(res, dx, DT_DEFAULT, use_heat, use_fire, use_colors, sds->smd);
+	
+	#ifndef WITH_MANTA
+		sds->fluid = smoke_init(res, dx, DT_DEFAULT, use_heat, use_fire, use_colors);
+	#else
+		sds->fluid = smoke_init(res, dx, DT_DEFAULT, use_heat, use_fire, use_colors, sds->smd);
+	#endif
+
 	smoke_initBlenderRNA(sds->fluid, &(sds->alpha), &(sds->beta), &(sds->time_scale), &(sds->vorticity), &(sds->border_collisions),
 	                     &(sds->burning_rate), &(sds->flame_smoke), sds->flame_smoke_color, &(sds->flame_vorticity), &(sds->flame_ignition), &(sds->flame_max_temp));
 
@@ -211,7 +217,11 @@ void smoke_reallocate_highres_fluid(SmokeDomainSettings *sds, float dx, int res[
 	/* smoke_turbulence_init uses non-threadsafe functions from fftw3 lib (like fftw_plan & co). */
 	BLI_lock_thread(LOCK_FFTW);
 
-	sds->wt = smoke_turbulence_init(res, sds->amplify + 1, sds->noise, BKE_tempdir_session(), use_fire, use_colors, sds);
+	#ifndef WITH_MANTA
+		sds->wt = smoke_turbulence_init(res, sds->amplify + 1, sds->noise, BKE_tempdir_session(), use_fire, use_colors);
+	#else
+		sds->wt = smoke_turbulence_init(res, sds->amplify + 1, sds->noise, BKE_tempdir_session(), use_fire, use_colors, sds);
+	#endif
 
 	BLI_unlock_thread(LOCK_FFTW);
 
@@ -2330,7 +2340,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 							}
 							else { // inflow
 								apply_inflow_fields(sfs, emission_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b);
-								if(sds->manta_solver_res == 3){
+								if((sds->flags & MOD_SMOKE_USE_MANTA) && (sds->manta_solver_res == 3)) {
 									apply_inflow_fields(sfs, emission_map[e_index], d_index, inflow_grid, heat, fuel, react, color_r, color_g, color_b);
 								}
 																/* initial velocity */
@@ -2428,7 +2438,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 							}  // bigdensity
 						} // low res loop
 
-				{ /*2D solver*/
+				if((sds->flags & MOD_SMOKE_USE_MANTA)) { /*2D solver*/
 					int cnty;
 					int cntz;
 					int step;

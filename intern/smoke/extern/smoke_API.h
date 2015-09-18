@@ -39,7 +39,11 @@ extern "C" {
 struct FLUID_3D;
 
 // low res
+#ifndef WITH_MANTA
+struct FLUID_3D *smoke_init(int *res, float dx, float dtdef, int use_heat, int use_fire, int use_colors);
+#else
 struct FLUID_3D *smoke_init(int *res, float dx, float dtdef, int use_heat, int use_fire, int use_colors, struct SmokeModifierData *smd);
+#endif
 void smoke_free(struct FLUID_3D *fluid);
 
 void smoke_initBlenderRNA(struct FLUID_3D *fluid, float *alpha, float *beta, float *dt_factor, float *vorticity, int *border_colli, float *burning_rate,
@@ -77,7 +81,12 @@ size_t smoke_get_index(int x, int max_x, int y, int max_y, int z);
 size_t smoke_get_index2d(int x, int max_x, int y);
 void smoke_dissolve(struct FLUID_3D *fluid, int speed, int log);
 // wavelet turbulence functions
-struct WTURBULENCE *smoke_turbulence_init(int *res, int amplify, int noisetype, const char *noisefile_path, int use_fire, int use_colors,struct SmokeDomainSettings *sds);
+#ifndef WITH_MANTA
+struct WTURBULENCE *smoke_turbulence_init(int *res, int amplify, int noisetype, const char *noisefile_path, int use_fire, int use_colors);
+#else
+struct WTURBULENCE *smoke_turbulence_init(int *res, int amplify, int noisetype, const char *noisefile_path, int use_fire, int use_colors, struct SmokeDomainSettings *sds);
+#endif
+
 void smoke_turbulence_free(struct WTURBULENCE *wt);
 void smoke_turbulence_step(struct WTURBULENCE *wt, struct FLUID_3D *fluid);
 float *smoke_turbulence_get_density(struct WTURBULENCE *wt);
