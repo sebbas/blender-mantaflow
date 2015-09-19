@@ -86,7 +86,7 @@ FluidSolver::FluidSolver(Vec3i gridsize, int dim)
 	: PbClass(this), mDt(1.0), mTimeTotal(0.), mFrame(0), 
 	  mCflCond(1000), mDtMin(1.), mDtMax(1.), mFrameLength(1.),
 	  mGridSize(gridsize), mDim(dim) , mTimePerFrame(0.), mLockDt(false), mAdaptDt(true)
-{    
+{
 	assertMsg(dim==2 || dim==3, "Can only create 2D and 3D solvers");
 	assertMsg(dim!=2 || gridsize.z == 1, "Trying to create 2D solver with size.z != 1");
 }

@@ -51,6 +51,7 @@
 FLUID_3D::FLUID_3D(int *res, float dx, float dtdef, int init_heat, int init_fire, int init_colors) :
 	_xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 {
+	cout << "FLUID" << endl;
 	// set simulation consts
 	_dt = dtdef;	// just in case. set in step from a RNA factor
 
@@ -531,6 +532,7 @@ void FLUID_3D::updateFlame(float *react, float *flame, int total_cells)
 FLUID_3D::FLUID_3D(int *res, float dx, float dtdef, int init_heat, int init_fire, int init_colors, SmokeModifierData *smd) :
 _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 {
+	cout << "FLUID_3D" << endl;
 	// set simulation consts
 	_dt = dtdef;	// just in case. set in step from a RNA factor
 	
@@ -575,13 +577,14 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	_yForce       = new float[_totalCells];
 	_zForce       = new float[_totalCells];
 	/*if two-dimensional, insert manta sim into blender _density field */
-	if (smd->domain->manta_solver_res == 2){
+	if (smd->domain->manta_solver_res == 2) {
 		_density  = new float[_totalCells];
 		_manta_flags = new int[_totalCells];
 		manta_resoution = 2;
 		_yLocation = _yRes / 2;
 	}
-	else{
+	else
+	{
 		_density  = NULL;
 		_manta_flags = NULL;
 		manta_resoution = 3;
@@ -656,6 +659,7 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 		smoke_script = smoke_setup_low  + liquid_step_low;
 	else
 		smoke_script = smoke_setup_low  + smoke_step_low;
+	
 	smd->domain->fluid = this;
 	std::string final_script = Manta_API::parseScript(smoke_script, smd);
 	ofstream myfile;

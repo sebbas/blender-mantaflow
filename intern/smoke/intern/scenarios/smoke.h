@@ -3,6 +3,7 @@ using namespace std;
 const string smoke_clean = "";
 
 const string smoke_setup_low ="from manta import *\n\
+print ('SMOKE SETUP LOW')\n\
 import os, shutil, math, sys\n\
 \n\
 def transform_back(obj, gs):\n\

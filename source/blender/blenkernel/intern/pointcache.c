@@ -600,7 +600,7 @@ static int  ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 	ptcache_file_write(pf, &sds->dx, 1, sizeof(float));
 	if (sds->fluid) {
 		size_t res = sds->res[0]*sds->res[1]*sds->res[2];
-		float dt, dx, *dens, *react, *fuel, *flame, *heat, *heatold, *vx, *vy, *vz, *r, *g, *b;
+		float dt, dx, *dens, *react, *fuel, *flame, *heat, *heatold, *manta_inflow, *vx, *vy, *vz, *r, *g, *b;
 		unsigned char *obstacles;
 		unsigned int in_len = sizeof(float)*(unsigned int)res;
 		unsigned char *out = (unsigned char *)MEM_callocN(LZO_OUT_LEN(in_len) * 4, "pointcache_lzo_buffer");
@@ -608,7 +608,11 @@ static int  ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 		int mode=1;		// light
 		if (sds->cache_comp == SM_CACHE_HEAVY) mode=2;	// heavy
 
-		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &heatold, &vx, &vy, &vz, &r, &g, &b, &obstacles);
+		#ifndef WITH_MANTA
+			smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &heatold, &vx, &vy, &vz, &r, &g, &b, &obstacles);
+		#else
+			smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &manta_inflow, &vx, &vy, &vz, &r, &g, &b, &obstacles);
+		#endif
 
 		ptcache_file_compressed_write(pf, (unsigned char *)sds->shadow, in_len, out, mode);
 		
@@ -618,9 +622,15 @@ static int  ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 
 		/*	writeArrToFile("dens.txt", dens, res);
 */
+		#ifdef WITH_MANTA
+			ptcache_file_compressed_write(pf, (unsigned char *)manta_inflow, in_len, out, mode);
+		#endif
 		if (fluid_fields & SM_ACTIVE_HEAT) {
 			ptcache_file_compressed_write(pf, (unsigned char *)heat, in_len, out, mode);
-			ptcache_file_compressed_write(pf, (unsigned char *)heatold, in_len, out, mode);
+			
+			#ifndef WITH_MANTA
+				ptcache_file_compressed_write(pf, (unsigned char *)heatold, in_len, out, mode);
+			#endif
 		}
 		if (fluid_fields & SM_ACTIVE_FIRE) {
 			ptcache_file_compressed_write(pf, (unsigned char *)flame, in_len, out, mode);
@@ -717,7 +727,7 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 	
 	if (sds->fluid) {
 		size_t res = sds->res[0]*sds->res[1]*sds->res[2];
-		float dt, dx, *dens, *heat, *heatold, *vx, *vy, *vz;
+		float dt, dx, *dens, *heat, *heatold, *manta_inflow, *vx, *vy, *vz;
 		unsigned char *obstacles;
 		unsigned int out_len = (unsigned int)res * sizeof(float);
 		float *tmp_array = MEM_callocN(out_len, "Smoke old cache tmp");
@@ -729,16 +739,24 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 		sds->active_color[1] = 0.7f;
 		sds->active_color[2] = 0.7f;
 		
-		smoke_export(sds->fluid, &dt, &dx, &dens, NULL, NULL, NULL, &heat, &heatold, &vx, &vy, &vz, NULL, NULL, NULL, &obstacles);
+		#ifndef WITH_MANTA
+			smoke_export(sds->fluid, &dt, &dx, &dens, NULL, NULL, NULL, &heat, &heatold, &vx, &vy, &vz, NULL, NULL, NULL, &obstacles);
+		#else
+			smoke_export(sds->fluid, &dt, &dx, &dens, NULL, NULL, NULL, &heat, &manta_inflow, &vx, &vy, &vz, NULL, NULL, NULL, &obstacles);
+		#endif
 
 		ptcache_file_compressed_read(pf, (unsigned char *)sds->shadow, out_len);
 		ptcache_file_compressed_read(pf, (unsigned char*)dens, out_len);
 		ptcache_file_compressed_read(pf, (unsigned char*)tmp_array, out_len);
 
-		if (fluid_fields & SM_ACTIVE_HEAT)
-		{
+		#ifdef WITH_MANTA
+			ptcache_file_compressed_read(pf, (unsigned char*)manta_inflow, out_len);
+		#endif
+		if (fluid_fields & SM_ACTIVE_HEAT) {
 			ptcache_file_compressed_read(pf, (unsigned char*)heat, out_len);
-			ptcache_file_compressed_read(pf, (unsigned char*)heatold, out_len);
+			#ifndef WITH_MANTA
+				ptcache_file_compressed_read(pf, (unsigned char*)heatold, out_len);
+			#endif
 		}
 		else
 		{
@@ -842,17 +860,29 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 	
 	if (sds->fluid) {
 		size_t res = sds->res[0]*sds->res[1]*sds->res[2];
-		float dt, dx, *dens, *react, *fuel, *flame, *heat, *heatold, *vx, *vy, *vz, *r, *g, *b;
+		float dt, dx, *dens, *react, *fuel, *flame, *heat, *heatold, *manta_inflow, *vx, *vy, *vz, *r, *g, *b;
 		unsigned char *obstacles;
 		unsigned int out_len = (unsigned int)res * sizeof(float);
 		
-		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &heatold, &vx, &vy, &vz, &r, &g, &b, &obstacles);
+		#ifndef WITH_MANTA
+			smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &heatold, &vx, &vy, &vz, &r, &g, &b, &obstacles);
+		#else
+			smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &manta_inflow, &vx, &vy, &vz, &r, &g, &b, &obstacles);
+		#endif
+
 
 		ptcache_file_compressed_read(pf, (unsigned char *)sds->shadow, out_len);
 		ptcache_file_compressed_read(pf, (unsigned char *)dens, out_len);
+		
+		#ifdef WITH_MANTA
+			ptcache_file_compressed_read(pf, (unsigned char *)manta_inflow, out_len);
+		#endif
 		if (cache_fields & SM_ACTIVE_HEAT) {
 			ptcache_file_compressed_read(pf, (unsigned char *)heat, out_len);
-			ptcache_file_compressed_read(pf, (unsigned char *)heatold, out_len);
+			
+			#ifndef WITH_MANTA
+				ptcache_file_compressed_read(pf, (unsigned char *)heatold, out_len);
+			#endif
 		}
 		if (cache_fields & SM_ACTIVE_FIRE) {
 			ptcache_file_compressed_read(pf, (unsigned char *)flame, out_len);

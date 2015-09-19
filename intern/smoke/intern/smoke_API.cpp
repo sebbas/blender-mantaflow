@@ -221,6 +221,7 @@ extern "C" void smoke_dissolve_wavelet(WTURBULENCE *wt, int speed, int log)
 	data_dissolve(wt->_densityBig, 0, wt->_color_rBig, wt->_color_gBig, wt->_color_bBig, wt->_totalCellsBig, speed, log);
 }
 
+#ifndef WITH_MANTA
 extern "C" void smoke_export(FLUID_3D *fluid, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, 
 							 float **heatold, float **vx, float **vy, float **vz, float **r, float **g, float **b, unsigned char **obstacles)
 {
@@ -248,6 +249,37 @@ extern "C" void smoke_export(FLUID_3D *fluid, float *dt, float *dx, float **dens
 	*dt = fluid->_dt;
 	*dx = fluid->_dx;
 }
+//////////////////////////////////////////////////////////////////////
+#else /*USING MANTAFLOW STRUCTURES*/
+//////////////////////////////////////////////////////////////////////
+extern "C" void smoke_export(FLUID_3D *fluid, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, 
+							 float **manta_inflow, float **vx, float **vy, float **vz, float **r, float **g, float **b, unsigned char **obstacles)
+{
+	*dens = fluid->_density;
+	if(fuel)
+		*fuel = fluid->_fuel;
+	if(react)
+		*react = fluid->_react;
+	if(flame)
+		*flame = fluid->_flame;
+	if(heat)
+		*heat = fluid->_heat;
+	if(manta_inflow)
+		*manta_inflow = fluid->_manta_inflow;
+	*vx = fluid->_xVelocity;
+	*vy = fluid->_yVelocity;
+	*vz = fluid->_zVelocity;
+	if(r)
+		*r = fluid->_color_r;
+	if(g)
+		*g = fluid->_color_g;
+	if(b)
+		*b = fluid->_color_b;
+	*obstacles = fluid->_obstacles;
+	*dt = fluid->_dt;
+	*dx = fluid->_dx;
+}
+#endif /* WITH_MANTA */
 
 extern "C" void smoke_turbulence_export(WTURBULENCE *wt, float **dens, float **react, float **flame, float **fuel,
                                         float **r, float **g, float **b , float **tcu, float **tcv, float **tcw)
