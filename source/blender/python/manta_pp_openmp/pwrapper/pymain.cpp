@@ -166,22 +166,46 @@ void export_force_fields(int size_x, int size_y, int size_z, float *f_x, float*f
 {
 	export_fields(size_x, size_y, size_z, f_x, f_y, f_z, "manta_forces.uni");	
 }
-		   
-void runMantaScript(const string& ss,vector<string>& args) {
+
+/* Called from Blender for internal use */
+void initializeMantaflow(vector<string>& args) {
 	string filename = args[0];
 	
 	// Initialize extension classes and wrappers
 	srand(0);
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	/*cleaning possible previous setups*/
-	PyRun_SimpleString(clean_code1.c_str());
+	//PyRun_SimpleString(clean_code1.c_str());
 	
 	if (! manta_initialized)
 	{	
 		debMsg("running manta init?", 0);
 		Pb::setup(filename, args);
 		manta_initialized = true;
-	}	
+	}
+
+	// Pass through the command line arguments
+	// for Py3k compatability, convert to wstring
+	vector<pyString> pyArgs(args.size());
+	const pyChar ** cargs = new const pyChar*  [args.size()];
+	for (size_t i=0; i<args.size(); i++) {
+		pyArgs[i] = pyString(args[i].begin(), args[i].end());
+		cargs[i] = pyArgs[i].c_str();
+	}
+	PySys_SetArgv( args.size(), (pyChar**) cargs);
+	PyGILState_Release(gilstate);
+
+	delete [] cargs;
+}
+
+
+void runScript(vector<string>& args) {
+	string filename = args[0];
+	
+	// Initialize extension classes and wrappers
+	srand(0);
+	Pb::setup(filename, args);
+		
 	// Pass through the command line arguments
 	// for Py3k compatability, convert to wstring
 	vector<pyString> pyArgs(args.size());
@@ -193,12 +217,12 @@ void runMantaScript(const string& ss,vector<string>& args) {
 	PySys_SetArgv( args.size(), (pyChar**) cargs);
 	
 	// Try to load python script
-//	FILE* fp = fopen(filename.c_str(),"rb");
-//	if (fp == NULL) {
-//		debMsg("Cannot open '" << filename << "'", 0);
-//		Pb::finalize();
-//		return;
-//	}
+	FILE* fp = fopen(filename.c_str(),"rb");
+	if (fp == NULL) {
+		debMsg("Cannot open '" << filename << "'", 0);
+		Pb::finalize();
+		return;
+	}
 	
 	// Run the python script file
 	debMsg("Loading script '" << filename << "'", 0);
@@ -215,50 +239,37 @@ void runMantaScript(const string& ss,vector<string>& args) {
 	delete[] buf;    
 #else
 	// for linux, use this as it produces nicer error messages
-	string toExec = "";
-	
-	PyRun_SimpleString(ss.c_str());
-//	PyRun_SimpleFileEx(fp, filename.c_str(), 0);    
-//	for (int frame=0; frame < 4; ++frame)
-//	{
-//		std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << frame) )->str();
-//		std::string py_string_0 = string("sim_step(").append(frame_str);
-//		std::string py_string_1 = py_string_0.append(")\0");
-//		PyRun_SimpleString(py_string_1.c_str());
-//	}
-//	if (fp != NULL){
-//		fclose(fp);    
-//	}
+	PyRun_SimpleFileEx(fp, filename.c_str(), 0);  
+	fclose(fp);    
 #endif
 	
 	debMsg("Script finished.", 0);
 #ifdef GUI
-//	guiWaitFinish();
+	guiWaitFinish();
 #endif
 
 	// finalize
-//	Pb::finalize();
-	PyGILState_Release(gilstate);
-
+	Pb::finalize();
+	
 	delete [] cargs;
 }
 
-//int manta_main(int argc,char* argv[]) {
-//	debMsg("Version: "<< buildInfoString() , 1);
-//
-//#ifdef GUI
-//	guiMain(argc, argv);    
-//#else
-//	if (argc<=1) {
-//		cerr << "Usage : Syntax is 'manta <config.py>'" << endl;  
-//		return 1;
-//	}
-//
-//	vector<string> args;
-//	for (int i=1; i<argc; i++) args.push_back(argv[i]);
-//	runMantaScript(args);
-//#endif        		
-//
-//	return 0;
-//}
+int mainManta(int argc,char* argv[]) {
+	debMsg("Version: "<< buildInfoString() , 1);
+
+#ifdef GUI
+	guiMain(argc, argv);    
+#else
+	if (argc<=1) {
+		cerr << "Usage : Syntax is 'manta <config.py>'" << endl;  
+		return 1;
+	}
+
+	vector<string> args;
+	for (int i=1; i<argc; i++) args.push_back(argv[i]);
+	runScript(args);
+#endif        		
+
+	return 0;
+}
 #endif

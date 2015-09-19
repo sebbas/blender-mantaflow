@@ -585,6 +585,7 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	}
 	else
 	{
+		smd->domain->manta_solver_res = 3; // TODO: When loading highres file from scratch this is not set. However it is need since the lowres file runs before the high res and it needs the solver dim
 		_density  = NULL;
 		_manta_flags = NULL;
 		manta_resoution = 3;

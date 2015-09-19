@@ -592,13 +592,13 @@ string Manta_API::getGridPointer(std::string gridName, std::string solverName)
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	PyObject *main = PyImport_AddModule("__main__");
 	if (main == NULL){cout << "null" << 1 << endl;return "";}
-    PyObject *globals = PyModule_GetDict(main);
-    if (globals == NULL){cout << "null" << 12 << endl;return "";}
-    PyObject *grid_object = PyDict_GetItemString(globals, gridName.c_str());
-    if (grid_object == NULL){cout << "null" << 13 << endl;return "";}
-    PyObject* func = PyObject_GetAttrString(grid_object,(char*)"getDataPointer");
-    if (func == NULL){cout << "null" << 14 << endl;return "";}
-    PyObject* retured_value = PyObject_CallObject(func, NULL);
+	PyObject *globals = PyModule_GetDict(main);
+	if (globals == NULL){cout << "null" << 12 << endl;return "";}
+	PyObject *grid_object = PyDict_GetItemString(globals, gridName.c_str());
+	if (grid_object == NULL){cout << "null" << 13 << endl;return "";}
+	PyObject* func = PyObject_GetAttrString(grid_object,(char*)"getDataPointer");
+	if (func == NULL){cout << "null" << 14 << endl;return "";}
+	PyObject* retured_value = PyObject_CallObject(func, NULL);
 	PyObject* encoded = PyUnicode_AsUTF8String(retured_value);
 	if (retured_value == NULL){cout << "null" << 15 << endl;return "";}
 	std::string res = strdup(PyBytes_AsString(encoded));
