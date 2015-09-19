@@ -396,7 +396,22 @@ void Manta_API::run_manta_sim_highRes(WTURBULENCE *wt)
 	updateHighResPointers(wt/*,false*/);
 }
 
-void Manta_API::generate_manta_sim_file_highRes(SmokeModifierData *smd)
+void Manta_API::run_manta_sim_file_lowRes(SmokeModifierData *smd)
+{
+	// Get either liquid or smoke setup string
+	string smoke_script = "";
+	if (smd->domain->flags & MOD_SMOKE_MANTA_USE_LIQUID)
+		smoke_script = smoke_setup_low  + liquid_step_low;
+	else
+		smoke_script = smoke_setup_low  + smoke_step_low;
+
+	std::string final_script = parseScript(smoke_script, smd);
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	PyRun_SimpleString(final_script.c_str());
+	PyGILState_Release(gilstate);
+}
+
+void Manta_API::run_manta_sim_file_highRes(SmokeModifierData *smd)
 {
 	string smoke_script = smoke_setup_high + smoke_step_high;		
 	std::string final_script = parseScript(smoke_script, smd);

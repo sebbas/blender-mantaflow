@@ -654,22 +654,12 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	
 	_colloPrev = 1;	// default value
 	
-	string smoke_script = "";
-	if (smd->domain->flags & MOD_SMOKE_MANTA_USE_LIQUID)
-		smoke_script = smoke_setup_low  + liquid_step_low;
-	else
-		smoke_script = smoke_setup_low  + smoke_step_low;
-	
 	smd->domain->fluid = this;
-	std::string final_script = Manta_API::parseScript(smoke_script, smd);
-	ofstream myfile;
-	cout<< "INITIALIZING SMOKE" << endl;
-	myfile.open ("manta_scene.py");
-	myfile << final_script;
-	myfile.close();
-	vector<string> a;
-	a.push_back("manta_scene.py");
-	runMantaScript(final_script,a); /*need this to delete previous solvers and grids*/
+	vector<string> args;
+	args.push_back("manta_scene.py");
+	initializeMantaflow(args); /*need this to delete previous solvers and grids*/
+	
+	Manta_API::run_manta_sim_file_lowRes(smd);
 	Manta_API::updatePointers(this);
 }
 

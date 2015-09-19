@@ -1293,7 +1293,7 @@ WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int no
 	_noiseTile = new float[noiseTileSize * noiseTileSize * noiseTileSize];
 	setNoise(noisetype, noisefile_path);
 	sds->smd->domain->wt = this;
-	Manta_API::generate_manta_sim_file_highRes(sds->smd);
+	Manta_API::run_manta_sim_file_highRes(sds->smd);
 	Manta_API::updateHighResPointers(this);
 }
 
