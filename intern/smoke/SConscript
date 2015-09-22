@@ -38,11 +38,19 @@ if env['WITH_BF_OPENMP']:
 
     defs += ' PARALLEL=1'
 
-incs += ' ' + env['BF_PNG_INC'] + ' ' + env['BF_ZLIB_INC'] 
-incs += ' intern ../../extern/bullet2/src ../memutil ../guardealloc '
+incs += ' ' + env['BF_PNG_INC'] + ' ' + env['BF_ZLIB_INC']
+incs += ' intern ../../extern/bullet2/src ../memutil ../guardealloc'
+incs += ' #/source/blender/blenlib'
+incs += ' ' + env['BF_PYTHON_INC']
+incs += ' #source/blender/python/manta_pp/util'
+incs += ' #source/blender/python/manta_pp'
+incs += ' ./extern '
+
+if env['WITH_BF_MANTA']:
+    defs += ' WITH_MANTA'
 
 if env['WITH_BF_FFTW3']:
     defs += ' WITH_FFTW3'
-    incs += env['BF_FFTW3_INC'] 
+    incs += env['BF_FFTW3_INC']
 
 env.BlenderLib ('bf_intern_smoke', sources, Split(incs), Split(defs), libtype=['intern'], priority=[40] )

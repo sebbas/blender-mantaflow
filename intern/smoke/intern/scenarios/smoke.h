@@ -46,6 +46,8 @@ pressure = s.create(RealGrid)\n\
 flags.initDomain()\n\
 flags.fillGrid()\n\
 \n\
+setOpenBound(flags=flags, bWidth=1, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n\
+\n\
 inflow_grid = s.create(LevelsetGrid)\n\
 source = s.create(Mesh)\n\
 forces = s.create(MACGrid)\n\

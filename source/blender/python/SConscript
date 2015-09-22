@@ -49,6 +49,9 @@ incs = [
     '../nodes',
     '../render/extern/include',
     '../windowmanager',
+    './manta_pp',
+    './manta_pp/pwrapper',
+    './manta_pp/util',
     env['BF_PYTHON_INC'],
     ]
 incs = ' '.join(incs)
@@ -81,9 +84,8 @@ env.BlenderLib( libname = 'bf_python_mathutils', sources = Split(sources), inclu
 # manta
 defs = []
 
-sources = env.Glob('manta_pp/source/*')
-env.BlenderLib( libname = 'bf_python_manta', sources = Split(sources), includes = Split(incs), defines = defs, libtype = ['core','player'])
-
+sources = env.Glob('manta_pp/*.cpp') + env.Glob('manta_pp/plugin/*.cpp') + env.Glob('manta_pp/pwrapper/*.cpp') + env.Glob('manta_pp/python/*.cpp') + env.Glob('manta_pp/util/*.cpp')
+env.BlenderLib( libname = 'bf_python_manta', sources = Split(sources), includes = Split(incs), defines = defs, libtype = ['core','player'], priority = [362,165])
 
 # bpy
 defs = []

@@ -236,11 +236,11 @@ void runScript(vector<string>& args) {
 	buf[filelen] = '\0';
 	fclose(fp);
 	PyRun_SimpleString(buf);
-	delete[] buf;    
+	delete[] buf;
 #else
 	// for linux, use this as it produces nicer error messages
 	PyRun_SimpleFileEx(fp, filename.c_str(), 0);  
-	fclose(fp);    
+	fclose(fp);
 #endif
 	
 	debMsg("Script finished.", 0);
@@ -268,7 +268,7 @@ int mainManta(int argc,char* argv[]) {
 	vector<string> args;
 	for (int i=1; i<argc; i++) args.push_back(argv[i]);
 	runScript(args);
-#endif        		
+#endif
 
 	return 0;
 }

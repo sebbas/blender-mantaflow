@@ -62,7 +62,7 @@ incs = [
     '#/intern/glew-mx',
     '#/intern/cycles/blender',
     '#/intern/smoke/extern',
-    '#/source//blender/python/manta_pp',
+    '#/source/blender/python/manta_pp',
     '../../blenfont',
     '../../blenkernel',
     '../../blenlib',
