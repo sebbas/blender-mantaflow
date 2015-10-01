@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/home/user/Developer/mantaflowgit/source/plugin/flip.cpp"
+#line 1 "/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/source/plugin/flip.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework 

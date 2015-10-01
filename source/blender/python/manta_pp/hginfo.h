@@ -1,4 +1,4 @@
 
 
-#define MANTA_HG_VERSION "commit 12149aba7b1810bd6cb8a70536d5869fee784bfc" 
+#define MANTA_HG_VERSION "commit a2f6249c04bfd375f8372064dc4da5978622ac18" 
 

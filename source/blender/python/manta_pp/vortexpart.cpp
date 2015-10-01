@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/home/user/Developer/mantaflowgit/source/vortexpart.cpp"
+#line 1 "/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/source/vortexpart.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework

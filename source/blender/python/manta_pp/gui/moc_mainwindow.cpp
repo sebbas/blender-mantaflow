@@ -1,7 +1,7 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'mainwindow.h'
 **
-** Created by: The Qt Meta Object Compiler version 67 (Qt 5.2.1)
+** Created by: The Qt Meta Object Compiler version 67 (Qt 5.4.2)
 **
 ** WARNING! All changes made in this file will be lost!
 *****************************************************************************/
@@ -12,7 +12,7 @@
 #if !defined(Q_MOC_OUTPUT_REVISION)
 #error "The header file 'mainwindow.h' doesn't include <QObject>."
 #elif Q_MOC_OUTPUT_REVISION != 67
-#error "This file was generated using the moc from 5.2.1. It"
+#error "This file was generated using the moc from 5.4.2. It"
 #error "cannot be used with the include files from this version of Qt."
 #error "(The moc has changed too much.)"
 #endif
@@ -20,59 +20,60 @@
 QT_BEGIN_MOC_NAMESPACE
 struct qt_meta_stringdata_Manta__MainWnd_t {
     QByteArrayData data[44];
-    char stringdata[341];
+    char stringdata[340];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
-    offsetof(qt_meta_stringdata_Manta__MainWnd_t, stringdata) + ofs \
-        - idx * sizeof(QByteArrayData) \
+    qptrdiff(offsetof(qt_meta_stringdata_Manta__MainWnd_t, stringdata) + ofs \
+        - idx * sizeof(QByteArrayData)) \
     )
 static const qt_meta_stringdata_Manta__MainWnd_t qt_meta_stringdata_Manta__MainWnd = {
     {
-QT_MOC_LITERAL(0, 0, 14),
-QT_MOC_LITERAL(1, 15, 12),
-QT_MOC_LITERAL(2, 28, 0),
-QT_MOC_LITERAL(3, 29, 1),
-QT_MOC_LITERAL(4, 31, 5),
-QT_MOC_LITERAL(5, 37, 8),
-QT_MOC_LITERAL(6, 46, 17),
-QT_MOC_LITERAL(7, 64, 5),
-QT_MOC_LITERAL(8, 70, 3),
-QT_MOC_LITERAL(9, 74, 8),
-QT_MOC_LITERAL(10, 83, 7),
-QT_MOC_LITERAL(11, 91, 5),
-QT_MOC_LITERAL(12, 97, 4),
-QT_MOC_LITERAL(13, 102, 4),
-QT_MOC_LITERAL(14, 107, 8),
-QT_MOC_LITERAL(15, 116, 10),
-QT_MOC_LITERAL(16, 127, 4),
-QT_MOC_LITERAL(17, 132, 10),
-QT_MOC_LITERAL(18, 143, 4),
-QT_MOC_LITERAL(19, 148, 9),
-QT_MOC_LITERAL(20, 158, 3),
-QT_MOC_LITERAL(21, 162, 2),
-QT_MOC_LITERAL(22, 165, 2),
-QT_MOC_LITERAL(23, 168, 2),
-QT_MOC_LITERAL(24, 171, 2),
-QT_MOC_LITERAL(25, 174, 2),
-QT_MOC_LITERAL(26, 177, 2),
-QT_MOC_LITERAL(27, 180, 12),
-QT_MOC_LITERAL(28, 193, 12),
-QT_MOC_LITERAL(29, 206, 8),
-QT_MOC_LITERAL(30, 215, 9),
-QT_MOC_LITERAL(31, 225, 9),
-QT_MOC_LITERAL(32, 235, 15),
-QT_MOC_LITERAL(33, 251, 15),
-QT_MOC_LITERAL(34, 267, 15),
-QT_MOC_LITERAL(35, 283, 15),
-QT_MOC_LITERAL(36, 299, 9),
-QT_MOC_LITERAL(37, 309, 1),
-QT_MOC_LITERAL(38, 311, 1),
-QT_MOC_LITERAL(39, 313, 1),
-QT_MOC_LITERAL(40, 315, 9),
-QT_MOC_LITERAL(41, 325, 10),
-QT_MOC_LITERAL(42, 336, 1),
-QT_MOC_LITERAL(43, 338, 1)
+QT_MOC_LITERAL(0, 0, 14), // "Manta::MainWnd"
+QT_MOC_LITERAL(1, 15, 12), // "painterEvent"
+QT_MOC_LITERAL(2, 28, 0), // ""
+QT_MOC_LITERAL(3, 29, 1), // "e"
+QT_MOC_LITERAL(4, 31, 5), // "param"
+QT_MOC_LITERAL(5, 37, 8), // "wakeMain"
+QT_MOC_LITERAL(6, 46, 17), // "setBackgroundMesh"
+QT_MOC_LITERAL(7, 64, 5), // "Mesh*"
+QT_MOC_LITERAL(8, 70, 3), // "bgr"
+QT_MOC_LITERAL(9, 74, 8), // "killMain"
+QT_MOC_LITERAL(10, 83, 7), // "exitApp"
+QT_MOC_LITERAL(11, 91, 5), // "pause"
+QT_MOC_LITERAL(12, 97, 4), // "play"
+QT_MOC_LITERAL(13, 102, 4), // "step"
+QT_MOC_LITERAL(14, 107, 8), // "showHelp"
+QT_MOC_LITERAL(15, 116, 10), // "addControl"
+QT_MOC_LITERAL(16, 127, 4), // "ctrl"
+QT_MOC_LITERAL(17, 132, 10), // "screenshot"
+QT_MOC_LITERAL(18, 143, 4), // "file"
+QT_MOC_LITERAL(19, 148, 9), // "clickLine"
+QT_MOC_LITERAL(20, 158, 3), // "pos"
+QT_MOC_LITERAL(21, 162, 2), // "p0"
+QT_MOC_LITERAL(22, 165, 2), // "p1"
+QT_MOC_LITERAL(23, 168, 2), // "p2"
+QT_MOC_LITERAL(24, 171, 2), // "q0"
+QT_MOC_LITERAL(25, 174, 2), // "q1"
+QT_MOC_LITERAL(26, 177, 2), // "q2"
+QT_MOC_LITERAL(27, 180, 12), // "nextRealGrid"
+QT_MOC_LITERAL(28, 193, 12), // "nextVec3Grid"
+QT_MOC_LITERAL(29, 206, 8), // "nextMesh"
+QT_MOC_LITERAL(30, 215, 9), // "nextParts"
+QT_MOC_LITERAL(31, 225, 9), // "nextPdata"
+QT_MOC_LITERAL(32, 235, 15), // "nextVec3Display"
+QT_MOC_LITERAL(33, 251, 15), // "nextPartDisplay"
+QT_MOC_LITERAL(34, 267, 15), // "nextMeshDisplay"
+QT_MOC_LITERAL(35, 283, 15), // "toggleHideGrids"
+QT_MOC_LITERAL(36, 299, 9), // "setCamPos"
+QT_MOC_LITERAL(37, 309, 1), // "x"
+QT_MOC_LITERAL(38, 311, 1), // "y"
+QT_MOC_LITERAL(39, 313, 1), // "z"
+QT_MOC_LITERAL(40, 315, 9), // "setCamRot"
+QT_MOC_LITERAL(41, 325, 10), // "windowSize"
+QT_MOC_LITERAL(42, 336, 1), // "w"
+QT_MOC_LITERAL(43, 338, 1) // "h"
+
     },
     "Manta::MainWnd\0painterEvent\0\0e\0param\0"
     "wakeMain\0setBackgroundMesh\0Mesh*\0bgr\0"
@@ -83,7 +84,7 @@ QT_MOC_LITERAL(43, 338, 1)
     "nextParts\0nextPdata\0nextVec3Display\0"
     "nextPartDisplay\0nextMeshDisplay\0"
     "toggleHideGrids\0setCamPos\0x\0y\0z\0"
-    "setCamRot\0windowSize\0w\0h\0"
+    "setCamRot\0windowSize\0w\0h"
 };
 #undef QT_MOC_LITERAL
 
@@ -101,33 +102,33 @@ static const uint qt_meta_data_Manta__MainWnd[] = {
        6,       // signalCount
 
  // signals: name, argc, parameters, tag, flags
-       1,    2,  139,    2, 0x06,
-       1,    1,  144,    2, 0x26,
-       5,    0,  147,    2, 0x06,
-       6,    1,  148,    2, 0x06,
-       9,    0,  151,    2, 0x06,
-      10,    0,  152,    2, 0x06,
+       1,    2,  139,    2, 0x06 /* Public */,
+       1,    1,  144,    2, 0x26 /* Public | MethodCloned */,
+       5,    0,  147,    2, 0x06 /* Public */,
+       6,    1,  148,    2, 0x06 /* Public */,
+       9,    0,  151,    2, 0x06 /* Public */,
+      10,    0,  152,    2, 0x06 /* Public */,
 
  // slots: name, argc, parameters, tag, flags
-      11,    0,  153,    2, 0x0a,
-      12,    0,  154,    2, 0x0a,
-      13,    0,  155,    2, 0x0a,
-      14,    0,  156,    2, 0x0a,
-      15,    1,  157,    2, 0x0a,
-      17,    1,  160,    2, 0x0a,
-      19,    7,  163,    2, 0x0a,
-      27,    0,  178,    2, 0x0a,
-      28,    0,  179,    2, 0x0a,
-      29,    0,  180,    2, 0x0a,
-      30,    0,  181,    2, 0x0a,
-      31,    0,  182,    2, 0x0a,
-      32,    0,  183,    2, 0x0a,
-      33,    0,  184,    2, 0x0a,
-      34,    0,  185,    2, 0x0a,
-      35,    0,  186,    2, 0x0a,
-      36,    3,  187,    2, 0x0a,
-      40,    3,  194,    2, 0x0a,
-      41,    2,  201,    2, 0x0a,
+      11,    0,  153,    2, 0x0a /* Public */,
+      12,    0,  154,    2, 0x0a /* Public */,
+      13,    0,  155,    2, 0x0a /* Public */,
+      14,    0,  156,    2, 0x0a /* Public */,
+      15,    1,  157,    2, 0x0a /* Public */,
+      17,    1,  160,    2, 0x0a /* Public */,
+      19,    7,  163,    2, 0x0a /* Public */,
+      27,    0,  178,    2, 0x0a /* Public */,
+      28,    0,  179,    2, 0x0a /* Public */,
+      29,    0,  180,    2, 0x0a /* Public */,
+      30,    0,  181,    2, 0x0a /* Public */,
+      31,    0,  182,    2, 0x0a /* Public */,
+      32,    0,  183,    2, 0x0a /* Public */,
+      33,    0,  184,    2, 0x0a /* Public */,
+      34,    0,  185,    2, 0x0a /* Public */,
+      35,    0,  186,    2, 0x0a /* Public */,
+      36,    3,  187,    2, 0x0a /* Public */,
+      40,    3,  194,    2, 0x0a /* Public */,
+      41,    2,  201,    2, 0x0a /* Public */,
 
  // signals: parameters
     QMetaType::Void, QMetaType::Int, QMetaType::Int,    3,    4,
@@ -231,7 +232,7 @@ void Manta::MainWnd::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _
 
 const QMetaObject Manta::MainWnd::staticMetaObject = {
     { &QMainWindow::staticMetaObject, qt_meta_stringdata_Manta__MainWnd.data,
-      qt_meta_data_Manta__MainWnd,  qt_static_metacall, 0, 0}
+      qt_meta_data_Manta__MainWnd,  qt_static_metacall, Q_NULLPTR, Q_NULLPTR}
 };
 
 
@@ -242,7 +243,7 @@ const QMetaObject *Manta::MainWnd::metaObject() const
 
 void *Manta::MainWnd::qt_metacast(const char *_clname)
 {
-    if (!_clname) return 0;
+    if (!_clname) return Q_NULLPTR;
     if (!strcmp(_clname, qt_meta_stringdata_Manta__MainWnd.stringdata))
         return static_cast<void*>(const_cast< MainWnd*>(this));
     return QMainWindow::qt_metacast(_clname);
@@ -268,32 +269,32 @@ int Manta::MainWnd::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
 // SIGNAL 0
 void Manta::MainWnd::painterEvent(int _t1, int _t2)
 {
-    void *_a[] = { 0, const_cast<void*>(reinterpret_cast<const void*>(&_t1)), const_cast<void*>(reinterpret_cast<const void*>(&_t2)) };
+    void *_a[] = { Q_NULLPTR, const_cast<void*>(reinterpret_cast<const void*>(&_t1)), const_cast<void*>(reinterpret_cast<const void*>(&_t2)) };
     QMetaObject::activate(this, &staticMetaObject, 0, _a);
 }
 
 // SIGNAL 2
 void Manta::MainWnd::wakeMain()
 {
-    QMetaObject::activate(this, &staticMetaObject, 2, 0);
+    QMetaObject::activate(this, &staticMetaObject, 2, Q_NULLPTR);
 }
 
 // SIGNAL 3
 void Manta::MainWnd::setBackgroundMesh(Mesh * _t1)
 {
-    void *_a[] = { 0, const_cast<void*>(reinterpret_cast<const void*>(&_t1)) };
+    void *_a[] = { Q_NULLPTR, const_cast<void*>(reinterpret_cast<const void*>(&_t1)) };
     QMetaObject::activate(this, &staticMetaObject, 3, _a);
 }
 
 // SIGNAL 4
 void Manta::MainWnd::killMain()
 {
-    QMetaObject::activate(this, &staticMetaObject, 4, 0);
+    QMetaObject::activate(this, &staticMetaObject, 4, Q_NULLPTR);
 }
 
 // SIGNAL 5
 void Manta::MainWnd::exitApp()
 {
-    QMetaObject::activate(this, &staticMetaObject, 5, 0);
+    QMetaObject::activate(this, &staticMetaObject, 5, Q_NULLPTR);
 }
 QT_END_MOC_NAMESPACE

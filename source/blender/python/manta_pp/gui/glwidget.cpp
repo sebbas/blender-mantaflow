@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/home/user/Developer/mantaflowgit/source/gui/glwidget.cpp"
+#line 1 "/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/source/gui/glwidget.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework

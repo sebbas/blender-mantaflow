@@ -1,7 +1,7 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'customctrl.h'
 **
-** Created by: The Qt Meta Object Compiler version 67 (Qt 5.2.1)
+** Created by: The Qt Meta Object Compiler version 67 (Qt 5.4.2)
 **
 ** WARNING! All changes made in this file will be lost!
 *****************************************************************************/
@@ -12,7 +12,7 @@
 #if !defined(Q_MOC_OUTPUT_REVISION)
 #error "The header file 'customctrl.h' doesn't include <QObject>."
 #elif Q_MOC_OUTPUT_REVISION != 67
-#error "This file was generated using the moc from 5.2.1. It"
+#error "This file was generated using the moc from 5.4.2. It"
 #error "cannot be used with the include files from this version of Qt."
 #error "(The moc has changed too much.)"
 #endif
@@ -20,21 +20,22 @@
 QT_BEGIN_MOC_NAMESPACE
 struct qt_meta_stringdata_Manta__TextCheckbox_t {
     QByteArrayData data[4];
-    char stringdata[31];
+    char stringdata[30];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
-    offsetof(qt_meta_stringdata_Manta__TextCheckbox_t, stringdata) + ofs \
-        - idx * sizeof(QByteArrayData) \
+    qptrdiff(offsetof(qt_meta_stringdata_Manta__TextCheckbox_t, stringdata) + ofs \
+        - idx * sizeof(QByteArrayData)) \
     )
 static const qt_meta_stringdata_Manta__TextCheckbox_t qt_meta_stringdata_Manta__TextCheckbox = {
     {
-QT_MOC_LITERAL(0, 0, 19),
-QT_MOC_LITERAL(1, 20, 6),
-QT_MOC_LITERAL(2, 27, 0),
-QT_MOC_LITERAL(3, 28, 1)
+QT_MOC_LITERAL(0, 0, 19), // "Manta::TextCheckbox"
+QT_MOC_LITERAL(1, 20, 6), // "update"
+QT_MOC_LITERAL(2, 27, 0), // ""
+QT_MOC_LITERAL(3, 28, 1) // "v"
+
     },
-    "Manta::TextCheckbox\0update\0\0v\0"
+    "Manta::TextCheckbox\0update\0\0v"
 };
 #undef QT_MOC_LITERAL
 
@@ -52,7 +53,7 @@ static const uint qt_meta_data_Manta__TextCheckbox[] = {
        0,       // signalCount
 
  // slots: name, argc, parameters, tag, flags
-       1,    1,   19,    2, 0x0a,
+       1,    1,   19,    2, 0x0a /* Public */,
 
  // slots: parameters
     QMetaType::Void, QMetaType::Int,    3,
@@ -73,7 +74,7 @@ void Manta::TextCheckbox::qt_static_metacall(QObject *_o, QMetaObject::Call _c, 
 
 const QMetaObject Manta::TextCheckbox::staticMetaObject = {
     { &QCheckBox::staticMetaObject, qt_meta_stringdata_Manta__TextCheckbox.data,
-      qt_meta_data_Manta__TextCheckbox,  qt_static_metacall, 0, 0}
+      qt_meta_data_Manta__TextCheckbox,  qt_static_metacall, Q_NULLPTR, Q_NULLPTR}
 };
 
 
@@ -84,7 +85,7 @@ const QMetaObject *Manta::TextCheckbox::metaObject() const
 
 void *Manta::TextCheckbox::qt_metacast(const char *_clname)
 {
-    if (!_clname) return 0;
+    if (!_clname) return Q_NULLPTR;
     if (!strcmp(_clname, qt_meta_stringdata_Manta__TextCheckbox.stringdata))
         return static_cast<void*>(const_cast< TextCheckbox*>(this));
     return QCheckBox::qt_metacast(_clname);
@@ -108,21 +109,22 @@ int Manta::TextCheckbox::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
 }
 struct qt_meta_stringdata_Manta__TextSlider_t {
     QByteArrayData data[4];
-    char stringdata[29];
+    char stringdata[28];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
-    offsetof(qt_meta_stringdata_Manta__TextSlider_t, stringdata) + ofs \
-        - idx * sizeof(QByteArrayData) \
+    qptrdiff(offsetof(qt_meta_stringdata_Manta__TextSlider_t, stringdata) + ofs \
+        - idx * sizeof(QByteArrayData)) \
     )
 static const qt_meta_stringdata_Manta__TextSlider_t qt_meta_stringdata_Manta__TextSlider = {
     {
-QT_MOC_LITERAL(0, 0, 17),
-QT_MOC_LITERAL(1, 18, 6),
-QT_MOC_LITERAL(2, 25, 0),
-QT_MOC_LITERAL(3, 26, 1)
+QT_MOC_LITERAL(0, 0, 17), // "Manta::TextSlider"
+QT_MOC_LITERAL(1, 18, 6), // "update"
+QT_MOC_LITERAL(2, 25, 0), // ""
+QT_MOC_LITERAL(3, 26, 1) // "v"
+
     },
-    "Manta::TextSlider\0update\0\0v\0"
+    "Manta::TextSlider\0update\0\0v"
 };
 #undef QT_MOC_LITERAL
 
@@ -140,7 +142,7 @@ static const uint qt_meta_data_Manta__TextSlider[] = {
        0,       // signalCount
 
  // slots: name, argc, parameters, tag, flags
-       1,    1,   19,    2, 0x0a,
+       1,    1,   19,    2, 0x0a /* Public */,
 
  // slots: parameters
     QMetaType::Void, QMetaType::Int,    3,
@@ -161,7 +163,7 @@ void Manta::TextSlider::qt_static_metacall(QObject *_o, QMetaObject::Call _c, in
 
 const QMetaObject Manta::TextSlider::staticMetaObject = {
     { &QSlider::staticMetaObject, qt_meta_stringdata_Manta__TextSlider.data,
-      qt_meta_data_Manta__TextSlider,  qt_static_metacall, 0, 0}
+      qt_meta_data_Manta__TextSlider,  qt_static_metacall, Q_NULLPTR, Q_NULLPTR}
 };
 
 
@@ -172,7 +174,7 @@ const QMetaObject *Manta::TextSlider::metaObject() const
 
 void *Manta::TextSlider::qt_metacast(const char *_clname)
 {
-    if (!_clname) return 0;
+    if (!_clname) return Q_NULLPTR;
     if (!strcmp(_clname, qt_meta_stringdata_Manta__TextSlider.stringdata))
         return static_cast<void*>(const_cast< TextSlider*>(this));
     return QSlider::qt_metacast(_clname);

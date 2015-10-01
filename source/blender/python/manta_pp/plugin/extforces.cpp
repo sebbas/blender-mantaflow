@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/home/user/Developer/mantaflowgit/source/plugin/extforces.cpp"
+#line 1 "/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/source/plugin/extforces.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -83,19 +83,19 @@ void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3 gravit
 	KnAddBuoyancy(flags,density, vel, f);
 } static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "addBuoyancy" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& density = *_args.getPtr<Grid<Real> >("density",1,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",2,&_lock); Vec3 gravity = _args.get<Vec3 >("gravity",3,&_lock);   _retval = getPyNone(); addBuoyancy(flags,density,vel,gravity);  _args.check(); } pbFinalizePlugin(parent,"addBuoyancy" ); return _retval; } catch(std::exception& e) { pbSetError("addBuoyancy",e.what()); return 0; } } static const Pb::Register _RP_addBuoyancy ("","addBuoyancy",_W_1); 
 
-//! add Buoyancy force based on smoke density
- struct KnAddHeatBuoyancy : public KernelBase { KnAddHeatBuoyancy(FlagGrid& flags, Grid<Real>& density, float densCoeff, MACGrid& vel, Vec3 strength, Grid<Real>& heat, float heatCoeff) :  KernelBase(&flags,1) ,flags(flags),density(density),densCoeff(densCoeff),vel(vel),strength(strength),heat(heat),heatCoeff(heatCoeff)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& density, float densCoeff, MACGrid& vel, Vec3 strength, Grid<Real>& heat, float heatCoeff )  {    
+//! add Buoyancy force based on coeffiecient
+ struct KnAddBuoyancy2 : public KernelBase { KnAddBuoyancy2(FlagGrid& flags, Grid<Real>& grid, MACGrid& vel, Vec3 strength, Real coefficient) :  KernelBase(&flags,1) ,flags(flags),grid(grid),vel(vel),strength(strength),coefficient(coefficient)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& grid, MACGrid& vel, Vec3 strength, Real coefficient )  {
 	if (!flags.isFluid(i,j,k)) return;
-	vel(i,j,k).x += (strength.x) * (densCoeff * density(i,j,k) - heatCoeff * heat(i,j,k));
-	vel(i,j,k).y += (strength.y) * (densCoeff * density(i,j,k) - heatCoeff * heat(i,j,k));
-	vel(i,j,k).z += (strength.z) * (densCoeff * density(i,j,k) - heatCoeff * heat(i,j,k));    
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return density; } typedef Grid<Real> type1;inline float& getArg2() { return densCoeff; } typedef float type2;inline MACGrid& getArg3() { return vel; } typedef MACGrid type3;inline Vec3& getArg4() { return strength; } typedef Vec3 type4;inline Grid<Real>& getArg5() { return heat; } typedef Grid<Real> type5;inline float& getArg6() { return heatCoeff; } typedef float type6; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,density,densCoeff,vel,strength,heat,heatCoeff);  } FlagGrid& flags; Grid<Real>& density; float densCoeff; MACGrid& vel; Vec3 strength; Grid<Real>& heat; float heatCoeff;   };
+	vel(i,j,k).x += (strength.x) * coefficient * grid(i,j,k);
+	vel(i,j,k).y += (strength.y) * coefficient * grid(i,j,k);
+	vel(i,j,k).z += (strength.z) * coefficient * grid(i,j,k);
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return grid; } typedef Grid<Real> type1;inline MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline Vec3& getArg3() { return strength; } typedef Vec3 type3;inline Real& getArg4() { return coefficient; } typedef Real type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,grid,vel,strength,coefficient);  } FlagGrid& flags; Grid<Real>& grid; MACGrid& vel; Vec3 strength; Real coefficient;   };
 
-//! add Buoyancy force based on smoke density
-void addHeatBuoyancy(FlagGrid& flags, Grid<Real>& density, float densCoeff, MACGrid& vel, Vec3 gravity, Grid<Real>& heat, float heatCoeff) {
+//! add Buoyancy force based on coeffiecient
+void addBuoyancy2(FlagGrid& flags, Grid<Real>& grid, MACGrid& vel, Vec3 gravity, Real coefficient) {
 	Vec3 f = - gravity * flags.getParent()->getDt() / flags.getParent()->getDx();
-	KnAddHeatBuoyancy(flags,density,densCoeff, vel, f, heat, heatCoeff);
-} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "addHeatBuoyancy" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& density = *_args.getPtr<Grid<Real> >("density",1,&_lock); float densCoeff = _args.get<float >("densCoeff",2,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",3,&_lock); Vec3 gravity = _args.get<Vec3 >("gravity",4,&_lock); Grid<Real>& heat = *_args.getPtr<Grid<Real> >("heat",5,&_lock); float heatCoeff = _args.get<float >("heatCoeff",6,&_lock);   _retval = getPyNone(); addHeatBuoyancy(flags,density,densCoeff,vel,gravity,heat,heatCoeff);  _args.check(); } pbFinalizePlugin(parent,"addHeatBuoyancy" ); return _retval; } catch(std::exception& e) { pbSetError("addHeatBuoyancy",e.what()); return 0; } } static const Pb::Register _RP_addHeatBuoyancy ("","addHeatBuoyancy",_W_2); 
+	KnAddBuoyancy2(flags, grid, vel, f, coefficient);
+} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "addBuoyancy2" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& grid = *_args.getPtr<Grid<Real> >("grid",1,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",2,&_lock); Vec3 gravity = _args.get<Vec3 >("gravity",3,&_lock); Real coefficient = _args.get<Real >("coefficient",4,&_lock);   _retval = getPyNone(); addBuoyancy2(flags,grid,vel,gravity,coefficient);  _args.check(); } pbFinalizePlugin(parent,"addBuoyancy2" ); return _retval; } catch(std::exception& e) { pbSetError("addBuoyancy2",e.what()); return 0; } } static const Pb::Register _RP_addBuoyancy2 ("","addBuoyancy2",_W_2); 
 
 // inflow / outflow boundaries
 

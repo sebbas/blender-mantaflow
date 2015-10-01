@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/home/user/Developer/mantaflowgit/source/conjugategrad.h"
+#line 1 "/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/source/conjugategrad.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework

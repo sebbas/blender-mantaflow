@@ -1,4 +1,4 @@
 -DGUI=1
 -o
-/home/user/Developer/mantaflowgit/build/pp/source/gui/moc_customctrl.cpp
-/home/user/Developer/mantaflowgit/build/pp/source/gui/customctrl.h
+/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/build/pp/source/gui/moc_customctrl.cpp
+/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/build/pp/source/gui/customctrl.h

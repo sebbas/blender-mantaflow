@@ -1,4 +1,4 @@
 -DGUI=1
 -o
-/home/user/Developer/mantaflowgit/build/pp/source/gui/moc_glwidget.cpp
-/home/user/Developer/mantaflowgit/build/pp/source/gui/glwidget.h
+/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/build/pp/source/gui/moc_glwidget.cpp
+/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/build/pp/source/gui/glwidget.h

@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/home/user/Developer/mantaflowgit/source/gui/meshpainter.cpp"
+#line 1 "/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/source/gui/meshpainter.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework

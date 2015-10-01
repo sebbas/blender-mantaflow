@@ -1,7 +1,7 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'qtmain.h'
 **
-** Created by: The Qt Meta Object Compiler version 67 (Qt 5.2.1)
+** Created by: The Qt Meta Object Compiler version 67 (Qt 5.4.2)
 **
 ** WARNING! All changes made in this file will be lost!
 *****************************************************************************/
@@ -12,7 +12,7 @@
 #if !defined(Q_MOC_OUTPUT_REVISION)
 #error "The header file 'qtmain.h' doesn't include <QObject>."
 #elif Q_MOC_OUTPUT_REVISION != 67
-#error "This file was generated using the moc from 5.2.1. It"
+#error "This file was generated using the moc from 5.4.2. It"
 #error "cannot be used with the include files from this version of Qt."
 #error "(The moc has changed too much.)"
 #endif
@@ -20,22 +20,23 @@
 QT_BEGIN_MOC_NAMESPACE
 struct qt_meta_stringdata_Manta__GuiThread_t {
     QByteArrayData data[5];
-    char stringdata[39];
+    char stringdata[38];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
-    offsetof(qt_meta_stringdata_Manta__GuiThread_t, stringdata) + ofs \
-        - idx * sizeof(QByteArrayData) \
+    qptrdiff(offsetof(qt_meta_stringdata_Manta__GuiThread_t, stringdata) + ofs \
+        - idx * sizeof(QByteArrayData)) \
     )
 static const qt_meta_stringdata_Manta__GuiThread_t qt_meta_stringdata_Manta__GuiThread = {
     {
-QT_MOC_LITERAL(0, 0, 16),
-QT_MOC_LITERAL(1, 17, 9),
-QT_MOC_LITERAL(2, 27, 0),
-QT_MOC_LITERAL(3, 28, 1),
-QT_MOC_LITERAL(4, 30, 7)
+QT_MOC_LITERAL(0, 0, 16), // "Manta::GuiThread"
+QT_MOC_LITERAL(1, 17, 9), // "sendEvent"
+QT_MOC_LITERAL(2, 27, 0), // ""
+QT_MOC_LITERAL(3, 28, 1), // "e"
+QT_MOC_LITERAL(4, 30, 7) // "exitApp"
+
     },
-    "Manta::GuiThread\0sendEvent\0\0e\0exitApp\0"
+    "Manta::GuiThread\0sendEvent\0\0e\0exitApp"
 };
 #undef QT_MOC_LITERAL
 
@@ -53,8 +54,8 @@ static const uint qt_meta_data_Manta__GuiThread[] = {
        0,       // signalCount
 
  // slots: name, argc, parameters, tag, flags
-       1,    1,   24,    2, 0x0a,
-       4,    0,   27,    2, 0x0a,
+       1,    1,   24,    2, 0x0a /* Public */,
+       4,    0,   27,    2, 0x0a /* Public */,
 
  // slots: parameters
     QMetaType::Void, QMetaType::Int,    3,
@@ -77,7 +78,7 @@ void Manta::GuiThread::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int
 
 const QMetaObject Manta::GuiThread::staticMetaObject = {
     { &QObject::staticMetaObject, qt_meta_stringdata_Manta__GuiThread.data,
-      qt_meta_data_Manta__GuiThread,  qt_static_metacall, 0, 0}
+      qt_meta_data_Manta__GuiThread,  qt_static_metacall, Q_NULLPTR, Q_NULLPTR}
 };
 
 
@@ -88,7 +89,7 @@ const QMetaObject *Manta::GuiThread::metaObject() const
 
 void *Manta::GuiThread::qt_metacast(const char *_clname)
 {
-    if (!_clname) return 0;
+    if (!_clname) return Q_NULLPTR;
     if (!strcmp(_clname, qt_meta_stringdata_Manta__GuiThread.stringdata))
         return static_cast<void*>(const_cast< GuiThread*>(this));
     return QObject::qt_metacast(_clname);
@@ -112,24 +113,25 @@ int Manta::GuiThread::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
 }
 struct qt_meta_stringdata_Manta__MainThread_t {
     QByteArrayData data[6];
-    char stringdata[50];
+    char stringdata[49];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
-    offsetof(qt_meta_stringdata_Manta__MainThread_t, stringdata) + ofs \
-        - idx * sizeof(QByteArrayData) \
+    qptrdiff(offsetof(qt_meta_stringdata_Manta__MainThread_t, stringdata) + ofs \
+        - idx * sizeof(QByteArrayData)) \
     )
 static const qt_meta_stringdata_Manta__MainThread_t qt_meta_stringdata_Manta__MainThread = {
     {
-QT_MOC_LITERAL(0, 0, 17),
-QT_MOC_LITERAL(1, 18, 9),
-QT_MOC_LITERAL(2, 28, 0),
-QT_MOC_LITERAL(3, 29, 5),
-QT_MOC_LITERAL(4, 35, 6),
-QT_MOC_LITERAL(5, 42, 6)
+QT_MOC_LITERAL(0, 0, 17), // "Manta::MainThread"
+QT_MOC_LITERAL(1, 18, 9), // "sendToGui"
+QT_MOC_LITERAL(2, 28, 0), // ""
+QT_MOC_LITERAL(3, 29, 5), // "event"
+QT_MOC_LITERAL(4, 35, 6), // "wakeUp"
+QT_MOC_LITERAL(5, 42, 6) // "killMe"
+
     },
     "Manta::MainThread\0sendToGui\0\0event\0"
-    "wakeUp\0killMe\0"
+    "wakeUp\0killMe"
 };
 #undef QT_MOC_LITERAL
 
@@ -147,11 +149,11 @@ static const uint qt_meta_data_Manta__MainThread[] = {
        1,       // signalCount
 
  // signals: name, argc, parameters, tag, flags
-       1,    1,   29,    2, 0x06,
+       1,    1,   29,    2, 0x06 /* Public */,
 
  // slots: name, argc, parameters, tag, flags
-       4,    0,   32,    2, 0x0a,
-       5,    0,   33,    2, 0x0a,
+       4,    0,   32,    2, 0x0a /* Public */,
+       5,    0,   33,    2, 0x0a /* Public */,
 
  // signals: parameters
     QMetaType::Void, QMetaType::Int,    3,
@@ -187,7 +189,7 @@ void Manta::MainThread::qt_static_metacall(QObject *_o, QMetaObject::Call _c, in
 
 const QMetaObject Manta::MainThread::staticMetaObject = {
     { &QThread::staticMetaObject, qt_meta_stringdata_Manta__MainThread.data,
-      qt_meta_data_Manta__MainThread,  qt_static_metacall, 0, 0}
+      qt_meta_data_Manta__MainThread,  qt_static_metacall, Q_NULLPTR, Q_NULLPTR}
 };
 
 
@@ -198,7 +200,7 @@ const QMetaObject *Manta::MainThread::metaObject() const
 
 void *Manta::MainThread::qt_metacast(const char *_clname)
 {
-    if (!_clname) return 0;
+    if (!_clname) return Q_NULLPTR;
     if (!strcmp(_clname, qt_meta_stringdata_Manta__MainThread.stringdata))
         return static_cast<void*>(const_cast< MainThread*>(this));
     return QThread::qt_metacast(_clname);
@@ -224,7 +226,7 @@ int Manta::MainThread::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
 // SIGNAL 0
 void Manta::MainThread::sendToGui(int _t1)
 {
-    void *_a[] = { 0, const_cast<void*>(reinterpret_cast<const void*>(&_t1)) };
+    void *_a[] = { Q_NULLPTR, const_cast<void*>(reinterpret_cast<const void*>(&_t1)) };
     QMetaObject::activate(this, &staticMetaObject, 0, _a);
 }
 QT_END_MOC_NAMESPACE

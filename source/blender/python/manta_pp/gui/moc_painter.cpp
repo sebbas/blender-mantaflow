@@ -1,7 +1,7 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'painter.h'
 **
-** Created by: The Qt Meta Object Compiler version 67 (Qt 5.2.1)
+** Created by: The Qt Meta Object Compiler version 67 (Qt 5.4.2)
 **
 ** WARNING! All changes made in this file will be lost!
 *****************************************************************************/
@@ -12,7 +12,7 @@
 #if !defined(Q_MOC_OUTPUT_REVISION)
 #error "The header file 'painter.h' doesn't include <QObject>."
 #elif Q_MOC_OUTPUT_REVISION != 67
-#error "This file was generated using the moc from 5.2.1. It"
+#error "This file was generated using the moc from 5.4.2. It"
 #error "cannot be used with the include files from this version of Qt."
 #error "(The moc has changed too much.)"
 #endif
@@ -20,27 +20,28 @@
 QT_BEGIN_MOC_NAMESPACE
 struct qt_meta_stringdata_Manta__Painter_t {
     QByteArrayData data[9];
-    char stringdata[66];
+    char stringdata[65];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
-    offsetof(qt_meta_stringdata_Manta__Painter_t, stringdata) + ofs \
-        - idx * sizeof(QByteArrayData) \
+    qptrdiff(offsetof(qt_meta_stringdata_Manta__Painter_t, stringdata) + ofs \
+        - idx * sizeof(QByteArrayData)) \
     )
 static const qt_meta_stringdata_Manta__Painter_t qt_meta_stringdata_Manta__Painter = {
     {
-QT_MOC_LITERAL(0, 0, 14),
-QT_MOC_LITERAL(1, 15, 11),
-QT_MOC_LITERAL(2, 27, 0),
-QT_MOC_LITERAL(3, 28, 5),
-QT_MOC_LITERAL(4, 34, 8),
-QT_MOC_LITERAL(5, 43, 5),
-QT_MOC_LITERAL(6, 49, 7),
-QT_MOC_LITERAL(7, 57, 1),
-QT_MOC_LITERAL(8, 59, 5)
+QT_MOC_LITERAL(0, 0, 14), // "Manta::Painter"
+QT_MOC_LITERAL(1, 15, 11), // "setViewport"
+QT_MOC_LITERAL(2, 27, 0), // ""
+QT_MOC_LITERAL(3, 28, 5), // "Vec3i"
+QT_MOC_LITERAL(4, 34, 8), // "gridsize"
+QT_MOC_LITERAL(5, 43, 5), // "paint"
+QT_MOC_LITERAL(6, 49, 7), // "doEvent"
+QT_MOC_LITERAL(7, 57, 1), // "e"
+QT_MOC_LITERAL(8, 59, 5) // "param"
+
     },
     "Manta::Painter\0setViewport\0\0Vec3i\0"
-    "gridsize\0paint\0doEvent\0e\0param\0"
+    "gridsize\0paint\0doEvent\0e\0param"
 };
 #undef QT_MOC_LITERAL
 
@@ -58,12 +59,12 @@ static const uint qt_meta_data_Manta__Painter[] = {
        1,       // signalCount
 
  // signals: name, argc, parameters, tag, flags
-       1,    1,   34,    2, 0x06,
+       1,    1,   34,    2, 0x06 /* Public */,
 
  // slots: name, argc, parameters, tag, flags
-       5,    0,   37,    2, 0x0a,
-       6,    2,   38,    2, 0x0a,
-       6,    1,   43,    2, 0x2a,
+       5,    0,   37,    2, 0x0a /* Public */,
+       6,    2,   38,    2, 0x0a /* Public */,
+       6,    1,   43,    2, 0x2a /* Public | MethodCloned */,
 
  // signals: parameters
     QMetaType::Void, 0x80000000 | 3,    4,
@@ -101,7 +102,7 @@ void Manta::Painter::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _
 
 const QMetaObject Manta::Painter::staticMetaObject = {
     { &QObject::staticMetaObject, qt_meta_stringdata_Manta__Painter.data,
-      qt_meta_data_Manta__Painter,  qt_static_metacall, 0, 0}
+      qt_meta_data_Manta__Painter,  qt_static_metacall, Q_NULLPTR, Q_NULLPTR}
 };
 
 
@@ -112,7 +113,7 @@ const QMetaObject *Manta::Painter::metaObject() const
 
 void *Manta::Painter::qt_metacast(const char *_clname)
 {
-    if (!_clname) return 0;
+    if (!_clname) return Q_NULLPTR;
     if (!strcmp(_clname, qt_meta_stringdata_Manta__Painter.stringdata))
         return static_cast<void*>(const_cast< Painter*>(this));
     return QObject::qt_metacast(_clname);
@@ -138,23 +139,24 @@ int Manta::Painter::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
 // SIGNAL 0
 void Manta::Painter::setViewport(const Vec3i & _t1)
 {
-    void *_a[] = { 0, const_cast<void*>(reinterpret_cast<const void*>(&_t1)) };
+    void *_a[] = { Q_NULLPTR, const_cast<void*>(reinterpret_cast<const void*>(&_t1)) };
     QMetaObject::activate(this, &staticMetaObject, 0, _a);
 }
 struct qt_meta_stringdata_Manta__LockedObjPainter_t {
     QByteArrayData data[1];
-    char stringdata[25];
+    char stringdata[24];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
-    offsetof(qt_meta_stringdata_Manta__LockedObjPainter_t, stringdata) + ofs \
-        - idx * sizeof(QByteArrayData) \
+    qptrdiff(offsetof(qt_meta_stringdata_Manta__LockedObjPainter_t, stringdata) + ofs \
+        - idx * sizeof(QByteArrayData)) \
     )
 static const qt_meta_stringdata_Manta__LockedObjPainter_t qt_meta_stringdata_Manta__LockedObjPainter = {
     {
-QT_MOC_LITERAL(0, 0, 23)
+QT_MOC_LITERAL(0, 0, 23) // "Manta::LockedObjPainter"
+
     },
-    "Manta::LockedObjPainter\0"
+    "Manta::LockedObjPainter"
 };
 #undef QT_MOC_LITERAL
 
@@ -184,7 +186,7 @@ void Manta::LockedObjPainter::qt_static_metacall(QObject *_o, QMetaObject::Call 
 
 const QMetaObject Manta::LockedObjPainter::staticMetaObject = {
     { &Painter::staticMetaObject, qt_meta_stringdata_Manta__LockedObjPainter.data,
-      qt_meta_data_Manta__LockedObjPainter,  qt_static_metacall, 0, 0}
+      qt_meta_data_Manta__LockedObjPainter,  qt_static_metacall, Q_NULLPTR, Q_NULLPTR}
 };
 
 
@@ -195,7 +197,7 @@ const QMetaObject *Manta::LockedObjPainter::metaObject() const
 
 void *Manta::LockedObjPainter::qt_metacast(const char *_clname)
 {
-    if (!_clname) return 0;
+    if (!_clname) return Q_NULLPTR;
     if (!strcmp(_clname, qt_meta_stringdata_Manta__LockedObjPainter.stringdata))
         return static_cast<void*>(const_cast< LockedObjPainter*>(this));
     return Painter::qt_metacast(_clname);
