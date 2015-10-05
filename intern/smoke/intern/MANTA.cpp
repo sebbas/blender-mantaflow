@@ -396,7 +396,7 @@ void Manta_API::run_manta_sim_highRes(WTURBULENCE *wt)
 	updateHighResPointers(wt/*,false*/);
 }
 
-std::string get_manta_smoke_script(bool highRes, SmokeModifierData *smd)
+std::string Manta_API::get_manta_smoke_script(bool highRes, SmokeModifierData *smd)
 {
 	std::string smoke_script = "";
 	if (highRes) {
@@ -444,15 +444,12 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 		ss <<  smd->domain->maxres;
 	else if (varName == "RESX")
 		ss <<  smd->domain->fluid->_xRes;
-	
 	else if (varName == "RESY")
 		if (is2D) {	ss <<  smd->domain->fluid->_zRes;}
-		else{ 		ss <<  smd->domain->fluid->_yRes;}
-	
+		else { 		ss <<  smd->domain->fluid->_yRes;}
 	else if (varName == "RESZ")
 		if (is2D){	ss << 1;}
 		else { 		ss << smd->domain->fluid->_zRes;}
-	
 	else if (varName == "SOLVER_DIM")
 		ss <<  smd->domain->manta_solver_res;
 	else if (varName == "NOISE_CN")
@@ -468,17 +465,17 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 	else if (varName == "HRESX")
 		ss << smd->domain->wt->getResBig()[0];
 	else if (varName == "HRESY")
-		if (is2D){	ss << smd->domain->wt->getResBig()[2];}
+		if (is2D) {	ss << smd->domain->wt->getResBig()[2];}
 		else{ 		ss << smd->domain->wt->getResBig()[1];}
 	else if (varName == "HRESZ")
-		if (is2D){	ss << 1;}
+		if (is2D) {	ss << 1;}
 		else { 		ss << smd->domain->wt->getResBig()[2];}
 	else if (varName == "TIMESTEP")
 		ss << smd->domain->time_scale * 0.1f;
 	else if (varName == "XL_TIMESTEP")
 		ss << smd->domain->time_scale * 0.1f;
 	else if (varName == "USE_WAVELETS")
-		ss << (smd->domain->flags & MOD_SMOKE_HIGHRES) ? "True" : "False";
+		ss << ((smd->domain->flags & MOD_SMOKE_HIGHRES) ? "True" : "False");
 	else if (varName == "BUYO_X")
 		ss << 0.;
 	else if (varName == "BUYO_Y")
@@ -511,7 +508,7 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 	else if (varName == "GRAVITY")
 		ss << "vec3(0,0,-0.981)";
 	else if (varName == "ABS_FLOW")
-		ss << (smd->flow->flags & MOD_SMOKE_FLOW_ABSOLUTE)?"True":"False";
+		ss << ((smd->flow->flags & MOD_SMOKE_FLOW_ABSOLUTE)? "True" : "False");
 	else if (varName == "DENSITY_MEM")
 		ss << smd->domain->fluid->_density;
 	else if (varName == "DENSITY_SIZE")

@@ -3,7 +3,6 @@ using namespace std;
 const string smoke_clean = "";
 
 const string smoke_setup_low ="from manta import *\n\
-print ('SMOKE SETUP LOW')\n\
 import os, shutil, math, sys\n\
 \n\
 def transform_back(obj, gs):\n\
@@ -55,7 +54,7 @@ dict_loaded = dict()\n\
 manta_using_colors = False\n\
 manta_using_heat = False\n\
 manta_using_fire = False\n\
-low_flags_updated = False\n\
+low_flags_updated = False\n\r\
 ";
 
 const string smoke_setup_high = "xl_gs = vec3($HRESX$, $HRESY$, $HRESZ$) \n\
@@ -190,7 +189,7 @@ if (GUI):\n\
   gui.pause()\n\
 \n\
 for step in range(100):\n\
-  sim_step_low(step, True)\n\
+  sim_step_low(step, True)\n\r\
 ";
 
 const string smoke_step_low = "def sim_step_low(t, standalone = False):\n\
@@ -199,6 +198,13 @@ const string smoke_step_low = "def sim_step_low(t, standalone = False):\n\
     density.load('$MANTA_EXPORT_PATH$density.uni')\n\
     flags.load('$MANTA_EXPORT_PATH$flags.uni')\n\
     forces.load('$MANTA_EXPORT_PATH$forces.uni')\n\
+    heat_low.load('$MANTA_EXPORT_PATH$heat.uni')\n\
+    color_r_low.load('$MANTA_EXPORT_PATH$color_r.uni')\n\
+    color_g_low.load('$MANTA_EXPORT_PATH$color_g.uni')\n\
+    color_b_low.load('$MANTA_EXPORT_PATH$color_b.uni')\n\
+    flame_low.load('$MANTA_EXPORT_PATH$flame.uni')\n\
+    fuel_low.load('$MANTA_EXPORT_PATH$fuel.uni')\n\
+    react_low.load('$MANTA_EXPORT_PATH$react.uni')\n\
   if standalone:\n\
     inflow_grid.load('$MANTA_EXPORT_PATH$inflow.uni')\n\
     inflow_grid.multConst(0.1)\n\
@@ -239,12 +245,11 @@ const string smoke_step_low = "def sim_step_low(t, standalone = False):\n\
   forces.clear()\n\
   \n\
   print ('Pressure')\n\
-  # TODO: where to put openBound? solvePressure(flags=flags, vel=vel, pressure=pressure, openBound=boundConditions)\n\
   solvePressure(flags=flags, vel=vel, pressure=pressure)\n\
   print ('Walls')\n\
   setWallBcs(flags=flags, vel=vel)\n\
   \n\
-  s.step()\n\
+  s.step()\n\r\
 ";
 
 const string liquid_step_low = "def sim_step_low(t):\n\
@@ -274,7 +279,7 @@ const string liquid_step_low = "def sim_step_low(t):\n\
   solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, useResNorm=True) \n\
   setWallBcs(flags=flags, vel=vel)\n\
   s.step()\n\
-  density.multConst(-1.)\n\
+  density.multConst(-1.)\n\r\
 ";
 
 const string smoke_step_high = "def sim_step_high(t):\n\
@@ -296,7 +301,7 @@ const string smoke_step_high = "def sim_step_high(t):\n\
     if manta_using_fire: \n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=fuel_high, order=$ADVECT_ORDER$)\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=react_high, order=$ADVECT_ORDER$)\n\
-  xl.step()\n\
+  xl.step()\n\r\
 ";
 
 const string full_smoke_setup = "from manta import * \n\
