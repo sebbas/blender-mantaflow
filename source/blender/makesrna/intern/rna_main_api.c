@@ -36,6 +36,7 @@
 #include "DNA_ID.h"
 #include "DNA_modifier_types.h"
 #include "DNA_space_types.h"
+#include "DNA_object_types.h"
 
 #include "BLI_utildefines.h"
 #include "BLI_path_util.h"
@@ -88,7 +89,6 @@
 #include "DNA_lamp_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_object_types.h"
 #include "DNA_speaker_types.h"
 #include "DNA_sound_types.h"
 #include "DNA_text_types.h"
@@ -107,7 +107,7 @@
 
 #include "ED_screen.h"
 
-#include "BLF_translation.h"
+#include "BLT_translation.h"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
@@ -352,12 +352,17 @@ static Image *rna_Main_images_new(Main *bmain, const char *name, int width, int 
 	id_us_min(&image->id);
 	return image;
 }
-static Image *rna_Main_images_load(Main *bmain, ReportList *reports, const char *filepath)
+static Image *rna_Main_images_load(Main *bmain, ReportList *reports, const char *filepath, int check_existing)
 {
 	Image *ima;
 
 	errno = 0;
-	ima = BKE_image_load(bmain, filepath);
+	if (check_existing) {
+		ima = BKE_image_load_exists(filepath);
+	}
+	else {
+		ima = BKE_image_load(bmain, filepath);
+	}
 
 	if (!ima) {
 		BKE_reportf(reports, RPT_ERROR, "Cannot read '%s': %s", filepath,
@@ -483,12 +488,13 @@ static void rna_Main_textures_remove(Main *bmain, ReportList *reports, PointerRN
 	}
 }
 
-static Brush *rna_Main_brushes_new(Main *bmain, const char *name)
+static Brush *rna_Main_brushes_new(Main *bmain, const char *name, int mode)
 {
-	Brush *brush = BKE_brush_add(bmain, name);
+	Brush *brush = BKE_brush_add(bmain, name, mode);
 	id_us_min(&brush->id);
 	return brush;
 }
+
 static void rna_Main_brushes_remove(Main *bmain, ReportList *reports, PointerRNA *brush_ptr)
 {
 	Brush *brush = brush_ptr->data;
@@ -1206,6 +1212,8 @@ void RNA_def_main_images(BlenderRNA *brna, PropertyRNA *cprop)
 	RNA_def_function_ui_description(func, "Load a new image into the main database");
 	parm = RNA_def_string_file_path(func, "filepath", "File Path", 0, "", "path of the file to load");
 	RNA_def_property_flag(parm, PROP_REQUIRED);
+	RNA_def_boolean(func, "check_existing", false, "",
+	                "Check whether this image filepath is already used, and return existing datablock in this case");
 	/* return type */
 	parm = RNA_def_pointer(func, "image", "Image", "", "New image datablock");
 	RNA_def_function_return(func, parm);
@@ -1422,6 +1430,7 @@ void RNA_def_main_brushes(BlenderRNA *brna, PropertyRNA *cprop)
 	RNA_def_function_ui_description(func, "Add a new brush to the main database");
 	parm = RNA_def_string(func, "name", "Brush", 0, "", "New name for the datablock");
 	RNA_def_property_flag(parm, PROP_REQUIRED);
+	parm = RNA_def_enum(func, "mode", object_mode_items, OB_MODE_TEXTURE_PAINT, "", "Paint Mode for the new brush");
 	/* return type */
 	parm = RNA_def_pointer(func, "brush", "Brush", "", "New brush datablock");
 	RNA_def_function_return(func, parm);

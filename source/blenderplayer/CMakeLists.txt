@@ -151,6 +151,7 @@ endif()
 		bf_dna
 		ge_videotex
 		bf_blenfont
+		bf_blentranslation
 		bf_intern_audaspace
 		blenkernel_blc
 		bf_bmesh

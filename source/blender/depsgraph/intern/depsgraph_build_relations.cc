@@ -812,6 +812,10 @@ void DepsgraphRelationBuilder::build_driver(ID *id, FCurve *fcu)
 		ComponentKey geometry_key(shape_key->from, DEPSNODE_TYPE_GEOMETRY);
 		add_relation(driver_key, geometry_key, DEPSREL_TYPE_DRIVER, "[Driver -> ShapeKey Geom]");
 	}
+	else if (strstr(fcu->rna_path, "key_blocks[")) {
+		ComponentKey geometry_key(id, DEPSNODE_TYPE_GEOMETRY);
+		add_relation(driver_key, geometry_key, DEPSREL_TYPE_DRIVER, "[Driver -> ShapeKey Geom]");
+	}
 	else {
 		if (GS(id->name) == ID_OB) {
 			/* assume that driver affects a transform... */
@@ -1576,6 +1580,17 @@ void DepsgraphRelationBuilder::build_obdata_geom(Main *bmain, Scene *scene, Obje
 			if (BKE_object_modifier_use_time(ob, md)) {
 				TimeSourceKey time_src_key;
 				add_relation(time_src_key, mod_key, DEPSREL_TYPE_TIME, "Time Source");
+				
+				/* Hacky fix for T45633 (Animated modifiers aren't updated)
+				 *
+				 * This check works because BKE_object_modifier_use_time() tests
+				 * for either the modifier needing time, or that it is animated.
+				 */
+				/* XXX: Remove this hack when these links are added as part of build_animdata() instead */
+				if (modifier_dependsOnTime(md) == false) {
+					ComponentKey animation_key(&ob->id, DEPSNODE_TYPE_ANIMATION);
+					add_relation(animation_key, mod_key, DEPSREL_TYPE_OPERATION, "Modifier Animation");
+				}
 			}
 
 			prev_mod_key = mod_key;

@@ -36,7 +36,7 @@
 #include "BLI_string.h"
 #include "BLI_math.h"
 
-#include "BLF_translation.h"
+#include "BLT_translation.h"
 
 #include "BKE_context.h"
 #include "BKE_modifier.h"
@@ -401,7 +401,7 @@ static void ringsel_finish(bContext *C, wmOperator *op)
 {
 	RingSelOpData *lcd = op->customdata;
 	const int cuts = RNA_int_get(op->ptr, "number_cuts");
-	const float smoothness = 0.292f * RNA_float_get(op->ptr, "smoothness");
+	const float smoothness = RNA_float_get(op->ptr, "smoothness");
 	const int smooth_falloff = RNA_enum_get(op->ptr, "falloff");
 #ifdef BMW_EDGERING_NGON
 	const bool use_only_quads = false;
@@ -430,8 +430,9 @@ static void ringsel_finish(bContext *C, wmOperator *op)
 			                   cuts, seltype, SUBD_CORNER_PATH, 0, true,
 			                   use_only_quads, 0);
 
-			/* when used in a macro tessface is already re-recalculated */
-			EDBM_update_generic(em, (is_macro == false), true);
+			/* when used in a macro the tessfaces will be recalculated anyway,
+			 * this is needed here because modifiers depend on updated tessellation, see T45920 */
+			EDBM_update_generic(em, true, true);
 
 			if (is_single) {
 				/* de-select endpoints */
@@ -856,7 +857,7 @@ void MESH_OT_loopcut(wmOperatorType *ot)
 	RNA_def_property_enum_items(prop, proportional_falloff_curve_only_items);
 	RNA_def_property_enum_default(prop, PROP_INVSQUARE);
 	RNA_def_property_ui_text(prop, "Falloff", "Falloff type the feather");
-	RNA_def_property_translation_context(prop, BLF_I18NCONTEXT_ID_CURVE); /* Abusing id_curve :/ */
+	RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_CURVE); /* Abusing id_curve :/ */
 
 	prop = RNA_def_int(ot->srna, "edge_index", -1, -1, INT_MAX, "Edge Index", "", 0, INT_MAX);
 	RNA_def_property_flag(prop, PROP_HIDDEN);

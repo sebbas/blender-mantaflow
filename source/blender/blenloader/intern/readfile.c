@@ -109,7 +109,7 @@
 #include "BLI_threads.h"
 #include "BLI_mempool.h"
 
-#include "BLF_translation.h"
+#include "BLT_translation.h"
 
 #include "BKE_action.h"
 #include "BKE_armature.h"
@@ -313,6 +313,56 @@ void blo_do_versions_oldnewmap_insert(OldNewMap *onm, void *oldaddr, void *newad
 	oldnewmap_insert(onm, oldaddr, newaddr, nr);
 }
 
+/**
+ * Do a full search (no state).
+ *
+ * \param lasthit: Use as a reference position to avoid a full search
+ * from either end of the array, giving more efficient lookups.
+ *
+ * \note This would seem an ideal case for hash or btree lookups.
+ * However the data is written in-order, using the \a lasthit will normally avoid calling this function.
+ * Creating a btree/hash structure adds overhead for the common-case to optimize the corner-case
+ * (since most entries will never be retrieved).
+ * So just keep full lookups as a fall-back.
+ */
+static int oldnewmap_lookup_entry_full(const OldNewMap *onm, const void *addr, int lasthit)
+{
+	const int nentries = onm->nentries;
+	const OldNew *entries = onm->entries;
+	int i;
+
+	/* search relative to lasthit where possible */
+	if (lasthit >= 0 && lasthit < nentries) {
+
+		/* search forwards */
+		i = lasthit;
+		while (++i != nentries) {
+			if (entries[i].old == addr) {
+				return i;
+			}
+		}
+
+		/* search backwards */
+		i = lasthit + 1;
+		while (i--) {
+			if (entries[i].old == addr) {
+				return i;
+			}
+		}
+	}
+	else {
+		/* search backwards (full) */
+		i = nentries;
+		while (i--) {
+			if (entries[i].old == addr) {
+				return i;
+			}
+		}
+	}
+
+	return -1;
+}
+
 static void *oldnewmap_lookup_and_inc(OldNewMap *onm, void *addr, bool increase_users) 
 {
 	int i;
@@ -329,16 +379,14 @@ static void *oldnewmap_lookup_and_inc(OldNewMap *onm, void *addr, bool increase_
 		}
 	}
 	
-	for (i = 0; i < onm->nentries; i++) {
+	i = oldnewmap_lookup_entry_full(onm, addr, onm->lasthit);
+	if (i != -1) {
 		OldNew *entry = &onm->entries[i];
-		
-		if (entry->old == addr) {
-			onm->lasthit = i;
-			
-			if (increase_users)
-				entry->nr++;
-			return entry->newp;
-		}
+		BLI_assert(entry->old == addr);
+		onm->lasthit = i;
+		if (increase_users)
+			entry->nr++;
+		return entry->newp;
 	}
 	
 	return NULL;
@@ -368,16 +416,13 @@ static void *oldnewmap_liblookup(OldNewMap *onm, void *addr, void *lib)
 	}
 	else {
 		/* note, this can be a bottle neck when loading some files */
-		unsigned int nentries = (unsigned int)onm->nentries;
-		unsigned int i;
-		OldNew *entry;
-
-		for (i = 0, entry = onm->entries; i < nentries; i++, entry++) {
-			if (entry->old == addr) {
-				ID *id = entry->newp;
-				if (id && (!lib || id->lib)) {
-					return id;
-				}
+		const int i = oldnewmap_lookup_entry_full(onm, addr, -1);
+		if (i != -1) {
+			OldNew *entry = &onm->entries[i];
+			ID *id = entry->newp;
+			BLI_assert(entry->old == addr);
+			if (id && (!lib || id->lib)) {
+				return id;
 			}
 		}
 	}
@@ -573,7 +618,9 @@ static Main *blo_find_main(FileData *fd, const char *filepath, const char *relab
 	m = BKE_main_new();
 	BLI_addtail(mainlist, m);
 	
-	lib = BKE_libblock_alloc(m, ID_LI, "lib");
+	/* Add library datablock itself to 'main' Main, since libraries are **never** linked data.
+	 * Fixes bug where you could end with all ID_LI datablocks having the same name... */
+	lib = BKE_libblock_alloc(mainlist->first, ID_LI, "Lib");
 	BLI_strncpy(lib->name, filepath, sizeof(lib->name));
 	BLI_strncpy(lib->filepath, name1, sizeof(lib->filepath));
 	
@@ -872,6 +919,41 @@ static int read_file_dna(FileData *fd)
 	return 0;
 }
 
+static int *read_file_thumbnail(FileData *fd)
+{
+	BHead *bhead;
+	int *blend_thumb = NULL;
+
+	for (bhead = blo_firstbhead(fd); bhead; bhead = blo_nextbhead(fd, bhead)) {
+		if (bhead->code == TEST) {
+			const bool do_endian_swap = (fd->flags & FD_FLAGS_SWITCH_ENDIAN) != 0;
+			int *data = (int *)(bhead + 1);
+
+			if (bhead->len < (2 * sizeof(int))) {
+				break;
+			}
+
+			if (do_endian_swap) {
+				BLI_endian_switch_int32(&data[0]);
+				BLI_endian_switch_int32(&data[1]);
+			}
+
+			if (bhead->len < BLEN_THUMB_MEMSIZE_FILE(data[0], data[1])) {
+				break;
+			}
+
+			blend_thumb = data;
+			break;
+		}
+		else if (bhead->code != REND) {
+			/* Thumbnail is stored in TEST immediately after first REND... */
+			break;
+		}
+	}
+
+	return blend_thumb;
+}
+
 static int fd_read_from_file(FileData *filedata, void *buffer, unsigned int size)
 {
 	int readsize = read(filedata->filedes, buffer, size);
@@ -1035,6 +1117,33 @@ FileData *blo_openblenderfile(const char *filepath, ReportList *reports)
 	}
 }
 
+/**
+ * Same as blo_openblenderfile(), but does not reads DNA data, only header. Use it for light access
+ * (e.g. thumbnail reading).
+ */
+static FileData *blo_openblenderfile_minimal(const char *filepath)
+{
+	gzFile gzfile;
+	errno = 0;
+	gzfile = BLI_gzopen(filepath, "rb");
+
+	if (gzfile != (gzFile)Z_NULL) {
+		FileData *fd = filedata_new();
+		fd->gzfiledes = gzfile;
+		fd->read = fd_read_gzip_from_file;
+
+		decode_blender_header(fd);
+
+		if (fd->flags & FD_FLAGS_FILE_OK) {
+			return fd;
+		}
+
+		blo_freefiledata(fd);
+	}
+
+	return NULL;
+}
+
 static int fd_read_gzip_from_memory(FileData *filedata, void *buffer, unsigned int size)
 {
 	int err;
@@ -1189,47 +1298,87 @@ bool BLO_has_bfile_extension(const char *str)
 	return BLI_testextensie_array(str, ext_test);
 }
 
-bool BLO_is_a_library(const char *path, char *dir, char *group)
+bool BLO_library_path_explode(const char *path, char *r_dir, char **r_group, char **r_name)
 {
-	/* return ok when a blenderfile, in dir is the filename,
-	 * in group the type of libdata
-	 */
-	int len;
-	char *fd;
-	
-	/* if path leads to a directory we can be sure we're not in a library */
-	if (BLI_is_dir(path)) return 0;
+	/* We might get some data names with slashes, so we have to go up in path until we find blend file itself,
+	 * then we now next path item is group, and everything else is data name. */
+	char *slash = NULL, *prev_slash = NULL, c = '\0';
 
-	strcpy(dir, path);
-	len = strlen(dir);
-	if (len < 7) return 0;
-	if ((dir[len - 1] != '/') && (dir[len - 1] != '\\')) return 0;
-	
-	group[0] = '\0';
-	dir[len - 1] = '\0';
+	r_dir[0] = '\0';
+	if (r_group) {
+		*r_group = NULL;
+	}
+	if (r_name) {
+		*r_name = NULL;
+	}
 
-	/* Find the last slash */
-	fd = (char *)BLI_last_slash(dir);
+	/* if path leads to an existing directory, we can be sure we're not (in) a library */
+	if (BLI_is_dir(path)) {
+		return false;
+	}
 
-	if (fd == NULL) return 0;
-	*fd = 0;
-	if (BLO_has_bfile_extension(fd+1)) {
-		/* the last part of the dir is a .blend file, no group follows */
-		*fd = '/'; /* put back the removed slash separating the dir and the .blend file name */
+	strcpy(r_dir, path);
+
+	while ((slash = (char *)BLI_last_slash(r_dir))) {
+		char tc = *slash;
+		*slash = '\0';
+		if (BLO_has_bfile_extension(r_dir)) {
+			break;
+		}
+
+		if (prev_slash) {
+			*prev_slash = c;
+		}
+		prev_slash = slash;
+		c = tc;
+	}
+
+	if (!slash) {
+		return false;
+	}
+
+	if (slash[1] != '\0') {
+		BLI_assert(strlen(slash + 1) < BLO_GROUP_MAX);
+		if (r_group) {
+			*r_group = slash + 1;
+		}
+	}
+
+	if (prev_slash && (prev_slash[1] != '\0')) {
+		BLI_assert(strlen(prev_slash + 1) < MAX_ID_NAME - 2);
+		if (r_name) {
+			*r_name = prev_slash + 1;
+		}
+	}
+
+	return true;
+}
+
+BlendThumbnail *BLO_thumbnail_from_file(const char *filepath)
+{
+	FileData *fd;
+	BlendThumbnail *data;
+	int *fd_data;
+
+	fd = blo_openblenderfile_minimal(filepath);
+	fd_data = fd ? read_file_thumbnail(fd) : NULL;
+
+	if (fd_data) {
+		const size_t sz = BLEN_THUMB_MEMSIZE(fd_data[0], fd_data[1]);
+		data = MEM_mallocN(sz, __func__);
+
+		BLI_assert((sz - sizeof(*data)) == (BLEN_THUMB_MEMSIZE_FILE(fd_data[0], fd_data[1]) - (sizeof(*fd_data) * 2)));
+		data->width = fd_data[0];
+		data->height = fd_data[1];
+		memcpy(data->rect, &fd_data[2], sz - sizeof(*data));
 	}
 	else {
-		const char * const gp = fd + 1; // in case we have a .blend file, gp points to the group
-		
-		/* Find the last slash */
-		fd = (char *)BLI_last_slash(dir);
-		if (!fd || !BLO_has_bfile_extension(fd+1)) return 0;
-		
-		/* now we know that we are in a blend file and it is safe to 
-		 * assume that gp actually points to a group */
-		if (!STREQ("Screen", gp))
-			BLI_strncpy(group, gp, BLO_GROUP_MAX);
+		data = NULL;
 	}
-	return 1;
+
+	blo_freefiledata(fd);
+
+	return data;
 }
 
 /* ************** OLD POINTERS ******************* */
@@ -6376,6 +6525,7 @@ void blo_lib_link_screen_restore(Main *newmain, bScreen *curscreen, Scene *cursc
 				else if (sl->spacetype == SPACE_FILE) {
 					SpaceFile *sfile = (SpaceFile *)sl;
 					sfile->op = NULL;
+					sfile->previews_timer = NULL;
 				}
 				else if (sl->spacetype == SPACE_ACTION) {
 					SpaceAction *saction = (SpaceAction *)sl;
@@ -6459,7 +6609,13 @@ void blo_lib_link_screen_restore(Main *newmain, bScreen *curscreen, Scene *cursc
 
 						BLI_mempool_iternew(so->treestore, &iter);
 						while ((tselem = BLI_mempool_iterstep(&iter))) {
-							tselem->id = restore_pointer_by_name(newmain, tselem->id, USER_IGNORE);
+							/* Do not try to restore pointers to drivers/sequence/etc., can crash in undo case! */
+							if (TSE_IS_REAL_ID(tselem)) {
+								tselem->id = restore_pointer_by_name(newmain, tselem->id, USER_IGNORE);
+							}
+							else {
+								tselem->id = NULL;
+							}
 						}
 						if (so->treehash) {
 							/* rebuild hash table, because it depends on ids too */
@@ -6905,6 +7061,7 @@ static bool direct_link_screen(FileData *fd, bScreen *sc)
 				sfile->files = NULL;
 				sfile->layout = NULL;
 				sfile->op = NULL;
+				sfile->previews_timer = NULL;
 				sfile->params = newdataadr(fd, sfile->params);
 			}
 			else if (sl->spacetype == SPACE_CLIP) {
@@ -8116,6 +8273,24 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
 	bfd->type = BLENFILETYPE_BLEND;
 	BLI_strncpy(bfd->main->name, filepath, sizeof(bfd->main->name));
 
+	if (G.background) {
+		/* We only read & store .blend thumbnail in background mode
+		 * (because we cannot re-generate it, no OpenGL available).
+		 */
+		const int *data = read_file_thumbnail(fd);
+
+		if (data) {
+			const size_t sz = BLEN_THUMB_MEMSIZE(data[0], data[1]);
+			bfd->main->blen_thumb = MEM_mallocN(sz, __func__);
+
+			BLI_assert((sz - sizeof(*bfd->main->blen_thumb)) ==
+			           (BLEN_THUMB_MEMSIZE_FILE(data[0], data[1]) - (sizeof(*data) * 2)));
+			bfd->main->blen_thumb->width = data[0];
+			bfd->main->blen_thumb->height = data[1];
+			memcpy(bfd->main->blen_thumb->rect, &data[2], sz - sizeof(*bfd->main->blen_thumb));
+		}
+	}
+
 	while (bhead) {
 		switch (bhead->code) {
 		case DATA:
@@ -8166,10 +8341,10 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
 	}
 	
 	/* do before read_libraries, but skip undo case */
-	if (fd->memfile==NULL)
+	if (fd->memfile == NULL) {
 		do_versions(fd, NULL, bfd->main);
-	
-	do_versions_userdef(fd, bfd);
+		do_versions_userdef(fd, bfd);
+	}
 	
 	read_libraries(fd, &mainlist);
 	
@@ -8182,6 +8357,8 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
 	
 	link_global(fd, bfd);	/* as last */
 	
+	fd->mainlist = NULL;  /* Safety, this is local variable, shall not be used afterward. */
+
 	return bfd;
 }
 

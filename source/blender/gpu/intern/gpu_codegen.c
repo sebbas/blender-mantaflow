@@ -718,7 +718,7 @@ static char *code_generate_vertex(ListBase *nodes, const GPUMatType type)
 	GPUNode *node;
 	GPUInput *input;
 	char *code;
-	char *vertcode;
+	char *vertcode = NULL;
 	
 	for (node = nodes->first; node; node = node->next) {
 		for (input = node->inputs.first; input; input = input->next) {
@@ -839,6 +839,8 @@ static char *code_generate_geometry(ListBase *nodes, bool use_opensubdiv)
 		BLI_dynstr_append(ds, datatoc_gpu_shader_geometry_glsl);
 
 		/* Generate varying assignments. */
+		/* TODO(sergey): Disabled for now, needs revisit. */
+#if 0
 		for (node = nodes->first; node; node = node->next) {
 			for (input = node->inputs.first; input; input = input->next) {
 				if (input->source == GPU_SOURCE_ATTRIB && input->attribfirst) {
@@ -852,6 +854,7 @@ static char *code_generate_geometry(ListBase *nodes, bool use_opensubdiv)
 				}
 			}
 		}
+#endif
 
 		BLI_dynstr_append(ds, "}\n\n");
 		code = BLI_dynstr_get_cstring(ds);
@@ -1612,7 +1615,16 @@ GPUPass *GPU_generate_pass(ListBase *nodes, GPUNodeLink *outlink,
 	fragmentcode = code_generate_fragment(nodes, outlink->output);
 	vertexcode = code_generate_vertex(nodes, type);
 	geometrycode = code_generate_geometry(nodes, use_opensubdiv);
-	shader = GPU_shader_create(vertexcode, fragmentcode, geometrycode, glsl_material_library, NULL, 0, 0, 0);
+	shader = GPU_shader_create_ex(vertexcode,
+	                              fragmentcode,
+	                              geometrycode,
+	                              glsl_material_library,
+	                              NULL,
+	                              0,
+	                              0,
+	                              0,
+	                              use_opensubdiv ? GPU_SHADER_FLAGS_SPECIAL_OPENSUBDIV
+	                                             : GPU_SHADER_FLAGS_NONE);
 
 	/* failed? */
 	if (!shader) {

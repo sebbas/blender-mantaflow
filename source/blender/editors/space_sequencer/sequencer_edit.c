@@ -41,7 +41,7 @@
 #include "BLI_timecode.h"
 #include "BLI_utildefines.h"
 
-#include "BLF_translation.h"
+#include "BLT_translation.h"
 
 #include "DNA_scene_types.h"
 
@@ -3832,7 +3832,7 @@ void SEQUENCER_OT_change_path(struct wmOperatorType *ot)
 
 	WM_operator_properties_filesel(ot, FILE_TYPE_FOLDER | FILE_TYPE_IMAGE | FILE_TYPE_MOVIE, FILE_SPECIAL, FILE_OPENFILE,
 	                               WM_FILESEL_DIRECTORY | WM_FILESEL_RELPATH | WM_FILESEL_FILEPATH | WM_FILESEL_FILES,
-	                               FILE_DEFAULTDISPLAY);
+	                               FILE_DEFAULTDISPLAY, FILE_SORT_ALPHA);
 	RNA_def_boolean(ot->srna, "use_placeholders", false, "Use Placeholders", "Use placeholders for missing frames of the strip");
 }
 
@@ -3859,7 +3859,9 @@ static int sequencer_export_subtitles_exec(bContext *C, wmOperator *op)
 {
 	Scene *scene = CTX_data_scene(C);
 	Sequence *seq = BKE_sequencer_active_get(scene);
+	Sequence *seq_next;
 	Editing *ed = BKE_sequencer_editing_get(scene, false);
+	ListBase text_seq = {0};
 	int iter = 0;
 	FILE *file;
 	char filepath[FILE_MAX];
@@ -3885,34 +3887,39 @@ static int sequencer_export_subtitles_exec(bContext *C, wmOperator *op)
 		return OPERATOR_CANCELLED;
 	}
 
-	/* time to open and write! */
-	file = BLI_fopen(filepath, "w");
-
 	SEQ_BEGIN(ed, seq)
 	{
 		if (seq->type == SEQ_TYPE_TEXT) {
-			TextVars *data = seq->effectdata;
-			char timecode_str[32];
-			double sec;
-			int frac;
-			int len;
-			fprintf(file, "%d\n", iter++);
-			sec = FRA2TIME(seq->startdisp);
-			frac = 1000 * (sec - floor(sec));
-			sec = floor(sec);
-			BLI_timecode_string_from_time(timecode_str, sizeof(timecode_str), 1, sec, FPS, USER_TIMECODE_SMPTE_FULL);
-			len = strlen(timecode_str);
-			timecode_str[len - 3] = 0;
-			fprintf(file, "%s,%d", timecode_str, frac);
-			sec = FRA2TIME(seq->enddisp);
-			BLI_timecode_string_from_time(timecode_str, sizeof(timecode_str), 1, sec, FPS, USER_TIMECODE_SMPTE_FULL);
-			len = strlen(timecode_str);
-			timecode_str[len - 3] = 0;
-			fprintf(file, " --> %s,%d\n", timecode_str, frac);
-			fprintf(file, "%s\n\n", data->text);
+			BLI_addtail(&text_seq, MEM_dupallocN(seq));
 		}
 	}
 	SEQ_END
+
+	if (BLI_listbase_is_empty(&text_seq)) {
+		BKE_report(op->reports, RPT_ERROR, "No subtitles (text strips) to export");
+		return OPERATOR_CANCELLED;
+	}
+
+	BLI_listbase_sort(&text_seq, BKE_sequencer_cmp_time_startdisp);
+
+	/* time to open and write! */
+	file = BLI_fopen(filepath, "w");
+
+	for (seq = text_seq.first; seq; seq = seq_next) {
+		TextVars *data = seq->effectdata;
+		char timecode_str_start[32];
+		char timecode_str_end[32];
+
+		BLI_timecode_string_from_time(timecode_str_start, sizeof(timecode_str_start),
+									  -2, FRA2TIME(seq->startdisp), FPS, USER_TIMECODE_SUBRIP);
+		BLI_timecode_string_from_time(timecode_str_end, sizeof(timecode_str_end),
+									  -2, FRA2TIME(seq->enddisp), FPS, USER_TIMECODE_SUBRIP);
+
+		fprintf(file, "%d\n%s --> %s\n%s\n\n", iter++, timecode_str_start, timecode_str_end, data->text);
+
+		seq_next = seq->next;
+		MEM_freeN(seq);
+	}
 
 	fclose(file);
 
@@ -3942,5 +3949,5 @@ void SEQUENCER_OT_export_subtitles(struct wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
 	WM_operator_properties_filesel(ot,  FILE_TYPE_FOLDER, FILE_BLENDER, FILE_SAVE,
-	                               WM_FILESEL_FILEPATH, FILE_DEFAULTDISPLAY);
+	                               WM_FILESEL_FILEPATH, FILE_DEFAULTDISPLAY, FILE_SORT_ALPHA);
 }

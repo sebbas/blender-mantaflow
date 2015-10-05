@@ -47,7 +47,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
-#include "BLF_translation.h"
+#include "BLT_translation.h"
 
 #include "BKE_blender.h"
 #include "BKE_context.h"
@@ -676,7 +676,7 @@ int wm_window_fullscreen_toggle_exec(bContext *C, wmOperator *UNUSED(op))
 
 /* ************ events *************** */
 
-static void wm_convert_cursor_position(wmWindow *win, int *x, int *y)
+void wm_cursor_position_from_ghost(wmWindow *win, int *x, int *y)
 {
 	float fac = GHOST_GetNativePixelSize(win->ghostwin);
 	
@@ -687,11 +687,21 @@ static void wm_convert_cursor_position(wmWindow *win, int *x, int *y)
 	*y *= fac;
 }
 
+void wm_cursor_position_to_ghost(wmWindow *win, int *x, int *y)
+{
+	float fac = GHOST_GetNativePixelSize(win->ghostwin);
+
+	*x /= fac;
+	*y /= fac;
+	*y = win->sizey - *y - 1;
+
+	GHOST_ClientToScreen(win->ghostwin, *x, *y, x, y);
+}
 
 void wm_get_cursor_position(wmWindow *win, int *x, int *y)
 {
 	GHOST_GetCursorPosition(g_system, x, y);
-	wm_convert_cursor_position(win, x, y);
+	wm_cursor_position_from_ghost(win, x, y);
 }
 
 typedef enum {
@@ -1017,9 +1027,12 @@ static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr
 						
 #if defined(__APPLE__) || defined(WIN32)
 						/* OSX and Win32 don't return to the mainloop while resize */
-						wm_event_do_handlers(C);
 						wm_event_do_notifiers(C);
 						wm_draw_update(C);
+
+						/* Warning! code above nulls 'C->wm.window', causing BGE to quit, see: T45699.
+						 * Further, its easier to match behavior across platforms, so restore the window. */
+						CTX_wm_window_set(C, win);
 #endif
 					}
 				}
@@ -1115,7 +1128,7 @@ static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr
 			{
 				GHOST_TEventTrackpadData *pd = data;
 				
-				wm_convert_cursor_position(win, &pd->x, &pd->y);
+				wm_cursor_position_from_ghost(win, &pd->x, &pd->y);
 				wm_event_add_ghostevent(wm, win, type, time, data);
 				break;
 			}
@@ -1123,7 +1136,7 @@ static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr
 			{
 				GHOST_TEventCursorData *cd = data;
 				
-				wm_convert_cursor_position(win, &cd->x, &cd->y);
+				wm_cursor_position_from_ghost(win, &cd->x, &cd->y);
 				wm_event_add_ghostevent(wm, win, type, time, data);
 				break;
 			}
@@ -1274,7 +1287,7 @@ void WM_event_timer_sleep(wmWindowManager *wm, wmWindow *UNUSED(win), wmTimer *t
 wmTimer *WM_event_add_timer(wmWindowManager *wm, wmWindow *win, int event_type, double timestep)
 {
 	wmTimer *wt = MEM_callocN(sizeof(wmTimer), "window timer");
-	
+
 	wt->event_type = event_type;
 	wt->ltime = PIL_check_seconds_timer();
 	wt->ntime = wt->ltime + timestep;
@@ -1538,14 +1551,9 @@ void WM_init_native_pixels(bool do_it)
 void WM_cursor_warp(wmWindow *win, int x, int y)
 {
 	if (win && win->ghostwin) {
-		float f = GHOST_GetNativePixelSize(win->ghostwin);
 		int oldx = x, oldy = y;
 
-		x = x / f;
-		y = y / f;
-		y = win->sizey - y - 1;
-
-		GHOST_ClientToScreen(win->ghostwin, x, y, &x, &y);
+		wm_cursor_position_to_ghost(win, &x, &y);
 		GHOST_SetCursorPosition(g_system, x, y);
 
 		win->eventstate->prevx = oldx;
@@ -1553,6 +1561,18 @@ void WM_cursor_warp(wmWindow *win, int x, int y)
 
 		win->eventstate->x = oldx;
 		win->eventstate->y = oldy;
+	}
+}
+
+/**
+ * Set x, y to values we can actually position the cursor to.
+ */
+void WM_cursor_compatible_xy(wmWindow *win, int *x, int *y)
+{
+	float f = GHOST_GetNativePixelSize(win->ghostwin);
+	if (f != 1.0f) {
+		*x = (int)(*x / f) * f;
+		*y = (int)(*y / f) * f;
 	}
 }
 

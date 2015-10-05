@@ -964,7 +964,7 @@ RAS_MeshObject* BL_ConvertMesh(Mesh* mesh, Object* blenderobj, KX_Scene* scene, 
 		if (CustomData_get_layer_index(&dm->faceData, CD_TANGENT) == -1) {
 			bool generate_data = false;
 			if (CustomData_get_layer_index(&dm->loopData, CD_TANGENT) == -1) {
-				DM_add_tangent_layer(dm);
+				DM_calc_loop_tangents(dm);
 				generate_data = true;
 			}
 			DM_generate_tangent_tessface_data(dm, generate_data);
@@ -2055,14 +2055,13 @@ void BL_ConvertBlenderObjects(struct Main* maggie,
 														converter,
 														libloading);
 
-						/* Insert object to the constraint game object list
-						 * so we can check later if there is a instance in the scene or
-						 * an instance and its actual group definition. */
-						convertedlist.insert((KX_GameObject*)gameobj->AddRef());
-
 						bool isInActiveLayer = false;
-						if (gameobj)
-						{
+						if (gameobj) {
+							/* Insert object to the constraint game object list
+							 * so we can check later if there is a instance in the scene or
+							 * an instance and its actual group definition. */
+							convertedlist.insert((KX_GameObject*)gameobj->AddRef());
+
 							/* macro calls object conversion funcs */
 							BL_CONVERTBLENDEROBJECT_SINGLE;
 

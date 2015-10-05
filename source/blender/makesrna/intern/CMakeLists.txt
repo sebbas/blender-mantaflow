@@ -319,10 +319,11 @@ endif()
 blender_include_dirs(
 	.
 	..
+	../../blenfont
 	../../blenkernel
 	../../blenlib
 	../../bmesh
-	../../blenfont
+	../../blentranslation
 	../../depsgraph
 	../../gpu
 	../../imbuf
@@ -353,7 +354,7 @@ target_link_libraries(makesrna bf_dna_blenlib)
 # note (linux only): with crashes try add this after COMMAND: valgrind --leak-check=full --track-origins=yes
 add_custom_command(
 	OUTPUT ${GENSRC}
-	COMMAND ${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/makesrna ${CMAKE_CURRENT_BINARY_DIR}/
+	COMMAND "$<TARGET_FILE:makesrna>" ${CMAKE_CURRENT_BINARY_DIR}/
 	DEPENDS makesrna
 )
 

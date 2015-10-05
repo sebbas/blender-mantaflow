@@ -35,6 +35,8 @@ required-numpy: \
 -- "$@" \
 )
 
+COMMANDLINE=$@
+
 DISTRO=""
 RPM=""
 SRC="$HOME/src/blender-deps"
@@ -42,6 +44,7 @@ INST="/opt/lib"
 TMP="/tmp"
 CWD=$PWD
 INFO_PATH=$CWD
+SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 # Do not install some optional, potentially conflicting libs by default...
 WITH_ALL=false
@@ -1376,19 +1379,7 @@ compile_LLVM() {
       cd $_src
 
       # XXX Ugly patching hack!
-      cat << EOF | patch -p1
---- a/CMakeLists.txt
-+++ b/CMakeLists.txt
-@@ -13,7 +13,7 @@
- set(LLVM_VERSION_MAJOR 3)
- set(LLVM_VERSION_MINOR 1)
- 
--set(PACKAGE_VERSION "\${LLVM_VERSION_MAJOR}.\${LLVM_VERSION_MINOR}svn")
-+set(PACKAGE_VERSION "\${LLVM_VERSION_MAJOR}.\${LLVM_VERSION_MINOR}")
- 
- set_property(GLOBAL PROPERTY USE_FOLDERS ON)
- 
-EOF
+      patch -p1 -i "$SCRIPT_DIR/install_deps_patches/llvm.patch"
 
       cd $CWD
 
@@ -1458,10 +1449,10 @@ compile_OSL() {
 
   # Clean install if needed!
   magic_compile_check osl-$OSL_VERSION $osl_magic
-  #~ if [ $? -eq 1 -o $OSL_FORCE_REBUILD == true ]; then
+  if [ $? -eq 1 -o $OSL_FORCE_REBUILD == true ]; then
     #~ rm -Rf $_src  # XXX Radical, but not easy to change remote repo fully automatically
-    #~ clean_OSL
-  #~ fi
+    clean_OSL
+  fi
 
   if [ ! -d $_inst ]; then
     INFO "Building OpenShadingLanguage-$OSL_VERSION"
@@ -1490,6 +1481,9 @@ compile_OSL() {
       # Stick to same rev as windows' libs...
       git checkout $OSL_SOURCE_REPO_UID
       git reset --hard
+
+      # XXX Ugly patching hack!
+      patch -p1 -i "$SCRIPT_DIR/install_deps_patches/osl.patch"
     fi
 
     # Always refresh the whole build!
@@ -1530,6 +1524,9 @@ compile_OSL() {
         cmake_d="$cmake_d -D LLVM_STATIC=ON"
       fi
     fi
+
+    #~ cmake_d="$cmake_d -D CMAKE_EXPORT_COMPILE_COMMANDS=ON"
+    #~ cmake_d="$cmake_d -D CMAKE_VERBOSE_MAKEFILE=ON"
 
     cmake $cmake_d ..
 
@@ -2536,7 +2533,7 @@ install_RPM() {
       if $NUMPY_SKIP; then
         WARNING "Skipping NumPy installation, as requested..."
       else
-        check_package_version_match_RPM python3-numpy $NUMPY_VERSION_MIN
+        check_package_version_ge_RPM python3-numpy $NUMPY_VERSION_MIN
         if [ $? -eq 0 ]; then
           install_packages_RPM python3-numpy
         elif $NUMPY_REQUIRED; then
@@ -3118,6 +3115,10 @@ print_info() {
   PRINT "The same goes for install_deps itself, if you encounter issues, please first erase everything in $SRC and $INST"
   PRINT "(provided obviously you did not add anything yourself in those dirs!), and run install_deps.sh again!"
   PRINT "Often, changes in the libs built by this script, or in your distro package, cannot be handled simply, so..."
+  PRINT ""
+  PRINT ""
+  PRINT "Ran with:"
+  PRINT "    install_deps.sh $COMMANDLINE"
   PRINT ""
   PRINT ""
   PRINT "If you're using CMake add this to your configuration flags:"

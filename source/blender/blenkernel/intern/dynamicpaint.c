@@ -35,7 +35,7 @@
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
-#include "BLF_translation.h"
+#include "BLT_translation.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
@@ -1077,7 +1077,7 @@ DynamicPaintSurface *dynamicPaint_createNewSurface(DynamicPaintCanvasSettings *c
 	modifier_path_init(surface->image_output_path, sizeof(surface->image_output_path), "cache_dynamicpaint");
 
 	/* Using ID_BRUSH i18n context, as we have no physics/dpaint one for now... */
-	dynamicPaintSurface_setUniqueName(surface, CTX_DATA_(BLF_I18NCONTEXT_ID_BRUSH, "Surface"));
+	dynamicPaintSurface_setUniqueName(surface, CTX_DATA_(BLT_I18NCONTEXT_ID_BRUSH, "Surface"));
 
 	surface->effector_weights = BKE_add_effector_weights(NULL);
 
@@ -1773,8 +1773,8 @@ static DerivedMesh *dynamicPaint_Modifier_apply(DynamicPaintModifierData *pmd,
 										}
 										else {
 											col[l_index].r =
-											    col[l_index].g =
-											        col[l_index].b = FTOCHAR(pPoint[v_index].wetness);
+											col[l_index].g =
+											col[l_index].b = FTOCHAR(pPoint[v_index].wetness);
 											col[l_index].a = 255;
 										}
 									}
@@ -2085,7 +2085,7 @@ static int dynamicPaint_findNeighbourPixel(PaintUVPoint *tempPoints, DerivedMesh
 			int i, edge1_index, edge2_index,
 			    e1_index, e2_index, target_tri;
 			float closest_point[2], lambda, dir_vec[2];
-			int target_uv1, target_uv2, final_pixel[2], final_index;
+			int target_uv1 = 0, target_uv2 = 0, final_pixel[2], final_index;
 
 			const float *s_uv1, *s_uv2, *t_uv1, *t_uv2;
 
@@ -3290,10 +3290,9 @@ static int dynamicPaint_paintMesh(DynamicPaintSurface *surface,
 		if (brush->flags & MOD_DPAINT_PROX_PROJECT && brush->collision != MOD_DPAINT_COL_VOLUME) {
 			mul_v3_fl(avg_brushNor, 1.0f / (float)numOfVerts);
 			/* instead of null vector use positive z */
-			if (!(MIN3(avg_brushNor[0], avg_brushNor[1], avg_brushNor[2])))
+			if (UNLIKELY(normalize_v3(avg_brushNor) == 0.0f)) {
 				avg_brushNor[2] = 1.0f;
-			else
-				normalize_v3(avg_brushNor);
+			}
 		}
 
 		/* check bounding box collision */
@@ -3417,7 +3416,7 @@ static int dynamicPaint_paintMesh(DynamicPaintSurface *surface,
 							{
 								float proxDist = -1.0f;
 								float hitCo[3] = {0.0f, 0.0f, 0.0f};
-								int tri;
+								int tri = 0;
 
 								/* if inverse prox and no hit found, skip this sample */
 								if (inner_proximity && !hit_found) continue;

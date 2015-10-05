@@ -52,7 +52,7 @@
 #include "BLI_path_util.h"
 #include "BLI_utildefines.h"
 
-#include "BLF_translation.h"
+#include "BLT_translation.h"
 
 #include "BKE_animsys.h"
 #include "BKE_global.h"
@@ -818,6 +818,10 @@ void nodeChainIter(
 	bNodeLink *link;
 
 	for (link = ntree->links.first; link; link = link->next) {
+		if ((link->flag & NODE_LINK_VALID) == 0) {
+			/* Skip links marked as cyclic. */
+			continue;
+		}
 		if (link->tonode && link->fromnode) {
 			/* is the link part of the chain meaning node_start == fromnode (or tonode for reversed case)? */
 			if ((reversed && (link->tonode == node_start)) ||

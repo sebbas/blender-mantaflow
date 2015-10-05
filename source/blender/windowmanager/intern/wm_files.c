@@ -60,7 +60,7 @@
 #include "BLI_system.h"
 #include BLI_SYSTEM_PID_H
 
-#include "BLF_translation.h"
+#include "BLT_translation.h"
 
 #include "DNA_object_types.h"
 #include "DNA_space_types.h"
@@ -76,6 +76,7 @@
 #include "BKE_context.h"
 #include "BKE_depsgraph.h"
 #include "BKE_global.h"
+#include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_packedFile.h"
 #include "BKE_report.h"
@@ -104,6 +105,9 @@
 #include "UI_view2d.h"
 
 #include "GPU_draw.h"
+
+/* only to report a missing engine */
+#include "RE_engine.h"
 
 #ifdef WITH_PYTHON
 #include "BPY_extern.h"
@@ -400,6 +404,89 @@ void WM_file_autoexec_init(const char *filepath)
 	}
 }
 
+void wm_file_read_report(bContext *C)
+{
+	ReportList *reports = NULL;
+	Scene *sce;
+
+	for (sce = G.main->scene.first; sce; sce = sce->id.next) {
+		if (sce->r.engine[0] &&
+		    BLI_findstring(&R_engines, sce->r.engine, offsetof(RenderEngineType, idname)) == NULL)
+		{
+			if (reports == NULL) {
+				reports = CTX_wm_reports(C);
+			}
+
+			BKE_reportf(reports, RPT_ERROR,
+			            "Engine '%s' not available for scene '%s' "
+			            "(an addon may need to be installed or enabled)",
+			            sce->r.engine, sce->id.name + 2);
+		}
+	}
+
+	if (reports) {
+		if (!G.background) {
+			WM_report_banner_show(C);
+		}
+	}
+}
+
+/**
+ * Logic shared between #WM_file_read & #wm_homefile_read,
+ * updates to make after reading a file.
+ */
+static void wm_file_read_post(bContext *C, bool is_startup_file)
+{
+	bool addons_loaded = false;
+	CTX_wm_window_set(C, CTX_wm_manager(C)->windows.first);
+
+	ED_editors_init(C);
+	DAG_on_visible_update(CTX_data_main(C), true);
+
+#ifdef WITH_PYTHON
+	if (is_startup_file) {
+		/* possible python hasn't been initialized */
+		if (CTX_py_init_get(C)) {
+			/* sync addons, these may have changed from the defaults */
+			BPY_string_exec(C, "__import__('addon_utils').reset_all()");
+
+			BPY_python_reset(C);
+			addons_loaded = true;
+		}
+	}
+	else {
+		/* run any texts that were loaded in and flagged as modules */
+		BPY_python_reset(C);
+		addons_loaded = true;
+	}
+#endif  /* WITH_PYTHON */
+
+	WM_operatortype_last_properties_clear_all();
+
+	/* important to do before NULL'ing the context */
+	BLI_callback_exec(CTX_data_main(C), NULL, BLI_CB_EVT_VERSION_UPDATE);
+	BLI_callback_exec(CTX_data_main(C), NULL, BLI_CB_EVT_LOAD_POST);
+
+	WM_event_add_notifier(C, NC_WM | ND_FILEREAD, NULL);
+
+	/* report any errors.
+	 * currently disabled if addons aren't yet loaded */
+	if (addons_loaded) {
+		wm_file_read_report(C);
+	}
+
+	if (!G.background) {
+		/* in background mode this makes it hard to load
+		 * a blend file and do anything since the screen
+		 * won't be set to a valid value again */
+		CTX_wm_window_set(C, NULL); /* exits queues */
+	}
+
+//	undo_editmode_clear();
+	BKE_undo_reset();
+	BKE_undo_write(C, "original");  /* save current state */
+}
+
 bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 {
 	/* assume automated tasks with background, don't write recent file list */
@@ -464,53 +551,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 			}
 		}
 
-
-		WM_event_add_notifier(C, NC_WM | ND_FILEREAD, NULL);
-//		refresh_interface_font();
-
-		CTX_wm_window_set(C, CTX_wm_manager(C)->windows.first);
-
-		ED_editors_init(C);
-		DAG_on_visible_update(CTX_data_main(C), true);
-
-#ifdef WITH_PYTHON
-		/* run any texts that were loaded in and flagged as modules */
-		BPY_python_reset(C);
-#endif
-
-		WM_operatortype_last_properties_clear_all();
-
-		/* important to do before NULL'ing the context */
-		BLI_callback_exec(CTX_data_main(C), NULL, BLI_CB_EVT_VERSION_UPDATE);
-		BLI_callback_exec(CTX_data_main(C), NULL, BLI_CB_EVT_LOAD_POST);
-
-		if (!G.background) {
-			/* in background mode this makes it hard to load
-			 * a blend file and do anything since the screen
-			 * won't be set to a valid value again */
-			CTX_wm_window_set(C, NULL); /* exits queues */
-		}
-
-#if 0
-		/* gives popups on windows but not linux, bug in report API
-		 * but disable for now to stop users getting annoyed  */
-		/* TODO, make this show in header info window */
-		{
-			Scene *sce;
-			for (sce = G.main->scene.first; sce; sce = sce->id.next) {
-				if (sce->r.engine[0] &&
-				    BLI_findstring(&R_engines, sce->r.engine, offsetof(RenderEngineType, idname)) == NULL)
-				{
-					BKE_reportf(reports, RPT_ERROR, "Engine '%s' not available for scene '%s' "
-					            "(an addon may need to be installed or enabled)",
-					            sce->r.engine, sce->id.name + 2);
-				}
-			}
-		}
-#endif
-
-		BKE_undo_reset();
-		BKE_undo_write(C, "original");  /* save current state */
+		wm_file_read_post(C, false);
 
 		success = true;
 	}
@@ -672,36 +713,7 @@ int wm_homefile_read(bContext *C, ReportList *reports, bool from_memory, const c
 	G.save_over = 0;    // start with save preference untitled.blend
 	G.fileflags &= ~G_FILE_AUTOPLAY;    /*  disable autoplay in startup.blend... */
 
-//	refresh_interface_font();
-	
-//	undo_editmode_clear();
-	BKE_undo_reset();
-	BKE_undo_write(C, "original");  /* save current state */
-
-	ED_editors_init(C);
-	DAG_on_visible_update(CTX_data_main(C), true);
-
-#ifdef WITH_PYTHON
-	if (CTX_py_init_get(C)) {
-		/* sync addons, these may have changed from the defaults */
-		BPY_string_exec(C, "__import__('addon_utils').reset_all()");
-
-		BPY_python_reset(C);
-	}
-#endif
-
-	WM_operatortype_last_properties_clear_all();
-
-	/* important to do before NULL'ing the context */
-	BLI_callback_exec(CTX_data_main(C), NULL, BLI_CB_EVT_VERSION_UPDATE);
-	BLI_callback_exec(CTX_data_main(C), NULL, BLI_CB_EVT_LOAD_POST);
-
-	WM_event_add_notifier(C, NC_WM | ND_FILEREAD, NULL);
-
-	/* in background mode the scene will stay NULL */
-	if (!G.background) {
-		CTX_wm_window_set(C, NULL); /* exits queues */
-	}
+	wm_file_read_post(C, true);
 
 	return true;
 }
@@ -864,11 +876,11 @@ static void wm_history_file_update(void)
 
 
 /* screen can be NULL */
-static ImBuf *blend_file_thumb(Scene *scene, bScreen *screen, int **thumb_pt)
+static ImBuf *blend_file_thumb(Scene *scene, bScreen *screen, BlendThumbnail **thumb_pt)
 {
 	/* will be scaled down, but gives some nice oversampling */
 	ImBuf *ibuf;
-	int *thumb;
+	BlendThumbnail *thumb;
 	char err_out[256] = "unknown";
 
 	/* screen if no camera found */
@@ -876,7 +888,11 @@ static ImBuf *blend_file_thumb(Scene *scene, bScreen *screen, int **thumb_pt)
 	ARegion *ar = NULL;
 	View3D *v3d = NULL;
 
-	*thumb_pt = NULL;
+	/* In case we are given a valid thumbnail data, just generate image from it. */
+	if (*thumb_pt) {
+		thumb = *thumb_pt;
+		return BKE_main_thumbnail_to_imbuf(NULL, thumb);
+	}
 
 	/* scene can be NULL if running a script at startup and calling the save operator */
 	if (G.background || scene == NULL)
@@ -914,13 +930,7 @@ static ImBuf *blend_file_thumb(Scene *scene, bScreen *screen, int **thumb_pt)
 		/* add pretty overlay */
 		IMB_thumb_overlay_blend(ibuf->rect, ibuf->x, ibuf->y, aspect);
 		
-		/* first write into thumb buffer */
-		thumb = MEM_mallocN(((2 + (BLEN_THUMB_SIZE * BLEN_THUMB_SIZE))) * sizeof(int), "write_file thumb");
-
-		thumb[0] = BLEN_THUMB_SIZE;
-		thumb[1] = BLEN_THUMB_SIZE;
-
-		memcpy(thumb + 2, ibuf->rect, BLEN_THUMB_SIZE * BLEN_THUMB_SIZE * sizeof(int));
+		thumb = BKE_main_thumbnail_from_imbuf(NULL, ibuf);
 	}
 	else {
 		/* '*thumb_pt' needs to stay NULL to prevent a bad thumbnail from being handled */
@@ -959,25 +969,26 @@ int wm_file_write(bContext *C, const char *filepath, int fileflags, ReportList *
 {
 	Library *li;
 	int len;
-	int *thumb = NULL;
+	int ret = -1;
+	BlendThumbnail *thumb, *main_thumb;
 	ImBuf *ibuf_thumb = NULL;
 
 	len = strlen(filepath);
 	
 	if (len == 0) {
 		BKE_report(reports, RPT_ERROR, "Path is empty, cannot save");
-		return -1;
+		return ret;
 	}
 
 	if (len >= FILE_MAX) {
 		BKE_report(reports, RPT_ERROR, "Path too long, cannot save");
-		return -1;
+		return ret;
 	}
 	
 	/* Check if file write permission is ok */
 	if (BLI_exists(filepath) && !BLI_file_is_writable(filepath)) {
 		BKE_reportf(reports, RPT_ERROR, "Cannot save blend file, path '%s' is not writable", filepath);
-		return -1;
+		return ret;
 	}
  
 	/* note: used to replace the file extension (to ensure '.blend'),
@@ -988,17 +999,20 @@ int wm_file_write(bContext *C, const char *filepath, int fileflags, ReportList *
 	for (li = G.main->library.first; li; li = li->id.next) {
 		if (BLI_path_cmp(li->filepath, filepath) == 0) {
 			BKE_reportf(reports, RPT_ERROR, "Cannot overwrite used library '%.240s'", filepath);
-			return -1;
+			return ret;
 		}
 	}
 
+	/* Call pre-save callbacks befores writing preview, that way you can generate custom file thumbnail... */
+	BLI_callback_exec(G.main, NULL, BLI_CB_EVT_SAVE_PRE);
+
 	/* blend file thumbnail */
 	/* save before exit_editmode, otherwise derivedmeshes for shared data corrupt #27765) */
+	/* Main now can store a .blend thumbnail, usefull for background mode or thumbnail customization. */
+	main_thumb = thumb = CTX_data_main(C)->blen_thumb;
 	if ((U.flag & USER_SAVE_PREVIEWS) && BLI_thread_is_main()) {
 		ibuf_thumb = blend_file_thumb(CTX_data_scene(C), CTX_wm_screen(C), &thumb);
 	}
-
-	BLI_callback_exec(G.main, NULL, BLI_CB_EVT_SAVE_PRE);
 
 	/* operator now handles overwrite checks */
 
@@ -1044,22 +1058,21 @@ int wm_file_write(bContext *C, const char *filepath, int fileflags, ReportList *
 		if (ibuf_thumb) {
 			IMB_thumb_delete(filepath, THB_FAIL); /* without this a failed thumb overrides */
 			ibuf_thumb = IMB_thumb_create(filepath, THB_LARGE, THB_SOURCE_BLEND, ibuf_thumb);
-			IMB_freeImBuf(ibuf_thumb);
 		}
 
-		if (thumb) MEM_freeN(thumb);
+		ret = 0;  /* Success. */
 	}
-	else {
-		if (ibuf_thumb) IMB_freeImBuf(ibuf_thumb);
-		if (thumb) MEM_freeN(thumb);
-		
-		WM_cursor_wait(0);
-		return -1;
+
+	if (ibuf_thumb) {
+		IMB_freeImBuf(ibuf_thumb);
+	}
+	if (thumb && thumb != main_thumb) {
+		MEM_freeN(thumb);
 	}
 
 	WM_cursor_wait(0);
-	
-	return 0;
+
+	return ret;
 }
 
 /**

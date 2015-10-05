@@ -286,7 +286,6 @@ static void draw_movieclip_buffer(const bContext *C, SpaceClip *sc, ARegion *ar,
 	MovieClip *clip = ED_space_clip_get_clip(sc);
 	int filter = GL_LINEAR;
 	int x, y;
-	rctf frame;
 
 	/* find window pixel coordinates of origin */
 	UI_view2d_view_to_region(&ar->v2d, 0.0f, 0.0f, &x, &y);
@@ -313,10 +312,12 @@ static void draw_movieclip_buffer(const bContext *C, SpaceClip *sc, ARegion *ar,
 	/* reset zoom */
 	glPixelZoom(1.0f, 1.0f);
 
-	BLI_rctf_init(&frame, 0.0f, ibuf->x, 0.0f, ibuf->y);
 
-	if (sc->flag & SC_SHOW_METADATA)
-		ED_region_image_metadata_draw(x, y, ibuf, frame, zoomx * width / ibuf->x, zoomy * height / ibuf->y);
+	if (sc->flag & SC_SHOW_METADATA) {
+		rctf frame;
+		BLI_rctf_init(&frame, 0.0f, ibuf->x, 0.0f, ibuf->y);
+		ED_region_image_metadata_draw(x, y, ibuf, &frame, zoomx * width / ibuf->x, zoomy * height / ibuf->y);
+	}
 
 	if (ibuf->planes == 32)
 		glDisable(GL_BLEND);
@@ -520,7 +521,7 @@ static void draw_marker_outline(SpaceClip *sc, MovieTrackingTrack *track, MovieT
 
 	/* pattern and search outline */
 	glPushMatrix();
-	glTranslatef(marker_pos[0], marker_pos[1], 0);
+	glTranslate2fv(marker_pos);
 
 	if (!tiny)
 		glLineWidth(3.0f);
@@ -652,7 +653,7 @@ static void draw_marker_areas(SpaceClip *sc, MovieTrackingTrack *track, MovieTra
 
 	/* pattern */
 	glPushMatrix();
-	glTranslatef(marker_pos[0], marker_pos[1], 0);
+	glTranslate2fv(marker_pos);
 
 	if (tiny) {
 		glLineStipple(3, 0xaaaa);
@@ -805,7 +806,7 @@ static void draw_marker_slide_zones(SpaceClip *sc, MovieTrackingTrack *track, Mo
 	}
 
 	glPushMatrix();
-	glTranslatef(marker_pos[0], marker_pos[1], 0);
+	glTranslate2fv(marker_pos);
 
 	dx = 6.0f / width / sc->zoom;
 	dy = 6.0f / height / sc->zoom;
@@ -1786,7 +1787,7 @@ void clip_draw_grease_pencil(bContext *C, int onlyv2d)
 					int framenr = ED_space_clip_get_clip_frame_number(sc);
 					MovieTrackingMarker *marker = BKE_tracking_marker_get(track, framenr);
 
-					glTranslatef(marker->pos[0], marker->pos[1], 0.0f);
+					glTranslate2fv(marker->pos);
 				}
 			}
 

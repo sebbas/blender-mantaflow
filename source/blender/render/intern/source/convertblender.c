@@ -44,7 +44,7 @@
 #  include "BLI_edgehash.h"
 #endif
 
-#include "BLF_translation.h"
+#include "BLT_translation.h"
 
 #include "DNA_material_types.h"
 #include "DNA_curve_types.h"
@@ -3275,7 +3275,7 @@ static void init_render_mesh(Render *re, ObjectRen *obr, int timeoffset)
 			if (need_nmap_tangent!=0 && CustomData_get_layer_index(&dm->faceData, CD_TANGENT) == -1) {
 				bool generate_data = false;
 				if (CustomData_get_layer_index(&dm->loopData, CD_TANGENT) == -1) {
-					DM_add_tangent_layer(dm);
+					dm->calcLoopTangents(dm);
 					generate_data = true;
 				}
 				DM_generate_tangent_tessface_data(dm, generate_data);
@@ -4658,7 +4658,7 @@ static void add_render_object(Render *re, Object *ob, Object *par, DupliObject *
 
 		/* only add instance for objects that have not been used for dupli */
 		if (!(ob->transflag & OB_RENDER_DUPLI)) {
-			obi= RE_addRenderInstance(re, obr, ob, par, index, 0, NULL, ob->lay);
+			obi = RE_addRenderInstance(re, obr, ob, par, index, 0, NULL, ob->lay, dob);
 			if (dob) set_dupli_tex_mat(re, obi, dob, omat);
 		}
 		else
@@ -4692,7 +4692,7 @@ static void add_render_object(Render *re, Object *ob, Object *par, DupliObject *
 
 			/* only add instance for objects that have not been used for dupli */
 			if (!(ob->transflag & OB_RENDER_DUPLI)) {
-				obi= RE_addRenderInstance(re, obr, ob, par, index, psysindex, NULL, ob->lay);
+				obi = RE_addRenderInstance(re, obr, ob, par, index, psysindex, NULL, ob->lay, dob);
 				if (dob) set_dupli_tex_mat(re, obi, dob, omat);
 			}
 			else
@@ -5053,7 +5053,7 @@ static void database_init_objects(Render *re, unsigned int renderlay, int nolamp
 						if (dob->type != OB_DUPLIGROUP || (obr=find_dupligroup_dupli(re, obd, 0))) {
 							mul_m4_m4m4(mat, re->viewmat, dob->mat);
 														/* ob = particle system, use that layer */
-							obi= RE_addRenderInstance(re, NULL, obd, ob, dob->persistent_id[0], 0, mat, ob->lay); 
+							obi = RE_addRenderInstance(re, NULL, obd, ob, dob->persistent_id[0], 0, mat, ob->lay, dob);
 
 							/* fill in instance variables for texturing */
 							set_dupli_tex_mat(re, obi, dob, dob_extra->obmat);
@@ -5080,7 +5080,7 @@ static void database_init_objects(Render *re, unsigned int renderlay, int nolamp
 							if (dob->type != OB_DUPLIGROUP || (obr=find_dupligroup_dupli(re, obd, psysindex))) {
 								if (obi == NULL)
 									mul_m4_m4m4(mat, re->viewmat, dob->mat);
-								obi= RE_addRenderInstance(re, NULL, obd, ob, dob->persistent_id[0], psysindex++, mat, obd->lay);
+								obi = RE_addRenderInstance(re, NULL, obd, ob, dob->persistent_id[0], psysindex++, mat, obd->lay, dob);
 
 								set_dupli_tex_mat(re, obi, dob, dob_extra->obmat);
 								if (dob->type != OB_DUPLIGROUP) {
@@ -5210,7 +5210,7 @@ void RE_Database_FromScene(Render *re, Main *bmain, Scene *scene, unsigned int l
 	/* still bad... doing all */
 	init_render_textures(re);
 	copy_v3_v3(amb, &re->wrld.ambr);
-	init_render_materials(re->main, re->r.mode, amb);
+	init_render_materials(re->main, re->r.mode, amb, (re->r.scemode & R_BUTS_PREVIEW) == 0);
 	set_node_shader_lamp_loop(shade_material_loop);
 
 	/* MAKE RENDER DATA */
@@ -5941,7 +5941,7 @@ void RE_Database_Baking(Render *re, Main *bmain, Scene *scene, unsigned int lay,
 	init_render_textures(re);
 	
 	copy_v3_v3(amb, &re->wrld.ambr);
-	init_render_materials(re->main, re->r.mode, amb);
+	init_render_materials(re->main, re->r.mode, amb, true);
 	
 	set_node_shader_lamp_loop(shade_material_loop);
 	

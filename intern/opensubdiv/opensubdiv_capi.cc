@@ -30,6 +30,7 @@
 #  include "iso646.h"
 #endif
 
+#include <stdlib.h>
 #include <GL/glew.h>
 
 #include <opensubdiv/osd/glMesh.h>
@@ -68,7 +69,6 @@
 #include <opensubdiv/far/stencilTable.h>
 
 #include "opensubdiv_intern.h"
-#include "opensubdiv_partitioned.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -80,22 +80,22 @@ using OpenSubdiv::Osd::MeshBitset;
 using OpenSubdiv::Far::StencilTable;
 using OpenSubdiv::Osd::GLPatchTable;
 
-using OpenSubdiv::Osd::PartitionedMesh;
+using OpenSubdiv::Osd::Mesh;
 
 /* CPU backend */
 using OpenSubdiv::Osd::CpuGLVertexBuffer;
 using OpenSubdiv::Osd::CpuEvaluator;
-typedef PartitionedMesh<CpuGLVertexBuffer,
-                        StencilTable,
-                        CpuEvaluator,
-                        GLPatchTable> OsdCpuMesh;
+typedef Mesh<CpuGLVertexBuffer,
+             StencilTable,
+             CpuEvaluator,
+             GLPatchTable> OsdCpuMesh;
 
 #ifdef OPENSUBDIV_HAS_OPENMP
 using OpenSubdiv::Osd::OmpEvaluator;
-typedef PartitionedMesh<CpuGLVertexBuffer,
-                        StencilTable,
-                        OmpEvaluator,
-                        GLPatchTable> OsdOmpMesh;
+typedef Mesh<CpuGLVertexBuffer,
+             StencilTable,
+             OmpEvaluator,
+             GLPatchTable> OsdOmpMesh;
 #endif  /* OPENSUBDIV_HAS_OPENMP */
 
 #ifdef OPENSUBDIV_HAS_OPENCL
@@ -103,11 +103,11 @@ using OpenSubdiv::Osd::CLEvaluator;
 using OpenSubdiv::Osd::CLGLVertexBuffer;
 using OpenSubdiv::Osd::CLStencilTable;
 /* TODO(sergey): Use CLDeviceCOntext similar to OSD examples? */
-typedef PartitionedMesh<CLGLVertexBuffer,
-                        CLStencilTable,
-                        CLEvaluator,
-                        GLPatchTable,
-                        CLDeviceContext> OsdCLMesh;
+typedef Mesh<CLGLVertexBuffer,
+             CLStencilTable,
+             CLEvaluator,
+             GLPatchTable,
+             CLDeviceContext> OsdCLMesh;
 static CLDeviceContext g_clDeviceContext;
 #endif  /* OPENSUBDIV_HAS_OPENCL */
 
@@ -115,10 +115,10 @@ static CLDeviceContext g_clDeviceContext;
 using OpenSubdiv::Osd::CudaEvaluator;
 using OpenSubdiv::Osd::CudaGLVertexBuffer;
 using OpenSubdiv::Osd::CudaStencilTable;
-typedef PartitionedMesh<CudaGLVertexBuffer,
-                        CudaStencilTable,
-                        CudaEvaluator,
-                        GLPatchTable> OsdCudaMesh;
+typedef Mesh<CudaGLVertexBuffer,
+             CudaStencilTable,
+             CudaEvaluator,
+             GLPatchTable> OsdCudaMesh;
 static CudaDeviceContext g_cudaDeviceContext;
 #endif  /* OPENSUBDIV_HAS_CUDA */
 
@@ -126,20 +126,20 @@ static CudaDeviceContext g_cudaDeviceContext;
 using OpenSubdiv::Osd::GLXFBEvaluator;
 using OpenSubdiv::Osd::GLStencilTableTBO;
 using OpenSubdiv::Osd::GLVertexBuffer;
-typedef PartitionedMesh<GLVertexBuffer,
-                        GLStencilTableTBO,
-                        GLXFBEvaluator,
-                        GLPatchTable> OsdGLSLTransformFeedbackMesh;
+typedef Mesh<GLVertexBuffer,
+             GLStencilTableTBO,
+             GLXFBEvaluator,
+             GLPatchTable> OsdGLSLTransformFeedbackMesh;
 #endif  /* OPENSUBDIV_HAS_GLSL_TRANSFORM_FEEDBACK */
 
 #ifdef OPENSUBDIV_HAS_GLSL_COMPUTE
 using OpenSubdiv::Osd::GLComputeEvaluator;
 using OpenSubdiv::Osd::GLStencilTableSSBO;
 using OpenSubdiv::Osd::GLVertexBuffer;
-typedef PartitionedMesh<GLVertexBuffer,
-                        GLStencilTableSSBO,
-                        GLComputeEvaluator,
-                        GLPatchTable> OsdGLSLComputeMesh;
+typedef Mesh<GLVertexBuffer,
+             GLStencilTableSSBO,
+             GLComputeEvaluator,
+             GLPatchTable> OsdGLSLComputeMesh;
 #endif
 
 struct OpenSubdiv_GLMesh *openSubdiv_createOsdGLMeshFromTopologyRefiner(
@@ -156,14 +156,12 @@ struct OpenSubdiv_GLMesh *openSubdiv_createOsdGLMeshFromTopologyRefiner(
 	 */
 	bits.set(OpenSubdiv::Osd::MeshAdaptive, 0);
 	bits.set(OpenSubdiv::Osd::MeshUseSingleCreasePatch, 0);
-	bits.set(OpenSubdiv::Osd::MeshInterleaveVarying, 0);
+	bits.set(OpenSubdiv::Osd::MeshInterleaveVarying, 1);
 	bits.set(OpenSubdiv::Osd::MeshFVarData, 1);
 	bits.set(OpenSubdiv::Osd::MeshEndCapBSplineBasis, 1);
-	// bits.set(Osd::MeshEndCapGregoryBasis, 1);
-	// bits.set(Osd::MeshEndCapLegacyGregory, 1);
 
-	const int num_vertex_elements = 6;
-	const int num_varying_elements = 0;
+	const int num_vertex_elements = 3;
+	const int num_varying_elements = 3;
 
 	GLMeshInterface *mesh = NULL;
 	TopologyRefiner *refiner = (TopologyRefiner*)topology_refiner;
@@ -297,7 +295,29 @@ const struct OpenSubdiv_TopologyRefinerDescr *openSubdiv_getGLMeshTopologyRefine
 
 int openSubdiv_supportGPUDisplay(void)
 {
-	return GL_EXT_geometry_shader4 &&
-	       GL_ARB_gpu_shader5 &&
-	       glProgramParameteriEXT;
+	{
+		/* Currently Intel GPUs has hard time working on Windows.
+		 *
+		 * For until we've got access to a hardware which demonstrates
+		 * the issue we disable OpenSubdiv on Intel GPUs.
+		 */
+		static bool vendor_checked = false;
+		static bool is_intel = false;
+		if (!vendor_checked) {
+			vendor_checked = true;
+			const char *vendor = (const char *)glGetString(GL_VENDOR);
+			if (vendor != NULL && strstr(vendor, "Intel")) {
+				if(getenv("OPENSUBDIV_ALLOW_INTEL") == NULL) {
+					is_intel = true;
+				}
+			}
+		}
+		if (is_intel) {
+			return false;
+		}
+	}
+
+	return GLEW_EXT_geometry_shader4 &&
+	       GLEW_ARB_gpu_shader5 &&
+	       GLEW_ARB_uniform_buffer_object;
 }

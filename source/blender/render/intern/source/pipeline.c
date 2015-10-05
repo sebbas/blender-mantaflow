@@ -55,7 +55,7 @@
 #include "BLI_rand.h"
 #include "BLI_callbacks.h"
 
-#include "BLF_translation.h"
+#include "BLT_translation.h"
 
 #include "BKE_animsys.h"  /* <------ should this be here?, needed for sequencer update */
 #include "BKE_camera.h"
@@ -531,6 +531,17 @@ void RE_FreeAllRender(void)
 	/* finalize Freestyle */
 	FRS_exit();
 #endif
+}
+
+void RE_FreeAllPersistentData(void)
+{
+	Render *re;
+	for (re = RenderGlobal.renderlist.first; re != NULL; re = re->next) {
+		if ((re->r.mode & R_PERSISTENT_DATA) != 0 && re->engine != NULL) {
+			RE_engine_free(re->engine);
+			re->engine = NULL;
+		}
+	}
 }
 
 /* on file load, free all re */
@@ -1270,8 +1281,11 @@ static void main_render_result_new(Render *re)
 
 	BLI_rw_mutex_unlock(&re->resultmutex);
 
-	if (re->result->do_exr_tile)
-		render_result_exr_file_begin(re);
+	if (re->result) {
+		if (re->result->do_exr_tile) {
+			render_result_exr_file_begin(re);
+		}
+	}
 }
 
 static void threaded_tile_processor(Render *re)
@@ -3503,6 +3517,11 @@ void RE_BlenderAnim(Render *re, Main *bmain, Scene *scene, Object *camera_overri
 		get_videos_dimensions(re, &rd, &width, &height);
 
 		mh = BKE_movie_handle_get(scene->r.im_format.imtype);
+		if (mh == NULL) {
+			BKE_report(re->reports, RPT_ERROR, "Movie format unsupported");
+			return;
+		}
+
 		re->movie_ctx_arr = MEM_mallocN(sizeof(void *) * totvideos, "Movies' Context");
 
 		for (i = 0; i < totvideos; i++) {

@@ -84,8 +84,7 @@ static bool isDisabled(ModifierData *md, int UNUSED(userRenderParams))
 
 static void foreachObjectLink(
         ModifierData *md, Object *ob,
-        void (*walk)(void *userData, Object *ob, Object **obpoin),
-        void *userData)
+        ObjectWalkFunc walk, void *userData)
 {
 	CurveModifierData *cmd = (CurveModifierData *) md;
 
@@ -112,7 +111,7 @@ static void updateDepgraph(ModifierData *md, DagForest *forest,
 static void updateDepsgraph(ModifierData *md,
                             struct Main *UNUSED(bmain),
                             struct Scene *scene,
-                            Object *UNUSED(ob),
+                            Object *object,
                             struct DepsNodeHandle *node)
 {
 	CurveModifierData *cmd = (CurveModifierData *)md;
@@ -126,6 +125,8 @@ static void updateDepsgraph(ModifierData *md,
 		DEG_add_object_relation(node, cmd->object, DEG_OB_COMP_GEOMETRY, "Curve Modifier");
 		DEG_add_special_eval_flag(scene->depsgraph, &cmd->object->id, DAG_EVAL_NEED_CURVE_PATH);
 	}
+
+	DEG_add_object_relation(node, object, DEG_OB_COMP_TRANSFORM, "Curve Modifier");
 }
 
 static void deformVerts(ModifierData *md, Object *ob,

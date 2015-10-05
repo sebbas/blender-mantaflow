@@ -29,7 +29,6 @@
  * BLI_string_utf8() for unicode conversion.
  */
 
-
 #include <Python.h>
 #include <frameobject.h>
 
@@ -666,7 +665,8 @@ void PyC_SetHomePath(const char *py_path_bundle)
 
 bool PyC_IsInterpreterActive(void)
 {
-	return (((PyThreadState *)_Py_atomic_load_relaxed(&_PyThreadState_Current)) != NULL);
+	/* instead of PyThreadState_Get, which calls Py_FatalError */
+	return (PyThreadState_GetDict() != NULL);
 }
 
 /* Would be nice if python had this built in

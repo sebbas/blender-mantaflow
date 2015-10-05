@@ -43,7 +43,7 @@
 #include "BLI_kdopbvh.h"
 #include "BLI_utildefines.h"
 
-#include "BLF_translation.h"
+#include "BLT_translation.h"
 
 #include "DNA_armature_types.h"
 #include "DNA_constraint_types.h"
@@ -447,7 +447,7 @@ static void contarget_get_mesh_mat(Object *ob, const char *substring, float mat[
 			copy_v3_v3(plane, tmat[1]);
 			
 			cross_v3_v3v3(mat[0], normal, plane);
-			if (len_v3(mat[0]) < 1e-3f) {
+			if (len_squared_v3(mat[0]) < SQUARE(1e-3f)) {
 				copy_v3_v3(plane, tmat[0]);
 				cross_v3_v3v3(mat[0], normal, plane);
 			}
@@ -4106,6 +4106,7 @@ static void followtrack_evaluate(bConstraint *con, bConstraintOb *cob, ListBase 
 					mul_v3_m4v3(ray_end, imat, cob->matrix[3]);
 
 					sub_v3_v3v3(ray_nor, ray_end, ray_start);
+					normalize_v3(ray_nor);
 
 					bvhtree_from_mesh_looptri(&treeData, target, 0.0f, 4, 6);
 

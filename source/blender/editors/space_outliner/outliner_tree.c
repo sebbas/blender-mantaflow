@@ -58,7 +58,7 @@
 #include "BLI_mempool.h"
 #include "BLI_fnmatch.h"
 
-#include "BLF_translation.h"
+#include "BLT_translation.h"
 
 #include "BKE_fcurve.h"
 #include "BKE_main.h"
@@ -847,6 +847,10 @@ static TreeElement *outliner_add_element(SpaceOops *soops, ListBase *lb, void *i
 	if (ELEM(type, TSE_RNA_STRUCT, TSE_RNA_PROPERTY, TSE_RNA_ARRAY_ELEM)) {
 		id = ((PointerRNA *)idv)->id.data;
 		if (!id) id = ((PointerRNA *)idv)->data;
+	}
+	else if (type == TSE_GP_LAYER) {
+		/* idv is the layer its self */
+		id = TREESTORE(parent)->id;
 	}
 
 	/* One exception */

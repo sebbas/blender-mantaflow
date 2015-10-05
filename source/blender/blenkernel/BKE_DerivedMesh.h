@@ -209,6 +209,8 @@ struct DerivedMesh {
 	void (*calcLoopNormalsSpaceArray)(DerivedMesh *dm, const bool use_split_normals, const float split_angle,
 	                                  struct MLoopNorSpaceArray *r_lnors_spacearr);
 
+	void (*calcLoopTangents)(DerivedMesh *dm);
+
 	/** Recalculates mesh tessellation */
 	void (*recalcTessellation)(DerivedMesh *dm);
 
@@ -496,6 +498,11 @@ void DM_init(
         DerivedMesh *dm, DerivedMeshType type, int numVerts, int numEdges,
         int numFaces, int numLoops, int numPolys);
 
+void DM_from_template_ex(
+        DerivedMesh *dm, DerivedMesh *source, DerivedMeshType type,
+        int numVerts, int numEdges, int numTessFaces,
+        int numLoops, int numPolys,
+        CustomDataMask mask);
 void DM_from_template(
         DerivedMesh *dm, DerivedMesh *source,
         DerivedMeshType type,
@@ -771,7 +778,7 @@ void DM_vertex_attributes_from_gpu(
 
 void DM_draw_attrib_vertex(DMVertexAttribs *attribs, int a, int index, int vert, int loop);
 
-void DM_add_tangent_layer(DerivedMesh *dm);
+void DM_calc_loop_tangents(DerivedMesh *dm);
 void DM_calc_auto_bump_scale(DerivedMesh *dm);
 
 /** Set object's bounding box based on DerivedMesh min/max data */

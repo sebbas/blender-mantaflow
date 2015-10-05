@@ -56,6 +56,7 @@
 #define BEVEL_EPSILON_BIG_SQ 1e-8f
 #define BEVEL_EPSILON_ANG DEG2RADF(2.0f)
 #define BEVEL_SMALL_ANG DEG2RADF(10.0f)
+#define BEVEL_MAX_ADJUST_PCT 10.0f
 
 /* happens far too often, uncomment for development */
 // #define BEVEL_ASSERT_PROJECT
@@ -347,7 +348,7 @@ static EdgeHalf *next_bev(BevVert *bv, EdgeHalf *from_e)
 /* Return a good representative face (for materials, etc.) for faces
  * created around/near BoundVert v.
  * Sometimes care about a second choice, if there is one.
- * If r_fother paramenter is non-NULL and there is another, different,
+ * If r_fother parameter is non-NULL and there is another, different,
  * possible frep, return the other one in that parameter. */
 static BMFace *boundvert_rep_face(BoundVert *v, BMFace **r_fother)
 {
@@ -791,7 +792,7 @@ static void offset_meet(EdgeHalf *e1, EdgeHalf *e2, BMVert *v, BMFace *f, bool e
 		/* intersect the lines */
 		isect_kind = isect_line_line_v3(off1a, off1b, off2a, off2b, meetco, isect2);
 		if (isect_kind == 0) {
-			/* lines are colinear: we already tested for this, but this used a different epsilon */
+			/* lines are collinear: we already tested for this, but this used a different epsilon */
 			copy_v3_v3(meetco, off1a);  /* just to do something */
 			d = dist_to_line_v3(meetco, v->co, BM_edge_other_vert(e2->e, v)->co);
 			if (fabsf(d - e2->offset_l) > BEVEL_EPSILON)
@@ -822,7 +823,7 @@ static void offset_meet(EdgeHalf *e1, EdgeHalf *e2, BMVert *v, BMFace *f, bool e
 					if (!ff)
 						continue;
 					plane_from_point_normal_v3(plane, v->co, ff->no);
-					closest_to_plane_v3(dropco, plane, meetco);
+					closest_to_plane_normalized_v3(dropco, plane, meetco);
 					if (point_between_edges(dropco, v, ff, e, e->next)) {
 						copy_v3_v3(meetco, dropco);
 						break;
@@ -1628,7 +1629,7 @@ static void build_boundary_terminal_edge(BevelParams *bp, BevVert *bv, EdgeHalf 
 	else {
 		/* More than 2 edges in. Put on-edge verts on all the other edges
 		 * and join with the beveled edge to make a poly or adj mesh,
-		 * Because e->prev has offset 0, offset_meet will put co on that edge */
+		 * Because e->prev has offset 0, offset_meet will put co on that edge. */
 		/* TODO: should do something else if angle between e and e->prev > 180 */
 		offset_meet(e->prev, e, bv->v, e->fprev, false, co);
 		if (construct) {
@@ -1653,7 +1654,8 @@ static void build_boundary_terminal_edge(BevelParams *bp, BevVert *bv, EdgeHalf 
 		else {
 			adjust_bound_vert(e->leftv, co);
 		}
-		d = len_v3v3(bv->v->co, co);
+		/* For the edges not adjacent to the beveled edge, slide the bevel amount along. */
+		d = efirst->offset_l_spec;
 		for (e = e->next; e->next != efirst; e = e->next) {
 			slide_dist(e, bv->v, d, co);
 			if (construct) {
@@ -1689,6 +1691,20 @@ static void build_boundary_terminal_edge(BevelParams *bp, BevVert *bv, EdgeHalf 
 			vm->mesh_kind = M_POLY;
 		}
 	}
+}
+
+/* Return a value that is v if v is within BEVEL_MAX_ADJUST_PCT of the spec (assumed positive),
+ * else clamp to make it at most that far away from spec */
+static float clamp_adjust(float v, float spec)
+{
+	float allowed_delta = spec * (BEVEL_MAX_ADJUST_PCT / 100.0f);
+
+	if (v - spec > allowed_delta)
+		return spec + allowed_delta;
+	else if (spec - v > allowed_delta)
+		return spec - allowed_delta;
+	else
+		return v;
 }
 
 /* Make a circular list of BoundVerts for bv, each of which has the coordinates
@@ -1731,8 +1747,16 @@ static void build_boundary(BevelParams *bp, BevVert *bv, bool construct)
 		eother = find_other_end_edge_half(bp, e, &bvother);
 		if (eother && bvother->visited && bp->offset_type != BEVEL_AMT_PERCENT) {
 			/* try to keep bevel even by matching other end offsets */
-			e->offset_l = eother->offset_r;
-			e->offset_r = eother->offset_l;
+			/* sometimes, adjustment can accumulate errors so use the bp->limit_offset to
+			 * let user limit the adjustment to within a reasonable range around spec */
+			if (bp->limit_offset) {
+				e->offset_l = clamp_adjust(eother->offset_r, e->offset_l_spec);
+				e->offset_r = clamp_adjust(eother->offset_l, e->offset_r_spec);
+			}
+			else {
+				e->offset_l = eother->offset_r;
+				e->offset_r = eother->offset_l;
+			}
 		}
 		else {
 			/* reset to user spec */
@@ -2923,7 +2947,7 @@ static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv)
 				BLI_array_append(ve, v == vm->boundstart ? NULL : frep_e);
 			}
 			else {
-				BLI_array_append(vf, frep);
+				BLI_array_append(vf, boundvert_rep_face(v, NULL));
 				BLI_array_append(ve, NULL);
 			}
 		} while ((v = v->next) != vm->boundstart);
@@ -4008,7 +4032,7 @@ static float find_superellipse_chord_u(float u0, float d2goal, float r)
  * Return the u's in *r_params, which should point to an array of size n+1. */
 static void find_even_superellipse_params(int n, float r, float *r_params)
 {
-	float d2low, d2high, d2, d2final, u;
+	float d2low, d2high, d2 = 0.0f, d2final, u;
 	int i, j, n2;
 	const int maxiters = 40;
 	const float d2tol = 1e-6f;
