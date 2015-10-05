@@ -159,6 +159,16 @@ density.save(os.path.join('$MANTA_EXPORT_PATH$','density.uni'))\n\
 flags.save(os.path.join('$MANTA_EXPORT_PATH$','flags.uni'))\n\
 inflow_grid.save(os.path.join('$MANTA_EXPORT_PATH$','inflow.uni'))\n\
 forces.save(os.path.join('$MANTA_EXPORT_PATH$','forces.uni'))\n\
+if manta_using_colors:\n\
+  color_r_low.save(os.path.join('$MANTA_EXPORT_PATH$','color_r.uni'))\n\
+  color_g_low.save(os.path.join('$MANTA_EXPORT_PATH$','color_g.uni'))\n\
+  color_b_low.save(os.path.join('$MANTA_EXPORT_PATH$','color_b.uni'))\n\
+if manta_using_heat:\n\
+  heat_low.save(os.path.join('$MANTA_EXPORT_PATH$','heat.uni'))\n\
+if manta_using_fire:\n\
+  flame_low.save(os.path.join('$MANTA_EXPORT_PATH$','flame.uni'))\n\
+  fuel_low.save(os.path.join('$MANTA_EXPORT_PATH$','fuel.uni'))\n\
+  react_low.save(os.path.join('$MANTA_EXPORT_PATH$','react.uni'))\n\
 print('Grids exported')";
 
 const string fire_process_burn_low = "\n\

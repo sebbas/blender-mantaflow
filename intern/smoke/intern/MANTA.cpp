@@ -381,7 +381,7 @@ void Manta_API::export_obstacles(float *data, int x, int y, int z, bool is2D = f
 
 void Manta_API::run_manta_sim_highRes(WTURBULENCE *wt)
 {
-	if (wt == NULL){		
+	if (wt == NULL) {
 		cout << "ERROR: cannot run wt step, wt object is NULL " <<endl;  return;
 	}
 	PyGILState_STATE gilstate = PyGILState_Ensure();
@@ -396,16 +396,25 @@ void Manta_API::run_manta_sim_highRes(WTURBULENCE *wt)
 	updateHighResPointers(wt/*,false*/);
 }
 
+std::string get_manta_smoke_script(bool highRes, SmokeModifierData *smd)
+{
+	std::string smoke_script = "";
+	if (highRes) {
+		smoke_script = smoke_setup_high + smoke_step_high;
+	} else {
+		if (smd->domain->flags & MOD_SMOKE_MANTA_USE_LIQUID)
+			smoke_script = smoke_setup_low  + liquid_step_low;
+		else
+			smoke_script = smoke_setup_low  + smoke_step_low;
+	}
+	return smoke_script;
+}
+
 void Manta_API::run_manta_sim_file_lowRes(SmokeModifierData *smd)
 {
-	// Get either liquid or smoke setup string
-	string smoke_script = "";
-	if (smd->domain->flags & MOD_SMOKE_MANTA_USE_LIQUID)
-		smoke_script = smoke_setup_low  + liquid_step_low;
-	else
-		smoke_script = smoke_setup_low  + smoke_step_low;
-
+	std::string smoke_script = get_manta_smoke_script(false, smd);
 	std::string final_script = parseScript(smoke_script, smd);
+	
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	PyRun_SimpleString(final_script.c_str());
 	PyGILState_Release(gilstate);
@@ -413,8 +422,9 @@ void Manta_API::run_manta_sim_file_lowRes(SmokeModifierData *smd)
 
 void Manta_API::run_manta_sim_file_highRes(SmokeModifierData *smd)
 {
-	string smoke_script = smoke_setup_high + smoke_step_high;		
+	std::string smoke_script = get_manta_smoke_script(true, smd);
 	std::string final_script = parseScript(smoke_script, smd);
+	
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	PyRun_SimpleString(final_script.c_str());
 	PyGILState_Release(gilstate);
@@ -539,7 +549,7 @@ std::string Manta_API::parseLine(const string& line, SmokeModifierData *smd)
 	bool readingVar = false;
 	const char delimiter = '$';
 	while (currPos < line.size()){
-		if(line[currPos] == delimiter && ! readingVar){
+		if(line[currPos] == delimiter && ! readingVar) {
 			readingVar 	= true;
 			start_del	= currPos + 1;
 			res 		+= line.substr(end_del + 1, currPos - end_del -1);
@@ -555,24 +565,22 @@ std::string Manta_API::parseLine(const string& line, SmokeModifierData *smd)
 	return res;
 }
 
-std::string Manta_API::parseScript(const string & setup_string, SmokeModifierData *smd)
+std::string Manta_API::parseScript(const string& setup_string, SmokeModifierData *smd)
 {
 	std::istringstream f(setup_string);
 	ostringstream res;
-	string line="";
-	while(getline(f,line)){
-		res << parseLine(line,smd) << "\n"; 
+	string line = "";
+	while(getline(f, line)) {
+		res << parseLine(line, smd) << "\n";
 	}
 	return res.str();
 }
 
-void Manta_API::manta_export_grids(SmokeModifierData *smd){
-	std::string smoke_script;
-	if (smd->domain->flags & MOD_SMOKE_MANTA_USE_LIQUID)
-		smoke_script = smoke_setup_low  + liquid_step_low;
-	else
-		smoke_script = smoke_setup_low  + smoke_step_low;
+void Manta_API::manta_export_grids(SmokeModifierData *smd)
+{
+	std::string smoke_script = get_manta_smoke_script(false, smd);
 	std::string final_script = Manta_API::parseScript(smoke_script, smd) + standalone;
+	
 	ofstream myfile;
 	myfile.open (smd->domain->_manta_filepath);
 	myfile << final_script;
@@ -585,7 +593,7 @@ void Manta_API::manta_export_grids(SmokeModifierData *smd){
 
 string Manta_API::getGridPointer(std::string gridName, std::string solverName)
 {
-	if ((gridName == "") && (solverName == "")){
+	if ((gridName == "") && (solverName == "")) {
 		return "";
 	}
 	cout << "getting grid pointer " << gridName<< " , " << solverName <<endl;
