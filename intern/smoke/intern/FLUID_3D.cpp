@@ -756,12 +756,9 @@ void FLUID_3D::step(float dt, float gravity[3])
 	manta_write_effectors(this);
 	Manta_API::updatePointers(this);
 
-	int sim_frame = 1;
 	PyGILState_STATE gilstate = PyGILState_Ensure();
-	std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << sim_frame) )->str();
-	std::string py_string_0 = string("sim_step_low(").append(frame_str);
-	std::string py_string_1 = py_string_0.append(")\0");
-	PyRun_SimpleString(py_string_1.c_str());
+	std::string py_string_0 = string("step_low()");
+	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
 	Manta_API::updatePointers(this);
 
@@ -779,15 +776,8 @@ void FLUID_3D::processBurn(float *fuel, float *smoke, float *react, float *heat,
 	initColors(0.0f, 0.0f, 0.0f);
 
 	PyGILState_STATE gilstate = PyGILState_Ensure();
-	stringstream ss;
-	ss << "burning_rate = " << *_burning_rate << endl;
-	ss << "flame_smoke = " << *_flame_smoke << endl;
-	ss << "ignition_temp = " << *_ignition_temp << endl;
-	ss << "max_temp = " << *_max_temp << endl;
-	ss << "dt = " << _dt << endl;
-	ss << "flame_smoke_color = vec3(" << _flame_smoke_color[0] << "," << _flame_smoke_color[1] << "," << _flame_smoke_color[2] << ")" << endl;
-	PyRun_SimpleString(ss.str().c_str());
-	PyRun_SimpleString(fire_process_burn_low.c_str());
+	std::string py_string_0 = string("process_burn()");
+	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
 	Manta_API::updatePointers(this);
 }
@@ -795,7 +785,8 @@ void FLUID_3D::processBurn(float *fuel, float *smoke, float *react, float *heat,
 void FLUID_3D::updateFlame(float *react, float *flame, int total_cells)
 {
 	PyGILState_STATE gilstate = PyGILState_Ensure();
-	PyRun_SimpleString(fire_update_flame_low.c_str());
+	std::string py_string_0 = string("update_flame()");
+	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
 	Manta_API::updatePointers(this);
 }

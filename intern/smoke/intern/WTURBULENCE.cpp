@@ -1360,12 +1360,9 @@ void WTURBULENCE::initBlenderRNA(float *strength)
 void WTURBULENCE::stepTurbulenceReadable(float dt, float* xvel, float* yvel, float* zvel, unsigned char *obstacles)
 {
 	PyGILState_STATE gilstate = PyGILState_Ensure();
-	int sim_frame = 1;
 	//	manta_write_effectors(fluid);
-	std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << sim_frame) )->str();
-	std::string py_string_0 = string("sim_step_high(").append(frame_str);
-	std::string py_string_1 = py_string_0.append(")\0");
-	PyRun_SimpleString(py_string_1.c_str());
+	std::string py_string_0 = string("step_high()");
+	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
 	Manta_API::updateHighResPointers(this);
 }
@@ -1375,12 +1372,9 @@ void WTURBULENCE::stepTurbulenceReadable(float dt, float* xvel, float* yvel, flo
 void WTURBULENCE::stepTurbulenceFull(float dt, float *xvel, float *yvel, float *zvel, unsigned char *obstacles)
 {
 	PyGILState_STATE gilstate = PyGILState_Ensure();
-	int sim_frame = 1;
 	//	manta_write_effectors(fluid);
-	std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << sim_frame) )->str();
-	std::string py_string_0 = string("sim_step_high(").append(frame_str);
-	std::string py_string_1 = py_string_0.append(")\0");
-	PyRun_SimpleString(py_string_1.c_str());
+	std::string py_string_0 = string("step_high()");
+	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
 	Manta_API::updateHighResPointers(this);
 }
@@ -1412,17 +1406,10 @@ void WTURBULENCE::processBurn(float *burningRate, float *flameSmoke, float *igni
 {
 	// Need to make sure that color grids are initialized as they are needed in processBurn
 	initColors(0.0f, 0.0f, 0.0f);
-
+	
 	PyGILState_STATE gilstate = PyGILState_Ensure();
-	stringstream ss;
-	ss << "burning_rate = " << *burningRate << endl;
-	ss << "flame_smoke = " << *flameSmoke << endl;
-	ss << "ignition_temp = " << *ignitionTemp << endl;
-	ss << "max_temp = " << *maxTemp << endl;
-	ss << "dt = " << dt << endl;
-	ss << "flame_smoke_color = vec3(" << flameSmokeColor[0] << "," << flameSmokeColor[1] << "," << flameSmokeColor[2] << ")" << endl;
-	PyRun_SimpleString(ss.str().c_str());
-	PyRun_SimpleString(fire_process_burn_high.c_str());
+	std::string py_string_0 = string("process_burn_high()");
+	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
 	Manta_API::updateHighResPointers(this);
 }
@@ -1430,7 +1417,8 @@ void WTURBULENCE::processBurn(float *burningRate, float *flameSmoke, float *igni
 void WTURBULENCE::updateFlame()
 {
 	PyGILState_STATE gilstate = PyGILState_Ensure();
-	PyRun_SimpleString(fire_update_flame_high.c_str());
+	std::string py_string_0 = string("update_flame_high()");
+	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
 	Manta_API::updateHighResPointers(this);
 }

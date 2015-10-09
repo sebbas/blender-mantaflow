@@ -379,40 +379,25 @@ void Manta_API::export_obstacles(float *data, int x, int y, int z, bool is2D = f
 	PyGILState_Release(gilstate);		
 }
 
-void Manta_API::run_manta_sim_highRes(WTURBULENCE *wt)
+std::string Manta_API::get_manta_smoke_script(SmokeModifierData *smd)
 {
-	if (wt == NULL) {
-		cout << "ERROR: cannot run wt step, wt object is NULL " <<endl;  return;
-	}
-	PyGILState_STATE gilstate = PyGILState_Ensure();
-	int sim_frame = 1;
-//	manta_write_effectors(fluid);
-	std::string frame_str = static_cast<ostringstream*>( &(ostringstream() << sim_frame) )->str();
-	std::string py_string_0 = string("sim_step_high(").append(frame_str);
-	std::string py_string_1 = py_string_0.append(")\0");
-	PyRun_SimpleString("print ('pyhton density pointer:' + density.getDataPointer())");
-	PyRun_SimpleString(py_string_1.c_str());
-	PyGILState_Release(gilstate);
-	updateHighResPointers(wt/*,false*/);
-}
-
-std::string Manta_API::get_manta_smoke_script(bool highRes, SmokeModifierData *smd)
-{
-	std::string smoke_script = "";
-	if (highRes) {
-		smoke_script = smoke_setup_high + smoke_step_high;
+    std::string smoke_script = "";
+	
+	// Check if high res is enabled
+	if (smd->domain->wt) {
+		smoke_script = smoke_setup_high + smoke_import_high + smoke_step_high;
 	} else {
 		if (smd->domain->flags & MOD_SMOKE_MANTA_USE_LIQUID)
 			smoke_script = smoke_setup_low  + liquid_step_low;
 		else
-			smoke_script = smoke_setup_low  + smoke_step_low;
+			smoke_script = smoke_setup_low + smoke_import_low + smoke_step_low ;
 	}
 	return smoke_script;
 }
 
 void Manta_API::run_manta_sim_file_lowRes(SmokeModifierData *smd)
 {
-	std::string smoke_script = get_manta_smoke_script(false, smd);
+	std::string smoke_script = get_manta_smoke_script(smd);
 	std::string final_script = parseScript(smoke_script, smd);
 	
 	PyGILState_STATE gilstate = PyGILState_Ensure();
@@ -422,7 +407,7 @@ void Manta_API::run_manta_sim_file_lowRes(SmokeModifierData *smd)
 
 void Manta_API::run_manta_sim_file_highRes(SmokeModifierData *smd)
 {
-	std::string smoke_script = get_manta_smoke_script(true, smd);
+	std::string smoke_script = get_manta_smoke_script(smd);
 	std::string final_script = parseScript(smoke_script, smd);
 	
 	PyGILState_STATE gilstate = PyGILState_Ensure();
@@ -433,6 +418,7 @@ void Manta_API::run_manta_sim_file_highRes(SmokeModifierData *smd)
 std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierData *smd)
 {
 	ostringstream ss;
+	cout << "name is " << varName << endl;
 	bool is2D = smd->domain->fluid->manta_resoution == 2;
 	if (varName == "UVS_CNT")
 		ss << smd->domain->manta_uvs_num ;
@@ -518,21 +504,27 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 	else if (varName == "XL_DENSITY_SIZE")
 		ss << sizeof(float) * smd->domain->wt->_xResBig * smd->domain->wt->_yResBig * smd->domain->wt->_zResBig;
 	else if (varName == "BURNING_RATE")
-		ss << smd->domain->fluid->_burning_rate;
+		ss << (smd->domain->burning_rate);
 	else if (varName == "FLAME_SMOKE")
-		ss << smd->domain->fluid->_flame_smoke;
+		ss << (smd->domain->flame_smoke);
 	else if (varName == "IGNITION_TEMP")
-		ss << smd->domain->fluid->_ignition_temp;
+		ss << (smd->domain->flame_ignition);
 	else if (varName == "MAX_TEMP")
-		ss << smd->domain->fluid->_max_temp;
+		ss << (smd->domain->flame_max_temp);
 	else if (varName == "DT")
 		ss << smd->domain->fluid->_dt;
 	else if (varName == "FLAME_SMOKE_COLOR_X")
-		ss << smd->domain->fluid->_flame_smoke_color[0];
+		ss << smd->domain->flame_smoke_color[0];
 	else if (varName == "FLAME_SMOKE_COLOR_Y")
-		ss << smd->domain->fluid->_flame_smoke_color[1];
+		ss << smd->domain->flame_smoke_color[1];
 	else if (varName == "FLAME_SMOKE_COLOR_Z")
-		ss << smd->domain->fluid->_flame_smoke_color[2];
+		ss << smd->domain->flame_smoke_color[2];
+	else if (varName == "USING_COLORS")
+		ss << ((smd->domain->fluid->using_colors) ? "True" : "False");
+	else if (varName == "USING_HEAT")
+		ss << ((smd->domain->fluid->using_heat) ? "True" : "False");
+	else if (varName == "USING_FIRE")
+		ss << ((smd->domain->fluid->using_fire) ? "True" : "False");
 	else 
 		cout << "ERROR: Unknown option:" << varName <<endl;
 	return ss.str();
@@ -575,7 +567,7 @@ std::string Manta_API::parseScript(const string& setup_string, SmokeModifierData
 
 void Manta_API::manta_export_grids(SmokeModifierData *smd)
 {
-	std::string smoke_script = get_manta_smoke_script(false, smd);
+	std::string smoke_script = get_manta_smoke_script(smd);
 	std::string final_script = Manta_API::parseScript(smoke_script, smd) + standalone;
 	
 	ofstream myfile;
@@ -584,7 +576,11 @@ void Manta_API::manta_export_grids(SmokeModifierData *smd)
 	myfile.close();
 	
 	PyGILState_STATE gilstate = PyGILState_Ensure();
-	PyRun_SimpleString(Manta_API::parseScript(smoke_export_low,smd).c_str());
+	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
+		PyRun_SimpleString(Manta_API::parseScript(smoke_export_high, smd).c_str());
+	} else {
+		PyRun_SimpleString(Manta_API::parseScript(smoke_export_low, smd).c_str());
+	}
 	PyGILState_Release(gilstate);
 }
 

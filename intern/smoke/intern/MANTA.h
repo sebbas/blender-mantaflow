@@ -130,7 +130,7 @@ public:
 	static void updatePointers(FLUID_3D *fluid);
 	static void updateHighResPointers(WTURBULENCE *wt);
 	static void manta_export_grids(SmokeModifierData *smd);
-	static std::string get_manta_smoke_script(bool highRes, SmokeModifierData *smd);
+	static std::string get_manta_smoke_script(SmokeModifierData *smd);
 };
 
 

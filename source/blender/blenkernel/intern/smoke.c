@@ -2434,7 +2434,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 											}
 											else { // inflow
 												apply_inflow_fields(sfs, interpolated_value, index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b);
-												if(sds->flags & MOD_SMOKE_USE_MANTA){
+												if(sds->flags & MOD_SMOKE_USE_MANTA) {
 													manta_big_inflow_sdf[index_big] = interpolated_value;
 												}
 											}
