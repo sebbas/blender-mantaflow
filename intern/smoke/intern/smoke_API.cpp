@@ -310,11 +310,6 @@ extern "C" float *smoke_get_density(FLUID_3D *fluid)
 	return fluid->_density;
 }
 
-extern "C" float *smoke_get_inflow_grid(FLUID_3D *fluid)
-{
-	return fluid->_manta_inflow;
-}
-
 extern "C" float *smoke_get_fuel(FLUID_3D *fluid)
 {
 	return fluid->_fuel;
@@ -680,4 +675,9 @@ extern "C" int cell_index_3D(int index_2d, int sizex,int sizey, int sizez)
 	return int(sizey * 0.5) * sizex + 
 	(index_2d % (sizex)) + 
 	int(index_2d/(sizex)) * sizex * sizey;
+}
+
+extern "C" float *smoke_get_inflow_grid(FLUID_3D *fluid)
+{
+	return fluid->_manta_inflow;
 }

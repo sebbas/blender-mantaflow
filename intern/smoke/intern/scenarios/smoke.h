@@ -55,7 +55,6 @@ manta_using_colors = $USING_COLORS$\n\
 manta_using_heat = $USING_HEAT$\n\
 manta_using_fire = $USING_FIRE$\n\
 low_flags_updated = False\n\
-\n\
 ";
 
 const string smoke_setup_high = "\
@@ -161,7 +160,7 @@ if (GUI):\n\
 \n\
 import_grids()\n\
 \n\
-for step in range(500):\n\
+for step in range(1000):\n\
   apply_inflow()\n\
 \n\
   print('Step '+ str(step))\n\
@@ -313,7 +312,6 @@ const string smoke_export_high = "\n\
 import os\n\
 xl_density.save(os.path.join('$MANTA_EXPORT_PATH$','xl_density.uni'))\n\
 xl_flags.save(os.path.join('$MANTA_EXPORT_PATH$','xl_flags.uni'))\n\
-vel.save(os.path.join('$MANTA_EXPORT_PATH$','vel.uni'))\n\
 if manta_using_colors:\n\
   color_r_high.save(os.path.join('$MANTA_EXPORT_PATH$','color_r_high.uni'))\n\
   color_g_high.save(os.path.join('$MANTA_EXPORT_PATH$','color_g_high.uni'))\n\
@@ -345,7 +343,7 @@ def import_grids():\n\
 \n\
 def apply_inflow():\n\
   print('Applying inflow')\n\
-  inflow_grid.multConst(0.1)\n\
+  #inflow_grid.multConst(0.1)\n\
   density.add(inflow_grid)\n\
 ";
 
