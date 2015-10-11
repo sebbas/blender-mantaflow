@@ -681,3 +681,8 @@ extern "C" float *smoke_get_inflow_grid(FLUID_3D *fluid)
 {
 	return fluid->_manta_inflow;
 }
+
+extern "C" float *smoke_get_fuel_inflow(FLUID_3D *fluid)
+{
+	return fluid->_fuel_inflow;
+}

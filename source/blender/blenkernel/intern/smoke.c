@@ -2290,6 +2290,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				EmissionMap *em = &emaps[flowIndex];
 				float *density = smoke_get_density(sds->fluid);
 				float *inflow_grid = smoke_get_inflow_grid(sds->fluid);
+				float *fuel_inflow = smoke_get_fuel_inflow(sds->fluid);
 				float *color_r = smoke_get_color_r(sds->fluid);
 				float *color_g = smoke_get_color_g(sds->fluid);
 				float *color_b = smoke_get_color_b(sds->fluid);
@@ -2345,7 +2346,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 							else { // inflow
 								apply_inflow_fields(sfs, emission_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b);
 								if((sfs->flags & MOD_SMOKE_USE_MANTA) && (sds->manta_solver_res == 3)) {
-									apply_inflow_fields(sfs, emission_map[e_index], d_index, inflow_grid, heat, fuel, react, color_r, color_g, color_b);
+									apply_inflow_fields(sfs, emission_map[e_index], d_index, inflow_grid, heat, fuel_inflow, react, color_r, color_g, color_b);
 								}
 																/* initial velocity */
 								if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY) {

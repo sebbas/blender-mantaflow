@@ -390,7 +390,7 @@ std::string Manta_API::get_manta_smoke_script(SmokeModifierData *smd)
 		if (smd->domain->flags & MOD_SMOKE_MANTA_USE_LIQUID)
 			smoke_script = smoke_setup_low  + liquid_step_low;
 		else
-			smoke_script = smoke_setup_low + smoke_import_low + smoke_step_low ;
+			smoke_script = smoke_setup_low + smoke_import_low + smoke_inflow_low + smoke_step_low ;
 	}
 	return smoke_script;
 }
@@ -671,6 +671,7 @@ void Manta_API::updatePointers(FLUID_3D *fluid)
 	}
 	
 	fluid->_manta_inflow = (float* )pointerFromString(getGridPointer("inflow_grid", "s"));
+	fluid->_fuel_inflow = (float* )pointerFromString(getGridPointer("fuel_inflow", "s"));
 	if (fluid-> manta_resoution == 2) {return;}
 	if (fluid->using_colors) {
 		fluid->_color_r = (float* )pointerFromString(getGridPointer("color_r_low", "s"));

@@ -118,6 +118,7 @@ struct FLUID_3D
 		unsigned char*  _obstacles; /* only used (useful) for static obstacles like domain boundaries */
 		unsigned char*  _obstaclesAnim;
 		float* _manta_inflow;
+		float* _fuel_inflow;
 		bool using_heat;
 		int manta_resoution;
 		int _yLocation;/*at which Y-coordinate store the information*/

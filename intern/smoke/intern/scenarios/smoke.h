@@ -31,6 +31,9 @@ heat_low = s.create(RealGrid)\n\
 flame_low = s.create(RealGrid)\n\
 fuel_low = s.create(RealGrid)\n\
 react_low = s.create(RealGrid)\n\
+forces = s.create(MACGrid)\n\
+inflow_grid = s.create(LevelsetGrid)\n\
+fuel_inflow = s.create(LevelsetGrid)\n\
 \n\
 # noise field\n\
 #noise = s.create(NoiseField, loadFromFile=True)\n\
@@ -42,15 +45,12 @@ react_low = s.create(RealGrid)\n\
 #noise.valOffset = 0.75\n\
 #noise.timeAnim = 0.2\n\
 \n\
+# prepare domain\n\
 flags.initDomain()\n\
 flags.fillGrid()\n\
-\n\
 setOpenBound(flags=flags, bWidth=1, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n\
 \n\
-inflow_grid = s.create(LevelsetGrid)\n\
-source = s.create(Mesh)\n\
-forces = s.create(MACGrid)\n\
-dict_loaded = dict()\n\
+# initialization flags\n\
 manta_using_colors = $USING_COLORS$\n\
 manta_using_heat = $USING_HEAT$\n\
 manta_using_fire = $USING_FIRE$\n\
@@ -162,7 +162,7 @@ import_grids()\n\
 \n\
 for step in range(1000):\n\
   apply_inflow()\n\
-\n\
+  \n\
   print('Step '+ str(step))\n\
   if manta_using_fire:\n\
     process_burn()\n\
@@ -199,20 +199,24 @@ def step_low():\n\
   \n\
   print('Advecting density')\n\
   advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$)\n\
+  \n\
   print('Advecting velocity')\n\
   advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=$ADVECT_ORDER$)\n\
   \n\
   print ('Walls')\n\
   setWallBcs(flags=flags, vel=vel)\n\
+  \n\
   print('Vorticity')\n\
   if $VORTICITY$ > 0.01:\n\
-    vorticityConfinement( vel=vel, flags=flags, strength=$VORTICITY$ ) \n\
-  print('Forcefield')\n\
-  #addForceField(flags=flags, vel=vel, force=forces)\n\
-  forces.clear()\n\
+    vorticityConfinement( vel=vel, flags=flags, strength=$VORTICITY$ )\n\
+  \n\
+  # TODO: print('Forcefield')\n\
+  # TODO: addForceField(flags=flags, vel=vel, force=forces)\n\
+  # TODO: forces.clear()\n\
   \n\
   print('Pressure')\n\
   solvePressure(flags=flags, vel=vel, pressure=pressure)\n\
+  \n\
   print('Walls')\n\
   setWallBcs(flags=flags, vel=vel)\n\
   \n\
@@ -291,10 +295,12 @@ def sim_step_low(t):\n\
 
 const string smoke_export_low = "\n\
 import os\n\
+print('Exporting grids')\n\
 density.save(os.path.join('$MANTA_EXPORT_PATH$','density_low.uni'))\n\
 flags.save(os.path.join('$MANTA_EXPORT_PATH$','flags_low.uni'))\n\
 forces.save(os.path.join('$MANTA_EXPORT_PATH$','forces_low.uni'))\n\
 inflow_grid.save(os.path.join('$MANTA_EXPORT_PATH$','inflow_low.uni'))\n\
+fuel_inflow.save(os.path.join('$MANTA_EXPORT_PATH$','fuel_inflow.uni'))\n\
 if manta_using_colors:\n\
   color_r_low.save(os.path.join('$MANTA_EXPORT_PATH$','color_r_low.uni'))\n\
   color_g_low.save(os.path.join('$MANTA_EXPORT_PATH$','color_g_low.uni'))\n\
@@ -305,11 +311,11 @@ if manta_using_fire:\n\
   flame_low.save(os.path.join('$MANTA_EXPORT_PATH$','flame_low.uni'))\n\
   fuel_low.save(os.path.join('$MANTA_EXPORT_PATH$','fuel_low.uni'))\n\
   react_low.save(os.path.join('$MANTA_EXPORT_PATH$','react_low.uni'))\n\
-print('Grids exported')\n\
 ";
 
 const string smoke_export_high = "\n\
 import os\n\
+print('Exporting grids')\n\
 xl_density.save(os.path.join('$MANTA_EXPORT_PATH$','xl_density.uni'))\n\
 xl_flags.save(os.path.join('$MANTA_EXPORT_PATH$','xl_flags.uni'))\n\
 if manta_using_colors:\n\
@@ -330,21 +336,20 @@ def import_grids():\n\
   flags.load('$MANTA_EXPORT_PATH$flags_low.uni')\n\
   forces.load('$MANTA_EXPORT_PATH$forces_low.uni')\n\
   inflow_grid.load('$MANTA_EXPORT_PATH$inflow_low.uni')\n\
+  fuel_inflow.load('$MANTA_EXPORT_PATH$fuel_inflow.uni')\n\
+  \n\
   if manta_using_colors:\n\
     color_r_low.load('$MANTA_EXPORT_PATH$color_r_low.uni')\n\
     color_g_low.load('$MANTA_EXPORT_PATH$color_g_low.uni')\n\
     color_b_low.load('$MANTA_EXPORT_PATH$color_b_low.uni')\n\
+  \n\
   if manta_using_heat:\n\
     heat_low.load('$MANTA_EXPORT_PATH$heat.uni')\n\
+  \n\
   if manta_using_fire:\n\
     flame_low.load('$MANTA_EXPORT_PATH$flame_low.uni')\n\
     fuel_low.load('$MANTA_EXPORT_PATH$fuel_low.uni')\n\
     react_low.load('$MANTA_EXPORT_PATH$react_low.uni')\n\
-\n\
-def apply_inflow():\n\
-  print('Applying inflow')\n\
-  #inflow_grid.multConst(0.1)\n\
-  density.add(inflow_grid)\n\
 ";
 
 const string smoke_import_high = "\n\
@@ -363,3 +368,15 @@ def import_grids():\n\
     react_high.load('$MANTA_EXPORT_PATH$react_high.uni')\n\
 ";
 
+const string smoke_inflow_low = "\n\
+def apply_inflow():\n\
+  print('Applying inflow')\n\
+  #inflow_grid.multConst(0.1)\n\
+  #fuel_inflow.multConst(0.1)\n\
+  density.add(inflow_grid)\n\
+  fuel_low.add(fuel_inflow)\n\
+";
+
+const string smoke_inflow_high = "\n\
+ # TODO\n\
+";

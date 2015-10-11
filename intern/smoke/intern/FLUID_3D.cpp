@@ -592,6 +592,7 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 		_yLocation = -1;
 	}
 	_manta_inflow = NULL;
+	_fuel_inflow = NULL;
 	_densityOld   = new float[_totalCells];
 	_obstacles    = new unsigned char[_totalCells]; // set 0 at end of step
 	
