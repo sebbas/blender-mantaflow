@@ -76,7 +76,6 @@ if $USE_WAVELETS$ and $UPRES$ > 0:\n\
   xl.timestep = $XL_TIMESTEP$\n\
   \n\
   # prepare grids\n\
-  vel = s.create(MACGrid)\n\
   xl_vel = xl.create(MACGrid)\n\
   xl_density = xl.create(RealGrid)\n\
   xl_flags = xl.create(FlagGrid)\n\
@@ -98,7 +97,7 @@ if $USE_WAVELETS$ and $UPRES$ > 0:\n\
   xl_noise.valOffset = $NOISE_VALOFFSET$ \n\
   xl_noise.timeAnim = $NOISE_TIMEANIM$ * $UPRES$ \n\
   xl_wltnoise = xl.create(NoiseField, loadFromFile=True) \n\
-  xl_wltnoise.posScale = vec3( int(1.0*gs.x) ) * 0.5 \n\
+  xl_wltnoise.posScale = vec3( int(1.0*xl_gs.x) ) * 0.5 \n\
   xl_wltnoise.posScale = xl_wltnoise.posScale * 0.5\n\
   xl_wltnoise.timeAnim = 0.1 \n\
   \n\
@@ -179,10 +178,14 @@ def step_low():\n\
     density.add(inflow_grid)\n\
   \n\
   if manta_using_heat:\n\
+    print ('Adding heat buoyancy')\n\
     gravity=vec3(0,0,-0.0981) if solver_dim==3 else vec3(0,-0.0981,0)\n\
-    addBuoyancy2(flags=flags, grid=density, vel=vel, gravity=gravity, coefficient=$ALPHA$)\n\
+    print ('Here 1')\n\
+    addBuoyancy2(flags=flags, grid=density, vel=vel, gravity=gravity, coefficient=(-0.001))\n\
+    print ('Here 2')\n\
     addBuoyancy2(flags=flags, grid=heat_low, vel=vel, gravity=gravity, coefficient=$BETA$*(-10))\n\
   else:\n\
+    print ('Adding buoyancy')\n\
     gravity=vec3(0,0,-0.01 * $ALPHA$) if solver_dim==3 else vec3(0,-0.01* $ALPHA$,0)\n\
     addBuoyancy(density=density, vel=vel, gravity=gravity, flags=flags)\n\
   \n\

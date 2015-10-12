@@ -754,7 +754,7 @@ FLUID_3D::~FLUID_3D()
 void FLUID_3D::step(float dt, float gravity[3])
 {
 	// Blender computes heat buoyancy, not yet impl. in Manta
-	manta_write_effectors(this);
+	//manta_write_effectors(this);
 	Manta_API::updatePointers(this);
 
 	PyGILState_STATE gilstate = PyGILState_Ensure();

@@ -282,7 +282,7 @@ string Manta_API::gridNameFromType(const string &type)
 void Manta_API::addGrid(void * data, string name, string type, int x, int y, int z, bool is2D = false)
 {
 	if (data == NULL || name == "" || gridNameFromType(type) == "") return;
-	//cout << "Adding Grid:" << name << endl;
+	cout << "Adding Grid: " << name << endl;
 	std::ostringstream stringStream;
 	
 	/* Temporary gridname */

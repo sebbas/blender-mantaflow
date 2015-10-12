@@ -21,6 +21,7 @@
 #include "fileio.h"
 #include "wchar.h"
 #include <fstream>
+
 using namespace std;
 namespace Manta {
 	extern void guiMain(int argc, char* argv[]);
@@ -45,7 +46,6 @@ static bool manta_initialized = false;
 //  if globals().has_key(x):\n\
 //    del x \n\
 //  except NameError as e:\n\
-print (\'not deleted\') \n\
 
 const string clean_code1 = "\n\
 if 's' in globals() : del s \n\
@@ -64,6 +64,10 @@ if 'energy' in globals() : del energy \n\
 if 'tempFlag' in globals() : del tempFlag \n\
 if 'sdf_flow' in globals() : del sdf_flow \n\
 if 'source_shape' in globals() : del source_shape\n";
+
+const string clean_code_low = "\
+del [res, solver_dim, gs, s, timings, flags, vel, density, pressure, color_r_low, color_g_low, color_b_low, heat_low, flame_low, fuel_low, react_low, forces, inflow_grid, fuel_inflow, manta_using_colors, manta_using_heat, manta_using_fire, low_flags_updated]";
+
 const static string clean_code2 = "del s;del noise;del xl;del xl_noise;del xl_wltnoise;";
 		   //for latter full object release	
 		   //const static string clean_code2 = "del [s, noise, source, sourceVel, xl, xl_vel, xl_density, xl_flags,xl_source, xl_noise, flags, vel, density, pressure, energy, tempFlag, sdf_flow, forces, source,source_shape, xl_wltnoise]";
@@ -175,7 +179,7 @@ void initializeMantaflow(vector<string>& args) {
 	srand(0);
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	/*cleaning possible previous setups*/
-	//PyRun_SimpleString(clean_code1.c_str());
+	//PyRun_SimpleString(clean_code_low.c_str());
 	
 	if (! manta_initialized)
 	{	

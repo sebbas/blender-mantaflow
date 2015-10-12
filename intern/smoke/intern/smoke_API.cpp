@@ -616,7 +616,7 @@ extern "C" void manta_write_effectors(struct FLUID_3D *fluid)
 			}		
 		}
 	}
-	else if (fluid->manta_resoution == 2){
+	else if (fluid->manta_resoution == 2) {
 		accumulated_force = (Manta::Vec3*)malloc(size_x * size_z * sizeof(Manta::Vec3));
 		int step(0);
 		for (int x(0); x < size_x; x++){
@@ -626,11 +626,10 @@ extern "C" void manta_write_effectors(struct FLUID_3D *fluid)
 				}	
 		}
 	}
-	else{
+	else {
 		cout << "ERROR: Manta solver resoltion is neither 2 nor 3; Cannot write forces"<<endl;
 		return;
 	}
-	
 	
 	bool is2D = (fluid->manta_resoution == 2);
 	Manta_API::addGrid(accumulated_force, "forces", "Vec3", size_x, size_y, size_z, is2D);
