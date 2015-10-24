@@ -12,6 +12,7 @@ import os, shutil, math, sys\n\
 res = $RES$\n\
 solver_dim = $SOLVER_DIM$\n\
 gs = vec3($RESX$,$RESY$,$RESZ$)\n\
+doOpen = $DO_OPEN$\n\
 boundConditions = '$BOUNDCONDITIONS$'\n\
 if solver_dim == 2:\n\
   gs.z = 1\n\
@@ -180,9 +181,7 @@ def step_low():\n\
   if manta_using_heat:\n\
     print ('Adding heat buoyancy')\n\
     gravity=vec3(0,0,-0.0981) if solver_dim==3 else vec3(0,-0.0981,0)\n\
-    print ('Here 1')\n\
     addBuoyancy2(flags=flags, grid=density, vel=vel, gravity=gravity, coefficient=(-0.001))\n\
-    print ('Here 2')\n\
     addBuoyancy2(flags=flags, grid=heat_low, vel=vel, gravity=gravity, coefficient=$BETA$*(-10))\n\
   else:\n\
     print ('Adding buoyancy')\n\
@@ -204,7 +203,7 @@ def step_low():\n\
   advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$)\n\
   \n\
   print('Advecting velocity')\n\
-  advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=$ADVECT_ORDER$)\n\
+  advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
   \n\
   print ('Walls')\n\
   setWallBcs(flags=flags, vel=vel)\n\

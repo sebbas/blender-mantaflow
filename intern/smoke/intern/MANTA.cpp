@@ -478,10 +478,11 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 		char parent_dir[1024];
 		BLI_split_dir_part(smd->domain->_manta_filepath, parent_dir, sizeof(parent_dir));
 		ss << parent_dir;
-	} else if (varName == "VORTICITY"){
+	} else if (varName == "VORTICITY") {
 		ss << smd->domain->vorticity / smd->domain->fluid->_constantScaling;
-	} else if (varName == "BOUNDCONDITIONS"){
-		if(smd->domain->border_collisions == SM_BORDER_OPEN) ss << "xXyY";
+	} else if (varName == "BOUNDCONDITIONS") {
+		// OLD SETUP. WHY LIKE THAT??
+		/*if(smd->domain->border_collisions == SM_BORDER_OPEN) ss << "xXyY";
 		else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "xXyY";
 		else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "xXyY";
 		
@@ -489,8 +490,19 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 			if(smd->domain->border_collisions == SM_BORDER_OPEN) ss << "z";
 			else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "z";
 			else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "zZ";
+		}*/
+		if(smd->domain->border_collisions == SM_BORDER_OPEN) ss << "xXyY";
+		else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "zZ";
+		else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "";
+		
+		if (smd->domain->manta_solver_res == 3) {
+			if(smd->domain->border_collisions == SM_BORDER_OPEN) ss << "zZ";
+			else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "";
+			else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "";
 		}
 	}
+	else if (varName == "DO_OPEN")
+		ss << ((smd->domain->border_collisions == SM_BORDER_CLOSED) ? "False" : "True");
 	else if (varName == "GRAVITY")
 		ss << "vec3(0,0,-0.981)";
 	else if (varName == "ABS_FLOW")

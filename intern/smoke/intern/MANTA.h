@@ -75,7 +75,6 @@ public:
 	
 	unsigned char*  _obstacles; /* only used (useful) for static obstacles like domain */
 	void step(float dt, float gravity[3]);
-//	void runMantaScript(const string&, vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
 	
 	void indent_ss(stringstream& ss, int indent);
 	

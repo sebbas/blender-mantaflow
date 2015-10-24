@@ -705,6 +705,9 @@ void FLUID_3D::initFire()
 
 FLUID_3D::~FLUID_3D()
 {
+	cout << "~FLUID_3D" << endl;
+// TODO: Get rid of all the initializations from FLUID_3D Manta constructor
+#if 0
 	if (_xVelocity) delete[] _xVelocity;
 	if (_yVelocity) delete[] _yVelocity;
 	if (_zVelocity) delete[] _zVelocity;
@@ -744,7 +747,8 @@ FLUID_3D::~FLUID_3D()
 	if (_color_b) delete[] _color_b;
 	if (_color_bOld) delete[] _color_bOld;
 	if (_color_bTemp) delete[] _color_bTemp;
-	
+#endif
+
     // printf("deleted fluid\n");
 }
 

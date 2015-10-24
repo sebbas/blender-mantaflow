@@ -202,7 +202,6 @@ void initializeMantaflow(vector<string>& args) {
 	delete [] cargs;
 }
 
-
 void runScript(vector<string>& args) {
 	string filename = args[0];
 	
