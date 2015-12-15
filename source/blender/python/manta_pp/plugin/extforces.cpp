@@ -86,9 +86,9 @@ void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3 gravit
 //! add Buoyancy force based on coeffiecient
  struct KnAddBuoyancy2 : public KernelBase { KnAddBuoyancy2(FlagGrid& flags, Grid<Real>& grid, MACGrid& vel, Vec3 strength, Real coefficient) :  KernelBase(&flags,1) ,flags(flags),grid(grid),vel(vel),strength(strength),coefficient(coefficient)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& grid, MACGrid& vel, Vec3 strength, Real coefficient )  {
 	if (!flags.isFluid(i,j,k)) return;
-	vel(i,j,k).x += (strength.x) * coefficient * grid(i,j,k);
-	vel(i,j,k).y += (strength.y) * coefficient * grid(i,j,k);
-	vel(i,j,k).z += (strength.z) * coefficient * grid(i,j,k);
+	vel(i,j,k).x -= (strength.x) * coefficient * grid(i,j,k);
+	vel(i,j,k).y -= (strength.y) * coefficient * grid(i,j,k);
+	vel(i,j,k).z -= (strength.z) * coefficient * grid(i,j,k);
 }   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return grid; } typedef Grid<Real> type1;inline MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline Vec3& getArg3() { return strength; } typedef Vec3 type3;inline Real& getArg4() { return coefficient; } typedef Real type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,grid,vel,strength,coefficient);  } FlagGrid& flags; Grid<Real>& grid; MACGrid& vel; Vec3 strength; Real coefficient;   };
 
 //! add Buoyancy force based on coeffiecient

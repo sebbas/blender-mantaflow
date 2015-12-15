@@ -757,6 +757,8 @@ FLUID_3D::~FLUID_3D()
 //////////////////////////////////////////////////////////////////////
 void FLUID_3D::step(float dt, float gravity[3])
 {
+	clock_t start = clock();
+
 	// Blender computes heat buoyancy, not yet impl. in Manta
 	//manta_write_effectors(this);
 	Manta_API::updatePointers(this);
@@ -767,16 +769,22 @@ void FLUID_3D::step(float dt, float gravity[3])
 	PyGILState_Release(gilstate);
 	Manta_API::updatePointers(this);
 
+#if 0
 	for (int i = 0; i < _totalCells; i++)
 	{
 		_xForce[i] = _yForce[i] = _zForce[i] = 0.0f;
 	}
-
+#endif
+	clock_t end = clock();
+	float seconds = (float)(end - start) / CLOCKS_PER_SEC;
+	printf("TIME FOR STEP: %f \n", seconds);
 }
 
 void FLUID_3D::processBurn(float *fuel, float *smoke, float *react, float *heat,
 						   float *r, float *g, float *b, int total_cells, float dt)
 {
+	clock_t start = clock();
+
 	// Need to make sure that color grids are initialized as they are needed in processBurn
 	initColors(0.0f, 0.0f, 0.0f);
 
@@ -785,15 +793,25 @@ void FLUID_3D::processBurn(float *fuel, float *smoke, float *react, float *heat,
 	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
 	Manta_API::updatePointers(this);
+	
+	clock_t end = clock();
+	float seconds = (float)(end - start) / CLOCKS_PER_SEC;
+	printf("TIME FOR PROCESS_BURN: %f \n", seconds);
 }
 
 void FLUID_3D::updateFlame(float *react, float *flame, int total_cells)
 {
+	clock_t start = clock();
+
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	std::string py_string_0 = string("update_flame()");
 	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
 	Manta_API::updatePointers(this);
+	
+	clock_t end = clock();
+	float seconds = (float)(end - start) / CLOCKS_PER_SEC;
+	printf("TIME FOR UPDATE_FLAME: %f \n", seconds);
 }
 
 #endif /*WITH_MANTA*/

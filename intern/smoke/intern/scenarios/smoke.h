@@ -178,16 +178,6 @@ def step_low():\n\
   if solver_dim == 2:\n\
     density.add(inflow_grid)\n\
   \n\
-  if manta_using_heat:\n\
-    print ('Adding heat buoyancy')\n\
-    gravity=vec3(0,0,-0.0981) if solver_dim==3 else vec3(0,-0.0981,0)\n\
-    addBuoyancy2(flags=flags, grid=density, vel=vel, gravity=gravity, coefficient=(-0.001))\n\
-    addBuoyancy2(flags=flags, grid=heat_low, vel=vel, gravity=gravity, coefficient=$BETA$*(-10))\n\
-  else:\n\
-    print ('Adding buoyancy')\n\
-    gravity=vec3(0,0,-0.01 * $ALPHA$) if solver_dim==3 else vec3(0,-0.01* $ALPHA$,0)\n\
-    addBuoyancy(density=density, vel=vel, gravity=gravity, flags=flags)\n\
-  \n\
   if manta_using_colors:\n\
     print ('Advecting colors')\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_r_low, order=$ADVECT_ORDER$)\n\
@@ -207,6 +197,16 @@ def step_low():\n\
   \n\
   print ('Walls')\n\
   setWallBcs(flags=flags, vel=vel)\n\
+  \n\
+  if manta_using_heat:\n\
+    print ('Adding heat buoyancy')\n\
+    gravity=vec3(0,0,-0.0981) if solver_dim==3 else vec3(0,-0.0981,0)\n\
+    addBuoyancy2(flags=flags, grid=density, vel=vel, gravity=gravity, coefficient=$ALPHA$)\n\
+    addBuoyancy2(flags=flags, grid=heat_low, vel=vel, gravity=gravity, coefficient=$BETA$*10)\n\
+  else:\n\
+    print ('Adding buoyancy')\n\
+    gravity=vec3(0,0,-0.01 * $ALPHA$) if solver_dim==3 else vec3(0,-0.01* $ALPHA$,0)\n\
+    addBuoyancy(density=density, vel=vel, gravity=gravity, flags=flags)\n\
   \n\
   print('Vorticity')\n\
   if $VORTICITY$ > 0.01:\n\
