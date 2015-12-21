@@ -28,6 +28,7 @@ from bl_ui.properties_paint_common import (
 from bl_ui.properties_grease_pencil_common import (
         GreasePencilDrawingToolsPanel,
         GreasePencilStrokeEditPanel,
+        GreasePencilStrokeSculptPanel,
         GreasePencilDataPanel,
         )
 from bpy.app.translations import pgettext_iface as iface_
@@ -87,7 +88,7 @@ class IMAGE_MT_view(Menu):
         layout.prop(uv, "show_metadata")
         if paint.brush and (context.image_paint_object or sima.mode == 'PAINT'):
             layout.prop(uv, "show_texpaint")
-            layout.prop(toolsettings, "show_uv_local_view", text="Show same material")
+            layout.prop(toolsettings, "show_uv_local_view", text="Show Same Material")
 
         layout.separator()
 
@@ -1189,6 +1190,11 @@ class IMAGE_PT_tools_grease_pencil_draw(GreasePencilDrawingToolsPanel, Panel):
 
 # Grease Pencil stroke editing tools
 class IMAGE_PT_tools_grease_pencil_edit(GreasePencilStrokeEditPanel, Panel):
+    bl_space_type = 'IMAGE_EDITOR'
+
+
+# Grease Pencil stroke sculpting tools
+class IMAGE_PT_tools_grease_pencil_sculpt(GreasePencilStrokeSculptPanel, Panel):
     bl_space_type = 'IMAGE_EDITOR'
 
 

@@ -57,8 +57,8 @@
 
 #include "GPU_buffers.h"
 #include "GPU_draw.h"
-#include "GPU_extensions.h"
 #include "GPU_glew.h"
+#include "GPU_shader.h"
 
 #include "WM_api.h"
 
@@ -344,9 +344,6 @@ static void cdDM_update_normals_from_pbvh(DerivedMesh *dm)
 	CDDerivedMesh *cddm = (CDDerivedMesh *) dm;
 	float (*face_nors)[3];
 
-	if (!cddm->pbvh || !cddm->pbvh_draw || !dm->numPolyData)
-		return;
-
 	face_nors = CustomData_get_layer(&dm->polyData, CD_NORMAL);
 
 	BKE_pbvh_update(cddm->pbvh, PBVH_UpdateNormals, face_nors);
@@ -446,18 +443,18 @@ static void cdDM_drawFacesSolid(
 	CDDerivedMesh *cddm = (CDDerivedMesh *) dm;
 	int a;
 
-	if (cddm->pbvh && cddm->pbvh_draw) {
-		if (BKE_pbvh_has_faces(cddm->pbvh)) {
-			float (*face_nors)[3] = CustomData_get_layer(&dm->faceData, CD_NORMAL);
-
-			cdDM_update_normals_from_pbvh(dm);
+	if (cddm->pbvh) {
+		if (cddm->pbvh_draw && BKE_pbvh_has_faces(cddm->pbvh)) {
+			float (*face_nors)[3] = CustomData_get_layer(&dm->polyData, CD_NORMAL);
 
 			BKE_pbvh_draw(cddm->pbvh, partial_redraw_planes, face_nors,
 			              setMaterial, false, false);
 			glShadeModel(GL_FLAT);
+			return;
 		}
-
-		return;
+		else {
+			cdDM_update_normals_from_pbvh(dm);
+		}
 	}
 	
 	GPU_vertex_setup(dm);
@@ -505,14 +502,18 @@ static void cdDM_drawFacesTex_common(
 	 *       textured view, but object itself will be displayed gray
 	 *       (the same as it'll display without UV maps in textured view)
 	 */
-	if (cddm->pbvh && cddm->pbvh_draw && BKE_pbvh_type(cddm->pbvh) == PBVH_BMESH) {
-		if (BKE_pbvh_has_faces(cddm->pbvh)) {
-			cdDM_update_normals_from_pbvh(dm);
+	if (cddm->pbvh) {
+		if (cddm->pbvh_draw &&
+		    BKE_pbvh_type(cddm->pbvh) == PBVH_BMESH &&
+		    BKE_pbvh_has_faces(cddm->pbvh))
+		{
 			GPU_set_tpage(NULL, false, false);
 			BKE_pbvh_draw(cddm->pbvh, NULL, NULL, NULL, false, false);
+			return;
 		}
-
-		return;
+		else {
+			cdDM_update_normals_from_pbvh(dm);
+		}
 	}
 
 	colType = CD_TEXTURE_MLOOPCOL;
@@ -664,7 +665,7 @@ static void cdDM_drawMappedFaces(
 			else
 				me = userData;
 
-			findex_buffer = GPU_buffer_alloc(dm->drawObject->tot_loop_verts * sizeof(int), false);
+			findex_buffer = GPU_buffer_alloc(dm->drawObject->tot_loop_verts * sizeof(int));
 			fi_map = GPU_buffer_lock(findex_buffer, GPU_BINDING_ARRAY);
 
 			if (fi_map) {
@@ -878,14 +879,18 @@ static void cdDM_drawMappedFacesGLSL(
 	 *       will skip using textures (dyntopo currently destroys UV anyway) and
 	 *       works fine for matcap
 	 */
-	if (cddm->pbvh && cddm->pbvh_draw && BKE_pbvh_type(cddm->pbvh) == PBVH_BMESH) {
-		if (BKE_pbvh_has_faces(cddm->pbvh)) {
-			cdDM_update_normals_from_pbvh(dm);
+	if (cddm->pbvh) {
+		if (cddm->pbvh_draw &&
+		    BKE_pbvh_type(cddm->pbvh) == PBVH_BMESH &&
+		    BKE_pbvh_has_faces(cddm->pbvh))
+		{
 			setMaterial(1, &gattribs);
 			BKE_pbvh_draw(cddm->pbvh, NULL, NULL, NULL, false, false);
+			return;
 		}
-
-		return;
+		else {
+			cdDM_update_normals_from_pbvh(dm);
+		}
 	}
 
 	matnr = -1;
@@ -893,10 +898,7 @@ static void cdDM_drawMappedFacesGLSL(
 
 	glShadeModel(GL_SMOOTH);
 
-	/* workaround for NVIDIA GPUs on Mac not supporting vertex arrays + interleaved formats, see T43342 */
-	if ((GPU_type_matches(GPU_DEVICE_NVIDIA, GPU_OS_MAC, GPU_DRIVER_ANY) && (U.gameflags & USER_DISABLE_VBO)) ||
-	    setDrawOptions != NULL)
-	{
+	if (setDrawOptions != NULL) {
 		DMVertexAttribs attribs;
 		DEBUG_VBO("Using legacy code. cdDM_drawMappedFacesGLSL\n");
 		memset(&attribs, 0, sizeof(attribs));
@@ -967,7 +969,7 @@ static void cdDM_drawMappedFacesGLSL(
 		int *mat_orig_to_new;
 		int tot_active_mat;
 		GPUBuffer *buffer = NULL;
-		char *varray;
+		unsigned char *varray;
 		size_t max_element_size = 0;
 		int tot_loops = 0;
 
@@ -1032,11 +1034,8 @@ static void cdDM_drawMappedFacesGLSL(
 
 		/* part two, generate and fill the arrays with the data */
 		if (max_element_size > 0) {
-			buffer = GPU_buffer_alloc(max_element_size * dm->drawObject->tot_loop_verts, false);
+			buffer = GPU_buffer_alloc(max_element_size * dm->drawObject->tot_loop_verts);
 
-			if (buffer == NULL) {
-				buffer = GPU_buffer_alloc(max_element_size * dm->drawObject->tot_loop_verts, true);
-			}
 			varray = GPU_buffer_lock_stream(buffer, GPU_BINDING_ARRAY);
 			if (varray == NULL) {
 				GPU_buffers_unbind();
@@ -1072,7 +1071,7 @@ static void cdDM_drawMappedFacesGLSL(
 						if (matconv[i].attribs.mcol[b].array) {
 							const MLoopCol *mloopcol = matconv[i].attribs.mcol[b].array;
 							for (j = 0; j < mpoly->totloop; j++)
-								copy_v4_v4_char((char *)&varray[offset + j * max_element_size], &mloopcol[mpoly->loopstart + j].r);
+								copy_v4_v4_uchar(&varray[offset + j * max_element_size], &mloopcol[mpoly->loopstart + j].r);
 							offset += sizeof(unsigned char) * 4;
 						}
 					}
@@ -1147,14 +1146,18 @@ static void cdDM_drawMappedFacesMat(
 	 *       works fine for matcap
 	 */
 
-	if (cddm->pbvh && cddm->pbvh_draw && BKE_pbvh_type(cddm->pbvh) == PBVH_BMESH) {
-		if (BKE_pbvh_has_faces(cddm->pbvh)) {
-			cdDM_update_normals_from_pbvh(dm);
+	if (cddm->pbvh) {
+		if (cddm->pbvh_draw &&
+		    BKE_pbvh_type(cddm->pbvh) == PBVH_BMESH &&
+		    BKE_pbvh_has_faces(cddm->pbvh))
+		{
 			setMaterial(userData, 1, &gattribs);
 			BKE_pbvh_draw(cddm->pbvh, NULL, NULL, NULL, false, false);
+			return;
 		}
-
-		return;
+		else {
+			cdDM_update_normals_from_pbvh(dm);
+		}
 	}
 
 	matnr = -1;
@@ -1347,6 +1350,7 @@ static void cdDM_buffer_copy_vertex(
 static void cdDM_buffer_copy_normal(
         DerivedMesh *dm, short *varray)
 {
+	CDDerivedMesh *cddm = (CDDerivedMesh *)dm;
 	int i, j, totpoly;
 	int start;
 
@@ -1361,6 +1365,10 @@ static void cdDM_buffer_copy_normal(
 	mpoly = dm->getPolyArray(dm);
 	mloop = dm->getLoopArray(dm);
 	totpoly = dm->getNumPolys(dm);
+
+	/* we are in sculpt mode, disable loop normals (since they won't get updated) */
+	if (cddm->pbvh)
+		lnors = NULL;
 
 	start = 0;
 	for (i = 0; i < totpoly; i++, mpoly++) {
@@ -1482,7 +1490,7 @@ static void cdDM_buffer_copy_mcol(
 
 	for (i = 0; i < totpoly; i++, mpoly++) {
 		for (j = 0; j < mpoly->totloop; j++) {
-			copy_v3_v3_char((char *)&varray[start], &mloopcol[mpoly->loopstart + j].r);
+			copy_v3_v3_uchar(&varray[start], &mloopcol[mpoly->loopstart + j].r);
 			start += 3;
 		}
 	}
@@ -2547,7 +2555,7 @@ void CDDM_calc_normals_mapping_ex(DerivedMesh *dm, const bool only_face_normals)
 
 	/* calculate face normals */
 	BKE_mesh_calc_normals_poly(
-	        cddm->mvert, dm->numVertData, CDDM_get_loops(dm), CDDM_get_polys(dm),
+	        cddm->mvert, NULL, dm->numVertData, CDDM_get_loops(dm), CDDM_get_polys(dm),
 	        dm->numLoopData, dm->numPolyData, face_nors,
 	        only_face_normals);
 
@@ -2597,7 +2605,7 @@ void CDDM_calc_normals(DerivedMesh *dm)
 	/* we don't want to overwrite any referenced layers */
 	cddm->mvert = CustomData_duplicate_referenced_layer(&dm->vertData, CD_MVERT, dm->numVertData);
 
-	BKE_mesh_calc_normals_poly(cddm->mvert, dm->numVertData, CDDM_get_loops(dm), CDDM_get_polys(dm),
+	BKE_mesh_calc_normals_poly(cddm->mvert, NULL, dm->numVertData, CDDM_get_loops(dm), CDDM_get_polys(dm),
 	                           dm->numLoopData, dm->numPolyData, NULL, false);
 
 	cddm->dm.dirty &= ~DM_DIRTY_NORMALS;
@@ -2646,7 +2654,7 @@ void CDDM_calc_loop_normals_spacearr(
 	if (!pnors) {
 		pnors = CustomData_add_layer(pdata, CD_NORMAL, CD_CALLOC, NULL, numPolys);
 	}
-	BKE_mesh_calc_normals_poly(mverts, numVerts, mloops, mpolys, numLoops, numPolys, pnors,
+	BKE_mesh_calc_normals_poly(mverts, NULL, numVerts, mloops, mpolys, numLoops, numPolys, pnors,
 	                           (dm->dirty & DM_DIRTY_NORMALS) ? false : true);
 
 	dm->dirty &= ~DM_DIRTY_NORMALS;

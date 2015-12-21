@@ -55,6 +55,9 @@
 
 #include "BLF_api.h"
 
+#include "GPU_draw.h"
+#include "GPU_basic_shader.h"
+
 #include "UI_interface.h"
 
 /* own include */
@@ -1216,43 +1219,33 @@ void ui_draw_but_COLORBAND(uiBut *but, uiWidgetColors *UNUSED(wcol), const rcti 
 void ui_draw_but_UNITVEC(uiBut *but, uiWidgetColors *wcol, const rcti *rect)
 {
 	static GLuint displist = 0;
-	int a, old[8];
-	GLfloat diff[4], diffn[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-	float vec0[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-	float dir[4], size;
+	float diffuse[3] = {1.0f, 1.0f, 1.0f};
+	float size;
 	
-	/* store stuff */
-	glGetMaterialfv(GL_FRONT, GL_DIFFUSE, diff);
-		
 	/* backdrop */
 	glColor3ubv((unsigned char *)wcol->inner);
 	UI_draw_roundbox_corner_set(UI_CNR_ALL);
 	UI_draw_roundbox_gl_mode(GL_POLYGON, rect->xmin, rect->ymin, rect->xmax, rect->ymax, 5.0f);
 	
 	/* sphere color */
-	glMaterialfv(GL_FRONT, GL_DIFFUSE, diffn);
 	glCullFace(GL_BACK);
 	glEnable(GL_CULL_FACE);
 	
-	/* disable blender light */
-	for (a = 0; a < 8; a++) {
-		old[a] = glIsEnabled(GL_LIGHT0 + a);
-		glDisable(GL_LIGHT0 + a);
-	}
-	
-	/* own light */
-	glEnable(GL_LIGHT7);
-	glEnable(GL_LIGHTING);
-	
-	ui_but_v3_get(but, dir);
+	/* setup lights */
+	GPULightData light = {0};
+	light.type = GPU_LIGHT_SUN;
+	copy_v3_v3(light.diffuse, diffuse);
+	zero_v3(light.specular);
+	ui_but_v3_get(but, light.direction);
 
-	dir[3] = 0.0f;   /* glLightfv needs 4 args, 0.0 is sun */
-	glLightfv(GL_LIGHT7, GL_POSITION, dir); 
-	glLightfv(GL_LIGHT7, GL_DIFFUSE, diffn); 
-	glLightfv(GL_LIGHT7, GL_SPECULAR, vec0); 
-	glLightf(GL_LIGHT7, GL_CONSTANT_ATTENUATION, 1.0f);
-	glLightf(GL_LIGHT7, GL_LINEAR_ATTENUATION, 0.0f);
-	
+	GPU_basic_shader_light_set(0, &light);
+	for (int a = 1; a < 8; a++)
+		GPU_basic_shader_light_set(a, NULL);
+
+	/* setup shader */
+	GPU_basic_shader_colors(diffuse, NULL, 0, 1.0f);
+	GPU_basic_shader_bind(GPU_SHADER_LIGHTING);
+
 	/* transform to button */
 	glPushMatrix();
 	glTranslatef(rect->xmin + 0.5f * BLI_rcti_size_x(rect), rect->ymin + 0.5f * BLI_rcti_size_y(rect), 0.0f);
@@ -1283,10 +1276,9 @@ void ui_draw_but_UNITVEC(uiBut *but, uiWidgetColors *wcol, const rcti *rect)
 	glCallList(displist);
 
 	/* restore */
-	glDisable(GL_LIGHTING);
+	GPU_basic_shader_bind(GPU_SHADER_USE_COLOR);
+	GPU_default_lights();
 	glDisable(GL_CULL_FACE);
-	glMaterialfv(GL_FRONT, GL_DIFFUSE, diff); 
-	glDisable(GL_LIGHT7);
 	
 	/* AA circle */
 	glEnable(GL_BLEND);
@@ -1298,12 +1290,6 @@ void ui_draw_but_UNITVEC(uiBut *but, uiWidgetColors *wcol, const rcti *rect)
 
 	/* matrix after circle */
 	glPopMatrix();
-
-	/* enable blender light */
-	for (a = 0; a < 8; a++) {
-		if (old[a])
-			glEnable(GL_LIGHT0 + a);
-	}
 }
 
 static void ui_draw_but_curve_grid(const rcti *rect, float zoomx, float zoomy, float offsx, float offsy, float step)

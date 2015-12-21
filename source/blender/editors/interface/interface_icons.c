@@ -34,6 +34,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "GPU_extensions.h"
+#include "GPU_basic_shader.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
@@ -626,7 +627,7 @@ static void init_internal_icons(void)
 		}
 
 		/* we only use a texture for cards with non-power of two */
-		if (GPU_non_power_of_two_support()) {
+		if (GPU_full_non_power_of_two_support()) {
 			glGenTextures(1, &icongltex.id);
 
 			if (icongltex.id) {
@@ -639,12 +640,12 @@ static void init_internal_icons(void)
 
 				glBindTexture(GL_TEXTURE_2D, icongltex.id);
 				
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, b32buf->x, b32buf->y, 0, GL_RGBA, GL_UNSIGNED_BYTE, b32buf->rect);
-				glTexImage2D(GL_TEXTURE_2D, 1, GL_RGBA, b16buf->x, b16buf->y, 0, GL_RGBA, GL_UNSIGNED_BYTE, b16buf->rect);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, b32buf->x, b32buf->y, 0, GL_RGBA, GL_UNSIGNED_BYTE, b32buf->rect);
+				glTexImage2D(GL_TEXTURE_2D, 1, GL_RGBA8, b16buf->x, b16buf->y, 0, GL_RGBA, GL_UNSIGNED_BYTE, b16buf->rect);
 				
 				while (b16buf->x > 1) {
 					ImBuf *nbuf = IMB_onehalf(b16buf);
-					glTexImage2D(GL_TEXTURE_2D, level, GL_RGBA, nbuf->x, nbuf->y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nbuf->rect);
+					glTexImage2D(GL_TEXTURE_2D, level, GL_RGBA8, nbuf->x, nbuf->y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nbuf->rect);
 					level++;
 					IMB_freeImBuf(b16buf);
 					b16buf = nbuf;
@@ -1122,7 +1123,7 @@ static void icon_draw_texture(
 	y1 = iy * icongltex.invh;
 	y2 = (iy + ih) * icongltex.invh;
 
-	glEnable(GL_TEXTURE_2D);
+	GPU_basic_shader_bind(GPU_SHADER_TEXTURE_2D | GPU_SHADER_USE_COLOR);
 	glBindTexture(GL_TEXTURE_2D, icongltex.id);
 
 	/* sharper downscaling, has no effect when scale matches with a mip level */
@@ -1145,7 +1146,7 @@ static void icon_draw_texture(
 	glTexEnvf(GL_TEXTURE_FILTER_CONTROL, GL_TEXTURE_LOD_BIAS, 0.0f);
 
 	glBindTexture(GL_TEXTURE_2D, 0);
-	glDisable(GL_TEXTURE_2D);
+	GPU_basic_shader_bind(GPU_SHADER_USE_COLOR);
 }
 
 /* Drawing size for preview images */
@@ -1228,12 +1229,7 @@ static void icon_draw_size(
 			if (!pi->rect[size]) return;  /* something has gone wrong! */
 			
 			/* preview images use premul alpha ... */
-			if (GLEW_VERSION_1_4) {
-				glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-			}
-			else {
-				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			}
+			glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
 			icon_draw_rect(x, y, w, h, aspect, pi->w[size], pi->h[size], pi->rect[size], alpha, rgb, is_preview);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -1317,15 +1313,15 @@ static int ui_id_brush_get_icon(const bContext *C, ID *id)
 
 		/* reset the icon */
 		if (mode == OB_MODE_SCULPT) {
-			items = brush_sculpt_tool_items;
+			items = rna_enum_brush_sculpt_tool_items;
 			tool = br->sculpt_tool;
 		}
 		else if (mode == OB_MODE_VERTEX_PAINT) {
-			items = brush_vertex_tool_items;
+			items = rna_enum_brush_vertex_tool_items;
 			tool = br->vertexpaint_tool;
 		}
 		else if (mode == OB_MODE_TEXTURE_PAINT) {
-			items = brush_image_tool_items;
+			items = rna_enum_brush_image_tool_items;
 			tool = br->imagepaint_tool;
 		}
 

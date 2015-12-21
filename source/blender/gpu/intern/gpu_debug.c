@@ -43,7 +43,7 @@
 
 #define CASE_CODE_RETURN_STR(code) case code: return #code;
 
-static const char* gpu_gl_error_symbol(GLenum err)
+static const char *gpu_gl_error_symbol(GLenum err)
 {
 	switch (err) {
 		CASE_CODE_RETURN_STR(GL_NO_ERROR)
@@ -81,8 +81,8 @@ static bool gpu_report_gl_errors(const char *file, int line, const char *str)
 	}
 	else {
 		/* glGetError should have cleared the error flag, so if we get the
-		   same flag twice that means glGetError itself probably triggered
-		   the error. This happens on Windows if the GL context is invalid.
+		 * same flag twice that means glGetError itself probably triggered
+		 * the error. This happens on Windows if the GL context is invalid.
 		 */
 		{
 			GLenum new_error = glGetError();
@@ -92,22 +92,18 @@ static bool gpu_report_gl_errors(const char *file, int line, const char *str)
 			}
 		}
 
-		fprintf(
-			stderr,
-			"%s(%d): ``%s'' -> GL Error (0x%04X - %s): %s\n",
-			file,
-			line,
-			str,
-			gl_error,
-			gpu_gl_error_symbol(gl_error),
-			gpuErrorString(gl_error));
+		fprintf(stderr,
+		        "%s:%d: ``%s'' -> GL Error (0x%04X - %s): %s\n",
+		        file, line, str, gl_error,
+		        gpu_gl_error_symbol(gl_error),
+		        gpuErrorString(gl_error));
 
 		return false;
 	}
 }
 
 
-const char* gpuErrorString(GLenum err)
+const char *gpuErrorString(GLenum err)
 {
 	switch (err) {
 		case GL_NO_ERROR:
@@ -208,9 +204,9 @@ void gpu_debug_init(void)
 
 	if (GLEW_KHR_debug) {
 #ifndef GLEW_ES_ONLY
-			glDebugMessageCallback(gpu_debug_proc, mxGetCurrentContext());
-			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
-			GPU_string_marker(sizeof(success), success);
+		glDebugMessageCallback(gpu_debug_proc, mxGetCurrentContext());
+		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
+		GPU_string_marker(sizeof(success), success);
 #endif
 		return;
 	}
@@ -324,7 +320,7 @@ void GPU_print_error_debug(const char *str)
 }
 
 
-void GPU_assert_no_gl_errors(const char* file, int line, const char* str)
+void GPU_assert_no_gl_errors(const char *file, int line, const char *str)
 {
 	if (G.debug) {
 		GLboolean gl_ok = gpu_report_gl_errors(file, line, str);
@@ -461,7 +457,7 @@ void GPU_state_print(void)
 	gpu_state_print_fl(GL_FOG_INDEX);
 	gpu_state_print_fl(GL_FOG_MODE);
 	gpu_state_print_fl(GL_FOG_START);
-	gpu_state_print_fl(GL_FRAGMENT_PROGRAM_ARB);
+	gpu_state_print_fl(GL_FRAGMENT_PROGRAM_ARB); /* TODO: remove ARB program support */
 	gpu_state_print_fl(GL_FRAGMENT_SHADER_DERIVATIVE_HINT);
 	gpu_state_print_fl(GL_FRONT_FACE);
 	gpu_state_print_fl(GL_GENERATE_MIPMAP_HINT);
@@ -564,7 +560,6 @@ void GPU_state_print(void)
 	gpu_state_print_fl(GL_MODELVIEW_MATRIX);
 	gpu_state_print_fl(GL_MODELVIEW_STACK_DEPTH);
 	gpu_state_print_fl(GL_MULTISAMPLE);
-	gpu_state_print_fl(GL_MULTISAMPLE_ARB);
 	gpu_state_print_fl(GL_NAME_STACK_DEPTH);
 	gpu_state_print_fl(GL_NORMALIZE);
 	gpu_state_print_fl(GL_NORMAL_ARRAY);
@@ -690,7 +685,6 @@ void GPU_state_print(void)
 	gpu_state_print_fl(GL_TEXTURE_COORD_ARRAY_STRIDE);
 	gpu_state_print_fl(GL_TEXTURE_COORD_ARRAY_TYPE);
 	gpu_state_print_fl(GL_TEXTURE_CUBE_MAP);
-	gpu_state_print_fl(GL_TEXTURE_CUBE_MAP_ARB);
 	gpu_state_print_fl(GL_TEXTURE_GEN_Q);
 	gpu_state_print_fl(GL_TEXTURE_GEN_R);
 	gpu_state_print_fl(GL_TEXTURE_GEN_S);

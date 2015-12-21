@@ -230,7 +230,7 @@ static int space_image_poll(bContext *C)
 }
 #endif
 
-int space_image_main_area_poll(bContext *C)
+int space_image_main_region_poll(bContext *C)
 {
 	SpaceImage *sima = CTX_wm_space_image(C);
 	/* XXX ARegion *ar = CTX_wm_region(C); */
@@ -270,7 +270,7 @@ static int image_sample_poll(bContext *C)
 			return false;
 		}
 
-		return space_image_main_area_poll(C);
+		return space_image_main_region_poll(C);
 	}
 	else {
 		return false;
@@ -401,7 +401,7 @@ void IMAGE_OT_view_pan(wmOperatorType *ot)
 	ot->invoke = image_view_pan_invoke;
 	ot->modal = image_view_pan_modal;
 	ot->cancel = image_view_pan_cancel;
-	ot->poll = space_image_main_area_poll;
+	ot->poll = space_image_main_region_poll;
 
 	/* flags */
 	ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR | OPTYPE_LOCK_BYPASS;
@@ -617,7 +617,7 @@ void IMAGE_OT_view_zoom(wmOperatorType *ot)
 	ot->invoke = image_view_zoom_invoke;
 	ot->modal = image_view_zoom_modal;
 	ot->cancel = image_view_zoom_cancel;
-	ot->poll = space_image_main_area_poll;
+	ot->poll = space_image_main_region_poll;
 
 	/* flags */
 	ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR | OPTYPE_LOCK_BYPASS;
@@ -672,7 +672,7 @@ void IMAGE_OT_view_ndof(wmOperatorType *ot)
 	
 	/* api callbacks */
 	ot->invoke = image_view_ndof_invoke;
-	ot->poll = space_image_main_area_poll;
+	ot->poll = space_image_main_region_poll;
 
 	/* flags */
 	ot->flag = OPTYPE_LOCK_BYPASS;
@@ -744,7 +744,7 @@ void IMAGE_OT_view_all(wmOperatorType *ot)
 	
 	/* api callbacks */
 	ot->exec = image_view_all_exec;
-	ot->poll = space_image_main_area_poll;
+	ot->poll = space_image_main_region_poll;
 
 	/* flags */
 	ot->flag = OPTYPE_LOCK_BYPASS;
@@ -808,7 +808,7 @@ static int image_view_selected_exec(bContext *C, wmOperator *UNUSED(op))
 
 static int image_view_selected_poll(bContext *C)
 {
-	return (space_image_main_area_poll(C) && (ED_operator_uvedit(C) || ED_operator_mask(C)));
+	return (space_image_main_region_poll(C) && (ED_operator_uvedit(C) || ED_operator_mask(C)));
 }
 
 void IMAGE_OT_view_selected(wmOperatorType *ot)
@@ -863,7 +863,7 @@ void IMAGE_OT_view_zoom_in(wmOperatorType *ot)
 	/* api callbacks */
 	ot->invoke = image_view_zoom_in_invoke;
 	ot->exec = image_view_zoom_in_exec;
-	ot->poll = space_image_main_area_poll;
+	ot->poll = space_image_main_region_poll;
 
 	/* flags */
 	ot->flag = OPTYPE_LOCK_BYPASS;
@@ -912,7 +912,7 @@ void IMAGE_OT_view_zoom_out(wmOperatorType *ot)
 	/* api callbacks */
 	ot->invoke = image_view_zoom_out_invoke;
 	ot->exec = image_view_zoom_out_exec;
-	ot->poll = space_image_main_area_poll;
+	ot->poll = space_image_main_region_poll;
 
 	/* flags */
 	ot->flag = OPTYPE_LOCK_BYPASS;
@@ -959,7 +959,7 @@ void IMAGE_OT_view_zoom_ratio(wmOperatorType *ot)
 	
 	/* api callbacks */
 	ot->exec = image_view_zoom_ratio_exec;
-	ot->poll = space_image_main_area_poll;
+	ot->poll = space_image_main_region_poll;
 
 	/* flags */
 	ot->flag = OPTYPE_LOCK_BYPASS;
@@ -1153,8 +1153,6 @@ static int image_open_exec(bContext *C, wmOperator *op)
 	}
 	else {
 		ima->flag &= ~IMA_USE_VIEWS;
-		ima->flag &= ~IMA_IS_STEREO;
-		ima->flag &= ~IMA_IS_MULTIVIEW;
 		BKE_image_free_views(ima);
 	}
 
@@ -1171,7 +1169,7 @@ static int image_open_exec(bContext *C, wmOperator *op)
 	if (iod->pprop.prop) {
 		/* when creating new ID blocks, use is already 1, but RNA
 		 * pointer se also increases user, so this compensates it */
-		ima->id.us--;
+		id_us_min(&ima->id);
 		if ((frame_seq_len > 1) && ima->source == IMA_SRC_FILE) {
 			ima->source = IMA_SRC_SEQUENCE;
 		}
@@ -1222,7 +1220,7 @@ static int image_open_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(
 	const char *path = U.textudir;
 	Image *ima = NULL;
 	Scene *scene = CTX_data_scene(C);
-	PropertyRNA *prop;
+
 	if (sima) {
 		ima = sima->image;
 	}
@@ -1262,6 +1260,7 @@ static int image_open_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(
 	image_open_init(C, op);
 
 	/* show multiview save options only if scene has multiviews */
+	PropertyRNA *prop;
 	prop = RNA_struct_find_property(op->ptr, "show_multiview");
 	RNA_property_boolean_set(op->ptr, prop, (scene->r.scemode & R_MULTIVIEW) != 0);
 
@@ -1703,7 +1702,7 @@ static bool save_image_doit(bContext *C, SpaceImage *sima, wmOperator *op, SaveI
 		/* we need renderresult for exr and rendered multiview */
 		scene = CTX_data_scene(C);
 		rr = BKE_image_acquire_renderresult(scene, ima);
-		is_mono = rr ? BLI_listbase_count_ex(&rr->views, 2) < 2 : (ima->flag & IMA_IS_MULTIVIEW) == 0;
+		is_mono = rr ? BLI_listbase_count_ex(&rr->views, 2) < 2 : BLI_listbase_count_ex(&ima->views, 2) < 2;
 
 		/* error handling */
 		if (!rr) {
@@ -1714,7 +1713,7 @@ static bool save_image_doit(bContext *C, SpaceImage *sima, wmOperator *op, SaveI
 		}
 		else {
 			if (imf->views_format == R_IMF_VIEWS_STEREO_3D) {
-				if ((ima->flag & IMA_IS_STEREO) == 0) {
+				if (!BKE_image_is_stereo(ima)) {
 					BKE_reportf(op->reports, RPT_ERROR, "Did not write, the image doesn't have a \"%s\" and \"%s\" views",
 					           STEREO_LEFT_NAME, STEREO_RIGHT_NAME);
 					goto cleanup;
@@ -1760,9 +1759,9 @@ static bool save_image_doit(bContext *C, SpaceImage *sima, wmOperator *op, SaveI
 		}
 		/* individual multiview images */
 		else if (imf->views_format == R_IMF_VIEWS_INDIVIDUAL) {
-			size_t i;
+			int i;
 			unsigned char planes = ibuf->planes;
-			const size_t totviews = (rr ? BLI_listbase_count(&rr->views) : BLI_listbase_count(&ima->views));
+			const int totviews = (rr ? BLI_listbase_count(&rr->views) : BLI_listbase_count(&ima->views));
 
 			if (!is_multilayer) {
 				ED_space_image_release_buffer(sima, ibuf, lock);
@@ -1959,9 +1958,9 @@ static int image_save_as_invoke(bContext *C, wmOperator *op, const wmEvent *UNUS
 
 	/* show multiview save options only if image has multiviews */
 	prop = RNA_struct_find_property(op->ptr, "show_multiview");
-	RNA_property_boolean_set(op->ptr, prop, (ima->flag & IMA_IS_MULTIVIEW) != 0);
+	RNA_property_boolean_set(op->ptr, prop, BKE_image_is_multiview(ima));
 	prop = RNA_struct_find_property(op->ptr, "use_multiview");
-	RNA_property_boolean_set(op->ptr, prop, (ima->flag & IMA_IS_MULTIVIEW) != 0);
+	RNA_property_boolean_set(op->ptr, prop, BKE_image_is_multiview(ima));
 
 	image_filesel(C, op, simopts.filepath);
 
@@ -2278,7 +2277,7 @@ static int image_new_exec(bContext *C, wmOperator *op)
 	if (prop) {
 		/* when creating new ID blocks, use is already 1, but RNA
 		 * pointer se also increases user, so this compensates it */
-		ima->id.us--;
+		id_us_min(&ima->id);
 
 		RNA_id_pointer_create(&ima->id, &idptr);
 		RNA_property_pointer_set(&ptr, prop, idptr);
@@ -2302,10 +2301,11 @@ static int image_new_exec(bContext *C, wmOperator *op)
 				SpaceLink *sl;
 				for (sl = sa->spacedata.first; sl; sl = sl->next) {
 					if (sl->spacetype == SPACE_IMAGE) {
-						SpaceImage *sima = (SpaceImage *)sl;
+						SpaceImage *sima_other = (SpaceImage *)sl;
 						
-						if (!sima->pin)
-							ED_space_image_set(sima, scene, scene->obedit, ima);
+						if (!sima_other->pin) {
+							ED_space_image_set(sima_other, scene, scene->obedit, ima);
+						}
 					}
 				}
 			}
@@ -2429,7 +2429,7 @@ void IMAGE_OT_new(wmOperatorType *ot)
 	RNA_def_property_subtype(prop, PROP_COLOR_GAMMA);
 	RNA_def_property_float_array_default(prop, default_color);
 	RNA_def_boolean(ot->srna, "alpha", 1, "Alpha", "Create an image with an alpha channel");
-	RNA_def_enum(ot->srna, "generated_type", image_generated_type_items, IMA_GENTYPE_BLANK,
+	RNA_def_enum(ot->srna, "generated_type", rna_enum_image_generated_type_items, IMA_GENTYPE_BLANK,
 	             "Generated Type", "Fill the image with a grid for UV map testing");
 	RNA_def_boolean(ot->srna, "float", 0, "32 bit Float", "Create image with 32 bit floating point bit depth");
 	prop = RNA_def_enum(ot->srna, "gen_context", gen_context_items, 0, "Gen Context", "Generation context");
@@ -2720,7 +2720,7 @@ void IMAGE_OT_unpack(wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 	
 	/* properties */
-	RNA_def_enum(ot->srna, "method", unpack_method_items, PF_USE_LOCAL, "Method", "How to unpack");
+	RNA_def_enum(ot->srna, "method", rna_enum_unpack_method_items, PF_USE_LOCAL, "Method", "How to unpack");
 	RNA_def_string(ot->srna, "id", NULL, MAX_ID_NAME - 2, "Image Name", "Image datablock name to unpack"); /* XXX, weark!, will fail with library, name collisions */
 }
 
@@ -3079,7 +3079,7 @@ void IMAGE_OT_sample_line(wmOperatorType *ot)
 	ot->invoke = image_sample_line_invoke;
 	ot->modal = WM_gesture_straightline_modal;
 	ot->exec = image_sample_line_exec;
-	ot->poll = space_image_main_area_poll;
+	ot->poll = space_image_main_region_poll;
 	ot->cancel = WM_gesture_straightline_cancel;
 	
 	/* flags */
@@ -3282,22 +3282,12 @@ static int image_cycle_render_slot_poll(bContext *C)
 static int image_cycle_render_slot_exec(bContext *C, wmOperator *op)
 {
 	Image *ima = CTX_data_edit_image(C);
-	int a, slot, cur = ima->render_slot;
-	const bool use_reverse = RNA_boolean_get(op->ptr, "reverse");
+	const int direction = RNA_boolean_get(op->ptr, "reverse") ? -1 : 1;
 
-	for (a = 1; a < IMA_MAX_RENDER_SLOT; a++) {
-		slot = (cur + (use_reverse ? -a : a)) % IMA_MAX_RENDER_SLOT;
-		if (slot < 0) slot += IMA_MAX_RENDER_SLOT;
-
-		if (ima->renders[slot] || slot == ima->last_render_slot) {
-			ima->render_slot = slot;
-			break;
-		}
+	if (!ED_image_slot_cycle(ima, direction)) {
+		return OPERATOR_CANCELLED;
 	}
 
-	if (a == IMA_MAX_RENDER_SLOT)
-		ima->render_slot = ((cur == 1) ? 0 : 1);
-	
 	WM_event_add_notifier(C, NC_IMAGE | ND_DRAW, NULL);
 
 	/* no undo push for browsing existing */
@@ -3332,7 +3322,7 @@ static int change_frame_poll(bContext *C)
 	if (G.is_rendering)
 		return 0;
 
-	return space_image_main_area_poll(C);
+	return space_image_main_region_poll(C);
 }
 
 static void change_frame_apply(bContext *C, wmOperator *op)
@@ -3465,7 +3455,7 @@ void IMAGE_OT_read_renderlayers(wmOperatorType *ot)
 	ot->idname = "IMAGE_OT_read_renderlayers";
 	ot->description = "Read all the current scene's render layers from cache, as needed";
 
-	ot->poll = space_image_main_area_poll;
+	ot->poll = space_image_main_region_poll;
 	ot->exec = image_read_renderlayers_exec;
 
 	/* flags */

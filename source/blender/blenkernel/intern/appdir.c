@@ -548,15 +548,7 @@ static void where_am_i(char *fullname, const size_t maxlen, const char *name)
 
 		BLI_strncpy(fullname, name, maxlen);
 		if (name[0] == '.') {
-			char wdir[FILE_MAX] = "";
-			BLI_current_working_dir(wdir, sizeof(wdir));     /* backup cwd to restore after */
-
-			// not needed but avoids annoying /./ in name
-			if (name[1] == SEP)
-				BLI_join_dirfile(fullname, maxlen, wdir, name + 2);
-			else
-				BLI_join_dirfile(fullname, maxlen, wdir, name);
-
+			BLI_path_cwd(fullname, maxlen);
 #ifdef _WIN32
 			BLI_path_program_extensions_add_win32(fullname, maxlen);
 #endif
@@ -608,7 +600,7 @@ bool BKE_appdir_program_python_search(
 	const char *basename = "python";
 	char python_ver[16];
 	/* check both possible names */
-	const char *python_names[] = {basename, python_ver};
+	const char *python_names[] = {python_ver, basename};
 	int i;
 
 	bool is_found = false;

@@ -143,10 +143,14 @@ bool    BM_face_exists_overlap(BMVert **varr, const int len, BMFace **r_f_overla
 bool    BM_face_exists_overlap_subset(BMVert **varr, const int len) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
 
 int     BM_face_share_face_count(BMFace *f_a, BMFace *f_b) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
-int     BM_face_share_edge_count(BMFace *f1, BMFace *f2) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
+int     BM_face_share_edge_count(BMFace *f_a, BMFace *f_b) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
+int     BM_face_share_vert_count(BMFace *f_a, BMFace *f_b) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
 
-bool    BM_face_share_face_check(BMFace *f1, BMFace *f2) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
-bool    BM_face_share_edge_check(BMFace *f1, BMFace *f2) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
+bool    BM_face_share_face_check(BMFace *f_a, BMFace *f_b) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
+bool    BM_face_share_edge_check(BMFace *f_a, BMFace *f_b) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
+bool    BM_face_share_vert_check(BMFace *f_a, BMFace *f_b) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
+
+
 bool    BM_edge_share_face_check(BMEdge *e1, BMEdge *e2) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
 bool    BM_edge_share_quad_check(BMEdge *e1, BMEdge *e2) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
 bool    BM_edge_share_vert_check(BMEdge *e1, BMEdge *e2) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
@@ -175,12 +179,12 @@ float BM_mesh_calc_volume(BMesh *bm, bool is_signed) ATTR_WARN_UNUSED_RESULT ATT
 
 int   BM_mesh_calc_face_groups(
         BMesh *bm, int *r_groups_array, int (**r_group_index)[2],
-        BMElemFilterFunc filter_fn, void *user_data,
+        BMLoopFilterFunc filter_fn, void *user_data,
         const char hflag_test, const char htype_step)
         ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1, 2, 3);
 int   BM_mesh_calc_edge_groups(
         BMesh *bm, int *r_groups_array, int (**r_group_index)[2],
-        BMElemFilterFunc filter_fn, void *user_data,
+        BMVertFilterFunc filter_fn, void *user_data,
         const char hflag_test)
         ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1, 2, 3);
 

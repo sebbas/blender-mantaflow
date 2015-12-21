@@ -457,7 +457,6 @@ int main(int argc, char** argv)
 	
 	initglobals();
 
-	U.gameflags |= USER_DISABLE_VBO;
 	// We load our own G.main, so free the one that initglobals() gives us
 	BKE_main_free(G.main);
 	G.main = NULL;
@@ -855,7 +854,7 @@ int main(int argc, char** argv)
 
 				get_filename(argc_py_clamped, argv, filename);
 				if (filename[0])
-					BLI_path_cwd(filename);
+					BLI_path_cwd(filename, sizeof(filename));
 				
 
 				// fill the GlobalSettings with the first scene files

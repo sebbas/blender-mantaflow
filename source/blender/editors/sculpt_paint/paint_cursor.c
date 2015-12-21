@@ -59,6 +59,8 @@
 
 #include "ED_view3d.h"
 
+#include "GPU_basic_shader.h"
+
 #include "UI_resources.h"
 
 #include "paint_intern.h"
@@ -149,7 +151,6 @@ static int load_tex(Brush *br, ViewContext *vc, float zoom, bool col, bool prima
 	int size;
 	int j;
 	int refresh;
-	GLenum format = col ? GL_RGBA : GL_ALPHA;
 	OverlayControlFlags invalid = (primary) ? (overlay_flags & PAINT_INVALID_OVERLAY_TEXTURE_PRIMARY) :
 	                           (overlay_flags & PAINT_INVALID_OVERLAY_TEXTURE_SECONDARY);
 
@@ -321,8 +322,11 @@ static int load_tex(Brush *br, ViewContext *vc, float zoom, bool col, bool prima
 	glBindTexture(GL_TEXTURE_2D, target->overlay_texture);
 
 	if (refresh) {
+		GLenum format = col ? GL_RGBA : GL_ALPHA;
+		GLenum internalformat = col ? GL_RGBA8 : GL_ALPHA8;
+
 		if (!init || (target->old_col != col)) {
-			glTexImage2D(GL_TEXTURE_2D, 0, format, size, size, 0, format, GL_UNSIGNED_BYTE, buffer);
+			glTexImage2D(GL_TEXTURE_2D, 0, internalformat, size, size, 0, format, GL_UNSIGNED_BYTE, buffer);
 		}
 		else {
 			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, size, size, format, GL_UNSIGNED_BYTE, buffer);
@@ -334,9 +338,8 @@ static int load_tex(Brush *br, ViewContext *vc, float zoom, bool col, bool prima
 		target->old_col = col;
 	}
 
-	glEnable(GL_TEXTURE_2D);
+	GPU_basic_shader_bind(GPU_SHADER_TEXTURE_2D | GPU_SHADER_USE_COLOR);
 
-	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -448,7 +451,7 @@ static int load_tex_cursor(Brush *br, ViewContext *vc, float zoom)
 
 	if (refresh) {
 		if (!init) {
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, size, size, 0, GL_ALPHA, GL_UNSIGNED_BYTE, buffer);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA8, size, size, 0, GL_ALPHA, GL_UNSIGNED_BYTE, buffer);
 		}
 		else {
 			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, size, size, GL_ALPHA, GL_UNSIGNED_BYTE, buffer);
@@ -458,9 +461,8 @@ static int load_tex_cursor(Brush *br, ViewContext *vc, float zoom)
 			MEM_freeN(buffer);
 	}
 
-	glEnable(GL_TEXTURE_2D);
+	GPU_basic_shader_bind(GPU_SHADER_TEXTURE_2D | GPU_SHADER_USE_COLOR);
 
-	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -524,38 +526,44 @@ static int project_brush_radius(ViewContext *vc,
 static bool sculpt_get_brush_geometry(
         bContext *C, ViewContext *vc,
         int x, int y, int *pixel_radius,
-        float location[3])
+        float location[3], UnifiedPaintSettings *ups)
 {
 	Scene *scene = CTX_data_scene(C);
 	Paint *paint = BKE_paint_get_active_from_context(C);
 	float mouse[2];
-	bool hit;
+	bool hit = false;
 
 	mouse[0] = x;
 	mouse[1] = y;
 
-	if (vc->obact->sculpt && vc->obact->sculpt->pbvh &&
-	    sculpt_stroke_get_location(C, location, mouse))
-	{
+	if (vc->obact->sculpt && vc->obact->sculpt->pbvh) {
+		if (!ups->stroke_active) {
+			hit = sculpt_stroke_get_location(C, location, mouse);
+		}
+		else {
+			hit = ups->last_hit;
+			copy_v3_v3(location, ups->last_location);
+		}
+	}
+
+	if (hit) {
 		Brush *brush = BKE_paint_brush(paint);
+
 		*pixel_radius =
-		    project_brush_radius(vc,
-		                         BKE_brush_unprojected_radius_get(scene, brush),
-		                         location);
+		        project_brush_radius(vc,
+		                             BKE_brush_unprojected_radius_get(scene, brush),
+		                             location);
 
 		if (*pixel_radius == 0)
 			*pixel_radius = BKE_brush_size_get(scene, brush);
 
 		mul_m4_v3(vc->obact->obmat, location);
-
-		hit = 1;
 	}
 	else {
 		Sculpt *sd    = CTX_data_tool_settings(C)->sculpt;
 		Brush *brush = BKE_paint_brush(&sd->paint);
 
 		*pixel_radius = BKE_brush_size_get(scene, brush);
-		hit = 0;
 	}
 
 	return hit;
@@ -789,6 +797,7 @@ static void paint_draw_alpha_overlay(UnifiedPaintSettings *ups, Brush *brush,
 	}
 
 	glPopAttrib();
+	GPU_basic_shader_bind(GPU_SHADER_USE_COLOR);
 }
 
 
@@ -1020,7 +1029,7 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 		bool hit;
 
 		/* test if brush is over the mesh */
-		hit = sculpt_get_brush_geometry(C, &vc, x, y, &pixel_radius, location);
+		hit = sculpt_get_brush_geometry(C, &vc, x, y, &pixel_radius, location, ups);
 
 		if (BKE_brush_use_locked_size(scene, brush))
 			BKE_brush_size_set(scene, brush, pixel_radius);

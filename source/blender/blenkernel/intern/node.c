@@ -1151,6 +1151,11 @@ void nodeDetachNode(struct bNode *node)
 	}
 }
 
+void ntreeInitDefault(bNodeTree *ntree)
+{
+	ntree_set_typeinfo(ntree, NULL);
+}
+
 bNodeTree *ntreeAddTree(Main *bmain, const char *name, const char *idname)
 {
 	bNodeTree *ntree;
@@ -2012,8 +2017,8 @@ void ntreeMakeLocal(bNodeTree *ntree)
 				if (node->id == (ID *)ntree) {
 					if (owner_id->lib == NULL) {
 						node->id = (ID *)newtree;
-						newtree->id.us++;
-						ntree->id.us--;
+						id_us_plus(&newtree->id);
+						id_us_min(&ntree->id);
 					}
 				}
 			}
@@ -2101,8 +2106,10 @@ bNodeTree *ntreeLocalize(bNodeTree *ntree)
 			adt->action = ladt->action = action_backup;
 			adt->tmpact = ladt->tmpact = tmpact_backup;
 
-			if (action_backup) action_backup->id.us++;
-			if (tmpact_backup) tmpact_backup->id.us++;
+			if (action_backup)
+				id_us_plus(&action_backup->id);
+			if (tmpact_backup)
+				id_us_plus(&tmpact_backup->id);
 
 		}
 		/* end animdata uglyness */
@@ -3419,6 +3426,10 @@ void node_type_size_preset(struct bNodeType *ntype, eNodeSizePreset size)
 	}
 }
 
+/**
+ * \warning Nodes defining a storage type _must_ allocate this for new nodes.
+ * Otherwise nodes will reload as undefined (T46619).
+ */
 void node_type_storage(bNodeType *ntype,
 	const char *storagename,
 	void (*freefunc)(struct bNode *node),

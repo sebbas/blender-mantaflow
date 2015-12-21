@@ -57,11 +57,9 @@
 
 /****************************** Camera Datablock *****************************/
 
-void *BKE_camera_add(Main *bmain, const char *name)
+void BKE_camera_init(Camera *cam)
 {
-	Camera *cam;
-	
-	cam =  BKE_libblock_alloc(bmain, ID_CA, name);
+	BLI_assert(MEMCMP_STRUCT_OFS_IS_ZERO(cam, id));
 
 	cam->lens = 35.0f;
 	cam->sensor_x = DEFAULT_SENSOR_WIDTH;
@@ -78,6 +76,15 @@ void *BKE_camera_add(Main *bmain, const char *name)
 	/* stereoscopy 3d */
 	cam->stereo.interocular_distance = 0.065f;
 	cam->stereo.convergence_distance = 30.f * 0.065f;
+}
+
+void *BKE_camera_add(Main *bmain, const char *name)
+{
+	Camera *cam;
+
+	cam =  BKE_libblock_alloc(bmain, ID_CA, name);
+
+	BKE_camera_init(cam);
 
 	return cam;
 }
@@ -136,8 +143,8 @@ void BKE_camera_make_local(Camera *cam)
 			if (ob->data == cam) {
 				if (ob->id.lib == NULL) {
 					ob->data = cam_new;
-					cam_new->id.us++;
-					cam->id.us--;
+					id_us_plus(&cam_new->id);
+					id_us_min(&cam->id);
 				}
 			}
 		}

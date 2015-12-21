@@ -21,8 +21,8 @@
 from _bpy import types as bpy_types
 import _bpy
 
-StructRNA = bpy_types.Struct.__bases__[0]
-StructMetaPropGroup = _bpy.StructMetaPropGroup
+StructRNA = bpy_types.bpy_struct
+StructMetaPropGroup = bpy_types.bpy_struct_meta_idprop
 # StructRNA = bpy_types.Struct
 
 bpy_types.BlendDataLibraries.load = _bpy._library_load
@@ -34,8 +34,10 @@ class Context(StructRNA):
     def copy(self):
         from types import BuiltinMethodType
         new_context = {}
-        generic_attrs = (list(StructRNA.__dict__.keys()) +
-                         ["bl_rna", "rna_type", "copy"])
+        generic_attrs = (
+            *StructRNA.__dict__.keys(),
+            "bl_rna", "rna_type", "copy",
+            )
         for attr in dir(self):
             if not (attr.startswith("_") or attr in generic_attrs):
                 value = getattr(self, attr)

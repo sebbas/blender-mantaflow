@@ -42,6 +42,7 @@
 
 #include "BKE_cdderivedmesh.h"
 #include "BKE_global.h"
+#include "BKE_library_query.h"
 #include "BKE_modifier.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
@@ -118,7 +119,7 @@ static void foreachObjectLink(
 {
 	MeshDeformModifierData *mmd = (MeshDeformModifierData *) md;
 
-	walk(userData, ob, &mmd->object);
+	walk(userData, ob, &mmd->object, IDWALK_NOP);
 }
 
 static void updateDepgraph(ModifierData *md, DagForest *forest,
@@ -233,7 +234,7 @@ typedef struct MeshdeformUserdata {
 	float (*icagemat)[3];
 } MeshdeformUserdata;
 
-static void meshdeform_vert_task(void * userdata, int iter)
+static void meshdeform_vert_task(void *userdata, void *UNUSED(userdata_chunck), int iter)
 {
 	MeshdeformUserdata *data = userdata;
 	/*const*/ MeshDeformModifierData *mmd = data->mmd;
@@ -351,7 +352,7 @@ static void meshdeformModifier_do(
 		/* progress bar redraw can make this recursive .. */
 		if (!recursive) {
 			recursive = 1;
-			mmd->bindfunc(md->scene, mmd, (float *)vertexCos, numVerts, cagemat);
+			mmd->bindfunc(md->scene, mmd, cagedm, (float *)vertexCos, numVerts, cagemat);
 			recursive = 0;
 		}
 	}

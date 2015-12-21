@@ -62,8 +62,62 @@ static inline void colorramp_to_array(BL::ColorRamp ramp, float4 *data, int size
 	}
 }
 
-static inline void curvemapping_color_to_array(BL::CurveMapping cumap, float4 *data, int size, bool rgb_curve)
+static inline void curvemap_minmax_curve(/*const*/ BL::CurveMap& curve,
+                                         float *min_x,
+                                         float *max_x)
 {
+	*min_x = min(*min_x, curve.points[0].location()[0]);
+	*max_x = max(*max_x, curve.points[curve.points.length() - 1].location()[0]);
+}
+
+static inline void curvemapping_minmax(/*const*/ BL::CurveMapping& cumap,
+                                       bool rgb_curve,
+                                       float *min_x,
+                                       float *max_x)
+{
+	/* const int num_curves = cumap.curves.length(); */  /* Gives linking error so far. */
+	const int num_curves = rgb_curve? 4: 3;
+	*min_x = FLT_MAX;
+	*max_x = -FLT_MAX;
+	for(int i = 0; i < num_curves; ++i) {
+		BL::CurveMap map(cumap.curves[i]);
+		curvemap_minmax_curve(map, min_x, max_x);
+	}
+}
+
+static inline void curvemapping_to_array(BL::CurveMapping cumap, float *data, int size)
+{
+	cumap.update();
+	BL::CurveMap curve = cumap.curves[0];
+	for(int i = 0; i < size; i++) {
+		float t = (float)i/(float)(size-1);
+		data[i] = curve.evaluate(t);
+	}
+}
+
+static inline void curvemapping_color_to_array(BL::CurveMapping cumap,
+                                               float4 *data,
+                                               int size,
+                                               bool rgb_curve)
+{
+	float min_x = 0.0f, max_x = 1.0f;
+	/* TODO(sergey): Vector curve mapping is still clipping to 0..1. */
+	if(rgb_curve) {
+		/* TODO(sergey): There is no easy way to automatically guess what is
+		 * the range to be used here for the case when mapping is applied on
+		 * top of another mapping (i.e. R curve applied on top of common
+		 * one).
+		 *
+		 * Using largest possible range form all curves works correct for the
+		 * cases like vector curves and should be good enough heuristic for
+		 * the color curves as well.
+		 *
+		 * There might be some better estimations here tho.
+		 */
+		curvemapping_minmax(cumap, rgb_curve, &min_x, &max_x);
+	}
+	const float range_x = max_x - min_x;
+
 	cumap.update();
 
 	BL::CurveMap mapR = cumap.curves[0];
@@ -74,7 +128,7 @@ static inline void curvemapping_color_to_array(BL::CurveMapping cumap, float4 *d
 		BL::CurveMap mapI = cumap.curves[3];
 
 		for(int i = 0; i < size; i++) {
-			float t = (float)i/(float)(size-1);
+			float t = min_x + (float)i/(float)(size-1) * range_x;
 
 			data[i][0] = mapR.evaluate(mapI.evaluate(t));
 			data[i][1] = mapG.evaluate(mapI.evaluate(t));
@@ -83,7 +137,7 @@ static inline void curvemapping_color_to_array(BL::CurveMapping cumap, float4 *d
 	}
 	else {
 		for(int i = 0; i < size; i++) {
-			float t = (float)i/(float)(size-1);
+			float t = min_x + (float)i/(float)(size-1) * range_x;
 
 			data[i][0] = mapR.evaluate(t);
 			data[i][1] = mapG.evaluate(t);
@@ -196,7 +250,11 @@ static inline uint get_layer(BL::Array<int, 20> array)
 	return layer;
 }
 
-static inline uint get_layer(BL::Array<int, 20> array, BL::Array<int, 8> local_array, bool use_local, bool is_light = false)
+static inline uint get_layer(BL::Array<int, 20> array,
+                             BL::Array<int, 8> local_array,
+                             bool use_local,
+                             bool is_light = false,
+                             uint scene_layers = (1 << 20) - 1)
 {
 	uint layer = 0;
 
@@ -205,9 +263,13 @@ static inline uint get_layer(BL::Array<int, 20> array, BL::Array<int, 8> local_a
 			layer |= (1 << i);
 
 	if(is_light) {
-		/* consider lamps on all local view layers */
-		for(uint i = 0; i < 8; i++)
-			layer |= (1 << (20+i));
+		/* Consider light is visible if it was visible without layer
+		 * override, which matches behavior of Blender Internal.
+		 */
+		if(layer & scene_layers) {
+			for(uint i = 0; i < 8; i++)
+				layer |= (1 << (20+i));
+		}
 	}
 	else {
 		for(uint i = 0; i < 8; i++)

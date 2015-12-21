@@ -77,6 +77,7 @@
 #include "BKE_cdderivedmesh.h"
 #include "BKE_collision.h"
 #include "BKE_effect.h"
+#include "BKE_library_query.h"
 #include "BKE_particle.h"
 #include "BKE_global.h"
 
@@ -893,7 +894,7 @@ void psys_get_birth_coords(ParticleSimulationData *sim, ParticleData *pa, Partic
 				float q_imat[4];
 
 				mat4_to_quat(q_obmat, ob->obmat);
-				invert_qt_qt(q_imat, q_obmat);
+				invert_qt_qt_normalized(q_imat, q_obmat);
 
 
 				if (part->rotmode != PART_ROT_NOR_TAN) {
@@ -1214,8 +1215,8 @@ void psys_get_pointcache_start_end(Scene *scene, ParticleSystem *psys, int *sfra
 {
 	ParticleSettings *part = psys->part;
 
-	*sfra = MAX2(1, (int)part->sta);
-	*efra = MIN2((int)(part->end + part->lifetime + 1.0f), MAX2(scene->r.pefra, scene->r.efra));
+	*sfra = max_ii(1, (int)part->sta);
+	*efra = min_ii((int)(part->end + part->lifetime + 1.0f), max_ii(scene->r.pefra, scene->r.efra));
 }
 
 /************************************************/
@@ -1938,7 +1939,7 @@ static void sphclassical_calc_dens(ParticleData *pa, float UNUSED(dfra), SPHData
 	pfr.mass = sphdata->mass;
 
 	sph_evaluate_func( NULL, psys, pa->state.co, &pfr, interaction_radius, sphclassical_density_accum_cb);
-	pa->sphdensity = MIN2(MAX2(data[0], fluid->rest_density * 0.9f), fluid->rest_density * 1.1f);
+	pa->sphdensity = min_ff(max_ff(data[0], fluid->rest_density * 0.9f), fluid->rest_density * 1.1f);
 }
 
 void psys_sph_init(ParticleSimulationData *sim, SPHData *sphdata)
@@ -3488,7 +3489,6 @@ static void dynamics_step(ParticleSimulationData *sim, float cfra)
 		case PART_PHYS_FLUID:
 		{
 			SPHData sphdata;
-			ParticleSettings *part = sim->psys->part;
 			psys_sph_init(sim, &sphdata);
 
 			if (part->fluid->solver == SPH_SOLVER_DDR) {
@@ -4207,6 +4207,30 @@ void particle_system_update(Scene *scene, Object *ob, ParticleSystem *psys)
 	/* save matrix for duplicators, at rendertime the actual dupliobject's matrix is used so don't update! */
 	if (psys->renderdata==0)
 		invert_m4_m4(psys->imat, ob->obmat);
+}
+
+/* ID looper */
+
+void BKE_particlesystem_id_loop(ParticleSystem *psys, ParticleSystemIDFunc func, void *userdata)
+{
+	ParticleTarget *pt;
+
+	func(psys, (ID **)&psys->part, userdata, IDWALK_USER | IDWALK_NEVER_NULL);
+	func(psys, (ID **)&psys->target_ob, userdata, IDWALK_NOP);
+	func(psys, (ID **)&psys->parent, userdata, IDWALK_NOP);
+
+	for (pt = psys->targets.first; pt; pt = pt->next) {
+		func(psys, (ID **)&pt->ob, userdata, IDWALK_NOP);
+	}
+
+	if (psys->part->phystype == PART_PHYS_BOIDS) {
+		ParticleData *pa;
+		int p;
+
+		for (p = 0, pa = psys->particles; p < psys->totpart; p++, pa++) {
+			func(psys, (ID **)&pa->boid->ground, userdata, IDWALK_NOP);
+		}
+	}
 }
 
 /* **** Depsgraph evaluation **** */

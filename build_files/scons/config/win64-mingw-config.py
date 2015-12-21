@@ -2,7 +2,7 @@ LCGDIR = '#../lib/mingw64'
 LIBDIR = "${LCGDIR}"
 
 BF_PYTHON = LIBDIR + '/python'
-BF_PYTHON_VERSION = '3.4'
+BF_PYTHON_VERSION = '3.5'
 WITH_BF_STATICPYTHON = False
 BF_PYTHON_INC = '${BF_PYTHON}/include/python${BF_PYTHON_VERSION}'
 BF_PYTHON_BINARY = 'python'
@@ -197,7 +197,7 @@ REL_CXXFLAGS = []
 REL_CCFLAGS = ['-O2', '-ftree-vectorize']
 
 # NOTE: C_WARN seems to get ignored - at least -Wno-char-subscripts doesn't work!
-C_WARN = ['-Wno-char-subscripts', '-Wdeclaration-after-statement', '-Wstrict-prototypes']
+C_WARN = ['-Wno-char-subscripts', '-Wvla', '-Wstrict-prototypes']
 
 CC_WARN = [ '-Wall', '-Wno-char-subscripts' ]
 

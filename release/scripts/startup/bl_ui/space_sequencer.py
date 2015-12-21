@@ -267,12 +267,23 @@ class SEQUENCER_MT_change(Menu):
 
     def draw(self, context):
         layout = self.layout
+        strip = act_strip(context)
 
         layout.operator_context = 'INVOKE_REGION_WIN'
 
         layout.operator_menu_enum("sequencer.change_effect_input", "swap")
         layout.operator_menu_enum("sequencer.change_effect_type", "type")
-        layout.operator("sequencer.change_path", text="Path/Files")
+        prop = layout.operator("sequencer.change_path", text="Path/Files")
+
+        if strip:
+            stype = strip.type
+
+            if stype == 'IMAGE':
+                prop.filter_image = True;
+            elif stype == 'MOVIE':
+                prop.filter_movie = True;
+            elif stype == 'SOUND':
+                prop.filter_sound = True;
 
 
 class SEQUENCER_MT_frame(Menu):
@@ -827,11 +838,13 @@ class SEQUENCER_PT_scene(SequencerButtonsPanel, Panel):
         layout.template_ID(strip, "scene")
 
         scene = strip.scene
+        layout.prop(strip, "use_sequence")
 
-        layout.label(text="Camera Override")
-        layout.template_ID(strip, "scene_camera")
+        if not strip.use_sequence:
+            layout.label(text="Camera Override")
+            layout.template_ID(strip, "scene_camera")
 
-        layout.prop(strip, "use_grease_pencil", text="Show Grease Pencil")
+            layout.prop(strip, "use_grease_pencil", text="Show Grease Pencil")
 
         if scene:
             layout.prop(scene, "audio_volume", text="Audio Volume")
@@ -966,11 +979,11 @@ class SEQUENCER_PT_proxy(SequencerButtonsPanel, Panel):
                 if proxy.use_proxy_custom_file:
                     flow.prop(proxy, "filepath")
 
-            row = layout.row()
-            row.prop(strip.proxy, "build_25")
-            row.prop(strip.proxy, "build_50")
-            row.prop(strip.proxy, "build_75")
-            row.prop(strip.proxy, "build_100")
+            row = layout.row(align=True)
+            row.prop(strip.proxy, "build_25", toggle=True)
+            row.prop(strip.proxy, "build_50", toggle=True)
+            row.prop(strip.proxy, "build_75", toggle=True)
+            row.prop(strip.proxy, "build_100", toggle=True)
 
             layout.prop(proxy, "use_overwrite")
 

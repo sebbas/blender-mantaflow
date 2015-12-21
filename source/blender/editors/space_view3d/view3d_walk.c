@@ -403,7 +403,6 @@ static void walk_navigation_mode_set(bContext *C, wmOperator *op, WalkInfo *walk
  */
 static bool walk_floor_distance_get(bContext *C, RegionView3D *rv3d, WalkInfo *walk, const float dvec[3], float *r_distance)
 {
-	float dummy_dist_px = 0;
 	float ray_normal[3] = {0, 0, -1}; /* down */
 	float ray_start[3];
 	float r_location[3];
@@ -418,10 +417,12 @@ static bool walk_floor_distance_get(bContext *C, RegionView3D *rv3d, WalkInfo *w
 	mul_v3_v3fl(dvec_tmp, dvec, walk->grid);
 	add_v3_v3(ray_start, dvec_tmp);
 
-	ret = snapObjectsRayEx(CTX_data_scene(C), NULL, NULL, NULL, NULL, SCE_SNAP_MODE_FACE,
-	                       NULL, NULL,
-	                       ray_start, ray_normal, r_distance,
-	                       NULL, &dummy_dist_px, r_location, r_normal, SNAP_ALL);
+	ret = snapObjectsRayEx(
+	        CTX_data_scene(C), NULL, NULL, NULL, NULL,
+	        NULL, SNAP_ALL, SCE_SNAP_MODE_FACE,
+	        ray_start, ray_normal, r_distance,
+	        r_location, r_normal, NULL, NULL,
+	        NULL, NULL);
 
 	/* artifically scale the distance to the scene size */
 	*r_distance /= walk->grid;
@@ -435,7 +436,6 @@ static bool walk_floor_distance_get(bContext *C, RegionView3D *rv3d, WalkInfo *w
  */
 static bool walk_ray_cast(bContext *C, RegionView3D *rv3d, WalkInfo *walk, float r_location[3], float r_normal[3], float *ray_distance)
 {
-	float dummy_dist_px = 0;
 	float ray_normal[3] = {0, 0, 1}; /* forward */
 	float ray_start[3];
 	float mat[3][3]; /* 3x3 copy of the view matrix so we can move along the view axis */
@@ -451,10 +451,12 @@ static bool walk_ray_cast(bContext *C, RegionView3D *rv3d, WalkInfo *walk, float
 	mul_v3_fl(ray_normal, -1);
 	normalize_v3(ray_normal);
 
-	ret = snapObjectsRayEx(CTX_data_scene(C), NULL, NULL, NULL, NULL, SCE_SNAP_MODE_FACE,
-	                       NULL, NULL,
-	                       ray_start, ray_normal, ray_distance,
-	                       NULL, &dummy_dist_px, r_location, r_normal, SNAP_ALL);
+	ret = snapObjectsRayEx(
+	        CTX_data_scene(C), NULL, NULL, NULL, NULL,
+	        NULL, SNAP_ALL, SCE_SNAP_MODE_FACE,
+	        ray_start, ray_normal, ray_distance,
+	        r_location, r_normal, NULL, NULL,
+	        NULL, NULL);
 
 
 	/* dot is positive if both rays are facing the same direction */
@@ -972,9 +974,6 @@ static int walkApply(bContext *C, wmOperator *op, WalkInfo *walk)
 	float mat[3][3]; /* 3x3 copy of the view matrix so we can move along the view axis */
 	float dvec[3] = {0.0f, 0.0f, 0.0f}; /* this is the direction that's added to the view offset per redraw */
 
-	/* Camera Uprighting variables */
-	float upvec[3] = {0.0f, 0.0f, 0.0f}; /* stores the view's up vector */
-
 	int moffset[2]; /* mouse offset from the views center */
 	float tmp_quat[4]; /* used for rotating the view */
 
@@ -1033,6 +1032,7 @@ static int walkApply(bContext *C, wmOperator *op, WalkInfo *walk)
 			{
 				/* rotate about the X axis- look up/down */
 				if (moffset[1]) {
+					float upvec[3];
 					float angle;
 					float y;
 
@@ -1064,6 +1064,7 @@ static int walkApply(bContext *C, wmOperator *op, WalkInfo *walk)
 
 				/* rotate about the Y axis- look left/right */
 				if (moffset[0]) {
+					float upvec[3];
 					float x;
 
 					/* if we're upside down invert the moffset */
@@ -1082,10 +1083,8 @@ static int walkApply(bContext *C, wmOperator *op, WalkInfo *walk)
 					/* user adjustement factor */
 					x *= walk->mouse_speed;
 
-					copy_v3_fl3(upvec, 0.0f, 0.0f, 1.0f);
-
 					/* Rotate about the relative up vec */
-					axis_angle_normalized_to_quat(tmp_quat, upvec, x);
+					axis_angle_to_quat_single(tmp_quat, 'Z', x);
 					mul_qt_qtqt(rv3d->viewquat, rv3d->viewquat, tmp_quat);
 				}
 			}

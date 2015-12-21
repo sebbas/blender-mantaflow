@@ -202,7 +202,7 @@ static int new_particle_settings_exec(bContext *C, wmOperator *UNUSED(op))
 	ob= ptr.id.data;
 
 	if (psys->part)
-		psys->part->id.us--;
+		id_us_min(&psys->part->id);
 
 	psys->part = part;
 
@@ -1095,6 +1095,7 @@ static bool copy_particle_systems_to_object(Scene *scene, Object *ob_from, Parti
 				break;
 			default:
 				/* should not happen */
+				from_mat = to_mat = NULL;
 				BLI_assert(false);
 				break;
 		}

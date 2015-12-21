@@ -63,7 +63,15 @@ void RE_sample_material_color(
 
 struct PointDensity;
 
-void RE_sample_point_density(struct Scene *scene, struct PointDensity *pd, int resolution, float *values);
+void RE_cache_point_density(struct Scene *scene,
+                            struct PointDensity *pd,
+                            const bool use_render_params);
+
+void RE_sample_point_density(struct Scene *scene,
+                             struct PointDensity *pd,
+                             const int resolution,
+                             const bool use_render_params,
+                             float *values);
 
 void RE_init_texture_rng(void);
 void RE_exit_texture_rng(void);

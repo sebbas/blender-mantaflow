@@ -137,6 +137,7 @@ struct wmWindowManager;
 #if 1
 #if defined(__GNUC__)
 #  pragma GCC diagnostic error "-Wmissing-prototypes"
+#  pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
 
 #include "../../intern/cycles/blender/CCL_api.h"
@@ -283,6 +284,7 @@ struct Render *RE_NewRender(const char *name) RET_NULL
 void RE_SwapResult(struct Render *re, struct RenderResult **rr) RET_NONE
 void RE_BlenderFrame(struct Render *re, struct Main *bmain, struct Scene *scene, struct SceneRenderLayer *srl, struct Object *camera_override, unsigned int lay_override, int frame, const bool write_still) RET_NONE
 bool RE_WriteEnvmapResult(struct ReportList *reports, struct Scene *scene, struct EnvMap *env, const char *relpath, const char imtype, float layout[12]) RET_ZERO
+void RE_cache_point_density(struct Scene *scene, struct PointDensity *pd, const bool use_render_params) RET_NONE
 
 /* rna */
 float *ED_view3d_cursor3d_get(struct Scene *scene, struct View3D *v3d) RET_NULL
@@ -511,16 +513,18 @@ bool ED_texture_context_check_others(const struct bContext *C) RET_ZERO
 
 bool ED_text_region_location_from_cursor(SpaceText *st, ARegion *ar, const int cursor_co[2], int r_pixel_co[2]) RET_ZERO
 
-bool snapObjectsRayEx(struct Scene *scene, struct Base *base_act, struct View3D *v3d, struct ARegion *ar, struct Object *obedit, short snap_mode,
-                      struct Object **r_ob, float r_obmat[4][4],
-                      const float ray_start[3], const float ray_normal[3], float *r_ray_dist,
-                      const float mval[2], float *r_dist_px, float r_loc[3], float r_no[3], SnapMode mode) RET_ZERO
+bool snapObjectsRayEx(
+        struct Scene *scene, struct View3D *v3d, struct ARegion *ar, struct Base *base_act, struct Object *obedit,
+        const float mval[2], SnapSelect snap_select, short snap_mode,
+        const float ray_start[3], const float ray_normal[3], float *ray_dist,
+        float r_loc[3], float r_no[3], float *r_dist_px, int *r_index,
+        struct Object **r_ob, float r_obmat[4][4]) RET_ZERO
 
-void make_editLatt(struct Object *obedit) RET_NONE
-void load_editLatt(struct Object *obedit) RET_NONE
+void ED_lattice_editlatt_make(struct Object *obedit) RET_NONE
+void ED_lattice_editlatt_load(struct Object *obedit) RET_NONE
 
-void load_editNurb(struct Object *obedit) RET_NONE
-void make_editNurb(struct Object *obedit) RET_NONE
+void ED_curve_editnurb_load(struct Object *obedit) RET_NONE
+void ED_curve_editnurb_make(struct Object *obedit) RET_NONE
 
 
 void uiItemR(uiLayout *layout, struct PointerRNA *ptr, const char *propname, int flag, const char *name, int icon) RET_NONE
@@ -627,7 +631,7 @@ void RE_engine_update_memory_stats(struct RenderEngine *engine, float mem_used, 
 struct RenderEngine *RE_engine_create(struct RenderEngineType *type) RET_NULL
 void RE_engine_frame_set(struct RenderEngine *engine, int frame, float subframe) RET_NONE
 void RE_FreePersistentData(void) RET_NONE
-void RE_sample_point_density(struct Scene *scene, struct PointDensity *pd, int resolution, float *values) RET_NONE;
+void RE_sample_point_density(struct Scene *scene, struct PointDensity *pd, int resolution, const bool use_render_params, float *values) RET_NONE;
 void RE_instance_get_particle_info(struct ObjectInstanceRen *obi, float *index, float *age, float *lifetime, float co[3], float *size, float vel[3], float angvel[3]) RET_NONE
 void RE_FreeAllPersistentData(void) RET_NONE
 

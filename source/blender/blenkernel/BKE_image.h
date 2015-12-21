@@ -212,6 +212,8 @@ void BKE_image_multiview_index(struct Image *ima, struct ImageUser *iuser);
 
 /* for multilayer images as well as for render-viewer */
 bool BKE_image_is_multilayer(struct Image *ima);
+bool BKE_image_is_multiview(struct Image *ima);
+bool BKE_image_is_stereo(struct Image *ima);
 struct RenderResult *BKE_image_acquire_renderresult(struct Scene *scene, struct Image *ima);
 void BKE_image_release_renderresult(struct Scene *scene, struct Image *ima);
 
@@ -219,7 +221,7 @@ void BKE_image_release_renderresult(struct Scene *scene, struct Image *ima);
 bool BKE_image_is_openexr(struct Image *ima);
 
 /* for multiple slot render, call this before render */
-void BKE_image_backup_render(struct Scene *scene, struct Image *ima);
+void BKE_image_backup_render(struct Scene *scene, struct Image *ima, bool free_current_slot);
 
 /* for singlelayer openexr saving */
 bool BKE_image_save_openexr_multiview(struct Image *ima, struct ImBuf *ibuf, const char *filepath, const int flags);

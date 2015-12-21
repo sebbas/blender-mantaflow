@@ -920,7 +920,7 @@ static PyObject *pyrna_prop_str(BPy_PropertyRNA *self)
 
 	type = RNA_property_type(self->prop);
 
-	if (RNA_enum_id_from_value(property_type_items, type, &type_id) == 0) {
+	if (RNA_enum_id_from_value(rna_enum_property_type_items, type, &type_id) == 0) {
 		PyErr_SetString(PyExc_RuntimeError, "could not use property type, internal error"); /* should never happen */
 		return NULL;
 	}
@@ -6678,6 +6678,21 @@ PyObject *BPY_rna_types(void)
 	/* add __name__ since help() expects its */
 	PyDict_SetItem(pyrna_basetype_Type.tp_dict, bpy_intern_str___name__, bpy_intern_str_bpy_types);
 
+	/* internal base types we have no other accessors for */
+	{
+		PyTypeObject *pyrna_types[] = {
+		    &pyrna_struct_meta_idprop_Type,
+		    &pyrna_struct_Type,
+		    &pyrna_prop_Type,
+		    &pyrna_prop_array_Type,
+		    &pyrna_prop_collection_Type,
+		    &pyrna_func_Type,
+		};
+
+		for (int i = 0; i < ARRAY_SIZE(pyrna_types); i += 1) {
+			PyDict_SetItemString(pyrna_basetype_Type.tp_dict, pyrna_types[i]->tp_name, (PyObject *)pyrna_types[i]);
+		}
+	}
 
 	self = (BPy_BaseTypeRNA *)PyObject_NEW(BPy_BaseTypeRNA, &pyrna_basetype_Type);
 

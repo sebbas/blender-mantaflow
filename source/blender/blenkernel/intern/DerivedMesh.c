@@ -52,6 +52,7 @@
 #include "BKE_cdderivedmesh.h"
 #include "BKE_editmesh.h"
 #include "BKE_key.h"
+#include "BKE_library.h"
 #include "BKE_material.h"
 #include "BKE_modifier.h"
 #include "BKE_mesh.h"
@@ -73,8 +74,8 @@ static DerivedMesh *navmesh_dm_createNavMeshForVisualization(DerivedMesh *dm);
 #include "BLI_sys_types.h" /* for intptr_t support */
 
 #include "GPU_buffers.h"
-#include "GPU_extensions.h"
 #include "GPU_glew.h"
+#include "GPU_shader.h"
 
 #ifdef WITH_OPENSUBDIV
 #  include "DNA_userdef_types.h"
@@ -581,7 +582,6 @@ void DM_update_tessface_data(DerivedMesh *dm)
 
 void DM_generate_tangent_tessface_data(DerivedMesh *dm, bool generate)
 {
-	int i;
 	MFace *mf, *mface = dm->getTessFaceArray(dm);
 	MPoly *mp = dm->getPolyArray(dm);
 	MLoop *ml = dm->getLoopArray(dm);
@@ -601,9 +601,10 @@ void DM_generate_tangent_tessface_data(DerivedMesh *dm, bool generate)
 		return;
 
 	if (generate) {
-		for (i = 0; i < ldata->totlayer; i++) {
-			if (ldata->layers[i].type == CD_TANGENT)
+		for (int i = 0; i < ldata->totlayer; i++) {
+			if (ldata->layers[i].type == CD_TANGENT) {
 				CustomData_add_layer_named(fdata, CD_TANGENT, CD_CALLOC, NULL, totface, ldata->layers[i].name);
+			}
 		}
 		CustomData_bmesh_update_active_layers(fdata, pdata, ldata);
 	}
@@ -800,7 +801,8 @@ void DM_to_mesh(DerivedMesh *dm, Mesh *me, Object *ob, CustomDataMask mask, bool
 	 * stack*/
 	if (tmp.totvert != me->totvert && !did_shapekeys && me->key) {
 		printf("%s: YEEK! this should be recoded! Shape key loss!: ID '%s'\n", __func__, tmp.id.name);
-		if (tmp.key) tmp.key->id.us--;
+		if (tmp.key)
+			id_us_min(&tmp.key->id);
 		tmp.key = NULL;
 	}
 
@@ -1443,7 +1445,7 @@ static void calc_weightpaint_vert_array(
 	MDeformVert *dv = DM_get_vert_data_layer(dm, CD_MDEFORMVERT);
 	int numVerts = dm->getNumVerts(dm);
 
-	if (dv) {
+	if (dv && (ob->actdef != 0)) {
 		unsigned char (*wc)[4] = r_wtcol_v;
 		unsigned int i;
 
@@ -1468,7 +1470,10 @@ static void calc_weightpaint_vert_array(
 	}
 	else {
 		unsigned char col[4];
-		if (draw_flag & (CALC_WP_GROUP_USER_ACTIVE | CALC_WP_GROUP_USER_ALL)) {
+		if ((ob->actdef == 0) && !BLI_listbase_is_empty(&ob->defbase)) {
+			ARRAY_SET_ITEMS(col, 0xff, 0, 0xff, 0xff);
+		}
+		else if (draw_flag & (CALC_WP_GROUP_USER_ACTIVE | CALC_WP_GROUP_USER_ALL)) {
 			copy_v3_v3_char((char *)col, dm_wcinfo->alert_color);
 			col[3] = 255;
 		}
@@ -1561,8 +1566,8 @@ void DM_update_weight_mcol(
 			ml = mloop + mp->loopstart;
 
 			for (j = 0; j < mp->totloop; j++, ml++, l_index++) {
-				copy_v4_v4_char((char *)&wtcol_l[l_index],
-				                (char *)&wtcol_v[ml->v]);
+				copy_v4_v4_uchar(&wtcol_l[l_index][0],
+				                 &wtcol_v[ml->v][0]);
 			}
 		}
 		MEM_freeN(wtcol_v);
@@ -2626,13 +2631,13 @@ static CustomDataMask object_get_datamask(const Scene *scene, Object *ob, bool *
 {
 	Object *actob = scene->basact ? scene->basact->object : NULL;
 	CustomDataMask mask = ob->customdata_mask;
-	bool editing = BKE_paint_select_face_test(ob);
 
 	if (r_need_mapping) {
 		*r_need_mapping = false;
 	}
 
 	if (ob == actob) {
+		bool editing = BKE_paint_select_face_test(ob);
 
 		/* weight paint and face select need original indices because of selection buffer drawing */
 		if (r_need_mapping) {
@@ -3426,7 +3431,7 @@ void DM_draw_attrib_vertex(DMVertexAttribs *attribs, int a, int index, int vert,
 		if (attribs->orco.gl_texco)
 			glTexCoord3fv(orco);
 		else
-			glVertexAttrib3fvARB(attribs->orco.gl_index, orco);
+			glVertexAttrib3fv(attribs->orco.gl_index, orco);
 	}
 
 	/* uv texture coordinates */
@@ -3444,7 +3449,7 @@ void DM_draw_attrib_vertex(DMVertexAttribs *attribs, int a, int index, int vert,
 		if (attribs->tface[b].gl_texco)
 			glTexCoord2fv(uv);
 		else
-			glVertexAttrib2fvARB(attribs->tface[b].gl_index, uv);
+			glVertexAttrib2fv(attribs->tface[b].gl_index, uv);
 	}
 
 	/* vertex colors */
@@ -3453,20 +3458,20 @@ void DM_draw_attrib_vertex(DMVertexAttribs *attribs, int a, int index, int vert,
 
 		if (attribs->mcol[b].array) {
 			const MLoopCol *cp = &attribs->mcol[b].array[loop];
-			copy_v4_v4_char((char *)col, &cp->r);
+			copy_v4_v4_uchar(col, &cp->r);
 		}
 		else {
 			col[0] = 0; col[1] = 0; col[2] = 0; col[3] = 0;
 		}
 
-		glVertexAttrib4ubvARB(attribs->mcol[b].gl_index, col);
+		glVertexAttrib4ubv(attribs->mcol[b].gl_index, col);
 	}
 
 	/* tangent for normal mapping */
 	if (attribs->tottang) {
 		/*const*/ float (*array)[4] = attribs->tang.array;
 		const float *tang = (array) ? array[loop] : zero;
-		glVertexAttrib4fvARB(attribs->tang.gl_index, tang);
+		glVertexAttrib4fv(attribs->tang.gl_index, tang);
 	}
 }
 
@@ -3524,14 +3529,11 @@ static void navmesh_drawColored(DerivedMesh *dm)
 
 #if 0
 	//UI_ThemeColor(TH_WIRE);
-	glDisable(GL_LIGHTING);
 	glLineWidth(2.0);
 	dm->drawEdges(dm, 0, 1);
 	glLineWidth(1.0);
-	glEnable(GL_LIGHTING);
 #endif
 
-	glDisable(GL_LIGHTING);
 	/* if (GPU_buffer_legacy(dm) ) */ /* TODO - VBO draw code, not high priority - campbell */
 	{
 		DEBUG_VBO("Using legacy code. drawNavMeshColored\n");
@@ -3561,7 +3563,6 @@ static void navmesh_drawColored(DerivedMesh *dm)
 		}
 		glEnd();
 	}
-	glEnable(GL_LIGHTING);
 }
 
 static void navmesh_DM_drawFacesTex(

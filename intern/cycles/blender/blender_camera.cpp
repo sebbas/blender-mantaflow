@@ -36,6 +36,8 @@ struct BlenderCamera {
 
 	float lens;
 	float shuttertime;
+	Camera::MotionPosition motion_position;
+	float shutter_curve[RAMP_TABLE_SIZE];
 
 	float aperturesize;
 	uint apertureblades;
@@ -83,6 +85,7 @@ static void blender_camera_init(BlenderCamera *bcam, BL::RenderSettings b_render
 	bcam->sensor_height = 18.0f;
 	bcam->sensor_fit = BlenderCamera::AUTO;
 	bcam->shuttertime = 1.0f;
+	bcam->motion_position = Camera::MOTION_POSITION_CENTER;
 	bcam->border.right = 1.0f;
 	bcam->border.top = 1.0f;
 	bcam->pano_viewplane.right = 1.0f;
@@ -93,6 +96,10 @@ static void blender_camera_init(BlenderCamera *bcam, BL::RenderSettings b_render
 	/* render resolution */
 	bcam->full_width = render_resolution_x(b_render);
 	bcam->full_height = render_resolution_y(b_render);
+
+	/* pixel aspect */
+	bcam->pixelaspect.x = b_render.pixel_aspect_x();
+	bcam->pixelaspect.y = b_render.pixel_aspect_y();
 }
 
 static float blender_camera_focal_distance(BL::RenderEngine b_engine, BL::Object b_ob, BL::Camera b_camera)
@@ -409,6 +416,9 @@ static void blender_camera_sync(Camera *cam, BlenderCamera *bcam, int width, int
 	cam->shuttertime = bcam->shuttertime;
 	cam->fov_pre = cam->fov;
 	cam->fov_post = cam->fov;
+	cam->motion_position = bcam->motion_position;
+
+	memcpy(cam->shutter_curve, bcam->shutter_curve, sizeof(cam->shutter_curve));
 
 	/* border */
 	cam->border = bcam->border;
@@ -430,6 +440,25 @@ void BlenderSync::sync_camera(BL::RenderSettings b_render, BL::Object b_override
 	bcam.pixelaspect.x = b_render.pixel_aspect_x();
 	bcam.pixelaspect.y = b_render.pixel_aspect_y();
 	bcam.shuttertime = b_render.motion_blur_shutter();
+	curvemapping_to_array(b_render.motion_blur_shutter_curve(),
+	                      bcam.shutter_curve,
+	                      RAMP_TABLE_SIZE);
+
+	PointerRNA cscene = RNA_pointer_get(&b_scene.ptr, "cycles");
+	switch(RNA_enum_get(&cscene, "motion_blur_position")) {
+		case 0:
+			bcam.motion_position = Camera::MOTION_POSITION_START;
+			break;
+		case 1:
+			bcam.motion_position = Camera::MOTION_POSITION_CENTER;
+			break;
+		case 2:
+			bcam.motion_position = Camera::MOTION_POSITION_END;
+			break;
+		default:
+			bcam.motion_position = Camera::MOTION_POSITION_CENTER;
+			break;
+	}
 
 	/* border */
 	if(b_render.use_border()) {
@@ -487,6 +516,7 @@ void BlenderSync::sync_camera_motion(BL::RenderSettings b_render,
 		BlenderCamera bcam;
 		float aspectratio, sensor_size;
 		blender_camera_init(&bcam, b_render);
+
 		blender_camera_from_object(&bcam, b_engine, b_ob);
 		blender_camera_viewplane(&bcam,
 		                         width, height,
@@ -521,6 +551,9 @@ static void blender_camera_from_view(BlenderCamera *bcam, BL::RenderEngine b_eng
 	bcam->farclip = b_v3d.clip_end();
 	bcam->lens = b_v3d.lens();
 	bcam->shuttertime = b_scene.render().motion_blur_shutter();
+	curvemapping_to_array(b_scene.render().motion_blur_shutter_curve(),
+	                      bcam->shutter_curve,
+	                      RAMP_TABLE_SIZE);
 
 	if(b_rv3d.view_perspective() == BL::RegionView3D::view_perspective_CAMERA) {
 		/* camera view */

@@ -54,6 +54,7 @@ enum_bvh_types = (
 enum_filter_types = (
     ('BOX', "Box", "Box filter"),
     ('GAUSSIAN', "Gaussian", "Gaussian filter"),
+    ('BLACKMAN_HARRIS', "Blackman-Harris", "Blackman-Harris filter"),
     )
 
 enum_aperture_types = (
@@ -518,6 +519,17 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
                 default=0.1,
                 min=0.0, max=5.0
                 )
+
+        cls.motion_blur_position = EnumProperty(
+            name="Motion Blur Position",
+            default='CENTER',
+            description="Offset for the shutter's time interval, allows to change the motion blur trails",
+            items=(
+                ('START', "Start on Frame", "The shutter opens at the current frame"),
+                ('CENTER', "Center on Frame", "The shutter is open during the current frame"),
+                ('END', "End on Frame", "The shutter closes at the current frame"),
+                ),
+            )
 
     @classmethod
     def unregister(cls):

@@ -384,6 +384,7 @@ typedef struct bNodeTree {
 	
 	/* callbacks */
 	void (*progress)(void *, float progress);
+	/** \warning may be called by different threads */
 	void (*stats_draw)(void *, const char *str);
 	int (*test_break)(void *);
 	void (*update_draw)(void *);
@@ -748,6 +749,8 @@ typedef struct NodeTexEnvironment {
 	ImageUser iuser;
 	int color_space;
 	int projection;
+	int interpolation;
+	int pad;
 } NodeTexEnvironment;
 
 typedef struct NodeTexGradient {
@@ -804,6 +807,7 @@ typedef struct NodeShaderTexPointDensity {
 	short interpolation;
 	short color_source;
 	short pad2;
+	PointDensity pd;
 } NodeShaderTexPointDensity;
 
 /* TEX_output */
@@ -1106,6 +1110,11 @@ enum {
 /* Plane track deform node */
 enum {
 	CMP_NODEFLAG_PLANETRACKDEFORM_MOTION_BLUR = 1,
+};
+
+/* Stabilization node */
+enum {
+	CMP_NODEFLAG_STABILIZE_INVERSE = 1,
 };
 
 #define CMP_NODE_PLANETRACKDEFORM_MBLUR_SAMPLES_MAX 64

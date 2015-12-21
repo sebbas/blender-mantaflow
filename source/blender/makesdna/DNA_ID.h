@@ -232,7 +232,6 @@ typedef struct PreviewImage {
 #define ID_ID		MAKE_ID2('I', 'D') /* (internal use only) */
 #define ID_AR		MAKE_ID2('A', 'R') /* bArmature */
 #define ID_AC		MAKE_ID2('A', 'C') /* bAction */
-#define ID_SCRIPT	MAKE_ID2('P', 'Y') /* Script (depreciated) */
 #define ID_NT		MAKE_ID2('N', 'T') /* bNodeTree */
 #define ID_BR		MAKE_ID2('B', 'R') /* Brush */
 #define ID_PA		MAKE_ID2('P', 'A') /* ParticleSettings */
@@ -255,11 +254,14 @@ typedef struct PreviewImage {
 			/* fluidsim Ipo */
 #define ID_FLUIDSIM	MAKE_ID2('F', 'S')
 
-#define ID_REAL_USERS(id) (((ID *)id)->us - ((((ID *)id)->flag & LIB_FAKEUSER) ? 1 : 0))
+#define ID_FAKE_USERS(id) ((((ID *)id)->flag & LIB_FAKEUSER) ? 1 : 0)
+#define ID_REAL_USERS(id) (((ID *)id)->us - ID_FAKE_USERS(id))
 
 #define ID_CHECK_UNDO(id) ((GS((id)->name) != ID_SCR) && (GS((id)->name) != ID_WM))
 
 #define ID_BLEND_PATH(_bmain, _id) ((_id)->lib ? (_id)->lib->filepath : (_bmain)->name)
+
+#define ID_MISSING(_id) (((_id)->flag & LIB_MISSING) != 0)
 
 #ifdef GS
 #  undef GS
@@ -280,6 +282,8 @@ enum {
 	LIB_TESTIND         = (LIB_NEED_EXPAND | LIB_INDIRECT),
 	LIB_READ            = 1 << 4,
 	LIB_NEED_LINK       = 1 << 5,
+	/* tag datablock as a place-holder (because the real one could not be linked from its library e.g.). */
+	LIB_MISSING         = 1 << 6,
 
 	LIB_NEW             = 1 << 8,
 	LIB_FAKEUSER        = 1 << 9,

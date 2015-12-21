@@ -328,7 +328,7 @@ static void py_bvhtree_nearest_point_cb(void *userdata, int index, const float c
 }
 
 PyDoc_STRVAR(py_bvhtree_ray_cast_doc,
-".. method:: ray_cast(co, direction, distance=sys.float_info.max)\n"
+".. method:: ray_cast(origin, direction, distance=sys.float_info.max)\n"
 "\n"
 "   Cast a ray onto the mesh.\n"
 "\n"
@@ -352,7 +352,7 @@ static PyObject *py_bvhtree_ray_cast(PyBVHTree *self, PyObject *args)
 
 		if (!PyArg_ParseTuple(
 		        args, (char *)"OO|f:ray_cast",
-		        &py_co, &py_direction, max_dist))
+		        &py_co, &py_direction, &max_dist))
 		{
 			return NULL;
 		}
@@ -383,7 +383,7 @@ static PyObject *py_bvhtree_ray_cast(PyBVHTree *self, PyObject *args)
 }
 
 PyDoc_STRVAR(py_bvhtree_find_nearest_doc,
-".. method:: find_nearest(co, distance=" PYBVH_MAX_DIST_STR ")\n"
+".. method:: find_nearest(origin, distance=" PYBVH_MAX_DIST_STR ")\n"
 "\n"
 "   Find the nearest element to a point.\n"
 "\n"

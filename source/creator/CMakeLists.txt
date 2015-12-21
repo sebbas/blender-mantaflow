@@ -250,8 +250,10 @@ endif()
 
 set(BLENDER_TEXT_FILES
 	${CMAKE_SOURCE_DIR}/release/text/GPL-license.txt
+	${CMAKE_SOURCE_DIR}/release/text/GPL3-license.txt
 	${CMAKE_SOURCE_DIR}/release/text/Python-license.txt
 	${CMAKE_SOURCE_DIR}/release/text/copyright.txt
+	${CMAKE_SOURCE_DIR}/release/text/jemalloc-license.txt
 	# generate this file
 	# ${CMAKE_SOURCE_DIR}/release/text/readme.html
 	${CMAKE_SOURCE_DIR}/release/datafiles/LICENSE-bfont.ttf.txt
@@ -292,7 +294,8 @@ elseif(APPLE)
 	else()
 		set(TARGETDIR_VER blender.app/Contents/Resources/${BLENDER_VERSION})
 	endif()
-
+	# Skip relinking on cpack / install
+	set_target_properties(blender PROPERTIES BUILD_WITH_INSTALL_RPATH true)
 endif()
 
 
@@ -1020,7 +1023,7 @@ if(DEFINED BLENDER_TEXT_FILES_DESTINATION)
 		"
 		file(READ \"${CMAKE_SOURCE_DIR}/release/text/readme.html\" DATA_SRC)
 		string(REGEX REPLACE \"BLENDER_VERSION\" \"${BLENDER_VERSION}\" DATA_DST \"\${DATA_SRC}\")
-		file(WRITE \"\${CMAKE_BINARY_DIR}/release/text/readme.html\" \"\${DATA_DST}\")
+		file(WRITE \"${CMAKE_BINARY_DIR}/release/text/readme.html\" \"\${DATA_DST}\")
 		unset(DATA_SRC)
 		unset(DATA_DST)
 		"

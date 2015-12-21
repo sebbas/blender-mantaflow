@@ -47,10 +47,12 @@
 #include "DNA_camera_types.h"
 #include "DNA_gpu_types.h"
 
-#include "GPU_extensions.h"
 #include "GPU_compositing.h"
-
+#include "GPU_extensions.h"
+#include "GPU_framebuffer.h"
 #include "GPU_glew.h"
+#include "GPU_shader.h"
+#include "GPU_texture.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -179,14 +181,13 @@ GPUFX *GPU_fx_compositor_create(void)
 {
 	GPUFX *fx = MEM_callocN(sizeof(GPUFX), "GPUFX compositor");
 
-	if (GLEW_ARB_vertex_buffer_object) {
-		glGenBuffersARB(1, &fx->vbuffer);
-		glBindBufferARB(GL_ARRAY_BUFFER_ARB, fx->vbuffer);
-		glBufferDataARB(GL_ARRAY_BUFFER_ARB, 16 * sizeof(float), NULL, GL_STATIC_DRAW);
-		glBufferSubDataARB(GL_ARRAY_BUFFER_ARB, 0, 8 * sizeof(float), fullscreencos);
-		glBufferSubDataARB(GL_ARRAY_BUFFER_ARB, 8 * sizeof(float), 8 * sizeof(float), fullscreenuvs);
-		glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
-	}
+	glGenBuffers(1, &fx->vbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, fx->vbuffer);
+	glBufferData(GL_ARRAY_BUFFER, 16 * sizeof(float), NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, 8 * sizeof(float), fullscreencos);
+	glBufferSubData(GL_ARRAY_BUFFER, 8 * sizeof(float), 8 * sizeof(float), fullscreenuvs);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
 	return fx;
 }
 
@@ -275,8 +276,7 @@ static void cleanup_fx_gl_data(GPUFX *fx, bool do_fbo)
 void GPU_fx_compositor_destroy(GPUFX *fx)
 {
 	cleanup_fx_gl_data(fx, true);
-	if (GLEW_ARB_vertex_buffer_object)
-		glDeleteBuffersARB(1, &fx->vbuffer);
+	glDeleteBuffers(1, &fx->vbuffer);
 	MEM_freeN(fx);
 }
 
@@ -306,7 +306,7 @@ bool GPU_fx_compositor_initialize_passes(
 
 	fx->effects = 0;
 
-	if (!GPU_non_power_of_two_support() || !GLEW_EXT_framebuffer_object || !GLEW_ARB_fragment_shader)
+	if (!GLEW_EXT_framebuffer_object)
 		return false;
 
 	if (!fx_settings) {
@@ -605,7 +605,7 @@ void GPU_fx_compositor_XRay_resolve(GPUFX *fx)
 	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
 	/* set up quad buffer */
-	glBindBufferARB(GL_ARRAY_BUFFER_ARB, fx->vbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, fx->vbuffer);
 	glVertexPointer(2, GL_FLOAT, 0, NULL);
 	glTexCoordPointer(2, GL_FLOAT, 0, ((GLubyte *)NULL + 8 * sizeof(float)));
 	glEnableClientState(GL_VERTEX_ARRAY);
@@ -636,7 +636,7 @@ void GPU_fx_compositor_XRay_resolve(GPUFX *fx)
 
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
-	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 
@@ -675,7 +675,7 @@ bool GPU_fx_do_composite_pass(GPUFX *fx, float projmat[4][4], bool is_persp, str
 	target = fx->color_buffer_sec;
 
 	/* set up quad buffer */
-	glBindBufferARB(GL_ARRAY_BUFFER_ARB, fx->vbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, fx->vbuffer);
 	glVertexPointer(2, GL_FLOAT, 0, NULL);
 	glTexCoordPointer(2, GL_FLOAT, 0, ((GLubyte *)NULL + 8 * sizeof(float)));
 	glEnableClientState(GL_VERTEX_ARRAY);
@@ -822,7 +822,7 @@ bool GPU_fx_do_composite_pass(GPUFX *fx, float projmat[4][4], bool is_persp, str
 				glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 
 				GPU_shader_unbind();
-				glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+				glBindBuffer(GL_ARRAY_BUFFER, 0);
 				return false;
 			}
 
@@ -1035,7 +1035,7 @@ bool GPU_fx_do_composite_pass(GPUFX *fx, float projmat[4][4], bool is_persp, str
 				glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 
 				GPU_shader_unbind();
-				glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+				glBindBuffer(GL_ARRAY_BUFFER, 0);
 				return false;
 			}
 
@@ -1084,12 +1084,12 @@ bool GPU_fx_do_composite_pass(GPUFX *fx, float projmat[4][4], bool is_persp, str
 			{
 				int invrendertargetdim_uniform, color_uniform, depth_uniform, dof_uniform;
 				int viewvecs_uniform;
-				float invrendertargetdim[2] = {1.0f / GPU_texture_opengl_width(fx->dof_near_coc_blurred_buffer),
-				                               1.0f / GPU_texture_opengl_height(fx->dof_near_coc_blurred_buffer)};
+				float invrendertargetdim[2] = {1.0f / GPU_texture_width(fx->dof_near_coc_blurred_buffer),
+				                               1.0f / GPU_texture_height(fx->dof_near_coc_blurred_buffer)};
 				float tmp = invrendertargetdim[0];
 				invrendertargetdim[0] = 0.0f;
 
-				dof_params[2] = GPU_texture_opengl_width(fx->dof_near_coc_blurred_buffer) / (scale_camera * fx_dof->sensor);
+				dof_params[2] = GPU_texture_width(fx->dof_near_coc_blurred_buffer) / (scale_camera * fx_dof->sensor);
 
 				dof_uniform = GPU_shader_get_uniform(dof_shader_pass2, "dof_params");
 				invrendertargetdim_uniform = GPU_shader_get_uniform(dof_shader_pass2, "invrendertargetdim");
@@ -1176,8 +1176,8 @@ bool GPU_fx_do_composite_pass(GPUFX *fx, float projmat[4][4], bool is_persp, str
 			{
 				int near_coc_downsampled;
 				int invrendertargetdim_uniform;
-				float invrendertargetdim[2] = {1.0f / GPU_texture_opengl_width(fx->dof_near_coc_blurred_buffer),
-				                               1.0f / GPU_texture_opengl_height(fx->dof_near_coc_blurred_buffer)};
+				float invrendertargetdim[2] = {1.0f / GPU_texture_width(fx->dof_near_coc_blurred_buffer),
+				                               1.0f / GPU_texture_height(fx->dof_near_coc_blurred_buffer)};
 
 				near_coc_downsampled = GPU_shader_get_uniform(dof_shader_pass4, "colorbuffer");
 				invrendertargetdim_uniform = GPU_shader_get_uniform(dof_shader_pass4, "invrendertargetdim");
@@ -1264,7 +1264,7 @@ bool GPU_fx_do_composite_pass(GPUFX *fx, float projmat[4][4], bool is_persp, str
 
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	GPU_shader_unbind();
 

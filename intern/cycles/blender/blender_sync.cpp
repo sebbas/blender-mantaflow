@@ -161,7 +161,12 @@ void BlenderSync::sync_data(BL::RenderSettings b_render,
 
 	mesh_synced.clear(); /* use for objects and motion sync */
 
-	sync_objects(b_v3d);
+	if(scene->need_motion() == Scene::MOTION_PASS ||
+	   scene->need_motion() == Scene::MOTION_NONE ||
+	   scene->camera->motion_position == Camera::MOTION_POSITION_CENTER)
+	{
+		sync_objects(b_v3d);
+	}
 	sync_motion(b_render,
 	            b_v3d,
 	            b_override,
@@ -322,7 +327,8 @@ void BlenderSync::sync_render_layers(BL::SpaceView3D b_v3d, const char *layer)
 			render_layer.exclude_layer = 0;
 			render_layer.holdout_layer = 0;
 			render_layer.material_override = PointerRNA_NULL;
-			render_layer.use_background = true;
+			render_layer.use_background_shader = true;
+			render_layer.use_background_ao = true;
 			render_layer.use_hair = true;
 			render_layer.use_surfaces = true;
 			render_layer.use_viewport_visibility = true;
@@ -354,7 +360,8 @@ void BlenderSync::sync_render_layers(BL::SpaceView3D b_v3d, const char *layer)
 			render_layer.layer |= render_layer.holdout_layer;
 
 			render_layer.material_override = b_rlay->material_override();
-			render_layer.use_background = b_rlay->use_sky();
+			render_layer.use_background_shader = b_rlay->use_sky();
+			render_layer.use_background_ao = b_rlay->use_ao();
 			render_layer.use_surfaces = b_rlay->use_solid();
 			render_layer.use_hair = b_rlay->use_strand();
 			render_layer.use_viewport_visibility = false;

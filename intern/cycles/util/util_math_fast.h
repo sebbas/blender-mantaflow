@@ -47,7 +47,6 @@
 
 CCL_NAMESPACE_BEGIN
 
-/* TODO(sergey): Make sure it does not conflict with SSE intrinsics. */
 ccl_device_inline float madd(const float a, const float b, const float c)
 {
 	/* NOTE: In the future we may want to explicitly ask for a fused
@@ -248,7 +247,7 @@ ccl_device float fast_sinpif(float x)
 	 * The basic idea of this approximation starts with the coarse approximation:
 	 *      sin(pi*x) ~= f(x) =  4 * (x - x * abs(x))
 	 *
-	 * This approximation always _over_ estimates the target. On the otherhand,
+	 * This approximation always _over_ estimates the target. On the other hand,
 	 * the curve:
 	 *      sin(pi*x) ~= f(x) * abs(f(x)) / 4
 	 *

@@ -49,6 +49,7 @@
 
 #include "DNA_lamp_types.h"
 #include "DNA_material_types.h"
+#include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
@@ -74,10 +75,13 @@
 #include "BKE_subsurf.h"
 #include "BKE_DerivedMesh.h"
 
+#include "GPU_basic_shader.h"
 #include "GPU_buffers.h"
 #include "GPU_draw.h"
 #include "GPU_extensions.h"
 #include "GPU_material.h"
+#include "GPU_shader.h"
+#include "GPU_texture.h"
 
 #include "PIL_time.h"
 
@@ -182,17 +186,17 @@ void GPU_render_text(
 			uv[2][1] = (uv_quad[2][1] - centery) * sizey + transy;
 			
 			glBegin(GL_POLYGON);
-			if (glattrib >= 0) glVertexAttrib2fvARB(glattrib, uv[0]);
+			if (glattrib >= 0) glVertexAttrib2fv(glattrib, uv[0]);
 			else glTexCoord2fv(uv[0]);
 			if (col) gpu_mcol(col[0]);
 			glVertex3f(sizex * v1[0] + movex, sizey * v1[1] + movey, v1[2]);
 			
-			if (glattrib >= 0) glVertexAttrib2fvARB(glattrib, uv[1]);
+			if (glattrib >= 0) glVertexAttrib2fv(glattrib, uv[1]);
 			else glTexCoord2fv(uv[1]);
 			if (col) gpu_mcol(col[1]);
 			glVertex3f(sizex * v2[0] + movex, sizey * v2[1] + movey, v2[2]);
 
-			if (glattrib >= 0) glVertexAttrib2fvARB(glattrib, uv[2]);
+			if (glattrib >= 0) glVertexAttrib2fv(glattrib, uv[2]);
 			else glTexCoord2fv(uv[2]);
 			if (col) gpu_mcol(col[2]);
 			glVertex3f(sizex * v3[0] + movex, sizey * v3[1] + movey, v3[2]);
@@ -201,7 +205,7 @@ void GPU_render_text(
 				uv[3][0] = (uv_quad[3][0] - centerx) * sizex + transx;
 				uv[3][1] = (uv_quad[3][1] - centery) * sizey + transy;
 
-				if (glattrib >= 0) glVertexAttrib2fvARB(glattrib, uv[3]);
+				if (glattrib >= 0) glVertexAttrib2fv(glattrib, uv[3]);
 				else glTexCoord2fv(uv[3]);
 				if (col) gpu_mcol(col[3]);
 				glVertex3f(sizex * v4[0] + movex, sizey * v4[1] + movey, v4[2]);
@@ -438,10 +442,7 @@ static void gpu_set_alpha_blend(GPUBlendMode alphablend)
 		glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
 
 		/* for OpenGL render we use the alpha channel, this makes alpha blend correct */
-		if (GLEW_VERSION_1_4)
-			glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-		else
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 		
 		/* if U.glalphaclip == 1.0, some cards go bonkers...
 		 * turn off alpha test in this case */
@@ -731,7 +732,7 @@ void GPU_create_gl_tex(unsigned int *bind, unsigned int *rect, float *frect, int
 	/* scale if not a power of two. this is not strictly necessary for newer
 	 * GPUs (OpenGL version >= 2.0) since they support non-power-of-two-textures 
 	 * Then don't bother scaling for hardware that supports NPOT textures! */
-	if ((!GPU_non_power_of_two_support() && !is_power_of_2_resolution(rectw, recth)) ||
+	if ((!GPU_full_non_power_of_two_support() && !is_power_of_2_resolution(rectw, recth)) ||
 		is_over_resolution_limit(rectw, recth)) {
 		rectw = smaller_power_of_2_limit(rectw);
 		recth = smaller_power_of_2_limit(recth);
@@ -756,12 +757,12 @@ void GPU_create_gl_tex(unsigned int *bind, unsigned int *rect, float *frect, int
 
 	if (use_high_bit_depth) {
 		if (GLEW_ARB_texture_float)
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, rectw, recth, 0, GL_RGBA, GL_FLOAT, frect);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F_ARB, rectw, recth, 0, GL_RGBA, GL_FLOAT, frect);
 		else
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16, rectw, recth, 0, GL_RGBA, GL_FLOAT, frect);
 	}
 	else
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rectw, recth, 0, GL_RGBA, GL_UNSIGNED_BYTE, rect);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, rectw, recth, 0, GL_RGBA, GL_UNSIGNED_BYTE, rect);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gpu_get_mipmap_filter(1));
 
@@ -787,12 +788,12 @@ void GPU_create_gl_tex(unsigned int *bind, unsigned int *rect, float *frect, int
 				ImBuf *mip = ibuf->mipmap[i - 1];
 				if (use_high_bit_depth) {
 					if (GLEW_ARB_texture_float)
-						glTexImage2D(GL_TEXTURE_2D, i, GL_RGBA16F, mip->x, mip->y, 0, GL_RGBA, GL_FLOAT, mip->rect_float);
+						glTexImage2D(GL_TEXTURE_2D, i, GL_RGBA16F_ARB, mip->x, mip->y, 0, GL_RGBA, GL_FLOAT, mip->rect_float);
 					else
 						glTexImage2D(GL_TEXTURE_2D, i, GL_RGBA16, mip->x, mip->y, 0, GL_RGBA, GL_FLOAT, mip->rect_float);
 				}
 				else {
-					glTexImage2D(GL_TEXTURE_2D, i, GL_RGBA, mip->x, mip->y, 0, GL_RGBA, GL_UNSIGNED_BYTE, mip->rect);
+					glTexImage2D(GL_TEXTURE_2D, i, GL_RGBA8, mip->x, mip->y, 0, GL_RGBA, GL_UNSIGNED_BYTE, mip->rect);
 				}
 			}
 		}
@@ -807,8 +808,6 @@ void GPU_create_gl_tex(unsigned int *bind, unsigned int *rect, float *frect, int
 
 	if (GLEW_EXT_texture_filter_anisotropic)
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, GPU_get_anisotropic());
-	/* set to modulate with vertex color */
-	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
 	if (ibuf)
 		IMB_freeImBuf(ibuf);
@@ -849,8 +848,6 @@ bool GPU_upload_dxt_texture(ImBuf *ibuf)
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gpu_get_mipmap_filter(0));
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gpu_get_mipmap_filter(1));
-
-	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
 	if (GLEW_EXT_texture_filter_anisotropic)
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, GPU_get_anisotropic());
@@ -1005,7 +1002,7 @@ void GPU_paint_set_mipmap(bool mipmap)
 /* check if image has been downscaled and do scaled partial update */
 static bool GPU_check_scaled_image(ImBuf *ibuf, Image *ima, float *frect, int x, int y, int w, int h)
 {
-	if ((!GPU_non_power_of_two_support() && !is_power_of_2_resolution(ibuf->x, ibuf->y)) ||
+	if ((!GPU_full_non_power_of_two_support() && !is_power_of_2_resolution(ibuf->x, ibuf->y)) ||
 	    is_over_resolution_limit(ibuf->x, ibuf->y))
 	{
 		int x_limit = smaller_power_of_2_limit(ibuf->x);
@@ -1029,14 +1026,14 @@ static bool GPU_check_scaled_image(ImBuf *ibuf, Image *ima, float *frect, int x,
 
 		/* float rectangles are already continuous in memory so we can use IMB_scaleImBuf */
 		if (frect) {
-			ImBuf *ibuf = IMB_allocFromBuffer(NULL, frect, w, h);
-			IMB_scaleImBuf(ibuf, rectw, recth);
+			ImBuf *ibuf_scale = IMB_allocFromBuffer(NULL, frect, w, h);
+			IMB_scaleImBuf(ibuf_scale, rectw, recth);
 
 			glBindTexture(GL_TEXTURE_2D, ima->bindcode);
 			glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, rectw, recth, GL_RGBA,
-			                GL_FLOAT, ibuf->rect_float);
+			                GL_FLOAT, ibuf_scale->rect_float);
 
-			IMB_freeImBuf(ibuf);
+			IMB_freeImBuf(ibuf_scale);
 		}
 		/* byte images are not continuous in memory so do manual interpolation */
 		else {
@@ -1406,9 +1403,10 @@ void GPU_free_images_old(void)
 /* OpenGL state caching for materials */
 
 typedef struct GPUMaterialFixed {
-	float diff[4];
-	float spec[4];
+	float diff[3];
+	float spec[3];
 	int hard;
+	float alpha;
 } GPUMaterialFixed; 
 
 static struct GPUMaterialState {
@@ -1417,7 +1415,7 @@ static struct GPUMaterialState {
 	int totmat;
 
 	/* set when called inside GPU_begin_object_materials / GPU_end_object_materials
-	 * otherwise calling GPU_enable_material returns zero */
+	 * otherwise calling GPU_object_material_bind returns zero */
 	bool is_enabled;
 
 	Material **gmatbuf;
@@ -1433,6 +1431,7 @@ static struct GPUMaterialState {
 	float (*gviewcamtexcofac);
 
 	bool backface_culling;
+	bool two_sided_lighting;
 
 	GPUBlendMode *alphablend;
 	GPUBlendMode alphablend_fixed[FIXEDMAT];
@@ -1450,20 +1449,18 @@ static void gpu_material_to_fixed(GPUMaterialFixed *smat, const Material *bmat, 
 {
 	if (bmat->mode & MA_SHLESS) {
 		copy_v3_v3(smat->diff, &bmat->r);
-		smat->diff[3] = 1.0;
 
 		if (gamma)
 			linearrgb_to_srgb_v3_v3(smat->diff, smat->diff);
 
-		zero_v4(smat->spec);
+		zero_v3(smat->spec);
+		smat->alpha = 1.0f;
 		smat->hard = 0;
 	}
 	else if (new_shading_nodes) {
 		copy_v3_v3(smat->diff, &bmat->r);
-		smat->diff[3] = 1.0;
-		
 		copy_v3_v3(smat->spec, &bmat->specr);
-		smat->spec[3] = 1.0;
+		smat->alpha = 1.0f;
 		smat->hard = CLAMPIS(bmat->har, 0, 128);
 		
 		if (dimdown) {
@@ -1478,14 +1475,13 @@ static void gpu_material_to_fixed(GPUMaterialFixed *smat, const Material *bmat, 
 	}
 	else {
 		mul_v3_v3fl(smat->diff, &bmat->r, bmat->ref + bmat->emit);
-		smat->diff[3] = 1.0; /* caller may set this to bmat->alpha */
 
 		if (bmat->shade_flag & MA_OBCOLOR)
 			mul_v3_v3(smat->diff, ob->col);
 		
 		mul_v3_v3fl(smat->spec, &bmat->specr, bmat->spec);
-		smat->spec[3] = 1.0; /* always 1 */
-		smat->hard= CLAMPIS(bmat->har, 0, 128);
+		smat->hard = CLAMPIS(bmat->har, 1, 128);
+		smat->alpha = 1.0f;
 
 		if (gamma) {
 			linearrgb_to_srgb_v3_v3(smat->diff, smat->diff);
@@ -1573,6 +1569,10 @@ void GPU_begin_object_materials(View3D *v3d, RegionView3D *rv3d, Scene *scene, O
 
 	GMS.backface_culling = (v3d->flag2 & V3D_BACKFACE_CULLING) != 0;
 
+	GMS.two_sided_lighting = false;
+	if (ob && ob->type == OB_MESH)
+		GMS.two_sided_lighting = (((Mesh*)ob->data)->flag & ME_TWOSIDED) != 0;
+
 	GMS.gob = ob;
 	GMS.gscene = scene;
 	GMS.is_opensubdiv = use_opensubdiv;
@@ -1651,11 +1651,11 @@ void GPU_begin_object_materials(View3D *v3d, RegionView3D *rv3d, Scene *scene, O
 				gpu_material_to_fixed(&GMS.matbuf[a], ma, gamma, ob, new_shading_nodes, false);
 
 				if (GMS.use_alpha_pass && ((ma->mode & MA_TRANSP) || (new_shading_nodes && ma->alpha != 1.0f))) {
-					GMS.matbuf[a].diff[3] = ma->alpha;
+					GMS.matbuf[a].alpha = ma->alpha;
 					alphablend = (ma->alpha == 1.0f)? GPU_BLEND_SOLID: GPU_BLEND_ALPHA;
 				}
 				else {
-					GMS.matbuf[a].diff[3] = 1.0f;
+					GMS.matbuf[a].alpha = 1.0f;
 					alphablend = GPU_BLEND_SOLID;
 				}
 			}
@@ -1671,7 +1671,7 @@ void GPU_begin_object_materials(View3D *v3d, RegionView3D *rv3d, Scene *scene, O
 	}
 
 	/* let's start with a clean state */
-	GPU_disable_material();
+	GPU_object_material_unbind();
 }
 
 static int GPU_get_particle_info(GPUParticleInfo *pi)
@@ -1704,7 +1704,7 @@ static int GPU_get_particle_info(GPUParticleInfo *pi)
 		return 0;
 }
 
-int GPU_enable_material(int nr, void *attribs)
+int GPU_object_material_bind(int nr, void *attribs)
 {
 	GPUVertexAttribs *gattribs = attribs;
 	GPUMaterial *gpumat;
@@ -1712,19 +1712,17 @@ int GPU_enable_material(int nr, void *attribs)
 
 	/* no GPU_begin_object_materials, use default material */
 	if (!GMS.matbuf) {
-		float diff[4], spec[4];
-
 		memset(&GMS, 0, sizeof(GMS));
 
-		mul_v3_v3fl(diff, &defmaterial.r, defmaterial.ref + defmaterial.emit);
-		diff[3] = 1.0;
+		float diffuse[3], specular[3];
+		mul_v3_v3fl(diffuse, &defmaterial.r, defmaterial.ref + defmaterial.emit);
+		mul_v3_v3fl(specular, &defmaterial.specr, defmaterial.spec);
+		GPU_basic_shader_colors(diffuse, specular, 35, 1.0f);
 
-		mul_v3_v3fl(spec, &defmaterial.specr, defmaterial.spec);
-		spec[3] = 1.0;
-
-		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, diff);
-		glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, spec);
-		glMateriali(GL_FRONT_AND_BACK, GL_SHININESS, 35); /* blender default */
+		if (GMS.two_sided_lighting)
+			GPU_basic_shader_bind(GPU_SHADER_LIGHTING | GPU_SHADER_TWO_SIDED);
+		else
+			GPU_basic_shader_bind(GPU_SHADER_LIGHTING);
 
 		return 0;
 	}
@@ -1801,9 +1799,13 @@ int GPU_enable_material(int nr, void *attribs)
 		}
 		else {
 			/* or do fixed function opengl material */
-			glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, GMS.matbuf[nr].diff);
-			glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, GMS.matbuf[nr].spec);
-			glMateriali(GL_FRONT_AND_BACK, GL_SHININESS, GMS.matbuf[nr].hard);
+			GPU_basic_shader_colors(GMS.matbuf[nr].diff,
+				GMS.matbuf[nr].spec, GMS.matbuf[nr].hard, GMS.matbuf[nr].alpha);
+
+			if (GMS.two_sided_lighting)
+				GPU_basic_shader_bind(GPU_SHADER_LIGHTING | GPU_SHADER_TWO_SIDED);
+			else
+				GPU_basic_shader_bind(GPU_SHADER_LIGHTING);
 		}
 
 		/* set (alpha) blending mode */
@@ -1811,6 +1813,31 @@ int GPU_enable_material(int nr, void *attribs)
 	}
 
 	return GMS.lastretval;
+}
+
+int GPU_object_material_visible(int nr, void *attribs)
+{
+	GPUVertexAttribs *gattribs = attribs;
+	int visible;
+
+	if (!GMS.matbuf)
+		return 0;
+
+	if (gattribs)
+		memset(gattribs, 0, sizeof(*gattribs));
+
+	if (nr>=GMS.totmat)
+		nr = 0;
+
+	if (GMS.use_alpha_pass) {
+		visible = ELEM(GMS.alphablend[nr], GPU_BLEND_SOLID, GPU_BLEND_CLIP);
+		if (GMS.is_alpha_pass)
+			visible = !visible;
+	}
+	else
+		visible = !GMS.is_alpha_pass;
+
+	return visible;
 }
 
 void GPU_set_material_alpha_blend(int alphablend)
@@ -1827,7 +1854,7 @@ int GPU_get_material_alpha_blend(void)
 	return GMS.lastalphablend;
 }
 
-void GPU_disable_material(void)
+void GPU_object_material_unbind(void)
 {
 	GMS.lastmatnr = -1;
 	GMS.lastretval = 1;
@@ -1840,6 +1867,8 @@ void GPU_disable_material(void)
 		GPU_material_unbind(GPU_material_from_blender(GMS.gscene, GMS.gboundmat, GMS.is_opensubdiv));
 		GMS.gboundmat = NULL;
 	}
+	else
+		GPU_basic_shader_bind(GPU_SHADER_USE_COLOR);
 
 	GPU_set_material_alpha_blend(GPU_BLEND_SOLID);
 }
@@ -1855,7 +1884,8 @@ void GPU_material_diffuse_get(int nr, float diff[4])
 		mul_v3_v3fl(diff, &defmaterial.r, defmaterial.ref + defmaterial.emit);
 	}
 	else {
-		copy_v4_v4(diff, GMS.matbuf[nr].diff);
+		copy_v3_v3(diff, GMS.matbuf[nr].diff);
+		diff[3] = GMS.matbuf[nr].alpha;
 	}
 }
 
@@ -1871,7 +1901,7 @@ bool GPU_object_materials_check(void)
 
 void GPU_end_object_materials(void)
 {
-	GPU_disable_material();
+	GPU_object_material_unbind();
 
 	GMS.is_enabled = false;
 
@@ -1884,6 +1914,7 @@ void GPU_end_object_materials(void)
 	GMS.matbuf = NULL;
 	GMS.gmatbuf = NULL;
 	GMS.alphablend = NULL;
+	GMS.two_sided_lighting = false;
 
 	/* resetting the texture matrix after the scaling needed for tiled textures */
 	if (GTS.tilemode) {
@@ -1897,7 +1928,6 @@ void GPU_end_object_materials(void)
 
 int GPU_default_lights(void)
 {
-	float zero[4] = {0.0f, 0.0f, 0.0f, 0.0f}, position[4];
 	int a, count = 0;
 	
 	/* initialize */
@@ -1921,42 +1951,25 @@ int GPU_default_lights(void)
 		U.light[2].spec[3] = 1.0;
 	}
 
-	glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, GL_FALSE);
+	GPU_basic_shader_light_set_viewer(false);
 
 	for (a = 0; a < 8; a++) {
-		if (a < 3) {
-			if (U.light[a].flag) {
-				glEnable(GL_LIGHT0 + a);
+		if (a < 3 && U.light[a].flag) {
+			GPULightData light = {0};
 
-				normalize_v3_v3(position, U.light[a].vec);
-				position[3] = 0.0f;
-				
-				glLightfv(GL_LIGHT0 + a, GL_POSITION, position); 
-				glLightfv(GL_LIGHT0 + a, GL_DIFFUSE, U.light[a].col); 
-				glLightfv(GL_LIGHT0 + a, GL_SPECULAR, U.light[a].spec); 
+			light.type = GPU_LIGHT_SUN;
 
-				count++;
-			}
-			else {
-				glDisable(GL_LIGHT0 + a);
+			normalize_v3_v3(light.direction, U.light[a].vec);
+			copy_v3_v3(light.diffuse, U.light[a].col);
+			copy_v3_v3(light.specular, U.light[a].spec);
 
-				glLightfv(GL_LIGHT0 + a, GL_POSITION, zero); 
-				glLightfv(GL_LIGHT0 + a, GL_DIFFUSE, zero); 
-				glLightfv(GL_LIGHT0 + a, GL_SPECULAR, zero);
-			}
+			GPU_basic_shader_light_set(a, &light);
 
-			/* clear stuff from other opengl lamp usage */
-			glLightf(GL_LIGHT0 + a, GL_SPOT_CUTOFF, 180.0);
-			glLightf(GL_LIGHT0 + a, GL_CONSTANT_ATTENUATION, 1.0);
-			glLightf(GL_LIGHT0 + a, GL_LINEAR_ATTENUATION, 0.0);
+			count++;
 		}
 		else
-			glDisable(GL_LIGHT0 + a);
+			GPU_basic_shader_light_set(a, NULL);
 	}
-	
-	glDisable(GL_LIGHTING);
-
-	glDisable(GL_COLOR_MATERIAL);
 
 	return count;
 }
@@ -1966,15 +1979,14 @@ int GPU_scene_object_lights(Scene *scene, Object *ob, int lay, float viewmat[4][
 	Base *base;
 	Lamp *la;
 	int count;
-	float position[4], direction[4], energy[4];
 	
 	/* disable all lights */
 	for (count = 0; count < 8; count++)
-		glDisable(GL_LIGHT0 + count);
+		GPU_basic_shader_light_set(count, NULL);
 	
 	/* view direction for specular is not computed correct by default in
 	 * opengl, so we set the settings ourselfs */
-	glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, ortho ? GL_FALSE : GL_TRUE);
+	GPU_basic_shader_light_set_viewer(!ortho);
 
 	count = 0;
 
@@ -1991,41 +2003,37 @@ int GPU_scene_object_lights(Scene *scene, Object *ob, int lay, float viewmat[4][
 		glPushMatrix();
 		glLoadMatrixf((float *)viewmat);
 		
-		if (la->type == LA_SUN) {
-			/* sun lamp */
-			copy_v3_v3(direction, base->object->obmat[2]);
-			direction[3] = 0.0;
+		/* setup light */
+		GPULightData light = {0};
 
-			glLightfv(GL_LIGHT0+count, GL_POSITION, direction); 
+		mul_v3_v3fl(light.diffuse, &la->r, la->energy);
+		mul_v3_v3fl(light.specular, &la->r, la->energy);
+
+		if (la->type == LA_SUN) {
+			/* directional sun light */
+			light.type = GPU_LIGHT_SUN;
+			normalize_v3_v3(light.direction, base->object->obmat[2]);
 		}
 		else {
-			/* other lamps with attenuation */
-			copy_v3_v3(position, base->object->obmat[3]);
-			position[3] = 1.0f;
+			/* other lamps with position attenuation */
+			copy_v3_v3(light.position, base->object->obmat[3]);
 
-			glLightfv(GL_LIGHT0+count, GL_POSITION, position); 
-			glLightf(GL_LIGHT0+count, GL_CONSTANT_ATTENUATION, 1.0);
-			glLightf(GL_LIGHT0+count, GL_LINEAR_ATTENUATION, la->att1 / la->dist);
-			glLightf(GL_LIGHT0+count, GL_QUADRATIC_ATTENUATION, la->att2 / (la->dist * la->dist));
+			light.constant_attenuation = 1.0f;
+			light.linear_attenuation = la->att1 / la->dist;
+			light.quadratic_attenuation = la->att2 / (la->dist * la->dist);
 			
 			if (la->type == LA_SPOT) {
-				/* spot lamp */
-				negate_v3_v3(direction, base->object->obmat[2]);
-				glLightfv(GL_LIGHT0 + count, GL_SPOT_DIRECTION, direction);
-				glLightf(GL_LIGHT0 + count, GL_SPOT_CUTOFF, RAD2DEGF(la->spotsize * 0.5f));
-				glLightf(GL_LIGHT0 + count, GL_SPOT_EXPONENT, 128.0f * la->spotblend);
+				light.type = GPU_LIGHT_SPOT;
+				negate_v3_v3(light.direction, base->object->obmat[2]);
+				normalize_v3(light.direction);
+				light.spot_cutoff = RAD2DEGF(la->spotsize * 0.5f);
+				light.spot_exponent = 128.0f * la->spotblend;
 			}
 			else
-				glLightf(GL_LIGHT0 + count, GL_SPOT_CUTOFF, 180.0);
+				light.type = GPU_LIGHT_POINT;
 		}
 		
-		/* setup energy */
-		mul_v3_v3fl(energy, &la->r, la->energy);
-		energy[3] = 1.0;
-
-		glLightfv(GL_LIGHT0 + count, GL_DIFFUSE, energy); 
-		glLightfv(GL_LIGHT0 + count, GL_SPECULAR, energy);
-		glEnable(GL_LIGHT0 + count);
+		GPU_basic_shader_light_set(count, &light);
 		
 		glPopMatrix();
 		
@@ -2039,40 +2047,42 @@ int GPU_scene_object_lights(Scene *scene, Object *ob, int lay, float viewmat[4][
 
 static void gpu_multisample(bool enable)
 {
-	if (GLEW_VERSION_1_3 || GLEW_ARB_multisample) {
 #ifdef __linux__
-		/* changing multisample from the default (enabled) causes problems on some
-		 * systems (NVIDIA/Linux) when the pixel format doesn't have a multisample buffer */
-		bool toggle_ok = true;
+	/* changing multisample from the default (enabled) causes problems on some
+	 * systems (NVIDIA/Linux) when the pixel format doesn't have a multisample buffer */
+	bool toggle_ok = true;
 
-		if (GPU_type_matches(GPU_DEVICE_NVIDIA, GPU_OS_UNIX, GPU_DRIVER_ANY)) {
-			int samples = 0;
-			glGetIntegerv(GL_SAMPLES, &samples);
+	if (GPU_type_matches(GPU_DEVICE_NVIDIA, GPU_OS_UNIX, GPU_DRIVER_ANY)) {
+		int samples = 0;
+		glGetIntegerv(GL_SAMPLES, &samples);
 
-			if (samples == 0)
-				toggle_ok = false;
-		}
+		if (samples == 0)
+			toggle_ok = false;
+	}
 
-		if (toggle_ok) {
-			if (enable)
-				glEnable(GL_MULTISAMPLE);
-			else
-				glDisable(GL_MULTISAMPLE);
-		}
-#else
+	if (toggle_ok) {
 		if (enable)
 			glEnable(GL_MULTISAMPLE);
 		else
 			glDisable(GL_MULTISAMPLE);
-#endif
 	}
+#else
+	if (enable)
+		glEnable(GL_MULTISAMPLE);
+	else
+		glDisable(GL_MULTISAMPLE);
+#endif
 }
 
-/* Default OpenGL State */
+/* Default OpenGL State
+ *
+ * This is called on startup, for opengl offscreen render and to restore state
+ * for the game engine. Generally we should always return to this state when
+ * temporarily modifying the state for drawing, though that are (undocumented)
+ * exceptions that we should try to get rid of. */
 
 void GPU_state_init(void)
 {
-	/* also called when doing opengl rendering and in the game engine */
 	float mat_ambient[] = { 0.0, 0.0, 0.0, 0.0 };
 	float mat_specular[] = { 0.5, 0.5, 0.5, 1.0 };
 	int a, x, y;
@@ -2083,6 +2093,7 @@ void GPU_state_init(void)
 	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_specular);
 	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
 	glMateriali(GL_FRONT_AND_BACK, GL_SHININESS, 35);
+	glColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
 
 	GPU_default_lights();
 	
@@ -2097,6 +2108,7 @@ void GPU_state_init(void)
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_FOG);
 	glDisable(GL_LIGHTING);
+	glDisable(GL_COLOR_MATERIAL);
 	glDisable(GL_LOGIC_OP);
 	glDisable(GL_STENCIL_TEST);
 	glDisable(GL_TEXTURE_1D);
@@ -2141,6 +2153,8 @@ void GPU_state_init(void)
 	glDisable(GL_CULL_FACE);
 
 	gpu_multisample(false);
+
+	GPU_basic_shader_bind(GPU_SHADER_USE_COLOR);
 }
 
 #ifdef WITH_OPENSUBDIV

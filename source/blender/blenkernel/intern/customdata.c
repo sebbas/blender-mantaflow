@@ -61,6 +61,8 @@
 #include "BKE_mesh_remap.h"
 #include "BKE_multires.h"
 
+#include "data_transfer_intern.h"
+
 #include "bmesh.h"
 
 #include <math.h>
@@ -305,13 +307,16 @@ static void layerInterp_normal(
         const void **sources, const float *weights,
         const float *UNUSED(sub_weights), int count, void *dest)
 {
+	/* Note: This is linear interpolation, which is not optimal for vectors.
+	 *       Unfortunately, spherical interpolation of more than two values is hairy, so for now it will do... */
 	float no[3] = {0.0f};
 
 	while (count--) {
 		madd_v3_v3fl(no, (const float *)sources[count], weights[count]);
 	}
 
-	copy_v3_v3((float *)dest, no);
+	/* Weighted sum of normalized vectors will **not** be normalized, even if weights are. */
+	normalize_v3_v3((float *)dest, no);
 }
 
 static void layerCopyValue_normal(const void *source, void *dest, const int mixmode, const float mixfactor)
@@ -904,6 +909,7 @@ static void layerInterp_mloopuv(
         const float *sub_weights, int count, void *dest)
 {
 	float uv[2];
+	int flag = 0;
 	int i;
 
 	zero_v2(uv);
@@ -911,9 +917,12 @@ static void layerInterp_mloopuv(
 	if (sub_weights) {
 		const float *sub_weight = sub_weights;
 		for (i = 0; i < count; i++) {
-			float weight = weights ? weights[i] : 1.0f;
+			float weight = (weights ? weights[i] : 1.0f) * (*sub_weight);
 			const MLoopUV *src = sources[i];
-			madd_v2_v2fl(uv, src->uv, (*sub_weight) * weight);
+			madd_v2_v2fl(uv, src->uv, weight);
+			if (weight > 0.0f) {
+				flag |= src->flag;
+			}
 			sub_weight++;
 		}
 	}
@@ -922,11 +931,15 @@ static void layerInterp_mloopuv(
 			float weight = weights ? weights[i] : 1;
 			const MLoopUV *src = sources[i];
 			madd_v2_v2fl(uv, src->uv, weight);
+			if (weight > 0.0f) {
+				flag |= src->flag;
+			}
 		}
 	}
 
 	/* delay writing to the destination incase dest is in sources */
 	copy_v2_v2(((MLoopUV *)dest)->uv, uv);
+	((MLoopUV *)dest)->flag = flag;
 }
 
 /* origspace is almost exact copy of mloopuv's, keep in sync */
@@ -1297,7 +1310,7 @@ static const LayerTypeInfo LAYERTYPEINFO[CD_NUMTYPES] = {
 	/* 35: CD_GRID_PAINT_MASK */
 	{sizeof(GridPaintMask), "GridPaintMask", 1, NULL, layerCopy_grid_paint_mask,
 	 layerFree_grid_paint_mask, NULL, NULL, NULL},
-	/* 36: CD_SKIN_NODE */
+	/* 36: CD_MVERT_SKIN */
 	{sizeof(MVertSkin), "MVertSkin", 1, NULL, NULL, NULL,
 	 layerInterp_mvert_skin, NULL, layerDefault_mvert_skin},
 	/* 37: CD_FREESTYLE_EDGE */
@@ -1312,7 +1325,6 @@ static const LayerTypeInfo LAYERTYPEINFO[CD_NUMTYPES] = {
 	{sizeof(short[2]), "vec2s", 1, NULL, NULL, NULL, NULL, NULL, NULL},
 };
 
-/* note, numbers are from trunk and need updating for bmesh */
 
 static const char *LAYERTYPENAMES[CD_NUMTYPES] = {
 	/*   0-4 */ "CDMVert", "CDMSticky", "CDMDeformVert", "CDMEdge", "CDMFace",
@@ -3910,6 +3922,38 @@ static void customdata_data_transfer_interp_generic(
 	}
 
 	MEM_freeN(tmp_dst);
+}
+
+/* Normals are special, we need to take care of source & destination spaces... */
+void customdata_data_transfer_interp_normal_normals(
+        const CustomDataTransferLayerMap *laymap, void *data_dst,
+        const void **sources, const float *weights, const int count,
+        const float mix_factor)
+{
+	const int data_type = laymap->data_type;
+	const int mix_mode = laymap->mix_mode;
+
+	SpaceTransform *space_transform = laymap->interp_data;
+
+	const LayerTypeInfo *type_info = layerType_getInfo(data_type);
+	cd_interp interp_cd = type_info->interp;
+
+	float tmp_dst[3];
+
+	BLI_assert(data_type == CD_NORMAL);
+
+	if (!sources) {
+		/* Not supported here, abort. */
+		return;
+	}
+
+	interp_cd(sources, weights, NULL, count, tmp_dst);
+	if (space_transform) {
+		/* tmp_dst is in source space so far, bring it back in destination space. */
+		BLI_space_transform_invert_normal(space_transform, tmp_dst);
+	}
+
+	CustomData_data_mix_value(data_type, tmp_dst, data_dst, mix_mode, mix_factor);
 }
 
 void CustomData_data_transfer(const MeshPairRemap *me_remap, const CustomDataTransferLayerMap *laymap)

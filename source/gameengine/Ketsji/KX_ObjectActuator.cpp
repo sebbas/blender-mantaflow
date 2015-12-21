@@ -65,12 +65,12 @@ KX_ObjectActuator(
 	m_drot(drot),
 	m_linear_velocity(linV),
 	m_angular_velocity(angV),
-	m_linear_length2(0.0),
-	m_current_linear_factor(0.0),
-	m_current_angular_factor(0.0),
+	m_linear_length2(0.0f),
+	m_current_linear_factor(0.0f),
+	m_current_angular_factor(0.0f),
 	m_damping(damping),
-	m_previous_error(0.0,0.0,0.0),
-	m_error_accumulator(0.0,0.0,0.0),
+	m_previous_error(0.0f,0.0f,0.0f),
+	m_error_accumulator(0.0f,0.0f,0.0f),
 	m_bitLocalFlag (flag),
 	m_reference(refobj),
 	m_active_combined_velocity (false),
@@ -134,13 +134,13 @@ bool KX_ObjectActuator::Update()
 
 		// Explicitly stop the movement if we're using character motion
 		if (m_bitLocalFlag.CharacterMotion) {
-			character->SetWalkDirection(MT_Vector3 (0.0, 0.0, 0.0));
+			character->SetWalkDirection(MT_Vector3 (0.0f, 0.0f, 0.0f));
 		}
 
 		m_linear_damping_active = false;
 		m_angular_damping_active = false;
-		m_error_accumulator.setValue(0.0,0.0,0.0);
-		m_previous_error.setValue(0.0,0.0,0.0);
+		m_error_accumulator.setValue(0.0f,0.0f,0.0f);
+		m_previous_error.setValue(0.0f,0.0f,0.0f);
 		m_jumping = false;
 		return false; 
 
@@ -276,8 +276,16 @@ bool KX_ObjectActuator::Update()
 			{
 				parent->ApplyRotation(m_drot,(m_bitLocalFlag.DRot) != 0);
 			}
-			if (!m_bitLocalFlag.ZeroLinearVelocity)
-			{
+
+			if (m_bitLocalFlag.ZeroLinearVelocity) {
+				if (!m_bitLocalFlag.AddOrSetLinV) {
+					/* No need to select local or world, as the velocity is zero anyway,
+					 * and setLinearVelocity() converts local to world first. We do need to
+					 * pass a true zero vector, as m_linear_velocity is only fuzzily zero. */
+					parent->setLinearVelocity(MT_Vector3(0, 0, 0), false);
+				}
+			}
+			else {
 				if (m_bitLocalFlag.AddOrSetLinV) {
 					parent->addLinearVelocity(m_linear_velocity,(m_bitLocalFlag.LinearVelocity) != 0);
 				} else {
@@ -291,10 +299,10 @@ bool KX_ObjectActuator::Update()
 							m_current_linear_factor = linV.dot(m_linear_velocity)/m_linear_length2;
 							m_linear_damping_active = true;
 						}
-						if (m_current_linear_factor < 1.0)
-							m_current_linear_factor += 1.0/m_damping;
-						if (m_current_linear_factor > 1.0)
-							m_current_linear_factor = 1.0;
+						if (m_current_linear_factor < 1.0f)
+							m_current_linear_factor += 1.0f/m_damping;
+						if (m_current_linear_factor > 1.0f)
+							m_current_linear_factor = 1.0f;
 						linV = m_current_linear_factor * m_linear_velocity;
 						parent->setLinearVelocity(linV,(m_bitLocalFlag.LinearVelocity) != 0);
 					} else {
@@ -302,8 +310,13 @@ bool KX_ObjectActuator::Update()
 					}
 				}
 			}
-			if (!m_bitLocalFlag.ZeroAngularVelocity)
-			{
+			if (m_bitLocalFlag.ZeroAngularVelocity) {
+				/* No need to select local or world, as the velocity is zero anyway,
+				 * and setAngularVelocity() converts local to world first. We do need to
+				 * pass a true zero vector, as m_angular_velocity is only fuzzily zero. */
+				parent->setAngularVelocity(MT_Vector3(0, 0, 0), false);
+			}
+			else {
 				m_active_combined_velocity = true;
 				if (m_damping > 0) {
 					MT_Vector3 angV;
@@ -314,10 +327,10 @@ bool KX_ObjectActuator::Update()
 						m_current_angular_factor = angV.dot(m_angular_velocity)/m_angular_length2;
 						m_angular_damping_active = true;
 					}
-					if (m_current_angular_factor < 1.0)
-						m_current_angular_factor += 1.0/m_damping;
-					if (m_current_angular_factor > 1.0)
-						m_current_angular_factor = 1.0;
+					if (m_current_angular_factor < 1.0f)
+						m_current_angular_factor += 1.0f/m_damping;
+					if (m_current_angular_factor > 1.0f)
+						m_current_angular_factor = 1.0f;
 					angV = m_current_angular_factor * m_angular_velocity;
 					parent->setAngularVelocity(angV,(m_bitLocalFlag.AngularVelocity) != 0);
 				} else {

@@ -220,7 +220,7 @@ static void distribute_grid(DerivedMesh *dm, ParticleSystem *psys)
 						copy_v3_v3(v2, mvert[mface->v2].co);
 						copy_v3_v3(v3, mvert[mface->v3].co);
 
-						if (isect_axial_line_tri_v3(a, co1, co2, v2, v3, v1, &lambda)) {
+						if (isect_axial_line_segment_tri_v3(a, co1, co2, v2, v3, v1, &lambda)) {
 							if (from==PART_FROM_FACE)
 								(pa+(int)(lambda*size[a])*a0mul)->flag &= ~PARS_UNEXIST;
 							else /* store number of intersections */
@@ -229,7 +229,7 @@ static void distribute_grid(DerivedMesh *dm, ParticleSystem *psys)
 						else if (mface->v4) {
 							copy_v3_v3(v4, mvert[mface->v4].co);
 
-							if (isect_axial_line_tri_v3(a, co1, co2, v4, v1, v3, &lambda)) {
+							if (isect_axial_line_segment_tri_v3(a, co1, co2, v4, v1, v3, &lambda)) {
 								if (from==PART_FROM_FACE)
 									(pa+(int)(lambda*size[a])*a0mul)->flag &= ~PARS_UNEXIST;
 								else
@@ -660,7 +660,7 @@ static void distribute_children_exec(ParticleTask *thread, ChildParticle *cpa, i
 		BLI_rng_skip(thread->rng, rng_skip_tot);
 }
 
-static void exec_distribute_parent(TaskPool *UNUSED(pool), void *taskdata, int UNUSED(threadid))
+static void exec_distribute_parent(TaskPool * __restrict UNUSED(pool), void *taskdata, int UNUSED(threadid))
 {
 	ParticleTask *task = taskdata;
 	ParticleSystem *psys= task->ctx->sim.psys;
@@ -686,7 +686,7 @@ static void exec_distribute_parent(TaskPool *UNUSED(pool), void *taskdata, int U
 	}
 }
 
-static void exec_distribute_child(TaskPool *UNUSED(pool), void *taskdata, int UNUSED(threadid))
+static void exec_distribute_child(TaskPool * __restrict UNUSED(pool), void *taskdata, int UNUSED(threadid))
 {
 	ParticleTask *task = taskdata;
 	ParticleSystem *psys = task->ctx->sim.psys;
