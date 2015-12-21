@@ -37,14 +37,14 @@ inflow_grid = s.create(LevelsetGrid)\n\
 fuel_inflow = s.create(LevelsetGrid)\n\
 \n\
 # noise field\n\
-#noise = s.create(NoiseField, loadFromFile=True)\n\
-#noise.posScale = vec3(45)\n\
-#noise.clamp = True\n\
-#noise.clampNeg = 0\n\
-#noise.clampPos = 1\n\
-#noise.valScale = 1\n\
-#noise.valOffset = 0.75\n\
-#noise.timeAnim = 0.2\n\
+noise = s.create(NoiseField, loadFromFile=True)\n\
+noise.posScale = vec3(45)\n\
+noise.clamp = True\n\
+noise.clampNeg = $NOISE_CN$ \n\
+noise.clampPos = $NOISE_CP$ \n\
+noise.valScale = $NOISE_VALSCALE$ \n\
+noise.valOffset = $NOISE_VALOFFSET$ \n\
+noise.timeAnim = $NOISE_TIMEANIM$ \n\
 \n\
 # prepare domain\n\
 flags.initDomain()\n\
@@ -52,9 +52,9 @@ flags.fillGrid()\n\
 setOpenBound(flags=flags, bWidth=1, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n\
 \n\
 # initialization flags\n\
-manta_using_colors = $USING_COLORS$\n\
-manta_using_heat = $USING_HEAT$\n\
-manta_using_fire = $USING_FIRE$\n\
+using_colors = $USING_COLORS$\n\
+using_heat = $USING_HEAT$\n\
+using_fire = $USING_FIRE$\n\
 low_flags_updated = False\n\
 ";
 
@@ -65,15 +65,16 @@ import os, shutil, math, sys\n\
 s = FluidSolver(name='main2', gridSize = vec3(21,21,32), dim = 3)\n\
 xl_gs = vec3($HRESX$, $HRESY$, $HRESZ$)\n\
 xl = Solver(name = 'larger', gridSize = xl_gs)\n\
-uvs =$UVS_CNT$\n\
-if $USE_WAVELETS$:\n\
+uvs = $UVS_CNT$\n\
+using_wavelets = $USE_WAVELETS$ \n\
+if using_wavelets:\n\
   upres = $UPRES$\n\
   wltStrength = $WLT_STR$\n\
-  if $UPRES$ > 0:\n\
+  if upres > 0:\n\
     octaves = int( math.log(upres)/ math.log(2.0) + 0.5 )\n\
   else:\n\
     octaves = 0\n\
-if $USE_WAVELETS$ and $UPRES$ > 0:\n\
+if using_wavelets and upres > 0:\n\
   xl.timestep = $XL_TIMESTEP$\n\
   \n\
   # prepare grids\n\
@@ -96,14 +97,15 @@ if $USE_WAVELETS$ and $UPRES$ > 0:\n\
   xl_noise.clampPos = $NOISE_CP$ \n\
   xl_noise.valScale = $NOISE_VALSCALE$ \n\
   xl_noise.valOffset = $NOISE_VALOFFSET$ \n\
-  xl_noise.timeAnim = $NOISE_TIMEANIM$ * $UPRES$ \n\
+  xl_noise.timeAnim = $NOISE_TIMEANIM$ * upres \n\
   xl_wltnoise = xl.create(NoiseField, loadFromFile=True) \n\
   xl_wltnoise.posScale = vec3( int(1.0*xl_gs.x) ) * 0.5 \n\
   xl_wltnoise.posScale = xl_wltnoise.posScale * 0.5\n\
   xl_wltnoise.timeAnim = 0.1 \n\
   \n\
-  manta_using_colors = $USING_COLORS$\n\
-  manta_using_fire = $USING_FIRE$\n\
+  # initialization flags\n\
+  using_colors = $USING_COLORS$\n\
+  using_fire = $USING_FIRE$\n\
 ";
 
 /* ADDITIONAL INITIALIZER */
@@ -116,13 +118,13 @@ color_g_low.add(density) \n\
 color_g_low.multConst(manta_color_g) \n\
 color_b_low.add(density) \n\
 color_b_low.multConst(manta_color_b) \n\
-manta_using_colors = True\n";
+using_colors = True\n";
 
 const string smoke_del_colors_low = "\n\
 del color_r_low \n\
 del color_g_low \n\
 del color_b_low \n\
-manta_using_colors = False";
+using_colors = False";
 
 const string smoke_init_colors_high = "\
 print(\"Initializing colors highres\")\n\
@@ -132,25 +134,25 @@ color_g_high.add(xl_density) \n\
 color_g_high.multConst(manta_color_g) \n\
 color_b_high.add(xl_density) \n\
 color_b_high.multConst(manta_color_b) \n\
-manta_using_colors = True\n";
+using_colors = True\n";
 
 const string smoke_init_heat_low = "\
 print(\"Initializing heat lowres\")\n\
-manta_using_heat = True\n";
+using_heat = True\n";
 
 const string smoke_init_fire_low = "\
 print(\"Initializing fire lowres\")\n\
-manta_using_fire = True\n";
+using_fire = True\n";
 
 const string smoke_init_fire_high = "\
 print(\"Initializing fire highres\")\n\
-manta_using_fire = True\n";
+using_fire = True\n";
 
 const string smoke_del_colors_high = "\n\
 del color_r_high \n\
 del color_g_high \n\
 del color_b_high \n\
-manta_using_colors = False";
+using_colors = False";
 
 const string standalone = "\n\
 if (GUI):\n\
@@ -164,10 +166,10 @@ for step in range(1000):\n\
   apply_inflow()\n\
   \n\
   print('Step '+ str(step))\n\
-  if manta_using_fire:\n\
+  if using_fire:\n\
     process_burn()\n\
   step_low()\n\
-  if manta_using_fire:\n\
+  if using_fire:\n\
     update_flame()\n\
 ";
 
@@ -178,13 +180,13 @@ def step_low():\n\
   if solver_dim == 2:\n\
     density.add(inflow_grid)\n\
   \n\
-  if manta_using_colors:\n\
+  if using_colors:\n\
     print ('Advecting colors')\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_r_low, order=$ADVECT_ORDER$)\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_g_low, order=$ADVECT_ORDER$)\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=color_b_low, order=$ADVECT_ORDER$)\n\
   \n\
-  if manta_using_fire:\n\
+  if using_fire:\n\
     print ('Advecting fire')\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=fuel_low, order=$ADVECT_ORDER$)\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=react_low, order=$ADVECT_ORDER$)\n\
@@ -198,7 +200,7 @@ def step_low():\n\
   print ('Walls')\n\
   setWallBcs(flags=flags, vel=vel)\n\
   \n\
-  if manta_using_heat:\n\
+  if using_heat:\n\
     print ('Adding heat buoyancy')\n\
     gravity=vec3(0,0,-0.0981) if solver_dim==3 else vec3(0,-0.0981,0)\n\
     addBuoyancy2(flags=flags, grid=density, vel=vel, gravity=gravity, coefficient=$ALPHA$)\n\
@@ -212,6 +214,7 @@ def step_low():\n\
   if $VORTICITY$ > 0.01:\n\
     vorticityConfinement( vel=vel, flags=flags, strength=$VORTICITY$ )\n\
   \n\
+  addNoise(flags=flags, density=density, noise=noise)\n\
   # TODO: print('Forcefield')\n\
   # TODO: addForceField(flags=flags, vel=vel, force=forces)\n\
   # TODO: forces.clear()\n\
@@ -235,20 +238,20 @@ const string smoke_step_high = "\n\
 def step_high():\n\
   interpolateMACGrid(source=vel, target=xl_vel)\n\
   sStr = 1.0 * wltStrength \n\
-  sPos = 2.0  \n\
-  for o in range(octaves): \n\
-    for i in range(uvs): \n\
-      uvWeight = getUvWeight(uv[i])  \n\
-      applyNoiseVec3( flags=xl_flags, target=xl_vel, noise=xl_wltnoise, scale=sStr * uvWeight, scaleSpatial=sPos , weight=energy, uv=uv[i] ) \n\
+  sPos = 2.0\n\
+  for o in range(octaves):\n\
+    for i in range(uvs):\n\
+      uvWeight = getUvWeight(uv[i])\n\
+      applyNoiseVec3( flags=xl_flags, target=xl_vel, noise=xl_wltnoise, scale=sStr * uvWeight, scaleSpatial=sPos , weight=energy, uv=uv[i] )\n\
     sStr *= 0.06 # magic kolmogorov factor \n\
     sPos *= 2.0 \n\
-  for substep in range(upres):  \n\
-    advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=$ADVECT_ORDER$)  \n\
-    if manta_using_colors: \n\
+  for substep in range(upres):\n\
+    advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=$ADVECT_ORDER$)\n\
+    if using_colors: \n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=color_r_high, order=$ADVECT_ORDER$)\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=color_g_high, order=$ADVECT_ORDER$)\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=color_b_high, order=$ADVECT_ORDER$)\n\
-    if manta_using_fire: \n\
+    if using_fire: \n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=fuel_high, order=$ADVECT_ORDER$)\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=react_high, order=$ADVECT_ORDER$)\n\
   xl.step()\n\
@@ -267,7 +270,7 @@ def sim_step_low(t):\n\
 #update flags from density on first step\n\
   setWallBcs(flags=flags, vel=vel)\n\
   density.multConst(-1.)\n\
-  print(manta_using_colors)\n\
+  print(using_colors)\n\
   global low_flags_updated\n\
   if not low_flags_updated:\n\
     print('Updating Flags from Levelset on startup!')\n\
@@ -303,13 +306,13 @@ flags.save(os.path.join('$MANTA_EXPORT_PATH$','flags_low.uni'))\n\
 forces.save(os.path.join('$MANTA_EXPORT_PATH$','forces_low.uni'))\n\
 inflow_grid.save(os.path.join('$MANTA_EXPORT_PATH$','inflow_low.uni'))\n\
 fuel_inflow.save(os.path.join('$MANTA_EXPORT_PATH$','fuel_inflow.uni'))\n\
-if manta_using_colors:\n\
+if using_colors:\n\
   color_r_low.save(os.path.join('$MANTA_EXPORT_PATH$','color_r_low.uni'))\n\
   color_g_low.save(os.path.join('$MANTA_EXPORT_PATH$','color_g_low.uni'))\n\
   color_b_low.save(os.path.join('$MANTA_EXPORT_PATH$','color_b_low.uni'))\n\
-if manta_using_heat:\n\
+if using_heat:\n\
   heat_low.save(os.path.join('$MANTA_EXPORT_PATH$','heat.uni'))\n\
-if manta_using_fire:\n\
+if using_fire:\n\
   flame_low.save(os.path.join('$MANTA_EXPORT_PATH$','flame_low.uni'))\n\
   fuel_low.save(os.path.join('$MANTA_EXPORT_PATH$','fuel_low.uni'))\n\
   react_low.save(os.path.join('$MANTA_EXPORT_PATH$','react_low.uni'))\n\
@@ -320,11 +323,11 @@ import os\n\
 print('Exporting grids')\n\
 xl_density.save(os.path.join('$MANTA_EXPORT_PATH$','xl_density.uni'))\n\
 xl_flags.save(os.path.join('$MANTA_EXPORT_PATH$','xl_flags.uni'))\n\
-if manta_using_colors:\n\
+if using_colors:\n\
   color_r_high.save(os.path.join('$MANTA_EXPORT_PATH$','color_r_high.uni'))\n\
   color_g_high.save(os.path.join('$MANTA_EXPORT_PATH$','color_g_high.uni'))\n\
   color_b_high.save(os.path.join('$MANTA_EXPORT_PATH$','color_b_high.uni'))\n\
-if manta_using_fire:\n\
+if using_fire:\n\
   flame_high.save(os.path.join('$MANTA_EXPORT_PATH$','flame_high.uni'))\n\
   fuel_high.save(os.path.join('$MANTA_EXPORT_PATH$','fuel_high.uni'))\n\
   react_high.save(os.path.join('$MANTA_EXPORT_PATH$','react_high.uni'))\n\
@@ -340,15 +343,15 @@ def import_grids():\n\
   inflow_grid.load('$MANTA_EXPORT_PATH$inflow_low.uni')\n\
   fuel_inflow.load('$MANTA_EXPORT_PATH$fuel_inflow.uni')\n\
   \n\
-  if manta_using_colors:\n\
+  if using_colors:\n\
     color_r_low.load('$MANTA_EXPORT_PATH$color_r_low.uni')\n\
     color_g_low.load('$MANTA_EXPORT_PATH$color_g_low.uni')\n\
     color_b_low.load('$MANTA_EXPORT_PATH$color_b_low.uni')\n\
   \n\
-  if manta_using_heat:\n\
+  if using_heat:\n\
     heat_low.load('$MANTA_EXPORT_PATH$heat.uni')\n\
   \n\
-  if manta_using_fire:\n\
+  if using_fire:\n\
     flame_low.load('$MANTA_EXPORT_PATH$flame_low.uni')\n\
     fuel_low.load('$MANTA_EXPORT_PATH$fuel_low.uni')\n\
     react_low.load('$MANTA_EXPORT_PATH$react_low.uni')\n\
@@ -360,11 +363,11 @@ def import_grids():\n\
   vel.load('$MANTA_EXPORT_PATH$vel.uni')\n\
   xl_density.load('$MANTA_EXPORT_PATH$xl_density.uni')\n\
   xl_flags.load('$MANTA_EXPORT_PATH$xl_flags.uni')\n\
-  if manta_using_colors:\n\
+  if using_colors:\n\
     color_r_high.load('$MANTA_EXPORT_PATH$color_r_high.uni')\n\
     color_g_high.load('$MANTA_EXPORT_PATH$color_g_high.uni')\n\
     color_b_high.load('$MANTA_EXPORT_PATH$color_b_high.uni')\n\
-  if manta_using_fire:\n\
+  if using_fire:\n\
     flame_high.load('$MANTA_EXPORT_PATH$flame_high.uni')\n\
     fuel_high.load('$MANTA_EXPORT_PATH$fuel_high.uni')\n\
     react_high.load('$MANTA_EXPORT_PATH$react_high.uni')\n\
