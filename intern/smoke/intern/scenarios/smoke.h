@@ -213,8 +213,6 @@ def step_low():\n\
   print('Vorticity')\n\
   if $VORTICITY$ > 0.01:\n\
     vorticityConfinement( vel=vel, flags=flags, strength=$VORTICITY$ )\n\
-  \n\
-  addNoise(flags=flags, density=density, noise=noise)\n\
   # TODO: print('Forcefield')\n\
   # TODO: addForceField(flags=flags, vel=vel, force=forces)\n\
   # TODO: forces.clear()\n\
