@@ -120,12 +120,6 @@ color_b_low.add(density) \n\
 color_b_low.multConst(manta_color_b) \n\
 using_colors = True\n";
 
-const string smoke_del_colors_low = "\n\
-del color_r_low \n\
-del color_g_low \n\
-del color_b_low \n\
-using_colors = False";
-
 const string smoke_init_colors_high = "\
 print(\"Initializing colors highres\")\n\
 color_r_high.add(xl_density) \n\
@@ -135,6 +129,18 @@ color_g_high.multConst(manta_color_g) \n\
 color_b_high.add(xl_density) \n\
 color_b_high.multConst(manta_color_b) \n\
 using_colors = True\n";
+
+const string smoke_del_colors_low = "\n\
+del color_r_low \n\
+del color_g_low \n\
+del color_b_low \n\
+using_colors = False";
+
+const string smoke_del_colors_high = "\n\
+del color_r_high \n\
+del color_g_high \n\
+del color_b_high \n\
+using_colors = False";
 
 const string smoke_init_heat_low = "\
 print(\"Initializing heat lowres\")\n\
@@ -148,29 +154,42 @@ const string smoke_init_fire_high = "\
 print(\"Initializing fire highres\")\n\
 using_fire = True\n";
 
-const string smoke_del_colors_high = "\n\
-del color_r_high \n\
-del color_g_high \n\
-del color_b_high \n\
-using_colors = False";
-
-const string standalone = "\n\
+const string standalone_low = "\n\
 if (GUI):\n\
   gui=Gui()\n\
   gui.show()\n\
   gui.pause()\n\
 \n\
-import_grids()\n\
+import_grids_low()\n\
 \n\
 for step in range(1000):\n\
   apply_inflow()\n\
   \n\
   print('Step '+ str(step))\n\
   if using_fire:\n\
-    process_burn()\n\
+    process_burn_low()\n\
   step_low()\n\
   if using_fire:\n\
-    update_flame()\n\
+    update_flame_low()\n\
+";
+
+const string standalone_high = "\n\
+if (GUI):\n\
+  gui=Gui()\n\
+  gui.show()\n\
+  gui.pause()\n\
+\n\
+import_grids_high()\n\
+\n\
+for step in range(1000):\n\
+  apply_inflow()\n\
+  \n\
+  print('Step '+ str(step))\n\
+  if using_fire:\n\
+    process_burn_high()\n\
+  step_high()\n\
+  if using_fire:\n\
+    update_flame_high()\n\
 ";
 
 /* SMOKE */
@@ -240,16 +259,18 @@ def step_high():\n\
   for o in range(octaves):\n\
     for i in range(uvs):\n\
       uvWeight = getUvWeight(uv[i])\n\
-      applyNoiseVec3( flags=xl_flags, target=xl_vel, noise=xl_wltnoise, scale=sStr * uvWeight, scaleSpatial=sPos , weight=energy, uv=uv[i] )\n\
+      applyNoiseVec3(flags=xl_flags, target=xl_vel, noise=xl_wltnoise, scale=sStr * uvWeight, scaleSpatial=sPos , weight=energy, uv=uv[i])\n\
     sStr *= 0.06 # magic kolmogorov factor \n\
     sPos *= 2.0 \n\
   for substep in range(upres):\n\
     advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=$ADVECT_ORDER$)\n\
     if using_colors: \n\
+      print ('Advecting colors high')\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=color_r_high, order=$ADVECT_ORDER$)\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=color_g_high, order=$ADVECT_ORDER$)\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=color_b_high, order=$ADVECT_ORDER$)\n\
     if using_fire: \n\
+      print ('Advecting fire high')\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=fuel_high, order=$ADVECT_ORDER$)\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=react_high, order=$ADVECT_ORDER$)\n\
   xl.step()\n\
@@ -333,7 +354,7 @@ print('Grids exported')\n\
 ";
 
 const string smoke_import_low = "\n\
-def import_grids():\n\
+def import_grids_low():\n\
   print('Importing grids')\n\
   density.load('$MANTA_EXPORT_PATH$density_low.uni')\n\
   flags.load('$MANTA_EXPORT_PATH$flags_low.uni')\n\
@@ -356,7 +377,7 @@ def import_grids():\n\
 ";
 
 const string smoke_import_high = "\n\
-def import_grids():\n\
+def import_grids_high():\n\
   print('Importing grids')\n\
   vel.load('$MANTA_EXPORT_PATH$vel.uni')\n\
   xl_density.load('$MANTA_EXPORT_PATH$xl_density.uni')\n\

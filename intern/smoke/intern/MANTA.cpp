@@ -384,9 +384,12 @@ std::string Manta_API::get_manta_smoke_script(SmokeModifierData *smd)
     std::string smoke_script = "";
 	
 	// Check if high res is enabled
+	// Need to check if wt exists and NOT just check if high res flag is set (smd->domain->flags & MOD_SMOKE_HIGHRES)
+	// because wt might not exist, i.e. when FLUID_3D constructor is called before WTURBULENCE constructor
 	if (smd->domain->wt) {
 		smoke_script = smoke_setup_high + smoke_import_high + smoke_step_high;
 	} else {
+		// TODO: Need to figure out how to handle liquids when high resolution grids are enabled, not just for low res grids
 		if (smd->domain->flags & MOD_SMOKE_MANTA_USE_LIQUID)
 			smoke_script = smoke_setup_low  + liquid_step_low;
 		else
@@ -452,7 +455,7 @@ std::string Manta_API::getRealValue( const std::string& varName, SmokeModifierDa
 		ss << smd->domain->wt->getResBig()[0];
 	else if (varName == "HRESY")
 		if (is2D) {	ss << smd->domain->wt->getResBig()[2];}
-		else{ 		ss << smd->domain->wt->getResBig()[1];}
+		else { 		ss << smd->domain->wt->getResBig()[1];}
 	else if (varName == "HRESZ")
 		if (is2D) {	ss << 1;}
 		else { 		ss << smd->domain->wt->getResBig()[2];}
@@ -579,14 +582,22 @@ std::string Manta_API::parseScript(const string& setup_string, SmokeModifierData
 
 void Manta_API::manta_export_grids(SmokeModifierData *smd)
 {
+	// Export the scene file
 	std::string smoke_script = get_manta_smoke_script(smd);
-	std::string final_script = Manta_API::parseScript(smoke_script, smd) + standalone;
+	
+	std::string final_script = "";
+	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
+		final_script = Manta_API::parseScript(smoke_script, smd) + standalone_high;
+	} else {
+		final_script = Manta_API::parseScript(smoke_script, smd) + standalone_low;
+	}
 	
 	ofstream myfile;
-	myfile.open (smd->domain->_manta_filepath);
+	myfile.open(smd->domain->_manta_filepath);
 	myfile << final_script;
 	myfile.close();
 	
+	// Run python environment to export grids, that is, create the grid files
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
 		PyRun_SimpleString(Manta_API::parseScript(smoke_export_high, smd).c_str());
@@ -702,6 +713,7 @@ void Manta_API::updatePointers(FLUID_3D *fluid)
 
 void Manta_API::updateHighResPointers(WTURBULENCE *wt)
 {
+	cout << "Updating pointers high res" << endl;
 	wt->_densityBig = (float* )pointerFromString(getGridPointer("xl_density", "xl"));;
 	if (wt->using_colors) {
 		wt->_color_rBig = (float* )pointerFromString(getGridPointer("color_r_high", "xl"));
