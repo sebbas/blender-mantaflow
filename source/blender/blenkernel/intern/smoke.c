@@ -2343,7 +2343,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 							}
 							else { // inflow
 								apply_inflow_fields(sfs, emission_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b);
-								if((sfs->flags & MOD_SMOKE_USE_MANTA) && (sds->manta_solver_res == 3)) {
+								if((sds->flags & MOD_SMOKE_USE_MANTA) && (sds->manta_solver_res == 3)) {
 									apply_inflow_fields(sfs, emission_map[e_index], d_index, inflow_grid, heat, fuel_inflow, react, color_r, color_g, color_b);
 								}
 																/* initial velocity */
