@@ -789,7 +789,7 @@ void FLUID_3D::processBurn(float *fuel, float *smoke, float *react, float *heat,
 	initColors(0.0f, 0.0f, 0.0f);
 
 	PyGILState_STATE gilstate = PyGILState_Ensure();
-	std::string py_string_0 = string("process_burn()");
+	std::string py_string_0 = string("process_burn_low()");
 	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
 	Manta_API::updatePointers(this);
@@ -804,7 +804,7 @@ void FLUID_3D::updateFlame(float *react, float *flame, int total_cells)
 	clock_t start = clock();
 
 	PyGILState_STATE gilstate = PyGILState_Ensure();
-	std::string py_string_0 = string("update_flame()");
+	std::string py_string_0 = string("update_flame_low()");
 	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
 	Manta_API::updatePointers(this);

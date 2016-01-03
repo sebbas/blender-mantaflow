@@ -244,10 +244,10 @@ def step_low():\n\
   \n\
   s.step()\n\
 \n\
-def process_burn():\n\
+def process_burn_low():\n\
   processBurn(fuel=fuel_low, density=density, react=react_low, red=color_r_low, green=color_g_low, blue=color_b_low, heat=heat_low, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=$DT$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
 \n\
-def update_flame():\n\
+def update_flame_low():\n\
   updateFlame(react=react_low, flame=flame_low)\n\
 ";
 
@@ -262,17 +262,22 @@ def step_high():\n\
       applyNoiseVec3(flags=xl_flags, target=xl_vel, noise=xl_wltnoise, scale=sStr * uvWeight, scaleSpatial=sPos , weight=energy, uv=uv[i])\n\
     sStr *= 0.06 # magic kolmogorov factor \n\
     sPos *= 2.0 \n\
+  \n\
   for substep in range(upres):\n\
-    advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=$ADVECT_ORDER$)\n\
     if using_colors: \n\
       print ('Advecting colors high')\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=color_r_high, order=$ADVECT_ORDER$)\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=color_g_high, order=$ADVECT_ORDER$)\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=color_b_high, order=$ADVECT_ORDER$)\n\
+    \n\
     if using_fire: \n\
       print ('Advecting fire high')\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=fuel_high, order=$ADVECT_ORDER$)\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=react_high, order=$ADVECT_ORDER$)\n\
+    \n\
+    print('Advecting density high')\n\
+    advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=$ADVECT_ORDER$)\n\
+  \n\
   xl.step()\n\
 \n\
 def process_burn_high():\n\
