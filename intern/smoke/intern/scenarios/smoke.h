@@ -1,40 +1,7 @@
 #include <string>
 using namespace std;
-const string smoke_clean = "";
 
 /* SETUPS */
-
-const string clean_code_low = "\
-del res\n\
-del solver_dim\n\
-del gs\n\
-del doOpen\n\
-del boundConditions\n\
-del s\n\
-del timings\n\
-del flags\n\
-del vel\n\
-del x_vel\n\
-del y_vel\n\
-del z_vel\n\
-del density\n\
-del pressure\n\
-del color_r_low\n\
-del color_g_low\n\
-del color_b_low\n\
-del heat_low\n\
-del flame_low\n\
-del fuel_low\n\
-del react_low\n\
-del forces\n\
-del inflow_grid\n\
-del fuel_inflow\n\
-del noise\n\
-del using_colors\n\
-del using_heat\n\
-del using_fire\n\
-del low_flags_updated\n\
-";
 
 const string smoke_setup_low = "\
 from manta import *\n\
@@ -90,10 +57,6 @@ low_flags_updated = False\n\
 ";
 
 const string smoke_setup_high = "\
-from manta import *\n\
-import os, shutil, math, sys\n\
-\n\
-s = FluidSolver(name='main2', gridSize = vec3(21,21,32), dim = 3)\n\
 xl_gs = vec3($HRESX$, $HRESY$, $HRESZ$)\n\
 xl = Solver(name = 'larger', gridSize = xl_gs)\n\
 uvs = $UVS_CNT$\n\
@@ -167,36 +130,69 @@ color_b_high.copyFrom(xl_density) \n\
 color_b_high.multConst(manta_color_b) \n\
 using_colors = True\n";
 
-const string smoke_del_colors_low = "\n\
+const string del_colors_low = "\n\
 del color_r_low \n\
 del color_g_low \n\
 del color_b_low \n\
 using_colors = False";
 
-const string smoke_del_colors_high = "\n\
+const string del_colors_high = "\n\
 del color_r_high \n\
 del color_g_high \n\
 del color_b_high \n\
 using_colors = False";
 
+const string del_fire_low = "\n\
+del flame_low \n\
+del fuel_low \n\
+del react_low \n\
+using_fire = False";
+
+const string del_heat_low = "\n\
+del heat_low \n\
+using_heat = False";
+
+const string del_base_grids_low = "\n\
+del res\n\
+del solver_dim\n\
+del gs\n\
+del doOpen\n\
+del boundConditions\n\
+del s\n\
+del timings\n\
+del using_colors\n\
+del using_heat\n\
+del using_fire\n\
+del flags\n\
+del vel\n\
+del x_vel\n\
+del y_vel\n\
+del z_vel\n\
+del density\n\
+del pressure\n\
+del forces\n\
+del inflow_grid\n\
+del fuel_inflow\n\
+del noise";
+
 const string smoke_init_heat_low = "\
 print(\"Initializing heat lowres\")\n\
 heat_low = s.create(RealGrid)\n\
-using_heat = True\n";
+using_heat = True";
 
 const string smoke_init_fire_low = "\
 print(\"Initializing fire lowres\")\n\
 flame_low = s.create(RealGrid)\n\
 fuel_low = s.create(RealGrid)\n\
 react_low = s.create(RealGrid)\n\
-using_fire = True\n";
+using_fire = True";
 
 const string smoke_init_fire_high = "\
 print(\"Initializing fire highres\")\n\
 flame_high = xl.create(RealGrid)\n\
 fuel_high = xl.create(RealGrid)\n\
 react_high = xl.create(RealGrid)\n\
-using_fire = True\n";
+using_fire = True";
 
 const string standalone_low = "\n\
 if (GUI):\n\
@@ -291,7 +287,7 @@ def step_low():\n\
   s.step()\n\
 \n\
 def process_burn_low():\n\
-  if (color_r_low and color_g_low and color_b_low):\n\
+  if (using_colors):\n\
     processBurn(fuel=fuel_low, density=density, react=react_low, red=color_r_low, green=color_g_low, blue=color_b_low, heat=heat_low, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=$DT$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
   else:\n\
     processBurn(fuel=fuel_low, density=density, react=react_low, heat=heat_low, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=$DT$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\

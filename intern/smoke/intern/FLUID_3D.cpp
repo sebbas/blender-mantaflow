@@ -589,38 +589,35 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 		_obstacles[x]    = false;
 	}
 	
-	/* heat */
 	_heat = NULL;
 	using_heat = false;
+	
+	_flame = _fuel = _react = NULL;
+	using_fire = false;
+	
+	_color_r = _color_g = _color_b = NULL;
+	using_colors = false;
+	
+	smd->domain->fluid = this;
+//	vector<string> args;
+//	args.push_back("manta_scene.py");
+//	initializeMantaflow(args); /*need this to delete previous solvers and grids*/
+	Manta_API::start_mantaflow();
+	Manta_API::run_manta_sim_file_lowRes(smd);
+	
+	// Heat grids
 	if (init_heat) {
 		initHeat();
 	}
-	// Fire simulation
-	_flame = _fuel = NULL;
-	_react = NULL;
-	using_fire = false;
+	// Fire grids
 	if (init_fire) {
 		initFire();
 	}
-	// Smoke color
-	_color_r = NULL;
-	_color_g = NULL;
-	_color_b = NULL;
-	using_colors = false;
+	// Smoke color grids
 	if (init_colors) {
 		initColors(0.0f, 0.0f, 0.0f);
 	}
 	
-//	PyGILState_STATE gilstate = PyGILState_Ensure();
-//	PyRun_SimpleString(clean_code_low.c_str());
-//	PyGILState_Release(gilstate);
-	
-	smd->domain->fluid = this;
-	vector<string> args;
-	args.push_back("manta_scene.py");
-	initializeMantaflow(args); /*need this to delete previous solvers and grids*/
-	
-	Manta_API::run_manta_sim_file_lowRes(smd);
 	Manta_API::updatePointers(this);
 }
 
@@ -665,6 +662,11 @@ void FLUID_3D::initFire()
 FLUID_3D::~FLUID_3D()
 {
 	cout << "~FLUID_3D" << endl;
+
+	if (using_heat) Manta_API::delete_heat_low();
+	if (using_fire) Manta_API::delete_fire_low();
+	if (using_colors) Manta_API::delete_colors_low();
+	Manta_API::delete_base_grids_low();
 
 //	if (_xVelocity) delete[] _xVelocity;
 //	if (_yVelocity) delete[] _yVelocity;

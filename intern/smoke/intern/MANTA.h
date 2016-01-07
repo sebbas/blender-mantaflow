@@ -31,7 +31,8 @@ struct manta_arg_struct {
 	SmokeModifierData smd;
 };
 
-static bool manta_sim_running=true;
+static bool manta_sim_running = true;
+static bool manta_initialized = false;
 
 extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY, int dimZ);
 
@@ -94,23 +95,21 @@ public:
 	/*blender transforms obj coords to [-1,1]. This method transforms them back*/
 	void add_mesh_transform_method(stringstream& ss);
 	
-	void manta_cache_path(char *filepath);
-	
-	void create_manta_folder();
-	
-	void *run_manta_scene_thread(void *threadid);
-	
-	void run_manta_sim_highRes(WTURBULENCE *wt);
-	
-	void run_manta_scene(Manta_API * fluid);
-	
 	void stop_manta_sim();
 	
 	static void run_manta_sim_file_lowRes(SmokeModifierData *smd);
 	
 	static void run_manta_sim_file_highRes(SmokeModifierData *smd);
 	
-	void manta_sim_step(int frame);
+	static void delete_colors_low();
+	
+	static void delete_fire_low();
+	
+	static void delete_heat_low();
+	
+	static void delete_base_grids_low();
+	
+	static void start_mantaflow();
 	
 	static std::string getRealValue(const string& varName, SmokeModifierData *sds);
 	

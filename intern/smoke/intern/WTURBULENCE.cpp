@@ -1423,4 +1423,4 @@ void WTURBULENCE::updateFlame()
 	Manta_API::updateHighResPointers(this);
 }
 
-#endif
+#endif /* WITH_MANTA */

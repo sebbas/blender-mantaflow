@@ -1,6 +1,7 @@
 #include "MANTA.h"
 #include "WTURBULENCE.h"
 #include "scenarios/smoke.h"
+#include "../../../source/blender/python/manta_pp/pwrapper/manta.h"
 
 extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY, int dimZ)
 {
@@ -415,6 +416,51 @@ void Manta_API::run_manta_sim_file_highRes(SmokeModifierData *smd)
 	
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	PyRun_SimpleString(final_script.c_str());
+	PyGILState_Release(gilstate);
+}
+
+void Manta_API::delete_colors_low()
+{
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	PyRun_SimpleString(del_colors_low.c_str());
+	PyGILState_Release(gilstate);
+}
+
+void Manta_API::delete_fire_low()
+{
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	PyRun_SimpleString(del_fire_low.c_str());
+	PyGILState_Release(gilstate);
+}
+
+void Manta_API::delete_heat_low()
+{
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	PyRun_SimpleString(del_heat_low.c_str());
+	PyGILState_Release(gilstate);
+}
+
+void Manta_API::delete_base_grids_low()
+{
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	PyRun_SimpleString(del_base_grids_low.c_str());
+	PyGILState_Release(gilstate);
+}
+
+void Manta_API::start_mantaflow()
+{
+	string filename = "manta_scene.py";
+	std::vector<std::string> fill = std::vector<std::string>();
+	
+	// Initialize extension classes and wrappers
+	srand(0);
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	
+	if (!manta_initialized)
+	{	
+		Pb::setup(filename, fill);
+		manta_initialized = true;
+	}
 	PyGILState_Release(gilstate);
 }
 
