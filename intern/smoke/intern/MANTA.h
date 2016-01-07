@@ -22,6 +22,8 @@ void export_force_fields(int size_x, int size_y, int size_z, float *f_x, float*f
 void export_em_fields(float *em_map, float flow_density, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z, float *inf, float *vel);/*defined in pymain.cpp*/
 extern "C" void manta_write_effectors(struct FLUID_3D *fluid); /*defined in smoke_api.cpp*/
 void initializeMantaflow(vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
+void runScript(vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
+
 
 /*for passing to detached thread*/
 struct manta_arg_struct {

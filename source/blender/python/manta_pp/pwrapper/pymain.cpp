@@ -66,7 +66,7 @@ if 'sdf_flow' in globals() : del sdf_flow \n\
 if 'source_shape' in globals() : del source_shape\n";
 
 const string clean_code_low = "\
-del [res, solver_dim, gs, s, timings, flags, vel, density, pressure, color_r_low, color_g_low, color_b_low, heat_low, flame_low, fuel_low, react_low, forces, inflow_grid, fuel_inflow, manta_using_colors, manta_using_heat, manta_using_fire, low_flags_updated]";
+del [res, solver_dim, gs, doOpen, boundConditions, s, timings, flags, vel, x_vel, y_vel, z_vel, density, pressure, color_r_low, color_g_low, color_b_low, heat_low, flame_low, fuel_low, react_low, forces, inflow_grid, fuel_inflow, noise, using_colors, using_heat, using_fire, low_flags_updated]";
 
 const static string clean_code2 = "del s;del noise;del xl;del xl_noise;del xl_wltnoise;";
 		   //for latter full object release	

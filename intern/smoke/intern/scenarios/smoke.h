@@ -4,6 +4,38 @@ const string smoke_clean = "";
 
 /* SETUPS */
 
+const string clean_code_low = "\
+del res\n\
+del solver_dim\n\
+del gs\n\
+del doOpen\n\
+del boundConditions\n\
+del s\n\
+del timings\n\
+del flags\n\
+del vel\n\
+del x_vel\n\
+del y_vel\n\
+del z_vel\n\
+del density\n\
+del pressure\n\
+del color_r_low\n\
+del color_g_low\n\
+del color_b_low\n\
+del heat_low\n\
+del flame_low\n\
+del fuel_low\n\
+del react_low\n\
+del forces\n\
+del inflow_grid\n\
+del fuel_inflow\n\
+del noise\n\
+del using_colors\n\
+del using_heat\n\
+del using_fire\n\
+del low_flags_updated\n\
+";
+
 const string smoke_setup_low = "\
 from manta import *\n\
 import os, shutil, math, sys\n\
@@ -23,15 +55,18 @@ timings = Timings()\n\
 # prepare grids\n\
 flags = s.create(FlagGrid)\n\
 vel = s.create(MACGrid)\n\
+x_vel = s.create(RealGrid)\n\
+y_vel = s.create(RealGrid)\n\
+z_vel = s.create(RealGrid)\n\
 density = s.create(LevelsetGrid)\n\
 pressure = s.create(RealGrid)\n\
-color_r_low = s.create(RealGrid)\n\
-color_g_low = s.create(RealGrid)\n\
-color_b_low = s.create(RealGrid)\n\
-heat_low = s.create(RealGrid)\n\
-flame_low = s.create(RealGrid)\n\
-fuel_low = s.create(RealGrid)\n\
-react_low = s.create(RealGrid)\n\
+color_r_low = None\n\
+color_g_low = None\n\
+color_b_low = None\n\
+heat_low = None\n\
+flame_low = None\n\
+fuel_low = None\n\
+react_low = None\n\
 forces = s.create(MACGrid)\n\
 inflow_grid = s.create(LevelsetGrid)\n\
 fuel_inflow = s.create(LevelsetGrid)\n\
@@ -81,12 +116,12 @@ if using_wavelets and upres > 0:\n\
   xl_vel = xl.create(MACGrid)\n\
   xl_density = xl.create(RealGrid)\n\
   xl_flags = xl.create(FlagGrid)\n\
-  color_r_high = xl.create(RealGrid)\n\
-  color_g_high = xl.create(RealGrid)\n\
-  color_b_high = xl.create(RealGrid)\n\
-  flame_high = xl.create(RealGrid)\n\
-  fuel_high = xl.create(RealGrid)\n\
-  react_high = xl.create(RealGrid)\n\
+  color_r_high = None\n\
+  color_g_high = None\n\
+  color_b_high = None\n\
+  flame_high = None\n\
+  fuel_high = None\n\
+  react_high = None\n\
   \n\
   xl_flags.initDomain() \n\
   xl_flags.fillGrid() \n\
@@ -112,21 +147,27 @@ if using_wavelets and upres > 0:\n\
 
 const string smoke_init_colors_low = "\
 print(\"Initializing colors\")\n\
-color_r_low.add(density) \n\
+color_r_low = s.create(RealGrid)\n\
+color_g_low = s.create(RealGrid)\n\
+color_b_low = s.create(RealGrid)\n\
+color_r_low.copyFrom(density) \n\
 color_r_low.multConst(manta_color_r) \n\
-color_g_low.add(density) \n\
+color_g_low.copyFrom(density) \n\
 color_g_low.multConst(manta_color_g) \n\
-color_b_low.add(density) \n\
+color_b_low.copyFrom(density) \n\
 color_b_low.multConst(manta_color_b) \n\
 using_colors = True\n";
 
 const string smoke_init_colors_high = "\
 print(\"Initializing colors highres\")\n\
-color_r_high.add(xl_density) \n\
+color_r_high = xl.create(RealGrid)\n\
+color_g_high = xl.create(RealGrid)\n\
+color_b_high = xl.create(RealGrid)\n\
+color_r_high.copyFrom(xl_density) \n\
 color_r_high.multConst(manta_color_r) \n\
-color_g_high.add(xl_density) \n\
+color_g_high.copyFrom(xl_density) \n\
 color_g_high.multConst(manta_color_g) \n\
-color_b_high.add(xl_density) \n\
+color_b_high.copyFrom(xl_density) \n\
 color_b_high.multConst(manta_color_b) \n\
 using_colors = True\n";
 
@@ -144,14 +185,21 @@ using_colors = False";
 
 const string smoke_init_heat_low = "\
 print(\"Initializing heat lowres\")\n\
+heat_low = s.create(RealGrid)\n\
 using_heat = True\n";
 
 const string smoke_init_fire_low = "\
 print(\"Initializing fire lowres\")\n\
+flame_low = s.create(RealGrid)\n\
+fuel_low = s.create(RealGrid)\n\
+react_low = s.create(RealGrid)\n\
 using_fire = True\n";
 
 const string smoke_init_fire_high = "\
 print(\"Initializing fire highres\")\n\
+flame_high = xl.create(RealGrid)\n\
+fuel_high = xl.create(RealGrid)\n\
+react_high = xl.create(RealGrid)\n\
 using_fire = True\n";
 
 const string standalone_low = "\n\
@@ -196,6 +244,7 @@ for step in range(1000):\n\
 
 const string smoke_step_low = "\n\
 def step_low():\n\
+  copyRealToMac(sourceX=x_vel, sourceY=y_vel, sourceZ=z_vel, target=vel)\n\
   if solver_dim == 2:\n\
     density.add(inflow_grid)\n\
   \n\
@@ -242,10 +291,14 @@ def step_low():\n\
   print('Walls')\n\
   setWallBcs(flags=flags, vel=vel)\n\
   \n\
+  copyMacToReal(source=vel, targetX=x_vel, targetY=y_vel, targetZ=z_vel)\n\
   s.step()\n\
 \n\
 def process_burn_low():\n\
-  processBurn(fuel=fuel_low, density=density, react=react_low, red=color_r_low, green=color_g_low, blue=color_b_low, heat=heat_low, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=$DT$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
+  if (color_r_low and color_g_low and color_b_low):\n\
+    processBurn(fuel=fuel_low, density=density, react=react_low, red=color_r_low, green=color_g_low, blue=color_b_low, heat=heat_low, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=$DT$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
+  else:\n\
+    processBurn(fuel=fuel_low, density=density, react=react_low, heat=heat_low, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=$DT$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
 \n\
 def update_flame_low():\n\
   updateFlame(react=react_low, flame=flame_low)\n\

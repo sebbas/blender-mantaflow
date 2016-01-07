@@ -545,15 +545,7 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	_totalSteps = 0;
 	_res = Vec3Int(_xRes,_yRes,_zRes);
 	_maxRes = MAX3(_xRes, _yRes, _zRes);
-	
-	// initialize wavelet turbulence
-	/*
-	 if(amplify)
-	 _wTurbulence = new WTURBULENCE(_res[0],_res[1],_res[2], amplify, noisetype);
-	 else
-	 _wTurbulence = NULL;
-	 */
-	
+
 	// scale the constants according to the refinement of the grid
 	if (!dx)
 		_dx = 1.0f / (float)_maxRes;
@@ -566,18 +558,10 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	// allocate arrays
 	_totalCells   = _xRes * _yRes * _zRes;
 	_slabSize = _xRes * _yRes;
-	_xVelocity    = new float[_totalCells];
-	_yVelocity    = new float[_totalCells];
-	_zVelocity    = new float[_totalCells];
 	_xVelocityOb  = new float[_totalCells];
 	_yVelocityOb  = new float[_totalCells];
 	_zVelocityOb  = new float[_totalCells];
-	_xVelocityOld = new float[_totalCells];
-	_yVelocityOld = new float[_totalCells];
-	_zVelocityOld = new float[_totalCells];
-	_xForce       = new float[_totalCells];
-	_yForce       = new float[_totalCells];
-	_zForce       = new float[_totalCells];
+	
 	/*if two-dimensional, insert manta sim into blender _density field */
 	if (smd->domain->manta_solver_res == 2) {
 		_density  = new float[_totalCells];
@@ -595,68 +579,41 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	}
 	_manta_inflow = NULL;
 	_fuel_inflow = NULL;
-	_densityOld   = new float[_totalCells];
 	_obstacles    = new unsigned char[_totalCells]; // set 0 at end of step
-	
-	// For threaded version:
-	_xVelocityTemp = new float[_totalCells];
-	_yVelocityTemp = new float[_totalCells];
-	_zVelocityTemp = new float[_totalCells];
-	_densityTemp   = new float[_totalCells];
 	
 	//initializing manta flag grids
 	// DG TODO: check if alloc went fine
 	
 	for (int x = 0; x < _totalCells; x++)
 	{
-		_densityOld[x]   = 0.0f;
-		_xVelocity[x]    = 0.0f;
-		_yVelocity[x]    = 0.0f;
-		_zVelocity[x]    = 0.0f;
-		_xVelocityOb[x]  = 0.0f;
-		_yVelocityOb[x]  = 0.0f;
-		_zVelocityOb[x]  = 0.0f;
-		_xVelocityOld[x] = 0.0f;
-		_yVelocityOld[x] = 0.0f;
-		_zVelocityOld[x] = 0.0f;
-		_xForce[x]       = 0.0f;
-		_yForce[x]       = 0.0f;
-		_zForce[x]       = 0.0f;
 		_obstacles[x]    = false;
 	}
 	
 	/* heat */
-	_heat = _heatOld = _heatTemp = NULL;
+	_heat = NULL;
 	using_heat = false;
 	if (init_heat) {
 		initHeat();
 	}
 	// Fire simulation
-	_flame = _fuel = _fuelTemp = _fuelOld = NULL;
-	_react = _reactTemp = _reactOld = NULL;
+	_flame = _fuel = NULL;
+	_react = NULL;
 	using_fire = false;
 	if (init_fire) {
 		initFire();
 	}
 	// Smoke color
-	_color_r = _color_rOld = _color_rTemp = NULL;
-	_color_g = _color_gOld = _color_gTemp = NULL;
-	_color_b = _color_bOld = _color_bTemp = NULL;
+	_color_r = NULL;
+	_color_g = NULL;
+	_color_b = NULL;
 	using_colors = false;
 	if (init_colors) {
 		initColors(0.0f, 0.0f, 0.0f);
 	}
 	
-	// boundary conditions of the fluid domain
-	// set default values -> vertically non-colliding
-	_domainBcFront = true;
-	_domainBcTop = false;
-	_domainBcLeft = true;
-	_domainBcBack = _domainBcFront;
-	_domainBcBottom = _domainBcTop;
-	_domainBcRight	= _domainBcLeft;
-	
-	_colloPrev = 1;	// default value
+//	PyGILState_STATE gilstate = PyGILState_Ensure();
+//	PyRun_SimpleString(clean_code_low.c_str());
+//	PyGILState_Release(gilstate);
 	
 	smd->domain->fluid = this;
 	vector<string> args;
@@ -674,7 +631,7 @@ void FLUID_3D::initHeat()
 		PyGILState_STATE gilstate = PyGILState_Ensure();
 		PyRun_SimpleString(smoke_init_heat_low.c_str());
 		PyGILState_Release(gilstate);
-		Manta_API::updatePointers(this);
+//		Manta_API::updatePointers(this);
 	}
 }
 
@@ -690,7 +647,7 @@ void FLUID_3D::initColors(float init_r, float init_g, float init_b)
 		PyRun_SimpleString(ss.str().c_str());
 		PyRun_SimpleString(smoke_init_colors_low.c_str());
 		PyGILState_Release(gilstate);
-		Manta_API::updatePointers(this);
+//		Manta_API::updatePointers(this);
 	}
 }
 
@@ -701,7 +658,7 @@ void FLUID_3D::initFire()
 		PyGILState_STATE gilstate = PyGILState_Ensure();
 		PyRun_SimpleString(smoke_init_fire_low.c_str());
 		PyGILState_Release(gilstate);
-		Manta_API::updatePointers(this);
+//		Manta_API::updatePointers(this);
 	}
 }
 
@@ -709,45 +666,45 @@ FLUID_3D::~FLUID_3D()
 {
 	cout << "~FLUID_3D" << endl;
 
-	if (_xVelocity) delete[] _xVelocity;
-	if (_yVelocity) delete[] _yVelocity;
-	if (_zVelocity) delete[] _zVelocity;
+//	if (_xVelocity) delete[] _xVelocity;
+//	if (_yVelocity) delete[] _yVelocity;
+//	if (_zVelocity) delete[] _zVelocity;
 	if (_xVelocityOb) delete[] _xVelocityOb;
 	if (_yVelocityOb) delete[] _yVelocityOb;
 	if (_zVelocityOb) delete[] _zVelocityOb;
-	if (_xVelocityOld) delete[] _xVelocityOld;
-	if (_yVelocityOld) delete[] _yVelocityOld;
-	if (_zVelocityOld) delete[] _zVelocityOld;
-	if (_xForce) delete[] _xForce;
-	if (_yForce) delete[] _yForce;
-	if (_zForce) delete[] _zForce;
-	if (_densityOld) delete[] _densityOld;
-	if (_heatOld) delete[] _heatOld;
+//	if (_xVelocityOld) delete[] _xVelocityOld;
+//	if (_yVelocityOld) delete[] _yVelocityOld;
+//	if (_zVelocityOld) delete[] _zVelocityOld;
+//	if (_xForce) delete[] _xForce;
+//	if (_yForce) delete[] _yForce;
+//	if (_zForce) delete[] _zForce;
+//	if (_densityOld) delete[] _densityOld;
+//	if (_heatOld) delete[] _heatOld;
 	if (_obstacles) delete[] _obstacles;
-	
-	if (_xVelocityTemp) delete[] _xVelocityTemp;
-	if (_yVelocityTemp) delete[] _yVelocityTemp;
-	if (_zVelocityTemp) delete[] _zVelocityTemp;
-	if (_densityTemp) delete[] _densityTemp;
-	if (_heatTemp) delete[] _heatTemp;
-	
-	if (_flame) delete[] _flame;
-	if (_fuel) delete[] _fuel;
-	if (_fuelTemp) delete[] _fuelTemp;
-	if (_fuelOld) delete[] _fuelOld;
-	if (_react) delete[] _react;
-	if (_reactTemp) delete[] _reactTemp;
-	if (_reactOld) delete[] _reactOld;
-	
-	if (_color_r) delete[] _color_r;
-	if (_color_rOld) delete[] _color_rOld;
-	if (_color_rTemp) delete[] _color_rTemp;
-	if (_color_g) delete[] _color_g;
-	if (_color_gOld) delete[] _color_gOld;
-	if (_color_gTemp) delete[] _color_gTemp;
-	if (_color_b) delete[] _color_b;
-	if (_color_bOld) delete[] _color_bOld;
-	if (_color_bTemp) delete[] _color_bTemp;
+//	
+//	if (_xVelocityTemp) delete[] _xVelocityTemp;
+//	if (_yVelocityTemp) delete[] _yVelocityTemp;
+//	if (_zVelocityTemp) delete[] _zVelocityTemp;
+//	if (_densityTemp) delete[] _densityTemp;
+//	if (_heatTemp) delete[] _heatTemp;
+//	
+//	if (_flame) delete[] _flame;
+//	if (_fuel) delete[] _fuel;
+//	if (_fuelTemp) delete[] _fuelTemp;
+//	if (_fuelOld) delete[] _fuelOld;
+//	if (_react) delete[] _react;
+//	if (_reactTemp) delete[] _reactTemp;
+//	if (_reactOld) delete[] _reactOld;
+//	
+//	if (_color_r) delete[] _color_r;
+//	if (_color_rOld) delete[] _color_rOld;
+//	if (_color_rTemp) delete[] _color_rTemp;
+//	if (_color_g) delete[] _color_g;
+//	if (_color_gOld) delete[] _color_gOld;
+//	if (_color_gTemp) delete[] _color_gTemp;
+//	if (_color_b) delete[] _color_b;
+//	if (_color_bOld) delete[] _color_bOld;
+//	if (_color_bTemp) delete[] _color_bTemp;
 
     // printf("deleted fluid\n");
 }
@@ -757,61 +714,33 @@ FLUID_3D::~FLUID_3D()
 //////////////////////////////////////////////////////////////////////
 void FLUID_3D::step(float dt, float gravity[3])
 {
-	clock_t start = clock();
-
 	// Blender computes heat buoyancy, not yet impl. in Manta
 	//manta_write_effectors(this);
-	Manta_API::updatePointers(this);
 
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	std::string py_string_0 = string("step_low()");
 	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
 	Manta_API::updatePointers(this);
-
-#if 0
-	for (int i = 0; i < _totalCells; i++)
-	{
-		_xForce[i] = _yForce[i] = _zForce[i] = 0.0f;
-	}
-#endif
-	clock_t end = clock();
-	float seconds = (float)(end - start) / CLOCKS_PER_SEC;
-	printf("TIME FOR STEP: %f \n", seconds);
 }
 
 void FLUID_3D::processBurn(float *fuel, float *smoke, float *react, float *heat,
 						   float *r, float *g, float *b, int total_cells, float dt)
 {
-	clock_t start = clock();
-
-	// Need to make sure that color grids are initialized as they are needed in processBurn
-	initColors(0.0f, 0.0f, 0.0f);
-
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	std::string py_string_0 = string("process_burn_low()");
 	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
 	Manta_API::updatePointers(this);
-	
-	clock_t end = clock();
-	float seconds = (float)(end - start) / CLOCKS_PER_SEC;
-	printf("TIME FOR PROCESS_BURN: %f \n", seconds);
 }
 
 void FLUID_3D::updateFlame(float *react, float *flame, int total_cells)
 {
-	clock_t start = clock();
-
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	std::string py_string_0 = string("update_flame_low()");
 	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
 	Manta_API::updatePointers(this);
-	
-	clock_t end = clock();
-	float seconds = (float)(end - start) / CLOCKS_PER_SEC;
-	printf("TIME FOR UPDATE_FLAME: %f \n", seconds);
 }
 
 #endif /*WITH_MANTA*/

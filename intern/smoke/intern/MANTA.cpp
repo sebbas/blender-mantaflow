@@ -625,7 +625,7 @@ string Manta_API::getGridPointer(std::string gridName, std::string solverName)
 	PyObject* retured_value = PyObject_CallObject(func, NULL);
 	PyObject* encoded = PyUnicode_AsUTF8String(retured_value);
 	if (retured_value == NULL){cout << "null" << 15 << endl;return "";}
-	std::string res = strdup(PyBytes_AsString(encoded));
+	std::string res = PyBytes_AsString(encoded);
 	cout << "Pointer on "<< gridName << " " << res << endl;
 	PyGILState_Release(gilstate);		
 	return res;
@@ -658,11 +658,6 @@ void * Manta_API::pointerFromString(const std::string& s){
 
 void Manta_API::updatePointers(FLUID_3D *fluid)
 {
-	//blender_to_manta: whether we copy data from blender density/velocity field to mantaflow or the other way around
-	/*in 2D case, we want to copy in the Z-axis field that is in the middle of X and Y axes */
-	//x + y * max_x + z * max_x*max_y
-//	int position_to_copy_from(0 + (fluid->xRes()/2) * fluid->xRes() + (fluid->zRes()/2) * fluid->xRes()*fluid->yRes());
-//	float *whereToCopy = &fluid->_density[position_to_copy_from];
 	cout << "Updating pointers" << endl;
 	if (fluid->manta_resoution == 2)
 	{
@@ -709,6 +704,9 @@ void Manta_API::updatePointers(FLUID_3D *fluid)
 		fluid->_fuel = (float* )pointerFromString(getGridPointer("fuel_low", "s"));
 		fluid->_react = (float* )pointerFromString(getGridPointer("react_low", "s"));
 	}
+	fluid->_xVelocity = (float* )pointerFromString(getGridPointer("x_vel", "s"));
+	fluid->_yVelocity = (float* )pointerFromString(getGridPointer("y_vel", "s"));
+	fluid->_zVelocity = (float* )pointerFromString(getGridPointer("z_vel", "s"));
 }
 
 void Manta_API::updateHighResPointers(WTURBULENCE *wt)
