@@ -618,7 +618,7 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 		initColors(0.0f, 0.0f, 0.0f);
 	}
 	
-	Manta_API::updatePointers(this);
+	Manta_API::update_pointers(this);
 }
 
 void FLUID_3D::initHeat()
@@ -723,7 +723,7 @@ void FLUID_3D::step(float dt, float gravity[3])
 	std::string py_string_0 = string("step_low()");
 	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
-	Manta_API::updatePointers(this);
+	Manta_API::update_pointers(this);
 }
 
 void FLUID_3D::processBurn(float *fuel, float *smoke, float *react, float *heat,
@@ -733,7 +733,7 @@ void FLUID_3D::processBurn(float *fuel, float *smoke, float *react, float *heat,
 	std::string py_string_0 = string("process_burn_low()");
 	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
-	Manta_API::updatePointers(this);
+	Manta_API::update_pointers(this);
 }
 
 void FLUID_3D::updateFlame(float *react, float *flame, int total_cells)
@@ -742,7 +742,7 @@ void FLUID_3D::updateFlame(float *react, float *flame, int total_cells)
 	std::string py_string_0 = string("update_flame_low()");
 	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
-	Manta_API::updatePointers(this);
+	Manta_API::update_pointers(this);
 }
 
 #endif /*WITH_MANTA*/

@@ -586,95 +586,95 @@ extern "C" void smoke_ensure_colors(FLUID_3D *fluid, WTURBULENCE *wt, float init
 
 
 /*MantaFlow funcs*/
-extern "C" int smoke_mantaflow_read(struct SmokeDomainSettings *sds, char* name, bool with_wavelets)
-{
-	return read_mantaflow_sim(sds, name, with_wavelets);
-}
-
-
-extern "C" void manta_write_effectors(struct FLUID_3D *fluid)
-{
-	int size_x = fluid->_xRes;
-	int size_y = fluid->_yRes;
-	int size_z = fluid->_zRes;
-	
-	float *force_x = smoke_get_force_x(fluid);
-	float *force_y = smoke_get_force_y(fluid);
-	float *force_z = smoke_get_force_z(fluid);
-//	export_force_fields(size_x, size_y, size_z, force_x, force_y, force_z);
-	/*accumulate all force fields in one grid*/	
-	Manta::Vec3 * accumulated_force = NULL;
-	long index(0);
-	if (fluid->manta_resoution == 3){
-		accumulated_force = (Manta::Vec3*)calloc(size_x * size_y * size_z , sizeof(Manta::Vec3));
-			for (int z(0); z < size_z; z++){
-				for (int y(0); y < size_y; y++){
-					for (int x(0); x < size_x; x++){
-					index = smoke_get_index(x, size_x, y, size_y, z);
-					accumulated_force[index] = Manta::Vec3(force_x[index], force_y[index], force_z[index]);
-				}	
-			}		
-		}
-	}
-	else if (fluid->manta_resoution == 2) {
-		accumulated_force = (Manta::Vec3*)malloc(size_x * size_z * sizeof(Manta::Vec3));
-		int step(0);
-		for (int x(0); x < size_x; x++){
-				for (int z(0); z < size_z; z++){
-					index = smoke_get_index(x, size_x, size_y/2, size_y, z);
-					accumulated_force[x + z * size_x] = Manta::Vec3(force_x[index], force_z[index], 0.0);
-				}	
-		}
-	}
-	else {
-		cout << "ERROR: Manta solver resoltion is neither 2 nor 3; Cannot write forces"<<endl;
-		return;
-	}
-	
-	bool is2D = (fluid->manta_resoution == 2);
-	Manta_API::addGrid(accumulated_force, "forces", "Vec3", size_x, size_y, size_z, is2D);
-}
-
-extern "C" void manta_write_emitters(struct SmokeFlowSettings *sfs, bool highRes, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z,float *influence, float *vel)
-{
-//	manta_update_effectors(s, smd->domain->manta_obj, smd->domain, 0.1f);
-	bool is2D = (sfs->smd->domain->fluid->manta_resoution == 2);
-	if (! highRes)
-		Manta_API::addAdaptiveGrid(influence, "density", "s", "float",
-										   min_x, min_y, min_z, max_x, max_y, max_z, is2D);
-	else 
-		Manta_API::addAdaptiveGrid(influence, "xl_density", "xl", "float", min_x, min_y, min_z, max_x, max_y, max_z, is2D);
-	//	export_em_fields(Manta_API::instance()->_emission_map,sfs->density, min_x,  min_y,  min_z,  max_x,  max_y,  max_z,  d_x,  d_y,  d_z,  influence,  vel);
-}
-
-/*deprecated*/
-extern "C" void manta_export_obstacles(float * influence, int x, int y, int z)
-{
-	
-	cout << "!!!!!!!!!!Deprecated method manta_export_obstacles is being used" << endl;
-	if (influence == NULL){
-		cout<< "ERROR: empty influence object when exporting smoke obstacles" << endl;
-		return;
-	}
-//	Manta_API::export_obstacles(influence, x, y, z);
-}
-
-extern "C" void smoke_mantaflow_stop_sim(struct Manta_API * fluid)
-{
-	if (fluid == NULL){
-		cout<< "ERROR: empty manta_API object when stopping smoke simulation" << endl;
-		return;
-	}
-	fluid->stop_manta_sim();
-}
-
-extern "C" int cell_index_3D(int index_2d, int sizex,int sizey, int sizez)
-{
-	
-	return int(sizey * 0.5) * sizex + 
-	(index_2d % (sizex)) + 
-	int(index_2d/(sizex)) * sizex * sizey;
-}
+//extern "C" int smoke_mantaflow_read(struct SmokeDomainSettings *sds, char* name, bool with_wavelets)
+//{
+//	return read_mantaflow_sim(sds, name, with_wavelets);
+//}
+//
+//
+//extern "C" void manta_write_effectors(struct FLUID_3D *fluid)
+//{
+//	int size_x = fluid->_xRes;
+//	int size_y = fluid->_yRes;
+//	int size_z = fluid->_zRes;
+//	
+//	float *force_x = smoke_get_force_x(fluid);
+//	float *force_y = smoke_get_force_y(fluid);
+//	float *force_z = smoke_get_force_z(fluid);
+////	export_force_fields(size_x, size_y, size_z, force_x, force_y, force_z);
+//	/*accumulate all force fields in one grid*/	
+//	Manta::Vec3 * accumulated_force = NULL;
+//	long index(0);
+//	if (fluid->manta_resoution == 3){
+//		accumulated_force = (Manta::Vec3*)calloc(size_x * size_y * size_z , sizeof(Manta::Vec3));
+//			for (int z(0); z < size_z; z++){
+//				for (int y(0); y < size_y; y++){
+//					for (int x(0); x < size_x; x++){
+//					index = smoke_get_index(x, size_x, y, size_y, z);
+//					accumulated_force[index] = Manta::Vec3(force_x[index], force_y[index], force_z[index]);
+//				}	
+//			}		
+//		}
+//	}
+//	else if (fluid->manta_resoution == 2) {
+//		accumulated_force = (Manta::Vec3*)malloc(size_x * size_z * sizeof(Manta::Vec3));
+//		int step(0);
+//		for (int x(0); x < size_x; x++){
+//				for (int z(0); z < size_z; z++){
+//					index = smoke_get_index(x, size_x, size_y/2, size_y, z);
+//					accumulated_force[x + z * size_x] = Manta::Vec3(force_x[index], force_z[index], 0.0);
+//				}	
+//		}
+//	}
+//	else {
+//		cout << "ERROR: Manta solver resoltion is neither 2 nor 3; Cannot write forces"<<endl;
+//		return;
+//	}
+//	
+//	bool is2D = (fluid->manta_resoution == 2);
+//	Manta_API::addGrid(accumulated_force, "forces", "Vec3", size_x, size_y, size_z, is2D);
+//}
+//
+//extern "C" void manta_write_emitters(struct SmokeFlowSettings *sfs, bool highRes, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z,float *influence, float *vel)
+//{
+////	manta_update_effectors(s, smd->domain->manta_obj, smd->domain, 0.1f);
+//	bool is2D = (sfs->smd->domain->fluid->manta_resoution == 2);
+//	if (! highRes)
+//		Manta_API::addAdaptiveGrid(influence, "density", "s", "float",
+//										   min_x, min_y, min_z, max_x, max_y, max_z, is2D);
+//	else 
+//		Manta_API::addAdaptiveGrid(influence, "xl_density", "xl", "float", min_x, min_y, min_z, max_x, max_y, max_z, is2D);
+//	//	export_em_fields(Manta_API::instance()->_emission_map,sfs->density, min_x,  min_y,  min_z,  max_x,  max_y,  max_z,  d_x,  d_y,  d_z,  influence,  vel);
+//}
+//
+///*deprecated*/
+//extern "C" void manta_export_obstacles(float * influence, int x, int y, int z)
+//{
+//	
+//	cout << "!!!!!!!!!!Deprecated method manta_export_obstacles is being used" << endl;
+//	if (influence == NULL){
+//		cout<< "ERROR: empty influence object when exporting smoke obstacles" << endl;
+//		return;
+//	}
+////	Manta_API::export_obstacles(influence, x, y, z);
+//}
+//
+//extern "C" void smoke_mantaflow_stop_sim(struct Manta_API * fluid)
+//{
+//	if (fluid == NULL){
+//		cout<< "ERROR: empty manta_API object when stopping smoke simulation" << endl;
+//		return;
+//	}
+//	fluid->stop_manta_sim();
+//}
+//
+//extern "C" int cell_index_3D(int index_2d, int sizex,int sizey, int sizez)
+//{
+//	
+//	return int(sizey * 0.5) * sizex + 
+//	(index_2d % (sizex)) + 
+//	int(index_2d/(sizex)) * sizex * sizey;
+//}
 
 extern "C" float *smoke_get_inflow_grid(FLUID_3D *fluid)
 {

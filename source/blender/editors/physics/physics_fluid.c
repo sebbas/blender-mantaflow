@@ -1183,78 +1183,78 @@ void MANTA_OT_make_file(wmOperatorType *ot)
 	ot->poll = ED_operator_object_active_editable;
 }
 
-static int manta_sim_step_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
-{
-	Scene *scene= CTX_data_scene(C);
-	SmokeModifierData *smd;
-	Object * smokeDomain = CTX_data_active_object(C);
-	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
-	/*	return OPERATOR_CANCELLED;*/
-	
-	return OPERATOR_FINISHED;
-}
-
-static int manta_sim_step_exec(bContext *C, wmOperator *op)
-{
-	Scene *scene= CTX_data_scene(C);
-	SmokeModifierData *smd;
-	Object * smokeDomain = CTX_data_active_object(C);
-	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
-	
-	/*	return OPERATOR_CANCELLED;*/
-	
-	return OPERATOR_FINISHED;
-}
-
-
-void MANTA_OT_sim_step(wmOperatorType *ot)
-{
-	/* identifiers */
-	ot->name = "Run Mantaflow Step";
-	ot->description = "Run One Step of Mantaflow Simulation";
-	ot->idname = "MANTA_OT_sim_step";
-	
-	/* api callbacks */
-	ot->invoke = manta_sim_step_invoke;
-	ot->exec = manta_sim_step_exec;
-	ot->poll = ED_operator_object_active_editable;
-}
-
-static int manta_stop_sim_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
-{
+//static int manta_sim_step_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+//{
 //	Scene *scene= CTX_data_scene(C);
-	SmokeModifierData *smd;
-	Object * smokeDomain = CTX_data_active_object(C);
-	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
-	smoke_mantaflow_stop_sim(smd->domain->fluid);
-	/*	return OPERATOR_CANCELLED;*/
-	
-	return OPERATOR_FINISHED;
-}
-
-static int manta_stop_sim_exec(bContext *C, wmOperator *op)
-{
+//	SmokeModifierData *smd;
+//	Object * smokeDomain = CTX_data_active_object(C);
+//	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+//	/*	return OPERATOR_CANCELLED;*/
+//	
+//	return OPERATOR_FINISHED;
+//}
+//
+//static int manta_sim_step_exec(bContext *C, wmOperator *op)
+//{
 //	Scene *scene= CTX_data_scene(C);
-	SmokeModifierData *smd;
-	Object * smokeDomain = CTX_data_active_object(C);
-	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
-	smoke_mantaflow_stop_sim(smd->domain->fluid);
-	
-	/*	return OPERATOR_CANCELLED;*/
-	
-	return OPERATOR_FINISHED;
-}
-
-
-void MANTA_OT_stop_sim(wmOperatorType *ot)
-{
-	/* identifiers */
-	ot->name = "Stop Mantaflow Sim";
-	ot->description = "Stop Mantaflow Sim";
-	ot->idname = "MANTA_OT_stop_sim";
-	
-	/* api callbacks */
-	ot->invoke = manta_stop_sim_invoke;
-	ot->exec = manta_stop_sim_exec;
-	ot->poll = ED_operator_object_active_editable;
-}
+//	SmokeModifierData *smd;
+//	Object * smokeDomain = CTX_data_active_object(C);
+//	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+//	
+//	/*	return OPERATOR_CANCELLED;*/
+//	
+//	return OPERATOR_FINISHED;
+//}
+//
+//
+//void MANTA_OT_sim_step(wmOperatorType *ot)
+//{
+//	/* identifiers */
+//	ot->name = "Run Mantaflow Step";
+//	ot->description = "Run One Step of Mantaflow Simulation";
+//	ot->idname = "MANTA_OT_sim_step";
+//	
+//	/* api callbacks */
+//	ot->invoke = manta_sim_step_invoke;
+//	ot->exec = manta_sim_step_exec;
+//	ot->poll = ED_operator_object_active_editable;
+//}
+//
+//static int manta_stop_sim_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+//{
+////	Scene *scene= CTX_data_scene(C);
+//	SmokeModifierData *smd;
+//	Object * smokeDomain = CTX_data_active_object(C);
+//	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+//	smoke_mantaflow_stop_sim(smd->domain->fluid);
+//	/*	return OPERATOR_CANCELLED;*/
+//	
+//	return OPERATOR_FINISHED;
+//}
+//
+//static int manta_stop_sim_exec(bContext *C, wmOperator *op)
+//{
+////	Scene *scene= CTX_data_scene(C);
+//	SmokeModifierData *smd;
+//	Object * smokeDomain = CTX_data_active_object(C);
+//	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+//	smoke_mantaflow_stop_sim(smd->domain->fluid);
+//	
+//	/*	return OPERATOR_CANCELLED;*/
+//	
+//	return OPERATOR_FINISHED;
+//}
+//
+//
+//void MANTA_OT_stop_sim(wmOperatorType *ot)
+//{
+//	/* identifiers */
+//	ot->name = "Stop Mantaflow Sim";
+//	ot->description = "Stop Mantaflow Sim";
+//	ot->idname = "MANTA_OT_stop_sim";
+//	
+//	/* api callbacks */
+//	ot->invoke = manta_stop_sim_invoke;
+//	ot->exec = manta_stop_sim_exec;
+//	ot->poll = ED_operator_object_active_editable;
+//}

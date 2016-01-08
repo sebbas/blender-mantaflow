@@ -1294,7 +1294,7 @@ WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int no
 	setNoise(noisetype, noisefile_path);
 	sds->smd->domain->wt = this;
 	Manta_API::run_manta_sim_file_highRes(sds->smd);
-	Manta_API::updateHighResPointers(this);
+	Manta_API::update_high_res_pointers(this);
 }
 
 /// destructor
@@ -1335,7 +1335,7 @@ void WTURBULENCE::initColors(float init_r, float init_g, float init_b)
 		PyRun_SimpleString(ss.str().c_str());
 		PyRun_SimpleString(smoke_init_colors_high.c_str());
 		PyGILState_Release(gilstate);
-		Manta_API::updateHighResPointers(this);
+		Manta_API::update_high_res_pointers(this);
 	}
 }
 
@@ -1346,7 +1346,7 @@ void WTURBULENCE::initFire()
 		PyGILState_STATE gilstate = PyGILState_Ensure();
 		PyRun_SimpleString(smoke_init_fire_high.c_str());
 		PyGILState_Release(gilstate);
-		Manta_API::updateHighResPointers(this);
+		Manta_API::update_high_res_pointers(this);
 	}
 }
 
@@ -1364,7 +1364,7 @@ void WTURBULENCE::stepTurbulenceReadable(float dt, float* xvel, float* yvel, flo
 	std::string py_string_0 = string("step_high()");
 	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
-	Manta_API::updateHighResPointers(this);
+	Manta_API::update_high_res_pointers(this);
 }
 
 // step more complete version -- include rotation correction
@@ -1376,7 +1376,7 @@ void WTURBULENCE::stepTurbulenceFull(float dt, float *xvel, float *yvel, float *
 	std::string py_string_0 = string("step_high()");
 	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
-	Manta_API::updateHighResPointers(this);
+	Manta_API::update_high_res_pointers(this);
 }
 
 // texcoord functions
@@ -1411,7 +1411,7 @@ void WTURBULENCE::processBurn(float *burningRate, float *flameSmoke, float *igni
 	std::string py_string_0 = string("process_burn_high()");
 	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
-	Manta_API::updateHighResPointers(this);
+	Manta_API::update_high_res_pointers(this);
 }
 
 void WTURBULENCE::updateFlame()
@@ -1420,7 +1420,7 @@ void WTURBULENCE::updateFlame()
 	std::string py_string_0 = string("update_flame_high()");
 	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
-	Manta_API::updateHighResPointers(this);
+	Manta_API::update_high_res_pointers(this);
 }
 
 #endif /* WITH_MANTA */

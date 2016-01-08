@@ -413,7 +413,7 @@ class OBJECT_OT_RunMantaButton(bpy.types.Operator):
         #     domain.scale[1] /= scale_fac
         #     global manta_solver_res_switched = True
         bpy.ops.manta.make_file()
-        bpy.ops.manta.sim_step()
+        #bpy.ops.manta.sim_step()
         return{'FINISHED'}
 
 class OBJECT_OT_StopMantaButton(bpy.types.Operator):
