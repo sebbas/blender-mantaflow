@@ -66,7 +66,7 @@ extern "C" FLUID_3D *smoke_init(int *res, float dx, float dtdef, int use_heat, i
 	return fluid;
 }
 
-extern "C" WTURBULENCE *smoke_turbulence_init(int *res, int amplify, int noisetype, const char *noisefile_path, int use_fire, int use_colors,struct SmokeDomainSettings *sds)
+extern "C" WTURBULENCE *smoke_turbulence_init(int *res, int amplify, int noisetype, const char *noisefile_path, int use_fire, int use_colors, struct SmokeDomainSettings *sds)
 {
 	if (amplify)
 		return new WTURBULENCE(res[0],res[1],res[2], amplify, noisetype, noisefile_path, use_fire, use_colors, sds);
@@ -100,6 +100,7 @@ extern "C" size_t smoke_get_index2d(int x, int max_x, int y /*, int max_y, int z
 extern "C" void smoke_manta_export(SmokeModifierData *smd)
 {
 	if (!smd) return;
+	Manta_API::manta_export_script(smd);
 	Manta_API::manta_export_grids(smd);
 }
 

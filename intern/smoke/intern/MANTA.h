@@ -25,17 +25,14 @@
 //void runScript(vector<string>& args);//defined in manta_pp/pwrapper/pymain.cpp
 
 namespace Manta_API {
-	std::string get_manta_smoke_script(SmokeModifierData *smd);
-	void run_manta_sim_file_lowRes(SmokeModifierData *smd);
-	void run_manta_sim_file_highRes(SmokeModifierData *smd);
-	void delete_colors_low();
-	void delete_fire_low();
-	void delete_heat_low();
-	void delete_base_grids_low();
+//	std::string get_manta_smoke_script(SmokeModifierData *smd);
+//	void run_manta_sim_file_lowRes(SmokeModifierData *smd);
+//	void run_manta_sim_file_highRes(SmokeModifierData *smd);
 	void start_mantaflow();
 	std::string get_real_value(const string& varName, SmokeModifierData *sds);
 	std::string parse_line(const string& line, SmokeModifierData *sds);
 	std::string parse_script(const string& setup_string, SmokeModifierData *sds);
+	void manta_export_script(SmokeModifierData *smd);
 	void manta_export_grids(SmokeModifierData *smd);
 	std::string get_grid_pointer(string gridName, string solverName);
 	void* pointer_from_string(const std::string& s);

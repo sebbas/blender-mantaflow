@@ -380,72 +380,24 @@
 //	PyGILState_Release(gilstate);		
 //}
 
-std::string Manta_API::get_manta_smoke_script(SmokeModifierData *smd)
-{
-    std::string smoke_script = "";
-	
-	// Check if high res is enabled
-	// Need to check if wt exists and NOT just check if high res flag is set (smd->domain->flags & MOD_SMOKE_HIGHRES)
-	// because wt might not exist, i.e. when FLUID_3D constructor is called before WTURBULENCE constructor
-	if (smd->domain->wt) {
-		smoke_script = smoke_setup_high + smoke_import_high + smoke_step_high;
-	} else {
-		// TODO: Need to figure out how to handle liquids when high resolution grids are enabled, not just for low res grids
-		if (smd->domain->flags & MOD_SMOKE_MANTA_USE_LIQUID)
-			smoke_script = smoke_setup_low  + liquid_step_low;
-		else
-			smoke_script = smoke_setup_low + smoke_import_low + smoke_inflow_low + smoke_step_low ;
-	}
-	return smoke_script;
-}
-
-void Manta_API::run_manta_sim_file_lowRes(SmokeModifierData *smd)
-{
-	std::string smoke_script = get_manta_smoke_script(smd);
-	std::string final_script = parse_script(smoke_script, smd);
-	
-	PyGILState_STATE gilstate = PyGILState_Ensure();
-	PyRun_SimpleString(final_script.c_str());
-	PyGILState_Release(gilstate);
-}
-
-void Manta_API::run_manta_sim_file_highRes(SmokeModifierData *smd)
-{
-	std::string smoke_script = get_manta_smoke_script(smd);
-	std::string final_script = parse_script(smoke_script, smd);
-	
-	PyGILState_STATE gilstate = PyGILState_Ensure();
-	PyRun_SimpleString(final_script.c_str());
-	PyGILState_Release(gilstate);
-}
-
-void Manta_API::delete_colors_low()
-{
-	PyGILState_STATE gilstate = PyGILState_Ensure();
-	PyRun_SimpleString(del_colors_low.c_str());
-	PyGILState_Release(gilstate);
-}
-
-void Manta_API::delete_fire_low()
-{
-	PyGILState_STATE gilstate = PyGILState_Ensure();
-	PyRun_SimpleString(del_fire_low.c_str());
-	PyGILState_Release(gilstate);
-}
-
-void Manta_API::delete_heat_low()
-{
-	PyGILState_STATE gilstate = PyGILState_Ensure();
-	PyRun_SimpleString(del_heat_low.c_str());
-	PyGILState_Release(gilstate);
-}
-
-void Manta_API::delete_base_grids_low()
-{
-	PyGILState_STATE gilstate = PyGILState_Ensure();
-	PyRun_SimpleString(del_base_grids_low.c_str());
-	PyGILState_Release(gilstate);
-}
+//std::string Manta_API::get_manta_smoke_script(SmokeModifierData *smd)
+//{
+//    std::string smoke_script = "";
+//	
+//	// Check if high res is enabled
+//	// Need to check if wt exists and NOT just check if high res flag is set (smd->domain->flags & MOD_SMOKE_HIGHRES)
+//	// because wt might not exist, i.e. when FLUID_3D constructor is called before WTURBULENCE constructor
+//	if (smd->domain->wt) {
+//		smoke_script = smoke_setup_high + smoke_import_high + smoke_step_high;
+//	} else {
+//		// TODO: Need to figure out how to handle liquids when high resolution grids are enabled, not just for low res grids
+//		if (smd->domain->flags & MOD_SMOKE_MANTA_USE_LIQUID)
+//			smoke_script = smoke_setup_low  + liquid_step_low;
+//		else
+//			smoke_script = smoke_setup_low + smoke_import_low + smoke_inflow_low + smoke_step_low ;
+//	}
+//	return smoke_script;
+//}
 
 void Manta_API::start_mantaflow()
 {
@@ -530,17 +482,7 @@ std::string Manta_API::get_real_value( const std::string& varName, SmokeModifier
 	} else if (varName == "VORTICITY") {
 		ss << smd->domain->vorticity / smd->domain->fluid->_constantScaling;
 	} else if (varName == "BOUNDCONDITIONS") {
-		// OLD SETUP. WHY LIKE THAT??
-		/*if(smd->domain->border_collisions == SM_BORDER_OPEN) ss << "xXyY";
-		else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "xXyY";
-		else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "xXyY";
-		
-		if (smd->domain->manta_solver_res == 3){
-			if(smd->domain->border_collisions == SM_BORDER_OPEN) ss << "z";
-			else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "z";
-			else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "zZ";
-		}*/
-		if(smd->domain->border_collisions == SM_BORDER_OPEN) ss << "xXyY";
+		if (smd->domain->border_collisions == SM_BORDER_OPEN) ss << "xXyY";
 		else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "zZ";
 		else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "";
 		
@@ -626,32 +568,71 @@ std::string Manta_API::parse_script(const string& setup_string, SmokeModifierDat
 	return res.str();
 }
 
-void Manta_API::manta_export_grids(SmokeModifierData *smd)
+void Manta_API::manta_export_script(SmokeModifierData *smd)
 {
-	// Export the scene file
-	std::string smoke_script = get_manta_smoke_script(smd);
+	// Setup low
+	std::string manta_script =
+		manta_import +
+		solver_setup_low +
+		alloc_base_grids_low +
+		alloc_colors_low +
+		noise_low +
+		prep_domain_low +
+		flags;
 	
-	std::string final_script = "";
+	// Setup high
 	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
-		final_script = Manta_API::parse_script(smoke_script, smd) + standalone_high;
-	} else {
-		final_script = Manta_API::parse_script(smoke_script, smd) + standalone_low;
+		manta_script +=
+			solver_setup_high +
+			alloc_base_grids_high +
+			noise_high +
+			prep_domain_high +
+			wavelet_turbulence_noise;
 	}
 	
+	// Import low
+	manta_script += smoke_import_low;
+	
+	// Import high
+	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
+		manta_script += smoke_step_high;
+	}
+	
+	// Step low
+	manta_script += smoke_step_low;
+	
+	// Step high
+	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
+		manta_script += smoke_step_high;
+	}
+	
+	// Fill in missing variables in script
+	std::string final_script = Manta_API::parse_script(manta_script, smd);
+	
+	// Add standalone mode (for-loop, gui, ...)
+	final_script += standalone;
+	
+	// Write script
 	ofstream myfile;
 	myfile.open(smd->domain->_manta_filepath);
 	myfile << final_script;
 	myfile.close();
-	
-	// Run python environment to export grids, that is, create the grid files
+}
+
+void Manta_API::manta_export_grids(SmokeModifierData *smd)
+{
 	PyGILState_STATE gilstate = PyGILState_Ensure();
+	
+	// Export low res grids
+	PyRun_SimpleString(Manta_API::parse_script(smoke_export_low, smd).c_str());
+
+	// Export high res grids
 	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
 		PyRun_SimpleString(Manta_API::parse_script(smoke_export_high, smd).c_str());
-	} else {
-		PyRun_SimpleString(Manta_API::parse_script(smoke_export_low, smd).c_str());
 	}
 	PyGILState_Release(gilstate);
 }
+
 
 string Manta_API::get_grid_pointer(std::string gridName, std::string solverName)
 {
@@ -694,7 +675,7 @@ string Manta_API::get_grid_pointer(std::string gridName, std::string solverName)
 //	_max_temp = flame_max_temp;
 //}
 
-void * Manta_API::pointer_from_string(const std::string& s){
+void* Manta_API::pointer_from_string(const std::string& s){
 	stringstream ss(s);
 	void *gridPointer = NULL;
 	ss >> gridPointer;

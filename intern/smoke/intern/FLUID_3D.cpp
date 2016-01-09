@@ -599,11 +599,22 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 	using_colors = false;
 	
 	smd->domain->fluid = this;
-//	vector<string> args;
-//	args.push_back("manta_scene.py");
-//	initializeMantaflow(args); /*need this to delete previous solvers and grids*/
+
 	Manta_API::start_mantaflow();
-	Manta_API::run_manta_sim_file_lowRes(smd);
+	
+	// Base setup low res
+	std::string setup_script =
+		manta_import +
+		solver_setup_low +
+		alloc_base_grids_low +
+		noise_low +
+		prep_domain_low +
+		flags +
+		smoke_step_low;
+	std::string final_script = Manta_API::parse_script(setup_script, smd);
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	PyRun_SimpleString(final_script.c_str());
+	PyGILState_Release(gilstate);
 	
 	// Heat grids
 	if (init_heat) {
@@ -626,9 +637,10 @@ void FLUID_3D::initHeat()
 	if (!_heat) {
 		using_heat = true;
 		PyGILState_STATE gilstate = PyGILState_Ensure();
-		PyRun_SimpleString(smoke_init_heat_low.c_str());
+		PyRun_SimpleString(alloc_heat_low.c_str());
+		PyRun_SimpleString(with_heat.c_str());
 		PyGILState_Release(gilstate);
-//		Manta_API::updatePointers(this);
+		Manta_API::update_pointers(this);
 	}
 }
 
@@ -642,9 +654,11 @@ void FLUID_3D::initColors(float init_r, float init_g, float init_b)
 		ss << "manta_color_g = " << init_g << endl;
 		ss << "manta_color_b = " << init_b << endl;
 		PyRun_SimpleString(ss.str().c_str());
-		PyRun_SimpleString(smoke_init_colors_low.c_str());
+		PyRun_SimpleString(alloc_colors_low.c_str());
+		PyRun_SimpleString(init_colors_low.c_str());
+		PyRun_SimpleString(with_fire.c_str());
 		PyGILState_Release(gilstate);
-//		Manta_API::updatePointers(this);
+		Manta_API::update_pointers(this);
 	}
 }
 
@@ -653,20 +667,27 @@ void FLUID_3D::initFire()
 	if (!_flame) {
 		using_fire = true;
 		PyGILState_STATE gilstate = PyGILState_Ensure();
-		PyRun_SimpleString(smoke_init_fire_low.c_str());
+		PyRun_SimpleString(alloc_fire_low.c_str());
+		PyRun_SimpleString(with_fire.c_str());
 		PyGILState_Release(gilstate);
-//		Manta_API::updatePointers(this);
+		Manta_API::update_pointers(this);
 	}
 }
 
 FLUID_3D::~FLUID_3D()
 {
 	cout << "~FLUID_3D" << endl;
+	
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	if (using_heat)
+		PyRun_SimpleString(del_heat_low.c_str());
+	if (using_fire)
+		PyRun_SimpleString(del_fire_low.c_str());
+	if (using_colors)
+		PyRun_SimpleString(del_colors_low.c_str());
+	PyRun_SimpleString(del_base_grids_low.c_str());
+	PyGILState_Release(gilstate);
 
-	if (using_heat) Manta_API::delete_heat_low();
-	if (using_fire) Manta_API::delete_fire_low();
-	if (using_colors) Manta_API::delete_colors_low();
-	Manta_API::delete_base_grids_low();
 
 //	if (_xVelocity) delete[] _xVelocity;
 //	if (_yVelocity) delete[] _yVelocity;

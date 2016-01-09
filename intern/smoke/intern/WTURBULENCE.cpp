@@ -1252,54 +1252,78 @@ WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int no
 		_densityBigOld[i] = 0.;
 	}
 	
-	/* fire */
-	_flameBig = _fuelBig = _fuelBigOld = NULL;
-	_reactBig = _reactBigOld = NULL;
+	_flameBig = _fuelBig = _reactBig = NULL;
 	using_fire = false;
+	
+	_color_rBig = _color_gBig = _color_bBig = NULL;
+	using_colors = false;
+	
+	sds->smd->domain->wt = this;
+
+	// Base setup high res
+	std::string setup_script =
+		solver_setup_high +
+		alloc_base_grids_high +
+		noise_high +
+		prep_domain_high +
+		wavelet_turbulence_noise +
+		smoke_step_high;
+	std::string final_script = Manta_API::parse_script(setup_script, sds->smd);
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	PyRun_SimpleString(final_script.c_str());
+	PyGILState_Release(gilstate);
+	
+	// Fire grids
 	if (init_fire) {
 		initFire();
 	}
-	/* colors */
-	_color_rBig = _color_rBigOld = NULL;
-	_color_gBig = _color_gBigOld = NULL;
-	_color_bBig = _color_bBigOld = NULL;
-	using_colors = false;
+	
+	// Color grids
 	if (init_colors) {
 		initColors(0.0f, 0.0f, 0.0f);
 	}
+
+//	// allocate & init texture coordinates
+//	_tcU = new float[_totalCellsSm];
+//	_tcV = new float[_totalCellsSm];
+//	_tcW = new float[_totalCellsSm];
+//	_tcTemp = new float[_totalCellsSm];
+//	
+//	// map all 
+//	const float dx = 1.0f/(float)(_resSm[0]);
+//	const float dy = 1.0f/(float)(_resSm[1]);
+//	const float dz = 1.0f/(float)(_resSm[2]);
+//	int index = 0;
+//	for (int z = 0; z < _zResSm; z++) 
+//		for (int y = 0; y < _yResSm; y++) 
+//			for (int x = 0; x < _xResSm; x++, index++)
+//			{
+//				_tcU[index] = x*dx;
+//				_tcV[index] = y*dy;
+//				_tcW[index] = z*dz;
+//				_tcTemp[index] = 0.;
+//			}
+//	
+//	// noise tiles
+//	_noiseTile = new float[noiseTileSize * noiseTileSize * noiseTileSize];
+//	setNoise(noisetype, noisefile_path);
 	
-	// allocate & init texture coordinates
-	_tcU = new float[_totalCellsSm];
-	_tcV = new float[_totalCellsSm];
-	_tcW = new float[_totalCellsSm];
-	_tcTemp = new float[_totalCellsSm];
-	
-	// map all 
-	const float dx = 1.0f/(float)(_resSm[0]);
-	const float dy = 1.0f/(float)(_resSm[1]);
-	const float dz = 1.0f/(float)(_resSm[2]);
-	int index = 0;
-	for (int z = 0; z < _zResSm; z++) 
-		for (int y = 0; y < _yResSm; y++) 
-			for (int x = 0; x < _xResSm; x++, index++)
-			{
-				_tcU[index] = x*dx;
-				_tcV[index] = y*dy;
-				_tcW[index] = z*dz;
-				_tcTemp[index] = 0.;
-			}
-	
-	// noise tiles
-	_noiseTile = new float[noiseTileSize * noiseTileSize * noiseTileSize];
-	setNoise(noisetype, noisefile_path);
-	sds->smd->domain->wt = this;
-	Manta_API::run_manta_sim_file_highRes(sds->smd);
 	Manta_API::update_high_res_pointers(this);
 }
 
 /// destructor
 WTURBULENCE::~WTURBULENCE()
 {
+	cout << "~WTURBULENCE" << endl;
+
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	if (using_fire)
+		PyRun_SimpleString(del_fire_high.c_str());
+	if (using_colors)
+		PyRun_SimpleString(del_colors_high.c_str());
+	PyRun_SimpleString(del_base_grids_high.c_str());
+	PyGILState_Release(gilstate);
+	
 	delete[] _densityBig;
 	delete[] _densityBigOld;
 	if (_flameBig) delete[] _flameBig;
@@ -1333,7 +1357,9 @@ void WTURBULENCE::initColors(float init_r, float init_g, float init_b)
 		ss << "manta_color_g = " << init_g << endl;
 		ss << "manta_color_b = " << init_b << endl;
 		PyRun_SimpleString(ss.str().c_str());
-		PyRun_SimpleString(smoke_init_colors_high.c_str());
+		PyRun_SimpleString(alloc_colors_high.c_str());
+		PyRun_SimpleString(init_colors_high.c_str());
+		PyRun_SimpleString(with_fire.c_str());
 		PyGILState_Release(gilstate);
 		Manta_API::update_high_res_pointers(this);
 	}
@@ -1341,10 +1367,10 @@ void WTURBULENCE::initColors(float init_r, float init_g, float init_b)
 
 void WTURBULENCE::initFire()
 {
-	if (!_flameBig) {
+	if (!_fuelBig) {
 		using_fire = true;
 		PyGILState_STATE gilstate = PyGILState_Ensure();
-		PyRun_SimpleString(smoke_init_fire_high.c_str());
+		PyRun_SimpleString(alloc_fire_high.c_str());
 		PyGILState_Release(gilstate);
 		Manta_API::update_high_res_pointers(this);
 	}
@@ -1356,7 +1382,6 @@ void WTURBULENCE::setNoise(int type, const char *noisefile_path)
 void WTURBULENCE::initBlenderRNA(float *strength)
 {}
 
-// step more readable version -- no rotation correction
 void WTURBULENCE::stepTurbulenceReadable(float dt, float* xvel, float* yvel, float* zvel, unsigned char *obstacles)
 {
 	PyGILState_STATE gilstate = PyGILState_Ensure();
@@ -1367,8 +1392,6 @@ void WTURBULENCE::stepTurbulenceReadable(float dt, float* xvel, float* yvel, flo
 	Manta_API::update_high_res_pointers(this);
 }
 
-// step more complete version -- include rotation correction
-// and use OpenMP if available
 void WTURBULENCE::stepTurbulenceFull(float dt, float *xvel, float *yvel, float *zvel, unsigned char *obstacles)
 {
 	PyGILState_STATE gilstate = PyGILState_Ensure();
@@ -1379,7 +1402,6 @@ void WTURBULENCE::stepTurbulenceFull(float dt, float *xvel, float *yvel, float *
 	Manta_API::update_high_res_pointers(this);
 }
 
-// texcoord functions
 void WTURBULENCE::advectTextureCoordinates(float dtOrg, float* xvel, float* yvel, float* zvel, float *tempBig1, float *tempBig2)
 {}
 
@@ -1403,10 +1425,7 @@ Vec3 WTURBULENCE::WVelocityWithJacobian(Vec3 p, float* xUnwarped, float* yUnwarp
 {return Vec3(0.);}
 
 void WTURBULENCE::processBurn(float *burningRate, float *flameSmoke, float *ignitionTemp, float *maxTemp, float dt, float *flameSmokeColor)
-{
-	// Need to make sure that color grids are initialized as they are needed in processBurn
-	initColors(0.0f, 0.0f, 0.0f);
-	
+{	
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	std::string py_string_0 = string("process_burn_high()");
 	PyRun_SimpleString(py_string_0.c_str());
