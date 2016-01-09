@@ -1266,6 +1266,7 @@ WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int no
 		alloc_base_grids_high +
 		noise_high +
 		prep_domain_high +
+		flags +
 		wavelet_turbulence_noise +
 		smoke_step_high;
 	std::string final_script = Manta_API::parse_script(setup_script, sds->smd);
@@ -1283,30 +1284,30 @@ WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int no
 		initColors(0.0f, 0.0f, 0.0f);
 	}
 
-//	// allocate & init texture coordinates
-//	_tcU = new float[_totalCellsSm];
-//	_tcV = new float[_totalCellsSm];
-//	_tcW = new float[_totalCellsSm];
-//	_tcTemp = new float[_totalCellsSm];
-//	
-//	// map all 
-//	const float dx = 1.0f/(float)(_resSm[0]);
-//	const float dy = 1.0f/(float)(_resSm[1]);
-//	const float dz = 1.0f/(float)(_resSm[2]);
-//	int index = 0;
-//	for (int z = 0; z < _zResSm; z++) 
-//		for (int y = 0; y < _yResSm; y++) 
-//			for (int x = 0; x < _xResSm; x++, index++)
-//			{
-//				_tcU[index] = x*dx;
-//				_tcV[index] = y*dy;
-//				_tcW[index] = z*dz;
-//				_tcTemp[index] = 0.;
-//			}
-//	
-//	// noise tiles
-//	_noiseTile = new float[noiseTileSize * noiseTileSize * noiseTileSize];
-//	setNoise(noisetype, noisefile_path);
+	// allocate & init texture coordinates
+	_tcU = new float[_totalCellsSm];
+	_tcV = new float[_totalCellsSm];
+	_tcW = new float[_totalCellsSm];
+	_tcTemp = new float[_totalCellsSm];
+	
+	// map all 
+	const float dx = 1.0f/(float)(_resSm[0]);
+	const float dy = 1.0f/(float)(_resSm[1]);
+	const float dz = 1.0f/(float)(_resSm[2]);
+	int index = 0;
+	for (int z = 0; z < _zResSm; z++) 
+		for (int y = 0; y < _yResSm; y++) 
+			for (int x = 0; x < _xResSm; x++, index++)
+			{
+				_tcU[index] = x*dx;
+				_tcV[index] = y*dy;
+				_tcW[index] = z*dz;
+				_tcTemp[index] = 0.;
+			}
+	
+	// noise tiles
+	_noiseTile = new float[noiseTileSize * noiseTileSize * noiseTileSize];
+	setNoise(noisetype, noisefile_path);
 	
 	Manta_API::update_high_res_pointers(this);
 }
@@ -1325,19 +1326,19 @@ WTURBULENCE::~WTURBULENCE()
 	PyGILState_Release(gilstate);
 	
 	delete[] _densityBig;
-	delete[] _densityBigOld;
+//	delete[] _densityBigOld;
 	if (_flameBig) delete[] _flameBig;
 	if (_fuelBig) delete[] _fuelBig;
-	if (_fuelBigOld) delete[] _fuelBigOld;
+//	if (_fuelBigOld) delete[] _fuelBigOld;
 	if (_reactBig) delete[] _reactBig;
-	if (_reactBigOld) delete[] _reactBigOld;
+//	if (_reactBigOld) delete[] _reactBigOld;
 	
 	if (_color_rBig) delete[] _color_rBig;
-	if (_color_rBigOld) delete[] _color_rBigOld;
+//	if (_color_rBigOld) delete[] _color_rBigOld;
 	if (_color_gBig) delete[] _color_gBig;
-	if (_color_gBigOld) delete[] _color_gBigOld;
+//	if (_color_gBigOld) delete[] _color_gBigOld;
 	if (_color_bBig) delete[] _color_bBig;
-	if (_color_bBigOld) delete[] _color_bBigOld;
+//	if (_color_bBigOld) delete[] _color_bBigOld;
 	
 	delete[] _tcU;
 	delete[] _tcV;
@@ -1380,7 +1381,9 @@ void WTURBULENCE::setNoise(int type, const char *noisefile_path)
 {}
 
 void WTURBULENCE::initBlenderRNA(float *strength)
-{}
+{
+	_strength = strength;
+}
 
 void WTURBULENCE::stepTurbulenceReadable(float dt, float* xvel, float* yvel, float* zvel, unsigned char *obstacles)
 {

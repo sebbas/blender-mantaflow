@@ -424,7 +424,7 @@ std::string Manta_API::get_real_value( const std::string& varName, SmokeModifier
 	if (varName == "UVS_CNT")
 		ss << smd->domain->manta_uvs_num ;
 	else if (varName == "UPRES")
-		ss << smd->domain->amplify+1;
+		ss << smd->domain->amplify; //ss << smd->domain->amplify+1;
 	else if (varName == "WLT_STR")
 		ss << smd->domain->strength ;
 	else if (varName == "RES")
@@ -718,17 +718,17 @@ void Manta_API::update_pointers(FLUID_3D *fluid)
 	fluid->_fuel_inflow = (float* )pointer_from_string(get_grid_pointer("fuel_inflow", "s"));
 	if (fluid-> manta_resoution == 2) {return;}
 	if (fluid->using_colors) {
-		fluid->_color_r = (float* )pointer_from_string(get_grid_pointer("color_r_low", "s"));
-		fluid->_color_g = (float* )pointer_from_string(get_grid_pointer("color_g_low", "s"));
-		fluid->_color_b = (float* )pointer_from_string(get_grid_pointer("color_b_low", "s"));
+		fluid->_color_r = (float* )pointer_from_string(get_grid_pointer("color_r", "s"));
+		fluid->_color_g = (float* )pointer_from_string(get_grid_pointer("color_g", "s"));
+		fluid->_color_b = (float* )pointer_from_string(get_grid_pointer("color_b", "s"));
 	}
 	if (fluid->using_heat) {
-		fluid->_heat = (float* )pointer_from_string(get_grid_pointer("heat_low", "s"));
+		fluid->_heat = (float* )pointer_from_string(get_grid_pointer("heat", "s"));
 	}
 	if (fluid->using_fire) {
-		fluid->_flame = (float* )pointer_from_string(get_grid_pointer("flame_low", "s"));
-		fluid->_fuel = (float* )pointer_from_string(get_grid_pointer("fuel_low", "s"));
-		fluid->_react = (float* )pointer_from_string(get_grid_pointer("react_low", "s"));
+		fluid->_flame = (float* )pointer_from_string(get_grid_pointer("flame", "s"));
+		fluid->_fuel = (float* )pointer_from_string(get_grid_pointer("fuel", "s"));
+		fluid->_react = (float* )pointer_from_string(get_grid_pointer("react", "s"));
 	}
 	fluid->_xVelocity = (float* )pointer_from_string(get_grid_pointer("x_vel", "s"));
 	fluid->_yVelocity = (float* )pointer_from_string(get_grid_pointer("y_vel", "s"));
@@ -740,14 +740,14 @@ void Manta_API::update_high_res_pointers(WTURBULENCE *wt)
 	cout << "Updating pointers high res" << endl;
 	wt->_densityBig = (float* )pointer_from_string(get_grid_pointer("xl_density", "xl"));;
 	if (wt->using_colors) {
-		wt->_color_rBig = (float* )pointer_from_string(get_grid_pointer("color_r_high", "xl"));
-		wt->_color_gBig = (float* )pointer_from_string(get_grid_pointer("color_g_high", "xl"));
-		wt->_color_bBig = (float* )pointer_from_string(get_grid_pointer("color_b_high", "xl"));
+		wt->_color_rBig = (float* )pointer_from_string(get_grid_pointer("xl_color_r", "xl"));
+		wt->_color_gBig = (float* )pointer_from_string(get_grid_pointer("xl_color_g", "xl"));
+		wt->_color_bBig = (float* )pointer_from_string(get_grid_pointer("xl_color_b", "xl"));
 	}
 	if (wt->using_fire) {
-		wt->_flameBig = (float* )pointer_from_string(get_grid_pointer("flame_high", "xl"));
-		wt->_fuelBig = (float* )pointer_from_string(get_grid_pointer("fuel_high", "xl"));
-		wt->_reactBig = (float* )pointer_from_string(get_grid_pointer("react_high", "xl"));
+		wt->_flameBig = (float* )pointer_from_string(get_grid_pointer("xl_flame", "xl"));
+		wt->_fuelBig = (float* )pointer_from_string(get_grid_pointer("xl_fuel", "xl"));
+		wt->_reactBig = (float* )pointer_from_string(get_grid_pointer("xl_react", "xl"));
 	}
 }
 

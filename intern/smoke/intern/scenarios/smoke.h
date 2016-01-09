@@ -16,6 +16,14 @@ using_fire = $USING_FIRE$\n\
 low_flags_updated = False\n\
 using_wavelets = $USE_WAVELETS$\n";
 
+const string uv_setup = "\n\
+# create the array of uv grids\n\
+uv = []\n\
+for i in range(uvs):\n\
+  uvGrid = s.create(VecGrid)\n\
+  uv.append(uvGrid)\n\
+  resetUvGrid(uv[i])\n";
+
 //////////////////////////////////////////////////////////////////////
 // LOW RESOLUTION SETUP
 //////////////////////////////////////////////////////////////////////
@@ -32,7 +40,8 @@ if dim == 2:\n\
 s = FluidSolver(name='main', gridSize=gs, dim=dim)\n\
 s.timestep = $TIMESTEP$\n\
 timings = Timings()\n\
-vorticity = $VORTICITY$\n";
+vorticity = $VORTICITY$\n\
+uvs = $UVS_CNT$\n";
 
 const string alloc_base_grids_low = "\n\
 # prepare grids low\n\
@@ -43,6 +52,7 @@ y_vel = s.create(RealGrid)\n\
 z_vel = s.create(RealGrid)\n\
 density = s.create(LevelsetGrid)\n\
 pressure = s.create(RealGrid)\n\
+energy = s.create(RealGrid)\n\
 forces = s.create(MACGrid)\n\
 inflow_grid = s.create(LevelsetGrid)\n\
 fuel_inflow = s.create(LevelsetGrid)\n";
@@ -76,7 +86,6 @@ if dim == 2:\n\
   xl_gs.z = 1\n\
 xl = Solver(name = 'larger', gridSize = xl_gs)\n\
 xl.timestep = $XL_TIMESTEP$\n\
-uvs = $UVS_CNT$\n\
 wltStrength = $WLT_STR$\n\
 octaves = 0\n\
 if(upres>0):\n\
@@ -109,11 +118,12 @@ xl_flags.initDomain()\n\
 xl_flags.fillGrid()\n";
 
 const string wavelet_turbulence_noise = "\n\
-# wavelet turbulence noise\n\
-xl_wltnoise = xl.create(NoiseField, loadFromFile=True)\n\
-xl_wltnoise.posScale = vec3( int(1.0*xl_gs.x) ) * 0.5\n\
-xl_wltnoise.posScale = xl_wltnoise.posScale * 0.5\n\
-xl_wltnoise.timeAnim = 0.1 \n";
+# wavelet turbulence noise field\n\
+xl_wltnoise = s.create(NoiseField, loadFromFile=True)\n\
+xl_wltnoise.posScale = vec3( int(1.0*gs.x) ) * 0.5\n\
+xl_wltnoise.timeAnim = 0.1\n\
+if(upres>0):\n\
+  xl_wltnoise.posScale = xl_wltnoise.posScale * (1./upres)\n";
 
 //////////////////////////////////////////////////////////////////////
 // ADDITIONAL GRIDS
@@ -121,49 +131,49 @@ xl_wltnoise.timeAnim = 0.1 \n";
 
 const string alloc_colors_low = "\n\
 print('Allocating colors low')\n\
-color_r_low = s.create(RealGrid)\n\
-color_g_low = s.create(RealGrid)\n\
-color_b_low = s.create(RealGrid)\n";
+color_r = s.create(RealGrid)\n\
+color_g = s.create(RealGrid)\n\
+color_b = s.create(RealGrid)\n";
 
 const string alloc_colors_high = "\n\
 print('Allocating colors high')\n\
-color_r_high = xl.create(RealGrid)\n\
-color_g_high = xl.create(RealGrid)\n\
-color_b_high = xl.create(RealGrid)\n";
+xl_color_r = xl.create(RealGrid)\n\
+xl_color_g = xl.create(RealGrid)\n\
+xl_color_b = xl.create(RealGrid)\n";
 
 const string init_colors_low = "\n\
 print('Initializing colors low')\n\
-color_r_low.copyFrom(density) \n\
-color_r_low.multConst(manta_color_r) \n\
-color_g_low.copyFrom(density) \n\
-color_g_low.multConst(manta_color_g) \n\
-color_b_low.copyFrom(density) \n\
-color_b_low.multConst(manta_color_b)\n";
+color_r.copyFrom(density) \n\
+color_r.multConst(manta_color_r) \n\
+color_g.copyFrom(density) \n\
+color_g.multConst(manta_color_g) \n\
+color_b.copyFrom(density) \n\
+color_b.multConst(manta_color_b)\n";
 
 const string init_colors_high = "\n\
 print('Initializing colors high')\n\
-color_r_high.copyFrom(xl_density) \n\
-color_r_high.multConst(manta_color_r) \n\
-color_g_high.copyFrom(xl_density) \n\
-color_g_high.multConst(manta_color_g) \n\
-color_b_high.copyFrom(xl_density) \n\
-color_b_high.multConst(manta_color_b)\n";
+xl_color_r.copyFrom(xl_density) \n\
+xl_color_r.multConst(manta_color_r) \n\
+xl_color_g.copyFrom(xl_density) \n\
+xl_color_g.multConst(manta_color_g) \n\
+xl_color_b.copyFrom(xl_density) \n\
+xl_color_b.multConst(manta_color_b)\n";
 
 const string alloc_heat_low = "\n\
 print('Allocating heat low')\n\
-heat_low = s.create(RealGrid)\n";
+heat = s.create(RealGrid)\n";
 
 const string alloc_fire_low = "\n\
 print('Allocating fire low')\n\
-flame_low = s.create(RealGrid)\n\
-fuel_low = s.create(RealGrid)\n\
-react_low = s.create(RealGrid)\n";
+flame = s.create(RealGrid)\n\
+fuel = s.create(RealGrid)\n\
+react = s.create(RealGrid)\n";
 
 const string alloc_fire_high = "\n\
 print('Allocating fire high')\n\
-flame_high = xl.create(RealGrid)\n\
-fuel_high = xl.create(RealGrid)\n\
-react_high = xl.create(RealGrid)\n";
+xl_flame = xl.create(RealGrid)\n\
+xl_fuel = xl.create(RealGrid)\n\
+xl_react = xl.create(RealGrid)\n";
 
 const string with_heat = "\n\
 using_heat = True\n";
@@ -212,31 +222,31 @@ for step in range(1000):\n\
 
 const string del_colors_low = "\n\
 print('Deleting colors low')\n\
-del color_r_low \n\
-del color_g_low \n\
-del color_b_low\n";
+del color_r\n\
+del color_g\n\
+del color_b\n";
 
 const string del_colors_high = "\n\
 print('Deleting colors high')\n\
-del color_r_high \n\
-del color_g_high \n\
-del color_b_high\n";
+del xl_color_r\n\
+del xl_color_g\n\
+del xl_color_b\n";
 
 const string del_fire_low = "\n\
 print('Deleting fire low')\n\
-del flame_low \n\
-del fuel_low \n\
-del react_low\n";
+del flame\n\
+del fuel\n\
+del react\n";
 
 const string del_fire_high = "\n\
 print('Deleting fire high')\n\
-del flame_high\n\
-del fuel_high\n\
-del react_high\n";
+del xl_flame\n\
+del xl_fuel\n\
+del xl_react\n";
 
 const string del_heat_low = "\n\
 print('Deleting heat low')\n\
-del heat_low\n";
+del heat\n";
 
 const string del_base_grids_low = "\n\
 print('Deleting base grids low')\n\
@@ -257,6 +267,7 @@ del y_vel\n\
 del z_vel\n\
 del density\n\
 del pressure\n\
+del energy\n\
 del forces\n\
 del inflow_grid\n\
 del fuel_inflow\n\
@@ -293,20 +304,25 @@ def step_low():\n\
   \n\
   if using_colors:\n\
     print ('Advecting colors')\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=color_r_low, order=$ADVECT_ORDER$)\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=color_g_low, order=$ADVECT_ORDER$)\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=color_b_low, order=$ADVECT_ORDER$)\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=color_r, order=$ADVECT_ORDER$)\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=color_g, order=$ADVECT_ORDER$)\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=color_b, order=$ADVECT_ORDER$)\n\
   \n\
   if using_fire:\n\
     print ('Advecting fire')\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=fuel_low, order=$ADVECT_ORDER$)\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=react_low, order=$ADVECT_ORDER$)\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=fuel, order=$ADVECT_ORDER$)\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=react, order=$ADVECT_ORDER$)\n\
   \n\
   print('Advecting density')\n\
   advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$)\n\
   \n\
   print('Advecting velocity')\n\
   advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
+  \n\
+  for i in range(uvs):\n\
+    print('Advecting UV and updating UVWeight')\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=uv[i], order=$ADVECT_ORDER$)\n\
+    updateUvWeight(resetTime=16.5 , index=i, numUvs=uvs, uv=uv[i])\n\
   \n\
   print('Walls')\n\
   setWallBcs(flags=flags, vel=vel)\n\
@@ -315,7 +331,7 @@ def step_low():\n\
     print ('Adding heat buoyancy')\n\
     gravity=vec3(0,0,-0.0981) if dim==3 else vec3(0,-0.0981,0)\n\
     addBuoyancy2(flags=flags, grid=density, vel=vel, gravity=gravity, coefficient=$ALPHA$)\n\
-    addBuoyancy2(flags=flags, grid=heat_low, vel=vel, gravity=gravity, coefficient=$BETA$*10)\n\
+    addBuoyancy2(flags=flags, grid=heat, vel=vel, gravity=gravity, coefficient=$BETA$*10)\n\
   else:\n\
     print ('Adding buoyancy')\n\
     gravity=vec3(0,0,-0.01 * $ALPHA$) if dim==3 else vec3(0,-0.01* $ALPHA$,0)\n\
@@ -334,19 +350,22 @@ def step_low():\n\
   print('Walls')\n\
   setWallBcs(flags=flags, vel=vel)\n\
   \n\
+  print('Energy')\n\
+  computeEnergy(flags=flags, vel=vel, energy=energy)\n\
+  \n\
   copyMacToReal(source=vel, targetX=x_vel, targetY=y_vel, targetZ=z_vel)\n\
   s.step()\n\
 \n\
 def process_burn_low():\n\
   print('Process burn low')\n\
   if (using_colors):\n\
-    processBurn(fuel=fuel_low, density=density, react=react_low, red=color_r_low, green=color_g_low, blue=color_b_low, heat=heat_low, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=$DT$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
+    processBurn(fuel=fuel, density=density, react=react, red=color_r, green=color_g, blue=color_b, heat=heat, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=$DT$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
   else:\n\
-    processBurn(fuel=fuel_low, density=density, react=react_low, heat=heat_low, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=$DT$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
+    processBurn(fuel=fuel, density=density, react=react, heat=heat, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=$DT$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
 \n\
 def update_flame_low():\n\
   print('Update flame low')\n\
-  updateFlame(react=react_low, flame=flame_low)\n";
+  updateFlame(react=react, flame=flame)\n";
 
 //////////////////////////////////////////////////////////////////////
 // STEP FUNCTIONS HIGH
@@ -356,8 +375,10 @@ const string smoke_step_high = "\n\
 def step_high():\n\
   print('Step high')\n\
   interpolateMACGrid(source=vel, target=xl_vel)\n\
-  sStr = 1.0 * wltStrength \n\
+  sStr = 1.0 * wltStrength\n\
   sPos = 2.0\n\
+  \n\
+  print('Octaves')\n\
   for o in range(octaves):\n\
     for i in range(uvs):\n\
       uvWeight = getUvWeight(uv[i])\n\
@@ -368,14 +389,14 @@ def step_high():\n\
   for substep in range(upres):\n\
     if using_colors: \n\
       print ('Advecting colors high')\n\
-      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=color_r_high, order=$ADVECT_ORDER$)\n\
-      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=color_g_high, order=$ADVECT_ORDER$)\n\
-      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=color_b_high, order=$ADVECT_ORDER$)\n\
+      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_color_r, order=$ADVECT_ORDER$)\n\
+      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_color_g, order=$ADVECT_ORDER$)\n\
+      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_color_b, order=$ADVECT_ORDER$)\n\
     \n\
     if using_fire: \n\
       print ('Advecting fire high')\n\
-      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=fuel_high, order=$ADVECT_ORDER$)\n\
-      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=react_high, order=$ADVECT_ORDER$)\n\
+      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_fuel, order=$ADVECT_ORDER$)\n\
+      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_react, order=$ADVECT_ORDER$)\n\
     \n\
     print('Advecting density high')\n\
     advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=$ADVECT_ORDER$)\n\
@@ -384,11 +405,14 @@ def step_high():\n\
 \n\
 def process_burn_high():\n\
   print('Process burn high')\n\
-  processBurn(fuel=fuel_high, density=xl_density, react=react_high, red=color_r_high, green=color_g_high, blue=color_b_high, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=$DT$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
+  if (using_colors):\n\
+    processBurn(fuel=xl_fuel, density=xl_density, react=xl_react, red=xl_color_r, green=xl_color_g, blue=xl_color_b, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=$DT$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
+  else:\n\
+    processBurn(fuel=xl_fuel, density=xl_density, react=xl_react, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=$DT$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
 \n\
 def update_flame_high():\n\
   print('Update flame high')\n\
-  updateFlame(react=react_high, flame=flame_high)\n";
+  updateFlame(react=xl_react, flame=xl_flame)\n";
 
 //////////////////////////////////////////////////////////////////////
 // STEP FUNCTIONS LIQUID
@@ -431,34 +455,34 @@ def sim_step_low(t):\n\
 const string smoke_export_low = "\n\
 import os\n\
 print('Exporting grids')\n\
-density.save(os.path.join('$MANTA_EXPORT_PATH$','density_low.uni'))\n\
-flags.save(os.path.join('$MANTA_EXPORT_PATH$','flags_low.uni'))\n\
-forces.save(os.path.join('$MANTA_EXPORT_PATH$','forces_low.uni'))\n\
+density.save(os.path.join('$MANTA_EXPORT_PATH$','density.uni'))\n\
+flags.save(os.path.join('$MANTA_EXPORT_PATH$','flags.uni'))\n\
+forces.save(os.path.join('$MANTA_EXPORT_PATH$','forces.uni'))\n\
 inflow_grid.save(os.path.join('$MANTA_EXPORT_PATH$','inflow_low.uni'))\n\
 fuel_inflow.save(os.path.join('$MANTA_EXPORT_PATH$','fuel_inflow.uni'))\n\
 if using_colors:\n\
-  color_r_low.save(os.path.join('$MANTA_EXPORT_PATH$','color_r_low.uni'))\n\
-  color_g_low.save(os.path.join('$MANTA_EXPORT_PATH$','color_g_low.uni'))\n\
-  color_b_low.save(os.path.join('$MANTA_EXPORT_PATH$','color_b_low.uni'))\n\
+  color_r.save(os.path.join('$MANTA_EXPORT_PATH$','color_r.uni'))\n\
+  color_g.save(os.path.join('$MANTA_EXPORT_PATH$','color_g.uni'))\n\
+  color_b.save(os.path.join('$MANTA_EXPORT_PATH$','color_b.uni'))\n\
 if using_heat:\n\
-  heat_low.save(os.path.join('$MANTA_EXPORT_PATH$','heat.uni'))\n\
+  heat.save(os.path.join('$MANTA_EXPORT_PATH$','heat.uni'))\n\
 if using_fire:\n\
-  flame_low.save(os.path.join('$MANTA_EXPORT_PATH$','flame_low.uni'))\n\
-  fuel_low.save(os.path.join('$MANTA_EXPORT_PATH$','fuel_low.uni'))\n\
-  react_low.save(os.path.join('$MANTA_EXPORT_PATH$','react_low.uni'))\n";
+  flame.save(os.path.join('$MANTA_EXPORT_PATH$','flame.uni'))\n\
+  fuel.save(os.path.join('$MANTA_EXPORT_PATH$','fuel.uni'))\n\
+  react.save(os.path.join('$MANTA_EXPORT_PATH$','react.uni'))\n";
 
 const string smoke_export_high = "\n\
 print('Exporting grids')\n\
 xl_density.save(os.path.join('$MANTA_EXPORT_PATH$','xl_density.uni'))\n\
 xl_flags.save(os.path.join('$MANTA_EXPORT_PATH$','xl_flags.uni'))\n\
 if using_colors:\n\
-  color_r_high.save(os.path.join('$MANTA_EXPORT_PATH$','color_r_high.uni'))\n\
-  color_g_high.save(os.path.join('$MANTA_EXPORT_PATH$','color_g_high.uni'))\n\
-  color_b_high.save(os.path.join('$MANTA_EXPORT_PATH$','color_b_high.uni'))\n\
+  xl_color_r.save(os.path.join('$MANTA_EXPORT_PATH$','xl_color_r.uni'))\n\
+  xl_color_g.save(os.path.join('$MANTA_EXPORT_PATH$','xl_color_g.uni'))\n\
+  xl_color_b.save(os.path.join('$MANTA_EXPORT_PATH$','xl_color_b.uni'))\n\
 if using_fire:\n\
-  flame_high.save(os.path.join('$MANTA_EXPORT_PATH$','flame_high.uni'))\n\
-  fuel_high.save(os.path.join('$MANTA_EXPORT_PATH$','fuel_high.uni'))\n\
-  react_high.save(os.path.join('$MANTA_EXPORT_PATH$','react_high.uni'))\n";
+  xl_flame.save(os.path.join('$MANTA_EXPORT_PATH$','xl_flame.uni'))\n\
+  xl_fuel.save(os.path.join('$MANTA_EXPORT_PATH$','xl_fuel.uni'))\n\
+  xl_react.save(os.path.join('$MANTA_EXPORT_PATH$','xl_react.uni'))\n";
 
 //////////////////////////////////////////////////////////////////////
 // IMPORT GRIDS
@@ -467,24 +491,24 @@ if using_fire:\n\
 const string smoke_import_low = "\n\
 def import_grids_low():\n\
   print('Importing grids')\n\
-  density.load('$MANTA_EXPORT_PATH$density_low.uni')\n\
-  flags.load('$MANTA_EXPORT_PATH$flags_low.uni')\n\
-  forces.load('$MANTA_EXPORT_PATH$forces_low.uni')\n\
+  density.load('$MANTA_EXPORT_PATH$density.uni')\n\
+  flags.load('$MANTA_EXPORT_PATH$flags.uni')\n\
+  forces.load('$MANTA_EXPORT_PATH$forces.uni')\n\
   inflow_grid.load('$MANTA_EXPORT_PATH$inflow_low.uni')\n\
   fuel_inflow.load('$MANTA_EXPORT_PATH$fuel_inflow.uni')\n\
   \n\
   if using_colors:\n\
-    color_r_low.load('$MANTA_EXPORT_PATH$color_r_low.uni')\n\
-    color_g_low.load('$MANTA_EXPORT_PATH$color_g_low.uni')\n\
-    color_b_low.load('$MANTA_EXPORT_PATH$color_b_low.uni')\n\
+    color_r.load('$MANTA_EXPORT_PATH$color_r.uni')\n\
+    color_g.load('$MANTA_EXPORT_PATH$color_g.uni')\n\
+    color_b.load('$MANTA_EXPORT_PATH$color_b.uni')\n\
   \n\
   if using_heat:\n\
-    heat_low.load('$MANTA_EXPORT_PATH$heat.uni')\n\
+    heat.load('$MANTA_EXPORT_PATH$heat.uni')\n\
   \n\
   if using_fire:\n\
-    flame_low.load('$MANTA_EXPORT_PATH$flame_low.uni')\n\
-    fuel_low.load('$MANTA_EXPORT_PATH$fuel_low.uni')\n\
-    react_low.load('$MANTA_EXPORT_PATH$react_low.uni')\n";
+    flame.load('$MANTA_EXPORT_PATH$flame.uni')\n\
+    fuel.load('$MANTA_EXPORT_PATH$fuel.uni')\n\
+    react.load('$MANTA_EXPORT_PATH$react.uni')\n";
 
 const string smoke_import_high = "\n\
 def import_grids_high():\n\
@@ -493,13 +517,13 @@ def import_grids_high():\n\
   xl_density.load('$MANTA_EXPORT_PATH$xl_density.uni')\n\
   xl_flags.load('$MANTA_EXPORT_PATH$xl_flags.uni')\n\
   if using_colors:\n\
-    color_r_high.load('$MANTA_EXPORT_PATH$color_r_high.uni')\n\
-    color_g_high.load('$MANTA_EXPORT_PATH$color_g_high.uni')\n\
-    color_b_high.load('$MANTA_EXPORT_PATH$color_b_high.uni')\n\
+    xl_color_r.load('$MANTA_EXPORT_PATH$xl_color_r.uni')\n\
+    xl_color_g.load('$MANTA_EXPORT_PATH$xl_color_g.uni')\n\
+    xl_color_b.load('$MANTA_EXPORT_PATH$xl_color_b.uni')\n\
   if using_fire:\n\
-    flame_high.load('$MANTA_EXPORT_PATH$flame_high.uni')\n\
-    fuel_high.load('$MANTA_EXPORT_PATH$fuel_high.uni')\n\
-    react_high.load('$MANTA_EXPORT_PATH$react_high.uni')\n";
+    xl_flame.load('$MANTA_EXPORT_PATH$xl_flame.uni')\n\
+    xl_fuel.load('$MANTA_EXPORT_PATH$xl_fuel.uni')\n\
+    xl_react.load('$MANTA_EXPORT_PATH$xl_react.uni')\n";
 
 //////////////////////////////////////////////////////////////////////
 // INFLOW
@@ -511,7 +535,7 @@ def apply_inflow():\n\
   #inflow_grid.multConst(0.1)\n\
   #fuel_inflow.multConst(0.1)\n\
   density.add(inflow_grid)\n\
-  fuel_low.add(fuel_inflow)\n";
+  fuel.add(fuel_inflow)\n";
 
 const string smoke_inflow_high = "\n\
  # TODO\n";
