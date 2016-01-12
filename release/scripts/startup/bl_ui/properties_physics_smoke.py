@@ -416,14 +416,14 @@ class OBJECT_OT_RunMantaButton(bpy.types.Operator):
         #bpy.ops.manta.sim_step()
         return{'FINISHED'}
 
-class OBJECT_OT_StopMantaButton(bpy.types.Operator):
-    bl_idname = "manta_stop_sim.button"
-    bl_label = "Stop Mantaflow Simulation"
-    def execute(self, context):
-        domain = context.smoke.domain_settings
-        #setting manta_sim_frame to "stop" value 
-        domain.manta_sim_frame = -1
-        return{'FINISHED'}
+#class OBJECT_OT_StopMantaButton(bpy.types.Operator):
+#    bl_idname = "manta_stop_sim.button"
+#    bl_label = "Stop Mantaflow Simulation"
+#    def execute(self, context):
+#        domain = context.smoke.domain_settings
+#        #setting manta_sim_frame to "stop" value 
+#        domain.manta_sim_frame = -1
+#        return{'FINISHED'}
 
 
 class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):

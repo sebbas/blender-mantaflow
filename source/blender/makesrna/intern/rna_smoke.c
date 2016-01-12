@@ -670,7 +670,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_int_sdna(prop, NULL, "manta_uvs_num");
 	RNA_def_property_range(prop, 0, 4);
 	RNA_def_property_ui_range(prop, 0, 4, 1, -1);
-	RNA_def_property_ui_text(prop, "UVs number", "Number of UV coordinate grids to use(Better not more than 2)");
+	RNA_def_property_ui_text(prop, "UVs number", "Number of UV coordinate grids to use (Better not more than 2)");
 //	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 	
 	prop = RNA_def_property(srna, "manta_clamp_noise", PROP_BOOLEAN, PROP_NONE);

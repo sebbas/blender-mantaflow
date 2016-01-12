@@ -120,7 +120,7 @@ xl_flags.fillGrid()\n";
 const string wavelet_turbulence_noise = "\n\
 # wavelet turbulence noise field\n\
 xl_wltnoise = s.create(NoiseField, loadFromFile=True)\n\
-xl_wltnoise.posScale = vec3( int(1.0*gs.x) ) * 0.5\n\
+xl_wltnoise.posScale = vec3(int(1.0*gs.x)) * 0.5\n\
 xl_wltnoise.timeAnim = 0.1\n\
 if(upres>0):\n\
   xl_wltnoise.posScale = xl_wltnoise.posScale * (1./upres)\n";
@@ -135,7 +135,7 @@ color_r = s.create(RealGrid)\n\
 color_g = s.create(RealGrid)\n\
 color_b = s.create(RealGrid)\n";
 
-const string alloc_colors_high = "\n\
+const string alloc_colors_high = "\
 print('Allocating colors high')\n\
 xl_color_r = xl.create(RealGrid)\n\
 xl_color_g = xl.create(RealGrid)\n\
@@ -194,6 +194,7 @@ if (GUI):\n\
   gui.show()\n\
   gui.pause()\n\
 \n\
+# import *.uni files\n\
 import_grids_low()\n\
 if using_wavelets:\n\
   import_grids_high()\n\
@@ -261,6 +262,7 @@ del using_colors\n\
 del using_heat\n\
 del using_fire\n\
 del flags\n\
+del uvs\n\
 del vel\n\
 del x_vel\n\
 del y_vel\n\
@@ -278,7 +280,6 @@ print('Deleting base grids high')\n\
 del upres\n\
 del xl_gs\n\
 del xl\n\
-del uvs\n\
 del wltStrength\n\
 del octaves\n\
 del xl_flags\n\
@@ -402,6 +403,8 @@ def step_high():\n\
     advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=$ADVECT_ORDER$)\n\
   \n\
   xl.step()\n\
+  \n\
+  timings.display()\n\
 \n\
 def process_burn_high():\n\
   print('Process burn high')\n\
@@ -454,9 +457,10 @@ def sim_step_low(t):\n\
 
 const string smoke_export_low = "\n\
 import os\n\
-print('Exporting grids')\n\
+print('Exporting grids low')\n\
 density.save(os.path.join('$MANTA_EXPORT_PATH$','density.uni'))\n\
 flags.save(os.path.join('$MANTA_EXPORT_PATH$','flags.uni'))\n\
+vel.save(os.path.join('$MANTA_EXPORT_PATH$','vel.uni'))\n\
 forces.save(os.path.join('$MANTA_EXPORT_PATH$','forces.uni'))\n\
 inflow_grid.save(os.path.join('$MANTA_EXPORT_PATH$','inflow_low.uni'))\n\
 fuel_inflow.save(os.path.join('$MANTA_EXPORT_PATH$','fuel_inflow.uni'))\n\
@@ -472,7 +476,7 @@ if using_fire:\n\
   react.save(os.path.join('$MANTA_EXPORT_PATH$','react.uni'))\n";
 
 const string smoke_export_high = "\n\
-print('Exporting grids')\n\
+print('Exporting grids high')\n\
 xl_density.save(os.path.join('$MANTA_EXPORT_PATH$','xl_density.uni'))\n\
 xl_flags.save(os.path.join('$MANTA_EXPORT_PATH$','xl_flags.uni'))\n\
 if using_colors:\n\
@@ -490,21 +494,19 @@ if using_fire:\n\
 
 const string smoke_import_low = "\n\
 def import_grids_low():\n\
-  print('Importing grids')\n\
+  print('Importing grids low')\n\
   density.load('$MANTA_EXPORT_PATH$density.uni')\n\
   flags.load('$MANTA_EXPORT_PATH$flags.uni')\n\
+  vel.save(os.path.join('$MANTA_EXPORT_PATH$','vel.uni'))\n\
   forces.load('$MANTA_EXPORT_PATH$forces.uni')\n\
   inflow_grid.load('$MANTA_EXPORT_PATH$inflow_low.uni')\n\
   fuel_inflow.load('$MANTA_EXPORT_PATH$fuel_inflow.uni')\n\
-  \n\
   if using_colors:\n\
     color_r.load('$MANTA_EXPORT_PATH$color_r.uni')\n\
     color_g.load('$MANTA_EXPORT_PATH$color_g.uni')\n\
     color_b.load('$MANTA_EXPORT_PATH$color_b.uni')\n\
-  \n\
   if using_heat:\n\
     heat.load('$MANTA_EXPORT_PATH$heat.uni')\n\
-  \n\
   if using_fire:\n\
     flame.load('$MANTA_EXPORT_PATH$flame.uni')\n\
     fuel.load('$MANTA_EXPORT_PATH$fuel.uni')\n\
@@ -512,8 +514,7 @@ def import_grids_low():\n\
 
 const string smoke_import_high = "\n\
 def import_grids_high():\n\
-  print('Importing grids')\n\
-  vel.load('$MANTA_EXPORT_PATH$vel.uni')\n\
+  print('Importing grids high')\n\
   xl_density.load('$MANTA_EXPORT_PATH$xl_density.uni')\n\
   xl_flags.load('$MANTA_EXPORT_PATH$xl_flags.uni')\n\
   if using_colors:\n\
@@ -535,7 +536,8 @@ def apply_inflow():\n\
   #inflow_grid.multConst(0.1)\n\
   #fuel_inflow.multConst(0.1)\n\
   density.add(inflow_grid)\n\
-  fuel.add(fuel_inflow)\n";
+  if using_fire:\n\
+    fuel.add(fuel_inflow)\n";
 
 const string smoke_inflow_high = "\n\
  # TODO\n";

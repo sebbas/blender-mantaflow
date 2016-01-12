@@ -419,7 +419,6 @@ void Manta_API::start_mantaflow()
 std::string Manta_API::get_real_value( const std::string& varName, SmokeModifierData *smd)
 {
 	ostringstream ss;
-	cout << "name is " << varName << endl;
 	bool is2D = smd->domain->fluid->manta_resoution == 2;
 	if (varName == "UVS_CNT")
 		ss << smd->domain->manta_uvs_num ;
@@ -574,29 +573,66 @@ void Manta_API::manta_export_script(SmokeModifierData *smd)
 	std::string manta_script =
 		manta_import +
 		solver_setup_low +
-		alloc_base_grids_low +
-		alloc_colors_low +
-		noise_low +
-		prep_domain_low +
-		flags;
+		uv_setup +
+		alloc_base_grids_low;
+	
+	// Add heat grid low if needed
+	if (smd->domain->fluid->using_heat) {
+		manta_script += alloc_heat_low;
+	}
+	
+	// Add color grids low if needed
+	if (smd->domain->fluid->using_colors) {
+		manta_script += alloc_colors_low;
+	}
+	
+	// Add fire grids low if needed
+	if (smd->domain->fluid->using_fire) {
+		manta_script += alloc_fire_low;
+	}
+	
+	// Rest of low res setup
+	manta_script += prep_domain_low + flags;
 	
 	// Setup high
 	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
 		manta_script +=
 			solver_setup_high +
-			alloc_base_grids_high +
-			noise_high +
-			prep_domain_high +
-			wavelet_turbulence_noise;
+			alloc_base_grids_high;
 	}
+	
+	// Add color grids high if needed
+	if (smd->domain->flags & MOD_SMOKE_HIGHRES && smd->domain->fluid->using_colors) {
+		manta_script += alloc_colors_high;
+	}
+	
+	// Add fire grids high if needed
+	if (smd->domain->flags & MOD_SMOKE_HIGHRES && smd->domain->fluid->using_fire) {
+		manta_script += alloc_fire_high;
+	}
+
+	// Rest of low res setup
+	manta_script += prep_domain_high + wavelet_turbulence_noise;
+	
+	// Noise low
+	// TODO. Maybe drop this grid, because it can only be used for inflow
+	
+	// Noise high
+	// TODO, Same as noise low
 	
 	// Import low
 	manta_script += smoke_import_low;
 	
 	// Import high
 	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
-		manta_script += smoke_step_high;
+		manta_script += smoke_import_high;
 	}
+	
+	// Inflow low
+	manta_script += smoke_inflow_low;
+	
+	// Inflow High
+	// TODO
 	
 	// Step low
 	manta_script += smoke_step_low;

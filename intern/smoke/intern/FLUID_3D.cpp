@@ -657,7 +657,7 @@ void FLUID_3D::initColors(float init_r, float init_g, float init_b)
 		PyRun_SimpleString(ss.str().c_str());
 		PyRun_SimpleString(alloc_colors_low.c_str());
 		PyRun_SimpleString(init_colors_low.c_str());
-		PyRun_SimpleString(with_fire.c_str());
+		PyRun_SimpleString(with_colors.c_str());
 		PyGILState_Release(gilstate);
 		Manta_API::update_pointers(this);
 	}
