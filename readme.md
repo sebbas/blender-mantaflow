@@ -97,11 +97,25 @@ Some fire renderings can be found on [Vimeo](https://vimeo.com/sebbas/videos). F
 
 ### Mac OSX
 
-If you have problems building under Mac OS 10.11 "El Capitan" and with Xcode 7 (I did) then set the `OSX_SYSTEM` setting manually.
+If you have problems building under Mac OS 10.11 "El Capitan" and with Xcode 7 (I did) then below are two possible workarounds
 
-You can do this in CMakeLists.txt by changing:
+The first is to edit CMakeLists.txt, and change the OSX_SYSTEM setting manually, by changing:
 
         elseif(${MAC_SYS} MATCHES 14)
-    -               set(OSX_SYSTEM 10.10)
-    +               set(OSX_SYSTEM 10.11)
+    -       set(OSX_SYSTEM 10.10)
+    +       set(OSX_SYSTEM 10.11)
 
+The second workaround is to use an older Mac OSX SDK, e.g. the SDK from 10.10. 
+
+ 1. Get a copy of the Mac OSX 10.10 SDK. It can be found in Xcode 6 under `Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk`. You might find Xcode 6 itself on your Time Machine Backup or you can download it from [Apple](https://developer.apple.com/downloads/).
+ 
+ 2. Copy `MacOSX10.10.sdk` into your current Xcode 7 app, alongside the 10.11 SDK which is located in `/ApplicationsXcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/`.
+ 
+ 3. Edit CMakeLists.txt like this
+
+            if(${MAC_SYS} MATCHES 15)
+        -       set(OSX_SYSTEM 10.11)
+        +       set(OSX_SYSTEM 10.10)
+
+
+Hope this works for you, if you know a better fix then please let me know!
