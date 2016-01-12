@@ -481,13 +481,14 @@ std::string Manta_API::get_real_value( const std::string& varName, SmokeModifier
 	} else if (varName == "VORTICITY") {
 		ss << smd->domain->vorticity / smd->domain->fluid->_constantScaling;
 	} else if (varName == "BOUNDCONDITIONS") {
-		if (smd->domain->border_collisions == SM_BORDER_OPEN) ss << "xXyY";
-		else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "zZ";
-		else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "";
-		
+		if (smd->domain->manta_solver_res == 2) {
+			if (smd->domain->border_collisions == SM_BORDER_OPEN) ss << "xXyY";
+			else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "yY";
+			else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "";
+		}
 		if (smd->domain->manta_solver_res == 3) {
-			if(smd->domain->border_collisions == SM_BORDER_OPEN) ss << "zZ";
-			else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "";
+			if(smd->domain->border_collisions == SM_BORDER_OPEN) ss << "xXyYzZ";
+			else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "zZ";
 			else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "";
 		}
 	}
@@ -611,8 +612,10 @@ void Manta_API::manta_export_script(SmokeModifierData *smd)
 		manta_script += alloc_fire_high;
 	}
 
-	// Rest of low res setup
-	manta_script += prep_domain_high + wavelet_turbulence_noise;
+	// Rest of high res setup
+	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
+		manta_script += prep_domain_high + wavelet_turbulence_noise;
+	}
 	
 	// Noise low
 	// TODO. Maybe drop this grid, because it can only be used for inflow
