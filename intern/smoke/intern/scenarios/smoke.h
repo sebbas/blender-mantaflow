@@ -61,7 +61,7 @@ const string noise_low = "\n\
 # noise field low\n\
 noise = s.create(NoiseField, loadFromFile=True)\n\
 noise.posScale = vec3(45)\n\
-noise.clamp = True\n\
+noise.clamp = $USE_NOISE_CLAMP$\n\
 noise.clampNeg = $NOISE_CN$\n\
 noise.clampPos = $NOISE_CP$\n\
 noise.valScale = $NOISE_VALSCALE$\n\
@@ -105,7 +105,7 @@ const string noise_high = "\n\
 # noise field high\n\
 xl_noise = xl.create(NoiseField, fixedSeed=256, loadFromFile=True)\n\
 xl_noise.posScale = vec3(20)\n\
-xl_noise.clamp = False\n\
+xl_noise.clamp = $USE_NOISE_CLAMP$\n\
 xl_noise.clampNeg = $NOISE_CN$\n\
 xl_noise.clampPos = $NOISE_CP$\n\
 xl_noise.valScale = $NOISE_VALSCALE$\n\
@@ -121,9 +121,16 @@ const string wavelet_turbulence_noise = "\n\
 # wavelet turbulence noise field\n\
 xl_wltnoise = s.create(NoiseField, loadFromFile=True)\n\
 xl_wltnoise.posScale = vec3(int(1.0*gs.x)) * 0.5\n\
-xl_wltnoise.timeAnim = 0.1\n\
+xl_wltnoise.clamp = $USE_NOISE_CLAMP$\n\
+xl_wltnoise.clampNeg = $NOISE_CN$\n\
+xl_wltnoise.clampPos = $NOISE_CP$\n\
+xl_wltnoise.valScale = $NOISE_VALSCALE$\n\
+xl_wltnoise.valOffset = $NOISE_VALOFFSET$\n\
+xl_wltnoise.timeAnim = $NOISE_TIMEANIM$\n\
 if(upres>0):\n\
-  xl_wltnoise.posScale = xl_wltnoise.posScale * (1./upres)\n";
+  xl_wltnoise.posScale = xl_wltnoise.posScale * (1./upres)\n\
+  xl_wltnoise.timeAnim = xl_wltnoise.timeAnim * upres\n";
+
 
 //////////////////////////////////////////////////////////////////////
 // ADDITIONAL GRIDS

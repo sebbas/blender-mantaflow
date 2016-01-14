@@ -583,14 +583,15 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			
 			/*mantaflow settings*/
 			smd->domain->manta_solver_res = 3;
-			smd->domain->manta_sim_frame = -1;
+//			smd->domain->manta_sim_frame = -1;
 			smd->domain->manta_start_frame = 1;
 			smd->domain->manta_end_frame = 10;
 			smd->domain->noise_clamp_neg = 0;
 			smd->domain->noise_clamp_pos = 1;
-			smd->domain->noise_val_scale = 0.;
-			smd->domain->noise_val_offset = 0.075;
-			smd->domain->noise_time_anim = 0.2;
+			smd->domain->noise_val_scale = 1.;
+			smd->domain->noise_val_offset = 0.;
+			smd->domain->noise_time_anim = 0.;
+			smd->domain->noise_clamp = 1;
 			BLI_make_file_string("/", smd->domain->_manta_filepath, BKE_tempdir_base(), "manta_scene.py");
 		}
 		else if (smd->type & MOD_SMOKE_TYPE_FLOW)

@@ -172,7 +172,8 @@ typedef struct SmokeDomainSettings {
 	float noise_val_scale;
 	float noise_val_offset;
 	float noise_time_anim;
-	int manta_sim_frame;/*current simulation frame number. If not simulating-> manta_sim_frame == -1*/
+	int noise_clamp;
+	//int manta_sim_frame;/*current simulation frame number. If not simulating-> manta_sim_frame == -1*/
 	float mock_var;	/*not used*/
 //	float mock_var2;	/*not used*/
 } SmokeDomainSettings;

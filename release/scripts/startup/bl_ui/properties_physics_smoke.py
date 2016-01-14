@@ -456,13 +456,16 @@ class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
         split = layout.split()
         col = split.column()
         col.label("Noise Settings")
-        col.prop(domain, "noise_clamp_neg", text="Clamp Neg")
-        col.prop(domain, "noise_clamp_pos", text="Clamp Pos")
-        col.prop(domain, "noise_time_anim", text="Time Anim")
+        col.prop(domain, "noise_clamp", text="Clamp")
+        sub = col.column()
+        sub.active = domain.noise_clamp
+        sub.prop(domain, "noise_clamp_neg", text="Clamp Neg")
+        sub.prop(domain, "noise_clamp_pos", text="Clamp Pos")
         col = split.column()
         col.label("")
         col.prop(domain, "noise_val_scale", text="Scale")
         col.prop(domain, "noise_val_offset", text="Offset")
+        col.prop(domain, "noise_time_anim", text="Time Anim")
 
 if __name__ == "__main__":  # only for live edit.
     bpy.utils.register_module(__name__)

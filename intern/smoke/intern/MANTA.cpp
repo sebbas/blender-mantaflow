@@ -427,9 +427,9 @@ std::string Manta_API::get_real_value( const std::string& varName, SmokeModifier
 	else if (varName == "WLT_STR")
 		ss << smd->domain->strength ;
 	else if (varName == "RES")
-		ss <<  smd->domain->maxres;
+		ss << smd->domain->maxres;
 	else if (varName == "RESX")
-		ss <<  smd->domain->fluid->_xRes;
+		ss << smd->domain->fluid->_xRes;
 	else if (varName == "RESY")
 		if (is2D) {	ss <<  smd->domain->fluid->_zRes;}
 		else { 		ss <<  smd->domain->fluid->_yRes;}
@@ -438,12 +438,14 @@ std::string Manta_API::get_real_value( const std::string& varName, SmokeModifier
 		else { 		ss << smd->domain->fluid->_zRes;}
 	else if (varName == "SOLVER_DIM")
 		ss <<  smd->domain->manta_solver_res;
+	else if (varName == "USE_NOISE_CLAMP")
+		ss << ((smd->domain->flags & MOD_SMOKE_NOISE_CLAMP) ? "True" : "False");
 	else if (varName == "NOISE_CN")
-		ss <<  smd->domain->noise_clamp_neg;
+		ss << smd->domain->noise_clamp_neg;
 	else if (varName == "NOISE_CP")
-		ss <<  smd->domain->noise_clamp_pos;
+		ss << smd->domain->noise_clamp_pos;
 	else if (varName == "NOISE_VALSCALE")
-		ss <<  smd->domain->noise_val_scale;
+		ss << smd->domain->noise_val_scale;
 	else if (varName == "NOISE_VALOFFSET")
 		ss << smd->domain->noise_val_offset;
 	else if (varName == "NOISE_TIMEANIM")
