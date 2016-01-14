@@ -446,7 +446,7 @@ class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
         domain = context.smoke.domain_settings
         split = layout.split()
         split.prop(domain, "use_manta_liquid", text="Liquid")
-        split.operator("manta_export_scene.button", text="Create Manta Setup")
+        split.operator("manta_export_scene.button", text="Export Mantaflow Script")
         split = layout.split()
         split.prop(domain, "manta_filepath")
         split = layout.split()
@@ -455,7 +455,7 @@ class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
         col.prop(domain, "manta_uvs", text="UVs count")
         split = layout.split()
         col = split.column()
-        col.label("Noise Settings")
+        col.label("Wavelet Noise")
         col.prop(domain, "noise_clamp", text="Clamp")
         sub = col.column()
         sub.active = domain.noise_clamp
