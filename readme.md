@@ -2,7 +2,7 @@
 
 This is the current state of the Blender Mantaflow integration. It builds on previous integration steps which can be found in the Blender branch `soc-2014-fluid`.
 
-## Build (for the impatient)
+## Building (for the impatient)
 
 ### Mac OSX
 
@@ -60,7 +60,7 @@ Run Blender from *your_path/build_darwin/bin/Blender.app*!
         
         $ make
 
-## Build (with explanations)
+## Building (with explanations)
 
 Since this repository relies on a working Blender building environment, the easiest way to set it up is to play it on top of the official Blender code. You can do so by following these steps:
 
@@ -92,6 +92,12 @@ Since this repository relies on a working Blender building environment, the easi
 
 Some fire renderings can be found on [Vimeo](https://vimeo.com/sebbas/videos). For the current development state, take a look at the latest videos!
 
+## Known issues
+- Every time Blender starts a new animation cycle, Mantaflow allocates new grids as the Blender constructor `FLUID_3D` (and `WTURBULENCE` if using the high resolution option) is called. This results in higher memory consumption than in the Vanilla Blender as allocated grids are not immediately garbage collected by Python.
+
+So, for now, don't let the animation loop to often ;)
+
+- The Mantaflow script that you obtain when exporting in Blender is *not* compatible with the current official Mantaflow [distribution](http://mantaflow.com/download.html). We still need to merge it with the Blender development branch in Mantaflow.
 
 ## Troubleshooting
 
