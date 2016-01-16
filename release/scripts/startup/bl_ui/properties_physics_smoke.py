@@ -456,12 +456,14 @@ class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
         split = layout.split()
         col = split.column()
         col.label("Wavelet Noise")
+        col.active = domain.use_high_resolution
         col.prop(domain, "noise_clamp", text="Clamp")
         sub = col.column()
         sub.active = domain.noise_clamp
         sub.prop(domain, "noise_clamp_neg", text="Clamp Neg")
         sub.prop(domain, "noise_clamp_pos", text="Clamp Pos")
         col = split.column()
+        col.active = domain.use_high_resolution
         col.label("")
         col.prop(domain, "noise_val_scale", text="Scale")
         col.prop(domain, "noise_val_offset", text="Offset")

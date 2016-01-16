@@ -1246,11 +1246,6 @@ WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int no
 	// allocate high resolution density field
 	_totalStepsBig = 0;
 	_densityBig = NULL;
-	_densityBigOld = new float[_totalCellsBig];
-	
-	for(int i = 0; i < _totalCellsBig; i++) {
-		_densityBigOld[i] = 0.;
-	}
 	
 	_flameBig = _fuelBig = _reactBig = NULL;
 	using_fire = false;
@@ -1325,19 +1320,19 @@ WTURBULENCE::~WTURBULENCE()
 	PyRun_SimpleString(del_base_grids_high.c_str());
 	PyGILState_Release(gilstate);
 	
-	delete[] _densityBig;
+//	delete[] _densityBig;
 //	delete[] _densityBigOld;
-	if (_flameBig) delete[] _flameBig;
-	if (_fuelBig) delete[] _fuelBig;
+//	if (_flameBig) delete[] _flameBig;
+//	if (_fuelBig) delete[] _fuelBig;
 //	if (_fuelBigOld) delete[] _fuelBigOld;
-	if (_reactBig) delete[] _reactBig;
+//	if (_reactBig) delete[] _reactBig;
 //	if (_reactBigOld) delete[] _reactBigOld;
 	
-	if (_color_rBig) delete[] _color_rBig;
+//	if (_color_rBig) delete[] _color_rBig;
 //	if (_color_rBigOld) delete[] _color_rBigOld;
-	if (_color_gBig) delete[] _color_gBig;
+//	if (_color_gBig) delete[] _color_gBig;
 //	if (_color_gBigOld) delete[] _color_gBigOld;
-	if (_color_bBig) delete[] _color_bBig;
+//	if (_color_bBig) delete[] _color_bBig;
 //	if (_color_bBigOld) delete[] _color_bBigOld;
 	
 	delete[] _tcU;

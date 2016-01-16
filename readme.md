@@ -97,7 +97,9 @@ Some fire renderings can be found on [Vimeo](https://vimeo.com/sebbas/videos). F
 
 So, for now, don't let the animation loop to often ;)
 
-- The Mantaflow script that you obtain when exporting in Blender is *not* compatible with the current official Mantaflow [distribution](http://mantaflow.com/download.html). We still need to merge it with the Blender development branch in Mantaflow.
+- The Mantaflow script that you obtain when exporting in Blender is *not* compatible with the current, official Mantaflow [distribution](http://mantaflow.com/download.html). We still need to merge it with the Blender development branch in Mantaflow.
+
+- Wavelet turbulence flickers at intersection "cached <-> uncached" when animation was not cached entirely (Probably because of uncached uvGrids ...) 
 
 ## Troubleshooting
 
