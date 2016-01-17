@@ -1,7 +1,7 @@
 #include "MANTA.h"
 #include "WTURBULENCE.h"
 #include "scenarios/smoke.h"
-#include "../../../source/blender/python/manta_pp/pwrapper/manta.h"
+//#include "../../../source/blender/python/manta_pp/pwrapper/manta.h"
 
 //extern "C" bool manta_check_grid_size(struct FLUID_3D *fluid, int dimX, int dimY, int dimZ)
 //{
@@ -401,19 +401,24 @@
 
 void Manta_API::start_mantaflow()
 {
-	string filename = "manta_scene.py";
-	std::vector<std::string> fill = std::vector<std::string>();
+//	string filename = "manta_scene.py";
+//	std::vector<std::string> fill = std::vector<std::string>();
+//	
+//	// Initialize extension classes and wrappers
+//	srand(0);
+//	PyGILState_STATE gilstate = PyGILState_Ensure();
+//	
+//	if (!manta_initialized)
+//	{	
+//		Pb::setup(filename, fill);
+//		manta_initialized = true;
+//	}
+//	PyGILState_Release(gilstate);
 	
-	// Initialize extension classes and wrappers
-	srand(0);
-	PyGILState_STATE gilstate = PyGILState_Ensure();
-	
-	if (!manta_initialized)
-	{	
-		Pb::setup(filename, fill);
-		manta_initialized = true;
-	}
-	PyGILState_Release(gilstate);
+	// Using old initialization setup
+	vector<string> args;
+	args.push_back("manta_scene.py");
+	initializeMantaflow(args);
 }
 
 std::string Manta_API::get_real_value( const std::string& varName, SmokeModifierData *smd)
