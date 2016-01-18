@@ -230,74 +230,74 @@ for step in range(1000):\n\
 
 const string del_colors_low = "\n\
 print('Deleting colors low')\n\
-del color_r\n\
-del color_g\n\
-del color_b\n";
+if 'color_r' in globals() : del color_r\n\
+if 'color_g' in globals() : del color_g\n\
+if 'color_b' in globals() : del color_b\n";
 
 const string del_colors_high = "\n\
 print('Deleting colors high')\n\
-del xl_color_r\n\
-del xl_color_g\n\
-del xl_color_b\n";
+if 'xl_color_r' in globals() : del xl_color_r\n\
+if 'xl_color_g' in globals() : del xl_color_g\n\
+if 'xl_color_b' in globals() : del xl_color_b\n";
 
 const string del_fire_low = "\n\
 print('Deleting fire low')\n\
-del flame\n\
-del fuel\n\
-del react\n";
+if 'flame' in globals() : del flame\n\
+if 'fuel' in globals() : del fuel\n\
+if 'react' in globals() : del react\n";
 
 const string del_fire_high = "\n\
 print('Deleting fire high')\n\
-del xl_flame\n\
-del xl_fuel\n\
-del xl_react\n";
+if 'xl_flame' in globals() : del xl_flame\n\
+if 'xl_fuel' in globals() : del xl_fuel\n\
+if 'xl_react' in globals() : del xl_react\n";
 
 const string del_heat_low = "\n\
 print('Deleting heat low')\n\
-del heat\n";
+if 'heat' in globals() : del heat\n";
 
 const string del_base_grids_low = "\n\
 print('Deleting base grids low')\n\
-del res\n\
-del dim\n\
-del gs\n\
-del doOpen\n\
-del boundConditions\n\
-del s\n\
-del timings\n\
-del using_colors\n\
-del using_heat\n\
-del using_fire\n\
-del flags\n\
-del uvs\n\
-del vel\n\
-del x_vel\n\
-del y_vel\n\
-del z_vel\n\
-del density\n\
-del pressure\n\
-del energy\n\
-del forces\n\
-del inflow_grid\n\
-del fuel_inflow\n\
-del noise\n";
+if 'res' in globals() : del res\n\
+if 'dim' in globals() : del dim\n\
+if 'gs' in globals() : del gs\n\
+if 'doOpen' in globals() : del doOpen\n\
+if 'boundConditions' in globals() : del boundConditions\n\
+if 's' in globals() : del s\n\
+if 'timings' in globals() : del timings\n\
+if 'using_colors' in globals() : del using_colors\n\
+if 'using_heat' in globals() : del using_heat\n\
+if 'using_fire' in globals() : del using_fire\n\
+if 'flags' in globals() : del flags\n\
+if 'uvs' in globals() : del uvs\n\
+if 'vel' in globals() : del vel\n\
+if 'x_vel' in globals() : del x_vel\n\
+if 'y_vel' in globals() : del y_vel\n\
+if 'z_vel' in globals() : del z_vel\n\
+if 'density' in globals() : del density\n\
+if 'pressure' in globals() : del pressure\n\
+if 'energy' in globals() : del energy\n\
+if 'forces' in globals() : del forces\n\
+if 'inflow_grid' in globals() : del inflow_grid\n\
+if 'fuel_inflow' in globals() : del fuel_inflow\n\
+if 'noise' in globals() : del noise\n";
 
 const string del_base_grids_high = "\n\
 print('Deleting base grids high')\n\
-del upres\n\
-del xl_gs\n\
-del xl\n\
-del wltStrength\n\
-del octaves\n\
-del xl_flags\n\
-del xl_vel\n\
-del xl_x_vel\n\
-del xl_y_vel\n\
-del xl_z_vel\n\
-del xl_density\n\
-del xl_weight\n\
-del xl_noise\n\
-del xl_wltnoise\n";
+if 'upres' in globals() : del upres\n\
+if 'xl_gs' in globals() : del xl_gs\n\
+if 'xl' in globals() : del xl\n\
+if 'wltStrength' in globals() : del wltStrength\n\
+if 'octaves' in globals() : del octaves\n\
+if 'xl_flags' in globals() : del xl_flags\n\
+if 'xl_vel' in globals() : del xl_vel\n\
+if 'xl_x_vel' in globals() : del xl_x_vel\n\
+if 'xl_y_vel' in globals() : del xl_y_vel\n\
+if 'xl_z_vel' in globals() : del xl_z_vel\n\
+if 'xl_density' in globals() : del xl_density\n\
+if 'xl_weight' in globals() : del xl_weight\n\
+if 'xl_noise' in globals() : del xl_noise\n\
+if 'xl_wltnoise' in globals() : del xl_wltnoise\n";
 
 //////////////////////////////////////////////////////////////////////
 // STEP FUNCTIONS LOW

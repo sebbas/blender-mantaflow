@@ -608,7 +608,7 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 		solver_setup_low +
 		uv_setup +
 		alloc_base_grids_low +
-		noise_low +
+		//noise_low +
 		prep_domain_low +
 		flags +
 		smoke_step_low;
