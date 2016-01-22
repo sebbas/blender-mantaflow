@@ -1607,7 +1607,7 @@ static void sample_derivedmesh(
 
 static void emit_from_derivedmesh(Object *flow_ob, SmokeDomainSettings *sds, SmokeFlowSettings *sfs, EmissionMap *em, float dt)
 {
-	clock_t start = clock();
+//	clock_t start = clock();
 	if (sfs->dm) {
 		DerivedMesh *dm;
 		int defgrp_index = sfs->vgroup_density - 1;
@@ -1760,9 +1760,9 @@ static void emit_from_derivedmesh(Object *flow_ob, SmokeDomainSettings *sds, Smo
 		dm->release(dm);
 	}
 	
-	clock_t end = clock();
-	float seconds = (float)(end - start) / CLOCKS_PER_SEC;
-	printf("TIME FOR RECONSTRUCTING SDF: %f \n", seconds);
+//	clock_t end = clock();
+//	float seconds = (float)(end - start) / CLOCKS_PER_SEC;
+//	printf("TIME FOR RECONSTRUCTING SDF: %f \n", seconds);
 }
 
 /**********************************************************
@@ -2903,7 +2903,7 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		// create shadows before writing cache so they get stored
 		smoke_calc_transparency(sds, scene);
 
-		if (sds->wt&& !(smd->domain->flags & MOD_SMOKE_USE_MANTA))
+		if (sds->wt)
 		{
 			smoke_turbulence_step(sds->wt, sds->fluid);
 		}

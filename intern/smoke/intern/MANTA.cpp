@@ -494,7 +494,7 @@ std::string Manta_API::get_real_value( const std::string& varName, SmokeModifier
 			else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "";
 		}
 		if (smd->domain->manta_solver_res == 3) {
-			if(smd->domain->border_collisions == SM_BORDER_OPEN) ss << "xXyYzZ";
+			if (smd->domain->border_collisions == SM_BORDER_OPEN) ss << "xXyYzZ";
 			else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "zZ";
 			else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "";
 		}

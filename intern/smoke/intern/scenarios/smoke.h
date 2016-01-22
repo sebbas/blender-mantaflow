@@ -72,7 +72,8 @@ const string prep_domain_low = "\n\
 # prepare domain low\n\
 flags.initDomain()\n\
 flags.fillGrid()\n\
-setOpenBound(flags=flags, bWidth=1, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
+if doOpen:\n\
+  setOpenBound(flags=flags, bWidth=1, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
 
 //////////////////////////////////////////////////////////////////////
 // HIGH RESOLUTION SETUP
@@ -115,7 +116,9 @@ xl_noise.timeAnim = $NOISE_TIMEANIM$ * upres\n";
 const string prep_domain_high = "\n\
 # prepare domain high\n\
 xl_flags.initDomain()\n\
-xl_flags.fillGrid()\n";
+xl_flags.fillGrid()\n\
+if doOpen:\n\
+  setOpenBound(flags=xl_flags, bWidth=1, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
 
 const string wavelet_turbulence_noise = "\n\
 # wavelet turbulence noise field\n\
@@ -311,37 +314,37 @@ def step_low():\n\
     density.add(inflow_grid)\n\
   \n\
   if using_colors:\n\
-    print ('Advecting colors')\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=color_r, order=$ADVECT_ORDER$)\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=color_g, order=$ADVECT_ORDER$)\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=color_b, order=$ADVECT_ORDER$)\n\
+    print('Advecting colors')\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=color_r, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=color_g, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=color_b, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
   \n\
   if using_fire:\n\
-    print ('Advecting fire')\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=fuel, order=$ADVECT_ORDER$)\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=react, order=$ADVECT_ORDER$)\n\
+    print('Advecting fire')\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=fuel, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=react, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
   \n\
   print('Advecting density')\n\
-  advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$)\n\
+  advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
   \n\
   print('Advecting velocity')\n\
   advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
   \n\
   for i in range(uvs):\n\
     print('Advecting UV and updating UVWeight')\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=uv[i], order=$ADVECT_ORDER$)\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=uv[i], order=$ADVECT_ORDER$, openBounds=doOpen)\n\
     updateUvWeight(resetTime=16.5 , index=i, numUvs=uvs, uv=uv[i])\n\
   \n\
   print('Walls')\n\
   setWallBcs(flags=flags, vel=vel)\n\
   \n\
   if using_heat:\n\
-    print ('Adding heat buoyancy')\n\
+    print('Adding heat buoyancy')\n\
     gravity=vec3(0,0,-0.0981) if dim==3 else vec3(0,-0.0981,0)\n\
     addBuoyancy2(flags=flags, grid=density, vel=vel, gravity=gravity, coefficient=$ALPHA$)\n\
     addBuoyancy2(flags=flags, grid=heat, vel=vel, gravity=gravity, coefficient=$BETA$*10)\n\
   else:\n\
-    print ('Adding buoyancy')\n\
+    print('Adding buoyancy')\n\
     gravity=vec3(0,0,-0.01 * $ALPHA$) if dim==3 else vec3(0,-0.01* $ALPHA$,0)\n\
     addBuoyancy(density=density, vel=vel, gravity=gravity, flags=flags)\n\
   \n\
@@ -396,18 +399,18 @@ def step_high():\n\
   \n\
   for substep in range(upres):\n\
     if using_colors: \n\
-      print ('Advecting colors high')\n\
-      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_color_r, order=$ADVECT_ORDER$)\n\
-      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_color_g, order=$ADVECT_ORDER$)\n\
-      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_color_b, order=$ADVECT_ORDER$)\n\
+      # print ('Advecting colors high')\n\
+      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_color_r, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
+      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_color_g, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
+      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_color_b, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
     \n\
     if using_fire: \n\
-      print ('Advecting fire high')\n\
-      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_fuel, order=$ADVECT_ORDER$)\n\
-      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_react, order=$ADVECT_ORDER$)\n\
+      # print ('Advecting fire high')\n\
+      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_fuel, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
+      advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_react, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
     \n\
     print('Advecting density high')\n\
-    advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=$ADVECT_ORDER$)\n\
+    advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
   \n\
   xl.step()\n\
   \n\
