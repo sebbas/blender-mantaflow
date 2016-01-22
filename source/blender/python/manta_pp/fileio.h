@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/source/fileio.h"
+#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/fileio.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -49,6 +49,7 @@ template<class T> void writeGridTxt(const std::string& name, Grid<T>* grid);
 
 template<class T> void readGridUni(const std::string& name, Grid<T>* grid);
 template<class T> void readGridRaw(const std::string& name, Grid<T>* grid);
+template<class T> void readGridVol(const std::string& name, Grid<T>* grid);
 
 void writeParticlesUni(const std::string& name, BasicParticleSystem* parts );
 void readParticlesUni (const std::string& name, BasicParticleSystem* parts );

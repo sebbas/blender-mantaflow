@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/source/plugin/vortexplugins.cpp"
+#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/plugin/vortexplugins.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -89,7 +89,14 @@ void meshSmokeInflow(VortexSheetMesh& mesh, Shape* shape, Real amount) {
 
  struct KnAcceleration : public KernelBase { KnAcceleration(MACGrid& a, const MACGrid& v1, const MACGrid& v0, const Real idt) :  KernelBase(&a,0) ,a(a),v1(v1),v0(v0),idt(idt)   { run(); }  inline void op(int idx, MACGrid& a, const MACGrid& v1, const MACGrid& v0, const Real idt )  { 
 	a[idx] = (v1[idx]-v0[idx])*idt; 
-}   inline MACGrid& getArg0() { return a; } typedef MACGrid type0;inline const MACGrid& getArg1() { return v1; } typedef MACGrid type1;inline const MACGrid& getArg2() { return v0; } typedef MACGrid type2;inline const Real& getArg3() { return idt; } typedef Real type3; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, a,v1,v0,idt);  } MACGrid& a; const MACGrid& v1; const MACGrid& v0; const Real idt;   };
+}   inline MACGrid& getArg0() { return a; } typedef MACGrid type0;inline const MACGrid& getArg1() { return v1; } typedef MACGrid type1;inline const MACGrid& getArg2() { return v0; } typedef MACGrid type2;inline const Real& getArg3() { return idt; } typedef Real type3; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,a,v1,v0,idt);  }  } MACGrid& a; const MACGrid& v1; const MACGrid& v0; const Real idt;   };
+#line 78 "plugin/vortexplugins.cpp"
+
+
 
 //! Add vorticity to vortex sheets based on buoyancy
 

@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/source/levelset.cpp"
+#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/levelset.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -53,7 +53,18 @@ static const Vec3i neighbors[6] = { Vec3i(-1,0,0), Vec3i(1,0,0), Vec3i(0,-1,0), 
 		if (v>=0) fmFlags[idx] = FlagInited;
 		else      fmFlags[idx] = 0;
 	}
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<int>& getArg1() { return fmFlags; } typedef Grid<int> type1;inline LevelsetGrid& getArg2() { return phi; } typedef LevelsetGrid type2;inline bool& getArg3() { return ignoreWalls; } typedef bool type3;inline int& getArg4() { return obstacleType; } typedef int type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,fmFlags,phi,ignoreWalls,obstacleType);  } FlagGrid& flags; Grid<int>& fmFlags; LevelsetGrid& phi; bool ignoreWalls; int obstacleType;   };
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<int>& getArg1() { return fmFlags; } typedef Grid<int> type1;inline LevelsetGrid& getArg2() { return phi; } typedef LevelsetGrid type2;inline bool& getArg3() { return ignoreWalls; } typedef bool type3;inline int& getArg4() { return obstacleType; } typedef int type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,fmFlags,phi,ignoreWalls,obstacleType);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,fmFlags,phi,ignoreWalls,obstacleType);  } }  } FlagGrid& flags; Grid<int>& fmFlags; LevelsetGrid& phi; bool ignoreWalls; int obstacleType;   };
+#line 32 "levelset.cpp"
+
+
 
 
  struct InitFmOut : public KernelBase { InitFmOut(FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& phi, bool ignoreWalls, int obstacleType) :  KernelBase(&flags,1) ,flags(flags),fmFlags(fmFlags),phi(phi),ignoreWalls(ignoreWalls),obstacleType(obstacleType)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& phi, bool ignoreWalls, int obstacleType )  {
@@ -68,7 +79,18 @@ static const Vec3i neighbors[6] = { Vec3i(-1,0,0), Vec3i(1,0,0), Vec3i(0,-1,0), 
 	} else {
 		fmFlags[idx] = (v<0) ? FlagInited : 0;
 	}
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<int>& getArg1() { return fmFlags; } typedef Grid<int> type1;inline LevelsetGrid& getArg2() { return phi; } typedef LevelsetGrid type2;inline bool& getArg3() { return ignoreWalls; } typedef bool type3;inline int& getArg4() { return obstacleType; } typedef int type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,fmFlags,phi,ignoreWalls,obstacleType);  } FlagGrid& flags; Grid<int>& fmFlags; LevelsetGrid& phi; bool ignoreWalls; int obstacleType;   };
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<int>& getArg1() { return fmFlags; } typedef Grid<int> type1;inline LevelsetGrid& getArg2() { return phi; } typedef LevelsetGrid type2;inline bool& getArg3() { return ignoreWalls; } typedef bool type3;inline int& getArg4() { return obstacleType; } typedef int type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,fmFlags,phi,ignoreWalls,obstacleType);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,fmFlags,phi,ignoreWalls,obstacleType);  } }  } FlagGrid& flags; Grid<int>& fmFlags; LevelsetGrid& phi; bool ignoreWalls; int obstacleType;   };
+#line 47 "levelset.cpp"
+
+
 
 
  struct SetUninitialized : public KernelBase { SetUninitialized(Grid<int>& flags, Grid<int>& fmFlags, LevelsetGrid& phi, const Real val, int ignoreWalls, int obstacleType) :  KernelBase(&flags,1) ,flags(flags),fmFlags(fmFlags),phi(phi),val(val),ignoreWalls(ignoreWalls),obstacleType(obstacleType)   { run(); }  inline void op(int i, int j, int k, Grid<int>& flags, Grid<int>& fmFlags, LevelsetGrid& phi, const Real val, int ignoreWalls, int obstacleType )  {
@@ -78,7 +100,18 @@ static const Vec3i neighbors[6] = { Vec3i(-1,0,0), Vec3i(1,0,0), Vec3i(0,-1,0), 
 	} else {
 		if ( (fmFlags(i,j,k) != FlagInited) ) phi(i,j,k) = val;
 	}
-}   inline Grid<int>& getArg0() { return flags; } typedef Grid<int> type0;inline Grid<int>& getArg1() { return fmFlags; } typedef Grid<int> type1;inline LevelsetGrid& getArg2() { return phi; } typedef LevelsetGrid type2;inline const Real& getArg3() { return val; } typedef Real type3;inline int& getArg4() { return ignoreWalls; } typedef int type4;inline int& getArg5() { return obstacleType; } typedef int type5; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,fmFlags,phi,val,ignoreWalls,obstacleType);  } Grid<int>& flags; Grid<int>& fmFlags; LevelsetGrid& phi; const Real val; int ignoreWalls; int obstacleType;   };
+}   inline Grid<int>& getArg0() { return flags; } typedef Grid<int> type0;inline Grid<int>& getArg1() { return fmFlags; } typedef Grid<int> type1;inline LevelsetGrid& getArg2() { return phi; } typedef LevelsetGrid type2;inline const Real& getArg3() { return val; } typedef Real type3;inline int& getArg4() { return ignoreWalls; } typedef int type4;inline int& getArg5() { return obstacleType; } typedef int type5; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,fmFlags,phi,val,ignoreWalls,obstacleType);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,fmFlags,phi,val,ignoreWalls,obstacleType);  } }  } Grid<int>& flags; Grid<int>& fmFlags; LevelsetGrid& phi; const Real val; int ignoreWalls; int obstacleType;   };
+#line 62 "levelset.cpp"
+
+
 
 template<bool inward>
 inline bool isAtInterface(Grid<int>& fmFlags, LevelsetGrid& phi, const Vec3i& p) {
@@ -112,13 +145,27 @@ Real LevelsetGrid::invalidTimeValue() {
 //! Kernel: perform levelset union
  struct KnJoin : public KernelBase { KnJoin(Grid<Real>& a, const Grid<Real>& b) :  KernelBase(&a,0) ,a(a),b(b)   { run(); }  inline void op(int idx, Grid<Real>& a, const Grid<Real>& b )  {
 	a[idx] = min(a[idx], b[idx]);
-}   inline Grid<Real>& getArg0() { return a; } typedef Grid<Real> type0;inline const Grid<Real>& getArg1() { return b; } typedef Grid<Real> type1; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, a,b);  } Grid<Real>& a; const Grid<Real>& b;   }; 
+}   inline Grid<Real>& getArg0() { return a; } typedef Grid<Real> type0;inline const Grid<Real>& getArg1() { return b; } typedef Grid<Real> type1; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,a,b);  }  } Grid<Real>& a; const Grid<Real>& b;   };
+#line 101 "levelset.cpp"
+
+ 
 void LevelsetGrid::join(const LevelsetGrid& o) { KnJoin(*this, o); }
 
 //! subtract b, note does not preserve SDF!
  struct KnSubtract : public KernelBase { KnSubtract(Grid<Real>& a, const Grid<Real>& b) :  KernelBase(&a,0) ,a(a),b(b)   { run(); }  inline void op(int idx, Grid<Real>& a, const Grid<Real>& b )  {
 	if(b[idx]<0.) a[idx] = b[idx] * -1.;
-}   inline Grid<Real>& getArg0() { return a; } typedef Grid<Real> type0;inline const Grid<Real>& getArg1() { return b; } typedef Grid<Real> type1; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, a,b);  } Grid<Real>& a; const Grid<Real>& b;   }; 
+}   inline Grid<Real>& getArg0() { return a; } typedef Grid<Real> type0;inline const Grid<Real>& getArg1() { return b; } typedef Grid<Real> type1; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,a,b);  }  } Grid<Real>& a; const Grid<Real>& b;   };
+#line 107 "levelset.cpp"
+
+ 
 void LevelsetGrid::subtract(const LevelsetGrid& o) { KnSubtract(*this, o); }
 
 //! re-init levelset and extrapolate velocities (in & out)

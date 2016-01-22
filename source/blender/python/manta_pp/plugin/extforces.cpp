@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/source/plugin/extforces.cpp"
+#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/plugin/extforces.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -44,7 +44,18 @@ namespace Manta {
 		vel(i,j,k).y += 0.5*(force(i,j-1,k).y + force(i,j,k).y);
 	if (vel.is3D() && (flags.isFluid(i,j,k-1) || (curFluid && flags.isEmpty(i,j,k-1))))
 		vel(i,j,k).z += 0.5*(force(i,j,k-1).z + force(i,j,k).z);
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<Vec3>& getArg2() { return force; } typedef Grid<Vec3> type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,vel,force);  } FlagGrid& flags; MACGrid& vel; Grid<Vec3>& force;   };
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<Vec3>& getArg2() { return force; } typedef Grid<Vec3> type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,force);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,force);  } }  } FlagGrid& flags; MACGrid& vel; Grid<Vec3>& force;   };
+#line 24 "plugin/extforces.cpp"
+
+
 
 //! add Forces between fl/fl and fl/em cells
  struct KnAddForce : public KernelBase { KnAddForce(FlagGrid& flags, MACGrid& vel, Vec3 force) :  KernelBase(&flags,1) ,flags(flags),vel(vel),force(force)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, Vec3 force )  {
@@ -58,7 +69,18 @@ namespace Manta {
 		vel(i,j,k).y += force.y;
 	if (vel.is3D() && (flags.isFluid(i,j,k-1) || (curFluid && flags.isEmpty(i,j,k-1))))
 		vel(i,j,k).z += force.z;
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Vec3& getArg2() { return force; } typedef Vec3 type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,vel,force);  } FlagGrid& flags; MACGrid& vel; Vec3 force;   };
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Vec3& getArg2() { return force; } typedef Vec3 type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,force);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,force);  } }  } FlagGrid& flags; MACGrid& vel; Vec3 force;   };
+#line 38 "plugin/extforces.cpp"
+
+
 
 //! add gravity forces to all fluid cells
 void addGravity(FlagGrid& flags, MACGrid& vel, Vec3 gravity) {    
@@ -75,7 +97,18 @@ void addGravity(FlagGrid& flags, MACGrid& vel, Vec3 gravity) {
 		vel(i,j,k).y += (0.5 * strength.y) * (density(i,j,k)+density(i,j-1,k));
 	if (vel.is3D() && flags.isFluid(i,j,k-1))
 		vel(i,j,k).z += (0.5 * strength.z) * (density(i,j,k)+density(i,j,k-1));    
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return density; } typedef Grid<Real> type1;inline MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline Vec3& getArg3() { return strength; } typedef Vec3 type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,density,vel,strength);  } FlagGrid& flags; Grid<Real>& density; MACGrid& vel; Vec3 strength;   };
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return density; } typedef Grid<Real> type1;inline MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline Vec3& getArg3() { return strength; } typedef Vec3 type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,density,vel,strength);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,density,vel,strength);  } }  } FlagGrid& flags; Grid<Real>& density; MACGrid& vel; Vec3 strength;   };
+#line 58 "plugin/extforces.cpp"
+
+
 
 //! add Buoyancy force based on smoke density
 void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3 gravity) {
@@ -83,13 +116,38 @@ void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3 gravit
 	KnAddBuoyancy(flags,density, vel, f);
 } static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "addBuoyancy" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& density = *_args.getPtr<Grid<Real> >("density",1,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",2,&_lock); Vec3 gravity = _args.get<Vec3 >("gravity",3,&_lock);   _retval = getPyNone(); addBuoyancy(flags,density,vel,gravity);  _args.check(); } pbFinalizePlugin(parent,"addBuoyancy" ); return _retval; } catch(std::exception& e) { pbSetError("addBuoyancy",e.what()); return 0; } } static const Pb::Register _RP_addBuoyancy ("","addBuoyancy",_W_1); 
 
+//! add Buoyancy force based on smoke density
+//KERNEL(bnd=1) void KnAddHeatBuoyancy(FlagGrid& flags, Grid<Real>& density, float densCoeff, MACGrid& vel, Vec3 strength, Grid<Real>& heat, float heatCoeff) {    
+//	if (!flags.isFluid(i,j,k)) return;
+//	vel(i,j,k).x += (strength.x) * (densCoeff * density(i,j,k) - heatCoeff * heat(i,j,k));
+//	vel(i,j,k).y += (strength.y) * (densCoeff * density(i,j,k) - heatCoeff * heat(i,j,k));
+//	vel(i,j,k).z += (strength.z) * (densCoeff * density(i,j,k) - heatCoeff * heat(i,j,k));    
+//}
+//
+////! add Buoyancy force based on smoke density
+//PYTHON() void addHeatBuoyancy(FlagGrid& flags, Grid<Real>& density, float densCoeff, MACGrid& vel, Vec3 gravity, Grid<Real>& heat, float heatCoeff) {
+//	Vec3 f = - gravity * flags.getParent()->getDt() / flags.getParent()->getDx();
+//	KnAddHeatBuoyancy(flags,density,densCoeff, vel, f, heat, heatCoeff);
+//}
+
 //! add Buoyancy force based on coeffiecient
  struct KnAddBuoyancy2 : public KernelBase { KnAddBuoyancy2(FlagGrid& flags, Grid<Real>& grid, MACGrid& vel, Vec3 strength, Real coefficient) :  KernelBase(&flags,1) ,flags(flags),grid(grid),vel(vel),strength(strength),coefficient(coefficient)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& grid, MACGrid& vel, Vec3 strength, Real coefficient )  {
 	if (!flags.isFluid(i,j,k)) return;
 	vel(i,j,k).x -= (strength.x) * coefficient * grid(i,j,k);
 	vel(i,j,k).y -= (strength.y) * coefficient * grid(i,j,k);
 	vel(i,j,k).z -= (strength.z) * coefficient * grid(i,j,k);
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return grid; } typedef Grid<Real> type1;inline MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline Vec3& getArg3() { return strength; } typedef Vec3 type3;inline Real& getArg4() { return coefficient; } typedef Real type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,grid,vel,strength,coefficient);  } FlagGrid& flags; Grid<Real>& grid; MACGrid& vel; Vec3 strength; Real coefficient;   };
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return grid; } typedef Grid<Real> type1;inline MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline Vec3& getArg3() { return strength; } typedef Vec3 type3;inline Real& getArg4() { return coefficient; } typedef Real type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,grid,vel,strength,coefficient);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,grid,vel,strength,coefficient);  } }  } FlagGrid& flags; Grid<Real>& grid; MACGrid& vel; Vec3 strength; Real coefficient;   };
+#line 89 "plugin/extforces.cpp"
+
+
 
 //! add Buoyancy force based on coeffiecient
 void addBuoyancy2(FlagGrid& flags, Grid<Real>& grid, MACGrid& vel, Vec3 gravity, Real coefficient) {
@@ -127,14 +185,13 @@ void setOpenBound(FlagGrid& flags, int bWidth, string openBound = "", int type =
 		bool innerJ = j>bWidth && j<flags.getSizeY() - bWidth - 1; 
 
 		// when setting boundaries to open: don't set shared part of wall to empty if neighboring wall is not open
-		if (flags.is2D() && (loX||upX||loY||upY)){
+		if ( (!flags.is3D()) && (loX||upX||loY||upY)){
 			if ((loX || upX || innerI) && (loY || upY || innerJ) && flags.isObstacle(i, j, k)) flags(i, j, k) = type;
-		}
-		else{
+		} else {
 			bool loZ = lo.z && k <= bWidth; // a cell which belongs to the lower z open bound
 			bool upZ = up.z && k >= flags.getSizeZ() - bWidth - 1; // a cell which belongs to the upper z open bound
 			bool innerK = k>bWidth && k<flags.getSizeZ() - bWidth - 1; // a cell which does not belong to the lower or upper z bound
-			if (loX || upX || loY || upY || loZ || upZ){
+			if (loX || upX || loY || upY || loZ || upZ) {
 				if ((loX || upX || innerI) && (loY || upY || innerJ) && (loZ || upZ || innerK) && flags.isObstacle(i, j, k)) flags(i, j, k) = type;
 			}
 		}
@@ -176,7 +233,18 @@ void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSystem* par
 	Vec3i p(i,j,k);
 	if (p[dim] == p0 || p[dim] == p0+1)
 		vel(i,j,k) = val;
-}   inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline int& getArg1() { return dim; } typedef int type1;inline int& getArg2() { return p0; } typedef int type2;inline const Vec3& getArg3() { return val; } typedef Vec3 type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, vel,dim,p0,val);  } MACGrid& vel; int dim; int p0; const Vec3& val;   };
+}   inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline int& getArg1() { return dim; } typedef int type1;inline int& getArg2() { return p0; } typedef int type2;inline const Vec3& getArg3() { return val; } typedef Vec3 type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,vel,dim,p0,val);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,vel,dim,p0,val);  } }  } MACGrid& vel; int dim; int p0; const Vec3& val;   };
+#line 176 "plugin/extforces.cpp"
+
+
 
 //! enforce a constant inflow/outflow at the grid boundaries
 void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
@@ -195,7 +263,7 @@ void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
 // set obstacle boundary conditions
 
 //! set no-stick wall boundary condition between ob/fl and ob/ob cells
- struct KnSetWallBcs : public KernelBase { KnSetWallBcs(FlagGrid& flags, MACGrid& vel) :  KernelBase(&flags,1) ,flags(flags),vel(vel)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel )  {
+ struct KnSetWallBcs : public KernelBase { KnSetWallBcs(FlagGrid& flags, MACGrid& vel) :  KernelBase(&flags,0) ,flags(flags),vel(vel)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel )  {
 
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curObs   = flags.isObstacle(i,j,k);
@@ -206,8 +274,10 @@ void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
 	if (i>0 && curObs && flags.isFluid(i-1,j,k))				 vel(i,j,k).x = 0;
 	if (j>0 && flags.isObstacle(i,j-1,k))						 vel(i,j,k).y = 0;
 	if (j>0 && curObs && flags.isFluid(i,j-1,k))				 vel(i,j,k).y = 0;
-	if (vel.is2D() || (k>0 && flags.isObstacle(i,j,k-1)))		 vel(i,j,k).z = 0;
-	if (vel.is2D() || (k>0 && curObs && flags.isFluid(i,j,k-1))) vel(i,j,k).z = 0;
+
+	if(!vel.is3D()) {                            				vel(i,j,k).z = 0; } else {
+	if (k>0 && flags.isObstacle(i,j,k-1))		 				vel(i,j,k).z = 0;
+	if (k>0 && curObs && flags.isFluid(i,j,k-1)) 				vel(i,j,k).z = 0; }
 	
 	if (curFluid) {
 		if ((i>0 && flags.isStick(i-1,j,k)) || (i<flags.getSizeX()-1 && flags.isStick(i+1,j,k)))
@@ -217,15 +287,25 @@ void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
 		if (vel.is3D() && ((k>0 && flags.isStick(i,j,k-1)) || (k<flags.getSizeZ()-1 && flags.isStick(i,j,k+1))))
 			vel(i,j,k).x = vel(i,j,k).y = 0;
 	}
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,vel);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,vel);  } }  } FlagGrid& flags; MACGrid& vel;   };
+#line 199 "plugin/extforces.cpp"
 
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,vel);  } FlagGrid& flags; MACGrid& vel;   };
+
+
 
 
  struct KnSetWallBcsFrac : public KernelBase { KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget, MACGrid* fractions, Grid<Real>* phiObs, const int &boundaryWidth=0) :  KernelBase(&flags,0) ,flags(flags),vel(vel),velTarget(velTarget),fractions(fractions),phiObs(phiObs),boundaryWidth(boundaryWidth)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, MACGrid& velTarget, MACGrid* fractions, Grid<Real>* phiObs, const int &boundaryWidth=0 )  { 
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curObs   = flags.isObstacle(i,j,k);
-	Vec3& v = velTarget(i,j,k);
-	v = vel(i,j,k);
+	velTarget(i,j,k) = vel(i,j,k);
 	if (!curFluid && !curObs) return; 
 
 	// zero normal component in all obstacle regions
@@ -303,7 +383,18 @@ void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
 	}
 	} // not at boundary
 
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline MACGrid& getArg2() { return velTarget; } typedef MACGrid type2;inline MACGrid* getArg3() { return fractions; } typedef MACGrid type3;inline Grid<Real>* getArg4() { return phiObs; } typedef Grid<Real> type4;inline const int& getArg5() { return boundaryWidth; } typedef int type5; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, flags,vel,velTarget,fractions,phiObs,boundaryWidth);  } FlagGrid& flags; MACGrid& vel; MACGrid& velTarget; MACGrid* fractions; Grid<Real>* phiObs; const int& boundaryWidth;   };
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline MACGrid& getArg2() { return velTarget; } typedef MACGrid type2;inline MACGrid* getArg3() { return fractions; } typedef MACGrid type3;inline Grid<Real>* getArg4() { return phiObs; } typedef Grid<Real> type4;inline const int& getArg5() { return boundaryWidth; } typedef int type5; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,vel,velTarget,fractions,phiObs,boundaryWidth);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,vel,velTarget,fractions,phiObs,boundaryWidth);  } }  } FlagGrid& flags; MACGrid& vel; MACGrid& velTarget; MACGrid* fractions; Grid<Real>* phiObs; const int& boundaryWidth;   };
+#line 227 "plugin/extforces.cpp"
+
+
 
 //! set zero normal velocity boundary condition on walls
 // (optionally with second order accuracy using the fill fraction grid)
@@ -325,7 +416,18 @@ void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* fractions = 0, Grid<Real
 	if(grid.is3D()) grad[2]= 0.5*( grid(i,j,k+1)-grid(i,j,k-1) );
 	normalize(grad);
 	force(i,j,k) = str * cross(grad, curl(i,j,k));
-}   inline Grid<Vec3>& getArg0() { return force; } typedef Grid<Vec3> type0;inline const Grid<Real>& getArg1() { return grid; } typedef Grid<Real> type1;inline const Grid<Vec3>& getArg2() { return curl; } typedef Grid<Vec3> type2;inline Real& getArg3() { return str; } typedef Real type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, force,grid,curl,str);  } Grid<Vec3>& force; const Grid<Real>& grid; const Grid<Vec3>& curl; Real str;   };
+}   inline Grid<Vec3>& getArg0() { return force; } typedef Grid<Vec3> type0;inline const Grid<Real>& getArg1() { return grid; } typedef Grid<Real> type1;inline const Grid<Vec3>& getArg2() { return curl; } typedef Grid<Vec3> type2;inline Real& getArg3() { return str; } typedef Real type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,force,grid,curl,str);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,force,grid,curl,str);  } }  } Grid<Vec3>& force; const Grid<Real>& grid; const Grid<Vec3>& curl; Real str;   };
+#line 324 "plugin/extforces.cpp"
+
+
 
 void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength) {
 	Grid<Vec3> velCenter(flags.getParent()), curl(flags.getParent()), force(flags.getParent());

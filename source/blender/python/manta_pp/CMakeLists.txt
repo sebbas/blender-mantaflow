@@ -1,4 +1,8 @@
-#add_definitions(-DGUI=1)
+if(WITH_OPENMP)
+	add_definitions(-DOPENMP)
+else()
+	message("Error. Mantaflow pp files require an OpenMP enabled compiler")
+endif()
 
 set(INC
 	${CMAKE_CURRENT_SOURCE_DIR}

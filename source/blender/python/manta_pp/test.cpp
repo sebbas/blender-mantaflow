@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/source/test.cpp"
+#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/test.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -36,14 +36,32 @@ namespace Manta {
 
  struct reductionTest : public KernelBase { reductionTest(const Grid<Real>& v) :  KernelBase(&v,0) ,v(v) ,sum(0)  { run(); }  inline void op(int idx, const Grid<Real>& v ,double& sum)  {
 	sum += v[idx];
-}   inline operator double () { return sum; } inline double  & getRet() { return sum; }  inline const Grid<Real>& getArg0() { return v; } typedef Grid<Real> type0; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, v,sum);  } const Grid<Real>& v;  double sum;  };
+}   inline operator double () { return sum; } inline double  & getRet() { return sum; }  inline const Grid<Real>& getArg0() { return v; } typedef Grid<Real> type0; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  double sum = 0; 
+#pragma omp for nowait 
+  for (int i=0; i < _sz; i++) op(i,v,sum); 
+#pragma omp critical
+{this->sum += sum; } }  } const Grid<Real>& v;  double sum;  };
+#line 25 "test.cpp"
+
+
 
 
 
  struct minReduction : public KernelBase { minReduction(const Grid<Real>& v) :  KernelBase(&v,0) ,v(v) ,sum(0)  { run(); }  inline void op(int idx, const Grid<Real>& v ,double& sum)  {
 	if (sum < v[idx])
 		sum = v[idx];
-}   inline operator double () { return sum; } inline double  & getRet() { return sum; }  inline const Grid<Real>& getArg0() { return v; } typedef Grid<Real> type0; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, v,sum);  } const Grid<Real>& v;  double sum;  };
+}   inline operator double () { return sum; } inline double  & getRet() { return sum; }  inline const Grid<Real>& getArg0() { return v; } typedef Grid<Real> type0; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  double sum = 0; 
+#pragma omp for nowait 
+  for (int i=0; i < _sz; i++) op(i,v,sum); 
+#pragma omp critical
+{this->sum = min(sum, this->sum); } }  } const Grid<Real>& v;  double sum;  };
+#line 31 "test.cpp"
+
+
 
 
 void getCurl(MACGrid& vel, Grid<Real>& vort, int comp) {

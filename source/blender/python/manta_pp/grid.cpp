@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/source/grid.cpp"
+#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/grid.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -107,6 +107,8 @@ void Grid<T>::load(string name) {
 		readGridRaw(name, this);
 	else if (ext == ".uni")
 		readGridUni(name, this);
+	else if (ext == ".vol")
+		readGridVol(name, this);
 	else
 		errMsg("file '" + name +"' filetype not supported");
 }
@@ -136,28 +138,64 @@ void Grid<T>::save(string name) {
  struct CompMinReal : public KernelBase { CompMinReal(Grid<Real>& val) :  KernelBase(&val,0) ,val(val) ,minVal(std::numeric_limits<Real>::max())  { run(); }  inline void op(int idx, Grid<Real>& val ,Real& minVal)  {
 	if (val[idx] < minVal)
 		minVal = val[idx];
-}   inline operator Real () { return minVal; } inline Real  & getRet() { return minVal; }  inline Grid<Real>& getArg0() { return val; } typedef Grid<Real> type0; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, val,minVal);  } Grid<Real>& val;  Real minVal;  };
+}   inline operator Real () { return minVal; } inline Real  & getRet() { return minVal; }  inline Grid<Real>& getArg0() { return val; } typedef Grid<Real> type0; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  Real minVal = std::numeric_limits<Real>::max(); 
+#pragma omp for nowait 
+  for (int i=0; i < _sz; i++) op(i,val,minVal); 
+#pragma omp critical
+{this->minVal = min(minVal, this->minVal); } }  } Grid<Real>& val;  Real minVal;  };
+#line 126 "grid.cpp"
+
+
 
 //! Kernel: Compute max value of Real grid
 
  struct CompMaxReal : public KernelBase { CompMaxReal(Grid<Real>& val) :  KernelBase(&val,0) ,val(val) ,maxVal(-std::numeric_limits<Real>::max())  { run(); }  inline void op(int idx, Grid<Real>& val ,Real& maxVal)  {
 	if (val[idx] > maxVal)
 		maxVal = val[idx];
-}   inline operator Real () { return maxVal; } inline Real  & getRet() { return maxVal; }  inline Grid<Real>& getArg0() { return val; } typedef Grid<Real> type0; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, val,maxVal);  } Grid<Real>& val;  Real maxVal;  };
+}   inline operator Real () { return maxVal; } inline Real  & getRet() { return maxVal; }  inline Grid<Real>& getArg0() { return val; } typedef Grid<Real> type0; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  Real maxVal = -std::numeric_limits<Real>::max(); 
+#pragma omp for nowait 
+  for (int i=0; i < _sz; i++) op(i,val,maxVal); 
+#pragma omp critical
+{this->maxVal = max(maxVal, this->maxVal); } }  } Grid<Real>& val;  Real maxVal;  };
+#line 133 "grid.cpp"
+
+
 
 //! Kernel: Compute min value of int grid
 
  struct CompMinInt : public KernelBase { CompMinInt(Grid<int>& val) :  KernelBase(&val,0) ,val(val) ,minVal(std::numeric_limits<int>::max())  { run(); }  inline void op(int idx, Grid<int>& val ,int& minVal)  {
 	if (val[idx] < minVal)
 		minVal = val[idx];
-}   inline operator int () { return minVal; } inline int  & getRet() { return minVal; }  inline Grid<int>& getArg0() { return val; } typedef Grid<int> type0; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, val,minVal);  } Grid<int>& val;  int minVal;  };
+}   inline operator int () { return minVal; } inline int  & getRet() { return minVal; }  inline Grid<int>& getArg0() { return val; } typedef Grid<int> type0; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  int minVal = std::numeric_limits<int>::max(); 
+#pragma omp for nowait 
+  for (int i=0; i < _sz; i++) op(i,val,minVal); 
+#pragma omp critical
+{this->minVal = min(minVal, this->minVal); } }  } Grid<int>& val;  int minVal;  };
+#line 140 "grid.cpp"
+
+
 
 //! Kernel: Compute max value of int grid
 
  struct CompMaxInt : public KernelBase { CompMaxInt(Grid<int>& val) :  KernelBase(&val,0) ,val(val) ,maxVal(-std::numeric_limits<int>::max())  { run(); }  inline void op(int idx, Grid<int>& val ,int& maxVal)  {
 	if (val[idx] > maxVal)
 		maxVal = val[idx];
-}   inline operator int () { return maxVal; } inline int  & getRet() { return maxVal; }  inline Grid<int>& getArg0() { return val; } typedef Grid<int> type0; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, val,maxVal);  } Grid<int>& val;  int maxVal;  };
+}   inline operator int () { return maxVal; } inline int  & getRet() { return maxVal; }  inline Grid<int>& getArg0() { return val; } typedef Grid<int> type0; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  int maxVal = -std::numeric_limits<int>::max(); 
+#pragma omp for nowait 
+  for (int i=0; i < _sz; i++) op(i,val,maxVal); 
+#pragma omp critical
+{this->maxVal = max(maxVal, this->maxVal); } }  } Grid<int>& val;  int maxVal;  };
+#line 147 "grid.cpp"
+
+
 
 //! Kernel: Compute min norm of vec grid
 
@@ -165,7 +203,16 @@ void Grid<T>::save(string name) {
 	const Real s = normSquare(val[idx]);
 	if (s < minVal)
 		minVal = s;
-}   inline operator Real () { return minVal; } inline Real  & getRet() { return minVal; }  inline Grid<Vec3>& getArg0() { return val; } typedef Grid<Vec3> type0; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, val,minVal);  } Grid<Vec3>& val;  Real minVal;  };
+}   inline operator Real () { return minVal; } inline Real  & getRet() { return minVal; }  inline Grid<Vec3>& getArg0() { return val; } typedef Grid<Vec3> type0; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  Real minVal = std::numeric_limits<Real>::max(); 
+#pragma omp for nowait 
+  for (int i=0; i < _sz; i++) op(i,val,minVal); 
+#pragma omp critical
+{this->minVal = min(minVal, this->minVal); } }  } Grid<Vec3>& val;  Real minVal;  };
+#line 154 "grid.cpp"
+
+
 
 //! Kernel: Compute max norm of vec grid
 
@@ -173,7 +220,16 @@ void Grid<T>::save(string name) {
 	const Real s = normSquare(val[idx]);
 	if (s > maxVal)
 		maxVal = s;
-}   inline operator Real () { return maxVal; } inline Real  & getRet() { return maxVal; }  inline Grid<Vec3>& getArg0() { return val; } typedef Grid<Vec3> type0; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, val,maxVal);  } Grid<Vec3>& val;  Real maxVal;  };
+}   inline operator Real () { return maxVal; } inline Real  & getRet() { return maxVal; }  inline Grid<Vec3>& getArg0() { return val; } typedef Grid<Vec3> type0; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  Real maxVal = -std::numeric_limits<Real>::max(); 
+#pragma omp for nowait 
+  for (int i=0; i < _sz; i++) op(i,val,maxVal); 
+#pragma omp critical
+{this->maxVal = max(maxVal, this->maxVal); } }  } Grid<Vec3>& val;  Real maxVal;  };
+#line 162 "grid.cpp"
+
+
 
 
 template<class T> Grid<T>& Grid<T>::safeDivide (const Grid<T>& a) {
@@ -190,10 +246,38 @@ template<class T> Grid<T>& Grid<T>::copyFrom (const Grid<T>& a) {
 	note: do not use , use copyFrom instead
 }*/
 
-template <class T>  struct knGridSetConstReal : public KernelBase { knGridSetConstReal(Grid<T>& me, T val) :  KernelBase(&me,0) ,me(me),val(val)   { run(); }  inline void op(int idx, Grid<T>& me, T val )  { me[idx]  = val; }   inline Grid<T>& getArg0() { return me; } typedef Grid<T> type0;inline T& getArg1() { return val; } typedef T type1; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, me,val);  } Grid<T>& me; T val;   };
-template <class T>  struct knGridAddConstReal : public KernelBase { knGridAddConstReal(Grid<T>& me, T val) :  KernelBase(&me,0) ,me(me),val(val)   { run(); }  inline void op(int idx, Grid<T>& me, T val )  { me[idx] += val; }   inline Grid<T>& getArg0() { return me; } typedef Grid<T> type0;inline T& getArg1() { return val; } typedef T type1; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, me,val);  } Grid<T>& me; T val;   };
-template <class T>  struct knGridMultConst : public KernelBase { knGridMultConst(Grid<T>& me, T val) :  KernelBase(&me,0) ,me(me),val(val)   { run(); }  inline void op(int idx, Grid<T>& me, T val )  { me[idx] *= val; }   inline Grid<T>& getArg0() { return me; } typedef Grid<T> type0;inline T& getArg1() { return val; } typedef T type1; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, me,val);  } Grid<T>& me; T val;   };
-template <class T>  struct knGridClamp : public KernelBase { knGridClamp(Grid<T>& me, T min, T max) :  KernelBase(&me,0) ,me(me),min(min),max(max)   { run(); }  inline void op(int idx, Grid<T>& me, T min, T max )  { me[idx] = clamp( me[idx], min, max); }   inline Grid<T>& getArg0() { return me; } typedef Grid<T> type0;inline T& getArg1() { return min; } typedef T type1;inline T& getArg2() { return max; } typedef T type2; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, me,min,max);  } Grid<T>& me; T min; T max;   };
+template <class T>  struct knGridSetConstReal : public KernelBase { knGridSetConstReal(Grid<T>& me, T val) :  KernelBase(&me,0) ,me(me),val(val)   { run(); }  inline void op(int idx, Grid<T>& me, T val )  { me[idx]  = val; }   inline Grid<T>& getArg0() { return me; } typedef Grid<T> type0;inline T& getArg1() { return val; } typedef T type1; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,me,val);  }  } Grid<T>& me; T val;   };
+#line 183 "grid.cpp"
+
+
+template <class T>  struct knGridAddConstReal : public KernelBase { knGridAddConstReal(Grid<T>& me, T val) :  KernelBase(&me,0) ,me(me),val(val)   { run(); }  inline void op(int idx, Grid<T>& me, T val )  { me[idx] += val; }   inline Grid<T>& getArg0() { return me; } typedef Grid<T> type0;inline T& getArg1() { return val; } typedef T type1; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,me,val);  }  } Grid<T>& me; T val;   };
+#line 184 "grid.cpp"
+
+
+template <class T>  struct knGridMultConst : public KernelBase { knGridMultConst(Grid<T>& me, T val) :  KernelBase(&me,0) ,me(me),val(val)   { run(); }  inline void op(int idx, Grid<T>& me, T val )  { me[idx] *= val; }   inline Grid<T>& getArg0() { return me; } typedef Grid<T> type0;inline T& getArg1() { return val; } typedef T type1; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,me,val);  }  } Grid<T>& me; T val;   };
+#line 185 "grid.cpp"
+
+
+template <class T>  struct knGridClamp : public KernelBase { knGridClamp(Grid<T>& me, T min, T max) :  KernelBase(&me,0) ,me(me),min(min),max(max)   { run(); }  inline void op(int idx, Grid<T>& me, T min, T max )  { me[idx] = clamp( me[idx], min, max); }   inline Grid<T>& getArg0() { return me; } typedef Grid<T> type0;inline T& getArg1() { return min; } typedef T type1;inline T& getArg2() { return max; } typedef T type2; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,me,min,max);  }  } Grid<T>& me; T min; T max;   };
+#line 186 "grid.cpp"
+
+
 
 template<class T> void Grid<T>::add(const Grid<T>& a) {
 	gridAdd<T,T>(*this, a);
@@ -253,6 +337,7 @@ template<> Real Grid<int>::getMaxAbs() {
 	int amax = CompMaxInt (*this);
 	return max( fabs((Real)amin), fabs((Real)amax));
 }
+
 template<class T> void Grid<T>::writeGridToMemory(const std::string& memLoc, const std::string& sizeAllowed) {
 	if (memLoc == "" ||memLoc == "0" ){
 		debMsg("Cant write grid to NULL pointer",1);
@@ -433,7 +518,18 @@ static inline Real computeUvRamp(Real t) {
 	return uvWeight;
 }
 
- struct knResetUvGrid : public KernelBase { knResetUvGrid(Grid<Vec3>& target) :  KernelBase(&target,0) ,target(target)   { run(); }  inline void op(int i, int j, int k, Grid<Vec3>& target )  { target(i,j,k) = Vec3((Real)i,(Real)j,(Real)k); }   inline Grid<Vec3>& getArg0() { return target; } typedef Grid<Vec3> type0; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, target);  } Grid<Vec3>& target;   };
+ struct knResetUvGrid : public KernelBase { knResetUvGrid(Grid<Vec3>& target) :  KernelBase(&target,0) ,target(target)   { run(); }  inline void op(int i, int j, int k, Grid<Vec3>& target )  { target(i,j,k) = Vec3((Real)i,(Real)j,(Real)k); }   inline Grid<Vec3>& getArg0() { return target; } typedef Grid<Vec3> type0; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,target);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,target);  } }  } Grid<Vec3>& target;   };
+#line 427 "grid.cpp"
+
+
 
 
 void resetUvGrid(Grid<Vec3> &target) {
@@ -471,7 +567,18 @@ template <class T>  struct knSetBoundary : public KernelBase { knSetBoundary(Gri
 	bool bnd = (i<=w || i>=grid.getSizeX()-1-w || j<=w || j>=grid.getSizeY()-1-w || (grid.is3D() && (k<=w || k>=grid.getSizeZ()-1-w)));
 	if (bnd) 
 		grid(i,j,k) = value;
-}   inline Grid<T>& getArg0() { return grid; } typedef Grid<T> type0;inline T& getArg1() { return value; } typedef T type1;inline int& getArg2() { return w; } typedef int type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, grid,value,w);  } Grid<T>& grid; T value; int w;   };
+}   inline Grid<T>& getArg0() { return grid; } typedef Grid<T> type0;inline T& getArg1() { return value; } typedef T type1;inline int& getArg2() { return w; } typedef int type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,value,w);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,value,w);  } }  } Grid<T>& grid; T value; int w;   };
+#line 461 "grid.cpp"
+
+
 
 template<class T> void Grid<T>::setBound(T value, int boundaryWidth) {
 	knSetBoundary<T>( *this, value, boundaryWidth );
@@ -503,7 +610,18 @@ template <class T>  struct knSetBoundaryNeumann : public KernelBase { knSetBound
 	}
 	if(set)
 		grid(i,j,k) = grid(si, sj, sk);
-}   inline Grid<T>& getArg0() { return grid; } typedef Grid<T> type0;inline int& getArg1() { return w; } typedef int type1; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, grid,w);  } Grid<T>& grid; int w;   };
+}   inline Grid<T>& getArg0() { return grid; } typedef Grid<T> type0;inline int& getArg1() { return w; } typedef int type1; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,w);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,w);  } }  } Grid<T>& grid; int w;   };
+#line 472 "grid.cpp"
+
+
 
 template<class T> void Grid<T>::setBoundNeumann(int boundaryWidth) {
 	knSetBoundaryNeumann<T>( *this, boundaryWidth );
@@ -514,10 +632,28 @@ template<class T> void Grid<T>::setBoundNeumann(int boundaryWidth) {
  struct knGridTotalSum : public KernelBase { knGridTotalSum(const Grid<Real>& a, FlagGrid* flags) :  KernelBase(&a,0) ,a(a),flags(flags) ,result(0.0)  { run(); }  inline void op(int idx, const Grid<Real>& a, FlagGrid* flags ,double& result)  {
 	if(flags) {	if(flags->isFluid(idx)) result += a[idx]; } 
 	else      {	result += a[idx]; } 
-}   inline operator double () { return result; } inline double  & getRet() { return result; }  inline const Grid<Real>& getArg0() { return a; } typedef Grid<Real> type0;inline FlagGrid* getArg1() { return flags; } typedef FlagGrid type1; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, a,flags,result);  } const Grid<Real>& a; FlagGrid* flags;  double result;  };
+}   inline operator double () { return result; } inline double  & getRet() { return result; }  inline const Grid<Real>& getArg0() { return a; } typedef Grid<Real> type0;inline FlagGrid* getArg1() { return flags; } typedef FlagGrid type1; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  double result = 0.0; 
+#pragma omp for nowait 
+  for (int i=0; i < _sz; i++) op(i,a,flags,result); 
+#pragma omp critical
+{this->result += result; } }  } const Grid<Real>& a; FlagGrid* flags;  double result;  };
+#line 505 "grid.cpp"
 
 
- struct knCountFluidCells : public KernelBase { knCountFluidCells(FlagGrid& flags) :  KernelBase(&flags,0) ,flags(flags) ,numEmpty(0)  { run(); }  inline void op(int idx, FlagGrid& flags ,int& numEmpty)  { if (flags.isFluid(idx) ) numEmpty++; }   inline operator int () { return numEmpty; } inline int  & getRet() { return numEmpty; }  inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, flags,numEmpty);  } FlagGrid& flags;  int numEmpty;  };
+
+
+ struct knCountFluidCells : public KernelBase { knCountFluidCells(FlagGrid& flags) :  KernelBase(&flags,0) ,flags(flags) ,numEmpty(0)  { run(); }  inline void op(int idx, FlagGrid& flags ,int& numEmpty)  { if (flags.isFluid(idx) ) numEmpty++; }   inline operator int () { return numEmpty; } inline int  & getRet() { return numEmpty; }  inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  int numEmpty = 0; 
+#pragma omp for nowait 
+  for (int i=0; i < _sz; i++) op(i,flags,numEmpty); 
+#pragma omp critical
+{this->numEmpty += numEmpty; } }  } FlagGrid& flags;  int numEmpty;  };
+#line 511 "grid.cpp"
+
+
 
 //! averaged value for all cells (if flags are given, only for fluid cells)
 
@@ -537,12 +673,26 @@ Real getGridAvg(Grid<Real>& source, FlagGrid* flags=NULL) {
 
  struct knGetComponent : public KernelBase { knGetComponent(Grid<Vec3>& source, Grid<Real>& target, int component) :  KernelBase(&source,0) ,source(source),target(target),component(component)   { run(); }  inline void op(int idx, Grid<Vec3>& source, Grid<Real>& target, int component )  { 
 	target[idx] = source[idx][component]; 
-}   inline Grid<Vec3>& getArg0() { return source; } typedef Grid<Vec3> type0;inline Grid<Real>& getArg1() { return target; } typedef Grid<Real> type1;inline int& getArg2() { return component; } typedef int type2; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, source,target,component);  } Grid<Vec3>& source; Grid<Real>& target; int component;   };
+}   inline Grid<Vec3>& getArg0() { return source; } typedef Grid<Vec3> type0;inline Grid<Real>& getArg1() { return target; } typedef Grid<Real> type1;inline int& getArg2() { return component; } typedef int type2; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,source,target,component);  }  } Grid<Vec3>& source; Grid<Real>& target; int component;   };
+#line 529 "grid.cpp"
+
+
 void getComponent(Grid<Vec3>& source, Grid<Real>& target, int component) { knGetComponent(source, target, component); } static PyObject* _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "getComponent" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& source = *_args.getPtr<Grid<Vec3> >("source",0,&_lock); Grid<Real>& target = *_args.getPtr<Grid<Real> >("target",1,&_lock); int component = _args.get<int >("component",2,&_lock);   _retval = getPyNone(); getComponent(source,target,component);  _args.check(); } pbFinalizePlugin(parent,"getComponent" ); return _retval; } catch(std::exception& e) { pbSetError("getComponent",e.what()); return 0; } } static const Pb::Register _RP_getComponent ("","getComponent",_W_14); 
 
  struct knSetComponent : public KernelBase { knSetComponent(Grid<Real>& source, Grid<Vec3>& target, int component) :  KernelBase(&source,0) ,source(source),target(target),component(component)   { run(); }  inline void op(int idx, Grid<Real>& source, Grid<Vec3>& target, int component )  { 
 	target[idx][component] = source[idx]; 
-}   inline Grid<Real>& getArg0() { return source; } typedef Grid<Real> type0;inline Grid<Vec3>& getArg1() { return target; } typedef Grid<Vec3> type1;inline int& getArg2() { return component; } typedef int type2; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, source,target,component);  } Grid<Real>& source; Grid<Vec3>& target; int component;   };
+}   inline Grid<Real>& getArg0() { return source; } typedef Grid<Real> type0;inline Grid<Vec3>& getArg1() { return target; } typedef Grid<Vec3> type1;inline int& getArg2() { return component; } typedef int type2; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,source,target,component);  }  } Grid<Real>& source; Grid<Vec3>& target; int component;   };
+#line 534 "grid.cpp"
+
+
 void setComponent(Grid<Real>& source, Grid<Vec3>& target, int component) { knSetComponent(source, target, component); } static PyObject* _W_15 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "setComponent" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock); int component = _args.get<int >("component",2,&_lock);   _retval = getPyNone(); setComponent(source,target,component);  _args.check(); } pbFinalizePlugin(parent,"setComponent" ); return _retval; } catch(std::exception& e) { pbSetError("setComponent",e.what()); return 0; } } static const Pb::Register _RP_setComponent ("","setComponent",_W_15); 
 
 //******************************************************************************
@@ -735,7 +885,18 @@ template<> Real Grid<nbVector>::getMin() { return 0.; }
 template<> Real Grid<nbVector>::getMax() { return 0.; }
 template<> Real Grid<nbVector>::getMaxAbs()      { return 0.; }
 
- struct knNbvecTestKernel : public KernelBase { knNbvecTestKernel(Grid<nbVector>& target) :  KernelBase(&target,0) ,target(target)   { run(); }  inline void op(int i, int j, int k, Grid<nbVector>& target )  { target(i,j,k).push_back(i+j+k); }   inline Grid<nbVector>& getArg0() { return target; } typedef Grid<nbVector> type0; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, target);  } Grid<nbVector>& target;   };
+ struct knNbvecTestKernel : public KernelBase { knNbvecTestKernel(Grid<nbVector>& target) :  KernelBase(&target,0) ,target(target)   { run(); }  inline void op(int i, int j, int k, Grid<nbVector>& target )  { target(i,j,k).push_back(i+j+k); }   inline Grid<nbVector>& getArg0() { return target; } typedef Grid<nbVector> type0; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,target);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,target);  } }  } Grid<nbVector>& target;   };
+#line 729 "grid.cpp"
+
+
 
 void nbvecTestOp(Grid<nbVector> &target) {
 	knNbvecTestKernel nbvecTest(target); 

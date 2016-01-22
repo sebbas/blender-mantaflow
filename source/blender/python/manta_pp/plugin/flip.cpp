@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/source/plugin/flip.cpp"
+#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/plugin/flip.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework 
@@ -104,7 +104,18 @@ void sampleLevelsetWithParticles( LevelsetGrid& phi, FlagGrid& flags, BasicParti
 	if (flags.isFluid(i,j,k)) {
 		flags(i,j,k) = (flags(i,j,k) | FlagGrid::TypeEmpty) & ~FlagGrid::TypeFluid;
 	}
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline int& getArg1() { return dummy; } typedef int type1; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, flags,dummy);  } FlagGrid& flags; int dummy;   };
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline int& getArg1() { return dummy; } typedef int type1; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,dummy);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,dummy);  } }  } FlagGrid& flags; int dummy;   };
+#line 91 "plugin/flip.cpp"
+
+
 
  struct knSetNbObstacle : public KernelBase { knSetNbObstacle(FlagGrid& flags, Grid<Real>* phiObs) :  KernelBase(&flags,1) ,flags(flags),phiObs(phiObs)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>* phiObs )  {
 	if ( (*phiObs)(i,j,k)>0. ) return;
@@ -120,7 +131,18 @@ void sampleLevelsetWithParticles( LevelsetGrid& phi, FlagGrid& flags, BasicParti
 		}
 		if(set) flags(i,j,k) = (flags(i,j,k) | FlagGrid::TypeFluid) & ~FlagGrid::TypeEmpty;
 	}
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>* getArg1() { return phiObs; } typedef Grid<Real> type1; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,phiObs);  } FlagGrid& flags; Grid<Real>* phiObs;   };
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>* getArg1() { return phiObs; } typedef Grid<Real> type1; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,phiObs);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,phiObs);  } }  } FlagGrid& flags; Grid<Real>* phiObs;   };
+#line 97 "plugin/flip.cpp"
+
+
 void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags, Grid<Real>* phiObs = NULL) {
 	// remove all fluid cells
 	knClearFluidFLags(flags, 0);
@@ -294,7 +316,18 @@ void gridParticleIndex( BasicParticleSystem& parts, ParticleIndexSystem& indexSy
 		}
 	}
 	phi(i,j,k) = phiv;
-}   inline Grid<int>& getArg0() { return index; } typedef Grid<int> type0;inline BasicParticleSystem& getArg1() { return parts; } typedef BasicParticleSystem type1;inline ParticleIndexSystem& getArg2() { return indexSys; } typedef ParticleIndexSystem type2;inline LevelsetGrid& getArg3() { return phi; } typedef LevelsetGrid type3;inline Real& getArg4() { return radius; } typedef Real type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, index,parts,indexSys,phi,radius);  } Grid<int>& index; BasicParticleSystem& parts; ParticleIndexSystem& indexSys; LevelsetGrid& phi; Real radius;   };
+}   inline Grid<int>& getArg0() { return index; } typedef Grid<int> type0;inline BasicParticleSystem& getArg1() { return parts; } typedef BasicParticleSystem type1;inline ParticleIndexSystem& getArg2() { return indexSys; } typedef ParticleIndexSystem type2;inline LevelsetGrid& getArg3() { return phi; } typedef LevelsetGrid type3;inline Real& getArg4() { return radius; } typedef Real type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,index,parts,indexSys,phi,radius);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,index,parts,indexSys,phi,radius);  } }  } Grid<int>& index; BasicParticleSystem& parts; ParticleIndexSystem& indexSys; LevelsetGrid& phi; Real radius;   };
+#line 260 "plugin/flip.cpp"
+
+
  
 
 
@@ -352,7 +385,18 @@ void unionParticleLevelset( BasicParticleSystem& parts, ParticleIndexSystem& ind
 		phiv = fabs( norm(gridPos-pacc) )-racc;
 	}
 	phi(i,j,k) = phiv;
-}   inline BasicParticleSystem& getArg0() { return parts; } typedef BasicParticleSystem type0;inline Grid<int>& getArg1() { return index; } typedef Grid<int> type1;inline ParticleIndexSystem& getArg2() { return indexSys; } typedef ParticleIndexSystem type2;inline LevelsetGrid& getArg3() { return phi; } typedef LevelsetGrid type3;inline Real& getArg4() { return radius; } typedef Real type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, parts,index,indexSys,phi,radius);  } BasicParticleSystem& parts; Grid<int>& index; ParticleIndexSystem& indexSys; LevelsetGrid& phi; Real radius;   };
+}   inline BasicParticleSystem& getArg0() { return parts; } typedef BasicParticleSystem type0;inline Grid<int>& getArg1() { return index; } typedef Grid<int> type1;inline ParticleIndexSystem& getArg2() { return indexSys; } typedef ParticleIndexSystem type2;inline LevelsetGrid& getArg3() { return phi; } typedef LevelsetGrid type3;inline Real& getArg4() { return radius; } typedef Real type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,parts,index,indexSys,phi,radius);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,parts,index,indexSys,phi,radius);  } }  } BasicParticleSystem& parts; Grid<int>& index; ParticleIndexSystem& indexSys; LevelsetGrid& phi; Real radius;   };
+#line 303 "plugin/flip.cpp"
+
+
 
 template<class T> T smoothingValue(Grid<T> val, int i, int j, int k, T center) {
 	return val(i,j,k);
@@ -368,7 +412,18 @@ template <class T>  struct knSmoothGrid : public KernelBase { knSmoothGrid(Grid<
 		val += me(i,j,k+1) + me(i,j,k-1);
 	}
 	tmp(i,j,k) = val * factor;
-}   inline Grid<T>& getArg0() { return me; } typedef Grid<T> type0;inline Grid<T>& getArg1() { return tmp; } typedef Grid<T> type1;inline Real& getArg2() { return factor; } typedef Real type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, me,tmp,factor);  } Grid<T>& me; Grid<T>& tmp; Real factor;   };
+}   inline Grid<T>& getArg0() { return me; } typedef Grid<T> type0;inline Grid<T>& getArg1() { return tmp; } typedef Grid<T> type1;inline Real& getArg2() { return factor; } typedef Real type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,me,tmp,factor);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,me,tmp,factor);  } }  } Grid<T>& me; Grid<T>& tmp; Real factor;   };
+#line 351 "plugin/flip.cpp"
+
+
 
 
 template <class T>  struct knSmoothGridNeg : public KernelBase { knSmoothGridNeg(Grid<T>& me, Grid<T>& tmp, Real factor) :  KernelBase(&me,1) ,me(me),tmp(tmp),factor(factor)   { run(); }  inline void op(int i, int j, int k, Grid<T>& me, Grid<T>& tmp, Real factor )  {
@@ -381,7 +436,18 @@ template <class T>  struct knSmoothGridNeg : public KernelBase { knSmoothGridNeg
 	val *= factor;
 	if(val<tmp(i,j,k)) tmp(i,j,k) = val;
 	else               tmp(i,j,k) = me(i,j,k);
-}   inline Grid<T>& getArg0() { return me; } typedef Grid<T> type0;inline Grid<T>& getArg1() { return tmp; } typedef Grid<T> type1;inline Real& getArg2() { return factor; } typedef Real type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, me,tmp,factor);  } Grid<T>& me; Grid<T>& tmp; Real factor;   };
+}   inline Grid<T>& getArg0() { return me; } typedef Grid<T> type0;inline Grid<T>& getArg1() { return tmp; } typedef Grid<T> type1;inline Real& getArg2() { return factor; } typedef Real type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,me,tmp,factor);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,me,tmp,factor);  } }  } Grid<T>& me; Grid<T>& tmp; Real factor;   };
+#line 362 "plugin/flip.cpp"
+
+
 
  
 
@@ -421,7 +487,14 @@ void averagedParticleLevelset( BasicParticleSystem& parts, ParticleIndexSystem& 
 		if( normalize(grad) < VECTOR_EPSILON ) return;
 		parts.setPos(idx, parts.getPos(idx) + shift * grad );
 	}
-}   inline BasicParticleSystem& getArg0() { return parts; } typedef BasicParticleSystem type0;inline FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline Grid<Real>& getArg2() { return phiObs; } typedef Grid<Real> type2;inline Real& getArg3() { return shift; } typedef Real type3;inline Real& getArg4() { return thresh; } typedef Real type4; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, parts,flags,phiObs,shift,thresh);  } BasicParticleSystem& parts; FlagGrid& flags; Grid<Real>& phiObs; Real shift; Real thresh;   };
+}   inline BasicParticleSystem& getArg0() { return parts; } typedef BasicParticleSystem type0;inline FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline Grid<Real>& getArg2() { return phiObs; } typedef Grid<Real> type2;inline Real& getArg3() { return shift; } typedef Real type3;inline Real& getArg4() { return thresh; } typedef Real type4; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,parts,flags,phiObs,shift,thresh);  }  } BasicParticleSystem& parts; FlagGrid& flags; Grid<Real>& phiObs; Real shift; Real thresh;   };
+#line 401 "plugin/flip.cpp"
+
+
 //! slightly push particles out of obstacle levelset
 void pushOutofObs(BasicParticleSystem& parts, FlagGrid& flags, Grid<Real>& phiObs, Real shift=0.05, Real thresh=0.) {
 	knPushOutofObs(parts, flags, phiObs, shift, thresh);
@@ -439,7 +512,14 @@ template <class T>  struct knSafeDivReal : public KernelBase { knSafeDivReal(Gri
 		T div( other[idx] );
 		me[idx] = safeDivide(me[idx], div ); 
 	}
-}   inline Grid<T>& getArg0() { return me; } typedef Grid<T> type0;inline const Grid<Real>& getArg1() { return other; } typedef Grid<Real> type1;inline Real& getArg2() { return cutoff; } typedef Real type2; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, me,other,cutoff);  } Grid<T>& me; const Grid<Real>& other; Real cutoff;   };
+}   inline Grid<T>& getArg0() { return me; } typedef Grid<T> type0;inline const Grid<Real>& getArg1() { return other; } typedef Grid<Real> type1;inline Real& getArg2() { return cutoff; } typedef Real type2; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,me,other,cutoff);  }  } Grid<T>& me; const Grid<Real>& other; Real cutoff;   };
+#line 423 "plugin/flip.cpp"
+
+
 
 // Set velocities on the grid from the particle system
 
@@ -448,7 +528,14 @@ template <class T>  struct knSafeDivReal : public KernelBase { knSafeDivReal(Gri
 	if(grid[idx][0] < threshold) grid[idx][0] = 0.;
 	if(grid[idx][1] < threshold) grid[idx][1] = 0.;
 	if(grid[idx][2] < threshold) grid[idx][2] = 0.;
-}   inline Grid<Vec3>& getArg0() { return grid; } typedef Grid<Vec3> type0;inline Real& getArg1() { return threshold; } typedef Real type1; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, grid,threshold);  } Grid<Vec3>& grid; Real threshold;   };
+}   inline Grid<Vec3>& getArg0() { return grid; } typedef Grid<Vec3> type0;inline Real& getArg1() { return threshold; } typedef Real type1; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,grid,threshold);  }  } Grid<Vec3>& grid; Real threshold;   };
+#line 435 "plugin/flip.cpp"
+
+
 
 
 
@@ -488,7 +575,14 @@ void mapPartsToMAC( FlagGrid& flags, MACGrid& vel , MACGrid& velOld , BasicParti
  struct knCombineVels : public KernelBase { knCombineVels(MACGrid& vel, Grid<Vec3>& w, MACGrid& combineVel ) :  KernelBase(&vel,0) ,vel(vel),w(w),combineVel(combineVel)   { run(); }  inline void op(int idx, MACGrid& vel, Grid<Vec3>& w, MACGrid& combineVel  )  {
 	for(int c=0; c<3; ++c)
 		if(w[idx][c]>0.1) combineVel[idx][c] = vel[idx][c];
-}   inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline Grid<Vec3>& getArg1() { return w; } typedef Grid<Vec3> type1;inline MACGrid& getArg2() { return combineVel; } typedef MACGrid type2; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, vel,w,combineVel);  } MACGrid& vel; Grid<Vec3>& w; MACGrid& combineVel;   };
+}   inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline Grid<Vec3>& getArg1() { return w; } typedef Grid<Vec3> type1;inline MACGrid& getArg2() { return combineVel; } typedef MACGrid type2; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,vel,w,combineVel);  }  } MACGrid& vel; Grid<Vec3>& w; MACGrid& combineVel;   };
+#line 476 "plugin/flip.cpp"
+
+
 
 void combineGridVel( MACGrid& vel, Grid<Vec3>& weight, MACGrid& combineVel ) {
 	knCombineVels(vel, weight, combineVel);
@@ -528,7 +622,14 @@ void mapPartsToGridVec3( FlagGrid& flags, Grid<Vec3>& target , BasicParticleSyst
 template <class T>  struct knMapFromGrid : public KernelBase { knMapFromGrid( BasicParticleSystem& p, Grid<T>& gsrc, ParticleDataImpl<T>& target ) :  KernelBase(p.size()) ,p(p),gsrc(gsrc),target(target)   { run(); }  inline void op(int idx,  BasicParticleSystem& p, Grid<T>& gsrc, ParticleDataImpl<T>& target  )  {
 	if (!p.isActive(idx)) return;
 	target[idx] = gsrc.getInterpolated( p[idx].pos );
-}   inline BasicParticleSystem& getArg0() { return p; } typedef BasicParticleSystem type0;inline Grid<T>& getArg1() { return gsrc; } typedef Grid<T> type1;inline ParticleDataImpl<T>& getArg2() { return target; } typedef ParticleDataImpl<T> type2; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, p,gsrc,target);  } BasicParticleSystem& p; Grid<T>& gsrc; ParticleDataImpl<T>& target;   }; 
+}   inline BasicParticleSystem& getArg0() { return p; } typedef BasicParticleSystem type0;inline Grid<T>& getArg1() { return gsrc; } typedef Grid<T> type1;inline ParticleDataImpl<T>& getArg2() { return target; } typedef ParticleDataImpl<T> type2; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,p,gsrc,target);  }  } BasicParticleSystem& p; Grid<T>& gsrc; ParticleDataImpl<T>& target;   };
+#line 516 "plugin/flip.cpp"
+
+ 
 void mapGridToParts( Grid<Real>& source , BasicParticleSystem& parts , ParticleDataImpl<Real>& target ) {
 	knMapFromGrid<Real>(parts, source, target);
 } static PyObject* _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "mapGridToParts" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",0,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",1,&_lock); ParticleDataImpl<Real>& target = *_args.getPtr<ParticleDataImpl<Real> >("target",2,&_lock);   _retval = getPyNone(); mapGridToParts(source,parts,target);  _args.check(); } pbFinalizePlugin(parent,"mapGridToParts" ); return _retval; } catch(std::exception& e) { pbSetError("mapGridToParts",e.what()); return 0; } } static const Pb::Register _RP_mapGridToParts ("","mapGridToParts",_W_14); 
@@ -545,7 +646,14 @@ void mapGridToPartsVec3( Grid<Vec3>& source , BasicParticleSystem& parts , Parti
 	if (!p.isActive(idx)) return;
 	// pure PIC
 	pvel[idx] = vel.getInterpolated( p[idx].pos );
-}   inline BasicParticleSystem& getArg0() { return p; } typedef BasicParticleSystem type0;inline FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline ParticleDataImpl<Vec3>& getArg3() { return pvel; } typedef ParticleDataImpl<Vec3> type3; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, p,flags,vel,pvel);  } BasicParticleSystem& p; FlagGrid& flags; MACGrid& vel; ParticleDataImpl<Vec3>& pvel;   };
+}   inline BasicParticleSystem& getArg0() { return p; } typedef BasicParticleSystem type0;inline FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline ParticleDataImpl<Vec3>& getArg3() { return pvel; } typedef ParticleDataImpl<Vec3> type3; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,p,flags,vel,pvel);  }  } BasicParticleSystem& p; FlagGrid& flags; MACGrid& vel; ParticleDataImpl<Vec3>& pvel;   };
+#line 532 "plugin/flip.cpp"
+
+
 
 void mapMACToParts(FlagGrid& flags, MACGrid& vel , BasicParticleSystem& parts , ParticleDataImpl<Vec3>& partVel ) {
 	knMapLinearMACGridToVec3_PIC( parts, flags, vel, partVel );
@@ -559,13 +667,30 @@ void mapMACToParts(FlagGrid& flags, MACGrid& vel , BasicParticleSystem& parts , 
 	Vec3 v     =        vel.getInterpolated(p[idx].pos);
 	Vec3 delta = v - oldVel.getInterpolated(p[idx].pos); 
 	pvel[idx] = flipRatio * (pvel[idx] + delta) + (1.0 - flipRatio) * v;    
-}   inline BasicParticleSystem& getArg0() { return p; } typedef BasicParticleSystem type0;inline FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline MACGrid& getArg3() { return oldVel; } typedef MACGrid type3;inline ParticleDataImpl<Vec3>& getArg4() { return pvel; } typedef ParticleDataImpl<Vec3> type4;inline Real& getArg5() { return flipRatio; } typedef Real type5; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, p,flags,vel,oldVel,pvel,flipRatio);  } BasicParticleSystem& p; FlagGrid& flags; MACGrid& vel; MACGrid& oldVel; ParticleDataImpl<Vec3>& pvel; Real flipRatio;   };
+}   inline BasicParticleSystem& getArg0() { return p; } typedef BasicParticleSystem type0;inline FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline MACGrid& getArg3() { return oldVel; } typedef MACGrid type3;inline ParticleDataImpl<Vec3>& getArg4() { return pvel; } typedef ParticleDataImpl<Vec3> type4;inline Real& getArg5() { return flipRatio; } typedef Real type5; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,p,flags,vel,oldVel,pvel,flipRatio);  }  } BasicParticleSystem& p; FlagGrid& flags; MACGrid& vel; MACGrid& oldVel; ParticleDataImpl<Vec3>& pvel; Real flipRatio;   };
+#line 545 "plugin/flip.cpp"
+
+
 
 
 void flipVelocityUpdate(FlagGrid& flags, MACGrid& vel , MACGrid& velOld , BasicParticleSystem& parts , ParticleDataImpl<Vec3>& partVel , Real flipRatio ) {
 	knMapLinearMACGridToVec3_FLIP( parts, flags, vel, velOld, partVel, flipRatio );
 } static PyObject* _W_17 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "flipVelocityUpdate" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); MACGrid& velOld = *_args.getPtr<MACGrid >("velOld",2,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",3,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",4,&_lock); Real flipRatio = _args.get<Real >("flipRatio",5,&_lock);   _retval = getPyNone(); flipVelocityUpdate(flags,vel,velOld,parts,partVel,flipRatio);  _args.check(); } pbFinalizePlugin(parent,"flipVelocityUpdate" ); return _retval; } catch(std::exception& e) { pbSetError("flipVelocityUpdate",e.what()); return 0; } } static const Pb::Register _RP_flipVelocityUpdate ("","flipVelocityUpdate",_W_17); 
 
+// NT_DEBUG
+
+void floatify( BasicParticleSystem& parts ) {
+	for (int idx=0; idx<(int)parts.size(); idx++) {
+		float f = parts.getPos(idx).x;
+		float g = parts.getPos(idx).y;
+		float h = parts.getPos(idx).z;
+		parts.setPos(idx, Vec3(f,g,h) );
+	}
+} static PyObject* _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "floatify" ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock);   _retval = getPyNone(); floatify(parts);  _args.check(); } pbFinalizePlugin(parent,"floatify" ); return _retval; } catch(std::exception& e) { pbSetError("floatify",e.what()); return 0; } } static const Pb::Register _RP_floatify ("","floatify",_W_18); 
 
 } // namespace
 

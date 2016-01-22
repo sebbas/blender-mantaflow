@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/source/mesh.cpp"
+#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/mesh.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -61,7 +61,7 @@ Real Mesh::computeCenterOfMass(Vec3& cm) const {
 		Vector3D<double> p3(toVec3d(getNode(tri,2)));
 		
 		double cvol = dot(cross(p1,p2),p3) / 6.0;        
-		cmd += (p1+p2+p3) * (cvol/3.0);
+		cmd += (p1+p2+p3) * (cvol/4.0);
 		vol += cvol;
 	}
 	if (vol != 0.0) cmd /= vol;    
@@ -228,7 +228,14 @@ void Mesh::rebuildChannels() {
 		u[idx] = _0;
 	else 
 		u[idx] = vel.getInterpolated(nodes[idx].pos) * dt;
-}   inline operator vector<Vec3> () { return u; } inline vector<Vec3>  & getRet() { return u; }  inline vector<Node>& getArg0() { return nodes; } typedef vector<Node> type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline const MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline const Real& getArg3() { return dt; } typedef Real type3; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, nodes,flags,vel,dt,u);  } vector<Node>& nodes; const FlagGrid& flags; const MACGrid& vel; const Real dt;  vector<Vec3>  u;  };
+}   inline operator vector<Vec3> () { return u; } inline vector<Vec3>  & getRet() { return u; }  inline vector<Node>& getArg0() { return nodes; } typedef vector<Node> type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline const MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline const Real& getArg3() { return dt; } typedef Real type3; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,nodes,flags,vel,dt,u);  }  } vector<Node>& nodes; const FlagGrid& flags; const MACGrid& vel; const Real dt;  vector<Vec3>  u;  };
+#line 212 "mesh.cpp"
+
+
 
 // advection plugin
 void Mesh::advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode) {
@@ -678,7 +685,18 @@ template <class T>  struct ApplyMeshToGrid : public KernelBase { ApplyMeshToGrid
 	{	
 		(*grid)(i,j,k) = value;
 	}
-}   inline Grid<T>* getArg0() { return grid; } typedef Grid<T> type0;inline Grid<Real> & getArg1() { return sdf; } typedef Grid<Real>  type1;inline T& getArg2() { return value; } typedef T type2;inline FlagGrid* getArg3() { return respectFlags; } typedef FlagGrid type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, grid,sdf,value,respectFlags);  } Grid<T>* grid; Grid<Real>  sdf; T value; FlagGrid* respectFlags;   };
+}   inline Grid<T>* getArg0() { return grid; } typedef Grid<T> type0;inline Grid<Real> & getArg1() { return sdf; } typedef Grid<Real>  type1;inline T& getArg2() { return value; } typedef T type2;inline FlagGrid* getArg3() { return respectFlags; } typedef FlagGrid type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,sdf,value,respectFlags);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,sdf,value,respectFlags);  } }  } Grid<T>* grid; Grid<Real>  sdf; T value; FlagGrid* respectFlags;   };
+#line 662 "mesh.cpp"
+
+
 
 void Mesh::applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags, Real cutoff) {
 	FluidSolver dummy(grid->getSize());
@@ -713,7 +731,7 @@ void meshSDF(Mesh& mesh, LevelsetGrid& levelset, Real sigma, Real cutoff)
 	std::vector<Vec3> normals;
 	short bigEdges(0);
 	std::vector<Vec3> samplePoints;
-	for(size_t i=0; i<mesh.numTris(); i++){	
+	for(int i=0; i<mesh.numTris(); i++){	
 		center.push_back(Vec3(mesh.getFaceCenter(i) * mult));
 		normals.push_back(mesh.getFaceNormal(i));
 		//count big, stretched edges

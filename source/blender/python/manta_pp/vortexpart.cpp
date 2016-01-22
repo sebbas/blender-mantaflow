@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/source/vortexpart.cpp"
+#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/vortexpart.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -69,7 +69,14 @@ inline Vec3 VortexKernel(const Vec3& p, const vector<VortexParticleData>& vp, Re
 		u[idx] = _0;
 	else
 		u[idx] = VortexKernel(nodes[idx].pos, vp, scale);
-}   inline operator vector<Vec3> () { return u; } inline vector<Vec3>  & getRet() { return u; }  inline vector<Node>& getArg0() { return nodes; } typedef vector<Node> type0;inline const vector<VortexParticleData>& getArg1() { return vp; } typedef vector<VortexParticleData> type1;inline Real& getArg2() { return scale; } typedef Real type2; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, nodes,vp,scale,u);  } vector<Node>& nodes; const vector<VortexParticleData>& vp; Real scale;  vector<Vec3>  u;  };
+}   inline operator vector<Vec3> () { return u; } inline vector<Vec3>  & getRet() { return u; }  inline vector<Node>& getArg0() { return nodes; } typedef vector<Node> type0;inline const vector<VortexParticleData>& getArg1() { return vp; } typedef vector<VortexParticleData> type1;inline Real& getArg2() { return scale; } typedef Real type2; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,nodes,vp,scale,u);  }  } vector<Node>& nodes; const vector<VortexParticleData>& vp; Real scale;  vector<Vec3>  u;  };
+#line 55 "vortexpart.cpp"
+
+
 
 
  struct KnVpAdvectSelf : public KernelBase { KnVpAdvectSelf(vector<VortexParticleData>& vp, Real scale) :  KernelBase(vp.size()) ,vp(vp),scale(scale) ,u((size))  { run(); }  inline void op(int idx, vector<VortexParticleData>& vp, Real scale ,vector<Vec3> & u)  {
@@ -77,7 +84,14 @@ inline Vec3 VortexKernel(const Vec3& p, const vector<VortexParticleData>& vp, Re
 		u[idx] = _0;
 	else
 		u[idx] = VortexKernel(vp[idx].pos, vp, scale);
-}   inline operator vector<Vec3> () { return u; } inline vector<Vec3>  & getRet() { return u; }  inline vector<VortexParticleData>& getArg0() { return vp; } typedef vector<VortexParticleData> type0;inline Real& getArg1() { return scale; } typedef Real type1; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, vp,scale,u);  } vector<VortexParticleData>& vp; Real scale;  vector<Vec3>  u;  };
+}   inline operator vector<Vec3> () { return u; } inline vector<Vec3>  & getRet() { return u; }  inline vector<VortexParticleData>& getArg0() { return vp; } typedef vector<VortexParticleData> type0;inline Real& getArg1() { return scale; } typedef Real type1; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,vp,scale,u);  }  } vector<VortexParticleData>& vp; Real scale;  vector<Vec3>  u;  };
+#line 63 "vortexpart.cpp"
+
+
 	
 VortexParticleSystem::VortexParticleSystem(FluidSolver* parent) :
 	ParticleSystem<VortexParticleData>(parent)

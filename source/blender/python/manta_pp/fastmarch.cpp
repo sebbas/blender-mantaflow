@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/source/fastmarch.cpp"
+#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/fastmarch.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -267,7 +267,19 @@ template class FastMarch<FmHeapEntryOut, +1>;
 		tmp(p)    = d+1;
 		vel(p)[c] = avgVel / nbs;
 	}
-}   inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline int& getArg1() { return distance; } typedef int type1;inline Grid<int>& getArg2() { return tmp; } typedef Grid<int> type2;inline const int& getArg3() { return d; } typedef int type3;inline const int& getArg4() { return c; } typedef int type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, vel,distance,tmp,d,c);  } MACGrid& vel; int distance; Grid<int>& tmp; const int d; const int c;   };
+}   inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline int& getArg1() { return distance; } typedef int type1;inline Grid<int>& getArg2() { return tmp; } typedef Grid<int> type2;inline const int& getArg3() { return d; } typedef int type3;inline const int& getArg4() { return c; } typedef int type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,vel,distance,tmp,d,c);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,vel,distance,tmp,d,c);  } }  } MACGrid& vel; int distance; Grid<int>& tmp; const int d; const int c;   };
+#line 233 "fastmarch.cpp"
+
+
+// TODO, make parallel by only modifying ijk (ie, turn push into pull)
 
 
  struct knExtrapolateIntoBnd : public KernelBase { knExtrapolateIntoBnd(FlagGrid& flags, MACGrid& vel) :  KernelBase(&flags,0) ,flags(flags),vel(vel)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel )  {
@@ -338,7 +350,18 @@ inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
 		Real l = dot(n,v);
 		vel(i,j,k) -= n*l;
 	}
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline LevelsetGrid& getArg2() { return phi; } typedef LevelsetGrid type2;inline Real& getArg3() { return maxDist; } typedef Real type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,vel,phi,maxDist);  } FlagGrid& flags; MACGrid& vel; LevelsetGrid& phi; Real maxDist;   };
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline LevelsetGrid& getArg2() { return phi; } typedef LevelsetGrid type2;inline Real& getArg3() { return maxDist; } typedef Real type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,phi,maxDist);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,phi,maxDist);  } }  } FlagGrid& flags; MACGrid& vel; LevelsetGrid& phi; Real maxDist;   };
+#line 319 "fastmarch.cpp"
+
+
 // a simple extrapolation step , used for cases where there's no levelset
 // (note, less accurate than fast marching extrapolation!)
 // into obstacle is a special mode for second order obstable boundaries (extrapolating
@@ -408,7 +431,18 @@ void extrapolateMACSimple(FlagGrid& flags, MACGrid& vel, int distance = 4, Level
 		weight(p)[c]    = d+1;
 		vel(p)[c] = avgVel / nbs;
 	}
-}   inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline Grid<Vec3>& getArg1() { return weight; } typedef Grid<Vec3> type1;inline int& getArg2() { return distance; } typedef int type2;inline const int& getArg3() { return d; } typedef int type3;inline const int& getArg4() { return c; } typedef int type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, vel,weight,distance,d,c);  } MACGrid& vel; Grid<Vec3>& weight; int distance; const int d; const int c;   };
+}   inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline Grid<Vec3>& getArg1() { return weight; } typedef Grid<Vec3> type1;inline int& getArg2() { return distance; } typedef int type2;inline const int& getArg3() { return d; } typedef int type3;inline const int& getArg4() { return c; } typedef int type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,vel,weight,distance,d,c);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,vel,weight,distance,d,c);  } }  } MACGrid& vel; Grid<Vec3>& weight; int distance; const int d; const int c;   };
+#line 376 "fastmarch.cpp"
+
+
 
 // same as extrapolateMACSimple, but uses weight vec3 grid instead of flags to check
 // for valid values (to be used in combination with mapPartsToMAC)
@@ -470,7 +504,18 @@ template <class S>  struct knExtrapolateLsSimple : public KernelBase { knExtrapo
 		tmp(p) = d+1;
 		val(p) = avg / nbs + direction;
 	} 
-}   inline Grid<S>& getArg0() { return val; } typedef Grid<S> type0;inline int& getArg1() { return distance; } typedef int type1;inline Grid<int>& getArg2() { return tmp; } typedef Grid<int> type2;inline const int& getArg3() { return d; } typedef int type3;inline S& getArg4() { return direction; } typedef S type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, val,distance,tmp,d,direction);  } Grid<S>& val; int distance; Grid<int>& tmp; const int d; S direction;   };
+}   inline Grid<S>& getArg0() { return val; } typedef Grid<S> type0;inline int& getArg1() { return distance; } typedef int type1;inline Grid<int>& getArg2() { return tmp; } typedef Grid<int> type2;inline const int& getArg3() { return d; } typedef int type3;inline S& getArg4() { return direction; } typedef S type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,val,distance,tmp,d,direction);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,val,distance,tmp,d,direction);  } }  } Grid<S>& val; int distance; Grid<int>& tmp; const int d; S direction;   };
+#line 443 "fastmarch.cpp"
+
+
 
 
 
@@ -478,7 +523,18 @@ template <class S>  struct knExtrapolateLsSimple : public KernelBase { knExtrapo
 template <class S>  struct knSetRemaining : public KernelBase { knSetRemaining(Grid<S>& phi, Grid<int>& tmp, S distance ) :  KernelBase(&phi,1) ,phi(phi),tmp(tmp),distance(distance)   { run(); }  inline void op(int i, int j, int k, Grid<S>& phi, Grid<int>& tmp, S distance  )  {
 	if (tmp(i,j,k) != 0) return;
 	phi(i,j,k) = distance;
-}   inline Grid<S>& getArg0() { return phi; } typedef Grid<S> type0;inline Grid<int>& getArg1() { return tmp; } typedef Grid<int> type1;inline S& getArg2() { return distance; } typedef S type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, phi,tmp,distance);  } Grid<S>& phi; Grid<int>& tmp; S distance;   };
+}   inline Grid<S>& getArg0() { return phi; } typedef Grid<S> type0;inline Grid<int>& getArg1() { return tmp; } typedef Grid<int> type1;inline S& getArg2() { return distance; } typedef S type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,phi,tmp,distance);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,phi,tmp,distance);  } }  } Grid<S>& phi; Grid<int>& tmp; S distance;   };
+#line 467 "fastmarch.cpp"
+
+
 
 
 void extrapolateLsSimple(Grid<Real>& phi, int distance = 4, bool inside=false ) {

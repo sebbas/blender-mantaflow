@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/source/fileio.cpp"
+#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/fileio.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -339,8 +339,6 @@ void pdataConvertWrite( gzFile& gzf, ParticleDataImpl<Vec3>& pdata, void* ptr, U
 	gzwrite(gzf, ptr, sizeof(Vector3D<float>) *head.dim);
 }
 
-#endif // NO_ZLIB!=1
-
 template <class T>
 void gridReadConvert(gzFile& gzf, Grid<T>& grid, void* ptr, int bytesPerElement) {
 	errMsg("unknown type, not yet supported");
@@ -421,6 +419,8 @@ static int unifyGridType(int type) {
 	if(type & GridBase::TypeMAC)      type |= GridBase::TypeVec3;
 	return type;
 }
+
+#endif // NO_ZLIB!=1
 
 //*****************************************************************************
 // grid data
@@ -570,10 +570,12 @@ void writeGridUni(const string& name, Grid<T>* grid) {
 	Grid<T> temp(grid->getParent());
 	// "misuse" temp grid as storage for floating point values (we have double, so it will always fit)
 	gridConvertWrite( gzf, *grid, &(temp[0]), head);
-#	endif
+#	else
 	gzwrite(gzf, &head, sizeof(UniHeader));
 	gzwrite(gzf, ptr, sizeof(T)*head.dimX*head.dimY*head.dimZ);
+#	endif
 	gzclose(gzf);
+
 #	else
 	debMsg( "file format not supported without zlib" ,1);
 #	endif
@@ -690,6 +692,35 @@ void writeGridVol<Real>(const string& name, Grid<Real>* grid) {
 	fclose(fp);
 };
 
+
+template <class T>
+void readGridVol(const string& name, Grid<T>* grid) {
+	debMsg( "writing grid " << grid->getName() << " to vol file " << name ,1);
+	errMsg("Type not yet supported!");
+}
+
+template <>
+void readGridVol<Real>(const string& name, Grid<Real>* grid) {
+	debMsg( "reading real grid " << grid->getName() << " from vol file " << name ,1);
+	
+	volHeader header; 
+	FILE* fp = fopen( name.c_str(), "rb" );
+	if (fp == NULL) {
+		errMsg("Cannot open '" << name << "'");
+		return;
+	}
+
+	// note, only very basic file format checks here!
+	assertMsg( fread( &header, 1, sizeof(volHeader) ,  fp) == sizeof(volHeader), "can't read file, no header present");
+	if( header.dimX != grid->getSizeX() || header.dimY != grid->getSizeY() || header.dimZ != grid->getSizeZ()) errMsg( "grid dim doesn't match, "<< Vec3(header.dimX,header.dimY,header.dimZ)<<" vs "<< grid->getSize() );
+#	if FLOATINGPOINT_PRECISION!=1
+	errMsg("Not yet supported");
+#	else
+	fread( &((*grid)[0]), 1, sizeof(float)*header.dimX*header.dimY*header.dimZ , fp);
+#	endif
+
+	fclose(fp);
+};
 
 
 //*****************************************************************************
@@ -812,6 +843,7 @@ void writePdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
 	gzwrite(gzf, &(pdata->get(0)), sizeof(T)*head.dim);
 #	endif
 	gzclose(gzf);
+
 #	else
 	debMsg( "file format not supported without zlib" ,1);
 #	endif
@@ -849,6 +881,7 @@ void readPdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
 #	endif
 }
 
+
 // explicit instantiation
 template void writeGridRaw<int> (const string& name, Grid<int>*  grid);
 template void writeGridRaw<Real>(const string& name, Grid<Real>* grid);
@@ -858,6 +891,8 @@ template void writeGridUni<Real>(const string& name, Grid<Real>* grid);
 template void writeGridUni<Vec3>(const string& name, Grid<Vec3>* grid);
 template void writeGridVol<int> (const string& name, Grid<int>*  grid);
 template void writeGridVol<Vec3>(const string& name, Grid<Vec3>* grid);
+template void readGridVol<int> (const string& name, Grid<int>*  grid);
+template void readGridVol<Vec3>(const string& name, Grid<Vec3>* grid);
 template void writeGridTxt<int> (const string& name, Grid<int>*  grid);
 template void writeGridTxt<Real>(const string& name, Grid<Real>* grid);
 template void writeGridTxt<Vec3>(const string& name, Grid<Vec3>* grid);

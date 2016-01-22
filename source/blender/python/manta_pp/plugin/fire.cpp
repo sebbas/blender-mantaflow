@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/source/plugin/fire.cpp"
+#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/plugin/fire.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -73,7 +73,18 @@ namespace Manta {
 		(*green)(i,j,k) = ((*green)(i,j,k) + flameSmokeColor.y * smokeEmit) * smokeFactor;
 		(*blue)(i,j,k) = ((*blue)(i,j,k) + flameSmokeColor.z * smokeEmit) * smokeFactor;
 	}
-}   inline Grid<Real>& getArg0() { return fuel; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return density; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return react; } typedef Grid<Real> type2;inline Grid<Real>* getArg3() { return red; } typedef Grid<Real> type3;inline Grid<Real>* getArg4() { return green; } typedef Grid<Real> type4;inline Grid<Real>* getArg5() { return blue; } typedef Grid<Real> type5;inline Grid<Real>* getArg6() { return heat; } typedef Grid<Real> type6;inline Real& getArg7() { return burningRate; } typedef Real type7;inline Real& getArg8() { return flameSmoke; } typedef Real type8;inline Real& getArg9() { return ignitionTemp; } typedef Real type9;inline Real& getArg10() { return maxTemp; } typedef Real type10;inline Real& getArg11() { return dt; } typedef Real type11;inline Vec3& getArg12() { return flameSmokeColor; } typedef Vec3 type12; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, fuel,density,react,red,green,blue,heat,burningRate,flameSmoke,ignitionTemp,maxTemp,dt,flameSmokeColor);  } Grid<Real>& fuel; Grid<Real>& density; Grid<Real>& react; Grid<Real>* red; Grid<Real>* green; Grid<Real>* blue; Grid<Real>* heat; Real burningRate; Real flameSmoke; Real ignitionTemp; Real maxTemp; Real dt; Vec3 flameSmokeColor;   };
+}   inline Grid<Real>& getArg0() { return fuel; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return density; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return react; } typedef Grid<Real> type2;inline Grid<Real>* getArg3() { return red; } typedef Grid<Real> type3;inline Grid<Real>* getArg4() { return green; } typedef Grid<Real> type4;inline Grid<Real>* getArg5() { return blue; } typedef Grid<Real> type5;inline Grid<Real>* getArg6() { return heat; } typedef Grid<Real> type6;inline Real& getArg7() { return burningRate; } typedef Real type7;inline Real& getArg8() { return flameSmoke; } typedef Real type8;inline Real& getArg9() { return ignitionTemp; } typedef Real type9;inline Real& getArg10() { return maxTemp; } typedef Real type10;inline Real& getArg11() { return dt; } typedef Real type11;inline Vec3& getArg12() { return flameSmokeColor; } typedef Vec3 type12; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,fuel,density,react,red,green,blue,heat,burningRate,flameSmoke,ignitionTemp,maxTemp,dt,flameSmokeColor);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,fuel,density,react,red,green,blue,heat,burningRate,flameSmoke,ignitionTemp,maxTemp,dt,flameSmokeColor);  } }  } Grid<Real>& fuel; Grid<Real>& density; Grid<Real>& react; Grid<Real>* red; Grid<Real>* green; Grid<Real>* blue; Grid<Real>* heat; Real burningRate; Real flameSmoke; Real ignitionTemp; Real maxTemp; Real dt; Vec3 flameSmokeColor;   };
+#line 27 "plugin/fire.cpp"
+
+
 
 
 
@@ -82,7 +93,18 @@ namespace Manta {
 		flame(i,j,k) = pow(react(i,j,k), 0.5f);
 	else
 		flame(i,j,k) = 0.0f;
-}   inline Grid<Real>& getArg0() { return react; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return flame; } typedef Grid<Real> type1; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, react,flame);  } Grid<Real>& react; Grid<Real>& flame;   };
+}   inline Grid<Real>& getArg0() { return react; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return flame; } typedef Grid<Real> type1; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,react,flame);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,react,flame);  } }  } Grid<Real>& react; Grid<Real>& flame;   };
+#line 68 "plugin/fire.cpp"
+
+
 
 
 

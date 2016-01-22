@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/source/particle.h"
+#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/particle.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -422,7 +422,14 @@ template <class S>  struct GridAdvectKernel : public KernelBase { GridAdvectKern
 		} 
 	}
 	u[idx] = vel.getInterpolated(p[idx].pos) * dt;
-}   inline operator std::vector<Vec3> () { return u; } inline std::vector<Vec3>  & getRet() { return u; }  inline std::vector<S>& getArg0() { return p; } typedef std::vector<S> type0;inline const MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline const FlagGrid& getArg2() { return flags; } typedef FlagGrid type2;inline Real& getArg3() { return dt; } typedef Real type3;inline bool& getArg4() { return deleteInObstacle; } typedef bool type4;inline bool& getArg5() { return stopInObstacle; } typedef bool type5; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, p,vel,flags,dt,deleteInObstacle,stopInObstacle,u);  } std::vector<S>& p; const MACGrid& vel; const FlagGrid& flags; Real dt; bool deleteInObstacle; bool stopInObstacle;  std::vector<Vec3>  u;  };;
+}   inline operator std::vector<Vec3> () { return u; } inline std::vector<Vec3>  & getRet() { return u; }  inline std::vector<S>& getArg0() { return p; } typedef std::vector<S> type0;inline const MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline const FlagGrid& getArg2() { return flags; } typedef FlagGrid type2;inline Real& getArg3() { return dt; } typedef Real type3;inline bool& getArg4() { return deleteInObstacle; } typedef bool type4;inline bool& getArg5() { return stopInObstacle; } typedef bool type5; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,p,vel,flags,dt,deleteInObstacle,stopInObstacle,u);  }  } std::vector<S>& p; const MACGrid& vel; const FlagGrid& flags; Real dt; bool deleteInObstacle; bool stopInObstacle;  std::vector<Vec3>  u;  };
+#line 403 "particle.h"
+
+;
 
 // final check after advection to make sure particles haven't escaped
 // (similar to particle advection kernel)
@@ -432,7 +439,14 @@ template <class S>  struct KnDeleteInObstacle : public KernelBase { KnDeleteInOb
 	if (!flags.isInBounds(p[idx].pos,1) || flags.isObstacle(p[idx].pos)) {
 		p[idx].flag |= ParticleBase::PDELETE;
 	} 
-}   inline std::vector<S>& getArg0() { return p; } typedef std::vector<S> type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, p,flags);  } std::vector<S>& p; const FlagGrid& flags;   };
+}   inline std::vector<S>& getArg0() { return p; } typedef std::vector<S> type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,p,flags);  }  } std::vector<S>& p; const FlagGrid& flags;   };
+#line 425 "particle.h"
+
+
 
 // try to get closer to actual obstacle boundary
 static inline Vec3 bisectBacktracePos(const FlagGrid& flags, const Vec3& oldp, const Vec3& newp)
@@ -458,7 +472,14 @@ template <class S>  struct KnClampPositions : public KernelBase { KnClampPositio
 	if (stopInObstacle && (flags.isObstacle(p[idx].pos)) ) {
 		p[idx].pos = bisectBacktracePos(flags, (*posOld)[idx], p[idx].pos);
 	}
-}   inline std::vector<S>& getArg0() { return p; } typedef std::vector<S> type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline ParticleDataImpl<Vec3> * getArg2() { return posOld; } typedef ParticleDataImpl<Vec3>  type2;inline bool& getArg3() { return stopInObstacle; } typedef bool type3; void run() {  const int _sz = size; for (int i=0; i < _sz; i++) op(i, p,flags,posOld,stopInObstacle);  } std::vector<S>& p; const FlagGrid& flags; ParticleDataImpl<Vec3> * posOld; bool stopInObstacle;   };
+}   inline std::vector<S>& getArg0() { return p; } typedef std::vector<S> type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline ParticleDataImpl<Vec3> * getArg2() { return posOld; } typedef ParticleDataImpl<Vec3>  type2;inline bool& getArg3() { return stopInObstacle; } typedef bool type3; void run() {  const int _sz = size; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int i=0; i < _sz; i++) op(i,p,flags,posOld,stopInObstacle);  }  } std::vector<S>& p; const FlagGrid& flags; ParticleDataImpl<Vec3> * posOld; bool stopInObstacle;   };
+#line 448 "particle.h"
+
+
 
 // advection plugin
 template<class S>
@@ -468,7 +489,7 @@ void ParticleSystem<S>::advectInGrid(FlagGrid& flags, MACGrid& vel, int integrat
 	if(!deleteInObstacle) {
 		posOld = new ParticleDataImpl<Vec3>(this->getParent());
 		posOld->resize(mData.size());
-		for(int i=0; i<mData.size();++i) (*posOld)[i] = mData[i].pos;
+		for(int i=0; i<(int)mData.size();++i) (*posOld)[i] = mData[i].pos;
 	}
 
 	// update positions

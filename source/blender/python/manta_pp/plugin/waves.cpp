@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/blenderFireIntegration/mantaflowgit/source/plugin/waves.cpp"
+#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/plugin/waves.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -47,7 +47,18 @@ namespace Manta {
     ret(i,j,k) = 
 		( -4. * v(i,j,k) + v(i-1,j,k) + v(i+1,j,k) + v(i,j-1,k) + v(i,j+1,k) );
 
-}   inline const Grid<Real>& getArg0() { return v; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return ret; } typedef Grid<Real> type1; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, v,ret);  } const Grid<Real>& v; Grid<Real>& ret;   };;
+}   inline const Grid<Real>& getArg0() { return v; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return ret; } typedef Grid<Real> type1; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,v,ret);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,v,ret);  } }  } const Grid<Real>& v; Grid<Real>& ret;   };
+#line 33 "plugin/waves.cpp"
+
+;
 
 
 void calcSecDeriv2d(const Grid<Real>& v, Grid<Real>& curv) {
@@ -58,7 +69,22 @@ void calcSecDeriv2d(const Grid<Real>& v, Grid<Real>& curv) {
 // mass conservation 
 
 
- struct knTotalSum : public KernelBase { knTotalSum(Grid<Real>& h) :  KernelBase(&h,1) ,h(h) ,sum(0)  { run(); }  inline void op(int i, int j, int k, Grid<Real>& h ,double& sum)  { sum += h(i,j,k); }   inline Grid<Real>& getArg0() { return h; } typedef Grid<Real> type0; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, h,sum);  } Grid<Real>& h;  double sum;  };
+ struct knTotalSum : public KernelBase { knTotalSum(Grid<Real>& h) :  KernelBase(&h,1) ,h(h) ,sum(0)  { run(); }  inline void op(int i, int j, int k, Grid<Real>& h ,double& sum)  { sum += h(i,j,k); }   inline Grid<Real>& getArg0() { return h; } typedef Grid<Real> type0; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  double sum = 0; 
+#pragma omp for nowait 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,h,sum); 
+#pragma omp critical
+{this->sum += sum; } } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  double sum = 0; 
+#pragma omp for nowait 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,h,sum); 
+#pragma omp critical
+{this->sum += sum; } } }  } Grid<Real>& h;  double sum;  };
+#line 49 "plugin/waves.cpp"
+
+
 
 Real totalSum(Grid<Real>& height) {
 	knTotalSum ts(height);
@@ -89,7 +115,18 @@ void normalizeSumTo(Grid<Real>& height, Real target) {
 	if(crankNic) {
 		rhs(i,j,k) += s * ( -4.*ut(i,j,k) + 1.*ut(i-1,j,k) + 1.*ut(i+1,j,k) + 1.*ut(i,j-1,k) + 1.*ut(i,j+1,k) );
 	} 
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return rhs; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return ut; } typedef Grid<Real> type2;inline Grid<Real>& getArg3() { return utm1; } typedef Grid<Real> type3;inline Real& getArg4() { return s; } typedef Real type4;inline bool& getArg5() { return crankNic; } typedef bool type5; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=1; j< _maxY; j++) for (int i=1; i< _maxX; i++) op(i,j,k, flags,rhs,ut,utm1,s,crankNic);  } FlagGrid& flags; Grid<Real>& rhs; Grid<Real>& ut; Grid<Real>& utm1; Real s; bool crankNic;   };
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return rhs; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return ut; } typedef Grid<Real> type2;inline Grid<Real>& getArg3() { return utm1; } typedef Grid<Real> type3;inline Real& getArg4() { return s; } typedef Real type4;inline bool& getArg5() { return crankNic; } typedef bool type5; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,rhs,ut,utm1,s,crankNic);  } } else { const int k=0; 
+#pragma omp parallel 
+ { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+#pragma omp for 
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,rhs,ut,utm1,s,crankNic);  } }  } FlagGrid& flags; Grid<Real>& rhs; Grid<Real>& ut; Grid<Real>& utm1; Real s; bool crankNic;   };
+#line 75 "plugin/waves.cpp"
+
+
 
 
 
