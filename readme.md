@@ -1,6 +1,11 @@
 # Blender Mantaflow integration
 
-This is the current state of the Blender Mantaflow integration. It builds on previous integration steps which can be found in the Blender branch `soc-2014-fluid`.
+<del>This is the current state of the Blender Mantaflow integration. It builds on previous integration steps which can be found in the Blender branch `soc-2014-fluid`.</del>
+
+## DEPRECATED
+No more development will be taking place in the branch `soc-2014-fluid`. The Blender Mantaflow integration can now be found in the `fluid-mantaflow` branch which is part of the official Blender repository. You should build using that code instead.
+
+However, an up-to-date version of `fluid-mantaflow` will also be available in this Github repository for you to fork. Building works just as described below.
 
 ## Building (for the impatient)
 
