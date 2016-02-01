@@ -41,6 +41,7 @@ s = FluidSolver(name='main', gridSize=gs, dim=dim)\n\
 s.timestep = $TIMESTEP$\n\
 timings = Timings()\n\
 vorticity = $VORTICITY$\n\
+boundaryWidth = 1\n\
 uvs = $UVS_CNT$\n";
 
 const string alloc_base_grids_low = "\n\
@@ -70,10 +71,10 @@ noise.timeAnim = $NOISE_TIMEANIM$\n";
 
 const string prep_domain_low = "\n\
 # prepare domain low\n\
-flags.initDomain()\n\
+flags.initDomain(boundaryWidth=boundaryWidth)\n\
 flags.fillGrid()\n\
 if doOpen:\n\
-  setOpenBound(flags=flags, bWidth=1, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
+  setOpenBound(flags=flags, bWidth=boundaryWidth, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
 
 //////////////////////////////////////////////////////////////////////
 // HIGH RESOLUTION SETUP
@@ -115,10 +116,10 @@ xl_noise.timeAnim = $NOISE_TIMEANIM$ * upres\n";
 
 const string prep_domain_high = "\n\
 # prepare domain high\n\
-xl_flags.initDomain()\n\
+xl_flags.initDomain(boundaryWidth=boundaryWidth)\n\
 xl_flags.fillGrid()\n\
 if doOpen:\n\
-  setOpenBound(flags=xl_flags, bWidth=1, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
+  setOpenBound(flags=xl_flags, bWidth=boundaryWidth, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
 
 const string wavelet_turbulence_noise = "\n\
 # wavelet turbulence noise field\n\
