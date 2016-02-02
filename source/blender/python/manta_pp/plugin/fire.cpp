@@ -49,7 +49,7 @@ namespace Manta {
 		fuel(i,j,k) = 0.0f;
 	
 	// Process reaction coordinate
-	if (origFuel > __FLT_EPSILON__) {
+	if (origFuel > VECTOR_EPSILON) {
 		react(i,j,k) *= fuel(i,j,k) / origFuel;
 		flame = pow(react(i,j,k), 0.5f);
 	} else {
@@ -67,7 +67,7 @@ namespace Manta {
 		(*heat)(i,j,k) = (1.0f - flame) * ignitionTemp + flame * maxTemp;
 	
 	// Mix new color
-	if (red && smokeEmit > __FLT_EPSILON__) {
+	if (red && smokeEmit > VECTOR_EPSILON) {
 		float smokeFactor = density(i,j,k) / (origSmoke + smokeEmit);
 		(*red)(i,j,k) = ((*red)(i,j,k) + flameSmokeColor.x * smokeEmit) * smokeFactor;
 		(*green)(i,j,k) = ((*green)(i,j,k) + flameSmokeColor.y * smokeEmit) * smokeFactor;
