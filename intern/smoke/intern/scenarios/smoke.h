@@ -314,57 +314,60 @@ def step_low():\n\
   if dim == 2:\n\
     density.add(inflow_grid)\n\
   \n\
-  if using_colors:\n\
-    print('Advecting colors')\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=color_r, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=color_g, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=color_b, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
+  print('Advecting density')\n\
+  advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$)\n\
+  \n\
+  if using_heat:\n\
+    print('Advecting heat')\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=heat, order=$ADVECT_ORDER$)\n\
   \n\
   if using_fire:\n\
     print('Advecting fire')\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=fuel, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=react, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=fuel, order=$ADVECT_ORDER$)\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=react, order=$ADVECT_ORDER$)\n\
   \n\
-  print('Advecting density')\n\
-  advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
+  if using_colors:\n\
+    print('Advecting colors')\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=color_r, order=$ADVECT_ORDER$)\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=color_g, order=$ADVECT_ORDER$)\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=color_b, order=$ADVECT_ORDER$)\n\
   \n\
   print('Advecting velocity')\n\
-  advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
+  advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=$ADVECT_ORDER$, openBounds=doOpen, boundaryWidth=boundaryWidth)\n\
   \n\
   for i in range(uvs):\n\
     print('Advecting UV and updating UVWeight')\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=uv[i], order=$ADVECT_ORDER$, openBounds=doOpen)\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=uv[i], order=$ADVECT_ORDER$)\n\
     updateUvWeight(resetTime=16.5 , index=i, numUvs=uvs, uv=uv[i])\n\
   \n\
-  print('Walls')\n\
-  setWallBcs(flags=flags, vel=vel)\n\
+  if doOpen:\n\
+    resetOutflow(flags=flags, real=density)\n\
+  print('Vorticity')\n\
+  if vorticity > 0.01:\n\
+    vorticityConfinement(vel=vel, flags=flags, strength=$VORTICITY$)\n\
   \n\
   if using_heat:\n\
     print('Adding heat buoyancy')\n\
-    gravity=vec3(0,0,-0.0981) if dim==3 else vec3(0,-0.0981,0)\n\
+    gravity=vec3(0,0,-0.3125) if dim==3 else vec3(0,-0.0981,0)\n\
     addBuoyancy2(flags=flags, grid=density, vel=vel, gravity=gravity, coefficient=$ALPHA$)\n\
-    addBuoyancy2(flags=flags, grid=heat, vel=vel, gravity=gravity, coefficient=$BETA$*10)\n\
+    addBuoyancy2(flags=flags, grid=heat, vel=vel, gravity=gravity, coefficient=$BETA$)\n\
   else:\n\
     print('Adding buoyancy')\n\
     gravity=vec3(0,0,-0.01 * $ALPHA$) if dim==3 else vec3(0,-0.01* $ALPHA$,0)\n\
     addBuoyancy(density=density, vel=vel, gravity=gravity, flags=flags)\n\
   \n\
-  print('Vorticity')\n\
-  if vorticity > 0.01:\n\
-    vorticityConfinement(vel=vel, flags=flags, strength=$VORTICITY$)\n\
-  # TODO: print('Forcefield')\n\
-  # TODO: addForceField(flags=flags, vel=vel, force=forces)\n\
-  # TODO: forces.clear()\n\
+  print('Walls')\n\
+  setWallBcs(flags=flags, vel=vel)\n\
   \n\
   print('Pressure')\n\
   solvePressure(flags=flags, vel=vel, pressure=pressure)\n\
   \n\
-  print('Walls')\n\
-  setWallBcs(flags=flags, vel=vel)\n\
-  \n\
   print('Energy')\n\
   computeEnergy(flags=flags, vel=vel, energy=energy)\n\
   \n\
+  # TODO: print('Forcefield')\n\
+  # TODO: addForceField(flags=flags, vel=vel, force=forces)\n\
+  # TODO: forces.clear()\n\
   copyMacToReal(source=vel, targetX=x_vel, targetY=y_vel, targetZ=z_vel)\n\
   s.step()\n\
 \n\
