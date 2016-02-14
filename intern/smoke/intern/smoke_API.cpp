@@ -104,6 +104,7 @@ extern "C" void smoke_manta_export(SmokeModifierData *smd)
 	Manta_API::manta_export_grids(smd);
 }
 
+#ifndef WITH_MANTA
 extern "C" void smoke_step(FLUID_3D *fluid, float gravity[3], float dtSubdiv)
 {
 	if (fluid->_fuel) {
@@ -116,6 +117,14 @@ extern "C" void smoke_step(FLUID_3D *fluid, float gravity[3], float dtSubdiv)
 		fluid->updateFlame(fluid->_react, fluid->_flame, fluid->_totalCells);
 	}
 }
+//////////////////////////////////////////////////////////////////////
+#else /*USING MANTAFLOW STRUCTURES*/
+//////////////////////////////////////////////////////////////////////
+extern "C" void smoke_step(FLUID_3D *fluid, float gravity[3], float dtSubdiv)
+{
+	fluid->step(dtSubdiv, gravity);
+}
+#endif /*WITH MANTA*/
 
 #ifndef WITH_MANTA
 extern "C" void smoke_turbulence_step(WTURBULENCE *wt, FLUID_3D *fluid)

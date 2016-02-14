@@ -38,7 +38,17 @@ gs = vec3($RESX$,$RESY$,$RESZ$)\n\
 if dim == 2:\n\
   gs.z = 1\n\
 s = FluidSolver(name='main', gridSize=gs, dim=dim)\n\
-s.timestep = $TIMESTEP$\n\
+# old timestep -> not used when adaptTimestep is used\n\
+#s.timestep = $TIMESTEP$\n\
+dt_default = 0.1\n\
+dt_factor = $DT_FACTOR$\n\
+fps = $FPS$\n\
+dt0 = dt_default * (25.0 / fps) * dt_factor\n\
+s.frameLength = dt0\n\
+s.timestepMin = dt0 / 10\n\
+s.timestepMax = dt0\n\
+s.cfl = 4.0\n\
+s.timestep = dt0\n\
 timings = Timings()\n\
 vorticity = $VORTICITY$\n\
 boundaryWidth = 1\n\
@@ -220,8 +230,8 @@ for step in range(1000):\n\
   if using_fire:\n\
     update_flame_low()\n\
   \n\
-  print('High step '+ str(step))\n\
   if using_wavelets:\n\
+    print('High step '+ str(step))\n\
     if using_fire:\n\
       process_burn_high()\n\
     step_high()\n\
@@ -304,6 +314,34 @@ if 'xl_noise' in globals() : del xl_noise\n\
 if 'xl_wltnoise' in globals() : del xl_wltnoise\n";
 
 //////////////////////////////////////////////////////////////////////
+// MANTA STEP
+//////////////////////////////////////////////////////////////////////
+
+const string manta_step = "\n\
+def manta_step():\n\
+  next_frame = s.frame + 1\n\
+  while s.frame < next_frame:\n\
+    print('Adapt timestep')\n\
+    maxvel = vel.getMaxValue()\n\
+    s.adaptTimestep(maxvel)\n\
+    \n\
+    print('Low step / s.frame: ' + str(s.frame))\n\
+    if using_fire:\n\
+      process_burn_low()\n\
+    step_low()\n\
+    if using_fire:\n\
+      update_flame_low()\n\
+    \n\
+    if using_wavelets:\n\
+      print('High step / s.frame: ' + str(s.frame))\n\
+      if using_fire:\n\
+        process_burn_high()\n\
+      step_high()\n\
+      if using_fire:\n\
+        update_flame_high()\n\
+    s.step()\n";
+
+//////////////////////////////////////////////////////////////////////
 // STEP FUNCTIONS LOW
 //////////////////////////////////////////////////////////////////////
 
@@ -369,14 +407,15 @@ def step_low():\n\
   # TODO: addForceField(flags=flags, vel=vel, force=forces)\n\
   # TODO: forces.clear()\n\
   copyMacToReal(source=vel, targetX=x_vel, targetY=y_vel, targetZ=z_vel)\n\
-  s.step()\n\
+  # --> removing solver step for now from here \n\
+  # s.step()\n\
 \n\
 def process_burn_low():\n\
   print('Process burn low')\n\
   if (using_colors):\n\
-    processBurn(fuel=fuel, density=density, react=react, red=color_r, green=color_g, blue=color_b, heat=heat, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=$DT$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
+    processBurn(fuel=fuel, density=density, react=react, red=color_r, green=color_g, blue=color_b, heat=heat, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=dt0, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
   else:\n\
-    processBurn(fuel=fuel, density=density, react=react, heat=heat, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=$DT$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
+    processBurn(fuel=fuel, density=density, react=react, heat=heat, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=dt0, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
 \n\
 def update_flame_low():\n\
   print('Update flame low')\n\
@@ -416,16 +455,15 @@ def step_high():\n\
     print('Advecting density high')\n\
     advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
   \n\
-  xl.step()\n\
-  \n\
-  timings.display()\n\
+  # --> removing solver step for now from here\n\
+  # xl.step()\n\
 \n\
 def process_burn_high():\n\
   print('Process burn high')\n\
   if (using_colors):\n\
-    processBurn(fuel=xl_fuel, density=xl_density, react=xl_react, red=xl_color_r, green=xl_color_g, blue=xl_color_b, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=$DT$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
+    processBurn(fuel=xl_fuel, density=xl_density, react=xl_react, red=xl_color_r, green=xl_color_g, blue=xl_color_b, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=dt0, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
   else:\n\
-    processBurn(fuel=xl_fuel, density=xl_density, react=xl_react, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=$DT$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
+    processBurn(fuel=xl_fuel, density=xl_density, react=xl_react, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=dt0, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
 \n\
 def update_flame_high():\n\
   print('Update flame high')\n\

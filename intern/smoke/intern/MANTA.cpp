@@ -425,6 +425,7 @@ std::string Manta_API::get_real_value( const std::string& varName, SmokeModifier
 {
 	ostringstream ss;
 	bool is2D = smd->domain->fluid->manta_resoution == 2;
+	ModifierData *md = ((ModifierData*) smd);
 	if (varName == "UVS_CNT")
 		ss << smd->domain->manta_uvs_num ;
 	else if (varName == "UPRES")
@@ -523,6 +524,10 @@ std::string Manta_API::get_real_value( const std::string& varName, SmokeModifier
 		ss << (smd->domain->flame_max_temp);
 	else if (varName == "DT")
 		ss << smd->domain->fluid->_dt;
+	else if (varName == "FPS")
+		ss << md->scene->r.frs_sec / md->scene->r.frs_sec_base;
+	else if (varName == "DT_FACTOR")
+		ss << smd->domain->time_scale;
 	else if (varName == "FLAME_SMOKE_COLOR_X")
 		ss << smd->domain->flame_smoke_color[0];
 	else if (varName == "FLAME_SMOKE_COLOR_Y")

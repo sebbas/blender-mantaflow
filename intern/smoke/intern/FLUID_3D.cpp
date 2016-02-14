@@ -611,6 +611,7 @@ _xRes(res[0]), _yRes(res[1]), _zRes(res[2]), _res(0.0f)
 		//noise_low +
 		prep_domain_low +
 		flags +
+		manta_step +
 		smoke_step_low;
 	std::string final_script = Manta_API::parse_script(setup_script, smd);
 	PyGILState_STATE gilstate = PyGILState_Ensure();
@@ -742,7 +743,7 @@ void FLUID_3D::step(float dt, float gravity[3])
 	//manta_write_effectors(this);
 
 	PyGILState_STATE gilstate = PyGILState_Ensure();
-	std::string py_string_0 = string("step_low()");
+	std::string py_string_0 = string("manta_step()");
 	PyRun_SimpleString(py_string_0.c_str());
 	PyGILState_Release(gilstate);
 	Manta_API::update_pointers(this);
