@@ -319,8 +319,8 @@ if 'xl_wltnoise' in globals() : del xl_wltnoise\n";
 
 const string manta_step = "\n\
 def manta_step():\n\
-  next_frame = s.frame + 1\n\
-  while s.frame < next_frame:\n\
+  last_frame = s.frame\n\
+  while s.frame == last_frame:\n\
     print('Adapt timestep')\n\
     maxvel = vel.getMaxValue()\n\
     s.adaptTimestep(maxvel)\n\
