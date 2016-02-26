@@ -135,11 +135,6 @@ const string wavelet_turbulence_noise = "\n\
 # wavelet turbulence noise field\n\
 xl_wltnoise = s.create(NoiseField, loadFromFile=True)\n\
 xl_wltnoise.posScale = vec3(int(1.0*gs.x)) * 0.5\n\
-xl_wltnoise.clamp = $USE_NOISE_CLAMP$\n\
-xl_wltnoise.clampNeg = $NOISE_CN$\n\
-xl_wltnoise.clampPos = $NOISE_CP$\n\
-xl_wltnoise.valScale = $NOISE_VALSCALE$\n\
-xl_wltnoise.valOffset = $NOISE_VALOFFSET$\n\
 xl_wltnoise.timeAnim = $NOISE_TIMEANIM$\n\
 if(upres>0):\n\
   xl_wltnoise.posScale = xl_wltnoise.posScale * (1./upres)\n\
