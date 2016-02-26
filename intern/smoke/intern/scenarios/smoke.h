@@ -333,6 +333,7 @@ def manta_step():\n\
       update_flame_low()\n\
     \n\
     if using_wavelets:\n\
+      xl.timestep = s.timestep\n\
       print('High step / s.frame: ' + str(s.frame))\n\
       if using_fire:\n\
         process_burn_high()\n\
