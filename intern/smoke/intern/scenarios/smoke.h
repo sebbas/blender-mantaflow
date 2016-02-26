@@ -89,7 +89,9 @@ xl = Solver(name = 'larger', gridSize = xl_gs)\n\
 xl.timestep = $XL_TIMESTEP$\n\
 wltStrength = $WLT_STR$\n\
 octaves = 0\n\
-if(upres>0):\n\
+if upres == 1:\n\
+  octaves = int(math.log(upres+1)/ math.log(2.0) + 0.5)\n\
+elif upres > 1:\n\
   octaves = int(math.log(upres)/ math.log(2.0) + 0.5)\n";
 
 const string alloc_base_grids_high = "\n\
@@ -112,7 +114,7 @@ if doOpen:\n\
 const string wavelet_turbulence_noise = "\n\
 # wavelet turbulence noise field\n\
 xl_wltnoise = s.create(NoiseField, loadFromFile=True)\n\
-xl_wltnoise.posScale = vec3(int(1.0*gs.x)) * $NOISE_POSSCALE$\n\
+xl_wltnoise.posScale = vec3(int(1.0*gs.x)) / $NOISE_POSSCALE$\n\
 xl_wltnoise.timeAnim = $NOISE_TIMEANIM$\n\
 if(upres>0):\n\
   xl_wltnoise.posScale = xl_wltnoise.posScale * (1./upres)\n\

@@ -635,14 +635,14 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "noise_pos_scale", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "noise_pos_scale");
-	RNA_def_property_range(prop, 0.0, 2.0);
-	RNA_def_property_ui_range(prop, 0.0, 2.0, 1, 2);
-	RNA_def_property_ui_text(prop, "Scale", "Scale of noise");
+	RNA_def_property_range(prop, 0.0, 10.0);
+	RNA_def_property_ui_range(prop, 0.1, 2.0, 1, 2);
+	RNA_def_property_ui_text(prop, "Scale", "Scale of noise (higher value results in larger vortices)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 	
 	prop = RNA_def_property(srna, "noise_time_anim", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "noise_time_anim");
-	RNA_def_property_range(prop, 0.0, 2.0);
+	RNA_def_property_range(prop, 0.0, 10.0);
 	RNA_def_property_ui_range(prop, 0.0, 2.0, 1, 2);
 	RNA_def_property_ui_text(prop, "Time", "Animation time of noise");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");

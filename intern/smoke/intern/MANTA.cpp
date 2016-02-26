@@ -32,7 +32,7 @@ std::string Manta_API::get_real_value( const std::string& varName, SmokeModifier
 	if (varName == "UVS_CNT")
 		ss << smd->domain->manta_uvs_num ;
 	else if (varName == "UPRES")
-		ss << smd->domain->amplify; //ss << smd->domain->amplify+1;
+		ss << smd->domain->amplify;
 	else if (varName == "WLT_STR")
 		ss << smd->domain->strength ;
 	else if (varName == "RES")
