@@ -28,6 +28,7 @@
 
 #include "vectorbase.h"
 #include "manta.h"
+#include "grid.h"
 
 namespace Manta {
 

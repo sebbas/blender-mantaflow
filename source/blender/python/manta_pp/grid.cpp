@@ -337,7 +337,6 @@ template<> Real Grid<int>::getMaxAbs() {
 	int amax = CompMaxInt (*this);
 	return max( fabs((Real)amin), fabs((Real)amax));
 }
-
 template<class T> void Grid<T>::writeGridToMemory(const std::string& memLoc, const std::string& sizeAllowed) {
 	if (memLoc == "" ||memLoc == "0" ){
 		debMsg("Cant write grid to NULL pointer",1);
@@ -527,7 +526,7 @@ static inline Real computeUvRamp(Real t) {
  { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
 #pragma omp for 
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,target);  } }  } Grid<Vec3>& target;   };
-#line 427 "grid.cpp"
+#line 426 "grid.cpp"
 
 
 
@@ -576,7 +575,7 @@ template <class T>  struct knSetBoundary : public KernelBase { knSetBoundary(Gri
  { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
 #pragma omp for 
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,value,w);  } }  } Grid<T>& grid; T value; int w;   };
-#line 461 "grid.cpp"
+#line 460 "grid.cpp"
 
 
 
@@ -619,7 +618,7 @@ template <class T>  struct knSetBoundaryNeumann : public KernelBase { knSetBound
  { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
 #pragma omp for 
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,w);  } }  } Grid<T>& grid; int w;   };
-#line 472 "grid.cpp"
+#line 471 "grid.cpp"
 
 
 
@@ -639,7 +638,7 @@ template<class T> void Grid<T>::setBoundNeumann(int boundaryWidth) {
   for (int i=0; i < _sz; i++) op(i,a,flags,result); 
 #pragma omp critical
 {this->result += result; } }  } const Grid<Real>& a; FlagGrid* flags;  double result;  };
-#line 505 "grid.cpp"
+#line 504 "grid.cpp"
 
 
 
@@ -651,7 +650,7 @@ template<class T> void Grid<T>::setBoundNeumann(int boundaryWidth) {
   for (int i=0; i < _sz; i++) op(i,flags,numEmpty); 
 #pragma omp critical
 {this->numEmpty += numEmpty; } }  } FlagGrid& flags;  int numEmpty;  };
-#line 511 "grid.cpp"
+#line 510 "grid.cpp"
 
 
 
@@ -678,7 +677,7 @@ Real getGridAvg(Grid<Real>& source, FlagGrid* flags=NULL) {
  { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
 #pragma omp for 
   for (int i=0; i < _sz; i++) op(i,source,target,component);  }  } Grid<Vec3>& source; Grid<Real>& target; int component;   };
-#line 529 "grid.cpp"
+#line 528 "grid.cpp"
 
 
 void getComponent(Grid<Vec3>& source, Grid<Real>& target, int component) { knGetComponent(source, target, component); } static PyObject* _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "getComponent" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& source = *_args.getPtr<Grid<Vec3> >("source",0,&_lock); Grid<Real>& target = *_args.getPtr<Grid<Real> >("target",1,&_lock); int component = _args.get<int >("component",2,&_lock);   _retval = getPyNone(); getComponent(source,target,component);  _args.check(); } pbFinalizePlugin(parent,"getComponent" ); return _retval; } catch(std::exception& e) { pbSetError("getComponent",e.what()); return 0; } } static const Pb::Register _RP_getComponent ("","getComponent",_W_14); 
@@ -690,7 +689,7 @@ void getComponent(Grid<Vec3>& source, Grid<Real>& target, int component) { knGet
  { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
 #pragma omp for 
   for (int i=0; i < _sz; i++) op(i,source,target,component);  }  } Grid<Real>& source; Grid<Vec3>& target; int component;   };
-#line 534 "grid.cpp"
+#line 533 "grid.cpp"
 
 
 void setComponent(Grid<Real>& source, Grid<Vec3>& target, int component) { knSetComponent(source, target, component); } static PyObject* _W_15 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "setComponent" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock); int component = _args.get<int >("component",2,&_lock);   _retval = getPyNone(); setComponent(source,target,component);  _args.check(); } pbFinalizePlugin(parent,"setComponent" ); return _retval; } catch(std::exception& e) { pbSetError("setComponent",e.what()); return 0; } } static const Pb::Register _RP_setComponent ("","setComponent",_W_15); 
@@ -894,7 +893,7 @@ template<> Real Grid<nbVector>::getMaxAbs()      { return 0.; }
  { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
 #pragma omp for 
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,target);  } }  } Grid<nbVector>& target;   };
-#line 729 "grid.cpp"
+#line 728 "grid.cpp"
 
 
 

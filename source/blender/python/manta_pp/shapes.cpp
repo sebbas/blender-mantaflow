@@ -114,6 +114,7 @@ template <class T>  struct ApplyShapeToGridSmooth : public KernelBase { ApplySha
 
 
 void Shape::applyToGrid(GridBase* grid, FlagGrid* respectFlags) {
+#	if NOPYTHON!=1
 	if (grid->getType() & GridBase::TypeInt)
 		ApplyShapeToGrid<int> ((Grid<int>*)grid, this, _args.get<int>("value"), respectFlags);
 	else if (grid->getType() & GridBase::TypeReal)
@@ -124,12 +125,16 @@ void Shape::applyToGrid(GridBase* grid, FlagGrid* respectFlags) {
 		ApplyShapeToGrid<Vec3> ((Grid<Vec3>*)grid, this, _args.get<Vec3>("value"), respectFlags);
 	else
 		errMsg("Shape::applyToGrid(): unknown grid type");
+#	else
+	errMsg("Not yet supported...");
+#	endif
 }
 
 void Shape::applyToGridSmooth(GridBase* grid, Real sigma, Real shift, FlagGrid* respectFlags) {
 	Grid<Real> phi(grid->getParent());
 	generateLevelset(phi);
 
+#	if NOPYTHON!=1
 	if (grid->getType() & GridBase::TypeInt)
 		ApplyShapeToGridSmooth<int> ((Grid<int>*)grid, phi, sigma, shift, _args.get<int>("value"), respectFlags);
 	else if (grid->getType() & GridBase::TypeReal)
@@ -138,6 +143,9 @@ void Shape::applyToGridSmooth(GridBase* grid, Real sigma, Real shift, FlagGrid* 
 		ApplyShapeToGridSmooth<Vec3> ((Grid<Vec3>*)grid, phi, sigma, shift, _args.get<Vec3>("value"), respectFlags);
 	else
 		errMsg("Shape::applyToGridSmooth(): unknown grid type");
+#	else
+	errMsg("Not yet supported...");
+#	endif
 }
 
 void Shape::collideMesh(Mesh& mesh) {
@@ -272,7 +280,7 @@ void Box::generateMesh(Mesh* mesh) {
  { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
 #pragma omp for 
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,phi,p1,p2);  } }  } Grid<Real>& phi; const Vec3& p1; const Vec3& p2;   };
-#line 170 "shapes.cpp"
+#line 178 "shapes.cpp"
 
 
 void Box::generateLevelset(Grid<Real>& phi) {
@@ -365,7 +373,7 @@ void Sphere::generateMesh(Mesh* mesh) {
  { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
 #pragma omp for 
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,phi,center,radius,scale);  } }  } Grid<Real>& phi; Vec3 center; Real radius; Vec3 scale;   };
-#line 301 "shapes.cpp"
+#line 309 "shapes.cpp"
 
 
 void Sphere::generateLevelset(Grid<Real>& phi) {
@@ -450,7 +458,7 @@ void Cylinder::generateMesh(Mesh* mesh) {
  { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
 #pragma omp for 
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,phi,center,radius,zaxis,maxz);  } }  } Grid<Real>& phi; Vec3 center; Real radius; Vec3 zaxis; Real maxz;   };
-#line 360 "shapes.cpp"
+#line 368 "shapes.cpp"
 
 
 void Cylinder::generateLevelset(Grid<Real>& phi) {
@@ -522,7 +530,7 @@ bool Slope::isInside(const Vec3& pos) const {
  { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
 #pragma omp for 
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,n,phiObs,fac,origin);  } }  } const Vec3& n; Grid<Real> & phiObs; const Real& fac; const Real& origin;   };
-#line 434 "shapes.cpp"
+#line 442 "shapes.cpp"
 
 
 

@@ -98,11 +98,15 @@ FluidSolver::~FluidSolver() {
 }
 
 PbClass* FluidSolver::create(PbType t, PbTypeVec T, const string& name) {        
+#	if NOPYTHON!=1
 	_args.add("nocheck",true);
 	if (t.str() == "")
 		errMsg("Need to specify object type. Use e.g. Solver.create(FlagGrid, ...) or Solver.create(type=FlagGrid, ...)");
 	
 	PbClass* ret = PbClass::createPyObject(t.str() + T.str(), name, _args, this);
+#	else
+	PbClass* ret = NULL;
+#	endif
 	return ret;
 }
 
@@ -127,6 +131,11 @@ void FluidSolver::step() {
 	updateQtGui(true, mFrame,mTimeTotal, "FluidSolver::step");
 }
 
+//! helper to unify printing from python scripts and printing internal messages (optionally pass debug level to control amount of output)
+void mantaMsg(const std::string& out, int level=1) {
+	debMsg( out, level );
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "mantaMsg" ); PyObject *_retval = 0; { ArgLocker _lock; const std::string& out = _args.get<std::string >("out",0,&_lock); int level = _args.getOpt<int >("level",1,1,&_lock);   _retval = getPyNone(); mantaMsg(out,level);  _args.check(); } pbFinalizePlugin(parent,"mantaMsg" ); return _retval; } catch(std::exception& e) { pbSetError("mantaMsg",e.what()); return 0; } } static const Pb::Register _RP_mantaMsg ("","mantaMsg",_W_0); 
+
 void FluidSolver::printMemInfo() {
 	std::ostringstream msg;
 	msg << "Allocated grids: int " << mGridsInt.used  <<"/"<< mGridsInt.grids.size()  <<", ";
@@ -139,11 +148,11 @@ std::string printBuildInfo() {
 	string infoString = buildInfoString();
 	debMsg( "Build info: "<<infoString.c_str()<<" ",1);
 	return infoString;
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "printBuildInfo" ); PyObject *_retval = 0; { ArgLocker _lock;   _retval = toPy(printBuildInfo());  _args.check(); } pbFinalizePlugin(parent,"printBuildInfo" ); return _retval; } catch(std::exception& e) { pbSetError("printBuildInfo",e.what()); return 0; } } static const Pb::Register _RP_printBuildInfo ("","printBuildInfo",_W_0); 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "printBuildInfo" ); PyObject *_retval = 0; { ArgLocker _lock;   _retval = toPy(printBuildInfo());  _args.check(); } pbFinalizePlugin(parent,"printBuildInfo" ); return _retval; } catch(std::exception& e) { pbSetError("printBuildInfo",e.what()); return 0; } } static const Pb::Register _RP_printBuildInfo ("","printBuildInfo",_W_1); 
 
 void setDebugLevel(int level=1) {
 	gDebugLevel = level; 
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "setDebugLevel" ); PyObject *_retval = 0; { ArgLocker _lock; int level = _args.getOpt<int >("level",0,1,&_lock);   _retval = getPyNone(); setDebugLevel(level);  _args.check(); } pbFinalizePlugin(parent,"setDebugLevel" ); return _retval; } catch(std::exception& e) { pbSetError("setDebugLevel",e.what()); return 0; } } static const Pb::Register _RP_setDebugLevel ("","setDebugLevel",_W_1); 
+} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "setDebugLevel" ); PyObject *_retval = 0; { ArgLocker _lock; int level = _args.getOpt<int >("level",0,1,&_lock);   _retval = getPyNone(); setDebugLevel(level);  _args.check(); } pbFinalizePlugin(parent,"setDebugLevel" ); return _retval; } catch(std::exception& e) { pbSetError("setDebugLevel",e.what()); return 0; } } static const Pb::Register _RP_setDebugLevel ("","setDebugLevel",_W_2); 
 
 void FluidSolver::adaptTimestep(Real maxVel)
 {
@@ -160,7 +169,7 @@ void FluidSolver::adaptTimestep(Real maxVel)
 			mLockDt = true;
 		}
 	}
-	debMsg( "Frame "<<mFrame<<" current max vel: "<<maxVel<<" , dt: "<<mDt<<", "<<mTimePerFrame<<"/"<<mFrameLength<<" lock:"<<mLockDt , 1);
+	debMsg( "Frame "<<mFrame<<" current max vel: "<<maxVel<<" , dt: "<<mDt<<", "<<mTimePerFrame<<"/"<<mFrameLength<<" lock:"<<mLockDt , 2);
 	mAdaptDt = true;
 
 	// sanity check
