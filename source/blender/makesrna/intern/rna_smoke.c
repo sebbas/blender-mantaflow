@@ -630,27 +630,20 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	
 	prop = RNA_def_property(srna, "manta_filepath", PROP_STRING, PROP_FILEPATH);
 	RNA_def_property_string_sdna(prop, NULL, "_manta_filepath");
-	RNA_def_property_ui_text(prop, "Output Path", "Directory to save Mantaflow scene script");
+	RNA_def_property_ui_text(prop, "Output Path", "Directory/name to save Mantaflow scene script");
 //	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_manta_write_settings");
-	
-	prop = RNA_def_property(srna, "manta_uvs", PROP_INT, PROP_NONE);
-	RNA_def_property_int_sdna(prop, NULL, "manta_uvs_num");
-	RNA_def_property_range(prop, 0, 4);
-	RNA_def_property_ui_range(prop, 0, 4, 1, -1);
-	RNA_def_property_ui_text(prop, "UVs number", "Number of UV coordinate grids to use (Better not more than 2)");
-	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "noise_pos_scale", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "noise_pos_scale");
 	RNA_def_property_range(prop, 0.0, 2.0);
-	RNA_def_property_ui_range(prop, 0.0, 1.0, 1.0, 5);
+	RNA_def_property_ui_range(prop, 0.0, 2.0, 1, 2);
 	RNA_def_property_ui_text(prop, "Scale", "Scale of noise");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 	
 	prop = RNA_def_property(srna, "noise_time_anim", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "noise_time_anim");
 	RNA_def_property_range(prop, 0.0, 2.0);
-	RNA_def_property_ui_range(prop, 0.0, 1.0, 1.0, 5);
+	RNA_def_property_ui_range(prop, 0.0, 2.0, 1, 2);
 	RNA_def_property_ui_text(prop, "Time", "Animation time of noise");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 }

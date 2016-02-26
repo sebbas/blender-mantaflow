@@ -68,17 +68,6 @@ forces = s.create(MACGrid)\n\
 inflow_grid = s.create(LevelsetGrid)\n\
 fuel_inflow = s.create(LevelsetGrid)\n";
 
-const string noise_low = "\n\
-# noise field low\n\
-noise = s.create(NoiseField, loadFromFile=True)\n\
-noise.posScale = vec3(45)\n\
-noise.clamp = $USE_NOISE_CLAMP$\n\
-noise.clampNeg = $NOISE_CN$\n\
-noise.clampPos = $NOISE_CP$\n\
-noise.valScale = $NOISE_VALSCALE$\n\
-noise.valOffset = $NOISE_VALOFFSET$\n\
-noise.timeAnim = $NOISE_TIMEANIM$\n";
-
 const string prep_domain_low = "\n\
 # prepare domain low\n\
 flags.initDomain(boundaryWidth=boundaryWidth)\n\
@@ -112,17 +101,6 @@ xl_y_vel = s.create(RealGrid)\n\
 xl_z_vel = s.create(RealGrid)\n\
 xl_density = xl.create(RealGrid)\n\
 xl_weight  = xl.create(RealGrid)\n";
-
-const string noise_high = "\n\
-# noise field high\n\
-xl_noise = xl.create(NoiseField, fixedSeed=256, loadFromFile=True)\n\
-xl_noise.posScale = vec3(20)\n\
-xl_noise.clamp = $USE_NOISE_CLAMP$\n\
-xl_noise.clampNeg = $NOISE_CN$\n\
-xl_noise.clampPos = $NOISE_CP$\n\
-xl_noise.valScale = $NOISE_VALSCALE$\n\
-xl_noise.valOffset = $NOISE_VALOFFSET$\n\
-xl_noise.timeAnim = $NOISE_TIMEANIM$ * upres\n";
 
 const string prep_domain_high = "\n\
 # prepare domain high\n\

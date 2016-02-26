@@ -1259,7 +1259,6 @@ WTURBULENCE::WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int no
 	std::string setup_script =
 		solver_setup_high +
 		alloc_base_grids_high +
-		//noise_high +
 		prep_domain_high +
 		flags +
 		wavelet_turbulence_noise +
