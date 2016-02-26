@@ -261,6 +261,8 @@ class PHYSICS_PT_smoke_highres(PhysicButtonsPanel, Panel):
         col.label(text="Noise Method:")
         col.row().prop(md, "noise_type", text="")
         col.prop(md, "strength")
+        col.prop(md, "noise_pos_scale")
+        col.prop(md, "noise_time_anim")
 
         layout.prop(md, "show_high_resolution")
 
@@ -416,58 +418,26 @@ class OBJECT_OT_RunMantaButton(bpy.types.Operator):
         #bpy.ops.manta.sim_step()
         return{'FINISHED'}
 
-#class OBJECT_OT_StopMantaButton(bpy.types.Operator):
-#    bl_idname = "manta_stop_sim.button"
-#    bl_label = "Stop Mantaflow Simulation"
-#    def execute(self, context):
-#        domain = context.smoke.domain_settings
-#        #setting manta_sim_frame to "stop" value 
-#        domain.manta_sim_frame = -1
-#        return{'FINISHED'}
-
-
 class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
-    bl_label = "MantaFlow Settings"
+    bl_label = "Mantaflow Settings"
     bl_options = {'DEFAULT_CLOSED'}
-    name = bpy.props.StringProperty(name="Test Prop", default="Unknown")
-    StringProp = bpy.props.StringProperty(name="manta_status", description="Status Of Simulation", default="Doing Nothing" )
-#    filepath = StringProperty(subtype='FILE_PATH',)
+
     @classmethod
     def poll(cls, context):
         md = context.smoke
         return md and (md.smoke_type == 'DOMAIN')
-    
-    def draw_header(self, context):
-        md = context.smoke.domain_settings
         
     def draw(self, context):
         layout = self.layout
         
         domain = context.smoke.domain_settings
         split = layout.split()
-        split.prop(domain, "use_manta_liquid", text="Liquid")
         split.operator("manta_export_scene.button", text="Export Mantaflow Script")
         split = layout.split()
         split.prop(domain, "manta_filepath")
         split = layout.split()
         col = split.column()
         col.prop(domain, "manta_solver_res", text="Solver Resolution")
-        col.prop(domain, "manta_uvs", text="UVs count")
-        split = layout.split()
-        col = split.column()
-        col.label("Wavelet Noise")
-        col.active = domain.use_high_resolution
-        col.prop(domain, "noise_clamp", text="Clamp")
-        sub = col.column()
-        sub.active = domain.noise_clamp
-        sub.prop(domain, "noise_clamp_neg", text="Clamp Neg")
-        sub.prop(domain, "noise_clamp_pos", text="Clamp Pos")
-        col = split.column()
-        col.active = domain.use_high_resolution
-        col.label("")
-        col.prop(domain, "noise_val_scale", text="Scale")
-        col.prop(domain, "noise_val_offset", text="Offset")
-        col.prop(domain, "noise_time_anim", text="Time Anim")
 
 if __name__ == "__main__":  # only for live edit.
     bpy.utils.register_module(__name__)

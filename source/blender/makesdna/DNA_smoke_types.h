@@ -163,19 +163,12 @@ typedef struct SmokeDomainSettings {
 	float flame_smoke_color[3];
 	/* mantaflow settings */
 	int manta_solver_res;	/*dimension of manta solver, 2d or 3d*/
-	int manta_start_frame;
-	int manta_end_frame;
 	int manta_uvs_num;		/*number of UVs, important for octaves count*/
-		/*noise settings*/
-	float noise_clamp_neg;
-	float noise_clamp_pos;
-	float noise_val_scale;
-	float noise_val_offset;
+	/*noise settings*/
+	float noise_pos_scale;
 	float noise_time_anim;
-	int noise_clamp;
-	//int manta_sim_frame;/*current simulation frame number. If not simulating-> manta_sim_frame == -1*/
-	float mock_var;	/*not used*/
-//	float mock_var2;	/*not used*/
+	//float mock_var;	/*not used*/
+	//float mock_var2;	/*not used*/
 } SmokeDomainSettings;
 
 /* inflow / outflow */

@@ -630,92 +630,29 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	
 	prop = RNA_def_property(srna, "manta_filepath", PROP_STRING, PROP_FILEPATH);
 	RNA_def_property_string_sdna(prop, NULL, "_manta_filepath");
-	RNA_def_property_ui_text(prop, "Output Path",
-	                         "Directory/name to save Mantaflow scene for further simulations");
+	RNA_def_property_ui_text(prop, "Output Path", "Directory to save Mantaflow scene script");
 //	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_manta_write_settings");
-	
-	// Currently not used
-//	prop = RNA_def_property(srna, "use_manta_liquid", PROP_BOOLEAN, PROP_NONE);
-//	RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_SMOKE_MANTA_USE_LIQUID);
-//	RNA_def_property_ui_text(prop, "MantaFlow Liquid", "Use Mantaflow liquid");
-//	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
-	
-	// Currently not used
-//	prop = RNA_def_property(srna, "manta_solver_res", PROP_INT, PROP_NONE);
-//	RNA_def_property_int_sdna(prop, NULL, "manta_solver_res");
-//	RNA_def_property_range(prop, 2, 3);
-//	RNA_def_property_ui_range(prop, 2, 3, 1, -1);
-//	RNA_def_property_ui_text(prop, "Solver Res", "Solver resolution(2D/3D)");
-//	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_manta_switch2D");
-
-//	prop = RNA_def_property(srna, "manta_sim_frame", PROP_INT, PROP_NONE);
-//	RNA_def_property_int_sdna(prop, NULL, "manta_sim_frame");
-//	RNA_def_property_range(prop, -1, 250);
-//	RNA_def_property_ui_range(prop, -1, 250, 1, -1);
-//	RNA_def_property_ui_text(prop, "Current Simulation Frame", "-1, if not simulating");
-	
-	prop = RNA_def_property(srna, "manta_start_frame", PROP_INT, PROP_NONE);
-	RNA_def_property_int_sdna(prop, NULL, "manta_start_frame");
-	RNA_def_property_range(prop, 0, 249);
-	RNA_def_property_ui_range(prop, 0, 249, 1, -1);
-	RNA_def_property_ui_text(prop, "Sim Start", "Frame from which to start simulation");
-//	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
-	
-	prop = RNA_def_property(srna, "manta_end_frame", PROP_INT, PROP_NONE);
-	RNA_def_property_int_sdna(prop, NULL, "manta_end_frame");
-	RNA_def_property_range(prop, 1, 250);
-	RNA_def_property_ui_range(prop, 1, 250, 1, -1);
-	RNA_def_property_ui_text(prop, "Sim End", "Frame on which to end simulation");
-//	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 	
 	prop = RNA_def_property(srna, "manta_uvs", PROP_INT, PROP_NONE);
 	RNA_def_property_int_sdna(prop, NULL, "manta_uvs_num");
 	RNA_def_property_range(prop, 0, 4);
 	RNA_def_property_ui_range(prop, 0, 4, 1, -1);
 	RNA_def_property_ui_text(prop, "UVs number", "Number of UV coordinate grids to use (Better not more than 2)");
-	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
-	
-	prop = RNA_def_property(srna, "noise_clamp", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_SMOKE_NOISE_CLAMP);
-	RNA_def_property_ui_text(prop, "Clamp Noise", "");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
-	
-	prop = RNA_def_property(srna, "noise_clamp_neg", PROP_FLOAT, PROP_NONE);
-	RNA_def_property_float_sdna(prop, NULL, "noise_clamp_neg");
+
+	prop = RNA_def_property(srna, "noise_pos_scale", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_float_sdna(prop, NULL, "noise_pos_scale");
 	RNA_def_property_range(prop, 0.0, 2.0);
 	RNA_def_property_ui_range(prop, 0.0, 1.0, 1.0, 5);
-	RNA_def_property_ui_text(prop, "Clamp Negative Noise", "");
-	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
-	
-	prop = RNA_def_property(srna, "noise_clamp_pos", PROP_FLOAT, PROP_NONE);
-	RNA_def_property_float_sdna(prop, NULL, "noise_clamp_pos");
-	RNA_def_property_range(prop, 0.0, 2.0);
-	RNA_def_property_ui_range(prop, 0.0, 1.0, 1.0, 5);
-	RNA_def_property_ui_text(prop, "Clamp Positive Noise", "");
-	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
-	
-	prop = RNA_def_property(srna, "noise_val_scale", PROP_FLOAT, PROP_NONE);
-	RNA_def_property_float_sdna(prop, NULL, "noise_val_scale");
-	RNA_def_property_range(prop, 0.0, 2.0);
-	RNA_def_property_ui_range(prop, 0.0, 1.0, 1.0, 5);
-	RNA_def_property_ui_text(prop, "Noise Value Scale", "");
-	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
-	
-	prop = RNA_def_property(srna, "noise_val_offset", PROP_FLOAT, PROP_NONE);
-	RNA_def_property_float_sdna(prop, NULL, "noise_val_offset");
-	RNA_def_property_range(prop, 0.0, 2.0);
-	RNA_def_property_ui_range(prop, 0.0, 1.0, 1.0, 5);
-	RNA_def_property_ui_text(prop, "Noise Value Offset", "");
+	RNA_def_property_ui_text(prop, "Scale", "Scale of noise");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 	
 	prop = RNA_def_property(srna, "noise_time_anim", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "noise_time_anim");
 	RNA_def_property_range(prop, 0.0, 2.0);
 	RNA_def_property_ui_range(prop, 0.0, 1.0, 1.0, 5);
-	RNA_def_property_ui_text(prop, "Noise animation time", "");
+	RNA_def_property_ui_text(prop, "Time", "Animation time of noise");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
-
-
 }
 
 static void rna_def_smoke_flow_settings(BlenderRNA *brna)

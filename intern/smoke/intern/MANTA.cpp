@@ -47,6 +47,8 @@ std::string Manta_API::get_real_value( const std::string& varName, SmokeModifier
 		else { 		ss << smd->domain->fluid->_zRes;}
 	else if (varName == "SOLVER_DIM")
 		ss <<  smd->domain->manta_solver_res;
+	else if (varName == "NOISE_POSSCALE")
+		ss << smd->domain->noise_pos_scale;
 	else if (varName == "NOISE_TIMEANIM")
 		ss << smd->domain->noise_time_anim;
 	else if (varName == "HRESX")
