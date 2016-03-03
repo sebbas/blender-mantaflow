@@ -38,8 +38,6 @@ gs = vec3($RESX$,$RESY$,$RESZ$)\n\
 if dim == 2:\n\
   gs.z = 1\n\
 s = FluidSolver(name='main', gridSize=gs, dim=dim)\n\
-# old timestep -> not used when adaptTimestep is used\n\
-#s.timestep = $TIMESTEP$\n\
 dt_default = 0.1\n\
 dt_factor = $DT_FACTOR$\n\
 fps = $FPS$\n\
@@ -361,7 +359,7 @@ def step_low():\n\
   \n\
   if using_heat:\n\
     mantaMsg('Adding heat buoyancy')\n\
-    gravity=vec3(0,0,-0.3125) if dim==3 else vec3(0,-0.0981,0)\n\
+    gravity=vec3(0,0,-1) if dim==3 else vec3(0,-0.0981,0)\n\
     addBuoyancy2(flags=flags, grid=density, vel=vel, gravity=gravity, coefficient=$ALPHA$)\n\
     addBuoyancy2(flags=flags, grid=heat, vel=vel, gravity=gravity, coefficient=$BETA$)\n\
   else:\n\

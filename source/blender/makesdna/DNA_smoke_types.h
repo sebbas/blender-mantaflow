@@ -163,7 +163,6 @@ typedef struct SmokeDomainSettings {
 	float flame_smoke_color[3];
 	/* mantaflow settings */
 	int manta_solver_res;	/*dimension of manta solver, 2d or 3d*/
-	int manta_uvs_num;		/*number of UVs, important for octaves count*/
 	/*noise settings*/
 	float noise_pos_scale;
 	float noise_time_anim;
