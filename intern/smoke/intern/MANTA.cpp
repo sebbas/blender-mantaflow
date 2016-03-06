@@ -29,9 +29,7 @@ std::string Manta_API::get_real_value( const std::string& varName, SmokeModifier
 	ostringstream ss;
 	bool is2D = smd->domain->fluid->manta_resoution == 2;
 	ModifierData *md = ((ModifierData*) smd);
-	if (varName == "UVS_CNT")
-		ss << smd->domain->manta_uvs_num ;
-	else if (varName == "UPRES")
+	if (varName == "UPRES")
 		ss << smd->domain->amplify;
 	else if (varName == "WLT_STR")
 		ss << smd->domain->strength ;

@@ -360,8 +360,8 @@ def step_low():\n\
   if using_heat:\n\
     mantaMsg('Adding heat buoyancy')\n\
     gravity=vec3(0,0,-1) if dim==3 else vec3(0,-0.0981,0)\n\
-    addBuoyancy2(flags=flags, grid=density, vel=vel, gravity=gravity, coefficient=$ALPHA$)\n\
-    addBuoyancy2(flags=flags, grid=heat, vel=vel, gravity=gravity, coefficient=$BETA$)\n\
+    addBuoyancy(flags=flags, density=density, vel=vel, gravity=gravity, coefficient=$ALPHA$*(-1))\n\
+    addBuoyancy(flags=flags, density=heat, vel=vel, gravity=gravity, coefficient=$BETA$*(-1))\n\
   else:\n\
     mantaMsg('Adding buoyancy')\n\
     gravity=vec3(0,0,-0.01 * $ALPHA$) if dim==3 else vec3(0,-0.01* $ALPHA$,0)\n\
