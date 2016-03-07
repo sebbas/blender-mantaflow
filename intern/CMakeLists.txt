@@ -82,3 +82,7 @@ endif()
 if(WIN32)
 	add_subdirectory(utfconv)
 endif()
+
+if(WITH_MOD_MANTA)
+	add_subdirectory(mantaflow)
+endif()

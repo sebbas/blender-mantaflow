@@ -50,6 +50,7 @@ set(INC
 	../../../intern/smoke/extern
 	../../../intern/atomic
 	../../../extern/libmv
+	../../../intern/mantaflow/extern
 
 	# XXX - BAD LEVEL CALL WM_api.h
 	../windowmanager

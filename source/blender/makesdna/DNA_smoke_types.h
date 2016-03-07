@@ -91,6 +91,7 @@ typedef struct SmokeSolvers{
 typedef struct SmokeDomainSettings {
 	struct SmokeModifierData *smd; /* for fast RNA access */
 	struct FLUID_3D *fluid;
+	struct MANTA *manta;
 	void *fluid_mutex;
 	struct Group *fluid_group;
 	struct Group *eff_group; // UNUSED
@@ -161,13 +162,14 @@ typedef struct SmokeDomainSettings {
 	float burning_rate, flame_smoke, flame_vorticity;
 	float flame_ignition, flame_max_temp;
 	float flame_smoke_color[3];
+	
 	/* mantaflow settings */
 	int manta_solver_res;	/*dimension of manta solver, 2d or 3d*/
-	/*noise settings*/
+	
+	/* noise settings */
 	float noise_pos_scale;
 	float noise_time_anim;
-	//float mock_var;	/*not used*/
-	//float mock_var2;	/*not used*/
+//	float padding;	/* not used */
 } SmokeDomainSettings;
 
 /* inflow / outflow */

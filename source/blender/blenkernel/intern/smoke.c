@@ -90,6 +90,7 @@
 /* #define USE_SMOKE_COLLISION_DM */
 
 #include "smoke_API.h"
+#include "manta_smoke_API.h"
 
 #ifdef WITH_SMOKE
 
@@ -195,9 +196,6 @@ void smoke_reallocate_fluid(SmokeDomainSettings *sds, float dx, int res[3], int 
 	smoke_initBlenderRNA(sds->fluid, &(sds->alpha), &(sds->beta), &(sds->time_scale), &(sds->vorticity), &(sds->border_collisions),
 	                     &(sds->burning_rate), &(sds->flame_smoke), sds->flame_smoke_color, &(sds->flame_vorticity), &(sds->flame_ignition), &(sds->flame_max_temp));
 
-	/*initializing mantaflow fields only if low-res sim
-	 if wavelets present, init in smoke_reallocate_highres_fluid
-	 */
 	/* reallocate shadow buffer */
 	if (sds->shadow)
 		MEM_freeN(sds->shadow);
@@ -582,6 +580,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->effector_weights = BKE_add_effector_weights(NULL);
 			
 			/*mantaflow settings*/
+			smd->domain->manta = NULL;
 			smd->domain->manta_solver_res = 3;
 			smd->domain->noise_pos_scale = 0.5f;
 			smd->domain->noise_time_anim = 0.1f;
