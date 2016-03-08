@@ -436,8 +436,6 @@ class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
         split = layout.split()
         split.prop(domain, "manta_filepath")
         split = layout.split()
-        col = split.column()
-        col.prop(domain, "manta_solver_res", text="Solver Resolution")
 
 if __name__ == "__main__":  # only for live edit.
     bpy.utils.register_module(__name__)
