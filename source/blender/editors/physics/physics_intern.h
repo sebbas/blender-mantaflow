@@ -93,8 +93,7 @@ void BOID_OT_state_move_down(struct wmOperatorType *ot);
 /* physics_fluid.c */
 void FLUID_OT_bake(struct wmOperatorType *ot);
 void MANTA_OT_make_file(struct wmOperatorType *ot);
-//void MANTA_OT_sim_step(struct wmOperatorType *ot);
-//void MANTA_OT_stop_sim(struct wmOperatorType *ot);
+
 /* dynamicpaint.c */
 void DPAINT_OT_bake(struct wmOperatorType *ot);
 void DPAINT_OT_surface_slot_add(struct wmOperatorType *ot);

@@ -178,15 +178,12 @@ static void operatortypes_fluid(void)
 	WM_operatortype_append(FLUID_OT_bake);
 }
 
-/********************************* manta ***********************************/
+/********************************* mantaflow ***********************************/
 
 static void operatortypes_manta(void)
 {
 	WM_operatortype_append(MANTA_OT_make_file);
-//	WM_operatortype_append(MANTA_OT_sim_step);
-//	WM_operatortype_append(MANTA_OT_stop_sim);
 }
-
 
 /**************************** point cache **********************************/
 
