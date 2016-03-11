@@ -2585,35 +2585,10 @@ endif()
 
 #-----------------------------------------------------------------------------
 # Configure mantaflow.
+
 if(WITH_MOD_MANTA)
 	add_definitions(-DWITH_MANTA)
 endif()
-
-#if(WITH_MOD_MANTA)
-#	message("including manta")
-#	include(ExternalProject)
-#	set(QT_QMAKE_EXECUTABLE /usr/bin/qmake-4.8)
-#	#set(BULLET_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/extern/bullet2/src")
-#	ExternalProject_Add(
-# 	MantaFlow
-#   	CVS_MODULE CMake
-##  	CVS_TAG -r CMake-2-6-4
-#   	#CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:
-#    #   PATH=<INSTALL_DIR>
-#	#CMAKE_ARGS  -DGUI=OFF
-#	#			-DPREPDEBUG=ON
-# 	UPDATE_COMMAND ""
-#   	DOWNLOAD_COMMAND ""
-#   	INSTALL_COMMAND ""
-#  	SOURCE_DIR ${CMAKE_SOURCE_DIR}/source/blender/python/manta_pp
-#)
-#ExternalProject_Add_Step(MantaFlow forceconfigure
-#            COMMAND ${CMAKE_COMMAND} -E echo "Force configure of MantaFlow"
-#            DEPENDEES update
-#            DEPENDERS configure
-#            ALWAYS 0)
-##set_target_properties(MantaFlow PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-#endif()
 
 #-----------------------------------------------------------------------------
 # Extra compile flags
