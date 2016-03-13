@@ -91,6 +91,7 @@ z_vel = s.create(RealGrid)\n\
 density = s.create(LevelsetGrid)\n\
 pressure = s.create(RealGrid)\n\
 energy = s.create(RealGrid)\n\
+tempFlag  = s.create(FlagGrid)\n\
 forces = s.create(MACGrid)\n\
 inflow_grid = s.create(LevelsetGrid)\n\
 fuel_inflow = s.create(LevelsetGrid)\n";
@@ -131,8 +132,7 @@ xl_vel = xl.create(MACGrid)\n\
 xl_x_vel = s.create(RealGrid)\n\
 xl_y_vel = s.create(RealGrid)\n\
 xl_z_vel = s.create(RealGrid)\n\
-xl_density = xl.create(RealGrid)\n\
-xl_weight  = xl.create(RealGrid)\n";
+xl_density = xl.create(RealGrid)\n";
 
 const string prep_domain_high = "\n\
 # prepare domain high\n\
@@ -143,12 +143,9 @@ if doOpen:\n\
 
 const string wavelet_turbulence_noise = "\n\
 # wavelet turbulence noise field\n\
-xl_wltnoise = s.create(NoiseField, loadFromFile=True)\n\
+xl_wltnoise = NoiseField(parent=xl, loadFromFile=True)\n\
 xl_wltnoise.posScale = vec3(int(1.0*gs.x)) / $NOISE_POSSCALE$\n\
-xl_wltnoise.timeAnim = $NOISE_TIMEANIM$\n\
-if(upres>0):\n\
-  xl_wltnoise.posScale = xl_wltnoise.posScale * (1./upres)\n\
-  xl_wltnoise.timeAnim = xl_wltnoise.timeAnim * upres\n";
+xl_wltnoise.timeAnim = $NOISE_TIMEANIM$\n";
 
 //////////////////////////////////////////////////////////////////////
 // ADDITIONAL GRIDS
@@ -422,6 +419,10 @@ def step_low():\n\
   mantaMsg('Energy')\n\
   computeEnergy(flags=flags, vel=vel, energy=energy)\n\
   \n\
+  tempFlag.copyFrom(flags)\n\
+  extrapolateSimpleFlags( flags=flags, val=tempFlag, distance=2, flagFrom=FlagObstacle, flagTo=FlagFluid )\n\
+  extrapolateSimpleFlags( flags=tempFlag, val=energy, distance=6, flagFrom=FlagFluid, flagTo=FlagObstacle )\n\
+  computeWaveletCoeffs(energy)\n\
   # TODO: mantaMsg('Forcefield')\n\
   # TODO: addForceField(flags=flags, vel=vel, force=forces)\n\
   # TODO: forces.clear()\n\
@@ -451,7 +452,7 @@ def step_high():\n\
   sStr = 1.0 * wltStrength\n\
   sPos = 2.0\n\
   \n\
-  mantaMsg('Octaves')\n\
+  mantaMsg('Applying noise vec')\n\
   for o in range(octaves):\n\
     for i in range(uvs):\n\
       uvWeight = getUvWeight(uv[i])\n\
