@@ -243,7 +243,7 @@ for step in range(1000):\n\
       update_flame_high()\n";
 
 //////////////////////////////////////////////////////////////////////
-// DESCTRUCTION
+// DESTRUCTION
 //////////////////////////////////////////////////////////////////////
 
 const string del_colors_low = "\n\
@@ -276,16 +276,6 @@ if 'heat' in globals() : del heat\n";
 
 const string del_base_grids_low = "\n\
 mantaMsg('Deleting base grids low')\n\
-if 'res' in globals() : del res\n\
-if 'dim' in globals() : del dim\n\
-if 'gs' in globals() : del gs\n\
-if 'doOpen' in globals() : del doOpen\n\
-if 'boundConditions' in globals() : del boundConditions\n\
-if 's' in globals() : del s\n\
-if 'timings' in globals() : del timings\n\
-if 'using_colors' in globals() : del using_colors\n\
-if 'using_heat' in globals() : del using_heat\n\
-if 'using_fire' in globals() : del using_fire\n\
 if 'flags' in globals() : del flags\n\
 if 'uvs' in globals() : del uvs\n\
 if 'vel' in globals() : del vel\n\
@@ -295,27 +285,51 @@ if 'z_vel' in globals() : del z_vel\n\
 if 'density' in globals() : del density\n\
 if 'pressure' in globals() : del pressure\n\
 if 'energy' in globals() : del energy\n\
+if 'tempFlag' in globals() : del tempFlag\n\
 if 'forces' in globals() : del forces\n\
 if 'inflow_grid' in globals() : del inflow_grid\n\
-if 'fuel_inflow' in globals() : del fuel_inflow\n\
-if 'noise' in globals() : del noise\n";
+if 'fuel_inflow' in globals() : del fuel_inflow\n";
 
 const string del_base_grids_high = "\n\
 mantaMsg('Deleting base grids high')\n\
-if 'upres' in globals() : del upres\n\
-if 'xl_gs' in globals() : del xl_gs\n\
-if 'xl' in globals() : del xl\n\
-if 'wltStrength' in globals() : del wltStrength\n\
-if 'octaves' in globals() : del octaves\n\
 if 'xl_flags' in globals() : del xl_flags\n\
 if 'xl_vel' in globals() : del xl_vel\n\
 if 'xl_x_vel' in globals() : del xl_x_vel\n\
 if 'xl_y_vel' in globals() : del xl_y_vel\n\
 if 'xl_z_vel' in globals() : del xl_z_vel\n\
 if 'xl_density' in globals() : del xl_density\n\
-if 'xl_weight' in globals() : del xl_weight\n\
-if 'xl_noise' in globals() : del xl_noise\n\
 if 'xl_wltnoise' in globals() : del xl_wltnoise\n";
+
+const string del_vars_low = "\n\
+mantaMsg('Deleting variables low')\n\
+if 'res' in globals() : del res\n\
+if 'dim' in globals() : del dim\n\
+if 'gs' in globals() : del gs\n\
+if 'doOpen' in globals() : del doOpen\n\
+if 'boundConditions' in globals() : del boundConditions\n\
+if 'dt_default' in globals() : del dt_default\n\
+if 'dt_factor' in globals() : del dt_factor\n\
+if 'fps' in globals() : del fps\n\
+if 'dt0' in globals() : del dt0\n\
+if 'vorticity' in globals() : del vorticity\n\
+if 'boundaryWidth' in globals() : del boundaryWidth\n\
+if 's' in globals() : del s\n\
+if 'timings' in globals() : del timings\n\
+if 'using_colors' in globals() : del using_colors\n\
+if 'using_heat' in globals() : del using_heat\n\
+if 'using_fire' in globals() : del using_fire\n\
+if 'last_frame' in globals() : del last_frame\n\
+if 'maxvel' in globals() : del maxvel\n\
+if 'gravity' in globals() : del gravity\n\
+if 'uv' in globals() : del uv\n";
+
+const string del_vars_high = "\n\
+mantaMsg('Deleting variables high')\n\
+if 'upres' in globals() : del upres\n\
+if 'xl_gs' in globals() : del xl_gs\n\
+if 'xl' in globals() : del xl\n\
+if 'wltStrength' in globals() : del wltStrength\n\
+if 'octaves' in globals() : del octaves\n";
 
 //////////////////////////////////////////////////////////////////////
 // MANTA STEP
