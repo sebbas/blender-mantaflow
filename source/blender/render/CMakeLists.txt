@@ -38,6 +38,7 @@ set(INC
 	../../../intern/guardedalloc
 	../../../intern/mikktspace
 	../../../intern/smoke/extern
+	../../../intern/mantaflow/extern
 )
 
 set(INC_SYS

@@ -340,6 +340,7 @@ blender_include_dirs(
 	../../../../intern/atomic
 	../../../../intern/memutil
 	../../../../intern/smoke/extern
+	../../../../intern/mantaflow/extern
 )
 
 blender_include_dirs_sys(
