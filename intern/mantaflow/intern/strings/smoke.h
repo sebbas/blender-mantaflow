@@ -150,6 +150,12 @@ xl_wltnoise.timeAnim = $NOISE_TIMEANIM$\n";
 // ADDITIONAL GRIDS
 //////////////////////////////////////////////////////////////////////
 
+const string set_color_codes = "\n\
+mantaMsg('Setting color codes')\n\
+manta_color_r = $COLOR_R$\n\
+manta_color_g = $COLOR_G$\n\
+manta_color_b = $COLOR_B$\n";
+
 const string alloc_colors_low = "\n\
 mantaMsg('Allocating colors low')\n\
 color_r = s.create(RealGrid)\n\
@@ -220,23 +226,8 @@ import_grids_low()\n\
 if using_wavelets:\n\
   import_grids_high()\n\
 \n\
-for step in range(1000):\n\
-  apply_inflow()\n\
-  \n\
-  mantaMsg('Low step '+ str(step))\n\
-  if using_fire:\n\
-    process_burn_low()\n\
-  step_low()\n\
-  if using_fire:\n\
-    update_flame_low()\n\
-  \n\
-  if using_wavelets:\n\
-    mantaMsg('High step '+ str(step))\n\
-    if using_fire:\n\
-      process_burn_high()\n\
-    step_high()\n\
-    if using_fire:\n\
-      update_flame_high()\n";
+# All low and high res steps\n\
+manta_step()\n";
 
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION
@@ -402,8 +393,8 @@ def step_low():\n\
   if using_heat:\n\
     mantaMsg('Adding heat buoyancy')\n\
     gravity=vec3(0,0,-1) if dim==3 else vec3(0,-0.0981,0)\n\
-    addBuoyancy(flags=flags, density=density, vel=vel, gravity=gravity, coefficient=$ALPHA$*(-1))\n\
-    addBuoyancy(flags=flags, density=heat, vel=vel, gravity=gravity, coefficient=$BETA$*(-1))\n\
+    addBuoyancy(flags=flags, density=density, vel=vel, gravity=gravity, coefficient=$ALPHA$)\n\
+    addBuoyancy(flags=flags, density=heat, vel=vel, gravity=gravity, coefficient=$BETA$)\n\
   else:\n\
     mantaMsg('Adding buoyancy')\n\
     gravity=vec3(0,0,-0.01 * $ALPHA$) if dim==3 else vec3(0,-0.01* $ALPHA$,0)\n\
@@ -426,8 +417,6 @@ def step_low():\n\
   # TODO: addForceField(flags=flags, vel=vel, force=forces)\n\
   # TODO: forces.clear()\n\
   copyMacToReal(source=vel, targetX=x_vel, targetY=y_vel, targetZ=z_vel)\n\
-  # --> removing solver step for now from here \n\
-  # s.step()\n\
 \n\
 def process_burn_low():\n\
   mantaMsg('Process burn low')\n\
@@ -473,9 +462,6 @@ def step_high():\n\
     \n\
     mantaMsg('Advecting density high')\n\
     advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
-  \n\
-  # --> removing solver step for now from here\n\
-  # xl.step()\n\
 \n\
 def process_burn_high():\n\
   mantaMsg('Process burn high')\n\
