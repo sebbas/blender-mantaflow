@@ -42,7 +42,6 @@ const string flags = "\n\
 using_colors = $USING_COLORS$\n\
 using_heat = $USING_HEAT$\n\
 using_fire = $USING_FIRE$\n\
-low_flags_updated = False\n\
 using_wavelets = $USE_WAVELETS$\n";
 
 const string uv_setup = "\n\
@@ -488,40 +487,6 @@ def process_burn_high():\n\
 def update_flame_high():\n\
   mantaMsg('Update flame high')\n\
   updateFlame(react=xl_react, flame=xl_flame)\n";
-
-//////////////////////////////////////////////////////////////////////
-// STEP FUNCTIONS LIQUID
-//////////////////////////////////////////////////////////////////////
-
-const string liquid_step_low = "\n\
-def sim_step_low(t):\n\
-#update flags from density on first step\n\
-  setWallBcs(flags=flags, vel=vel)\n\
-  density.multConst(-1.)\n\
-  mantaMsg(using_colors)\n\
-  global low_flags_updated\n\
-  if not low_flags_updated:\n\
-    mantaMsg('Updating Flags from Levelset on startup!')\n\
-    flags.updateFromLevelset(density)\n\
-  low_flags_updated = True \n\
-  setWallBcs(flags=flags, vel=vel)\n\
-  density.reinitMarching(flags=flags, velTransport=vel)\n\
-  advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)\n\
-  flags.updateFromLevelset(density)\n\
-  \n\
-  advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)\n\
-  addGravity(flags=flags, vel=vel, gravity=vec3(0,0,-0.981))\n\
-  \n\
-  # mantaMsg current maximal velocity\n\
-  maxvel = vel.getMaxValue()\n\
-  mantaMsg('Current max velocity %f ' % maxvel)\n\
-  \n\
-  # pressure solve\n\
-  setWallBcs(flags=flags, vel=vel)\n\
-  solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, useResNorm=True) \n\
-  setWallBcs(flags=flags, vel=vel)\n\
-  s.step()\n\
-  density.multConst(-1.)\n";
 
 //////////////////////////////////////////////////////////////////////
 // EXPORT GRIDS
