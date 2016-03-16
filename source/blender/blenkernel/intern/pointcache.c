@@ -80,7 +80,11 @@
 
 /* both in intern */
 #ifdef WITH_SMOKE
-#include "smoke_API.h"
+#ifndef WITH_MANTA
+	#include "smoke_API.h"
+#else
+	#include "manta_smoke_API.h"
+#endif
 #endif
 
 #ifdef WITH_LZO
@@ -638,7 +642,11 @@ static int  ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 		ret = 1;
 	}
 
+#ifndef WITH_MANTA
 	if (sds->wt) {
+#else
+	if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) {
+#endif
 		int res_big_array[3];
 		int res_big;
 		int res = sds->res[0]*sds->res[1]*sds->res[2];
@@ -648,7 +656,11 @@ static int  ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 		unsigned char *out;
 		int mode;
 
+#ifndef WITH_MANTA
 		smoke_turbulence_get_res(sds->wt, res_big_array);
+#else
+		smoke_turbulence_get_res(sds->fluid, res_big_array);
+#endif
 		res_big = res_big_array[0]*res_big_array[1]*res_big_array[2];
 		//mode =  res_big >= 1000000 ? 2 : 1;
 		mode = 1;	// light
@@ -656,7 +668,11 @@ static int  ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 
 		in_len_big = sizeof(float) * (unsigned int)res_big;
 
+#ifndef WITH_MANTA
 		smoke_turbulence_export(sds->wt, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw);
+#else
+		smoke_turbulence_export(sds->fluid, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw);
+#endif
 
 		out = (unsigned char *)MEM_callocN(LZO_OUT_LEN(in_len_big), "pointcache_lzo_buffer");
 		ptcache_file_compressed_write(pf, (unsigned char *)dens, in_len_big, out, mode);
@@ -732,18 +748,30 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 
 		MEM_freeN(tmp_array);
 
+#ifndef WITH_MANTA
 		if (pf->data_types & (1<<BPHYS_DATA_SMOKE_HIGH) && sds->wt) {
+#else
+		if (pf->data_types & (1<<BPHYS_DATA_SMOKE_HIGH) && sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) {
+#endif
 			int res_big, res_big_array[3];
 			float *tcu, *tcv, *tcw;
 			unsigned int out_len_big;
 			unsigned char *tmp_array_big;
+#ifndef WITH_MANTA
 			smoke_turbulence_get_res(sds->wt, res_big_array);
+#else
+			smoke_turbulence_get_res(sds->fluid, res_big_array);
+#endif
 			res_big = res_big_array[0]*res_big_array[1]*res_big_array[2];
 			out_len_big = sizeof(float) * (unsigned int)res_big;
 
 			tmp_array_big = MEM_callocN(out_len_big, "Smoke old cache tmp");
 
+#ifndef WITH_MANTA
 			smoke_turbulence_export(sds->wt, &dens, NULL, NULL, NULL, NULL, NULL, NULL, &tcu, &tcv, &tcw);
+#else
+			smoke_turbulence_export(sds->fluid, &dens, NULL, NULL, NULL, NULL, NULL, NULL, &tcu, &tcv, &tcw);
+#endif
 
 			ptcache_file_compressed_read(pf, (unsigned char*)dens, out_len_big);
 			ptcache_file_compressed_read(pf, (unsigned char*)tmp_array_big, out_len_big);
@@ -854,19 +882,30 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 		ptcache_file_read(pf, &sds->active_color, 3, sizeof(float));
 	}
 
+#ifndef WITH_MANTA
 	if (pf->data_types & (1<<BPHYS_DATA_SMOKE_HIGH) && sds->wt) {
+#else
+	if (pf->data_types & (1<<BPHYS_DATA_SMOKE_HIGH) && sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) {
+#endif
 			int res = sds->res[0]*sds->res[1]*sds->res[2];
 			int res_big, res_big_array[3];
 			float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *r, *g, *b;
 			unsigned int out_len = sizeof(float)*(unsigned int)res;
 			unsigned int out_len_big;
 
+#ifndef WITH_MANTA
 			smoke_turbulence_get_res(sds->wt, res_big_array);
+#else
+			smoke_turbulence_get_res(sds->fluid, res_big_array);
+#endif
 			res_big = res_big_array[0]*res_big_array[1]*res_big_array[2];
 			out_len_big = sizeof(float) * (unsigned int)res_big;
 
+#ifndef WITH_MANTA
 			smoke_turbulence_export(sds->wt, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw);
-
+#else
+			smoke_turbulence_export(sds->fluid, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw);
+#endif
 			ptcache_file_compressed_read(pf, (unsigned char *)dens, out_len_big);
 			if (cache_fields & SM_ACTIVE_FIRE) {
 				ptcache_file_compressed_read(pf, (unsigned char *)flame, out_len_big);
@@ -1258,8 +1297,13 @@ void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct SmokeMo
 
 	if (sds->fluid)
 		pid->data_types |= (1<<BPHYS_DATA_SMOKE_LOW);
+#ifndef WITH_MANTA
 	if (sds->wt)
 		pid->data_types |= (1<<BPHYS_DATA_SMOKE_HIGH);
+#else
+	if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES)
+		pid->data_types |= (1<<BPHYS_DATA_SMOKE_HIGH);
+#endif
 
 	pid->default_step = 1;
 	pid->max_step = 1;

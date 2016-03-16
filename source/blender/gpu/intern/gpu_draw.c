@@ -85,7 +85,11 @@
 
 #include "PIL_time.h"
 
-#include "smoke_API.h"
+#ifndef WITH_MANTA
+	#include "smoke_API.h"
+#else
+	#include "manta_smoke_API.h"
+#endif
 
 #ifdef WITH_OPENSUBDIV
 #  include "DNA_mesh_types.h"
@@ -1246,6 +1250,7 @@ void GPU_create_smoke(SmokeModifierData *smd, int highres)
 			sds->tex_flame = (smoke_has_fuel(sds->fluid)) ? GPU_texture_create_3D(sds->res[0], sds->res[1], sds->res[2], 1, smoke_get_flame(sds->fluid)) : NULL;
 		}
 		else if (!sds->tex && highres) {
+#ifndef WITH_MANTA
 			/* rgba texture for color + density */
 			if (smoke_turbulence_has_colors(sds->wt)) {
 				float *data = MEM_callocN(sizeof(float) * smoke_turbulence_get_cells(sds->wt) * 4, "smokeColorTexture");
@@ -1259,6 +1264,21 @@ void GPU_create_smoke(SmokeModifierData *smd, int highres)
 			}
 			sds->tex_flame = (smoke_turbulence_has_fuel(sds->wt)) ? GPU_texture_create_3D(sds->res_wt[0], sds->res_wt[1], sds->res_wt[2], 1, smoke_turbulence_get_flame(sds->wt)) : NULL;
 		}
+#else
+			/* rgba texture for color + density */
+			if (smoke_turbulence_has_colors(sds->fluid)) {
+				float *data = MEM_callocN(sizeof(float) * smoke_turbulence_get_cells(sds->fluid) * 4, "smokeColorTexture");
+				smoke_turbulence_get_rgba(sds->fluid, data, 0);
+				sds->tex = GPU_texture_create_3D(sds->res_wt[0], sds->res_wt[1], sds->res_wt[2], 4, data);
+				MEM_freeN(data);
+			}
+			/* density only */
+			else {
+				sds->tex = GPU_texture_create_3D(sds->res_wt[0], sds->res_wt[1], sds->res_wt[2], 1, smoke_turbulence_get_density(sds->fluid));
+			}
+			sds->tex_flame = (smoke_turbulence_has_fuel(sds->fluid)) ? GPU_texture_create_3D(sds->res_wt[0], sds->res_wt[1], sds->res_wt[2], 1, smoke_turbulence_get_flame(sds->fluid)) : NULL;
+		}
+#endif
 
 		sds->tex_shadow = GPU_texture_create_3D(sds->res[0], sds->res[1], sds->res[2], 1, sds->shadow);
 	}

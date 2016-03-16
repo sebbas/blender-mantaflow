@@ -7957,13 +7957,23 @@ void draw_object(Scene *scene, ARegion *ar, View3D *v3d, Base *base, const short
 				p1[1] = (sds->p0[1] + sds->cell_size[1] * sds->res_max[1] + sds->obj_shift_f[1]) * fabsf(ob->size[1]);
 				p1[2] = (sds->p0[2] + sds->cell_size[2] * sds->res_max[2] + sds->obj_shift_f[2]) * fabsf(ob->size[2]);
 
+
+
+#ifndef WITH_MANTA
 				if (!sds->wt || !(sds->viewsettings & MOD_SMOKE_VIEW_SHOWBIG)) {
+#else
+				if (!(sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) || !(sds->viewsettings & MOD_SMOKE_VIEW_SHOWBIG)) {
+#endif
 					sds->tex = NULL;
 					GPU_create_smoke(smd, 0);
 					draw_smoke_volume(sds, ob, p0, p1, viewnormal);
 					GPU_free_smoke(smd);
 				}
+#ifndef WITH_MANTA
 				else if (sds->wt && (sds->viewsettings & MOD_SMOKE_VIEW_SHOWBIG)) {
+#else
+				else if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES && sds->viewsettings & MOD_SMOKE_VIEW_SHOWBIG) {
+#endif
 					sds->tex = NULL;
 					GPU_create_smoke(smd, 1);
 					draw_smoke_volume(sds, ob, p0, p1, viewnormal);

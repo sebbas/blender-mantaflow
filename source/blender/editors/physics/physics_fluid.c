@@ -67,8 +67,11 @@
 
 /* enable/disable overall compilation */
 /*mantaflow include*/
-#include "../../../../intern/smoke/extern/smoke_API.h"
-//#include "../../blenkernel/intern/smoke.c"
+#ifndef WITH_MANTA
+	#include "../../../../intern/smoke/extern/smoke_API.h"
+#else
+	#include "../../../../intern/mantaflow/extern/manta_smoke_API.h"
+#endif
 #include "DNA_smoke_types.h"
 
 #ifdef WITH_MOD_FLUID
@@ -1132,15 +1135,12 @@ void FLUID_OT_bake(wmOperatorType *ot)
 	ot->poll = ED_operator_object_active_editable;
 }
 
-
-
 static int manta_make_file_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
 	Scene *scene= CTX_data_scene(C);
 	SmokeModifierData *smd;
 	Object * smokeDomain = CTX_data_active_object(C);
 	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
-	/*	return OPERATOR_CANCELLED;*/
 	
 	return OPERATOR_FINISHED;
 }
@@ -1153,22 +1153,13 @@ static int manta_make_file_exec(bContext *C, wmOperator *op)
 	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
 	
 	if (smd->domain->fluid == NULL)
-	{
 		smoke_reallocate_fluid(smd->domain, smd->domain->dx, smd->domain->res, 1);
-		if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
-			smoke_reallocate_highres_fluid(smd->domain, smd->domain->dx, smd->domain->res, 1);
-		}
-	}
+
 	if (smd->domain->fluid)
-	{
 		smoke_manta_export(smd);
-	}
-	
-	/*	return OPERATOR_CANCELLED;*/
 	
 	return OPERATOR_FINISHED;
 }
-
 
 void MANTA_OT_make_file(wmOperatorType *ot)
 {
@@ -1182,79 +1173,3 @@ void MANTA_OT_make_file(wmOperatorType *ot)
 	ot->exec = manta_make_file_exec;
 	ot->poll = ED_operator_object_active_editable;
 }
-
-//static int manta_sim_step_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
-//{
-//	Scene *scene= CTX_data_scene(C);
-//	SmokeModifierData *smd;
-//	Object * smokeDomain = CTX_data_active_object(C);
-//	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
-//	/*	return OPERATOR_CANCELLED;*/
-//	
-//	return OPERATOR_FINISHED;
-//}
-//
-//static int manta_sim_step_exec(bContext *C, wmOperator *op)
-//{
-//	Scene *scene= CTX_data_scene(C);
-//	SmokeModifierData *smd;
-//	Object * smokeDomain = CTX_data_active_object(C);
-//	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
-//	
-//	/*	return OPERATOR_CANCELLED;*/
-//	
-//	return OPERATOR_FINISHED;
-//}
-//
-//
-//void MANTA_OT_sim_step(wmOperatorType *ot)
-//{
-//	/* identifiers */
-//	ot->name = "Run Mantaflow Step";
-//	ot->description = "Run One Step of Mantaflow Simulation";
-//	ot->idname = "MANTA_OT_sim_step";
-//	
-//	/* api callbacks */
-//	ot->invoke = manta_sim_step_invoke;
-//	ot->exec = manta_sim_step_exec;
-//	ot->poll = ED_operator_object_active_editable;
-//}
-//
-//static int manta_stop_sim_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
-//{
-////	Scene *scene= CTX_data_scene(C);
-//	SmokeModifierData *smd;
-//	Object * smokeDomain = CTX_data_active_object(C);
-//	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
-//	smoke_mantaflow_stop_sim(smd->domain->fluid);
-//	/*	return OPERATOR_CANCELLED;*/
-//	
-//	return OPERATOR_FINISHED;
-//}
-//
-//static int manta_stop_sim_exec(bContext *C, wmOperator *op)
-//{
-////	Scene *scene= CTX_data_scene(C);
-//	SmokeModifierData *smd;
-//	Object * smokeDomain = CTX_data_active_object(C);
-//	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
-//	smoke_mantaflow_stop_sim(smd->domain->fluid);
-//	
-//	/*	return OPERATOR_CANCELLED;*/
-//	
-//	return OPERATOR_FINISHED;
-//}
-//
-//
-//void MANTA_OT_stop_sim(wmOperatorType *ot)
-//{
-//	/* identifiers */
-//	ot->name = "Stop Mantaflow Sim";
-//	ot->description = "Stop Mantaflow Sim";
-//	ot->idname = "MANTA_OT_stop_sim";
-//	
-//	/* api callbacks */
-//	ot->invoke = manta_stop_sim_invoke;
-//	ot->exec = manta_stop_sim_exec;
-//	ot->poll = ED_operator_object_active_editable;
-//}

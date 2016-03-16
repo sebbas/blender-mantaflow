@@ -53,8 +53,11 @@
 #include "BKE_depsgraph.h"
 #include "BKE_particle.h"
 
-#include "smoke_API.h"
-
+#ifndef WITH_MANTA
+	#include "smoke_API.h"
+#else
+	#include "manta_smoke_API.h"
+#endif
 
 static void rna_Smoke_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
 {
@@ -134,14 +137,26 @@ static int rna_SmokeModifier_grid_get_length(PointerRNA *ptr, int length[RNA_MAX
 	float *density = NULL;
 	int size = 0;
 
+#ifndef WITH_MANTA
 	if (sds->flags & MOD_SMOKE_HIGHRES && sds->wt) {
+#else
+	if (sds->flags & MOD_SMOKE_HIGHRES && sds->fluid) {
+#endif
 		/* high resolution smoke */
 		int res[3];
 
+#ifndef WITH_MANTA
 		smoke_turbulence_get_res(sds->wt, res);
+#else
+		smoke_turbulence_get_res(sds->fluid, res);
+#endif
 		size = res[0] * res[1] * res[2];
 
+#ifndef WITH_MANTA
 		density = smoke_turbulence_get_density(sds->wt);
+#else
+		density = smoke_turbulence_get_density(sds->fluid);
+#endif
 	}
 	else if (sds->fluid) {
 		/* regular resolution */
@@ -200,8 +215,13 @@ static void rna_SmokeModifier_density_grid_get(PointerRNA *ptr, float *values)
 
 	BLI_rw_mutex_lock(sds->fluid_mutex, THREAD_LOCK_READ);
 	
+#ifndef WITH_MANTA
 	if (sds->flags & MOD_SMOKE_HIGHRES && sds->wt)
 		density = smoke_turbulence_get_density(sds->wt);
+#else
+	if (sds->flags & MOD_SMOKE_HIGHRES && sds->fluid)
+		density = smoke_turbulence_get_density(sds->fluid);
+#endif
 	else
 		density = smoke_get_density(sds->fluid);
 
@@ -248,10 +268,17 @@ static void rna_SmokeModifier_color_grid_get(PointerRNA *ptr, float *values)
 	BLI_rw_mutex_lock(sds->fluid_mutex, THREAD_LOCK_READ);
 
 	if (sds->flags & MOD_SMOKE_HIGHRES) {
+#ifndef WITH_MANTA
 		if (smoke_turbulence_has_colors(sds->wt))
 			smoke_turbulence_get_rgba(sds->wt, values, 0);
 		else
 			smoke_turbulence_get_rgba_from_density(sds->wt, sds->active_color, values, 0);
+#else
+		if (smoke_turbulence_has_colors(sds->fluid))
+			smoke_turbulence_get_rgba(sds->fluid, values, 0);
+		else
+			smoke_turbulence_get_rgba_from_density(sds->fluid, sds->active_color, values, 0);
+#endif
 	}
 	else {
 		if (smoke_has_colors(sds->fluid))
@@ -275,9 +302,14 @@ static void rna_SmokeModifier_flame_grid_get(PointerRNA *ptr, float *values)
 	float *flame;
 
 	BLI_rw_mutex_lock(sds->fluid_mutex, THREAD_LOCK_READ);
-	
+
+#ifndef WITH_MANTA
 	if (sds->flags & MOD_SMOKE_HIGHRES && sds->wt)
 		flame = smoke_turbulence_get_flame(sds->wt);
+#else
+	if (sds->flags & MOD_SMOKE_HIGHRES && sds->fluid)
+		flame = smoke_turbulence_get_flame(sds->fluid);
+#endif
 	else
 		flame = smoke_get_flame(sds->fluid);
 	

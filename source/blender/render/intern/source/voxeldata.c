@@ -57,7 +57,11 @@
 #include "BKE_main.h"
 #include "BKE_modifier.h"
 
-#include "smoke_API.h"
+#ifndef WITH_MANTA
+	#include "smoke_API.h"
+#else
+	#include "manta_smoke_API.h"
+#endif
 #include "BPH_mass_spring.h"
 
 #include "DNA_texture_types.h"
@@ -296,12 +300,21 @@ static void init_frame_smoke(VoxelData *vd, int cfra)
 				float *flame;
 
 				if (sds->flags & MOD_SMOKE_HIGHRES) {
+#ifndef WITH_MANTA
 					if (!smoke_turbulence_has_fuel(sds->wt)) {
 						BLI_rw_mutex_unlock(sds->fluid_mutex);
 						return;
 					}
 					smoke_turbulence_get_res(sds->wt, vd->resol);
 					flame = smoke_turbulence_get_flame(sds->wt);
+#else
+					if (!smoke_turbulence_has_fuel(sds->fluid)) {
+						BLI_rw_mutex_unlock(sds->fluid_mutex);
+						return;
+					}
+					smoke_turbulence_get_res(sds->fluid, vd->resol);
+					flame = smoke_turbulence_get_flame(sds->fluid);
+#endif
 				}
 				else {
 					if (!smoke_has_fuel(sds->fluid)) {
@@ -324,7 +337,11 @@ static void init_frame_smoke(VoxelData *vd, int cfra)
 
 				/* data resolution */
 				if (sds->flags & MOD_SMOKE_HIGHRES) {
+#ifndef WITH_MANTA
 					smoke_turbulence_get_res(sds->wt, vd->resol);
+#else
+					smoke_turbulence_get_res(sds->fluid, vd->resol);
+#endif
 				}
 				else {
 					copy_v3_v3_int(vd->resol, sds->res);
@@ -336,12 +353,21 @@ static void init_frame_smoke(VoxelData *vd, int cfra)
 				vd->dataset = MEM_mapallocN(sizeof(float) * totCells, "smoke data");
 
 				if (sds->flags & MOD_SMOKE_HIGHRES) {
+#ifndef WITH_MANTA
 					if (smoke_turbulence_has_colors(sds->wt)) {
 						smoke_turbulence_get_rgba(sds->wt, vd->dataset, 1);
 					}
 					else {
 						smoke_turbulence_get_rgba_from_density(sds->wt, sds->active_color, vd->dataset, 1);
 					}
+#else
+					if (smoke_turbulence_has_colors(sds->fluid)) {
+						smoke_turbulence_get_rgba(sds->fluid, vd->dataset, 1);
+					}
+					else {
+						smoke_turbulence_get_rgba_from_density(sds->fluid, sds->active_color, vd->dataset, 1);
+					}
+#endif
 				}
 				else {
 					if (smoke_has_colors(sds->fluid)) {
