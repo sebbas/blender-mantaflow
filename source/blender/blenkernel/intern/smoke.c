@@ -580,11 +580,10 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->effector_weights = BKE_add_effector_weights(NULL);
 			
 			/*mantaflow settings*/
-			smd->domain->manta = NULL;
 			smd->domain->manta_solver_res = 3;
 			smd->domain->noise_pos_scale = 0.5f;
 			smd->domain->noise_time_anim = 0.1f;
-			BLI_make_file_string("/", smd->domain->_manta_filepath, BKE_tempdir_base(), "manta_scene.py");
+			BLI_make_file_string("/", smd->domain->manta_filepath, BKE_tempdir_base(), "manta_scene.py");
 		}
 		else if (smd->type & MOD_SMOKE_TYPE_FLOW)
 		{
@@ -877,7 +876,6 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 
 	unsigned int collIndex;
 	unsigned char *obstacles = smoke_get_obstacle(sds->fluid);
-	int *manta_obstacles = smoke_get_manta_flags(sds->fluid);
 	float *velx = NULL;
 	float *vely = NULL;
 	float *velz = NULL;
@@ -927,25 +925,20 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 
 	if (collobjs)
 		MEM_freeN(collobjs);
-	
-	float *manta_obs_sdf = MEM_callocN(sds->res[0] * sds->res[1] * sds->res[2] * sizeof(float), "manta_obstacle_SDF");
+
 	/* obstacle cells should not contain any velocity from the smoke simulation */
-	int loopLimit = (sds->manta_solver_res == 3)?sds->res[0] * sds->res[1] * sds->res[2]:sds->res[0] * sds->res[2]; 
-	for (z = 0; z < loopLimit; z++)
+	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
 	{
-		manta_obs_sdf[z] = 0.;
 		if (obstacles[z])
 		{
-			manta_obs_sdf[z] = 1.;
-			manta_obstacles[z] = 2;/*manta obstacle flag*/
-//			velxOrig[z] = 0;
-//			velyOrig[z] = 0;
-//			velzOrig[z] = 0;
+			velxOrig[z] = 0;
+			velyOrig[z] = 0;
+			velzOrig[z] = 0;
 			density[z] = 0;
-//			if (fuel) {
-//				fuel[z] = 0;
-//				flame[z] = 0;
-//			}
+			if (fuel) {
+				fuel[z] = 0;
+				flame[z] = 0;
+			}
 			if (r) {
 				r[z] = 0;
 				g[z] = 0;
@@ -953,9 +946,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 			}
 		}
 	}
-	MEM_freeN(manta_obs_sdf);
 }
-
 
 /**********************************************************
  *	Object subframe update method from dynamicpaint.c
@@ -2306,11 +2297,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 
 				int ii, jj, kk, gx, gy, gz, ex, ey, ez, dx, dy, dz, block_size;
 				size_t e_index, d_index, index_big;
-				float *manta_big_inflow_sdf;
-				if ((sds->flags & MOD_SMOKE_USE_MANTA) && (bigdensity)){
-					smoke_turbulence_get_res(sds->wt, bigres);				
-					manta_big_inflow_sdf = MEM_callocN(bigres[0] * bigres[1] * bigres[2] * sizeof(float), "manta_highres_inflow");
-				}
+
 				// loop through every emission map cell
 				for (gx = em->min[0]; gx < em->max[0]; gx++)
 					for (gy = em->min[1]; gy < em->max[1]; gy++)
@@ -2331,15 +2318,12 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 							if (dx < 0 || dy < 0 || dz < 0 || dx >= sds->res[0] || dy >= sds->res[1] || dz >= sds->res[2]) continue;
 
 							if (sfs->type == MOD_SMOKE_FLOW_TYPE_OUTFLOW) { // outflow
-								apply_outflow_fields(d_index, inflow_grid, heat, fuel, react, color_r, color_g, color_b);
 								apply_outflow_fields(d_index, density, heat, fuel, react, color_r, color_g, color_b);
 							}
 							else { // inflow
 								apply_inflow_fields(sfs, emission_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b);
-								if((sds->flags & MOD_SMOKE_USE_MANTA) && (sds->manta_solver_res == 3)) {
-									apply_inflow_fields(sfs, emission_map[e_index], d_index, inflow_grid, heat, fuel_inflow, react, color_r, color_g, color_b);
-								}
-																/* initial velocity */
+
+								/* initial velocity */
 								if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY) {
 									velocity_x[d_index] = ADD_IF_LOWER(velocity_x[d_index], velocity_map[e_index * 3]);
 									velocity_y[d_index] = ADD_IF_LOWER(velocity_y[d_index], velocity_map[e_index * 3 + 1]);
@@ -2426,31 +2410,11 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 											}
 											else { // inflow
 												apply_inflow_fields(sfs, interpolated_value, index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b);
-												if(sds->flags & MOD_SMOKE_USE_MANTA) {
-													manta_big_inflow_sdf[index_big] = interpolated_value;
-												}
 											}
 										} // hires loop
 							}  // bigdensity
 						} // low res loop
 
-				if((sds->flags & MOD_SMOKE_USE_MANTA)) { /*2D solver*/
-					int cnty;
-					int cntz;
-					int step;
-					for ( cnty=0;cnty<sds->res_max[1]; ++cnty)
-						for( cntz=0;cntz<sds->res_max[2]; ++cntz)
-						{
-							step = sds->res_max[0]/2 + cnty * sds->res_max[0] + cntz * sds->res_max[0]*sds->res_max[1]; 
-							inflow_grid[cnty + cntz*sds->res_max[0]] = density[step];
-						}
-				}
-
-				if((sds->flags & MOD_SMOKE_USE_MANTA) && (bigdensity)){
-//					manta_write_emitters(sfs,true,0,0,0,bigres[0], bigres[1], bigres[2], bigres[0], bigres[1], bigres[2],manta_big_inflow_sdf, NULL);
-					MEM_freeN(manta_big_inflow_sdf);
-				}
-				
 				// free emission maps
 				em_freeData(em);
 
@@ -2530,74 +2494,6 @@ static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 		}
 	}
 
-	pdEndEffectors(&effectors);
-}
-
-void manta_update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds, float UNUSED(dt))
-{
-	ListBase *effectors;
-	/* make sure smoke flow influence is 0.0f */
-	sds->effector_weights->weight[PFIELD_SMOKEFLOW] = 0.0f;
-	effectors = pdInitEffectors(scene, ob, NULL, sds->effector_weights, true);
-	
-	if (effectors)
-	{
-		float *density = smoke_get_density(sds->fluid);
-		float *fuel = smoke_get_fuel(sds->fluid);
-		float *force_x = smoke_get_force_x(sds->fluid);
-		float *force_y = smoke_get_force_y(sds->fluid);
-		float *force_z = smoke_get_force_z(sds->fluid);
-		float *velocity_x = smoke_get_velocity_x(sds->fluid);
-		float *velocity_y = smoke_get_velocity_y(sds->fluid);
-		float *velocity_z = smoke_get_velocity_z(sds->fluid);
-		unsigned char *obstacle = smoke_get_obstacle(sds->fluid);
-		int x;
-		
-		// precalculate wind forces
-#pragma omp parallel for schedule(static)
-		for (x = 0; x < sds->res[0]; x++)
-		{
-			int y, z;
-			for (y = 0; y < sds->res[1]; y++)
-				for (z = 0; z < sds->res[2]; z++)
-				{
-					EffectedPoint epoint;
-					float mag;
-					float voxelCenter[3] = {0, 0, 0}, vel[3] = {0, 0, 0}, retvel[3] = {0, 0, 0};
-					unsigned int index = smoke_get_index(x, sds->res[0], y, sds->res[1], z);
-					
-					vel[0] = velocity_x[index];
-					vel[1] = velocity_y[index];
-					vel[2] = velocity_z[index];
-					
-					/* convert vel to global space */
-					mag = len_v3(vel);
-					mul_mat3_m4_v3(sds->obmat, vel);
-					normalize_v3(vel);
-					mul_v3_fl(vel, mag);
-					
-					voxelCenter[0] = sds->p0[0] + sds->cell_size[0] * ((float)(x + sds->res_min[0]) + 0.5f);
-					voxelCenter[1] = sds->p0[1] + sds->cell_size[1] * ((float)(y + sds->res_min[1]) + 0.5f);
-					voxelCenter[2] = sds->p0[2] + sds->cell_size[2] * ((float)(z + sds->res_min[2]) + 0.5f);
-					mul_m4_v3(sds->obmat, voxelCenter);
-					
-					pd_point_from_loc(scene, voxelCenter, vel, index, &epoint);
-					pdDoEffectors(effectors, NULL, sds->effector_weights, &epoint, retvel, NULL);
-					
-					/* convert retvel to local space */
-					mag = len_v3(retvel);
-					mul_mat3_m4_v3(sds->imat, retvel);
-					normalize_v3(retvel);
-					mul_v3_fl(retvel, mag);
-					
-					// TODO dg - do in force!
-					force_x[index] = min_ff(max_ff(-1.0f, retvel[0] * 0.2f), 1.0f);
-					force_y[index] = min_ff(max_ff(-1.0f, retvel[1] * 0.2f), 1.0f);
-					force_z[index] = min_ff(max_ff(-1.0f, retvel[2] * 0.2f), 1.0f);
-				}
-		}
-	}
-	
 	pdEndEffectors(&effectors);
 }
 
