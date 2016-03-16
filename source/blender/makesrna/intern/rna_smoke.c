@@ -97,26 +97,6 @@ static void rna_Smoke_reset_dependency(Main *bmain, Scene *scene, PointerRNA *pt
 	rna_Smoke_dependency_update(bmain, scene, ptr);
 }
 
-static void rna_Smoke_manta_write_settings(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
-	rna_Smoke_reset(bmain,scene,ptr);
-}
-
-static void rna_Smoke_manta_switch2D(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
-	if (settings->manta_solver_res == 2)
-	{
-		settings->base_res[1] = 1;
-	}
-	else if(settings->manta_solver_res == 3)
-	{
-		settings->base_res[1] = 5;
-	}
-	rna_Smoke_reset(bmain,scene,ptr);
-}
-
 static char *rna_SmokeDomainSettings_path(PointerRNA *ptr)
 {
 	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
@@ -623,15 +603,9 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 	
 	/* mantaflow variables */
-	prop = RNA_def_property(srna, "use_manta", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_SMOKE_USE_MANTA);
-	RNA_def_property_ui_text(prop, "MantaFlow", "Use Mantaflow");
-	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_manta_write_settings");
-	
 	prop = RNA_def_property(srna, "manta_filepath", PROP_STRING, PROP_FILEPATH);
-	RNA_def_property_string_sdna(prop, NULL, "_manta_filepath");
+	RNA_def_property_string_sdna(prop, NULL, "manta_filepath");
 	RNA_def_property_ui_text(prop, "Output Path", "Directory/name to save Mantaflow scene script");
-//	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_manta_write_settings");
 
 	prop = RNA_def_property(srna, "noise_pos_scale", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "noise_pos_scale");
