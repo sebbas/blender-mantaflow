@@ -38,6 +38,7 @@ set(INC
 	../../../../intern/cycles/blender
 	../../../../intern/opencolorio
 	../../../../intern/guardedalloc
+	../../../../intern/mantaflow/extern
 )
 
 set(INC_SYS

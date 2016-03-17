@@ -79,7 +79,7 @@
 #include "../bmesh/bmesh_py_api.h"
 #include "../mathutils/mathutils.h"
 
-#include "../../../../intern/mantaflow/extern/manta_python_api.h"
+#include "manta_python_API.h"
 
 
 /* for internal use, when starting and ending python scripts */
