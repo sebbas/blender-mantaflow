@@ -79,7 +79,7 @@
 #include "../bmesh/bmesh_py_api.h"
 #include "../mathutils/mathutils.h"
 
-#include "../manta_pp/pwrapper/manta_api.h"
+#include "../../../../intern/mantaflow/extern/manta_python_api.h"
 
 
 /* for internal use, when starting and ending python scripts */
@@ -274,7 +274,6 @@ void BPY_python_start(int argc, const char **argv)
 #endif
 
 	Py_FrozenFlag = 1;
-//	PyImport_AppendInittab("manta", PyInit_Manta);
 	Py_Initialize();
 
 	// PySys_SetArgv(argc, argv);  /* broken in py3, not a huge deal */

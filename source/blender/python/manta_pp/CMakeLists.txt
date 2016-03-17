@@ -141,4 +141,4 @@ ${CMAKE_CURRENT_SOURCE_DIR}/util/simpleimage.h
 list(REMOVE_DUPLICATES "SRC")
 list_assert_duplicates("${SRC}")
 
-blender_add_lib(bf_python_manta "${SRC}" "${INC}" "${INC_SYS}")
+#blender_add_lib(bf_python_manta "${SRC}" "${INC}" "${INC_SYS}")

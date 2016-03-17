@@ -130,6 +130,7 @@ endif()
 		bf_intern_itasc
 		bf_intern_iksolver
 		bf_intern_smoke
+		bf_intern_mantaflow
 		bf_modifiers
 		bf_intern_moto 
 		bf_nodes
@@ -143,7 +144,6 @@ endif()
 		bf_intern_guardedalloc 
 		bf_intern_memutil 
 		bf_python_ext
-		bf_python_manta
 		bf_python_mathutils
 		bf_python_bmesh
 		bf_intern_utfconv

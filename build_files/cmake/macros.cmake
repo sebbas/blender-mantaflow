@@ -562,7 +562,6 @@ function(SETUP_BLENDER_SORTED_LIBS)
 		bf_render
 		bf_python
 		bf_python_ext
-#		bf_python_manta # configured separately in source/creator/CMakeLists.txt 
 		bf_python_mathutils
 		bf_python_bmesh
 		bf_freestyle
@@ -596,6 +595,7 @@ function(SETUP_BLENDER_SORTED_LIBS)
 		ge_phys_dummy
 		ge_phys_bullet
 		bf_intern_smoke
+#		bf_intern_mantaflow # configured separately in source/creator/CMakeLists.txt
 		extern_lzma
 		ge_logic_ketsji
 		extern_recastnavigation

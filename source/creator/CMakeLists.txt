@@ -1054,12 +1054,10 @@ setup_blender_sorted_libs()
 
 # -----------------------------------------------------------------------------
 # Mantaflow Force linking
-#PR removed -Wl, -force_load 
-#SET(MANTA_LINK_LIBRARIES -rdynamic -Wl,-force_load bf_python_manta) 
 if(APPLE)
-	SET(MANTA_LINK_LIBRARIES -force_load bf_python_manta ) 
+	SET(MANTA_LINK_LIBRARIES -force_load bf_intern_mantaflow )
 else()
-	SET(MANTA_LINK_LIBRARIES -Wl,--whole-archive bf_python_manta -Wl,--no-whole-archive )
+	SET(MANTA_LINK_LIBRARIES -Wl,--whole-archive bf_intern_mantaflow -Wl,--no-whole-archive )
 endif()
 target_link_libraries(blender ${MANTA_LINK_LIBRARIES})
 
