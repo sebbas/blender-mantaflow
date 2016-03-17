@@ -1,0 +1,12 @@
+#include "noisefield.h"
++WaveletNoiseField^ static const Pb::Register _R_$IDX$ ("WaveletNoiseField","NoiseField","PbClass"); template<> const char* Namify<WaveletNoiseField >::S = "WaveletNoiseField"; 
+>WaveletNoiseField^
++WaveletNoiseField^ static const Pb::Register _R_$IDX$ ("WaveletNoiseField","WaveletNoiseField",WaveletNoiseField::_W_0); 
++WaveletNoiseField^ static const Pb::Register _R_$IDX$ ("WaveletNoiseField","posOffset",WaveletNoiseField::_GET_mPosOffset,WaveletNoiseField::_SET_mPosOffset); 
++WaveletNoiseField^ static const Pb::Register _R_$IDX$ ("WaveletNoiseField","posScale",WaveletNoiseField::_GET_mPosScale,WaveletNoiseField::_SET_mPosScale); 
++WaveletNoiseField^ static const Pb::Register _R_$IDX$ ("WaveletNoiseField","valOffset",WaveletNoiseField::_GET_mValOffset,WaveletNoiseField::_SET_mValOffset); 
++WaveletNoiseField^ static const Pb::Register _R_$IDX$ ("WaveletNoiseField","valScale",WaveletNoiseField::_GET_mValScale,WaveletNoiseField::_SET_mValScale); 
++WaveletNoiseField^ static const Pb::Register _R_$IDX$ ("WaveletNoiseField","clamp",WaveletNoiseField::_GET_mClamp,WaveletNoiseField::_SET_mClamp); 
++WaveletNoiseField^ static const Pb::Register _R_$IDX$ ("WaveletNoiseField","clampNeg",WaveletNoiseField::_GET_mClampNeg,WaveletNoiseField::_SET_mClampNeg); 
++WaveletNoiseField^ static const Pb::Register _R_$IDX$ ("WaveletNoiseField","clampPos",WaveletNoiseField::_GET_mClampPos,WaveletNoiseField::_SET_mClampPos); 
++WaveletNoiseField^ static const Pb::Register _R_$IDX$ ("WaveletNoiseField","timeAnim",WaveletNoiseField::_GET_mTimeAnim,WaveletNoiseField::_SET_mTimeAnim); 
