@@ -299,7 +299,7 @@ void MANTA::startMantaflow()
 	// Initialize extension classes and wrappers
 	srand(0);
 	PyGILState_STATE gilstate = PyGILState_Ensure();
-	Pb::setup(filename, fill);
+	Pb::setup(filename, fill);  // Namespace from Mantaflow (registry)
 	PyGILState_Release(gilstate);
 	mantaInitialized = true;
 }
@@ -498,18 +498,21 @@ void MANTA::exportScript(SmokeModifierData *smd)
 	// Inflow High
 	// TODO
 	
-	// Step low
+	// Step low functions
 	manta_script += smoke_step_low;
 	
-	// Step high
+	// Step high functions
 	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
 		manta_script += smoke_step_high;
 	}
 	
+	// Step wrapper function
+	manta_script += manta_step;
+	
 	// Fill in missing variables in script
 	std::string final_script = MANTA::parseScript(manta_script, smd);
 	
-	// Add standalone mode (for-loop, gui, ...)
+	// Add standalone mode (loop, gui, ...)
 	final_script += standalone;
 	
 	// Write script
