@@ -45,47 +45,47 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 	mCommands.clear();
 
 	// simulation constants
-	mTempAmb			= 0; // TODO: Maybe use this later for buoyancy calculation
-	mResX				= res[0];
-	mResY				= res[1];
-	mResZ				= res[2];
-	int maxRes			= MAX3(mResX, mResY, mResZ);
-	mConstantScaling	= 64.0f / maxRes;
-	mConstantScaling	= (mConstantScaling < 1.0f) ? 1.0f : mConstantScaling;
-	mTotalCells			= mResX * mResY * mResZ;
+	mTempAmb            = 0; // TODO: Maybe use this later for buoyancy calculation
+	mResX               = res[0];
+	mResY               = res[1];
+	mResZ               = res[2];
+	int maxRes          = MAX3(mResX, mResY, mResZ);
+	mConstantScaling    = 64.0f / maxRes;
+	mConstantScaling    = (mConstantScaling < 1.0f) ? 1.0f : mConstantScaling;
+	mTotalCells         = mResX * mResY * mResZ;
 	
 	// low res grids
-	mDensity		= NULL;
-	mHeat			= NULL;
-	mVelocityX		= NULL;
-	mVelocityY		= NULL;
-	mVelocityZ		= NULL;
-	mForceX			= NULL;
-	mForceY			= NULL;
-	mForceZ			= NULL;
-	mFlame			= NULL;
-	mFuel			= NULL;
-	mReact			= NULL;
-	mColorR			= NULL;
-	mColorG			= NULL;
-	mColorB			= NULL;
-	mDensityInflow	= NULL;
-	mFuelInflow		= NULL;
-	mMantaFlags		= NULL;
-	mObVelocityX	= new float[mTotalCells];				// TODO in Mantaflow
-	mObVelocityY	= new float[mTotalCells];				// TODO in Mantaflow
-	mObVelocityZ	= new float[mTotalCells];				// TODO in Mantaflow
-	mObstacles		= new unsigned char[mTotalCells];		// TODO in Mantaflow
-	mObstaclesAnim	= new unsigned char[mTotalCells];		// TODO in Mantaflow
+	mDensity        = NULL;
+	mHeat           = NULL;
+	mVelocityX      = NULL;
+	mVelocityY      = NULL;
+	mVelocityZ      = NULL;
+	mForceX         = NULL;
+	mForceY         = NULL;
+	mForceZ         = NULL;
+	mFlame          = NULL;
+	mFuel           = NULL;
+	mReact          = NULL;
+	mColorR         = NULL;
+	mColorG         = NULL;
+	mColorB         = NULL;
+	mDensityInflow  = NULL;
+	mFuelInflow     = NULL;
+	mMantaFlags     = NULL;
+	mObVelocityX    = new float[mTotalCells];               // TODO in Mantaflow
+	mObVelocityY    = new float[mTotalCells];               // TODO in Mantaflow
+	mObVelocityZ    = new float[mTotalCells];               // TODO in Mantaflow
+	mObstacles      = new unsigned char[mTotalCells];       // TODO in Mantaflow
+	mObstaclesAnim  = new unsigned char[mTotalCells];       // TODO in Mantaflow
 	
 	// high res grids
-	mDensityHigh	= NULL;
-	mFlameHigh		= NULL;
-	mFuelHigh		= NULL;
-	mReactHigh		= NULL;
-	mColorRHigh		= NULL;
-	mColorGHigh		= NULL;
-	mColorBHigh		= NULL;
+	mDensityHigh    = NULL;
+	mFlameHigh      = NULL;
+	mFuelHigh       = NULL;
+	mReactHigh      = NULL;
+	mColorRHigh     = NULL;
+	mColorGHigh     = NULL;
+	mColorBHigh     = NULL;
 	
 	// TODO: Obstacle grid not mantaflow optimized
 	for (int x = 0; x < mTotalCells; x++)
@@ -111,27 +111,27 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 		mCommands.clear();
 
 		// simulation constants
-		int amplify		= smd->domain->amplify + 1;
-		mResXHigh		= amplify * mResX;
-		mResYHigh		= amplify * mResY;
-		mResZHigh		= amplify * mResZ;
+		int amplify     = smd->domain->amplify + 1;
+		mResXHigh       = amplify * mResX;
+		mResYHigh       = amplify * mResY;
+		mResZHigh       = amplify * mResZ;
 		mTotalCellsHigh	= mResXHigh * mResYHigh * mResZHigh;
 		
-		mTextureU = new float[mTotalCells];					// TODO in Mantaflow
-		mTextureV = new float[mTotalCells];					// TODO in Mantaflow
-		mTextureW = new float[mTotalCells];					// TODO in Mantaflow
+		mTextureU = new float[mTotalCells];                 // TODO in Mantaflow
+		mTextureV = new float[mTotalCells];                 // TODO in Mantaflow
+		mTextureW = new float[mTotalCells];                 // TODO in Mantaflow
 		
-		const float dx = 1.0f/(float)(mResX);				// TODO in Mantaflow
-		const float dy = 1.0f/(float)(mResY);				// TODO in Mantaflow
-		const float dz = 1.0f/(float)(mResZ);				// TODO in Mantaflow
-		int index = 0;										// TODO in Mantaflow
-		for (int z = 0; z < mResZ; z++)						// TODO in Mantaflow
-			for (int y = 0; y < mResY; y++)					// TODO in Mantaflow
-				for (int x = 0; x < mResX; x++, index++)	// TODO in Mantaflow
+		const float dx = 1.0f/(float)(mResX);               // TODO in Mantaflow
+		const float dy = 1.0f/(float)(mResY);               // TODO in Mantaflow
+		const float dz = 1.0f/(float)(mResZ);               // TODO in Mantaflow
+		int index = 0;                                      // TODO in Mantaflow
+		for (int z = 0; z < mResZ; z++)                     // TODO in Mantaflow
+			for (int y = 0; y < mResY; y++)                 // TODO in Mantaflow
+				for (int x = 0; x < mResX; x++, index++)    // TODO in Mantaflow
 				{
-					mTextureU[index] = x*dx;				// TODO in Mantaflow
-					mTextureV[index] = y*dy;				// TODO in Mantaflow
-					mTextureW[index] = z*dz;				// TODO in Mantaflow
+					mTextureU[index] = x*dx;                // TODO in Mantaflow
+					mTextureV[index] = y*dy;                // TODO in Mantaflow
+					mTextureW[index] = z*dz;                // TODO in Mantaflow
 				}
 		
 		// Initialize Mantaflow variables in Python
@@ -175,7 +175,6 @@ void MANTA::initSetupHigh(SmokeModifierData *smd)
 		
 	runPythonString(mCommands);
 }
-
 
 void MANTA::initHeat(SmokeModifierData *smd)
 {
@@ -240,7 +239,7 @@ void MANTA::initColorsHigh(SmokeModifierData *smd)
 
 void MANTA::step(SmokeModifierData *smd)
 {
-	// manta_write_effectors(this);							// TODO in Mantaflow
+	// manta_write_effectors(this);                         // TODO in Mantaflow
 
 	mCommands.clear();
 	mCommands.push_back("manta_step()");
@@ -252,32 +251,33 @@ MANTA::~MANTA()
 {
 	std::cout << "~MANTA()" << std::endl;
 
+	// Destruction in Python
 	mCommands.clear();
-
 	mCommands.push_back(del_vars_low);
-	if (mHeat)			mCommands.push_back(del_heat_low);
-	if (mFuel)			mCommands.push_back(del_fire_low);
-	if (mFuelHigh)		mCommands.push_back(del_fire_high);
-	if (mColorR)		mCommands.push_back(del_colors_low);
-	if (mColorRHigh)	mCommands.push_back(del_colors_high);
-	if (mDensity)		mCommands.push_back(del_base_grids_low);
-	if (mDensityHigh)	mCommands.push_back(del_base_grids_high);
-	if (mUsingHighRes)	mCommands.push_back(del_vars_high);
-
+	if (mHeat)          mCommands.push_back(del_heat_low);
+	if (mFuel)          mCommands.push_back(del_fire_low);
+	if (mFuelHigh)      mCommands.push_back(del_fire_high);
+	if (mColorR)        mCommands.push_back(del_colors_low);
+	if (mColorRHigh)    mCommands.push_back(del_colors_high);
+	if (mDensity)       mCommands.push_back(del_base_grids_low);
+	if (mDensityHigh)   mCommands.push_back(del_base_grids_high);
+	if (mUsingHighRes)  mCommands.push_back(del_vars_high);
+	mCommands.push_back(del_solver_low);
 	runPythonString(mCommands);
 	
-	if (mObVelocityX) delete[] mObVelocityX;				// TODO in Mantaflow
-	if (mObVelocityY) delete[] mObVelocityY;				// TODO in Mantaflow
-	if (mObVelocityZ) delete[] mObVelocityZ;				// TODO in Mantaflow
-	if (mObstacles) delete[] mObstacles;					// TODO in Mantaflow
-	if (mObstaclesAnim) delete[] mObstaclesAnim;			// TODO in Mantaflow
+	// TODO
+	// Reset pointers in this to avoid dangling pointers
 	
-	if (mDensityHigh)
-	{
-		if (mTextureU) delete[] mTextureU;					// TODO in Mantaflow
-		if (mTextureV) delete[] mTextureV;					// TODO in Mantaflow
-		if (mTextureW) delete[] mTextureW;					// TODO in Mantaflow
-	}
+	
+	if (mObVelocityX)   delete[] mObVelocityX;              // TODO in Mantaflow
+	if (mObVelocityY)   delete[] mObVelocityY;              // TODO in Mantaflow
+	if (mObVelocityZ)   delete[] mObVelocityZ;              // TODO in Mantaflow
+	if (mObstacles)     delete[] mObstacles;                // TODO in Mantaflow
+	if (mObstaclesAnim) delete[] mObstaclesAnim;            // TODO in Mantaflow
+	
+	if (mTextureU) delete[] mTextureU;                      // TODO in Mantaflow
+	if (mTextureV) delete[] mTextureV;                      // TODO in Mantaflow
+	if (mTextureW) delete[] mTextureW;                      // TODO in Mantaflow
 }
 
 void MANTA::runPythonString(std::vector<std::string> commands)
@@ -409,14 +409,14 @@ std::string MANTA::parseLine(const string& line, SmokeModifierData *smd)
 	const char delimiter = '$';
 	while (currPos < line.size()){
 		if (line[currPos] == delimiter && ! readingVar) {
-			readingVar 	= true;
-			start_del	= currPos + 1;
-			res 		+= line.substr(end_del + 1, currPos - end_del -1);
+			readingVar  = true;
+			start_del   = currPos + 1;
+			res        += line.substr(end_del + 1, currPos - end_del -1);
 		}
 		else if (line[currPos] == delimiter && readingVar){
-			readingVar 	= false;
-			end_del 	= currPos;
-			res 		+= getRealValue(line.substr(start_del, currPos - start_del), smd);
+			readingVar  = false;
+			end_del     = currPos;
+			res        += getRealValue(line.substr(start_del, currPos - start_del), smd);
 		}
 		currPos ++;
 	}
@@ -572,44 +572,44 @@ void* MANTA::pointerFromString(const std::string& s)
 void MANTA::updatePointers(SmokeModifierData *smd)
 {
 	std::cout << "Updating pointers low res" << std::endl;
-	mDensity		= (float*)	pointerFromString( getGridPointer("density",	"s") );
-	mMantaFlags		= (int*)	pointerFromString( getGridPointer("flags",		"s") );
-	mDensityInflow	= (float*)	pointerFromString( getGridPointer("inflow_grid","s") );
-	mFuelInflow		= (float*)	pointerFromString( getGridPointer("fuel_inflow","s") );
+	mDensity        = (float*) pointerFromString( getGridPointer("density",    "s") );
+	mMantaFlags     = (int*)   pointerFromString( getGridPointer("flags",      "s") );
+	mDensityInflow  = (float*) pointerFromString( getGridPointer("inflow_grid","s") );
+	mFuelInflow     = (float*) pointerFromString( getGridPointer("fuel_inflow","s") );
 	
 	if (smd->domain->active_fields & SM_ACTIVE_HEAT) {
-		mHeat		= (float*)	pointerFromString(getGridPointer("heat",		"s") );
+		mHeat      = (float*) pointerFromString(getGridPointer("heat",        "s") );
 	}
 	if (smd->domain->active_fields & SM_ACTIVE_FIRE) {
-		mFlame		= (float*)	pointerFromString( getGridPointer("flame",		"s") );
-		mFuel		= (float*)	pointerFromString( getGridPointer("fuel",		"s") );
-		mReact		= (float*)	pointerFromString( getGridPointer("react",		"s") );
+		mFlame      = (float*) pointerFromString( getGridPointer("flame",      "s") );
+		mFuel       = (float*) pointerFromString( getGridPointer("fuel",       "s") );
+		mReact      = (float*) pointerFromString( getGridPointer("react",      "s") );
 	}
 	if (smd->domain->active_fields & SM_ACTIVE_COLORS) {
-		mColorR		= (float*)	pointerFromString( getGridPointer("color_r",	"s") );
-		mColorG		= (float*)	pointerFromString( getGridPointer("color_g",	"s") );
-		mColorB		= (float*)	pointerFromString( getGridPointer("color_b",	"s") );
+		mColorR     = (float*) pointerFromString( getGridPointer("color_r",    "s") );
+		mColorG     = (float*) pointerFromString( getGridPointer("color_g",    "s") );
+		mColorB     = (float*) pointerFromString( getGridPointer("color_b",    "s") );
 	}
 	
-	mVelocityX		= (float*)	pointerFromString( getGridPointer("x_vel",		"s") );
-	mVelocityY		= (float*)	pointerFromString( getGridPointer("y_vel",		"s") );
-	mVelocityZ		= (float*)	pointerFromString( getGridPointer("z_vel",		"s") );
+	mVelocityX      = (float*) pointerFromString( getGridPointer("x_vel",      "s") );
+	mVelocityY      = (float*) pointerFromString( getGridPointer("y_vel",      "s") );
+	mVelocityZ      = (float*) pointerFromString( getGridPointer("z_vel",      "s") );
 }
 
 void MANTA::updatePointersHigh(SmokeModifierData *smd)
 {
 	std::cout << "Updating pointers high res" << std::endl;
-	mDensityHigh	= (float*)	pointerFromString( getGridPointer("xl_density",	"xl") );;
+	mDensityHigh    = (float*) pointerFromString( getGridPointer("xl_density", "xl") );;
 
 	if (smd->domain->active_fields & SM_ACTIVE_FIRE) {
-		mFlameHigh	= (float*)	pointerFromString( getGridPointer("xl_flame",	"xl") );
-		mFuelHigh	= (float*)	pointerFromString( getGridPointer("xl_fuel",	"xl") );
-		mReactHigh	= (float*)	pointerFromString( getGridPointer("xl_react",	"xl") );
+		mFlameHigh  = (float*) pointerFromString( getGridPointer("xl_flame",   "xl") );
+		mFuelHigh   = (float*) pointerFromString( getGridPointer("xl_fuel",    "xl") );
+		mReactHigh  = (float*) pointerFromString( getGridPointer("xl_react",   "xl") );
 	}
 	if (smd->domain->active_fields & SM_ACTIVE_COLORS) {
-		mColorRHigh	= (float*)	pointerFromString( getGridPointer("xl_color_r", "xl") );
-		mColorGHigh	= (float*)	pointerFromString( getGridPointer("xl_color_g", "xl") );
-		mColorBHigh	= (float*)	pointerFromString( getGridPointer("xl_color_b", "xl") );
+		mColorRHigh = (float*) pointerFromString( getGridPointer("xl_color_r", "xl") );
+		mColorGHigh = (float*) pointerFromString( getGridPointer("xl_color_g", "xl") );
+		mColorBHigh = (float*) pointerFromString( getGridPointer("xl_color_b", "xl") );
 	}
 }
 
