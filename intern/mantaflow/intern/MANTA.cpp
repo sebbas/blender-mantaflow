@@ -105,7 +105,7 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 	
 	updatePointers(smd); // Needs to be after heat, fire, color init
 	
-	if (smd->domain->flags & MOD_SMOKE_HIGHRES)
+	if (mUsingHighRes)
 	{		
 		// Make sure that string vector does not contain any previous commands
 		mCommands.clear();
@@ -124,10 +124,10 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 		const float dx = 1.0f/(float)(mResX);               // TODO in Mantaflow
 		const float dy = 1.0f/(float)(mResY);               // TODO in Mantaflow
 		const float dz = 1.0f/(float)(mResZ);               // TODO in Mantaflow
-		int index = 0;                                      // TODO in Mantaflow
-		for (int z = 0; z < mResZ; z++)                     // TODO in Mantaflow
-			for (int y = 0; y < mResY; y++)                 // TODO in Mantaflow
-				for (int x = 0; x < mResX; x++, index++)    // TODO in Mantaflow
+		int index = 0;
+		for (int z = 0; z < mResZ; z++)
+			for (int y = 0; y < mResY; y++)
+				for (int x = 0; x < mResX; x++, index++)
 				{
 					mTextureU[index] = x*dx;                // TODO in Mantaflow
 					mTextureV[index] = y*dy;                // TODO in Mantaflow
@@ -262,7 +262,6 @@ MANTA::~MANTA()
 	if (mDensity)       mCommands.push_back(del_base_grids_low);
 	if (mDensityHigh)   mCommands.push_back(del_base_grids_high);
 	if (mUsingHighRes)  mCommands.push_back(del_vars_high);
-	mCommands.push_back(del_solver_low);
 	runPythonString(mCommands);
 	
 	// TODO
@@ -275,9 +274,12 @@ MANTA::~MANTA()
 	if (mObstacles)     delete[] mObstacles;                // TODO in Mantaflow
 	if (mObstaclesAnim) delete[] mObstaclesAnim;            // TODO in Mantaflow
 	
-	if (mTextureU) delete[] mTextureU;                      // TODO in Mantaflow
-	if (mTextureV) delete[] mTextureV;                      // TODO in Mantaflow
-	if (mTextureW) delete[] mTextureW;                      // TODO in Mantaflow
+	if (mUsingHighRes)
+	{
+		if (mTextureU) delete[] mTextureU;                  // TODO in Mantaflow
+		if (mTextureV) delete[] mTextureV;                  // TODO in Mantaflow
+		if (mTextureW) delete[] mTextureW;                  // TODO in Mantaflow
+	}
 }
 
 void MANTA::runPythonString(std::vector<std::string> commands)
@@ -542,7 +544,6 @@ string MANTA::getGridPointer(std::string gridName, std::string solverName)
 	if ((gridName == "") && (solverName == "")) {
 		return "";
 	}
-	cout << "getting grid pointer " << gridName<< " , " << solverName <<endl;
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	PyObject *main = PyImport_AddModule("__main__");
 	if (main == NULL){cout << "null" << 1 << endl;return "";}
@@ -599,7 +600,7 @@ void MANTA::updatePointers(SmokeModifierData *smd)
 void MANTA::updatePointersHigh(SmokeModifierData *smd)
 {
 	std::cout << "Updating pointers high res" << std::endl;
-	mDensityHigh    = (float*) pointerFromString( getGridPointer("xl_density", "xl") );;
+	mDensityHigh    = (float*) pointerFromString( getGridPointer("xl_density", "xl") );
 
 	if (smd->domain->active_fields & SM_ACTIVE_FIRE) {
 		mFlameHigh  = (float*) pointerFromString( getGridPointer("xl_flame",   "xl") );
