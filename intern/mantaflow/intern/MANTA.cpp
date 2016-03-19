@@ -44,7 +44,7 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 	// Make sure that string vector does not contain any previous commands
 	mCommands.clear();
 
-	// simulation constants
+	// Simulation constants
 	mTempAmb            = 0; // TODO: Maybe use this later for buoyancy calculation
 	mResX               = res[0];
 	mResY               = res[1];
@@ -54,7 +54,7 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 	mConstantScaling    = (mConstantScaling < 1.0f) ? 1.0f : mConstantScaling;
 	mTotalCells         = mResX * mResY * mResZ;
 	
-	// low res grids
+	// Low res grids
 	mDensity        = NULL;
 	mHeat           = NULL;
 	mVelocityX      = NULL;
@@ -78,7 +78,7 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 	mObstacles      = new unsigned char[mTotalCells];       // TODO in Mantaflow
 	mObstaclesAnim  = new unsigned char[mTotalCells];       // TODO in Mantaflow
 	
-	// high res grids
+	// High res grids
 	mDensityHigh    = NULL;
 	mFlameHigh      = NULL;
 	mFuelHigh       = NULL;
@@ -150,7 +150,6 @@ void MANTA::initSetup(SmokeModifierData *smd)
 	std::string tmpString =
 		manta_import +
 		solver_setup_low +
-		uv_setup +
 		alloc_base_grids_low +
 		prep_domain_low +
 		flags +
@@ -166,6 +165,7 @@ void MANTA::initSetupHigh(SmokeModifierData *smd)
 {
 	std::string tmpString =
 		solver_setup_high +
+		uv_setup +
 		alloc_base_grids_high +
 		prep_domain_high +
 		wavelet_turbulence_noise +
@@ -558,7 +558,7 @@ string MANTA::getGridPointer(std::string gridName, std::string solverName)
 	if (retured_value == NULL){cout << "null" << 15 << endl;return "";}
 	std::string res = PyBytes_AsString(encoded);
 	cout << "Pointer on "<< gridName << " " << res << endl;
-	PyGILState_Release(gilstate);		
+	PyGILState_Release(gilstate);
 	return res;
 }
 
@@ -579,7 +579,7 @@ void MANTA::updatePointers(SmokeModifierData *smd)
 	mFuelInflow     = (float*) pointerFromString( getGridPointer("fuel_inflow","s") );
 	
 	if (smd->domain->active_fields & SM_ACTIVE_HEAT) {
-		mHeat      = (float*) pointerFromString(getGridPointer("heat",        "s") );
+		mHeat       = (float*) pointerFromString(getGridPointer("heat",        "s") );
 	}
 	if (smd->domain->active_fields & SM_ACTIVE_FIRE) {
 		mFlame      = (float*) pointerFromString( getGridPointer("flame",      "s") );

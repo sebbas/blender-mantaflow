@@ -77,8 +77,7 @@ s.cfl = 4.0\n\
 s.timestep = dt0\n\
 timings = Timings()\n\
 vorticity = $VORTICITY$\n\
-boundaryWidth = 1\n\
-uvs = 2\n";
+boundaryWidth = 1\n";
 
 const string alloc_base_grids_low = "\n\
 # prepare grids low\n\
@@ -119,6 +118,7 @@ xl.timestepMax = s.timestepMax\n\
 xl.cfl = s.cfl\n\
 wltStrength = $WLT_STR$\n\
 octaves = 0\n\
+uvs = 2\n\
 if upres == 1:\n\
   octaves = int(math.log(upres+1)/ math.log(2.0) + 0.5)\n\
 elif upres > 1:\n\
@@ -264,7 +264,6 @@ if 'heat' in globals() : del heat\n";
 const string del_base_grids_low = "\n\
 mantaMsg('Deleting base grids low')\n\
 if 'flags' in globals() : del flags\n\
-if 'uvs' in globals() : del uvs\n\
 if 'vel' in globals() : del vel\n\
 if 'x_vel' in globals() : del x_vel\n\
 if 'y_vel' in globals() : del y_vel\n\
@@ -300,15 +299,13 @@ if 'fps' in globals() : del fps\n\
 if 'dt0' in globals() : del dt0\n\
 if 'vorticity' in globals() : del vorticity\n\
 if 'boundaryWidth' in globals() : del boundaryWidth\n\
-if 's' in globals() : del s\n\
 if 'timings' in globals() : del timings\n\
 if 'using_colors' in globals() : del using_colors\n\
 if 'using_heat' in globals() : del using_heat\n\
 if 'using_fire' in globals() : del using_fire\n\
 if 'last_frame' in globals() : del last_frame\n\
 if 'maxvel' in globals() : del maxvel\n\
-if 'gravity' in globals() : del gravity\n\
-if 'uv' in globals() : del uv\n";
+if 'gravity' in globals() : del gravity\n";
 
 const string del_vars_high = "\n\
 mantaMsg('Deleting variables high')\n\
@@ -316,6 +313,8 @@ if 'upres' in globals() : del upres\n\
 if 'xl_gs' in globals() : del xl_gs\n\
 if 'xl' in globals() : del xl\n\
 if 'wltStrength' in globals() : del wltStrength\n\
+if 'uvs' in globals() : del uvs\n\
+if 'uv' in globals() : del uv\n\
 if 'octaves' in globals() : del octaves\n";
 
 //////////////////////////////////////////////////////////////////////
@@ -379,11 +378,6 @@ def step_low():\n\
   mantaMsg('Advecting velocity')\n\
   advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=$ADVECT_ORDER$, openBounds=doOpen, boundaryWidth=boundaryWidth)\n\
   \n\
-  for i in range(uvs):\n\
-    mantaMsg('Advecting UV and updating UVWeight')\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=uv[i], order=$ADVECT_ORDER$)\n\
-    updateUvWeight(resetTime=16.5 , index=i, numUvs=uvs, uv=uv[i])\n\
-  \n\
   if doOpen:\n\
     resetOutflow(flags=flags, real=density)\n\
   mantaMsg('Vorticity')\n\
@@ -405,14 +399,6 @@ def step_low():\n\
   \n\
   mantaMsg('Pressure')\n\
   solvePressure(flags=flags, vel=vel, pressure=pressure)\n\
-  \n\
-  mantaMsg('Energy')\n\
-  computeEnergy(flags=flags, vel=vel, energy=energy)\n\
-  \n\
-  tempFlag.copyFrom(flags)\n\
-  extrapolateSimpleFlags( flags=flags, val=tempFlag, distance=2, flagFrom=FlagObstacle, flagTo=FlagFluid )\n\
-  extrapolateSimpleFlags( flags=tempFlag, val=energy, distance=6, flagFrom=FlagFluid, flagTo=FlagObstacle )\n\
-  computeWaveletCoeffs(energy)\n\
   # TODO: mantaMsg('Forcefield')\n\
   # TODO: addForceField(flags=flags, vel=vel, force=forces)\n\
   # TODO: forces.clear()\n\
@@ -436,6 +422,20 @@ def update_flame_low():\n\
 const string smoke_step_high = "\n\
 def step_high():\n\
   mantaMsg('Step high')\n\
+  for i in range(uvs):\n\
+    mantaMsg('Advecting UV')\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=uv[i], order=$ADVECT_ORDER$)\n\
+    mantaMsg('Updating UVWeight')\n\
+    updateUvWeight(resetTime=16.5 , index=i, numUvs=uvs, uv=uv[i])\n\
+  \n\
+  mantaMsg('Energy')\n\
+  computeEnergy(flags=flags, vel=vel, energy=energy)\n\
+  \n\
+  tempFlag.copyFrom(flags)\n\
+  extrapolateSimpleFlags(flags=flags, val=tempFlag, distance=2, flagFrom=FlagObstacle, flagTo=FlagFluid)\n\
+  extrapolateSimpleFlags(flags=tempFlag, val=energy, distance=6, flagFrom=FlagFluid, flagTo=FlagObstacle)\n\
+  computeWaveletCoeffs(energy)\n\
+  \n\
   interpolateMACGrid(source=vel, target=xl_vel)\n\
   sStr = 1.0 * wltStrength\n\
   sPos = 2.0\n\
