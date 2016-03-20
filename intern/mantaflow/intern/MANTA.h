@@ -183,6 +183,8 @@ private:
 	std::string parseScript(const string& setup_string, SmokeModifierData *smd);
 	std::string getGridPointer(std::string gridName, std::string solverName);
 	void* pointerFromString(const std::string& s);
+	PyObject* getPythonObject(std::string pyVariableName);
+
 };
 
 #endif

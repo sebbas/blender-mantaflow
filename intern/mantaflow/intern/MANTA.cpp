@@ -250,7 +250,53 @@ void MANTA::step(SmokeModifierData *smd)
 MANTA::~MANTA()
 {
 	std::cout << "~MANTA()" << std::endl;
-
+	
+	// Decrease reference count of Python objects.
+	// Reason: Some Python objects are also referenced in this class
+	// Note: All grids from updatePointers() have to be handled here!
+	Py_DECREF( getPythonObject("density") );
+	Py_DECREF( getPythonObject("x_vel") );
+	Py_DECREF( getPythonObject("y_vel") );
+	Py_DECREF( getPythonObject("z_vel") );
+	Py_DECREF( getPythonObject("inflow_grid") );
+	Py_DECREF( getPythonObject("fuel_inflow") );
+	
+	if (mHeat)
+		Py_DECREF( getPythonObject("heat") );
+	
+	if (mFuel)
+	{
+		Py_DECREF( getPythonObject("flame") );
+		Py_DECREF( getPythonObject("fuel") );
+		Py_DECREF( getPythonObject("react") );
+	}
+	
+	if (mColorR)
+	{
+		Py_DECREF( getPythonObject("color_r") );
+		Py_DECREF( getPythonObject("color_g") );
+		Py_DECREF( getPythonObject("color_b") );
+	}
+	
+	if (mUsingHighRes)
+	{
+    	Py_DECREF( getPythonObject("xl_density") );
+		
+		if (mFuel)
+		{
+			Py_DECREF( getPythonObject("xl_flame") );
+			Py_DECREF( getPythonObject("xl_fuel") );
+			Py_DECREF( getPythonObject("xl_react") );
+		}
+		
+		if (mColorR)
+		{
+			Py_DECREF( getPythonObject("xl_color_r") );
+			Py_DECREF( getPythonObject("xl_color_g") );
+			Py_DECREF( getPythonObject("xl_color_b") );
+		}
+	}
+	
 	// Destruction in Python
 	mCommands.clear();
 	mCommands.push_back(del_vars_low);
@@ -264,10 +310,24 @@ MANTA::~MANTA()
 	if (mUsingHighRes)  mCommands.push_back(del_vars_high);
 	runPythonString(mCommands);
 	
-	// TODO
-	// Reset pointers in this to avoid dangling pointers
-	
-	
+	// Reset pointers to avoid dangling pointers
+	mDensity        = NULL;
+	mHeat           = NULL;
+	mVelocityX      = NULL;
+	mVelocityY      = NULL;
+	mVelocityZ      = NULL;
+	mForceX         = NULL;
+	mForceY         = NULL;
+	mForceZ         = NULL;
+	mFlame          = NULL;
+	mFuel           = NULL;
+	mReact          = NULL;
+	mColorR         = NULL;
+	mColorG         = NULL;
+	mColorB         = NULL;
+	mDensityInflow  = NULL;
+	mFuelInflow     = NULL;
+	mMantaFlags     = NULL;
 	if (mObVelocityX)   delete[] mObVelocityX;              // TODO in Mantaflow
 	if (mObVelocityY)   delete[] mObVelocityY;              // TODO in Mantaflow
 	if (mObVelocityZ)   delete[] mObVelocityZ;              // TODO in Mantaflow
@@ -276,6 +336,14 @@ MANTA::~MANTA()
 	
 	if (mUsingHighRes)
 	{
+		mDensityHigh    = NULL;
+		mFlameHigh      = NULL;
+		mFuelHigh       = NULL;
+		mReactHigh      = NULL;
+		mColorRHigh     = NULL;
+		mColorGHigh     = NULL;
+		mColorBHigh     = NULL;
+	
 		if (mTextureU) delete[] mTextureU;                  // TODO in Mantaflow
 		if (mTextureV) delete[] mTextureV;                  // TODO in Mantaflow
 		if (mTextureW) delete[] mTextureW;                  // TODO in Mantaflow
@@ -538,6 +606,17 @@ void MANTA::exportGrids(SmokeModifierData *smd)
 	PyGILState_Release(gilstate);
 }
 
+PyObject* MANTA::getPythonObject(std::string pyVariableName)
+{
+	if (pyVariableName == "") return NULL;
+	
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	PyObject* main = PyImport_AddModule("__main__");
+	PyObject* globals = PyModule_GetDict(main);
+	PyObject* pyObject = PyDict_GetItemString(globals, pyVariableName.c_str());
+	PyGILState_Release(gilstate);
+	return pyObject;
+}
 
 string MANTA::getGridPointer(std::string gridName, std::string solverName)
 {
@@ -574,7 +653,9 @@ void MANTA::updatePointers(SmokeModifierData *smd)
 {
 	std::cout << "Updating pointers low res" << std::endl;
 	mDensity        = (float*) pointerFromString( getGridPointer("density",    "s") );
-	mMantaFlags     = (int*)   pointerFromString( getGridPointer("flags",      "s") );
+	mVelocityX      = (float*) pointerFromString( getGridPointer("x_vel",      "s") );
+	mVelocityY      = (float*) pointerFromString( getGridPointer("y_vel",      "s") );
+	mVelocityZ      = (float*) pointerFromString( getGridPointer("z_vel",      "s") );
 	mDensityInflow  = (float*) pointerFromString( getGridPointer("inflow_grid","s") );
 	mFuelInflow     = (float*) pointerFromString( getGridPointer("fuel_inflow","s") );
 	
@@ -591,10 +672,6 @@ void MANTA::updatePointers(SmokeModifierData *smd)
 		mColorG     = (float*) pointerFromString( getGridPointer("color_g",    "s") );
 		mColorB     = (float*) pointerFromString( getGridPointer("color_b",    "s") );
 	}
-	
-	mVelocityX      = (float*) pointerFromString( getGridPointer("x_vel",      "s") );
-	mVelocityY      = (float*) pointerFromString( getGridPointer("y_vel",      "s") );
-	mVelocityZ      = (float*) pointerFromString( getGridPointer("z_vel",      "s") );
 }
 
 void MANTA::updatePointersHigh(SmokeModifierData *smd)
