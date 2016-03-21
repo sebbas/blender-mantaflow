@@ -28,23 +28,22 @@
  */
 
 #include <string>
-using namespace std;
 
 //////////////////////////////////////////////////////////////////////
 // GENERAL SETUP
 //////////////////////////////////////////////////////////////////////
 
-const string manta_import = "\
+const std::string manta_import = "\
 from manta import *\n\
 import os, shutil, math, sys\n";
 
-const string flags = "\n\
+const std::string flags = "\n\
 using_colors = $USING_COLORS$\n\
 using_heat = $USING_HEAT$\n\
 using_fire = $USING_FIRE$\n\
 using_wavelets = $USE_WAVELETS$\n";
 
-const string uv_setup = "\n\
+const std::string uv_setup = "\n\
 # create the array of uv grids\n\
 uv = []\n\
 for i in range(uvs):\n\
@@ -56,7 +55,7 @@ for i in range(uvs):\n\
 // LOW RESOLUTION SETUP
 //////////////////////////////////////////////////////////////////////
 
-const string solver_setup_low = "\n\
+const std::string solver_setup_low = "\n\
 # solver low params\n\
 dim = $SOLVER_DIM$\n\
 doOpen = $DO_OPEN$\n\
@@ -79,7 +78,7 @@ timings = Timings()\n\
 vorticity = $VORTICITY$\n\
 boundaryWidth = 1\n";
 
-const string alloc_base_grids_low = "\n\
+const std::string alloc_base_grids_low = "\n\
 # prepare grids low\n\
 flags = s.create(FlagGrid)\n\
 vel = s.create(MACGrid)\n\
@@ -94,7 +93,7 @@ forces = s.create(MACGrid)\n\
 inflow_grid = s.create(LevelsetGrid)\n\
 fuel_inflow = s.create(LevelsetGrid)\n";
 
-const string prep_domain_low = "\n\
+const std::string prep_domain_low = "\n\
 # prepare domain low\n\
 flags.initDomain(boundaryWidth=boundaryWidth)\n\
 flags.fillGrid()\n\
@@ -105,7 +104,7 @@ if doOpen:\n\
 // HIGH RESOLUTION SETUP
 //////////////////////////////////////////////////////////////////////
 
-const string solver_setup_high = "\n\
+const std::string solver_setup_high = "\n\
 # solver high params\n\
 upres = $UPRES$\n\
 xl_gs = vec3($HRESX$, $HRESY$, $HRESZ$)\n\
@@ -124,7 +123,7 @@ if upres == 1:\n\
 elif upres > 1:\n\
   octaves = int(math.log(upres)/ math.log(2.0) + 0.5)\n";
 
-const string alloc_base_grids_high = "\n\
+const std::string alloc_base_grids_high = "\n\
 # prepare grids high\n\
 xl_flags = xl.create(FlagGrid)\n\
 xl_vel = xl.create(MACGrid)\n\
@@ -133,14 +132,14 @@ xl_y_vel = s.create(RealGrid)\n\
 xl_z_vel = s.create(RealGrid)\n\
 xl_density = xl.create(RealGrid)\n";
 
-const string prep_domain_high = "\n\
+const std::string prep_domain_high = "\n\
 # prepare domain high\n\
 xl_flags.initDomain(boundaryWidth=boundaryWidth)\n\
 xl_flags.fillGrid()\n\
 if doOpen:\n\
   setOpenBound(flags=xl_flags, bWidth=boundaryWidth, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
 
-const string wavelet_turbulence_noise = "\n\
+const std::string wavelet_turbulence_noise = "\n\
 # wavelet turbulence noise field\n\
 xl_wltnoise = NoiseField(parent=xl, loadFromFile=True)\n\
 xl_wltnoise.posScale = vec3(int(1.0*gs.x)) / $NOISE_POSSCALE$\n\
@@ -150,25 +149,25 @@ xl_wltnoise.timeAnim = $NOISE_TIMEANIM$\n";
 // ADDITIONAL GRIDS
 //////////////////////////////////////////////////////////////////////
 
-const string set_color_codes = "\n\
+const std::string set_color_codes = "\n\
 mantaMsg('Setting color codes')\n\
 manta_color_r = $COLOR_R$\n\
 manta_color_g = $COLOR_G$\n\
 manta_color_b = $COLOR_B$\n";
 
-const string alloc_colors_low = "\n\
+const std::string alloc_colors_low = "\n\
 mantaMsg('Allocating colors low')\n\
 color_r = s.create(RealGrid)\n\
 color_g = s.create(RealGrid)\n\
 color_b = s.create(RealGrid)\n";
 
-const string alloc_colors_high = "\
+const std::string alloc_colors_high = "\
 mantaMsg('Allocating colors high')\n\
 xl_color_r = xl.create(RealGrid)\n\
 xl_color_g = xl.create(RealGrid)\n\
 xl_color_b = xl.create(RealGrid)\n";
 
-const string init_colors_low = "\n\
+const std::string init_colors_low = "\n\
 mantaMsg('Initializing colors low')\n\
 color_r.copyFrom(density) \n\
 color_r.multConst(manta_color_r) \n\
@@ -177,7 +176,7 @@ color_g.multConst(manta_color_g) \n\
 color_b.copyFrom(density) \n\
 color_b.multConst(manta_color_b)\n";
 
-const string init_colors_high = "\n\
+const std::string init_colors_high = "\n\
 mantaMsg('Initializing colors high')\n\
 xl_color_r.copyFrom(xl_density) \n\
 xl_color_r.multConst(manta_color_r) \n\
@@ -186,36 +185,36 @@ xl_color_g.multConst(manta_color_g) \n\
 xl_color_b.copyFrom(xl_density) \n\
 xl_color_b.multConst(manta_color_b)\n";
 
-const string alloc_heat_low = "\n\
+const std::string alloc_heat_low = "\n\
 mantaMsg('Allocating heat low')\n\
 heat = s.create(RealGrid)\n";
 
-const string alloc_fire_low = "\n\
+const std::string alloc_fire_low = "\n\
 mantaMsg('Allocating fire low')\n\
 flame = s.create(RealGrid)\n\
 fuel = s.create(RealGrid)\n\
 react = s.create(RealGrid)\n";
 
-const string alloc_fire_high = "\n\
+const std::string alloc_fire_high = "\n\
 mantaMsg('Allocating fire high')\n\
 xl_flame = xl.create(RealGrid)\n\
 xl_fuel = xl.create(RealGrid)\n\
 xl_react = xl.create(RealGrid)\n";
 
-const string with_heat = "\n\
+const std::string with_heat = "\n\
 using_heat = True\n";
 
-const string with_colors = "\n\
+const std::string with_colors = "\n\
 using_colors = True\n";
 
-const string with_fire = "\n\
+const std::string with_fire = "\n\
 using_fire = True\n";
 
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE
 //////////////////////////////////////////////////////////////////////
 
-const string standalone = "\n\
+const std::string standalone = "\n\
 if (GUI):\n\
   gui=Gui()\n\
   gui.show()\n\
@@ -233,35 +232,35 @@ manta_step()\n";
 // DESTRUCTION
 //////////////////////////////////////////////////////////////////////
 
-const string del_colors_low = "\n\
+const std::string del_colors_low = "\n\
 mantaMsg('Deleting colors low')\n\
 if 'color_r' in globals() : del color_r\n\
 if 'color_g' in globals() : del color_g\n\
 if 'color_b' in globals() : del color_b\n";
 
-const string del_colors_high = "\n\
+const std::string del_colors_high = "\n\
 mantaMsg('Deleting colors high')\n\
 if 'xl_color_r' in globals() : del xl_color_r\n\
 if 'xl_color_g' in globals() : del xl_color_g\n\
 if 'xl_color_b' in globals() : del xl_color_b\n";
 
-const string del_fire_low = "\n\
+const std::string del_fire_low = "\n\
 mantaMsg('Deleting fire low')\n\
 if 'flame' in globals() : del flame\n\
 if 'fuel' in globals() : del fuel\n\
 if 'react' in globals() : del react\n";
 
-const string del_fire_high = "\n\
+const std::string del_fire_high = "\n\
 mantaMsg('Deleting fire high')\n\
 if 'xl_flame' in globals() : del xl_flame\n\
 if 'xl_fuel' in globals() : del xl_fuel\n\
 if 'xl_react' in globals() : del xl_react\n";
 
-const string del_heat_low = "\n\
+const std::string del_heat_low = "\n\
 mantaMsg('Deleting heat low')\n\
 if 'heat' in globals() : del heat\n";
 
-const string del_base_grids_low = "\n\
+const std::string del_base_grids_low = "\n\
 mantaMsg('Deleting base grids low')\n\
 if 'flags' in globals() : del flags\n\
 if 'vel' in globals() : del vel\n\
@@ -276,7 +275,7 @@ if 'forces' in globals() : del forces\n\
 if 'inflow_grid' in globals() : del inflow_grid\n\
 if 'fuel_inflow' in globals() : del fuel_inflow\n";
 
-const string del_base_grids_high = "\n\
+const std::string del_base_grids_high = "\n\
 mantaMsg('Deleting base grids high')\n\
 if 'xl_flags' in globals() : del xl_flags\n\
 if 'xl_vel' in globals() : del xl_vel\n\
@@ -286,7 +285,7 @@ if 'xl_z_vel' in globals() : del xl_z_vel\n\
 if 'xl_density' in globals() : del xl_density\n\
 if 'xl_wltnoise' in globals() : del xl_wltnoise\n";
 
-const string del_vars_low = "\n\
+const std::string del_vars_low = "\n\
 mantaMsg('Deleting variables low')\n\
 if 'res' in globals() : del res\n\
 if 'dim' in globals() : del dim\n\
@@ -307,7 +306,7 @@ if 'last_frame' in globals() : del last_frame\n\
 if 'maxvel' in globals() : del maxvel\n\
 if 'gravity' in globals() : del gravity\n";
 
-const string del_vars_high = "\n\
+const std::string del_vars_high = "\n\
 mantaMsg('Deleting variables high')\n\
 if 'upres' in globals() : del upres\n\
 if 'xl_gs' in globals() : del xl_gs\n\
@@ -321,7 +320,7 @@ if 'octaves' in globals() : del octaves\n";
 // MANTA STEP
 //////////////////////////////////////////////////////////////////////
 
-const string manta_step = "\n\
+const std::string manta_step = "\n\
 def manta_step():\n\
   last_frame = s.frame\n\
   while s.frame == last_frame:\n\
@@ -350,7 +349,7 @@ def manta_step():\n\
 // STEP FUNCTIONS LOW
 //////////////////////////////////////////////////////////////////////
 
-const string smoke_step_low = "\n\
+const std::string smoke_step_low = "\n\
 def step_low():\n\
   mantaMsg('Step low')\n\
   copyRealToMac(sourceX=x_vel, sourceY=y_vel, sourceZ=z_vel, target=vel)\n\
@@ -419,7 +418,7 @@ def update_flame_low():\n\
 // STEP FUNCTIONS HIGH
 //////////////////////////////////////////////////////////////////////
 
-const string smoke_step_high = "\n\
+const std::string smoke_step_high = "\n\
 def step_high():\n\
   mantaMsg('Step high')\n\
   for i in range(uvs):\n\
@@ -478,7 +477,7 @@ def update_flame_high():\n\
 // EXPORT GRIDS
 //////////////////////////////////////////////////////////////////////
 
-const string smoke_export_low = "\n\
+const std::string smoke_export_low = "\n\
 import os\n\
 mantaMsg('Exporting grids low')\n\
 density.save(os.path.join('$MANTA_EXPORT_PATH$','density.uni'))\n\
@@ -498,7 +497,7 @@ if using_fire:\n\
   fuel.save(os.path.join('$MANTA_EXPORT_PATH$','fuel.uni'))\n\
   react.save(os.path.join('$MANTA_EXPORT_PATH$','react.uni'))\n";
 
-const string smoke_export_high = "\n\
+const std::string smoke_export_high = "\n\
 mantaMsg('Exporting grids high')\n\
 xl_density.save(os.path.join('$MANTA_EXPORT_PATH$','xl_density.uni'))\n\
 xl_flags.save(os.path.join('$MANTA_EXPORT_PATH$','xl_flags.uni'))\n\
@@ -515,7 +514,7 @@ if using_fire:\n\
 // IMPORT GRIDS
 //////////////////////////////////////////////////////////////////////
 
-const string smoke_import_low = "\n\
+const std::string smoke_import_low = "\n\
 def import_grids_low():\n\
   mantaMsg('Importing grids low')\n\
   density.load('$MANTA_EXPORT_PATH$density.uni')\n\
@@ -535,7 +534,7 @@ def import_grids_low():\n\
     fuel.load('$MANTA_EXPORT_PATH$fuel.uni')\n\
     react.load('$MANTA_EXPORT_PATH$react.uni')\n";
 
-const string smoke_import_high = "\n\
+const std::string smoke_import_high = "\n\
 def import_grids_high():\n\
   mantaMsg('Importing grids high')\n\
   xl_density.load('$MANTA_EXPORT_PATH$xl_density.uni')\n\
@@ -553,7 +552,7 @@ def import_grids_high():\n\
 // INFLOW
 //////////////////////////////////////////////////////////////////////
 
-const string smoke_inflow_low = "\n\
+const std::string smoke_inflow_low = "\n\
 def apply_inflow():\n\
   mantaMsg('Applying inflow')\n\
   #inflow_grid.multConst(0.1)\n\
@@ -562,5 +561,5 @@ def apply_inflow():\n\
   if using_fire:\n\
     fuel.add(fuel_inflow)\n";
 
-const string smoke_inflow_high = "\n\
+const std::string smoke_inflow_high = "\n\
  # TODO\n";

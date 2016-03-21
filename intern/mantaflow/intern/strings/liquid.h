@@ -28,14 +28,13 @@
  */
 
 #include <string>
-using namespace std;
 
 //////////////////////////////////////////////////////////////////////
 // GENERAL SETUP
 //////////////////////////////////////////////////////////////////////
 
 // DEPRECATED! BUT KEEPING HERE FOR REFERENCE FOR LATER USE
-const string liquid_flags = "\n\
+const std::endl liquid_flags = "\n\
 low_flags_updated = False\n";
 
 //////////////////////////////////////////////////////////////////////
@@ -43,7 +42,7 @@ low_flags_updated = False\n";
 //////////////////////////////////////////////////////////////////////
 
 // DEPRECATED! BUT KEEPING HERE FOR REFERENCE FOR LATER USE
-const string liquid_step_low = "\n\
+const std::endl liquid_step_low = "\n\
 def sim_step_low(t):\n\
 #update flags from density on first step\n\
   setWallBcs(flags=flags, vel=vel)\n\

@@ -1156,7 +1156,7 @@ static int manta_make_file_exec(bContext *C, wmOperator *op)
 		smoke_reallocate_fluid(smd->domain, smd->domain->dx, smd->domain->res, 1);
 
 	if (smd->domain->fluid)
-		smoke_manta_export(smd);
+		smoke_manta_export(smd->domain->fluid, smd);
 	
 	return OPERATOR_FINISHED;
 }

@@ -27,13 +27,11 @@
  *  \ingroup mantaflow
  */
 
-#include "MANTA.h"
-#include "spectrum.h"
+#include <cmath>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
+#include "MANTA.h"
 #include "manta_smoke_API.h"
+#include "spectrum.h"
 
 extern "C" int *smoke_get_manta_flags(struct MANTA *manta) {
 	return manta->getMantaFlags();
@@ -61,10 +59,9 @@ extern "C" size_t smoke_get_index2d(int x, int max_x, int y /*, int max_y, int z
 	return x + y * max_x;
 }
 
-extern "C" void smoke_manta_export(SmokeModifierData *smd)
+extern "C" void smoke_manta_export(MANTA* manta, SmokeModifierData *smd)
 {
-	if (!smd) return;
-	MANTA *manta = smd->domain->fluid;
+	if (!manta && !smd) return;
 	manta->exportScript(smd);
 	manta->exportGrids(smd);
 }
@@ -116,7 +113,7 @@ static void data_dissolve(float *density, float *heat, float *r, float *g, float
 
 			/* heat */
 			if (heat) {
-				if      (abs(heat[i]) < dydx) heat[i] = 0.0f;
+				if      (fabs(heat[i]) < dydx) heat[i] = 0.0f;
 				else if (heat[i] > 0.0f) heat[i] -= dydx;
 				else if (heat[i] < 0.0f) heat[i] += dydx;
 			}
@@ -127,7 +124,6 @@ static void data_dissolve(float *density, float *heat, float *r, float *g, float
 				g[i] *= (density[i]/d);
 				b[i] *= (density[i]/d);
 			}
-				
 		}
 	}
 }

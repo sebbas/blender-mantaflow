@@ -27,27 +27,13 @@
  *  \ingroup mantaflow
  */
 
-#ifndef MANTA_H
-#define MANTA_H
+#ifndef MANTA_A_H
+#define MANTA_A_H
 
-#include <cstdlib>
-#include <cmath>
-#include <cstring>
-#include <sstream>
-#include <fstream>
-#include <iostream>
+#include <string>
 #include <vector>
 
-#include "smoke.h"
 #include "Python.h"
-#include "registry.h"
-
-#include "DNA_scene_types.h"
-#include "DNA_modifier_types.h"
-#include "DNA_smoke_types.h"
-
-#include "BLI_path_util.h"
-#include "BLI_utildefines.h"
 
 struct MANTA {
 public:
@@ -179,8 +165,8 @@ private:
 	void startMantaflow();
 	void runPythonString(std::vector<std::string> commands);
 	std::string getRealValue(const std::string& varName, SmokeModifierData *smd);
-	std::string parseLine(const string& line, SmokeModifierData *smd);
-	std::string parseScript(const string& setup_string, SmokeModifierData *smd);
+	std::string parseLine(const std::string& line, SmokeModifierData *smd);
+	std::string parseScript(const std::string& setup_string, SmokeModifierData *smd);
 	std::string getGridPointer(std::string gridName, std::string solverName);
 	void* pointerFromString(const std::string& s);
 	PyObject* getPythonObject(std::string pyVariableName);

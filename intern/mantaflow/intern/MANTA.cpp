@@ -27,7 +27,20 @@
  *  \ingroup mantaflow
  */
 
+#include <sstream>
+#include <fstream>
+#include <iostream>
+
 #include "MANTA.h"
+#include "registry.h"
+#include "smoke.h"
+
+#include "BLI_path_util.h"
+#include "BLI_utildefines.h"
+
+#include "DNA_scene_types.h"
+#include "DNA_modifier_types.h"
+#include "DNA_smoke_types.h"
 
 bool MANTA::mantaInitialized = false;
 
@@ -213,7 +226,7 @@ void MANTA::initColors(SmokeModifierData *smd)
 {
 	if (!mColorR) {
 		mCommands.clear();
-		std:: string colorCodes = parseScript(set_color_codes, smd);
+		std::string colorCodes = parseScript(set_color_codes, smd);
 		mCommands.push_back(colorCodes);
 		mCommands.push_back(alloc_colors_low);
 		mCommands.push_back(init_colors_low);
@@ -227,7 +240,7 @@ void MANTA::initColorsHigh(SmokeModifierData *smd)
 {
 	if (!mColorRHigh) {
 		mCommands.clear();
-		std:: string colorCodes = parseScript(set_color_codes, smd);
+		std::string colorCodes = parseScript(set_color_codes, smd);
 		mCommands.push_back(colorCodes);
 		mCommands.push_back(alloc_colors_high);
 		mCommands.push_back(init_colors_high);
@@ -376,7 +389,7 @@ void MANTA::startMantaflow()
 
 std::string MANTA::getRealValue(const std::string& varName,  SmokeModifierData *smd)
 {
-	ostringstream ss;
+	std::ostringstream ss;
 	bool is2D = (smd->domain->manta_solver_res == 2);
 	ModifierData *md = ((ModifierData*) smd);
 	
@@ -466,14 +479,14 @@ std::string MANTA::getRealValue(const std::string& varName,  SmokeModifierData *
 		BLI_split_dir_part(smd->domain->manta_filepath, parent_dir, sizeof(parent_dir));
 		ss << parent_dir;
 	} else
-		cout << "ERROR: Unknown option:" << varName <<endl;
+		std::cout << "ERROR: Unknown option:" << varName << std::endl;
 	return ss.str();
 }
 
-std::string MANTA::parseLine(const string& line, SmokeModifierData *smd)
+std::string MANTA::parseLine(const std::string& line, SmokeModifierData *smd)
 {
 	if (line.size() == 0) return "";
-	string res = "";
+	std::string res = "";
 	int currPos = 0, start_del = 0, end_del = -1;
 	bool readingVar = false;
 	const char delimiter = '$';
@@ -494,11 +507,11 @@ std::string MANTA::parseLine(const string& line, SmokeModifierData *smd)
 	return res;
 }
 
-std::string MANTA::parseScript(const string& setup_string, SmokeModifierData *smd)
+std::string MANTA::parseScript(const std::string& setup_string, SmokeModifierData *smd)
 {
 	std::istringstream f(setup_string);
-	ostringstream res;
-	string line = "";
+	std::ostringstream res;
+	std::string line = "";
 	while(getline(f, line)) {
 		res << parseLine(line, smd) << "\n";
 	}
@@ -586,7 +599,7 @@ void MANTA::exportScript(SmokeModifierData *smd)
 	final_script += standalone;
 	
 	// Write script
-	ofstream myfile;
+	std::ofstream myfile;
 	myfile.open(smd->domain->manta_filepath);
 	myfile << final_script;
 	myfile.close();
@@ -618,32 +631,32 @@ PyObject* MANTA::getPythonObject(std::string pyVariableName)
 	return pyObject;
 }
 
-string MANTA::getGridPointer(std::string gridName, std::string solverName)
+std::string MANTA::getGridPointer(std::string gridName, std::string solverName)
 {
 	if ((gridName == "") && (solverName == "")) {
 		return "";
 	}
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	PyObject *main = PyImport_AddModule("__main__");
-	if (main == NULL){cout << "null" << 1 << endl;return "";}
+	if (main == NULL){std::cout << "null" << 1 << std::endl; return "";}
 	PyObject *globals = PyModule_GetDict(main);
-	if (globals == NULL){cout << "null" << 12 << endl;return "";}
+	if (globals == NULL){std::cout << "null" << 12 << std::endl; return "";}
 	PyObject *grid_object = PyDict_GetItemString(globals, gridName.c_str());
-	if (grid_object == NULL){cout << "null" << 13 << endl;return "";}
+	if (grid_object == NULL){std::cout << "null" << 13 << std::endl; return "";}
 	PyObject* func = PyObject_GetAttrString(grid_object,(char*)"getDataPointer");
-	if (func == NULL){cout << "null" << 14 << endl;return "";}
+	if (func == NULL){std::cout << "null" << 14 << std::endl; return "";}
 	PyObject* retured_value = PyObject_CallObject(func, NULL);
 	PyObject* encoded = PyUnicode_AsUTF8String(retured_value);
-	if (retured_value == NULL){cout << "null" << 15 << endl;return "";}
+	if (retured_value == NULL){std::cout << "null" << 15 << std::endl; return "";}
 	std::string res = PyBytes_AsString(encoded);
-	cout << "Pointer on "<< gridName << " " << res << endl;
+	std::cout << "Pointer on "<< gridName << " " << res << std::endl;
 	PyGILState_Release(gilstate);
 	return res;
 }
 
 void* MANTA::pointerFromString(const std::string& s)
 {
-	stringstream ss(s);
+	std::stringstream ss(s);
 	void *gridPointer = NULL;
 	ss >> gridPointer;
 	return gridPointer;

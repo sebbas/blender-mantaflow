@@ -27,9 +27,8 @@
  *  \ingroup mantaflow
  */
 
-
-#ifndef MANTA_SMOKE_API_H_
-#define MANTA_SMOKE_API_H_
+#ifndef MANTA_SMOKE_API_H
+#define MANTA_SMOKE_API_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,7 +41,7 @@ struct MANTA *smoke_init(int *res, struct SmokeModifierData *smd);
 void smoke_free(struct MANTA *manta);
 size_t smoke_get_index(int x, int max_x, int y, int max_y, int z /*, int max_z */);
 size_t smoke_get_index2d(int x, int max_x, int y /*, int max_y, int z, int max_z */);
-void smoke_manta_export(struct SmokeModifierData *smd);
+void smoke_manta_export(struct MANTA* manta, SmokeModifierData *smd);
 void smoke_step(struct MANTA *manta, SmokeModifierData *smd);
 void smoke_dissolve(struct MANTA *manta, int speed, int log);
 void smoke_dissolve_wavelet(struct MANTA *manta, int speed, int log);
