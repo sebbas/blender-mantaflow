@@ -35,7 +35,7 @@
 
 const std::string manta_import = "\
 from manta import *\n\
-import os, shutil, math, sys\n";
+import os, shutil, math, sys, gc\n";
 
 const std::string flags = "\n\
 using_colors = $USING_COLORS$\n\
@@ -207,6 +207,9 @@ using_colors = True\n";
 const std::string with_fire = "\n\
 using_fire = True\n";
 
+const std::string gc_collect = "\n\
+gc.collect()\n";
+
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE
 //////////////////////////////////////////////////////////////////////
@@ -309,6 +312,14 @@ if 'wltStrength' in globals() : del wltStrength\n\
 if 'uvs' in globals() : del uvs\n\
 if 'uv' in globals() : del uv\n\
 if 'octaves' in globals() : del octaves\n";
+
+const std::string del_solver_low = "\n\
+mantaMsg('Deleting solver low')\n\
+if 's' in globals() : del s\n";
+
+const std::string del_solver_high = "\n\
+mantaMsg('Deleting solver high')\n\
+if 'xl' in globals() : del xl\n";
 
 //////////////////////////////////////////////////////////////////////
 // MANTA STEP
@@ -556,4 +567,4 @@ def apply_inflow():\n\
     fuel.add(fuel_inflow)\n";
 
 const std::string smoke_inflow_high = "\n\
- # TODO\n";
+# TODO\n";
