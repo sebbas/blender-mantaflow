@@ -47,8 +47,8 @@ const std::string uv_setup = "\n\
 # create the array of uv grids\n\
 uv = []\n\
 for i in range(uvs):\n\
-  uvGrid = s.create(VecGrid)\n\
-  uv.append(uvGrid)\n\
+  xl_uvGrid = xl.create(VecGrid)\n\
+  uv.append(xl_uvGrid)\n\
   resetUvGrid(uv[i])\n";
 
 //////////////////////////////////////////////////////////////////////
@@ -87,8 +87,6 @@ y_vel = s.create(RealGrid)\n\
 z_vel = s.create(RealGrid)\n\
 density = s.create(LevelsetGrid)\n\
 pressure = s.create(RealGrid)\n\
-energy = s.create(RealGrid)\n\
-tempFlag  = s.create(FlagGrid)\n\
 forces = s.create(MACGrid)\n\
 inflow_grid = s.create(LevelsetGrid)\n\
 fuel_inflow = s.create(LevelsetGrid)\n";
@@ -127,9 +125,8 @@ const std::string alloc_base_grids_high = "\n\
 # prepare grids high\n\
 xl_flags = xl.create(FlagGrid)\n\
 xl_vel = xl.create(MACGrid)\n\
-xl_x_vel = s.create(RealGrid)\n\
-xl_y_vel = s.create(RealGrid)\n\
-xl_z_vel = s.create(RealGrid)\n\
+xl_energy = xl.create(RealGrid)\n\
+xl_tempFlag  = xl.create(FlagGrid)\n\
 xl_density = xl.create(RealGrid)\n";
 
 const std::string prep_domain_high = "\n\
@@ -269,8 +266,6 @@ if 'y_vel' in globals() : del y_vel\n\
 if 'z_vel' in globals() : del z_vel\n\
 if 'density' in globals() : del density\n\
 if 'pressure' in globals() : del pressure\n\
-if 'energy' in globals() : del energy\n\
-if 'tempFlag' in globals() : del tempFlag\n\
 if 'forces' in globals() : del forces\n\
 if 'inflow_grid' in globals() : del inflow_grid\n\
 if 'fuel_inflow' in globals() : del fuel_inflow\n";
@@ -279,10 +274,10 @@ const std::string del_base_grids_high = "\n\
 mantaMsg('Deleting base grids high')\n\
 if 'xl_flags' in globals() : del xl_flags\n\
 if 'xl_vel' in globals() : del xl_vel\n\
-if 'xl_x_vel' in globals() : del xl_x_vel\n\
-if 'xl_y_vel' in globals() : del xl_y_vel\n\
-if 'xl_z_vel' in globals() : del xl_z_vel\n\
 if 'xl_density' in globals() : del xl_density\n\
+if 'xl_energy' in globals() : del xl_energy\n\
+if 'xl_tempFlag' in globals() : del xl_tempFlag\n\
+if 'xl_uvGrid' in globals() : del xl_uvGrid\n\
 if 'xl_wltnoise' in globals() : del xl_wltnoise\n";
 
 const std::string del_vars_low = "\n\
@@ -310,7 +305,6 @@ const std::string del_vars_high = "\n\
 mantaMsg('Deleting variables high')\n\
 if 'upres' in globals() : del upres\n\
 if 'xl_gs' in globals() : del xl_gs\n\
-if 'xl' in globals() : del xl\n\
 if 'wltStrength' in globals() : del wltStrength\n\
 if 'uvs' in globals() : del uvs\n\
 if 'uv' in globals() : del uv\n\
@@ -421,21 +415,21 @@ def update_flame_low():\n\
 const std::string smoke_step_high = "\n\
 def step_high():\n\
   mantaMsg('Step high')\n\
+  interpolateMACGrid(source=vel, target=xl_vel)\n\
   for i in range(uvs):\n\
     mantaMsg('Advecting UV')\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=uv[i], order=$ADVECT_ORDER$)\n\
+    advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=uv[i], order=$ADVECT_ORDER$)\n\
     mantaMsg('Updating UVWeight')\n\
     updateUvWeight(resetTime=16.5 , index=i, numUvs=uvs, uv=uv[i])\n\
   \n\
   mantaMsg('Energy')\n\
-  computeEnergy(flags=flags, vel=vel, energy=energy)\n\
+  computeEnergy(flags=xl_flags, vel=xl_vel, energy=xl_energy)\n\
   \n\
-  tempFlag.copyFrom(flags)\n\
-  extrapolateSimpleFlags(flags=flags, val=tempFlag, distance=2, flagFrom=FlagObstacle, flagTo=FlagFluid)\n\
-  extrapolateSimpleFlags(flags=tempFlag, val=energy, distance=6, flagFrom=FlagFluid, flagTo=FlagObstacle)\n\
-  computeWaveletCoeffs(energy)\n\
+  xl_tempFlag.copyFrom(xl_flags)\n\
+  extrapolateSimpleFlags(flags=xl_flags, val=xl_tempFlag, distance=2, flagFrom=FlagObstacle, flagTo=FlagFluid)\n\
+  extrapolateSimpleFlags(flags=xl_tempFlag, val=xl_energy, distance=6, flagFrom=FlagFluid, flagTo=FlagObstacle)\n\
+  computeWaveletCoeffs(xl_energy)\n\
   \n\
-  interpolateMACGrid(source=vel, target=xl_vel)\n\
   sStr = 1.0 * wltStrength\n\
   sPos = 2.0\n\
   \n\
@@ -443,19 +437,19 @@ def step_high():\n\
   for o in range(octaves):\n\
     for i in range(uvs):\n\
       uvWeight = getUvWeight(uv[i])\n\
-      applyNoiseVec3(flags=xl_flags, target=xl_vel, noise=xl_wltnoise, scale=sStr * uvWeight, scaleSpatial=sPos , weight=energy, uv=uv[i])\n\
+      applyNoiseVec3(flags=xl_flags, target=xl_vel, noise=xl_wltnoise, scale=sStr * uvWeight, scaleSpatial=sPos , weight=xl_energy, uv=uv[i])\n\
     sStr *= 0.06 # magic kolmogorov factor \n\
     sPos *= 2.0 \n\
   \n\
   for substep in range(upres):\n\
     if using_colors: \n\
-      # mantaMsg ('Advecting colors high')\n\
+      mantaMsg('Advecting colors high')\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_color_r, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_color_g, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_color_b, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
     \n\
     if using_fire: \n\
-      # mantaMsg ('Advecting fire high')\n\
+      mantaMsg('Advecting fire high')\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_fuel, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
       advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_react, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
     \n\
