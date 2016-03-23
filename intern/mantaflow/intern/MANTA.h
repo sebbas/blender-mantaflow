@@ -110,6 +110,10 @@ private:
 	// simulation constants
 	size_t mTotalCells;
 	size_t mTotalCellsHigh;
+	
+	bool mUsingHeat;
+	bool mUsingColors;
+	bool mUsingFire;
 	bool mUsingHighRes;
 	
 	int mResX;

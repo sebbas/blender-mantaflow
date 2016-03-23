@@ -52,6 +52,10 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 	// General variables used for low and high res
 	std::string tmpScript = "";
 	std::string finalScript = "";
+
+	mUsingHeat = smd->domain->active_fields & SM_ACTIVE_HEAT;
+	mUsingFire = smd->domain->active_fields & SM_ACTIVE_FIRE;
+	mUsingColors = smd->domain->active_fields & SM_ACTIVE_COLORS;
 	mUsingHighRes = smd->domain->flags & MOD_SMOKE_HIGHRES;
 	
 	// Make sure that string vector does not contain any previous commands
@@ -109,12 +113,9 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 	
 	// Initialize Mantaflow variables in Python
 	initSetup(smd);
-	if (smd->domain->active_fields & SM_ACTIVE_HEAT)
-		initHeat(smd);
-	if (smd->domain->active_fields & SM_ACTIVE_FIRE)
-		initFire(smd);
-	if (smd->domain->active_fields & SM_ACTIVE_COLORS)
-		initColors(smd);
+	if (mUsingHeat)   initHeat(smd);
+	if (mUsingFire)   initFire(smd);
+	if (mUsingColors) initColors(smd);
 	
 	updatePointers(smd); // Needs to be after heat, fire, color init
 	
@@ -149,10 +150,8 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 		
 		// Initialize Mantaflow variables in Python
 		initSetupHigh(smd);
-		if (smd->domain->active_fields & SM_ACTIVE_FIRE)
-			initFireHigh(smd);
-		if (smd->domain->active_fields & SM_ACTIVE_COLORS)
-			initColorsHigh(smd);
+		if (mUsingFire)   initFireHigh(smd);
+		if (mUsingColors) initColorsHigh(smd);
 
 		updatePointersHigh(smd); // Needs to be after fire, color init
 	}
@@ -169,6 +168,7 @@ void MANTA::initSetup(SmokeModifierData *smd)
 		manta_step +
 		smoke_step_low;
 	std::string finalString = parseScript(tmpString, smd);
+	mCommands.clear();
 	mCommands.push_back(finalString);
 	
 	runPythonString(mCommands);
@@ -184,9 +184,11 @@ void MANTA::initSetupHigh(SmokeModifierData *smd)
 		wavelet_turbulence_noise +
 		smoke_step_high;
 	std::string finalString = parseScript(tmpString, smd);
+	mCommands.clear();
 	mCommands.push_back(finalString);
 		
 	runPythonString(mCommands);
+	mUsingHighRes = true;
 }
 
 void MANTA::initHeat(SmokeModifierData *smd)
@@ -197,6 +199,7 @@ void MANTA::initHeat(SmokeModifierData *smd)
 		mCommands.push_back(with_heat);
 		
 		runPythonString(mCommands);
+		mUsingHeat = true;
 	}
 }
 
@@ -208,6 +211,7 @@ void MANTA::initFire(SmokeModifierData *smd)
 		mCommands.push_back(with_fire);
 
 		runPythonString(mCommands);
+		mUsingFire = true;
 	}
 }
 
@@ -219,6 +223,7 @@ void MANTA::initFireHigh(SmokeModifierData *smd)
 		mCommands.push_back(with_fire);
 
 		runPythonString(mCommands);
+		mUsingFire = true;
 	}
 }
 
@@ -233,6 +238,7 @@ void MANTA::initColors(SmokeModifierData *smd)
 		mCommands.push_back(with_colors);
 
 		runPythonString(mCommands);
+		mUsingColors = true;
 	}
 }
 
@@ -247,6 +253,7 @@ void MANTA::initColorsHigh(SmokeModifierData *smd)
 		mCommands.push_back(with_colors);
 
 		runPythonString(mCommands);
+		mUsingColors = true;
 	}
 }
 
@@ -312,15 +319,20 @@ MANTA::~MANTA()
 	
 	// Destruction in Python
 	mCommands.clear();
+	mCommands.push_back(del_base_grids_low);
 	mCommands.push_back(del_vars_low);
-	if (mHeat)          mCommands.push_back(del_heat_low);
-	if (mFuel)          mCommands.push_back(del_fire_low);
-	if (mFuelHigh)      mCommands.push_back(del_fire_high);
-	if (mColorR)        mCommands.push_back(del_colors_low);
-	if (mColorRHigh)    mCommands.push_back(del_colors_high);
-	if (mDensity)       mCommands.push_back(del_base_grids_low);
-	if (mDensityHigh)   mCommands.push_back(del_base_grids_high);
-	if (mUsingHighRes)  mCommands.push_back(del_vars_high);
+	if (mUsingHeat)          mCommands.push_back(del_heat_low);
+	if (mUsingFire)          mCommands.push_back(del_fire_low);
+	if (mUsingColors)        mCommands.push_back(del_colors_low);
+	mCommands.push_back(del_solver_low);
+	
+	if (mUsingHighRes)                 mCommands.push_back(del_base_grids_high);
+	if (mUsingHighRes)                 mCommands.push_back(del_vars_high);
+	if (mUsingColors && mUsingHighRes) mCommands.push_back(del_colors_high);
+	if (mUsingFire && mUsingHighRes)   mCommands.push_back(del_fire_high);
+	if (mUsingHighRes)                 mCommands.push_back(del_solver_high);
+	
+	mCommands.push_back(gc_collect);
 	runPythonString(mCommands);
 	
 	// Reset pointers to avoid dangling pointers
@@ -341,6 +353,7 @@ MANTA::~MANTA()
 	mDensityInflow  = NULL;
 	mFuelInflow     = NULL;
 	mMantaFlags     = NULL;
+
 	if (mObVelocityX)   delete[] mObVelocityX;              // TODO in Mantaflow
 	if (mObVelocityY)   delete[] mObVelocityY;              // TODO in Mantaflow
 	if (mObVelocityZ)   delete[] mObVelocityZ;              // TODO in Mantaflow
@@ -361,6 +374,12 @@ MANTA::~MANTA()
 		if (mTextureV) delete[] mTextureV;                  // TODO in Mantaflow
 		if (mTextureW) delete[] mTextureW;                  // TODO in Mantaflow
 	}
+	
+	// Reset flags
+	mUsingHeat = false;
+	mUsingFire = false;
+	mUsingColors = false;
+	mUsingHighRes = false;	
 }
 
 void MANTA::runPythonString(std::vector<std::string> commands)
@@ -672,15 +691,15 @@ void MANTA::updatePointers(SmokeModifierData *smd)
 	mDensityInflow  = (float*) pointerFromString( getGridPointer("inflow_grid","s") );
 	mFuelInflow     = (float*) pointerFromString( getGridPointer("fuel_inflow","s") );
 	
-	if (smd->domain->active_fields & SM_ACTIVE_HEAT) {
+	if (mUsingHeat) {
 		mHeat       = (float*) pointerFromString(getGridPointer("heat",        "s") );
 	}
-	if (smd->domain->active_fields & SM_ACTIVE_FIRE) {
+	if (mUsingFire) {
 		mFlame      = (float*) pointerFromString( getGridPointer("flame",      "s") );
 		mFuel       = (float*) pointerFromString( getGridPointer("fuel",       "s") );
 		mReact      = (float*) pointerFromString( getGridPointer("react",      "s") );
 	}
-	if (smd->domain->active_fields & SM_ACTIVE_COLORS) {
+	if (mUsingColors) {
 		mColorR     = (float*) pointerFromString( getGridPointer("color_r",    "s") );
 		mColorG     = (float*) pointerFromString( getGridPointer("color_g",    "s") );
 		mColorB     = (float*) pointerFromString( getGridPointer("color_b",    "s") );
@@ -692,12 +711,12 @@ void MANTA::updatePointersHigh(SmokeModifierData *smd)
 	std::cout << "Updating pointers high res" << std::endl;
 	mDensityHigh    = (float*) pointerFromString( getGridPointer("xl_density", "xl") );
 
-	if (smd->domain->active_fields & SM_ACTIVE_FIRE) {
+	if (mUsingFire) {
 		mFlameHigh  = (float*) pointerFromString( getGridPointer("xl_flame",   "xl") );
 		mFuelHigh   = (float*) pointerFromString( getGridPointer("xl_fuel",    "xl") );
 		mReactHigh  = (float*) pointerFromString( getGridPointer("xl_react",   "xl") );
 	}
-	if (smd->domain->active_fields & SM_ACTIVE_COLORS) {
+	if (mUsingColors) {
 		mColorRHigh = (float*) pointerFromString( getGridPointer("xl_color_r", "xl") );
 		mColorGHigh = (float*) pointerFromString( getGridPointer("xl_color_g", "xl") );
 		mColorBHigh = (float*) pointerFromString( getGridPointer("xl_color_b", "xl") );
