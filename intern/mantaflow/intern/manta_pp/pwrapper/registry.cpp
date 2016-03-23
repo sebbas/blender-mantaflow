@@ -131,9 +131,7 @@ PyObject* cbGetCName(PbObject* self, void* cl) {
 void cbDealloc(PbObject* self) {
 	//cout << "dealloc " << self->instance->getName() << " " << self->classdef->cName << endl;
 	if (self->instance) {
-		// don't delete top-level objects
-		if (self->instance->getParent() != self->instance)
-			delete self->instance;
+		delete self->instance;
 	}
 	Py_TYPE(self)->tp_free((PyObject*)self);
 }

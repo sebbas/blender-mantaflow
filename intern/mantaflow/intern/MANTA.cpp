@@ -270,53 +270,7 @@ void MANTA::step(SmokeModifierData *smd)
 MANTA::~MANTA()
 {
 	std::cout << "~MANTA()" << std::endl;
-	
-	// Decrease reference count of Python objects.
-	// Reason: Some Python objects are also referenced in this class
-	// Note: All grids from updatePointers() have to be handled here!
-	Py_DECREF( getPythonObject("density") );
-	Py_DECREF( getPythonObject("x_vel") );
-	Py_DECREF( getPythonObject("y_vel") );
-	Py_DECREF( getPythonObject("z_vel") );
-	Py_DECREF( getPythonObject("inflow_grid") );
-	Py_DECREF( getPythonObject("fuel_inflow") );
-	
-	if (mHeat)
-		Py_DECREF( getPythonObject("heat") );
-	
-	if (mFuel)
-	{
-		Py_DECREF( getPythonObject("flame") );
-		Py_DECREF( getPythonObject("fuel") );
-		Py_DECREF( getPythonObject("react") );
-	}
-	
-	if (mColorR)
-	{
-		Py_DECREF( getPythonObject("color_r") );
-		Py_DECREF( getPythonObject("color_g") );
-		Py_DECREF( getPythonObject("color_b") );
-	}
-	
-	if (mUsingHighRes)
-	{
-    	Py_DECREF( getPythonObject("xl_density") );
-		
-		if (mFuel)
-		{
-			Py_DECREF( getPythonObject("xl_flame") );
-			Py_DECREF( getPythonObject("xl_fuel") );
-			Py_DECREF( getPythonObject("xl_react") );
-		}
-		
-		if (mColorR)
-		{
-			Py_DECREF( getPythonObject("xl_color_r") );
-			Py_DECREF( getPythonObject("xl_color_g") );
-			Py_DECREF( getPythonObject("xl_color_b") );
-		}
-	}
-	
+
 	// Destruction in Python
 	mCommands.clear();
 	mCommands.push_back(del_base_grids_low);
@@ -643,32 +597,37 @@ PyObject* MANTA::getPythonObject(std::string pyVariableName)
 	if (pyVariableName == "") return NULL;
 	
 	PyGILState_STATE gilstate = PyGILState_Ensure();
+
 	PyObject* main = PyImport_AddModule("__main__");
-	PyObject* globals = PyModule_GetDict(main);
-	PyObject* pyObject = PyDict_GetItemString(globals, pyVariableName.c_str());
+	PyObject* pyObject = PyObject_GetAttrString(main, pyVariableName.c_str());
+
+	Py_DECREF(pyObject);
+
 	PyGILState_Release(gilstate);
 	return pyObject;
 }
 
 std::string MANTA::getGridPointer(std::string gridName, std::string solverName)
 {
-	if ((gridName == "") && (solverName == "")) {
-		return "";
-	}
+	if ((gridName == "") && (solverName == "")) return "";
+
 	PyGILState_STATE gilstate = PyGILState_Ensure();
-	PyObject *main = PyImport_AddModule("__main__");
-	if (main == NULL){std::cout << "null" << 1 << std::endl; return "";}
-	PyObject *globals = PyModule_GetDict(main);
-	if (globals == NULL){std::cout << "null" << 12 << std::endl; return "";}
-	PyObject *grid_object = PyDict_GetItemString(globals, gridName.c_str());
-	if (grid_object == NULL){std::cout << "null" << 13 << std::endl; return "";}
-	PyObject* func = PyObject_GetAttrString(grid_object,(char*)"getDataPointer");
-	if (func == NULL){std::cout << "null" << 14 << std::endl; return "";}
-	PyObject* retured_value = PyObject_CallObject(func, NULL);
-	PyObject* encoded = PyUnicode_AsUTF8String(retured_value);
-	if (retured_value == NULL){std::cout << "null" << 15 << std::endl; return "";}
+
+	PyObject* main = PyImport_AddModule("__main__");
+	PyObject* gridObject = PyObject_GetAttrString(main, gridName.c_str());
+
+	PyObject* func = PyObject_GetAttrString(gridObject, (char*) "getDataPointer");
+	PyObject* returnedValue = PyObject_CallObject(func, NULL);
+	PyObject* encoded = PyUnicode_AsUTF8String(returnedValue);
+
 	std::string res = PyBytes_AsString(encoded);
 	std::cout << "Pointer on "<< gridName << " " << res << std::endl;
+
+	Py_DECREF(gridObject);
+	Py_DECREF(func);
+	Py_DECREF(returnedValue);
+	Py_DECREF(encoded);
+
 	PyGILState_Release(gilstate);
 	return res;
 }
