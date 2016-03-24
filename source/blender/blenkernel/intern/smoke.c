@@ -562,13 +562,13 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->maxres = 32;
 			smd->domain->amplify = 1;
 			smd->domain->alpha = -0.001;
-			smd->domain->beta = 0.1;
+			smd->domain->beta = 0.3;
 			smd->domain->time_scale = 1.0;
 			smd->domain->vorticity = 0.2;
 			smd->domain->border_collisions = SM_BORDER_OPEN; // open domain
 			smd->domain->flags = MOD_SMOKE_DISSOLVE_LOG;
 			smd->domain->highres_sampling = SM_HRES_FULLSAMPLE;
-			smd->domain->strength = 2.0;
+			smd->domain->strength = 1.0;
 			smd->domain->noise = MOD_SMOKE_NOISEWAVE;
 			smd->domain->diss_speed = 5;
 			smd->domain->active_fields = 0;
@@ -592,7 +592,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			
 			/*mantaflow settings*/
 			smd->domain->manta_solver_res = 3;
-			smd->domain->noise_pos_scale = 0.5f;
+			smd->domain->noise_pos_scale = 2.0f;
 			smd->domain->noise_time_anim = 0.1f;
 			BLI_make_file_string("/", smd->domain->manta_filepath, BKE_tempdir_base(), "manta_scene.py");
 		}
@@ -681,6 +681,13 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->flame_vorticity = smd->domain->flame_vorticity;
 		tsmd->domain->flame_ignition = smd->domain->flame_ignition;
 		tsmd->domain->flame_max_temp = smd->domain->flame_max_temp;
+		
+#ifdef WITH_MANTA
+		tsmd->domain->manta_solver_res = smd->domain->manta_solver_res;
+		tsmd->domain->noise_pos_scale = smd->domain->noise_pos_scale;
+		tsmd->domain->noise_time_anim = smd->domain->noise_time_anim;
+#endif
+
 		copy_v3_v3(tsmd->domain->flame_smoke_color, smd->domain->flame_smoke_color);
 
 		MEM_freeN(tsmd->domain->effector_weights);
@@ -2706,10 +2713,11 @@ static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *
 		update_obstacles(scene, ob, sds, dtSubdiv, substep, totalSubsteps);
 
 		if (sds->total_cells > 1) {
-			update_effectors(scene, ob, sds, dtSubdiv); // DG TODO? problem --> uses forces instead of velocity, need to check how they need to be changed with variable dt
 #ifndef WITH_MANTA
+			update_effectors(scene, ob, sds, dtSubdiv); // DG TODO? problem --> uses forces instead of velocity, need to check how they need to be changed with variable dt
 			smoke_step(sds->fluid, gravity, dtSubdiv);
 #else
+//			update_effectors(scene, ob, sds, dtSubdiv); // TODO (sebbas)
 			smoke_step(sds->fluid, smd);
 #endif
 		}

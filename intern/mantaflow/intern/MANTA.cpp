@@ -48,6 +48,7 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 {
 	std::cout << "MANTA" << std::endl;
 	smd->domain->fluid = this;
+	smd->domain->manta_solver_res = 3; // Why do we need to set this explicitly? When not set, fluidsolver throws exception (occurs when loading a new .blend file)
 	
 	// General variables used for low and high res
 	std::string tmpScript = "";
