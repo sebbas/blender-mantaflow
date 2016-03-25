@@ -88,6 +88,9 @@ z_vel = s.create(RealGrid)\n\
 density = s.create(LevelsetGrid)\n\
 pressure = s.create(RealGrid)\n\
 forces = s.create(MACGrid)\n\
+x_force = s.create(RealGrid)\n\
+y_force = s.create(RealGrid)\n\
+z_force = s.create(RealGrid)\n\
 inflow_grid = s.create(LevelsetGrid)\n\
 fuel_inflow = s.create(LevelsetGrid)\n";
 
@@ -270,6 +273,9 @@ if 'z_vel' in globals() : del z_vel\n\
 if 'density' in globals() : del density\n\
 if 'pressure' in globals() : del pressure\n\
 if 'forces' in globals() : del forces\n\
+if 'x_force' in globals() : del x_force\n\
+if 'y_force' in globals() : del y_force\n\
+if 'z_force' in globals() : del z_force\n\
 if 'inflow_grid' in globals() : del inflow_grid\n\
 if 'fuel_inflow' in globals() : del fuel_inflow\n";
 
@@ -384,6 +390,7 @@ def step_low():\n\
   \n\
   if doOpen:\n\
     resetOutflow(flags=flags, real=density)\n\
+  \n\
   mantaMsg('Vorticity')\n\
   if vorticity > 0.01:\n\
     vorticityConfinement(vel=vel, flags=flags, strength=$VORTICITY$)\n\
@@ -398,14 +405,17 @@ def step_low():\n\
     gravity=vec3(0,0,-0.01 * $ALPHA$) if dim==3 else vec3(0,-0.01* $ALPHA$,0)\n\
     addBuoyancy(density=density, vel=vel, gravity=gravity, flags=flags)\n\
   \n\
+  copyRealToMac(sourceX=x_force, sourceY=y_force, sourceZ=z_force, target=forces)\n\
+  mantaMsg('Adding forces')\n\
+  addForceField(flags=flags, vel=vel, force=forces)\n\
+  forces.clear()\n\
+  \n\
   mantaMsg('Walls')\n\
   setWallBcs(flags=flags, vel=vel)\n\
   \n\
   mantaMsg('Pressure')\n\
   solvePressure(flags=flags, vel=vel, pressure=pressure)\n\
-  # TODO: mantaMsg('Forcefield')\n\
-  # TODO: addForceField(flags=flags, vel=vel, force=forces)\n\
-  # TODO: forces.clear()\n\
+  \n\
   copyMacToReal(source=vel, targetX=x_vel, targetY=y_vel, targetZ=z_vel)\n\
 \n\
 def process_burn_low():\n\

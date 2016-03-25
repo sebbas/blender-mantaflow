@@ -648,6 +648,9 @@ void MANTA::updatePointers(SmokeModifierData *smd)
 	mVelocityX      = (float*) pointerFromString( getGridPointer("x_vel",      "s") );
 	mVelocityY      = (float*) pointerFromString( getGridPointer("y_vel",      "s") );
 	mVelocityZ      = (float*) pointerFromString( getGridPointer("z_vel",      "s") );
+	mForceX         = (float*) pointerFromString( getGridPointer("x_force",    "s") );
+	mForceY         = (float*) pointerFromString( getGridPointer("y_force",    "s") );
+	mForceZ         = (float*) pointerFromString( getGridPointer("z_force",    "s") );
 	mDensityInflow  = (float*) pointerFromString( getGridPointer("inflow_grid","s") );
 	mFuelInflow     = (float*) pointerFromString( getGridPointer("fuel_inflow","s") );
 	
