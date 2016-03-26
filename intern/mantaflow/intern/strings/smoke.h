@@ -363,7 +363,7 @@ def manta_step():\n\
 const std::string smoke_step_low = "\n\
 def step_low():\n\
   mantaMsg('Step low')\n\
-  copyRealToMac(sourceX=x_vel, sourceY=y_vel, sourceZ=z_vel, target=vel)\n\
+  copyRealToVec3(sourceX=x_vel, sourceY=y_vel, sourceZ=z_vel, target=vel)\n\
   if dim == 2:\n\
     density.add(inflow_grid)\n\
   \n\
@@ -405,7 +405,7 @@ def step_low():\n\
     gravity=vec3(0,0,-0.01 * $ALPHA$) if dim==3 else vec3(0,-0.01* $ALPHA$,0)\n\
     addBuoyancy(density=density, vel=vel, gravity=gravity, flags=flags)\n\
   \n\
-  copyRealToMac(sourceX=x_force, sourceY=y_force, sourceZ=z_force, target=forces)\n\
+  copyRealToVec3(sourceX=x_force, sourceY=y_force, sourceZ=z_force, target=forces)\n\
   mantaMsg('Adding forces')\n\
   addForceField(flags=flags, vel=vel, force=forces)\n\
   forces.clear()\n\
@@ -416,7 +416,7 @@ def step_low():\n\
   mantaMsg('Pressure')\n\
   solvePressure(flags=flags, vel=vel, pressure=pressure)\n\
   \n\
-  copyMacToReal(source=vel, targetX=x_vel, targetY=y_vel, targetZ=z_vel)\n\
+  copyVec3ToReal(source=vel, targetX=x_vel, targetY=y_vel, targetZ=z_vel)\n\
 \n\
 def process_burn_low():\n\
   mantaMsg('Process burn low')\n\

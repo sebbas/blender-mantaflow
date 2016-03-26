@@ -455,27 +455,27 @@ void copyLevelsetToReal(LevelsetGrid &source , Grid<Real> &target) {
 void convertLevelsetToReal(LevelsetGrid &source , Grid<Real> &target) { debMsg("Deprecated - do not use convertLevelsetToReal... use copyLevelsetToReal instead",1); copyLevelsetToReal(source,target); } static PyObject* _W_6 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "convertLevelsetToReal" ); PyObject *_retval = 0; { ArgLocker _lock; LevelsetGrid& source = *_args.getPtr<LevelsetGrid >("source",0,&_lock); Grid<Real> & target = *_args.getPtr<Grid<Real>  >("target",1,&_lock);   _retval = getPyNone(); convertLevelsetToReal(source,target);  _args.check(); } pbFinalizePlugin(parent,"convertLevelsetToReal" ); return _retval; } catch(std::exception& e) { pbSetError("convertLevelsetToReal",e.what()); return 0; } } static const Pb::Register _RP_convertLevelsetToReal ("","convertLevelsetToReal",_W_6); 
 
 
-void copyMacToReal(MACGrid &source, Grid<Real> &targetX, Grid<Real> &targetY, Grid<Real> &targetZ) {
+void copyVec3ToReal(Grid<Vec3> &source, Grid<Real> &targetX, Grid<Real> &targetY, Grid<Real> &targetZ) {
 	FOR_IJK(source) {
 		targetX(i,j,k) = source(i,j,k).x;
 		targetY(i,j,k) = source(i,j,k).y;
 		targetZ(i,j,k) = source(i,j,k).z;
 	}
-} static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "copyMacToReal" ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& source = *_args.getPtr<MACGrid >("source",0,&_lock); Grid<Real> & targetX = *_args.getPtr<Grid<Real>  >("targetX",1,&_lock); Grid<Real> & targetY = *_args.getPtr<Grid<Real>  >("targetY",2,&_lock); Grid<Real> & targetZ = *_args.getPtr<Grid<Real>  >("targetZ",3,&_lock);   _retval = getPyNone(); copyMacToReal(source,targetX,targetY,targetZ);  _args.check(); } pbFinalizePlugin(parent,"copyMacToReal" ); return _retval; } catch(std::exception& e) { pbSetError("copyMacToReal",e.what()); return 0; } } static const Pb::Register _RP_copyMacToReal ("","copyMacToReal",_W_7); 
+} static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "copyVec3ToReal" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3> & source = *_args.getPtr<Grid<Vec3>  >("source",0,&_lock); Grid<Real> & targetX = *_args.getPtr<Grid<Real>  >("targetX",1,&_lock); Grid<Real> & targetY = *_args.getPtr<Grid<Real>  >("targetY",2,&_lock); Grid<Real> & targetZ = *_args.getPtr<Grid<Real>  >("targetZ",3,&_lock);   _retval = getPyNone(); copyVec3ToReal(source,targetX,targetY,targetZ);  _args.check(); } pbFinalizePlugin(parent,"copyVec3ToReal" ); return _retval; } catch(std::exception& e) { pbSetError("copyVec3ToReal",e.what()); return 0; } } static const Pb::Register _RP_copyVec3ToReal ("","copyVec3ToReal",_W_7); 
 
 
-void copyRealToMac(Grid<Real> &sourceX, Grid<Real> &sourceY, Grid<Real> &sourceZ, MACGrid &target) {
+void copyRealToVec3(Grid<Real> &sourceX, Grid<Real> &sourceY, Grid<Real> &sourceZ, Grid<Vec3> &target) {
 	FOR_IJK(target) {
 		target(i,j,k).x = sourceX(i,j,k);
 		target(i,j,k).y = sourceY(i,j,k);
 		target(i,j,k).z = sourceZ(i,j,k);
 	}
-} static PyObject* _W_8 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "copyRealToMac" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real> & sourceX = *_args.getPtr<Grid<Real>  >("sourceX",0,&_lock); Grid<Real> & sourceY = *_args.getPtr<Grid<Real>  >("sourceY",1,&_lock); Grid<Real> & sourceZ = *_args.getPtr<Grid<Real>  >("sourceZ",2,&_lock); MACGrid& target = *_args.getPtr<MACGrid >("target",3,&_lock);   _retval = getPyNone(); copyRealToMac(sourceX,sourceY,sourceZ,target);  _args.check(); } pbFinalizePlugin(parent,"copyRealToMac" ); return _retval; } catch(std::exception& e) { pbSetError("copyRealToMac",e.what()); return 0; } } static const Pb::Register _RP_copyRealToMac ("","copyRealToMac",_W_8); 
+} static PyObject* _W_8 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "copyRealToVec3" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real> & sourceX = *_args.getPtr<Grid<Real>  >("sourceX",0,&_lock); Grid<Real> & sourceY = *_args.getPtr<Grid<Real>  >("sourceY",1,&_lock); Grid<Real> & sourceZ = *_args.getPtr<Grid<Real>  >("sourceZ",2,&_lock); Grid<Vec3> & target = *_args.getPtr<Grid<Vec3>  >("target",3,&_lock);   _retval = getPyNone(); copyRealToVec3(sourceX,sourceY,sourceZ,target);  _args.check(); } pbFinalizePlugin(parent,"copyRealToVec3" ); return _retval; } catch(std::exception& e) { pbSetError("copyRealToVec3",e.what()); return 0; } } static const Pb::Register _RP_copyRealToVec3 ("","copyRealToVec3",_W_8); 
 
 template<class T> void Grid<T>::printGrid(int zSlice, bool printIndex) {
 	std::ostringstream out;
 	out << std::endl;
-	const int bnd = 1;
+	const int bnd = 0;
 	FOR_IJK_BND(*this,bnd) {
 		int idx = (*this).index(i,j,k);
 		if(zSlice>=0 && k==zSlice) { 
