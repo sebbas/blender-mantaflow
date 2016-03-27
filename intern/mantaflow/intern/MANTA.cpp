@@ -179,8 +179,8 @@ void MANTA::initSetupHigh(SmokeModifierData *smd)
 {
 	std::string tmpString =
 		solver_setup_high +
-		uv_setup +
 		alloc_base_grids_high +
+		uv_setup +
 		prep_domain_high +
 		wavelet_turbulence_noise +
 		smoke_step_high;
@@ -498,7 +498,6 @@ void MANTA::exportScript(SmokeModifierData *smd)
 	std::string manta_script =
 		manta_import +
 		solver_setup_low +
-		uv_setup +
 		alloc_base_grids_low;
 	
 	// Add heat grid low if needed
@@ -523,6 +522,7 @@ void MANTA::exportScript(SmokeModifierData *smd)
 	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
 		manta_script +=
 			solver_setup_high +
+			uv_setup +
 			alloc_base_grids_high;
 	}
 	
