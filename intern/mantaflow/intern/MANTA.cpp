@@ -262,8 +262,15 @@ void MANTA::step(SmokeModifierData *smd)
 {
 	// manta_write_effectors(this);                         // TODO in Mantaflow
 
+	// Get the frame number for this step
+	ModifierData *md = ((ModifierData*) smd);
+	int startFrame = md->scene->r.cfra;
+	
+	// Run manta step and handover current frame number
 	mCommands.clear();
-	mCommands.push_back("manta_step()");
+	std::ostringstream manta_step;
+	manta_step <<  "manta_step(" << startFrame << ")";
+	mCommands.push_back(manta_step.str());
 	
 	runPythonString(mCommands);
 }
@@ -448,6 +455,8 @@ std::string MANTA::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << smd->domain->flame_smoke_color[1];
 	else if (varName == "FLAME_SMOKE_COLOR_Z")
 		ss << smd->domain->flame_smoke_color[2];
+	else if (varName == "CURRENT_FRAME")
+		ss << md->scene->r.cfra;
 	else if (varName == "MANTA_EXPORT_PATH") {
 		char parent_dir[1024];
 		BLI_split_dir_part(smd->domain->manta_filepath, parent_dir, sizeof(parent_dir));

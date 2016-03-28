@@ -229,8 +229,9 @@ import_grids_low()\n\
 if using_wavelets:\n\
   import_grids_high()\n\
 \n\
+start_frame = $CURRENT_FRAME$\n\
 # All low and high res steps\n\
-manta_step()\n";
+manta_step(start_frame)\n";
 
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION
@@ -333,7 +334,9 @@ if 'xl' in globals() : del xl\n";
 //////////////////////////////////////////////////////////////////////
 
 const std::string manta_step = "\n\
-def manta_step():\n\
+def manta_step(start_frame):\n\
+  s.frame = start_frame\n\
+  s.timeTotal = s.frame * dt0\n\
   last_frame = s.frame\n\
   while s.frame == last_frame:\n\
     mantaMsg('Adapt timestep')\n\
