@@ -286,12 +286,14 @@ MANTA::~MANTA()
 	if (mUsingHeat)          mCommands.push_back(del_heat_low);
 	if (mUsingFire)          mCommands.push_back(del_fire_low);
 	if (mUsingColors)        mCommands.push_back(del_colors_low);
-	mCommands.push_back(del_solver_low);
 	
 	if (mUsingHighRes)                 mCommands.push_back(del_base_grids_high);
 	if (mUsingHighRes)                 mCommands.push_back(del_vars_high);
 	if (mUsingColors && mUsingHighRes) mCommands.push_back(del_colors_high);
 	if (mUsingFire && mUsingHighRes)   mCommands.push_back(del_fire_high);
+	
+	// Solvers always have to be the last objects to be deleted
+	mCommands.push_back(del_solver_low);
 	if (mUsingHighRes)                 mCommands.push_back(del_solver_high);
 	
 	mCommands.push_back(gc_collect);
