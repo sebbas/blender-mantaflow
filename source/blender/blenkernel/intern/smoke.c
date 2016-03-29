@@ -1938,8 +1938,8 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 			unsigned char *dummy_p;
 			/* high res smoke */
 			int wt_res_old[3];
-			float *o_wt_dens, *o_wt_react, *o_wt_flame, *o_wt_fuel, *o_wt_tcu, *o_wt_tcv, *o_wt_tcw, *o_wt_r, *o_wt_g, *o_wt_b;
-			float *n_wt_dens, *n_wt_react, *n_wt_flame, *n_wt_fuel, *n_wt_tcu, *n_wt_tcv, *n_wt_tcw, *n_wt_r, *n_wt_g, *n_wt_b;
+			float *o_wt_dens, *o_wt_react, *o_wt_flame, *o_wt_fuel, *o_wt_tcu, *o_wt_tcv, *o_wt_tcw, *o_wt_tcu2, *o_wt_tcv2, *o_wt_tcw2, *o_wt_r, *o_wt_g, *o_wt_b;
+			float *n_wt_dens, *n_wt_react, *n_wt_flame, *n_wt_fuel, *n_wt_tcu, *n_wt_tcv, *n_wt_tcw, *n_wt_tcu2, *n_wt_tcv2, *n_wt_tcw2, *n_wt_r, *n_wt_g, *n_wt_b;
 
 			smoke_export(fluid_old, &dummy, &dummy, &o_dens, &o_react, &o_flame, &o_fuel, &o_heat, &o_heatold, &o_vx, &o_vy, &o_vz, &o_r, &o_g, &o_b, &dummy_p);
 			smoke_export(sds->fluid, &dummy, &dummy, &n_dens, &n_react, &n_flame, &n_fuel, &n_heat, &n_heatold, &n_vx, &n_vy, &n_vz, &n_r, &n_g, &n_b, &dummy_p);
@@ -1950,9 +1950,9 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 				smoke_turbulence_get_res(turb_old, wt_res_old);
 				smoke_turbulence_export(sds->wt, &n_wt_dens, &n_wt_react, &n_wt_flame, &n_wt_fuel, &n_wt_r, &n_wt_g, &n_wt_b, &n_wt_tcu, &n_wt_tcv, &n_wt_tcw);
 #else
-				smoke_turbulence_export(fluid_old, &o_wt_dens, &o_wt_react, &o_wt_flame, &o_wt_fuel, &o_wt_r, &o_wt_g, &o_wt_b, &o_wt_tcu, &o_wt_tcv, &o_wt_tcw);
+				smoke_turbulence_export(fluid_old, &o_wt_dens, &o_wt_react, &o_wt_flame, &o_wt_fuel, &o_wt_r, &o_wt_g, &o_wt_b, &o_wt_tcu, &o_wt_tcv, &o_wt_tcw, &o_wt_tcu2, &o_wt_tcv2, &o_wt_tcw2);
 				smoke_turbulence_get_res(fluid_old, wt_res_old);
-				smoke_turbulence_export(sds->fluid, &n_wt_dens, &n_wt_react, &n_wt_flame, &n_wt_fuel, &n_wt_r, &n_wt_g, &n_wt_b, &n_wt_tcu, &n_wt_tcv, &n_wt_tcw);
+				smoke_turbulence_export(sds->fluid, &n_wt_dens, &n_wt_react, &n_wt_flame, &n_wt_fuel, &n_wt_r, &n_wt_g, &n_wt_b, &n_wt_tcu, &n_wt_tcv, &n_wt_tcw, &n_wt_tcu2, &n_wt_tcv2, &n_wt_tcw2);
 #endif
 			}
 
@@ -2018,6 +2018,12 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 							n_wt_tcu[index_new] = o_wt_tcu[index_old];
 							n_wt_tcv[index_new] = o_wt_tcv[index_old];
 							n_wt_tcw[index_new] = o_wt_tcw[index_old];
+							
+#ifdef WITH_MANTA
+							n_wt_tcu2[index_new] = o_wt_tcu2[index_old];
+							n_wt_tcv2[index_new] = o_wt_tcv2[index_old];
+							n_wt_tcw2[index_new] = o_wt_tcw2[index_old];
+#endif
 
 							for (i = 0; i < block_size; i++)
 								for (j = 0; j < block_size; j++)

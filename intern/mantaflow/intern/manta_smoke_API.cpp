@@ -162,12 +162,12 @@ extern "C" void smoke_export(MANTA *manta, float *dt, float *dx, float **dens, f
 	if (b)
 		*b = manta->getColorB();
 	*obstacles = manta->getObstacles();
-	*dt = 1; //dummy value, not here needed for manta
-	*dx = 1; //dummy value, not here needed for manta
+	*dt = 1; //dummy value, not needed for manta
+	*dx = 1; //dummy value, not needed for manta
 }
 
 extern "C" void smoke_turbulence_export(MANTA *manta, float **dens, float **react, float **flame, float **fuel,
-                                        float **r, float **g, float **b , float **tcu, float **tcv, float **tcw)
+                                        float **r, float **g, float **b , float **tcu, float **tcv, float **tcw, float **tcu2, float **tcv2, float **tcw2)
 {
 	if (!manta && !manta->usingHighRes())
 		return;
@@ -188,6 +188,10 @@ extern "C" void smoke_turbulence_export(MANTA *manta, float **dens, float **reac
 	*tcu = manta->getTextureU();
 	*tcv = manta->getTextureV();
 	*tcw = manta->getTextureW();
+	
+	*tcu2 = manta->getTextureU2();
+	*tcv2 = manta->getTextureV2();
+	*tcw2 = manta->getTextureW2();
 }
 
 extern "C" float *smoke_get_density(MANTA *manta)

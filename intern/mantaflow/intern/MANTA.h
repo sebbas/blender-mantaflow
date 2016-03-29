@@ -103,6 +103,9 @@ public:
 	inline float* getTextureU() { return mTextureU; }
 	inline float* getTextureV() { return mTextureV; }
 	inline float* getTextureW() { return mTextureW; }
+	inline float* getTextureU2() { return mTextureU2; }
+	inline float* getTextureV2() { return mTextureV2; }
+	inline float* getTextureW2() { return mTextureW2; }
 
 	static bool mantaInitialized;
 
@@ -163,6 +166,9 @@ private:
 	float* mTextureU;
 	float* mTextureV;
 	float* mTextureW;
+	float* mTextureU2;
+	float* mTextureV2;
+	float* mTextureW2;
 	
 	void initSetup(struct SmokeModifierData *smd);
 	void initSetupHigh(struct SmokeModifierData *smd);

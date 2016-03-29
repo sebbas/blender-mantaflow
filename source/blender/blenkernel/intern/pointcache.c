@@ -578,7 +578,7 @@ static void ptcache_smoke_error(void *smoke_v, const char *message)
 
 #define SMOKE_CACHE_VERSION "1.04"
 
-static int  ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
+static int ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 {	
 	SmokeModifierData *smd= (SmokeModifierData *)smoke_v;
 	SmokeDomainSettings *sds = smd->domain;
@@ -650,7 +650,7 @@ static int  ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 		int res_big_array[3];
 		int res_big;
 		int res = sds->res[0]*sds->res[1]*sds->res[2];
-		float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *r, *g, *b;
+		float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *tcu2, *tcv2, *tcw2, *r, *g, *b;
 		unsigned int in_len = sizeof(float)*(unsigned int)res;
 		unsigned int in_len_big;
 		unsigned char *out;
@@ -671,7 +671,7 @@ static int  ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 #ifndef WITH_MANTA
 		smoke_turbulence_export(sds->wt, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw);
 #else
-		smoke_turbulence_export(sds->fluid, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw);
+		smoke_turbulence_export(sds->fluid, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw, &tcu2, &tcv2, &tcw2);
 #endif
 
 		out = (unsigned char *)MEM_callocN(LZO_OUT_LEN(in_len_big), "pointcache_lzo_buffer");
@@ -692,6 +692,12 @@ static int  ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 		ptcache_file_compressed_write(pf, (unsigned char *)tcu, in_len, out, mode);
 		ptcache_file_compressed_write(pf, (unsigned char *)tcv, in_len, out, mode);
 		ptcache_file_compressed_write(pf, (unsigned char *)tcw, in_len, out, mode);
+		
+#ifdef WITH_MANTA
+		ptcache_file_compressed_write(pf, (unsigned char *)tcu2, in_len, out, mode);
+		ptcache_file_compressed_write(pf, (unsigned char *)tcv2, in_len, out, mode);
+		ptcache_file_compressed_write(pf, (unsigned char *)tcw2, in_len, out, mode);
+#endif
 		MEM_freeN(out);
 		
 		ret = 1;
@@ -754,7 +760,7 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 		if (pf->data_types & (1<<BPHYS_DATA_SMOKE_HIGH) && sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) {
 #endif
 			int res_big, res_big_array[3];
-			float *tcu, *tcv, *tcw;
+			float *tcu, *tcv, *tcw, *tcu2, *tcv2, *tcw2;
 			unsigned int out_len_big;
 			unsigned char *tmp_array_big;
 #ifndef WITH_MANTA
@@ -770,7 +776,7 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 #ifndef WITH_MANTA
 			smoke_turbulence_export(sds->wt, &dens, NULL, NULL, NULL, NULL, NULL, NULL, &tcu, &tcv, &tcw);
 #else
-			smoke_turbulence_export(sds->fluid, &dens, NULL, NULL, NULL, NULL, NULL, NULL, &tcu, &tcv, &tcw);
+			smoke_turbulence_export(sds->fluid, &dens, NULL, NULL, NULL, NULL, NULL, NULL, &tcu, &tcv, &tcw, &tcu2, &tcv2, &tcw2);
 #endif
 
 			ptcache_file_compressed_read(pf, (unsigned char*)dens, out_len_big);
@@ -779,6 +785,12 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 			ptcache_file_compressed_read(pf, (unsigned char*)tcu, out_len);
 			ptcache_file_compressed_read(pf, (unsigned char*)tcv, out_len);
 			ptcache_file_compressed_read(pf, (unsigned char*)tcw, out_len);
+			
+#ifdef WITH_MANTA
+			ptcache_file_compressed_read(pf, (unsigned char*)tcu2, out_len);
+			ptcache_file_compressed_read(pf, (unsigned char*)tcv2, out_len);
+			ptcache_file_compressed_read(pf, (unsigned char*)tcw2, out_len);
+#endif
 
 			MEM_freeN(tmp_array_big);
 		}
@@ -889,7 +901,7 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 #endif
 			int res = sds->res[0]*sds->res[1]*sds->res[2];
 			int res_big, res_big_array[3];
-			float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *r, *g, *b;
+			float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *tcu2, *tcv2, *tcw2, *r, *g, *b;
 			unsigned int out_len = sizeof(float)*(unsigned int)res;
 			unsigned int out_len_big;
 
@@ -904,7 +916,7 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 #ifndef WITH_MANTA
 			smoke_turbulence_export(sds->wt, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw);
 #else
-			smoke_turbulence_export(sds->fluid, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw);
+			smoke_turbulence_export(sds->fluid, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw, &tcu2, &tcv2, &tcw2);
 #endif
 			ptcache_file_compressed_read(pf, (unsigned char *)dens, out_len_big);
 			if (cache_fields & SM_ACTIVE_FIRE) {
@@ -921,6 +933,12 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 			ptcache_file_compressed_read(pf, (unsigned char *)tcu, out_len);
 			ptcache_file_compressed_read(pf, (unsigned char *)tcv, out_len);
 			ptcache_file_compressed_read(pf, (unsigned char *)tcw, out_len);
+			
+	#ifdef WITH_MANTA
+			ptcache_file_compressed_read(pf, (unsigned char *)tcu2, out_len);
+			ptcache_file_compressed_read(pf, (unsigned char *)tcv2, out_len);
+			ptcache_file_compressed_read(pf, (unsigned char *)tcw2, out_len);
+	#endif
 		}
 
 	return 1;

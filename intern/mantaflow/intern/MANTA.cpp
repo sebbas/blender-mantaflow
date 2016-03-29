@@ -104,6 +104,12 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 	mColorRHigh     = NULL;
 	mColorGHigh     = NULL;
 	mColorBHigh     = NULL;
+	mTextureU       = NULL;
+	mTextureV       = NULL;
+	mTextureW       = NULL;
+	mTextureU2      = NULL;
+	mTextureV2      = NULL;
+	mTextureW2      = NULL;
 	
 	// TODO: Obstacle grid not mantaflow optimized
 	for (int x = 0; x < mTotalCells; x++)
@@ -131,23 +137,6 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 		mResYHigh       = amplify * mResY;
 		mResZHigh       = amplify * mResZ;
 		mTotalCellsHigh	= mResXHigh * mResYHigh * mResZHigh;
-		
-		mTextureU = new float[mTotalCells];                 // TODO in Mantaflow
-		mTextureV = new float[mTotalCells];                 // TODO in Mantaflow
-		mTextureW = new float[mTotalCells];                 // TODO in Mantaflow
-		
-		const float dx = 1.0f/(float)(mResX);               // TODO in Mantaflow
-		const float dy = 1.0f/(float)(mResY);               // TODO in Mantaflow
-		const float dz = 1.0f/(float)(mResZ);               // TODO in Mantaflow
-		int index = 0;
-		for (int z = 0; z < mResZ; z++)
-			for (int y = 0; y < mResY; y++)
-				for (int x = 0; x < mResX; x++, index++)
-				{
-					mTextureU[index] = x*dx;                // TODO in Mantaflow
-					mTextureV[index] = y*dy;                // TODO in Mantaflow
-					mTextureW[index] = z*dz;                // TODO in Mantaflow
-				}
 		
 		// Initialize Mantaflow variables in Python
 		initSetupHigh(smd);
@@ -333,10 +322,12 @@ MANTA::~MANTA()
 		mColorRHigh     = NULL;
 		mColorGHigh     = NULL;
 		mColorBHigh     = NULL;
-	
-		if (mTextureU) delete[] mTextureU;                  // TODO in Mantaflow
-		if (mTextureV) delete[] mTextureV;                  // TODO in Mantaflow
-		if (mTextureW) delete[] mTextureW;                  // TODO in Mantaflow
+		mTextureU       = NULL;
+		mTextureV       = NULL;
+		mTextureW       = NULL;
+		mTextureU2      = NULL;
+		mTextureV2      = NULL;
+		mTextureW2      = NULL;
 	}
 	
 	// Reset flags
@@ -683,17 +674,23 @@ void MANTA::updatePointers(SmokeModifierData *smd)
 void MANTA::updatePointersHigh(SmokeModifierData *smd)
 {
 	std::cout << "Updating pointers high res" << std::endl;
-	mDensityHigh    = (float*) pointerFromString( getGridPointer("xl_density", "xl") );
-
+	mDensityHigh    = (float*) pointerFromString( getGridPointer("xl_density",   "xl") );
+	mTextureU       = (float*) pointerFromString( getGridPointer("texture_u",     "s") );
+	mTextureV       = (float*) pointerFromString( getGridPointer("texture_v",     "s") );
+	mTextureW       = (float*) pointerFromString( getGridPointer("texture_w",     "s") );
+	mTextureU2      = (float*) pointerFromString( getGridPointer("texture_u2",    "s") );
+	mTextureV2      = (float*) pointerFromString( getGridPointer("texture_v2",    "s") );
+	mTextureW2      = (float*) pointerFromString( getGridPointer("texture_w2",    "s") );
+	
 	if (mUsingFire) {
-		mFlameHigh  = (float*) pointerFromString( getGridPointer("xl_flame",   "xl") );
-		mFuelHigh   = (float*) pointerFromString( getGridPointer("xl_fuel",    "xl") );
-		mReactHigh  = (float*) pointerFromString( getGridPointer("xl_react",   "xl") );
+		mFlameHigh  = (float*) pointerFromString( getGridPointer("xl_flame",     "xl") );
+		mFuelHigh   = (float*) pointerFromString( getGridPointer("xl_fuel",      "xl") );
+		mReactHigh  = (float*) pointerFromString( getGridPointer("xl_react",     "xl") );
 	}
 	if (mUsingColors) {
-		mColorRHigh = (float*) pointerFromString( getGridPointer("xl_color_r", "xl") );
-		mColorGHigh = (float*) pointerFromString( getGridPointer("xl_color_g", "xl") );
-		mColorBHigh = (float*) pointerFromString( getGridPointer("xl_color_b", "xl") );
+		mColorRHigh = (float*) pointerFromString( getGridPointer("xl_color_r",   "xl") );
+		mColorGHigh = (float*) pointerFromString( getGridPointer("xl_color_g",   "xl") );
+		mColorBHigh = (float*) pointerFromString( getGridPointer("xl_color_b",   "xl") );
 	}
 }
 

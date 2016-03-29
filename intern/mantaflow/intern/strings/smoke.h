@@ -131,7 +131,13 @@ xl_flags = xl.create(FlagGrid)\n\
 xl_vel = xl.create(MACGrid)\n\
 xl_density = xl.create(RealGrid)\n\
 energy = s.create(RealGrid)\n\
-tempFlag = s.create(FlagGrid)\n";
+tempFlag = s.create(FlagGrid)\n\
+texture_u = s.create(RealGrid)\n\
+texture_v = s.create(RealGrid)\n\
+texture_w = s.create(RealGrid)\n\
+texture_u2 = s.create(RealGrid)\n\
+texture_v2 = s.create(RealGrid)\n\
+texture_w2 = s.create(RealGrid)\n";
 
 const std::string prep_domain_high = "\n\
 # prepare domain high\n\
@@ -289,6 +295,12 @@ if 'xl_density' in globals() : del xl_density\n\
 if 'energy' in globals() : del energy\n\
 if 'tempFlag' in globals() : del tempFlag\n\
 if 'uvGrid' in globals() : del uvGrid\n\
+if 'texture_u' in globals() : del texture_u\n\
+if 'texture_v' in globals() : del texture_v\n\
+if 'texture_w' in globals() : del texture_w\n\
+if 'texture_u2' in globals() : del texture_u2\n\
+if 'texture_v2' in globals() : del texture_v2\n\
+if 'texture_w2' in globals() : del texture_w2\n\
 if 'xl_wltnoise' in globals() : del xl_wltnoise\n";
 
 const std::string del_vars_low = "\n\
@@ -440,6 +452,9 @@ def update_flame_low():\n\
 const std::string smoke_step_high = "\n\
 def step_high():\n\
   mantaMsg('Step high')\n\
+  copyRealToVec3(sourceX=texture_u, sourceY=texture_v, sourceZ=texture_w, target=uv[0])\n\
+  copyRealToVec3(sourceX=texture_u2, sourceY=texture_v2, sourceZ=texture_w2, target=uv[1])\n\
+  \n\
   interpolateMACGrid(source=vel, target=xl_vel)\n\
   for i in range(uvs):\n\
     mantaMsg('Advecting UV')\n\
@@ -480,6 +495,9 @@ def step_high():\n\
     \n\
     mantaMsg('Advecting density high')\n\
     advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
+  \n\
+  copyVec3ToReal(source=uv[0], targetX=texture_u, targetY=texture_v, targetZ=texture_w)\n\
+  copyVec3ToReal(source=uv[1], targetX=texture_u2, targetY=texture_v2, targetZ=texture_w2)\n\
 \n\
 def process_burn_high():\n\
   mantaMsg('Process burn high')\n\
