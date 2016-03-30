@@ -50,7 +50,10 @@ mantaMsg('Initializing UV Grids')\n\
 for i in range(uvs):\n\
   uvGrid = s.create(VecGrid)\n\
   uv.append(uvGrid)\n\
-  resetUvGrid(uv[i])\n";
+  resetUvGrid(uv[i])\n\
+# Need to initialize helper grids for uvw as well\n\
+copyVec3ToReal(source=uv[0], targetX=texture_u, targetY=texture_v, targetZ=texture_w)\n\
+copyVec3ToReal(source=uv[1], targetX=texture_u2, targetY=texture_v2, targetZ=texture_w2)\n";
 
 //////////////////////////////////////////////////////////////////////
 // LOW RESOLUTION SETUP
