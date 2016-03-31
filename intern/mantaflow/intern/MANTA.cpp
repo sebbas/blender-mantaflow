@@ -93,7 +93,7 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 	mObVelocityX    = new float[mTotalCells];               // TODO in Mantaflow
 	mObVelocityY    = new float[mTotalCells];               // TODO in Mantaflow
 	mObVelocityZ    = new float[mTotalCells];               // TODO in Mantaflow
-	mObstacles      = new unsigned char[mTotalCells];       // TODO in Mantaflow
+	mObstacles      = NULL;
 	mObstaclesAnim  = new unsigned char[mTotalCells];       // TODO in Mantaflow
 	
 	// High res grids
@@ -110,10 +110,6 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 	mTextureU2      = NULL;
 	mTextureV2      = NULL;
 	mTextureW2      = NULL;
-	
-	// TODO: Obstacle grid not mantaflow optimized
-	for (int x = 0; x < mTotalCells; x++)
-		mObstacles[x] = false;
 
 	if (!mantaInitialized)
 		startMantaflow();
@@ -306,11 +302,11 @@ MANTA::~MANTA()
 	mDensityInflow  = NULL;
 	mFuelInflow     = NULL;
 	mMantaFlags     = NULL;
+	mObstacles      = NULL;
 
 	if (mObVelocityX)   delete[] mObVelocityX;              // TODO in Mantaflow
 	if (mObVelocityY)   delete[] mObVelocityY;              // TODO in Mantaflow
 	if (mObVelocityZ)   delete[] mObVelocityZ;              // TODO in Mantaflow
-	if (mObstacles)     delete[] mObstacles;                // TODO in Mantaflow
 	if (mObstaclesAnim) delete[] mObstaclesAnim;            // TODO in Mantaflow
 	
 	if (mUsingHighRes)
@@ -655,6 +651,7 @@ void MANTA::updatePointers(SmokeModifierData *smd)
 	mForceZ         = (float*) pointerFromString( getGridPointer("z_force",    "s") );
 	mDensityInflow  = (float*) pointerFromString( getGridPointer("inflow_grid","s") );
 	mFuelInflow     = (float*) pointerFromString( getGridPointer("fuel_inflow","s") );
+	mObstacles      = (unsigned char*) pointerFromString( getGridPointer("flags",      "s") );
 	
 	if (mUsingHeat) {
 		mHeat       = (float*) pointerFromString(getGridPointer("heat",        "s") );
