@@ -277,10 +277,14 @@ MANTA::~MANTA()
 	if (mUsingColors && mUsingHighRes) mCommands.push_back(del_colors_high);
 	if (mUsingFire && mUsingHighRes)   mCommands.push_back(del_fire_high);
 	
+	// Make sure that everything is garbage collected
+	mCommands.push_back(gc_collect);
+
 	// Solvers always have to be the last objects to be deleted
 	mCommands.push_back(del_solver_low);
 	if (mUsingHighRes)                 mCommands.push_back(del_solver_high);
 	
+	// Just in case: gc again
 	mCommands.push_back(gc_collect);
 	runPythonString(mCommands);
 	
