@@ -92,9 +92,9 @@ FluidSolver::FluidSolver(Vec3i gridsize, int dim)
 }
 
 FluidSolver::~FluidSolver() {
-	if (mGridsInt.used == 0) mGridsInt.free();
-	if (mGridsReal.used == 0) mGridsReal.free();
-	if (mGridsVec.used == 0) mGridsVec.free();
+	mGridsInt.free();
+	mGridsReal.free();
+	mGridsVec.free();
 }
 
 PbClass* FluidSolver::create(PbType t, PbTypeVec T, const string& name) {        
