@@ -463,7 +463,7 @@ def step_high():\n\
     mantaMsg('Advecting UV')\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=uv[i], order=$ADVECT_ORDER$)\n\
     mantaMsg('Updating UVWeight')\n\
-    updateUvWeight(resetTime=16.5 , index=i, numUvs=uvs, uv=uv[i])\n\
+    updateUvWeight(resetTime=10.0 , index=i, numUvs=uvs, uv=uv[i])\n\
   \n\
   mantaMsg('Energy')\n\
   computeEnergy(flags=flags, vel=vel, energy=energy)\n\
