@@ -51,12 +51,12 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 	smd->domain->manta_solver_res = 3; // Why do we need to set this explicitly? When not set, fluidsolver throws exception (occurs when loading a new .blend file)
 	
 	// General variables used for low and high res
-	std::string tmpScript = "";
+	std::string tmpScript   = "";
 	std::string finalScript = "";
 
-	mUsingHeat = smd->domain->active_fields & SM_ACTIVE_HEAT;
-	mUsingFire = smd->domain->active_fields & SM_ACTIVE_FIRE;
-	mUsingColors = smd->domain->active_fields & SM_ACTIVE_COLORS;
+	mUsingHeat    = smd->domain->active_fields & SM_ACTIVE_HEAT;
+	mUsingFire    = smd->domain->active_fields & SM_ACTIVE_FIRE;
+	mUsingColors  = smd->domain->active_fields & SM_ACTIVE_COLORS;
 	mUsingHighRes = smd->domain->flags & MOD_SMOKE_HIGHRES;
 	
 	// Make sure that string vector does not contain any previous commands
@@ -111,6 +111,7 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 	mTextureV2      = NULL;
 	mTextureW2      = NULL;
 
+	// Only start Mantaflow once. No need to start whenever new MANTA objected is allocated
 	if (!mantaInitialized)
 		startMantaflow();
 	
@@ -331,9 +332,9 @@ MANTA::~MANTA()
 	}
 	
 	// Reset flags
-	mUsingHeat = false;
-	mUsingFire = false;
-	mUsingColors = false;
+	mUsingHeat    = false;
+	mUsingFire    = false;
+	mUsingColors  = false;
 	mUsingHighRes = false;	
 }
 
