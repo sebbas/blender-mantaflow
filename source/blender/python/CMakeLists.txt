@@ -21,8 +21,3 @@ add_subdirectory(generic)
 add_subdirectory(mathutils)
 add_subdirectory(bmesh)
 
-if(WITH_OPENMP)
-	add_subdirectory(manta_pp)
-else()
-	message("Error. Mantaflow pp files require an OpenMP enabled compiler")
-endif()
