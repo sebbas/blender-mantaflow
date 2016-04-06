@@ -408,7 +408,7 @@ static void object_delete_cb(bContext *C, Scene *scene, TreeElement *te,
 static void id_local_cb(bContext *C, Scene *UNUSED(scene), TreeElement *UNUSED(te),
                         TreeStoreElem *UNUSED(tsep), TreeStoreElem *tselem, void *UNUSED(user_data))
 {
-	if (tselem->id->lib && (tselem->id->flag & LIB_EXTERN)) {
+	if (tselem->id->lib && (tselem->id->tag & LIB_TAG_EXTERN)) {
 		/* if the ID type has no special local function,
 		 * just clear the lib */
 		if (id_make_local(tselem->id, false) == false) {
@@ -1256,7 +1256,7 @@ typedef enum eOutlinerLibOpTypes {
 
 static EnumPropertyItem outliner_lib_op_type_items[] = {
 	{OL_LIB_RENAME, "RENAME", 0, "Rename", ""},
-    {OL_LIB_DELETE, "DELETE", 0, "Delete", "Delete this library and all its item from Blender (needs a save/reload)"},
+	{OL_LIB_DELETE, "DELETE", 0, "Delete", "Delete this library and all its item from Blender (needs a save/reload)"},
 	{0, NULL, 0, NULL, NULL}
 
 };

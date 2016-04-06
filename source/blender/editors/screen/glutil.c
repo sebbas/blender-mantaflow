@@ -56,95 +56,6 @@
 #define GL_CLAMP_TO_EDGE                        0x812F
 #endif
 
-
-/* ******************************************** */
-
-/* defined in BIF_gl.h */
-const GLubyte stipple_halftone[128] = {
-	0xAA, 0xAA, 0xAA, 0xAA, 0x55, 0x55, 0x55, 0x55, 
-	0xAA, 0xAA, 0xAA, 0xAA, 0x55, 0x55, 0x55, 0x55, 
-	0xAA, 0xAA, 0xAA, 0xAA, 0x55, 0x55, 0x55, 0x55,
-	0xAA, 0xAA, 0xAA, 0xAA, 0x55, 0x55, 0x55, 0x55, 
-	0xAA, 0xAA, 0xAA, 0xAA, 0x55, 0x55, 0x55, 0x55, 
-	0xAA, 0xAA, 0xAA, 0xAA, 0x55, 0x55, 0x55, 0x55,
-	0xAA, 0xAA, 0xAA, 0xAA, 0x55, 0x55, 0x55, 0x55, 
-	0xAA, 0xAA, 0xAA, 0xAA, 0x55, 0x55, 0x55, 0x55, 
-	0xAA, 0xAA, 0xAA, 0xAA, 0x55, 0x55, 0x55, 0x55,
-	0xAA, 0xAA, 0xAA, 0xAA, 0x55, 0x55, 0x55, 0x55, 
-	0xAA, 0xAA, 0xAA, 0xAA, 0x55, 0x55, 0x55, 0x55, 
-	0xAA, 0xAA, 0xAA, 0xAA, 0x55, 0x55, 0x55, 0x55,
-	0xAA, 0xAA, 0xAA, 0xAA, 0x55, 0x55, 0x55, 0x55, 
-	0xAA, 0xAA, 0xAA, 0xAA, 0x55, 0x55, 0x55, 0x55, 
-	0xAA, 0xAA, 0xAA, 0xAA, 0x55, 0x55, 0x55, 0x55,
-	0xAA, 0xAA, 0xAA, 0xAA, 0x55, 0x55, 0x55, 0x55};
-
-
-/*  repeat this pattern
- *
- *     X000X000
- *     00000000
- *     00X000X0
- *     00000000 */
-
-
-const GLubyte stipple_quarttone[128] = {
-	136, 136, 136, 136, 0, 0, 0, 0, 34, 34, 34, 34, 0, 0, 0, 0,
-	136, 136, 136, 136, 0, 0, 0, 0, 34, 34, 34, 34, 0, 0, 0, 0,
-	136, 136, 136, 136, 0, 0, 0, 0, 34, 34, 34, 34, 0, 0, 0, 0,
-	136, 136, 136, 136, 0, 0, 0, 0, 34, 34, 34, 34, 0, 0, 0, 0,
-	136, 136, 136, 136, 0, 0, 0, 0, 34, 34, 34, 34, 0, 0, 0, 0,
-	136, 136, 136, 136, 0, 0, 0, 0, 34, 34, 34, 34, 0, 0, 0, 0,
-	136, 136, 136, 136, 0, 0, 0, 0, 34, 34, 34, 34, 0, 0, 0, 0,
-	136, 136, 136, 136, 0, 0, 0, 0, 34, 34, 34, 34, 0, 0, 0, 0};
-
-
-const GLubyte stipple_diag_stripes_pos[128] = {
-	0x00, 0xff, 0x00, 0xff, 0x01, 0xfe, 0x01, 0xfe,
-	0x03, 0xfc, 0x03, 0xfc, 0x07, 0xf8, 0x07, 0xf8,
-	0x0f, 0xf0, 0x0f, 0xf0, 0x1f, 0xe0, 0x1f, 0xe0,
-	0x3f, 0xc0, 0x3f, 0xc0, 0x7f, 0x80, 0x7f, 0x80,
-	0xff, 0x00, 0xff, 0x00, 0xfe, 0x01, 0xfe, 0x01,
-	0xfc, 0x03, 0xfc, 0x03, 0xf8, 0x07, 0xf8, 0x07,
-	0xf0, 0x0f, 0xf0, 0x0f, 0xe0, 0x1f, 0xe0, 0x1f,
-	0xc0, 0x3f, 0xc0, 0x3f, 0x80, 0x7f, 0x80, 0x7f,
-	0x00, 0xff, 0x00, 0xff, 0x01, 0xfe, 0x01, 0xfe,
-	0x03, 0xfc, 0x03, 0xfc, 0x07, 0xf8, 0x07, 0xf8,
-	0x0f, 0xf0, 0x0f, 0xf0, 0x1f, 0xe0, 0x1f, 0xe0,
-	0x3f, 0xc0, 0x3f, 0xc0, 0x7f, 0x80, 0x7f, 0x80,
-	0xff, 0x00, 0xff, 0x00, 0xfe, 0x01, 0xfe, 0x01,
-	0xfc, 0x03, 0xfc, 0x03, 0xf8, 0x07, 0xf8, 0x07,
-	0xf0, 0x0f, 0xf0, 0x0f, 0xe0, 0x1f, 0xe0, 0x1f,
-	0xc0, 0x3f, 0xc0, 0x3f, 0x80, 0x7f, 0x80, 0x7f};
-
-
-const GLubyte stipple_diag_stripes_neg[128] = {
-	0xff, 0x00, 0xff, 0x00, 0xfe, 0x01, 0xfe, 0x01,
-	0xfc, 0x03, 0xfc, 0x03, 0xf8, 0x07, 0xf8, 0x07,
-	0xf0, 0x0f, 0xf0, 0x0f, 0xe0, 0x1f, 0xe0, 0x1f,
-	0xc0, 0x3f, 0xc0, 0x3f, 0x80, 0x7f, 0x80, 0x7f,
-	0x00, 0xff, 0x00, 0xff, 0x01, 0xfe, 0x01, 0xfe,
-	0x03, 0xfc, 0x03, 0xfc, 0x07, 0xf8, 0x07, 0xf8,
-	0x0f, 0xf0, 0x0f, 0xf0, 0x1f, 0xe0, 0x1f, 0xe0,
-	0x3f, 0xc0, 0x3f, 0xc0, 0x7f, 0x80, 0x7f, 0x80,
-	0xff, 0x00, 0xff, 0x00, 0xfe, 0x01, 0xfe, 0x01,
-	0xfc, 0x03, 0xfc, 0x03, 0xf8, 0x07, 0xf8, 0x07,
-	0xf0, 0x0f, 0xf0, 0x0f, 0xe0, 0x1f, 0xe0, 0x1f,
-	0xc0, 0x3f, 0xc0, 0x3f, 0x80, 0x7f, 0x80, 0x7f,
-	0x00, 0xff, 0x00, 0xff, 0x01, 0xfe, 0x01, 0xfe,
-	0x03, 0xfc, 0x03, 0xfc, 0x07, 0xf8, 0x07, 0xf8,
-	0x0f, 0xf0, 0x0f, 0xf0, 0x1f, 0xe0, 0x1f, 0xe0,
-	0x3f, 0xc0, 0x3f, 0xc0, 0x7f, 0x80, 0x7f, 0x80};
-
-const GLubyte stipple_checker_8px[128] = {
-	255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0,
-	255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0,
-	0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255,
-	0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255,
-	255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0,
-	255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0,
-	0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255,
-	0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255};
-
 /* UNUSED */
 #if 0
 void fdrawbezier(float vec[4][3])
@@ -160,7 +71,7 @@ void fdrawbezier(float vec[4][3])
 	
 	vec[2][0] = vec[3][0] - dist;
 	vec[2][1] = vec[3][1];
-	/* we can reuse the dist variable here to increment the GL curve eval amount*/
+	/* we can reuse the dist variable here to increment the GL curve eval amount */
 	dist = 1.0f / curve_res;
 	
 	cpack(0x0);
@@ -206,10 +117,10 @@ void fdrawcheckerboard(float x1, float y1, float x2, float y2)
 	glRectf(x1, y1, x2, y2);
 	glColor3ubv(col2);
 
-	glEnable(GL_POLYGON_STIPPLE);
-	glPolygonStipple(stipple_checker_8px);
+	GPU_basic_shader_bind(GPU_SHADER_STIPPLE | GPU_SHADER_USE_COLOR);
+	GPU_basic_shader_stipple(GPU_SHADER_STIPPLE_CHECKER_8PX);
 	glRectf(x1, y1, x2, y2);
-	glDisable(GL_POLYGON_STIPPLE);
+	GPU_basic_shader_bind(GPU_SHADER_USE_COLOR);
 }
 
 void sdrawline(int x1, int y1, int x2, int y2)
@@ -440,8 +351,6 @@ static int get_cached_work_texture(int *r_w, int *r_h)
 	static int tex_h = 256;
 
 	if (texid == -1) {
-		unsigned char *tbuf;
-
 		glGenTextures(1, (GLuint *)&texid);
 
 		glBindTexture(GL_TEXTURE_2D, texid);
@@ -449,9 +358,7 @@ static int get_cached_work_texture(int *r_w, int *r_h)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-		tbuf = MEM_callocN(tex_w * tex_h * 4, "tbuf");
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, tex_w, tex_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, tbuf);
-		MEM_freeN(tbuf);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, tex_w, tex_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
@@ -501,7 +408,7 @@ void glaDrawPixelsTexScaled(float x, float y, int img_w, int img_h, int format, 
 		components = 4;
 	else if (format == GL_RGB)
 		components = 3;
-	else if (ELEM(format,  GL_LUMINANCE, GL_ALPHA))
+	else if (ELEM(format, GL_LUMINANCE, GL_ALPHA))
 		components = 1;
 	else {
 		BLI_assert(!"Incompatible format passed to glaDrawPixelsTexScaled");
@@ -520,7 +427,7 @@ void glaDrawPixelsTexScaled(float x, float y, int img_w, int img_h, int format, 
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F_ARB, tex_w, tex_h, 0, format, GL_FLOAT, NULL);
 	}
 	else {
-		/* switch to 8bit RGBA for byte buffer  */
+		/* switch to 8bit RGBA for byte buffer */
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, tex_w, tex_h, 0, format, GL_UNSIGNED_BYTE, NULL);
 	}
 
@@ -537,14 +444,14 @@ void glaDrawPixelsTexScaled(float x, float y, int img_w, int img_h, int format, 
 			float rast_x = x + subpart_x * offset_x * xzoom;
 			float rast_y = y + subpart_y * offset_y * yzoom;
 			
-			/* check if we already got these because we always get 2 more when doing seamless*/
+			/* check if we already got these because we always get 2 more when doing seamless */
 			if (subpart_w <= seamless || subpart_h <= seamless)
 				continue;
 			
 			if (type == GL_FLOAT) {
 				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, subpart_w, subpart_h, format, GL_FLOAT, &f_rect[((size_t)subpart_y) * offset_y * img_w * components + subpart_x * offset_x * components]);
 				
-				/* add an extra border of pixels so linear looks ok at edges of full image. */
+				/* add an extra border of pixels so linear looks ok at edges of full image */
 				if (subpart_w < tex_w)
 					glTexSubImage2D(GL_TEXTURE_2D, 0, subpart_w, 0, 1, subpart_h, format, GL_FLOAT, &f_rect[((size_t)subpart_y) * offset_y * img_w * components + (subpart_x * offset_x + subpart_w - 1) * components]);
 				if (subpart_h < tex_h)
@@ -823,101 +730,6 @@ void glaEnd2DDraw(gla2DDrawInfo *di)
 }
 #endif
 
-/* **************** GL_POINT hack ************************ */
-
-static int curmode = 0;
-static int pointhack = 0;
-static GLubyte Squaredot[16] = {0xff, 0xff, 0xff, 0xff,
-                                0xff, 0xff, 0xff, 0xff,
-                                0xff, 0xff, 0xff, 0xff,
-                                0xff, 0xff, 0xff, 0xff};
-
-void bglBegin(int mode)
-{
-	curmode = mode;
-	
-	if (mode == GL_POINTS) {
-		float value[4];
-		glGetFloatv(GL_POINT_SIZE_RANGE, value);
-		if (value[1] < 2.0f) {
-			glGetFloatv(GL_POINT_SIZE, value);
-			pointhack = iroundf(value[0]);
-			if (pointhack > 4) pointhack = 4;
-		}
-		else {
-			glBegin(mode);
-		}
-	}
-}
-
-#if 0 /* UNUSED */
-int bglPointHack(void)
-{
-	float value[4];
-	int pointhack_px;
-	glGetFloatv(GL_POINT_SIZE_RANGE, value);
-	if (value[1] < 2.0f) {
-		glGetFloatv(GL_POINT_SIZE, value);
-		pointhack_px = floorf(value[0] + 0.5f);
-		if (pointhack_px > 4) pointhack_px = 4;
-		return pointhack_px;
-	}
-	return 0;
-}
-#endif
-
-void bglVertex3fv(const float vec[3])
-{
-	switch (curmode) {
-		case GL_POINTS:
-			if (pointhack) {
-				glRasterPos3fv(vec);
-				glBitmap(pointhack, pointhack, (float)pointhack / 2.0f, (float)pointhack / 2.0f, 0.0, 0.0, Squaredot);
-			}
-			else {
-				glVertex3fv(vec);
-			}
-			break;
-	}
-}
-
-void bglVertex3f(float x, float y, float z)
-{
-	switch (curmode) {
-		case GL_POINTS:
-			if (pointhack) {
-				glRasterPos3f(x, y, z);
-				glBitmap(pointhack, pointhack, (float)pointhack / 2.0f, (float)pointhack / 2.0f, 0.0, 0.0, Squaredot);
-			}
-			else {
-				glVertex3f(x, y, z);
-			}
-			break;
-	}
-}
-
-void bglVertex2fv(const float vec[2])
-{
-	switch (curmode) {
-		case GL_POINTS:
-			if (pointhack) {
-				glRasterPos2fv(vec);
-				glBitmap(pointhack, pointhack, (float)pointhack / 2, pointhack / 2, 0.0, 0.0, Squaredot);
-			}
-			else {
-				glVertex2fv(vec);
-			}
-			break;
-	}
-}
-
-
-void bglEnd(void)
-{
-	if (pointhack) pointhack = 0;
-	else glEnd();
-	
-}
 
 /* Uses current OpenGL state to get view matrices for gluProject/gluUnProject */
 void bgl_get_mats(bglMats *mats)
@@ -953,7 +765,7 @@ void bgl_get_mats(bglMats *mats)
  */
 void bglPolygonOffset(float viewdist, float dist)
 {
-	static float winmat[16], offset = 0.0;
+	static float winmat[16], offset = 0.0f;
 	
 	if (dist != 0.0f) {
 		float offs;
@@ -994,7 +806,6 @@ void bglPolygonOffset(float viewdist, float dist)
 		glMatrixMode(GL_MODELVIEW);
 	}
 	else {
-
 		glMatrixMode(GL_PROJECTION);
 		winmat[14] += offset;
 		offset = 0.0;
@@ -1002,17 +813,6 @@ void bglPolygonOffset(float viewdist, float dist)
 		glMatrixMode(GL_MODELVIEW);
 	}
 }
-
-#if 0 /* UNUSED */
-void bglFlush(void) 
-{
-	glFlush();
-#ifdef __APPLE__
-//	if (GPU_type_matches(GPU_DEVICE_INTEL, GPU_OS_MAC, GPU_DRIVER_OFFICIAL))
-// XXX		myswapbuffers(); //hack to get mac intel graphics to show frontbuffer
-#endif
-}
-#endif
 
 /* **** Color management helper functions for GLSL display/transform ***** */
 
@@ -1093,8 +893,7 @@ void glaDrawImBuf_glsl(ImBuf *ibuf, float x, float y, int zoomfilter,
 		display_buffer = IMB_display_buffer_acquire(ibuf, view_settings, display_settings, &cache_handle);
 
 		if (display_buffer)
-			glaDrawPixelsAuto(x, y, ibuf->x, ibuf->y, GL_RGBA, GL_UNSIGNED_BYTE,
-			                  zoomfilter, display_buffer);
+			glaDrawPixelsAuto(x, y, ibuf->x, ibuf->y, GL_RGBA, GL_UNSIGNED_BYTE, zoomfilter, display_buffer);
 
 		IMB_display_buffer_release(cache_handle);
 	}

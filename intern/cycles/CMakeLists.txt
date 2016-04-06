@@ -11,7 +11,7 @@ endif()
 include(cmake/external_libs.cmake)
 
 # Build Flags
-# todo: refactor this code to match scons
+# todo: this code could be refactored a bit to avoid duplication
 # note: CXX_HAS_SSE is needed in case passing SSE flags fails altogether (gcc-arm)
 
 if(WITH_CYCLES_WERROR)
@@ -126,20 +126,12 @@ add_definitions(
 	-DCCL_NAMESPACE_END=}
 )
 
-if(WITH_CYCLES_NETWORK)
-	add_definitions(-DWITH_NETWORK)
-endif()
-
 if(WITH_CYCLES_STANDALONE_GUI)
 	add_definitions(-DWITH_CYCLES_STANDALONE_GUI)
 endif()
 
 if(WITH_CYCLES_PTEX)
 	add_definitions(-DWITH_PTEX)
-endif()
-
-if(WITH_CYCLES_OPENSUBDIV)
-	add_definitions(-DWITH_OPENSUBDIV)
 endif()
 
 if(WITH_CYCLES_OSL)
@@ -151,13 +143,13 @@ if(WITH_CYCLES_OSL)
 	)
 endif()
 
-add_definitions(
-	-DWITH_OPENCL
-	-DWITH_CUDA
-	-DWITH_MULTI
-)
+set(WITH_CYCLES_DEVICE_OPENCL TRUE)
+set(WITH_CYCLES_DEVICE_CUDA TRUE)
+set(WITH_CYCLES_DEVICE_MULTI TRUE)
 
-TEST_UNORDERED_MAP_SUPPORT()
+if(CYCLES_STANDALONE_REPOSITORY)
+	TEST_UNORDERED_MAP_SUPPORT()
+endif()
 if(HAVE_STD_UNORDERED_MAP_HEADER)
 	if(HAVE_UNORDERED_MAP_IN_STD_NAMESPACE)
 		add_definitions(-DCYCLES_STD_UNORDERED_MAP)

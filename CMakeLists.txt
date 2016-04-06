@@ -158,7 +158,6 @@ option_defaults_init(
 	_init_IMAGE_REDCODE
 	_init_INPUT_NDOF
 	_init_JACK
-	_init_LIBMV_SCHUR_SPECIALIZATION
 	_init_OPENCOLLADA
 	_init_OPENCOLORIO
 	_init_SDL
@@ -185,7 +184,6 @@ if (UNIX AND NOT APPLE)
 elseif(WIN32)
 	set(_init_JACK                           OFF)
 elseif(APPLE)
-	set(_init_INPUT_NDOF                     OFF)
 	set(_init_JACK                           OFF)
 	set(_init_OPENSUBDIV                     OFF)
 endif()
@@ -243,11 +241,14 @@ option(WITH_OPENSUBDIV    "Enable OpenSubdiv for surface subdivision" _init_OPEN
 option(WITH_SUBSURF_WERROR  "Treat warnings as errors in subsurf code" OFF)
 mark_as_advanced(WITH_COMPOSITOR_WERROR)
 
+option(WITH_OPENVDB       "Enable features relying on OpenVDB" OFF)
+option(WITH_OPENVDB_BLOSC "Enable blosc compression for OpenVDB, only enable if OpenVDB was built with blosc support" OFF)
+
 # GHOST Windowing Library Options
 option(WITH_GHOST_DEBUG   "Enable debugging output for the GHOST library" OFF)
 mark_as_advanced(WITH_GHOST_DEBUG)
 
-option(WITH_GHOST_SDL    "Enable building blender against SDL for windowing rather then the native APIs" OFF)
+option(WITH_GHOST_SDL    "Enable building Blender against SDL for windowing rather than the native APIs" OFF)
 mark_as_advanced(WITH_GHOST_SDL)
 
 if(WITH_X11)
@@ -349,7 +350,7 @@ endif()
 
 # Camera/motion tracking
 option(WITH_LIBMV         "Enable Libmv structure from motion library" ON)
-option(WITH_LIBMV_SCHUR_SPECIALIZATIONS "Enable fixed-size schur specializations." ${_init_LIBMV_SCHUR_SPECIALIZATION})
+option(WITH_LIBMV_SCHUR_SPECIALIZATIONS "Enable fixed-size schur specializations." OFF)
 option(WITH_LIBMV_WERROR  "Treat warnings as errors in Libmv (and Blender's motion tracking) code")
 mark_as_advanced(WITH_LIBMV_SCHUR_SPECIALIZATIONS)
 mark_as_advanced(WITH_LIBMV_WERROR)
@@ -399,6 +400,9 @@ option(WITH_CYCLES_WERROR	"Treat warnings as errors in Cycles code" OFF)
 mark_as_advanced(WITH_CYCLES_LOGGING)
 mark_as_advanced(WITH_CYCLES_DEBUG)
 mark_as_advanced(WITH_CYCLES_WERROR)
+
+option(WITH_CUDA_DYNLOAD "Dynamically load CUDA libraries at runtime" ON)
+mark_as_advanced(WITH_CUDA_DYNLOAD)
 
 # LLVM
 option(WITH_LLVM					"Use LLVM" OFF)
@@ -470,7 +474,7 @@ if(WITH_GLEW_ES AND WITH_SYSTEM_GLEW)
 	set(WITH_SYSTEM_GLEW OFF)
 endif()
 
-if(MSVC)
+if(WIN32)
 	getDefaultWindowsPrefixBase(CMAKE_GENERIC_PROGRAM_FILES)
 	set(CPACK_INSTALL_PREFIX ${CMAKE_GENERIC_PROGRAM_FILES}/${})
 endif()
@@ -493,7 +497,7 @@ option_defaults_clear()
 # By default we want to install to the directory we are compiling our executables
 # unless specified otherwise, which we currently do not allow
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-	if(MSVC)
+	if(WIN32)
 		set(CMAKE_INSTALL_PREFIX ${EXECUTABLE_OUTPUT_PATH}/\${BUILD_TYPE} CACHE PATH "default install path" FORCE)
 	elseif(APPLE)
 		set(CMAKE_INSTALL_PREFIX ${EXECUTABLE_OUTPUT_PATH}/\${BUILD_TYPE} CACHE PATH "default install path" FORCE)
@@ -675,10 +679,14 @@ if(NOT WITH_BOOST)
 	set_and_warn(WITH_CYCLES         OFF)
 	set_and_warn(WITH_AUDASPACE      OFF)
 	set_and_warn(WITH_INTERNATIONAL  OFF)
+	set_and_warn(WITH_OPENVDB        OFF)
+	set_and_warn(WITH_OPENCOLORIO    OFF)
+	set_and_warn(WITH_MOD_BOOLEAN    OFF)
 
 	set_and_warn(WITH_OPENAL         OFF)  # depends on AUDASPACE
 	set_and_warn(WITH_GAMEENGINE     OFF)  # depends on AUDASPACE
-elseif(WITH_CYCLES OR WITH_OPENIMAGEIO OR WITH_AUDASPACE OR WITH_INTERNATIONAL)
+	set_and_warn(WITH_PLAYER         OFF)  # depends on GAMEENGINE
+elseif(WITH_CYCLES OR WITH_OPENIMAGEIO OR WITH_AUDASPACE OR WITH_INTERNATIONAL OR WITH_OPENVDB OR WITH_OPENCOLORIO OR WITH_MOD_BOOLEAN)
 	# Keep enabled
 else()
 	# Enabled but we don't need it
@@ -724,10 +732,8 @@ else()
 	set(COMPILER_SSE2_FLAG)
 endif()
 
-TEST_STDBOOL_SUPPORT()
-if(HAVE_STDBOOL_H)
-	add_definitions(-DHAVE_STDBOOL_H)
-endif()
+TEST_SHARED_PTR_SUPPORT()
+TEST_UNORDERED_MAP_SUPPORT()
 
 if(WITH_AUDASPACE)
 	if(WITH_SYSTEM_AUDASPACE)
@@ -1056,6 +1062,16 @@ if(UNIX AND NOT APPLE)
 		endif()
 	endif()
 
+	if(WITH_OPENVDB)
+		find_package_wrapper(OpenVDB)
+		find_package_wrapper(TBB)
+		if(NOT OPENVDB_FOUND OR NOT TBB_FOUND)
+			set(WITH_OPENVDB OFF)
+			set(WITH_OPENVDB_BLOSC OFF)
+			message(STATUS "OpenVDB not found, disabling it")
+		endif()
+	endif()
+
 	if(WITH_BOOST)
 		# uses in build instructions to override include and library variables
 		if(NOT BOOST_CUSTOM)
@@ -1075,6 +1091,9 @@ if(UNIX AND NOT APPLE)
 			endif()
 			if(WITH_CYCLES_NETWORK)
 				list(APPEND __boost_packages serialization)
+			endif()
+			if(WITH_OPENVDB)
+				list(APPEND __boost_packages iostreams)
 			endif()
 			find_package(Boost 1.48 COMPONENTS ${__boost_packages})
 			if(NOT Boost_FOUND)
@@ -1339,9 +1358,7 @@ elseif(WIN32)
 			set(PNG_LIBPATH ${PNG}/lib) # not cmake defined
 		endif()
 
-		if(MSVC)
-			set(JPEG_NAMES ${JPEG_NAMES} libjpeg)
-		endif()
+		set(JPEG_NAMES ${JPEG_NAMES} libjpeg)
 		find_package(jpeg REQUIRED)
 
 		set(PTHREADS_INCLUDE_DIRS ${LIBDIR}/pthreads/include)
@@ -1485,12 +1502,12 @@ elseif(WIN32)
 				set(BOOST_INCLUDE_DIR ${BOOST}/include)
 				if(MSVC12)
 					set(BOOST_LIBPATH ${BOOST}/lib)
-					set(BOOST_POSTFIX "vc120-mt-s-1_55.lib")
-					set(BOOST_DEBUG_POSTFIX "vc120-mt-sgd-1_55.lib")
+					set(BOOST_POSTFIX "vc120-mt-s-1_60.lib")
+					set(BOOST_DEBUG_POSTFIX "vc120-mt-sgd-1_60.lib")
 				else()
 					set(BOOST_LIBPATH ${BOOST}/lib)
-					set(BOOST_POSTFIX "vc90-mt-s-1_49.lib")
-					set(BOOST_DEBUG_POSTFIX "vc90-mt-sgd-1_49.lib")
+					set(BOOST_POSTFIX "vc140-mt-s-1_60.lib")
+					set(BOOST_DEBUG_POSTFIX "vc140-mt-sgd-1_60.lib")
 				endif()
 				set(BOOST_LIBRARIES
 					optimized libboost_date_time-${BOOST_POSTFIX} optimized libboost_filesystem-${BOOST_POSTFIX}
@@ -1563,7 +1580,14 @@ elseif(WIN32)
 			set(OPENCOLORIO_LIBPATH ${LIBDIR}/opencolorio/lib)
 			set(OPENCOLORIO_DEFINITIONS)
 		endif()
-		
+
+		if(WITH_OPENVDB)
+			set(OPENVDB ${LIBDIR}/openvdb)
+			set(OPENVDB_INCLUDE_DIRS ${OPENVDB}/include)
+			set(OPENVDB_LIBRARIES openvdb ${TBB_LIBRARIES})
+			set(OPENVDB_LIBPATH ${LIBDIR}/openvdb/lib)
+			set(OPENVDB_DEFINITIONS)
+		endif()
 
 		if(WITH_MOD_CLOTH_ELTOPO)
 			set(LAPACK ${LIBDIR}/lapack)
@@ -1586,8 +1610,13 @@ elseif(WIN32)
 		if(WITH_SDL)
 			set(SDL ${LIBDIR}/sdl)
 			set(SDL_INCLUDE_DIR ${SDL}/include)
-			set(SDL_LIBRARY SDL2)
 			set(SDL_LIBPATH ${SDL}/lib)
+			# MinGW TODO: Update MinGW to SDL2
+			if(NOT CMAKE_COMPILER_IS_GNUCC)
+				set(SDL_LIBRARY SDL2)
+			else()
+				set(SDL_LIBRARY SDL)
+			endif()
 		endif()
 
 		# Audio IO
@@ -1617,12 +1646,7 @@ elseif(WIN32)
 		
 		if(WITH_MINGW64)
 			message(STATUS "Compiling for 64 bit with MinGW-w64.")
-			execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
-			if(GCC_VERSION VERSION_GREATER 4.9 OR GCC_VERSION VERSION_EQUAL 4.9)
-				set(LIBDIR ${CMAKE_SOURCE_DIR}/../lib/mingw64_gcc49)
-			else()
-				set(LIBDIR ${CMAKE_SOURCE_DIR}/../lib/mingw64)
-			endif()
+			set(LIBDIR ${CMAKE_SOURCE_DIR}/../lib/mingw64)
 		else()
 			message(STATUS "Compiling for 32 bit with MinGW-w32.")
 			set(LIBDIR ${CMAKE_SOURCE_DIR}/../lib/mingw32)
@@ -1834,6 +1858,14 @@ elseif(WIN32)
 			set(SDL_INCLUDE_DIR ${SDL}/include)
 			set(SDL_LIBRARY SDL)
 			set(SDL_LIBPATH ${SDL}/lib)
+		endif()
+
+		if(WITH_OPENVDB)
+			set(OPENVDB ${LIBDIR}/openvdb)
+			set(OPENVDB_INCLUDE_DIRS ${OPENVDB}/include)
+			set(OPENVDB_LIBRARIES openvdb ${TBB_LIBRARIES})
+			set(OPENVDB_LIBPATH ${LIBDIR}/openvdb/lib)
+			set(OPENVDB_DEFINITIONS)
 		endif()
 
 		set(PLATFORM_LINKFLAGS "-Xlinker --stack=2097152")
@@ -2139,6 +2171,14 @@ elseif(APPLE)
 		set(OPENCOLORIO_INCLUDE_DIRS ${OPENCOLORIO}/include)
 		set(OPENCOLORIO_LIBRARIES OpenColorIO tinyxml yaml-cpp)
 		set(OPENCOLORIO_LIBPATH ${OPENCOLORIO}/lib)
+	endif()
+
+	if(WITH_OPENVDB)
+		set(OPENVDB ${LIBDIR}/openvdb)
+		set(OPENVDB_INCLUDE_DIRS ${OPENVDB}/include)
+		set(OPENVDB_LIBRARIES openvdb ${TBB_LIBRARIES})
+		set(OPENVDB_LIBPATH ${LIBDIR}/openvdb/lib)
+		set(OPENVDB_DEFINITIONS)
 	endif()
 
 	if(WITH_LLVM)
@@ -2472,7 +2512,7 @@ if(WITH_OPENMP)
 			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 		else()
 			# Typically avoid adding flags as defines but we can't
-			# ass OpenMP flags to the linker for static builds, meaning
+			# pass OpenMP flags to the linker for static builds, meaning
 			# we can't add any OpenMP related flags to CFLAGS variables
 			# since they're passed to the linker as well.
 			add_definitions("${OpenMP_C_FLAGS}")
@@ -2588,6 +2628,59 @@ endif()
 
 if(WITH_MOD_MANTA)
 	add_definitions(-DWITH_MANTA)
+endif()
+
+#-----------------------------------------------------------------------------
+# Configure GLog/GFlags
+
+if(WITH_LIBMV OR WITH_GTESTS OR (WITH_CYCLES AND WITH_CYCLES_LOGGING))
+	set(GLOG_DEFINES
+		-DGOOGLE_GLOG_DLL_DECL=
+	)
+
+	set(GFLAGS_DEFINES
+		-DGFLAGS_DLL_DEFINE_FLAG=
+		-DGFLAGS_DLL_DECLARE_FLAG=
+		-DGFLAGS_DLL_DECL=
+	)
+endif()
+
+#-----------------------------------------------------------------------------
+# Configure Ceres
+
+if(WITH_LIBMV)
+	set(CERES_DEFINES)
+
+	if(SHARED_PTR_FOUND)
+		if(SHARED_PTR_TR1_MEMORY_HEADER)
+			list(APPEND CERES_DEFINES -DCERES_TR1_MEMORY_HEADER)
+		endif()
+		if(SHARED_PTR_TR1_NAMESPACE)
+			list(APPEND CERES_DEFINES -DCERES_TR1_SHARED_PTR)
+		endif()
+	else()
+		message(FATAL_ERROR "Ceres: Unable to find shared_ptr.")
+	endif()
+
+	if(HAVE_STD_UNORDERED_MAP_HEADER)
+		if(HAVE_UNORDERED_MAP_IN_STD_NAMESPACE)
+			list(APPEND CERES_DEFINES -DCERES_STD_UNORDERED_MAP)
+		else()
+			if(HAVE_UNORDERED_MAP_IN_TR1_NAMESPACE)
+				list(APPEND CERES_DEFINES -DCERES_STD_UNORDERED_MAP_IN_TR1_NAMESPACE)
+			else()
+				list(APPEND CERES_DEFINES -DCERES_NO_UNORDERED_MAP)
+				message(STATUS "Ceres: Replacing unordered_map/set with map/set (warning: slower!)")
+			endif()
+		endif()
+	else()
+		if(HAVE_UNORDERED_MAP_IN_TR1_NAMESPACE)
+			list(APPEND CERES_DEFINES -DCERES_TR1_UNORDERED_MAP)
+		else()
+			list(APPEND CERES_DEFINES -DCERES_NO_UNORDERED_MAP)
+			message(STATUS "Ceres: Replacing unordered_map/set with map/set (warning: slower!)")
+		endif()
+	endif()
 endif()
 
 #-----------------------------------------------------------------------------
@@ -2865,7 +2958,9 @@ if(WITH_BLENDER OR WITH_PLAYER)
 elseif(WITH_CYCLES_STANDALONE)
 	add_subdirectory(intern/cycles)
 	add_subdirectory(extern/clew)
-	add_subdirectory(extern/cuew)
+	if(WITH_CUDA_DYNLOAD)
+		add_subdirectory(extern/cuew)
+	endif()
 	if(NOT WITH_SYSTEM_GLEW)
 		add_subdirectory(extern/glew)
 	endif()
@@ -2939,6 +3034,7 @@ if(FIRST_RUN)
 	info_cfg_option(WITH_CYCLES)
 	info_cfg_option(WITH_FREESTYLE)
 	info_cfg_option(WITH_OPENCOLORIO)
+	info_cfg_option(WITH_OPENVDB)
 
 	info_cfg_text("Compiler Options:")
 	info_cfg_option(WITH_BUILDINFO)
@@ -3003,9 +3099,6 @@ if(FIRST_RUN)
 	if(WIN32)
 		info_cfg_option(WITH_GL_ANGLE)
 	endif()
-
-	# debug
-	message(STATUS "HAVE_STDBOOL_H = ${HAVE_STDBOOL_H}")
 
 	info_cfg_text("")
 

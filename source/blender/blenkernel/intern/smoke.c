@@ -44,6 +44,7 @@
 #include "BLI_math.h"
 #include "BLI_kdtree.h"
 #include "BLI_kdopbvh.h"
+#include "BLI_task.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 #include "BLI_voxel.h"
@@ -89,57 +90,18 @@
 /* UNUSED so far, may be enabled later */
 /* #define USE_SMOKE_COLLISION_DM */
 
+//#define DEBUG_TIME
+
+#ifdef DEBUG_TIME
+#	include "PIL_time.h"
+#endif
+
 #include "smoke_API.h"
 #include "manta_smoke_API.h"
 
 #ifdef WITH_SMOKE
 
 static ThreadMutex object_update_lock = BLI_MUTEX_INITIALIZER;
-
-#ifdef _WIN32
-#include <time.h>
-#include <stdio.h>
-#include <conio.h>
-#include <windows.h>
-
-static LARGE_INTEGER liFrequency;
-static LARGE_INTEGER liStartTime;
-static LARGE_INTEGER liCurrentTime;
-
-static void tstart(void)
-{
-	QueryPerformanceFrequency(&liFrequency);
-	QueryPerformanceCounter(&liStartTime);
-}
-static void tend(void)
-{
-	QueryPerformanceCounter(&liCurrentTime);
-}
-static double UNUSED_FUNCTION(tval) (void)
-{
-	return ((double)( (liCurrentTime.QuadPart - liStartTime.QuadPart) * (double)1000.0 / (double)liFrequency.QuadPart));
-}
-#else
-#include <sys/time.h>
-static struct timeval _tstart, _tend;
-static struct timezone tz;
-static void tstart(void)
-{
-	gettimeofday(&_tstart, &tz);
-}
-static void tend(void)
-{
-	gettimeofday(&_tend, &tz);
-}
-
-static double UNUSED_FUNCTION(tval) (void)
-{
-	double t1, t2;
-	t1 = ( double ) _tstart.tv_sec * 1000 + ( double ) _tstart.tv_usec / (1000);
-	t2 = ( double ) _tend.tv_sec * 1000 + ( double ) _tend.tv_usec / (1000);
-	return t2 - t1;
-}
-#endif
 
 struct Object;
 struct Scene;
@@ -165,9 +127,8 @@ void smoke_initWaveletBlenderRNA(struct WTURBULENCE *UNUSED(wt), float *UNUSED(s
 void smoke_initBlenderRNA(struct FLUID_3D *UNUSED(fluid), float *UNUSED(alpha), float *UNUSED(beta), float *UNUSED(dt_factor), float *UNUSED(vorticity),
                           int *UNUSED(border_colli), float *UNUSED(burning_rate), float *UNUSED(flame_smoke), float *UNUSED(flame_smoke_color),
                           float *UNUSED(flame_vorticity), float *UNUSED(flame_ignition_temp), float *UNUSED(flame_max_temp)) {}
-struct DerivedMesh *smokeModifier_do(SmokeModifierData *UNUSED(smd), Scene *UNUSED(scene), Object *UNUSED(ob), DerivedMesh *UNUSED(dm), bool UNUSED(for_render)) { return NULL; }
+struct DerivedMesh *smokeModifier_do(SmokeModifierData *UNUSED(smd), Scene *UNUSED(scene), Object *UNUSED(ob), DerivedMesh *UNUSED(dm)) { return NULL; }
 float smoke_get_velocity_at(struct Object *UNUSED(ob), float UNUSED(position[3]), float UNUSED(velocity[3])) { return 0.0f; }
-void flame_get_spectrum(unsigned char *UNUSED(spec), int UNUSED(width), float UNUSED(t1), float UNUSED(t2)) {}
 
 #endif /* WITH_SMOKE */
 
@@ -304,21 +265,21 @@ static void smoke_set_domain_from_derivedmesh(SmokeDomainSettings *sds, Object *
 		scale = res / size[0];
 		sds->scale = size[0] / fabsf(ob->size[0]);
 		sds->base_res[0] = res;
-		sds->base_res[1] = (int)(size[1] * scale + 0.5f);
-		sds->base_res[2] = (int)(size[2] * scale + 0.5f);
+		sds->base_res[1] = max_ii((int)(size[1] * scale + 0.5f), 4);
+		sds->base_res[2] = max_ii((int)(size[2] * scale + 0.5f), 4);
 	}
 	else if (size[1] >= MAX2(size[0], size[2])) {
 		scale = res / size[1];
 		sds->scale = size[1] / fabsf(ob->size[1]);
-		sds->base_res[0] = (int)(size[0] * scale + 0.5f);
+		sds->base_res[0] = max_ii((int)(size[0] * scale + 0.5f), 4);
 		sds->base_res[1] = res;
-		sds->base_res[2] = (int)(size[2] * scale + 0.5f);
+		sds->base_res[2] = max_ii((int)(size[2] * scale + 0.5f), 4);
 	}
 	else {
 		scale = res / size[2];
 		sds->scale = size[2] / fabsf(ob->size[2]);
-		sds->base_res[0] = (int)(size[0] * scale + 0.5f);
-		sds->base_res[1] = (int)(size[1] * scale + 0.5f);
+		sds->base_res[0] = max_ii((int)(size[0] * scale + 0.5f), 4);
+		sds->base_res[1] = max_ii((int)(size[1] * scale + 0.5f), 4);
 		sds->base_res[2] = res;
 	}
 
@@ -342,6 +303,7 @@ static int smokeModifier_init(SmokeModifierData *smd, Object *ob, Scene *scene, 
 		add_v3_fl(sds->shift_f, 0.5f);
 		zero_v3(sds->prev_loc);
 		mul_m4_v3(ob->obmat, sds->prev_loc);
+		copy_m4_m4(sds->obmat, ob->obmat);
 
 		/* set resolutions */
 		if (smd->domain->flags & MOD_SMOKE_ADAPTIVE_DOMAIN) {
@@ -590,11 +552,21 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->viewsettings = MOD_SMOKE_VIEW_SHOWBIG;
 			smd->domain->effector_weights = BKE_add_effector_weights(NULL);
 			
+#ifdef WITH_MANTA
 			/*mantaflow settings*/
 			smd->domain->manta_solver_res = 3;
 			smd->domain->noise_pos_scale = 2.0f;
 			smd->domain->noise_time_anim = 0.1f;
 			BLI_make_file_string("/", smd->domain->manta_filepath, BKE_tempdir_base(), "manta_scene.py");
+#endif
+
+#ifdef WITH_OPENVDB_BLOSC
+			smd->domain->openvdb_comp = VDB_COMPRESSION_BLOSC;
+#else
+			smd->domain->openvdb_comp = VDB_COMPRESSION_ZIP;
+#endif
+			smd->domain->data_depth = 0;
+			smd->domain->cache_file_format = PTCACHE_FILE_PTCACHE;
 		}
 		else if (smd->type & MOD_SMOKE_TYPE_FLOW)
 		{
@@ -692,6 +664,9 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 
 		MEM_freeN(tsmd->domain->effector_weights);
 		tsmd->domain->effector_weights = MEM_dupallocN(smd->domain->effector_weights);
+		tsmd->domain->openvdb_comp = smd->domain->openvdb_comp;
+		tsmd->domain->data_depth = smd->domain->data_depth;
+		tsmd->domain->cache_file_format = smd->domain->cache_file_format;
 	}
 	else if (tsmd->flow) {
 		tsmd->flow->psys = smd->flow->psys;
@@ -759,7 +734,75 @@ static int get_lamp(Scene *scene, float *light)
  *	Obstacles
  **********************************************************/
 
-static void obstacles_from_derivedmesh(Object *coll_ob, SmokeDomainSettings *sds, SmokeCollSettings *scs, unsigned char *obstacle_map, float *velocityX, float *velocityY, float *velocityZ, float dt)
+typedef struct ObstaclesFromDMData {
+	SmokeDomainSettings *sds;
+	const MVert *mvert;
+	const MLoop *mloop;
+	const MLoopTri *looptri;
+	BVHTreeFromMesh *tree;
+	unsigned char *obstacle_map;
+
+	bool has_velocity;
+	float *vert_vel;
+	float *velocityX, *velocityY, *velocityZ;
+} ObstaclesFromDMData;
+
+static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
+{
+	ObstaclesFromDMData *data = userdata;
+	SmokeDomainSettings *sds = data->sds;
+
+	/* slightly rounded-up sqrt(3 * (0.5)^2) == max. distance of cell boundary along the diagonal */
+	const float surface_distance = 0.867f;
+
+	for (int x = sds->res_min[0]; x < sds->res_max[0]; x++) {
+		for (int y = sds->res_min[1]; y < sds->res_max[1]; y++) {
+			const int index = smoke_get_index(x - sds->res_min[0], sds->res[0], y - sds->res_min[1], sds->res[1], z - sds->res_min[2]);
+
+			float ray_start[3] = {(float)x + 0.5f, (float)y + 0.5f, (float)z + 0.5f};
+			BVHTreeNearest nearest = {0};
+			nearest.index = -1;
+			nearest.dist_sq = surface_distance * surface_distance; /* find_nearest uses squared distance */
+
+			/* find the nearest point on the mesh */
+			if (BLI_bvhtree_find_nearest(data->tree->tree, ray_start, &nearest, data->tree->nearest_callback, data->tree) != -1) {
+				const MLoopTri *lt = &data->looptri[nearest.index];
+				float weights[4];
+				int v1, v2, v3;
+
+				/* calculate barycentric weights for nearest point */
+				v1 = data->mloop[lt->tri[0]].v;
+				v2 = data->mloop[lt->tri[1]].v;
+				v3 = data->mloop[lt->tri[2]].v;
+				interp_weights_face_v3(
+				            weights, data->mvert[v1].co, data->mvert[v2].co, data->mvert[v3].co, NULL, nearest.co);
+
+				// DG TODO
+				if (data->has_velocity)
+				{
+					/* apply object velocity */
+					{
+						float hit_vel[3];
+						interp_v3_v3v3v3(hit_vel, &data->vert_vel[v1 * 3], &data->vert_vel[v2 * 3], &data->vert_vel[v3 * 3], weights);
+						data->velocityX[index] += hit_vel[0];
+						data->velocityY[index] += hit_vel[1];
+						data->velocityZ[index] += hit_vel[2];
+					}
+				}
+
+				/* tag obstacle cells */
+				data->obstacle_map[index] = 1;
+
+				if (data->has_velocity)
+					data->obstacle_map[index] |= 8;
+			}
+		}
+	}
+}
+
+static void obstacles_from_derivedmesh(
+        Object *coll_ob, SmokeDomainSettings *sds, SmokeCollSettings *scs,
+        unsigned char *obstacle_map, float *velocityX, float *velocityY, float *velocityZ, float dt)
 {
 	if (!scs->dm) return;
 	{
@@ -768,15 +811,10 @@ static void obstacles_from_derivedmesh(Object *coll_ob, SmokeDomainSettings *sds
 		const MLoopTri *looptri;
 		const MLoop *mloop;
 		BVHTreeFromMesh treeData = {NULL};
-		int numverts, i, z;
-
-		/* slightly rounded-up sqrt(3 * (0.5)^2) == max. distance of cell boundary along the diagonal */
-		const float surface_distance = 0.867f;
+		int numverts, i;
 
 		float *vert_vel = NULL;
-		int has_velocity = 0;
-
-		tstart();
+		bool has_velocity = false;
 
 		dm = CDDM_copy(scs->dm);
 		CDDM_calc_normals(dm);
@@ -799,7 +837,7 @@ static void obstacles_from_derivedmesh(Object *coll_ob, SmokeDomainSettings *sds
 				scs->numverts = numverts;
 			}
 			else {
-				has_velocity = 1;
+				has_velocity = true;
 			}
 		}
 
@@ -831,51 +869,14 @@ static void obstacles_from_derivedmesh(Object *coll_ob, SmokeDomainSettings *sds
 		}
 
 		if (bvhtree_from_mesh_looptri(&treeData, dm, 0.0f, 4, 6)) {
-#pragma omp parallel for schedule(static)
-			for (z = sds->res_min[2]; z < sds->res_max[2]; z++) {
-				int x, y;
-				for (x = sds->res_min[0]; x < sds->res_max[0]; x++)
-					for (y = sds->res_min[1]; y < sds->res_max[1]; y++) {
-						int index = smoke_get_index(x - sds->res_min[0], sds->res[0], y - sds->res_min[1], sds->res[1], z - sds->res_min[2]);
-
-						float ray_start[3] = {(float)x + 0.5f, (float)y + 0.5f, (float)z + 0.5f};
-						BVHTreeNearest nearest = {0};
-						nearest.index = -1;
-						nearest.dist_sq = surface_distance * surface_distance; /* find_nearest uses squared distance */
-
-						/* find the nearest point on the mesh */
-						if (BLI_bvhtree_find_nearest(treeData.tree, ray_start, &nearest, treeData.nearest_callback, &treeData) != -1) {
-							const MLoopTri *lt = &looptri[nearest.index];
-							float weights[4];
-							int v1, v2, v3;
-
-							/* calculate barycentric weights for nearest point */
-							v1 = mloop[lt->tri[0]].v;
-							v2 = mloop[lt->tri[1]].v;
-							v3 = mloop[lt->tri[2]].v;
-							interp_weights_face_v3(weights, mvert[v1].co, mvert[v2].co, mvert[v3].co, NULL, nearest.co);
-
-							// DG TODO
-							if (has_velocity)
-							{
-								/* apply object velocity */
-								{
-									float hit_vel[3];
-									interp_v3_v3v3v3(hit_vel, &vert_vel[v1 * 3], &vert_vel[v2 * 3], &vert_vel[v3 * 3], weights);
-									velocityX[index] += hit_vel[0];
-									velocityY[index] += hit_vel[1];
-									velocityZ[index] += hit_vel[2];
-								}
-							}
-
-							/* tag obstacle cells */
-							obstacle_map[index] = 1;
-
-							if (has_velocity)
-								obstacle_map[index] |= 8;
-						}
-					}
-			}
+			ObstaclesFromDMData data = {
+			    .sds = sds, .mvert = mvert, .mloop = mloop, .looptri = looptri,
+			    .tree = &treeData, .obstacle_map = obstacle_map,
+			    .has_velocity = has_velocity, .vert_vel = vert_vel,
+			    .velocityX = velocityX, .velocityY = velocityY, .velocityZ = velocityZ
+			};
+			BLI_task_parallel_range(
+			            sds->res_min[2], sds->res_max[2], &data, obstacles_from_derivedmesh_task_cb, true);
 		}
 		/* free bvh tree */
 		free_bvhtree_from_mesh(&treeData);
@@ -1255,8 +1256,85 @@ static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_mult
 	em_freeData(&em1);
 }
 
+typedef struct EmitFromParticlesData {
+	SmokeFlowSettings *sfs;
+	KDTree *tree;
+	int hires_multiplier;
 
-static void emit_from_particles(Object *flow_ob, SmokeDomainSettings *sds, SmokeFlowSettings *sfs, EmissionMap *em, Scene *scene, float dt)
+	EmissionMap *em;
+	float *particle_vel;
+	float hr;
+
+	int *min, *max, *res;
+
+	float solid;
+	float smooth;
+	float hr_smooth;
+} EmitFromParticlesData;
+
+static void emit_from_particles_task_cb(void *userdata, const int z)
+{
+	EmitFromParticlesData *data = userdata;
+	SmokeFlowSettings *sfs = data->sfs;
+	EmissionMap *em = data->em;
+	const int hires_multiplier = data->hires_multiplier;
+
+	for (int x = data->min[0]; x < data->max[0]; x++) {
+		for (int y = data->min[1]; y < data->max[1]; y++) {
+			/* take low res samples where possible */
+			if (hires_multiplier <= 1 || !(x % hires_multiplier || y % hires_multiplier || z % hires_multiplier)) {
+				/* get low res space coordinates */
+				const int lx = x / hires_multiplier;
+				const int ly = y / hires_multiplier;
+				const int lz = z / hires_multiplier;
+
+				const int index = smoke_get_index(lx - em->min[0], em->res[0], ly - em->min[1], em->res[1], lz - em->min[2]);
+				const float ray_start[3] = {((float)lx) + 0.5f, ((float)ly) + 0.5f, ((float)lz) + 0.5f};
+
+				/* find particle distance from the kdtree */
+				KDTreeNearest nearest;
+				const float range = data->solid + data->smooth;
+				BLI_kdtree_find_nearest(data->tree, ray_start, &nearest);
+
+				if (nearest.dist < range) {
+					em->influence[index] = (nearest.dist < data->solid) ?
+					                       1.0f : (1.0f - (nearest.dist - data->solid) / data->smooth);
+					/* Uses particle velocity as initial velocity for smoke */
+					if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY && (sfs->psys->part->phystype != PART_PHYS_NO)) {
+						VECADDFAC(&em->velocity[index * 3], &em->velocity[index * 3],
+						          &data->particle_vel[nearest.index * 3], sfs->vel_multi);
+					}
+				}
+			}
+
+			/* take high res samples if required */
+			if (hires_multiplier > 1) {
+				/* get low res space coordinates */
+				const float lx = ((float)x) * data->hr;
+				const float ly = ((float)y) * data->hr;
+				const float lz = ((float)z) * data->hr;
+
+				const int index = smoke_get_index(
+				                      x - data->min[0], data->res[0], y - data->min[1], data->res[1], z - data->min[2]);
+				const float ray_start[3] = {lx + 0.5f * data->hr, ly + 0.5f * data->hr, lz + 0.5f * data->hr};
+
+				/* find particle distance from the kdtree */
+				KDTreeNearest nearest;
+				const float range = data->solid + data->hr_smooth;
+				BLI_kdtree_find_nearest(data->tree, ray_start, &nearest);
+
+				if (nearest.dist < range) {
+					em->influence_high[index] = (nearest.dist < data->solid) ?
+					                            1.0f : (1.0f - (nearest.dist - data->solid) / data->smooth);
+				}
+			}
+
+		}
+	}
+}
+
+static void emit_from_particles(
+        Object *flow_ob, SmokeDomainSettings *sds, SmokeFlowSettings *sfs, EmissionMap *em, Scene *scene, float dt)
 {
 	if (sfs && sfs->psys && sfs->psys->part && ELEM(sfs->psys->part->type, PART_EMITTER, PART_FLUID)) // is particle system selected
 	{
@@ -1270,11 +1348,10 @@ static void emit_from_particles(Object *flow_ob, SmokeDomainSettings *sds, Smoke
 		int bounds_margin = 1;
 
 		/* radius based flow */
-		float solid = sfs->particle_size * 0.5f;
-		float smooth = 0.5f; /* add 0.5 cells of linear falloff to reduce aliasing */
+		const float solid = sfs->particle_size * 0.5f;
+		const float smooth = 0.5f; /* add 0.5 cells of linear falloff to reduce aliasing */
 		int hires_multiplier = 1;
-		int z;
-		KDTree *tree;
+		KDTree *tree = NULL;
 
 		sim.scene = scene;
 		sim.ob = flow_ob;
@@ -1385,9 +1462,8 @@ static void emit_from_particles(Object *flow_ob, SmokeDomainSettings *sds, Smoke
 			}   // particles loop
 		}
 		else if (valid_particles > 0) { // MOD_SMOKE_FLOW_USE_PART_SIZE
-
 			int min[3], max[3], res[3];
-			float hr = 1.0f / ((float)hires_multiplier);
+			const float hr = 1.0f / ((float)hires_multiplier);
 			/* slightly adjust high res antialias smoothness based on number of divisions
 			 * to allow smaller details but yet not differing too much from the low res size */
 			const float hr_smooth = smooth * powf(hr, 1.0f / 3.0f);
@@ -1401,62 +1477,13 @@ static void emit_from_particles(Object *flow_ob, SmokeDomainSettings *sds, Smoke
 
 			BLI_kdtree_balance(tree);
 
-			/* begin thread safe malloc */
-			BLI_begin_threaded_malloc();
+			EmitFromParticlesData data = {
+				.sfs = sfs, .tree = tree, .hires_multiplier = hires_multiplier, .hr = hr,
+			    .em = em, .particle_vel = particle_vel, .min = min, .max = max, .res = res,
+			    .solid = solid, .smooth = smooth, .hr_smooth = hr_smooth,
+			};
 
-#pragma omp parallel for schedule(static)
-			for (z = min[2]; z < max[2]; z++) {
-				int x, y;
-				for (x = min[0]; x < max[0]; x++)
-					for (y = min[1]; y < max[1]; y++) {
-						/* take low res samples where possible */
-						if (hires_multiplier <= 1 || !(x % hires_multiplier || y % hires_multiplier || z % hires_multiplier)) {
-							/* get low res space coordinates */
-							int lx = x / hires_multiplier;
-							int ly = y / hires_multiplier;
-							int lz = z / hires_multiplier;
-
-							int index = smoke_get_index(lx - em->min[0], em->res[0], ly - em->min[1], em->res[1], lz - em->min[2]);
-							float ray_start[3] = {((float)lx) + 0.5f, ((float)ly) + 0.5f, ((float)lz) + 0.5f};
-
-							/* find particle distance from the kdtree */
-							KDTreeNearest nearest;
-							float range = solid + smooth;
-							BLI_kdtree_find_nearest(tree, ray_start, &nearest);
-
-							if (nearest.dist < range) {
-								em->influence[index] = (nearest.dist < solid) ? 1.0f : (1.0f - (nearest.dist-solid) / smooth);
-								/* Uses particle velocity as initial velocity for smoke */
-								if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY && (psys->part->phystype != PART_PHYS_NO))
-								{
-									VECADDFAC(&em->velocity[index * 3], &em->velocity[index * 3], &particle_vel[nearest.index * 3], sfs->vel_multi);
-								}
-							}
-						}
-
-						/* take high res samples if required */
-						if (hires_multiplier > 1) {
-							/* get low res space coordinates */
-							float lx = ((float)x) * hr;
-							float ly = ((float)y) * hr;
-							float lz = ((float)z) * hr;
-
-							int index = smoke_get_index(x - min[0], res[0], y - min[1], res[1], z - min[2]);
-							float ray_start[3] = {lx + 0.5f*hr, ly + 0.5f*hr, lz + 0.5f*hr};
-
-							/* find particle distance from the kdtree */
-							KDTreeNearest nearest;
-							float range = solid + hr_smooth;
-							BLI_kdtree_find_nearest(tree, ray_start, &nearest);
-
-							if (nearest.dist < range) {
-								em->influence_high[index] = (nearest.dist < solid) ? 1.0f : (1.0f - (nearest.dist-solid) / smooth);
-							}
-						}
-
-					}
-			}
-			BLI_end_threaded_malloc();
+			BLI_task_parallel_range(min[2], max[2], &data, emit_from_particles_task_cb, true);
 		}
 
 		if (sfs->flags & MOD_SMOKE_FLOW_USE_PART_SIZE) {
@@ -1606,6 +1633,76 @@ static void sample_derivedmesh(
 	influence_map[index] = MAX2(volume_factor, sample_str);
 }
 
+typedef struct EmitFromDMData {
+	SmokeDomainSettings *sds;
+	SmokeFlowSettings *sfs;
+	const MVert *mvert;
+	const MLoop *mloop;
+	const MLoopTri *mlooptri;
+	const MLoopUV *mloopuv;
+	MDeformVert *dvert;
+	int defgrp_index;
+
+	BVHTreeFromMesh *tree;
+	int hires_multiplier;
+	float hr;
+
+	EmissionMap *em;
+	bool has_velocity;
+	float *vert_vel;
+
+	float *flow_center;
+	int *min, *max, *res;
+} EmitFromDMData;
+
+static void emit_from_derivedmesh_task_cb(void *userdata, const int z)
+{
+	EmitFromDMData *data = userdata;
+	EmissionMap *em = data->em;
+	const int hires_multiplier = data->hires_multiplier;
+
+	for (int x = data->min[0]; x < data->max[0]; x++) {
+		for (int y = data->min[1]; y < data->max[1]; y++) {
+			/* take low res samples where possible */
+			if (hires_multiplier <= 1 || !(x % hires_multiplier || y % hires_multiplier || z % hires_multiplier)) {
+				/* get low res space coordinates */
+				const int lx = x / hires_multiplier;
+				const int ly = y / hires_multiplier;
+				const int lz = z / hires_multiplier;
+
+				const int index = smoke_get_index(
+				                      lx - em->min[0], em->res[0], ly - em->min[1], em->res[1], lz - em->min[2]);
+				const float ray_start[3] = {((float)lx) + 0.5f, ((float)ly) + 0.5f, ((float)lz) + 0.5f};
+
+				sample_derivedmesh(
+				        data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
+				        em->influence, em->velocity, index, data->sds->base_res, data->flow_center,
+				        data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
+				        (float)lx, (float)ly, (float)lz);
+			}
+
+			/* take high res samples if required */
+			if (hires_multiplier > 1) {
+				/* get low res space coordinates */
+				const float lx = ((float)x) * data->hr;
+				const float ly = ((float)y) * data->hr;
+				const float lz = ((float)z) * data->hr;
+
+				const int index = smoke_get_index(
+				                      x - data->min[0], data->res[0], y - data->min[1], data->res[1], z - data->min[2]);
+				const float ray_start[3] = {lx + 0.5f * data->hr, ly + 0.5f * data->hr, lz + 0.5f * data->hr};
+
+				sample_derivedmesh(
+				        data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
+				        em->influence_high, NULL, index, data->sds->base_res, data->flow_center,
+				        data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
+				        /* x,y,z needs to be always lowres */
+				        lx, ly, lz);
+			}
+		}
+	}
+}
+
 static void emit_from_derivedmesh(Object *flow_ob, SmokeDomainSettings *sds, SmokeFlowSettings *sfs, EmissionMap *em, float dt)
 {
 //	clock_t start = clock();
@@ -1619,7 +1716,7 @@ static void emit_from_derivedmesh(Object *flow_ob, SmokeDomainSettings *sds, Smo
 		const MLoopUV *mloopuv = NULL;
 		const MLoop *mloop = NULL;
 		BVHTreeFromMesh treeData = {NULL};
-		int numOfVerts, i, z;
+		int numOfVerts, i;
 		float flow_center[3] = {0};
 
 		float *vert_vel = NULL;
@@ -1701,49 +1798,18 @@ static void emit_from_derivedmesh(Object *flow_ob, SmokeDomainSettings *sds, Smo
 		}
 
 		if (bvhtree_from_mesh_looptri(&treeData, dm, 0.0f, 4, 6)) {
-#pragma omp parallel for schedule(static)
-			for (z = min[2]; z < max[2]; z++) {
-				int x, y;
-				for (x = min[0]; x < max[0]; x++)
-					for (y = min[1]; y < max[1]; y++) {
-						/* take low res samples where possible */
-						if (hires_multiplier <= 1 || !(x % hires_multiplier || y % hires_multiplier || z % hires_multiplier)) {
-							/* get low res space coordinates */
-							int lx = x / hires_multiplier;
-							int ly = y / hires_multiplier;
-							int lz = z / hires_multiplier;
+			const float hr = 1.0f / ((float)hires_multiplier);
 
-							int index = smoke_get_index(lx - em->min[0], em->res[0], ly - em->min[1], em->res[1], lz - em->min[2]);
-							float ray_start[3] = {((float)lx) + 0.5f, ((float)ly) + 0.5f, ((float)lz) + 0.5f};
+			EmitFromDMData data = {
+				.sds = sds, .sfs = sfs,
+			    .mvert = mvert, .mloop = mloop, .mlooptri = mlooptri, .mloopuv = mloopuv,
+			    .dvert = dvert, .defgrp_index = defgrp_index,
+			    .tree = &treeData, .hires_multiplier = hires_multiplier, .hr = hr,
+			    .em = em, .has_velocity = has_velocity, .vert_vel = vert_vel,
+			    .flow_center = flow_center, .min = min, .max = max, .res = res,
+			};
 
-							sample_derivedmesh(
-							        sfs, mvert, mloop, mlooptri, mloopuv,
-							        em->influence, em->velocity, index, sds->base_res, flow_center,
-							        &treeData, ray_start,vert_vel, has_velocity, defgrp_index, dvert,
-							        (float)lx, (float)ly, (float)lz);
-						}
-
-						/* take high res samples if required */
-						if (hires_multiplier > 1) {
-							/* get low res space coordinates */
-							float hr = 1.0f / ((float)hires_multiplier);
-							float lx = ((float)x) * hr;
-							float ly = ((float)y) * hr;
-							float lz = ((float)z) * hr;
-
-							int index = smoke_get_index(x - min[0], res[0], y - min[1], res[1], z - min[2]);
-							float ray_start[3] = {lx + 0.5f*hr, ly + 0.5f*hr, lz + 0.5f*hr};
-
-							sample_derivedmesh(
-							        sfs, mvert, mloop, mlooptri, mloopuv,
-							        em->influence_high, NULL, index, sds->base_res, flow_center,
-							        &treeData, ray_start, vert_vel, has_velocity, defgrp_index, dvert,
-							        /* x,y,z needs to be always lowres */
-							        lx, ly, lz);
-						}
-
-					}
-			}
+			BLI_task_parallel_range(min[2], max[2], &data, emit_from_derivedmesh_task_cb, true);
 		}
 		/* free bvh tree */
 		free_bvhtree_from_mesh(&treeData);
@@ -2134,7 +2200,7 @@ BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value
 	}
 }
 
-static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sds, float dt, bool for_render)
+static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sds, float dt)
 {
 	Object **flowobjs = NULL;
 	EmissionMap *emaps = NULL;
@@ -2241,7 +2307,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 					else { /* MOD_SMOKE_FLOW_SOURCE_MESH */
 						/* update flow object frame */
 						BLI_mutex_lock(&object_update_lock);
-						subframe_updateObject(scene, collob, 1, 5, BKE_scene_frame_get(scene), for_render);
+						BKE_object_modifier_update_subframe(scene, collob, true, 5, BKE_scene_frame_get(scene), eModifierType_Smoke);
 						BLI_mutex_unlock(&object_update_lock);
 
 						/* apply flow */
@@ -2271,6 +2337,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 						active_fields |= SM_ACTIVE_COLOR_SET;
 					}
 					else if (!equals_v3v3(sds->active_color, sfs->color)) {
+						copy_v3_v3(sds->active_color, sfs->color);
 						active_fields |= SM_ACTIVE_COLORS;
 					}
 				}
@@ -2289,6 +2356,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 			active_fields |= SM_ACTIVE_COLOR_SET;
 		}
 		else if (!equals_v3v3(sds->active_color, sds->flame_smoke_color)) {
+			copy_v3_v3(sds->active_color, sds->flame_smoke_color);
 			active_fields |= SM_ACTIVE_COLORS;
 		}
 	}
@@ -2508,6 +2576,73 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 		MEM_freeN(emaps);
 }
 
+typedef struct UpdateEffectorsData {
+	Scene *scene;
+	SmokeDomainSettings *sds;
+	ListBase *effectors;
+
+	float *density;
+	float *fuel;
+	float *force_x;
+	float *force_y;
+	float *force_z;
+	float *velocity_x;
+	float *velocity_y;
+	float *velocity_z;
+	unsigned char *obstacle;
+} UpdateEffectorsData;
+
+static void update_effectors_task_cb(void *userdata, const int x)
+{
+	UpdateEffectorsData *data = userdata;
+	SmokeDomainSettings *sds = data->sds;
+
+	for (int y = 0; y < sds->res[1]; y++) {
+		for (int z = 0; z < sds->res[2]; z++)
+		{
+			EffectedPoint epoint;
+			float mag;
+			float voxelCenter[3] = {0, 0, 0}, vel[3] = {0, 0, 0}, retvel[3] = {0, 0, 0};
+			const unsigned int index = smoke_get_index(x, sds->res[0], y, sds->res[1], z);
+
+			if (((data->fuel ? MAX2(data->density[index], data->fuel[index]) : data->density[index]) < FLT_EPSILON) ||
+			    data->obstacle[index])
+			{
+				continue;
+			}
+
+			vel[0] = data->velocity_x[index];
+			vel[1] = data->velocity_y[index];
+			vel[2] = data->velocity_z[index];
+
+			/* convert vel to global space */
+			mag = len_v3(vel);
+			mul_mat3_m4_v3(sds->obmat, vel);
+			normalize_v3(vel);
+			mul_v3_fl(vel, mag);
+
+			voxelCenter[0] = sds->p0[0] + sds->cell_size[0] * ((float)(x + sds->res_min[0]) + 0.5f);
+			voxelCenter[1] = sds->p0[1] + sds->cell_size[1] * ((float)(y + sds->res_min[1]) + 0.5f);
+			voxelCenter[2] = sds->p0[2] + sds->cell_size[2] * ((float)(z + sds->res_min[2]) + 0.5f);
+			mul_m4_v3(sds->obmat, voxelCenter);
+
+			pd_point_from_loc(data->scene, voxelCenter, vel, index, &epoint);
+			pdDoEffectors(data->effectors, NULL, sds->effector_weights, &epoint, retvel, NULL);
+
+			/* convert retvel to local space */
+			mag = len_v3(retvel);
+			mul_mat3_m4_v3(sds->imat, retvel);
+			normalize_v3(retvel);
+			mul_v3_fl(retvel, mag);
+
+			// TODO dg - do in force!
+			data->force_x[index] = min_ff(max_ff(-1.0f, retvel[0] * 0.2f), 1.0f);
+			data->force_y[index] = min_ff(max_ff(-1.0f, retvel[1] * 0.2f), 1.0f);
+			data->force_z[index] = min_ff(max_ff(-1.0f, retvel[2] * 0.2f), 1.0f);
+		}
+	}
+}
+
 static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds, float UNUSED(dt))
 {
 	ListBase *effectors;
@@ -2515,69 +2650,29 @@ static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	sds->effector_weights->weight[PFIELD_SMOKEFLOW] = 0.0f;
 	effectors = pdInitEffectors(scene, ob, NULL, sds->effector_weights, true);
 
-	if (effectors)
-	{
-		float *density = smoke_get_density(sds->fluid);
-		float *fuel = smoke_get_fuel(sds->fluid);
-		float *force_x = smoke_get_force_x(sds->fluid);
-		float *force_y = smoke_get_force_y(sds->fluid);
-		float *force_z = smoke_get_force_z(sds->fluid);
-		float *velocity_x = smoke_get_velocity_x(sds->fluid);
-		float *velocity_y = smoke_get_velocity_y(sds->fluid);
-		float *velocity_z = smoke_get_velocity_z(sds->fluid);
-		unsigned char *obstacle = smoke_get_obstacle(sds->fluid);
-		int x;
-
+	if (effectors) {
 		// precalculate wind forces
-#pragma omp parallel for schedule(static)
-		for (x = 0; x < sds->res[0]; x++)
-		{
-			int y, z;
-			for (y = 0; y < sds->res[1]; y++)
-				for (z = 0; z < sds->res[2]; z++)
-				{
-					EffectedPoint epoint;
-					float mag;
-					float voxelCenter[3] = {0, 0, 0}, vel[3] = {0, 0, 0}, retvel[3] = {0, 0, 0};
-					unsigned int index = smoke_get_index(x, sds->res[0], y, sds->res[1], z);
-					if (((fuel ? MAX2(density[index], fuel[index]) : density[index]) < FLT_EPSILON) || obstacle[index])
-						continue;
-					vel[0] = velocity_x[index];
-					vel[1] = velocity_y[index];
-					vel[2] = velocity_z[index];
+		UpdateEffectorsData data;
+		data.scene = scene;
+		data.sds = sds;
+		data.effectors = effectors;
+		data.density = smoke_get_density(sds->fluid);
+		data.fuel = smoke_get_fuel(sds->fluid);
+		data.force_x = smoke_get_force_x(sds->fluid);
+		data.force_y = smoke_get_force_y(sds->fluid);
+		data.force_z = smoke_get_force_z(sds->fluid);
+		data.velocity_x = smoke_get_velocity_x(sds->fluid);
+		data.velocity_y = smoke_get_velocity_y(sds->fluid);
+		data.velocity_z = smoke_get_velocity_z(sds->fluid);
+		data.obstacle = smoke_get_obstacle(sds->fluid);
 
-					/* convert vel to global space */
-					mag = len_v3(vel);
-					mul_mat3_m4_v3(sds->obmat, vel);
-					normalize_v3(vel);
-					mul_v3_fl(vel, mag);
-
-					voxelCenter[0] = sds->p0[0] + sds->cell_size[0] * ((float)(x + sds->res_min[0]) + 0.5f);
-					voxelCenter[1] = sds->p0[1] + sds->cell_size[1] * ((float)(y + sds->res_min[1]) + 0.5f);
-					voxelCenter[2] = sds->p0[2] + sds->cell_size[2] * ((float)(z + sds->res_min[2]) + 0.5f);
-					mul_m4_v3(sds->obmat, voxelCenter);
-
-					pd_point_from_loc(scene, voxelCenter, vel, index, &epoint);
-					pdDoEffectors(effectors, NULL, sds->effector_weights, &epoint, retvel, NULL);
-
-					/* convert retvel to local space */
-					mag = len_v3(retvel);
-					mul_mat3_m4_v3(sds->imat, retvel);
-					normalize_v3(retvel);
-					mul_v3_fl(retvel, mag);
-
-					// TODO dg - do in force!
-					force_x[index] = min_ff(max_ff(-1.0f, retvel[0] * 0.2f), 1.0f);
-					force_y[index] = min_ff(max_ff(-1.0f, retvel[1] * 0.2f), 1.0f);
-					force_z[index] = min_ff(max_ff(-1.0f, retvel[2] * 0.2f), 1.0f);
-				}
-		}
+		BLI_task_parallel_range(0, sds->res[0], &data, update_effectors_task_cb, true);
 	}
 
 	pdEndEffectors(&effectors);
 }
 
-static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *domain_dm, float fps, bool for_render)
+static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *domain_dm, float fps)
 {
 	SmokeDomainSettings *sds = smd->domain;
 	/* stability values copied from wturbulence.cpp */
@@ -2647,7 +2742,7 @@ static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *
 	for (substep = 0; substep < totalSubsteps; substep++)
 	{
 		// calc animated obstacle velocities
-		update_flowsfluids(scene, ob, sds, dtSubdiv, for_render);
+		update_flowsfluids(scene, ob, sds, dtSubdiv);
 		update_obstacles(scene, ob, sds, dtSubdiv, substep, totalSubsteps);
 
 		if (sds->total_cells > 1) {
@@ -2748,7 +2843,7 @@ static DerivedMesh *createDomainGeometry(SmokeDomainSettings *sds, Object *ob)
 	return result;
 }
 
-static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *ob, DerivedMesh *dm, bool for_render)
+static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *ob, DerivedMesh *dm)
 {
 	if ((smd->type & MOD_SMOKE_TYPE_FLOW))
 	{
@@ -2846,7 +2941,9 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		if (framenr != scene->r.cfra)
 			return;
 
-		tstart();
+#ifdef DEBUG_TIME
+		double start = PIL_check_seconds_timer();
+#endif
 
 		/* if on second frame, write cache for first frame */
 		if ((int)smd->time == startframe && (cache->flag & PTCACHE_OUTDATED || cache->last_exact == 0)) {
@@ -2875,7 +2972,7 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 				}
 #endif
 			}
-			step(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base, for_render);
+			step(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base);
 		}
 		// create shadows before writing cache so they get stored
 		smoke_calc_transparency(sds, scene);
@@ -2890,18 +2987,20 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		if (framenr != startframe)
 			BKE_ptcache_write(&pid, framenr);
 
-		tend();
-		// printf ( "Frame: %d, Time: %f\n\n", (int)smd->time, (float) tval() );
+#ifdef DEBUG_TIME
+		double end = PIL_check_seconds_timer();
+		printf("Frame: %d, Time: %f\n\n", (int)smd->time, (float)(end - start));
+#endif
 	}
 }
 
-struct DerivedMesh *smokeModifier_do(SmokeModifierData *smd, Scene *scene, Object *ob, DerivedMesh *dm, bool for_render)
+struct DerivedMesh *smokeModifier_do(SmokeModifierData *smd, Scene *scene, Object *ob, DerivedMesh *dm)
 {
 	/* lock so preview render does not read smoke data while it gets modified */
 	if ((smd->type & MOD_SMOKE_TYPE_DOMAIN) && smd->domain)
 		BLI_rw_mutex_lock(smd->domain->fluid_mutex, THREAD_LOCK_WRITE);
 
-	smokeModifier_process(smd, scene, ob, dm, for_render);
+	smokeModifier_process(smd, scene, ob, dm);
 
 	if ((smd->type & MOD_SMOKE_TYPE_DOMAIN) && smd->domain)
 		BLI_rw_mutex_unlock(smd->domain->fluid_mutex);
@@ -2927,7 +3026,6 @@ static float calc_voxel_transp(float *result, float *input, int res[3], int *pix
 
 	if (result[index] < 0.0f)
 	{
-// #pragma omp critical
 		result[index] = *tRay;
 	}
 
@@ -3042,7 +3140,6 @@ static void smoke_calc_transparency(SmokeDomainSettings *sds, Scene *scene)
 	bv[3] = (float)sds->res[1]; // y
 	bv[5] = (float)sds->res[2]; // z
 
-// #pragma omp parallel for schedule(static, 1)
 	for (z = 0; z < sds->res[2]; z++)
 	{
 		size_t index = z * slabsize;
@@ -3084,7 +3181,6 @@ static void smoke_calc_transparency(SmokeDomainSettings *sds, Scene *scene)
 				bresenham_linie_3D(cell[0], cell[1], cell[2], x, y, z, &tRay, calc_voxel_transp, sds->shadow, density, sds->res, correct);
 
 				// convention -> from a RGBA float array, use G value for tRay
-// #pragma omp critical
 				sds->shadow[index] = tRay;
 			}
 	}

@@ -194,6 +194,8 @@ static int print_version(int argc, const char **argv, void *data);
 /* Initialize callbacks for the modules that need them */
 static void setCallbacks(void); 
 
+static unsigned char python_exit_code_on_error = 0;
+
 #ifndef WITH_PYTHON_MODULE
 
 static bool use_crash_handler = true;
@@ -299,6 +301,7 @@ static int print_help(int UNUSED(argc), const char **UNUSED(argv), void *data)
 	BLI_argsPrintArgDoc(ba, "--python-text");
 	BLI_argsPrintArgDoc(ba, "--python-expr");
 	BLI_argsPrintArgDoc(ba, "--python-console");
+	BLI_argsPrintArgDoc(ba, "--python-exit-code");
 	BLI_argsPrintArgDoc(ba, "--addons");
 
 
@@ -454,8 +457,11 @@ static bool parse_int_relative_clamp(
 	}
 }
 
-static bool parse_int(
-        const char *str,
+/**
+ * No clamping, fails with any number outside the range.
+ */
+static bool parse_int_strict_range(
+        const char *str, const int min, const int max,
         int *r_value, const char **r_err_msg)
 {
 	char *str_end = NULL;
@@ -469,7 +475,7 @@ static bool parse_int(
 		*r_err_msg = msg;
 		return false;
 	}
-	else if ((errno == ERANGE) || ((value < INT_MIN || value > INT_MAX))) {
+	else if ((errno == ERANGE) || ((value < min || value > max))) {
 		static const char *msg = "exceeds range";
 		*r_err_msg = msg;
 		return false;
@@ -478,6 +484,13 @@ static bool parse_int(
 		*r_value = (int)value;
 		return true;
 	}
+}
+
+static bool parse_int(
+        const char *str,
+        int *r_value, const char **r_err_msg)
+{
+	return parse_int_strict_range(str, INT_MIN, INT_MAX, r_value, r_err_msg);
 }
 
 static bool parse_int_clamp(
@@ -1028,24 +1041,20 @@ static int set_image_type(int argc, const char **argv, void *data)
 static int set_threads(int argc, const char **argv, void *UNUSED(data))
 {
 	const char *arg_id = "-t / --threads";
+	const int min = 0, max = BLENDER_MAX_THREADS;
 	if (argc > 1) {
 		const char *err_msg = NULL;
 		int threads;
-		if (!parse_int(argv[1], &threads, &err_msg)) {
-			printf("\nError: %s '%s %s'.\n", err_msg, arg_id, argv[1]);
+		if (!parse_int_strict_range(argv[1], min, max, &threads, &err_msg)) {
+			printf("\nError: %s '%s %s', expected number in [%d..%d].\n", err_msg, arg_id, argv[1], min, max);
 			return 1;
 		}
 
-		if (threads >= 0 && threads <= BLENDER_MAX_THREADS) {
-			BLI_system_num_threads_override_set(threads);
-		}
-		else {
-			printf("Error, threads has to be in range 0-%d\n", BLENDER_MAX_THREADS);
-		}
+		BLI_system_num_threads_override_set(threads);
 		return 1;
 	}
 	else {
-		printf("\nError: you must specify a number of threads between 0 and %d '%s'.\n", BLENDER_MAX_THREADS, arg_id);
+		printf("\nError: you must specify a number of threads in [%d..%d] '%s'.\n", min, max, arg_id);
 		return 0;
 	}
 }
@@ -1326,32 +1335,69 @@ static int set_skip_frame(int argc, const char **argv, void *data)
 	}
 }
 
-/* macro for ugly context setup/reset */
+
 #ifdef WITH_PYTHON
-#define BPY_CTX_SETUP(_cmd)                                                   \
-	{                                                                         \
-		wmWindowManager *wm = CTX_wm_manager(C);                              \
-		Scene *scene_prev = CTX_data_scene(C);                                \
-		wmWindow *win_prev;                                                   \
-		const bool has_win = !BLI_listbase_is_empty(&wm->windows);            \
-		if (has_win) {                                                        \
-			win_prev = CTX_wm_window(C);                                      \
-			CTX_wm_window_set(C, wm->windows.first);                          \
-		}                                                                     \
-		else {                                                                \
-			fprintf(stderr, "Python script \"%s\" "                           \
-			        "running with missing context data.\n", argv[1]);         \
-		}                                                                     \
-		{                                                                     \
-			_cmd;                                                             \
-		}                                                                     \
-		if (has_win) {                                                        \
-			CTX_wm_window_set(C, win_prev);                                   \
-		}                                                                     \
-		CTX_data_scene_set(C, scene_prev);                                    \
-	} (void)0                                                                 \
+
+/** \name Utilities Python Context Macro (#BPY_CTX_SETUP)
+ * \{ */
+struct BlendePyContextStore {
+	wmWindowManager *wm;
+	Scene *scene;
+	wmWindow *win;
+	bool has_win;
+};
+
+static void blender_py_context_backup(
+        bContext *C, struct BlendePyContextStore *c_py,
+        const char *script_id)
+{
+	c_py->wm = CTX_wm_manager(C);
+	c_py->scene = CTX_data_scene(C);
+	c_py->has_win = !BLI_listbase_is_empty(&c_py->wm->windows);
+	if (c_py->has_win) {
+		c_py->win = CTX_wm_window(C);
+		CTX_wm_window_set(C, c_py->wm->windows.first);
+	}
+	else {
+		c_py->win = NULL;
+		fprintf(stderr, "Python script \"%s\" "
+		        "running with missing context data.\n", script_id);
+	}
+}
+
+static void blender_py_context_restore(
+        bContext *C, struct BlendePyContextStore *c_py)
+{
+	/* script may load a file, check old data is valid before using */
+	if (c_py->has_win) {
+		if ((c_py->win == NULL) ||
+		    ((BLI_findindex(&G.main->wm, c_py->wm) != -1) &&
+		     (BLI_findindex(&c_py->wm->windows, c_py->win) != -1)))
+		{
+			CTX_wm_window_set(C, c_py->win);
+		}
+	}
+
+	if ((c_py->scene == NULL) ||
+	    BLI_findindex(&G.main->scene, c_py->scene) != -1)
+	{
+		CTX_data_scene_set(C, c_py->scene);
+	}
+}
+
+/* macro for context setup/reset */
+#define BPY_CTX_SETUP(_cmd) \
+	{ \
+		struct BlendePyContextStore py_c; \
+		blender_py_context_backup(C, &py_c, argv[1]); \
+		{ _cmd; } \
+		blender_py_context_restore(C, &py_c); \
+	} ((void)0)
 
 #endif /* WITH_PYTHON */
+
+/** \} */
+
 
 static int run_python_file(int argc, const char **argv, void *data)
 {
@@ -1365,8 +1411,12 @@ static int run_python_file(int argc, const char **argv, void *data)
 		BLI_strncpy(filename, argv[1], sizeof(filename));
 		BLI_path_cwd(filename, sizeof(filename));
 
-		BPY_CTX_SETUP(BPY_filepath_exec(C, filename, NULL));
-
+		bool ok;
+		BPY_CTX_SETUP(ok = BPY_execute_filepath(C, filename, NULL));
+		if (!ok && python_exit_code_on_error) {
+			printf("\nError: script failed, file: '%s', exiting with code %d.\n", argv[1], python_exit_code_on_error);
+			exit(python_exit_code_on_error);
+		}
 		return 1;
 	}
 	else {
@@ -1389,15 +1439,22 @@ static int run_python_text(int argc, const char **argv, void *data)
 	if (argc > 1) {
 		/* Make the path absolute because its needed for relative linked blends to be found */
 		struct Text *text = (struct Text *)BKE_libblock_find_name(ID_TXT, argv[1]);
+		bool ok;
 
 		if (text) {
-			BPY_CTX_SETUP(BPY_text_exec(C, text, NULL, false));
-			return 1;
+			BPY_CTX_SETUP(ok = BPY_execute_text(C, text, NULL, false));
 		}
 		else {
 			printf("\nError: text block not found %s.\n", argv[1]);
-			return 1;
+			ok = false;
 		}
+
+		if (!ok && python_exit_code_on_error) {
+			printf("\nError: script failed, text: '%s', exiting.\n", argv[1]);
+			exit(python_exit_code_on_error);
+		}
+
+		return 1;
 	}
 	else {
 		printf("\nError: you must specify a text block after '%s'.\n", argv[0]);
@@ -1417,7 +1474,12 @@ static int run_python_expr(int argc, const char **argv, void *data)
 
 	/* workaround for scripts not getting a bpy.context.scene, causes internal errors elsewhere */
 	if (argc > 1) {
-		BPY_CTX_SETUP(BPY_string_exec_ex(C, argv[1], false));
+		bool ok;
+		BPY_CTX_SETUP(ok = BPY_execute_string_ex(C, argv[1], false));
+		if (!ok && python_exit_code_on_error) {
+			printf("\nError: script failed, expr: '%s', exiting.\n", argv[1]);
+			exit(python_exit_code_on_error);
+		}
 		return 1;
 	}
 	else {
@@ -1436,7 +1498,7 @@ static int run_python_console(int UNUSED(argc), const char **argv, void *data)
 #ifdef WITH_PYTHON
 	bContext *C = data;
 
-	BPY_CTX_SETUP(BPY_string_exec(C, "__import__('code').interact()"));
+	BPY_CTX_SETUP(BPY_execute_string(C, "__import__('code').interact()"));
 
 	return 0;
 #else
@@ -1444,6 +1506,27 @@ static int run_python_console(int UNUSED(argc), const char **argv, void *data)
 	printf("This blender was built without python support\n");
 	return 0;
 #endif /* WITH_PYTHON */
+}
+
+static int set_python_exit_code(int argc, const char **argv, void *UNUSED(data))
+{
+	const char *arg_id = "--python-exit-code";
+	if (argc > 1) {
+		const char *err_msg = NULL;
+		const int min = 0, max = 255;
+		int exit_code;
+		if (!parse_int_strict_range(argv[1], min, max, &exit_code, &err_msg)) {
+			printf("\nError: %s '%s %s', expected number in [%d..%d].\n", err_msg, arg_id, argv[1], min, max);
+			return 1;
+		}
+
+		python_exit_code_on_error = (unsigned char)exit_code;
+		return 1;
+	}
+	else {
+		printf("\nError: you must specify an exit code number '%s'.\n", arg_id);
+		return 0;
+	}
 }
 
 static int set_addons(int argc, const char **argv, void *data)
@@ -1462,7 +1545,7 @@ static int set_addons(int argc, const char **argv, void *data)
 		BLI_snprintf(str, slen, script_str, argv[1]);
 
 		BLI_assert(strlen(str) + 1 == slen);
-		BPY_CTX_SETUP(BPY_string_exec_ex(C, str, false));
+		BPY_CTX_SETUP(BPY_execute_string_ex(C, str, false));
 		free(str);
 #else
 		UNUSED_VARS(argv, data);
@@ -1676,6 +1759,7 @@ static void setupArguments(bContext *C, bArgs *ba, SYS_SystemHandle *syshandle)
 	BLI_argsAdd(ba, 4, NULL, "--python-text", "<name>\n\tRun the given Python script text block", run_python_text, C);
 	BLI_argsAdd(ba, 4, NULL, "--python-expr", "<expression>\n\tRun the given expression as a Python script", run_python_expr, C);
 	BLI_argsAdd(ba, 4, NULL, "--python-console", "\n\tRun blender with an interactive console", run_python_console, C);
+	BLI_argsAdd(ba, 4, NULL, "--python-exit-code", "\n\tSet the exit-code in [0..255] to exit if a Python exception is raised (only for scripts executed from the command line), zero disables.", set_python_exit_code, NULL);
 	BLI_argsAdd(ba, 4, NULL, "--addons", "\n\tComma separated list of addons (no spaces)", set_addons, C);
 
 	BLI_argsAdd(ba, 4, "-o", "--render-output", output_doc, set_output, C);
@@ -1701,11 +1785,11 @@ char **environ = NULL;
 #endif
 
 /**
- * Blender's main function responsabilities are:
+ * Blender's main function responsibilities are:
  * - setup subsystems.
  * - handle arguments.
- * - run WM_main() event loop,
- *   or exit when running in background mode.
+ * - run #WM_main() event loop,
+ *   or exit immediately when running in background mode.
  */
 int main(
         int argc,
@@ -1848,7 +1932,7 @@ int main(
 	DAG_init();
 
 	BKE_brush_system_init();
-	RE_init_texture_rng();
+	RE_texture_rng_init();
 	
 
 	BLI_callback_global_init();
@@ -1987,7 +2071,7 @@ int main(
 #endif
 
 	if (G.background) {
-		/* actually incorrect, but works for now (ton) */
+		/* Using window-manager API in background mode is a bit odd, but works fine. */
 		WM_exit(C);
 	}
 	else {

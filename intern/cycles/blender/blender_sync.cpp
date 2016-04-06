@@ -442,7 +442,7 @@ SceneParams BlenderSync::get_scene_params(BL::Scene b_scene, bool background, bo
 
 #if !(defined(__GNUC__) && (defined(i386) || defined(_M_IX86)))
 	if(is_cpu) {
-		params.use_qbvh = system_cpu_support_sse2();
+		params.use_qbvh = DebugFlags().cpu.qbvh && system_cpu_support_sse2();
 	}
 	else
 #endif
@@ -554,7 +554,7 @@ SessionParams BlenderSync::get_session_params(BL::RenderEngine b_engine,
 		params.tile_size = make_int2(tile_x, tile_y);
 	}
 
-	if(BlenderSession::headless == false) {
+	if((BlenderSession::headless == false) && background) {
 		params.tile_order = (TileOrder)RNA_enum_get(&cscene, "tile_order");
 	}
 	else {

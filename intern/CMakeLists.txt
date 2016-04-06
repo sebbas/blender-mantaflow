@@ -27,10 +27,10 @@
 add_subdirectory(string)
 add_subdirectory(ghost)
 add_subdirectory(guardedalloc)
+add_subdirectory(libmv)
 add_subdirectory(memutil)
 add_subdirectory(opencolorio)
 add_subdirectory(mikktspace)
-add_subdirectory(raskter)
 add_subdirectory(glew-mx)
 add_subdirectory(eigen)
 
@@ -85,4 +85,8 @@ endif()
 
 if(WITH_MOD_MANTA)
 	add_subdirectory(mantaflow)
+endif()
+
+if(WITH_OPENVDB)
+	add_subdirectory(openvdb)
 endif()

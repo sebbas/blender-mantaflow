@@ -173,8 +173,6 @@ void ED_operatortypes_mesh(void)
 
 	WM_operatortype_append(MESH_OT_bevel);
 
-	WM_operatortype_append(MESH_OT_select_next_loop);
-
 	WM_operatortype_append(MESH_OT_bridge_edge_loops);
 	WM_operatortype_append(MESH_OT_inset);
 	WM_operatortype_append(MESH_OT_offset_edge_loops);
@@ -349,6 +347,10 @@ void ED_keymap_mesh(wmKeyConfig *keyconf)
 
 	WM_keymap_add_item(keymap, "MESH_OT_select_more", PADPLUSKEY, KM_PRESS, KM_CTRL, 0);
 	WM_keymap_add_item(keymap, "MESH_OT_select_less", PADMINUS, KM_PRESS, KM_CTRL, 0);
+
+	WM_keymap_add_item(keymap, "MESH_OT_select_next_item", PADPLUSKEY, KM_PRESS, KM_CTRL | KM_SHIFT, 0);
+	WM_keymap_add_item(keymap, "MESH_OT_select_prev_item", PADMINUS, KM_PRESS, KM_CTRL | KM_SHIFT, 0);
+
 	WM_keymap_add_item(keymap, "MESH_OT_select_non_manifold", MKEY, KM_PRESS, (KM_CTRL | KM_SHIFT | KM_ALT), 0);
 	
 	WM_keymap_add_item(keymap, "MESH_OT_select_linked", LKEY, KM_PRESS, KM_CTRL, 0);

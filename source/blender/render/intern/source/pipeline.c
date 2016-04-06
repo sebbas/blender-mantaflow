@@ -34,6 +34,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include <errno.h>
 
 #include "DNA_anim_types.h"
 #include "DNA_image_types.h"
@@ -196,6 +197,35 @@ static void stats_background(void *UNUSED(arg), RenderStats *rs)
 
 	fputc('\n', stdout);
 	fflush(stdout);
+}
+
+static void render_print_save_message(const char *name, int ok, int err)
+{
+	if (ok) {
+		printf("Saved: '%s'\n", name);
+	}
+	else {
+		printf("Render error (%s) cannot save: '%s'\n", strerror(err), name);
+	}
+}
+
+static int render_imbuf_write_stamp_test(
+        Scene *scene, struct RenderResult *rr, ImBuf *ibuf, const char *name,
+        const ImageFormatData *imf, bool stamp)
+{
+	int ok;
+
+	if (stamp) {
+		/* writes the name of the individual cameras */
+		ok = BKE_imbuf_write_stamp(scene, rr, ibuf, name, imf);
+	}
+	else {
+		ok = BKE_imbuf_write(ibuf, name, imf);
+	}
+
+	render_print_save_message(name, ok, errno);
+
+	return ok;
 }
 
 void RE_FreeRenderResult(RenderResult *res)
@@ -1460,7 +1490,6 @@ void RE_TileProcessor(Render *re)
 static void do_render_3d(Render *re)
 {
 	RenderView *rv;
-	int cfra_backup;
 
 	re->current_scene_update(re->suh, re->scene);
 
@@ -1472,9 +1501,10 @@ static void do_render_3d(Render *re)
 	RE_parts_clamp(re);
 	
 	/* add motion blur and fields offset to frames */
-	cfra_backup = re->scene->r.cfra;
+	const int cfra_backup = re->scene->r.cfra;
+	const float subframe_backup = re->scene->r.subframe;
 
-	BKE_scene_frame_set(re->scene, (double)re->scene->r.cfra + (double)re->mblur_offs + (double)re->field_offs);
+	BKE_scene_frame_set(re->scene, (double)re->scene->r.cfra + re->scene->r.subframe + re->mblur_offs + re->field_offs);
 
 	/* init main render result */
 	main_render_result_new(re);
@@ -1526,7 +1556,7 @@ static void do_render_3d(Render *re)
 	main_render_result_end(re);
 
 	re->scene->r.cfra = cfra_backup;
-	re->scene->r.subframe = 0.f;
+	re->scene->r.subframe = subframe_backup;
 }
 
 /* called by blur loop, accumulate RGBA key alpha */
@@ -2013,7 +2043,7 @@ static void tag_scenes_for_render(Render *re)
 #endif
 	
 	for (sce = re->main->scene.first; sce; sce = sce->id.next) {
-		sce->id.flag &= ~LIB_DOIT;
+		sce->id.tag &= ~LIB_TAG_DOIT;
 #ifdef DEPSGRAPH_WORKAROUND_HACK
 		tag_dependend_objects_for_render(sce, renderlay);
 #endif
@@ -2022,7 +2052,7 @@ static void tag_scenes_for_render(Render *re)
 #ifdef WITH_FREESTYLE
 	if (re->freestyle_bmain) {
 		for (sce = re->freestyle_bmain->scene.first; sce; sce = sce->id.next) {
-			sce->id.flag &= ~LIB_DOIT;
+			sce->id.tag &= ~LIB_TAG_DOIT;
 #ifdef DEPSGRAPH_WORKAROUND_HACK
 			tag_dependend_objects_for_render(sce, renderlay);
 #endif
@@ -2031,7 +2061,7 @@ static void tag_scenes_for_render(Render *re)
 #endif
 
 	if (RE_GetCamera(re) && composite_needs_render(re->scene, 1)) {
-		re->scene->id.flag |= LIB_DOIT;
+		re->scene->id.tag |= LIB_TAG_DOIT;
 #ifdef DEPSGRAPH_WORKAROUND_HACK
 		tag_dependend_objects_for_render(re->scene, renderlay);
 #endif
@@ -2039,7 +2069,7 @@ static void tag_scenes_for_render(Render *re)
 	
 	if (re->scene->nodetree == NULL) return;
 	
-	/* check for render-layers nodes using other scenes, we tag them LIB_DOIT */
+	/* check for render-layers nodes using other scenes, we tag them LIB_TAG_DOIT */
 	for (node = re->scene->nodetree->nodes.first; node; node = node->next) {
 		node->flag &= ~NODE_TEST;
 		if (node->type == CMP_NODE_R_LAYERS && (node->flag & NODE_MUTED) == 0) {
@@ -2060,11 +2090,11 @@ static void tag_scenes_for_render(Render *re)
 				}
 
 				if (node->id != (ID *)re->scene) {
-					if ((node->id->flag & LIB_DOIT) == 0) {
+					if ((node->id->tag & LIB_TAG_DOIT) == 0) {
 						Scene *scene = (Scene *) node->id;
 						if (render_scene_has_layers_to_render(scene)) {
 							node->flag |= NODE_TEST;
-							node->id->flag |= LIB_DOIT;
+							node->id->tag |= LIB_TAG_DOIT;
 #ifdef DEPSGRAPH_WORKAROUND_HACK
 							tag_dependend_objects_for_render(scene, renderlay);
 #endif
@@ -2283,7 +2313,7 @@ static void do_merge_fullsample(Render *re, bNodeTree *ntree)
 			
 		tag_scenes_for_render(re);
 		for (sce = re->main->scene.first; sce; sce = sce->id.next) {
-			if (sce->id.flag & LIB_DOIT) {
+			if (sce->id.tag & LIB_TAG_DOIT) {
 				re1 = RE_GetRender(sce->id.name);
 
 				if (re1 && (re1->r.scemode & R_FULL_SAMPLE)) {
@@ -2408,12 +2438,12 @@ void RE_MergeFullSample(Render *re, Main *bmain, Scene *sce, bNodeTree *ntree)
 	
 	/* tag scenes unread */
 	for (scene = re->main->scene.first; scene; scene = scene->id.next)
-		scene->id.flag |= LIB_DOIT;
+		scene->id.tag |= LIB_TAG_DOIT;
 	
 #ifdef WITH_FREESTYLE
 	if (re->freestyle_bmain) {
 		for (scene = re->freestyle_bmain->scene.first; scene; scene = scene->id.next)
-			scene->id.flag &= ~LIB_DOIT;
+			scene->id.tag &= ~LIB_TAG_DOIT;
 	}
 #endif
 
@@ -2422,18 +2452,18 @@ void RE_MergeFullSample(Render *re, Main *bmain, Scene *sce, bNodeTree *ntree)
 			Scene *nodescene = (Scene *)node->id;
 			
 			if (nodescene == NULL) nodescene = sce;
-			if (nodescene->id.flag & LIB_DOIT) {
+			if (nodescene->id.tag & LIB_TAG_DOIT) {
 				nodescene->r.mode |= R_OSA; /* render struct needs tables */
 				RE_ReadRenderResult(sce, nodescene);
-				nodescene->id.flag &= ~LIB_DOIT;
+				nodescene->id.tag &= ~LIB_TAG_DOIT;
 			}
 		}
 	}
 	
 	/* own render result should be read/allocated */
-	if (re->scene->id.flag & LIB_DOIT) {
+	if (re->scene->id.tag & LIB_TAG_DOIT) {
 		RE_ReadRenderResult(re->scene, re->scene);
-		re->scene->id.flag &= ~LIB_DOIT;
+		re->scene->id.tag &= ~LIB_TAG_DOIT;
 	}
 	
 	/* and now we can draw (result is there) */
@@ -3020,9 +3050,8 @@ static void update_physics_cache(Render *re, Scene *scene, int UNUSED(anim_init)
 	baker.render = 1;
 	baker.anim_init = 1;
 	baker.quick_step = 1;
-	baker.break_test = re->test_break;
-	baker.break_data = re->tbh;
-	baker.progressbar = NULL;
+	baker.update_progress = NULL;
+	baker.bake_job = NULL;
 
 	BKE_ptcache_bake(&baker);
 }
@@ -3209,8 +3238,8 @@ bool RE_WriteRenderViewsImage(ReportList *reports, RenderResult *rr, Scene *scen
 	if (ELEM(rd->im_format.imtype, R_IMF_IMTYPE_OPENEXR, R_IMF_IMTYPE_MULTILAYER) &&
 	    rd->im_format.views_format == R_IMF_VIEWS_MULTIVIEW)
 	{
-		RE_WriteRenderResult(reports, rr, name, &rd->im_format, true, NULL);
-		printf("Saved: %s\n", name);
+		ok = RE_WriteRenderResult(reports, rr, name, &rd->im_format, true, NULL);
+		render_print_save_message(name, ok, errno);
 	}
 
 	/* mono, legacy code */
@@ -3228,8 +3257,8 @@ bool RE_WriteRenderViewsImage(ReportList *reports, RenderResult *rr, Scene *scen
 			}
 
 			if (rd->im_format.imtype == R_IMF_IMTYPE_MULTILAYER) {
-				RE_WriteRenderResult(reports, rr, name, &rd->im_format, false, rv->name);
-				printf("Saved: %s\n", name);
+				ok = RE_WriteRenderResult(reports, rr, name, &rd->im_format, false, rv->name);
+				render_print_save_message(name, ok, errno);
 			}
 			else {
 				ImBuf *ibuf = render_result_rect_to_ibuf(rr, rd, view_id);
@@ -3237,18 +3266,7 @@ bool RE_WriteRenderViewsImage(ReportList *reports, RenderResult *rr, Scene *scen
 				IMB_colormanagement_imbuf_for_write(ibuf, true, false, &scene->view_settings,
 				                                    &scene->display_settings, &rd->im_format);
 
-				if (stamp) {
-					/* writes the name of the individual cameras */
-					ok = BKE_imbuf_write_stamp(scene, rr, ibuf, name, &rd->im_format);
-				}
-				else {
-					ok = BKE_imbuf_write(ibuf, name, &rd->im_format);
-				}
-
-				if (ok == false) {
-					printf("Render error: cannot save %s\n", name);
-				}
-				else printf("Saved: %s\n", name);
+				ok = render_imbuf_write_stamp_test(scene, rr, ibuf, name, &rd->im_format, stamp);
 
 				/* optional preview images for exr */
 				if (ok && rd->im_format.imtype == R_IMF_IMTYPE_OPENEXR && (rd->im_format.flag & R_IMF_FLAG_PREVIEW_JPG)) {
@@ -3263,14 +3281,7 @@ bool RE_WriteRenderViewsImage(ReportList *reports, RenderResult *rr, Scene *scen
 					IMB_colormanagement_imbuf_for_write(ibuf, true, false, &scene->view_settings,
 					                                    &scene->display_settings, &imf);
 
-					if (stamp) {
-						/* writes the name of the individual cameras */
-						ok = BKE_imbuf_write_stamp(scene, rr, ibuf, name, &imf);
-					}
-					else {
-						ok = BKE_imbuf_write(ibuf, name, &imf);
-					}
-					printf("Saved: %s\n", name);
+					ok = render_imbuf_write_stamp_test(scene, rr, ibuf, name, &imf, stamp);
 				}
 
 				/* imbuf knows which rects are not part of ibuf */
@@ -3299,15 +3310,7 @@ bool RE_WriteRenderViewsImage(ReportList *reports, RenderResult *rr, Scene *scen
 
 			ibuf_arr[2] = IMB_stereo3d_ImBuf(&scene->r.im_format, ibuf_arr[0], ibuf_arr[1]);
 
-			if (stamp)
-				ok = BKE_imbuf_write_stamp(scene, rr, ibuf_arr[2], name, &rd->im_format);
-			else
-				ok = BKE_imbuf_write(ibuf_arr[2], name, &rd->im_format);
-
-			if (ok == false)
-				printf("Render error: cannot save %s\n", name);
-			else
-				printf("Saved: %s\n", name);
+			ok = render_imbuf_write_stamp_test(scene, rr, ibuf_arr[2], name, &rd->im_format, stamp);
 
 			/* optional preview images for exr */
 			if (ok && rd->im_format.imtype == R_IMF_IMTYPE_OPENEXR &&
@@ -3325,12 +3328,7 @@ bool RE_WriteRenderViewsImage(ReportList *reports, RenderResult *rr, Scene *scen
 				IMB_colormanagement_imbuf_for_write(ibuf_arr[2], true, false, &scene->view_settings,
 				                                    &scene->display_settings, &imf);
 
-				if (stamp)
-					ok = BKE_imbuf_write_stamp(scene, rr, ibuf_arr[2], name, &rd->im_format);
-				else
-					ok = BKE_imbuf_write(ibuf_arr[2], name, &imf);
-
-				printf("Saved: %s\n", name);
+				ok = render_imbuf_write_stamp_test(scene, rr, ibuf_arr[2], name, &rd->im_format, stamp);
 			}
 
 			/* imbuf knows which rects are not part of ibuf */

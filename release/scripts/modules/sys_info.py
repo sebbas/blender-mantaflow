@@ -21,7 +21,7 @@
 # classes for extracting info from blenders internal classes
 
 
-def write_sysinfo(op):
+def write_sysinfo(filepath):
     import sys
 
     import textwrap
@@ -29,14 +29,6 @@ def write_sysinfo(op):
 
     import bpy
     import bgl
-
-    output_filename = "system-info.txt"
-
-    output = bpy.data.texts.get(output_filename)
-    if output:
-        output.clear()
-    else:
-        output = bpy.data.texts.new(name=output_filename)
 
     # pretty repr
     def prepr(v):
@@ -48,6 +40,8 @@ def write_sysinfo(op):
             r = r[1:-1]
         return r
 
+
+    output = open(filepath, 'w', encoding="utf-8")
 
     header = "= Blender %s System Information =\n" % bpy.app.version_string
     lilies = "%s\n\n" % ((len(header) - 1) * "=")
@@ -157,6 +151,13 @@ def write_sysinfo(op):
     else:
         output.write("Blender was built without Cycles support\n")
 
+    openvdb = bpy.app.openvdb
+    output.write("OpenVDB: ")
+    if openvdb.supported:
+        output.write("%s\n" % openvdb.version_string)
+    else:
+        output.write("Blender was built without OpenVDB support\n")
+
     if not bpy.app.build_options.sdl:
         output.write("SDL: Blender was built without SDL support\n")
 
@@ -204,6 +205,5 @@ def write_sysinfo(op):
         output.write(title("Cycles"))
         output.write(cycles.engine.system_info())
 
-    output.current_line_index = 0
+    output.close()
 
-    op.report({'INFO'}, "System information generated in 'system-info.txt'")

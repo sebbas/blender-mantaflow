@@ -151,8 +151,8 @@ void ED_editors_exit(bContext *C)
 	}
 
 	/* global in meshtools... */
-	ED_mesh_mirror_spatial_table(NULL, NULL, NULL, 'e');
-	ED_mesh_mirror_topo_table(NULL, 'e');
+	ED_mesh_mirror_spatial_table(NULL, NULL, NULL, NULL, 'e');
+	ED_mesh_mirror_topo_table(NULL, NULL, 'e');
 }
 
 /* flush any temp data from object editing to DNA before writing files,
@@ -316,7 +316,7 @@ void ED_region_draw_mouse_line_cb(const bContext *C, ARegion *ar, void *arg_info
 
 	UI_ThemeColor(TH_VIEW_OVERLAY);
 	setlinestyle(3);
-	glBegin(GL_LINE_STRIP);
+	glBegin(GL_LINES);
 	glVertex2iv(mval_dst);
 	glVertex2fv(mval_src);
 	glEnd();

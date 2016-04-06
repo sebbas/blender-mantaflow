@@ -386,6 +386,8 @@ typedef struct SeqLoadInfo {
 #define SEQ_LOAD_FRAME_ADVANCE  (1 << 1)
 #define SEQ_LOAD_MOVIE_SOUND    (1 << 2)
 #define SEQ_LOAD_SOUND_CACHE    (1 << 3)
+#define SEQ_LOAD_SYNC_FPS       (1 << 4)
+#define SEQ_LOAD_SOUND_MONO     (1 << 5)
 
 
 /* seq_dupli' flags */
@@ -458,7 +460,7 @@ typedef struct SequenceModifierTypeInfo {
 
 const struct SequenceModifierTypeInfo *BKE_sequence_modifier_type_info_get(int type);
 
-struct SequenceModifierData *BKE_sequence_modifier_new(struct Sequence *seq, const char *name, int type);
+struct SequenceModifierData *BKE_sequence_modifier_new(struct Sequence *seq, const char *name, int type, struct Scene *scene);
 bool BKE_sequence_modifier_remove(struct Sequence *seq, struct SequenceModifierData *smd);
 void BKE_sequence_modifier_clear(struct Sequence *seq);
 void BKE_sequence_modifier_free(struct SequenceModifierData *smd);
