@@ -611,29 +611,32 @@ PyObject* MANTA::getPythonObject(std::string pyVariableName)
 	return pyObject;
 }
 
-std::string MANTA::getGridPointer(std::string gridName, std::string solverName)
+void* MANTA::getGridPointer(std::string gridName, std::string solverName)
 {
-	if ((gridName == "") && (solverName == "")) return "";
+	if ((gridName == "") && (solverName == "")) return NULL;
 
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 
+	// Get pyobject that holds pointer address as string
 	PyObject* main = PyImport_AddModule("__main__");
 	PyObject* gridObject = PyObject_GetAttrString(main, gridName.c_str());
-
 	PyObject* func = PyObject_GetAttrString(gridObject, (char*) "getDataPointer");
 	PyObject* returnedValue = PyObject_CallObject(func, NULL);
 	PyObject* encoded = PyUnicode_AsUTF8String(returnedValue);
 
-	std::string res = PyBytes_AsString(encoded);
-	std::cout << "Pointer on "<< gridName << " " << res << std::endl;
-
+	// Convert string pointer to void pointer
+	std::string pointerString = PyBytes_AsString(encoded);
+	std::istringstream in(pointerString);
+	void *gridPointer = NULL;
+	in >> gridPointer;
+	
 	Py_DECREF(gridObject);
 	Py_DECREF(func);
 	Py_DECREF(returnedValue);
 	Py_DECREF(encoded);
 
 	PyGILState_Release(gilstate);
-	return res;
+	return gridPointer;
 }
 
 void* MANTA::pointerFromString(const std::string& s)
@@ -647,52 +650,58 @@ void* MANTA::pointerFromString(const std::string& s)
 void MANTA::updatePointers(SmokeModifierData *smd)
 {
 	std::cout << "Updating pointers low res" << std::endl;
-	mDensity        = (float*) pointerFromString( getGridPointer("density",    "s") );
-	mVelocityX      = (float*) pointerFromString( getGridPointer("x_vel",      "s") );
-	mVelocityY      = (float*) pointerFromString( getGridPointer("y_vel",      "s") );
-	mVelocityZ      = (float*) pointerFromString( getGridPointer("z_vel",      "s") );
-	mForceX         = (float*) pointerFromString( getGridPointer("x_force",    "s") );
-	mForceY         = (float*) pointerFromString( getGridPointer("y_force",    "s") );
-	mForceZ         = (float*) pointerFromString( getGridPointer("z_force",    "s") );
-	mDensityInflow  = (float*) pointerFromString( getGridPointer("inflow_grid","s") );
-	mFuelInflow     = (float*) pointerFromString( getGridPointer("fuel_inflow","s") );
-	mObstacles      = (unsigned char*) pointerFromString( getGridPointer("flags",      "s") );
+
+	mDensity        = (float*)         getGridPointer("density",     "s");
+	mVelocityX      = (float*)         getGridPointer("x_vel",       "s");
+	mVelocityY      = (float*)         getGridPointer("y_vel",       "s");
+	mVelocityZ      = (float*)         getGridPointer("z_vel",       "s");
+	mObVelocityX    = (float*)         getGridPointer("x_obvel",     "s");
+	mObVelocityY    = (float*)         getGridPointer("y_obvel",     "s");
+	mObVelocityZ    = (float*)         getGridPointer("z_obvel",     "s");
+	mForceX         = (float*)         getGridPointer("x_force",     "s");
+	mForceY         = (float*)         getGridPointer("y_force",     "s");
+	mForceZ         = (float*)         getGridPointer("z_force",     "s");
+	mDensityInflow  = (float*)         getGridPointer("inflow_grid", "s");
+	mFuelInflow     = (float*)         getGridPointer("fuel_inflow", "s");
+	mObstacles      = (unsigned char*) getGridPointer("flags",       "s");
 	
 	if (mUsingHeat) {
-		mHeat       = (float*) pointerFromString(getGridPointer("heat",        "s") );
+		mHeat       = (float*) getGridPointer("heat",    "s");
 	}
 	if (mUsingFire) {
-		mFlame      = (float*) pointerFromString( getGridPointer("flame",      "s") );
-		mFuel       = (float*) pointerFromString( getGridPointer("fuel",       "s") );
-		mReact      = (float*) pointerFromString( getGridPointer("react",      "s") );
+		mFlame      = (float*) getGridPointer("flame",   "s");
+		mFuel       = (float*) getGridPointer("fuel",    "s");
+		mReact      = (float*) getGridPointer("react",   "s");
 	}
 	if (mUsingColors) {
-		mColorR     = (float*) pointerFromString( getGridPointer("color_r",    "s") );
-		mColorG     = (float*) pointerFromString( getGridPointer("color_g",    "s") );
-		mColorB     = (float*) pointerFromString( getGridPointer("color_b",    "s") );
+		mColorR     = (float*) getGridPointer("color_r", "s");
+		mColorG     = (float*) getGridPointer("color_g", "s");
+		mColorB     = (float*) getGridPointer("color_b", "s");
 	}
+
 }
 
 void MANTA::updatePointersHigh(SmokeModifierData *smd)
 {
 	std::cout << "Updating pointers high res" << std::endl;
-	mDensityHigh    = (float*) pointerFromString( getGridPointer("xl_density",   "xl") );
-	mTextureU       = (float*) pointerFromString( getGridPointer("texture_u",     "s") );
-	mTextureV       = (float*) pointerFromString( getGridPointer("texture_v",     "s") );
-	mTextureW       = (float*) pointerFromString( getGridPointer("texture_w",     "s") );
-	mTextureU2      = (float*) pointerFromString( getGridPointer("texture_u2",    "s") );
-	mTextureV2      = (float*) pointerFromString( getGridPointer("texture_v2",    "s") );
-	mTextureW2      = (float*) pointerFromString( getGridPointer("texture_w2",    "s") );
+
+	mDensityHigh    = (float*) getGridPointer("xl_density", "xl");
+	mTextureU       = (float*) getGridPointer("texture_u",  "s");
+	mTextureV       = (float*) getGridPointer("texture_v",  "s");
+	mTextureW       = (float*) getGridPointer("texture_w",  "s");
+	mTextureU2      = (float*) getGridPointer("texture_u2", "s");
+	mTextureV2      = (float*) getGridPointer("texture_v2", "s");
+	mTextureW2      = (float*) getGridPointer("texture_w2", "s");
 	
 	if (mUsingFire) {
-		mFlameHigh  = (float*) pointerFromString( getGridPointer("xl_flame",     "xl") );
-		mFuelHigh   = (float*) pointerFromString( getGridPointer("xl_fuel",      "xl") );
-		mReactHigh  = (float*) pointerFromString( getGridPointer("xl_react",     "xl") );
+		mFlameHigh  = (float*) getGridPointer("xl_flame",   "xl");
+		mFuelHigh   = (float*) getGridPointer("xl_fuel",    "xl");
+		mReactHigh  = (float*) getGridPointer("xl_react",   "xl");
 	}
 	if (mUsingColors) {
-		mColorRHigh = (float*) pointerFromString( getGridPointer("xl_color_r",   "xl") );
-		mColorGHigh = (float*) pointerFromString( getGridPointer("xl_color_g",   "xl") );
-		mColorBHigh = (float*) pointerFromString( getGridPointer("xl_color_b",   "xl") );
+		mColorRHigh = (float*) getGridPointer("xl_color_r", "xl");
+		mColorGHigh = (float*) getGridPointer("xl_color_g", "xl");
+		mColorBHigh = (float*) getGridPointer("xl_color_b", "xl");
 	}
 }
 
