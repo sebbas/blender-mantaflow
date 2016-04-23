@@ -596,21 +596,6 @@ void MANTA::exportGrids(SmokeModifierData *smd)
 	PyGILState_Release(gilstate);
 }
 
-PyObject* MANTA::getPythonObject(std::string pyVariableName)
-{
-	if (pyVariableName == "") return NULL;
-	
-	PyGILState_STATE gilstate = PyGILState_Ensure();
-
-	PyObject* main = PyImport_AddModule("__main__");
-	PyObject* pyObject = PyObject_GetAttrString(main, pyVariableName.c_str());
-
-	Py_DECREF(pyObject);
-
-	PyGILState_Release(gilstate);
-	return pyObject;
-}
-
 void* MANTA::getGridPointer(std::string gridName, std::string solverName)
 {
 	if ((gridName == "") && (solverName == "")) return NULL;
@@ -636,14 +621,6 @@ void* MANTA::getGridPointer(std::string gridName, std::string solverName)
 	Py_DECREF(encoded);
 
 	PyGILState_Release(gilstate);
-	return gridPointer;
-}
-
-void* MANTA::pointerFromString(const std::string& s)
-{
-	std::stringstream ss(s);
-	void *gridPointer = NULL;
-	ss >> gridPointer;
 	return gridPointer;
 }
 
