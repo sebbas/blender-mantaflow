@@ -791,10 +791,10 @@ static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
 				}
 
 				/* tag obstacle cells */
-				data->obstacle_map[index] = 1;
+				data->obstacle_map[index] = 2;
 
 				if (data->has_velocity)
-					data->obstacle_map[index] |= 8;
+					data->obstacle_map[index] = 4;
 			}
 		}
 	}
@@ -914,9 +914,9 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	// TODO: delete old obstacle flags
 	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
 	{
-		if (obstacles[z] & 8) // Do not delete static obstacles
+		if (obstacles[z] == 4) // Do not delete static obstacles
 		{
-			obstacles[z] = 0;
+			obstacles[z] = 2;
 		}
 
 		velx[z] = 0;
@@ -948,7 +948,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	/* obstacle cells should not contain any velocity from the smoke simulation */
 	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
 	{
-		if (obstacles[z])
+		if (obstacles[z] & 2)
 		{
 			velxOrig[z] = 0;
 			velyOrig[z] = 0;
