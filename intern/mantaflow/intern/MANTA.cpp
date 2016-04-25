@@ -78,6 +78,9 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 	mVelocityX      = NULL;
 	mVelocityY      = NULL;
 	mVelocityZ      = NULL;
+	mObVelocityX    = NULL;
+	mObVelocityY    = NULL;
+	mObVelocityZ    = NULL;
 	mForceX         = NULL;
 	mForceY         = NULL;
 	mForceZ         = NULL;
@@ -90,11 +93,7 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 	mDensityInflow  = NULL;
 	mFuelInflow     = NULL;
 	mMantaFlags     = NULL;
-	mObVelocityX    = new float[mTotalCells];               // TODO in Mantaflow
-	mObVelocityY    = new float[mTotalCells];               // TODO in Mantaflow
-	mObVelocityZ    = new float[mTotalCells];               // TODO in Mantaflow
 	mObstacles      = NULL;
-	mObstaclesAnim  = new unsigned char[mTotalCells];       // TODO in Mantaflow
 	
 	// High res grids
 	mDensityHigh    = NULL;
@@ -295,6 +294,9 @@ MANTA::~MANTA()
 	mVelocityX      = NULL;
 	mVelocityY      = NULL;
 	mVelocityZ      = NULL;
+	mObVelocityX    = NULL;
+	mObVelocityY    = NULL;
+	mObVelocityZ    = NULL;
 	mForceX         = NULL;
 	mForceY         = NULL;
 	mForceZ         = NULL;
@@ -308,11 +310,6 @@ MANTA::~MANTA()
 	mFuelInflow     = NULL;
 	mMantaFlags     = NULL;
 	mObstacles      = NULL;
-
-	if (mObVelocityX)   delete[] mObVelocityX;              // TODO in Mantaflow
-	if (mObVelocityY)   delete[] mObVelocityY;              // TODO in Mantaflow
-	if (mObVelocityZ)   delete[] mObVelocityZ;              // TODO in Mantaflow
-	if (mObstaclesAnim) delete[] mObstaclesAnim;            // TODO in Mantaflow
 	
 	if (mUsingHighRes)
 	{

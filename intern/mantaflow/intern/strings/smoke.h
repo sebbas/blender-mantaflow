@@ -89,6 +89,10 @@ vel = s.create(MACGrid)\n\
 x_vel = s.create(RealGrid)\n\
 y_vel = s.create(RealGrid)\n\
 z_vel = s.create(RealGrid)\n\
+obvel = s.create(MACGrid)\n\
+x_obvel = s.create(RealGrid)\n\
+y_obvel = s.create(RealGrid)\n\
+z_obvel = s.create(RealGrid)\n\
 density = s.create(LevelsetGrid)\n\
 pressure = s.create(RealGrid)\n\
 forces = s.create(MACGrid)\n\
@@ -281,6 +285,10 @@ if 'vel' in globals() : del vel\n\
 if 'x_vel' in globals() : del x_vel\n\
 if 'y_vel' in globals() : del y_vel\n\
 if 'z_vel' in globals() : del z_vel\n\
+if 'obvel' in globals() : del obvel\n\
+if 'x_obvel' in globals() : del x_obvel\n\
+if 'y_obvel' in globals() : del y_obvel\n\
+if 'z_obvel' in globals() : del z_obvel\n\
 if 'density' in globals() : del density\n\
 if 'pressure' in globals() : del pressure\n\
 if 'forces' in globals() : del forces\n\
@@ -383,6 +391,7 @@ const std::string smoke_step_low = "\n\
 def step_low():\n\
   mantaMsg('Step low')\n\
   copyRealToVec3(sourceX=x_vel, sourceY=y_vel, sourceZ=z_vel, target=vel)\n\
+  copyRealToVec3(sourceX=x_obvel, sourceY=y_obvel, sourceZ=z_obvel, target=obvel)\n\
   if dim == 2:\n\
     density.add(inflow_grid)\n\
   \n\
@@ -436,6 +445,7 @@ def step_low():\n\
   solvePressure(flags=flags, vel=vel, pressure=pressure)\n\
   \n\
   copyVec3ToReal(source=vel, targetX=x_vel, targetY=y_vel, targetZ=z_vel)\n\
+  copyVec3ToReal(source=obvel, targetX=x_obvel, targetY=y_obvel, targetZ=z_obvel)\n\
 \n\
 def process_burn_low():\n\
   mantaMsg('Process burn low')\n\
