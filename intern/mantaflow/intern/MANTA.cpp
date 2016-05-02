@@ -50,10 +50,6 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 	smd->domain->fluid = this;
 	smd->domain->manta_solver_res = 3; // Why do we need to set this explicitly? When not set, fluidsolver throws exception (occurs when loading a new .blend file)
 	
-	// General variables used for low and high res
-	std::string tmpScript   = "";
-	std::string finalScript = "";
-
 	mUsingHeat    = smd->domain->active_fields & SM_ACTIVE_HEAT;
 	mUsingFire    = smd->domain->active_fields & SM_ACTIVE_FIRE;
 	mUsingColors  = smd->domain->active_fields & SM_ACTIVE_COLORS;
@@ -464,13 +460,13 @@ std::string MANTA::parseLine(const std::string& line, SmokeModifierData *smd)
 	int currPos = 0, start_del = 0, end_del = -1;
 	bool readingVar = false;
 	const char delimiter = '$';
-	while (currPos < line.size()){
+	while (currPos < line.size()) {
 		if (line[currPos] == delimiter && ! readingVar) {
 			readingVar  = true;
 			start_del   = currPos + 1;
 			res        += line.substr(end_del + 1, currPos - end_del -1);
 		}
-		else if (line[currPos] == delimiter && readingVar){
+		else if (line[currPos] == delimiter && readingVar) {
 			readingVar  = false;
 			end_del     = currPos;
 			res        += getRealValue(line.substr(start_del, currPos - start_del), smd);

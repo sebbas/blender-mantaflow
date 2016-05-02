@@ -68,7 +68,7 @@ res = $RES$\n\
 gs = vec3($RESX$,$RESY$,$RESZ$)\n\
 if dim == 2:\n\
   gs.z = 1\n\
-s = FluidSolver(name='main', gridSize=gs, dim=dim)\n\
+s = Solver(name='main', gridSize=gs, dim=dim)\n\
 dt_default = 0.1\n\
 dt_factor = $DT_FACTOR$\n\
 fps = $FPS$\n\
@@ -78,7 +78,6 @@ s.timestepMin = dt0 / 10\n\
 s.timestepMax = dt0\n\
 s.cfl = 4.0\n\
 s.timestep = dt0\n\
-timings = Timings()\n\
 vorticity = $VORTICITY$\n\
 boundaryWidth = 1\n";
 
@@ -327,7 +326,6 @@ if 'fps' in globals() : del fps\n\
 if 'dt0' in globals() : del dt0\n\
 if 'vorticity' in globals() : del vorticity\n\
 if 'boundaryWidth' in globals() : del boundaryWidth\n\
-if 'timings' in globals() : del timings\n\
 if 'using_colors' in globals() : del using_colors\n\
 if 'using_heat' in globals() : del using_heat\n\
 if 'using_fire' in globals() : del using_fire\n\
@@ -353,7 +351,7 @@ mantaMsg('Deleting solver high')\n\
 if 'xl' in globals() : del xl\n";
 
 //////////////////////////////////////////////////////////////////////
-// MANTA STEP
+// ADAPTIVE STEP
 //////////////////////////////////////////////////////////////////////
 
 const std::string manta_step = "\n\
@@ -425,7 +423,7 @@ def step_low():\n\
   \n\
   if using_heat:\n\
     mantaMsg('Adding heat buoyancy')\n\
-    gravity=vec3(0,0,-1) if dim==3 else vec3(0,-0.0981,0)\n\
+    gravity=vec3(0,0,-1) if dim==3 else vec3(0,-1,0)\n\
     addBuoyancy(flags=flags, density=density, vel=vel, gravity=gravity, coefficient=$ALPHA$)\n\
     addBuoyancy(flags=flags, density=heat, vel=vel, gravity=gravity, coefficient=$BETA$)\n\
   else:\n\
