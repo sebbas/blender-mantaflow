@@ -33,7 +33,7 @@
 
 #include "MANTA.h"
 #include "registry.h"
-#include "smoke.h"
+#include "smoke_script.h"
 
 #include "BLI_path_util.h"
 #include "BLI_utildefines.h"

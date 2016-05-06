@@ -50,7 +50,7 @@ set(SRC
 	extern/manta_smoke_API.h
 	intern/MANTA.h
 	intern/spectrum.h
-	intern/strings/smoke.h
+	intern/strings/smoke_script.h
 
 	intern/manta_pp/commonkernels.h
 	intern/manta_pp/commonkernels.h.reg
