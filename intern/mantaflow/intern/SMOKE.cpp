@@ -23,7 +23,7 @@
  * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file mantaflow/intern/MANTA.cpp
+/** \file mantaflow/intern/SMOKE.cpp
  *  \ingroup mantaflow
  */
 
@@ -31,7 +31,7 @@
 #include <fstream>
 #include <iostream>
 
-#include "MANTA.h"
+#include "SMOKE.h"
 #include "registry.h"
 #include "smoke_script.h"
 
@@ -42,11 +42,11 @@
 #include "DNA_modifier_types.h"
 #include "DNA_smoke_types.h"
 
-bool MANTA::mantaInitialized = false;
+bool SMOKE::mantaInitialized = false;
 
-MANTA::MANTA(int *res, SmokeModifierData *smd)
+SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 {
-	std::cout << "MANTA" << std::endl;
+	std::cout << "SMOKE" << std::endl;
 	smd->domain->fluid = this;
 	smd->domain->manta_solver_res = 3; // Why do we need to set this explicitly? When not set, fluidsolver throws exception (occurs when loading a new .blend file)
 	
@@ -106,7 +106,7 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 	mTextureV2      = NULL;
 	mTextureW2      = NULL;
 
-	// Only start Mantaflow once. No need to start whenever new MANTA objected is allocated
+	// Only start Mantaflow once. No need to start whenever new SMOKE objected is allocated
 	if (!mantaInitialized)
 		startMantaflow();
 	
@@ -139,7 +139,7 @@ MANTA::MANTA(int *res, SmokeModifierData *smd)
 	}
 }
 
-void MANTA::initSetup(SmokeModifierData *smd)
+void SMOKE::initSetup(SmokeModifierData *smd)
 {
 	std::string tmpString =
 		manta_import +
@@ -156,7 +156,7 @@ void MANTA::initSetup(SmokeModifierData *smd)
 	runPythonString(mCommands);
 }
 
-void MANTA::initSetupHigh(SmokeModifierData *smd)
+void SMOKE::initSetupHigh(SmokeModifierData *smd)
 {
 	std::string tmpString =
 		solver_setup_high +
@@ -173,7 +173,7 @@ void MANTA::initSetupHigh(SmokeModifierData *smd)
 	mUsingHighRes = true;
 }
 
-void MANTA::initHeat(SmokeModifierData *smd)
+void SMOKE::initHeat(SmokeModifierData *smd)
 {
 	if (!mHeat) {
 		mCommands.clear();
@@ -185,7 +185,7 @@ void MANTA::initHeat(SmokeModifierData *smd)
 	}
 }
 
-void MANTA::initFire(SmokeModifierData *smd)
+void SMOKE::initFire(SmokeModifierData *smd)
 {
 	if (!mFuel) {
 		mCommands.clear();
@@ -197,7 +197,7 @@ void MANTA::initFire(SmokeModifierData *smd)
 	}
 }
 
-void MANTA::initFireHigh(SmokeModifierData *smd)
+void SMOKE::initFireHigh(SmokeModifierData *smd)
 {
 	if (!mFuelHigh) {
 		mCommands.clear();
@@ -209,7 +209,7 @@ void MANTA::initFireHigh(SmokeModifierData *smd)
 	}
 }
 
-void MANTA::initColors(SmokeModifierData *smd)
+void SMOKE::initColors(SmokeModifierData *smd)
 {
 	if (!mColorR) {
 		mCommands.clear();
@@ -224,7 +224,7 @@ void MANTA::initColors(SmokeModifierData *smd)
 	}
 }
 
-void MANTA::initColorsHigh(SmokeModifierData *smd)
+void SMOKE::initColorsHigh(SmokeModifierData *smd)
 {
 	if (!mColorRHigh) {
 		mCommands.clear();
@@ -239,7 +239,7 @@ void MANTA::initColorsHigh(SmokeModifierData *smd)
 	}
 }
 
-void MANTA::step(SmokeModifierData *smd)
+void SMOKE::step(SmokeModifierData *smd)
 {
 	// manta_write_effectors(this);                         // TODO in Mantaflow
 
@@ -256,9 +256,9 @@ void MANTA::step(SmokeModifierData *smd)
 	runPythonString(mCommands);
 }
 
-MANTA::~MANTA()
+SMOKE::~SMOKE()
 {
-	std::cout << "~MANTA()" << std::endl;
+	std::cout << "~SMOKE()" << std::endl;
 
 	// Destruction in Python
 	mCommands.clear();
@@ -331,7 +331,7 @@ MANTA::~MANTA()
 	mUsingHighRes = false;	
 }
 
-void MANTA::runPythonString(std::vector<std::string> commands)
+void SMOKE::runPythonString(std::vector<std::string> commands)
 {
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	for (std::vector<std::string>::iterator it = commands.begin(); it != commands.end(); ++it) {
@@ -341,7 +341,7 @@ void MANTA::runPythonString(std::vector<std::string> commands)
 	PyGILState_Release(gilstate);
 }
 
-void MANTA::startMantaflow()
+void SMOKE::startMantaflow()
 {
 	std::cout << "Starting mantaflow" << std::endl;
 	std::string filename = "manta_scene.py";
@@ -355,7 +355,7 @@ void MANTA::startMantaflow()
 	mantaInitialized = true;
 }
 
-std::string MANTA::getRealValue(const std::string& varName,  SmokeModifierData *smd)
+std::string SMOKE::getRealValue(const std::string& varName,  SmokeModifierData *smd)
 {
 	std::ostringstream ss;
 	bool is2D = (smd->domain->manta_solver_res == 2);
@@ -453,7 +453,7 @@ std::string MANTA::getRealValue(const std::string& varName,  SmokeModifierData *
 	return ss.str();
 }
 
-std::string MANTA::parseLine(const std::string& line, SmokeModifierData *smd)
+std::string SMOKE::parseLine(const std::string& line, SmokeModifierData *smd)
 {
 	if (line.size() == 0) return "";
 	std::string res = "";
@@ -477,7 +477,7 @@ std::string MANTA::parseLine(const std::string& line, SmokeModifierData *smd)
 	return res;
 }
 
-std::string MANTA::parseScript(const std::string& setup_string, SmokeModifierData *smd)
+std::string SMOKE::parseScript(const std::string& setup_string, SmokeModifierData *smd)
 {
 	std::istringstream f(setup_string);
 	std::ostringstream res;
@@ -488,7 +488,7 @@ std::string MANTA::parseScript(const std::string& setup_string, SmokeModifierDat
 	return res.str();
 }
 
-void MANTA::exportScript(SmokeModifierData *smd)
+void SMOKE::exportScript(SmokeModifierData *smd)
 {
 	// Setup low
 	std::string manta_script =
@@ -575,21 +575,21 @@ void MANTA::exportScript(SmokeModifierData *smd)
 	myfile.close();
 }
 
-void MANTA::exportGrids(SmokeModifierData *smd)
+void SMOKE::exportGrids(SmokeModifierData *smd)
 {
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	
 	// Export low res grids
-	PyRun_SimpleString(MANTA::parseScript(smoke_export_low, smd).c_str());
+	PyRun_SimpleString(SMOKE::parseScript(smoke_export_low, smd).c_str());
 
 	// Export high res grids
 	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
-		PyRun_SimpleString(MANTA::parseScript(smoke_export_high, smd).c_str());
+		PyRun_SimpleString(SMOKE::parseScript(smoke_export_high, smd).c_str());
 	}
 	PyGILState_Release(gilstate);
 }
 
-void* MANTA::getGridPointer(std::string gridName, std::string solverName)
+void* SMOKE::getGridPointer(std::string gridName, std::string solverName)
 {
 	if ((gridName == "") && (solverName == "")) return NULL;
 
@@ -617,7 +617,7 @@ void* MANTA::getGridPointer(std::string gridName, std::string solverName)
 	return gridPointer;
 }
 
-void MANTA::updatePointers(SmokeModifierData *smd)
+void SMOKE::updatePointers(SmokeModifierData *smd)
 {
 	std::cout << "Updating pointers low res" << std::endl;
 
@@ -651,7 +651,7 @@ void MANTA::updatePointers(SmokeModifierData *smd)
 
 }
 
-void MANTA::updatePointersHigh(SmokeModifierData *smd)
+void SMOKE::updatePointersHigh(SmokeModifierData *smd)
 {
 	std::cout << "Updating pointers high res" << std::endl;
 
