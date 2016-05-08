@@ -563,7 +563,7 @@ void SMOKE::exportScript(SmokeModifierData *smd)
 	manta_script += manta_step;
 	
 	// Fill in missing variables in script
-	std::string final_script = MANTA::parseScript(manta_script, smd);
+	std::string final_script = SMOKE::parseScript(manta_script, smd);
 	
 	// Add standalone mode (loop, gui, ...)
 	final_script += standalone;

@@ -41,7 +41,7 @@ struct SMOKE *smoke_init(int *res, struct SmokeModifierData *smd);
 void smoke_free(struct SMOKE *smoke);
 size_t smoke_get_index(int x, int max_x, int y, int max_y, int z /*, int max_z */);
 size_t smoke_get_index2d(int x, int max_x, int y /*, int max_y, int z, int max_z */);
-void smoke_manta_export(struct SMOKE* manta, SmokeModifierData *smd);
+void smoke_manta_export(struct SMOKE* smoke, SmokeModifierData *smd);
 void smoke_step(struct SMOKE *smoke, SmokeModifierData *smd);
 void smoke_dissolve(struct SMOKE *smoke, int speed, int log);
 void smoke_dissolve_wavelet(struct SMOKE *smoke, int speed, int log);

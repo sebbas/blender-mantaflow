@@ -1987,7 +1987,7 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 		struct FLUID_3D *fluid_old = sds->fluid;
 		struct WTURBULENCE *turb_old = sds->wt;
 #else
-		struct MANTA *fluid_old = sds->fluid;
+		struct SMOKE *fluid_old = sds->fluid;
 #endif
 		/* allocate new fluid data */
 		smoke_reallocate_fluid(sds, sds->dx, res, 0);

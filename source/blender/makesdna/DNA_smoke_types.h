@@ -168,7 +168,7 @@ typedef struct SmokeDomainSettings {
 	float flame_smoke_color[3];
 	
 	/* mantaflow settings */
-	struct MANTA *fluid;
+	struct SMOKE *fluid;
 	struct Object *manta_obj;
 	float noise_pos_scale;		/* noise settings */
 	float noise_time_anim;
