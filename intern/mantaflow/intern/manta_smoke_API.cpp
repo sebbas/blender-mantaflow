@@ -29,21 +29,21 @@
 
 #include <cmath>
 
-#include "MANTA.h"
+#include "SMOKE.h"
 #include "manta_smoke_API.h"
 #include "spectrum.h"
 
-extern "C" int *smoke_get_manta_flags(struct MANTA *manta) {
+extern "C" int *smoke_get_manta_flags(struct SMOKE *smoke) {
 	return manta->getMantaFlags();
 }
 
-extern "C" MANTA *smoke_init(int *res, struct SmokeModifierData *smd)
+extern "C" SMOKE *smoke_init(int *res, struct SmokeModifierData *smd)
 {
-	MANTA *manta = new MANTA(res, smd);
+	SMOKE *smoke = new SMOKE(res, smd);
 	return manta;
 }
 
-extern "C" void smoke_free(MANTA *manta)
+extern "C" void smoke_free(SMOKE *smoke)
 {
 	delete manta;
 	manta = NULL;
@@ -59,14 +59,14 @@ extern "C" size_t smoke_get_index2d(int x, int max_x, int y /*, int max_y, int z
 	return x + y * max_x;
 }
 
-extern "C" void smoke_manta_export(MANTA* manta, SmokeModifierData *smd)
+extern "C" void smoke_manta_export(SMOKE* manta, SmokeModifierData *smd)
 {
 	if (!manta && !smd) return;
 	manta->exportScript(smd);
 	manta->exportGrids(smd);
 }
 
-extern "C" void smoke_step(MANTA *manta, SmokeModifierData *smd)
+extern "C" void smoke_step(SMOKE *smoke, SmokeModifierData *smd)
 {
 	manta->step(smd);
 	manta->updatePointers(smd);
@@ -128,18 +128,18 @@ static void data_dissolve(float *density, float *heat, float *r, float *g, float
 	}
 }
 
-extern "C" void smoke_dissolve(MANTA *manta, int speed, int log)
+extern "C" void smoke_dissolve(SMOKE *smoke, int speed, int log)
 {
 	data_dissolve(manta->getDensity(), manta->getHeat(), manta->getColorR(), manta->getColorG(), manta->getColorB(), manta->getTotalCells(), speed, log);
 }
 
-extern "C" void smoke_dissolve_wavelet(MANTA *manta, int speed, int log)
+extern "C" void smoke_dissolve_wavelet(SMOKE *smoke, int speed, int log)
 {
 	data_dissolve(manta->getDensityHigh(), 0, manta->getColorRHigh(), manta->getColorGHigh(), manta->getColorBHigh(), manta->getTotalCellsHigh(), speed, log);
 }
 
-extern "C" void smoke_export(MANTA *manta, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, 
-							 float **manta_inflow, float **vx, float **vy, float **vz, float **r, float **g, float **b, unsigned char **obstacles)
+extern "C" void smoke_export(SMOKE *smoke, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, 
+							 float **smoke_inflow, float **vx, float **vy, float **vz, float **r, float **g, float **b, unsigned char **obstacles)
 {
 	*dens = manta->getDensity();
 	if (fuel)
@@ -151,7 +151,7 @@ extern "C" void smoke_export(MANTA *manta, float *dt, float *dx, float **dens, f
 	if( heat)
 		*heat = manta->getHeat();
 	if (manta_inflow)
-		*manta_inflow = manta->getDensityInflow();
+		*smoke_inflow = manta->getDensityInflow();
 	*vx = manta->getVelocityX();
 	*vy = manta->getVelocityY();
 	*vz = manta->getVelocityZ();
@@ -166,7 +166,7 @@ extern "C" void smoke_export(MANTA *manta, float *dt, float *dx, float **dens, f
 	*dx = 1; //dummy value, not needed for manta
 }
 
-extern "C" void smoke_turbulence_export(MANTA *manta, float **dens, float **react, float **flame, float **fuel,
+extern "C" void smoke_turbulence_export(SMOKE *smoke, float **dens, float **react, float **flame, float **fuel,
                                         float **r, float **g, float **b , float **tcu, float **tcv, float **tcw, float **tcu2, float **tcv2, float **tcw2)
 {
 	if (!manta && !manta->usingHighRes())
@@ -194,72 +194,72 @@ extern "C" void smoke_turbulence_export(MANTA *manta, float **dens, float **reac
 	*tcw2 = manta->getTextureW2();
 }
 
-extern "C" float *smoke_get_density(MANTA *manta)
+extern "C" float *smoke_get_density(SMOKE *smoke)
 {
 	return manta->getDensity();
 }
 
-extern "C" float *smoke_get_fuel(MANTA *manta)
+extern "C" float *smoke_get_fuel(SMOKE *smoke)
 {
 	return manta->getFuel();
 }
 
-extern "C" float *smoke_get_react(MANTA *manta)
+extern "C" float *smoke_get_react(SMOKE *smoke)
 {
 	return manta->getReact();
 }
 
-extern "C" float *smoke_get_heat(MANTA *manta)
+extern "C" float *smoke_get_heat(SMOKE *smoke)
 {
 	return manta->getHeat();
 }
 
-extern "C" float *smoke_get_velocity_x(MANTA *manta)
+extern "C" float *smoke_get_velocity_x(SMOKE *smoke)
 {
 	return manta->getVelocityX();
 }
 
-extern "C" float *smoke_get_velocity_y(MANTA *manta)
+extern "C" float *smoke_get_velocity_y(SMOKE *smoke)
 {
 	return manta->getVelocityY();
 }
 
-extern "C" float *smoke_get_velocity_z(MANTA *manta)
+extern "C" float *smoke_get_velocity_z(SMOKE *smoke)
 {
 	return manta->getVelocityZ();
 }
 
-extern "C" float *smoke_get_force_x(MANTA *manta)
+extern "C" float *smoke_get_force_x(SMOKE *smoke)
 {
 	return manta->getForceX();
 }
 
-extern "C" float *smoke_get_force_y(MANTA *manta)
+extern "C" float *smoke_get_force_y(SMOKE *smoke)
 {
 	return manta->getForceY();
 }
 
-extern "C" float *smoke_get_force_z(MANTA *manta)
+extern "C" float *smoke_get_force_z(SMOKE *smoke)
 {
 	return manta->getForceZ();
 }
 
-extern "C" float *smoke_get_flame(MANTA *manta)
+extern "C" float *smoke_get_flame(SMOKE *smoke)
 {
 	return manta->getFlame();
 }
 
-extern "C" float *smoke_get_color_r(MANTA *manta)
+extern "C" float *smoke_get_color_r(SMOKE *smoke)
 {
 	return manta->getColorR();
 }
 
-extern "C" float *smoke_get_color_g(MANTA *manta)
+extern "C" float *smoke_get_color_g(SMOKE *smoke)
 {
 	return manta->getColorG();
 }
 
-extern "C" float *smoke_get_color_b(MANTA *manta)
+extern "C" float *smoke_get_color_b(SMOKE *smoke)
 {
 	return manta->getColorB();
 }
@@ -290,12 +290,12 @@ static void get_rgba(float *r, float *g, float *b, float *a, int total_cells, fl
 	}
 }
 
-extern "C" void smoke_get_rgba(MANTA *manta, float *data, int sequential)
+extern "C" void smoke_get_rgba(SMOKE *smoke, float *data, int sequential)
 {
 	get_rgba(manta->getColorR(), manta->getColorG(), manta->getColorB(), manta->getDensity(), manta->getTotalCells(), data, sequential);
 }
 
-extern "C" void smoke_turbulence_get_rgba(MANTA *manta, float *data, int sequential)
+extern "C" void smoke_turbulence_get_rgba(SMOKE *smoke, float *data, int sequential)
 {
 	get_rgba(manta->getColorRHigh(), manta->getColorGHigh(), manta->getColorBHigh(), manta->getDensityHigh(), manta->getTotalCellsHigh(), data, sequential);
 }
@@ -327,52 +327,52 @@ static void get_rgba_from_density(float color[3], float *a, int total_cells, flo
 	}
 }
 
-extern "C" void smoke_get_rgba_from_density(MANTA *manta, float color[3], float *data, int sequential)
+extern "C" void smoke_get_rgba_from_density(SMOKE *smoke, float color[3], float *data, int sequential)
 {
 	get_rgba_from_density(color, manta->getDensity(), manta->getTotalCells(), data, sequential);
 }
 
-extern "C" void smoke_turbulence_get_rgba_from_density(MANTA *manta, float color[3], float *data, int sequential)
+extern "C" void smoke_turbulence_get_rgba_from_density(SMOKE *smoke, float color[3], float *data, int sequential)
 {
 	get_rgba_from_density(color, manta->getDensityHigh(), manta->getTotalCellsHigh(), data, sequential);
 }
 
-extern "C" float *smoke_turbulence_get_density(MANTA *manta)
+extern "C" float *smoke_turbulence_get_density(SMOKE *smoke)
 {
 	return (manta && manta->usingHighRes()) ? manta->getDensityHigh() : NULL;
 }
 
-extern "C" float *smoke_turbulence_get_fuel(MANTA *manta)
+extern "C" float *smoke_turbulence_get_fuel(SMOKE *smoke)
 {
 	return (manta && manta->usingHighRes()) ? manta->getFuelHigh() : NULL;
 }
 
-extern "C" float *smoke_turbulence_get_react(MANTA *manta)
+extern "C" float *smoke_turbulence_get_react(SMOKE *smoke)
 {
 	return (manta && manta->usingHighRes()) ? manta->getReactHigh() : NULL;
 }
 
-extern "C" float *smoke_turbulence_get_color_r(MANTA *manta)
+extern "C" float *smoke_turbulence_get_color_r(SMOKE *smoke)
 {
 	return (manta && manta->usingHighRes()) ? manta->getColorRHigh() : NULL;
 }
 
-extern "C" float *smoke_turbulence_get_color_g(MANTA *manta)
+extern "C" float *smoke_turbulence_get_color_g(SMOKE *smoke)
 {
 	return (manta && manta->usingHighRes()) ? manta->getColorGHigh() : NULL;
 }
 
-extern "C" float *smoke_turbulence_get_color_b(MANTA *manta)
+extern "C" float *smoke_turbulence_get_color_b(SMOKE *smoke)
 {
 	return (manta && manta->usingHighRes()) ? manta->getColorBHigh() : NULL;
 }
 
-extern "C" float *smoke_turbulence_get_flame(MANTA *manta)
+extern "C" float *smoke_turbulence_get_flame(SMOKE *smoke)
 {
 	return (manta && manta->usingHighRes()) ? manta->getFlameHigh() : NULL;
 }
 
-extern "C" void smoke_turbulence_get_res(MANTA *manta, int *res)
+extern "C" void smoke_turbulence_get_res(SMOKE *smoke, int *res)
 {
 	if (manta && manta->usingHighRes()) {
 		res[0] = manta->getResXHigh();
@@ -381,18 +381,18 @@ extern "C" void smoke_turbulence_get_res(MANTA *manta, int *res)
 	}
 }
 
-extern "C" int smoke_turbulence_get_cells(MANTA *manta)
+extern "C" int smoke_turbulence_get_cells(SMOKE *smoke)
 {
 	int total_cells_high = manta->getResXHigh() * manta->getResYHigh() * manta->getResZHigh();
 	return (manta && manta->usingHighRes()) ? total_cells_high : 0;
 }
 
-extern "C" unsigned char *smoke_get_obstacle(MANTA *manta)
+extern "C" unsigned char *smoke_get_obstacle(SMOKE *smoke)
 {
 	return manta->getObstacles();
 }
 
-extern "C" void smoke_get_ob_velocity(MANTA *manta, float **x, float **y, float **z)
+extern "C" void smoke_get_ob_velocity(SMOKE *smoke, float **x, float **y, float **z)
 {
 	*x = manta->getObVelocityX();
 	*y = manta->getObVelocityY();
@@ -400,7 +400,7 @@ extern "C" void smoke_get_ob_velocity(MANTA *manta, float **x, float **y, float 
 }
 
 #if 0
-extern "C" unsigned char *smoke_get_obstacle_anim(MANTA *manta)
+extern "C" unsigned char *smoke_get_obstacle_anim(SMOKE *smoke)
 {
 	return manta->getObstaclesAnim();
 }
@@ -411,33 +411,33 @@ extern "C" void flame_get_spectrum(unsigned char *spec, int width, float t1, flo
 	spectrum(t1, t2, width, spec);
 }
 
-extern "C" int smoke_has_heat(MANTA *manta)
+extern "C" int smoke_has_heat(SMOKE *smoke)
 {
 	return (manta->getHeat()) ? 1 : 0;
 }
 
-extern "C" int smoke_has_fuel(MANTA *manta)
+extern "C" int smoke_has_fuel(SMOKE *smoke)
 {
 	return (manta->getFuel()) ? 1 : 0;
 }
 
-extern "C" int smoke_has_colors(MANTA *manta)
+extern "C" int smoke_has_colors(SMOKE *smoke)
 {
 	return (manta->getColorR() && manta->getColorG() && manta->getColorB()) ? 1 : 0;
 }
 
-extern "C" int smoke_turbulence_has_fuel(MANTA *manta)
+extern "C" int smoke_turbulence_has_fuel(SMOKE *smoke)
 {
 	return (manta->getFuelHigh()) ? 1 : 0;
 }
 
-extern "C" int smoke_turbulence_has_colors(MANTA *manta)
+extern "C" int smoke_turbulence_has_colors(SMOKE *smoke)
 {
 	return (manta->getColorRHigh() && manta->getColorGHigh() && manta->getColorBHigh()) ? 1 : 0;
 }
 
 /* additional field initialization */
-extern "C" void smoke_ensure_heat(MANTA *manta, struct SmokeModifierData *smd)
+extern "C" void smoke_ensure_heat(SMOKE *smoke, struct SmokeModifierData *smd)
 {
 	if (manta) {
 		manta->initHeat(smd);
@@ -445,7 +445,7 @@ extern "C" void smoke_ensure_heat(MANTA *manta, struct SmokeModifierData *smd)
 	}
 }
 
-extern "C" void smoke_ensure_fire(MANTA *manta, struct SmokeModifierData *smd)
+extern "C" void smoke_ensure_fire(SMOKE *smoke, struct SmokeModifierData *smd)
 {
 	if (manta) {
 		manta->initFire(smd);
@@ -457,7 +457,7 @@ extern "C" void smoke_ensure_fire(MANTA *manta, struct SmokeModifierData *smd)
 	}
 }
 
-extern "C" void smoke_ensure_colors(MANTA *manta, struct SmokeModifierData *smd)
+extern "C" void smoke_ensure_colors(SMOKE *smoke, struct SmokeModifierData *smd)
 {
 	if (manta) {
 		manta->initColors(smd);
@@ -469,12 +469,12 @@ extern "C" void smoke_ensure_colors(MANTA *manta, struct SmokeModifierData *smd)
 	}
 }
 
-extern "C" float *smoke_get_inflow_grid(MANTA *manta)
+extern "C" float *smoke_get_inflow_grid(SMOKE *smoke)
 {
 	return manta->getDensityInflow();
 }
 
-extern "C" float *smoke_get_fuel_inflow(MANTA *manta)
+extern "C" float *smoke_get_fuel_inflow(SMOKE *smoke)
 {
 	return manta->getFuelInflow();
 }
