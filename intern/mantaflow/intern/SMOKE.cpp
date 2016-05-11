@@ -33,6 +33,7 @@
 
 #include "SMOKE.h"
 #include "registry.h"
+#include "shared_script.h"
 #include "smoke_script.h"
 
 #include "BLI_path_util.h"

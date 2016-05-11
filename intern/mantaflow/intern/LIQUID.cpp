@@ -34,6 +34,7 @@
 #include "LIQUID.h"
 #include "registry.h"
 #include "liquid_script.h"
+#include "shared_script.h"
 
 bool LIQUID::mantaInitialized = false;
 

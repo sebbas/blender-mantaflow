@@ -33,10 +33,6 @@
 // GENERAL SETUP
 //////////////////////////////////////////////////////////////////////
 
-const std::string manta_import = "\
-from manta import *\n\
-import os, shutil, math, sys, gc\n";
-
 const std::string liquid_flags = "\n\
 narrowBand = False\n";
 
