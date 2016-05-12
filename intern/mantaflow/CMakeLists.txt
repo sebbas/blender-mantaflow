@@ -41,16 +41,22 @@ set(INC_SYS
 )
 
 set(SRC
+	intern/manta_liquid_API.cpp
 	intern/manta_python_API.cpp
 	intern/manta_smoke_API.cpp
-	intern/MANTA.cpp
+	intern/LIQUID.cpp
+	intern/SMOKE.cpp
 	intern/spectrum.cpp
 
+	extern/manta_liquid_API.h
 	extern/manta_python_API.h
 	extern/manta_smoke_API.h
-	intern/MANTA.h
+	intern/LIQUID.h
+	intern/SMOKE.h
 	intern/spectrum.h
+	intern/strings/shared_script.h
 	intern/strings/smoke_script.h
+	intern/strings/liquid_script.h
 
 	intern/manta_pp/commonkernels.h
 	intern/manta_pp/commonkernels.h.reg
