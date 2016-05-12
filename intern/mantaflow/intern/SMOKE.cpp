@@ -142,14 +142,14 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 
 void SMOKE::initSetup(SmokeModifierData *smd)
 {
-	std::string tmpString =
-		manta_import +
-		solver_setup_low +
-		alloc_base_grids_low +
-		prep_domain_low +
-		flags +
-		manta_step +
-		smoke_step_low;
+	std::string tmpString = manta_import
+		+ solver_low
+		+ adaptive_time_stepping
+		+ alloc_base_grids_low
+		+ smoke_variables
+		+ prep_domain_low
+		+ manta_step
+		+ smoke_step_low;
 	std::string finalString = parseScript(tmpString, smd);
 	mCommands.clear();
 	mCommands.push_back(finalString);
@@ -494,7 +494,7 @@ void SMOKE::exportScript(SmokeModifierData *smd)
 	// Setup low
 	std::string manta_script =
 		manta_import +
-		solver_setup_low +
+		solver_low +
 		alloc_base_grids_low;
 	
 	// Add heat grid low if needed
@@ -513,7 +513,7 @@ void SMOKE::exportScript(SmokeModifierData *smd)
 	}
 	
 	// Rest of low res setup
-	manta_script += prep_domain_low + flags;
+	manta_script += prep_domain_low + smoke_variables;
 	
 	// Setup high
 	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {

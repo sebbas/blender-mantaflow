@@ -33,11 +33,15 @@
 // GENERAL SETUP
 //////////////////////////////////////////////////////////////////////
 
-const std::string flags = "\n\
-using_colors   = $USING_COLORS$\n\
-using_heat     = $USING_HEAT$\n\
-using_fire     = $USING_FIRE$\n\
-using_wavelets = $USE_WAVELETS$\n";
+const std::string smoke_variables = "\n\
+using_colors    = $USING_COLORS$\n\
+using_heat      = $USING_HEAT$\n\
+using_fire      = $USING_FIRE$\n\
+using_wavelets  = $USE_WAVELETS$\n\
+vorticity       = $VORTICITY$\n\
+doOpen          = $DO_OPEN$\n\
+boundConditions = '$BOUNDCONDITIONS$'\n\
+boundaryWidth   = 1\n";
 
 const std::string uv_setup = "\n\
 # create the array of uv grids\n\
@@ -47,6 +51,7 @@ for i in range(uvs):\n\
     uvGrid = s.create(VecGrid)\n\
     uv.append(uvGrid)\n\
     resetUvGrid(uv[i])\n\
+\n\
 # Need to initialize helper grids for uvw as well\n\
 copyVec3ToReal(source=uv[0], targetX=texture_u, targetY=texture_v, targetZ=texture_w)\n\
 copyVec3ToReal(source=uv[1], targetX=texture_u2, targetY=texture_v2, targetZ=texture_w2)\n";
@@ -54,28 +59,6 @@ copyVec3ToReal(source=uv[1], targetX=texture_u2, targetY=texture_v2, targetZ=tex
 //////////////////////////////////////////////////////////////////////
 // LOW RESOLUTION SETUP
 //////////////////////////////////////////////////////////////////////
-
-const std::string solver_setup_low = "\n\
-# solver low params\n\
-dim = $SOLVER_DIM$\n\
-doOpen = $DO_OPEN$\n\
-boundConditions = '$BOUNDCONDITIONS$'\n\
-res = $RES$\n\
-gs = vec3($RESX$,$RESY$,$RESZ$)\n\
-if dim == 2:\n\
-    gs.z = 1\n\
-s = Solver(name='main', gridSize=gs, dim=dim)\n\
-dt_default = 0.1\n\
-dt_factor = $DT_FACTOR$\n\
-fps = $FPS$\n\
-dt0 = dt_default * (25.0 / fps) * dt_factor\n\
-s.frameLength = dt0\n\
-s.timestepMin = dt0 / 10\n\
-s.timestepMax = dt0\n\
-s.cfl = 4.0\n\
-s.timestep = dt0\n\
-vorticity = $VORTICITY$\n\
-boundaryWidth = 1\n";
 
 const std::string alloc_base_grids_low = "\n\
 # prepare grids low\n\
@@ -112,14 +95,13 @@ const std::string solver_setup_high = "\n\
 # solver high params\n\
 upres = $UPRES$\n\
 xl_gs = vec3($HRESX$, $HRESY$, $HRESZ$)\n\
-if dim == 2:\n\
-    xl_gs.z = 1\n\
+if dim == 2: xl_gs.z = 1\n\
 xl = Solver(name = 'larger', gridSize = xl_gs)\n\
 xl.frameLength = s.frameLength\n\
 xl.timestepMin = s.timestepMin / 10\n\
 xl.timestepMax = s.timestepMax\n\
-xl.cfl = s.cfl\n\
-wltStrength = $WLT_STR$\n\
+xl.cfl         = s.cfl\n\
+wltStrength    = $WLT_STR$\n\
 octaves = 0\n\
 uvs = 2\n\
 if upres == 1:\n\

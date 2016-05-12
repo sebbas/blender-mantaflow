@@ -51,15 +51,15 @@ LIQUID::LIQUID()
 
 void LIQUID::initSetup()
 {
-	std::string tmpString =
-		manta_import +
-		liquid_flags +
-		liquid_solver_setup +
-		alloc_liquid +
-		prep_domain +
-		mesh_loading +
-		manta_step +
-		liquid_step;
+	std::string tmpString = manta_import
+		+ solver_low
+		+ adaptive_time_stepping
+		+ alloc_liquid
+		+ liquid_variables
+		+ prep_domain
+		+ mesh_loading
+		+ manta_step
+		+ liquid_step;
 //	std::string finalString = parseScript(tmpString, smd);
 	mCommands.clear();
 	mCommands.push_back(tmpString);

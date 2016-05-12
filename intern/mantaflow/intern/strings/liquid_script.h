@@ -33,38 +33,17 @@
 // GENERAL SETUP
 //////////////////////////////////////////////////////////////////////
 
-const std::string liquid_flags = "\n\
-narrowBand = False\n";
-
-const std::string liquid_solver_setup = "\n\
-dim = 3\n\
-particleNumber = 2\n\
-res = 64\n\
-gs = vec3(res,res,res)\n\
-if (dim==2):\n\
-    gs.z=1\n\
-s = Solver(name='main', gridSize = gs, dim=dim)\n\
-dt_default = 0.1\n\
-dt_factor = 1.0\n\
-fps = 24\n\
-dt0 = dt_default * (25.0 / fps) * dt_factor\n\
-s.frameLength = dt0\n\
-s.timestepMin = dt0 / 10\n\
-s.timestepMax = dt0\n\
-s.cfl = 4.0\n\
-s.timestep = dt0\n\
-#s.frameLength = 1.0\n\
-#s.timestep    = 1.0\n\
-#s.timestepMin = 0.5\n\
-#s.timestepMax = 1.0\n\
-#s.cfl         = 5.0\n\
+const std::string liquid_variables = "\n\
+narrowBand       = False\n\
 narrowBandWidth  = 3\n\
 combineBandWidth = narrowBandWidth - 1\n\
-# using special gravity for blender\n\
+\n\
+minParticles   = pow(2,dim)\n\
+particleNumber = 2\n\
+\n\
 gravity = (0,0,-1)\n\
-minParticles = pow(2,dim)\n\
-step = -1\n\
-maxVel = 0\n";
+step    = -1\n\
+maxVel  = 0\n";
 
 //////////////////////////////////////////////////////////////////////
 // GRIDS & MESHES
@@ -82,13 +61,13 @@ velOld   = s.create(MACGrid)\n\
 velParts = s.create(MACGrid)\n\
 mapWeights  = s.create(MACGrid)\n\
 \n\
-pp        = s.create(BasicParticleSystem)\n\
-pVel      = pp.create(PdataVec3)\n\
-mesh      = s.create(Mesh)\n\
+pp       = s.create(BasicParticleSystem)\n\
+pVel     = pp.create(PdataVec3)\n\
+mesh     = s.create(Mesh)\n\
 \n\
 # Acceleration data for particle nbs\n\
-pindex = s.create(ParticleIndexSystem)\n\
-gpi    = s.create(IntGrid)\n";
+pindex   = s.create(ParticleIndexSystem)\n\
+gpi      = s.create(IntGrid)\n";
 
 const std::string prep_domain = "\n\
 flags.initDomain(boundaryWidth=0)\n\
