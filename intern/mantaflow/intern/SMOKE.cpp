@@ -246,7 +246,7 @@ void SMOKE::step(SmokeModifierData *smd)
 
 	// Get the frame number for this step
 	ModifierData *md = ((ModifierData*) smd);
-	int startFrame = md->scene->r.cfra;
+	int startFrame = md->scene->r.cfra - 1; // Current frame is always one ahead
 	
 	// Run manta step and handover current frame number
 	mCommands.clear();
@@ -462,7 +462,7 @@ std::string SMOKE::parseLine(const std::string& line, SmokeModifierData *smd)
 	bool readingVar = false;
 	const char delimiter = '$';
 	while (currPos < line.size()) {
-		if (line[currPos] == delimiter && ! readingVar) {
+		if (line[currPos] == delimiter && !readingVar) {
 			readingVar  = true;
 			start_del   = currPos + 1;
 			res        += line.substr(end_del + 1, currPos - end_del -1);
