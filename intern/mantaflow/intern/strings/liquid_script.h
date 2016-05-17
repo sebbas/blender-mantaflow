@@ -34,7 +34,7 @@
 //////////////////////////////////////////////////////////////////////
 
 const std::string liquid_variables = "\n\
-narrowBand       = False\n\
+narrowBand       = True\n\
 narrowBandWidth  = 3\n\
 combineBandWidth = narrowBandWidth - 1\n\
 \n\
@@ -46,52 +46,38 @@ step    = -1\n\
 maxVel  = 0\n";
 
 //////////////////////////////////////////////////////////////////////
-// GRIDS & MESHES
+// GRIDS & MESH & PARTICLESYSTEM
 //////////////////////////////////////////////////////////////////////
 
 const std::string alloc_liquid = "\n\
-flags    = s.create(FlagGrid)\n\
+flags      = s.create(FlagGrid)\n\
 \n\
-phiParts = s.create(LevelsetGrid)\n\
-phi      = s.create(LevelsetGrid)\n\
-pressure = s.create(RealGrid)\n\
+phiParts   = s.create(LevelsetGrid)\n\
+phi        = s.create(LevelsetGrid)\n\
+pressure   = s.create(RealGrid)\n\
 \n\
-vel      = s.create(MACGrid)\n\
-velOld   = s.create(MACGrid)\n\
-velParts = s.create(MACGrid)\n\
-mapWeights  = s.create(MACGrid)\n\
+vel        = s.create(MACGrid)\n\
+velOld     = s.create(MACGrid)\n\
+velParts   = s.create(MACGrid)\n\
+mapWeights = s.create(MACGrid)\n\
 \n\
-pp       = s.create(BasicParticleSystem)\n\
-pVel     = pp.create(PdataVec3)\n\
-mesh     = s.create(Mesh)\n\
+pp         = s.create(BasicParticleSystem)\n\
+pVel       = pp.create(PdataVec3)\n\
+mesh       = s.create(Mesh)\n\
 \n\
 # Acceleration data for particle nbs\n\
-pindex   = s.create(ParticleIndexSystem)\n\
-gpi      = s.create(IntGrid)\n";
+pindex     = s.create(ParticleIndexSystem)\n\
+gpi        = s.create(IntGrid)\n";
 
 const std::string prep_domain = "\n\
 flags.initDomain(boundaryWidth=0)\n\
 phi.initFromFlags(flags)\n";
 
 //////////////////////////////////////////////////////////////////////
-// MESH LOADING
-//////////////////////////////////////////////////////////////////////
-
-const std::string mesh_loading = "\n\
-mesh.load('manta_flow.obj')\n\
-mesh.scale( vec3(res/2.0) )\n\
-mesh.offset( gs*0.5 )\n\
-mesh.computeLevelset(phi, 4., -1.)\n\
-\n\
-flags.updateFromLevelset(phi)\n\
-sampleLevelsetWithParticles( phi=phi, flags=flags, parts=pp, discretization=2, randomness=0.4 )\n\
-mapGridToPartsVec3(source=vel, parts=pp, target=pVel )\n";
-
-//////////////////////////////////////////////////////////////////////
 // ADAPTIVE STEP
 //////////////////////////////////////////////////////////////////////
 
-const std::string manta_step = "\n\
+const std::string adaptive_step_liquid = "\n\
 def manta_step(start_frame):\n\
     s.frame = start_frame\n\
     s.timeTotal = s.frame * dt0\n\
