@@ -176,4 +176,35 @@ def liquid_step():\n\
     else:\n\
         adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi )\n";
 
+//////////////////////////////////////////////////////////////////////
+// DESTRUCTION
+//////////////////////////////////////////////////////////////////////
+
+const std::string del_liquid_grids = "\n\
+mantaMsg('Deleting grids, mesh, particlesystem')\n\
+if 'flags'      in globals() : del flags\n\
+if 'phiParts'   in globals() : del phiParts\n\
+if 'phi'        in globals() : del phi\n\
+if 'pressure'   in globals() : del pressure\n\
+if 'vel'        in globals() : del vel\n\
+if 'velOld'     in globals() : del velOld\n\
+if 'velParts'   in globals() : del velParts\n\
+if 'mapWeights' in globals() : del mapWeights\n\
+if 'pp'         in globals() : del pp\n\
+if 'pVel'       in globals() : del pVel\n\
+if 'mesh'       in globals() : del mesh\n\
+if 'pindex'     in globals() : del pindex\n\
+if 'gpi'        in globals() : del gpi\n";
+
+const std::string del_liquid_vars = "\n\
+mantaMsg('Deleting liquid variables')\n\
+if 'narrowBand'       in globals() : del narrowBand\n\
+if 'narrowBandWidth'  in globals() : del narrowBandWidth\n\
+if 'combineBandWidth' in globals() : del combineBandWidth\n\
+if 'minParticles'     in globals() : del minParticles\n\
+if 'particleNumber'   in globals() : del particleNumber\n\
+if 'gravity'          in globals() : del gravity\n\
+if 'step'             in globals() : del step\n\
+if 'maxVel'           in globals() : del maxVel\n";
+
 
