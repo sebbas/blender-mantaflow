@@ -82,6 +82,14 @@ def manta_step(start_frame):\n\
     s.frame = start_frame\n\
     s.timeTotal = s.frame * dt0\n\
     last_frame = s.frame\n\
+    \n\
+    # Sample particles on first frame\n\
+    if (start_frame == 1):\n\
+        phi.printGrid(zSlice=10)\n\
+        flags.updateFromLevelset(phi)\n\
+        sampleLevelsetWithParticles( phi=phi, flags=flags, parts=pp, discretization=2, randomness=0.4 )\n\
+        mapGridToPartsVec3(source=vel, parts=pp, target=pVel )\n\
+    \n\
     while s.frame == last_frame:\n\
         global step\n\
         step = step + 1\n\
