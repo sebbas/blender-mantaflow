@@ -160,13 +160,12 @@ void SMOKE::initSetup(SmokeModifierData *smd)
 
 void SMOKE::initSetupHigh(SmokeModifierData *smd)
 {
-	std::string tmpString =
-		solver_setup_high +
-		alloc_base_grids_high +
-		uv_setup +
-		prep_domain_high +
-		wavelet_turbulence_noise +
-		smoke_step_high;
+	std::string tmpString = solver_setup_high
+		+ alloc_base_grids_high
+		+ uv_setup
+		+ prep_domain_high
+		+ wavelet_turbulence_noise
+		+ smoke_step_high;
 	std::string finalString = parseScript(tmpString, smd);
 	mCommands.clear();
 	mCommands.push_back(finalString);
