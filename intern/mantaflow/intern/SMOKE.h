@@ -172,6 +172,7 @@ private:
 	
 	void initSetup(struct SmokeModifierData *smd);
 	void initSetupHigh(struct SmokeModifierData *smd);
+	void initLiquid(SmokeModifierData *smd);
 	void startMantaflow();
 	void runPythonString(std::vector<std::string> commands);
 	std::string getRealValue(const std::string& varName, SmokeModifierData *smd);
