@@ -57,8 +57,7 @@ void LIQUID::initSetup()
 		+ alloc_liquid
 		+ liquid_variables
 		+ prep_domain
-		+ mesh_loading
-		+ manta_step
+		+ adaptive_step_liquid
 		+ liquid_step;
 //	std::string finalString = parseScript(tmpString, smd);
 	mCommands.clear();
