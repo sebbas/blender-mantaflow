@@ -118,6 +118,8 @@ private:
 	bool mUsingColors;
 	bool mUsingFire;
 	bool mUsingHighRes;
+	bool mUsingLiquid;
+	bool mUsingSmoke;
 	
 	int mResX;
 	int mResY;
