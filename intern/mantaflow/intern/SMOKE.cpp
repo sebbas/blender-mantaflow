@@ -115,31 +115,33 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 		startMantaflow();
 	
 	// Initialize Mantaflow variables in Python
-	initSetup(smd);
-	if (mUsingHeat)   initHeat(smd);
-	if (mUsingFire)   initFire(smd);
-	if (mUsingColors) initColors(smd);
-	
-	updatePointers(smd); // Needs to be after heat, fire, color init
-	
-	if (mUsingHighRes)
-	{		
-		// Make sure that string vector does not contain any previous commands
-		mCommands.clear();
+	// Smoke
+	if (mUsingSmoke) {
+		initSetup(smd);
+		if (mUsingHeat)   initHeat(smd);
+		if (mUsingFire)   initFire(smd);
+		if (mUsingColors) initColors(smd);
 
-		// simulation constants
-		int amplify     = smd->domain->amplify + 1;
-		mResXHigh       = amplify * mResX;
-		mResYHigh       = amplify * mResY;
-		mResZHigh       = amplify * mResZ;
-		mTotalCellsHigh	= mResXHigh * mResYHigh * mResZHigh;
-		
-		// Initialize Mantaflow variables in Python
-		initSetupHigh(smd);
-		if (mUsingFire)   initFireHigh(smd);
-		if (mUsingColors) initColorsHigh(smd);
+		updatePointers(smd); // Needs to be after heat, fire, color init
 
-		updatePointersHigh(smd); // Needs to be after fire, color init
+		if (mUsingHighRes) {
+			// Make sure that string vector does not contain any previous commands
+			mCommands.clear();
+
+			// simulation constants
+			int amplify     = smd->domain->amplify + 1;
+			mResXHigh       = amplify * mResX;
+			mResYHigh       = amplify * mResY;
+			mResZHigh       = amplify * mResZ;
+			mTotalCellsHigh	= mResXHigh * mResYHigh * mResZHigh;
+			
+			// Initialize Mantaflow variables in Python
+			initSetupHigh(smd);
+			if (mUsingFire)   initFireHigh(smd);
+			if (mUsingColors) initColorsHigh(smd);
+
+			updatePointersHigh(smd); // Needs to be after fire, color init
+		}
 	}
 }
 
@@ -283,23 +285,27 @@ SMOKE::~SMOKE()
 
 	// Destruction in Python
 	mCommands.clear();
-	mCommands.push_back(del_base_grids_low);
-	mCommands.push_back(del_vars_low);
-	if (mUsingHeat)          mCommands.push_back(del_heat_low);
-	if (mUsingFire)          mCommands.push_back(del_fire_low);
-	if (mUsingColors)        mCommands.push_back(del_colors_low);
-	
-	if (mUsingHighRes)                 mCommands.push_back(del_base_grids_high);
-	if (mUsingHighRes)                 mCommands.push_back(del_vars_high);
-	if (mUsingColors && mUsingHighRes) mCommands.push_back(del_colors_high);
-	if (mUsingFire && mUsingHighRes)   mCommands.push_back(del_fire_high);
+
+	// Smoke
+	if (mUsingSmoke) {
+		mCommands.push_back(del_base_grids_low);
+		mCommands.push_back(del_vars_low);
+		if (mUsingHeat)          mCommands.push_back(del_heat_low);
+		if (mUsingFire)          mCommands.push_back(del_fire_low);
+		if (mUsingColors)        mCommands.push_back(del_colors_low);
+		
+		if (mUsingHighRes)                 mCommands.push_back(del_base_grids_high);
+		if (mUsingHighRes)                 mCommands.push_back(del_vars_high);
+		if (mUsingColors && mUsingHighRes) mCommands.push_back(del_colors_high);
+		if (mUsingFire && mUsingHighRes)   mCommands.push_back(del_fire_high);
+	}
 	
 	// Make sure that everything is garbage collected
 	mCommands.push_back(gc_collect);
 
 	// Solvers always have to be the last objects to be deleted
 	mCommands.push_back(del_solver_low);
-	if (mUsingHighRes)                 mCommands.push_back(del_solver_high);
+	if (mUsingHighRes) mCommands.push_back(del_solver_high);
 	
 	// Just in case: gc again
 	mCommands.push_back(gc_collect);
@@ -642,34 +648,36 @@ void SMOKE::updatePointers(SmokeModifierData *smd)
 {
 	std::cout << "Updating pointers low res" << std::endl;
 
-	mDensity        = (float*)         getGridPointer("density",     "s");
-	mVelocityX      = (float*)         getGridPointer("x_vel",       "s");
-	mVelocityY      = (float*)         getGridPointer("y_vel",       "s");
-	mVelocityZ      = (float*)         getGridPointer("z_vel",       "s");
-	mObVelocityX    = (float*)         getGridPointer("x_obvel",     "s");
-	mObVelocityY    = (float*)         getGridPointer("y_obvel",     "s");
-	mObVelocityZ    = (float*)         getGridPointer("z_obvel",     "s");
-	mForceX         = (float*)         getGridPointer("x_force",     "s");
-	mForceY         = (float*)         getGridPointer("y_force",     "s");
-	mForceZ         = (float*)         getGridPointer("z_force",     "s");
-	mDensityInflow  = (float*)         getGridPointer("inflow_grid", "s");
-	mFuelInflow     = (float*)         getGridPointer("fuel_inflow", "s");
-	mObstacles      = (unsigned char*) getGridPointer("flags",       "s");
-	
-	if (mUsingHeat) {
-		mHeat       = (float*) getGridPointer("heat",    "s");
+	// Smoke
+	if (mUsingSmoke) {
+		mDensity        = (float*)         getGridPointer("density",     "s");
+		mVelocityX      = (float*)         getGridPointer("x_vel",       "s");
+		mVelocityY      = (float*)         getGridPointer("y_vel",       "s");
+		mVelocityZ      = (float*)         getGridPointer("z_vel",       "s");
+		mObVelocityX    = (float*)         getGridPointer("x_obvel",     "s");
+		mObVelocityY    = (float*)         getGridPointer("y_obvel",     "s");
+		mObVelocityZ    = (float*)         getGridPointer("z_obvel",     "s");
+		mForceX         = (float*)         getGridPointer("x_force",     "s");
+		mForceY         = (float*)         getGridPointer("y_force",     "s");
+		mForceZ         = (float*)         getGridPointer("z_force",     "s");
+		mDensityInflow  = (float*)         getGridPointer("inflow_grid", "s");
+		mFuelInflow     = (float*)         getGridPointer("fuel_inflow", "s");
+		mObstacles      = (unsigned char*) getGridPointer("flags",       "s");
+		
+		if (mUsingHeat) {
+			mHeat       = (float*) getGridPointer("heat",    "s");
+		}
+		if (mUsingFire) {
+			mFlame      = (float*) getGridPointer("flame",   "s");
+			mFuel       = (float*) getGridPointer("fuel",    "s");
+			mReact      = (float*) getGridPointer("react",   "s");
+		}
+		if (mUsingColors) {
+			mColorR     = (float*) getGridPointer("color_r", "s");
+			mColorG     = (float*) getGridPointer("color_g", "s");
+			mColorB     = (float*) getGridPointer("color_b", "s");
+		}
 	}
-	if (mUsingFire) {
-		mFlame      = (float*) getGridPointer("flame",   "s");
-		mFuel       = (float*) getGridPointer("fuel",    "s");
-		mReact      = (float*) getGridPointer("react",   "s");
-	}
-	if (mUsingColors) {
-		mColorR     = (float*) getGridPointer("color_r", "s");
-		mColorG     = (float*) getGridPointer("color_g", "s");
-		mColorB     = (float*) getGridPointer("color_b", "s");
-	}
-
 }
 
 void SMOKE::updatePointersHigh(SmokeModifierData *smd)

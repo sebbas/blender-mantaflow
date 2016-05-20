@@ -133,7 +133,7 @@ private:
 	float mConstantScaling;
 	std::vector<std::string> mCommands;
 
-	// Grids low res
+	// Smoke grids low res
 	float* mDensity;
 	float* mHeat;
 	float* mVelocityX;
@@ -157,7 +157,7 @@ private:
 	float* mFuelInflow;
 	int* mMantaFlags;
 
-	// Grids high res
+	// Smoke grids high res
 	float* mDensityHigh;
 	float* mFlameHigh;
 	float* mFuelHigh;
