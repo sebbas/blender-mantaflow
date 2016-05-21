@@ -109,12 +109,22 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 	mTextureU2      = NULL;
 	mTextureV2      = NULL;
 	mTextureW2      = NULL;
+	
+	// Liquids
+	mPhi            = NULL;
 
 	// Only start Mantaflow once. No need to start whenever new SMOKE objected is allocated
 	if (!mantaInitialized)
 		startMantaflow();
 	
 	// Initialize Mantaflow variables in Python
+	// Liquid
+	if (mUsingLiquid) {
+		initLiquid(smd);
+		updatePointers(smd);
+		return;
+	}
+	
 	// Smoke
 	if (mUsingSmoke) {
 		initSetup(smd);
@@ -285,7 +295,13 @@ SMOKE::~SMOKE()
 
 	// Destruction in Python
 	mCommands.clear();
-
+	
+	// Liquid
+	if (mUsingLiquid) {
+		mCommands.push_back(del_liquid_grids);
+		mCommands.push_back(del_liquid_vars);
+	}
+	
 	// Smoke
 	if (mUsingSmoke) {
 		mCommands.push_back(del_base_grids_low);
@@ -350,6 +366,9 @@ SMOKE::~SMOKE()
 		mTextureV2      = NULL;
 		mTextureW2      = NULL;
 	}
+	
+	// Liquid
+	mPhi = NULL;
 	
 	// Reset flags
 	mUsingHeat    = false;
@@ -648,6 +667,10 @@ void SMOKE::updatePointers(SmokeModifierData *smd)
 {
 	std::cout << "Updating pointers low res" << std::endl;
 
+	if (mUsingLiquid) {
+		mPhi        = (float*)         getGridPointer("phi",         "s");
+	}
+	
 	// Smoke
 	if (mUsingSmoke) {
 		mDensity        = (float*)         getGridPointer("density",     "s");

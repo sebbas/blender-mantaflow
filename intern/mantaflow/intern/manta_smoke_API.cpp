@@ -478,3 +478,8 @@ extern "C" float *smoke_get_fuel_inflow(SMOKE *smoke)
 {
 	return smoke->getFuelInflow();
 }
+
+extern "C" float *liquid_get_phi(SMOKE *liquid)
+{
+	return liquid->getPhi();
+}
