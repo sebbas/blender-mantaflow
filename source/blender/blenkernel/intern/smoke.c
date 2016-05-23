@@ -914,14 +914,16 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	// TODO: delete old obstacle flags
 	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
 	{
-		if (obstacles[z] == 4) // Do not delete static obstacles
+		if (obstacles && obstacles[z] == 4) // Do not delete static obstacles
 		{
 			obstacles[z] = 2;
 		}
 
-		velx[z] = 0;
-		vely[z] = 0;
-		velz[z] = 0;
+		if (velx && velz && velz) {
+			velx[z] = 0;
+			vely[z] = 0;
+			velz[z] = 0;
+		}
 	}
 
 
@@ -948,7 +950,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	/* obstacle cells should not contain any velocity from the smoke simulation */
 	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
 	{
-		if (obstacles[z] & 2)
+		if (obstacles && obstacles[z] & 2)
 		{
 			velxOrig[z] = 0;
 			velyOrig[z] = 0;
@@ -2144,8 +2146,13 @@ BLI_INLINE void apply_outflow_fields(int index, float *density, float *heat, flo
 	}
 }
 
-BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value, int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b)
+BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value, int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi)
 {
+	/* add liquid inflow */
+	if (phi) {
+		phi[index] = emission_value * (-1) + 0.5; // TODO How to get more accurate value?
+		return;
+	}
 	int absolute_flow = (sfs->flags & MOD_SMOKE_FLOW_ABSOLUTE);
 	float dens_old = density[index];
 	// float fuel_old = (fuel) ? fuel[index] : 0.0f;  /* UNUSED */
@@ -2432,6 +2439,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				float *velocity_x = smoke_get_velocity_x(sds->fluid);
 				float *velocity_y = smoke_get_velocity_y(sds->fluid);
 				float *velocity_z = smoke_get_velocity_z(sds->fluid);
+				float *phi = liquid_get_phi(sds->fluid);
 				//unsigned char *obstacle = smoke_get_obstacle(sds->fluid);
 				// DG TODO UNUSED unsigned char *obstacleAnim = smoke_get_obstacle_anim(sds->fluid);
 				int bigres[3];
@@ -2465,7 +2473,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 								apply_outflow_fields(d_index, density, heat, fuel, react, color_r, color_g, color_b);
 							}
 							else { // inflow
-								apply_inflow_fields(sfs, emission_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b);
+								apply_inflow_fields(sfs, emission_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b, phi);
 
 								/* initial velocity */
 								if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY) {
@@ -2557,7 +2565,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 												}
 											}
 											else { // inflow
-												apply_inflow_fields(sfs, interpolated_value, index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b);
+												apply_inflow_fields(sfs, interpolated_value, index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL);
 											}
 										} // hires loop
 							}  // bigdensity
@@ -2975,7 +2983,8 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			step(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base);
 		}
 		// create shadows before writing cache so they get stored
-		smoke_calc_transparency(sds, scene);
+//		TODO Disabled while integrating liquids
+//		smoke_calc_transparency(sds, scene);
 
 #ifndef WITH_MANTA
 		if (sds->wt)
@@ -2983,9 +2992,10 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			smoke_turbulence_step(sds->wt, sds->fluid);
 		}
 #endif
-		BKE_ptcache_validate(cache, framenr);
-		if (framenr != startframe)
-			BKE_ptcache_write(&pid, framenr);
+//		TODO Disabled while integrating liquids
+//		BKE_ptcache_validate(cache, framenr);
+//		if (framenr != startframe)
+//			BKE_ptcache_write(&pid, framenr);
 
 #ifdef DEBUG_TIME
 		double end = PIL_check_seconds_timer();
