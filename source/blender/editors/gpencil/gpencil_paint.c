@@ -449,45 +449,6 @@ static short gp_stroke_addpoint(tGPsdata *p, const int mval[2], float pressure, 
 	return GP_STROKEADD_INVALID;
 }
 
-/* smooth a stroke (in buffer) before storing it */
-static void gp_stroke_smooth(tGPsdata *p)
-{
-	bGPdata *gpd = p->gpd;
-	tGPspoint *spt, tmp_spt[3];
-	int i = 0, cmx = gpd->sbuffer_size;
-	
-	/* only smooth if smoothing is enabled, and we're not doing a straight line */
-	if (!(U.gp_settings & GP_PAINT_DOSMOOTH) || ELEM(p->paintmode, GP_PAINTMODE_DRAW_STRAIGHT, GP_PAINTMODE_DRAW_POLY))
-		return;
-	
-	/* don't try if less than 2 points in buffer */
-	if ((cmx <= 2) || (gpd->sbuffer == NULL))
-		return;
-	
-	/* Calculate smoothing coordinates using weighted-averages
-	 * WARNING: we do NOT smooth first and last points (to avoid shrinkage)
-	 */
-	spt = (tGPspoint *)gpd->sbuffer;
-	
-	/* This (tmp_spt) small array stores the last two points' original coordinates,
-	 * as we don't want to use already averaged ones! It is used as a cyclic buffer...
-	 */
-	tmp_spt[0] = *spt;
-	for (i = 1, spt++; i < cmx - 1; i++, spt++) {
-		const tGPspoint *pc = spt;
-		const tGPspoint *pb = &tmp_spt[(i - 1) % 3];
-		const tGPspoint *pa = (i - 1 > 0) ? (&tmp_spt[(i - 2) % 3]) : (pb);
-		const tGPspoint *pd = pc + 1;
-		const tGPspoint *pe = (i + 2 < cmx) ? (pc + 2) : (pd);
-		
-		/* Store current point's original state for the two next points! */
-		tmp_spt[i % 3] = *spt;
-		
-		spt->x = (int)(0.1 * pa->x + 0.2 * pb->x + 0.4 * pc->x + 0.2 * pd->x + 0.1 * pe->x);
-		spt->y = (int)(0.1 * pa->y + 0.2 * pb->y + 0.4 * pc->y + 0.2 * pd->y + 0.1 * pe->y);
-	}
-}
-
 /* simplify a stroke (in buffer) before storing it
  *	- applies a reverse Chaikin filter
  *	- code adapted from etch-a-ton branch (editarmature_sketch.c)
@@ -568,9 +529,11 @@ static void gp_stroke_simplify(tGPsdata *p)
 static void gp_stroke_newfrombuffer(tGPsdata *p)
 {
 	bGPdata *gpd = p->gpd;
+	bGPDlayer *gpl = p->gpl;
 	bGPDstroke *gps;
 	bGPDspoint *pt;
 	tGPspoint *ptc;
+	
 	int i, totelem;
 	/* since strokes are so fine, when using their depth we need a margin otherwise they might get missed */
 	int depth_margin = (p->gpd->flag & GP_DATA_DEPTH_STROKE) ? 4 : 0;
@@ -609,9 +572,21 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
 	gps->flag = gpd->sbuffer_sflag;
 	gps->inittime = p->inittime;
 	
+	/* enable recalculation flag by default (only used if hq fill) */
+	gps->flag |= GP_STROKE_RECALC_CACHES;
+
 	/* allocate enough memory for a continuous array for storage points */
-	gps->points = MEM_callocN(sizeof(bGPDspoint) * gps->totpoints, "gp_stroke_points");
+	int sublevel = gpl->sublevel;
+	int new_totpoints = gps->totpoints;
 	
+	for (i = 0; i < sublevel; i++) {
+		new_totpoints += new_totpoints - 1;
+	}
+	gps->points = MEM_callocN(sizeof(bGPDspoint) * new_totpoints, "gp_stroke_points");
+	/* initialize triangle memory to dummy data */
+	gps->triangles = MEM_callocN(sizeof(bGPDtriangle), "GP Stroke triangulation");
+	gps->flag |= GP_STROKE_RECALC_CACHES;
+	gps->tot_triangles = 0;
 	/* set pointer to first non-initialized point */
 	pt = gps->points + (gps->totpoints - totelem);
 	
@@ -730,10 +705,36 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
 			pt->time = ptc->time;
 		}
 		
+		/* subdivide the stroke */
+		if (sublevel > 0) {
+			int totpoints = gps->totpoints;
+			for (i = 0; i < sublevel; i++) {
+				/* we're adding one new point between each pair of verts on each step */
+				totpoints += totpoints - 1;
+				
+				gp_subdivide_stroke(gps, totpoints);
+			}
+		}
+		
+		/* smooth stroke after subdiv - only if there's something to do 
+		 * for each iteration, the factor is reduced to get a better smoothing without changing too much 
+		 * the original stroke
+		 */
+		if (gpl->draw_smoothfac > 0.0f) {
+			float reduce = 0.0f;
+			for (int r = 0; r < gpl->draw_smoothlvl; ++r) {
+				for (i = 0; i < gps->totpoints; i++) {
+					/* NOTE: No pressure smoothing, or else we get annoying thickness changes while drawing... */
+					gp_smooth_stroke(gps, i, gpl->draw_smoothfac - reduce, false);
+				}
+				reduce += 0.25f;  // reduce the factor
+			}
+		}
+		
 		if (depth_arr)
 			MEM_freeN(depth_arr);
 	}
-	
+
 	/* add stroke to frame */
 	BLI_addtail(&p->gpf->strokes, gps);
 	gp_stroke_added_enable(p);
@@ -807,6 +808,8 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
 		/* just free stroke */
 		if (gps->points)
 			MEM_freeN(gps->points);
+		if (gps->triangles)
+			MEM_freeN(gps->triangles);
 		BLI_freelinkN(&gpf->strokes, gps);
 	}
 	else if (gps->totpoints == 1) {
@@ -819,6 +822,8 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
 				/* free stroke */
 				// XXX: pressure sensitive eraser should apply here too?
 				MEM_freeN(gps->points);
+				if (gps->triangles)
+					 MEM_freeN(gps->triangles);
 				BLI_freelinkN(&gpf->strokes, gps);
 			}
 		}
@@ -931,7 +936,7 @@ static void gp_stroke_doeraser(tGPsdata *p)
 		bGPDframe *gpf = gpl->actframe;
 		
 		/* only affect layer if it's editable (and visible) */
-		if (gpl->flag & (GP_LAYER_HIDE | GP_LAYER_LOCKED)) {
+		if (gpencil_layer_is_editable(gpl) == false) {
 			continue;
 		}
 		else if (gpf == NULL) {
@@ -1198,7 +1203,7 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode)
 	/* get active layer (or add a new one if non-existent) */
 	p->gpl = gpencil_layer_getactive(p->gpd);
 	if (p->gpl == NULL) {
-		p->gpl = gpencil_layer_addnew(p->gpd, "GP_Layer", 1);
+		p->gpl = gpencil_layer_addnew(p->gpd, "GP_Layer", true);
 		
 		if (p->custom_color[3])
 			copy_v3_v3(p->gpl->color, p->custom_color);
@@ -1220,7 +1225,7 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode)
 		bGPDlayer *gpl;
 		for (gpl = p->gpd->layers.first; gpl; gpl = gpl->next) {
 			/* Skip if layer not editable */
-			if (gpl->flag & (GP_LAYER_HIDE | GP_LAYER_LOCKED))
+			if (gpencil_layer_is_editable(gpl) == false)
 				continue;
 			
 			/* Add a new frame if needed (and based off the active frame,
@@ -1385,9 +1390,6 @@ static void gp_paint_strokeend(tGPsdata *p)
 	
 	/* check if doing eraser or not */
 	if ((p->gpd->sbuffer_sflag & GP_STROKE_ERASER) == 0) {
-		/* smooth stroke before transferring? */
-		gp_stroke_smooth(p);
-		
 		/* simplify stroke before transferring? */
 		gp_stroke_simplify(p);
 		
@@ -1571,24 +1573,24 @@ static void gpencil_draw_status_indicators(tGPsdata *p)
 			/* print status info */
 			switch (p->paintmode) {
 				case GP_PAINTMODE_ERASER:
-					ED_area_headerprint(p->sa, IFACE_("Grease Pencil Erase Session: Hold and drag LMB or RMB to erase |"
-					                                  " ESC/Enter to end"));
+					ED_area_headerprint(p->sa, IFACE_("Grease Pencil Erase Session: Hold and drag LMB or RMB to erase | "
+					                                  "ESC/Enter to end  (or click outside this area)"));
 					break;
 				case GP_PAINTMODE_DRAW_STRAIGHT:
 					ED_area_headerprint(p->sa, IFACE_("Grease Pencil Line Session: Hold and drag LMB to draw | "
-					                                  "ESC/Enter to end"));
+					                                  "ESC/Enter to end  (or click outside this area)"));
 					break;
 				case GP_PAINTMODE_DRAW:
 					ED_area_headerprint(p->sa, IFACE_("Grease Pencil Freehand Session: Hold and drag LMB to draw | "
-					                                  "ESC/Enter to end"));
+					                                  "ESC/Enter to end  (or click outside this area)"));
 					break;
 				case GP_PAINTMODE_DRAW_POLY:
 					ED_area_headerprint(p->sa, IFACE_("Grease Pencil Poly Session: LMB click to place next stroke vertex | "
-					                                  "ESC/Enter to end"));
+					                                  "ESC/Enter to end  (or click outside this area)"));
 					break;
 				
 				default: /* unhandled future cases */
-					ED_area_headerprint(p->sa, IFACE_("Grease Pencil Session: ESC/Enter to end"));
+					ED_area_headerprint(p->sa, IFACE_("Grease Pencil Session: ESC/Enter to end   (or click outside this area)"));
 					break;
 			}
 			break;
@@ -1949,6 +1951,13 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
 			 *   - for undo (during sketching sessions)
 			 */
 		}
+		else if (ELEM(event->type, PAD0, PAD1, PAD2, PAD3, PAD4, PAD5, PAD6, PAD7, PAD8, PAD9)) {
+			/* allow numpad keys so that camera/view manipulations can still take place
+			 * - PAD0 in particular is really important for Grease Pencil drawing,
+			 *   as animators may be working "to camera", so having this working
+			 *   is essential for ensuring that they can quickly return to that view
+			 */
+		}
 		else {
 			estate = OPERATOR_RUNNING_MODAL;
 		}
@@ -2145,8 +2154,8 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
 				case PADMINUS:
 					p->radius -= 5;
 					
-					if (p->radius < 0)
-						p->radius = 0;
+					if (p->radius <= 0)
+						p->radius = 1;
 					break;
 			}
 			

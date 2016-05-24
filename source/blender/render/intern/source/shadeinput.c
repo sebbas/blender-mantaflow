@@ -705,6 +705,35 @@ void shade_input_set_viewco(ShadeInput *shi, float x, float y, float xs, float y
 	shade_input_calc_viewco(shi, xs, ys, z, shi->view, dxyview, shi->co, dxco, dyco);
 }
 
+void barycentric_differentials_from_position(
+	const float co[3], const float v1[3], const float v2[3], const float v3[3],
+	const float dxco[3], const float dyco[3], const float facenor[3], const bool differentials,
+	float *u, float *v, float *dx_u, float *dx_v, float *dy_u, float *dy_v)
+{
+	/* find most stable axis to project */
+	int axis1, axis2;
+	axis_dominant_v3(&axis1, &axis2, facenor);
+
+	/* compute u,v and derivatives */
+	float t00 = v3[axis1] - v1[axis1];
+	float t01 = v3[axis2] - v1[axis2];
+	float t10 = v3[axis1] - v2[axis1];
+	float t11 = v3[axis2] - v2[axis2];
+
+	float detsh = (t00 * t11 - t10 * t01);
+	detsh = (detsh != 0.0f) ? 1.0f / detsh : 0.0f;
+	t00 *= detsh; t01 *= detsh;
+	t10 *= detsh; t11 *= detsh;
+
+	*u = (v3[axis1] - co[axis1]) * t11 - (v3[axis2] - co[axis2]) * t10;
+	*v = (v3[axis2] - co[axis2]) * t00 - (v3[axis1] - co[axis1]) * t01;
+	if (differentials) {
+		*dx_u =  dxco[axis1] * t11 - dxco[axis2] * t10;
+		*dx_v =  dxco[axis2] * t00 - dxco[axis1] * t01;
+		*dy_u =  dyco[axis1] * t11 - dyco[axis2] * t10;
+		*dy_v =  dyco[axis2] * t00 - dyco[axis1] * t01;
+	}
+}
 /* calculate U and V, for scanline (silly render face u and v are in range -1 to 0) */
 void shade_input_set_uv(ShadeInput *shi)
 {
@@ -746,30 +775,12 @@ void shade_input_set_uv(ShadeInput *shi)
 			}
 		}
 		else {
-			/* most of this could become re-used for faces */
-			float detsh, t00, t10, t01, t11;
-			int axis1, axis2;
+			barycentric_differentials_from_position(
+				shi->co, v1, v2, v3, shi->dxco, shi->dyco, shi->facenor, shi->osatex,
+				&shi->u, &shi->v, &shi->dx_u, &shi->dx_v, &shi->dy_u, &shi->dy_v);
 
-			/* find most stable axis to project */
-			axis_dominant_v3(&axis1, &axis2, shi->facenor);
-
-			/* compute u,v and derivatives */
-			t00 = v3[axis1] - v1[axis1]; t01 = v3[axis2] - v1[axis2];
-			t10 = v3[axis1] - v2[axis1]; t11 = v3[axis2] - v2[axis2];
-
-			detsh = (t00 * t11 - t10 * t01);
-			detsh = (detsh != 0.0f) ? 1.0f / detsh : 0.0f;
-			t00 *= detsh; t01 *= detsh;
-			t10 *= detsh; t11 *= detsh;
-
-			shi->u = (shi->co[axis1] - v3[axis1]) * t11 - (shi->co[axis2] - v3[axis2]) * t10;
-			shi->v = (shi->co[axis2] - v3[axis2]) * t00 - (shi->co[axis1] - v3[axis1]) * t01;
-			if (shi->osatex) {
-				shi->dx_u =  shi->dxco[axis1] * t11 - shi->dxco[axis2] * t10;
-				shi->dx_v =  shi->dxco[axis2] * t00 - shi->dxco[axis1] * t01;
-				shi->dy_u =  shi->dyco[axis1] * t11 - shi->dyco[axis2] * t10;
-				shi->dy_v =  shi->dyco[axis2] * t00 - shi->dyco[axis1] * t01;
-			}
+			shi->u = -shi->u;
+			shi->v = -shi->v;
 
 			/* u and v are in range -1 to 0, we allow a little bit extra but not too much, screws up speedvectors */
 			CLAMP(shi->u, -2.0f, 1.0f);
@@ -873,7 +884,10 @@ void shade_input_set_shade_texco(ShadeInput *shi)
 	float u = shi->u, v = shi->v;
 	float l = 1.0f + u + v, dl;
 	int mode = shi->mode;        /* or-ed result for all nodes */
+	int mode2 = shi->mode2;
 	short texco = shi->mat->texco;
+	const bool need_mikk_tangent = (mode & MA_NORMAP_TANG || R.flag & R_NEED_TANGENT);
+	const bool need_mikk_tangent_concrete = (mode2 & MA_TANGENT_CONCRETE) != 0;
 
 	/* calculate dxno */
 	if (shi->vlr->flag & R_SMOOTH) {
@@ -894,8 +908,8 @@ void shade_input_set_shade_texco(ShadeInput *shi)
 	}
 
 	/* calc tangents */
-	if (mode & (MA_TANGENT_V | MA_NORMAP_TANG) || R.flag & R_NEED_TANGENT) {
-		const float *tangent, *s1, *s2, *s3;
+	if (mode & (MA_TANGENT_V | MA_NORMAP_TANG) || mode2 & MA_TANGENT_CONCRETE || R.flag & R_NEED_TANGENT) {
+		const float *s1, *s2, *s3;
 		float tl, tu, tv;
 
 		if (shi->vlr->flag & R_SMOOTH) {
@@ -932,14 +946,18 @@ void shade_input_set_shade_texco(ShadeInput *shi)
 			}
 		}
 
-		if (mode & MA_NORMAP_TANG || R.flag & R_NEED_TANGENT) {
-			tangent = RE_vlakren_get_nmap_tangent(obr, shi->vlr, 0);
+		if (need_mikk_tangent || need_mikk_tangent_concrete) {
+			int j1 = shi->i1, j2 = shi->i2, j3 = shi->i3;
+			float c0[3], c1[3], c2[3];
+			int acttang = obr->actmtface;
 
-			if (tangent) {
-				int j1 = shi->i1, j2 = shi->i2, j3 = shi->i3;
-				float c0[3], c1[3], c2[3];
+			vlr_set_uv_indices(shi->vlr, &j1, &j2, &j3);
 
-				vlr_set_uv_indices(shi->vlr, &j1, &j2, &j3);
+			/* cycle through all tangent in vlakren */
+			for (int i = 0; i < MAX_MTFACE; i++) {
+				const float *tangent = RE_vlakren_get_nmap_tangent(obr, shi->vlr, i, false);
+				if (!tangent)
+					continue;
 
 				copy_v3_v3(c0, &tangent[j1 * 4]);
 				copy_v3_v3(c1, &tangent[j2 * 4]);
@@ -955,13 +973,19 @@ void shade_input_set_shade_texco(ShadeInput *shi)
 
 				/* we don't normalize the interpolated TBN tangent
 				 * corresponds better to how it's done in game engines */
-				shi->nmaptang[0] = (tl * c2[0] - tu * c0[0] - tv * c1[0]);
-				shi->nmaptang[1] = (tl * c2[1] - tu * c0[1] - tv * c1[1]);
-				shi->nmaptang[2] = (tl * c2[2] - tu * c0[2] - tv * c1[2]);
+				shi->tangents[i][0] = (tl * c2[0] - tu * c0[0] - tv * c1[0]);
+				shi->tangents[i][1] = (tl * c2[1] - tu * c0[1] - tv * c1[1]);
+				shi->tangents[i][2] = (tl * c2[2] - tu * c0[2] - tv * c1[2]);
 
 				/* the sign is the same for all 3 vertices of any
 				 * non degenerate triangle. */
-				shi->nmaptang[3] = tangent[j1 * 4 + 3];
+				shi->tangents[i][3] = tangent[j1 * 4 + 3];
+
+				if (acttang == i && need_mikk_tangent) {
+					for (int m = 0; m < 4; m++) {
+						shi->nmaptang[m] = shi->tangents[i][m];
+					}
+				}
 			}
 		}
 	}

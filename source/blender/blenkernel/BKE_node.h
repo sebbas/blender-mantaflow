@@ -347,7 +347,7 @@ void              ntreeUserDecrefID(struct bNodeTree *ntree);
 
 struct bNodeTree *ntreeFromID(struct ID *id);
 
-void              ntreeMakeLocal(struct bNodeTree *ntree);
+void              ntreeMakeLocal(struct bNodeTree *ntree, bool id_in_mainlist);
 bool              ntreeHasType(const struct bNodeTree *ntree, int type);
 bool              ntreeHasTree(const struct bNodeTree *ntree, const struct bNodeTree *lookup);
 void              ntreeUpdateTree(struct Main *main, struct bNodeTree *ntree);
@@ -642,12 +642,12 @@ void BKE_node_tree_unlink_id(ID *id, struct bNodeTree *ntree);
  * Examples:
  *
  * \code{.c}
- * FOREACH_NODETREE(bmain, nodetree) {
+ * FOREACH_NODETREE(bmain, nodetree, id) {
  *     if (id == nodetree)
  *         printf("This is a linkable node tree");
  * } FOREACH_NODETREE_END
  *
- * FOREACH_NODETREE(bmain, nodetree) {
+ * FOREACH_NODETREE(bmain, nodetree, id) {
  *     if (nodetree->idname == "ShaderNodeTree")
  *         printf("This is a shader node tree);
  *     if (GS(id) == ID_MA)

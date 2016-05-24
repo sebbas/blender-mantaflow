@@ -105,7 +105,7 @@ static void get_child_modifier_parameters(ParticleSettings *part, ParticleThread
                                           ChildParticle *cpa, short cpa_from, int cpa_num, float *cpa_fuv, float *orco, ParticleTexture *ptex);
 static void get_cpa_texture(DerivedMesh *dm, ParticleSystem *psys, ParticleSettings *part, ParticleData *par,
 							int child_index, int face_index, const float fw[4], float *orco, ParticleTexture *ptex, int event, float cfra);
-extern void do_child_modifiers(ParticleSimulationData *sim,
+extern void do_child_modifiers(ParticleThreadContext *ctx, ParticleSimulationData *sim,
                                ParticleTexture *ptex, const float par_co[3], const float par_vel[3], const float par_rot[4], const float par_orco[3],
                                ChildParticle *cpa, const float orco[3], float mat[4][4], ParticleKey *state, float t);
 
@@ -720,13 +720,19 @@ void psys_render_restore(Object *ob, ParticleSystem *psys)
 	disp = psys_get_current_display_percentage(psys);
 
 	if (disp != render_disp) {
-		PARTICLE_P;
+		/* Hair can and has to be recalculated if everything isn't displayed. */
+		if (psys->part->type == PART_HAIR) {
+			psys->recalc |= PSYS_RECALC_RESET;
+		}
+		else {
+			PARTICLE_P;
 
-		LOOP_PARTICLES {
-			if (psys_frand(psys, p) > disp)
-				pa->flag |= PARS_NO_DISP;
-			else
-				pa->flag &= ~PARS_NO_DISP;
+			LOOP_PARTICLES {
+				if (psys_frand(psys, p) > disp)
+					pa->flag |= PARS_NO_DISP;
+				else
+					pa->flag &= ~PARS_NO_DISP;
+			}
 		}
 	}
 }
@@ -1416,13 +1422,19 @@ int psys_particle_dm_face_lookup(
 {
 	MFace *mtessface_final;
 	OrigSpaceFace *osface_final;
-	int totface_final;
 	int pindex_orig;
 	float uv[2], (*faceuv)[2];
 
 	const int *index_mf_to_mpoly_deformed = NULL;
 	const int *index_mf_to_mpoly = NULL;
 	const int *index_mp_to_orig = NULL;
+
+	const int totface_final = dm_final->getNumTessFaces(dm_final);
+	const int totface_deformed = dm_deformed ? dm_deformed->getNumTessFaces(dm_deformed) : totface_final;
+
+	if (ELEM(0, totface_final, totface_deformed)) {
+		return DMCACHE_NOTFOUND;
+	}
 
 	index_mf_to_mpoly = dm_final->getTessFaceDataArray(dm_final, CD_ORIGINDEX);
 	index_mp_to_orig = dm_final->getPolyDataArray(dm_final, CD_ORIGINDEX);
@@ -1444,11 +1456,6 @@ int psys_particle_dm_face_lookup(
 	}
 
 	index_mf_to_mpoly_deformed = NULL;
-
-	totface_final = dm_final->getNumTessFaces(dm_final);
-	if (!totface_final) {
-		return DMCACHE_NOTFOUND;
-	}
 
 	mtessface_final = dm_final->getTessFaceArray(dm_final);
 	osface_final = dm_final->getTessFaceDataArray(dm_final, CD_ORIGSPACE);
@@ -1603,8 +1610,14 @@ void psys_particle_on_dm(DerivedMesh *dm_final, int from, int index, int index_d
 			normalize_v3(nor);
 		}
 
-		if (orco)
-			copy_v3_v3(orco, orcodata[mapindex]);
+		if (orco) {
+			if (orcodata) {
+				copy_v3_v3(orco, orcodata[mapindex]);
+			}
+			else {
+				copy_v3_v3(orco, vec);
+			}
+		}
 
 		if (ornor) {
 			dm_final->getVertNo(dm_final, mapindex, ornor);
@@ -2105,10 +2118,20 @@ static bool psys_thread_context_init_path(ParticleThreadContext *ctx, ParticleSi
 		ctx->vg_effector = psys_cache_vgroup(ctx->dm, psys, PSYS_VG_EFFECTOR);
 
 	/* prepare curvemapping tables */
-	if ((part->child_flag & PART_CHILD_USE_CLUMP_CURVE) && part->clumpcurve)
-		curvemapping_changed_all(part->clumpcurve);
-	if ((part->child_flag & PART_CHILD_USE_ROUGH_CURVE) && part->roughcurve)
-		curvemapping_changed_all(part->roughcurve);
+	if ((part->child_flag & PART_CHILD_USE_CLUMP_CURVE) && part->clumpcurve) {
+		ctx->clumpcurve = curvemapping_copy(part->clumpcurve);
+		curvemapping_changed_all(ctx->clumpcurve);
+	}
+	else {
+		ctx->clumpcurve = NULL;
+	}
+	if ((part->child_flag & PART_CHILD_USE_ROUGH_CURVE) && part->roughcurve) {
+		ctx->roughcurve = curvemapping_copy(part->roughcurve);
+		curvemapping_changed_all(ctx->roughcurve);
+	}
+	else {
+		ctx->roughcurve = NULL;
+	}
 
 	return true;
 }
@@ -3489,7 +3512,7 @@ static void get_cpa_texture(DerivedMesh *dm, ParticleSystem *psys, ParticleSetti
 					break;
 			}
 
-			externtex(mtex, texvec, &value, rgba, rgba + 1, rgba + 2, rgba + 3, 0, NULL, false);
+			externtex(mtex, texvec, &value, rgba, rgba + 1, rgba + 2, rgba + 3, 0, NULL, false, false);
 
 			if ((event & mtex->mapto) & PAMAP_ROUGH)
 				ptex->rough1 = ptex->rough2 = ptex->roughe = texture_value_blend(def, ptex->rough1, value, mtex->roughfac, blend);
@@ -3572,7 +3595,7 @@ void psys_get_texture(ParticleSimulationData *sim, ParticleData *pa, ParticleTex
 					break;
 			}
 
-			externtex(mtex, texvec, &value, rgba, rgba + 1, rgba + 2, rgba + 3, 0, NULL, false);
+			externtex(mtex, texvec, &value, rgba, rgba + 1, rgba + 2, rgba + 3, 0, NULL, false, false);
 
 			if ((event & mtex->mapto) & PAMAP_TIME) {
 				/* the first time has to set the base value for time regardless of blend mode */
@@ -3890,7 +3913,7 @@ void psys_get_particle_on_path(ParticleSimulationData *sim, int p, ParticleKey *
 				copy_particle_key(&tstate, state, 1);
 
 			/* apply different deformations to the child path */
-			do_child_modifiers(sim, &ptex, par->co, par->vel, par->rot, par_orco, cpa, orco, hairmat, state, t);
+			do_child_modifiers(NULL, sim, &ptex, par->co, par->vel, par->rot, par_orco, cpa, orco, hairmat, state, t);
 
 			/* try to estimate correct velocity */
 			if (vel) {
@@ -3993,7 +4016,7 @@ int psys_get_particle_state(ParticleSimulationData *sim, int p, ParticleKey *sta
 			CLAMP(t, 0.0f, 1.0f);
 
 			unit_m4(mat);
-			do_child_modifiers(sim, NULL, key1->co, key1->vel, key1->rot, par_orco, cpa, cpa->fuv, mat, state, t);
+			do_child_modifiers(NULL, sim, NULL, key1->co, key1->vel, key1->rot, par_orco, cpa, cpa->fuv, mat, state, t);
 
 			if (psys->lattice_deform_data)
 				calc_latt_deform(psys->lattice_deform_data, state->co, 1.0f);
@@ -4202,8 +4225,8 @@ void psys_make_billboard(ParticleBillboardData *bb, float xvec[3], float yvec[3]
 	/* can happen with bad pointcache or physics calculation
 	 * since this becomes geometry, nan's and inf's crash raytrace code.
 	 * better not allow this. */
-	if ((!finite(bb->vec[0])) || (!finite(bb->vec[1])) || (!finite(bb->vec[2])) ||
-	    (!finite(bb->vel[0])) || (!finite(bb->vel[1])) || (!finite(bb->vel[2])) )
+	if ((!isfinite(bb->vec[0])) || (!isfinite(bb->vec[1])) || (!isfinite(bb->vec[2])) ||
+	    (!isfinite(bb->vel[0])) || (!isfinite(bb->vel[1])) || (!isfinite(bb->vel[2])) )
 	{
 		zero_v3(bb->vec);
 		zero_v3(bb->vel);

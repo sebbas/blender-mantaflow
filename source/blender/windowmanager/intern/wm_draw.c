@@ -43,7 +43,6 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
-#include "BLI_math_base.h"
 
 #include "BIF_gl.h"
 
@@ -59,6 +58,7 @@
 #include "GPU_draw.h"
 #include "GPU_extensions.h"
 #include "GPU_glew.h"
+#include "GPU_basic_shader.h"
 
 #include "RE_engine.h"
 

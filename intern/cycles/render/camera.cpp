@@ -73,6 +73,12 @@ Camera::Camera()
 	longitude_max = M_PI_F;
 	fov = M_PI_4_F;
 	fov_pre = fov_post = fov;
+	stereo_eye = STEREO_NONE;
+	interocular_distance = 0.065f;
+	convergence_distance = 30.0f * 0.065f;
+	use_pole_merge = false;
+	pole_merge_angle_from = 60.0f * M_PI_F / 180.0f;
+	pole_merge_angle_to = 75.0f * M_PI_F / 180.0f;
 
 	sensorwidth = 0.036f;
 	sensorheight = 0.024f;
@@ -155,12 +161,15 @@ void Camera::update()
 
 	/* ndc to raster */
 	Transform ndctoraster = transform_scale(width, height, 1.0f) * bordertofull;
+	Transform full_ndctoraster = transform_scale(full_width, full_height, 1.0f) * bordertofull;
 
 	/* raster to screen */
 	Transform screentondc = fulltoborder * transform_from_viewplane(viewplane);
 
 	Transform screentoraster = ndctoraster * screentondc;
 	Transform rastertoscreen = transform_inverse(screentoraster);
+	Transform full_screentoraster = full_ndctoraster * screentondc;
+	Transform full_rastertoscreen = transform_inverse(full_screentoraster);
 
 	/* screen to camera */
 	Transform cameratoscreen;
@@ -174,6 +183,7 @@ void Camera::update()
 	Transform screentocamera = transform_inverse(cameratoscreen);
 
 	rastertocamera = screentocamera * rastertoscreen;
+	Transform full_rastertocamera = screentocamera * full_rastertoscreen;
 	cameratoraster = screentoraster * cameratoscreen;
 
 	cameratoworld = matrix;
@@ -193,12 +203,18 @@ void Camera::update()
 	if(type == CAMERA_ORTHOGRAPHIC) {
 		dx = transform_direction(&rastertocamera, make_float3(1, 0, 0));
 		dy = transform_direction(&rastertocamera, make_float3(0, 1, 0));
+		full_dx = transform_direction(&full_rastertocamera, make_float3(1, 0, 0));
+		full_dy = transform_direction(&full_rastertocamera, make_float3(0, 1, 0));
 	}
 	else if(type == CAMERA_PERSPECTIVE) {
 		dx = transform_perspective(&rastertocamera, make_float3(1, 0, 0)) -
 		     transform_perspective(&rastertocamera, make_float3(0, 0, 0));
 		dy = transform_perspective(&rastertocamera, make_float3(0, 1, 0)) -
 		     transform_perspective(&rastertocamera, make_float3(0, 0, 0));
+		full_dx = transform_perspective(&full_rastertocamera, make_float3(1, 0, 0)) -
+		     transform_perspective(&full_rastertocamera, make_float3(0, 0, 0));
+		full_dy = transform_perspective(&full_rastertocamera, make_float3(0, 1, 0)) -
+		     transform_perspective(&full_rastertocamera, make_float3(0, 0, 0));
 	}
 	else {
 		dx = make_float3(0.0f, 0.0f, 0.0f);
@@ -207,6 +223,8 @@ void Camera::update()
 
 	dx = transform_direction(&cameratoworld, dx);
 	dy = transform_direction(&cameratoworld, dy);
+	full_dx = transform_direction(&cameratoworld, full_dx);
+	full_dy = transform_direction(&cameratoworld, full_dy);
 
 	/* TODO(sergey): Support other types of camera. */
 	if(type == CAMERA_PERSPECTIVE) {
@@ -308,6 +326,7 @@ void Camera::device_update(Device *device, DeviceScene *dscene, Scene *scene)
 #ifdef __CAMERA_MOTION__
 	kcam->shuttertime = (need_motion == Scene::MOTION_BLUR) ? shuttertime: -1.0f;
 
+	scene->lookup_tables->remove_table(&shutter_table_offset);
 	if(need_motion == Scene::MOTION_BLUR) {
 		vector<float> shutter_table;
 		util_cdf_inverted(SHUTTER_TABLE_SIZE,
@@ -319,10 +338,6 @@ void Camera::device_update(Device *device, DeviceScene *dscene, Scene *scene)
 		shutter_table_offset = scene->lookup_tables->add_table(dscene,
 		                                                       shutter_table);
 		kcam->shutter_table_offset = (int)shutter_table_offset;
-	}
-	else if(shutter_table_offset != TABLE_OFFSET_INVALID) {
-		scene->lookup_tables->remove_table(shutter_table_offset);
-		shutter_table_offset = TABLE_OFFSET_INVALID;
 	}
 #else
 	kcam->shuttertime = -1.0f;
@@ -340,6 +355,29 @@ void Camera::device_update(Device *device, DeviceScene *dscene, Scene *scene)
 	kcam->fisheye_lens = fisheye_lens;
 	kcam->equirectangular_range = make_float4(longitude_min - longitude_max, -longitude_min,
 	                                          latitude_min -  latitude_max, -latitude_min + M_PI_2_F);
+
+	switch(stereo_eye) {
+		case STEREO_LEFT:
+			kcam->interocular_offset = -interocular_distance * 0.5f;
+			break;
+		case STEREO_RIGHT:
+			kcam->interocular_offset = interocular_distance * 0.5f;
+			break;
+		case STEREO_NONE:
+		default:
+			kcam->interocular_offset = 0.0f;
+			break;
+	}
+
+	kcam->convergence_distance = convergence_distance;
+	if(use_pole_merge) {
+		kcam->pole_merge_angle_from = pole_merge_angle_from;
+		kcam->pole_merge_angle_to = pole_merge_angle_to;
+	}
+	else {
+		kcam->pole_merge_angle_from = -1.0f;
+		kcam->pole_merge_angle_to = -1.0f;
+	}
 
 	/* sensor size */
 	kcam->sensorwidth = sensorwidth;
@@ -395,10 +433,7 @@ void Camera::device_free(Device * /*device*/,
                          DeviceScene * /*dscene*/,
                          Scene *scene)
 {
-	if(shutter_table_offset != TABLE_OFFSET_INVALID) {
-		scene->lookup_tables->remove_table(shutter_table_offset);
-		shutter_table_offset = TABLE_OFFSET_INVALID;
-	}
+	scene->lookup_tables->remove_table(&shutter_table_offset);
 }
 
 bool Camera::modified(const Camera& cam)
@@ -427,7 +462,8 @@ bool Camera::modified(const Camera& cam)
 		(latitude_min == cam.latitude_min) &&
 		(latitude_max == cam.latitude_max) &&
 		(longitude_min == cam.longitude_min) &&
-		(longitude_max == cam.longitude_max));
+		(longitude_max == cam.longitude_max) &&
+		(stereo_eye == cam.stereo_eye));
 }
 
 bool Camera::motion_modified(const Camera& cam)
@@ -480,9 +516,30 @@ BoundBox Camera::viewplane_bounds_get()
 	BoundBox bounds = BoundBox::empty;
 
 	if(type == CAMERA_PANORAMA) {
-		bounds.grow(make_float3(cameratoworld.x.w,
-		                        cameratoworld.y.w,
-		                        cameratoworld.z.w));
+		if(use_spherical_stereo == false) {
+			bounds.grow(make_float3(cameratoworld.x.w,
+			                        cameratoworld.y.w,
+			                        cameratoworld.z.w));
+		}
+		else {
+			float half_eye_distance = interocular_distance * 0.5f;
+
+			bounds.grow(make_float3(cameratoworld.x.w + half_eye_distance,
+			                        cameratoworld.y.w,
+			                        cameratoworld.z.w));
+
+			bounds.grow(make_float3(cameratoworld.z.w,
+			                        cameratoworld.y.w + half_eye_distance,
+			                        cameratoworld.z.w));
+
+			bounds.grow(make_float3(cameratoworld.x.w - half_eye_distance,
+			                        cameratoworld.y.w,
+			                        cameratoworld.z.w));
+
+			bounds.grow(make_float3(cameratoworld.x.w,
+			                        cameratoworld.y.w - half_eye_distance,
+			                        cameratoworld.z.w));
+		}
 	}
 	else {
 		bounds.grow(transform_raster_to_world(0.0f, 0.0f));
@@ -497,6 +554,34 @@ BoundBox Camera::viewplane_bounds_get()
 		}
 	}
 	return bounds;
+}
+
+float Camera::world_to_raster_size(float3 P)
+{
+	if(type == CAMERA_ORTHOGRAPHIC) {
+		return min(len(full_dx), len(full_dy));
+	}
+	else if(type == CAMERA_PERSPECTIVE) {
+		/* Calculate as if point is directly ahead of the camera. */
+		float3 raster = make_float3(0.5f*width, 0.5f*height, 0.0f);
+		float3 Pcamera = transform_perspective(&rastertocamera, raster);
+
+		/* dDdx */
+		float3 Ddiff = transform_direction(&cameratoworld, Pcamera);
+		float3 dx = len_squared(full_dx) < len_squared(full_dy) ? full_dx : full_dy;
+		float3 dDdx = normalize(Ddiff + dx) - normalize(Ddiff);
+
+		/* dPdx */
+		float dist = len(transform_point(&worldtocamera, P));
+		float3 D = normalize(Ddiff);
+		return len(dist*dDdx - dot(dist*dDdx, D)*D);
+	}
+	else {
+		// TODO(mai): implement for CAMERA_PANORAMA
+		assert(!"pixel width calculation for panoramic projection not implemented yet");
+	}
+
+	return 1.0f;
 }
 
 CCL_NAMESPACE_END

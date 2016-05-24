@@ -490,15 +490,17 @@ static void cdDM_drawFacesTex_common(
         DMSetDrawOptionsTex drawParams,
         DMSetDrawOptionsMappedTex drawParamsMapped,
         DMCompareDrawOptions compareDrawOptions,
-        void *userData, DMDrawFlag uvflag)
+        void *userData, DMDrawFlag flag)
 {
 	CDDerivedMesh *cddm = (CDDerivedMesh *) dm;
 	const MPoly *mpoly = cddm->mpoly;
 	MTexPoly *mtexpoly = DM_get_poly_data_layer(dm, CD_MTEXPOLY);
-	const  MLoopCol *mloopcol;
+	const  MLoopCol *mloopcol = NULL;
 	int i;
 	int colType, start_element, tot_drawn;
-	bool use_tface = (uvflag & DM_DRAW_USE_ACTIVE_UV) != 0;
+	const bool use_hide = (flag & DM_DRAW_SKIP_HIDDEN) != 0;
+	const bool use_tface = (flag & DM_DRAW_USE_ACTIVE_UV) != 0;
+	const bool use_colors = (flag & DM_DRAW_USE_COLORS) != 0;
 	int totpoly;
 	int next_actualFace;
 	int mat_index;
@@ -528,21 +530,23 @@ static void cdDM_drawFacesTex_common(
 		}
 	}
 
-	colType = CD_TEXTURE_MLOOPCOL;
-	mloopcol = dm->getLoopDataArray(dm, colType);
-	if (!mloopcol) {
-		colType = CD_PREVIEW_MLOOPCOL;
+	if (use_colors) {
+		colType = CD_TEXTURE_MLOOPCOL;
 		mloopcol = dm->getLoopDataArray(dm, colType);
-	}
-	if (!mloopcol) {
-		colType = CD_MLOOPCOL;
-		mloopcol = dm->getLoopDataArray(dm, colType);
+		if (!mloopcol) {
+			colType = CD_PREVIEW_MLOOPCOL;
+			mloopcol = dm->getLoopDataArray(dm, colType);
+		}
+		if (!mloopcol) {
+			colType = CD_MLOOPCOL;
+			mloopcol = dm->getLoopDataArray(dm, colType);
+		}
 	}
 
 	GPU_vertex_setup(dm);
 	GPU_normal_setup(dm);
 	GPU_triangle_setup(dm);
-	if (uvflag & DM_DRAW_USE_TEXPAINT_UV)
+	if (flag & DM_DRAW_USE_TEXPAINT_UV)
 		GPU_texpaint_uv_setup(dm);
 	else
 		GPU_uv_setup(dm);
@@ -570,7 +574,10 @@ static void cdDM_drawFacesTex_common(
 			if (i != totpoly - 1)
 				next_actualFace = bufmat->polys[i + 1];
 
-			if (drawParams) {
+			if (use_hide && (mpoly[actualFace].flag & ME_HIDE)) {
+				draw_option = DM_DRAW_OPTION_SKIP;
+			}
+			else if (drawParams) {
 				MTexPoly *tp = use_tface && mtexpoly ? &mtexpoly[actualFace] : NULL;
 				draw_option = drawParams(tp, (mloopcol != NULL), mpoly[actualFace].mat_nr);
 			}
@@ -634,9 +641,9 @@ static void cdDM_drawFacesTex(
         DerivedMesh *dm,
         DMSetDrawOptionsTex setDrawOptions,
         DMCompareDrawOptions compareDrawOptions,
-        void *userData, DMDrawFlag uvflag)
+        void *userData, DMDrawFlag flag)
 {
-	cdDM_drawFacesTex_common(dm, setDrawOptions, NULL, compareDrawOptions, userData, uvflag);
+	cdDM_drawFacesTex_common(dm, setDrawOptions, NULL, compareDrawOptions, userData, flag);
 }
 
 static void cdDM_drawMappedFaces(
@@ -649,7 +656,9 @@ static void cdDM_drawMappedFaces(
 	CDDerivedMesh *cddm = (CDDerivedMesh *) dm;
 	const MPoly *mpoly = cddm->mpoly;
 	const MLoopCol *mloopcol = NULL;
-	int colType, useColors = flag & DM_DRAW_USE_COLORS, useHide = flag & DM_DRAW_SKIP_HIDDEN;
+	const bool use_colors = (flag & DM_DRAW_USE_COLORS) != 0;
+	const bool use_hide = (flag & DM_DRAW_SKIP_HIDDEN) != 0;
+	int colType;
 	int i, j;
 	int start_element = 0, tot_element, tot_drawn;
 	int totpoly;
@@ -686,7 +695,7 @@ static void cdDM_drawMappedFaces(
 					const int orig = (index_mp_to_orig) ? index_mp_to_orig[i] : i;
 					bool is_hidden;
 
-					if (useHide) {
+					if (use_hide) {
 						if (flag & DM_DRAW_SELECT_USE_EDITMODE) {
 							BMFace *efa = BM_face_at_index(bm, orig);
 							is_hidden = BM_elem_flag_test(efa, BM_ELEM_HIDDEN) != 0;
@@ -716,7 +725,7 @@ static void cdDM_drawMappedFaces(
 	else {
 		GPU_normal_setup(dm);
 
-		if (useColors) {
+		if (use_colors) {
 			colType = CD_TEXTURE_MLOOPCOL;
 			mloopcol = DM_get_loop_data_layer(dm, colType);
 			if (!mloopcol) {
@@ -728,7 +737,7 @@ static void cdDM_drawMappedFaces(
 				mloopcol = DM_get_loop_data_layer(dm, colType);
 			}
 
-			if (useColors && mloopcol) {
+			if (use_colors && mloopcol) {
 				GPU_color_setup(dm, colType);
 			}
 		}
@@ -751,7 +760,7 @@ static void cdDM_drawMappedFaces(
 			GPUBufferMaterial *bufmat = dm->drawObject->materials + mat_index;
 			DMDrawOption draw_option = DM_DRAW_OPTION_NORMAL;
 			int next_actualFace = bufmat->polys[0];
-			totpoly = useHide ? bufmat->totvisiblepolys : bufmat->totpolys;
+			totpoly = use_hide ? bufmat->totvisiblepolys : bufmat->totpolys;
 
 			tot_element = 0;
 			start_element = 0;
@@ -819,7 +828,12 @@ static void cdDM_drawMappedFaces(
 						start_element = tot_element;
 					}
 					else {
-						tot_drawn += tot_tri_verts;
+						if (draw_option != DM_DRAW_OPTION_SKIP) {
+							tot_drawn += tot_tri_verts;
+						}
+						else {
+							start_element = tot_element;
+						}
 					}
 				}
 			}
@@ -946,7 +960,7 @@ static void cdDM_drawMappedFacesGLSL(
 			if (!do_draw) {
 				continue;
 			}
-			else if (setDrawOptions) {
+			else /* if (setDrawOptions) */ {
 				orig = (index_mp_to_orig) ? index_mp_to_orig[lt->poly] : lt->poly;
 
 				if (orig == ORIGINDEX_NONE) {
@@ -1038,11 +1052,13 @@ static void cdDM_drawMappedFacesGLSL(
 						numdata++;
 					}
 				}
-				if (matconv[a].attribs.tottang && matconv[a].attribs.tang.array) {
-					matconv[a].datatypes[numdata].index = matconv[a].attribs.tang.gl_index;
-					matconv[a].datatypes[numdata].size = 4;
-					matconv[a].datatypes[numdata].type = GL_FLOAT;
-					numdata++;
+				for (b = 0; b < matconv[a].attribs.tottang; b++) {
+					if (matconv[a].attribs.tang[b].array) {
+						matconv[a].datatypes[numdata].index = matconv[a].attribs.tang[b].gl_index;
+						matconv[a].datatypes[numdata].size = 4;
+						matconv[a].datatypes[numdata].type = GL_FLOAT;
+						numdata++;
+					}
 				}
 				if (numdata != 0) {
 					matconv[a].numdata = numdata;
@@ -1094,11 +1110,13 @@ static void cdDM_drawMappedFacesGLSL(
 							offset += sizeof(unsigned char) * 4;
 						}
 					}
-					if (matconv[i].attribs.tottang && matconv[i].attribs.tang.array) {
-						const float (*looptang)[4] = (const float (*)[4])matconv[i].attribs.tang.array;
-						for (j = 0; j < mpoly->totloop; j++)
-							copy_v4_v4((float *)&varray[offset + j * max_element_size], looptang[mpoly->loopstart + j]);
-						offset += sizeof(float) * 4;
+					for (b = 0; b < matconv[i].attribs.tottang; b++) {
+						if (matconv[i].attribs.tottang && matconv[i].attribs.tang[b].array) {
+							const float (*looptang)[4] = (const float (*)[4])matconv[i].attribs.tang[b].array;
+							for (j = 0; j < mpoly->totloop; j++)
+								copy_v4_v4((float *)&varray[offset + j * max_element_size], looptang[mpoly->loopstart + j]);
+							offset += sizeof(float) * 4;
+						}
 					}
 				}
 
@@ -1489,7 +1507,7 @@ static void cdDM_buffer_copy_uv_texpaint(
 		}
 	}
 
-	MEM_freeN(uv_base);
+	MEM_freeN((void *)uv_base);
 }
 
 /* treat varray_ as an array of MCol, four MCol's per face */
@@ -2913,6 +2931,8 @@ static bool poly_gset_compare_fn(const void *k1, const void *k2)
  * \param vtargetmap  The table that maps vertices to target vertices.  a value of -1
  * indicates a vertex is a target, and is to be kept.
  * This array is aligned with 'dm->numVertData'
+ * \warning \a vtergatmap must **not** contain any chained mapping (v1 -> v2 -> v3 etc.), this is not supported
+ * and will likely generate corrupted geometry.
  *
  * \param tot_vtargetmap  The number of non '-1' values in vtargetmap. (not the size)
  *
@@ -3221,7 +3241,10 @@ DerivedMesh *CDDM_merge_verts(DerivedMesh *dm, const int *vtargetmap, const int 
 			med->v1 = newv[med->v1];
 		if (newv[med->v2] != -1)
 			med->v2 = newv[med->v2];
-		
+
+		/* Can happen in case vtargetmap contains some double chains, we do not support that. */
+		BLI_assert(med->v1 != med->v2);
+
 		CustomData_copy_data(&dm->edgeData, &cddm2->dm.edgeData, olde[i], i, 1);
 	}
 	

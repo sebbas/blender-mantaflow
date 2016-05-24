@@ -246,22 +246,19 @@ static int map_insert_vert(PBVH *bvh, GHash *map,
 	void *key, **value_p;
 
 	key = SET_INT_IN_POINTER(vertex);
-	value_p = BLI_ghash_lookup_p(map, key);
-
-	if (value_p == NULL) {
-		void *value;
-		if (BLI_BITMAP_TEST(bvh->vert_bitmap, vertex)) {
-			value = SET_INT_IN_POINTER(~(*face_verts));
-			++(*face_verts);
+	if (!BLI_ghash_ensure_p(map, key, &value_p)) {
+		int value_i;
+		if (BLI_BITMAP_TEST(bvh->vert_bitmap, vertex) == 0) {
+			BLI_BITMAP_ENABLE(bvh->vert_bitmap, vertex);
+			value_i = *uniq_verts;
+			(*uniq_verts)++;
 		}
 		else {
-			BLI_BITMAP_ENABLE(bvh->vert_bitmap, vertex);
-			value = SET_INT_IN_POINTER(*uniq_verts);
-			++(*uniq_verts);
+			value_i = ~(*face_verts);
+			(*face_verts)++;
 		}
-		
-		BLI_ghash_insert(map, key, value);
-		return GET_INT_FROM_POINTER(value);
+		*value_p = SET_INT_IN_POINTER(value_i);
+		return value_i;
 	}
 	else {
 		return GET_INT_FROM_POINTER(*value_p);
@@ -502,7 +499,7 @@ static void pbvh_build(PBVH *bvh, BB *cb, BBC *prim_bbc, int totprim)
 		bvh->totprim = totprim;
 		if (bvh->nodes) MEM_freeN(bvh->nodes);
 		if (bvh->prim_indices) MEM_freeN(bvh->prim_indices);
-		bvh->prim_indices = MEM_callocN(sizeof(int) * totprim,
+		bvh->prim_indices = MEM_mallocN(sizeof(int) * totprim,
 		                                "bvh prim indices");
 		for (int i = 0; i < totprim; ++i)
 			bvh->prim_indices[i] = i;
@@ -982,16 +979,7 @@ static void pbvh_update_normals_accum_task_cb(void *userdata, const int n)
 					 *       Not exact equivalent though, since atomicity is only ensured for one component
 					 *       of the vector at a time, but here it shall not make any sensible difference. */
 					for (int k = 3; k--; ) {
-						/* Atomic float addition.
-						 * Note that since collision are unlikely, loop will nearly always run once. */
-						float oldval, newval;
-						uint32_t prevval;
-						do {
-							oldval = vnors[v][k];
-							newval = oldval + fn[k];
-							prevval = atomic_cas_uint32(
-							              (uint32_t *)&vnors[v][k], *(uint32_t *)(&oldval), *(uint32_t *)(&newval));
-						} while (UNLIKELY(prevval != *(uint32_t *)(&oldval)));
+						atomic_add_fl(&vnors[v][k], fn[k]);
 					}
 				}
 			}
@@ -1267,8 +1255,7 @@ void BKE_pbvh_get_grid_updates(PBVH *bvh, bool clear, void ***r_gridfaces, int *
 		if (node->flag & PBVH_UpdateNormals) {
 			for (unsigned i = 0; i < node->totprim; ++i) {
 				void *face = bvh->gridfaces[node->prim_indices[i]];
-				if (!BLI_gset_haskey(face_set, face))
-					BLI_gset_insert(face_set, face);
+				BLI_gset_add(face_set, face);
 			}
 
 			if (clear)
@@ -1473,6 +1460,30 @@ void BKE_pbvh_node_get_bm_orco_data(
 	*r_orco_tris_num = node->bm_tot_ortri;
 	*r_orco_coords = node->bm_orco;
 }
+
+/**
+ * \note doing a full search on all vertices here seems expensive,
+ * however this is important to avoid having to recalculate boundbox & sync the buffers to the GPU
+ * (which is far more expensive!) See: T47232.
+ */
+bool BKE_pbvh_node_vert_update_check_any(PBVH *bvh, PBVHNode *node)
+{
+	BLI_assert(bvh->type == PBVH_FACES);
+	const int *verts = node->vert_indices;
+	const int totvert = node->uniq_verts + node->face_verts;
+
+	for (int i = 0; i < totvert; ++i) {
+		const int v = verts[i];
+		const MVert *mvert = &bvh->verts[v];
+
+		if (mvert->flag & ME_VERT_PBVH_UPDATE) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 
 /********************************* Raycast ***********************************/
 
@@ -1914,8 +1925,11 @@ void BKE_pbvh_apply_vertCos(PBVH *pbvh, float (*vertCos)[3])
 		MVert *mvert = pbvh->verts;
 		/* copy new verts coords */
 		for (int a = 0; a < pbvh->totvert; ++a, ++mvert) {
-			copy_v3_v3(mvert->co, vertCos[a]);
-			mvert->flag |= ME_VERT_PBVH_UPDATE;
+			/* no need for float comparison here (memory is exactly equal or not) */
+			if (memcmp(mvert->co, vertCos[a], sizeof(float[3])) != 0) {
+				copy_v3_v3(mvert->co, vertCos[a]);
+				mvert->flag |= ME_VERT_PBVH_UPDATE;
+			}
 		}
 
 		/* coordinates are new -- normals should also be updated */

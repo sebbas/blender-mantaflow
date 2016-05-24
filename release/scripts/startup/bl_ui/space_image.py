@@ -113,6 +113,11 @@ class IMAGE_MT_view(Menu):
         layout.separator()
 
         if show_render:
+            layout.operator("image.render_border")
+            layout.operator("image.clear_render_border")
+
+            layout.separator()
+
             layout.operator("image.cycle_render_slot", text="Render Slot Cycle Next")
             layout.operator("image.cycle_render_slot", text="Render Slot Cycle Previous").reverse = True
             layout.separator()
@@ -208,18 +213,17 @@ class IMAGE_MT_image(Menu):
             layout.menu("IMAGE_MT_image_invert")
 
             if not show_render:
-                layout.separator()
-
                 if not ima.packed_file:
+                    layout.separator()
                     layout.operator("image.pack")
 
                 # only for dirty && specific image types, perhaps
                 # this could be done in operator poll too
                 if ima.is_dirty:
                     if ima.source in {'FILE', 'GENERATED'} and ima.type != 'OPEN_EXR_MULTILAYER':
+                        if ima.packed_file:
+                            layout.separator()
                         layout.operator("image.pack", text="Pack As PNG").as_png = True
-
-            layout.separator()
 
 
 class IMAGE_MT_image_invert(Menu):
@@ -727,6 +731,7 @@ class IMAGE_PT_paint(Panel, ImagePaintPanel):
         sima = context.space_data
         toolsettings = context.tool_settings.image_paint
         return sima.show_paint
+
 
 class IMAGE_PT_tools_brush_overlay(BrushButtonsPanel, Panel):
     bl_label = "Overlay"

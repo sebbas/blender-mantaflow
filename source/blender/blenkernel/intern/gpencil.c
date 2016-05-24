@@ -68,6 +68,7 @@ bool free_gpencil_strokes(bGPDframe *gpf)
 		
 		/* free stroke memory arrays, then stroke itself */
 		if (gps->points) MEM_freeN(gps->points);
+		if (gps->triangles) MEM_freeN(gps->triangles);
 		BLI_freelinkN(&gpf->strokes, gps);
 	}
 
@@ -234,7 +235,7 @@ bGPDframe *gpencil_frame_addcopy(bGPDlayer *gpl, int cframe)
 }
 
 /* add a new gp-layer and make it the active layer */
-bGPDlayer *gpencil_layer_addnew(bGPdata *gpd, const char *name, int setactive)
+bGPDlayer *gpencil_layer_addnew(bGPdata *gpd, const char *name, bool setactive)
 {
 	bGPDlayer *gpl;
 	
@@ -253,11 +254,19 @@ bGPDlayer *gpencil_layer_addnew(bGPdata *gpd, const char *name, int setactive)
 	gpl->thickness = 3;
 	
 	/* onion-skinning settings */
+	if (gpd->flag & GP_DATA_SHOW_ONIONSKINS)
+		gpl->flag |= GP_LAYER_ONIONSKIN;
+	
 	gpl->flag |= (GP_LAYER_GHOST_PREVCOL | GP_LAYER_GHOST_NEXTCOL);
 	
 	ARRAY_SET_ITEMS(gpl->gcolor_prev, 0.145098f, 0.419608f, 0.137255f); /* green */
 	ARRAY_SET_ITEMS(gpl->gcolor_next, 0.125490f, 0.082353f, 0.529412f); /* blue */
 	
+	/* high quality fill by default */
+	gpl->flag |= GP_LAYER_HQ_FILL;
+	
+	/* default smooth iterations */
+	gpl->draw_smoothlvl = 1;
 	
 	/* auto-name */
 	BLI_strncpy(gpl->info, name, sizeof(gpl->info));
@@ -312,7 +321,8 @@ bGPDframe *gpencil_frame_duplicate(bGPDframe *src)
 		/* make copy of source stroke, then adjust pointer to points too */
 		gpsd = MEM_dupallocN(gps);
 		gpsd->points = MEM_dupallocN(gps->points);
-		
+		gpsd->triangles = MEM_dupallocN(gps->triangles);
+		gpsd->flag |= GP_STROKE_RECALC_CACHES;
 		BLI_addtail(&dst->strokes, gpsd);
 	}
 	
@@ -421,6 +431,7 @@ void gpencil_frame_delete_laststroke(bGPDlayer *gpl, bGPDframe *gpf)
 	
 	/* free the stroke and its data */
 	MEM_freeN(gps->points);
+	MEM_freeN(gps->triangles);
 	BLI_freelinkN(&gpf->strokes, gps);
 	
 	/* if frame has no strokes after this, delete it */
@@ -432,16 +443,41 @@ void gpencil_frame_delete_laststroke(bGPDlayer *gpl, bGPDframe *gpf)
 
 /* -------- GP-Layer API ---------- */
 
+/* Check if the given layer is able to be edited or not */
+bool gpencil_layer_is_editable(const bGPDlayer *gpl)
+{
+	/* Sanity check */
+	if (gpl == NULL)
+		return false;
+	
+	/* Layer must be: Visible + Editable */
+	if ((gpl->flag & (GP_LAYER_HIDE | GP_LAYER_LOCKED)) == 0) {
+		/* Opacity must be sufficiently high that it is still "visible"
+		 * Otherwise, it's not really "visible" to the user, so no point editing...
+		 */
+		if ((gpl->color[3] > GPENCIL_ALPHA_OPACITY_THRESH) || (gpl->fill[3] > GPENCIL_ALPHA_OPACITY_THRESH)) {
+			return true;
+		}
+	}
+	
+	/* Something failed */
+	return false;
+}
+
+/* Look up the gp-frame on the requested frame number, but don't add a new one */
 bGPDframe *BKE_gpencil_layer_find_frame(bGPDlayer *gpl, int cframe)
 {
 	bGPDframe *gpf;
-
+	
+	/* Search in reverse order, since this is often used for playback/adding,
+	 * where it's less likely that we're interested in the earlier frames
+	 */
 	for (gpf = gpl->frames.last; gpf; gpf = gpf->prev) {
 		if (gpf->framenum == cframe) {
 			return gpf;
 		}
 	}
-
+	
 	return NULL;
 }
 

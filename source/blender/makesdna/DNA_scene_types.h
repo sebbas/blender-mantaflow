@@ -795,8 +795,14 @@ typedef struct RecastData {
 	int vertsperpoly;
 	float detailsampledist;
 	float detailsamplemaxerror;
-	short pad1, pad2;
+	char partitioning;
+	char pad1;
+	short pad2;
 } RecastData;
+
+#define RC_PARTITION_WATERSHED 0
+#define RC_PARTITION_MONOTONE 1
+#define RC_PARTITION_LAYERS 2
 
 typedef struct GameData {
 
@@ -1260,6 +1266,41 @@ typedef enum {
 	UNIFIED_PAINT_BRUSH_ALPHA_PRESSURE  = (1 << 4)
 } UnifiedPaintSettingsFlags;
 
+
+typedef struct CurvePaintSettings {
+	char curve_type;
+	char flag;
+	char depth_mode;
+	char surface_plane;
+	int error_threshold;
+	float radius_min, radius_max;
+	float radius_taper_start, radius_taper_end;
+	float surface_offset;
+	float corner_angle;
+} CurvePaintSettings;
+
+/* CurvePaintSettings.flag */
+enum {
+	CURVE_PAINT_FLAG_CORNERS_DETECT             = (1 << 0),
+	CURVE_PAINT_FLAG_PRESSURE_RADIUS            = (1 << 1),
+	CURVE_PAINT_FLAG_DEPTH_STROKE_ENDPOINTS     = (1 << 2),
+	CURVE_PAINT_FLAG_DEPTH_STROKE_OFFSET_ABS    = (1 << 3),
+};
+
+/* CurvePaintSettings.depth_mode */
+enum {
+	CURVE_PAINT_PROJECT_CURSOR              = 0,
+	CURVE_PAINT_PROJECT_SURFACE             = 1,
+};
+
+/* CurvePaintSettings.surface_plane */
+enum {
+	CURVE_PAINT_SURFACE_PLANE_NORMAL_VIEW           = 0,
+	CURVE_PAINT_SURFACE_PLANE_NORMAL_SURFACE        = 1,
+	CURVE_PAINT_SURFACE_PLANE_VIEW                  = 2,
+};
+
+
 /* *************************************************************** */
 /* Stats */
 
@@ -1342,10 +1383,10 @@ typedef struct ToolSettings {
 
 	/* Auto-Keying Mode */
 	short autokey_mode, autokey_flag;	/* defines in DNA_userdef_types.h */
+	char keyframe_type;                 /* keyframe type (see DNA_curve_types.h) */
 
 	/* Multires */
 	char multires_subdiv_type;
-	char pad3[1];
 
 	/* Skeleton generation */
 	short skgen_resolution;
@@ -1410,6 +1451,8 @@ typedef struct ToolSettings {
 
 	/* Unified Paint Settings */
 	struct UnifiedPaintSettings unified_paint_settings;
+
+	struct CurvePaintSettings curve_paint_settings;
 
 	struct MeshStatVis statvis;
 } ToolSettings;
@@ -1645,7 +1688,7 @@ typedef struct Scene {
 #define R_FREE_IMAGE		0x0100
 #define R_SINGLE_LAYER		0x0200
 #define R_EXR_TILE_FILE		0x0400
-#define R_COMP_FREE			0x0800
+/* #define R_COMP_FREE			0x0800 */
 #define R_NO_IMAGE_LOAD		0x1000
 #define R_NO_TEX			0x2000
 #define R_NO_FRAME_UPDATE	0x4000
@@ -1671,9 +1714,10 @@ typedef struct Scene {
 #define R_STAMP_RENDERTIME	0x0400
 #define R_STAMP_CAMERALENS	0x0800
 #define R_STAMP_STRIPMETA	0x1000
+#define R_STAMP_MEMORY		0x2000
 #define R_STAMP_ALL (R_STAMP_TIME|R_STAMP_FRAME|R_STAMP_DATE|R_STAMP_CAMERA|R_STAMP_SCENE| \
                      R_STAMP_NOTE|R_STAMP_MARKER|R_STAMP_FILENAME|R_STAMP_SEQSTRIP|        \
-                     R_STAMP_RENDERTIME|R_STAMP_CAMERALENS)
+                     R_STAMP_RENDERTIME|R_STAMP_CAMERALENS|R_STAMP_MEMORY)
 
 /* alphamode */
 #define R_ADDSKY		0
@@ -1739,16 +1783,17 @@ extern const char *RE_engine_id_CYCLES;
 
 /* **************** SCENE ********************* */
 
+/* note that much higher maxframes give imprecise sub-frames, see: T46859 */
 /* for general use */
-#define MAXFRAME	300000
-#define MAXFRAMEF	300000.0f
+#define MAXFRAME	500000
+#define MAXFRAMEF	500000.0f
 
 #define MINFRAME	0
 #define MINFRAMEF	0.0f
 
 /* (minimum frame number for current-frame) */
-#define MINAFRAME	-300000
-#define MINAFRAMEF	-300000.0f
+#define MINAFRAME	-500000
+#define MINAFRAMEF	-500000.0f
 
 /* depricate this! */
 #define TESTBASE(v3d, base)  (                                                \

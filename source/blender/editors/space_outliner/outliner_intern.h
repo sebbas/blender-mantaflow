@@ -42,6 +42,8 @@ struct bContext;
 struct Scene;
 struct ID;
 struct Object;
+struct bPoseChannel;
+struct EditBone;
 
 typedef struct TreeElement {
 	struct TreeElement *next, *prev, *parent;
@@ -60,7 +62,7 @@ typedef struct TreeElement {
 #define TREESTORE_ID_TYPE(_id) \
 	(ELEM(GS((_id)->name), ID_SCE, ID_LI, ID_OB, ID_ME, ID_CU, ID_MB, ID_NT, ID_MA, ID_TE, ID_IM, ID_LT, ID_LA, ID_CA) || \
 	 ELEM(GS((_id)->name), ID_KE, ID_WO, ID_SPK, ID_GR, ID_AR, ID_AC, ID_BR, ID_PA, ID_GD, ID_LS) || \
-	 ELEM(GS((_id)->name), ID_SCR, ID_WM, ID_TXT, ID_VF))  /* Only in 'blendfile' mode ... :/ */
+	 ELEM(GS((_id)->name), ID_SCR, ID_WM, ID_TXT, ID_VF, ID_SO))  /* Only in 'blendfile' mode ... :/ */
 
 /* TreeElement->flag */
 #define TE_ACTIVE       1
@@ -128,9 +130,11 @@ typedef enum {
 void outliner_free_tree(ListBase *lb);
 void outliner_cleanup_tree(struct SpaceOops *soops);
 
-TreeElement *outliner_find_tse(struct SpaceOops *soops, TreeStoreElem *tse);
-TreeElement *outliner_find_tree_element(ListBase *lb, TreeStoreElem *store_elem);
-TreeElement *outliner_find_id(struct SpaceOops *soops, ListBase *lb, struct ID *id);
+TreeElement *outliner_find_tse(struct SpaceOops *soops, const TreeStoreElem *tse);
+TreeElement *outliner_find_tree_element(ListBase *lb, const TreeStoreElem *store_elem);
+TreeElement *outliner_find_id(struct SpaceOops *soops, ListBase *lb, const struct ID *id);
+TreeElement *outliner_find_posechannel(struct SpaceOops *soops, ListBase *lb, const struct bPoseChannel *pchan);
+TreeElement *outliner_find_editbone(struct SpaceOops *soops, ListBase *lb, const struct EditBone *ebone);
 struct ID *outliner_search_back(SpaceOops *soops, TreeElement *te, short idcode);
 
 void outliner_build_tree(struct Main *mainvar, struct Scene *scene, struct SpaceOops *soops);

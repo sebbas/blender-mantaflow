@@ -33,10 +33,10 @@ SSH_UPLOAD="/data/www/vhosts/www.blender.org/api" # blender_python_api_VERSION, 
 # "_".join(str(v) for v in bpy.app.version)
 # custom blender vars
 blender_srcdir=$(dirname -- $0)/../..
-blender_version=$(grep "BLENDER_VERSION\s" "$blender_srcdir/source/blender/blenkernel/BKE_blender.h" | awk '{print $3}')
-blender_version_char=$(grep "BLENDER_VERSION_CHAR\s" "$blender_srcdir/source/blender/blenkernel/BKE_blender.h" | awk '{print $3}')
-blender_version_cycle=$(grep "BLENDER_VERSION_CYCLE\s" "$blender_srcdir/source/blender/blenkernel/BKE_blender.h" | awk '{print $3}')
-blender_subversion=$(grep "BLENDER_SUBVERSION\s" "$blender_srcdir/source/blender/blenkernel/BKE_blender.h" | awk '{print $3}')
+blender_version=$(grep "BLENDER_VERSION\s" "$blender_srcdir/source/blender/blenkernel/BKE_blender_version.h" | awk '{print $3}')
+blender_version_char=$(grep "BLENDER_VERSION_CHAR\s" "$blender_srcdir/source/blender/blenkernel/BKE_blender_version.h" | awk '{print $3}')
+blender_version_cycle=$(grep "BLENDER_VERSION_CYCLE\s" "$blender_srcdir/source/blender/blenkernel/BKE_blender_version.h" | awk '{print $3}')
+blender_subversion=$(grep "BLENDER_SUBVERSION\s" "$blender_srcdir/source/blender/blenkernel/BKE_blender_version.h" | awk '{print $3}')
 
 if [ "$blender_version_cycle" = "release" ] ; then
 	BLENDER_VERSION=$(expr $blender_version / 100)_$(expr $blender_version % 100)$blender_version_char"_release"
@@ -54,7 +54,17 @@ SPHINXBASE=doc/python_api
 
 if $DO_EXE_BLENDER ; then
 	# dont delete existing docs, now partial updates are used for quick builds.
-	$BLENDER_BIN --background -noaudio --factory-startup --python $SPHINXBASE/sphinx_doc_gen.py
+	$BLENDER_BIN \
+		--background \
+		-noaudio \
+		--factory-startup \
+		--python-exit-code 1 \
+		--python $SPHINXBASE/sphinx_doc_gen.py
+
+	if (($? == 1)) ; then
+		echo "Generating documentation failed, aborting"
+		exit 1
+	fi
 fi
 
 

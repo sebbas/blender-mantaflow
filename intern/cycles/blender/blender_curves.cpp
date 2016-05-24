@@ -138,8 +138,7 @@ bool ObtainCacheParticleData(Mesh *mesh, BL::Mesh *b_mesh, BL::Object *b_ob, Par
 			BL::ParticleSettings b_part((const PointerRNA)b_psys.settings().ptr);
 
 			if((b_part.render_type() == BL::ParticleSettings::render_type_PATH) && (b_part.type() == BL::ParticleSettings::type_HAIR)) {
-				int mi = clamp(b_part.material()-1, 0, mesh->used_shaders.size()-1);
-				int shader = mesh->used_shaders[mi];
+				int shader = clamp(b_part.material()-1, 0, mesh->used_shaders.size()-1);
 				int draw_step = background ? b_part.render_step() : b_part.draw_step();
 				int totparts = b_psys.particles.length();
 				int totchild = background ? b_psys.child_particles.length() : (int)((float)b_psys.child_particles.length() * (float)b_part.draw_percentage() / 100.0f);
@@ -795,8 +794,16 @@ void BlenderSync::sync_curve_settings()
 	curve_system_manager->minimum_width = get_float(csscene, "minimum_width");
 	curve_system_manager->maximum_width = get_float(csscene, "maximum_width");
 
-	curve_system_manager->primitive = get_enum(csscene, "primitive");
-	curve_system_manager->curve_shape = get_enum(csscene, "shape");
+	curve_system_manager->primitive =
+	        (CurvePrimitiveType)get_enum(csscene,
+	                                     "primitive",
+	                                     CURVE_NUM_PRIMITIVE_TYPES,
+	                                     CURVE_LINE_SEGMENTS);
+	curve_system_manager->curve_shape =
+	        (CurveShapeType)get_enum(csscene,
+	                                 "shape",
+	                                 CURVE_NUM_SHAPE_TYPES,
+	                                 CURVE_THICK);
 	curve_system_manager->resolution = get_int(csscene, "resolution");
 	curve_system_manager->subdivisions = get_int(csscene, "subdivisions");
 	curve_system_manager->use_backfacing = !get_boolean(csscene, "cull_backfacing");
@@ -856,7 +863,11 @@ void BlenderSync::sync_curve_settings()
 		curve_system_manager->tag_update(scene);
 }
 
-void BlenderSync::sync_curves(Mesh *mesh, BL::Mesh b_mesh, BL::Object b_ob, bool motion, int time_index)
+void BlenderSync::sync_curves(Mesh *mesh,
+                              BL::Mesh& b_mesh,
+                              BL::Object& b_ob,
+                              bool motion,
+                              int time_index)
 {
 	if(!motion) {
 		/* Clear stored curve data */

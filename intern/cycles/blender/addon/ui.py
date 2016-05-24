@@ -151,7 +151,7 @@ class CyclesRender_PT_sampling(CyclesButtonsPanel, Panel):
 
         row = layout.row()
         sub = row.row()
-        sub.active = device_type != 'OPENCL'
+        sub.active = device_type != 'OPENCL' or use_cpu(context)
         sub.prop(cscene, "progressive", text="")
         row.prop(cscene, "use_square_samples")
 
@@ -168,7 +168,7 @@ class CyclesRender_PT_sampling(CyclesButtonsPanel, Panel):
         sub.prop(cscene, "sample_clamp_direct")
         sub.prop(cscene, "sample_clamp_indirect")
 
-        if cscene.progressive == 'PATH' or use_branched_path(context) == False:
+        if cscene.progressive == 'PATH' or use_branched_path(context) is False:
             col = split.column()
             sub = col.column(align=True)
             sub.label(text="Samples:")
@@ -209,8 +209,8 @@ class CyclesRender_PT_sampling(CyclesButtonsPanel, Panel):
         draw_samples_info(layout, context)
 
 
-class CyclesRender_PT_volume_sampling(CyclesButtonsPanel, Panel):
-    bl_label = "Volume Sampling"
+class CyclesRender_PT_geometery(CyclesButtonsPanel, Panel):
+    bl_label = "Geometry"
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
@@ -219,11 +219,30 @@ class CyclesRender_PT_volume_sampling(CyclesButtonsPanel, Panel):
         scene = context.scene
         cscene = scene.cycles
 
-        row = layout.row()
-        row.label("Heterogeneous:")
-        row = layout.row()
-        row.prop(cscene, "volume_step_size")
-        row.prop(cscene, "volume_max_steps")
+        if cscene.feature_set == 'EXPERIMENTAL':
+            split = layout.split()
+
+            col = split.column()
+
+            sub = col.column(align=True)
+            sub.label("Volume Sampling:")
+            sub.prop(cscene, "volume_step_size")
+            sub.prop(cscene, "volume_max_steps")
+
+            col = split.column()
+
+            sub = col.column(align=True)
+            sub.label("Subdivision Rate:")
+            sub.prop(cscene, "dicing_rate", text="Render")
+            sub.prop(cscene, "preview_dicing_rate", text="Preview")
+            sub.separator()
+            sub.prop(cscene, "max_subdivisions")
+        else:
+            row = layout.row()
+            row.label("Volume Sampling:")
+            row = layout.row()
+            row.prop(cscene, "volume_step_size")
+            row.prop(cscene, "volume_max_steps")
 
 
 class CyclesRender_PT_light_paths(CyclesButtonsPanel, Panel):
@@ -329,8 +348,8 @@ class CyclesRender_PT_film(CyclesButtonsPanel, Panel):
 
         col = split.column()
         sub = col.column(align=True)
-        sub.prop(cscene, "filter_type", text="")
-        if cscene.filter_type != 'BOX':
+        sub.prop(cscene, "pixel_filter_type", text="")
+        if cscene.pixel_filter_type != 'BOX':
             sub.prop(cscene, "filter_width", text="Width")
 
 
@@ -610,9 +629,9 @@ class Cycles_PT_context_material(CyclesButtonsPanel, Panel):
         ob = context.object
         slot = context.material_slot
         space = context.space_data
-        is_sortable = len(ob.material_slots) > 1
 
         if ob:
+            is_sortable = len(ob.material_slots) > 1
             rows = 1
             if (is_sortable):
                 rows = 4
@@ -681,10 +700,20 @@ class Cycles_PT_mesh_displacement(CyclesButtonsPanel, Panel):
         elif mball:
             cdata = mball.cycles
 
-        layout.prop(cdata, "displacement_method", text="Method")
-        layout.prop(cdata, "use_subdivision")
-        layout.prop(cdata, "dicing_rate")
+        split = layout.split()
 
+        col = split.column()
+        sub = col.column(align=True)
+        sub.label(text="Displacment:")
+        sub.prop(cdata, "displacement_method", text="")
+
+        col = split.column()
+        sub = col.column(align=True)
+        sub.label(text="Subdivision:")
+        sub.prop(cdata, "subdivision_type", text="")
+
+        if cdata.subdivision_type != 'NONE':
+            sub.prop(cdata, "dicing_rate")
 
 class CyclesObject_PT_motion_blur(CyclesButtonsPanel, Panel):
     bl_label = "Motion Blur"
@@ -1441,7 +1470,43 @@ class CyclesRender_PT_bake(CyclesButtonsPanel, Panel):
 
         col = layout.column()
         col.prop(cscene, "bake_type")
-        col.separator()
+
+        col = layout.column()
+
+        if cscene.bake_type == 'NORMAL':
+            col.prop(cbk, "normal_space", text="Space")
+
+            row = col.row(align=True)
+            row.label(text="Swizzle:")
+            row.prop(cbk, "normal_r", text="")
+            row.prop(cbk, "normal_g", text="")
+            row.prop(cbk, "normal_b", text="")
+
+        elif cscene.bake_type == 'COMBINED':
+            row = col.row(align=True)
+            row.prop(cbk, "use_pass_direct", toggle=True)
+            row.prop(cbk, "use_pass_indirect", toggle=True)
+
+            split = col.split()
+            split.active = cbk.use_pass_direct or cbk.use_pass_indirect
+
+            col = split.column()
+            col.prop(cbk, "use_pass_diffuse")
+            col.prop(cbk, "use_pass_glossy")
+            col.prop(cbk, "use_pass_transmission")
+
+            col = split.column()
+            col.prop(cbk, "use_pass_subsurface")
+            col.prop(cbk, "use_pass_ambient_occlusion")
+            col.prop(cbk, "use_pass_emit")
+
+        elif cscene.bake_type in {'DIFFUSE', 'GLOSSY', 'TRANSMISSION', 'SUBSURFACE'}:
+            row = col.row(align=True)
+            row.prop(cbk, "use_pass_direct", toggle=True)
+            row.prop(cbk, "use_pass_indirect", toggle=True)
+            row.prop(cbk, "use_pass_color", toggle=True)
+
+        layout.separator()
 
         split = layout.split()
 
@@ -1460,51 +1525,6 @@ class CyclesRender_PT_bake(CyclesButtonsPanel, Panel):
         else:
             sub.prop(cbk, "cage_extrusion", text="Ray Distance")
 
-        if cscene.bake_type == 'NORMAL':
-            layout.separator()
-            col = layout.column()
-            col.label(text="Normal Settings:")
-            col.prop(cbk, "normal_space", text="Space")
-
-            row = col.row(align=True)
-            row.label(text="Swizzle:")
-            row.prop(cbk, "normal_r", text="")
-            row.prop(cbk, "normal_g", text="")
-            row.prop(cbk, "normal_b", text="")
-
-        elif cscene.bake_type == 'COMBINED':
-            col = layout.column()
-            col.label(text="Combined Settings:")
-
-            row = col.row()
-            row.prop(cbk, "use_pass_ambient_occlusion")
-            row.prop(cbk, "use_pass_emit")
-
-            row = col.row(align=True)
-            row.prop(cbk, "use_pass_direct", toggle=True)
-            row.prop(cbk, "use_pass_indirect", toggle=True)
-
-            split = col.split()
-            split.active = cbk.use_pass_direct or cbk.use_pass_indirect
-
-            col = split.column()
-            col.prop(cbk, "use_pass_diffuse")
-            col.prop(cbk, "use_pass_glossy")
-
-            col = split.column()
-            col.prop(cbk, "use_pass_transmission")
-            col.prop(cbk, "use_pass_subsurface")
-
-        elif cscene.bake_type in {'DIFFUSE', 'GLOSSY', 'TRANSMISSION', 'SUBSURFACE'}:
-            layout.separator()
-            col = layout.column()
-            col.label(text="{0} Settings:".format(cscene.bake_type.title()))
-
-            row = col.row(align=True)
-            row.prop(cbk, "use_pass_direct", toggle=True)
-            row.prop(cbk, "use_pass_indirect", toggle=True)
-            row.prop(cbk, "use_pass_color", toggle=True)
-
 
 class CyclesRender_PT_debug(CyclesButtonsPanel, Panel):
     bl_label = "Debug"
@@ -1514,7 +1534,7 @@ class CyclesRender_PT_debug(CyclesButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        return bpy.app.debug_value == 256
+        return CyclesButtonsPanel.poll(context) and bpy.app.debug_value == 256
 
     def draw(self, context):
         layout = self.layout
@@ -1532,6 +1552,10 @@ class CyclesRender_PT_debug(CyclesButtonsPanel, Panel):
         row.prop(cscene, "debug_use_cpu_avx", toggle=True)
         row.prop(cscene, "debug_use_cpu_avx2", toggle=True)
         col.prop(cscene, "debug_use_qbvh")
+
+        col = layout.column()
+        col.label('CUDA Flags:')
+        col.prop(cscene, "debug_use_cuda_adaptive_compile")
 
         col = layout.column()
         col.label('OpenCL Flags:')

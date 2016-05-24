@@ -59,7 +59,6 @@
 
 #include "BKE_appdir.h"
 #include "BKE_anim.h"
-#include "BKE_blender.h"
 #include "BKE_cloth.h"
 #include "BKE_dynamicpaint.h"
 #include "BKE_global.h"
@@ -1164,15 +1163,15 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 
 		OpenVDB_import_grid_fl(reader, "shadow", &sds->shadow, sds->res);
 
-		const char *name = (!sds->wt) ? "density" : "density Low";
+		const char *name = (!sds->wt) ? "density" : "density low";
 		OpenVDB_import_grid_fl(reader, name, &dens, sds->res);
 
-		if (fluid_fields & SM_ACTIVE_HEAT) {
+		if (cache_fields & SM_ACTIVE_HEAT) {
 			OpenVDB_import_grid_fl(reader, "heat", &heat, sds->res);
 			OpenVDB_import_grid_fl(reader, "heat old", &heatold, sds->res);
 		}
 
-		if (fluid_fields & SM_ACTIVE_FIRE) {
+		if (cache_fields & SM_ACTIVE_FIRE) {
 			name = (!sds->wt) ? "flame" : "flame low";
 			OpenVDB_import_grid_fl(reader, name, &flame, sds->res);
 			name = (!sds->wt) ? "fuel" : "fuel low";
@@ -1181,7 +1180,7 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 			OpenVDB_import_grid_fl(reader, name, &react, sds->res);
 		}
 
-		if (fluid_fields & SM_ACTIVE_COLORS) {
+		if (cache_fields & SM_ACTIVE_COLORS) {
 			name = (!sds->wt) ? "color" : "color low";
 			OpenVDB_import_grid_vec(reader, name, &r, &g, &b, sds->res);
 		}
@@ -1949,9 +1948,6 @@ static PTCacheFile *ptcache_file_open(PTCacheID *pid, int mode, int cfra)
 	ptcache_filename(pid, filename, cfra, 1, 1);
 
 	if (mode==PTCACHE_FILE_READ) {
-		if (!BLI_exists(filename)) {
-			return NULL;
-		}
 		fp = BLI_fopen(filename, "rb");
 	}
 	else if (mode==PTCACHE_FILE_WRITE) {
@@ -3574,15 +3570,13 @@ void BKE_ptcache_quick_cache_all(Main *bmain, Scene *scene)
 {
 	PTCacheBaker baker;
 
-	baker.bake=0;
-	baker.pid=NULL;
-	baker.render=0;
+	memset(&baker, 0, sizeof(baker));
+	baker.main = bmain;
+	baker.scene = scene;
+	baker.bake = 0;
+	baker.render = 0;
 	baker.anim_init = 0;
-	baker.main=bmain;
-	baker.scene=scene;
-	baker.quick_step=scene->physics_settings.quick_cache_step;
-	baker.update_progress = NULL;
-	baker.bake_job = NULL;
+	baker.quick_step = scene->physics_settings.quick_cache_step;
 
 	BKE_ptcache_bake(&baker);
 }
@@ -3607,7 +3601,7 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
 	Scene *sce_iter; /* SETLOOPER macro only */
 	Base *base;
 	ListBase pidlist;
-	PTCacheID *pid = baker->pid;
+	PTCacheID *pid = &baker->pid;
 	PointCache *cache = NULL;
 	float frameleno = scene->r.framelen;
 	int cfrao = CFRA;
@@ -3618,7 +3612,7 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
 	G.is_break = false;
 
 	/* set caches to baking mode and figure out start frame */
-	if (pid) {
+	if (pid->ob) {
 		/* cache/bake a single object */
 		cache = pid->cache;
 		if ((cache->flag & PTCACHE_BAKED)==0) {
@@ -3746,9 +3740,6 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
 
 			ptime = ctime;
 		}
-
-		/* Delay to lessen CPU load from UI thread */
-		PIL_sleep_ms(200);
 
 		/* NOTE: breaking baking should leave calculated frames in cache, not clear it */
 		if ((cancel || G.is_break)) {

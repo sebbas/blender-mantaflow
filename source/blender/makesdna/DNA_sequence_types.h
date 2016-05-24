@@ -274,6 +274,7 @@ typedef struct GaussianBlurVars {
 typedef struct TextVars {
 	char text[512];
 	int text_size;
+	float color[4], shadow_color[4];
 	float loc[2];
 	float wrap_width;
 	char flag;
@@ -313,7 +314,6 @@ typedef struct SequenceModifierData {
 
 	struct Sequence *mask_sequence;
 	struct Mask     *mask_id;
-	struct Scene    *scene;
 } SequenceModifierData;
 
 typedef struct ColorBalanceModifierData {

@@ -223,7 +223,11 @@ static PyObject *bpy_bmfaceseq_get(BPy_BMesh *self, void *UNUSED(closure))
 }
 
 PyDoc_STRVAR(bpy_bmloopseq_doc,
-"This meshes face sequence (read-only).\n\n:type: :class:`BMLoopSeq`"
+"This meshes loops (read-only).\n\n:type: :class:`BMLoopSeq`\n"
+"\n"
+".. note::\n"
+"\n"
+"   Loops must be accessed via faces, this is only exposed for layer access.\n"
 );
 static PyObject *bpy_bmloopseq_get(BPy_BMesh *self, void *UNUSED(closure))
 {
@@ -912,7 +916,7 @@ static PyObject *bpy_bmesh_to_mesh(BPy_BMesh *self, PyObject *args)
 	/* python won't ensure matching uv/mtex */
 	BM_mesh_cd_validate(bm);
 
-	BM_mesh_bm_to_me(bm, me, false);
+	BM_mesh_bm_to_me(bm, me, (&(struct BMeshToMeshParams){0}));
 
 	/* we could have the user do this but if they forget blender can easy crash
 	 * since the references arrays for the objects derived meshes are now invalid */
@@ -937,8 +941,9 @@ PyDoc_STRVAR(bpy_bmesh_from_object_doc,
 "   :arg face_normals: Calculate face normals.\n"
 "   :type face_normals: boolean\n"
 );
-static PyObject *bpy_bmesh_from_object(BPy_BMesh *self, PyObject *args)
+static PyObject *bpy_bmesh_from_object(BPy_BMesh *self, PyObject *args, PyObject *kw)
 {
+	static const char *kwlist[] = {"object", "scene", "deform", "render", "cage", "face_normals", NULL};
 	PyObject *py_object;
 	PyObject *py_scene;
 	Object *ob;
@@ -953,8 +958,8 @@ static PyObject *bpy_bmesh_from_object(BPy_BMesh *self, PyObject *args)
 
 	BPY_BM_CHECK_OBJ(self);
 
-	if (!PyArg_ParseTuple(
-	        args, "OO|O&O&O&O&:from_object",
+	if (!PyArg_ParseTupleAndKeywords(
+	        args, kw, "OO|O&O&O&O&:from_object", (char **)kwlist,
 	        &py_object, &py_scene,
 	        PyC_ParseBool, &use_deform,
 	        PyC_ParseBool, &use_render,
@@ -1070,7 +1075,10 @@ static PyObject *bpy_bmesh_from_mesh(BPy_BMesh *self, PyObject *args, PyObject *
 
 	bm = self->bm;
 
-	BM_mesh_bm_from_me(bm, me, use_fnorm, use_shape_key, shape_key_index + 1);
+	BM_mesh_bm_from_me(
+	        bm, me, (&(struct BMeshFromMeshParams){
+	            .calc_face_normal = use_fnorm, .use_shapekey = use_shape_key, .active_shapekey = shape_key_index + 1,
+	        }));
 
 	Py_RETURN_NONE;
 }

@@ -1064,17 +1064,11 @@ bScreen *ED_screen_duplicate(wmWindow *win, bScreen *sc)
 /* screen sets cursor based on swinid */
 static void region_cursor_set(wmWindow *win, int swinid, int swin_changed)
 {
-	ScrArea *sa = win->screen->areabase.first;
-	
-	for (; sa; sa = sa->next) {
-		ARegion *ar = sa->regionbase.first;
-		for (; ar; ar = ar->next) {
+	for (ScrArea *sa = win->screen->areabase.first; sa; sa = sa->next) {
+		for (ARegion *ar = sa->regionbase.first; ar; ar = ar->next) {
 			if (ar->swinid == swinid) {
 				if (swin_changed || (ar->type && ar->type->event_cursor)) {
-					if (ar->type && ar->type->cursor)
-						ar->type->cursor(win, sa, ar);
-					else
-						WM_cursor_set(win, CURSOR_STD);
+					ED_region_cursor_set(win, sa, ar);
 				}
 				return;
 			}
@@ -1146,7 +1140,7 @@ void ED_screen_draw(wmWindow *win)
 	/* blended join arrow */
 	if (sa1 && sa2) {
 		int dir = area_getorientation(sa1, sa2);
-		int dira;
+		int dira = -1;
 		if (dir != -1) {
 			switch (dir) {
 				case 0: /* W */
@@ -1233,10 +1227,12 @@ void ED_screen_refresh(wmWindowManager *wm, wmWindow *win)
 		
 		screen_test_scale(win->screen, winsize_x, winsize_y);
 		
-		if (win->screen->mainwin == 0)
-			win->screen->mainwin = wm_subwindow_open(win, &winrct);
-		else
-			wm_subwindow_position(win, win->screen->mainwin, &winrct);
+		if (win->screen->mainwin == 0) {
+			win->screen->mainwin = wm_subwindow_open(win, &winrct, false);
+		}
+		else {
+			wm_subwindow_position(win, win->screen->mainwin, &winrct, false);
+		}
 		
 		for (sa = win->screen->areabase.first; sa; sa = sa->next) {
 			/* set spacetype and region callbacks, calls init() */
@@ -1798,25 +1794,21 @@ ScrArea *ED_screen_full_newspace(bContext *C, ScrArea *sa, int type)
 		newsa->flag &= ~AREA_FLAG_TEMP_TYPE;
 	}
 
-	ED_area_newspace(C, newsa, type);
-	
+	ED_area_newspace(C, newsa, type, (newsa->flag & AREA_FLAG_TEMP_TYPE));
+
 	return newsa;
 }
 
 /**
  * \a was_prev_temp for the case previous space was a temporary fullscreen as well
  */
-void ED_screen_full_prevspace(bContext *C, ScrArea *sa, const bool was_prev_temp)
+void ED_screen_full_prevspace(bContext *C, ScrArea *sa)
 {
 	BLI_assert(sa->full);
 
 	if (sa->flag & AREA_FLAG_STACKED_FULLSCREEN) {
 		/* stacked fullscreen -> only go back to previous screen and don't toggle out of fullscreen */
 		ED_area_prevspace(C, sa);
-		/* only clear if previous space wasn't a temp fullscreen as well */
-		if (!was_prev_temp) {
-			sa->flag &= ~AREA_FLAG_TEMP_TYPE;
-		}
 	}
 	else {
 		ED_screen_restore_temp_type(C, sa);
@@ -1851,7 +1843,7 @@ void ED_screen_full_restore(bContext *C, ScrArea *sa)
 	
 	if (sl->next) {
 		if (sa->flag & AREA_FLAG_TEMP_TYPE) {
-			ED_screen_full_prevspace(C, sa, false);
+			ED_screen_full_prevspace(C, sa);
 		}
 		else {
 			ED_screen_state_toggle(C, win, sa, state);
@@ -1961,7 +1953,7 @@ ScrArea *ED_screen_state_toggle(bContext *C, wmWindow *win, ScrArea *sa, const s
 		if (state == SCREENMAXIMIZED) {
 			/* returns the top small area */
 			newa = area_split(sc, (ScrArea *)sc->areabase.first, 'h', 0.99f, 1);
-			ED_area_newspace(C, newa, SPACE_INFO);
+			ED_area_newspace(C, newa, SPACE_INFO, false);
 
 			/* copy area */
 			newa = newa->prev;

@@ -1,13 +1,14 @@
 
 set(INC
 	.
+	../bvh
 	../device
+	../graph
 	../kernel
 	../kernel/svm
-	../bvh
-	../util
 	../render
 	../subd
+	../util
 )
 set(INC_SYS
 )
@@ -20,6 +21,7 @@ set(LIBRARIES
 	cycles_render
 	cycles_bvh
 	cycles_subd
+	cycles_graph
 	cycles_util
 	${BLENDER_GL_LIBRARIES}
 	${CYCLES_APP_GLEW_LIBRARY}
@@ -49,7 +51,7 @@ if(CYCLES_STANDALONE_REPOSITORY)
 		)
 	endif()
 else()
-	list(APPEND LIBRARIES bf_intern_glew_mx)
+	list(APPEND LIBRARIES bf_intern_glew_mx bf_intern_guardedalloc)
 	if(WITH_CYCLES_LOGGING)
 		list(APPEND LIBRARIES extern_glog extern_gflags)
 	endif()
@@ -84,18 +86,12 @@ include_directories(SYSTEM ${INC_SYS})
 macro(cycles_target_link_libraries target)
 	target_link_libraries(${target} ${LIBRARIES})
 	if(WITH_CYCLES_OSL)
-		target_link_libraries_decoupled(${target} OSL_LIBRARIES)
-		if(MSVC)
-			target_link_libraries_debug(${target} "${LLVM_LIBRARIES_DEBUG}")
-			target_link_libraries_optimized(${target} "${LLVM_LIBRARIES}")
-		else()
-			target_link_libraries(${target} ${LLVM_LIBRARIES})
-		endif()
+		target_link_libraries(${target} ${OSL_LIBRARIES} ${LLVM_LIBRARIES})
 	endif()
-	target_link_libraries_decoupled(${target} OPENIMAGEIO_LIBRARIES)
-	target_link_libraries_decoupled(${target} OPENEXR_LIBRARIES)
 	target_link_libraries(
 		${target}
+		${OPENIMAGEIO_LIBRARIES}
+		${OPENEXR_LIBRARIES}
 		${PUGIXML_LIBRARIES}
 		${BOOST_LIBRARIES}
 		${CMAKE_DL_LIBS}

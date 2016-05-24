@@ -22,11 +22,10 @@
 
 #include "device_memory.h"
 
-#include "kernel_types.h"
-
 #include "util_param.h"
 #include "util_string.h"
 #include "util_system.h"
+#include "util_texture.h"
 #include "util_thread.h"
 #include "util_types.h"
 #include "util_vector.h"
@@ -64,7 +63,7 @@ public:
 	device_vector<float4> bvh_nodes;
 	device_vector<float4> bvh_leaf_nodes;
 	device_vector<uint> object_node;
-	device_vector<float4> tri_woop;
+	device_vector<float4> tri_storage;
 	device_vector<uint> prim_type;
 	device_vector<uint> prim_visibility;
 	device_vector<uint> prim_index;
@@ -110,11 +109,14 @@ public:
 	device_vector<uint> sobol_directions;
 
 	/* cpu images */
-	device_vector<uchar4> tex_image[TEX_EXTENDED_NUM_IMAGES_CPU];
-	device_vector<float4> tex_float_image[TEX_EXTENDED_NUM_FLOAT_IMAGES];
+	device_vector<uchar4> tex_byte4_image[TEX_NUM_BYTE4_IMAGES_CPU];
+	device_vector<float4> tex_float4_image[TEX_NUM_FLOAT4_IMAGES_CPU];
+	device_vector<float> tex_float_image[TEX_NUM_FLOAT_IMAGES_CPU];
+	device_vector<uchar> tex_byte_image[TEX_NUM_BYTE_IMAGES_CPU];
 
 	/* opencl images */
-	device_vector<uchar4> tex_image_packed;
+	device_vector<uchar4> tex_image_byte4_packed;
+	device_vector<float4> tex_image_float4_packed;
 	device_vector<uint4> tex_image_packed_info;
 
 	KernelData data;
@@ -125,7 +127,12 @@ public:
 class SceneParams {
 public:
 	ShadingSystem shadingsystem;
-	enum BVHType { BVH_DYNAMIC, BVH_STATIC } bvh_type;
+	enum BVHType {
+		BVH_DYNAMIC = 0,
+		BVH_STATIC = 1,
+
+		BVH_NUM_TYPES,
+	} bvh_type;
 	bool use_bvh_spatial_split;
 	bool use_qbvh;
 	bool persistent_data;
@@ -176,10 +183,10 @@ public:
 	BakeManager *bake_manager;
 
 	/* default shaders */
-	int default_surface;
-	int default_light;
-	int default_background;
-	int default_empty;
+	Shader *default_surface;
+	Shader *default_light;
+	Shader *default_background;
+	Shader *default_empty;
 
 	/* device */
 	Device *device;
@@ -209,6 +216,11 @@ public:
 	void device_free();
 
 protected:
+	/* Check if some heavy data worth logging was updated.
+	 * Mainly used to suppress extra annoying logging.
+	 */
+	bool need_data_update();
+
 	void free_memory(bool final);
 };
 

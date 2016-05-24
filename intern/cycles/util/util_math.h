@@ -24,10 +24,6 @@
 
 #ifndef __KERNEL_OPENCL__
 
-#ifdef _MSC_VER
-#  define _USE_MATH_DEFINES
-#endif
-
 #include <float.h>
 #include <math.h>
 #include <stdio.h>
@@ -100,6 +96,11 @@ ccl_device_inline float fminf(float a, float b)
 #endif
 
 #ifndef __KERNEL_GPU__
+
+ccl_device_inline int abs(int x)
+{
+	return (x > 0)? x: -x;
+}
 
 ccl_device_inline int max(int a, int b)
 {

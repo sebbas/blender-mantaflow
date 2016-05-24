@@ -43,7 +43,9 @@
 #include "WM_types.h"
 
 /* default properties for fileselect */
-void WM_operator_properties_filesel(wmOperatorType *ot, int filter, short type, short action, short flag, short display, short sort)
+void WM_operator_properties_filesel(
+        wmOperatorType *ot, int filter, short type, short action,
+        short flag, short display, short sort)
 {
 	PropertyRNA *prop;
 
@@ -170,6 +172,20 @@ void WM_operator_properties_select_random(wmOperatorType *ot)
 	        "Random Seed", "Seed for the random number generator", 0, 255);
 
 	WM_operator_properties_select_action_simple(ot, SEL_SELECT);
+}
+
+int WM_operator_properties_select_random_seed_increment_get(wmOperator *op)
+{
+	PropertyRNA *prop = RNA_struct_find_property(op->ptr, "seed");
+	int value = RNA_property_int_get(op->ptr, prop);
+
+	if (op->flag & OP_IS_INVOKE) {
+		if (!RNA_property_is_set(op->ptr, prop)) {
+			value += 1;
+			RNA_property_int_set(op->ptr, prop, value);
+		}
+	}
+	return value;
 }
 
 void WM_operator_properties_select_all(wmOperatorType *ot)

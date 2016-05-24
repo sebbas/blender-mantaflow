@@ -1473,6 +1473,7 @@ void UI_panel_category_active_set(ARegion *ar, const char *idname)
 			pc_act_next = pc_act->next;
 			if (!BLI_findstring(&ar->type->paneltypes, pc_act->idname, offsetof(PanelType, category))) {
 				BLI_remlink(lb, pc_act);
+				MEM_freeN(pc_act);
 			}
 		}
 	}
@@ -1678,7 +1679,7 @@ void UI_panel_category_draw_all(ARegion *ar, const char *category_id_active)
 	BLF_size(fontid, fstyle_points, U.dpi);
 
 	BLF_enable(fontid, BLF_SHADOW);
-	BLF_shadow(fontid, 3, 1.0f, 1.0f, 1.0f, 0.25f);
+	BLF_shadow(fontid, 3, (const float[4]){1.0f, 1.0f, 1.0f, 0.25f});
 	BLF_shadow_offset(fontid, -1, -1);
 
 	BLI_assert(UI_panel_category_is_visible(ar));

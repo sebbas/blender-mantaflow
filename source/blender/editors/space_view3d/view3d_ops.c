@@ -44,7 +44,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_appdir.h"
-#include "BKE_blender.h"
+#include "BKE_blender_copybuffer.h"
 #include "BKE_context.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
@@ -92,7 +92,7 @@ static int view3d_copybuffer_exec(bContext *C, wmOperator *op)
 	}
 	
 	BLI_make_file_string("/", str, BKE_tempdir_base(), "copybuffer.blend");
-	BKE_copybuffer_save(str, op->reports);
+	BKE_copybuffer_save(bmain, str, op->reports);
 	
 	BKE_report(op->reports, RPT_INFO, "Copied selected objects to buffer");
 
@@ -218,7 +218,9 @@ void view3d_operatortypes(void)
 	WM_operatortype_append(VIEW3D_OT_snap_cursor_to_center);
 	WM_operatortype_append(VIEW3D_OT_snap_cursor_to_selected);
 	WM_operatortype_append(VIEW3D_OT_snap_cursor_to_active);
-		
+
+	WM_operatortype_append(VIEW3D_OT_toggle_render);
+
 	transform_operatortypes();
 }
 
@@ -369,9 +371,8 @@ void view3d_keymap(wmKeyConfig *keyconf)
 	WM_keymap_add_item(keymap, "VIEW3D_OT_ndof_all", NDOF_MOTION, 0, KM_CTRL | KM_SHIFT, 0);
 	kmi = WM_keymap_add_item(keymap, "VIEW3D_OT_view_selected", NDOF_BUTTON_FIT, KM_PRESS, 0, 0);
 	RNA_boolean_set(kmi->ptr, "use_all_regions", false);
-	RNA_float_set(WM_keymap_add_item(keymap, "VIEW3D_OT_view_roll", NDOF_BUTTON_ROLL_CCW, KM_PRESS, 0, 0)->ptr, "angle", -M_PI_2);
-	RNA_float_set(WM_keymap_add_item(keymap, "VIEW3D_OT_view_roll", NDOF_BUTTON_ROLL_CW, KM_PRESS, 0, 0)->ptr, "angle", M_PI_2);
-
+	RNA_enum_set(WM_keymap_add_item(keymap, "VIEW3D_OT_view_roll", NDOF_BUTTON_ROLL_CCW, KM_PRESS, 0, 0)->ptr, "type", V3D_VIEW_STEPLEFT);
+	RNA_enum_set(WM_keymap_add_item(keymap, "VIEW3D_OT_view_roll", NDOF_BUTTON_ROLL_CCW, KM_PRESS, 0, 0)->ptr, "type", V3D_VIEW_STEPRIGHT);
 
 	RNA_enum_set(WM_keymap_add_item(keymap, "VIEW3D_OT_viewnumpad", NDOF_BUTTON_FRONT, KM_PRESS, 0, 0)->ptr, "type", RV3D_VIEW_FRONT);
 	RNA_enum_set(WM_keymap_add_item(keymap, "VIEW3D_OT_viewnumpad", NDOF_BUTTON_BACK, KM_PRESS, 0, 0)->ptr, "type", RV3D_VIEW_BACK);
@@ -418,10 +419,7 @@ void view3d_keymap(wmKeyConfig *keyconf)
 	RNA_string_set(kmi->ptr, "value_1", "SOLID");
 	RNA_string_set(kmi->ptr, "value_2", "TEXTURED");
 
-	kmi = WM_keymap_add_item(keymap, "WM_OT_context_toggle_enum", ZKEY, KM_PRESS, KM_SHIFT, 0);
-	RNA_string_set(kmi->ptr, "data_path", "space_data.viewport_shade");
-	RNA_string_set(kmi->ptr, "value_1", "SOLID");
-	RNA_string_set(kmi->ptr, "value_2", "RENDERED");
+	WM_keymap_add_item(keymap, "VIEW3D_OT_toggle_render", ZKEY, KM_PRESS, KM_SHIFT, 0);
 
 	/* selection*/
 	kmi = WM_keymap_add_item(keymap, "VIEW3D_OT_select", SELECTMOUSE, KM_PRESS, 0, 0);

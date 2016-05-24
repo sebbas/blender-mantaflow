@@ -156,6 +156,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.label(text="Object:")
         col.prop(md, "object", text="")
 
+        """
         layout.prop(md, "use_bmesh")
         if md.use_bmesh:
             box = layout.box()
@@ -164,6 +165,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
             box.prop(md, "use_bmesh_dissolve")
             box.prop(md, "use_bmesh_connect_regions")
             box.prop(md, "threshold")
+        """
 
     def BUILD(self, layout, ob, md):
         split = layout.split()
@@ -293,7 +295,6 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
             row = col.split(percentage=0.75)
             row.prop(md, "use_symmetry")
             row.prop(md, "symmetry_axis", text="")
-            
 
         elif decimate_type == 'UNSUBDIV':
             layout.prop(md, "iterations")
@@ -502,13 +503,12 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         split = layout.split()
 
         col = split.column()
-        col.active = not md.is_bound
+        col.enabled = not md.is_bound
         col.label(text="Object:")
         col.prop(md, "object", text="")
 
         col = split.column()
         col.label(text="Vertex Group:")
-
         row = col.row(align=True)
         row.prop_search(md, "vertex_group", ob, "vertex_groups", text="")
         sub = row.row(align=True)
@@ -516,15 +516,16 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         sub.prop(md, "invert_vertex_group", text="", icon='ARROW_LEFTRIGHT')
 
         layout.separator()
+        row = layout.row()
+        row.enabled = not md.is_bound
+        row.prop(md, "precision")
+        row.prop(md, "use_dynamic_bind")
 
+        layout.separator()
         if md.is_bound:
             layout.operator("object.meshdeform_bind", text="Unbind")
         else:
             layout.operator("object.meshdeform_bind", text="Bind")
-
-            row = layout.row()
-            row.prop(md, "precision")
-            row.prop(md, "use_dynamic_bind")
 
     def MIRROR(self, layout, ob, md):
         split = layout.split(percentage=0.25)
@@ -737,7 +738,9 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "target", text="")
         col = split.column()
         col.label(text="Vertex Group:")
-        col.prop_search(md, "vertex_group", ob, "vertex_groups", text="")
+        row = col.row(align=True)
+        row.prop_search(md, "vertex_group", ob, "vertex_groups", text="")
+        row.prop(md, "invert_vertex_group", text="", icon='ARROW_LEFTRIGHT')
 
         split = layout.split()
 
@@ -785,12 +788,14 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
 
         col = split.column()
         col.label(text="Vertex Group:")
-        col.prop_search(md, "vertex_group", ob, "vertex_groups", text="")
+        row = col.row(align=True)
+        row.prop_search(md, "vertex_group", ob, "vertex_groups", text="")
+        row.prop(md, "invert_vertex_group", text="", icon='ARROW_LEFTRIGHT')
 
         split = layout.split()
 
         col = split.column()
-        col.label(text="Origin:")
+        col.label(text="Axis, Origin:")
         col.prop(md, "origin", text="")
 
         if md.deform_method in {'TAPER', 'STRETCH', 'TWIST'}:

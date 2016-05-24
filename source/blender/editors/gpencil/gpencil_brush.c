@@ -221,72 +221,11 @@ static bool gp_brush_smooth_apply(tGP_BrushEditData *gso, bGPDstroke *gps, int i
                                   const int radius, const int co[2])
 {
 	GP_EditBrush_Data *brush = gso->brush;
-	bGPDspoint *pt = &gps->points[i];
 	float inf = gp_brush_influence_calc(gso, radius, co);
-	float pressure = 0.0f;
-	float sco[3] = {0.0f};
+	bool affect_pressure = (brush->flag & GP_EDITBRUSH_FLAG_SMOOTH_PRESSURE) != 0;
 	
-	/* Do nothing if not enough points to smooth out */
-	if (gps->totpoints <= 2) {
-		return false;
-	}
-	
-	/* Only affect endpoints by a fraction of the normal strength,
-	 * to prevent the stroke from shrinking too much
-	 */
-	if ((i == 0) || (i == gps->totpoints - 1)) {
-		inf *= 0.1f;
-	}
-	
-	/* Compute smoothed coordinate by taking the ones nearby */
-	/* XXX: This is potentially slow, and suffers from accumulation error as earlier points are handled before later ones */
-	{	
-		// XXX: this is hardcoded to look at 2 points on either side of the current one (i.e. 5 items total)
-		const int   steps = 2;
-		const float average_fac = 1.0f / (float)(steps * 2 + 1);
-		int step;
-		
-		/* add the point itself */
-		madd_v3_v3fl(sco, &pt->x, average_fac);
-		
-		if (brush->flag & GP_EDITBRUSH_FLAG_SMOOTH_PRESSURE) {
-			pressure += pt->pressure * average_fac;
-		}
-		
-		/* n-steps before/after current point */
-		// XXX: review how the endpoints are treated by this algorithm
-		// XXX: falloff measures should also introduce some weighting variations, so that further-out points get less weight
-		for (step = 1; step <= steps; step++) {
-			bGPDspoint *pt1, *pt2;
-			int before = i - step;
-			int after  = i + step;
-			
-			CLAMP_MIN(before, 0);
-			CLAMP_MAX(after, gps->totpoints - 1);
-			
-			pt1 = &gps->points[before];
-			pt2 = &gps->points[after];
-			
-			/* add both these points to the average-sum (s += p[i]/n) */
-			madd_v3_v3fl(sco, &pt1->x, average_fac);
-			madd_v3_v3fl(sco, &pt2->x, average_fac);
-			
-			/* do pressure too? */
-			if (brush->flag & GP_EDITBRUSH_FLAG_SMOOTH_PRESSURE) {
-				pressure += pt1->pressure * average_fac;
-				pressure += pt2->pressure * average_fac;
-			}
-		}
-	}
-	
-	/* Based on influence factor, blend between original and optimal smoothed coordinate */
-	interp_v3_v3v3(&pt->x, &pt->x, sco, inf);
-	
-	if (brush->flag & GP_EDITBRUSH_FLAG_SMOOTH_PRESSURE) {
-		pt->pressure = pressure;
-	}
-	
-	return true;
+	/* perform smoothing */
+	return gp_smooth_stroke(gps, i, inf, affect_pressure);
 }
 
 /* ----------------------------------------------- */
@@ -575,8 +514,6 @@ static bool gp_brush_twist_apply(tGP_BrushEditData *gso, bGPDstroke *gps, int i,
                                  const int radius, const int co[2])
 {
 	bGPDspoint *pt = gps->points + i;
-	float tco[2], rco[2], nco[2];
-	float rmat[2][2];
 	float angle, inf;
 	
 	/* Angle to rotate by */
@@ -588,42 +525,52 @@ static bool gp_brush_twist_apply(tGP_BrushEditData *gso, bGPDstroke *gps, int i,
 		angle *= -1;
 	}
 	
-	/* Express position of point relative to cursor, ready to rotate */
-	tco[0] = (float)(co[0] - gso->mval[0]);
-	tco[1] = (float)(co[1] - gso->mval[1]);
-	
-	/* Rotate point in 2D */
-	angle_to_mat2(rmat, angle);
-	mul_v2_m2v2(rco, rmat, tco);
-	
-	/* Convert back to screen-coordinates */
-	nco[0] = rco[0] + (float)gso->mval[0];
-	nco[1] = rco[1] + (float)gso->mval[1];
-	
-#if 0
-	printf("C: %d %d | P: %d %d -> t: %f %f -> r: %f %f x %f -> %f %f\n",
-	       gso->mval[0], gso->mval[1], co[0], co[1],
-	       tco[0], tco[1],
-	       rco[0], rco[1], angle,
-	       nco[0], nco[1]);
-#endif
-	
-	/* convert to dataspace */
+	/* Rotate in 2D or 3D space? */
 	if (gps->flag & GP_STROKE_3DSPACE) {
-		/* 3D: Project to 3D space */
-		if (gso->sa->spacetype == SPACE_VIEW3D) {
-			// XXX: this conversion process sometimes introduces noise to the data -> some parts don't seem to move at all, while others get random offsets
-			gp_point_xy_to_3d(&gso->gsc, gso->scene, nco, &pt->x);
-		}
-		else {
-			/* ERROR */
-			BLI_assert("3D stroke being sculpted in non-3D view");
-		}
+		/* Perform rotation in 3D space... */
+		RegionView3D *rv3d = gso->ar->regiondata;
+		float rmat[3][3];
+		float axis[3];
+		float vec[3];
+		
+		/* Compute rotation matrix - rotate around view vector by angle */
+		negate_v3_v3(axis, rv3d->persinv[2]);
+		normalize_v3(axis);
+		
+		axis_angle_normalized_to_mat3(rmat, axis, angle);
+		
+		/* Rotate point (no matrix-space transforms needed, as GP points are in world space) */
+		sub_v3_v3v3(vec, &pt->x, gso->dvec); /* make relative to center (center is stored in dvec) */
+		mul_m3_v3(rmat, vec);
+		add_v3_v3v3(&pt->x, vec, gso->dvec); /* restore */
 	}
 	else {
-		/* 2D: As-is */
-		// XXX: v2d scaling/offset?
-		copy_v2_v2(&pt->x, nco);
+		const float axis[3] = {0.0f, 0.0f, 1.0f};
+		float vec[3] = {0.0f};
+		float rmat[3][3];
+		
+		/* Express position of point relative to cursor, ready to rotate */
+		// XXX: There is still some offset here, but it's close to working as expected...
+		vec[0] = (float)(co[0] - gso->mval[0]);
+		vec[1] = (float)(co[1] - gso->mval[1]);
+		
+		/* rotate point */
+		axis_angle_normalized_to_mat3(rmat, axis, angle);
+		mul_m3_v3(rmat, vec);
+		
+		/* Convert back to screen-coordinates */
+		vec[0] += (float)gso->mval[0];
+		vec[1] += (float)gso->mval[1];
+		
+		/* Map from screen-coordinates to final coordinate space */
+		if (gps->flag & GP_STROKE_2DSPACE) {
+			View2D *v2d = gso->gsc.v2d;
+			UI_view2d_region_to_view(v2d, vec[0], vec[1], &pt->x, &pt->y);
+		}
+		else {
+			// XXX
+			copy_v2_v2(&pt->x, vec);
+		}
 	}
 	
 	/* done */
@@ -651,7 +598,7 @@ static bool gp_brush_randomize_apply(tGP_BrushEditData *gso, bGPDstroke *gps, in
 	 *   and then project these to get the points/distances in
 	 *   viewspace as needed
 	 */
-	float mvec[2], svec[2], nco[2];
+	float mvec[2], svec[2];
 	
 	/* mouse movement in ints -> floats */
 	mvec[0] = (float)(gso->mval[0] - gso->mval_prev[0]);
@@ -671,16 +618,20 @@ static bool gp_brush_randomize_apply(tGP_BrushEditData *gso, bGPDstroke *gps, in
 		mul_v2_fl(svec, fac);
 	}
 	
-	nco[0] = (float)co[0] + svec[0];
-	nco[1] = (float)co[1] + svec[1];
-	
 	//printf("%f %f (%f), nco = {%f %f}, co = %d %d\n", svec[0], svec[1], fac, nco[0], nco[1], co[0], co[1]);
 	
 	/* convert to dataspace */
 	if (gps->flag & GP_STROKE_3DSPACE) {
 		/* 3D: Project to 3D space */
 		if (gso->sa->spacetype == SPACE_VIEW3D) {
-			gp_point_xy_to_3d(&gso->gsc, gso->scene, nco, &pt->x);
+			bool flip;
+			RegionView3D *rv3d = gso->ar->regiondata;
+			float zfac = ED_view3d_calc_zfac(rv3d, &pt->x, &flip);
+			if (flip == false) {
+				float dvec[3];
+				ED_view3d_win_to_delta(gso->gsc.ar, svec, dvec, zfac);
+				add_v3_v3(&pt->x, dvec);
+			}
 		}
 		else {
 			/* ERROR */
@@ -690,6 +641,10 @@ static bool gp_brush_randomize_apply(tGP_BrushEditData *gso, bGPDstroke *gps, in
 	else {
 		/* 2D: As-is */
 		// XXX: v2d scaling/offset?
+		float nco[2];
+		nco[0] = (float)co[0] + svec[0];
+		nco[1] = (float)co[1] + svec[1];
+
 		copy_v2_v2(&pt->x, nco);
 	}
 	
@@ -811,8 +766,9 @@ static void gp_brush_clone_add(bContext *C, tGP_BrushEditData *gso)
 			new_stroke = MEM_dupallocN(gps);
 			
 			new_stroke->points = MEM_dupallocN(gps->points);
-			new_stroke->next = new_stroke->prev = NULL;
+			new_stroke->triangles = MEM_dupallocN(gps->triangles);
 			
+			new_stroke->next = new_stroke->prev = NULL;
 			BLI_addtail(&gpf->strokes, new_stroke);
 			
 			/* Adjust all the stroke's points, so that the strokes
@@ -910,13 +866,17 @@ static void gp_brush_drawcursor(bContext *C, int x, int y, void *UNUSED(customda
 		
 		glTranslatef((float)x, (float)y, 0.0f);
 		
-		/* TODO: toggle between add and remove? */
-		glColor4ub(255, 255, 255, 128);
-		
 		glEnable(GL_LINE_SMOOTH);
 		glEnable(GL_BLEND);
 		
+		/* Inner Ring: Light color for action of the brush */
+		/* TODO: toggle between add and remove? */
+		glColor4ub(255, 255, 255, 200);
 		glutil_draw_lined_arc(0.0, M_PI * 2.0, brush->size, 40);
+		
+		/* Outer Ring: Dark color for contrast on light backgrounds (e.g. gray on white) */
+		glColor3ub(30, 30, 30);
+		glutil_draw_lined_arc(0.0, M_PI * 2.0, brush->size + 1, 40);
 		
 		glDisable(GL_BLEND);
 		glDisable(GL_LINE_SMOOTH);
@@ -950,7 +910,7 @@ static void gpencil_toggle_brush_cursor(bContext *C, bool enable)
 static void gpsculpt_brush_header_set(bContext *C, tGP_BrushEditData *gso)
 {
 	const char *brush_name = NULL;
-	char str[256] = "";
+	char str[UI_MAX_DRAW_STR] = "";
 	
 	RNA_enum_name(rna_enum_gpencil_sculpt_brush_items, gso->brush_type, &brush_name);
 	
@@ -1118,9 +1078,7 @@ static void gpsculpt_brush_init_stroke(tGP_BrushEditData *gso)
 	/* go through each layer, and ensure that we've got a valid frame to use */
 	for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
 		/* only editable and visible layers are considered */
-		if ((gpl->flag & (GP_LAYER_HIDE | GP_LAYER_LOCKED)) == 0 &&
-		    (gpl->actframe != NULL))
-		{
+		if (gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
 			bGPDframe *gpf = gpl->actframe;
 			
 			/* Make a new frame to work on if the layer's frame and the current scene frame don't match up 
@@ -1191,7 +1149,7 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso, bGPDstroke *gps, GP
 			    ((!ELEM(V2D_IS_CLIPPED, pc2[0], pc2[1])) && BLI_rcti_isect_pt(rect, pc2[0], pc2[1])))
 			{
 				/* Check if point segment of stroke had anything to do with
-				 * eraser region  (either within stroke painted, or on its lines)
+				 * brush region  (either within stroke painted, or on its lines)
 				 *  - this assumes that linewidth is irrelevant
 				 */
 				if (gp_stroke_inside_circle(gso->mval, gso->mval_prev, radius, pc1[0], pc1[1], pc2[0], pc2[1])) {
@@ -1250,7 +1208,7 @@ static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
 		}
 		
 		case GP_EDITBRUSH_TYPE_PINCH: /* Pinch points */
-		//case GP_EDITBRUSH_TYPE_TWIST: /* Twist points around midpoint */
+		case GP_EDITBRUSH_TYPE_TWIST: /* Twist points around midpoint */
 		{
 			/* calculate midpoint of the brush (in data space) */
 			gp_brush_calc_midpoint(gso);
@@ -1330,6 +1288,12 @@ static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
 			default:
 				printf("ERROR: Unknown type of GPencil Sculpt brush - %u\n", gso->brush_type);
 				break;
+		}
+		
+		/* Triangulation must be calculated if changed */
+		if (changed) {
+			gps->flag |= GP_STROKE_RECALC_CACHES;
+			gps->tot_triangles = 0;
 		}
 	}
 	CTX_DATA_END;
@@ -1523,6 +1487,7 @@ static int gpsculpt_brush_modal(bContext *C, wmOperator *op, const wmEvent *even
 	tGP_BrushEditData *gso = op->customdata;
 	const bool is_modal = RNA_boolean_get(op->ptr, "wait_for_input");
 	bool redraw_region = false;
+	bool redraw_toolsettings = false;
 	
 	/* The operator can be in 2 states: Painting and Idling */
 	if (gso->is_painting) {
@@ -1561,8 +1526,9 @@ static int gpsculpt_brush_modal(bContext *C, wmOperator *op, const wmEvent *even
 					gso->brush->size += 3;
 					CLAMP_MAX(gso->brush->size, 300);
 				}
-					
+				
 				redraw_region = true;
+				redraw_toolsettings = true;
 				break;
 			
 			case WHEELDOWNMOUSE: 
@@ -1577,8 +1543,9 @@ static int gpsculpt_brush_modal(bContext *C, wmOperator *op, const wmEvent *even
 					gso->brush->size -= 3;
 					CLAMP_MIN(gso->brush->size, 1);
 				}
-					
+				
 				redraw_region = true;
+				redraw_toolsettings = true;
 				break;
 			
 			/* Painting mbut release = Stop painting (back to idle) */
@@ -1650,8 +1617,9 @@ static int gpsculpt_brush_modal(bContext *C, wmOperator *op, const wmEvent *even
 					gso->brush->size += 3;
 					CLAMP_MAX(gso->brush->size, 300);
 				}
-					
+				
 				redraw_region = true;
+				redraw_toolsettings = true;
 				break;
 			
 			case WHEELDOWNMOUSE: 
@@ -1666,8 +1634,9 @@ static int gpsculpt_brush_modal(bContext *C, wmOperator *op, const wmEvent *even
 					gso->brush->size -= 3;
 					CLAMP_MIN(gso->brush->size, 1);
 				}
-					
+				
 				redraw_region = true;
+				redraw_toolsettings = true;
 				break;
 			
 			/* Change Frame - Allowed */
@@ -1687,6 +1656,11 @@ static int gpsculpt_brush_modal(bContext *C, wmOperator *op, const wmEvent *even
 	if (redraw_region) {
 		ARegion *ar = CTX_wm_region(C);
 		ED_region_tag_redraw(ar);
+	}
+	
+	/* Redraw toolsettings (brush settings)? */
+	if (redraw_toolsettings) {
+		WM_event_add_notifier(C, NC_SCENE | ND_TOOLSETTINGS, NULL);
 	}
 	
 	return OPERATOR_RUNNING_MODAL;

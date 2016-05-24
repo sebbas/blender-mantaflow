@@ -67,6 +67,13 @@ static void copyData(ModifierData *md, ModifierData *target)
 	HookModifierData *hmd = (HookModifierData *) md;
 	HookModifierData *thmd = (HookModifierData *) target;
 
+	if (thmd->curfalloff != NULL) {
+		curvemapping_free(thmd->curfalloff);
+	}
+	if (thmd->indexar != NULL) {
+		MEM_freeN(thmd->indexar);
+	}
+
 	modifier_copyData_generic(md, target);
 
 	thmd->curfalloff = curvemapping_copy(hmd->curfalloff);
@@ -132,20 +139,21 @@ static void updateDepgraph(ModifierData *md, DagForest *forest,
 static void updateDepsgraph(ModifierData *md,
                             struct Main *UNUSED(bmain),
                             struct Scene *UNUSED(scene),
-                            Object *UNUSED(ob),
+                            Object *ob,
                             struct DepsNodeHandle *node)
 {
 	HookModifierData *hmd = (HookModifierData *)md;
 	if (hmd->object != NULL) {
 		if (hmd->subtarget[0]) {
-			/* TODO(sergey): Hpw do we add relation to bone here? */
-			//DEG_add_object_relation(node, hmd->object, DEG_OB_COMP_EVAL_POSE, "Hook Modifier");
+			DEG_add_bone_relation(node, hmd->object, hmd->subtarget, DEG_OB_COMP_TRANSFORM, "Hook Modifier");
 			DEG_add_bone_relation(node, hmd->object, hmd->subtarget, DEG_OB_COMP_BONE, "Hook Modifier");
 		}
 		else {
 			DEG_add_object_relation(node, hmd->object, DEG_OB_COMP_TRANSFORM, "Hook Modifier");
 		}
 	}
+	/* We need own transformation as well. */
+	DEG_add_object_relation(node, ob, DEG_OB_COMP_TRANSFORM, "Hook Modifier");
 }
 
 struct HookData_cb {
@@ -409,6 +417,7 @@ ModifierTypeInfo modifierType_Hook = {
 	/* structSize */        sizeof(HookModifierData),
 	/* type */              eModifierTypeType_OnlyDeform,
 	/* flags */             eModifierTypeFlag_AcceptsCVs |
+	                        eModifierTypeFlag_AcceptsLattice |
 	                        eModifierTypeFlag_SupportsEditmode,
 	/* copyData */          copyData,
 	/* deformVerts */       deformVerts,

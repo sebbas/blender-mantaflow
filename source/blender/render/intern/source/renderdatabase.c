@@ -70,6 +70,7 @@
 #include "DNA_material_types.h" 
 #include "DNA_meshdata_types.h" 
 #include "DNA_texture_types.h"
+#include "DNA_listBase.h"
 #include "DNA_particle_types.h"
 
 #include "BKE_customdata.h"
@@ -380,19 +381,28 @@ float *RE_vlakren_get_surfnor(ObjectRen *obr, VlakRen *vlak, int verify)
 	return surfnor + (vlak->index & 255)*RE_SURFNOR_ELEMS;
 }
 
-float *RE_vlakren_get_nmap_tangent(ObjectRen *obr, VlakRen *vlak, int verify)
+float *RE_vlakren_get_nmap_tangent(ObjectRen *obr, VlakRen *vlak, int index, bool verify)
 {
-	float *tangent;
+	float **tangents;
 	int nr= vlak->index>>8;
 
-	tangent= obr->vlaknodes[nr].tangent;
-	if (tangent==NULL) {
-		if (verify) 
-			tangent= obr->vlaknodes[nr].tangent= MEM_callocN(256*RE_NMAP_TANGENT_ELEMS*sizeof(float), "tangent table");
+	tangents = obr->vlaknodes[nr].tangent_arrays;
+
+	if (index + 1 > 8) {
+		return NULL;
+	}
+
+	index = index < 0 ? 0: index;
+
+	if (tangents[index] == NULL) {
+		if (verify) {
+			tangents[index] = MEM_callocN(256*RE_NMAP_TANGENT_ELEMS*sizeof(float), "tangent table");
+		}
 		else
 			return NULL;
 	}
-	return tangent + (vlak->index & 255)*RE_NMAP_TANGENT_ELEMS;
+
+	return tangents[index] + (vlak->index & 255)*RE_NMAP_TANGENT_ELEMS;
 }
 
 RadFace **RE_vlakren_get_radface(ObjectRen *obr, VlakRen *vlak, int verify)
@@ -415,7 +425,8 @@ VlakRen *RE_vlakren_copy(ObjectRen *obr, VlakRen *vlr)
 	VlakRen *vlr1 = RE_findOrAddVlak(obr, obr->totvlak++);
 	MTFace *mtface, *mtface1;
 	MCol *mcol, *mcol1;
-	float *surfnor, *surfnor1, *tangent, *tangent1;
+	float *surfnor, *surfnor1;
+	float *tangent, *tangent1;
 	int *origindex, *origindex1;
 	RadFace **radface, **radface1;
 	int i, index = vlr1->index;
@@ -447,9 +458,11 @@ VlakRen *RE_vlakren_copy(ObjectRen *obr, VlakRen *vlr)
 		copy_v3_v3(surfnor1, surfnor);
 	}
 
-	tangent= RE_vlakren_get_nmap_tangent(obr, vlr, 0);
-	if (tangent) {
-		tangent1= RE_vlakren_get_nmap_tangent(obr, vlr1, 1);
+	for (i=0; i < MAX_MTFACE; i++) {
+		tangent = RE_vlakren_get_nmap_tangent(obr, vlr, i, false);
+		if (!tangent)
+			continue;
+		tangent1 = RE_vlakren_get_nmap_tangent(obr, vlr1, i, true);
 		memcpy(tangent1, tangent, sizeof(float)*RE_NMAP_TANGENT_ELEMS);
 	}
 
@@ -790,8 +803,10 @@ void free_renderdata_vlaknodes(VlakTableNode *vlaknodes)
 			MEM_freeN(vlaknodes[a].origindex);
 		if (vlaknodes[a].surfnor)
 			MEM_freeN(vlaknodes[a].surfnor);
-		if (vlaknodes[a].tangent)
-			MEM_freeN(vlaknodes[a].tangent);
+		for (int b = 0; b < MAX_MTFACE; b++) {
+			if (vlaknodes[a].tangent_arrays[b])
+				MEM_freeN(vlaknodes[a].tangent_arrays[b]);
+		}
 		if (vlaknodes[a].radface)
 			MEM_freeN(vlaknodes[a].radface);
 	}
@@ -956,6 +971,7 @@ HaloRen *RE_inithalo(Render *re, ObjectRen *obr, Material *ma,
                      const float *orco, float hasize, float vectsize, int seed)
 {
 	const bool skip_load_image = (re->r.scemode & R_NO_IMAGE_LOAD) != 0;
+	const bool texnode_preview = (re->r.scemode & R_TEXNODE_PREVIEW) != 0;
 	HaloRen *har;
 	MTex *mtex;
 	float tin, tr, tg, tb, ta;
@@ -1047,7 +1063,13 @@ HaloRen *RE_inithalo(Render *re, ObjectRen *obr, Material *ma,
 				}
 			}
 
-			externtex(mtex, texvec, &tin, &tr, &tg, &tb, &ta, 0, re->pool, skip_load_image);
+			externtex(mtex,
+			          texvec,
+			          &tin, &tr, &tg, &tb, &ta,
+			          0,
+			          re->pool,
+			          skip_load_image,
+			          texnode_preview);
 
 			yn= tin*mtex->colfac;
 			//zn= tin*mtex->alphafac;
@@ -1067,7 +1089,8 @@ HaloRen *RE_inithalo(Render *re, ObjectRen *obr, Material *ma,
 	}
 
 	har->pool = re->pool;
-	har->skip_load_image = (re->r.scemode & R_NO_IMAGE_LOAD) != 0;
+	har->skip_load_image = skip_load_image;
+	har->texnode_preview = texnode_preview;
 
 	return har;
 }
@@ -1077,6 +1100,7 @@ HaloRen *RE_inithalo_particle(Render *re, ObjectRen *obr, DerivedMesh *dm, Mater
                               const float *orco, const float *uvco, float hasize, float vectsize, int seed, const float pa_co[3])
 {
 	const bool skip_load_image = (re->r.scemode & R_NO_IMAGE_LOAD) != 0;
+	const bool texnode_preview = (re->r.scemode & R_TEXNODE_PREVIEW) != 0;
 	HaloRen *har;
 	MTex *mtex;
 	float tin, tr, tg, tb, ta;
@@ -1180,7 +1204,13 @@ HaloRen *RE_inithalo_particle(Render *re, ObjectRen *obr, DerivedMesh *dm, Mater
 				copy_v3_v3(texvec, orco);
 			}
 
-			hasrgb = externtex(mtex, texvec, &tin, &tr, &tg, &tb, &ta, 0, re->pool, skip_load_image);
+			hasrgb = externtex(mtex,
+			                   texvec,
+			                   &tin, &tr, &tg, &tb, &ta,
+			                   0,
+			                   re->pool,
+			                   skip_load_image,
+			                   texnode_preview);
 
 			//yn= tin*mtex->colfac;
 			//zn= tin*mtex->alphafac;
@@ -1225,6 +1255,7 @@ HaloRen *RE_inithalo_particle(Render *re, ObjectRen *obr, DerivedMesh *dm, Mater
 
 	har->pool = re->pool;
 	har->skip_load_image = (re->r.scemode & R_NO_IMAGE_LOAD) != 0;
+	har->texnode_preview = (re->r.scemode & R_TEXNODE_PREVIEW) != 0;
 
 	return har;
 }

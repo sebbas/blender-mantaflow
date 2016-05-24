@@ -926,7 +926,7 @@ static void *do_bake_thread(void *bs_v)
 void RE_bake_ibuf_filter(ImBuf *ibuf, char *mask, const int filter)
 {
 	/* must check before filtering */
-	const short is_new_alpha = (ibuf->planes != R_IMF_PLANES_RGBA) && BKE_imbuf_alpha_test(ibuf);
+	const bool is_new_alpha = (ibuf->planes != R_IMF_PLANES_RGBA) && BKE_imbuf_alpha_test(ibuf);
 
 	/* Margin */
 	if (filter) {
@@ -1037,7 +1037,7 @@ int RE_bake_shade_all_selected(Render *re, int type, Object *actob, short *do_up
 
 	if (R.r.bake_flag & R_BAKE_VCOL) {
 		/* untag all meshes */
-		BKE_main_id_tag_listbase(&G.main->mesh, false);
+		BKE_main_id_tag_listbase(&G.main->mesh, LIB_TAG_DOIT, false);
 	}
 
 	BLI_init_threads(&threads, do_bake_thread, re->r.threads);

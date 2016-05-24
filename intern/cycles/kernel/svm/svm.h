@@ -295,7 +295,7 @@ ccl_device_noinline void svm_eval_nodes(KernelGlobals *kg, ShaderData *sd, ccl_a
 				break;
 #    endif  /* NODES_FEATURE(NODE_FEATURE_BUMP) */
 			case NODE_HSV:
-				svm_node_hsv(kg, sd, stack, node.y, node.z, node.w, &offset);
+				svm_node_hsv(kg, sd, stack, node, &offset);
 				break;
 #  endif  /* __EXTRA_NODES__ */
 #endif  /* NODES_GROUP(NODE_GROUP_LEVEL_0) */
@@ -447,11 +447,11 @@ ccl_device_noinline void svm_eval_nodes(KernelGlobals *kg, ShaderData *sd, ccl_a
 				svm_node_blackbody(kg, sd, stack, node.y, node.z);
 				break;
 #  endif  /* __EXTRA_NODES__ */
-#  if NODES_FEATURE(NODE_FEATURE_VOLUME) && !defined(__KERNEL_GPU__)
+#  if NODES_FEATURE(NODE_FEATURE_VOLUME)
 			case NODE_TEX_VOXEL:
 				svm_node_tex_voxel(kg, sd, stack, node, &offset);
 				break;
-#  endif  /* NODES_FEATURE(NODE_FEATURE_VOLUME) && !defined(__KERNEL_GPU__) */
+#  endif  /* NODES_FEATURE(NODE_FEATURE_VOLUME) */
 #endif  /* NODES_GROUP(NODE_GROUP_LEVEL_3) */
 			case NODE_END:
 				return;

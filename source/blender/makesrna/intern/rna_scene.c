@@ -860,7 +860,7 @@ static void rna_ImageFormatSettings_file_format_set(PointerRNA *ptr, int value)
 {
 	ImageFormatData *imf = (ImageFormatData *)ptr->data;
 	ID *id = ptr->id.data;
-	const char is_render = (id && GS(id->name) == ID_SCE);
+	const bool is_render = (id && GS(id->name) == ID_SCE);
 	/* see note below on why this is */
 	const char chan_flag = BKE_imtype_valid_channels(imf->imtype, true) | (is_render ? IMA_CHAN_FLAG_BW : 0);
 
@@ -927,7 +927,7 @@ static EnumPropertyItem *rna_ImageFormatSettings_color_mode_itemf(
 {
 	ImageFormatData *imf = (ImageFormatData *)ptr->data;
 	ID *id = ptr->id.data;
-	const char is_render = (id && GS(id->name) == ID_SCE);
+	const bool is_render = (id && GS(id->name) == ID_SCE);
 
 	/* note, we need to act differently for render
 	 * where 'BW' will force grayscale even if the output format writes
@@ -1470,6 +1470,12 @@ static int rna_RenderSettings_use_shading_nodes_get(PointerRNA *ptr)
 	return BKE_scene_use_new_shading_nodes(scene);
 }
 
+static int rna_RenderSettings_use_spherical_stereo_get(PointerRNA *ptr)
+{
+	Scene *scene = (Scene *)ptr->id.data;
+	return BKE_scene_use_spherical_stereo(scene);
+}
+
 static int rna_RenderSettings_use_game_engine_get(PointerRNA *ptr)
 {
 	RenderData *rd = (RenderData *)ptr->data;
@@ -1582,7 +1588,7 @@ static void rna_Scene_use_simplify_update(Main *bmain, Scene *UNUSED(scene), Poi
 	Scene *sce_iter;
 	Base *base;
 
-	BKE_main_id_tag_listbase(&bmain->object, true);
+	BKE_main_id_tag_listbase(&bmain->object, LIB_TAG_DOIT, true);
 	for (SETLOOPER(sce, sce_iter, base))
 		object_simplify_update(base->object);
 	
@@ -1759,6 +1765,11 @@ static void rna_UnifiedPaintSettings_radius_update(Main *bmain, Scene *scene, Po
 static char *rna_UnifiedPaintSettings_path(PointerRNA *UNUSED(ptr))
 {
 	return BLI_strdup("tool_settings.unified_paint_settings");
+}
+
+static char *rna_CurvePaintSettings_path(PointerRNA *UNUSED(ptr))
+{
+	return BLI_strdup("tool_settings.curve_paint_settings");
 }
 
 /* generic function to recalc geometry */
@@ -2373,6 +2384,12 @@ static void rna_def_tool_settings(BlenderRNA  *brna)
 	                         "Automatic keyframe insertion using active Keying Set only");
 	RNA_def_property_ui_icon(prop, ICON_KEYINGSET, 0);
 	
+	/* Keyframing */
+	prop = RNA_def_property(srna, "keyframe_type", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "keyframe_type");
+	RNA_def_property_enum_items(prop, rna_enum_beztriple_keyframe_type_items);
+	RNA_def_property_ui_text(prop, "New Keyframe Type", "Type of keyframes to create when inserting keyframes");
+	
 	/* UV */
 	prop = RNA_def_property(srna, "uv_select_mode", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "uv_selectmode");
@@ -2485,6 +2502,12 @@ static void rna_def_tool_settings(BlenderRNA  *brna)
 	RNA_def_property_struct_type(prop, "UnifiedPaintSettings");
 	RNA_def_property_ui_text(prop, "Unified Paint Settings", NULL);
 
+	/* Curve Paint Settings */
+	prop = RNA_def_property(srna, "curve_paint_settings", PROP_POINTER, PROP_NONE);
+	RNA_def_property_flag(prop, PROP_NEVER_NULL);
+	RNA_def_property_struct_type(prop, "CurvePaintSettings");
+	RNA_def_property_ui_text(prop, "Curve Paint Settings", NULL);
+
 	/* Mesh Statistics */
 	prop = RNA_def_property(srna, "statvis", PROP_POINTER, PROP_NONE);
 	RNA_def_property_flag(prop, PROP_NEVER_NULL);
@@ -2581,6 +2604,100 @@ static void rna_def_unified_paint_settings(BlenderRNA  *brna)
 	RNA_def_property_ui_text(prop, "Use Blender Units",
 	                         "When locked brush stays same size relative to object; "
 	                         "when unlocked brush size is given in pixels");
+}
+
+
+static void rna_def_curve_paint_settings(BlenderRNA  *brna)
+{
+	StructRNA *srna;
+	PropertyRNA *prop;
+
+	srna = RNA_def_struct(brna, "CurvePaintSettings", NULL);
+	RNA_def_struct_path_func(srna, "rna_CurvePaintSettings_path");
+	RNA_def_struct_ui_text(srna, "Curve Paint Settings", "");
+
+	static EnumPropertyItem curve_type_items[] = {
+		{CU_POLY, "POLY", 0, "Poly", ""},
+		{CU_BEZIER, "BEZIER", 0, "Bezier", ""},
+		{0, NULL, 0, NULL, NULL}};
+
+	prop = RNA_def_property(srna, "curve_type", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "curve_type");
+	RNA_def_property_enum_items(prop, curve_type_items);
+	RNA_def_property_ui_text(prop, "Type", "Type of curve to use for new strokes");
+
+	prop = RNA_def_property(srna, "use_corners_detect", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", CURVE_PAINT_FLAG_CORNERS_DETECT);
+	RNA_def_property_ui_text(prop, "Detect Corners", "Detect corners and use non-aligned handles");
+
+	prop = RNA_def_property(srna, "use_pressure_radius", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", CURVE_PAINT_FLAG_PRESSURE_RADIUS);
+	RNA_def_property_ui_icon(prop, ICON_STYLUS_PRESSURE, 0);
+	RNA_def_property_ui_text(prop, "Use Pressure", "Map tablet pressure to curve radius");
+
+	prop = RNA_def_property(srna, "use_stroke_endpoints", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", CURVE_PAINT_FLAG_DEPTH_STROKE_ENDPOINTS);
+	RNA_def_property_ui_text(prop, "Only First", "Use the start of the stroke for the depth");
+
+	prop = RNA_def_property(srna, "use_offset_absolute", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", CURVE_PAINT_FLAG_DEPTH_STROKE_OFFSET_ABS);
+	RNA_def_property_ui_text(prop, "Absolute Offset", "Apply a fixed offset (don't scale by the radius)");
+
+	prop = RNA_def_property(srna, "error_threshold", PROP_INT, PROP_PIXEL);
+	RNA_def_property_range(prop, 1, 100);
+	RNA_def_property_ui_text(prop, "Tolerance", "Allow deviation for a smoother, less precise line");
+
+	prop = RNA_def_property(srna, "corner_angle", PROP_FLOAT, PROP_ANGLE);
+	RNA_def_property_range(prop, 0, M_PI);
+	RNA_def_property_ui_text(prop, "Corner Angle", "Angles above this are considered corners");
+
+	prop = RNA_def_property(srna, "radius_min", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 100.0);
+	RNA_def_property_ui_range(prop, 0.0f, 10.0, 10, 2);
+	RNA_def_property_ui_text(prop, "Radius Min",
+	                         "Minimum radius when the minimum pressure is applied (also the minimum when tapering)");
+
+	prop = RNA_def_property(srna, "radius_max", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 100.0);
+	RNA_def_property_ui_range(prop, 0.0f, 10.0, 10, 2);
+	RNA_def_property_ui_text(prop, "Radius Max",
+	                         "Radius to use when the maximum pressure is applied (or when a tablet isn't used)");
+
+	prop = RNA_def_property(srna, "radius_taper_start", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 1.0);
+	RNA_def_property_ui_range(prop, 0.0f, 1.0, 1, 2);
+	RNA_def_property_ui_text(prop, "Radius Min", "Taper factor for the radius of each point along the curve");
+
+	prop = RNA_def_property(srna, "radius_taper_end", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 10.0);
+	RNA_def_property_ui_range(prop, 0.0f, 1.0, 1, 2);
+	RNA_def_property_ui_text(prop, "Radius Max", "Taper factor for the radius of each point along the curve");
+
+	prop = RNA_def_property(srna, "surface_offset", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, -10.0, 10.0);
+	RNA_def_property_ui_range(prop, -1.0f, 1.0, 1, 2);
+	RNA_def_property_ui_text(prop, "Offset", "Offset the stroke from the surface");
+
+	static EnumPropertyItem depth_mode_items[] = {
+		{CURVE_PAINT_PROJECT_CURSOR,  "CURSOR",  0, "Cursor",  ""},
+		{CURVE_PAINT_PROJECT_SURFACE, "SURFACE", 0, "Surface", ""},
+		{0, NULL, 0, NULL, NULL}};
+
+	prop = RNA_def_property(srna, "depth_mode", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "depth_mode");
+	RNA_def_property_enum_items(prop, depth_mode_items);
+	RNA_def_property_ui_text(prop, "Depth", "Method of projecting depth");
+
+	static EnumPropertyItem surface_plane_items[] = {
+		{CURVE_PAINT_SURFACE_PLANE_NORMAL_VIEW,  "NORMAL_VIEW", 0, "Normal/View", "Draw perpendicular to the surface"},
+		{CURVE_PAINT_SURFACE_PLANE_NORMAL_SURFACE, "NORMAL_SURFACE", 0, "Normal/Surface", "Draw aligned to the surface"},
+		{CURVE_PAINT_SURFACE_PLANE_VIEW, "VIEW", 0, "View", "Draw aligned to the viewport"},
+		{0, NULL, 0, NULL, NULL}};
+
+	prop = RNA_def_property(srna, "surface_plane", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "surface_plane");
+	RNA_def_property_enum_items(prop, surface_plane_items);
+	RNA_def_property_ui_text(prop, "Plane", "Plane for projected stroke");
 }
 
 static void rna_def_statvis(BlenderRNA  *brna)
@@ -2723,7 +2840,7 @@ static void rna_def_unit_settings(BlenderRNA  *brna)
 	prop = RNA_def_property(srna, "scale_length", PROP_FLOAT, PROP_UNSIGNED);
 	RNA_def_property_ui_text(prop, "Unit Scale", "Scale to use when converting between blender units and dimensions");
 	RNA_def_property_range(prop, 0.00001, 100000.0);
-	RNA_def_property_ui_range(prop, 0.001, 100.0, 0.1, 3);
+	RNA_def_property_ui_range(prop, 0.001, 100.0, 0.1, 6);
 	RNA_def_property_update(prop, NC_WINDOW, NULL);
 
 	prop = RNA_def_property(srna, "use_separate", PROP_BOOLEAN, PROP_NONE);
@@ -3553,6 +3670,13 @@ static void rna_def_scene_game_recast_data(BlenderRNA *brna)
 	StructRNA *srna;
 	PropertyRNA *prop;
 
+	static EnumPropertyItem rna_enum_partitioning_items[] = {
+		{RC_PARTITION_WATERSHED, "WATERSHED", 0, "Watershed", "Classic Recast partitioning method generating the nicest tessellation"},
+		{RC_PARTITION_MONOTONE, "MONOTONE", 0, "Monotone", "Fastest navmesh generation method, may create long thin polygons"},
+		{RC_PARTITION_LAYERS, "LAYERS", 0, "Layers", "Reasonably fast method that produces better triangles than monotone partitioning"},
+		{0, NULL, 0, NULL, NULL}
+	};
+
 	srna = RNA_def_struct(brna, "SceneGameRecastData", NULL);
 	RNA_def_struct_sdna(srna, "RecastData");
 	RNA_def_struct_nested(brna, srna, "Scene");
@@ -3613,6 +3737,13 @@ static void rna_def_scene_game_recast_data(BlenderRNA *brna)
 	RNA_def_property_ui_range(prop, 0, 150, 1, 2);
 	RNA_def_property_float_default(prop, 20.0f);
 	RNA_def_property_ui_text(prop, "Merged Region Size", "Minimum regions size (smaller regions will be merged)");
+	RNA_def_property_update(prop, NC_SCENE, NULL);
+
+	prop = RNA_def_property(srna, "partitioning", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_bitflag_sdna(prop, NULL, "partitioning");
+	RNA_def_property_enum_items(prop, rna_enum_partitioning_items);
+	RNA_def_property_enum_default(prop, RC_PARTITION_WATERSHED);
+	RNA_def_property_ui_text(prop, "Partitioning", "Choose partitioning method");
 	RNA_def_property_update(prop, NC_SCENE, NULL);
 
 	prop = RNA_def_property(srna, "edge_max_len", PROP_FLOAT, PROP_NONE);
@@ -5617,12 +5748,6 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
 	                         "Free all image textures from memory after render, to save memory before compositing");
 	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
 
-	prop = RNA_def_property(srna, "use_free_unused_nodes", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "scemode", R_COMP_FREE);
-	RNA_def_property_ui_text(prop, "Free Unused Nodes",
-	                         "Free Nodes that are not used while compositing, to save memory");
-	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
-
 	prop = RNA_def_property(srna, "use_save_buffers", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "scemode", R_EXR_TILE_FILE);
 	RNA_def_property_boolean_funcs(prop, "rna_RenderSettings_save_buffers_get", NULL);
@@ -5843,6 +5968,11 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Strip Metadata", "Use metadata from the strips in the sequencer");
 	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
 
+	prop = RNA_def_property(srna, "use_stamp_memory", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "stamp", R_STAMP_MEMORY);
+	RNA_def_property_ui_text(prop, "Stamp Peak Memory", "Include the peak memory usage in image metadata");
+	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
 	prop = RNA_def_property(srna, "stamp_font_size", PROP_INT, PROP_NONE);
 	RNA_def_property_int_sdna(prop, NULL, "stamp_font_id");
 	RNA_def_property_range(prop, 8, 64);
@@ -5950,6 +6080,11 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
 	RNA_def_property_boolean_funcs(prop, "rna_RenderSettings_use_shading_nodes_get", NULL);
 	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 	RNA_def_property_ui_text(prop, "Use Shading Nodes", "Active render engine uses new shading nodes system");
+
+	prop = RNA_def_property(srna, "use_spherical_stereo", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_funcs(prop, "rna_RenderSettings_use_spherical_stereo_get", NULL);
+	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+	RNA_def_property_ui_text(prop, "Use Spherical Stereo", "Active render engine supports spherical stereo rendering");
 
 	prop = RNA_def_property(srna, "use_game_engine", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_funcs(prop, "rna_RenderSettings_use_game_engine_get", NULL);
@@ -6695,6 +6830,7 @@ void RNA_def_scene(BlenderRNA *brna)
 	RNA_define_animate_sdna(false);
 	rna_def_tool_settings(brna);
 	rna_def_unified_paint_settings(brna);
+	rna_def_curve_paint_settings(brna);
 	rna_def_statvis(brna);
 	rna_def_unit_settings(brna);
 	rna_def_scene_image_format_data(brna);

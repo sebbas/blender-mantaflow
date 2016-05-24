@@ -136,6 +136,7 @@ class VIEW3D_PT_tools_add_object(View3DPanel, Panel):
 
     @staticmethod
     def draw_add_curve(layout, label=False):
+
         if label:
             layout.label(text="Bezier:")
         layout.operator("curve.primitive_bezier_curve_add", text="Bezier", icon='CURVE_BEZCURVE')
@@ -148,6 +149,10 @@ class VIEW3D_PT_tools_add_object(View3DPanel, Panel):
         layout.operator("curve.primitive_nurbs_curve_add", text="Nurbs Curve", icon='CURVE_NCURVE')
         layout.operator("curve.primitive_nurbs_circle_add", text="Nurbs Circle", icon='CURVE_NCIRCLE')
         layout.operator("curve.primitive_nurbs_path_add", text="Path", icon='CURVE_PATH')
+
+        layout.separator()
+
+        layout.operator("curve.draw", icon='LINE_DATA')
 
     @staticmethod
     def draw_add_surface(layout):
@@ -242,13 +247,19 @@ class VIEW3D_PT_tools_animation(View3DPanel, Panel):
     def draw(self, context):
         layout = self.layout
 
+        ob = context.active_object
+        mpath = ob.motion_path if ob else None
+
         draw_keyframing_tools(context, layout)
 
         col = layout.column(align=True)
         col.label(text="Motion Paths:")
-        row = col.row(align=True)
-        row.operator("object.paths_calculate", text="Calculate")
-        row.operator("object.paths_clear", text="Clear")
+        if mpath:
+            row = col.row(align=True)
+            row.operator("object.paths_update", text="Update")
+            row.operator("object.paths_clear", text="", icon='X')
+        else:
+            col.operator("object.paths_calculate", text="Calculate")
 
         col.separator()
 
@@ -540,8 +551,60 @@ class VIEW3D_PT_tools_add_curve_edit(View3DPanel, Panel):
 
         VIEW3D_PT_tools_add_object.draw_add_curve(col, label=True)
 
-# ********** default tools for editmode_surface ****************
 
+class VIEW3D_PT_tools_curveedit_options_stroke(View3DPanel, Panel):
+    bl_category = "Options"
+    bl_context = "curve_edit"
+    bl_label = "Curve Stroke"
+
+    def draw(self, context):
+        layout = self.layout
+
+        tool_settings = context.tool_settings
+        cps = tool_settings.curve_paint_settings
+
+        col = layout.column()
+
+        col.prop(cps, "curve_type")
+
+        if cps.curve_type == 'BEZIER':
+            col.label("Bezier Options:")
+            col.prop(cps, "error_threshold")
+            col.prop(cps, "use_corners_detect")
+
+            col = layout.column()
+            col.active = cps.use_corners_detect
+            col.prop(cps, "corner_angle")
+
+        col.label("Pressure Radius:")
+        row = layout.row(align=True)
+        rowsub = row.row(align=True)
+        rowsub.prop(cps, "radius_min", text="Min")
+        rowsub.prop(cps, "radius_max", text="Max")
+
+        row.prop(cps, "use_pressure_radius", text="", icon_only=True)
+
+        col = layout.column()
+        col.label("Taper Radius:")
+        row = layout.row(align=True)
+        row.prop(cps, "radius_taper_start", text="Start")
+        row.prop(cps, "radius_taper_end", text="End")
+
+        col = layout.column()
+        col.label("Projection Depth:")
+        row = layout.row(align=True)
+        row.prop(cps, "depth_mode", expand=True)
+
+        col = layout.column()
+        if cps.depth_mode == 'SURFACE':
+            col.prop(cps, "surface_offset")
+            col.prop(cps, "use_offset_absolute")
+            col.prop(cps, "use_stroke_endpoints")
+            if cps.use_stroke_endpoints:
+                colsub = layout.column(align=True)
+                colsub.prop(cps, "surface_plane", expand=True)
+
+# ********** default tools for editmode_surface ****************
 
 class VIEW3D_PT_tools_transform_surface(View3DPanel, Panel):
     bl_category = "Tools"
@@ -770,11 +833,17 @@ class VIEW3D_PT_tools_posemode(View3DPanel, Panel):
 
         draw_keyframing_tools(context, layout)
 
+        pchan = context.active_pose_bone
+        mpath = pchan.motion_path if pchan else None
+
         col = layout.column(align=True)
         col.label(text="Motion Paths:")
-        row = col.row(align=True)
-        row.operator("pose.paths_calculate", text="Calculate")
-        row.operator("pose.paths_clear", text="Clear")
+        if mpath:
+            row = col.row(align=True)
+            row.operator("pose.paths_update", text="Update")
+            row.operator("pose.paths_clear", text="", icon='X')
+        else:
+            col.operator("pose.paths_calculate", text="Calculate")
 
 
 class VIEW3D_PT_tools_posemode_options(View3DPanel, Panel):
@@ -1042,6 +1111,10 @@ class VIEW3D_PT_tools_brush(Panel, View3DPaintPanel):
             self.prop_unified_strength(row, context, brush, "use_pressure_strength")
 
             col.prop(brush, "vertex_tool", text="Blend")
+
+            if brush.vertex_tool == 'BLUR':
+                col.prop(brush, "use_accumulate")
+                col.separator()
 
             col = layout.column()
             col.prop(toolsettings, "use_auto_normalize", text="Auto Normalize")

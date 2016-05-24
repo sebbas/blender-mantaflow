@@ -1127,6 +1127,10 @@ rna_max = FloatProperty(
         precision=3,
         )
 
+rna_use_soft_limits = BoolProperty(
+        name="Use Soft Limits",
+        )
+
 
 class WM_OT_properties_edit(Operator):
     bl_idname = "wm.properties_edit"
@@ -1139,9 +1143,20 @@ class WM_OT_properties_edit(Operator):
     value = rna_value
     min = rna_min
     max = rna_max
+    use_soft_limits = rna_use_soft_limits
+    soft_min = rna_min
+    soft_max = rna_max
     description = StringProperty(
             name="Tooltip",
             )
+
+    def _cmp_props_get(self):
+        # Changing these properties will refresh the UI
+        return {
+            "use_soft_limits": self.use_soft_limits,
+            "soft_range": (self.soft_min, self.soft_max),
+            "hard_range": (self.min, self.max),
+            }
 
     def execute(self, context):
         from rna_prop_ui import (
@@ -1190,8 +1205,15 @@ class WM_OT_properties_edit(Operator):
         prop_ui = rna_idprop_ui_prop_get(item, prop)
 
         if prop_type in {float, int}:
-            prop_ui["soft_min"] = prop_ui["min"] = prop_type(self.min)
-            prop_ui["soft_max"] = prop_ui["max"] = prop_type(self.max)
+            prop_ui["min"] = prop_type(self.min)
+            prop_ui["max"] = prop_type(self.max)
+
+            if self.use_soft_limits:
+                prop_ui["soft_min"] = prop_type(self.soft_min)
+                prop_ui["soft_max"] = prop_type(self.soft_max)
+            else:
+                prop_ui["soft_min"] = prop_type(self.min)
+                prop_ui["soft_max"] = prop_type(self.max)
 
         prop_ui["description"] = self.description
 
@@ -1252,8 +1274,61 @@ class WM_OT_properties_edit(Operator):
             self.max = prop_ui.get("max", 1000000000)
             self.description = prop_ui.get("description", "")
 
+            self.soft_min = prop_ui.get("soft_min", self.min)
+            self.soft_max = prop_ui.get("soft_max", self.max)
+            self.use_soft_limits = (
+                    self.min != self.soft_min or
+                    self.max != self.soft_max)
+
+        # store for comparison
+        self._cmp_props = self._cmp_props_get()
+
         wm = context.window_manager
         return wm.invoke_props_dialog(self)
+
+    def check(self, context):
+        cmp_props = self._cmp_props_get()
+        changed = False
+        if self._cmp_props != cmp_props:
+            if cmp_props["use_soft_limits"]:
+                if cmp_props["soft_range"] != self._cmp_props["soft_range"]:
+                    self.min = min(self.min, self.soft_min)
+                    self.max = max(self.max, self.soft_max)
+                    changed = True
+                if cmp_props["hard_range"] != self._cmp_props["hard_range"]:
+                    self.soft_min = max(self.min, self.soft_min)
+                    self.soft_max = min(self.max, self.soft_max)
+                    changed = True
+            else:
+                if cmp_props["soft_range"] != cmp_props["hard_range"]:
+                    self.soft_min = self.min
+                    self.soft_max = self.max
+                    changed = True
+
+            changed |= (cmp_props["use_soft_limits"] != self._cmp_props["use_soft_limits"])
+
+            if changed:
+                cmp_props = self._cmp_props_get()
+
+            self._cmp_props = cmp_props
+
+        return changed
+
+    def draw(self, context):
+        layout = self.layout
+        layout.prop(self, "property")
+        layout.prop(self, "value")
+        row = layout.row(align=True)
+        row.prop(self, "min")
+        row.prop(self, "max")
+
+        layout.prop(self, "use_soft_limits")
+
+        row = layout.row(align=True)
+        row.enabled = self.use_soft_limits
+        row.prop(self, "soft_min", text="Soft Min")
+        row.prop(self, "soft_max", text="Soft Max")
+        layout.prop(self, "description")
 
 
 class WM_OT_properties_add(Operator):
@@ -1765,12 +1840,12 @@ class WM_OT_operator_cheat_sheet(Operator):
 
 
 # -----------------------------------------------------------------------------
-# Addon Operators
+# Add-on Operators
 
 class WM_OT_addon_enable(Operator):
     "Enable an add-on"
     bl_idname = "wm.addon_enable"
-    bl_label = "Enable Addon"
+    bl_label = "Enable Add-on"
 
     module = StringProperty(
             name="Module",
@@ -1814,7 +1889,7 @@ class WM_OT_addon_enable(Operator):
 class WM_OT_addon_disable(Operator):
     "Disable an add-on"
     bl_idname = "wm.addon_disable"
-    bl_label = "Disable Addon"
+    bl_label = "Disable Add-on"
 
     module = StringProperty(
             name="Module",
@@ -1919,7 +1994,7 @@ class WM_OT_addon_install(Operator):
 
     overwrite = BoolProperty(
             name="Overwrite",
-            description="Remove existing addons with the same ID",
+            description="Remove existing add-ons with the same ID",
             default=True,
             )
     target = EnumProperty(
@@ -1978,7 +2053,7 @@ class WM_OT_addon_install(Operator):
                 path_addons = os.path.join(path_addons, "addons")
 
         if not path_addons:
-            self.report({'ERROR'}, "Failed to get addons path")
+            self.report({'ERROR'}, "Failed to get add-ons path")
             return {'CANCELLED'}
 
         if not os.path.isdir(path_addons):
@@ -2080,7 +2155,7 @@ class WM_OT_addon_install(Operator):
 class WM_OT_addon_remove(Operator):
     "Delete the add-on from the file system"
     bl_idname = "wm.addon_remove"
-    bl_label = "Remove Addon"
+    bl_label = "Remove Add-on"
 
     module = StringProperty(
             name="Module",
@@ -2108,7 +2183,7 @@ class WM_OT_addon_remove(Operator):
 
         path, isdir = WM_OT_addon_remove.path_from_addon(self.module)
         if path is None:
-            self.report({'WARNING'}, "Addon path %r could not be found" % path)
+            self.report({'WARNING'}, "Add-on path %r could not be found" % path)
             return {'CANCELLED'}
 
         # in case its enabled
@@ -2127,7 +2202,7 @@ class WM_OT_addon_remove(Operator):
 
     # lame confirmation check
     def draw(self, context):
-        self.layout.label(text="Remove Addon: %r?" % self.module)
+        self.layout.label(text="Remove Add-on: %r?" % self.module)
         path, isdir = WM_OT_addon_remove.path_from_addon(self.module)
         self.layout.label(text="Path: %r" % path)
 

@@ -101,11 +101,6 @@
 
 #include "bmesh.h"
 
-#ifdef WIN32
-#else
-#  include <sys/time.h>
-#endif
-
 const char *RE_engine_id_BLENDER_RENDER = "BLENDER_RENDER";
 const char *RE_engine_id_BLENDER_GAME = "BLENDER_GAME";
 const char *RE_engine_id_CYCLES = "CYCLES";
@@ -550,7 +545,7 @@ void BKE_scene_init(Scene *sce)
 	sce->r.bake.im_format.compress = 15;
 
 	sce->r.scemode = R_DOCOMP | R_DOSEQ | R_EXTENSION;
-	sce->r.stamp = R_STAMP_TIME | R_STAMP_FRAME | R_STAMP_DATE | R_STAMP_CAMERA | R_STAMP_SCENE | R_STAMP_FILENAME | R_STAMP_RENDERTIME;
+	sce->r.stamp = R_STAMP_TIME | R_STAMP_FRAME | R_STAMP_DATE | R_STAMP_CAMERA | R_STAMP_SCENE | R_STAMP_FILENAME | R_STAMP_RENDERTIME | R_STAMP_MEMORY;
 	sce->r.stamp_font_id = 12;
 	sce->r.fg_stamp[0] = sce->r.fg_stamp[1] = sce->r.fg_stamp[2] = 0.8f;
 	sce->r.fg_stamp[3] = 1.0f;
@@ -616,6 +611,12 @@ void BKE_scene_init(Scene *sce)
 	sce->toolsettings->skgen_subdivisions[1] = SKGEN_SUB_LENGTH;
 	sce->toolsettings->skgen_subdivisions[2] = SKGEN_SUB_ANGLE;
 
+	sce->toolsettings->curve_paint_settings.curve_type = CU_BEZIER;
+	sce->toolsettings->curve_paint_settings.flag |= CURVE_PAINT_FLAG_CORNERS_DETECT;
+	sce->toolsettings->curve_paint_settings.error_threshold = 8;
+	sce->toolsettings->curve_paint_settings.radius_max = 1.0f;
+	sce->toolsettings->curve_paint_settings.corner_angle = DEG2RADF(70.0f);
+
 	sce->toolsettings->statvis.overhang_axis = OB_NEGZ;
 	sce->toolsettings->statvis.overhang_min = 0;
 	sce->toolsettings->statvis.overhang_max = DEG2RADF(45.0f);
@@ -650,12 +651,12 @@ void BKE_scene_init(Scene *sce)
 	pset->fade_frames = 2;
 	pset->selectmode = SCE_SELECT_PATH;
 	for (a = 0; a < PE_TOT_BRUSH; a++) {
-		pset->brush[a].strength = 0.5;
+		pset->brush[a].strength = 0.5f;
 		pset->brush[a].size = 50;
 		pset->brush[a].step = 10;
 		pset->brush[a].count = 10;
 	}
-	pset->brush[PE_BRUSH_CUT].strength = 100;
+	pset->brush[PE_BRUSH_CUT].strength = 1.0f;
 
 	sce->r.ffcodecdata.audio_mixrate = 48000;
 	sce->r.ffcodecdata.audio_volume = 1.0f;
@@ -889,7 +890,7 @@ void BKE_scene_set_background(Main *bmain, Scene *scene)
 	/* no full animation update, this to enable render code to work (render code calls own animation updates) */
 }
 
-/* called from creator.c */
+/* called from creator_args.c */
 Scene *BKE_scene_set_name(Main *bmain, const char *name)
 {
 	Scene *sce = (Scene *)BKE_libblock_find_name_ex(bmain, ID_SCE, name);
@@ -1768,7 +1769,7 @@ static void prepare_mesh_for_viewport_render(Main *bmain, Scene *scene)
 		{
 			if (check_rendered_viewport_visible(bmain)) {
 				BMesh *bm = mesh->edit_btmesh->bm;
-				BM_mesh_bm_to_me(bm, mesh, false);
+				BM_mesh_bm_to_me(bm, mesh, (&(struct BMeshToMeshParams){0}));
 				DAG_id_tag_update(&mesh->id, 0);
 			}
 		}
@@ -1810,8 +1811,8 @@ void BKE_scene_update_tagged(EvaluationContext *eval_ctx, Main *bmain, Scene *sc
 	/* clear "LIB_TAG_DOIT" flag from all materials, to prevent infinite recursion problems later
 	 * when trying to find materials with drivers that need evaluating [#32017] 
 	 */
-	BKE_main_id_tag_idcode(bmain, ID_MA, false);
-	BKE_main_id_tag_idcode(bmain, ID_LA, false);
+	BKE_main_id_tag_idcode(bmain, ID_MA, LIB_TAG_DOIT, false);
+	BKE_main_id_tag_idcode(bmain, ID_LA, LIB_TAG_DOIT, false);
 
 	/* update all objects: drivers, matrices, displists, etc. flags set
 	 * by depgraph or manual, no layer check here, gets correct flushed
@@ -1969,8 +1970,8 @@ void BKE_scene_update_for_newframe_ex(EvaluationContext *eval_ctx, Main *bmain, 
 	/* clear "LIB_TAG_DOIT" flag from all materials, to prevent infinite recursion problems later
 	 * when trying to find materials with drivers that need evaluating [#32017] 
 	 */
-	BKE_main_id_tag_idcode(bmain, ID_MA, false);
-	BKE_main_id_tag_idcode(bmain, ID_LA, false);
+	BKE_main_id_tag_idcode(bmain, ID_MA, LIB_TAG_DOIT, false);
+	BKE_main_id_tag_idcode(bmain, ID_LA, LIB_TAG_DOIT, false);
 
 	/* run rigidbody sim */
 	/* NOTE: current position is so that rigidbody sim affects other objects, might change in the future */
@@ -2190,6 +2191,12 @@ bool BKE_scene_use_shading_nodes_custom(Scene *scene)
 {
 	RenderEngineType *type = RE_engines_find(scene->r.engine);
 	return (type && type->flag & RE_USE_SHADING_NODES_CUSTOM);
+}
+
+bool BKE_scene_use_spherical_stereo(Scene *scene)
+{
+	RenderEngineType *type = RE_engines_find(scene->r.engine);
+	return (type && type->flag & RE_USE_SPHERICAL_STEREO);
 }
 
 bool BKE_scene_uses_blender_internal(const  Scene *scene)
@@ -2417,7 +2424,6 @@ SceneRenderView *BKE_scene_multiview_render_view_findindex(const RenderData *rd,
 	if ((rd->scemode & R_MULTIVIEW) == 0)
 		return NULL;
 
-	nr = 0;
 	for (srv = rd->views.first, nr = 0; srv; srv = srv->next) {
 		if (BKE_scene_multiview_is_render_view_active(rd, srv)) {
 			if (nr++ == view_id)
@@ -2448,7 +2454,6 @@ int BKE_scene_multiview_view_id_get(const RenderData *rd, const char *viewname)
 	if ((!viewname) || (!viewname[0]))
 		return 0;
 
-	nr = 0;
 	for (srv = rd->views.first, nr = 0; srv; srv = srv->next) {
 		if (BKE_scene_multiview_is_render_view_active(rd, srv)) {
 			if (STREQ(viewname, srv->name)) {
@@ -2530,13 +2535,15 @@ void BKE_scene_multiview_view_prefix_get(Scene *scene, const char *name, char *r
 
 	/* begin of extension */
 	index_act = BLI_str_rpartition(name, delims, rext, &suf_act);
+	if (*rext == NULL)
+		return;
 	BLI_assert(index_act > 0);
 	UNUSED_VARS_NDEBUG(index_act);
 
 	for (srv = scene->r.views.first; srv; srv = srv->next) {
 		if (BKE_scene_multiview_is_render_view_active(&scene->r, srv)) {
 			size_t len = strlen(srv->suffix);
-			if (STREQLEN(*rext - len, srv->suffix, len)) {
+			if (strlen(*rext) >= len && STREQLEN(*rext - len, srv->suffix, len)) {
 				BLI_strncpy(rprefix, name, strlen(name) - strlen(*rext) - len + 1);
 				break;
 			}

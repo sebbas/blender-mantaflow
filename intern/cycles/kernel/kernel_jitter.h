@@ -26,7 +26,7 @@ CCL_NAMESPACE_BEGIN
 
 ccl_device_inline bool cmj_is_pow2(int i)
 {
-	return (i & (i - 1)) == 0;
+	return (i > 1) && ((i & (i - 1)) == 0);
 }
 
 ccl_device_inline int cmj_fast_mod_pow2(int a, int b)
@@ -175,7 +175,7 @@ ccl_device void cmj_sample_2D(int s, int N, int p, float *fx, float *fy)
 #else
 	int m = float_to_int(sqrtf(N));
 #endif
-	int n = (N + m - 1)/m;
+	int n = (N - 1)/m + 1;
 	float invN = 1.0f/N;
 	float invm = 1.0f/m;
 	float invn = 1.0f/n;

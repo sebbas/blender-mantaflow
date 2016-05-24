@@ -897,6 +897,7 @@ static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
 					}
 					break;
 				case GHOST_kKeyEqual:
+				case GHOST_kKeyPlus:
 				case GHOST_kKeyNumpadPlus:
 				{
 					if (val == 0) break;
@@ -1238,12 +1239,6 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
 		exit(1);
 	}
 
-#if 0 //XXX25
-#if !defined(WIN32) && !defined(__APPLE__)
-	if (fork()) exit(0);
-#endif
-#endif //XXX25
-
 	{
 
 		GHOST_EventConsumerHandle consumer = GHOST_CreateEventConsumer(ghost_event_proc, &ps);
@@ -1528,15 +1523,11 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
 	AUD_Sound_free(source);
 	source = NULL;
 #endif
-
-#if 0 // XXX25
-	free_blender();
-#else
 	/* we still miss freeing a lot!,
 	 * but many areas could skip initialization too for anim play */
 	
 	BLF_exit();
-#endif
+
 	GHOST_DisposeWindow(g_WS.ghost_system, g_WS.ghost_window);
 
 	/* early exit, IMB and BKE should be exited only in end */

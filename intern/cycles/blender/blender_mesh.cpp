@@ -18,6 +18,7 @@
 #include "mesh.h"
 #include "object.h"
 #include "scene.h"
+#include "camera.h"
 
 #include "blender_sync.h"
 #include "blender_session.h"
@@ -80,7 +81,9 @@ inline void face_split_tri_indices(const int num_verts,
 /* Tangent Space */
 
 struct MikkUserData {
-	MikkUserData(const BL::Mesh mesh_, BL::MeshTextureFaceLayer *layer_, int num_faces_)
+	MikkUserData(const BL::Mesh& mesh_,
+	             BL::MeshTextureFaceLayer *layer_,
+	             int num_faces_)
 	: mesh(mesh_), layer(layer_), num_faces(num_faces_)
 	{
 		tangent.resize(num_faces*4);
@@ -182,7 +185,7 @@ static void mikk_set_tangent_space(const SMikkTSpaceContext *context, const floa
 	userdata->tangent[face*4 + vert] = make_float4(T[0], T[1], T[2], sign);
 }
 
-static void mikk_compute_tangents(BL::Mesh b_mesh,
+static void mikk_compute_tangents(BL::Mesh& b_mesh,
                                   BL::MeshTextureFaceLayer *b_layer,
                                   Mesh *mesh,
                                   const vector<int>& nverts,
@@ -280,7 +283,11 @@ static void mikk_compute_tangents(BL::Mesh b_mesh,
 
 /* Create Volume Attribute */
 
-static void create_mesh_volume_attribute(BL::Object b_ob, Mesh *mesh, ImageManager *image_manager, AttributeStandard std, float frame)
+static void create_mesh_volume_attribute(BL::Object& b_ob,
+                                         Mesh *mesh,
+                                         ImageManager *image_manager,
+                                         AttributeStandard std,
+                                         float frame)
 {
 	BL::SmokeDomainSettings b_domain = object_smoke_domain_find(b_ob);
 
@@ -301,11 +308,14 @@ static void create_mesh_volume_attribute(BL::Object b_ob, Mesh *mesh, ImageManag
 	        is_float,
 	        is_linear,
 	        INTERPOLATION_LINEAR,
-	        EXTENSION_REPEAT,
+	        EXTENSION_CLIP,
 	        true);
 }
 
-static void create_mesh_volume_attributes(Scene *scene, BL::Object b_ob, Mesh *mesh, float frame)
+static void create_mesh_volume_attributes(Scene *scene,
+                                          BL::Object& b_ob,
+                                          Mesh *mesh,
+                                          float frame)
 {
 	/* for smoke volume rendering */
 	if(mesh->need_attribute(scene, ATTR_STD_VOLUME_DENSITY))
@@ -323,7 +333,7 @@ static void create_mesh_volume_attributes(Scene *scene, BL::Object b_ob, Mesh *m
 /* Create vertex color attributes. */
 static void attr_create_vertex_color(Scene *scene,
                                      Mesh *mesh,
-                                     BL::Mesh b_mesh,
+                                     BL::Mesh& b_mesh,
                                      const vector<int>& nverts,
                                      const vector<int>& face_flags)
 {
@@ -370,7 +380,7 @@ static void attr_create_vertex_color(Scene *scene,
 /* Create uv map attributes. */
 static void attr_create_uv_map(Scene *scene,
                                Mesh *mesh,
-                               BL::Mesh b_mesh,
+                               BL::Mesh& b_mesh,
                                const vector<int>& nverts,
                                const vector<int>& face_flags)
 {
@@ -455,7 +465,7 @@ static void attr_create_uv_map(Scene *scene,
 /* Create vertex pointiness attributes. */
 static void attr_create_pointiness(Scene *scene,
                                    Mesh *mesh,
-                                   BL::Mesh b_mesh)
+                                   BL::Mesh& b_mesh)
 {
 	if(mesh->need_attribute(scene, ATTR_STD_POINTINESS)) {
 		const int numverts = b_mesh.vertices.length();
@@ -519,7 +529,10 @@ static void attr_create_pointiness(Scene *scene,
 
 /* Create Mesh */
 
-static void create_mesh(Scene *scene, Mesh *mesh, BL::Mesh b_mesh, const vector<uint>& used_shaders)
+static void create_mesh(Scene *scene,
+                        Mesh *mesh,
+                        BL::Mesh& b_mesh,
+                        const vector<Shader*>& used_shaders)
 {
 	/* count vertices and faces */
 	int numverts = b_mesh.vertices.length();
@@ -575,8 +588,7 @@ static void create_mesh(Scene *scene, Mesh *mesh, BL::Mesh b_mesh, const vector<
 	for(b_mesh.tessfaces.begin(f); f != b_mesh.tessfaces.end(); ++f, ++fi) {
 		int4 vi = get_int4(f->vertices_raw());
 		int n = (vi[3] == 0)? 3: 4;
-		int mi = clamp(f->material_index(), 0, used_shaders.size()-1);
-		int shader = used_shaders[mi];
+		int shader = clamp(f->material_index(), 0, used_shaders.size()-1);
 		bool smooth = f->use_smooth() || use_loop_normals;
 
 		/* split vertices if normal is different
@@ -605,18 +617,19 @@ static void create_mesh(Scene *scene, Mesh *mesh, BL::Mesh b_mesh, const vector<
 			if(is_zero(cross(mesh->verts[vi[1]] - mesh->verts[vi[0]], mesh->verts[vi[2]] - mesh->verts[vi[0]])) ||
 			   is_zero(cross(mesh->verts[vi[2]] - mesh->verts[vi[0]], mesh->verts[vi[3]] - mesh->verts[vi[0]])))
 			{
-				mesh->set_triangle(ti++, vi[0], vi[1], vi[3], shader, smooth);
-				mesh->set_triangle(ti++, vi[2], vi[3], vi[1], shader, smooth);
+				// TODO(mai): order here is probably wrong
+				mesh->set_triangle(ti++, vi[0], vi[1], vi[3], shader, smooth, true);
+				mesh->set_triangle(ti++, vi[2], vi[3], vi[1], shader, smooth, true);
 				face_flags[fi] |= FACE_FLAG_DIVIDE_24;
 			}
 			else {
-				mesh->set_triangle(ti++, vi[0], vi[1], vi[2], shader, smooth);
-				mesh->set_triangle(ti++, vi[0], vi[2], vi[3], shader, smooth);
+				mesh->set_triangle(ti++, vi[0], vi[1], vi[2], shader, smooth, true);
+				mesh->set_triangle(ti++, vi[0], vi[2], vi[3], shader, smooth, true);
 				face_flags[fi] |= FACE_FLAG_DIVIDE_13;
 			}
 		}
 		else
-			mesh->set_triangle(ti++, vi[0], vi[1], vi[2], shader, smooth);
+			mesh->set_triangle(ti++, vi[0], vi[1], vi[2], shader, smooth, false);
 
 		nverts[fi] = n;
 	}
@@ -641,51 +654,36 @@ static void create_mesh(Scene *scene, Mesh *mesh, BL::Mesh b_mesh, const vector<
 	}
 }
 
-static void create_subd_mesh(Scene *scene, Mesh *mesh, BL::Mesh b_mesh, PointerRNA *cmesh, const vector<uint>& used_shaders)
+static void create_subd_mesh(Scene *scene,
+                             Mesh *mesh,
+                             BL::Object& b_ob,
+                             BL::Mesh& b_mesh,
+                             PointerRNA *cmesh,
+                             const vector<Shader*>& used_shaders,
+                             float dicing_rate,
+                             int max_subdivisions)
 {
-	/* create subd mesh */
-	SubdMesh sdmesh;
+	Mesh basemesh;
+	create_mesh(scene, &basemesh, b_mesh, used_shaders);
 
-	/* create vertices */
-	BL::Mesh::vertices_iterator v;
+	SubdParams sdparams(mesh, 0, true, false);
+	sdparams.dicing_rate = max(0.1f, RNA_float_get(cmesh, "dicing_rate") * dicing_rate);
+	sdparams.max_level = max_subdivisions;
 
-	for(b_mesh.vertices.begin(v); v != b_mesh.vertices.end(); ++v)
-		sdmesh.add_vert(get_float3(v->co()));
-
-	/* create faces */
-	BL::Mesh::tessfaces_iterator f;
-
-	for(b_mesh.tessfaces.begin(f); f != b_mesh.tessfaces.end(); ++f) {
-		int4 vi = get_int4(f->vertices_raw());
-		int n = (vi[3] == 0) ? 3: 4;
-		//int shader = used_shaders[f->material_index()];
-
-		if(n == 4)
-			sdmesh.add_face(vi[0], vi[1], vi[2], vi[3]);
-		else
-			sdmesh.add_face(vi[0], vi[1], vi[2]);
-	}
-
-	/* finalize subd mesh */
-	sdmesh.finish();
-
-	/* parameters */
-	bool need_ptex = mesh->need_attribute(scene, ATTR_STD_PTEX_FACE_ID) ||
-	                 mesh->need_attribute(scene, ATTR_STD_PTEX_UV);
-
-	SubdParams sdparams(mesh, used_shaders[0], true, need_ptex);
-	sdparams.dicing_rate = RNA_float_get(cmesh, "dicing_rate");
-	//scene->camera->update();
-	//sdparams.camera = scene->camera;
+	scene->camera->update();
+	sdparams.camera = scene->camera;
+	sdparams.objecttoworld = get_transform(b_ob.matrix_world());
 
 	/* tesselate */
 	DiagSplit dsplit(sdparams);
-	sdmesh.tessellate(&dsplit);
+	basemesh.tessellate(&dsplit);
 }
 
 /* Sync */
 
-Mesh *BlenderSync::sync_mesh(BL::Object b_ob, bool object_updated, bool hide_tris)
+Mesh *BlenderSync::sync_mesh(BL::Object& b_ob,
+                             bool object_updated,
+                             bool hide_tris)
 {
 	/* When viewport display is not needed during render we can force some
 	 * caches to be releases from blender side in order to reduce peak memory
@@ -701,14 +699,17 @@ Mesh *BlenderSync::sync_mesh(BL::Object b_ob, bool object_updated, bool hide_tri
 	BL::Material material_override = render_layer.material_override;
 
 	/* find shader indices */
-	vector<uint> used_shaders;
+	vector<Shader*> used_shaders;
 
 	BL::Object::material_slots_iterator slot;
 	for(b_ob.material_slots.begin(slot); slot != b_ob.material_slots.end(); ++slot) {
-		if(material_override)
+		if(material_override) {
 			find_shader(material_override, used_shaders, scene->default_surface);
-		else
-			find_shader(slot->material(), used_shaders, scene->default_surface);
+		}
+		else {
+			BL::ID b_material(slot->material());
+			find_shader(b_material, used_shaders, scene->default_surface);
+		}
 	}
 
 	if(used_shaders.size() == 0) {
@@ -740,8 +741,8 @@ Mesh *BlenderSync::sync_mesh(BL::Object b_ob, bool object_updated, bool hide_tri
 			 * because the shader needs different mesh attributes */
 			bool attribute_recalc = false;
 
-			foreach(uint shader, mesh->used_shaders)
-				if(scene->shaders[shader]->need_update_attributes)
+			foreach(Shader *shader, mesh->used_shaders)
+				if(shader->need_update_attributes)
 					attribute_recalc = true;
 
 			if(!attribute_recalc)
@@ -783,8 +784,9 @@ Mesh *BlenderSync::sync_mesh(BL::Object b_ob, bool object_updated, bool hide_tri
 
 		if(b_mesh) {
 			if(render_layer.use_surfaces && !hide_tris) {
-				if(cmesh.data && experimental && RNA_boolean_get(&cmesh, "use_subdivision"))
-					create_subd_mesh(scene, mesh, b_mesh, &cmesh, used_shaders);
+				if(cmesh.data && experimental && RNA_enum_get(&cmesh, "subdivision_type"))
+					create_subd_mesh(scene, mesh, b_ob, b_mesh, &cmesh, used_shaders,
+					                 dicing_rate, max_subdivisions);
 				else
 					create_mesh(scene, mesh, b_mesh, used_shaders);
 
@@ -806,7 +808,10 @@ Mesh *BlenderSync::sync_mesh(BL::Object b_ob, bool object_updated, bool hide_tri
 
 	/* displacement method */
 	if(cmesh.data) {
-		const int method = RNA_enum_get(&cmesh, "displacement_method");
+		const int method = get_enum(cmesh,
+		                            "displacement_method",
+		                            Mesh::DISPLACE_NUM_METHODS,
+		                            Mesh::DISPLACE_BUMP);
 
 		if(method == 0 || !experimental)
 			mesh->displacement_method = Mesh::DISPLACE_BUMP;
@@ -838,7 +843,9 @@ Mesh *BlenderSync::sync_mesh(BL::Object b_ob, bool object_updated, bool hide_tri
 	return mesh;
 }
 
-void BlenderSync::sync_mesh_motion(BL::Object b_ob, Object *object, float motion_time)
+void BlenderSync::sync_mesh_motion(BL::Object& b_ob,
+                                   Object *object,
+                                   float motion_time)
 {
 	/* ensure we only sync instanced meshes once */
 	Mesh *mesh = object->mesh;
@@ -968,7 +975,12 @@ void BlenderSync::sync_mesh_motion(BL::Object b_ob, Object *object, float motion
 			   memcmp(mP, &mesh->verts[0], sizeof(float3)*numverts) == 0)
 			{
 				/* no motion, remove attributes again */
-				VLOG(1) << "No actual deformation motion for object " << b_ob.name();
+				if(b_mesh.vertices.length() != numverts) {
+					VLOG(1) << "Topology differs, disabling motion blur.";
+				}
+				else {
+					VLOG(1) << "No actual deformation motion for object " << b_ob.name();
+				}
 				mesh->attributes.remove(ATTR_STD_MOTION_VERTEX_POSITION);
 				if(attr_mN)
 					mesh->attributes.remove(ATTR_STD_MOTION_VERTEX_NORMAL);

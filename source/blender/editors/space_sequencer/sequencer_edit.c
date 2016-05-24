@@ -35,7 +35,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_fileops.h"
 #include "BLI_ghash.h"
 #include "BLI_math.h"
 #include "BLI_timecode.h"
@@ -62,6 +61,7 @@
 
 /* for menu/popup icons etc etc*/
 
+#include "ED_anim_api.h"
 #include "ED_numinput.h"
 #include "ED_screen.h"
 #include "ED_transform.h"
@@ -686,6 +686,14 @@ static Sequence *cut_seq_hard(Scene *scene, Sequence *seq, int cutframe)
 	/* First Strip! */
 	/* strips with extended stillfames before */
 	
+	/* Precaution, needed because the length saved on-disk may not match the length saved in the blend file,
+	 * or our code may have minor differences reading file length between versions.
+	 * This causes hard-cut to fail, see: T47862 */
+	if (seq->type != SEQ_TYPE_META) {
+		BKE_sequence_reload_new_file(scene, seq, true);
+		BKE_sequence_calc(scene, seq);
+	}
+
 	if ((seq->startstill) && (cutframe < seq->start)) {
 		/* don't do funny things with METAs ... */
 		if (seq->type == SEQ_TYPE_META) {
@@ -927,37 +935,6 @@ static bool sequence_offset_after_frame(Scene *scene, const int delta, const int
 	}
 
 	return done;
-}
-
-static void UNUSED_FUNCTION(touch_seq_files) (Scene *scene)
-{
-	Sequence *seq;
-	Editing *ed = BKE_sequencer_editing_get(scene, false);
-	char str[256];
-
-	/* touch all strips with movies */
-	
-	if (ed == NULL) return;
-
-	// XXX25 if (okee("Touch and print selected movies")==0) return;
-
-	WM_cursor_wait(1);
-
-	SEQP_BEGIN (ed, seq)
-	{
-		if (seq->flag & SELECT) {
-			if (seq->type == SEQ_TYPE_MOVIE) {
-				if (seq->strip && seq->strip->stripdata) {
-					BLI_make_file_string(G.main->name, str, seq->strip->dir, seq->strip->stripdata->name);
-					BLI_file_touch(seq->name);
-				}
-			}
-
-		}
-	}
-	SEQ_END
-
-	WM_cursor_wait(0);
 }
 
 #if 0
@@ -1529,23 +1506,20 @@ static int sequencer_slip_exec(bContext *C, wmOperator *op)
 
 static void sequencer_slip_update_header(Scene *scene, ScrArea *sa, SlipData *data, int offset)
 {
-#define HEADER_LENGTH 40
-	char msg[HEADER_LENGTH];
+	char msg[UI_MAX_DRAW_STR];
 
 	if (sa) {
 		if (hasNumInput(&data->num_input)) {
 			char num_str[NUM_STR_REP_LEN];
 			outputNumInput(&data->num_input, num_str, &scene->unit);
-			BLI_snprintf(msg, HEADER_LENGTH, "Trim offset: %s", num_str);
+			BLI_snprintf(msg, sizeof(msg), IFACE_("Trim offset: %s"), num_str);
 		}
 		else {
-			BLI_snprintf(msg, HEADER_LENGTH, "Trim offset: %d", offset);
+			BLI_snprintf(msg, sizeof(msg), IFACE_("Trim offset: %d"), offset);
 		}
 	}
 
 	ED_area_headerprint(sa, msg);
-
-#undef HEADER_LENGTH
 }
 
 static int sequencer_slip_modal(bContext *C, wmOperator *op, const wmEvent *event)
@@ -2458,7 +2432,7 @@ void SEQUENCER_OT_images_separate(wmOperatorType *ot)
 	
 	/* api callbacks */
 	ot->exec = sequencer_separate_images_exec;
-	ot->invoke = WM_operator_props_popup;
+	ot->invoke = WM_operator_props_popup_confirm;
 	ot->poll = sequencer_edit_poll;
 	
 	/* flags */
@@ -2719,6 +2693,29 @@ void SEQUENCER_OT_view_all(wmOperatorType *ot)
 	
 	/* flags */
 	ot->flag = OPTYPE_REGISTER;
+}
+
+static int sequencer_view_frame_exec(bContext *C, wmOperator *op)
+{
+	const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
+	ANIM_center_frame(C, smooth_viewtx);
+	
+	return OPERATOR_FINISHED;
+}
+
+void SEQUENCER_OT_view_frame(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "View Frame";
+	ot->idname = "SEQUENCER_OT_view_frame";
+	ot->description = "Reset viewable area to show range around current frame";
+	
+	/* api callbacks */
+	ot->exec = sequencer_view_frame_exec;
+	ot->poll = ED_operator_sequencer_active;
+	
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
 /* view_all operator */
@@ -3843,9 +3840,10 @@ void SEQUENCER_OT_change_path(struct wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-	WM_operator_properties_filesel(ot, FILE_TYPE_FOLDER, FILE_SPECIAL, FILE_OPENFILE,
-	                               WM_FILESEL_DIRECTORY | WM_FILESEL_RELPATH | WM_FILESEL_FILEPATH | WM_FILESEL_FILES,
-	                               FILE_DEFAULTDISPLAY, FILE_SORT_ALPHA);
+	WM_operator_properties_filesel(
+	        ot, FILE_TYPE_FOLDER, FILE_SPECIAL, FILE_OPENFILE,
+	        WM_FILESEL_DIRECTORY | WM_FILESEL_RELPATH | WM_FILESEL_FILEPATH | WM_FILESEL_FILES,
+	        FILE_DEFAULTDISPLAY, FILE_SORT_ALPHA);
 	RNA_def_boolean(ot->srna, "use_placeholders", false, "Use Placeholders", "Use placeholders for missing frames of the strip");
 }
 
@@ -3960,6 +3958,7 @@ void SEQUENCER_OT_export_subtitles(struct wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-	WM_operator_properties_filesel(ot,  FILE_TYPE_FOLDER, FILE_BLENDER, FILE_SAVE,
-	                               WM_FILESEL_FILEPATH, FILE_DEFAULTDISPLAY, FILE_SORT_ALPHA);
+	WM_operator_properties_filesel(
+	        ot,  FILE_TYPE_FOLDER, FILE_BLENDER, FILE_SAVE,
+	        WM_FILESEL_FILEPATH, FILE_DEFAULTDISPLAY, FILE_SORT_ALPHA);
 }

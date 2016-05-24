@@ -839,6 +839,14 @@ bool isect_seg_seg_v2_simple(const float v1[2], const float v2[2], const float v
  * \param l1, l2: Coordinates (point of line).
  * \param sp, r:  Coordinate and radius (sphere).
  * \return r_p1, r_p2: Intersection coordinates.
+ *
+ * \note The order of assignment for intersection points (\a r_p1, \a r_p2) is predictable,
+ * based on the direction defined by ``l2 - l1``,
+ * this direction compared with the normal of each point on the sphere:
+ * \a r_p1 always has a >= 0.0 dot product.
+ * \a r_p2 always has a <= 0.0 dot product.
+ * For example, when \a l1 is inside the sphere and \a l2 is outside,
+ * \a r_p1 will always be between \a l1 and \a l2.
  */
 int isect_line_sphere_v3(const float l1[3], const float l2[3],
                          const float sp[3], const float r,
@@ -2262,13 +2270,13 @@ void dist_squared_ray_to_aabb_v3_precalc(
 
 	for (int i = 0; i < 3; i++) {
 		data->ray_origin[i] = ray_origin[i];
-		data->ray_dot_axis[i] = ray_direction[i];
-		data->idot_axis[i] = (data->ray_dot_axis[i] != 0.0f) ? (1.0f / data->ray_dot_axis[i]) : FLT_MAX;
-		/* It has to be a function of `idot_axis`,
+		data->ray_direction[i] = ray_direction[i];
+		data->ray_inv_dir[i] = (data->ray_direction[i] != 0.0f) ? (1.0f / data->ray_direction[i]) : FLT_MAX;
+		/* It has to be a function of `ray_inv_dir`,
 		 * since the division of 1 by 0.0f, can be -inf or +inf */
-		data->sign[i] = (data->idot_axis[i] < 0.0f);
+		data->sign[i] = (data->ray_inv_dir[i] < 0.0f);
 
-		dir_sq[i] = SQUARE(data->ray_dot_axis[i]);
+		dir_sq[i] = SQUARE(data->ray_direction[i]);
 	}
 
 	/* `diag_sq` Length square of each face diagonal */
@@ -2281,9 +2289,9 @@ void dist_squared_ray_to_aabb_v3_precalc(
 	data->idiag_sq[1] = (diag_sq[1] > FLT_EPSILON) ? (1.0f / diag_sq[1]) : FLT_MAX;
 	data->idiag_sq[2] = (diag_sq[2] > FLT_EPSILON) ? (1.0f / diag_sq[2]) : FLT_MAX;
 
-	data->cdot_axis[0] = data->ray_dot_axis[0] * data->idiag_sq[0];
-	data->cdot_axis[1] = data->ray_dot_axis[1] * data->idiag_sq[1];
-	data->cdot_axis[2] = data->ray_dot_axis[2] * data->idiag_sq[2];
+	data->cdot_axis[0] = data->ray_direction[0] * data->idiag_sq[0];
+	data->cdot_axis[1] = data->ray_direction[1] * data->idiag_sq[1];
+	data->cdot_axis[2] = data->ray_direction[2] * data->idiag_sq[2];
 }
 
 /**
@@ -2329,18 +2337,18 @@ float dist_squared_ray_to_aabb_v3(
 	}
 
 	const float tmin[3] = {
-		local_bvmin[0] * data->idot_axis[0],
-		local_bvmin[1] * data->idot_axis[1],
-		local_bvmin[2] * data->idot_axis[2],
+		local_bvmin[0] * data->ray_inv_dir[0],
+		local_bvmin[1] * data->ray_inv_dir[1],
+		local_bvmin[2] * data->ray_inv_dir[2],
 	};
 
 	/* `tmax` is a vector that has the longer distances to each of the
 	 * infinite planes of the `AABB` faces (hit in farthest face X plane,
 	 * farthest face Y plane and farthest face Z plane) */
 	const float tmax[3] = {
-		local_bvmax[0] * data->idot_axis[0],
-		local_bvmax[1] * data->idot_axis[1],
-		local_bvmax[2] * data->idot_axis[2],
+		local_bvmax[0] * data->ray_inv_dir[0],
+		local_bvmax[1] * data->ray_inv_dir[1],
+		local_bvmax[2] * data->ray_inv_dir[2],
 	};
 	/* `v1` and `v3` is be the coordinates of the nearest `AABB` edge to the ray*/
 	float v1[3], v2[3];
@@ -2359,7 +2367,7 @@ float dist_squared_ray_to_aabb_v3(
 		// printf("# Hit in X %s\n", data->sign[0] ? "min", "max");
 		rtmax = tmax[0];
 		v1[0] = v2[0] = local_bvmax[0];
-		mul = local_bvmax[0] * data->ray_dot_axis[0];
+		mul = local_bvmax[0] * data->ray_direction[0];
 		main_axis = 3;
 		r_axis_closest[0] = data->sign[0];
 	}
@@ -2367,7 +2375,7 @@ float dist_squared_ray_to_aabb_v3(
 		// printf("# Hit in Y %s\n", data->sign[1] ? "min", "max");
 		rtmax = tmax[1];
 		v1[1] = v2[1] = local_bvmax[1];
-		mul = local_bvmax[1] * data->ray_dot_axis[1];
+		mul = local_bvmax[1] * data->ray_direction[1];
 		main_axis = 2;
 		r_axis_closest[1] = data->sign[1];
 	}
@@ -2375,7 +2383,7 @@ float dist_squared_ray_to_aabb_v3(
 		// printf("# Hit in Z %s\n", data->sign[2] ? "min", "max");
 		rtmax = tmax[2];
 		v1[2] = v2[2] = local_bvmax[2];
-		mul = local_bvmax[2] * data->ray_dot_axis[2];
+		mul = local_bvmax[2] * data->ray_direction[2];
 		main_axis = 1;
 		r_axis_closest[2] = data->sign[2];
 	}
@@ -2385,7 +2393,7 @@ float dist_squared_ray_to_aabb_v3(
 		// printf("# To X %s\n", data->sign[0] ? "max", "min");
 		rtmin = tmin[0];
 		v1[0] = v2[0] = local_bvmin[0];
-		mul += local_bvmin[0] * data->ray_dot_axis[0];
+		mul += local_bvmin[0] * data->ray_direction[0];
 		main_axis -= 3;
 		r_axis_closest[0] = !data->sign[0];
 	}
@@ -2393,7 +2401,7 @@ float dist_squared_ray_to_aabb_v3(
 		// printf("# To Y %s\n", data->sign[1] ? "max", "min");
 		rtmin = tmin[1];
 		v1[1] = v2[1] = local_bvmin[1];
-		mul += local_bvmin[1] * data->ray_dot_axis[1];
+		mul += local_bvmin[1] * data->ray_direction[1];
 		main_axis -= 1;
 		r_axis_closest[1] = !data->sign[1];
 	}
@@ -2401,7 +2409,7 @@ float dist_squared_ray_to_aabb_v3(
 		// printf("# To Z %s\n", data->sign[2] ? "max", "min");
 		rtmin = tmin[2];
 		v1[2] = v2[2] = local_bvmin[2];
-		mul += local_bvmin[2] * data->ray_dot_axis[2];
+		mul += local_bvmin[2] * data->ray_direction[2];
 		main_axis -= 2;
 		r_axis_closest[2] = !data->sign[2];
 	}
@@ -2428,7 +2436,7 @@ float dist_squared_ray_to_aabb_v3(
 
 	/* if rtmin < rtmax, ray intersect `AABB` */
 	if (rtmin <= rtmax) {
-		const float proj = rtmin * data->ray_dot_axis[main_axis];
+		const float proj = rtmin * data->ray_direction[main_axis];
 		rdist = 0.0f;
 		r_axis_closest[main_axis] = (proj - v1[main_axis]) < (v2[main_axis] - proj);
 	}
@@ -2440,12 +2448,12 @@ float dist_squared_ray_to_aabb_v3(
 			/* `depth` is equivalent the distance from the origin to the point v1,
 			 * Here's a faster way to calculate the dot product of v1 and ray
 			 * (depth = dot_v3v3(v1, data->ray.direction))*/
-			depth = mul + data->ray_dot_axis[main_axis] * v1[main_axis];
+			depth = mul + data->ray_direction[main_axis] * v1[main_axis];
 			rdist = len_squared_v3(v1) - SQUARE(depth);
 			r_axis_closest[main_axis] = true;
 		}
 		else if (v2[main_axis] < proj) {  /* the nearest point of the ray is the point v2 */
-			depth = mul + data->ray_dot_axis[main_axis] * v2[main_axis];
+			depth = mul + data->ray_direction[main_axis] * v2[main_axis];
 			rdist = len_squared_v3(v2) - SQUARE(depth);
 			r_axis_closest[main_axis] = false;
 		}
@@ -2453,16 +2461,16 @@ float dist_squared_ray_to_aabb_v3(
 			float v[2];
 			mul *= data->idiag_sq[main_axis];
 			if (main_axis == 0) {
-				v[0] = (mul * data->ray_dot_axis[1]) - v1[1];
-				v[1] = (mul * data->ray_dot_axis[2]) - v1[2];
+				v[0] = (mul * data->ray_direction[1]) - v1[1];
+				v[1] = (mul * data->ray_direction[2]) - v1[2];
 			}
 			else if (main_axis == 1) {
-				v[0] = (mul * data->ray_dot_axis[0]) - v1[0];
-				v[1] = (mul * data->ray_dot_axis[2]) - v1[2];
+				v[0] = (mul * data->ray_direction[0]) - v1[0];
+				v[1] = (mul * data->ray_direction[2]) - v1[2];
 			}
 			else {
-				v[0] = (mul * data->ray_dot_axis[0]) - v1[0];
-				v[1] = (mul * data->ray_dot_axis[1]) - v1[1];
+				v[0] = (mul * data->ray_direction[0]) - v1[0];
+				v[1] = (mul * data->ray_direction[1]) - v1[1];
 			}
 			rdist = len_squared_v2(v);
 			r_axis_closest[main_axis] = (proj - v1[main_axis]) < (v2[main_axis] - proj);
@@ -2498,6 +2506,22 @@ float closest_to_line_v2(float r_close[2], const float p[2], const float l1[2], 
 	return lambda;
 }
 
+float ray_point_factor_v3_ex(
+        const float p[3], const float ray_origin[3], const float ray_direction[3],
+        const float epsilon, const float fallback)
+{
+	float p_relative[3];
+	sub_v3_v3v3(p_relative, p, ray_origin);
+	const float dot = len_squared_v3(ray_direction);
+	return (dot > epsilon) ? (dot_v3v3(ray_direction, p_relative) / dot) : fallback;
+}
+
+float ray_point_factor_v3(
+        const float p[3], const float ray_origin[3], const float ray_direction[3])
+{
+	return ray_point_factor_v3_ex(p, ray_origin, ray_direction, 0.0f, 0.0f);
+}
+
 /**
  * A simplified version of #closest_to_line_v3
  * we only need to return the ``lambda``
@@ -2517,8 +2541,8 @@ float line_point_factor_v3_ex(
 	return (dot_v3v3(u, h) / dot_v3v3(u, u));
 #else
 	/* better check for zero */
-	dot = dot_v3v3(u, u);
-	return (fabsf(dot) > epsilon) ? (dot_v3v3(u, h) / dot) : fallback;
+	dot = len_squared_v3(u);
+	return (dot > epsilon) ? (dot_v3v3(u, h) / dot) : fallback;
 #endif
 }
 float line_point_factor_v3(
@@ -2539,8 +2563,8 @@ float line_point_factor_v2_ex(
 	return (dot_v2v2(u, h) / dot_v2v2(u, u));
 #else
 	/* better check for zero */
-	dot = dot_v2v2(u, u);
-	return (fabsf(dot) > epsilon) ? (dot_v2v2(u, h) / dot) : fallback;
+	dot = len_squared_v2(u);
+	return (dot > epsilon) ? (dot_v2v2(u, h) / dot) : fallback;
 #endif
 }
 
@@ -2811,8 +2835,8 @@ void plot_line_v2v2i(const int p1[2], const int p2[2], bool (*callback)(int, int
 	signed char iy;
 
 	/* if x1 == x2 or y1 == y2, then it does not matter what we set here */
-	int delta_x = (x2 > x1 ? (ix = 1, x2 - x1) : (ix = -1, x1 - x2)) << 1;
-	int delta_y = (y2 > y1 ? (iy = 1, y2 - y1) : (iy = -1, y1 - y2)) << 1;
+	int delta_x = (x2 > x1 ? ((void)(ix = 1), x2 - x1) : ((void)(ix = -1), x1 - x2)) << 1;
+	int delta_y = (y2 > y1 ? ((void)(iy = 1), y2 - y1) : ((void)(iy = -1), y1 - y2)) << 1;
 
 	if (callback(x1, y1, userData) == 0) {
 		return;
@@ -4837,55 +4861,59 @@ float form_factor_hemi_poly(float p[3], float n[3], float v1[3], float v2[3], fl
 	return contrib;
 }
 
-/* evaluate if entire quad is a proper convex quad */
+/**
+ * Evaluate if entire quad is a proper convex quad
+ */
 bool is_quad_convex_v3(const float v1[3], const float v2[3], const float v3[3], const float v4[3])
 {
-	float nor[3], nor_a[3], nor_b[3], vec[4][2];
-	float mat[3][3];
-	const bool is_ok_a = (normal_tri_v3(nor_a, v1, v2, v3) > FLT_EPSILON);
-	const bool is_ok_b = (normal_tri_v3(nor_b, v1, v3, v4) > FLT_EPSILON);
+	/**
+	 * Method projects points onto a plane and checks its convex using following method:
+	 *
+	 * - Create a plane from the cross-product of both diagonal vectors.
+	 * - Project all points onto the plane.
+	 * - Subtract for direction vectors.
+	 * - Return true if all corners cross-products point the direction of the plane.
+	 */
 
-	/* define projection, do both trias apart, quad is undefined! */
+	/* non-unit length normal, used as a projection plane */
+	float plane[3];
 
-	/* check normal length incase one size is zero area */
-	if (is_ok_a) {
-		if (is_ok_b) {
-			/* use both, most common outcome */
+	{
+		float v13[3], v24[3];
 
-			/* when the face is folded over as 2 tris we probably don't want to create
-			 * a quad from it, but go ahead with the intersection test since this
-			 * isn't a function for degenerate faces */
-			if (UNLIKELY(dot_v3v3(nor_a, nor_b) < 0.0f)) {
-				/* flip so adding normals in the opposite direction
-				 * doesn't give a zero length vector */
-				negate_v3(nor_b);
-			}
+		sub_v3_v3v3(v13, v1, v3);
+		sub_v3_v3v3(v24, v2, v4);
 
-			add_v3_v3v3(nor, nor_a, nor_b);
-			normalize_v3(nor);
-		}
-		else {
-			copy_v3_v3(nor, nor_a);  /* only 'a' */
-		}
-	}
-	else {
-		if (is_ok_b) {
-			copy_v3_v3(nor, nor_b);  /* only 'b' */
-		}
-		else {
-			return false;  /* both zero, we can't do anything useful here */
+		cross_v3_v3v3(plane, v13, v24);
+
+		if (len_squared_v3(plane) < FLT_EPSILON) {
+			return false;
 		}
 	}
 
-	axis_dominant_v3_to_m3(mat, nor);
+	const float *quad_coords[4] = {v1, v2, v3, v4};
+	float        quad_proj[4][3];
 
-	mul_v2_m3v3(vec[0], mat, v1);
-	mul_v2_m3v3(vec[1], mat, v2);
-	mul_v2_m3v3(vec[2], mat, v3);
-	mul_v2_m3v3(vec[3], mat, v4);
+	for (int i = 0; i < 4; i++) {
+		project_plane_v3_v3v3(quad_proj[i], quad_coords[i], plane);
+	}
 
-	/* linetests, the 2 diagonals have to instersect to be convex */
-	return (isect_seg_seg_v2(vec[0], vec[2], vec[1], vec[3]) > 0);
+	float        quad_dirs[4][3];
+	for (int i = 0, j = 3; i < 4; j = i++) {
+		sub_v3_v3v3(quad_dirs[i], quad_proj[i], quad_proj[j]);
+	}
+
+	float test_dir[3];
+
+#define CROSS_SIGN(dir_a, dir_b) \
+	((void)cross_v3_v3v3(test_dir, dir_a, dir_b), (dot_v3v3(plane, test_dir) > 0.0f))
+
+	return (CROSS_SIGN(quad_dirs[0], quad_dirs[1]) &&
+	        CROSS_SIGN(quad_dirs[1], quad_dirs[2]) &&
+	        CROSS_SIGN(quad_dirs[2], quad_dirs[3]) &&
+	        CROSS_SIGN(quad_dirs[3], quad_dirs[0]));
+
+#undef CROSS_SIGN
 }
 
 bool is_quad_convex_v2(const float v1[2], const float v2[2], const float v3[2], const float v4[2])
@@ -4959,4 +4987,38 @@ int is_quad_flip_v3(const float v1[3], const float v2[3], const float v3[3], con
 	ret |= ((dot_v3v3(cross_a, cross_b) < 0.0f) << 1);
 
 	return ret;
+}
+
+/**
+ * Return the value which the distance between points will need to be scaled by,
+ * to define a handle, given both points are on a perfect circle.
+ *
+ * Use when we want a bezier curve to match a circle as closely as possible.
+ *
+ * \note the return value will need to be divided by 0.75 for correct results.
+ */
+float cubic_tangent_factor_circle_v3(const float tan_l[3], const float tan_r[3])
+{
+	BLI_ASSERT_UNIT_V3(tan_l);
+	BLI_ASSERT_UNIT_V3(tan_r);
+
+	const float eps = 1e-7f;
+	const float tan_dot = dot_v3v3(tan_l, tan_r);
+	if (tan_dot > 1.0f - eps) {
+		/* no angle difference (use fallback, length wont make any difference) */
+		return (1.0f / 3.0f) * 0.75f;
+	}
+	else if (tan_dot < -1.0f + eps) {
+		/* parallele tangents (half-circle) */
+		return (1.0f / 2.0f);
+	}
+	else {
+		/* non-aligned tangents, calculate handle length */
+		const float angle = acosf(tan_dot) / 2.0f;
+
+		/* could also use 'angle_sin = len_vnvn(tan_l, tan_r, dims) / 2.0' */
+		const float angle_sin = sinf(angle);
+		const float angle_cos = cosf(angle);
+		return ((1.0f - angle_cos) / (angle_sin * 2.0f)) / angle_sin;
+	}
 }

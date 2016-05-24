@@ -55,7 +55,6 @@ set(SRC_HEADERS
 	kernel_queues.h
 	kernel_random.h
 	kernel_shader.h
-	kernel_shaderdata_vars.h
 	kernel_shadow.h
 	kernel_subsurface.h
 	kernel_textures.h
@@ -68,6 +67,7 @@ set(SRC_KERNELS_CPU_HEADERS
 	kernel.h
 	kernels/cpu/kernel_cpu.h
 	kernels/cpu/kernel_cpu_impl.h
+	kernels/cpu/kernel_cpu_image.h
 )
 
 set(SRC_CLOSURE_HEADERS
@@ -166,6 +166,7 @@ set(SRC_UTIL_HEADERS
 	../util/util_math.h
 	../util/util_math_fast.h
 	../util/util_transform.h
+	../util/util_texture.h
 	../util/util_types.h
 )
 
@@ -187,7 +188,7 @@ set(SRC_SPLIT_HEADERS
 
 if(WITH_CYCLES_CUDA_BINARIES)
 	# 32 bit or 64 bit
-	if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
+	if(CUDA_64_BIT_DEVICE_CODE)
 		set(CUDA_BITS 64)
 	else()
 		set(CUDA_BITS 32)
@@ -195,16 +196,16 @@ if(WITH_CYCLES_CUDA_BINARIES)
 
 	# CUDA version
 	execute_process(COMMAND ${CUDA_NVCC_EXECUTABLE} "--version" OUTPUT_VARIABLE NVCC_OUT)
-	string(REGEX REPLACE ".*release ([0-9]+)\\.([0-9]+).*" "\\1" CUDA_VERSION_MAJOR ${NVCC_OUT})
-	string(REGEX REPLACE ".*release ([0-9]+)\\.([0-9]+).*" "\\2" CUDA_VERSION_MINOR ${NVCC_OUT})
+	string(REGEX REPLACE ".*release ([0-9]+)\\.([0-9]+).*" "\\1" CUDA_VERSION_MAJOR "${NVCC_OUT}")
+	string(REGEX REPLACE ".*release ([0-9]+)\\.([0-9]+).*" "\\2" CUDA_VERSION_MINOR "${NVCC_OUT}")
 	set(CUDA_VERSION "${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}")
 
 	# warn for other versions
-	if(CUDA_VERSION MATCHES "65")
+	if(CUDA_VERSION MATCHES "75")
 	else()
 		message(WARNING
 			"CUDA version ${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR} detected, "
-			"build may succeed but only CUDA 6.5 is officially supported")
+			"build may succeed but only CUDA 7.5 is officially supported")
 	endif()
 
 	# build for each arch

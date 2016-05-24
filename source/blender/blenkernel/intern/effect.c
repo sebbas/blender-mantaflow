@@ -746,18 +746,20 @@ static void do_texture_effector(EffectorCache *eff, EffectorData *efd, EffectedP
 
 	copy_v3_v3(tex_co, point->loc);
 
-	if (eff->pd->flag & PFIELD_TEX_2D) {
+	if (eff->pd->flag & PFIELD_TEX_OBJECT) {
+		mul_m4_v3(eff->ob->imat, tex_co);
+
+		if (eff->pd->flag & PFIELD_TEX_2D)
+			tex_co[2] = 0.0f;
+	}
+	else if (eff->pd->flag & PFIELD_TEX_2D) {
 		float fac=-dot_v3v3(tex_co, efd->nor);
 		madd_v3_v3fl(tex_co, efd->nor, fac);
 	}
 
-	if (eff->pd->flag & PFIELD_TEX_OBJECT) {
-		mul_m4_v3(eff->ob->imat, tex_co);
-	}
-
 	scene_color_manage = BKE_scene_check_color_management_enabled(eff->scene);
 
-	hasrgb = multitex_ext(eff->pd->tex, tex_co, NULL, NULL, 0, result, NULL, scene_color_manage, false);
+	hasrgb = multitex_ext(eff->pd->tex, tex_co, NULL, NULL, 0, result, 0, NULL, scene_color_manage, false);
 
 	if (hasrgb && mode==PFIELD_TEX_RGB) {
 		force[0] = (0.5f - result->tr) * strength;
@@ -768,15 +770,15 @@ static void do_texture_effector(EffectorCache *eff, EffectorData *efd, EffectedP
 		strength/=nabla;
 
 		tex_co[0] += nabla;
-		multitex_ext(eff->pd->tex, tex_co, NULL, NULL, 0, result+1, NULL, scene_color_manage, false);
+		multitex_ext(eff->pd->tex, tex_co, NULL, NULL, 0, result+1, 0, NULL, scene_color_manage, false);
 
 		tex_co[0] -= nabla;
 		tex_co[1] += nabla;
-		multitex_ext(eff->pd->tex, tex_co, NULL, NULL, 0, result+2, NULL, scene_color_manage, false);
+		multitex_ext(eff->pd->tex, tex_co, NULL, NULL, 0, result+2, 0, NULL, scene_color_manage, false);
 
 		tex_co[1] -= nabla;
 		tex_co[2] += nabla;
-		multitex_ext(eff->pd->tex, tex_co, NULL, NULL, 0, result+3, NULL, scene_color_manage, false);
+		multitex_ext(eff->pd->tex, tex_co, NULL, NULL, 0, result+3, 0, NULL, scene_color_manage, false);
 
 		if (mode == PFIELD_TEX_GRAD || !hasrgb) { /* if we don't have rgb fall back to grad */
 			/* generate intensity if texture only has rgb value */

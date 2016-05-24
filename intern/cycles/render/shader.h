@@ -18,20 +18,15 @@
 #define __SHADER_H__
 
 #ifdef WITH_OSL
-#  if defined(_MSC_VER)
-/* Prevent OSL from polluting the context with weird macros from windows.h.
- * TODO(sergey): Ideally it's only enough to have class/struct declarations in
- * the header and skip header include here.
- */
-#    define NOGDI
-#    define NOMINMAX
-#    define WIN32_LEAN_AND_MEAN
-#  endif
+/* So no context pollution happens from indirectly included windows.h */
+#  include "util_windows.h"
 #  include <OSL/oslexec.h>
 #endif
 
 #include "attribute.h"
 #include "kernel_types.h"
+
+#include "node.h"
 
 #include "util_map.h"
 #include "util_param.h"
@@ -60,11 +55,15 @@ enum VolumeSampling {
 	VOLUME_SAMPLING_DISTANCE = 0,
 	VOLUME_SAMPLING_EQUIANGULAR = 1,
 	VOLUME_SAMPLING_MULTIPLE_IMPORTANCE = 2,
+
+	VOLUME_NUM_SAMPLING,
 };
 
 enum VolumeInterpolation {
 	VOLUME_INTERPOLATION_LINEAR = 0,
 	VOLUME_INTERPOLATION_CUBIC = 1,
+
+	VOLUME_NUM_INTERPOLATION,
 };
 
 /* Shader describing the appearance of a Mesh, Light or Background.
@@ -73,10 +72,10 @@ enum VolumeInterpolation {
  * volume and displacement, that the shader manager will compile and execute
  * separately. */
 
-class Shader {
+class Shader : public Node {
 public:
-	/* name */
-	string name;
+	NODE_DECLARE;
+
 	int pass_id;
 
 	/* shader graph */
@@ -106,7 +105,8 @@ public:
 	bool has_displacement;
 	bool has_surface_bssrdf;
 	bool has_bssrdf_bump;
-	bool has_heterogeneous_volume;
+	bool has_surface_spatial_varying;
+	bool has_volume_spatial_varying;
 	bool has_object_dependency;
 	bool has_integrator_dependency;
 
@@ -114,6 +114,7 @@ public:
 	AttributeRequestSet attributes;
 
 	/* determined before compiling */
+	uint id;
 	bool used;
 
 #ifdef WITH_OSL
@@ -161,7 +162,7 @@ public:
 	uint get_attribute_id(AttributeStandard std);
 
 	/* get shader id for mesh faces */
-	int get_shader_id(uint shader, Mesh *mesh = NULL, bool smooth = false);
+	int get_shader_id(Shader *shader, Mesh *mesh = NULL, bool smooth = false);
 
 	/* add default shaders to scene, to use as default for things that don't
 	 * have any shader assigned explicitly */
@@ -170,6 +171,8 @@ public:
 	/* Selective nodes compilation. */
 	void get_requested_features(Scene *scene,
 	                            DeviceRequestedFeatures *requested_features);
+
+	static void free_memory();
 
 protected:
 	ShaderManager();

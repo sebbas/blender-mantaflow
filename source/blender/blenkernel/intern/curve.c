@@ -109,10 +109,6 @@ void BKE_curve_editfont_free(Curve *cu)
 			MEM_freeN(ef->textbuf);
 		if (ef->textbufinfo)
 			MEM_freeN(ef->textbufinfo);
-		if (ef->copybuf)
-			MEM_freeN(ef->copybuf);
-		if (ef->copybufinfo)
-			MEM_freeN(ef->copybufinfo);
 		if (ef->selboxes)
 			MEM_freeN(ef->selboxes);
 
@@ -1406,14 +1402,14 @@ void BKE_nurb_makeCurve(Nurb *nu, float *coord_array, float *tilt_array, float *
 			}
 		}
 
-		coord_fp = (float *)(((char *)coord_fp) + stride);
+		coord_fp = POINTER_OFFSET(coord_fp, stride);
 
 		if (tilt_fp)
-			tilt_fp = (float *)(((char *)tilt_fp) + stride);
+			tilt_fp = POINTER_OFFSET(tilt_fp, stride);
 		if (radius_fp)
-			radius_fp = (float *)(((char *)radius_fp) + stride);
+			radius_fp = POINTER_OFFSET(radius_fp, stride);
 		if (weight_fp)
-			weight_fp = (float *)(((char *)weight_fp) + stride);
+			weight_fp = POINTER_OFFSET(weight_fp, stride);
 
 		u += ustep;
 	}
@@ -1444,7 +1440,7 @@ void BKE_curve_forward_diff_bezier(float q0, float q1, float q2, float q3, float
 
 	for (a = 0; a <= it; a++) {
 		*p = q0;
-		p = (float *)(((char *)p) + stride);
+		p = POINTER_OFFSET(p, stride);
 		q0 += q1;
 		q1 += q2;
 		q2 += q3;
@@ -1469,7 +1465,7 @@ void BKE_curve_forward_diff_tangent_bezier(float q0, float q1, float q2, float q
 
 	for (a = 0; a <= it; a++) {
 		*p = q0;
-		p = (float *)(((char *)p) + stride);
+		p = POINTER_OFFSET(p, stride);
 		q0 += q1;
 		q1 += q2;
 	}
@@ -1494,7 +1490,7 @@ static void forward_diff_bezier_cotangent(const float p0[3], const float p1[3], 
 			       ( 6.0f  * t)         * p3[i];
 		}
 		normalize_v3(p);
-		p = (float *)(((char *)p) + stride);
+		p = POINTER_OFFSET(p, stride);
 	}
 }
 
@@ -2106,7 +2102,7 @@ static void alfa_bezpart(BezTriple *prevbezt, BezTriple *bezt, Nurb *nu, float *
 				*tilt_array = t[0] * pprev->alfa + t[1] * prevbezt->alfa + t[2] * bezt->alfa + t[3] * next->alfa;
 			}
 
-			tilt_array = (float *)(((char *)tilt_array) + stride);
+			tilt_array = POINTER_OFFSET(tilt_array, stride);
 		}
 
 		if (radius_array) {
@@ -2127,7 +2123,7 @@ static void alfa_bezpart(BezTriple *prevbezt, BezTriple *bezt, Nurb *nu, float *
 					t[2] * bezt->radius + t[3] * next->radius;
 			}
 
-			radius_array = (float *)(((char *)radius_array) + stride);
+			radius_array = POINTER_OFFSET(radius_array, stride);
 		}
 
 		if (weight_array) {
@@ -2135,7 +2131,7 @@ static void alfa_bezpart(BezTriple *prevbezt, BezTriple *bezt, Nurb *nu, float *
 			*weight_array = prevbezt->weight +
 				(bezt->weight - prevbezt->weight) * (3.0f * fac * fac - 2.0f * fac * fac * fac);
 
-			weight_array = (float *)(((char *)weight_array) + stride);
+			weight_array = POINTER_OFFSET(weight_array, stride);
 		}
 	}
 }
@@ -3124,14 +3120,17 @@ void BKE_curve_bevelList_make(Object *ob, ListBase *nurbs, bool for_render)
 
 /* ****************** HANDLES ************** */
 
-static void calchandleNurb_intern(BezTriple *bezt, BezTriple *prev, BezTriple *next,
-                                  bool is_fcurve, bool skip_align)
+static void calchandleNurb_intern(
+        BezTriple *bezt, const BezTriple *prev, const BezTriple *next,
+        bool is_fcurve, bool skip_align)
 {
 	/* defines to avoid confusion */
 #define p2_h1 ((p2) - 3)
 #define p2_h2 ((p2) + 3)
 
-	float *p1, *p2, *p3, pt[3];
+	const float *p1, *p3;
+	float *p2;
+	float pt[3];
 	float dvec_a[3], dvec_b[3];
 	float len, len_a, len_b;
 	float len_ratio;
@@ -4257,6 +4256,7 @@ void BKE_curve_nurb_active_set(Curve *cu, const Nurb *nu)
 		cu->actnu = CU_ACT_NONE;
 	}
 	else {
+		BLI_assert(!nu->hide);
 		ListBase *nurbs = BKE_curve_editNurbs_get(cu);
 		cu->actnu = BLI_findindex(nurbs, nu);
 	}
@@ -4359,6 +4359,10 @@ void BKE_curve_nurb_vert_active_validate(Curve *cu)
 			if ((bp->f1 & SELECT) == 0) {
 				cu->actvert = CU_ACT_NONE;
 			}
+		}
+
+		if (nu->hide) {
+			cu->actnu = CU_ACT_NONE;
 		}
 	}
 }

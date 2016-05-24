@@ -46,6 +46,12 @@ enum_displacement_methods = (
     ('BOTH', "Both", "Combination of displacement and bump mapping"),
     )
 
+enum_subdivision_types = (
+    ('NONE', "None", "No subdivision"),
+    ('LINEAR', "Linear", "Use linear subdivision"),
+    ('CATMULL_CLARK', "Catmull–Clark", "Use Catmull-Clark subdivision"),
+    )
+
 enum_bvh_types = (
     ('DYNAMIC_BVH', "Dynamic BVH", "Objects can be individually updated, at the cost of slower render time"),
     ('STATIC_BVH', "Static BVH", "Any object modification requires a complete BVH rebuild, but renders faster"),
@@ -187,58 +193,58 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         cls.aa_samples = IntProperty(
                 name="AA Samples",
                 description="Number of antialiasing samples to render for each pixel",
-                min=1, max=10000,
+                min=1, max=2097151,
                 default=4,
                 )
         cls.preview_aa_samples = IntProperty(
                 name="AA Samples",
                 description="Number of antialiasing samples to render in the viewport, unlimited if 0",
-                min=0, max=10000,
+                min=0, max=2097151,
                 default=4,
                 )
         cls.diffuse_samples = IntProperty(
                 name="Diffuse Samples",
                 description="Number of diffuse bounce samples to render for each AA sample",
-                min=1, max=10000,
+                min=1, max=1024,
                 default=1,
                 )
         cls.glossy_samples = IntProperty(
                 name="Glossy Samples",
                 description="Number of glossy bounce samples to render for each AA sample",
-                min=1, max=10000,
+                min=1, max=1024,
                 default=1,
                 )
         cls.transmission_samples = IntProperty(
                 name="Transmission Samples",
                 description="Number of transmission bounce samples to render for each AA sample",
-                min=1, max=10000,
+                min=1, max=1024,
                 default=1,
                 )
         cls.ao_samples = IntProperty(
                 name="Ambient Occlusion Samples",
                 description="Number of ambient occlusion samples to render for each AA sample",
-                min=1, max=10000,
+                min=1, max=1024,
                 default=1,
                 )
         cls.mesh_light_samples = IntProperty(
                 name="Mesh Light Samples",
                 description="Number of mesh emission light samples to render for each AA sample",
-                min=1, max=10000,
+                min=1, max=1024,
                 default=1,
                 )
 
         cls.subsurface_samples = IntProperty(
                 name="Subsurface Samples",
                 description="Number of subsurface scattering samples to render for each AA sample",
-                min=1, max=10000,
+                min=1, max=1024,
                 default=1,
                 )
 
         cls.volume_samples = IntProperty(
                 name="Volume Samples",
                 description="Number of volume scattering samples to render for each AA sample",
-                min=1, max=10000,
-                default=0,
+                min=1, max=1024,
+                default=1,
                 )
 
         cls.sampling_pattern = EnumProperty(
@@ -353,7 +359,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
                 description="Distance between volume shader samples when rendering the volume "
                             "(lower values give more accurate and detailed results, but also increased render time)",
                 default=0.1,
-                min=0.0000001, max=100000.0, soft_min=0.01, soft_max=1.0
+                min=0.0000001, max=100000.0, soft_min=0.01, soft_max=1.0, precision=4
                 )
 
         cls.volume_max_steps = IntProperty(
@@ -362,6 +368,26 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
                             "to avoid extremely long render times with big objects or small step sizes",
                 default=1024,
                 min=2, max=65536
+                )
+
+        cls.dicing_rate = FloatProperty(
+                name="Dicing Rate",
+                description="Size of a micropolygon in pixels",
+                min=0.1, max=1000.0,
+                default=1.0,
+                )
+        cls.preview_dicing_rate = FloatProperty(
+                name="Preview Dicing Rate",
+                description="Size of a micropolygon in pixels during preview render",
+                min=0.1, max=1000.0,
+                default=8.0,
+                )
+
+        cls.max_subdivisions = IntProperty(
+                name="Max Subdivisions",
+                description="Stop subdividing when this level is reached even if the dice rate would produce finer tessellation",
+                min=0, max=16,
+                default=12,
                 )
 
         cls.film_exposure = FloatProperty(
@@ -376,12 +402,24 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
                 default=False,
                 )
 
+        # Really annoyingly, we have to keep it around for a few releases,
+        # otherwise forward compatibility breaks in really bad manner: CRASH!
+        #
+        # TODO(sergey): Remove this during 2.8x series of Blender.
         cls.filter_type = EnumProperty(
                 name="Filter Type",
                 description="Pixel filter type",
                 items=enum_filter_types,
                 default='BLACKMAN_HARRIS',
                 )
+
+        cls.pixel_filter_type = EnumProperty(
+                name="Filter Type",
+                description="Pixel filter type",
+                items=enum_filter_types,
+                default='BLACKMAN_HARRIS',
+                )
+
         cls.filter_width = FloatProperty(
                 name="Filter Width",
                 description="Pixel filter width",
@@ -538,7 +576,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         cls.rolling_shutter_duration = FloatProperty(
             name="Rolling Shutter Duration",
             description="Scanline \"exposure\" time for the rolling shutter effect",
-            default = 0.1,
+            default=0.1,
             min=0.0, max=1.0,
             )
 
@@ -555,6 +593,8 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         cls.debug_use_cpu_sse3 = BoolProperty(name="SSE3", default=True)
         cls.debug_use_cpu_sse2 = BoolProperty(name="SSE2", default=True)
         cls.debug_use_qbvh = BoolProperty(name="QBVH", default=True)
+
+        cls.debug_use_cuda_adaptive_compile = BoolProperty(name="Adaptive Compile", default=False)
 
         cls.debug_opencl_kernel_type = EnumProperty(
             name="OpenCL Kernel Type",
@@ -796,20 +836,20 @@ class CyclesWorldSettings(bpy.types.PropertyGroup):
                 name="Multiple Importance Sample",
                 description="Use multiple importance sampling for the environment, "
                             "enabling for non-solid colors is recommended",
-                default=False,
+                default=True,
                 )
         cls.sample_map_resolution = IntProperty(
                 name="Map Resolution",
                 description="Importance map size is resolution x resolution; "
                             "higher values potentially produce less noise, at the cost of memory and speed",
                 min=4, max=8192,
-                default=256,
+                default=1024,
                 )
         cls.samples = IntProperty(
                 name="Samples",
                 description="Number of light samples to render for each AA sample",
                 min=1, max=10000,
-                default=4,
+                default=1,
                 )
         cls.max_bounces = IntProperty(
                 name="Max Bounces",
@@ -919,15 +959,16 @@ class CyclesMeshSettings(bpy.types.PropertyGroup):
                 items=enum_displacement_methods,
                 default='BUMP',
                 )
-        cls.use_subdivision = BoolProperty(
-                name="Use Subdivision",
-                description="Subdivide mesh for rendering",
-                default=False,
+        cls.subdivision_type = EnumProperty(
+                name="Subdivision Type",
+                description="Type of subdivision to use",
+                items=enum_subdivision_types,
+                default='NONE',
                 )
         cls.dicing_rate = FloatProperty(
                 name="Dicing Rate",
-                description="",
-                min=0.001, max=1000.0,
+                description="Multiplier for scene dicing rate",
+                min=0.1, max=1000.0,
                 default=1.0,
                 )
 

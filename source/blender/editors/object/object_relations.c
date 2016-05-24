@@ -136,7 +136,7 @@ static int vertex_parent_set_exec(bContext *C, wmOperator *op)
 		BMEditMesh *em;
 
 		EDBM_mesh_load(obedit);
-		EDBM_mesh_make(scene->toolsettings, obedit);
+		EDBM_mesh_make(scene->toolsettings, obedit, true);
 
 		DAG_id_tag_update(obedit->data, 0);
 
@@ -1338,7 +1338,7 @@ static int move_to_layer_invoke(bContext *C, wmOperator *op, const wmEvent *even
 {
 	View3D *v3d = CTX_wm_view3d(C);
 	if (v3d && v3d->localvd) {
-		return WM_operator_confirm_message(C, op, "Move from localview");
+		return WM_operator_confirm_message(C, op, "Move out of Local View");
 	}
 	else {
 		move_to_layer_init(C, op);
@@ -2123,19 +2123,21 @@ enum {
 	MAKE_LOCAL_ALL                    = 4,
 };
 
-static bool tag_localizable_looper(void *UNUSED(user_data), ID **id_pointer, const int UNUSED(cd_flag))
+static int tag_localizable_looper(
+        void *UNUSED(user_data), ID *UNUSED(self_id), ID **id_pointer, const int UNUSED(cd_flag))
 {
 	if (*id_pointer) {
 		(*id_pointer)->tag &= ~LIB_TAG_DOIT;
 	}
-	return true;
+
+	return IDWALK_RET_NOP;
 }
 
 static void tag_localizable_objects(bContext *C, const int mode)
 {
 	Main *bmain = CTX_data_main(C);
 
-	BKE_main_id_tag_all(bmain, false);
+	BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
 
 	/* Set LIB_TAG_DOIT flag for all selected objects, so next we can check whether
 	 * object is gonna to become local or not.

@@ -244,6 +244,11 @@ bool BKE_object_support_modifier_type_check(Object *ob, int modifier_type)
 
 	mti = modifierType_getInfo(modifier_type);
 
+
+	if (ob->type == OB_LATTICE && (mti->flags & eModifierTypeFlag_AcceptsLattice) == 0) {
+		return false;
+	}
+
 	if (!((mti->flags & eModifierTypeFlag_AcceptsCVs) ||
 	      (ob->type == OB_MESH && (mti->flags & eModifierTypeFlag_AcceptsMesh))))
 	{
@@ -3231,6 +3236,9 @@ int BKE_object_obdata_texspace_get(Object *ob, short **r_texflag, float **r_loc,
 		case ID_ME:
 		{
 			Mesh *me = ob->data;
+			if (me->bb == NULL || (me->bb->flag & BOUNDBOX_DIRTY)) {
+				BKE_mesh_texspace_calc(me);
+			}
 			if (r_texflag) *r_texflag = &me->texflag;
 			if (r_loc) *r_loc = me->loc;
 			if (r_size) *r_size = me->size;
@@ -3240,6 +3248,9 @@ int BKE_object_obdata_texspace_get(Object *ob, short **r_texflag, float **r_loc,
 		case ID_CU:
 		{
 			Curve *cu = ob->data;
+			if (cu->bb == NULL || (cu->bb->flag & BOUNDBOX_DIRTY)) {
+				BKE_curve_texspace_calc(cu);
+			}
 			if (r_texflag) *r_texflag = &cu->texflag;
 			if (r_loc) *r_loc = cu->loc;
 			if (r_size) *r_size = cu->size;
@@ -3647,6 +3658,17 @@ static bool object_moves_in_time(Object *object)
 	return false;
 }
 
+static bool object_deforms_in_time(Object *object)
+{
+	if (BKE_key_from_object(object) != NULL) {
+		return true;
+	}
+	if (!BLI_listbase_is_empty(&object->modifiers)) {
+		return true;
+	}
+	return object_moves_in_time(object);
+}
+
 static bool constructive_modifier_is_deform_modified(ModifierData *md)
 {
 	/* TODO(sergey): Consider generalizing this a bit so all modifier logic
@@ -3706,8 +3728,16 @@ int BKE_object_is_deform_modified(Scene *scene, Object *ob)
 	int flag = 0;
 	const bool is_modifier_animated = modifiers_has_animation_check(ob);
 
-	if (BKE_key_from_object(ob))
+	if (BKE_key_from_object(ob)) {
 		flag |= eModifierMode_Realtime | eModifierMode_Render;
+	}
+
+	if (ob->type == OB_CURVE) {
+		Curve *cu = (Curve *)ob->data;
+		if (cu->taperobj != NULL && object_deforms_in_time(cu->taperobj)) {
+			flag |= eModifierMode_Realtime | eModifierMode_Render;
+		}
+	}
 
 	/* cloth */
 	for (md = modifiers_getVirtualModifierList(ob, &virtualModifierData);

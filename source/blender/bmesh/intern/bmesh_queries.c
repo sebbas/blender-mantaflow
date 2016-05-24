@@ -1951,7 +1951,7 @@ bool BM_face_exists(BMVert **varr, int len, BMFace **r_existface)
 								if (l_walk->v != varr[i_walk]) {
 									break;
 								}
-							} while ((l_walk = l_walk->next), ++i_walk != len);
+							} while ((void)(l_walk = l_walk->next), ++i_walk != len);
 						}
 						else if (l_iter_radial->prev->v == varr[1]) {
 							BMLoop *l_walk = l_iter_radial->prev->prev;
@@ -1959,7 +1959,7 @@ bool BM_face_exists(BMVert **varr, int len, BMFace **r_existface)
 								if (l_walk->v != varr[i_walk]) {
 									break;
 								}
-							} while ((l_walk = l_walk->prev), ++i_walk != len);
+							} while ((void)(l_walk = l_walk->prev), ++i_walk != len);
 						}
 
 						if (i_walk == len) {
@@ -2186,14 +2186,13 @@ bool BM_face_exists_overlap_subset(BMVert **varr, const int len)
 {
 	BMIter viter;
 	BMFace *f;
-	int i;
 	bool is_init = false;
 	bool is_overlap = false;
 	LinkNode *f_lnk = NULL;
 
 #ifdef DEBUG
 	/* check flag isn't already set */
-	for (i = 0; i < len; i++) {
+	for (int i = 0; i < len; i++) {
 		BLI_assert(BM_ELEM_API_FLAG_TEST(varr[i], _FLAG_OVERLAP) == 0);
 		BM_ITER_ELEM (f, &viter, varr[i], BM_FACES_OF_VERT) {
 			BLI_assert(BM_ELEM_API_FLAG_TEST(f, _FLAG_OVERLAP) == 0);
@@ -2201,7 +2200,7 @@ bool BM_face_exists_overlap_subset(BMVert **varr, const int len)
 	}
 #endif
 
-	for (i = 0; i < len; i++) {
+	for (int i = 0; i < len; i++) {
 		BM_ITER_ELEM (f, &viter, varr[i], BM_FACES_OF_VERT) {
 			if ((f->len <= len) && (BM_ELEM_API_FLAG_TEST(f, _FLAG_OVERLAP) == 0)) {
 				/* check if all vers in this face are flagged*/
@@ -2209,8 +2208,8 @@ bool BM_face_exists_overlap_subset(BMVert **varr, const int len)
 
 				if (is_init == false) {
 					is_init = true;
-					for (i = 0; i < len; i++) {
-						BM_ELEM_API_FLAG_ENABLE(varr[i], _FLAG_OVERLAP);
+					for (int j = 0; j < len; j++) {
+						BM_ELEM_API_FLAG_ENABLE(varr[j], _FLAG_OVERLAP);
 					}
 				}
 
@@ -2234,7 +2233,7 @@ bool BM_face_exists_overlap_subset(BMVert **varr, const int len)
 	}
 
 	if (is_init == true) {
-		for (i = 0; i < len; i++) {
+		for (int i = 0; i < len; i++) {
 			BM_ELEM_API_FLAG_DISABLE(varr[i], _FLAG_OVERLAP);
 		}
 	}

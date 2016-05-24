@@ -247,7 +247,14 @@ void DepsgraphNodeBuilder::build_scene(Main *bmain, Scene *scene)
 	 * shouldn't bother with setting it, they only might query this flag when
 	 * needed.
 	 */
-	BKE_main_id_tag_all(bmain, false);
+	BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
+	/* XXX nested node trees are not included in tag-clearing above,
+	 * so we need to do this manually.
+	 */
+	FOREACH_NODETREE(bmain, nodetree, id) {
+		if (id != (ID *)nodetree)
+			nodetree->id.tag &= ~LIB_TAG_DOIT;
+	} FOREACH_NODETREE_END
 
 	/* scene ID block */
 	add_id_node(&scene->id);
@@ -778,6 +785,22 @@ void DepsgraphNodeBuilder::build_rig(Scene *scene, Object *ob)
 		}
 	}
 
+	/* speed optimization for animation lookups */
+	if (ob->pose) {
+		BKE_pose_channels_hash_make(ob->pose);
+		if (ob->pose->flag & POSE_CONSTRAINTS_NEED_UPDATE_FLAGS) {
+			BKE_pose_update_constraint_flags(ob->pose);
+		}
+	}
+
+	/* Make sure pose is up-to-date with armature updates. */
+	add_operation_node(&arm->id,
+	                   DEPSNODE_TYPE_PARAMETERS,
+	                   DEPSOP_TYPE_EXEC,
+	                   NULL,
+	                   DEG_OPCODE_PLACEHOLDER,
+	                   "Armature Eval");
+
 	/**
 	 * Pose Rig Graph
 	 * ==============
@@ -863,6 +886,14 @@ void DepsgraphNodeBuilder::build_proxy_rig(Object *ob)
 {
 	ID *obdata = (ID *)ob->data;
 	build_animdata(obdata);
+
+	BLI_assert(ob->pose != NULL);
+
+	/* speed optimization for animation lookups */
+	BKE_pose_channels_hash_make(ob->pose);
+	if (ob->pose->flag & POSE_CONSTRAINTS_NEED_UPDATE_FLAGS) {
+		BKE_pose_update_constraint_flags(ob->pose);
+	}
 
 	add_operation_node(&ob->id,
 	                   DEPSNODE_TYPE_EVAL_POSE,

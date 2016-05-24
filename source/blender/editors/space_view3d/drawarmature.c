@@ -53,6 +53,7 @@
 #include "BKE_global.h"
 #include "BKE_modifier.h"
 #include "BKE_nla.h"
+#include "BKE_curve.h"
 
 
 #include "BIF_gl.h"
@@ -1093,20 +1094,101 @@ static void draw_line_bone(int armflag, int boneflag, short constflag, unsigned 
 	glPopMatrix();
 }
 
-static void draw_b_bone_boxes(const short dt, bPoseChannel *pchan, float xwidth, float length, float zwidth)
+/* A partial copy of b_bone_spline_setup(), with just the parts for previewing editmode curve settings 
+ *
+ * This assumes that prev/next bones don't have any impact (since they should all still be in the "straight"
+ * position here anyway), and that we can simply apply the bbone settings to get the desired effect...
+ */
+static void ebone_spline_preview(EditBone *ebone, Mat4 result_array[MAX_BBONE_SUBDIV])
+{
+	float h1[3], h2[3], length, hlength1, hlength2, roll1 = 0.0f, roll2 = 0.0f;
+	float mat3[3][3];
+	float data[MAX_BBONE_SUBDIV + 1][4], *fp;
+	int a;
+	
+	length = ebone->length;
+	
+	hlength1 = ebone->ease1 * length * 0.390464f; /* 0.5f * sqrt(2) * kappa, the handle length for near-perfect circles */
+	hlength2 = ebone->ease2 * length * 0.390464f;
+	
+	/* find the handle points, since this is inside bone space, the
+	 * first point = (0, 0, 0)
+	 * last point =  (0, length, 0)
+	 *
+	 * we also just apply all the "extra effects", since they're the whole reason we're doing this...
+	 */
+	h1[0] = ebone->curveInX;
+	h1[1] = hlength1;
+	h1[2] = ebone->curveInY;
+	roll1 = ebone->roll1;
+	
+	h2[0] = ebone->curveOutX;
+	h2[1] = -hlength2;
+	h2[2] = ebone->curveOutY;
+	roll2 = ebone->roll2;
+	
+	/* make curve */
+	if (ebone->segments > MAX_BBONE_SUBDIV)
+		ebone->segments = MAX_BBONE_SUBDIV;
+
+	BKE_curve_forward_diff_bezier(0.0f,  h1[0],                               h2[0],                               0.0f,   data[0],     MAX_BBONE_SUBDIV, 4 * sizeof(float));
+	BKE_curve_forward_diff_bezier(0.0f,  h1[1],                               length + h2[1],                      length, data[0] + 1, MAX_BBONE_SUBDIV, 4 * sizeof(float));
+	BKE_curve_forward_diff_bezier(0.0f,  h1[2],                               h2[2],                               0.0f,   data[0] + 2, MAX_BBONE_SUBDIV, 4 * sizeof(float));
+	BKE_curve_forward_diff_bezier(roll1, roll1 + 0.390464f * (roll2 - roll1), roll2 - 0.390464f * (roll2 - roll1), roll2,  data[0] + 3, MAX_BBONE_SUBDIV, 4 * sizeof(float));
+
+	equalize_bbone_bezier(data[0], ebone->segments); /* note: does stride 4! */
+
+	/* make transformation matrices for the segments for drawing */
+	for (a = 0, fp = data[0]; a < ebone->segments; a++, fp += 4) {
+		sub_v3_v3v3(h1, fp + 4, fp);
+		vec_roll_to_mat3(h1, fp[3], mat3); /* fp[3] is roll */
+		
+		copy_m4_m3(result_array[a].mat, mat3);
+		copy_v3_v3(result_array[a].mat[3], fp);
+		
+		/* "extra" scale facs... */
+		{
+			const int num_segments = ebone->segments;
+			
+			const float scaleFactorIn  = 1.0f + (ebone->scaleIn  - 1.0f) * ((float)(num_segments - a) / (float)num_segments);
+			const float scaleFactorOut = 1.0f + (ebone->scaleOut - 1.0f) * ((float)(a + 1)            / (float)num_segments);
+			
+			const float scalefac = scaleFactorIn * scaleFactorOut;
+			float bscalemat[4][4], bscale[3];
+			
+			bscale[0] = scalefac;
+			bscale[1] = 1.0f;
+			bscale[2] = scalefac;
+			
+			size_to_mat4(bscalemat, bscale);
+			
+			/* Note: don't multiply by inverse scale mat here, as it causes problems with scaling shearing and breaking segment chains */
+			mul_m4_series(result_array[a].mat, result_array[a].mat, bscalemat);
+		}
+	}
+}
+
+static void draw_b_bone_boxes(const short dt, bPoseChannel *pchan, EditBone *ebone, float xwidth, float length, float zwidth)
 {
 	int segments = 0;
 	
 	if (pchan) 
 		segments = pchan->bone->segments;
+	else if (ebone)
+		segments = ebone->segments;
 	
-	if ((segments > 1) && (pchan)) {
+	if (segments > 1) {
 		float dlen = length / (float)segments;
 		Mat4 bbone[MAX_BBONE_SUBDIV];
 		int a;
-
-		b_bone_spline_setup(pchan, 0, bbone);
-
+		
+		if (pchan) {
+			b_bone_spline_setup(pchan, 0, bbone);
+		}
+		else if (ebone) {
+			ebone_spline_preview(ebone, bbone);
+		}
+		
 		for (a = 0; a < segments; a++) {
 			glPushMatrix();
 			glMultMatrixf(bbone[a].mat);
@@ -1177,7 +1259,7 @@ static void draw_b_bone(const short dt, int armflag, int boneflag, short constfl
 		else
 			UI_ThemeColor(TH_BONE_SOLID);
 		
-		draw_b_bone_boxes(OB_SOLID, pchan, xwidth, length, zwidth);
+		draw_b_bone_boxes(OB_SOLID, pchan, ebone, xwidth, length, zwidth);
 		
 		/* disable solid drawing */
 		GPU_basic_shader_bind(GPU_SHADER_USE_COLOR);
@@ -1190,7 +1272,7 @@ static void draw_b_bone(const short dt, int armflag, int boneflag, short constfl
 				if (set_pchan_glColor(PCHAN_COLOR_CONSTS, boneflag, constflag)) {
 					glEnable(GL_BLEND);
 					
-					draw_b_bone_boxes(OB_SOLID, pchan, xwidth, length, zwidth);
+					draw_b_bone_boxes(OB_SOLID, pchan, ebone, xwidth, length, zwidth);
 					
 					glDisable(GL_BLEND);
 				}
@@ -1200,7 +1282,7 @@ static void draw_b_bone(const short dt, int armflag, int boneflag, short constfl
 			}
 		}
 		
-		draw_b_bone_boxes(OB_WIRE, pchan, xwidth, length, zwidth);
+		draw_b_bone_boxes(OB_WIRE, pchan, ebone, xwidth, length, zwidth);
 	}
 }
 
@@ -1662,21 +1744,20 @@ static void draw_pose_bones(Scene *scene, View3D *v3d, ARegion *ar, Base *base,
 	bArmature *arm = ob->data;
 	bPoseChannel *pchan;
 	Bone *bone;
-	GLfloat tmp;
 	float smat[4][4], imat[4][4], bmat[4][4];
 	int index = -1;
-	short do_dashed = 3;
+	const enum {
+		DASH_RELATIONSHIP_LINES = 1,
+		DASH_HELP_LINES = 2,
+	} do_dashed = (
+	        (is_outline ? 0 : DASH_RELATIONSHIP_LINES) |
+	        ((v3d->flag & V3D_HIDE_HELPLINES) ? 0 : DASH_HELP_LINES));
 	bool draw_wire = false;
 	int flag;
 	bool is_cull_enabled;
 	
 	/* being set below */
 	arm->layer_used = 0;
-	
-	/* hacky... prevent outline select from drawing dashed helplines */
-	glGetFloatv(GL_LINE_WIDTH, &tmp);
-	if (tmp > 1.1f) do_dashed &= ~1;
-	if (v3d->flag & V3D_HIDE_HELPLINES) do_dashed &= ~2;
 	
 	/* precalc inverse matrix for drawing screen aligned */
 	if (arm->drawtype == ARM_ENVELOPE) {
@@ -1766,7 +1847,10 @@ static void draw_pose_bones(Scene *scene, View3D *v3d, ARegion *ar, Base *base,
 						/* set color-set to use */
 						set_pchan_colorset(ob, pchan);
 					}
-					
+
+					/* may be 2x width from custom bone's outline option */
+					glLineWidth(1.0f);
+
 					if (use_custom) {
 						/* if drawwire, don't try to draw in solid */
 						if (pchan->bone->flag & BONE_DRAWWIRE) {
@@ -1889,6 +1973,11 @@ static void draw_pose_bones(Scene *scene, View3D *v3d, ARegion *ar, Base *base,
 		}
 	}
 	
+	/* custom bone may draw outline double-width */
+	if (arm->flag & ARM_POSEMODE) {
+		glLineWidth(1.0f);
+	}
+
 	/* wire draw over solid only in posemode */
 	if ((dt <= OB_WIRE) || (arm->flag & ARM_POSEMODE) || ELEM(arm->drawtype, ARM_LINE, ARM_WIRE)) {
 		/* draw line check first. we do selection indices */
@@ -1921,11 +2010,11 @@ static void draw_pose_bones(Scene *scene, View3D *v3d, ARegion *ar, Base *base,
 			{
 				if (bone->layer & arm->layer) {
 					const short constflag = pchan->constflag;
-					if ((do_dashed & 1) && (pchan->parent)) {
+					if ((do_dashed & DASH_RELATIONSHIP_LINES) && (pchan->parent)) {
 						/* Draw a line from our root to the parent's tip 
 						 * - only if V3D_HIDE_HELPLINES is enabled...
 						 */
-						if ((do_dashed & 2) && ((bone->flag & BONE_CONNECTED) == 0)) {
+						if ((do_dashed & DASH_HELP_LINES) && ((bone->flag & BONE_CONNECTED) == 0)) {
 							if (arm->flag & ARM_POSEMODE) {
 								GPU_select_load_id(index & 0xFFFF);  /* object tag, for bordersel optim */
 								UI_ThemeColor(TH_WIRE);
@@ -1948,7 +2037,7 @@ static void draw_pose_bones(Scene *scene, View3D *v3d, ARegion *ar, Base *base,
 									else glColor3ub(200, 200, 50);  /* add theme! */
 
 									GPU_select_load_id(index & 0xFFFF);
-									pchan_draw_IK_root_lines(pchan, !(do_dashed & 2));
+									pchan_draw_IK_root_lines(pchan, !(do_dashed & DASH_HELP_LINES));
 								}
 							}
 							else if (constflag & PCHAN_HAS_SPLINEIK) {
@@ -1956,7 +2045,7 @@ static void draw_pose_bones(Scene *scene, View3D *v3d, ARegion *ar, Base *base,
 									glColor3ub(150, 200, 50);  /* add theme! */
 									
 									GPU_select_load_id(index & 0xFFFF);
-									pchan_draw_IK_root_lines(pchan, !(do_dashed & 2));
+									pchan_draw_IK_root_lines(pchan, !(do_dashed & DASH_HELP_LINES));
 								}
 							}
 						}
@@ -2077,7 +2166,10 @@ static void draw_pose_bones(Scene *scene, View3D *v3d, ARegion *ar, Base *base,
 							glMultMatrixf(bmat);
 							
 							glColor3ubv(col);
-							drawaxes(pchan->bone->length * 0.25f, OB_ARROWS);
+
+							float viewmat_pchan[4][4];
+							mul_m4_m4m4(viewmat_pchan, rv3d->viewmatob, bmat);
+							drawaxes(viewmat_pchan, pchan->bone->length * 0.25f, OB_ARROWS);
 							
 							glPopMatrix();
 						}
@@ -2285,7 +2377,10 @@ static void draw_ebones(View3D *v3d, ARegion *ar, Object *ob, const short dt)
 							glMultMatrixf(bmat);
 
 							glColor3ubv(col);
-							drawaxes(eBone->length * 0.25f, OB_ARROWS);
+
+							float viewmat_ebone[4][4];
+							mul_m4_m4m4(viewmat_ebone, rv3d->viewmatob, bmat);
+							drawaxes(viewmat_ebone, eBone->length * 0.25f, OB_ARROWS);
 							
 							glPopMatrix();
 						}

@@ -89,7 +89,7 @@ class GreasePencilDrawingToolsPanel:
                 row.prop(context.tool_settings, "grease_pencil_source", expand=True)
             elif context.space_data.type == 'CLIP_EDITOR':
                 row.prop(context.space_data, "grease_pencil_source", expand=True)
-        
+
         col.separator()
         col.separator()
 
@@ -179,7 +179,6 @@ class GreasePencilStrokeSculptPanel:
     bl_label = "Sculpt Strokes"
     bl_category = "Grease Pencil"
     bl_region_type = 'TOOLS'
-    bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
     def poll(cls, context):
@@ -192,11 +191,11 @@ class GreasePencilStrokeSculptPanel:
     @staticmethod
     def draw(self, context):
         layout = self.layout
-        
+
         settings = context.tool_settings.gpencil_sculpt
         tool = settings.tool
         brush = settings.brush
-        
+
         layout.column().prop(settings, "tool", expand=True)
 
         col = layout.column()
@@ -394,7 +393,7 @@ class GPENCIL_PIE_sculpt(Menu):
 
         # W - Launch Sculpt Mode
         col = pie.column()
-        #col.label("Tool:")
+        # col.label("Tool:")
         col.prop(settings, "tool", text="")
         col.operator("gpencil.brush_paint", text="Sculpt", icon='SCULPTMODE_HLT')
 
@@ -403,7 +402,7 @@ class GPENCIL_PIE_sculpt(Menu):
         col.prop(brush, "size", slider=True)
         row = col.row(align=True)
         row.prop(brush, "strength", slider=True)
-       # row.prop(brush, "use_pressure_strength", text="", icon_only=True)
+        # row.prop(brush, "use_pressure_strength", text="", icon_only=True)
         col.prop(brush, "use_falloff")
 
         # S - Change Brush Type Shortcuts
@@ -571,16 +570,21 @@ class GreasePencilDataPanel:
         col.prop(gpl, "fill_alpha", text="Opacity", slider=True)
 
         # Options
+        col = layout.column(align=True)
+        col.active = not gpl.lock
+        col.prop(gpl, "line_width", slider=True)
+
+
         split = layout.split(percentage=0.5)
         split.active = not gpl.lock
 
         col = split.column(align=True)
-        col.prop(gpl, "line_width", slider=True)
         col.prop(gpl, "use_volumetric_strokes")
-
-        col = split.column(align=True)
-        col.prop(gpl, "show_x_ray")
         col.prop(gpl, "show_points", text="Points")
+        
+        col = split.column(align=True)
+        col.prop(gpl, "use_hq_fill")
+        col.prop(gpl, "show_x_ray")
 
         layout.separator()
 
@@ -622,6 +626,15 @@ class GreasePencilDataPanel:
         row.active = gpl.use_ghost_custom_colors
         row.prop(gpl, "after_color", text="")
         sub.prop(gpl, "ghost_after_range", text="After")
+
+        # Smooth and subdivide new strokes
+        layout.separator()
+        col = layout.column(align=True)
+        col.label(text="New Stroke Quality:")
+        col.prop(gpl, "pen_smooth_factor")
+        col.prop(gpl, "pen_smooth_steps")
+        col.separator()
+        col.prop(gpl, "pen_subdivision_steps")
 
 
 class GreasePencilToolsPanel:

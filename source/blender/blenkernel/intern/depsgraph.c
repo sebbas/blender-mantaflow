@@ -935,11 +935,14 @@ DagForest *build_dag(Main *bmain, Scene *sce, short mask)
 		dag = dag_init();
 		sce->theDag = dag;
 	}
-	
+	dag->need_update = false;
+
+	BKE_main_id_tag_idcode(bmain, ID_OB, LIB_TAG_DOIT, false);
+
 	/* clear "LIB_TAG_DOIT" flag from all materials, to prevent infinite recursion problems later [#32017] */
-	BKE_main_id_tag_idcode(bmain, ID_MA, false);
-	BKE_main_id_tag_idcode(bmain, ID_LA, false);
-	BKE_main_id_tag_idcode(bmain, ID_GR, false);
+	BKE_main_id_tag_idcode(bmain, ID_MA, LIB_TAG_DOIT, false);
+	BKE_main_id_tag_idcode(bmain, ID_LA, LIB_TAG_DOIT, false);
+	BKE_main_id_tag_idcode(bmain, ID_GR, LIB_TAG_DOIT, false);
 	
 	/* add base node for scene. scene is always the first node in DAG */
 	scenenode = dag_add_node(dag, sce);
@@ -947,15 +950,44 @@ DagForest *build_dag(Main *bmain, Scene *sce, short mask)
 	/* add current scene objects */
 	for (base = sce->base.first; base; base = base->next) {
 		ob = base->object;
-		
+		ob->id.tag |= LIB_TAG_DOIT;
 		build_dag_object(dag, scenenode, bmain, sce, ob, mask);
 		if (ob->proxy)
 			build_dag_object(dag, scenenode, bmain, sce, ob->proxy, mask);
 		if (ob->dup_group) 
 			build_dag_group(dag, scenenode, bmain, sce, ob->dup_group, mask);
 	}
-	
-	BKE_main_id_tag_idcode(bmain, ID_GR, false);
+
+	/* There might be situations when object from current scene depends on
+	 * objects form other scene AND objects from other scene has own
+	 * dependencies on objects from other scene.
+	 *
+	 * This is really important to include such indirect dependencies in order
+	 * to keep threaded update safe but since we don't really know if object is
+	 * coming from current scene or another scene we do rather stupid tag-based
+	 * check here: all the objects for which build_dag_object() was called are
+	 * getting tagged with LIB_TAG_DOIT. This way if some node has untagged
+	 * object we know it's an object from other scene.
+	 *
+	 * It should be enough to to it once, because if there's longer chain of
+	 * indirect dependencies, all the new nodes will be added to the end of the
+	 * list, meaning we'll keep covering them in this for loop.
+	 */
+	for (node = sce->theDag->DagNode.first; node != NULL; node = node->next) {
+		if (node->type == ID_OB) {
+			ob = node->ob;
+			if ((ob->id.tag & LIB_TAG_DOIT) == 0) {
+				ob->id.tag |= LIB_TAG_DOIT;
+				build_dag_object(dag, scenenode, bmain, sce, ob, mask);
+				if (ob->proxy)
+					build_dag_object(dag, scenenode, bmain, sce, ob->proxy, mask);
+				if (ob->dup_group)
+					build_dag_group(dag, scenenode, bmain, sce, ob->dup_group, mask);
+			}
+		}
+	}
+
+	BKE_main_id_tag_idcode(bmain, ID_GR, LIB_TAG_DOIT, false);
 	
 	/* Now all relations were built, but we need to solve 1 exceptional case;
 	 * When objects have multiple "parents" (for example parent + constraint working on same object)
@@ -1440,6 +1472,13 @@ static void scene_sort_groups(Main *bmain, Scene *sce)
 	}
 }
 
+static void dag_scene_tag_rebuild(Scene *sce)
+{
+	if (sce->theDag) {
+		sce->theDag->need_update = true;
+	}
+}
+
 /* free the depency graph */
 static void dag_scene_free(Scene *sce)
 {
@@ -1582,7 +1621,7 @@ static void dag_scene_build(Main *bmain, Scene *sce)
 	BLI_listbase_clear(&tempbase);
 
 	build_dag(bmain, sce, DAG_RL_ALL_BUT_DATA);
-	
+
 	dag_check_cycle(sce->theDag);
 
 	nqueue = queue_create(DAGQUEUEALLOC);
@@ -1672,7 +1711,7 @@ void DAG_relations_tag_update(Main *bmain)
 	if (DEG_depsgraph_use_legacy()) {
 		Scene *sce;
 		for (sce = bmain->scene.first; sce; sce = sce->id.next) {
-			dag_scene_free(sce);
+			dag_scene_tag_rebuild(sce);
 		}
 	}
 	else {
@@ -1698,7 +1737,7 @@ void DAG_scene_relations_rebuild(Main *bmain, Scene *sce)
 void DAG_scene_relations_update(Main *bmain, Scene *sce)
 {
 	if (DEG_depsgraph_use_legacy()) {
-		if (!sce->theDag)
+		if (!sce->theDag || sce->theDag->need_update)
 			dag_scene_build(bmain, sce);
 	}
 	else {
@@ -1975,7 +2014,7 @@ void DAG_scene_flush_update(Main *bmain, Scene *sce, unsigned int lay, const sho
 		return;
 	}
 
-	if (sce->theDag == NULL) {
+	if (sce->theDag == NULL || sce->theDag->need_update) {
 		printf("DAG zero... not allowed to happen!\n");
 		DAG_scene_relations_update(bmain, sce);
 	}
@@ -2289,7 +2328,7 @@ void DAG_scene_update_flags(Main *bmain, Scene *scene, unsigned int lay, const b
 	GroupObject *go;
 	Scene *sce_iter;
 
-	BKE_main_id_tag_idcode(bmain, ID_GR, false);
+	BKE_main_id_tag_idcode(bmain, ID_GR, LIB_TAG_DOIT, false);
 
 	/* set ob flags where animated systems are */
 	for (SETLOOPER(scene, sce_iter, base)) {
@@ -2468,7 +2507,7 @@ void DAG_on_visible_update(Main *bmain, const bool do_time)
 		for (sce_iter = scene; sce_iter; sce_iter = sce_iter->set)
 			dag_scene_flush_layers(sce_iter, lay);
 
-		BKE_main_id_tag_idcode(bmain, ID_GR, false);
+		BKE_main_id_tag_idcode(bmain, ID_GR, LIB_TAG_DOIT, false);
 
 		for (SETLOOPER(scene, sce_iter, base)) {
 			ob = base->object;
@@ -2499,7 +2538,7 @@ void DAG_on_visible_update(Main *bmain, const bool do_time)
 			}
 		}
 
-		BKE_main_id_tag_idcode(bmain, ID_GR, false);
+		BKE_main_id_tag_idcode(bmain, ID_GR, LIB_TAG_DOIT, false);
 
 		/* now tag update flags, to ensure deformers get calculated on redraw */
 		DAG_scene_update_flags(bmain, scene, lay, do_time, true);
@@ -2578,7 +2617,18 @@ static void dag_id_flush_update(Main *bmain, Scene *sce, ID *id)
 				}
 			}
 		}
-		
+		else if (idtype == ID_VF) {
+			for (obt = bmain->object.first; obt; obt = obt->id.next) {
+				if (obt->type == OB_FONT) {
+					Curve *cu = obt->data;
+					if (ELEM((struct VFont *)id, CURVE_VFONT_ANY(cu))) {
+						obt->recalc |= OB_RECALC_DATA;
+						lib_id_recalc_data_tag(bmain, &obt->id);
+					}
+				}
+			}
+		}
+
 		/* set flags based on textures - can influence depgraph via modifiers */
 		if (idtype == ID_TE) {
 			for (obt = bmain->object.first; obt; obt = obt->id.next) {
@@ -2941,18 +2991,6 @@ void DAG_id_tag_update_ex(Main *bmain, ID *id, short flag)
 						psys->recalc |= (flag & PSYS_RECALC);
 						lib_id_recalc_tag(bmain, &ob->id);
 						lib_id_recalc_data_tag(bmain, &ob->id);
-					}
-				}
-			}
-		}
-		else if (idtype == ID_VF) {
-			/* this is weak still, should be done delayed as well */
-			for (ob = bmain->object.first; ob; ob = ob->id.next) {
-				if (ob->type == OB_FONT) {
-					Curve *cu = ob->data;
-
-					if (ELEM((struct VFont *)id, cu->vfont, cu->vfontb, cu->vfonti, cu->vfontbi)) {
-						ob->recalc |= (flag & OB_RECALC_ALL);
 					}
 				}
 			}
