@@ -39,11 +39,8 @@ extern "C" {
 struct FLUID_3D;
 
 // low res
-#ifndef WITH_MANTA
+// Renamed all headers so that they don't conflict with mantaflow header (they have same signature) (sebbas)
 struct FLUID_3D *old_smoke_init(int *res, float dx, float dtdef, int use_heat, int use_fire, int use_colors);
-#else
-struct FLUID_3D *old_smoke_init(int *res, float dx, float dtdef, int use_heat, int use_fire, int use_colors, struct SmokeModifierData *smd);
-#endif
 void old_smoke_free(struct FLUID_3D *fluid);
 
 void old_smoke_initBlenderRNA(struct FLUID_3D *fluid, float *alpha, float *beta, float *dt_factor, float *vorticity, int *border_colli, float *burning_rate,
@@ -82,12 +79,6 @@ size_t old_smoke_get_index(int x, int max_x, int y, int max_y, int z);
 size_t old_smoke_get_index2d(int x, int max_x, int y);
 void old_smoke_dissolve(struct FLUID_3D *fluid, int speed, int log);
 // wavelet turbulence functions
-#ifndef WITH_MANTA
-struct WTURBULENCE *old_smoke_turbulence_init(int *res, int amplify, int noisetype, const char *noisefile_path, int use_fire, int use_colors);
-#else
-struct WTURBULENCE *old_smoke_turbulence_init(int *res, int amplify, int noisetype, const char *noisefile_path, int use_fire, int use_colors, struct SmokeDomainSettings *sds);
-#endif
-
 void old_smoke_turbulence_free(struct WTURBULENCE *wt);
 void old_smoke_turbulence_step(struct WTURBULENCE *wt, struct FLUID_3D *fluid);
 float *old_smoke_turbulence_get_density(struct WTURBULENCE *wt);
@@ -120,15 +111,6 @@ void old_smoke_ensure_heat(struct FLUID_3D *fluid);
 void old_smoke_ensure_fire(struct FLUID_3D *fluid, struct WTURBULENCE *wt);
 void old_smoke_ensure_colors(struct FLUID_3D *fluid, struct WTURBULENCE *wt, float init_r, float init_g, float init_b);
 
-
-//	/*Mantaflow functions*/
-//int old_smoke_mantaflow_read(struct SmokeDomainSettings *sds, char* name, bool with_wavelets); //1:success, 0: no file,error
-//void old_smoke_mantaflow_stop_sim(struct Manta_API *fluid);
-//void manta_write_effectors(struct FLUID_3D *fluid);
-//void manta_update_effectors(struct Scene *scene, struct Object *ob,struct SmokeDomainSettings *sds, float dt);
-//void manta_write_emitters(struct SmokeFlowSettings *sfs, bool highRes, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z,float *influence, float *vel);	
-//void manta_export_obstacles(float * influence, int x, int y, int z);
-//	int cell_index_3D(int index_2d,int sizex,int sizey, int sizez); /*For 2D sims only: transforms 2D manta cell index into 3D Blender index*/
 #ifdef __cplusplus
 }
 #endif

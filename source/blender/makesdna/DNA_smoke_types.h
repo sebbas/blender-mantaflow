@@ -44,8 +44,6 @@ enum {
 #endif
 	MOD_SMOKE_FILE_LOAD = (1 << 6),  /* flag for file load */
 	MOD_SMOKE_ADAPTIVE_DOMAIN = (1 << 7),
-	MOD_SMOKE_NOISE_CLAMP = (1 << 8), /*for mantaflow*/
-	MOD_SMOKE_MANTA_USE_LIQUID = (1 << 9),/*enable liquid simulation*/
 };
 
 /* noise */
@@ -166,7 +164,7 @@ typedef struct SmokeDomainSettings {
 	float burning_rate, flame_smoke, flame_vorticity;
 	float flame_ignition, flame_max_temp;
 	float flame_smoke_color[3];
-	
+
 	/* mantaflow settings */
 	struct SMOKE *fluid;
 	struct Object *manta_obj;

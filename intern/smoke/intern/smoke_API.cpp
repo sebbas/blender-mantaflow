@@ -34,16 +34,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include "MANTA.h"
-#include "vectorbase.h" /* mantaflow */
-#include "smoke_API.h"  /* to ensure valid prototypes */
 
-extern "C" int *smoke_get_manta_flags(struct FLUID_3D *fluid){
-	return fluid->_manta_flags;
-}
+#include "../extern/smoke_API.h"  /* to ensure valid prototypes */
 
-#ifndef WITH_MANTA
-extern "C" FLUID_3D *smoke_init(int *res, float dx, float dtdef, int use_heat, int use_fire, int use_colors )
+extern "C" FLUID_3D *smoke_init(int *res, float dx, float dtdef, int use_heat, int use_fire, int use_colors)
 {
 	FLUID_3D *fluid = new FLUID_3D(res, dx, dtdef, use_heat, use_fire, use_colors);
 	return fluid;
@@ -56,23 +50,6 @@ extern "C" WTURBULENCE *smoke_turbulence_init(int *res, int amplify, int noisety
 	else 
 		return NULL;
 }
-//////////////////////////////////////////////////////////////////////
-#else /*USING MANTAFLOW STRUCTURES*/
-//////////////////////////////////////////////////////////////////////
-extern "C" FLUID_3D *smoke_init(int *res, float dx, float dtdef, int use_heat, int use_fire, int use_colors, struct SmokeModifierData *smd )
-{
-	FLUID_3D *fluid = new FLUID_3D(res, dx, dtdef, use_heat, use_fire, use_colors, smd);
-	return fluid;
-}
-
-extern "C" WTURBULENCE *smoke_turbulence_init(int *res, int amplify, int noisetype, const char *noisefile_path, int use_fire, int use_colors, struct SmokeDomainSettings *sds)
-{
-	if (amplify)
-		return new WTURBULENCE(res[0],res[1],res[2], amplify, noisetype, noisefile_path, use_fire, use_colors, sds);
-	else 
-		return NULL;
-}
-#endif /* WITH_MANTA */
 
 extern "C" void smoke_free(FLUID_3D *fluid)
 {
@@ -96,14 +73,6 @@ extern "C" size_t smoke_get_index2d(int x, int max_x, int y /*, int max_y, int z
 	return x + y * max_x;
 }
 
-extern "C" void smoke_manta_export(SmokeModifierData *smd)
-{
-	if (!smd) return;
-	Manta_API::manta_export_script(smd);
-	Manta_API::manta_export_grids(smd);
-}
-
-#ifndef WITH_MANTA
 extern "C" void smoke_step(FLUID_3D *fluid, float gravity[3], float dtSubdiv)
 {
 	if (fluid->_fuel) {
@@ -116,16 +85,7 @@ extern "C" void smoke_step(FLUID_3D *fluid, float gravity[3], float dtSubdiv)
 		fluid->updateFlame(fluid->_react, fluid->_flame, fluid->_totalCells);
 	}
 }
-//////////////////////////////////////////////////////////////////////
-#else /*USING MANTAFLOW STRUCTURES*/
-//////////////////////////////////////////////////////////////////////
-extern "C" void smoke_step(FLUID_3D *fluid, float gravity[3], float dtSubdiv)
-{
-	fluid->step(dtSubdiv, gravity);
-}
-#endif /*WITH MANTA*/
 
-#ifndef WITH_MANTA
 extern "C" void smoke_turbulence_step(WTURBULENCE *wt, FLUID_3D *fluid)
 {
 	if (wt->_fuelBig) {
@@ -138,21 +98,6 @@ extern "C" void smoke_turbulence_step(WTURBULENCE *wt, FLUID_3D *fluid)
 		fluid->updateFlame(wt->_reactBig, wt->_flameBig, wt->_totalCellsBig);
 	}
 }
-//////////////////////////////////////////////////////////////////////
-#else /*USING MANTAFLOW STRUCTURES*/
-//////////////////////////////////////////////////////////////////////
-extern "C" void smoke_turbulence_step(WTURBULENCE *wt, FLUID_3D *fluid)
-{
-	if (wt->_fuelBig) {
-		wt->processBurn(fluid->_burning_rate, fluid->_flame_smoke, fluid->_ignition_temp, fluid->_max_temp, fluid->_dt, fluid->_flame_smoke_color);
-	}
-	wt->stepTurbulenceFull(fluid->_dt/fluid->_dx, fluid->_xVelocity, fluid->_yVelocity, fluid->_zVelocity, fluid->_obstacles);
-
-	if (wt->_fuelBig) {
-		wt->updateFlame();
-	}
-}
-#endif /*WITH MANTA*/
 
 extern "C" void smoke_initBlenderRNA(FLUID_3D *fluid, float *alpha, float *beta, float *dt_factor, float *vorticity, int *border_colli, float *burning_rate,
 									 float *flame_smoke, float *flame_smoke_color, float *flame_vorticity, float *flame_ignition_temp, float *flame_max_temp)
@@ -230,7 +175,6 @@ extern "C" void smoke_dissolve_wavelet(WTURBULENCE *wt, int speed, int log)
 	data_dissolve(wt->_densityBig, 0, wt->_color_rBig, wt->_color_gBig, wt->_color_bBig, wt->_totalCellsBig, speed, log);
 }
 
-#ifndef WITH_MANTA
 extern "C" void smoke_export(FLUID_3D *fluid, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, 
 							 float **heatold, float **vx, float **vy, float **vz, float **r, float **g, float **b, unsigned char **obstacles)
 {
@@ -258,37 +202,6 @@ extern "C" void smoke_export(FLUID_3D *fluid, float *dt, float *dx, float **dens
 	*dt = fluid->_dt;
 	*dx = fluid->_dx;
 }
-//////////////////////////////////////////////////////////////////////
-#else /*USING MANTAFLOW STRUCTURES*/
-//////////////////////////////////////////////////////////////////////
-extern "C" void smoke_export(FLUID_3D *fluid, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, 
-							 float **manta_inflow, float **vx, float **vy, float **vz, float **r, float **g, float **b, unsigned char **obstacles)
-{
-	*dens = fluid->_density;
-	if(fuel)
-		*fuel = fluid->_fuel;
-	if(react)
-		*react = fluid->_react;
-	if(flame)
-		*flame = fluid->_flame;
-	if(heat)
-		*heat = fluid->_heat;
-	if(manta_inflow)
-		*manta_inflow = fluid->_manta_inflow;
-	*vx = fluid->_xVelocity;
-	*vy = fluid->_yVelocity;
-	*vz = fluid->_zVelocity;
-	if(r)
-		*r = fluid->_color_r;
-	if(g)
-		*g = fluid->_color_g;
-	if(b)
-		*b = fluid->_color_b;
-	*obstacles = fluid->_obstacles;
-	*dt = fluid->_dt;
-	*dx = fluid->_dx;
-}
-#endif /* WITH_MANTA */
 
 extern "C" void smoke_turbulence_export(WTURBULENCE *wt, float **dens, float **react, float **flame, float **fuel,
                                         float **r, float **g, float **b , float **tcu, float **tcv, float **tcw)
@@ -586,106 +499,4 @@ extern "C" void smoke_ensure_colors(FLUID_3D *fluid, WTURBULENCE *wt, float init
 	if (wt) {
 		wt->initColors(init_r, init_g, init_b);
 	}
-}
-
-
-/*MantaFlow funcs*/
-//extern "C" int smoke_mantaflow_read(struct SmokeDomainSettings *sds, char* name, bool with_wavelets)
-//{
-//	return read_mantaflow_sim(sds, name, with_wavelets);
-//}
-//
-//
-//extern "C" void manta_write_effectors(struct FLUID_3D *fluid)
-//{
-//	int size_x = fluid->_xRes;
-//	int size_y = fluid->_yRes;
-//	int size_z = fluid->_zRes;
-//	
-//	float *force_x = smoke_get_force_x(fluid);
-//	float *force_y = smoke_get_force_y(fluid);
-//	float *force_z = smoke_get_force_z(fluid);
-////	export_force_fields(size_x, size_y, size_z, force_x, force_y, force_z);
-//	/*accumulate all force fields in one grid*/	
-//	Manta::Vec3 * accumulated_force = NULL;
-//	long index(0);
-//	if (fluid->manta_resoution == 3){
-//		accumulated_force = (Manta::Vec3*)calloc(size_x * size_y * size_z , sizeof(Manta::Vec3));
-//			for (int z(0); z < size_z; z++){
-//				for (int y(0); y < size_y; y++){
-//					for (int x(0); x < size_x; x++){
-//					index = smoke_get_index(x, size_x, y, size_y, z);
-//					accumulated_force[index] = Manta::Vec3(force_x[index], force_y[index], force_z[index]);
-//				}	
-//			}		
-//		}
-//	}
-//	else if (fluid->manta_resoution == 2) {
-//		accumulated_force = (Manta::Vec3*)malloc(size_x * size_z * sizeof(Manta::Vec3));
-//		int step(0);
-//		for (int x(0); x < size_x; x++){
-//				for (int z(0); z < size_z; z++){
-//					index = smoke_get_index(x, size_x, size_y/2, size_y, z);
-//					accumulated_force[x + z * size_x] = Manta::Vec3(force_x[index], force_z[index], 0.0);
-//				}	
-//		}
-//	}
-//	else {
-//		cout << "ERROR: Manta solver resoltion is neither 2 nor 3; Cannot write forces"<<endl;
-//		return;
-//	}
-//	
-//	bool is2D = (fluid->manta_resoution == 2);
-//	Manta_API::addGrid(accumulated_force, "forces", "Vec3", size_x, size_y, size_z, is2D);
-//}
-//
-//extern "C" void manta_write_emitters(struct SmokeFlowSettings *sfs, bool highRes, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z, int d_x, int d_y, int d_z,float *influence, float *vel)
-//{
-////	manta_update_effectors(s, smd->domain->manta_obj, smd->domain, 0.1f);
-//	bool is2D = (sfs->smd->domain->fluid->manta_resoution == 2);
-//	if (! highRes)
-//		Manta_API::addAdaptiveGrid(influence, "density", "s", "float",
-//										   min_x, min_y, min_z, max_x, max_y, max_z, is2D);
-//	else 
-//		Manta_API::addAdaptiveGrid(influence, "xl_density", "xl", "float", min_x, min_y, min_z, max_x, max_y, max_z, is2D);
-//	//	export_em_fields(Manta_API::instance()->_emission_map,sfs->density, min_x,  min_y,  min_z,  max_x,  max_y,  max_z,  d_x,  d_y,  d_z,  influence,  vel);
-//}
-//
-///*deprecated*/
-//extern "C" void manta_export_obstacles(float * influence, int x, int y, int z)
-//{
-//	
-//	cout << "!!!!!!!!!!Deprecated method manta_export_obstacles is being used" << endl;
-//	if (influence == NULL){
-//		cout<< "ERROR: empty influence object when exporting smoke obstacles" << endl;
-//		return;
-//	}
-////	Manta_API::export_obstacles(influence, x, y, z);
-//}
-//
-//extern "C" void smoke_mantaflow_stop_sim(struct Manta_API * fluid)
-//{
-//	if (fluid == NULL){
-//		cout<< "ERROR: empty manta_API object when stopping smoke simulation" << endl;
-//		return;
-//	}
-//	fluid->stop_manta_sim();
-//}
-//
-//extern "C" int cell_index_3D(int index_2d, int sizex,int sizey, int sizez)
-//{
-//	
-//	return int(sizey * 0.5) * sizex + 
-//	(index_2d % (sizex)) + 
-//	int(index_2d/(sizex)) * sizex * sizey;
-//}
-
-extern "C" float *smoke_get_inflow_grid(FLUID_3D *fluid)
-{
-	return fluid->_manta_inflow;
-}
-
-extern "C" float *smoke_get_fuel_inflow(FLUID_3D *fluid)
-{
-	return fluid->_fuel_inflow;
 }

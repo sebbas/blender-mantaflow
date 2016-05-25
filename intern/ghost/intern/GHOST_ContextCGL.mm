@@ -182,7 +182,6 @@ static void makeAttribList(
 	 * Maybe a command line flag is better... */
 	if (getenv("BLENDER_SOFTWAREGL")) {
 		attribs.push_back(NSOpenGLPFARendererID);
-
 		attribs.push_back(kCGLRendererGenericFloatID);
 	}
 	else {

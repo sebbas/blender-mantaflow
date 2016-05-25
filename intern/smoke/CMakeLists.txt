@@ -26,19 +26,13 @@
 set(INC
 	intern
 	../memutil
-	../../source/blender/blenlib
-	../../source/blender/python/manta_pp
-	../../source/blender/python/manta_pp/util/
-	extern
 )
 
 set(INC_SYS
 	${BULLET_INCLUDE_DIRS}
 	${PNG_INCLUDE_DIRS}
 	${ZLIB_INCLUDE_DIRS}
-	${PYTHON_INCLUDE_DIRS}
 )
-add_definitions(-DWITH_PYTHON)
 
 set(SRC
 	intern/EIGENVALUE_HELPER.cpp
@@ -63,10 +57,6 @@ set(SRC
 	intern/VEC3.h
 	intern/WAVELET_NOISE.h
 	intern/WTURBULENCE.h
-	intern/MANTA.h
-	intern/MANTA.cpp
-	intern/scenarios/smoke.h
-
 	intern/tnt/jama_eig.h
 	intern/tnt/jama_lu.h
 	intern/tnt/tnt.h
@@ -108,5 +98,5 @@ if(WITH_FFTW3)
 	)
 endif()
 
-#blender_add_lib(bf_intern_smoke "${SRC}" "${INC}" "${INC_SYS}")
+blender_add_lib(bf_intern_smoke "${SRC}" "${INC}" "${INC_SYS}")
 

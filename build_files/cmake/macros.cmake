@@ -578,7 +578,6 @@ function(SETUP_BLENDER_SORTED_LIBS)
 		ge_phys_dummy
 		ge_phys_bullet
 		bf_intern_smoke
-#		bf_intern_mantaflow # configured separately in source/creator/CMakeLists.txt
 		extern_lzma
 		extern_curve_fit_nd
 		ge_logic_ketsji

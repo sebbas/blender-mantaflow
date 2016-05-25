@@ -36,11 +36,7 @@ struct WTURBULENCE
 {
 	public:
 		// both config files can be NULL, altCfg might override values from noiseCfg
-		#ifndef WITH_MANTA
 		WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int noisetype, const char *noisefile_path, int init_fire, int init_colors);
-		#else
-		WTURBULENCE(int xResSm, int yResSm, int zResSm, int amplify, int noisetype, const char *noisefile_path, int init_fire, int init_colors, struct SmokeDomainSettings *sds);
-		#endif
 
 		/// destructor
 		virtual ~WTURBULENCE();
@@ -125,7 +121,6 @@ struct WTURBULENCE
 		float* _fuelBigOld;
 		float* _reactBig;
 		float* _reactBigOld;
-		bool using_fire;
 
 		float* _color_rBig;
 		float* _color_rBigOld;
@@ -133,8 +128,7 @@ struct WTURBULENCE
 		float* _color_gBigOld;
 		float* _color_bBig;
 		float* _color_bBigOld;
-		bool using_colors;
-	
+
 		// texture coordinates for noise
 		float* _tcU;
 		float* _tcV;
@@ -150,9 +144,6 @@ struct WTURBULENCE
 		
 		void computeEigenvalues(float *_eigMin, float *_eigMax);
 		void decomposeEnergy(float *energy, float *_highFreqEnergy);
-	
-		void processBurn(float *burningRate, float *flameSmoke, float *ignitionTemp, float *maxTemp, float dt, float *flameSmokeColor); // Mantaflow
-		void updateFlame(); // Mantaflow
 };
 
 #endif // WTURBULENCE_H

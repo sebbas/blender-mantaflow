@@ -46,12 +46,7 @@ struct WTURBULENCE;
 struct FLUID_3D  
 {
 	public:
-		#ifndef WITH_MANTA
 		FLUID_3D(int *res, float dx, float dtdef, int init_heat, int init_fire, int init_colors);
-		#else
-		FLUID_3D(int *res, float dx, float dtdef, int init_heat, int init_fire, int init_colors, struct SmokeModifierData *smd);
-		#endif
-
 		FLUID_3D() {};
 		virtual ~FLUID_3D();
 
@@ -117,11 +112,6 @@ struct FLUID_3D
 		float* _zForce;
 		unsigned char*  _obstacles; /* only used (useful) for static obstacles like domain boundaries */
 		unsigned char*  _obstaclesAnim;
-		float* _manta_inflow;
-		float* _fuel_inflow;
-		bool using_heat;
-		int manta_resoution;
-		int _yLocation;/*at which Y-coordinate store the information*/
 
 		// Required for proper threading:
 		float* _xVelocityTemp;
@@ -138,7 +128,6 @@ struct FLUID_3D
 		float *_react;
 		float *_reactTemp;
 		float *_reactOld;
-		bool using_fire;
 
 		// smoke color
 		float *_color_r;
@@ -150,9 +139,8 @@ struct FLUID_3D
 		float *_color_b;
 		float *_color_bOld;
 		float *_color_bTemp;
-		bool using_colors;
 
-		int *_manta_flags;
+
 		// CG fields
 		int _iterations;
 
