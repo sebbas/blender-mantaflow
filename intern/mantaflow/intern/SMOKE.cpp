@@ -668,7 +668,7 @@ void SMOKE::updatePointers(SmokeModifierData *smd)
 	std::cout << "Updating pointers low res" << std::endl;
 
 	if (mUsingLiquid) {
-		mPhi        = (float*)         getGridPointer("phi",         "s");
+		mPhi        = (float*)         getGridPointer("phiTemp",         "s");
 	}
 	
 	// Smoke
