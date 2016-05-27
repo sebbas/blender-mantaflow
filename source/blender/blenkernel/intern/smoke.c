@@ -1068,6 +1068,7 @@ typedef struct EmissionMap {
 	float *influence;
 	float *influence_high;
 	float *velocity;
+	int* inflow;
 	int min[3], max[3], res[3];
 	int hmin[3], hmax[3], hres[3];
 	int total_cells, valid;
@@ -1130,6 +1131,10 @@ static void em_allocateData(EmissionMap *em, bool use_velocity, int hires_mul)
 	em->influence = MEM_callocN(sizeof(float) * em->total_cells, "smoke_flow_influence");
 	if (use_velocity)
 		em->velocity = MEM_callocN(sizeof(float) * em->total_cells * 3, "smoke_flow_velocity");
+	
+	em->inflow = MEM_callocN(sizeof(int) * em->total_cells, "liquid_inflow_map");
+	for (i = 0; i < em->total_cells-1; i++)
+		em->inflow[i] = 1; // Make sure that we start with ones (= outside mesh)
 
 	/* allocate high resolution map if required */
 	if (hires_mul > 1) {
@@ -1503,7 +1508,7 @@ static void emit_from_particles(
 static void sample_derivedmesh(
         SmokeFlowSettings *sfs,
         const MVert *mvert, const MLoop *mloop, const MLoopTri *mlooptri, const MLoopUV *mloopuv,
-        float *influence_map, float *velocity_map, int index, const int base_res[3], float flow_center[3],
+        float *influence_map, float *velocity_map, int *inflow_map, int index, const int base_res[3], float flow_center[3],
         BVHTreeFromMesh *treeData, const float ray_start[3], const float *vert_vel,
         bool has_velocity, int defgrp_index, MDeformVert *dvert,
         float x, float y, float z)
@@ -1555,6 +1560,18 @@ static void sample_derivedmesh(
 		}
 		else
 			sample_str = 0.0f;
+
+		/* Calculate map of points inside and outside mesh */
+		float x_delta = nearest.co[0] - x;
+		float y_delta = nearest.co[1] - y;
+		float z_delta = nearest.co[2] - z;
+		
+		float dot = x_delta * nearest.no[0] + y_delta * nearest.no[1] + z_delta * nearest.no[2];
+		
+		if (dot < 0.0f)
+			inflow_map[index] = 1; // Outside mesh
+		else
+			inflow_map[index] = -1; // Inside mesh
 
 		/* calculate barycentric weights for nearest point */
 		v1 = mloop[mlooptri[f_index].tri[0]].v;
@@ -1678,7 +1695,7 @@ static void emit_from_derivedmesh_task_cb(void *userdata, const int z)
 
 				sample_derivedmesh(
 				        data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
-				        em->influence, em->velocity, index, data->sds->base_res, data->flow_center,
+				        em->influence, em->velocity, em->inflow, index, data->sds->base_res, data->flow_center,
 				        data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
 				        (float)lx, (float)ly, (float)lz);
 			}
@@ -1694,9 +1711,10 @@ static void emit_from_derivedmesh_task_cb(void *userdata, const int z)
 				                      x - data->min[0], data->res[0], y - data->min[1], data->res[1], z - data->min[2]);
 				const float ray_start[3] = {lx + 0.5f * data->hr, ly + 0.5f * data->hr, lz + 0.5f * data->hr};
 
+				// TODO (sebbas) inflow map highres?
 				sample_derivedmesh(
 				        data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
-				        em->influence_high, NULL, index, data->sds->base_res, data->flow_center,
+				        em->influence_high, NULL, NULL, index, data->sds->base_res, data->flow_center,
 				        data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
 				        /* x,y,z needs to be always lowres */
 				        lx, ly, lz);
@@ -2146,11 +2164,11 @@ BLI_INLINE void apply_outflow_fields(int index, float *density, float *heat, flo
 	}
 }
 
-BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value, int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi)
+BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value, int inflow_value, int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi)
 {
 	/* add liquid inflow */
 	if (phi) {
-		phi[index] = emission_value * (-1) + 0.5; // TODO How to get more accurate value?
+		phi[index] = inflow_value; // TODO How to get more accurate value?
 		return;
 	}
 	int absolute_flow = (sfs->flags & MOD_SMOKE_FLOW_ABSOLUTE);
@@ -2447,6 +2465,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				float *velocity_map = em->velocity;
 				float *emission_map = em->influence;
 				float *emission_map_high = em->influence_high;
+				int* inflow_map = em->inflow;
 
 				int ii, jj, kk, gx, gy, gz, ex, ey, ez, dx, dy, dz, block_size;
 				size_t e_index, d_index, index_big;
@@ -2474,7 +2493,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 								apply_outflow_fields(d_index, density, heat, fuel, react, color_r, color_g, color_b);
 							}
 							else { // inflow
-								apply_inflow_fields(sfs, emission_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b, phi);
+								apply_inflow_fields(sfs, emission_map[e_index], inflow_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b, phi);
 
 								/* initial velocity */
 								if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY) {
@@ -2566,7 +2585,8 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 												}
 											}
 											else { // inflow
-												apply_inflow_fields(sfs, interpolated_value, index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL);
+												// TODO (sebbas) inflow map highres?
+												apply_inflow_fields(sfs, interpolated_value, 1, index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL);
 											}
 										} // hires loop
 							}  // bigdensity
