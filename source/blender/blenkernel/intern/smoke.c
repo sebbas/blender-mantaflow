@@ -2387,16 +2387,17 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 	}
 #else
 	/* Initialize new data fields if any */
-	if (active_fields & SM_ACTIVE_HEAT) {
-		smoke_ensure_heat(sds->fluid, sds->smd);
-	}
-	if (active_fields & SM_ACTIVE_FIRE) {
-		smoke_ensure_fire(sds->fluid, sds->smd);
-	}
-	if (active_fields & SM_ACTIVE_COLORS) {
-		/* initialize all smoke with "active_color" */
-		smoke_ensure_colors(sds->fluid, sds->smd);
-	}
+//	TODO (sebbas) disabled during liquid integration
+//	if (active_fields & SM_ACTIVE_HEAT) {
+//		smoke_ensure_heat(sds->fluid, sds->smd);
+//	}
+//	if (active_fields & SM_ACTIVE_FIRE) {
+//		smoke_ensure_fire(sds->fluid, sds->smd);
+//	}
+//	if (active_fields & SM_ACTIVE_COLORS) {
+//		/* initialize all smoke with "active_color" */
+//		smoke_ensure_colors(sds->fluid, sds->smd);
+//	}
 #endif
 
 	sds->active_fields = active_fields;
