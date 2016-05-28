@@ -1068,7 +1068,7 @@ typedef struct EmissionMap {
 	float *influence;
 	float *influence_high;
 	float *velocity;
-	int* inflow;
+	float* inflow;
 	int min[3], max[3], res[3];
 	int hmin[3], hmax[3], hres[3];
 	int total_cells, valid;
@@ -1132,9 +1132,7 @@ static void em_allocateData(EmissionMap *em, bool use_velocity, int hires_mul)
 	if (use_velocity)
 		em->velocity = MEM_callocN(sizeof(float) * em->total_cells * 3, "smoke_flow_velocity");
 	
-	em->inflow = MEM_callocN(sizeof(int) * em->total_cells, "liquid_inflow_map");
-	for (i = 0; i < em->total_cells-1; i++)
-		em->inflow[i] = 1; // Make sure that we start with ones (= outside mesh)
+	em->inflow = MEM_callocN(sizeof(float) * em->total_cells, "liquid_inflow_map");
 
 	/* allocate high resolution map if required */
 	if (hires_mul > 1) {
@@ -1508,7 +1506,7 @@ static void emit_from_particles(
 static void sample_derivedmesh(
         SmokeFlowSettings *sfs,
         const MVert *mvert, const MLoop *mloop, const MLoopTri *mlooptri, const MLoopUV *mloopuv,
-        float *influence_map, float *velocity_map, int *inflow_map, int index, const int base_res[3], float flow_center[3],
+        float *influence_map, float *velocity_map, float *inflow_map, int index, const int base_res[3], float flow_center[3],
         BVHTreeFromMesh *treeData, const float ray_start[3], const float *vert_vel,
         bool has_velocity, int defgrp_index, MDeformVert *dvert,
         float x, float y, float z)
@@ -2164,7 +2162,7 @@ BLI_INLINE void apply_outflow_fields(int index, float *density, float *heat, flo
 	}
 }
 
-BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value, int inflow_value, int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi)
+BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value, float inflow_value, int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi)
 {
 	/* add liquid inflow */
 	if (phi) {
@@ -2465,7 +2463,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				float *velocity_map = em->velocity;
 				float *emission_map = em->influence;
 				float *emission_map_high = em->influence_high;
-				int* inflow_map = em->inflow;
+				float* inflow_map = em->inflow;
 
 				int ii, jj, kk, gx, gy, gz, ex, ey, ez, dx, dy, dz, block_size;
 				size_t e_index, d_index, index_big;
