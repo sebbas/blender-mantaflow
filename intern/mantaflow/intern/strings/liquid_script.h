@@ -43,10 +43,7 @@ particleNumber = 2\n\
 \n\
 gravity = (0,0,-1)\n\
 step    = -1\n\
-maxVel  = 0\n\
-\n\
-# triangle scale relative to cell size\n\
-scale = 0.5\n";
+maxVel  = 0\n";
 
 //////////////////////////////////////////////////////////////////////
 // GRIDS & MESH & PARTICLESYSTEM
@@ -168,12 +165,6 @@ def liquid_step():\n\
     \n\
     if dim==3:\n\
         phi.createMesh(mesh)\n\
-        # beautify mesh, too slow right now!\n\
-        subdivideMesh(mesh=mesh, minAngle=0.01, minLength=scale, maxLength=3*scale, cutTubes=False)\n\
-        # perform smoothing\n\
-        for iters in range(10):\n\
-            smoothMesh(mesh=mesh, strength=1e-3, steps=10)\n\
-            subdivideMesh(mesh=mesh, minAngle=0.01, minLength=scale, maxLength=3*scale, cutTubes=True)\n\
         mesh.save('/Users/sbarschkis/Desktop/surface/fluidsurface_final_%04d.bobj.gz' % step)\n\
     \n\
     # Resample particles\n\
@@ -214,7 +205,5 @@ if 'minParticles'     in globals() : del minParticles\n\
 if 'particleNumber'   in globals() : del particleNumber\n\
 if 'gravity'          in globals() : del gravity\n\
 if 'step'             in globals() : del step\n\
-if 'maxVel'           in globals() : del maxVel\n\
-if 'scale'            in globals() : del scale\n";
-
+if 'maxVel'           in globals() : del maxVel\n";
 
