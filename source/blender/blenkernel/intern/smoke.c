@@ -1157,6 +1157,8 @@ static void em_freeData(EmissionMap *em)
 		MEM_freeN(em->influence_high);
 	if (em->velocity)
 		MEM_freeN(em->velocity);
+	if (em->inflow)
+		MEM_freeN(em->inflow);
 }
 
 static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_multiplier, int additive, float sample_size)
