@@ -1545,6 +1545,26 @@ static void sample_derivedmesh(
 			}
 		}
 	}
+	
+	/* Calculate map which indicates whether point is inside a mesh or not */
+	if (BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dir, 0.0f, &hit, treeData->raycast_callback, treeData) != -1) {
+		float dot = ray_dir[0] * hit.no[0] + ray_dir[1] * hit.no[1] + ray_dir[2] * hit.no[2];
+
+		if (dot >= 0) {
+			/* Also cast a ray in opposite direction to make sure
+			 * point is at least surrounded by two faces */
+			negate_v3(ray_dir);
+			hit.index = -1;
+			hit.dist = 9999;
+
+			BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dir, 0.0f, &hit, treeData->raycast_callback, treeData);
+			
+			if (hit.index != -1) {
+				inflow_map[index] = -0.5; // Outside mesh (-0.5 because of mantaflow convention)
+			}
+		}
+	}
+
 
 	/* find the nearest point on the mesh */
 	if (BLI_bvhtree_find_nearest(treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1) {
@@ -1560,18 +1580,6 @@ static void sample_derivedmesh(
 		}
 		else
 			sample_str = 0.0f;
-
-		/* Calculate map of points inside and outside mesh */
-		float x_delta = nearest.co[0] - x;
-		float y_delta = nearest.co[1] - y;
-		float z_delta = nearest.co[2] - z;
-		
-		float dot = x_delta * nearest.no[0] + y_delta * nearest.no[1] + z_delta * nearest.no[2];
-		
-		if (dot < 0.0f)
-			inflow_map[index] = 1; // Outside mesh
-		else
-			inflow_map[index] = -1; // Inside mesh
 
 		/* calculate barycentric weights for nearest point */
 		v1 = mloop[mlooptri[f_index].tri[0]].v;
@@ -2168,7 +2176,7 @@ BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value
 {
 	/* add liquid inflow */
 	if (phi) {
-		phi[index] = inflow_value; // TODO How to get more accurate value?
+		if (inflow_value < 0) phi[index] = inflow_value; // Only copy values of points inside a mesh
 		return;
 	}
 	int absolute_flow = (sfs->flags & MOD_SMOKE_FLOW_ABSOLUTE);
