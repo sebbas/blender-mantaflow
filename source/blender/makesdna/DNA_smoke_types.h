@@ -77,6 +77,7 @@ enum {
 #define SM_ACTIVE_FIRE		(1<<1)
 #define SM_ACTIVE_COLORS	(1<<2)
 #define SM_ACTIVE_COLOR_SET	(1<<3)
+#define SM_ACTIVE_LIQUID	(1<<4)
 
 enum {
 	VDB_COMPRESSION_BLOSC = 0,
@@ -180,6 +181,7 @@ typedef struct SmokeDomainSettings {
 #define MOD_SMOKE_FLOW_TYPE_FIRE 1
 #define MOD_SMOKE_FLOW_TYPE_OUTFLOW 2
 #define MOD_SMOKE_FLOW_TYPE_SMOKEFIRE 3
+#define MOD_SMOKE_FLOW_TYPE_LIQUID 4
 
 /* flow source */
 #define MOD_SMOKE_FLOW_SOURCE_PARTICLES 0
@@ -223,7 +225,7 @@ typedef struct SmokeFlowSettings {
 	char uvlayer_name[64];	/* MAX_CUSTOMDATA_LAYER_NAME */
 	short vgroup_density;
 
-	short type; /* smoke, flames, both, outflow */
+	short type; /* smoke, flames, both, outflow, liquid */
 	short source;
 	short texture_type;
 	int flags; /* absolute emission etc*/

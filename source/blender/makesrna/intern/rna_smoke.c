@@ -765,6 +765,7 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
 		{MOD_SMOKE_FLOW_TYPE_SMOKE, "SMOKE", 0, "Smoke", "Add smoke"},
 		{MOD_SMOKE_FLOW_TYPE_SMOKEFIRE, "BOTH", 0, "Fire + Smoke", "Add fire and smoke"},
 		{MOD_SMOKE_FLOW_TYPE_FIRE, "FIRE", 0, "Fire", "Add fire"},
+		{MOD_SMOKE_FLOW_TYPE_LIQUID, "LIQUID", 0, "Liquid", "Add liquid"},
 		{0, NULL, 0, NULL, NULL}
 	};
 
