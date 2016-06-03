@@ -89,7 +89,7 @@ def manta_step(start_frame):\n\
     if (start_frame == 1):\n\
         phi.copyFrom(phiTemp)\n\
         flags.updateFromLevelset(phi)\n\
-        sampleLevelsetWithParticles( phi=phi, flags=flags, parts=pp, discretization=2, randomness=0.4 )\n\
+        sampleLevelsetWithParticles( phi=phi, flags=flags, parts=pp, discretization=2, randomness=0.01 )\n\
         mapGridToPartsVec3(source=vel, parts=pp, target=pVel )\n\
         phi.save('/Users/sbarschkis/Desktop/phi.uni')\n\
     \n\
