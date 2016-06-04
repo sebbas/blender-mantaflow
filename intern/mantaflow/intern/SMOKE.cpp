@@ -256,20 +256,22 @@ void SMOKE::initColorsHigh(SmokeModifierData *smd)
 
 void SMOKE::initLiquid(SmokeModifierData *smd)
 {
-	std::string tmpString = manta_import
-		+ solver_low
-		+ adaptive_time_stepping
-		+ alloc_liquid
-		+ liquid_variables
-		+ prep_domain
-		+ adaptive_step_liquid
-		+ liquid_step;
-	std::string finalString = parseScript(tmpString, smd);
-	mCommands.clear();
-	mCommands.push_back(finalString);
+	if (!mPhi) {
+		std::string tmpString = manta_import
+			+ solver_low
+			+ adaptive_time_stepping
+			+ alloc_liquid
+			+ liquid_variables
+			+ prep_domain
+			+ adaptive_step_liquid
+			+ liquid_step;
+		std::string finalString = parseScript(tmpString, smd);
+		mCommands.clear();
+		mCommands.push_back(finalString);
 
-	runPythonString(mCommands);
-	mUsingLiquid = true;
+		runPythonString(mCommands);
+		mUsingLiquid = true;
+	}
 }
 
 void SMOKE::step(SmokeModifierData *smd)
