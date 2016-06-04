@@ -469,6 +469,14 @@ extern "C" void smoke_ensure_colors(SMOKE *smoke, struct SmokeModifierData *smd)
 	}
 }
 
+extern "C" void liquid_ensure_init(SMOKE *smoke, struct SmokeModifierData *smd)
+{
+	if (smoke) {
+		smoke->initLiquid(smd);
+		smoke->updatePointers(smd);
+	}
+}
+
 extern "C" float *smoke_get_inflow_grid(SMOKE *smoke)
 {
 	return smoke->getDensityInflow();

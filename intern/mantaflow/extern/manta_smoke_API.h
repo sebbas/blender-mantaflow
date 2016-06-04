@@ -89,6 +89,8 @@ float *smoke_get_inflow_grid(struct SMOKE *smoke);
 float *smoke_get_fuel_inflow(struct SMOKE *smoke);
 
 float *liquid_get_phi(struct SMOKE *liquid);
+void liquid_ensure_init(struct SMOKE *smoke, struct SmokeModifierData *smd);
+
 
 #ifdef __cplusplus
 }
