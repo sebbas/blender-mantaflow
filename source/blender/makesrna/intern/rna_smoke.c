@@ -406,6 +406,12 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 {
 	StructRNA *srna;
 	PropertyRNA *prop;
+	
+	static EnumPropertyItem smoke_domain_types[] = {
+		{MOD_SMOKE_DOMAIN_TYPE_GAS, "GAS", 0, "Gas", "Create domain for gases"},
+		{MOD_SMOKE_DOMAIN_TYPE_LIQUID, "LIQUID", 0, "Liquid", "Create domain for liquids"},
+		{0, NULL, 0, NULL, NULL}
+	};
 
 	static EnumPropertyItem prop_noise_type_items[] = {
 		{MOD_SMOKE_NOISEWAVE, "NOISEWAVE", 0, "Wavelet", ""},
@@ -464,6 +470,12 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_struct_ui_text(srna, "Domain Settings", "Smoke domain settings");
 	RNA_def_struct_sdna(srna, "SmokeDomainSettings");
 	RNA_def_struct_path_func(srna, "rna_SmokeDomainSettings_path");
+	
+	prop = RNA_def_property(srna, "smoke_domain_type", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "type");
+	RNA_def_property_enum_items(prop, smoke_domain_types);
+	RNA_def_property_ui_text(prop, "Domain Type", "Change domain type of the simulation");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
 	prop = RNA_def_property(srna, "resolution_max", PROP_INT, PROP_NONE);
 	RNA_def_property_int_sdna(prop, NULL, "maxres");

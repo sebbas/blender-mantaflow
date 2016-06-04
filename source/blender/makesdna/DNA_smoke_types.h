@@ -32,6 +32,10 @@
 #ifndef __DNA_SMOKE_TYPES_H__
 #define __DNA_SMOKE_TYPES_H__
 
+/* type */
+#define MOD_SMOKE_DOMAIN_TYPE_GAS 0
+#define MOD_SMOKE_DOMAIN_TYPE_LIQUID 1
+
 /* flags */
 enum {
 	MOD_SMOKE_HIGHRES = (1 << 1),  /* enable high resolution */
@@ -173,7 +177,8 @@ typedef struct SmokeDomainSettings {
 	float noise_time_anim;
 	int manta_solver_res;	/* dimension of manta solver, 2d or 3d */
 	char manta_filepath[1024];
-	float mock_var; /* unused */
+	short type; /* gas, liquid */
+	short mock_var; /* unused */
 } SmokeDomainSettings;
 
 /* type */
