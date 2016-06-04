@@ -306,6 +306,7 @@ class QuickSmoke(Operator):
             items=(('SMOKE', "Smoke", ""),
                    ('FIRE', "Fire", ""),
                    ('BOTH', "Smoke + Fire", ""),
+                   ('LIQUID', "Liquid", ""),
                    ),
             default='SMOKE',
             )

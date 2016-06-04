@@ -54,6 +54,8 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
         if md.smoke_type == 'DOMAIN':
             domain = md.domain_settings
 
+            layout.prop(domain, "smoke_domain_type", expand=False)
+
             split = layout.split()
 
             split.enabled = not domain.point_cache.is_baked
@@ -78,7 +80,6 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
             sub.prop(domain, "use_dissolve_smoke_log", text="Slow")
 
         elif md.smoke_type == 'FLOW':
-
             flow = md.flow_settings
 
             layout.prop(flow, "smoke_flow_type", expand=False)
