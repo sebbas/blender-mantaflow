@@ -178,8 +178,10 @@ private:
 	// Liquids
 	float* mPhi;
 	
-	void initSetup(struct SmokeModifierData *smd);
-	void initSetupHigh(struct SmokeModifierData *smd);
+	void initDomain(struct SmokeModifierData *smd);
+	void initDomainHigh(struct SmokeModifierData *smd);
+	void initSmoke(struct SmokeModifierData *smd);
+	void initSmokeHigh(struct SmokeModifierData *smd);
 	void startMantaflow();
 	void runPythonString(std::vector<std::string> commands);
 	std::string getRealValue(const std::string& varName, SmokeModifierData *smd);

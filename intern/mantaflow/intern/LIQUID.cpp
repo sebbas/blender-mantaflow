@@ -53,7 +53,7 @@ void LIQUID::initSetup()
 {
 	std::string tmpString = manta_import
 		+ solver_low
-		+ adaptive_time_stepping
+		+ adaptive_time_stepping_low
 		+ alloc_liquid
 		+ liquid_variables
 		+ prep_domain

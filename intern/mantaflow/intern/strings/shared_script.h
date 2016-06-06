@@ -41,7 +41,14 @@ gs     = vec3($RESX$,$RESY$,$RESZ$)\n\
 if dim == 2: gs.z = 1\n\
 s      = Solver(name='main', gridSize=gs, dim=dim)\n";
 
-const std::string adaptive_time_stepping = "\n\
+const std::string solver_high = "\n\
+# solver high params\n\
+upres  = $UPRES$\n\
+xl_gs  = vec3($HRESX$, $HRESY$, $HRESZ$)\n\
+if dim == 2: xl_gs.z = 1\n\
+xl = Solver(name = 'larger', gridSize = xl_gs)\n";
+
+const std::string adaptive_time_stepping_low = "\n\
 # adaptive time stepping\n\
 dt_default    = 0.1\n\
 dt_factor     = $DT_FACTOR$\n\
@@ -52,5 +59,11 @@ s.timestepMin = dt0 / 10\n\
 s.timestepMax = dt0\n\
 s.cfl         = 4.0\n\
 s.timestep    = dt0\n";
+
+const std::string adaptive_time_stepping_high = "\n\
+xl.frameLength = s.frameLength\n\
+xl.timestepMin = s.timestepMin / 10\n\
+xl.timestepMax = s.timestepMax\n\
+xl.cfl         = s.cfl\n";
 
 

@@ -116,6 +116,9 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 	// Only start Mantaflow once. No need to start whenever new SMOKE objected is allocated
 	if (!mantaInitialized)
 		startMantaflow();
+
+	initDomain(smd);
+	if (mUsingHighRes) initDomainHigh(smd);
 	
 	// Initialize Mantaflow variables in Python
 	// Liquid
@@ -127,7 +130,7 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 	
 	// Smoke
 	if (mUsingSmoke) {
-		initSetup(smd);
+		initSmoke(smd);
 		if (mUsingHeat)   initHeat(smd);
 		if (mUsingFire)   initFire(smd);
 		if (mUsingColors) initColors(smd);
@@ -146,7 +149,7 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 			mTotalCellsHigh	= mResXHigh * mResYHigh * mResZHigh;
 			
 			// Initialize Mantaflow variables in Python
-			initSetupHigh(smd);
+			initSmokeHigh(smd);
 			if (mUsingFire)   initFireHigh(smd);
 			if (mUsingColors) initColorsHigh(smd);
 
@@ -155,13 +158,33 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 	}
 }
 
-void SMOKE::initSetup(SmokeModifierData *smd)
+void SMOKE::initDomain(SmokeModifierData *smd)
 {
 	std::string tmpString = manta_import
 		+ solver_low
-		+ adaptive_time_stepping
-		+ alloc_base_grids_low
-		+ smoke_variables
+		+ adaptive_time_stepping_low;
+	std::string finalString = parseScript(tmpString, smd);
+	mCommands.clear();
+	mCommands.push_back(finalString);
+	
+	runPythonString(mCommands);
+}
+
+void SMOKE::initDomainHigh(SmokeModifierData *smd)
+{
+	std::string tmpString = solver_high
+		+ adaptive_time_stepping_high;
+	std::string finalString = parseScript(tmpString, smd);
+	mCommands.clear();
+	mCommands.push_back(finalString);
+	
+	runPythonString(mCommands);
+}
+
+void SMOKE::initSmoke(SmokeModifierData *smd)
+{
+	std::string tmpString = alloc_base_grids_low
+		+ smoke_variables_low
 		+ prep_domain_low
 		+ manta_step
 		+ smoke_step_low;
@@ -172,9 +195,9 @@ void SMOKE::initSetup(SmokeModifierData *smd)
 	runPythonString(mCommands);
 }
 
-void SMOKE::initSetupHigh(SmokeModifierData *smd)
+void SMOKE::initSmokeHigh(SmokeModifierData *smd)
 {
-	std::string tmpString = solver_setup_high
+	std::string tmpString = solver_high
 		+ alloc_base_grids_high
 		+ uv_setup
 		+ prep_domain_high
@@ -257,10 +280,7 @@ void SMOKE::initColorsHigh(SmokeModifierData *smd)
 void SMOKE::initLiquid(SmokeModifierData *smd)
 {
 	if (!mPhi) {
-		std::string tmpString = manta_import
-			+ solver_low
-			+ adaptive_time_stepping
-			+ alloc_liquid
+		std::string tmpString = alloc_liquid
 			+ liquid_variables
 			+ prep_domain
 			+ adaptive_step_liquid
@@ -560,12 +580,12 @@ void SMOKE::exportScript(SmokeModifierData *smd)
 	}
 	
 	// Rest of low res setup
-	manta_script += prep_domain_low + smoke_variables;
+	manta_script += prep_domain_low + smoke_variables_low;
 	
 	// Setup high
 	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
 		manta_script +=
-			solver_setup_high +
+			solver_high +
 			uv_setup +
 			alloc_base_grids_high;
 	}

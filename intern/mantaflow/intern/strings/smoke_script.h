@@ -33,16 +33,6 @@
 // GENERAL SETUP
 //////////////////////////////////////////////////////////////////////
 
-const std::string smoke_variables = "\n\
-using_colors    = $USING_COLORS$\n\
-using_heat      = $USING_HEAT$\n\
-using_fire      = $USING_FIRE$\n\
-using_wavelets  = $USE_WAVELETS$\n\
-vorticity       = $VORTICITY$\n\
-doOpen          = $DO_OPEN$\n\
-boundConditions = '$BOUNDCONDITIONS$'\n\
-boundaryWidth   = 1\n";
-
 const std::string uv_setup = "\n\
 # create the array of uv grids\n\
 uv = []\n\
@@ -59,6 +49,16 @@ copyVec3ToReal(source=uv[1], targetX=texture_u2, targetY=texture_v2, targetZ=tex
 //////////////////////////////////////////////////////////////////////
 // LOW RESOLUTION SETUP
 //////////////////////////////////////////////////////////////////////
+
+const std::string smoke_variables_low = "\n\
+using_colors    = $USING_COLORS$\n\
+using_heat      = $USING_HEAT$\n\
+using_fire      = $USING_FIRE$\n\
+using_wavelets  = $USE_WAVELETS$\n\
+vorticity       = $VORTICITY$\n\
+doOpen          = $DO_OPEN$\n\
+boundConditions = '$BOUNDCONDITIONS$'\n\
+boundaryWidth   = 1\n";
 
 const std::string alloc_base_grids_low = "\n\
 # prepare grids low\n\
@@ -91,16 +91,7 @@ if doOpen:\n\
 // HIGH RESOLUTION SETUP
 //////////////////////////////////////////////////////////////////////
 
-const std::string solver_setup_high = "\n\
-# solver high params\n\
-upres = $UPRES$\n\
-xl_gs = vec3($HRESX$, $HRESY$, $HRESZ$)\n\
-if dim == 2: xl_gs.z = 1\n\
-xl = Solver(name = 'larger', gridSize = xl_gs)\n\
-xl.frameLength = s.frameLength\n\
-xl.timestepMin = s.timestepMin / 10\n\
-xl.timestepMax = s.timestepMax\n\
-xl.cfl         = s.cfl\n\
+const std::string smoke_variables_high = "\n\
 wltStrength    = $WLT_STR$\n\
 octaves = 0\n\
 uvs = 2\n\
