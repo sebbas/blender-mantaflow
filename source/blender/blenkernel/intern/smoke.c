@@ -2357,7 +2357,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 			if (em->total_cells && sfs->type != MOD_SMOKE_FLOW_TYPE_OUTFLOW) {
 				/* activate liquid field. cannot be combined with anything else */
 				if (sfs->type == MOD_SMOKE_FLOW_TYPE_LIQUID) {
-					active_fields |= SM_ACTIVE_LIQUID;
+					active_fields &= SM_ACTIVE_LIQUID;
 				}
 				/* activate heat field if flow produces any heat */
 				if (sfs->temp && sfs->type != MOD_SMOKE_FLOW_TYPE_LIQUID) {
@@ -2426,6 +2426,9 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 	if (active_fields & SM_ACTIVE_COLORS) {
 		/* initialize all smoke with "active_color" */
 		smoke_ensure_colors(sds->fluid, sds->smd);
+	}
+	if (active_fields & SM_ACTIVE_LIQUID) {
+		liquid_ensure_init(sds->fluid, sds->smd);
 	}
 #endif
 

@@ -56,8 +56,8 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 	mUsingFire    = smd->domain->active_fields & SM_ACTIVE_FIRE;
 	mUsingColors  = smd->domain->active_fields & SM_ACTIVE_COLORS;
 	mUsingHighRes = smd->domain->flags & MOD_SMOKE_HIGHRES;
-	mUsingLiquid  = true; // TODO Hardcoded for liquid testing (no gui yet)
-	mUsingSmoke   = false;
+	mUsingLiquid  = smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID;
+	mUsingSmoke   = smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS;
 	
 	// Make sure that string vector does not contain any previous commands
 	mCommands.clear();
