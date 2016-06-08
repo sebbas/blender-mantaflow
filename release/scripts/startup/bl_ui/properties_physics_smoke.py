@@ -327,6 +327,9 @@ class PHYSICS_PT_smoke_cache(PhysicButtonsPanel, Panel):
             row = layout.row()
             row.label("Data Depth:")
             row.prop(domain, "data_depth", expand=True, text="Data Depth")
+        elif cache_file_format == 'OBJECT':
+            layout.label(text="Compression:")
+            layout.prop(domain, "liquid_cache_compress_type", expand=True)
 
         cache = domain.point_cache
         point_cache_ui(self, context, cache, (cache.is_baked is False), 'SMOKE')

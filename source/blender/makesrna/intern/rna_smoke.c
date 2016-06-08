@@ -436,6 +436,12 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 		{SM_CACHE_HEAVY, "CACHEHEAVY", 0, "Heavy", "Effective but slow compression"},
 		{0, NULL, 0, NULL, NULL}
 	};
+	
+	static EnumPropertyItem liquid_cache_comp_items[] = {
+		{SM_CACHE_LIGHT, "CACHELIGHT", 0, "Light", "Write .bobj.gz files, smaller in size than .obj"},
+		{SM_CACHE_HEAVY, "CACHEHEAVY", 0, "Heavy", "Write .obj files (not yet implemented)"},
+		{0, NULL, 0, NULL, NULL}
+	};
 
 	static EnumPropertyItem smoke_highres_sampling_items[] = {
 		{SM_HRES_FULLSAMPLE, "FULLSAMPLE", 0, "Full Sample", ""},
@@ -462,6 +468,9 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 		{PTCACHE_FILE_PTCACHE, "POINTCACHE", 0, "Point Cache", "Blender specific point cache file format"},
 #ifdef WITH_OPENVDB
 		{PTCACHE_FILE_OPENVDB, "OPENVDB", 0, "OpenVDB", "OpenVDB file format"},
+#endif
+#ifdef WITH_MANTA
+		{PTCACHE_FILE_LIQUID, "OBJECT", 0, "Object files ", "Obj file format"},
 #endif
 		{0, NULL, 0, NULL, NULL}
 	};
@@ -586,6 +595,11 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_enum_sdna(prop, NULL, "openvdb_comp");
 	RNA_def_property_enum_items(prop, prop_compression_items);
 	RNA_def_property_ui_text(prop, "Compression", "Compression method to be used");
+	
+	prop = RNA_def_property(srna, "liquid_cache_compress_type", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "liquid_cache_comp");
+	RNA_def_property_enum_items(prop, liquid_cache_comp_items);
+	RNA_def_property_ui_text(prop, "Cache Compression", "Compression method to be used");
 
 	prop = RNA_def_property(srna, "data_depth", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_bitflag_sdna(prop, NULL, "data_depth");

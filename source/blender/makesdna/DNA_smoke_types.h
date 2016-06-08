@@ -153,6 +153,9 @@ typedef struct SmokeDomainSettings {
 	char cache_file_format;
 	char data_depth;
 	char pad[2];
+	/* Liquid cache options */
+	int liquid_cache_comp;
+	char mock_pad[4]; /* unused */
 
 	/* Smoke uses only one cache from now on (index [0]), but keeping the array for now for reading old files. */
 	struct PointCache *point_cache[2];	/* definition is in DNA_object_force.h */
