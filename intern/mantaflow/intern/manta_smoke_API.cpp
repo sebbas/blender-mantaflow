@@ -372,6 +372,11 @@ extern "C" float *smoke_turbulence_get_flame(SMOKE *smoke)
 	return (smoke && smoke->usingHighRes()) ? smoke->getFlameHigh() : NULL;
 }
 
+extern "C" float *liquid_turbulence_get_phi(SMOKE *liquid)
+{
+	return (liquid && liquid->usingHighRes()) ? liquid->getPhiHigh() : NULL;
+}
+
 extern "C" void smoke_turbulence_get_res(SMOKE *smoke, int *res)
 {
 	if (smoke && smoke->usingHighRes()) {

@@ -197,8 +197,8 @@ void SMOKE::initSmoke(SmokeModifierData *smd)
 
 void SMOKE::initSmokeHigh(SmokeModifierData *smd)
 {
-	std::string tmpString = solver_high
-		+ alloc_base_grids_high
+	std::string tmpString = alloc_base_grids_high
+		+ smoke_variables_high
 		+ uv_setup
 		+ prep_domain_high
 		+ wavelet_turbulence_noise
@@ -584,10 +584,10 @@ void SMOKE::exportScript(SmokeModifierData *smd)
 	
 	// Setup high
 	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
-		manta_script +=
-			solver_high +
-			uv_setup +
-			alloc_base_grids_high;
+		manta_script += solver_high
+			+ smoke_variables_high
+			+ uv_setup
+			+ alloc_base_grids_high;
 	}
 	
 	// Add color grids high if needed
