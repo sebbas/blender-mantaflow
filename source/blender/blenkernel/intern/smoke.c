@@ -1069,6 +1069,7 @@ typedef struct EmissionMap {
 	float *influence_high;
 	float *velocity;
 	float* inflow;
+	float* inflow_high;
 	int min[3], max[3], res[3];
 	int hmin[3], hmax[3], hres[3];
 	int total_cells, valid;
@@ -1145,6 +1146,7 @@ static void em_allocateData(EmissionMap *em, bool use_velocity, int hires_mul)
 		}
 
 		em->influence_high = MEM_callocN(sizeof(float) * total_cells_high, "smoke_flow_influence_high");
+		em->inflow_high = MEM_callocN(sizeof(float) * total_cells_high, "liquid_inflow_map_high");
 	}
 	em->valid = 1;
 }
@@ -1159,6 +1161,8 @@ static void em_freeData(EmissionMap *em)
 		MEM_freeN(em->velocity);
 	if (em->inflow)
 		MEM_freeN(em->inflow);
+	if (em->inflow_high)
+		MEM_freeN(em->inflow_high);
 }
 
 static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_multiplier, int additive, float sample_size)
@@ -1719,10 +1723,9 @@ static void emit_from_derivedmesh_task_cb(void *userdata, const int z)
 				                      x - data->min[0], data->res[0], y - data->min[1], data->res[1], z - data->min[2]);
 				const float ray_start[3] = {lx + 0.5f * data->hr, ly + 0.5f * data->hr, lz + 0.5f * data->hr};
 
-				// TODO (sebbas) inflow map highres?
 				sample_derivedmesh(
 				        data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
-				        em->influence_high, NULL, NULL, index, data->sds->base_res, data->flow_center,
+				        em->influence_high, NULL, em->inflow_high, index, data->sds->base_res, data->flow_center,
 				        data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
 				        /* x,y,z needs to be always lowres */
 				        lx, ly, lz);
@@ -2467,6 +2470,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				float *bigcolor_r = smoke_turbulence_get_color_r(sds->fluid);
 				float *bigcolor_g = smoke_turbulence_get_color_g(sds->fluid);
 				float *bigcolor_b = smoke_turbulence_get_color_b(sds->fluid);
+				float *bigphi = liquid_turbulence_get_phi(sds->fluid);
 #endif
 				float *heat = smoke_get_heat(sds->fluid);
 				float *velocity_x = smoke_get_velocity_x(sds->fluid);
@@ -2480,6 +2484,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				float *emission_map = em->influence;
 				float *emission_map_high = em->influence_high;
 				float* inflow_map = em->inflow;
+				float* inflow_map_high = em->inflow_high;
 
 				int ii, jj, kk, gx, gy, gz, ex, ey, ez, dx, dy, dz, block_size;
 				size_t e_index, d_index, index_big;
@@ -2600,7 +2605,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 											}
 											else { // inflow
 												// TODO (sebbas) inflow map highres?
-												apply_inflow_fields(sfs, interpolated_value, 1, index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL);
+												apply_inflow_fields(sfs, interpolated_value, inflow_map_high[index_big], index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, bigphi);
 											}
 										} // hires loop
 							}  // bigdensity
