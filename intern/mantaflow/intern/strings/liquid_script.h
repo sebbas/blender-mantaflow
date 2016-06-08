@@ -54,7 +54,7 @@ flags      = s.create(FlagGrid)\n\
 \n\
 phiParts   = s.create(LevelsetGrid)\n\
 phi        = s.create(LevelsetGrid)\n\
-phiTemp    = s.create(LevelsetGrid)\n\
+phiInit    = s.create(LevelsetGrid)\n\
 pressure   = s.create(RealGrid)\n\
 \n\
 vel        = s.create(MACGrid)\n\
@@ -73,7 +73,7 @@ gpi        = s.create(IntGrid)\n";
 const std::string prep_domain = "\n\
 flags.initDomain(boundaryWidth=0)\n\
 phi.initFromFlags(flags)\n\
-phiTemp.initFromFlags(flags)\n";
+phiInit.initFromFlags(flags)\n";
 
 //////////////////////////////////////////////////////////////////////
 // ADAPTIVE STEP
@@ -87,14 +87,14 @@ def manta_step(start_frame):\n\
     \n\
     # Sample particles on first frame\n\
     if (start_frame == 1):\n\
-        phi.copyFrom(phiTemp)\n\
+        phi.copyFrom(phiInit)\n\
         flags.updateFromLevelset(phi)\n\
         sampleLevelsetWithParticles( phi=phi, flags=flags, parts=pp, discretization=2, randomness=0.01 )\n\
         mapGridToPartsVec3(source=vel, parts=pp, target=pVel )\n\
         phi.save('/Users/sbarschkis/Desktop/phi.uni')\n\
     \n\
     #for i in range(int(gs.z)):\n\
-        #phiTemp.printGrid(zSlice=int(i))\n\
+        #phiInit.printGrid(zSlice=int(i))\n\
     while s.frame == last_frame:\n\
         global step\n\
         step = step + 1\n\
@@ -184,7 +184,7 @@ mantaMsg('Deleting grids, mesh, particlesystem')\n\
 if 'flags'      in globals() : del flags\n\
 if 'phiParts'   in globals() : del phiParts\n\
 if 'phi'        in globals() : del phi\n\
-if 'phiTemp'    in globals() : del phiTemp\n\
+if 'phiInit'    in globals() : del phiInit\n\
 if 'pressure'   in globals() : del pressure\n\
 if 'vel'        in globals() : del vel\n\
 if 'velOld'     in globals() : del velOld\n\

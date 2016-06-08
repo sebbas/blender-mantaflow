@@ -51,6 +51,7 @@ copyVec3ToReal(source=uv[1], targetX=texture_u2, targetY=texture_v2, targetZ=tex
 //////////////////////////////////////////////////////////////////////
 
 const std::string smoke_variables_low = "\n\
+mantaMsg('Smoke variables low')\n\
 using_colors    = $USING_COLORS$\n\
 using_heat      = $USING_HEAT$\n\
 using_fire      = $USING_FIRE$\n\
@@ -62,6 +63,7 @@ boundaryWidth   = 1\n";
 
 const std::string alloc_base_grids_low = "\n\
 # prepare grids low\n\
+mantaMsg('Smoke alloc grids low')\n\
 flags       = s.create(FlagGrid)\n\
 vel         = s.create(MACGrid)\n\
 x_vel       = s.create(RealGrid)\n\
@@ -82,6 +84,7 @@ fuel_inflow = s.create(LevelsetGrid)\n";
 
 const std::string prep_domain_low = "\n\
 # prepare domain low\n\
+mantaMsg('Smoke domain low')\n\
 flags.initDomain(boundaryWidth=boundaryWidth)\n\
 flags.fillGrid()\n\
 if doOpen:\n\
@@ -92,9 +95,11 @@ if doOpen:\n\
 //////////////////////////////////////////////////////////////////////
 
 const std::string smoke_variables_high = "\n\
-wltStrength    = $WLT_STR$\n\
-octaves = 0\n\
-uvs = 2\n\
+mantaMsg('Smoke variables high')\n\
+wltStrength = $WLT_STR$\n\
+octaves     = 0\n\
+uvs         = 2\n\
+\n\
 if upres == 1:\n\
     octaves = int(math.log(upres+1)/ math.log(2.0) + 0.5)\n\
 elif upres > 1:\n\
@@ -102,6 +107,7 @@ elif upres > 1:\n\
 
 const std::string alloc_base_grids_high = "\n\
 # prepare grids high\n\
+mantaMsg('Smoke alloc grids high')\n\
 xl_flags   = xl.create(FlagGrid)\n\
 xl_vel     = xl.create(MACGrid)\n\
 xl_density = xl.create(RealGrid)\n\
@@ -116,6 +122,7 @@ texture_w2 = s.create(RealGrid)\n";
 
 const std::string prep_domain_high = "\n\
 # prepare domain high\n\
+mantaMsg('Smoke domain high')\n\
 xl_flags.initDomain(boundaryWidth=boundaryWidth)\n\
 xl_flags.fillGrid()\n\
 if doOpen:\n\
@@ -123,6 +130,7 @@ if doOpen:\n\
 
 const std::string wavelet_turbulence_noise = "\n\
 # wavelet turbulence noise field\n\
+mantaMsg('Smoke wavelet noise')\n\
 xl_wltnoise = NoiseField(parent=xl, loadFromFile=True)\n\
 xl_wltnoise.posScale = vec3(int(1.0*gs.x)) / $NOISE_POSSCALE$\n\
 xl_wltnoise.timeAnim = $NOISE_TIMEANIM$\n";

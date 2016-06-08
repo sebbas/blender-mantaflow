@@ -35,6 +35,7 @@ import os, shutil, math, sys, gc\n";
 
 const std::string solver_low = "\n\
 # solver low params\n\
+mantaMsg('Solver low')\n\
 dim    = $SOLVER_DIM$\n\
 res    = $RES$\n\
 gs     = vec3($RESX$,$RESY$,$RESZ$)\n\
@@ -43,13 +44,15 @@ s      = Solver(name='main', gridSize=gs, dim=dim)\n";
 
 const std::string solver_high = "\n\
 # solver high params\n\
+mantaMsg('Solver high')\n\
 upres  = $UPRES$\n\
 xl_gs  = vec3($HRESX$, $HRESY$, $HRESZ$)\n\
 if dim == 2: xl_gs.z = 1\n\
-xl = Solver(name = 'larger', gridSize = xl_gs)\n";
+xl     = Solver(name='larger', gridSize=xl_gs)\n";
 
 const std::string adaptive_time_stepping_low = "\n\
 # adaptive time stepping\n\
+mantaMsg('Adaptive time stepping low')\n\
 dt_default    = 0.1\n\
 dt_factor     = $DT_FACTOR$\n\
 fps           = $FPS$\n\
@@ -61,6 +64,7 @@ s.cfl         = 4.0\n\
 s.timestep    = dt0\n";
 
 const std::string adaptive_time_stepping_high = "\n\
+mantaMsg('Adaptive time stepping high')\n\
 xl.frameLength = s.frameLength\n\
 xl.timestepMin = s.timestepMin / 10\n\
 xl.timestepMax = s.timestepMax\n\

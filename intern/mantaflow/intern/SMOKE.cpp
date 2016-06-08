@@ -693,7 +693,7 @@ void SMOKE::updatePointers(SmokeModifierData *smd)
 
 	// Liquid
 	if (mUsingLiquid) {
-		mPhi        = (float*)         getGridPointer("phiTemp",         "s");
+		mPhi        = (float*)         getGridPointer("phiInit",         "s");
 	}
 	
 	// Smoke
