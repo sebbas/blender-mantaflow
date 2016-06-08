@@ -116,13 +116,11 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 	// Only start Mantaflow once. No need to start whenever new SMOKE objected is allocated
 	if (!mantaInitialized)
 		startMantaflow();
-
-	initDomain(smd);
-	if (mUsingHighRes) initDomainHigh(smd);
 	
 	// Initialize Mantaflow variables in Python
 	// Liquid
 	if (mUsingLiquid) {
+		initDomain(smd);
 		initLiquid(smd);
 		updatePointers(smd);
 		return;
@@ -130,6 +128,7 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 	
 	// Smoke
 	if (mUsingSmoke) {
+		initDomain(smd);
 		initSmoke(smd);
 		if (mUsingHeat)   initHeat(smd);
 		if (mUsingFire)   initFire(smd);
@@ -149,6 +148,7 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 			mTotalCellsHigh	= mResXHigh * mResYHigh * mResZHigh;
 			
 			// Initialize Mantaflow variables in Python
+			initDomainHigh(smd);
 			initSmokeHigh(smd);
 			if (mUsingFire)   initFireHigh(smd);
 			if (mUsingColors) initColorsHigh(smd);
