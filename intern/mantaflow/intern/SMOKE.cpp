@@ -112,6 +112,7 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 	
 	// Liquids
 	mPhi            = NULL;
+	mPhiHigh        = NULL;
 
 	// Only start Mantaflow once. No need to start whenever new SMOKE objected is allocated
 	if (!mantaInitialized)
@@ -390,7 +391,8 @@ SMOKE::~SMOKE()
 	}
 	
 	// Liquid
-	mPhi = NULL;
+	mPhi     = NULL;
+	mPhiHigh = NULL;
 	
 	// Reset flags
 	mUsingHeat    = false;
@@ -689,6 +691,7 @@ void SMOKE::updatePointers(SmokeModifierData *smd)
 {
 	std::cout << "Updating pointers low res" << std::endl;
 
+	// Liquid
 	if (mUsingLiquid) {
 		mPhi        = (float*)         getGridPointer("phiTemp",         "s");
 	}
@@ -729,23 +732,31 @@ void SMOKE::updatePointersHigh(SmokeModifierData *smd)
 {
 	std::cout << "Updating pointers high res" << std::endl;
 
-	mDensityHigh    = (float*) getGridPointer("xl_density", "xl");
-	mTextureU       = (float*) getGridPointer("texture_u",  "s");
-	mTextureV       = (float*) getGridPointer("texture_v",  "s");
-	mTextureW       = (float*) getGridPointer("texture_w",  "s");
-	mTextureU2      = (float*) getGridPointer("texture_u2", "s");
-	mTextureV2      = (float*) getGridPointer("texture_v2", "s");
-	mTextureW2      = (float*) getGridPointer("texture_w2", "s");
-	
-	if (mUsingFire) {
-		mFlameHigh  = (float*) getGridPointer("xl_flame",   "xl");
-		mFuelHigh   = (float*) getGridPointer("xl_fuel",    "xl");
-		mReactHigh  = (float*) getGridPointer("xl_react",   "xl");
+	// Liquid
+	if (mUsingLiquid) {
+		// TODO (sebbas) phiInitHigh does not exist yet
+		mPhiHigh    = (float*) getGridPointer("phiInitHigh", "xl");
 	}
-	if (mUsingColors) {
-		mColorRHigh = (float*) getGridPointer("xl_color_r", "xl");
-		mColorGHigh = (float*) getGridPointer("xl_color_g", "xl");
-		mColorBHigh = (float*) getGridPointer("xl_color_b", "xl");
+	
+	if (mUsingSmoke) {
+		mDensityHigh    = (float*) getGridPointer("xl_density", "xl");
+		mTextureU       = (float*) getGridPointer("texture_u",  "s");
+		mTextureV       = (float*) getGridPointer("texture_v",  "s");
+		mTextureW       = (float*) getGridPointer("texture_w",  "s");
+		mTextureU2      = (float*) getGridPointer("texture_u2", "s");
+		mTextureV2      = (float*) getGridPointer("texture_v2", "s");
+		mTextureW2      = (float*) getGridPointer("texture_w2", "s");
+		
+		if (mUsingFire) {
+			mFlameHigh  = (float*) getGridPointer("xl_flame",   "xl");
+			mFuelHigh   = (float*) getGridPointer("xl_fuel",    "xl");
+			mReactHigh  = (float*) getGridPointer("xl_react",   "xl");
+		}
+		if (mUsingColors) {
+			mColorRHigh = (float*) getGridPointer("xl_color_r", "xl");
+			mColorGHigh = (float*) getGridPointer("xl_color_g", "xl");
+			mColorBHigh = (float*) getGridPointer("xl_color_b", "xl");
+		}
 	}
 }
 

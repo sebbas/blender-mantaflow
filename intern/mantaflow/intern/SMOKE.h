@@ -108,7 +108,8 @@ public:
 	inline float* getTextureV2() { return mTextureV2; }
 	inline float* getTextureW2() { return mTextureW2; }
 	
-	inline float* getPhi() { return mPhi; }
+	inline float* getPhi()     { return mPhi; }
+	inline float* getPhiHigh() { return NULL; } // Not yet implemented
 
 	static bool mantaInitialized;
 
@@ -177,6 +178,7 @@ private:
 	
 	// Liquids
 	float* mPhi;
+	float* mPhiHigh;
 	
 	void initDomain(struct SmokeModifierData *smd);
 	void initDomainHigh(struct SmokeModifierData *smd);
