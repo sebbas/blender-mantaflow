@@ -3018,8 +3018,7 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			step(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base);
 		}
 		// create shadows before writing cache so they get stored
-//		TODO Disabled while integrating liquids
-//		smoke_calc_transparency(sds, scene);
+		smoke_calc_transparency(sds, scene);
 
 #ifndef WITH_MANTA
 		if (sds->wt)
@@ -3027,10 +3026,9 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			smoke_turbulence_step(sds->wt, sds->fluid);
 		}
 #endif
-//		TODO Disabled while integrating liquids
-//		BKE_ptcache_validate(cache, framenr);
-//		if (framenr != startframe)
-//			BKE_ptcache_write(&pid, framenr);
+		BKE_ptcache_validate(cache, framenr);
+		if (framenr != startframe)
+			BKE_ptcache_write(&pid, framenr);
 
 #ifdef DEBUG_TIME
 		double end = PIL_check_seconds_timer();
