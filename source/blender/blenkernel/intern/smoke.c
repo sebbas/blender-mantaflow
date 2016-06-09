@@ -3032,10 +3032,9 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			smoke_turbulence_step(sds->wt, sds->fluid);
 		}
 #endif
-		// TODO (sebbas) disabled for liquid integration
-//		BKE_ptcache_validate(cache, framenr);
-//		if (framenr != startframe)
-//			BKE_ptcache_write(&pid, framenr);
+		BKE_ptcache_validate(cache, framenr);
+		if (framenr != startframe)
+			BKE_ptcache_write(&pid, framenr);
 
 #ifdef DEBUG_TIME
 		double end = PIL_check_seconds_timer();

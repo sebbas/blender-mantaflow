@@ -496,3 +496,10 @@ extern "C" float *liquid_get_phi(SMOKE *liquid)
 {
 	return liquid->getPhi();
 }
+
+extern "C" void liquid_save_mesh(SMOKE *liquid, int startFrame)
+{
+	if (liquid) {
+		liquid->saveMesh(startFrame);
+	}
+}

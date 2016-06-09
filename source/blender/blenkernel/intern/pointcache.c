@@ -1215,6 +1215,37 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 }
 #endif
 
+#ifdef WITH_MANTA
+static int ptcache_liquid_read(PTCacheFile *pf, void *smoke_v)
+{
+	SmokeModifierData *smd = (SmokeModifierData *)smoke_v;
+
+	if (!smd) {
+		return 0;
+	}
+
+	SmokeDomainSettings *sds = smd->domain;
+	return 1;
+}
+
+static int ptcache_liquid_write(void *smoke_v, int cfra)
+{
+	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
+
+	if (!smd) {
+		return 0;
+	}
+
+	SmokeDomainSettings *sds = smd->domain;
+	
+	if (sds->fluid) {
+		liquid_save_mesh(sds->fluid, cfra);
+		return 1;
+	}
+	return 0;
+}
+#endif // WITH_MANTA
+
 #else // WITH_SMOKE
 static int  ptcache_smoke_totpoint(void *UNUSED(smoke_v), int UNUSED(cfra)) { return 0; }
 static void ptcache_smoke_error(void *UNUSED(smoke_v), const char *UNUSED(message)) { }
@@ -1457,6 +1488,9 @@ void BKE_ptcache_id_from_softbody(PTCacheID *pid, Object *ob, SoftBody *sb)
 
 	pid->write_openvdb_stream	= NULL;
 	pid->read_openvdb_stream	= NULL;
+	
+	pid->write_liquid_stream	= NULL;
+	pid->read_liquid_stream		= NULL;
 
 	pid->write_extra_data		= NULL;
 	pid->read_extra_data		= NULL;
@@ -1502,6 +1536,9 @@ void BKE_ptcache_id_from_particles(PTCacheID *pid, Object *ob, ParticleSystem *p
 
 	pid->write_openvdb_stream	= NULL;
 	pid->read_openvdb_stream	= NULL;
+	
+	pid->write_liquid_stream	= NULL;
+	pid->read_liquid_stream		= NULL;
 
 	pid->write_extra_data		= NULL;
 	pid->read_extra_data		= NULL;
@@ -1559,6 +1596,9 @@ void BKE_ptcache_id_from_cloth(PTCacheID *pid, Object *ob, ClothModifierData *cl
 
 	pid->write_stream			= NULL;
 	pid->read_stream			= NULL;
+	
+	pid->write_liquid_stream	= NULL;
+	pid->read_liquid_stream		= NULL;
 
 	pid->write_extra_data		= NULL;
 	pid->read_extra_data		= NULL;
@@ -1598,11 +1638,14 @@ void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct SmokeMo
 	pid->interpolate_point		= NULL;
 
 	// TODO (sebbas) need to disable this again for liquids
-	pid->read_stream			= NULL; //ptcache_smoke_read;
-	pid->write_stream			= NULL; //ptcache_smoke_write;
+	pid->read_stream			= ptcache_smoke_read;
+	pid->write_stream			= ptcache_smoke_write;
 
 	pid->write_openvdb_stream	= ptcache_smoke_openvdb_write;
 	pid->read_openvdb_stream	= ptcache_smoke_openvdb_read;
+	
+	pid->write_liquid_stream	= ptcache_liquid_write;
+	pid->read_liquid_stream		= ptcache_liquid_read;
 
 	pid->write_extra_data		= NULL;
 	pid->read_extra_data		= NULL;
@@ -2836,6 +2879,16 @@ static int ptcache_write_openvdb_stream(PTCacheID *pid, int cfra)
 	return 0;
 #endif
 }
+static int ptcache_write_liquid_stream(PTCacheID *pid, int cfra)
+{
+	char filename[FILE_MAX * 2];
+	BKE_ptcache_id_clear(pid, PTCACHE_CLEAR_FRAME, cfra);
+	ptcache_filename(pid, filename, cfra, 1, 1);
+	
+	int error = pid->write_liquid_stream(pid->calldata, cfra);
+	
+	return error == 0;
+}
 static int ptcache_write(PTCacheID *pid, int cfra, int overwrite)
 {
 	PointCache *cache = pid->cache;
@@ -2969,6 +3022,9 @@ int BKE_ptcache_write(PTCacheID *pid, unsigned int cfra)
 
 	if (pid->file_type == PTCACHE_FILE_OPENVDB && pid->write_openvdb_stream) {
 		ptcache_write_openvdb_stream(pid, cfra);
+	}
+	else if (pid->file_type == PTCACHE_FILE_LIQUID && pid->write_liquid_stream) {
+		ptcache_write_liquid_stream(pid, cfra);
 	}
 	else if (pid->write_stream) {
 		ptcache_write_stream(pid, cfra, totpoint);

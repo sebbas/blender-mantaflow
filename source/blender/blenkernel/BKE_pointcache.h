@@ -160,6 +160,11 @@ typedef struct PTCacheID {
 	int (*write_openvdb_stream)(struct OpenVDBWriter *writer, void *calldata);
 	/* copies cache cata to point data */
 	int (*read_openvdb_stream)(struct OpenVDBReader *reader, void *calldata);
+	
+	/* copies point data to cache data */
+	int (*write_liquid_stream)(void *calldata, int cfra);
+	/* copies cache cata to point data */
+	int (*read_liquid_stream)(void *calldata, int cfra);
 
 	/* copies custom extradata to cache data */
 	void (*write_extra_data)(void *calldata, struct PTCacheMem *pm, int cfra);

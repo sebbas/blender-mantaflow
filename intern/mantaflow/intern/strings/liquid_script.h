@@ -165,7 +165,6 @@ def liquid_step():\n\
     \n\
     if dim==3:\n\
         phi.createMesh(mesh)\n\
-        mesh.save('/Users/sbarschkis/Desktop/surface/fluidsurface_final_%04d.bobj.gz' % step)\n\
     \n\
     # Resample particles\n\
     pVel.setSource( vel, isMAC=True ) # Set source grids for resampling, used in adjustNumber!\n\
@@ -174,6 +173,10 @@ def liquid_step():\n\
         adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, narrowBand=narrowBandWidth )\n\
     else:\n\
         adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi )\n";
+
+const std::string save_mesh = "\n\
+def save_mesh(step):\n\
+    mesh.save('/Users/sbarschkis/Desktop/surface/fluidsurface_final_%04d.bobj.gz' % step)\n";
 
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION

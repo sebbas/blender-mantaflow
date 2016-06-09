@@ -60,6 +60,9 @@ public:
 	void exportScript(struct SmokeModifierData *smd);
 	void exportGrids(struct SmokeModifierData *smd);
 	
+	// Write files for liquids
+	void saveMesh(int startFrame);
+	
 	// Getters
 	inline size_t getTotalCells() { return mTotalCells; }
 	inline size_t getTotalCellsHigh() { return mTotalCellsHigh; }

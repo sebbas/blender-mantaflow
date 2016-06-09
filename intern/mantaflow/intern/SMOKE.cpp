@@ -284,6 +284,7 @@ void SMOKE::initLiquid(SmokeModifierData *smd)
 		std::string tmpString = alloc_liquid
 			+ liquid_variables
 			+ prep_domain
+			+ save_mesh
 			+ adaptive_step_liquid
 			+ liquid_step;
 		std::string finalString = parseScript(tmpString, smd);
@@ -758,6 +759,16 @@ void SMOKE::updatePointersHigh(SmokeModifierData *smd)
 			mColorBHigh = (float*) getGridPointer("xl_color_b", "xl");
 		}
 	}
+}
+
+void SMOKE::saveMesh(int startFrame)
+{
+	mCommands.clear();
+	std::ostringstream save_mesh;
+	save_mesh <<  "save_mesh(" << startFrame << ")";
+	mCommands.push_back(save_mesh.str());
+	
+	runPythonString(mCommands);
 }
 
 
