@@ -1216,7 +1216,7 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 #endif
 
 #ifdef WITH_MANTA
-static int ptcache_liquid_read(PTCacheFile *pf, void *smoke_v)
+static int ptcache_liquid_read(void *smoke_v, char *filename)
 {
 	SmokeModifierData *smd = (SmokeModifierData *)smoke_v;
 
@@ -1228,7 +1228,7 @@ static int ptcache_liquid_read(PTCacheFile *pf, void *smoke_v)
 	return 1;
 }
 
-static int ptcache_liquid_write(void *smoke_v, int cfra)
+static int ptcache_liquid_write(void *smoke_v, char *filename)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
 
@@ -1239,7 +1239,7 @@ static int ptcache_liquid_write(void *smoke_v, int cfra)
 	SmokeDomainSettings *sds = smd->domain;
 	
 	if (sds->fluid) {
-		liquid_save_mesh(sds->fluid, cfra);
+		liquid_save_mesh(sds->fluid, filename);
 		return 1;
 	}
 	return 0;
@@ -1852,6 +1852,8 @@ static const char *ptcache_file_extension(const PTCacheID *pid)
 			return PTCACHE_EXT;
 		case PTCACHE_FILE_OPENVDB:
 			return ".vdb";
+		case PTCACHE_FILE_LIQUID:
+			return ".bobj.gz";
 	}
 }
 
@@ -2882,10 +2884,13 @@ static int ptcache_write_openvdb_stream(PTCacheID *pid, int cfra)
 static int ptcache_write_liquid_stream(PTCacheID *pid, int cfra)
 {
 	char filename[FILE_MAX * 2];
-	BKE_ptcache_id_clear(pid, PTCACHE_CLEAR_FRAME, cfra);
-	ptcache_filename(pid, filename, cfra, 1, 1);
 	
-	int error = pid->write_liquid_stream(pid->calldata, cfra);
+	BKE_ptcache_id_clear(pid, PTCACHE_CLEAR_FRAME, cfra);
+	
+	ptcache_filename(pid, filename, cfra, 1, 1);
+	BLI_make_existing_file(filename);
+
+	int error = pid->write_liquid_stream(pid->calldata, filename);
 	
 	return error == 0;
 }

@@ -175,8 +175,8 @@ def liquid_step():\n\
         adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi )\n";
 
 const std::string save_mesh = "\n\
-def save_mesh(step):\n\
-    mesh.save('/Users/sbarschkis/Desktop/surface/fluidsurface_final_%04d.bobj.gz' % step)\n";
+def save_mesh(path):\n\
+    mesh.save(path)\n";
 
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION

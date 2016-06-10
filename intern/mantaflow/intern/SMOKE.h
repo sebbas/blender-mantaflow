@@ -61,7 +61,7 @@ public:
 	void exportGrids(struct SmokeModifierData *smd);
 	
 	// Write files for liquids
-	void saveMesh(int startFrame);
+	void saveMesh(char *filename);
 	
 	// Getters
 	inline size_t getTotalCells() { return mTotalCells; }

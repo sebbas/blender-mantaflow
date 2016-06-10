@@ -761,11 +761,13 @@ void SMOKE::updatePointersHigh(SmokeModifierData *smd)
 	}
 }
 
-void SMOKE::saveMesh(int startFrame)
+void SMOKE::saveMesh(char *filename)
 {
+	std::string path(filename);
+	
 	mCommands.clear();
 	std::ostringstream save_mesh;
-	save_mesh <<  "save_mesh(" << startFrame << ")";
+	save_mesh <<  "save_mesh('" <<  path << "')";
 	mCommands.push_back(save_mesh.str());
 	
 	runPythonString(mCommands);

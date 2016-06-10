@@ -91,7 +91,7 @@ float *smoke_get_fuel_inflow(struct SMOKE *smoke);
 float *liquid_get_phi(struct SMOKE *liquid);
 float *liquid_turbulence_get_phi(struct SMOKE *liquid);
 void liquid_ensure_init(struct SMOKE *smoke, struct SmokeModifierData *smd);
-void liquid_save_mesh(struct SMOKE *smoke, int startFrame);
+void liquid_save_mesh(struct SMOKE *smoke, char *filename);
 
 #ifdef __cplusplus
 }
