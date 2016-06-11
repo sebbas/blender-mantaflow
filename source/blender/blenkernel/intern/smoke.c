@@ -1565,7 +1565,7 @@ static void sample_derivedmesh(
 			BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dir, 0.0f, &hit, treeData->raycast_callback, treeData);
 			
 			if (hit.index != -1) {
-				inflow_map[index] = 0.5; // Inside mesh
+				inflow_map[index] = -0.5; // Inside mesh
 			}
 		}
 	}
