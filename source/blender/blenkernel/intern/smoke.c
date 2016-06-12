@@ -1550,6 +1550,110 @@ static void sample_derivedmesh(
 		}
 	}
 	
+	/*****************************************************
+	 * Old inflow based on surface distance
+	 *****************************************************/
+
+//	// Reset hit tree
+//	hit.index = -1;
+//	hit.dist = 9999;
+//	float first_hit, opposite_hit;
+//	
+//	/* Calculate map which indicates whether point is inside a mesh or not */
+//	if (BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dir, 0.0f, &hit, treeData->raycast_callback, treeData) != -1) {
+//		float dot = ray_dir[0] * hit.no[0] + ray_dir[1] * hit.no[1] + ray_dir[2] * hit.no[2];
+//		/*  If ray and hit face normal are facing same direction
+//		 *	hit point is inside a closed mesh. */
+//		if (dot >= 0) {
+//			first_hit = hit.dist;
+//			/* Also cast a ray in opposite direction to make sure
+//			 * point is at least surrounded by two faces */
+//			negate_v3(ray_dir);
+//			hit.index = -1;
+//			hit.dist = 9999;
+//
+//			BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dir, 0.0f, &hit, treeData->raycast_callback, treeData);
+//			
+//			if (hit.index != -1) {
+//				opposite_hit = hit.dist;
+//				inflow_map[index] = -MIN2(first_hit, opposite_hit); // Inside mesh
+//			}
+//		}
+//	}
+
+	/*****************************************************
+	 * Better liquid inflow based on raycasts in all 6 directions
+	 *****************************************************/
+	
+	// Reset hit tree
+//	BVHTreeRayHit hit_x = {0};
+//	BVHTreeRayHit hit_y = {0};
+//	BVHTreeRayHit hit_z = {0};
+//
+//	hit_x.index = -1;
+//	hit_x.dist = 9999;
+//	
+//	hit_y.index = -1;
+//	hit_y.dist = 9999;
+//	
+//	hit_z.index = -1;
+//	hit_z.dist = 9999;
+//	
+//	float dist_x_pos, dist_y_pos, dist_z_pos, dist_x_neg, dist_y_neg, dist_z_neg;
+//	float min_dist_x, min_dist_y, min_dist_z;
+//	float ray_dir_x[3] = {1.0f, 0.0f, 0.0f};
+//	float ray_dir_y[3] = {0.0f, 1.0f, 0.0f};
+//	float ray_dir_z[3] = {0.0f, 0.0f, 1.0f};
+//	
+//	/* Calculate map which indicates whether point is inside a mesh or not */
+//	if (BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dir_x, 0.0f, &hit_x, treeData->raycast_callback, treeData) != -1 ||
+//		BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dir_y, 0.0f, &hit_y, treeData->raycast_callback, treeData) != -1 ||
+//		BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dir_z, 0.0f, &hit_z, treeData->raycast_callback, treeData) != -1)
+//	{
+//		dist_x_pos = hit_x.dist;
+//		dist_y_pos = hit_y.dist;
+//		dist_z_pos = hit_z.dist;
+//		
+//		float dot_x = ray_dir_x[0] * hit_x.no[0] + ray_dir_x[1] * hit_x.no[1] + ray_dir_x[2] * hit_x.no[2];
+//		float dot_y = ray_dir_y[0] * hit_y.no[0] + ray_dir_y[1] * hit_y.no[1] + ray_dir_y[2] * hit_y.no[2];
+//		float dot_z = ray_dir_z[0] * hit_z.no[0] + ray_dir_z[1] * hit_z.no[1] + ray_dir_z[2] * hit_z.no[2];
+//		
+//		if (dot_x >= 0 && dot_y >= 0 && dot_z >= 0) {
+//
+//			/* Also cast a ray in opposite direction to make sure
+//			 * point is at least surrounded by two faces */
+//			negate_v3(ray_dir_x);
+//			negate_v3(ray_dir_y);
+//			negate_v3(ray_dir_z);
+//
+//			hit_x.index = -1;
+//			hit_x.dist = 9999;
+//			
+//			hit_y.index = -1;
+//			hit_y.dist = 9999;
+//			
+//			hit_z.index = -1;
+//			hit_z.dist = 9999;
+//			
+//			if (BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dir_x, 0.0f, &hit_x, treeData->raycast_callback, treeData) != -1 &&
+//				BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dir_y, 0.0f, &hit_y, treeData->raycast_callback, treeData) != -1 &&
+//				BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dir_z, 0.0f, &hit_z, treeData->raycast_callback, treeData) != -1)
+//			{
+//				dist_x_neg = hit_x.dist;
+//				dist_y_neg = hit_y.dist;
+//				dist_z_neg = hit_z.dist;
+//				
+//				min_dist_x = MIN2(dist_x_pos, dist_x_neg);
+//				min_dist_y = MIN2(dist_y_pos, dist_y_neg);
+//				min_dist_z = MIN2(dist_z_pos, dist_z_neg);
+//
+//				inflow_map[index] = -MIN3(min_dist_x, min_dist_y, min_dist_z);
+//			}
+//		}
+//	}
+	
+	/*****************************************************/	
+	
 	/* Calculate map which indicates whether point is inside a mesh or not */
 	if (BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dir, 0.0f, &hit, treeData->raycast_callback, treeData) != -1) {
 		float dot = ray_dir[0] * hit.no[0] + ray_dir[1] * hit.no[1] + ray_dir[2] * hit.no[2];
