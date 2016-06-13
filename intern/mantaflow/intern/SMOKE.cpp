@@ -67,8 +67,8 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 	mResX               = res[0];
 	mResY               = res[1];
 	mResZ               = res[2];
-	int maxRes          = MAX3(mResX, mResY, mResZ);
-	mConstantScaling    = 64.0f / maxRes;
+	mMaxRes             = MAX3(mResX, mResY, mResZ);
+	mConstantScaling    = 64.0f / mMaxRes;
 	mConstantScaling    = (mConstantScaling < 1.0f) ? 1.0f : mConstantScaling;
 	mTotalCells         = mResX * mResY * mResZ;
 	

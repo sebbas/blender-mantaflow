@@ -131,6 +131,7 @@ private:
 	int mResX;
 	int mResY;
 	int mResZ;
+	int mMaxRes;
 	
 	int mResXHigh;
 	int mResYHigh;
