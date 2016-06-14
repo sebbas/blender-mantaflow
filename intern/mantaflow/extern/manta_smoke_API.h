@@ -90,8 +90,21 @@ float *smoke_get_fuel_inflow(struct SMOKE *smoke);
 
 float *liquid_get_phi(struct SMOKE *liquid);
 float *liquid_turbulence_get_phi(struct SMOKE *liquid);
-void liquid_ensure_init(struct SMOKE *smoke, struct SmokeModifierData *smd);
-void liquid_save_mesh(struct SMOKE *smoke, char *filename);
+void liquid_ensure_init(struct SMOKE *liquid, struct SmokeModifierData *smd);
+void liquid_save_mesh(struct SMOKE *liquid, char *filename);
+void liquid_load_mesh(struct SMOKE *liquid, char *filename);
+int liquid_get_num_verts(struct SMOKE *liquid);
+int liquid_get_num_normals(struct SMOKE *liquid);
+int liquid_get_num_triangles(struct SMOKE *liquid);
+float liquid_get_vertice_x_at(struct SMOKE *liquid, int i);
+float liquid_get_vertice_y_at(struct SMOKE *liquid, int i);
+float liquid_get_vertice_z_at(struct SMOKE *liquid, int i);
+float liquid_get_normal_x_at(struct SMOKE *liquid, int i);
+float liquid_get_normal_y_at(struct SMOKE *liquid, int i);
+float liquid_get_normal_z_at(struct SMOKE *liquid, int i);
+float liquid_get_triangle_x_at(struct SMOKE *liquid, int i);
+float liquid_get_triangle_y_at(struct SMOKE *liquid, int i);
+float liquid_get_triangle_z_at(struct SMOKE *liquid, int i);
 
 #ifdef __cplusplus
 }

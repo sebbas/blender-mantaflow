@@ -503,3 +503,64 @@ extern "C" void liquid_save_mesh(SMOKE *liquid, char *filename)
 		liquid->saveMesh(filename);
 	}
 }
+
+extern "C" int liquid_get_num_verts(SMOKE *liquid)
+{
+	return liquid->getNumVertices();
+}
+
+extern "C" int liquid_get_num_normals(SMOKE *liquid)
+{
+	return liquid->getNumNormals();
+}
+
+extern "C" int liquid_get_num_triangles(SMOKE *liquid)
+{
+	return liquid->getNumTriangles();
+}
+
+extern "C" float liquid_get_vertice_x_at(SMOKE *liquid, int i)
+{
+	return liquid->getVerticeXAt(i);
+}
+
+extern "C" float liquid_get_vertice_y_at(SMOKE *liquid, int i)
+{
+	return liquid->getVerticeYAt(i);
+}
+
+extern "C" float liquid_get_vertice_z_at(SMOKE *liquid, int i)
+{
+	return liquid->getVerticeZAt(i);
+}
+
+extern "C" float liquid_get_normal_x_at(SMOKE *liquid, int i)
+{
+	return liquid->getNormalXAt(i);
+}
+
+extern "C" float liquid_get_normal_y_at(SMOKE *liquid, int i)
+{
+	return liquid->getNormalYAt(i);
+}
+
+extern "C" float liquid_get_normal_z_at(SMOKE *liquid, int i)
+{
+	return liquid->getNormalZAt(i);
+}
+
+extern "C" float liquid_get_triangle_x_at(SMOKE *liquid, int i)
+{
+	return liquid->getTriangleXAt(i);
+}
+
+extern "C" float liquid_get_triangle_y_at(SMOKE *liquid, int i)
+{
+	return liquid->getTriangleYAt(i);
+}
+
+extern "C" float liquid_get_triangle_z_at(SMOKE *liquid, int i)
+{
+	return liquid->getTriangleZAt(i);
+}
+

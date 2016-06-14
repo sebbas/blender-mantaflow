@@ -63,7 +63,7 @@ public:
 	// Write files for liquids
 	void saveMesh(char *filename);
 	
-	// Getters
+	// Smoke getters
 	inline size_t getTotalCells() { return mTotalCells; }
 	inline size_t getTotalCellsHigh() { return mTotalCellsHigh; }
 	inline bool usingHighRes() { return mUsingHighRes; }
@@ -115,6 +115,23 @@ public:
 	inline float* getPhiHigh() { return NULL; } // Not yet implemented
 
 	static bool mantaInitialized;
+	
+	// Liquid getters
+	inline int getNumVertices()  { return mNumVertices; }
+	inline int getNumNormals()   { return mNumNormals; }
+	inline int getNumTriangles() { return mNumTriangles; }
+	
+	inline int getVerticeXAt(int i)  { return mVerticesX[i]; }
+	inline int getVerticeYAt(int i)  { return mVerticesY[i]; }
+	inline int getVerticeZAt(int i)  { return mVerticesZ[i]; }
+
+	inline int getNormalXAt(int i)   { return mNormalsX[i]; }
+	inline int getNormalYAt(int i)   { return mNormalsY[i]; }
+	inline int getNormalZAt(int i)   { return mNormalsZ[i]; }
+
+	inline int getTriangleXAt(int i) { return mTrianglesX[i]; }
+	inline int getTriangleYAt(int i) { return mTrianglesY[i]; }
+	inline int getTriangleZAt(int i) { return mTrianglesZ[i]; }
 
 private:
 	// simulation constants
