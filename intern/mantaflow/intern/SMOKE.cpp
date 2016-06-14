@@ -113,6 +113,10 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 	// Liquids
 	mPhi            = NULL;
 	mPhiHigh        = NULL;
+	
+	mNumVertices  = 0;
+	mNumNormals   = 0;
+	mNumTriangles = 0;
 
 	// Only start Mantaflow once. No need to start whenever new SMOKE objected is allocated
 	if (!mantaInitialized)

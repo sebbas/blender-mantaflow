@@ -183,6 +183,19 @@ private:
 	// Liquids
 	float* mPhi;
 	float* mPhiHigh;
+	// Mesh fields for liquid surface
+	int mNumVertices;
+	int mNumNormals;
+	int mNumTriangles;
+	std::vector<float> mVerticesX;
+	std::vector<float> mVerticesY;
+	std::vector<float> mVerticesZ;
+	std::vector<float> mNormalsX;
+	std::vector<float> mNormalsY;
+	std::vector<float> mNormalsZ;
+	std::vector<int> mTrianglesX;
+	std::vector<int> mTrianglesY;
+	std::vector<int> mTrianglesZ;
 	
 	void initDomain(struct SmokeModifierData *smd);
 	void initDomainHigh(struct SmokeModifierData *smd);
