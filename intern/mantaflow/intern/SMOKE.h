@@ -132,6 +132,8 @@ public:
 	inline int getTriangleXAt(int i) { return mTrianglesX[i]; }
 	inline int getTriangleYAt(int i) { return mTrianglesY[i]; }
 	inline int getTriangleZAt(int i) { return mTrianglesZ[i]; }
+	
+	void updateMeshData(char* filename);
 
 private:
 	// simulation constants

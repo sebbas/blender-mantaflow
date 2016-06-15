@@ -564,3 +564,8 @@ extern "C" float liquid_get_triangle_z_at(SMOKE *liquid, int i)
 	return liquid->getTriangleZAt(i);
 }
 
+extern "C" void liquid_update_mesh_data(SMOKE *liquid, char* filename)
+{
+	liquid->updateMeshData(filename);
+}
+

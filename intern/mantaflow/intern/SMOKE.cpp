@@ -30,6 +30,7 @@
 #include <sstream>
 #include <fstream>
 #include <iostream>
+#include <zlib.h>
 
 #include "SMOKE.h"
 #include "registry.h"
@@ -39,6 +40,7 @@
 
 #include "BLI_path_util.h"
 #include "BLI_utildefines.h"
+#include "BLI_fileops.h"
 
 #include "DNA_scene_types.h"
 #include "DNA_modifier_types.h"
@@ -690,6 +692,89 @@ void* SMOKE::getGridPointer(std::string gridName, std::string solverName)
 
 	PyGILState_Release(gilstate);
 	return gridPointer;
+}
+
+void SMOKE::updateMeshData(char* filename)
+{
+	float dx =  1.0f / mMaxRes;
+	float fbuffer[3];
+	int ibuffer[3];
+
+	gzFile gzf = BLI_gzopen(filename, "rb1"); // do some compression
+	if (!gzf)
+		std::cout << "readBobj: unable to open file" << std::endl;
+	
+	// Num vertices
+	mNumVertices = 0;
+	gzread(gzf, &mNumVertices, sizeof(int));
+	
+	std::cout << "read mesh , verts " << mNumVertices << std::endl;
+
+	if (mNumVertices)
+	{
+		mVerticesX.resize(mNumVertices);
+		mVerticesY.resize(mNumVertices);
+		mVerticesZ.resize(mNumVertices);
+		
+		// Vertices
+		for (int i = 0; i < mNumVertices; i++) {
+			gzread(gzf, fbuffer, sizeof(float)  * 3);
+			
+			mVerticesX[i] = fbuffer[0];
+			mVerticesY[i] = fbuffer[1];
+			mVerticesZ[i] = fbuffer[2];
+
+			// convert to grid space
+			mVerticesX[i] /= dx;
+			mVerticesX[i] += mResX*0.5;
+			mVerticesY[i] /= dx;
+			mVerticesY[i] += mResY*0.5;
+			mVerticesZ[i] /= dx;
+			mVerticesZ[i] += mResZ*0.5;
+		}
+	}
+	
+	// Num normals
+	mNumNormals = 0;
+	gzread(gzf, &mNumNormals, sizeof(float));
+	
+	if (mNumNormals)
+	{
+		mNormalsX.resize(mNumNormals);
+		mNormalsY.resize(mNumNormals);
+		mNormalsZ.resize(mNumNormals);
+		
+		// Normals
+		for (int i = 0; i < mNumNormals; i++) {
+			gzread(gzf, fbuffer, sizeof(float) * 3);
+			
+			mNormalsX[i] = fbuffer[0];
+			mNormalsY[i] = fbuffer[1];
+			mNormalsZ[i] = fbuffer[2];
+		}
+	}
+	
+	// Num triangles
+	mNumTriangles = 0;
+	gzread(gzf, &mNumTriangles, sizeof(int));
+	
+	if (mNumTriangles)
+	{
+		mTrianglesX.resize(mNumTriangles);
+		mTrianglesY.resize(mNumTriangles);
+		mTrianglesZ.resize(mNumTriangles);
+		
+		// Triangles
+		for (int i = 0; i < mNumTriangles; i++) {
+			gzread(gzf, ibuffer, sizeof(int) * 3);
+			
+			mTrianglesX[i] = ibuffer[0];
+			mTrianglesY[i] = ibuffer[1];
+			mTrianglesZ[i] = ibuffer[2];
+		}
+	}
+
+	gzclose( gzf );
 }
 
 void SMOKE::updatePointers(SmokeModifierData *smd)
