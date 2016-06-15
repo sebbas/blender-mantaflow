@@ -1218,14 +1218,19 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 #ifdef WITH_MANTA
 static int ptcache_liquid_read(void *smoke_v, char *filename)
 {
-	SmokeModifierData *smd = (SmokeModifierData *)smoke_v;
+	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
 
 	if (!smd) {
 		return 0;
 	}
 
 	SmokeDomainSettings *sds = smd->domain;
-	return 1;
+	
+	if (sds->fluid) {
+		liquid_update_mesh_data(sds->fluid, filename);
+		return 1;
+	}
+	return 0;
 }
 
 static int ptcache_liquid_write(void *smoke_v, char *filename)
@@ -1240,6 +1245,10 @@ static int ptcache_liquid_write(void *smoke_v, char *filename)
 	
 	if (sds->fluid) {
 		liquid_save_mesh(sds->fluid, filename);
+		
+		/* After writing mesh data make sure that fields in fluid object
+		 * are up-to-date (necessary for instant replay functionality) */
+		liquid_update_mesh_data(sds->fluid, filename);
 		return 1;
 	}
 	return 0;
@@ -2633,6 +2642,27 @@ static int ptcache_read_openvdb_stream(PTCacheID *pid, int cfra)
 #endif
 }
 
+static int ptcache_read_liquid_stream(PTCacheID *pid, int cfra)
+{
+	char filename[FILE_MAX * 2];
+
+	 /* save blend file before using disk pointcache */
+	if (!G.relbase_valid && (pid->cache->flag & PTCACHE_EXTERNAL) == 0)
+		return 0;
+
+	ptcache_filename(pid, filename, cfra, 1, 1);
+
+	if (!BLI_exists(filename)) {
+		return 0;
+	}
+
+	if (!pid->read_liquid_stream(pid->calldata, filename)) {
+		return 0;
+	}
+
+	return 1;
+}
+
 static int ptcache_read(PTCacheID *pid, int cfra)
 {
 	PTCacheMem *pm = NULL;
@@ -2779,6 +2809,11 @@ int BKE_ptcache_read(PTCacheID *pid, float cfra)
 				return 0;
 			}
 		}
+		else if (pid->file_type == PTCACHE_FILE_LIQUID && pid->read_liquid_stream) {
+			if (!ptcache_read_liquid_stream(pid, cfra1)) {
+				return 0;
+			}
+		}
 		else if (pid->read_stream) {
 			if (!ptcache_read_stream(pid, cfra1))
 				return 0;
@@ -2790,6 +2825,11 @@ int BKE_ptcache_read(PTCacheID *pid, float cfra)
 	if (cfra2) {
 		if (pid->file_type == PTCACHE_FILE_OPENVDB && pid->read_openvdb_stream) {
 			if (!ptcache_read_openvdb_stream(pid, cfra2)) {
+				return 0;
+			}
+		}
+		else if (pid->file_type == PTCACHE_FILE_LIQUID && pid->read_liquid_stream) {
+			if (!ptcache_read_liquid_stream(pid, cfra2)) {
 				return 0;
 			}
 		}
