@@ -2908,6 +2908,95 @@ static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *
 	}
 }
 
+static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgdm)
+{
+	DerivedMesh *dm;
+	MVert *mverts;
+	MPoly *mpolys;
+	MLoop *mloops;
+	short *normals, *no_s;
+	float no[3];
+	
+	/* assign material + flags to new dm
+	 * if there's no faces in original dm, keep materials and flags unchanged */
+	MPoly *mpoly;
+	MPoly mp_example = {0};
+	mpoly = orgdm->getPolyArray(orgdm);
+	if (mpoly) {
+		mp_example = *mpoly;
+	}
+	
+	const short mp_mat_nr = mp_example.mat_nr;
+	const char mp_flag    = mp_example.flag;
+	
+	int i;
+	int num_verts   = liquid_get_num_verts(sds->fluid);
+	int num_normals = liquid_get_num_normals(sds->fluid);
+	int num_faces   = liquid_get_num_triangles(sds->fluid);
+	
+	if (!num_verts || !num_normals || !num_faces)
+		return NULL;
+	
+	dm     = CDDM_new(num_verts, 0, 0, num_faces * 3, num_faces);
+	mverts = CDDM_get_verts(dm);
+	mpolys = CDDM_get_polys(dm);
+	mloops = CDDM_get_loops(dm);
+	
+	if (!dm)
+		return NULL;
+	
+	printf("num_verts: %d, num_normals: %d, num_triangles: %d\n", num_verts, num_normals, num_faces);
+	
+	// Vertices
+	for (i = 0; i < num_verts; i++, mverts++)
+	{
+		mverts->co[0] = liquid_get_vertice_x_at(sds->fluid, i);
+		mverts->co[1] = liquid_get_vertice_y_at(sds->fluid, i);
+		mverts->co[2] = liquid_get_vertice_z_at(sds->fluid, i);
+		
+//		printf("mverts->co[0]: %f, mverts->co[1]: %f, mverts->co[2]: %f\n", mverts->co[0], mverts->co[1], mverts->co[2]);
+	}
+	
+	// Normals
+	normals = MEM_callocN(sizeof(short) * num_normals * 3, "fluid_tmp_normals");
+	
+	for (i = num_normals, no_s = normals; i > 0; i--, no_s += 3)
+	{
+		no[0] = liquid_get_normal_x_at(sds->fluid, i);
+		no[1] = liquid_get_normal_y_at(sds->fluid, i);
+		no[2] = liquid_get_normal_z_at(sds->fluid, i);
+
+		normal_float_to_short_v3(no_s, no);
+		
+//		printf("no_s[0]: %d, no_s[1]: %d, no_s[2]: %d\n", no_s[0], no_s[1], no_s[2]);
+	}
+	
+	// Triangles
+	for (i = 0; i < num_faces; i++, mpolys++, mloops += 3)
+	{
+		/* initialize from existing face */
+		mpolys->mat_nr = mp_mat_nr; // TODO (sebbas)
+		mpolys->flag =   mp_flag; // TODO (sebbas)
+
+		mpolys->loopstart = i * 3;
+		mpolys->totloop = 3;
+		
+		mloops[0].v = liquid_get_triangle_x_at(sds->fluid, i);
+		mloops[1].v = liquid_get_triangle_y_at(sds->fluid, i);
+		mloops[2].v = liquid_get_triangle_z_at(sds->fluid, i);
+		
+//		printf("mloops[0].v: %d, mloops[1].v: %d, mloops[2].v: %d\n", mloops[0].v, mloops[1].v, mloops[2].v);
+	}
+	
+	CDDM_calc_edges(dm);
+	CDDM_apply_vert_normals(dm, (short (*)[3])normals);
+	
+	MEM_freeN(normals);
+	printf("returning derived mesh\n");
+
+	return dm;
+}
+
 static DerivedMesh *createDomainGeometry(SmokeDomainSettings *sds, Object *ob)
 {
 	DerivedMesh *result;
@@ -3164,6 +3253,12 @@ struct DerivedMesh *smokeModifier_do(SmokeModifierData *smd, Scene *scene, Objec
 	    smd->domain->base_res[0])
 	{
 		return createDomainGeometry(smd->domain, ob);
+	}
+	else if (smd->type & MOD_SMOKE_TYPE_DOMAIN && smd->domain &&
+		smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
+	{
+		DerivedMesh *result = createLiquidMesh(smd->domain, dm);
+		return (result) ? CDDM_copy(result) : CDDM_copy(dm);
 	}
 	else {
 		return CDDM_copy(dm);
