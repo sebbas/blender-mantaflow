@@ -850,7 +850,6 @@ static void fluidsim_delete_until_lastframe(FluidsimSettings *fss, const char *r
 	return;
 }
 
-#ifndef WITH_MANTA
 static int fluidsimBake(bContext *C, ReportList *reports, Object *fsDomain, short do_job)
 {
 	Scene *scene= CTX_data_scene(C);
@@ -1086,19 +1085,6 @@ static int fluidsimBake(bContext *C, ReportList *reports, Object *fsDomain, shor
 	// elbeemFree();
 	return 1;
 }
-#else /* WITH_MANTA */
-static int fluidsimBake(bContext *C, ReportList *reports, Object *fsDomain, short do_job)
-{
-//	Scene *scene= CTX_data_scene(C);
-//	int currentFrame = scene->r.cfra;
-	
-	struct LIQUID *liquid = liquid_init();
-	for (int i = 0; i < 100; ++i)
-		liquid_step(liquid, i);
-
-	return 1;
-}
-#endif /* WITH_MANTA */
 
 static void UNUSED_FUNCTION(fluidsimFreeBake)(Object *UNUSED(ob))
 {
