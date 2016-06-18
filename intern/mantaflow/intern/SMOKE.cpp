@@ -701,7 +701,7 @@ void SMOKE::updateMeshData(const char* filename)
 	float fbuffer[3];
 	int ibuffer[3];
 
-	gzf = BLI_gzopen(filename, "rb"); // do some compression
+	gzf = (gzFile) BLI_gzopen(filename, "rb1"); // do some compression
 	if (!gzf)
 		std::cout << "readBobj: unable to open file" << std::endl;
 	
