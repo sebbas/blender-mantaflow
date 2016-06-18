@@ -3257,7 +3257,7 @@ struct DerivedMesh *smokeModifier_do(SmokeModifierData *smd, Scene *scene, Objec
 		smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
 	{
 		DerivedMesh *result = createLiquidMesh(smd->domain, dm);
-		return (result) ? CDDM_copy(result) : CDDM_copy(dm);
+		return (result) ? result : CDDM_copy(dm);
 	}
 	else {
 		return CDDM_copy(dm);
