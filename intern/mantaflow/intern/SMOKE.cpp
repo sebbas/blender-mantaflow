@@ -694,13 +694,14 @@ void* SMOKE::getGridPointer(std::string gridName, std::string solverName)
 	return gridPointer;
 }
 
-void SMOKE::updateMeshData(char* filename)
+void SMOKE::updateMeshData(const char* filename)
 {
+	gzFile gzf;
 	float dx =  1.0f / mMaxRes;
 	float fbuffer[3];
 	int ibuffer[3];
 
-	gzFile gzf = BLI_gzopen(filename, "rb1"); // do some compression
+	gzf = BLI_gzopen(filename, "rb"); // do some compression
 	if (!gzf)
 		std::cout << "readBobj: unable to open file" << std::endl;
 	
