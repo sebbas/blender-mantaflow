@@ -3128,7 +3128,6 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 	else if (smd->type & MOD_SMOKE_TYPE_DOMAIN)
 	{
 		SmokeDomainSettings *sds = smd->domain;
-		sds->manta_obj = ob;
 		PointCache *cache = NULL;
 		PTCacheID pid;
 		int startframe, endframe, framenr;
