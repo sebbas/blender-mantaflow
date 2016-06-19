@@ -92,7 +92,6 @@ float *liquid_get_phi(struct SMOKE *liquid);
 float *liquid_turbulence_get_phi(struct SMOKE *liquid);
 void liquid_ensure_init(struct SMOKE *liquid, struct SmokeModifierData *smd);
 void liquid_save_mesh(struct SMOKE *liquid, char *filename);
-void liquid_load_mesh(struct SMOKE *liquid, char *filename);
 int liquid_get_num_verts(struct SMOKE *liquid);
 int liquid_get_num_normals(struct SMOKE *liquid);
 int liquid_get_num_triangles(struct SMOKE *liquid);
