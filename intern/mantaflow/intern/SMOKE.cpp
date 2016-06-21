@@ -719,7 +719,7 @@ void SMOKE::updateMeshData(const char* filename)
 		
 		// Vertices
 		for (int i = 0; i < mNumVertices; i++) {
-			gzread(gzf, fbuffer, sizeof(float)  * 3);
+			gzread(gzf, fbuffer, sizeof(float) * 3);
 			
 			mVerticesX[i] = fbuffer[0];
 			mVerticesY[i] = fbuffer[1];
@@ -727,11 +727,8 @@ void SMOKE::updateMeshData(const char* filename)
 
 			// convert to grid space
 			mVerticesX[i] /= dx;
-			mVerticesX[i] += mResX*0.5;
 			mVerticesY[i] /= dx;
-			mVerticesY[i] += mResY*0.5;
 			mVerticesZ[i] /= dx;
-			mVerticesZ[i] += mResZ*0.5;
 		}
 	}
 	
