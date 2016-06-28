@@ -1550,28 +1550,6 @@ static void sample_derivedmesh(
 		}
 	}
 	
-//	/*****************************************************/	
-//	
-//	/* Calculate map which indicates whether point is inside a mesh or not */
-//	if (BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dir, 0.0f, &hit, treeData->raycast_callback, treeData) != -1) {
-//		float dot = ray_dir[0] * hit.no[0] + ray_dir[1] * hit.no[1] + ray_dir[2] * hit.no[2];
-//		/*  If ray and hit face normal are facing same direction
-//		 *	hit point is inside a closed mesh. */
-//		if (dot >= 0) {
-//			/* Also cast a ray in opposite direction to make sure
-//			 * point is at least surrounded by two faces */
-//			negate_v3(ray_dir);
-//			hit.index = -1;
-//			hit.dist = 9999;
-//
-//			BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dir, 0.0f, &hit, treeData->raycast_callback, treeData);
-//			
-//			if (hit.index != -1) {
-//				inflow_map[index] = -0.5; // Inside mesh
-//			}
-//		}
-//	}
-	
 	/*****************************************************
 	 * Liquid inflow based on raycasts in all 6 directions. 
 	 * Uses distances to mesh surface from within and outside flow mesh for inflow map.
