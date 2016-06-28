@@ -1550,27 +1550,70 @@ static void sample_derivedmesh(
 		}
 	}
 	
-	/*****************************************************/	
+//	/*****************************************************/	
+//	
+//	/* Calculate map which indicates whether point is inside a mesh or not */
+//	if (BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dir, 0.0f, &hit, treeData->raycast_callback, treeData) != -1) {
+//		float dot = ray_dir[0] * hit.no[0] + ray_dir[1] * hit.no[1] + ray_dir[2] * hit.no[2];
+//		/*  If ray and hit face normal are facing same direction
+//		 *	hit point is inside a closed mesh. */
+//		if (dot >= 0) {
+//			/* Also cast a ray in opposite direction to make sure
+//			 * point is at least surrounded by two faces */
+//			negate_v3(ray_dir);
+//			hit.index = -1;
+//			hit.dist = 9999;
+//
+//			BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dir, 0.0f, &hit, treeData->raycast_callback, treeData);
+//			
+//			if (hit.index != -1) {
+//				inflow_map[index] = -0.5; // Inside mesh
+//			}
+//		}
+//	}
+	
+	/*****************************************************
+	 * Liquid inflow based on raycasts in all 6 directions. 
+	 * Uses distances to mesh surface from within and outside flow mesh for inflow map.
+	 *****************************************************/
 	
 	/* Calculate map which indicates whether point is inside a mesh or not */
-	if (BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dir, 0.0f, &hit, treeData->raycast_callback, treeData) != -1) {
-		float dot = ray_dir[0] * hit.no[0] + ray_dir[1] * hit.no[1] + ray_dir[2] * hit.no[2];
-		/*  If ray and hit face normal are facing same direction
-		 *	hit point is inside a closed mesh. */
-		if (dot >= 0) {
-			/* Also cast a ray in opposite direction to make sure
-			 * point is at least surrounded by two faces */
-			negate_v3(ray_dir);
-			hit.index = -1;
-			hit.dist = 9999;
+	BVHTreeRayHit hit_tree = {0}; // Reset hit tree
+	int i, hit_index;
+	float min_dist_pos, min_dist_neg, min_dist_combined; // for xyz axis in pos and neg direction and when combining 6 axis
+	float hit_dists[6] = {0.0f};
+	float ray_dirs[6][3] = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f},
+							{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}};
+	size_t ray_cnt = sizeof ray_dirs / sizeof ray_dirs[0];
+	inflow_map[index] = 1.0f; // Init inflow map to zero, undetermined otherwise which is not good ...
 
-			BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dir, 0.0f, &hit, treeData->raycast_callback, treeData);
-			
-			if (hit.index != -1) {
-				inflow_map[index] = -0.5; // Inside mesh
+	for (i = 0; i < ray_cnt; i++) {
+		hit_tree.index = -1;
+		hit_tree.dist = 9999;
+
+		hit_index = BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dirs[i], 0.0f, &hit_tree, treeData->raycast_callback, treeData);
+		hit_dists[i] = hit_tree.dist;
+
+		if (hit_index != -1) {
+		
+			float dot = ray_dirs[i][0] * hit_tree.no[0] + ray_dirs[i][1] * hit_tree.no[1] + ray_dirs[i][2] * hit_tree.no[2];
+
+			if (dot >= 0) {
+				inflow_map[index] = -1.0f; // place mark in map: current point is inside flow mesh. we need this info later
 			}
 		}
 	}
+	
+	/* Get the minimum distance of pos and neg coord systems. Then compare both and again get min */
+	min_dist_pos = MIN3(hit_dists[0], hit_dists[1], hit_dists[2]);
+	min_dist_neg = MIN3(hit_dists[3], hit_dists[4], hit_dists[5]);
+	min_dist_combined = MIN2(min_dist_pos, min_dist_neg);
+	
+	/* If distance is still undetermined (=9999) use default manta value (=0.5) instead (outside emission map value is also 0.5)
+	 * Otherwise use computed distance. inflow_map is either 1.0 or -1.0. Multiplied with dist_comb we have mesh dist from out- and inside */
+	inflow_map[index] *= (min_dist_combined == 9999) ? 0.5 : min_dist_combined; // TODO (sebbas): Better value for 0.5?
+	
+	/*****************************************************/
 
 	/* find the nearest point on the mesh */
 	if (BLI_bvhtree_find_nearest(treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1) {
