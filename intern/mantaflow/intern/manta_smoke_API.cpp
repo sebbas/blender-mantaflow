@@ -519,19 +519,19 @@ extern "C" int liquid_get_num_triangles(SMOKE *liquid)
 	return liquid->getNumTriangles();
 }
 
-extern "C" float liquid_get_vertice_x_at(SMOKE *liquid, int i)
+extern "C" float liquid_get_vertex_x_at(SMOKE *liquid, int i)
 {
-	return liquid->getVerticeXAt(i);
+	return liquid->getVertexXAt(i);
 }
 
-extern "C" float liquid_get_vertice_y_at(SMOKE *liquid, int i)
+extern "C" float liquid_get_vertex_y_at(SMOKE *liquid, int i)
 {
-	return liquid->getVerticeYAt(i);
+	return liquid->getVertexYAt(i);
 }
 
-extern "C" float liquid_get_vertice_z_at(SMOKE *liquid, int i)
+extern "C" float liquid_get_vertex_z_at(SMOKE *liquid, int i)
 {
-	return liquid->getVerticeZAt(i);
+	return liquid->getVertexZAt(i);
 }
 
 extern "C" float liquid_get_normal_x_at(SMOKE *liquid, int i)

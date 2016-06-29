@@ -2869,16 +2869,15 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 	// Vertices
 	for (i = 0; i < num_verts; i++, mverts++)
 	{
-	
-		mverts->co[0] = liquid_get_vertice_x_at(sds->fluid, i);
-		mverts->co[1] = liquid_get_vertice_y_at(sds->fluid, i);
-		mverts->co[2] = liquid_get_vertice_z_at(sds->fluid, i);
+		mverts->co[0] = liquid_get_vertex_x_at(sds->fluid, i);
+		mverts->co[1] = liquid_get_vertex_y_at(sds->fluid, i);
+		mverts->co[2] = liquid_get_vertex_z_at(sds->fluid, i);
 		
 //		printf("mverts->co[0]: %f, mverts->co[1]: %f, mverts->co[2]: %f\n", mverts->co[0], mverts->co[1], mverts->co[2]);
 	}
 	
 	// Normals
-	normals = MEM_callocN(sizeof(short) * num_normals * 3, "fluid_tmp_normals");
+	normals = MEM_callocN(sizeof(short) * num_normals * 3, "liquid_tmp_normals");
 	
 	for (i = num_normals, no_s = normals; i > 0; i--, no_s += 3)
 	{
@@ -2912,7 +2911,6 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 	CDDM_apply_vert_normals(dm, (short (*)[3])normals);
 	
 	MEM_freeN(normals);
-	printf("returning derived mesh\n");
 
 	return dm;
 }

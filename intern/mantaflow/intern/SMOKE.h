@@ -121,9 +121,9 @@ public:
 	inline int getNumNormals()   { return mNumNormals; }
 	inline int getNumTriangles() { return mNumTriangles; }
 	
-	inline int getVerticeXAt(int i)  { return mVerticesX[i]; }
-	inline int getVerticeYAt(int i)  { return mVerticesY[i]; }
-	inline int getVerticeZAt(int i)  { return mVerticesZ[i]; }
+	inline float getVertexXAt(int i)  { return mVerticesX[i]; }
+	inline float getVertexYAt(int i)  { return mVerticesY[i]; }
+	inline float getVertexZAt(int i)  { return mVerticesZ[i]; }
 
 	inline int getNormalXAt(int i)   { return mNormalsX[i]; }
 	inline int getNormalYAt(int i)   { return mNormalsY[i]; }
