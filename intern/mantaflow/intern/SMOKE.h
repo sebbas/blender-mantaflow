@@ -125,9 +125,9 @@ public:
 	inline float getVertexYAt(int i)  { return mVerticesY[i]; }
 	inline float getVertexZAt(int i)  { return mVerticesZ[i]; }
 
-	inline int getNormalXAt(int i)   { return mNormalsX[i]; }
-	inline int getNormalYAt(int i)   { return mNormalsY[i]; }
-	inline int getNormalZAt(int i)   { return mNormalsZ[i]; }
+	inline float getNormalXAt(int i)   { return mNormalsX[i]; }
+	inline float getNormalYAt(int i)   { return mNormalsY[i]; }
+	inline float getNormalZAt(int i)   { return mNormalsZ[i]; }
 
 	inline int getTriangleXAt(int i) { return mTrianglesX[i]; }
 	inline int getTriangleYAt(int i) { return mTrianglesY[i]; }
