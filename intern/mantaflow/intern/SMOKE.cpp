@@ -697,7 +697,6 @@ void* SMOKE::getGridPointer(std::string gridName, std::string solverName)
 void SMOKE::updateMeshData(const char* filename)
 {
 	gzFile gzf;
-	float dx =  1.0f / mMaxRes;
 	float fbuffer[3];
 	int ibuffer[3];
 
@@ -724,11 +723,6 @@ void SMOKE::updateMeshData(const char* filename)
 			mVerticesX[i] = fbuffer[0];
 			mVerticesY[i] = fbuffer[1];
 			mVerticesZ[i] = fbuffer[2];
-
-			// convert to grid space
-			mVerticesX[i] /= dx;
-			mVerticesY[i] /= dx;
-			mVerticesZ[i] /= dx;
 		}
 	}
 	
