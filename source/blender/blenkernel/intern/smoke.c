@@ -2873,6 +2873,10 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 		mverts->co[1] = liquid_get_vertex_y_at(sds->fluid, i);
 		mverts->co[2] = liquid_get_vertex_z_at(sds->fluid, i);
 		
+		mverts->co[0] *= sds->scale;
+		mverts->co[1] *= sds->scale;
+		mverts->co[2] *= sds->scale;
+		
 //		printf("mverts->co[0]: %f, mverts->co[1]: %f, mverts->co[2]: %f\n", mverts->co[0], mverts->co[1], mverts->co[2]);
 	}
 	
