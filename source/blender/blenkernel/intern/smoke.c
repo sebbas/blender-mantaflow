@@ -2850,9 +2850,14 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 	const char mp_flag    = mp_example.flag;
 	
 	int i;
-	int num_verts   = liquid_get_num_verts(sds->fluid);
-	int num_normals = liquid_get_num_normals(sds->fluid);
-	int num_faces   = liquid_get_num_triangles(sds->fluid);
+	int num_verts, num_normals, num_faces;
+	
+	if (!sds->fluid)
+		return NULL;
+	
+	num_verts   = liquid_get_num_verts(sds->fluid);
+	num_normals = liquid_get_num_normals(sds->fluid);
+	num_faces   = liquid_get_num_triangles(sds->fluid);
 	
 	if (!num_verts || !num_normals || !num_faces)
 		return NULL;
