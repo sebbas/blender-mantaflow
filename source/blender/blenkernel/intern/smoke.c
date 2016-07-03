@@ -2828,7 +2828,7 @@ static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *
 	}
 }
 
-static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgdm)
+static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgdm, Object* ob)
 {
 	DerivedMesh *dm;
 	MVert *mverts;
@@ -2872,6 +2872,8 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 	
 	printf("num_verts: %d, num_normals: %d, num_triangles: %d\n", num_verts, num_normals, num_faces);
 	
+	float max_size = MAX3(sds->global_size[0], sds->global_size[1], sds->global_size[2]);
+	
 	// Vertices
 	for (i = 0; i < num_verts; i++, mverts++)
 	{
@@ -2879,9 +2881,9 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 		mverts->co[1] = liquid_get_vertex_y_at(sds->fluid, i);
 		mverts->co[2] = liquid_get_vertex_z_at(sds->fluid, i);
 		
-		mverts->co[0] *= sds->scale;
-		mverts->co[1] *= sds->scale;
-		mverts->co[2] *= sds->scale;
+		mverts->co[0] *= max_size / fabsf(ob->size[0]);
+		mverts->co[1] *= max_size / fabsf(ob->size[1]);
+		mverts->co[2] *= max_size / fabsf(ob->size[2]);
 		
 //		printf("mverts->co[0]: %f, mverts->co[1]: %f, mverts->co[2]: %f\n", mverts->co[0], mverts->co[1], mverts->co[2]);
 	}
@@ -3183,7 +3185,7 @@ struct DerivedMesh *smokeModifier_do(SmokeModifierData *smd, Scene *scene, Objec
 	else if (smd->type & MOD_SMOKE_TYPE_DOMAIN && smd->domain &&
 		smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
 	{
-		DerivedMesh *result = createLiquidMesh(smd->domain, dm);
+		DerivedMesh *result = createLiquidMesh(smd->domain, dm, ob);
 		return (result) ? result : CDDM_copy(dm);
 	}
 	else {
