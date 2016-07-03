@@ -1556,8 +1556,8 @@ static void sample_derivedmesh(
 	 *****************************************************/
 	
 	/* Calculate map which indicates whether point is inside a mesh or not */
-	BVHTreeRayHit hit_tree = {0}; // Reset hit tree
 	int i, hit_index;
+	float dot;
 	float min_dist_pos, min_dist_neg, min_dist_combined; // for xyz axis in pos and neg direction and when combining 6 axis
 	float hit_dists[6] = {0.0f};
 	float ray_dirs[6][3] = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f},
@@ -1566,6 +1566,7 @@ static void sample_derivedmesh(
 	inflow_map[index] = 1.0f; // Init inflow map to zero, undetermined otherwise which is not good ...
 
 	for (i = 0; i < ray_cnt; i++) {
+		BVHTreeRayHit hit_tree = {0};
 		hit_tree.index = -1;
 		hit_tree.dist = 9999;
 
@@ -1574,7 +1575,7 @@ static void sample_derivedmesh(
 
 		if (hit_index != -1) {
 		
-			float dot = ray_dirs[i][0] * hit_tree.no[0] + ray_dirs[i][1] * hit_tree.no[1] + ray_dirs[i][2] * hit_tree.no[2];
+			dot = ray_dirs[i][0] * hit_tree.no[0] + ray_dirs[i][1] * hit_tree.no[1] + ray_dirs[i][2] * hit_tree.no[2];
 
 			if (dot >= 0) {
 				inflow_map[index] = -1.0f; // place mark in map: current point is inside flow mesh. we need this info later
