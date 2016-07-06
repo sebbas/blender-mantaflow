@@ -84,7 +84,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
 
             layout.prop(flow, "smoke_flow_type", expand=False)
 
-            if flow.smoke_flow_type != 'OUTFLOW':
+            if flow.smoke_flow_type != 'LIQUID':
                 split = layout.split()
                 col = split.column()
                 col.label(text="Flow Source:")
@@ -110,7 +110,11 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
                     sub.prop(flow, "velocity_normal")
                     #sub.prop(flow, "velocity_random")
 
-                sub = split.column()
+                col = split.column()
+                col.label(text="Flow behavior:")
+                col.prop(flow, "smoke_flow_behavior", text="")
+
+                sub = col.column()
                 sub.label(text="Initial Values:")
                 sub.prop(flow, "use_absolute")
                 if flow.smoke_flow_type in {'SMOKE', 'BOTH'}:

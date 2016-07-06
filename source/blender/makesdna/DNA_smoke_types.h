@@ -190,6 +190,11 @@ typedef struct SmokeDomainSettings {
 #define MOD_SMOKE_FLOW_TYPE_SMOKEFIRE 3
 #define MOD_SMOKE_FLOW_TYPE_LIQUID 4
 
+/* behavior */
+#define MOD_SMOKE_FLOW_BEHAVIOR_INFLOW 0
+#define MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW 1
+#define MOD_SMOKE_FLOW_BEHAVIOR_STATIC 2
+
 /* flow source */
 #define MOD_SMOKE_FLOW_SOURCE_PARTICLES 0
 #define MOD_SMOKE_FLOW_SOURCE_MESH 1
@@ -233,8 +238,10 @@ typedef struct SmokeFlowSettings {
 	short vgroup_density;
 
 	short type; /* smoke, flames, both, outflow, liquid */
+	short behavior; /* inflow, outflow, static */
 	short source;
 	short texture_type;
+	short pad2[3];
 	int flags; /* absolute emission etc*/
 } SmokeFlowSettings;
 

@@ -794,6 +794,13 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
 		{MOD_SMOKE_FLOW_TYPE_LIQUID, "LIQUID", 0, "Liquid", "Add liquid"},
 		{0, NULL, 0, NULL, NULL}
 	};
+	
+	static EnumPropertyItem smoke_flow_behaviors[] = {
+		{MOD_SMOKE_FLOW_BEHAVIOR_INFLOW, "INFLOW", 0, "Inflow", "Add fluid to simulation"},
+		{MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW, "OUTFLOW", 0, "Outflow", "Delete fluid from simulation"},
+		{MOD_SMOKE_FLOW_BEHAVIOR_STATIC, "STATIC", 0, "Static", "Only use given geometry for fluid"},
+		{0, NULL, 0, NULL, NULL}
+	};
 
 	static EnumPropertyItem smoke_flow_sources[] = {
 		{MOD_SMOKE_FLOW_SOURCE_PARTICLES, "PARTICLES", ICON_PARTICLES, "Particle System", "Emit smoke from particles"},
@@ -848,7 +855,13 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "smoke_flow_type", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "type");
 	RNA_def_property_enum_items(prop, smoke_flow_types);
-	RNA_def_property_ui_text(prop, "Flow Type", "Change how flow affects the simulation");
+	RNA_def_property_ui_text(prop, "Flow Type", "Change type of fluid in the simulation");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+	
+	prop = RNA_def_property(srna, "smoke_flow_behavior", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "behavior");
+	RNA_def_property_enum_items(prop, smoke_flow_behaviors);
+	RNA_def_property_ui_text(prop, "Flow Behavior", "Change flow behavior in the simulation");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
 	prop = RNA_def_property(srna, "smoke_flow_source", PROP_ENUM, PROP_NONE);
