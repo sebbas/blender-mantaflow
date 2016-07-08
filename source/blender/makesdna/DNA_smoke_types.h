@@ -42,6 +42,7 @@ enum {
 	MOD_SMOKE_DISSOLVE = (1 << 2),  /* let smoke dissolve */
 	MOD_SMOKE_DISSOLVE_LOG = (1 << 3),  /* using 1/x for dissolve */
 	MOD_SMOKE_USE_MANTA = (1 << 4),
+	MOD_LIQUID_NARROW_BAND = (1 << 5),
 
 #ifdef DNA_DEPRECATED
 	MOD_SMOKE_HIGH_SMOOTH = (1 << 5),  /* -- Deprecated -- */
@@ -65,6 +66,11 @@ enum {
 #define SM_BORDER_OPEN		0
 #define SM_BORDER_VERTICAL	1
 #define SM_BORDER_CLOSED	2
+
+/* viewport preview types */
+#define SM_VIEWPORT_GEOM  	0
+#define SM_VIEWPORT_PREVIEW	1
+#define SM_VIEWPORT_FINAL	2
 
 /* collision types */
 #define SM_COLL_STATIC		0
@@ -162,6 +168,8 @@ typedef struct SmokeDomainSettings {
 	struct ListBase ptcaches[2];
 	struct EffectorWeights *effector_weights;
 	int border_collisions;	/* How domain border collisions are handled */
+	int viewport_display;	/* How to display mesh in viewport */
+	char pad2[4];
 	float time_scale;
 	float vorticity;
 	int active_fields;
@@ -172,6 +180,10 @@ typedef struct SmokeDomainSettings {
 	float burning_rate, flame_smoke, flame_vorticity;
 	float flame_ignition, flame_max_temp;
 	float flame_smoke_color[3];
+	
+	/* liquid parameters */
+	float particle_randomness;
+	float nb_width;
 
 	/* mantaflow settings */
 	struct SMOKE *fluid;

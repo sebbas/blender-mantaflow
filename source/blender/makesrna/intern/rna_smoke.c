@@ -463,6 +463,13 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 		{SM_BORDER_CLOSED, "BORDERCLOSED", 0, "Collide All", "Smoke collides with every side"},
 		{0, NULL, 0, NULL, NULL}
 	};
+	
+	static EnumPropertyItem smoke_quality_items[] = {
+		{SM_VIEWPORT_GEOM, "GEOMETRY", 0, "Geometry", "Display geometry"},
+		{SM_VIEWPORT_PREVIEW, "PREVIEW", 0, "Preview", "Display preview quality results"},
+		{SM_VIEWPORT_FINAL, "FINAL", 0, "Final", "Display final quality results"},
+		{0, NULL, 0, NULL, NULL}
+	};
 
 	static EnumPropertyItem cache_file_type_items[] = {
 		{PTCACHE_FILE_PTCACHE, "POINTCACHE", 0, "Point Cache", "Blender specific point cache file format"},
@@ -615,6 +622,11 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Border Collisions",
 	                         "Select which domain border will be treated as collision object");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+	
+	prop = RNA_def_property(srna, "viewport_display", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "viewport_display");
+	RNA_def_property_enum_items(prop, smoke_quality_items);
+	RNA_def_property_ui_text(prop, "Viewport Display Mode", "How to display the mesh in the viewport");
 
 	prop = RNA_def_property(srna, "effector_weights", PROP_POINTER, PROP_NONE);
 	RNA_def_property_struct_type(prop, "EffectorWeights");
@@ -779,6 +791,23 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_range(prop, 0.0, 10.0);
 	RNA_def_property_ui_range(prop, 0.0, 2.0, 1, 2);
 	RNA_def_property_ui_text(prop, "Time", "Animation time of noise");
+	
+	prop = RNA_def_property(srna, "particle_randomness", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 1.0);
+	RNA_def_property_ui_range(prop, 1.0, 5.0, 1.0, 5);
+	RNA_def_property_ui_text(prop, "Randomness", "Randomness factor for particle sampling");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+	
+	prop = RNA_def_property(srna, "nb_width", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 1.0, 10.0);
+	RNA_def_property_ui_range(prop, 1.0, 5.0, 1.0, 5);
+	RNA_def_property_ui_text(prop, "Width", "Narrow band width in cells");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+	
+	prop = RNA_def_property(srna, "use_narrow_band", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_LIQUID_NARROW_BAND);
+	RNA_def_property_ui_text(prop, "Use Narrow Band", "Enable narrow band for liquids");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 }
 
 static void rna_def_smoke_flow_settings(BlenderRNA *brna)
