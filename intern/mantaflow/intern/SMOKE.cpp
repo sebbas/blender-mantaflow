@@ -413,7 +413,19 @@ void SMOKE::runPythonString(std::vector<std::string> commands)
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	for (std::vector<std::string>::iterator it = commands.begin(); it != commands.end(); ++it) {
 		std::string command = *it;
+
+#ifdef WIN32
+		// special treatment for windows when running python code
+		size_t cmdLength = command.length();
+		char* buffer = new char[cmdLength+1];
+		memcpy(buffer, command.data(), cmdLength);
+
+		buffer[cmdLength] = '\0';
+		PyRun_SimpleString(buffer);
+		delete[] buffer;
+#else
 		PyRun_SimpleString(command.c_str());
+#endif
 	}
 	PyGILState_Release(gilstate);
 }
