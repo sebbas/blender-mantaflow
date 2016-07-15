@@ -902,47 +902,47 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 #else
 	if (pf->data_types & (1<<BPHYS_DATA_SMOKE_HIGH) && sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) {
 #endif
-			int res = sds->res[0]*sds->res[1]*sds->res[2];
-			int res_big, res_big_array[3];
-			float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *tcu2, *tcv2, *tcw2, *r, *g, *b;
-			unsigned int out_len = sizeof(float)*(unsigned int)res;
-			unsigned int out_len_big;
+		int res = sds->res[0]*sds->res[1]*sds->res[2];
+		int res_big, res_big_array[3];
+		float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *tcu2, *tcv2, *tcw2, *r, *g, *b;
+		unsigned int out_len = sizeof(float)*(unsigned int)res;
+		unsigned int out_len_big;
 
 #ifndef WITH_MANTA
-			smoke_turbulence_get_res(sds->wt, res_big_array);
+		smoke_turbulence_get_res(sds->wt, res_big_array);
 #else
-			smoke_turbulence_get_res(sds->fluid, res_big_array);
+		smoke_turbulence_get_res(sds->fluid, res_big_array);
 #endif
-			res_big = res_big_array[0]*res_big_array[1]*res_big_array[2];
-			out_len_big = sizeof(float) * (unsigned int)res_big;
+		res_big = res_big_array[0]*res_big_array[1]*res_big_array[2];
+		out_len_big = sizeof(float) * (unsigned int)res_big;
 
 #ifndef WITH_MANTA
-			smoke_turbulence_export(sds->wt, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw);
+		smoke_turbulence_export(sds->wt, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw);
 #else
-			smoke_turbulence_export(sds->fluid, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw, &tcu2, &tcv2, &tcw2);
+		smoke_turbulence_export(sds->fluid, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw, &tcu2, &tcv2, &tcw2);
 #endif
-			ptcache_file_compressed_read(pf, (unsigned char *)dens, out_len_big);
-			if (cache_fields & SM_ACTIVE_FIRE) {
-				ptcache_file_compressed_read(pf, (unsigned char *)flame, out_len_big);
-				ptcache_file_compressed_read(pf, (unsigned char *)fuel, out_len_big);
-				ptcache_file_compressed_read(pf, (unsigned char *)react, out_len_big);
-			}
-			if (cache_fields & SM_ACTIVE_COLORS) {
-				ptcache_file_compressed_read(pf, (unsigned char *)r, out_len_big);
-				ptcache_file_compressed_read(pf, (unsigned char *)g, out_len_big);
-				ptcache_file_compressed_read(pf, (unsigned char *)b, out_len_big);
-			}
-
-			ptcache_file_compressed_read(pf, (unsigned char *)tcu, out_len);
-			ptcache_file_compressed_read(pf, (unsigned char *)tcv, out_len);
-			ptcache_file_compressed_read(pf, (unsigned char *)tcw, out_len);
-			
-	#ifdef WITH_MANTA
-			ptcache_file_compressed_read(pf, (unsigned char *)tcu2, out_len);
-			ptcache_file_compressed_read(pf, (unsigned char *)tcv2, out_len);
-			ptcache_file_compressed_read(pf, (unsigned char *)tcw2, out_len);
-	#endif
+		ptcache_file_compressed_read(pf, (unsigned char *)dens, out_len_big);
+		if (cache_fields & SM_ACTIVE_FIRE) {
+			ptcache_file_compressed_read(pf, (unsigned char *)flame, out_len_big);
+			ptcache_file_compressed_read(pf, (unsigned char *)fuel, out_len_big);
+			ptcache_file_compressed_read(pf, (unsigned char *)react, out_len_big);
 		}
+		if (cache_fields & SM_ACTIVE_COLORS) {
+			ptcache_file_compressed_read(pf, (unsigned char *)r, out_len_big);
+			ptcache_file_compressed_read(pf, (unsigned char *)g, out_len_big);
+			ptcache_file_compressed_read(pf, (unsigned char *)b, out_len_big);
+		}
+
+		ptcache_file_compressed_read(pf, (unsigned char *)tcu, out_len);
+		ptcache_file_compressed_read(pf, (unsigned char *)tcv, out_len);
+		ptcache_file_compressed_read(pf, (unsigned char *)tcw, out_len);
+		
+#ifdef WITH_MANTA
+		ptcache_file_compressed_read(pf, (unsigned char *)tcu2, out_len);
+		ptcache_file_compressed_read(pf, (unsigned char *)tcv2, out_len);
+		ptcache_file_compressed_read(pf, (unsigned char *)tcw2, out_len);
+#endif
+	}
 
 	return 1;
 }
