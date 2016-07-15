@@ -56,6 +56,7 @@ phiParts   = s.create(LevelsetGrid)\n\
 phi        = s.create(LevelsetGrid)\n\
 phiInit    = s.create(LevelsetGrid)\n\
 pressure   = s.create(RealGrid)\n\
+# TODO (sebbas): remove density grid. only here because of stand in\n\
 density    = s.create(RealGrid)\n\
 \n\
 vel        = s.create(MACGrid)\n\
@@ -92,7 +93,8 @@ def manta_step(start_frame):\n\
         flags.updateFromLevelset(phi)\n\
         sampleLevelsetWithParticles( phi=phi, flags=flags, parts=pp, discretization=2, randomness=0.01 )\n\
         mapGridToPartsVec3(source=vel, parts=pp, target=pVel )\n\
-        phi.save('/Users/sbarschkis/Desktop/phi.uni')\n\
+        # sebbas: just using this for local debugging\n\
+        # phi.save('/Users/sbarschkis/Desktop/phi.uni')\n\
     \n\
     #for i in range(int(gs.z)):\n\
         #phiInit.printGrid(zSlice=int(i))\n\

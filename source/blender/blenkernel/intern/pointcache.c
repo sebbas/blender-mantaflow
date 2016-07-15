@@ -1646,7 +1646,6 @@ void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct SmokeMo
 	pid->read_point				= NULL;
 	pid->interpolate_point		= NULL;
 
-	// TODO (sebbas) need to disable this again for liquids
 	pid->read_stream			= ptcache_smoke_read;
 	pid->write_stream			= ptcache_smoke_write;
 
