@@ -168,8 +168,12 @@ typedef struct SmokeDomainSettings {
 	struct ListBase ptcaches[2];
 	struct EffectorWeights *effector_weights;
 	int border_collisions;	/* How domain border collisions are handled */
-	int viewport_display;	/* How to display mesh in viewport */
+	
+	/* show original meshes, preview or final sim */
+	short viewport_mode;
+	short render_mode;
 	char pad2[4];
+	
 	float time_scale;
 	float vorticity;
 	int active_fields;

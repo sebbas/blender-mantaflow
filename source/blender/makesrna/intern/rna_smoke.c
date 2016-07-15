@@ -623,10 +623,11 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	                         "Select which domain border will be treated as collision object");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 	
-	prop = RNA_def_property(srna, "viewport_display", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "viewport_display");
+	prop = RNA_def_property(srna, "viewport_mode", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "viewport_mode");
 	RNA_def_property_enum_items(prop, smoke_quality_items);
 	RNA_def_property_ui_text(prop, "Viewport Display Mode", "How to display the mesh in the viewport");
+	RNA_def_property_update(prop, 0, "rna_Smoke_update");
 
 	prop = RNA_def_property(srna, "effector_weights", PROP_POINTER, PROP_NONE);
 	RNA_def_property_struct_type(prop, "EffectorWeights");

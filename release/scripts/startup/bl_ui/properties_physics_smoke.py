@@ -70,7 +70,7 @@ class PHYSICS_PT_fluid(PhysicButtonsPanel, Panel):
             col.label(text="Border Collisions:")
             col.prop(domain, "collision_extents", text="")
             col.label(text="Viewport Display:")
-            col.prop(domain, "viewport_display", text="")
+            col.prop(domain, "viewport_mode", text="")
 
         elif md.smoke_type == 'FLOW':
             flow = md.flow_settings
