@@ -2855,6 +2855,10 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 	if (!sds->fluid)
 		return NULL;
 	
+	/* just display original object */
+	if (sds->viewport_mode == 0)
+		return NULL;
+	
 	num_verts   = liquid_get_num_verts(sds->fluid);
 	num_normals = liquid_get_num_normals(sds->fluid);
 	num_faces   = liquid_get_num_triangles(sds->fluid);
