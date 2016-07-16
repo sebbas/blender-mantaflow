@@ -1511,7 +1511,7 @@ static void emit_from_particles(
 
 static void sample_derivedmesh(
         SmokeFlowSettings *sfs,
-        const MVert *mvert, const MLoop *mloop, const MLoopTri *mlooptri, const MLoopUV *mloopuv,
+        const MVert *mvert, const MLoop *mloop, const MLoopTri *mlooptri, const MLoopUV *mloopuv, const float cell_size[3],
         float *influence_map, float *velocity_map, float *inflow_map, int index, const int base_res[3], float flow_center[3],
         BVHTreeFromMesh *treeData, const float ray_start[3], const float *vert_vel,
         bool has_velocity, int defgrp_index, MDeformVert *dvert,
@@ -1558,7 +1558,7 @@ static void sample_derivedmesh(
 	/* Calculate map which indicates whether point is inside a mesh or not */
 	int i, hit_index;
 	float dot;
-	float min_dist_pos, min_dist_neg, min_dist_combined; // for xyz axis in pos and neg direction and when combining 6 axis
+	float min_dist_pos, min_dist_neg, min_dist_combined, min_dist_combined_normalized; // for xyz axis in pos and neg direction and when combining 6 axis
 	float hit_dists[6] = {0.0f};
 	float ray_dirs[6][3] = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f},
 							{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}};
@@ -1587,10 +1587,11 @@ static void sample_derivedmesh(
 	min_dist_pos = MIN3(hit_dists[0], hit_dists[1], hit_dists[2]);
 	min_dist_neg = MIN3(hit_dists[3], hit_dists[4], hit_dists[5]);
 	min_dist_combined = MIN2(min_dist_pos, min_dist_neg);
+	min_dist_combined_normalized = min_dist_combined / cell_size[0]; // TODO (sebbas): also consider cell_size[1] and cell_size[2] ?!
 	
 	/* If distance is still undetermined (=9999) use default manta value (=0.5) instead (outside emission map value is also 0.5)
 	 * Otherwise use computed distance. inflow_map is either 1.0 or -1.0. Multiplied with dist_comb we have mesh dist from out- and inside */
-	inflow_map[index] *= (min_dist_combined == 9999) ? 0.5 : min_dist_combined; // TODO (sebbas): Better value for 0.5?
+	inflow_map[index] *= (min_dist_combined == 9999) ? 0.5 : min_dist_combined_normalized; // TODO (sebbas): Better value for 0.5?
 	
 	/*****************************************************/
 
@@ -1730,7 +1731,7 @@ static void emit_from_derivedmesh_task_cb(void *userdata, const int z)
 				const float ray_start[3] = {((float)lx) + 0.5f, ((float)ly) + 0.5f, ((float)lz) + 0.5f};
 
 				sample_derivedmesh(
-				        data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
+				        data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv, data->sds->cell_size,
 				        em->influence, em->velocity, em->inflow, index, data->sds->base_res, data->flow_center,
 				        data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
 				        (float)lx, (float)ly, (float)lz);
@@ -1748,7 +1749,7 @@ static void emit_from_derivedmesh_task_cb(void *userdata, const int z)
 				const float ray_start[3] = {lx + 0.5f * data->hr, ly + 0.5f * data->hr, lz + 0.5f * data->hr};
 
 				sample_derivedmesh(
-				        data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
+				        data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv, data->sds->cell_size,
 				        em->influence_high, NULL, em->inflow_high, index, data->sds->base_res, data->flow_center,
 				        data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
 				        /* x,y,z needs to be always lowres */
