@@ -177,9 +177,51 @@ def liquid_step():\n\
     else:\n\
         adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi )\n";
 
+//////////////////////////////////////////////////////////////////////
+// IMPORT EXPORT GRIDS, MESHES, PARTICLESYSTEM
+//////////////////////////////////////////////////////////////////////
+
 const std::string save_mesh = "\n\
 def save_mesh(path):\n\
     mesh.save(path)\n";
+
+const std::string save_liquid_data = "\n\
+def save_liquid_data(path):\n\
+    flags.save(path + str('flags.uni'))\n\
+    \n\
+    phiParts.save(path + str('phiParts.uni'))\n\
+    phi.save(path + str('phi.uni'))\n\
+    phiInit.save(path + str('phiInit.uni'))\n\
+    pressure.save(path + str('pressure.uni'))\n\
+    \n\
+    vel.save(path + str('vel.uni'))\n\
+    velOld.save(path + str('velOld.uni'))\n\
+    velParts.save(path + str('velParts.uni'))\n\
+    mapWeights.save(path + str('mapWeights.uni'))\n\
+    \n\
+    pp.save(path + str('pp.uni'))\n\
+    pVel.save(path + str('pVel.uni'))\n\
+    \n\
+    gpi.save(path + str('gpi.uni'))\n";
+
+const std::string load_liquid_data = "\n\
+def load_liquid_data(path):\n\
+    flags.load(path + str('flags.uni'))\n\
+    \n\
+    phiParts.load(path + str('phiParts.uni'))\n\
+    phi.load(path + str('phi.uni'))\n\
+    phiInit.load(path + str('phiInit.uni'))\n\
+    pressure.load(path + str('pressure.uni'))\n\
+    \n\
+    vel.load(path + str('vel.uni'))\n\
+    velOld.load(path + str('velOld.uni'))\n\
+    velParts.load(path + str('velParts.uni'))\n\
+    mapWeights.load(path + str('mapWeights.uni'))\n\
+    \n\
+    pp.load(path + str('pp.uni'))\n\
+    pVel.load(path + str('pVel.uni'))\n\
+    \n\
+    gpi.load(path + str('gpi.uni'))\n";
 
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION
