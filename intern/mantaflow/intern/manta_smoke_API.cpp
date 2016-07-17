@@ -497,6 +497,11 @@ extern "C" float *liquid_get_phi(SMOKE *liquid)
 	return liquid->getPhi();
 }
 
+extern "C" float *liquid_get_phiinit(SMOKE *liquid)
+{
+	return liquid->getPhiInit();
+}
+
 extern "C" void liquid_save_mesh(SMOKE *liquid, char *filename)
 {
 	if (liquid) {

@@ -112,6 +112,7 @@ public:
 	inline float* getTextureW2() { return mTextureW2; }
 	
 	inline float* getPhi()     { return mPhi; }
+	inline float* getPhiInit() { return mPhiInit; }
 	inline float* getPhiHigh() { return NULL; } // Not yet implemented
 
 	static bool mantaInitialized;
@@ -201,7 +202,9 @@ private:
 	
 	// Liquids
 	float* mPhi;
+	float* mPhiInit;
 	float* mPhiHigh;
+	
 	// Mesh fields for liquid surface
 	int mNumVertices;
 	int mNumNormals;
