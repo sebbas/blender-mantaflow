@@ -62,6 +62,10 @@ public:
 	
 	// Write files for liquids
 	void saveMesh(char *filename);
+	void saveLiquidData(char *pathname);
+	
+	// Load files for liquids
+	void loadLiquidData(char * pathname);
 	
 	// Smoke getters
 	inline size_t getTotalCells() { return mTotalCells; }

@@ -291,6 +291,8 @@ void SMOKE::initLiquid(SmokeModifierData *smd)
 			+ liquid_variables
 			+ prep_domain
 			+ save_mesh
+			+ save_liquid_data
+			+ load_liquid_data
 			+ adaptive_step_liquid
 			+ liquid_step;
 		std::string finalString = parseScript(tmpString, smd);
@@ -862,8 +864,32 @@ void SMOKE::saveMesh(char *filename)
 	
 	mCommands.clear();
 	std::ostringstream save_mesh;
-	save_mesh <<  "save_mesh('" <<  path << "')";
+	save_mesh <<  "save_mesh('" << path << "')";
 	mCommands.push_back(save_mesh.str());
+	
+	runPythonString(mCommands);
+}
+
+void SMOKE::saveLiquidData(char *pathname)
+{
+	std::string path(pathname);
+	
+	mCommands.clear();
+	std::ostringstream save_liquid_data;
+	save_liquid_data <<  "save_liquid_data('" << path << "')";
+	mCommands.push_back(save_liquid_data.str());
+	
+	runPythonString(mCommands);
+}
+
+void SMOKE::loadLiquidData(char *pathname)
+{
+	std::string path(pathname);
+	
+	mCommands.clear();
+	std::ostringstream load_liquid_data;
+	load_liquid_data <<  "load_liquid_data('" <<  path << "')";
+	mCommands.push_back(load_liquid_data.str());
 	
 	runPythonString(mCommands);
 }
