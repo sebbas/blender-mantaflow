@@ -509,6 +509,20 @@ extern "C" void liquid_save_mesh(SMOKE *liquid, char *filename)
 	}
 }
 
+extern "C" void liquid_save_data(SMOKE *liquid, char *pathname)
+{
+	if (liquid) {
+		liquid->saveLiquidData(pathname);
+	}
+}
+
+extern "C" void liquid_load_data(SMOKE *liquid, char *pathname)
+{
+	if (liquid) {
+		liquid->loadLiquidData(pathname);
+	}
+}
+
 extern "C" int liquid_get_num_verts(SMOKE *liquid)
 {
 	return liquid->getNumVertices();
