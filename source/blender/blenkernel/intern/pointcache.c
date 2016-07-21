@@ -1216,7 +1216,7 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 #endif
 
 #ifdef WITH_MANTA
-static int ptcache_liquid_read(void *smoke_v, char *filename)
+static int ptcache_liquid_read(void *smoke_v, char *filename, char *pathname)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
 
@@ -1227,13 +1227,14 @@ static int ptcache_liquid_read(void *smoke_v, char *filename)
 	SmokeDomainSettings *sds = smd->domain;
 	
 	if (sds->fluid) {
+		liquid_load_data(sds->fluid, pathname);
 		liquid_update_mesh_data(sds->fluid, filename);
 		return 1;
 	}
 	return 0;
 }
 
-static int ptcache_liquid_write(void *smoke_v, char *filename)
+static int ptcache_liquid_write(void *smoke_v, char *filename, char* pathname)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
 
@@ -1244,6 +1245,7 @@ static int ptcache_liquid_write(void *smoke_v, char *filename)
 	SmokeDomainSettings *sds = smd->domain;
 	
 	if (sds->fluid) {
+		liquid_save_data(sds->fluid, pathname);
 		liquid_save_mesh(sds->fluid, filename);
 		
 		/* After writing mesh data make sure that fields in fluid object
@@ -2644,18 +2646,20 @@ static int ptcache_read_openvdb_stream(PTCacheID *pid, int cfra)
 static int ptcache_read_liquid_stream(PTCacheID *pid, int cfra)
 {
 	char filename[FILE_MAX * 2];
+	char pathname[FILE_MAX * 2];
 
 	 /* save blend file before using disk pointcache */
 	if (!G.relbase_valid && (pid->cache->flag & PTCACHE_EXTERNAL) == 0)
 		return 0;
 
 	ptcache_filename(pid, filename, cfra, 1, 1);
+	ptcache_path(pid, pathname);
 
 	if (!BLI_exists(filename)) {
 		return 0;
 	}
 
-	if (!pid->read_liquid_stream(pid->calldata, filename)) {
+	if (!pid->read_liquid_stream(pid->calldata, filename, pathname)) {
 		return 0;
 	}
 
@@ -2923,13 +2927,16 @@ static int ptcache_write_openvdb_stream(PTCacheID *pid, int cfra)
 static int ptcache_write_liquid_stream(PTCacheID *pid, int cfra)
 {
 	char filename[FILE_MAX * 2];
-	
+	char pathname[FILE_MAX * 2];
+
 	BKE_ptcache_id_clear(pid, PTCACHE_CLEAR_FRAME, cfra);
 	
 	ptcache_filename(pid, filename, cfra, 1, 1);
+	ptcache_path(pid, pathname);
+	
 	BLI_make_existing_file(filename);
 
-	int error = pid->write_liquid_stream(pid->calldata, filename);
+	int error = pid->write_liquid_stream(pid->calldata, filename, pathname);
 	
 	return error == 0;
 }
