@@ -138,26 +138,19 @@ class PHYSICS_PT_smoke_flow_advanced(PhysicButtonsPanel, Panel):
     @classmethod
     def poll(cls, context):
         md = context.smoke
-        return md and (md.smoke_type == 'FLOW') and (md.flow_settings.smoke_flow_source == 'MESH')
+        return md and (md.smoke_type == 'FLOW')
 
     def draw(self, context):
         layout = self.layout
         ob = context.object
         flow = context.smoke.flow_settings
-
+        
         split = layout.split()
         
         col = split.column()
         col.label(text="Flow Source:")
         col.prop(flow, "smoke_flow_source", expand=False, text="")
-        if flow.smoke_flow_source == 'PARTICLES':
-            col.label(text="Particle System:")
-            col.prop_search(flow, "particle_system", ob, "particle_systems", text="")
-            col.prop(flow, "use_particle_size", text="Set Size")
-            sub = col.column()
-            sub.active = flow.use_particle_size
-            sub.prop(flow, "particle_size")
-        else:
+        if flow.smoke_flow_source == 'MESH':
             col.prop(flow, "surface_distance")
             col.prop(flow, "volume_density")
 
@@ -170,22 +163,30 @@ class PHYSICS_PT_smoke_flow_advanced(PhysicButtonsPanel, Panel):
         if flow.smoke_flow_source == 'MESH':
             sub.prop(flow, "velocity_normal")
             #sub.prop(flow, "velocity_random")
-    
+
         col = split.column()
-        col.label(text="Vertex Group:")
-        col.prop_search(flow, "density_vertex_group", ob, "vertex_groups", text="")
-		
-        col.prop(flow, "use_texture")
-        sub = col.column()
-        sub.active = flow.use_texture
-        sub.prop(flow, "noise_texture", text="")
-        sub.label(text="Mapping:")
-        sub.prop(flow, "texture_map_type", expand=False, text="")
-        if flow.texture_map_type == 'UV':
-            sub.prop_search(flow, "uv_layer", ob.data, "uv_textures", text="")
-        if flow.texture_map_type == 'AUTO':
-            sub.prop(flow, "texture_size")
-        sub.prop(flow, "texture_offset")
+        if flow.smoke_flow_source == 'PARTICLES':
+            col.label(text="Particle System:")
+            col.prop_search(flow, "particle_system", ob, "particle_systems", text="")
+            col.prop(flow, "use_particle_size", text="Set Size")
+            sub = col.column()
+            sub.active = flow.use_particle_size
+            sub.prop(flow, "particle_size")
+        else:
+            col.label(text="Vertex Group:")
+            col.prop_search(flow, "density_vertex_group", ob, "vertex_groups", text="")
+            
+            col.prop(flow, "use_texture")
+            sub = col.column()
+            sub.active = flow.use_texture
+            sub.prop(flow, "noise_texture", text="")
+            sub.label(text="Mapping:")
+            sub.prop(flow, "texture_map_type", expand=False, text="")
+            if flow.texture_map_type == 'UV':
+                sub.prop_search(flow, "uv_layer", ob.data, "uv_textures", text="")
+            if flow.texture_map_type == 'AUTO':
+                sub.prop(flow, "texture_size")
+            sub.prop(flow, "texture_offset")
 
 
 class PHYSICS_PT_smoke_fire(PhysicButtonsPanel, Panel):
@@ -255,13 +256,13 @@ class PHYSICS_PT_smoke_adaptive_domain(PhysicButtonsPanel, Panel):
         md = context.smoke.domain_settings
 
         self.layout.prop(md, "use_adaptive_domain", text="")
-		
+        
     def draw(self, context):
         layout = self.layout
 
         domain = context.smoke.domain_settings
         layout.active = domain.use_adaptive_domain
-		
+        
         split = layout.split()
         split.enabled = (not domain.point_cache.is_baked)
 
