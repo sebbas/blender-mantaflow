@@ -318,7 +318,7 @@ class PHYSICS_PT_smoke_highres(PhysicButtonsPanel, Panel):
 
 
 class PHYSICS_PT_smoke_groups(PhysicButtonsPanel, Panel):
-    bl_label = "Smoke Groups"
+    bl_label = "Fluid Groups"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -346,7 +346,7 @@ class PHYSICS_PT_smoke_groups(PhysicButtonsPanel, Panel):
 
 
 class PHYSICS_PT_smoke_cache(PhysicButtonsPanel, Panel):
-    bl_label = "Smoke Cache"
+    bl_label = "Fluid Cache"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -385,7 +385,7 @@ class PHYSICS_PT_smoke_cache(PhysicButtonsPanel, Panel):
 
 
 class PHYSICS_PT_smoke_field_weights(PhysicButtonsPanel, Panel):
-    bl_label = "Smoke Field Weights"
+    bl_label = "Fluid Field Weights"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
