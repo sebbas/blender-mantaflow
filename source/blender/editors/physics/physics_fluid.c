@@ -71,7 +71,6 @@
 	#include "../../../../intern/smoke/extern/smoke_API.h"
 #else
 	#include "../../../../intern/mantaflow/extern/manta_smoke_API.h"
-	#include "../../../../intern/mantaflow/extern/manta_liquid_API.h"
 #endif
 #include "DNA_smoke_types.h"
 
