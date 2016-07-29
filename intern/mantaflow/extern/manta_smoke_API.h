@@ -36,7 +36,6 @@ extern "C" {
 
 struct SMOKE;
 
-int *smoke_get_manta_flags(struct SMOKE *smoke);
 struct SMOKE *smoke_init(int *res, struct SmokeModifierData *smd);
 void smoke_free(struct SMOKE *smoke);
 size_t smoke_get_index(int x, int max_x, int y, int max_y, int z /*, int max_z */);
@@ -87,6 +86,8 @@ void smoke_ensure_fire(struct SMOKE *smoke, struct SmokeModifierData *smd);
 void smoke_ensure_colors(struct SMOKE *smoke, struct SmokeModifierData *smd);
 float *smoke_get_inflow_grid(struct SMOKE *smoke);
 float *smoke_get_fuel_inflow(struct SMOKE *smoke);
+int *smoke_get_flags(struct SMOKE *smoke);
+int *smoke_turbulence_get_flags(struct SMOKE *smoke);
 
 float *liquid_get_phi(struct SMOKE *liquid);
 float *liquid_get_phiinit(struct SMOKE *liquid);

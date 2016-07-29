@@ -99,7 +99,7 @@ public:
 	inline float* getColorB() { return mColorB; }
 	inline float* getDensityInflow() { return mDensityInflow; }
 	inline float* getFuelInflow() { return mFuelInflow; }
-	inline int* getMantaFlags() { return mMantaFlags; }
+	inline int* getFlags() { return mFlags; }
 
 	inline float* getDensityHigh() { return mDensityHigh; }
 	inline float* getFlameHigh() { return mFlameHigh; }
@@ -114,6 +114,7 @@ public:
 	inline float* getTextureU2() { return mTextureU2; }
 	inline float* getTextureV2() { return mTextureV2; }
 	inline float* getTextureW2() { return mTextureW2; }
+	inline int* getFlagsHigh() { return mFlagsHigh; }
 	
 	inline float* getPhi()     { return mPhi; }
 	inline float* getPhiInit() { return mPhiInit; }
@@ -187,7 +188,7 @@ private:
 	float *mColorB;
 	float* mDensityInflow;
 	float* mFuelInflow;
-	int* mMantaFlags;
+	int* mFlags;
 
 	// Smoke grids high res
 	float* mDensityHigh;
@@ -203,6 +204,7 @@ private:
 	float* mTextureU2;
 	float* mTextureV2;
 	float* mTextureW2;
+	int* mFlagsHigh;
 	
 	// Liquids
 	float* mPhi;

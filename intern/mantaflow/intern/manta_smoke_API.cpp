@@ -33,10 +33,6 @@
 #include "manta_smoke_API.h"
 #include "spectrum.h"
 
-extern "C" int *smoke_get_manta_flags(struct SMOKE *smoke) {
-	return smoke->getMantaFlags();
-}
-
 extern "C" SMOKE *smoke_init(int *res, struct SmokeModifierData *smd)
 {
 	SMOKE *smoke = new SMOKE(res, smd);
@@ -199,6 +195,11 @@ extern "C" float *smoke_get_density(SMOKE *smoke)
 	return smoke->getDensity();
 }
 
+extern "C" int *smoke_get_flags(SMOKE *smoke)
+{
+	return smoke->getFlags();
+}
+
 extern "C" float *smoke_get_fuel(SMOKE *smoke)
 {
 	return smoke->getFuel();
@@ -340,6 +341,11 @@ extern "C" void smoke_turbulence_get_rgba_from_density(SMOKE *smoke, float color
 extern "C" float *smoke_turbulence_get_density(SMOKE *smoke)
 {
 	return (smoke && smoke->usingHighRes()) ? smoke->getDensityHigh() : NULL;
+}
+
+extern "C" int *smoke_turbulence_get_flags(SMOKE *smoke)
+{
+	return (smoke && smoke->usingHighRes()) ? smoke->getFlagsHigh() : NULL;
 }
 
 extern "C" float *smoke_turbulence_get_fuel(SMOKE *smoke)

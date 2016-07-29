@@ -76,6 +76,7 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 	
 	// Low res grids
 	mDensity        = NULL;
+	mFlags          = NULL;
 	mHeat           = NULL;
 	mVelocityX      = NULL;
 	mVelocityY      = NULL;
@@ -94,7 +95,6 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 	mColorB         = NULL;
 	mDensityInflow  = NULL;
 	mFuelInflow     = NULL;
-	mMantaFlags     = NULL;
 	mObstacles      = NULL;
 	
 	// High res grids
@@ -361,6 +361,7 @@ SMOKE::~SMOKE()
 	
 	// Reset pointers to avoid dangling pointers
 	mDensity        = NULL;
+	mFlags          = NULL;
 	mHeat           = NULL;
 	mVelocityX      = NULL;
 	mVelocityY      = NULL;
@@ -379,7 +380,6 @@ SMOKE::~SMOKE()
 	mColorB         = NULL;
 	mDensityInflow  = NULL;
 	mFuelInflow     = NULL;
-	mMantaFlags     = NULL;
 	mObstacles      = NULL;
 	
 	if (mUsingHighRes)
@@ -787,9 +787,11 @@ void SMOKE::updatePointers(SmokeModifierData *smd)
 {
 	std::cout << "Updating pointers low res" << std::endl;
 
+	mFlags = (int*) getGridPointer("flags", "s");
+	
 	// Liquid
 	if (mUsingLiquid) {
-		mPhi        = (float*)         getGridPointer("phi",         "s");
+		mPhi        = (float*)         getGridPointer("phi",             "s");
 		mPhiInit    = (float*)         getGridPointer("phiInit",         "s");
 		mDensity    = (float*)         getGridPointer("density",         "s");
 	}
