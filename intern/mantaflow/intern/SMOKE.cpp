@@ -191,6 +191,7 @@ void SMOKE::initDomainHigh(SmokeModifierData *smd)
 void SMOKE::initSmoke(SmokeModifierData *smd)
 {
 	std::string tmpString = alloc_base_grids_low
+		+ fluid_variables
 		+ smoke_variables_low
 		+ prep_domain_low
 		+ manta_step
@@ -288,8 +289,10 @@ void SMOKE::initLiquid(SmokeModifierData *smd)
 {
 	if (!mPhi) {
 		std::string tmpString = alloc_liquid
+			+ fluid_variables
 			+ liquid_variables
-			+ prep_domain
+//			+ prep_domain_low
+			+ init_phi
 			+ save_mesh
 			+ save_liquid_data
 			+ load_liquid_data

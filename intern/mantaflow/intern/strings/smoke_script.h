@@ -56,10 +56,7 @@ using_colors    = $USING_COLORS$\n\
 using_heat      = $USING_HEAT$\n\
 using_fire      = $USING_FIRE$\n\
 using_wavelets  = $USE_WAVELETS$\n\
-vorticity       = $VORTICITY$\n\
-doOpen          = $DO_OPEN$\n\
-boundConditions = '$BOUNDCONDITIONS$'\n\
-boundaryWidth   = 1\n";
+vorticity       = $VORTICITY$\n";
 
 const std::string alloc_base_grids_low = "\n\
 # prepare grids low\n\
@@ -81,14 +78,6 @@ y_force     = s.create(RealGrid)\n\
 z_force     = s.create(RealGrid)\n\
 inflow_grid = s.create(LevelsetGrid)\n\
 fuel_inflow = s.create(LevelsetGrid)\n";
-
-const std::string prep_domain_low = "\n\
-# prepare domain low\n\
-mantaMsg('Smoke domain low')\n\
-flags.initDomain(boundaryWidth=boundaryWidth)\n\
-flags.fillGrid()\n\
-if doOpen:\n\
-    setOpenBound(flags=flags, bWidth=boundaryWidth, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
 
 //////////////////////////////////////////////////////////////////////
 // HIGH RESOLUTION SETUP
@@ -119,14 +108,6 @@ texture_w  = s.create(RealGrid)\n\
 texture_u2 = s.create(RealGrid)\n\
 texture_v2 = s.create(RealGrid)\n\
 texture_w2 = s.create(RealGrid)\n";
-
-const std::string prep_domain_high = "\n\
-# prepare domain high\n\
-mantaMsg('Smoke domain high')\n\
-xl_flags.initDomain(boundaryWidth=boundaryWidth)\n\
-xl_flags.fillGrid()\n\
-if doOpen:\n\
-    setOpenBound(flags=xl_flags, bWidth=boundaryWidth, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
 
 const std::string wavelet_turbulence_noise = "\n\
 # wavelet turbulence noise field\n\

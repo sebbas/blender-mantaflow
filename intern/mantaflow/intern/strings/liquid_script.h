@@ -40,6 +40,7 @@ combineBandWidth = narrowBandWidth - 1\n\
 \n\
 minParticles   = pow(2,dim)\n\
 particleNumber = 2\n\
+radiusFactor = 1.0\n\
 \n\
 gravity = (0,0,-1)\n\
 step    = -1\n\
@@ -72,7 +73,7 @@ mesh       = s.create(Mesh)\n\
 pindex     = s.create(ParticleIndexSystem)\n\
 gpi        = s.create(IntGrid)\n";
 
-const std::string prep_domain = "\n\
+const std::string init_phi = "\n\
 flags.initDomain(boundaryWidth=0)\n\
 phi.initFromFlags(flags)\n\
 phiInit.initFromFlags(flags)\n";
@@ -87,17 +88,13 @@ def manta_step(start_frame):\n\
     s.timeTotal = s.frame * dt0\n\
     last_frame = s.frame\n\
     \n\
-    # Sample particles on first frame\n\
-    if (start_frame == 1):\n\
-        phi.copyFrom(phiInit)\n\
-        flags.updateFromLevelset(phi)\n\
-        sampleLevelsetWithParticles( phi=phi, flags=flags, parts=pp, discretization=2, randomness=0.01 )\n\
-        mapGridToPartsVec3(source=vel, parts=pp, target=pVel )\n\
-        # sebbas: just using this for local debugging\n\
-        # phi.save('/Users/sbarschkis/Desktop/phi.uni')\n\
+    pVel.setSource( vel, isMAC=True )\n\
+    sampleLevelsetWithParticles( phi=phiInit, flags=flags, parts=pp, discretization=2, randomness=0.01, refillEmpty=True )\n\
+    mapGridToPartsVec3(source=vel, parts=pp, target=pVel )\n\
+    adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, radiusFactor=radiusFactor, narrowBand=narrowBandWidth )\n\
+    phi.join(phiInit)\n\
+    flags.updateFromLevelset(phi)\n\
     \n\
-    #for i in range(int(gs.z)):\n\
-        #phiInit.printGrid(zSlice=int(i))\n\
     while s.frame == last_frame:\n\
         global step\n\
         step = step + 1\n\
@@ -175,7 +172,10 @@ def liquid_step():\n\
         phi.setBoundNeumann(0) # make sure no particles are placed at outer boundary\n\
         adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, narrowBand=narrowBandWidth )\n\
     else:\n\
-        adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi )\n";
+        adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi )\n\
+    \n\
+    # reset inflow grid\n\
+    phiInit.initFromFlags(flags)\n";
 
 //////////////////////////////////////////////////////////////////////
 // IMPORT EXPORT GRIDS, MESHES, PARTICLESYSTEM
