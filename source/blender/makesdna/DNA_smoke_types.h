@@ -223,6 +223,7 @@ typedef struct SmokeDomainSettings {
 #define MOD_SMOKE_FLOW_INITVELOCITY (1<<2) /* passes particles speed to the smoke */
 #define MOD_SMOKE_FLOW_TEXTUREEMIT (1<<3) /* use texture to control emission speed */
 #define MOD_SMOKE_FLOW_USE_PART_SIZE (1<<4) /* use specific size for particles instead of closest cell */
+#define MOD_SMOKE_FLOW_USE_INFLOW (1<<5) /* control when to apply inflow */
 
 typedef struct SmokeFlowSettings {
 	struct SmokeModifierData *smd; /* for fast RNA access */

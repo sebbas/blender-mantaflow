@@ -953,6 +953,11 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Set Size", "Set particle size in simulation cells or use nearest cell");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
+	prop = RNA_def_property(srna, "use_inflow", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_SMOKE_FLOW_USE_INFLOW);
+	RNA_def_property_ui_text(prop, "Use inflow", "Control when to apply inflow");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+	
 	prop = RNA_def_property(srna, "subframes", PROP_INT, PROP_NONE);
 	RNA_def_property_range(prop, 0, 50);
 	RNA_def_property_ui_range(prop, 0, 10, 1, -1);

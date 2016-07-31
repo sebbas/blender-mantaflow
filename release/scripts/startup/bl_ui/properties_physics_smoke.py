@@ -78,21 +78,24 @@ class PHYSICS_PT_fluid(PhysicButtonsPanel, Panel):
             layout.prop(flow, "smoke_flow_type", expand=False)
             layout.prop(flow, "smoke_flow_behavior", expand=False)
 
-            if flow.smoke_flow_type != 'LIQUID':
-                split = layout.split()
+            split = layout.split()
 
-                col = split.column()
+            col = split.column()
+            if flow.smoke_flow_type in {'SMOKE', 'BOTH', 'FIRE'}:
                 col.label(text="Initial Values:")
                 col.prop(flow, "use_absolute")
-                if flow.smoke_flow_type in {'SMOKE', 'BOTH'}:
-                    col.prop(flow, "density")
-                    col.prop(flow, "temperature")
-                    col.prop(flow, "smoke_color")
-                if flow.smoke_flow_type in {'FIRE', 'BOTH'}:
-                    col.prop(flow, "fuel_amount")
-                col = split.column()
-                col.label(text="Sampling:")
-                col.prop(flow, "subframes")
+            if flow.smoke_flow_type in {'SMOKE', 'BOTH'}:
+                col.prop(flow, "density")
+                col.prop(flow, "temperature")
+                col.prop(flow, "smoke_color")
+            if flow.smoke_flow_type in {'FIRE', 'BOTH'}:
+                col.prop(flow, "fuel_amount")
+
+            col = split.column()
+            col.label(text="Sampling:")
+            if flow.smoke_flow_behavior == 'INFLOW':
+                col.prop(flow, "use_inflow")
+            col.prop(flow, "subframes")
 
         elif md.smoke_type == 'COLLISION':
             coll = md.coll_settings
