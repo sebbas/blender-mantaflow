@@ -2382,7 +2382,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 			}
 
 			/* update required data fields */
-			if (em->total_cells && sfs->type != MOD_SMOKE_FLOW_TYPE_OUTFLOW) {
+			if (em->total_cells && sfs->behavior != MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) {
 				/* activate liquid field. cannot be combined with anything else */
 				if (sfs->type == MOD_SMOKE_FLOW_TYPE_LIQUID) {
 					active_fields &= SM_ACTIVE_LIQUID;
@@ -2533,10 +2533,10 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 							/* make sure emission cell is inside the new domain boundary */
 							if (dx < 0 || dy < 0 || dz < 0 || dx >= sds->res[0] || dy >= sds->res[1] || dz >= sds->res[2]) continue;
 
-							if (sfs->type == MOD_SMOKE_FLOW_TYPE_OUTFLOW) { // outflow
+							if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) { // outflow
 								apply_outflow_fields(d_index, density, heat, fuel, react, color_r, color_g, color_b);
 							}
-							else { // inflow
+							else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW) { // inflow
 								apply_inflow_fields(sfs, emission_map[e_index], inflow_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b, phi);
 
 								/* initial velocity */
@@ -2623,12 +2623,12 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 											/* get shifted index for current high resolution block */
 											index_big = smoke_get_index(block_size * dx + ii - shift_x, bigres[0], block_size * dy + jj - shift_y, bigres[1], block_size * dz + kk - shift_z);
 
-											if (sfs->type == MOD_SMOKE_FLOW_TYPE_OUTFLOW) { // outflow
+											if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) { // outflow
 												if (interpolated_value) {
 													apply_outflow_fields(index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b);
 												}
 											}
-											else { // inflow
+											else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW) { // inflow
 												// TODO (sebbas) inflow map highres?
 												apply_inflow_fields(sfs, interpolated_value, inflow_map_high[index_big], index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, bigphi);
 											}
