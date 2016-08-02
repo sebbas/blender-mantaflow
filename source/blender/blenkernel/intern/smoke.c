@@ -2183,8 +2183,12 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 	}
 }
 
-BLI_INLINE void apply_outflow_fields(int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b)
+BLI_INLINE void apply_outflow_fields(int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi, int *flags)
 {
+	if (phi) {
+		phi[index] = 0.5f; // mantaflow convetion
+		flags[index] = 20; // mantaflow convetion
+	}
 	density[index] = 0.f;
 	if (heat) {
 		heat[index] = 0.f;
@@ -2207,6 +2211,8 @@ BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value
 		phi[index] = inflow_value;
 		return;
 	}
+	
+	/* add smoke inflow */
 	int absolute_flow = (sfs->flags & MOD_SMOKE_FLOW_ABSOLUTE);
 	float dens_old = density[index];
 	// float fuel_old = (fuel) ? fuel[index] : 0.0f;  /* UNUSED */
@@ -2496,11 +2502,13 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				float *bigcolor_g = smoke_turbulence_get_color_g(sds->fluid);
 				float *bigcolor_b = smoke_turbulence_get_color_b(sds->fluid);
 				float *bigphi = liquid_turbulence_get_phi(sds->fluid);
+				int *bigflags = smoke_turbulence_get_flags(sds->fluid);
 #endif
 				float *heat = smoke_get_heat(sds->fluid);
 				float *velocity_x = smoke_get_velocity_x(sds->fluid);
 				float *velocity_y = smoke_get_velocity_y(sds->fluid);
 				float *velocity_z = smoke_get_velocity_z(sds->fluid);
+				int *flags = smoke_get_flags(sds->fluid);
 				float *phi = liquid_get_phiinit(sds->fluid);
 				//unsigned char *obstacle = smoke_get_obstacle(sds->fluid);
 				// DG TODO UNUSED unsigned char *obstacleAnim = smoke_get_obstacle_anim(sds->fluid);
@@ -2534,7 +2542,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 							if (dx < 0 || dy < 0 || dz < 0 || dx >= sds->res[0] || dy >= sds->res[1] || dz >= sds->res[2]) continue;
 
 							if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) { // outflow
-								apply_outflow_fields(d_index, density, heat, fuel, react, color_r, color_g, color_b);
+								apply_outflow_fields(d_index, density, heat, fuel, react, color_r, color_g, color_b, phi, flags);
 							}
 							else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW) { // inflow
 								apply_inflow_fields(sfs, emission_map[e_index], inflow_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b, phi);
@@ -2625,7 +2633,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 
 											if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) { // outflow
 												if (interpolated_value) {
-													apply_outflow_fields(index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b);
+													apply_outflow_fields(index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, bigphi, bigflags);
 												}
 											}
 											else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW) { // inflow
