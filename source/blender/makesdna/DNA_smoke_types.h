@@ -63,9 +63,10 @@ enum {
 #define SM_CACHE_HEAVY		1
 
 /* domain border collision */
-#define SM_BORDER_OPEN		0
-#define SM_BORDER_VERTICAL	1
-#define SM_BORDER_CLOSED	2
+#define SM_BORDER_OPEN		 0
+#define SM_BORDER_VERTICAL	 1
+#define SM_BORDER_CLOSED	 2
+#define SM_BORDER_HORIZONTAL 3
 
 /* viewport preview types */
 #define SM_VIEWPORT_GEOM  	0

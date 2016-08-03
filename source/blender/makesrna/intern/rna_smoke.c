@@ -461,6 +461,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 		{SM_BORDER_VERTICAL, "BORDERVERTICAL", 0, "Vertically Open",
 		 "Smoke doesn't collide with top and bottom sides"},
 		{SM_BORDER_CLOSED, "BORDERCLOSED", 0, "Collide All", "Smoke collides with every side"},
+		{SM_BORDER_HORIZONTAL, "BORDERHORIZONTAL", 0, "Horizontally Open", "Smoke doesn't collide with left, right, front and back sides"},
 		{0, NULL, 0, NULL, NULL}
 	};
 	
