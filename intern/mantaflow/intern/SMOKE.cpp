@@ -114,6 +114,7 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 	
 	// Liquids
 	mPhi            = NULL;
+	mPhiInit        = NULL;
 	mPhiHigh        = NULL;
 	
 	mNumVertices  = 0;
@@ -404,6 +405,7 @@ SMOKE::~SMOKE()
 	
 	// Liquid
 	mPhi     = NULL;
+	mPhiInit = NULL;
 	mPhiHigh = NULL;
 	
 	// Reset flags
