@@ -581,7 +581,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->flow->density = 1.0f;
 			smd->flow->fuel_amount = 1.0f;
 			smd->flow->temp = 1.0f;
-			smd->flow->flags = MOD_SMOKE_FLOW_ABSOLUTE | MOD_SMOKE_FLOW_USE_PART_SIZE;
+			smd->flow->flags = MOD_SMOKE_FLOW_ABSOLUTE | MOD_SMOKE_FLOW_USE_PART_SIZE | MOD_SMOKE_FLOW_USE_INFLOW;
 			smd->flow->vel_multi = 1.0f;
 			smd->flow->volume_density = 0.0f;
 			smd->flow->surface_distance = 1.5f;
@@ -2206,6 +2206,11 @@ BLI_INLINE void apply_outflow_fields(int index, float *density, float *heat, flo
 
 BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value, float inflow_value, int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi)
 {
+	/* no inflow enabled. just return */
+	if (!(sfs->flags & MOD_SMOKE_FLOW_USE_INFLOW)) {
+		return;
+	}
+	
 	/* add liquid inflow */
 	if (phi) {
 		phi[index] = inflow_value;
