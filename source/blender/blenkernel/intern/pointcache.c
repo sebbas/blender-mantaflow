@@ -1648,14 +1648,25 @@ void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct SmokeMo
 	pid->read_point				= NULL;
 	pid->interpolate_point		= NULL;
 
-	pid->read_stream			= ptcache_smoke_read;
-	pid->write_stream			= ptcache_smoke_write;
+	if (smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS)
+	{
+		pid->read_stream			= ptcache_smoke_read;
+		pid->write_stream			= ptcache_smoke_write;
+		
+		pid->write_liquid_stream	= NULL;
+		pid->read_liquid_stream		= NULL;
+	}
+	else if (smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
+	{
+		pid->read_stream			= NULL;
+		pid->write_stream			= NULL;
+		
+		pid->write_liquid_stream	= ptcache_liquid_write;
+		pid->read_liquid_stream		= ptcache_liquid_read;
+	}
 
 	pid->write_openvdb_stream	= ptcache_smoke_openvdb_write;
 	pid->read_openvdb_stream	= ptcache_smoke_openvdb_read;
-	
-	pid->write_liquid_stream	= ptcache_liquid_write;
-	pid->read_liquid_stream		= ptcache_liquid_read;
 
 	pid->write_extra_data		= NULL;
 	pid->read_extra_data		= NULL;
@@ -2817,12 +2828,13 @@ int BKE_ptcache_read(PTCacheID *pid, float cfra)
 				return 0;
 			}
 		}
-		else if (pid->read_stream) {
+		else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->read_stream) {
 			if (!ptcache_read_stream(pid, cfra1))
 				return 0;
 		}
-		else if (pid->read_point)
+		else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->read_point) {
 			ptcache_read(pid, cfra1);
+		}
 	}
 
 	if (cfra2) {
@@ -2836,11 +2848,11 @@ int BKE_ptcache_read(PTCacheID *pid, float cfra)
 				return 0;
 			}
 		}
-		else if (pid->read_stream) {
+		else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->read_stream) {
 			if (!ptcache_read_stream(pid, cfra2))
 				return 0;
 		}
-		else if (pid->read_point) {
+		else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->read_point) {
 			if (cfra1 && cfra2 && pid->interpolate_point)
 				ptcache_interpolate(pid, cfra, cfra1, cfra2);
 			else
@@ -3077,10 +3089,10 @@ int BKE_ptcache_write(PTCacheID *pid, unsigned int cfra)
 	else if (pid->file_type == PTCACHE_FILE_LIQUID && pid->write_liquid_stream) {
 		ptcache_write_liquid_stream(pid, cfra);
 	}
-	else if (pid->write_stream) {
+	else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->write_stream) {
 		ptcache_write_stream(pid, cfra, totpoint);
 	}
-	else if (pid->write_point) {
+	else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->write_point) {
 		error += ptcache_write(pid, cfra, overwrite);
 	}
 
