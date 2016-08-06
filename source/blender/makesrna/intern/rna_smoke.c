@@ -500,7 +500,15 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_int_sdna(prop, NULL, "maxres");
 	RNA_def_property_range(prop, 6, 512);
 	RNA_def_property_ui_range(prop, 24, 512, 2, -1);
-	RNA_def_property_ui_text(prop, "Max Res", "Maximal resolution used in the fluid domain");
+	RNA_def_property_ui_text(prop, "Max Res", "Domain resolution used in the fluid domain");
+	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+	
+	prop = RNA_def_property(srna, "resolution_preview", PROP_INT, PROP_NONE);
+	RNA_def_property_int_sdna(prop, NULL, "previewres");
+	RNA_def_property_range(prop, 6, 128);
+	RNA_def_property_ui_range(prop, 24, 128, 2, -1);
+	RNA_def_property_ui_text(prop, "Max Res", "Preview resolution used in the fluid domain");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
@@ -626,10 +634,16 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	                         "Select which domain border will be treated as collision object");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 	
-	prop = RNA_def_property(srna, "viewport_mode", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "viewport_mode");
+	prop = RNA_def_property(srna, "viewport_display_mode", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "viewport_display_mode");
 	RNA_def_property_enum_items(prop, smoke_quality_items);
 	RNA_def_property_ui_text(prop, "Viewport Display Mode", "How to display the mesh in the viewport");
+	RNA_def_property_update(prop, 0, "rna_Smoke_update");
+	
+	prop = RNA_def_property(srna, "render_display_mode", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "render_display_mode");
+	RNA_def_property_enum_items(prop, smoke_quality_items);
+	RNA_def_property_ui_text(prop, "Render Display Mode", "How to display the mesh for rendering");
 	RNA_def_property_update(prop, 0, "rna_Smoke_update");
 
 	prop = RNA_def_property(srna, "effector_weights", PROP_POINTER, PROP_NONE);

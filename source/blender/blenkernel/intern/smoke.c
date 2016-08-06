@@ -522,6 +522,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->fluid_group = NULL;
 			smd->domain->coll_group = NULL;
 			smd->domain->maxres = 32;
+			smd->domain->previewres = 16;
 			smd->domain->amplify = 1;
 			smd->domain->alpha = -0.001;
 			smd->domain->beta = 0.3;
@@ -637,6 +638,7 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->beta = smd->domain->beta;
 		tsmd->domain->amplify = smd->domain->amplify;
 		tsmd->domain->maxres = smd->domain->maxres;
+		tsmd->domain->previewres = smd->domain->previewres;
 		tsmd->domain->flags = smd->domain->flags;
 		tsmd->domain->highres_sampling = smd->domain->highres_sampling;
 		tsmd->domain->viewsettings = smd->domain->viewsettings;
@@ -2870,7 +2872,7 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 		return NULL;
 	
 	/* just display original object */
-	if (sds->viewport_mode == 0)
+	if (sds->viewport_display_mode == 0)
 		return NULL;
 	
 	num_verts   = liquid_get_num_verts(sds->fluid);

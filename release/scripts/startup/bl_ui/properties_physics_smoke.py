@@ -53,6 +53,7 @@ class PHYSICS_PT_fluid(PhysicButtonsPanel, Panel):
 
         if md.smoke_type == 'DOMAIN':
             domain = md.domain_settings
+            flow = md.flow_settings
 
             layout.prop(domain, "smoke_domain_type", expand=False)
 
@@ -61,16 +62,59 @@ class PHYSICS_PT_fluid(PhysicButtonsPanel, Panel):
             split.enabled = not domain.point_cache.is_baked
 
             col = split.column()
-            col.label(text="Resolution:")
-            col.prop(domain, "resolution_max", text="Divisions")
             col.label(text="Time:")
             col.prop(domain, "time_scale", text="Scale")
 
             col = split.column()
             col.label(text="Border Collisions:")
             col.prop(domain, "collision_extents", text="")
-            col.label(text="Viewport Display:")
-            col.prop(domain, "viewport_mode", text="")
+
+            if domain.smoke_domain_type in {'GAS'}:
+                split = layout.split()
+                split.enabled = not domain.point_cache.is_baked
+
+                col = split.column(align=True)
+                col.label(text="Smoke:")
+                col.prop(domain, "alpha")
+                col.prop(domain, "beta", text="Temp. Diff.")
+                col.prop(domain, "vorticity")
+
+                col = split.column(align=True)
+                col.label()
+                col.prop(domain, "use_dissolve_smoke", text="Dissolve")
+                sub = col.column()
+                sub.active = domain.use_dissolve_smoke
+                sub.prop(domain, "dissolve_speed", text="Time")
+                sub.prop(domain, "use_dissolve_smoke_log", text="Slow")
+
+                split = layout.split()
+                split.enabled = not domain.point_cache.is_baked
+
+                col = split.column(align=True)
+                col.label(text="Fire:")
+                col.prop(domain, "burning_rate")
+                col.prop(domain, "flame_smoke")
+                col.prop(domain, "flame_vorticity")
+
+                col = split.column(align=True)
+                col.label()
+                col.prop(domain, "flame_ignition")
+                col.prop(domain, "flame_max_temp")
+                col.prop(domain, "flame_smoke_color")
+
+            if domain.smoke_domain_type in {'LIQUID'}:
+                split = layout.split()
+                split.enabled = not domain.point_cache.is_baked
+
+                col = split.column(align=True)
+                col.label(text="Liquid:")
+                col.prop(domain, "particle_randomness")
+
+                col = split.column(align=True)
+                col.prop(domain, "use_narrow_band", text="Narrow Band")
+                sub = col.column()
+                sub.active = domain.use_narrow_band
+                sub.prop(domain, "nb_width", text="Width")
 
         elif md.smoke_type == 'FLOW':
             flow = md.flow_settings
@@ -104,35 +148,6 @@ class PHYSICS_PT_fluid(PhysicButtonsPanel, Panel):
 
             col = split.column()
             col.prop(coll, "collision_type")
-
-class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
-    bl_label = "Smoke"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(cls, context):
-        md = context.smoke
-        return md and (md.smoke_type == 'DOMAIN')
-
-    def draw(self, context):
-        layout = self.layout
-        domain = context.smoke.domain_settings
-
-        split = layout.split()
-        split.enabled = not domain.point_cache.is_baked
-
-        col = split.column(align=True)
-        col.label(text="Behavior:")
-        col.prop(domain, "alpha")
-        col.prop(domain, "beta", text="Temp. Diff.")
-        col.prop(domain, "vorticity")
-
-        col = split.column(align=True)
-        col.prop(domain, "use_dissolve_smoke", text="Dissolve")
-        sub = col.column()
-        sub.active = domain.use_dissolve_smoke
-        sub.prop(domain, "dissolve_speed", text="Time")
-        sub.prop(domain, "use_dissolve_smoke_log", text="Slow")
 
 class PHYSICS_PT_smoke_flow_advanced(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Source"
@@ -191,61 +206,6 @@ class PHYSICS_PT_smoke_flow_advanced(PhysicButtonsPanel, Panel):
                 sub.prop(flow, "texture_size")
             sub.prop(flow, "texture_offset")
 
-
-class PHYSICS_PT_smoke_fire(PhysicButtonsPanel, Panel):
-    bl_label = "Fire"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(cls, context):
-        md = context.smoke
-        return md and (md.smoke_type == 'DOMAIN')
-
-    def draw(self, context):
-        layout = self.layout
-        domain = context.smoke.domain_settings
-
-        split = layout.split()
-        split.enabled = not domain.point_cache.is_baked
-
-        col = split.column(align=True)
-        col.label(text="Reaction:")
-        col.prop(domain, "burning_rate")
-        col.prop(domain, "flame_smoke")
-        col.prop(domain, "flame_vorticity")
-
-        col = split.column(align=True)
-        col.label(text="Temperatures:")
-        col.prop(domain, "flame_ignition")
-        col.prop(domain, "flame_max_temp")
-        col.prop(domain, "flame_smoke_color")
-
-class PHYSICS_PT_liquid(PhysicButtonsPanel, Panel):
-    bl_label = "Liquid"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(cls, context):
-        md = context.smoke
-        return md and (md.smoke_type == 'DOMAIN')
-
-    def draw(self, context):
-        layout = self.layout
-        domain = context.smoke.domain_settings
-
-        split = layout.split()
-        split.enabled = not domain.point_cache.is_baked
-
-        col = split.column(align=True)
-        col.label(text="Particles:")
-        col.prop(domain, "particle_randomness")
-
-        col = split.column(align=True)
-        col.prop(domain, "use_narrow_band", text="Narrow Band")
-        sub = col.column()
-        sub.active = domain.use_narrow_band
-        sub.prop(domain, "nb_width", text="Width")
-
 class PHYSICS_PT_smoke_adaptive_domain(PhysicButtonsPanel, Panel):
     bl_label = "Smoke Adaptive Domain"
     bl_options = {'DEFAULT_CLOSED'}
@@ -253,7 +213,9 @@ class PHYSICS_PT_smoke_adaptive_domain(PhysicButtonsPanel, Panel):
     @classmethod
     def poll(cls, context):
         md = context.smoke
-        return md and (md.smoke_type == 'DOMAIN')
+        # TODO (sebbas): Adaptive domain currently not supported by mantaflow. Disabling for now
+        return False
+        # return md and (md.smoke_type == 'DOMAIN')
 
     def draw_header(self, context):
         md = context.smoke.domain_settings
@@ -280,7 +242,7 @@ class PHYSICS_PT_smoke_adaptive_domain(PhysicButtonsPanel, Panel):
 
 
 class PHYSICS_PT_smoke_highres(PhysicButtonsPanel, Panel):
-    bl_label = "Smoke High Resolution"
+    bl_label = "Fluid Quality"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -289,36 +251,44 @@ class PHYSICS_PT_smoke_highres(PhysicButtonsPanel, Panel):
         rd = context.scene.render
         return md and (md.smoke_type == 'DOMAIN') and (not rd.use_game_engine)
 
-    def draw_header(self, context):
-        md = context.smoke.domain_settings
-
-        self.layout.prop(md, "use_high_resolution", text="")
-
     def draw(self, context):
         layout = self.layout
-
-        md = context.smoke.domain_settings
-
-        layout.active = md.use_high_resolution
+        domain = context.smoke.domain_settings
 
         split = layout.split()
-        split.enabled = not md.point_cache.is_baked
+        split.enabled = not domain.point_cache.is_baked
 
         col = split.column()
         col.label(text="Resolution:")
-        col.prop(md, "amplify", text="Divisions")
-        col.label(text="Flow Sampling:")
-        col.row().prop(md, "highres_sampling", text="")
+        col.prop(domain, "resolution_max", text="Final")
+        col.label(text="Render Display:")
+        col.prop(domain, "render_display_mode", text="")
 
         col = split.column()
-        col.label(text="Noise Method:")
-        col.row().prop(md, "noise_type", text="")
-        col.prop(md, "strength")
-        col.prop(md, "noise_pos_scale")
-        col.prop(md, "noise_time_anim")
+        col.label()
+        col.prop(domain, "resolution_preview", text="Preview")
+        col.label(text="Viewport Display:")
+        col.prop(domain, "viewport_display_mode", text="")
 
-        layout.prop(md, "show_high_resolution")
+        split = layout.split()
 
+        if domain.smoke_domain_type == 'GAS': # high resolution only for gases right now
+            col = split.column()
+            col.prop(domain, "use_high_resolution", text="High resolution")
+            sub = col.column()
+            sub.active = domain.use_high_resolution
+            sub.prop(domain, "amplify", text="Divisions")
+            sub.label(text="Flow Sampling:")
+            sub.row().prop(domain, "highres_sampling", text="")
+            sub.prop(domain, "show_high_resolution")
+
+            sub = split.column()
+            sub.active = domain.use_high_resolution
+            sub.label(text="Noise Method:")
+            sub.row().prop(domain, "noise_type", text="")
+            sub.prop(domain, "strength")
+            sub.prop(domain, "noise_pos_scale")
+            sub.prop(domain, "noise_time_anim")
 
 class PHYSICS_PT_smoke_groups(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Groups"
@@ -410,7 +380,7 @@ class OBJECT_OT_RunMantaButton(bpy.types.Operator):
         return{'FINISHED'}
 
 class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
-    bl_label = "Mantaflow Settings"
+    bl_label = "Fluid Export"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
