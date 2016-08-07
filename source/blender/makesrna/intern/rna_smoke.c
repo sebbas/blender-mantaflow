@@ -459,11 +459,11 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	};
 
 	static EnumPropertyItem smoke_domain_colli_items[] = {
-		{SM_BORDER_OPEN, "BORDEROPEN", 0, "Open", "Smoke doesn't collide with any border"},
+		{SM_BORDER_OPEN, "BORDEROPEN", 0, "Open", "Fluid doesn't collide with any border"},
 		{SM_BORDER_VERTICAL, "BORDERVERTICAL", 0, "Vertically Open",
-		 "Smoke doesn't collide with top and bottom sides"},
-		{SM_BORDER_CLOSED, "BORDERCLOSED", 0, "Collide All", "Smoke collides with every side"},
-		{SM_BORDER_HORIZONTAL, "BORDERHORIZONTAL", 0, "Horizontally Open", "Smoke doesn't collide with left, right, front and back sides"},
+		 "Fluid doesn't collide with top and bottom sides"},
+		{SM_BORDER_CLOSED, "BORDERCLOSED", 0, "Collide All", "Fluid collides with every side"},
+		{SM_BORDER_HORIZONTAL, "BORDERHORIZONTAL", 0, "Horizontally Open", "Fluid doesn't collide with left, right, front and back sides"},
 		{0, NULL, 0, NULL, NULL}
 	};
 	
@@ -833,7 +833,7 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
 	static EnumPropertyItem smoke_flow_behaviors[] = {
 		{MOD_SMOKE_FLOW_BEHAVIOR_INFLOW, "INFLOW", 0, "Inflow", "Add fluid to simulation"},
 		{MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW, "OUTFLOW", 0, "Outflow", "Delete fluid from simulation"},
-		{MOD_SMOKE_FLOW_BEHAVIOR_STATIC, "STATIC", 0, "Static", "Only use given geometry for fluid"},
+		{MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY, "GEOMETRY", 0, "Geometry", "Only use given geometry for fluid"},
 		{0, NULL, 0, NULL, NULL}
 	};
 

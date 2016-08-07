@@ -209,7 +209,7 @@ typedef struct SmokeDomainSettings {
 /* behavior */
 #define MOD_SMOKE_FLOW_BEHAVIOR_INFLOW 0
 #define MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW 1
-#define MOD_SMOKE_FLOW_BEHAVIOR_STATIC 2
+#define MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY 2
 
 /* flow source */
 #define MOD_SMOKE_FLOW_SOURCE_PARTICLES 0
