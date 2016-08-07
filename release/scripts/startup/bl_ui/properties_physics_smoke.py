@@ -110,12 +110,6 @@ class PHYSICS_PT_fluid(PhysicButtonsPanel, Panel):
                 col.label(text="Liquid:")
                 col.prop(domain, "particle_randomness")
 
-                col = split.column(align=True)
-                col.prop(domain, "use_narrow_band", text="Narrow Band")
-                sub = col.column()
-                sub.active = domain.use_narrow_band
-                sub.prop(domain, "nb_width", text="Width")
-
         elif md.smoke_type == 'FLOW':
             flow = md.flow_settings
 

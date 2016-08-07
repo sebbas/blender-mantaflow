@@ -811,20 +811,9 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Time", "Animation time of noise");
 	
 	prop = RNA_def_property(srna, "particle_randomness", PROP_FLOAT, PROP_NONE);
-	RNA_def_property_range(prop, 0.0, 1.0);
-	RNA_def_property_ui_range(prop, 1.0, 5.0, 1.0, 5);
+	RNA_def_property_range(prop, 0.01, 1.0);
+	RNA_def_property_ui_range(prop, 0.01, 2.0, 1.0, 5);
 	RNA_def_property_ui_text(prop, "Randomness", "Randomness factor for particle sampling");
-	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
-	
-	prop = RNA_def_property(srna, "nb_width", PROP_FLOAT, PROP_NONE);
-	RNA_def_property_range(prop, 1.0, 10.0);
-	RNA_def_property_ui_range(prop, 1.0, 5.0, 1.0, 5);
-	RNA_def_property_ui_text(prop, "Width", "Narrow band width in cells");
-	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
-	
-	prop = RNA_def_property(srna, "use_narrow_band", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_LIQUID_NARROW_BAND);
-	RNA_def_property_ui_text(prop, "Use Narrow Band", "Enable narrow band for liquids");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 }
 

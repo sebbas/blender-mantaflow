@@ -553,6 +553,9 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->viewsettings = MOD_SMOKE_VIEW_SHOWBIG;
 			smd->domain->effector_weights = BKE_add_effector_weights(NULL);
 			
+			/* liquid */
+			smd->domain->particle_randomness = 0.1f;
+
 #ifdef WITH_MANTA
 			/*mantaflow settings*/
 			smd->domain->manta_solver_res = 3;

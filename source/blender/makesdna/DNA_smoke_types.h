@@ -42,7 +42,6 @@ enum {
 	MOD_SMOKE_DISSOLVE = (1 << 2),  /* let smoke dissolve */
 	MOD_SMOKE_DISSOLVE_LOG = (1 << 3),  /* using 1/x for dissolve */
 	MOD_SMOKE_USE_MANTA = (1 << 4),
-	MOD_LIQUID_NARROW_BAND = (1 << 5),
 
 #ifdef DNA_DEPRECATED
 	MOD_SMOKE_HIGH_SMOOTH = (1 << 5),  /* -- Deprecated -- */
@@ -189,7 +188,7 @@ typedef struct SmokeDomainSettings {
 	
 	/* liquid parameters */
 	float particle_randomness;
-	float nb_width;
+	float mock_var2;
 
 	/* mantaflow settings */
 	struct SMOKE *fluid;

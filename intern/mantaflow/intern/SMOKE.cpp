@@ -542,6 +542,8 @@ std::string SMOKE::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << smd->domain->flame_smoke_color[2];
 	else if (varName == "CURRENT_FRAME")
 		ss << md->scene->r.cfra;
+	else if (varName == "RANDOMNESS")
+		ss << smd->domain->particle_randomness;
 	else if (varName == "MANTA_EXPORT_PATH") {
 		char parent_dir[1024];
 		BLI_split_dir_part(smd->domain->manta_filepath, parent_dir, sizeof(parent_dir));
