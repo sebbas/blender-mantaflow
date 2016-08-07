@@ -176,7 +176,7 @@ def liquid_step():\n\
         adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi )\n\
     \n\
     # reset inflow grid\n\
-    phiInit.initFromFlags(flags)\n";
+    phiInit.setConst(0.5)\n";
 
 //////////////////////////////////////////////////////////////////////
 // IMPORT EXPORT GRIDS, MESHES, PARTICLESYSTEM

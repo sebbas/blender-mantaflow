@@ -2212,7 +2212,7 @@ BLI_INLINE void apply_outflow_fields(int index, float *density, float *heat, flo
 BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value, float inflow_value, int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi)
 {
 	/* no inflow enabled. just return */
-	if (!(sfs->flags & MOD_SMOKE_FLOW_USE_INFLOW)) {
+	if (!(sfs->flags & MOD_SMOKE_FLOW_USE_INFLOW) && sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW) {
 		return;
 	}
 	
@@ -2554,7 +2554,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 							if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) { // outflow
 								apply_outflow_fields(d_index, density, heat, fuel, react, color_r, color_g, color_b, phi, flags);
 							}
-							else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW) { // inflow
+							else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW || (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time == 2)) { // inflow
 								apply_inflow_fields(sfs, emission_map[e_index], inflow_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b, phi);
 
 								/* initial velocity */
@@ -2646,7 +2646,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 													apply_outflow_fields(index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, bigphi, bigflags);
 												}
 											}
-											else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW) { // inflow
+											else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW || (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time == 2)) { // inflow
 												// TODO (sebbas) inflow map highres?
 												apply_inflow_fields(sfs, interpolated_value, inflow_map_high[index_big], index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, bigphi);
 											}
