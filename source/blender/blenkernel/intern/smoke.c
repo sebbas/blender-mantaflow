@@ -553,6 +553,9 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->viewsettings = MOD_SMOKE_VIEW_SHOWBIG;
 			smd->domain->effector_weights = BKE_add_effector_weights(NULL);
 			
+			smd->domain->viewport_display_mode = SM_VIEWPORT_FINAL;
+			smd->domain->render_display_mode = SM_VIEWPORT_FINAL;
+			
 			/* liquid */
 			smd->domain->particle_randomness = 0.1f;
 
