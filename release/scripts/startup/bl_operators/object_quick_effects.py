@@ -637,3 +637,83 @@ class QuickFluid(Operator):
             bpy.ops.fluid.bake('INVOKE_DEFAULT')
 
         return {'FINISHED'}
+
+
+class QuickLiquid(Operator):
+    bl_idname = "object.quick_liquid"
+    bl_label = "Quick Liquid"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    show_flows = BoolProperty(
+            name="Render Smoke Objects",
+            description="Keep the smoke objects visible during rendering",
+            default=False,
+            )
+
+    def execute(self, context):
+        fake_context = context.copy()
+        mesh_objects = [obj for obj in context.selected_objects
+                        if obj.type == 'MESH']
+        min_co = Vector((100000.0, 100000.0, 100000.0))
+        max_co = -min_co
+
+        if not mesh_objects:
+            self.report({'ERROR'}, "Select at least one mesh object")
+            return {'CANCELLED'}
+
+        for obj in mesh_objects:
+            fake_context["object"] = obj
+            # make each selected object a smoke flow
+            bpy.ops.object.modifier_add(fake_context, type='SMOKE')
+            obj.modifiers[-1].smoke_type = 'FLOW'
+
+            # set type
+            obj.modifiers[-1].flow_settings.smoke_flow_type = 'LIQUID'
+
+            # set flow behavior
+            obj.modifiers[-1].flow_settings.smoke_flow_behavior = 'GEOMETRY'
+
+            if not self.show_flows:
+                obj.draw_type = 'WIRE'
+
+            # store bounding box min/max for the domain object
+            obj_bb_minmax(obj, min_co, max_co)
+
+        # add the liquid domain object
+        bpy.ops.mesh.primitive_cube_add()
+        obj = context.active_object
+        obj.name = "Liquid Domain"
+
+        # give the smoke some room above the flows
+        obj.location = 0.5 * (max_co + min_co) + Vector((0.0, 0.0, -1.0))
+        obj.scale = 0.5 * (max_co - min_co) + Vector((1.0, 1.0, 2.0))
+
+        # setup liquid domain
+        bpy.ops.object.modifier_add(type='SMOKE')
+        obj.modifiers[-1].smoke_type = 'DOMAIN'
+        obj.modifiers[-1].domain_settings.smoke_domain_type = 'LIQUID'
+
+        # set correct cache file format for liquid
+        obj.modifiers[-1].domain_settings.cache_file_format = 'OBJECT'
+		
+        # make domain solid so that liquid becomes better visible
+        obj.draw_type = 'SOLID'
+
+        # make the domain smooth so it renders nicely
+        # bpy.ops.object.shade_smooth()
+
+        # create a ray-transparent material for the domain
+        bpy.ops.object.material_slot_add()
+
+        mat = bpy.data.materials.new("Liquid Domain Material")
+        obj.material_slots[0].material = mat
+
+        mat.specular_intensity = 1
+        mat.specular_hardness = 100
+        mat.use_transparency = True
+        mat.alpha = 0.0
+        mat.transparency_method = 'RAYTRACE'
+        mat.raytrace_transparency.ior = 1.33
+        mat.raytrace_transparency.depth = 4
+
+        return {'FINISHED'}
