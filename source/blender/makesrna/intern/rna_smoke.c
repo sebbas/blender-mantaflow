@@ -665,7 +665,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "vorticity", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "vorticity");
-	RNA_def_property_range(prop, 0.01, 4.0);
+	RNA_def_property_range(prop, 0.0, 4.0);
 	RNA_def_property_ui_range(prop, 0.01, 4.0, 0.02, 5);
 	RNA_def_property_ui_text(prop, "Vorticity", "Amount of turbulence/rotation in fluid");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
@@ -811,7 +811,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Time", "Animation time of noise");
 	
 	prop = RNA_def_property(srna, "particle_randomness", PROP_FLOAT, PROP_NONE);
-	RNA_def_property_range(prop, 0.01, 1.0);
+	RNA_def_property_range(prop, 0.0, 2.0);
 	RNA_def_property_ui_range(prop, 0.01, 2.0, 1.0, 5);
 	RNA_def_property_ui_text(prop, "Randomness", "Randomness factor for particle sampling");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
