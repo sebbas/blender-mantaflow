@@ -555,6 +555,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			
 			smd->domain->viewport_display_mode = SM_VIEWPORT_FINAL;
 			smd->domain->render_display_mode = SM_VIEWPORT_FINAL;
+			smd->domain->type = MOD_SMOKE_DOMAIN_TYPE_GAS;
 			
 			/* liquid */
 			smd->domain->particle_randomness = 0.1f;

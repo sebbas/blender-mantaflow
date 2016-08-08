@@ -7528,7 +7528,7 @@ void draw_object(Scene *scene, ARegion *ar, View3D *v3d, Base *base, const short
 	{
 		smd = (SmokeModifierData *)md;
 
-		if (smd->domain && smd->domain->type & MOD_SMOKE_DOMAIN_TYPE_GAS) {
+		if (smd->domain && (smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS)) {
 			if (!v3d->transp && (dflag & DRAW_PICKING) == 0) {
 				if (!v3d->xray && !(ob->dtx & OB_DRAWXRAY)) {
 					/* object has already been drawn so skip drawing it */
@@ -7900,7 +7900,7 @@ void draw_object(Scene *scene, ARegion *ar, View3D *v3d, Base *base, const short
 #endif
 
 		/* only draw domains */
-		if (smd->domain) {
+		if (smd->domain && (smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS)) {
 			SmokeDomainSettings *sds = smd->domain;
 			float viewnormal[3];
 
