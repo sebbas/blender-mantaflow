@@ -2192,12 +2192,17 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 	}
 }
 
-BLI_INLINE void apply_outflow_fields(int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi, int *flags)
+BLI_INLINE void apply_outflow_fields(int index, float inflow_value, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi, int *flags)
 {
+	/* set liquid outflow */
 	if (phi) {
 		phi[index] = 0.5f; // mantaflow convetion
-		flags[index] = 20; // mantaflow convetion
 	}
+	if (inflow_value < 0.f) { // only set outflow inside mesh
+		flags[index] = 20; // mantaflow convetion (FlagOutflow | FlagEmpty)
+	}
+	
+	/* set smoke outflow */
 	density[index] = 0.f;
 	if (heat) {
 		heat[index] = 0.f;
@@ -2556,7 +2561,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 							if (dx < 0 || dy < 0 || dz < 0 || dx >= sds->res[0] || dy >= sds->res[1] || dz >= sds->res[2]) continue;
 
 							if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) { // outflow
-								apply_outflow_fields(d_index, density, heat, fuel, react, color_r, color_g, color_b, phi, flags);
+								apply_outflow_fields(d_index, inflow_map[e_index], density, heat, fuel, react, color_r, color_g, color_b, phi, flags);
 							}
 							else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW || (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time == 2)) { // inflow
 								apply_inflow_fields(sfs, emission_map[e_index], inflow_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b, phi);
@@ -2647,7 +2652,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 
 											if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) { // outflow
 												if (interpolated_value) {
-													apply_outflow_fields(index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, bigphi, bigflags);
+													apply_outflow_fields(index_big, inflow_map_high[index_big], bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, bigphi, bigflags);
 												}
 											}
 											else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW || (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time == 2)) { // inflow
