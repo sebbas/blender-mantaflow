@@ -292,7 +292,7 @@ void SMOKE::initLiquid(SmokeModifierData *smd)
 		std::string tmpString = alloc_liquid
 			+ fluid_variables
 			+ liquid_variables
-//			+ prep_domain_low
+			+ prep_domain_low
 			+ init_phi
 			+ save_mesh
 			+ save_liquid_data

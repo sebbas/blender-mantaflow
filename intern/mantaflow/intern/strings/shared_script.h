@@ -73,7 +73,7 @@ xl.cfl         = s.cfl\n";
 const std::string fluid_variables = "\n\
 doOpen          = $DO_OPEN$\n\
 boundConditions = '$BOUNDCONDITIONS$'\n\
-boundaryWidth   = 1\n";
+boundaryWidth   = 0\n";
 
 const std::string prep_domain_low = "\n\
 # prepare domain low\n\

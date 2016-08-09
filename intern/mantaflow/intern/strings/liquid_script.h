@@ -75,7 +75,6 @@ pindex     = s.create(ParticleIndexSystem)\n\
 gpi        = s.create(IntGrid)\n";
 
 const std::string init_phi = "\n\
-flags.initDomain(boundaryWidth=0)\n\
 phi.initFromFlags(flags)\n\
 phiInit.initFromFlags(flags)\n";
 
@@ -116,16 +115,19 @@ def liquid_step():\n\
     # Advect particles and grid phi\n\
     # Note: Grid velocities are extrapolated at the end of each step\n\
     pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False )\n\
-    advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=1)\n\
-    flags.updateFromLevelset(phi)\n\
+    advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=1, openBounds=doOpen, boundaryWidth=boundaryWidth)\n\
     \n\
     # Advect grid velocity\n\
     if narrowBand:\n\
-        advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)\n\
+        advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2, openBounds=doOpen, boundaryWidth=boundaryWidth)\n\
     \n\
     # Create level set of particles\n\
     gridParticleIndex( parts=pp , flags=flags, indexSys=pindex, index=gpi )\n\
     unionParticleLevelset( pp, pindex, flags, gpi, phiParts )\n\
+    \n\
+    if doOpen:\n\
+        resetOutflow(flags=flags, phi=phi, parts=pp, index=gpi, indexSys=pindex)\n\
+    flags.updateFromLevelset(phi)\n\
     \n\
     if narrowBand:\n\
         # Combine level set of particles with grid level set\n\
@@ -170,7 +172,7 @@ def liquid_step():\n\
     # Resample particles\n\
     pVel.setSource( vel, isMAC=True ) # Set source grids for resampling, used in adjustNumber!\n\
     if narrowBand:\n\
-        phi.setBoundNeumann(0) # make sure no particles are placed at outer boundary\n\
+        phi.setBoundNeumann(boundaryWidth) # make sure no particles are placed at outer boundary\n\
         adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, narrowBand=narrowBandWidth )\n\
     else:\n\
         adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi )\n\
