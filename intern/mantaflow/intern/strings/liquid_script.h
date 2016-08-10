@@ -88,16 +88,12 @@ def manta_step(start_frame):\n\
     s.timeTotal = s.frame * dt0\n\
     last_frame = s.frame\n\
     \n\
-    pVel.setSource( vel, isMAC=True )\n\
     sampleLevelsetWithParticles( phi=phiInit, flags=flags, parts=pp, discretization=2, randomness=randomness, refillEmpty=True )\n\
     mapGridToPartsVec3(source=vel, parts=pp, target=pVel )\n\
-    adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, radiusFactor=radiusFactor, narrowBand=narrowBandWidth )\n\
     phi.join(phiInit)\n\
     flags.updateFromLevelset(phi)\n\
     \n\
     while s.frame == last_frame:\n\
-        global step\n\
-        step = step + 1\n\
         mantaMsg('Adapt timestep')\n\
         maxvel = vel.getMaxValue()\n\
         s.adaptTimestep(maxvel)\n\
@@ -114,45 +110,46 @@ const std::string liquid_step = "\n\
 def liquid_step():\n\
     # Advect particles and grid phi\n\
     # Note: Grid velocities are extrapolated at the end of each step\n\
-    pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False )\n\
+    pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False)\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=1, openBounds=doOpen, boundaryWidth=boundaryWidth)\n\
+    flags.updateFromLevelset(phi)\n\
     \n\
     # Advect grid velocity\n\
     if narrowBand:\n\
         advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2, openBounds=doOpen, boundaryWidth=boundaryWidth)\n\
     \n\
     # Create level set of particles\n\
-    gridParticleIndex( parts=pp , flags=flags, indexSys=pindex, index=gpi )\n\
-    unionParticleLevelset( pp, pindex, flags, gpi, phiParts )\n\
+    gridParticleIndex(parts=pp , flags=flags, indexSys=pindex, index=gpi)\n\
+    unionParticleLevelset(pp, pindex, flags, gpi, phiParts)\n\
     \n\
     if doOpen:\n\
         resetOutflow(flags=flags, phi=phi, parts=pp, index=gpi, indexSys=pindex)\n\
-    flags.updateFromLevelset(phi)\n\
+        flags.updateFromLevelset(phi)\n\
     \n\
     if narrowBand:\n\
         # Combine level set of particles with grid level set\n\
-        phi.addConst(1.); # shrink slightly\n\
-        phi.join( phiParts );\n\
+        phi.addConst(1.) # shrink slightly\n\
+        phi.join(phiParts)\n\
         extrapolateLsSimple(phi=phi, distance=narrowBandWidth+2, inside=True )\n\
     else:\n\
         # Overwrite grid level set with level set of particles\n\
-        phi.copyFrom( phiParts );\n\
+        phi.copyFrom(phiParts)\n\
         extrapolateLsSimple(phi=phi, distance=4, inside=True )\n\
     \n\
-    extrapolateLsSimple(phi=phi, distance=3 )\n\
+    extrapolateLsSimple(phi=phi, distance=3)\n\
     flags.updateFromLevelset(phi)\n\
     \n\
     # Make sure we have velocities throught liquid region\n\
     if narrowBand:\n\
         # Combine particles velocities with advected grid velocities\n\
         mapPartsToMAC(vel=velParts, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=mapWeights)\n\
-        extrapolateMACFromWeight( vel=velParts , distance=2, weight=mapWeights )\n\
+        extrapolateMACFromWeight(vel=velParts , distance=2, weight=mapWeights)\n\
         combineGridVel(vel=velParts, weight=mapWeights , combineVel=vel, phi=phi, narrowBand=combineBandWidth, thresh=0)\n\
         velOld.copyFrom(vel)\n\
     else:\n\
         # Map particle velocities to grid\n\
         mapPartsToMAC(vel=vel, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=mapWeights)\n\
-        extrapolateMACFromWeight( vel=vel , distance=2, weight=mapWeights )\n\
+        extrapolateMACFromWeight(vel=vel , distance=2, weight=mapWeights)\n\
     \n\
     # Forces & pressure solve\n\
     addGravity(flags=flags, vel=vel, gravity=gravity)\n\
@@ -161,21 +158,21 @@ def liquid_step():\n\
     setWallBcs(flags=flags, vel=vel)\n\
     \n\
     # Extrapolate velocities\n\
-    extrapolateMACSimple( flags=flags, vel=vel, distance=(int(maxVel*1.25 + 2.)) )\n\
+    extrapolateMACSimple(flags=flags, vel=vel, distance=(int(maxVel*1.25 + 2.)))\n\
     \n\
     # Update particle velocities\n\
-    flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.95 )\n\
+    flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.95)\n\
     \n\
     if dim==3:\n\
         phi.createMesh(mesh)\n\
     \n\
     # Resample particles\n\
-    pVel.setSource( vel, isMAC=True ) # Set source grids for resampling, used in adjustNumber!\n\
+    pVel.setSource(vel, isMAC=True) # Set source grids for resampling, used in adjustNumber!\n\
     if narrowBand:\n\
         phi.setBoundNeumann(boundaryWidth) # make sure no particles are placed at outer boundary\n\
-        adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, narrowBand=narrowBandWidth )\n\
+        adjustNumber(parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, radiusFactor=radiusFactor, narrowBand=narrowBandWidth)\n\
     else:\n\
-        adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi )\n\
+        adjustNumber(parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, radiusFactor=radiusFactor)\n\
     \n\
     # reset inflow grid\n\
     phiInit.setConst(0.5)\n";
