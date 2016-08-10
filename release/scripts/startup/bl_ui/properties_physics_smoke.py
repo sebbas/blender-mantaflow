@@ -237,7 +237,6 @@ class PHYSICS_PT_smoke_adaptive_domain(PhysicButtonsPanel, Panel):
 
 class PHYSICS_PT_smoke_highres(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Quality"
-    bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
     def poll(cls, context):
@@ -266,23 +265,22 @@ class PHYSICS_PT_smoke_highres(PhysicButtonsPanel, Panel):
 
         split = layout.split()
 
-        if domain.smoke_domain_type == 'GAS': # high resolution only for gases right now
-            col = split.column()
-            col.prop(domain, "use_high_resolution", text="High resolution")
-            sub = col.column()
-            sub.active = domain.use_high_resolution
-            sub.prop(domain, "amplify", text="Divisions")
-            sub.label(text="Flow Sampling:")
-            sub.row().prop(domain, "highres_sampling", text="")
-            sub.prop(domain, "show_high_resolution")
+        col = split.column()
+        col.prop(domain, "use_high_resolution", text="High resolution")
+        sub = col.column()
+        sub.active = domain.use_high_resolution
+        sub.prop(domain, "amplify", text="Divisions")
+        sub.label(text="Flow Sampling:")
+        sub.row().prop(domain, "highres_sampling", text="")
+        sub.prop(domain, "show_high_resolution")
 
-            sub = split.column()
-            sub.active = domain.use_high_resolution
-            sub.label(text="Noise Method:")
-            sub.row().prop(domain, "noise_type", text="")
-            sub.prop(domain, "strength")
-            sub.prop(domain, "noise_pos_scale")
-            sub.prop(domain, "noise_time_anim")
+        sub = split.column()
+        sub.active = domain.use_high_resolution and domain.smoke_domain_type == 'GAS'
+        sub.label(text="Noise Method:")
+        sub.row().prop(domain, "noise_type", text="")
+        sub.prop(domain, "strength")
+        sub.prop(domain, "noise_pos_scale")
+        sub.prop(domain, "noise_time_anim")
 
 class PHYSICS_PT_smoke_groups(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Groups"
