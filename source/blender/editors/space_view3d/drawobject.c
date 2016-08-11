@@ -7965,7 +7965,7 @@ void draw_object(Scene *scene, ARegion *ar, View3D *v3d, Base *base, const short
 #ifndef WITH_MANTA
 				if (!sds->wt || !(sds->viewsettings & MOD_SMOKE_VIEW_SHOWBIG)) {
 #else
-				if (!(sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) || !(sds->viewsettings & MOD_SMOKE_VIEW_SHOWBIG)) {
+				if (!(sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) || sds->viewport_display_mode & SM_VIEWPORT_PREVIEW) {
 #endif
 					sds->tex = NULL;
 					GPU_create_smoke(smd, 0);
@@ -7975,7 +7975,7 @@ void draw_object(Scene *scene, ARegion *ar, View3D *v3d, Base *base, const short
 #ifndef WITH_MANTA
 				else if (sds->wt && (sds->viewsettings & MOD_SMOKE_VIEW_SHOWBIG)) {
 #else
-				else if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES && sds->viewsettings & MOD_SMOKE_VIEW_SHOWBIG) {
+				else if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES && sds->viewport_display_mode & SM_VIEWPORT_FINAL) {
 #endif
 					sds->tex = NULL;
 					GPU_create_smoke(smd, 1);
