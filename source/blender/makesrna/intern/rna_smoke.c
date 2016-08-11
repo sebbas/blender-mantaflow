@@ -468,7 +468,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	};
 	
 	static EnumPropertyItem smoke_quality_items[] = {
-		{SM_VIEWPORT_GEOM, "GEOMETRY", 0, "Geometry", "Display geometry"},
+		{SM_VIEWPORT_GEOMETRY, "GEOMETRY", 0, "Geometry", "Display geometry"},
 		{SM_VIEWPORT_PREVIEW, "PREVIEW", 0, "Preview", "Display preview quality results"},
 		{SM_VIEWPORT_FINAL, "FINAL", 0, "Final", "Display final quality results"},
 		{0, NULL, 0, NULL, NULL}

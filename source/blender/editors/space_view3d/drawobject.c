@@ -7960,12 +7960,13 @@ void draw_object(Scene *scene, ARegion *ar, View3D *v3d, Base *base, const short
 				p1[1] = (sds->p0[1] + sds->cell_size[1] * sds->res_max[1] + sds->obj_shift_f[1]) * fabsf(ob->size[1]);
 				p1[2] = (sds->p0[2] + sds->cell_size[2] * sds->res_max[2] + sds->obj_shift_f[2]) * fabsf(ob->size[2]);
 
-
-
+				if (sds->fluid && sds->viewport_display_mode == SM_VIEWPORT_GEOMETRY) {
+					// Nothing to do here
+				}
 #ifndef WITH_MANTA
-				if (!sds->wt || !(sds->viewsettings & MOD_SMOKE_VIEW_SHOWBIG)) {
+				else if (!sds->wt || !(sds->viewsettings & MOD_SMOKE_VIEW_SHOWBIG)) {
 #else
-				if (!(sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) || sds->viewport_display_mode & SM_VIEWPORT_PREVIEW) {
+				else if (!(sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) || sds->viewport_display_mode == SM_VIEWPORT_PREVIEW) {
 #endif
 					sds->tex = NULL;
 					GPU_create_smoke(smd, 0);
@@ -7975,7 +7976,7 @@ void draw_object(Scene *scene, ARegion *ar, View3D *v3d, Base *base, const short
 #ifndef WITH_MANTA
 				else if (sds->wt && (sds->viewsettings & MOD_SMOKE_VIEW_SHOWBIG)) {
 #else
-				else if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES && sds->viewport_display_mode & SM_VIEWPORT_FINAL) {
+				else if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES && sds->viewport_display_mode == SM_VIEWPORT_FINAL) {
 #endif
 					sds->tex = NULL;
 					GPU_create_smoke(smd, 1);

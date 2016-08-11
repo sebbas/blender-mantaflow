@@ -68,9 +68,9 @@ enum {
 #define SM_BORDER_HORIZONTAL 3
 
 /* viewport preview types */
-#define SM_VIEWPORT_GEOM  	0
-#define SM_VIEWPORT_PREVIEW	1
-#define SM_VIEWPORT_FINAL	2
+#define SM_VIEWPORT_GEOMETRY 0
+#define SM_VIEWPORT_PREVIEW	 1
+#define SM_VIEWPORT_FINAL	 2
 
 /* collision types */
 #define SM_COLL_STATIC		0
