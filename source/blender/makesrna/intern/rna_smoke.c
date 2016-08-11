@@ -500,15 +500,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_int_sdna(prop, NULL, "maxres");
 	RNA_def_property_range(prop, 6, 512);
 	RNA_def_property_ui_range(prop, 24, 512, 2, -1);
-	RNA_def_property_ui_text(prop, "Max Res", "Domain resolution used in the fluid domain");
-	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
-	
-	prop = RNA_def_property(srna, "resolution_preview", PROP_INT, PROP_NONE);
-	RNA_def_property_int_sdna(prop, NULL, "previewres");
-	RNA_def_property_range(prop, 6, 128);
-	RNA_def_property_ui_range(prop, 24, 128, 2, -1);
-	RNA_def_property_ui_text(prop, "Max Res", "Preview resolution used in the fluid domain");
+	RNA_def_property_ui_text(prop, "Max Res", "Resolution used for the fluid domain");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
@@ -516,7 +508,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_int_sdna(prop, NULL, "amplify");
 	RNA_def_property_range(prop, 1, 10);
 	RNA_def_property_ui_range(prop, 1, 10, 1, -1);
-	RNA_def_property_ui_text(prop, "Amplification", "Enhance the resolution of smoke by this factor using noise");
+	RNA_def_property_ui_text(prop, "Amplification", "Enhance the resolution of fluid domain by this factor");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 

@@ -522,7 +522,6 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->fluid_group = NULL;
 			smd->domain->coll_group = NULL;
 			smd->domain->maxres = 32;
-			smd->domain->previewres = 16;
 			smd->domain->amplify = 1;
 			smd->domain->alpha = -0.001;
 			smd->domain->beta = 0.3;
@@ -553,7 +552,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->viewsettings = MOD_SMOKE_VIEW_SHOWBIG;
 			smd->domain->effector_weights = BKE_add_effector_weights(NULL);
 			
-			smd->domain->viewport_display_mode = SM_VIEWPORT_FINAL;
+			smd->domain->viewport_display_mode = SM_VIEWPORT_PREVIEW;
 			smd->domain->render_display_mode = SM_VIEWPORT_FINAL;
 			smd->domain->type = MOD_SMOKE_DOMAIN_TYPE_GAS;
 			
@@ -645,7 +644,6 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->beta = smd->domain->beta;
 		tsmd->domain->amplify = smd->domain->amplify;
 		tsmd->domain->maxres = smd->domain->maxres;
-		tsmd->domain->previewres = smd->domain->previewres;
 		tsmd->domain->flags = smd->domain->flags;
 		tsmd->domain->highres_sampling = smd->domain->highres_sampling;
 		tsmd->domain->viewsettings = smd->domain->viewsettings;

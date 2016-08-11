@@ -143,7 +143,6 @@ typedef struct SmokeDomainSettings {
 	float beta;
 	int amplify; /* wavelet amplification */
 	int maxres; /* longest axis on the BB gets this resolution assigned */
-	int previewres;
 	int flags; /* show up-res or low res, etc */
 	int viewsettings;
 	short noise; /* noise type: wave, curl, anisotropic */
@@ -159,7 +158,7 @@ typedef struct SmokeDomainSettings {
 	int openvdb_comp;
 	char cache_file_format;
 	char data_depth;
-	char pad[6];
+	char pad[2];
 	/* Liquid cache options */
 	int liquid_cache_comp;
 	char mock_pad[4]; /* unused */
