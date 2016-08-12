@@ -202,35 +202,6 @@ class PHYSICS_PT_smoke_flow_advanced(PhysicButtonsPanel, Panel):
                 sub.prop(flow, "texture_size")
             sub.prop(flow, "texture_offset")
 
-class PHYSICS_PT_smoke_fire(PhysicButtonsPanel, Panel):
-    bl_label = "Smoke Flames"
-    bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER'}
-
-    @classmethod
-    def poll(cls, context):
-        md = context.smoke
-        return md and (md.smoke_type == 'DOMAIN')
-
-    def draw(self, context):
-        layout = self.layout
-        domain = context.smoke.domain_settings
-
-        split = layout.split()
-        split.enabled = not domain.point_cache.is_baked
-
-        col = split.column(align=True)
-        col.label(text="Reaction:")
-        col.prop(domain, "burning_rate")
-        col.prop(domain, "flame_smoke")
-        col.prop(domain, "flame_vorticity")
-
-        col = split.column(align=True)
-        col.label(text="Temperatures:")
-        col.prop(domain, "flame_ignition")
-        col.prop(domain, "flame_max_temp")
-        col.prop(domain, "flame_smoke_color")
-
 class PHYSICS_PT_smoke_adaptive_domain(PhysicButtonsPanel, Panel):
     bl_label = "Smoke Adaptive Domain"
     bl_options = {'DEFAULT_CLOSED'}
