@@ -1695,7 +1695,7 @@ static int font_open_exec(bContext *C, wmOperator *op)
 
 	if (pprop->prop) {
 		/* when creating new ID blocks, use is already 1, but RNA
-		 * pointer se also increases user, so this compensates it */
+		 * pointer use also increases user, so this compensates it */
 		id_us_min(&font->id);
 	
 		RNA_id_pointer_create(&font->id, &idptr);
@@ -1792,64 +1792,6 @@ void FONT_OT_unlink(wmOperatorType *ot)
 	
 	/* api callbacks */
 	ot->exec = font_unlink_exec;
-}
-
-
-/* **************** undo for font object ************** */
-
-static void undoFont_to_editFont(void *strv, void *ecu, void *UNUSED(obdata))
-{
-	Curve *cu = (Curve *)ecu;
-	EditFont *ef = cu->editfont;
-	const char *str = strv;
-
-	ef->pos = *((const short *)str);
-	ef->len = *((const short *)(str + 2));
-
-	memcpy(ef->textbuf, str + 4, (ef->len + 1) * sizeof(wchar_t));
-	memcpy(ef->textbufinfo, str + 4 + (ef->len + 1) * sizeof(wchar_t), ef->len * sizeof(CharInfo));
-	
-	ef->selstart = ef->selend = 0;
-
-}
-
-static void *editFont_to_undoFont(void *ecu, void *UNUSED(obdata))
-{
-	Curve *cu = (Curve *)ecu;
-	EditFont *ef = cu->editfont;
-	char *str;
-	
-	/* The undo buffer includes [MAXTEXT+6]=actual string and [MAXTEXT+4]*sizeof(CharInfo)=charinfo */
-	str = MEM_callocN((MAXTEXT + 6) * sizeof(wchar_t) + (MAXTEXT + 4) * sizeof(CharInfo), "string undo");
-
-	/* Copy the string and string information */
-	memcpy(str + 4, ef->textbuf, (ef->len + 1) * sizeof(wchar_t));
-	memcpy(str + 4 + (ef->len + 1) * sizeof(wchar_t), ef->textbufinfo, ef->len * sizeof(CharInfo));
-
-	*((short *)(str + 0)) = ef->pos;
-	*((short *)(str + 2)) = ef->len;
-	
-	return str;
-}
-
-static void free_undoFont(void *strv)
-{
-	MEM_freeN(strv);
-}
-
-static void *get_undoFont(bContext *C)
-{
-	Object *obedit = CTX_data_edit_object(C);
-	if (obedit && obedit->type == OB_FONT) {
-		return obedit->data;
-	}
-	return NULL;
-}
-
-/* and this is all the undo system needs to know */
-void undo_push_font(bContext *C, const char *name)
-{
-	undo_editmode_push(C, name, get_undoFont, free_undoFont, undoFont_to_editFont, editFont_to_undoFont, NULL);
 }
 
 /**

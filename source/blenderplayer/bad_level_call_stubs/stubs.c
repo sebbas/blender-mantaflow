@@ -45,6 +45,7 @@ struct ARegion;
 struct ARegionType;
 struct BMEditMesh;
 struct Base;
+struct bContext;
 struct BoundBox;
 struct Brush;
 struct CSG_FaceIteratorDescriptor;
@@ -111,6 +112,7 @@ struct bConstraint;
 struct bConstraintOb;
 struct bConstraintTarget;
 struct bContextDataResult;
+struct bGPDlayer;
 struct bNode;
 struct bNodeType;
 struct bNodeSocket;
@@ -153,6 +155,7 @@ struct wmWindowManager;
 #include "../blender/editors/include/ED_clip.h"
 #include "../blender/editors/include/ED_curve.h"
 #include "../blender/editors/include/ED_fileselect.h"
+#include "../blender/editors/include/ED_gpencil.h"
 #include "../blender/editors/include/ED_image.h"
 #include "../blender/editors/include/ED_info.h"
 #include "../blender/editors/include/ED_keyframes_edit.h"
@@ -246,7 +249,7 @@ bool RE_HasFakeLayer(RenderResult *res) RET_ZERO
 
 /* zbuf.c stub */
 void antialias_tagbuf(int xsize, int ysize, char *rectmove) RET_NONE
-void RE_zbuf_accumulate_vecblur(struct NodeBlurData *nbd, int xsize, int ysize, float *newrect, float *imgrect, float *vecbufrect, float *zbufrect) RET_NONE
+void RE_zbuf_accumulate_vecblur(struct NodeBlurData *nbd, int xsize, int ysize, float *newrect, const float *imgrect, float *vecbufrect, const float *zbufrect) RET_NONE
 
 /* imagetexture.c stub */
 void ibuf_sample(struct ImBuf *ibuf, float fx, float fy, float dx, float dy, float *result) RET_NONE
@@ -308,6 +311,8 @@ void WM_operator_handlers_clear(wmWindowManager *wm, struct wmOperatorType *ot) 
 void WM_autosave_init(wmWindowManager *wm) RET_NONE
 void WM_jobs_kill_all_except(struct wmWindowManager *wm, void *owner) RET_NONE
 
+void WM_lib_reload(struct Library *lib, struct bContext *C, struct ReportList *reports) RET_NONE
+
 char *WM_clipboard_text_get(bool selection, int *r_len) RET_NULL
 char *WM_clipboard_text_get_firstline(bool selection, int *r_len) RET_NULL
 void WM_clipboard_text_set(const char *buf, bool selection) RET_NONE
@@ -318,6 +323,19 @@ void WM_cursor_modal_restore(struct wmWindow *win) RET_NONE
 void WM_cursor_time(struct wmWindow *win, int nr) RET_NONE
 void WM_cursor_warp(struct wmWindow *win, int x, int y) RET_NONE
 
+struct wmJob *WM_jobs_get(struct wmWindowManager *wm, struct wmWindow *win, void *owner, const char *name, int flag, int job_type) RET_NULL
+void WM_jobs_customdata_set(struct wmJob *job, void *customdata, void (*free)(void *)) RET_NONE
+void WM_jobs_timer(struct wmJob *job, double timestep, unsigned int note, unsigned int endnote) RET_NONE
+
+void WM_jobs_callbacks(struct wmJob *job,
+                       void (*startjob)(void *, short *, short *, float *),
+                       void (*initjob)(void *),
+                       void (*update)(void *),
+                       void (*endjob)(void *)) RET_NONE
+
+void WM_jobs_start(struct wmWindowManager *wm, struct wmJob *job) RET_NONE
+void WM_report(ReportType type, const char *message) RET_NONE
+
 void WM_ndof_deadzone_set(float deadzone) RET_NONE
 
 void                WM_uilisttype_init(void) RET_NONE
@@ -325,8 +343,6 @@ struct uiListType  *WM_uilisttype_find(const char *idname, bool quiet) RET_NULL
 bool                WM_uilisttype_add(struct uiListType *ult) RET_ZERO
 void                WM_uilisttype_freelink(struct uiListType *ult) RET_NONE
 void                WM_uilisttype_free(void) RET_NONE
-
-void WM_framebuffer_index_get(int index, int *r_col) RET_NONE
 
 struct wmKeyMapItem *WM_keymap_item_find_id(struct wmKeyMap *keymap, int id) RET_NULL
 int WM_enum_search_invoke(struct bContext *C, struct wmOperator *op, const struct wmEvent *event) RET_ZERO
@@ -350,6 +366,7 @@ void *ED_region_draw_cb_activate(struct ARegionType *art, void(*draw)(const stru
 void *ED_region_draw_cb_customdata(void *handle) RET_ZERO /* XXX This one looks wrong also */
 void ED_region_draw_cb_exit(struct ARegionType *art, void *handle) RET_NONE
 void ED_area_headerprint(struct ScrArea *sa, const char *str) RET_NONE
+void ED_gpencil_parent_location(struct bGPDlayer *gpl, float diff_mat[4][4]) RET_NONE
 void UI_view2d_region_to_view(struct View2D *v2d, float x, float y, float *viewx, float *viewy) RET_NONE
 bool UI_view2d_view_to_region_clip(struct View2D *v2d, float x, float y, int *regionx, int *regiony) RET_ZERO
 void UI_view2d_view_to_region(struct View2D *v2d, float x, float y, int *regionx, int *region_y) RET_NONE
@@ -380,7 +397,7 @@ void ED_area_tag_redraw_regiontype(struct ScrArea *sa, int regiontype) RET_NONE
 void ED_render_engine_changed(struct Main *bmain) RET_NONE
 
 void ED_file_read_bookmarks(void) RET_NONE
-void ED_file_change_dir(struct bContext *C, const bool checkdir) RET_NONE
+void ED_file_change_dir(struct bContext *C) RET_NONE
 void ED_preview_kill_jobs(struct wmWindowManager *wm, struct Main *bmain) RET_NONE
 struct FSMenu *ED_fsmenu_get(void) RET_NULL
 struct FSMenuEntry *ED_fsmenu_get_category(struct FSMenu *fsmenu, FSMenuCategory category) RET_NULL
@@ -526,10 +543,11 @@ SnapObjectContext *ED_transform_snap_object_context_create(
         struct Main *bmain, struct Scene *scene, int flag) RET_NULL
 SnapObjectContext *ED_transform_snap_object_context_create_view3d(
         struct Main *bmain, struct Scene *scene, int flag,
-        struct ARegion *ar, struct View3D *v3d) RET_NULL
+        const struct ARegion *ar, const struct View3D *v3d) RET_NULL
 void ED_transform_snap_object_context_destroy(SnapObjectContext *sctx) RET_NONE
 bool ED_transform_snap_object_project_ray_ex(
         struct SnapObjectContext *sctx,
+        const unsigned short snap_to,
         const struct SnapObjectParams *params,
         const float ray_start[3], const float ray_normal[3], float *ray_depth,
         /* return args */
@@ -619,6 +637,7 @@ void uiTemplateComponentMenu(struct uiLayout *layout, struct PointerRNA *ptr, co
 void uiTemplateNodeSocket(struct uiLayout *layout, struct bContext *C, float *color) RET_NONE
 void uiTemplatePalette(struct uiLayout *layout, struct PointerRNA *ptr, const char *propname, int color) RET_NONE
 void uiTemplateImageStereo3d(struct uiLayout *layout, struct PointerRNA *stereo3d_format_ptr) RET_NONE
+void uiTemplateCacheFile(uiLayout *layout, struct bContext *C, struct PointerRNA *ptr, const char *propname) RET_NONE
 
 /* rna render */
 struct RenderResult *RE_engine_begin_result(RenderEngine *engine, int x, int y, int w, int h, const char *layername, const char *viewname) RET_NULL
@@ -712,6 +731,7 @@ int collada_export(struct Scene *sce,
 
                    int triangulate,
                    int use_object_instantiation,
+                   int use_blender_profile,
                    int sort_by_name,
                    BC_export_transformation_type export_transformation_type,
                    int open_sim) RET_ZERO
@@ -724,7 +744,7 @@ void BPY_text_free_code(struct Text *text) RET_NONE
 void BPY_id_release(struct ID *id) RET_NONE
 int BPY_context_member_get(struct bContext *C, const char *member, struct bContextDataResult *result) RET_ZERO
 void BPY_pyconstraint_target(struct bPythonConstraint *con, struct bConstraintTarget *ct) RET_NONE
-float BPY_driver_exec(struct ChannelDriver *driver, const float evaltime) RET_ZERO /* might need this one! */
+float BPY_driver_exec(PathResolvedRNA *anim_rna, struct ChannelDriver *driver, const float evaltime) RET_ZERO /* might need this one! */
 void BPY_DECREF(void *pyob_ptr) RET_NONE
 void BPY_pyconstraint_exec(struct bPythonConstraint *con, struct bConstraintOb *cob, struct ListBase *targets) RET_NONE
 void macro_wrapper(struct wmOperatorType *ot, void *userdata) RET_NONE

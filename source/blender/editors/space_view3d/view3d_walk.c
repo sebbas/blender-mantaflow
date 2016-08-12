@@ -49,6 +49,7 @@
 
 #include "ED_screen.h"
 #include "ED_space_api.h"
+#include "ED_transform.h"
 #include "ED_transform_snap_object_context.h"
 
 #include "PIL_time.h" /* smoothview */
@@ -424,6 +425,9 @@ static bool walk_floor_distance_get(
 
 	ret = ED_transform_snap_object_project_ray(
 	        walk->snap_context,
+	        &(const struct SnapObjectParams){
+	            .snap_select = SNAP_ALL,
+	        },
 	        ray_start, ray_normal, r_distance,
 	        r_location, r_normal_dummy);
 
@@ -455,6 +459,9 @@ static bool walk_ray_cast(
 
 	ret = ED_transform_snap_object_project_ray(
 	        walk->snap_context,
+	        &(const struct SnapObjectParams){
+	            .snap_select = SNAP_ALL,
+	        },
 	        ray_start, ray_normal, NULL,
 	        r_location, r_normal);
 
@@ -498,7 +505,7 @@ static bool initWalkInfo(bContext *C, WalkInfo *walk, wmOperator *op)
 		walk->rv3d->persp = RV3D_PERSP;
 	}
 
-	if (walk->rv3d->persp == RV3D_CAMOB && walk->v3d->camera->id.lib) {
+	if (walk->rv3d->persp == RV3D_CAMOB && ID_IS_LINKED_DATABLOCK(walk->v3d->camera)) {
 		BKE_report(op->reports, RPT_ERROR, "Cannot navigate a camera from an external library");
 		return false;
 	}
@@ -917,8 +924,7 @@ static void walkEvent(bContext *C, wmOperator *op, WalkInfo *walk, const wmEvent
 					copy_v3_v3(teleport->origin, walk->rv3d->viewinv[3]);
 
 					/* stop the camera from a distance (camera height) */
-					normalize_v3(nor);
-					mul_v3_fl(nor, walk->view_height);
+					normalize_v3_length(nor, walk->view_height);
 					add_v3_v3(loc, nor);
 
 					sub_v3_v3v3(teleport->direction, loc, teleport->origin);

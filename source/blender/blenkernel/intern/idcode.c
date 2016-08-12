@@ -39,6 +39,7 @@
 
 #include "BLT_translation.h"
 
+#include "BKE_library.h"
 #include "BKE_idcode.h"
 
 typedef struct {
@@ -54,14 +55,15 @@ typedef struct {
 /* plural need to match rna_main.c's MainCollectionDef */
 /* WARNING! Keep it in sync with i18n contexts in BLT_translation.h */
 static IDType idtypes[] = {
+	/** ID's directly below must all be in #Main, and be kept in sync with #MAX_LIBARRAY (membership, not order) */
 	{ ID_AC,   "Action",             "actions",         BLT_I18NCONTEXT_ID_ACTION,             IDTYPE_FLAGS_ISLINKABLE },
 	{ ID_AR,   "Armature",           "armatures",       BLT_I18NCONTEXT_ID_ARMATURE,           IDTYPE_FLAGS_ISLINKABLE },
 	{ ID_BR,   "Brush",              "brushes",         BLT_I18NCONTEXT_ID_BRUSH,              IDTYPE_FLAGS_ISLINKABLE },
 	{ ID_CA,   "Camera",             "cameras",         BLT_I18NCONTEXT_ID_CAMERA,             IDTYPE_FLAGS_ISLINKABLE },
+	{ ID_CF,   "CacheFile",          "cache_files",     BLT_I18NCONTEXT_ID_CACHEFILE,          IDTYPE_FLAGS_ISLINKABLE },
 	{ ID_CU,   "Curve",              "curves",          BLT_I18NCONTEXT_ID_CURVE,              IDTYPE_FLAGS_ISLINKABLE },
 	{ ID_GD,   "GPencil",            "grease_pencil",   BLT_I18NCONTEXT_ID_GPENCIL,            IDTYPE_FLAGS_ISLINKABLE }, /* rename gpencil */
 	{ ID_GR,   "Group",              "groups",          BLT_I18NCONTEXT_ID_GROUP,              IDTYPE_FLAGS_ISLINKABLE },
-	{ ID_ID,   "ID",                 "ids",             BLT_I18NCONTEXT_ID_ID,                 0                       }, /* plural is fake */
 	{ ID_IM,   "Image",              "images",          BLT_I18NCONTEXT_ID_IMAGE,              IDTYPE_FLAGS_ISLINKABLE },
 	{ ID_IP,   "Ipo",                "ipos",            "",                                    IDTYPE_FLAGS_ISLINKABLE }, /* deprecated */
 	{ ID_KE,   "Key",                "shape_keys",      BLT_I18NCONTEXT_ID_SHAPEKEY,           0                       },
@@ -89,7 +91,13 @@ static IDType idtypes[] = {
 	{ ID_VF,   "VFont",              "fonts",           BLT_I18NCONTEXT_ID_VFONT,              IDTYPE_FLAGS_ISLINKABLE },
 	{ ID_WO,   "World",              "worlds",          BLT_I18NCONTEXT_ID_WORLD,              IDTYPE_FLAGS_ISLINKABLE },
 	{ ID_WM,   "WindowManager",      "window_managers", BLT_I18NCONTEXT_ID_WINDOWMANAGER,      0                       },
+
+	/** Keep last, not an ID exactly, only include for completeness */
+	{ ID_ID,   "ID",                 "ids",             BLT_I18NCONTEXT_ID_ID,                 0                       }, /* plural is fake */
 };
+
+/* -1 for ID_ID */
+BLI_STATIC_ASSERT((ARRAY_SIZE(idtypes) - 1 == MAX_LIBARRAY), "Missing IDType");
 
 static IDType *idtype_from_name(const char *str) 
 {
@@ -117,7 +125,7 @@ static IDType *idtype_from_code(short idcode)
 /**
  * Return if the ID code is a valid ID code.
  *
- * \param code The code to check.
+ * \param idcode: The code to check.
  * \return Boolean, 0 when invalid.
  */
 bool BKE_idcode_is_valid(short idcode)
@@ -128,7 +136,7 @@ bool BKE_idcode_is_valid(short idcode)
 /**
  * Return non-zero when an ID type is linkable.
  *
- * \param code The code to check.
+ * \param idcode: The code to check.
  * \return Boolean, 0 when non linkable.
  */
 bool BKE_idcode_is_linkable(short idcode)
@@ -141,7 +149,7 @@ bool BKE_idcode_is_linkable(short idcode)
 /**
  * Convert an idcode into a name.
  *
- * \param code The code to convert.
+ * \param idcode: The code to convert.
  * \return A static string representing the name of
  * the code.
  */
@@ -177,6 +185,7 @@ int BKE_idcode_to_idfilter(const short idcode)
 		CASE_IDFILTER(AR);
 		CASE_IDFILTER(BR);
 		CASE_IDFILTER(CA);
+		CASE_IDFILTER(CF);
 		CASE_IDFILTER(CU);
 		CASE_IDFILTER(GD);
 		CASE_IDFILTER(GR);
@@ -220,6 +229,7 @@ short BKE_idcode_from_idfilter(const int idfilter)
 		CASE_IDFILTER(AR);
 		CASE_IDFILTER(BR);
 		CASE_IDFILTER(CA);
+		CASE_IDFILTER(CF);
 		CASE_IDFILTER(CU);
 		CASE_IDFILTER(GD);
 		CASE_IDFILTER(GR);
@@ -252,9 +262,59 @@ short BKE_idcode_from_idfilter(const int idfilter)
 }
 
 /**
+ * Convert an idcode into an index (e.g. ID_OB -> INDEX_ID_OB).
+ */
+int BKE_idcode_to_index(const short idcode)
+{
+#define CASE_IDINDEX(_id) case ID_##_id: return INDEX_ID_##_id
+
+	switch ((ID_Type)idcode) {
+		CASE_IDINDEX(AC);
+		CASE_IDINDEX(AR);
+		CASE_IDINDEX(BR);
+		CASE_IDINDEX(CA);
+		CASE_IDINDEX(CF);
+		CASE_IDINDEX(CU);
+		CASE_IDINDEX(GD);
+		CASE_IDINDEX(GR);
+		CASE_IDINDEX(IM);
+		CASE_IDINDEX(KE);
+		CASE_IDINDEX(IP);
+		CASE_IDINDEX(LA);
+		CASE_IDINDEX(LI);
+		CASE_IDINDEX(LS);
+		CASE_IDINDEX(LT);
+		CASE_IDINDEX(MA);
+		CASE_IDINDEX(MB);
+		CASE_IDINDEX(MC);
+		CASE_IDINDEX(ME);
+		CASE_IDINDEX(MSK);
+		CASE_IDINDEX(NT);
+		CASE_IDINDEX(OB);
+		CASE_IDINDEX(PA);
+		CASE_IDINDEX(PAL);
+		CASE_IDINDEX(PC);
+		CASE_IDINDEX(SCE);
+		CASE_IDINDEX(SCR);
+		CASE_IDINDEX(SPK);
+		CASE_IDINDEX(SO);
+		CASE_IDINDEX(TE);
+		CASE_IDINDEX(TXT);
+		CASE_IDINDEX(VF);
+		CASE_IDINDEX(WM);
+		CASE_IDINDEX(WO);
+	}
+
+	BLI_assert(0);
+	return -1;
+
+#undef CASE_IDINDEX
+}
+
+/**
  * Convert an idcode into a name (plural).
  *
- * \param code The code to convert.
+ * \param idcode: The code to convert.
  * \return A static string representing the name of
  * the code.
  */
@@ -268,7 +328,7 @@ const char *BKE_idcode_to_name_plural(short idcode)
 /**
  * Convert an idcode into its translations' context.
  *
- * \param code The code to convert.
+ * \param idcode: The code to convert.
  * \return A static string representing the i18n context of the code.
  */
 const char *BKE_idcode_to_translation_context(short idcode)

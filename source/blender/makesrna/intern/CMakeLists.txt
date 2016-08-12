@@ -38,6 +38,7 @@ set(DEFSRC
 	rna_armature.c
 	rna_boid.c
 	rna_brush.c
+	rna_cachefile.c
 	rna_camera.c
 	rna_cloth.c
 	rna_color.c
@@ -294,6 +295,13 @@ if(WITH_INTERNATIONAL)
 	add_definitions(-DWITH_INTERNATIONAL)
 endif()
 
+if(WITH_ALEMBIC)
+	list(APPEND INC
+		../../alembic
+	)
+	add_definitions(-DWITH_ALEMBIC)
+endif()
+
 if(WITH_BULLET)
 	list(APPEND INC
 		../../../../intern/rigidbody
@@ -355,7 +363,10 @@ blender_include_dirs_sys(
 	"${GLEW_INCLUDE_PATH}"
 )
 
+add_cc_flags_custom_test(makesrna)
+
 add_executable(makesrna ${SRC} ${SRC_RNA_INC} ${SRC_DNA_INC})
+
 target_link_libraries(makesrna bf_dna)
 target_link_libraries(makesrna bf_dna_blenlib)
 

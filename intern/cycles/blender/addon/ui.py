@@ -76,9 +76,8 @@ def use_cuda(context):
 
 def use_branched_path(context):
     cscene = context.scene.cycles
-    device_type = context.user_preferences.system.compute_device_type
 
-    return (cscene.progressive == 'BRANCHED_PATH' and device_type != 'OPENCL')
+    return (cscene.progressive == 'BRANCHED_PATH' and not use_opencl(context))
 
 
 def use_sample_all_lights(context):
@@ -384,7 +383,6 @@ class CyclesRender_PT_performance(CyclesButtonsPanel, Panel):
         sub.prop(cscene, "use_progressive_refine")
 
         subsub = sub.column(align=True)
-        subsub.enabled = not rd.use_border
         subsub.prop(rd, "use_save_buffers")
 
         col = split.column(align=True)
@@ -403,6 +401,7 @@ class CyclesRender_PT_performance(CyclesButtonsPanel, Panel):
 
         col.label(text="Acceleration structure:")
         col.prop(cscene, "debug_use_spatial_splits")
+        col.prop(cscene, "debug_use_hair_bvh")
 
 
 class CyclesRender_PT_layer_options(CyclesButtonsPanel, Panel):
@@ -460,7 +459,9 @@ class CyclesRender_PT_layer_passes(CyclesButtonsPanel, Panel):
         col.prop(rl, "use_pass_z")
         col.prop(rl, "use_pass_mist")
         col.prop(rl, "use_pass_normal")
-        col.prop(rl, "use_pass_vector")
+        row = col.row()
+        row.prop(rl, "use_pass_vector")
+        row.active = not rd.use_motion_blur
         col.prop(rl, "use_pass_uv")
         col.prop(rl, "use_pass_object_index")
         col.prop(rl, "use_pass_material_index")
@@ -673,48 +674,6 @@ class Cycles_PT_context_material(CyclesButtonsPanel, Panel):
             split.separator()
 
 
-class Cycles_PT_mesh_displacement(CyclesButtonsPanel, Panel):
-    bl_label = "Displacement"
-    bl_context = "data"
-
-    @classmethod
-    def poll(cls, context):
-        if CyclesButtonsPanel.poll(context):
-            if context.mesh or context.curve or context.meta_ball:
-                if context.scene.cycles.feature_set == 'EXPERIMENTAL':
-                    return True
-
-        return False
-
-    def draw(self, context):
-        layout = self.layout
-
-        mesh = context.mesh
-        curve = context.curve
-        mball = context.meta_ball
-
-        if mesh:
-            cdata = mesh.cycles
-        elif curve:
-            cdata = curve.cycles
-        elif mball:
-            cdata = mball.cycles
-
-        split = layout.split()
-
-        col = split.column()
-        sub = col.column(align=True)
-        sub.label(text="Displacment:")
-        sub.prop(cdata, "displacement_method", text="")
-
-        col = split.column()
-        sub = col.column(align=True)
-        sub.label(text="Subdivision:")
-        sub.prop(cdata, "subdivision_type", text="")
-
-        if cdata.subdivision_type != 'NONE':
-            sub.prop(cdata, "dicing_rate")
-
 class CyclesObject_PT_motion_blur(CyclesButtonsPanel, Panel):
     bl_label = "Motion Blur"
     bl_context = "object"
@@ -894,7 +853,7 @@ class CyclesLamp_PT_lamp(CyclesButtonsPanel, Panel):
 
         lamp = context.lamp
         clamp = lamp.cycles
-        cscene = context.scene.cycles
+        # cscene = context.scene.cycles
 
         layout.prop(lamp, "type", expand=True)
 
@@ -1114,7 +1073,7 @@ class CyclesWorld_PT_settings(CyclesButtonsPanel, Panel):
 
         world = context.world
         cworld = world.cycles
-        cscene = context.scene.cycles
+        # cscene = context.scene.cycles
 
         split = layout.split()
 
@@ -1225,6 +1184,11 @@ class CyclesMaterial_PT_settings(CyclesButtonsPanel, Panel):
         col.label(text="Surface:")
         col.prop(cmat, "sample_as_light", text="Multiple Importance")
         col.prop(cmat, "use_transparent_shadow")
+
+        if context.scene.cycles.feature_set == 'EXPERIMENTAL':
+            col.separator()
+            col.label(text="Displacement:")
+            col.prop(cmat, "displacement_method", text="")
 
         col = split.column()
         col.label(text="Volume:")
@@ -1664,104 +1628,62 @@ def draw_pause(self, context):
 
 
 def get_panels():
-    types = bpy.types
-    panels = [
-        "RENDER_PT_render",
-        "RENDER_PT_output",
-        "RENDER_PT_encoding",
-        "RENDER_PT_dimensions",
-        "RENDER_PT_stamp",
-        "RENDER_PT_freestyle",
-        "RENDERLAYER_PT_layers",
-        "RENDERLAYER_PT_freestyle",
-        "RENDERLAYER_PT_freestyle_lineset",
-        "RENDERLAYER_PT_freestyle_linestyle",
-        "SCENE_PT_scene",
-        "SCENE_PT_color_management",
-        "SCENE_PT_custom_props",
-        "SCENE_PT_audio",
-        "SCENE_PT_unit",
-        "SCENE_PT_keying_sets",
-        "SCENE_PT_keying_set_paths",
-        "SCENE_PT_physics",
-        "WORLD_PT_context_world",
-        "WORLD_PT_custom_props",
-        "DATA_PT_context_mesh",
-        "DATA_PT_context_camera",
-        "DATA_PT_context_lamp",
-        "DATA_PT_context_speaker",
-        "DATA_PT_normals",
-        "DATA_PT_texture_space",
-        "DATA_PT_curve_texture_space",
-        "DATA_PT_mball_texture_space",
-        "DATA_PT_vertex_groups",
-        "DATA_PT_shape_keys",
-        "DATA_PT_uv_texture",
-        "DATA_PT_vertex_colors",
-        "DATA_PT_camera",
-        "DATA_PT_camera_display",
-        "DATA_PT_camera_stereoscopy",
-        "DATA_PT_camera_safe_areas",
-        "DATA_PT_lens",
-        "DATA_PT_speaker",
-        "DATA_PT_distance",
-        "DATA_PT_cone",
-        "DATA_PT_customdata",
-        "DATA_PT_custom_props_mesh",
-        "DATA_PT_custom_props_camera",
-        "DATA_PT_custom_props_lamp",
-        "DATA_PT_custom_props_speaker",
-        "DATA_PT_custom_props_arm",
-        "DATA_PT_custom_props_curve",
-        "DATA_PT_custom_props_lattice",
-        "DATA_PT_custom_props_metaball",
-        "TEXTURE_PT_preview",
-        "TEXTURE_PT_custom_props",
-        "TEXTURE_PT_clouds",
-        "TEXTURE_PT_wood",
-        "TEXTURE_PT_marble",
-        "TEXTURE_PT_magic",
-        "TEXTURE_PT_blend",
-        "TEXTURE_PT_stucci",
-        "TEXTURE_PT_image",
-        "TEXTURE_PT_image_sampling",
-        "TEXTURE_PT_image_mapping",
-        "TEXTURE_PT_musgrave",
-        "TEXTURE_PT_voronoi",
-        "TEXTURE_PT_distortednoise",
-        "TEXTURE_PT_voxeldata",
-        "TEXTURE_PT_pointdensity",
-        "TEXTURE_PT_pointdensity_turbulence",
-        "TEXTURE_PT_mapping",
-        "TEXTURE_PT_ocean",
-        "TEXTURE_PT_influence",
-        "TEXTURE_PT_colors",
-        "PARTICLE_PT_context_particles",
-        "PARTICLE_PT_custom_props",
-        "PARTICLE_PT_emission",
-        "PARTICLE_PT_hair_dynamics",
-        "PARTICLE_PT_cache",
-        "PARTICLE_PT_velocity",
-        "PARTICLE_PT_rotation",
-        "PARTICLE_PT_physics",
-        "SCENE_PT_rigid_body_world",
-        "SCENE_PT_rigid_body_cache",
-        "SCENE_PT_rigid_body_field_weights",
-        "PARTICLE_PT_boidbrain",
-        "PARTICLE_PT_render",
-        "PARTICLE_PT_draw",
-        "PARTICLE_PT_children",
-        "PARTICLE_PT_field_weights",
-        "PARTICLE_PT_force_fields",
-        "PARTICLE_PT_vertexgroups",
-        "MATERIAL_PT_custom_props",
-        "MATERIAL_PT_freestyle_line",
-        "BONE_PT_custom_props",
-        "OBJECT_PT_custom_props",
-        ]
+    exclude_panels = {
+        'DATA_PT_area',
+        'DATA_PT_camera_dof',
+        'DATA_PT_falloff_curve',
+        'DATA_PT_lamp',
+        'DATA_PT_preview',
+        'DATA_PT_shadow',
+        'DATA_PT_spot',
+        'DATA_PT_sunsky',
+        'MATERIAL_PT_context_material',
+        'MATERIAL_PT_diffuse',
+        'MATERIAL_PT_flare',
+        'MATERIAL_PT_halo',
+        'MATERIAL_PT_mirror',
+        'MATERIAL_PT_options',
+        'MATERIAL_PT_pipeline',
+        'MATERIAL_PT_preview',
+        'MATERIAL_PT_shading',
+        'MATERIAL_PT_shadow',
+        'MATERIAL_PT_specular',
+        'MATERIAL_PT_sss',
+        'MATERIAL_PT_strand',
+        'MATERIAL_PT_transp',
+        'MATERIAL_PT_volume_density',
+        'MATERIAL_PT_volume_integration',
+        'MATERIAL_PT_volume_lighting',
+        'MATERIAL_PT_volume_options',
+        'MATERIAL_PT_volume_shading',
+        'MATERIAL_PT_volume_transp',
+        'RENDERLAYER_PT_layer_options',
+        'RENDERLAYER_PT_layer_passes',
+        'RENDERLAYER_PT_views',
+        'RENDER_PT_antialiasing',
+        'RENDER_PT_bake',
+        'RENDER_PT_motion_blur',
+        'RENDER_PT_performance',
+        'RENDER_PT_post_processing',
+        'RENDER_PT_shading',
+        'SCENE_PT_simplify',
+        'TEXTURE_PT_context_texture',
+        'WORLD_PT_ambient_occlusion',
+        'WORLD_PT_environment_lighting',
+        'WORLD_PT_gather',
+        'WORLD_PT_indirect_lighting',
+        'WORLD_PT_mist',
+        'WORLD_PT_preview',
+        'WORLD_PT_world'
+        }
 
-    return [getattr(types, p) for p in panels if hasattr(types, p)]
+    panels = []
+    for panel in bpy.types.Panel.__subclasses__():
+        if hasattr(panel, 'COMPAT_ENGINES') and 'BLENDER_RENDER' in panel.COMPAT_ENGINES:
+            if panel.__name__ not in exclude_panels:
+                panels.append(panel)
 
+    return panels
 
 def register():
     bpy.types.RENDER_PT_render.append(draw_device)
@@ -1770,10 +1692,10 @@ def register():
     for panel in get_panels():
         panel.COMPAT_ENGINES.add('CYCLES')
 
-
 def unregister():
     bpy.types.RENDER_PT_render.remove(draw_device)
     bpy.types.VIEW3D_HT_header.remove(draw_pause)
 
     for panel in get_panels():
-        panel.COMPAT_ENGINES.remove('CYCLES')
+        if 'CYCLES' in panel.COMPAT_ENGINES:
+            panel.COMPAT_ENGINES.remove('CYCLES')

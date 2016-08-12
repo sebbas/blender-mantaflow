@@ -382,7 +382,11 @@ typedef bool (*uiMenuStepFunc)(struct bContext *C, int direction, void *arg1);
 
 typedef struct uiPopupMenu uiPopupMenu;
 
-struct uiPopupMenu *UI_popup_menu_begin(struct bContext *C, const char *title, int icon) ATTR_NONNULL();
+uiPopupMenu *UI_popup_menu_begin(
+        struct bContext *C, const char *title, int icon) ATTR_NONNULL();
+uiPopupMenu *UI_popup_menu_begin_ex(
+        struct bContext *C, const char *title, const char *block_name,
+        int icon) ATTR_NONNULL();
 void UI_popup_menu_end(struct bContext *C, struct uiPopupMenu *head);
 struct uiLayout *UI_popup_menu_layout(uiPopupMenu *head);
 
@@ -941,6 +945,7 @@ void uiTemplateReportsBanner(uiLayout *layout, struct bContext *C);
 void uiTemplateKeymapItemProperties(uiLayout *layout, struct PointerRNA *ptr);
 void uiTemplateComponentMenu(uiLayout *layout, struct PointerRNA *ptr, const char *propname, const char *name);
 void uiTemplateNodeSocket(uiLayout *layout, struct bContext *C, float *color);
+void uiTemplateCacheFile(uiLayout *layout, struct bContext *C, struct PointerRNA *ptr, const char *propname);
 
 /* Default UIList class name, keep in sync with its declaration in bl_ui/__init__.py */
 #define UI_UL_DEFAULT_CLASS_NAME "UI_UL_list"
@@ -1020,12 +1025,18 @@ bool UI_context_copy_to_selected_list(
 
 /* Helpers for Operators */
 uiBut *UI_context_active_but_get(const struct bContext *C);
-void UI_context_active_but_prop_get(const struct bContext *C, struct PointerRNA *ptr, struct PropertyRNA **prop, int *index);
+void UI_context_active_but_prop_get(
+        const struct bContext *C,
+        struct PointerRNA *r_ptr, struct PropertyRNA **r_prop, int *r_index);
 void UI_context_active_but_prop_handle(struct bContext *C);
 struct wmOperator *UI_context_active_operator_get(const struct bContext *C);
 void UI_context_update_anim_flag(const struct bContext *C);
-void UI_context_active_but_prop_get_filebrowser(const struct bContext *C, struct PointerRNA *r_ptr, struct PropertyRNA **r_prop, bool *r_is_undo);
-void UI_context_active_but_prop_get_templateID(struct bContext *C, struct PointerRNA *ptr, struct PropertyRNA **prop);
+void UI_context_active_but_prop_get_filebrowser(
+        const struct bContext *C,
+        struct PointerRNA *r_ptr, struct PropertyRNA **r_prop, bool *r_is_undo);
+void UI_context_active_but_prop_get_templateID(
+        struct bContext *C,
+        struct PointerRNA *r_ptr, struct PropertyRNA **r_prop);
 
 /* Styled text draw */
 void UI_fontstyle_set(const struct uiFontStyle *fs);

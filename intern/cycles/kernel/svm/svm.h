@@ -142,6 +142,7 @@ CCL_NAMESPACE_END
 #include "svm_noise.h"
 #include "svm_texture.h"
 
+#include "svm_color_util.h"
 #include "svm_math_util.h"
 
 #include "svm_attribute.h"
@@ -404,10 +405,8 @@ ccl_device_noinline void svm_eval_nodes(KernelGlobals *kg, ShaderData *sd, ccl_a
 
 #if NODES_GROUP(NODE_GROUP_LEVEL_3)
 			case NODE_RGB_CURVES:
-				svm_node_rgb_curves(kg, sd, stack, node, &offset);
-				break;
 			case NODE_VECTOR_CURVES:
-				svm_node_vector_curves(kg, sd, stack, node, &offset);
+				svm_node_curves(kg, sd, stack, node, &offset);
 				break;
 			case NODE_TANGENT:
 				svm_node_tangent(kg, sd, stack, node);

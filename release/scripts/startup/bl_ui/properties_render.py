@@ -193,7 +193,6 @@ class RENDER_PT_antialiasing(RenderButtonsPanel, Panel):
         col = split.column()
         col.row().prop(rd, "antialiasing_samples", expand=True)
         sub = col.row()
-        sub.enabled = not rd.use_border
         sub.prop(rd, "use_full_sample")
 
         col = split.column()
@@ -248,6 +247,7 @@ class RENDER_PT_shading(RenderButtonsPanel, Panel):
         col = split.column()
         col.prop(rd, "use_raytrace", text="Ray Tracing")
         col.prop(rd, "alpha_mode", text="Alpha")
+        col.prop(rd, "use_world_space_shading", text="World Space Shading")
 
 
 class RENDER_PT_performance(RenderButtonsPanel, Panel):
@@ -279,7 +279,7 @@ class RENDER_PT_performance(RenderButtonsPanel, Panel):
         col = split.column()
         col.label(text="Memory:")
         sub = col.column()
-        sub.enabled = not (rd.use_border or rd.use_full_sample)
+        sub.enabled = not rd.use_full_sample
         sub.prop(rd, "use_save_buffers")
         sub = col.column()
         sub.active = rd.use_compositing

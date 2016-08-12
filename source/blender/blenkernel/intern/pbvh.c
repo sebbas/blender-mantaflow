@@ -276,16 +276,14 @@ static void build_mesh_leaf_node(PBVH *bvh, PBVHNode *node)
 	/* reserve size is rough guess */
 	GHash *map = BLI_ghash_int_new_ex("build_mesh_leaf_node gh", 2 * totface);
 
-	int (*face_vert_indices)[4] = MEM_callocN(sizeof(int[4]) * totface,
+	int (*face_vert_indices)[3] = MEM_mallocN(sizeof(int[3]) * totface,
 	                                          "bvh node face vert indices");
 
-	node->face_vert_indices = (const int (*)[4])face_vert_indices;
+	node->face_vert_indices = (const int (*)[3])face_vert_indices;
 
 	for (int i = 0; i < totface; ++i) {
 		const MLoopTri *lt = &bvh->looptri[node->prim_indices[i]];
-		const int sides = 3;
-
-		for (int j = 0; j < sides; ++j) {
+		for (int j = 0; j < 3; ++j) {
 			face_vert_indices[i][j] =
 			        map_insert_vert(bvh, map, &node->face_verts,
 			                        &node->uniq_verts, bvh->mloop[lt->tri[j]].v);
@@ -637,6 +635,7 @@ void BKE_pbvh_free(PBVH *bvh)
 				BLI_gset_free(node->bm_other_verts, NULL);
 		}
 	}
+	GPU_free_pbvh_buffer_multires(&bvh->grid_common_gpu_buffer);
 
 	if (bvh->deformed) {
 		if (bvh->verts) {
@@ -689,8 +688,7 @@ static void pbvh_stack_push(PBVHIter *iter, PBVHNode *node, bool revisiting)
 {
 	if (UNLIKELY(iter->stacksize == iter->stackspace)) {
 		iter->stackspace *= 2;
-
-		if (iter->stackspace != STACK_FIXED_DEPTH) {
+		if (iter->stackspace != (STACK_FIXED_DEPTH * 2)) {
 			iter->stack = MEM_reallocN(iter->stack, sizeof(PBVHStack) * iter->stackspace);
 		}
 		else {
@@ -1100,7 +1098,7 @@ static void pbvh_update_draw_buffers(PBVH *bvh, PBVHNode **nodes, int totnode)
 					                           node->totprim,
 					                           bvh->grid_hidden,
 					                           bvh->gridkey.grid_size,
-					                           &bvh->gridkey);
+					                           &bvh->gridkey, &bvh->grid_common_gpu_buffer);
 					break;
 				case PBVH_FACES:
 					node->draw_buffers =
@@ -1495,12 +1493,18 @@ typedef struct {
 static bool ray_aabb_intersect(PBVHNode *node, void *data_v)
 {
 	RaycastData *rcd = data_v;
-	float bb_min[3], bb_max[3];
+	const float *bb_min, *bb_max;
 
-	if (rcd->original)
-		BKE_pbvh_node_get_original_BB(node, bb_min, bb_max);
-	else
-		BKE_pbvh_node_get_BB(node, bb_min, bb_max);
+	if (rcd->original) {
+		/* BKE_pbvh_node_get_original_BB */
+		bb_min = node->orig_vb.bmin;
+		bb_max = node->orig_vb.bmax;
+	}
+	else {
+		/* BKE_pbvh_node_get_BB */
+		bb_min = node->vb.bmin;
+		bb_max = node->vb.bmax;
+	}
 
 	return isect_ray_aabb_v3(&rcd->ray, bb_min, bb_max, &node->tmin);
 }
@@ -1800,17 +1804,21 @@ static PlaneAABBIsect test_planes_aabb(const float bb_min[3],
 
 bool BKE_pbvh_node_planes_contain_AABB(PBVHNode *node, void *data)
 {
-	float bb_min[3], bb_max[3];
+	const float *bb_min, *bb_max;
+	/* BKE_pbvh_node_get_BB */
+	bb_min = node->vb.bmin;
+	bb_max = node->vb.bmax;
 	
-	BKE_pbvh_node_get_BB(node, bb_min, bb_max);
 	return test_planes_aabb(bb_min, bb_max, data) != ISECT_OUTSIDE;
 }
 
 bool BKE_pbvh_node_planes_exclude_AABB(PBVHNode *node, void *data)
 {
-	float bb_min[3], bb_max[3];
+	const float *bb_min, *bb_max;
+	/* BKE_pbvh_node_get_BB */
+	bb_min = node->vb.bmin;
+	bb_max = node->vb.bmax;
 	
-	BKE_pbvh_node_get_BB(node, bb_min, bb_max);
 	return test_planes_aabb(bb_min, bb_max, data) != ISECT_INSIDE;
 }
 

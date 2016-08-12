@@ -795,7 +795,7 @@ public:
 
 	bool load_binary(const string& /*kernel_path*/,
 	                 const string& clbin,
-	                 string custom_kernel_build_options,
+	                 const string& custom_kernel_build_options,
 	                 cl_program *program,
 	                 const string *debug_src = NULL)
 	{
@@ -848,7 +848,7 @@ public:
 	}
 
 	bool build_kernel(cl_program *kernel_program,
-	                  string custom_kernel_build_options,
+	                  const string& custom_kernel_build_options,
 	                  const string *debug_src = NULL)
 	{
 		string build_options;
@@ -875,36 +875,46 @@ public:
 
 		if(ciErr != CL_SUCCESS) {
 			opencl_error("OpenCL build failed: errors in console");
+			fprintf(stderr, "Build error: %s\n", clewErrorString(ciErr));
 			return false;
 		}
 
 		return true;
 	}
 
-	bool compile_kernel(const string& kernel_path,
-	                    string source,
-	                    string custom_kernel_build_options,
+	bool compile_kernel(const string& kernel_name,
+	                    const string& kernel_path,
+	                    const string& source,
+	                    const string& custom_kernel_build_options,
 	                    cl_program *kernel_program,
 	                    const string *debug_src = NULL)
 	{
-		/* we compile kernels consisting of many files. unfortunately opencl
+		/* We compile kernels consisting of many files. unfortunately OpenCL
 		 * kernel caches do not seem to recognize changes in included files.
-		 * so we force recompile on changes by adding the md5 hash of all files */
-		source = path_source_replace_includes(source, kernel_path);
+		 * so we force recompile on changes by adding the md5 hash of all files.
+		 */
+		string inlined_source = path_source_replace_includes(source,
+		                                                     kernel_path);
 
-		if(debug_src)
-			path_write_text(*debug_src, source);
+		if(debug_src) {
+			path_write_text(*debug_src, inlined_source);
+		}
 
-		size_t source_len = source.size();
-		const char *source_str = source.c_str();
+		size_t source_len = inlined_source.size();
+		const char *source_str = inlined_source.c_str();
 
-		*kernel_program = clCreateProgramWithSource(cxContext, 1, &source_str, &source_len, &ciErr);
+		*kernel_program = clCreateProgramWithSource(cxContext,
+		                                            1,
+		                                            &source_str,
+		                                            &source_len,
+		                                            &ciErr);
 
-		if(opencl_error(ciErr))
+		if(opencl_error(ciErr)) {
 			return false;
+		}
 
 		double starttime = time_dt();
-		printf("Compiling OpenCL kernel ...\n");
+		printf("Compiling %s OpenCL kernel ...\n", kernel_name.c_str());
 		/* TODO(sergey): Report which kernel is being compiled
 		 * as well (megakernel or which of split kernels etc..).
 		 */
@@ -1004,7 +1014,8 @@ public:
 				string init_kernel_source = "#include \"kernels/opencl/kernel.cl\" // " + kernel_md5 + "\n";
 
 				/* If does not exist or loading binary failed, compile kernel. */
-				if(!compile_kernel(kernel_path,
+				if(!compile_kernel("base_kernel",
+				                   kernel_path,
 				                   init_kernel_source,
 				                   build_flags,
 				                   &cpProgram,
@@ -1187,7 +1198,9 @@ public:
 	               InterpolationType /*interpolation*/,
 	               ExtensionType /*extension*/)
 	{
-		VLOG(1) << "Texture allocate: " << name << ", " << mem.memory_size() << " bytes.";
+		VLOG(1) << "Texture allocate: " << name << ", "
+		        << string_human_readable_number(mem.memory_size()) << " bytes. ("
+		        << string_human_readable_size(mem.memory_size()) << ")";
 		mem_alloc(mem, MEM_READ_ONLY);
 		mem_copy_to(mem);
 		assert(mem_map.find(name) == mem_map.end());
@@ -1222,18 +1235,28 @@ public:
 			CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &workgroup_size, NULL);
 		clGetDeviceInfo(cdDevice,
 			CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(size_t)*3, max_work_items, NULL);
-	
-		/* try to divide evenly over 2 dimensions */
+
+		/* Try to divide evenly over 2 dimensions. */
 		size_t sqrt_workgroup_size = max((size_t)sqrt((double)workgroup_size), 1);
 		size_t local_size[2] = {sqrt_workgroup_size, sqrt_workgroup_size};
 
-		/* some implementations have max size 1 on 2nd dimension */
+		/* Some implementations have max size 1 on 2nd dimension. */
 		if(local_size[1] > max_work_items[1]) {
 			local_size[0] = workgroup_size/max_work_items[1];
 			local_size[1] = max_work_items[1];
 		}
 
-		size_t global_size[2] = {global_size_round_up(local_size[0], w), global_size_round_up(local_size[1], h)};
+		size_t global_size[2] = {global_size_round_up(local_size[0], w),
+		                         global_size_round_up(local_size[1], h)};
+
+		/* Vertical size of 1 is coming from bake/shade kernels where we should
+		 * not round anything up because otherwise we'll either be doing too
+		 * much work per pixel (if we don't check global ID on Y axis) or will
+		 * be checking for global ID to always have Y of 0.
+		 */
+		if (h == 1) {
+			global_size[h] = 1;
+		}
 
 		/* run kernel */
 		opencl_assert(clEnqueueNDRangeKernel(cqCommandQueue, kernel, 2, NULL, global_size, NULL, 0, NULL, NULL));
@@ -1318,47 +1341,48 @@ public:
 		else
 			kernel = ckShaderKernel;
 
+		cl_uint start_arg_index =
+			kernel_set_args(kernel,
+			                0,
+			                d_data,
+			                d_input,
+			                d_output);
+
+		if(task.shader_eval_type < SHADER_EVAL_BAKE) {
+			start_arg_index += kernel_set_args(kernel,
+			                                   start_arg_index,
+			                                   d_output_luma);
+		}
+
+#define KERNEL_TEX(type, ttype, name) \
+		set_kernel_arg_mem(kernel, &start_arg_index, #name);
+#include "kernel_textures.h"
+#undef KERNEL_TEX
+
+		start_arg_index += kernel_set_args(kernel,
+		                                   start_arg_index,
+		                                   d_shader_eval_type);
+		if(task.shader_eval_type >= SHADER_EVAL_BAKE) {
+			start_arg_index += kernel_set_args(kernel,
+			                                   start_arg_index,
+			                                   d_shader_filter);
+		}
+		start_arg_index += kernel_set_args(kernel,
+		                                   start_arg_index,
+		                                   d_shader_x,
+		                                   d_shader_w,
+		                                   d_offset);
+
 		for(int sample = 0; sample < task.num_samples; sample++) {
 
 			if(task.get_cancel())
 				break;
 
-			cl_int d_sample = sample;
-
-			cl_uint start_arg_index =
-				kernel_set_args(kernel,
-				                0,
-				                d_data,
-				                d_input,
-				                d_output);
-
-			if(task.shader_eval_type < SHADER_EVAL_BAKE) {
-				start_arg_index += kernel_set_args(kernel,
-				                                   start_arg_index,
-				                                   d_output_luma);
-			}
-
-#define KERNEL_TEX(type, ttype, name) \
-			set_kernel_arg_mem(kernel, &start_arg_index, #name);
-#include "kernel_textures.h"
-#undef KERNEL_TEX
-
-			start_arg_index += kernel_set_args(kernel,
-			                                   start_arg_index,
-			                                   d_shader_eval_type);
-			if(task.shader_eval_type >= SHADER_EVAL_BAKE) {
-				start_arg_index += kernel_set_args(kernel,
-				                                   start_arg_index,
-				                                   d_shader_filter);
-			}
-			start_arg_index += kernel_set_args(kernel,
-			                                   start_arg_index,
-			                                   d_shader_x,
-			                                   d_shader_w,
-			                                   d_offset,
-			                                   d_sample);
+			kernel_set_args(kernel, start_arg_index, sample);
 
 			enqueue_kernel(kernel, task.shader_w, 1);
+
+			clFinish(cqCommandQueue);
 
 			task.update_progress(NULL);
 		}
@@ -1681,7 +1705,8 @@ public:
 				string init_kernel_source = "#include \"kernels/opencl/kernel.cl\" // " +
 				                            kernel_md5 + "\n";
 				/* If does not exist or loading binary failed, compile kernel. */
-				if(!compile_kernel(kernel_path,
+				if(!compile_kernel("mega_kernel",
+				                   kernel_path,
 				                   init_kernel_source,
 				                   custom_kernel_build_options,
 				                   &path_trace_program,
@@ -2065,30 +2090,33 @@ public:
 	/* TODO(sergey): Seems really close to load_kernel(),
 	 * could it be de-duplicated?
 	 */
-	bool load_split_kernel(string kernel_path,
-	                       string kernel_init_source,
-	                       string clbin,
-	                       string custom_kernel_build_options,
+	bool load_split_kernel(const string& kernel_name,
+	                       const string& kernel_path,
+	                       const string& kernel_init_source,
+	                       const string& clbin,
+	                       const string& custom_kernel_build_options,
 	                       cl_program *program,
 	                       const string *debug_src = NULL)
 	{
-		if(!opencl_version_check())
+		if(!opencl_version_check()) {
 			return false;
+		}
 
-		clbin = path_user_get(path_join("cache", clbin));
+		string cache_clbin = path_user_get(path_join("cache", clbin));
 
 		/* If exists already, try use it. */
-		if(path_exists(clbin) && load_binary(kernel_path,
-		                                     clbin,
-		                                     custom_kernel_build_options,
-		                                     program,
-		                                     debug_src))
+		if(path_exists(cache_clbin) && load_binary(kernel_path,
+		                                           cache_clbin,
+		                                           custom_kernel_build_options,
+		                                           program,
+		                                           debug_src))
 		{
 			/* Kernel loaded from binary. */
 		}
 		else {
 			/* If does not exist or loading binary failed, compile kernel. */
-			if(!compile_kernel(kernel_path,
+			if(!compile_kernel(kernel_name,
+			                   kernel_path,
 			                   kernel_init_source,
 			                   custom_kernel_build_options,
 			                   program,
@@ -2097,7 +2125,7 @@ public:
 				return false;
 			}
 			/* Save binary for reuse. */
-			if(!save_binary(program, clbin)) {
+			if(!save_binary(program, cache_clbin)) {
 				return false;
 			}
 		}
@@ -2195,7 +2223,10 @@ public:
 			clsrc = path_user_get(path_join("cache", clsrc)); \
 			debug_src = &clsrc; \
 		} \
-		if(!load_split_kernel(kernel_path, kernel_init_source, clbin, \
+		if(!load_split_kernel(#name, \
+		                      kernel_path, \
+		                      kernel_init_source, \
+		                      clbin, \
 		                      build_options, \
 		                      &GLUE(name, _program), \
 		                      debug_src)) \

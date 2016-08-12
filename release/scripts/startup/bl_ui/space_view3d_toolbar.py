@@ -22,7 +22,9 @@ from bpy.types import Menu, Panel, UIList
 from bl_ui.properties_grease_pencil_common import (
         GreasePencilDrawingToolsPanel,
         GreasePencilStrokeEditPanel,
-        GreasePencilStrokeSculptPanel
+        GreasePencilStrokeSculptPanel,
+        GreasePencilBrushPanel,
+        GreasePencilBrushCurvesPanel
         )
 from bl_ui.properties_paint_common import (
         UnifiedPaintPanel,
@@ -570,6 +572,7 @@ class VIEW3D_PT_tools_curveedit_options_stroke(View3DPanel, Panel):
         if cps.curve_type == 'BEZIER':
             col.label("Bezier Options:")
             col.prop(cps, "error_threshold")
+            col.prop(cps, "fit_method")
             col.prop(cps, "use_corners_detect")
 
             col = layout.column()
@@ -603,6 +606,7 @@ class VIEW3D_PT_tools_curveedit_options_stroke(View3DPanel, Panel):
             if cps.use_stroke_endpoints:
                 colsub = layout.column(align=True)
                 colsub.prop(cps, "surface_plane", expand=True)
+
 
 # ********** default tools for editmode_surface ****************
 
@@ -1532,6 +1536,15 @@ class VIEW3D_PT_sculpt_dyntopo(Panel, View3DPaintPanel):
     def poll(cls, context):
         return (context.sculpt_object and context.tool_settings.sculpt)
 
+    def draw_header(self, context):
+        layout = self.layout
+        layout.operator(
+                "sculpt.dynamic_topology_toggle",
+                icon='CHECKBOX_HLT' if context.sculpt_object.use_dynamic_topology_sculpting else 'CHECKBOX_DEHLT',
+                text="",
+                emboss=False,
+                )
+
     def draw(self, context):
         layout = self.layout
 
@@ -1539,11 +1552,6 @@ class VIEW3D_PT_sculpt_dyntopo(Panel, View3DPaintPanel):
         sculpt = toolsettings.sculpt
         settings = self.paint_settings(context)
         brush = settings.brush
-
-        if context.sculpt_object.use_dynamic_topology_sculpting:
-            layout.operator("sculpt.dynamic_topology_toggle", icon='X', text="Disable Dyntopo")
-        else:
-            layout.operator("sculpt.dynamic_topology_toggle", icon='SCULPT_DYNTOPO', text="Enable Dyntopo")
 
         col = layout.column()
         col.active = context.sculpt_object.use_dynamic_topology_sculpting
@@ -1603,7 +1611,7 @@ class VIEW3D_PT_sculpt_options(Panel, View3DPaintPanel):
 
 class VIEW3D_PT_sculpt_symmetry(Panel, View3DPaintPanel):
     bl_category = "Tools"
-    bl_label = "Symmetry / Lock"
+    bl_label = "Symmetry/Lock"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -1956,6 +1964,15 @@ class VIEW3D_PT_tools_grease_pencil_edit(GreasePencilStrokeEditPanel, Panel):
 
 # Grease Pencil stroke sculpting tools
 class VIEW3D_PT_tools_grease_pencil_sculpt(GreasePencilStrokeSculptPanel, Panel):
+    bl_space_type = 'VIEW_3D'
+
+
+# Grease Pencil drawing brushes
+class VIEW3D_PT_tools_grease_pencil_brush(GreasePencilBrushPanel, Panel):
+    bl_space_type = 'VIEW_3D'
+
+# Grease Pencil drawingcurves
+class VIEW3D_PT_tools_grease_pencil_brushcurves(GreasePencilBrushCurvesPanel, Panel):
     bl_space_type = 'VIEW_3D'
 
 

@@ -46,44 +46,36 @@
 #include "BKE_global.h"
 #include "BKE_icons.h"
 #include "BKE_library.h"
+#include "BKE_library_query.h"
+#include "BKE_library_remap.h"
 #include "BKE_main.h"
 #include "BKE_node.h"
 #include "BKE_world.h"
 
 #include "GPU_material.h"
 
-void BKE_world_free_ex(World *wrld, bool do_id_user)
+/** Free (or release) any data used by this world (does not free the world itself). */
+void BKE_world_free(World *wrld)
 {
-	MTex *mtex;
 	int a;
-	
-	for (a = 0; a < MAX_MTEX; a++) {
-		mtex = wrld->mtex[a];
-		if (do_id_user && mtex && mtex->tex)
-			id_us_min(&mtex->tex->id);
-		if (mtex)
-			MEM_freeN(mtex);
-	}
-	BKE_previewimg_free(&wrld->preview);
 
-	BKE_animdata_free((ID *)wrld);
+	BKE_animdata_free((ID *)wrld, false);
+
+	for (a = 0; a < MAX_MTEX; a++) {
+		MEM_SAFE_FREE(wrld->mtex[a]);
+	}
 
 	/* is no lib link block, but world extension */
 	if (wrld->nodetree) {
-		ntreeFreeTree_ex(wrld->nodetree, do_id_user);
+		ntreeFreeTree(wrld->nodetree);
 		MEM_freeN(wrld->nodetree);
+		wrld->nodetree = NULL;
 	}
 
-	if (wrld->gpumaterial.first)
-		GPU_material_free(&wrld->gpumaterial);
+	GPU_material_free(&wrld->gpumaterial);
 	
 	BKE_icon_id_delete((struct ID *)wrld);
-	wrld->id.icon_id = 0;
-}
-
-void BKE_world_free(World *wrld)
-{
-	BKE_world_free_ex(wrld, true);
+	BKE_previewimg_free(&wrld->preview);
 }
 
 void BKE_world_init(World *wrld)
@@ -127,12 +119,12 @@ World *add_world(Main *bmain, const char *name)
 	return wrld;
 }
 
-World *BKE_world_copy(World *wrld)
+World *BKE_world_copy(Main *bmain, World *wrld)
 {
 	World *wrldn;
 	int a;
 	
-	wrldn = BKE_libblock_copy(&wrld->id);
+	wrldn = BKE_libblock_copy(bmain, &wrld->id);
 	
 	for (a = 0; a < MAX_MTEX; a++) {
 		if (wrld->mtex[a]) {
@@ -143,17 +135,14 @@ World *BKE_world_copy(World *wrld)
 	}
 
 	if (wrld->nodetree) {
-		wrldn->nodetree = ntreeCopyTree(wrld->nodetree);
+		wrldn->nodetree = ntreeCopyTree(bmain, wrld->nodetree);
 	}
 	
-	if (wrld->preview)
-		wrldn->preview = BKE_previewimg_copy(wrld->preview);
+	BKE_previewimg_id_copy(&wrldn->id, &wrld->id);
 
 	BLI_listbase_clear(&wrldn->gpumaterial);
 
-	if (wrld->id.lib) {
-		BKE_id_lib_local_paths(G.main, wrld->id.lib, &wrldn->id);
-	}
+	BKE_id_copy_ensure_local(bmain, &wrld->id, &wrldn->id);
 
 	return wrldn;
 }
@@ -184,48 +173,7 @@ World *localize_world(World *wrld)
 	return wrldn;
 }
 
-void BKE_world_make_local(World *wrld)
+void BKE_world_make_local(Main *bmain, World *wrld, const bool lib_local)
 {
-	Main *bmain = G.main;
-	Scene *sce;
-	bool is_local = false, is_lib = false;
-
-	/* - only lib users: do nothing
-	 * - only local users: set flag
-	 * - mixed: make copy
-	 */
-	
-	if (wrld->id.lib == NULL) return;
-	if (wrld->id.us == 1) {
-		id_clear_lib_data(bmain, &wrld->id);
-		return;
-	}
-	
-	for (sce = bmain->scene.first; sce && ELEM(false, is_lib, is_local); sce = sce->id.next) {
-		if (sce->world == wrld) {
-			if (sce->id.lib) is_lib = true;
-			else is_local = true;
-		}
-	}
-
-	if (is_local && is_lib == false) {
-		id_clear_lib_data(bmain, &wrld->id);
-	}
-	else if (is_local && is_lib) {
-		World *wrld_new = BKE_world_copy(wrld);
-		wrld_new->id.us = 0;
-
-		/* Remap paths of new ID using old library as base. */
-		BKE_id_lib_local_paths(bmain, wrld->id.lib, &wrld_new->id);
-
-		for (sce = bmain->scene.first; sce; sce = sce->id.next) {
-			if (sce->world == wrld) {
-				if (sce->id.lib == NULL) {
-					sce->world = wrld_new;
-					id_us_plus(&wrld_new->id);
-					id_us_min(&wrld->id);
-				}
-			}
-		}
-	}
+	BKE_id_make_local_generic(bmain, &wrld->id, true, lib_local);
 }

@@ -367,6 +367,8 @@ void transform_armature_mirror_update(Object *obedit)
 					eboflip->tail[2] = ebo->tail[2];
 					eboflip->rad_tail = ebo->rad_tail;
 					eboflip->roll = -ebo->roll;
+					eboflip->curveOutX = -ebo->curveOutX;
+					eboflip->roll2 = -ebo->roll2;
 					
 					/* Also move connected children, in case children's name aren't mirrored properly */
 					for (children = arm->edbo->first; children; children = children->next) {
@@ -382,6 +384,8 @@ void transform_armature_mirror_update(Object *obedit)
 					eboflip->head[2] = ebo->head[2];
 					eboflip->rad_head = ebo->rad_head;
 					eboflip->roll = -ebo->roll;
+					eboflip->curveInX = -ebo->curveInX;
+					eboflip->roll1 = -ebo->roll1;
 					
 					/* Also move connected parent, in case parent's name isn't mirrored properly */
 					if (eboflip->parent && eboflip->flag & BONE_CONNECTED) {
@@ -395,6 +399,11 @@ void transform_armature_mirror_update(Object *obedit)
 					eboflip->roll = -ebo->roll;
 					eboflip->xwidth = ebo->xwidth;
 					eboflip->zwidth = ebo->zwidth;
+					
+					eboflip->curveInX = -ebo->curveInX;
+					eboflip->curveOutX = -ebo->curveOutX;
+					eboflip->roll1 = -ebo->roll1;
+					eboflip->roll2 = -ebo->roll2;
 				}
 			}
 		}
@@ -415,7 +424,9 @@ EditBone *make_boneList(ListBase *edbo, ListBase *bones, EditBone *parent, Bone 
 	for (curBone = bones->first; curBone; curBone = curBone->next) {
 		eBone = MEM_callocN(sizeof(EditBone), "make_editbone");
 		
-		/*	Copy relevant data from bone to eBone */
+		/* Copy relevant data from bone to eBone
+		 * Keep selection logic in sync with ED_armature_sync_selection.
+		 */
 		eBone->parent = parent;
 		BLI_strncpy(eBone->name, curBone->name, sizeof(eBone->name));
 		eBone->flag = curBone->flag;
@@ -426,11 +437,11 @@ EditBone *make_boneList(ListBase *edbo, ListBase *bones, EditBone *parent, Bone 
 			eBone->flag |= BONE_TIPSEL;
 			if (eBone->parent && (eBone->flag & BONE_CONNECTED)) {
 				eBone->parent->flag |= BONE_TIPSEL;
-				eBone->flag &= ~BONE_ROOTSEL; /* this is ignored when there is a connected parent, so unset it */
 			}
-			else {
-				eBone->flag |= BONE_ROOTSEL;
-			}
+
+			/* For connected bones, take care when changing the selection when we have a connected parent,
+			 * this flag is a copy of '(eBone->parent->flag & BONE_TIPSEL)'. */
+			eBone->flag |= BONE_ROOTSEL;
 		}
 		else {
 			/* if the bone is not selected, but connected to its parent

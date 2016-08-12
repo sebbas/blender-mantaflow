@@ -252,7 +252,7 @@ typedef struct SpaceOops {
 	struct BLI_mempool *treestore;
 	
 	/* search stuff */
-	char search_string[32];
+	char search_string[64];
 	struct TreeStoreElem search_tse;
 
 	short flag, outlinevis, storeflag, search_flags;
@@ -412,6 +412,8 @@ typedef enum eSpaceNla_Flag {
 	SNLA_NOSTRIPCURVES     = (1 << 5),
 	/* don't perform realtime updates */
 	SNLA_NOREALTIMEUPDATES = (1 << 6),
+	/* don't show local strip marker indications */
+	SNLA_NOLOCALMARKERS    = (1 << 7),
 } eSpaceNla_Flag;
 
 
@@ -736,6 +738,7 @@ typedef enum eFileSel_File_Types {
 	FILE_TYPE_COLLADA           = (1 << 13),
 	FILE_TYPE_OPERATOR          = (1 << 14), /* from filter_glob operator property */
 	FILE_TYPE_APPLICATIONBUNDLE = (1 << 15),
+	FILE_TYPE_ALEMBIC           = (1 << 16),
 
 	FILE_TYPE_DIR               = (1 << 30),  /* An FS directory (i.e. S_ISDIR on its path is true). */
 	FILE_TYPE_BLENDERLIB        = (1 << 31),
@@ -874,8 +877,6 @@ typedef struct SpaceImage {
 
 	struct Image *image;
 	struct ImageUser iuser;
-
-	struct CurveMapping *cumap DNA_DEPRECATED;  /* was switched to scene's color management settings */
 
 	struct Scopes scopes;           /* histogram waveform and vectorscope */
 	struct Histogram sample_line_hist;  /* sample line histogram */

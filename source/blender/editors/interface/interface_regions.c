@@ -110,7 +110,7 @@ bool ui_but_menu_step_poll(const uiBut *but)
 {
 	BLI_assert(but->type == UI_BTYPE_MENU);
 
-	/* currenly only RNA buttons */
+	/* currently only RNA buttons */
 	return ((but->menu_step_func != NULL) ||
 	        (but->rnaprop && RNA_property_type(but->rnaprop) == PROP_ENUM));
 }
@@ -454,7 +454,7 @@ static uiTooltipData *ui_tooltip_data_from_button(bContext *C, uiBut *but)
 
 		if (but->rnapoin.id.data) {
 			ID *id = but->rnapoin.id.data;
-			if (id->lib) {
+			if (ID_IS_LINKED_DATABLOCK(id)) {
 				BLI_snprintf(data->lines[data->totline], sizeof(data->lines[0]), TIP_("Library: %s"), id->lib->name);
 				data->format[data->totline].color_id = UI_TIP_LC_NORMAL;
 				data->totline++;
@@ -1701,7 +1701,9 @@ static void ui_block_region_draw(const bContext *C, ARegion *ar)
 		ar->do_draw &= ~RGN_DRAW_REFRESH_UI;
 		for (block = ar->uiblocks.first; block; block = block_next) {
 			block_next = block->next;
-			ui_popup_block_refresh((bContext *)C, block->handle, NULL, NULL);
+			if (block->handle->can_refresh) {
+				ui_popup_block_refresh((bContext *)C, block->handle, NULL, NULL);
+			}
 		}
 	}
 
@@ -1811,6 +1813,8 @@ uiBlock *ui_popup_block_refresh(
         bContext *C, uiPopupBlockHandle *handle,
         ARegion *butregion, uiBut *but)
 {
+	BLI_assert(handle->can_refresh == true);
+
 	const int margin = UI_POPUP_MARGIN;
 	wmWindow *window = CTX_wm_window(C);
 	ARegion *ar = handle->region;
@@ -2001,6 +2005,8 @@ uiPopupBlockHandle *ui_popup_block_create(
 	handle->popup_create_vars.arg = arg;
 	handle->popup_create_vars.butregion = but ? butregion : NULL;
 	copy_v2_v2_int(handle->popup_create_vars.event_xy, &window->eventstate->x);
+	/* caller may free vars used to create this popup, in that case this variable should be disabled. */
+	handle->can_refresh = true;
 
 	/* create area region */
 	ar = ui_region_temp_add(CTX_wm_screen(C));
@@ -2327,6 +2333,12 @@ static void ui_block_colorpicker(uiBlock *block, float rgba[4], PointerRNA *ptr,
 	RNA_property_float_range(ptr, prop, &hardmin, &hardmax);
 	RNA_property_float_get_array(ptr, prop, rgba);
 
+	/* when the softmax isn't defined in the RNA,
+	 * using very large numbers causes sRGB/linear round trip to fail. */
+	if (softmax == FLT_MAX) {
+		softmax = 1.0f;
+	}
+
 	switch (U.color_picker_type) {
 		case USER_CP_SQUARE_SV:
 			ui_colorpicker_square(block, ptr, prop, UI_GRAD_SV, cpicker);
@@ -2418,7 +2430,7 @@ static void ui_block_colorpicker(uiBlock *block, float rgba[4], PointerRNA *ptr,
 	BLI_snprintf(hexcol, sizeof(hexcol), "%02X%02X%02X", UNPACK3_EX((unsigned int), rgb_gamma_uchar, ));
 
 	yco = -3.0f * UI_UNIT_Y;
-	bt = uiDefBut(block, UI_BTYPE_TEXT, 0, IFACE_("Hex: "), 0, yco, butwidth, UI_UNIT_Y, hexcol, 0, 8, 0, 0, TIP_("Hex triplet for color (#RRGGBB)"));
+	bt = uiDefBut(block, UI_BTYPE_TEXT, 0, IFACE_("Hex: "), 0, yco, butwidth, UI_UNIT_Y, hexcol, 0, 7, 0, 0, TIP_("Hex triplet for color (#RRGGBB)"));
 	UI_but_func_set(bt, ui_colorpicker_hex_rna_cb, bt, hexcol);
 	bt->custom_data = cpicker;
 	uiDefBut(block, UI_BTYPE_LABEL, 0, IFACE_("(Gamma Corrected)"), 0, yco - UI_UNIT_Y, butwidth, UI_UNIT_Y, NULL, 0.0, 0.0, 0, 0, "");
@@ -2794,6 +2806,7 @@ uiPopupBlockHandle *ui_popup_menu_create(
 		WM_event_add_mousemove(C);
 	}
 	
+	handle->can_refresh = false;
 	MEM_freeN(pup);
 
 	return handle;
@@ -2801,14 +2814,17 @@ uiPopupBlockHandle *ui_popup_menu_create(
 
 /******************** Popup Menu API with begin and end ***********************/
 
-/* only return handler, and set optional title */
-uiPopupMenu *UI_popup_menu_begin(bContext *C, const char *title, int icon)
+/**
+ * Only return handler, and set optional title.
+ * \param block_name: Assigned to uiBlock.name (useful info for debugging).
+ */
+uiPopupMenu *UI_popup_menu_begin_ex(bContext *C, const char *title, const char *block_name, int icon)
 {
 	uiStyle *style = UI_style_get_dpi();
 	uiPopupMenu *pup = MEM_callocN(sizeof(uiPopupMenu), "popup menu");
 	uiBut *but;
 
-	pup->block = UI_block_begin(C, NULL, __func__, UI_EMBOSS_PULLDOWN);
+	pup->block = UI_block_begin(C, NULL, block_name, UI_EMBOSS_PULLDOWN);
 	pup->block->flag |= UI_BLOCK_POPUP_MEMORY | UI_BLOCK_IS_FLIP;
 	pup->block->puphash = ui_popup_menu_hash(title);
 	pup->layout = UI_block_layout(pup->block, UI_LAYOUT_VERTICAL, UI_LAYOUT_MENU, 0, 0, 200, 0, MENU_PADDING, style);
@@ -2839,6 +2855,11 @@ uiPopupMenu *UI_popup_menu_begin(bContext *C, const char *title, int icon)
 	return pup;
 }
 
+uiPopupMenu *UI_popup_menu_begin(bContext *C, const char *title, int icon)
+{
+	return UI_popup_menu_begin_ex(C, title, __func__, icon);
+}
+
 /* set the whole structure to work */
 void UI_popup_menu_end(bContext *C, uiPopupMenu *pup)
 {
@@ -2854,7 +2875,8 @@ void UI_popup_menu_end(bContext *C, uiPopupMenu *pup)
 	
 	UI_popup_handlers_add(C, &window->modalhandlers, menu, 0);
 	WM_event_add_mousemove(C);
-	
+
+	menu->can_refresh = false;
 	MEM_freeN(pup);
 }
 
@@ -2985,6 +3007,7 @@ void UI_pie_menu_end(bContext *C, uiPieMenu *pie)
 	        menu, WM_HANDLER_ACCEPT_DBL_CLICK);
 	WM_event_add_mousemove(C);
 
+	menu->can_refresh = false;
 	MEM_freeN(pie);
 }
 
@@ -3197,7 +3220,8 @@ void UI_popup_menu_reports(bContext *C, ReportList *reports)
 		if (pup == NULL) {
 			char title[UI_MAX_DRAW_STR];
 			BLI_snprintf(title, sizeof(title), "%s: %s", IFACE_("Report"), report->typestr);
-			pup = UI_popup_menu_begin(C, title, ICON_NONE);
+			/* popup_menu stuff does just what we need (but pass meaningful block name) */
+			pup = UI_popup_menu_begin_ex(C, title, __func__, ICON_NONE);
 			layout = UI_popup_menu_layout(pup);
 		}
 		else {
@@ -3325,6 +3349,11 @@ void UI_popup_block_close(bContext *C, wmWindow *win, uiBlock *block)
 		if (win) {
 			UI_popup_handlers_remove(&win->modalhandlers, block->handle);
 			ui_popup_block_free(C, block->handle);
+
+			/* In the case we have nested popups, closing one may need to redraw another, see: T48874 */
+			for (ARegion *ar = win->screen->regionbase.first; ar; ar = ar->next) {
+				ED_region_tag_refresh_ui(ar);
+			}
 		}
 	}
 }

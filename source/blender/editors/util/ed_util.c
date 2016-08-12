@@ -57,6 +57,7 @@
 #include "BKE_multires.h"
 #include "BKE_packedFile.h"
 #include "BKE_paint.h"
+#include "BKE_screen.h"
 
 #include "ED_armature.h"
 #include "ED_buttons.h"
@@ -104,7 +105,7 @@ void ED_editors_init(bContext *C)
 			ob->mode = OB_MODE_OBJECT;
 			data = ob->data;
 
-			if (ob == obact && !ob->id.lib && !(data && data->lib))
+			if (ob == obact && !ID_IS_LINKED_DATABLOCK(ob) && !(data && ID_IS_LINKED_DATABLOCK(data)))
 				ED_object_toggle_modes(C, mode);
 		}
 	}
@@ -326,22 +327,14 @@ void ED_region_draw_mouse_line_cb(const bContext *C, ARegion *ar, void *arg_info
 /**
  * Use to free ID references within runtime data (stored outside of DNA)
  *
- * \note Typically notifiers take care of this,
- * but there are times we have to free references immediately, see: T44376
+ * \param new_id may be NULL to unlink \a old_id.
  */
-void ED_spacedata_id_unref(struct SpaceLink *sl, const ID *id)
+void ED_spacedata_id_remap(struct ScrArea *sa, struct SpaceLink *sl, ID *old_id, ID *new_id)
 {
+	SpaceType *st = BKE_spacetype_from_id(sl->spacetype);
 
-	switch (sl->spacetype) {
-		case SPACE_OUTLINER:
-			ED_outliner_id_unref((SpaceOops *)sl, id);
-			break;
-		case SPACE_BUTS:
-			ED_buttons_id_unref((SpaceButs *)sl, id);
-			break;
-		case SPACE_NODE:
-			ED_node_id_unref((SpaceNode *)sl, id);
-			break;
+	if (st && st->id_remap) {
+		st->id_remap(sa, sl, old_id, new_id);
 	}
 }
 

@@ -150,6 +150,12 @@ NODE_DEFINE(Shader)
 	volume_interpolation_method_enum.insert("cubic", VOLUME_INTERPOLATION_CUBIC);
 	SOCKET_ENUM(volume_interpolation_method, "Volume Interpolation Method", volume_interpolation_method_enum, VOLUME_INTERPOLATION_LINEAR);
 
+	static NodeEnum displacement_method_enum;
+	displacement_method_enum.insert("bump", DISPLACE_BUMP);
+	displacement_method_enum.insert("true", DISPLACE_TRUE);
+	displacement_method_enum.insert("both", DISPLACE_BOTH);
+	SOCKET_ENUM(displacement_method, "Displacement Method", displacement_method_enum, DISPLACE_BUMP);
+
 	return type;
 }
 
@@ -172,6 +178,8 @@ Shader::Shader()
 	has_volume_spatial_varying = false;
 	has_object_dependency = false;
 	has_integrator_dependency = false;
+
+	displacement_method = DISPLACE_BUMP;
 
 	id = -1;
 	used = false;
@@ -310,7 +318,7 @@ int ShaderManager::get_shader_id(Shader *shader, Mesh *mesh, bool smooth)
 	int id = shader->id*2;
 	
 	/* index depends bump since this setting is not in the shader */
-	if(mesh && mesh->displacement_method != Mesh::DISPLACE_TRUE)
+	if(mesh && shader->displacement_method != DISPLACE_TRUE)
 		id += 1;
 	/* smooth flag */
 	if(smooth)
@@ -449,17 +457,15 @@ void ShaderManager::device_free_common(Device *device, DeviceScene *dscene, Scen
 
 void ShaderManager::add_default(Scene *scene)
 {
-	ShaderNode *closure, *out;
-
 	/* default surface */
 	{
 		ShaderGraph *graph = new ShaderGraph();
 
-		closure = graph->add(new DiffuseBsdfNode());
-		closure->input("Color")->value = make_float3(0.8f, 0.8f, 0.8f);
-		out = graph->output();
+		DiffuseBsdfNode *diffuse = new DiffuseBsdfNode();
+		diffuse->color = make_float3(0.8f, 0.8f, 0.8f);
+		graph->add(diffuse);
 
-		graph->connect(closure->output("BSDF"), out->input("Surface"));
+		graph->connect(diffuse->output("BSDF"), graph->output()->input("Surface"));
 
 		Shader *shader = new Shader();
 		shader->name = "default_surface";
@@ -472,12 +478,12 @@ void ShaderManager::add_default(Scene *scene)
 	{
 		ShaderGraph *graph = new ShaderGraph();
 
-		closure = graph->add(new EmissionNode());
-		closure->input("Color")->value = make_float3(0.8f, 0.8f, 0.8f);
-		closure->input("Strength")->value.x = 0.0f;
-		out = graph->output();
+		EmissionNode *emission = new EmissionNode();
+		emission->color = make_float3(0.8f, 0.8f, 0.8f);
+		emission->strength = 0.0f;
+		graph->add(emission);
 
-		graph->connect(closure->output("Emission"), out->input("Surface"));
+		graph->connect(emission->output("Emission"), graph->output()->input("Surface"));
 
 		Shader *shader = new Shader();
 		shader->name = "default_light";

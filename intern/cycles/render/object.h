@@ -17,6 +17,7 @@
 #ifndef __OBJECT_H__
 #define __OBJECT_H__
 
+#include "node.h"
 #include "scene.h"
 
 #include "util_boundbox.h"
@@ -37,12 +38,13 @@ struct Transform;
 
 /* Object */
 
-class Object {
+class Object : public Node {
 public:
+	NODE_DECLARE;
+
 	Mesh *mesh;
 	Transform tfm;
 	BoundBox bounds;
-	ustring name;
 	uint random_id;
 	int pass_id;
 	vector<ParamValue> attributes;
@@ -66,6 +68,11 @@ public:
 	void apply_transform(bool apply_to_motion);
 
 	vector<float> motion_times();
+
+	/* Check whether object is traceable and it worth adding it to
+	 * kernel scene.
+	 */
+	bool is_traceable();
 };
 
 /* Object Manager */
@@ -90,6 +97,8 @@ public:
 	                         Scene *scene,
 	                         Progress& progress,
 	                         bool bounds_valid = true);
+	void device_update_patch_map_offsets(Device *device, DeviceScene *dscene, Scene *scene);
+
 	void device_free(Device *device, DeviceScene *dscene);
 
 	void tag_update(Scene *scene);

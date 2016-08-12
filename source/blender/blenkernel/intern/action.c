@@ -59,6 +59,8 @@
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_library.h"
+#include "BKE_library_query.h"
+#include "BKE_library_remap.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
 
@@ -92,94 +94,32 @@ bAction *add_empty_action(Main *bmain, const char name[])
 
 /* .................................. */
 
-/* temp data for BKE_action_make_local */
-typedef struct tMakeLocalActionContext {
-	bAction *act;       /* original action */
-	bAction *act_new;   /* new action */
-	
-	bool is_lib;        /* some action users were libraries */
-	bool is_local;      /* some action users were not libraries */
-} tMakeLocalActionContext;
-
-/* helper function for BKE_action_make_local() - local/lib init step */
-static void make_localact_init_cb(ID *id, AnimData *adt, void *mlac_ptr)
-{
-	tMakeLocalActionContext *mlac = (tMakeLocalActionContext *)mlac_ptr;
-	
-	if (adt->action == mlac->act) {
-		if (id->lib) mlac->is_lib = true;
-		else mlac->is_local = true;
-	}
-}
-
-/* helper function for BKE_action_make_local() - change references */
-static void make_localact_apply_cb(ID *id, AnimData *adt, void *mlac_ptr)
-{
-	tMakeLocalActionContext *mlac = (tMakeLocalActionContext *)mlac_ptr;
-	
-	if (adt->action == mlac->act) {
-		if (id->lib == NULL) {
-			adt->action = mlac->act_new;
-			
-			id_us_plus(&mlac->act_new->id);
-			id_us_min(&mlac->act->id);
-		}
-	}
-}
-
 // does copy_fcurve...
-void BKE_action_make_local(bAction *act)
+void BKE_action_make_local(Main *bmain, bAction *act, const bool lib_local)
 {
-	tMakeLocalActionContext mlac = {act, NULL, false, false};
-	Main *bmain = G.main;
-	
-	if (act->id.lib == NULL)
-		return;
-	
-	/* XXX: double-check this; it used to be just single-user check, but that was when fake-users were still default */
-	if ((act->id.flag & LIB_FAKEUSER) && (act->id.us <= 1)) {
-		id_clear_lib_data(bmain, &act->id);
-		return;
-	}
-	
-	BKE_animdata_main_cb(bmain, make_localact_init_cb, &mlac);
-	
-	if (mlac.is_local && mlac.is_lib == false) {
-		id_clear_lib_data(bmain, &act->id);
-	}
-	else if (mlac.is_local && mlac.is_lib) {
-		mlac.act_new = BKE_action_copy(act);
-		mlac.act_new->id.us = 0;
-
-		BKE_id_lib_local_paths(bmain, act->id.lib, &mlac.act_new->id);
-
-		BKE_animdata_main_cb(bmain, make_localact_apply_cb, &mlac);
-	}
+	BKE_id_make_local_generic(bmain, &act->id, true, lib_local);
 }
 
 /* .................................. */
 
+/** Free (or release) any data used by this action (does not free the action itself). */
 void BKE_action_free(bAction *act)
-{
-	/* sanity check */
-	if (act == NULL)
-		return;
-	
+{	
+	/* No animdata here. */
+
 	/* Free F-Curves */
 	free_fcurves(&act->curves);
 	
 	/* Free groups */
-	if (act->groups.first)
-		BLI_freelistN(&act->groups);
+	BLI_freelistN(&act->groups);
 		
 	/* Free pose-references (aka local markers) */
-	if (act->markers.first)
-		BLI_freelistN(&act->markers);
+	BLI_freelistN(&act->markers);
 }
 
 /* .................................. */
 
-bAction *BKE_action_copy(bAction *src)
+bAction *BKE_action_copy(Main *bmain, bAction *src)
 {
 	bAction *dst = NULL;
 	bActionGroup *dgrp, *sgrp;
@@ -187,7 +127,7 @@ bAction *BKE_action_copy(bAction *src)
 	
 	if (src == NULL) 
 		return NULL;
-	dst = BKE_libblock_copy(&src->id);
+	dst = BKE_libblock_copy(bmain, &src->id);
 	
 	/* duplicate the lists of groups and markers */
 	BLI_duplicatelist(&dst->groups, &src->groups);
@@ -216,9 +156,7 @@ bAction *BKE_action_copy(bAction *src)
 		}
 	}
 	
-	if (src->id.lib) {
-		BKE_id_lib_local_paths(G.main, src->id.lib, &dst->id);
-	}
+	BKE_id_copy_ensure_local(bmain, &src->id, &dst->id);
 
 	return dst;
 }

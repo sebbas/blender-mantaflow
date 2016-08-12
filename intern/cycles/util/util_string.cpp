@@ -74,7 +74,10 @@ bool string_iequals(const string& a, const string& b)
 	return false;
 }
 
-void string_split(vector<string>& tokens, const string& str, const string& separators)
+void string_split(vector<string>& tokens,
+                  const string& str,
+                  const string& separators,
+                  bool skip_empty_tokens)
 {
 	size_t token_start = 0, token_length = 0;
 	for(size_t i = 0; i < str.size(); ++i) {
@@ -87,9 +90,9 @@ void string_split(vector<string>& tokens, const string& str, const string& separ
 		}
 		else {
 			/* Current character is a separator,
-			 * append current token to the list (if token is not empty).
+			 * append current token to the list.
 			 */
-			if(token_length > 0) {
+			if(!skip_empty_tokens || token_length > 0) {
 				string token = str.substr(token_start, token_length);
 				tokens.push_back(token);
 			}
@@ -238,6 +241,50 @@ string string_to_ansi(const string& str)
 }
 
 #endif  /* _WIN32 */
+
+string string_human_readable_size(size_t size)
+{
+	static const char suffixes[] = "BKMGTPEZY";
+
+	const char* suffix = suffixes;
+	size_t r = 0;
+
+	while(size >= 1024) {
+		r = size % 1024;
+		size /= 1024;
+		suffix++;
+	}
+
+	if(*suffix != 'B')
+		return string_printf("%.2f%c", double(size*1024+r)/1024.0, *suffix);
+	else
+		return string_printf("%zu", size);
+}
+
+string string_human_readable_number(size_t num)
+{
+	if(num == 0) {
+		return "0";
+	}
+
+	/* Add thousands separators. */
+	char buf[32];
+
+	char* p = buf+31;
+	*p = '\0';
+
+	int i = -1;
+	while(num) {
+		if(++i && i % 3 == 0)
+			*(--p) = ',';
+
+		*(--p) = '0' + (num % 10);
+
+		num /= 10;
+	}
+
+	return p;
+}
 
 CCL_NAMESPACE_END
 

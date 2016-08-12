@@ -39,7 +39,7 @@ class Context(StructRNA):
         generic_attrs = (
             *StructRNA.__dict__.keys(),
             "bl_rna", "rna_type", "copy",
-            )
+        )
         for attr in dir(self):
             if not (attr.startswith("_") or attr in generic_attrs):
                 value = getattr(self, attr)
@@ -408,6 +408,14 @@ class Mesh(bpy_types.ID):
            the *vertices* argument. eg: [(5, 6, 8, 9), (1, 2, 3), ...]
 
         :type faces: iterable object
+
+        .. warning::
+
+           Invalid mesh data
+           *(out of range indices, edges with matching indices,
+           2 sided faces... etc)* are **not** prevented.
+           If the data used for mesh creation isn't known to be valid,
+           run :class:`Mesh.validate` after this function.
         """
         from itertools import chain, islice, accumulate
 
@@ -534,6 +542,7 @@ class Sound(bpy_types.ID):
 
 
 class RNAMeta(type):
+
     def __new__(cls, name, bases, classdict, **args):
         result = type.__new__(cls, name, bases, classdict)
         if bases and bases[0] is not StructRNA:
@@ -554,6 +563,7 @@ class RNAMeta(type):
 
 
 class OrderedDictMini(dict):
+
     def __init__(self, *args):
         self.order = []
         dict.__init__(self, args)
@@ -573,6 +583,7 @@ class RNAMetaPropGroup(StructMetaPropGroup, RNAMeta):
 
 
 class OrderedMeta(RNAMeta):
+
     def __init__(cls, name, bases, attributes):
         if attributes.__class__ is OrderedDictMini:
             cls.order = attributes.order
@@ -627,7 +638,7 @@ class Macro(StructRNA, metaclass=OrderedMeta):
 
 
 class PropertyGroup(StructRNA, metaclass=RNAMetaPropGroup):
-        __slots__ = ()
+    __slots__ = ()
 
 
 class RenderEngine(StructRNA, metaclass=RNAMeta):

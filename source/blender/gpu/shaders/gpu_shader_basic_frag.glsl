@@ -3,6 +3,7 @@
  *
  * USE_COLOR: use glColor for diffuse colors
  * USE_TEXTURE: use texture for diffuse colors
+ * USE_TEXTURE_RECTANGLE: use GL_TEXTURE_RECTANGLE instead of GL_TEXTURE_2D
  * USE_SCENE_LIGHTING: use lights (up to 8)
  * USE_SOLID_LIGHTING: assume 3 directional lights for solid draw mode
  * USE_TWO_SIDED: flip normal towards viewer
@@ -27,8 +28,11 @@
 #define STIPPLE_S3D_INTERLACE_CHECKERBOARD_SWAP        11
 
 #if defined(USE_SOLID_LIGHTING) || defined(USE_SCENE_LIGHTING)
+#if defined(USE_FLAT_NORMAL)
+varying vec3 eyespace_vert_pos;
+#else
 varying vec3 varying_normal;
-
+#endif
 #ifndef USE_SOLID_LIGHTING
 varying vec3 varying_position;
 #endif
@@ -39,8 +43,16 @@ varying vec4 varying_vertex_color;
 #endif
 
 #ifdef USE_TEXTURE
+#ifdef USE_TEXTURE_RECTANGLE
+#define sampler2D_default sampler2DRect
+#define texture2D_default texture2DRect
+#else
+#define sampler2D_default sampler2D
+#define texture2D_default texture2D
+#endif
+
 varying vec2 varying_texture_coord;
-uniform sampler2D texture_map;
+uniform sampler2D_default texture_map;
 #endif
 
 #ifdef USE_STIPPLE
@@ -88,7 +100,7 @@ void main()
 			discard;
 	}
 	else if (stipple_id == STIPPLE_CHECKER_8PX) {
-		int result = int(mod(int(gl_FragCoord.x)/8 + int(gl_FragCoord.y) / 8, 2));
+		int result = int(mod(int(gl_FragCoord.x) / 8 + int(gl_FragCoord.y) / 8, 2));
 		if (result != 0)
 			discard;
 	}
@@ -137,7 +149,11 @@ void main()
 
 #if defined(USE_SOLID_LIGHTING) || defined(USE_SCENE_LIGHTING)
 	/* compute normal */
+#if defined(USE_FLAT_NORMAL)
+	vec3 N = normalize(cross(dFdx(eyespace_vert_pos), dFdy(eyespace_vert_pos)));
+#else
 	vec3 N = normalize(varying_normal);
+#endif
 
 #ifdef USE_TWO_SIDED
 	if (!gl_FrontFacing)
@@ -158,7 +174,7 @@ void main()
 		/* diffuse light */
 		vec3 light_diffuse = gl_LightSource[i].diffuse.rgb;
 		float diffuse_bsdf = max(dot(N, light_direction), 0.0);
-		L_diffuse += light_diffuse*diffuse_bsdf;
+		L_diffuse += light_diffuse * diffuse_bsdf;
 
 #ifndef NO_SPECULAR
 		/* specular light */
@@ -166,7 +182,7 @@ void main()
 		vec3 H = gl_LightSource[i].halfVector.xyz;
 
 		float specular_bsdf = pow(max(dot(N, H), 0.0), gl_FrontMaterial.shininess);
-		L_specular += light_specular*specular_bsdf;
+		L_specular += light_specular * specular_bsdf;
 #endif
 	}
 #else
@@ -174,7 +190,7 @@ void main()
 
 #ifndef NO_SPECULAR
 	/* view vector computation, depends on orthographics or perspective */
-	vec3 V = (gl_ProjectionMatrix[3][3] == 0.0) ? normalize(varying_position): vec3(0.0, 0.0, -1.0);
+	vec3 V = (gl_ProjectionMatrix[3][3] == 0.0) ? normalize(varying_position) : vec3(0.0, 0.0, -1.0);
 #endif
 
 	for (int i = 0; i < NUM_SCENE_LIGHTS; i++) {
@@ -205,14 +221,14 @@ void main()
 			float distance = length(d);
 
 			intensity /= gl_LightSource[i].constantAttenuation +
-				gl_LightSource[i].linearAttenuation * distance +
-				gl_LightSource[i].quadraticAttenuation * distance * distance;
+			             gl_LightSource[i].linearAttenuation * distance +
+			             gl_LightSource[i].quadraticAttenuation * distance * distance;
 		}
 
 		/* diffuse light */
 		vec3 light_diffuse = gl_LightSource[i].diffuse.rgb;
 		float diffuse_bsdf = max(dot(N, light_direction), 0.0);
-		L_diffuse += light_diffuse*diffuse_bsdf*intensity;
+		L_diffuse += light_diffuse * diffuse_bsdf * intensity;
 
 #ifndef NO_SPECULAR
 		/* specular light */
@@ -220,7 +236,7 @@ void main()
 		vec3 H = normalize(light_direction - V);
 
 		float specular_bsdf = pow(max(dot(N, H), 0.0), gl_FrontMaterial.shininess);
-		L_specular += light_specular*specular_bsdf*intensity;
+		L_specular += light_specular * specular_bsdf * intensity;
 #endif
 	}
 #endif
@@ -229,12 +245,12 @@ void main()
 	float alpha;
 
 #if defined(USE_TEXTURE) && defined(USE_COLOR)
-	vec4 texture_color = texture2D(texture_map, varying_texture_coord);
+	vec4 texture_color = texture2D_default(texture_map, varying_texture_coord);
 
 	L_diffuse *= texture_color.rgb * varying_vertex_color.rgb;
 	alpha = texture_color.a * varying_vertex_color.a;
 #elif defined(USE_TEXTURE)
-	vec4 texture_color = texture2D(texture_map, varying_texture_coord);
+	vec4 texture_color = texture2D_default(texture_map, varying_texture_coord);
 
 	L_diffuse *= texture_color.rgb;
 	alpha = texture_color.a;
@@ -250,7 +266,7 @@ void main()
 	vec3 L = gl_FrontLightModelProduct.sceneColor.rgb + L_diffuse;
 
 #ifndef NO_SPECULAR
-	L += L_specular*gl_FrontMaterial.specular.rgb;
+	L += L_specular * gl_FrontMaterial.specular.rgb;
 #endif
 
 	/* write out fragment color */
@@ -259,9 +275,9 @@ void main()
 
 	/* no lighting */
 #if defined(USE_TEXTURE) && defined(USE_COLOR)
-	gl_FragColor = texture2D(texture_map, varying_texture_coord) * varying_vertex_color;
+	gl_FragColor = texture2D_default(texture_map, varying_texture_coord) * varying_vertex_color;
 #elif defined(USE_TEXTURE)
-	gl_FragColor = texture2D(texture_map, varying_texture_coord);
+	gl_FragColor = texture2D_default(texture_map, varying_texture_coord);
 #elif defined(USE_COLOR)
 	gl_FragColor = varying_vertex_color;
 #else

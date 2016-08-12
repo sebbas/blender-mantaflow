@@ -38,6 +38,7 @@
 #include "DNA_armature_types.h"
 #include "DNA_constraint_types.h"
 #include "DNA_camera_types.h"
+#include "DNA_cachefile_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_group_types.h"
 #include "DNA_key_types.h"
@@ -490,7 +491,7 @@ static void outliner_add_object_contents(SpaceOops *soops, TreeElement *te, Tree
 	
 	outliner_add_element(soops, &te->subtree, ob->poselib, te, 0, 0); // XXX FIXME.. add a special type for this
 	
-	if (ob->proxy && ob->id.lib == NULL)
+	if (ob->proxy && !ID_IS_LINKED_DATABLOCK(ob))
 		outliner_add_element(soops, &te->subtree, ob->proxy, te, TSE_PROXY, 0);
 		
 	outliner_add_element(soops, &te->subtree, ob->gpd, te, 0, 0);
@@ -744,6 +745,16 @@ static void outliner_add_id_contents(SpaceOops *soops, TreeElement *te, TreeStor
 			
 			if (outliner_animdata_test(ca->adt))
 				outliner_add_element(soops, &te->subtree, ca, te, TSE_ANIM_DATA, 0);
+			break;
+		}
+		case ID_CF:
+		{
+			CacheFile *cache_file = (CacheFile *)id;
+
+			if (outliner_animdata_test(cache_file->adt)) {
+				outliner_add_element(soops, &te->subtree, cache_file, te, TSE_ANIM_DATA, 0);
+			}
+
 			break;
 		}
 		case ID_LA:

@@ -36,7 +36,11 @@ typedef struct VolumeShaderCoefficients {
 } VolumeShaderCoefficients;
 
 /* evaluate shader to get extinction coefficient at P */
-ccl_device bool volume_shader_extinction_sample(KernelGlobals *kg, ShaderData *sd, PathState *state, float3 P, float3 *extinction)
+ccl_device_inline bool volume_shader_extinction_sample(KernelGlobals *kg,
+                                                       ShaderData *sd,
+                                                       PathState *state,
+                                                       float3 P,
+                                                       float3 *extinction)
 {
 	sd->P = P;
 	shader_eval_volume(kg, sd, state, state->volume_stack, PATH_RAY_SHADOW, SHADER_CONTEXT_SHADOW);
@@ -58,7 +62,11 @@ ccl_device bool volume_shader_extinction_sample(KernelGlobals *kg, ShaderData *s
 }
 
 /* evaluate shader to get absorption, scattering and emission at P */
-ccl_device bool volume_shader_sample(KernelGlobals *kg, ShaderData *sd, PathState *state, float3 P, VolumeShaderCoefficients *coeff)
+ccl_device_inline bool volume_shader_sample(KernelGlobals *kg,
+                                            ShaderData *sd,
+                                            PathState *state,
+                                            float3 P,
+                                            VolumeShaderCoefficients *coeff)
 {
 	sd->P = P;
 	shader_eval_volume(kg, sd, state, state->volume_stack, state->flag, SHADER_CONTEXT_VOLUME);
@@ -276,7 +284,7 @@ ccl_device float kernel_volume_distance_sample(float max_t, float3 sigma_t, int 
 	float sample_t = min(max_t, -logf(1.0f - xi*(1.0f - sample_transmittance))/sample_sigma_t);
 
 	*transmittance = volume_color_transmittance(sigma_t, sample_t);
-	*pdf = (sigma_t * *transmittance)/(make_float3(1.0f, 1.0f, 1.0f) - full_transmittance);
+	*pdf = safe_divide_color(sigma_t * *transmittance, make_float3(1.0f, 1.0f, 1.0f) - full_transmittance);
 
 	/* todo: optimization: when taken together with hit/miss decision,
 	 * the full_transmittance cancels out drops out and xi does not
@@ -290,7 +298,7 @@ ccl_device float3 kernel_volume_distance_pdf(float max_t, float3 sigma_t, float 
 	float3 full_transmittance = volume_color_transmittance(sigma_t, max_t);
 	float3 transmittance = volume_color_transmittance(sigma_t, sample_t);
 
-	return (sigma_t * transmittance)/(make_float3(1.0f, 1.0f, 1.0f) - full_transmittance);
+	return safe_divide_color(sigma_t * transmittance, make_float3(1.0f, 1.0f, 1.0f) - full_transmittance);
 }
 
 /* Emission */
@@ -625,10 +633,12 @@ ccl_device void kernel_volume_decoupled_record(KernelGlobals *kg, PathState *sta
 		const int global_max_steps = kernel_data.integrator.volume_max_steps;
 		step_size = kernel_data.integrator.volume_step_size;
 		/* compute exact steps in advance for malloc */
-		max_steps = max((int)ceilf(ray->t/step_size), 1);
-		if(max_steps > global_max_steps) {
+		if(ray->t > global_max_steps*step_size) {
 			max_steps = global_max_steps;
 			step_size = ray->t / (float)max_steps;
+		}
+		else {
+			max_steps = max((int)ceilf(ray->t/step_size), 1);
 		}
 #ifdef __KERNEL_CPU__
 		/* NOTE: For the branched path tracing it's possible to have direct
@@ -1027,7 +1037,7 @@ ccl_device void kernel_volume_stack_init(KernelGlobals *kg,
 	int stack_index = 0, enclosed_index = 0;
 
 #ifdef __VOLUME_RECORD_ALL__
-	Intersection hits[2*VOLUME_STACK_SIZE];
+	Intersection hits[2*VOLUME_STACK_SIZE + 1];
 	uint num_hits = scene_intersect_volume_all(kg,
 	                                           &volume_ray,
 	                                           hits,
@@ -1197,7 +1207,7 @@ ccl_device void kernel_volume_stack_update_for_subsurface(KernelGlobals *kg,
 	Ray volume_ray = *ray;
 
 #  ifdef __VOLUME_RECORD_ALL__
-	Intersection hits[2*VOLUME_STACK_SIZE];
+	Intersection hits[2*VOLUME_STACK_SIZE + 1];
 	uint num_hits = scene_intersect_volume_all(kg,
 	                                           &volume_ray,
 	                                           hits,
@@ -1216,6 +1226,7 @@ ccl_device void kernel_volume_stack_update_for_subsurface(KernelGlobals *kg,
 #  else
 	Intersection isect;
 	int step = 0;
+	float3 Pend = ray->P + ray->D*ray->t;
 	while(step < 2 * VOLUME_STACK_SIZE &&
 	      scene_intersect_volume(kg,
 	                             &volume_ray,
@@ -1227,7 +1238,9 @@ ccl_device void kernel_volume_stack_update_for_subsurface(KernelGlobals *kg,
 
 		/* Move ray forward. */
 		volume_ray.P = ray_offset(stack_sd->P, -stack_sd->Ng);
-		volume_ray.t -= stack_sd->ray_length;
+		if(volume_ray.t != FLT_MAX) {
+			volume_ray.D = normalize_len(Pend - volume_ray.P, &volume_ray.t);
+		}
 		++step;
 	}
 #  endif

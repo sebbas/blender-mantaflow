@@ -172,18 +172,28 @@ if(WITH_BUILDINFO)
 	include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 
-	# XXX, "_buildinfo.h" is used twice here,
+	# XXX, ${buildinfo_h_fake} is used here,
 	# because we rely on that file being detected as missing
 	# every build so that the real header "buildinfo.h" is updated.
 	#
 	# Keep this until we find a better way to resolve!
 
+	set(buildinfo_h_real "${CMAKE_CURRENT_BINARY_DIR}/buildinfo.h")
+	set(buildinfo_h_fake "${CMAKE_CURRENT_BINARY_DIR}/buildinfo.h_fake")
+
+	if(EXISTS ${buildinfo_h_fake})
+		message(FATAL_ERROR "File \"${buildinfo_h_fake}\" found, this should never be created, remove!")
+	endif()
+
 	# a custom target that is always built
 	add_custom_target(buildinfo ALL
-		DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/_buildinfo.h)
+		DEPENDS ${buildinfo_h_fake})
 
 	# creates buildinfo.h using cmake script
-	add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/_buildinfo.h
+	add_custom_command(
+		OUTPUT
+			${buildinfo_h_fake}  # ensure we always run
+			${buildinfo_h_real}
 		COMMAND ${CMAKE_COMMAND}
 		-DSOURCE_DIR=${CMAKE_SOURCE_DIR}
 		# overrides only used when non-empty strings
@@ -192,9 +202,13 @@ if(WITH_BUILDINFO)
 		-P ${CMAKE_SOURCE_DIR}/build_files/cmake/buildinfo.cmake)
 
 	# buildinfo.h is a generated file
-	set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/buildinfo.h
+	set_source_files_properties(
+		${buildinfo_h_real}
 		PROPERTIES GENERATED TRUE
 		HEADER_FILE_ONLY TRUE)
+
+	unset(buildinfo_h_real)
+	unset(buildinfo_h_fake)
 
 	# add deps below, after adding blender
 	# -------------- done with header values.
@@ -207,6 +221,8 @@ if(WITH_BUILDINFO)
 	add_library(buildinfoobj OBJECT buildinfo.c)
 	add_dependencies(buildinfoobj buildinfo)
 endif()
+
+add_cc_flags_custom_test(blender)
 
 # message(STATUS "Configuring blender")
 if(WITH_PYTHON_MODULE)
@@ -230,7 +246,7 @@ if(WITH_PYTHON_MODULE)
 		set_target_properties(
 			blender
 			PROPERTIES
-				MACOSX_BUNDLE
+				MACOSX_BUNDLE TRUE
 				LINK_FLAGS_RELEASE "${PLATFORM_LINKFLAGS}"
 				LINK_FLAGS_DEBUG "${PLATFORM_LINKFLAGS_DEBUG}"
 		)
@@ -338,6 +354,8 @@ if(WITH_PYTHON)
 		DIRECTORY ${CMAKE_SOURCE_DIR}/release/scripts
 		DESTINATION ${TARGETDIR_VER}
 		PATTERN ".git" EXCLUDE
+		PATTERN ".gitignore" EXCLUDE
+		PATTERN ".arcconfig" EXCLUDE
 		PATTERN "__pycache__" EXCLUDE
 		PATTERN "${ADDON_EXCLUDE_CONDITIONAL}" EXCLUDE
 		PATTERN "${FREESTYLE_EXCLUDE_CONDITIONAL}" EXCLUDE
@@ -538,6 +556,7 @@ if(UNIX AND NOT APPLE)
 				DIRECTORY ${PYTHON_LIBPATH}/python${PYTHON_VERSION}
 				DESTINATION ${TARGETDIR_VER}/python/${_target_LIB}
 				PATTERN "__pycache__" EXCLUDE               # * any cache *
+				PATTERN "config-${PYTHON_VERSION}m/*.a" EXCLUDE  # static lib
 				PATTERN "lib2to3" EXCLUDE                   # ./lib2to3
 				PATTERN "site-packages/*" EXCLUDE           # ./site-packages/*
 				PATTERN "tkinter" EXCLUDE                   # ./tkinter
@@ -692,6 +711,10 @@ elseif(WIN32)
 			)
 
 			if(WITH_PYTHON_INSTALL_NUMPY)
+				set(PYTHON_NUMPY_VERSION 1.9)
+				if(MSVC_VERSION EQUAL 1900)
+					set(PYTHON_NUMPY_VERSION 1.11)
+				endif()
 				add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${BLENDER_VERSION}/python/lib/site-packages
 					COMMAND ${CMAKE_COMMAND} -E
 					        make_directory ${CMAKE_CURRENT_BINARY_DIR}/${BLENDER_VERSION}/python/lib/site-packages)
@@ -699,9 +722,9 @@ elseif(WIN32)
 				add_custom_command(
 					OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${BLENDER_VERSION}/python/lib/site-packages/numpy
 					COMMAND ${CMAKE_COMMAND} -E
-					        tar xzvf "${LIBDIR}/release/python${_PYTHON_VERSION_NO_DOTS}_numpy_1.9.tar.gz"
+					        tar xzvf "${LIBDIR}/release/python${_PYTHON_VERSION_NO_DOTS}_numpy_${PYTHON_NUMPY_VERSION}.tar.gz"
 					DEPENDS
-						${LIBDIR}/release/python${_PYTHON_VERSION_NO_DOTS}_numpy_1.9.tar.gz
+						${LIBDIR}/release/python${_PYTHON_VERSION_NO_DOTS}_numpy_${PYTHON_NUMPY_VERSION}.tar.gz
 						${CMAKE_CURRENT_BINARY_DIR}/${BLENDER_VERSION}/python/lib/site-packages
 					WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${BLENDER_VERSION}/python/lib/site-packages
 				)
@@ -910,6 +933,7 @@ elseif(APPLE)
 			PATTERN "__pycache__" EXCLUDE
 			PATTERN "__MACOSX" EXCLUDE
 			PATTERN ".DS_Store" EXCLUDE
+			PATTERN "config-${PYTHON_VERSION}m/*.a" EXCLUDE  # static lib
 		)
 	endmacro()
 

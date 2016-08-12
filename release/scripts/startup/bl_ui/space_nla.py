@@ -77,6 +77,7 @@ class NLA_MT_view(Menu):
         layout.prop(st, "show_locked_time")
 
         layout.prop(st, "show_strip_curves")
+        layout.prop(st, "show_local_markers")
 
         layout.separator()
         layout.operator("anim.previewrange_set")
@@ -90,8 +91,8 @@ class NLA_MT_view(Menu):
 
         layout.separator()
         layout.operator("screen.area_dupli")
-        layout.operator("screen.screen_full_area", text="Toggle Maximize Area")
-        layout.operator("screen.screen_full_area").use_hide_panels = True
+        layout.operator("screen.screen_full_area")
+        layout.operator("screen.screen_full_area", text="Toggle Fullscreen Area").use_hide_panels = True
 
 
 class NLA_MT_select(Menu):

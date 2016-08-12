@@ -80,7 +80,6 @@ typedef struct DupliContext {
 
 	int persistent_id[MAX_DUPLI_RECUR];
 	int level;
-	int index;
 
 	const struct DupliGenerator *gen;
 
@@ -851,7 +850,7 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
 	if (part == NULL)
 		return;
 
-	if (!psys_check_enabled(par, psys))
+	if (!psys_check_enabled(par, psys, (ctx->eval_ctx->mode == DAG_EVAL_RENDER)))
 		return;
 
 	if (!for_render)

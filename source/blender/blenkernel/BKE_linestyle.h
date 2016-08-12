@@ -54,6 +54,8 @@ FreestyleLineStyle *BKE_linestyle_new(struct Main *bmain, const char *name);
 void                BKE_linestyle_free(FreestyleLineStyle *linestyle);
 FreestyleLineStyle *BKE_linestyle_copy(struct Main *bmain, FreestyleLineStyle *linestyle);
 
+void BKE_linestyle_make_local(struct Main *bmain, struct FreestyleLineStyle *linestyle, const bool lib_local);
+
 FreestyleLineStyle *BKE_linestyle_active_from_scene(struct Scene *scene);
 
 LineStyleModifier *BKE_linestyle_color_modifier_add(FreestyleLineStyle *linestyle, const char *name, int type);
@@ -78,8 +80,6 @@ void BKE_linestyle_geometry_modifier_move(FreestyleLineStyle *linestyle, LineSty
 
 void BKE_linestyle_modifier_list_color_ramps(FreestyleLineStyle *linestyle, ListBase *listbase);
 char *BKE_linestyle_path_to_color_ramp(FreestyleLineStyle *linestyle, struct ColorBand *color_ramp);
-
-void BKE_linestyle_target_object_unlink(FreestyleLineStyle *linestyle, struct Object *ob);
 
 bool BKE_linestyle_use_textures(FreestyleLineStyle *linestyle, const bool use_shading_nodes);
 

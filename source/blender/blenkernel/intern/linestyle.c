@@ -125,26 +125,25 @@ FreestyleLineStyle *BKE_linestyle_new(struct Main *bmain, const char *name)
 	return linestyle;
 }
 
+/** Free (or release) any data used by this linestyle (does not free the linestyle itself). */
 void BKE_linestyle_free(FreestyleLineStyle *linestyle)
 {
 	LineStyleModifier *m;
-
-	MTex *mtex;
 	int a;
 
+	BKE_animdata_free(&linestyle->id, false);
+
 	for (a = 0; a < MAX_MTEX; a++) {
-		mtex = linestyle->mtex[a];
-		if (mtex && mtex->tex)
-			id_us_min(&mtex->tex->id);
-		if (mtex)
-			MEM_freeN(mtex);
+		MEM_SAFE_FREE(linestyle->mtex[a]);
 	}
+
+	/* is no lib link block, but linestyle extension */
 	if (linestyle->nodetree) {
 		ntreeFreeTree(linestyle->nodetree);
 		MEM_freeN(linestyle->nodetree);
+		linestyle->nodetree = NULL;
 	}
 
-	BKE_animdata_free(&linestyle->id);
 	while ((m = (LineStyleModifier *)linestyle->color_modifiers.first))
 		BKE_linestyle_color_modifier_remove(linestyle, m);
 	while ((m = (LineStyleModifier *)linestyle->alpha_modifiers.first))
@@ -172,7 +171,7 @@ FreestyleLineStyle *BKE_linestyle_copy(struct Main *bmain, FreestyleLineStyle *l
 		}
 	}
 	if (linestyle->nodetree) {
-		new_linestyle->nodetree = ntreeCopyTree(linestyle->nodetree);
+		new_linestyle->nodetree = ntreeCopyTree(bmain, linestyle->nodetree);
 	}
 
 	new_linestyle->r = linestyle->r;
@@ -219,11 +218,14 @@ FreestyleLineStyle *BKE_linestyle_copy(struct Main *bmain, FreestyleLineStyle *l
 	for (m = (LineStyleModifier *)linestyle->geometry_modifiers.first; m; m = m->next)
 		BKE_linestyle_geometry_modifier_copy(new_linestyle, m);
 
-	if (linestyle->id.lib) {
-		BKE_id_lib_local_paths(G.main, linestyle->id.lib, &new_linestyle->id);
-	}
+	BKE_id_copy_ensure_local(bmain, &linestyle->id, &new_linestyle->id);
 
 	return new_linestyle;
+}
+
+void BKE_linestyle_make_local(struct Main *bmain, FreestyleLineStyle *linestyle, const bool lib_local)
+{
+	BKE_id_make_local_generic(bmain, &linestyle->id, true, lib_local);
 }
 
 FreestyleLineStyle *BKE_linestyle_active_from_scene(Scene *scene)
@@ -1450,33 +1452,6 @@ char *BKE_linestyle_path_to_color_ramp(FreestyleLineStyle *linestyle, ColorBand 
 	}
 	printf("BKE_linestyle_path_to_color_ramp: No color ramps correspond to the given pointer.\n");
 	return NULL;
-}
-
-void BKE_linestyle_target_object_unlink(FreestyleLineStyle *linestyle, struct Object *ob)
-{
-	LineStyleModifier *m;
-
-	for (m = (LineStyleModifier *)linestyle->color_modifiers.first; m; m = m->next) {
-		if (m->type == LS_MODIFIER_DISTANCE_FROM_OBJECT) {
-			if (((LineStyleColorModifier_DistanceFromObject *)m)->target == ob) {
-				((LineStyleColorModifier_DistanceFromObject *)m)->target = NULL;
-			}
-		}
-	}
-	for (m = (LineStyleModifier *)linestyle->alpha_modifiers.first; m; m = m->next) {
-		if (m->type == LS_MODIFIER_DISTANCE_FROM_OBJECT) {
-			if (((LineStyleAlphaModifier_DistanceFromObject *)m)->target == ob) {
-				((LineStyleAlphaModifier_DistanceFromObject *)m)->target = NULL;
-			}
-		}
-	}
-	for (m = (LineStyleModifier *)linestyle->thickness_modifiers.first; m; m = m->next) {
-		if (m->type == LS_MODIFIER_DISTANCE_FROM_OBJECT) {
-			if (((LineStyleThicknessModifier_DistanceFromObject *)m)->target == ob) {
-				((LineStyleThicknessModifier_DistanceFromObject *)m)->target = NULL;
-			}
-		}
-	}
 }
 
 bool BKE_linestyle_use_textures(FreestyleLineStyle *linestyle, const bool use_shading_nodes)

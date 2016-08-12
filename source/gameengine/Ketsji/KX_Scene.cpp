@@ -172,6 +172,7 @@ KX_Scene::KX_Scene(class SCA_IInputDevice* keyboarddevice,
 	m_activity_culling = false;
 	m_suspend = false;
 	m_isclearingZbuffer = true;
+	m_isShadowDone = false;
 	m_tempObjectList = new CListValue();
 	m_objectlist = new CListValue();
 	m_parentlist = new CListValue();
@@ -1664,7 +1665,7 @@ static void update_anim_thread_func(TaskPool *pool, void *taskdata, int UNUSED(t
 
 		// Only do deformers here if they are not parented to an armature, otherwise the armature will
 		// handle updating its children
-		if (gameobj->GetDeformer() && (!parent || (parent && parent->GetGameObjectType() != SCA_IObject::OBJ_ARMATURE)))
+		if (gameobj->GetDeformer() && (!parent || parent->GetGameObjectType() != SCA_IObject::OBJ_ARMATURE))
 			gameobj->GetDeformer()->Update();
 
 		for (int j=0; j<children->GetCount(); ++j) {
@@ -1784,7 +1785,7 @@ void KX_Scene::UpdateObjectLods(void)
 
 	for (int i = 0; i < this->GetObjectList()->GetCount(); i++) {
 		gameobj = (KX_GameObject*) GetObjectList()->GetValue(i);
-		if (!gameobj->GetCulled()){
+		if (!gameobj->GetCulled()) {
 			gameobj->UpdateLod(cam_pos);
 		}
 	}

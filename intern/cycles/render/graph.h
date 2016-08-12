@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Blender Foundation
+ * Copyright 2011-2016 Blender Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,9 @@
 
 #ifndef __GRAPH_H__
 #define __GRAPH_H__
+
+#include "node.h"
+#include "node_type.h"
 
 #include "kernel_types.h"
 
@@ -38,23 +41,7 @@ class ShaderGraph;
 class SVMCompiler;
 class OSLCompiler;
 class OutputNode;
-
-/* Socket Type
- *
- * Data type for inputs and outputs */
-
-enum ShaderSocketType {
-	SHADER_SOCKET_UNDEFINED,
-	
-	SHADER_SOCKET_FLOAT,
-	SHADER_SOCKET_INT,
-	SHADER_SOCKET_COLOR,
-	SHADER_SOCKET_VECTOR,
-	SHADER_SOCKET_POINT,
-	SHADER_SOCKET_NORMAL,
-	SHADER_SOCKET_CLOSURE,
-	SHADER_SOCKET_STRING
-};
+class ConstantFolder;
 
 /* Bump
  *
@@ -86,30 +73,6 @@ enum ShaderNodeSpecialType {
 	SHADER_SPECIAL_TYPE_BUMP,
 };
 
-/* Enum
- *
- * Utility class for enum values. */
-
-class ShaderEnum {
-public:
-	bool empty() const { return left.empty(); }
-	void insert(const char *x, int y) {
-		left[ustring(x)] = y;
-		right[y] = ustring(x);
-	}
-
-	bool exists(ustring x) { return left.find(x) != left.end(); }
-	bool exists(int y) { return right.find(y) != right.end(); }
-
-	int operator[](const char *x) { return left[ustring(x)]; }
-	int operator[](ustring x) { return left[x]; }
-	ustring operator[](int y) { return right[y]; }
-
-protected:
-	map<ustring, int> left;
-	map<int, ustring> right;
-};
-
 /* Input
  *
  * Input socket for a shader node. May be linked to an output or not. If not
@@ -118,39 +81,21 @@ protected:
 
 class ShaderInput {
 public:
-	enum DefaultValue {
-		TEXTURE_GENERATED,
-		TEXTURE_UV,
-		INCOMING,
-		NORMAL,
-		POSITION,
-		TANGENT,
-		NONE
-	};
+	ShaderInput(const SocketType& socket_type_, ShaderNode* parent_)
+	: socket_type(socket_type_), parent(parent_), link(NULL), stack_offset(SVM_STACK_INVALID)
+	{}
 
-	enum Usage {
-		USE_SVM = 1,
-		USE_OSL = 2,
-		USE_ALL = USE_SVM|USE_OSL
-	};
+	ustring name() { return socket_type.ui_name; }
+	int flags() { return socket_type.flags; }
+	SocketType::Type type() { return socket_type.type; }
 
-	ShaderInput(ShaderNode *parent, const char *name, ShaderSocketType type);
-	void set(const float3& v) { value = v; }
-	void set(float f) { value = make_float3(f, 0, 0); }
-	void set(const ustring v) { value_string = v; }
+	void set(float f) { ((Node*)parent)->set(socket_type, f); }
+	void set(float3 f) { ((Node*)parent)->set(socket_type, f); }
 
-	const char *name;
-	ShaderSocketType type;
-
+	const SocketType& socket_type;
 	ShaderNode *parent;
 	ShaderOutput *link;
-
-	DefaultValue default_value;
-	float3 value;
-	ustring value_string;
-
 	int stack_offset; /* for SVM compiler */
-	int usage;
 };
 
 /* Output
@@ -159,14 +104,16 @@ public:
 
 class ShaderOutput {
 public:
-	ShaderOutput(ShaderNode *parent, const char *name, ShaderSocketType type);
+	ShaderOutput(const SocketType& socket_type_, ShaderNode* parent_)
+	: socket_type(socket_type_), parent(parent_), stack_offset(SVM_STACK_INVALID)
+	{}
 
-	const char *name;
+	ustring name() { return socket_type.ui_name; }
+	SocketType::Type type() { return socket_type.type; }
+
+	const SocketType& socket_type;
 	ShaderNode *parent;
-	ShaderSocketType type;
-
 	vector<ShaderInput*> links;
-
 	int stack_offset; /* for SVM compiler */
 };
 
@@ -175,18 +122,17 @@ public:
  * Shader node in graph, with input and output sockets. This is the virtual
  * base class for all node types. */
 
-class ShaderNode {
+class ShaderNode : public Node {
 public:
-	explicit ShaderNode(const char *name);
+	explicit ShaderNode(const NodeType *type);
 	virtual ~ShaderNode();
+
+	void create_inputs_outputs(const NodeType *type);
 
 	ShaderInput *input(const char *name);
 	ShaderOutput *output(const char *name);
-
-	ShaderInput *add_input(const char *name, ShaderSocketType type, float value=0.0f, int usage=ShaderInput::USE_ALL);
-	ShaderInput *add_input(const char *name, ShaderSocketType type, float3 value, int usage=ShaderInput::USE_ALL);
-	ShaderInput *add_input(const char *name, ShaderSocketType type, ShaderInput::DefaultValue value, int usage=ShaderInput::USE_ALL);
-	ShaderOutput *add_output(const char *name, ShaderSocketType type);
+	ShaderInput *input(ustring name);
+	ShaderOutput *output(ustring name);
 
 	virtual ShaderNode *clone() const = 0;
 	virtual void attributes(Shader *shader, AttributeRequestSet *attributes);
@@ -195,7 +141,7 @@ public:
 
 	/* ** Node optimization ** */
 	/* Check whether the node can be replaced with single constant. */
-	virtual bool constant_fold(ShaderGraph * /*graph*/, ShaderOutput * /*socket*/, float3 * /*optimized_value*/) { return false; }
+	virtual void constant_fold(const ConstantFolder& /*folder*/) {}
 
 	/* Simplify settings used by artists to the ones which are simpler to
 	 * evaluate in the kernel but keep the final result unchanged.
@@ -213,7 +159,6 @@ public:
 	vector<ShaderInput*> inputs;
 	vector<ShaderOutput*> outputs;
 
-	ustring name; /* name, not required to be unique */
 	int id; /* index in graph node array */
 	ShaderBump bump; /* for bump mapping utility */
 	
@@ -249,23 +194,21 @@ public:
 	 * NOTE: If some node can't be de-duplicated for whatever reason it
 	 * is to be handled in the subclass.
 	 */
-	virtual bool equals(const ShaderNode *other)
-	{
-		return name == other->name &&
-		       bump == other->bump;
-	}
+	virtual bool equals(const ShaderNode& other);
 };
 
 
 /* Node definition utility macros */
 
 #define SHADER_NODE_CLASS(type) \
+	NODE_DECLARE; \
 	type(); \
 	virtual ShaderNode *clone() const { return new type(*this); } \
 	virtual void compile(SVMCompiler& compiler); \
 	virtual void compile(OSLCompiler& compiler); \
 
 #define SHADER_NODE_NO_CLONE_CLASS(type) \
+	NODE_DECLARE; \
 	type(); \
 	virtual void compile(SVMCompiler& compiler); \
 	virtual void compile(OSLCompiler& compiler); \
@@ -307,6 +250,7 @@ public:
 	OutputNode *output();
 
 	void connect(ShaderOutput *from, ShaderInput *to);
+	void disconnect(ShaderOutput *from);
 	void disconnect(ShaderInput *to);
 	void relink(ShaderNode *node, ShaderOutput *from, ShaderOutput *to);
 

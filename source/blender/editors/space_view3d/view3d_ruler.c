@@ -259,6 +259,37 @@ static bool view3d_ruler_pick(RulerInfo *ruler_info, const float mval[2],
 	}
 }
 
+/**
+ * Ensure the 'snap_context' is only cached while dragging,
+ * needed since the user may toggle modes between tool use.
+ */
+static void ruler_state_set(bContext *C, RulerInfo *ruler_info, int state)
+{
+	if (state == ruler_info->state) {
+		return;
+	}
+
+	/* always remove */
+	if (ruler_info->snap_context) {
+		ED_transform_snap_object_context_destroy(ruler_info->snap_context);
+		ruler_info->snap_context = NULL;
+	}
+
+	if (state == RULER_STATE_NORMAL) {
+		/* pass */
+	}
+	else if (state == RULER_STATE_DRAG) {
+		ruler_info->snap_context = ED_transform_snap_object_context_create_view3d(
+		        CTX_data_main(C), CTX_data_scene(C), SNAP_OBJECT_USE_CACHE,
+		        ruler_info->ar, CTX_wm_view3d(C));
+	}
+	else {
+		BLI_assert(0);
+	}
+
+	ruler_info->state = state;
+}
+
 #define RULER_ID "RulerData3D"
 static bool view3d_ruler_to_gpencil(bContext *C, RulerInfo *ruler_info)
 {
@@ -271,18 +302,18 @@ static bool view3d_ruler_to_gpencil(bContext *C, RulerInfo *ruler_info)
 	bool changed = false;
 
 	if (scene->gpd == NULL) {
-		scene->gpd = gpencil_data_addnew("GPencil");
+		scene->gpd = BKE_gpencil_data_addnew("GPencil");
 	}
 
 	gpl = BLI_findstring(&scene->gpd->layers, ruler_name, offsetof(bGPDlayer, info));
 	if (gpl == NULL) {
-		gpl = gpencil_layer_addnew(scene->gpd, ruler_name, false);
+		gpl = BKE_gpencil_layer_addnew(scene->gpd, ruler_name, false);
 		gpl->thickness = 1;
 		gpl->flag |= GP_LAYER_HIDE;
 	}
 
-	gpf = gpencil_layer_getframe(gpl, CFRA, true);
-	free_gpencil_strokes(gpf);
+	gpf = BKE_gpencil_layer_getframe(gpl, CFRA, true);
+	BKE_gpencil_free_strokes(gpf);
 
 	for (ruler_item = ruler_info->items.first; ruler_item; ruler_item = ruler_item->next) {
 		bGPDspoint *pt;
@@ -296,6 +327,7 @@ static bool view3d_ruler_to_gpencil(bContext *C, RulerInfo *ruler_info)
 			for (j = 0; j < 3; j++) {
 				copy_v3_v3(&pt->x, ruler_item->co[j]);
 				pt->pressure = 1.0f;
+				pt->strength = 1.0f;
 				pt++;
 			}
 		}
@@ -305,6 +337,7 @@ static bool view3d_ruler_to_gpencil(bContext *C, RulerInfo *ruler_info)
 			for (j = 0; j < 3; j += 2) {
 				copy_v3_v3(&pt->x, ruler_item->co[j]);
 				pt->pressure = 1.0f;
+				pt->strength = 1.0f;
 				pt++;
 			}
 		}
@@ -327,7 +360,7 @@ static bool view3d_ruler_from_gpencil(bContext *C, RulerInfo *ruler_info)
 		gpl = BLI_findstring(&scene->gpd->layers, ruler_name, offsetof(bGPDlayer, info));
 		if (gpl) {
 			bGPDframe *gpf;
-			gpf = gpencil_layer_getframe(gpl, CFRA, false);
+			gpf = BKE_gpencil_layer_getframe(gpl, CFRA, false);
 			if (gpf) {
 				bGPDstroke *gps;
 				for (gps = gpf->strokes.first; gps; gps = gps->next) {
@@ -640,7 +673,9 @@ static void view3d_ruler_free(RulerInfo *ruler_info)
 {
 	BLI_freelistN(&ruler_info->items);
 
-	ED_transform_snap_object_context_destroy(ruler_info->snap_context);
+	if (ruler_info->snap_context) {
+		ED_transform_snap_object_context_destroy(ruler_info->snap_context);
+	}
 
 	MEM_freeN(ruler_info);
 }
@@ -679,9 +714,10 @@ static bool view3d_ruler_item_mousemove(
 
 			if (ED_transform_snap_object_project_view3d_mixed(
 			        ruler_info->snap_context,
+			        SCE_SELECT_FACE,
 			        &(const struct SnapObjectParams){
 			            .snap_select = SNAP_ALL,
-			            .snap_to_flag = SCE_SELECT_FACE,
+			            .use_object_edit_cage = true,
 			        },
 			        mval_fl, &dist_px, true,
 			        co, ray_normal))
@@ -691,6 +727,10 @@ static bool view3d_ruler_item_mousemove(
 				madd_v3_v3v3fl(ray_start, co, ray_normal, eps_bias);
 				ED_transform_snap_object_project_ray(
 				        ruler_info->snap_context,
+				        &(const struct SnapObjectParams){
+				            .snap_select = SNAP_ALL,
+				            .use_object_edit_cage = true,
+				        },
 				        ray_start, ray_normal, NULL,
 				        co_other, NULL);
 			}
@@ -703,9 +743,10 @@ static bool view3d_ruler_item_mousemove(
 
 			if (ED_transform_snap_object_project_view3d_mixed(
 			        ruler_info->snap_context,
+			        (SCE_SELECT_VERTEX | SCE_SELECT_EDGE) | (use_depth ? SCE_SELECT_FACE : 0),
 			        &(const struct SnapObjectParams){
 			            .snap_select = SNAP_ALL,
-			            .snap_to_flag = (SCE_SELECT_VERTEX | SCE_SELECT_EDGE) | (use_depth ? SCE_SELECT_FACE : 0),
+			            .use_object_edit_cage = true,
 			        },
 			        mval_fl, &dist_px, use_depth,
 			        co, NULL))
@@ -750,10 +791,6 @@ static int view3d_ruler_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSE
 	}
 
 	op->customdata = ruler_info;
-
-	ruler_info->snap_context = ED_transform_snap_object_context_create_view3d(
-	        CTX_data_main(C), CTX_data_scene(C), SNAP_OBJECT_USE_CACHE,
-	        ar, CTX_wm_view3d(C));
 
 	ruler_info->win = win;
 	ruler_info->sa = sa;
@@ -812,7 +849,7 @@ static int view3d_ruler_modal(bContext *C, wmOperator *op, const wmEvent *event)
 						ruler_info->snap_flag &= ~RULER_SNAP_OK;
 						do_draw = true;
 					}
-					ruler_info->state = RULER_STATE_NORMAL;
+					ruler_state_set(C, ruler_info, RULER_STATE_NORMAL);
 				}
 			}
 			else {
@@ -829,7 +866,7 @@ static int view3d_ruler_modal(bContext *C, wmOperator *op, const wmEvent *event)
 						RulerItem *ruler_item_prev = ruler_item_active_get(ruler_info);
 						RulerItem *ruler_item;
 						/* check if we want to drag an existing point or add a new one */
-						ruler_info->state = RULER_STATE_DRAG;
+						ruler_state_set(C, ruler_info, RULER_STATE_DRAG);
 
 						ruler_item = ruler_item_add(ruler_info);
 						ruler_item_active_set(ruler_info, ruler_item);
@@ -871,7 +908,7 @@ static int view3d_ruler_modal(bContext *C, wmOperator *op, const wmEvent *event)
 									ruler_item_active_set(ruler_info, ruler_item_pick);
 									ruler_item_pick->flag |= RULERITEM_USE_ANGLE;
 									ruler_item_pick->co_index = 1;
-									ruler_info->state = RULER_STATE_DRAG;
+									ruler_state_set(C, ruler_info, RULER_STATE_DRAG);
 
 									/* find the factor */
 									{
@@ -898,7 +935,7 @@ static int view3d_ruler_modal(bContext *C, wmOperator *op, const wmEvent *event)
 							else {
 								ruler_item_active_set(ruler_info, ruler_item_pick);
 								ruler_item_pick->co_index = co_index;
-								ruler_info->state = RULER_STATE_DRAG;
+								ruler_state_set(C, ruler_info, RULER_STATE_DRAG);
 
 								/* store the initial depth */
 								copy_v3_v3(ruler_info->drag_start_co, ruler_item_pick->co[ruler_item_pick->co_index]);

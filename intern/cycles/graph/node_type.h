@@ -21,6 +21,7 @@
 #include "util_map.h"
 #include "util_param.h"
 #include "util_string.h"
+#include "util_vector.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -38,6 +39,7 @@ struct SocketType
 		BOOLEAN,
 		FLOAT,
 		INT,
+		UINT,
 		COLOR,
 		VECTOR,
 		POINT,
@@ -94,13 +96,19 @@ struct SocketType
 	static size_t max_size();
 	static ustring type_name(Type type);
 	static void *zero_default_value();
+	static bool is_float3(Type type);
 };
 
 /* Node Type */
 
 struct NodeType
 {
-	explicit NodeType();
+	enum Type {
+		NONE,
+		SHADER
+	};
+
+	explicit NodeType(Type type = NONE);
 	~NodeType();
 
 	void register_input(ustring name, ustring ui_name, SocketType::Type type,
@@ -110,15 +118,18 @@ struct NodeType
 						int flags = 0, int extra_flags = 0);
 	void register_output(ustring name, ustring ui_name, SocketType::Type type);
 
+	const SocketType *find_input(ustring name) const;
+	const SocketType *find_output(ustring name) const;
+
 	typedef Node *(*CreateFunc)(const NodeType *type);
-	typedef unordered_map<ustring, SocketType, ustringHash> SocketMap;
 
 	ustring name;
-	SocketMap inputs;
-	SocketMap outputs;
+	Type type;
+	std::vector<SocketType> inputs;
+	std::vector<SocketType> outputs;
 	CreateFunc create;
 
-	static NodeType *add(const char *name, CreateFunc create);
+	static NodeType *add(const char *name, CreateFunc create, Type type = NONE);
 	static const NodeType *find(ustring name);
 	static unordered_map<ustring, NodeType, ustringHash>& types();
 };
@@ -144,7 +155,7 @@ const NodeType *structname::register_type()
 #define SOCKET_DEFINE(name, ui_name, default_value, datatype, TYPE, flags, ...) \
 	{ \
 		static datatype defval = default_value; \
-		assert(SOCKET_SIZEOF(T, name) == sizeof(datatype)); \
+		CHECK_TYPE(((T *)1)->name, datatype); \
 		type->register_input(ustring(#name), ustring(ui_name), TYPE, SOCKET_OFFSETOF(T, name), &defval, NULL, NULL, flags, ##__VA_ARGS__); \
 	}
 
@@ -152,6 +163,8 @@ const NodeType *structname::register_type()
 	SOCKET_DEFINE(name, ui_name, default_value, bool, SocketType::BOOLEAN, 0, ##__VA_ARGS__)
 #define SOCKET_INT(name, ui_name, default_value, ...) \
 	SOCKET_DEFINE(name, ui_name, default_value, int, SocketType::INT, 0, ##__VA_ARGS__)
+#define SOCKET_UINT(name, ui_name, default_value, ...) \
+	SOCKET_DEFINE(name, ui_name, default_value, uint, SocketType::UINT, 0, ##__VA_ARGS__)
 #define SOCKET_FLOAT(name, ui_name, default_value, ...) \
 	SOCKET_DEFINE(name, ui_name, default_value, float, SocketType::FLOAT, 0, ##__VA_ARGS__)
 #define SOCKET_COLOR(name, ui_name, default_value, ...) \

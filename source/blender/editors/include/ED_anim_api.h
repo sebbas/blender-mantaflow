@@ -74,6 +74,7 @@ typedef struct bAnimContext {
 	short mode;             /* editor->mode */
 	short spacetype;        /* sa->spacetype */
 	short regiontype;       /* active region -> type (channels or main) */
+	
 	struct ScrArea *sa;     /* editor host */
 	struct SpaceLink *sl;   /* editor data */
 	struct ARegion *ar;     /* region within editor */
@@ -85,6 +86,8 @@ typedef struct bAnimContext {
 	ListBase *markers;      /* active set of markers */
 	
 	struct ReportList *reports; /* pointer to current reports list */
+	
+	float yscale_fac;       /* scale factor for height of channels (i.e. based on the size of keyframes) */
 } bAnimContext;
 
 /* Main Data container types */
@@ -153,6 +156,7 @@ typedef enum eAnim_ChannelType {
 	ANIMTYPE_DSMAT,
 	ANIMTYPE_DSLAM,
 	ANIMTYPE_DSCAM,
+	ANIMTYPE_DSCACHEFILE,
 	ANIMTYPE_DSCUR,
 	ANIMTYPE_DSSKEY,
 	ANIMTYPE_DSWOR,
@@ -272,6 +276,7 @@ typedef enum eAnimFilter_Flags {
 #define FILTER_MAT_OBJD(ma)     (CHECK_TYPE_INLINE(ma, Material *), ((ma->flag & MA_DS_EXPAND)))
 #define FILTER_LAM_OBJD(la)     (CHECK_TYPE_INLINE(la, Lamp *), ((la->flag & LA_DS_EXPAND)))
 #define FILTER_CAM_OBJD(ca)     (CHECK_TYPE_INLINE(ca, Camera *), ((ca->flag & CAM_DS_EXPAND)))
+#define FILTER_CACHEFILE_OBJD(cf)     (CHECK_TYPE_INLINE(cf, CacheFile *), ((cf->flag & CACHEFILE_DS_EXPAND)))
 #define FILTER_CUR_OBJD(cu)     (CHECK_TYPE_INLINE(cu, Curve *), ((cu->flag & CU_DS_EXPAND)))
 #define FILTER_PART_OBJD(part)  (CHECK_TYPE_INLINE(part, ParticleSettings *), ((part->flag & PART_DS_EXPAND)))
 #define FILTER_MBALL_OBJD(mb)   (CHECK_TYPE_INLINE(mb, MetaBall *), ((mb->flag2 & MB_DS_EXPAND)))
@@ -331,11 +336,11 @@ typedef enum eAnimFilter_Flags {
 /* -------------- Channel Defines -------------- */
 
 /* channel heights */
-#define ACHANNEL_FIRST          (-0.8f * U.widget_unit)
-#define ACHANNEL_HEIGHT         (0.8f * U.widget_unit)
-#define ACHANNEL_HEIGHT_HALF    (0.4f * U.widget_unit)
-#define ACHANNEL_SKIP           (0.1f * U.widget_unit)
-#define ACHANNEL_STEP           (ACHANNEL_HEIGHT + ACHANNEL_SKIP)
+#define ACHANNEL_FIRST(ac)          (-0.8f * (ac)->yscale_fac * U.widget_unit)
+#define ACHANNEL_HEIGHT(ac)         (0.8f * (ac)->yscale_fac * U.widget_unit)
+#define ACHANNEL_HEIGHT_HALF(ac)    (0.4f * (ac)->yscale_fac * U.widget_unit)
+#define ACHANNEL_SKIP               (0.1f * U.widget_unit)
+#define ACHANNEL_STEP(ac)           (ACHANNEL_HEIGHT(ac) + ACHANNEL_SKIP)
 
 /* channel widths */
 #define ACHANNEL_NAMEWIDTH      (10 * U.widget_unit)
@@ -347,7 +352,6 @@ typedef enum eAnimFilter_Flags {
 /* -------------- NLA Channel Defines -------------- */
 
 /* NLA channel heights */
-// XXX: NLACHANNEL_FIRST isn't used?
 #define NLACHANNEL_FIRST                (-0.8f * U.widget_unit)
 #define NLACHANNEL_HEIGHT(snla)         ((snla && (snla->flag & SNLA_NOSTRIPCURVES)) ? (0.8f * U.widget_unit) : (1.2f * U.widget_unit))
 #define NLACHANNEL_HEIGHT_HALF(snla)    ((snla && (snla->flag & SNLA_NOSTRIPCURVES)) ? (0.4f * U.widget_unit) : (0.6f * U.widget_unit))
@@ -608,7 +612,7 @@ typedef enum eAnimUnitConv_Flags {
 	ANIM_UNITCONV_SKIPKNOTS  = (1 << 4),
 	/* Scale FCurve i a way it fits to -1..1 space */
 	ANIM_UNITCONV_NORMALIZE  = (1 << 5),
-	/* Only whennormalization is used: use scale factor from previous run,
+	/* Only when normalization is used: use scale factor from previous run,
 	 * prevents curves from jumping all over the place when tweaking them.
 	 */
 	ANIM_UNITCONV_NORMALIZE_FREEZE  = (1 << 6),

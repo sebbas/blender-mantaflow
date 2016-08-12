@@ -1138,7 +1138,7 @@ static bool ui_but_event_property_operator_string(const bContext *C, uiBut *but,
  * as new items are added to the menu later on. It also optimises efficiency -
  * a radial menu is best kept symmetrical, with as large an angle between
  * items as possible, so that the gestural mouse movements can be fast and inexact.
-
+ *
  * It starts off with two opposite sides for the first two items
  * then joined by the one below for the third (this way, even with three items,
  * the menu seems to still be 'in order' reading left to right). Then the fourth is
@@ -2576,9 +2576,11 @@ static void ui_set_but_soft_range(uiBut *but)
 	}
 	else if (but->poin && (but->pointype & UI_BUT_POIN_TYPES)) {
 		float value = ui_but_value_get(but);
-		CLAMP(value, but->hardmin, but->hardmax);
-		but->softmin = min_ff(but->softmin, value);
-		but->softmax = max_ff(but->softmax, value);
+		if (isfinite(value)) {
+			CLAMP(value, but->hardmin, but->hardmax);
+			but->softmin = min_ff(but->softmin, value);
+			but->softmax = max_ff(but->softmax, value);
+		}
 	}
 	else {
 		BLI_assert(0);
@@ -4323,7 +4325,7 @@ uiBut *uiDefSearchBut(uiBlock *block, void *arg, int retval, int icon, int maxle
 
 
 /**
- * \param sfunc, bfunc: both get it as \a arg.
+ * \param search_func, bfunc: both get it as \a arg.
  * \param arg: user value,
  * \param  active: when set, button opens with this item visible and selected.
  */

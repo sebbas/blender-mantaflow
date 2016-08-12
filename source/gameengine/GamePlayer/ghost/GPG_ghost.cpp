@@ -46,8 +46,8 @@
 #include "KX_PyConstraintBinding.h" // for PHY_SetActiveEnvironment
 
 /**********************************
-* Begin Blender include block
-**********************************/
+ * Begin Blender include block
+ **********************************/
 #ifdef __cplusplus
 extern "C"
 {
@@ -61,6 +61,7 @@ extern "C"
 
 #include "DNA_scene_types.h"
 #include "DNA_userdef_types.h"
+#include "DNA_genfile.h"
 
 #include "BLO_readfile.h"
 #include "BLO_runtime.h"
@@ -74,6 +75,7 @@ extern "C"
 #include "BKE_node.h"
 #include "BKE_report.h"
 #include "BKE_library.h"
+#include "BKE_library_remap.h"
 #include "BKE_modifier.h"
 #include "BKE_material.h"
 #include "BKE_text.h"
@@ -102,8 +104,8 @@ extern char datatoc_bmonofont_ttf[];
 #include "GPU_draw.h"
 
 /**********************************
-* End Blender include block
-**********************************/
+ * End Blender include block
+ **********************************/
 
 #include "BL_System.h"
 #include "GPG_Application.h"
@@ -444,6 +446,7 @@ int main(
 	int validArguments=0;
 	bool samplesParFound = false;
 	GHOST_TUns16 aasamples = 0;
+	int alphaBackground = 0;
 	
 #ifdef WIN32
 	char **argv;
@@ -461,8 +464,8 @@ int main(
 
 	/* Win32 Unicode Args */
 	/* NOTE: cannot use guardedalloc malloc here, as it's not yet initialized
-	*       (it depends on the args passed in, which is what we're getting here!)
-	*/
+	 *       (it depends on the args passed in, which is what we're getting here!)
+	 */
 	{
 		wchar_t **argv_16 = CommandLineToArgvW(GetCommandLineW(), &argc);
 		argv = (char**)malloc(argc * sizeof(char *));
@@ -489,6 +492,8 @@ int main(
 	// We don't use threads directly in the BGE, but we need to call this so things like
 	// freeing up GPU_Textures works correctly.
 	BLI_threadapi_init();
+
+	DNA_sdna_current_init();
 
 	RNA_init();
 
@@ -707,7 +712,7 @@ int main(
 			{
 				i++;
 				if ( (i + 1) <= validArguments )
-					parentWindow = atoi(argv[i++]);
+					parentWindow = (GHOST_TEmbedderWindowID)atoll(argv[i++]);
 				else {
 					error = true;
 					printf("error: too few options for parent window argument.\n");
@@ -836,6 +841,12 @@ int main(
 					}
 					i++;
 				}
+				break;
+			}
+			case 'a':   // allow window to blend with display background
+			{
+				i++;
+				alphaBackground = 1;
 				break;
 			}
 			default:  //not recognized
@@ -1041,7 +1052,7 @@ int main(
 #endif
 								{
 									app.startFullScreen(fullScreenWidth, fullScreenHeight, fullScreenBpp, fullScreenFrequency,
-									                    stereoWindow, stereomode, aasamples, (scene->gm.playerflag & GAME_PLAYER_DESKTOP_RESOLUTION));
+									                    stereoWindow, stereomode, alphaBackground, aasamples, (scene->gm.playerflag & GAME_PLAYER_DESKTOP_RESOLUTION));
 								}
 							}
 							else
@@ -1088,7 +1099,7 @@ int main(
 										app.startEmbeddedWindow(title, parentWindow, stereoWindow, stereomode, aasamples);
 									else
 										app.startWindow(title, windowLeft, windowTop, windowWidth, windowHeight,
-										                stereoWindow, stereomode, aasamples);
+										                stereoWindow, stereomode, alphaBackground, aasamples);
 
 									if (SYS_GetCommandLineInt(syshandle, "nomipmap", 0)) {
 										GPU_set_mipmap(0);

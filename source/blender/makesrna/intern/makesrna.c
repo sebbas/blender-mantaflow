@@ -227,6 +227,10 @@ static const char *rna_safe_id(const char *id)
 		return "operator_value";
 	else if (STREQ(id, "new"))
 		return "create";
+	else if (STREQ(id, "co_return")) {
+		/* MSVC2015, C++ uses for coroutines */
+		return "coord_return";
+	}
 
 	return id;
 }
@@ -466,7 +470,7 @@ static const char *rna_parameter_type_name(PropertyRNA *parm)
 		}
 		case PROP_COLLECTION:
 		{
-			return "ListBase";
+			return "CollectionListBase";
 		}
 		default:
 			return "<error, no type specified>";
@@ -3297,6 +3301,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
 	{"rna_armature.c", "rna_armature_api.c", RNA_def_armature},
 	{"rna_boid.c", NULL, RNA_def_boid},
 	{"rna_brush.c", NULL, RNA_def_brush},
+	{"rna_cachefile.c", NULL, RNA_def_cachefile},
 	{"rna_camera.c", "rna_camera_api.c", RNA_def_camera},
 	{"rna_cloth.c", NULL, RNA_def_cloth},
 	{"rna_color.c", NULL, RNA_def_color},

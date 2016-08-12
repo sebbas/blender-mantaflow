@@ -168,7 +168,7 @@ int ED_operator_screen_mainwinactive(bContext *C)
 int ED_operator_scene_editable(bContext *C)
 {
 	Scene *scene = CTX_data_scene(C);
-	if (scene && scene->id.lib == NULL)
+	if (scene && !ID_IS_LINKED_DATABLOCK(scene))
 		return 1;
 	return 0;
 }
@@ -178,7 +178,7 @@ int ED_operator_objectmode(bContext *C)
 	Scene *scene = CTX_data_scene(C);
 	Object *obact = CTX_data_active_object(C);
 
-	if (scene == NULL || scene->id.lib)
+	if (scene == NULL || ID_IS_LINKED_DATABLOCK(scene))
 		return 0;
 	if (CTX_data_edit_object(C))
 		return 0;
@@ -279,7 +279,7 @@ int ED_operator_node_editable(bContext *C)
 {
 	SpaceNode *snode = CTX_wm_space_node(C);
 	
-	if (snode && snode->edittree && snode->edittree->id.lib == NULL)
+	if (snode && snode->edittree && !ID_IS_LINKED_DATABLOCK(snode->edittree))
 		return 1;
 	
 	return 0;
@@ -341,20 +341,20 @@ int ED_operator_object_active(bContext *C)
 int ED_operator_object_active_editable(bContext *C)
 {
 	Object *ob = ED_object_active_context(C);
-	return ((ob != NULL) && !(ob->id.lib) && !ed_object_hidden(ob));
+	return ((ob != NULL) && !ID_IS_LINKED_DATABLOCK(ob) && !ed_object_hidden(ob));
 }
 
 int ED_operator_object_active_editable_mesh(bContext *C)
 {
 	Object *ob = ED_object_active_context(C);
-	return ((ob != NULL) && !(ob->id.lib) && !ed_object_hidden(ob) &&
-	        (ob->type == OB_MESH) && !(((ID *)ob->data)->lib));
+	return ((ob != NULL) && !ID_IS_LINKED_DATABLOCK(ob) && !ed_object_hidden(ob) &&
+	        (ob->type == OB_MESH) && !ID_IS_LINKED_DATABLOCK(ob->data));
 }
 
 int ED_operator_object_active_editable_font(bContext *C)
 {
 	Object *ob = ED_object_active_context(C);
-	return ((ob != NULL) && !(ob->id.lib) && !ed_object_hidden(ob) &&
+	return ((ob != NULL) && !ID_IS_LINKED_DATABLOCK(ob) && !ed_object_hidden(ob) &&
 	        (ob->type == OB_FONT));
 }
 
@@ -2479,7 +2479,7 @@ static void SCREEN_OT_screen_full_area(wmOperatorType *ot)
 {
 	PropertyRNA *prop;
 
-	ot->name = "Toggle Fullscreen Area";
+	ot->name = "Toggle Maximize Area";
 	ot->description = "Toggle display selected area as fullscreen/maximized";
 	ot->idname = "SCREEN_OT_screen_full_area";
 	
@@ -3355,24 +3355,24 @@ static int match_area_with_refresh(int spacetype, int refresh)
 	return 0;
 }
 
-static int match_region_with_redraws(int spacetype, int regiontype, int redraws)
+static int match_region_with_redraws(int spacetype, int regiontype, int redraws, bool from_anim_edit)
 {
 	if (regiontype == RGN_TYPE_WINDOW) {
 		
 		switch (spacetype) {
 			case SPACE_VIEW3D:
-				if (redraws & TIME_ALL_3D_WIN)
+				if ((redraws & TIME_ALL_3D_WIN) || from_anim_edit)
 					return 1;
 				break;
 			case SPACE_IPO:
 			case SPACE_ACTION:
 			case SPACE_NLA:
-				if (redraws & TIME_ALL_ANIM_WIN)
+				if ((redraws & TIME_ALL_ANIM_WIN) || from_anim_edit)
 					return 1;
 				break;
 			case SPACE_TIME:
 				/* if only 1 window or 3d windows, we do timeline too */
-				if (redraws & (TIME_ALL_ANIM_WIN | TIME_REGION | TIME_ALL_3D_WIN))
+				if ((redraws & (TIME_ALL_ANIM_WIN | TIME_REGION | TIME_ALL_3D_WIN)) || from_anim_edit)
 					return 1;
 				break;
 			case SPACE_BUTS:
@@ -3380,7 +3380,7 @@ static int match_region_with_redraws(int spacetype, int regiontype, int redraws)
 					return 1;
 				break;
 			case SPACE_SEQ:
-				if (redraws & (TIME_SEQ | TIME_ALL_ANIM_WIN))
+				if ((redraws & (TIME_SEQ | TIME_ALL_ANIM_WIN)) || from_anim_edit)
 					return 1;
 				break;
 			case SPACE_NODE:
@@ -3388,11 +3388,11 @@ static int match_region_with_redraws(int spacetype, int regiontype, int redraws)
 					return 1;
 				break;
 			case SPACE_IMAGE:
-				if (redraws & TIME_ALL_IMAGE_WIN)
+				if ((redraws & TIME_ALL_IMAGE_WIN) || from_anim_edit)
 					return 1;
 				break;
 			case SPACE_CLIP:
-				if (redraws & TIME_CLIPS)
+				if ((redraws & TIME_CLIPS) || from_anim_edit)
 					return 1;
 				break;
 				
@@ -3572,7 +3572,7 @@ static int screen_animation_step(bContext *C, wmOperator *UNUSED(op), const wmEv
 					if (ar == sad->ar) {
 						redraw = true;
 					}
-					else if (match_region_with_redraws(sa->spacetype, ar->regiontype, sad->redraws)) {
+					else if (match_region_with_redraws(sa->spacetype, ar->regiontype, sad->redraws, sad->from_anim_edit)) {
 						redraw = true;
 					}
 
@@ -3955,7 +3955,7 @@ static int scene_new_exec(bContext *C, wmOperator *op)
 		newscene = BKE_scene_add(bmain, DATA_("Scene"));
 	}
 	else { /* different kinds of copying */
-		newscene = BKE_scene_copy(scene, type);
+		newscene = BKE_scene_copy(bmain, scene, type);
 
 		/* these can't be handled in blenkernel currently, so do them here */
 		if (type == SCE_COPY_LINK_DATA) {

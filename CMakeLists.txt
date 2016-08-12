@@ -229,6 +229,11 @@ option(WITH_BULLET        "Enable Bullet (Physics Engine)" ON)
 option(WITH_SYSTEM_BULLET "Use the systems bullet library (currently unsupported due to missing features in upstream!)" )
 mark_as_advanced(WITH_SYSTEM_BULLET)
 option(WITH_GAMEENGINE    "Enable Game Engine" ${_init_GAMEENGINE})
+if(APPLE)
+	set(WITH_GAMEENGINE_DECKLINK OFF)
+else()
+	option(WITH_GAMEENGINE_DECKLINK "Support BlackMagicDesign DeckLink cards in the Game Engine" ON)
+endif()
 option(WITH_PLAYER        "Build Player" OFF)
 option(WITH_OPENCOLORIO   "Enable OpenColorIO color management" ${_init_OPENCOLORIO})
 option(WITH_MOD_MANTA     "Enable Mantaflow Framework" ON)
@@ -274,6 +279,7 @@ endif()
 if(WITH_X11)
 	option(WITH_X11_XINPUT    "Enable X11 Xinput (tablet support and unicode input)"  ON)
 	option(WITH_X11_XF86VMODE "Enable X11 video mode switching"                       ON)
+	option(WITH_X11_ALPHA     "Enable X11 transparent background"                     ON)
 endif()
 
 if(UNIX AND NOT APPLE)
@@ -317,6 +323,10 @@ option(WITH_IMAGE_FRAMESERVER   "Enable image FrameServer Support for rendering"
 option(WITH_CODEC_AVI           "Enable Blenders own AVI file support (raw/jpeg)" ON)
 option(WITH_CODEC_FFMPEG        "Enable FFMPeg Support (http://ffmpeg.org)" ${_init_CODEC_FFMPEG})
 option(WITH_CODEC_SNDFILE       "Enable libsndfile Support (http://www.mega-nerd.com/libsndfile)" OFF)
+
+# Alembic support
+option(WITH_ALEMBIC             "Enable Alembic Support" OFF)
+option(WITH_ALEMBIC_HDF5        "Enable Legacy Alembic Support (not officially supported)" OFF)
 
 if(APPLE)
 	option(WITH_CODEC_QUICKTIME     "Enable Quicktime Support" ON)
@@ -388,6 +398,7 @@ option(WITH_CYCLES					"Enable Cycles Render Engine" ON)
 option(WITH_CYCLES_STANDALONE		"Build Cycles standalone application" OFF)
 option(WITH_CYCLES_STANDALONE_GUI	"Build Cycles standalone with GUI" OFF)
 option(WITH_CYCLES_OSL				"Build Cycles with OSL support" ${_init_CYCLES_OSL})
+option(WITH_CYCLES_OPENSUBDIV		"Build Cycles with OpenSubdiv support" ON)
 option(WITH_CYCLES_CUDA_BINARIES	"Build Cycles CUDA binaries" OFF)
 set(CYCLES_CUDA_BINARIES_ARCH sm_20 sm_21 sm_30 sm_35 sm_37 sm_50 sm_52 CACHE STRING "CUDA architectures to build binaries for")
 mark_as_advanced(CYCLES_CUDA_BINARIES_ARCH)
@@ -715,6 +726,11 @@ if(WITH_OPENIMAGEIO)
 	set(WITH_IMAGE_TIFF ON)
 endif()
 
+# auto enable alembic linking dependencies
+if(WITH_ALEMBIC)
+	set(WITH_IMAGE_OPENEXR ON)
+endif()
+
 # don't store paths to libs for portable distribution
 if(WITH_INSTALL_PORTABLE)
 	set(CMAKE_SKIP_BUILD_RPATH TRUE)
@@ -724,6 +740,7 @@ if(WITH_GHOST_SDL OR WITH_HEADLESS)
 	set(WITH_X11           OFF)
 	set(WITH_X11_XINPUT    OFF)
 	set(WITH_X11_XF86VMODE OFF)
+	set(WITH_X11_ALPHA     OFF)
 	set(WITH_GHOST_XDND    OFF)
 	set(WITH_INPUT_IME     OFF)
 endif()
@@ -860,6 +877,16 @@ if(WITH_X11)
 			list(APPEND PLATFORM_LINKLIBS ${X11_Xxf86vmode_LIB})
 		else()
 			set(WITH_X11_XF86VMODE OFF)
+		endif()
+	endif()
+
+	if(WITH_X11_ALPHA)
+		find_library(X11_Xrender_LIB Xrender  ${X11_LIB_SEARCH_PATH})
+		mark_as_advanced(X11_Xrender_LIB)
+		if (X11_Xrender_LIB)
+			list(APPEND PLATFORM_LINKLIBS ${X11_Xrender_LIB})
+		else()
+			set(WITH_X11_ALPHA OFF)
 		endif()
 	endif()
 
@@ -1075,6 +1102,20 @@ if(UNIX AND NOT APPLE)
 		endif()
 	endif()
 
+	if(WITH_ALEMBIC)
+		find_package_wrapper(Alembic)
+
+		if(WITH_ALEMBIC_HDF5)
+			set(HDF5_ROOT_DIR ${LIBDIR}/hdf5)
+			find_package_wrapper(HDF5)
+		endif()
+
+		if(NOT ALEMBIC_FOUND OR (WITH_ALEMBIC_HDF5 AND NOT HDF5_FOUND))
+			set(WITH_ALEMBIC OFF)
+			set(WITH_ALEMBIC_HDF5 OFF)
+		endif()
+	endif()
+
 	if(WITH_BOOST)
 		# uses in build instructions to override include and library variables
 		if(NOT BOOST_CUSTOM)
@@ -1267,11 +1308,21 @@ elseif(WIN32)
 
 	if(MSVC)
 		# Minimum MSVC Version
-		set(_min_ver "18.0.31101")
-		if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS ${_min_ver})
-			message(FATAL_ERROR
-			        "Visual Studio 2013 (Update 4, ${_min_ver}) required, "
-			        "found (${CMAKE_CXX_COMPILER_VERSION})")
+		if(MSVC_VERSION EQUAL 1800)
+			set(_min_ver "18.0.31101")
+			if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS ${_min_ver})
+				message(FATAL_ERROR
+					"Visual Studio 2013 (Update 4, ${_min_ver}) required, "
+					"found (${CMAKE_CXX_COMPILER_VERSION})")
+			endif()
+		endif()
+		if(MSVC_VERSION EQUAL 1900)
+			set(_min_ver "19.0.24210")
+			if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS ${_min_ver})
+				message(FATAL_ERROR
+					"Visual Studio 2015 (Update 3, ${_min_ver}) required, "
+					"found (${CMAKE_CXX_COMPILER_VERSION})")
+			endif()
 		endif()
 		unset(_min_ver)
 
@@ -1300,10 +1351,8 @@ elseif(WIN32)
 		# MSVC11 needs _ALLOW_KEYWORD_MACROS to build
 		add_definitions(-D_ALLOW_KEYWORD_MACROS)
 
-		if(CMAKE_CL_64)
-			# We want to support Vista level ABI for x64
-			add_definitions(-D_WIN32_WINNT=0x600)
-		endif()
+		# We want to support Vista level ABI 
+		add_definitions(-D_WIN32_WINNT=0x600)
 
 		# Make cmake find the msvc redistributables
 		set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP TRUE)
@@ -1336,17 +1385,6 @@ elseif(WIN32)
 		endif()
 
 		set(PLATFORM_LINKFLAGS_DEBUG "/IGNORE:4099 /NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:libc.lib")
-
-		# Use dynamic loading for OpenMP
-		if(WITH_OPENMP)
-			if(MSVC_VERSION EQUAL 1800)
-				set(OPENMP_DLL_NAME "vcomp120")
-			else()
-				set(OPENMP_DLL_NAME "vcomp140")
-			endif()
-			set(PLATFORM_LINKFLAGS "${PLATFORM_LINKFLAGS} /DELAYLOAD:${OPENMP_DLL_NAME}.dll delayimp.lib")
-			set(PLATFORM_LINKFLAGS_DEBUG "${PLATFORM_LINKFLAGS_DEBUG} /DELAYLOAD:${OPENMP_DLL_NAME}d.dll delayimp.lib")
-		endif()
 
 		if(NOT DEFINED LIBDIR)
 
@@ -1643,6 +1681,14 @@ elseif(WIN32)
 			set(OPENVDB_INCLUDE_DIRS ${OPENVDB}/include ${TBB_INCLUDE_DIR})
 			set(OPENVDB_LIBRARIES optimized openvdb debug openvdb_d ${TBB_LIBRARIES} ${BLOSC_LIBRARIES})
 			set(OPENVDB_LIBPATH ${LIBDIR}/openvdb/lib)
+		endif()
+
+		if(WITH_ALEMBIC)
+			set(ALEMBIC ${LIBDIR}/alembic)
+			set(ALEMBIC_INCLUDE_DIR ${ALEMBIC}/include)
+			set(ALEMBIC_INCLUDE_DIRS ${ALEMBIC_INCLUDE_DIR})
+			set(ALEMBIC_LIBPATH ${ALEMBIC}/lib)
+			set(ALEMBIC_LIBRARIES optimized alembic debug alembic_d)
 		endif()
 
 		if(WITH_MOD_CLOTH_ELTOPO)
@@ -1944,6 +1990,23 @@ elseif(WIN32)
 			set(OPENVDB_DEFINITIONS)
 		endif()
 
+		if(WITH_ALEMBIC)
+			# TODO(sergey): For until someone drops by and compiles libraries for
+			# MinGW we allow users to compile their own Alembic library and use
+			# that via find_package(),
+			#
+			# Once precompiled libraries are there we'll use hardcoded locations.
+			find_package_wrapper(Alembic)
+			if(WITH_ALEMBIC_HDF5)
+				set(HDF5_ROOT_DIR ${LIBDIR}/hdf5)
+				find_package_wrapper(HDF5)
+			endif()
+			if(NOT ALEMBIC_FOUND OR (WITH_ALEMBIC_HDF5 AND NOT HDF5_FOUND))
+				set(WITH_ALEMBIC OFF)
+				set(WITH_ALEMBIC_HDF5 OFF)
+			endif()
+		endif()
+
 		set(PLATFORM_LINKFLAGS "-Xlinker --stack=2097152")
 
 		## DISABLE - causes linking errors 
@@ -1960,7 +2023,7 @@ elseif(WIN32)
 		set(OPENAL ${LIBDIR}/openal)
 		set(OPENALDIR ${LIBDIR}/openal)
 		set(OPENAL_INCLUDE_DIR ${OPENAL}/include)
-		if(MSVC12)
+		if(MSVC)
 			set(OPENAL_LIBRARY openal32)
 		else()
 			set(OPENAL_LIBRARY wrap_oal)
@@ -2026,6 +2089,14 @@ elseif(APPLE)
 		else()
 			set(WITH_OPENAL OFF)
 		endif()
+	endif()
+
+	if(WITH_ALEMBIC)
+		set(ALEMBIC ${LIBDIR}/alembic)
+		set(ALEMBIC_INCLUDE_DIR ${ALEMBIC}/include)
+		set(ALEMBIC_INCLUDE_DIRS ${ALEMBIC_INCLUDE_DIR})
+		set(ALEMBIC_LIBPATH ${ALEMBIC}/lib)
+		set(ALEMBIC_LIBRARIES Alembic)
 	endif()
 
 	if(WITH_OPENSUBDIV)
@@ -2437,6 +2508,11 @@ if(WITH_CYCLES)
 			)
 		endif()
 	endif()
+
+	if(WITH_CYCLES_OPENSUBDIV AND NOT WITH_OPENSUBDIV)
+		message(STATUS "WITH_CYCLES_OPENSUBDIV requires WITH_OPENSUBDIV to be ON, turning OFF")
+		set(WITH_CYCLES_OPENSUBDIV OFF)
+	endif()
 endif()
 
 if(WITH_INTERNATIONAL)
@@ -2489,8 +2565,6 @@ else()
 	endif()
 	unset(_SYSTEM_BIG_ENDIAN)
 endif()
-
-
 if(WITH_IMAGE_OPENJPEG)
 	if(WITH_SYSTEM_OPENJPEG)
 		# dealt with above
@@ -3153,6 +3227,14 @@ add_subdirectory(tests)
 # CPack for generating packages
 include(build_files/cmake/packaging.cmake)
 
+#-----------------------------------------------------------------------------
+# Use dynamic loading for OpenMP
+if(WITH_BLENDER)
+	openmp_delayload(blender)
+endif(WITH_BLENDER)
+if(WITH_PLAYER)
+	openmp_delayload(blenderplayer)
+endif(WITH_PLAYER)
 
 #-----------------------------------------------------------------------------
 # Print Final Configuration
@@ -3199,6 +3281,7 @@ if(FIRST_RUN)
 	info_cfg_option(WITH_FREESTYLE)
 	info_cfg_option(WITH_OPENCOLORIO)
 	info_cfg_option(WITH_OPENVDB)
+	info_cfg_option(WITH_ALEMBIC)
 
 	info_cfg_text("Compiler Options:")
 	info_cfg_option(WITH_BUILDINFO)
@@ -3207,6 +3290,7 @@ if(FIRST_RUN)
 
 	info_cfg_text("System Options:")
 	info_cfg_option(WITH_INSTALL_PORTABLE)
+	info_cfg_option(WITH_X11_ALPHA)
 	info_cfg_option(WITH_X11_XF86VMODE)
 	info_cfg_option(WITH_X11_XINPUT)
 	info_cfg_option(WITH_MEM_JEMALLOC)

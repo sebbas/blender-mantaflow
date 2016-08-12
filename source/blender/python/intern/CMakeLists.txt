@@ -50,6 +50,7 @@ set(SRC
 	gpu_offscreen.c
 	bpy.c
 	bpy_app.c
+	bpy_app_alembic.c
 	bpy_app_build_options.c
 	bpy_app_ffmpeg.c
 	bpy_app_handlers.c
@@ -83,6 +84,7 @@ set(SRC
 	gpu.h
 	bpy.h
 	bpy_app.h
+	bpy_app_alembic.h
 	bpy_app_build_options.h
 	bpy_app_ffmpeg.h
 	bpy_app_handlers.h
@@ -269,6 +271,10 @@ if(WITH_OPENCOLLADA)
 	add_definitions(-DWITH_COLLADA)
 endif()
 
+if(WITH_ALEMBIC)
+	add_definitions(-DWITH_ALEMBIC)
+endif()
+
 if(WITH_OPENCOLORIO)
 	add_definitions(-DWITH_OCIO)
 endif()
@@ -277,6 +283,13 @@ if(WITH_OPENVDB)
 	add_definitions(-DWITH_OPENVDB)
 	list(APPEND INC
 		../../../../intern/openvdb
+	)
+endif()
+
+if(WITH_ALEMBIC)
+	add_definitions(-DWITH_ALEMBIC)
+	list(APPEND INC
+		../../alembic
 	)
 endif()
 

@@ -27,7 +27,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 #include "BLI_math_base.h"
 #include "BLI_math_vector.h"
@@ -437,6 +436,10 @@ GPUShader *GPU_shader_create_ex(const char *vertexcode,
 #ifdef WITH_OPENSUBDIV
 	/* TODO(sergey): Find a better place for this. */
 	if (use_opensubdiv && GLEW_VERSION_4_1) {
+		glProgramUniform1i(shader->program,
+		                   glGetUniformLocation(shader->program, "FVarDataOffsetBuffer"),
+		                   30);  /* GL_TEXTURE30 */
+
 		glProgramUniform1i(shader->program,
 		                   glGetUniformLocation(shader->program, "FVarDataBuffer"),
 		                   31);  /* GL_TEXTURE31 */

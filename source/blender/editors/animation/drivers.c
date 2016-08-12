@@ -158,7 +158,7 @@ static int add_driver_with_target(
         ReportList *UNUSED(reports),
         ID *dst_id, const char dst_path[], int dst_index,
         ID *src_id, const char src_path[], int src_index,
-        PointerRNA *UNUSED(dst_ptr), PropertyRNA *dst_prop,
+        PointerRNA *dst_ptr, PropertyRNA *dst_prop,
         PointerRNA *src_ptr, PropertyRNA *src_prop,
         short flag, int driver_type)
 {
@@ -207,11 +207,15 @@ static int add_driver_with_target(
 		/* Create a driver variable for the target
 		 *   - For transform properties, we want to automatically use "transform channel" instead
 		 *     (The only issue is with quat rotations vs euler channels...)
+		 *   - To avoid problems with transform properties depending on the final transform that they
+		 *     control (thus creating pseudo-cycles - see T48734), we don't use transform channels
+		 *     when both the source and destinations are in same places.
 		 */
 		dvar = driver_add_new_variable(driver);
 		
 		if (ELEM(src_ptr->type, &RNA_Object, &RNA_PoseBone) &&  
-		    (STREQ(prop_name, "location") || STREQ(prop_name, "scale") || STRPREFIX(prop_name, "rotation_")))
+		    (STREQ(prop_name, "location") || STREQ(prop_name, "scale") || STRPREFIX(prop_name, "rotation_")) &&
+		    (src_ptr->data != dst_ptr->data))
 		{
 			/* Transform Channel */
 			DriverTarget *dtar;
@@ -753,7 +757,7 @@ EnumPropertyItem prop_driver_create_mapping_types[] = {
 	 "Create drivers for each pair of corresponding elements"},
 	 
 	{CREATEDRIVER_MAPPING_NONE_ALL, "NONE_ALL", ICON_HAND, "Manually Create Later",
-	 "Create drivers for all properites without assigning any targets yet"},
+	 "Create drivers for all properties without assigning any targets yet"},
 	{CREATEDRIVER_MAPPING_NONE,     "NONE_SINGLE", 0, "Manually Create Later (Single)",
 	 "Create driver for this property only and without assigning any targets yet"},
 	{0, NULL, 0, NULL, NULL}
@@ -866,7 +870,7 @@ static int add_driver_button_exec(bContext *C, wmOperator *op)
 }
 
 /* Show menu or create drivers */
-static int add_driver_button_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int add_driver_button_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
 	PropertyRNA *prop;
 	
@@ -877,7 +881,8 @@ static int add_driver_button_invoke(bContext *C, wmOperator *op, const wmEvent *
 	else {
 		/* Show menu */
 		// TODO: This should get filtered by the enum filter
-		return WM_menu_invoke(C, op, event);
+		/* important to execute in the region we're currently in */
+		return WM_menu_invoke_ex(C, op, WM_OP_INVOKE_DEFAULT);
 	}
 }
 

@@ -33,6 +33,7 @@
 
 #include "bpy_app.h"
 
+#include "bpy_app_alembic.h"
 #include "bpy_app_ffmpeg.h"
 #include "bpy_app_ocio.h"
 #include "bpy_app_oiio.h"
@@ -104,6 +105,7 @@ static PyStructSequence_Field app_info_fields[] = {
 	{(char *)"build_system", (char *)"Build system used"},
 
 	/* submodules */
+	{(char *)"alembic", (char *)"Alembic library information backend"},
 	{(char *)"ffmpeg", (char *)"FFmpeg library information backend"},
 	{(char *)"ocio", (char *)"OpenColorIO library information backend"},
 	{(char *)"oiio", (char *)"OpenImageIO library information backend"},
@@ -182,6 +184,7 @@ static PyObject *make_app_info(void)
 	SetBytesItem("Unknown");
 #endif
 
+	SetObjItem(BPY_app_alembic_struct());
 	SetObjItem(BPY_app_ffmpeg_struct());
 	SetObjItem(BPY_app_ocio_struct());
 	SetObjItem(BPY_app_oiio_struct());
@@ -236,7 +239,7 @@ static int bpy_app_debug_set(PyObject *UNUSED(self), PyObject *value, void *clos
 PyDoc_STRVAR(bpy_app_binary_path_python_doc,
 "String, the path to the python executable (read-only)"
 );
-static PyObject *bpy_app_binary_path_python_get(PyObject *UNUSED(self), void *UNUSED(closure))
+static PyObject *bpy_app_binary_path_python_get(PyObject *self, void *UNUSED(closure))
 {
 	/* refcount is held in BlenderAppType.tp_dict */
 	static PyObject *ret = NULL;
@@ -248,7 +251,7 @@ static PyObject *bpy_app_binary_path_python_get(PyObject *UNUSED(self), void *UN
 		        fullpath, sizeof(fullpath),
 		        PY_MAJOR_VERSION, PY_MINOR_VERSION);
 		ret = PyC_UnicodeFromByte(fullpath);
-		PyDict_SetItemString(BlenderAppType.tp_dict, "binary_path_python", ret);
+		PyDict_SetItem(BlenderAppType.tp_dict, PyDescr_NAME(self), ret);
 	}
 	else {
 		Py_INCREF(ret);
@@ -356,10 +359,10 @@ static PyGetSetDef bpy_app_getsets[] = {
 static void py_struct_seq_getset_init(void)
 {
 	/* tricky dynamic members, not to py-spec! */
-	PyGetSetDef *getset;
-
-	for (getset = bpy_app_getsets; getset->name; getset++) {
-		PyDict_SetItemString(BlenderAppType.tp_dict, getset->name, PyDescr_NewGetSet(&BlenderAppType, getset));
+	for (PyGetSetDef *getset = bpy_app_getsets; getset->name; getset++) {
+		PyObject *item = PyDescr_NewGetSet(&BlenderAppType, getset);
+		PyDict_SetItem(BlenderAppType.tp_dict, PyDescr_NAME(item), item);
+		Py_DECREF(item);
 	}
 }
 /* end dynamic bpy.app */

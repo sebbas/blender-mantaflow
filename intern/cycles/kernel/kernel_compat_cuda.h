@@ -31,17 +31,24 @@
 #endif
 
 #include <cuda.h>
+#include <cuda_fp16.h>
 #include <float.h>
 
 /* Qualifier wrappers for different names on different devices */
 
 #define ccl_device  __device__ __inline__
-#define ccl_device_inline  __device__ __inline__
+#if (__KERNEL_CUDA_VERSION__ == 80) && (__CUDA_ARCH__ < 500)
+#  define ccl_device_inline  __device__ __forceinline__
+#else
+#  define ccl_device_inline  __device__ __inline__
+#endif
 #define ccl_device_noinline  __device__ __noinline__
 #define ccl_global
 #define ccl_constant
 #define ccl_may_alias
 #define ccl_addr_space
+#define ccl_restrict __restrict__
+#define ccl_align(n) __align__(n)
 
 /* No assert supported for CUDA */
 

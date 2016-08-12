@@ -401,7 +401,7 @@ static void image_undo_end(void)
 			UndoImageTile *tmp_tile = tile->next;
 			deallocsize += allocsize * ((tile->use_float) ? sizeof(float) : sizeof(char));
 			MEM_freeN(tile->rect.pt);
-			BLI_freelinkN (lb, tile);
+			BLI_freelinkN(lb, tile);
 			tile = tmp_tile;
 		}
 		else {
@@ -1342,7 +1342,7 @@ static int texture_paint_toggle_poll(bContext *C)
 	Object *ob = CTX_data_active_object(C);
 	if (ob == NULL || ob->type != OB_MESH)
 		return 0;
-	if (!ob->data || ((ID *)ob->data)->lib)
+	if (!ob->data || ID_IS_LINKED_DATABLOCK(ob->data))
 		return 0;
 	if (CTX_data_edit_object(C))
 		return 0;

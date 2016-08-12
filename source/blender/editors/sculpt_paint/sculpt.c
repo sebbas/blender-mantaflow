@@ -1145,7 +1145,9 @@ static void calc_area_normal_and_center(
 /* Return modified brush strength. Includes the direction of the brush, positive
  * values pull vertices, negative values push. Uses tablet pressure and a
  * special multiplier found experimentally to scale the strength factor. */
-static float brush_strength(const Sculpt *sd, const StrokeCache *cache, const float feather, const UnifiedPaintSettings *ups)
+static float brush_strength(
+        const Sculpt *sd, const StrokeCache *cache,
+        const float feather, const UnifiedPaintSettings *ups)
 {
 	const Scene *scene = cache->vc->scene;
 	const Brush *brush = BKE_paint_brush((Paint *)&sd->paint);
@@ -1237,7 +1239,7 @@ static float brush_strength(const Sculpt *sd, const StrokeCache *cache, const fl
 
 /* Return a multiplier for brush strength on a particular vertex. */
 static float tex_strength(SculptSession *ss, Brush *br,
-                          const float point[3],
+                          const float brush_point[3],
                           const float len,
                           const short vno[3],
                           const float fno[3],
@@ -1249,6 +1251,9 @@ static float tex_strength(SculptSession *ss, Brush *br,
 	MTex *mtex = &br->mtex;
 	float avg = 1;
 	float rgba[4];
+	float point[3];
+
+	sub_v3_v3v3(point, brush_point, cache->plane_offset);
 
 	if (!mtex->tex) {
 		avg = 1;
@@ -3985,7 +3990,9 @@ static void sculpt_init_mirror_clipping(Object *ob, SculptSession *ss)
 }
 
 /* Initialize the stroke cache invariants from operator properties */
-static void sculpt_update_cache_invariants(bContext *C, Sculpt *sd, SculptSession *ss, wmOperator *op, const float mouse[2])
+static void sculpt_update_cache_invariants(
+        bContext *C, Sculpt *sd, SculptSession *ss,
+        wmOperator *op, const float mouse[2])
 {
 	StrokeCache *cache = MEM_callocN(sizeof(StrokeCache), "stroke cache");
 	Scene *scene = CTX_data_scene(C);
@@ -4448,7 +4455,9 @@ static void sculpt_raycast_detail_cb(PBVHNode *node, void *data_v, float *tmin)
 	}
 }
 
-static float sculpt_raycast_init(ViewContext *vc, const float mouse[2], float ray_start[3], float ray_end[3], float ray_normal[3], bool original)
+static float sculpt_raycast_init(
+        ViewContext *vc, const float mouse[2],
+        float ray_start[3], float ray_end[3], float ray_normal[3], bool original)
 {
 	float obimat[4][4];
 	float dist;
@@ -4956,8 +4965,9 @@ void sculpt_dyntopo_node_layers_add(SculptSession *ss)
 		cd_node_layer_index = CustomData_get_named_layer_index(&ss->bm->vdata, CD_PROP_INT, layer_id);
 	}
 
-	ss->cd_vert_node_offset = CustomData_get_n_offset(&ss->bm->vdata, CD_PROP_INT,
-	                                                  cd_node_layer_index - CustomData_get_layer_index(&ss->bm->vdata, CD_PROP_INT));
+	ss->cd_vert_node_offset = CustomData_get_n_offset(
+	        &ss->bm->vdata, CD_PROP_INT,
+	        cd_node_layer_index - CustomData_get_layer_index(&ss->bm->vdata, CD_PROP_INT));
 
 	ss->bm->vdata.layers[cd_node_layer_index].flag |= CD_FLAG_TEMPORARY;
 
@@ -4967,8 +4977,9 @@ void sculpt_dyntopo_node_layers_add(SculptSession *ss)
 		cd_node_layer_index = CustomData_get_named_layer_index(&ss->bm->pdata, CD_PROP_INT, layer_id);
 	}
 
-	ss->cd_face_node_offset = CustomData_get_n_offset(&ss->bm->pdata, CD_PROP_INT,
-	                                                  cd_node_layer_index - CustomData_get_layer_index(&ss->bm->pdata, CD_PROP_INT));
+	ss->cd_face_node_offset = CustomData_get_n_offset(
+	        &ss->bm->pdata, CD_PROP_INT,
+	        cd_node_layer_index - CustomData_get_layer_index(&ss->bm->pdata, CD_PROP_INT));
 
 	ss->bm->pdata.layers[cd_node_layer_index].flag |= CD_FLAG_TEMPORARY;
 }
@@ -5001,7 +5012,9 @@ void sculpt_dynamic_topology_enable(bContext *C)
 	BKE_mesh_mselect_clear(me);
 
 	/* Create triangles-only BMesh */
-	ss->bm = BM_mesh_create(&allocsize);
+	ss->bm = BM_mesh_create(
+	        &allocsize,
+	        &((struct BMeshCreateParams){.use_toolflags = false,}));
 
 	BM_mesh_bm_from_me(
 	        ss->bm, me, (&(struct BMeshFromMeshParams){
@@ -5011,7 +5024,9 @@ void sculpt_dynamic_topology_enable(bContext *C)
 	BM_data_layer_add(ss->bm, &ss->bm->vdata, CD_PAINT_MASK);
 	sculpt_dyntopo_node_layers_add(ss);
 	/* make sure the data for existing faces are initialized */
-	BM_mesh_normals_update(ss->bm);
+	if (me->totpoly != ss->bm->totface) {
+		BM_mesh_normals_update(ss->bm);
+	}
 
 	/* Enable dynamic topology */
 	me->flag |= ME_SCULPT_DYNAMIC_TOPOLOGY;
@@ -5088,6 +5103,8 @@ static int sculpt_dynamic_topology_toggle_exec(bContext *C, wmOperator *UNUSED(o
 	Object *ob = CTX_data_active_object(C);
 	SculptSession *ss = ob->sculpt;
 
+	WM_cursor_wait(1);
+
 	if (ss->bm) {
 		sculpt_undo_push_begin("Dynamic topology disable");
 		sculpt_undo_push_node(ob, NULL, SCULPT_UNDO_DYNTOPO_END);
@@ -5100,16 +5117,24 @@ static int sculpt_dynamic_topology_toggle_exec(bContext *C, wmOperator *UNUSED(o
 	}
 	sculpt_undo_push_end(C);
 
+	WM_cursor_wait(0);
+
 	return OPERATOR_FINISHED;
 }
 
+enum eDynTopoWarnFlag {
+	DYNTOPO_WARN_VDATA = (1 << 0),
+	DYNTOPO_WARN_EDATA = (1 << 1),
+	DYNTOPO_WARN_LDATA = (1 << 2),
+	DYNTOPO_WARN_MODIFIER = (1 << 3),
+};
 
-static int dyntopo_warning_popup(bContext *C, wmOperatorType *ot, bool vdata, bool modifiers)
+static int dyntopo_warning_popup(bContext *C, wmOperatorType *ot, enum eDynTopoWarnFlag flag)
 {
 	uiPopupMenu *pup = UI_popup_menu_begin(C, IFACE_("Warning!"), ICON_ERROR);
 	uiLayout *layout = UI_popup_menu_layout(pup);
 
-	if (vdata) {
+	if (flag & (DYNTOPO_WARN_VDATA | DYNTOPO_WARN_EDATA | DYNTOPO_WARN_LDATA)) {
 		const char *msg_error = TIP_("Vertex Data Detected!");
 		const char *msg = TIP_("Dyntopo will not preserve vertex colors, UVs, or other customdata");
 		uiItemL(layout, msg_error, ICON_INFO);
@@ -5117,7 +5142,7 @@ static int dyntopo_warning_popup(bContext *C, wmOperatorType *ot, bool vdata, bo
 		uiItemS(layout);
 	}
 
-	if (modifiers) {
+	if (flag & DYNTOPO_WARN_MODIFIER) {
 		const char *msg_error = TIP_("Generative Modifiers Detected!");
 		const char *msg = TIP_("Keeping the modifiers will increase polycount when returning to object mode");
 
@@ -5133,33 +5158,35 @@ static int dyntopo_warning_popup(bContext *C, wmOperatorType *ot, bool vdata, bo
 	return OPERATOR_INTERFACE;
 }
 
-
-static int sculpt_dynamic_topology_toggle_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static enum eDynTopoWarnFlag sculpt_dynamic_topology_check(bContext *C)
 {
 	Object *ob = CTX_data_active_object(C);
 	Mesh *me = ob->data;
 	SculptSession *ss = ob->sculpt;
 
-	if (!ss->bm) {
-		Scene *scene = CTX_data_scene(C);
-		ModifierData *md;
-		VirtualModifierData virtualModifierData;
-		int i;
-		bool vdata = false;
-		bool modifiers = false;
+	Scene *scene = CTX_data_scene(C);
+	enum eDynTopoWarnFlag flag = 0;
 
-		for (i = 0; i < CD_NUMTYPES; i++) {
-			if (!ELEM(i, CD_MVERT, CD_MEDGE, CD_MFACE, CD_MLOOP, CD_MPOLY, CD_PAINT_MASK, CD_ORIGINDEX) &&
-			    (CustomData_has_layer(&me->vdata, i) ||
-			     CustomData_has_layer(&me->edata, i) ||
-			     CustomData_has_layer(&me->ldata, i)))
-			{
-				vdata = true;
-				break;
+	BLI_assert(ss->bm == NULL);
+	UNUSED_VARS_NDEBUG(ss);
+
+	for (int i = 0; i < CD_NUMTYPES; i++) {
+		if (!ELEM(i, CD_MVERT, CD_MEDGE, CD_MFACE, CD_MLOOP, CD_MPOLY, CD_PAINT_MASK, CD_ORIGINDEX)) {
+			if (CustomData_has_layer(&me->vdata, i)) {
+				flag |= DYNTOPO_WARN_VDATA;
+			}
+			if (CustomData_has_layer(&me->edata, i)) {
+				flag |= DYNTOPO_WARN_EDATA;
+			}
+			if (CustomData_has_layer(&me->ldata, i)) {
+				flag |= DYNTOPO_WARN_LDATA;
 			}
 		}
+	}
 
-		md = modifiers_getVirtualModifierList(ob, &virtualModifierData);
+	{
+		VirtualModifierData virtualModifierData;
+		ModifierData *md = modifiers_getVirtualModifierList(ob, &virtualModifierData);
 
 		/* exception for shape keys because we can edit those */
 		for (; md; md = md->next) {
@@ -5167,14 +5194,26 @@ static int sculpt_dynamic_topology_toggle_invoke(bContext *C, wmOperator *op, co
 			if (!modifier_isEnabled(scene, md, eModifierMode_Realtime)) continue;
 
 			if (mti->type == eModifierTypeType_Constructive) {
-				modifiers = true;
+				flag |= DYNTOPO_WARN_MODIFIER;
 				break;
 			}
 		}
+	}
 
-		if (vdata || modifiers) {
+	return flag;
+}
+
+static int sculpt_dynamic_topology_toggle_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+{
+	Object *ob = CTX_data_active_object(C);
+	SculptSession *ss = ob->sculpt;
+
+	if (!ss->bm) {
+		enum eDynTopoWarnFlag flag = sculpt_dynamic_topology_check(C);
+
+		if (flag) {
 			/* The mesh has customdata that will be lost, let the user confirm this is OK */
-			return dyntopo_warning_popup(C, op->type, vdata, modifiers);
+			return dyntopo_warning_popup(C, op->type, flag);
 		}
 	}
 
@@ -5249,6 +5288,8 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *UNUSED(op))
 	sculpt_undo_push_node(ob, NULL, SCULPT_UNDO_DYNTOPO_SYMMETRIZE);
 	BM_log_before_all_removed(ss->bm, ss->bm_log);
 
+	BM_mesh_toolflags_set(ss->bm, true);
+
 	/* Symmetrize and re-triangulate */
 	BMO_op_callf(ss->bm, BMO_FLAG_DEFAULTS,
 	             "symmetrize input=%avef direction=%i  dist=%f",
@@ -5257,6 +5298,8 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *UNUSED(op))
 
 	/* bisect operator flags edges (keep tags clean for edge queue) */
 	BM_mesh_elem_hflag_disable_all(ss->bm, BM_EDGE, BM_ELEM_TAG, false);
+
+	BM_mesh_toolflags_set(ss->bm, false);
 
 	/* Finish undo */
 	BM_log_all_added(ss->bm, ss->bm_log);
@@ -5327,6 +5370,9 @@ static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
 			 * mode to ensure the undo stack stays in a consistent
 			 * state */
 			sculpt_dynamic_topology_toggle_exec(C, NULL);
+
+			/* store so we know to re-enable when entering sculpt mode */
+			me->flag |= ME_SCULPT_DYNAMIC_TOPOLOGY;
 		}
 
 		/* Leave sculptmode */
@@ -5339,12 +5385,6 @@ static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
 	else {
 		/* Enter sculptmode */
 		ob->mode |= mode_flag;
-
-		/* Remove dynamic-topology flag; this will be enabled if the
-		 * file was saved with dynamic topology on, but we don't
-		 * automatically re-enter dynamic-topology mode when loading a
-		 * file. */
-		me->flag &= ~ME_SCULPT_DYNAMIC_TOPOLOGY;
 
 		if (flush_recalc)
 			DAG_id_tag_update(&ob->id, OB_RECALC_DATA);
@@ -5399,6 +5439,52 @@ static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
 		BKE_paint_init(scene, ePaintSculpt, PAINT_CURSOR_SCULPT);
 
 		paint_cursor_start(C, sculpt_poll_view3d);
+
+		/* Check dynamic-topology flag; re-enter dynamic-topology mode when changing modes,
+		 * As long as no data was added that is not supported. */
+		if (me->flag & ME_SCULPT_DYNAMIC_TOPOLOGY) {
+			const char *message_unsupported = NULL;
+			if (me->totloop != me->totpoly * 3) {
+				message_unsupported = TIP_("non-triangle face");
+			}
+			else if (mmd != NULL) {
+				message_unsupported = TIP_("multi-res modifier");
+			}
+			else {
+				enum eDynTopoWarnFlag flag = sculpt_dynamic_topology_check(C);
+				if (flag == 0) {
+					/* pass */
+				}
+				else if (flag & DYNTOPO_WARN_VDATA) {
+					message_unsupported = TIP_("vertex data");
+				}
+				else if (flag & DYNTOPO_WARN_EDATA) {
+					message_unsupported = TIP_("edge data");
+				}
+				else if (flag & DYNTOPO_WARN_LDATA) {
+					message_unsupported = TIP_("face data");
+				}
+				else if (flag & DYNTOPO_WARN_MODIFIER) {
+					message_unsupported = TIP_("constructive modifier");
+				}
+				else {
+					BLI_assert(0);
+				}
+			}
+
+			if (message_unsupported == NULL) {
+				/* undo push is needed to prevent memory leak */
+				sculpt_undo_push_begin("Dynamic topology enable");
+				sculpt_dynamic_topology_enable(C);
+				sculpt_undo_push_node(ob, NULL, SCULPT_UNDO_DYNTOPO_BEGIN);
+			}
+			else {
+				BKE_reportf(op->reports, RPT_WARNING,
+				            "Dynamic Topology found: %s, disabled",
+				            message_unsupported);
+				me->flag &= ~ME_SCULPT_DYNAMIC_TOPOLOGY;
+			}
+		}
 	}
 
 	if (ob->derivedFinal) /* VBO no longer valid */
@@ -5592,7 +5678,8 @@ static void SCULPT_OT_sample_detail_size(wmOperatorType *ot)
 
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-	RNA_def_int_array(ot->srna, "location", 2, NULL, 0, SHRT_MAX, "Location", "Screen Coordinates of sampling", 0, SHRT_MAX);
+	RNA_def_int_array(ot->srna, "location", 2, NULL, 0, SHRT_MAX,
+	                  "Location", "Screen Coordinates of sampling", 0, SHRT_MAX);
 }
 
 

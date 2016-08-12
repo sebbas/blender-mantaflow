@@ -67,6 +67,8 @@
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_library.h"
+#include "BKE_library_query.h"
+#include "BKE_library_remap.h"
 #include "BKE_lattice.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
@@ -120,75 +122,31 @@ void BKE_armature_bonelist_free(ListBase *lb)
 	BLI_freelistN(lb);
 }
 
+/** Free (or release) any data used by this armature (does not free the armature itself). */
 void BKE_armature_free(bArmature *arm)
 {
-	if (arm) {
-		BKE_armature_bonelist_free(&arm->bonebase);
+	BKE_animdata_free(&arm->id, false);
 
-		/* free editmode data */
-		if (arm->edbo) {
-			BLI_freelistN(arm->edbo);
+	BKE_armature_bonelist_free(&arm->bonebase);
 
-			MEM_freeN(arm->edbo);
-			arm->edbo = NULL;
-		}
+	/* free editmode data */
+	if (arm->edbo) {
+		BLI_freelistN(arm->edbo);
 
-		/* free sketch */
-		if (arm->sketch) {
-			freeSketch(arm->sketch);
-			arm->sketch = NULL;
-		}
+		MEM_freeN(arm->edbo);
+		arm->edbo = NULL;
+	}
 
-		/* free animation data */
-		if (arm->adt) {
-			BKE_animdata_free(&arm->id);
-			arm->adt = NULL;
-		}
+	/* free sketch */
+	if (arm->sketch) {
+		freeSketch(arm->sketch);
+		arm->sketch = NULL;
 	}
 }
 
-void BKE_armature_make_local(bArmature *arm)
+void BKE_armature_make_local(Main *bmain, bArmature *arm, const bool lib_local)
 {
-	Main *bmain = G.main;
-	bool is_local = false, is_lib = false;
-	Object *ob;
-
-	if (arm->id.lib == NULL)
-		return;
-	if (arm->id.us == 1) {
-		id_clear_lib_data(bmain, &arm->id);
-		return;
-	}
-
-	for (ob = bmain->object.first; ob && ELEM(0, is_lib, is_local); ob = ob->id.next) {
-		if (ob->data == arm) {
-			if (ob->id.lib)
-				is_lib = true;
-			else
-				is_local = true;
-		}
-	}
-
-	if (is_local && is_lib == false) {
-		id_clear_lib_data(bmain, &arm->id);
-	}
-	else if (is_local && is_lib) {
-		bArmature *arm_new = BKE_armature_copy(arm);
-		arm_new->id.us = 0;
-
-		/* Remap paths of new ID using old library as base. */
-		BKE_id_lib_local_paths(bmain, arm->id.lib, &arm_new->id);
-
-		for (ob = bmain->object.first; ob; ob = ob->id.next) {
-			if (ob->data == arm) {
-				if (ob->id.lib == NULL) {
-					ob->data = arm_new;
-					id_us_plus(&arm_new->id);
-					id_us_min(&arm->id);
-				}
-			}
-		}
-	}
+	BKE_id_make_local_generic(bmain, &arm->id, true, lib_local);
 }
 
 static void copy_bonechildren(Bone *newBone, Bone *oldBone, Bone *actBone, Bone **newActBone)
@@ -213,13 +171,13 @@ static void copy_bonechildren(Bone *newBone, Bone *oldBone, Bone *actBone, Bone 
 	}
 }
 
-bArmature *BKE_armature_copy(bArmature *arm)
+bArmature *BKE_armature_copy(Main *bmain, bArmature *arm)
 {
 	bArmature *newArm;
 	Bone *oldBone, *newBone;
 	Bone *newActBone = NULL;
 
-	newArm = BKE_libblock_copy(&arm->id);
+	newArm = BKE_libblock_copy(bmain, &arm->id);
 	BLI_duplicatelist(&newArm->bonebase, &arm->bonebase);
 
 	/* Duplicate the childrens' lists */
@@ -236,9 +194,7 @@ bArmature *BKE_armature_copy(bArmature *arm)
 	newArm->act_edbone = NULL;
 	newArm->sketch = NULL;
 
-	if (arm->id.lib) {
-		BKE_id_lib_local_paths(G.main, arm->id.lib, &newArm->id);
-	}
+	BKE_id_copy_ensure_local(bmain, &arm->id, &newArm->id);
 
 	return newArm;
 }
@@ -640,6 +596,7 @@ void b_bone_spline_setup(bPoseChannel *pchan, int rest, Mat4 result_array[MAX_BB
 
 	{
 		const float circle_factor = length * (cubic_tangent_factor_circle_v3(h1, h2) / 0.75f);
+
 		const float hlength1 = bone->ease1 * circle_factor;
 		const float hlength2 = bone->ease2 * circle_factor;
 
@@ -1946,6 +1903,17 @@ static int rebuild_pose_bone(bPose *pose, Bone *bone, bPoseChannel *parchan, int
 	return counter;
 }
 
+/**
+ * Clear pointers of object's pose (needed in remap case, since we cannot always wait for a complete pose rebuild).
+ */
+void BKE_pose_clear_pointers(bPose *pose)
+{
+	for (bPoseChannel *pchan = pose->chanbase.first; pchan; pchan = pchan->next) {
+		pchan->bone = NULL;
+		pchan->child = NULL;
+	}
+}
+
 /* only after leave editmode, duplicating, validating older files, library syncing */
 /* NOTE: pose->flag is set for it */
 void BKE_pose_rebuild(Object *ob, bArmature *arm)
@@ -1966,10 +1934,7 @@ void BKE_pose_rebuild(Object *ob, bArmature *arm)
 	pose = ob->pose;
 
 	/* clear */
-	for (pchan = pose->chanbase.first; pchan; pchan = pchan->next) {
-		pchan->bone = NULL;
-		pchan->child = NULL;
-	}
+	BKE_pose_clear_pointers(pose);
 
 	/* first step, check if all channels are there */
 	for (bone = arm->bonebase.first; bone; bone = bone->next) {

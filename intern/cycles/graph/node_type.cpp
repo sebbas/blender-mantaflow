@@ -41,6 +41,7 @@ size_t SocketType::size(Type type)
 		case BOOLEAN: return sizeof(bool);
 		case FLOAT: return sizeof(float);
 		case INT: return sizeof(int);
+		case UINT: return sizeof(uint);
 		case COLOR: return sizeof(float3);
 		case VECTOR: return sizeof(float3);
 		case POINT: return sizeof(float3);
@@ -88,6 +89,7 @@ ustring SocketType::type_name(Type type)
 		ustring("boolean"),
 		ustring("float"),
 		ustring("int"),
+		ustring("uint"),
 		ustring("color"),
 		ustring("vector"),
 		ustring("point"),
@@ -114,9 +116,15 @@ ustring SocketType::type_name(Type type)
 	return names[(int)type];
 }
 
+bool SocketType::is_float3(Type type)
+{
+	return (type == COLOR || type == VECTOR || type == POINT || type == NORMAL);
+}
+
 /* Node Type */
 
-NodeType::NodeType()
+NodeType::NodeType(Type type_)
+: type(type_)
 {
 }
 
@@ -137,7 +145,7 @@ void NodeType::register_input(ustring name, ustring ui_name, SocketType::Type ty
 	socket.enum_values = enum_values;
 	socket.node_type = node_type;
 	socket.flags = flags | extra_flags;
-	inputs[name] = socket;
+	inputs.push_back(socket);
 }
 
 void NodeType::register_output(ustring name, ustring ui_name, SocketType::Type type)
@@ -151,7 +159,29 @@ void NodeType::register_output(ustring name, ustring ui_name, SocketType::Type t
 	socket.enum_values = NULL;
 	socket.node_type = NULL;
 	socket.flags = SocketType::LINKABLE;
-	outputs[name] = socket;
+	outputs.push_back(socket);
+}
+
+const SocketType *NodeType::find_input(ustring name) const
+{
+	foreach(const SocketType& socket, inputs) {
+		if(socket.name == name) {
+			return &socket;
+		}
+	}
+
+	return NULL;
+}
+
+const SocketType *NodeType::find_output(ustring name) const
+{
+	foreach(const SocketType& socket, outputs) {
+		if(socket.name == name) {
+			return &socket;
+		}
+	}
+
+	return NULL;
 }
 
 /* Node Type Registry */
@@ -162,7 +192,7 @@ unordered_map<ustring, NodeType, ustringHash>& NodeType::types()
 	return _types;
 }
 
-NodeType *NodeType::add(const char *name_, CreateFunc create_)
+NodeType *NodeType::add(const char *name_, CreateFunc create_, Type type_)
 {
 	ustring name(name_);
 
@@ -172,7 +202,7 @@ NodeType *NodeType::add(const char *name_, CreateFunc create_)
 		return NULL;
 	}
 
-	types()[name] = NodeType();
+	types()[name] = NodeType(type_);
 
 	NodeType *type = &types()[name];
 	type->name = name;

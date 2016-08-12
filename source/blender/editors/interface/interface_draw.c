@@ -181,7 +181,6 @@ void UI_draw_roundbox_shade_x(
 	coldown[1] = max_ff(0.0f, color[1] + shadedown);
 	coldown[2] = max_ff(0.0f, color[2] + shadedown);
 
-	glShadeModel(GL_SMOOTH);
 	glBegin(mode);
 
 	/* start with corner right-bottom */
@@ -260,7 +259,6 @@ void UI_draw_roundbox_shade_x(
 	}
 	
 	glEnd();
-	glShadeModel(GL_FLAT);
 }
 
 /* linear vertical shade within button or in outline */
@@ -291,7 +289,6 @@ void UI_draw_roundbox_shade_y(
 	colRight[1] = max_ff(0.0f, color[1] + shadeRight);
 	colRight[2] = max_ff(0.0f, color[2] + shadeRight);
 
-	glShadeModel(GL_SMOOTH);
 	glBegin(mode);
 
 	/* start with corner right-bottom */
@@ -367,7 +364,6 @@ void UI_draw_roundbox_shade_y(
 	}
 	
 	glEnd();
-	glShadeModel(GL_FLAT);
 }
 
 /* plain antialiased unfilled rectangle */
@@ -531,7 +527,6 @@ static void histogram_draw_one(
 	}
 	else {
 		/* under the curve */
-		glShadeModel(GL_FLAT);
 		glBegin(GL_TRIANGLE_STRIP);
 		glVertex2f(x, y);
 		glVertex2f(x, y + (data[0] * h));
@@ -739,24 +734,50 @@ void ui_draw_but_WAVEFORM(ARegion *ar, uiBut *but, uiWidgetColors *UNUSED(wcol),
 			CLAMP(max, rect.ymin, rect.ymax);
 			fdrawline(rect.xmax - 3, min, rect.xmax - 3, max);
 		}
+		/* RGB (3 channel) */
+		else if (scopes->wavefrm_mode == SCOPES_WAVEFRM_RGB) {
+			glBlendFunc(GL_ONE, GL_ONE);
 
-		/* RGB / YCC (3 channels) */
+			glEnableClientState(GL_VERTEX_ARRAY);
+
+			glPushMatrix();
+
+			glTranslatef(rect.xmin, yofs, 0.f);
+			glScalef(w, h, 0.f);
+
+			glColor3fv( colors_alpha[0] );
+			glVertexPointer(2, GL_FLOAT, 0, scopes->waveform_1);
+			glDrawArrays(GL_POINTS, 0, scopes->waveform_tot);
+
+			glColor3fv( colors_alpha[1] );
+			glVertexPointer(2, GL_FLOAT, 0, scopes->waveform_2);
+			glDrawArrays(GL_POINTS, 0, scopes->waveform_tot);
+
+			glColor3fv( colors_alpha[2] );
+			glVertexPointer(2, GL_FLOAT, 0, scopes->waveform_3);
+			glDrawArrays(GL_POINTS, 0, scopes->waveform_tot);
+
+			glDisableClientState(GL_VERTEX_ARRAY);
+			glPopMatrix();
+		}
+		/* PARADE / YCC (3 channels) */
 		else if (ELEM(scopes->wavefrm_mode,
-		              SCOPES_WAVEFRM_RGB,
+		              SCOPES_WAVEFRM_RGB_PARADE,
 		              SCOPES_WAVEFRM_YCC_601,
 		              SCOPES_WAVEFRM_YCC_709,
-		              SCOPES_WAVEFRM_YCC_JPEG))
+		              SCOPES_WAVEFRM_YCC_JPEG
+		              ))
 		{
-			int rgb = (scopes->wavefrm_mode == SCOPES_WAVEFRM_RGB);
-			
+			int rgb = (scopes->wavefrm_mode == SCOPES_WAVEFRM_RGB_PARADE);
+
 			glBlendFunc(GL_ONE, GL_ONE);
-			
+
 			glPushMatrix();
 			glEnableClientState(GL_VERTEX_ARRAY);
-			
+
 			glTranslatef(rect.xmin, yofs, 0.f);
 			glScalef(w3, h, 0.f);
-			
+
 			glColor3fv((rgb) ? colors_alpha[0] : colorsycc_alpha[0]);
 			glVertexPointer(2, GL_FLOAT, 0, scopes->waveform_1);
 			glDrawArrays(GL_POINTS, 0, scopes->waveform_tot);
@@ -765,19 +786,19 @@ void ui_draw_but_WAVEFORM(ARegion *ar, uiBut *but, uiWidgetColors *UNUSED(wcol),
 			glColor3fv((rgb) ? colors_alpha[1] : colorsycc_alpha[1]);
 			glVertexPointer(2, GL_FLOAT, 0, scopes->waveform_2);
 			glDrawArrays(GL_POINTS, 0, scopes->waveform_tot);
-			
+
 			glTranslatef(1.f, 0.f, 0.f);
 			glColor3fv((rgb) ? colors_alpha[2] : colorsycc_alpha[2]);
 			glVertexPointer(2, GL_FLOAT, 0, scopes->waveform_3);
 			glDrawArrays(GL_POINTS, 0, scopes->waveform_tot);
-			
+
 			glDisableClientState(GL_VERTEX_ARRAY);
 			glPopMatrix();
-
-			
-			/* min max */
+		}
+		/* min max */
+		if (scopes->wavefrm_mode != SCOPES_WAVEFRM_LUMA ) {
 			for (int c = 0; c < 3; c++) {
-				if (scopes->wavefrm_mode == SCOPES_WAVEFRM_RGB)
+				if (ELEM(scopes->wavefrm_mode, SCOPES_WAVEFRM_RGB_PARADE, SCOPES_WAVEFRM_RGB))
 					glColor3f(colors[c][0] * 0.75f, colors[c][1] * 0.75f, colors[c][2] * 0.75f);
 				else
 					glColor3f(colorsycc[c][0] * 0.75f, colorsycc[c][1] * 0.75f, colorsycc[c][2] * 0.75f);
@@ -1087,7 +1108,6 @@ void ui_draw_but_COLORBAND(uiBut *but, uiWidgetColors *UNUSED(wcol), const rcti 
 	GPU_basic_shader_bind(GPU_SHADER_USE_COLOR);
 
 	/* layer: color ramp */
-	glShadeModel(GL_FLAT);
 	glEnable(GL_BLEND);
 
 	CBData *cbd = coba->data;
@@ -1133,7 +1153,6 @@ void ui_draw_but_COLORBAND(uiBut *but, uiWidgetColors *UNUSED(wcol), const rcti 
 	glEnd();
 
 	glDisable(GL_BLEND);
-	glShadeModel(GL_SMOOTH);
 
 	/* layer: box outline */
 	glColor4f(0.0, 0.0, 0.0, 1.0);
@@ -1212,9 +1231,8 @@ void ui_draw_but_UNITVEC(uiBut *but, uiWidgetColors *wcol, const rcti *rect)
 		
 		qobj = gluNewQuadric();
 		gluQuadricDrawStyle(qobj, GLU_FILL);
-		glShadeModel(GL_SMOOTH);
+		GPU_basic_shader_bind(GPU_basic_shader_bound_options());
 		gluSphere(qobj, 100.0, 32, 24);
-		glShadeModel(GL_FLAT);
 		gluDeleteQuadric(qobj);
 		
 		glEndList();
@@ -1545,10 +1563,12 @@ void ui_draw_but_TRACKPREVIEW(ARegion *ar, uiBut *but, uiWidgetColors *UNUSED(wc
 			          BLI_rctf_size_x(&rect),
 			          BLI_rctf_size_y(&rect));
 
+			GPU_basic_shader_bind_enable(GPU_SHADER_LINE);
+
 			for (int a = 0; a < 2; a++) {
 				if (a == 1) {
-					glLineStipple(3, 0xaaaa);
-					glEnable(GL_LINE_STIPPLE);
+					GPU_basic_shader_bind_enable(GPU_SHADER_STIPPLE);
+					GPU_basic_shader_line_stipple(3, 0xAAAA);
 					UI_ThemeColor(TH_SEL_MARKER);
 				}
 				else {
@@ -1562,9 +1582,10 @@ void ui_draw_but_TRACKPREVIEW(ARegion *ar, uiBut *but, uiWidgetColors *UNUSED(wc
 				glVertex2f(0.0f, 10.0f);
 				glEnd();
 			}
+
+			GPU_basic_shader_bind_disable(GPU_SHADER_LINE | GPU_SHADER_STIPPLE);
 		}
 
-		glDisable(GL_LINE_STIPPLE);
 		glPopMatrix();
 
 		ok = true;
@@ -1677,7 +1698,6 @@ static void ui_shadowbox(float minx, float miny, float maxx, float maxy, float s
 void UI_draw_box_shadow(unsigned char alpha, float minx, float miny, float maxx, float maxy)
 {
 	glEnable(GL_BLEND);
-	glShadeModel(GL_SMOOTH);
 	
 	glBegin(GL_QUADS);
 
@@ -1689,7 +1709,6 @@ void UI_draw_box_shadow(unsigned char alpha, float minx, float miny, float maxx,
 	glEnd();
 	
 	glDisable(GL_BLEND);
-	glShadeModel(GL_FLAT);
 }
 
 

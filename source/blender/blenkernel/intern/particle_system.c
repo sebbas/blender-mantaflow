@@ -230,7 +230,7 @@ static void realloc_particles(ParticleSimulationData *sim, int new_totpart)
 				newboids= MEM_callocN(totpart*sizeof(BoidParticle), "boid particles");
 
 				if (newboids == NULL) {
-					 /* allocation error! */
+					/* allocation error! */
 					if (newpars)
 						MEM_freeN(newpars);
 					return;
@@ -2183,7 +2183,6 @@ static void basic_rotate(ParticleSettings *part, ParticleData *pa, float dfra, f
  *     http://en.wikipedia.org/wiki/Newton's_method
  *
  ************************************************/
-#define COLLISION_MAX_COLLISIONS	10
 #define COLLISION_MIN_RADIUS 0.001f
 #define COLLISION_MIN_DISTANCE 0.0001f
 #define COLLISION_ZERO 0.00001f
@@ -2570,10 +2569,6 @@ void BKE_psys_collision_neartest_cb(void *userdata, int index, const BVHTreeRay 
 	pce.inside = 0;
 	pce.index = index;
 
-	/* don't collide with same face again */
-	if (col->hit == col->current && col->pce.index == index && col->pce.tot == 3)
-		return;
-
 	collision = collision_sphere_to_tri(col, ray->radius, &pce, &t);
 	if (col->pce.inside == 0) {
 		collision += collision_sphere_to_edges(col, ray->radius, &pce, &t);
@@ -2609,8 +2604,17 @@ static int collision_detect(ParticleData *pa, ParticleCollision *col, BVHTreeRay
 		hit->dist = col->original_ray_length = 0.000001f;
 
 	for (coll = colliders->first; coll; coll=coll->next) {
-		/* for boids: don't check with current ground object */
-		if (coll->ob == col->skip)
+		/* for boids: don't check with current ground object; also skip if permeated */
+		bool skip = false;
+
+		for (int i = 0; i < col->skip_count; i++) {
+			if (coll->ob == col->skip[i]) {
+				skip = true;
+				break;
+			}
+		}
+
+		if (skip)
 			continue;
 
 		/* particles should not collide with emitter at birth */
@@ -2746,7 +2750,7 @@ static int collision_response(ParticleData *pa, ParticleCollision *col, BVHTreeR
 		if (through==0 && ((vc_dot>0.0f && v0_dot>0.0f && vc_dot>v0_dot) || (vc_dot<0.0f && v0_dot<0.0f && vc_dot<v0_dot)))
 			mul_v3_v3fl(v0_nor, pce->nor, vc_dot);
 		else if (v0_dot > 0.f)
-			mul_v3_v3fl(v0_nor, pce->nor, vc_dot + (through ? -1.0f : 1.0f) * v0_dot);
+			mul_v3_v3fl(v0_nor, pce->nor, vc_dot + v0_dot);
 		else
 			mul_v3_v3fl(v0_nor, pce->nor, vc_dot + (through ? 1.0f : -1.0f) * v0_dot);
 
@@ -2801,8 +2805,10 @@ static int collision_response(ParticleData *pa, ParticleCollision *col, BVHTreeR
 		col->f = f;
 	}
 
-	col->prev = col->hit;
-	col->prev_index = hit->index;
+	/* if permeability random roll succeeded, disable collider for this sim step */
+	if (through) {
+		col->skip[col->skip_count++] = col->hit;
+	}
 
 	return 1;
 }
@@ -2863,16 +2869,16 @@ static void collision_check(ParticleSimulationData *sim, int p, float dfra, floa
 	if (part->phystype == PART_PHYS_BOIDS && part->boids->options & BOID_ALLOW_LAND) {
 		col.boid = 1;
 		col.boid_z = pa->state.co[2];
-		col.skip = pa->boid->ground;
+		col.skip[col.skip_count++] = pa->boid->ground;
 	}
 
 	/* 10 iterations to catch multiple collisions */
-	while (collision_count < COLLISION_MAX_COLLISIONS) {
+	while (collision_count < PARTICLE_COLLISION_MAX_COLLISIONS) {
 		if (collision_detect(pa, &col, &hit, sim->colliders)) {
 			
 			collision_count++;
 
-			if (collision_count == COLLISION_MAX_COLLISIONS)
+			if (collision_count == PARTICLE_COLLISION_MAX_COLLISIONS)
 				collision_fail(pa, &col);
 			else if (collision_response(pa, &col, &hit, part->flag & PART_DIE_ON_COL, part->flag & PART_ROT_DYN)==0)
 				return;
@@ -2885,7 +2891,7 @@ static void collision_check(ParticleSimulationData *sim, int p, float dfra, floa
 /*			Hair								*/
 /************************************************/
 /* check if path cache or children need updating and do it if needed */
-static void psys_update_path_cache(ParticleSimulationData *sim, float cfra)
+static void psys_update_path_cache(ParticleSimulationData *sim, float cfra, const bool use_render_params)
 {
 	ParticleSystem *psys = sim->psys;
 	ParticleSettings *part = psys->part;
@@ -2909,7 +2915,7 @@ static void psys_update_path_cache(ParticleSimulationData *sim, float cfra)
 				distribute_particles(sim, PART_FROM_CHILD);
 
 				if (part->childtype==PART_CHILD_FACES && part->parents != 0.0f)
-					psys_find_parents(sim);
+					psys_find_parents(sim, use_render_params);
 			}
 		}
 		else
@@ -2947,7 +2953,7 @@ static void psys_update_path_cache(ParticleSimulationData *sim, float cfra)
 	}
 
 	if (!skip) {
-		psys_cache_paths(sim, cfra);
+		psys_cache_paths(sim, cfra, use_render_params);
 
 		/* for render, child particle paths are computed on the fly */
 		if (part->childtype) {
@@ -2957,7 +2963,7 @@ static void psys_update_path_cache(ParticleSimulationData *sim, float cfra)
 				skip = 1;
 
 			if (!skip)
-				psys_cache_child_paths(sim, cfra, 0);
+				psys_cache_child_paths(sim, cfra, 0, use_render_params);
 		}
 	}
 	else if (psys->pathcache)
@@ -3193,7 +3199,7 @@ static void do_hair_dynamics(ParticleSimulationData *sim)
 	/* restore cloth effector weights */
 	psys->clmd->sim_parms->effector_weights = clmd_effweights;
 }
-static void hair_step(ParticleSimulationData *sim, float cfra)
+static void hair_step(ParticleSimulationData *sim, float cfra, const bool use_render_params)
 {
 	ParticleSystem *psys = sim->psys;
 	ParticleSettings *part = psys->part;
@@ -3225,7 +3231,7 @@ static void hair_step(ParticleSimulationData *sim, float cfra)
 
 	/* following lines were removed r29079 but cause bug [#22811], see report for details */
 	psys_update_effectors(sim);
-	psys_update_path_cache(sim, cfra);
+	psys_update_path_cache(sim, cfra, use_render_params);
 
 	psys->flag |= PSYS_HAIR_UPDATED;
 }
@@ -3311,7 +3317,7 @@ static float get_base_time_step(ParticleSettings *part)
 	return 1.0f / (float) (part->subframes + 1);
 }
 /* Update time step size to suit current conditions. */
-static float update_timestep(ParticleSystem *psys, ParticleSimulationData *sim, float t_frac)
+static void update_timestep(ParticleSystem *psys, ParticleSimulationData *sim)
 {
 	float dt_target;
 	if (sim->courant_num == 0.0f)
@@ -3331,7 +3337,10 @@ static float update_timestep(ParticleSystem *psys, ParticleSimulationData *sim, 
 		psys->dt_frac = interpf(dt_target, psys->dt_frac, TIMESTEP_EXPANSION_FACTOR);
 	else
 		psys->dt_frac = dt_target;
+}
 
+static float sync_timestep(ParticleSystem *psys, float t_frac)
+{
 	/* Sync with frame end if it's close. */
 	if (t_frac == 1.0f)
 		return psys->dt_frac;
@@ -3493,7 +3502,7 @@ static void dynamics_step(ParticleSimulationData *sim, float cfra)
 	psys_update_effectors(sim);
 
 	if (part->type != PART_HAIR)
-		sim->colliders = get_collider_cache(sim->scene, sim->ob, NULL);
+		sim->colliders = get_collider_cache(sim->scene, sim->ob, part->collision_group);
 
 	/* initialize physics type specific stuff */
 	switch (part->phystype) {
@@ -3732,7 +3741,7 @@ static void cached_step(ParticleSimulationData *sim, float cfra)
 	}
 }
 
-static void particles_fluid_step(ParticleSimulationData *sim, int UNUSED(cfra))
+static void particles_fluid_step(ParticleSimulationData *sim, int UNUSED(cfra), const bool use_render_params)
 {	
 	ParticleSystem *psys = sim->psys;
 	if (psys->particles) {
@@ -3775,7 +3784,7 @@ static void particles_fluid_step(ParticleSimulationData *sim, int UNUSED(cfra))
 			}
 	
 			gzread(gzf, &totpart, sizeof(totpart));
-			totpart = (G.is_rendering)?totpart:(part->disp*totpart) / 100;
+			totpart = (use_render_params) ? totpart:(part->disp*totpart) / 100;
 			
 			part->totpart= totpart;
 			part->sta=part->end = 1.0f;
@@ -3836,6 +3845,8 @@ static void particles_fluid_step(ParticleSimulationData *sim, int UNUSED(cfra))
 			
 		} // fluid sim particles done
 	}
+#else
+	UNUSED_VARS(use_render_params);
 #endif // WITH_MOD_FLUID
 }
 
@@ -3857,7 +3868,7 @@ static int emit_particles(ParticleSimulationData *sim, PTCacheID *pid, float UNU
  * 2. Check cache (if used) and return if frame is cached
  * 3. Do dynamics
  * 4. Save to cache */
-static void system_step(ParticleSimulationData *sim, float cfra)
+static void system_step(ParticleSimulationData *sim, float cfra, const bool use_render_params)
 {
 	ParticleSystem *psys = sim->psys;
 	ParticleSettings *part = psys->part;
@@ -3914,12 +3925,12 @@ static void system_step(ParticleSimulationData *sim, float cfra)
 
 /* 2. try to read from the cache */
 	if (pid) {
-		int cache_result = BKE_ptcache_read(pid, cache_cfra);
+		int cache_result = BKE_ptcache_read(pid, cache_cfra, true);
 
 		if (ELEM(cache_result, PTCACHE_READ_EXACT, PTCACHE_READ_INTERPOLATED)) {
 			cached_step(sim, cfra);
 			update_children(sim);
-			psys_update_path_cache(sim, cfra);
+			psys_update_path_cache(sim, cfra, use_render_params);
 
 			BKE_ptcache_validate(cache, (int)cache_cfra);
 
@@ -3989,7 +4000,9 @@ static void system_step(ParticleSimulationData *sim, float cfra)
 				printf("%f,%f,%f,%f\n", cfra+dframe+t_frac - 1.f, t_frac, dt_frac, sim->courant_num);
 #endif
 				if (part->time_flag & PART_TIME_AUTOSF)
-					dt_frac = update_timestep(psys, sim, t_frac);
+					update_timestep(psys, sim);
+				/* Even without AUTOSF dt_frac may not add up to 1.0 due to float precision. */
+				dt_frac = sync_timestep(psys, t_frac);
 			}
 		}
 	}
@@ -4137,7 +4150,7 @@ static int hair_needs_recalc(ParticleSystem *psys)
 
 /* main particle update call, checks that things are ok on the large scale and
  * then advances in to actual particle calculations depending on particle type */
-void particle_system_update(Scene *scene, Object *ob, ParticleSystem *psys)
+void particle_system_update(Scene *scene, Object *ob, ParticleSystem *psys, const bool use_render_params)
 {
 	ParticleSimulationData sim= {0};
 	ParticleSettings *part = psys->part;
@@ -4146,7 +4159,7 @@ void particle_system_update(Scene *scene, Object *ob, ParticleSystem *psys)
 	/* drawdata is outdated after ANY change */
 	if (psys->pdd) psys->pdd->flag &= ~PARTICLE_DRAW_DATA_UPDATED;
 
-	if (!psys_check_enabled(ob, psys))
+	if (!psys_check_enabled(ob, psys, use_render_params))
 		return;
 
 	cfra= BKE_scene_frame_get(scene);
@@ -4215,7 +4228,7 @@ void particle_system_update(Scene *scene, Object *ob, ParticleSystem *psys)
 					hcfra=100.0f*(float)i/(float)psys->part->hair_step;
 					if ((part->flag & PART_HAIR_REGROW)==0)
 						BKE_animsys_evaluate_animdata(scene, &part->id, part->adt, hcfra, ADT_RECALC_ANIM);
-					system_step(&sim, hcfra);
+					system_step(&sim, hcfra, use_render_params);
 					psys->cfra = hcfra;
 					psys->recalc = 0;
 					save_hair(&sim, hcfra);
@@ -4228,12 +4241,12 @@ void particle_system_update(Scene *scene, Object *ob, ParticleSystem *psys)
 				psys->flag |= PSYS_HAIR_DONE;
 
 			if (psys->flag & PSYS_HAIR_DONE)
-				hair_step(&sim, cfra);
+				hair_step(&sim, cfra, use_render_params);
 			break;
 		}
 		case PART_FLUID:
 		{
-			particles_fluid_step(&sim, (int)cfra);
+			particles_fluid_step(&sim, (int)cfra, use_render_params);
 			break;
 		}
 		default:
@@ -4280,14 +4293,14 @@ void particle_system_update(Scene *scene, Object *ob, ParticleSystem *psys)
 					if (part->phystype == PART_PHYS_KEYED) {
 						psys_count_keyed_targets(&sim);
 						set_keyed_keys(&sim);
-						psys_update_path_cache(&sim,(int)cfra);
+						psys_update_path_cache(&sim, (int)cfra, use_render_params);
 					}
 					break;
 				}
 				default:
 				{
 					/* the main dynamic particle system step */
-					system_step(&sim, cfra);
+					system_step(&sim, cfra, use_render_params);
 					break;
 				}
 			}

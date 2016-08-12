@@ -72,8 +72,6 @@ struct bSound *BKE_sound_new_buffer(struct Main *bmain, struct bSound *source);
 struct bSound *BKE_sound_new_limiter(struct Main *bmain, struct bSound *source, float start, float end);
 #endif
 
-void BKE_sound_delete(struct Main *bmain, struct bSound *sound);
-
 void BKE_sound_cache(struct bSound *sound);
 
 void BKE_sound_delete_cache(struct bSound *sound);
@@ -81,6 +79,8 @@ void BKE_sound_delete_cache(struct bSound *sound);
 void BKE_sound_load(struct Main *main, struct bSound *sound);
 
 void BKE_sound_free(struct bSound *sound);
+
+void BKE_sound_make_local(struct Main *bmain, struct bSound *sound, const bool lib_local);
 
 #if defined(__AUD_C_API_H__) || defined(WITH_SYSTEM_AUDASPACE)
 AUD_Device *BKE_sound_mixdown(struct Scene *scene, AUD_DeviceSpecs specs, int start, float volume);

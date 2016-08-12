@@ -31,7 +31,6 @@
  * Manages materials, lights and textures.
  */
 
-
 #include <math.h>
 #include <string.h>
 
@@ -49,7 +48,6 @@
 
 #include "BKE_anim.h"
 #include "BKE_colortools.h"
-#include "BKE_DerivedMesh.h"
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_main.h"
@@ -68,7 +66,9 @@
 
 #include "gpu_codegen.h"
 
-#include <string.h>
+#ifdef WITH_OPENSUBDIV
+#  include "BKE_DerivedMesh.h"
+#endif
 
 /* Structs */
 
@@ -88,6 +88,7 @@ static struct GPUWorld {
 	float mistcol[4];
 	float horicol[3];
 	float ambcol[4];
+	float zencol[3];
 } GPUWorld;
 
 struct GPUMaterial {
@@ -212,6 +213,9 @@ static void gpu_material_set_attrib_id(GPUMaterial *material)
 		BLI_snprintf(name, sizeof(name), "att%d", attribs->layer[a].attribid);
 		attribs->layer[a].glindex = GPU_shader_get_attribute(shader, name);
 
+		BLI_snprintf(name, sizeof(name), "att%d_info", attribs->layer[a].attribid);
+		attribs->layer[a].glinfoindoex = GPU_shader_get_uniform(shader, name);
+
 		if (attribs->layer[a].glindex >= 0) {
 			attribs->layer[b] = attribs->layer[a];
 			b++;
@@ -265,6 +269,9 @@ static int GPU_material_construct_end(GPUMaterial *material, const char *passnam
 		if (material->builtins & GPU_PARTICLE_ANG_VELOCITY)
 			material->partangvel = GPU_shader_get_uniform(shader, GPU_builtin_name(GPU_PARTICLE_ANG_VELOCITY));
 		return 1;
+	}
+	else {
+		GPU_pass_free_nodes(&material->nodes);
 	}
 
 	return 0;
@@ -512,6 +519,11 @@ bool GPU_material_do_color_management(GPUMaterial *mat)
 bool GPU_material_use_new_shading_nodes(GPUMaterial *mat)
 {
 	return BKE_scene_use_new_shading_nodes(mat->scene);
+}
+
+bool GPU_material_use_world_space_shading(GPUMaterial *mat)
+{
+	return BKE_scene_use_world_space_shading(mat->scene);
 }
 
 static GPUNodeLink *lamp_get_visibility(GPUMaterial *mat, GPULamp *lamp, GPUNodeLink **lv, GPUNodeLink **dist)
@@ -1665,6 +1677,11 @@ void GPU_ambient_update_color(float color[3])
 	GPUWorld.ambcol[3] = 1.0f;
 }
 
+void GPU_zenith_update_color(float color[3])
+{
+	copy_v3_v3(GPUWorld.zencol, color);
+}
+
 void GPU_shaderesult_set(GPUShadeInput *shi, GPUShadeResult *shr)
 {
 	GPUMaterial *mat = shi->gpumat;
@@ -1719,6 +1736,36 @@ void GPU_shaderesult_set(GPUShadeInput *shi, GPUShadeResult *shr)
 					ulinfac, ulogfac, &shr->combined);
 				GPU_link(mat, "shade_exposure_correct", shr->spec,
 					ulinfac, ulogfac, &shr->spec);
+			}
+
+			/* environment lighting */
+			if (!(mat->scene->gm.flag & GAME_GLSL_NO_ENV_LIGHTING) &&
+			    (world->mode & WO_ENV_LIGHT) &&
+			    (mat->scene->r.mode & R_SHADOW) &&
+			    !BKE_scene_use_new_shading_nodes(mat->scene))
+			{
+				if ((world->ao_env_energy != 0.0f) && (GPU_link_changed(shi->amb) || ma->amb != 0.0f) &&
+				    (GPU_link_changed(shi->refl) || ma->ref != 0.0f))
+				{
+					if (world->aocolor != WO_AOPLAIN) {
+						if (!(is_zero_v3(&world->horr) & is_zero_v3(&world->zenr))) {
+							GPUNodeLink *fcol, *f;
+							GPU_link(mat, "math_multiply", shi->amb, shi->refl, &f);
+							GPU_link(mat, "math_multiply", f, GPU_uniform(&world->ao_env_energy), &f);
+							GPU_link(mat, "shade_mul_value", f, shi->rgb, &fcol);
+							GPU_link(mat, "env_apply", shr->combined,
+							         GPU_dynamic_uniform(GPUWorld.horicol, GPU_DYNAMIC_HORIZON_COLOR, NULL),
+							         GPU_dynamic_uniform(GPUWorld.zencol, GPU_DYNAMIC_ZENITH_COLOR, NULL), fcol,
+							         GPU_builtin(GPU_VIEW_MATRIX), shi->vn, &shr->combined);
+						}
+					}
+					else {
+						GPUNodeLink *f;
+						GPU_link(mat, "math_multiply", shi->amb, shi->refl, &f);
+						GPU_link(mat, "math_multiply", f, GPU_uniform(&world->ao_env_energy), &f);
+						GPU_link(mat, "shade_maddf", shr->combined, f, shi->rgb, &shr->combined);
+					}
+				}
 			}
 
 			/* ambient color */
@@ -2544,7 +2591,7 @@ int GPU_lamp_shadow_bind_code(GPULamp *lamp)
 
 float *GPU_lamp_dynpersmat(GPULamp *lamp)
 {
-	return lamp->dynpersmat ? (float *)lamp->dynpersmat : NULL;
+	return &lamp->dynpersmat[0][0];
 }
 
 int GPU_lamp_shadow_layer(GPULamp *lamp)
@@ -2842,8 +2889,7 @@ void GPU_material_update_fvar_offset(GPUMaterial *gpu_material,
 			             "fvar%d_offset",
 			             input->attribid);
 			location = GPU_shader_get_uniform(shader, name);
-			/* Multiply by 2 because we're offseting U and V variables. */
-			GPU_shader_uniform_int(shader, location, layer_index * 2);
+			GPU_shader_uniform_int(shader, location, layer_index);
 		}
 	}
 

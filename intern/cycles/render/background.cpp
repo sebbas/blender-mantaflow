@@ -32,12 +32,12 @@ NODE_DEFINE(Background)
 {
 	NodeType* type = NodeType::add("background", create);
 
-	SOCKET_INT(ao_factor, "AO Factor", 0.0f);
+	SOCKET_FLOAT(ao_factor, "AO Factor", 0.0f);
 	SOCKET_FLOAT(ao_distance, "AO Distance", FLT_MAX);
 
 	SOCKET_BOOLEAN(use_shader, "Use Shader", true);
 	SOCKET_BOOLEAN(use_ao, "Use AO", false);
-	SOCKET_INT(visibility, "Visibility", PATH_RAY_ALL_VISIBILITY);
+	SOCKET_UINT(visibility, "Visibility", PATH_RAY_ALL_VISIBILITY);
 	SOCKET_BOOLEAN(transparent, "Transparent", false);
 
 	SOCKET_NODE(shader, "Shader", &Shader::node_type);
@@ -114,6 +114,11 @@ void Background::device_update(Device *device, DeviceScene *dscene, Scene *scene
 
 void Background::device_free(Device * /*device*/, DeviceScene * /*dscene*/)
 {
+}
+
+bool Background::modified(const Background& background)
+{
+	return !Node::equals(background);
 }
 
 void Background::tag_update(Scene *scene)

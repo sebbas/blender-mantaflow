@@ -1308,41 +1308,40 @@ StripElem *BKE_sequencer_give_stripelem(Sequence *seq, int cfra)
 
 static int evaluate_seq_frame_gen(Sequence **seq_arr, ListBase *seqbase, int cfra, int chanshown)
 {
-	Sequence *seq;
-	Sequence *effect_inputs[MAXSEQ + 1];
-	int i, totseq = 0, num_effect_inputs = 0;
+	/* Use arbitrary sized linked list, the size could be over MAXSEQ. */
+	LinkNodePair effect_inputs = {NULL, NULL};
+	int totseq = 0;
 
 	memset(seq_arr, 0, sizeof(Sequence *) * (MAXSEQ + 1));
 
-	seq = seqbase->first;
-	while (seq) {
-		if (seq->startdisp <= cfra && seq->enddisp > cfra) {
+	for (Sequence *seq = seqbase->first; seq; seq = seq->next) {
+		if ((seq->startdisp <= cfra) && (seq->enddisp > cfra)) {
 			if ((seq->type & SEQ_TYPE_EFFECT) && !(seq->flag & SEQ_MUTE)) {
+
 				if (seq->seq1) {
-					effect_inputs[num_effect_inputs++] = seq->seq1;
+					BLI_linklist_append_alloca(&effect_inputs, seq->seq1);
 				}
 
 				if (seq->seq2) {
-					effect_inputs[num_effect_inputs++] = seq->seq2;
+					BLI_linklist_append_alloca(&effect_inputs, seq->seq2);
 				}
 
 				if (seq->seq3) {
-					effect_inputs[num_effect_inputs++] = seq->seq3;
+					BLI_linklist_append_alloca(&effect_inputs, seq->seq3);
 				}
 			}
 
 			seq_arr[seq->machine] = seq;
 			totseq++;
 		}
-		seq = seq->next;
 	}
 
 	/* Drop strips which are used for effect inputs, we don't want
 	 * them to blend into render stack in any other way than effect
 	 * string rendering.
 	 */
-	for (i = 0; i < num_effect_inputs; i++) {
-		seq = effect_inputs[i];
+	for (LinkNode *seq_item = effect_inputs.list; seq_item; seq_item = seq_item->next) {
+		Sequence *seq = seq_item->link;
 		/* It's possible that effetc strip would be placed to the same
 		 * 'machine' as it's inputs. We don't want to clear such strips
 		 * from the stack.
@@ -1657,6 +1656,9 @@ static bool seq_proxy_get_fname(Editing *ed, Sequence *seq, int cfra, int render
 	else if ((proxy->storage & SEQ_STORAGE_PROXY_CUSTOM_DIR) && (proxy->storage & SEQ_STORAGE_PROXY_CUSTOM_FILE)) {
 		BLI_strncpy(dir, seq->strip->proxy->dir, sizeof(dir));
 	}
+	else if (proxy->storage & SEQ_STORAGE_PROXY_CUSTOM_FILE) {
+		BLI_strncpy(dir, seq->strip->proxy->dir, sizeof(dir));
+	}
 	else if (sanim && sanim->anim && (proxy->storage & SEQ_STORAGE_PROXY_CUSTOM_DIR)) {
 		char fname[FILE_MAXFILE];
 		BLI_strncpy(dir, seq->strip->proxy->dir, sizeof(dir));
@@ -1676,13 +1678,21 @@ static bool seq_proxy_get_fname(Editing *ed, Sequence *seq, int cfra, int render
 	if (view_id > 0)
 		BLI_snprintf(suffix, sizeof(suffix), "_%d", view_id);
 
-	if (proxy->storage & SEQ_STORAGE_PROXY_CUSTOM_FILE && sanim && sanim->anim &&
+	if (proxy->storage & SEQ_STORAGE_PROXY_CUSTOM_FILE &&
 	    ed->proxy_storage != SEQ_EDIT_PROXY_DIR_STORAGE)
 	{
-		BLI_join_dirfile(name, PROXY_MAXFILE,
-		                 dir, proxy->file);
-		BLI_path_abs(name, G.main->name);
-		BLI_snprintf(name, PROXY_MAXFILE, "%s_%s", name, suffix);
+		char fname[FILE_MAXFILE];
+		BLI_join_dirfile(fname, PROXY_MAXFILE, dir, proxy->file);
+		BLI_path_abs(fname, G.main->name);
+		if (suffix[0] != '\0') {
+			/* TODO(sergey): This will actually append suffix after extension
+			 * which is weird but how was originally coded in multiview branch.
+			 */
+			BLI_snprintf(name, PROXY_MAXFILE, "%s_%s", fname, suffix);
+		}
+		else {
+			BLI_strncpy(name, fname, PROXY_MAXFILE);
+		}
 
 		return true;
 	}
@@ -1826,8 +1836,10 @@ static void seq_proxy_build_frame(
 	IMB_freeImBuf(ibuf);
 }
 
-/* returns whether the file this context would read from even exist, if not, don't create the context
-*/
+/**
+ * Returns whether the file this context would read from even exist,
+ * if not, don't create the context
+ */
 static bool seq_proxy_multiview_context_invalid(Sequence *seq, Scene *scene, const int view_id)
 {
 	if ((scene->r.scemode & R_MULTIVIEW) == 0)
@@ -1862,8 +1874,9 @@ static bool seq_proxy_multiview_context_invalid(Sequence *seq, Scene *scene, con
 	return false;
 }
 
-/** This returns the maximum possible number of required contexts
-*/
+/**
+ * This returns the maximum possible number of required contexts
+ */
 static int seq_proxy_context_count(Sequence *seq, Scene *scene)
 {
 	int num_views = 1;
@@ -3092,7 +3105,7 @@ static ImBuf *seq_render_mask(const SeqRenderData *context, Mask *mask, float nr
 
 		BKE_maskrasterize_handle_init(mr_handle, mask_temp, context->rectx, context->recty, true, true, true);
 
-		BKE_mask_free_nolib(mask_temp);
+		BKE_mask_free(mask_temp);
 		MEM_freeN(mask_temp);
 
 		BKE_maskrasterize_buffer(mr_handle, context->rectx, context->recty, maskbuf);
@@ -3556,7 +3569,7 @@ static ImBuf *seq_render_strip(
 
 			if (ibuf == NULL) {
 				/* MOVIECLIPs have their own proxy management */
-				if (ibuf == NULL && seq->type != SEQ_TYPE_MOVIECLIP) {
+				if (seq->type != SEQ_TYPE_MOVIECLIP) {
 					ibuf = seq_proxy_fetch(context, seq, cfra);
 					is_proxy_image = (ibuf != NULL);
 				}
@@ -5154,7 +5167,7 @@ Sequence *BKE_sequencer_add_sound_strip(bContext *C, ListBase *seqbasep, SeqLoad
 	info = AUD_getInfo(sound->playback_handle);
 
 	if (info.specs.channels == AUD_CHANNELS_INVALID) {
-		BKE_sound_delete(bmain, sound);
+		BKE_libblock_free(bmain, sound);
 #if 0
 		if (op)
 			BKE_report(op->reports, RPT_ERROR, "Unsupported audio format");
@@ -5592,4 +5605,32 @@ int BKE_sequencer_find_next_prev_edit(
 	}
 
 	return best_frame;
+}
+
+static void sequencer_all_free_anim_ibufs(ListBase *seqbase, int cfra)
+{
+	for (Sequence *seq = seqbase->first; seq != NULL; seq = seq->next) {
+		if (seq->enddisp < cfra || seq->startdisp > cfra) {
+			BKE_sequence_free_anim(seq);
+		}
+		if (seq->type == SEQ_TYPE_META) {
+			sequencer_all_free_anim_ibufs(&seq->seqbase, cfra);
+		}
+	}
+}
+
+void BKE_sequencer_all_free_anim_ibufs(int cfra)
+{
+	BKE_sequencer_cache_cleanup();
+	for (Scene *scene = G.main->scene.first;
+	     scene != NULL;
+	     scene = scene->id.next)
+	{
+		Editing *ed = BKE_sequencer_editing_get(scene, false);
+		if (ed == NULL) {
+			/* Ignore scenes without sequencer. */
+			continue;
+		}
+		sequencer_all_free_anim_ibufs(&ed->seqbase, cfra);
+	}
 }

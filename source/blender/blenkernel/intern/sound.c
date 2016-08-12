@@ -123,8 +123,11 @@ bSound *BKE_sound_new_file_exists(struct Main *bmain, const char *filepath)
 	return BKE_sound_new_file_exists_ex(bmain, filepath, NULL);
 }
 
+/** Free (or release) any data used by this sound (does not free the sound itself). */
 void BKE_sound_free(bSound *sound)
 {
+	/* No animdata here. */
+
 	if (sound->packedfile) {
 		freePackedFile(sound->packedfile);
 		sound->packedfile = NULL;
@@ -148,9 +151,13 @@ void BKE_sound_free(bSound *sound)
 		BLI_spin_end(sound->spinlock);
 		MEM_freeN(sound->spinlock);
 		sound->spinlock = NULL;
-	}
-	
+	}	
 #endif  /* WITH_AUDASPACE */
+}
+
+void BKE_sound_make_local(Main *bmain, bSound *sound, const bool lib_local)
+{
+	BKE_id_make_local_generic(bmain, &sound->id, true, lib_local);
 }
 
 #ifdef WITH_AUDASPACE
@@ -314,15 +321,6 @@ bSound *BKE_sound_new_limiter(struct Main *bmain, bSound *source, float start, f
 	return sound;
 }
 #endif
-
-void BKE_sound_delete(struct Main *bmain, bSound *sound)
-{
-	if (sound) {
-		BKE_sound_free(sound);
-
-		BKE_libblock_free(bmain, sound);
-	}
-}
 
 void BKE_sound_cache(bSound *sound)
 {

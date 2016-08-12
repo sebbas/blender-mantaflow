@@ -116,7 +116,7 @@ static int sound_open_exec(bContext *C, wmOperator *op)
 	info = AUD_getInfo(sound->playback_handle);
 
 	if (info.specs.channels == AUD_CHANNELS_INVALID) {
-		BKE_sound_delete(bmain, sound);
+		BKE_libblock_free(bmain, sound);
 		if (op->customdata) MEM_freeN(op->customdata);
 		BKE_report(op->reports, RPT_ERROR, "Unsupported audio format");
 		return OPERATOR_CANCELLED;
@@ -136,7 +136,7 @@ static int sound_open_exec(bContext *C, wmOperator *op)
 
 	if (pprop->prop) {
 		/* when creating new ID blocks, use is already 1, but RNA
-		 * pointer se also increases user, so this compensates it */
+		 * pointer use also increases user, so this compensates it */
 		id_us_min(&sound->id);
 
 		RNA_id_pointer_create(&sound->id, &idptr);

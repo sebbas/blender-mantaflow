@@ -1433,10 +1433,12 @@ static void calc_weightpaint_vert_array(
         Object *ob, DerivedMesh *dm, int const draw_flag, DMWeightColorInfo *dm_wcinfo,
         unsigned char (*r_wtcol_v)[4])
 {
-	MDeformVert *dv = DM_get_vert_data_layer(dm, CD_MDEFORMVERT);
-	int numVerts = dm->getNumVerts(dm);
+	BMEditMesh *em = (dm->type == DM_TYPE_EDITBMESH) ? BKE_editmesh_from_object(ob) : NULL;
+	const int numVerts = dm->getNumVerts(dm);
 
-	if (dv && (ob->actdef != 0)) {
+	if ((ob->actdef != 0) &&
+	    (CustomData_has_layer(em ? &em->bm->vdata : &dm->vertData, CD_MDEFORMVERT)))
+	{
 		unsigned char (*wc)[4] = r_wtcol_v;
 		unsigned int i;
 
@@ -1455,8 +1457,30 @@ static void calc_weightpaint_vert_array(
 			}
 		}
 
-		for (i = numVerts; i != 0; i--, wc++, dv++) {
-			calc_weightpaint_vert_color((unsigned char *)wc, dv, dm_wcinfo, defbase_tot, defbase_act, defbase_sel, defbase_sel_tot, draw_flag);
+		/* editmesh won't have deform verts unless modifiers require it,
+		 * avoid having to create an array of deform-verts only for drawing
+		 * by reading from the bmesh directly. */
+		if (em) {
+			BMIter iter;
+			BMVert *eve;
+			const int cd_dvert_offset = CustomData_get_offset(&em->bm->vdata, CD_MDEFORMVERT);
+			BLI_assert(cd_dvert_offset != -1);
+
+			BM_ITER_MESH_INDEX (eve, &iter, em->bm, BM_VERTS_OF_MESH, i) {
+				const MDeformVert *dv = BM_ELEM_CD_GET_VOID_P(eve, cd_dvert_offset);
+				calc_weightpaint_vert_color(
+				        (unsigned char *)wc, dv, dm_wcinfo,
+				        defbase_tot, defbase_act, defbase_sel, defbase_sel_tot, draw_flag);
+				wc++;
+			}
+		}
+		else {
+			const MDeformVert *dv = DM_get_vert_data_layer(dm, CD_MDEFORMVERT);
+			for (i = numVerts; i != 0; i--, wc++, dv++) {
+				calc_weightpaint_vert_color(
+				        (unsigned char *)wc, dv, dm_wcinfo,
+				        defbase_tot, defbase_act, defbase_sel, defbase_sel_tot, draw_flag);
+			}
 		}
 
 		if (defbase_sel) {
@@ -2003,15 +2027,10 @@ static void mesh_calc_modifiers(
 					DM_add_edge_layer(dm, CD_ORIGINDEX, CD_CALLOC, NULL);
 					DM_add_poly_layer(dm, CD_ORIGINDEX, CD_CALLOC, NULL);
 
-#pragma omp parallel sections if (dm->numVertData + dm->numEdgeData + dm->numPolyData >= BKE_MESH_OMP_LIMIT)
-					{
-#pragma omp section
-						{ range_vn_i(DM_get_vert_data_layer(dm, CD_ORIGINDEX), dm->numVertData, 0); }
-#pragma omp section
-						{ range_vn_i(DM_get_edge_data_layer(dm, CD_ORIGINDEX), dm->numEdgeData, 0); }
-#pragma omp section
-						{ range_vn_i(DM_get_poly_data_layer(dm, CD_ORIGINDEX), dm->numPolyData, 0); }
-					}
+					/* Not worth parallelizing this, gives less than 0.1% overall speedup in best of best cases... */
+					range_vn_i(DM_get_vert_data_layer(dm, CD_ORIGINDEX), dm->numVertData, 0);
+					range_vn_i(DM_get_edge_data_layer(dm, CD_ORIGINDEX), dm->numEdgeData, 0);
+					range_vn_i(DM_get_poly_data_layer(dm, CD_ORIGINDEX), dm->numPolyData, 0);
 				}
 			}
 
@@ -2287,7 +2306,7 @@ static void editbmesh_calc_modifiers(
 	modifiers_clearErrors(ob);
 
 	if (r_cage && cageIndex == -1) {
-		*r_cage = getEditDerivedBMesh(em, ob, NULL);
+		*r_cage = getEditDerivedBMesh(em, ob, dataMask, NULL);
 	}
 
 	md = modifiers_getVirtualModifierList(ob, &virtualModifierData);
@@ -2453,7 +2472,7 @@ static void editbmesh_calc_modifiers(
 			}
 			else {
 				*r_cage = getEditDerivedBMesh(
-				        em, ob,
+				        em, ob, mask,
 				        deformedVerts ? MEM_dupallocN(deformedVerts) : NULL);
 			}
 		}
@@ -2489,7 +2508,7 @@ static void editbmesh_calc_modifiers(
 	}
 	else {
 		/* this is just a copy of the editmesh, no need to calc normals */
-		*r_final = getEditDerivedBMesh(em, ob, deformedVerts);
+		*r_final = getEditDerivedBMesh(em, ob, dataMask, deformedVerts);
 		deformedVerts = NULL;
 
 		/* In this case, we should never have weight-modifying modifiers in stack... */
@@ -2852,9 +2871,9 @@ DerivedMesh *editbmesh_get_derived_cage(Scene *scene, Object *obedit, BMEditMesh
 	return em->derivedCage;
 }
 
-DerivedMesh *editbmesh_get_derived_base(Object *obedit, BMEditMesh *em)
+DerivedMesh *editbmesh_get_derived_base(Object *obedit, BMEditMesh *em, CustomDataMask data_mask)
 {
-	return getEditDerivedBMesh(em, obedit, NULL);
+	return getEditDerivedBMesh(em, obedit, data_mask, NULL);
 }
 
 /***/
@@ -3678,6 +3697,7 @@ void DM_vertex_attributes_from_gpu(DerivedMesh *dm, GPUVertexAttribs *gattribs, 
 			}
 
 			attribs->tface[a].gl_index = gattribs->layer[b].glindex;
+			attribs->tface[a].gl_info_index = gattribs->layer[b].glinfoindoex;
 			attribs->tface[a].gl_texco = gattribs->layer[b].gltexco;
 		}
 		else if (type == CD_MCOL) {
@@ -3701,6 +3721,7 @@ void DM_vertex_attributes_from_gpu(DerivedMesh *dm, GPUVertexAttribs *gattribs, 
 			}
 
 			attribs->mcol[a].gl_index = gattribs->layer[b].glindex;
+			attribs->mcol[a].gl_info_index = gattribs->layer[b].glinfoindoex;
 		}
 		else if (type == CD_TANGENT) {
 			/* note, even with 'is_editmesh' this uses the derived-meshes loop data */
@@ -3723,6 +3744,7 @@ void DM_vertex_attributes_from_gpu(DerivedMesh *dm, GPUVertexAttribs *gattribs, 
 			}
 
 			attribs->tang[a].gl_index = gattribs->layer[b].glindex;
+			attribs->tang[a].gl_info_index = gattribs->layer[b].glinfoindoex;
 		}
 		else if (type == CD_ORCO) {
 			/* original coordinates */
@@ -3742,6 +3764,7 @@ void DM_vertex_attributes_from_gpu(DerivedMesh *dm, GPUVertexAttribs *gattribs, 
 
 			attribs->orco.gl_index = gattribs->layer[b].glindex;
 			attribs->orco.gl_texco = gattribs->layer[b].gltexco;
+			attribs->orco.gl_info_index = gattribs->layer[b].glinfoindoex;
 		}
 	}
 }
@@ -3770,6 +3793,7 @@ void DM_draw_attrib_vertex(DMVertexAttribs *attribs, int a, int index, int vert,
 			glTexCoord3fv(orco);
 		else
 			glVertexAttrib3fv(attribs->orco.gl_index, orco);
+		glUniform1i(attribs->orco.gl_info_index, 0);
 	}
 
 	/* uv texture coordinates */
@@ -3788,6 +3812,7 @@ void DM_draw_attrib_vertex(DMVertexAttribs *attribs, int a, int index, int vert,
 			glTexCoord2fv(uv);
 		else
 			glVertexAttrib2fv(attribs->tface[b].gl_index, uv);
+		glUniform1i(attribs->tface[b].gl_info_index, 0);
 	}
 
 	/* vertex colors */
@@ -3803,6 +3828,7 @@ void DM_draw_attrib_vertex(DMVertexAttribs *attribs, int a, int index, int vert,
 		}
 
 		glVertexAttrib4fv(attribs->mcol[b].gl_index, col);
+		glUniform1i(attribs->mcol[b].gl_info_index, GPU_ATTR_INFO_SRGB);
 	}
 
 	/* tangent for normal mapping */
@@ -3812,6 +3838,7 @@ void DM_draw_attrib_vertex(DMVertexAttribs *attribs, int a, int index, int vert,
 			const float *tang = (array) ? array[a * 4 + vert] : zero;
 			glVertexAttrib4fv(attribs->tang[b].gl_index, tang);
 		}
+		glUniform1i(attribs->tang[b].gl_info_index, 0);
 	}
 }
 
@@ -3878,7 +3905,6 @@ static void navmesh_drawColored(DerivedMesh *dm)
 	/* if (GPU_buffer_legacy(dm) ) */ /* TODO - VBO draw code, not high priority - campbell */
 	{
 		DEBUG_VBO("Using legacy code. drawNavMeshColored\n");
-		//glShadeModel(GL_SMOOTH);
 		glBegin(glmode = GL_QUADS);
 		for (a = 0; a < dm->numTessFaceData; a++, mface++) {
 			int new_glmode = mface->v4 ? GL_QUADS : GL_TRIANGLES;

@@ -694,7 +694,7 @@ DerivedMesh *mesh_create_derived_render(
         CustomDataMask dataMask);
 
 DerivedMesh *getEditDerivedBMesh(
-        struct BMEditMesh *em, struct Object *ob,
+        struct BMEditMesh *em, struct Object *ob, CustomDataMask data_mask,
         float (*vertexCos)[3]);
 
 DerivedMesh *mesh_create_derived_index_render(
@@ -723,7 +723,7 @@ DerivedMesh *mesh_create_derived_physics(
         CustomDataMask dataMask);
 
 DerivedMesh *editbmesh_get_derived_base(
-        struct Object *, struct BMEditMesh *em);
+        struct Object *ob, struct BMEditMesh *em, CustomDataMask data_mask);
 DerivedMesh *editbmesh_get_derived_cage(
         struct Scene *scene, struct Object *,
         struct BMEditMesh *em, CustomDataMask dataMask);
@@ -757,22 +757,22 @@ void DM_update_weight_mcol(
 typedef struct DMVertexAttribs {
 	struct {
 		struct MLoopUV *array;
-		int em_offset, gl_index, gl_texco;
+		int em_offset, gl_index, gl_texco, gl_info_index;
 	} tface[MAX_MTFACE];
 
 	struct {
 		struct MLoopCol *array;
-		int em_offset, gl_index;
+		int em_offset, gl_index, gl_info_index;
 	} mcol[MAX_MCOL];
 
 	struct {
 		float (*array)[4];
-		int em_offset, gl_index;
+		int em_offset, gl_index, gl_info_index;
 	} tang[MAX_MTFACE];
 
 	struct {
 		float (*array)[3];
-		int em_offset, gl_index, gl_texco;
+		int em_offset, gl_index, gl_texco, gl_info_index;
 	} orco;
 
 	int tottface, totmcol, tottang, totorco;

@@ -230,7 +230,7 @@ typedef struct Curve {
 
 	/* font part */
 	short lines;
-	char spacemode, pad1;
+	char spacemode, align_y;
 	float spacing, linedist, shear, fsize, wordspace, ulpos, ulheight;
 	float xof, yof;
 	float linewidth;
@@ -322,11 +322,19 @@ enum {
 
 /* Curve.spacemode */
 enum {
-	CU_LEFT               = 0,
-	CU_MIDDLE             = 1,
-	CU_RIGHT              = 2,
-	CU_JUSTIFY            = 3,
-	CU_FLUSH              = 4,
+	CU_ALIGN_X_LEFT               = 0,
+	CU_ALIGN_X_MIDDLE             = 1,
+	CU_ALIGN_X_RIGHT              = 2,
+	CU_ALIGN_X_JUSTIFY            = 3,
+	CU_ALIGN_X_FLUSH              = 4,
+};
+
+/* Curve.align_y */
+enum {
+	CU_ALIGN_Y_TOP_BASELINE       = 0,
+	CU_ALIGN_Y_TOP                = 1,
+	CU_ALIGN_Y_CENTER             = 2,
+	CU_ALIGN_Y_BOTTOM             = 3,
 };
 
 /* Nurb.flag */
@@ -416,6 +424,7 @@ typedef enum eBezTriple_KeyframeType {
 	BEZT_KEYTYPE_EXTREME = 1,   /* 'extreme' keyframe */
 	BEZT_KEYTYPE_BREAKDOWN = 2, /* 'breakdown' keyframe */
 	BEZT_KEYTYPE_JITTER = 3,    /* 'jitter' keyframe (for adding 'filler' secondary motion) */
+	BEZT_KEYTYPE_MOVEHOLD = 4,  /* one end of a 'moving hold' */
 } eBezTriple_KeyframeType;
 
 /* checks if the given BezTriple is selected */

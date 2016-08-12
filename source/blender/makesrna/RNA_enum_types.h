@@ -52,6 +52,7 @@ extern EnumPropertyItem rna_enum_proportional_editing_items[];
 extern EnumPropertyItem rna_enum_snap_target_items[];
 extern EnumPropertyItem rna_enum_snap_element_items[];
 extern EnumPropertyItem rna_enum_snap_node_element_items[];
+extern EnumPropertyItem rna_enum_curve_fit_method_items[];
 extern EnumPropertyItem rna_enum_mesh_select_mode_items[];
 extern EnumPropertyItem rna_enum_mesh_delimit_mode_items[];
 extern EnumPropertyItem rna_enum_space_type_items[];
@@ -196,6 +197,8 @@ extern EnumPropertyItem rna_enum_dt_method_poly_items[];
 extern EnumPropertyItem rna_enum_dt_mix_mode_items[];
 extern EnumPropertyItem rna_enum_dt_layers_select_src_items[];
 extern EnumPropertyItem rna_enum_dt_layers_select_dst_items[];
+
+extern EnumPropertyItem rna_enum_abc_compression_items[];
 
 
 /* API calls */

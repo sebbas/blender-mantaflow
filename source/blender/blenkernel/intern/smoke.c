@@ -752,6 +752,7 @@ typedef struct ObstaclesFromDMData {
 	bool has_velocity;
 	float *vert_vel;
 	float *velocityX, *velocityY, *velocityZ;
+	int *num_obstacles;
 } ObstaclesFromDMData;
 
 static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
@@ -800,8 +801,10 @@ static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
 				/* tag obstacle cells */
 				data->obstacle_map[index] = 2;
 
-				if (data->has_velocity)
+				if (data->has_velocity) {
 					data->obstacle_map[index] = 4;
+					data->num_obstacles[index]++;
+				}
 			}
 		}
 	}
@@ -809,7 +812,7 @@ static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
 
 static void obstacles_from_derivedmesh(
         Object *coll_ob, SmokeDomainSettings *sds, SmokeCollSettings *scs,
-        unsigned char *obstacle_map, float *velocityX, float *velocityY, float *velocityZ, float dt)
+        unsigned char *obstacle_map, float *velocityX, float *velocityY, float *velocityZ, int *num_obstacles, float dt)
 {
 	if (!scs->dm) return;
 	{
@@ -880,7 +883,8 @@ static void obstacles_from_derivedmesh(
 			    .sds = sds, .mvert = mvert, .mloop = mloop, .looptri = looptri,
 			    .tree = &treeData, .obstacle_map = obstacle_map,
 			    .has_velocity = has_velocity, .vert_vel = vert_vel,
-			    .velocityX = velocityX, .velocityY = velocityY, .velocityZ = velocityZ
+			    .velocityX = velocityX, .velocityY = velocityY, .velocityZ = velocityZ,
+			    .num_obstacles = num_obstacles
 			};
 			BLI_task_parallel_range(
 			            sds->res_min[2], sds->res_max[2], &data, obstacles_from_derivedmesh_task_cb, true);
@@ -916,6 +920,8 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	float *b = smoke_get_color_b(sds->fluid);
 	unsigned int z;
 
+	int *num_obstacles = MEM_callocN(sizeof(int) * sds->res[0] * sds->res[1] * sds->res[2], "smoke_num_obstacles");
+
 	smoke_get_ob_velocity(sds->fluid, &velx, &vely, &velz);
 
 	// TODO: delete old obstacle flags
@@ -947,7 +953,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 		if ((smd2->type & MOD_SMOKE_TYPE_COLL) && smd2->coll)
 		{
 			SmokeCollSettings *scs = smd2->coll;
-			obstacles_from_derivedmesh(collob, sds, scs, obstacles, velx, vely, velz, dt);
+			obstacles_from_derivedmesh(collob, sds, scs, obstacles, velx, vely, velz, num_obstacles, dt);
 		}
 	}
 
@@ -973,7 +979,15 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 				b[z] = 0;
 			}
 		}
+		/* average velocities from multiple obstacles in one cell */
+		if (num_obstacles[z]) {
+			velx[z] /= num_obstacles[z];
+			vely[z] /= num_obstacles[z];
+			velz[z] /= num_obstacles[z];
+		}
 	}
+
+	MEM_freeN(num_obstacles);
 }
 
 /**********************************************************
@@ -3125,20 +3139,19 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			printf("bad smokeModifier_init\n");
 			return;
 		}
-		
+
+		/* only calculate something when we advanced a single frame */
+		/* don't simulate if viewing start frame, but scene frame is not real start frame */
+		bool can_simulate = (framenr == (int)smd->time + 1) && (framenr == scene->r.cfra);
+
 		/* try to read from cache */
-		if (BKE_ptcache_read(&pid, (float)framenr) == PTCACHE_READ_EXACT) {
+		if (BKE_ptcache_read(&pid, (float)framenr, can_simulate) == PTCACHE_READ_EXACT) {
 			BKE_ptcache_validate(cache, framenr);
 			smd->time = framenr;
 			return;
 		}
-				
-		/* only calculate something when we advanced a single frame */
-		if (framenr != (int)smd->time + 1)
-			return;
 
-		/* don't simulate if viewing start frame, but scene frame is not real start frame */
-		if (framenr != scene->r.cfra)
+		if (!can_simulate)
 			return;
 
 #ifdef DEBUG_TIME
@@ -3178,8 +3191,7 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		smoke_calc_transparency(sds, scene);
 
 #ifndef WITH_MANTA
-		if (sds->wt)
-		{
+		if (sds->wt && sds->total_cells > 1) {
 			smoke_turbulence_step(sds->wt, sds->fluid);
 		}
 #endif

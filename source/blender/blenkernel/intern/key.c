@@ -58,6 +58,7 @@
 #include "BKE_key.h"
 #include "BKE_lattice.h"
 #include "BKE_library.h"
+#include "BKE_main.h"
 #include "BKE_mesh.h"
 #include "BKE_editmesh.h"
 #include "BKE_scene.h"
@@ -74,11 +75,13 @@
 #define IPO_BEZTRIPLE   100
 #define IPO_BPOINT      101
 
+
+/** Free (or release) any data used by this shapekey (does not free the key itself). */
 void BKE_key_free(Key *key)
 {
 	KeyBlock *kb;
-	
-	BKE_animdata_free((ID *)key);
+
+	BKE_animdata_free((ID *)key, false);
 
 	while ((kb = BLI_pophead(&key->block))) {
 		if (kb->data)
@@ -147,14 +150,12 @@ Key *BKE_key_add(ID *id)    /* common function */
 	return key;
 }
 
-Key *BKE_key_copy(Key *key)
+Key *BKE_key_copy(Main *bmain, Key *key)
 {
 	Key *keyn;
 	KeyBlock *kbn, *kb;
 	
-	if (key == NULL) return NULL;
-	
-	keyn = BKE_libblock_copy(&key->id);
+	keyn = BKE_libblock_copy(bmain, &key->id);
 	
 	BLI_duplicatelist(&keyn->block, &key->block);
 	
@@ -169,21 +170,15 @@ Key *BKE_key_copy(Key *key)
 		kb = kb->next;
 	}
 
-	if (key->id.lib) {
-		BKE_id_lib_local_paths(G.main, key->id.lib, &keyn->id);
-	}
+	BKE_id_copy_ensure_local(bmain, &key->id, &keyn->id);
 
 	return keyn;
 }
-
 
 Key *BKE_key_copy_nolib(Key *key)
 {
 	Key *keyn;
 	KeyBlock *kbn, *kb;
-	
-	if (key == NULL)
-		return NULL;
 	
 	keyn = MEM_dupallocN(key);
 
@@ -203,19 +198,6 @@ Key *BKE_key_copy_nolib(Key *key)
 	}
 	
 	return keyn;
-}
-
-void BKE_key_make_local(Key *key)
-{
-
-	/* - only lib users: do nothing
-	 * - only local users: set flag
-	 * - mixed: make copy
-	 */
-	if (key == NULL) return;
-	
-	key->id.lib = NULL;
-	new_id(NULL, &key->id, NULL);
 }
 
 /* Sort shape keys and Ipo curves after a change.  This assumes that at most

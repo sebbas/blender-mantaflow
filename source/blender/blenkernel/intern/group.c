@@ -60,79 +60,19 @@ static void free_group_object(GroupObject *go)
 	MEM_freeN(go);
 }
 
-
+/** Free (or release) any data used by this group (does not free the group itself). */
 void BKE_group_free(Group *group)
 {
 	/* don't free group itself */
 	GroupObject *go;
 
-	BKE_previewimg_free(&group->preview);
+	/* No animdata here. */
 
 	while ((go = BLI_pophead(&group->gobject))) {
 		free_group_object(go);
 	}
-}
 
-void BKE_group_unlink(Main *bmain, Group *group)
-{
-	Material *ma;
-	Object *ob;
-	Scene *sce;
-	SceneRenderLayer *srl;
-	ParticleSystem *psys;
-	
-	for (ma = bmain->mat.first; ma; ma = ma->id.next) {
-		if (ma->group == group)
-			ma->group = NULL;
-	}
-	for (ma = bmain->mat.first; ma; ma = ma->id.next) {
-		if (ma->group == group)
-			ma->group = NULL;
-	}
-	for (sce = bmain->scene.first; sce; sce = sce->id.next) {
-		Base *base = sce->base.first;
-		
-		/* ensure objects are not in this group */
-		for (; base; base = base->next) {
-			if (BKE_group_object_unlink(group, base->object, sce, base) &&
-			    BKE_group_object_find(NULL, base->object) == NULL)
-			{
-				base->object->flag &= ~OB_FROMGROUP;
-				base->flag &= ~OB_FROMGROUP;
-			}
-		}
-		
-		for (srl = sce->r.layers.first; srl; srl = srl->next) {
-			FreestyleLineSet *lineset;
-
-			if (srl->light_override == group)
-				srl->light_override = NULL;
-			for (lineset = srl->freestyleConfig.linesets.first; lineset; lineset = lineset->next) {
-				if (lineset->group == group)
-					lineset->group = NULL;
-			}
-		}
-	}
-	
-	for (ob = bmain->object.first; ob; ob = ob->id.next) {
-		
-		if (ob->dup_group == group) {
-			ob->dup_group = NULL;
-		}
-		
-		for (psys = ob->particlesystem.first; psys; psys = psys->next) {
-			if (psys->part->dup_group == group)
-				psys->part->dup_group = NULL;
-#if 0       /* not used anymore, only keps for readfile.c, no need to account for this */
-			if (psys->part->eff_group == group)
-				psys->part->eff_group = NULL;
-#endif
-		}
-	}
-	
-	/* group stays in library, but no members */
-	BKE_group_free(group);
-	group->id.us = 0;
+	BKE_previewimg_free(&group->preview);
 }
 
 Group *BKE_group_add(Main *bmain, const char *name)
@@ -147,21 +87,24 @@ Group *BKE_group_add(Main *bmain, const char *name)
 	return group;
 }
 
-Group *BKE_group_copy(Group *group)
+Group *BKE_group_copy(Main *bmain, Group *group)
 {
 	Group *groupn;
 
-	groupn = BKE_libblock_copy(&group->id);
+	groupn = BKE_libblock_copy(bmain, &group->id);
 	BLI_duplicatelist(&groupn->gobject, &group->gobject);
 
 	/* Do not copy group's preview (same behavior as for objects). */
 	groupn->preview = NULL;
 
-	if (group->id.lib) {
-		BKE_id_lib_local_paths(G.main, group->id.lib, &groupn->id);
-	}
+	BKE_id_copy_ensure_local(bmain, &group->id, &groupn->id);
 
 	return groupn;
+}
+
+void BKE_group_make_local(Main *bmain, Group *group, const bool lib_local)
+{
+	BKE_id_make_local_generic(bmain, &group->id, true, lib_local);
 }
 
 /* external */

@@ -63,7 +63,8 @@ public:
 	device_vector<float4> bvh_nodes;
 	device_vector<float4> bvh_leaf_nodes;
 	device_vector<uint> object_node;
-	device_vector<float4> tri_storage;
+	device_vector<uint> prim_tri_index;
+	device_vector<float4> prim_tri_verts;
 	device_vector<uint> prim_type;
 	device_vector<uint> prim_visibility;
 	device_vector<uint> prim_index;
@@ -72,11 +73,14 @@ public:
 	/* mesh */
 	device_vector<uint> tri_shader;
 	device_vector<float4> tri_vnormal;
-	device_vector<float4> tri_vindex;
-	device_vector<float4> tri_verts;
+	device_vector<uint4> tri_vindex;
+	device_vector<uint> tri_patch;
+	device_vector<float2> tri_patch_uv;
 
 	device_vector<float4> curves;
 	device_vector<float4> curve_keys;
+
+	device_vector<uint> patches;
 
 	/* objects */
 	device_vector<float4> objects;
@@ -109,10 +113,12 @@ public:
 	device_vector<uint> sobol_directions;
 
 	/* cpu images */
-	device_vector<uchar4> tex_byte4_image[TEX_NUM_BYTE4_IMAGES_CPU];
-	device_vector<float4> tex_float4_image[TEX_NUM_FLOAT4_IMAGES_CPU];
-	device_vector<float> tex_float_image[TEX_NUM_FLOAT_IMAGES_CPU];
-	device_vector<uchar> tex_byte_image[TEX_NUM_BYTE_IMAGES_CPU];
+	device_vector<uchar4> tex_byte4_image[TEX_NUM_BYTE4_CPU];
+	device_vector<float4> tex_float4_image[TEX_NUM_FLOAT4_CPU];
+	device_vector<float> tex_float_image[TEX_NUM_FLOAT_CPU];
+	device_vector<uchar> tex_byte_image[TEX_NUM_BYTE_CPU];
+	device_vector<half4> tex_half4_image[TEX_NUM_HALF4_CPU];
+	device_vector<half> tex_half_image[TEX_NUM_HALF_CPU];
 
 	/* opencl images */
 	device_vector<uchar4> tex_image_byte4_packed;
@@ -134,6 +140,7 @@ public:
 		BVH_NUM_TYPES,
 	} bvh_type;
 	bool use_bvh_spatial_split;
+	bool use_bvh_unaligned_nodes;
 	bool use_qbvh;
 	bool persistent_data;
 
@@ -142,6 +149,7 @@ public:
 		shadingsystem = SHADINGSYSTEM_SVM;
 		bvh_type = BVH_DYNAMIC;
 		use_bvh_spatial_split = false;
+		use_bvh_unaligned_nodes = true;
 		use_qbvh = false;
 		persistent_data = false;
 	}
@@ -150,6 +158,7 @@ public:
 	{ return !(shadingsystem == params.shadingsystem
 		&& bvh_type == params.bvh_type
 		&& use_bvh_spatial_split == params.use_bvh_spatial_split
+		&& use_bvh_unaligned_nodes == params.use_bvh_unaligned_nodes
 		&& use_qbvh == params.use_qbvh
 		&& persistent_data == params.persistent_data); }
 };
@@ -208,6 +217,7 @@ public:
 
 	enum MotionType { MOTION_NONE = 0, MOTION_PASS, MOTION_BLUR };
 	MotionType need_motion(bool advanced_shading = true);
+	float motion_shutter_time();
 
 	bool need_update();
 	bool need_reset();

@@ -61,6 +61,11 @@
 #include <X11/XF86keysym.h>
 #endif
 
+/* for XIWarpPointer */
+#ifdef WITH_X11_XINPUT
+#  include <X11/extensions/XInput2.h>
+#endif
+
 /* For timing */
 #include <sys/time.h>
 #include <unistd.h>
@@ -72,6 +77,10 @@
 
 /* for debugging - so we can breakpoint X11 errors */
 // #define USE_X11_ERROR_HANDLERS
+
+#ifdef WITH_X11_XINPUT
+#  define USE_XINPUT_HOTPLUG
+#endif
 
 /* see [#34039] Fix Alt key glitch on Unity desktop */
 #define USE_UNITY_WORKAROUND
@@ -169,11 +178,36 @@ GHOST_SystemX11(
 	}
 	
 #ifdef WITH_X11_XINPUT
+	/* detect if we have xinput (for reuse) */
+	{
+		memset(&m_xinput_version, 0, sizeof(m_xinput_version));
+		XExtensionVersion *version = XGetExtensionVersion(m_display, INAME);
+		if (version && (version != (XExtensionVersion *)NoSuchExtension)) {
+			if (version->present) {
+				m_xinput_version = *version;
+			}
+			XFree(version);
+		}
+	}
+
+#ifdef USE_XINPUT_HOTPLUG
+	if (m_xinput_version.present) {
+		XEventClass class_presence;
+		int xi_presence;
+		DevicePresence(m_display, xi_presence, class_presence);
+		XSelectExtensionEvent(
+		        m_display,
+		        RootWindow(m_display, DefaultScreen(m_display)),
+		        &class_presence, 1);
+		(void)xi_presence;
+	}
+#endif  /* USE_XINPUT_HOTPLUG */
+
 	/* initialize incase X11 fails to load */
 	memset(&m_xtablet, 0, sizeof(m_xtablet));
 
-	initXInputDevices();
-#endif
+	refreshXInputDevices();
+#endif  /* WITH_X11_XINPUT */
 }
 
 GHOST_SystemX11::
@@ -310,6 +344,7 @@ createWindow(const STR_String& title,
 	                             left, top, width, height,
 	                             state, parentWindow, type,
 	                             ((glSettings.flags & GHOST_glStereoVisual) != 0), exclusive,
+	                             ((glSettings.flags & GHOST_glAlphaBackground) != 0),
 	                             glSettings.numOfAASamples, (glSettings.flags & GHOST_glDebugContext) != 0);
 
 	if (window) {
@@ -419,8 +454,7 @@ static Bool init_timestamp_scanner(Display *, XEvent *event, XPointer arg)
 {
 	init_timestamp_data *data =
 	    reinterpret_cast<init_timestamp_data *>(arg);
-	switch (event->type)
-	{
+	switch (event->type) {
 		case ButtonPress:
 		case ButtonRelease:
 			data->timestamp = event->xbutton.time;
@@ -627,7 +661,12 @@ static bool checkTabletProximity(Display *display, XDevice *device)
 		return false;
 	}
 
+	/* needed since unplugging will abort() without this */
+	GHOST_X11_ERROR_HANDLERS_OVERRIDE(handler_store);
+
 	state = XQueryDeviceState(display, device);
+
+	GHOST_X11_ERROR_HANDLERS_RESTORE(handler_store);
 
 	if (state) {
 		XInputClass *cls = state->data;
@@ -661,6 +700,41 @@ GHOST_SystemX11::processEvent(XEvent *xe)
 	GHOST_WindowX11 *window = findGhostWindow(xe->xany.window);
 	GHOST_Event *g_event = NULL;
 
+#ifdef USE_XINPUT_HOTPLUG
+	/* Hot-Plug support */
+	if (m_xinput_version.present) {
+		XEventClass class_presence;
+		int xi_presence;
+
+		DevicePresence(m_display, xi_presence, class_presence);
+		(void)class_presence;
+
+		if (xe->type == xi_presence) {
+			XDevicePresenceNotifyEvent *notify_event = (XDevicePresenceNotifyEvent *)xe;
+			if ((notify_event->devchange == DeviceEnabled) ||
+			    (notify_event->devchange == DeviceDisabled) ||
+			    (notify_event->devchange == DeviceAdded) ||
+			    (notify_event->devchange == DeviceRemoved))
+			{
+				refreshXInputDevices();
+
+				/* update all window events */
+				{
+					vector<GHOST_IWindow *> & win_vec = m_windowManager->getWindows();
+					vector<GHOST_IWindow *>::iterator win_it = win_vec.begin();
+					vector<GHOST_IWindow *>::const_iterator win_end = win_vec.end();
+
+					for (; win_it != win_end; ++win_it) {
+						GHOST_WindowX11 *window = static_cast<GHOST_WindowX11 *>(*win_it);
+						window->refreshXInputDevices();
+					}
+				}
+			}
+		}
+	}
+#endif  /* USE_XINPUT_HOTPLUG */
+
+
 	if (!window) {
 		return;
 	}
@@ -680,7 +754,6 @@ GHOST_SystemX11::processEvent(XEvent *xe)
 		}
 	}
 #endif /* WITH_X11_XINPUT */
-
 	switch (xe->type) {
 		case Expose:
 		{
@@ -1401,7 +1474,22 @@ setCursorPosition(
 	int relx = x - cx;
 	int rely = y - cy;
 
-	XWarpPointer(m_display, None, None, 0, 0, 0, 0, relx, rely);
+#ifdef WITH_X11_XINPUT
+	if ((m_xinput_version.present) &&
+	    (m_xinput_version.major_version >= 2))
+	{
+		/* Needed to account for XInput "Coordinate Transformation Matrix", see T48901 */
+		int device_id;
+		if (XIGetClientPointer(m_display, None, &device_id) != False) {
+			XIWarpPointer(m_display, device_id, None, None, 0, 0, 0, 0, relx, rely);
+		}
+	}
+	else
+#endif
+	{
+		XWarpPointer(m_display, None, None, 0, 0, 0, 0, relx, rely);
+	}
+
 	XSync(m_display, 0); /* Sync to process all requests */
 	
 	return GHOST_kSuccess;
@@ -1917,11 +2005,8 @@ GHOST_TSuccess GHOST_SystemX11::pushDragDropEvent(GHOST_TEventType eventType,
 	                         );
 }
 #endif
-
-#if defined(USE_X11_ERROR_HANDLERS) || defined(WITH_X11_XINPUT)
-/*
+/**
  * These callbacks can be used for debugging, so we can breakpoint on an X11 error.
-
  *
  * Dummy function to get around IO Handler exiting if device invalid
  * Basically it will not crash blender now if you have a X device that
@@ -1952,7 +2037,6 @@ int GHOST_X11_ApplicationIOErrorHandler(Display * /*display*/)
 	/* No exit! - but keep lint happy */
 	return 0;
 }
-#endif
 
 #ifdef WITH_X11_XINPUT
 /* These C functions are copied from Wine 1.1.13's wintab.c */
@@ -1963,8 +2047,7 @@ int GHOST_X11_ApplicationIOErrorHandler(Display * /*display*/)
 static bool match_token(const char *haystack, const char *needle)
 {
 	const char *p, *q;
-	for (p = haystack; *p; )
-	{
+	for (p = haystack; *p; ) {
 		while (*p && isspace(*p))
 			p++;
 		if (!*p)
@@ -2050,23 +2133,27 @@ static BOOL is_eraser(const char *name, const char *type)
 #undef FALSE
 /* end code copied from wine */
 
-void GHOST_SystemX11::initXInputDevices()
+void GHOST_SystemX11::refreshXInputDevices()
 {
-	static XErrorHandler   old_handler = (XErrorHandler) 0;
-	static XIOErrorHandler old_handler_io = (XIOErrorHandler) 0;
+	if (m_xinput_version.present) {
 
-	XExtensionVersion *version = XGetExtensionVersion(m_display, INAME);
+		if (m_xtablet.StylusDevice) {
+			XCloseDevice(m_display, m_xtablet.StylusDevice);
+			m_xtablet.StylusDevice = NULL;
+		}
 
-	if (version && (version != (XExtensionVersion *)NoSuchExtension)) {
-		if (version->present) {
+		if (m_xtablet.EraserDevice) {
+			XCloseDevice(m_display, m_xtablet.EraserDevice);
+			m_xtablet.EraserDevice = NULL;
+		}
+
+		/* Install our error handler to override Xlib's termination behavior */
+		GHOST_X11_ERROR_HANDLERS_OVERRIDE(handler_store);
+
+		{
 			int device_count;
 			XDeviceInfo *device_info = XListInputDevices(m_display, &device_count);
-			m_xtablet.StylusDevice = NULL;
-			m_xtablet.EraserDevice = NULL;
 
-			/* Install our error handler to override Xlib's termination behavior */
-			old_handler = XSetErrorHandler(GHOST_X11_ApplicationErrorHandler);
-			old_handler_io = XSetIOErrorHandler(GHOST_X11_ApplicationIOErrorHandler);
 
 			for (int i = 0; i < device_count; ++i) {
 				char *device_type = device_info[i].type ? XGetAtomName(m_display, device_info[i].type) : NULL;
@@ -2125,13 +2212,10 @@ void GHOST_SystemX11::initXInputDevices()
 				}
 			}
 
-			/* Restore handler */
-			(void) XSetErrorHandler(old_handler);
-			(void) XSetIOErrorHandler(old_handler_io);
-
 			XFreeDeviceList(device_info);
 		}
-		XFree(version);
+
+		GHOST_X11_ERROR_HANDLERS_RESTORE(handler_store);
 	}
 }
 

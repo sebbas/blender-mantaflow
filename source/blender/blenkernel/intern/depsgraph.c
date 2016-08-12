@@ -46,6 +46,7 @@
 
 #include "DNA_anim_types.h"
 #include "DNA_camera_types.h"
+#include "DNA_cachefile_types.h"
 #include "DNA_group_types.h"
 #include "DNA_lamp_types.h"
 #include "DNA_lattice_types.h"
@@ -66,6 +67,7 @@
 #include "BKE_effect.h"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
+#include "BKE_idcode.h"
 #include "BKE_image.h"
 #include "BKE_key.h"
 #include "BKE_library.h"
@@ -770,7 +772,7 @@ static void build_dag_object(DagForest *dag, DagNode *scenenode, Main *bmain, Sc
 
 			dag_add_relation(dag, node, node, DAG_RL_OB_DATA, "Particle-Object Relation");
 
-			if (!psys_check_enabled(ob, psys))
+			if (!psys_check_enabled(ob, psys, G.is_rendering))
 				continue;
 
 			if (ELEM(part->phystype, PART_PHYS_KEYED, PART_PHYS_BOIDS)) {
@@ -2173,7 +2175,12 @@ static void dag_object_time_update_flags(Main *bmain, Scene *scene, Object *ob)
 			
 			if (cti) {
 				/* special case for camera tracking -- it doesn't use targets to define relations */
-				if (ELEM(cti->type, CONSTRAINT_TYPE_FOLLOWTRACK, CONSTRAINT_TYPE_CAMERASOLVER, CONSTRAINT_TYPE_OBJECTSOLVER)) {
+				if (ELEM(cti->type,
+				         CONSTRAINT_TYPE_FOLLOWTRACK,
+				         CONSTRAINT_TYPE_CAMERASOLVER,
+				         CONSTRAINT_TYPE_OBJECTSOLVER,
+				         CONSTRAINT_TYPE_TRANSFORM_CACHE))
+				{
 					ob->recalc |= OB_RECALC_OB;
 				}
 				else if (cti->get_constraint_targets) {
@@ -2285,7 +2292,7 @@ static void dag_object_time_update_flags(Main *bmain, Scene *scene, Object *ob)
 			ParticleSystem *psys = ob->particlesystem.first;
 
 			for (; psys; psys = psys->next) {
-				if (psys_check_enabled(ob, psys)) {
+				if (psys_check_enabled(ob, psys, G.is_rendering)) {
 					ob->recalc |= OB_RECALC_DATA;
 					break;
 				}
@@ -2799,9 +2806,7 @@ void DAG_ids_flush_tagged(Main *bmain)
 		ListBase *lb = lbarray[a];
 		ID *id = lb->first;
 
-		/* we tag based on first ID type character to avoid 
-		 * looping over all ID's in case there are no tags */
-		if (id && bmain->id_tag_update[id->name[0]]) {
+		if (id && bmain->id_tag_update[BKE_idcode_to_index(GS(id->name))]) {
 			for (; id; id = id->next) {
 				if (id->tag & (LIB_TAG_ID_RECALC | LIB_TAG_ID_RECALC_DATA)) {
 					
@@ -2841,9 +2846,7 @@ void DAG_ids_check_recalc(Main *bmain, Scene *scene, bool time)
 		ListBase *lb = lbarray[a];
 		ID *id = lb->first;
 
-		/* we tag based on first ID type character to avoid 
-		 * looping over all ID's in case there are no tags */
-		if (id && bmain->id_tag_update[id->name[0]]) {
+		if (id && bmain->id_tag_update[BKE_idcode_to_index(GS(id->name))]) {
 			updated = true;
 			break;
 		}
@@ -2924,9 +2927,7 @@ void DAG_ids_clear_recalc(Main *bmain)
 		ListBase *lb = lbarray[a];
 		ID *id = lb->first;
 
-		/* we tag based on first ID type character to avoid 
-		 * looping over all ID's in case there are no tags */
-		if (id && bmain->id_tag_update[id->name[0]]) {
+		if (id && bmain->id_tag_update[BKE_idcode_to_index(GS(id->name))]) {
 			for (; id; id = id->next) {
 				if (id->tag & (LIB_TAG_ID_RECALC | LIB_TAG_ID_RECALC_DATA))
 					id->tag &= ~(LIB_TAG_ID_RECALC | LIB_TAG_ID_RECALC_DATA);
@@ -3001,6 +3002,33 @@ void DAG_id_tag_update_ex(Main *bmain, ID *id, short flag)
 			/* BLI_assert(!"invalid flag for this 'idtype'"); */
 		}
 	}
+	else if (GS(id->name) == ID_CF) {
+		for (Object *ob = bmain->object.first; ob; ob = ob->id.next) {
+			ModifierData *md = modifiers_findByType(ob, eModifierType_MeshSequenceCache);
+
+			if (md) {
+				MeshSeqCacheModifierData *mcmd = (MeshSeqCacheModifierData *)md;
+
+				if (mcmd->cache_file && (&mcmd->cache_file->id == id)) {
+					ob->recalc |= OB_RECALC_DATA;
+					continue;
+				}
+			}
+
+			for (bConstraint *con = ob->constraints.first; con; con = con->next) {
+				if (con->type != CONSTRAINT_TYPE_TRANSFORM_CACHE) {
+					continue;
+				}
+
+				bTransformCacheConstraint *data = con->data;
+
+				if (data->cache_file && (&data->cache_file->id == id)) {
+					ob->recalc |= OB_RECALC_DATA;
+					break;
+				}
+			}
+		}
+	}
 }
 
 void DAG_id_tag_update(ID *id, short flag)
@@ -3020,12 +3048,12 @@ void DAG_id_type_tag(Main *bmain, short idtype)
 		DAG_id_type_tag(bmain, ID_SCE);
 	}
 
-	bmain->id_tag_update[((char *)&idtype)[0]] = 1;
+	bmain->id_tag_update[BKE_idcode_to_index(idtype)] = 1;
 }
 
 int DAG_id_type_tagged(Main *bmain, short idtype)
 {
-	return bmain->id_tag_update[((char *)&idtype)[0]];
+	return bmain->id_tag_update[BKE_idcode_to_index(idtype)];
 }
 
 #if 0 // UNUSED
