@@ -7943,21 +7943,13 @@ void draw_object(Scene *scene, ARegion *ar, View3D *v3d, Base *base, const short
 				if (sds->fluid && sds->viewport_display_mode == SM_VIEWPORT_GEOMETRY) {
 					// Nothing to do here
 				}
-#ifndef WITH_MANTA
-				else if (!sds->wt || !(sds->viewsettings & MOD_SMOKE_VIEW_SHOWBIG)) {
-#else
 				else if (!(sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) || sds->viewport_display_mode == SM_VIEWPORT_PREVIEW) {
-#endif
 					sds->tex = NULL;
 					GPU_create_smoke(smd, 0);
 					draw_smoke_volume(sds, ob, p0, p1, viewnormal);
 					GPU_free_smoke(smd);
 				}
-#ifndef WITH_MANTA
-				else if (sds->wt && (sds->viewsettings & MOD_SMOKE_VIEW_SHOWBIG)) {
-#else
 				else if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES && sds->viewport_display_mode == SM_VIEWPORT_FINAL) {
-#endif
 					sds->tex = NULL;
 					GPU_create_smoke(smd, 1);
 					draw_smoke_volume(sds, ob, p0, p1, viewnormal);

@@ -306,7 +306,6 @@ class PHYSICS_PT_smoke_highres(PhysicButtonsPanel, Panel):
             sub.prop(domain, "amplify", text="Divisions")
             sub.label(text="Flow Sampling:")
             sub.row().prop(domain, "highres_sampling", text="")
-            sub.prop(domain, "show_high_resolution")
 
             sub = split.column()
             sub.active = domain.use_high_resolution
