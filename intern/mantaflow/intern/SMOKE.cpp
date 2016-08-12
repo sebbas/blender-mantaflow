@@ -74,7 +74,7 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 	mConstantScaling    = (mConstantScaling < 1.0f) ? 1.0f : mConstantScaling;
 	mTotalCells         = mResX * mResY * mResZ;
 	
-	// Low res grids
+	// Smoke low res grids
 	mDensity        = NULL;
 	mFlags          = NULL;
 	mHeat           = NULL;
@@ -97,7 +97,7 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 	mFuelInflow     = NULL;
 	mObstacles      = NULL;
 	
-	// High res grids
+	// Smoke high res grids
 	mDensityHigh    = NULL;
 	mFlameHigh      = NULL;
 	mFuelHigh       = NULL;
@@ -112,9 +112,11 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 	mTextureV2      = NULL;
 	mTextureW2      = NULL;
 	
-	// Liquids
+	// Liquid low res grids
 	mPhi            = NULL;
 	mPhiInit        = NULL;
+	
+	// Liquid high res grids
 	mPhiHigh        = NULL;
 	
 	mNumVertices  = 0;
@@ -130,7 +132,27 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 	if (mUsingLiquid) {
 		initDomain(smd);
 		initLiquid(smd);
+
 		updatePointers(smd);
+		
+		if (mUsingHighRes) {
+			// Make sure that string vector does not contain any previous commands
+			mCommands.clear();
+
+			// simulation constants
+			int amplify     = smd->domain->amplify + 1;
+			mResXHigh       = amplify * mResX;
+			mResYHigh       = amplify * mResY;
+			mResZHigh       = amplify * mResZ;
+			mTotalCellsHigh	= mResXHigh * mResYHigh * mResZHigh;
+			
+			// Initialize Mantaflow variables in Python
+			initDomainHigh(smd);
+			initLiquidHigh(smd);
+
+			updatePointersHigh(smd);
+		}
+
 		return;
 	}
 	
@@ -194,7 +216,7 @@ void SMOKE::initSmoke(SmokeModifierData *smd)
 	std::string tmpString = alloc_base_grids_low
 		+ fluid_variables
 		+ smoke_variables_low
-		+ prep_domain_low
+		+ smoke_prep_domain_low
 		+ manta_step
 		+ smoke_step_low;
 	std::string finalString = parseScript(tmpString, smd);
@@ -209,7 +231,7 @@ void SMOKE::initSmokeHigh(SmokeModifierData *smd)
 	std::string tmpString = alloc_base_grids_high
 		+ smoke_variables_high
 		+ uv_setup
-		+ prep_domain_high
+		+ smoke_prep_domain_high
 		+ wavelet_turbulence_noise
 		+ smoke_step_high;
 	std::string finalString = parseScript(tmpString, smd);
@@ -292,7 +314,7 @@ void SMOKE::initLiquid(SmokeModifierData *smd)
 		std::string tmpString = alloc_liquid
 			+ fluid_variables
 			+ liquid_variables
-			+ prep_domain_low
+			+ liquid_prep_domain_low
 			+ init_phi
 			+ save_mesh
 			+ save_liquid_data
@@ -306,6 +328,20 @@ void SMOKE::initLiquid(SmokeModifierData *smd)
 		runPythonString(mCommands);
 		mUsingLiquid = true;
 	}
+}
+
+void SMOKE::initLiquidHigh(SmokeModifierData *smd)
+{
+	std::string tmpString = alloc_liquid_high
+		+ liquid_variables_high
+		+ liquid_prep_domain_high
+		+ liquid_step_high;
+	std::string finalString = parseScript(tmpString, smd);
+	mCommands.clear();
+	mCommands.push_back(finalString);
+		
+	runPythonString(mCommands);
+	mUsingHighRes = true;
 }
 
 void SMOKE::step(SmokeModifierData *smd)
@@ -336,6 +372,9 @@ SMOKE::~SMOKE()
 	if (mUsingLiquid) {
 		mCommands.push_back(del_liquid_grids);
 		mCommands.push_back(del_liquid_vars);
+		
+		if (mUsingHighRes) mCommands.push_back(del_liquid_grids_high);
+		if (mUsingHighRes) mCommands.push_back(del_liquid_vars_high);
 	}
 	
 	// Smoke
@@ -499,7 +538,7 @@ std::string SMOKE::getRealValue(const std::string& varName,  SmokeModifierData *
 	else if (varName == "VORTICITY")
 		ss << smd->domain->vorticity / mConstantScaling;
 	else if (varName == "UPRES")
-		ss << smd->domain->amplify;
+		ss << smd->domain->amplify + 1;
 	else if (varName == "HRESX")
 		ss << mResXHigh;
 	else if (varName == "HRESY") {
@@ -612,7 +651,7 @@ void SMOKE::exportScript(SmokeModifierData *smd)
 	}
 	
 	// Rest of low res setup
-	manta_script += prep_domain_low + smoke_variables_low;
+	manta_script += smoke_prep_domain_low + smoke_variables_low;
 	
 	// Setup high
 	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
@@ -634,7 +673,7 @@ void SMOKE::exportScript(SmokeModifierData *smd)
 
 	// Rest of high res setup
 	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
-		manta_script += prep_domain_high + wavelet_turbulence_noise;
+		manta_script += smoke_prep_domain_high + wavelet_turbulence_noise;
 	}
 	
 	// Import low
@@ -844,7 +883,7 @@ void SMOKE::updatePointersHigh(SmokeModifierData *smd)
 	// Liquid
 	if (mUsingLiquid) {
 		// TODO (sebbas) phiInitHigh does not exist yet
-		mPhiHigh    = (float*) getGridPointer("phiInitHigh", "xl");
+		// mPhiHigh    = (float*) getGridPointer("phiInitHigh", "xl");
 	}
 	
 	if (mUsingSmoke) {

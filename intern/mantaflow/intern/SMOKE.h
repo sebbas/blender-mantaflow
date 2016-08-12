@@ -51,6 +51,7 @@ public:
 	void initFireHigh(struct SmokeModifierData *smd);
 	void initColorsHigh(struct SmokeModifierData *smd);
 	void initLiquid(SmokeModifierData *smd);
+	void initLiquidHigh(SmokeModifierData *smd);
 	
 	// Pointer transfer Mantaflow -> Blender
 	void updatePointers(struct SmokeModifierData *smd);

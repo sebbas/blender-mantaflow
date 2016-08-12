@@ -75,19 +75,4 @@ doOpen          = $DO_OPEN$\n\
 boundConditions = '$BOUNDCONDITIONS$'\n\
 boundaryWidth   = 0\n";
 
-const std::string prep_domain_low = "\n\
-# prepare domain low\n\
-mantaMsg('Fluid domain low')\n\
-flags.initDomain(boundaryWidth=boundaryWidth)\n\
-flags.fillGrid()\n\
-if doOpen:\n\
-    setOpenBound(flags=flags, bWidth=boundaryWidth, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
-
-const std::string prep_domain_high = "\n\
-# prepare domain high\n\
-mantaMsg('Fluid domain high')\n\
-xl_flags.initDomain(boundaryWidth=boundaryWidth)\n\
-xl_flags.fillGrid()\n\
-if doOpen:\n\
-    setOpenBound(flags=xl_flags, bWidth=boundaryWidth, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
 

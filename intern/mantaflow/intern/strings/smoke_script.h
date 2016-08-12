@@ -46,6 +46,22 @@ for i in range(uvs):\n\
 copyVec3ToReal(source=uv[0], targetX=texture_u, targetY=texture_v, targetZ=texture_w)\n\
 copyVec3ToReal(source=uv[1], targetX=texture_u2, targetY=texture_v2, targetZ=texture_w2)\n";
 
+const std::string smoke_prep_domain_low = "\n\
+# prepare domain low\n\
+mantaMsg('Smoke domain low')\n\
+flags.initDomain(boundaryWidth=boundaryWidth)\n\
+flags.fillGrid()\n\
+if doOpen:\n\
+    setOpenBound(flags=flags, bWidth=boundaryWidth, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
+
+const std::string smoke_prep_domain_high = "\n\
+# prepare domain high\n\
+mantaMsg('Smoke domain high')\n\
+xl_flags.initDomain(boundaryWidth=boundaryWidth)\n\
+xl_flags.fillGrid()\n\
+if doOpen:\n\
+    setOpenBound(flags=xl_flags, bWidth=boundaryWidth, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
+
 //////////////////////////////////////////////////////////////////////
 // LOW RESOLUTION SETUP
 //////////////////////////////////////////////////////////////////////
