@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/vortexsheet.cpp"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/vortexsheet.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -20,6 +20,7 @@
  * http://www.gnu.org/licenses
  *
  * Vortex sheets
+ * (warning, the vortex methods are currently experimental, and not fully supported!)
  *
  ******************************************************************************/
 

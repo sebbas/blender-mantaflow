@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/plugin/advection.cpp"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/plugin/advection.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -36,17 +36,17 @@ namespace Manta {
 //! Semi-Lagrange interpolation kernel
 
 
-template <class T>  struct SemiLagrange : public KernelBase { SemiLagrange(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& src, Real dt, bool isLevelset, int orderSpace) :  KernelBase(&flags,1) ,flags(flags),vel(vel),dst(dst),src(src),dt(dt),isLevelset(isLevelset),orderSpace(orderSpace)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& src, Real dt, bool isLevelset, int orderSpace )  {
+template <class T>  struct SemiLagrange : public KernelBase { SemiLagrange(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& src, Real dt, bool isLevelset, int orderSpace) :  KernelBase(&flags,1) ,flags(flags),vel(vel),dst(dst),src(src),dt(dt),isLevelset(isLevelset),orderSpace(orderSpace)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& src, Real dt, bool isLevelset, int orderSpace )  {
 	// traceback position
 	Vec3 pos = Vec3(i+0.5f,j+0.5f,k+0.5f) - vel.getCentered(i,j,k) * dt;
 	dst(i,j,k) = src.getInterpolatedHi(pos, orderSpace);
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<T>& getArg2() { return dst; } typedef Grid<T> type2;inline Grid<T>& getArg3() { return src; } typedef Grid<T> type3;inline Real& getArg4() { return dt; } typedef Real type4;inline bool& getArg5() { return isLevelset; } typedef bool type5;inline int& getArg6() { return orderSpace; } typedef int type6; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<T>& getArg2() { return dst; } typedef Grid<T> type2;inline Grid<T>& getArg3() { return src; } typedef Grid<T> type3;inline Real& getArg4() { return dt; } typedef Real type4;inline bool& getArg5() { return isLevelset; } typedef bool type5;inline int& getArg6() { return orderSpace; } typedef int type6; void runMessage() { debMsg("Executing kernel SemiLagrange ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,dst,src,dt,isLevelset,orderSpace);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,dst,src,dt,isLevelset,orderSpace);  } }  } FlagGrid& flags; MACGrid& vel; Grid<T>& dst; Grid<T>& src; Real dt; bool isLevelset; int orderSpace;   };
 #line 27 "plugin/advection.cpp"
@@ -56,7 +56,7 @@ template <class T>  struct SemiLagrange : public KernelBase { SemiLagrange(FlagG
 //! Semi-Lagrange interpolation kernel for MAC grids
 
 
- struct SemiLagrangeMAC : public KernelBase { SemiLagrangeMAC(FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& src, Real dt, int orderSpace) :  KernelBase(&flags,1) ,flags(flags),vel(vel),dst(dst),src(src),dt(dt),orderSpace(orderSpace)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& src, Real dt, int orderSpace )  {
+ struct SemiLagrangeMAC : public KernelBase { SemiLagrangeMAC(FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& src, Real dt, int orderSpace) :  KernelBase(&flags,1) ,flags(flags),vel(vel),dst(dst),src(src),dt(dt),orderSpace(orderSpace)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& src, Real dt, int orderSpace )  {
 	// get currect velocity at MAC position
 	// no need to shift xpos etc. as lookup field is also shifted
 	Vec3 xpos = Vec3(i+0.5f,j+0.5f,k+0.5f) - vel.getAtMACX(i,j,k) * dt;
@@ -67,13 +67,13 @@ template <class T>  struct SemiLagrange : public KernelBase { SemiLagrange(FlagG
 	Real vz = src.getInterpolatedComponentHi<2>(zpos, orderSpace);
 	
 	dst(i,j,k) = Vec3(vx,vy,vz);
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline MACGrid& getArg2() { return dst; } typedef MACGrid type2;inline MACGrid& getArg3() { return src; } typedef MACGrid type3;inline Real& getArg4() { return dt; } typedef Real type4;inline int& getArg5() { return orderSpace; } typedef int type5; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline MACGrid& getArg2() { return dst; } typedef MACGrid type2;inline MACGrid& getArg3() { return src; } typedef MACGrid type3;inline Real& getArg4() { return dt; } typedef Real type4;inline int& getArg5() { return orderSpace; } typedef int type5; void runMessage() { debMsg("Executing kernel SemiLagrangeMAC ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,dst,src,dt,orderSpace);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,dst,src,dt,orderSpace);  } }  } FlagGrid& flags; MACGrid& vel; MACGrid& dst; MACGrid& src; Real dt; int orderSpace;   };
 #line 36 "plugin/advection.cpp"
@@ -85,18 +85,18 @@ template <class T>  struct SemiLagrange : public KernelBase { SemiLagrange(FlagG
 
 
 
-template <class T>  struct MacCormackCorrect : public KernelBase { MacCormackCorrect(FlagGrid& flags, Grid<T>& dst, Grid<T>& old, Grid<T>& fwd, Grid<T>& bwd, Real strength, bool isLevelSet, bool isMAC=false ) :  KernelBase(&flags,0) ,flags(flags),dst(dst),old(old),fwd(fwd),bwd(bwd),strength(strength),isLevelSet(isLevelSet),isMAC(isMAC)   { run(); }  inline void op(int idx, FlagGrid& flags, Grid<T>& dst, Grid<T>& old, Grid<T>& fwd, Grid<T>& bwd, Real strength, bool isLevelSet, bool isMAC=false  )  {
+template <class T>  struct MacCormackCorrect : public KernelBase { MacCormackCorrect(FlagGrid& flags, Grid<T>& dst, Grid<T>& old, Grid<T>& fwd, Grid<T>& bwd, Real strength, bool isLevelSet, bool isMAC=false ) :  KernelBase(&flags,0) ,flags(flags),dst(dst),old(old),fwd(fwd),bwd(bwd),strength(strength),isLevelSet(isLevelSet),isMAC(isMAC)   { runMessage(); run(); }   inline void op(IndexInt idx, FlagGrid& flags, Grid<T>& dst, Grid<T>& old, Grid<T>& fwd, Grid<T>& bwd, Real strength, bool isLevelSet, bool isMAC=false  )  {
 	dst[idx] = fwd[idx];
 
 	if (flags.isFluid(idx)) {
 		// only correct inside fluid region; note, strenth of correction can be modified here
 		dst[idx] += strength * 0.5 * (old[idx] - bwd[idx]);
 	}
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<T>& getArg1() { return dst; } typedef Grid<T> type1;inline Grid<T>& getArg2() { return old; } typedef Grid<T> type2;inline Grid<T>& getArg3() { return fwd; } typedef Grid<T> type3;inline Grid<T>& getArg4() { return bwd; } typedef Grid<T> type4;inline Real& getArg5() { return strength; } typedef Real type5;inline bool& getArg6() { return isLevelSet; } typedef bool type6;inline bool& getArg7() { return isMAC; } typedef bool type7; void run() {  const int _sz = size; 
+}    inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<T>& getArg1() { return dst; } typedef Grid<T> type1;inline Grid<T>& getArg2() { return old; } typedef Grid<T> type2;inline Grid<T>& getArg3() { return fwd; } typedef Grid<T> type3;inline Grid<T>& getArg4() { return bwd; } typedef Grid<T> type4;inline Real& getArg5() { return strength; } typedef Real type5;inline bool& getArg6() { return isLevelSet; } typedef bool type6;inline bool& getArg7() { return isMAC; } typedef bool type7; void runMessage() { debMsg("Executing kernel MacCormackCorrect ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
-  for (int i=0; i < _sz; i++) op(i,flags,dst,old,fwd,bwd,strength,isLevelSet,isMAC);  }  } FlagGrid& flags; Grid<T>& dst; Grid<T>& old; Grid<T>& fwd; Grid<T>& bwd; Real strength; bool isLevelSet; bool isMAC;   };
+  for (IndexInt i = 0; i < _sz; i++) op(i,flags,dst,old,fwd,bwd,strength,isLevelSet,isMAC);  }   } FlagGrid& flags; Grid<T>& dst; Grid<T>& old; Grid<T>& fwd; Grid<T>& bwd; Real strength; bool isLevelSet; bool isMAC;   };
 #line 54 "plugin/advection.cpp"
 
 
@@ -105,7 +105,7 @@ template <class T>  struct MacCormackCorrect : public KernelBase { MacCormackCor
 
 
 
-template <class T>  struct MacCormackCorrectMAC : public KernelBase { MacCormackCorrectMAC(FlagGrid& flags, Grid<T>& dst, Grid<T>& old, Grid<T>& fwd, Grid<T>& bwd, Real strength, bool isLevelSet, bool isMAC=false ) :  KernelBase(&flags,0) ,flags(flags),dst(dst),old(old),fwd(fwd),bwd(bwd),strength(strength),isLevelSet(isLevelSet),isMAC(isMAC)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<T>& dst, Grid<T>& old, Grid<T>& fwd, Grid<T>& bwd, Real strength, bool isLevelSet, bool isMAC=false  )  {
+template <class T>  struct MacCormackCorrectMAC : public KernelBase { MacCormackCorrectMAC(FlagGrid& flags, Grid<T>& dst, Grid<T>& old, Grid<T>& fwd, Grid<T>& bwd, Real strength, bool isLevelSet, bool isMAC=false ) :  KernelBase(&flags,0) ,flags(flags),dst(dst),old(old),fwd(fwd),bwd(bwd),strength(strength),isLevelSet(isLevelSet),isMAC(isMAC)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<T>& dst, Grid<T>& old, Grid<T>& fwd, Grid<T>& bwd, Real strength, bool isLevelSet, bool isMAC=false  )  {
 	bool skip[3] = { false, false, false };
 
 	if (!flags.isFluid(i,j,k)) skip[0] = skip[1] = skip[2] = true;
@@ -123,13 +123,13 @@ template <class T>  struct MacCormackCorrectMAC : public KernelBase { MacCormack
 			dst(i,j,k)[c] = fwd(i,j,k)[c] + strength * 0.5 * (old(i,j,k)[c] - bwd(i,j,k)[c]);
 		}
 	}
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<T>& getArg1() { return dst; } typedef Grid<T> type1;inline Grid<T>& getArg2() { return old; } typedef Grid<T> type2;inline Grid<T>& getArg3() { return fwd; } typedef Grid<T> type3;inline Grid<T>& getArg4() { return bwd; } typedef Grid<T> type4;inline Real& getArg5() { return strength; } typedef Real type5;inline bool& getArg6() { return isLevelSet; } typedef bool type6;inline bool& getArg7() { return isMAC; } typedef bool type7; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<T>& getArg1() { return dst; } typedef Grid<T> type1;inline Grid<T>& getArg2() { return old; } typedef Grid<T> type2;inline Grid<T>& getArg3() { return fwd; } typedef Grid<T> type3;inline Grid<T>& getArg4() { return bwd; } typedef Grid<T> type4;inline Real& getArg5() { return strength; } typedef Real type5;inline bool& getArg6() { return isLevelSet; } typedef bool type6;inline bool& getArg7() { return isMAC; } typedef bool type7; void runMessage() { debMsg("Executing kernel MacCormackCorrectMAC ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,dst,old,fwd,bwd,strength,isLevelSet,isMAC);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,dst,old,fwd,bwd,strength,isLevelSet,isMAC);  } }  } FlagGrid& flags; Grid<T>& dst; Grid<T>& old; Grid<T>& fwd; Grid<T>& bwd; Real strength; bool isLevelSet; bool isMAC;   };
 #line 67 "plugin/advection.cpp"
@@ -230,7 +230,7 @@ inline Real doClampComponentMAC(const Vec3i& gridSize, Real dst, MACGrid& orig, 
 //          (note - MAC grids are handled below)
 
 
-template <class T>  struct MacCormackClamp : public KernelBase { MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig, Grid<T>& fwd, Real dt) :  KernelBase(&flags,1) ,flags(flags),vel(vel),dst(dst),orig(orig),fwd(fwd),dt(dt)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig, Grid<T>& fwd, Real dt )  {
+template <class T>  struct MacCormackClamp : public KernelBase { MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig, Grid<T>& fwd, Real dt) :  KernelBase(&flags,1) ,flags(flags),vel(vel),dst(dst),orig(orig),fwd(fwd),dt(dt)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig, Grid<T>& fwd, Real dt )  {
 	T     dval       = dst(i,j,k);
 	Vec3i gridUpper  = flags.getSize() - 1;
 	
@@ -250,13 +250,13 @@ template <class T>  struct MacCormackClamp : public KernelBase { MacCormackClamp
 		dval = fwd(i,j,k);
 	}
 	dst(i,j,k) = dval;
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<T>& getArg2() { return dst; } typedef Grid<T> type2;inline Grid<T>& getArg3() { return orig; } typedef Grid<T> type3;inline Grid<T>& getArg4() { return fwd; } typedef Grid<T> type4;inline Real& getArg5() { return dt; } typedef Real type5; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<T>& getArg2() { return dst; } typedef Grid<T> type2;inline Grid<T>& getArg3() { return orig; } typedef Grid<T> type3;inline Grid<T>& getArg4() { return fwd; } typedef Grid<T> type4;inline Real& getArg5() { return dt; } typedef Real type5; void runMessage() { debMsg("Executing kernel MacCormackClamp ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,dst,orig,fwd,dt);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,dst,orig,fwd,dt);  } }  } FlagGrid& flags; MACGrid& vel; Grid<T>& dst; Grid<T>& orig; Grid<T>& fwd; Real dt;   };
 #line 181 "plugin/advection.cpp"
@@ -266,7 +266,7 @@ template <class T>  struct MacCormackClamp : public KernelBase { MacCormackClamp
 //! Kernel: same as MacCormackClamp above, but specialized version for MAC grids
 
 
- struct MacCormackClampMAC : public KernelBase { MacCormackClampMAC(FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& orig, MACGrid& fwd, Real dt) :  KernelBase(&flags,1) ,flags(flags),vel(vel),dst(dst),orig(orig),fwd(fwd),dt(dt)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& orig, MACGrid& fwd, Real dt )  {
+ struct MacCormackClampMAC : public KernelBase { MacCormackClampMAC(FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& orig, MACGrid& fwd, Real dt) :  KernelBase(&flags,1) ,flags(flags),vel(vel),dst(dst),orig(orig),fwd(fwd),dt(dt)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& orig, MACGrid& fwd, Real dt )  {
 	Vec3  pos(i,j,k);
 	Vec3  dval       = dst(i,j,k);
 	Vec3  dfwd       = fwd(i,j,k);
@@ -280,13 +280,13 @@ template <class T>  struct MacCormackClamp : public KernelBase { MacCormackClamp
 	// this would need to be done for each face separately to stay symmetric...
 
 	dst(i,j,k) = dval;
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline MACGrid& getArg2() { return dst; } typedef MACGrid type2;inline MACGrid& getArg3() { return orig; } typedef MACGrid type3;inline MACGrid& getArg4() { return fwd; } typedef MACGrid type4;inline Real& getArg5() { return dt; } typedef Real type5; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline MACGrid& getArg2() { return dst; } typedef MACGrid type2;inline MACGrid& getArg3() { return orig; } typedef MACGrid type3;inline MACGrid& getArg4() { return fwd; } typedef MACGrid type4;inline Real& getArg5() { return dt; } typedef Real type5; void runMessage() { debMsg("Executing kernel MacCormackClampMAC ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,dst,orig,fwd,dt);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,dst,orig,fwd,dt);  } }  } FlagGrid& flags; MACGrid& vel; MACGrid& dst; MACGrid& orig; MACGrid& fwd; Real dt;   };
 #line 206 "plugin/advection.cpp"
@@ -350,7 +350,7 @@ Vec3 getBulkVel(FlagGrid& flags, MACGrid& vel, int i, int j, int k){
 }
 
 //! extrapolate normal velocity components into outflow cell
- struct extrapolateVelConvectiveBC : public KernelBase { extrapolateVelConvectiveBC(FlagGrid& flags, MACGrid& vel, MACGrid& velDst, MACGrid& velPrev, Real timeStep, int bWidth) :  KernelBase(&flags,0) ,flags(flags),vel(vel),velDst(velDst),velPrev(velPrev),timeStep(timeStep),bWidth(bWidth)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, MACGrid& velDst, MACGrid& velPrev, Real timeStep, int bWidth )  {
+ struct extrapolateVelConvectiveBC : public KernelBase { extrapolateVelConvectiveBC(FlagGrid& flags, MACGrid& vel, MACGrid& velDst, MACGrid& velPrev, Real timeStep, int bWidth) :  KernelBase(&flags,0) ,flags(flags),vel(vel),velDst(velDst),velPrev(velPrev),timeStep(timeStep),bWidth(bWidth)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, MACGrid& velDst, MACGrid& velPrev, Real timeStep, int bWidth )  {
 	if (flags.isOutflow(i,j,k)){
 		Vec3 bulkVel = getBulkVel(flags,vel,i,j,k);
 		bool done=false;
@@ -382,13 +382,13 @@ Vec3 getBulkVel(FlagGrid& flags, MACGrid& vel, int i, int j, int k){
 			done=false;
 		}
 	}
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline MACGrid& getArg2() { return velDst; } typedef MACGrid type2;inline MACGrid& getArg3() { return velPrev; } typedef MACGrid type3;inline Real& getArg4() { return timeStep; } typedef Real type4;inline int& getArg5() { return bWidth; } typedef int type5; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline MACGrid& getArg2() { return velDst; } typedef MACGrid type2;inline MACGrid& getArg3() { return velPrev; } typedef MACGrid type3;inline Real& getArg4() { return timeStep; } typedef Real type4;inline int& getArg5() { return bWidth; } typedef int type5; void runMessage() { debMsg("Executing kernel extrapolateVelConvectiveBC ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,vel,velDst,velPrev,timeStep,bWidth);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,vel,velDst,velPrev,timeStep,bWidth);  } }  } FlagGrid& flags; MACGrid& vel; MACGrid& velDst; MACGrid& velPrev; Real timeStep; int bWidth;   };
 #line 279 "plugin/advection.cpp"
@@ -396,13 +396,13 @@ Vec3 getBulkVel(FlagGrid& flags, MACGrid& vel, int i, int j, int k){
 
 
 //! copy extrapolated velocity components
- struct copyChangedVels : public KernelBase { copyChangedVels(FlagGrid& flags, MACGrid& velDst, MACGrid& vel) :  KernelBase(&flags,0) ,flags(flags),velDst(velDst),vel(vel)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& velDst, MACGrid& vel )  { if (flags.isOutflow(i,j,k)) vel(i, j, k) = velDst(i, j, k); }   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return velDst; } typedef MACGrid type1;inline MACGrid& getArg2() { return vel; } typedef MACGrid type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+ struct copyChangedVels : public KernelBase { copyChangedVels(FlagGrid& flags, MACGrid& velDst, MACGrid& vel) :  KernelBase(&flags,0) ,flags(flags),velDst(velDst),vel(vel)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& velDst, MACGrid& vel )  { if (flags.isOutflow(i,j,k)) vel(i, j, k) = velDst(i, j, k); }   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return velDst; } typedef MACGrid type1;inline MACGrid& getArg2() { return vel; } typedef MACGrid type2; void runMessage() { debMsg("Executing kernel copyChangedVels ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,velDst,vel);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,velDst,vel);  } }  } FlagGrid& flags; MACGrid& velDst; MACGrid& vel;   };
 #line 314 "plugin/advection.cpp"
@@ -419,23 +419,23 @@ void applyOutflowBC(FlagGrid& flags, MACGrid& vel, MACGrid& velPrev, double time
 // advection helpers
 
 //! prevent parts of the surface getting "stuck" in obstacle regions
- struct knResetPhiInObs : public KernelBase { knResetPhiInObs(FlagGrid& flags, Grid<Real>& sdf) :  KernelBase(&flags,0) ,flags(flags),sdf(sdf)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& sdf )  {
+ struct knResetPhiInObs : public KernelBase { knResetPhiInObs(FlagGrid& flags, Grid<Real>& sdf) :  KernelBase(&flags,0) ,flags(flags),sdf(sdf)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& sdf )  {
 	if( flags.isObstacle(i,j,k) && (sdf(i,j,k)<0.) ) {
 		sdf(i,j,k) = 0.1;
 	}
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return sdf; } typedef Grid<Real> type1; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return sdf; } typedef Grid<Real> type1; void runMessage() { debMsg("Executing kernel knResetPhiInObs ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,sdf);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,sdf);  } }  } FlagGrid& flags; Grid<Real>& sdf;   };
 #line 326 "plugin/advection.cpp"
 
 
-void resetPhiInObs(FlagGrid& flags, Grid<Real>& sdf) { knResetPhiInObs(flags, sdf); } static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "resetPhiInObs" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& sdf = *_args.getPtr<Grid<Real> >("sdf",1,&_lock);   _retval = getPyNone(); resetPhiInObs(flags,sdf);  _args.check(); } pbFinalizePlugin(parent,"resetPhiInObs" ); return _retval; } catch(std::exception& e) { pbSetError("resetPhiInObs",e.what()); return 0; } } static const Pb::Register _RP_resetPhiInObs ("","resetPhiInObs",_W_0); 
+void resetPhiInObs(FlagGrid& flags, Grid<Real>& sdf) { knResetPhiInObs(flags, sdf); } static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "resetPhiInObs" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& sdf = *_args.getPtr<Grid<Real> >("sdf",1,&_lock);   _retval = getPyNone(); resetPhiInObs(flags,sdf);  _args.check(); } pbFinalizePlugin(parent,"resetPhiInObs", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("resetPhiInObs",e.what()); return 0; } } static const Pb::Register _RP_resetPhiInObs ("","resetPhiInObs",_W_0); 
 
 // advection main calls
 
@@ -492,7 +492,7 @@ void advectSemiLagrange(FlagGrid* flags, MACGrid* vel, GridBase* grid, int order
 	}
 	else
 		errMsg("AdvectSemiLagrange: Grid Type is not supported (only Real, Vec3, MAC, Levelset)");    
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "advectSemiLagrange" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid* flags = _args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid* vel = _args.getPtr<MACGrid >("vel",1,&_lock); GridBase* grid = _args.getPtr<GridBase >("grid",2,&_lock); int order = _args.getOpt<int >("order",3,1,&_lock); Real strength = _args.getOpt<Real >("strength",4,1.0,&_lock); int orderSpace = _args.getOpt<int >("orderSpace",5,1,&_lock); bool openBounds = _args.getOpt<bool >("openBounds",6,false,&_lock); int boundaryWidth = _args.getOpt<int >("boundaryWidth",7,1,&_lock);   _retval = getPyNone(); advectSemiLagrange(flags,vel,grid,order,strength,orderSpace,openBounds,boundaryWidth);  _args.check(); } pbFinalizePlugin(parent,"advectSemiLagrange" ); return _retval; } catch(std::exception& e) { pbSetError("advectSemiLagrange",e.what()); return 0; } } static const Pb::Register _RP_advectSemiLagrange ("","advectSemiLagrange",_W_1); 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "advectSemiLagrange" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid* flags = _args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid* vel = _args.getPtr<MACGrid >("vel",1,&_lock); GridBase* grid = _args.getPtr<GridBase >("grid",2,&_lock); int order = _args.getOpt<int >("order",3,1,&_lock); Real strength = _args.getOpt<Real >("strength",4,1.0,&_lock); int orderSpace = _args.getOpt<int >("orderSpace",5,1,&_lock); bool openBounds = _args.getOpt<bool >("openBounds",6,false,&_lock); int boundaryWidth = _args.getOpt<int >("boundaryWidth",7,1,&_lock);   _retval = getPyNone(); advectSemiLagrange(flags,vel,grid,order,strength,orderSpace,openBounds,boundaryWidth);  _args.check(); } pbFinalizePlugin(parent,"advectSemiLagrange", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("advectSemiLagrange",e.what()); return 0; } } static const Pb::Register _RP_advectSemiLagrange ("","advectSemiLagrange",_W_1); 
 
 } // end namespace DDF 
 

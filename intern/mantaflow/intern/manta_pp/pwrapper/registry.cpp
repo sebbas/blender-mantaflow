@@ -131,7 +131,14 @@ PyObject* cbGetCName(PbObject* self, void* cl) {
 void cbDealloc(PbObject* self) {
 	//cout << "dealloc " << self->instance->getName() << " " << self->classdef->cName << endl;
 	if (self->instance) {
+	#ifndef WITH_MANTA
+		// don't delete top-level objects
+		if (self->instance->getParent() != self->instance)
+			delete self->instance;
+	#else
+		// in Blender we *have* to delete all objects
 		delete self->instance;
+	#endif
 	}
 	Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -161,10 +168,11 @@ PyMODINIT_FUNC PyInit_Main(void) {
 #endif
 }
 
-PyObject *PyInit_Main_Obj(void)
-{
+#ifdef WITH_MANTA
+PyObject *PyInit_Main_Obj(void) {
 	return PyInit_Main();	
 }
+#endif
 
 //******************************************************
 // WrapperRegistry

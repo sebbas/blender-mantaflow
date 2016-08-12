@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/plugin/kepsilon.cpp"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/plugin/kepsilon.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -48,7 +48,7 @@ const Real keNuMax = 5.0;
 
 //! clamp k and epsilon to limits    
 
- struct KnTurbulenceClamp : public KernelBase { KnTurbulenceClamp(Grid<Real>& kgrid, Grid<Real>& egrid, Real minK, Real maxK, Real minNu, Real maxNu) :  KernelBase(&kgrid,0) ,kgrid(kgrid),egrid(egrid),minK(minK),maxK(maxK),minNu(minNu),maxNu(maxNu)   { run(); }  inline void op(int idx, Grid<Real>& kgrid, Grid<Real>& egrid, Real minK, Real maxK, Real minNu, Real maxNu )  {
+ struct KnTurbulenceClamp : public KernelBase { KnTurbulenceClamp(Grid<Real>& kgrid, Grid<Real>& egrid, Real minK, Real maxK, Real minNu, Real maxNu) :  KernelBase(&kgrid,0) ,kgrid(kgrid),egrid(egrid),minK(minK),maxK(maxK),minNu(minNu),maxNu(maxNu)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid<Real>& kgrid, Grid<Real>& egrid, Real minK, Real maxK, Real minNu, Real maxNu )  {
 	Real eps = egrid[idx];
 	Real ke = clamp(kgrid[idx],minK,maxK);
 	Real nu = keCmu*square(ke)/eps;
@@ -59,11 +59,11 @@ const Real keNuMax = 5.0;
 
 	kgrid[idx] = ke;
 	egrid[idx] = eps;
-}   inline Grid<Real>& getArg0() { return kgrid; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return egrid; } typedef Grid<Real> type1;inline Real& getArg2() { return minK; } typedef Real type2;inline Real& getArg3() { return maxK; } typedef Real type3;inline Real& getArg4() { return minNu; } typedef Real type4;inline Real& getArg5() { return maxNu; } typedef Real type5; void run() {  const int _sz = size; 
+}    inline Grid<Real>& getArg0() { return kgrid; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return egrid; } typedef Grid<Real> type1;inline Real& getArg2() { return minK; } typedef Real type2;inline Real& getArg3() { return maxK; } typedef Real type3;inline Real& getArg4() { return minNu; } typedef Real type4;inline Real& getArg5() { return maxNu; } typedef Real type5; void runMessage() { debMsg("Executing kernel KnTurbulenceClamp ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
-  for (int i=0; i < _sz; i++) op(i,kgrid,egrid,minK,maxK,minNu,maxNu);  }  } Grid<Real>& kgrid; Grid<Real>& egrid; Real minK; Real maxK; Real minNu; Real maxNu;   };
+  for (IndexInt i = 0; i < _sz; i++) op(i,kgrid,egrid,minK,maxK,minNu,maxNu);  }   } Grid<Real>& kgrid; Grid<Real>& egrid; Real minK; Real maxK; Real minNu; Real maxNu;   };
 #line 39 "plugin/kepsilon.cpp"
 
 
@@ -72,7 +72,7 @@ const Real keNuMax = 5.0;
 
 
 
- struct KnComputeProduction : public KernelBase { KnComputeProduction(const MACGrid& vel, const Grid<Vec3>& velCenter, const Grid<Real>& ke, const Grid<Real>& eps, Grid<Real>& prod, Grid<Real>& nuT, Grid<Real>* strain, Real pscale = 1.0f) :  KernelBase(&vel,1) ,vel(vel),velCenter(velCenter),ke(ke),eps(eps),prod(prod),nuT(nuT),strain(strain),pscale(pscale)   { run(); }  inline void op(int i, int j, int k, const MACGrid& vel, const Grid<Vec3>& velCenter, const Grid<Real>& ke, const Grid<Real>& eps, Grid<Real>& prod, Grid<Real>& nuT, Grid<Real>* strain, Real pscale = 1.0f )  {
+ struct KnComputeProduction : public KernelBase { KnComputeProduction(const MACGrid& vel, const Grid<Vec3>& velCenter, const Grid<Real>& ke, const Grid<Real>& eps, Grid<Real>& prod, Grid<Real>& nuT, Grid<Real>* strain, Real pscale = 1.0f) :  KernelBase(&vel,1) ,vel(vel),velCenter(velCenter),ke(ke),eps(eps),prod(prod),nuT(nuT),strain(strain),pscale(pscale)   { runMessage(); run(); }  inline void op(int i, int j, int k, const MACGrid& vel, const Grid<Vec3>& velCenter, const Grid<Real>& ke, const Grid<Real>& eps, Grid<Real>& prod, Grid<Real>& nuT, Grid<Real>* strain, Real pscale = 1.0f )  {
 	Real curEps = eps(i,j,k);
 	if (curEps > 0) {
 		// turbulent viscosity: nu_T = C_mu * k^2/eps
@@ -99,13 +99,13 @@ const Real keNuMax = 5.0;
 		nuT(i,j,k) = 0;
 		if (strain) (*strain)(i,j,k) = 0;
 	}
-}   inline const MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline const Grid<Vec3>& getArg1() { return velCenter; } typedef Grid<Vec3> type1;inline const Grid<Real>& getArg2() { return ke; } typedef Grid<Real> type2;inline const Grid<Real>& getArg3() { return eps; } typedef Grid<Real> type3;inline Grid<Real>& getArg4() { return prod; } typedef Grid<Real> type4;inline Grid<Real>& getArg5() { return nuT; } typedef Grid<Real> type5;inline Grid<Real>* getArg6() { return strain; } typedef Grid<Real> type6;inline Real& getArg7() { return pscale; } typedef Real type7; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline const MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline const Grid<Vec3>& getArg1() { return velCenter; } typedef Grid<Vec3> type1;inline const Grid<Real>& getArg2() { return ke; } typedef Grid<Real> type2;inline const Grid<Real>& getArg3() { return eps; } typedef Grid<Real> type3;inline Grid<Real>& getArg4() { return prod; } typedef Grid<Real> type4;inline Grid<Real>& getArg5() { return nuT; } typedef Grid<Real> type5;inline Grid<Real>* getArg6() { return strain; } typedef Grid<Real> type6;inline Real& getArg7() { return pscale; } typedef Real type7; void runMessage() { debMsg("Executing kernel KnComputeProduction ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,vel,velCenter,ke,eps,prod,nuT,strain,pscale);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,vel,velCenter,ke,eps,prod,nuT,strain,pscale);  } }  } const MACGrid& vel; const Grid<Vec3>& velCenter; const Grid<Real>& ke; const Grid<Real>& eps; Grid<Real>& prod; Grid<Real>& nuT; Grid<Real>* strain; Real pscale;   };
 #line 56 "plugin/kepsilon.cpp"
@@ -126,11 +126,11 @@ void KEpsilonComputeProduction(MACGrid& vel, Grid<Real>& k, Grid<Real>& eps, Gri
 	KnTurbulenceClamp(k, eps, minK, maxK, keNuMin, keNuMax);
 	
 	KnComputeProduction(vel, vcenter, k, eps, prod, nuT, strain, pscale);    
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "KEpsilonComputeProduction" ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Real>& k = *_args.getPtr<Grid<Real> >("k",1,&_lock); Grid<Real>& eps = *_args.getPtr<Grid<Real> >("eps",2,&_lock); Grid<Real>& prod = *_args.getPtr<Grid<Real> >("prod",3,&_lock); Grid<Real>& nuT = *_args.getPtr<Grid<Real> >("nuT",4,&_lock); Grid<Real>* strain = _args.getPtrOpt<Grid<Real> >("strain",5,0,&_lock); Real pscale = _args.getOpt<Real >("pscale",6,1.0f,&_lock);   _retval = getPyNone(); KEpsilonComputeProduction(vel,k,eps,prod,nuT,strain,pscale);  _args.check(); } pbFinalizePlugin(parent,"KEpsilonComputeProduction" ); return _retval; } catch(std::exception& e) { pbSetError("KEpsilonComputeProduction",e.what()); return 0; } } static const Pb::Register _RP_KEpsilonComputeProduction ("","KEpsilonComputeProduction",_W_0); 
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "KEpsilonComputeProduction" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Real>& k = *_args.getPtr<Grid<Real> >("k",1,&_lock); Grid<Real>& eps = *_args.getPtr<Grid<Real> >("eps",2,&_lock); Grid<Real>& prod = *_args.getPtr<Grid<Real> >("prod",3,&_lock); Grid<Real>& nuT = *_args.getPtr<Grid<Real> >("nuT",4,&_lock); Grid<Real>* strain = _args.getPtrOpt<Grid<Real> >("strain",5,0,&_lock); Real pscale = _args.getOpt<Real >("pscale",6,1.0f,&_lock);   _retval = getPyNone(); KEpsilonComputeProduction(vel,k,eps,prod,nuT,strain,pscale);  _args.check(); } pbFinalizePlugin(parent,"KEpsilonComputeProduction", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("KEpsilonComputeProduction",e.what()); return 0; } } static const Pb::Register _RP_KEpsilonComputeProduction ("","KEpsilonComputeProduction",_W_0); 
 
 //! Integrate source terms of k-epsilon equation
 
- struct KnAddTurbulenceSource : public KernelBase { KnAddTurbulenceSource(Grid<Real>& kgrid, Grid<Real>& egrid, const Grid<Real>& pgrid, Real dt) :  KernelBase(&kgrid,0) ,kgrid(kgrid),egrid(egrid),pgrid(pgrid),dt(dt)   { run(); }  inline void op(int idx, Grid<Real>& kgrid, Grid<Real>& egrid, const Grid<Real>& pgrid, Real dt )  {
+ struct KnAddTurbulenceSource : public KernelBase { KnAddTurbulenceSource(Grid<Real>& kgrid, Grid<Real>& egrid, const Grid<Real>& pgrid, Real dt) :  KernelBase(&kgrid,0) ,kgrid(kgrid),egrid(egrid),pgrid(pgrid),dt(dt)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid<Real>& kgrid, Grid<Real>& egrid, const Grid<Real>& pgrid, Real dt )  {
 	Real eps = egrid[idx], prod = pgrid[idx], ke = kgrid[idx];
 	if (ke <= 0) ke = 1e-3; // pre-clamp to avoid nan
 	
@@ -140,11 +140,11 @@ void KEpsilonComputeProduction(MACGrid& vel, Grid<Real>& k, Grid<Real>& eps, Gri
 
 	kgrid[idx] = newK;
 	egrid[idx] = newEps;
-}   inline Grid<Real>& getArg0() { return kgrid; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return egrid; } typedef Grid<Real> type1;inline const Grid<Real>& getArg2() { return pgrid; } typedef Grid<Real> type2;inline Real& getArg3() { return dt; } typedef Real type3; void run() {  const int _sz = size; 
+}    inline Grid<Real>& getArg0() { return kgrid; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return egrid; } typedef Grid<Real> type1;inline const Grid<Real>& getArg2() { return pgrid; } typedef Grid<Real> type2;inline Real& getArg3() { return dt; } typedef Real type3; void runMessage() { debMsg("Executing kernel KnAddTurbulenceSource ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
-  for (int i=0; i < _sz; i++) op(i,kgrid,egrid,pgrid,dt);  }  } Grid<Real>& kgrid; Grid<Real>& egrid; const Grid<Real>& pgrid; Real dt;   };
+  for (IndexInt i = 0; i < _sz; i++) op(i,kgrid,egrid,pgrid,dt);  }   } Grid<Real>& kgrid; Grid<Real>& egrid; const Grid<Real>& pgrid; Real dt;   };
 #line 103 "plugin/kepsilon.cpp"
 
 
@@ -160,7 +160,7 @@ void KEpsilonSources(Grid<Real>& k, Grid<Real>& eps, Grid<Real>& prod) {
 	const Real minK = 1.5*square(keU0)*square(keImin);
 	const Real maxK = 1.5*square(keU0)*square(keImax);
 	KnTurbulenceClamp(k, eps, minK, maxK, keNuMin, keNuMax);    
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "KEpsilonSources" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& k = *_args.getPtr<Grid<Real> >("k",0,&_lock); Grid<Real>& eps = *_args.getPtr<Grid<Real> >("eps",1,&_lock); Grid<Real>& prod = *_args.getPtr<Grid<Real> >("prod",2,&_lock);   _retval = getPyNone(); KEpsilonSources(k,eps,prod);  _args.check(); } pbFinalizePlugin(parent,"KEpsilonSources" ); return _retval; } catch(std::exception& e) { pbSetError("KEpsilonSources",e.what()); return 0; } } static const Pb::Register _RP_KEpsilonSources ("","KEpsilonSources",_W_1); 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "KEpsilonSources" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& k = *_args.getPtr<Grid<Real> >("k",0,&_lock); Grid<Real>& eps = *_args.getPtr<Grid<Real> >("eps",1,&_lock); Grid<Real>& prod = *_args.getPtr<Grid<Real> >("prod",2,&_lock);   _retval = getPyNone(); KEpsilonSources(k,eps,prod);  _args.check(); } pbFinalizePlugin(parent,"KEpsilonSources", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("KEpsilonSources",e.what()); return 0; } } static const Pb::Register _RP_KEpsilonSources ("","KEpsilonSources",_W_1); 
 
 //! Initialize the domain or boundary conditions
 void KEpsilonBcs(FlagGrid& flags, Grid<Real>& k, Grid<Real>& eps, Real intensity, Real nu, bool fillArea) {
@@ -174,7 +174,7 @@ void KEpsilonBcs(FlagGrid& flags, Grid<Real>& k, Grid<Real>& eps, Real intensity
 			eps[idx] = ve;
 		}
 	}
-} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "KEpsilonBcs" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& k = *_args.getPtr<Grid<Real> >("k",1,&_lock); Grid<Real>& eps = *_args.getPtr<Grid<Real> >("eps",2,&_lock); Real intensity = _args.get<Real >("intensity",3,&_lock); Real nu = _args.get<Real >("nu",4,&_lock); bool fillArea = _args.get<bool >("fillArea",5,&_lock);   _retval = getPyNone(); KEpsilonBcs(flags,k,eps,intensity,nu,fillArea);  _args.check(); } pbFinalizePlugin(parent,"KEpsilonBcs" ); return _retval; } catch(std::exception& e) { pbSetError("KEpsilonBcs",e.what()); return 0; } } static const Pb::Register _RP_KEpsilonBcs ("","KEpsilonBcs",_W_2); 
+} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "KEpsilonBcs" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& k = *_args.getPtr<Grid<Real> >("k",1,&_lock); Grid<Real>& eps = *_args.getPtr<Grid<Real> >("eps",2,&_lock); Real intensity = _args.get<Real >("intensity",3,&_lock); Real nu = _args.get<Real >("nu",4,&_lock); bool fillArea = _args.get<bool >("fillArea",5,&_lock);   _retval = getPyNone(); KEpsilonBcs(flags,k,eps,intensity,nu,fillArea);  _args.check(); } pbFinalizePlugin(parent,"KEpsilonBcs", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("KEpsilonBcs",e.what()); return 0; } } static const Pb::Register _RP_KEpsilonBcs ("","KEpsilonBcs",_W_2); 
 
 //! Gradient diffusion smoothing. Not unconditionally stable -- should probably do substepping etc.
 void ApplyGradDiff(const Grid<Real>& grid, Grid<Real>& res, const Grid<Real>& nu, Real dt, Real sigma) {
@@ -213,7 +213,7 @@ void KEpsilonGradientDiffusion(Grid<Real>& k, Grid<Real>& eps, Grid<Real>& nuT, 
 			SetComponent(*vel, vc, c);    
 		}
 	}
-} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "KEpsilonGradientDiffusion" ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& k = *_args.getPtr<Grid<Real> >("k",0,&_lock); Grid<Real>& eps = *_args.getPtr<Grid<Real> >("eps",1,&_lock); Grid<Real>& nuT = *_args.getPtr<Grid<Real> >("nuT",2,&_lock); Real sigmaU = _args.getOpt<Real >("sigmaU",3,4.0,&_lock); MACGrid* vel = _args.getPtrOpt<MACGrid >("vel",4,0,&_lock);   _retval = getPyNone(); KEpsilonGradientDiffusion(k,eps,nuT,sigmaU,vel);  _args.check(); } pbFinalizePlugin(parent,"KEpsilonGradientDiffusion" ); return _retval; } catch(std::exception& e) { pbSetError("KEpsilonGradientDiffusion",e.what()); return 0; } } static const Pb::Register _RP_KEpsilonGradientDiffusion ("","KEpsilonGradientDiffusion",_W_3); 
+} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "KEpsilonGradientDiffusion" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& k = *_args.getPtr<Grid<Real> >("k",0,&_lock); Grid<Real>& eps = *_args.getPtr<Grid<Real> >("eps",1,&_lock); Grid<Real>& nuT = *_args.getPtr<Grid<Real> >("nuT",2,&_lock); Real sigmaU = _args.getOpt<Real >("sigmaU",3,4.0,&_lock); MACGrid* vel = _args.getPtrOpt<MACGrid >("vel",4,0,&_lock);   _retval = getPyNone(); KEpsilonGradientDiffusion(k,eps,nuT,sigmaU,vel);  _args.check(); } pbFinalizePlugin(parent,"KEpsilonGradientDiffusion", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("KEpsilonGradientDiffusion",e.what()); return 0; } } static const Pb::Register _RP_KEpsilonGradientDiffusion ("","KEpsilonGradientDiffusion",_W_3); 
 
 
 

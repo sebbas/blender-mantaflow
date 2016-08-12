@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/general.h"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/general.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -88,6 +88,9 @@ inline bool _chklevel(int level=0) { return gDebugLevel >= level; }
 #define errMsg(msg)          throwError(msg);
 #define assertMsg(cond,msg)  if(!(cond)) throwError(msg)
 #define assertDeb(cond,msg)  DEBUG_ONLY( assertMsg(cond,msg) )
+
+// common type for indexing large grids
+typedef long long IndexInt;
 
 // template tricks
 template<typename T>

@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/mesh.cpp"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/mesh.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -221,25 +221,25 @@ void Mesh::rebuildChannels() {
 }
 
 
- struct KnAdvectMeshInGrid : public KernelBase { KnAdvectMeshInGrid(vector<Node>& nodes, const FlagGrid& flags, const MACGrid& vel, const Real dt) :  KernelBase(nodes.size()) ,nodes(nodes),flags(flags),vel(vel),dt(dt) ,u((size))  { run(); }  inline void op(int idx, vector<Node>& nodes, const FlagGrid& flags, const MACGrid& vel, const Real dt ,vector<Vec3> & u)  {
+ struct KnAdvectMeshInGrid : public KernelBase { KnAdvectMeshInGrid(vector<Node>& nodes, const FlagGrid& flags, const MACGrid& vel, const Real dt) :  KernelBase(nodes.size()) ,nodes(nodes),flags(flags),vel(vel),dt(dt) ,u((size))  { runMessage(); run(); }   inline void op(IndexInt idx, vector<Node>& nodes, const FlagGrid& flags, const MACGrid& vel, const Real dt ,vector<Vec3> & u)  {
 	if (nodes[idx].flags & Mesh::NfFixed) 
 		u[idx] = 0.0;
 	else if (!flags.isInBounds(nodes[idx].pos,1)) 
 		u[idx] = 0.0;
 	else 
 		u[idx] = vel.getInterpolated(nodes[idx].pos) * dt;
-}   inline operator vector<Vec3> () { return u; } inline vector<Vec3>  & getRet() { return u; }  inline vector<Node>& getArg0() { return nodes; } typedef vector<Node> type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline const MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline const Real& getArg3() { return dt; } typedef Real type3; void run() {  const int _sz = size; 
+}    inline operator vector<Vec3> () { return u; } inline vector<Vec3>  & getRet() { return u; }  inline vector<Node>& getArg0() { return nodes; } typedef vector<Node> type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline const MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline const Real& getArg3() { return dt; } typedef Real type3; void runMessage() { debMsg("Executing kernel KnAdvectMeshInGrid ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
-  for (int i=0; i < _sz; i++) op(i,nodes,flags,vel,dt,u);  }  } vector<Node>& nodes; const FlagGrid& flags; const MACGrid& vel; const Real dt;  vector<Vec3>  u;  };
+  for (IndexInt i = 0; i < _sz; i++) op(i,nodes,flags,vel,dt,u);  }   } vector<Node>& nodes; const FlagGrid& flags; const MACGrid& vel; const Real dt;  vector<Vec3>  u;  };
 #line 212 "mesh.cpp"
 
 
 
 // advection plugin
-void Mesh::advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode) {
-	KnAdvectMeshInGrid kernel(mNodes, flaggrid, vel, getParent()->getDt());
+void Mesh::advectInGrid(FlagGrid& flags, MACGrid& vel, int integrationMode) {
+	KnAdvectMeshInGrid kernel(mNodes, flags, vel, getParent()->getDt());
 	integratePointSet( kernel, integrationMode);    
 }
 
@@ -670,7 +670,7 @@ static void SDFKernel(Grid<int>& partStart, Grid<int>& partLen, CVec3Ptr pos, CV
 	}
 }
 
-static inline int _cIndex(const Vec3& pos, const Vec3i& s) {
+static inline IndexInt _cIndex(const Vec3& pos, const Vec3i& s) {
 	Vec3i p = toVec3i(pos);
 	if (p.x < 0 || p.y < 0 || p.z < 0 || p.x >= s.x || p.y >= s.y || p.z >= s.z) return -1;
 	return p.x + s.x * (p.y + s.y * p.z);
@@ -678,20 +678,20 @@ static inline int _cIndex(const Vec3& pos, const Vec3i& s) {
 
 //! Kernel: Apply a shape to a grid, setting value inside
 
-template <class T>  struct ApplyMeshToGrid : public KernelBase { ApplyMeshToGrid(Grid<T>* grid, Grid<Real> sdf, T value, FlagGrid* respectFlags) :  KernelBase(grid,0) ,grid(grid),sdf(sdf),value(value),respectFlags(respectFlags)   { run(); }  inline void op(int i, int j, int k, Grid<T>* grid, Grid<Real> sdf, T value, FlagGrid* respectFlags )  {
+template <class T>  struct ApplyMeshToGrid : public KernelBase { ApplyMeshToGrid(Grid<T>* grid, Grid<Real> sdf, T value, FlagGrid* respectFlags) :  KernelBase(grid,0) ,grid(grid),sdf(sdf),value(value),respectFlags(respectFlags)   { runMessage(); run(); }  inline void op(int i, int j, int k, Grid<T>* grid, Grid<Real> sdf, T value, FlagGrid* respectFlags )  {
 	if (respectFlags && respectFlags->isObstacle(i,j,k))
 		return;
 	if (sdf(i,j,k) < 0)
 	{	
 		(*grid)(i,j,k) = value;
 	}
-}   inline Grid<T>* getArg0() { return grid; } typedef Grid<T> type0;inline Grid<Real> & getArg1() { return sdf; } typedef Grid<Real>  type1;inline T& getArg2() { return value; } typedef T type2;inline FlagGrid* getArg3() { return respectFlags; } typedef FlagGrid type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline Grid<T>* getArg0() { return grid; } typedef Grid<T> type0;inline Grid<Real> & getArg1() { return sdf; } typedef Grid<Real>  type1;inline T& getArg2() { return value; } typedef T type2;inline FlagGrid* getArg3() { return respectFlags; } typedef FlagGrid type3; void runMessage() { debMsg("Executing kernel ApplyMeshToGrid ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,sdf,value,respectFlags);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,sdf,value,respectFlags);  } }  } Grid<T>* grid; Grid<Real>  sdf; T value; FlagGrid* respectFlags;   };
 #line 662 "mesh.cpp"
@@ -799,10 +799,9 @@ void meshSDF(Mesh& mesh, LevelsetGrid& levelset, Real sigma, Real cutoff)
 	levelset.setConst( -cutoff );
 	
 	// 1. count sources per cell
-	// NT_DEBUG todo, use IndexInt
 	Grid<int> srcPerCell(levelset.getParent());
 	for (size_t i=0; i<center.size(); i++) {
-		int idx = _cIndex(center[i], gridRes);
+		IndexInt idx = _cIndex(center[i], gridRes);
 		if (idx >= 0)
 			srcPerCell[idx]++;
 	}
@@ -811,7 +810,7 @@ void meshSDF(Mesh& mesh, LevelsetGrid& levelset, Real sigma, Real cutoff)
 	Grid<int> srcCellStart(levelset.getParent());
 	int cnt=0;
 	FOR_IJK(srcCellStart) {
-		int idx = srcCellStart.index(i,j,k);
+		IndexInt idx = srcCellStart.index(i,j,k);
 		srcCellStart[idx] = cnt;
 		cnt += srcPerCell[idx];
 	}
@@ -822,9 +821,9 @@ void meshSDF(Mesh& mesh, LevelsetGrid& levelset, Real sigma, Real cutoff)
 	{
 		Grid<int> curSrcCell(levelset.getParent());
 		for (int i=0; i<(int)center.size(); i++) {
-			int idx = _cIndex(center[i], gridRes);
+			IndexInt idx = _cIndex(center[i], gridRes);
 			if (idx < 0) continue;
-			int idx2 = srcCellStart[idx] + curSrcCell[idx];
+			IndexInt idx2 = srcCellStart[idx] + curSrcCell[idx];
 			reorderPos.set(idx2, center[i]);
 			reorderNormal.set(idx2, normals[i]);
 			curSrcCell[idx]++;

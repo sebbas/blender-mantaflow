@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/plugin/meshplugins.cpp"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/plugin/meshplugins.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -113,7 +113,7 @@ void smoothMesh(Mesh& mesh, Real strength, int steps = 1, Real minLength=1e-5) {
 	for (int n=0; n<numNodes; n++)
 		if (!mesh.isNodeFixed(n))
 			mesh.nodes(n).pos = origCM + (mesh.nodes(n).pos - newCM) * beta;
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "smoothMesh" ); PyObject *_retval = 0; { ArgLocker _lock; Mesh& mesh = *_args.getPtr<Mesh >("mesh",0,&_lock); Real strength = _args.get<Real >("strength",1,&_lock); int steps = _args.getOpt<int >("steps",2,1,&_lock); Real minLength = _args.getOpt<Real >("minLength",3,1e-5,&_lock);   _retval = getPyNone(); smoothMesh(mesh,strength,steps,minLength);  _args.check(); } pbFinalizePlugin(parent,"smoothMesh" ); return _retval; } catch(std::exception& e) { pbSetError("smoothMesh",e.what()); return 0; } } static const Pb::Register _RP_smoothMesh ("","smoothMesh",_W_0); 
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "smoothMesh" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Mesh& mesh = *_args.getPtr<Mesh >("mesh",0,&_lock); Real strength = _args.get<Real >("strength",1,&_lock); int steps = _args.getOpt<int >("steps",2,1,&_lock); Real minLength = _args.getOpt<Real >("minLength",3,1e-5,&_lock);   _retval = getPyNone(); smoothMesh(mesh,strength,steps,minLength);  _args.check(); } pbFinalizePlugin(parent,"smoothMesh", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("smoothMesh",e.what()); return 0; } } static const Pb::Register _RP_smoothMesh ("","smoothMesh",_W_0); 
 
 //! Subdivide and edgecollapse to guarantee mesh with edgelengths between
 //! min/maxLength and an angle below minAngle
@@ -570,7 +570,7 @@ void subdivideMesh(Mesh& mesh, Real minAngle, Real minLength, Real maxLength, bo
 	cout << " + " << edgeCollsAngle << " + " << edgeKill << endl;
 	//mesh.sanityCheck();
 	
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "subdivideMesh" ); PyObject *_retval = 0; { ArgLocker _lock; Mesh& mesh = *_args.getPtr<Mesh >("mesh",0,&_lock); Real minAngle = _args.get<Real >("minAngle",1,&_lock); Real minLength = _args.get<Real >("minLength",2,&_lock); Real maxLength = _args.get<Real >("maxLength",3,&_lock); bool cutTubes = _args.getOpt<bool >("cutTubes",4,false,&_lock);   _retval = getPyNone(); subdivideMesh(mesh,minAngle,minLength,maxLength,cutTubes);  _args.check(); } pbFinalizePlugin(parent,"subdivideMesh" ); return _retval; } catch(std::exception& e) { pbSetError("subdivideMesh",e.what()); return 0; } } static const Pb::Register _RP_subdivideMesh ("","subdivideMesh",_W_1); 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "subdivideMesh" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Mesh& mesh = *_args.getPtr<Mesh >("mesh",0,&_lock); Real minAngle = _args.get<Real >("minAngle",1,&_lock); Real minLength = _args.get<Real >("minLength",2,&_lock); Real maxLength = _args.get<Real >("maxLength",3,&_lock); bool cutTubes = _args.getOpt<bool >("cutTubes",4,false,&_lock);   _retval = getPyNone(); subdivideMesh(mesh,minAngle,minLength,maxLength,cutTubes);  _args.check(); } pbFinalizePlugin(parent,"subdivideMesh", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("subdivideMesh",e.what()); return 0; } } static const Pb::Register _RP_subdivideMesh ("","subdivideMesh",_W_1); 
 	
 void killSmallComponents(Mesh& mesh, int elements = 10) {
 	const int num = mesh.numTris();
@@ -628,7 +628,7 @@ void killSmallComponents(Mesh& mesh, int elements = 10) {
 	
 	if (!taintedTris.empty())
 		cout << "Killed small components : " << deletedNodes.size() << " nodes, " << taintedTris.size() << " tris deleted." << endl;
-} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "killSmallComponents" ); PyObject *_retval = 0; { ArgLocker _lock; Mesh& mesh = *_args.getPtr<Mesh >("mesh",0,&_lock); int elements = _args.getOpt<int >("elements",1,10,&_lock);   _retval = getPyNone(); killSmallComponents(mesh,elements);  _args.check(); } pbFinalizePlugin(parent,"killSmallComponents" ); return _retval; } catch(std::exception& e) { pbSetError("killSmallComponents",e.what()); return 0; } } static const Pb::Register _RP_killSmallComponents ("","killSmallComponents",_W_2); 
+} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "killSmallComponents" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Mesh& mesh = *_args.getPtr<Mesh >("mesh",0,&_lock); int elements = _args.getOpt<int >("elements",1,10,&_lock);   _retval = getPyNone(); killSmallComponents(mesh,elements);  _args.check(); } pbFinalizePlugin(parent,"killSmallComponents", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("killSmallComponents",e.what()); return 0; } } static const Pb::Register _RP_killSmallComponents ("","killSmallComponents",_W_2); 
    
 	
 } //namespace

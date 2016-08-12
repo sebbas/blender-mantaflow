@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/noisefield.h"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/noisefield.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -37,7 +37,7 @@ namespace Manta {
 // wrapper for a parametrized field of wavelet noise
 
 class WaveletNoiseField : public PbClass {	public:     
-		WaveletNoiseField( FluidSolver* parent, int fixedSeed=-1 , int loadFromFile=false ); static int _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); pbPreparePlugin(0, "WaveletNoiseField::WaveletNoiseField" ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock); int fixedSeed = _args.getOpt<int >("fixedSeed",1,-1 ,&_lock); int loadFromFile = _args.getOpt<int >("loadFromFile",2,false ,&_lock);  obj = new WaveletNoiseField(parent,fixedSeed,loadFromFile); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"WaveletNoiseField::WaveletNoiseField" ); return 0; } catch(std::exception& e) { pbSetError("WaveletNoiseField::WaveletNoiseField",e.what()); return -1; } }
+		WaveletNoiseField( FluidSolver* parent, int fixedSeed=-1 , int loadFromFile=false ); static int _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(0, "WaveletNoiseField::WaveletNoiseField" , !noTiming ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock); int fixedSeed = _args.getOpt<int >("fixedSeed",1,-1 ,&_lock); int loadFromFile = _args.getOpt<int >("loadFromFile",2,false ,&_lock);  obj = new WaveletNoiseField(parent,fixedSeed,loadFromFile); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"WaveletNoiseField::WaveletNoiseField" , !noTiming ); return 0; } catch(std::exception& e) { pbSetError("WaveletNoiseField::WaveletNoiseField",e.what()); return -1; } }
 		~WaveletNoiseField() {
 			if(mNoiseTile) { delete mNoiseTile; mNoiseTile=NULL; }
 		};

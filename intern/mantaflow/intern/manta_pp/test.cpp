@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/test.cpp"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/test.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -32,79 +32,41 @@ using namespace std;
 
 namespace Manta {
 
+// two simple example kernels
 
 
- struct reductionTest : public KernelBase { reductionTest(const Grid<Real>& v) :  KernelBase(&v,0) ,v(v) ,sum(0)  { run(); }  inline void op(int idx, const Grid<Real>& v ,double& sum)  {
+
+ struct reductionTest : public KernelBase { reductionTest(const Grid<Real>& v) :  KernelBase(&v,0) ,v(v) ,sum(0)  { runMessage(); run(); }   inline void op(IndexInt idx, const Grid<Real>& v ,double& sum)  {
 	sum += v[idx];
-}   inline operator double () { return sum; } inline double  & getRet() { return sum; }  inline const Grid<Real>& getArg0() { return v; } typedef Grid<Real> type0; void run() {  const int _sz = size; 
+}    inline operator double () { return sum; } inline double  & getRet() { return sum; }  inline const Grid<Real>& getArg0() { return v; } typedef Grid<Real> type0; void runMessage() { debMsg("Executing kernel reductionTest ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  double sum = 0; 
+ {  double sum = 0; 
 #pragma omp for nowait 
-  for (int i=0; i < _sz; i++) op(i,v,sum); 
+  for (IndexInt i = 0; i < _sz; i++) op(i,v,sum); 
 #pragma omp critical
-{this->sum += sum; } }  } const Grid<Real>& v;  double sum;  };
-#line 25 "test.cpp"
+{this->sum += sum; } }   } const Grid<Real>& v;  double sum;  };
+#line 27 "test.cpp"
 
 
 
 
 
- struct minReduction : public KernelBase { minReduction(const Grid<Real>& v) :  KernelBase(&v,0) ,v(v) ,sum(0)  { run(); }  inline void op(int idx, const Grid<Real>& v ,double& sum)  {
+ struct minReduction : public KernelBase { minReduction(const Grid<Real>& v) :  KernelBase(&v,0) ,v(v) ,sum(0)  { runMessage(); run(); }   inline void op(IndexInt idx, const Grid<Real>& v ,double& sum)  {
 	if (sum < v[idx])
 		sum = v[idx];
-}   inline operator double () { return sum; } inline double  & getRet() { return sum; }  inline const Grid<Real>& getArg0() { return v; } typedef Grid<Real> type0; void run() {  const int _sz = size; 
+}    inline operator double () { return sum; } inline double  & getRet() { return sum; }  inline const Grid<Real>& getArg0() { return v; } typedef Grid<Real> type0; void runMessage() { debMsg("Executing kernel minReduction ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  double sum = 0; 
+ {  double sum = 0; 
 #pragma omp for nowait 
-  for (int i=0; i < _sz; i++) op(i,v,sum); 
+  for (IndexInt i = 0; i < _sz; i++) op(i,v,sum); 
 #pragma omp critical
-{this->sum = min(sum, this->sum); } }  } const Grid<Real>& v;  double sum;  };
-#line 31 "test.cpp"
+{this->sum = min(sum, this->sum); } }   } const Grid<Real>& v;  double sum;  };
+#line 33 "test.cpp"
 
 
 
 
-void getCurl(MACGrid& vel, Grid<Real>& vort, int comp) {
-	Grid<Vec3> velCenter(vel.getParent()), curl(vel.getParent());
-	
-	GetCentered(velCenter, vel);
-	CurlOp(velCenter, curl);
-	GetComponent(curl, vort, comp);
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "getCurl" ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Real>& vort = *_args.getPtr<Grid<Real> >("vort",1,&_lock); int comp = _args.get<int >("comp",2,&_lock);   _retval = getPyNone(); getCurl(vel,vort,comp);  _args.check(); } pbFinalizePlugin(parent,"getCurl" ); return _retval; } catch(std::exception& e) { pbSetError("getCurl",e.what()); return 0; } } static const Pb::Register _RP_getCurl ("","getCurl",_W_0); 
-
-void setinflow(FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, Real h) {
-	FOR_IJK(vel) {
-		if (i<=2) {
-			if (j < h*flags.getSizeY()) {
-				vel(i,j,k).x = 1;            
-				if (!flags.isObstacle(i,j,k)) { 
-					flags(i,j,k) = 1;        
-					phi(i,j,k) = -1;
-				}                
-			} else {
-				vel(i,j,k).x = 0;                            
-				if (!flags.isObstacle(i,j,k)) { 
-					flags(i,j,k) = 4;
-					phi(i,j,k) = 1;
-				}
-			}
-		}
-		else if (i>=flags.getSizeX()-2) {
-			vel(i,j,k).x = 1;            
-		}
-	}
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "setinflow" ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",2,&_lock); Real h = _args.get<Real >("h",3,&_lock);   _retval = getPyNone(); setinflow(flags,vel,phi,h);  _args.check(); } pbFinalizePlugin(parent,"setinflow" ); return _retval; } catch(std::exception& e) { pbSetError("setinflow",e.what()); return 0; } } static const Pb::Register _RP_setinflow ("","setinflow",_W_1); 
-	
-void testDiscardNth(BasicParticleSystem& parts, int skip=1) { 
-	//knSetPdataConst<Real>(pd,value); 
-	for(int i=0; i<parts.size(); ++i) {
-		if(i%(skip+1) == skip) { // keep 
-		} else {
-			parts.setPos(i, Vec3(-100000) );
-		}
-	}
-} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "testDiscardNth" ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); int skip = _args.getOpt<int >("skip",1,1,&_lock);   _retval = getPyNone(); testDiscardNth(parts,skip);  _args.check(); } pbFinalizePlugin(parent,"testDiscardNth" ); return _retval; } catch(std::exception& e) { pbSetError("testDiscardNth",e.what()); return 0; } } static const Pb::Register _RP_testDiscardNth ("","testDiscardNth",_W_2); 
-
+// ... add own test code ...
 
 
 } //namespace

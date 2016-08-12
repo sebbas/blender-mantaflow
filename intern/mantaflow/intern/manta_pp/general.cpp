@@ -9,11 +9,11 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/general.cpp"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/general.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
- * Copyright 2015 Tobias Pfaff, Nils Thuerey 
+ * Copyright 2011-2016 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
  * GNU General Public License (GPL) 

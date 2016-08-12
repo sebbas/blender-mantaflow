@@ -56,6 +56,10 @@ Manta::PbClass* createPy(const std::string& classname, const std::string& name, 
 void setReference(Manta::PbClass* cls, PyObject* obj);
 PyObject* copyObject(Manta::PbClass* cls, const std::string& classname);
 
+#ifdef WITH_MANTA
+extern "C" PyObject *PyInit_Main_Obj(void);
+#endif
+
 // callback type
 typedef void (*InitFunc)(PyObject*);
 typedef PyObject* (*GenericFunction)(PyObject* self, PyObject* args, PyObject* kwds);
@@ -63,7 +67,6 @@ typedef PyObject* (*OperatorFunction)(PyObject* self, PyObject* o);
 typedef int (*Constructor)(PyObject* self, PyObject* args, PyObject* kwds);
 typedef PyObject* (*Getter)(PyObject* self, void* closure);
 typedef int (*Setter)(PyObject* self, PyObject* value, void* closure);
-extern "C" PyObject *PyInit_Main_Obj(void);
 
 //! Auto registry of python methods and classes
 struct Register {

@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/vortexsheet.h"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/vortexsheet.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -20,6 +20,7 @@
  * http://www.gnu.org/licenses
  *
  * Vortex sheets
+ * (warning, the vortex methods are currently experimental, and not fully supported!)
  *
  ******************************************************************************/
 
@@ -69,7 +70,7 @@ struct TurbulenceChannel : public SimpleNodeChannel<TurbulenceInfo> {
 
 //! Typed Mesh with a vorticity and 2 texcoord3 channels
 class VortexSheetMesh : public Mesh {public:
-	VortexSheetMesh(FluidSolver* parent); static int _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); pbPreparePlugin(0, "VortexSheetMesh::VortexSheetMesh" ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock);  obj = new VortexSheetMesh(parent); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"VortexSheetMesh::VortexSheetMesh" ); return 0; } catch(std::exception& e) { pbSetError("VortexSheetMesh::VortexSheetMesh",e.what()); return -1; } }
+	VortexSheetMesh(FluidSolver* parent); static int _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(0, "VortexSheetMesh::VortexSheetMesh" , !noTiming ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock);  obj = new VortexSheetMesh(parent); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"VortexSheetMesh::VortexSheetMesh" , !noTiming ); return 0; } catch(std::exception& e) { pbSetError("VortexSheetMesh::VortexSheetMesh",e.what()); return -1; } }
 	virtual Mesh* clone();
 	
 	virtual MeshType getType() { return TypeVortexSheet; }    
@@ -82,9 +83,9 @@ class VortexSheetMesh : public Mesh {public:
 	void resetTex1();
 	void resetTex2();
 	
-	void calcCirculation(); static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); VortexSheetMesh* pbo = dynamic_cast<VortexSheetMesh*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "VortexSheetMesh::calcCirculation"); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->calcCirculation();  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"VortexSheetMesh::calcCirculation"); return _retval; } catch(std::exception& e) { pbSetError("VortexSheetMesh::calcCirculation",e.what()); return 0; } }
-	void calcVorticity(); static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); VortexSheetMesh* pbo = dynamic_cast<VortexSheetMesh*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "VortexSheetMesh::calcVorticity"); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->calcVorticity();  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"VortexSheetMesh::calcVorticity"); return _retval; } catch(std::exception& e) { pbSetError("VortexSheetMesh::calcVorticity",e.what()); return 0; } }
-	void reinitTexCoords(); static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); VortexSheetMesh* pbo = dynamic_cast<VortexSheetMesh*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "VortexSheetMesh::reinitTexCoords"); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->reinitTexCoords();  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"VortexSheetMesh::reinitTexCoords"); return _retval; } catch(std::exception& e) { pbSetError("VortexSheetMesh::reinitTexCoords",e.what()); return 0; } }
+	void calcCirculation(); static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); VortexSheetMesh* pbo = dynamic_cast<VortexSheetMesh*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "VortexSheetMesh::calcCirculation" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->calcCirculation();  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"VortexSheetMesh::calcCirculation" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("VortexSheetMesh::calcCirculation",e.what()); return 0; } }
+	void calcVorticity(); static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); VortexSheetMesh* pbo = dynamic_cast<VortexSheetMesh*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "VortexSheetMesh::calcVorticity" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->calcVorticity();  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"VortexSheetMesh::calcVorticity" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("VortexSheetMesh::calcVorticity",e.what()); return 0; } }
+	void reinitTexCoords(); static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); VortexSheetMesh* pbo = dynamic_cast<VortexSheetMesh*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "VortexSheetMesh::reinitTexCoords" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->reinitTexCoords();  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"VortexSheetMesh::reinitTexCoords" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("VortexSheetMesh::reinitTexCoords",e.what()); return 0; } }
 	
 protected:
 	Vec3 mTexOffset;
@@ -96,4 +97,5 @@ protected:
 }; // namespace
 
 #endif
+
 

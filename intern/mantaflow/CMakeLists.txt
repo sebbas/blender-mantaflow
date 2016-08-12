@@ -81,11 +81,15 @@ set(SRC
 	intern/manta_pp/general.h
 	intern/manta_pp/general.h.reg
 	intern/manta_pp/general.h.reg.cpp
+	intern/manta_pp/gitinfo.h
 	intern/manta_pp/grid.cpp
 	intern/manta_pp/grid.h
 	intern/manta_pp/grid.h.reg
 	intern/manta_pp/grid.h.reg.cpp
-	intern/manta_pp/hginfo.h
+	intern/manta_pp/grid4d.cpp
+	intern/manta_pp/grid4d.h
+	intern/manta_pp/grid4d.h.reg
+	intern/manta_pp/grid4d.h.reg.cpp
 	intern/manta_pp/kernel.cpp
 	intern/manta_pp/kernel.h
 	intern/manta_pp/kernel.h.reg
@@ -118,6 +122,7 @@ set(SRC
 	intern/manta_pp/plugin/kepsilon.cpp
 	intern/manta_pp/plugin/meshplugins.cpp
 	intern/manta_pp/plugin/pressure.cpp
+	intern/manta_pp/plugin/surfaceturbulence.cpp
 	intern/manta_pp/plugin/vortexplugins.cpp
 	intern/manta_pp/plugin/waveletturbulence.cpp
 	intern/manta_pp/plugin/waves.cpp
@@ -156,6 +161,8 @@ set(SRC
 	intern/manta_pp/util/simpleimage.cpp
 	intern/manta_pp/util/simpleimage.h
 	intern/manta_pp/util/solvana.h
+	intern/manta_pp/util/vector4d.cpp
+	intern/manta_pp/util/vector4d.h
 	intern/manta_pp/util/vectorbase.cpp
 	intern/manta_pp/util/vectorbase.h
 	intern/manta_pp/vortexpart.cpp

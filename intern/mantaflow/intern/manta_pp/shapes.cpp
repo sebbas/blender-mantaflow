@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/shapes.cpp"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/shapes.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -51,18 +51,18 @@ bool Shape::isInside(const Vec3& pos) const {
 
 //! Kernel: Apply a shape to a grid, setting value inside
 
-template <class T>  struct ApplyShapeToGrid : public KernelBase { ApplyShapeToGrid(Grid<T>* grid, Shape* shape, T value, FlagGrid* respectFlags) :  KernelBase(grid,0) ,grid(grid),shape(shape),value(value),respectFlags(respectFlags)   { run(); }  inline void op(int i, int j, int k, Grid<T>* grid, Shape* shape, T value, FlagGrid* respectFlags )  {
+template <class T>  struct ApplyShapeToGrid : public KernelBase { ApplyShapeToGrid(Grid<T>* grid, Shape* shape, T value, FlagGrid* respectFlags) :  KernelBase(grid,0) ,grid(grid),shape(shape),value(value),respectFlags(respectFlags)   { runMessage(); run(); }  inline void op(int i, int j, int k, Grid<T>* grid, Shape* shape, T value, FlagGrid* respectFlags )  {
 	if (respectFlags && respectFlags->isObstacle(i,j,k))
 		return;
 	if (shape->isInsideGrid(i,j,k))
 		(*grid)(i,j,k) = value;
-}   inline Grid<T>* getArg0() { return grid; } typedef Grid<T> type0;inline Shape* getArg1() { return shape; } typedef Shape type1;inline T& getArg2() { return value; } typedef T type2;inline FlagGrid* getArg3() { return respectFlags; } typedef FlagGrid type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline Grid<T>* getArg0() { return grid; } typedef Grid<T> type0;inline Shape* getArg1() { return shape; } typedef Shape type1;inline T& getArg2() { return value; } typedef T type2;inline FlagGrid* getArg3() { return respectFlags; } typedef FlagGrid type3; void runMessage() { debMsg("Executing kernel ApplyShapeToGrid ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,shape,value,respectFlags);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,shape,value,respectFlags);  } }  } Grid<T>* grid; Shape* shape; T value; FlagGrid* respectFlags;   };
 #line 42 "shapes.cpp"
@@ -71,7 +71,7 @@ template <class T>  struct ApplyShapeToGrid : public KernelBase { ApplyShapeToGr
 
 //! Kernel: Apply a shape to a grid, setting value inside (scaling by SDF value)
 
-template <class T>  struct ApplyShapeToGridSmooth : public KernelBase { ApplyShapeToGridSmooth(Grid<T>* grid, Grid<Real>& phi, Real sigma, Real shift, T value, FlagGrid* respectFlags) :  KernelBase(grid,0) ,grid(grid),phi(phi),sigma(sigma),shift(shift),value(value),respectFlags(respectFlags)   { run(); }  inline void op(int i, int j, int k, Grid<T>* grid, Grid<Real>& phi, Real sigma, Real shift, T value, FlagGrid* respectFlags )  {
+template <class T>  struct ApplyShapeToGridSmooth : public KernelBase { ApplyShapeToGridSmooth(Grid<T>* grid, Grid<Real>& phi, Real sigma, Real shift, T value, FlagGrid* respectFlags) :  KernelBase(grid,0) ,grid(grid),phi(phi),sigma(sigma),shift(shift),value(value),respectFlags(respectFlags)   { runMessage(); run(); }  inline void op(int i, int j, int k, Grid<T>* grid, Grid<Real>& phi, Real sigma, Real shift, T value, FlagGrid* respectFlags )  {
 	if (respectFlags && respectFlags->isObstacle(i,j,k))
 		return;
 	const Real p = phi(i,j,k) - shift;
@@ -79,13 +79,13 @@ template <class T>  struct ApplyShapeToGridSmooth : public KernelBase { ApplySha
 		(*grid)(i,j,k) = value;
 	else if (p < sigma)
 		(*grid)(i,j,k) = value*(0.5f*(1.0f-p/sigma));
-}   inline Grid<T>* getArg0() { return grid; } typedef Grid<T> type0;inline Grid<Real>& getArg1() { return phi; } typedef Grid<Real> type1;inline Real& getArg2() { return sigma; } typedef Real type2;inline Real& getArg3() { return shift; } typedef Real type3;inline T& getArg4() { return value; } typedef T type4;inline FlagGrid* getArg5() { return respectFlags; } typedef FlagGrid type5; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline Grid<T>* getArg0() { return grid; } typedef Grid<T> type0;inline Grid<Real>& getArg1() { return phi; } typedef Grid<Real> type1;inline Real& getArg2() { return sigma; } typedef Real type2;inline Real& getArg3() { return shift; } typedef Real type3;inline T& getArg4() { return value; } typedef T type4;inline FlagGrid* getArg5() { return respectFlags; } typedef FlagGrid type5; void runMessage() { debMsg("Executing kernel ApplyShapeToGridSmooth ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,phi,sigma,shift,value,respectFlags);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,phi,sigma,shift,value,respectFlags);  } }  } Grid<T>* grid; Grid<Real>& phi; Real sigma; Real shift; T value; FlagGrid* respectFlags;   };
 #line 51 "shapes.cpp"
@@ -94,19 +94,19 @@ template <class T>  struct ApplyShapeToGridSmooth : public KernelBase { ApplySha
 
 //! Kernel: Apply a shape to a MAC grid, setting value inside
 
- struct ApplyShapeToMACGrid : public KernelBase { ApplyShapeToMACGrid(MACGrid* grid, Shape* shape, Vec3 value, FlagGrid* respectFlags) :  KernelBase(grid,0) ,grid(grid),shape(shape),value(value),respectFlags(respectFlags)   { run(); }  inline void op(int i, int j, int k, MACGrid* grid, Shape* shape, Vec3 value, FlagGrid* respectFlags )  {
+ struct ApplyShapeToMACGrid : public KernelBase { ApplyShapeToMACGrid(MACGrid* grid, Shape* shape, Vec3 value, FlagGrid* respectFlags) :  KernelBase(grid,0) ,grid(grid),shape(shape),value(value),respectFlags(respectFlags)   { runMessage(); run(); }  inline void op(int i, int j, int k, MACGrid* grid, Shape* shape, Vec3 value, FlagGrid* respectFlags )  {
 	if (respectFlags && respectFlags->isObstacle(i,j,k))
 		return;    
 	if (shape->isInside(Vec3(i,j+0.5,k+0.5))) (*grid)(i,j,k).x = value.x;
 	if (shape->isInside(Vec3(i+0.5,j,k+0.5))) (*grid)(i,j,k).y = value.y;
 	if (shape->isInside(Vec3(i+0.5,j+0.5,k))) (*grid)(i,j,k).z = value.z;
-}   inline MACGrid* getArg0() { return grid; } typedef MACGrid type0;inline Shape* getArg1() { return shape; } typedef Shape type1;inline Vec3& getArg2() { return value; } typedef Vec3 type2;inline FlagGrid* getArg3() { return respectFlags; } typedef FlagGrid type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline MACGrid* getArg0() { return grid; } typedef MACGrid type0;inline Shape* getArg1() { return shape; } typedef Shape type1;inline Vec3& getArg2() { return value; } typedef Vec3 type2;inline FlagGrid* getArg3() { return respectFlags; } typedef FlagGrid type3; void runMessage() { debMsg("Executing kernel ApplyShapeToMACGrid ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,shape,value,respectFlags);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,shape,value,respectFlags);  } }  } MACGrid* grid; Shape* shape; Vec3 value; FlagGrid* respectFlags;   };
 #line 63 "shapes.cpp"
@@ -220,7 +220,7 @@ void Box::generateMesh(Mesh* mesh) {
 }
 
 //! Kernel: Analytic SDF for box shape
- struct BoxSDF : public KernelBase { BoxSDF(Grid<Real>& phi, const Vec3& p1, const Vec3& p2) :  KernelBase(&phi,0) ,phi(phi),p1(p1),p2(p2)   { run(); }  inline void op(int i, int j, int k, Grid<Real>& phi, const Vec3& p1, const Vec3& p2 )  {
+ struct BoxSDF : public KernelBase { BoxSDF(Grid<Real>& phi, const Vec3& p1, const Vec3& p2) :  KernelBase(&phi,0) ,phi(phi),p1(p1),p2(p2)   { runMessage(); run(); }  inline void op(int i, int j, int k, Grid<Real>& phi, const Vec3& p1, const Vec3& p2 )  {
 	const Vec3 p(i+0.5, j+0.5, k+0.5);
 	if (p.x <= p2.x && p.x >= p1.x && p.y <= p2.y && p.y >= p1.y && p.z <= p2.z && p.z >= p1.z) {
 		// inside: minimal surface distance
@@ -271,13 +271,13 @@ void Box::generateMesh(Mesh* mesh) {
 		m = min(m, norm(p-Vec3(p2.x,p2.y,p2.z)));
 		phi(i,j,k) = m;
 	}
-}   inline Grid<Real>& getArg0() { return phi; } typedef Grid<Real> type0;inline const Vec3& getArg1() { return p1; } typedef Vec3 type1;inline const Vec3& getArg2() { return p2; } typedef Vec3 type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline Grid<Real>& getArg0() { return phi; } typedef Grid<Real> type0;inline const Vec3& getArg1() { return p1; } typedef Vec3 type1;inline const Vec3& getArg2() { return p2; } typedef Vec3 type2; void runMessage() { debMsg("Executing kernel BoxSDF ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,phi,p1,p2);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,phi,p1,p2);  } }  } Grid<Real>& phi; const Vec3& p1; const Vec3& p2;   };
 #line 178 "shapes.cpp"
@@ -362,15 +362,15 @@ void Sphere::generateMesh(Mesh* mesh) {
 	mesh->rebuildLookup(oldtri,-1);
 }
 	
- struct SphereSDF : public KernelBase { SphereSDF(Grid<Real>& phi, Vec3 center, Real radius, Vec3 scale) :  KernelBase(&phi,0) ,phi(phi),center(center),radius(radius),scale(scale)   { run(); }  inline void op(int i, int j, int k, Grid<Real>& phi, Vec3 center, Real radius, Vec3 scale )  {
+ struct SphereSDF : public KernelBase { SphereSDF(Grid<Real>& phi, Vec3 center, Real radius, Vec3 scale) :  KernelBase(&phi,0) ,phi(phi),center(center),radius(radius),scale(scale)   { runMessage(); run(); }  inline void op(int i, int j, int k, Grid<Real>& phi, Vec3 center, Real radius, Vec3 scale )  {
 	phi(i,j,k) = norm((Vec3(i+0.5,j+0.5,k+0.5)-center)/scale)-radius;
-}   inline Grid<Real>& getArg0() { return phi; } typedef Grid<Real> type0;inline Vec3& getArg1() { return center; } typedef Vec3 type1;inline Real& getArg2() { return radius; } typedef Real type2;inline Vec3& getArg3() { return scale; } typedef Vec3 type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline Grid<Real>& getArg0() { return phi; } typedef Grid<Real> type0;inline Vec3& getArg1() { return center; } typedef Vec3 type1;inline Real& getArg2() { return radius; } typedef Real type2;inline Vec3& getArg3() { return scale; } typedef Vec3 type3; void runMessage() { debMsg("Executing kernel SphereSDF ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,phi,center,radius,scale);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,phi,center,radius,scale);  } }  } Grid<Real>& phi; Vec3 center; Real radius; Vec3 scale;   };
 #line 309 "shapes.cpp"
@@ -432,7 +432,7 @@ void Cylinder::generateMesh(Mesh* mesh) {
 }
 	
 
- struct CylinderSDF : public KernelBase { CylinderSDF(Grid<Real>& phi, Vec3 center, Real radius, Vec3 zaxis, Real maxz) :  KernelBase(&phi,0) ,phi(phi),center(center),radius(radius),zaxis(zaxis),maxz(maxz)   { run(); }  inline void op(int i, int j, int k, Grid<Real>& phi, Vec3 center, Real radius, Vec3 zaxis, Real maxz )  {
+ struct CylinderSDF : public KernelBase { CylinderSDF(Grid<Real>& phi, Vec3 center, Real radius, Vec3 zaxis, Real maxz) :  KernelBase(&phi,0) ,phi(phi),center(center),radius(radius),zaxis(zaxis),maxz(maxz)   { runMessage(); run(); }  inline void op(int i, int j, int k, Grid<Real>& phi, Vec3 center, Real radius, Vec3 zaxis, Real maxz )  {
 	Vec3 p=Vec3(i+0.5,j+0.5,k+0.5)-center;
 	Real z = fabs(dot(p, zaxis));
 	Real r = sqrt(normSquare(p)-z*z);
@@ -449,13 +449,13 @@ void Cylinder::generateMesh(Mesh* mesh) {
 		// edge
 		phi(i,j,k) = sqrt(square(z-maxz)+square(r-radius));
 	}
-}   inline Grid<Real>& getArg0() { return phi; } typedef Grid<Real> type0;inline Vec3& getArg1() { return center; } typedef Vec3 type1;inline Real& getArg2() { return radius; } typedef Real type2;inline Vec3& getArg3() { return zaxis; } typedef Vec3 type3;inline Real& getArg4() { return maxz; } typedef Real type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline Grid<Real>& getArg0() { return phi; } typedef Grid<Real> type0;inline Vec3& getArg1() { return center; } typedef Vec3 type1;inline Real& getArg2() { return radius; } typedef Real type2;inline Vec3& getArg3() { return zaxis; } typedef Vec3 type3;inline Real& getArg4() { return maxz; } typedef Real type4; void runMessage() { debMsg("Executing kernel CylinderSDF ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,phi,center,radius,zaxis,maxz);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,phi,center,radius,zaxis,maxz);  } }  } Grid<Real>& phi; Vec3 center; Real radius; Vec3 zaxis; Real maxz;   };
 #line 368 "shapes.cpp"
@@ -517,17 +517,17 @@ bool Slope::isInside(const Vec3& pos) const {
 
 }
 
- struct SlopeSDF : public KernelBase { SlopeSDF(const Vec3 &n, Grid<Real> &phiObs, const Real &fac, const Real &origin) :  KernelBase(&phiObs,0) ,n(n),phiObs(phiObs),fac(fac),origin(origin)   { run(); }  inline void op(int i, int j, int k, const Vec3 &n, Grid<Real> &phiObs, const Real &fac, const Real &origin )  {
+ struct SlopeSDF : public KernelBase { SlopeSDF(const Vec3 &n, Grid<Real> &phiObs, const Real &fac, const Real &origin) :  KernelBase(&phiObs,0) ,n(n),phiObs(phiObs),fac(fac),origin(origin)   { runMessage(); run(); }  inline void op(int i, int j, int k, const Vec3 &n, Grid<Real> &phiObs, const Real &fac, const Real &origin )  {
 
 	phiObs(i,j,k) = (n.x*(double)i + n.y*(double)j + n.z*(double)k - origin) * fac;
 
-}   inline const Vec3& getArg0() { return n; } typedef Vec3 type0;inline Grid<Real> & getArg1() { return phiObs; } typedef Grid<Real>  type1;inline const Real& getArg2() { return fac; } typedef Real type2;inline const Real& getArg3() { return origin; } typedef Real type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline const Vec3& getArg0() { return n; } typedef Vec3 type0;inline Grid<Real> & getArg1() { return phiObs; } typedef Grid<Real>  type1;inline const Real& getArg2() { return fac; } typedef Real type2;inline const Real& getArg3() { return origin; } typedef Real type3; void runMessage() { debMsg("Executing kernel SlopeSDF ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,n,phiObs,fac,origin);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,n,phiObs,fac,origin);  } }  } const Vec3& n; Grid<Real> & phiObs; const Real& fac; const Real& origin;   };
 #line 442 "shapes.cpp"

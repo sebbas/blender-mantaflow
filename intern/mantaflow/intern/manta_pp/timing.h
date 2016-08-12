@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/timing.h"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/timing.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -60,9 +60,9 @@ protected:
 
 // Python interface
 class Timings : public PbClass {public:
-	Timings() :PbClass(0){} static int _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); pbPreparePlugin(0, "Timings::Timings" ); { ArgLocker _lock;  obj = new Timings(); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"Timings::Timings" ); return 0; } catch(std::exception& e) { pbSetError("Timings::Timings",e.what()); return -1; } }
+	Timings() :PbClass(0){} static int _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(0, "Timings::Timings" , !noTiming ); { ArgLocker _lock;  obj = new Timings(); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"Timings::Timings" , !noTiming ); return 0; } catch(std::exception& e) { pbSetError("Timings::Timings",e.what()); return -1; } }
 	
-	void display() { TimingData::instance().print(); } static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); Timings* pbo = dynamic_cast<Timings*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "Timings::display"); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->display();  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"Timings::display"); return _retval; } catch(std::exception& e) { pbSetError("Timings::display",e.what()); return 0; } } 	void saveMean(std::string file) { TimingData::instance().saveMean(file); } static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); Timings* pbo = dynamic_cast<Timings*>(Pb::objFromPy(_self)); pbPreparePlugin(pbo->getParent(), "Timings::saveMean"); PyObject *_retval = 0; { ArgLocker _lock; std::string file = _args.get<std::string >("file",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->saveMean(file);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"Timings::saveMean"); return _retval; } catch(std::exception& e) { pbSetError("Timings::saveMean",e.what()); return 0; } } public: PbArgs _args;}
+	void display() { TimingData::instance().print(); } static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); Timings* pbo = dynamic_cast<Timings*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Timings::display" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->display();  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"Timings::display" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("Timings::display",e.what()); return 0; } } 	void saveMean(std::string file) { TimingData::instance().saveMean(file); } static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); Timings* pbo = dynamic_cast<Timings*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Timings::saveMean" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; std::string file = _args.get<std::string >("file",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->saveMean(file);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"Timings::saveMean" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("Timings::saveMean",e.what()); return 0; } } public: PbArgs _args;}
 #define _C_Timings
 ;
 

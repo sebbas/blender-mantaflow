@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/plugin/pressure.cpp"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/plugin/pressure.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -33,7 +33,7 @@ namespace Manta {
 
 
 
- struct MakeRhs : public KernelBase { MakeRhs(FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, Grid<Real>* perCellCorr, MACGrid* fractions) :  KernelBase(&flags,1) ,flags(flags),rhs(rhs),vel(vel),perCellCorr(perCellCorr),fractions(fractions) ,cnt(0),sum(0)  { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, Grid<Real>* perCellCorr, MACGrid* fractions ,int& cnt,double& sum)  {
+ struct MakeRhs : public KernelBase { MakeRhs(FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, Grid<Real>* perCellCorr, MACGrid* fractions) :  KernelBase(&flags,1) ,flags(flags),rhs(rhs),vel(vel),perCellCorr(perCellCorr),fractions(fractions) ,cnt(0),sum(0)  { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, Grid<Real>* perCellCorr, MACGrid* fractions ,int& cnt,double& sum)  {
 	if (!flags.isFluid(i,j,k)) {
 		rhs(i,j,k) = 0;
 		return;
@@ -61,15 +61,15 @@ namespace Manta {
 	cnt++;
 	
 	rhs(i,j,k) = set;
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return rhs; } typedef Grid<Real> type1;inline MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline Grid<Real>* getArg3() { return perCellCorr; } typedef Grid<Real> type3;inline MACGrid* getArg4() { return fractions; } typedef MACGrid type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return rhs; } typedef Grid<Real> type1;inline MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline Grid<Real>* getArg3() { return perCellCorr; } typedef Grid<Real> type3;inline MACGrid* getArg4() { return fractions; } typedef MACGrid type4; void runMessage() { debMsg("Executing kernel MakeRhs ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  int cnt = 0;double sum = 0; 
+ {  int cnt = 0;double sum = 0; 
 #pragma omp for nowait 
   for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,rhs,vel,perCellCorr,fractions,cnt,sum); 
 #pragma omp critical
 {this->cnt += cnt; this->sum += sum; } } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  int cnt = 0;double sum = 0; 
+ {  int cnt = 0;double sum = 0; 
 #pragma omp for nowait 
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,rhs,vel,perCellCorr,fractions,cnt,sum); 
 #pragma omp critical
@@ -81,8 +81,8 @@ namespace Manta {
 //! Kernel: Apply velocity update from poisson equation
 
 
- struct CorrectVelocity : public KernelBase { CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure) :  KernelBase(&flags,1) ,flags(flags),vel(vel),pressure(pressure)   { run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure )  {
-	int idx = flags.index(i,j,k);
+ struct CorrectVelocity : public KernelBase { CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure) :  KernelBase(&flags,1) ,flags(flags),vel(vel),pressure(pressure)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure )  {
+	IndexInt idx = flags.index(i,j,k);
 	if (flags.isFluid(idx))
 	{
 		if (flags.isFluid(i-1,j,k)) vel[idx].x -= (pressure[idx] - pressure(i-1,j,k));
@@ -104,13 +104,13 @@ namespace Manta {
 		else                        vel[idx].z  = 0.f;
 		}
 	}
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<Real>& getArg2() { return pressure; } typedef Grid<Real> type2; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<Real>& getArg2() { return pressure; } typedef Grid<Real> type2; void runMessage() { debMsg("Executing kernel CorrectVelocity ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,pressure);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,pressure);  } }  } FlagGrid& flags; MACGrid& vel; Grid<Real>& pressure;   };
 #line 57 "plugin/pressure.cpp"
@@ -129,7 +129,7 @@ inline static Real thetaHelper(Real inside, Real outside)
 }
 
 // calculate ghost fluid factor, cell at idx should be a fluid cell
-inline static Real ghostFluidHelper(int idx, int offset, const Grid<Real> &phi, Real gfClamp)
+inline static Real ghostFluidHelper(IndexInt idx, int offset, const Grid<Real> &phi, Real gfClamp)
 {
 	Real alpha = thetaHelper(phi[idx], phi[idx+offset]);
 	if (alpha < gfClamp) return alpha = gfClamp;
@@ -139,9 +139,9 @@ inline static Real ghostFluidHelper(int idx, int offset, const Grid<Real> &phi, 
 //! Kernel: Adapt A0 for ghost fluid
 
 
- struct ApplyGhostFluidDiagonal : public KernelBase { ApplyGhostFluidDiagonal(Grid<Real> &A0, const FlagGrid &flags, const Grid<Real> &phi, Real gfClamp) :  KernelBase(&A0,1) ,A0(A0),flags(flags),phi(phi),gfClamp(gfClamp)   { run(); }  inline void op(int i, int j, int k, Grid<Real> &A0, const FlagGrid &flags, const Grid<Real> &phi, Real gfClamp )  {
+ struct ApplyGhostFluidDiagonal : public KernelBase { ApplyGhostFluidDiagonal(Grid<Real> &A0, const FlagGrid &flags, const Grid<Real> &phi, Real gfClamp) :  KernelBase(&A0,1) ,A0(A0),flags(flags),phi(phi),gfClamp(gfClamp)   { runMessage(); run(); }  inline void op(int i, int j, int k, Grid<Real> &A0, const FlagGrid &flags, const Grid<Real> &phi, Real gfClamp )  {
 	const int X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
-	int idx = flags.index(i,j,k);
+	IndexInt idx = flags.index(i,j,k);
 	if (!flags.isFluid(idx)) return;
 
 	if (flags.isEmpty(i-1,j,k)) A0[idx] -= ghostFluidHelper(idx, -X, phi, gfClamp);
@@ -152,13 +152,13 @@ inline static Real ghostFluidHelper(int idx, int offset, const Grid<Real> &phi, 
 		if (flags.isEmpty(i,j,k-1)) A0[idx] -= ghostFluidHelper(idx, -Z, phi, gfClamp);
 		if (flags.isEmpty(i,j,k+1)) A0[idx] -= ghostFluidHelper(idx, +Z, phi, gfClamp);
 	}
-}   inline Grid<Real> & getArg0() { return A0; } typedef Grid<Real>  type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline const Grid<Real> & getArg2() { return phi; } typedef Grid<Real>  type2;inline Real& getArg3() { return gfClamp; } typedef Real type3; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline Grid<Real> & getArg0() { return A0; } typedef Grid<Real>  type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline const Grid<Real> & getArg2() { return phi; } typedef Grid<Real>  type2;inline Real& getArg3() { return gfClamp; } typedef Real type3; void runMessage() { debMsg("Executing kernel ApplyGhostFluidDiagonal ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,A0,flags,phi,gfClamp);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,A0,flags,phi,gfClamp);  } }  } Grid<Real> & A0; const FlagGrid& flags; const Grid<Real> & phi; Real gfClamp;   };
 #line 104 "plugin/pressure.cpp"
@@ -168,9 +168,9 @@ inline static Real ghostFluidHelper(int idx, int offset, const Grid<Real> &phi, 
 //! Kernel: Apply velocity update: ghost fluid contribution
 
 
- struct CorrectVelocityGhostFluid : public KernelBase { CorrectVelocityGhostFluid(MACGrid &vel, const FlagGrid &flags, const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp) :  KernelBase(&vel,1) ,vel(vel),flags(flags),pressure(pressure),phi(phi),gfClamp(gfClamp)   { run(); }  inline void op(int i, int j, int k, MACGrid &vel, const FlagGrid &flags, const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp )  {
-	const int X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
-	const int idx = flags.index(i,j,k);
+ struct CorrectVelocityGhostFluid : public KernelBase { CorrectVelocityGhostFluid(MACGrid &vel, const FlagGrid &flags, const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp) :  KernelBase(&vel,1) ,vel(vel),flags(flags),pressure(pressure),phi(phi),gfClamp(gfClamp)   { runMessage(); run(); }  inline void op(int i, int j, int k, MACGrid &vel, const FlagGrid &flags, const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp )  {
+	const IndexInt X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
+	const IndexInt idx = flags.index(i,j,k);
 	if (flags.isFluid(idx))
 	{
 		if (flags.isEmpty(i-1,j,k)) vel[idx][0] += pressure[idx] * ghostFluidHelper(idx, -X, phi, gfClamp);
@@ -188,13 +188,13 @@ inline static Real ghostFluidHelper(int idx, int offset, const Grid<Real> &phi, 
 		else                        vel[idx].z  = 0.f;
 		}
 	}
-}   inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline const Grid<Real> & getArg2() { return pressure; } typedef Grid<Real>  type2;inline const Grid<Real> & getArg3() { return phi; } typedef Grid<Real>  type3;inline Real& getArg4() { return gfClamp; } typedef Real type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline const Grid<Real> & getArg2() { return pressure; } typedef Grid<Real>  type2;inline const Grid<Real> & getArg3() { return phi; } typedef Grid<Real>  type3;inline Real& getArg4() { return gfClamp; } typedef Real type4; void runMessage() { debMsg("Executing kernel CorrectVelocityGhostFluid ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,vel,flags,pressure,phi,gfClamp);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,vel,flags,pressure,phi,gfClamp);  } }  } MACGrid& vel; const FlagGrid& flags; const Grid<Real> & pressure; const Grid<Real> & phi; Real gfClamp;   };
 #line 122 "plugin/pressure.cpp"
@@ -204,7 +204,7 @@ inline static Real ghostFluidHelper(int idx, int offset, const Grid<Real> &phi, 
 
 // improve behavior of clamping for large time steps:
 
-inline static Real ghostFluidWasClamped(int idx, int offset, const Grid<Real> &phi, Real gfClamp)
+inline static Real ghostFluidWasClamped(IndexInt idx, int offset, const Grid<Real> &phi, Real gfClamp)
 {
 	Real alpha = thetaHelper(phi[idx], phi[idx+offset]);
 	if (alpha < gfClamp) return true;
@@ -214,9 +214,9 @@ inline static Real ghostFluidWasClamped(int idx, int offset, const Grid<Real> &p
 
 
 
- struct ReplaceClampedGhostFluidVels : public KernelBase { ReplaceClampedGhostFluidVels(MACGrid &vel, FlagGrid &flags, const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp ) :  KernelBase(&vel,1) ,vel(vel),flags(flags),pressure(pressure),phi(phi),gfClamp(gfClamp)   { run(); }  inline void op(int i, int j, int k, MACGrid &vel, FlagGrid &flags, const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp  )  {
-	const int X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
-	const int idx = flags.index(i,j,k);
+ struct ReplaceClampedGhostFluidVels : public KernelBase { ReplaceClampedGhostFluidVels(MACGrid &vel, FlagGrid &flags, const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp ) :  KernelBase(&vel,1) ,vel(vel),flags(flags),pressure(pressure),phi(phi),gfClamp(gfClamp)   { runMessage(); run(); }  inline void op(int i, int j, int k, MACGrid &vel, FlagGrid &flags, const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp  )  {
+	const IndexInt idx = flags.index(i,j,k);
+	const IndexInt X   = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
 	if (!flags.isEmpty(idx)) return;
 
 	if( (flags.isFluid(i-1,j,k)) && ( ghostFluidWasClamped(idx-X, +X, phi, gfClamp) ) )
@@ -234,13 +234,13 @@ inline static Real ghostFluidWasClamped(int idx, int offset, const Grid<Real> &p
 	if( flags.is3D() && 
 	   (flags.isFluid(i,j,k+1))  && ( ghostFluidWasClamped(idx+Z, -Z, phi, gfClamp)) )
 		vel[idx][2] = vel[idx+Z][2];
-}   inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline const Grid<Real> & getArg2() { return pressure; } typedef Grid<Real>  type2;inline const Grid<Real> & getArg3() { return phi; } typedef Grid<Real>  type3;inline Real& getArg4() { return gfClamp; } typedef Real type4; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline const Grid<Real> & getArg2() { return pressure; } typedef Grid<Real>  type2;inline const Grid<Real> & getArg3() { return phi; } typedef Grid<Real>  type3;inline Real& getArg4() { return gfClamp; } typedef Real type4; void runMessage() { debMsg("Executing kernel ReplaceClampedGhostFluidVels ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,vel,flags,pressure,phi,gfClamp);  } } else { const int k=0; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,vel,flags,pressure,phi,gfClamp);  } }  } MACGrid& vel; FlagGrid& flags; const Grid<Real> & pressure; const Grid<Real> & phi; Real gfClamp;   };
 #line 157 "plugin/pressure.cpp"
@@ -249,15 +249,15 @@ inline static Real ghostFluidWasClamped(int idx, int offset, const Grid<Real> &p
 
 //! Kernel: Compute min value of Real grid
 
- struct CountEmptyCells : public KernelBase { CountEmptyCells(FlagGrid& flags) :  KernelBase(&flags,0) ,flags(flags) ,numEmpty(0)  { run(); }  inline void op(int idx, FlagGrid& flags ,int& numEmpty)  {
+ struct CountEmptyCells : public KernelBase { CountEmptyCells(FlagGrid& flags) :  KernelBase(&flags,0) ,flags(flags) ,numEmpty(0)  { runMessage(); run(); }   inline void op(IndexInt idx, FlagGrid& flags ,int& numEmpty)  {
 	if (flags.isEmpty(idx) ) numEmpty++;
-}   inline operator int () { return numEmpty; } inline int  & getRet() { return numEmpty; }  inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0; void run() {  const int _sz = size; 
+}    inline operator int () { return numEmpty; } inline int  & getRet() { return numEmpty; }  inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0; void runMessage() { debMsg("Executing kernel CountEmptyCells ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  int numEmpty = 0; 
+ {  int numEmpty = 0; 
 #pragma omp for nowait 
-  for (int i=0; i < _sz; i++) op(i,flags,numEmpty); 
+  for (IndexInt i = 0; i < _sz; i++) op(i,flags,numEmpty); 
 #pragma omp critical
-{this->numEmpty += numEmpty; } }  } FlagGrid& flags;  int numEmpty;  };
+{this->numEmpty += numEmpty; } }   } FlagGrid& flags;  int numEmpty;  };
 #line 181 "plugin/pressure.cpp"
 
 
@@ -265,23 +265,20 @@ inline static Real ghostFluidWasClamped(int idx, int offset, const Grid<Real> &p
 // *****************************************************************************
 // Main pressure solve
 
-//! Perform pressure projection of the velocity grid
-
-
-
-
-
-
-
-
-
-
-
-
-void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid<Real>* phi = 0, Grid<Real>* perCellCorr = 0, MACGrid* fractions = 0, Real gfClamp = 1e-04, Real cgMaxIterFac = 1.5, Real cgAccuracy = 1e-3, bool precondition = true, bool enforceCompatibility = false, bool useL2Norm = false, bool zeroPressureFixing = false, Grid<Real>* retRhs = NULL ) {
+IndexInt solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid<Real>& rhs, Real cgAccuracy = 1e-3,
+	Grid<Real>* phi = 0,
+	Grid<Real>* perCellCorr = 0,
+	MACGrid* fractions = 0,
+	Real gfClamp = 1e-04,
+	Real cgMaxIterFac = 1.5,
+	bool precondition = true,
+	bool enforceCompatibility = false,
+	bool useL2Norm = false,
+	bool zeroPressureFixing = false,
+	Grid<Real>* retRhs = NULL)
+{
 	// reserve temp grids
 	FluidSolver* parent = flags.getParent();
-	Grid<Real> rhs(parent);
 	Grid<Real> residual(parent);
 	Grid<Real> search(parent);
 	Grid<Real> A0(parent);
@@ -309,7 +306,7 @@ void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid<Rea
 	
 	// check whether we need to fix some pressure value...
 	// (manually enable, or automatically for high accuracy, can cause asymmetries otherwise)
-	int fixPidx = -1;
+	IndexInt fixPidx = -1;
 	if(zeroPressureFixing || cgAccuracy<1e-07) 
 	{
 		if(FLOATINGPOINT_PRECISION==1) debMsg("Warning - high CG accuracy with single-precision floating point accuracy might not converge...", 2);
@@ -325,6 +322,9 @@ void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid<Rea
 			//debMsg("No empty cells! Fixing pressure of cell "<<fixPidx<<" to zero",1);
 		}
 		if(fixPidx>=0) {
+			// adjustment for approx. symmetric zeroPressureFixing cell (top center)
+			fixPidx = flags.index(flags.getSizeX() / 2, flags.getSizeY() - 2, flags.is3D() ? flags.getSizeZ() / 2 : 0);
+
 			flags[fixPidx] |= FlagGrid::TypeZeroPressure;
 			rhs[fixPidx] = 0.; 
 			debMsg("Pinning pressure of cell "<<fixPidx<<" to zero", 2);
@@ -349,8 +349,26 @@ void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid<Rea
 	for (int iter=0; iter<maxIter; iter++) {
 		if (!gcg->iterate()) iter=maxIter;
 	} 
-	debMsg("FluidSolver::solvePressure iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
+	//debMsg("FluidSolver::solvePressureBase iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
 	delete gcg;
+	return fixPidx;
+}
+
+//! Perform pressure projection of the velocity grid
+
+
+
+
+
+
+
+
+
+
+
+void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Real cgAccuracy = 1e-3, Grid<Real>* phi = 0, Grid<Real>* perCellCorr = 0, MACGrid* fractions = 0, Real gfClamp = 1e-04, Real cgMaxIterFac = 1.5, bool precondition = true, bool enforceCompatibility = false, bool useL2Norm = false, bool zeroPressureFixing = false, Grid<Real>* retRhs = NULL ) {
+	Grid<Real> rhs(vel.getParent());
+	IndexInt fixPidx = solvePressureBase(vel, pressure, flags, rhs, cgAccuracy, phi, perCellCorr, fractions, gfClamp, cgMaxIterFac, precondition, enforceCompatibility, useL2Norm, zeroPressureFixing, retRhs);
 	
 	CorrectVelocity(flags, vel, pressure ); 
 	if (phi) {
@@ -366,7 +384,7 @@ void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid<Rea
 	if(retRhs) {
 		retRhs->copyFrom( rhs );
 	}
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); pbPreparePlugin(parent, "solvePressure" ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Real>& pressure = *_args.getPtr<Grid<Real> >("pressure",1,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",2,&_lock); Grid<Real>* phi = _args.getPtrOpt<Grid<Real> >("phi",3,0,&_lock); Grid<Real>* perCellCorr = _args.getPtrOpt<Grid<Real> >("perCellCorr",4,0,&_lock); MACGrid* fractions = _args.getPtrOpt<MACGrid >("fractions",5,0,&_lock); Real gfClamp = _args.getOpt<Real >("gfClamp",6,1e-04,&_lock); Real cgMaxIterFac = _args.getOpt<Real >("cgMaxIterFac",7,1.5,&_lock); Real cgAccuracy = _args.getOpt<Real >("cgAccuracy",8,1e-3,&_lock); bool precondition = _args.getOpt<bool >("precondition",9,true,&_lock); bool enforceCompatibility = _args.getOpt<bool >("enforceCompatibility",10,false,&_lock); bool useL2Norm = _args.getOpt<bool >("useL2Norm",11,false,&_lock); bool zeroPressureFixing = _args.getOpt<bool >("zeroPressureFixing",12,false,&_lock); Grid<Real>* retRhs = _args.getPtrOpt<Grid<Real> >("retRhs",13,NULL ,&_lock);   _retval = getPyNone(); solvePressure(vel,pressure,flags,phi,perCellCorr,fractions,gfClamp,cgMaxIterFac,cgAccuracy,precondition,enforceCompatibility,useL2Norm,zeroPressureFixing,retRhs);  _args.check(); } pbFinalizePlugin(parent,"solvePressure" ); return _retval; } catch(std::exception& e) { pbSetError("solvePressure",e.what()); return 0; } } static const Pb::Register _RP_solvePressure ("","solvePressure",_W_0); 
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "solvePressure" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Real>& pressure = *_args.getPtr<Grid<Real> >("pressure",1,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",2,&_lock); Real cgAccuracy = _args.getOpt<Real >("cgAccuracy",3,1e-3,&_lock); Grid<Real>* phi = _args.getPtrOpt<Grid<Real> >("phi",4,0,&_lock); Grid<Real>* perCellCorr = _args.getPtrOpt<Grid<Real> >("perCellCorr",5,0,&_lock); MACGrid* fractions = _args.getPtrOpt<MACGrid >("fractions",6,0,&_lock); Real gfClamp = _args.getOpt<Real >("gfClamp",7,1e-04,&_lock); Real cgMaxIterFac = _args.getOpt<Real >("cgMaxIterFac",8,1.5,&_lock); bool precondition = _args.getOpt<bool >("precondition",9,true,&_lock); bool enforceCompatibility = _args.getOpt<bool >("enforceCompatibility",10,false,&_lock); bool useL2Norm = _args.getOpt<bool >("useL2Norm",11,false,&_lock); bool zeroPressureFixing = _args.getOpt<bool >("zeroPressureFixing",12,false,&_lock); Grid<Real>* retRhs = _args.getPtrOpt<Grid<Real> >("retRhs",13,NULL ,&_lock);   _retval = getPyNone(); solvePressure(vel,pressure,flags,cgAccuracy,phi,perCellCorr,fractions,gfClamp,cgMaxIterFac,precondition,enforceCompatibility,useL2Norm,zeroPressureFixing,retRhs);  _args.check(); } pbFinalizePlugin(parent,"solvePressure", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("solvePressure",e.what()); return 0; } } static const Pb::Register _RP_solvePressure ("","solvePressure",_W_0); 
 
 } // end namespace
 

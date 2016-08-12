@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/user/Developer/Xcode Projects/mantaflowDevelop/mantaflowgit/source/conjugategrad.cpp"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/conjugategrad.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -47,7 +47,7 @@ void InitPreconditionIncompCholesky(FlagGrid& flags,
 	
 	FOR_IJK(A0) {
 		if (flags.isFluid(i,j,k)) {
-			const int idx = A0.index(i,j,k);
+			const IndexInt idx = A0.index(i,j,k);
 			A0[idx] = sqrt(A0[idx]);
 			
 			// correct left and top stencil in other entries
@@ -125,7 +125,7 @@ void ApplyPreconditionIncompCholesky(Grid<Real>& dst, Grid<Real>& Var1, FlagGrid
 	
 	// backward substitution
 	FOR_IJK_REVERSE(dst) {
-		const int idx = A0.index(i,j,k);
+		const IndexInt idx = A0.index(i,j,k);
 		if (!flags.isFluid(idx)) continue;
 		dst[idx] = A0[idx] * ( dst[idx] 
 			   - dst(i+1,j,k) * Ai[idx]
@@ -151,7 +151,7 @@ void ApplyPreconditionModifiedIncompCholesky2(Grid<Real>& dst, Grid<Real>& Var1,
 	
 	// backward substitution
 	FOR_IJK_REVERSE(dst) {            
-		const int idx = A0.index(i,j,k);
+		const IndexInt idx = A0.index(i,j,k);
 		if (!flags.isFluid(idx)) continue;
 		const Real p = Aprecond[idx];
 		dst[idx] = p * ( dst[idx] 
@@ -168,15 +168,15 @@ void ApplyPreconditionModifiedIncompCholesky2(Grid<Real>& dst, Grid<Real>& Var1,
 //! Kernel: Compute the dot product between two Real grids
 /*! Uses double precision internally */
 
- struct GridDotProduct : public KernelBase { GridDotProduct(const Grid<Real>& a, const Grid<Real>& b) :  KernelBase(&a,0) ,a(a),b(b) ,result(0.0)  { run(); }  inline void op(int idx, const Grid<Real>& a, const Grid<Real>& b ,double& result)  {
+ struct GridDotProduct : public KernelBase { GridDotProduct(const Grid<Real>& a, const Grid<Real>& b) :  KernelBase(&a,0) ,a(a),b(b) ,result(0.0)  { runMessage(); run(); }   inline void op(IndexInt idx, const Grid<Real>& a, const Grid<Real>& b ,double& result)  {
 	result += (a[idx] * b[idx]);    
-}   inline operator double () { return result; } inline double  & getRet() { return result; }  inline const Grid<Real>& getArg0() { return a; } typedef Grid<Real> type0;inline const Grid<Real>& getArg1() { return b; } typedef Grid<Real> type1; void run() {  const int _sz = size; 
+}    inline operator double () { return result; } inline double  & getRet() { return result; }  inline const Grid<Real>& getArg0() { return a; } typedef Grid<Real> type0;inline const Grid<Real>& getArg1() { return b; } typedef Grid<Real> type1; void runMessage() { debMsg("Executing kernel GridDotProduct ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  double result = 0.0; 
+ {  double result = 0.0; 
 #pragma omp for nowait 
-  for (int i=0; i < _sz; i++) op(i,a,b,result); 
+  for (IndexInt i = 0; i < _sz; i++) op(i,a,b,result); 
 #pragma omp critical
-{this->result += result; } }  } const Grid<Real>& a; const Grid<Real>& b;  double result;  };
+{this->result += result; } }   } const Grid<Real>& a; const Grid<Real>& b;  double result;  };
 #line 159 "conjugategrad.cpp"
 
 ;
@@ -184,33 +184,33 @@ void ApplyPreconditionModifiedIncompCholesky2(Grid<Real>& dst, Grid<Real>& Var1,
 //! Kernel: compute residual (init) and add to sigma
 
 
- struct InitSigma : public KernelBase { InitSigma(FlagGrid& flags, Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& temp) :  KernelBase(&flags,0) ,flags(flags),dst(dst),rhs(rhs),temp(temp) ,sigma(0)  { run(); }  inline void op(int idx, FlagGrid& flags, Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& temp ,double& sigma)  {    
+ struct InitSigma : public KernelBase { InitSigma(FlagGrid& flags, Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& temp) :  KernelBase(&flags,0) ,flags(flags),dst(dst),rhs(rhs),temp(temp) ,sigma(0)  { runMessage(); run(); }   inline void op(IndexInt idx, FlagGrid& flags, Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& temp ,double& sigma)  {    
 	const double res = rhs[idx] - temp[idx]; 
 	dst[idx] = (Real)res;
 
 	// only compute residual in fluid region
 	if(flags.isFluid(idx)) 
 		sigma += res*res;
-}   inline operator double () { return sigma; } inline double  & getRet() { return sigma; }  inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return dst; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return rhs; } typedef Grid<Real> type2;inline Grid<Real>& getArg3() { return temp; } typedef Grid<Real> type3; void run() {  const int _sz = size; 
+}    inline operator double () { return sigma; } inline double  & getRet() { return sigma; }  inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return dst; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return rhs; } typedef Grid<Real> type2;inline Grid<Real>& getArg3() { return temp; } typedef Grid<Real> type3; void runMessage() { debMsg("Executing kernel InitSigma ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  double sigma = 0; 
+ {  double sigma = 0; 
 #pragma omp for nowait 
-  for (int i=0; i < _sz; i++) op(i,flags,dst,rhs,temp,sigma); 
+  for (IndexInt i = 0; i < _sz; i++) op(i,flags,dst,rhs,temp,sigma); 
 #pragma omp critical
-{this->sigma += sigma; } }  } FlagGrid& flags; Grid<Real>& dst; Grid<Real>& rhs; Grid<Real>& temp;  double sigma;  };
+{this->sigma += sigma; } }   } FlagGrid& flags; Grid<Real>& dst; Grid<Real>& rhs; Grid<Real>& temp;  double sigma;  };
 #line 166 "conjugategrad.cpp"
 
 ;
 
 //! Kernel: update search vector
 
- struct UpdateSearchVec : public KernelBase { UpdateSearchVec(Grid<Real>& dst, Grid<Real>& src, Real factor) :  KernelBase(&dst,0) ,dst(dst),src(src),factor(factor)   { run(); }  inline void op(int idx, Grid<Real>& dst, Grid<Real>& src, Real factor )  {
+ struct UpdateSearchVec : public KernelBase { UpdateSearchVec(Grid<Real>& dst, Grid<Real>& src, Real factor) :  KernelBase(&dst,0) ,dst(dst),src(src),factor(factor)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid<Real>& dst, Grid<Real>& src, Real factor )  {
 	dst[idx] = src[idx] + factor * dst[idx];
-}   inline Grid<Real>& getArg0() { return dst; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return src; } typedef Grid<Real> type1;inline Real& getArg2() { return factor; } typedef Real type2; void run() {  const int _sz = size; 
+}    inline Grid<Real>& getArg0() { return dst; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return src; } typedef Grid<Real> type1;inline Real& getArg2() { return factor; } typedef Real type2; void runMessage() { debMsg("Executing kernel UpdateSearchVec ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
- { this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();  
+ {  
 #pragma omp for 
-  for (int i=0; i < _sz; i++) op(i,dst,src,factor);  }  } Grid<Real>& dst; Grid<Real>& src; Real factor;   };
+  for (IndexInt i = 0; i < _sz; i++) op(i,dst,src,factor);  }   } Grid<Real>& dst; Grid<Real>& src; Real factor;   };
 #line 177 "conjugategrad.cpp"
 
 
