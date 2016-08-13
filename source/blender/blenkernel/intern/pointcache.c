@@ -981,7 +981,11 @@ static void compute_fluid_matrices(SmokeDomainSettings *sds)
 
 	mul_m4_m4m4(sds->fluidmat, sds->obmat, sds->fluidmat);
 
+#ifndef WITH_MANTA
 	if (sds->wt) {
+#else
+	if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) {
+#endif
 		float voxel_size_high[3];
 		/* construct high res matrix */
 		mul_v3_v3fl(voxel_size_high, sds->cell_size, 1.0f / (float)(sds->amplify + 1));
@@ -1023,11 +1027,19 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
 
 	OpenVDBWriter_add_meta_int(writer, "blender/smoke/fluid_fields", fluid_fields);
 
+#ifndef WITH_MANTA
 	if (sds->wt) {
+#else
+	if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) {
+#endif
 		struct OpenVDBFloatGrid *wt_density_grid;
-		float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *r, *g, *b;
+		float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *tcu2, *tcv2, *tcw2, *r, *g, *b;
 
+#ifndef WITH_MANTA
 		smoke_turbulence_export(sds->wt, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw);
+#else
+		smoke_turbulence_export(sds->fluid, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw, &tcu2, &tcv2, &tcw2);
+#endif
 
 		wt_density_grid = OpenVDB_export_grid_fl(writer, "density", dens, sds->res_wt, sds->fluidmat_wt, NULL);
 		clip_grid = wt_density_grid;
@@ -1187,10 +1199,18 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 		OpenVDB_import_grid_ch(reader, "obstacles", &obstacles, sds->res);
 	}
 
+#ifndef WITH_MANTA
 	if (sds->wt) {
-		float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *r, *g, *b;
+#else
+	if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) {
+#endif
+		float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *tcu2, *tcv2, *tcw2, *r, *g, *b;
 
+#ifndef WITH_MANTA
 		smoke_turbulence_export(sds->wt, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw);
+#else
+		smoke_turbulence_export(sds->fluid, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw, &tcu2, &tcv2, &tcw2);
+#endif
 
 		OpenVDB_import_grid_fl(reader, "density", &dens, sds->res_wt);
 
