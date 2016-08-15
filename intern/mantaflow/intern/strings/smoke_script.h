@@ -246,12 +246,10 @@ def step_low():\n\
     \n\
     if using_heat:\n\
         mantaMsg('Adding heat buoyancy')\n\
-        gravity=vec3(0,0,-1) if dim==3 else vec3(0,-1,0)\n\
         addBuoyancy(flags=flags, density=density, vel=vel, gravity=gravity, coefficient=$ALPHA$)\n\
         addBuoyancy(flags=flags, density=heat, vel=vel, gravity=gravity, coefficient=$BETA$)\n\
     else:\n\
         mantaMsg('Adding buoyancy')\n\
-        gravity=vec3(0,0,-0.01 * $ALPHA$) if dim==3 else vec3(0,-0.01* $ALPHA$,0)\n\
         addBuoyancy(density=density, vel=vel, gravity=gravity, flags=flags)\n\
     \n\
     copyRealToVec3(sourceX=x_force, sourceY=y_force, sourceZ=z_force, target=forces)\n\

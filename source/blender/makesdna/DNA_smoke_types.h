@@ -131,11 +131,13 @@ typedef struct SmokeDomainSettings {
 	int total_cells;
 	float dx; /* 1.0f / res */
 	float scale; /* largest domain size */
+	float gravity[3];
 
 	/* user settings */
 	int adapt_margin;
 	int adapt_res;
 	float adapt_threshold;
+	char pad3[4]; /* unused */
 
 	float alpha;
 	float beta;

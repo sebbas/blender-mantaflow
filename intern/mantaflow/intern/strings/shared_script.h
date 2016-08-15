@@ -45,10 +45,12 @@ const std::string fluid_solver_low = "\n\
 mantaMsg('Solver low')\n\
 dim     = $SOLVER_DIM$\n\
 res     = $RES$\n\
+gravity = vec3($GRAVITY_X$, $GRAVITY_Y$, $GRAVITY_Z$)\n\
 gs      = vec3($RESX$, $RESY$, $RESZ$)\n\
 \n\
 if dim == 2:\n\
     gs.z    = 1\n\
+    gravity = vec3($GRAVITY_X$,$GRAVITY_Z$,0)\n\
 \n\
 doOpen          = $DO_OPEN$\n\
 boundConditions = '$BOUNDCONDITIONS$'\n\

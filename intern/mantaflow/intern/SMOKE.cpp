@@ -581,6 +581,12 @@ std::string SMOKE::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << md->scene->r.cfra;
 	else if (varName == "RANDOMNESS")
 		ss << smd->domain->particle_randomness;
+	else if (varName == "GRAVITY_X")
+		ss << smd->domain->gravity[0];
+	else if (varName == "GRAVITY_Y")
+		ss << smd->domain->gravity[1];
+	else if (varName == "GRAVITY_Z")
+		ss << smd->domain->gravity[2];
 	else if (varName == "MANTA_EXPORT_PATH") {
 		char parent_dir[1024];
 		BLI_split_dir_part(smd->domain->manta_filepath, parent_dir, sizeof(parent_dir));

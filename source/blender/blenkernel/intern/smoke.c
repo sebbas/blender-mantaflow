@@ -289,6 +289,29 @@ static void smoke_set_domain_from_derivedmesh(SmokeDomainSettings *sds, Object *
 	sds->cell_size[2] /= (float)sds->base_res[2];
 }
 
+static void smoke_set_domain_gravity(Scene *scene, SmokeDomainSettings *sds)
+{
+	float gravity[3] = {0.0f, 0.0f, -1.0f};
+	float gravity_mag;
+
+	/* use global gravity if enabled */
+	if (scene->physics_settings.flag & PHYS_GLOBAL_GRAVITY) {
+		copy_v3_v3(gravity, scene->physics_settings.gravity);
+		/* map default value to 1.0 */
+		mul_v3_fl(gravity, 1.0f / 9.810f);
+	}
+	
+	/* convert gravity to domain space */
+	gravity_mag = len_v3(gravity);
+	mul_mat3_m4_v3(sds->imat, gravity);
+	normalize_v3(gravity);
+	mul_v3_fl(gravity, gravity_mag);
+	
+	sds->gravity[0] = gravity[0];
+	sds->gravity[1] = gravity[1];
+	sds->gravity[2] = gravity[2];
+}
+
 static int smokeModifier_init(SmokeModifierData *smd, Object *ob, Scene *scene, DerivedMesh *dm)
 {
 	if ((smd->type & MOD_SMOKE_TYPE_DOMAIN) && smd->domain && !smd->domain->fluid)
@@ -534,6 +557,10 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->noise = MOD_SMOKE_NOISEWAVE;
 			smd->domain->diss_speed = 5;
 			smd->domain->active_fields = 0;
+			
+			smd->domain->gravity[0] = 0.0;
+			smd->domain->gravity[1] = 0.0;
+			smd->domain->gravity[2] = -9.81;;
 
 			smd->domain->adapt_margin = 4;
 			smd->domain->adapt_res = 0;
@@ -2815,7 +2842,8 @@ static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *
 	invert_m4_m4(sds->imat, ob->obmat);
 	copy_m4_m4(sds->obmat, ob->obmat);
 	smoke_set_domain_from_derivedmesh(sds, ob, domain_dm, (sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN) != 0);
-
+	
+#ifndef WITH_MANTA
 	/* use global gravity if enabled */
 	if (scene->physics_settings.flag & PHYS_GLOBAL_GRAVITY) {
 		copy_v3_v3(gravity, scene->physics_settings.gravity);
@@ -2827,6 +2855,9 @@ static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *
 	mul_mat3_m4_v3(sds->imat, gravity);
 	normalize_v3(gravity);
 	mul_v3_fl(gravity, gravity_mag);
+#else
+	smoke_set_domain_gravity(scene, sds);
+#endif
 
 	/* adapt timestep for different framerates, dt = 0.1 is at 25fps */
 	dt = DT_DEFAULT * (25.0f / fps);

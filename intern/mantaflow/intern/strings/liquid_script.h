@@ -61,7 +61,6 @@ particleNumber = 2\n\
 radiusFactor   = 1.0\n\
 randomness     = $RANDOMNESS$\n\
 \n\
-gravity = (0,0,-1)\n\
 step    = -1\n\
 maxVel  = 0\n\
 \n\
