@@ -29,29 +29,48 @@
 
 #include <string>
 
+//////////////////////////////////////////////////////////////////////
+// LIBRARIES
+//////////////////////////////////////////////////////////////////////
+
 const std::string manta_import = "\
 from manta import *\n\
 import os, shutil, math, sys, gc\n";
 
-const std::string solver_low = "\n\
-# solver low params\n\
-mantaMsg('Solver low')\n\
-dim    = $SOLVER_DIM$\n\
-res    = $RES$\n\
-gs     = vec3($RESX$,$RESY$,$RESZ$)\n\
-if dim == 2: gs.z = 1\n\
-s      = Solver(name='main', gridSize=gs, dim=dim)\n";
+//////////////////////////////////////////////////////////////////////
+// SOLVERS
+//////////////////////////////////////////////////////////////////////
 
-const std::string solver_high = "\n\
-# solver high params\n\
+const std::string fluid_solver_low = "\n\
+mantaMsg('Solver low')\n\
+dim     = $SOLVER_DIM$\n\
+res     = $RES$\n\
+gs      = vec3($RESX$, $RESY$, $RESZ$)\n\
+\n\
+if dim == 2:\n\
+    gs.z    = 1\n\
+\n\
+doOpen          = $DO_OPEN$\n\
+boundConditions = '$BOUNDCONDITIONS$'\n\
+boundaryWidth   = 0\n\
+\n\
+s = Solver(name='main', gridSize=gs, dim=dim)\n";
+
+const std::string fluid_solver_high = "\n\
 mantaMsg('Solver high')\n\
 upres  = $UPRES$\n\
 xl_gs  = vec3($HRESX$, $HRESY$, $HRESZ$)\n\
-if dim == 2: xl_gs.z = 1\n\
-xl     = Solver(name='larger', gridSize=xl_gs)\n";
+\n\
+if dim == 2:\n\
+    xl_gs.z = 1\n\
+\n\
+xl = Solver(name='larger', gridSize=xl_gs)\n";
 
-const std::string adaptive_time_stepping_low = "\n\
-# adaptive time stepping\n\
+//////////////////////////////////////////////////////////////////////
+// ADAPTIVE TIME STEPPING
+//////////////////////////////////////////////////////////////////////
+
+const std::string fluid_adaptive_time_stepping_low = "\n\
 mantaMsg('Adaptive time stepping low')\n\
 dt_default    = 0.1\n\
 dt_factor     = $DT_FACTOR$\n\
@@ -63,16 +82,43 @@ s.timestepMax = dt0\n\
 s.cfl         = 4.0\n\
 s.timestep    = dt0\n";
 
-const std::string adaptive_time_stepping_high = "\n\
+const std::string fluid_adaptive_time_stepping_high = "\n\
 mantaMsg('Adaptive time stepping high')\n\
 xl.frameLength = s.frameLength\n\
 xl.timestepMin = s.timestepMin / 10\n\
 xl.timestepMax = s.timestepMax\n\
 xl.cfl         = s.cfl\n";
 
-const std::string fluid_variables = "\n\
-doOpen          = $DO_OPEN$\n\
-boundConditions = '$BOUNDCONDITIONS$'\n\
-boundaryWidth   = 0\n";
+//////////////////////////////////////////////////////////////////////
+// DESTRUCTION
+//////////////////////////////////////////////////////////////////////
 
+const std::string fluid_delete_variables_low = "\n\
+if 'dim'             in globals() : del dim\n\
+if 'res'             in globals() : del gravity\n\
+if 'gravity'         in globals() : del gravity\n\
+if 'gs'              in globals() : del gs\n\
+if 'gravity'         in globals() : del gravity\n\
+if 'gs'              in globals() : del gs\n\
+if 'doOpen'          in globals() : del doOpen\n\
+if 'boundConditions' in globals() : del boundConditions\n\
+if 'boundaryWidth'   in globals() : del boundaryWidth\n\
+if 'dt_default'      in globals() : del dt_default\n\
+if 'dt_factor'       in globals() : del dt_factor\n\
+if 'fps'             in globals() : del fps\n\
+if 'dt0'             in globals() : del dt0\n";
 
+const std::string fluid_delete_variables_high = "\n\
+if 'upres'           in globals() : del upres\n\
+if 'xl_gs'           in globals() : del xl_gs\n";
+
+const std::string fluid_delete_solver_low = "\n\
+mantaMsg('Deleting solver low')\n\
+if 's' in globals() : del s\n";
+
+const std::string fluid_delete_solver_high = "\n\
+mantaMsg('Deleting solver high')\n\
+if 'xl' in globals() : del xl\n";
+
+const std::string gc_collect = "\n\
+gc.collect()\n";

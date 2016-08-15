@@ -30,10 +30,28 @@
 #include <string>
 
 //////////////////////////////////////////////////////////////////////
-// GENERAL SETUP
+// BOUNDS
 //////////////////////////////////////////////////////////////////////
 
-const std::string liquid_variables = "\n\
+const std::string liquid_bounds_low = "\n\
+# prepare domain low\n\
+mantaMsg('Liquid domain low')\n\
+flags.initDomain(boundaryWidth=boundaryWidth)\n\
+if doOpen:\n\
+    setOpenBound(flags=flags, bWidth=boundaryWidth, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
+
+const std::string liquid_bounds_high = "\n\
+# prepare domain high\n\
+mantaMsg('Liquid domain high')\n\
+xl_flags.initDomain(boundaryWidth=boundaryWidth)\n\
+if doOpen:\n\
+    setOpenBound(flags=xl_flags, bWidth=boundaryWidth, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
+
+//////////////////////////////////////////////////////////////////////
+// VARIABLES
+//////////////////////////////////////////////////////////////////////
+
+const std::string liquid_variables_low = "\n\
 narrowBand       = True\n\
 narrowBandWidth  = 3\n\
 combineBandWidth = narrowBandWidth - 1\n\
@@ -53,25 +71,11 @@ const std::string liquid_variables_high = "\n\
 scale = 0.5\n\
 xl_radiusFactor = 2.5\n";
 
-const std::string liquid_prep_domain_low = "\n\
-# prepare domain low\n\
-mantaMsg('Liquid domain low')\n\
-flags.initDomain(boundaryWidth=boundaryWidth)\n\
-if doOpen:\n\
-    setOpenBound(flags=flags, bWidth=boundaryWidth, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
-
-const std::string liquid_prep_domain_high = "\n\
-# prepare domain high\n\
-mantaMsg('Liquid domain high')\n\
-xl_flags.initDomain(boundaryWidth=boundaryWidth)\n\
-if doOpen:\n\
-    setOpenBound(flags=xl_flags, bWidth=boundaryWidth, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
-
 //////////////////////////////////////////////////////////////////////
 // GRIDS & MESH & PARTICLESYSTEM
 //////////////////////////////////////////////////////////////////////
 
-const std::string alloc_liquid = "\n\
+const std::string liquid_alloc_low = "\n\
 flags      = s.create(FlagGrid)\n\
 \n\
 phiParts   = s.create(LevelsetGrid)\n\
@@ -94,11 +98,7 @@ mesh       = s.create(Mesh)\n\
 pindex     = s.create(ParticleIndexSystem)\n\
 gpi        = s.create(IntGrid)\n";
 
-const std::string init_phi = "\n\
-phi.initFromFlags(flags)\n\
-phiInit.initFromFlags(flags)\n";
-
-const std::string alloc_liquid_high = "\n\
+const std::string liquid_alloc_high = "\n\
 xl_flags   = xl.create(FlagGrid)\n\
 xl_phi     = xl.create(LevelsetGrid)\n\
 xl_pp      = xl.create(BasicParticleSystem)\n\
@@ -108,11 +108,15 @@ xl_mesh    = xl.create(Mesh)\n\
 xl_pindex  = xl.create(ParticleIndexSystem)\n\
 xl_gpi     = xl.create(IntGrid)\n";
 
+const std::string liquid_init_phi = "\n\
+phi.initFromFlags(flags)\n\
+phiInit.initFromFlags(flags)\n";
+
 //////////////////////////////////////////////////////////////////////
-// ADAPTIVE STEP
+// STEP FUNCTIONS
 //////////////////////////////////////////////////////////////////////
 
-const std::string adaptive_step_liquid = "\n\
+const std::string liquid_adaptive_step = "\n\
 def manta_step(start_frame):\n\
     s.frame = start_frame\n\
     s.timeTotal = s.frame * dt0\n\
@@ -139,11 +143,7 @@ def manta_step(start_frame):\n\
         \n\
         s.step()\n";
 
-//////////////////////////////////////////////////////////////////////
-// STEP FUNCTIONS
-//////////////////////////////////////////////////////////////////////
-
-const std::string liquid_step = "\n\
+const std::string liquid_step_low = "\n\
 def liquid_step():\n\
     # Advect particles and grid phi\n\
     # Note: Grid velocities are extrapolated at the end of each step\n\
@@ -239,36 +239,17 @@ def liquid_step_high():\n\
         #subdivideMesh(mesh=xl_mesh, minAngle=0.01, minLength=scale, maxLength=3*scale, cutTubes=True)\n";
 
 //////////////////////////////////////////////////////////////////////
-// IMPORT EXPORT GRIDS, MESHES, PARTICLESYSTEM
+// IMPORT / EXPORT
 //////////////////////////////////////////////////////////////////////
 
-const std::string save_mesh = "\n\
+const std::string liquid_save_mesh = "\n\
 def save_mesh(path):\n\
     mesh.save(path)\n\
     # TODO (sebbas)\n\
 	#if using_highres:\n\
         #xl_mesh.save(path)\n";
 
-const std::string save_liquid_data = "\n\
-def save_liquid_data(path):\n\
-    flags.save(path + str('flags.uni'))\n\
-    \n\
-    phiParts.save(path + str('phiParts.uni'))\n\
-    phi.save(path + str('phi.uni'))\n\
-    phiInit.save(path + str('phiInit.uni'))\n\
-    pressure.save(path + str('pressure.uni'))\n\
-    \n\
-    vel.save(path + str('vel.uni'))\n\
-    velOld.save(path + str('velOld.uni'))\n\
-    velParts.save(path + str('velParts.uni'))\n\
-    mapWeights.save(path + str('mapWeights.uni'))\n\
-    \n\
-    pp.save(path + str('pp.uni'))\n\
-    pVel.save(path + str('pVel.uni'))\n\
-    \n\
-    gpi.save(path + str('gpi.uni'))\n";
-
-const std::string load_liquid_data = "\n\
+const std::string liquid_import_low = "\n\
 def load_liquid_data(path):\n\
     flags.load(path + str('flags.uni'))\n\
     \n\
@@ -287,11 +268,30 @@ def load_liquid_data(path):\n\
     \n\
     gpi.load(path + str('gpi.uni'))\n";
 
+const std::string liquid_export_low = "\n\
+def save_liquid_data(path):\n\
+    flags.save(path + str('flags.uni'))\n\
+    \n\
+    phiParts.save(path + str('phiParts.uni'))\n\
+    phi.save(path + str('phi.uni'))\n\
+    phiInit.save(path + str('phiInit.uni'))\n\
+    pressure.save(path + str('pressure.uni'))\n\
+    \n\
+    vel.save(path + str('vel.uni'))\n\
+    velOld.save(path + str('velOld.uni'))\n\
+    velParts.save(path + str('velParts.uni'))\n\
+    mapWeights.save(path + str('mapWeights.uni'))\n\
+    \n\
+    pp.save(path + str('pp.uni'))\n\
+    pVel.save(path + str('pVel.uni'))\n\
+    \n\
+    gpi.save(path + str('gpi.uni'))\n";
+
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION
 //////////////////////////////////////////////////////////////////////
 
-const std::string del_liquid_grids = "\n\
+const std::string liquid_delete_grids_low = "\n\
 mantaMsg('Deleting lowres grids, mesh, particlesystem')\n\
 if 'flags'      in globals() : del flags\n\
 if 'phiParts'   in globals() : del phiParts\n\
@@ -309,7 +309,7 @@ if 'mesh'       in globals() : del mesh\n\
 if 'pindex'     in globals() : del pindex\n\
 if 'gpi'        in globals() : del gpi\n";
 
-const std::string del_liquid_grids_high = "\n\
+const std::string liquid_delete_grids_high = "\n\
 mantaMsg('Deleting highres grids, mesh, particlesystem')\n\
 if 'xl_flags'   in globals() : del xl_flags\n\
 if 'xl_phi'     in globals() : del xl_phi\n\
@@ -318,18 +318,17 @@ if 'xl_mesh'    in globals() : del xl_mesh\n\
 if 'xl_pindex'  in globals() : del xl_pindex\n\
 if 'xl_gpi'     in globals() : del xl_gpi\n";
 
-const std::string del_liquid_vars = "\n\
+const std::string liquid_delete_variables_low = "\n\
 mantaMsg('Deleting lowres liquid variables')\n\
 if 'narrowBand'       in globals() : del narrowBand\n\
 if 'narrowBandWidth'  in globals() : del narrowBandWidth\n\
 if 'combineBandWidth' in globals() : del combineBandWidth\n\
 if 'minParticles'     in globals() : del minParticles\n\
 if 'particleNumber'   in globals() : del particleNumber\n\
-if 'gravity'          in globals() : del gravity\n\
 if 'step'             in globals() : del step\n\
 if 'maxVel'           in globals() : del maxVel\n";
 
-const std::string del_liquid_vars_high = "\n\
+const std::string liquid_delete_variables_high = "\n\
 mantaMsg('Deleting highres liquid variables')\n\
 if 'scale'            in globals() : del scale\n\
 if 'xl_radiusFactor'  in globals() : del xl_radiusFactor\n";
