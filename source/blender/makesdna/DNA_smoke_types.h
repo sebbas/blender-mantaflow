@@ -190,7 +190,7 @@ typedef struct SmokeDomainSettings {
 	float mock_var2;
 
 	/* mantaflow settings */
-	struct SMOKE *fluid;
+	struct FLUID *fluid;
 	float noise_pos_scale;		/* noise settings */
 	float noise_time_anim;
 	int manta_solver_res;	/* dimension of manta solver, 2d or 3d */

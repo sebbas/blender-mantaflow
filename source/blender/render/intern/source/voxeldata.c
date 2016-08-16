@@ -60,7 +60,7 @@
 #ifndef WITH_MANTA
 	#include "smoke_API.h"
 #else
-	#include "manta_smoke_API.h"
+	#include "manta_fluid_API.h"
 #endif
 #include "BPH_mass_spring.h"
 

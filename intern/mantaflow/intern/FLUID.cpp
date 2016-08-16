@@ -23,7 +23,7 @@
  * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file mantaflow/intern/SMOKE.cpp
+/** \file mantaflow/intern/FLUID.cpp
  *  \ingroup mantaflow
  */
 
@@ -32,7 +32,7 @@
 #include <iostream>
 #include <zlib.h>
 
-#include "SMOKE.h"
+#include "FLUID.h"
 #include "registry.h"
 #include "shared_script.h"
 #include "smoke_script.h"
@@ -46,11 +46,11 @@
 #include "DNA_modifier_types.h"
 #include "DNA_smoke_types.h"
 
-bool SMOKE::mantaInitialized = false;
+bool FLUID::mantaInitialized = false;
 
-SMOKE::SMOKE(int *res, SmokeModifierData *smd)
+FLUID::FLUID(int *res, SmokeModifierData *smd)
 {
-	std::cout << "SMOKE" << std::endl;
+	std::cout << "FLUID" << std::endl;
 	smd->domain->fluid = this;
 	smd->domain->manta_solver_res = 3; // Why do we need to set this explicitly? When not set, fluidsolver throws exception (occurs when loading a new .blend file)
 	
@@ -188,7 +188,7 @@ SMOKE::SMOKE(int *res, SmokeModifierData *smd)
 	}
 }
 
-void SMOKE::initDomain(SmokeModifierData *smd)
+void FLUID::initDomain(SmokeModifierData *smd)
 {
 	std::string tmpString = manta_import
 		+ fluid_solver_low
@@ -200,7 +200,7 @@ void SMOKE::initDomain(SmokeModifierData *smd)
 	runPythonString(mCommands);
 }
 
-void SMOKE::initDomainHigh(SmokeModifierData *smd)
+void FLUID::initDomainHigh(SmokeModifierData *smd)
 {
 	std::string tmpString = fluid_solver_high
 		+ fluid_adaptive_time_stepping_high;
@@ -211,7 +211,7 @@ void SMOKE::initDomainHigh(SmokeModifierData *smd)
 	runPythonString(mCommands);
 }
 
-void SMOKE::initSmoke(SmokeModifierData *smd)
+void FLUID::initSmoke(SmokeModifierData *smd)
 {
 	std::string tmpString = smoke_alloc_low
 		+ smoke_variables_low
@@ -225,7 +225,7 @@ void SMOKE::initSmoke(SmokeModifierData *smd)
 	runPythonString(mCommands);
 }
 
-void SMOKE::initSmokeHigh(SmokeModifierData *smd)
+void FLUID::initSmokeHigh(SmokeModifierData *smd)
 {
 	std::string tmpString = smoke_alloc_high
 		+ smoke_variables_high
@@ -241,7 +241,7 @@ void SMOKE::initSmokeHigh(SmokeModifierData *smd)
 	mUsingHighRes = true;
 }
 
-void SMOKE::initHeat(SmokeModifierData *smd)
+void FLUID::initHeat(SmokeModifierData *smd)
 {
 	if (!mHeat) {
 		mCommands.clear();
@@ -253,7 +253,7 @@ void SMOKE::initHeat(SmokeModifierData *smd)
 	}
 }
 
-void SMOKE::initFire(SmokeModifierData *smd)
+void FLUID::initFire(SmokeModifierData *smd)
 {
 	if (!mFuel) {
 		mCommands.clear();
@@ -265,7 +265,7 @@ void SMOKE::initFire(SmokeModifierData *smd)
 	}
 }
 
-void SMOKE::initFireHigh(SmokeModifierData *smd)
+void FLUID::initFireHigh(SmokeModifierData *smd)
 {
 	if (!mFuelHigh) {
 		mCommands.clear();
@@ -277,7 +277,7 @@ void SMOKE::initFireHigh(SmokeModifierData *smd)
 	}
 }
 
-void SMOKE::initColors(SmokeModifierData *smd)
+void FLUID::initColors(SmokeModifierData *smd)
 {
 	if (!mColorR) {
 		mCommands.clear();
@@ -292,7 +292,7 @@ void SMOKE::initColors(SmokeModifierData *smd)
 	}
 }
 
-void SMOKE::initColorsHigh(SmokeModifierData *smd)
+void FLUID::initColorsHigh(SmokeModifierData *smd)
 {
 	if (!mColorRHigh) {
 		mCommands.clear();
@@ -307,7 +307,7 @@ void SMOKE::initColorsHigh(SmokeModifierData *smd)
 	}
 }
 
-void SMOKE::initLiquid(SmokeModifierData *smd)
+void FLUID::initLiquid(SmokeModifierData *smd)
 {
 	if (!mPhi) {
 		std::string tmpString = liquid_alloc_low
@@ -328,7 +328,7 @@ void SMOKE::initLiquid(SmokeModifierData *smd)
 	}
 }
 
-void SMOKE::initLiquidHigh(SmokeModifierData *smd)
+void FLUID::initLiquidHigh(SmokeModifierData *smd)
 {
 	std::string tmpString = liquid_alloc_high
 		+ liquid_variables_high
@@ -342,7 +342,7 @@ void SMOKE::initLiquidHigh(SmokeModifierData *smd)
 	mUsingHighRes = true;
 }
 
-void SMOKE::step(SmokeModifierData *smd)
+void FLUID::step(SmokeModifierData *smd)
 {
 	// manta_write_effectors(this);                         // TODO in Mantaflow
 
@@ -359,7 +359,7 @@ void SMOKE::step(SmokeModifierData *smd)
 	runPythonString(mCommands);
 }
 
-SMOKE::~SMOKE()
+FLUID::~FLUID()
 {
 	std::cout << "~SMOKE()" << std::endl;
 
@@ -452,7 +452,7 @@ SMOKE::~SMOKE()
 	mUsingHighRes = false;	
 }
 
-void SMOKE::runPythonString(std::vector<std::string> commands)
+void FLUID::runPythonString(std::vector<std::string> commands)
 {
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	for (std::vector<std::string>::iterator it = commands.begin(); it != commands.end(); ++it) {
@@ -474,7 +474,7 @@ void SMOKE::runPythonString(std::vector<std::string> commands)
 	PyGILState_Release(gilstate);
 }
 
-void SMOKE::startMantaflow()
+void FLUID::startMantaflow()
 {
 	std::cout << "Starting mantaflow" << std::endl;
 	std::string filename = "manta_scene.py";
@@ -488,7 +488,7 @@ void SMOKE::startMantaflow()
 	mantaInitialized = true;
 }
 
-std::string SMOKE::getRealValue(const std::string& varName,  SmokeModifierData *smd)
+std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *smd)
 {
 	std::ostringstream ss;
 	bool is2D = (smd->domain->manta_solver_res == 2);
@@ -596,7 +596,7 @@ std::string SMOKE::getRealValue(const std::string& varName,  SmokeModifierData *
 	return ss.str();
 }
 
-std::string SMOKE::parseLine(const std::string& line, SmokeModifierData *smd)
+std::string FLUID::parseLine(const std::string& line, SmokeModifierData *smd)
 {
 	if (line.size() == 0) return "";
 	std::string res = "";
@@ -620,7 +620,7 @@ std::string SMOKE::parseLine(const std::string& line, SmokeModifierData *smd)
 	return res;
 }
 
-std::string SMOKE::parseScript(const std::string& setup_string, SmokeModifierData *smd)
+std::string FLUID::parseScript(const std::string& setup_string, SmokeModifierData *smd)
 {
 	std::istringstream f(setup_string);
 	std::ostringstream res;
@@ -631,7 +631,7 @@ std::string SMOKE::parseScript(const std::string& setup_string, SmokeModifierDat
 	return res.str();
 }
 
-void SMOKE::exportScript(SmokeModifierData *smd)
+void FLUID::exportScript(SmokeModifierData *smd)
 {
 	// Setup low
 	std::string manta_script =
@@ -706,7 +706,7 @@ void SMOKE::exportScript(SmokeModifierData *smd)
 	manta_script += smoke_adaptive_step;
 	
 	// Fill in missing variables in script
-	std::string final_script = SMOKE::parseScript(manta_script, smd);
+	std::string final_script = FLUID::parseScript(manta_script, smd);
 	
 	// Add standalone mode (loop, gui, ...)
 	final_script += smoke_standalone;
@@ -718,21 +718,21 @@ void SMOKE::exportScript(SmokeModifierData *smd)
 	myfile.close();
 }
 
-void SMOKE::exportGrids(SmokeModifierData *smd)
+void FLUID::exportGrids(SmokeModifierData *smd)
 {
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	
 	// Export low res grids
-	PyRun_SimpleString(SMOKE::parseScript(smoke_export_low, smd).c_str());
+	PyRun_SimpleString(FLUID::parseScript(smoke_export_low, smd).c_str());
 
 	// Export high res grids
 	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
-		PyRun_SimpleString(SMOKE::parseScript(smoke_export_high, smd).c_str());
+		PyRun_SimpleString(FLUID::parseScript(smoke_export_high, smd).c_str());
 	}
 	PyGILState_Release(gilstate);
 }
 
-void* SMOKE::getGridPointer(std::string gridName, std::string solverName)
+void* FLUID::getGridPointer(std::string gridName, std::string solverName)
 {
 	if ((gridName == "") && (solverName == "")) return NULL;
 
@@ -760,7 +760,7 @@ void* SMOKE::getGridPointer(std::string gridName, std::string solverName)
 	return gridPointer;
 }
 
-void SMOKE::updateMeshData(const char* filename)
+void FLUID::updateMeshData(const char* filename)
 {
 	gzFile gzf;
 	float fbuffer[3];
@@ -835,7 +835,7 @@ void SMOKE::updateMeshData(const char* filename)
 	gzclose( gzf );
 }
 
-void SMOKE::updatePointers(SmokeModifierData *smd)
+void FLUID::updatePointers(SmokeModifierData *smd)
 {
 	std::cout << "Updating pointers low res" << std::endl;
 
@@ -880,7 +880,7 @@ void SMOKE::updatePointers(SmokeModifierData *smd)
 	}
 }
 
-void SMOKE::updatePointersHigh(SmokeModifierData *smd)
+void FLUID::updatePointersHigh(SmokeModifierData *smd)
 {
 	std::cout << "Updating pointers high res" << std::endl;
 
@@ -912,7 +912,7 @@ void SMOKE::updatePointersHigh(SmokeModifierData *smd)
 	}
 }
 
-void SMOKE::saveMesh(char *filename)
+void FLUID::saveMesh(char *filename)
 {
 	std::string path(filename);
 	
@@ -924,7 +924,7 @@ void SMOKE::saveMesh(char *filename)
 	runPythonString(mCommands);
 }
 
-void SMOKE::saveLiquidData(char *pathname)
+void FLUID::saveLiquidData(char *pathname)
 {
 	std::string path(pathname);
 	
@@ -936,7 +936,7 @@ void SMOKE::saveLiquidData(char *pathname)
 	runPythonString(mCommands);
 }
 
-void SMOKE::loadLiquidData(char *pathname)
+void FLUID::loadLiquidData(char *pathname)
 {
 	std::string path(pathname);
 	

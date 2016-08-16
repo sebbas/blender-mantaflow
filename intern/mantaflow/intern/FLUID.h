@@ -23,23 +23,23 @@
  * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file mantaflow/intern/SMOKE.h
+/** \file mantaflow/intern/FLUID.h
  *  \ingroup mantaflow
  */
 
-#ifndef SMOKE_A_H
-#define SMOKE_A_H
+#ifndef FLUID_A_H
+#define FLUID_A_H
 
 #include <string>
 #include <vector>
 
 #include "Python.h"
 
-struct SMOKE {
+struct FLUID {
 public:
-	SMOKE(int *res, struct SmokeModifierData *smd);
-	SMOKE() {};
-	virtual ~SMOKE();
+	FLUID(int *res, struct SmokeModifierData *smd);
+	FLUID() {};
+	virtual ~FLUID();
 	
 	// Manta step, handling everything
 	void step(struct SmokeModifierData *smd);

@@ -29,17 +29,17 @@
 
 #include <cmath>
 
-#include "SMOKE.h"
-#include "manta_smoke_API.h"
+#include "FLUID.h"
+#include "manta_fluid_API.h"
 #include "spectrum.h"
 
-extern "C" SMOKE *smoke_init(int *res, struct SmokeModifierData *smd)
+extern "C" FLUID *smoke_init(int *res, struct SmokeModifierData *smd)
 {
-	SMOKE *smoke = new SMOKE(res, smd);
+	FLUID *smoke = new FLUID(res, smd);
 	return smoke;
 }
 
-extern "C" void smoke_free(SMOKE *smoke)
+extern "C" void smoke_free(FLUID *smoke)
 {
 	delete smoke;
 	smoke = NULL;
@@ -55,14 +55,14 @@ extern "C" size_t smoke_get_index2d(int x, int max_x, int y /*, int max_y, int z
 	return x + y * max_x;
 }
 
-extern "C" void smoke_manta_export(SMOKE* smoke, SmokeModifierData *smd)
+extern "C" void smoke_manta_export(FLUID* smoke, SmokeModifierData *smd)
 {
 	if (!smoke && !smd) return;
 	smoke->exportScript(smd);
 	smoke->exportGrids(smd);
 }
 
-extern "C" void smoke_step(SMOKE *smoke, SmokeModifierData *smd)
+extern "C" void smoke_step(FLUID *smoke, SmokeModifierData *smd)
 {
 	smoke->step(smd);
 	smoke->updatePointers(smd);
@@ -124,17 +124,17 @@ static void data_dissolve(float *density, float *heat, float *r, float *g, float
 	}
 }
 
-extern "C" void smoke_dissolve(SMOKE *smoke, int speed, int log)
+extern "C" void smoke_dissolve(FLUID *smoke, int speed, int log)
 {
 	data_dissolve(smoke->getDensity(), smoke->getHeat(), smoke->getColorR(), smoke->getColorG(), smoke->getColorB(), smoke->getTotalCells(), speed, log);
 }
 
-extern "C" void smoke_dissolve_wavelet(SMOKE *smoke, int speed, int log)
+extern "C" void smoke_dissolve_wavelet(FLUID *smoke, int speed, int log)
 {
 	data_dissolve(smoke->getDensityHigh(), 0, smoke->getColorRHigh(), smoke->getColorGHigh(), smoke->getColorBHigh(), smoke->getTotalCellsHigh(), speed, log);
 }
 
-extern "C" void smoke_export(SMOKE *smoke, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, 
+extern "C" void smoke_export(FLUID *smoke, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, 
 							 float **smoke_inflow, float **vx, float **vy, float **vz, float **r, float **g, float **b, unsigned char **obstacles)
 {
 	*dens = smoke->getDensity();
@@ -162,7 +162,7 @@ extern "C" void smoke_export(SMOKE *smoke, float *dt, float *dx, float **dens, f
 	*dx = 1; //dummy value, not needed for smoke
 }
 
-extern "C" void smoke_turbulence_export(SMOKE *smoke, float **dens, float **react, float **flame, float **fuel,
+extern "C" void smoke_turbulence_export(FLUID *smoke, float **dens, float **react, float **flame, float **fuel,
                                         float **r, float **g, float **b , float **tcu, float **tcv, float **tcw, float **tcu2, float **tcv2, float **tcw2)
 {
 	if (!smoke && !smoke->usingHighRes())
@@ -190,77 +190,77 @@ extern "C" void smoke_turbulence_export(SMOKE *smoke, float **dens, float **reac
 	*tcw2 = smoke->getTextureW2();
 }
 
-extern "C" float *smoke_get_density(SMOKE *smoke)
+extern "C" float *smoke_get_density(FLUID *smoke)
 {
 	return smoke->getDensity();
 }
 
-extern "C" int *smoke_get_flags(SMOKE *smoke)
+extern "C" int *smoke_get_flags(FLUID *smoke)
 {
 	return smoke->getFlags();
 }
 
-extern "C" float *smoke_get_fuel(SMOKE *smoke)
+extern "C" float *smoke_get_fuel(FLUID *smoke)
 {
 	return smoke->getFuel();
 }
 
-extern "C" float *smoke_get_react(SMOKE *smoke)
+extern "C" float *smoke_get_react(FLUID *smoke)
 {
 	return smoke->getReact();
 }
 
-extern "C" float *smoke_get_heat(SMOKE *smoke)
+extern "C" float *smoke_get_heat(FLUID *smoke)
 {
 	return smoke->getHeat();
 }
 
-extern "C" float *smoke_get_velocity_x(SMOKE *smoke)
+extern "C" float *smoke_get_velocity_x(FLUID *smoke)
 {
 	return smoke->getVelocityX();
 }
 
-extern "C" float *smoke_get_velocity_y(SMOKE *smoke)
+extern "C" float *smoke_get_velocity_y(FLUID *smoke)
 {
 	return smoke->getVelocityY();
 }
 
-extern "C" float *smoke_get_velocity_z(SMOKE *smoke)
+extern "C" float *smoke_get_velocity_z(FLUID *smoke)
 {
 	return smoke->getVelocityZ();
 }
 
-extern "C" float *smoke_get_force_x(SMOKE *smoke)
+extern "C" float *smoke_get_force_x(FLUID *smoke)
 {
 	return smoke->getForceX();
 }
 
-extern "C" float *smoke_get_force_y(SMOKE *smoke)
+extern "C" float *smoke_get_force_y(FLUID *smoke)
 {
 	return smoke->getForceY();
 }
 
-extern "C" float *smoke_get_force_z(SMOKE *smoke)
+extern "C" float *smoke_get_force_z(FLUID *smoke)
 {
 	return smoke->getForceZ();
 }
 
-extern "C" float *smoke_get_flame(SMOKE *smoke)
+extern "C" float *smoke_get_flame(FLUID *smoke)
 {
 	return smoke->getFlame();
 }
 
-extern "C" float *smoke_get_color_r(SMOKE *smoke)
+extern "C" float *smoke_get_color_r(FLUID *smoke)
 {
 	return smoke->getColorR();
 }
 
-extern "C" float *smoke_get_color_g(SMOKE *smoke)
+extern "C" float *smoke_get_color_g(FLUID *smoke)
 {
 	return smoke->getColorG();
 }
 
-extern "C" float *smoke_get_color_b(SMOKE *smoke)
+extern "C" float *smoke_get_color_b(FLUID *smoke)
 {
 	return smoke->getColorB();
 }
@@ -291,12 +291,12 @@ static void get_rgba(float *r, float *g, float *b, float *a, int total_cells, fl
 	}
 }
 
-extern "C" void smoke_get_rgba(SMOKE *smoke, float *data, int sequential)
+extern "C" void smoke_get_rgba(FLUID *smoke, float *data, int sequential)
 {
 	get_rgba(smoke->getColorR(), smoke->getColorG(), smoke->getColorB(), smoke->getDensity(), smoke->getTotalCells(), data, sequential);
 }
 
-extern "C" void smoke_turbulence_get_rgba(SMOKE *smoke, float *data, int sequential)
+extern "C" void smoke_turbulence_get_rgba(FLUID *smoke, float *data, int sequential)
 {
 	get_rgba(smoke->getColorRHigh(), smoke->getColorGHigh(), smoke->getColorBHigh(), smoke->getDensityHigh(), smoke->getTotalCellsHigh(), data, sequential);
 }
@@ -328,62 +328,62 @@ static void get_rgba_from_density(float color[3], float *a, int total_cells, flo
 	}
 }
 
-extern "C" void smoke_get_rgba_from_density(SMOKE *smoke, float color[3], float *data, int sequential)
+extern "C" void smoke_get_rgba_from_density(FLUID *smoke, float color[3], float *data, int sequential)
 {
 	get_rgba_from_density(color, smoke->getDensity(), smoke->getTotalCells(), data, sequential);
 }
 
-extern "C" void smoke_turbulence_get_rgba_from_density(SMOKE *smoke, float color[3], float *data, int sequential)
+extern "C" void smoke_turbulence_get_rgba_from_density(FLUID *smoke, float color[3], float *data, int sequential)
 {
 	get_rgba_from_density(color, smoke->getDensityHigh(), smoke->getTotalCellsHigh(), data, sequential);
 }
 
-extern "C" float *smoke_turbulence_get_density(SMOKE *smoke)
+extern "C" float *smoke_turbulence_get_density(FLUID *smoke)
 {
 	return (smoke && smoke->usingHighRes()) ? smoke->getDensityHigh() : NULL;
 }
 
-extern "C" int *smoke_turbulence_get_flags(SMOKE *smoke)
+extern "C" int *smoke_turbulence_get_flags(FLUID *smoke)
 {
 	return (smoke && smoke->usingHighRes()) ? smoke->getFlagsHigh() : NULL;
 }
 
-extern "C" float *smoke_turbulence_get_fuel(SMOKE *smoke)
+extern "C" float *smoke_turbulence_get_fuel(FLUID *smoke)
 {
 	return (smoke && smoke->usingHighRes()) ? smoke->getFuelHigh() : NULL;
 }
 
-extern "C" float *smoke_turbulence_get_react(SMOKE *smoke)
+extern "C" float *smoke_turbulence_get_react(FLUID *smoke)
 {
 	return (smoke && smoke->usingHighRes()) ? smoke->getReactHigh() : NULL;
 }
 
-extern "C" float *smoke_turbulence_get_color_r(SMOKE *smoke)
+extern "C" float *smoke_turbulence_get_color_r(FLUID *smoke)
 {
 	return (smoke && smoke->usingHighRes()) ? smoke->getColorRHigh() : NULL;
 }
 
-extern "C" float *smoke_turbulence_get_color_g(SMOKE *smoke)
+extern "C" float *smoke_turbulence_get_color_g(FLUID *smoke)
 {
 	return (smoke && smoke->usingHighRes()) ? smoke->getColorGHigh() : NULL;
 }
 
-extern "C" float *smoke_turbulence_get_color_b(SMOKE *smoke)
+extern "C" float *smoke_turbulence_get_color_b(FLUID *smoke)
 {
 	return (smoke && smoke->usingHighRes()) ? smoke->getColorBHigh() : NULL;
 }
 
-extern "C" float *smoke_turbulence_get_flame(SMOKE *smoke)
+extern "C" float *smoke_turbulence_get_flame(FLUID *smoke)
 {
 	return (smoke && smoke->usingHighRes()) ? smoke->getFlameHigh() : NULL;
 }
 
-extern "C" float *liquid_turbulence_get_phi(SMOKE *liquid)
+extern "C" float *liquid_turbulence_get_phi(FLUID *liquid)
 {
 	return (liquid && liquid->usingHighRes()) ? liquid->getPhiHigh() : NULL;
 }
 
-extern "C" void smoke_turbulence_get_res(SMOKE *smoke, int *res)
+extern "C" void smoke_turbulence_get_res(FLUID *smoke, int *res)
 {
 	if (smoke && smoke->usingHighRes()) {
 		res[0] = smoke->getResXHigh();
@@ -392,18 +392,18 @@ extern "C" void smoke_turbulence_get_res(SMOKE *smoke, int *res)
 	}
 }
 
-extern "C" int smoke_turbulence_get_cells(SMOKE *smoke)
+extern "C" int smoke_turbulence_get_cells(FLUID *smoke)
 {
 	int total_cells_high = smoke->getResXHigh() * smoke->getResYHigh() * smoke->getResZHigh();
 	return (smoke && smoke->usingHighRes()) ? total_cells_high : 0;
 }
 
-extern "C" unsigned char *smoke_get_obstacle(SMOKE *smoke)
+extern "C" unsigned char *smoke_get_obstacle(FLUID *smoke)
 {
 	return smoke->getObstacles();
 }
 
-extern "C" void smoke_get_ob_velocity(SMOKE *smoke, float **x, float **y, float **z)
+extern "C" void smoke_get_ob_velocity(FLUID *smoke, float **x, float **y, float **z)
 {
 	*x = smoke->getObVelocityX();
 	*y = smoke->getObVelocityY();
@@ -411,7 +411,7 @@ extern "C" void smoke_get_ob_velocity(SMOKE *smoke, float **x, float **y, float 
 }
 
 #if 0
-extern "C" unsigned char *smoke_get_obstacle_anim(SMOKE *smoke)
+extern "C" unsigned char *smoke_get_obstacle_anim(FLUID *smoke)
 {
 	return smoke->getObstaclesAnim();
 }
@@ -422,33 +422,33 @@ extern "C" void flame_get_spectrum(unsigned char *spec, int width, float t1, flo
 	spectrum(t1, t2, width, spec);
 }
 
-extern "C" int smoke_has_heat(SMOKE *smoke)
+extern "C" int smoke_has_heat(FLUID *smoke)
 {
 	return (smoke->getHeat()) ? 1 : 0;
 }
 
-extern "C" int smoke_has_fuel(SMOKE *smoke)
+extern "C" int smoke_has_fuel(FLUID *smoke)
 {
 	return (smoke->getFuel()) ? 1 : 0;
 }
 
-extern "C" int smoke_has_colors(SMOKE *smoke)
+extern "C" int smoke_has_colors(FLUID *smoke)
 {
 	return (smoke->getColorR() && smoke->getColorG() && smoke->getColorB()) ? 1 : 0;
 }
 
-extern "C" int smoke_turbulence_has_fuel(SMOKE *smoke)
+extern "C" int smoke_turbulence_has_fuel(FLUID *smoke)
 {
 	return (smoke->getFuelHigh()) ? 1 : 0;
 }
 
-extern "C" int smoke_turbulence_has_colors(SMOKE *smoke)
+extern "C" int smoke_turbulence_has_colors(FLUID *smoke)
 {
 	return (smoke->getColorRHigh() && smoke->getColorGHigh() && smoke->getColorBHigh()) ? 1 : 0;
 }
 
 /* additional field initialization */
-extern "C" void smoke_ensure_heat(SMOKE *smoke, struct SmokeModifierData *smd)
+extern "C" void smoke_ensure_heat(FLUID *smoke, struct SmokeModifierData *smd)
 {
 	if (smoke) {
 		smoke->initHeat(smd);
@@ -456,7 +456,7 @@ extern "C" void smoke_ensure_heat(SMOKE *smoke, struct SmokeModifierData *smd)
 	}
 }
 
-extern "C" void smoke_ensure_fire(SMOKE *smoke, struct SmokeModifierData *smd)
+extern "C" void smoke_ensure_fire(FLUID *smoke, struct SmokeModifierData *smd)
 {
 	if (smoke) {
 		smoke->initFire(smd);
@@ -468,7 +468,7 @@ extern "C" void smoke_ensure_fire(SMOKE *smoke, struct SmokeModifierData *smd)
 	}
 }
 
-extern "C" void smoke_ensure_colors(SMOKE *smoke, struct SmokeModifierData *smd)
+extern "C" void smoke_ensure_colors(FLUID *smoke, struct SmokeModifierData *smd)
 {
 	if (smoke) {
 		smoke->initColors(smd);
@@ -480,7 +480,7 @@ extern "C" void smoke_ensure_colors(SMOKE *smoke, struct SmokeModifierData *smd)
 	}
 }
 
-extern "C" void liquid_ensure_init(SMOKE *smoke, struct SmokeModifierData *smd)
+extern "C" void liquid_ensure_init(FLUID *smoke, struct SmokeModifierData *smd)
 {
 	if (smoke) {
 		smoke->initLiquid(smd);
@@ -488,108 +488,108 @@ extern "C" void liquid_ensure_init(SMOKE *smoke, struct SmokeModifierData *smd)
 	}
 }
 
-extern "C" float *smoke_get_inflow_grid(SMOKE *smoke)
+extern "C" float *smoke_get_inflow_grid(FLUID *smoke)
 {
 	return smoke->getDensityInflow();
 }
 
-extern "C" float *smoke_get_fuel_inflow(SMOKE *smoke)
+extern "C" float *smoke_get_fuel_inflow(FLUID *smoke)
 {
 	return smoke->getFuelInflow();
 }
 
-extern "C" float *liquid_get_phi(SMOKE *liquid)
+extern "C" float *liquid_get_phi(FLUID *liquid)
 {
 	return liquid->getPhi();
 }
 
-extern "C" float *liquid_get_phiinit(SMOKE *liquid)
+extern "C" float *liquid_get_phiinit(FLUID *liquid)
 {
 	return liquid->getPhiInit();
 }
 
-extern "C" void liquid_save_mesh(SMOKE *liquid, char *filename)
+extern "C" void liquid_save_mesh(FLUID *liquid, char *filename)
 {
 	if (liquid) {
 		liquid->saveMesh(filename);
 	}
 }
 
-extern "C" void liquid_save_data(SMOKE *liquid, char *pathname)
+extern "C" void liquid_save_data(FLUID *liquid, char *pathname)
 {
 	if (liquid) {
 		liquid->saveLiquidData(pathname);
 	}
 }
 
-extern "C" void liquid_load_data(SMOKE *liquid, char *pathname)
+extern "C" void liquid_load_data(FLUID *liquid, char *pathname)
 {
 	if (liquid) {
 		liquid->loadLiquidData(pathname);
 	}
 }
 
-extern "C" int liquid_get_num_verts(SMOKE *liquid)
+extern "C" int liquid_get_num_verts(FLUID *liquid)
 {
 	return liquid->getNumVertices();
 }
 
-extern "C" int liquid_get_num_normals(SMOKE *liquid)
+extern "C" int liquid_get_num_normals(FLUID *liquid)
 {
 	return liquid->getNumNormals();
 }
 
-extern "C" int liquid_get_num_triangles(SMOKE *liquid)
+extern "C" int liquid_get_num_triangles(FLUID *liquid)
 {
 	return liquid->getNumTriangles();
 }
 
-extern "C" float liquid_get_vertex_x_at(SMOKE *liquid, int i)
+extern "C" float liquid_get_vertex_x_at(FLUID *liquid, int i)
 {
 	return liquid->getVertexXAt(i);
 }
 
-extern "C" float liquid_get_vertex_y_at(SMOKE *liquid, int i)
+extern "C" float liquid_get_vertex_y_at(FLUID *liquid, int i)
 {
 	return liquid->getVertexYAt(i);
 }
 
-extern "C" float liquid_get_vertex_z_at(SMOKE *liquid, int i)
+extern "C" float liquid_get_vertex_z_at(FLUID *liquid, int i)
 {
 	return liquid->getVertexZAt(i);
 }
 
-extern "C" float liquid_get_normal_x_at(SMOKE *liquid, int i)
+extern "C" float liquid_get_normal_x_at(FLUID *liquid, int i)
 {
 	return liquid->getNormalXAt(i);
 }
 
-extern "C" float liquid_get_normal_y_at(SMOKE *liquid, int i)
+extern "C" float liquid_get_normal_y_at(FLUID *liquid, int i)
 {
 	return liquid->getNormalYAt(i);
 }
 
-extern "C" float liquid_get_normal_z_at(SMOKE *liquid, int i)
+extern "C" float liquid_get_normal_z_at(FLUID *liquid, int i)
 {
 	return liquid->getNormalZAt(i);
 }
 
-extern "C" float liquid_get_triangle_x_at(SMOKE *liquid, int i)
+extern "C" float liquid_get_triangle_x_at(FLUID *liquid, int i)
 {
 	return liquid->getTriangleXAt(i);
 }
 
-extern "C" float liquid_get_triangle_y_at(SMOKE *liquid, int i)
+extern "C" float liquid_get_triangle_y_at(FLUID *liquid, int i)
 {
 	return liquid->getTriangleYAt(i);
 }
 
-extern "C" float liquid_get_triangle_z_at(SMOKE *liquid, int i)
+extern "C" float liquid_get_triangle_z_at(FLUID *liquid, int i)
 {
 	return liquid->getTriangleZAt(i);
 }
 
-extern "C" void liquid_update_mesh_data(SMOKE *liquid, char* filename)
+extern "C" void liquid_update_mesh_data(FLUID *liquid, char* filename)
 {
 	liquid->updateMeshData(filename);
 }
