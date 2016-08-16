@@ -845,7 +845,6 @@ void FLUID::updatePointers(SmokeModifierData *smd)
 	if (mUsingLiquid) {
 		mPhi        = (float*)         getGridPointer("phi",             "s");
 		mPhiInit    = (float*)         getGridPointer("phiInit",         "s");
-		mDensity    = (float*)         getGridPointer("density",         "s");
 	}
 	
 	// Smoke

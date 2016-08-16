@@ -81,8 +81,6 @@ phiParts   = s.create(LevelsetGrid)\n\
 phi        = s.create(LevelsetGrid)\n\
 phiInit    = s.create(LevelsetGrid)\n\
 pressure   = s.create(RealGrid)\n\
-# TODO (sebbas): remove density grid. only here because of stand in\n\
-density    = s.create(RealGrid)\n\
 \n\
 vel        = s.create(MACGrid)\n\
 velOld     = s.create(MACGrid)\n\
@@ -297,7 +295,6 @@ if 'phiParts'   in globals() : del phiParts\n\
 if 'phi'        in globals() : del phi\n\
 if 'phiInit'    in globals() : del phiInit\n\
 if 'pressure'   in globals() : del pressure\n\
-if 'density'    in globals() : del density\n\
 if 'vel'        in globals() : del vel\n\
 if 'velOld'     in globals() : del velOld\n\
 if 'velParts'   in globals() : del velParts\n\

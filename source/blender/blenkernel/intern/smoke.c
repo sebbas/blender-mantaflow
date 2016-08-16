@@ -3224,7 +3224,9 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			step(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base);
 		}
 		// create shadows before writing cache so they get stored
-		smoke_calc_transparency(sds, scene);
+		if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
+			smoke_calc_transparency(sds, scene);
+		}
 
 #ifndef WITH_MANTA
 		if (sds->wt && sds->total_cells > 1) {
