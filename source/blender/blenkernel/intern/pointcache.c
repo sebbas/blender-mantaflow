@@ -2968,6 +2968,10 @@ static int ptcache_write_liquid_stream(PTCacheID *pid, int cfra)
 
 	BKE_ptcache_id_clear(pid, PTCACHE_CLEAR_FRAME, cfra);
 	
+	/* save blend file before using disk pointcache */
+	if (!G.relbase_valid && (pid->cache->flag & PTCACHE_EXTERNAL)==0)
+		return 0;
+
 	ptcache_filename(pid, filename, cfra, 1, 1);
 	ptcache_path(pid, pathname);
 	
