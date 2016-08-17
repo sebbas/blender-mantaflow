@@ -262,12 +262,13 @@ class PHYSICS_PT_smoke_highres(PhysicButtonsPanel, Panel):
         col = split.column()
         col.label(text="Resolution:")
         col.prop(domain, "resolution_max", text="Divisions")
-        col.label(text="Render Display:")
-        col.prop(domain, "render_display_mode", text="")
+        # TODO (sebbas): Disabling render display switch for now. Needs some more consideration
+        #col.label(text="Render Display:")
+        #col.prop(domain, "render_display_mode", text="")
 
         col = split.column()
-        col.label()
-        col.label()
+        #col.label()
+        #col.label()
         col.label(text="Viewport Display:")
         col.prop(domain, "viewport_display_mode", text="")
 

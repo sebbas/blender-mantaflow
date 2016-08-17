@@ -2243,7 +2243,7 @@ BLI_INLINE void apply_outflow_fields(int index, float inflow_value, float *densi
 	if (phi) {
 		phi[index] = 0.5f; // mantaflow convetion
 	}
-	if (inflow_value < 0.f) { // only set outflow inside mesh
+	if (flags && inflow_value < 0.f) { // only set outflow inside mesh
 		flags[index] = 20; // mantaflow convetion (FlagOutflow | FlagEmpty)
 	}
 	
@@ -2702,7 +2702,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 											}
 											else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW || (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time == 2)) { // inflow
 												// TODO (sebbas) inflow map highres?
-												apply_inflow_fields(sfs, interpolated_value, inflow_map_high[index_big], index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, bigphi);
+												apply_inflow_fields(sfs, interpolated_value, inflow_map_high[index_big], index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL);
 											}
 										} // hires loop
 							}  // bigdensity
