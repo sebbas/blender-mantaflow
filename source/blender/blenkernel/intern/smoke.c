@@ -590,6 +590,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			
 			/* liquid */
 			smd->domain->particle_randomness = 0.1f;
+			smd->domain->particle_number = 2;
 
 #ifdef WITH_MANTA
 			/*mantaflow settings*/

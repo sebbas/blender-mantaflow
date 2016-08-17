@@ -111,6 +111,10 @@ class PHYSICS_PT_fluid(PhysicButtonsPanel, Panel):
                 col.label(text="Liquid:")
                 col.prop(domain, "particle_randomness")
 
+                col = split.column(align=True)
+                col.label()
+                col.prop(domain, "particle_number")
+
         elif md.smoke_type == 'FLOW':
             flow = md.flow_settings
 

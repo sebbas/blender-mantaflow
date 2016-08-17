@@ -58,7 +58,7 @@ narrowBandWidth  = 3\n\
 combineBandWidth = narrowBandWidth - 1\n\
 \n\
 minParticles   = pow(2,dim)\n\
-particleNumber = 2\n\
+particleNumber = $PARTICLE_NUMBER$\n\
 radiusFactor   = 1.0\n\
 randomness     = $RANDOMNESS$\n\
 \n\
@@ -123,7 +123,7 @@ def manta_step(start_frame):\n\
     s.timeTotal = s.frame * dt0\n\
     last_frame = s.frame\n\
     \n\
-    sampleLevelsetWithParticles( phi=phiInit, flags=flags, parts=pp, discretization=2, randomness=randomness, refillEmpty=True )\n\
+    sampleLevelsetWithParticles( phi=phiInit, flags=flags, parts=pp, discretization=particleNumber, randomness=randomness, refillEmpty=True )\n\
     mapGridToPartsVec3(source=vel, parts=pp, target=pVel )\n\
     phi.join(phiInit)\n\
     flags.updateFromLevelset(phi)\n\

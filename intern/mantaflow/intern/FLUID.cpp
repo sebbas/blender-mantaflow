@@ -581,6 +581,8 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << md->scene->r.cfra;
 	else if (varName == "RANDOMNESS")
 		ss << smd->domain->particle_randomness;
+	else if (varName == "PARTICLE_NUMBER")
+		ss << smd->domain->particle_number;
 	else if (varName == "GRAVITY_X")
 		ss << smd->domain->gravity[0];
 	else if (varName == "GRAVITY_Y")
