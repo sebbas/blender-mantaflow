@@ -87,7 +87,7 @@ using_fire = True\n";
 
 const std::string smoke_alloc_low = "\n\
 # prepare grids low\n\
-mantaMsg('Smoke alloc grids low')\n\
+mantaMsg('Smoke alloc low')\n\
 flags       = s.create(FlagGrid)\n\
 vel         = s.create(MACGrid)\n\
 x_vel       = s.create(RealGrid)\n\
@@ -108,7 +108,7 @@ fuel_inflow = s.create(LevelsetGrid)\n";
 
 const std::string smoke_alloc_high = "\n\
 # prepare grids high\n\
-mantaMsg('Smoke alloc grids high')\n\
+mantaMsg('Smoke alloc high')\n\
 xl_flags   = xl.create(FlagGrid)\n\
 xl_vel     = xl.create(MACGrid)\n\
 xl_density = xl.create(RealGrid)\n\
@@ -498,8 +498,6 @@ if 'maxvel'          in globals() : del maxvel\n";
 
 const std::string smoke_delete_variables_high = "\n\
 mantaMsg('Deleting variables high')\n\
-if 'upres'       in globals() : del upres\n\
-if 'xl_gs'       in globals() : del xl_gs\n\
 if 'wltStrength' in globals() : del wltStrength\n\
 if 'uvs'         in globals() : del uvs\n\
 if 'uv'          in globals() : del uv\n\

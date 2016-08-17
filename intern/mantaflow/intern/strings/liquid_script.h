@@ -52,6 +52,7 @@ if doOpen:\n\
 //////////////////////////////////////////////////////////////////////
 
 const std::string liquid_variables_low = "\n\
+mantaMsg('Liquid variables low')\n\
 narrowBand       = True\n\
 narrowBandWidth  = 3\n\
 combineBandWidth = narrowBandWidth - 1\n\
@@ -67,6 +68,7 @@ maxVel  = 0\n\
 using_highres = $USE_WAVELETS$\n";
 
 const std::string liquid_variables_high = "\n\
+mantaMsg('Liquid variables high')\n\
 scale = 0.5\n\
 xl_radiusFactor = 2.5\n";
 
@@ -75,6 +77,7 @@ xl_radiusFactor = 2.5\n";
 //////////////////////////////////////////////////////////////////////
 
 const std::string liquid_alloc_low = "\n\
+mantaMsg('Liquid alloc low')\n\
 flags      = s.create(FlagGrid)\n\
 \n\
 phiParts   = s.create(LevelsetGrid)\n\
@@ -96,6 +99,7 @@ pindex     = s.create(ParticleIndexSystem)\n\
 gpi        = s.create(IntGrid)\n";
 
 const std::string liquid_alloc_high = "\n\
+mantaMsg('Liquid alloc high')\n\
 xl_flags   = xl.create(FlagGrid)\n\
 xl_phi     = xl.create(LevelsetGrid)\n\
 xl_pp      = xl.create(BasicParticleSystem)\n\
