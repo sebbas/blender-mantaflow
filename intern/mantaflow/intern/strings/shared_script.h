@@ -97,11 +97,9 @@ xl.cfl         = s.cfl\n";
 
 const std::string fluid_delete_variables_low = "\n\
 if 'dim'             in globals() : del dim\n\
-if 'res'             in globals() : del gravity\n\
-if 'gravity'         in globals() : del gravity\n\
+if 'res'             in globals() : del res\n\
 if 'gs'              in globals() : del gs\n\
 if 'gravity'         in globals() : del gravity\n\
-if 'gs'              in globals() : del gs\n\
 if 'doOpen'          in globals() : del doOpen\n\
 if 'boundConditions' in globals() : del boundConditions\n\
 if 'boundaryWidth'   in globals() : del boundaryWidth\n\

@@ -210,7 +210,7 @@ def manta_step(start_frame):\n\
 
 const std::string smoke_step_low = "\n\
 def step_low():\n\
-    mantaMsg('Step low')\n\
+    mantaMsg('Smoke step low')\n\
     copyRealToVec3(sourceX=x_vel, sourceY=y_vel, sourceZ=z_vel, target=vel)\n\
     copyRealToVec3(sourceX=x_obvel, sourceY=y_obvel, sourceZ=z_obvel, target=obvel)\n\
     if dim == 2:\n\
@@ -279,7 +279,7 @@ def update_flame_low():\n\
 
 const std::string smoke_step_high = "\n\
 def step_high():\n\
-    mantaMsg('Step high')\n\
+    mantaMsg('Smoke step high')\n\
     copyRealToVec3(sourceX=texture_u, sourceY=texture_v, sourceZ=texture_w, target=uv[0])\n\
     copyRealToVec3(sourceX=texture_u2, sourceY=texture_v2, sourceZ=texture_w2, target=uv[1])\n\
     \n\
