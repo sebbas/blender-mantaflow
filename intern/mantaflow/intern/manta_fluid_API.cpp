@@ -135,7 +135,7 @@ extern "C" void smoke_dissolve_wavelet(FLUID *smoke, int speed, int log)
 }
 
 extern "C" void smoke_export(FLUID *smoke, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, 
-							 float **smoke_inflow, float **vx, float **vy, float **vz, float **r, float **g, float **b, unsigned char **obstacles)
+							 float **smoke_inflow, float **vx, float **vy, float **vz, float **r, float **g, float **b, unsigned char **obstacle)
 {
 	*dens = smoke->getDensity();
 	if (fuel)
@@ -157,7 +157,7 @@ extern "C" void smoke_export(FLUID *smoke, float *dt, float *dx, float **dens, f
 		*g = smoke->getColorG();
 	if (b)
 		*b = smoke->getColorB();
-	*obstacles = smoke->getObstacles();
+	*obstacle = smoke->getObstacle();
 	*dt = 1; //dummy value, not needed for smoke
 	*dx = 1; //dummy value, not needed for smoke
 }
@@ -193,11 +193,6 @@ extern "C" void smoke_turbulence_export(FLUID *smoke, float **dens, float **reac
 extern "C" float *smoke_get_density(FLUID *smoke)
 {
 	return smoke->getDensity();
-}
-
-extern "C" int *smoke_get_flags(FLUID *smoke)
-{
-	return smoke->getFlags();
 }
 
 extern "C" float *smoke_get_fuel(FLUID *smoke)
@@ -343,9 +338,9 @@ extern "C" float *smoke_turbulence_get_density(FLUID *smoke)
 	return (smoke && smoke->usingHighRes()) ? smoke->getDensityHigh() : NULL;
 }
 
-extern "C" int *smoke_turbulence_get_flags(FLUID *smoke)
+extern "C" unsigned char *smoke_turbulence_get_obstacle(FLUID *smoke)
 {
-	return (smoke && smoke->usingHighRes()) ? smoke->getFlagsHigh() : NULL;
+	return (smoke && smoke->usingHighRes()) ? smoke->getObstacleHigh() : NULL;
 }
 
 extern "C" float *smoke_turbulence_get_fuel(FLUID *smoke)
@@ -400,7 +395,7 @@ extern "C" int smoke_turbulence_get_cells(FLUID *smoke)
 
 extern "C" unsigned char *smoke_get_obstacle(FLUID *smoke)
 {
-	return smoke->getObstacles();
+	return smoke->getObstacle();
 }
 
 extern "C" void smoke_get_ob_velocity(FLUID *smoke, float **x, float **y, float **z)

@@ -580,7 +580,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->flame_smoke_color[2] = 0.7f;
 
 			/* Deprecated */
-			smd->domain->viewsettings = NULL;
+			smd->domain->viewsettings = 0;
 			
 			smd->domain->effector_weights = BKE_add_effector_weights(NULL);
 			
@@ -832,10 +832,10 @@ static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
 				}
 
 				/* tag obstacle cells */
-				data->obstacle_map[index] = 2;
+				data->obstacle_map[index] = 2; // mantaflow convetion (FlagObstacle)
 
 				if (data->has_velocity) {
-					data->obstacle_map[index] = 4;
+					data->obstacle_map[index] |= 8;
 					data->num_obstacles[index]++;
 				}
 			}
@@ -951,6 +951,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	float *r = smoke_get_color_r(sds->fluid);
 	float *g = smoke_get_color_g(sds->fluid);
 	float *b = smoke_get_color_b(sds->fluid);
+	float *phi = liquid_get_phi(sds->fluid);
 	unsigned int z;
 
 	int *num_obstacles = MEM_callocN(sizeof(int) * sds->res[0] * sds->res[1] * sds->res[2], "smoke_num_obstacles");
@@ -960,9 +961,9 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	// TODO: delete old obstacle flags
 	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
 	{
-		if (obstacles && obstacles[z] == 4) // Do not delete static obstacles
+		if (obstacles && obstacles[z] & 8) // Do not delete static obstacles
 		{
-			obstacles[z] = 2;
+			obstacles[z] = 2; // mantaflow convention (FlagObstacle)
 		}
 
 		if (velx && velz && velz) {
@@ -1001,7 +1002,9 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 			velxOrig[z] = 0;
 			velyOrig[z] = 0;
 			velzOrig[z] = 0;
-			density[z] = 0;
+			if (density) {
+				density[z] = 0;
+			}
 			if (fuel) {
 				fuel[z] = 0;
 				flame[z] = 0;
@@ -1010,6 +1013,9 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 				r[z] = 0;
 				g[z] = 0;
 				b[z] = 0;
+			}
+			if (phi) {
+				phi[z] = 0.5;
 			}
 		}
 		/* average velocities from multiple obstacles in one cell */
@@ -2237,18 +2243,20 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 	}
 }
 
-BLI_INLINE void apply_outflow_fields(int index, float inflow_value, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi, int *flags)
+BLI_INLINE void apply_outflow_fields(int index, float inflow_value, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi, unsigned char *obstacle)
 {
 	/* set liquid outflow */
 	if (phi) {
-		phi[index] = 0.5f; // mantaflow convetion
+		phi[index] = 0.5f; // mantaflow convention
 	}
-	if (flags && inflow_value < 0.f) { // only set outflow inside mesh
-		flags[index] = 20; // mantaflow convetion (FlagOutflow | FlagEmpty)
+	if (obstacle && inflow_value < 0.f) { // only set outflow inside mesh
+		obstacle[index] = 20; // mantaflow convention (FlagOutflow | FlagEmpty)
 	}
 	
 	/* set smoke outflow */
-	density[index] = 0.f;
+	if (density) {
+		density[index] = 0.f;
+	}
 	if (heat) {
 		heat[index] = 0.f;
 	}
@@ -2566,15 +2574,14 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				float *bigcolor_g = smoke_turbulence_get_color_g(sds->fluid);
 				float *bigcolor_b = smoke_turbulence_get_color_b(sds->fluid);
 				float *bigphi = liquid_turbulence_get_phi(sds->fluid);
-				int *bigflags = smoke_turbulence_get_flags(sds->fluid);
+				unsigned char *bigobstacle = smoke_turbulence_get_obstacle(sds->fluid);
 #endif
 				float *heat = smoke_get_heat(sds->fluid);
 				float *velocity_x = smoke_get_velocity_x(sds->fluid);
 				float *velocity_y = smoke_get_velocity_y(sds->fluid);
 				float *velocity_z = smoke_get_velocity_z(sds->fluid);
-				int *flags = smoke_get_flags(sds->fluid);
 				float *phi = liquid_get_phiinit(sds->fluid);
-				//unsigned char *obstacle = smoke_get_obstacle(sds->fluid);
+				unsigned char *obstacle = smoke_get_obstacle(sds->fluid);
 				// DG TODO UNUSED unsigned char *obstacleAnim = smoke_get_obstacle_anim(sds->fluid);
 				int bigres[3];
 				float *velocity_map = em->velocity;
@@ -2606,7 +2613,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 							if (dx < 0 || dy < 0 || dz < 0 || dx >= sds->res[0] || dy >= sds->res[1] || dz >= sds->res[2]) continue;
 
 							if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) { // outflow
-								apply_outflow_fields(d_index, inflow_map[e_index], density, heat, fuel, react, color_r, color_g, color_b, phi, flags);
+								apply_outflow_fields(d_index, inflow_map[e_index], density, heat, fuel, react, color_r, color_g, color_b, phi, obstacle);
 							}
 							else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW || (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time == 2)) { // inflow
 								apply_inflow_fields(sfs, emission_map[e_index], inflow_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b, phi);
@@ -2697,7 +2704,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 
 											if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) { // outflow
 												if (interpolated_value) {
-													apply_outflow_fields(index_big, inflow_map_high[index_big], bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, bigphi, bigflags);
+													apply_outflow_fields(index_big, inflow_map_high[index_big], bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, bigphi, bigobstacle);
 												}
 											}
 											else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW || (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time == 2)) { // inflow
@@ -2735,6 +2742,7 @@ typedef struct UpdateEffectorsData {
 	float *velocity_y;
 	float *velocity_z;
 	unsigned char *obstacle;
+	float *phi;
 } UpdateEffectorsData;
 
 static void update_effectors_task_cb(void *userdata, const int x)
@@ -2750,8 +2758,10 @@ static void update_effectors_task_cb(void *userdata, const int x)
 			float voxelCenter[3] = {0, 0, 0}, vel[3] = {0, 0, 0}, retvel[3] = {0, 0, 0};
 			const unsigned int index = smoke_get_index(x, sds->res[0], y, sds->res[1], z);
 
-			if (((data->fuel ? MAX2(data->density[index], data->fuel[index]) : data->density[index]) < FLT_EPSILON) ||
-			    data->obstacle[index])
+			if ((data->fuel && MAX2(data->density[index], data->fuel[index]) < FLT_EPSILON) ||
+				(data->density && data->density[index] < FLT_EPSILON) ||
+				(data->phi     && data->phi[index] < 0.0f) ||
+				data->obstacle[index])
 			{
 				continue;
 			}
@@ -2810,6 +2820,7 @@ static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 		data.velocity_y = smoke_get_velocity_y(sds->fluid);
 		data.velocity_z = smoke_get_velocity_z(sds->fluid);
 		data.obstacle = smoke_get_obstacle(sds->fluid);
+		data.phi = liquid_get_phi(sds->fluid);
 
 		BLI_task_parallel_range(0, sds->res[0], &data, update_effectors_task_cb, true);
 	}

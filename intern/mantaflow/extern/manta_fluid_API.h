@@ -86,8 +86,7 @@ void smoke_ensure_fire(struct FLUID *smoke, struct SmokeModifierData *smd);
 void smoke_ensure_colors(struct FLUID *smoke, struct SmokeModifierData *smd);
 float *smoke_get_inflow_grid(struct FLUID *smoke);
 float *smoke_get_fuel_inflow(struct FLUID *smoke);
-int *smoke_get_flags(struct FLUID *smoke);
-int *smoke_turbulence_get_flags(struct FLUID *smoke);
+unsigned char *smoke_turbulence_get_obstacle(struct FLUID *smoke);
 
 float *liquid_get_phi(struct FLUID *liquid);
 float *liquid_get_phiinit(struct FLUID *liquid);

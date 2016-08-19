@@ -90,7 +90,7 @@ public:
 	inline float* getForceX() { return mForceX; }
 	inline float* getForceY() { return mForceY; }
 	inline float* getForceZ() { return mForceZ; }
-	inline unsigned char* getObstacles() { return mObstacles; }
+	inline unsigned char* getObstacle() { return mObstacle; }
 	inline unsigned char* getObstaclesAnim() { return mObstaclesAnim; }
 	inline float* getFlame() { return mFlame; }
 	inline float* getFuel() { return mFuel; }
@@ -100,7 +100,6 @@ public:
 	inline float* getColorB() { return mColorB; }
 	inline float* getDensityInflow() { return mDensityInflow; }
 	inline float* getFuelInflow() { return mFuelInflow; }
-	inline int* getFlags() { return mFlags; }
 
 	inline float* getDensityHigh() { return mDensityHigh; }
 	inline float* getFlameHigh() { return mFlameHigh; }
@@ -115,7 +114,7 @@ public:
 	inline float* getTextureU2() { return mTextureU2; }
 	inline float* getTextureV2() { return mTextureV2; }
 	inline float* getTextureW2() { return mTextureW2; }
-	inline int* getFlagsHigh() { return mFlagsHigh; }
+	inline unsigned char* getObstacleHigh() { return mObstacleHigh; }
 	
 	inline float* getPhi()     { return mPhi; }
 	inline float* getPhiInit() { return mPhiInit; }
@@ -179,7 +178,7 @@ private:
 	float* mForceX;
 	float* mForceY;
 	float* mForceZ;
-	unsigned char* mObstacles; /* only used (useful) for static obstacles like domain boundaries */
+	unsigned char* mObstacle; /* only used (useful) for static obstacles like domain boundaries */
 	unsigned char* mObstaclesAnim;
 	float *mFlame;
 	float *mFuel;
@@ -189,7 +188,6 @@ private:
 	float *mColorB;
 	float* mDensityInflow;
 	float* mFuelInflow;
-	int* mFlags;
 
 	// Smoke grids high res
 	float* mDensityHigh;
@@ -205,7 +203,7 @@ private:
 	float* mTextureU2;
 	float* mTextureV2;
 	float* mTextureW2;
-	int* mFlagsHigh;
+	unsigned char* mObstacleHigh;
 	
 	// Liquids
 	float* mPhi;

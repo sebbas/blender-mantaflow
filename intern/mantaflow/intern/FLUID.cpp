@@ -76,7 +76,6 @@ FLUID::FLUID(int *res, SmokeModifierData *smd)
 	
 	// Smoke low res grids
 	mDensity        = NULL;
-	mFlags          = NULL;
 	mHeat           = NULL;
 	mVelocityX      = NULL;
 	mVelocityY      = NULL;
@@ -95,7 +94,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd)
 	mColorB         = NULL;
 	mDensityInflow  = NULL;
 	mFuelInflow     = NULL;
-	mObstacles      = NULL;
+	mObstacle       = NULL;
 	
 	// Smoke high res grids
 	mDensityHigh    = NULL;
@@ -402,7 +401,6 @@ FLUID::~FLUID()
 	
 	// Reset pointers to avoid dangling pointers
 	mDensity        = NULL;
-	mFlags          = NULL;
 	mHeat           = NULL;
 	mVelocityX      = NULL;
 	mVelocityY      = NULL;
@@ -421,24 +419,21 @@ FLUID::~FLUID()
 	mColorB         = NULL;
 	mDensityInflow  = NULL;
 	mFuelInflow     = NULL;
-	mObstacles      = NULL;
+	mObstacle       = NULL;
 	
-	if (mUsingHighRes)
-	{
-		mDensityHigh    = NULL;
-		mFlameHigh      = NULL;
-		mFuelHigh       = NULL;
-		mReactHigh      = NULL;
-		mColorRHigh     = NULL;
-		mColorGHigh     = NULL;
-		mColorBHigh     = NULL;
-		mTextureU       = NULL;
-		mTextureV       = NULL;
-		mTextureW       = NULL;
-		mTextureU2      = NULL;
-		mTextureV2      = NULL;
-		mTextureW2      = NULL;
-	}
+	mDensityHigh    = NULL;
+	mFlameHigh      = NULL;
+	mFuelHigh       = NULL;
+	mReactHigh      = NULL;
+	mColorRHigh     = NULL;
+	mColorGHigh     = NULL;
+	mColorBHigh     = NULL;
+	mTextureU       = NULL;
+	mTextureV       = NULL;
+	mTextureW       = NULL;
+	mTextureU2      = NULL;
+	mTextureV2      = NULL;
+	mTextureW2      = NULL;
 	
 	// Liquid
 	mPhi     = NULL;
@@ -841,29 +836,31 @@ void FLUID::updatePointers(SmokeModifierData *smd)
 {
 	std::cout << "Updating pointers low res" << std::endl;
 
-	mFlags = (int*) getGridPointer("flags", "s");
+	mObstacle = (unsigned char*) getGridPointer("flags", "s");
+	
+	mVelocityX = (float*) getGridPointer("x_vel", "s");
+	mVelocityY = (float*) getGridPointer("y_vel", "s");
+	mVelocityZ = (float*) getGridPointer("z_vel", "s");
+	
+	mObVelocityX = (float*) getGridPointer("x_obvel", "s");
+	mObVelocityY = (float*) getGridPointer("y_obvel", "s");
+	mObVelocityZ = (float*) getGridPointer("z_obvel", "s");
+	
+	mForceX    = (float*) getGridPointer("x_force", "s");
+	mForceY    = (float*) getGridPointer("y_force", "s");
+	mForceZ    = (float*) getGridPointer("z_force", "s");
 	
 	// Liquid
 	if (mUsingLiquid) {
-		mPhi        = (float*)         getGridPointer("phi",             "s");
-		mPhiInit    = (float*)         getGridPointer("phiInit",         "s");
+		mPhi        = (float*) getGridPointer("phi",     "s");
+		mPhiInit    = (float*) getGridPointer("phiInit", "s");
 	}
 	
 	// Smoke
 	if (mUsingSmoke) {
-		mDensity        = (float*)         getGridPointer("density",     "s");
-		mVelocityX      = (float*)         getGridPointer("x_vel",       "s");
-		mVelocityY      = (float*)         getGridPointer("y_vel",       "s");
-		mVelocityZ      = (float*)         getGridPointer("z_vel",       "s");
-		mObVelocityX    = (float*)         getGridPointer("x_obvel",     "s");
-		mObVelocityY    = (float*)         getGridPointer("y_obvel",     "s");
-		mObVelocityZ    = (float*)         getGridPointer("z_obvel",     "s");
-		mForceX         = (float*)         getGridPointer("x_force",     "s");
-		mForceY         = (float*)         getGridPointer("y_force",     "s");
-		mForceZ         = (float*)         getGridPointer("z_force",     "s");
-		mDensityInflow  = (float*)         getGridPointer("inflow_grid", "s");
-		mFuelInflow     = (float*)         getGridPointer("fuel_inflow", "s");
-		mObstacles      = (unsigned char*) getGridPointer("flags",       "s");
+		mDensity        = (float*) getGridPointer("density",     "s");
+		mDensityInflow  = (float*) getGridPointer("inflow_grid", "s");
+		mFuelInflow     = (float*) getGridPointer("fuel_inflow", "s");
 		
 		if (mUsingHeat) {
 			mHeat       = (float*) getGridPointer("heat",    "s");
@@ -884,6 +881,8 @@ void FLUID::updatePointers(SmokeModifierData *smd)
 void FLUID::updatePointersHigh(SmokeModifierData *smd)
 {
 	std::cout << "Updating pointers high res" << std::endl;
+	
+	mObstacleHigh = (unsigned char*) getGridPointer("xl_flags", "s");
 
 	// Liquid
 	if (mUsingLiquid) {

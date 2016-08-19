@@ -86,6 +86,13 @@ phiInit    = s.create(LevelsetGrid)\n\
 pressure   = s.create(RealGrid)\n\
 \n\
 vel        = s.create(MACGrid)\n\
+x_vel      = s.create(RealGrid)\n\
+y_vel      = s.create(RealGrid)\n\
+z_vel      = s.create(RealGrid)\n\
+obvel      = s.create(MACGrid)\n\
+x_obvel    = s.create(RealGrid)\n\
+y_obvel    = s.create(RealGrid)\n\
+z_obvel    = s.create(RealGrid)\n\
 velOld     = s.create(MACGrid)\n\
 velParts   = s.create(MACGrid)\n\
 mapWeights = s.create(MACGrid)\n\
@@ -146,6 +153,10 @@ def manta_step(start_frame):\n\
 
 const std::string liquid_step_low = "\n\
 def liquid_step():\n\
+    mantaMsg('Liquid step low')\n\
+    copyRealToVec3(sourceX=x_vel, sourceY=y_vel, sourceZ=z_vel, target=vel)\n\
+    copyRealToVec3(sourceX=x_obvel, sourceY=y_obvel, sourceZ=z_obvel, target=obvel)\n\
+    \n\
     # Advect particles and grid phi\n\
     # Note: Grid velocities are extrapolated at the end of each step\n\
     pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False)\n\
@@ -217,10 +228,14 @@ def liquid_step():\n\
         #pp.save('/tmp/partfile.uni')\n\
     \n\
     # reset inflow grid\n\
-    phiInit.setConst(0.5)\n";
+    phiInit.setConst(0.5)\n\
+    \n\
+    copyVec3ToReal(source=vel, targetX=x_vel, targetY=y_vel, targetZ=z_vel)\n\
+    copyVec3ToReal(source=obvel, targetX=x_obvel, targetY=y_obvel, targetZ=z_obvel)\n";
 
 const std::string liquid_step_high = "\n\
 def liquid_step_high():\n\
+    mantaMsg('Liquid step high')\n\
     xl_phi.setBound(value=0., boundaryWidth=1)\n\
     xl_pp.load('/tmp/partfile.uni')\n\
     \n\
@@ -300,6 +315,13 @@ if 'phi'        in globals() : del phi\n\
 if 'phiInit'    in globals() : del phiInit\n\
 if 'pressure'   in globals() : del pressure\n\
 if 'vel'        in globals() : del vel\n\
+if 'x_vel'      in globals() : del x_vel\n\
+if 'y_vel'      in globals() : del y_vel\n\
+if 'z_vel'      in globals() : del z_vel\n\
+if 'obvel'      in globals() : del obvel\n\
+if 'x_obvel'    in globals() : del x_obvel\n\
+if 'y_obvel'    in globals() : del y_obvel\n\
+if 'z_obvel'    in globals() : del z_obvel\n\
 if 'velOld'     in globals() : del velOld\n\
 if 'velParts'   in globals() : del velParts\n\
 if 'mapWeights' in globals() : del mapWeights\n\
