@@ -271,9 +271,9 @@ class PHYSICS_PT_smoke_highres(PhysicButtonsPanel, Panel):
         domain = context.smoke.domain_settings
 
         split = layout.split()
-        split.enabled = not domain.point_cache.is_baked
 
         col = split.column()
+        col.enabled = not domain.point_cache.is_baked
         col.label(text="Resolution:")
         col.prop(domain, "resolution_max", text="Divisions")
         # TODO (sebbas): Disabling render display switch for now. Needs some more consideration
@@ -287,6 +287,7 @@ class PHYSICS_PT_smoke_highres(PhysicButtonsPanel, Panel):
         col.prop(domain, "viewport_display_mode", text="")
 
         split = layout.split()
+        split.enabled = not domain.point_cache.is_baked
 
         if domain.smoke_domain_type == 'GAS':
             col = split.column()
