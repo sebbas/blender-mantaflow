@@ -49,6 +49,7 @@ class PHYSICS_PT_fluid(PhysicButtonsPanel, Panel):
 
         md = context.smoke
         ob = context.object
+        scene = context.scene
 
         layout.prop(md, "smoke_type", expand=True)
 
@@ -66,9 +67,18 @@ class PHYSICS_PT_fluid(PhysicButtonsPanel, Panel):
             col.label(text="Time:")
             col.prop(domain, "time_scale", text="Scale")
 
-            col = split.column()
             col.label(text="Border Collisions:")
             col.prop(domain, "collision_extents", text="")
+            
+            col = split.column()
+            if scene.use_gravity:
+                col.label(text="Use Scene Gravity", icon='SCENE_DATA')
+                sub = col.column()
+                sub.enabled = False
+                sub.prop(domain, "gravity", text="")
+            else:
+                col.label(text="Gravity:")
+                col.prop(domain, "gravity", text="")
 
             if domain.smoke_domain_type in {'GAS'}:
                 split = layout.split()
@@ -79,26 +89,17 @@ class PHYSICS_PT_fluid(PhysicButtonsPanel, Panel):
                 col.prop(domain, "alpha")
                 col.prop(domain, "beta", text="Temp. Diff.")
                 col.prop(domain, "vorticity")
-
-                col = split.column(align=True)
-                col.label()
                 col.prop(domain, "use_dissolve_smoke", text="Dissolve")
                 sub = col.column()
                 sub.active = domain.use_dissolve_smoke
                 sub.prop(domain, "dissolve_speed", text="Time")
                 sub.prop(domain, "use_dissolve_smoke_log", text="Slow")
 
-                split = layout.split()
-                split.enabled = not domain.point_cache.is_baked
-
                 col = split.column(align=True)
                 col.label(text="Fire:")
                 col.prop(domain, "burning_rate")
                 col.prop(domain, "flame_smoke")
                 col.prop(domain, "flame_vorticity")
-
-                col = split.column(align=True)
-                col.label()
                 col.prop(domain, "flame_ignition")
                 col.prop(domain, "flame_max_temp")
                 col.prop(domain, "flame_smoke_color")
@@ -119,26 +120,39 @@ class PHYSICS_PT_fluid(PhysicButtonsPanel, Panel):
             flow = md.flow_settings
 
             layout.prop(flow, "smoke_flow_type", expand=False)
-            layout.prop(flow, "smoke_flow_behavior", expand=False)
 
             split = layout.split()
-
             col = split.column()
-            if flow.smoke_flow_type in {'SMOKE', 'BOTH', 'FIRE'}:
-                col.label(text="Initial Values:")
-                col.prop(flow, "use_absolute")
-            if flow.smoke_flow_type in {'SMOKE', 'BOTH'}:
-                col.prop(flow, "density")
-                col.prop(flow, "temperature")
-                col.prop(flow, "smoke_color")
-            if flow.smoke_flow_type in {'FIRE', 'BOTH'}:
-                col.prop(flow, "fuel_amount")
-
-            col = split.column()
+                
             col.label(text="Sampling:")
-            if flow.smoke_flow_behavior == 'INFLOW':
-                col.prop(flow, "use_inflow")
             col.prop(flow, "subframes")
+
+            col = split.column()
+            
+            col.label(text="Flow behavior:")
+            col.prop(flow, "smoke_flow_behavior", expand=False, text="")
+
+            if not flow.smoke_flow_behavior == 'OUTFLOW':
+
+                split = layout.split()
+                col = split.column()
+				
+                if flow.smoke_flow_type in {'SMOKE', 'BOTH', 'FIRE'}:
+                    col.label(text="Initial Values:")
+                if flow.smoke_flow_type in {'SMOKE', 'BOTH'}:
+                    col.prop(flow, "density")
+                    col.prop(flow, "temperature")
+                if flow.smoke_flow_type in {'FIRE', 'BOTH'}:
+                    col.prop(flow, "fuel_amount")
+
+                col = split.column()
+
+                if flow.smoke_flow_behavior in {'INFLOW', 'GEOMETRY'}:
+                    col.prop(flow, "use_inflow")
+                if flow.smoke_flow_type in {'SMOKE', 'BOTH', 'FIRE'}:
+                    col.prop(flow, "use_absolute")
+                if flow.smoke_flow_type in {'SMOKE', 'BOTH'}:
+                    col.prop(flow, "smoke_color")
 
         elif md.smoke_type == 'COLLISION':
             coll = md.coll_settings

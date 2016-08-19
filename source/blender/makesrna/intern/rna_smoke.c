@@ -824,6 +824,13 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_range(prop, 1, 3, 2, -1);
 	RNA_def_property_ui_text(prop, "Discretization", "Particle number factor (higher value results in more particles)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+	
+	prop = RNA_def_property(srna, "gravity", PROP_FLOAT, PROP_ACCELERATION);
+	RNA_def_property_float_sdna(prop, NULL, "gravity");
+	RNA_def_property_array(prop, 3);
+	RNA_def_property_range(prop, -1000.1, 1000.1);
+	RNA_def_property_ui_text(prop, "Gravity", "Gravity in X, Y and Z direction");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 }
 
 static void rna_def_smoke_flow_settings(BlenderRNA *brna)
@@ -970,7 +977,7 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "use_inflow", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_SMOKE_FLOW_USE_INFLOW);
-	RNA_def_property_ui_text(prop, "Use inflow", "Control when to apply inflow");
+	RNA_def_property_ui_text(prop, "Enabled", "Control when to apply inflow");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 	
 	prop = RNA_def_property(srna, "subframes", PROP_INT, PROP_NONE);

@@ -302,17 +302,17 @@ static void smoke_set_domain_gravity(Scene *scene, SmokeDomainSettings *sds)
 		copy_v3_v3(gravity, scene->physics_settings.gravity);
 		/* map default value to 1.0 */
 		mul_v3_fl(gravity, 1.0f / 9.810f);
+		
+		/* convert gravity to domain space */
+		gravity_mag = len_v3(gravity);
+		mul_mat3_m4_v3(sds->imat, gravity);
+		normalize_v3(gravity);
+		mul_v3_fl(gravity, gravity_mag);
+	
+		sds->gravity[0] = gravity[0];
+		sds->gravity[1] = gravity[1];
+		sds->gravity[2] = gravity[2];
 	}
-	
-	/* convert gravity to domain space */
-	gravity_mag = len_v3(gravity);
-	mul_mat3_m4_v3(sds->imat, gravity);
-	normalize_v3(gravity);
-	mul_v3_fl(gravity, gravity_mag);
-	
-	sds->gravity[0] = gravity[0];
-	sds->gravity[1] = gravity[1];
-	sds->gravity[2] = gravity[2];
 }
 
 static int smokeModifier_init(SmokeModifierData *smd, Object *ob, Scene *scene, DerivedMesh *dm)
@@ -323,6 +323,8 @@ static int smokeModifier_init(SmokeModifierData *smd, Object *ob, Scene *scene, 
 		int res[3];
 		/* set domain dimensions from derivedmesh */
 		smoke_set_domain_from_derivedmesh(sds, ob, dm, true);
+		/* set domain gravity */
+		smoke_set_domain_gravity(scene, sds);
 		/* reset domain values */
 		zero_v3_int(sds->shift);
 		zero_v3(sds->shift_f);
@@ -560,10 +562,6 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->noise = MOD_SMOKE_NOISEWAVE;
 			smd->domain->diss_speed = 5;
 			smd->domain->active_fields = 0;
-			
-			smd->domain->gravity[0] = 0.0;
-			smd->domain->gravity[1] = 0.0;
-			smd->domain->gravity[2] = -9.81;;
 
 			smd->domain->adapt_margin = 4;
 			smd->domain->adapt_res = 0;
@@ -588,11 +586,15 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->render_display_mode = SM_VIEWPORT_FINAL;
 			smd->domain->type = MOD_SMOKE_DOMAIN_TYPE_GAS;
 			
+#ifdef WITH_MANTA
+			smd->domain->gravity[0] = 0.0f;
+			smd->domain->gravity[1] = 0.0f;
+			smd->domain->gravity[2] = -1.0f;
+
 			/* liquid */
 			smd->domain->particle_randomness = 0.1f;
 			smd->domain->particle_number = 2;
 
-#ifdef WITH_MANTA
 			/*mantaflow settings*/
 			smd->domain->manta_solver_res = 3;
 			smd->domain->noise_pos_scale = 2.0f;
@@ -695,6 +697,13 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->flame_max_temp = smd->domain->flame_max_temp;
 		
 #ifdef WITH_MANTA
+		tsmd->domain->gravity[0] = smd->domain->gravity[0];
+		tsmd->domain->gravity[1] = smd->domain->gravity[1];
+		tsmd->domain->gravity[2] = smd->domain->gravity[2];
+
+		tsmd->domain->particle_randomness = smd->domain->particle_randomness;
+		tsmd->domain->particle_number = smd->domain->particle_number;
+
 		tsmd->domain->manta_solver_res = smd->domain->manta_solver_res;
 		tsmd->domain->noise_pos_scale = smd->domain->noise_pos_scale;
 		tsmd->domain->noise_time_anim = smd->domain->noise_time_anim;
