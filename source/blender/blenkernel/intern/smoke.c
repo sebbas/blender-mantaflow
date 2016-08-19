@@ -2282,11 +2282,6 @@ BLI_INLINE void apply_outflow_fields(int index, float inflow_value, float *densi
 
 BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value, float inflow_value, int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi)
 {
-	/* no inflow enabled. just return */
-	if (!(sfs->flags & MOD_SMOKE_FLOW_USE_INFLOW) && sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW) {
-		return;
-	}
-	
 	/* add liquid inflow */
 	if (phi) {
 		phi[index] = inflow_value;
@@ -2625,13 +2620,16 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 								apply_outflow_fields(d_index, inflow_map[e_index], density, heat, fuel, react, color_r, color_g, color_b, phi, obstacle);
 							}
 							else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW || (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time == 2)) { // inflow
-								apply_inflow_fields(sfs, emission_map[e_index], inflow_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b, phi);
-
-								/* initial velocity */
-								if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY) {
-									velocity_x[d_index] = ADD_IF_LOWER(velocity_x[d_index], velocity_map[e_index * 3]);
-									velocity_y[d_index] = ADD_IF_LOWER(velocity_y[d_index], velocity_map[e_index * 3 + 1]);
-									velocity_z[d_index] = ADD_IF_LOWER(velocity_z[d_index], velocity_map[e_index * 3 + 2]);
+								/* only apply inflow if enabled */
+								if (sfs->flags & MOD_SMOKE_FLOW_USE_INFLOW) {
+									apply_inflow_fields(sfs, emission_map[e_index], inflow_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b, phi);
+									
+									/* initial velocity */
+									if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY) {
+										velocity_x[d_index] = ADD_IF_LOWER(velocity_x[d_index], velocity_map[e_index * 3]);
+										velocity_y[d_index] = ADD_IF_LOWER(velocity_y[d_index], velocity_map[e_index * 3 + 1]);
+										velocity_z[d_index] = ADD_IF_LOWER(velocity_z[d_index], velocity_map[e_index * 3 + 2]);
+									}
 								}
 							}
 
