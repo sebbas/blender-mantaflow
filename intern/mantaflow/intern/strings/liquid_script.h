@@ -103,7 +103,12 @@ mesh       = s.create(Mesh)\n\
 \n\
 # Acceleration data for particle nbs\n\
 pindex     = s.create(ParticleIndexSystem)\n\
-gpi        = s.create(IntGrid)\n";
+gpi        = s.create(IntGrid)\n\
+\n\
+forces     = s.create(MACGrid)\n\
+x_force    = s.create(RealGrid)\n\
+y_force    = s.create(RealGrid)\n\
+z_force    = s.create(RealGrid)\n";
 
 const std::string liquid_alloc_high = "\n\
 mantaMsg('Liquid alloc high')\n\
@@ -202,6 +207,10 @@ def liquid_step():\n\
     \n\
     # Forces & pressure solve\n\
     addGravity(flags=flags, vel=vel, gravity=gravity)\n\
+    copyRealToVec3(sourceX=x_force, sourceY=y_force, sourceZ=z_force, target=forces)\n\
+    addForceField(flags=flags, vel=vel, force=forces)\n\
+    forces.clear()\n\
+    \n\
     setWallBcs(flags=flags, vel=vel)\n\
     solvePressure(flags=flags, vel=vel, pressure=pressure, phi=phi)\n\
     setWallBcs(flags=flags, vel=vel)\n\
@@ -329,7 +338,11 @@ if 'pp'         in globals() : del pp\n\
 if 'pVel'       in globals() : del pVel\n\
 if 'mesh'       in globals() : del mesh\n\
 if 'pindex'     in globals() : del pindex\n\
-if 'gpi'        in globals() : del gpi\n";
+if 'gpi'        in globals() : del gpi\n\
+if 'forces'     in globals() : del forces\n\
+if 'x_force'    in globals() : del x_force\n\
+if 'y_force'    in globals() : del y_force\n\
+if 'z_force'    in globals() : del z_force\n";
 
 const std::string liquid_delete_grids_high = "\n\
 mantaMsg('Deleting highres grids, mesh, particlesystem')\n\
@@ -354,4 +367,3 @@ const std::string liquid_delete_variables_high = "\n\
 mantaMsg('Deleting highres liquid variables')\n\
 if 'scale'            in globals() : del scale\n\
 if 'xl_radiusFactor'  in globals() : del xl_radiusFactor\n";
-
