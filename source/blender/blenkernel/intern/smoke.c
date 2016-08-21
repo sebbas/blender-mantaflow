@@ -2390,6 +2390,26 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 	/* init emission maps for each flow */
 	emaps = MEM_callocN(sizeof(struct EmissionMap) * numflowobj, "smoke_flow_maps");
 
+	/* Check if all flow objects are valid with respect to domain type */
+	for (flowIndex = 0; flowIndex < numflowobj; flowIndex++)
+	{
+		Object *collob = flowobjs[flowIndex];
+		SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(collob, eModifierType_Smoke);
+		
+		// check for initialized smoke object
+		if ((smd2->type & MOD_SMOKE_TYPE_FLOW) && smd2->flow)
+		{
+			// we got nice flow object
+			SmokeFlowSettings *sfs = smd2->flow;
+			
+			if (sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID) {
+				if (sfs->type != MOD_SMOKE_FLOW_TYPE_LIQUID) return;
+			} else if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
+				if (sfs->type != MOD_SMOKE_FLOW_TYPE_SMOKE && sfs->type != MOD_SMOKE_FLOW_TYPE_FIRE && sfs->type != MOD_SMOKE_FLOW_TYPE_SMOKEFIRE) return;
+			}
+		}
+	}
+	
 	/* Prepare flow emission maps */
 	for (flowIndex = 0; flowIndex < numflowobj; flowIndex++)
 	{
