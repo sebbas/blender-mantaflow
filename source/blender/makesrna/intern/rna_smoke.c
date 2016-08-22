@@ -660,8 +660,8 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "time_scale", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "time_scale");
-	RNA_def_property_range(prop, 0.2, 1.5);
-	RNA_def_property_ui_range(prop, 0.2, 1.5, 0.02, 5);
+	RNA_def_property_range(prop, 0.0001, 10.0);
+	RNA_def_property_ui_range(prop, 0.0001, 10.0, 0.02, 5);
 	RNA_def_property_ui_text(prop, "Time Scale", "Adjust simulation speed");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
@@ -802,26 +802,26 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "noise_pos_scale", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "noise_pos_scale");
-	RNA_def_property_range(prop, 0.1, 10.0);
-	RNA_def_property_ui_range(prop, 0.1, 2.0, 1, 2);
+	RNA_def_property_range(prop, 0.0001, 10.0);
+	RNA_def_property_ui_range(prop, 0.0001, 10.0, 0.02, 5);
 	RNA_def_property_ui_text(prop, "Scale", "Scale of noise (higher value results in larger vortices)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 	
 	prop = RNA_def_property(srna, "noise_time_anim", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "noise_time_anim");
-	RNA_def_property_range(prop, 0.1, 10.0);
-	RNA_def_property_ui_range(prop, 0.1, 2.0, 1, 2);
+	RNA_def_property_range(prop, 0.0001, 10.0);
+	RNA_def_property_ui_range(prop, 0.0001, 10.0, 0.02, 5);
 	RNA_def_property_ui_text(prop, "Time", "Animation time of noise");
 	
 	prop = RNA_def_property(srna, "particle_randomness", PROP_FLOAT, PROP_NONE);
-	RNA_def_property_range(prop, 0.0, 2.0);
-	RNA_def_property_ui_range(prop, 0.01, 2.0, 1.0, 5);
+	RNA_def_property_range(prop, 0.0, 10.0);
+	RNA_def_property_ui_range(prop, 0.0, 10.0, 0.02, 5);
 	RNA_def_property_ui_text(prop, "Randomness", "Randomness factor for particle sampling");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 	
 	prop = RNA_def_property(srna, "particle_number", PROP_INT, PROP_NONE);
-	RNA_def_property_range(prop, 1, 3);
-	RNA_def_property_ui_range(prop, 1, 3, 2, -1);
+	RNA_def_property_range(prop, 1, 5);
+	RNA_def_property_ui_range(prop, 1, 5, 2, -1);
 	RNA_def_property_ui_text(prop, "Discretization", "Particle number factor (higher value results in more particles)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 	

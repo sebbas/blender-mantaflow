@@ -241,8 +241,7 @@ def step_low():\n\
         resetOutflow(flags=flags, real=density)\n\
     \n\
     mantaMsg('Vorticity')\n\
-    if vorticity > 0.01:\n\
-        vorticityConfinement(vel=vel, flags=flags, strength=$VORTICITY$)\n\
+    vorticityConfinement(vel=vel, flags=flags, strength=$VORTICITY$)\n\
     \n\
     if using_heat:\n\
         mantaMsg('Adding heat buoyancy')\n\
