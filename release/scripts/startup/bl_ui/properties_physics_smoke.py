@@ -40,7 +40,7 @@ class PhysicButtonsPanel:
         return (ob and ob.type == 'MESH') and (rd.engine in cls.COMPAT_ENGINES) and (context.smoke)
 
 
-class PHYSICS_PT_fluid(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
     bl_label = "Fluid"
     COMPAT_ENGINES = {'BLENDER_RENDER'}
 
