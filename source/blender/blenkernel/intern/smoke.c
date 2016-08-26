@@ -972,7 +972,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	{
 		if (obstacles && obstacles[z] & 8) // Do not delete static obstacles
 		{
-			obstacles[z] = 2; // mantaflow convention (FlagObstacle)
+			obstacles[z] = 4; // mantaflow convention (FlagObstacle)
 		}
 
 		if (velx && velz && velz) {
