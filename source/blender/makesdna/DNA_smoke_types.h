@@ -188,6 +188,8 @@ typedef struct SmokeDomainSettings {
 	/* liquid parameters */
 	float particle_randomness;
 	int particle_number;
+	float particle_radius;
+	int pad4;
 
 	/* mantaflow settings */
 	struct FLUID *fluid;

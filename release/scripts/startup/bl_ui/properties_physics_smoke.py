@@ -108,11 +108,12 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
                 split = layout.split()
                 split.enabled = not domain.point_cache.is_baked
 
-                col = split.column(align=True)
+                col = split.column()
                 col.label(text="Liquid:")
                 col.prop(domain, "particle_randomness")
+                col.prop(domain, "particle_radius")
 
-                col = split.column(align=True)
+                col = split.column()
                 col.label()
                 col.prop(domain, "particle_number")
 
@@ -136,7 +137,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
 
                 split = layout.split()
                 col = split.column()
-				
+
                 if flow.smoke_flow_type in {'SMOKE', 'BOTH', 'FIRE'}:
                     col.label(text="Initial Values:")
                 if flow.smoke_flow_type in {'SMOKE', 'BOTH'}:

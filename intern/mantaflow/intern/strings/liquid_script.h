@@ -57,10 +57,10 @@ narrowBand       = True\n\
 narrowBandWidth  = 3\n\
 combineBandWidth = narrowBandWidth - 1\n\
 \n\
-minParticles   = pow(2,dim)\n\
 particleNumber = $PARTICLE_NUMBER$\n\
-radiusFactor   = 1.0\n\
-randomness     = $RANDOMNESS$\n\
+minParticles   = pow(particleNumber,dim)\n\
+radiusFactor   = $PARTICLE_RADIUS$\n\
+randomness     = $PARTICLE_RANDOMNESS$\n\
 \n\
 step    = -1\n\
 maxVel  = 0\n\
@@ -68,9 +68,7 @@ maxVel  = 0\n\
 using_highres = $USE_WAVELETS$\n";
 
 const std::string liquid_variables_high = "\n\
-mantaMsg('Liquid variables high')\n\
-scale = 0.5\n\
-xl_radiusFactor = 2.5\n";
+mantaMsg('Liquid variables high')\n";
 
 //////////////////////////////////////////////////////////////////////
 // GRIDS & MESH & PARTICLESYSTEM
@@ -364,6 +362,4 @@ if 'step'             in globals() : del step\n\
 if 'maxVel'           in globals() : del maxVel\n";
 
 const std::string liquid_delete_variables_high = "\n\
-mantaMsg('Deleting highres liquid variables')\n\
-if 'scale'            in globals() : del scale\n\
-if 'xl_radiusFactor'  in globals() : del xl_radiusFactor\n";
+mantaMsg('Deleting highres liquid variables')\n";

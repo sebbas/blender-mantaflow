@@ -594,6 +594,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			/* liquid */
 			smd->domain->particle_randomness = 0.1f;
 			smd->domain->particle_number = 2;
+			smd->domain->particle_radius = 1.0f;
 
 			/*mantaflow settings*/
 			smd->domain->manta_solver_res = 3;
@@ -703,6 +704,7 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 
 		tsmd->domain->particle_randomness = smd->domain->particle_randomness;
 		tsmd->domain->particle_number = smd->domain->particle_number;
+		tsmd->domain->particle_radius = smd->domain->particle_radius;
 
 		tsmd->domain->manta_solver_res = smd->domain->manta_solver_res;
 		tsmd->domain->noise_pos_scale = smd->domain->noise_pos_scale;
