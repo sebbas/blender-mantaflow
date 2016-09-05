@@ -265,15 +265,16 @@ def liquid_step_high():\n\
 // IMPORT / EXPORT
 //////////////////////////////////////////////////////////////////////
 
-const std::string liquid_save_mesh = "\n\
-def save_mesh(path):\n\
-    mesh.save(path)\n\
-    # TODO (sebbas)\n\
-	#if using_highres:\n\
-        #xl_mesh.save(path)\n";
+const std::string liquid_save_mesh_low = "\n\
+def save_mesh_low(path):\n\
+    mesh.save(path)\n";
+
+const std::string liquid_save_mesh_high = "\n\
+def save_mesh_high(path):\n\
+    xl_mesh.save(path)\n";
 
 const std::string liquid_import_low = "\n\
-def load_liquid_data(path):\n\
+def load_liquid_data_low(path):\n\
     flags.load(path + str('flags.uni'))\n\
     \n\
     phiParts.load(path + str('phiParts.uni'))\n\
@@ -291,8 +292,16 @@ def load_liquid_data(path):\n\
     \n\
     gpi.load(path + str('gpi.uni'))\n";
 
+const std::string liquid_import_high = "\n\
+def load_liquid_data_high(path):\n\
+    xl_flags.load(path + str('xl_flags.uni'))\n\
+    \n\
+    xl_phi.load(path + str('xl_phi.uni'))\n\
+    \n\
+    xl_pp.load(path + str('xl_pp.uni'))\n";
+
 const std::string liquid_export_low = "\n\
-def save_liquid_data(path):\n\
+def save_liquid_data_low(path):\n\
     flags.save(path + str('flags.uni'))\n\
     \n\
     phiParts.save(path + str('phiParts.uni'))\n\
@@ -309,6 +318,14 @@ def save_liquid_data(path):\n\
     pVel.save(path + str('pVel.uni'))\n\
     \n\
     gpi.save(path + str('gpi.uni'))\n";
+
+const std::string liquid_export_high = "\n\
+def save_liquid_data_high(path):\n\
+    xl_flags.save(path + str('xl_flags.uni'))\n\
+    \n\
+    xl_phi.save(path + str('xl_phi.uni'))\n\
+    \n\
+    xl_pp.save(path + str('xl_pp.uni'))\n";
 
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION

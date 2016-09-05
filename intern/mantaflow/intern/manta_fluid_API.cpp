@@ -510,6 +510,13 @@ extern "C" void liquid_save_mesh(FLUID *liquid, char *filename)
 	}
 }
 
+extern "C" void liquid_save_mesh_high(FLUID *liquid, char *filename)
+{
+	if (liquid) {
+		liquid->saveMeshHigh(filename);
+	}
+}
+
 extern "C" void liquid_save_data(FLUID *liquid, char *pathname)
 {
 	if (liquid) {
@@ -517,10 +524,24 @@ extern "C" void liquid_save_data(FLUID *liquid, char *pathname)
 	}
 }
 
+extern "C" void liquid_save_data_high(FLUID *liquid, char *pathname)
+{
+	if (liquid) {
+		liquid->saveLiquidDataHigh(pathname);
+	}
+}
+
 extern "C" void liquid_load_data(FLUID *liquid, char *pathname)
 {
 	if (liquid) {
 		liquid->loadLiquidData(pathname);
+	}
+}
+
+extern "C" void liquid_load_data_high(FLUID *liquid, char *pathname)
+{
+	if (liquid) {
+		liquid->loadLiquidDataHigh(pathname);
 	}
 }
 

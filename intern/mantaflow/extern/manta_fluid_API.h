@@ -108,6 +108,9 @@ float liquid_get_triangle_x_at(struct FLUID *liquid, int i);
 float liquid_get_triangle_y_at(struct FLUID *liquid, int i);
 float liquid_get_triangle_z_at(struct FLUID *liquid, int i);
 void liquid_update_mesh_data(struct FLUID *liquid, char *filename);
+void liquid_save_mesh_high(struct FLUID *liquid, char *filename);
+void liquid_save_data_high(struct FLUID *liquid, char *pathname);
+void liquid_load_data_high(struct FLUID *liquid, char *pathname);
 
 #ifdef __cplusplus
 }
