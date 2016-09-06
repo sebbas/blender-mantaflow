@@ -110,10 +110,11 @@ z_force    = s.create(RealGrid)\n";
 
 const std::string liquid_alloc_high = "\n\
 mantaMsg('Liquid alloc high')\n\
-xl_flags   = xl.create(FlagGrid)\n\
-xl_phi     = xl.create(LevelsetGrid)\n\
-xl_pp      = xl.create(BasicParticleSystem)\n\
-xl_mesh    = xl.create(Mesh)\n\
+xl_flags    = xl.create(FlagGrid)\n\
+xl_phiParts = xl.create(LevelsetGrid)\n\
+xl_phi      = xl.create(LevelsetGrid)\n\
+xl_pp       = xl.create(BasicParticleSystem)\n\
+xl_mesh     = xl.create(Mesh)\n\
 \n\
 # Acceleration data for particle nbs\n\
 xl_pindex  = xl.create(ParticleIndexSystem)\n\
@@ -146,7 +147,6 @@ def manta_step(start_frame):\n\
         mantaMsg('Low step / s.frame: ' + str(s.frame))\n\
         liquid_step()\n\
         \n\
-        # TODO (sebbas)\n\
         if using_highres:\n\
             xl.timestep = s.timestep\n\
             mantaMsg('High step / s.frame: ' + str(s.frame))\n\
@@ -169,6 +169,10 @@ def liquid_step():\n\
     # Advect grid velocity\n\
     if narrowBand:\n\
         advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2, openBounds=doOpen, boundaryWidth=boundaryWidth)\n\
+    \n\
+	# Keep an original copy of interpolated phi grid for later use in (optional) high-res step\n\
+    if using_highres:\n\
+        interpolateGrid(target=xl_phi, source=phi)\n\
     \n\
     # Create level set of particles\n\
     gridParticleIndex(parts=pp , flags=flags, indexSys=pindex, index=gpi)\n\
@@ -231,8 +235,8 @@ def liquid_step():\n\
         adjustNumber(parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, radiusFactor=radiusFactor)\n\
     \n\
     # TODO (sebbas): HACK - saving particle system for highres step\n\
-    #if using_highres:\n\
-        #pp.save('/tmp/partfile.uni')\n\
+    if using_highres:\n\
+        pp.save('/tmp/partfile.uni')\n\
     \n\
     # reset inflow grid\n\
     phiInit.setConst(0.5)\n\
@@ -243,23 +247,17 @@ def liquid_step():\n\
 const std::string liquid_step_high = "\n\
 def liquid_step_high():\n\
     mantaMsg('Liquid step high')\n\
-    xl_phi.setBound(value=0., boundaryWidth=1)\n\
+    #xl_phi.setBound(value=0., boundaryWidth=1)\n\
     xl_pp.load('/tmp/partfile.uni')\n\
     \n\
     # create surface\n\
     gridParticleIndex( parts=xl_pp , flags=xl_flags, indexSys=xl_pindex, index=xl_gpi )\n\
-    unionParticleLevelset( xl_pp, xl_pindex, xl_flags, xl_gpi, xl_phi , xl_radiusFactor )\n\
-    #averagedParticleLevelset( xl_pp, xl_pindex, xl_flags, xl_gpi, xl_phi , xl_radiusFactor , 1, 1 )\n\
+    #unionParticleLevelset( xl_pp, xl_pindex, xl_flags, xl_gpi, xl_phi , radiusFactor ) # faster, but not as smooth\n\
+    averagedParticleLevelset( xl_pp, xl_pindex, xl_flags, xl_gpi, xl_phiParts, radiusFactor , 1, 1 )\n\
+    xl_phi.join(xl_phiParts)\n\
     \n\
-    xl_phi.setBound(value=0., boundaryWidth=1)\n\
-    xl_phi.createMesh(xl_mesh)\n\
-    \n\
-    # beautify mesh, too slow right now!\n\
-    #subdivideMesh(mesh=xl_mesh, minAngle=0.01, minLength=scale, maxLength=3*scale, cutTubes=False)\n\
-    # perform smoothing\n\
-    #for iters in range(10):\n\
-        #smoothMesh(mesh=xl_mesh, strength=1e-3, steps=10)\n\
-        #subdivideMesh(mesh=xl_mesh, minAngle=0.01, minLength=scale, maxLength=3*scale, cutTubes=True)\n";
+    #xl_phi.setBound(value=0., boundaryWidth=1)\n\
+    xl_phi.createMesh(xl_mesh)\n";
 
 //////////////////////////////////////////////////////////////////////
 // IMPORT / EXPORT
@@ -296,6 +294,7 @@ const std::string liquid_import_high = "\n\
 def load_liquid_data_high(path):\n\
     xl_flags.load(path + str('xl_flags.uni'))\n\
     \n\
+    xl_phiParts.load(path + str('xl_phiParts.uni'))\n\
     xl_phi.load(path + str('xl_phi.uni'))\n\
     \n\
     xl_pp.load(path + str('xl_pp.uni'))\n";
@@ -323,6 +322,7 @@ const std::string liquid_export_high = "\n\
 def save_liquid_data_high(path):\n\
     xl_flags.save(path + str('xl_flags.uni'))\n\
     \n\
+    xl_phiParts.save(path + str('xl_phiParts.uni'))\n\
     xl_phi.save(path + str('xl_phi.uni'))\n\
     \n\
     xl_pp.save(path + str('xl_pp.uni'))\n";
@@ -361,12 +361,13 @@ if 'z_force'    in globals() : del z_force\n";
 
 const std::string liquid_delete_grids_high = "\n\
 mantaMsg('Deleting highres grids, mesh, particlesystem')\n\
-if 'xl_flags'   in globals() : del xl_flags\n\
-if 'xl_phi'     in globals() : del xl_phi\n\
-if 'xl_pp'      in globals() : del xl_pp\n\
-if 'xl_mesh'    in globals() : del xl_mesh\n\
-if 'xl_pindex'  in globals() : del xl_pindex\n\
-if 'xl_gpi'     in globals() : del xl_gpi\n";
+if 'xl_flags'    in globals() : del xl_flags\n\
+if 'xl_phiParts' in globals() : del xl_phiParts\n\
+if 'xl_phi'      in globals() : del xl_phi\n\
+if 'xl_pp'       in globals() : del xl_pp\n\
+if 'xl_mesh'     in globals() : del xl_mesh\n\
+if 'xl_pindex'   in globals() : del xl_pindex\n\
+if 'xl_gpi'      in globals() : del xl_gpi\n";
 
 const std::string liquid_delete_variables_low = "\n\
 mantaMsg('Deleting lowres liquid variables')\n\
