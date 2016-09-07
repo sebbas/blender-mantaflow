@@ -290,15 +290,15 @@ class PHYSICS_PT_smoke_highres(PhysicButtonsPanel, Panel):
         split = layout.split()
         split.enabled = not domain.point_cache.is_baked
 
-        if domain.smoke_domain_type == 'GAS':
-            col = split.column()
-            col.prop(domain, "use_high_resolution", text="High resolution")
-            sub = col.column()
-            sub.active = domain.use_high_resolution
-            sub.prop(domain, "amplify", text="Divisions")
-            sub.label(text="Flow Sampling:")
-            sub.row().prop(domain, "highres_sampling", text="")
+        col = split.column()
+        col.prop(domain, "use_high_resolution", text="High resolution")
+        sub = col.column()
+        sub.active = domain.use_high_resolution
+        sub.prop(domain, "amplify", text="Divisions")
+        sub.label(text="Flow Sampling:")
+        sub.row().prop(domain, "highres_sampling", text="")
 
+        if domain.smoke_domain_type == 'GAS':
             sub = split.column()
             sub.active = domain.use_high_resolution
             sub.label(text="Noise Method:")
