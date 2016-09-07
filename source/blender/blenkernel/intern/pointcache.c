@@ -1237,7 +1237,8 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 static int ptcache_liquid_read(void *smoke_v, char *filename, char *pathname)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
-
+	int i;
+	
 	if (!smd) {
 		return 0;
 	}
@@ -1246,6 +1247,18 @@ static int ptcache_liquid_read(void *smoke_v, char *filename, char *pathname)
 	
 	if (sds->fluid) {
 		liquid_load_data(sds->fluid, pathname);
+		
+		if (sds->flags & MOD_SMOKE_HIGHRES) {
+			
+			i = strlen(filename);
+			/* remove .bobj.gz ...*/
+			if (i > 8)
+				filename[i-8] = '\0';
+			/* ... and add _HIGH.bobj.gz ending */
+			strcat(filename, "_HIGH.bobj.gz");
+			
+			liquid_load_data_high(sds->fluid, pathname);
+		}
 		liquid_update_mesh_data(sds->fluid, filename);
 		return 1;
 	}
@@ -1255,6 +1268,7 @@ static int ptcache_liquid_read(void *smoke_v, char *filename, char *pathname)
 static int ptcache_liquid_write(void *smoke_v, char *filename, char* pathname)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
+	int i;
 
 	if (!smd) {
 		return 0;
@@ -1263,9 +1277,21 @@ static int ptcache_liquid_write(void *smoke_v, char *filename, char* pathname)
 	SmokeDomainSettings *sds = smd->domain;
 	
 	if (sds->fluid) {
-		liquid_save_data(sds->fluid, pathname);
 		liquid_save_mesh(sds->fluid, filename);
+		liquid_save_data(sds->fluid, pathname);
 		
+		if (sds->flags & MOD_SMOKE_HIGHRES) {
+			
+			i = strlen(filename);
+			/* remove .bobj.gz ...*/
+			if (i > 8)
+				filename[i-8] = '\0';
+			/* ... and add _HIGH.bobj.gz ending */
+			strcat(filename, "_HIGH.bobj.gz");
+			
+			liquid_save_mesh_high(sds->fluid, filename);
+			liquid_save_data_high(sds->fluid, pathname);
+		}
 		/* After writing mesh data make sure that fields in fluid object
 		 * are up-to-date (necessary for instant replay functionality) */
 		liquid_update_mesh_data(sds->fluid, filename);
