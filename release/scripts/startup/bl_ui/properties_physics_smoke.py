@@ -84,7 +84,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
                 split = layout.split()
                 split.enabled = not domain.point_cache.is_baked
 
-                col = split.column(align=True)
+                col = split.column()
                 col.label(text="Smoke:")
                 col.prop(domain, "alpha")
                 col.prop(domain, "beta", text="Temp. Diff.")
@@ -95,7 +95,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
                 sub.prop(domain, "dissolve_speed", text="Time")
                 sub.prop(domain, "use_dissolve_smoke_log", text="Slow")
 
-                col = split.column(align=True)
+                col = split.column()
                 col.label(text="Fire:")
                 col.prop(domain, "burning_rate")
                 col.prop(domain, "flame_smoke")
@@ -290,19 +290,33 @@ class PHYSICS_PT_smoke_highres(PhysicButtonsPanel, Panel):
         split = layout.split()
         split.enabled = not domain.point_cache.is_baked
 
-        col = split.column()
-        col.prop(domain, "use_high_resolution", text="High resolution")
-        sub = col.column()
-        sub.active = domain.use_high_resolution
-        sub.prop(domain, "amplify", text="Divisions")
-        sub.label(text="Flow Sampling:")
-        sub.row().prop(domain, "highres_sampling", text="")
-
-        if domain.smoke_domain_type == 'GAS':
+        if domain.smoke_domain_type == 'LIQUID':
+            col = split.column()
+            col.prop(domain, "use_high_resolution", text="High resolution")
+            sub = col.column()
+            sub.active = domain.use_high_resolution
+            sub.prop(domain, "amplify", text="Divisions")
+            
             sub = split.column()
             sub.active = domain.use_high_resolution
-            sub.label(text="Noise Method:")
-            sub.row().prop(domain, "noise_type", text="")
+            sub.label(text="Flow Sampling:")
+            sub.row().prop(domain, "highres_sampling", text="")
+            
+        if domain.smoke_domain_type == 'GAS':
+            col = split.column()
+            col.prop(domain, "use_high_resolution", text="High resolution")
+            sub = col.column()
+            sub.active = domain.use_high_resolution
+            sub.prop(domain, "amplify", text="Divisions")
+            sub.label(text="Flow Sampling:")
+            sub.row().prop(domain, "highres_sampling", text="")
+        
+            sub = split.column()
+            sub.active = domain.use_high_resolution
+            # TODO (sebbas): Mantaflow only supports wavelet noise. Do we really need fft noise? Maybe get rid of noise type ...
+            #sub.label(text="Noise Method:")
+            #sub.row().prop(domain, "noise_type", text="")
+            sub.label(text="Noise:")
             sub.prop(domain, "strength")
             sub.prop(domain, "noise_pos_scale")
             sub.prop(domain, "noise_time_anim")
