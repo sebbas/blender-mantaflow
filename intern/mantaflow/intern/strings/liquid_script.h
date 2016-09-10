@@ -164,7 +164,6 @@ def liquid_step():\n\
     # Note: Grid velocities are extrapolated at the end of each step\n\
     pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False)\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=1, openBounds=doOpen, boundaryWidth=boundaryWidth)\n\
-    flags.updateFromLevelset(phi)\n\
     \n\
     # Advect grid velocity\n\
     if narrowBand:\n\
@@ -180,7 +179,6 @@ def liquid_step():\n\
     \n\
     if doOpen:\n\
         resetOutflow(flags=flags, phi=phi, parts=pp, index=gpi, indexSys=pindex)\n\
-        flags.updateFromLevelset(phi)\n\
     \n\
     if narrowBand:\n\
         # Combine level set of particles with grid level set\n\
