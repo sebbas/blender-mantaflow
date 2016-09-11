@@ -58,8 +58,8 @@ extern "C" size_t smoke_get_index2d(int x, int max_x, int y /*, int max_y, int z
 extern "C" void smoke_manta_export(FLUID* smoke, SmokeModifierData *smd)
 {
 	if (!smoke && !smd) return;
-	smoke->exportScript(smd);
-	smoke->exportGrids(smd);
+	smoke->exportSmokeScript(smd);
+	smoke->exportSmokeData(smd);
 }
 
 extern "C" void smoke_step(FLUID *smoke, SmokeModifierData *smd)
@@ -610,3 +610,9 @@ extern "C" void liquid_update_mesh_data(FLUID *liquid, char* filename)
 	liquid->updateMeshData(filename);
 }
 
+extern "C" void liquid_manta_export(FLUID* liquid, SmokeModifierData *smd)
+{
+	if (!liquid && !smd) return;
+	liquid->exportLiquidScript(smd);
+	liquid->exportLiquidData(smd);
+}

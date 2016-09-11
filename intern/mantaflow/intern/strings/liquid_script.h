@@ -379,3 +379,16 @@ if 'maxVel'           in globals() : del maxVel\n";
 
 const std::string liquid_delete_variables_high = "\n\
 mantaMsg('Deleting highres liquid variables')\n";
+
+//////////////////////////////////////////////////////////////////////
+// STANDALONE MODE
+//////////////////////////////////////////////////////////////////////
+
+const std::string liquid_standalone_load = "\n\
+# import *.uni files\n\
+path_prefix = '$MANTA_EXPORT_PATH$'\n\
+load_liquid_data_low(path_prefix)\n\
+if using_highres:\n\
+    load_liquid_data_high(path_prefix)\n";
+
+

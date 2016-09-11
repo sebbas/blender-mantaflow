@@ -342,71 +342,68 @@ def update_flame_high():\n\
 //////////////////////////////////////////////////////////////////////
 
 const std::string smoke_import_low = "\n\
-def import_grids_low():\n\
-    mantaMsg('Importing grids low')\n\
-    density.load('$MANTA_EXPORT_PATH$density.uni')\n\
-    flags.load('$MANTA_EXPORT_PATH$flags.uni')\n\
-    vel.save(os.path.join('$MANTA_EXPORT_PATH$','vel.uni'))\n\
-    forces.load('$MANTA_EXPORT_PATH$forces.uni')\n\
-    inflow_grid.load('$MANTA_EXPORT_PATH$inflow_low.uni')\n\
-    fuel_inflow.load('$MANTA_EXPORT_PATH$fuel_inflow.uni')\n\
+def load_smoke_data_low(path):\n\
+    density.load(path + str('density.uni'))\n\
+    flags.load(path + str('flags.uni'))\n\
+    vel.load(path + str('vel.uni'))\n\
+    forces.load(path + str('forces.uni')\n\
+    inflow_grid.load(path + str('inflow_low.uni')\n\
+    fuel_inflow.load(path + str('fuel_inflow.uni')\n\
     if using_colors:\n\
-        color_r.load('$MANTA_EXPORT_PATH$color_r.uni')\n\
-        color_g.load('$MANTA_EXPORT_PATH$color_g.uni')\n\
-        color_b.load('$MANTA_EXPORT_PATH$color_b.uni')\n\
+        color_r.load(path + str('color_r.uni')\n\
+        color_g.load(path + str('color_g.uni')\n\
+        color_b.load(path + str('color_b.uni')\n\
     if using_heat:\n\
-        heat.load('$MANTA_EXPORT_PATH$heat.uni')\n\
+        heat.load(path + str('heat.uni')\n\
     if using_fire:\n\
-        flame.load('$MANTA_EXPORT_PATH$flame.uni')\n\
-        fuel.load('$MANTA_EXPORT_PATH$fuel.uni')\n\
-        react.load('$MANTA_EXPORT_PATH$react.uni')\n";
+        flame.load(path + str('flame.uni')\n\
+        fuel.load(path + str('fuel.uni')\n\
+        react.load(path + str('react.uni')\n";
 
 const std::string smoke_import_high = "\n\
-def import_grids_high():\n\
-    mantaMsg('Importing grids high')\n\
-    xl_density.load('$MANTA_EXPORT_PATH$xl_density.uni')\n\
-    xl_flags.load('$MANTA_EXPORT_PATH$xl_flags.uni')\n\
+def load_smoke_data_high(path):\n\
+    xl_density.load(path + str('xl_density.uni'))\n\
+    xl_flags.load(path + str('xl_flags.uni')\n\
     if using_colors:\n\
-        xl_color_r.load('$MANTA_EXPORT_PATH$xl_color_r.uni')\n\
-        xl_color_g.load('$MANTA_EXPORT_PATH$xl_color_g.uni')\n\
-        xl_color_b.load('$MANTA_EXPORT_PATH$xl_color_b.uni')\n\
+        xl_color_r.load(path + str('xl_color_r.uni')\n\
+        xl_color_g.load(path + str('xl_color_g.uni')\n\
+        xl_color_b.load(path + str('xl_color_b.uni')\n\
     if using_fire:\n\
-        xl_flame.load('$MANTA_EXPORT_PATH$xl_flame.uni')\n\
-        xl_fuel.load('$MANTA_EXPORT_PATH$xl_fuel.uni')\n\
-        xl_react.load('$MANTA_EXPORT_PATH$xl_react.uni')\n";
+        xl_flame.load(path + str('xl_flame.uni')\n\
+        xl_fuel.load(path + str('xl_fuel.uni')\n\
+        xl_react.load(path + str('xl_react.uni')\n";
 
 const std::string smoke_export_low = "\n\
-import os\n\
-mantaMsg('Exporting grids low')\n\
-density.save(os.path.join('$MANTA_EXPORT_PATH$','density.uni'))\n\
-flags.save(os.path.join('$MANTA_EXPORT_PATH$','flags.uni'))\n\
-vel.save(os.path.join('$MANTA_EXPORT_PATH$','vel.uni'))\n\
-forces.save(os.path.join('$MANTA_EXPORT_PATH$','forces.uni'))\n\
-inflow_grid.save(os.path.join('$MANTA_EXPORT_PATH$','inflow_low.uni'))\n\
-fuel_inflow.save(os.path.join('$MANTA_EXPORT_PATH$','fuel_inflow.uni'))\n\
-if using_colors:\n\
-    color_r.save(os.path.join('$MANTA_EXPORT_PATH$','color_r.uni'))\n\
-    color_g.save(os.path.join('$MANTA_EXPORT_PATH$','color_g.uni'))\n\
-    color_b.save(os.path.join('$MANTA_EXPORT_PATH$','color_b.uni'))\n\
-if using_heat:\n\
-    heat.save(os.path.join('$MANTA_EXPORT_PATH$','heat.uni'))\n\
-if using_fire:\n\
-    flame.save(os.path.join('$MANTA_EXPORT_PATH$','flame.uni'))\n\
-    fuel.save(os.path.join('$MANTA_EXPORT_PATH$','fuel.uni'))\n\
-    react.save(os.path.join('$MANTA_EXPORT_PATH$','react.uni'))\n";
+def save_smoke_data_low(path):\n\
+    density.save(path + str('density.uni'))\n\
+    flags.save(path + str('flags.uni'))\n\
+    vel.save(path + str('vel.uni'))\n\
+    forces.save(path + str('forces.uni'))\n\
+    inflow_grid.save(path + str('inflow_low.uni'))\n\
+    fuel_inflow.save(path + str('fuel_inflow.uni'))\n\
+    if using_colors:\n\
+        color_r.save(path + str('color_r.uni'))\n\
+        color_g.save(path + str('color_g.uni'))\n\
+        color_b.save(path + str('color_b.uni'))\n\
+    if using_heat:\n\
+        heat.save(path + str('heat.uni'))\n\
+    if using_fire:\n\
+        flame.save(path + str('flame.uni'))\n\
+        fuel.save(path + str('fuel.uni'))\n\
+        react.save(path + str('react.uni'))\n";
 
 const std::string smoke_export_high = "\n\
-mantaMsg('Exporting grids high')\n\
-xl_density.save(os.path.join('$MANTA_EXPORT_PATH$','xl_density.uni'))\n\
-xl_flags.save(os.path.join('$MANTA_EXPORT_PATH$','xl_flags.uni'))\n\
-if using_colors:\n\
-    xl_color_r.save(os.path.join('$MANTA_EXPORT_PATH$','xl_color_r.uni'))\n\
-    xl_color_g.save(os.path.join('$MANTA_EXPORT_PATH$','xl_color_g.uni'))\n\
-    xl_color_b.save(os.path.join('$MANTA_EXPORT_PATH$','xl_color_b.uni'))\n\
-if using_fire:\n\
-    xl_flame.save(os.path.join('$MANTA_EXPORT_PATH$','xl_flame.uni'))\n\
-    xl_fuel.save(os.path.join('$MANTA_EXPORT_PATH$','xl_fuel.uni'))\n\
-    xl_react.save(os.path.join('$MANTA_EXPORT_PATH$','xl_react.uni'))\n";
+def save_smoke_data_low(path):\n\
+    xl_density.save(path + str('xl_density.uni'))\n\
+    xl_flags.save(path + str('xl_flags.uni'))\n\
+    if using_colors:\n\
+        xl_color_r.save(path + str('xl_color_r.uni'))\n\
+        xl_color_g.save(path + str('xl_color_g.uni'))\n\
+        xl_color_b.save(path + str('xl_color_b.uni'))\n\
+    if using_fire:\n\
+        xl_flame.save(path + str('xl_flame.uni'))\n\
+        xl_fuel.save(path + str('xl_fuel.uni'))\n\
+        xl_react.save(path + str('xl_react.uni'))\n";
 
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION
@@ -542,17 +539,9 @@ const std::string smoke_inflow_high = "\n\
 // STANDALONE MODE
 //////////////////////////////////////////////////////////////////////
 
-const std::string smoke_standalone = "\n\
-if (GUI):\n\
-    gui=Gui()\n\
-    gui.show()\n\
-    gui.pause()\n\
-\n\
+const std::string smoke_standalone_load = "\n\
 # import *.uni files\n\
-import_grids_low()\n\
-if using_wavelets:\n\
-    import_grids_high()\n\
-\n\
-start_frame = $CURRENT_FRAME$\n\
-# All low and high res steps\n\
-manta_step(start_frame)\n";
+path_prefix = '$MANTA_EXPORT_PATH$'\n\
+load_smoke_data_low(path_prefix)\n\
+if using_highres:\n\
+    load_smoke_data_high(path_prefix)\n";

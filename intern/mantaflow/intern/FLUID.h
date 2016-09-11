@@ -58,14 +58,18 @@ public:
 	void updatePointersHigh(struct SmokeModifierData *smd);
 
 	// IO for Mantaflow scene script
-	void exportScript(struct SmokeModifierData *smd);
-	void exportGrids(struct SmokeModifierData *smd);
+	void exportSmokeScript(struct SmokeModifierData *smd);
+	void exportSmokeData(struct SmokeModifierData *smd);
+	void exportLiquidScript(struct SmokeModifierData *smd);
+	void exportLiquidData(struct SmokeModifierData *smd);
 	
 	// Write files for liquids
 	void saveMesh(char *filename);
 	void saveMeshHigh(char *filename);
 	void saveLiquidData(char *pathname);
 	void saveLiquidDataHigh(char *pathname);
+	void saveSmokeData(char *pathname);
+	void saveSmokeDataHigh(char *pathname);
 
 	// Load files for liquids
 	void loadLiquidData(char *pathname);

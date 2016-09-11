@@ -122,3 +122,22 @@ if 'xl' in globals() : del xl\n";
 
 const std::string gc_collect = "\n\
 gc.collect()\n";
+
+//////////////////////////////////////////////////////////////////////
+// STANDALONE MODE
+//////////////////////////////////////////////////////////////////////
+
+const std::string fluid_standalone = "\n\
+if (GUI):\n\
+    gui=Gui()\n\
+    gui.show()\n\
+    gui.pause()\n\
+\n\
+start_frame = $CURRENT_FRAME$\n\
+end_frame = 100\n\
+\n\
+# All low and high res steps\n\
+while start_frame <= end_frame:\n\
+    manta_step(start_frame)\n\
+    start_frame += 1\n";
+

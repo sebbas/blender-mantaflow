@@ -111,6 +111,8 @@ void liquid_update_mesh_data(struct FLUID *liquid, char *filename);
 void liquid_save_mesh_high(struct FLUID *liquid, char *filename);
 void liquid_save_data_high(struct FLUID *liquid, char *pathname);
 void liquid_load_data_high(struct FLUID *liquid, char *pathname);
+void liquid_manta_export(struct FLUID* smoke, SmokeModifierData *smd);
+
 
 #ifdef __cplusplus
 }

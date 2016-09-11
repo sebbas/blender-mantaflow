@@ -216,6 +216,7 @@ void FLUID::initSmoke(SmokeModifierData *smd)
 		+ smoke_variables_low
 		+ smoke_bounds_low
 		+ smoke_adaptive_step
+		+ smoke_export_low
 		+ smoke_step_low;
 	std::string finalString = parseScript(tmpString, smd);
 	mCommands.clear();
@@ -231,6 +232,7 @@ void FLUID::initSmokeHigh(SmokeModifierData *smd)
 		+ smoke_uv_setup
 		+ smoke_bounds_high
 		+ smoke_wavelet_turbulence_noise
+		+ smoke_export_high
 		+ smoke_step_high;
 	std::string finalString = parseScript(tmpString, smd);
 	mCommands.clear();
@@ -633,7 +635,7 @@ std::string FLUID::parseScript(const std::string& setup_string, SmokeModifierDat
 	return res.str();
 }
 
-void FLUID::exportScript(SmokeModifierData *smd)
+void FLUID::exportSmokeScript(SmokeModifierData *smd)
 {
 	// Setup low
 	std::string manta_script =
@@ -711,7 +713,8 @@ void FLUID::exportScript(SmokeModifierData *smd)
 	std::string final_script = FLUID::parseScript(manta_script, smd);
 	
 	// Add standalone mode (loop, gui, ...)
-	final_script += smoke_standalone;
+	final_script += smoke_standalone_load;
+	final_script += fluid_standalone;
 	
 	// Write script
 	std::ofstream myfile;
@@ -720,18 +723,71 @@ void FLUID::exportScript(SmokeModifierData *smd)
 	myfile.close();
 }
 
-void FLUID::exportGrids(SmokeModifierData *smd)
+void FLUID::exportSmokeData(SmokeModifierData *smd)
 {
-	PyGILState_STATE gilstate = PyGILState_Ensure();
-	
-	// Export low res grids
-	PyRun_SimpleString(FLUID::parseScript(smoke_export_low, smd).c_str());
+	bool highres = smd->domain->flags & MOD_SMOKE_HIGHRES;
 
-	// Export high res grids
-	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
-		PyRun_SimpleString(FLUID::parseScript(smoke_export_high, smd).c_str());
+	char parent_dir[1024];
+	BLI_split_dir_part(smd->domain->manta_filepath, parent_dir, sizeof(parent_dir));
+	
+	FLUID::saveSmokeData(parent_dir);
+	if (highres)
+		FLUID::saveSmokeDataHigh(parent_dir);
+}
+
+void FLUID::exportLiquidScript(SmokeModifierData *smd)
+{
+	bool highres = smd->domain->flags & MOD_SMOKE_HIGHRES;
+
+	std::string manta_script;
+	
+	manta_script += manta_import
+		+ fluid_solver_low
+		+ fluid_adaptive_time_stepping_low
+		+ liquid_alloc_low
+		+ liquid_init_phi
+		+ liquid_bounds_low
+		+ liquid_variables_low;
+
+	if (highres) {
+		manta_script += fluid_solver_high
+			+ fluid_adaptive_time_stepping_high
+			+ liquid_alloc_high
+			+ liquid_bounds_high
+			+ liquid_variables_high;
 	}
-	PyGILState_Release(gilstate);
+
+	manta_script += liquid_import_low;
+	if (highres)
+		manta_script += liquid_import_high;
+
+	manta_script += liquid_step_low;
+	if (highres)
+		manta_script += liquid_step_high;
+	
+	manta_script += liquid_adaptive_step;
+	manta_script += liquid_standalone_load;
+	manta_script += fluid_standalone;
+
+	std::string final_script = FLUID::parseScript(manta_script, smd);
+	
+	// Write script
+	std::ofstream myfile;
+	myfile.open(smd->domain->manta_filepath);
+	myfile << final_script;
+	myfile.close();
+}
+
+void FLUID::exportLiquidData(SmokeModifierData *smd)
+{
+	bool highres = smd->domain->flags & MOD_SMOKE_HIGHRES;
+
+	char parent_dir[1024];
+	BLI_split_dir_part(smd->domain->manta_filepath, parent_dir, sizeof(parent_dir));
+	
+	FLUID::saveLiquidData(parent_dir);
+	if (highres)
+		FLUID::saveLiquidDataHigh(parent_dir);
 }
 
 void* FLUID::getGridPointer(std::string gridName, std::string solverName)
@@ -939,6 +995,30 @@ void FLUID::saveMeshHigh(char *filename)
 	
 	save_mesh_high <<  "save_mesh_high('" << path << "')";
 	mCommands.push_back(save_mesh_high.str());
+	
+	runPythonString(mCommands);
+}
+
+void FLUID::saveSmokeData(char *pathname)
+{
+	std::string path(pathname);
+	
+	mCommands.clear();
+	std::ostringstream save_smoke_data_low;
+	save_smoke_data_low <<  "save_smoke_data_low('" << path << "')";
+	mCommands.push_back(save_smoke_data_low.str());
+	
+	runPythonString(mCommands);
+}
+
+void FLUID::saveSmokeDataHigh(char *pathname)
+{
+	std::string path(pathname);
+	
+	mCommands.clear();
+	std::ostringstream save_smoke_data_high;
+	save_smoke_data_high <<  "save_smoke_data_high('" << path << "')";
+	mCommands.push_back(save_smoke_data_high.str());
 	
 	runPythonString(mCommands);
 }
