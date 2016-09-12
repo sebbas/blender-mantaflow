@@ -134,7 +134,7 @@ if (GUI):\n\
     gui.pause()\n\
 \n\
 start_frame = $CURRENT_FRAME$\n\
-end_frame = 100\n\
+end_frame = 1000\n\
 \n\
 # All low and high res steps\n\
 while start_frame <= end_frame:\n\

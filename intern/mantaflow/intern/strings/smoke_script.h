@@ -58,7 +58,7 @@ mantaMsg('Smoke variables low')\n\
 using_colors    = $USING_COLORS$\n\
 using_heat      = $USING_HEAT$\n\
 using_fire      = $USING_FIRE$\n\
-using_wavelets  = $USE_WAVELETS$\n\
+using_highres   = $USING_HIGHRES$\n\
 vorticity       = $VORTICITY$\n";
 
 const std::string smoke_variables_high = "\n\
@@ -251,6 +251,7 @@ def step_low():\n\
         mantaMsg('Adding buoyancy')\n\
         addBuoyancy(density=density, vel=vel, gravity=gravity, flags=flags)\n\
     \n\
+    #addObjectVelocity(flags, vel, obvel)\n\
     copyRealToVec3(sourceX=x_force, sourceY=y_force, sourceZ=z_force, target=forces)\n\
     mantaMsg('Adding forces')\n\
     addForceField(flags=flags, vel=vel, force=forces)\n\
@@ -346,32 +347,32 @@ def load_smoke_data_low(path):\n\
     density.load(path + str('density.uni'))\n\
     flags.load(path + str('flags.uni'))\n\
     vel.load(path + str('vel.uni'))\n\
-    forces.load(path + str('forces.uni')\n\
-    inflow_grid.load(path + str('inflow_low.uni')\n\
-    fuel_inflow.load(path + str('fuel_inflow.uni')\n\
+    forces.load(path + str('forces.uni'))\n\
+    inflow_grid.load(path + str('inflow_low.uni'))\n\
+    fuel_inflow.load(path + str('fuel_inflow.uni'))\n\
     if using_colors:\n\
-        color_r.load(path + str('color_r.uni')\n\
-        color_g.load(path + str('color_g.uni')\n\
-        color_b.load(path + str('color_b.uni')\n\
+        color_r.load(path + str('color_r.uni'))\n\
+        color_g.load(path + str('color_g.uni'))\n\
+        color_b.load(path + str('color_b.uni'))\n\
     if using_heat:\n\
-        heat.load(path + str('heat.uni')\n\
+        heat.load(path + str('heat.uni'))\n\
     if using_fire:\n\
-        flame.load(path + str('flame.uni')\n\
-        fuel.load(path + str('fuel.uni')\n\
-        react.load(path + str('react.uni')\n";
+        flame.load(path + str('flame.uni'))\n\
+        fuel.load(path + str('fuel.uni'))\n\
+        react.load(path + str('react.uni'))\n";
 
 const std::string smoke_import_high = "\n\
 def load_smoke_data_high(path):\n\
     xl_density.load(path + str('xl_density.uni'))\n\
-    xl_flags.load(path + str('xl_flags.uni')\n\
+    xl_flags.load(path + str('xl_flags.uni'))\n\
     if using_colors:\n\
-        xl_color_r.load(path + str('xl_color_r.uni')\n\
-        xl_color_g.load(path + str('xl_color_g.uni')\n\
-        xl_color_b.load(path + str('xl_color_b.uni')\n\
+        xl_color_r.load(path + str('xl_color_r.uni'))\n\
+        xl_color_g.load(path + str('xl_color_g.uni'))\n\
+        xl_color_b.load(path + str('xl_color_b.uni'))\n\
     if using_fire:\n\
-        xl_flame.load(path + str('xl_flame.uni')\n\
-        xl_fuel.load(path + str('xl_fuel.uni')\n\
-        xl_react.load(path + str('xl_react.uni')\n";
+        xl_flame.load(path + str('xl_flame.uni'))\n\
+        xl_fuel.load(path + str('xl_fuel.uni'))\n\
+        xl_react.load(path + str('xl_react.uni'))\n";
 
 const std::string smoke_export_low = "\n\
 def save_smoke_data_low(path):\n\

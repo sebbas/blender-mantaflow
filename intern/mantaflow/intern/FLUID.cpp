@@ -500,7 +500,7 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << (smd->domain->active_fields & SM_ACTIVE_HEAT ? "True" : "False");
 	else if (varName == "USING_FIRE")
 		ss << (smd->domain->active_fields & SM_ACTIVE_FIRE ? "True" : "False");
-	else if (varName == "USE_WAVELETS")
+	else if (varName == "USING_HIGHRES")
 		ss << (smd->domain->flags & MOD_SMOKE_HIGHRES ? "True" : "False");
 	else if (varName == "SOLVER_DIM")
 		ss << smd->domain->manta_solver_res;

@@ -65,7 +65,7 @@ randomness     = $PARTICLE_RANDOMNESS$\n\
 step    = -1\n\
 maxVel  = 0\n\
 \n\
-using_highres = $USE_WAVELETS$\n";
+using_highres = $USING_HIGHRES$\n";
 
 const std::string liquid_variables_high = "\n\
 mantaMsg('Liquid variables high')\n";
@@ -169,7 +169,7 @@ def liquid_step():\n\
     if narrowBand:\n\
         advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2, openBounds=doOpen, boundaryWidth=boundaryWidth)\n\
     \n\
-	# Keep an original copy of interpolated phi grid for later use in (optional) high-res step\n\
+    # Keep an original copy of interpolated phi grid for later use in (optional) high-res step\n\
     if using_highres:\n\
         interpolateGrid(target=xl_phi, source=phi)\n\
     \n\
