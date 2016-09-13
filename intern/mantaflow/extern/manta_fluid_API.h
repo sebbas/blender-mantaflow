@@ -90,6 +90,7 @@ unsigned char *smoke_turbulence_get_obstacle(struct FLUID *smoke);
 
 float *liquid_get_phi(struct FLUID *liquid);
 float *liquid_get_phiinit(struct FLUID *liquid);
+float *liquid_get_phiobsinit(struct FLUID *liquid);
 float *liquid_turbulence_get_phi(struct FLUID *liquid);
 void liquid_ensure_init(struct FLUID *liquid, struct SmokeModifierData *smd);
 void liquid_save_mesh(struct FLUID *liquid, char *filename);

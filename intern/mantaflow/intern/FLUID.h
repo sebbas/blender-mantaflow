@@ -123,9 +123,10 @@ public:
 	inline float* getTextureW2() { return mTextureW2; }
 	inline unsigned char* getObstacleHigh() { return mObstacleHigh; }
 	
-	inline float* getPhi()     { return mPhi; }
-	inline float* getPhiInit() { return mPhiInit; }
-	inline float* getPhiHigh() { return NULL; } // Not yet implemented
+	inline float* getPhi()        { return mPhi; }
+	inline float* getPhiInit()    { return mPhiInit; }
+	inline float* getPhiObsInit() { return mPhiObsInit; }
+	inline float* getPhiHigh()    { return NULL; } // Not yet implemented
 
 	static bool mantaInitialized;
 	
@@ -215,6 +216,7 @@ private:
 	// Liquids
 	float* mPhi;
 	float* mPhiInit;
+	float* mPhiObsInit;
 	float* mPhiHigh;
 	
 	// Mesh fields for liquid surface

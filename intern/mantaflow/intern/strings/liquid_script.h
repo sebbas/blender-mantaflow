@@ -83,6 +83,10 @@ phi        = s.create(LevelsetGrid)\n\
 phiInit    = s.create(LevelsetGrid)\n\
 pressure   = s.create(RealGrid)\n\
 \n\
+phiObs     = s.create(LevelsetGrid)\n\
+phiObsInit = s.create(LevelsetGrid)\n\
+fractions  = s.create(MACGrid)\n\
+\n\
 vel        = s.create(MACGrid)\n\
 x_vel      = s.create(RealGrid)\n\
 y_vel      = s.create(RealGrid)\n\
@@ -276,6 +280,9 @@ def load_liquid_data_low(path):\n\
     phiParts.load(path + str('phiParts.uni'))\n\
     phi.load(path + str('phi.uni'))\n\
     phiInit.load(path + str('phiInit.uni'))\n\
+    phiObs.load(path + str('phiObs.uni'))\n\
+    phiObsInit.load(path + str('phiObsInit.uni'))\n\
+    fractions.load(path + str('fractions.uni'))\n\
     pressure.load(path + str('pressure.uni'))\n\
     \n\
     vel.load(path + str('vel.uni'))\n\
@@ -304,6 +311,9 @@ def save_liquid_data_low(path):\n\
     phiParts.save(path + str('phiParts.uni'))\n\
     phi.save(path + str('phi.uni'))\n\
     phiInit.save(path + str('phiInit.uni'))\n\
+    phiObs.save(path + str('phiObs.uni'))\n\
+    phiObsInit.save(path + str('phiObsInit.uni'))\n\
+    fractions.save(path + str('fractions.uni'))\n\
     pressure.save(path + str('pressure.uni'))\n\
     \n\
     vel.save(path + str('vel.uni'))\n\
@@ -355,7 +365,10 @@ if 'gpi'        in globals() : del gpi\n\
 if 'forces'     in globals() : del forces\n\
 if 'x_force'    in globals() : del x_force\n\
 if 'y_force'    in globals() : del y_force\n\
-if 'z_force'    in globals() : del z_force\n";
+if 'z_force'    in globals() : del z_force\n\
+if 'phiObs'     in globals() : del phiObs\n\
+if 'phiObsInit' in globals() : del phiObsInit\n\
+if 'fractions'  in globals() : del fractions\n";
 
 const std::string liquid_delete_grids_high = "\n\
 mantaMsg('Deleting highres grids, mesh, particlesystem')\n\

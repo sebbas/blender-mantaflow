@@ -114,7 +114,8 @@ FLUID::FLUID(int *res, SmokeModifierData *smd)
 	// Liquid low res grids
 	mPhi            = NULL;
 	mPhiInit        = NULL;
-	
+	mPhiObsInit     = NULL;
+
 	// Liquid high res grids
 	mPhiHigh        = NULL;
 	
@@ -441,9 +442,10 @@ FLUID::~FLUID()
 	mTextureW2      = NULL;
 	
 	// Liquid
-	mPhi     = NULL;
-	mPhiInit = NULL;
-	mPhiHigh = NULL;
+	mPhi        = NULL;
+	mPhiInit    = NULL;
+	mPhiObsInit = NULL;
+	mPhiHigh    = NULL;
 	
 	// Reset flags
 	mUsingHeat    = false;
@@ -913,8 +915,9 @@ void FLUID::updatePointers(SmokeModifierData *smd)
 	
 	// Liquid
 	if (mUsingLiquid) {
-		mPhi        = (float*) getGridPointer("phi",     "s");
-		mPhiInit    = (float*) getGridPointer("phiInit", "s");
+		mPhi        = (float*) getGridPointer("phi",        "s");
+		mPhiInit    = (float*) getGridPointer("phiInit",    "s");
+		mPhiObsInit = (float*) getGridPointer("phiObsInit", "s");
 	}
 	
 	// Smoke

@@ -503,6 +503,11 @@ extern "C" float *liquid_get_phiinit(FLUID *liquid)
 	return liquid->getPhiInit();
 }
 
+extern "C" float *liquid_get_phiobsinit(FLUID *liquid)
+{
+	return liquid->getPhiObsInit();
+}
+
 extern "C" void liquid_save_mesh(FLUID *liquid, char *filename)
 {
 	if (liquid) {
