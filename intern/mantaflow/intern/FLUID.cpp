@@ -711,12 +711,12 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 	// Step wrapper function
 	manta_script += smoke_adaptive_step;
 	
+	// Add standalone mode (loop, gui, ...)
+	manta_script += smoke_standalone_load;
+	manta_script += fluid_standalone;
+	
 	// Fill in missing variables in script
 	std::string final_script = FLUID::parseScript(manta_script, smd);
-	
-	// Add standalone mode (loop, gui, ...)
-	final_script += smoke_standalone_load;
-	final_script += fluid_standalone;
 	
 	// Write script
 	std::ofstream myfile;
