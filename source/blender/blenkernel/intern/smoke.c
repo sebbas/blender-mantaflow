@@ -843,10 +843,10 @@ static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
 				}
 
 				/* tag obstacle cells */
-				data->obstacle_map[index] = 2; // mantaflow convetion (FlagObstacle)
+//				data->obstacle_map[index] = 2; // TODO (sebbas): mantaflow convetion (FlagObstacle)
 
 				if (data->has_velocity) {
-					data->obstacle_map[index] |= 8;
+//					data->obstacle_map[index] |= 8; // TODO (sebbas)
 					data->num_obstacles[index]++;
 				}
 			}
@@ -974,7 +974,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	{
 		if (obstacles && obstacles[z] & 8) // Do not delete static obstacles
 		{
-			obstacles[z] = 4; // mantaflow convention (FlagObstacle)
+//			obstacles[z] = 4; // TODO (sebbas): mantaflow convention (FlagEmpty)
 		}
 
 		if (velx && velz && velz) {
@@ -1026,7 +1026,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 				b[z] = 0;
 			}
 			if (phi) {
-				phi[z] = 0.5;
+				//phi[z] = 0.5; // TODO (sebbas): if enabled this causes the mesh "flickering"
 			}
 		}
 		/* average velocities from multiple obstacles in one cell */
@@ -2261,7 +2261,7 @@ BLI_INLINE void apply_outflow_fields(int index, float inflow_value, float *densi
 		phi[index] = 0.5f; // mantaflow convention
 	}
 	if (obstacle && inflow_value < 0.f) { // only set outflow inside mesh
-		obstacle[index] = 20; // mantaflow convention (FlagOutflow | FlagEmpty)
+//		obstacle[index] = 20; // TODO (sebbas) mantaflow convention (FlagOutflow | FlagEmpty)
 	}
 	
 	/* set smoke outflow */
