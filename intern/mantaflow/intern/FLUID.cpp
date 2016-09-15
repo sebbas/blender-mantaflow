@@ -580,7 +580,7 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 	else if (varName == "FLAME_SMOKE_COLOR_Z")
 		ss << smd->domain->flame_smoke_color[2];
 	else if (varName == "CURRENT_FRAME")
-		ss << md->scene->r.cfra;
+		ss << md->scene->r.cfra - 1;
 	else if (varName == "PARTICLE_RANDOMNESS")
 		ss << smd->domain->particle_randomness;
 	else if (varName == "PARTICLE_NUMBER")
@@ -747,8 +747,8 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 		+ fluid_solver_low
 		+ fluid_adaptive_time_stepping_low
 		+ liquid_alloc_low
-		+ liquid_init_phi
 		+ liquid_bounds_low
+		+ liquid_init_phi
 		+ liquid_variables_low;
 
 	if (highres) {

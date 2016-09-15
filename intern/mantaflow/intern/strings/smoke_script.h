@@ -198,7 +198,7 @@ def manta_step(start_frame):\n\
         if using_fire:\n\
             update_flame_low()\n\
         \n\
-        if using_wavelets:\n\
+        if using_highres:\n\
             xl.timestep = s.timestep\n\
             mantaMsg('High step / s.frame: ' + str(s.frame))\n\
             if using_fire:\n\
