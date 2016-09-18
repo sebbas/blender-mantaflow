@@ -54,7 +54,7 @@ if dim == 2:\n\
 \n\
 doOpen          = $DO_OPEN$\n\
 boundConditions = '$BOUNDCONDITIONS$'\n\
-boundaryWidth   = 0\n\
+boundaryWidth   = 1\n\
 \n\
 s = Solver(name='main', gridSize=gs, dim=dim)\n";
 
