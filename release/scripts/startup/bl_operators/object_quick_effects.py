@@ -645,8 +645,8 @@ class QuickLiquid(Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     show_flows = BoolProperty(
-            name="Render Smoke Objects",
-            description="Keep the smoke objects visible during rendering",
+            name="Render Liquid Objects",
+            description="Keep the liquid objects visible during rendering",
             default=False,
             )
 
@@ -663,7 +663,7 @@ class QuickLiquid(Operator):
 
         for obj in mesh_objects:
             fake_context["object"] = obj
-            # make each selected object a smoke flow
+            # make each selected object a liquid flow
             bpy.ops.object.modifier_add(fake_context, type='SMOKE')
             obj.modifiers[-1].smoke_type = 'FLOW'
 
@@ -684,7 +684,7 @@ class QuickLiquid(Operator):
         obj = context.active_object
         obj.name = "Liquid Domain"
 
-        # give the smoke some room above the flows
+        # give the liquid some room above the flows
         obj.location = 0.5 * (max_co + min_co) + Vector((0.0, 0.0, -1.0))
         obj.scale = 0.5 * (max_co - min_co) + Vector((1.0, 1.0, 2.0))
 
@@ -701,7 +701,7 @@ class QuickLiquid(Operator):
         obj.draw_type = 'SOLID'
 
         # make the domain smooth so it renders nicely
-        # bpy.ops.object.shade_smooth()
+        bpy.ops.object.shade_smooth()
 
         # create a ray-transparent material for the domain
         bpy.ops.object.material_slot_add()
