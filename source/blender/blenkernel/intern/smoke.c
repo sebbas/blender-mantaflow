@@ -756,6 +756,7 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 // forward decleration
 static void smoke_calc_transparency(SmokeDomainSettings *sds, Scene *scene);
 static float calc_voxel_transp(float *result, float *input, int res[3], int *pixel, float *tRay, float correct);
+static void update_mesh_distances(int index, float *inflow_map, BVHTreeFromMesh *treeData, const float cell_size[3], const float ray_start[3]);
 
 static int get_lamp(Scene *scene, float *light)
 {
@@ -1580,6 +1581,51 @@ static void emit_from_particles(
 	}
 }
 
+static void update_mesh_distances(int index, float *inflow_map, BVHTreeFromMesh *treeData, const float cell_size[3], const float ray_start[3]) {
+	/*****************************************************
+	 * Liquid inflow based on raycasts in all 6 directions.
+	 * Uses distances to mesh surface from within and outside flow mesh for inflow map.
+	 *****************************************************/
+	
+	/* Calculate map which indicates whether point is inside a mesh or not */
+	int i, hit_index;
+	float dot;
+	float min_dist_pos, min_dist_neg, min_dist_combined, min_dist_combined_normalized; // for xyz axis in pos and neg direction and when combining 6 axis
+	float hit_dists[6] = {0.0f};
+	float ray_dirs[6][3] = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f},
+							{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}};
+	size_t ray_cnt = sizeof ray_dirs / sizeof ray_dirs[0];
+	inflow_map[index] = 1.0f; // Init inflow map to one, undetermined otherwise which is not good ...
+
+	for (i = 0; i < ray_cnt; i++) {
+		BVHTreeRayHit hit_tree = {0};
+		hit_tree.index = -1;
+		hit_tree.dist = 9999;
+
+		hit_index = BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dirs[i], 0.0f, &hit_tree, treeData->raycast_callback, treeData);
+		hit_dists[i] = hit_tree.dist;
+
+		if (hit_index != -1) {
+		
+			dot = ray_dirs[i][0] * hit_tree.no[0] + ray_dirs[i][1] * hit_tree.no[1] + ray_dirs[i][2] * hit_tree.no[2];
+
+			if (dot >= 0) {
+				inflow_map[index] = -1.0f; // place mark in map: current point is inside flow mesh. we need this info later
+			}
+		}
+	}
+	
+	/* Get the minimum distance of pos and neg coord systems. Then compare both and again get min */
+	min_dist_pos = MIN3(hit_dists[0], hit_dists[1], hit_dists[2]);
+	min_dist_neg = MIN3(hit_dists[3], hit_dists[4], hit_dists[5]);
+	min_dist_combined = MIN2(min_dist_pos, min_dist_neg);
+	min_dist_combined_normalized = min_dist_combined; // / cell_size[0]; // TODO (sebbas): normalization results in too big values
+	
+	/* If distance is still undetermined (=9999) use default manta value (=0.5) instead (outside emission map value is also 0.5)
+	 * Otherwise use computed distance. inflow_map is either 1.0 or -1.0. Multiplied with dist_comb we have mesh dist from out- and inside */
+	inflow_map[index] *= (min_dist_combined == 9999) ? 0.5f : min_dist_combined_normalized;
+}
+
 static void sample_derivedmesh(
         SmokeFlowSettings *sfs,
         const MVert *mvert, const MLoop *mloop, const MLoopTri *mlooptri, const MLoopUV *mloopuv, const float cell_size[3],
@@ -1621,50 +1667,10 @@ static void sample_derivedmesh(
 		}
 	}
 	
-	/*****************************************************
-	 * Liquid inflow based on raycasts in all 6 directions. 
-	 * Uses distances to mesh surface from within and outside flow mesh for inflow map.
-	 *****************************************************/
-	
-	/* Calculate map which indicates whether point is inside a mesh or not */
-	int i, hit_index;
-	float dot;
-	float min_dist_pos, min_dist_neg, min_dist_combined, min_dist_combined_normalized; // for xyz axis in pos and neg direction and when combining 6 axis
-	float hit_dists[6] = {0.0f};
-	float ray_dirs[6][3] = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f},
-							{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}};
-	size_t ray_cnt = sizeof ray_dirs / sizeof ray_dirs[0];
-	inflow_map[index] = 1.0f; // Init inflow map to zero, undetermined otherwise which is not good ...
-
-	for (i = 0; i < ray_cnt; i++) {
-		BVHTreeRayHit hit_tree = {0};
-		hit_tree.index = -1;
-		hit_tree.dist = 9999;
-
-		hit_index = BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dirs[i], 0.0f, &hit_tree, treeData->raycast_callback, treeData);
-		hit_dists[i] = hit_tree.dist;
-
-		if (hit_index != -1) {
-		
-			dot = ray_dirs[i][0] * hit_tree.no[0] + ray_dirs[i][1] * hit_tree.no[1] + ray_dirs[i][2] * hit_tree.no[2];
-
-			if (dot >= 0) {
-				inflow_map[index] = -1.0f; // place mark in map: current point is inside flow mesh. we need this info later
-			}
-		}
+	/* Get mesh distances for liquid phi grid */
+	if (sfs->type == MOD_SMOKE_FLOW_TYPE_LIQUID) {
+		update_mesh_distances(index, inflow_map, treeData, cell_size, ray_start);
 	}
-	
-	/* Get the minimum distance of pos and neg coord systems. Then compare both and again get min */
-	min_dist_pos = MIN3(hit_dists[0], hit_dists[1], hit_dists[2]);
-	min_dist_neg = MIN3(hit_dists[3], hit_dists[4], hit_dists[5]);
-	min_dist_combined = MIN2(min_dist_pos, min_dist_neg);
-	min_dist_combined_normalized = min_dist_combined / cell_size[0]; // TODO (sebbas): also consider cell_size[1] and cell_size[2] ?!
-	
-	/* If distance is still undetermined (=9999) use default manta value (=0.5) instead (outside emission map value is also 0.5)
-	 * Otherwise use computed distance. inflow_map is either 1.0 or -1.0. Multiplied with dist_comb we have mesh dist from out- and inside */
-	inflow_map[index] *= (min_dist_combined == 9999) ? 0.5 : min_dist_combined_normalized; // TODO (sebbas): Better value for 0.5?
-	
-	/*****************************************************/
 
 	/* find the nearest point on the mesh */
 	if (BLI_bvhtree_find_nearest(treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1) {
