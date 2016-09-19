@@ -36,14 +36,14 @@
 const std::string liquid_bounds_low = "\n\
 # prepare domain low\n\
 mantaMsg('Liquid domain low')\n\
-flags.initDomain(boundaryWidth=boundaryWidth)\n\
+flags.initDomain(boundaryWidth=boundaryWidth, phiWalls=phiObs)\n\
 if doOpen:\n\
     setOpenBound(flags=flags, bWidth=boundaryWidth, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
 
 const std::string liquid_bounds_high = "\n\
 # prepare domain high\n\
 mantaMsg('Liquid domain high')\n\
-xl_flags.initDomain(boundaryWidth=boundaryWidth)\n\
+xl_flags.initDomain(boundaryWidth=boundaryWidth, phiWalls=phiObs)\n\
 if doOpen:\n\
     setOpenBound(flags=xl_flags, bWidth=boundaryWidth, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
 
@@ -138,12 +138,22 @@ def manta_step(start_frame):\n\
     s.timeTotal = s.frame * dt0\n\
     last_frame = s.frame\n\
     \n\
-    sampleLevelsetWithParticles( phi=phiInit, flags=flags, parts=pp, discretization=particleNumber, randomness=randomness, refillEmpty=True )\n\
-    mapGridToPartsVec3(source=vel, parts=pp, target=pVel )\n\
-    phi.join(phiInit)\n\
-    flags.updateFromLevelset(phi)\n\
+    if start_frame == 1:\n\
+        phi.join(phiInit)\n\
+        phiObs.join(phiObsInit)\n\
+        phi.subtract(phiObs)\n\
+        \n\
+        flags.updateFromLevelset(phi)\n\
+        \n\
+        sampleLevelsetWithParticles(phi=phi, flags=flags, parts=pp, discretization=particleNumber, randomness=randomness)\n\
+        mapGridToPartsVec3(source=vel, parts=pp, target=pVel)\n\
+        \n\
+        updateFractions(flags=flags, phiObs=phiObs, fractions=fractions, boundaryWidth=boundaryWidth)\n\
+        setObstacleFlags(flags=flags, phiObs=phiObs, fractions=fractions)\n\
     \n\
     while s.frame == last_frame:\n\
+        sampleLevelsetWithParticles(phi=phiInit, flags=flags, parts=pp, discretization=particleNumber, randomness=randomness, refillEmpty=True)\n\
+        \n\
         mantaMsg('Adapt timestep')\n\
         maxvel = vel.getMaxValue()\n\
         s.adaptTimestep(maxvel)\n\
@@ -166,7 +176,9 @@ def liquid_step():\n\
     \n\
     # Advect particles and grid phi\n\
     # Note: Grid velocities are extrapolated at the end of each step\n\
-    pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False)\n\
+    pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False, stopInObstacle=False)\n\
+    pushOutofObs(parts=pp, flags=flags, phiObs=phiObs)\n\
+    \n\
     advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=1, openBounds=doOpen, boundaryWidth=boundaryWidth)\n\
     \n\
     # Advect grid velocity\n\
@@ -215,12 +227,12 @@ def liquid_step():\n\
     addForceField(flags=flags, vel=vel, force=forces)\n\
     forces.clear()\n\
     \n\
-    setWallBcs(flags=flags, vel=vel)\n\
-    solvePressure(flags=flags, vel=vel, pressure=pressure, phi=phi)\n\
-    setWallBcs(flags=flags, vel=vel)\n\
+    setWallBcs(flags=flags, vel=vel, fractions=fractions, phiObs=phiObs)\n\
+    solvePressure(flags=flags, vel=vel, pressure=pressure, phi=phi, fractions=fractions)\n\
+    setWallBcs(flags=flags, vel=vel, fractions=fractions, phiObs=phiObs)\n\
     \n\
     # Extrapolate velocities\n\
-    extrapolateMACSimple(flags=flags, vel=vel, distance=(int(maxVel*1.25 + 2.)))\n\
+    extrapolateMACSimple(flags=flags, vel=vel, distance=(int(maxVel*1.25 + 2.)), intoObs=True)\n\
     \n\
     # Update particle velocities\n\
     flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.95)\n\
@@ -232,16 +244,13 @@ def liquid_step():\n\
     pVel.setSource(vel, isMAC=True) # Set source grids for resampling, used in adjustNumber!\n\
     if narrowBand:\n\
         phi.setBoundNeumann(boundaryWidth) # make sure no particles are placed at outer boundary\n\
-        adjustNumber(parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, radiusFactor=radiusFactor, narrowBand=narrowBandWidth)\n\
+        adjustNumber(parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, exclude=phiObs, radiusFactor=radiusFactor, narrowBand=narrowBandWidth)\n\
     else:\n\
-        adjustNumber(parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, radiusFactor=radiusFactor)\n\
+        adjustNumber(parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, exclude=phiObs, radiusFactor=radiusFactor)\n\
     \n\
     # TODO (sebbas): HACK - saving particle system for highres step\n\
     if using_highres:\n\
         pp.save('/tmp/partfile.uni')\n\
-    \n\
-    # reset inflow grid\n\
-    phiInit.setConst(0.5)\n\
     \n\
     copyVec3ToReal(source=vel, targetX=x_vel, targetY=y_vel, targetZ=z_vel)\n\
     copyVec3ToReal(source=obvel, targetX=x_obvel, targetY=y_obvel, targetZ=z_obvel)\n";
