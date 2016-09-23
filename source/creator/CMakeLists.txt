@@ -1141,11 +1141,16 @@ setup_blender_sorted_libs()
 
 # -----------------------------------------------------------------------------
 # Mantaflow Force linking
-if(APPLE)
-	SET(MANTA_LINK_LIBRARIES -force_load bf_intern_mantaflow )
-else()
-	SET(MANTA_LINK_LIBRARIES -Wl,--whole-archive bf_intern_mantaflow -Wl,--no-whole-archive )
+if(UNIX AND NOT APPLE)
+	SET(MANTA_LINK_LIBRARIES -Wl,--whole-archive bf_intern_mantaflow -Wl,--no-whole-archive)
+
+elseif(WIN32)
+	SET(MANTA_LINK_LIBRARIES bf_intern_mantaflow)
+
+elseif(APPLE)
+	SET(MANTA_LINK_LIBRARIES -force_load bf_intern_mantaflow)
 endif()
+
 target_link_libraries(blender ${MANTA_LINK_LIBRARIES})
 
 # -----------------------------------------------------------------------------
