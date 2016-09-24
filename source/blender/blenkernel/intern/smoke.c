@@ -3015,8 +3015,6 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 	if (!dm)
 		return NULL;
 	
-	printf("num_verts: %d, num_normals: %d, num_triangles: %d\n", num_verts, num_normals, num_faces);
-	
 	float max_size = MAX3(sds->global_size[0], sds->global_size[1], sds->global_size[2]);
 	
 	// Vertices
@@ -3036,7 +3034,7 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 	// Normals
 	normals = MEM_callocN(sizeof(short) * num_normals * 3, "liquid_tmp_normals");
 	
-	for (i = num_normals, no_s = normals; i > 0; i--, no_s += 3)
+	for (i = 0, no_s = normals; i < num_normals; no_s += 3, i++)
 	{
 		no[0] = liquid_get_normal_x_at(sds->fluid, i);
 		no[1] = liquid_get_normal_y_at(sds->fluid, i);
