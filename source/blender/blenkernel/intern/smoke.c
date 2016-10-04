@@ -968,7 +968,6 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	float *r = smoke_get_color_r(sds->fluid);
 	float *g = smoke_get_color_g(sds->fluid);
 	float *b = smoke_get_color_b(sds->fluid);
-	float *phi = liquid_get_phi(sds->fluid);
 	float *phiObsInit = liquid_get_phiobsinit(sds->fluid);
 	unsigned int z;
 
@@ -1031,9 +1030,6 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 				r[z] = 0;
 				g[z] = 0;
 				b[z] = 0;
-			}
-			if (phi) {
-				//phi[z] = 0.5; // TODO (sebbas): if enabled this causes the mesh "flickering"
 			}
 		}
 		/* average velocities from multiple obstacles in one cell */
