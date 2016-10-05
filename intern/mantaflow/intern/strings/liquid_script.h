@@ -284,65 +284,65 @@ def save_mesh_high(path):\n\
 
 const std::string liquid_import_low = "\n\
 def load_liquid_data_low(path):\n\
-    flags.load(path + str('flags.uni'))\n\
+    flags.load(os.path.join(path, 'flags.uni'))\n\
     \n\
-    phiParts.load(path + str('phiParts.uni'))\n\
-    phi.load(path + str('phi.uni'))\n\
-    phiInit.load(path + str('phiInit.uni'))\n\
-    phiObs.load(path + str('phiObs.uni'))\n\
-    phiObsInit.load(path + str('phiObsInit.uni'))\n\
-    fractions.load(path + str('fractions.uni'))\n\
-    pressure.load(path + str('pressure.uni'))\n\
+    phiParts.load(os.path.join(path, 'phiParts.uni'))\n\
+    phi.load(os.path.join(path, 'phi.uni'))\n\
+    phiInit.load(os.path.join(path, 'phiInit.uni'))\n\
+    phiObs.load(os.path.join(path, 'phiObs.uni'))\n\
+    phiObsInit.load(os.path.join(path, 'phiObsInit.uni'))\n\
+    fractions.load(os.path.join(path, 'fractions.uni'))\n\
+    pressure.load(os.path.join(path, 'pressure.uni'))\n\
     \n\
-    vel.load(path + str('vel.uni'))\n\
-    velOld.load(path + str('velOld.uni'))\n\
-    velParts.load(path + str('velParts.uni'))\n\
-    mapWeights.load(path + str('mapWeights.uni'))\n\
+    vel.load(os.path.join(path, 'vel.uni'))\n\
+    velOld.load(os.path.join(path, 'velOld.uni'))\n\
+    velParts.load(os.path.join(path, 'velParts.uni'))\n\
+    mapWeights.load(os.path.join(path, 'mapWeights.uni'))\n\
     \n\
-    pp.load(path + str('pp.uni'))\n\
-    pVel.load(path + str('pVel.uni'))\n\
+    pp.load(os.path.join(path, 'pp.uni'))\n\
+    pVel.load(os.path.join(path, 'pVel.uni'))\n\
     \n\
-    gpi.load(path + str('gpi.uni'))\n";
+    gpi.load(os.path.join(path, 'gpi.uni'))\n";
 
 const std::string liquid_import_high = "\n\
 def load_liquid_data_high(path):\n\
-    xl_flags.load(path + str('xl_flags.uni'))\n\
+    xl_flags.load(os.path.join(path, 'xl_flags.uni'))\n\
     \n\
-    xl_phiParts.load(path + str('xl_phiParts.uni'))\n\
-    xl_phi.load(path + str('xl_phi.uni'))\n\
+    xl_phiParts.load(os.path.join(path, 'xl_phiParts.uni'))\n\
+    xl_phi.load(os.path.join(path, 'xl_phi.uni'))\n\
     \n\
-    xl_pp.load(path + str('xl_pp.uni'))\n";
+    xl_pp.load(os.path.join(path, 'xl_pp.uni'))\n";
 
 const std::string liquid_export_low = "\n\
 def save_liquid_data_low(path):\n\
-    flags.save(path + str('flags.uni'))\n\
+    flags.save(os.path.join(path, 'flags.uni'))\n\
     \n\
-    phiParts.save(path + str('phiParts.uni'))\n\
-    phi.save(path + str('phi.uni'))\n\
-    phiInit.save(path + str('phiInit.uni'))\n\
-    phiObs.save(path + str('phiObs.uni'))\n\
-    phiObsInit.save(path + str('phiObsInit.uni'))\n\
-    fractions.save(path + str('fractions.uni'))\n\
-    pressure.save(path + str('pressure.uni'))\n\
+    phiParts.save(os.path.join(path, 'phiParts.uni'))\n\
+    phi.save(os.path.join(path, 'phi.uni'))\n\
+    phiInit.save(os.path.join(path, 'phiInit.uni'))\n\
+    phiObs.save(os.path.join(path, 'phiObs.uni'))\n\
+    phiObsInit.save(os.path.join(path, 'phiObsInit.uni'))\n\
+    fractions.save(os.path.join(path, 'fractions.uni'))\n\
+    pressure.save(os.path.join(path, 'pressure.uni'))\n\
     \n\
-    vel.save(path + str('vel.uni'))\n\
-    velOld.save(path + str('velOld.uni'))\n\
-    velParts.save(path + str('velParts.uni'))\n\
-    mapWeights.save(path + str('mapWeights.uni'))\n\
+    vel.save(os.path.join(path, 'vel.uni'))\n\
+    velOld.save(os.path.join(path, 'velOld.uni'))\n\
+    velParts.save(os.path.join(path, 'velParts.uni'))\n\
+    mapWeights.save(os.path.join(path, 'mapWeights.uni'))\n\
     \n\
-    pp.save(path + str('pp.uni'))\n\
-    pVel.save(path + str('pVel.uni'))\n\
+    pp.save(os.path.join(path, 'pp.uni'))\n\
+    pVel.save(os.path.join(path, 'pVel.uni'))\n\
     \n\
-    gpi.save(path + str('gpi.uni'))\n";
+    gpi.save(os.path.join(path, 'gpi.uni'))\n";
 
 const std::string liquid_export_high = "\n\
 def save_liquid_data_high(path):\n\
-    xl_flags.save(path + str('xl_flags.uni'))\n\
+    xl_flags.save(os.path.join(path, 'xl_flags.uni'))\n\
     \n\
-    xl_phiParts.save(path + str('xl_phiParts.uni'))\n\
-    xl_phi.save(path + str('xl_phi.uni'))\n\
+    xl_phiParts.save(os.path.join(path, 'xl_phiParts.uni'))\n\
+    xl_phi.save(os.path.join(path, 'xl_phi.uni'))\n\
     \n\
-    xl_pp.save(path + str('xl_pp.uni'))\n";
+    xl_pp.save(os.path.join(path, 'xl_pp.uni'))\n";
 
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION
