@@ -35,7 +35,7 @@
 
 const std::string manta_import = "\
 from manta import *\n\
-import os, shutil, math, sys, gc\n";
+import os, shutil, math, sys, gc, tempfile\n";
 
 //////////////////////////////////////////////////////////////////////
 // SOLVERS
