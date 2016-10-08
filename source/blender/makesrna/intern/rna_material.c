@@ -233,7 +233,7 @@ static void rna_Material_active_texture_set(PointerRNA *ptr, PointerRNA value)
 	set_current_material_texture(ma, value.data);
 }
 
-static int rna_Material_active_texture_editable(PointerRNA *ptr)
+static int rna_Material_active_texture_editable(PointerRNA *ptr, const char **UNUSED(r_info))
 {
 	Material *ma = (Material *)ptr->id.data;
 
@@ -1889,7 +1889,7 @@ void RNA_def_material(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "pass_index", PROP_INT, PROP_UNSIGNED);
 	RNA_def_property_int_sdna(prop, NULL, "index");
-	RNA_def_property_ui_text(prop, "Pass Index", "Index number for the IndexMA render pass");
+	RNA_def_property_ui_text(prop, "Pass Index", "Index number for the \"Material Index\" render pass");
 	RNA_def_property_update(prop, NC_OBJECT, "rna_Material_update");
 
 	/* flags */

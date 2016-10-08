@@ -40,9 +40,14 @@
 #include "BLI_utildefines.h"
 #include "BLI_math.h"
 
+#include "BKE_DerivedMesh.h"
 #include "BKE_particle.h"
 
+#ifdef WITH_MANTA
+#include "manta_fluid_API.h"
+#else
 #include "smoke_API.h"
+#endif
 
 #include "BIF_gl.h"
 
@@ -112,6 +117,63 @@ typedef struct VolumeSlicer {
 	float max[3];
 	float (*verts)[3];
 } VolumeSlicer;
+
+/* *************************** Axis Aligned Slicing ************************** */
+
+static void create_single_slice(VolumeSlicer *slicer, const float depth,
+                                const int axis, const int idx)
+{
+	const float vertices[3][4][3] = {
+	    {
+	        { depth, slicer->min[1], slicer->min[2] },
+	        { depth, slicer->max[1], slicer->min[2] },
+	        { depth, slicer->max[1], slicer->max[2] },
+	        { depth, slicer->min[1], slicer->max[2] }
+	    },
+	    {
+	        { slicer->min[0], depth, slicer->min[2] },
+	        { slicer->min[0], depth, slicer->max[2] },
+	        { slicer->max[0], depth, slicer->max[2] },
+	        { slicer->max[0], depth, slicer->min[2] }
+	    },
+	    {
+	        { slicer->min[0], slicer->min[1], depth },
+	        { slicer->min[0], slicer->max[1], depth },
+	        { slicer->max[0], slicer->max[1], depth },
+	        { slicer->max[0], slicer->min[1], depth }
+	    }
+	};
+
+	copy_v3_v3(slicer->verts[idx + 0], vertices[axis][0]);
+	copy_v3_v3(slicer->verts[idx + 1], vertices[axis][1]);
+	copy_v3_v3(slicer->verts[idx + 2], vertices[axis][2]);
+	copy_v3_v3(slicer->verts[idx + 3], vertices[axis][0]);
+	copy_v3_v3(slicer->verts[idx + 4], vertices[axis][2]);
+	copy_v3_v3(slicer->verts[idx + 5], vertices[axis][3]);
+}
+
+static void create_axis_aligned_slices(VolumeSlicer *slicer, const int num_slices,
+                                       const float view_dir[3], const int axis)
+{
+	float depth, slice_size = slicer->size[axis] / num_slices;
+
+	/* always process slices in back to front order! */
+	if (view_dir[axis] > 0.0f) {
+		depth = slicer->min[axis];
+	}
+	else {
+		depth = slicer->max[axis];
+		slice_size = -slice_size;
+	}
+
+	int count = 0;
+	for (int slice = 0; slice < num_slices; slice++) {
+		create_single_slice(slicer, depth, axis, count);
+
+		count += 6;
+		depth += slice_size;
+	}
+}
 
 /* *************************** View Aligned Slicing ************************** */
 
@@ -288,6 +350,108 @@ static int create_view_aligned_slices(VolumeSlicer *slicer,
 	return num_points;
 }
 
+static void bind_shader(SmokeDomainSettings *sds, GPUShader *shader, GPUTexture *tex_spec,
+                        bool use_fire, const float min[3],
+                        const float ob_sizei[3], const float invsize[3])
+{
+	int invsize_location = GPU_shader_get_uniform(shader, "invsize");
+	int ob_sizei_location = GPU_shader_get_uniform(shader, "ob_sizei");
+	int min_location = GPU_shader_get_uniform(shader, "min_location");
+
+	int soot_location;
+	int stepsize_location;
+	int densityscale_location;
+	int spec_location, flame_location;
+	int shadow_location, actcol_location;
+
+	if (use_fire) {
+		spec_location = GPU_shader_get_uniform(shader, "spectrum_texture");
+		flame_location = GPU_shader_get_uniform(shader, "flame_texture");
+	}
+	else {
+		shadow_location = GPU_shader_get_uniform(shader, "shadow_texture");
+		actcol_location = GPU_shader_get_uniform(shader, "active_color");
+		soot_location = GPU_shader_get_uniform(shader, "soot_texture");
+		stepsize_location = GPU_shader_get_uniform(shader, "step_size");
+		densityscale_location = GPU_shader_get_uniform(shader, "density_scale");
+	}
+
+	GPU_shader_bind(shader);
+
+	if (use_fire) {
+		GPU_texture_bind(sds->tex_flame, 2);
+		GPU_shader_uniform_texture(shader, flame_location, sds->tex_flame);
+
+		GPU_texture_bind(tex_spec, 3);
+		GPU_shader_uniform_texture(shader, spec_location, tex_spec);
+	}
+	else {
+		float density_scale = 10.0f * sds->display_thickness;
+
+		GPU_shader_uniform_vector(shader, stepsize_location, 1, 1, &sds->dx);
+		GPU_shader_uniform_vector(shader, densityscale_location, 1, 1, &density_scale);
+
+		GPU_texture_bind(sds->tex, 0);
+		GPU_shader_uniform_texture(shader, soot_location, sds->tex);
+
+		GPU_texture_bind(sds->tex_shadow, 1);
+		GPU_shader_uniform_texture(shader, shadow_location, sds->tex_shadow);
+
+		float active_color[3] = { 0.9, 0.9, 0.9 };
+		if ((sds->active_fields & SM_ACTIVE_COLORS) == 0)
+			mul_v3_v3(active_color, sds->active_color);
+		GPU_shader_uniform_vector(shader, actcol_location, 3, 1, active_color);
+	}
+
+	GPU_shader_uniform_vector(shader, min_location, 3, 1, min);
+	GPU_shader_uniform_vector(shader, ob_sizei_location, 3, 1, ob_sizei);
+	GPU_shader_uniform_vector(shader, invsize_location, 3, 1, invsize);
+}
+
+static void unbind_shader(SmokeDomainSettings *sds, GPUTexture *tex_spec, bool use_fire)
+{
+	GPU_shader_unbind();
+
+	GPU_texture_unbind(sds->tex);
+
+	if (use_fire) {
+		GPU_texture_unbind(sds->tex_flame);
+		GPU_texture_unbind(tex_spec);
+		GPU_texture_free(tex_spec);
+	}
+	else {
+		GPU_texture_unbind(sds->tex_shadow);
+	}
+}
+
+static void draw_buffer(SmokeDomainSettings *sds, GPUShader *shader, const VolumeSlicer *slicer,
+                        const float ob_sizei[3], const float invsize[3], const int num_points, const bool do_fire)
+{
+	GPUTexture *tex_spec = (do_fire) ? create_flame_spectrum_texture() : NULL;
+
+	GLuint vertex_buffer;
+	glGenBuffers(1, &vertex_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 3 * num_points, &slicer->verts[0][0], GL_STATIC_DRAW);
+
+	bind_shader(sds, shader, tex_spec, do_fire, slicer->min, ob_sizei, invsize);
+
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, NULL);
+
+	glDrawArrays(GL_TRIANGLES, 0, num_points);
+
+	glDisableClientState(GL_VERTEX_ARRAY);
+
+	unbind_shader(sds, tex_spec, do_fire);
+
+	/* cleanup */
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	glDeleteBuffers(1, &vertex_buffer);
+}
+
 void draw_smoke_volume(SmokeDomainSettings *sds, Object *ob,
                        const float min[3], const float max[3],
                         const float viewnormal[3])
@@ -299,12 +463,21 @@ void draw_smoke_volume(SmokeDomainSettings *sds, Object *ob,
 
 	const bool use_fire = (sds->active_fields & SM_ACTIVE_FIRE) && sds->tex_flame;
 
-	GPUShader *shader = GPU_shader_get_builtin_shader(
-	                        (use_fire) ? GPU_SHADER_SMOKE_FIRE : GPU_SHADER_SMOKE);
+	GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_SMOKE);
 
 	if (!shader) {
 		fprintf(stderr, "Unable to create GLSL smoke shader.\n");
 		return;
+	}
+
+	GPUShader *fire_shader = NULL;
+	if (use_fire) {
+		fire_shader = GPU_shader_get_builtin_shader(GPU_SHADER_SMOKE_FIRE);
+
+		if (!fire_shader) {
+			fprintf(stderr, "Unable to create GLSL fire shader.\n");
+			return;
+		}
 	}
 
 	const float ob_sizei[3] = {
@@ -320,54 +493,27 @@ void draw_smoke_volume(SmokeDomainSettings *sds, Object *ob,
 	TIMEIT_START(draw);
 #endif
 
-	/* setup smoke shader */
-
-	int soot_location = GPU_shader_get_uniform(shader, "soot_texture");
-	int spec_location = GPU_shader_get_uniform(shader, "spectrum_texture");
-	int shadow_location = GPU_shader_get_uniform(shader, "shadow_texture");
-	int flame_location = GPU_shader_get_uniform(shader, "flame_texture");
-	int actcol_location = GPU_shader_get_uniform(shader, "active_color");
-	int stepsize_location = GPU_shader_get_uniform(shader, "step_size");
-	int densityscale_location = GPU_shader_get_uniform(shader, "density_scale");
-	int invsize_location = GPU_shader_get_uniform(shader, "invsize");
-	int ob_sizei_location = GPU_shader_get_uniform(shader, "ob_sizei");
-	int min_location = GPU_shader_get_uniform(shader, "min_location");
-
-	GPU_shader_bind(shader);
-
-	GPU_texture_bind(sds->tex, 0);
-	GPU_shader_uniform_texture(shader, soot_location, sds->tex);
-
-	GPU_texture_bind(sds->tex_shadow, 1);
-	GPU_shader_uniform_texture(shader, shadow_location, sds->tex_shadow);
-
-	GPUTexture *tex_spec = NULL;
-
-	if (use_fire) {
-		GPU_texture_bind(sds->tex_flame, 2);
-		GPU_shader_uniform_texture(shader, flame_location, sds->tex_flame);
-
-		tex_spec = create_flame_spectrum_texture();
-		GPU_texture_bind(tex_spec, 3);
-		GPU_shader_uniform_texture(shader, spec_location, tex_spec);
-	}
-
-	float active_color[3] = { 0.9, 0.9, 0.9 };
-	float density_scale = 10.0f;
-	if ((sds->active_fields & SM_ACTIVE_COLORS) == 0)
-		mul_v3_v3(active_color, sds->active_color);
-
-	GPU_shader_uniform_vector(shader, actcol_location, 3, 1, active_color);
-	GPU_shader_uniform_vector(shader, stepsize_location, 1, 1, &sds->dx);
-	GPU_shader_uniform_vector(shader, densityscale_location, 1, 1, &density_scale);
-	GPU_shader_uniform_vector(shader, min_location, 3, 1, min);
-	GPU_shader_uniform_vector(shader, ob_sizei_location, 3, 1, ob_sizei);
-	GPU_shader_uniform_vector(shader, invsize_location, 3, 1, invsize);
-
 	/* setup slicing information */
 
-	const int max_slices = 256;
-	const int max_points = max_slices * 12;
+	const bool view_aligned = (sds->slice_method == MOD_SMOKE_SLICE_VIEW_ALIGNED);
+	int max_slices, max_points, axis = 0;
+
+	if (view_aligned) {
+		max_slices = max_iii(sds->res[0], sds->res[1], sds->res[2]) * sds->slice_per_voxel;
+		max_points = max_slices * 12;
+	}
+	else {
+		if (sds->axis_slice_method == AXIS_SLICE_FULL) {
+			axis = axis_dominant_v3_single(viewnormal);
+			max_slices = sds->res[axis] * sds->slice_per_voxel;
+		}
+		else {
+			axis = (sds->slice_axis == SLICE_AXIS_AUTO) ? axis_dominant_v3_single(viewnormal) : sds->slice_axis - 1;
+			max_slices = 1;
+		}
+
+		max_points = max_slices * 6;
+	}
 
 	VolumeSlicer slicer;
 	copy_v3_v3(slicer.min, min);
@@ -375,7 +521,22 @@ void draw_smoke_volume(SmokeDomainSettings *sds, Object *ob,
 	copy_v3_v3(slicer.size, size);
 	slicer.verts = MEM_mallocN(sizeof(float) * 3 * max_points, "smoke_slice_vertices");
 
-	const int num_points = create_view_aligned_slices(&slicer, max_slices, viewnormal);
+	int num_points;
+
+	if (view_aligned) {
+		num_points = create_view_aligned_slices(&slicer, max_slices, viewnormal);
+	}
+	else {
+		num_points = max_points;
+
+		if (sds->axis_slice_method == AXIS_SLICE_FULL) {
+			create_axis_aligned_slices(&slicer, max_slices, viewnormal, axis);
+		}
+		else {
+			const float depth = (sds->slice_depth - 0.5f) * size[axis];
+			create_single_slice(&slicer, depth, axis, 0);
+		}
+	}
 
 	/* setup buffer and draw */
 
@@ -387,42 +548,22 @@ void draw_smoke_volume(SmokeDomainSettings *sds, Object *ob,
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_FALSE);
 	glEnable(GL_BLEND);
+
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+	draw_buffer(sds, shader, &slicer, ob_sizei, invsize, num_points, false);
 
-	GLuint vertex_buffer;
-	glGenBuffers(1, &vertex_buffer);
-	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 3 * num_points, &slicer.verts[0][0], GL_STATIC_DRAW);
-
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(3, GL_FLOAT, 0, NULL);
-
-	glDrawArrays(GL_TRIANGLES, 0, num_points);
-
-	glDisableClientState(GL_VERTEX_ARRAY);
+	/* Draw fire separately (T47639). */
+	if (use_fire) {
+		glBlendFunc(GL_ONE, GL_ONE);
+		draw_buffer(sds, fire_shader, &slicer, ob_sizei, invsize, num_points, true);
+	}
 
 #ifdef DEBUG_DRAW_TIME
 	printf("Draw Time: %f\n", (float)TIMEIT_VALUE(draw));
 	TIMEIT_END(draw);
 #endif
 
-	/* cleanup */
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glDeleteBuffers(1, &vertex_buffer);
-
-	GPU_texture_unbind(sds->tex);
-	GPU_texture_unbind(sds->tex_shadow);
-
-	if (use_fire) {
-		GPU_texture_unbind(sds->tex_flame);
-		GPU_texture_unbind(tex_spec);
-		GPU_texture_free(tex_spec);
-	}
-
 	MEM_freeN(slicer.verts);
-
-	GPU_shader_unbind();
 
 	glDepthMask(gl_depth_write);
 
@@ -435,61 +576,193 @@ void draw_smoke_volume(SmokeDomainSettings *sds, Object *ob,
 	}
 }
 
-#ifdef SMOKE_DEBUG_VELOCITY
-void draw_smoke_velocity(SmokeDomainSettings *domain, Object *ob)
+#ifdef WITH_SMOKE
+static void add_tri(float (*verts)[3], float(*colors)[3], int *offset,
+                    float p1[3], float p2[3], float p3[3], float rgb[3])
 {
-	float x, y, z;
-	float x0, y0, z0;
-	int *base_res = domain->base_res;
-	int *res = domain->res;
-	int *res_min = domain->res_min;
-	int *res_max = domain->res_max;
-	float *vel_x = smoke_get_velocity_x(domain->fluid);
-	float *vel_y = smoke_get_velocity_y(domain->fluid);
-	float *vel_z = smoke_get_velocity_z(domain->fluid);
+	copy_v3_v3(verts[*offset + 0], p1);
+	copy_v3_v3(verts[*offset + 1], p2);
+	copy_v3_v3(verts[*offset + 2], p3);
 
-	float min[3];
-	float *cell_size = domain->cell_size;
-	float step_size = ((float)max_iii(base_res[0], base_res[1], base_res[2])) / 16.f;
-	float vf = domain->scale / 16.f * 2.f; /* velocity factor */
+	copy_v3_v3(colors[*offset + 0], rgb);
+	copy_v3_v3(colors[*offset + 1], rgb);
+	copy_v3_v3(colors[*offset + 2], rgb);
+
+	*offset += 3;
+}
+
+static void add_needle(float (*verts)[3], float (*colors)[3], float center[3],
+                       float dir[3], float scale, float voxel_size, int *offset)
+{
+	float len = len_v3(dir);
+
+	float rgb[3];
+	weight_to_rgb(rgb, len);
+
+	if (len != 0.0f) {
+		mul_v3_fl(dir, 1.0f / len);
+		len *= scale;
+	}
+
+	len *= voxel_size;
+
+	float corners[4][3] = {
+	    { 0.0f, 0.2f, -0.5f },
+	    { -0.2f * 0.866f, -0.2f * 0.5f, -0.5f },
+	    { 0.2f * 0.866f, -0.2f * 0.5f, -0.5f },
+	    { 0.0f, 0.0f, 0.5f }
+	};
+
+	const float up[3] = { 0.0f, 0.0f, 1.0f };
+	float rot[3][3];
+
+	rotation_between_vecs_to_mat3(rot, up, dir);
+	transpose_m3(rot);
+
+	for (int i = 0; i < 4; i++) {
+		mul_m3_v3(rot, corners[i]);
+		mul_v3_fl(corners[i], len);
+		add_v3_v3(corners[i], center);
+	}
+
+	add_tri(verts, colors, offset, corners[0], corners[1], corners[2], rgb);
+	add_tri(verts, colors, offset, corners[0], corners[1], corners[3], rgb);
+	add_tri(verts, colors, offset, corners[1], corners[2], corners[3], rgb);
+	add_tri(verts, colors, offset, corners[2], corners[0], corners[3], rgb);
+}
+
+static void add_streamline(float (*verts)[3], float(*colors)[3], float center[3],
+                           float dir[3], float scale, float voxel_size, int *offset)
+{
+	const float len = len_v3(dir);
+
+	float rgb[3];
+	weight_to_rgb(rgb, len);
+
+	copy_v3_v3(colors[(*offset)], rgb);
+	copy_v3_v3(verts[(*offset)++], center);
+
+	mul_v3_fl(dir, scale * voxel_size);
+	add_v3_v3(center, dir);
+
+	copy_v3_v3(colors[(*offset)], rgb);
+	copy_v3_v3(verts[(*offset)++], center);
+}
+
+typedef void (*vector_draw_func)(float(*)[3], float(*)[3], float*, float*, float, float, int*);
+#endif  /* WITH_SMOKE */
+
+void draw_smoke_velocity(SmokeDomainSettings *domain, float viewnormal[3])
+{
+#ifdef WITH_SMOKE
+	const float *vel_x = smoke_get_velocity_x(domain->fluid);
+	const float *vel_y = smoke_get_velocity_y(domain->fluid);
+	const float *vel_z = smoke_get_velocity_z(domain->fluid);
+
+	if (ELEM(NULL, vel_x, vel_y, vel_z)) {
+		return;
+	}
+
+	const int *base_res = domain->base_res;
+	const int *res = domain->res;
+	const int *res_min = domain->res_min;
+
+	int res_max[3];
+	copy_v3_v3_int(res_max, domain->res_max);
+
+	const float *cell_size = domain->cell_size;
+	const float step_size = ((float)max_iii(base_res[0], base_res[1], base_res[2])) / 16.0f;
+
+	/* set first position so that it doesn't jump when domain moves */
+	float xyz[3] = {
+	    res_min[0] + fmod(-(float)domain->shift[0] + res_min[0], step_size),
+	    res_min[1] + fmod(-(float)domain->shift[1] + res_min[1], step_size),
+	    res_min[2] + fmod(-(float)domain->shift[2] + res_min[2], step_size)
+	};
+
+	if (xyz[0] < res_min[0]) xyz[0] += step_size;
+	if (xyz[1] < res_min[1]) xyz[1] += step_size;
+	if (xyz[2] < res_min[2]) xyz[2] += step_size;
+
+	float min[3] = {
+	    domain->p0[0] - domain->cell_size[0] * domain->adapt_res,
+		domain->p0[1] - domain->cell_size[1] * domain->adapt_res,
+		domain->p0[2] - domain->cell_size[2] * domain->adapt_res,
+	};
+
+	int num_points_v[3] = {
+	    ((float)(res_max[0] - floor(xyz[0])) / step_size) + 0.5f,
+	    ((float)(res_max[1] - floor(xyz[1])) / step_size) + 0.5f,
+	    ((float)(res_max[2] - floor(xyz[2])) / step_size) + 0.5f
+	};
+
+	if (domain->slice_method == MOD_SMOKE_SLICE_AXIS_ALIGNED &&
+	    domain->axis_slice_method == AXIS_SLICE_SINGLE)
+	{
+		const int axis = (domain->slice_axis == SLICE_AXIS_AUTO) ?
+		                     axis_dominant_v3_single(viewnormal) : domain->slice_axis - 1;
+
+		xyz[axis] = (float)base_res[axis] * domain->slice_depth;
+		num_points_v[axis] = 1;
+		res_max[axis] = xyz[axis] + 1;
+	}
+
+	vector_draw_func func;
+	int max_points;
+
+	if (domain->vector_draw_type == VECTOR_DRAW_NEEDLE) {
+		func = add_needle;
+		max_points = (num_points_v[0] * num_points_v[1] * num_points_v[2]) * 4 * 3;
+	}
+	else {
+		func = add_streamline;
+		max_points = (num_points_v[0] * num_points_v[1] * num_points_v[2]) * 2;
+	}
+
+	float (*verts)[3] = MEM_mallocN(sizeof(float) * 3 * max_points, "");
+	float (*colors)[3] = MEM_mallocN(sizeof(float) * 3 * max_points, "");
+
+	int num_points = 0;
+
+	for (float x = floor(xyz[0]); x < res_max[0]; x += step_size) {
+		for (float y = floor(xyz[1]); y < res_max[1]; y += step_size) {
+			for (float z = floor(xyz[2]); z < res_max[2]; z += step_size) {
+				int index = (floor(x) - res_min[0]) + (floor(y) - res_min[1]) * res[0] + (floor(z) - res_min[2]) * res[0] * res[1];
+
+				float pos[3] = {
+				    min[0] + ((float)x + 0.5f) * cell_size[0],
+				    min[1] + ((float)y + 0.5f) * cell_size[1],
+				    min[2] + ((float)z + 0.5f) * cell_size[2]
+				};
+
+				float vel[3] = {
+				    vel_x[index], vel_y[index], vel_z[index]
+				};
+
+				func(verts, colors, pos, vel, domain->vector_scale, cell_size[0], &num_points);
+			}
+		}
+	}
 
 	glLineWidth(1.0f);
 
-	/* set first position so that it doesn't jump when domain moves */
-	x0 = res_min[0] + fmod(-(float)domain->shift[0] + res_min[0], step_size);
-	y0 = res_min[1] + fmod(-(float)domain->shift[1] + res_min[1], step_size);
-	z0 = res_min[2] + fmod(-(float)domain->shift[2] + res_min[2], step_size);
-	if (x0 < res_min[0]) x0 += step_size;
-	if (y0 < res_min[1]) y0 += step_size;
-	if (z0 < res_min[2]) z0 += step_size;
-	add_v3_v3v3(min, domain->p0, domain->obj_shift_f);
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, verts);
 
-	for (x = floor(x0); x < res_max[0]; x += step_size)
-		for (y = floor(y0); y < res_max[1]; y += step_size)
-			for (z = floor(z0); z < res_max[2]; z += step_size) {
-				int index = (floor(x) - res_min[0]) + (floor(y) - res_min[1]) * res[0] + (floor(z) - res_min[2]) * res[0] * res[1];
+	glEnableClientState(GL_COLOR_ARRAY);
+	glColorPointer(3, GL_FLOAT, 0, colors);
 
-				float pos[3] = {min[0] + ((float)x + 0.5f) * cell_size[0], min[1] + ((float)y + 0.5f) * cell_size[1], min[2] + ((float)z + 0.5f) * cell_size[2]};
-				float vel = sqrtf(vel_x[index] * vel_x[index] + vel_y[index] * vel_y[index] + vel_z[index] * vel_z[index]);
+	glDrawArrays(GL_LINES, 0, num_points);
 
-				/* draw heat as scaled "arrows" */
-				if (vel >= 0.01f) {
-					float col_g = 1.0f - vel;
-					CLAMP(col_g, 0.0f, 1.0f);
-					glColor3f(1.0f, col_g, 0.0f);
-					glPointSize(10.0f * vel);
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisableClientState(GL_COLOR_ARRAY);
 
-					glBegin(GL_LINES);
-					glVertex3f(pos[0], pos[1], pos[2]);
-					glVertex3f(pos[0] + vel_x[index] * vf, pos[1] + vel_y[index] * vf, pos[2] + vel_z[index] * vf);
-					glEnd();
-					glBegin(GL_POINTS);
-					glVertex3f(pos[0] + vel_x[index] * vf, pos[1] + vel_y[index] * vf, pos[2] + vel_z[index] * vf);
-					glEnd();
-				}
-			}
-}
+	MEM_freeN(verts);
+	MEM_freeN(colors);
+#else
+	UNUSED_VARS(domain, viewnormal);
 #endif
+}
 
 #ifdef SMOKE_DEBUG_HEAT
 void draw_smoke_heat(SmokeDomainSettings *domain, Object *ob)

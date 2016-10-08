@@ -23,6 +23,7 @@
 
 #include "util_set.h"
 #include "util_string.h"
+#include "util_thread.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -46,6 +47,15 @@ public:
 
 	void device_update(Device *device, DeviceScene *dscene, Scene *scene, Progress& progress);
 	void device_free(Device *device, DeviceScene *dscene, Scene *scene);
+
+protected:
+	/* Lock used to synchronize threaded nodes compilation. */
+	thread_spin_lock nodes_lock_;
+
+	void device_update_shader(Scene *scene,
+	                          Shader *shader,
+	                          Progress *progress,
+	                          vector<int4> *global_svm_nodes);
 };
 
 /* Graph Compiler */
@@ -99,6 +109,7 @@ public:
 	int stack_assign(ShaderInput *input);
 	int stack_assign_if_linked(ShaderInput *input);
 	int stack_assign_if_linked(ShaderOutput *output);
+	int stack_find_offset(int size);
 	int stack_find_offset(SocketType::Type type);
 	void stack_clear_offset(SocketType::Type type, int offset);
 	void stack_link(ShaderInput *input, ShaderOutput *output);
@@ -199,7 +210,7 @@ protected:
 	/* compile */
 	void compile_type(Shader *shader, ShaderGraph *graph, ShaderType type);
 
-	vector<int4> svm_nodes;
+	vector<int4> current_svm_nodes;
 	ShaderType current_type;
 	Shader *current_shader;
 	ShaderGraph *current_graph;

@@ -245,18 +245,15 @@ static void do_item_rename(ARegion *ar, TreeElement *te, TreeStoreElem *tselem, 
 }
 
 void item_rename_cb(
-        bContext *C, ReportList *UNUSED(reports), Scene *UNUSED(scene), TreeElement *te,
+        bContext *C, ReportList *reports, Scene *UNUSED(scene), TreeElement *te,
         TreeStoreElem *UNUSED(tsep), TreeStoreElem *tselem, void *UNUSED(user_data))
 {
 	ARegion *ar = CTX_wm_region(C);
-	ReportList *reports = CTX_wm_reports(C); // XXX
 	do_item_rename(ar, te, tselem, reports);
 }
 
-static int do_outliner_item_rename(bContext *C, ARegion *ar, SpaceOops *soops, TreeElement *te, const float mval[2])
-{	
-	ReportList *reports = CTX_wm_reports(C); // XXX
-	
+static int do_outliner_item_rename(ReportList *reports, ARegion *ar, SpaceOops *soops, TreeElement *te, const float mval[2])
+{
 	if (mval[1] > te->ys && mval[1] < te->ys + UI_UNIT_Y) {
 		TreeStoreElem *tselem = TREESTORE(te);
 		
@@ -269,12 +266,12 @@ static int do_outliner_item_rename(bContext *C, ARegion *ar, SpaceOops *soops, T
 	}
 	
 	for (te = te->subtree.first; te; te = te->next) {
-		if (do_outliner_item_rename(C, ar, soops, te, mval)) return 1;
+		if (do_outliner_item_rename(reports, ar, soops, te, mval)) return 1;
 	}
 	return 0;
 }
 
-static int outliner_item_rename(bContext *C, wmOperator *UNUSED(op), const wmEvent *event)
+static int outliner_item_rename(bContext *C, wmOperator *op, const wmEvent *event)
 {
 	ARegion *ar = CTX_wm_region(C);
 	SpaceOops *soops = CTX_wm_space_outliner(C);
@@ -285,7 +282,7 @@ static int outliner_item_rename(bContext *C, wmOperator *UNUSED(op), const wmEve
 	UI_view2d_region_to_view(&ar->v2d, event->mval[0], event->mval[1], &fmval[0], &fmval[1]);
 	
 	for (te = soops->tree.first; te; te = te->next) {
-		if (do_outliner_item_rename(C, ar, soops, te, fmval)) {
+		if (do_outliner_item_rename(op->reports, ar, soops, te, fmval)) {
 			changed = true;
 			break;
 		}
@@ -323,7 +320,7 @@ static void id_delete(bContext *C, ReportList *reports, TreeElement *te, TreeSto
 	}
 	else if (BKE_library_ID_is_indirectly_used(bmain, id) && ID_REAL_USERS(id) <= 1) {
 		BKE_reportf(reports, RPT_WARNING,
-		            "Cannot delete id '%s', indirectly used datablocks need at least one user",
+		            "Cannot delete id '%s', indirectly used data-blocks need at least one user",
 		            id->name);
 		return;
 	}
@@ -392,7 +389,7 @@ static int outliner_id_delete_invoke(bContext *C, wmOperator *op, const wmEvent 
 
 void OUTLINER_OT_id_delete(wmOperatorType *ot)
 {
-	ot->name = "Delete Datablock";
+	ot->name = "Delete Data-Block";
 	ot->idname = "OUTLINER_OT_id_delete";
 	ot->description = "Delete the ID under cursor";
 
@@ -425,7 +422,7 @@ static int outliner_id_remap_exec(bContext *C, wmOperator *op)
 
 	if (ID_IS_LINKED_DATABLOCK(old_id)) {
 		BKE_reportf(op->reports, RPT_WARNING,
-		            "Old ID '%s' is linked from a library, indirect usages of this datablock will not be remapped",
+		            "Old ID '%s' is linked from a library, indirect usages of this data-block will not be remapped",
 		            old_id->name);
 	}
 
@@ -788,12 +785,17 @@ int common_restrict_check(bContext *C, Object *ob)
 /* Toggle Visibility ---------------------------------------- */
 
 void object_toggle_visibility_cb(
-        bContext *C, ReportList *UNUSED(reports), Scene *scene, TreeElement *te,
+        bContext *C, ReportList *reports, Scene *scene, TreeElement *te,
         TreeStoreElem *UNUSED(tsep), TreeStoreElem *tselem, void *UNUSED(user_data))
 {
 	Base *base = (Base *)te->directdata;
 	Object *ob = (Object *)tselem->id;
-	
+
+	if (ID_IS_LINKED_DATABLOCK(tselem->id)) {
+		BKE_report(reports, RPT_WARNING, "Cannot edit external libdata");
+		return;
+	}
+
 	/* add check for edit mode */
 	if (!common_restrict_check(C, ob)) return;
 	
@@ -845,11 +847,16 @@ void OUTLINER_OT_visibility_toggle(wmOperatorType *ot)
 /* Toggle Selectability ---------------------------------------- */
 
 void object_toggle_selectability_cb(
-        bContext *UNUSED(C), ReportList *UNUSED(reports), Scene *scene, TreeElement *te,
+        bContext *UNUSED(C), ReportList *reports, Scene *scene, TreeElement *te,
         TreeStoreElem *UNUSED(tsep), TreeStoreElem *tselem, void *UNUSED(user_data))
 {
 	Base *base = (Base *)te->directdata;
-	
+
+	if (ID_IS_LINKED_DATABLOCK(tselem->id)) {
+		BKE_report(reports, RPT_WARNING, "Cannot edit external libdata");
+		return;
+	}
+
 	if (base == NULL) base = BKE_scene_base_find(scene, (Object *)tselem->id);
 	if (base) {
 		base->object->restrictflag ^= OB_RESTRICT_SELECT;
@@ -895,11 +902,16 @@ void OUTLINER_OT_selectability_toggle(wmOperatorType *ot)
 /* Toggle Renderability ---------------------------------------- */
 
 void object_toggle_renderability_cb(
-        bContext *UNUSED(C), ReportList *UNUSED(reports), Scene *scene, TreeElement *te,
+        bContext *UNUSED(C), ReportList *reports, Scene *scene, TreeElement *te,
         TreeStoreElem *UNUSED(tsep), TreeStoreElem *tselem, void *UNUSED(user_data))
 {
 	Base *base = (Base *)te->directdata;
-	
+
+	if (ID_IS_LINKED_DATABLOCK(tselem->id)) {
+		BKE_report(reports, RPT_WARNING, "Cannot edit external libdata");
+		return;
+	}
+
 	if (base == NULL) base = BKE_scene_base_find(scene, (Object *)tselem->id);
 	if (base) {
 		base->object->restrictflag ^= OB_RESTRICT_RENDER;
@@ -1930,7 +1942,7 @@ static int outliner_orphans_purge_invoke(bContext *C, wmOperator *op, const wmEv
 {
 	/* present a prompt to informing users that this change is irreversible */
 	return WM_operator_confirm_message(C, op,
-	                                   "Purging unused datablocks cannot be undone. "
+	                                   "Purging unused data-blocks cannot be undone. "
 	                                   "Click here to proceed...");
 }
 
@@ -1952,7 +1964,7 @@ void OUTLINER_OT_orphans_purge(wmOperatorType *ot)
 	/* identifiers */
 	ot->idname = "OUTLINER_OT_orphans_purge";
 	ot->name = "Purge All";
-	ot->description = "Clear all orphaned datablocks without any users from the file (cannot be undone)";
+	ot->description = "Clear all orphaned data-blocks without any users from the file (cannot be undone)";
 	
 	/* callbacks */
 	ot->invoke = outliner_orphans_purge_invoke;

@@ -5391,13 +5391,13 @@ static void def_cmp_double_edge_mask(StructRNA *srna)
 	};
 
 	prop = RNA_def_property(srna, "inner_mode", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "custom2");
+	RNA_def_property_enum_sdna(prop, NULL, "custom1");
 	RNA_def_property_enum_items(prop, InnerEdgeMode_items);
 	RNA_def_property_ui_text(prop, "Inner Edge Mode", "");
 	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
 	prop = RNA_def_property(srna, "edge_mode", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "custom1");
+	RNA_def_property_enum_sdna(prop, NULL, "custom2");
 	RNA_def_property_enum_items(prop, BufEdgeMode_items);
 	RNA_def_property_ui_text(prop, "Buffer Edge Mode", "");
 	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
@@ -8217,9 +8217,9 @@ static void rna_def_nodetree(BlenderRNA *brna)
 	RNA_def_property_flag(parm, PROP_REQUIRED | PROP_NEVER_NULL);
 	parm = RNA_def_pointer(func, "result_1", "NodeTree", "Node Tree", "Active node tree from context");
 	RNA_def_function_output(func, parm);
-	parm = RNA_def_pointer(func, "result_2", "ID", "Owner ID", "ID data block that owns the node tree");
+	parm = RNA_def_pointer(func, "result_2", "ID", "Owner ID", "ID data-block that owns the node tree");
 	RNA_def_function_output(func, parm);
-	parm = RNA_def_pointer(func, "result_3", "ID", "From ID", "Original ID data block selected from the context");
+	parm = RNA_def_pointer(func, "result_3", "ID", "From ID", "Original ID data-block selected from the context");
 	RNA_def_function_output(func, parm);
 }
 

@@ -22,13 +22,9 @@
 
 #include "../ABC_alembic.h"
 
-#ifdef WITH_ALEMBIC_HDF5
-#  include <Alembic/AbcCoreHDF5/All.h>
-#endif
-
-#include <Alembic/AbcCoreOgawa/All.h>
 #include <Alembic/AbcMaterial/IMaterial.h>
 
+#include "abc_archive.h"
 #include "abc_camera.h"
 #include "abc_curves.h"
 #include "abc_hair.h"
@@ -77,13 +73,10 @@ extern "C" {
 using Alembic::Abc::Int32ArraySamplePtr;
 using Alembic::Abc::ObjectHeader;
 
-using Alembic::AbcGeom::ErrorHandler;
-using Alembic::AbcGeom::Exception;
 using Alembic::AbcGeom::MetaData;
 using Alembic::AbcGeom::P3fArraySamplePtr;
 using Alembic::AbcGeom::kWrapExisting;
 
-using Alembic::AbcGeom::IArchive;
 using Alembic::AbcGeom::ICamera;
 using Alembic::AbcGeom::ICurves;
 using Alembic::AbcGeom::ICurvesSchema;
@@ -113,45 +106,14 @@ struct AbcArchiveHandle {
 	int unused;
 };
 
-ABC_INLINE IArchive *archive_from_handle(AbcArchiveHandle *handle)
+ABC_INLINE ArchiveReader *archive_from_handle(AbcArchiveHandle *handle)
 {
-	return reinterpret_cast<IArchive *>(handle);
+	return reinterpret_cast<ArchiveReader *>(handle);
 }
 
-ABC_INLINE AbcArchiveHandle *handle_from_archive(IArchive *archive)
+ABC_INLINE AbcArchiveHandle *handle_from_archive(ArchiveReader *archive)
 {
 	return reinterpret_cast<AbcArchiveHandle *>(archive);
-}
-
-static IArchive *open_archive(const std::string &filename)
-{
-	Alembic::AbcCoreAbstract::ReadArraySampleCachePtr cache_ptr;
-	IArchive *archive;
-
-	try {
-		archive = new IArchive(Alembic::AbcCoreOgawa::ReadArchive(),
-		                       filename.c_str(), ErrorHandler::kThrowPolicy,
-		                       cache_ptr);
-	}
-	catch (const Exception &e) {
-		std::cerr << e.what() << '\n';
-
-#ifdef WITH_ALEMBIC_HDF5
-		try {
-			archive = new IArchive(Alembic::AbcCoreHDF5::ReadArchive(),
-			                       filename.c_str(), ErrorHandler::kThrowPolicy,
-			                       cache_ptr);
-		}
-		catch (const Exception &) {
-			std::cerr << e.what() << '\n';
-			return NULL;
-		}
-#else
-		return NULL;
-#endif
-	}
-
-	return archive;
 }
 
 //#define USE_NURBS
@@ -247,9 +209,10 @@ static void gather_objects_paths(const IObject &object, ListBase *object_paths)
 
 AbcArchiveHandle *ABC_create_handle(const char *filename, ListBase *object_paths)
 {
-	IArchive *archive = open_archive(filename);
+	ArchiveReader *archive = new ArchiveReader(filename);
 
-	if (!archive) {
+	if (!archive->valid()) {
+		delete archive;
 		return NULL;
 	}
 
@@ -388,6 +351,9 @@ void ABC_export(
 	job->settings.export_ogawa = (params->compression_type == ABC_ARCHIVE_OGAWA);
 	job->settings.pack_uv = params->packuv;
 	job->settings.global_scale = params->global_scale;
+	job->settings.triangulate = params->triangulate;
+	job->settings.quad_method = params->quad_method;
+	job->settings.ngon_method = params->ngon_method;
 
 	if (job->settings.frame_start > job->settings.frame_end) {
 		std::swap(job->settings.frame_start, job->settings.frame_end);
@@ -544,10 +510,6 @@ struct ImportJobData {
 
 ABC_INLINE bool is_mesh_and_strands(const IObject &object)
 {
-	if (object.getNumChildren() != 2) {
-		return false;
-	}
-
 	bool has_mesh = false;
 	bool has_curve = false;
 
@@ -569,6 +531,9 @@ ABC_INLINE bool is_mesh_and_strands(const IObject &object)
 		else if (ICurves::matches(md)) {
 			has_curve = true;
 		}
+		else if (IPoints::matches(md)) {
+			has_curve = true;
+		}
 	}
 
 	return has_mesh && has_curve;
@@ -582,9 +547,10 @@ static void import_startjob(void *user_data, short *stop, short *do_update, floa
 	data->do_update = do_update;
 	data->progress = progress;
 
-	IArchive *archive = open_archive(data->filename);
+	ArchiveReader *archive = new ArchiveReader(data->filename);
 
-	if (!archive || !archive->valid()) {
+	if (!archive->valid()) {
+		delete archive;
 		data->error_code = ABC_ARCHIVE_FAIL;
 		return;
 	}
@@ -809,7 +775,7 @@ void ABC_import(bContext *C, const char *filepath, float scale, bool is_sequence
 
 void ABC_get_transform(AbcArchiveHandle *handle, Object *ob, const char *object_path, float r_mat[4][4], float time, float scale)
 {
-	IArchive *archive = archive_from_handle(handle);
+	ArchiveReader *archive = archive_from_handle(handle);
 
 	if (!archive || !archive->valid()) {
 		return;
@@ -833,9 +799,8 @@ void ABC_get_transform(AbcArchiveHandle *handle, Object *ob, const char *object_
 		return;
 	}
 
-	ISampleSelector sample_sel(time);
-
-	create_input_transform(sample_sel, ixform, ob, r_mat, scale);
+	const Imath::M44d matrix = get_matrix(schema, time);
+	convert_matrix(matrix, ob, r_mat, scale);
 }
 
 /* ***************************************** */
@@ -932,13 +897,14 @@ static DerivedMesh *read_mesh_sample(DerivedMesh *dm, const IObject &iobject, co
 	}
 
 	CDStreamConfig config = get_config(new_dm ? new_dm : dm);
+	config.time = time;
 
-	bool has_loop_normals = false;
-	read_mesh_sample(&settings, schema, sample_sel, config, has_loop_normals);
+	bool do_normals = false;
+	read_mesh_sample(&settings, schema, sample_sel, config, do_normals);
 
 	if (new_dm) {
 		/* Check if we had ME_SMOOTH flag set to restore it. */
-		if (!has_loop_normals && check_smooth_poly_flag(dm)) {
+		if (!do_normals && check_smooth_poly_flag(dm)) {
 			set_smooth_poly_flag(new_dm);
 		}
 
@@ -946,6 +912,10 @@ static DerivedMesh *read_mesh_sample(DerivedMesh *dm, const IObject &iobject, co
 		CDDM_calc_edges(new_dm);
 
 		return new_dm;
+	}
+
+	if (do_normals) {
+		CDDM_calc_normals(dm);
 	}
 
 	return dm;
@@ -982,6 +952,7 @@ static DerivedMesh *read_subd_sample(DerivedMesh *dm, const IObject &iobject, co
 
 	/* Only read point data when streaming meshes, unless we need to create new ones. */
 	CDStreamConfig config = get_config(new_dm ? new_dm : dm);
+	config.time = time;
 	read_subd_sample(&settings, schema, sample_sel, config);
 
 	if (new_dm) {
@@ -1081,7 +1052,7 @@ DerivedMesh *ABC_read_mesh(AbcArchiveHandle *handle,
                            const char **err_str,
                            int read_flag)
 {
-	IArchive *archive = archive_from_handle(handle);
+	ArchiveReader *archive = archive_from_handle(handle);
 
 	if (!archive || !archive->valid()) {
 		*err_str = "Invalid archive!";

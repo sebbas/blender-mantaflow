@@ -263,6 +263,7 @@ if(WITH_PYTHON_MODULE)
 
 else()
 	add_executable(blender ${EXETYPE} ${SRC})
+	WINDOWS_SIGN_TARGET(blender)
 endif()
 
 if(WITH_BUILDINFO)
@@ -337,7 +338,8 @@ if(WITH_PYTHON)
 	# install(CODE "message(\"copying blender scripts...\")")
 	
 	# exclude addons_contrib if release
-	if("${BLENDER_VERSION_CYCLE}" STREQUAL "release")
+	if("${BLENDER_VERSION_CYCLE}" STREQUAL "release" OR
+	   "${BLENDER_VERSION_CYCLE}" STREQUAL "rc")
 		set(ADDON_EXCLUDE_CONDITIONAL "addons_contrib/*")
 	else()
 		set(ADDON_EXCLUDE_CONDITIONAL "_addons_contrib/*")  # dummy, wont do anything

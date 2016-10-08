@@ -476,7 +476,7 @@ void CLIP_OT_view_pan(wmOperatorType *ot)
 	ot->poll = ED_space_clip_view_clip_poll;
 
 	/* flags */
-	ot->flag = OPTYPE_BLOCKING;
+	ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR;
 
 	/* properties */
 	RNA_def_float_vector(ot->srna, "offset", 2, NULL, -FLT_MAX, FLT_MAX,
@@ -1405,6 +1405,7 @@ void CLIP_OT_mode_set(wmOperatorType *ot)
 	RNA_def_enum(ot->srna, "mode", rna_enum_clip_editor_mode_items, SC_MODE_TRACKING, "Mode", "");
 }
 
+#ifdef WITH_INPUT_NDOF
 /********************** NDOF operator *********************/
 
 /* Combined pan/zoom from a 3D mouse device.
@@ -1451,6 +1452,7 @@ void CLIP_OT_view_ndof(wmOperatorType *ot)
 	ot->invoke = clip_view_ndof_invoke;
 	ot->poll = ED_space_clip_view_clip_poll;
 }
+#endif /* WITH_INPUT_NDOF */
 
 /********************** Prefetch operator *********************/
 

@@ -449,7 +449,8 @@ void OBJECT_OT_material_slot_move(wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-	RNA_def_enum(ot->srna, "direction", material_slot_move, 0, "Direction", "Direction to move, UP or DOWN");
+	RNA_def_enum(ot->srna, "direction", material_slot_move, 0, "Direction",
+	             "Direction to move the active material towards");
 }
 
 /********************** new material operator *********************/
@@ -828,14 +829,10 @@ static int freestyle_module_move_exec(bContext *C, wmOperator *op)
 	FreestyleModuleConfig *module = ptr.data;
 	int dir = RNA_enum_get(op->ptr, "direction");
 
-	if (dir == 1) {
-		BKE_freestyle_module_move_up(&srl->freestyleConfig, module);
+	if (BKE_freestyle_module_move(&srl->freestyleConfig, module, dir)) {
+		DAG_id_tag_update(&scene->id, 0);
+		WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
 	}
-	else {
-		BKE_freestyle_module_move_down(&srl->freestyleConfig, module);
-	}
-	DAG_id_tag_update(&scene->id, 0);
-	WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
 
 	return OPERATOR_FINISHED;
 }
@@ -843,8 +840,8 @@ static int freestyle_module_move_exec(bContext *C, wmOperator *op)
 void SCENE_OT_freestyle_module_move(wmOperatorType *ot)
 {
 	static EnumPropertyItem direction_items[] = {
-		{1, "UP", 0, "Up", ""},
-		{-1, "DOWN", 0, "Down", ""},
+		{-1, "UP", 0, "Up", ""},
+		{1, "DOWN", 0, "Down", ""},
 		{0, NULL, 0, NULL, NULL}
 	};
 
@@ -861,7 +858,8 @@ void SCENE_OT_freestyle_module_move(wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
 
 	/* props */
-	RNA_def_enum(ot->srna, "direction", direction_items, 0, "Direction", "Direction to move, UP or DOWN");
+	RNA_def_enum(ot->srna, "direction", direction_items, 0, "Direction",
+	             "Direction to move the chosen style module towards");
 }
 
 static int freestyle_lineset_add_exec(bContext *C, wmOperator *UNUSED(op))
@@ -991,14 +989,10 @@ static int freestyle_lineset_move_exec(bContext *C, wmOperator *op)
 	SceneRenderLayer *srl = BLI_findlink(&scene->r.layers, scene->r.actlay);
 	int dir = RNA_enum_get(op->ptr, "direction");
 
-	if (dir == 1) {
-		FRS_move_active_lineset_up(&srl->freestyleConfig);
+	if (FRS_move_active_lineset(&srl->freestyleConfig, dir)) {
+		DAG_id_tag_update(&scene->id, 0);
+		WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
 	}
-	else {
-		FRS_move_active_lineset_down(&srl->freestyleConfig);
-	}
-	DAG_id_tag_update(&scene->id, 0);
-	WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
 
 	return OPERATOR_FINISHED;
 }
@@ -1006,8 +1000,8 @@ static int freestyle_lineset_move_exec(bContext *C, wmOperator *op)
 void SCENE_OT_freestyle_lineset_move(wmOperatorType *ot)
 {
 	static EnumPropertyItem direction_items[] = {
-		{1, "UP", 0, "Up", ""},
-		{-1, "DOWN", 0, "Down", ""},
+		{-1, "UP", 0, "Up", ""},
+		{1, "DOWN", 0, "Down", ""},
 		{0, NULL, 0, NULL, NULL}
 	};
 
@@ -1024,7 +1018,8 @@ void SCENE_OT_freestyle_lineset_move(wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
 
 	/* props */
-	RNA_def_enum(ot->srna, "direction", direction_items, 0, "Direction", "Direction to move, UP or DOWN");
+	RNA_def_enum(ot->srna, "direction", direction_items, 0, "Direction",
+	             "Direction to move the active line set towards");
 }
 
 static int freestyle_linestyle_new_exec(bContext *C, wmOperator *op)
@@ -1347,6 +1342,7 @@ static int freestyle_modifier_move_exec(bContext *C, wmOperator *op)
 	PointerRNA ptr = CTX_data_pointer_get_type(C, "modifier", &RNA_LineStyleModifier);
 	LineStyleModifier *modifier = ptr.data;
 	int dir = RNA_enum_get(op->ptr, "direction");
+	bool changed = false;
 
 	if (!freestyle_linestyle_check_report(lineset, op->reports)) {
 		return OPERATOR_CANCELLED;
@@ -1354,23 +1350,26 @@ static int freestyle_modifier_move_exec(bContext *C, wmOperator *op)
 
 	switch (freestyle_get_modifier_type(&ptr)) {
 		case LS_MODIFIER_TYPE_COLOR:
-			BKE_linestyle_color_modifier_move(lineset->linestyle, modifier, dir);
+			changed = BKE_linestyle_color_modifier_move(lineset->linestyle, modifier, dir);
 			break;
 		case LS_MODIFIER_TYPE_ALPHA:
-			BKE_linestyle_alpha_modifier_move(lineset->linestyle, modifier, dir);
+			changed = BKE_linestyle_alpha_modifier_move(lineset->linestyle, modifier, dir);
 			break;
 		case LS_MODIFIER_TYPE_THICKNESS:
-			BKE_linestyle_thickness_modifier_move(lineset->linestyle, modifier, dir);
+			changed = BKE_linestyle_thickness_modifier_move(lineset->linestyle, modifier, dir);
 			break;
 		case LS_MODIFIER_TYPE_GEOMETRY:
-			BKE_linestyle_geometry_modifier_move(lineset->linestyle, modifier, dir);
+			changed = BKE_linestyle_geometry_modifier_move(lineset->linestyle, modifier, dir);
 			break;
 		default:
 			BKE_report(op->reports, RPT_ERROR, "The object the data pointer refers to is not a valid modifier");
 			return OPERATOR_CANCELLED;
 	}
-	DAG_id_tag_update(&lineset->linestyle->id, 0);
-	WM_event_add_notifier(C, NC_LINESTYLE, lineset->linestyle);
+
+	if (changed) {
+		DAG_id_tag_update(&lineset->linestyle->id, 0);
+		WM_event_add_notifier(C, NC_LINESTYLE, lineset->linestyle);
+	}
 
 	return OPERATOR_FINISHED;
 }
@@ -1378,8 +1377,8 @@ static int freestyle_modifier_move_exec(bContext *C, wmOperator *op)
 void SCENE_OT_freestyle_modifier_move(wmOperatorType *ot)
 {
 	static EnumPropertyItem direction_items[] = {
-		{1, "UP", 0, "Up", ""},
-		{-1, "DOWN", 0, "Down", ""},
+		{-1, "UP", 0, "Up", ""},
+		{1, "DOWN", 0, "Down", ""},
 		{0, NULL, 0, NULL, NULL}
 	};
 
@@ -1396,7 +1395,8 @@ void SCENE_OT_freestyle_modifier_move(wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
 
 	/* props */
-	RNA_def_enum(ot->srna, "direction", direction_items, 0, "Direction", "Direction to move, UP or DOWN");
+	RNA_def_enum(ot->srna, "direction", direction_items, 0, "Direction",
+	             "Direction to move the chosen modifier towards");
 }
 
 static int freestyle_stroke_material_create_exec(bContext *C, wmOperator *op)

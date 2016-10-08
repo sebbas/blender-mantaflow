@@ -1,8 +1,5 @@
 /*
- * Adapted from code Copyright 2009-2010 NVIDIA Corporation,
- * and code copyright 2009-2012 Intel Corporation
- *
- * Modifications Copyright 2011-2014, Blender Foundation.
+ * Copyright 2011-2013 Blender Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -103,8 +100,9 @@ ccl_device bool BVH_FUNCTION_FULL_NAME(QBVH)(KernelGlobals *kg,
 		do {
 			/* Traverse internal nodes. */
 			while(node_addr >= 0 && node_addr != ENTRYPOINT_SENTINEL) {
-#ifdef __VISIBILITY_FLAG__
 				float4 inodes = kernel_tex_fetch(__bvh_nodes, node_addr+0);
+
+#ifdef __VISIBILITY_FLAG__
 				if((__float_as_uint(inodes.x) & visibility) == 0) {
 					/* Pop. */
 					node_addr = traversal_stack[stack_ptr].addr;
@@ -236,6 +234,14 @@ ccl_device bool BVH_FUNCTION_FULL_NAME(QBVH)(KernelGlobals *kg,
 			/* If node is leaf, fetch triangle list. */
 			if(node_addr < 0) {
 				float4 leaf = kernel_tex_fetch(__bvh_leaf_nodes, (-node_addr-1));
+
+				if((__float_as_uint(leaf.z) & visibility) == 0) {
+					/* Pop. */
+					node_addr = traversal_stack[stack_ptr].addr;
+					--stack_ptr;
+					continue;
+				}
+
 				int prim_addr = __float_as_int(leaf.x);
 
 #if BVH_FEATURE(BVH_INSTANCING)

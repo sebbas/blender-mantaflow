@@ -37,8 +37,8 @@ extern "C" {
 #include "BLI_math_geom.h"
 #include "BLI_string.h"
 
+#include "BKE_cdderivedmesh.h"
 #include "BKE_depsgraph.h"
-#include "BKE_DerivedMesh.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mesh.h"
@@ -49,6 +49,9 @@ extern "C" {
 #include "WM_types.h"
 
 #include "ED_mesh.h"
+
+#include "bmesh.h"
+#include "bmesh_tools.h"
 }
 
 using Alembic::Abc::FloatArraySample;
@@ -140,19 +143,6 @@ static void get_topology(DerivedMesh *dm,
 		for (int j = 0; j < poly.totloop; ++j, --loop) {
 			poly_verts.push_back(loop->v);
 		}
-	}
-}
-
-static void get_material_indices(DerivedMesh *dm, std::vector<int32_t> &indices)
-{
-	indices.clear();
-	indices.reserve(dm->getNumTessFaces(dm));
-
-	MPoly *mpolys = dm->getPolyArray(dm);
-
-	for (int i = 1, e = dm->getNumPolys(dm); i < e; ++i) {
-		MPoly *mpoly = &mpolys[i];
-		indices.push_back(mpoly->mat_nr);
 	}
 }
 
@@ -306,7 +296,6 @@ AbcMeshWriter::AbcMeshWriter(Scene *scene,
 {
 	m_is_animated = isAnimated();
 	m_subsurf_mod = NULL;
-	m_has_per_face_materials = false;
 	m_is_subd = false;
 
 	/* If the object is static, use the default static time sampling. */
@@ -403,8 +392,8 @@ void AbcMeshWriter::writeMesh(DerivedMesh *dm)
 	get_vertices(dm, points);
 	get_topology(dm, poly_verts, loop_counts, smooth_normal);
 
-	if (m_first_frame) {
-		writeCommonData(dm, m_mesh_schema);
+	if (m_first_frame && m_settings.export_face_sets) {
+		writeFaceSets(dm, m_mesh_schema);
 	}
 
 	m_mesh_sample = OPolyMeshSchema::Sample(V3fArraySample(points),
@@ -472,9 +461,8 @@ void AbcMeshWriter::writeSubD(DerivedMesh *dm)
 	get_topology(dm, poly_verts, loop_counts, smooth_normal);
 	get_creases(dm, crease_indices, crease_lengths, crease_sharpness);
 
-	if (m_first_frame) {
-		/* create materials' face_sets */
-		writeCommonData(dm, m_subdiv_schema);
+	if (m_first_frame && m_settings.export_face_sets) {
+		writeFaceSets(dm, m_subdiv_schema);
 	}
 
 	m_subdiv_sample = OSubDSchema::Sample(V3fArraySample(points),
@@ -511,7 +499,7 @@ void AbcMeshWriter::writeSubD(DerivedMesh *dm)
 }
 
 template <typename Schema>
-void AbcMeshWriter::writeCommonData(DerivedMesh *dm, Schema &schema)
+void AbcMeshWriter::writeFaceSets(DerivedMesh *dm, Schema &schema)
 {
 	std::map< std::string, std::vector<int32_t> > geo_groups;
 	getGeoGroups(dm, geo_groups);
@@ -536,6 +524,23 @@ DerivedMesh *AbcMeshWriter::getFinalMesh()
 
 	if (m_subsurf_mod) {
 		m_subsurf_mod->mode &= ~eModifierMode_DisableTemporary;
+	}
+
+	if (m_settings.triangulate) {
+		const bool tag_only = false;
+		const int quad_method = m_settings.quad_method;
+		const int ngon_method = m_settings.ngon_method;
+
+		BMesh *bm = DM_to_bmesh(dm, true);
+
+		BM_mesh_triangulate(bm, quad_method, ngon_method, tag_only, NULL, NULL, NULL);
+
+		DerivedMesh *result = CDDM_from_bmesh(bm, false);
+		BM_mesh_free(bm);
+
+		freeMesh(dm);
+
+		dm = result;
 	}
 
 	m_custom_data_config.pack_uvs = m_settings.pack_uv;
@@ -566,18 +571,6 @@ void AbcMeshWriter::writeArbGeoParams(DerivedMesh *dm)
 		}
 		else {
 			write_custom_data(m_mesh_schema.getArbGeomParams(), m_custom_data_config, &dm->loopData, CD_MLOOPCOL);
-		}
-	}
-
-	if (m_first_frame && m_has_per_face_materials) {
-		std::vector<int32_t> material_indices;
-
-		if (m_settings.export_face_sets) {
-			get_material_indices(dm, material_indices);
-
-			OFaceSetSchema::Sample samp;
-			samp.setFaces(Int32ArraySample(material_indices));
-			m_face_set.getSchema().set(samp);
 		}
 	}
 }
@@ -784,6 +777,7 @@ struct AbcMeshData {
 	Int32ArraySamplePtr face_counts;
 
 	P3fArraySamplePtr positions;
+	P3fArraySamplePtr ceil_positions;
 
 	N3fArraySamplePtr vertex_normals;
 	N3fArraySamplePtr face_normals;
@@ -831,11 +825,34 @@ CDStreamConfig create_config(Mesh *mesh)
 	return config;
 }
 
+static void read_mverts_interp(MVert *mverts, const P3fArraySamplePtr &positions, const P3fArraySamplePtr &ceil_positions, const float weight)
+{
+	float tmp[3];
+	for (int i = 0; i < positions->size(); ++i) {
+		MVert &mvert = mverts[i];
+		const Imath::V3f &floor_pos = (*positions)[i];
+		const Imath::V3f &ceil_pos = (*ceil_positions)[i];
+
+		interp_v3_v3v3(tmp, floor_pos.getValue(), ceil_pos.getValue(), weight);
+		copy_yup_zup(mvert.co, tmp);
+
+		mvert.bweight = 0;
+	}
+}
+
 static void read_mverts(CDStreamConfig &config, const AbcMeshData &mesh_data)
 {
 	MVert *mverts = config.mvert;
 	const P3fArraySamplePtr &positions = mesh_data.positions;
 	const N3fArraySamplePtr &normals = mesh_data.vertex_normals;
+
+	if (   config.weight != 0.0f
+	    && mesh_data.ceil_positions != NULL
+	    && mesh_data.ceil_positions->size() == positions->size())
+	{
+		read_mverts_interp(mverts, positions, mesh_data.ceil_positions, config.weight);
+		return;
+	}
 
 	read_mverts(mverts, positions, normals);
 }
@@ -968,7 +985,8 @@ AbcMeshReader::AbcMeshReader(const IObject &object, ImportSettings &settings)
 
 	IPolyMesh ipoly_mesh(m_iobject, kWrapExisting);
 	m_schema = ipoly_mesh.getSchema();
-	get_min_max_time(m_schema, m_min_time, m_max_time);
+
+	get_min_max_time(m_iobject, m_schema, m_min_time, m_max_time);
 }
 
 bool AbcMeshReader::valid() const
@@ -1062,6 +1080,22 @@ void AbcMeshReader::readFaceSetsSample(Main *bmain, Mesh *mesh, size_t poly_star
 	utils::assign_materials(bmain, m_object, mat_map);
 }
 
+static void get_weight_and_index(CDStreamConfig &config,
+                                 Alembic::AbcCoreAbstract::TimeSamplingPtr time_sampling,
+                                 size_t samples_number)
+{
+	Alembic::AbcGeom::index_t i0, i1;
+
+	config.weight = get_weight_and_index(config.time,
+	                                     time_sampling,
+	                                     samples_number,
+	                                     i0,
+	                                     i1);
+
+	config.index = i0;
+	config.ceil_index = i1;
+}
+
 void read_mesh_sample(ImportSettings *settings,
                       const IPolyMeshSchema &schema,
                       const ISampleSelector &selector,
@@ -1078,6 +1112,14 @@ void read_mesh_sample(ImportSettings *settings,
 	read_normals_params(abc_mesh_data, schema.getNormalsParam(), selector);
 
 	do_normals = (abc_mesh_data.face_normals != NULL);
+
+	get_weight_and_index(config, schema.getTimeSampling(), schema.getNumSamples());
+
+	if (config.weight != 0.0f) {
+		Alembic::AbcGeom::IPolyMeshSchema::Sample ceil_sample;
+		schema.get(ceil_sample, Alembic::Abc::ISampleSelector(static_cast<Alembic::AbcCoreAbstract::index_t>(config.ceil_index)));
+		abc_mesh_data.ceil_positions = ceil_sample.getPositions();
+	}
 
 	if ((settings->read_flag & MOD_MESHSEQ_READ_UV) != 0) {
 		read_uvs_params(config, abc_mesh_data, schema.getUVsParam(), selector);
@@ -1120,7 +1162,8 @@ AbcSubDReader::AbcSubDReader(const IObject &object, ImportSettings &settings)
 
 	ISubD isubd_mesh(m_iobject, kWrapExisting);
 	m_schema = isubd_mesh.getSchema();
-	get_min_max_time(m_schema, m_min_time, m_max_time);
+
+	get_min_max_time(m_iobject, m_schema, m_min_time, m_max_time);
 }
 
 bool AbcSubDReader::valid() const
@@ -1192,6 +1235,14 @@ void read_subd_sample(ImportSettings *settings,
 	abc_mesh_data.vertex_normals = N3fArraySamplePtr();
 	abc_mesh_data.face_normals = N3fArraySamplePtr();
 	abc_mesh_data.positions = sample.getPositions();
+
+	get_weight_and_index(config, schema.getTimeSampling(), schema.getNumSamples());
+
+	if (config.weight != 0.0f) {
+		Alembic::AbcGeom::ISubDSchema::Sample ceil_sample;
+		schema.get(ceil_sample, Alembic::Abc::ISampleSelector(static_cast<Alembic::AbcCoreAbstract::index_t>(config.ceil_index)));
+		abc_mesh_data.ceil_positions = ceil_sample.getPositions();
+	}
 
 	if ((settings->read_flag & MOD_MESHSEQ_READ_UV) != 0) {
 		read_uvs_params(config, abc_mesh_data, schema.getUVsParam(), selector);

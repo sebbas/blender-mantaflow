@@ -63,6 +63,8 @@ struct bConstraint;
 struct Scene;
 struct Tex;
 struct World;
+struct EffectorWeights;
+struct ParticleSystem;
 
 struct PropertyRNA;
 
@@ -244,6 +246,9 @@ struct DepsgraphRelationBuilder
 	void build_compositor(Scene *scene);
 	void build_gpencil(ID *owner, bGPdata *gpd);
 
+	void add_collision_relations(const OperationKey &key, Scene *scene, Object *ob, Group *group, int layer, bool dupli, const char *name);
+	void add_forcefield_relations(const OperationKey &key, Scene *scene, Object *ob, ParticleSystem *psys, EffectorWeights *eff, bool add_absorption, const char *name);
+
 	template <typename KeyType>
 	OperationDepsNode *find_operation_node(const KeyType &key);
 
@@ -365,10 +370,12 @@ void DepsgraphRelationBuilder::add_node_handle_relation(
 	}
 	else {
 		if (!op_from) {
-			/* XXX TODO handle as error or report if needed */
+			fprintf(stderr, "add_node_handle_relation(%d, %s) - Could not find op_from (%s)\n",
+			        type, description, key_from.identifier().c_str());
 		}
 		if (!op_to) {
-			/* XXX TODO handle as error or report if needed */
+			fprintf(stderr, "add_node_handle_relation(%d, %s) - Could not find op_to (%s)\n",
+			        type, description, key_from.identifier().c_str());
 		}
 	}
 }

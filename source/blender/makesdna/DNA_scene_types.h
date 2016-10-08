@@ -135,6 +135,37 @@ typedef struct QuicktimeCodecSettings {
 	int pad1;
 } QuicktimeCodecSettings;
 
+typedef enum FFMpegPreset {
+	FFM_PRESET_NONE,
+	FFM_PRESET_ULTRAFAST,
+	FFM_PRESET_SUPERFAST,
+	FFM_PRESET_VERYFAST,
+	FFM_PRESET_FASTER,
+	FFM_PRESET_FAST,
+	FFM_PRESET_MEDIUM,
+	FFM_PRESET_SLOW,
+	FFM_PRESET_SLOWER,
+	FFM_PRESET_VERYSLOW,
+} FFMpegPreset;
+
+
+/* Mapping from easily-understandable descriptions to CRF values.
+ * Assumes we output 8-bit video. Needs to be remapped if 10-bit
+ * is output.
+ * We use a slightly wider than "subjectively sane range" according
+ * to https://trac.ffmpeg.org/wiki/Encode/H.264#a1.ChooseaCRFvalue
+ */
+typedef enum FFMpegCrf {
+	FFM_CRF_NONE = -1,
+	FFM_CRF_LOSSLESS = 0,
+	FFM_CRF_PERC_LOSSLESS = 17,
+	FFM_CRF_HIGH = 20,
+	FFM_CRF_MEDIUM = 23,
+	FFM_CRF_LOW = 26,
+	FFM_CRF_VERYLOW = 29,
+	FFM_CRF_LOWEST = 32,
+} FFMpegCrf;
+
 typedef struct FFMpegCodecData {
 	int type;
 	int codec;
@@ -146,13 +177,18 @@ typedef struct FFMpegCodecData {
 	int audio_pad;
 	float audio_volume;
 	int gop_size;
+	int max_b_frames; /* only used if FFMPEG_USE_MAX_B_FRAMES flag is set. */
 	int flags;
+	int constant_rate_factor;
+	int ffmpeg_preset; /* see FFMpegPreset */
 
 	int rc_min_rate;
 	int rc_max_rate;
 	int rc_buffer_size;
 	int mux_packet_size;
 	int mux_rate;
+	int pad1;
+
 	IDProperty *properties;
 } FFMpegCodecData;
 
@@ -1167,7 +1203,11 @@ typedef enum eGP_BrushEdit_SettingsFlag {
 	/* apply brush to strength */
 	GP_BRUSHEDIT_FLAG_APPLY_STRENGTH = (1 << 2),
 	/* apply brush to thickness */
-	GP_BRUSHEDIT_FLAG_APPLY_THICKNESS = (1 << 3)
+	GP_BRUSHEDIT_FLAG_APPLY_THICKNESS = (1 << 3),
+	/* apply interpolation to all layers */
+	GP_BRUSHEDIT_FLAG_INTERPOLATE_ALL_LAYERS = (1 << 4),
+	/* apply interpolation to only selected */
+	GP_BRUSHEDIT_FLAG_INTERPOLATE_ONLY_SELECTED = (1 << 5)
 
 } eGP_BrushEdit_SettingsFlag;
 
@@ -1738,9 +1778,11 @@ typedef struct Scene {
 #define R_STAMP_CAMERALENS	0x0800
 #define R_STAMP_STRIPMETA	0x1000
 #define R_STAMP_MEMORY		0x2000
+#define R_STAMP_HIDE_LABELS	0x4000
 #define R_STAMP_ALL (R_STAMP_TIME|R_STAMP_FRAME|R_STAMP_DATE|R_STAMP_CAMERA|R_STAMP_SCENE| \
                      R_STAMP_NOTE|R_STAMP_MARKER|R_STAMP_FILENAME|R_STAMP_SEQSTRIP|        \
-                     R_STAMP_RENDERTIME|R_STAMP_CAMERALENS|R_STAMP_MEMORY)
+                     R_STAMP_RENDERTIME|R_STAMP_CAMERALENS|R_STAMP_MEMORY|                 \
+                     R_STAMP_HIDE_LABELS)
 
 /* alphamode */
 #define R_ADDSKY		0
@@ -1976,6 +2018,7 @@ enum {
 #endif
 	FFMPEG_AUTOSPLIT_OUTPUT = 2,
 	FFMPEG_LOSSLESS_OUTPUT  = 4,
+	FFMPEG_USE_MAX_B_FRAMES = (1 << 3),
 };
 
 /* Paint.flags */

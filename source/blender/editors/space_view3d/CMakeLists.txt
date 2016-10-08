@@ -35,6 +35,7 @@ set(INC
 	../../../../intern/guardedalloc
 	../../../../intern/glew-mx
 	../../../../intern/smoke/extern
+	../../../../intern/mantaflow/extern
 )
 
 set(INC_SYS
@@ -88,6 +89,10 @@ endif()
 
 if(WITH_FREESTYLE)
 	add_definitions(-DWITH_FREESTYLE)
+endif()
+
+if(WITH_MOD_SMOKE)
+	add_definitions(-DWITH_SMOKE)
 endif()
 
 if(WITH_LEGACY_DEPSGRAPH)

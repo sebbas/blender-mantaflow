@@ -139,6 +139,10 @@ public:
 	Shader();
 	~Shader();
 
+	/* Checks whether the shader consists of just a emission node with fixed inputs that's connected directly to the output.
+	 * If yes, it sets the content of emission to the constant value (color * strength), which is then used for speeding up light evaluation. */
+	bool is_constant_emission(float3* emission);
+
 	void set_graph(ShaderGraph *graph);
 	void tag_update(Scene *scene);
 	void tag_used(Scene *scene);
@@ -173,7 +177,7 @@ public:
 	uint get_attribute_id(AttributeStandard std);
 
 	/* get shader id for mesh faces */
-	int get_shader_id(Shader *shader, Mesh *mesh = NULL, bool smooth = false);
+	int get_shader_id(Shader *shader, bool smooth = false);
 
 	/* add default shaders to scene, to use as default for things that don't
 	 * have any shader assigned explicitly */

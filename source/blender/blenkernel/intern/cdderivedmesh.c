@@ -687,20 +687,24 @@ static void cdDM_drawMappedFaces(
 					const int orig = (index_mp_to_orig) ? index_mp_to_orig[i] : i;
 					bool is_hidden;
 
-					if (use_hide) {
-						if (flag & DM_DRAW_SELECT_USE_EDITMODE) {
-							BMFace *efa = BM_face_at_index(bm, orig);
-							is_hidden = BM_elem_flag_test(efa, BM_ELEM_HIDDEN) != 0;
+					if (orig != ORIGINDEX_NONE) {
+						if (use_hide) {
+							if (flag & DM_DRAW_SELECT_USE_EDITMODE) {
+								BMFace *efa = BM_face_at_index(bm, orig);
+								is_hidden = BM_elem_flag_test(efa, BM_ELEM_HIDDEN) != 0;
+							}
+							else {
+								is_hidden = (me->mpoly[orig].flag & ME_HIDE) != 0;
+							}
+
+							if (!is_hidden) {
+								GPU_select_index_get(orig + 1, &selcol);
+							}
 						}
 						else {
-							is_hidden = (me->mpoly[orig].flag & ME_HIDE) != 0;
-						}
-
-						if ((orig != ORIGINDEX_NONE) && !is_hidden)
 							GPU_select_index_get(orig + 1, &selcol);
+						}
 					}
-					else if (orig != ORIGINDEX_NONE)
-						GPU_select_index_get(orig + 1, &selcol);
 
 					for (j = 0; j < mpoly->totloop; j++)
 						fi_map[start_element++] = selcol;
@@ -937,8 +941,10 @@ static void cdDM_drawMappedFacesGLSL(
 
 				matnr = new_matnr;
 				do_draw = setMaterial(matnr + 1, &gattribs);
-				if (do_draw)
+				if (do_draw) {
 					DM_vertex_attributes_from_gpu(dm, &gattribs, &attribs);
+					DM_draw_attrib_vertex_uniforms(&attribs);
+				}
 
 				glBegin(GL_TRIANGLES);
 			}
@@ -1206,6 +1212,7 @@ static void cdDM_drawMappedFacesMat(
 
 			setMaterial(userData, matnr = new_matnr, &gattribs);
 			DM_vertex_attributes_from_gpu(dm, &gattribs, &attribs);
+			DM_draw_attrib_vertex_uniforms(&attribs);
 
 			glBegin(GL_TRIANGLES);
 		}

@@ -37,6 +37,7 @@
 /* Qualifier wrappers for different names on different devices */
 
 #define ccl_device  __device__ __inline__
+#  define ccl_device_forceinline  __device__ __forceinline__
 #if (__KERNEL_CUDA_VERSION__ == 80) && (__CUDA_ARCH__ < 500)
 #  define ccl_device_inline  __device__ __forceinline__
 #else
@@ -67,6 +68,7 @@ typedef texture<float, 1> texture_float;
 typedef texture<uint, 1> texture_uint;
 typedef texture<int, 1> texture_int;
 typedef texture<uint4, 1> texture_uint4;
+typedef texture<uchar, 1> texture_uchar;
 typedef texture<uchar4, 1> texture_uchar4;
 typedef texture<float4, 2> texture_image_float4;
 typedef texture<float4, 3> texture_image3d_float4;

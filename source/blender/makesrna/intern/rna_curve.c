@@ -221,7 +221,7 @@ static void rna_Curve_texspace_set(Main *UNUSED(bmain), Scene *UNUSED(scene), Po
 		BKE_curve_texspace_calc(cu);
 }
 
-static int rna_Curve_texspace_editable(PointerRNA *ptr)
+static int rna_Curve_texspace_editable(PointerRNA *ptr, const char **UNUSED(r_info))
 {
 	Curve *cu = (Curve *)ptr->data;
 	return (cu->texflag & CU_AUTOSPACE) ? 0 : PROP_EDITABLE;
@@ -1273,7 +1273,7 @@ static void rna_def_curve_spline_bezpoints(BlenderRNA *brna, PropertyRNA *cprop)
 	RNA_def_property_srna(cprop, "SplineBezierPoints");
 	srna = RNA_def_struct(brna, "SplineBezierPoints", NULL);
 	RNA_def_struct_sdna(srna, "Nurb");
-	RNA_def_struct_ui_text(srna, "Spline Bezier Points", "Collection of spline bezirt points");
+	RNA_def_struct_ui_text(srna, "Spline Bezier Points", "Collection of spline Bezier points");
 
 	func = RNA_def_function(srna, "add", "rna_Curve_spline_bezpoints_add");
 	RNA_def_function_ui_description(func, "Add a number of points to this spline");

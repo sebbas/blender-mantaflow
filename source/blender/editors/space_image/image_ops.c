@@ -656,6 +656,7 @@ void IMAGE_OT_view_zoom(wmOperatorType *ot)
 	RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
+#ifdef WITH_INPUT_NDOF
 /********************** NDOF operator *********************/
 
 /* Combined pan/zoom from a 3D mouse device.
@@ -705,6 +706,7 @@ void IMAGE_OT_view_ndof(wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_LOCK_BYPASS;
 }
+#endif /* WITH_INPUT_NDOF */
 
 /********************** view all operator *********************/
 
@@ -1606,18 +1608,26 @@ static int save_image_options_init(SaveImageOptions *simopts, SpaceImage *sima, 
 			/* imtype */
 			simopts->im_format = scene->r.im_format;
 			is_depth_set = true;
+			if (!BKE_image_is_multiview(ima)) {
+				/* In case multiview is disabled, render settings would be invalid for render result in this area. */
+				simopts->im_format.stereo3d_format = *ima->stereo3d_format;
+				simopts->im_format.views_format = ima->views_format;
+			}
 		}
 		else {
 			if (ima->source == IMA_SRC_GENERATED) {
 				simopts->im_format.imtype = R_IMF_IMTYPE_PNG;
 				simopts->im_format.compress = ibuf->foptions.quality;
+				simopts->im_format.planes = ibuf->planes;
 			}
 			else {
 				BKE_imbuf_to_image_format(&simopts->im_format, ibuf);
 			}
-		}
 
-		simopts->im_format.planes = ibuf->planes;
+			/* use the multiview image settings as the default */
+			simopts->im_format.stereo3d_format = *ima->stereo3d_format;
+			simopts->im_format.views_format = ima->views_format;
+		}
 
 		//simopts->subimtype = scene->r.subimtype; /* XXX - this is lame, we need to make these available too! */
 
@@ -1657,10 +1667,6 @@ static int save_image_options_init(SaveImageOptions *simopts, SpaceImage *sima, 
 				BLI_path_abs(simopts->filepath, is_prev_save ? G.ima : G.main->name);
 			}
 		}
-
-		/* use the multiview image settings as the default */
-		simopts->im_format.stereo3d_format = *ima->stereo3d_format;
-		simopts->im_format.views_format = ima->views_format;
 
 		/* color management */
 		BKE_color_managed_display_settings_copy(&simopts->im_format.display_settings, &scene->display_settings);
@@ -2540,7 +2546,7 @@ void IMAGE_OT_new(wmOperatorType *ot)
 	ot->flag = OPTYPE_UNDO;
 
 	/* properties */
-	RNA_def_string(ot->srna, "name", IMA_DEF_NAME, MAX_ID_NAME - 2, "Name", "Image datablock name");
+	RNA_def_string(ot->srna, "name", IMA_DEF_NAME, MAX_ID_NAME - 2, "Name", "Image data-block name");
 	prop = RNA_def_int(ot->srna, "width", 1024, 1, INT_MAX, "Width", "Image width", 1, 16384);
 	RNA_def_property_subtype(prop, PROP_PIXEL);
 	prop = RNA_def_int(ot->srna, "height", 1024, 1, INT_MAX, "Height", "Image height", 1, 16384);
@@ -2841,7 +2847,7 @@ void IMAGE_OT_unpack(wmOperatorType *ot)
 	
 	/* properties */
 	RNA_def_enum(ot->srna, "method", rna_enum_unpack_method_items, PF_USE_LOCAL, "Method", "How to unpack");
-	RNA_def_string(ot->srna, "id", NULL, MAX_ID_NAME - 2, "Image Name", "Image datablock name to unpack"); /* XXX, weark!, will fail with library, name collisions */
+	RNA_def_string(ot->srna, "id", NULL, MAX_ID_NAME - 2, "Image Name", "Image data-block name to unpack"); /* XXX, weark!, will fail with library, name collisions */
 }
 
 /******************** sample image operator ********************/

@@ -987,7 +987,7 @@ public:
 			string clbin = string_printf("cycles_kernel_%s_%s.clbin",
 			                             device_md5.c_str(),
 			                             kernel_md5.c_str());
-			clbin = path_user_get(path_join("cache", clbin));
+			clbin = path_cache_get(path_join("kernels", clbin));
 
 			/* path to preprocessed source for debugging */
 			string clsrc, *debug_src = NULL;
@@ -996,7 +996,7 @@ public:
 				clsrc = string_printf("cycles_kernel_%s_%s.cl",
 				                      device_md5.c_str(),
 				                      kernel_md5.c_str());
-				clsrc = path_user_get(path_join("cache", clsrc));
+				clsrc = path_cache_get(path_join("kernels", clsrc));
 				debug_src = &clsrc;
 			}
 
@@ -1680,7 +1680,7 @@ public:
 			string clbin = string_printf("cycles_kernel_%s_%s.clbin",
 			                             device_md5.c_str(),
 			                             kernel_md5.c_str());
-			clbin = path_user_get(path_join("cache", clbin));
+			clbin = path_cache_get(path_join("kernels", clbin));
 
 			/* Path to preprocessed source for debugging. */
 			string clsrc, *debug_src = NULL;
@@ -1688,7 +1688,7 @@ public:
 				clsrc = string_printf("cycles_kernel_%s_%s.cl",
 				                      device_md5.c_str(),
 				                      kernel_md5.c_str());
-				clsrc = path_user_get(path_join("cache", clsrc));
+				clsrc = path_cache_get(path_join("kernels", clsrc));
 				debug_src = &clsrc;
 			}
 
@@ -2102,7 +2102,7 @@ public:
 			return false;
 		}
 
-		string cache_clbin = path_user_get(path_join("cache", clbin));
+		string cache_clbin = path_cache_get(path_join("kernels", clbin));
 
 		/* If exists already, try use it. */
 		if(path_exists(cache_clbin) && load_binary(kernel_path,
@@ -2220,7 +2220,7 @@ public:
 		if(opencl_kernel_use_debug()) { \
 			clsrc = string_printf("cycles_kernel_%s_%s_" #name ".cl", \
 			                      device_md5.c_str(), kernel_md5.c_str()); \
-			clsrc = path_user_get(path_join("cache", clsrc)); \
+			clsrc = path_cache_get(path_join("kernels", clsrc)); \
 			debug_src = &clsrc; \
 		} \
 		if(!load_split_kernel(#name, \
@@ -2346,7 +2346,9 @@ public:
 		}
 	}
 
-	void path_trace(SplitRenderTile& rtile, int2 max_render_feasible_tile_size)
+	void path_trace(DeviceTask *task,
+	                SplitRenderTile& rtile,
+	                int2 max_render_feasible_tile_size)
 	{
 		/* cast arguments to cl types */
 		cl_mem d_data = CL_MEM_PTR(const_mem_map["__data"]->device_pointer);
@@ -2739,6 +2741,7 @@ public:
 		/* Record number of time host intervention has been made */
 		unsigned int numHostIntervention = 0;
 		unsigned int numNextPathIterTimes = PathIteration_times;
+		bool canceled = false;
 		while(activeRaysAvailable) {
 			/* Twice the global work size of other kernels for
 			 * ckPathTraceKernel_shadow_blocked_direct_lighting. */
@@ -2757,6 +2760,10 @@ public:
 				ENQUEUE_SPLIT_KERNEL(direct_lighting, global_size, local_size);
 				ENQUEUE_SPLIT_KERNEL(shadow_blocked, global_size_shadow_blocked, local_size);
 				ENQUEUE_SPLIT_KERNEL(next_iteration_setup, global_size, local_size);
+				if(task->get_cancel()) {
+					canceled = true;
+					break;
+				}
 			}
 
 			/* Read ray-state into Host memory to decide if we should exit
@@ -2794,22 +2801,28 @@ public:
 				 */
 				numNextPathIterTimes += PATH_ITER_INC_FACTOR;
 			}
+			if(task->get_cancel()) {
+				canceled = true;
+				break;
+			}
 		}
 
 		/* Execute SumALLRadiance kernel to accumulate radiance calculated in
 		 * per_sample_output_buffers into RenderTile's output buffer.
 		 */
-		size_t sum_all_radiance_local_size[2] = {16, 16};
-		size_t sum_all_radiance_global_size[2];
-		sum_all_radiance_global_size[0] =
-			(((d_w - 1) / sum_all_radiance_local_size[0]) + 1) *
-			sum_all_radiance_local_size[0];
-		sum_all_radiance_global_size[1] =
-			(((d_h - 1) / sum_all_radiance_local_size[1]) + 1) *
-			sum_all_radiance_local_size[1];
-		ENQUEUE_SPLIT_KERNEL(sum_all_radiance,
-		                     sum_all_radiance_global_size,
-		                     sum_all_radiance_local_size);
+		if (!canceled) {
+			size_t sum_all_radiance_local_size[2] = {16, 16};
+			size_t sum_all_radiance_global_size[2];
+			sum_all_radiance_global_size[0] =
+				(((d_w - 1) / sum_all_radiance_local_size[0]) + 1) *
+				sum_all_radiance_local_size[0];
+			sum_all_radiance_global_size[1] =
+				(((d_h - 1) / sum_all_radiance_local_size[1]) + 1) *
+				sum_all_radiance_local_size[1];
+			ENQUEUE_SPLIT_KERNEL(sum_all_radiance,
+			                     sum_all_radiance_global_size,
+			                     sum_all_radiance_local_size);
+		}
 
 #undef ENQUEUE_SPLIT_KERNEL
 #undef GLUE
@@ -3182,7 +3195,8 @@ public:
 					    tile_iter < to_path_trace_render_tiles.size();
 					    ++tile_iter)
 					{
-						path_trace(to_path_trace_render_tiles[tile_iter],
+						path_trace(task,
+						           to_path_trace_render_tiles[tile_iter],
 						           max_render_feasible_tile_size);
 					}
 				}
@@ -3198,7 +3212,7 @@ public:
 					/* buffer_rng_state_stride is stride itself. */
 					SplitRenderTile split_tile(tile);
 					split_tile.buffer_rng_state_stride = tile.stride;
-					path_trace(split_tile, max_render_feasible_tile_size);
+					path_trace(task, split_tile, max_render_feasible_tile_size);
 				}
 				tile.sample = tile.start_sample + tile.num_samples;
 

@@ -30,6 +30,7 @@
 
 extern "C" {
 #include "DNA_mesh_types.h"
+#include "DNA_object_types.h"
 
 #include "BKE_lattice.h"
 #include "BKE_mesh.h"
@@ -66,7 +67,7 @@ AbcPointsWriter::AbcPointsWriter(Scene *scene,
 {
 	m_psys = psys;
 
-	OPoints points(parent->alembicXform(), m_name, m_time_sampling);
+	OPoints points(parent->alembicXform(), psys->name, m_time_sampling);
 	m_schema = points.getSchema();
 }
 
@@ -141,7 +142,7 @@ AbcPointsReader::AbcPointsReader(const Alembic::Abc::IObject &object, ImportSett
 {
 	IPoints ipoints(m_iobject, kWrapExisting);
 	m_schema = ipoints.getSchema();
-	get_min_max_time(m_schema, m_min_time, m_max_time);
+	get_min_max_time(m_iobject, m_schema, m_min_time, m_max_time);
 }
 
 bool AbcPointsReader::valid() const

@@ -1,6 +1,5 @@
 /*
- * Adapted from code Copyright 2009-2010 NVIDIA Corporation
- * Modifications Copyright 2011, Blender Foundation.
+ * Copyright 2011-2013 Blender Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +16,9 @@
 
 #include "geom_attribute.h"
 #include "geom_object.h"
-#include "geom_patch.h"
+#ifdef __PATCH_EVAL__
+#  include "geom_patch.h"
+#endif
 #include "geom_triangle.h"
 #include "geom_subd_triangle.h"
 #include "geom_triangle_intersect.h"

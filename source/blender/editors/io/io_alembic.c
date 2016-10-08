@@ -34,6 +34,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_mesh_types.h"
+#include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_space_types.h"
@@ -68,8 +69,16 @@
 static int wm_alembic_export_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
 	if (!RNA_struct_property_is_set(op->ptr, "filepath")) {
+		Main *bmain = CTX_data_main(C);
 		char filepath[FILE_MAX];
-		BLI_strncpy(filepath, G.main->name, sizeof(filepath));
+
+		if (bmain->name[0] == '\0') {
+			BLI_strncpy(filepath, "untitled", sizeof(filepath));
+		}
+		else {
+			BLI_strncpy(filepath, bmain->name, sizeof(filepath));
+		}
+
 		BLI_replace_extension(filepath, sizeof(filepath), ".abc");
 		RNA_string_set(op->ptr, "filepath", filepath);
 	}
@@ -113,6 +122,9 @@ static int wm_alembic_export_exec(bContext *C, wmOperator *op)
 	    .use_subdiv_schema = RNA_boolean_get(op->ptr, "subdiv_schema"),
 	    .compression_type = RNA_enum_get(op->ptr, "compression_type"),
 	    .packuv = RNA_boolean_get(op->ptr, "packuv"),
+		.triangulate = RNA_boolean_get(op->ptr, "triangulate"),
+		.quad_method = RNA_enum_get(op->ptr, "quad_method"),
+		.ngon_method = RNA_enum_get(op->ptr, "ngon_method"),
 
 	    .global_scale = RNA_float_get(op->ptr, "global_scale"),
 	};
@@ -124,10 +136,11 @@ static int wm_alembic_export_exec(bContext *C, wmOperator *op)
 
 static void ui_alembic_export_settings(uiLayout *layout, PointerRNA *imfptr)
 {
-	uiLayout *box = uiLayoutBox(layout);
+	uiLayout *box;
 	uiLayout *row;
 
 #ifdef WITH_ALEMBIC_HDF5
+	box = uiLayoutBox(layout);
 	row = uiLayoutRow(box, false);
 	uiItemL(row, IFACE_("Archive Options:"), ICON_NONE);
 
@@ -203,6 +216,19 @@ static void ui_alembic_export_settings(uiLayout *layout, PointerRNA *imfptr)
 
 	row = uiLayoutRow(box, false);
 	uiItemR(row, imfptr, "apply_subdiv", 0, NULL, ICON_NONE);
+
+	row = uiLayoutRow(box, false);
+	uiItemR(row, imfptr, "triangulate", 0, NULL, ICON_NONE);
+
+	const bool triangulate = RNA_boolean_get(imfptr, "triangulate");
+
+	row = uiLayoutRow(box, false);
+	uiLayoutSetEnabled(row, triangulate);
+	uiItemR(row, imfptr, "quad_method", 0, NULL, ICON_NONE);
+
+	row = uiLayoutRow(box, false);
+	uiLayoutSetEnabled(row, triangulate);
+	uiItemR(row, imfptr, "ngon_method", 0, NULL, ICON_NONE);
 }
 
 static void wm_alembic_export_draw(bContext *UNUSED(C), wmOperator *op)
@@ -213,15 +239,31 @@ static void wm_alembic_export_draw(bContext *UNUSED(C), wmOperator *op)
 	ui_alembic_export_settings(op->layout, &ptr);
 }
 
+static bool wm_alembic_export_check(bContext *UNUSED(C), wmOperator *op)
+{
+	char filepath[FILE_MAX];
+	RNA_string_get(op->ptr, "filepath", filepath);
+
+	if (!BLI_testextensie(filepath, ".abc")) {
+		BLI_ensure_extension(filepath, FILE_MAX, ".abc");
+		RNA_string_set(op->ptr, "filepath", filepath);
+		return true;
+	}
+
+	return false;
+}
+
 void WM_OT_alembic_export(wmOperatorType *ot)
 {
-	ot->name = "Export Alembic Archive";
+	ot->name = "Export Alembic";
+	ot->description = "Export current scene in an Alembic archive";
 	ot->idname = "WM_OT_alembic_export";
 
 	ot->invoke = wm_alembic_export_invoke;
 	ot->exec = wm_alembic_export_exec;
 	ot->poll = WM_operator_winactive;
 	ot->ui = wm_alembic_export_draw;
+	ot->check = wm_alembic_export_check;
 
 	WM_operator_properties_filesel(ot, FILE_TYPE_FOLDER | FILE_TYPE_ALEMBIC,
 	                               FILE_BLENDER, FILE_SAVE, WM_FILESEL_FILEPATH,
@@ -237,7 +279,7 @@ void WM_OT_alembic_export(wmOperatorType *ot)
 	            "Transform Samples", "Number of times per frame transformations are sampled", 1, 128);
 
 	RNA_def_int(ot->srna, "gsamples", 1, 1, 128,
-	            "Geometry Samples", "Number of times per frame object datas are sampled", 1, 128);
+	            "Geometry Samples", "Number of times per frame object data are sampled", 1, 128);
 
 	RNA_def_float(ot->srna, "sh_open", 0.0f, -1.0f, 1.0f,
 	              "Shutter Open", "Time at which the shutter is open", -1.0f, 1.0f);
@@ -266,7 +308,7 @@ void WM_OT_alembic_export(wmOperatorType *ot)
 
 	RNA_def_boolean(ot->srna, "normals", 1, "Normals", "Export normals");
 
-	RNA_def_boolean(ot->srna, "vcolors", 0, "Vertex colors", "Export vertex colors");
+	RNA_def_boolean(ot->srna, "vcolors", 0, "Vertex Colors", "Export vertex colors");
 
 	RNA_def_boolean(ot->srna, "face_sets", 0, "Face Sets", "Export per face shading group assignments");
 
@@ -283,6 +325,15 @@ void WM_OT_alembic_export(wmOperatorType *ot)
 	RNA_def_float(ot->srna, "global_scale", 1.0f, 0.0001f, 1000.0f, "Scale",
 	              "Value by which to enlarge or shrink the objects with respect to the world's origin",
 	              0.0001f, 1000.0f);
+
+	RNA_def_boolean(ot->srna, "triangulate", false, "Triangulate",
+	                "Export Polygons (Quads & NGons) as Triangles");
+
+	RNA_def_enum(ot->srna, "quad_method", rna_enum_modifier_triangulate_quad_method_items,
+	             MOD_TRIANGULATE_QUAD_SHORTEDGE, "Quad Method", "Method for splitting the quads into triangles");
+
+	RNA_def_enum(ot->srna, "ngon_method", rna_enum_modifier_triangulate_quad_method_items,
+	             MOD_TRIANGULATE_NGON_BEAUTY, "Polygon Method", "Method for splitting the polygons into triangles");
 }
 
 /* ************************************************************************** */
@@ -428,7 +479,8 @@ static int wm_alembic_import_exec(bContext *C, wmOperator *op)
 
 void WM_OT_alembic_import(wmOperatorType *ot)
 {
-	ot->name = "Import Alembic Archive";
+	ot->name = "Import Alembic";
+	ot->description = "Load an Alembic archive";
 	ot->idname = "WM_OT_alembic_import";
 
 	ot->invoke = WM_operator_filesel;

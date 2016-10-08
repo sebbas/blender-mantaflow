@@ -292,14 +292,16 @@ static bool task_scheduler_thread_wait_pop(TaskScheduler *scheduler, Task **task
 				continue;
 			}
 
-			if (pool->num_threads == 0 ||
-			    pool->currently_running_tasks < pool->num_threads)
+			if (atomic_add_z(&pool->currently_running_tasks, 1) <= pool->num_threads ||
+			    pool->num_threads == 0)
 			{
 				*task = current_task;
 				found_task = true;
-				atomic_add_z(&pool->currently_running_tasks, 1);
 				BLI_remlink(&scheduler->queue, *task);
 				break;
+			}
+			else {
+				atomic_sub_z(&pool->currently_running_tasks, 1);
 			}
 		}
 		if (!found_task)
@@ -780,9 +782,10 @@ BLI_INLINE bool parallel_range_next_iter_get(
         ParallelRangeState * __restrict state,
         int * __restrict iter, int * __restrict count)
 {
-	uint32_t previter = atomic_fetch_and_add_uint32((uint32_t *)(&state->iter), state->chunk_size);
+	uint32_t uval = atomic_fetch_and_add_uint32((uint32_t *)(&state->iter), state->chunk_size);
+	int previter = *(int32_t*)&uval;
 
-	*iter = (int)previter;
+	*iter = previter;
 	*count = max_ii(0, min_ii(state->chunk_size, state->stop - previter));
 
 	return (previter < state->stop);

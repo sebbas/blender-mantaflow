@@ -712,7 +712,7 @@ static void rna_Object_active_material_set(PointerRNA *ptr, PointerRNA value)
 	assign_material(ob, value.data, ob->actcol, BKE_MAT_ASSIGN_EXISTING);
 }
 
-static int rna_Object_active_material_editable(PointerRNA *ptr)
+static int rna_Object_active_material_editable(PointerRNA *ptr, const char **UNUSED(r_info))
 {
 	Object *ob = (Object *)ptr->id.data;
 	bool is_editable;
@@ -2559,7 +2559,7 @@ static void rna_def_object(BlenderRNA *brna)
 	/* render */
 	prop = RNA_def_property(srna, "pass_index", PROP_INT, PROP_UNSIGNED);
 	RNA_def_property_int_sdna(prop, NULL, "index");
-	RNA_def_property_ui_text(prop, "Pass Index", "Index number for the IndexOB render pass");
+	RNA_def_property_ui_text(prop, "Pass Index", "Index number for the \"Object Index\" render pass");
 	RNA_def_property_update(prop, NC_OBJECT, "rna_Object_internal_update");
 	
 	prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR);

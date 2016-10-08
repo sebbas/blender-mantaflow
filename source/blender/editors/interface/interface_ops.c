@@ -1083,7 +1083,6 @@ static void UI_OT_drop_color(wmOperatorType *ot)
 }
 
 
-
 /* ********************************************************* */
 /* Registration */
 
@@ -1112,12 +1111,29 @@ void ED_operatortypes_ui(void)
 
 /**
  * \brief User Interface Keymap
- *
- * For now only modal maps here, since UI uses special ui-handlers instead of operators.
  */
 void ED_keymap_ui(wmKeyConfig *keyconf)
 {
-	WM_keymap_find(keyconf, "User Interface", 0, 0);
+	wmKeyMap *keymap = WM_keymap_find(keyconf, "User Interface", 0, 0);
+
+	/* eyedroppers - notice they all have the same shortcut, but pass the event
+	 * through until a suitable eyedropper for the active button is found */
+	WM_keymap_add_item(keymap, "UI_OT_eyedropper_color", EKEY, KM_PRESS, 0, 0);
+	WM_keymap_add_item(keymap, "UI_OT_eyedropper_id", EKEY, KM_PRESS, 0, 0);
+	WM_keymap_add_item(keymap, "UI_OT_eyedropper_depth", EKEY, KM_PRESS, 0, 0);
+
+	/* keyframes */
+	WM_keymap_add_item(keymap, "ANIM_OT_keyframe_insert_button", IKEY, KM_PRESS, 0, 0);
+	WM_keymap_add_item(keymap, "ANIM_OT_keyframe_delete_button", IKEY, KM_PRESS, KM_ALT, 0);
+	WM_keymap_add_item(keymap, "ANIM_OT_keyframe_clear_button", IKEY, KM_PRESS, KM_SHIFT | KM_ALT, 0);
+
+	/* drivers */
+	WM_keymap_add_item(keymap, "ANIM_OT_driver_button_add", DKEY, KM_PRESS, KM_CTRL, 0);
+	WM_keymap_add_item(keymap, "ANIM_OT_driver_button_remove", DKEY, KM_PRESS, KM_CTRL | KM_ALT, 0);
+
+	/* keyingsets */
+	WM_keymap_add_item(keymap, "ANIM_OT_keyingset_button_add", KKEY, KM_PRESS, 0, 0);
+	WM_keymap_add_item(keymap, "ANIM_OT_keyingset_button_remove", KKEY, KM_PRESS, KM_ALT, 0);
 
 	eyedropper_modal_keymap(keyconf);
 }

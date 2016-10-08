@@ -198,8 +198,11 @@ void WM_init(bContext *C, int argc, const char **argv)
 	BLT_lang_set(NULL);
 
 	if (!G.background) {
+
+#ifdef WITH_INPUT_NDOF
 		/* sets 3D mouse deadzone */
 		WM_ndof_deadzone_set(U.ndof_deadzone);
+#endif
 
 		GPU_init();
 
@@ -524,7 +527,6 @@ void WM_exit_ext(bContext *C, const bool do_python)
 	ANIM_fmodifiers_copybuf_free();
 	ED_gpencil_anim_copybuf_free();
 	ED_gpencil_strokes_copybuf_free();
-	ED_clipboard_posebuf_free();
 	BKE_node_clipboard_clear();
 
 	BLF_exit();

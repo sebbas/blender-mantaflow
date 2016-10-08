@@ -1061,7 +1061,8 @@ void FILE_OT_bookmark_move(wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_REGISTER;  /* No undo! */
 
-	RNA_def_enum(ot->srna, "direction", slot_move, 0, "Direction", "Direction to move, UP or DOWN");
+	RNA_def_enum(ot->srna, "direction", slot_move, 0, "Direction",
+	             "Direction to move the active bookmark towards");
 }
 
 static int reset_recent_exec(bContext *C, wmOperator *UNUSED(op))
@@ -1894,7 +1895,7 @@ void file_directory_enter_handle(bContext *C, void *UNUSED(arg_unused), void *UN
 		file_expand_directory(C);
 
 		/* special case, user may have pasted a filepath into the directory */
-		if (!file_is_dir(sfile, sfile->params->dir)) {
+		if (!filelist_is_dir(sfile->files, sfile->params->dir)) {
 			char tdir[FILE_MAX_LIBEXTRA];
 			char *group, *name;
 
@@ -1920,7 +1921,7 @@ void file_directory_enter_handle(bContext *C, void *UNUSED(arg_unused), void *UN
 
 		BLI_cleanup_dir(G.main->name, sfile->params->dir);
 
-		if (file_is_dir(sfile, sfile->params->dir)) {
+		if (filelist_is_dir(sfile->files, sfile->params->dir)) {
 			/* if directory exists, enter it immediately */
 			ED_file_change_dir(C);
 
@@ -1993,7 +1994,7 @@ void file_filename_enter_handle(bContext *C, void *UNUSED(arg_unused), void *arg
 			BLI_join_dirfile(filepath, sizeof(sfile->params->dir), sfile->params->dir, sfile->params->file);
 
 			/* if directory, open it and empty filename field */
-			if (file_is_dir(sfile, filepath)) {
+			if (filelist_is_dir(sfile->files, filepath)) {
 				BLI_cleanup_dir(G.main->name, filepath);
 				BLI_strncpy(sfile->params->dir, filepath, sizeof(sfile->params->dir));
 				sfile->params->file[0] = '\0';

@@ -292,11 +292,13 @@ static void rna_userdef_autokeymode_set(PointerRNA *ptr, int value)
 	}
 }
 
+#ifdef WITH_INPUT_NDOF
 static void rna_userdef_ndof_deadzone_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
 {
 	UserDef *userdef = ptr->data;
 	WM_ndof_deadzone_set(userdef->ndof_deadzone);
 }
+#endif
 
 static void rna_userdef_timecode_style_set(PointerRNA *ptr, int value)
 {
@@ -1363,6 +1365,11 @@ static void rna_def_userdef_theme_spaces_vertex(StructRNA *srna)
 	RNA_def_property_ui_text(prop, "Vertex Size", "");
 	RNA_def_property_update(prop, 0, "rna_userdef_update");
 
+	prop = RNA_def_property(srna, "vertex_bevel", PROP_FLOAT, PROP_COLOR_GAMMA);
+	RNA_def_property_array(prop, 3);
+	RNA_def_property_ui_text(prop, "Vertex Bevel", "");
+	RNA_def_property_update(prop, 0, "rna_userdef_update");
+
 	prop = RNA_def_property(srna, "vertex_unreferenced", PROP_FLOAT, PROP_COLOR_GAMMA);
 	RNA_def_property_array(prop, 3);
 	RNA_def_property_ui_text(prop, "Vertex Group Unreferenced", "");
@@ -1391,6 +1398,11 @@ static void rna_def_userdef_theme_spaces_edge(StructRNA *srna)
 	prop = RNA_def_property(srna, "edge_crease", PROP_FLOAT, PROP_COLOR_GAMMA);
 	RNA_def_property_array(prop, 3);
 	RNA_def_property_ui_text(prop, "Edge Crease", "");
+	RNA_def_property_update(prop, 0, "rna_userdef_update");
+
+	prop = RNA_def_property(srna, "edge_bevel", PROP_FLOAT, PROP_COLOR_GAMMA);
+	RNA_def_property_array(prop, 3);
+	RNA_def_property_ui_text(prop, "Edge Bevel", "");
 	RNA_def_property_update(prop, 0, "rna_userdef_update");
 
 	prop = RNA_def_property(srna, "edge_facesel", PROP_FLOAT, PROP_COLOR_GAMMA);
@@ -1889,36 +1901,11 @@ static void rna_def_userdef_theme_space_file(BlenderRNA *brna)
 	RNA_def_struct_ui_text(srna, "Theme File Browser", "Theme settings for the File Browser");
 
 	rna_def_userdef_theme_spaces_main(srna);
-	rna_def_userdef_theme_spaces_list_main(srna);
 
 	prop = RNA_def_property(srna, "selected_file", PROP_FLOAT, PROP_COLOR_GAMMA);
 	RNA_def_property_float_sdna(prop, NULL, "hilite");
 	RNA_def_property_array(prop, 3);
 	RNA_def_property_ui_text(prop, "Selected File", "");
-	RNA_def_property_update(prop, 0, "rna_userdef_update");
-
-	prop = RNA_def_property(srna, "scrollbar", PROP_FLOAT, PROP_COLOR_GAMMA);
-	RNA_def_property_float_sdna(prop, NULL, "shade1");
-	RNA_def_property_array(prop, 3);
-	RNA_def_property_ui_text(prop, "Scrollbar", "");
-	RNA_def_property_update(prop, 0, "rna_userdef_update");
-
-	prop = RNA_def_property(srna, "scroll_handle", PROP_FLOAT, PROP_COLOR_GAMMA);
-	RNA_def_property_float_sdna(prop, NULL, "shade2");
-	RNA_def_property_array(prop, 3);
-	RNA_def_property_ui_text(prop, "Scroll Handle", "");
-	RNA_def_property_update(prop, 0, "rna_userdef_update");
-
-	prop = RNA_def_property(srna, "active_file", PROP_FLOAT, PROP_COLOR_GAMMA);
-	RNA_def_property_float_sdna(prop, NULL, "active");
-	RNA_def_property_array(prop, 3);
-	RNA_def_property_ui_text(prop, "Active File", "");
-	RNA_def_property_update(prop, 0, "rna_userdef_update");
-	
-	prop = RNA_def_property(srna, "active_file_text", PROP_FLOAT, PROP_COLOR_GAMMA);
-	RNA_def_property_float_sdna(prop, NULL, "grid");
-	RNA_def_property_array(prop, 3);
-	RNA_def_property_ui_text(prop, "Active File Text", "");
 	RNA_def_property_update(prop, 0, "rna_userdef_update");
 }
 
@@ -2833,13 +2820,13 @@ static void rna_def_userdef_theme_space_nla(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "active_action", PROP_FLOAT, PROP_COLOR_GAMMA);
 	RNA_def_property_float_sdna(prop, NULL, "anim_active");
 	RNA_def_property_array(prop, 4);
-	RNA_def_property_ui_text(prop, "Active Action", "Animation data block has active action");
+	RNA_def_property_ui_text(prop, "Active Action", "Animation data-block has active action");
 	RNA_def_property_update(prop, 0, "rna_userdef_update");
 	
 	prop = RNA_def_property(srna, "active_action_unset", PROP_FLOAT, PROP_COLOR_GAMMA);
 	RNA_def_property_float_sdna(prop, NULL, "anim_non_active");
 	RNA_def_property_array(prop, 4);
-	RNA_def_property_ui_text(prop, "No Active Action", "Animation data block doesn't have active action");
+	RNA_def_property_ui_text(prop, "No Active Action", "Animation data-block doesn't have active action");
 	RNA_def_property_update(prop, 0, "rna_userdef_update");
 	
 	prop = RNA_def_property(srna, "strips", PROP_FLOAT, PROP_COLOR_GAMMA);
@@ -4333,6 +4320,7 @@ static void rna_def_userdef_input(BlenderRNA *brna)
 		{0, NULL, 0, NULL, NULL}
 	};
 
+#ifdef WITH_INPUT_NDOF
 	static EnumPropertyItem ndof_view_navigation_items[] = {
 		{0, "FREE", 0, "Free", "Use full 6 degrees of freedom by default"},
 		{NDOF_MODE_ORBIT, "ORBIT", 0, "Orbit", "Orbit about the view center by default"},
@@ -4344,6 +4332,7 @@ static void rna_def_userdef_input(BlenderRNA *brna)
 		{0, "TRACKBALL", 0, "Trackball", "Use trackball style rotation in the viewport"},
 		{0, NULL, 0, NULL, NULL}
 	};
+#endif /* WITH_INPUT_NDOF */
 
 	static EnumPropertyItem view_zoom_styles[] = {
 		{USER_ZOOM_CONT, "CONTINUE", 0, "Continue", "Old style zoom, continues while moving mouse up or down"},
@@ -4421,6 +4410,7 @@ static void rna_def_userdef_input(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Tweak Threshold",
 	                         "Number of pixels you have to drag before tweak event is triggered");
 
+#ifdef WITH_INPUT_NDOF
 	/* 3D mouse settings */
 	/* global options */
 	prop = RNA_def_property(srna, "ndof_sensitivity", PROP_FLOAT, PROP_NONE);
@@ -4501,6 +4491,13 @@ static void rna_def_userdef_input(BlenderRNA *brna)
 	RNA_def_property_boolean_sdna(prop, NULL, "ndof_flag", NDOF_FLY_HELICOPTER);
 	RNA_def_property_ui_text(prop, "Helicopter Mode", "Device up/down directly controls your Z position");
 
+	/* let Python know whether NDOF is enabled */
+	prop = RNA_def_boolean(srna, "use_ndof", true, "", "");
+#else
+	prop = RNA_def_boolean(srna, "use_ndof", false, "", "");
+#endif /* WITH_INPUT_NDOF */
+	RNA_def_property_flag(prop, PROP_IDPROPERTY);
+	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
 	prop = RNA_def_property(srna, "mouse_double_click_time", PROP_INT, PROP_NONE);
 	RNA_def_property_int_sdna(prop, NULL, "dbl_click_time");
@@ -4564,7 +4561,7 @@ static void rna_def_userdef_filepaths(BlenderRNA *brna)
 	
 	prop = RNA_def_property(srna, "show_hidden_files_datablocks", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "uiflag", USER_HIDE_DOT);
-	RNA_def_property_ui_text(prop, "Hide Dot Files/Datablocks", "Hide files/data-blocks that start with a dot (.*)");
+	RNA_def_property_ui_text(prop, "Hide Dot Files/Data-Blocks", "Hide files/data-blocks that start with a dot (.*)");
 	
 	prop = RNA_def_property(srna, "use_filter_files", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "uiflag", USER_FILTERFILEEXTS);

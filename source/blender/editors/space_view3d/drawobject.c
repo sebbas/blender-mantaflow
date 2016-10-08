@@ -3079,7 +3079,7 @@ static DMDrawOption draw_dm_bweights__setDrawOptions(void *userData, int index)
 	if (!BM_elem_flag_test(eed, BM_ELEM_HIDDEN)) {
 		const float bweight = BM_ELEM_CD_GET_FLOAT(eed, data->cd_layer_offset);
 		if (bweight != 0.0f) {
-			UI_ThemeColorBlend(TH_WIRE_EDIT, TH_EDGE_SELECT, bweight);
+			UI_ThemeColorBlend(TH_WIRE_EDIT, TH_EDGE_BEVEL, bweight);
 			return DM_DRAW_OPTION_NORMAL;
 		}
 	}
@@ -3095,7 +3095,7 @@ static void draw_dm_bweights__mapFunc(void *userData, int index, const float co[
 	if (!BM_elem_flag_test(eve, BM_ELEM_HIDDEN)) {
 		const float bweight = BM_ELEM_CD_GET_FLOAT(eve, data->cd_layer_offset);
 		if (bweight != 0.0f) {
-			UI_ThemeColorBlend(TH_VERTEX, TH_VERTEX_SELECT, bweight);
+			UI_ThemeColorBlend(TH_VERTEX, TH_VERTEX_BEVEL, bweight);
 			glVertex3fv(co);
 		}
 	}
@@ -4227,7 +4227,7 @@ static bool draw_mesh_object(Scene *scene, ARegion *ar, View3D *v3d, RegionView3
 	/* If we are drawing shadows and any of the materials don't cast a shadow,
 	 * then don't draw the object */
 	if (v3d->flag2 & V3D_RENDER_SHADOW) {
-		for (int i = 0; i < ob->totcol; ++i) {
+		for (int i = 1; i <= ob->totcol; ++i) {
 			Material *ma = give_current_material(ob, i);
 			if (ma && !(ma->mode2 & MA_CASTSHADOW)) {
 				return true;
@@ -7845,125 +7845,83 @@ void draw_object(Scene *scene, ARegion *ar, View3D *v3d, Base *base, const short
 		}
 	}
 
-	/* draw code for smoke */
-	if (smd) {
-#if 0
-		/* draw collision objects */
-		if ((smd->type & MOD_SMOKE_TYPE_COLL) && smd->coll) {
-			SmokeCollSettings *scs = smd->coll;
-			if (scs->points) {
-				size_t i;
+	/* draw code for smoke, only draw domains */
+	if (smd && smd->domain && (smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS)) {
+		SmokeDomainSettings *sds = smd->domain;
+		float viewnormal[3];
 
-				glLoadMatrixf(rv3d->viewmat);
+		glLoadMatrixf(rv3d->viewmat);
+		glMultMatrixf(ob->obmat);
 
-				if (col || (ob->flag & SELECT)) cpack(0xFFFFFF);
-				glDepthMask(GL_FALSE);
-				glEnable(GL_BLEND);
-				
+		if (!render_override) {
+			BoundBox bb;
+			float p0[3], p1[3];
 
-				// glPointSize(3.0);
-				glBegin(GL_POINTS);
-
-				for (i = 0; i < scs->numpoints; i++)
-				{
-					glVertex3fv(&scs->points[3 * i]);
-				}
-
-				glEnd();
-
-				glMultMatrixf(ob->obmat);
-				glDisable(GL_BLEND);
-				glDepthMask(GL_TRUE);
-				if (col) cpack(col);
-			}
-		}
-#endif
-
-		/* only draw domains */
-		if (smd->domain && (smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS)) {
-			SmokeDomainSettings *sds = smd->domain;
-			float viewnormal[3];
-
-			glLoadMatrixf(rv3d->viewmat);
-			glMultMatrixf(ob->obmat);
-
-			if (!render_override) {
-				BoundBox bb;
-				float p0[3], p1[3];
-
-				/* draw adaptive domain bounds */
-				if ((sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN)) {
-					/* draw domain max bounds */
-					VECSUBFAC(p0, sds->p0, sds->cell_size, sds->adapt_res);
-					VECADDFAC(p1, sds->p1, sds->cell_size, sds->adapt_res);
-					BKE_boundbox_init_from_minmax(&bb, p0, p1);
-					draw_box(bb.vec, false);
-				}
-
-#if 0
-				/* draw base resolution bounds */
-				BKE_boundbox_init_from_minmax(&bb, sds->p0, sds->p1);
-				draw_box(bb.vec);
-#endif
-
-
-				/* draw a single voxel to hint the user about the resolution of the fluid */
-				copy_v3_v3(p0, sds->p0);
-
-				if (sds->flags & MOD_SMOKE_HIGHRES) {
-					madd_v3_v3v3fl(p1, p0, sds->cell_size, 1.0f / (sds->amplify + 1));
-				}
-				else {
-					add_v3_v3v3(p1, p0, sds->cell_size);
-				}
-
+			/* draw max domain bounds */
+			if ((sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN)) {
+				VECSUBFAC(p0, sds->p0, sds->cell_size, sds->adapt_res);
+				VECADDFAC(p1, sds->p1, sds->cell_size, sds->adapt_res);
 				BKE_boundbox_init_from_minmax(&bb, p0, p1);
 				draw_box(bb.vec, false);
 			}
 
-			/* don't show smoke before simulation starts, this could be made an option in the future */
-			if (sds->fluid && CFRA >= sds->point_cache[0]->startframe) {
-				float p0[3], p1[3];
+			/* draw a single voxel to hint the user about the resolution of the fluid */
+			copy_v3_v3(p0, sds->p0);
 
-				/* get view vector */
-				invert_m4_m4(ob->imat, ob->obmat);
-				mul_v3_mat3_m4v3(viewnormal, ob->imat, rv3d->viewinv[2]);
-				normalize_v3(viewnormal);
-
-				/* set dynamic boundaries to draw the volume
-				 * also scale cube to global space to equalize volume slicing on all axes
-				 *  (it's scaled back before drawing) */
-				p0[0] = (sds->p0[0] + sds->cell_size[0] * sds->res_min[0] + sds->obj_shift_f[0]) * fabsf(ob->size[0]);
-				p0[1] = (sds->p0[1] + sds->cell_size[1] * sds->res_min[1] + sds->obj_shift_f[1]) * fabsf(ob->size[1]);
-				p0[2] = (sds->p0[2] + sds->cell_size[2] * sds->res_min[2] + sds->obj_shift_f[2]) * fabsf(ob->size[2]);
-				p1[0] = (sds->p0[0] + sds->cell_size[0] * sds->res_max[0] + sds->obj_shift_f[0]) * fabsf(ob->size[0]);
-				p1[1] = (sds->p0[1] + sds->cell_size[1] * sds->res_max[1] + sds->obj_shift_f[1]) * fabsf(ob->size[1]);
-				p1[2] = (sds->p0[2] + sds->cell_size[2] * sds->res_max[2] + sds->obj_shift_f[2]) * fabsf(ob->size[2]);
-
-				if (sds->fluid && sds->viewport_display_mode == SM_VIEWPORT_GEOMETRY) {
-					// Nothing to do here
-				}
-				else if (!(sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) || sds->viewport_display_mode == SM_VIEWPORT_PREVIEW) {
-					sds->tex = NULL;
-					GPU_create_smoke(smd, 0);
-					draw_smoke_volume(sds, ob, p0, p1, viewnormal);
-					GPU_free_smoke(smd);
-				}
-				else if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES && sds->viewport_display_mode == SM_VIEWPORT_FINAL) {
-					sds->tex = NULL;
-					GPU_create_smoke(smd, 1);
-					draw_smoke_volume(sds, ob, p0, p1, viewnormal);
-					GPU_free_smoke(smd);
-				}
-
-				/* smoke debug render */
-#ifdef SMOKE_DEBUG_VELOCITY
-				draw_smoke_velocity(smd->domain, ob);
-#endif
-#ifdef SMOKE_DEBUG_HEAT
-				draw_smoke_heat(smd->domain, ob);
-#endif
+			if (sds->flags & MOD_SMOKE_HIGHRES) {
+				madd_v3_v3v3fl(p1, p0, sds->cell_size, 1.0f / (sds->amplify + 1));
 			}
+			else {
+				add_v3_v3v3(p1, p0, sds->cell_size);
+			}
+
+			BKE_boundbox_init_from_minmax(&bb, p0, p1);
+			draw_box(bb.vec, false);
+		}
+
+		/* don't show smoke before simulation starts, this could be made an option in the future */
+		if (sds->fluid && CFRA >= sds->point_cache[0]->startframe) {
+			float p0[3], p1[3];
+
+			/* get view vector */
+			invert_m4_m4(ob->imat, ob->obmat);
+			mul_v3_mat3_m4v3(viewnormal, ob->imat, rv3d->viewinv[2]);
+			normalize_v3(viewnormal);
+
+			/* set dynamic boundaries to draw the volume
+			 * also scale cube to global space to equalize volume slicing on all axes
+			 *  (it's scaled back before drawing) */
+			p0[0] = (sds->p0[0] + sds->cell_size[0] * sds->res_min[0] + sds->obj_shift_f[0]) * fabsf(ob->size[0]);
+			p0[1] = (sds->p0[1] + sds->cell_size[1] * sds->res_min[1] + sds->obj_shift_f[1]) * fabsf(ob->size[1]);
+			p0[2] = (sds->p0[2] + sds->cell_size[2] * sds->res_min[2] + sds->obj_shift_f[2]) * fabsf(ob->size[2]);
+			p1[0] = (sds->p0[0] + sds->cell_size[0] * sds->res_max[0] + sds->obj_shift_f[0]) * fabsf(ob->size[0]);
+			p1[1] = (sds->p0[1] + sds->cell_size[1] * sds->res_max[1] + sds->obj_shift_f[1]) * fabsf(ob->size[1]);
+			p1[2] = (sds->p0[2] + sds->cell_size[2] * sds->res_max[2] + sds->obj_shift_f[2]) * fabsf(ob->size[2]);
+			
+			if (sds->fluid && sds->viewport_display_mode == SM_VIEWPORT_GEOMETRY) {
+				// Nothing to do here
+			}
+			else if (!(sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) || sds->viewport_display_mode == SM_VIEWPORT_PREVIEW) {
+				sds->tex = NULL;
+				GPU_create_smoke(smd, 0);
+				draw_smoke_volume(sds, ob, p0, p1, viewnormal);
+				GPU_free_smoke(smd);
+			}
+			else if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES && sds->viewport_display_mode == SM_VIEWPORT_FINAL) {
+				sds->tex = NULL;
+				GPU_create_smoke(smd, 1);
+				draw_smoke_volume(sds, ob, p0, p1, viewnormal);
+				GPU_free_smoke(smd);
+			}
+
+			/* smoke debug render */
+			if (!render_override && sds->draw_velocity) {
+				draw_smoke_velocity(sds, viewnormal);
+			}
+
+#ifdef SMOKE_DEBUG_HEAT
+			draw_smoke_heat(smd->domain, ob);
+#endif
 		}
 	}
 

@@ -1118,11 +1118,9 @@ Object *BKE_object_copy_ex(Main *bmain, Object *ob, bool copy_caches)
 
 	BLI_listbase_clear(&obn->prop);
 	BKE_bproperty_copy_list(&obn->prop, &ob->prop);
-	
-	copy_sensors(&obn->sensors, &ob->sensors);
-	copy_controllers(&obn->controllers, &ob->controllers);
-	copy_actuators(&obn->actuators, &ob->actuators);
-	
+
+	BKE_sca_logic_copy(obn, ob);
+
 	if (ob->pose) {
 		copy_object_pose(obn, ob);
 		/* backwards compat... non-armatures can get poses in older files? */
@@ -1138,7 +1136,7 @@ Object *BKE_object_copy_ex(Main *bmain, Object *ob, bool copy_caches)
 	/* increase user numbers */
 	id_us_plus((ID *)obn->data);
 	id_us_plus((ID *)obn->gpd);
-	id_lib_extern((ID *)obn->dup_group);
+	id_us_plus((ID *)obn->dup_group);
 
 	for (a = 0; a < obn->totcol; a++) id_us_plus((ID *)obn->mat[a]);
 	
@@ -3213,6 +3211,14 @@ static bool constructive_modifier_is_deform_modified(ModifierData *md)
 	else if (md->type == eModifierType_Screw) {
 		ScrewModifierData *smd = (ScrewModifierData *)md;
 		return smd->ob_axis != NULL && object_moves_in_time(smd->ob_axis);
+	}
+	else if (md->type == eModifierType_MeshSequenceCache) {
+		/* NOTE: Not ideal because it's unknown whether topology changes or not.
+		 * This will be detected later, so by assuming it's only deformation
+		 * going on here we allow to bake deform-only mesh to Alembic and have
+		 * proper motion blur after that.
+		 */
+		return true;
 	}
 	return false;
 }

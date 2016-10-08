@@ -40,8 +40,8 @@ struct FLUID *smoke_init(int *res, struct SmokeModifierData *smd);
 void smoke_free(struct FLUID *smoke);
 size_t smoke_get_index(int x, int max_x, int y, int max_y, int z /*, int max_z */);
 size_t smoke_get_index2d(int x, int max_x, int y /*, int max_y, int z, int max_z */);
-void smoke_manta_export(struct FLUID* smoke, SmokeModifierData *smd);
-void smoke_step(struct FLUID *smoke, SmokeModifierData *smd);
+void smoke_manta_export(struct FLUID* smoke, struct SmokeModifierData *smd);
+void smoke_step(struct FLUID *smoke, struct SmokeModifierData *smd);
 void smoke_dissolve(struct FLUID *smoke, int speed, int log);
 void smoke_dissolve_wavelet(struct FLUID *smoke, int speed, int log);
 void smoke_export(struct FLUID *smoke, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, float **smoke_inflow, float **vx, float **vy, float **vz, float **r, float **g, float **b, unsigned char **obstacles);
@@ -112,7 +112,7 @@ void liquid_update_mesh_data(struct FLUID *liquid, char *filename);
 void liquid_save_mesh_high(struct FLUID *liquid, char *filename);
 void liquid_save_data_high(struct FLUID *liquid, char *pathname);
 void liquid_load_data_high(struct FLUID *liquid, char *pathname);
-void liquid_manta_export(struct FLUID* smoke, SmokeModifierData *smd);
+void liquid_manta_export(struct FLUID* smoke, struct SmokeModifierData *smd);
 
 
 #ifdef __cplusplus

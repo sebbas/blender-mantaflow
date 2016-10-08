@@ -112,7 +112,7 @@ ccl_device_noinline void kernel_branched_path_surface_indirect_light(KernelGloba
 			}
 
 			kernel_path_indirect(kg,
-						         indirect_sd,
+			                     indirect_sd,
 			                     emission_sd,
 			                     rng,
 			                     &bsdf_ray,
@@ -224,7 +224,7 @@ ccl_device void kernel_branched_path_subsurface_scatter(KernelGlobals *kg,
 				        kg,
 				        rng,
 				        &bssrdf_sd,
-						indirect_sd,
+				        indirect_sd,
 				        emission_sd,
 				        throughput,
 				        num_samples_inv,
@@ -282,9 +282,9 @@ ccl_device float4 kernel_branched_path_integrate(KernelGlobals *kg, RNG *rng, in
 			lcg_state = lcg_state_init(rng, &state, 0x51633e2d);
 		}
 
-		bool hit = scene_intersect(kg, &ray, visibility, &isect, &lcg_state, difl, extmax);
+		bool hit = scene_intersect(kg, ray, visibility, &isect, &lcg_state, difl, extmax);
 #else
-		bool hit = scene_intersect(kg, &ray, visibility, &isect, NULL, 0.0f, 0.0f);
+		bool hit = scene_intersect(kg, ray, visibility, &isect, NULL, 0.0f, 0.0f);
 #endif
 
 #ifdef __KERNEL_DEBUG__

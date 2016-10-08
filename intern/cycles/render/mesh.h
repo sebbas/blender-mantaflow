@@ -39,6 +39,7 @@ class Progress;
 class Scene;
 class SceneParams;
 class AttributeRequest;
+struct SubdParams;
 class DiagSplit;
 struct PackedPatchTable;
 
@@ -156,6 +157,8 @@ public:
 
 	array<SubdEdgeCrease> subd_creases;
 
+	SubdParams *subd_params;
+
 	vector<Shader*> used_shaders;
 	AttributeSet attributes;
 	AttributeSet curve_attributes;
@@ -212,6 +215,7 @@ public:
 	void compute_bounds();
 	void add_face_normals();
 	void add_vertex_normals();
+	void add_undisplaced();
 
 	void pack_normals(Scene *scene, uint *shader, float4 *vnormal);
 	void pack_verts(const vector<uint>& tri_prim_index,
