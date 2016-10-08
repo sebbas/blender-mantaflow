@@ -62,7 +62,6 @@ minParticles   = pow(particleNumber,dim)\n\
 radiusFactor   = $PARTICLE_RADIUS$\n\
 randomness     = $PARTICLE_RANDOMNESS$\n\
 \n\
-step    = -1\n\
 maxVel  = 0\n\
 \n\
 using_highres = $USING_HIGHRES$\n";
@@ -396,7 +395,6 @@ if 'narrowBandWidth'  in globals() : del narrowBandWidth\n\
 if 'combineBandWidth' in globals() : del combineBandWidth\n\
 if 'minParticles'     in globals() : del minParticles\n\
 if 'particleNumber'   in globals() : del particleNumber\n\
-if 'step'             in globals() : del step\n\
 if 'maxVel'           in globals() : del maxVel\n";
 
 const std::string liquid_delete_variables_high = "\n\
