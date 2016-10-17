@@ -1614,7 +1614,11 @@ static void update_mesh_distances(int index, float *inflow_map, BVHTreeFromMesh 
 	float ray_dirs[6][3] = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f},
 							{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}};
 	size_t ray_cnt = sizeof ray_dirs / sizeof ray_dirs[0];
-	inflow_map[index] = 1.0f; // Init inflow map to one, undetermined otherwise which is not good ...
+	
+	/* Initialize inflow map. Any following initialization leaves points inside mesh ( < 0.0f) unaffected */
+	if (inflow_map[index] >= 0.0f) {
+		inflow_map[index] = 0.5f;
+	}
 
 	for (i = 0; i < ray_cnt; i++) {
 		BVHTreeRayHit hit_tree = {0};
@@ -1640,9 +1644,10 @@ static void update_mesh_distances(int index, float *inflow_map, BVHTreeFromMesh 
 	min_dist_combined = MIN2(min_dist_pos, min_dist_neg);
 	min_dist_combined_normalized = min_dist_combined; // / cell_size[0]; // TODO (sebbas): normalization results in too big values
 	
-	/* If distance is still undetermined (=9999) use default manta value (=0.5) instead (outside emission map value is also 0.5)
-	 * Otherwise use computed distance. inflow_map is either 1.0 or -1.0. Multiplied with dist_comb we have mesh dist from out- and inside */
-	inflow_map[index] *= (min_dist_combined == 9999) ? 0.5f : min_dist_combined_normalized;
+	/* Multiply actual distances to those points inside mesh (those points in inflow map with value -1)*/
+	if (min_dist_combined != 9999) {
+		inflow_map[index] *= min_dist_combined_normalized;
+	}
 }
 
 static void sample_derivedmesh(
