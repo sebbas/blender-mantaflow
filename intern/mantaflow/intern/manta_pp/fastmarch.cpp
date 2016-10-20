@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/fastmarch.cpp"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/fastmarch.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -404,7 +404,7 @@ void extrapolateMACSimple(FlagGrid& flags, MACGrid& vel, int distance = 4, Level
 
 	// copy tangential values into sides
 	knExtrapolateIntoBnd(flags, vel);
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "extrapolateMACSimple" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); int distance = _args.getOpt<int >("distance",2,4,&_lock); LevelsetGrid* phiObs = _args.getPtrOpt<LevelsetGrid >("phiObs",3,NULL ,&_lock); bool intoObs = _args.getOpt<bool >("intoObs",4,false ,&_lock);   _retval = getPyNone(); extrapolateMACSimple(flags,vel,distance,phiObs,intoObs);  _args.check(); } pbFinalizePlugin(parent,"extrapolateMACSimple", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateMACSimple",e.what()); return 0; } } static const Pb::Register _RP_extrapolateMACSimple ("","extrapolateMACSimple",_W_0); 
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "extrapolateMACSimple" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); int distance = _args.getOpt<int >("distance",2,4,&_lock); LevelsetGrid* phiObs = _args.getPtrOpt<LevelsetGrid >("phiObs",3,NULL ,&_lock); bool intoObs = _args.getOpt<bool >("intoObs",4,false ,&_lock);   _retval = getPyNone(); extrapolateMACSimple(flags,vel,distance,phiObs,intoObs);  _args.check(); } pbFinalizePlugin(parent,"extrapolateMACSimple", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateMACSimple",e.what()); return 0; } } static const Pb::Register _RP_extrapolateMACSimple ("","extrapolateMACSimple",_W_0);  extern "C" { void PbRegister_extrapolateMACSimple() { KEEP_UNUSED(_RP_extrapolateMACSimple); } } 
 
 
 
@@ -470,7 +470,7 @@ void extrapolateMACFromWeight( MACGrid& vel, Grid<Vec3>& weight, int distance = 
 		} // d
 
 	}
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "extrapolateMACFromWeight" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Vec3>& weight = *_args.getPtr<Grid<Vec3> >("weight",1,&_lock); int distance = _args.getOpt<int >("distance",2,2,&_lock);   _retval = getPyNone(); extrapolateMACFromWeight(vel,weight,distance);  _args.check(); } pbFinalizePlugin(parent,"extrapolateMACFromWeight", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateMACFromWeight",e.what()); return 0; } } static const Pb::Register _RP_extrapolateMACFromWeight ("","extrapolateMACFromWeight",_W_1); 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "extrapolateMACFromWeight" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Vec3>& weight = *_args.getPtr<Grid<Vec3> >("weight",1,&_lock); int distance = _args.getOpt<int >("distance",2,2,&_lock);   _retval = getPyNone(); extrapolateMACFromWeight(vel,weight,distance);  _args.check(); } pbFinalizePlugin(parent,"extrapolateMACFromWeight", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateMACFromWeight",e.what()); return 0; } } static const Pb::Register _RP_extrapolateMACFromWeight ("","extrapolateMACFromWeight",_W_1);  extern "C" { void PbRegister_extrapolateMACFromWeight() { KEEP_UNUSED(_RP_extrapolateMACFromWeight); } } 
 
 // simple extrapolation functions for levelsets
 
@@ -569,7 +569,7 @@ void extrapolateLsSimple(Grid<Real>& phi, int distance = 4, bool inside=false ) 
 
 	// set all remaining cells to max
 	knSetRemaining<Real>(phi, tmp, Real(direction * (distance+2)) );
-} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "extrapolateLsSimple" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& phi = *_args.getPtr<Grid<Real> >("phi",0,&_lock); int distance = _args.getOpt<int >("distance",1,4,&_lock); bool inside = _args.getOpt<bool >("inside",2,false ,&_lock);   _retval = getPyNone(); extrapolateLsSimple(phi,distance,inside);  _args.check(); } pbFinalizePlugin(parent,"extrapolateLsSimple", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateLsSimple",e.what()); return 0; } } static const Pb::Register _RP_extrapolateLsSimple ("","extrapolateLsSimple",_W_2); 
+} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "extrapolateLsSimple" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& phi = *_args.getPtr<Grid<Real> >("phi",0,&_lock); int distance = _args.getOpt<int >("distance",1,4,&_lock); bool inside = _args.getOpt<bool >("inside",2,false ,&_lock);   _retval = getPyNone(); extrapolateLsSimple(phi,distance,inside);  _args.check(); } pbFinalizePlugin(parent,"extrapolateLsSimple", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateLsSimple",e.what()); return 0; } } static const Pb::Register _RP_extrapolateLsSimple ("","extrapolateLsSimple",_W_2);  extern "C" { void PbRegister_extrapolateLsSimple() { KEEP_UNUSED(_RP_extrapolateLsSimple); } } 
 
 // extrapolate centered vec3 values from marked fluid cells
 
@@ -597,7 +597,7 @@ void extrapolateVec3Simple(Grid<Vec3>& vel, Grid<Real>& phi, int distance = 4) {
 		knExtrapolateLsSimple<Vec3>(vel, distance, tmp, d, Vec3(0.) );
 	} 
 	knSetRemaining<Vec3>(vel, tmp, Vec3(0.) );
-} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "extrapolateVec3Simple" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& vel = *_args.getPtr<Grid<Vec3> >("vel",0,&_lock); Grid<Real>& phi = *_args.getPtr<Grid<Real> >("phi",1,&_lock); int distance = _args.getOpt<int >("distance",2,4,&_lock);   _retval = getPyNone(); extrapolateVec3Simple(vel,phi,distance);  _args.check(); } pbFinalizePlugin(parent,"extrapolateVec3Simple", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateVec3Simple",e.what()); return 0; } } static const Pb::Register _RP_extrapolateVec3Simple ("","extrapolateVec3Simple",_W_3); 
+} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "extrapolateVec3Simple" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& vel = *_args.getPtr<Grid<Vec3> >("vel",0,&_lock); Grid<Real>& phi = *_args.getPtr<Grid<Real> >("phi",1,&_lock); int distance = _args.getOpt<int >("distance",2,4,&_lock);   _retval = getPyNone(); extrapolateVec3Simple(vel,phi,distance);  _args.check(); } pbFinalizePlugin(parent,"extrapolateVec3Simple", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateVec3Simple",e.what()); return 0; } } static const Pb::Register _RP_extrapolateVec3Simple ("","extrapolateVec3Simple",_W_3);  extern "C" { void PbRegister_extrapolateVec3Simple() { KEEP_UNUSED(_RP_extrapolateVec3Simple); } } 
 
 
 

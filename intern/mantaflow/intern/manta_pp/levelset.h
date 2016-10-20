@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/levelset.h"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/levelset.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -49,7 +49,7 @@ void reinitMarching(FlagGrid& flags, Real maxTime=4.0, MACGrid* velTransport=NUL
 	
 	//! initialize levelset from flags (+/- 0.5 heaviside)
 	void initFromFlags(FlagGrid& flags, bool ignoreWalls=false); static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); LevelsetGrid* pbo = dynamic_cast<LevelsetGrid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "LevelsetGrid::initFromFlags" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); bool ignoreWalls = _args.getOpt<bool >("ignoreWalls",1,false,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->initFromFlags(flags,ignoreWalls);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"LevelsetGrid::initFromFlags" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("LevelsetGrid::initFromFlags",e.what()); return 0; } }
-	 	static Real invalidTimeValue(); public: PbArgs _args;}
+	 	static Real invalidTimeValue(); public: PbArgs _args; }
 #define _C_LevelsetGrid
 ;
 

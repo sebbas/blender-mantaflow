@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/shapes.h"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/shapes.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -60,7 +60,7 @@ class Shape : public PbClass {public:
 	virtual void generateMesh(Mesh* mesh) {} ;    
 	virtual void generateLevelset(Grid<Real>& phi) {};    
 	
-protected: 	GridType mType; public: PbArgs _args;}
+protected: 	GridType mType; public: PbArgs _args; }
 #define _C_Shape
 ;
 
@@ -72,7 +72,7 @@ public:
 	virtual bool isInside(const Vec3& pos) const { return false; }
 	virtual void generateMesh(Mesh* mesh) {}
 	
-protected: 	virtual void generateLevelset(Grid<Real>& phi) { gridSetConst<Real>( phi , 1000.0f ); } public: PbArgs _args;}
+protected: 	virtual void generateLevelset(Grid<Real>& phi) { gridSetConst<Real>( phi , 1000.0f ); } public: PbArgs _args; }
 #define _C_NullShape
 ;
 
@@ -91,7 +91,7 @@ public:
 	virtual void generateMesh(Mesh* mesh);
 	virtual void generateLevelset(Grid<Real>& phi);
 	
-protected: 	Vec3 mP0, mP1; public: PbArgs _args;}
+protected: 	Vec3 mP0, mP1; public: PbArgs _args; }
 #define _C_Box
 ;
 
@@ -109,7 +109,7 @@ public:
 	virtual void generateLevelset(Grid<Real>& phi);
 	
 protected:
-	Vec3 mCenter, mScale; 	Real mRadius; public: PbArgs _args;}
+	Vec3 mCenter, mScale; 	Real mRadius; public: PbArgs _args; }
 #define _C_Sphere
 ;
 
@@ -131,7 +131,7 @@ public:
 	virtual void generateLevelset(Grid<Real>& phi);
 
 protected:
-	Vec3 mCenter, mZDir; 	Real mRadius, mZ; public: PbArgs _args;}
+	Vec3 mCenter, mZDir; 	Real mRadius, mZ; public: PbArgs _args; }
 #define _C_Cylinder
 ;
 
@@ -156,7 +156,7 @@ class Slope : public Shape {public:
 
 protected:
 	Real mAnglexy, mAngleyz;
-	Real mOrigin; 	Vec3 mGs; public: PbArgs _args;}
+	Real mOrigin; 	Vec3 mGs; public: PbArgs _args; }
 #define _C_Slope
 ;
 

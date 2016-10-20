@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/mesh.cpp"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/mesh.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -678,14 +678,14 @@ static inline IndexInt _cIndex(const Vec3& pos, const Vec3i& s) {
 
 //! Kernel: Apply a shape to a grid, setting value inside
 
-template <class T>  struct ApplyMeshToGrid : public KernelBase { ApplyMeshToGrid(Grid<T>* grid, Grid<Real> sdf, T value, FlagGrid* respectFlags) :  KernelBase(grid,0) ,grid(grid),sdf(sdf),value(value),respectFlags(respectFlags)   { runMessage(); run(); }  inline void op(int i, int j, int k, Grid<T>* grid, Grid<Real> sdf, T value, FlagGrid* respectFlags )  {
+template <class T>  struct ApplyMeshToGrid : public KernelBase { ApplyMeshToGrid(Grid<T>* grid, Grid<Real>& sdf, T value, FlagGrid* respectFlags) :  KernelBase(grid,0) ,grid(grid),sdf(sdf),value(value),respectFlags(respectFlags)   { runMessage(); run(); }  inline void op(int i, int j, int k, Grid<T>* grid, Grid<Real>& sdf, T value, FlagGrid* respectFlags )  {
 	if (respectFlags && respectFlags->isObstacle(i,j,k))
 		return;
 	if (sdf(i,j,k) < 0)
 	{	
 		(*grid)(i,j,k) = value;
 	}
-}   inline Grid<T>* getArg0() { return grid; } typedef Grid<T> type0;inline Grid<Real> & getArg1() { return sdf; } typedef Grid<Real>  type1;inline T& getArg2() { return value; } typedef T type2;inline FlagGrid* getArg3() { return respectFlags; } typedef FlagGrid type3; void runMessage() { debMsg("Executing kernel ApplyMeshToGrid ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline Grid<T>* getArg0() { return grid; } typedef Grid<T> type0;inline Grid<Real>& getArg1() { return sdf; } typedef Grid<Real> type1;inline T& getArg2() { return value; } typedef T type2;inline FlagGrid* getArg3() { return respectFlags; } typedef FlagGrid type3; void runMessage() { debMsg("Executing kernel ApplyMeshToGrid ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
 #pragma omp for 
@@ -693,7 +693,7 @@ template <class T>  struct ApplyMeshToGrid : public KernelBase { ApplyMeshToGrid
 #pragma omp parallel 
  {  
 #pragma omp for 
-  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,sdf,value,respectFlags);  } }  } Grid<T>* grid; Grid<Real>  sdf; T value; FlagGrid* respectFlags;   };
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,sdf,value,respectFlags);  } }  } Grid<T>* grid; Grid<Real>& sdf; T value; FlagGrid* respectFlags;   };
 #line 662 "mesh.cpp"
 
 

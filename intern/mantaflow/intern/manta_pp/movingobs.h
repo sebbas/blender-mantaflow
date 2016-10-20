@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/movingobs.h"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/movingobs.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -44,7 +44,7 @@ class MovingObstacle : public PbClass {public:
 protected:
 	std::vector<Shape*> mShapes;
 	int mEmptyType;
-	int mID; 	static int sIDcnt; public: PbArgs _args;}
+	int mID; 	static int sIDcnt; public: PbArgs _args; }
 #define _C_MovingObstacle
 ;
 	

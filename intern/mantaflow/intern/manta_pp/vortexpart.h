@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/vortexpart.h"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/vortexpart.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -47,7 +47,7 @@ class VortexParticleSystem : public ParticleSystem<VortexParticleData> {public:
   
 	void advectSelf(Real scale=1.0, int integrationMode=IntRK4); static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); VortexParticleSystem* pbo = dynamic_cast<VortexParticleSystem*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "VortexParticleSystem::advectSelf" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; Real scale = _args.getOpt<Real >("scale",0,1.0,&_lock); int integrationMode = _args.getOpt<int >("integrationMode",1,IntRK4,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->advectSelf(scale,integrationMode);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"VortexParticleSystem::advectSelf" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("VortexParticleSystem::advectSelf",e.what()); return 0; } }
 	void applyToMesh(Mesh& mesh, Real scale=1.0, int integrationMode=IntRK4); static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); VortexParticleSystem* pbo = dynamic_cast<VortexParticleSystem*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "VortexParticleSystem::applyToMesh" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; Mesh& mesh = *_args.getPtr<Mesh >("mesh",0,&_lock); Real scale = _args.getOpt<Real >("scale",1,1.0,&_lock); int integrationMode = _args.getOpt<int >("integrationMode",2,IntRK4,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->applyToMesh(mesh,scale,integrationMode);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"VortexParticleSystem::applyToMesh" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("VortexParticleSystem::applyToMesh",e.what()); return 0; } }
-	 	virtual ParticleBase* clone(); public: PbArgs _args;}
+	 	virtual ParticleBase* clone(); public: PbArgs _args; }
 #define _C_VortexParticleSystem
 ;
 

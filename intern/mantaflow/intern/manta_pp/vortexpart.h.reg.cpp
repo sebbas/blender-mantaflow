@@ -12,20 +12,37 @@
 #include "vortexpart.h"
 namespace Manta {
 #ifdef _C_ParticleSystem
- static const Pb::Register _R_0 ("ParticleSystem<VortexParticleData>","ParticleSystem<VortexParticleData>","ParticleBase"); template<> const char* Namify<ParticleSystem<VortexParticleData> >::S = "ParticleSystem<VortexParticleData>"; 
- static const Pb::Register _R_1 ("ParticleSystem<VortexParticleData>","ParticleSystem",ParticleSystem<VortexParticleData>::_W_2); 
- static const Pb::Register _R_2 ("ParticleSystem<VortexParticleData>","setPos",ParticleSystem<VortexParticleData>::_W_3); 
- static const Pb::Register _R_3 ("ParticleSystem<VortexParticleData>","getPos",ParticleSystem<VortexParticleData>::_W_4); 
- static const Pb::Register _R_4 ("ParticleSystem<VortexParticleData>","getPosPdata",ParticleSystem<VortexParticleData>::_W_5); 
- static const Pb::Register _R_5 ("ParticleSystem<VortexParticleData>","setPosPdata",ParticleSystem<VortexParticleData>::_W_6); 
- static const Pb::Register _R_6 ("ParticleSystem<VortexParticleData>","clear",ParticleSystem<VortexParticleData>::_W_7); 
- static const Pb::Register _R_7 ("ParticleSystem<VortexParticleData>","advectInGrid",ParticleSystem<VortexParticleData>::_W_8); 
- static const Pb::Register _R_8 ("ParticleSystem<VortexParticleData>","projectOutside",ParticleSystem<VortexParticleData>::_W_9); 
+ static const Pb::Register _R_19 ("ParticleSystem<VortexParticleData>","ParticleSystem<VortexParticleData>","ParticleBase"); template<> const char* Namify<ParticleSystem<VortexParticleData> >::S = "ParticleSystem<VortexParticleData>"; 
+ static const Pb::Register _R_20 ("ParticleSystem<VortexParticleData>","ParticleSystem",ParticleSystem<VortexParticleData>::_W_2); 
+ static const Pb::Register _R_21 ("ParticleSystem<VortexParticleData>","setPos",ParticleSystem<VortexParticleData>::_W_3); 
+ static const Pb::Register _R_22 ("ParticleSystem<VortexParticleData>","getPos",ParticleSystem<VortexParticleData>::_W_4); 
+ static const Pb::Register _R_23 ("ParticleSystem<VortexParticleData>","getPosPdata",ParticleSystem<VortexParticleData>::_W_5); 
+ static const Pb::Register _R_24 ("ParticleSystem<VortexParticleData>","setPosPdata",ParticleSystem<VortexParticleData>::_W_6); 
+ static const Pb::Register _R_25 ("ParticleSystem<VortexParticleData>","clear",ParticleSystem<VortexParticleData>::_W_7); 
+ static const Pb::Register _R_26 ("ParticleSystem<VortexParticleData>","advectInGrid",ParticleSystem<VortexParticleData>::_W_8); 
+ static const Pb::Register _R_27 ("ParticleSystem<VortexParticleData>","projectOutside",ParticleSystem<VortexParticleData>::_W_9); 
 #endif
 #ifdef _C_VortexParticleSystem
- static const Pb::Register _R_9 ("VortexParticleSystem","VortexParticleSystem","ParticleSystem<VortexParticleData>"); template<> const char* Namify<VortexParticleSystem >::S = "VortexParticleSystem"; 
- static const Pb::Register _R_10 ("VortexParticleSystem","VortexParticleSystem",VortexParticleSystem::_W_0); 
- static const Pb::Register _R_11 ("VortexParticleSystem","advectSelf",VortexParticleSystem::_W_1); 
- static const Pb::Register _R_12 ("VortexParticleSystem","applyToMesh",VortexParticleSystem::_W_2); 
+ static const Pb::Register _R_28 ("VortexParticleSystem","VortexParticleSystem","ParticleSystem<VortexParticleData>"); template<> const char* Namify<VortexParticleSystem >::S = "VortexParticleSystem"; 
+ static const Pb::Register _R_29 ("VortexParticleSystem","VortexParticleSystem",VortexParticleSystem::_W_0); 
+ static const Pb::Register _R_30 ("VortexParticleSystem","advectSelf",VortexParticleSystem::_W_1); 
+ static const Pb::Register _R_31 ("VortexParticleSystem","applyToMesh",VortexParticleSystem::_W_2); 
 #endif
+extern "C" {
+void PbRegister_file_19()
+{
+	KEEP_UNUSED(_R_19);
+	KEEP_UNUSED(_R_20);
+	KEEP_UNUSED(_R_21);
+	KEEP_UNUSED(_R_22);
+	KEEP_UNUSED(_R_23);
+	KEEP_UNUSED(_R_24);
+	KEEP_UNUSED(_R_25);
+	KEEP_UNUSED(_R_26);
+	KEEP_UNUSED(_R_27);
+	KEEP_UNUSED(_R_28);
+	KEEP_UNUSED(_R_29);
+	KEEP_UNUSED(_R_30);
+	KEEP_UNUSED(_R_31);
 }
+}}

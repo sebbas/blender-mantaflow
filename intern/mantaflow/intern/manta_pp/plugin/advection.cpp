@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/plugin/advection.cpp"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/plugin/advection.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -435,7 +435,7 @@ void applyOutflowBC(FlagGrid& flags, MACGrid& vel, MACGrid& velPrev, double time
 #line 326 "plugin/advection.cpp"
 
 
-void resetPhiInObs(FlagGrid& flags, Grid<Real>& sdf) { knResetPhiInObs(flags, sdf); } static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "resetPhiInObs" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& sdf = *_args.getPtr<Grid<Real> >("sdf",1,&_lock);   _retval = getPyNone(); resetPhiInObs(flags,sdf);  _args.check(); } pbFinalizePlugin(parent,"resetPhiInObs", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("resetPhiInObs",e.what()); return 0; } } static const Pb::Register _RP_resetPhiInObs ("","resetPhiInObs",_W_0); 
+void resetPhiInObs(FlagGrid& flags, Grid<Real>& sdf) { knResetPhiInObs(flags, sdf); } static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "resetPhiInObs" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& sdf = *_args.getPtr<Grid<Real> >("sdf",1,&_lock);   _retval = getPyNone(); resetPhiInObs(flags,sdf);  _args.check(); } pbFinalizePlugin(parent,"resetPhiInObs", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("resetPhiInObs",e.what()); return 0; } } static const Pb::Register _RP_resetPhiInObs ("","resetPhiInObs",_W_0);  extern "C" { void PbRegister_resetPhiInObs() { KEEP_UNUSED(_RP_resetPhiInObs); } } 
 
 // advection main calls
 
@@ -492,7 +492,7 @@ void advectSemiLagrange(FlagGrid* flags, MACGrid* vel, GridBase* grid, int order
 	}
 	else
 		errMsg("AdvectSemiLagrange: Grid Type is not supported (only Real, Vec3, MAC, Levelset)");    
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "advectSemiLagrange" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid* flags = _args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid* vel = _args.getPtr<MACGrid >("vel",1,&_lock); GridBase* grid = _args.getPtr<GridBase >("grid",2,&_lock); int order = _args.getOpt<int >("order",3,1,&_lock); Real strength = _args.getOpt<Real >("strength",4,1.0,&_lock); int orderSpace = _args.getOpt<int >("orderSpace",5,1,&_lock); bool openBounds = _args.getOpt<bool >("openBounds",6,false,&_lock); int boundaryWidth = _args.getOpt<int >("boundaryWidth",7,1,&_lock);   _retval = getPyNone(); advectSemiLagrange(flags,vel,grid,order,strength,orderSpace,openBounds,boundaryWidth);  _args.check(); } pbFinalizePlugin(parent,"advectSemiLagrange", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("advectSemiLagrange",e.what()); return 0; } } static const Pb::Register _RP_advectSemiLagrange ("","advectSemiLagrange",_W_1); 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "advectSemiLagrange" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid* flags = _args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid* vel = _args.getPtr<MACGrid >("vel",1,&_lock); GridBase* grid = _args.getPtr<GridBase >("grid",2,&_lock); int order = _args.getOpt<int >("order",3,1,&_lock); Real strength = _args.getOpt<Real >("strength",4,1.0,&_lock); int orderSpace = _args.getOpt<int >("orderSpace",5,1,&_lock); bool openBounds = _args.getOpt<bool >("openBounds",6,false,&_lock); int boundaryWidth = _args.getOpt<int >("boundaryWidth",7,1,&_lock);   _retval = getPyNone(); advectSemiLagrange(flags,vel,grid,order,strength,orderSpace,openBounds,boundaryWidth);  _args.check(); } pbFinalizePlugin(parent,"advectSemiLagrange", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("advectSemiLagrange",e.what()); return 0; } } static const Pb::Register _RP_advectSemiLagrange ("","advectSemiLagrange",_W_1);  extern "C" { void PbRegister_advectSemiLagrange() { KEEP_UNUSED(_RP_advectSemiLagrange); } } 
 
 } // end namespace DDF 
 

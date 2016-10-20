@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/mesh.h"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/mesh.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -215,7 +215,7 @@ protected:
     std::vector<Triangle> mTris;
     std::vector<Corner> mCorners;
     std::vector<NodeChannel*> mNodeChannels;
-    std::vector<TriChannel*> mTriChannels;     std::vector<OneRing> m1RingLookup; public: PbArgs _args;}
+    std::vector<TriChannel*> mTriChannels;     std::vector<OneRing> m1RingLookup; public: PbArgs _args; }
 #define _C_Mesh
 ;
 

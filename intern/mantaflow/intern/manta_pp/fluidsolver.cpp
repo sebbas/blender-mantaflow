@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/fluidsolver.cpp"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/fluidsolver.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -120,8 +120,9 @@ FluidSolver::FluidSolver(Vec3i gridsize, int dim, int fourthDim)
 	: PbClass(this), mDt(1.0), mTimeTotal(0.), mFrame(0), 
 	  mCflCond(1000), mDtMin(1.), mDtMax(1.), mFrameLength(1.),
 	  mGridSize(gridsize), mDim(dim) , mTimePerFrame(0.), mLockDt(false), mFourthDim(fourthDim)
-{    
-	assertMsg(dim==2 || dim==3, "Can only create 2D and 3D solvers");
+{
+	if(dim==4 && mFourthDim>0) errMsg("Don't create 4D solvers, use 3D with fourth-dim parameter >0 instead.");
+	assertMsg(dim==2 || dim==3, "Only 2D and 3D solvers allowed.");
 	assertMsg(dim!=2 || gridsize.z == 1, "Trying to create 2D solver with size.z != 1");
 }
 
@@ -171,7 +172,7 @@ void FluidSolver::step() {
 //! helper to unify printing from python scripts and printing internal messages (optionally pass debug level to control amount of output)
 void mantaMsg(const std::string& out, int level=1) {
 	debMsg( out, level );
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "mantaMsg" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const std::string& out = _args.get<std::string >("out",0,&_lock); int level = _args.getOpt<int >("level",1,1,&_lock);   _retval = getPyNone(); mantaMsg(out,level);  _args.check(); } pbFinalizePlugin(parent,"mantaMsg", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("mantaMsg",e.what()); return 0; } } static const Pb::Register _RP_mantaMsg ("","mantaMsg",_W_0); 
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "mantaMsg" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const std::string& out = _args.get<std::string >("out",0,&_lock); int level = _args.getOpt<int >("level",1,1,&_lock);   _retval = getPyNone(); mantaMsg(out,level);  _args.check(); } pbFinalizePlugin(parent,"mantaMsg", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("mantaMsg",e.what()); return 0; } } static const Pb::Register _RP_mantaMsg ("","mantaMsg",_W_0);  extern "C" { void PbRegister_mantaMsg() { KEEP_UNUSED(_RP_mantaMsg); } } 
 
 void FluidSolver::printMemInfo() {
 	std::ostringstream msg;
@@ -179,7 +180,7 @@ void FluidSolver::printMemInfo() {
 	msg << "                 real "<< mGridsReal.used <<"/"<< mGridsReal.grids.size() <<", ";
 	msg << "                 vec3 "<< mGridsVec.used  <<"/"<< mGridsVec.grids.size()  <<". ";
 	msg << "                 vec4 "<< mGridsVec4.used <<"/"<< mGridsVec4.grids.size() <<". ";
-	if(has4D()) {
+	if( supports4D() ) {
 	msg << "Allocated 4d grids: int " << mGrids4dInt.used  <<"/"<< mGrids4dInt.grids.size()  <<", ";
 	msg << "                    real "<< mGrids4dReal.used <<"/"<< mGrids4dReal.grids.size() <<", ";
 	msg << "                    vec3 "<< mGrids4dVec.used  <<"/"<< mGrids4dVec.grids.size()  <<". ";
@@ -191,11 +192,11 @@ std::string printBuildInfo() {
 	string infoString = buildInfoString();
 	debMsg( "Build info: "<<infoString.c_str()<<" ",1);
 	return infoString;
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "printBuildInfo" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock;   _retval = toPy(printBuildInfo());  _args.check(); } pbFinalizePlugin(parent,"printBuildInfo", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("printBuildInfo",e.what()); return 0; } } static const Pb::Register _RP_printBuildInfo ("","printBuildInfo",_W_1); 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "printBuildInfo" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock;   _retval = toPy(printBuildInfo());  _args.check(); } pbFinalizePlugin(parent,"printBuildInfo", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("printBuildInfo",e.what()); return 0; } } static const Pb::Register _RP_printBuildInfo ("","printBuildInfo",_W_1);  extern "C" { void PbRegister_printBuildInfo() { KEEP_UNUSED(_RP_printBuildInfo); } } 
 
 void setDebugLevel(int level=1) {
 	gDebugLevel = level; 
-} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setDebugLevel" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; int level = _args.getOpt<int >("level",0,1,&_lock);   _retval = getPyNone(); setDebugLevel(level);  _args.check(); } pbFinalizePlugin(parent,"setDebugLevel", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setDebugLevel",e.what()); return 0; } } static const Pb::Register _RP_setDebugLevel ("","setDebugLevel",_W_2); 
+} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setDebugLevel" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; int level = _args.getOpt<int >("level",0,1,&_lock);   _retval = getPyNone(); setDebugLevel(level);  _args.check(); } pbFinalizePlugin(parent,"setDebugLevel", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setDebugLevel",e.what()); return 0; } } static const Pb::Register _RP_setDebugLevel ("","setDebugLevel",_W_2);  extern "C" { void PbRegister_setDebugLevel() { KEEP_UNUSED(_RP_setDebugLevel); } } 
 
 //! warning, uses 10^-4 epsilon values, thus only use around "regular" FPS time scales, e.g. 30 frames per time unit
 //! pass max magnitude of current velocity as maxvel, not yet scaled by dt!

@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/grid4d.h"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/grid4d.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -95,7 +95,7 @@ protected:
 	Vec4i      mSize;
 	Real       mDx;
 	// precomputed Z,T shift: to ensure 2D compatibility, always use this instead of sx*sy !
-	IndexInt   mStrideZ;  	IndexInt   mStrideT;  public: PbArgs _args;}
+	IndexInt   mStrideZ;  	IndexInt   mStrideT;  public: PbArgs _args; }
 #define _C_Grid4dBase
 ;
 
@@ -206,7 +206,7 @@ template<class T> class Grid4d : public Grid4dBase {public:
 	//! Swap data with another grid (no actual data is moved)
 	void swap(Grid4d<T>& other);
 
-protected: 	T* mData; public: PbArgs _args;}
+protected: 	T* mData; public: PbArgs _args; }
 #define _C_Grid4d
 ;
 

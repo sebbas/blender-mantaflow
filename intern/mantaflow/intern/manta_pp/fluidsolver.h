@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/fluidsolver.h"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/fluidsolver.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -103,8 +103,8 @@ protected:
 	//! 4d data section, only required for simulations working with space-time data 
 
 public:
-	//! 4D enabled?
-	inline bool has4D() const        { return mFourthDim>0; }
+	//! 4D enabled? note, there's intentionally no "is4D" function, there are only 3D solvers that also support 4D of a certain size
+	inline bool supports4D() const        { return mFourthDim>0; }
 	//! fourth dimension size
 	inline int  getFourthDim() const { return mFourthDim; }
 	//! 4d data allocation
@@ -113,14 +113,16 @@ public:
 
 protected:
 
-	//! 4d size (note - 4d is not treated like going from 2d to 3d! it's a separate data type)
+	//! 4d size. Note - 4d is not treated like going from 2d to 3d! 4D grids are a separate data type. Normally all
+	//! grids are forced to have the same size. In contrast, a solver can create and work with 3D as 
+	//! well as 4D grids, when fourth-dim is >0.
 	int       mFourthDim;  
 
 	//! 4d grid storage
 	GridStorage<Vec4> mGridsVec4; 
 	GridStorage<int>  mGrids4dInt;
 	GridStorage<Real> mGrids4dReal;
-	GridStorage<Vec3> mGrids4dVec; 	GridStorage<Vec4> mGrids4dVec4; public: PbArgs _args;}
+	GridStorage<Vec3> mGrids4dVec; 	GridStorage<Vec4> mGrids4dVec4; public: PbArgs _args; }
 #define _C_FluidSolver
 ;
 

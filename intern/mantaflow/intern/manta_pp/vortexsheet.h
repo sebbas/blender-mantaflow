@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/vortexsheet.h"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/vortexsheet.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -90,7 +90,7 @@ class VortexSheetMesh : public Mesh {public:
 protected:
 	Vec3 mTexOffset;
 	VorticityChannel mVorticity;
-	TexCoord3Channel mTex1, mTex2; 	TurbulenceChannel mTurb; public: PbArgs _args;}
+	TexCoord3Channel mTex1, mTex2; 	TurbulenceChannel mTurb; public: PbArgs _args; }
 #define _C_VortexSheetMesh
 ;
 

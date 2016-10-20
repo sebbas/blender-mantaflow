@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/fileio.cpp"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/fileio.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -657,7 +657,7 @@ Vec3 getUniFileSize(const string& name) {
 	int x,y,z;
 	getUniFileSize(name, x,y,z);
 	return Vec3( Real(x), Real(y), Real(z) );
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "getUniFileSize" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const string& name = _args.get<string >("name",0,&_lock);   _retval = toPy(getUniFileSize(name));  _args.check(); } pbFinalizePlugin(parent,"getUniFileSize", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("getUniFileSize",e.what()); return 0; } } static const Pb::Register _RP_getUniFileSize ("","getUniFileSize",_W_0); 
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "getUniFileSize" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const string& name = _args.get<string >("name",0,&_lock);   _retval = toPy(getUniFileSize(name));  _args.check(); } pbFinalizePlugin(parent,"getUniFileSize", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("getUniFileSize",e.what()); return 0; } } static const Pb::Register _RP_getUniFileSize ("","getUniFileSize",_W_0);  extern "C" { void PbRegister_getUniFileSize() { KEEP_UNUSED(_RP_getUniFileSize); } } 
 
 //! for test run debugging
 void printUniFileInfoString(const string& name) {
@@ -666,7 +666,7 @@ void printUniFileInfoString(const string& name) {
 	// use getUniFileSize to parse the different headers
 	getUniFileSize(name, x,y,z,&t, &info);
 	debMsg("File '"<<name<<"' info: "<< info ,1);
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "printUniFileInfoString" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const string& name = _args.get<string >("name",0,&_lock);   _retval = getPyNone(); printUniFileInfoString(name);  _args.check(); } pbFinalizePlugin(parent,"printUniFileInfoString", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("printUniFileInfoString",e.what()); return 0; } } static const Pb::Register _RP_printUniFileInfoString ("","printUniFileInfoString",_W_1); 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "printUniFileInfoString" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const string& name = _args.get<string >("name",0,&_lock);   _retval = getPyNone(); printUniFileInfoString(name);  _args.check(); } pbFinalizePlugin(parent,"printUniFileInfoString", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("printUniFileInfoString",e.what()); return 0; } } static const Pb::Register _RP_printUniFileInfoString ("","printUniFileInfoString",_W_1);  extern "C" { void PbRegister_printUniFileInfoString() { KEEP_UNUSED(_RP_printUniFileInfoString); } } 
 
 
 // actual read/write functions
@@ -1241,7 +1241,7 @@ void readPdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
 #line 1220 "fileio.cpp"
 
  
-void quantizeGrid(Grid<Real>& grid, Real step) { knQuantize(grid,step); } static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "quantizeGrid" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& grid = *_args.getPtr<Grid<Real> >("grid",0,&_lock); Real step = _args.get<Real >("step",1,&_lock);   _retval = getPyNone(); quantizeGrid(grid,step);  _args.check(); } pbFinalizePlugin(parent,"quantizeGrid", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("quantizeGrid",e.what()); return 0; } } static const Pb::Register _RP_quantizeGrid ("","quantizeGrid",_W_2); 
+void quantizeGrid(Grid<Real>& grid, Real step) { knQuantize(grid,step); } static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "quantizeGrid" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& grid = *_args.getPtr<Grid<Real> >("grid",0,&_lock); Real step = _args.get<Real >("step",1,&_lock);   _retval = getPyNone(); quantizeGrid(grid,step);  _args.check(); } pbFinalizePlugin(parent,"quantizeGrid", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("quantizeGrid",e.what()); return 0; } } static const Pb::Register _RP_quantizeGrid ("","quantizeGrid",_W_2);  extern "C" { void PbRegister_quantizeGrid() { KEEP_UNUSED(_RP_quantizeGrid); } } 
 
 
 
@@ -1289,17 +1289,6 @@ template void writeGrid4dRaw<int> (const string& name, Grid4d<int>*  grid);
 template void writeGrid4dRaw<Real>(const string& name, Grid4d<Real>* grid);
 template void writeGrid4dRaw<Vec3>(const string& name, Grid4d<Vec3>* grid);
 template void writeGrid4dRaw<Vec4>(const string& name, Grid4d<Vec4>* grid);
-
-#if ENABLE_GRID_TEST_DATATYPE==1
-// dummy functions for test datatype - not really supported right now!
-// but we need some function body for linking
-template<> void writeGridRaw<nbVector>(const string& name, Grid<nbVector>* grid) {assertMsg(false,"Not supported right now.");};
-template<> void writeGridUni<nbVector>(const string& name, Grid<nbVector>* grid) {assertMsg(false,"Not supported right now.");};
-template<> void writeGridVol<nbVector>(const string& name, Grid<nbVector>* grid) {assertMsg(false,"Not supported right now.");};
-template<> void writeGridTxt<nbVector>(const string& name, Grid<nbVector>* grid) {assertMsg(false,"Not supported right now.");};
-template<> void readGridRaw<nbVector> (const string& name, Grid<nbVector>* grid) {assertMsg(false,"Not supported right now.");};
-template<> void readGridUni<nbVector> (const string& name, Grid<nbVector>* grid) {assertMsg(false,"Not supported right now.");};
-#endif // ENABLE_GRID_TEST_DATATYPE
 
 
 } //namespace

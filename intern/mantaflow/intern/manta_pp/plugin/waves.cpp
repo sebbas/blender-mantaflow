@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/plugin/waves.cpp"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/plugin/waves.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -64,7 +64,7 @@ namespace Manta {
 //! calculate a second derivative for the wave equation
 void calcSecDeriv2d(const Grid<Real>& v, Grid<Real>& curv) {
 	knCalcSecDeriv2d(v,curv);
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "calcSecDeriv2d" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const Grid<Real>& v = *_args.getPtr<Grid<Real> >("v",0,&_lock); Grid<Real>& curv = *_args.getPtr<Grid<Real> >("curv",1,&_lock);   _retval = getPyNone(); calcSecDeriv2d(v,curv);  _args.check(); } pbFinalizePlugin(parent,"calcSecDeriv2d", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("calcSecDeriv2d",e.what()); return 0; } } static const Pb::Register _RP_calcSecDeriv2d ("","calcSecDeriv2d",_W_0); 
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "calcSecDeriv2d" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const Grid<Real>& v = *_args.getPtr<Grid<Real> >("v",0,&_lock); Grid<Real>& curv = *_args.getPtr<Grid<Real> >("curv",1,&_lock);   _retval = getPyNone(); calcSecDeriv2d(v,curv);  _args.check(); } pbFinalizePlugin(parent,"calcSecDeriv2d", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("calcSecDeriv2d",e.what()); return 0; } } static const Pb::Register _RP_calcSecDeriv2d ("","calcSecDeriv2d",_W_0);  extern "C" { void PbRegister_calcSecDeriv2d() { KEEP_UNUSED(_RP_calcSecDeriv2d); } } 
 
 
 // mass conservation 
@@ -91,14 +91,14 @@ void calcSecDeriv2d(const Grid<Real>& v, Grid<Real>& curv) {
 Real totalSum(Grid<Real>& height) {
 	knTotalSum ts(height);
 	return ts.sum;
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "totalSum" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& height = *_args.getPtr<Grid<Real> >("height",0,&_lock);   _retval = toPy(totalSum(height));  _args.check(); } pbFinalizePlugin(parent,"totalSum", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("totalSum",e.what()); return 0; } } static const Pb::Register _RP_totalSum ("","totalSum",_W_1); 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "totalSum" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& height = *_args.getPtr<Grid<Real> >("height",0,&_lock);   _retval = toPy(totalSum(height));  _args.check(); } pbFinalizePlugin(parent,"totalSum", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("totalSum",e.what()); return 0; } } static const Pb::Register _RP_totalSum ("","totalSum",_W_1);  extern "C" { void PbRegister_totalSum() { KEEP_UNUSED(_RP_totalSum); } } 
 
 //! normalize all values in a grid (for wave equation solves)
 void normalizeSumTo(Grid<Real>& height, Real target) {
 	knTotalSum ts(height);
 	Real factor = target / ts.sum;
 	height.multConst(factor);
-} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "normalizeSumTo" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& height = *_args.getPtr<Grid<Real> >("height",0,&_lock); Real target = _args.get<Real >("target",1,&_lock);   _retval = getPyNone(); normalizeSumTo(height,target);  _args.check(); } pbFinalizePlugin(parent,"normalizeSumTo", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("normalizeSumTo",e.what()); return 0; } } static const Pb::Register _RP_normalizeSumTo ("","normalizeSumTo",_W_2); 
+} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "normalizeSumTo" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& height = *_args.getPtr<Grid<Real> >("height",0,&_lock); Real target = _args.get<Real >("target",1,&_lock);   _retval = getPyNone(); normalizeSumTo(height,target);  _args.check(); } pbFinalizePlugin(parent,"normalizeSumTo", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("normalizeSumTo",e.what()); return 0; } } static const Pb::Register _RP_normalizeSumTo ("","normalizeSumTo",_W_2);  extern "C" { void PbRegister_normalizeSumTo() { KEEP_UNUSED(_RP_normalizeSumTo); } } 
 
 
 /******************************************************************************
@@ -190,13 +190,13 @@ void cgSolveWE(FlagGrid& flags, Grid<Real>& ut, Grid<Real>& utm1, Grid<Real>& ou
 	for (int iter=0; iter<maxIter; iter++) {
 		if (!gcg->iterate()) iter=maxIter;
 	} 
-	debMsg("FluidSolver::solvePressure iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
+	debMsg("cgSolveWaveEq iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
 
 	utm1.swap( ut );
 	ut.copyFrom( out );
 
 	delete gcg;
-} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "cgSolveWE" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& ut = *_args.getPtr<Grid<Real> >("ut",1,&_lock); Grid<Real>& utm1 = *_args.getPtr<Grid<Real> >("utm1",2,&_lock); Grid<Real>& out = *_args.getPtr<Grid<Real> >("out",3,&_lock); bool crankNic = _args.getOpt<bool >("crankNic",4,false,&_lock); Real cSqr = _args.getOpt<Real >("cSqr",5,0.25,&_lock); Real cgMaxIterFac = _args.getOpt<Real >("cgMaxIterFac",6,1.5,&_lock); Real cgAccuracy = _args.getOpt<Real >("cgAccuracy",7,1e-5 ,&_lock);   _retval = getPyNone(); cgSolveWE(flags,ut,utm1,out,crankNic,cSqr,cgMaxIterFac,cgAccuracy);  _args.check(); } pbFinalizePlugin(parent,"cgSolveWE", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("cgSolveWE",e.what()); return 0; } } static const Pb::Register _RP_cgSolveWE ("","cgSolveWE",_W_3); 
+} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "cgSolveWE" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& ut = *_args.getPtr<Grid<Real> >("ut",1,&_lock); Grid<Real>& utm1 = *_args.getPtr<Grid<Real> >("utm1",2,&_lock); Grid<Real>& out = *_args.getPtr<Grid<Real> >("out",3,&_lock); bool crankNic = _args.getOpt<bool >("crankNic",4,false,&_lock); Real cSqr = _args.getOpt<Real >("cSqr",5,0.25,&_lock); Real cgMaxIterFac = _args.getOpt<Real >("cgMaxIterFac",6,1.5,&_lock); Real cgAccuracy = _args.getOpt<Real >("cgAccuracy",7,1e-5 ,&_lock);   _retval = getPyNone(); cgSolveWE(flags,ut,utm1,out,crankNic,cSqr,cgMaxIterFac,cgAccuracy);  _args.check(); } pbFinalizePlugin(parent,"cgSolveWE", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("cgSolveWE",e.what()); return 0; } } static const Pb::Register _RP_cgSolveWE ("","cgSolveWE",_W_3);  extern "C" { void PbRegister_cgSolveWE() { KEEP_UNUSED(_RP_cgSolveWE); } } 
 
 
 

@@ -139,6 +139,7 @@ set(SRC
 	intern/manta_pp/python/defines.py
 	intern/manta_pp/python/defines.py.reg
 	intern/manta_pp/python/defines.py.reg.cpp
+	intern/manta_pp/registration.cpp
 	intern/manta_pp/shapes.cpp
 	intern/manta_pp/shapes.h
 	intern/manta_pp/shapes.h.reg

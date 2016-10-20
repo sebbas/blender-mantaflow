@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/turbulencepart.h"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/turbulencepart.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -54,7 +54,7 @@ class TurbulenceParticleSystem : public ParticleSystem<TurbulenceParticleData> {
 		
 	virtual ParticleBase* clone();
 	
-private: 	WaveletNoiseField& noise; public: PbArgs _args;}
+private: 	WaveletNoiseField& noise; public: PbArgs _args; }
 #define _C_TurbulenceParticleSystem
 ;
 

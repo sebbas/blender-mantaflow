@@ -24,7 +24,7 @@
 #include <vector>
 #include <map>
 
-struct QMutex;
+class QMutex;
 
 namespace Manta {
 struct PbClassData;

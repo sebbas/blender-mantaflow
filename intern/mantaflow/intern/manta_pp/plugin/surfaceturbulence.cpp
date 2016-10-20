@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/plugin/surfaceturbulence.cpp"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/plugin/surfaceturbulence.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework 
@@ -23,11 +23,28 @@
  * Mercier et al., SIGGRAPH Asia 2015
  * 
  * Possible speedups :
- * - only initialize surface points around coarse particles near the surface. Use the flags in the fluid grid and only use cells with non-fluid neighbors.
+ * - only initialize surface points around coarse particles near the surface. Use the flags in the fluid 
+ *   grid and only use cells with non-fluid neighbors.
  *
  ******************************************************************************/
 
+// use chrono stl for detailed timing only if available
+#ifdef __GNUC__
+#if __GNUC__<5
+#define USE_CHRONO 0
+#endif
+#endif 
+
+#if MANTA_WITHCPP11==1 
+#ifndef USE_CHRONO
+#define USE_CHRONO 1
+#endif
+#endif 
+
 #include <iomanip>
+#if USE_CHRONO==1
+#include <chrono>
+#endif
 #include "particle.h"
 
 using namespace std;
@@ -429,7 +446,7 @@ void initFines(
  {  
 #pragma omp for 
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,coarseParticles,coarseParticlesPrevPos);  }   } BasicParticleSystemWrapper& surfacePoints; BasicParticleSystemWrapper& coarseParticles; ParticleDataImplVec3Wrapper& coarseParticlesPrevPos;   };
-#line 396 "plugin/surfaceturbulence.cpp"
+#line 413 "plugin/surfaceturbulence.cpp"
 
 
 
@@ -522,7 +539,7 @@ Vec3 computeConstraintGradient(
  {  
 #pragma omp for 
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,coarseParticles,surfaceNormals);  }   } BasicParticleSystemWrapper& surfacePoints; BasicParticleSystemWrapper& coarseParticles; ParticleDataImpl<Vec3>& surfaceNormals;   };
-#line 455 "plugin/surfaceturbulence.cpp"
+#line 472 "plugin/surfaceturbulence.cpp"
 
 
 
@@ -548,7 +565,7 @@ Vec3 computeConstraintGradient(
  {  
 #pragma omp for 
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceNormals);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Vec3>& surfaceNormals;   };
-#line 512 "plugin/surfaceturbulence.cpp"
+#line 529 "plugin/surfaceturbulence.cpp"
 
 
 
@@ -563,7 +580,7 @@ Vec3 computeConstraintGradient(
  {  
 #pragma omp for 
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceNormals);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Vec3>& surfaceNormals;   };
-#line 526 "plugin/surfaceturbulence.cpp"
+#line 543 "plugin/surfaceturbulence.cpp"
 
 
 
@@ -686,7 +703,7 @@ void addDeleteSurfacePoints(
  {  
 #pragma omp for 
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,dummy);  }   } BasicParticleSystemWrapper& surfacePoints; void* dummy;   };
-#line 635 "plugin/surfaceturbulence.cpp"
+#line 652 "plugin/surfaceturbulence.cpp"
 
 
 
@@ -734,7 +751,7 @@ void addDeleteSurfacePoints(
  {  
 #pragma omp for 
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceNormals);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Vec3>& surfaceNormals;   };
-#line 650 "plugin/surfaceturbulence.cpp"
+#line 667 "plugin/surfaceturbulence.cpp"
 
 
 
@@ -749,7 +766,7 @@ void addDeleteSurfacePoints(
  {  
 #pragma omp for 
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,dummy);  }   } BasicParticleSystemWrapper& surfacePoints; void* dummy;   };
-#line 691 "plugin/surfaceturbulence.cpp"
+#line 708 "plugin/surfaceturbulence.cpp"
 
 
 
@@ -784,7 +801,7 @@ void regularizeSurfacePoints(
  {  
 #pragma omp for 
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,coarseParticles);  }   } BasicParticleSystemWrapper& surfacePoints; BasicParticleSystemWrapper& coarseParticles;   };
-#line 713 "plugin/surfaceturbulence.cpp"
+#line 730 "plugin/surfaceturbulence.cpp"
 
 
 
@@ -824,7 +841,7 @@ void regularizeSurfacePoints(
  {  
 #pragma omp for 
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceWaveH,surfaceWaveDtH,surfaceWaveSeed,surfaceWaveSeedAmplitude);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Real>& surfaceWaveH; ParticleDataImpl<Real>& surfaceWaveDtH; ParticleDataImpl<Real>& surfaceWaveSeed; ParticleDataImpl<Real>& surfaceWaveSeedAmplitude;   };
-#line 731 "plugin/surfaceturbulence.cpp"
+#line 748 "plugin/surfaceturbulence.cpp"
 
 
 
@@ -877,7 +894,7 @@ void surfaceMaintenance(
  {  
 #pragma omp for 
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceWaveH,surfaceWaveSeed);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Real>& surfaceWaveH; ParticleDataImpl<Real>& surfaceWaveSeed;   };
-#line 798 "plugin/surfaceturbulence.cpp"
+#line 815 "plugin/surfaceturbulence.cpp"
 
 
 
@@ -934,7 +951,7 @@ void surfaceMaintenance(
  {  
 #pragma omp for 
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceNormals,surfaceWaveH);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Vec3>& surfaceNormals; ParticleDataImpl<Real>& surfaceWaveH;   };
-#line 808 "plugin/surfaceturbulence.cpp"
+#line 825 "plugin/surfaceturbulence.cpp"
 
 
 
@@ -984,7 +1001,7 @@ void surfaceMaintenance(
  {  
 #pragma omp for 
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceNormals,surfaceWaveH);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Vec3>& surfaceNormals; ParticleDataImpl<Real>& surfaceWaveH;   };
-#line 857 "plugin/surfaceturbulence.cpp"
+#line 874 "plugin/surfaceturbulence.cpp"
 
 
 
@@ -1010,7 +1027,7 @@ void surfaceMaintenance(
  {  
 #pragma omp for 
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceWaveH,surfaceWaveDtH,surfaceWaveSeed);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Real>& surfaceWaveH; ParticleDataImpl<Real>& surfaceWaveDtH; ParticleDataImpl<Real>& surfaceWaveSeed;   };
-#line 902 "plugin/surfaceturbulence.cpp"
+#line 919 "plugin/surfaceturbulence.cpp"
 
 
 
@@ -1046,7 +1063,7 @@ void surfaceMaintenance(
  {  
 #pragma omp for 
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceNormals);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Vec3>& surfaceNormals;   };
-#line 919 "plugin/surfaceturbulence.cpp"
+#line 936 "plugin/surfaceturbulence.cpp"
 
 
 
@@ -1072,7 +1089,7 @@ void surfaceMaintenance(
  {  
 #pragma omp for 
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceWaveSource);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Real>& surfaceWaveSource;   };
-#line 948 "plugin/surfaceturbulence.cpp"
+#line 965 "plugin/surfaceturbulence.cpp"
 
 
 
@@ -1100,7 +1117,7 @@ void surfaceMaintenance(
  {  
 #pragma omp for 
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceWaveSeed,surfaceWaveSeedAmplitude,surfaceWaveSource);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Real>& surfaceWaveSeed; ParticleDataImpl<Real>& surfaceWaveSeedAmplitude; ParticleDataImpl<Real>& surfaceWaveSource;   };
-#line 969 "plugin/surfaceturbulence.cpp"
+#line 986 "plugin/surfaceturbulence.cpp"
 
 
 
@@ -1160,7 +1177,14 @@ void surfaceWaves(
 
 
 
-void particleSurfaceTurbulence( FlagGrid& flags, BasicParticleSystem& coarseParts, ParticleDataImpl<Vec3>& coarsePartsPrevPos, BasicParticleSystem& surfPoints, ParticleDataImpl<Vec3>& surfaceNormals, ParticleDataImpl<Real>& surfaceWaveH, ParticleDataImpl<Real>& surfaceWaveDtH, BasicParticleSystem& surfacePointsDisplaced, ParticleDataImpl<Real>& surfaceWaveSource, ParticleDataImpl<Real>& surfaceWaveSeed, ParticleDataImpl<Real>& surfaceWaveSeedAmplitude, int res, Real outerRadius = 1.0f, int surfaceDensity = 20, int nbSurfaceMaintenanceIterations = 4, Real dt = 0.005f, Real waveSpeed = 16.0f, Real waveDamping = 0.0f, Real waveSeedFrequency = 4, Real waveMaxAmplitude = 0.25f, Real waveMaxFrequency = 800, Real waveMaxSeedingAmplitude = 0.5, Real waveSeedingCurvatureThresholdRegionCenter = 0.025f, Real waveSeedingCurvatureThresholdRegionRadius = 0.01f, Real waveSeedStepSizeRatioOfMax = 0.05f ) {
+void particleSurfaceTurbulence( FlagGrid& flags, BasicParticleSystem& coarseParts, ParticleDataImpl<Vec3>& coarsePartsPrevPos, BasicParticleSystem& surfPoints, ParticleDataImpl<Vec3>& surfaceNormals, ParticleDataImpl<Real>& surfaceWaveH, ParticleDataImpl<Real>& surfaceWaveDtH, BasicParticleSystem& surfacePointsDisplaced, ParticleDataImpl<Real>& surfaceWaveSource, ParticleDataImpl<Real>& surfaceWaveSeed, ParticleDataImpl<Real>& surfaceWaveSeedAmplitude, int res, Real outerRadius = 1.0f, int surfaceDensity = 20, int nbSurfaceMaintenanceIterations = 4, Real dt = 0.005f, Real waveSpeed = 16.0f, Real waveDamping = 0.0f, Real waveSeedFrequency = 4, Real waveMaxAmplitude = 0.25f, Real waveMaxFrequency = 800, Real waveMaxSeedingAmplitude = 0.5, Real waveSeedingCurvatureThresholdRegionCenter = 0.025f, Real waveSeedingCurvatureThresholdRegionRadius = 0.01f, Real waveSeedStepSizeRatioOfMax = 0.05f ) { 
+#	if USE_CHRONO==1
+    static std::chrono::high_resolution_clock::time_point begin, end; 
+    end = std::chrono::high_resolution_clock::now();
+    cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1000000000.f << " : time sim" << endl;
+    begin = std::chrono::high_resolution_clock::now();
+#	endif
+    
     // wrap data
     coarseParticles.points = &coarseParts;
     coarseParticlesPrevPos.points = &coarsePartsPrevPos;
@@ -1250,7 +1274,13 @@ void particleSurfaceTurbulence( FlagGrid& flags, BasicParticleSystem& coarsePart
             surfacePointsDisplaced.addParticle(surfacePoints.getPos(idx) + surfaceNormals[idx]*surfaceWaveH[idx]);
         }
     }
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "particleSurfaceTurbulence" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); BasicParticleSystem& coarseParts = *_args.getPtr<BasicParticleSystem >("coarseParts",1,&_lock); ParticleDataImpl<Vec3>& coarsePartsPrevPos = *_args.getPtr<ParticleDataImpl<Vec3> >("coarsePartsPrevPos",2,&_lock); BasicParticleSystem& surfPoints = *_args.getPtr<BasicParticleSystem >("surfPoints",3,&_lock); ParticleDataImpl<Vec3>& surfaceNormals = *_args.getPtr<ParticleDataImpl<Vec3> >("surfaceNormals",4,&_lock); ParticleDataImpl<Real>& surfaceWaveH = *_args.getPtr<ParticleDataImpl<Real> >("surfaceWaveH",5,&_lock); ParticleDataImpl<Real>& surfaceWaveDtH = *_args.getPtr<ParticleDataImpl<Real> >("surfaceWaveDtH",6,&_lock); BasicParticleSystem& surfacePointsDisplaced = *_args.getPtr<BasicParticleSystem >("surfacePointsDisplaced",7,&_lock); ParticleDataImpl<Real>& surfaceWaveSource = *_args.getPtr<ParticleDataImpl<Real> >("surfaceWaveSource",8,&_lock); ParticleDataImpl<Real>& surfaceWaveSeed = *_args.getPtr<ParticleDataImpl<Real> >("surfaceWaveSeed",9,&_lock); ParticleDataImpl<Real>& surfaceWaveSeedAmplitude = *_args.getPtr<ParticleDataImpl<Real> >("surfaceWaveSeedAmplitude",10,&_lock); int res = _args.get<int >("res",11,&_lock); Real outerRadius = _args.getOpt<Real >("outerRadius",12,1.0f,&_lock); int surfaceDensity = _args.getOpt<int >("surfaceDensity",13,20,&_lock); int nbSurfaceMaintenanceIterations = _args.getOpt<int >("nbSurfaceMaintenanceIterations",14,4,&_lock); Real dt = _args.getOpt<Real >("dt",15,0.005f,&_lock); Real waveSpeed = _args.getOpt<Real >("waveSpeed",16,16.0f,&_lock); Real waveDamping = _args.getOpt<Real >("waveDamping",17,0.0f,&_lock); Real waveSeedFrequency = _args.getOpt<Real >("waveSeedFrequency",18,4,&_lock); Real waveMaxAmplitude = _args.getOpt<Real >("waveMaxAmplitude",19,0.25f,&_lock); Real waveMaxFrequency = _args.getOpt<Real >("waveMaxFrequency",20,800,&_lock); Real waveMaxSeedingAmplitude = _args.getOpt<Real >("waveMaxSeedingAmplitude",21,0.5,&_lock); Real waveSeedingCurvatureThresholdRegionCenter = _args.getOpt<Real >("waveSeedingCurvatureThresholdRegionCenter",22,0.025f,&_lock); Real waveSeedingCurvatureThresholdRegionRadius = _args.getOpt<Real >("waveSeedingCurvatureThresholdRegionRadius",23,0.01f,&_lock); Real waveSeedStepSizeRatioOfMax = _args.getOpt<Real >("waveSeedStepSizeRatioOfMax",24,0.05f ,&_lock);   _retval = getPyNone(); particleSurfaceTurbulence(flags,coarseParts,coarsePartsPrevPos,surfPoints,surfaceNormals,surfaceWaveH,surfaceWaveDtH,surfacePointsDisplaced,surfaceWaveSource,surfaceWaveSeed,surfaceWaveSeedAmplitude,res,outerRadius,surfaceDensity,nbSurfaceMaintenanceIterations,dt,waveSpeed,waveDamping,waveSeedFrequency,waveMaxAmplitude,waveMaxFrequency,waveMaxSeedingAmplitude,waveSeedingCurvatureThresholdRegionCenter,waveSeedingCurvatureThresholdRegionRadius,waveSeedStepSizeRatioOfMax);  _args.check(); } pbFinalizePlugin(parent,"particleSurfaceTurbulence", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("particleSurfaceTurbulence",e.what()); return 0; } } static const Pb::Register _RP_particleSurfaceTurbulence ("","particleSurfaceTurbulence",_W_0); 
+    
+#	if USE_CHRONO==1
+    end = std::chrono::high_resolution_clock::now();
+    cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1000000000.f << " : time upres" << endl; 
+    begin = std::chrono::high_resolution_clock::now();
+#	endif
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "particleSurfaceTurbulence" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); BasicParticleSystem& coarseParts = *_args.getPtr<BasicParticleSystem >("coarseParts",1,&_lock); ParticleDataImpl<Vec3>& coarsePartsPrevPos = *_args.getPtr<ParticleDataImpl<Vec3> >("coarsePartsPrevPos",2,&_lock); BasicParticleSystem& surfPoints = *_args.getPtr<BasicParticleSystem >("surfPoints",3,&_lock); ParticleDataImpl<Vec3>& surfaceNormals = *_args.getPtr<ParticleDataImpl<Vec3> >("surfaceNormals",4,&_lock); ParticleDataImpl<Real>& surfaceWaveH = *_args.getPtr<ParticleDataImpl<Real> >("surfaceWaveH",5,&_lock); ParticleDataImpl<Real>& surfaceWaveDtH = *_args.getPtr<ParticleDataImpl<Real> >("surfaceWaveDtH",6,&_lock); BasicParticleSystem& surfacePointsDisplaced = *_args.getPtr<BasicParticleSystem >("surfacePointsDisplaced",7,&_lock); ParticleDataImpl<Real>& surfaceWaveSource = *_args.getPtr<ParticleDataImpl<Real> >("surfaceWaveSource",8,&_lock); ParticleDataImpl<Real>& surfaceWaveSeed = *_args.getPtr<ParticleDataImpl<Real> >("surfaceWaveSeed",9,&_lock); ParticleDataImpl<Real>& surfaceWaveSeedAmplitude = *_args.getPtr<ParticleDataImpl<Real> >("surfaceWaveSeedAmplitude",10,&_lock); int res = _args.get<int >("res",11,&_lock); Real outerRadius = _args.getOpt<Real >("outerRadius",12,1.0f,&_lock); int surfaceDensity = _args.getOpt<int >("surfaceDensity",13,20,&_lock); int nbSurfaceMaintenanceIterations = _args.getOpt<int >("nbSurfaceMaintenanceIterations",14,4,&_lock); Real dt = _args.getOpt<Real >("dt",15,0.005f,&_lock); Real waveSpeed = _args.getOpt<Real >("waveSpeed",16,16.0f,&_lock); Real waveDamping = _args.getOpt<Real >("waveDamping",17,0.0f,&_lock); Real waveSeedFrequency = _args.getOpt<Real >("waveSeedFrequency",18,4,&_lock); Real waveMaxAmplitude = _args.getOpt<Real >("waveMaxAmplitude",19,0.25f,&_lock); Real waveMaxFrequency = _args.getOpt<Real >("waveMaxFrequency",20,800,&_lock); Real waveMaxSeedingAmplitude = _args.getOpt<Real >("waveMaxSeedingAmplitude",21,0.5,&_lock); Real waveSeedingCurvatureThresholdRegionCenter = _args.getOpt<Real >("waveSeedingCurvatureThresholdRegionCenter",22,0.025f,&_lock); Real waveSeedingCurvatureThresholdRegionRadius = _args.getOpt<Real >("waveSeedingCurvatureThresholdRegionRadius",23,0.01f,&_lock); Real waveSeedStepSizeRatioOfMax = _args.getOpt<Real >("waveSeedStepSizeRatioOfMax",24,0.05f ,&_lock);   _retval = getPyNone(); particleSurfaceTurbulence(flags,coarseParts,coarsePartsPrevPos,surfPoints,surfaceNormals,surfaceWaveH,surfaceWaveDtH,surfacePointsDisplaced,surfaceWaveSource,surfaceWaveSeed,surfaceWaveSeedAmplitude,res,outerRadius,surfaceDensity,nbSurfaceMaintenanceIterations,dt,waveSpeed,waveDamping,waveSeedFrequency,waveMaxAmplitude,waveMaxFrequency,waveMaxSeedingAmplitude,waveSeedingCurvatureThresholdRegionCenter,waveSeedingCurvatureThresholdRegionRadius,waveSeedStepSizeRatioOfMax);  _args.check(); } pbFinalizePlugin(parent,"particleSurfaceTurbulence", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("particleSurfaceTurbulence",e.what()); return 0; } } static const Pb::Register _RP_particleSurfaceTurbulence ("","particleSurfaceTurbulence",_W_0);  extern "C" { void PbRegister_particleSurfaceTurbulence() { KEEP_UNUSED(_RP_particleSurfaceTurbulence); } } 
 
 
 
@@ -1262,7 +1292,7 @@ void debugCheckParts(BasicParticleSystem& parts, FlagGrid& flags) {
             debMsg("bad position??? "<<idx<<" "<< parts.getPos(idx) ,1 ); exit(1);
         }
     }
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "debugCheckParts" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock);   _retval = getPyNone(); debugCheckParts(parts,flags);  _args.check(); } pbFinalizePlugin(parent,"debugCheckParts", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("debugCheckParts",e.what()); return 0; } } static const Pb::Register _RP_debugCheckParts ("","debugCheckParts",_W_1); 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "debugCheckParts" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock);   _retval = getPyNone(); debugCheckParts(parts,flags);  _args.check(); } pbFinalizePlugin(parent,"debugCheckParts", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("debugCheckParts",e.what()); return 0; } } static const Pb::Register _RP_debugCheckParts ("","debugCheckParts",_W_1);  extern "C" { void PbRegister_debugCheckParts() { KEEP_UNUSED(_RP_debugCheckParts); } } 
 
 
 

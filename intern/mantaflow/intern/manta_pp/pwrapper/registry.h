@@ -55,9 +55,13 @@ Manta::PbClass* objFromPy(PyObject* obj);
 Manta::PbClass* createPy(const std::string& classname, const std::string& name, Manta::PbArgs& args, Manta::PbClass* parent);
 void setReference(Manta::PbClass* cls, PyObject* obj);
 PyObject* copyObject(Manta::PbClass* cls, const std::string& classname);
+void MantaEnsureRegistration();
 
 #ifdef WITH_MANTA
-extern "C" PyObject *PyInit_Main_Obj(void);
+#ifdef PyMODINIT_FUNC
+PyMODINIT_FUNC PyInit_Main(void);
+PyMODINIT_FUNC PyInit_Main_Obj(void);
+#endif
 #endif
 
 // callback type
@@ -85,6 +89,8 @@ struct Register {
 	//! register external code
 	Register(InitFunc func);
 };
+
+#define KEEP_UNUSED(var) do { (void)var; } while(false);	
 
 }
 #endif

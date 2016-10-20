@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/grid.cpp"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/grid.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -352,7 +352,7 @@ Real gridMaxDiff(Grid<Real>& g1, Grid<Real>& g2) {
 		maxVal = std::max(maxVal, (double)fabs(g1(i, j, k) - g2(i, j, k)));
 	}
 	return maxVal;
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "gridMaxDiff" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& g1 = *_args.getPtr<Grid<Real> >("g1",0,&_lock); Grid<Real>& g2 = *_args.getPtr<Grid<Real> >("g2",1,&_lock);   _retval = toPy(gridMaxDiff(g1,g2));  _args.check(); } pbFinalizePlugin(parent,"gridMaxDiff", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("gridMaxDiff",e.what()); return 0; } } static const Pb::Register _RP_gridMaxDiff ("","gridMaxDiff",_W_0); 
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "gridMaxDiff" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& g1 = *_args.getPtr<Grid<Real> >("g1",0,&_lock); Grid<Real>& g2 = *_args.getPtr<Grid<Real> >("g2",1,&_lock);   _retval = toPy(gridMaxDiff(g1,g2));  _args.check(); } pbFinalizePlugin(parent,"gridMaxDiff", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("gridMaxDiff",e.what()); return 0; } } static const Pb::Register _RP_gridMaxDiff ("","gridMaxDiff",_W_0);  extern "C" { void PbRegister_gridMaxDiff() { KEEP_UNUSED(_RP_gridMaxDiff); } } 
 
 Real gridMaxDiffInt(Grid<int>& g1, Grid<int>& g2) {
 	double maxVal = 0.;
@@ -360,7 +360,7 @@ Real gridMaxDiffInt(Grid<int>& g1, Grid<int>& g2) {
 		maxVal = std::max(maxVal, (double)fabs((double)g1(i, j, k) - g2(i, j, k)));
 	}
 	return maxVal;
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "gridMaxDiffInt" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<int>& g1 = *_args.getPtr<Grid<int> >("g1",0,&_lock); Grid<int>& g2 = *_args.getPtr<Grid<int> >("g2",1,&_lock);   _retval = toPy(gridMaxDiffInt(g1,g2));  _args.check(); } pbFinalizePlugin(parent,"gridMaxDiffInt", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("gridMaxDiffInt",e.what()); return 0; } } static const Pb::Register _RP_gridMaxDiffInt ("","gridMaxDiffInt",_W_1); 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "gridMaxDiffInt" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<int>& g1 = *_args.getPtr<Grid<int> >("g1",0,&_lock); Grid<int>& g2 = *_args.getPtr<Grid<int> >("g2",1,&_lock);   _retval = toPy(gridMaxDiffInt(g1,g2));  _args.check(); } pbFinalizePlugin(parent,"gridMaxDiffInt", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("gridMaxDiffInt",e.what()); return 0; } } static const Pb::Register _RP_gridMaxDiffInt ("","gridMaxDiffInt",_W_1);  extern "C" { void PbRegister_gridMaxDiffInt() { KEEP_UNUSED(_RP_gridMaxDiffInt); } } 
 
 Real gridMaxDiffVec3(Grid<Vec3>& g1, Grid<Vec3>& g2) {
 	double maxVal = 0.;
@@ -375,7 +375,7 @@ Real gridMaxDiffVec3(Grid<Vec3>& g1, Grid<Vec3>& g2) {
 		//maxVal = std::max(maxVal, (double)fabs( norm(g1(i,j,k)-g2(i,j,k)) ));
 	}
 	return maxVal;
-} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "gridMaxDiffVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& g1 = *_args.getPtr<Grid<Vec3> >("g1",0,&_lock); Grid<Vec3>& g2 = *_args.getPtr<Grid<Vec3> >("g2",1,&_lock);   _retval = toPy(gridMaxDiffVec3(g1,g2));  _args.check(); } pbFinalizePlugin(parent,"gridMaxDiffVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("gridMaxDiffVec3",e.what()); return 0; } } static const Pb::Register _RP_gridMaxDiffVec3 ("","gridMaxDiffVec3",_W_2); 
+} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "gridMaxDiffVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& g1 = *_args.getPtr<Grid<Vec3> >("g1",0,&_lock); Grid<Vec3>& g2 = *_args.getPtr<Grid<Vec3> >("g2",1,&_lock);   _retval = toPy(gridMaxDiffVec3(g1,g2));  _args.check(); } pbFinalizePlugin(parent,"gridMaxDiffVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("gridMaxDiffVec3",e.what()); return 0; } } static const Pb::Register _RP_gridMaxDiffVec3 ("","gridMaxDiffVec3",_W_2);  extern "C" { void PbRegister_gridMaxDiffVec3() { KEEP_UNUSED(_RP_gridMaxDiffVec3); } } 
 
 // simple helper functions to copy (convert) mac to vec3 , and levelset to real grids
 // (are assumed to be the same for running the test cases - in general they're not!)
@@ -384,9 +384,9 @@ void copyMacToVec3(MACGrid &source, Grid<Vec3>& target) {
 	FOR_IJK(target) {
 		target(i,j,k) = source(i,j,k);
 	}
-} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "copyMacToVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& source = *_args.getPtr<MACGrid >("source",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock);   _retval = getPyNone(); copyMacToVec3(source,target);  _args.check(); } pbFinalizePlugin(parent,"copyMacToVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("copyMacToVec3",e.what()); return 0; } } static const Pb::Register _RP_copyMacToVec3 ("","copyMacToVec3",_W_3); 
+} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "copyMacToVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& source = *_args.getPtr<MACGrid >("source",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock);   _retval = getPyNone(); copyMacToVec3(source,target);  _args.check(); } pbFinalizePlugin(parent,"copyMacToVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("copyMacToVec3",e.what()); return 0; } } static const Pb::Register _RP_copyMacToVec3 ("","copyMacToVec3",_W_3);  extern "C" { void PbRegister_copyMacToVec3() { KEEP_UNUSED(_RP_copyMacToVec3); } } 
 
-void convertMacToVec3(MACGrid &source , Grid<Vec3> &target) { debMsg("Deprecated - do not use convertMacToVec3... use copyMacToVec3 instead",1); copyMacToVec3(source,target); } static PyObject* _W_4 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "convertMacToVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& source = *_args.getPtr<MACGrid >("source",0,&_lock); Grid<Vec3> & target = *_args.getPtr<Grid<Vec3>  >("target",1,&_lock);   _retval = getPyNone(); convertMacToVec3(source,target);  _args.check(); } pbFinalizePlugin(parent,"convertMacToVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("convertMacToVec3",e.what()); return 0; } } static const Pb::Register _RP_convertMacToVec3 ("","convertMacToVec3",_W_4); 
+void convertMacToVec3(MACGrid &source , Grid<Vec3> &target) { debMsg("Deprecated - do not use convertMacToVec3... use copyMacToVec3 instead",1); copyMacToVec3(source,target); } static PyObject* _W_4 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "convertMacToVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& source = *_args.getPtr<MACGrid >("source",0,&_lock); Grid<Vec3> & target = *_args.getPtr<Grid<Vec3>  >("target",1,&_lock);   _retval = getPyNone(); convertMacToVec3(source,target);  _args.check(); } pbFinalizePlugin(parent,"convertMacToVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("convertMacToVec3",e.what()); return 0; } } static const Pb::Register _RP_convertMacToVec3 ("","convertMacToVec3",_W_4);  extern "C" { void PbRegister_convertMacToVec3() { KEEP_UNUSED(_RP_convertMacToVec3); } } 
 
 //! vec3->mac grid conversion , but with full resampling 
 void resampleVec3ToMac(Grid<Vec3>& source, MACGrid &target ) {
@@ -396,20 +396,20 @@ void resampleVec3ToMac(Grid<Vec3>& source, MACGrid &target ) {
 		if(target.is3D()) {
 		target(i,j,k)[2] = 0.5*(source(i,j,k-1)[2]+source(i,j,k))[2]; }
 	}
-} static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "resampleVec3ToMac" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& source = *_args.getPtr<Grid<Vec3> >("source",0,&_lock); MACGrid& target = *_args.getPtr<MACGrid >("target",1,&_lock);   _retval = getPyNone(); resampleVec3ToMac(source,target);  _args.check(); } pbFinalizePlugin(parent,"resampleVec3ToMac", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("resampleVec3ToMac",e.what()); return 0; } } static const Pb::Register _RP_resampleVec3ToMac ("","resampleVec3ToMac",_W_5); 
+} static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "resampleVec3ToMac" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& source = *_args.getPtr<Grid<Vec3> >("source",0,&_lock); MACGrid& target = *_args.getPtr<MACGrid >("target",1,&_lock);   _retval = getPyNone(); resampleVec3ToMac(source,target);  _args.check(); } pbFinalizePlugin(parent,"resampleVec3ToMac", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("resampleVec3ToMac",e.what()); return 0; } } static const Pb::Register _RP_resampleVec3ToMac ("","resampleVec3ToMac",_W_5);  extern "C" { void PbRegister_resampleVec3ToMac() { KEEP_UNUSED(_RP_resampleVec3ToMac); } } 
 //! mac->vec3 grid conversion , with full resampling 
 void resampleMacToVec3(MACGrid &source, Grid<Vec3>& target ) {
 	FOR_IJK_BND(target,1) {
 		target(i,j,k) = source.getCentered(i,j,k);
 	}
-} static PyObject* _W_6 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "resampleMacToVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& source = *_args.getPtr<MACGrid >("source",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock);   _retval = getPyNone(); resampleMacToVec3(source,target);  _args.check(); } pbFinalizePlugin(parent,"resampleMacToVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("resampleMacToVec3",e.what()); return 0; } } static const Pb::Register _RP_resampleMacToVec3 ("","resampleMacToVec3",_W_6); 
+} static PyObject* _W_6 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "resampleMacToVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& source = *_args.getPtr<MACGrid >("source",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock);   _retval = getPyNone(); resampleMacToVec3(source,target);  _args.check(); } pbFinalizePlugin(parent,"resampleMacToVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("resampleMacToVec3",e.what()); return 0; } } static const Pb::Register _RP_resampleMacToVec3 ("","resampleMacToVec3",_W_6);  extern "C" { void PbRegister_resampleMacToVec3() { KEEP_UNUSED(_RP_resampleMacToVec3); } } 
 
 
 void copyLevelsetToReal(LevelsetGrid &source , Grid<Real> &target) {
 	FOR_IJK(target) {
 		target(i,j,k) = source(i,j,k);
 	}
-} static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "copyLevelsetToReal" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; LevelsetGrid& source = *_args.getPtr<LevelsetGrid >("source",0,&_lock); Grid<Real> & target = *_args.getPtr<Grid<Real>  >("target",1,&_lock);   _retval = getPyNone(); copyLevelsetToReal(source,target);  _args.check(); } pbFinalizePlugin(parent,"copyLevelsetToReal", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("copyLevelsetToReal",e.what()); return 0; } } static const Pb::Register _RP_copyLevelsetToReal ("","copyLevelsetToReal",_W_7); 
+} static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "copyLevelsetToReal" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; LevelsetGrid& source = *_args.getPtr<LevelsetGrid >("source",0,&_lock); Grid<Real> & target = *_args.getPtr<Grid<Real>  >("target",1,&_lock);   _retval = getPyNone(); copyLevelsetToReal(source,target);  _args.check(); } pbFinalizePlugin(parent,"copyLevelsetToReal", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("copyLevelsetToReal",e.what()); return 0; } } static const Pb::Register _RP_copyLevelsetToReal ("","copyLevelsetToReal",_W_7);  extern "C" { void PbRegister_copyLevelsetToReal() { KEEP_UNUSED(_RP_copyLevelsetToReal); } } 
 
 void copyVec3ToReal(Grid<Vec3> &source, Grid<Real> &targetX, Grid<Real> &targetY, Grid<Real> &targetZ) {
 	FOR_IJK(source) {
@@ -417,7 +417,7 @@ void copyVec3ToReal(Grid<Vec3> &source, Grid<Real> &targetX, Grid<Real> &targetY
 		targetY(i,j,k) = source(i,j,k).y;
 		targetZ(i,j,k) = source(i,j,k).z;
 	}
-} static PyObject* _W_8 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "copyVec3ToReal" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3> & source = *_args.getPtr<Grid<Vec3>  >("source",0,&_lock); Grid<Real> & targetX = *_args.getPtr<Grid<Real>  >("targetX",1,&_lock); Grid<Real> & targetY = *_args.getPtr<Grid<Real>  >("targetY",2,&_lock); Grid<Real> & targetZ = *_args.getPtr<Grid<Real>  >("targetZ",3,&_lock);   _retval = getPyNone(); copyVec3ToReal(source,targetX,targetY,targetZ);  _args.check(); } pbFinalizePlugin(parent,"copyVec3ToReal", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("copyVec3ToReal",e.what()); return 0; } } static const Pb::Register _RP_copyVec3ToReal ("","copyVec3ToReal",_W_8); 
+} static PyObject* _W_8 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "copyVec3ToReal" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3> & source = *_args.getPtr<Grid<Vec3>  >("source",0,&_lock); Grid<Real> & targetX = *_args.getPtr<Grid<Real>  >("targetX",1,&_lock); Grid<Real> & targetY = *_args.getPtr<Grid<Real>  >("targetY",2,&_lock); Grid<Real> & targetZ = *_args.getPtr<Grid<Real>  >("targetZ",3,&_lock);   _retval = getPyNone(); copyVec3ToReal(source,targetX,targetY,targetZ);  _args.check(); } pbFinalizePlugin(parent,"copyVec3ToReal", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("copyVec3ToReal",e.what()); return 0; } } static const Pb::Register _RP_copyVec3ToReal ("","copyVec3ToReal",_W_8);  extern "C" { void PbRegister_copyVec3ToReal() { KEEP_UNUSED(_RP_copyVec3ToReal); } } 
 
 
 void copyRealToVec3(Grid<Real> &sourceX, Grid<Real> &sourceY, Grid<Real> &sourceZ, Grid<Vec3> &target) {
@@ -426,8 +426,8 @@ void copyRealToVec3(Grid<Real> &sourceX, Grid<Real> &sourceY, Grid<Real> &source
 		target(i,j,k).y = sourceY(i,j,k);
 		target(i,j,k).z = sourceZ(i,j,k);
 	}
-} static PyObject* _W_9 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "copyRealToVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real> & sourceX = *_args.getPtr<Grid<Real>  >("sourceX",0,&_lock); Grid<Real> & sourceY = *_args.getPtr<Grid<Real>  >("sourceY",1,&_lock); Grid<Real> & sourceZ = *_args.getPtr<Grid<Real>  >("sourceZ",2,&_lock); Grid<Vec3> & target = *_args.getPtr<Grid<Vec3>  >("target",3,&_lock);   _retval = getPyNone(); copyRealToVec3(sourceX,sourceY,sourceZ,target);  _args.check(); } pbFinalizePlugin(parent,"copyRealToVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("copyRealToVec3",e.what()); return 0; } } static const Pb::Register _RP_copyRealToVec3 ("","copyRealToVec3",_W_9); 
-void convertLevelsetToReal(LevelsetGrid &source , Grid<Real> &target) { debMsg("Deprecated - do not use convertLevelsetToReal... use copyLevelsetToReal instead",1); copyLevelsetToReal(source,target); } static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "convertLevelsetToReal" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; LevelsetGrid& source = *_args.getPtr<LevelsetGrid >("source",0,&_lock); Grid<Real> & target = *_args.getPtr<Grid<Real>  >("target",1,&_lock);   _retval = getPyNone(); convertLevelsetToReal(source,target);  _args.check(); } pbFinalizePlugin(parent,"convertLevelsetToReal", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("convertLevelsetToReal",e.what()); return 0; } } static const Pb::Register _RP_convertLevelsetToReal ("","convertLevelsetToReal",_W_10); 
+} static PyObject* _W_9 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "copyRealToVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real> & sourceX = *_args.getPtr<Grid<Real>  >("sourceX",0,&_lock); Grid<Real> & sourceY = *_args.getPtr<Grid<Real>  >("sourceY",1,&_lock); Grid<Real> & sourceZ = *_args.getPtr<Grid<Real>  >("sourceZ",2,&_lock); Grid<Vec3> & target = *_args.getPtr<Grid<Vec3>  >("target",3,&_lock);   _retval = getPyNone(); copyRealToVec3(sourceX,sourceY,sourceZ,target);  _args.check(); } pbFinalizePlugin(parent,"copyRealToVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("copyRealToVec3",e.what()); return 0; } } static const Pb::Register _RP_copyRealToVec3 ("","copyRealToVec3",_W_9);  extern "C" { void PbRegister_copyRealToVec3() { KEEP_UNUSED(_RP_copyRealToVec3); } } 
+void convertLevelsetToReal(LevelsetGrid &source , Grid<Real> &target) { debMsg("Deprecated - do not use convertLevelsetToReal... use copyLevelsetToReal instead",1); copyLevelsetToReal(source,target); } static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "convertLevelsetToReal" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; LevelsetGrid& source = *_args.getPtr<LevelsetGrid >("source",0,&_lock); Grid<Real> & target = *_args.getPtr<Grid<Real>  >("target",1,&_lock);   _retval = getPyNone(); convertLevelsetToReal(source,target);  _args.check(); } pbFinalizePlugin(parent,"convertLevelsetToReal", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("convertLevelsetToReal",e.what()); return 0; } } static const Pb::Register _RP_convertLevelsetToReal ("","convertLevelsetToReal",_W_10);  extern "C" { void PbRegister_convertLevelsetToReal() { KEEP_UNUSED(_RP_convertLevelsetToReal); } } 
 
 template<class T> void Grid<T>::printGrid(int zSlice, bool printIndex) {
 	std::ostringstream out;
@@ -454,12 +454,12 @@ void swapComponents(Grid<Vec3>& vel, int c1=0, int c2=1, int c3=2) {
 		vel(i,j,k)[1] = v[c2];
 		vel(i,j,k)[2] = v[c3];
 	}
-} static PyObject* _W_11 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "swapComponents" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& vel = *_args.getPtr<Grid<Vec3> >("vel",0,&_lock); int c1 = _args.getOpt<int >("c1",1,0,&_lock); int c2 = _args.getOpt<int >("c2",2,1,&_lock); int c3 = _args.getOpt<int >("c3",3,2,&_lock);   _retval = getPyNone(); swapComponents(vel,c1,c2,c3);  _args.check(); } pbFinalizePlugin(parent,"swapComponents", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("swapComponents",e.what()); return 0; } } static const Pb::Register _RP_swapComponents ("","swapComponents",_W_11); 
+} static PyObject* _W_11 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "swapComponents" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& vel = *_args.getPtr<Grid<Vec3> >("vel",0,&_lock); int c1 = _args.getOpt<int >("c1",1,0,&_lock); int c2 = _args.getOpt<int >("c2",2,1,&_lock); int c3 = _args.getOpt<int >("c3",3,2,&_lock);   _retval = getPyNone(); swapComponents(vel,c1,c2,c3);  _args.check(); } pbFinalizePlugin(parent,"swapComponents", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("swapComponents",e.what()); return 0; } } static const Pb::Register _RP_swapComponents ("","swapComponents",_W_11);  extern "C" { void PbRegister_swapComponents() { KEEP_UNUSED(_RP_swapComponents); } } 
 
 // helper functions for UV grid data (stored grid coordinates as Vec3 values, and uv weight in entry zero)
 
 // make uv weight accesible in python
-Real getUvWeight(Grid<Vec3> &uv) { return uv[0][0]; } static PyObject* _W_12 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "getUvWeight" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3> & uv = *_args.getPtr<Grid<Vec3>  >("uv",0,&_lock);   _retval = toPy(getUvWeight(uv));  _args.check(); } pbFinalizePlugin(parent,"getUvWeight", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("getUvWeight",e.what()); return 0; } } static const Pb::Register _RP_getUvWeight ("","getUvWeight",_W_12); 
+Real getUvWeight(Grid<Vec3> &uv) { return uv[0][0]; } static PyObject* _W_12 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "getUvWeight" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3> & uv = *_args.getPtr<Grid<Vec3>  >("uv",0,&_lock);   _retval = toPy(getUvWeight(uv));  _args.check(); } pbFinalizePlugin(parent,"getUvWeight", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("getUvWeight",e.what()); return 0; } } static const Pb::Register _RP_getUvWeight ("","getUvWeight",_W_12);  extern "C" { void PbRegister_getUvWeight() { KEEP_UNUSED(_RP_getUvWeight); } } 
 
 // note - right now the UV grids have 0 values at the border after advection... could be fixed with an extrapolation step...
 
@@ -490,7 +490,7 @@ static inline Real computeUvRamp(Real t) {
 
 void resetUvGrid(Grid<Vec3> &target) {
 	knResetUvGrid reset(target); // note, llvm complains about anonymous declaration here... ?
-} static PyObject* _W_13 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "resetUvGrid" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3> & target = *_args.getPtr<Grid<Vec3>  >("target",0,&_lock);   _retval = getPyNone(); resetUvGrid(target);  _args.check(); } pbFinalizePlugin(parent,"resetUvGrid", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("resetUvGrid",e.what()); return 0; } } static const Pb::Register _RP_resetUvGrid ("","resetUvGrid",_W_13); 
+} static PyObject* _W_13 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "resetUvGrid" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3> & target = *_args.getPtr<Grid<Vec3>  >("target",0,&_lock);   _retval = getPyNone(); resetUvGrid(target);  _args.check(); } pbFinalizePlugin(parent,"resetUvGrid", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("resetUvGrid",e.what()); return 0; } } static const Pb::Register _RP_resetUvGrid ("","resetUvGrid",_W_13);  extern "C" { void PbRegister_resetUvGrid() { KEEP_UNUSED(_RP_resetUvGrid); } } 
 
 void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv) {
 	const Real t   = uv.getParent()->getTime();
@@ -517,7 +517,7 @@ void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv) {
 
 	// print info about uv weights?
 	debMsg("Uv grid "<<index<<"/"<<numUvs<< " t="<<currt<<" w="<<uvWeight<<", reset:"<<(int)(currt<lastt) , 2);
-} static PyObject* _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "updateUvWeight" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Real resetTime = _args.get<Real >("resetTime",0,&_lock); int index = _args.get<int >("index",1,&_lock); int numUvs = _args.get<int >("numUvs",2,&_lock); Grid<Vec3> & uv = *_args.getPtr<Grid<Vec3>  >("uv",3,&_lock);   _retval = getPyNone(); updateUvWeight(resetTime,index,numUvs,uv);  _args.check(); } pbFinalizePlugin(parent,"updateUvWeight", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("updateUvWeight",e.what()); return 0; } } static const Pb::Register _RP_updateUvWeight ("","updateUvWeight",_W_14); 
+} static PyObject* _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "updateUvWeight" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Real resetTime = _args.get<Real >("resetTime",0,&_lock); int index = _args.get<int >("index",1,&_lock); int numUvs = _args.get<int >("numUvs",2,&_lock); Grid<Vec3> & uv = *_args.getPtr<Grid<Vec3>  >("uv",3,&_lock);   _retval = getPyNone(); updateUvWeight(resetTime,index,numUvs,uv);  _args.check(); } pbFinalizePlugin(parent,"updateUvWeight", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("updateUvWeight",e.what()); return 0; } } static const Pb::Register _RP_updateUvWeight ("","updateUvWeight",_W_14);  extern "C" { void PbRegister_updateUvWeight() { KEEP_UNUSED(_RP_updateUvWeight); } } 
 
 template <class T>  struct knSetBoundary : public KernelBase { knSetBoundary(Grid<T>& grid, T value, int w) :  KernelBase(&grid,0) ,grid(grid),value(value),w(w)   { runMessage(); run(); }  inline void op(int i, int j, int k, Grid<T>& grid, T value, int w )  { 
 	bool bnd = (i<=w || i>=grid.getSizeX()-1-w || j<=w || j>=grid.getSizeY()-1-w || (grid.is3D() && (k<=w || k>=grid.getSizeZ()-1-w)));
@@ -583,6 +583,52 @@ template<class T> void Grid<T>::setBoundNeumann(int boundaryWidth) {
 	knSetBoundaryNeumann<T>( *this, boundaryWidth );
 }
 
+//! kernel to set velocity components of mac grid to value for a boundary of w cells
+ struct knSetBoundaryMAC : public KernelBase { knSetBoundaryMAC(Grid<Vec3>& grid, Vec3 value, int w) :  KernelBase(&grid,0) ,grid(grid),value(value),w(w)   { runMessage(); run(); }  inline void op(int i, int j, int k, Grid<Vec3>& grid, Vec3 value, int w )  { 
+	if (i<=w   || i>=grid.getSizeX()  -w || j<=w-1 || j>=grid.getSizeY()-1-w || (grid.is3D() && (k<=w-1 || k>=grid.getSizeZ()-1-w)))
+		grid(i,j,k).x = value.x;
+	if (i<=w-1 || i>=grid.getSizeX()-1-w || j<=w   || j>=grid.getSizeY()  -w || (grid.is3D() && (k<=w-1 || k>=grid.getSizeZ()-1-w)))
+		grid(i,j,k).y = value.y;
+	if (i<=w-1 || i>=grid.getSizeX()-1-w || j<=w-1 || j>=grid.getSizeY()-1-w || (grid.is3D() && (k<=w   || k>=grid.getSizeZ()  -w)))
+		grid(i,j,k).z = value.z;
+}   inline Grid<Vec3>& getArg0() { return grid; } typedef Grid<Vec3> type0;inline Vec3& getArg1() { return value; } typedef Vec3 type1;inline int& getArg2() { return w; } typedef int type2; void runMessage() { debMsg("Executing kernel knSetBoundaryMAC ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ {  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,value,w);  } } else { const int k=0; 
+#pragma omp parallel 
+ {  
+#pragma omp for 
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,value,w);  } }  } Grid<Vec3>& grid; Vec3 value; int w;   };
+#line 460 "grid.cpp"
+
+ 
+
+//! only set normal velocity components of mac grid to value for a boundary of w cells
+ struct knSetBoundaryMACNorm : public KernelBase { knSetBoundaryMACNorm(Grid<Vec3>& grid, Vec3 value, int w) :  KernelBase(&grid,0) ,grid(grid),value(value),w(w)   { runMessage(); run(); }  inline void op(int i, int j, int k, Grid<Vec3>& grid, Vec3 value, int w )  { 
+	if (i<=w   || i>=grid.getSizeX()  -w ) grid(i,j,k).x = value.x;
+	if (j<=w   || j>=grid.getSizeY()  -w ) grid(i,j,k).y = value.y;
+	if ( (grid.is3D() && (k<=w   || k>=grid.getSizeZ()  -w))) grid(i,j,k).z = value.z;
+}   inline Grid<Vec3>& getArg0() { return grid; } typedef Grid<Vec3> type0;inline Vec3& getArg1() { return value; } typedef Vec3 type1;inline int& getArg2() { return w; } typedef int type2; void runMessage() { debMsg("Executing kernel knSetBoundaryMACNorm ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ {  
+#pragma omp for 
+  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,value,w);  } } else { const int k=0; 
+#pragma omp parallel 
+ {  
+#pragma omp for 
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,value,w);  } }  } Grid<Vec3>& grid; Vec3 value; int w;   };
+#line 470 "grid.cpp"
+
+ 
+
+//! set velocity components of mac grid to value for a boundary of w cells (optionally only normal values)
+void MACGrid::setBoundMAC(Vec3 value, int boundaryWidth, bool normalOnly) { 
+	if(!normalOnly) knSetBoundaryMAC    ( *this, value, boundaryWidth ); 
+	else            knSetBoundaryMACNorm( *this, value, boundaryWidth ); 
+}
+
+
 //! helper kernels for getGridAvg
 
  struct knGridTotalSum : public KernelBase { knGridTotalSum(const Grid<Real>& a, FlagGrid* flags) :  KernelBase(&a,0) ,a(a),flags(flags) ,result(0.0)  { runMessage(); run(); }   inline void op(IndexInt idx, const Grid<Real>& a, FlagGrid* flags ,double& result)  {
@@ -595,7 +641,7 @@ template<class T> void Grid<T>::setBoundNeumann(int boundaryWidth) {
   for (IndexInt i = 0; i < _sz; i++) op(i,a,flags,result); 
 #pragma omp critical
 {this->result += result; } }   } const Grid<Real>& a; FlagGrid* flags;  double result;  };
-#line 461 "grid.cpp"
+#line 485 "grid.cpp"
 
 
 
@@ -607,7 +653,7 @@ template<class T> void Grid<T>::setBoundNeumann(int boundaryWidth) {
   for (IndexInt i = 0; i < _sz; i++) op(i,flags,numEmpty); 
 #pragma omp critical
 {this->numEmpty += numEmpty; } }   } FlagGrid& flags;  int numEmpty;  };
-#line 467 "grid.cpp"
+#line 491 "grid.cpp"
 
 
 
@@ -623,7 +669,7 @@ Real getGridAvg(Grid<Real>& source, FlagGrid* flags=NULL) {
 	if(cells>0.) sum *= 1./cells;
 	else         sum = -1.;
 	return sum;
-} static PyObject* _W_15 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "getGridAvg" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",0,&_lock); FlagGrid* flags = _args.getPtrOpt<FlagGrid >("flags",1,NULL,&_lock);   _retval = toPy(getGridAvg(source,flags));  _args.check(); } pbFinalizePlugin(parent,"getGridAvg", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("getGridAvg",e.what()); return 0; } } static const Pb::Register _RP_getGridAvg ("","getGridAvg",_W_15); 
+} static PyObject* _W_15 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "getGridAvg" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",0,&_lock); FlagGrid* flags = _args.getPtrOpt<FlagGrid >("flags",1,NULL,&_lock);   _retval = toPy(getGridAvg(source,flags));  _args.check(); } pbFinalizePlugin(parent,"getGridAvg", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("getGridAvg",e.what()); return 0; } } static const Pb::Register _RP_getGridAvg ("","getGridAvg",_W_15);  extern "C" { void PbRegister_getGridAvg() { KEEP_UNUSED(_RP_getGridAvg); } } 
 
 //! transfer data between real and vec3 grids
 
@@ -634,10 +680,10 @@ Real getGridAvg(Grid<Real>& source, FlagGrid* flags=NULL) {
  {  
 #pragma omp for 
   for (IndexInt i = 0; i < _sz; i++) op(i,source,target,component);  }   } Grid<Vec3>& source; Grid<Real>& target; int component;   };
-#line 485 "grid.cpp"
+#line 509 "grid.cpp"
 
 
-void getComponent(Grid<Vec3>& source, Grid<Real>& target, int component) { knGetComponent(source, target, component); } static PyObject* _W_16 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "getComponent" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& source = *_args.getPtr<Grid<Vec3> >("source",0,&_lock); Grid<Real>& target = *_args.getPtr<Grid<Real> >("target",1,&_lock); int component = _args.get<int >("component",2,&_lock);   _retval = getPyNone(); getComponent(source,target,component);  _args.check(); } pbFinalizePlugin(parent,"getComponent", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("getComponent",e.what()); return 0; } } static const Pb::Register _RP_getComponent ("","getComponent",_W_16); 
+void getComponent(Grid<Vec3>& source, Grid<Real>& target, int component) { knGetComponent(source, target, component); } static PyObject* _W_16 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "getComponent" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& source = *_args.getPtr<Grid<Vec3> >("source",0,&_lock); Grid<Real>& target = *_args.getPtr<Grid<Real> >("target",1,&_lock); int component = _args.get<int >("component",2,&_lock);   _retval = getPyNone(); getComponent(source,target,component);  _args.check(); } pbFinalizePlugin(parent,"getComponent", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("getComponent",e.what()); return 0; } } static const Pb::Register _RP_getComponent ("","getComponent",_W_16);  extern "C" { void PbRegister_getComponent() { KEEP_UNUSED(_RP_getComponent); } } 
 
  struct knSetComponent : public KernelBase { knSetComponent(Grid<Real>& source, Grid<Vec3>& target, int component) :  KernelBase(&source,0) ,source(source),target(target),component(component)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid<Real>& source, Grid<Vec3>& target, int component )  { 
 	target[idx][component] = source[idx]; 
@@ -646,10 +692,10 @@ void getComponent(Grid<Vec3>& source, Grid<Real>& target, int component) { knGet
  {  
 #pragma omp for 
   for (IndexInt i = 0; i < _sz; i++) op(i,source,target,component);  }   } Grid<Real>& source; Grid<Vec3>& target; int component;   };
-#line 490 "grid.cpp"
+#line 514 "grid.cpp"
 
 
-void setComponent(Grid<Real>& source, Grid<Vec3>& target, int component) { knSetComponent(source, target, component); } static PyObject* _W_17 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setComponent" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock); int component = _args.get<int >("component",2,&_lock);   _retval = getPyNone(); setComponent(source,target,component);  _args.check(); } pbFinalizePlugin(parent,"setComponent", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setComponent",e.what()); return 0; } } static const Pb::Register _RP_setComponent ("","setComponent",_W_17); 
+void setComponent(Grid<Real>& source, Grid<Vec3>& target, int component) { knSetComponent(source, target, component); } static PyObject* _W_17 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setComponent" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock); int component = _args.get<int >("component",2,&_lock);   _retval = getPyNone(); setComponent(source,target,component);  _args.check(); } pbFinalizePlugin(parent,"setComponent", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setComponent",e.what()); return 0; } } static const Pb::Register _RP_setComponent ("","setComponent",_W_17);  extern "C" { void PbRegister_setComponent() { KEEP_UNUSED(_RP_setComponent); } } 
 
 //******************************************************************************
 // Specialization classes
@@ -828,40 +874,6 @@ void FlagGrid::fillGrid(int type) {
 template class Grid<int>;
 template class Grid<Real>;
 template class Grid<Vec3>;
-
-
-//******************************************************************************
-// enable compilation of a more complicated test data type
-// enable in grid.h
-
-#if ENABLE_GRID_TEST_DATATYPE==1
-// todo fix, missing:  template<> const char* Namify<nbVector>::S = "TestDatatype";
-
-template<> Real Grid<nbVector>::getMin() { return 0.; }
-template<> Real Grid<nbVector>::getMax() { return 0.; }
-template<> Real Grid<nbVector>::getMaxAbs()      { return 0.; }
-
- struct knNbvecTestKernel : public KernelBase { knNbvecTestKernel(Grid<nbVector>& target) :  KernelBase(&target,0) ,target(target)   { runMessage(); run(); }  inline void op(int i, int j, int k, Grid<nbVector>& target )  { target(i,j,k).push_back(i+j+k); }   inline Grid<nbVector>& getArg0() { return target; } typedef Grid<nbVector> type0; void runMessage() { debMsg("Executing kernel knNbvecTestKernel ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
-#pragma omp parallel 
- {  
-#pragma omp for 
-  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,target);  } } else { const int k=0; 
-#pragma omp parallel 
- {  
-#pragma omp for 
-  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,target);  } }  } Grid<nbVector>& target;   };
-#line 685 "grid.cpp"
-
-
-
-void nbvecTestOp(Grid<nbVector> &target) {
-	knNbvecTestKernel nbvecTest(target); 
-} static PyObject* _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "nbvecTestOp" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<nbVector> & target = *_args.getPtr<Grid<nbVector>  >("target",0,&_lock);   _retval = getPyNone(); nbvecTestOp(target);  _args.check(); } pbFinalizePlugin(parent,"nbvecTestOp", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("nbvecTestOp",e.what()); return 0; } } static const Pb::Register _RP_nbvecTestOp ("","nbvecTestOp",_W_18); 
-
-// instantiate test datatype , not really required for simulations, mostly here for demonstration purposes
-template class Grid<nbVector>;
-#endif // ENABLE_GRID_TEST_DATATYPE
-
 
 } //namespace
 

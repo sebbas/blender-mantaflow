@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/noisefield.h"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/noisefield.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -101,7 +101,7 @@ class WaveletNoiseField : public PbClass {	public:
 		Vec3 mSeedOffset;
 		
 		static Real* mNoiseTile; 		// global random seed storage
-		static int randomSeed; public: PbArgs _args;}
+		static int randomSeed; public: PbArgs _args; }
 #define _C_WaveletNoiseField
 ;
 

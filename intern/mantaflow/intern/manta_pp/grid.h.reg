@@ -36,10 +36,11 @@
 >MACGrid^
 @MACGrid^^Grid^Vec3
 +MACGrid^ static const Pb::Register _R_$IDX$ ("MACGrid","MACGrid",MACGrid::_W_24); 
++MACGrid^ static const Pb::Register _R_$IDX$ ("MACGrid","setBoundMAC",MACGrid::_W_25); 
 +FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","FlagGrid","Grid<$BT$>"); template<> const char* Namify<FlagGrid >::S = "FlagGrid"; 
 >FlagGrid^
 @FlagGrid^^Grid^int
-+FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","FlagGrid",FlagGrid::_W_25); 
-+FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","initDomain",FlagGrid::_W_26); 
-+FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","updateFromLevelset",FlagGrid::_W_27); 
-+FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","fillGrid",FlagGrid::_W_28); 
++FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","FlagGrid",FlagGrid::_W_26); 
++FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","initDomain",FlagGrid::_W_27); 
++FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","updateFromLevelset",FlagGrid::_W_28); 
++FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","fillGrid",FlagGrid::_W_29); 

@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/blenderIntegration/mantaflowgit/source/particle.h"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/particle.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -98,7 +98,7 @@ protected:
 	std::vector< ParticleDataImpl<Real> *> mPdataReal;
 	std::vector< ParticleDataImpl<Vec3> *> mPdataVec3;
 	std::vector< ParticleDataImpl<int> *>  mPdataInt; 	//! indicate that pdata of this particle system is copied, and needs to be freed
-	bool mFreePdata; public: PbArgs _args;}
+	bool mFreePdata; public: PbArgs _args; }
 #define _C_ParticleBase
 ;
 
@@ -164,7 +164,7 @@ protected:
 	//! the particle data
 	std::vector<S> mData;    
  	//! reduce storage , called by doCompress
-	virtual void compress();  public: PbArgs _args;}
+	virtual void compress();  public: PbArgs _args; }
 #define _C_ParticleSystem
 ;
 
@@ -200,7 +200,7 @@ class BasicParticleSystem : public ParticleSystem<BasicParticleData> {public:
 
 	// dangerous, get low level access - avoid usage, only used in vortex filament advection for now
 	std::vector<BasicParticleData>& getData() { return mData; }
- 	void printParts(IndexInt start=-1, IndexInt stop=-1, bool printIndex=false); static PyObject* _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); BasicParticleSystem* pbo = dynamic_cast<BasicParticleSystem*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "BasicParticleSystem::printParts" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; IndexInt start = _args.getOpt<IndexInt >("start",0,-1,&_lock); IndexInt stop = _args.getOpt<IndexInt >("stop",1,-1,&_lock); bool printIndex = _args.getOpt<bool >("printIndex",2,false,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->printParts(start,stop,printIndex);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"BasicParticleSystem::printParts" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("BasicParticleSystem::printParts",e.what()); return 0; } }  public: PbArgs _args;}
+ 	void printParts(IndexInt start=-1, IndexInt stop=-1, bool printIndex=false); static PyObject* _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); BasicParticleSystem* pbo = dynamic_cast<BasicParticleSystem*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "BasicParticleSystem::printParts" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; IndexInt start = _args.getOpt<IndexInt >("start",0,-1,&_lock); IndexInt stop = _args.getOpt<IndexInt >("stop",1,-1,&_lock); bool printIndex = _args.getOpt<bool >("printIndex",2,false,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->printParts(start,stop,printIndex);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"BasicParticleSystem::printParts" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("BasicParticleSystem::printParts",e.what()); return 0; } }  public: PbArgs _args; }
 #define _C_BasicParticleSystem
 ;
 
@@ -227,7 +227,7 @@ public:
 class ParticleIndexSystem : public ParticleSystem<ParticleIndexData> {public:
 	ParticleIndexSystem(FluidSolver* parent) :ParticleSystem<ParticleIndexData>(parent){} static int _W_15 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(0, "ParticleIndexSystem::ParticleIndexSystem" , !noTiming ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock);  obj = new ParticleIndexSystem(parent); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"ParticleIndexSystem::ParticleIndexSystem" , !noTiming ); return 0; } catch(std::exception& e) { pbSetError("ParticleIndexSystem::ParticleIndexSystem",e.what()); return -1; } };
 	 	//! we only need a resize function...
-	void resize(IndexInt size) { mData.resize(size); } public: PbArgs _args;}
+	void resize(IndexInt size) { mData.resize(size); } public: PbArgs _args; }
 #define _C_ParticleIndexSystem
 ;
 
@@ -249,7 +249,7 @@ template<class DATA, class CON> class ConnectedParticleSystem : public ParticleS
 	virtual ParticleBase* clone();
 	
 protected:
-	std::vector<CON> mSegments; 	virtual void compress();     public: PbArgs _args;}
+	std::vector<CON> mSegments; 	virtual void compress();     public: PbArgs _args; }
 #define _C_ConnectedParticleSystem
 ;
 
@@ -277,7 +277,7 @@ class ParticleDataBase : public PbClass {public:
 	//! debugging
 	inline void checkPartIndex(IndexInt idx) const;
 
-protected: 	ParticleBase* mpParticleSys; public: PbArgs _args;}
+protected: 	ParticleBase* mpParticleSys; public: PbArgs _args; }
 #define _C_ParticleDataBase
 ;
 
@@ -340,7 +340,7 @@ protected:
 
 	//! optionally , we might have an associated grid from which to grab new data
 	Grid<T>* mpGridSource; 	//! unfortunately , we need to distinguish mac vs regular vec3
-	bool mGridSourceMAC; public: PbArgs _args;}
+	bool mGridSourceMAC; public: PbArgs _args; }
 #define _C_ParticleDataImpl
 ;
 
@@ -652,9 +652,9 @@ ParticleBase* ConnectedParticleSystem<DATA,CON>::clone() {
 template<class S>  
 std::string ParticleSystem<S>::infoString() const { 
 	std::stringstream s;
-	s << "ParticleSys '" << getName() << "' [" << size() << " parts";
-	if(this->getNumPdata()>0) s<< " "<< this->getNumPdata()<<" pd";
-	s << "]";
+	s << "ParticleSys '" << getName() << "'\n-> ";
+	if(this->getNumPdata()>0) s<< "pdata: "<< this->getNumPdata();
+	s << "parts: " << size();
 	//for(IndexInt i=0; i<(IndexInt)mPartData.size(); ++i) { sstr << i<<":" << mPartData[i]->size() <<" "; } 
 	return s.str();
 }
