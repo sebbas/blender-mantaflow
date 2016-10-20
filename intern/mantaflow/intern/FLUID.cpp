@@ -983,7 +983,7 @@ void FLUID::saveMesh(char *filename)
 	mCommands.clear();
 	std::ostringstream save_mesh_low;
 	
-	save_mesh_low <<  "save_mesh_low('" << path << "')";
+	save_mesh_low <<  "save_mesh_low(r'" << path << "')";
 	mCommands.push_back(save_mesh_low.str());
 	
 	runPythonString(mCommands);
@@ -996,7 +996,7 @@ void FLUID::saveMeshHigh(char *filename)
 	mCommands.clear();
 	std::ostringstream save_mesh_high;
 	
-	save_mesh_high <<  "save_mesh_high('" << path << "')";
+	save_mesh_high <<  "save_mesh_high(r'" << path << "')";
 	mCommands.push_back(save_mesh_high.str());
 	
 	runPythonString(mCommands);
@@ -1008,7 +1008,7 @@ void FLUID::saveSmokeData(char *pathname)
 	
 	mCommands.clear();
 	std::ostringstream save_smoke_data_low;
-	save_smoke_data_low <<  "save_smoke_data_low('" << path << "')";
+	save_smoke_data_low <<  "save_smoke_data_low(r'" << path << "')";
 	mCommands.push_back(save_smoke_data_low.str());
 	
 	runPythonString(mCommands);
@@ -1020,7 +1020,7 @@ void FLUID::saveSmokeDataHigh(char *pathname)
 	
 	mCommands.clear();
 	std::ostringstream save_smoke_data_high;
-	save_smoke_data_high <<  "save_smoke_data_high('" << path << "')";
+	save_smoke_data_high <<  "save_smoke_data_high(r'" << path << "')";
 	mCommands.push_back(save_smoke_data_high.str());
 	
 	runPythonString(mCommands);
@@ -1032,7 +1032,7 @@ void FLUID::saveLiquidData(char *pathname)
 	
 	mCommands.clear();
 	std::ostringstream save_liquid_data_low;
-	save_liquid_data_low <<  "save_liquid_data_low('" << path << "')";
+	save_liquid_data_low <<  "save_liquid_data_low(r'" << path << "')";
 	mCommands.push_back(save_liquid_data_low.str());
 	
 	runPythonString(mCommands);
@@ -1044,7 +1044,7 @@ void FLUID::saveLiquidDataHigh(char *pathname)
 	
 	mCommands.clear();
 	std::ostringstream save_liquid_data_high;
-	save_liquid_data_high <<  "save_liquid_data_high('" << path << "')";
+	save_liquid_data_high <<  "save_liquid_data_high(r'" << path << "')";
 	mCommands.push_back(save_liquid_data_high.str());
 	
 	runPythonString(mCommands);
@@ -1056,7 +1056,7 @@ void FLUID::loadLiquidData(char *pathname)
 	
 	mCommands.clear();
 	std::ostringstream load_liquid_data_low;
-	load_liquid_data_low <<  "load_liquid_data_low('" <<  path << "')";
+	load_liquid_data_low <<  "load_liquid_data_low(r'" <<  path << "')";
 	mCommands.push_back(load_liquid_data_low.str());
 	
 	runPythonString(mCommands);
@@ -1068,7 +1068,7 @@ void FLUID::loadLiquidDataHigh(char *pathname)
 	
 	mCommands.clear();
 	std::ostringstream load_liquid_data_high;
-	load_liquid_data_high <<  "load_liquid_data_high('" <<  path << "')";
+	load_liquid_data_high <<  "load_liquid_data_high(r'" <<  path << "')";
 	mCommands.push_back(load_liquid_data_high.str());
 	
 	runPythonString(mCommands);
