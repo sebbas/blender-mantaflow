@@ -132,7 +132,6 @@ set(SRC
 	intern/manta_pp/pwrapper/pconvert.cpp
 	intern/manta_pp/pwrapper/pconvert.h
 	intern/manta_pp/pwrapper/pvec3.cpp
-	intern/manta_pp/pwrapper/pymain.cpp
 	intern/manta_pp/pwrapper/pythonInclude.h
 	intern/manta_pp/pwrapper/registry.cpp
 	intern/manta_pp/pwrapper/registry.h

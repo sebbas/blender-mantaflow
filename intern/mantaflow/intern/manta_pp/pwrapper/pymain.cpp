@@ -91,8 +91,7 @@ void runScript(vector<string>& args) {
 	delete [] cargs;
 }
 
-// Changed function name from 'main()' to 'mainManta()' because of name conflict
-int mainManta(int argc,char* argv[]) {
+int main(int argc,char* argv[]) {
 	debMsg("Version: "<< buildInfoString() , 1);
 
 	bool doScript = true;
