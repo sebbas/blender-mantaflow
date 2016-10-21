@@ -617,7 +617,7 @@ if(APPLE)
 		# so i use a selfcomposed bundlepath here  
 		set(OSX_SYSROOT_PREFIX ${XCODE_BUNDLE}/Contents/Developer/Platforms/MacOSX.platform)
 		message(STATUS "OSX_SYSROOT_PREFIX: " ${OSX_SYSROOT_PREFIX})
-		set(OSX_DEVELOPER_PREFIX /Developer/SDKs/MacOSX10.10.sdk) # use guaranteed existing sdk
+		set(OSX_DEVELOPER_PREFIX /Developer/SDKs/MacOSX${OSX_SYSTEM}.sdk) # use guaranteed existing sdk
 		set(CMAKE_OSX_SYSROOT ${OSX_SYSROOT_PREFIX}/${OSX_DEVELOPER_PREFIX} CACHE PATH "" FORCE)
 		if(${CMAKE_GENERATOR} MATCHES "Xcode")
 			# to silence sdk not found warning, just overrides CMAKE_OSX_SYSROOT
