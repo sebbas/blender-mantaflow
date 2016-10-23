@@ -87,7 +87,7 @@ s.timestep    = dt0\n";
 const std::string fluid_adaptive_time_stepping_high = "\n\
 mantaMsg('Adaptive time stepping high')\n\
 xl.frameLength = s.frameLength\n\
-xl.timestepMin = s.timestepMin / 10\n\
+xl.timestepMin = s.timestepMin\n\
 xl.timestepMax = s.timestepMax\n\
 xl.cfl         = s.cfl\n";
 

@@ -512,7 +512,7 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		if (smd->domain->manta_solver_res == 2) {
 			if (smd->domain->border_collisions == SM_BORDER_OPEN) ss << "xXyY";
 			else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "yY";
-			else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "xX";
+			else if (smd->domain->border_collisions == SM_BORDER_HORIZONTAL) ss << "xX";
 			else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "";
 		}
 		if (smd->domain->manta_solver_res == 3) {
