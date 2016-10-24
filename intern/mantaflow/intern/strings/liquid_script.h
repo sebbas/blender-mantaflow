@@ -191,7 +191,7 @@ def liquid_step():\n\
     phi.join(phiParts)\n\
     extrapolateLsSimple(phi=phi, distance=narrowBandWidth+2, inside=True)\n\
     extrapolateLsSimple(phi=phi, distance=3)\n\
-    phi.setBoundNeumann(1) # make sure no particles are placed at outer boundary\n\
+    phi.setBoundNeumann(boundaryWidth) # make sure no particles are placed at outer boundary\n\
     if doOpen:\n\
         resetOutflow(flags=flags, phi=phi, parts=pp, index=gpi, indexSys=pindex) # open boundaries\n\
     flags.updateFromLevelset(phi)\n\
@@ -241,7 +241,6 @@ def liquid_step_high():\n\
     \n\
     # create surface\n\
     gridParticleIndex( parts=xl_pp , flags=xl_flags, indexSys=xl_pindex, index=xl_gpi )\n\
-    #unionParticleLevelset( xl_pp, xl_pindex, xl_flags, xl_gpi, xl_phi , radiusFactor ) # faster, but not as smooth\n\
     averagedParticleLevelset( xl_pp, xl_pindex, xl_flags, xl_gpi, xl_phiParts, radiusFactor , 1, 1 )\n\
     xl_phi.join(xl_phiParts)\n\
     \n\
