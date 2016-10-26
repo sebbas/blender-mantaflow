@@ -4,7 +4,7 @@
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version. 
+ * of the License, or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -260,65 +260,69 @@ def save_mesh_high(path):\n\
 
 const std::string liquid_import_low = "\n\
 def load_liquid_data_low(path):\n\
-    flags.load(os.path.join(path, 'flags.uni'))\n\
+    path = Path(path)\n\
+    flags.load(path / 'flags.uni')\n\
     \n\
-    phiParts.load(os.path.join(path, 'phiParts.uni'))\n\
-    phi.load(os.path.join(path, 'phi.uni'))\n\
-    phiInit.load(os.path.join(path, 'phiInit.uni'))\n\
-    phiObs.load(os.path.join(path, 'phiObs.uni'))\n\
-    phiObsInit.load(os.path.join(path, 'phiObsInit.uni'))\n\
-    fractions.load(os.path.join(path, 'fractions.uni'))\n\
-    pressure.load(os.path.join(path, 'pressure.uni'))\n\
+    phiParts.load(path / 'phiParts.uni')\n\
+    phi.load(path / 'phi.uni')\n\
+    phiInit.load(path / 'phiInit.uni')\n\
+    phiObs.load(path / 'phiObs.uni')\n\
+    phiObsInit.load(path / 'phiObsInit.uni')\n\
+    fractions.load(path / 'fractions.uni')\n\
+    pressure.load(path / 'pressure.uni')\n\
     \n\
-    vel.load(os.path.join(path, 'vel.uni'))\n\
-    velOld.load(os.path.join(path, 'velOld.uni'))\n\
-    velParts.load(os.path.join(path, 'velParts.uni'))\n\
-    mapWeights.load(os.path.join(path, 'mapWeights.uni'))\n\
+    vel.load(path / 'vel.uni')\n\
+    velOld.load(path / 'velOld.uni')\n\
+    velParts.load(path / 'velParts.uni')\n\
+    mapWeights.load(path / 'mapWeights.uni')\n\
     \n\
-    pp.load(os.path.join(path, 'pp.uni'))\n\
-    pVel.load(os.path.join(path, 'pVel.uni'))\n\
+    pp.load(path / 'pp.uni')\n\
+    pVel.load(path / 'pVel.uni')\n\
     \n\
-    gpi.load(os.path.join(path, 'gpi.uni'))\n";
+    gpi.load(path / 'gpi.uni')\n";
 
 const std::string liquid_import_high = "\n\
 def load_liquid_data_high(path):\n\
-    xl_flags.load(os.path.join(path, 'xl_flags.uni'))\n\
+    path = Path(path)\n\
+    xl_flags.load(path / 'xl_flags.uni')\n\
     \n\
-    xl_phiParts.load(os.path.join(path, 'xl_phiParts.uni'))\n\
-    xl_phi.load(os.path.join(path, 'xl_phi.uni'))\n\
+    xl_phiParts.load(path / 'xl_phiParts.uni')\n\
+    xl_phi.load(path / 'xl_phi.uni')\n\
     \n\
-    xl_pp.load(os.path.join(path, 'xl_pp.uni'))\n";
+    xl_pp.load(path / 'xl_pp.uni')\n";
 
 const std::string liquid_export_low = "\n\
 def save_liquid_data_low(path):\n\
-    flags.save(os.path.join(path, 'flags.uni'))\n\
+    path = Path(path)\n\
+    flags.save(path / 'flags.uni')\n\
     \n\
-    phiParts.save(os.path.join(path, 'phiParts.uni'))\n\
-    phi.save(os.path.join(path, 'phi.uni'))\n\
-    phiInit.save(os.path.join(path, 'phiInit.uni'))\n\
-    phiObs.save(os.path.join(path, 'phiObs.uni'))\n\
-    phiObsInit.save(os.path.join(path, 'phiObsInit.uni'))\n\
-    fractions.save(os.path.join(path, 'fractions.uni'))\n\
-    pressure.save(os.path.join(path, 'pressure.uni'))\n\
+    phiParts.save(path / 'phiParts.uni')\n\
+    phi.save(path / 'phi.uni')\n\
+    phiInit.save(path / 'phiInit.uni')\n\
+    phiObs.save(path / 'phiObs.uni')\n\
+    phiObsInit.save(path / 'phiObsInit.uni')\n\
+    fractions.save(path / 'fractions.uni')\n\
+    pressure.save(path / 'pressure.uni')\n\
     \n\
-    vel.save(os.path.join(path, 'vel.uni'))\n\
-    velOld.save(os.path.join(path, 'velOld.uni'))\n\
-    velParts.save(os.path.join(path, 'velParts.uni'))\n\
-    mapWeights.save(os.path.join(path, 'mapWeights.uni'))\n\
+    vel.save(path / 'vel.uni')\n\
+    velOld.save(path / 'velOld.uni')\n\
+    velParts.save(path / 'velParts.uni')\n\
+    mapWeights.save(path / 'mapWeights.uni')\n\
     \n\
-    pp.save(os.path.join(path, 'pp.uni'))\n\
-    pVel.save(os.path.join(path, 'pVel.uni'))\n\
+    pp.save(path / 'pp.uni')\n\
+    pVel.save(path / 'pVel.uni')\n\
     \n\
-    gpi.save(os.path.join(path, 'gpi.uni'))\n";
+    gpi.save(path / 'gpi.uni')\n";
 
 const std::string liquid_export_high = "\n\
 def save_liquid_data_high(path):\n\
-    xl_flags.save(os.path.join(path, 'xl_flags.uni'))\n\
+    path = Path(path)\n\
+    xl_flags.save(path / 'xl_flags.uni')\n\
     \n\
-    xl_phiParts.save(os.path.join(path, 'xl_phiParts.uni'))\n\
-    xl_phi.save(os.path.join(path, 'xl_phi.uni'))\n\
+    xl_phiParts.save(path / 'xl_phiParts.uni')\n\
+    xl_phi.save(path / 'xl_phi.uni')\n\
     \n\
-    xl_pp.save(os.path.join(path, 'xl_pp.uni'))\n";
+    xl_pp.save(path / 'xl_pp.uni')\n";
 
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION
@@ -386,5 +390,3 @@ path_prefix = '$MANTA_EXPORT_PATH$'\n\
 load_liquid_data_low(path_prefix)\n\
 if using_highres:\n\
     load_liquid_data_high(path_prefix)\n";
-
-

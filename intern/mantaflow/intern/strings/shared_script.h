@@ -4,7 +4,7 @@
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version. 
+ * of the License, or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -35,6 +35,7 @@
 
 const std::string manta_import = "\
 from manta import *\n\
+from pathlib import Path\n\
 import os, shutil, math, sys, gc, tempfile\n";
 
 //////////////////////////////////////////////////////////////////////
@@ -140,4 +141,3 @@ end_frame = 1000\n\
 while start_frame <= end_frame:\n\
     manta_step(start_frame)\n\
     start_frame += 1\n";
-
