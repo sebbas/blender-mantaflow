@@ -379,7 +379,7 @@ def load_smoke_data_high(path):\n\
 const std::string smoke_export_low = "\n\
 def save_smoke_data_low(path):\n\
     path = Path(path)\n\
-    density.save(path / 'density.uni'))\n\
+    density.save(path / 'density.uni')\n\
     flags.save(path / 'flags.uni')\n\
     vel.save(path / 'vel.uni')\n\
     forces.save(path / 'forces.uni')\n\
