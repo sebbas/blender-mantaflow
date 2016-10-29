@@ -344,71 +344,67 @@ def update_flame_high():\n\
 
 const std::string smoke_import_low = "\n\
 def load_smoke_data_low(path):\n\
-    path = Path(path)\n\
-    density.load(path / 'density.uni')\n\
-    flags.load(path / 'flags.uni')\n\
-    vel.load(path / 'vel.uni')\n\
-    forces.load(path / 'forces.uni')\n\
-    inflow_grid.load(path / 'inflow_low.uni')\n\
-    fuel_inflow.load(path / 'fuel_inflow.uni')\n\
+    density.load(os.path.join(path, 'density.uni'))\n\
+    flags.load(os.path.join(path, 'flags.uni'))\n\
+    vel.load(os.path.join(path, 'vel.uni'))\n\
+    forces.load(os.path.join(path, 'forces.uni'))\n\
+    inflow_grid.load(os.path.join(path, 'inflow_low.uni'))\n\
+    fuel_inflow.load(os.path.join(path, 'fuel_inflow.uni'))\n\
     if using_colors:\n\
-        color_r.load(path / 'color_r.uni')\n\
-        color_g.load(path / 'color_g.uni')\n\
-        color_b.load(path / 'color_b.uni')\n\
+        color_r.load(os.path.join(path, 'color_r.uni'))\n\
+        color_g.load(os.path.join(path, 'color_g.uni'))\n\
+        color_b.load(os.path.join(path, 'color_b.uni'))\n\
     if using_heat:\n\
-        heat.load(path / 'heat.uni')\n\
+        heat.load(os.path.join(path, 'heat.uni'))\n\
     if using_fire:\n\
-        flame.load(path / 'flame.uni')\n\
-        fuel.load(path / 'fuel.uni')\n\
-        react.load(path / 'react.uni')\n";
+        flame.load(os.path.join(path, 'flame.uni'))\n\
+        fuel.load(os.path.join(path, 'fuel.uni'))\n\
+        react.load(os.path.join(path, 'react.uni'))\n";
 
 const std::string smoke_import_high = "\n\
 def load_smoke_data_high(path):\n\
-    path = Path(path)\n\
-    xl_density.load(path / 'xl_density.uni')\n\
-    xl_flags.load(path / 'xl_flags.uni')\n\
+    xl_density.load(os.path.join(path, 'xl_density.uni'))\n\
+    xl_flags.load(os.path.join(path, 'xl_flags.uni'))\n\
     if using_colors:\n\
-        xl_color_r.load(path / 'xl_color_r.uni')\n\
-        xl_color_g.load(path / 'xl_color_g.uni')\n\
-        xl_color_b.load(path / 'xl_color_b.uni')\n\
+        xl_color_r.load(os.path.join(path, 'xl_color_r.uni'))\n\
+        xl_color_g.load(os.path.join(path, 'xl_color_g.uni'))\n\
+        xl_color_b.load(os.path.join(path, 'xl_color_b.uni'))\n\
     if using_fire:\n\
-        xl_flame.load(path / 'xl_flame.uni')\n\
-        xl_fuel.load(path / 'xl_fuel.uni')\n\
-        xl_react.load(path / 'xl_react.uni')\n";
+        xl_flame.load(os.path.join(path, 'xl_flame.uni'))\n\
+        xl_fuel.load(os.path.join(path, 'xl_fuel.uni'))\n\
+        xl_react.load(os.path.join(path, 'xl_react.uni'))\n";
 
 const std::string smoke_export_low = "\n\
 def save_smoke_data_low(path):\n\
-    path = Path(path)\n\
-    density.save(path / 'density.uni')\n\
-    flags.save(path / 'flags.uni')\n\
-    vel.save(path / 'vel.uni')\n\
-    forces.save(path / 'forces.uni')\n\
-    inflow_grid.save(path / 'inflow_low.uni')\n\
-    fuel_inflow.save(path / 'fuel_inflow.uni')\n\
+    density.save(os.path.join(path, 'density.uni'))\n\
+    flags.save(os.path.join(path, 'flags.uni'))\n\
+    vel.save(os.path.join(path, 'vel.uni'))\n\
+    forces.save(os.path.join(path, 'forces.uni'))\n\
+    inflow_grid.save(os.path.join(path, 'inflow_low.uni'))\n\
+    fuel_inflow.save(os.path.join(path, 'fuel_inflow.uni'))\n\
     if using_colors:\n\
-        color_r.save(path / 'color_r.uni')\n\
-        color_g.save(path / 'color_g.uni')\n\
-        color_b.save(path / 'color_b.uni')\n\
+        color_r.save(os.path.join(path, 'color_r.uni'))\n\
+        color_g.save(os.path.join(path, 'color_g.uni'))\n\
+        color_b.save(os.path.join(path, 'color_b.uni'))\n\
     if using_heat:\n\
-        heat.save(path / 'heat.uni')\n\
+        heat.save(os.path.join(path, 'heat.uni'))\n\
     if using_fire:\n\
-        flame.save(path / 'flame.uni')\n\
-        fuel.save(path / 'fuel.uni')\n\
-        react.save(path / 'react.uni')\n";
+        flame.save(os.path.join(path, 'flame.uni'))\n\
+        fuel.save(os.path.join(path, 'fuel.uni'))\n\
+        react.save(os.path.join(path, 'react.uni'))\n";
 
 const std::string smoke_export_high = "\n\
 def save_smoke_data_low(path):\n\
-    path = Path(path)\n\
-    xl_density.save(path / 'xl_density.uni')\n\
-    xl_flags.save(path / 'xl_flags.uni')\n\
+    xl_density.save(os.path.join(path, 'xl_density.uni'))\n\
+    xl_flags.save(os.path.join(path, 'xl_flags.uni'))\n\
     if using_colors:\n\
-        xl_color_r.save(path / 'xl_color_r.uni')\n\
-        xl_color_g.save(path / 'xl_color_g.uni')\n\
-        xl_color_b.save(path / 'xl_color_b.uni')\n\
+        xl_color_r.save(os.path.join(path, 'xl_color_r.uni'))\n\
+        xl_color_g.save(os.path.join(path, 'xl_color_g.uni'))\n\
+        xl_color_b.save(os.path.join(path, 'xl_color_b.uni'))\n\
     if using_fire:\n\
-        xl_flame.save(path / 'xl_flame.uni')\n\
-        xl_fuel.save(path / 'xl_fuel.uni')\n\
-        xl_react.save(path / 'xl_react.uni')\n";
+        xl_flame.save(os.path.join(path, 'xl_flame.uni'))\n\
+        xl_fuel.save(os.path.join(path, 'xl_fuel.uni'))\n\
+        xl_react.save(os.path.join(path, 'xl_react.uni'))\n";
 
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION
