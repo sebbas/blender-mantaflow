@@ -1033,9 +1033,10 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	{
 		if (obstacles && obstacles[z] & 2)
 		{
-			velxOrig[z] = 0;
-			velyOrig[z] = 0;
-			velzOrig[z] = 0;
+			// TODO (sebbas): Removing vel reset for now. Otherwise parts of liquid mesh flow slower than others.
+//			velxOrig[z] = 0;
+//			velyOrig[z] = 0;
+//			velzOrig[z] = 0;
 			if (density) {
 				density[z] = 0;
 			}
