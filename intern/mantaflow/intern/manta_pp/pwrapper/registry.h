@@ -57,10 +57,9 @@ void setReference(Manta::PbClass* cls, PyObject* obj);
 PyObject* copyObject(Manta::PbClass* cls, const std::string& classname);
 void MantaEnsureRegistration();
 
-#ifdef WITH_MANTA
+#ifdef BLENDER
 #ifdef PyMODINIT_FUNC
 PyMODINIT_FUNC PyInit_Main(void);
-PyMODINIT_FUNC PyInit_Main_Obj(void);
 #endif
 #endif
 

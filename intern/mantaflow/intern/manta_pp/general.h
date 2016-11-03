@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/general.h"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/general.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -88,6 +88,13 @@ inline bool _chklevel(int level=0) { return gDebugLevel >= level; }
 #define errMsg(msg)          throwError(msg);
 #define assertMsg(cond,msg)  if(!(cond)) throwError(msg)
 #define assertDeb(cond,msg)  DEBUG_ONLY( assertMsg(cond,msg) )
+
+// for compatibility with blender, blender only defines WITH_MANTA, make sure we have "BLENDER"
+#ifndef BLENDER
+#ifdef WITH_MANTA
+#define BLENDER 1
+#endif
+#endif
 
 // common type for indexing large grids
 typedef long long IndexInt;

@@ -131,7 +131,7 @@ PyObject* cbGetCName(PbObject* self, void* cl) {
 void cbDealloc(PbObject* self) {
 	//cout << "dealloc " << self->instance->getName() << " " << self->classdef->cName << endl;
 	if (self->instance) {
-	#ifndef WITH_MANTA
+	#ifndef BLENDER
 		// don't delete top-level objects
 		if (self->instance->getParent() != self->instance)
 			delete self->instance;
@@ -168,12 +168,6 @@ PyMODINIT_FUNC PyInit_Main(void) {
 	WrapperRegistry::instance().initModule();   
 #endif
 }
-
-#ifdef WITH_MANTA
-PyMODINIT_FUNC PyInit_Main_Obj(void) {
-	return PyInit_Main();	
-}
-#endif
 
 //******************************************************
 // WrapperRegistry

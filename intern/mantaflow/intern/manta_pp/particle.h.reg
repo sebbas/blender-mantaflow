@@ -18,37 +18,38 @@
 +BasicParticleSystem^ static const Pb::Register _R_$IDX$ ("BasicParticleSystem","BasicParticleSystem",BasicParticleSystem::_W_10); 
 +BasicParticleSystem^ static const Pb::Register _R_$IDX$ ("BasicParticleSystem","save",BasicParticleSystem::_W_11); 
 +BasicParticleSystem^ static const Pb::Register _R_$IDX$ ("BasicParticleSystem","load",BasicParticleSystem::_W_12); 
-+BasicParticleSystem^ static const Pb::Register _R_$IDX$ ("BasicParticleSystem","addParticle",BasicParticleSystem::_W_13); 
-+BasicParticleSystem^ static const Pb::Register _R_$IDX$ ("BasicParticleSystem","printParts",BasicParticleSystem::_W_14); 
++BasicParticleSystem^ static const Pb::Register _R_$IDX$ ("BasicParticleSystem","readParticles",BasicParticleSystem::_W_13); 
++BasicParticleSystem^ static const Pb::Register _R_$IDX$ ("BasicParticleSystem","addParticle",BasicParticleSystem::_W_14); 
++BasicParticleSystem^ static const Pb::Register _R_$IDX$ ("BasicParticleSystem","printParts",BasicParticleSystem::_W_15); 
 +ParticleIndexSystem^ static const Pb::Register _R_$IDX$ ("ParticleIndexSystem","ParticleIndexSystem","ParticleSystem<$BT$>"); template<> const char* Namify<ParticleIndexSystem >::S = "ParticleIndexSystem"; 
 >ParticleIndexSystem^
 @ParticleIndexSystem^^ParticleSystem^ParticleIndexData
-+ParticleIndexSystem^ static const Pb::Register _R_$IDX$ ("ParticleIndexSystem","ParticleIndexSystem",ParticleIndexSystem::_W_15); 
++ParticleIndexSystem^ static const Pb::Register _R_$IDX$ ("ParticleIndexSystem","ParticleIndexSystem",ParticleIndexSystem::_W_16); 
 +ConnectedParticleSystem^ static const Pb::Register _R_$IDX$ ("ConnectedParticleSystem<$CT$>","ConnectedParticleSystem<$CT$>","ParticleSystem<$BT$>"); template<> const char* Namify<ConnectedParticleSystem<$CT$> >::S = "ConnectedParticleSystem<$CT$>"; 
 @ConnectedParticleSystem^DATA,CON^ParticleSystem^DATA
-+ConnectedParticleSystem^ static const Pb::Register _R_$IDX$ ("ConnectedParticleSystem<$CT$>","ConnectedParticleSystem",ConnectedParticleSystem<$CT$>::_W_16); 
++ConnectedParticleSystem^ static const Pb::Register _R_$IDX$ ("ConnectedParticleSystem<$CT$>","ConnectedParticleSystem",ConnectedParticleSystem<$CT$>::_W_17); 
 +ParticleDataBase^ static const Pb::Register _R_$IDX$ ("ParticleDataBase","ParticleDataBase","PbClass"); template<> const char* Namify<ParticleDataBase >::S = "ParticleDataBase"; 
 >ParticleDataBase^
-+ParticleDataBase^ static const Pb::Register _R_$IDX$ ("ParticleDataBase","ParticleDataBase",ParticleDataBase::_W_17); 
++ParticleDataBase^ static const Pb::Register _R_$IDX$ ("ParticleDataBase","ParticleDataBase",ParticleDataBase::_W_18); 
 +ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","ParticleDataImpl<$CT$>","ParticleDataBase"); template<> const char* Namify<ParticleDataImpl<$CT$> >::S = "ParticleDataImpl<$CT$>"; 
-+ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","ParticleDataImpl",ParticleDataImpl<$CT$>::_W_18); 
-+ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","clear",ParticleDataImpl<$CT$>::_W_19); 
-+ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","setSource",ParticleDataImpl<$CT$>::_W_20); 
-+ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","setConst",ParticleDataImpl<$CT$>::_W_21); 
-+ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","copyFrom",ParticleDataImpl<$CT$>::_W_22); 
-+ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","add",ParticleDataImpl<$CT$>::_W_23); 
-+ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","sub",ParticleDataImpl<$CT$>::_W_24); 
-+ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","addConst",ParticleDataImpl<$CT$>::_W_25); 
-+ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","addScaled",ParticleDataImpl<$CT$>::_W_26); 
-+ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","mult",ParticleDataImpl<$CT$>::_W_27); 
-+ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","multConst",ParticleDataImpl<$CT$>::_W_28); 
-+ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","clamp",ParticleDataImpl<$CT$>::_W_29); 
-+ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","getMaxAbsValue",ParticleDataImpl<$CT$>::_W_30); 
-+ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","getMaxValue",ParticleDataImpl<$CT$>::_W_31); 
-+ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","getMinValue",ParticleDataImpl<$CT$>::_W_32); 
-+ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","printPdata",ParticleDataImpl<$CT$>::_W_33); 
-+ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","save",ParticleDataImpl<$CT$>::_W_34); 
-+ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","load",ParticleDataImpl<$CT$>::_W_35); 
++ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","ParticleDataImpl",ParticleDataImpl<$CT$>::_W_19); 
++ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","clear",ParticleDataImpl<$CT$>::_W_20); 
++ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","setSource",ParticleDataImpl<$CT$>::_W_21); 
++ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","setConst",ParticleDataImpl<$CT$>::_W_22); 
++ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","copyFrom",ParticleDataImpl<$CT$>::_W_23); 
++ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","add",ParticleDataImpl<$CT$>::_W_24); 
++ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","sub",ParticleDataImpl<$CT$>::_W_25); 
++ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","addConst",ParticleDataImpl<$CT$>::_W_26); 
++ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","addScaled",ParticleDataImpl<$CT$>::_W_27); 
++ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","mult",ParticleDataImpl<$CT$>::_W_28); 
++ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","multConst",ParticleDataImpl<$CT$>::_W_29); 
++ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","clamp",ParticleDataImpl<$CT$>::_W_30); 
++ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","getMaxAbsValue",ParticleDataImpl<$CT$>::_W_31); 
++ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","getMaxValue",ParticleDataImpl<$CT$>::_W_32); 
++ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","getMinValue",ParticleDataImpl<$CT$>::_W_33); 
++ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","printPdata",ParticleDataImpl<$CT$>::_W_34); 
++ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","save",ParticleDataImpl<$CT$>::_W_35); 
++ParticleDataImpl^ static const Pb::Register _R_$IDX$ ("ParticleDataImpl<$CT$>","load",ParticleDataImpl<$CT$>::_W_36); 
 >ParticleDataImpl^int
 &static const Pb::Register _R_$IDX$ ("ParticleDataImpl<int>","PdataInt","");
 >ParticleDataImpl^Real

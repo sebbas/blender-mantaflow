@@ -29,10 +29,10 @@
 
 #include "Python.h"
 #include "manta_python_API.h"
-#include "registry.h"
+#include "manta.h"
 
 PyObject* PyInit_Manta(void)
 {
-	return Pb::PyInit_Main_Obj();
+	return Pb::PyInit_Main();
 }
 

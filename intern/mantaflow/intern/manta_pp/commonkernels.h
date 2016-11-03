@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowLinkerFix161019/source/commonkernels.h"
+#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/commonkernels.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
