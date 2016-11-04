@@ -221,15 +221,11 @@ def liquid_step():\n\
         phiParts.copyFrom(phi)\n\
         phiParts.setBound(0.5,0)\n\
         phiParts.createMesh(mesh)\n\
-	\n\
+    \n\
     # set source grids for resampling, used in adjustNumber!\n\
     pVel.setSource(vel, isMAC=True)\n\
     adjustNumber(parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, exclude=phiObs, radiusFactor=radiusFactor, narrowBand=narrowBandWidth)\n\
     flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.95)\n\
-    \n\
-    # TODO (sebbas): HACK - saving particle system for highres step\n\
-    if using_highres:\n\
-        pp.save(os.path.join(tempfile.gettempdir(), 'partfile.uni'))\n\
     \n\
     copyVec3ToReal(source=vel, targetX=x_vel, targetY=y_vel, targetZ=z_vel)\n\
     copyVec3ToReal(source=obvel, targetX=x_obvel, targetY=y_obvel, targetZ=z_obvel)\n";
@@ -237,7 +233,7 @@ def liquid_step():\n\
 const std::string liquid_step_high = "\n\
 def liquid_step_high():\n\
     mantaMsg('Liquid step high')\n\
-    xl_pp.load(os.path.join(tempfile.gettempdir(), 'partfile.uni'))\n\
+    xl_pp.readParticles(pp)\n\
     \n\
     # create surface\n\
     gridParticleIndex( parts=xl_pp , flags=xl_flags, indexSys=xl_pindex, index=xl_gpi )\n\
