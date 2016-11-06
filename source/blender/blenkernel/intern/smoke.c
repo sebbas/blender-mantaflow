@@ -1616,7 +1616,7 @@ static void update_mesh_distances(int index, float *inflow_map, BVHTreeFromMesh 
 							{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}};
 	size_t ray_cnt = sizeof ray_dirs / sizeof ray_dirs[0];
 	
-	/* Initialize inflow map. Any following initialization leaves points inside mesh ( < 0.0f) unaffected */
+	/* Initialize inflow map. Any following initialization leaves points inside mesh ( < 0.0f) unaffected - important when multiple flow / obstacle objects in scene */
 	if (inflow_map[index] >= 0.0f) {
 		inflow_map[index] = 0.5f;
 	}
@@ -1643,10 +1643,10 @@ static void update_mesh_distances(int index, float *inflow_map, BVHTreeFromMesh 
 	min_dist_pos = MIN3(hit_dists[0], hit_dists[1], hit_dists[2]);
 	min_dist_neg = MIN3(hit_dists[3], hit_dists[4], hit_dists[5]);
 	min_dist_combined = MIN2(min_dist_pos, min_dist_neg);
-	min_dist_combined_normalized = min_dist_combined; // / cell_size[0]; // TODO (sebbas): normalization results in too big values
-	
+	min_dist_combined_normalized = min_dist_combined; // TODO (sebbas): normalization results in too big values
+
 	/* Multiply actual distances to those points inside mesh (those points in inflow map with value -1)*/
-	if (min_dist_combined != 9999) {
+	if (inflow_map[index] == -1.0f) {
 		inflow_map[index] *= min_dist_combined_normalized;
 	}
 }
