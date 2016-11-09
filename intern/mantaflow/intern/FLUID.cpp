@@ -639,81 +639,53 @@ std::string FLUID::parseScript(const std::string& setup_string, SmokeModifierDat
 
 void FLUID::exportSmokeScript(SmokeModifierData *smd)
 {
-	// Setup low
-	std::string manta_script =
-		manta_import +
-		fluid_solver_low +
-		smoke_alloc_low;
+    bool highres = smd->domain->flags & MOD_SMOKE_HIGHRES;
+    bool heat    = smd->domain->active_fields & SM_ACTIVE_HEAT;
+    bool colors  = smd->domain->active_fields & SM_ACTIVE_COLORS;
+    bool fire    = smd->domain->active_fields & SM_ACTIVE_FIRE;
+
+    std::string manta_script;
+
+	manta_script += manta_import
+		+ fluid_solver_low
+        + fluid_adaptive_time_stepping_low
+		+ smoke_alloc_low
+        + smoke_bounds_low
+        + smoke_variables_low;
 	
-	// Add heat grid low if needed
-	if (smd->domain->active_fields & SM_ACTIVE_HEAT) {
+	if (heat)
 		manta_script += smoke_alloc_heat_low;
-	}
-	
-	// Add color grids low if needed
-	if (smd->domain->active_fields & SM_ACTIVE_COLORS) {
+	if (colors)
 		manta_script += smoke_alloc_colors_low;
-	}
-	
-	// Add fire grids low if needed
-	if (smd->domain->active_fields & SM_ACTIVE_FIRE) {
+	if (fire)
 		manta_script += smoke_alloc_fire_low;
-	}
-	
-	// Rest of low res setup
-	manta_script += smoke_bounds_low + smoke_variables_low;
-	
-	// Setup high
-	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
+
+	if (highres) {
 		manta_script += fluid_solver_high
+            + fluid_adaptive_time_stepping_high
 			+ smoke_variables_high
 			+ smoke_uv_setup
-			+ smoke_alloc_high;
-	}
-	
-	// Add color grids high if needed
-	if (smd->domain->flags & MOD_SMOKE_HIGHRES && smd->domain->active_fields & SM_ACTIVE_COLORS) {
-		manta_script += smoke_alloc_colors_high;
-	}
-	
-	// Add fire grids high if needed
-	if (smd->domain->flags & MOD_SMOKE_HIGHRES && smd->domain->active_fields & SM_ACTIVE_FIRE) {
-		manta_script += smoke_alloc_fire_high;
-	}
+			+ smoke_alloc_high
+            + smoke_bounds_high
+            + smoke_wavelet_turbulence_noise;
 
-	// Rest of high res setup
-	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
-		manta_script += smoke_bounds_high + smoke_wavelet_turbulence_noise;
+        if (colors)
+            manta_script += smoke_alloc_colors_high;
+        if (fire)
+            manta_script += smoke_alloc_fire_high;
 	}
 	
-	// Import low
 	manta_script += smoke_import_low;
-	
-	// Import high
-	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
+	if (highres)
 		manta_script += smoke_import_high;
-	}
 	
-	// Inflow low
-	manta_script += smoke_inflow_low;
-	
-	// Inflow High
-	// TODO
-	
-	// Step low functions
 	manta_script += smoke_step_low;
-	
-	// Step high functions
-	if (smd->domain->flags & MOD_SMOKE_HIGHRES) {
+	if (highres)
 		manta_script += smoke_step_high;
-	}
 	
-	// Step wrapper function
-	manta_script += smoke_adaptive_step;
-	
-	// Add standalone mode (loop, gui, ...)
-	manta_script += smoke_standalone_load;
-	manta_script += fluid_standalone;
+	manta_script += smoke_adaptive_step
+            + smoke_standalone_load
+            + fluid_standalone;
 	
 	// Fill in missing variables in script
 	std::string final_script = FLUID::parseScript(manta_script, smd);
@@ -767,9 +739,9 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 	if (highres)
 		manta_script += liquid_step_high;
 	
-	manta_script += liquid_adaptive_step;
-	manta_script += liquid_standalone_load;
-	manta_script += fluid_standalone;
+	manta_script += liquid_adaptive_step
+            + liquid_standalone_load
+            + fluid_standalone;
 
 	std::string final_script = FLUID::parseScript(manta_script, smd);
 	
