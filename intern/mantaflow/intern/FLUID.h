@@ -97,7 +97,7 @@ public:
 	inline float* getForceX() { return mForceX; }
 	inline float* getForceY() { return mForceY; }
 	inline float* getForceZ() { return mForceZ; }
-	inline unsigned char* getObstacle() { return mObstacle; }
+	inline int* getObstacle() { return mObstacle; }
 	inline unsigned char* getObstaclesAnim() { return mObstaclesAnim; }
 	inline float* getFlame() { return mFlame; }
 	inline float* getFuel() { return mFuel; }
@@ -121,7 +121,7 @@ public:
 	inline float* getTextureU2() { return mTextureU2; }
 	inline float* getTextureV2() { return mTextureV2; }
 	inline float* getTextureW2() { return mTextureW2; }
-	inline unsigned char* getObstacleHigh() { return mObstacleHigh; }
+	inline int* getObstacleHigh() { return mObstacleHigh; }
 	
 	inline float* getPhi()        { return mPhi; }
 	inline float* getPhiInit()    { return mPhiInit; }
@@ -186,7 +186,7 @@ private:
 	float* mForceX;
 	float* mForceY;
 	float* mForceZ;
-	unsigned char* mObstacle; /* only used (useful) for static obstacles like domain boundaries */
+	int* mObstacle; /* only used (useful) for static obstacles like domain boundaries */
 	unsigned char* mObstaclesAnim;
 	float *mFlame;
 	float *mFuel;
@@ -211,7 +211,7 @@ private:
 	float* mTextureU2;
 	float* mTextureV2;
 	float* mTextureW2;
-	unsigned char* mObstacleHigh;
+	int* mObstacleHigh;
 	
 	// Liquids
 	float* mPhi;

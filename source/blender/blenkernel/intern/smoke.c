@@ -809,7 +809,7 @@ typedef struct ObstaclesFromDMData {
 	const MLoop *mloop;
 	const MLoopTri *looptri;
 	BVHTreeFromMesh *tree;
-	unsigned char *obstacle_map;
+	int *obstacle_map;
 
 	bool has_velocity;
 	float *vert_vel;
@@ -879,7 +879,7 @@ static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
 
 static void obstacles_from_derivedmesh(
         Object *coll_ob, SmokeDomainSettings *sds, SmokeCollSettings *scs,
-        unsigned char *obstacle_map, float *distances_map, float *velocityX, float *velocityY, float *velocityZ, int *num_obstacles, float dt)
+        int *obstacle_map, float *distances_map, float *velocityX, float *velocityY, float *velocityZ, int *num_obstacles, float dt)
 {
 	if (!scs->dm) return;
 	{
@@ -972,7 +972,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	unsigned int numcollobj = 0;
 
 	unsigned int collIndex;
-	unsigned char *obstacles = smoke_get_obstacle(sds->fluid);
+	int *obstacles = smoke_get_obstacle(sds->fluid);
 	float *velx = NULL;
 	float *vely = NULL;
 	float *velz = NULL;
@@ -2285,7 +2285,7 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 	}
 }
 
-BLI_INLINE void apply_outflow_fields(int index, float inflow_value, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi, float *phiobsinit, unsigned char *obstacle)
+BLI_INLINE void apply_outflow_fields(int index, float inflow_value, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi, float *phiobsinit, int *obstacle)
 {
 	/* set liquid outflow */
 	if (phi) {
@@ -2636,7 +2636,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				float *bigcolor_g = smoke_turbulence_get_color_g(sds->fluid);
 				float *bigcolor_b = smoke_turbulence_get_color_b(sds->fluid);
 				float *bigphi = liquid_turbulence_get_phi(sds->fluid);
-				unsigned char *bigobstacle = smoke_turbulence_get_obstacle(sds->fluid);
+				int *bigobstacle = smoke_turbulence_get_obstacle(sds->fluid);
 #endif
 				float *heat = smoke_get_heat(sds->fluid);
 				float *velocity_x = smoke_get_velocity_x(sds->fluid);
@@ -2644,7 +2644,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				float *velocity_z = smoke_get_velocity_z(sds->fluid);
 				float *phiinit = liquid_get_phiinit(sds->fluid);
 				float *phiobsinit = liquid_get_phiobsinit(sds->fluid);
-				unsigned char *obstacle = smoke_get_obstacle(sds->fluid);
+				int *obstacle = smoke_get_obstacle(sds->fluid);
 				// DG TODO UNUSED unsigned char *obstacleAnim = smoke_get_obstacle_anim(sds->fluid);
 				int bigres[3];
 				float *velocity_map = em->velocity;
@@ -2813,7 +2813,7 @@ typedef struct UpdateEffectorsData {
 	float *velocity_x;
 	float *velocity_y;
 	float *velocity_z;
-	unsigned char *obstacle;
+	int *obstacle;
 	float *phi;
 } UpdateEffectorsData;
 
@@ -2833,7 +2833,7 @@ static void update_effectors_task_cb(void *userdata, const int x)
 			if ((data->fuel && MAX2(data->density[index], data->fuel[index]) < FLT_EPSILON) ||
 				(data->density && data->density[index] < FLT_EPSILON) ||
 				(data->phi     && data->phi[index] < 0.0f) ||
-				data->obstacle[index])
+				 data->obstacle[index])
 			{
 				continue;
 			}
