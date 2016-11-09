@@ -973,9 +973,9 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 
 	unsigned int collIndex;
 	int *obstacles = smoke_get_obstacle(sds->fluid);
-	float *velx = NULL;
-	float *vely = NULL;
-	float *velz = NULL;
+	float *velx = smoke_get_ob_velocity_x(sds->fluid);
+	float *vely = smoke_get_ob_velocity_y(sds->fluid);
+	float *velz = smoke_get_ob_velocity_z(sds->fluid);
 	float *velxOrig = smoke_get_velocity_x(sds->fluid);
 	float *velyOrig = smoke_get_velocity_y(sds->fluid);
 	float *velzOrig = smoke_get_velocity_z(sds->fluid);
@@ -989,8 +989,6 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	unsigned int z;
 
 	int *num_obstacles = MEM_callocN(sizeof(int) * sds->res[0] * sds->res[1] * sds->res[2], "smoke_num_obstacles");
-
-	smoke_get_ob_velocity(sds->fluid, &velx, &vely, &velz);
 
 	// TODO: delete old obstacle flags
 	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)

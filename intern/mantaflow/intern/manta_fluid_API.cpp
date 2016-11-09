@@ -225,6 +225,21 @@ extern "C" float *smoke_get_velocity_z(FLUID *smoke)
 	return smoke->getVelocityZ();
 }
 
+extern "C" float *smoke_get_ob_velocity_x(FLUID *fluid)
+{
+	return fluid->getObVelocityX();
+}
+
+extern "C" float *smoke_get_ob_velocity_y(FLUID *fluid)
+{
+	return fluid->getObVelocityY();
+}
+
+extern "C" float *smoke_get_ob_velocity_z(FLUID *fluid)
+{
+	return fluid->getObVelocityZ();
+}
+
 extern "C" float *smoke_get_force_x(FLUID *smoke)
 {
 	return smoke->getForceX();
