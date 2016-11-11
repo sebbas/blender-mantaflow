@@ -503,7 +503,7 @@ void updateFractions(FlagGrid& flags, Grid<Real>& phiObs, MACGrid& fractions, co
 } static PyObject* _W_16 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "updateFractions" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& phiObs = *_args.getPtr<Grid<Real> >("phiObs",1,&_lock); MACGrid& fractions = *_args.getPtr<MACGrid >("fractions",2,&_lock); const int& boundaryWidth = _args.getOpt<int >("boundaryWidth",3,0,&_lock);   _retval = getPyNone(); updateFractions(flags,phiObs,fractions,boundaryWidth);  _args.check(); } pbFinalizePlugin(parent,"updateFractions", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("updateFractions",e.what()); return 0; } } static const Pb::Register _RP_updateFractions ("","updateFractions",_W_16);  extern "C" { void PbRegister_updateFractions() { KEEP_UNUSED(_RP_updateFractions); } } 
 
 
- struct KnUpdateFlags : public KernelBase { KnUpdateFlags(FlagGrid& flags, MACGrid& fractions, Grid<Real>& phiObs) :  KernelBase(&flags,1) ,flags(flags),fractions(fractions),phiObs(phiObs)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& fractions, Grid<Real>& phiObs )  {
+ struct KnUpdateFlags : public KernelBase { KnUpdateFlags(FlagGrid& flags, MACGrid& fractions, Grid<Real>& phiObs, Grid<Real>* phiOut) :  KernelBase(&flags,1) ,flags(flags),fractions(fractions),phiObs(phiObs),phiOut(phiOut)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& fractions, Grid<Real>& phiObs, Grid<Real>* phiOut )  {
 
 	Real test = 0.;
 	test += fractions.get(i  ,j,k).x;
@@ -514,24 +514,79 @@ void updateFractions(FlagGrid& flags, Grid<Real>& phiObs, MACGrid& fractions, co
 	test += fractions.get(i,j,k  ).z;
 	test += fractions.get(i,j,k+1).z; }
 
-	if(test==0. && phiObs(i,j,k) < 0.) flags(i,j,k) = FlagGrid::TypeObstacle; 
-	else flags(i,j,k) = FlagGrid::TypeEmpty; 
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return fractions; } typedef MACGrid type1;inline Grid<Real>& getArg2() { return phiObs; } typedef Grid<Real> type2; void runMessage() { debMsg("Executing kernel KnUpdateFlags ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+	if(test==0. && phiObs(i,j,k) < 0.) flags(i,j,k) = FlagGrid::TypeObstacle;
+	else if (phiOut && (*phiOut)(i,j,k) < 0.) flags(i,j,k) = (FlagGrid::TypeEmpty | FlagGrid::TypeOutflow);
+	else flags(i,j,k) = FlagGrid::TypeEmpty;
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return fractions; } typedef MACGrid type1;inline Grid<Real>& getArg2() { return phiObs; } typedef Grid<Real> type2;inline Grid<Real>* getArg3() { return phiOut; } typedef Grid<Real> type3; void runMessage() { debMsg("Executing kernel KnUpdateFlags ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
 #pragma omp for 
-  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,fractions,phiObs);  } } else { const int k=0; 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,fractions,phiObs,phiOut);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
 #pragma omp for 
-  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,fractions,phiObs);  } }  } FlagGrid& flags; MACGrid& fractions; Grid<Real>& phiObs;   };
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,fractions,phiObs,phiOut);  } }  } FlagGrid& flags; MACGrid& fractions; Grid<Real>& phiObs; Grid<Real>* phiOut;   };
 #line 414 "plugin/initplugins.cpp"
 
 
 
-void setObstacleFlags(FlagGrid& flags, MACGrid& fractions, Grid<Real>& phiObs) {
-	KnUpdateFlags(flags,fractions, phiObs);
-} static PyObject* _W_17 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setObstacleFlags" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& fractions = *_args.getPtr<MACGrid >("fractions",1,&_lock); Grid<Real>& phiObs = *_args.getPtr<Grid<Real> >("phiObs",2,&_lock);   _retval = getPyNone(); setObstacleFlags(flags,fractions,phiObs);  _args.check(); } pbFinalizePlugin(parent,"setObstacleFlags", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setObstacleFlags",e.what()); return 0; } } static const Pb::Register _RP_setObstacleFlags ("","setObstacleFlags",_W_17);  extern "C" { void PbRegister_setObstacleFlags() { KEEP_UNUSED(_RP_setObstacleFlags); } } 
+void setObstacleFlags(FlagGrid& flags, MACGrid& fractions, Grid<Real>& phiObs, Grid<Real>* phiOut=NULL) {
+	KnUpdateFlags(flags,fractions, phiObs, phiOut);
+} static PyObject* _W_17 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setObstacleFlags" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& fractions = *_args.getPtr<MACGrid >("fractions",1,&_lock); Grid<Real>& phiObs = *_args.getPtr<Grid<Real> >("phiObs",2,&_lock); Grid<Real>* phiOut = _args.getPtrOpt<Grid<Real> >("phiOut",3,NULL,&_lock);   _retval = getPyNone(); setObstacleFlags(flags,fractions,phiObs,phiOut);  _args.check(); } pbFinalizePlugin(parent,"setObstacleFlags", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setObstacleFlags",e.what()); return 0; } } static const Pb::Register _RP_setObstacleFlags ("","setObstacleFlags",_W_17);  extern "C" { void PbRegister_setObstacleFlags() { KEEP_UNUSED(_RP_setObstacleFlags); } } 
+
+ struct KnClearInObstacle : public KernelBase { KnClearInObstacle(FlagGrid* flags, GridBase* grid) :  KernelBase(flags,0) ,flags(flags),grid(grid)   { runMessage(); run(); }   inline void op(IndexInt idx, FlagGrid* flags, GridBase* grid )  {
+
+	if ((*flags).isObstacle(idx)) {
+		if (grid->getType() & GridBase::TypeReal) {
+			(*(Grid<Real>*) grid)[idx] = 0.;
+		}
+		else if (grid->getType() & GridBase::TypeInt) {
+			(*(Grid<int>*) grid)[idx] = 0;
+		}
+		else if (grid->getType() & GridBase::TypeMAC || grid->getType() & GridBase::TypeVec3) {
+			(*(Grid<Vec3>*) grid)[idx].x = 0;
+			(*(Grid<Vec3>*) grid)[idx].y = 0;
+			(*(Grid<Vec3>*) grid)[idx].z = 0;
+		}
+		else if (grid->getType() & GridBase::TypeLevelset) {
+			(*(Grid<Real>*) grid)[idx] = 0.5;
+		}
+		else
+			errMsg("ClearInObstacle: Grid Type is not supported (only Real, Int, Vec3, MAC, Levelset)");
+	}
+}    inline FlagGrid* getArg0() { return flags; } typedef FlagGrid type0;inline GridBase* getArg1() { return grid; } typedef GridBase type1; void runMessage() { debMsg("Executing kernel KnClearInObstacle ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for 
+  for (IndexInt i = 0; i < _sz; i++) op(i,flags,grid);  }   } FlagGrid* flags; GridBase* grid;   };
+#line 434 "plugin/initplugins.cpp"
+
+
+
+
+void clearInObstacle(FlagGrid* flags, GridBase* grid) {
+	KnClearInObstacle(flags, grid);
+} static PyObject* _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "clearInObstacle" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid* flags = _args.getPtr<FlagGrid >("flags",0,&_lock); GridBase* grid = _args.getPtr<GridBase >("grid",1,&_lock);   _retval = getPyNone(); clearInObstacle(flags,grid);  _args.check(); } pbFinalizePlugin(parent,"clearInObstacle", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("clearInObstacle",e.what()); return 0; } } static const Pb::Register _RP_clearInObstacle ("","clearInObstacle",_W_18);  extern "C" { void PbRegister_clearInObstacle() { KEEP_UNUSED(_RP_clearInObstacle); } } 
+
+ struct KnAveragedVel : public KernelBase { KnAveragedVel(MACGrid& vel, Grid<int>& numObs) :  KernelBase(&vel,0) ,vel(vel),numObs(numObs)   { runMessage(); run(); }   inline void op(IndexInt idx, MACGrid& vel, Grid<int>& numObs )  {
+	if (numObs[idx]) {
+		vel[idx].x /= numObs[idx];
+		vel[idx].y /= numObs[idx];
+		vel[idx].z /= numObs[idx];
+	}
+}    inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline Grid<int>& getArg1() { return numObs; } typedef Grid<int> type1; void runMessage() { debMsg("Executing kernel KnAveragedVel ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for 
+  for (IndexInt i = 0; i < _sz; i++) op(i,vel,numObs);  }   } MACGrid& vel; Grid<int>& numObs;   };
+#line 461 "plugin/initplugins.cpp"
+
+
+
+
+void averagedVel(MACGrid& vel, Grid<int>& numObs) {
+	KnAveragedVel(vel, numObs);
+} static PyObject* _W_19 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "averagedVel" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<int>& numObs = *_args.getPtr<Grid<int> >("numObs",1,&_lock);   _retval = getPyNone(); averagedVel(vel,numObs);  _args.check(); } pbFinalizePlugin(parent,"averagedVel", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("averagedVel",e.what()); return 0; } } static const Pb::Register _RP_averagedVel ("","averagedVel",_W_19);  extern "C" { void PbRegister_averagedVel() { KEEP_UNUSED(_RP_averagedVel); } } 
 
 } // namespace
 

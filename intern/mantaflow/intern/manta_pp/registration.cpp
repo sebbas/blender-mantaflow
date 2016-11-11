@@ -91,6 +91,8 @@ extern "C" {
 		extern void PbRegister_initVortexVelocity() ;
 		extern void PbRegister_updateFractions() ;
 		extern void PbRegister_setObstacleFlags() ;
+		extern void PbRegister_clearInObstacle() ;
+		extern void PbRegister_averagedVel() ;
 		extern void PbRegister_smoothMesh() ;
 		extern void PbRegister_subdivideMesh() ;
 		extern void PbRegister_killSmallComponents() ;
@@ -239,6 +241,8 @@ namespace Pb {
 		PbRegister_initVortexVelocity() ;
 		PbRegister_updateFractions() ;
 		PbRegister_setObstacleFlags() ;
+		PbRegister_clearInObstacle() ;
+		PbRegister_averagedVel() ;
 		PbRegister_smoothMesh() ;
 		PbRegister_subdivideMesh() ;
 		PbRegister_killSmallComponents() ;
