@@ -97,14 +97,14 @@ obvel       = s.create(MACGrid)\n\
 x_obvel     = s.create(RealGrid)\n\
 y_obvel     = s.create(RealGrid)\n\
 z_obvel     = s.create(RealGrid)\n\
-density     = s.create(LevelsetGrid)\n\
+density     = s.create(RealGrid)\n\
 pressure    = s.create(RealGrid)\n\
 forces      = s.create(MACGrid)\n\
 x_force     = s.create(RealGrid)\n\
 y_force     = s.create(RealGrid)\n\
 z_force     = s.create(RealGrid)\n\
-inflow_grid = s.create(LevelsetGrid)\n\
-fuel_inflow = s.create(LevelsetGrid)\n";
+inflow_grid = s.create(RealGrid)\n\
+fuel_inflow = s.create(RealGrid)\n";
 
 const std::string smoke_alloc_high = "\n\
 # prepare grids high\n\
@@ -251,7 +251,6 @@ def step_low():\n\
         mantaMsg('Adding buoyancy')\n\
         addBuoyancy(density=density, vel=vel, gravity=gravity, flags=flags)\n\
     \n\
-    #addObjectVelocity(flags, vel, obvel)\n\
     copyRealToVec3(sourceX=x_force, sourceY=y_force, sourceZ=z_force, target=forces)\n\
     mantaMsg('Adding forces')\n\
     addForceField(flags=flags, vel=vel, force=forces)\n\
@@ -347,9 +346,20 @@ def load_smoke_data_low(path):\n\
     density.load(os.path.join(path, 'density.uni'))\n\
     flags.load(os.path.join(path, 'flags.uni'))\n\
     vel.load(os.path.join(path, 'vel.uni'))\n\
+    obvel.load(os.path.join(path, 'obvel.uni'))\n\
+    pressure.load(os.path.join(path, 'pressure.uni'))\n\
     forces.load(os.path.join(path, 'forces.uni'))\n\
+    x_force.load(os.path.join(path, 'x_force.uni'))\n\
+    y_force.load(os.path.join(path, 'y_force.uni'))\n\
+    z_force.load(os.path.join(path, 'z_force.uni'))\n\
     inflow_grid.load(os.path.join(path, 'inflow_low.uni'))\n\
     fuel_inflow.load(os.path.join(path, 'fuel_inflow.uni'))\n\
+    x_vel.load(os.path.join(path, 'x_vel.uni'))\n\
+    y_vel.load(os.path.join(path, 'y_vel.uni'))\n\
+    z_vel.load(os.path.join(path, 'z_vel.uni'))\n\
+    x_obvel.load(os.path.join(path, 'x_obvel.uni'))\n\
+    y_obvel.load(os.path.join(path, 'y_obvel.uni'))\n\
+    z_obvel.load(os.path.join(path, 'z_obvel.uni'))\n\
     if using_colors:\n\
         color_r.load(os.path.join(path, 'color_r.uni'))\n\
         color_g.load(os.path.join(path, 'color_g.uni'))\n\
@@ -365,6 +375,14 @@ const std::string smoke_import_high = "\n\
 def load_smoke_data_high(path):\n\
     xl_density.load(os.path.join(path, 'xl_density.uni'))\n\
     xl_flags.load(os.path.join(path, 'xl_flags.uni'))\n\
+    \n\
+    texture_u.load(os.path.join(path, 'texture_u.uni'))\n\
+    texture_v.load(os.path.join(path, 'texture_v.uni'))\n\
+    texture_w.load(os.path.join(path, 'texture_w.uni'))\n\
+    texture_u2.load(os.path.join(path, 'texture_u2.uni'))\n\
+    texture_v2.load(os.path.join(path, 'texture_v2.uni'))\n\
+    texture_w2.load(os.path.join(path, 'texture_w2.uni'))\n\
+    \n\
     if using_colors:\n\
         xl_color_r.load(os.path.join(path, 'xl_color_r.uni'))\n\
         xl_color_g.load(os.path.join(path, 'xl_color_g.uni'))\n\
@@ -379,9 +397,20 @@ def save_smoke_data_low(path):\n\
     density.save(os.path.join(path, 'density.uni'))\n\
     flags.save(os.path.join(path, 'flags.uni'))\n\
     vel.save(os.path.join(path, 'vel.uni'))\n\
+    obvel.save(os.path.join(path, 'obvel.uni'))\n\
+    pressure.save(os.path.join(path, 'pressure.uni'))\n\
     forces.save(os.path.join(path, 'forces.uni'))\n\
+    x_force.save(os.path.join(path, 'x_force.uni'))\n\
+    y_force.save(os.path.join(path, 'y_force.uni'))\n\
+    z_force.save(os.path.join(path, 'z_force.uni'))\n\
     inflow_grid.save(os.path.join(path, 'inflow_low.uni'))\n\
     fuel_inflow.save(os.path.join(path, 'fuel_inflow.uni'))\n\
+    x_vel.save(os.path.join(path, 'x_vel.uni'))\n\
+    y_vel.save(os.path.join(path, 'y_vel.uni'))\n\
+    z_vel.save(os.path.join(path, 'z_vel.uni'))\n\
+    x_obvel.save(os.path.join(path, 'x_obvel.uni'))\n\
+    y_obvel.save(os.path.join(path, 'y_obvel.uni'))\n\
+    z_obvel.save(os.path.join(path, 'z_obvel.uni'))\n\
     if using_colors:\n\
         color_r.save(os.path.join(path, 'color_r.uni'))\n\
         color_g.save(os.path.join(path, 'color_g.uni'))\n\
@@ -394,9 +423,17 @@ def save_smoke_data_low(path):\n\
         react.save(os.path.join(path, 'react.uni'))\n";
 
 const std::string smoke_export_high = "\n\
-def save_smoke_data_low(path):\n\
+def save_smoke_data_high(path):\n\
     xl_density.save(os.path.join(path, 'xl_density.uni'))\n\
     xl_flags.save(os.path.join(path, 'xl_flags.uni'))\n\
+    \n\
+    texture_u.save(os.path.join(path, 'texture_u.uni'))\n\
+    texture_v.save(os.path.join(path, 'texture_v.uni'))\n\
+    texture_w.save(os.path.join(path, 'texture_w.uni'))\n\
+    texture_u2.save(os.path.join(path, 'texture_u2.uni'))\n\
+    texture_v2.save(os.path.join(path, 'texture_v2.uni'))\n\
+    texture_w2.save(os.path.join(path, 'texture_w2.uni'))\n\
+    \n\
     if using_colors:\n\
         xl_color_r.save(os.path.join(path, 'xl_color_r.uni'))\n\
         xl_color_g.save(os.path.join(path, 'xl_color_g.uni'))\n\

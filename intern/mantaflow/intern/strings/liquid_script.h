@@ -43,7 +43,7 @@ if doOpen:\n\
 const std::string liquid_bounds_high = "\n\
 # prepare domain high\n\
 mantaMsg('Liquid domain high')\n\
-xl_flags.initDomain(boundaryWidth=boundaryWidth, phiWalls=phiObs)\n\
+xl_flags.initDomain(boundaryWidth=boundaryWidth)\n\
 if doOpen:\n\
     setOpenBound(flags=xl_flags, bWidth=boundaryWidth, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
 
@@ -60,8 +60,6 @@ particleNumber = $PARTICLE_NUMBER$\n\
 minParticles   = pow(particleNumber,dim)\n\
 radiusFactor   = $PARTICLE_RADIUS$\n\
 randomness     = $PARTICLE_RANDOMNESS$\n\
-\n\
-maxVel  = 0\n\
 \n\
 using_highres = $USING_HIGHRES$\n";
 
@@ -168,19 +166,16 @@ def manta_step(start_frame):\n\
 const std::string liquid_step_low = "\n\
 def liquid_step():\n\
     mantaMsg('Liquid step low')\n\
-    copyRealToVec3(sourceX=x_vel, sourceY=y_vel, sourceZ=z_vel, target=vel)\n\
-    copyRealToVec3(sourceX=x_obvel, sourceY=y_obvel, sourceZ=z_obvel, target=obvel)\n\
-    \n\
     # FLIP\n\
+    # Create interpolated version of original phi grid for later use in (optional) high-res step\n\
+    if using_highres:\n\
+        interpolateGrid(target=xl_phi, source=phi)\n\
+    \n\
     pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False, stopInObstacle=False)\n\
     pushOutofObs(parts=pp, flags=flags, phiObs=phiObs)\n\
     \n\
     advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=1, openBounds=doOpen, boundaryWidth=boundaryWidth) # first order is usually enough\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2, openBounds=doOpen, boundaryWidth=boundaryWidth)\n\
-    \n\
-    # Keep an original copy of interpolated phi grid for later use in (optional) high-res step\n\
-    if using_highres:\n\
-        interpolateGrid(target=xl_phi, source=phi)\n\
     \n\
     # create level set of particles\n\
     gridParticleIndex(parts=pp , flags=flags, indexSys=pindex, index=gpi)\n\
@@ -225,7 +220,7 @@ def liquid_step():\n\
     # set source grids for resampling, used in adjustNumber!\n\
     pVel.setSource(vel, isMAC=True)\n\
     adjustNumber(parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, exclude=phiObs, radiusFactor=radiusFactor, narrowBand=narrowBandWidth)\n\
-    flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.95)\n\
+    flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.97)\n\
     \n\
     copyVec3ToReal(source=vel, targetX=x_vel, targetY=y_vel, targetZ=z_vel)\n\
     copyVec3ToReal(source=obvel, targetX=x_obvel, targetY=y_obvel, targetZ=z_obvel)\n";
@@ -271,6 +266,13 @@ def load_liquid_data_low(path):\n\
     velParts.load(os.path.join(path, 'velParts.uni'))\n\
     mapWeights.load(os.path.join(path, 'mapWeights.uni'))\n\
     \n\
+    x_vel.load(os.path.join(path, 'x_vel.uni'))\n\
+    y_vel.load(os.path.join(path, 'y_vel.uni'))\n\
+    z_vel.load(os.path.join(path, 'z_vel.uni'))\n\
+    x_obvel.load(os.path.join(path, 'x_obvel.uni'))\n\
+    y_obvel.load(os.path.join(path, 'y_obvel.uni'))\n\
+    z_obvel.load(os.path.join(path, 'z_obvel.uni'))\n\
+	\n\
     pp.load(os.path.join(path, 'pp.uni'))\n\
     pVel.load(os.path.join(path, 'pVel.uni'))\n\
     \n\
@@ -302,6 +304,13 @@ def save_liquid_data_low(path):\n\
     velParts.save(os.path.join(path, 'velParts.uni'))\n\
     mapWeights.save(os.path.join(path, 'mapWeights.uni'))\n\
     \n\
+    x_vel.save(os.path.join(path, 'x_vel.uni'))\n\
+    y_vel.save(os.path.join(path, 'y_vel.uni'))\n\
+    z_vel.save(os.path.join(path, 'z_vel.uni'))\n\
+    x_obvel.save(os.path.join(path, 'x_obvel.uni'))\n\
+    y_obvel.save(os.path.join(path, 'y_obvel.uni'))\n\
+    z_obvel.save(os.path.join(path, 'z_obvel.uni'))\n\
+	\n\
     pp.save(os.path.join(path, 'pp.uni'))\n\
     pVel.save(os.path.join(path, 'pVel.uni'))\n\
     \n\
