@@ -123,7 +123,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd)
 	mNumNormals   = 0;
 	mNumTriangles = 0;
 
-	// Only start Mantaflow once. No need to start whenever new SMOKE objected is allocated
+	// Only start Mantaflow once. No need to start whenever new FLUID objected is allocated
 	if (!mantaInitialized)
 		startMantaflow();
 	
@@ -639,19 +639,19 @@ std::string FLUID::parseScript(const std::string& setup_string, SmokeModifierDat
 
 void FLUID::exportSmokeScript(SmokeModifierData *smd)
 {
-    bool highres = smd->domain->flags & MOD_SMOKE_HIGHRES;
-    bool heat    = smd->domain->active_fields & SM_ACTIVE_HEAT;
-    bool colors  = smd->domain->active_fields & SM_ACTIVE_COLORS;
-    bool fire    = smd->domain->active_fields & SM_ACTIVE_FIRE;
+	bool highres = smd->domain->flags & MOD_SMOKE_HIGHRES;
+	bool heat    = smd->domain->active_fields & SM_ACTIVE_HEAT;
+	bool colors  = smd->domain->active_fields & SM_ACTIVE_COLORS;
+	bool fire    = smd->domain->active_fields & SM_ACTIVE_FIRE;
 
-    std::string manta_script;
+	std::string manta_script;
 
 	manta_script += manta_import
 		+ fluid_solver_low
-        + fluid_adaptive_time_stepping_low
+		+ fluid_adaptive_time_stepping_low
 		+ smoke_alloc_low
-        + smoke_bounds_low
-        + smoke_variables_low;
+		+ smoke_bounds_low
+		+ smoke_variables_low;
 	
 	if (heat)
 		manta_script += smoke_alloc_heat_low;
@@ -662,17 +662,17 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 
 	if (highres) {
 		manta_script += fluid_solver_high
-            + fluid_adaptive_time_stepping_high
+			+ fluid_adaptive_time_stepping_high
 			+ smoke_variables_high
-			+ smoke_uv_setup
 			+ smoke_alloc_high
-            + smoke_bounds_high
-            + smoke_wavelet_turbulence_noise;
+			+ smoke_uv_setup
+			+ smoke_bounds_high
+			+ smoke_wavelet_turbulence_noise;
 
-        if (colors)
-            manta_script += smoke_alloc_colors_high;
-        if (fire)
-            manta_script += smoke_alloc_fire_high;
+		if (colors)
+			manta_script += smoke_alloc_colors_high;
+		if (fire)
+			manta_script += smoke_alloc_fire_high;
 	}
 	
 	manta_script += smoke_import_low;
@@ -684,8 +684,8 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 		manta_script += smoke_step_high;
 	
 	manta_script += smoke_adaptive_step
-            + smoke_standalone_load
-            + fluid_standalone;
+			+ smoke_standalone_load
+			+ fluid_standalone;
 	
 	// Fill in missing variables in script
 	std::string final_script = FLUID::parseScript(manta_script, smd);
@@ -738,13 +738,13 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 	manta_script += liquid_step_low;
 	if (highres)
 		manta_script += liquid_step_high;
-	
+
 	manta_script += liquid_adaptive_step
-            + liquid_standalone_load
-            + fluid_standalone;
+			+ liquid_standalone_load
+			+ fluid_standalone;
 
 	std::string final_script = FLUID::parseScript(manta_script, smd);
-	
+
 	// Write script
 	std::ofstream myfile;
 	myfile.open(smd->domain->manta_filepath);
@@ -922,10 +922,10 @@ void FLUID::updatePointersHigh(SmokeModifierData *smd)
 
 	// Liquid
 	if (mUsingLiquid) {
-		// TODO (sebbas) phiInitHigh does not exist yet
-		// mPhiHigh    = (float*) getGridPointer("phiInitHigh", "xl");
+		// Nothing to do here
 	}
 	
+	// Smoke
 	if (mUsingSmoke) {
 		mDensityHigh    = (float*) getGridPointer("xl_density", "xl");
 		mTextureU       = (float*) getGridPointer("texture_u",  "s");
@@ -1028,7 +1028,7 @@ void FLUID::loadLiquidData(char *pathname)
 	
 	mCommands.clear();
 	std::ostringstream load_liquid_data_low;
-	load_liquid_data_low <<  "load_liquid_data_low(r'" <<  path << "')";
+	load_liquid_data_low <<  "load_liquid_data_low(r'" << path << "')";
 	mCommands.push_back(load_liquid_data_low.str());
 	
 	runPythonString(mCommands);
@@ -1040,7 +1040,7 @@ void FLUID::loadLiquidDataHigh(char *pathname)
 	
 	mCommands.clear();
 	std::ostringstream load_liquid_data_high;
-	load_liquid_data_high <<  "load_liquid_data_high(r'" <<  path << "')";
+	load_liquid_data_high <<  "load_liquid_data_high(r'" << path << "')";
 	mCommands.push_back(load_liquid_data_high.str());
 	
 	runPythonString(mCommands);

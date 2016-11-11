@@ -135,13 +135,13 @@ public:
 	inline int getNumNormals()   { return mNumNormals; }
 	inline int getNumTriangles() { return mNumTriangles; }
 	
-	inline float getVertexXAt(int i)  { return mVerticesX[i]; }
-	inline float getVertexYAt(int i)  { return mVerticesY[i]; }
-	inline float getVertexZAt(int i)  { return mVerticesZ[i]; }
+	inline float getVertexXAt(int i) { return mVerticesX[i]; }
+	inline float getVertexYAt(int i) { return mVerticesY[i]; }
+	inline float getVertexZAt(int i) { return mVerticesZ[i]; }
 
-	inline float getNormalXAt(int i)   { return mNormalsX[i]; }
-	inline float getNormalYAt(int i)   { return mNormalsY[i]; }
-	inline float getNormalZAt(int i)   { return mNormalsZ[i]; }
+	inline float getNormalXAt(int i) { return mNormalsX[i]; }
+	inline float getNormalYAt(int i) { return mNormalsY[i]; }
+	inline float getNormalZAt(int i) { return mNormalsZ[i]; }
 
 	inline int getTriangleXAt(int i) { return mTrianglesX[i]; }
 	inline int getTriangleYAt(int i) { return mTrianglesY[i]; }
