@@ -861,11 +861,7 @@ static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
 					}
 				}
 
-				/* tag obstacle cells */
-//				data->obstacle_map[index] = 2; // TODO (sebbas): mantaflow convetion (FlagObstacle)
-
 				if (data->has_velocity) {
-//					data->obstacle_map[index] |= 8; // TODO (sebbas)
 					data->num_obstacles[index]++;
 				}
 			}
@@ -2297,7 +2293,7 @@ BLI_INLINE void apply_outflow_fields(int index, float inflow_value, float *densi
 	if (obstacle && inflow_value < 0.f) { // only set outflow inside mesh
 //		obstacle[index] = 20; // TODO (sebbas) mantaflow convention (FlagOutflow | FlagEmpty)
 	}
-	
+
 	/* set smoke outflow */
 	if (density) {
 		density[index] = 0.f;
@@ -2633,8 +2629,6 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				float *bigcolor_r = smoke_turbulence_get_color_r(sds->fluid);
 				float *bigcolor_g = smoke_turbulence_get_color_g(sds->fluid);
 				float *bigcolor_b = smoke_turbulence_get_color_b(sds->fluid);
-				float *bigphi = liquid_turbulence_get_phi(sds->fluid);
-				int *bigobstacle = smoke_turbulence_get_obstacle(sds->fluid);
 #endif
 				float *heat = smoke_get_heat(sds->fluid);
 				float *velocity_x = smoke_get_velocity_x(sds->fluid);
@@ -2771,7 +2765,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 
 											if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) { // outflow
 												if (interpolated_value) {
-													apply_outflow_fields(index_big, inflow_map_high[index_big], bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, bigphi, NULL, bigobstacle);
+													apply_outflow_fields(index_big, inflow_map_high[index_big], bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL, NULL, NULL);
 												}
 											}
 											else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time > 2) {
