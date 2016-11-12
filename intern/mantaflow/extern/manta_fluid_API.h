@@ -117,6 +117,7 @@ void liquid_save_data_high(struct FLUID *liquid, char *pathname);
 void liquid_load_data_high(struct FLUID *liquid, char *pathname);
 void liquid_manta_export(struct FLUID* smoke, struct SmokeModifierData *smd);
 
+int *fluid_get_num_obstacle(struct FLUID *fluid);
 
 #ifdef __cplusplus
 }

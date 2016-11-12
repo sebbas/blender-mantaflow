@@ -89,6 +89,7 @@ const std::string smoke_alloc_low = "\n\
 # prepare grids low\n\
 mantaMsg('Smoke alloc low')\n\
 flags       = s.create(FlagGrid)\n\
+numObs      = s.create(IntGrid)\n\
 vel         = s.create(MACGrid)\n\
 x_vel       = s.create(RealGrid)\n\
 y_vel       = s.create(RealGrid)\n\
@@ -478,6 +479,7 @@ if 'heat' in globals() : del heat\n";
 const std::string smoke_delete_grids_low = "\n\
 mantaMsg('Deleting base grids low')\n\
 if 'flags'       in globals() : del flags\n\
+if 'numObs'      in globals() : del numObs\n\
 if 'vel'         in globals() : del vel\n\
 if 'x_vel'       in globals() : del x_vel\n\
 if 'y_vel'       in globals() : del y_vel\n\

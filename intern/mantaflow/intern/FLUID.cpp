@@ -4,7 +4,7 @@
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version. 
+ * of the License, or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -451,7 +451,7 @@ FLUID::~FLUID()
 	mUsingHeat    = false;
 	mUsingFire    = false;
 	mUsingColors  = false;
-	mUsingHighRes = false;	
+	mUsingHighRes = false;
 }
 
 void FLUID::runPythonString(std::vector<std::string> commands)
@@ -871,7 +871,8 @@ void FLUID::updatePointers(SmokeModifierData *smd)
 {
 	std::cout << "Updating pointers low res" << std::endl;
 
-	mObstacle = (int*) getGridPointer("flags", "s");
+	mObstacle    = (int*) getGridPointer("flags",  "s");
+	mNumObstacle = (int*) getGridPointer("numObs", "s");
 	
 	mVelocityX = (float*) getGridPointer("x_vel", "s");
 	mVelocityY = (float*) getGridPointer("y_vel", "s");

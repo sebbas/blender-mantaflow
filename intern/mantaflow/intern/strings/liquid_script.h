@@ -73,7 +73,7 @@ mantaMsg('Liquid variables high')\n";
 const std::string liquid_alloc_low = "\n\
 mantaMsg('Liquid alloc low')\n\
 flags      = s.create(FlagGrid)\n\
-\n\
+numObs     = s.create(IntGrid)\n\
 phiParts   = s.create(LevelsetGrid)\n\
 phi        = s.create(LevelsetGrid)\n\
 phiInit    = s.create(LevelsetGrid)\n\
@@ -272,7 +272,7 @@ def load_liquid_data_low(path):\n\
     x_obvel.load(os.path.join(path, 'x_obvel.uni'))\n\
     y_obvel.load(os.path.join(path, 'y_obvel.uni'))\n\
     z_obvel.load(os.path.join(path, 'z_obvel.uni'))\n\
-	\n\
+    \n\
     pp.load(os.path.join(path, 'pp.uni'))\n\
     pVel.load(os.path.join(path, 'pVel.uni'))\n\
     \n\
@@ -310,7 +310,7 @@ def save_liquid_data_low(path):\n\
     x_obvel.save(os.path.join(path, 'x_obvel.uni'))\n\
     y_obvel.save(os.path.join(path, 'y_obvel.uni'))\n\
     z_obvel.save(os.path.join(path, 'z_obvel.uni'))\n\
-	\n\
+    \n\
     pp.save(os.path.join(path, 'pp.uni'))\n\
     pVel.save(os.path.join(path, 'pVel.uni'))\n\
     \n\
@@ -332,6 +332,7 @@ def save_liquid_data_high(path):\n\
 const std::string liquid_delete_grids_low = "\n\
 mantaMsg('Deleting lowres grids, mesh, particlesystem')\n\
 if 'flags'      in globals() : del flags\n\
+if 'numObs'     in globals() : del numObs\n\
 if 'phiParts'   in globals() : del phiParts\n\
 if 'phi'        in globals() : del phi\n\
 if 'phiInit'    in globals() : del phiInit\n\

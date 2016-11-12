@@ -4,7 +4,7 @@
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version. 
+ * of the License, or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -98,7 +98,7 @@ public:
 	inline float* getForceY() { return mForceY; }
 	inline float* getForceZ() { return mForceZ; }
 	inline int* getObstacle() { return mObstacle; }
-	inline unsigned char* getObstaclesAnim() { return mObstaclesAnim; }
+	inline int* getNumObstacle() { return mNumObstacle; }
 	inline float* getFlame() { return mFlame; }
 	inline float* getFuel() { return mFuel; }
 	inline float* getReact() { return mReact; }
@@ -187,7 +187,7 @@ private:
 	float* mForceY;
 	float* mForceZ;
 	int* mObstacle; /* only used (useful) for static obstacles like domain boundaries */
-	unsigned char* mObstaclesAnim;
+	int* mNumObstacle;
 	float *mFlame;
 	float *mFuel;
 	float *mReact;

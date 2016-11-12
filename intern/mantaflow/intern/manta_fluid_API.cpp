@@ -420,12 +420,10 @@ extern "C" void smoke_get_ob_velocity(FLUID *smoke, float **x, float **y, float 
 	*z = smoke->getObVelocityZ();
 }
 
-#if 0
-extern "C" unsigned char *smoke_get_obstacle_anim(FLUID *smoke)
+extern "C" int *fluid_get_num_obstacle(FLUID *fluid)
 {
-	return smoke->getObstaclesAnim();
+	return fluid->getNumObstacle();
 }
-#endif
 
 extern "C" void flame_get_spectrum(unsigned char *spec, int width, float t1, float t2)
 {
