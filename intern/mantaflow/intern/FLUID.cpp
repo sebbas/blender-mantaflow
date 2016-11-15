@@ -218,7 +218,9 @@ void FLUID::initSmoke(SmokeModifierData *smd)
 		+ smoke_bounds_low
 		+ smoke_adaptive_step
 		+ smoke_export_low
-		+ smoke_step_low;
+		+ smoke_pre_step_low
+		+ smoke_step_low
+		+ smoke_post_step_low;
 	std::string finalString = parseScript(tmpString, smd);
 	mCommands.clear();
 	mCommands.push_back(finalString);
@@ -234,11 +236,13 @@ void FLUID::initSmokeHigh(SmokeModifierData *smd)
 		+ smoke_bounds_high
 		+ smoke_wavelet_turbulence_noise
 		+ smoke_export_high
-		+ smoke_step_high;
+		+ smoke_pre_step_high
+		+ smoke_step_high
+		+ smoke_post_step_high;
 	std::string finalString = parseScript(tmpString, smd);
 	mCommands.clear();
 	mCommands.push_back(finalString);
-		
+
 	runPythonString(mCommands);
 	mUsingHighRes = true;
 }
@@ -320,7 +324,9 @@ void FLUID::initLiquid(SmokeModifierData *smd)
 			+ liquid_export_low
 			+ liquid_import_low
 			+ liquid_adaptive_step
-			+ liquid_step_low;
+			+ liquid_pre_step_low
+			+ liquid_step_low
+			+ liquid_post_step_low;
 		std::string finalString = parseScript(tmpString, smd);
 		mCommands.clear();
 		mCommands.push_back(finalString);
@@ -338,11 +344,13 @@ void FLUID::initLiquidHigh(SmokeModifierData *smd)
 		+ liquid_save_mesh_high
 		+ liquid_export_high
 		+ liquid_import_high
-		+ liquid_step_high;
+		+ liquid_pre_step_high
+		+ liquid_step_high
+		+ liquid_post_step_high;
 	std::string finalString = parseScript(tmpString, smd);
 	mCommands.clear();
 	mCommands.push_back(finalString);
-		
+
 	runPythonString(mCommands);
 	mUsingHighRes = true;
 }
@@ -679,6 +687,14 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 	if (highres)
 		manta_script += smoke_import_high;
 	
+	manta_script += smoke_pre_step_low;
+	if (highres)
+		manta_script += smoke_pre_step_high;
+	
+	manta_script += smoke_post_step_low;
+	if (highres)
+		manta_script += smoke_post_step_high;
+
 	manta_script += smoke_step_low;
 	if (highres)
 		manta_script += smoke_step_high;
@@ -734,7 +750,15 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 	manta_script += liquid_import_low;
 	if (highres)
 		manta_script += liquid_import_high;
-
+	
+	manta_script += liquid_pre_step_low;
+	if (highres)
+		manta_script += liquid_pre_step_high;
+	
+	manta_script += liquid_post_step_low;
+	if (highres)
+		manta_script += liquid_post_step_high;
+	
 	manta_script += liquid_step_low;
 	if (highres)
 		manta_script += liquid_step_high;

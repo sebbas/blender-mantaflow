@@ -125,6 +125,36 @@ phi.initFromFlags(flags)\n\
 phiInit.initFromFlags(flags)\n";
 
 //////////////////////////////////////////////////////////////////////
+// PRE / POST STEP
+//////////////////////////////////////////////////////////////////////
+
+const std::string liquid_pre_step_low = "\n\
+def liquid_pre_step_low():\n\
+    copyRealToVec3(sourceX=x_vel, sourceY=y_vel, sourceZ=z_vel, target=vel)\n\
+    copyRealToVec3(sourceX=x_obvel, sourceY=y_obvel, sourceZ=z_obvel, target=obvel)\n\
+    \n\
+    clearInObstacle(flags=flags, grid=phi)\n";
+
+const std::string liquid_pre_step_high = "\n\
+def liquid_pre_step_high():\n\
+    clearInObstacle(flags=xl_flags, grid=xl_phi)\n";
+
+const std::string liquid_post_step_low = "\n\
+def liquid_post_step_low():\n\
+    forces.clear()\n\
+    obvel.clear()\n\
+    \n\
+    phiIn.setConst(0.5)\n\
+    phiObs.setConst(0.5)\n\
+    phiObsIn.setConst(0.5)\n\
+    \n\
+    copyVec3ToReal(source=vel, targetX=x_vel, targetY=y_vel, targetZ=z_vel)\n";
+
+const std::string liquid_post_step_high = "\n\
+def liquid_post_step_high():\n\
+    clearInObstacle(flags=xl_flags, grid=xl_phi)\n";
+
+//////////////////////////////////////////////////////////////////////
 // STEP FUNCTIONS
 //////////////////////////////////////////////////////////////////////
 

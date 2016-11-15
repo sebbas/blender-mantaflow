@@ -179,6 +179,63 @@ xl_fuel  = xl.create(RealGrid)\n\
 xl_react = xl.create(RealGrid)\n";
 
 //////////////////////////////////////////////////////////////////////
+// PRE / POST STEP
+//////////////////////////////////////////////////////////////////////
+
+const std::string smoke_pre_step_low = "\n\
+def smoke_pre_step_low():\n\
+    copyRealToVec3(sourceX=x_vel, sourceY=y_vel, sourceZ=z_vel, target=vel)\n\
+    copyRealToVec3(sourceX=x_obvel, sourceY=y_obvel, sourceZ=z_obvel, target=obvel)\n\
+    copyRealToVec3(sourceX=x_force, sourceY=y_force, sourceZ=z_force, target=forces)\n\
+    \n\
+    clearInObstacle(flags=flags, grid=density)\n\
+    clearInObstacle(flags=flags, grid=vel)\n\
+    if (using_fire):\n\
+        clearInObstacle(flags=flags, grid=fuel)\n\
+        clearInObstacle(flags=flags, grid=flame)\n\
+        clearInObstacle(flags=flags, grid=react)\n\
+    if (using_colors):\n\
+        clearInObstacle(flags=flags, grid=color_r)\n\
+        clearInObstacle(flags=flags, grid=color_g)\n\
+        clearInObstacle(flags=flags, grid=color_b)\n\
+    \n\
+    averagedVel(vel=obvel, numObs=numObs)\n";
+
+const std::string smoke_pre_step_high = "\n\
+def smoke_pre_step_high():\n\
+    copyRealToVec3(sourceX=texture_u, sourceY=texture_v, sourceZ=texture_w, target=uv[0])\n\
+    copyRealToVec3(sourceX=texture_u2, sourceY=texture_v2, sourceZ=texture_w2, target=uv[1])\n\
+    \n\
+    clearInObstacle(flags=xl_flags, grid=xl_density)\n\
+    clearInObstacle(flags=xl_flags, grid=xl_vel)\n\
+    if (using_fire):\n\
+        clearInObstacle(flags=xl_flags, grid=xl_fuel)\n\
+        clearInObstacle(flags=xl_flags, grid=xl_flame)\n\
+        clearInObstacle(flags=xl_flags, grid=xl_react)\n\
+    if (using_colors):\n\
+        clearInObstacle(flags=xl_flags, grid=xl_color_r)\n\
+        clearInObstacle(flags=xl_flags, grid=xl_color_g)\n\
+        clearInObstacle(flags=xl_flags, grid=xl_color_b)\n";
+
+const std::string smoke_post_step_low = "\n\
+def smoke_post_step_low():\n\
+    forces.clear()\n\
+    #obvel.clear()\n\
+    #x_obvel.clear()\n\
+    #y_obvel.clear()\n\
+    #z_obvel.clear()\n\
+    phiObsIn.setConst(0.5)\n\
+    \n\
+    copyVec3ToReal(source=vel, targetX=x_vel, targetY=y_vel, targetZ=z_vel)\n";
+
+const std::string smoke_post_step_high = "\n\
+def smoke_post_step_high():\n\
+    xl_phiObsIn.setConst(0.5)\n\
+    \n\
+    copyVec3ToReal(source=uv[0], targetX=texture_u, targetY=texture_v, targetZ=texture_w)\n\
+    copyVec3ToReal(source=uv[1], targetX=texture_u2, targetY=texture_v2, targetZ=texture_w2)\n";
+
+//////////////////////////////////////////////////////////////////////
 // STEP FUNCTIONS
 //////////////////////////////////////////////////////////////////////
 
