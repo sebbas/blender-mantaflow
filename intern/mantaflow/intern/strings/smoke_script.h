@@ -244,6 +244,11 @@ def manta_step(start_frame):\n\
     s.frame = start_frame\n\
     s.timeTotal = s.frame * dt0\n\
     last_frame = s.frame\n\
+    \n\
+    smoke_pre_step_low()\n\
+    if using_highres:\n\
+        smoke_pre_step_high()\n\
+    \n\
     while s.frame == last_frame:\n\
         mantaMsg('Adapt timestep')\n\
         maxvel = vel.getMaxValue()\n\
@@ -264,16 +269,15 @@ def manta_step(start_frame):\n\
             step_high()\n\
             if using_fire:\n\
                 update_flame_high()\n\
-        s.step()\n";
+        s.step()\n\
+    \n\
+    smoke_post_step_low()\n\
+    if using_highres:\n\
+        smoke_post_step_high()\n";
 
 const std::string smoke_step_low = "\n\
 def step_low():\n\
     mantaMsg('Smoke step low')\n\
-    copyRealToVec3(sourceX=x_vel, sourceY=y_vel, sourceZ=z_vel, target=vel)\n\
-    copyRealToVec3(sourceX=x_obvel, sourceY=y_obvel, sourceZ=z_obvel, target=obvel)\n\
-    if dim == 2:\n\
-        density.add(inflow_grid)\n\
-    \n\
     mantaMsg('Advecting density')\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$)\n\
     \n\
@@ -309,7 +313,6 @@ def step_low():\n\
         mantaMsg('Adding buoyancy')\n\
         addBuoyancy(density=density, vel=vel, gravity=gravity, flags=flags)\n\
     \n\
-    copyRealToVec3(sourceX=x_force, sourceY=y_force, sourceZ=z_force, target=forces)\n\
     mantaMsg('Adding forces')\n\
     addForceField(flags=flags, vel=vel, force=forces)\n\
     forces.clear()\n\
@@ -319,9 +322,6 @@ def step_low():\n\
     \n\
     mantaMsg('Pressure')\n\
     solvePressure(flags=flags, vel=vel, pressure=pressure)\n\
-    \n\
-    copyVec3ToReal(source=vel, targetX=x_vel, targetY=y_vel, targetZ=z_vel)\n\
-    copyVec3ToReal(source=obvel, targetX=x_obvel, targetY=y_obvel, targetZ=z_obvel)\n\
 \n\
 def process_burn_low():\n\
     mantaMsg('Process burn low')\n\
@@ -337,9 +337,6 @@ def update_flame_low():\n\
 const std::string smoke_step_high = "\n\
 def step_high():\n\
     mantaMsg('Smoke step high')\n\
-    copyRealToVec3(sourceX=texture_u, sourceY=texture_v, sourceZ=texture_w, target=uv[0])\n\
-    copyRealToVec3(sourceX=texture_u2, sourceY=texture_v2, sourceZ=texture_w2, target=uv[1])\n\
-    \n\
     interpolateMACGrid(source=vel, target=xl_vel)\n\
     for i in range(uvs):\n\
         mantaMsg('Advecting UV')\n\
@@ -380,9 +377,6 @@ def step_high():\n\
         \n\
         mantaMsg('Advecting density high')\n\
         advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=$ADVECT_ORDER$, openBounds=doOpen)\n\
-    \n\
-    copyVec3ToReal(source=uv[0], targetX=texture_u, targetY=texture_v, targetZ=texture_w)\n\
-    copyVec3ToReal(source=uv[1], targetX=texture_u2, targetY=texture_v2, targetZ=texture_w2)\n\
 \n\
 def process_burn_high():\n\
     mantaMsg('Process burn high')\n\

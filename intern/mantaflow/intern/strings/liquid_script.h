@@ -164,6 +164,9 @@ def manta_step(start_frame):\n\
     s.timeTotal = s.frame * dt0\n\
     last_frame = s.frame\n\
     \n\
+    liquid_pre_step_low()\n\
+    if using_highres:\n\
+        liquid_pre_step_high()\n\
     if start_frame == 1:\n\
         phi.join(phiInit)\n\
         phiObs.join(phiObsInit)\n\
@@ -190,8 +193,11 @@ def manta_step(start_frame):\n\
             xl.timestep = s.timestep\n\
             mantaMsg('High step / s.frame: ' + str(s.frame))\n\
             liquid_step_high()\n\
-        \n\
-        s.step()\n";
+        s.step()\n\
+    \n\
+    liquid_post_step_low()\n\
+    if using_highres:\n\
+        liquid_post_step_high()\n";
 
 const std::string liquid_step_low = "\n\
 def liquid_step():\n\
@@ -241,6 +247,11 @@ def liquid_step():\n\
     extrapolateMACSimple(flags=flags, vel=vel, distance=4, intoObs=True)\n\
     setWallBcs(flags=flags, vel=vel, fractions=fractions, phiObs=phiObs)\n\
     \n\
+    # TODO (sebbas): Clearing should not be needed once obvel are added correctly\n\
+    clearInObstacle(flags=flags, grid=phi)\n\
+    clearInObstacle(flags=flags, grid=phiParts)\n\
+    pushOutofObs(parts=pp, flags=flags, phiObs=phiObs)\n\
+    \n\
     if (dim==3):\n\
         # mis-use phiParts as temp grid to close the mesh\n\
         phiParts.copyFrom(phi)\n\
@@ -250,10 +261,7 @@ def liquid_step():\n\
     # set source grids for resampling, used in adjustNumber!\n\
     pVel.setSource(vel, isMAC=True)\n\
     adjustNumber(parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, exclude=phiObs, radiusFactor=radiusFactor, narrowBand=narrowBandWidth)\n\
-    flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.97)\n\
-    \n\
-    copyVec3ToReal(source=vel, targetX=x_vel, targetY=y_vel, targetZ=z_vel)\n\
-    copyVec3ToReal(source=obvel, targetX=x_obvel, targetY=y_obvel, targetZ=z_obvel)\n";
+    flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.97)\n";
 
 const std::string liquid_step_high = "\n\
 def liquid_step_high():\n\
@@ -261,8 +269,8 @@ def liquid_step_high():\n\
     xl_pp.readParticles(pp)\n\
     \n\
     # create surface\n\
-    gridParticleIndex( parts=xl_pp , flags=xl_flags, indexSys=xl_pindex, index=xl_gpi )\n\
-    averagedParticleLevelset( xl_pp, xl_pindex, xl_flags, xl_gpi, xl_phiParts, radiusFactor , 1, 1 )\n\
+    gridParticleIndex(parts=xl_pp, flags=xl_flags, indexSys=xl_pindex, index=xl_gpi )\n\
+    averagedParticleLevelset(xl_pp, xl_pindex, xl_flags, xl_gpi, xl_phiParts, radiusFactor , 1, 1)\n\
     xl_phi.join(xl_phiParts)\n\
     \n\
     xl_phi.createMesh(xl_mesh)\n";
