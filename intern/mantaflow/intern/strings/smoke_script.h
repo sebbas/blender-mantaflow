@@ -39,7 +39,7 @@ mantaMsg('Smoke domain low')\n\
 flags.initDomain(boundaryWidth=boundaryWidth)\n\
 flags.fillGrid()\n\
 if doOpen:\n\
-    setOpenBound(flags=flags, bWidth=boundaryWidth, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
+    setOpenBound(flags=flags, bWidth=0, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
 
 const std::string smoke_bounds_high = "\n\
 # prepare domain high\n\
@@ -47,7 +47,7 @@ mantaMsg('Smoke domain high')\n\
 xl_flags.initDomain(boundaryWidth=boundaryWidth)\n\
 xl_flags.fillGrid()\n\
 if doOpen:\n\
-    setOpenBound(flags=xl_flags, bWidth=boundaryWidth, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
+    setOpenBound(flags=xl_flags, bWidth=0, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n";
 
 //////////////////////////////////////////////////////////////////////
 // VARIABLES
