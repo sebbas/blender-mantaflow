@@ -91,10 +91,9 @@ float *smoke_get_inflow_grid(struct FLUID *smoke);
 float *smoke_get_fuel_inflow(struct FLUID *smoke);
 int *smoke_turbulence_get_obstacle(struct FLUID *smoke);
 
-float *liquid_get_phi(struct FLUID *liquid);
-float *liquid_get_phiinit(struct FLUID *liquid);
-float *liquid_get_phiobsinit(struct FLUID *liquid);
-float *liquid_turbulence_get_phi(struct FLUID *liquid);
+float *liquid_get_phiin(struct FLUID *liquid);
+float *liquid_get_phiobs(struct FLUID *liquid);
+float *liquid_get_phiout(struct FLUID *liquid);
 void liquid_ensure_init(struct FLUID *liquid, struct SmokeModifierData *smd);
 void liquid_save_mesh(struct FLUID *liquid, char *filename);
 void liquid_save_data(struct FLUID *liquid, char *pathname);

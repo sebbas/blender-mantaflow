@@ -112,12 +112,9 @@ FLUID::FLUID(int *res, SmokeModifierData *smd)
 	mTextureW2      = NULL;
 	
 	// Liquid low res grids
-	mPhi            = NULL;
-	mPhiInit        = NULL;
-	mPhiObsInit     = NULL;
-
-	// Liquid high res grids
-	mPhiHigh        = NULL;
+	mPhiIn          = NULL;
+	mPhiObs         = NULL;
+	mPhiOut         = NULL;
 	
 	mNumVertices  = 0;
 	mNumNormals   = 0;
@@ -315,7 +312,7 @@ void FLUID::initColorsHigh(SmokeModifierData *smd)
 
 void FLUID::initLiquid(SmokeModifierData *smd)
 {
-	if (!mPhi) {
+	if (!mPhiIn) {
 		std::string tmpString = liquid_alloc_low
 			+ liquid_variables_low
 			+ liquid_bounds_low
@@ -450,10 +447,9 @@ FLUID::~FLUID()
 	mTextureW2      = NULL;
 	
 	// Liquid
-	mPhi        = NULL;
-	mPhiInit    = NULL;
-	mPhiObsInit = NULL;
-	mPhiHigh    = NULL;
+	mPhiIn  = NULL;
+	mPhiObs = NULL;
+	mPhiOut = NULL;
 	
 	// Reset flags
 	mUsingHeat    = false;
@@ -910,11 +906,12 @@ void FLUID::updatePointers(SmokeModifierData *smd)
 	mForceY    = (float*) getGridPointer("y_force", "s");
 	mForceZ    = (float*) getGridPointer("z_force", "s");
 	
+	mPhiObs = (float*) getGridPointer("phiObsIn", "s");
+	
 	// Liquid
 	if (mUsingLiquid) {
-		mPhi        = (float*) getGridPointer("phi",        "s");
-		mPhiInit    = (float*) getGridPointer("phiInit",    "s");
-		mPhiObsInit = (float*) getGridPointer("phiObsInit", "s");
+		mPhiIn  = (float*) getGridPointer("phiIn",  "s");
+		mPhiOut = (float*) getGridPointer("phiOut", "s");
 	}
 	
 	// Smoke

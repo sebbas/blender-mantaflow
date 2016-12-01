@@ -100,6 +100,9 @@ y_obvel     = s.create(RealGrid)\n\
 z_obvel     = s.create(RealGrid)\n\
 density     = s.create(RealGrid)\n\
 pressure    = s.create(RealGrid)\n\
+phiObsIn    = s.create(LevelsetGrid)\n\
+phiOut      = s.create(LevelsetGrid)\n\
+fractions   = s.create(MACGrid) # dummy grid\n\
 forces      = s.create(MACGrid)\n\
 x_force     = s.create(RealGrid)\n\
 y_force     = s.create(RealGrid)\n\
@@ -113,6 +116,8 @@ mantaMsg('Smoke alloc high')\n\
 xl_flags   = xl.create(FlagGrid)\n\
 xl_vel     = xl.create(MACGrid)\n\
 xl_density = xl.create(RealGrid)\n\
+xl_phiObsIn  = xl.create(LevelsetGrid)\n\
+xl_fractions = xl.create(MACGrid) # dummy grid\n\
 energy     = s.create(RealGrid)\n\
 tempFlag   = s.create(FlagGrid)\n\
 texture_u  = s.create(RealGrid)\n\
@@ -278,6 +283,9 @@ def manta_step(start_frame):\n\
 const std::string smoke_step_low = "\n\
 def step_low():\n\
     mantaMsg('Smoke step low')\n\
+    setObstacleFlags(flags=flags, phiObs=phiObsIn, fractions=fractions, phiOut=phiOut)\n\
+    flags.fillGrid()\n\
+    \n\
     mantaMsg('Advecting density')\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$)\n\
     \n\
@@ -299,8 +307,11 @@ def step_low():\n\
     mantaMsg('Advecting velocity')\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=$ADVECT_ORDER$, openBounds=doOpen, boundaryWidth=boundaryWidth)\n\
     \n\
-    if doOpen:\n\
-        resetOutflow(flags=flags, real=density)\n\
+    # Create interpolated version of original phi grid for later use in (optional) high-res step\n\
+    if using_highres:\n\
+        interpolateGrid(target=xl_phiObsIn, source=phiObsIn)\n\
+    #if doOpen:\n\
+    resetOutflow(flags=flags, real=density)\n\
     \n\
     mantaMsg('Vorticity')\n\
     vorticityConfinement(vel=vel, flags=flags, strength=$VORTICITY$)\n\
@@ -315,7 +326,7 @@ def step_low():\n\
     \n\
     mantaMsg('Adding forces')\n\
     addForceField(flags=flags, vel=vel, force=forces)\n\
-    forces.clear()\n\
+    addForceField(flags=flags, vel=vel, force=obvel)\n\
     \n\
     mantaMsg('Walls')\n\
     setWallBcs(flags=flags, vel=vel)\n\
@@ -337,6 +348,9 @@ def update_flame_low():\n\
 const std::string smoke_step_high = "\n\
 def step_high():\n\
     mantaMsg('Smoke step high')\n\
+    setObstacleFlags(flags=xl_flags, phiObs=xl_phiObsIn, fractions=xl_fractions)\n\
+    xl_flags.fillGrid()\n\
+    \n\
     interpolateMACGrid(source=vel, target=xl_vel)\n\
     for i in range(uvs):\n\
         mantaMsg('Advecting UV')\n\
@@ -412,6 +426,9 @@ def load_smoke_data_low(path):\n\
     x_obvel.load(os.path.join(path, 'x_obvel.uni'))\n\
     y_obvel.load(os.path.join(path, 'y_obvel.uni'))\n\
     z_obvel.load(os.path.join(path, 'z_obvel.uni'))\n\
+    phiObsIn.load(os.path.join(path, 'phiObsIn.uni'))\n\
+    phiOut.load(os.path.join(path, 'phiOut.uni'))\n\
+    fractions.load(os.path.join(path, 'fractions.uni'))\n\
     if using_colors:\n\
         color_r.load(os.path.join(path, 'color_r.uni'))\n\
         color_g.load(os.path.join(path, 'color_g.uni'))\n\
@@ -463,6 +480,9 @@ def save_smoke_data_low(path):\n\
     x_obvel.save(os.path.join(path, 'x_obvel.uni'))\n\
     y_obvel.save(os.path.join(path, 'y_obvel.uni'))\n\
     z_obvel.save(os.path.join(path, 'z_obvel.uni'))\n\
+    phiObsIn.save(os.path.join(path, 'phiObsIn.uni'))\n\
+    phiOut.save(os.path.join(path, 'phiOut.uni'))\n\
+    fractions.save(os.path.join(path, 'fractions.uni'))\n\
     if using_colors:\n\
         color_r.save(os.path.join(path, 'color_r.uni'))\n\
         color_g.save(os.path.join(path, 'color_g.uni'))\n\
@@ -541,6 +561,9 @@ if 'y_obvel'     in globals() : del y_obvel\n\
 if 'z_obvel'     in globals() : del z_obvel\n\
 if 'density'     in globals() : del density\n\
 if 'pressure'    in globals() : del pressure\n\
+if 'phiObsIn'    in globals() : del phiObsIn\n\
+if 'phiOut'      in globals() : del phiOut\n\
+if 'fractions'   in globals() : del fractions\n\
 if 'forces'      in globals() : del forces\n\
 if 'x_force'     in globals() : del x_force\n\
 if 'y_force'     in globals() : del y_force\n\
@@ -553,6 +576,8 @@ mantaMsg('Deleting base grids high')\n\
 if 'xl_flags'    in globals() : del xl_flags\n\
 if 'xl_vel'      in globals() : del xl_vel\n\
 if 'xl_density'  in globals() : del xl_density\n\
+if 'xl_phiObsIn'  in globals() : del xl_phiObsIn\n\
+if 'xl_fractions' in globals() : del xl_fractions\n\
 if 'energy'      in globals() : del energy\n\
 if 'tempFlag'    in globals() : del tempFlag\n\
 if 'uvGrid'      in globals() : del uvGrid\n\

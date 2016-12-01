@@ -123,11 +123,10 @@ public:
 	inline float* getTextureW2() { return mTextureW2; }
 	inline int* getObstacleHigh() { return mObstacleHigh; }
 	
-	inline float* getPhi()        { return mPhi; }
-	inline float* getPhiInit()    { return mPhiInit; }
-	inline float* getPhiObsInit() { return mPhiObsInit; }
-	inline float* getPhiHigh()    { return NULL; } // Not yet implemented
-
+	inline float* getPhiIn()  { return mPhiIn; }
+	inline float* getPhiObs() { return mPhiObs; }
+	inline float* getPhiOut() { return mPhiOut; }
+	
 	static bool mantaInitialized;
 	
 	// Liquid getters
@@ -214,10 +213,9 @@ private:
 	int* mObstacleHigh;
 	
 	// Liquids
-	float* mPhi;
-	float* mPhiInit;
-	float* mPhiObsInit;
-	float* mPhiHigh;
+	float* mPhiIn;
+	float* mPhiObs;
+	float* mPhiOut;
 	
 	// Mesh fields for liquid surface
 	int mNumVertices;

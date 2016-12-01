@@ -501,19 +501,19 @@ extern "C" float *smoke_get_fuel_inflow(FLUID *smoke)
 	return smoke->getFuelInflow();
 }
 
-extern "C" float *liquid_get_phi(FLUID *liquid)
+extern "C" float *liquid_get_phiin(FLUID *liquid)
 {
-	return liquid->getPhi();
+	return liquid->getPhiIn();
 }
 
-extern "C" float *liquid_get_phiinit(FLUID *liquid)
+extern "C" float *liquid_get_phiobs(FLUID *liquid)
 {
-	return liquid->getPhiInit();
+	return liquid->getPhiObs();
 }
 
-extern "C" float *liquid_get_phiobsinit(FLUID *liquid)
+extern "C" float *liquid_get_phiout(FLUID *liquid)
 {
-	return liquid->getPhiObsInit();
+	return liquid->getPhiOut();
 }
 
 extern "C" void liquid_save_mesh(FLUID *liquid, char *filename)

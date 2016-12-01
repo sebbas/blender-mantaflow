@@ -76,11 +76,12 @@ flags      = s.create(FlagGrid)\n\
 numObs     = s.create(IntGrid)\n\
 phiParts   = s.create(LevelsetGrid)\n\
 phi        = s.create(LevelsetGrid)\n\
-phiInit    = s.create(LevelsetGrid)\n\
+phiIn      = s.create(LevelsetGrid)\n\
+phiOut     = s.create(LevelsetGrid)\n\
 pressure   = s.create(RealGrid)\n\
 \n\
 phiObs     = s.create(LevelsetGrid)\n\
-phiObsInit = s.create(LevelsetGrid)\n\
+phiObsIn = s.create(LevelsetGrid)\n\
 fractions  = s.create(MACGrid)\n\
 \n\
 vel        = s.create(MACGrid)\n\
@@ -122,7 +123,7 @@ xl_gpi     = xl.create(IntGrid)\n";
 
 const std::string liquid_init_phi = "\n\
 phi.initFromFlags(flags)\n\
-phiInit.initFromFlags(flags)\n";
+phiIn.initFromFlags(flags)\n";
 
 //////////////////////////////////////////////////////////////////////
 // PRE / POST STEP
@@ -167,20 +168,24 @@ def manta_step(start_frame):\n\
     liquid_pre_step_low()\n\
     if using_highres:\n\
         liquid_pre_step_high()\n\
-    if start_frame == 1:\n\
-        phi.join(phiInit)\n\
-        phiObs.join(phiObsInit)\n\
-        \n\
-        flags.updateFromLevelset(phi)\n\
-        phi.subtract(phiObs)\n\
-        \n\
-        sampleLevelsetWithParticles(phi=phi, flags=flags, parts=pp, discretization=particleNumber, randomness=randomness)\n\
-        \n\
-        updateFractions(flags=flags, phiObs=phiObs, fractions=fractions, boundaryWidth=boundaryWidth)\n\
-        setObstacleFlags(flags=flags, phiObs=phiObs, fractions=fractions)\n\
     \n\
     while s.frame == last_frame:\n\
-        sampleLevelsetWithParticles(phi=phiInit, flags=flags, parts=pp, discretization=particleNumber, randomness=randomness, refillEmpty=True)\n\
+        \n\
+        flags.initDomain(boundaryWidth=boundaryWidth, phiWalls=phiObs)\n\
+        if doOpen:\n\
+            setOpenBound(flags=flags, bWidth=boundaryWidth, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n\
+        \n\
+        phiObs.join(phiObsIn)\n\
+        #phi.subtract(phiObs)\n\
+        phiIn.subtract(phiObs)\n\
+        phi.join(phiIn)\n\
+        \n\
+        updateFractions(flags=flags, phiObs=phiObs, fractions=fractions, boundaryWidth=boundaryWidth)\n\
+        setObstacleFlags(flags=flags, phiObs=phiObs, fractions=fractions, phiOut=phiOut)\n\
+        \n\
+        sampleLevelsetWithParticles(phi=phiIn, flags=flags, parts=pp, discretization=particleNumber, randomness=randomness, refillEmpty=True)\n\
+        flags.updateFromLevelset(phi)\n\
+        pushOutofObs(parts=pp, flags=flags, phiObs=phiObs)\n\
         \n\
         mantaMsg('Adapt timestep')\n\
         maxvel = vel.getMaxValue()\n\
@@ -223,8 +228,8 @@ def liquid_step():\n\
     extrapolateLsSimple(phi=phi, distance=narrowBandWidth+2, inside=True)\n\
     extrapolateLsSimple(phi=phi, distance=3)\n\
     phi.setBoundNeumann(boundaryWidth) # make sure no particles are placed at outer boundary\n\
-    if doOpen:\n\
-        resetOutflow(flags=flags, phi=phi, parts=pp, index=gpi, indexSys=pindex) # open boundaries\n\
+    #if doOpen:\n\
+    resetOutflow(flags=flags, phi=phi, parts=pp, index=gpi, indexSys=pindex) # open boundaries\n\
     flags.updateFromLevelset(phi)\n\
     \n\
     # combine particles velocities with advected grid velocities\n\
@@ -237,6 +242,9 @@ def liquid_step():\n\
     addGravity(flags=flags, vel=vel, gravity=gravity)\n\
     copyRealToVec3(sourceX=x_force, sourceY=y_force, sourceZ=z_force, target=forces)\n\
     addForceField(flags=flags, vel=vel, force=forces)\n\
+    # TODO (sebbas): need to extrapolate obvels - currently only on mesh border\n\
+    #extrapolateMACSimple(flags=flags, vel=obvel, distance=res/2, intoObs=True)\n\
+    addForceField(flags=flags, vel=vel, force=obvel)\n\
     forces.clear()\n\
     \n\
     extrapolateMACSimple(flags=flags, vel=vel, distance=2, intoObs=True)\n\
@@ -247,7 +255,6 @@ def liquid_step():\n\
     extrapolateMACSimple(flags=flags, vel=vel, distance=4, intoObs=True)\n\
     setWallBcs(flags=flags, vel=vel, fractions=fractions, phiObs=phiObs)\n\
     \n\
-    # TODO (sebbas): Clearing should not be needed once obvel are added correctly\n\
     clearInObstacle(flags=flags, grid=phi)\n\
     clearInObstacle(flags=flags, grid=phiParts)\n\
     pushOutofObs(parts=pp, flags=flags, phiObs=phiObs)\n\
@@ -293,9 +300,10 @@ def load_liquid_data_low(path):\n\
     \n\
     phiParts.load(os.path.join(path, 'phiParts.uni'))\n\
     phi.load(os.path.join(path, 'phi.uni'))\n\
-    phiInit.load(os.path.join(path, 'phiInit.uni'))\n\
+    phiIn.load(os.path.join(path, 'phiIn.uni'))\n\
     phiObs.load(os.path.join(path, 'phiObs.uni'))\n\
-    phiObsInit.load(os.path.join(path, 'phiObsInit.uni'))\n\
+    phiObsIn.load(os.path.join(path, 'phiObsIn.uni'))\n\
+    phiOut.load(os.path.join(path, 'phiOut.uni'))\n\
     fractions.load(os.path.join(path, 'fractions.uni'))\n\
     pressure.load(os.path.join(path, 'pressure.uni'))\n\
     \n\
@@ -331,9 +339,10 @@ def save_liquid_data_low(path):\n\
     \n\
     phiParts.save(os.path.join(path, 'phiParts.uni'))\n\
     phi.save(os.path.join(path, 'phi.uni'))\n\
-    phiInit.save(os.path.join(path, 'phiInit.uni'))\n\
+    phiIn.save(os.path.join(path, 'phiIn.uni'))\n\
     phiObs.save(os.path.join(path, 'phiObs.uni'))\n\
-    phiObsInit.save(os.path.join(path, 'phiObsInit.uni'))\n\
+    phiObsIn.save(os.path.join(path, 'phiObsIn.uni'))\n\
+    phiOut.save(os.path.join(path, 'phiOut.uni'))\n\
     fractions.save(os.path.join(path, 'fractions.uni'))\n\
     pressure.save(os.path.join(path, 'pressure.uni'))\n\
     \n\
@@ -373,7 +382,8 @@ if 'flags'      in globals() : del flags\n\
 if 'numObs'     in globals() : del numObs\n\
 if 'phiParts'   in globals() : del phiParts\n\
 if 'phi'        in globals() : del phi\n\
-if 'phiInit'    in globals() : del phiInit\n\
+if 'phiIn'      in globals() : del phiIn\n\
+if 'phiOut'     in globals() : del phiOut\n\
 if 'pressure'   in globals() : del pressure\n\
 if 'vel'        in globals() : del vel\n\
 if 'x_vel'      in globals() : del x_vel\n\
@@ -396,7 +406,7 @@ if 'x_force'    in globals() : del x_force\n\
 if 'y_force'    in globals() : del y_force\n\
 if 'z_force'    in globals() : del z_force\n\
 if 'phiObs'     in globals() : del phiObs\n\
-if 'phiObsInit' in globals() : del phiObsInit\n\
+if 'phiObsIn'   in globals() : del phiObsIn\n\
 if 'fractions'  in globals() : del fractions\n";
 
 const std::string liquid_delete_grids_high = "\n\
