@@ -133,6 +133,7 @@ const std::string liquid_pre_step_low = "\n\
 def liquid_pre_step_low():\n\
     copyRealToVec3(sourceX=x_vel, sourceY=y_vel, sourceZ=z_vel, target=vel)\n\
     copyRealToVec3(sourceX=x_obvel, sourceY=y_obvel, sourceZ=z_obvel, target=obvel)\n\
+    copyRealToVec3(sourceX=x_force, sourceY=y_force, sourceZ=z_force, target=forces)\n\
     \n\
     clearInObstacle(flags=flags, grid=phi)\n";
 
@@ -147,7 +148,7 @@ def liquid_post_step_low():\n\
     \n\
     phiIn.setConst(0.5)\n\
     phiObs.setConst(0.5)\n\
-    phiObsIn.setConst(0.5)\n\
+    phiObsIn.setConst(0)\n\
     \n\
     copyVec3ToReal(source=vel, targetX=x_vel, targetY=y_vel, targetZ=z_vel)\n";
 
@@ -176,7 +177,6 @@ def manta_step(start_frame):\n\
             setOpenBound(flags=flags, bWidth=boundaryWidth, openBound=boundConditions, type=FlagOutflow|FlagEmpty)\n\
         \n\
         phiObs.join(phiObsIn)\n\
-        #phi.subtract(phiObs)\n\
         phiIn.subtract(phiObs)\n\
         phi.join(phiIn)\n\
         \n\
@@ -185,7 +185,6 @@ def manta_step(start_frame):\n\
         \n\
         sampleLevelsetWithParticles(phi=phiIn, flags=flags, parts=pp, discretization=particleNumber, randomness=randomness, refillEmpty=True)\n\
         flags.updateFromLevelset(phi)\n\
-        pushOutofObs(parts=pp, flags=flags, phiObs=phiObs)\n\
         \n\
         mantaMsg('Adapt timestep')\n\
         maxvel = vel.getMaxValue()\n\
@@ -240,12 +239,10 @@ def liquid_step():\n\
     \n\
     # forces & pressure solve\n\
     addGravity(flags=flags, vel=vel, gravity=gravity)\n\
-    copyRealToVec3(sourceX=x_force, sourceY=y_force, sourceZ=z_force, target=forces)\n\
     addForceField(flags=flags, vel=vel, force=forces)\n\
     # TODO (sebbas): need to extrapolate obvels - currently only on mesh border\n\
     #extrapolateMACSimple(flags=flags, vel=obvel, distance=res/2, intoObs=True)\n\
     addForceField(flags=flags, vel=vel, force=obvel)\n\
-    forces.clear()\n\
     \n\
     extrapolateMACSimple(flags=flags, vel=vel, distance=2, intoObs=True)\n\
     setWallBcs(flags=flags, vel=vel, fractions=fractions, phiObs=phiObs)\n\
