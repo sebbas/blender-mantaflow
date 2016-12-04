@@ -353,11 +353,6 @@ extern "C" float *smoke_turbulence_get_density(FLUID *smoke)
 	return (smoke && smoke->usingHighRes()) ? smoke->getDensityHigh() : NULL;
 }
 
-extern "C" int *smoke_turbulence_get_obstacle(FLUID *smoke)
-{
-	return (smoke && smoke->usingHighRes()) ? smoke->getObstacleHigh() : NULL;
-}
-
 extern "C" float *smoke_turbulence_get_fuel(FLUID *smoke)
 {
 	return (smoke && smoke->usingHighRes()) ? smoke->getFuelHigh() : NULL;

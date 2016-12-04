@@ -939,8 +939,6 @@ void FLUID::updatePointers(SmokeModifierData *smd)
 void FLUID::updatePointersHigh(SmokeModifierData *smd)
 {
 	std::cout << "Updating pointers high res" << std::endl;
-	
-	mObstacleHigh = (int*) getGridPointer("xl_flags", "s");
 
 	// Liquid
 	if (mUsingLiquid) {

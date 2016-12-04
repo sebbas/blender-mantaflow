@@ -121,7 +121,6 @@ public:
 	inline float* getTextureU2() { return mTextureU2; }
 	inline float* getTextureV2() { return mTextureV2; }
 	inline float* getTextureW2() { return mTextureW2; }
-	inline int* getObstacleHigh() { return mObstacleHigh; }
 	
 	inline float* getPhiIn()  { return mPhiIn; }
 	inline float* getPhiObs() { return mPhiObs; }
@@ -210,7 +209,6 @@ private:
 	float* mTextureU2;
 	float* mTextureV2;
 	float* mTextureW2;
-	int* mObstacleHigh;
 	
 	// Liquids
 	float* mPhiIn;
