@@ -33,8 +33,6 @@
 #include <string>
 #include <vector>
 
-#include "Python.h"
-
 struct FLUID {
 public:
 	FLUID(int *res, struct SmokeModifierData *smd);

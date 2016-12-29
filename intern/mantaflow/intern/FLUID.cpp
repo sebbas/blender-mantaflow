@@ -33,7 +33,8 @@
 #include <zlib.h>
 
 #include "FLUID.h"
-#include "registry.h"
+#include "manta.h"
+#include "Python.h"
 #include "shared_script.h"
 #include "smoke_script.h"
 #include "liquid_script.h"
