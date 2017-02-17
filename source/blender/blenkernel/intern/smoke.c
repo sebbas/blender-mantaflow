@@ -773,7 +773,7 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 // forward decleration
 static void smoke_calc_transparency(SmokeDomainSettings *sds, Scene *scene);
 static float calc_voxel_transp(float *result, float *input, int res[3], int *pixel, float *tRay, float correct);
-static void update_mesh_distances(int index, float *inflow_map, BVHTreeFromMesh *treeData, const float cell_size[3], const float ray_start[3]);
+static void update_mesh_distances(int index, float *inflow_map, BVHTreeFromMesh *treeData, const float ray_start[3]);
 
 static int get_lamp(Scene *scene, float *light)
 {
@@ -864,7 +864,7 @@ static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
 					data->num_obstacles[index]++;
 				}
 			}
-			update_mesh_distances(index, data->distances_map, data->tree, sds->cell_size, ray_start);
+			update_mesh_distances(index, data->distances_map, data->tree, ray_start);
 		}
 	}
 }
@@ -1595,7 +1595,7 @@ static void emit_from_particles(
 	}
 }
 
-static void update_mesh_distances(int index, float *inflow_map, BVHTreeFromMesh *treeData, const float cell_size[3], const float ray_start[3]) {
+static void update_mesh_distances(int index, float *inflow_map, BVHTreeFromMesh *treeData, const float ray_start[3]) {
 	/*****************************************************
 	 * Liquid inflow based on raycasts in all 6 directions.
 	 * Uses distances to mesh surface from within and outside flow mesh for inflow map.
@@ -1647,7 +1647,7 @@ static void update_mesh_distances(int index, float *inflow_map, BVHTreeFromMesh 
 
 static void sample_derivedmesh(
         SmokeFlowSettings *sfs,
-        const MVert *mvert, const MLoop *mloop, const MLoopTri *mlooptri, const MLoopUV *mloopuv, const float cell_size[3],
+        const MVert *mvert, const MLoop *mloop, const MLoopTri *mlooptri, const MLoopUV *mloopuv,
         float *influence_map, float *velocity_map, float *inflow_map, int index, const int base_res[3], float flow_center[3],
         BVHTreeFromMesh *treeData, const float ray_start[3], const float *vert_vel,
         bool has_velocity, int defgrp_index, MDeformVert *dvert,
@@ -1688,7 +1688,7 @@ static void sample_derivedmesh(
 	
 	/* Get mesh distances for liquid phi grid */
 	if (sfs->type == MOD_SMOKE_FLOW_TYPE_LIQUID) {
-		update_mesh_distances(index, inflow_map, treeData, cell_size, ray_start);
+		update_mesh_distances(index, inflow_map, treeData, ray_start);
 	}
 
 	/* find the nearest point on the mesh */
@@ -1827,7 +1827,7 @@ static void emit_from_derivedmesh_task_cb(void *userdata, const int z)
 				const float ray_start[3] = {((float)lx) + 0.5f, ((float)ly) + 0.5f, ((float)lz) + 0.5f};
 
 				sample_derivedmesh(
-				        data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv, data->sds->cell_size,
+				        data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
 				        em->influence, em->velocity, em->inflow, index, data->sds->base_res, data->flow_center,
 				        data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
 				        (float)lx, (float)ly, (float)lz);
@@ -1845,7 +1845,7 @@ static void emit_from_derivedmesh_task_cb(void *userdata, const int z)
 				const float ray_start[3] = {lx + 0.5f * data->hr, ly + 0.5f * data->hr, lz + 0.5f * data->hr};
 
 				sample_derivedmesh(
-				        data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv, data->sds->cell_size,
+				        data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
 				        em->influence_high, NULL, em->inflow_high, index, data->sds->base_res, data->flow_center,
 				        data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
 				        /* x,y,z needs to be always lowres */
