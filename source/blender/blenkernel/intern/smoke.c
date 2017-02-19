@@ -1602,9 +1602,8 @@ static void update_mesh_distances(int index, float *inflow_map, BVHTreeFromMesh 
 	 *****************************************************/
 	
 	/* Calculate map which indicates whether point is inside a mesh or not */
-	int i, hit_index;
-	float dot;
-	float min_dist_pos, min_dist_neg, min_dist_combined, min_dist_combined_normalized; // for xyz axis in pos and neg direction and when combining 6 axis
+	float min_dist_pos, min_dist_neg, min_dist_combined; // for xyz axis in pos and neg direction and when combining 6 axis
+	float inv_ray[3] = {0.0f};
 	float hit_dists[6] = {0.0f};
 	float ray_dirs[6][3] = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f},
 							{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}};
@@ -1615,20 +1614,29 @@ static void update_mesh_distances(int index, float *inflow_map, BVHTreeFromMesh 
 		inflow_map[index] = 0.5f;
 	}
 
-	for (i = 0; i < ray_cnt; i++) {
+	for (int i = 0; i < ray_cnt; i++) {
 		BVHTreeRayHit hit_tree = {0};
 		hit_tree.index = -1;
-		hit_tree.dist = 9999;
+		hit_tree.dist = BVH_RAYCAST_DIST_MAX;
 
-		hit_index = BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dirs[i], 0.0f, &hit_tree, treeData->raycast_callback, treeData);
-		hit_dists[i] = hit_tree.dist;
+		BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dirs[i], 0.0f, &hit_tree, treeData->raycast_callback, treeData);
+		hit_dists[i] = normalize_v3(&hit_tree.dist); // Make sure manta gets normalized distances
 
-		if (hit_index != -1) {
-		
-			dot = ray_dirs[i][0] * hit_tree.no[0] + ray_dirs[i][1] * hit_tree.no[1] + ray_dirs[i][2] * hit_tree.no[2];
+		if (hit_tree.index != -1) {
+			if (dot_v3v3(ray_dirs[i], hit_tree.no)) {
+				/* Also cast a ray in opposite direction to make sure
+				 * point is at least surrounded by two faces */
+				hit_tree.index = -1;
+				hit_tree.dist = BVH_RAYCAST_DIST_MAX;
 
-			if (dot >= 0) {
-				inflow_map[index] = -1.0f; // place mark in map: current point is inside flow mesh. we need this info later
+				negate_v3_v3(inv_ray, ray_dirs[i]);
+				BLI_bvhtree_ray_cast(treeData->tree, ray_start, inv_ray, 0.0f, &hit_tree, treeData->raycast_callback, treeData);
+
+				if (hit_tree.index != -1) {
+					if (dot_v3v3(inv_ray, hit_tree.no)) {
+						inflow_map[index] = -1.0f; // place mark in map: current point is inside flow mesh. we need this info later
+					}
+				}
 			}
 		}
 	}
@@ -1637,11 +1645,10 @@ static void update_mesh_distances(int index, float *inflow_map, BVHTreeFromMesh 
 	min_dist_pos = MIN3(hit_dists[0], hit_dists[1], hit_dists[2]);
 	min_dist_neg = MIN3(hit_dists[3], hit_dists[4], hit_dists[5]);
 	min_dist_combined = MIN2(min_dist_pos, min_dist_neg);
-	min_dist_combined_normalized = min_dist_combined; // TODO (sebbas): normalization results in too big values
 
 	/* Multiply actual distances to those points inside mesh (those points in inflow map with value -1)*/
 	if (inflow_map[index] == -1.0f) {
-		inflow_map[index] *= min_dist_combined_normalized;
+		inflow_map[index] *= min_dist_combined;
 	}
 }
 
