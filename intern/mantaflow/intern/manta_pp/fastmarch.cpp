@@ -573,16 +573,23 @@ void extrapolateLsSimple(Grid<Real>& phi, int distance = 4, bool inside=false ) 
 
 // extrapolate centered vec3 values from marked fluid cells
 
-void extrapolateVec3Simple(Grid<Vec3>& vel, Grid<Real>& phi, int distance = 4) {
+void extrapolateVec3Simple(Grid<Vec3>& vel, Grid<Real>& phi, int distance = 4, bool inside=false) {
 	Grid<int> tmp( vel.getParent() );
 	tmp.clear();
 	const int dim = (vel.is3D() ? 3:2);
 
-	// mark all inside
-	FOR_IJK_BND(vel,1) {
-		if ( phi(i,j,k) < 0. ) { tmp(i,j,k) = 1; }
-	} 
-	// + first layer outside
+	// by default, march outside
+	if(!inside) {
+		// mark all inside
+		FOR_IJK_BND(phi,1) {
+			if ( phi(i,j,k) < 0. ) { tmp(i,j,k) = 1; }
+		}
+	} else {
+		FOR_IJK_BND(phi,1) {
+			if ( phi(i,j,k) > 0. ) { tmp(i,j,k) = 1; }
+		}
+	}
+	// + first layer around
 	FOR_IJK_BND(vel,1) {
 		Vec3i p(i,j,k);
 		if ( tmp(p) ) continue;
@@ -591,13 +598,13 @@ void extrapolateVec3Simple(Grid<Vec3>& vel, Grid<Real>& phi, int distance = 4) {
 				tmp(i,j,k) = 2; n=2*dim;
 			}
 		}
-	} 
+	}
 
 	for(int d=2; d<1+distance; ++d) {
 		knExtrapolateLsSimple<Vec3>(vel, distance, tmp, d, Vec3(0.) );
 	} 
 	knSetRemaining<Vec3>(vel, tmp, Vec3(0.) );
-} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "extrapolateVec3Simple" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& vel = *_args.getPtr<Grid<Vec3> >("vel",0,&_lock); Grid<Real>& phi = *_args.getPtr<Grid<Real> >("phi",1,&_lock); int distance = _args.getOpt<int >("distance",2,4,&_lock);   _retval = getPyNone(); extrapolateVec3Simple(vel,phi,distance);  _args.check(); } pbFinalizePlugin(parent,"extrapolateVec3Simple", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateVec3Simple",e.what()); return 0; } } static const Pb::Register _RP_extrapolateVec3Simple ("","extrapolateVec3Simple",_W_3);  extern "C" { void PbRegister_extrapolateVec3Simple() { KEEP_UNUSED(_RP_extrapolateVec3Simple); } } 
+} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "extrapolateVec3Simple" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& vel = *_args.getPtr<Grid<Vec3> >("vel",0,&_lock); Grid<Real>& phi = *_args.getPtr<Grid<Real> >("phi",1,&_lock); int distance = _args.getOpt<int >("distance",2,4,&_lock); bool inside = _args.getOpt<bool >("inside",3,false,&_lock);   _retval = getPyNone(); extrapolateVec3Simple(vel,phi,distance,inside);  _args.check(); } pbFinalizePlugin(parent,"extrapolateVec3Simple", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateVec3Simple",e.what()); return 0; } } static const Pb::Register _RP_extrapolateVec3Simple ("","extrapolateVec3Simple",_W_3);  extern "C" { void PbRegister_extrapolateVec3Simple() { KEEP_UNUSED(_RP_extrapolateVec3Simple); } } 
 
 
 
