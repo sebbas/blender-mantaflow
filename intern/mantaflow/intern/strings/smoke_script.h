@@ -103,7 +103,7 @@ pressure    = s.create(RealGrid)\n\
 phiObsIn    = s.create(LevelsetGrid)\n\
 phiOut      = s.create(LevelsetGrid)\n\
 fractions   = s.create(MACGrid) # dummy grid\n\
-forces      = s.create(MACGrid)\n\
+forces      = s.create(Vec3Grid)\n\
 x_force     = s.create(RealGrid)\n\
 y_force     = s.create(RealGrid)\n\
 z_force     = s.create(RealGrid)\n\
@@ -326,7 +326,6 @@ def step_low():\n\
     \n\
     mantaMsg('Adding forces')\n\
     addForceField(flags=flags, vel=vel, force=forces)\n\
-    addForceField(flags=flags, vel=vel, force=obvel)\n\
     \n\
     mantaMsg('Walls')\n\
     setWallBcs(flags=flags, vel=vel)\n\
@@ -429,6 +428,7 @@ def load_smoke_data_low(path):\n\
     phiObsIn.load(os.path.join(path, 'phiObsIn.uni'))\n\
     phiOut.load(os.path.join(path, 'phiOut.uni'))\n\
     fractions.load(os.path.join(path, 'fractions.uni'))\n\
+    numObs.load(os.path.join(path, 'numObs.uni'))\n\
     if using_colors:\n\
         color_r.load(os.path.join(path, 'color_r.uni'))\n\
         color_g.load(os.path.join(path, 'color_g.uni'))\n\
@@ -483,6 +483,7 @@ def save_smoke_data_low(path):\n\
     phiObsIn.save(os.path.join(path, 'phiObsIn.uni'))\n\
     phiOut.save(os.path.join(path, 'phiOut.uni'))\n\
     fractions.save(os.path.join(path, 'fractions.uni'))\n\
+    numObs.save(os.path.join(path, 'numObs.uni'))\n\
     if using_colors:\n\
         color_r.save(os.path.join(path, 'color_r.uni'))\n\
         color_g.save(os.path.join(path, 'color_g.uni'))\n\

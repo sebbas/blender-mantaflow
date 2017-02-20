@@ -81,7 +81,7 @@ phiOut     = s.create(LevelsetGrid)\n\
 pressure   = s.create(RealGrid)\n\
 \n\
 phiObs     = s.create(LevelsetGrid)\n\
-phiObsIn = s.create(LevelsetGrid)\n\
+phiObsIn   = s.create(LevelsetGrid)\n\
 fractions  = s.create(MACGrid)\n\
 \n\
 vel        = s.create(MACGrid)\n\
