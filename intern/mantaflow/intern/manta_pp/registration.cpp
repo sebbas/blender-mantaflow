@@ -47,6 +47,7 @@ extern "C" {
 		extern void PbRegister_resetOutflow() ;
 		extern void PbRegister_setInflowBcs() ;
 		extern void PbRegister_setWallBcs() ;
+		extern void PbRegister_setObstacleVelocity() ;
 		extern void PbRegister_vorticityConfinement() ;
 		extern void PbRegister_addForceField() ;
 		extern void PbRegister_sampleFlagsWithParticles() ;
@@ -92,7 +93,7 @@ extern "C" {
 		extern void PbRegister_updateFractions() ;
 		extern void PbRegister_setObstacleFlags() ;
 		extern void PbRegister_clearInObstacle() ;
-		extern void PbRegister_averagedVel() ;
+		extern void PbRegister_averageGrid() ;
 		extern void PbRegister_smoothMesh() ;
 		extern void PbRegister_subdivideMesh() ;
 		extern void PbRegister_killSmallComponents() ;
@@ -144,6 +145,13 @@ extern "C" {
 		extern void PbRegister_file_18();
 		extern void PbRegister_file_19();
 		extern void PbRegister_file_20();
+		extern void PbRegister_file_21();
+		extern void PbRegister_file_22();
+		extern void PbRegister_file_23();
+		extern void PbRegister_file_24();
+		extern void PbRegister_file_25();
+		extern void PbRegister_file_26();
+		extern void PbRegister_file_27();
 }
 
 namespace Pb {
@@ -197,6 +205,7 @@ namespace Pb {
 		PbRegister_resetOutflow() ;
 		PbRegister_setInflowBcs() ;
 		PbRegister_setWallBcs() ;
+		PbRegister_setObstacleVelocity() ;
 		PbRegister_vorticityConfinement() ;
 		PbRegister_addForceField() ;
 		PbRegister_sampleFlagsWithParticles() ;
@@ -242,7 +251,7 @@ namespace Pb {
 		PbRegister_updateFractions() ;
 		PbRegister_setObstacleFlags() ;
 		PbRegister_clearInObstacle() ;
-		PbRegister_averagedVel() ;
+		PbRegister_averageGrid() ;
 		PbRegister_smoothMesh() ;
 		PbRegister_subdivideMesh() ;
 		PbRegister_killSmallComponents() ;
@@ -294,5 +303,12 @@ namespace Pb {
 		PbRegister_file_18();
 		PbRegister_file_19();
 		PbRegister_file_20();
+		PbRegister_file_21();
+		PbRegister_file_22();
+		PbRegister_file_23();
+		PbRegister_file_24();
+		PbRegister_file_25();
+		PbRegister_file_26();
+		PbRegister_file_27();
 	}
 }

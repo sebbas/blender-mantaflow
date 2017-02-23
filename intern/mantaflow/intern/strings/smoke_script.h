@@ -204,7 +204,7 @@ def smoke_pre_step_low():\n\
         clearInObstacle(flags=flags, grid=color_g)\n\
         clearInObstacle(flags=flags, grid=color_b)\n\
     \n\
-    averagedVel(vel=obvel, numObs=numObs)\n";
+    averageGrid(grid=obvel, num=numObs)\n";
 
 const std::string smoke_pre_step_high = "\n\
 def smoke_pre_step_high():\n\

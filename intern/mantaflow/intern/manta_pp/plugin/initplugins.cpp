@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/plugin/initplugins.cpp"
+#line 1 "/Users/sebbas/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/plugin/initplugins.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -568,25 +568,25 @@ void clearInObstacle(FlagGrid* flags, GridBase* grid) {
 	KnClearInObstacle(flags, grid);
 } static PyObject* _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "clearInObstacle" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid* flags = _args.getPtr<FlagGrid >("flags",0,&_lock); GridBase* grid = _args.getPtr<GridBase >("grid",1,&_lock);   _retval = getPyNone(); clearInObstacle(flags,grid);  _args.check(); } pbFinalizePlugin(parent,"clearInObstacle", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("clearInObstacle",e.what()); return 0; } } static const Pb::Register _RP_clearInObstacle ("","clearInObstacle",_W_18);  extern "C" { void PbRegister_clearInObstacle() { KEEP_UNUSED(_RP_clearInObstacle); } } 
 
- struct KnAveragedVel : public KernelBase { KnAveragedVel(MACGrid& vel, Grid<int>& numObs) :  KernelBase(&vel,0) ,vel(vel),numObs(numObs)   { runMessage(); run(); }   inline void op(IndexInt idx, MACGrid& vel, Grid<int>& numObs )  {
-	if (numObs[idx]) {
-		vel[idx].x /= numObs[idx];
-		vel[idx].y /= numObs[idx];
-		vel[idx].z /= numObs[idx];
+ struct KnAverageGrid : public KernelBase { KnAverageGrid(Grid<Vec3>& grid, Grid<int>& num) :  KernelBase(&grid,0) ,grid(grid),num(num)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid<Vec3>& grid, Grid<int>& num )  {
+	if (num[idx]) {
+		grid[idx].x /= num[idx];
+		grid[idx].y /= num[idx];
+		grid[idx].z /= num[idx];
 	}
-}    inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline Grid<int>& getArg1() { return numObs; } typedef Grid<int> type1; void runMessage() { debMsg("Executing kernel KnAveragedVel ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline Grid<Vec3>& getArg0() { return grid; } typedef Grid<Vec3> type0;inline Grid<int>& getArg1() { return num; } typedef Grid<int> type1; void runMessage() { debMsg("Executing kernel KnAverageGrid ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
 #pragma omp for 
-  for (IndexInt i = 0; i < _sz; i++) op(i,vel,numObs);  }   } MACGrid& vel; Grid<int>& numObs;   };
+  for (IndexInt i = 0; i < _sz; i++) op(i,grid,num);  }   } Grid<Vec3>& grid; Grid<int>& num;   };
 #line 461 "plugin/initplugins.cpp"
 
 
 
 
-void averagedVel(MACGrid& vel, Grid<int>& numObs) {
-	KnAveragedVel(vel, numObs);
-} static PyObject* _W_19 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "averagedVel" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<int>& numObs = *_args.getPtr<Grid<int> >("numObs",1,&_lock);   _retval = getPyNone(); averagedVel(vel,numObs);  _args.check(); } pbFinalizePlugin(parent,"averagedVel", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("averagedVel",e.what()); return 0; } } static const Pb::Register _RP_averagedVel ("","averagedVel",_W_19);  extern "C" { void PbRegister_averagedVel() { KEEP_UNUSED(_RP_averagedVel); } } 
+void averageGrid(Grid<Vec3>& grid, Grid<int>& num) {
+	KnAverageGrid(grid, num);
+} static PyObject* _W_19 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "averageGrid" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& grid = *_args.getPtr<Grid<Vec3> >("grid",0,&_lock); Grid<int>& num = *_args.getPtr<Grid<int> >("num",1,&_lock);   _retval = getPyNone(); averageGrid(grid,num);  _args.check(); } pbFinalizePlugin(parent,"averageGrid", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("averageGrid",e.what()); return 0; } } static const Pb::Register _RP_averageGrid ("","averageGrid",_W_19);  extern "C" { void PbRegister_averageGrid() { KEEP_UNUSED(_RP_averageGrid); } } 
 
 } // namespace
 
