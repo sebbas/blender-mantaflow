@@ -145,13 +145,6 @@ extern "C" {
 		extern void PbRegister_file_18();
 		extern void PbRegister_file_19();
 		extern void PbRegister_file_20();
-		extern void PbRegister_file_21();
-		extern void PbRegister_file_22();
-		extern void PbRegister_file_23();
-		extern void PbRegister_file_24();
-		extern void PbRegister_file_25();
-		extern void PbRegister_file_26();
-		extern void PbRegister_file_27();
 }
 
 namespace Pb {
@@ -303,12 +296,5 @@ namespace Pb {
 		PbRegister_file_18();
 		PbRegister_file_19();
 		PbRegister_file_20();
-		PbRegister_file_21();
-		PbRegister_file_22();
-		PbRegister_file_23();
-		PbRegister_file_24();
-		PbRegister_file_25();
-		PbRegister_file_26();
-		PbRegister_file_27();
 	}
 }
