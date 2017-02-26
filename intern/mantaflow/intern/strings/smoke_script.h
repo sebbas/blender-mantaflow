@@ -191,52 +191,19 @@ const std::string smoke_pre_step_low = "\n\
 def smoke_pre_step_low():\n\
     copyRealToVec3(sourceX=x_vel, sourceY=y_vel, sourceZ=z_vel, target=vel)\n\
     copyRealToVec3(sourceX=x_obvel, sourceY=y_obvel, sourceZ=z_obvel, target=obvel)\n\
-    copyRealToVec3(sourceX=x_force, sourceY=y_force, sourceZ=z_force, target=forces)\n\
-    \n\
-    clearInObstacle(flags=flags, grid=density)\n\
-    clearInObstacle(flags=flags, grid=vel)\n\
-    if (using_fire):\n\
-        clearInObstacle(flags=flags, grid=fuel)\n\
-        clearInObstacle(flags=flags, grid=flame)\n\
-        clearInObstacle(flags=flags, grid=react)\n\
-    if (using_colors):\n\
-        clearInObstacle(flags=flags, grid=color_r)\n\
-        clearInObstacle(flags=flags, grid=color_g)\n\
-        clearInObstacle(flags=flags, grid=color_b)\n\
-    \n\
-    averageGrid(grid=obvel, num=numObs)\n";
+    copyRealToVec3(sourceX=x_force, sourceY=y_force, sourceZ=z_force, target=forces)\n";
 
 const std::string smoke_pre_step_high = "\n\
 def smoke_pre_step_high():\n\
     copyRealToVec3(sourceX=texture_u, sourceY=texture_v, sourceZ=texture_w, target=uv[0])\n\
-    copyRealToVec3(sourceX=texture_u2, sourceY=texture_v2, sourceZ=texture_w2, target=uv[1])\n\
-    \n\
-    clearInObstacle(flags=xl_flags, grid=xl_density)\n\
-    clearInObstacle(flags=xl_flags, grid=xl_vel)\n\
-    if (using_fire):\n\
-        clearInObstacle(flags=xl_flags, grid=xl_fuel)\n\
-        clearInObstacle(flags=xl_flags, grid=xl_flame)\n\
-        clearInObstacle(flags=xl_flags, grid=xl_react)\n\
-    if (using_colors):\n\
-        clearInObstacle(flags=xl_flags, grid=xl_color_r)\n\
-        clearInObstacle(flags=xl_flags, grid=xl_color_g)\n\
-        clearInObstacle(flags=xl_flags, grid=xl_color_b)\n";
+    copyRealToVec3(sourceX=texture_u2, sourceY=texture_v2, sourceZ=texture_w2, target=uv[1])\n";
 
 const std::string smoke_post_step_low = "\n\
 def smoke_post_step_low():\n\
-    forces.clear()\n\
-    #obvel.clear()\n\
-    #x_obvel.clear()\n\
-    #y_obvel.clear()\n\
-    #z_obvel.clear()\n\
-    phiObsIn.setConst(0.5)\n\
-    \n\
     copyVec3ToReal(source=vel, targetX=x_vel, targetY=y_vel, targetZ=z_vel)\n";
 
 const std::string smoke_post_step_high = "\n\
 def smoke_post_step_high():\n\
-    xl_phiObsIn.setConst(0.5)\n\
-    \n\
     copyVec3ToReal(source=uv[0], targetX=texture_u, targetY=texture_v, targetZ=texture_w)\n\
     copyVec3ToReal(source=uv[1], targetX=texture_u2, targetY=texture_v2, targetZ=texture_w2)\n";
 
@@ -283,8 +250,23 @@ def manta_step(start_frame):\n\
 const std::string smoke_step_low = "\n\
 def step_low():\n\
     mantaMsg('Smoke step low')\n\
+    \n\
+    mantaMsg('Setting flags')\n\
     setObstacleFlags(flags=flags, phiObs=phiObsIn, fractions=fractions, phiOut=phiOut)\n\
     flags.fillGrid()\n\
+    \n\
+    mantaMsg('Clearing cells')\n\
+    clearInObstacle(flags=flags, grid=density)\n\
+    clearInObstacle(flags=flags, grid=vel)\n\
+    clearInObstacle(flags=flags, grid=pressure)\n\
+    if (using_fire):\n\
+        clearInObstacle(flags=flags, grid=fuel)\n\
+        clearInObstacle(flags=flags, grid=flame)\n\
+        clearInObstacle(flags=flags, grid=react)\n\
+    if (using_colors):\n\
+        clearInObstacle(flags=flags, grid=color_r)\n\
+        clearInObstacle(flags=flags, grid=color_g)\n\
+        clearInObstacle(flags=flags, grid=color_b)\n\
     \n\
     mantaMsg('Advecting density')\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$)\n\
@@ -326,6 +308,7 @@ def step_low():\n\
     \n\
     mantaMsg('Adding forces')\n\
     addForceField(flags=flags, vel=vel, force=forces)\n\
+    forces.clear()\n\
     \n\
     mantaMsg('Walls')\n\
     setWallBcs(flags=flags, vel=vel)\n\
@@ -349,6 +332,18 @@ def step_high():\n\
     mantaMsg('Smoke step high')\n\
     setObstacleFlags(flags=xl_flags, phiObs=xl_phiObsIn, fractions=xl_fractions)\n\
     xl_flags.fillGrid()\n\
+    \n\
+    mantaMsg('Clearing cells high')\n\
+    clearInObstacle(flags=xl_flags, grid=xl_density)\n\
+    clearInObstacle(flags=xl_flags, grid=xl_vel)\n\
+    if (using_fire):\n\
+        clearInObstacle(flags=xl_flags, grid=xl_fuel)\n\
+        clearInObstacle(flags=xl_flags, grid=xl_flame)\n\
+        clearInObstacle(flags=xl_flags, grid=xl_react)\n\
+    if (using_colors):\n\
+        clearInObstacle(flags=xl_flags, grid=xl_color_r)\n\
+        clearInObstacle(flags=xl_flags, grid=xl_color_g)\n\
+        clearInObstacle(flags=xl_flags, grid=xl_color_b)\n\
     \n\
     interpolateMACGrid(source=vel, target=xl_vel)\n\
     for i in range(uvs):\n\

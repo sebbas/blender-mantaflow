@@ -977,31 +977,25 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 //	float *b = smoke_get_color_b(sds->fluid);
 	float *phiObs = liquid_get_phiobs(sds->fluid);
 	int *num_obstacles = fluid_get_num_obstacle(sds->fluid);
-//	unsigned int z;
+	unsigned int z;
 
-	// TODO (sebbas): Removing for now - better do this directly in Mantaflow
-	// TODO: delete old obstacle flags
-//	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
-//	{
-//		if (obstacles[z] & 2 && obstaclesAnim[z] == 1) // Only delete moving obstacles, do not delete static obstacles, mantaflow convention: 2 == FlagObstacle
-//		{
-//			obstaclesAnim[z] = 0;
-//			obstacles[z] |= (sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID) ? 4 : 1; // mantaflow convention: 4 == FlagEmpty, 1 == FlagFluid
-//		}
-//        
-        /* Make sure phi grids are "fresh" before performing any joins in manta script */
-//        if (phi)
-//            phi[z] = 0.5f;
-//		if (phiObs)
-//			phiObs[z] = 0.5f;
-//
-//		if (velx && velz && velz) {
-//			velx[z] = 0;
-//			vely[z] = 0;
-//			velz[z] = 0;
-//		}
-//	}
+	/* Resetting all grids related to moving obstacles */
+	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
+	{
+		// TODO (sebbas): when and how reset liquid phi?
+//		if (phi)
+//			phi[z] = 0.5f;
+		if (phiObs)
+			phiObs[z] = 0.5f;
+		if (num_obstacles)
+			num_obstacles[z] = 0;
 
+		if (velx && velz && velz) {
+			velx[z] = 0.0f;
+			vely[z] = 0.0f;
+			velz[z] = 0.0f;
+		}
+	}
 
 	collobjs = get_collisionobjects(scene, ob, sds->coll_group, &numcollobj, eModifierType_Smoke);
 
