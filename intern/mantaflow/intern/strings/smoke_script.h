@@ -189,6 +189,11 @@ xl_react = xl.create(RealGrid)\n";
 
 const std::string smoke_pre_step_low = "\n\
 def smoke_pre_step_low():\n\
+    # translate obvels (world space) to grid space\n\
+    x_obvel.multConst(gs.x)\n\
+    y_obvel.multConst(gs.y)\n\
+    z_obvel.multConst(gs.z)\n\
+    \n\
     copyRealToVec3(sourceX=x_vel, sourceY=y_vel, sourceZ=z_vel, target=vel)\n\
     copyRealToVec3(sourceX=x_obvel, sourceY=y_obvel, sourceZ=z_obvel, target=obvel)\n\
     copyRealToVec3(sourceX=x_force, sourceY=y_force, sourceZ=z_force, target=forces)\n";
