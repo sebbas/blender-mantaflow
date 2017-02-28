@@ -59,7 +59,8 @@ using_colors    = $USING_COLORS$\n\
 using_heat      = $USING_HEAT$\n\
 using_fire      = $USING_FIRE$\n\
 using_highres   = $USING_HIGHRES$\n\
-vorticity       = $VORTICITY$\n";
+vorticity       = $VORTICITY$\n\
+obvel_border    = 2\n";
 
 const std::string smoke_variables_high = "\n\
 mantaMsg('Smoke variables high')\n\
@@ -277,7 +278,8 @@ def step_low():\n\
     averageGrid(grid=obvel, num=numObs)\n\
     # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
     extrapolateVec3Simple(vel=obvel, phi=phiObsIn, distance=res/2, inside=True)\n\
-    setObstacleVelocity(flags=flags, vel=vel, obvel=obvel)\n\
+    extrapolateVec3Simple(vel=obvel, phi=phiObsIn, distance=obvel_border, inside=False)\n\
+    setObstacleVelocity(flags=flags, vel=vel, obvel=obvel, borderWidth=obvel_border-1)\n\
     \n\
     mantaMsg('Advecting density')\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$)\n\
