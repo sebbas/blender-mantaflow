@@ -273,6 +273,12 @@ def step_low():\n\
         clearInObstacle(flags=flags, grid=color_g)\n\
         clearInObstacle(flags=flags, grid=color_b)\n\
     \n\
+    mantaMsg('Adding object velocity')\n\
+    averageGrid(grid=obvel, num=numObs)\n\
+    # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
+    extrapolateVec3Simple(vel=obvel, phi=phiObsIn, distance=res/2, inside=True)\n\
+    setObstacleVelocity(flags=flags, vel=vel, obvel=obvel)\n\
+    \n\
     mantaMsg('Advecting density')\n\
     advectSemiLagrange(flags=flags, vel=vel, grid=density, order=$ADVECT_ORDER$)\n\
     \n\
