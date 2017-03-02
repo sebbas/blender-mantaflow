@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/vortexpart.cpp"
+#line 1 "/Users/sebbas/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/vortexpart.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -70,10 +70,10 @@ inline Vec3 VortexKernel(const Vec3& p, const vector<VortexParticleData>& vp, Re
 		u[idx] = 0.0;
 	else
 		u[idx] = VortexKernel(nodes[idx].pos, vp, scale);
-}    inline operator vector<Vec3> () { return u; } inline vector<Vec3>  & getRet() { return u; }  inline vector<Node>& getArg0() { return nodes; } typedef vector<Node> type0;inline const vector<VortexParticleData>& getArg1() { return vp; } typedef vector<VortexParticleData> type1;inline Real& getArg2() { return scale; } typedef Real type2; void runMessage() { debMsg("Executing kernel KnVpAdvectMesh ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline operator vector<Vec3> () { return u; } inline vector<Vec3>  & getRet() { return u; }  inline vector<Node>& getArg0() { return nodes; } typedef vector<Node> type0;inline const vector<VortexParticleData>& getArg1() { return vp; } typedef vector<VortexParticleData> type1;inline Real& getArg2() { return scale; } typedef Real type2; void runMessage() { debMsg("Executing kernel KnVpAdvectMesh ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,nodes,vp,scale,u);  }   } vector<Node>& nodes; const vector<VortexParticleData>& vp; Real scale;  vector<Vec3>  u;  };
 #line 56 "vortexpart.cpp"
 
@@ -85,10 +85,10 @@ inline Vec3 VortexKernel(const Vec3& p, const vector<VortexParticleData>& vp, Re
 		u[idx] = 0.0;
 	else
 		u[idx] = VortexKernel(vp[idx].pos, vp, scale);
-}    inline operator vector<Vec3> () { return u; } inline vector<Vec3>  & getRet() { return u; }  inline vector<VortexParticleData>& getArg0() { return vp; } typedef vector<VortexParticleData> type0;inline Real& getArg1() { return scale; } typedef Real type1; void runMessage() { debMsg("Executing kernel KnVpAdvectSelf ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline operator vector<Vec3> () { return u; } inline vector<Vec3>  & getRet() { return u; }  inline vector<VortexParticleData>& getArg0() { return vp; } typedef vector<VortexParticleData> type0;inline Real& getArg1() { return scale; } typedef Real type1; void runMessage() { debMsg("Executing kernel KnVpAdvectSelf ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,vp,scale,u);  }   } vector<VortexParticleData>& vp; Real scale;  vector<Vec3>  u;  };
 #line 64 "vortexpart.cpp"
 

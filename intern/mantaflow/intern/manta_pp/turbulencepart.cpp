@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/turbulencepart.cpp"
+#line 1 "/Users/sebbas/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/turbulencepart.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -119,10 +119,10 @@ void TurbulenceParticleSystem::resetTexCoords(int num, const Vec3& inflow ) {
 		p[idx].tex0 += dx;
 		p[idx].tex1 += dx;
 	}
-}    inline TurbulenceParticleSystem& getArg0() { return p; } typedef TurbulenceParticleSystem type0;inline FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Grid<Real>& getArg3() { return kGrid; } typedef Grid<Real> type3;inline Real& getArg4() { return alpha; } typedef Real type4;inline Real& getArg5() { return dt; } typedef Real type5;inline int& getArg6() { return octaves; } typedef int type6;inline Real& getArg7() { return scale; } typedef Real type7;inline Real& getArg8() { return invL0; } typedef Real type8;inline Real& getArg9() { return kmin; } typedef Real type9; void runMessage() { debMsg("Executing kernel KnSynthesizeTurbulence ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline TurbulenceParticleSystem& getArg0() { return p; } typedef TurbulenceParticleSystem type0;inline FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Grid<Real>& getArg3() { return kGrid; } typedef Grid<Real> type3;inline Real& getArg4() { return alpha; } typedef Real type4;inline Real& getArg5() { return dt; } typedef Real type5;inline int& getArg6() { return octaves; } typedef int type6;inline Real& getArg7() { return scale; } typedef Real type7;inline Real& getArg8() { return invL0; } typedef Real type8;inline Real& getArg9() { return kmin; } typedef Real type9; void runMessage() { debMsg("Executing kernel KnSynthesizeTurbulence ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,p,flags,noise,kGrid,alpha,dt,octaves,scale,invL0,kmin);  }   } TurbulenceParticleSystem& p; FlagGrid& flags; WaveletNoiseField& noise; Grid<Real>& kGrid; Real alpha; Real dt; int octaves; Real scale; Real invL0; Real kmin;   };
 #line 81 "turbulencepart.cpp"
 

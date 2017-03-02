@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/edgecollapse.cpp"
+#line 1 "/Users/sebbas/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/edgecollapse.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework

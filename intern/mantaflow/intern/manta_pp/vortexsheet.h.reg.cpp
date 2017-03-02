@@ -12,19 +12,19 @@
 #include "vortexsheet.h"
 namespace Manta {
 #ifdef _C_VortexSheetMesh
- static const Pb::Register _R_13 ("VortexSheetMesh","VortexSheetMesh","Mesh"); template<> const char* Namify<VortexSheetMesh >::S = "VortexSheetMesh"; 
- static const Pb::Register _R_14 ("VortexSheetMesh","VortexSheetMesh",VortexSheetMesh::_W_0); 
- static const Pb::Register _R_15 ("VortexSheetMesh","calcCirculation",VortexSheetMesh::_W_1); 
- static const Pb::Register _R_16 ("VortexSheetMesh","calcVorticity",VortexSheetMesh::_W_2); 
- static const Pb::Register _R_17 ("VortexSheetMesh","reinitTexCoords",VortexSheetMesh::_W_3); 
+ static const Pb::Register _R_14 ("VortexSheetMesh","VortexSheetMesh","Mesh"); template<> const char* Namify<VortexSheetMesh >::S = "VortexSheetMesh"; 
+ static const Pb::Register _R_15 ("VortexSheetMesh","VortexSheetMesh",VortexSheetMesh::_W_0); 
+ static const Pb::Register _R_16 ("VortexSheetMesh","calcCirculation",VortexSheetMesh::_W_1); 
+ static const Pb::Register _R_17 ("VortexSheetMesh","calcVorticity",VortexSheetMesh::_W_2); 
+ static const Pb::Register _R_18 ("VortexSheetMesh","reinitTexCoords",VortexSheetMesh::_W_3); 
 #endif
 extern "C" {
-void PbRegister_file_13()
+void PbRegister_file_14()
 {
-	KEEP_UNUSED(_R_13);
 	KEEP_UNUSED(_R_14);
 	KEEP_UNUSED(_R_15);
 	KEEP_UNUSED(_R_16);
 	KEEP_UNUSED(_R_17);
+	KEEP_UNUSED(_R_18);
 }
 }}

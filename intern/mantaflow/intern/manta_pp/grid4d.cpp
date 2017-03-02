@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/grid4d.cpp"
+#line 1 "/Users/sebbas/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/grid4d.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -149,10 +149,10 @@ void Grid4d<T>::save(string name) {
  struct kn4dMinReal : public KernelBase { kn4dMinReal(Grid4d<Real>& val) :  KernelBase(&val,0) ,val(val) ,minVal(std::numeric_limits<Real>::max())  { runMessage(); run(); }   inline void op(IndexInt idx, Grid4d<Real>& val ,Real& minVal)  {
 	if (val[idx] < minVal)
 		minVal = val[idx];
-}    inline operator Real () { return minVal; } inline Real  & getRet() { return minVal; }  inline Grid4d<Real>& getArg0() { return val; } typedef Grid4d<Real> type0; void runMessage() { debMsg("Executing kernel kn4dMinReal ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline operator Real () { return minVal; } inline Real  & getRet() { return minVal; }  inline Grid4d<Real>& getArg0() { return val; } typedef Grid4d<Real> type0; void runMessage() { debMsg("Executing kernel kn4dMinReal ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  Real minVal = std::numeric_limits<Real>::max(); 
-#pragma omp for nowait 
+#pragma omp for nowait  
   for (IndexInt i = 0; i < _sz; i++) op(i,val,minVal); 
 #pragma omp critical
 {this->minVal = min(minVal, this->minVal); } }   } Grid4d<Real>& val;  Real minVal;  };
@@ -165,10 +165,10 @@ void Grid4d<T>::save(string name) {
  struct kn4dMaxReal : public KernelBase { kn4dMaxReal(Grid4d<Real>& val) :  KernelBase(&val,0) ,val(val) ,maxVal(-std::numeric_limits<Real>::max())  { runMessage(); run(); }   inline void op(IndexInt idx, Grid4d<Real>& val ,Real& maxVal)  {
 	if (val[idx] > maxVal)
 		maxVal = val[idx];
-}    inline operator Real () { return maxVal; } inline Real  & getRet() { return maxVal; }  inline Grid4d<Real>& getArg0() { return val; } typedef Grid4d<Real> type0; void runMessage() { debMsg("Executing kernel kn4dMaxReal ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline operator Real () { return maxVal; } inline Real  & getRet() { return maxVal; }  inline Grid4d<Real>& getArg0() { return val; } typedef Grid4d<Real> type0; void runMessage() { debMsg("Executing kernel kn4dMaxReal ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  Real maxVal = -std::numeric_limits<Real>::max(); 
-#pragma omp for nowait 
+#pragma omp for nowait  
   for (IndexInt i = 0; i < _sz; i++) op(i,val,maxVal); 
 #pragma omp critical
 {this->maxVal = max(maxVal, this->maxVal); } }   } Grid4d<Real>& val;  Real maxVal;  };
@@ -181,10 +181,10 @@ void Grid4d<T>::save(string name) {
  struct kn4dMinInt : public KernelBase { kn4dMinInt(Grid4d<int>& val) :  KernelBase(&val,0) ,val(val) ,minVal(std::numeric_limits<int>::max())  { runMessage(); run(); }   inline void op(IndexInt idx, Grid4d<int>& val ,int& minVal)  {
 	if (val[idx] < minVal)
 		minVal = val[idx];
-}    inline operator int () { return minVal; } inline int  & getRet() { return minVal; }  inline Grid4d<int>& getArg0() { return val; } typedef Grid4d<int> type0; void runMessage() { debMsg("Executing kernel kn4dMinInt ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline operator int () { return minVal; } inline int  & getRet() { return minVal; }  inline Grid4d<int>& getArg0() { return val; } typedef Grid4d<int> type0; void runMessage() { debMsg("Executing kernel kn4dMinInt ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  int minVal = std::numeric_limits<int>::max(); 
-#pragma omp for nowait 
+#pragma omp for nowait  
   for (IndexInt i = 0; i < _sz; i++) op(i,val,minVal); 
 #pragma omp critical
 {this->minVal = min(minVal, this->minVal); } }   } Grid4d<int>& val;  int minVal;  };
@@ -197,10 +197,10 @@ void Grid4d<T>::save(string name) {
  struct kn4dMaxInt : public KernelBase { kn4dMaxInt(Grid4d<int>& val) :  KernelBase(&val,0) ,val(val) ,maxVal(std::numeric_limits<int>::min())  { runMessage(); run(); }   inline void op(IndexInt idx, Grid4d<int>& val ,int& maxVal)  {
 	if (val[idx] > maxVal)
 		maxVal = val[idx];
-}    inline operator int () { return maxVal; } inline int  & getRet() { return maxVal; }  inline Grid4d<int>& getArg0() { return val; } typedef Grid4d<int> type0; void runMessage() { debMsg("Executing kernel kn4dMaxInt ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline operator int () { return maxVal; } inline int  & getRet() { return maxVal; }  inline Grid4d<int>& getArg0() { return val; } typedef Grid4d<int> type0; void runMessage() { debMsg("Executing kernel kn4dMaxInt ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  int maxVal = std::numeric_limits<int>::min(); 
-#pragma omp for nowait 
+#pragma omp for nowait  
   for (IndexInt i = 0; i < _sz; i++) op(i,val,maxVal); 
 #pragma omp critical
 {this->maxVal = max(maxVal, this->maxVal); } }   } Grid4d<int>& val;  int maxVal;  };
@@ -214,10 +214,10 @@ template <class VEC>  struct kn4dMinVec : public KernelBase { kn4dMinVec(Grid4d<
 	const Real s = normSquare(val[idx]);
 	if (s < minVal)
 		minVal = s;
-}    inline operator Real () { return minVal; } inline Real  & getRet() { return minVal; }  inline Grid4d<VEC>& getArg0() { return val; } typedef Grid4d<VEC> type0; void runMessage() { debMsg("Executing kernel kn4dMinVec ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline operator Real () { return minVal; } inline Real  & getRet() { return minVal; }  inline Grid4d<VEC>& getArg0() { return val; } typedef Grid4d<VEC> type0; void runMessage() { debMsg("Executing kernel kn4dMinVec ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  Real minVal = std::numeric_limits<Real>::max(); 
-#pragma omp for nowait 
+#pragma omp for nowait  
   for (IndexInt i = 0; i < _sz; i++) op(i,val,minVal); 
 #pragma omp critical
 {this->minVal = min(minVal, this->minVal); } }   } Grid4d<VEC>& val;  Real minVal;  };
@@ -231,10 +231,10 @@ template <class VEC>  struct kn4dMaxVec : public KernelBase { kn4dMaxVec(Grid4d<
 	const Real s = normSquare(val[idx]);
 	if (s > maxVal)
 		maxVal = s;
-}    inline operator Real () { return maxVal; } inline Real  & getRet() { return maxVal; }  inline Grid4d<VEC>& getArg0() { return val; } typedef Grid4d<VEC> type0; void runMessage() { debMsg("Executing kernel kn4dMaxVec ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline operator Real () { return maxVal; } inline Real  & getRet() { return maxVal; }  inline Grid4d<VEC>& getArg0() { return val; } typedef Grid4d<VEC> type0; void runMessage() { debMsg("Executing kernel kn4dMaxVec ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  Real maxVal = -std::numeric_limits<Real>::max(); 
-#pragma omp for nowait 
+#pragma omp for nowait  
   for (IndexInt i = 0; i < _sz; i++) op(i,val,maxVal); 
 #pragma omp critical
 {this->maxVal = max(maxVal, this->maxVal); } }   } Grid4d<VEC>& val;  Real maxVal;  };
@@ -257,34 +257,34 @@ template<class T> Grid4d<T>& Grid4d<T>::copyFrom (const Grid4d<T>& a, bool copyT
 	note: do not use , use copyFrom instead
 }*/
 
-template <class T>  struct kn4dSetConstReal : public KernelBase { kn4dSetConstReal(Grid4d<T>& me, T val) :  KernelBase(&me,0) ,me(me),val(val)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid4d<T>& me, T val )  { me[idx]  = val; }    inline Grid4d<T>& getArg0() { return me; } typedef Grid4d<T> type0;inline T& getArg1() { return val; } typedef T type1; void runMessage() { debMsg("Executing kernel kn4dSetConstReal ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+template <class T>  struct kn4dSetConstReal : public KernelBase { kn4dSetConstReal(Grid4d<T>& me, T val) :  KernelBase(&me,0) ,me(me),val(val)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid4d<T>& me, T val )  { me[idx]  = val; }    inline Grid4d<T>& getArg0() { return me; } typedef Grid4d<T> type0;inline T& getArg1() { return val; } typedef T type1; void runMessage() { debMsg("Executing kernel kn4dSetConstReal ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,val);  }   } Grid4d<T>& me; T val;   };
 #line 194 "grid4d.cpp"
 
 
-template <class T>  struct kn4dAddConstReal : public KernelBase { kn4dAddConstReal(Grid4d<T>& me, T val) :  KernelBase(&me,0) ,me(me),val(val)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid4d<T>& me, T val )  { me[idx] += val; }    inline Grid4d<T>& getArg0() { return me; } typedef Grid4d<T> type0;inline T& getArg1() { return val; } typedef T type1; void runMessage() { debMsg("Executing kernel kn4dAddConstReal ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+template <class T>  struct kn4dAddConstReal : public KernelBase { kn4dAddConstReal(Grid4d<T>& me, T val) :  KernelBase(&me,0) ,me(me),val(val)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid4d<T>& me, T val )  { me[idx] += val; }    inline Grid4d<T>& getArg0() { return me; } typedef Grid4d<T> type0;inline T& getArg1() { return val; } typedef T type1; void runMessage() { debMsg("Executing kernel kn4dAddConstReal ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,val);  }   } Grid4d<T>& me; T val;   };
 #line 195 "grid4d.cpp"
 
 
-template <class T>  struct kn4dMultConst : public KernelBase { kn4dMultConst(Grid4d<T>& me, T val) :  KernelBase(&me,0) ,me(me),val(val)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid4d<T>& me, T val )  { me[idx] *= val; }    inline Grid4d<T>& getArg0() { return me; } typedef Grid4d<T> type0;inline T& getArg1() { return val; } typedef T type1; void runMessage() { debMsg("Executing kernel kn4dMultConst ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+template <class T>  struct kn4dMultConst : public KernelBase { kn4dMultConst(Grid4d<T>& me, T val) :  KernelBase(&me,0) ,me(me),val(val)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid4d<T>& me, T val )  { me[idx] *= val; }    inline Grid4d<T>& getArg0() { return me; } typedef Grid4d<T> type0;inline T& getArg1() { return val; } typedef T type1; void runMessage() { debMsg("Executing kernel kn4dMultConst ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,val);  }   } Grid4d<T>& me; T val;   };
 #line 196 "grid4d.cpp"
 
 
-template <class T>  struct kn4dClamp : public KernelBase { kn4dClamp(Grid4d<T>& me, T min, T max) :  KernelBase(&me,0) ,me(me),min(min),max(max)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid4d<T>& me, T min, T max )  { me[idx] = clamp( me[idx], min, max); }    inline Grid4d<T>& getArg0() { return me; } typedef Grid4d<T> type0;inline T& getArg1() { return min; } typedef T type1;inline T& getArg2() { return max; } typedef T type2; void runMessage() { debMsg("Executing kernel kn4dClamp ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+template <class T>  struct kn4dClamp : public KernelBase { kn4dClamp(Grid4d<T>& me, T min, T max) :  KernelBase(&me,0) ,me(me),min(min),max(max)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid4d<T>& me, T min, T max )  { me[idx] = clamp( me[idx], min, max); }    inline Grid4d<T>& getArg0() { return me; } typedef Grid4d<T> type0;inline T& getArg1() { return min; } typedef T type1;inline T& getArg2() { return max; } typedef T type2; void runMessage() { debMsg("Executing kernel kn4dClamp ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,min,max);  }   } Grid4d<T>& me; T min; T max;   };
 #line 197 "grid4d.cpp"
 
@@ -382,18 +382,18 @@ template<class T> void Grid4d<T>::printGrid(int zSlice, int tSlice, bool printIn
 
 
 // helper to set/get components of vec4 Grids
- struct knGetComp4d : public KernelBase { knGetComp4d(const Grid4d<Vec4>& src, Grid4d<Real>& dst, int c) :  KernelBase(&src,0) ,src(src),dst(dst),c(c)   { runMessage(); run(); }   inline void op(IndexInt idx, const Grid4d<Vec4>& src, Grid4d<Real>& dst, int c )  { dst[idx]    = src[idx][c]; }    inline const Grid4d<Vec4>& getArg0() { return src; } typedef Grid4d<Vec4> type0;inline Grid4d<Real>& getArg1() { return dst; } typedef Grid4d<Real> type1;inline int& getArg2() { return c; } typedef int type2; void runMessage() { debMsg("Executing kernel knGetComp4d ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+ struct knGetComp4d : public KernelBase { knGetComp4d(const Grid4d<Vec4>& src, Grid4d<Real>& dst, int c) :  KernelBase(&src,0) ,src(src),dst(dst),c(c)   { runMessage(); run(); }   inline void op(IndexInt idx, const Grid4d<Vec4>& src, Grid4d<Real>& dst, int c )  { dst[idx]    = src[idx][c]; }    inline const Grid4d<Vec4>& getArg0() { return src; } typedef Grid4d<Vec4> type0;inline Grid4d<Real>& getArg1() { return dst; } typedef Grid4d<Real> type1;inline int& getArg2() { return c; } typedef int type2; void runMessage() { debMsg("Executing kernel knGetComp4d ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,src,dst,c);  }   } const Grid4d<Vec4>& src; Grid4d<Real>& dst; int c;   };
 #line 291 "grid4d.cpp"
 
 ;
- struct knSetComp4d : public KernelBase { knSetComp4d(const Grid4d<Real>& src, Grid4d<Vec4>& dst, int c) :  KernelBase(&src,0) ,src(src),dst(dst),c(c)   { runMessage(); run(); }   inline void op(IndexInt idx, const Grid4d<Real>& src, Grid4d<Vec4>& dst, int c )  { dst[idx][c] = src[idx];    }    inline const Grid4d<Real>& getArg0() { return src; } typedef Grid4d<Real> type0;inline Grid4d<Vec4>& getArg1() { return dst; } typedef Grid4d<Vec4> type1;inline int& getArg2() { return c; } typedef int type2; void runMessage() { debMsg("Executing kernel knSetComp4d ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+ struct knSetComp4d : public KernelBase { knSetComp4d(const Grid4d<Real>& src, Grid4d<Vec4>& dst, int c) :  KernelBase(&src,0) ,src(src),dst(dst),c(c)   { runMessage(); run(); }   inline void op(IndexInt idx, const Grid4d<Real>& src, Grid4d<Vec4>& dst, int c )  { dst[idx][c] = src[idx];    }    inline const Grid4d<Real>& getArg0() { return src; } typedef Grid4d<Real> type0;inline Grid4d<Vec4>& getArg1() { return dst; } typedef Grid4d<Vec4> type1;inline int& getArg2() { return c; } typedef int type2; void runMessage() { debMsg("Executing kernel knSetComp4d ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,src,dst,c);  }   } const Grid4d<Real>& src; Grid4d<Vec4>& dst; int c;   };
 #line 292 "grid4d.cpp"
 
@@ -410,18 +410,18 @@ template <class T>  struct knSetBnd4d : public KernelBase { knSetBnd4d(Grid4d<T>
 		 t<=w || t>=grid.getSizeT()-1-w );
 	if (bnd) 
 		grid(i,j,k,t) = value;
-}    inline Grid4d<T>& getArg0() { return grid; } typedef Grid4d<T> type0;inline T& getArg1() { return value; } typedef T type1;inline int& getArg2() { return w; } typedef int type2; void runMessage() { debMsg("Executing kernel knSetBnd4d ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   " t "<< minT<<" - "<< maxT  , 3); }; void run() {   const int _maxX = maxX; const int _maxY = maxY; if (maxT > 1) { const int _maxZ = maxZ; 
+}    inline Grid4d<T>& getArg0() { return grid; } typedef Grid4d<T> type0;inline T& getArg1() { return value; } typedef T type1;inline int& getArg2() { return w; } typedef int type2; void runMessage() { debMsg("Executing kernel knSetBnd4d ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   " t "<< minT<<" - "<< maxT  , 4); }; void run() {   const int _maxX = maxX; const int _maxY = maxY; if (maxT > 1) { const int _maxZ = maxZ; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int t=0; t < maxT; t++) for (int k=0; k < _maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,t,grid,value,w);  } } else if (maxZ > 1) { const int t=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,t,grid,value,w);  } } else { const int t=0; const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,t,grid,value,w);  } }   } Grid4d<T>& grid; T value; int w;   };
 #line 297 "grid4d.cpp"
 
@@ -460,18 +460,18 @@ template <class T>  struct knSetBnd4dNeumann : public KernelBase { knSetBnd4dNeu
 	}
 	if(set)
 		grid(i,j,k,t) = grid(si, sj, sk, st);
-}    inline Grid4d<T>& getArg0() { return grid; } typedef Grid4d<T> type0;inline int& getArg1() { return w; } typedef int type1; void runMessage() { debMsg("Executing kernel knSetBnd4dNeumann ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   " t "<< minT<<" - "<< maxT  , 3); }; void run() {   const int _maxX = maxX; const int _maxY = maxY; if (maxT > 1) { const int _maxZ = maxZ; 
+}    inline Grid4d<T>& getArg0() { return grid; } typedef Grid4d<T> type0;inline int& getArg1() { return w; } typedef int type1; void runMessage() { debMsg("Executing kernel knSetBnd4dNeumann ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   " t "<< minT<<" - "<< maxT  , 4); }; void run() {   const int _maxX = maxX; const int _maxY = maxY; if (maxT > 1) { const int _maxZ = maxZ; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int t=0; t < maxT; t++) for (int k=0; k < _maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,t,grid,w);  } } else if (maxZ > 1) { const int t=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,t,grid,w);  } } else { const int t=0; const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,t,grid,w);  } }   } Grid4d<T>& grid; int w;   };
 #line 311 "grid4d.cpp"
 
@@ -533,18 +533,18 @@ template <class S>  struct knSetRegion4d : public KernelBase { knSetRegion4d(Gri
 	Vec4 p(i,j,k,t);
 	for(int c=0; c<4; ++c) if(p[c]<start[c] || p[c]>end[c]) return;
 	dst(i,j,k,t) = value;
-}    inline Grid4d<S>& getArg0() { return dst; } typedef Grid4d<S> type0;inline Vec4& getArg1() { return start; } typedef Vec4 type1;inline Vec4& getArg2() { return end; } typedef Vec4 type2;inline S& getArg3() { return value; } typedef S type3; void runMessage() { debMsg("Executing kernel knSetRegion4d ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   " t "<< minT<<" - "<< maxT  , 3); }; void run() {   const int _maxX = maxX; const int _maxY = maxY; if (maxT > 1) { const int _maxZ = maxZ; 
+}    inline Grid4d<S>& getArg0() { return dst; } typedef Grid4d<S> type0;inline Vec4& getArg1() { return start; } typedef Vec4 type1;inline Vec4& getArg2() { return end; } typedef Vec4 type2;inline S& getArg3() { return value; } typedef S type3; void runMessage() { debMsg("Executing kernel knSetRegion4d ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   " t "<< minT<<" - "<< maxT  , 4); }; void run() {   const int _maxX = maxX; const int _maxY = maxY; if (maxT > 1) { const int _maxZ = maxZ; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int t=0; t < maxT; t++) for (int k=0; k < _maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,t,dst,start,end,value);  } } else if (maxZ > 1) { const int t=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,t,dst,start,end,value);  } } else { const int t=0; const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,t,dst,start,end,value);  } }   } Grid4d<S>& dst; Vec4 start; Vec4 end; S value;   };
 #line 394 "grid4d.cpp"
 
@@ -601,18 +601,18 @@ static inline void gridFactor4d(Vec4 s1, Vec4 s2, Vec4 optSize, Vec4 scale, Vec4
 template <class S>  struct knInterpol4d : public KernelBase { knInterpol4d(Grid4d<S>& target, Grid4d<S>& source, const Vec4& srcFac, const Vec4& offset) :  KernelBase(&target,0) ,target(target),source(source),srcFac(srcFac),offset(offset)   { runMessage(); run(); }   inline void op(int i, int j, int k, int t, Grid4d<S>& target, Grid4d<S>& source, const Vec4& srcFac, const Vec4& offset )  {
 	Vec4 pos = Vec4(i,j,k,t) * srcFac + offset;
 	target(i,j,k,t) = source.getInterpolated(pos);
-}    inline Grid4d<S>& getArg0() { return target; } typedef Grid4d<S> type0;inline Grid4d<S>& getArg1() { return source; } typedef Grid4d<S> type1;inline const Vec4& getArg2() { return srcFac; } typedef Vec4 type2;inline const Vec4& getArg3() { return offset; } typedef Vec4 type3; void runMessage() { debMsg("Executing kernel knInterpol4d ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   " t "<< minT<<" - "<< maxT  , 3); }; void run() {   const int _maxX = maxX; const int _maxY = maxY; if (maxT > 1) { const int _maxZ = maxZ; 
+}    inline Grid4d<S>& getArg0() { return target; } typedef Grid4d<S> type0;inline Grid4d<S>& getArg1() { return source; } typedef Grid4d<S> type1;inline const Vec4& getArg2() { return srcFac; } typedef Vec4 type2;inline const Vec4& getArg3() { return offset; } typedef Vec4 type3; void runMessage() { debMsg("Executing kernel knInterpol4d ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   " t "<< minT<<" - "<< maxT  , 4); }; void run() {   const int _maxX = maxX; const int _maxY = maxY; if (maxT > 1) { const int _maxZ = maxZ; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int t=0; t < maxT; t++) for (int k=0; k < _maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,t,target,source,srcFac,offset);  } } else if (maxZ > 1) { const int t=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,t,target,source,srcFac,offset);  } } else { const int t=0; const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,t,target,source,srcFac,offset);  } }   } Grid4d<S>& target; Grid4d<S>& source; const Vec4& srcFac; const Vec4& offset;   };
 #line 448 "grid4d.cpp"
 

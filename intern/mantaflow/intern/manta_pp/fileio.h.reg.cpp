@@ -12,7 +12,7 @@
 #include "fileio.h"
 namespace Manta {
 extern "C" {
-void PbRegister_file_17()
+void PbRegister_file_18()
 {
 }
 }}

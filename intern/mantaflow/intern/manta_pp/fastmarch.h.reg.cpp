@@ -12,7 +12,7 @@
 #include "fastmarch.h"
 namespace Manta {
 extern "C" {
-void PbRegister_file_4()
+void PbRegister_file_5()
 {
 }
 }}

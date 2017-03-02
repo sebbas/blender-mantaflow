@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/plugin/vortexplugins.cpp"
+#line 1 "/Users/sebbas/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/plugin/vortexplugins.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -89,10 +89,10 @@ void meshSmokeInflow(VortexSheetMesh& mesh, Shape* shape, Real amount) {
 
  struct KnAcceleration : public KernelBase { KnAcceleration(MACGrid& a, const MACGrid& v1, const MACGrid& v0, const Real idt) :  KernelBase(&a,0) ,a(a),v1(v1),v0(v0),idt(idt)   { runMessage(); run(); }   inline void op(IndexInt idx, MACGrid& a, const MACGrid& v1, const MACGrid& v0, const Real idt )  { 
 	a[idx] = (v1[idx]-v0[idx])*idt; 
-}    inline MACGrid& getArg0() { return a; } typedef MACGrid type0;inline const MACGrid& getArg1() { return v1; } typedef MACGrid type1;inline const MACGrid& getArg2() { return v0; } typedef MACGrid type2;inline const Real& getArg3() { return idt; } typedef Real type3; void runMessage() { debMsg("Executing kernel KnAcceleration ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline MACGrid& getArg0() { return a; } typedef MACGrid type0;inline const MACGrid& getArg1() { return v1; } typedef MACGrid type1;inline const MACGrid& getArg2() { return v0; } typedef MACGrid type2;inline const Real& getArg3() { return idt; } typedef Real type3; void runMessage() { debMsg("Executing kernel KnAcceleration ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,a,v1,v0,idt);  }   } MACGrid& a; const MACGrid& v1; const MACGrid& v0; const Real idt;   };
 #line 78 "plugin/vortexplugins.cpp"
 
@@ -298,7 +298,7 @@ void VICintegration(VortexSheetMesh& mesh, Real sigma, Grid<Vec3>& vel, FlagGrid
 		GridCgInterface *gcg = new GridCg<ApplyMatrix>(solution, rhs, residual, search, flags, temp1, &A0, &Ai, &Aj, &Ak );
 		gcg->setAccuracy(cgAccuracy); 
 		gcg->setUseL2Norm(true);
-		gcg->setPreconditioner( (GridCgInterface::PreconditionType)precondition, &pca0, &pca1, &pca2, &pca3); 
+		gcg->setICPreconditioner( (GridCgInterface::PreconditionType)precondition, &pca0, &pca1, &pca2, &pca3); 
 		
 		// iterations
 		for (int iter=0; iter<maxIter; iter++) {

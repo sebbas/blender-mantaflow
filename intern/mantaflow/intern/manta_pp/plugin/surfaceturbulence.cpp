@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/plugin/surfaceturbulence.cpp"
+#line 1 "/Users/sebbas/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/plugin/surfaceturbulence.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework 
@@ -441,10 +441,10 @@ void initFines(
         if(totalWeight != 0) avgDisplacement /= totalWeight;
         surfacePoints.setPos(idx, p + avgDisplacement);
     }
-}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline BasicParticleSystemWrapper& getArg1() { return coarseParticles; } typedef BasicParticleSystemWrapper type1;inline ParticleDataImplVec3Wrapper& getArg2() { return coarseParticlesPrevPos; } typedef ParticleDataImplVec3Wrapper type2; void runMessage() { debMsg("Executing kernel advectSurfacePoints ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline BasicParticleSystemWrapper& getArg1() { return coarseParticles; } typedef BasicParticleSystemWrapper type1;inline ParticleDataImplVec3Wrapper& getArg2() { return coarseParticlesPrevPos; } typedef ParticleDataImplVec3Wrapper type2; void runMessage() { debMsg("Executing kernel advectSurfacePoints ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,coarseParticles,coarseParticlesPrevPos);  }   } BasicParticleSystemWrapper& surfacePoints; BasicParticleSystemWrapper& coarseParticles; ParticleDataImplVec3Wrapper& coarseParticlesPrevPos;   };
 #line 413 "plugin/surfaceturbulence.cpp"
 
@@ -534,10 +534,10 @@ Vec3 computeConstraintGradient(
             if(dot(gradient, normal) < 0) {normal = -normal;}
             surfaceNormals[idx] = normal;
         }
-}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline BasicParticleSystemWrapper& getArg1() { return coarseParticles; } typedef BasicParticleSystemWrapper type1;inline ParticleDataImpl<Vec3>& getArg2() { return surfaceNormals; } typedef ParticleDataImpl<Vec3> type2; void runMessage() { debMsg("Executing kernel computeSurfaceNormals ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline BasicParticleSystemWrapper& getArg1() { return coarseParticles; } typedef BasicParticleSystemWrapper type1;inline ParticleDataImpl<Vec3>& getArg2() { return surfaceNormals; } typedef ParticleDataImpl<Vec3> type2; void runMessage() { debMsg("Executing kernel computeSurfaceNormals ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,coarseParticles,surfaceNormals);  }   } BasicParticleSystemWrapper& surfacePoints; BasicParticleSystemWrapper& coarseParticles; ParticleDataImpl<Vec3>& surfaceNormals;   };
 #line 472 "plugin/surfaceturbulence.cpp"
 
@@ -560,10 +560,10 @@ Vec3 computeConstraintGradient(
         newNormal += w * surfaceNormals[idn];
     LOOP_NEIGHBORS_END
     tempSurfaceVec3[idx] = getNormalized(newNormal);
-}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Vec3>& getArg1() { return surfaceNormals; } typedef ParticleDataImpl<Vec3> type1; void runMessage() { debMsg("Executing kernel computeAveragedNormals ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Vec3>& getArg1() { return surfaceNormals; } typedef ParticleDataImpl<Vec3> type1; void runMessage() { debMsg("Executing kernel computeAveragedNormals ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceNormals);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Vec3>& surfaceNormals;   };
 #line 529 "plugin/surfaceturbulence.cpp"
 
@@ -575,10 +575,10 @@ Vec3 computeConstraintGradient(
 
  struct assignNormals : public KernelBase { assignNormals( BasicParticleSystemWrapper& surfacePoints, ParticleDataImpl<Vec3>& surfaceNormals ) :  KernelBase(surfacePoints.size()) ,surfacePoints(surfacePoints),surfaceNormals(surfaceNormals)   { runMessage(); run(); }   inline void op(IndexInt idx,  BasicParticleSystemWrapper& surfacePoints, ParticleDataImpl<Vec3>& surfaceNormals  )  {
     surfaceNormals[idx] = tempSurfaceVec3[idx];
-}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Vec3>& getArg1() { return surfaceNormals; } typedef ParticleDataImpl<Vec3> type1; void runMessage() { debMsg("Executing kernel assignNormals ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Vec3>& getArg1() { return surfaceNormals; } typedef ParticleDataImpl<Vec3> type1; void runMessage() { debMsg("Executing kernel assignNormals ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceNormals);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Vec3>& surfaceNormals;   };
 #line 543 "plugin/surfaceturbulence.cpp"
 
@@ -698,10 +698,10 @@ void addDeleteSurfacePoints(
         LOOP_GHOSTS_END
     LOOP_NEIGHBORS_END
     tempSurfaceFloat[idx] = density;
-}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline void* getArg1() { return dummy; } typedef void type1; void runMessage() { debMsg("Executing kernel computeSurfaceDensities ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline void* getArg1() { return dummy; } typedef void type1; void runMessage() { debMsg("Executing kernel computeSurfaceDensities ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,dummy);  }   } BasicParticleSystemWrapper& surfacePoints; void* dummy;   };
 #line 652 "plugin/surfaceturbulence.cpp"
 
@@ -746,10 +746,10 @@ void addDeleteSurfacePoints(
     displacementNormal  *= .75f;
     displacementTangent *= .25f * params.meanFineDistance;
     tempSurfaceVec3[idx] = displacementNormal + displacementTangent;
-}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Vec3>& getArg1() { return surfaceNormals; } typedef ParticleDataImpl<Vec3> type1; void runMessage() { debMsg("Executing kernel computeSurfaceDisplacements ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Vec3>& getArg1() { return surfaceNormals; } typedef ParticleDataImpl<Vec3> type1; void runMessage() { debMsg("Executing kernel computeSurfaceDisplacements ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceNormals);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Vec3>& surfaceNormals;   };
 #line 667 "plugin/surfaceturbulence.cpp"
 
@@ -761,10 +761,10 @@ void addDeleteSurfacePoints(
 
  struct applySurfaceDisplacements : public KernelBase { applySurfaceDisplacements( BasicParticleSystemWrapper& surfacePoints, void* dummy ) :  KernelBase(surfacePoints.size()) ,surfacePoints(surfacePoints),dummy(dummy)   { runMessage(); run(); }   inline void op(IndexInt idx,  BasicParticleSystemWrapper& surfacePoints, void* dummy  )  {
     surfacePoints.setPos(idx, surfacePoints.getPos(idx) + tempSurfaceVec3[idx]);
-}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline void* getArg1() { return dummy; } typedef void type1; void runMessage() { debMsg("Executing kernel applySurfaceDisplacements ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline void* getArg1() { return dummy; } typedef void type1; void runMessage() { debMsg("Executing kernel applySurfaceDisplacements ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,dummy);  }   } BasicParticleSystemWrapper& surfacePoints; void* dummy;   };
 #line 708 "plugin/surfaceturbulence.cpp"
 
@@ -796,10 +796,10 @@ void regularizeSurfacePoints(
         }else if(level < 0) {
             surfacePoints.setPos(idx, pos - (params.outerRadius-params.innerRadius)*  level  *computeConstraintGradient(coarseParticles, surfacePoints.getPos(idx)));
         }
-}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline BasicParticleSystemWrapper& getArg1() { return coarseParticles; } typedef BasicParticleSystemWrapper type1; void runMessage() { debMsg("Executing kernel constrainSurface ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline BasicParticleSystemWrapper& getArg1() { return coarseParticles; } typedef BasicParticleSystemWrapper type1; void runMessage() { debMsg("Executing kernel constrainSurface ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,coarseParticles);  }   } BasicParticleSystemWrapper& surfacePoints; BasicParticleSystemWrapper& coarseParticles;   };
 #line 730 "plugin/surfaceturbulence.cpp"
 
@@ -836,10 +836,10 @@ void regularizeSurfacePoints(
             surfaceWaveSeedAmplitude[idx] /= wTotal;
         }
     }
-}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Real>& getArg1() { return surfaceWaveH; } typedef ParticleDataImpl<Real> type1;inline ParticleDataImpl<Real>& getArg2() { return surfaceWaveDtH; } typedef ParticleDataImpl<Real> type2;inline ParticleDataImpl<Real>& getArg3() { return surfaceWaveSeed; } typedef ParticleDataImpl<Real> type3;inline ParticleDataImpl<Real>& getArg4() { return surfaceWaveSeedAmplitude; } typedef ParticleDataImpl<Real> type4; void runMessage() { debMsg("Executing kernel interpolateNewWaveData ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Real>& getArg1() { return surfaceWaveH; } typedef ParticleDataImpl<Real> type1;inline ParticleDataImpl<Real>& getArg2() { return surfaceWaveDtH; } typedef ParticleDataImpl<Real> type2;inline ParticleDataImpl<Real>& getArg3() { return surfaceWaveSeed; } typedef ParticleDataImpl<Real> type3;inline ParticleDataImpl<Real>& getArg4() { return surfaceWaveSeedAmplitude; } typedef ParticleDataImpl<Real> type4; void runMessage() { debMsg("Executing kernel interpolateNewWaveData ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceWaveH,surfaceWaveDtH,surfaceWaveSeed,surfaceWaveSeedAmplitude);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Real>& surfaceWaveH; ParticleDataImpl<Real>& surfaceWaveDtH; ParticleDataImpl<Real>& surfaceWaveSeed; ParticleDataImpl<Real>& surfaceWaveSeedAmplitude;   };
 #line 748 "plugin/surfaceturbulence.cpp"
 
@@ -889,10 +889,10 @@ void surfaceMaintenance(
 
  struct addSeed : public KernelBase { addSeed( BasicParticleSystemWrapper& surfacePoints, ParticleDataImpl<Real>& surfaceWaveH, ParticleDataImpl<Real>& surfaceWaveSeed ) :  KernelBase(surfacePoints.size()) ,surfacePoints(surfacePoints),surfaceWaveH(surfaceWaveH),surfaceWaveSeed(surfaceWaveSeed)   { runMessage(); run(); }   inline void op(IndexInt idx,  BasicParticleSystemWrapper& surfacePoints, ParticleDataImpl<Real>& surfaceWaveH, ParticleDataImpl<Real>& surfaceWaveSeed  )  {
     surfaceWaveH[idx] += surfaceWaveSeed[idx];
-}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Real>& getArg1() { return surfaceWaveH; } typedef ParticleDataImpl<Real> type1;inline ParticleDataImpl<Real>& getArg2() { return surfaceWaveSeed; } typedef ParticleDataImpl<Real> type2; void runMessage() { debMsg("Executing kernel addSeed ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Real>& getArg1() { return surfaceWaveH; } typedef ParticleDataImpl<Real> type1;inline ParticleDataImpl<Real>& getArg2() { return surfaceWaveSeed; } typedef ParticleDataImpl<Real> type2; void runMessage() { debMsg("Executing kernel addSeed ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceWaveH,surfaceWaveSeed);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Real>& surfaceWaveH; ParticleDataImpl<Real>& surfaceWaveSeed;   };
 #line 815 "plugin/surfaceturbulence.cpp"
 
@@ -946,10 +946,10 @@ void surfaceMaintenance(
         Vec3 waveNormal = -getNormalized(vx*abc.x + vy*abc.y - Vec3(0,0,1));
         tempSurfaceVec3[idx] = waveNormal;
     }
-}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Vec3>& getArg1() { return surfaceNormals; } typedef ParticleDataImpl<Vec3> type1;inline ParticleDataImpl<Real>& getArg2() { return surfaceWaveH; } typedef ParticleDataImpl<Real> type2; void runMessage() { debMsg("Executing kernel computeSurfaceWaveNormal ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Vec3>& getArg1() { return surfaceNormals; } typedef ParticleDataImpl<Vec3> type1;inline ParticleDataImpl<Real>& getArg2() { return surfaceWaveH; } typedef ParticleDataImpl<Real> type2; void runMessage() { debMsg("Executing kernel computeSurfaceWaveNormal ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceNormals,surfaceWaveH);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Vec3>& surfaceNormals; ParticleDataImpl<Real>& surfaceWaveH;   };
 #line 825 "plugin/surfaceturbulence.cpp"
 
@@ -996,10 +996,10 @@ void surfaceMaintenance(
         if(wTotal != 0) {tempSurfaceFloat[idx] = laplacian/wTotal;}
         else {tempSurfaceFloat[idx] = 0;}
     }
-}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Vec3>& getArg1() { return surfaceNormals; } typedef ParticleDataImpl<Vec3> type1;inline ParticleDataImpl<Real>& getArg2() { return surfaceWaveH; } typedef ParticleDataImpl<Real> type2; void runMessage() { debMsg("Executing kernel computeSurfaceWaveLaplacians ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Vec3>& getArg1() { return surfaceNormals; } typedef ParticleDataImpl<Vec3> type1;inline ParticleDataImpl<Real>& getArg2() { return surfaceWaveH; } typedef ParticleDataImpl<Real> type2; void runMessage() { debMsg("Executing kernel computeSurfaceWaveLaplacians ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceNormals,surfaceWaveH);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Vec3>& surfaceNormals; ParticleDataImpl<Real>& surfaceWaveH;   };
 #line 874 "plugin/surfaceturbulence.cpp"
 
@@ -1022,10 +1022,10 @@ void surfaceMaintenance(
     // clamp H and DtH (to prevent rare extreme behaviors)
     surfaceWaveDtH[idx] = clamp(surfaceWaveDtH[idx], -params.waveMaxFrequency*params.waveMaxAmplitude, params.waveMaxFrequency*params.waveMaxAmplitude);
     surfaceWaveH[idx]   = clamp(surfaceWaveH[idx], -params.waveMaxAmplitude, params.waveMaxAmplitude);
-}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Real>& getArg1() { return surfaceWaveH; } typedef ParticleDataImpl<Real> type1;inline ParticleDataImpl<Real>& getArg2() { return surfaceWaveDtH; } typedef ParticleDataImpl<Real> type2;inline ParticleDataImpl<Real>& getArg3() { return surfaceWaveSeed; } typedef ParticleDataImpl<Real> type3; void runMessage() { debMsg("Executing kernel evolveWave ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Real>& getArg1() { return surfaceWaveH; } typedef ParticleDataImpl<Real> type1;inline ParticleDataImpl<Real>& getArg2() { return surfaceWaveDtH; } typedef ParticleDataImpl<Real> type2;inline ParticleDataImpl<Real>& getArg3() { return surfaceWaveSeed; } typedef ParticleDataImpl<Real> type3; void runMessage() { debMsg("Executing kernel evolveWave ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceWaveH,surfaceWaveDtH,surfaceWaveSeed);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Real>& surfaceWaveH; ParticleDataImpl<Real>& surfaceWaveDtH; ParticleDataImpl<Real>& surfaceWaveSeed;   };
 #line 919 "plugin/surfaceturbulence.cpp"
 
@@ -1058,10 +1058,10 @@ void surfaceMaintenance(
     LOOP_NEIGHBORS_END
     if(wTotal!=0) {curv /= wTotal;}
     tempSurfaceFloat[idx] = fabs(curv);
-}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Vec3>& getArg1() { return surfaceNormals; } typedef ParticleDataImpl<Vec3> type1; void runMessage() { debMsg("Executing kernel computeSurfaceCurvature ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Vec3>& getArg1() { return surfaceNormals; } typedef ParticleDataImpl<Vec3> type1; void runMessage() { debMsg("Executing kernel computeSurfaceCurvature ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceNormals);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Vec3>& surfaceNormals;   };
 #line 936 "plugin/surfaceturbulence.cpp"
 
@@ -1084,10 +1084,10 @@ void surfaceMaintenance(
     LOOP_NEIGHBORS_END
     if(wTotal!=0) {curv /= wTotal;}
     surfaceWaveSource[idx] = curv;
-}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Real>& getArg1() { return surfaceWaveSource; } typedef ParticleDataImpl<Real> type1; void runMessage() { debMsg("Executing kernel smoothCurvature ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Real>& getArg1() { return surfaceWaveSource; } typedef ParticleDataImpl<Real> type1; void runMessage() { debMsg("Executing kernel smoothCurvature ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceWaveSource);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Real>& surfaceWaveSource;   };
 #line 965 "plugin/surfaceturbulence.cpp"
 
@@ -1112,10 +1112,10 @@ void surfaceMaintenance(
 
     // source values for display (not used after this point anyway)
     surfaceWaveSource[idx] = (source>=0) ? 1 : 0;
-}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Real>& getArg1() { return surfaceWaveSeed; } typedef ParticleDataImpl<Real> type1;inline ParticleDataImpl<Real>& getArg2() { return surfaceWaveSeedAmplitude; } typedef ParticleDataImpl<Real> type2;inline ParticleDataImpl<Real>& getArg3() { return surfaceWaveSource; } typedef ParticleDataImpl<Real> type3; void runMessage() { debMsg("Executing kernel seedWaves ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystemWrapper& getArg0() { return surfacePoints; } typedef BasicParticleSystemWrapper type0;inline ParticleDataImpl<Real>& getArg1() { return surfaceWaveSeed; } typedef ParticleDataImpl<Real> type1;inline ParticleDataImpl<Real>& getArg2() { return surfaceWaveSeedAmplitude; } typedef ParticleDataImpl<Real> type2;inline ParticleDataImpl<Real>& getArg3() { return surfaceWaveSource; } typedef ParticleDataImpl<Real> type3; void runMessage() { debMsg("Executing kernel seedWaves ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,surfacePoints,surfaceWaveSeed,surfaceWaveSeedAmplitude,surfaceWaveSource);  }   } BasicParticleSystemWrapper& surfacePoints; ParticleDataImpl<Real>& surfaceWaveSeed; ParticleDataImpl<Real>& surfaceWaveSeedAmplitude; ParticleDataImpl<Real>& surfaceWaveSource;   };
 #line 986 "plugin/surfaceturbulence.cpp"
 

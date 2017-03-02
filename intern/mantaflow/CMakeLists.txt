@@ -106,6 +106,10 @@ set(SRC
 	intern/manta_pp/movingobs.h
 	intern/manta_pp/movingobs.h.reg
 	intern/manta_pp/movingobs.h.reg.cpp
+	intern/manta_pp/multigrid.cpp
+	intern/manta_pp/multigrid.h
+	intern/manta_pp/multigrid.h.reg
+	intern/manta_pp/multigrid.h.reg.cpp
 	intern/manta_pp/noisefield.cpp
 	intern/manta_pp/noisefield.h
 	intern/manta_pp/noisefield.h.reg
@@ -118,6 +122,7 @@ set(SRC
 	intern/manta_pp/plugin/extforces.cpp
 	intern/manta_pp/plugin/fire.cpp
 	intern/manta_pp/plugin/flip.cpp
+	intern/manta_pp/plugin/fluidguiding.cpp
 	intern/manta_pp/plugin/initplugins.cpp
 	intern/manta_pp/plugin/kepsilon.cpp
 	intern/manta_pp/plugin/meshplugins.cpp
@@ -158,6 +163,7 @@ set(SRC
 	intern/manta_pp/util/mcubes.h
 	intern/manta_pp/util/quaternion.h
 	intern/manta_pp/util/randomstream.h
+	intern/manta_pp/util/rcmatrix.h
 	intern/manta_pp/util/simpleimage.cpp
 	intern/manta_pp/util/simpleimage.h
 	intern/manta_pp/util/solvana.h

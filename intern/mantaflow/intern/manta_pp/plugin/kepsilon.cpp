@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/plugin/kepsilon.cpp"
+#line 1 "/Users/sebbas/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/plugin/kepsilon.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -59,10 +59,10 @@ const Real keNuMax = 5.0;
 
 	kgrid[idx] = ke;
 	egrid[idx] = eps;
-}    inline Grid<Real>& getArg0() { return kgrid; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return egrid; } typedef Grid<Real> type1;inline Real& getArg2() { return minK; } typedef Real type2;inline Real& getArg3() { return maxK; } typedef Real type3;inline Real& getArg4() { return minNu; } typedef Real type4;inline Real& getArg5() { return maxNu; } typedef Real type5; void runMessage() { debMsg("Executing kernel KnTurbulenceClamp ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline Grid<Real>& getArg0() { return kgrid; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return egrid; } typedef Grid<Real> type1;inline Real& getArg2() { return minK; } typedef Real type2;inline Real& getArg3() { return maxK; } typedef Real type3;inline Real& getArg4() { return minNu; } typedef Real type4;inline Real& getArg5() { return maxNu; } typedef Real type5; void runMessage() { debMsg("Executing kernel KnTurbulenceClamp ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,kgrid,egrid,minK,maxK,minNu,maxNu);  }   } Grid<Real>& kgrid; Grid<Real>& egrid; Real minK; Real maxK; Real minNu; Real maxNu;   };
 #line 39 "plugin/kepsilon.cpp"
 
@@ -99,14 +99,14 @@ const Real keNuMax = 5.0;
 		nuT(i,j,k) = 0;
 		if (strain) (*strain)(i,j,k) = 0;
 	}
-}   inline const MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline const Grid<Vec3>& getArg1() { return velCenter; } typedef Grid<Vec3> type1;inline const Grid<Real>& getArg2() { return ke; } typedef Grid<Real> type2;inline const Grid<Real>& getArg3() { return eps; } typedef Grid<Real> type3;inline Grid<Real>& getArg4() { return prod; } typedef Grid<Real> type4;inline Grid<Real>& getArg5() { return nuT; } typedef Grid<Real> type5;inline Grid<Real>* getArg6() { return strain; } typedef Grid<Real> type6;inline Real& getArg7() { return pscale; } typedef Real type7; void runMessage() { debMsg("Executing kernel KnComputeProduction ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline const MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline const Grid<Vec3>& getArg1() { return velCenter; } typedef Grid<Vec3> type1;inline const Grid<Real>& getArg2() { return ke; } typedef Grid<Real> type2;inline const Grid<Real>& getArg3() { return eps; } typedef Grid<Real> type3;inline Grid<Real>& getArg4() { return prod; } typedef Grid<Real> type4;inline Grid<Real>& getArg5() { return nuT; } typedef Grid<Real> type5;inline Grid<Real>* getArg6() { return strain; } typedef Grid<Real> type6;inline Real& getArg7() { return pscale; } typedef Real type7; void runMessage() { debMsg("Executing kernel KnComputeProduction ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,vel,velCenter,ke,eps,prod,nuT,strain,pscale);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,vel,velCenter,ke,eps,prod,nuT,strain,pscale);  } }  } const MACGrid& vel; const Grid<Vec3>& velCenter; const Grid<Real>& ke; const Grid<Real>& eps; Grid<Real>& prod; Grid<Real>& nuT; Grid<Real>* strain; Real pscale;   };
 #line 56 "plugin/kepsilon.cpp"
 
@@ -140,10 +140,10 @@ void KEpsilonComputeProduction(MACGrid& vel, Grid<Real>& k, Grid<Real>& eps, Gri
 
 	kgrid[idx] = newK;
 	egrid[idx] = newEps;
-}    inline Grid<Real>& getArg0() { return kgrid; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return egrid; } typedef Grid<Real> type1;inline const Grid<Real>& getArg2() { return pgrid; } typedef Grid<Real> type2;inline Real& getArg3() { return dt; } typedef Real type3; void runMessage() { debMsg("Executing kernel KnAddTurbulenceSource ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline Grid<Real>& getArg0() { return kgrid; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return egrid; } typedef Grid<Real> type1;inline const Grid<Real>& getArg2() { return pgrid; } typedef Grid<Real> type2;inline Real& getArg3() { return dt; } typedef Real type3; void runMessage() { debMsg("Executing kernel KnAddTurbulenceSource ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,kgrid,egrid,pgrid,dt);  }   } Grid<Real>& kgrid; Grid<Real>& egrid; const Grid<Real>& pgrid; Real dt;   };
 #line 103 "plugin/kepsilon.cpp"
 

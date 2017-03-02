@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/fastmarch.cpp"
+#line 1 "/Users/sebbas/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/fastmarch.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -202,7 +202,7 @@ void FastMarch<COMP,TDIR>::addToList(const Vec3i& p, const Vec3i& src) {
 		if (k==0)      phi(i,j,k) = phi(i,j,1);
 		if (k==maxZ-1) phi(i,j,k) = phi(i,j,k-1);
 	}
-}   inline Grid<Real>& getArg0() { return phi; } typedef Grid<Real> type0; void runMessage() { debMsg("Executing kernel SetLevelsetBoundaries ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, phi);  } Grid<Real>& phi;   };
+}   inline Grid<Real>& getArg0() { return phi; } typedef Grid<Real> type0; void runMessage() { debMsg("Executing kernel SetLevelsetBoundaries ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, phi);  } Grid<Real>& phi;   };
 
 /*****************************************************************************/
 //! Walk...
@@ -267,19 +267,19 @@ template class FastMarch<FmHeapEntryOut, +1>;
 		tmp(p)    = d+1;
 		vel(p)[c] = avgVel / nbs;
 	}
-}   inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline int& getArg1() { return distance; } typedef int type1;inline Grid<int>& getArg2() { return tmp; } typedef Grid<int> type2;inline const int& getArg3() { return d; } typedef int type3;inline const int& getArg4() { return c; } typedef int type4; void runMessage() { debMsg("Executing kernel knExtrapolateMACSimple ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline int& getArg1() { return distance; } typedef int type1;inline Grid<int>& getArg2() { return tmp; } typedef Grid<int> type2;inline const int& getArg3() { return d; } typedef int type3;inline const int& getArg4() { return c; } typedef int type4; void runMessage() { debMsg("Executing kernel knExtrapolateMACSimple ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,vel,distance,tmp,d,c);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,vel,distance,tmp,d,c);  } }  } MACGrid& vel; int distance; Grid<int>& tmp; const int d; const int c;   };
 #line 233 "fastmarch.cpp"
 
 
-// TODO, make parallel by only modifying ijk (ie, turn push into pull)
+// NT_DEBUG, todo - test w/o single threaded, should work...
 
 
  struct knExtrapolateIntoBnd : public KernelBase { knExtrapolateIntoBnd(FlagGrid& flags, MACGrid& vel) :  KernelBase(&flags,0) ,flags(flags),vel(vel)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel )  {
@@ -311,7 +311,7 @@ template class FastMarch<FmHeapEntryOut, +1>;
 		if(v[2] < 0.) v[2] = 0.;
 		c++;
 	}
-	else if( k==(flags.getSizeY()-1) ) { 
+	else if( k==(flags.getSizeZ()-1) ) { 
 		v = vel(i,j,k-1);
 		if(v[2] > 0.) v[2] = 0.;
 		c++;
@@ -319,7 +319,7 @@ template class FastMarch<FmHeapEntryOut, +1>;
 	if(c>0) {
 		vel(i,j,k) = v/(Real)c;
 	}
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1; void runMessage() { debMsg("Executing kernel knExtrapolateIntoBnd ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, flags,vel);  } FlagGrid& flags; MACGrid& vel;   };
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1; void runMessage() { debMsg("Executing kernel knExtrapolateIntoBnd ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, flags,vel);  } FlagGrid& flags; MACGrid& vel;   };
 
 // todo - use getGradient instead?
 inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
@@ -351,14 +351,14 @@ inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
 		Real l = dot(n,v);
 		vel(i,j,k) -= n*l;
 	}
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<Real>& getArg2() { return phi; } typedef Grid<Real> type2;inline Real& getArg3() { return maxDist; } typedef Real type3; void runMessage() { debMsg("Executing kernel knUnprojectNormalComp ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<Real>& getArg2() { return phi; } typedef Grid<Real> type2;inline Real& getArg3() { return maxDist; } typedef Real type3; void runMessage() { debMsg("Executing kernel knUnprojectNormalComp ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,phi,maxDist);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,phi,maxDist);  } }  } FlagGrid& flags; MACGrid& vel; Grid<Real>& phi; Real maxDist;   };
 #line 320 "fastmarch.cpp"
 
@@ -432,14 +432,14 @@ void extrapolateMACSimple(FlagGrid& flags, MACGrid& vel, int distance = 4, Level
 		weight(p)[c]    = d+1;
 		vel(p)[c] = avgVel / nbs;
 	}
-}   inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline Grid<Vec3>& getArg1() { return weight; } typedef Grid<Vec3> type1;inline int& getArg2() { return distance; } typedef int type2;inline const int& getArg3() { return d; } typedef int type3;inline const int& getArg4() { return c; } typedef int type4; void runMessage() { debMsg("Executing kernel knExtrapolateMACFromWeight ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline Grid<Vec3>& getArg1() { return weight; } typedef Grid<Vec3> type1;inline int& getArg2() { return distance; } typedef int type2;inline const int& getArg3() { return d; } typedef int type3;inline const int& getArg4() { return c; } typedef int type4; void runMessage() { debMsg("Executing kernel knExtrapolateMACFromWeight ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,vel,weight,distance,d,c);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,vel,weight,distance,d,c);  } }  } MACGrid& vel; Grid<Vec3>& weight; int distance; const int d; const int c;   };
 #line 377 "fastmarch.cpp"
 
@@ -500,14 +500,14 @@ template <class S>  struct knExtrapolateLsSimple : public KernelBase { knExtrapo
 		tmp(p) = d+1;
 		val(p) = avg / nbs + direction;
 	} 
-}   inline Grid<S>& getArg0() { return val; } typedef Grid<S> type0;inline int& getArg1() { return distance; } typedef int type1;inline Grid<int>& getArg2() { return tmp; } typedef Grid<int> type2;inline const int& getArg3() { return d; } typedef int type3;inline S& getArg4() { return direction; } typedef S type4; void runMessage() { debMsg("Executing kernel knExtrapolateLsSimple ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline Grid<S>& getArg0() { return val; } typedef Grid<S> type0;inline int& getArg1() { return distance; } typedef int type1;inline Grid<int>& getArg2() { return tmp; } typedef Grid<int> type2;inline const int& getArg3() { return d; } typedef int type3;inline S& getArg4() { return direction; } typedef S type4; void runMessage() { debMsg("Executing kernel knExtrapolateLsSimple ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,val,distance,tmp,d,direction);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,val,distance,tmp,d,direction);  } }  } Grid<S>& val; int distance; Grid<int>& tmp; const int d; S direction;   };
 #line 439 "fastmarch.cpp"
 
@@ -519,14 +519,14 @@ template <class S>  struct knExtrapolateLsSimple : public KernelBase { knExtrapo
 template <class S>  struct knSetRemaining : public KernelBase { knSetRemaining(Grid<S>& phi, Grid<int>& tmp, S distance ) :  KernelBase(&phi,1) ,phi(phi),tmp(tmp),distance(distance)   { runMessage(); run(); }  inline void op(int i, int j, int k, Grid<S>& phi, Grid<int>& tmp, S distance  )  {
 	if (tmp(i,j,k) != 0) return;
 	phi(i,j,k) = distance;
-}   inline Grid<S>& getArg0() { return phi; } typedef Grid<S> type0;inline Grid<int>& getArg1() { return tmp; } typedef Grid<int> type1;inline S& getArg2() { return distance; } typedef S type2; void runMessage() { debMsg("Executing kernel knSetRemaining ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline Grid<S>& getArg0() { return phi; } typedef Grid<S> type0;inline Grid<int>& getArg1() { return tmp; } typedef Grid<int> type1;inline S& getArg2() { return distance; } typedef S type2; void runMessage() { debMsg("Executing kernel knSetRemaining ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,phi,tmp,distance);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,phi,tmp,distance);  } }  } Grid<S>& phi; Grid<int>& tmp; S distance;   };
 #line 463 "fastmarch.cpp"
 
@@ -577,7 +577,7 @@ void extrapolateVec3Simple(Grid<Vec3>& vel, Grid<Real>& phi, int distance = 4, b
 	Grid<int> tmp( vel.getParent() );
 	tmp.clear();
 	const int dim = (vel.is3D() ? 3:2);
-
+	
 	// by default, march outside
 	if(!inside) {
 		// mark all inside
@@ -599,10 +599,10 @@ void extrapolateVec3Simple(Grid<Vec3>& vel, Grid<Real>& phi, int distance = 4, b
 			}
 		}
 	}
-
+	
 	for(int d=2; d<1+distance; ++d) {
 		knExtrapolateLsSimple<Vec3>(vel, distance, tmp, d, Vec3(0.) );
-	} 
+	}
 	knSetRemaining<Vec3>(vel, tmp, Vec3(0.) );
 } static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "extrapolateVec3Simple" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& vel = *_args.getPtr<Grid<Vec3> >("vel",0,&_lock); Grid<Real>& phi = *_args.getPtr<Grid<Real> >("phi",1,&_lock); int distance = _args.getOpt<int >("distance",2,4,&_lock); bool inside = _args.getOpt<bool >("inside",3,false,&_lock);   _retval = getPyNone(); extrapolateVec3Simple(vel,phi,distance,inside);  _args.check(); } pbFinalizePlugin(parent,"extrapolateVec3Simple", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateVec3Simple",e.what()); return 0; } } static const Pb::Register _RP_extrapolateVec3Simple ("","extrapolateVec3Simple",_W_3);  extern "C" { void PbRegister_extrapolateVec3Simple() { KEEP_UNUSED(_RP_extrapolateVec3Simple); } } 
 

@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/fileio.cpp"
+#line 1 "/Users/sebbas/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/fileio.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -52,10 +52,12 @@ static const int STR_LEN_PDATA = 256;
 typedef struct {
 	int dimX, dimY, dimZ; // grid size
 	int gridType, elementType, bytesPerElement; // data type info
-	char info[252]; // mantaflow build information
-	int dimT;       // optionally store forth dimension for 4d grids
+	char info[STR_LEN_GRID]; // mantaflow build information
+	int dimT;                // optionally store forth dimension for 4d grids
 	unsigned long long timestamp; // creation time
 } UniHeader;
+
+// note: header v4 only uses 4 bytes of the info string to store the fourth dimension, not needed for pdata
 
 //! pdata uni header, v3  (similar to grid header)
 typedef struct {
@@ -782,7 +784,7 @@ void readGridUni(const string& name, Grid<T>* grid) {
 		gzread(gzf, &((*grid)[0]), sizeof(T)*head.dimX*head.dimY*head.dimZ);
 #		endif
 	} else {
-		debMsg( "Unknown header!" ,1);
+		errMsg( "Unknown header '"<<ID<<"' " );
 	}
 	gzclose(gzf);
 #	else
@@ -926,6 +928,8 @@ void writeGrid4dUni(const string& name, Grid4d<T>* grid) {
 #	endif
 };
 
+//! note, reading 4d uni grids is slightly more complicated than 3d ones
+//! as it optionally supports sliced reading
 template <class T>
 void readGrid4dUni(const string& name, Grid4d<T>* grid, int readTslice, Grid4d<T>* slice, void** fileHandle ) 
 {
@@ -1233,12 +1237,12 @@ void readPdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
 	int    q  = int(grid(idx) / step + step*0.5);
 	double qd = q * (double)step;
 	grid(idx) = (Real)qd;
-}    inline Grid<Real>& getArg0() { return grid; } typedef Grid<Real> type0;inline Real& getArg1() { return step; } typedef Real type1; void runMessage() { debMsg("Executing kernel knQuantize ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline Grid<Real>& getArg0() { return grid; } typedef Grid<Real> type0;inline Real& getArg1() { return step; } typedef Real type1; void runMessage() { debMsg("Executing kernel knQuantize ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,grid,step);  }   } Grid<Real>& grid; Real step;   };
-#line 1220 "fileio.cpp"
+#line 1224 "fileio.cpp"
 
  
 void quantizeGrid(Grid<Real>& grid, Real step) { knQuantize(grid,step); } static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "quantizeGrid" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& grid = *_args.getPtr<Grid<Real> >("grid",0,&_lock); Real step = _args.get<Real >("step",1,&_lock);   _retval = getPyNone(); quantizeGrid(grid,step);  _args.check(); } pbFinalizePlugin(parent,"quantizeGrid", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("quantizeGrid",e.what()); return 0; } } static const Pb::Register _RP_quantizeGrid ("","quantizeGrid",_W_2);  extern "C" { void PbRegister_quantizeGrid() { KEEP_UNUSED(_RP_quantizeGrid); } } 

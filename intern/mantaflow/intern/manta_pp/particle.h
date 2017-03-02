@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/particle.h"
+#line 1 "/Users/sebbas/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/particle.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -426,10 +426,10 @@ template <class S>  struct GridAdvectKernel : public KernelBase { GridAdvectKern
 		} 
 	}
 	u[idx] = vel.getInterpolated(p[idx].pos) * dt;
-}    inline operator std::vector<Vec3> () { return u; } inline std::vector<Vec3>  & getRet() { return u; }  inline std::vector<S>& getArg0() { return p; } typedef std::vector<S> type0;inline const MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline const FlagGrid& getArg2() { return flags; } typedef FlagGrid type2;inline Real& getArg3() { return dt; } typedef Real type3;inline bool& getArg4() { return deleteInObstacle; } typedef bool type4;inline bool& getArg5() { return stopInObstacle; } typedef bool type5; void runMessage() { debMsg("Executing kernel GridAdvectKernel ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline operator std::vector<Vec3> () { return u; } inline std::vector<Vec3>  & getRet() { return u; }  inline std::vector<S>& getArg0() { return p; } typedef std::vector<S> type0;inline const MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline const FlagGrid& getArg2() { return flags; } typedef FlagGrid type2;inline Real& getArg3() { return dt; } typedef Real type3;inline bool& getArg4() { return deleteInObstacle; } typedef bool type4;inline bool& getArg5() { return stopInObstacle; } typedef bool type5; void runMessage() { debMsg("Executing kernel GridAdvectKernel ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,p,vel,flags,dt,deleteInObstacle,stopInObstacle,u);  }   } std::vector<S>& p; const MACGrid& vel; const FlagGrid& flags; Real dt; bool deleteInObstacle; bool stopInObstacle;  std::vector<Vec3>  u;  };
 #line 407 "particle.h"
 
@@ -443,10 +443,10 @@ template <class S>  struct KnDeleteInObstacle : public KernelBase { KnDeleteInOb
 	if (!flags.isInBounds(p[idx].pos,1) || flags.isObstacle(p[idx].pos)) {
 		p[idx].flag |= ParticleBase::PDELETE;
 	} 
-}    inline std::vector<S>& getArg0() { return p; } typedef std::vector<S> type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1; void runMessage() { debMsg("Executing kernel KnDeleteInObstacle ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline std::vector<S>& getArg0() { return p; } typedef std::vector<S> type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1; void runMessage() { debMsg("Executing kernel KnDeleteInObstacle ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,p,flags);  }   } std::vector<S>& p; const FlagGrid& flags;   };
 #line 429 "particle.h"
 
@@ -476,10 +476,10 @@ template <class S>  struct KnClampPositions : public KernelBase { KnClampPositio
 	if (stopInObstacle && (flags.isObstacle(p[idx].pos)) ) {
 		p[idx].pos = bisectBacktracePos(flags, (*posOld)[idx], p[idx].pos);
 	}
-}    inline std::vector<S>& getArg0() { return p; } typedef std::vector<S> type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline ParticleDataImpl<Vec3> * getArg2() { return posOld; } typedef ParticleDataImpl<Vec3>  type2;inline bool& getArg3() { return stopInObstacle; } typedef bool type3; void runMessage() { debMsg("Executing kernel KnClampPositions ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline std::vector<S>& getArg0() { return p; } typedef std::vector<S> type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline ParticleDataImpl<Vec3> * getArg2() { return posOld; } typedef ParticleDataImpl<Vec3>  type2;inline bool& getArg3() { return stopInObstacle; } typedef bool type3; void runMessage() { debMsg("Executing kernel KnClampPositions ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,p,flags,posOld,stopInObstacle);  }   } std::vector<S>& p; const FlagGrid& flags; ParticleDataImpl<Vec3> * posOld; bool stopInObstacle;   };
 #line 452 "particle.h"
 
@@ -528,7 +528,7 @@ template <class S>  struct KnProjectParticles : public KernelBase { KnProjectPar
 		Vec3 jitter = jlen * rand.getVec3();
 		part[idx].pos = clamp(p, Vec3(1,1,1)+jitter, toVec3(gradient.getSize()-1)-jitter);
 	}
-}    inline ParticleSystem<S>& getArg0() { return part; } typedef ParticleSystem<S> type0;inline Grid<Vec3>& getArg1() { return gradient; } typedef Grid<Vec3> type1; void runMessage() { debMsg("Executing kernel KnProjectParticles ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; for (IndexInt i = 0; i < _sz; i++) op(i, part,gradient);   } ParticleSystem<S>& part; Grid<Vec3>& gradient;   };
+}    inline ParticleSystem<S>& getArg0() { return part; } typedef ParticleSystem<S> type0;inline Grid<Vec3>& getArg1() { return gradient; } typedef Grid<Vec3> type1; void runMessage() { debMsg("Executing kernel KnProjectParticles ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; for (IndexInt i = 0; i < _sz; i++) op(i, part,gradient);   } ParticleSystem<S>& part; Grid<Vec3>& gradient;   };
 
 template<class S>
 void ParticleSystem<S>::projectOutside(Grid<Vec3>& gradient) {

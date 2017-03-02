@@ -12,7 +12,7 @@
 #include "edgecollapse.h"
 namespace Manta {
 extern "C" {
-void PbRegister_file_18()
+void PbRegister_file_19()
 {
 }
 }}

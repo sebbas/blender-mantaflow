@@ -45,14 +45,14 @@ namespace Manta {
 	Real target = noise.evaluate(Vec3(i,j,k)) * scale * factor;
 	if (density(i,j,k) < target)
 		density(i,j,k) = target;
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return density; } typedef Grid<Real> type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Grid<Real>& getArg3() { return sdf; } typedef Grid<Real> type3;inline Real& getArg4() { return scale; } typedef Real type4;inline Real& getArg5() { return sigma; } typedef Real type5; void runMessage() { debMsg("Executing kernel KnApplyNoiseInfl ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return density; } typedef Grid<Real> type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Grid<Real>& getArg3() { return sdf; } typedef Grid<Real> type3;inline Real& getArg4() { return scale; } typedef Real type4;inline Real& getArg5() { return sigma; } typedef Real type5; void runMessage() { debMsg("Executing kernel KnApplyNoiseInfl ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,density,noise,sdf,scale,sigma);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,density,noise,sdf,scale,sigma);  } }  } FlagGrid& flags; Grid<Real>& density; WaveletNoiseField& noise; Grid<Real>& sdf; Real scale; Real sigma;   };
 #line 29 "plugin/initplugins.cpp"
 
@@ -68,14 +68,14 @@ void densityInflow(FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& nois
  struct KnAddNoise : public KernelBase { KnAddNoise(FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, Grid<Real>* sdf, Real scale) :  KernelBase(&flags,0) ,flags(flags),density(density),noise(noise),sdf(sdf),scale(scale)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, Grid<Real>* sdf, Real scale )  {
 	if (!flags.isFluid(i,j,k) || (sdf && (*sdf)(i,j,k) > 0.) ) return;
 	density(i,j,k) += noise.evaluate(Vec3(i,j,k)) * scale;
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return density; } typedef Grid<Real> type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Grid<Real>* getArg3() { return sdf; } typedef Grid<Real> type3;inline Real& getArg4() { return scale; } typedef Real type4; void runMessage() { debMsg("Executing kernel KnAddNoise ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return density; } typedef Grid<Real> type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Grid<Real>* getArg3() { return sdf; } typedef Grid<Real> type3;inline Real& getArg4() { return scale; } typedef Real type4; void runMessage() { debMsg("Executing kernel KnAddNoise ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,density,noise,sdf,scale);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,density,noise,sdf,scale);  } }  } FlagGrid& flags; Grid<Real>& density; WaveletNoiseField& noise; Grid<Real>* sdf; Real scale;   };
 #line 45 "plugin/initplugins.cpp"
 
@@ -88,10 +88,10 @@ void addNoise(FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, Gr
 
 template <class T>  struct knSetPdataNoise : public KernelBase { knSetPdataNoise(BasicParticleSystem& parts, ParticleDataImpl<T>& pdata, WaveletNoiseField& noise, Real scale) :  KernelBase(parts.size()) ,parts(parts),pdata(pdata),noise(noise),scale(scale)   { runMessage(); run(); }   inline void op(IndexInt idx, BasicParticleSystem& parts, ParticleDataImpl<T>& pdata, WaveletNoiseField& noise, Real scale )  {
 	pdata[idx] = noise.evaluate( parts.getPos(idx) ) * scale;
-}    inline BasicParticleSystem& getArg0() { return parts; } typedef BasicParticleSystem type0;inline ParticleDataImpl<T>& getArg1() { return pdata; } typedef ParticleDataImpl<T> type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Real& getArg3() { return scale; } typedef Real type3; void runMessage() { debMsg("Executing kernel knSetPdataNoise ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystem& getArg0() { return parts; } typedef BasicParticleSystem type0;inline ParticleDataImpl<T>& getArg1() { return pdata; } typedef ParticleDataImpl<T> type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Real& getArg3() { return scale; } typedef Real type3; void runMessage() { debMsg("Executing kernel knSetPdataNoise ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,parts,pdata,noise,scale);  }   } BasicParticleSystem& parts; ParticleDataImpl<T>& pdata; WaveletNoiseField& noise; Real scale;   };
 #line 55 "plugin/initplugins.cpp"
 
@@ -99,10 +99,10 @@ template <class T>  struct knSetPdataNoise : public KernelBase { knSetPdataNoise
 
 template <class T>  struct knSetPdataNoiseVec : public KernelBase { knSetPdataNoiseVec(BasicParticleSystem& parts, ParticleDataImpl<T>& pdata, WaveletNoiseField& noise, Real scale) :  KernelBase(parts.size()) ,parts(parts),pdata(pdata),noise(noise),scale(scale)   { runMessage(); run(); }   inline void op(IndexInt idx, BasicParticleSystem& parts, ParticleDataImpl<T>& pdata, WaveletNoiseField& noise, Real scale )  {
 	pdata[idx] = noise.evaluateVec( parts.getPos(idx) ) * scale;
-}    inline BasicParticleSystem& getArg0() { return parts; } typedef BasicParticleSystem type0;inline ParticleDataImpl<T>& getArg1() { return pdata; } typedef ParticleDataImpl<T> type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Real& getArg3() { return scale; } typedef Real type3; void runMessage() { debMsg("Executing kernel knSetPdataNoiseVec ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystem& getArg0() { return parts; } typedef BasicParticleSystem type0;inline ParticleDataImpl<T>& getArg1() { return pdata; } typedef ParticleDataImpl<T> type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Real& getArg3() { return scale; } typedef Real type3; void runMessage() { debMsg("Executing kernel knSetPdataNoiseVec ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,parts,pdata,noise,scale);  }   } BasicParticleSystem& parts; ParticleDataImpl<T>& pdata; WaveletNoiseField& noise; Real scale;   };
 #line 59 "plugin/initplugins.cpp"
 
@@ -161,14 +161,14 @@ LevelsetGrid obstacleLevelset(FlagGrid& flags) {
 		density(i,j,k) = emission(i,j,k);
 	else
 		density(i,j,k) += emission(i,j,k);
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return density; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return emission; } typedef Grid<Real> type2;inline bool& getArg3() { return isAbsolute; } typedef bool type3; void runMessage() { debMsg("Executing kernel KnApplyEmission ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return density; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return emission; } typedef Grid<Real> type2;inline bool& getArg3() { return isAbsolute; } typedef bool type3; void runMessage() { debMsg("Executing kernel KnApplyEmission ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,density,emission,isAbsolute);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,density,emission,isAbsolute);  } }  } FlagGrid& flags; Grid<Real>& density; Grid<Real>& emission; bool isAbsolute;   };
 #line 110 "plugin/initplugins.cpp"
 
@@ -187,14 +187,14 @@ void applyEmission(FlagGrid& flags, Grid<Real>& density, Grid<Real>& emission, b
  struct KnApplyDensity : public KernelBase { KnApplyDensity(FlagGrid& flags, Grid<Real>& density, Grid<Real>& sdf, Real value, Real sigma) :  KernelBase(&flags,0) ,flags(flags),density(density),sdf(sdf),value(value),sigma(sigma)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& density, Grid<Real>& sdf, Real value, Real sigma )  {
 	if (!flags.isFluid(i,j,k) || sdf(i,j,k) > sigma) return;
 	density(i,j,k) = value;
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return density; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return sdf; } typedef Grid<Real> type2;inline Real& getArg3() { return value; } typedef Real type3;inline Real& getArg4() { return sigma; } typedef Real type4; void runMessage() { debMsg("Executing kernel KnApplyDensity ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return density; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return sdf; } typedef Grid<Real> type2;inline Real& getArg3() { return value; } typedef Real type3;inline Real& getArg4() { return sigma; } typedef Real type4; void runMessage() { debMsg("Executing kernel KnApplyDensity ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,density,sdf,value,sigma);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,density,sdf,value,sigma);  } }  } FlagGrid& flags; Grid<Real>& density; Grid<Real>& sdf; Real value; Real sigma;   };
 #line 128 "plugin/initplugins.cpp"
 
@@ -389,14 +389,14 @@ Real pdataMaxDiff( ParticleDataBase* a, ParticleDataBase* b ) {
 
 	}
 
-}   inline Grid<Real> & getArg0() { return phiObs; } typedef Grid<Real>  type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline const Vec3& getArg2() { return center; } typedef Vec3 type2;inline const Real& getArg3() { return radius; } typedef Real type3; void runMessage() { debMsg("Executing kernel kninitVortexVelocity ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline Grid<Real> & getArg0() { return phiObs; } typedef Grid<Real>  type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline const Vec3& getArg2() { return center; } typedef Vec3 type2;inline const Real& getArg3() { return radius; } typedef Real type3; void runMessage() { debMsg("Executing kernel kninitVortexVelocity ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,phiObs,vel,center,radius);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,phiObs,vel,center,radius);  } }  } Grid<Real> & phiObs; MACGrid& vel; const Vec3& center; const Real& radius;   };
 #line 302 "plugin/initplugins.cpp"
 
@@ -484,14 +484,14 @@ inline static Real calcFraction(Real phi1, Real phi2)
 	}
 	}
 
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return phiObs; } typedef Grid<Real> type1;inline MACGrid& getArg2() { return fractions; } typedef MACGrid type2;inline const int& getArg3() { return boundaryWidth; } typedef int type3; void runMessage() { debMsg("Executing kernel KnUpdateFractions ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return phiObs; } typedef Grid<Real> type1;inline MACGrid& getArg2() { return fractions; } typedef MACGrid type2;inline const int& getArg3() { return boundaryWidth; } typedef int type3; void runMessage() { debMsg("Executing kernel KnUpdateFractions ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,phiObs,fractions,boundaryWidth);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,phiObs,fractions,boundaryWidth);  } }  } FlagGrid& flags; Grid<Real>& phiObs; MACGrid& fractions; const int& boundaryWidth;   };
 #line 344 "plugin/initplugins.cpp"
 
@@ -504,27 +504,27 @@ void updateFractions(FlagGrid& flags, Grid<Real>& phiObs, MACGrid& fractions, co
 
 
  struct KnUpdateFlags : public KernelBase { KnUpdateFlags(FlagGrid& flags, MACGrid& fractions, Grid<Real>& phiObs, Grid<Real>* phiOut) :  KernelBase(&flags,1) ,flags(flags),fractions(fractions),phiObs(phiObs),phiOut(phiOut)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& fractions, Grid<Real>& phiObs, Grid<Real>* phiOut )  {
-
+	
 	Real test = 0.;
 	test += fractions.get(i  ,j,k).x;
 	test += fractions.get(i+1,j,k).x;
 	test += fractions.get(i,j  ,k).y;
 	test += fractions.get(i,j+1,k).y;
 	if (flags.is3D()) {
-	test += fractions.get(i,j,k  ).z;
-	test += fractions.get(i,j,k+1).z; }
-
+		test += fractions.get(i,j,k  ).z;
+		test += fractions.get(i,j,k+1).z; }
+	
 	if(test==0. && phiObs(i,j,k) < 0.) flags(i,j,k) = FlagGrid::TypeObstacle;
 	else if (phiOut && (*phiOut)(i,j,k) < 0.) flags(i,j,k) = (FlagGrid::TypeEmpty | FlagGrid::TypeOutflow);
 	else flags(i,j,k) = FlagGrid::TypeEmpty;
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return fractions; } typedef MACGrid type1;inline Grid<Real>& getArg2() { return phiObs; } typedef Grid<Real> type2;inline Grid<Real>* getArg3() { return phiOut; } typedef Grid<Real> type3; void runMessage() { debMsg("Executing kernel KnUpdateFlags ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return fractions; } typedef MACGrid type1;inline Grid<Real>& getArg2() { return phiObs; } typedef Grid<Real> type2;inline Grid<Real>* getArg3() { return phiOut; } typedef Grid<Real> type3; void runMessage() { debMsg("Executing kernel KnUpdateFlags ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,fractions,phiObs,phiOut);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,fractions,phiObs,phiOut);  } }  } FlagGrid& flags; MACGrid& fractions; Grid<Real>& phiObs; Grid<Real>* phiOut;   };
 #line 414 "plugin/initplugins.cpp"
 
@@ -535,7 +535,7 @@ void setObstacleFlags(FlagGrid& flags, MACGrid& fractions, Grid<Real>& phiObs, G
 } static PyObject* _W_17 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setObstacleFlags" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& fractions = *_args.getPtr<MACGrid >("fractions",1,&_lock); Grid<Real>& phiObs = *_args.getPtr<Grid<Real> >("phiObs",2,&_lock); Grid<Real>* phiOut = _args.getPtrOpt<Grid<Real> >("phiOut",3,NULL,&_lock);   _retval = getPyNone(); setObstacleFlags(flags,fractions,phiObs,phiOut);  _args.check(); } pbFinalizePlugin(parent,"setObstacleFlags", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setObstacleFlags",e.what()); return 0; } } static const Pb::Register _RP_setObstacleFlags ("","setObstacleFlags",_W_17);  extern "C" { void PbRegister_setObstacleFlags() { KEEP_UNUSED(_RP_setObstacleFlags); } } 
 
  struct KnClearInObstacle : public KernelBase { KnClearInObstacle(FlagGrid* flags, GridBase* grid) :  KernelBase(flags,0) ,flags(flags),grid(grid)   { runMessage(); run(); }   inline void op(IndexInt idx, FlagGrid* flags, GridBase* grid )  {
-
+	
 	if ((*flags).isObstacle(idx)) {
 		if (grid->getType() & GridBase::TypeReal) {
 			(*(Grid<Real>*) grid)[idx] = 0.;
@@ -554,10 +554,10 @@ void setObstacleFlags(FlagGrid& flags, MACGrid& fractions, Grid<Real>& phiObs, G
 		else
 			errMsg("ClearInObstacle: Grid Type is not supported (only Real, Int, Vec3, MAC, Levelset)");
 	}
-}    inline FlagGrid* getArg0() { return flags; } typedef FlagGrid type0;inline GridBase* getArg1() { return grid; } typedef GridBase type1; void runMessage() { debMsg("Executing kernel KnClearInObstacle ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline FlagGrid* getArg0() { return flags; } typedef FlagGrid type0;inline GridBase* getArg1() { return grid; } typedef GridBase type1; void runMessage() { debMsg("Executing kernel KnClearInObstacle ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,flags,grid);  }   } FlagGrid* flags; GridBase* grid;   };
 #line 434 "plugin/initplugins.cpp"
 
@@ -574,10 +574,10 @@ void clearInObstacle(FlagGrid* flags, GridBase* grid) {
 		grid[idx].y /= num[idx];
 		grid[idx].z /= num[idx];
 	}
-}    inline Grid<Vec3>& getArg0() { return grid; } typedef Grid<Vec3> type0;inline Grid<int>& getArg1() { return num; } typedef Grid<int> type1; void runMessage() { debMsg("Executing kernel KnAverageGrid ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {   const IndexInt _sz = size; 
+}    inline Grid<Vec3>& getArg0() { return grid; } typedef Grid<Vec3> type0;inline Grid<int>& getArg1() { return num; } typedef Grid<int> type1; void runMessage() { debMsg("Executing kernel KnAverageGrid ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,grid,num);  }   } Grid<Vec3>& grid; Grid<int>& num;   };
 #line 461 "plugin/initplugins.cpp"
 
@@ -587,6 +587,7 @@ void clearInObstacle(FlagGrid* flags, GridBase* grid) {
 void averageGrid(Grid<Vec3>& grid, Grid<int>& num) {
 	KnAverageGrid(grid, num);
 } static PyObject* _W_19 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "averageGrid" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& grid = *_args.getPtr<Grid<Vec3> >("grid",0,&_lock); Grid<int>& num = *_args.getPtr<Grid<int> >("num",1,&_lock);   _retval = getPyNone(); averageGrid(grid,num);  _args.check(); } pbFinalizePlugin(parent,"averageGrid", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("averageGrid",e.what()); return 0; } } static const Pb::Register _RP_averageGrid ("","averageGrid",_W_19);  extern "C" { void PbRegister_averageGrid() { KEEP_UNUSED(_RP_averageGrid); } } 
+
 
 } // namespace
 

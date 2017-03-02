@@ -70,6 +70,9 @@ extern "C" {
 		extern void PbRegister_combineGridVel() ;
 		extern void PbRegister_processBurn() ;
 		extern void PbRegister_updateFlame() ;
+		extern void PbRegister_getSpiralVelocity2D() ;
+		extern void PbRegister_setGradientYWeight() ;
+		extern void PbRegister_PD_fluid_guiding() ;
 		extern void PbRegister_KEpsilonComputeProduction() ;
 		extern void PbRegister_KEpsilonSources() ;
 		extern void PbRegister_KEpsilonBcs() ;
@@ -97,6 +100,7 @@ extern "C" {
 		extern void PbRegister_smoothMesh() ;
 		extern void PbRegister_subdivideMesh() ;
 		extern void PbRegister_killSmallComponents() ;
+		extern void PbRegister_releaseMG() ;
 		extern void PbRegister_solvePressure() ;
 		extern void PbRegister_particleSurfaceTurbulence() ;
 		extern void PbRegister_debugCheckParts() ;
@@ -145,6 +149,7 @@ extern "C" {
 		extern void PbRegister_file_18();
 		extern void PbRegister_file_19();
 		extern void PbRegister_file_20();
+		extern void PbRegister_file_21();
 }
 
 namespace Pb {
@@ -221,6 +226,9 @@ namespace Pb {
 		PbRegister_combineGridVel() ;
 		PbRegister_processBurn() ;
 		PbRegister_updateFlame() ;
+		PbRegister_getSpiralVelocity2D() ;
+		PbRegister_setGradientYWeight() ;
+		PbRegister_PD_fluid_guiding() ;
 		PbRegister_KEpsilonComputeProduction() ;
 		PbRegister_KEpsilonSources() ;
 		PbRegister_KEpsilonBcs() ;
@@ -248,6 +256,7 @@ namespace Pb {
 		PbRegister_smoothMesh() ;
 		PbRegister_subdivideMesh() ;
 		PbRegister_killSmallComponents() ;
+		PbRegister_releaseMG() ;
 		PbRegister_solvePressure() ;
 		PbRegister_particleSurfaceTurbulence() ;
 		PbRegister_debugCheckParts() ;
@@ -296,5 +305,6 @@ namespace Pb {
 		PbRegister_file_18();
 		PbRegister_file_19();
 		PbRegister_file_20();
+		PbRegister_file_21();
 	}
 }

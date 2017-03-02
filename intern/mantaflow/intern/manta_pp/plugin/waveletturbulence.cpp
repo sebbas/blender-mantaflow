@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sbarschkis/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/plugin/waveletturbulence.cpp"
+#line 1 "/Users/sebbas/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/plugin/waveletturbulence.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -80,14 +80,14 @@ void interpolateGridVec3( Grid<Vec3>& target, Grid<Vec3>& source , Vec3 scale=Ve
 	if(source.is3D()) vz = source.getInterpolatedHi(pos - Vec3(0,0,0.5), orderSpace)[2];
 
 	target(i,j,k) = Vec3(vx,vy,vz);
-}   inline MACGrid& getArg0() { return target; } typedef MACGrid type0;inline MACGrid& getArg1() { return source; } typedef MACGrid type1;inline const Vec3& getArg2() { return sourceFactor; } typedef Vec3 type2;inline const Vec3& getArg3() { return off; } typedef Vec3 type3;inline int& getArg4() { return orderSpace; } typedef int type4; void runMessage() { debMsg("Executing kernel KnInterpolateMACGrid ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline MACGrid& getArg0() { return target; } typedef MACGrid type0;inline MACGrid& getArg1() { return source; } typedef MACGrid type1;inline const Vec3& getArg2() { return sourceFactor; } typedef Vec3 type2;inline const Vec3& getArg3() { return off; } typedef Vec3 type3;inline int& getArg4() { return orderSpace; } typedef int type4; void runMessage() { debMsg("Executing kernel KnInterpolateMACGrid ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,target,source,sourceFactor,off,orderSpace);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,target,source,sourceFactor,off,orderSpace);  } }  } MACGrid& target; MACGrid& source; const Vec3& sourceFactor; const Vec3& off; int orderSpace;   };
 #line 62 "plugin/waveletturbulence.cpp"
 
@@ -113,14 +113,14 @@ void interpolateMACGrid(MACGrid& target, MACGrid& source, Vec3 scale=Vec3(1.), V
 	Real factor = 1;
 	if(weight) factor = (*weight)(i,j,k);
 	target(i,j,k) += noise.evaluateCurl( Vec3(i,j,k)+Vec3(0.5) ) * scale * factor;
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Vec3>& getArg1() { return target; } typedef Grid<Vec3> type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Real& getArg3() { return scale; } typedef Real type3;inline Grid<Real>* getArg4() { return weight; } typedef Grid<Real> type4; void runMessage() { debMsg("Executing kernel knApplySimpleNoiseVec3 ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Vec3>& getArg1() { return target; } typedef Grid<Vec3> type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Real& getArg3() { return scale; } typedef Real type3;inline Grid<Real>* getArg4() { return weight; } typedef Grid<Real> type4; void runMessage() { debMsg("Executing kernel knApplySimpleNoiseVec3 ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,target,noise,scale,weight);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,target,noise,scale,weight);  } }  } FlagGrid& flags; Grid<Vec3>& target; WaveletNoiseField& noise; Real scale; Grid<Real>* weight;   };
 #line 88 "plugin/waveletturbulence.cpp"
 
@@ -142,14 +142,14 @@ void applySimpleNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField
 	Real factor = 1;
 	if(weight) factor = (*weight)(i,j,k);
 	target(i,j,k) += noise.evaluate( Vec3(i,j,k)+Vec3(0.5) ) * scale * factor;
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return target; } typedef Grid<Real> type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Real& getArg3() { return scale; } typedef Real type3;inline Grid<Real>* getArg4() { return weight; } typedef Grid<Real> type4; void runMessage() { debMsg("Executing kernel knApplySimpleNoiseReal ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return target; } typedef Grid<Real> type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Real& getArg3() { return scale; } typedef Real type3;inline Grid<Real>* getArg4() { return weight; } typedef Grid<Real> type4; void runMessage() { debMsg("Executing kernel knApplySimpleNoiseReal ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,target,noise,scale,weight);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,target,noise,scale,weight);  } }  } FlagGrid& flags; Grid<Real>& target; WaveletNoiseField& noise; Real scale; Grid<Real>* weight;   };
 #line 106 "plugin/waveletturbulence.cpp"
 
@@ -197,14 +197,14 @@ void applySimpleNoiseReal(FlagGrid& flags, Grid<Real>& target, WaveletNoiseField
 	Vec3 noiseVec3 = noise.evaluateCurl( pos ) * scale * w; 
 	//noiseVec3=pos; // debug , show interpolated positions
 	target(i,j,k) += noiseVec3;
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Vec3>& getArg1() { return target; } typedef Grid<Vec3> type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Real& getArg3() { return scale; } typedef Real type3;inline Real& getArg4() { return scaleSpatial; } typedef Real type4;inline Grid<Real>* getArg5() { return weight; } typedef Grid<Real> type5;inline Grid<Vec3>* getArg6() { return uv; } typedef Grid<Vec3> type6;inline bool& getArg7() { return uvInterpol; } typedef bool type7;inline const Vec3& getArg8() { return sourceFactor; } typedef Vec3 type8; void runMessage() { debMsg("Executing kernel knApplyNoiseVec3 ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Vec3>& getArg1() { return target; } typedef Grid<Vec3> type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Real& getArg3() { return scale; } typedef Real type3;inline Real& getArg4() { return scaleSpatial; } typedef Real type4;inline Grid<Real>* getArg5() { return weight; } typedef Grid<Real> type5;inline Grid<Vec3>* getArg6() { return uv; } typedef Grid<Vec3> type6;inline bool& getArg7() { return uvInterpol; } typedef bool type7;inline const Vec3& getArg8() { return sourceFactor; } typedef Vec3 type8; void runMessage() { debMsg("Executing kernel knApplyNoiseVec3 ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,target,noise,scale,scaleSpatial,weight,uv,uvInterpol,sourceFactor);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,target,noise,scale,scaleSpatial,weight,uv,uvInterpol,sourceFactor);  } }  } FlagGrid& flags; Grid<Vec3>& target; WaveletNoiseField& noise; Real scale; Real scaleSpatial; Grid<Real>* weight; Grid<Vec3>* uv; bool uvInterpol; const Vec3& sourceFactor;   };
 #line 126 "plugin/waveletturbulence.cpp"
 
@@ -242,14 +242,14 @@ void applyNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& nois
 		e = 0.5 * (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
 	}
 	energy(i,j,k) = e;
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<Real>& getArg2() { return energy; } typedef Grid<Real> type2; void runMessage() { debMsg("Executing kernel KnApplyComputeEnergy ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<Real>& getArg2() { return energy; } typedef Grid<Real> type2; void runMessage() { debMsg("Executing kernel KnApplyComputeEnergy ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,vel,energy);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,vel,energy);  } }  } FlagGrid& flags; MACGrid& vel; Grid<Real>& energy;   };
 #line 182 "plugin/waveletturbulence.cpp"
 
@@ -295,14 +295,14 @@ void computeVorticity(MACGrid& vel, Grid<Vec3>& vorticity, Grid<Real>* norm) {
 	Real S2 = square(diag.x) + square(diag.y) + square(diag.z) +
 		2.0*square(S12) + 2.0*square(S13) + 2.0*square(S23);
 	prod(i,j,k) = S2;
-}   inline const MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline const Grid<Vec3>& getArg1() { return velCenter; } typedef Grid<Vec3> type1;inline Grid<Real>& getArg2() { return prod; } typedef Grid<Real> type2; void runMessage() { debMsg("Executing kernel KnComputeStrainRateMag ", 2); debMsg("Kernel range" << " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 3); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline const MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline const Grid<Vec3>& getArg1() { return velCenter; } typedef Grid<Vec3> type1;inline Grid<Real>& getArg2() { return prod; } typedef Grid<Real> type2; void runMessage() { debMsg("Executing kernel KnComputeStrainRateMag ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,vel,velCenter,prod);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
-#pragma omp for 
+#pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,vel,velCenter,prod);  } }  } const MACGrid& vel; const Grid<Vec3>& velCenter; Grid<Real>& prod;   };
 #line 214 "plugin/waveletturbulence.cpp"
 
