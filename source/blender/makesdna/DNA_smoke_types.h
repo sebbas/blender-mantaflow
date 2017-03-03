@@ -233,7 +233,7 @@ typedef struct SmokeDomainSettings {
 	int manta_solver_res;	/* dimension of manta solver, 2d or 3d */
 	char manta_filepath[1024];
 	short type; /* gas, liquid */
-	short mock_var; /* unused */
+	short preconditioner; /* cg preconditioner */
 } SmokeDomainSettings;
 
 /* type */
@@ -241,6 +241,12 @@ typedef struct SmokeDomainSettings {
 #define MOD_SMOKE_FLOW_TYPE_FIRE 1
 #define MOD_SMOKE_FLOW_TYPE_SMOKEFIRE 2
 #define MOD_SMOKE_FLOW_TYPE_LIQUID 3
+
+/* preconditioner */
+#define MOD_SMOKE_PC_NONE 0
+#define MOD_SMOKE_PC_MIC 1
+#define MOD_SMOKE_PC_MG_DYNAMIC 2
+#define MOD_SMOKE_PC_MG_STATIC 3
 
 /* behavior */
 #define MOD_SMOKE_FLOW_BEHAVIOR_INFLOW 0

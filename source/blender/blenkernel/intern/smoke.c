@@ -585,6 +585,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->viewport_display_mode = SM_VIEWPORT_PREVIEW;
 			smd->domain->render_display_mode = SM_VIEWPORT_FINAL;
 			smd->domain->type = MOD_SMOKE_DOMAIN_TYPE_GAS;
+			smd->domain->preconditioner = MOD_SMOKE_PC_MG_STATIC;
 			
 #ifdef WITH_MANTA
 			smd->domain->gravity[0] = 0.0f;
@@ -717,6 +718,11 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->manta_solver_res = smd->domain->manta_solver_res;
 		tsmd->domain->noise_pos_scale = smd->domain->noise_pos_scale;
 		tsmd->domain->noise_time_anim = smd->domain->noise_time_anim;
+		
+		tsmd->domain->viewport_display_mode = smd->domain->viewport_display_mode;
+		tsmd->domain->render_display_mode = smd->domain->render_display_mode;
+		tsmd->domain->type = smd->domain->type;
+		tsmd->domain->preconditioner = smd->domain->preconditioner;
 #endif
 
 		copy_v3_v3(tsmd->domain->flame_smoke_color, smd->domain->flame_smoke_color);
@@ -909,6 +915,9 @@ static void obstacles_from_derivedmesh(
 				has_velocity = true;
 			}
 		}
+		
+		/* Manta CG precoditioner */
+		sds->preconditioner = (has_velocity) ? MOD_SMOKE_PC_MG_DYNAMIC : MOD_SMOKE_PC_MG_STATIC;
 
 		/*	Transform collider vertices to
 		 *   domain grid space for fast lookups */

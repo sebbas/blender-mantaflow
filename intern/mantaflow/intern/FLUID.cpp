@@ -602,6 +602,11 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		char parent_dir[1024];
 		BLI_split_dir_part(smd->domain->manta_filepath, parent_dir, sizeof(parent_dir));
 		ss << parent_dir;
+	} else if (varName == "PRECONDITIONER") {
+		if (smd->domain->preconditioner == MOD_SMOKE_PC_NONE) ss << "PcNone";
+		else if (smd->domain->preconditioner == MOD_SMOKE_PC_MIC) ss << "PcMIC";
+		else if (smd->domain->preconditioner == MOD_SMOKE_PC_MG_DYNAMIC) ss << "PcMGDynamic";
+		else if (smd->domain->preconditioner == MOD_SMOKE_PC_MG_STATIC) ss << "PcMGStatic";
 	} else
 		std::cout << "ERROR: Unknown option:" << varName << std::endl;
 	return ss.str();
