@@ -58,6 +58,7 @@
 
 #include "BLI_strict_flags.h"
 
+#include "atomic_ops.h"
 #include "mikktspace.h"
 
 // #define DEBUG_TIME
@@ -236,7 +237,9 @@ static void mesh_calc_normals_poly_accum_task_cb(void *userdata, const int pidx)
 			const float fac = saacos(-dot_v3v3(cur_edge, prev_edge));
 
 			/* accumulate */
-			madd_v3_v3fl(vnors[ml[i].v], pnor, fac);
+			for (int k = 3; k--; ) {
+				atomic_add_and_fetch_fl(&vnors[ml[i].v][k], pnor[k] * fac);
+			}
 			prev_edge = cur_edge;
 		}
 	}
@@ -988,7 +991,6 @@ static void loop_split_worker(TaskPool * __restrict UNUSED(pool), void *taskdata
 #endif
 }
 
-/* Note we use data_buff to detect whether we are in threaded context or not, in later case it is NULL. */
 static void loop_split_generator_do(LoopSplitTaskDataCommon *common_data, const bool threaded)
 {
 	MLoopNorSpaceArray *lnors_spacearr = common_data->lnors_spacearr;
@@ -1007,7 +1009,7 @@ static void loop_split_generator_do(LoopSplitTaskDataCommon *common_data, const 
 	int data_idx = 0;
 
 	/* Temp edge vectors stack, only used when computing lnor spacearr (and we are not multi-threading). */
-	BLI_Stack *edge_vectors = (lnors_spacearr && !data_buff) ? BLI_stack_new(sizeof(float[3]), __func__) : NULL;
+	BLI_Stack *edge_vectors = NULL;
 
 #ifdef DEBUG_TIME
 	TIMEIT_START(loop_split_generator);
@@ -1016,6 +1018,10 @@ static void loop_split_generator_do(LoopSplitTaskDataCommon *common_data, const 
 	if (!threaded) {
 		memset(&data_mem, 0, sizeof(data_mem));
 		data = &data_mem;
+
+		if (lnors_spacearr) {
+			edge_vectors = BLI_stack_new(sizeof(float[3]), __func__);
+		}
 	}
 
 	/* We now know edges that can be smoothed (with their vector, and their two loops), and edges that will be hard!
@@ -1149,7 +1155,6 @@ void BKE_mesh_normals_loop_split(
         const bool use_split_normals, float split_angle,
         MLoopNorSpaceArray *r_lnors_spacearr, short (*clnors_data)[2], int *r_loop_to_poly)
 {
-
 	/* For now this is not supported. If we do not use split normals, we do not generate anything fancy! */
 	BLI_assert(use_split_normals || !(r_lnors_spacearr));
 
@@ -1906,19 +1911,19 @@ void BKE_mesh_calc_poly_center(
         const MVert *mvarray, float r_cent[3])
 {
 	if (mpoly->totloop == 3) {
-		cent_tri_v3(r_cent,
-		            mvarray[loopstart[0].v].co,
-		            mvarray[loopstart[1].v].co,
-		            mvarray[loopstart[2].v].co
-		            );
+		mid_v3_v3v3v3(r_cent,
+		              mvarray[loopstart[0].v].co,
+		              mvarray[loopstart[1].v].co,
+		              mvarray[loopstart[2].v].co
+		              );
 	}
 	else if (mpoly->totloop == 4) {
-		cent_quad_v3(r_cent,
-		             mvarray[loopstart[0].v].co,
-		             mvarray[loopstart[1].v].co,
-		             mvarray[loopstart[2].v].co,
-		             mvarray[loopstart[3].v].co
-		             );
+		mid_v3_v3v3v3v3(r_cent,
+		                mvarray[loopstart[0].v].co,
+		                mvarray[loopstart[1].v].co,
+		                mvarray[loopstart[2].v].co,
+		                mvarray[loopstart[3].v].co
+		                );
 	}
 	else {
 		mesh_calc_ngon_center(mpoly, loopstart, mvarray, r_cent);
@@ -1975,7 +1980,7 @@ static float mesh_calc_poly_planar_area_centroid(
 		tri_area = area_tri_signed_v3(v1, v2, v3, normal);
 		total_area += tri_area;
 
-		cent_tri_v3(tri_cent, v1, v2, v3);
+		mid_v3_v3v3v3(tri_cent, v1, v2, v3);
 		madd_v3_v3fl(r_cent, tri_cent, tri_area);
 
 		copy_v3_v3(v2, v3);

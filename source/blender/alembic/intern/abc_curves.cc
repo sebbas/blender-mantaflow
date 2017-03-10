@@ -37,6 +37,7 @@ extern "C" {
 
 #include "BLI_listbase.h"
 
+#include "BKE_cdderivedmesh.h"
 #include "BKE_curve.h"
 #include "BKE_object.h"
 
@@ -101,7 +102,7 @@ void AbcCurveWriter::do_write()
 			const BPoint *point = nurbs->bp;
 
 			for (int i = 0; i < totpoint; ++i, ++point) {
-				copy_zup_yup(temp_vert.getValue(), point->vec);
+				copy_yup_from_zup(temp_vert.getValue(), point->vec);
 				verts.push_back(temp_vert);
 				weights.push_back(point->vec[3]);
 				widths.push_back(point->radius);
@@ -117,7 +118,7 @@ void AbcCurveWriter::do_write()
 
 			/* TODO(kevin): store info about handles, Alembic doesn't have this. */
 			for (int i = 0; i < totpoint; ++i, ++bezier) {
-				copy_zup_yup(temp_vert.getValue(), bezier->vec[1]);
+				copy_yup_from_zup(temp_vert.getValue(), bezier->vec[1]);
 				verts.push_back(temp_vert);
 				widths.push_back(bezier->radius);
 			}
@@ -321,7 +322,7 @@ void read_curve_sample(Curve *cu, const ICurvesSchema &schema, const float time)
 				weight = (*weights)[idx];
 			}
 
-			copy_yup_zup(bp->vec, pos.getValue());
+			copy_zup_from_yup(bp->vec, pos.getValue());
 			bp->vec[3] = weight;
 			bp->f1 = SELECT;
 			bp->radius = radius;
@@ -352,4 +353,55 @@ void read_curve_sample(Curve *cu, const ICurvesSchema &schema, const float time)
 
 		BLI_addtail(BKE_curve_nurbs_get(cu), nu);
 	}
+}
+
+/* NOTE: Alembic only stores data about control points, but the DerivedMesh
+ * passed from the cache modifier contains the displist, which has more data
+ * than the control points, so to avoid corrupting the displist we modify the
+ * object directly and create a new DerivedMesh from that. Also we might need to
+ * create new or delete existing NURBS in the curve.
+ */
+DerivedMesh *AbcCurveReader::read_derivedmesh(DerivedMesh * /*dm*/, const float time, int /*read_flag*/, const char ** /*err_str*/)
+{
+	ISampleSelector sample_sel(time);
+	const ICurvesSchema::Sample sample = m_curves_schema.getValue(sample_sel);
+
+	const P3fArraySamplePtr &positions = sample.getPositions();
+	const Int32ArraySamplePtr num_vertices = sample.getCurvesNumVertices();
+
+	int vertex_idx = 0;
+	int curve_idx = 0;
+	Curve *curve = static_cast<Curve *>(m_object->data);
+
+	const int curve_count = BLI_listbase_count(&curve->nurb);
+
+	if (curve_count != num_vertices->size()) {
+		BKE_nurbList_free(&curve->nurb);
+		read_curve_sample(curve, m_curves_schema, time);
+	}
+	else {
+		Nurb *nurbs = static_cast<Nurb *>(curve->nurb.first);
+		for (; nurbs; nurbs = nurbs->next, ++curve_idx) {
+			const int totpoint = (*num_vertices)[curve_idx];
+
+			if (nurbs->bp) {
+				BPoint *point = nurbs->bp;
+
+				for (int i = 0; i < totpoint; ++i, ++point, ++vertex_idx) {
+					const Imath::V3f &pos = (*positions)[vertex_idx];
+					copy_zup_from_yup(point->vec, pos.getValue());
+				}
+			}
+			else if (nurbs->bezt) {
+				BezTriple *bezier = nurbs->bezt;
+
+				for (int i = 0; i < totpoint; ++i, ++bezier, ++vertex_idx) {
+					const Imath::V3f &pos = (*positions)[vertex_idx];
+					copy_zup_from_yup(bezier->vec[1], pos.getValue());
+				}
+			}
+		}
+	}
+
+	return CDDM_from_curve(m_object);
 }

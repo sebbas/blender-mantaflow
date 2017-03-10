@@ -43,6 +43,8 @@ NODE_DEFINE(Integrator)
 	SOCKET_INT(transparent_max_bounce, "Transparent Max Bounce", 7);
 	SOCKET_BOOLEAN(transparent_shadows, "Transparent Shadows", false);
 
+	SOCKET_INT(ao_bounces, "AO Bounces", 0);
+
 	SOCKET_INT(volume_max_steps, "Volume Max Steps", 1024);
 	SOCKET_FLOAT(volume_step_size, "Volume Step Size", 0.1f);
 
@@ -62,9 +64,11 @@ NODE_DEFINE(Integrator)
 	SOCKET_INT(mesh_light_samples, "Mesh Light Samples", 1);
 	SOCKET_INT(subsurface_samples, "Subsurface Samples", 1);
 	SOCKET_INT(volume_samples, "Volume Samples", 1);
+	SOCKET_INT(start_sample, "Start Sample", 0);
 
 	SOCKET_BOOLEAN(sample_all_lights_direct, "Sample All Lights Direct", true);
 	SOCKET_BOOLEAN(sample_all_lights_indirect, "Sample All Lights Indirect", true);
+	SOCKET_FLOAT(light_sampling_threshold, "Light Sampling Threshold", 0.05f);
 
 	static NodeEnum method_enum;
 	method_enum.insert("path", PATH);
@@ -110,6 +114,13 @@ void Integrator::device_update(Device *device, DeviceScene *dscene, Scene *scene
 	kintegrator->transparent_max_bounce = transparent_max_bounce + 1;
 	kintegrator->transparent_min_bounce = transparent_min_bounce + 1;
 
+	if(ao_bounces == 0) {
+		kintegrator->ao_bounces = INT_MAX;
+	}
+	else {
+		kintegrator->ao_bounces = ao_bounces - 1;
+	}
+
 	/* Transparent Shadows
 	 * We only need to enable transparent shadows, if we actually have 
 	 * transparent shaders in the scene. Otherwise we can disable it
@@ -151,6 +162,7 @@ void Integrator::device_update(Device *device, DeviceScene *dscene, Scene *scene
 	kintegrator->mesh_light_samples = mesh_light_samples;
 	kintegrator->subsurface_samples = subsurface_samples;
 	kintegrator->volume_samples = volume_samples;
+	kintegrator->start_sample = start_sample;
 
 	if(method == BRANCHED_PATH) {
 		kintegrator->sample_all_lights_direct = sample_all_lights_direct;
@@ -163,6 +175,13 @@ void Integrator::device_update(Device *device, DeviceScene *dscene, Scene *scene
 
 	kintegrator->sampling_pattern = sampling_pattern;
 	kintegrator->aa_samples = aa_samples;
+
+	if(light_sampling_threshold > 0.0f) {
+		kintegrator->light_inv_rr_threshold = 1.0f / light_sampling_threshold;
+	}
+	else {
+		kintegrator->light_inv_rr_threshold = 0.0f;
+	}
 
 	/* sobol directions table */
 	int max_samples = 1;

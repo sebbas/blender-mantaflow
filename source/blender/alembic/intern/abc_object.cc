@@ -97,14 +97,14 @@ Imath::Box3d AbcObjectWriter::bounds()
 		return Imath::Box3d();
 	}
 
-	/* Convert Z-up to Y-up. */
+	/* Convert Z-up to Y-up. This also changes which vector goes into which min/max property. */
 	this->m_bounds.min.x = bb->vec[0][0];
 	this->m_bounds.min.y = bb->vec[0][2];
-	this->m_bounds.min.z = -bb->vec[0][1];
+	this->m_bounds.min.z = -bb->vec[6][1];
 
 	this->m_bounds.max.x = bb->vec[6][0];
 	this->m_bounds.max.y = bb->vec[6][2];
-	this->m_bounds.max.z = -bb->vec[6][1];
+	this->m_bounds.max.z = -bb->vec[0][1];
 
 	return this->m_bounds;
 }
@@ -126,6 +126,7 @@ AbcObjectReader::AbcObjectReader(const IObject &object, ImportSettings &settings
     , m_settings(&settings)
     , m_min_time(std::numeric_limits<chrono_t>::max())
     , m_max_time(std::numeric_limits<chrono_t>::min())
+    , m_refcount(0)
 {
 	m_name = object.getFullName();
 	std::vector<std::string> parts;
@@ -153,6 +154,11 @@ Object *AbcObjectReader::object() const
 	return m_object;
 }
 
+void AbcObjectReader::object(Object *ob)
+{
+	m_object = ob;
+}
+
 static Imath::M44d blend_matrices(const Imath::M44d &m0, const Imath::M44d &m1, const float weight)
 {
 	float mat0[4][4], mat1[4][4], ret[4][4];
@@ -164,13 +170,13 @@ static Imath::M44d blend_matrices(const Imath::M44d &m0, const Imath::M44d &m1, 
 
 	for (int i = 0; i < 4; ++i) {
 		for (int j = 0; j < 4; ++j) {
-			mat0[i][j] = m0[i][j];
+			mat0[i][j] = static_cast<float>(m0[i][j]);
 		}
 	}
 
 	for (int i = 0; i < 4; ++i) {
 		for (int j = 0; j < 4; ++j) {
-			mat1[i][j] = m1[i][j];
+			mat1[i][j] = static_cast<float>(m1[i][j]);
 		}
 	}
 
@@ -209,6 +215,28 @@ Imath::M44d get_matrix(const IXformSchema &schema, const float time)
 }
 
 void AbcObjectReader::readObjectMatrix(const float time)
+{
+	bool is_constant = false;
+
+	this->read_matrix(m_object->obmat, time, m_settings->scale, is_constant);
+	invert_m4_m4(m_object->imat, m_object->obmat);
+
+	BKE_object_apply_mat4(m_object, m_object->obmat, false,  false);
+
+	if (!is_constant) {
+		bConstraint *con = BKE_constraint_add_for_object(m_object, NULL, CONSTRAINT_TYPE_TRANSFORM_CACHE);
+		bTransformCacheConstraint *data = static_cast<bTransformCacheConstraint *>(con->data);
+		BLI_strncpy(data->object_path, m_iobject.getFullName().c_str(), FILE_MAX);
+
+		data->cache_file = m_settings->cache_file;
+		id_us_plus(&data->cache_file->id);
+
+		data->reader = reinterpret_cast<CacheReader *>(this);
+		this->incref();
+	}
+}
+
+void AbcObjectReader::read_matrix(float mat[4][4], const float time, const float scale, bool &is_constant)
 {
 	IXform ixform;
 	bool has_alembic_parent = false;
@@ -250,23 +278,12 @@ void AbcObjectReader::readObjectMatrix(const float time)
 	}
 
 	const Imath::M44d matrix = get_matrix(schema, time);
-	convert_matrix(matrix, m_object, m_object->obmat, m_settings->scale, has_alembic_parent);
+	convert_matrix(matrix, m_object, mat, scale, has_alembic_parent);
 
-	invert_m4_m4(m_object->imat, m_object->obmat);
-
-	BKE_object_apply_mat4(m_object, m_object->obmat, false,  false);
-
-	if (!schema.isConstant()) {
-		bConstraint *con = BKE_constraint_add_for_object(m_object, NULL, CONSTRAINT_TYPE_TRANSFORM_CACHE);
-		bTransformCacheConstraint *data = static_cast<bTransformCacheConstraint *>(con->data);
-		BLI_strncpy(data->object_path, m_iobject.getFullName().c_str(), FILE_MAX);
-
-		data->cache_file = m_settings->cache_file;
-		id_us_plus(&data->cache_file->id);
-	}
+	is_constant = schema.isConstant();
 }
 
-void AbcObjectReader::addCacheModifier() const
+void AbcObjectReader::addCacheModifier()
 {
 	ModifierData *md = modifier_new(eModifierType_MeshSequenceCache);
 	BLI_addtail(&m_object->modifiers, md);
@@ -277,6 +294,9 @@ void AbcObjectReader::addCacheModifier() const
 	id_us_plus(&mcmd->cache_file->id);
 
 	BLI_strncpy(mcmd->object_path, m_iobject.getFullName().c_str(), FILE_MAX);
+
+	mcmd->reader = reinterpret_cast<CacheReader *>(this);
+	this->incref();
 }
 
 chrono_t AbcObjectReader::minTime() const
@@ -287,4 +307,19 @@ chrono_t AbcObjectReader::minTime() const
 chrono_t AbcObjectReader::maxTime() const
 {
 	return m_max_time;
+}
+
+int AbcObjectReader::refcount() const
+{
+	return m_refcount;
+}
+
+void AbcObjectReader::incref()
+{
+	++m_refcount;
+}
+
+void AbcObjectReader::decref()
+{
+	--m_refcount;
 }

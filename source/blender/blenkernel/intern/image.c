@@ -436,7 +436,6 @@ static void copy_image_packedfiles(ListBase *lb_dst, const ListBase *lb_src)
 Image *BKE_image_copy(Main *bmain, Image *ima)
 {
 	Image *nima = image_alloc(bmain, ima->id.name + 2, ima->source, ima->type);
-	ima->id.newid = &nima->id;
 
 	BLI_strncpy(nima->name, ima->name, sizeof(ima->name));
 
@@ -1244,7 +1243,6 @@ char BKE_imtype_valid_channels(const char imtype, bool write_file)
 		case R_IMF_IMTYPE_RAWTGA:
 		case R_IMF_IMTYPE_IRIS:
 		case R_IMF_IMTYPE_PNG:
-		case R_IMF_IMTYPE_RADHDR:
 		case R_IMF_IMTYPE_TIFF:
 		case R_IMF_IMTYPE_OPENEXR:
 		case R_IMF_IMTYPE_MULTILAYER:
@@ -3161,7 +3159,7 @@ static ImBuf *load_sequence_single(Image *ima, ImageUser *iuser, int frame, cons
 	struct ImBuf *ibuf;
 	char name[FILE_MAX];
 	int flag;
-	ImageUser iuser_t;
+	ImageUser iuser_t = {0};
 
 	/* XXX temp stuff? */
 	if (ima->lastframe != frame)
@@ -3169,8 +3167,12 @@ static ImBuf *load_sequence_single(Image *ima, ImageUser *iuser, int frame, cons
 
 	ima->lastframe = frame;
 
-	if (iuser)
+	if (iuser) {
 		iuser_t = *iuser;
+	}
+	else {
+		/* TODO(sergey): Do we need to initialize something here? */
+	}
 
 	iuser_t.view = view_id;
 	BKE_image_user_file_path(&iuser_t, ima, name);

@@ -757,9 +757,9 @@ uint64_t path_modified_time(const string& path)
 {
 	path_stat_t st;
 	if(path_stat(path, &st) != 0) {
-		return st.st_mtime;
+		return 0;
 	}
-	return 0;
+	return st.st_mtime;
 }
 
 bool path_remove(const string& path)
@@ -814,7 +814,7 @@ string path_source_replace_includes(const string& source,
 						/* Use line directives for better error messages. */
 						line = line_directive(filepath, 1)
 						     + token.replace(0, n_end + 1, "\n" + text + "\n")
-						     + line_directive(path_join(path, source_filename), i);
+						     + line_directive(path_join(path, source_filename), i + 1);
 					}
 				}
 			}

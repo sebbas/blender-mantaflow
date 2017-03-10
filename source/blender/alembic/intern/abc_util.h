@@ -32,9 +32,14 @@
 #  define ABC_INLINE static inline
 #endif
 
+struct CacheReader {
+	int unused;
+};
+
 using Alembic::Abc::chrono_t;
 
-class ImportSettings;
+class AbcObjectReader;
+struct ImportSettings;
 
 struct ID;
 struct Object;
@@ -100,6 +105,8 @@ float get_weight_and_index(float time,
                            Alembic::AbcGeom::index_t &i0,
                            Alembic::AbcGeom::index_t &i1);
 
+AbcObjectReader *create_reader(const Alembic::AbcGeom::IObject &object, ImportSettings &settings);
+
 /* ************************** */
 
 /* TODO(kevin): for now keeping these transformations hardcoded to make sure
@@ -109,14 +116,14 @@ float get_weight_and_index(float time,
 
 /* Copy from Y-up to Z-up. */
 
-ABC_INLINE void copy_yup_zup(float zup[3], const float yup[3])
+ABC_INLINE void copy_zup_from_yup(float zup[3], const float yup[3])
 {
 	zup[0] = yup[0];
 	zup[1] = -yup[2];
 	zup[2] = yup[1];
 }
 
-ABC_INLINE void copy_yup_zup(short zup[3], const short yup[3])
+ABC_INLINE void copy_zup_from_yup(short zup[3], const short yup[3])
 {
 	zup[0] = yup[0];
 	zup[1] = -yup[2];
@@ -125,18 +132,37 @@ ABC_INLINE void copy_yup_zup(short zup[3], const short yup[3])
 
 /* Copy from Z-up to Y-up. */
 
-ABC_INLINE void copy_zup_yup(float yup[3], const float zup[3])
+ABC_INLINE void copy_yup_from_zup(float yup[3], const float zup[3])
 {
 	yup[0] = zup[0];
 	yup[1] = zup[2];
 	yup[2] = -zup[1];
 }
 
-ABC_INLINE void copy_zup_yup(short yup[3], const short zup[3])
+ABC_INLINE void copy_yup_from_zup(short yup[3], const short zup[3])
 {
 	yup[0] = zup[0];
 	yup[1] = zup[2];
 	yup[2] = -zup[1];
 }
+
+/* *************************** */
+
+#undef ABC_DEBUG_TIME
+
+class ScopeTimer {
+	const char *m_message;
+	double m_start;
+
+public:
+	ScopeTimer(const char *message);
+	~ScopeTimer();
+};
+
+#ifdef ABC_DEBUG_TIME
+#	define SCOPE_TIMER(message) ScopeTimer prof(message)
+#else
+#	define SCOPE_TIMER(message)
+#endif
 
 #endif  /* __ABC_UTIL_H__ */

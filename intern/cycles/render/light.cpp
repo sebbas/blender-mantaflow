@@ -43,8 +43,8 @@ static void shade_background_pixels(Device *device, DeviceScene *dscene, int res
 
 	for(int y = 0; y < height; y++) {
 		for(int x = 0; x < width; x++) {
-			float u = x/(float)width;
-			float v = y/(float)height;
+			float u = (x + 0.5f)/width;
+			float v = (y + 0.5f)/height;
 
 			uint4 in = make_uint4(__float_as_int(u), __float_as_int(v), 0, 0);
 			d_input_data[x + y*width] = in;
@@ -57,9 +57,9 @@ static void shade_background_pixels(Device *device, DeviceScene *dscene, int res
 
 	device->const_copy_to("__data", &dscene->data, sizeof(dscene->data));
 
-	device->mem_alloc(d_input, MEM_READ_ONLY);
+	device->mem_alloc("shade_background_pixels_input", d_input, MEM_READ_ONLY);
 	device->mem_copy_to(d_input);
-	device->mem_alloc(d_output, MEM_WRITE_ONLY);
+	device->mem_alloc("shade_background_pixels_output", d_output, MEM_WRITE_ONLY);
 
 	DeviceTask main_task(DeviceTask::SHADER);
 	main_task.shader_input = d_input.device_pointer;
@@ -106,6 +106,7 @@ NODE_DEFINE(Light)
 
 	static NodeEnum type_enum;
 	type_enum.insert("point", LIGHT_POINT);
+	type_enum.insert("distant", LIGHT_DISTANT);
 	type_enum.insert("background", LIGHT_BACKGROUND);
 	type_enum.insert("area", LIGHT_AREA);
 	type_enum.insert("spot", LIGHT_SPOT);
@@ -125,6 +126,8 @@ NODE_DEFINE(Light)
 
 	SOCKET_FLOAT(spot_angle, "Spot Angle", M_PI_4_F);
 	SOCKET_FLOAT(spot_smooth, "Spot Smooth", 0.0f);
+
+	SOCKET_TRANSFORM(tfm, "Transform", transform_identity());
 
 	SOCKET_BOOLEAN(cast_shadow, "Cast Shadow", true);
 	SOCKET_BOOLEAN(use_mis, "Use Mis", false);
@@ -483,10 +486,18 @@ static void background_cdf(int start,
                            float2 *cond_cdf)
 {
 	/* Conditional CDFs (rows, U direction). */
+	/* NOTE: It is possible to have some NaN pixels on background
+	 * which will ruin CDF causing wrong shading. We replace such
+	 * pixels with black.
+	 */
 	for(int i = start; i < end; i++) {
 		float sin_theta = sinf(M_PI_F * (i + 0.5f) / res);
 		float3 env_color = (*pixels)[i * res];
 		float ave_luminance = average(env_color);
+		/* TODO(sergey): Consider adding average_safe(). */
+		if(!isfinite(ave_luminance)) {
+			ave_luminance = 0.0f;
+		}
 
 		cond_cdf[i * cdf_count].x = ave_luminance * sin_theta;
 		cond_cdf[i * cdf_count].y = 0.0f;
@@ -494,6 +505,9 @@ static void background_cdf(int start,
 		for(int j = 1; j < res; j++) {
 			env_color = (*pixels)[i * res + j];
 			ave_luminance = average(env_color);
+			if(!isfinite(ave_luminance)) {
+				ave_luminance = 0.0f;
+			}
 
 			cond_cdf[i * cdf_count + j].x = ave_luminance * sin_theta;
 			cond_cdf[i * cdf_count + j].y = cond_cdf[i * cdf_count + j - 1].y + cond_cdf[i * cdf_count + j - 1].x / res;
@@ -762,6 +776,11 @@ void LightManager::device_update_points(Device *device,
 
 		light_data[light_index*LIGHT_SIZE + 4] = make_float4(max_bounces, 0.0f, 0.0f, 0.0f);
 
+		Transform tfm = light->tfm;
+		Transform itfm = transform_inverse(tfm);
+		memcpy(&light_data[light_index*LIGHT_SIZE + 5], &tfm, sizeof(float4)*3);
+		memcpy(&light_data[light_index*LIGHT_SIZE + 8], &itfm, sizeof(float4)*3);
+
 		light_index++;
 	}
 
@@ -787,6 +806,11 @@ void LightManager::device_update_points(Device *device,
 		light_data[light_index*LIGHT_SIZE + 2] = make_float4(invarea, axisv.x, axisv.y, axisv.z);
 		light_data[light_index*LIGHT_SIZE + 3] = make_float4(-1, dir.x, dir.y, dir.z);
 		light_data[light_index*LIGHT_SIZE + 4] = make_float4(-1, 0.0f, 0.0f, 0.0f);
+
+		Transform tfm = light->tfm;
+		Transform itfm = transform_inverse(tfm);
+		memcpy(&light_data[light_index*LIGHT_SIZE + 5], &tfm, sizeof(float4)*3);
+		memcpy(&light_data[light_index*LIGHT_SIZE + 8], &itfm, sizeof(float4)*3);
 
 		light_index++;
 	}

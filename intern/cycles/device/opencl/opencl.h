@@ -16,56 +16,59 @@
 
 #ifdef WITH_OPENCL
 
-#include "clew.h"
-
 #include "device.h"
 
 #include "util_map.h"
 #include "util_param.h"
 #include "util_string.h"
 
+#include "clew.h"
+
 CCL_NAMESPACE_BEGIN
 
+/* Define CYCLES_DISABLE_DRIVER_WORKAROUNDS to disable workaounds for testing */
+#ifndef CYCLES_DISABLE_DRIVER_WORKAROUNDS
+/* Work around AMD driver hangs by ensuring each command is finished before doing anything else. */
+#  undef clEnqueueNDRangeKernel
+#  define clEnqueueNDRangeKernel(a, b, c, d, e, f, g, h, i) \
+	clFinish(a); \
+	CLEW_GET_FUN(__clewEnqueueNDRangeKernel)(a, b, c, d, e, f, g, h, i); \
+	clFinish(a);
+
+#  undef clEnqueueWriteBuffer
+#  define clEnqueueWriteBuffer(a, b, c, d, e, f, g, h, i) \
+	clFinish(a); \
+	CLEW_GET_FUN(__clewEnqueueWriteBuffer)(a, b, c, d, e, f, g, h, i); \
+	clFinish(a);
+
+#  undef clEnqueueReadBuffer
+#  define clEnqueueReadBuffer(a, b, c, d, e, f, g, h, i) \
+	clFinish(a); \
+	CLEW_GET_FUN(__clewEnqueueReadBuffer)(a, b, c, d, e, f, g, h, i); \
+	clFinish(a);
+#endif  /* CYCLES_DISABLE_DRIVER_WORKAROUNDS */
+
 #define CL_MEM_PTR(p) ((cl_mem)(uintptr_t)(p))
-
-/* Macro declarations used with split kernel */
-
-/* Macro to enable/disable work-stealing */
-#define __WORK_STEALING__
-
-#define SPLIT_KERNEL_LOCAL_SIZE_X 64
-#define SPLIT_KERNEL_LOCAL_SIZE_Y 1
-
-/* This value may be tuned according to the scene we are rendering.
- *
- * Modifying PATH_ITER_INC_FACTOR value proportional to number of expected
- * ray-bounces will improve performance.
- */
-#define PATH_ITER_INC_FACTOR 8
-
-/* When allocate global memory in chunks. We may not be able to
- * allocate exactly "CL_DEVICE_MAX_MEM_ALLOC_SIZE" bytes in chunks;
- * Since some bytes may be needed for aligning chunks of memory;
- * This is the amount of memory that we dedicate for that purpose.
- */
-#define DATA_ALLOCATION_MEM_FACTOR 5000000 //5MB
 
 struct OpenCLPlatformDevice {
 	OpenCLPlatformDevice(cl_platform_id platform_id,
 	                     const string& platform_name,
 	                     cl_device_id device_id,
 	                     cl_device_type device_type,
-	                     const string& device_name)
+	                     const string& device_name,
+	                     const string& hardware_id)
 	  : platform_id(platform_id),
 	    platform_name(platform_name),
 	    device_id(device_id),
 	    device_type(device_type),
-	    device_name(device_name) {}
+	    device_name(device_name),
+	    hardware_id(hardware_id) {}
 	cl_platform_id platform_id;
 	string platform_name;
 	cl_device_id device_id;
 	cl_device_type device_type;
 	string device_name;
+	string hardware_id;
 };
 
 /* Contains all static OpenCL helper functions. */
@@ -83,8 +86,11 @@ public:
 	                                   string *error = NULL);
 	static bool device_version_check(cl_device_id device,
 	                                 string *error = NULL);
+	static string get_hardware_id(string platform_name,
+	                              cl_device_id device_id);
 	static void get_usable_devices(vector<OpenCLPlatformDevice> *usable_devices,
 	                               bool force_all = false);
+	static bool use_single_program();
 };
 
 /* Thread safe cache for contexts and programs.
@@ -243,6 +249,7 @@ public:
 
 	bool device_initialized;
 	string platform_name;
+	string device_name;
 
 	bool opencl_error(cl_int err);
 	void opencl_error(const string& message);
@@ -261,10 +268,10 @@ public:
 
 	/* Has to be implemented by the real device classes.
 	 * The base device will then load all these programs. */
-	virtual void load_kernels(const DeviceRequestedFeatures& requested_features,
+	virtual bool load_kernels(const DeviceRequestedFeatures& requested_features,
 	                          vector<OpenCLProgram*> &programs) = 0;
 
-	void mem_alloc(device_memory& mem, MemoryType type);
+	void mem_alloc(const char *name, device_memory& mem, MemoryType type);
 	void mem_copy_to(device_memory& mem);
 	void mem_copy_from(device_memory& mem, int y, int w, int h, int elem);
 	void mem_zero(device_memory& mem);
@@ -321,16 +328,39 @@ protected:
 
 	class ArgumentWrapper {
 	public:
-		ArgumentWrapper() : size(0), pointer(NULL) {}
-		template <typename T>
+		ArgumentWrapper() : size(0), pointer(NULL)
+		{
+		}
+
+		ArgumentWrapper(device_memory& argument) : size(sizeof(void*)),
+		                                           pointer((void*)(&argument.device_pointer))
+		{
+		}
+
+		template<typename T>
+		ArgumentWrapper(device_vector<T>& argument) : size(sizeof(void*)),
+		                                              pointer((void*)(&argument.device_pointer))
+		{
+		}
+
+		template<typename T>
 		ArgumentWrapper(T& argument) : size(sizeof(argument)),
-		                               pointer(&argument) { }
+		                               pointer(&argument)
+		{
+		}
+
 		ArgumentWrapper(int argument) : size(sizeof(int)),
 		                                int_value(argument),
-		                                pointer(&int_value) { }
+		                                pointer(&int_value)
+		{
+		}
+
 		ArgumentWrapper(float argument) : size(sizeof(float)),
 		                                  float_value(argument),
-		                                  pointer(&float_value) { }
+		                                  pointer(&float_value)
+		{
+		}
+
 		size_t size;
 		int int_value;
 		float float_value;

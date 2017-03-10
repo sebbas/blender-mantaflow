@@ -30,6 +30,7 @@ CCL_NAMESPACE_BEGIN
 class Device;
 class DeviceScene;
 class Progress;
+class Scene;
 
 class ImageManager {
 public:
@@ -60,15 +61,24 @@ public:
 	void remove_image(const string& filename,
 	                  void *builtin_data,
 	                  InterpolationType interpolation,
-	                  ExtensionType extension);
+	                  ExtensionType extension,
+	                  bool use_alpha);
 	void tag_reload_image(const string& filename,
 	                      void *builtin_data,
 	                      InterpolationType interpolation,
-	                      ExtensionType extension);
+	                      ExtensionType extension,
+	                      bool use_alpha);
 	ImageDataType get_image_metadata(const string& filename, void *builtin_data, bool& is_linear);
 
-	void device_update(Device *device, DeviceScene *dscene, Progress& progress);
-	void device_update_slot(Device *device, DeviceScene *dscene, int flat_slot, Progress *progress);
+	void device_update(Device *device,
+	                   DeviceScene *dscene,
+	                   Scene *scene,
+	                   Progress& progress);
+	void device_update_slot(Device *device,
+	                        DeviceScene *dscene,
+	                        Scene *scene,
+	                        int flat_slot,
+	                        Progress *progress);
 	void device_free(Device *device, DeviceScene *dscene);
 	void device_free_builtin(Device *device, DeviceScene *dscene);
 
@@ -78,9 +88,25 @@ public:
 
 	bool need_update;
 
-	function<void(const string &filename, void *data, bool &is_float, int &width, int &height, int &depth, int &channels)> builtin_image_info_cb;
-	function<bool(const string &filename, void *data, unsigned char *pixels)> builtin_image_pixels_cb;
-	function<bool(const string &filename, void *data, float *pixels)> builtin_image_float_pixels_cb;
+	/* NOTE: Here pixels_size is a size of storage, which equals to
+	 *       width * height * depth.
+	 *       Use this to avoid some nasty memory corruptions.
+	 */
+	function<void(const string &filename,
+	              void *data,
+	              bool &is_float,
+	              int &width,
+	              int &height,
+	              int &depth,
+	              int &channels)> builtin_image_info_cb;
+	function<bool(const string &filename,
+	              void *data,
+	              unsigned char *pixels,
+	              const size_t pixels_size)> builtin_image_pixels_cb;
+	function<bool(const string &filename,
+	              void *data,
+	              float *pixels,
+	              const size_t pixels_size)> builtin_image_float_pixels_cb;
 
 	struct Image {
 		string filename;
@@ -109,14 +135,13 @@ private:
 
 	bool file_load_image_generic(Image *img, ImageInput **in, int &width, int &height, int &depth, int &components);
 
-	template<typename T>
-	bool file_load_byte_image(Image *img, ImageDataType type, device_vector<T>& tex_img);
-
-	template<typename T>
-	bool file_load_float_image(Image *img, ImageDataType type, device_vector<T>& tex_img);
-
-	template<typename T>
-	bool file_load_half_image(Image *img, ImageDataType type, device_vector<T>& tex_img);
+	template<TypeDesc::BASETYPE FileFormat,
+	         typename StorageType,
+	         typename DeviceType>
+	bool file_load_image(Image *img,
+	                     ImageDataType type,
+	                     int texture_limit,
+	                     device_vector<DeviceType>& tex_img);
 
 	int type_index_to_flattened_slot(int slot, ImageDataType type);
 	int flattened_slot_to_type_index(int flat_slot, ImageDataType *type);
@@ -124,10 +149,20 @@ private:
 
 	uint8_t pack_image_options(ImageDataType type, size_t slot);
 
-	void device_load_image(Device *device, DeviceScene *dscene, ImageDataType type, int slot, Progress *progess);
-	void device_free_image(Device *device, DeviceScene *dscene, ImageDataType type, int slot);
+	void device_load_image(Device *device,
+	                       DeviceScene *dscene,
+	                       Scene *scene,
+	                       ImageDataType type,
+	                       int slot,
+	                       Progress *progess);
+	void device_free_image(Device *device,
+	                       DeviceScene *dscene,
+	                       ImageDataType type,
+	                       int slot);
 
-	void device_pack_images(Device *device, DeviceScene *dscene, Progress& progess);
+	void device_pack_images(Device *device,
+	                        DeviceScene *dscene,
+	                        Progress& progess);
 };
 
 CCL_NAMESPACE_END

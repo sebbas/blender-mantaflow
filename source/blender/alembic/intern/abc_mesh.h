@@ -102,16 +102,12 @@ public:
 
 	void readObjectData(Main *bmain, float time);
 
+	DerivedMesh *read_derivedmesh(DerivedMesh *dm, const float time, int read_flag, const char **err_str);
+
 private:
 	void readFaceSetsSample(Main *bmain, Mesh *mesh, size_t poly_start,
 	                        const Alembic::AbcGeom::ISampleSelector &sample_sel);
 };
-
-void read_mesh_sample(ImportSettings *settings,
-                      const Alembic::AbcGeom::IPolyMeshSchema &schema,
-                      const Alembic::AbcGeom::ISampleSelector &selector,
-                      CDStreamConfig &config,
-                      bool &do_normals);
 
 /* ************************************************************************** */
 
@@ -126,25 +122,15 @@ public:
 	bool valid() const;
 
 	void readObjectData(Main *bmain, float time);
+	DerivedMesh *read_derivedmesh(DerivedMesh *dm, const float time, int read_flag, const char **err_str);
 };
 
-void read_subd_sample(ImportSettings *settings,
-                      const Alembic::AbcGeom::ISubDSchema &schema,
-                      const Alembic::AbcGeom::ISampleSelector &selector,
-                      CDStreamConfig &config);
-
 /* ************************************************************************** */
-
-namespace utils {
-
-void mesh_add_verts(struct Mesh *mesh, size_t len);
-
-}
 
 void read_mverts(MVert *mverts,
                  const Alembic::AbcGeom::P3fArraySamplePtr &positions,
                  const Alembic::AbcGeom::N3fArraySamplePtr &normals);
 
-CDStreamConfig create_config(Mesh *mesh);
+CDStreamConfig get_config(DerivedMesh *dm);
 
 #endif  /* __ABC_MESH_H__ */

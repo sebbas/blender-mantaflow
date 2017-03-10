@@ -69,6 +69,7 @@ public:
 	device_vector<uint> prim_visibility;
 	device_vector<uint> prim_index;
 	device_vector<uint> prim_object;
+	device_vector<float2> prim_time;
 
 	/* mesh */
 	device_vector<uint> tri_shader;
@@ -143,8 +144,10 @@ public:
 	} bvh_type;
 	bool use_bvh_spatial_split;
 	bool use_bvh_unaligned_nodes;
+	int num_bvh_time_steps;
 	bool use_qbvh;
 	bool persistent_data;
+	int texture_limit;
 
 	SceneParams()
 	{
@@ -152,8 +155,10 @@ public:
 		bvh_type = BVH_DYNAMIC;
 		use_bvh_spatial_split = false;
 		use_bvh_unaligned_nodes = true;
+		num_bvh_time_steps = 0;
 		use_qbvh = false;
 		persistent_data = false;
+		texture_limit = 0;
 	}
 
 	bool modified(const SceneParams& params)
@@ -161,8 +166,10 @@ public:
 		&& bvh_type == params.bvh_type
 		&& use_bvh_spatial_split == params.use_bvh_spatial_split
 		&& use_bvh_unaligned_nodes == params.use_bvh_unaligned_nodes
+		&& num_bvh_time_steps == params.num_bvh_time_steps
 		&& use_qbvh == params.use_qbvh
-		&& persistent_data == params.persistent_data); }
+		&& persistent_data == params.persistent_data
+		&& texture_limit == params.texture_limit); }
 };
 
 /* Scene */

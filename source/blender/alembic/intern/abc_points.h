@@ -28,7 +28,7 @@
 #include "abc_object.h"
 #include "abc_customdata.h"
 
-class ParticleSystem;
+struct ParticleSystem;
 
 /* ************************************************************************** */
 
@@ -60,6 +60,8 @@ public:
 	bool valid() const;
 
 	void readObjectData(Main *bmain, float time);
+
+	DerivedMesh *read_derivedmesh(DerivedMesh *dm, const float time, int read_flag, const char **err_str);
 };
 
 void read_points_sample(const Alembic::AbcGeom::IPointsSchema &schema,

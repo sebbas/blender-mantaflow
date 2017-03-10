@@ -32,6 +32,7 @@
 #include "BLI_utildefines.h"
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
+#include "BLI_string_utils.h"
 
 #include "DNA_armature_types.h"
 #include "DNA_cloth_types.h"
@@ -408,8 +409,9 @@ void BKE_object_defgroup_remove(Object *ob, bDeformGroup *defgroup)
 
 /**
  * Remove all vgroups from object. Work in Object and Edit modes.
+ * When only_unlocked=true, locked vertex groups are not removed.
  */
-void BKE_object_defgroup_remove_all(Object *ob)
+void BKE_object_defgroup_remove_all_ex(struct Object *ob, bool only_unlocked)
 {
 	bDeformGroup *dg = (bDeformGroup *)ob->defbase.first;
 	const bool edit_mode = BKE_object_is_in_editmode_vgroup(ob);
@@ -418,10 +420,12 @@ void BKE_object_defgroup_remove_all(Object *ob)
 		while (dg) {
 			bDeformGroup *next_dg = dg->next;
 
-			if (edit_mode)
-				object_defgroup_remove_edit_mode(ob, dg);
-			else
-				object_defgroup_remove_object_mode(ob, dg);
+			if (!only_unlocked || (dg->flag & DG_LOCK_WEIGHT) == 0) {
+				if (edit_mode)
+					object_defgroup_remove_edit_mode(ob, dg);
+				else
+					object_defgroup_remove_object_mode(ob, dg);
+			}
 
 			dg = next_dg;
 		}
@@ -444,6 +448,15 @@ void BKE_object_defgroup_remove_all(Object *ob)
 		ob->actdef = 0;
 	}
 }
+
+/**
+ * Remove all vgroups from object. Work in Object and Edit modes.
+ */
+void BKE_object_defgroup_remove_all(struct Object *ob)
+{
+	BKE_object_defgroup_remove_all_ex(ob, false);
+}
+
 
 /**
  * Get MDeformVert vgroup data from given object. Should only be used in Object mode.
@@ -611,7 +624,7 @@ void BKE_object_defgroup_mirror_selection(
 		if (dg_selection[i]) {
 			char name_flip[MAXBONENAME];
 
-			BKE_deform_flip_side_name(name_flip, defgroup->name, false);
+			BLI_string_flip_side_name(name_flip, defgroup->name, false, sizeof(name_flip));
 			i_mirr = STREQ(name_flip, defgroup->name) ? i : defgroup_name_index(ob, name_flip);
 
 			if ((i_mirr >= 0 && i_mirr < defbase_tot) && (dg_flags_sel[i_mirr] == false)) {

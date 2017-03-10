@@ -42,17 +42,17 @@ ccl_device_inline void kernel_branched_path_ao(KernelGlobals *kg,
 
 		sample_cos_hemisphere(ao_N, bsdf_u, bsdf_v, &ao_D, &ao_pdf);
 
-		if(dot(ccl_fetch(sd, Ng), ao_D) > 0.0f && ao_pdf != 0.0f) {
+		if(dot(sd->Ng, ao_D) > 0.0f && ao_pdf != 0.0f) {
 			Ray light_ray;
 			float3 ao_shadow;
 
-			light_ray.P = ray_offset(ccl_fetch(sd, P), ccl_fetch(sd, Ng));
+			light_ray.P = ray_offset(sd->P, sd->Ng);
 			light_ray.D = ao_D;
 			light_ray.t = kernel_data.background.ao_distance;
 #ifdef __OBJECT_MOTION__
-			light_ray.time = ccl_fetch(sd, time);
-#endif
-			light_ray.dP = ccl_fetch(sd, dP);
+			light_ray.time = sd->time;
+#endif  /* __OBJECT_MOTION__ */
+			light_ray.dP = sd->dP;
 			light_ray.dD = differential3_zero();
 
 			if(!shadow_blocked(kg, emission_sd, state, &light_ray, &ao_shadow))
@@ -67,8 +67,8 @@ ccl_device_noinline void kernel_branched_path_surface_indirect_light(KernelGloba
 	RNG *rng, ShaderData *sd, ShaderData *indirect_sd, ShaderData *emission_sd,
 	float3 throughput, float num_samples_adjust, PathState *state, PathRadiance *L)
 {
-	for(int i = 0; i < ccl_fetch(sd, num_closure); i++) {
-		const ShaderClosure *sc = &ccl_fetch(sd, closure)[i];
+	for(int i = 0; i < sd->num_closure; i++) {
+		const ShaderClosure *sc = &sd->closure[i];
 
 		if(!CLOSURE_IS_BSDF(sc->type))
 			continue;
@@ -140,8 +140,8 @@ ccl_device void kernel_branched_path_subsurface_scatter(KernelGlobals *kg,
                                                         Ray *ray,
                                                         float3 throughput)
 {
-	for(int i = 0; i < ccl_fetch(sd, num_closure); i++) {
-		ShaderClosure *sc = &ccl_fetch(sd, closure)[i];
+	for(int i = 0; i < sd->num_closure; i++) {
+		ShaderClosure *sc = &sd->closure[i];
 
 		if(!CLOSURE_IS_BSSRDF(sc->type))
 			continue;
@@ -167,9 +167,10 @@ ccl_device void kernel_branched_path_subsurface_scatter(KernelGlobals *kg,
 			                                                  true);
 #ifdef __VOLUME__
 			Ray volume_ray = *ray;
-			bool need_update_volume_stack = kernel_data.integrator.use_volumes &&
-			                                ccl_fetch(sd, flag) & SD_OBJECT_INTERSECTS_VOLUME;
-#endif
+			bool need_update_volume_stack =
+			        kernel_data.integrator.use_volumes &&
+			        sd->object_flag & SD_OBJECT_INTERSECTS_VOLUME;
+#endif  /* __VOLUME__ */
 
 			/* compute lighting with the BSDF closure */
 			for(int hit = 0; hit < num_hits; hit++) {
@@ -200,7 +201,7 @@ ccl_device void kernel_branched_path_subsurface_scatter(KernelGlobals *kg,
 					    &volume_ray,
 					    hit_state.volume_stack);
 				}
-#endif
+#endif  /* __VOLUME__ */
 
 #ifdef __EMISSION__
 				/* direct light */
@@ -217,7 +218,7 @@ ccl_device void kernel_branched_path_subsurface_scatter(KernelGlobals *kg,
 					        L,
 					        all);
 				}
-#endif
+#endif  /* __EMISSION__ */
 
 				/* indirect light */
 				kernel_branched_path_surface_indirect_light(
@@ -234,7 +235,7 @@ ccl_device void kernel_branched_path_subsurface_scatter(KernelGlobals *kg,
 		}
 	}
 }
-#endif
+#endif  /* __SUBSURFACE__ */
 
 ccl_device float4 kernel_branched_path_integrate(KernelGlobals *kg, RNG *rng, int sample, Ray ray, ccl_global float *buffer)
 {
@@ -256,7 +257,7 @@ ccl_device float4 kernel_branched_path_integrate(KernelGlobals *kg, RNG *rng, in
 #ifdef __KERNEL_DEBUG__
 	DebugData debug_data;
 	debug_data_init(&debug_data);
-#endif
+#endif  /* __KERNEL_DEBUG__ */
 
 	/* Main Loop
 	 * Here we only handle transparency intersections from the camera ray.
@@ -285,15 +286,20 @@ ccl_device float4 kernel_branched_path_integrate(KernelGlobals *kg, RNG *rng, in
 		bool hit = scene_intersect(kg, ray, visibility, &isect, &lcg_state, difl, extmax);
 #else
 		bool hit = scene_intersect(kg, ray, visibility, &isect, NULL, 0.0f, 0.0f);
-#endif
+#endif  /* __HAIR__ */
 
 #ifdef __KERNEL_DEBUG__
-		debug_data.num_bvh_traversal_steps += isect.num_traversal_steps;
+		debug_data.num_bvh_traversed_nodes += isect.num_traversed_nodes;
 		debug_data.num_bvh_traversed_instances += isect.num_traversed_instances;
+		debug_data.num_bvh_intersections += isect.num_intersections;
 		debug_data.num_ray_bounces++;
-#endif
+#endif  /* __KERNEL_DEBUG__ */
 
 #ifdef __VOLUME__
+		/* Sanitize volume stack. */
+		if(!hit) {
+			kernel_volume_clean_stack(kg, state.volume_stack);
+		}
 		/* volume attenuation, emission, scatter */
 		if(state.volume_stack[0].shader != SHADER_NONE) {
 			Ray volume_ray = ray;
@@ -432,14 +438,14 @@ ccl_device float4 kernel_branched_path_integrate(KernelGlobals *kg, RNG *rng, in
 						path_radiance_reset_indirect(&L);
 					}
 				}
-#endif
+#endif  /* __VOLUME_SCATTER__ */
 			}
 
 			/* todo: avoid this calculation using decoupled ray marching */
 			kernel_volume_shadow(kg, &emission_sd, &state, &volume_ray, &throughput);
-#endif
+#endif  /* __VOLUME_DECOUPLED__ */
 		}
-#endif
+#endif  /* __VOLUME__ */
 
 		if(!hit) {
 			/* eval background shader if nothing hit */
@@ -448,7 +454,7 @@ ccl_device float4 kernel_branched_path_integrate(KernelGlobals *kg, RNG *rng, in
 
 #ifdef __PASSES__
 				if(!(kernel_data.film.pass_flag & PASS_BACKGROUND))
-#endif
+#endif  /* __PASSES__ */
 					break;
 			}
 
@@ -456,7 +462,7 @@ ccl_device float4 kernel_branched_path_integrate(KernelGlobals *kg, RNG *rng, in
 			/* sample background shader */
 			float3 L_background = indirect_background(kg, &emission_sd, &state, &ray);
 			path_radiance_accum_background(&L, throughput, L_background, state.bounce);
-#endif
+#endif  /* __BACKGROUND__ */
 
 			break;
 		}
@@ -468,23 +474,23 @@ ccl_device float4 kernel_branched_path_integrate(KernelGlobals *kg, RNG *rng, in
 
 		/* holdout */
 #ifdef __HOLDOUT__
-		if(sd.flag & (SD_HOLDOUT|SD_HOLDOUT_MASK)) {
+		if((sd.flag & SD_HOLDOUT) || (sd.object_flag & SD_OBJECT_HOLDOUT_MASK)) {
 			if(kernel_data.background.transparent) {
 				float3 holdout_weight;
-				
-				if(sd.flag & SD_HOLDOUT_MASK)
+				if(sd.object_flag & SD_OBJECT_HOLDOUT_MASK) {
 					holdout_weight = make_float3(1.0f, 1.0f, 1.0f);
-				else
+				}
+				else {
 					holdout_weight = shader_holdout_eval(kg, &sd);
-
+				}
 				/* any throughput is ok, should all be identical here */
 				L_transparent += average(holdout_weight*throughput);
 			}
-
-			if(sd.flag & SD_HOLDOUT_MASK)
+			if(sd.object_flag & SD_OBJECT_HOLDOUT_MASK) {
 				break;
+			}
 		}
-#endif
+#endif  /* __HOLDOUT__ */
 
 		/* holdout mask objects do not write data passes */
 		kernel_write_data_passes(kg, buffer, &L, &sd, sample, &state, throughput);
@@ -495,7 +501,7 @@ ccl_device float4 kernel_branched_path_integrate(KernelGlobals *kg, RNG *rng, in
 			float3 emission = indirect_primitive_emission(kg, &sd, isect.t, state.flag, state.ray_pdf);
 			path_radiance_accum_emission(&L, throughput, emission, state.bounce);
 		}
-#endif
+#endif  /* __EMISSION__ */
 
 		/* transparency termination */
 		if(state.flag & PATH_RAY_TRANSPARENT) {
@@ -522,7 +528,7 @@ ccl_device float4 kernel_branched_path_integrate(KernelGlobals *kg, RNG *rng, in
 		if(kernel_data.integrator.use_ambient_occlusion || (sd.flag & SD_AO)) {
 			kernel_branched_path_ao(kg, &sd, &emission_sd, &L, &state, rng, throughput);
 		}
-#endif
+#endif  /* __AO__ */
 
 #ifdef __SUBSURFACE__
 		/* bssrdf scatter to a different location on the same object */
@@ -530,7 +536,7 @@ ccl_device float4 kernel_branched_path_integrate(KernelGlobals *kg, RNG *rng, in
 			kernel_branched_path_subsurface_scatter(kg, &sd, &indirect_sd, &emission_sd,
 			                                        &L, &state, rng, &ray, throughput);
 		}
-#endif
+#endif  /* __SUBSURFACE__ */
 
 		if(!(sd.flag & SD_HAS_ONLY_VOLUME)) {
 			PathState hit_state = state;
@@ -542,7 +548,7 @@ ccl_device float4 kernel_branched_path_integrate(KernelGlobals *kg, RNG *rng, in
 				kernel_branched_path_surface_connect_light(kg, rng,
 					&sd, &emission_sd, &hit_state, throughput, 1.0f, &L, all);
 			}
-#endif
+#endif  /* __EMISSION__ */
 
 			/* indirect light */
 			kernel_branched_path_surface_indirect_light(kg, rng,
@@ -567,12 +573,12 @@ ccl_device float4 kernel_branched_path_integrate(KernelGlobals *kg, RNG *rng, in
 		ray.dP = sd.dP;
 		ray.dD.dx = -sd.dI.dx;
 		ray.dD.dy = -sd.dI.dy;
-#endif
+#endif  /* __RAY_DIFFERENTIALS__ */
 
 #ifdef __VOLUME__
 		/* enter/exit volume */
 		kernel_volume_stack_enter_exit(kg, &sd, state.volume_stack);
-#endif
+#endif  /* __VOLUME__ */
 	}
 
 	float3 L_sum = path_radiance_clamp_and_sum(kg, &L);
@@ -581,7 +587,7 @@ ccl_device float4 kernel_branched_path_integrate(KernelGlobals *kg, RNG *rng, in
 
 #ifdef __KERNEL_DEBUG__
 	kernel_write_debug_passes(kg, buffer, &state, &debug_data, sample);
-#endif
+#endif  /* __KERNEL_DEBUG__ */
 
 	return make_float4(L_sum.x, L_sum.y, L_sum.z, 1.0f - L_transparent);
 }

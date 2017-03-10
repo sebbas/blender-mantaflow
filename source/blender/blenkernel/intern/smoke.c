@@ -409,6 +409,10 @@ static void smokeModifier_freeDomain(SmokeModifierData *smd)
 		BKE_ptcache_free_list(&(smd->domain->ptcaches[0]));
 		smd->domain->point_cache[0] = NULL;
 
+		if (smd->domain->coba) {
+			MEM_freeN(smd->domain->coba);
+		}
+
 		MEM_freeN(smd->domain);
 		smd->domain = NULL;
 	}
@@ -619,6 +623,9 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->slice_depth = 0.5f;
 			smd->domain->slice_axis = 0;
 			smd->domain->vector_scale = 1.0f;
+
+			smd->domain->coba = NULL;
+			smd->domain->coba_field = FLUID_FIELD_DENSITY;
 		}
 		else if (smd->type & MOD_SMOKE_TYPE_FLOW)
 		{
@@ -741,6 +748,10 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->draw_velocity = smd->domain->draw_velocity;
 		tsmd->domain->vector_draw_type = smd->domain->vector_draw_type;
 		tsmd->domain->vector_scale = smd->domain->vector_scale;
+
+		if (smd->domain->coba) {
+			tsmd->domain->coba = MEM_dupallocN(smd->domain->coba);
+		}
 	}
 	else if (tsmd->flow) {
 		tsmd->flow->psys = smd->flow->psys;
@@ -843,15 +854,14 @@ static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
 			/* find the nearest point on the mesh */
 			if (BLI_bvhtree_find_nearest(data->tree->tree, ray_start, &nearest, data->tree->nearest_callback, data->tree) != -1) {
 				const MLoopTri *lt = &data->looptri[nearest.index];
-				float weights[4];
+				float weights[3];
 				int v1, v2, v3;
 
 				/* calculate barycentric weights for nearest point */
 				v1 = data->mloop[lt->tri[0]].v;
 				v2 = data->mloop[lt->tri[1]].v;
 				v3 = data->mloop[lt->tri[2]].v;
-				interp_weights_face_v3(
-				            weights, data->mvert[v1].co, data->mvert[v2].co, data->mvert[v3].co, NULL, nearest.co);
+				interp_weights_tri_v3(weights, data->mvert[v1].co, data->mvert[v2].co, data->mvert[v3].co, nearest.co);
 
 				// DG TODO
 				if (data->has_velocity)
@@ -1703,7 +1713,7 @@ static void sample_derivedmesh(
 
 	/* find the nearest point on the mesh */
 	if (BLI_bvhtree_find_nearest(treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1) {
-		float weights[4];
+		float weights[3];
 		int v1, v2, v3, f_index = nearest.index;
 		float n1[3], n2[3], n3[3], hit_normal[3];
 
@@ -1720,7 +1730,7 @@ static void sample_derivedmesh(
 		v1 = mloop[mlooptri[f_index].tri[0]].v;
 		v2 = mloop[mlooptri[f_index].tri[1]].v;
 		v3 = mloop[mlooptri[f_index].tri[2]].v;
-		interp_weights_face_v3(weights, mvert[v1].co, mvert[v2].co, mvert[v3].co, NULL, nearest.co);
+		interp_weights_tri_v3(weights, mvert[v1].co, mvert[v2].co, mvert[v3].co, nearest.co);
 
 		if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY && velocity_map) {
 			/* apply normal directional velocity */

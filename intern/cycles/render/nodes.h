@@ -243,7 +243,7 @@ public:
 	int offset_frequency, squash_frequency;
 
 	float3 color1, color2, mortar;
-	float scale, mortar_size, bias, brick_width, row_height;
+	float scale, mortar_size, mortar_smooth, bias, brick_width, row_height;
 	float3 vector;
 
 	virtual int get_group() { return NODE_GROUP_LEVEL_2; }
@@ -388,7 +388,7 @@ public:
 	bool has_integrator_dependency();
 	ClosureType get_closure_type() { return distribution; }
 
-	float roughness;
+	float roughness, roughness_orig;
 	ClosureType distribution, distribution_orig;
 };
 
@@ -400,7 +400,7 @@ public:
 	bool has_integrator_dependency();
 	ClosureType get_closure_type() { return distribution; }
 
-	float roughness, IOR;
+	float roughness, roughness_orig, IOR;
 	ClosureType distribution, distribution_orig;
 };
 
@@ -412,7 +412,7 @@ public:
 	bool has_integrator_dependency();
 	ClosureType get_closure_type() { return distribution; }
 
-	float roughness, IOR;
+	float roughness, roughness_orig, IOR;
 	ClosureType distribution, distribution_orig;
 };
 

@@ -56,6 +56,7 @@ set(SRC
 	intern/array_store_utils.c
 	intern/array_utils.c
 	intern/astar.c
+	intern/bitmap_draw_2d.c
 	intern/boxpack2d.c
 	intern/buffer.c
 	intern/callbacks.c
@@ -108,6 +109,7 @@ set(SRC
 	intern/string.c
 	intern/string_cursor_utf8.c
 	intern/string_utf8.c
+	intern/string_utils.c
 	intern/system.c
 	intern/task.c
 	intern/threads.c
@@ -127,6 +129,7 @@ set(SRC
 	BLI_array_utils.h
 	BLI_astar.h
 	BLI_bitmap.h
+	BLI_bitmap_draw_2d.h
 	BLI_blenlib.h
 	BLI_boxpack2d.h
 	BLI_buffer.h
@@ -193,6 +196,7 @@ set(SRC
 	BLI_string.h
 	BLI_string_cursor_utf8.h
 	BLI_string_utf8.h
+	BLI_string_utils.h
 	BLI_sys_types.h
 	BLI_system.h
 	BLI_task.h

@@ -120,13 +120,11 @@ ccl_device_forceinline float path_rng_1D(KernelGlobals *kg, ccl_addr_space RNG *
 	/* Cranly-Patterson rotation using rng seed */
 	float shift;
 
-	/* using the same *rng value to offset seems to give correlation issues,
-	 * we could hash it with the dimension but this has a performance impact,
-	 * we need to find a solution for this */
-	if(dimension & 1)
-		shift = (*rng >> 16) * (1.0f/(float)0xFFFF);
-	else
-		shift = (*rng & 0xFFFF) * (1.0f/(float)0xFFFF);
+	/* Hash rng with dimension to solve correlation issues.
+	 * See T38710, T50116.
+	 */
+	RNG tmp_rng = cmj_hash_simple(dimension, *rng);
+	shift = tmp_rng * (1.0f/(float)0xFFFFFFFF);
 
 	return r + shift - floorf(r + shift);
 #endif
@@ -298,6 +296,23 @@ ccl_device_inline float path_branched_rng_1D_for_decision(KernelGlobals *kg, ccl
 ccl_device_inline void path_branched_rng_2D(KernelGlobals *kg, ccl_addr_space RNG *rng, const PathState *state, int branch, int num_branches, int dimension, float *fx, float *fy)
 {
 	path_rng_2D(kg, rng, state->sample*num_branches + branch, state->num_samples*num_branches, state->rng_offset + dimension, fx, fy);
+}
+
+/* Utitility functions to get light termination value, since it might not be needed in many cases. */
+ccl_device_inline float path_state_rng_light_termination(KernelGlobals *kg, ccl_addr_space RNG *rng, const ccl_addr_space PathState *state)
+{
+	if(kernel_data.integrator.light_inv_rr_threshold > 0.0f) {
+		return path_state_rng_1D_for_decision(kg, rng, state, PRNG_LIGHT_TERMINATE);
+	}
+	return 0.0f;
+}
+
+ccl_device_inline float path_branched_rng_light_termination(KernelGlobals *kg, ccl_addr_space RNG *rng, const PathState *state, int branch, int num_branches)
+{
+	if(kernel_data.integrator.light_inv_rr_threshold > 0.0f) {
+		return path_branched_rng_1D_for_decision(kg, rng, state, branch, num_branches, PRNG_LIGHT_TERMINATE);
+	}
+	return 0.0f;
 }
 
 ccl_device_inline void path_state_branch(PathState *state, int branch, int num_branches)
