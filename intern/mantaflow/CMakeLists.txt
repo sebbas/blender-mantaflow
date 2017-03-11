@@ -23,14 +23,26 @@
 #
 # ***** END GPL LICENSE BLOCK *****
 
+if(WITH_OPENMP)
+	set(MANTA_PP
+		intern/manta_pp/omp
+	)
+	add_definitions(-DOPENMP=1)
+else()
+	set(MANTA_PP
+		intern/manta_pp/tbb
+	)
+	add_definitions(-DTBB=1)
+endif()
+
 set(INC
 	extern
 	intern/strings
-	intern/manta_pp
-	intern/manta_pp/python
-	intern/manta_pp/plugin
-	intern/manta_pp/pwrapper
-	intern/manta_pp/util
+	${MANTA_PP}
+	${MANTA_PP}/python
+	${MANTA_PP}/plugin
+	${MANTA_PP}/pwrapper
+	${MANTA_PP}/util
 	../../source/blender/makesdna
 	../../source/blender/blenlib
 )
@@ -39,6 +51,12 @@ set(INC_SYS
 	${PYTHON_INCLUDE_DIRS}
 	${ZLIB_INCLUDE_DIRS}
 )
+
+if(NOT WITH_OPENMP)
+	list(APPEND INC_SYS
+		${TBB_INCLUDE_DIRS}
+	)
+endif()
 
 set(SRC
 	intern/manta_python_API.cpp
@@ -54,138 +72,132 @@ set(SRC
 	intern/strings/smoke_script.h
 	intern/strings/liquid_script.h
 
-	intern/manta_pp/commonkernels.h
-	intern/manta_pp/commonkernels.h.reg
-	intern/manta_pp/commonkernels.h.reg.cpp
-	intern/manta_pp/conjugategrad.cpp
-	intern/manta_pp/conjugategrad.h
-	intern/manta_pp/conjugategrad.h.reg
-	intern/manta_pp/conjugategrad.h.reg.cpp
-	intern/manta_pp/edgecollapse.cpp
-	intern/manta_pp/edgecollapse.h
-	intern/manta_pp/edgecollapse.h.reg
-	intern/manta_pp/edgecollapse.h.reg.cpp
-	intern/manta_pp/fastmarch.cpp
-	intern/manta_pp/fastmarch.h
-	intern/manta_pp/fastmarch.h.reg
-	intern/manta_pp/fastmarch.h.reg.cpp
-	intern/manta_pp/fileio.cpp
-	intern/manta_pp/fileio.h
-	intern/manta_pp/fileio.h.reg
-	intern/manta_pp/fileio.h.reg.cpp
-	intern/manta_pp/fluidsolver.cpp
-	intern/manta_pp/fluidsolver.h
-	intern/manta_pp/fluidsolver.h.reg
-	intern/manta_pp/fluidsolver.h.reg.cpp
-	intern/manta_pp/general.cpp
-	intern/manta_pp/general.h
-	intern/manta_pp/general.h.reg
-	intern/manta_pp/general.h.reg.cpp
-	intern/manta_pp/gitinfo.h
-	intern/manta_pp/grid.cpp
-	intern/manta_pp/grid.h
-	intern/manta_pp/grid.h.reg
-	intern/manta_pp/grid.h.reg.cpp
-	intern/manta_pp/grid4d.cpp
-	intern/manta_pp/grid4d.h
-	intern/manta_pp/grid4d.h.reg
-	intern/manta_pp/grid4d.h.reg.cpp
-	intern/manta_pp/kernel.cpp
-	intern/manta_pp/kernel.h
-	intern/manta_pp/kernel.h.reg
-	intern/manta_pp/kernel.h.reg.cpp
-	intern/manta_pp/levelset.cpp
-	intern/manta_pp/levelset.h
-	intern/manta_pp/levelset.h.reg
-	intern/manta_pp/levelset.h.reg.cpp
-	intern/manta_pp/mesh.cpp
-	intern/manta_pp/mesh.h
-	intern/manta_pp/mesh.h.reg
-	intern/manta_pp/mesh.h.reg.cpp
-	intern/manta_pp/movingobs.cpp
-	intern/manta_pp/movingobs.h
-	intern/manta_pp/movingobs.h.reg
-	intern/manta_pp/movingobs.h.reg.cpp
-	intern/manta_pp/multigrid.cpp
-	intern/manta_pp/multigrid.h
-	intern/manta_pp/multigrid.h.reg
-	intern/manta_pp/multigrid.h.reg.cpp
-	intern/manta_pp/noisefield.cpp
-	intern/manta_pp/noisefield.h
-	intern/manta_pp/noisefield.h.reg
-	intern/manta_pp/noisefield.h.reg.cpp
-	intern/manta_pp/particle.cpp
-	intern/manta_pp/particle.h
-	intern/manta_pp/particle.h.reg
-	intern/manta_pp/particle.h.reg.cpp
-	intern/manta_pp/plugin/advection.cpp
-	intern/manta_pp/plugin/extforces.cpp
-	intern/manta_pp/plugin/fire.cpp
-	intern/manta_pp/plugin/flip.cpp
-	intern/manta_pp/plugin/fluidguiding.cpp
-	intern/manta_pp/plugin/initplugins.cpp
-	intern/manta_pp/plugin/kepsilon.cpp
-	intern/manta_pp/plugin/meshplugins.cpp
-	intern/manta_pp/plugin/pressure.cpp
-	intern/manta_pp/plugin/surfaceturbulence.cpp
-	intern/manta_pp/plugin/vortexplugins.cpp
-	intern/manta_pp/plugin/waveletturbulence.cpp
-	intern/manta_pp/plugin/waves.cpp
-	intern/manta_pp/pwrapper/manta.h
-	intern/manta_pp/pwrapper/pclass.cpp
-	intern/manta_pp/pwrapper/pclass.h
-	intern/manta_pp/pwrapper/pconvert.cpp
-	intern/manta_pp/pwrapper/pconvert.h
-	intern/manta_pp/pwrapper/pvec3.cpp
-	intern/manta_pp/pwrapper/pythonInclude.h
-	intern/manta_pp/pwrapper/registry.cpp
-	intern/manta_pp/pwrapper/registry.h
-	intern/manta_pp/python/defines.py
-	intern/manta_pp/python/defines.py.reg
-	intern/manta_pp/python/defines.py.reg.cpp
-	intern/manta_pp/registration.cpp
-	intern/manta_pp/shapes.cpp
-	intern/manta_pp/shapes.h
-	intern/manta_pp/shapes.h.reg
-	intern/manta_pp/shapes.h.reg.cpp
-	intern/manta_pp/test.cpp
-	intern/manta_pp/timing.cpp
-	intern/manta_pp/timing.h
-	intern/manta_pp/timing.h.reg
-	intern/manta_pp/timing.h.reg.cpp
-	intern/manta_pp/turbulencepart.cpp
-	intern/manta_pp/turbulencepart.h
-	intern/manta_pp/turbulencepart.h.reg
-	intern/manta_pp/turbulencepart.h.reg.cpp
-	intern/manta_pp/util/integrator.h
-	intern/manta_pp/util/interpol.h
-	intern/manta_pp/util/interpolHigh.h
-	intern/manta_pp/util/mcubes.h
-	intern/manta_pp/util/quaternion.h
-	intern/manta_pp/util/randomstream.h
-	intern/manta_pp/util/rcmatrix.h
-	intern/manta_pp/util/simpleimage.cpp
-	intern/manta_pp/util/simpleimage.h
-	intern/manta_pp/util/solvana.h
-	intern/manta_pp/util/vector4d.cpp
-	intern/manta_pp/util/vector4d.h
-	intern/manta_pp/util/vectorbase.cpp
-	intern/manta_pp/util/vectorbase.h
-	intern/manta_pp/vortexpart.cpp
-	intern/manta_pp/vortexpart.h
-	intern/manta_pp/vortexpart.h.reg
-	intern/manta_pp/vortexpart.h.reg.cpp
-	intern/manta_pp/vortexsheet.cpp
-	intern/manta_pp/vortexsheet.h
-	intern/manta_pp/vortexsheet.h.reg
-	intern/manta_pp/vortexsheet.h.reg.cpp
+	${MANTA_PP}/commonkernels.h
+	${MANTA_PP}/commonkernels.h.reg
+	${MANTA_PP}/commonkernels.h.reg.cpp
+	${MANTA_PP}/conjugategrad.cpp
+	${MANTA_PP}/conjugategrad.h
+	${MANTA_PP}/conjugategrad.h.reg
+	${MANTA_PP}/conjugategrad.h.reg.cpp
+	${MANTA_PP}/edgecollapse.cpp
+	${MANTA_PP}/edgecollapse.h
+	${MANTA_PP}/edgecollapse.h.reg
+	${MANTA_PP}/edgecollapse.h.reg.cpp
+	${MANTA_PP}/fastmarch.cpp
+	${MANTA_PP}/fastmarch.h
+	${MANTA_PP}/fastmarch.h.reg
+	${MANTA_PP}/fastmarch.h.reg.cpp
+	${MANTA_PP}/fileio.cpp
+	${MANTA_PP}/fileio.h
+	${MANTA_PP}/fileio.h.reg
+	${MANTA_PP}/fileio.h.reg.cpp
+	${MANTA_PP}/fluidsolver.cpp
+	${MANTA_PP}/fluidsolver.h
+	${MANTA_PP}/fluidsolver.h.reg
+	${MANTA_PP}/fluidsolver.h.reg.cpp
+	${MANTA_PP}/general.cpp
+	${MANTA_PP}/general.h
+	${MANTA_PP}/general.h.reg
+	${MANTA_PP}/general.h.reg.cpp
+	${MANTA_PP}/gitinfo.h
+	${MANTA_PP}/grid.cpp
+	${MANTA_PP}/grid.h
+	${MANTA_PP}/grid.h.reg
+	${MANTA_PP}/grid.h.reg.cpp
+	${MANTA_PP}/grid4d.cpp
+	${MANTA_PP}/grid4d.h
+	${MANTA_PP}/grid4d.h.reg
+	${MANTA_PP}/grid4d.h.reg.cpp
+	${MANTA_PP}/kernel.cpp
+	${MANTA_PP}/kernel.h
+	${MANTA_PP}/kernel.h.reg
+	${MANTA_PP}/kernel.h.reg.cpp
+	${MANTA_PP}/levelset.cpp
+	${MANTA_PP}/levelset.h
+	${MANTA_PP}/levelset.h.reg
+	${MANTA_PP}/levelset.h.reg.cpp
+	${MANTA_PP}/mesh.cpp
+	${MANTA_PP}/mesh.h
+	${MANTA_PP}/mesh.h.reg
+	${MANTA_PP}/mesh.h.reg.cpp
+	${MANTA_PP}/movingobs.cpp
+	${MANTA_PP}/movingobs.h
+	${MANTA_PP}/movingobs.h.reg
+	${MANTA_PP}/movingobs.h.reg.cpp
+	${MANTA_PP}/multigrid.cpp
+	${MANTA_PP}/multigrid.h
+	${MANTA_PP}/multigrid.h.reg
+	${MANTA_PP}/multigrid.h.reg.cpp
+	${MANTA_PP}/noisefield.cpp
+	${MANTA_PP}/noisefield.h
+	${MANTA_PP}/noisefield.h.reg
+	${MANTA_PP}/noisefield.h.reg.cpp
+	${MANTA_PP}/particle.cpp
+	${MANTA_PP}/particle.h
+	${MANTA_PP}/particle.h.reg
+	${MANTA_PP}/particle.h.reg.cpp
+	${MANTA_PP}/plugin/advection.cpp
+	${MANTA_PP}/plugin/extforces.cpp
+	${MANTA_PP}/plugin/fire.cpp
+	${MANTA_PP}/plugin/flip.cpp
+	${MANTA_PP}/plugin/fluidguiding.cpp
+	${MANTA_PP}/plugin/initplugins.cpp
+	${MANTA_PP}/plugin/kepsilon.cpp
+	${MANTA_PP}/plugin/meshplugins.cpp
+	${MANTA_PP}/plugin/pressure.cpp
+	${MANTA_PP}/plugin/surfaceturbulence.cpp
+	${MANTA_PP}/plugin/vortexplugins.cpp
+	${MANTA_PP}/plugin/waveletturbulence.cpp
+	${MANTA_PP}/plugin/waves.cpp
+	${MANTA_PP}/pwrapper/manta.h
+	${MANTA_PP}/pwrapper/pclass.cpp
+	${MANTA_PP}/pwrapper/pclass.h
+	${MANTA_PP}/pwrapper/pconvert.cpp
+	${MANTA_PP}/pwrapper/pconvert.h
+	${MANTA_PP}/pwrapper/pvec3.cpp
+	${MANTA_PP}/pwrapper/pythonInclude.h
+	${MANTA_PP}/pwrapper/registry.cpp
+	${MANTA_PP}/pwrapper/registry.h
+	${MANTA_PP}/python/defines.py
+	${MANTA_PP}/python/defines.py.reg
+	${MANTA_PP}/python/defines.py.reg.cpp
+	${MANTA_PP}/registration.cpp
+	${MANTA_PP}/shapes.cpp
+	${MANTA_PP}/shapes.h
+	${MANTA_PP}/shapes.h.reg
+	${MANTA_PP}/shapes.h.reg.cpp
+	${MANTA_PP}/test.cpp
+	${MANTA_PP}/timing.cpp
+	${MANTA_PP}/timing.h
+	${MANTA_PP}/timing.h.reg
+	${MANTA_PP}/timing.h.reg.cpp
+	${MANTA_PP}/turbulencepart.cpp
+	${MANTA_PP}/turbulencepart.h
+	${MANTA_PP}/turbulencepart.h.reg
+	${MANTA_PP}/turbulencepart.h.reg.cpp
+	${MANTA_PP}/util/integrator.h
+	${MANTA_PP}/util/interpol.h
+	${MANTA_PP}/util/interpolHigh.h
+	${MANTA_PP}/util/mcubes.h
+	${MANTA_PP}/util/quaternion.h
+	${MANTA_PP}/util/randomstream.h
+	${MANTA_PP}/util/rcmatrix.h
+	${MANTA_PP}/util/simpleimage.cpp
+	${MANTA_PP}/util/simpleimage.h
+	${MANTA_PP}/util/solvana.h
+	${MANTA_PP}/util/vector4d.cpp
+	${MANTA_PP}/util/vector4d.h
+	${MANTA_PP}/util/vectorbase.cpp
+	${MANTA_PP}/util/vectorbase.h
+	${MANTA_PP}/vortexpart.cpp
+	${MANTA_PP}/vortexpart.h
+	${MANTA_PP}/vortexpart.h.reg
+	${MANTA_PP}/vortexpart.h.reg.cpp
+	${MANTA_PP}/vortexsheet.cpp
+	${MANTA_PP}/vortexsheet.h
+	${MANTA_PP}/vortexsheet.h.reg
+	${MANTA_PP}/vortexsheet.h.reg.cpp
 )
-
-if(WITH_OPENMP)
-	add_definitions(-DOPENMP)
-else()
-	message("Error. Mantaflow pp files require an OpenMP enabled compiler")
-endif()
 
 blender_add_lib(bf_intern_mantaflow "${SRC}" "${INC}" "${INC_SYS}")
 

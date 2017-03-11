@@ -1,0 +1,7 @@
+#include "vortexpart.h"
++VortexParticleSystem^ static const Pb::Register _R_$IDX$ ("VortexParticleSystem","VortexParticleSystem","ParticleSystem<$BT$>"); template<> const char* Namify<VortexParticleSystem >::S = "VortexParticleSystem"; 
+>VortexParticleSystem^
+@VortexParticleSystem^^ParticleSystem^VortexParticleData
++VortexParticleSystem^ static const Pb::Register _R_$IDX$ ("VortexParticleSystem","VortexParticleSystem",VortexParticleSystem::_W_0); 
++VortexParticleSystem^ static const Pb::Register _R_$IDX$ ("VortexParticleSystem","advectSelf",VortexParticleSystem::_W_1); 
++VortexParticleSystem^ static const Pb::Register _R_$IDX$ ("VortexParticleSystem","applyToMesh",VortexParticleSystem::_W_2); 

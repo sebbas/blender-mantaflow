@@ -431,6 +431,12 @@ if(WITH_OPENMP)
 	endif()
 endif()
 
+if(WITH_MOD_MANTA)
+	message(STATUS "Using TBB as fallback for Mantaflow since OpenMP was not found!")
+	set(TBB_INCLUDE_DIRS ${LIBDIR}/tbb/include)
+	set(TBB_LIBRARIES ${LIBDIR}/tbb/lib/libtbb.a)
+endif()
+
 set(EXETYPE MACOSX_BUNDLE)
 
 set(CMAKE_C_FLAGS_DEBUG "-fno-strict-aliasing -g")

@@ -1,0 +1,13 @@
+#include "mesh.h"
++Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","Mesh","PbClass"); template<> const char* Namify<Mesh >::S = "Mesh"; 
+>Mesh^
++Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","Mesh",Mesh::_W_0); 
++Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","clear",Mesh::_W_1); 
++Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","load",Mesh::_W_2); 
++Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","fromShape",Mesh::_W_3); 
++Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","save",Mesh::_W_4); 
++Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","advectInGrid",Mesh::_W_5); 
++Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","scale",Mesh::_W_6); 
++Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","offset",Mesh::_W_7); 
++Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","computeLevelset",Mesh::_W_8); 
++Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","applyMeshToGrid",Mesh::_W_9); 
