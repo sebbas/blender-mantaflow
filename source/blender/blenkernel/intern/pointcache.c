@@ -1997,7 +1997,7 @@ static int ptcache_filename(PTCacheID *pid, char *filename, int cfra, short do_p
 	filename[0] = '\0';
 	newname = filename;
 	
-	if (!G.relbase_valid && (pid->cache->flag & PTCACHE_EXTERNAL)==0) return 0; /* save blend file before using disk pointcache */
+	/* if (!G.relbase_valid && (pid->cache->flag & PTCACHE_EXTERNAL)==0) return 0; *//* save blend file before using disk pointcache */
 	
 	/* start with temp dir */
 	if (do_path) {
@@ -2993,10 +2993,6 @@ static int ptcache_write_liquid_stream(PTCacheID *pid, int cfra)
 	char pathname[FILE_MAX * 2];
 
 	BKE_ptcache_id_clear(pid, PTCACHE_CLEAR_FRAME, cfra);
-	
-	/* save blend file before using disk pointcache */
-	if (!G.relbase_valid && (pid->cache->flag & PTCACHE_EXTERNAL)==0)
-		return 0;
 
 	ptcache_filename(pid, filename, cfra, 1, 1);
 	ptcache_path(pid, pathname);
@@ -3004,6 +3000,9 @@ static int ptcache_write_liquid_stream(PTCacheID *pid, int cfra)
 	BLI_make_existing_file(filename);
 
 	int error = pid->write_liquid_stream(pid->calldata, filename, pathname);
+	
+	if (error && G.debug & G_DEBUG)
+		printf("Error writing to disk cache\n");
 	
 	return error == 0;
 }
@@ -3142,9 +3141,11 @@ int BKE_ptcache_write(PTCacheID *pid, unsigned int cfra)
 		ptcache_write_openvdb_stream(pid, cfra);
 	}
 	else if (pid->file_type == PTCACHE_FILE_LIQUID && pid->write_liquid_stream) {
+		printf("write liquid\n");
 		ptcache_write_liquid_stream(pid, cfra);
 	}
 	else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->write_stream) {
+		printf("write smoke\n");
 		ptcache_write_stream(pid, cfra, totpoint);
 	}
 	else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->write_point) {
