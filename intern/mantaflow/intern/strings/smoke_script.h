@@ -277,7 +277,7 @@ def step_low():\n\
     mantaMsg('Adding object velocity')\n\
     averageGrid(grid=obvel, num=numObs)\n\
     # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
-    extrapolateVec3Simple(vel=obvel, phi=phiObsIn, distance=res/2, inside=True)\n\
+    extrapolateVec3Simple(vel=obvel, phi=phiObsIn, distance=int(res/2), inside=True)\n\
     extrapolateVec3Simple(vel=obvel, phi=phiObsIn, distance=obvel_border, inside=False)\n\
     setObstacleVelocity(flags=flags, vel=vel, obvel=obvel, borderWidth=obvel_border-1)\n\
     \n\
