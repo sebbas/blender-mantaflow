@@ -1314,9 +1314,11 @@ static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_mult
 					/* values */
 					if (additive) {
 						output->influence[index_out] += em2->influence[index_in] * sample_size;
+						output->inflow[index_out] += em2->inflow[index_in] * sample_size;
 					}
 					else {
 						output->influence[index_out] = MAX2(em2->influence[index_in], output->influence[index_out]);
+						output->inflow[index_out] = MAX2(em2->inflow[index_in], output->inflow[index_out]);
 					}
 					if (output->velocity && em2->velocity) {
 						/* last sample replaces the velocity */
@@ -1354,9 +1356,11 @@ static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_mult
 						/* values */
 						if (additive) {
 							output->influence_high[index_out] += em2->influence_high[index_in] * sample_size;
+							output->inflow_high[index_out] += em2->inflow_high[index_in] * sample_size;
 						}
 						else {
 							output->influence_high[index_out] = MAX2(em2->influence_high[index_in], output->influence_high[index_out]);
+							output->inflow_high[index_out] = MAX2(em2->inflow_high[index_in], output->inflow_high[index_out]);
 						}
 					}
 		} // high res loop
