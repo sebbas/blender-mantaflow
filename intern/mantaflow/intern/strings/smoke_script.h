@@ -328,6 +328,7 @@ def step_low():\n\
     \n\
     mantaMsg('Pressure')\n\
     solvePressure(flags=flags, vel=vel, pressure=pressure, preconditioner=$PRECONDITIONER$)\n\
+    releaseMG() # manual clean up\n\
 \n\
 def process_burn_low():\n\
     mantaMsg('Process burn low')\n\
