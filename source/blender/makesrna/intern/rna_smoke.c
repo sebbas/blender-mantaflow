@@ -37,6 +37,7 @@
 #include "BKE_modifier.h"
 #include "BKE_smoke.h"
 #include "BKE_pointcache.h"
+#include "BKE_object.h"
 
 #include "BLI_threads.h"
 
@@ -93,6 +94,77 @@ static void rna_Smoke_cachetype_set(struct PointerRNA *ptr, int value)
 		BKE_ptcache_id_clear(&id, PTCACHE_CLEAR_ALL, 0);
 
 		settings->cache_file_format = value;
+	}
+}
+
+static EnumPropertyItem *rna_Smoke_cachetype_itemf(
+        bContext *UNUSED(C), PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
+{
+	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+
+	EnumPropertyItem *item = NULL;
+	EnumPropertyItem tmp = {0, "", 0, "", ""};
+	int totitem = 0;
+
+	if (settings->type == MOD_SMOKE_DOMAIN_TYPE_GAS)
+	{
+		tmp.value = PTCACHE_FILE_PTCACHE;
+		tmp.identifier = "POINTCACHE";
+		tmp.name = "Point Cache";
+		tmp.description = "Blender specific point cache file format";
+		RNA_enum_item_add(&item, &totitem, &tmp);
+
+#ifdef WITH_OPENVDB
+		tmp.value = PTCACHE_FILE_OPENVDB;
+		tmp.identifier = "OPENVDB";
+		tmp.name = "OpenVDB";
+		tmp.description = "OpenVDB file format";
+		RNA_enum_item_add(&item, &totitem, &tmp);
+#endif
+	}
+	else if (settings->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
+	{
+		tmp.value = PTCACHE_FILE_LIQUID;
+		tmp.identifier = "OBJECT";
+		tmp.name = "Object files";
+		tmp.description = "Obj file format";
+		RNA_enum_item_add(&item, &totitem, &tmp);
+	}
+
+	RNA_enum_item_end(&item, &totitem);
+	*r_free = true;
+	
+	return item;
+}
+
+static void rna_Smoke_collisionextents_set(struct PointerRNA *ptr, int value)
+{
+	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+	settings->border_collisions = value;
+}
+
+static void rna_Smoke_domaintype_set(struct PointerRNA *ptr, int value)
+{
+	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+	Object *ob = (Object *)ptr->id.data;
+	
+	if (value != settings->type) {
+		/* Set common values for liquid/smoke domain: cache type, border collision and viewport drawtype. */
+		if (value == MOD_SMOKE_DOMAIN_TYPE_GAS)
+		{
+			rna_Smoke_cachetype_set(ptr, PTCACHE_FILE_PTCACHE);
+			rna_Smoke_collisionextents_set(ptr, SM_BORDER_OPEN);
+			BKE_object_draw_type_set(ob, OB_WIRE);
+		}
+		else if (value == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
+		{
+			rna_Smoke_cachetype_set(ptr, PTCACHE_FILE_LIQUID);
+			rna_Smoke_collisionextents_set(ptr, SM_BORDER_CLOSED);
+			BKE_object_draw_type_set(ob, OB_SOLID);
+		}
+
+		/* Set actual domain type */
+		settings->type = value;
 	}
 }
 
@@ -502,14 +574,9 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 		{0, NULL, 0, NULL, NULL}
 	};
 
+	/*  Cache type - generated dynamically based on domain type */
 	static EnumPropertyItem cache_file_type_items[] = {
-		{PTCACHE_FILE_PTCACHE, "POINTCACHE", 0, "Point Cache", "Blender specific point cache file format"},
-#ifdef WITH_OPENVDB
-		{PTCACHE_FILE_OPENVDB, "OPENVDB", 0, "OpenVDB", "OpenVDB file format"},
-#endif
-#ifdef WITH_MANTA
-		{PTCACHE_FILE_LIQUID, "OBJECT", 0, "Object files ", "Obj file format"},
-#endif
+		{0, "NONE", 0, "", ""},
 		{0, NULL, 0, NULL, NULL}
 	};
 
@@ -547,8 +614,9 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "smoke_domain_type", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "type");
 	RNA_def_property_enum_items(prop, smoke_domain_types);
+	RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_domaintype_set", NULL);
 	RNA_def_property_ui_text(prop, "Domain Type", "Change domain type of the simulation");
-	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Smoke_reset");
 
 	prop = RNA_def_property(srna, "resolution_max", PROP_INT, PROP_NONE);
 	RNA_def_property_int_sdna(prop, NULL, "maxres");
@@ -671,6 +739,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "collision_extents", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "border_collisions");
 	RNA_def_property_enum_items(prop, smoke_domain_colli_items);
+	RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_collisionextents_set", NULL);
 	RNA_def_property_ui_text(prop, "Border Collisions",
 	                         "Select which domain border will be treated as collision object");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
@@ -830,7 +899,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "cache_file_format", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "cache_file_format");
 	RNA_def_property_enum_items(prop, cache_file_type_items);
-	RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_cachetype_set", NULL);
+	RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_cachetype_set", "rna_Smoke_cachetype_itemf");
 	RNA_def_property_ui_text(prop, "File Format", "Select the file format to be used for caching");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 	

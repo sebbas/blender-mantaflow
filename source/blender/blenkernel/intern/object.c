@@ -2410,6 +2410,11 @@ void BKE_object_empty_draw_type_set(Object *ob, const int value)
 	}
 }
 
+void BKE_object_draw_type_set(Object *ob, const int value)
+{
+	ob->dt = value;
+}
+
 bool BKE_object_minmax_dupli(Scene *scene, Object *ob, float r_min[3], float r_max[3], const bool use_hidden)
 {
 	bool ok = false;
