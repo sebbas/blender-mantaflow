@@ -34,7 +34,7 @@
 extern "C" {
 #endif
 
-PyObject* PyInit_Manta(void);
+PyObject* Manta_initPython(void);
 
 #ifdef __cplusplus
 }

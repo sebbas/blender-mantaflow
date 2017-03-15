@@ -31,7 +31,7 @@
 #include "manta_python_API.h"
 #include "manta.h"
 
-PyObject* PyInit_Manta(void)
+PyObject* Manta_initPython(void)
 {
 	return Pb::PyInit_Main();
 }

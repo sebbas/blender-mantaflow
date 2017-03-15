@@ -75,9 +75,6 @@
 #include "../bmesh/bmesh_py_api.h"
 #include "../mathutils/mathutils.h"
 
-#include "manta_python_API.h"
-
-
 /* for internal use, when starting and ending python scripts */
 
 /* in case a python script triggers another python call, stop bpy_context_clear from invalidating */
@@ -195,8 +192,15 @@ void BPY_context_set(bContext *C)
 	BPy_SetContext(C);
 }
 
+#ifdef WITH_MANTA
+/* defined in manta module */
+extern PyObject *Manta_initPython(void);
+#endif
+
+#ifdef WITH_AUDASPACE
 /* defined in AUD_C-API.cpp */
 extern PyObject *AUD_initPython(void);
+#endif
 
 #ifdef WITH_CYCLES
 /* defined in cycles module */
@@ -217,11 +221,13 @@ static struct _inittab bpy_internal_modules[] = {
 	{"bgl", BPyInit_bgl},
 	{"blf", BPyInit_blf},
 	{"bmesh", BPyInit_bmesh},
-	{ "manta", PyInit_Manta},
 #if 0
 	{"bmesh.types", BPyInit_bmesh_types},
 	{"bmesh.utils", BPyInit_bmesh_utils},
 	{"bmesh.utils", BPyInit_bmesh_geometry},
+#endif
+#ifdef WITH_MANTA
+	{"manta", Manta_initPython},
 #endif
 #ifdef WITH_AUDASPACE
 	{"aud", AUD_initPython},
