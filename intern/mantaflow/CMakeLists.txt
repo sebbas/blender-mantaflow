@@ -62,12 +62,10 @@ set(SRC
 	intern/manta_python_API.cpp
 	intern/manta_fluid_API.cpp
 	intern/FLUID.cpp
-	intern/spectrum.cpp
 
 	extern/manta_python_API.h
 	extern/manta_fluid_API.h
 	intern/FLUID.h
-	intern/spectrum.h
 	intern/strings/shared_script.h
 	intern/strings/smoke_script.h
 	intern/strings/liquid_script.h

@@ -31,7 +31,6 @@
 
 #include "FLUID.h"
 #include "manta_fluid_API.h"
-#include "spectrum.h"
 
 extern "C" FLUID *smoke_init(int *res, struct SmokeModifierData *smd)
 {
@@ -413,11 +412,6 @@ extern "C" void smoke_get_ob_velocity(FLUID *smoke, float **x, float **y, float 
 extern "C" int *fluid_get_num_obstacle(FLUID *fluid)
 {
 	return fluid->getNumObstacle();
-}
-
-extern "C" void flame_get_spectrum(unsigned char *spec, int width, float t1, float t2)
-{
-	spectrum(t1, t2, width, spec);
 }
 
 extern "C" int smoke_has_heat(FLUID *smoke)

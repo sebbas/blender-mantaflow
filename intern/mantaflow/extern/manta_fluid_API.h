@@ -78,7 +78,6 @@ void smoke_turbulence_get_res(struct FLUID *smoke, int *res);
 int smoke_turbulence_get_cells(struct FLUID *smoke);
 int *smoke_get_obstacle(struct FLUID *smoke);
 void smoke_get_ob_velocity(struct FLUID *smoke, float **x, float **y, float **z);
-void flame_get_spectrum(unsigned char *spec, int width, float t1, float t2);
 int smoke_has_heat(struct FLUID *smoke);
 int smoke_has_fuel(struct FLUID *smoke);
 int smoke_has_colors(struct FLUID *smoke);
