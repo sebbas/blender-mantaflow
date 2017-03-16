@@ -248,9 +248,11 @@ void FLUID::initSmokeHigh(SmokeModifierData *smd)
 void FLUID::initHeat(SmokeModifierData *smd)
 {
 	if (!mHeat) {
+		std::string tmpString = smoke_alloc_heat_low
+			+ smoke_with_heat;
+		std::string finalString = parseScript(tmpString, smd);
 		mCommands.clear();
-		mCommands.push_back(smoke_alloc_heat_low);
-		mCommands.push_back(smoke_with_heat);
+		mCommands.push_back(finalString);
 		
 		runPythonString(mCommands);
 		mUsingHeat = true;
@@ -260,9 +262,11 @@ void FLUID::initHeat(SmokeModifierData *smd)
 void FLUID::initFire(SmokeModifierData *smd)
 {
 	if (!mFuel) {
+		std::string tmpString = smoke_alloc_fire_low
+			+ smoke_with_fire;
+		std::string finalString = parseScript(tmpString, smd);
 		mCommands.clear();
-		mCommands.push_back(smoke_alloc_fire_low);
-		mCommands.push_back(smoke_with_fire);
+		mCommands.push_back(finalString);
 
 		runPythonString(mCommands);
 		mUsingFire = true;
@@ -272,9 +276,11 @@ void FLUID::initFire(SmokeModifierData *smd)
 void FLUID::initFireHigh(SmokeModifierData *smd)
 {
 	if (!mFuelHigh) {
+		std::string tmpString = smoke_alloc_fire_high
+			+ smoke_with_fire;
+		std::string finalString = parseScript(tmpString, smd);
 		mCommands.clear();
-		mCommands.push_back(smoke_alloc_fire_high);
-		mCommands.push_back(smoke_with_fire);
+		mCommands.push_back(finalString);
 
 		runPythonString(mCommands);
 		mUsingFire = true;
@@ -284,12 +290,13 @@ void FLUID::initFireHigh(SmokeModifierData *smd)
 void FLUID::initColors(SmokeModifierData *smd)
 {
 	if (!mColorR) {
+		std::string tmpString = smoke_alloc_colors_low
+			+ smoke_set_color_codes
+			+ smoke_init_colors_low
+			+ smoke_with_colors;
+		std::string finalString = parseScript(tmpString, smd);
 		mCommands.clear();
-		std::string colorCodes = parseScript(smoke_set_color_codes, smd);
-		mCommands.push_back(colorCodes);
-		mCommands.push_back(smoke_alloc_colors_low);
-		mCommands.push_back(smoke_init_colors_low);
-		mCommands.push_back(smoke_with_colors);
+		mCommands.push_back(finalString);
 
 		runPythonString(mCommands);
 		mUsingColors = true;
@@ -299,12 +306,13 @@ void FLUID::initColors(SmokeModifierData *smd)
 void FLUID::initColorsHigh(SmokeModifierData *smd)
 {
 	if (!mColorRHigh) {
+		std::string tmpString = smoke_alloc_colors_high
+			+ smoke_set_color_codes
+			+ smoke_init_colors_high
+			+ smoke_with_colors;
+		std::string finalString = parseScript(tmpString, smd);
 		mCommands.clear();
-		std::string colorCodes = parseScript(smoke_set_color_codes, smd);
-		mCommands.push_back(colorCodes);
-		mCommands.push_back(smoke_alloc_colors_high);
-		mCommands.push_back(smoke_init_colors_high);
-		mCommands.push_back(smoke_with_colors);
+		mCommands.push_back(finalString);
 
 		runPythonString(mCommands);
 		mUsingColors = true;
@@ -368,43 +376,47 @@ void FLUID::step(int startFrame)
 
 FLUID::~FLUID()
 {
-	std::cout << "~SMOKE()" << std::endl;
+	std::cout << "~FLUID()" << std::endl;
 
 	// Destruction in Python
-	mCommands.clear();
-	
+	std::string tmpString = "";
+
 	// Liquid
 	if (mUsingLiquid) {
-		mCommands.push_back(liquid_delete_grids_low);
-		mCommands.push_back(liquid_delete_variables_low);
-		
-		if (mUsingHighRes) mCommands.push_back(liquid_delete_grids_high);
-		if (mUsingHighRes) mCommands.push_back(liquid_delete_variables_high);
+		tmpString += liquid_delete_variables_low;
+		tmpString += liquid_delete_grids_low;
+
+		if (mUsingHighRes) tmpString += liquid_delete_variables_high;
+		if (mUsingHighRes) tmpString += liquid_delete_grids_high;
 	}
 	
 	// Smoke
 	if (mUsingSmoke) {
-		mCommands.push_back(smoke_delete_grids_low);
-		mCommands.push_back(smoke_delete_variables_low);
-		if (mUsingHeat)          mCommands.push_back(smoke_delete_heat_low);
-		if (mUsingFire)          mCommands.push_back(smoke_delete_fire_low);
-		if (mUsingColors)        mCommands.push_back(smoke_delete_colors_low);
+		tmpString += smoke_delete_variables_low;
+		tmpString += smoke_delete_grids_low;
+		if (mUsingHeat)          tmpString += smoke_delete_heat_low;
+		if (mUsingFire)          tmpString += smoke_delete_fire_low;
+		if (mUsingColors)        tmpString += smoke_delete_colors_low;
 		
-		if (mUsingHighRes)                 mCommands.push_back(smoke_delete_grids_high);
-		if (mUsingHighRes)                 mCommands.push_back(smoke_delete_variables_high);
-		if (mUsingColors && mUsingHighRes) mCommands.push_back(smoke_delete_colors_high);
-		if (mUsingFire && mUsingHighRes)   mCommands.push_back(smoke_delete_fire_high);
+		if (mUsingHighRes)                 tmpString += smoke_delete_variables_high;
+		if (mUsingHighRes)                 tmpString += smoke_delete_grids_high;
+		if (mUsingFire && mUsingHighRes)   tmpString += smoke_delete_fire_high;
+		if (mUsingColors && mUsingHighRes) tmpString += smoke_delete_colors_high;
 	}
 	
 	// Make sure that everything is garbage collected
-	mCommands.push_back(gc_collect);
+	tmpString += gc_collect;
 
 	// Solvers always have to be the last objects to be deleted
-	mCommands.push_back(fluid_delete_solver_low);
-	if (mUsingHighRes) mCommands.push_back(fluid_delete_solver_high);
+	tmpString += fluid_delete_solver_low;
+	if (mUsingHighRes) tmpString += fluid_delete_solver_high;
 	
 	// Just in case: gc again
-	mCommands.push_back(gc_collect);
+	tmpString += gc_collect;
+
+	std::string finalString = parseScript(tmpString, NULL); // Safe to pass NULL argument since only looking up IDs
+	mCommands.clear();
+	mCommands.push_back(finalString);
 	runPythonString(mCommands);
 	
 	// Reset pointers to avoid dangling pointers
