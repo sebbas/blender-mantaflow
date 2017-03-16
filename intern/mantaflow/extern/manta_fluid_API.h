@@ -44,7 +44,7 @@ void smoke_manta_export(struct FLUID* smoke, struct SmokeModifierData *smd);
 void smoke_step(struct FLUID *smoke, struct SmokeModifierData *smd);
 void smoke_dissolve(struct FLUID *smoke, int speed, int log);
 void smoke_dissolve_wavelet(struct FLUID *smoke, int speed, int log);
-void smoke_export(struct FLUID *smoke, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, float **smoke_inflow, float **vx, float **vy, float **vz, float **r, float **g, float **b, int **obstacles);
+void smoke_export(struct FLUID *smoke, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, float **vx, float **vy, float **vz, float **r, float **g, float **b, int **obstacles);
 void smoke_turbulence_export(struct FLUID *smoke, float **dens, float **react, float **flame, float **fuel, float **r, float **g, float **b , float **tcu, float **tcv, float **tcw, float **tcu2, float **tcv2, float **tcw2);
 float *smoke_get_density(struct FLUID *smoke);
 float *smoke_get_fuel(struct FLUID *smoke);

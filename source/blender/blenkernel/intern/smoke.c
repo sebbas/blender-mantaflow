@@ -2163,7 +2163,7 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 		struct FLUID_3D *fluid_old = sds->fluid;
 		struct WTURBULENCE *turb_old = sds->wt;
 #else
-		struct SMOKE *fluid_old = sds->fluid;
+		struct FLUID *fluid_old = sds->fluid;
 #endif
 		/* allocate new fluid data */
 		smoke_reallocate_fluid(sds, sds->dx, res, 0);
@@ -2174,17 +2174,17 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 		/* copy values from old fluid to new */
 		if (sds->total_cells > 1 && total_cells > 1) {
 			/* low res smoke */
-			float *o_dens, *o_react, *o_flame, *o_fuel, *o_heat, *o_heatold, *o_vx, *o_vy, *o_vz, *o_r, *o_g, *o_b;
-			float *n_dens, *n_react, *n_flame, *n_fuel, *n_heat, *n_heatold, *n_vx, *n_vy, *n_vz, *n_r, *n_g, *n_b;
+			float *o_dens, *o_react, *o_flame, *o_fuel, *o_heat, *o_vx, *o_vy, *o_vz, *o_r, *o_g, *o_b;
+			float *n_dens, *n_react, *n_flame, *n_fuel, *n_heat, *n_vx, *n_vy, *n_vz, *n_r, *n_g, *n_b;
 			float dummy;
-			unsigned char *dummy_p;
+			int *dummy_p;
 			/* high res smoke */
 			int wt_res_old[3];
 			float *o_wt_dens, *o_wt_react, *o_wt_flame, *o_wt_fuel, *o_wt_tcu, *o_wt_tcv, *o_wt_tcw, *o_wt_tcu2, *o_wt_tcv2, *o_wt_tcw2, *o_wt_r, *o_wt_g, *o_wt_b;
 			float *n_wt_dens, *n_wt_react, *n_wt_flame, *n_wt_fuel, *n_wt_tcu, *n_wt_tcv, *n_wt_tcw, *n_wt_tcu2, *n_wt_tcv2, *n_wt_tcw2, *n_wt_r, *n_wt_g, *n_wt_b;
 
-			smoke_export(fluid_old, &dummy, &dummy, &o_dens, &o_react, &o_flame, &o_fuel, &o_heat, &o_heatold, &o_vx, &o_vy, &o_vz, &o_r, &o_g, &o_b, &dummy_p);
-			smoke_export(sds->fluid, &dummy, &dummy, &n_dens, &n_react, &n_flame, &n_fuel, &n_heat, &n_heatold, &n_vx, &n_vy, &n_vz, &n_r, &n_g, &n_b, &dummy_p);
+			smoke_export(fluid_old, &dummy, &dummy, &o_dens, &o_react, &o_flame, &o_fuel, &o_heat, &o_vx, &o_vy, &o_vz, &o_r, &o_g, &o_b, &dummy_p);
+			smoke_export(sds->fluid, &dummy, &dummy, &n_dens, &n_react, &n_flame, &n_fuel, &n_heat, &n_vx, &n_vy, &n_vz, &n_r, &n_g, &n_b, &dummy_p);
 
 			if (sds->flags & MOD_SMOKE_HIGHRES) {
 #ifndef WITH_MANTA
@@ -2224,7 +2224,6 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 						/* heat */
 						if (n_heat && o_heat) {
 							n_heat[index_new] = o_heat[index_old];
-							n_heatold[index_new] = o_heatold[index_old];
 						}
 						/* fuel */
 						if (n_fuel && o_fuel) {

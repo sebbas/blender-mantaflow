@@ -134,7 +134,7 @@ extern "C" void smoke_dissolve_wavelet(FLUID *smoke, int speed, int log)
 }
 
 extern "C" void smoke_export(FLUID *smoke, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, 
-							 float **smoke_inflow, float **vx, float **vy, float **vz, float **r, float **g, float **b, int **obstacle)
+							 float **vx, float **vy, float **vz, float **r, float **g, float **b, int **obstacle)
 {
 	*dens = smoke->getDensity();
 	if (fuel)
@@ -145,8 +145,6 @@ extern "C" void smoke_export(FLUID *smoke, float *dt, float *dx, float **dens, f
 		*flame = smoke->getFlame();
 	if( heat)
 		*heat = smoke->getHeat();
-	if (smoke_inflow)
-		*smoke_inflow = smoke->getDensityInflow();
 	*vx = smoke->getVelocityX();
 	*vy = smoke->getVelocityY();
 	*vz = smoke->getVelocityZ();

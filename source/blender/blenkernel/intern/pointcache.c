@@ -595,21 +595,20 @@ static int ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 	
 	if (sds->fluid) {
 		size_t res = sds->res[0]*sds->res[1]*sds->res[2];
-		float dt, dx, *dens, *react, *fuel, *flame, *heat, *heatold, *vx, *vy, *vz, *r, *g, *b;
-		unsigned char *obstacles;
+		float dt, dx, *dens, *react, *fuel, *flame, *heat, *vx, *vy, *vz, *r, *g, *b;
+		int *obstacles;
 		unsigned int in_len = sizeof(float)*(unsigned int)res;
 		unsigned char *out = (unsigned char *)MEM_callocN(LZO_OUT_LEN(in_len) * 4, "pointcache_lzo_buffer");
 		//int mode = res >= 1000000 ? 2 : 1;
 		int mode=1;		// light
 		if (sds->cache_comp == SM_CACHE_HEAVY) mode=2;	// heavy
 
-		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &heatold, &vx, &vy, &vz, &r, &g, &b, &obstacles);
+		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles);
 
 		ptcache_file_compressed_write(pf, (unsigned char *)sds->shadow, in_len, out, mode);
 		ptcache_file_compressed_write(pf, (unsigned char *)dens, in_len, out, mode);
 		if (fluid_fields & SM_ACTIVE_HEAT) {
 			ptcache_file_compressed_write(pf, (unsigned char *)heat, in_len, out, mode);
-			ptcache_file_compressed_write(pf, (unsigned char *)heatold, in_len, out, mode);
 		}
 		if (fluid_fields & SM_ACTIVE_FIRE) {
 			ptcache_file_compressed_write(pf, (unsigned char *)flame, in_len, out, mode);
@@ -716,8 +715,8 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 	if (sds->fluid) {
 		const size_t res = sds->res[0] * sds->res[1] * sds->res[2];
 		const unsigned int out_len = (unsigned int)res * sizeof(float);
-		float dt, dx, *dens, *heat, *heatold, *vx, *vy, *vz;
-		unsigned char *obstacles;
+		float dt, dx, *dens, *heat, *vx, *vy, *vz;
+		int *obstacles;
 		float *tmp_array = MEM_callocN(out_len, "Smoke old cache tmp");
 
 		int fluid_fields = smoke_get_data_flags(sds);
@@ -727,7 +726,7 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 		sds->active_color[1] = 0.7f;
 		sds->active_color[2] = 0.7f;
 		
-		smoke_export(sds->fluid, &dt, &dx, &dens, NULL, NULL, NULL, &heat, &heatold, &vx, &vy, &vz, NULL, NULL, NULL, &obstacles);
+		smoke_export(sds->fluid, &dt, &dx, &dens, NULL, NULL, NULL, &heat, &vx, &vy, &vz, NULL, NULL, NULL, &obstacles);
 
 		ptcache_file_compressed_read(pf, (unsigned char *)sds->shadow, out_len);
 		ptcache_file_compressed_read(pf, (unsigned char*)dens, out_len);
@@ -736,7 +735,6 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 		if (fluid_fields & SM_ACTIVE_HEAT)
 		{
 			ptcache_file_compressed_read(pf, (unsigned char*)heat, out_len);
-			ptcache_file_compressed_read(pf, (unsigned char*)heatold, out_len);
 		}
 		else
 		{
@@ -855,17 +853,16 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 	
 	if (sds->fluid) {
 		size_t res = sds->res[0]*sds->res[1]*sds->res[2];
-		float dt, dx, *dens, *react, *fuel, *flame, *heat, *heatold, *vx, *vy, *vz, *r, *g, *b;
-		unsigned char *obstacles;
+		float dt, dx, *dens, *react, *fuel, *flame, *heat, *vx, *vy, *vz, *r, *g, *b;
+		int *obstacles;
 		unsigned int out_len = (unsigned int)res * sizeof(float);
 		
-		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &heatold, &vx, &vy, &vz, &r, &g, &b, &obstacles);
+		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles);
 
 		ptcache_file_compressed_read(pf, (unsigned char *)sds->shadow, out_len);
 		ptcache_file_compressed_read(pf, (unsigned char *)dens, out_len);
 		if (cache_fields & SM_ACTIVE_HEAT) {
 			ptcache_file_compressed_read(pf, (unsigned char *)heat, out_len);
-			ptcache_file_compressed_read(pf, (unsigned char *)heatold, out_len);
 		}
 		if (cache_fields & SM_ACTIVE_FIRE) {
 			ptcache_file_compressed_read(pf, (unsigned char *)flame, out_len);
@@ -1059,11 +1056,10 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
 
 	if (sds->fluid) {
 		struct OpenVDBFloatGrid *density_grid;
-		float dt, dx, *dens, *react, *fuel, *flame, *heat, *heatold, *vx, *vy, *vz, *r, *g, *b;
-		unsigned char *obstacles;
+		float dt, dx, *dens, *react, *fuel, *flame, *heat, *vx, *vy, *vz, *r, *g, *b;
+		int *obstacles;
 
-		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat,
-		             &heatold, &vx, &vy, &vz, &r, &g, &b, &obstacles);
+		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles);
 
 		OpenVDBWriter_add_meta_fl(writer, "blender/smoke/dx", dx);
 		OpenVDBWriter_add_meta_fl(writer, "blender/smoke/dt", dt);
@@ -1076,7 +1072,6 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
 
 		if (fluid_fields & SM_ACTIVE_HEAT) {
 			OpenVDB_export_grid_fl(writer, "heat", heat, sds->res, sds->fluidmat, clip_grid);
-			OpenVDB_export_grid_fl(writer, "heat old", heatold, sds->res, sds->fluidmat, clip_grid);
 		}
 
 		if (fluid_fields & SM_ACTIVE_FIRE) {
@@ -1163,11 +1158,10 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 	}
 
 	if (sds->fluid) {
-		float dt, dx, *dens, *react, *fuel, *flame, *heat, *heatold, *vx, *vy, *vz, *r, *g, *b;
-		unsigned char *obstacles;
+		float dt, dx, *dens, *react, *fuel, *flame, *heat, *vx, *vy, *vz, *r, *g, *b;
+		int *obstacles;
 
-		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat,
-		             &heatold, &vx, &vy, &vz, &r, &g, &b, &obstacles);
+		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles);
 
 		OpenVDBReader_get_meta_fl(reader, "blender/smoke/dt", &dt);
 
@@ -1178,7 +1172,6 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 
 		if (cache_fields & SM_ACTIVE_HEAT) {
 			OpenVDB_import_grid_fl(reader, "heat", &heat, sds->res);
-			OpenVDB_import_grid_fl(reader, "heat old", &heatold, sds->res);
 		}
 
 		if (cache_fields & SM_ACTIVE_FIRE) {
