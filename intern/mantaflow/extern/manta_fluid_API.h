@@ -41,7 +41,7 @@ void smoke_free(struct FLUID *smoke);
 size_t smoke_get_index(int x, int max_x, int y, int max_y, int z /*, int max_z */);
 size_t smoke_get_index2d(int x, int max_x, int y /*, int max_y, int z, int max_z */);
 void smoke_manta_export(struct FLUID* smoke, struct SmokeModifierData *smd);
-void smoke_step(struct FLUID *smoke, struct SmokeModifierData *smd);
+void smoke_step(struct FLUID *smoke, int startFrame);
 void smoke_dissolve(struct FLUID *smoke, int speed, int log);
 void smoke_dissolve_wavelet(struct FLUID *smoke, int speed, int log);
 void smoke_export(struct FLUID *smoke, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, float **vx, float **vy, float **vz, float **r, float **g, float **b, int **obstacles);

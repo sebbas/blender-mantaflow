@@ -131,7 +131,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd)
 		initDomain(smd);
 		initLiquid(smd);
 
-		updatePointers(smd);
+		updatePointers();
 		
 		if (mUsingHighRes) {
 			// Make sure that string vector does not contain any previous commands
@@ -148,7 +148,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd)
 			initDomainHigh(smd);
 			initLiquidHigh(smd);
 
-			updatePointersHigh(smd);
+			updatePointersHigh();
 		}
 
 		return;
@@ -162,7 +162,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd)
 		if (mUsingFire)   initFire(smd);
 		if (mUsingColors) initColors(smd);
 
-		updatePointers(smd); // Needs to be after heat, fire, color init
+		updatePointers(); // Needs to be after heat, fire, color init
 
 		if (mUsingHighRes) {
 			// Make sure that string vector does not contain any previous commands
@@ -181,7 +181,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd)
 			if (mUsingFire)   initFireHigh(smd);
 			if (mUsingColors) initColorsHigh(smd);
 
-			updatePointersHigh(smd); // Needs to be after fire, color init
+			updatePointersHigh(); // Needs to be after fire, color init
 		}
 	}
 }
@@ -353,20 +353,16 @@ void FLUID::initLiquidHigh(SmokeModifierData *smd)
 	mUsingHighRes = true;
 }
 
-void FLUID::step(SmokeModifierData *smd)
+void FLUID::step(int startFrame)
 {
 	// manta_write_effectors(this);                         // TODO in Mantaflow
 
-	// Get the frame number for this step
-	ModifierData *md = ((ModifierData*) smd);
-	int startFrame = md->scene->r.cfra - 1; // Current frame is always one ahead
-	
 	// Run manta step and handover current frame number
 	mCommands.clear();
 	std::ostringstream manta_step;
 	manta_step <<  "manta_step(" << startFrame << ")";
 	mCommands.push_back(manta_step.str());
-	
+
 	runPythonString(mCommands);
 }
 
@@ -893,7 +889,7 @@ void FLUID::updateMeshData(const char* filename)
 	gzclose( gzf );
 }
 
-void FLUID::updatePointers(SmokeModifierData *smd)
+void FLUID::updatePointers()
 {
 	std::cout << "Updating pointers low res" << std::endl;
 
@@ -942,7 +938,7 @@ void FLUID::updatePointers(SmokeModifierData *smd)
 	}
 }
 
-void FLUID::updatePointersHigh(SmokeModifierData *smd)
+void FLUID::updatePointersHigh()
 {
 	std::cout << "Updating pointers high res" << std::endl;
 

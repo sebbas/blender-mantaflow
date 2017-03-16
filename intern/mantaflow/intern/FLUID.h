@@ -40,7 +40,7 @@ public:
 	virtual ~FLUID();
 	
 	// Manta step, handling everything
-	void step(struct SmokeModifierData *smd);
+	void step(int startFrame);
 	
 	// Grid initialization functions
 	void initHeat(struct SmokeModifierData *smd);
@@ -52,8 +52,8 @@ public:
 	void initLiquidHigh(SmokeModifierData *smd);
 	
 	// Pointer transfer Mantaflow -> Blender
-	void updatePointers(struct SmokeModifierData *smd);
-	void updatePointersHigh(struct SmokeModifierData *smd);
+	void updatePointers();
+	void updatePointersHigh();
 
 	// IO for Mantaflow scene script
 	void exportSmokeScript(struct SmokeModifierData *smd);
