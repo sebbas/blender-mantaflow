@@ -32,6 +32,7 @@
 
 #include <string>
 #include <vector>
+#include <atomic>
 
 struct FLUID {
 public:
@@ -124,7 +125,8 @@ public:
 	inline float* getPhiObs() { return mPhiObs; }
 	inline float* getPhiOut() { return mPhiOut; }
 	
-	static bool mantaInitialized;
+	static std::atomic<bool> mantaInitialized;
+	static std::atomic<int> solverID;
 	
 	// Liquid getters
 	inline int getNumVertices()  { return mNumVertices; }
@@ -145,10 +147,15 @@ public:
 	
 	void updateMeshData(const char* filename);
 
+	// Helper for standalone Mantaflow
+	float* getInflow() { return mInflow; }
+
 private:
 	// simulation constants
 	size_t mTotalCells;
 	size_t mTotalCellsHigh;
+
+	int mCurrentID;
 	
 	bool mUsingHeat;
 	bool mUsingColors;
@@ -231,7 +238,8 @@ private:
 	void initDomainHigh(struct SmokeModifierData *smd);
 	void initSmoke(struct SmokeModifierData *smd);
 	void initSmokeHigh(struct SmokeModifierData *smd);
-	void startMantaflow();
+	void initializeMantaflow();
+	void terminateMantaflow();
 	void runPythonString(std::vector<std::string> commands);
 	std::string getRealValue(const std::string& varName, SmokeModifierData *smd);
 	std::string parseLine(const std::string& line, SmokeModifierData *smd);

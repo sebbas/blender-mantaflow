@@ -47,11 +47,12 @@
 #include "DNA_modifier_types.h"
 #include "DNA_smoke_types.h"
 
-bool FLUID::mantaInitialized = false;
+std::atomic<bool> FLUID::mantaInitialized(false);
+std::atomic<int> FLUID::solverID(0);
 
-FLUID::FLUID(int *res, SmokeModifierData *smd)
+FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 {
-	std::cout << "FLUID" << std::endl;
+	std::cout << "FLUID: " << mCurrentID << std::endl;
 	smd->domain->fluid = this;
 	smd->domain->manta_solver_res = 3; // Why do we need to set this explicitly? When not set, fluidsolver throws exception (occurs when loading a new .blend file)
 	
@@ -123,8 +124,8 @@ FLUID::FLUID(int *res, SmokeModifierData *smd)
 
 	// Only start Mantaflow once. No need to start whenever new FLUID objected is allocated
 	if (!mantaInitialized)
-		startMantaflow();
-	
+		initializeMantaflow();
+
 	// Initialize Mantaflow variables in Python
 	// Liquid
 	if (mUsingLiquid) {
@@ -368,7 +369,7 @@ void FLUID::step(int startFrame)
 	// Run manta step and handover current frame number
 	mCommands.clear();
 	std::ostringstream manta_step;
-	manta_step <<  "manta_step(" << startFrame << ")";
+	manta_step <<  "manta_step_" << mCurrentID << "(" << startFrame << ")";
 	mCommands.push_back(manta_step.str());
 
 	runPythonString(mCommands);
@@ -376,7 +377,7 @@ void FLUID::step(int startFrame)
 
 FLUID::~FLUID()
 {
-	std::cout << "~FLUID()" << std::endl;
+	std::cout << "FLUID: " << mCurrentID << std::endl;
 
 	// Destruction in Python
 	std::string tmpString = "";
@@ -489,10 +490,10 @@ void FLUID::runPythonString(std::vector<std::string> commands)
 	PyGILState_Release(gilstate);
 }
 
-void FLUID::startMantaflow()
+void FLUID::initializeMantaflow()
 {
-	std::cout << "Starting mantaflow" << std::endl;
-	std::string filename = "manta_scene.py";
+	std::cout << "Initializing  Mantaflow" << std::endl;
+	std::string filename = "manta_scene_" + std::to_string(mCurrentID) + ".py";
 	std::vector<std::string> fill = std::vector<std::string>();
 	
 	// Initialize extension classes and wrappers
@@ -501,6 +502,16 @@ void FLUID::startMantaflow()
 	Pb::setup(filename, fill);  // Namespace from Mantaflow (registry)
 	PyGILState_Release(gilstate);
 	mantaInitialized = true;
+}
+
+void FLUID::terminateMantaflow()
+{
+	std::cout << "Terminating Mantaflow" << std::endl;
+
+	PyGILState_STATE gilstate = PyGILState_Ensure();
+	Pb::finalize();  // Namespace from Mantaflow (registry)
+	PyGILState_Release(gilstate);
+	mantaInitialized = false;
 }
 
 std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *smd)
@@ -615,8 +626,10 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		else if (smd->domain->preconditioner == MOD_SMOKE_PC_MIC) ss << "PcMIC";
 		else if (smd->domain->preconditioner == MOD_SMOKE_PC_MG_DYNAMIC) ss << "PcMGDynamic";
 		else if (smd->domain->preconditioner == MOD_SMOKE_PC_MG_STATIC) ss << "PcMGStatic";
-	} else
-		std::cout << "ERROR: Unknown option:" << varName << std::endl;
+	} else if (varName == "ID")
+		ss << mCurrentID;
+	else
+		std::cout << "ERROR: Unknown option: " << varName << std::endl;
 	return ss.str();
 }
 
