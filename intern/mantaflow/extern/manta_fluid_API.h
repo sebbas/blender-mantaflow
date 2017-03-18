@@ -86,8 +86,6 @@ int smoke_turbulence_has_colors(struct FLUID *smoke);
 void smoke_ensure_heat(struct FLUID *smoke, struct SmokeModifierData *smd);
 void smoke_ensure_fire(struct FLUID *smoke, struct SmokeModifierData *smd);
 void smoke_ensure_colors(struct FLUID *smoke, struct SmokeModifierData *smd);
-float *smoke_get_inflow_grid(struct FLUID *smoke);
-float *smoke_get_fuel_inflow(struct FLUID *smoke);
 
 float *liquid_get_phiin(struct FLUID *liquid);
 float *liquid_get_phiobs(struct FLUID *liquid);
@@ -115,6 +113,7 @@ void liquid_load_data_high(struct FLUID *liquid, char *pathname);
 void liquid_manta_export(struct FLUID* smoke, struct SmokeModifierData *smd);
 
 int *fluid_get_num_obstacle(struct FLUID *fluid);
+float *fluid_get_inflow(struct FLUID *fluid);
 
 #ifdef __cplusplus
 }

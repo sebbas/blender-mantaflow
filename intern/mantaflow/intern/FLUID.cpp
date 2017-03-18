@@ -94,8 +94,6 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mColorR         = NULL;
 	mColorG         = NULL;
 	mColorB         = NULL;
-	mDensityInflow  = NULL;
-	mFuelInflow     = NULL;
 	mObstacle       = NULL;
 	
 	// Smoke high res grids
@@ -438,8 +436,6 @@ FLUID::~FLUID()
 	mColorR         = NULL;
 	mColorG         = NULL;
 	mColorB         = NULL;
-	mDensityInflow  = NULL;
-	mFuelInflow     = NULL;
 	mObstacle       = NULL;
 	
 	mDensityHigh    = NULL;
@@ -943,9 +939,8 @@ void FLUID::updatePointers()
 	
 	// Smoke
 	if (mUsingSmoke) {
-		mDensity        = (float*) getGridPointer("density",     "s");
-		mDensityInflow  = (float*) getGridPointer("inflow_grid", "s");
-		mFuelInflow     = (float*) getGridPointer("fuel_inflow", "s");
+		mDensity        = (float*) getGridPointer("density", "s");
+		mInflow         = (float*) getGridPointer("inflow",  "s");
 		
 		if (mUsingHeat) {
 			mHeat       = (float*) getGridPointer("heat",    "s");

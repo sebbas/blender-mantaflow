@@ -2327,14 +2327,19 @@ BLI_INLINE void apply_outflow_fields(int index, float inflow_value, float *densi
 	}
 }
 
-BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value, float inflow_value, int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi)
+BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value, float inflow_value, int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi, float *manta_inflow)
 {
 	/* add liquid inflow */
 	if (phi) {
 		phi[index] = inflow_value;
 		return;
 	}
-	
+
+	/* save inflow value for mantaflow standalone */
+	if (manta_inflow) {
+		manta_inflow[index] = emission_value;
+	}
+
 	/* add smoke inflow */
 	int absolute_flow = (sfs->flags & MOD_SMOKE_FLOW_ABSOLUTE);
 	float dens_old = density[index];
@@ -2651,6 +2656,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				float *velocity_z = smoke_get_velocity_z(sds->fluid);
 				float *phiin = liquid_get_phiin(sds->fluid);
 				float *phiout = liquid_get_phiout(sds->fluid);
+				float *manta_inflow = fluid_get_inflow(sds->fluid); // Copy of emission map for inflow modeling in Mantaflow standalone
 
 				int bigres[3];
 				float *velocity_map = em->velocity;
@@ -2685,12 +2691,12 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 								apply_outflow_fields(d_index, inflow_map[e_index], density, heat, fuel, react, color_r, color_g, color_b, phiout);
 							}
 							else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time > 2) {
-								apply_inflow_fields(sfs, 0.0f, 0.5f, d_index, density, heat, fuel, react, color_r, color_g, color_b, phiin);
+								apply_inflow_fields(sfs, 0.0f, 0.5f, d_index, density, heat, fuel, react, color_r, color_g, color_b, phiin, manta_inflow);
 							}
 							else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW || sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY) { // inflow
 								/* only apply inflow if enabled */
 								if (sfs->flags & MOD_SMOKE_FLOW_USE_INFLOW) {
-									apply_inflow_fields(sfs, emission_map[e_index], inflow_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b, phiin);
+									apply_inflow_fields(sfs, emission_map[e_index], inflow_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b, phiin, manta_inflow);
 									
 									/* initial velocity */
 									if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY) {
@@ -2783,11 +2789,11 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 												}
 											}
 											else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time > 2) {
-												apply_inflow_fields(sfs, 0.0f, 0.5f, d_index, density, heat, fuel, react, color_r, color_g, color_b, NULL);
+												apply_inflow_fields(sfs, 0.0f, 0.5f, d_index, density, heat, fuel, react, color_r, color_g, color_b, NULL, NULL);
 											}
 											else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW || sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY) { // inflow
 												// TODO (sebbas) inflow map highres?
-												apply_inflow_fields(sfs, interpolated_value, inflow_map_high[index_big], index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL);
+												apply_inflow_fields(sfs, interpolated_value, inflow_map_high[index_big], index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL, NULL);
 											}
 										} // hires loop
 							}  // bigdensity

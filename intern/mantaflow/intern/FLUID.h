@@ -104,8 +104,7 @@ public:
 	inline float* getColorR() { return mColorR; }
 	inline float* getColorG() { return mColorG; }
 	inline float* getColorB() { return mColorB; }
-	inline float* getDensityInflow() { return mDensityInflow; }
-	inline float* getFuelInflow() { return mFuelInflow; }
+	inline float* getInflow() { return mInflow; }
 
 	inline float* getDensityHigh() { return mDensityHigh; }
 	inline float* getFlameHigh() { return mFlameHigh; }
@@ -147,9 +146,6 @@ public:
 	
 	void updateMeshData(const char* filename);
 
-	// Helper for standalone Mantaflow
-	float* getInflow() { return mInflow; }
-
 private:
 	// simulation constants
 	size_t mTotalCells;
@@ -177,7 +173,7 @@ private:
 	float mConstantScaling;
 	std::vector<std::string> mCommands;
 
-	// Smoke grids low res
+	// Smoke grids
 	float* mDensity;
 	float* mHeat;
 	float* mVelocityX;
@@ -197,10 +193,7 @@ private:
 	float *mColorR;
 	float *mColorG;
 	float *mColorB;
-	float* mDensityInflow;
-	float* mFuelInflow;
-
-	// Smoke grids high res
+	float *mInflow;
 	float* mDensityHigh;
 	float* mFlameHigh;
 	float* mFuelHigh;
@@ -214,7 +207,7 @@ private:
 	float* mTextureU2;
 	float* mTextureV2;
 	float* mTextureW2;
-	
+
 	// Liquids
 	float* mPhiIn;
 	float* mPhiObs;

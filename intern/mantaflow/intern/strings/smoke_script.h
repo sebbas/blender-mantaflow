@@ -108,8 +108,7 @@ forces      = s.create(Vec3Grid)\n\
 x_force     = s.create(RealGrid)\n\
 y_force     = s.create(RealGrid)\n\
 z_force     = s.create(RealGrid)\n\
-inflow_grid = s.create(RealGrid)\n\
-fuel_inflow = s.create(RealGrid)\n";
+inflow      = s.create(RealGrid)\n";
 
 const std::string smoke_alloc_high = "\n\
 # prepare grids high\n\
@@ -426,8 +425,7 @@ def load_smoke_data_low(path):\n\
     x_force.load(os.path.join(path, 'x_force.uni'))\n\
     y_force.load(os.path.join(path, 'y_force.uni'))\n\
     z_force.load(os.path.join(path, 'z_force.uni'))\n\
-    inflow_grid.load(os.path.join(path, 'inflow_low.uni'))\n\
-    fuel_inflow.load(os.path.join(path, 'fuel_inflow.uni'))\n\
+    inflow.load(os.path.join(path, 'inflow_low.uni'))\n\
     x_vel.load(os.path.join(path, 'x_vel.uni'))\n\
     y_vel.load(os.path.join(path, 'y_vel.uni'))\n\
     z_vel.load(os.path.join(path, 'z_vel.uni'))\n\
@@ -481,8 +479,7 @@ def save_smoke_data_low(path):\n\
     x_force.save(os.path.join(path, 'x_force.uni'))\n\
     y_force.save(os.path.join(path, 'y_force.uni'))\n\
     z_force.save(os.path.join(path, 'z_force.uni'))\n\
-    inflow_grid.save(os.path.join(path, 'inflow_low.uni'))\n\
-    fuel_inflow.save(os.path.join(path, 'fuel_inflow.uni'))\n\
+    inflow.save(os.path.join(path, 'inflow_low.uni'))\n\
     x_vel.save(os.path.join(path, 'x_vel.uni'))\n\
     y_vel.save(os.path.join(path, 'y_vel.uni'))\n\
     z_vel.save(os.path.join(path, 'z_vel.uni'))\n\
@@ -578,8 +575,7 @@ if 'forces'      in globals() : del forces\n\
 if 'x_force'     in globals() : del x_force\n\
 if 'y_force'     in globals() : del y_force\n\
 if 'z_force'     in globals() : del z_force\n\
-if 'inflow_grid' in globals() : del inflow_grid\n\
-if 'fuel_inflow' in globals() : del fuel_inflow\n";
+if 'inflow'      in globals() : del inflow\n";
 
 const std::string smoke_delete_grids_high = "\n\
 mantaMsg('Deleting base grids high')\n\
@@ -654,9 +650,9 @@ def apply_inflow():\n\
     mantaMsg('Applying inflow')\n\
     #inflow_grid.multConst(0.1)\n\
     #fuel_inflow.multConst(0.1)\n\
-    density.add(inflow_grid)\n\
-    if using_fire:\n\
-        fuel.add(fuel_inflow)\n";
+    #density.add(inflow_grid)\n\
+    #if using_fire:\n\
+        #fuel.add(fuel_inflow)\n";
 
 const std::string smoke_inflow_high = "\n\
 # TODO\n";

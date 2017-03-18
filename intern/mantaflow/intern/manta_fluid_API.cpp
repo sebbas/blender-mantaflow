@@ -478,16 +478,6 @@ extern "C" void liquid_ensure_init(FLUID *smoke, struct SmokeModifierData *smd)
 	}
 }
 
-extern "C" float *smoke_get_inflow_grid(FLUID *smoke)
-{
-	return smoke->getDensityInflow();
-}
-
-extern "C" float *smoke_get_fuel_inflow(FLUID *smoke)
-{
-	return smoke->getFuelInflow();
-}
-
 extern "C" float *liquid_get_phiin(FLUID *liquid)
 {
 	return liquid->getPhiIn();
@@ -615,4 +605,9 @@ extern "C" void liquid_manta_export(FLUID* liquid, SmokeModifierData *smd)
 	if (!liquid && !smd) return;
 	liquid->exportLiquidScript(smd);
 	liquid->exportLiquidData(smd);
+}
+
+extern "C" float *fluid_get_inflow(FLUID* fluid)
+{
+	return fluid->getInflow();
 }
