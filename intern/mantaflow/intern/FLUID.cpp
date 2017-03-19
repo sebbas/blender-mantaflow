@@ -188,6 +188,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 void FLUID::initDomain(SmokeModifierData *smd)
 {
 	std::string tmpString = manta_import
+		+ fluid_variables_low
 		+ fluid_solver_low
 		+ fluid_adaptive_time_stepping_low;
 	std::string finalString = parseScript(tmpString, smd);
@@ -199,7 +200,8 @@ void FLUID::initDomain(SmokeModifierData *smd)
 
 void FLUID::initDomainHigh(SmokeModifierData *smd)
 {
-	std::string tmpString = fluid_solver_high
+	std::string tmpString = fluid_variables_high
+		+ fluid_solver_high
 		+ fluid_adaptive_time_stepping_high;
 	std::string finalString = parseScript(tmpString, smd);
 	mCommands.clear();
@@ -513,9 +515,14 @@ void FLUID::terminateMantaflow()
 std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *smd)
 {
 	std::ostringstream ss;
-	bool is2D = (smd->domain->manta_solver_res == 2);
-	ModifierData *md = ((ModifierData*) smd);
+	bool is2D = false;
+	ModifierData *md;
 	
+	if (smd) {
+		is2D = (smd->domain->manta_solver_res == 2);
+		md = ((ModifierData*) smd);
+	}
+
 	if (varName == "USING_COLORS")
 		ss << (smd->domain->active_fields & SM_ACTIVE_COLORS ? "True" : "False");
 	else if (varName == "USING_HEAT")
@@ -674,6 +681,7 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 	std::string manta_script;
 
 	manta_script += manta_import
+		+ fluid_variables_low
 		+ fluid_solver_low
 		+ fluid_adaptive_time_stepping_low
 		+ smoke_alloc_low
@@ -688,7 +696,8 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 		manta_script += smoke_alloc_fire_low;
 
 	if (highres) {
-		manta_script += fluid_solver_high
+		manta_script += fluid_variables_high
+			+ fluid_solver_high
 			+ fluid_adaptive_time_stepping_high
 			+ smoke_variables_high
 			+ smoke_alloc_high
@@ -751,6 +760,7 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 	std::string manta_script;
 	
 	manta_script += manta_import
+		+ fluid_variables_low
 		+ fluid_solver_low
 		+ fluid_adaptive_time_stepping_low
 		+ liquid_alloc_low
@@ -759,7 +769,8 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 		+ liquid_variables_low;
 
 	if (highres) {
-		manta_script += fluid_solver_high
+		manta_script += fluid_variables_low
+			+ fluid_solver_high
 			+ fluid_adaptive_time_stepping_high
 			+ liquid_alloc_high
 			+ liquid_bounds_high

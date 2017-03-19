@@ -43,6 +43,17 @@ import os, shutil, math, sys, gc\n";
 
 const std::string fluid_solver_low = "\n\
 mantaMsg('Solver low')\n\
+s = Solver(name='main', gridSize=gs, dim=dim)\n";
+
+const std::string fluid_solver_high = "\n\
+mantaMsg('Solver high')\n\
+xl = Solver(name='larger', gridSize=xl_gs)\n";
+
+//////////////////////////////////////////////////////////////////////
+// VARIABLES
+//////////////////////////////////////////////////////////////////////
+
+const std::string fluid_variables_low = "\n\
 dim     = $SOLVER_DIM$\n\
 res     = $RES$\n\
 gravity = vec3($GRAVITY_X$, $GRAVITY_Y$, $GRAVITY_Z$)\n\
@@ -54,19 +65,14 @@ if dim == 2:\n\
 \n\
 doOpen          = $DO_OPEN$\n\
 boundConditions = '$BOUNDCONDITIONS$'\n\
-boundaryWidth   = 1\n\
-\n\
-s = Solver(name='main', gridSize=gs, dim=dim)\n";
+boundaryWidth   = 1\n\\n";
 
-const std::string fluid_solver_high = "\n\
-mantaMsg('Solver high')\n\
+const std::string fluid_variables_high= "\n\
 upres  = $UPRES$\n\
 xl_gs  = vec3($HRESX$, $HRESY$, $HRESZ$)\n\
 \n\
 if dim == 2:\n\
-    xl_gs.z = 1\n\
-\n\
-xl = Solver(name='larger', gridSize=xl_gs)\n";
+    xl_gs.z = 1\n";
 
 //////////////////////////////////////////////////////////////////////
 // ADAPTIVE TIME STEPPING
