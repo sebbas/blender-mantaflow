@@ -292,7 +292,6 @@ void FLUID::initColors(SmokeModifierData *smd)
 {
 	if (!mColorR) {
 		std::string tmpString = smoke_alloc_colors_low
-			+ smoke_set_color_codes
 			+ smoke_init_colors_low
 			+ smoke_with_colors;
 		std::string finalString = parseScript(tmpString, smd);
@@ -308,7 +307,6 @@ void FLUID::initColorsHigh(SmokeModifierData *smd)
 {
 	if (!mColorRHigh) {
 		std::string tmpString = smoke_alloc_colors_high
-			+ smoke_set_color_codes
 			+ smoke_init_colors_high
 			+ smoke_with_colors;
 		std::string finalString = parseScript(tmpString, smd);
@@ -420,6 +418,10 @@ FLUID::~FLUID()
 	mCommands.push_back(finalString);
 	runPythonString(mCommands);
 	
+	// Let Mantaflow do some cleanup
+//	if (mantaInitialized)
+//		terminateMantaflow();
+
 	// Reset pointers to avoid dangling pointers
 	mDensity        = NULL;
 	mHeat           = NULL;
@@ -728,6 +730,7 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 		manta_script += smoke_step_high;
 	
 	manta_script += smoke_adaptive_step
+			+ smoke_inflow_low
 			+ smoke_standalone_load
 			+ fluid_standalone;
 	
@@ -923,48 +926,51 @@ void FLUID::updateMeshData(const char* filename)
 
 void FLUID::updatePointers()
 {
-	std::cout << "Updating pointers low res" << std::endl;
-
-	mObstacle    = (int*) getGridPointer("flags",  "s");
-	mNumObstacle = (int*) getGridPointer("numObs", "s");
+	std::cout << "Updating pointers low res, ID: " << mCurrentID << std::endl;
+	std::string id = std::to_string(mCurrentID);
+	std::string solver = "s" + id;
+	std::string solver_ext = "_" + solver;
 	
-	mVelocityX = (float*) getGridPointer("x_vel", "s");
-	mVelocityY = (float*) getGridPointer("y_vel", "s");
-	mVelocityZ = (float*) getGridPointer("z_vel", "s");
+	mObstacle    = (int*) getGridPointer("flags" + solver_ext,  solver);
+	mNumObstacle = (int*) getGridPointer("numObs" + solver_ext, solver);
 	
-	mObVelocityX = (float*) getGridPointer("x_obvel", "s");
-	mObVelocityY = (float*) getGridPointer("y_obvel", "s");
-	mObVelocityZ = (float*) getGridPointer("z_obvel", "s");
+	mVelocityX = (float*) getGridPointer("x_vel" + solver_ext, solver);
+	mVelocityY = (float*) getGridPointer("y_vel" + solver_ext, solver);
+	mVelocityZ = (float*) getGridPointer("z_vel" + solver_ext, solver);
 	
-	mForceX    = (float*) getGridPointer("x_force", "s");
-	mForceY    = (float*) getGridPointer("y_force", "s");
-	mForceZ    = (float*) getGridPointer("z_force", "s");
+	mObVelocityX = (float*) getGridPointer("x_obvel" + solver_ext, solver);
+	mObVelocityY = (float*) getGridPointer("y_obvel" + solver_ext, solver);
+	mObVelocityZ = (float*) getGridPointer("z_obvel" + solver_ext, solver);
 	
-	mPhiObs = (float*) getGridPointer("phiObsIn", "s");
+	mForceX    = (float*) getGridPointer("x_force" + solver_ext, solver);
+	mForceY    = (float*) getGridPointer("y_force" + solver_ext, solver);
+	mForceZ    = (float*) getGridPointer("z_force" + solver_ext, solver);
+	
+	mPhiObs = (float*) getGridPointer("phiObsIn" + solver_ext, solver);
 	
 	// Liquid
 	if (mUsingLiquid) {
-		mPhiIn  = (float*) getGridPointer("phiIn",  "s");
-		mPhiOut = (float*) getGridPointer("phiOut", "s");
+		mPhiIn  = (float*) getGridPointer("phiIn" + solver_ext,  solver);
+		mPhiOut = (float*) getGridPointer("phiOut" + solver_ext, solver);
 	}
 	
 	// Smoke
 	if (mUsingSmoke) {
-		mDensity        = (float*) getGridPointer("density", "s");
-		mInflow         = (float*) getGridPointer("inflow",  "s");
+		mDensity        = (float*) getGridPointer("density" + solver_ext,     solver);
+		mInflow         = (float*) getGridPointer("inflow"  + solver_ext,     solver);
 		
 		if (mUsingHeat) {
-			mHeat       = (float*) getGridPointer("heat",    "s");
+			mHeat       = (float*) getGridPointer("heat" + solver_ext,    solver);
 		}
 		if (mUsingFire) {
-			mFlame      = (float*) getGridPointer("flame",   "s");
-			mFuel       = (float*) getGridPointer("fuel",    "s");
-			mReact      = (float*) getGridPointer("react",   "s");
+			mFlame      = (float*) getGridPointer("flame" + solver_ext,   solver);
+			mFuel       = (float*) getGridPointer("fuel" + solver_ext,    solver);
+			mReact      = (float*) getGridPointer("react" + solver_ext,   solver);
 		}
 		if (mUsingColors) {
-			mColorR     = (float*) getGridPointer("color_r", "s");
-			mColorG     = (float*) getGridPointer("color_g", "s");
-			mColorB     = (float*) getGridPointer("color_b", "s");
+			mColorR     = (float*) getGridPointer("color_r" + solver_ext, solver);
+			mColorG     = (float*) getGridPointer("color_g" + solver_ext, solver);
+			mColorB     = (float*) getGridPointer("color_b" + solver_ext, solver);
 		}
 	}
 }
@@ -972,6 +978,12 @@ void FLUID::updatePointers()
 void FLUID::updatePointersHigh()
 {
 	std::cout << "Updating pointers high res" << std::endl;
+	std::string id = std::to_string(mCurrentID);
+	std::string solver = "s" + id;
+	std::string solver_ext = "_" + solver;
+
+	std::string xlsolver = "xl" + id;
+	std::string xlsolver_ext = "_" + xlsolver;
 
 	// Liquid
 	if (mUsingLiquid) {
@@ -980,23 +992,23 @@ void FLUID::updatePointersHigh()
 	
 	// Smoke
 	if (mUsingSmoke) {
-		mDensityHigh    = (float*) getGridPointer("xl_density", "xl");
-		mTextureU       = (float*) getGridPointer("texture_u",  "s");
-		mTextureV       = (float*) getGridPointer("texture_v",  "s");
-		mTextureW       = (float*) getGridPointer("texture_w",  "s");
-		mTextureU2      = (float*) getGridPointer("texture_u2", "s");
-		mTextureV2      = (float*) getGridPointer("texture_v2", "s");
-		mTextureW2      = (float*) getGridPointer("texture_w2", "s");
+		mDensityHigh    = (float*) getGridPointer("density"    + xlsolver_ext, xlsolver);
+		mTextureU       = (float*) getGridPointer("texture_u"  + solver_ext,   solver);
+		mTextureV       = (float*) getGridPointer("texture_v"  + solver_ext,   solver);
+		mTextureW       = (float*) getGridPointer("texture_w"  + solver_ext,   solver);
+		mTextureU2      = (float*) getGridPointer("texture_u2" + solver_ext,   solver);
+		mTextureV2      = (float*) getGridPointer("texture_v2" + solver_ext,   solver);
+		mTextureW2      = (float*) getGridPointer("texture_w2" + solver_ext,   solver);
 		
 		if (mUsingFire) {
-			mFlameHigh  = (float*) getGridPointer("xl_flame",   "xl");
-			mFuelHigh   = (float*) getGridPointer("xl_fuel",    "xl");
-			mReactHigh  = (float*) getGridPointer("xl_react",   "xl");
+			mFlameHigh  = (float*) getGridPointer("flame" + xlsolver_ext, xlsolver);
+			mFuelHigh   = (float*) getGridPointer("fuel"  + xlsolver_ext, xlsolver);
+			mReactHigh  = (float*) getGridPointer("react" + xlsolver_ext, xlsolver);
 		}
 		if (mUsingColors) {
-			mColorRHigh = (float*) getGridPointer("xl_color_r", "xl");
-			mColorGHigh = (float*) getGridPointer("xl_color_g", "xl");
-			mColorBHigh = (float*) getGridPointer("xl_color_b", "xl");
+			mColorRHigh = (float*) getGridPointer("color_r" + xlsolver_ext, xlsolver);
+			mColorGHigh = (float*) getGridPointer("color_g" + xlsolver_ext, xlsolver);
+			mColorBHigh = (float*) getGridPointer("color_b" + xlsolver_ext, xlsolver);
 		}
 	}
 }
@@ -1008,7 +1020,7 @@ void FLUID::saveMesh(char *filename)
 	mCommands.clear();
 	std::ostringstream save_mesh_low;
 	
-	save_mesh_low <<  "save_mesh_low(r'" << path << "')";
+	save_mesh_low <<  "save_mesh_low_" << mCurrentID << "(r'" << path << "')";
 	mCommands.push_back(save_mesh_low.str());
 	
 	runPythonString(mCommands);
@@ -1021,7 +1033,7 @@ void FLUID::saveMeshHigh(char *filename)
 	mCommands.clear();
 	std::ostringstream save_mesh_high;
 	
-	save_mesh_high <<  "save_mesh_high(r'" << path << "')";
+	save_mesh_high <<  "save_mesh_high_" << mCurrentID << "(r'" << path << "')";
 	mCommands.push_back(save_mesh_high.str());
 	
 	runPythonString(mCommands);
@@ -1033,7 +1045,7 @@ void FLUID::saveSmokeData(char *pathname)
 	
 	mCommands.clear();
 	std::ostringstream save_smoke_data_low;
-	save_smoke_data_low <<  "save_smoke_data_low(r'" << path << "')";
+	save_smoke_data_low <<  "save_smoke_data_low_" << mCurrentID << "(r'" << path << "')";
 	mCommands.push_back(save_smoke_data_low.str());
 	
 	runPythonString(mCommands);
@@ -1045,7 +1057,7 @@ void FLUID::saveSmokeDataHigh(char *pathname)
 	
 	mCommands.clear();
 	std::ostringstream save_smoke_data_high;
-	save_smoke_data_high <<  "save_smoke_data_high(r'" << path << "')";
+	save_smoke_data_high <<  "save_smoke_data_high_" << mCurrentID << "(r'" << path << "')";
 	mCommands.push_back(save_smoke_data_high.str());
 	
 	runPythonString(mCommands);
@@ -1057,7 +1069,7 @@ void FLUID::saveLiquidData(char *pathname)
 	
 	mCommands.clear();
 	std::ostringstream save_liquid_data_low;
-	save_liquid_data_low <<  "save_liquid_data_low(r'" << path << "')";
+	save_liquid_data_low <<  "save_liquid_data_low_" << mCurrentID << "(r'" << path << "')";
 	mCommands.push_back(save_liquid_data_low.str());
 	
 	runPythonString(mCommands);
@@ -1069,7 +1081,7 @@ void FLUID::saveLiquidDataHigh(char *pathname)
 	
 	mCommands.clear();
 	std::ostringstream save_liquid_data_high;
-	save_liquid_data_high <<  "save_liquid_data_high(r'" << path << "')";
+	save_liquid_data_high <<  "save_liquid_data_high_" << mCurrentID << "(r'" << path << "')";
 	mCommands.push_back(save_liquid_data_high.str());
 	
 	runPythonString(mCommands);
@@ -1081,7 +1093,7 @@ void FLUID::loadLiquidData(char *pathname)
 	
 	mCommands.clear();
 	std::ostringstream load_liquid_data_low;
-	load_liquid_data_low <<  "load_liquid_data_low(r'" << path << "')";
+	load_liquid_data_low <<  "load_liquid_data_low_" << mCurrentID << "(r'" << path << "')";
 	mCommands.push_back(load_liquid_data_low.str());
 	
 	runPythonString(mCommands);
@@ -1093,7 +1105,7 @@ void FLUID::loadLiquidDataHigh(char *pathname)
 	
 	mCommands.clear();
 	std::ostringstream load_liquid_data_high;
-	load_liquid_data_high <<  "load_liquid_data_high(r'" << path << "')";
+	load_liquid_data_high <<  "load_liquid_data_high_" << mCurrentID << "(r'" << path << "')";
 	mCommands.push_back(load_liquid_data_high.str());
 	
 	runPythonString(mCommands);

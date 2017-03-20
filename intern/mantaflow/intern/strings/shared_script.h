@@ -43,36 +43,39 @@ import os, shutil, math, sys, gc\n";
 
 const std::string fluid_solver_low = "\n\
 mantaMsg('Solver low')\n\
-s = Solver(name='main', gridSize=gs, dim=dim)\n";
+s$ID$ = Solver(name='solver_s$ID$', gridSize=gs_s$ID$, dim=dim_s$ID$)\n";
 
 const std::string fluid_solver_high = "\n\
 mantaMsg('Solver high')\n\
-xl = Solver(name='larger', gridSize=xl_gs)\n";
+xl$ID$ = Solver(name='solver_xl$ID$', gridSize=gs_xl$ID$)\n";
 
 //////////////////////////////////////////////////////////////////////
 // VARIABLES
 //////////////////////////////////////////////////////////////////////
 
 const std::string fluid_variables_low = "\n\
-dim     = $SOLVER_DIM$\n\
-res     = $RES$\n\
-gravity = vec3($GRAVITY_X$, $GRAVITY_Y$, $GRAVITY_Z$)\n\
-gs      = vec3($RESX$, $RESY$, $RESZ$)\n\
+dim_s$ID$     = $SOLVER_DIM$\n\
+res_s$ID$     = $RES$\n\
+gravity_s$ID$ = vec3($GRAVITY_X$, $GRAVITY_Y$, $GRAVITY_Z$)\n\
+gs_s$ID$      = vec3($RESX$, $RESY$, $RESZ$)\n\
 \n\
-if dim == 2:\n\
-    gs.z    = 1\n\
-    gravity = vec3($GRAVITY_X$,$GRAVITY_Z$,0)\n\
+if dim_s$ID$ == 2:\n\
+    gs_s$ID$.z    = 1\n\
+    gravity_s$ID$ = vec3($GRAVITY_X$,$GRAVITY_Z$,0)\n\
 \n\
-doOpen          = $DO_OPEN$\n\
-boundConditions = '$BOUNDCONDITIONS$'\n\
-boundaryWidth   = 1\n\\n";
+doOpen_s$ID$          = $DO_OPEN$\n\
+boundConditions_s$ID$ = '$BOUNDCONDITIONS$'\n\
+boundaryWidth_s$ID$   = 1\n\
+\n\
+using_highres_s$ID$   = $USING_HIGHRES$\n\
+using_adaptTime_s$ID$ = True # adaptive time stepping disabled for now\n";
 
 const std::string fluid_variables_high= "\n\
-upres  = $UPRES$\n\
-xl_gs  = vec3($HRESX$, $HRESY$, $HRESZ$)\n\
+upres_xl$ID$  = $UPRES$\n\
+gs_xl$ID$     = vec3($HRESX$, $HRESY$, $HRESZ$)\n\
 \n\
-if dim == 2:\n\
-    xl_gs.z = 1\n";
+if dim_s$ID$ == 2:\n\
+    gs_xl$ID$.z = 1\n";
 
 //////////////////////////////////////////////////////////////////////
 // ADAPTIVE TIME STEPPING
@@ -80,51 +83,53 @@ if dim == 2:\n\
 
 const std::string fluid_adaptive_time_stepping_low = "\n\
 mantaMsg('Adaptive time stepping low')\n\
-dt_default    = 0.1\n\
-dt_factor     = $DT_FACTOR$\n\
-fps           = $FPS$\n\
-dt0           = dt_default * (25.0 / fps) * dt_factor\n\
-s.frameLength = dt0\n\
-s.timestepMin = dt0 / 10\n\
-s.timestepMax = dt0\n\
-s.cfl         = 4.0\n\
-s.timestep    = dt0\n";
+dt_default_s$ID$  = 0.1\n\
+dt_factor_s$ID$   = $DT_FACTOR$\n\
+fps_s$ID$         = $FPS$\n\
+dt0_s$ID$         = dt_default_s$ID$ * (25.0 / fps_s$ID$) * dt_factor_s$ID$\n\
+s$ID$.frameLength = dt0_s$ID$\n\
+s$ID$.timestepMin = dt0_s$ID$ / 10\n\
+s$ID$.timestepMax = dt0_s$ID$\n\
+s$ID$.cfl         = 4.0\n\
+s$ID$.timestep    = dt0_s$ID$\n";
 
 const std::string fluid_adaptive_time_stepping_high = "\n\
 mantaMsg('Adaptive time stepping high')\n\
-xl.frameLength = s.frameLength\n\
-xl.timestepMin = s.timestepMin\n\
-xl.timestepMax = s.timestepMax\n\
-xl.cfl         = s.cfl\n";
+xl$ID$.frameLength = s$ID$.frameLength\n\
+xl$ID$.timestepMin = s$ID$.timestepMin\n\
+xl$ID$.timestepMax = s$ID$.timestepMax\n\
+xl$ID$.cfl         = s$ID$.cfl\n";
 
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION
 //////////////////////////////////////////////////////////////////////
 
 const std::string fluid_delete_variables_low = "\n\
-if 'dim'             in globals() : del dim\n\
-if 'res'             in globals() : del res\n\
-if 'gs'              in globals() : del gs\n\
-if 'gravity'         in globals() : del gravity\n\
-if 'doOpen'          in globals() : del doOpen\n\
-if 'boundConditions' in globals() : del boundConditions\n\
-if 'boundaryWidth'   in globals() : del boundaryWidth\n\
-if 'dt_default'      in globals() : del dt_default\n\
-if 'dt_factor'       in globals() : del dt_factor\n\
-if 'fps'             in globals() : del fps\n\
-if 'dt0'             in globals() : del dt0\n";
+mantaMsg('Deleting fluid variables low')\n\
+if 'dim_s$ID$'             in globals() : del dim_s$ID$\n\
+if 'res_s$ID$'             in globals() : del res_s$ID$\n\
+if 'gs_s$ID$'              in globals() : del gs_s$ID$\n\
+if 'gravity_s$ID$'         in globals() : del gravity_s$ID$\n\
+if 'doOpen_s$ID$'          in globals() : del doOpen_s$ID$\n\
+if 'boundConditions_s$ID$' in globals() : del boundConditions_s$ID$\n\
+if 'boundaryWidth_s$ID$'   in globals() : del boundaryWidth_s$ID$\n\
+if 'dt_default_s$ID$'      in globals() : del dt_default_s$ID$\n\
+if 'dt_factor_s$ID$'       in globals() : del dt_factor_s$ID$\n\
+if 'fps_s$ID$'             in globals() : del fps_s$ID$\n\
+if 'dt0_s$ID$'             in globals() : del dt0_s$ID$\n";
 
 const std::string fluid_delete_variables_high = "\n\
-if 'upres'           in globals() : del upres\n\
-if 'xl_gs'           in globals() : del xl_gs\n";
+mantaMsg('Deleting fluid variables high')\n\
+if 'upres_xl$ID$'          in globals() : del upres_xl$ID$\n\
+if 'gs_xl$ID$'             in globals() : del gs_xl$ID$\n";
 
 const std::string fluid_delete_solver_low = "\n\
 mantaMsg('Deleting solver low')\n\
-if 's' in globals() : del s\n";
+if 's$ID$' in globals() : del s$ID$\n";
 
 const std::string fluid_delete_solver_high = "\n\
 mantaMsg('Deleting solver high')\n\
-if 'xl' in globals() : del xl\n";
+if 'xl$ID$' in globals() : del xl$ID$\n";
 
 const std::string gc_collect = "\n\
 gc.collect()\n";
@@ -144,5 +149,5 @@ end_frame = 1000\n\
 \n\
 # All low and high res steps\n\
 while start_frame <= end_frame:\n\
-    manta_step(start_frame)\n\
+    manta_step_$ID$(start_frame)\n\
     start_frame += 1\n";
