@@ -1001,9 +1001,6 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	/* Resetting all grids related to moving obstacles */
 	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
 	{
-		// TODO (sebbas): when and how reset liquid phi?
-//		if (phi)
-//			phi[z] = 0.5f;
 		if (phiObs)
 			phiObs[z] = 0.5f;
 		if (num_obstacles)
