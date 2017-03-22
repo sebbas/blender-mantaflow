@@ -1002,7 +1002,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
 	{
 		if (phiObs)
-			phiObs[z] = 0.5f;
+			phiObs[z] = 9999.f;
 		if (num_obstacles)
 			num_obstacles[z] = 0;
 
@@ -1610,59 +1610,54 @@ static void emit_from_particles(
 }
 
 static void update_mesh_distances(int index, float *inflow_map, BVHTreeFromMesh *treeData, const float ray_start[3]) {
-	/*****************************************************
-	 * Liquid inflow based on raycasts in all 6 directions.
-	 * Uses distances to mesh surface from within and outside flow mesh for inflow map.
-	 *****************************************************/
-	
-	/* Calculate map which indicates whether point is inside a mesh or not */
-	float min_dist_pos, min_dist_neg, min_dist_combined; // for xyz axis in pos and neg direction and when combining 6 axis
+
+	/* Calculate map of (minimum) distances to flow/obstacle surface. Distances outside mesh are positive, inside negative */
+	float min_dist = 9999;
 	float inv_ray[3] = {0.0f};
-	float hit_dists[6] = {0.0f};
-	float ray_dirs[6][3] = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f},
-							{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}};
+	/* Raycasts in 14 directions (6 axis + 8 quadrant diagonals) are at least necessary */
+	float ray_dirs[14][3] = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f},
+							{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f},
+							{1.0f, 1.0f, 1.0f}, {1.0f, -1.0f, 1.0f}, {-1.0f, 1.0f, 1.0f}, {-1.0f, -1.0f, 1.0f},
+							{1.0f, 1.0f, -1.0f}, {1.0f, -1.0f, -1.0f}, {-1.0f, 1.0f, -1.0f}, {-1.0f, -1.0f, -1.0f}};
 	size_t ray_cnt = sizeof ray_dirs / sizeof ray_dirs[0];
-	
-	/* Initialize inflow map. Any following initialization leaves points inside mesh ( < 0.0f) unaffected - important when multiple flow / obstacle objects in scene */
-	if (inflow_map[index] >= 0.0f) {
-		inflow_map[index] = 0.5f;
-	}
 
 	for (int i = 0; i < ray_cnt; i++) {
 		BVHTreeRayHit hit_tree = {0};
 		hit_tree.index = -1;
-		hit_tree.dist = BVH_RAYCAST_DIST_MAX;
+		hit_tree.dist = 9999;
 
 		BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dirs[i], 0.0f, &hit_tree, treeData->raycast_callback, treeData);
-		hit_dists[i] = normalize_v3(&hit_tree.dist); // Make sure manta gets normalized distances
+
+		/* Save hit dist first time */
+		min_dist = normalize_v3(&hit_tree.dist);
 
 		if (hit_tree.index != -1) {
+			/* Is dot > 0 aka are we inside the mesh? */
 			if (dot_v3v3(ray_dirs[i], hit_tree.no)) {
+
 				/* Also cast a ray in opposite direction to make sure
 				 * point is at least surrounded by two faces */
 				hit_tree.index = -1;
-				hit_tree.dist = BVH_RAYCAST_DIST_MAX;
+				hit_tree.dist = 9999;
 
 				negate_v3_v3(inv_ray, ray_dirs[i]);
 				BLI_bvhtree_ray_cast(treeData->tree, ray_start, inv_ray, 0.0f, &hit_tree, treeData->raycast_callback, treeData);
 
+				/* Save hit dist second time */
+				min_dist = MIN2(min_dist, normalize_v3(&hit_tree.dist));
+
 				if (hit_tree.index != -1) {
 					if (dot_v3v3(inv_ray, hit_tree.no)) {
-						inflow_map[index] = -1.0f; // place mark in map: current point is inside flow mesh. we need this info later
+						/* Current index is inside mesh, place negative mesh distance */
+						inflow_map[index] = -1.0f * MIN2(fabsf(inflow_map[index]), min_dist);
 					}
+				/* No second hit, so just write outside mesh distances */
+				} else if (inflow_map[index] >= 0) {
+					/* Current index is outside mesh, place positive mesh distance */
+					inflow_map[index] = MIN2(fabsf(inflow_map[index]), min_dist);
 				}
 			}
 		}
-	}
-	
-	/* Get the minimum distance of pos and neg coord systems. Then compare both and again get min */
-	min_dist_pos = MIN3(hit_dists[0], hit_dists[1], hit_dists[2]);
-	min_dist_neg = MIN3(hit_dists[3], hit_dists[4], hit_dists[5]);
-	min_dist_combined = MIN2(min_dist_pos, min_dist_neg);
-
-	/* Multiply actual distances to those points inside mesh (those points in inflow map with value -1)*/
-	if (inflow_map[index] == -1.0f) {
-		inflow_map[index] *= min_dist_combined;
 	}
 }
 
