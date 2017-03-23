@@ -790,7 +790,7 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 // forward decleration
 static void smoke_calc_transparency(SmokeDomainSettings *sds, Scene *scene);
 static float calc_voxel_transp(float *result, float *input, int res[3], int *pixel, float *tRay, float correct);
-static void update_mesh_distances(int index, float *inflow_map, BVHTreeFromMesh *treeData, const float ray_start[3]);
+static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromMesh *treeData, const float ray_start[3]);
 
 static int get_lamp(Scene *scene, float *light)
 {
@@ -1002,7 +1002,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
 	{
 		if (phiObs)
-			phiObs[z] = 9999.f;
+			phiObs[z] = 9999;
 		if (num_obstacles)
 			num_obstacles[z] = 0;
 
@@ -1164,8 +1164,8 @@ typedef struct EmissionMap {
 	float *influence;
 	float *influence_high;
 	float *velocity;
-	float* inflow;
-	float* inflow_high;
+	float* distances;
+	float* distances_high;
 	int min[3], max[3], res[3];
 	int hmin[3], hmax[3], hres[3];
 	int total_cells, valid;
@@ -1229,7 +1229,8 @@ static void em_allocateData(EmissionMap *em, bool use_velocity, int hires_mul)
 	if (use_velocity)
 		em->velocity = MEM_callocN(sizeof(float) * em->total_cells * 3, "smoke_flow_velocity");
 	
-	em->inflow = MEM_callocN(sizeof(float) * em->total_cells, "liquid_inflow_map");
+	em->distances = MEM_callocN(sizeof(float) * em->total_cells, "fluid_flow_distances");
+	memset(em->distances, 9999, sizeof(float) * em->total_cells);
 
 	/* allocate high resolution map if required */
 	if (hires_mul > 1) {
@@ -1242,7 +1243,8 @@ static void em_allocateData(EmissionMap *em, bool use_velocity, int hires_mul)
 		}
 
 		em->influence_high = MEM_callocN(sizeof(float) * total_cells_high, "smoke_flow_influence_high");
-		em->inflow_high = MEM_callocN(sizeof(float) * total_cells_high, "liquid_inflow_map_high");
+		em->distances_high = MEM_callocN(sizeof(float) * total_cells_high, "fluid_flow_distances_high");
+		memset(em->distances_high, 9999, sizeof(float) * total_cells_high);
 	}
 	em->valid = 1;
 }
@@ -1255,10 +1257,10 @@ static void em_freeData(EmissionMap *em)
 		MEM_freeN(em->influence_high);
 	if (em->velocity)
 		MEM_freeN(em->velocity);
-	if (em->inflow)
-		MEM_freeN(em->inflow);
-	if (em->inflow_high)
-		MEM_freeN(em->inflow_high);
+	if (em->distances)
+		MEM_freeN(em->distances);
+	if (em->distances_high)
+		MEM_freeN(em->distances_high);
 }
 
 static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_multiplier, int additive, float sample_size)
@@ -1311,11 +1313,11 @@ static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_mult
 					/* values */
 					if (additive) {
 						output->influence[index_out] += em2->influence[index_in] * sample_size;
-						output->inflow[index_out] += em2->inflow[index_in] * sample_size;
+						output->distances[index_out] += em2->distances[index_in] * sample_size;
 					}
 					else {
 						output->influence[index_out] = MAX2(em2->influence[index_in], output->influence[index_out]);
-						output->inflow[index_out] = MAX2(em2->inflow[index_in], output->inflow[index_out]);
+						output->distances[index_out] = MAX2(em2->distances[index_in], output->distances[index_out]);
 					}
 					if (output->velocity && em2->velocity) {
 						/* last sample replaces the velocity */
@@ -1352,12 +1354,12 @@ static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_mult
 
 						/* values */
 						if (additive) {
-							output->influence_high[index_out] += em2->influence_high[index_in] * sample_size;
-							output->inflow_high[index_out] += em2->inflow_high[index_in] * sample_size;
+							output->influence_high[index_out] += em2->distances_high[index_in] * sample_size;
+							output->distances_high[index_out] += em2->distances_high[index_in] * sample_size;
 						}
 						else {
-							output->influence_high[index_out] = MAX2(em2->influence_high[index_in], output->influence_high[index_out]);
-							output->inflow_high[index_out] = MAX2(em2->inflow_high[index_in], output->inflow_high[index_out]);
+							output->distances_high[index_out] = MAX2(em2->distances_high[index_in], output->distances_high[index_out]);
+							output->distances_high[index_out] = MAX2(em2->distances_high[index_in], output->distances_high[index_out]);
 						}
 					}
 		} // high res loop
@@ -1609,16 +1611,16 @@ static void emit_from_particles(
 	}
 }
 
-static void update_mesh_distances(int index, float *inflow_map, BVHTreeFromMesh *treeData, const float ray_start[3]) {
+static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromMesh *treeData, const float ray_start[3]) {
 
 	/* Calculate map of (minimum) distances to flow/obstacle surface. Distances outside mesh are positive, inside negative */
 	float min_dist = 9999;
 	float inv_ray[3] = {0.0f};
 	/* Raycasts in 14 directions (6 axis + 8 quadrant diagonals) are at least necessary */
-	float ray_dirs[14][3] = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f},
-							{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f},
-							{1.0f, 1.0f, 1.0f}, {1.0f, -1.0f, 1.0f}, {-1.0f, 1.0f, 1.0f}, {-1.0f, -1.0f, 1.0f},
-							{1.0f, 1.0f, -1.0f}, {1.0f, -1.0f, -1.0f}, {-1.0f, 1.0f, -1.0f}, {-1.0f, -1.0f, -1.0f}};
+	float ray_dirs[14][3] = { {  1.0f, 0.0f,  0.0f }, { 0.0f,  1.0f,  0.0f }, {  0.0f, 0.0f,  1.0f },
+							  { -1.0f, 0.0f,  0.0f }, { 0.0f, -1.0f,  0.0f }, {  0.0f, 0.0f, -1.0f },
+							  {  1.0f, 1.0f,  1.0f }, { 1.0f, -1.0f,  1.0f }, { -1.0f, 1.0f,  1.0f }, { -1.0f, -1.0f,  1.0f },
+							  {  1.0f, 1.0f, -1.0f }, { 1.0f, -1.0f, -1.0f }, { -1.0f, 1.0f, -1.0f }, { -1.0f, -1.0f, -1.0f } };
 	size_t ray_cnt = sizeof ray_dirs / sizeof ray_dirs[0];
 
 	for (int i = 0; i < ray_cnt; i++) {
@@ -1632,8 +1634,8 @@ static void update_mesh_distances(int index, float *inflow_map, BVHTreeFromMesh 
 		min_dist = normalize_v3(&hit_tree.dist);
 
 		if (hit_tree.index != -1) {
-			/* Is dot > 0 aka are we inside the mesh? */
-			if (dot_v3v3(ray_dirs[i], hit_tree.no)) {
+			/* Is dot > 0? Are we inside the mesh? */
+			if (dot_v3v3(ray_dirs[i], hit_tree.no) > 0) {
 
 				/* Also cast a ray in opposite direction to make sure
 				 * point is at least surrounded by two faces */
@@ -1647,16 +1649,18 @@ static void update_mesh_distances(int index, float *inflow_map, BVHTreeFromMesh 
 				min_dist = MIN2(min_dist, normalize_v3(&hit_tree.dist));
 
 				if (hit_tree.index != -1) {
-					if (dot_v3v3(inv_ray, hit_tree.no)) {
+					if (dot_v3v3(inv_ray, hit_tree.no) > 0) {
 						/* Current index is inside mesh, place negative mesh distance */
-						inflow_map[index] = -1.0f * MIN2(fabsf(inflow_map[index]), min_dist);
+						/* If map previously contained pos value (outside), use only neg min_dist to ensure neg inside mesh. Otherwise evaluate min2 as usual */
+						mesh_distances[index] = (mesh_distances[index] > 0) ? -1.0f * min_dist : -1.0f * MIN2(fabsf(mesh_distances[index]), min_dist);
 					}
-				/* No second hit, so just write outside mesh distances */
-				} else if (inflow_map[index] >= 0) {
-					/* Current index is outside mesh, place positive mesh distance */
-					inflow_map[index] = MIN2(fabsf(inflow_map[index]), min_dist);
 				}
 			}
+		}
+		/* No negative, previously written distance at index,
+		 * so just write positive value corresponding to outside distance into map */
+		if (mesh_distances[index] > 0) {
+			mesh_distances[index] = MIN2(mesh_distances[index], min_dist);
 		}
 	}
 }
@@ -1664,7 +1668,7 @@ static void update_mesh_distances(int index, float *inflow_map, BVHTreeFromMesh 
 static void sample_derivedmesh(
         SmokeFlowSettings *sfs,
         const MVert *mvert, const MLoop *mloop, const MLoopTri *mlooptri, const MLoopUV *mloopuv,
-        float *influence_map, float *velocity_map, float *inflow_map, int index, const int base_res[3], float flow_center[3],
+        float *influence_map, float *velocity_map, int index, const int base_res[3], float flow_center[3],
         BVHTreeFromMesh *treeData, const float ray_start[3], const float *vert_vel,
         bool has_velocity, int defgrp_index, MDeformVert *dvert,
         float x, float y, float z)
@@ -1700,11 +1704,6 @@ static void sample_derivedmesh(
 				}
 			}
 		}
-	}
-	
-	/* Get mesh distances for liquid phi grid */
-	if (sfs->type == MOD_SMOKE_FLOW_TYPE_LIQUID) {
-		update_mesh_distances(index, inflow_map, treeData, ray_start);
 	}
 
 	/* find the nearest point on the mesh */
@@ -1842,11 +1841,15 @@ static void emit_from_derivedmesh_task_cb(void *userdata, const int z)
 				                      lx - em->min[0], em->res[0], ly - em->min[1], em->res[1], lz - em->min[2]);
 				const float ray_start[3] = {((float)lx) + 0.5f, ((float)ly) + 0.5f, ((float)lz) + 0.5f};
 
+				/* Emission for smoke and fire. Result in em->influence */
 				sample_derivedmesh(
 				        data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
-				        em->influence, em->velocity, em->inflow, index, data->sds->base_res, data->flow_center,
+				        em->influence, em->velocity, index, data->sds->base_res, data->flow_center,
 				        data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
 				        (float)lx, (float)ly, (float)lz);
+
+				/* Emission for liquid. Result in em->distances */
+				update_mesh_distances(index, em->distances, data->tree, ray_start);
 			}
 
 			/* take high res samples if required */
@@ -1860,9 +1863,10 @@ static void emit_from_derivedmesh_task_cb(void *userdata, const int z)
 				                      x - data->min[0], data->res[0], y - data->min[1], data->res[1], z - data->min[2]);
 				const float ray_start[3] = {lx + 0.5f * data->hr, ly + 0.5f * data->hr, lz + 0.5f * data->hr};
 
+				/* Emission for smoke and fire high. Result in em->influence_high */
 				sample_derivedmesh(
 				        data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
-				        em->influence_high, NULL, em->inflow_high, index, data->sds->base_res, data->flow_center,
+				        em->influence_high, NULL, index, data->sds->base_res, data->flow_center,
 				        data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
 				        /* x,y,z needs to be always lowres */
 				        lx, ly, lz);
@@ -2294,11 +2298,11 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 	}
 }
 
-BLI_INLINE void apply_outflow_fields(int index, float inflow_value, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phiout)
+BLI_INLINE void apply_outflow_fields(int index, float distance_value, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phiout)
 {
 	/* determine outflow cells - phiout used in smoke and liquids */
 	if (phiout) {
-		phiout[index] = inflow_value;
+		phiout[index] = distance_value;
 	}
 
 	/* set smoke outflow */
@@ -2319,11 +2323,11 @@ BLI_INLINE void apply_outflow_fields(int index, float inflow_value, float *densi
 	}
 }
 
-BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value, float inflow_value, int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi, float *manta_inflow)
+BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value, float distance_value, int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi, float *manta_inflow)
 {
 	/* add liquid inflow */
 	if (phi) {
-		phi[index] = inflow_value;
+		phi[index] = distance_value;
 		return;
 	}
 
@@ -2654,8 +2658,8 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				float *velocity_map = em->velocity;
 				float *emission_map = em->influence;
 				float *emission_map_high = em->influence_high;
-				float* inflow_map = em->inflow;
-				float* inflow_map_high = em->inflow_high;
+				float* distance_map = em->distances;
+				float* distance_map_high = em->distances_high;
 
 				int ii, jj, kk, gx, gy, gz, ex, ey, ez, dx, dy, dz, block_size;
 				size_t e_index, d_index, index_big;
@@ -2680,7 +2684,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 							if (dx < 0 || dy < 0 || dz < 0 || dx >= sds->res[0] || dy >= sds->res[1] || dz >= sds->res[2]) continue;
 
 							if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) { // outflow
-								apply_outflow_fields(d_index, inflow_map[e_index], density, heat, fuel, react, color_r, color_g, color_b, phiout);
+								apply_outflow_fields(d_index, distance_map[e_index], density, heat, fuel, react, color_r, color_g, color_b, phiout);
 							}
 							else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time > 2) {
 								apply_inflow_fields(sfs, 0.0f, 0.5f, d_index, density, heat, fuel, react, color_r, color_g, color_b, phiin, manta_inflow);
@@ -2688,7 +2692,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 							else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW || sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY) { // inflow
 								/* only apply inflow if enabled */
 								if (sfs->flags & MOD_SMOKE_FLOW_USE_INFLOW) {
-									apply_inflow_fields(sfs, emission_map[e_index], inflow_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b, phiin, manta_inflow);
+									apply_inflow_fields(sfs, emission_map[e_index], distance_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b, phiin, manta_inflow);
 									
 									/* initial velocity */
 									if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY) {
@@ -2777,7 +2781,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 
 											if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) { // outflow
 												if (interpolated_value) {
-													apply_outflow_fields(index_big, inflow_map_high[index_big], bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL);
+													apply_outflow_fields(index_big, distance_map_high[index_big], bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL);
 												}
 											}
 											else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time > 2) {
@@ -2785,7 +2789,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 											}
 											else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW || sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY) { // inflow
 												// TODO (sebbas) inflow map highres?
-												apply_inflow_fields(sfs, interpolated_value, inflow_map_high[index_big], index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL, NULL);
+												apply_inflow_fields(sfs, interpolated_value, distance_map_high[index_big], index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL, NULL);
 											}
 										} // hires loop
 							}  // bigdensity
