@@ -2909,7 +2909,7 @@ static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	pdEndEffectors(&effectors);
 }
 
-static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *domain_dm, float fps, int startFrame)
+static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *domain_dm, float fps, int framenr)
 {
 	SmokeDomainSettings *sds = smd->domain;
 	/* stability values copied from wturbulence.cpp */
@@ -2991,7 +2991,7 @@ static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *
 #ifndef WITH_MANTA
 			smoke_step(sds->fluid, gravity, dtSubdiv);
 #else
-			smoke_step(sds->fluid, startFrame);
+			smoke_step(sds->fluid, framenr);
 #endif
 		}
 	}
@@ -3312,7 +3312,7 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 				}
 #endif
 			}
-			step(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base, startframe);
+			step(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base, framenr);
 		}
 		// create shadows before writing cache so they get stored
 		if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {

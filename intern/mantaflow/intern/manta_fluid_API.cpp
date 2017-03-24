@@ -61,9 +61,9 @@ extern "C" void smoke_manta_export(FLUID* smoke, SmokeModifierData *smd)
 	smoke->exportSmokeData(smd);
 }
 
-extern "C" void smoke_step(FLUID *fluid, int startFrame)
+extern "C" void smoke_step(FLUID *fluid, int framenr)
 {
-	fluid->step(startFrame);
+	fluid->step(framenr);
 	fluid->updatePointers();
 	if (fluid->usingHighRes())
 		fluid->updatePointersHigh();

@@ -360,14 +360,14 @@ void FLUID::initLiquidHigh(SmokeModifierData *smd)
 	mUsingHighRes = true;
 }
 
-void FLUID::step(int startFrame)
+void FLUID::step(int framenr)
 {
 	// manta_write_effectors(this);                         // TODO in Mantaflow
 
 	// Run manta step and handover current frame number
 	mCommands.clear();
 	std::ostringstream manta_step;
-	manta_step <<  "manta_step_" << mCurrentID << "(" << startFrame << ")";
+	manta_step <<  "manta_step_" << mCurrentID << "(" << framenr << ")";
 	mCommands.push_back(manta_step.str());
 
 	runPythonString(mCommands);
