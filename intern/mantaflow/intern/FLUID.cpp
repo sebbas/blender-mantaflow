@@ -377,31 +377,31 @@ FLUID::~FLUID()
 {
 	std::cout << "FLUID: " << mCurrentID << std::endl;
 
-	// Destruction in Python
+	// Destruction string for Python
 	std::string tmpString = "";
 
-	// Liquid
-	if (mUsingLiquid) {
-		tmpString += liquid_delete_variables_low;
-		tmpString += liquid_delete_grids_low;
+	// Fluid
+	tmpString += fluid_delete_variables_low;
+	tmpString += fluid_delete_variables_high;
 
-		if (mUsingHighRes) tmpString += liquid_delete_variables_high;
-		if (mUsingHighRes) tmpString += liquid_delete_grids_high;
-	}
+	// Liquid
+	tmpString += liquid_delete_variables_low;
+	tmpString += liquid_delete_grids_low;
+
+	tmpString += liquid_delete_variables_high;
+	tmpString += liquid_delete_grids_high;
 	
 	// Smoke
-	if (mUsingSmoke) {
-		tmpString += smoke_delete_variables_low;
-		tmpString += smoke_delete_grids_low;
-		if (mUsingHeat)          tmpString += smoke_delete_heat_low;
-		if (mUsingFire)          tmpString += smoke_delete_fire_low;
-		if (mUsingColors)        tmpString += smoke_delete_colors_low;
+	tmpString += smoke_delete_variables_low;
+	tmpString += smoke_delete_grids_low;
+	tmpString += smoke_delete_heat_low;
+	tmpString += smoke_delete_fire_low;
+	tmpString += smoke_delete_colors_low;
 		
-		if (mUsingHighRes)                 tmpString += smoke_delete_variables_high;
-		if (mUsingHighRes)                 tmpString += smoke_delete_grids_high;
-		if (mUsingFire && mUsingHighRes)   tmpString += smoke_delete_fire_high;
-		if (mUsingColors && mUsingHighRes) tmpString += smoke_delete_colors_high;
-	}
+	tmpString += smoke_delete_variables_high;
+	tmpString += smoke_delete_grids_high;
+	tmpString += smoke_delete_fire_high;
+	tmpString += smoke_delete_colors_high;
 	
 	// Make sure that everything is garbage collected
 	tmpString += gc_collect;
@@ -413,15 +413,12 @@ FLUID::~FLUID()
 	// Just in case: gc again
 	tmpString += gc_collect;
 
-	std::string finalString = parseScript(tmpString, NULL); // Safe to pass NULL argument since only looking up IDs
+	// Safe to pass NULL argument since only looking up IDs
+	std::string finalString = parseScript(tmpString, NULL);
 	mCommands.clear();
 	mCommands.push_back(finalString);
 	runPythonString(mCommands);
 	
-	// Let Mantaflow do some cleanup
-//	if (mantaInitialized)
-//		terminateMantaflow();
-
 	// Reset pointers to avoid dangling pointers
 	mDensity        = NULL;
 	mHeat           = NULL;
