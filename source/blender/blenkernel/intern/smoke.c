@@ -1842,14 +1842,18 @@ static void emit_from_derivedmesh_task_cb(void *userdata, const int z)
 				const float ray_start[3] = {((float)lx) + 0.5f, ((float)ly) + 0.5f, ((float)lz) + 0.5f};
 
 				/* Emission for smoke and fire. Result in em->influence */
-				sample_derivedmesh(
-				        data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
-				        em->influence, em->velocity, index, data->sds->base_res, data->flow_center,
-				        data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
-				        (float)lx, (float)ly, (float)lz);
+				if (data->sfs->type == MOD_SMOKE_FLOW_TYPE_SMOKE || data->sfs->type == MOD_SMOKE_FLOW_TYPE_FIRE || data->sfs->type == MOD_SMOKE_FLOW_TYPE_SMOKEFIRE) {
+					sample_derivedmesh(
+							data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
+							em->influence, em->velocity, index, data->sds->base_res, data->flow_center,
+							data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
+							(float)lx, (float)ly, (float)lz);
+				}
 
 				/* Emission for liquid. Result in em->distances */
-				update_mesh_distances(index, em->distances, data->tree, ray_start);
+				if (data->sfs->type == MOD_SMOKE_FLOW_TYPE_LIQUID) {
+					update_mesh_distances(index, em->distances, data->tree, ray_start);
+				}
 			}
 
 			/* take high res samples if required */
@@ -1864,12 +1868,14 @@ static void emit_from_derivedmesh_task_cb(void *userdata, const int z)
 				const float ray_start[3] = {lx + 0.5f * data->hr, ly + 0.5f * data->hr, lz + 0.5f * data->hr};
 
 				/* Emission for smoke and fire high. Result in em->influence_high */
-				sample_derivedmesh(
-				        data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
-				        em->influence_high, NULL, index, data->sds->base_res, data->flow_center,
-				        data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
-				        /* x,y,z needs to be always lowres */
-				        lx, ly, lz);
+				if (data->sfs->type == MOD_SMOKE_FLOW_TYPE_SMOKE || data->sfs->type == MOD_SMOKE_FLOW_TYPE_FIRE || data->sfs->type == MOD_SMOKE_FLOW_TYPE_SMOKEFIRE) {
+					sample_derivedmesh(
+							data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
+							em->influence_high, NULL, index, data->sds->base_res, data->flow_center,
+							data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
+							/* x,y,z needs to be always lowres */
+							lx, ly, lz);
+				}
 			}
 		}
 	}
