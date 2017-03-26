@@ -63,9 +63,10 @@ if dim_s$ID$ == 2:\n\
     gs_s$ID$.z    = 1\n\
     gravity_s$ID$ = vec3($GRAVITY_X$,$GRAVITY_Z$,0)\n\
 \n\
-doOpen_s$ID$          = $DO_OPEN$\n\
-boundConditions_s$ID$ = '$BOUNDCONDITIONS$'\n\
-boundaryWidth_s$ID$   = 1\n\
+doOpen_s$ID$              = $DO_OPEN$\n\
+boundConditions_s$ID$     = '$BOUNDCONDITIONS$'\n\
+boundaryWidth_s$ID$       = 1\n\
+obvelBorderWidth_s$ID$    = 2\n\
 \n\
 using_highres_s$ID$   = $USING_HIGHRES$\n\
 using_adaptTime_s$ID$ = True # adaptive time stepping disabled for now\n";
@@ -91,7 +92,7 @@ s$ID$.frameLength = dt0_s$ID$\n\
 s$ID$.timestepMin = dt0_s$ID$ / 10\n\
 s$ID$.timestepMax = dt0_s$ID$\n\
 s$ID$.cfl         = 4.0\n\
-s$ID$.timestep    = dt0_s$ID$\n";
+s$ID$.timestep    = (s$ID$.timestepMax+s$ID$.timestepMin)*0.5\n";
 
 const std::string fluid_adaptive_time_stepping_high = "\n\
 mantaMsg('Adaptive time stepping high')\n\
@@ -106,17 +107,18 @@ xl$ID$.cfl         = s$ID$.cfl\n";
 
 const std::string fluid_delete_variables_low = "\n\
 mantaMsg('Deleting fluid variables low')\n\
-if 'dim_s$ID$'             in globals() : del dim_s$ID$\n\
-if 'res_s$ID$'             in globals() : del res_s$ID$\n\
-if 'gs_s$ID$'              in globals() : del gs_s$ID$\n\
-if 'gravity_s$ID$'         in globals() : del gravity_s$ID$\n\
-if 'doOpen_s$ID$'          in globals() : del doOpen_s$ID$\n\
-if 'boundConditions_s$ID$' in globals() : del boundConditions_s$ID$\n\
-if 'boundaryWidth_s$ID$'   in globals() : del boundaryWidth_s$ID$\n\
-if 'dt_default_s$ID$'      in globals() : del dt_default_s$ID$\n\
-if 'dt_factor_s$ID$'       in globals() : del dt_factor_s$ID$\n\
-if 'fps_s$ID$'             in globals() : del fps_s$ID$\n\
-if 'dt0_s$ID$'             in globals() : del dt0_s$ID$\n";
+if 'dim_s$ID$'              in globals() : del dim_s$ID$\n\
+if 'res_s$ID$'              in globals() : del res_s$ID$\n\
+if 'gs_s$ID$'               in globals() : del gs_s$ID$\n\
+if 'gravity_s$ID$'          in globals() : del gravity_s$ID$\n\
+if 'doOpen_s$ID$'           in globals() : del doOpen_s$ID$\n\
+if 'boundConditions_s$ID$'  in globals() : del boundConditions_s$ID$\n\
+if 'boundaryWidth_s$ID$'    in globals() : del boundaryWidth_s$ID$\n\
+if 'dt_default_s$ID$'       in globals() : del dt_default_s$ID$\n\
+if 'dt_factor_s$ID$'        in globals() : del dt_factor_s$ID$\n\
+if 'fps_s$ID$'              in globals() : del fps_s$ID$\n\
+if 'dt0_s$ID$'              in globals() : del dt0_s$ID$\n\
+if 'obvelBorderWidth_s$ID$' in globals() : del obvelBorderWidth_s$ID$";
 
 const std::string fluid_delete_variables_high = "\n\
 mantaMsg('Deleting fluid variables high')\n\

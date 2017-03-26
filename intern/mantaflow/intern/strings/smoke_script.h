@@ -58,8 +58,7 @@ mantaMsg('Smoke variables low')\n\
 using_colors_s$ID$    = $USING_COLORS$\n\
 using_heat_s$ID$      = $USING_HEAT$\n\
 using_fire_s$ID$      = $USING_FIRE$\n\
-vorticity_s$ID$       = $VORTICITY$\n\
-obvel_border_s$ID$    = 2\n";
+vorticity_s$ID$       = $VORTICITY$\n";
 
 const std::string smoke_variables_high = "\n\
 mantaMsg('Smoke variables high')\n\
@@ -94,7 +93,7 @@ vel_s$ID$         = s$ID$.create(MACGrid)\n\
 x_vel_s$ID$       = s$ID$.create(RealGrid)\n\
 y_vel_s$ID$       = s$ID$.create(RealGrid)\n\
 z_vel_s$ID$       = s$ID$.create(RealGrid)\n\
-obvel_s$ID$       = s$ID$.create(MACGrid)\n\
+obvel_s$ID$       = s$ID$.create(Vec3Grid)\n\
 x_obvel_s$ID$     = s$ID$.create(RealGrid)\n\
 y_obvel_s$ID$     = s$ID$.create(RealGrid)\n\
 z_obvel_s$ID$     = s$ID$.create(RealGrid)\n\
@@ -254,25 +253,11 @@ def step_low_$ID$():\n\
     setObstacleFlags(flags=flags_s$ID$, phiObs=phiObsIn_s$ID$, fractions=fractions_s$ID$, phiOut=phiOut_s$ID$)\n\
     flags_s$ID$.fillGrid()\n\
     \n\
-    mantaMsg('Clearing cells')\n\
-    clearInObstacle(flags=flags_s$ID$, grid=density_s$ID$)\n\
-    clearInObstacle(flags=flags_s$ID$, grid=vel_s$ID$)\n\
-    clearInObstacle(flags=flags_s$ID$, grid=pressure_s$ID$)\n\
-    if (using_fire_s$ID$):\n\
-        clearInObstacle(flags=flags_s$ID$, grid=fuel_s$ID$)\n\
-        clearInObstacle(flags=flags_s$ID$, grid=flame_s$ID$)\n\
-        clearInObstacle(flags=flags_s$ID$, grid=react_s$ID$)\n\
-    if (using_colors_s$ID$):\n\
-        clearInObstacle(flags=flags_s$ID$, grid=color_r_s$ID$)\n\
-        clearInObstacle(flags=flags_s$ID$, grid=color_g_s$ID$)\n\
-        clearInObstacle(flags=flags_s$ID$, grid=color_b_s$ID$)\n\
-    \n\
     mantaMsg('Adding object velocity')\n\
-    averageGrid(grid=obvel_s$ID$, num=numObs_s$ID$)\n\
     # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
     extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
-    extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=obvel_border_s$ID$, inside=False)\n\
-    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$, borderWidth=obvel_border_s$ID$-1)\n\
+    extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=obvelBorderWidth_s$ID$, inside=False)\n\
+    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$, borderWidth=obvelBorderWidth_s$ID$-1)\n\
     \n\
     mantaMsg('Advecting density')\n\
     advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=density_s$ID$, order=$ADVECT_ORDER$)\n\
@@ -320,7 +305,7 @@ def step_low_$ID$():\n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$)\n\
     \n\
     mantaMsg('Pressure')\n\
-    solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, preconditioner=$PRECONDITIONER$)\n\
+    solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$)\n\
     releaseMG() # manual clean up\n\
 \n\
 def process_burn_low_$ID$():\n\
@@ -337,20 +322,8 @@ def update_flame_low_$ID$():\n\
 const std::string smoke_step_high = "\n\
 def step_high_$ID$():\n\
     mantaMsg('Smoke step high')\n\
-    setObstacleFlags(flags=flags_xl$ID$, phiObs=phiObsIn_xl$ID$, fractions=fractions_xl$ID$)\n\
+    updateFlags(flags=flags_xl$ID$, phiObs=phiObsIn_xl$ID$, fractions=fractions_xl$ID$)\n\
     flags_xl$ID$.fillGrid()\n\
-    \n\
-    mantaMsg('Clearing cells high')\n\
-    clearInObstacle(flags=flags_xl$ID$, grid=density_xl$ID$)\n\
-    clearInObstacle(flags=flags_xl$ID$, grid=vel_xl$ID$)\n\
-    if (using_fire_s$ID$):\n\
-        clearInObstacle(flags=flags_xl$ID$, grid=fuel_xl$ID$)\n\
-        clearInObstacle(flags=flags_xl$ID$, grid=flame_xl$ID$)\n\
-        clearInObstacle(flags=flags_xl$ID$, grid=react_xl$ID$)\n\
-    if (using_colors_s$ID$):\n\
-        clearInObstacle(flags=flags_xl$ID$, grid=color_r_xl$ID$)\n\
-        clearInObstacle(flags=flags_xl$ID$, grid=color_g_xl$ID$)\n\
-        clearInObstacle(flags=flags_xl$ID$, grid=color_b_xl$ID$)\n\
     \n\
     interpolateMACGrid(source=vel_s$ID$, target=vel_xl$ID$)\n\
     for i in range(uvs_s$ID$):\n\

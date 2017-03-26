@@ -86,7 +86,7 @@ vel_s$ID$        = s$ID$.create(MACGrid)\n\
 x_vel_s$ID$      = s$ID$.create(RealGrid)\n\
 y_vel_s$ID$      = s$ID$.create(RealGrid)\n\
 z_vel_s$ID$      = s$ID$.create(RealGrid)\n\
-obvel_s$ID$      = s$ID$.create(MACGrid)\n\
+obvel_s$ID$      = s$ID$.create(Vec3Grid)\n\
 x_obvel_s$ID$    = s$ID$.create(RealGrid)\n\
 y_obvel_s$ID$    = s$ID$.create(RealGrid)\n\
 z_obvel_s$ID$    = s$ID$.create(RealGrid)\n\
@@ -129,6 +129,11 @@ phiIn_s$ID$.initFromFlags(flags_s$ID$)\n";
 
 const std::string liquid_pre_step_low = "\n\
 def liquid_pre_step_low_$ID$():\n\
+    # translate obvels (world space) to grid space\n\
+    x_obvel_s$ID$.multConst(gs_s$ID$.x)\n\
+    y_obvel_s$ID$.multConst(gs_s$ID$.y)\n\
+    z_obvel_s$ID$.multConst(gs_s$ID$.z)\n\
+    \n\
     copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
     copyRealToVec3(sourceX=x_obvel_s$ID$, sourceY=y_obvel_s$ID$, sourceZ=z_obvel_s$ID$, target=obvel_s$ID$)\n\
     copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n";
@@ -138,9 +143,7 @@ def liquid_post_step_low_$ID$():\n\
     forces_s$ID$.clear()\n\
     obvel_s$ID$.clear()\n\
     \n\
-    phiIn_s$ID$.setConst(0.5)\n\
     phiObs_s$ID$.setConst(0.5)\n\
-    phiObsIn_s$ID$.setConst(0)\n\
     \n\
     copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n";
 
@@ -192,15 +195,21 @@ const std::string liquid_step_low = "\n\
 def liquid_step_$ID$():\n\
     mantaMsg('Liquid step low')\n\
     # FLIP\n\
-    # Create interpolated version of original phi grid for later use in (optional) high-res step\n\
-    if using_highres_s$ID$:\n\
-        interpolateGrid(target=phi_xl$ID$, source=phi_s$ID$)\n\
+    mantaMsg('Adding object velocity')\n\
+    # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
+    extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
+    extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=obvelBorderWidth_s$ID$, inside=False)\n\
+    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$, borderWidth=obvelBorderWidth_s$ID$-1)\n\
     \n\
     pp_s$ID$.advectInGrid(flags=flags_s$ID$, vel=vel_s$ID$, integrationMode=IntRK4, deleteInObstacle=False, stopInObstacle=False)\n\
     pushOutofObs(parts=pp_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$)\n\
     \n\
     advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=phi_s$ID$, order=1, openBounds=doOpen_s$ID$, boundaryWidth=boundaryWidth_s$ID$) # first order is usually enough\n\
     advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=vel_s$ID$, order=2, openBounds=doOpen_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
+    \n\
+    # Create interpolated version of original phi grid for later use in (optional) high-res step\n\
+    if using_highres_s$ID$:\n\
+        interpolateGrid(target=phi_xl$ID$, source=phi_s$ID$)\n\
     \n\
     # create level set of particles\n\
     gridParticleIndex(parts=pp_s$ID$, flags=flags_s$ID$, indexSys=pindex_s$ID$, index=gpi_s$ID$)\n\
@@ -233,10 +242,6 @@ def liquid_step_$ID$():\n\
     \n\
     extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4, intoObs=True)\n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, fractions=fractions_s$ID$, phiObs=phiObs_s$ID$)\n\
-    \n\
-    clearInObstacle(flags=flags_s$ID$, grid=phi_s$ID$)\n\
-    clearInObstacle(flags=flags_s$ID$, grid=phiParts_s$ID$)\n\
-    pushOutofObs(parts=pp_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$)\n\
     \n\
     if (dim_s$ID$==3):\n\
         # mis-use phiParts as temp grid to close the mesh\n\

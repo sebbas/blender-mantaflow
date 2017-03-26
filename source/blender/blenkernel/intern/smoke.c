@@ -985,16 +985,17 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	float *velx = smoke_get_ob_velocity_x(sds->fluid);
 	float *vely = smoke_get_ob_velocity_y(sds->fluid);
 	float *velz = smoke_get_ob_velocity_z(sds->fluid);
-//	float *velxOrig = smoke_get_velocity_x(sds->fluid);
-//	float *velyOrig = smoke_get_velocity_y(sds->fluid);
-//	float *velzOrig = smoke_get_velocity_z(sds->fluid);
-//	float *density = smoke_get_density(sds->fluid);
-//	float *fuel = smoke_get_fuel(sds->fluid);
-//	float *flame = smoke_get_flame(sds->fluid);
-//	float *r = smoke_get_color_r(sds->fluid);
-//	float *g = smoke_get_color_g(sds->fluid);
-//	float *b = smoke_get_color_b(sds->fluid);
+	float *velxOrig = smoke_get_velocity_x(sds->fluid);
+	float *velyOrig = smoke_get_velocity_y(sds->fluid);
+	float *velzOrig = smoke_get_velocity_z(sds->fluid);
+	float *density = smoke_get_density(sds->fluid);
+	float *fuel = smoke_get_fuel(sds->fluid);
+	float *flame = smoke_get_flame(sds->fluid);
+	float *r = smoke_get_color_r(sds->fluid);
+	float *g = smoke_get_color_g(sds->fluid);
+	float *b = smoke_get_color_b(sds->fluid);
 	float *phiObs = liquid_get_phiobs(sds->fluid);
+	int *obstacles = smoke_get_obstacle(sds->fluid);
 	int *num_obstacles = fluid_get_num_obstacle(sds->fluid);
 	unsigned int z;
 
@@ -1033,36 +1034,34 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	if (collobjs)
 		MEM_freeN(collobjs);
 
-	// TODO (sebbas): Removing for now - better do this directly in Mantaflow
 	/* obstacle cells should not contain any velocity from the smoke simulation */
-//	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
-//	{
-//		if (obstacles[z] & 2) // mantaflow convention: FlagObstacle
-//		{
-//			// TODO (sebbas): Removing vel reset for now. Otherwise parts of liquid mesh flow slower than others.
-//			velxOrig[z] = 0;
-//			velyOrig[z] = 0;
-//			velzOrig[z] = 0;
-//			if (density) {
-//				density[z] = 0;
-//			}
-//			if (fuel) {
-//				fuel[z] = 0;
-//				flame[z] = 0;
-//			}
-//			if (r) {
-//				r[z] = 0;
-//				g[z] = 0;
-//				b[z] = 0;
-//			}
-//		}
-//		/* average velocities from multiple obstacles in one cell */
-//		if (num_obstacles[z]) {
-//			velx[z] /= num_obstacles[z];
-//			vely[z] /= num_obstacles[z];
-//			velz[z] /= num_obstacles[z];
-//		}
-//	}
+	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
+	{
+		if (obstacles[z] & 2) // mantaflow convention: FlagObstacle
+		{
+			velxOrig[z] = 0;
+			velyOrig[z] = 0;
+			velzOrig[z] = 0;
+			if (density) {
+				density[z] = 0;
+			}
+			if (fuel) {
+				fuel[z] = 0;
+				flame[z] = 0;
+			}
+			if (r) {
+				r[z] = 0;
+				g[z] = 0;
+				b[z] = 0;
+			}
+		}
+		/* average velocities from multiple obstacles in one cell */
+		if (num_obstacles[z]) {
+			velx[z] /= num_obstacles[z];
+			vely[z] /= num_obstacles[z];
+			velz[z] /= num_obstacles[z];
+		}
+	}
 }
 
 /**********************************************************
