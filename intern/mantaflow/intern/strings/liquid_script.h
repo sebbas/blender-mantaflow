@@ -131,13 +131,7 @@ const std::string liquid_pre_step_low = "\n\
 def liquid_pre_step_low_$ID$():\n\
     copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
     copyRealToVec3(sourceX=x_obvel_s$ID$, sourceY=y_obvel_s$ID$, sourceZ=z_obvel_s$ID$, target=obvel_s$ID$)\n\
-    copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n\
-    \n\
-    clearInObstacle(flags=flags_s$ID$, grid=phi_s$ID$)\n";
-
-const std::string liquid_pre_step_high = "\n\
-def liquid_pre_step_high_s$ID$():\n\
-    clearInObstacle(flags=flags_xl$ID$, grid=phi_xl$ID$)\n";
+    copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n";
 
 const std::string liquid_post_step_low = "\n\
 def liquid_post_step_low_$ID$():\n\
@@ -150,10 +144,6 @@ def liquid_post_step_low_$ID$():\n\
     \n\
     copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n";
 
-const std::string liquid_post_step_high = "\n\
-def liquid_post_step_high_$ID$():\n\
-    clearInObstacle(flags=flags_xl$ID$, grid=phi_xl$ID$)\n";
-
 //////////////////////////////////////////////////////////////////////
 // STEP FUNCTIONS
 //////////////////////////////////////////////////////////////////////
@@ -165,8 +155,6 @@ def manta_step_$ID$(framenr):\n\
     last_frame_s$ID$ = s$ID$.frame\n\
     \n\
     liquid_pre_step_low_$ID$()\n\
-    if using_highres_s$ID$:\n\
-        liquid_pre_step_high_s$ID$()\n\
     \n\
     while s$ID$.frame == last_frame_s$ID$:\n\
         \n\
@@ -198,9 +186,7 @@ def manta_step_$ID$(framenr):\n\
             liquid_step_high_$ID$()\n\
         s$ID$.step()\n\
     \n\
-    liquid_post_step_low_$ID$()\n\
-    if using_highres_s$ID$:\n\
-        liquid_post_step_high_$ID$()\n";
+    liquid_post_step_low_$ID$()\n";
 
 const std::string liquid_step_low = "\n\
 def liquid_step_$ID$():\n\

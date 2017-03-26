@@ -349,9 +349,7 @@ void FLUID::initLiquidHigh(SmokeModifierData *smd)
 		+ liquid_save_mesh_high
 		+ liquid_export_high
 		+ liquid_import_high
-		+ liquid_pre_step_high
-		+ liquid_step_high
-		+ liquid_post_step_high;
+		+ liquid_step_high;
 	std::string finalString = parseScript(tmpString, smd);
 	mCommands.clear();
 	mCommands.push_back(finalString);
@@ -769,7 +767,7 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 		+ liquid_variables_low;
 
 	if (highres) {
-		manta_script += fluid_variables_low
+		manta_script += fluid_variables_high
 			+ fluid_solver_high
 			+ fluid_adaptive_time_stepping_high
 			+ liquid_alloc_high
@@ -782,12 +780,7 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 		manta_script += liquid_import_high;
 	
 	manta_script += liquid_pre_step_low;
-	if (highres)
-		manta_script += liquid_pre_step_high;
-	
 	manta_script += liquid_post_step_low;
-	if (highres)
-		manta_script += liquid_post_step_high;
 	
 	manta_script += liquid_step_low;
 	if (highres)
