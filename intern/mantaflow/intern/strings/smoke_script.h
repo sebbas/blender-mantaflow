@@ -250,14 +250,14 @@ def step_low_$ID$():\n\
     mantaMsg('Smoke step low')\n\
     \n\
     mantaMsg('Setting flags')\n\
-    setObstacleFlags(flags=flags_s$ID$, phiObs=phiObsIn_s$ID$, fractions=fractions_s$ID$, phiOut=phiOut_s$ID$)\n\
+    updateFlags(flags=flags_s$ID$, phiObs=phiObsIn_s$ID$, fractions=fractions_s$ID$, phiOut=phiOut_s$ID$)\n\
     flags_s$ID$.fillGrid()\n\
     \n\
     mantaMsg('Adding object velocity')\n\
     # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
     extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
     extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=obvelBorderWidth_s$ID$, inside=False)\n\
-    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$, borderWidth=obvelBorderWidth_s$ID$-1)\n\
+    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$, boundaryWidth=1, borderWidth=obvelBorderWidth_s$ID$-1)\n\
     \n\
     mantaMsg('Advecting density')\n\
     advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=density_s$ID$, order=$ADVECT_ORDER$)\n\

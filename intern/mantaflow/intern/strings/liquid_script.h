@@ -170,7 +170,7 @@ def manta_step_$ID$(framenr):\n\
         phi_s$ID$.join(phiIn_s$ID$)\n\
         \n\
         updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
-        setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, phiOut=phiOut_s$ID$)\n\
+        updateFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, phiOut=phiOut_s$ID$)\n\
         \n\
         sampleLevelsetWithParticles(phi=phiIn_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, discretization=particleNumber_s$ID$, randomness=randomness_s$ID$, refillEmpty=True)\n\
         flags_s$ID$.updateFromLevelset(phi_s$ID$)\n\
@@ -199,7 +199,7 @@ def liquid_step_$ID$():\n\
     # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
     extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
     extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=obvelBorderWidth_s$ID$, inside=False)\n\
-    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$, borderWidth=obvelBorderWidth_s$ID$-1)\n\
+    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$, boundaryWidth=2, borderWidth=obvelBorderWidth_s$ID$-1)\n\
     \n\
     pp_s$ID$.advectInGrid(flags=flags_s$ID$, vel=vel_s$ID$, integrationMode=IntRK4, deleteInObstacle=False, stopInObstacle=False)\n\
     pushOutofObs(parts=pp_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$)\n\

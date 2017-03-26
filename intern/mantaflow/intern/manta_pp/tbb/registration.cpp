@@ -87,6 +87,7 @@ extern "C" {
 		extern void PbRegister_applyEmission() ;
 		extern void PbRegister_densityInflowMeshNoise() ;
 		extern void PbRegister_densityInflowMesh() ;
+		extern void PbRegister_applyInflow() ;
 		extern void PbRegister_checkSymmetry() ;
 		extern void PbRegister_checkSymmetryVec3() ;
 		extern void PbRegister_projectPpmFull() ;
@@ -94,8 +95,8 @@ extern "C" {
 		extern void PbRegister_pdataMaxDiff() ;
 		extern void PbRegister_initVortexVelocity() ;
 		extern void PbRegister_updateFractions() ;
-		extern void PbRegister_setObstacleFlags() ;
-		extern void PbRegister_clearInObstacle() ;
+		extern void PbRegister_updateFlags() ;
+		extern void PbRegister_clearInFlags() ;
 		extern void PbRegister_averageGrid() ;
 		extern void PbRegister_smoothMesh() ;
 		extern void PbRegister_subdivideMesh() ;
@@ -243,6 +244,7 @@ namespace Pb {
 		PbRegister_applyEmission() ;
 		PbRegister_densityInflowMeshNoise() ;
 		PbRegister_densityInflowMesh() ;
+		PbRegister_applyInflow() ;
 		PbRegister_checkSymmetry() ;
 		PbRegister_checkSymmetryVec3() ;
 		PbRegister_projectPpmFull() ;
@@ -250,8 +252,8 @@ namespace Pb {
 		PbRegister_pdataMaxDiff() ;
 		PbRegister_initVortexVelocity() ;
 		PbRegister_updateFractions() ;
-		PbRegister_setObstacleFlags() ;
-		PbRegister_clearInObstacle() ;
+		PbRegister_updateFlags() ;
+		PbRegister_clearInFlags() ;
 		PbRegister_averageGrid() ;
 		PbRegister_smoothMesh() ;
 		PbRegister_subdivideMesh() ;
