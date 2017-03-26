@@ -62,6 +62,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
             flow = md.flow_settings
 
             layout.prop(domain, "smoke_domain_type", expand=False)
+            layout.prop(domain, "collision_extents", expand=False)
 
             split = layout.split()
 
@@ -70,9 +71,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
             col = split.column()
             col.label(text="Time:")
             col.prop(domain, "time_scale", text="Scale")
-
-            col.label(text="Border Collisions:")
-            col.prop(domain, "collision_extents", text="")
+            col.prop(domain, "use_adaptive_stepping", text="Adaptive stepping")
             
             col = split.column()
             if scene.use_gravity:

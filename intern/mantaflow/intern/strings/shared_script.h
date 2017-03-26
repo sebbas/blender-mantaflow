@@ -69,7 +69,7 @@ boundaryWidth_s$ID$       = 1\n\
 obvelBorderWidth_s$ID$    = 2\n\
 \n\
 using_highres_s$ID$   = $USING_HIGHRES$\n\
-using_adaptTime_s$ID$ = True # adaptive time stepping disabled for now\n";
+using_adaptTime_s$ID$ = $USING_ADAPTIVETIME$\n";
 
 const std::string fluid_variables_high= "\n\
 upres_xl$ID$  = $UPRES$\n\

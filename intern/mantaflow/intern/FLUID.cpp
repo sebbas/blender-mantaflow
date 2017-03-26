@@ -628,6 +628,8 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		else if (smd->domain->preconditioner == MOD_SMOKE_PC_MG_STATIC) ss << "PcMGStatic";
 	} else if (varName == "ID")
 		ss << mCurrentID;
+	else if (varName == "USING_ADAPTIVETIME")
+		ss << (smd->domain->flags & MOD_SMOKE_ADAPTIVE_TIME ? "True" : "False");
 	else
 		std::cout << "ERROR: Unknown option: " << varName << std::endl;
 	return ss.str();
