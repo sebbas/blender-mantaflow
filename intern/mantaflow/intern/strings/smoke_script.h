@@ -101,7 +101,6 @@ density_s$ID$     = s$ID$.create(RealGrid)\n\
 pressure_s$ID$    = s$ID$.create(RealGrid)\n\
 phiObsIn_s$ID$    = s$ID$.create(LevelsetGrid)\n\
 phiOut_s$ID$      = s$ID$.create(LevelsetGrid)\n\
-fractions_s$ID$   = s$ID$.create(MACGrid) # dummy grid\n\
 forces_s$ID$      = s$ID$.create(Vec3Grid)\n\
 x_force_s$ID$     = s$ID$.create(RealGrid)\n\
 y_force_s$ID$     = s$ID$.create(RealGrid)\n\
@@ -115,7 +114,6 @@ flags_xl$ID$     = xl$ID$.create(FlagGrid)\n\
 vel_xl$ID$       = xl$ID$.create(MACGrid)\n\
 density_xl$ID$   = xl$ID$.create(RealGrid)\n\
 phiObsIn_xl$ID$  = xl$ID$.create(LevelsetGrid)\n\
-fractions_xl$ID$ = xl$ID$.create(MACGrid) # dummy grid\n\
 energy_s$ID$     = s$ID$.create(RealGrid)\n\
 tempFlag_s$ID$   = s$ID$.create(FlagGrid)\n\
 texture_u_s$ID$  = s$ID$.create(RealGrid)\n\
@@ -250,7 +248,7 @@ def step_low_$ID$():\n\
     mantaMsg('Smoke step low')\n\
     \n\
     mantaMsg('Setting flags')\n\
-    updateFlags(flags=flags_s$ID$, phiObs=phiObsIn_s$ID$, fractions=fractions_s$ID$, phiOut=phiOut_s$ID$)\n\
+    updateFlags(flags=flags_s$ID$, phiObs=phiObsIn_s$ID$, phiOut=phiOut_s$ID$)\n\
     flags_s$ID$.fillGrid()\n\
     \n\
     mantaMsg('Adding object velocity')\n\
@@ -322,7 +320,7 @@ def update_flame_low_$ID$():\n\
 const std::string smoke_step_high = "\n\
 def step_high_$ID$():\n\
     mantaMsg('Smoke step high')\n\
-    updateFlags(flags=flags_xl$ID$, phiObs=phiObsIn_xl$ID$, fractions=fractions_xl$ID$)\n\
+    updateFlags(flags=flags_xl$ID$, phiObs=phiObsIn_xl$ID$)\n\
     flags_xl$ID$.fillGrid()\n\
     \n\
     interpolateMACGrid(source=vel_s$ID$, target=vel_xl$ID$)\n\
@@ -401,7 +399,6 @@ def load_smoke_data_low_$ID$(path):\n\
     z_obvel_s$ID$.load(os.path.join(path, 'z_obvel_s$ID$.uni'))\n\
     phiObsIn_s$ID$.load(os.path.join(path, 'phiObsIn_s$ID$.uni'))\n\
     phiOut_s$ID$.load(os.path.join(path, 'phiOut_s$ID$.uni'))\n\
-    fractions_s$ID$.load(os.path.join(path, 'fractions_s$ID$.uni'))\n\
     numObs_s$ID$.load(os.path.join(path, 'numObs_s$ID$.uni'))\n\
     if using_colors_s$ID$:\n\
         color_r_s$ID$.load(os.path.join(path, 'color_r_s$ID$.uni'))\n\
@@ -455,7 +452,6 @@ def save_smoke_data_low_$ID$(path):\n\
     z_obvel_s$ID$.save(os.path.join(path, 'z_obvel_s$ID$.uni'))\n\
     phiObsIn_s$ID$.save(os.path.join(path, 'phiObsIn_s$ID$.uni'))\n\
     phiOut_s$ID$.save(os.path.join(path, 'phiOut_s$ID$.uni'))\n\
-    fractions_s$ID$.save(os.path.join(path, 'fractions_s$ID$.uni'))\n\
     numObs_s$ID$.save(os.path.join(path, 'numObs_s$ID$.uni'))\n\
     if using_colors_s$ID$:\n\
         color_r_s$ID$.save(os.path.join(path, 'color_r_s$ID$.uni'))\n\
@@ -537,7 +533,6 @@ if 'density_s$ID$'     in globals() : del density_s$ID$\n\
 if 'pressure_s$ID$'    in globals() : del pressure_s$ID$\n\
 if 'phiObsIn_s$ID$'    in globals() : del phiObsIn_s$ID$\n\
 if 'phiOut_s$ID$'      in globals() : del phiOut_s$ID$\n\
-if 'fractions_s$ID$'   in globals() : del fractions_s$ID$\n\
 if 'forces_s$ID$'      in globals() : del forces_s$ID$\n\
 if 'x_force_s$ID$'     in globals() : del x_force_s$ID$\n\
 if 'y_force_s$ID$'     in globals() : del y_force_s$ID$\n\
@@ -550,7 +545,6 @@ if 'flags_xl$ID$'      in globals() : del flags_xl$ID$\n\
 if 'vel_xl$ID$'        in globals() : del vel_xl$ID$\n\
 if 'density_xl$ID$'    in globals() : del density_xl$ID$\n\
 if 'phiObsIn_xl$ID$'   in globals() : del phiObsIn_xl$ID$\n\
-if 'fractions_xl$ID$'  in globals() : del fractions_xl$ID$\n\
 if 'energy_s$ID$'      in globals() : del energy_s$ID$\n\
 if 'tempFlag_s$ID$'    in globals() : del tempFlag_s$ID$\n\
 if 'uvGrid_s$ID$'      in globals() : del uvGrid_s$ID$\n\
