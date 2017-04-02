@@ -41,7 +41,7 @@ static const int FlagInited = FastMarch<FmHeapEntryOut, +1>::FlagInited;
 static const Vec3i neighbors[6] = { Vec3i(-1,0,0), Vec3i(1,0,0), Vec3i(0,-1,0), Vec3i(0,1,0), Vec3i(0,0,-1), Vec3i(0,0,1) };
 	
 
- struct InitFmIn : public KernelBase { InitFmIn(FlagGrid& flags, Grid<int>& fmFlags, Grid<Real>& phi, bool ignoreWalls, int obstacleType) :  KernelBase(&flags,1) ,flags(flags),fmFlags(fmFlags),phi(phi),ignoreWalls(ignoreWalls),obstacleType(obstacleType)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<int>& fmFlags, Grid<Real>& phi, bool ignoreWalls, int obstacleType )  {
+ struct InitFmIn : public KernelBase { InitFmIn(const FlagGrid& flags, Grid<int>& fmFlags, Grid<Real>& phi, bool ignoreWalls, int obstacleType) :  KernelBase(&flags,1) ,flags(flags),fmFlags(fmFlags),phi(phi),ignoreWalls(ignoreWalls),obstacleType(obstacleType)   { runMessage(); run(); }  inline void op(int i, int j, int k, const FlagGrid& flags, Grid<int>& fmFlags, Grid<Real>& phi, bool ignoreWalls, int obstacleType )  {
 	const IndexInt idx = flags.index(i,j,k);
 	const Real v = phi[idx];
 	if (ignoreWalls) {
@@ -53,7 +53,7 @@ static const Vec3i neighbors[6] = { Vec3i(-1,0,0), Vec3i(1,0,0), Vec3i(0,-1,0), 
 		if (v>=0) fmFlags[idx] = FlagInited;
 		else      fmFlags[idx] = 0;
 	}
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<int>& getArg1() { return fmFlags; } typedef Grid<int> type1;inline Grid<Real>& getArg2() { return phi; } typedef Grid<Real> type2;inline bool& getArg3() { return ignoreWalls; } typedef bool type3;inline int& getArg4() { return obstacleType; } typedef int type4; void runMessage() { debMsg("Executing kernel InitFmIn ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline const FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<int>& getArg1() { return fmFlags; } typedef Grid<int> type1;inline Grid<Real>& getArg2() { return phi; } typedef Grid<Real> type2;inline bool& getArg3() { return ignoreWalls; } typedef bool type3;inline int& getArg4() { return obstacleType; } typedef int type4; void runMessage() { debMsg("Executing kernel InitFmIn ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
 #pragma omp for  
@@ -61,13 +61,13 @@ static const Vec3i neighbors[6] = { Vec3i(-1,0,0), Vec3i(1,0,0), Vec3i(0,-1,0), 
 #pragma omp parallel 
  {  
 #pragma omp for  
-  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,fmFlags,phi,ignoreWalls,obstacleType);  } }  } FlagGrid& flags; Grid<int>& fmFlags; Grid<Real>& phi; bool ignoreWalls; int obstacleType;   };
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,fmFlags,phi,ignoreWalls,obstacleType);  } }  } const FlagGrid& flags; Grid<int>& fmFlags; Grid<Real>& phi; bool ignoreWalls; int obstacleType;   };
 #line 32 "levelset.cpp"
 
 
 
 
- struct InitFmOut : public KernelBase { InitFmOut(FlagGrid& flags, Grid<int>& fmFlags, Grid<Real>& phi, bool ignoreWalls, int obstacleType) :  KernelBase(&flags,1) ,flags(flags),fmFlags(fmFlags),phi(phi),ignoreWalls(ignoreWalls),obstacleType(obstacleType)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<int>& fmFlags, Grid<Real>& phi, bool ignoreWalls, int obstacleType )  {
+ struct InitFmOut : public KernelBase { InitFmOut(const FlagGrid& flags, Grid<int>& fmFlags, Grid<Real>& phi, bool ignoreWalls, int obstacleType) :  KernelBase(&flags,1) ,flags(flags),fmFlags(fmFlags),phi(phi),ignoreWalls(ignoreWalls),obstacleType(obstacleType)   { runMessage(); run(); }  inline void op(int i, int j, int k, const FlagGrid& flags, Grid<int>& fmFlags, Grid<Real>& phi, bool ignoreWalls, int obstacleType )  {
 	const IndexInt idx = flags.index(i,j,k);
 	const Real v = phi[idx];
 	if (ignoreWalls) {
@@ -79,7 +79,7 @@ static const Vec3i neighbors[6] = { Vec3i(-1,0,0), Vec3i(1,0,0), Vec3i(0,-1,0), 
 	} else {
 		fmFlags[idx] = (v<0) ? FlagInited : 0;
 	}
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<int>& getArg1() { return fmFlags; } typedef Grid<int> type1;inline Grid<Real>& getArg2() { return phi; } typedef Grid<Real> type2;inline bool& getArg3() { return ignoreWalls; } typedef bool type3;inline int& getArg4() { return obstacleType; } typedef int type4; void runMessage() { debMsg("Executing kernel InitFmOut ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline const FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<int>& getArg1() { return fmFlags; } typedef Grid<int> type1;inline Grid<Real>& getArg2() { return phi; } typedef Grid<Real> type2;inline bool& getArg3() { return ignoreWalls; } typedef bool type3;inline int& getArg4() { return obstacleType; } typedef int type4; void runMessage() { debMsg("Executing kernel InitFmOut ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
 #pragma omp for  
@@ -87,20 +87,20 @@ static const Vec3i neighbors[6] = { Vec3i(-1,0,0), Vec3i(1,0,0), Vec3i(0,-1,0), 
 #pragma omp parallel 
  {  
 #pragma omp for  
-  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,fmFlags,phi,ignoreWalls,obstacleType);  } }  } FlagGrid& flags; Grid<int>& fmFlags; Grid<Real>& phi; bool ignoreWalls; int obstacleType;   };
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,fmFlags,phi,ignoreWalls,obstacleType);  } }  } const FlagGrid& flags; Grid<int>& fmFlags; Grid<Real>& phi; bool ignoreWalls; int obstacleType;   };
 #line 47 "levelset.cpp"
 
 
 
 
- struct SetUninitialized : public KernelBase { SetUninitialized(Grid<int>& flags, Grid<int>& fmFlags, Grid<Real>& phi, const Real val, int ignoreWalls, int obstacleType) :  KernelBase(&flags,1) ,flags(flags),fmFlags(fmFlags),phi(phi),val(val),ignoreWalls(ignoreWalls),obstacleType(obstacleType)   { runMessage(); run(); }  inline void op(int i, int j, int k, Grid<int>& flags, Grid<int>& fmFlags, Grid<Real>& phi, const Real val, int ignoreWalls, int obstacleType )  {
+ struct SetUninitialized : public KernelBase { SetUninitialized(const Grid<int>& flags, Grid<int>& fmFlags, Grid<Real>& phi, const Real val, int ignoreWalls, int obstacleType) :  KernelBase(&flags,1) ,flags(flags),fmFlags(fmFlags),phi(phi),val(val),ignoreWalls(ignoreWalls),obstacleType(obstacleType)   { runMessage(); run(); }  inline void op(int i, int j, int k, const Grid<int>& flags, Grid<int>& fmFlags, Grid<Real>& phi, const Real val, int ignoreWalls, int obstacleType )  {
 	if(ignoreWalls) {
 		if ( (fmFlags(i,j,k) != FlagInited) && ((flags(i,j,k) & obstacleType) == 0) ) {
 			phi(i,j,k) = val; }
 	} else {
 		if ( (fmFlags(i,j,k) != FlagInited) ) phi(i,j,k) = val;
 	}
-}   inline Grid<int>& getArg0() { return flags; } typedef Grid<int> type0;inline Grid<int>& getArg1() { return fmFlags; } typedef Grid<int> type1;inline Grid<Real>& getArg2() { return phi; } typedef Grid<Real> type2;inline const Real& getArg3() { return val; } typedef Real type3;inline int& getArg4() { return ignoreWalls; } typedef int type4;inline int& getArg5() { return obstacleType; } typedef int type5; void runMessage() { debMsg("Executing kernel SetUninitialized ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline const Grid<int>& getArg0() { return flags; } typedef Grid<int> type0;inline Grid<int>& getArg1() { return fmFlags; } typedef Grid<int> type1;inline Grid<Real>& getArg2() { return phi; } typedef Grid<Real> type2;inline const Real& getArg3() { return val; } typedef Real type3;inline int& getArg4() { return ignoreWalls; } typedef int type4;inline int& getArg5() { return obstacleType; } typedef int type5; void runMessage() { debMsg("Executing kernel SetUninitialized ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
 #pragma omp for  
@@ -108,13 +108,13 @@ static const Vec3i neighbors[6] = { Vec3i(-1,0,0), Vec3i(1,0,0), Vec3i(0,-1,0), 
 #pragma omp parallel 
  {  
 #pragma omp for  
-  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,fmFlags,phi,val,ignoreWalls,obstacleType);  } }  } Grid<int>& flags; Grid<int>& fmFlags; Grid<Real>& phi; const Real val; int ignoreWalls; int obstacleType;   };
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,fmFlags,phi,val,ignoreWalls,obstacleType);  } }  } const Grid<int>& flags; Grid<int>& fmFlags; Grid<Real>& phi; const Real val; int ignoreWalls; int obstacleType;   };
 #line 62 "levelset.cpp"
 
 
 
 template<bool inward>
-inline bool isAtInterface(Grid<int>& fmFlags, Grid<Real>& phi, const Vec3i& p) {
+inline bool isAtInterface(const Grid<int>& fmFlags, Grid<Real>& phi, const Vec3i& p) {
 	// check for interface
 	int max = phi.is3D() ? 6 : 4;
 	for (int nb=0; nb<max; nb++) {
@@ -171,7 +171,7 @@ void LevelsetGrid::subtract(const LevelsetGrid& o) { KnSubtract(*this, o); }
 //! re-init levelset and extrapolate velocities (in & out)
 //  note - uses flags to identify border (could also be done based on ls values)
 static void doReinitMarch( Grid<Real>& phi,
-		FlagGrid& flags, Real maxTime, MACGrid* velTransport,
+		const FlagGrid& flags, Real maxTime, MACGrid* velTransport,
 		bool ignoreWalls, bool correctOuterLayer, int obstacleType )
 {
 	const int dim = (phi.is3D() ? 3 : 2); 
@@ -272,14 +272,14 @@ static void doReinitMarch( Grid<Real>& phi,
 
 //! call for levelset grids & external real grids
 
-void LevelsetGrid::reinitMarching( FlagGrid& flags, Real maxTime, MACGrid* velTransport,
+void LevelsetGrid::reinitMarching( const FlagGrid& flags, Real maxTime, MACGrid* velTransport,
 		bool ignoreWalls, bool correctOuterLayer, int obstacleType )
 {
 	doReinitMarch( *this, flags, maxTime, velTransport, ignoreWalls, correctOuterLayer, obstacleType );
 }
 
 
-void LevelsetGrid::initFromFlags(FlagGrid& flags, bool ignoreWalls) {
+void LevelsetGrid::initFromFlags(const FlagGrid& flags, bool ignoreWalls) {
 	FOR_IDX(*this) {
 		if (flags.isFluid(idx) || (ignoreWalls && flags.isObstacle(idx)))
 			mData[idx] = -0.5;

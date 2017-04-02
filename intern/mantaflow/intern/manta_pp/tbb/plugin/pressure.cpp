@@ -228,14 +228,26 @@ void fixPressure (int fixPidx, Real value, Grid<Real>& rhs, Grid<Real>& A0, Grid
 }
 
 
-// for "static" MG mode, keep data structure
-// leave cleanup to OS if nonzero at program termination (PcMGStatic mode)
+// for "static" MG mode, keep one MG data structure per fluid solver
+// leave cleanup to OS/user if nonzero at program termination (PcMGStatic mode)
 // alternatively, manually release in scene file with releaseMG
-static GridMg* gMG = nullptr; 
-void releaseMG() {
-	delete gMG; 
-	gMG = nullptr;
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "releaseMG" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock;   _retval = getPyNone(); releaseMG();  _args.check(); } pbFinalizePlugin(parent,"releaseMG", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("releaseMG",e.what()); return 0; } } static const Pb::Register _RP_releaseMG ("","releaseMG",_W_0);  extern "C" { void PbRegister_releaseMG() { KEEP_UNUSED(_RP_releaseMG); } } 
+static std::map<FluidSolver*, GridMg*> gMapMG;
+
+void releaseMG(FluidSolver* solver=nullptr) {
+	// release all?
+	if(!solver) {
+		for( std::map<FluidSolver*, GridMg*>::iterator it = gMapMG.begin(); it != gMapMG.end(); it++) {
+			if(it->first != nullptr) releaseMG(it->first);
+		}
+		return;
+	}
+
+	GridMg* mg = gMapMG[solver];
+	if(mg) {
+		delete mg; 
+		gMapMG[solver] = nullptr;
+	}
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "releaseMG" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FluidSolver* solver = _args.getPtrOpt<FluidSolver >("solver",0,nullptr,&_lock);   _retval = getPyNone(); releaseMG(solver);  _args.check(); } pbFinalizePlugin(parent,"releaseMG", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("releaseMG",e.what()); return 0; } } static const Pb::Register _RP_releaseMG ("","releaseMG",_W_0);  extern "C" { void PbRegister_releaseMG() { KEEP_UNUSED(_RP_releaseMG); } } 
 
 
 //! Perform pressure projection of the velocity grid
@@ -344,6 +356,7 @@ void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Real cgA
 	int maxIter = 0;
 	
 	Grid<Real> *pca0 = nullptr, *pca1 = nullptr, *pca2 = nullptr, *pca3 = nullptr;
+	GridMg* pmg = nullptr;
 
 	// optional preconditioning	
 	if (preconditioner == PcNone || preconditioner == PcMIC) {			
@@ -359,9 +372,13 @@ void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Real cgA
 	} else if (preconditioner == PcMGDynamic || preconditioner == PcMGStatic) {
 		maxIter = 100;
 
-		if (!gMG) gMG = new GridMg(pressure.getSize());
+		pmg = gMapMG[parent];
+		if (!pmg) {
+			pmg = new GridMg(pressure.getSize());
+			gMapMG[parent] = pmg;
+		}
 
-		gcg->setMGPreconditioner( GridCgInterface::PC_MGP, gMG);
+		gcg->setMGPreconditioner( GridCgInterface::PC_MGP, pmg);
 	}
 
 	// CG solve
@@ -380,7 +397,7 @@ void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Real cgA
 
 	// PcMGDynamic: always delete multigrid solver after use
 	// PcMGStatic: keep multigrid solver for next solve
-	if (gMG && preconditioner==PcMGDynamic) releaseMG();
+	if (pmg && preconditioner==PcMGDynamic) releaseMG(parent);
 
 	CorrectVelocity(flags, vel, pressure ); 
 	if (phi) {

@@ -170,7 +170,7 @@ def manta_step_$ID$(framenr):\n\
         phi_s$ID$.join(phiIn_s$ID$)\n\
         \n\
         updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
-        updateFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, phiOut=phiOut_s$ID$)\n\
+        setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, phiOut=phiOut_s$ID$)\n\
         \n\
         sampleLevelsetWithParticles(phi=phiIn_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, discretization=particleNumber_s$ID$, randomness=randomness_s$ID$, refillEmpty=True)\n\
         flags_s$ID$.updateFromLevelset(phi_s$ID$)\n\
@@ -199,12 +199,16 @@ def liquid_step_$ID$():\n\
     # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
     extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
     extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=obvelBorderWidth_s$ID$, inside=False)\n\
-    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$, boundaryWidth=2, borderWidth=obvelBorderWidth_s$ID$-1)\n\
+    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obsvel=obvel_s$ID$, boundaryWidth=2, borderWidth=obvelBorderWidth_s$ID$-1)\n\
     \n\
+    mantaMsg('Advecting particles')\n\
     pp_s$ID$.advectInGrid(flags=flags_s$ID$, vel=vel_s$ID$, integrationMode=IntRK4, deleteInObstacle=False, stopInObstacle=False)\n\
+    mantaMsg('Pushing particles out of obstacles')\n\
     pushOutofObs(parts=pp_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$)\n\
     \n\
+    mantaMsg('Advecting phi')\n\
     advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=phi_s$ID$, order=1, openBounds=doOpen_s$ID$, boundaryWidth=boundaryWidth_s$ID$) # first order is usually enough\n\
+    mantaMsg('Advecting velocity')\n\
     advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=vel_s$ID$, order=2, openBounds=doOpen_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
     \n\
     # Create interpolated version of original phi grid for later use in (optional) high-res step\n\
@@ -238,7 +242,7 @@ def liquid_step_$ID$():\n\
     extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, intoObs=True)\n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, fractions=fractions_s$ID$, phiObs=phiObs_s$ID$)\n\
     \n\
-    solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$, fractions=fractions_s$ID$)\n\
+    solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$, fractions=fractions_s$ID$, preconditioner=$PRECONDITIONER$)\n\
     \n\
     extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4, intoObs=True)\n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, fractions=fractions_s$ID$, phiObs=phiObs_s$ID$)\n\

@@ -248,14 +248,14 @@ def step_low_$ID$():\n\
     mantaMsg('Smoke step low')\n\
     \n\
     mantaMsg('Setting flags')\n\
-    updateFlags(flags=flags_s$ID$, phiObs=phiObsIn_s$ID$, phiOut=phiOut_s$ID$)\n\
+    setObstacleFlags(flags=flags_s$ID$, phiObs=phiObsIn_s$ID$, phiOut=phiOut_s$ID$)\n\
     flags_s$ID$.fillGrid()\n\
     \n\
     mantaMsg('Adding object velocity')\n\
     # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
     extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
     extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=obvelBorderWidth_s$ID$, inside=False)\n\
-    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$, boundaryWidth=1, borderWidth=obvelBorderWidth_s$ID$-1)\n\
+    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obsvel=obvel_s$ID$, boundaryWidth=1, borderWidth=obvelBorderWidth_s$ID$-1)\n\
     \n\
     mantaMsg('Advecting density')\n\
     advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=density_s$ID$, order=$ADVECT_ORDER$)\n\
@@ -303,8 +303,7 @@ def step_low_$ID$():\n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$)\n\
     \n\
     mantaMsg('Pressure')\n\
-    solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$)\n\
-    releaseMG() # manual clean up\n\
+    solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, preconditioner=$PRECONDITIONER$)\n\
 \n\
 def process_burn_low_$ID$():\n\
     mantaMsg('Process burn low')\n\
@@ -320,7 +319,7 @@ def update_flame_low_$ID$():\n\
 const std::string smoke_step_high = "\n\
 def step_high_$ID$():\n\
     mantaMsg('Smoke step high')\n\
-    updateFlags(flags=flags_xl$ID$, phiObs=phiObsIn_xl$ID$)\n\
+    setObstacleFlags(flags=flags_xl$ID$, phiObs=phiObsIn_xl$ID$)\n\
     flags_xl$ID$.fillGrid()\n\
     \n\
     interpolateMACGrid(source=vel_s$ID$, target=vel_xl$ID$)\n\
