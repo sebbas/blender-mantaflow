@@ -133,6 +133,14 @@ const std::string fluid_delete_solver_high = "\n\
 mantaMsg('Deleting solver high')\n\
 if 'xl$ID$' in globals() : del xl$ID$\n";
 
+const std::string fluid_multigrid_cleanup_low = "\n\
+mantaMsg('Cleanup multigrid low')\n\
+releaseMG(s$ID$)\n";
+
+const std::string fluid_multigrid_cleanup_high = "\n\
+mantaMsg('Cleanup multigrid high')\n\
+releaseMG(xl$ID$)\n";
+
 const std::string gc_collect = "\n\
 gc.collect()\n";
 

@@ -400,7 +400,11 @@ FLUID::~FLUID()
 	tmpString += smoke_delete_grids_high;
 	tmpString += smoke_delete_fire_high;
 	tmpString += smoke_delete_colors_high;
-	
+
+	// Cleanup multigrid
+	tmpString += fluid_multigrid_cleanup_low;
+	if (mUsingHighRes) tmpString += fluid_multigrid_cleanup_high;
+
 	// Make sure that everything is garbage collected
 	tmpString += gc_collect;
 
