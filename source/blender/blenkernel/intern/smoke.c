@@ -3297,7 +3297,7 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 				}
 #endif
 			}
-			step(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base, framenr);
+			step(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base, framenr-1); // framenr-1: manta solver starts frames at 0
 		}
 		// create shadows before writing cache so they get stored
 		if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
