@@ -840,7 +840,8 @@ static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
 	SmokeDomainSettings *sds = data->sds;
 
 	/* slightly rounded-up sqrt(3 * (0.5)^2) == max. distance of cell boundary along the diagonal */
-	const float surface_distance = 0.867f;
+	const float surface_distance = 2.0f; //0.867f;
+	/* Note: Use larger surface distance to cover larger area with obvel. Manta will use these obvels and extrapolate them (inside and outside obstacle) */
 
 	for (int x = sds->res_min[0]; x < sds->res_max[0]; x++) {
 		for (int y = sds->res_min[1]; y < sds->res_max[1]; y++) {
@@ -880,6 +881,8 @@ static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
 					data->num_obstacles[index]++;
 				}
 			}
+
+			/* Get distance to mesh surface from both within and outside grid (mantaflow phi grid) */
 			update_mesh_distances(index, data->distances_map, data->tree, ray_start);
 		}
 	}
