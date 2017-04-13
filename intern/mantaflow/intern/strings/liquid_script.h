@@ -211,10 +211,6 @@ def liquid_step_$ID$():\n\
     mantaMsg('Advecting velocity')\n\
     advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=vel_s$ID$, order=2, openBounds=doOpen_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
     \n\
-    # Create interpolated version of original phi grid for later use in (optional) high-res step\n\
-    if using_highres_s$ID$:\n\
-        interpolateGrid(target=phi_xl$ID$, source=phi_s$ID$)\n\
-    \n\
     # create level set of particles\n\
     gridParticleIndex(parts=pp_s$ID$, flags=flags_s$ID$, indexSys=pindex_s$ID$, index=gpi_s$ID$)\n\
     unionParticleLevelset(pp_s$ID$, pindex_s$ID$, flags_s$ID$, gpi_s$ID$, phiParts_s$ID$)\n\
@@ -252,6 +248,10 @@ def liquid_step_$ID$():\n\
         phiParts_s$ID$.copyFrom(phi_s$ID$)\n\
         phiParts_s$ID$.setBound(0.5,0)\n\
         phiParts_s$ID$.createMesh(mesh_s$ID$)\n\
+    \n\
+    # Create interpolated version of original phi grid for later use in (optional) high-res step\n\
+    if using_highres_s$ID$:\n\
+        interpolateGrid(target=phi_xl$ID$, source=phiParts_s$ID$)\n\
     \n\
     # set source grids for resampling, used in adjustNumber!\n\
     pVel_s$ID$.setSource(vel_s$ID$, isMAC=True)\n\
