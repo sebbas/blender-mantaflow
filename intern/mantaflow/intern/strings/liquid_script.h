@@ -169,8 +169,8 @@ def manta_step_$ID$(framenr):\n\
         phiIn_s$ID$.subtract(phiObs_s$ID$)\n\
         phi_s$ID$.join(phiIn_s$ID$)\n\
         \n\
-        updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
-        setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, phiOut=phiOut_s$ID$)\n\
+        #updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$) # TODO: uncomment for fractions\n\
+        setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$)#, fractions=fractions_s$ID$) # TODO: uncomment for fractions\n\
         \n\
         sampleLevelsetWithParticles(phi=phiIn_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, discretization=particleNumber_s$ID$, randomness=randomness_s$ID$, refillEmpty=True)\n\
         flags_s$ID$.updateFromLevelset(phi_s$ID$)\n\
@@ -235,13 +235,14 @@ def liquid_step_$ID$():\n\
     addGravity(flags=flags_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$)\n\
     addForceField(flags=flags_s$ID$, vel=vel_s$ID$, force=forces_s$ID$)\n\
     \n\
-    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, intoObs=True)\n\
-    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, fractions=fractions_s$ID$, phiObs=phiObs_s$ID$)\n\
+    #extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, intoObs=True) # TODO: uncomment for fractions\n\
+    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$)#, fractions=fractions_s$ID$, phiObs=phiObs_s$ID$) # TODO: uncomment for fractions\n\
     \n\
-    solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$, fractions=fractions_s$ID$, preconditioner=$PRECONDITIONER$)\n\
+    solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$)#, fractions=fractions_s$ID$) # TODO: uncomment for fractions\n\
     \n\
-    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4, intoObs=True)\n\
-    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, fractions=fractions_s$ID$, phiObs=phiObs_s$ID$)\n\
+    #extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4, intoObs=True) # TODO: uncomment for fractions\n\
+    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$)#, fractions=fractions_s$ID$, phiObs=phiObs_s$ID$) # TODO: uncomment for fractions\n\
+    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, intoObs=True) # TODO: remove this line when enabling fractions\n\
     \n\
     if (dim_s$ID$==3):\n\
         # mis-use phiParts as temp grid to close the mesh\n\
