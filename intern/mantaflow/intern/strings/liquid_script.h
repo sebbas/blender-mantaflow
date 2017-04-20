@@ -143,7 +143,8 @@ def liquid_post_step_low_$ID$():\n\
     forces_s$ID$.clear()\n\
     obvel_s$ID$.clear()\n\
     \n\
-    phiObs_s$ID$.setConst(0.5)\n\
+    phiIn_s$ID$.setConst(9999)\n\
+    phiObs_s$ID$.setConst(9999)\n\
     \n\
     copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n";
 
