@@ -167,8 +167,8 @@ def manta_step_$ID$(framenr):\n\
             setOpenBound(flags=flags_s$ID$, bWidth=boundaryWidth_s$ID$, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty)\n\
         \n\
         phiObs_s$ID$.join(phiObsIn_s$ID$)\n\
-        phiIn_s$ID$.subtract(phiObs_s$ID$)\n\
         phi_s$ID$.join(phiIn_s$ID$)\n\
+        phi_s$ID$.subtract(phiObsIn_s$ID$)\n\
         \n\
         #updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$) # TODO: uncomment for fractions\n\
         setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$)#, fractions=fractions_s$ID$) # TODO: uncomment for fractions\n\
