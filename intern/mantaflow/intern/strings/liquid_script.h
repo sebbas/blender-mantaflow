@@ -238,6 +238,7 @@ def liquid_step_$ID$():\n\
     \n\
     #extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, intoObs=True) # TODO: uncomment for fractions\n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$)#, fractions=fractions_s$ID$, phiObs=phiObs_s$ID$) # TODO: uncomment for fractions\n\
+    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$, boundaryWidth=2, borderWidth=obvelBorderWidth_s$ID$)\n\
     \n\
     solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$)#, fractions=fractions_s$ID$) # TODO: uncomment for fractions\n\
     \n\
