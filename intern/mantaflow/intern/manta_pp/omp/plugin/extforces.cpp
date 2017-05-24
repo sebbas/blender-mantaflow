@@ -370,26 +370,47 @@ void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* fractions = 0, Grid<Real
 	}
 } static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setWallBcs" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); MACGrid* fractions = _args.getPtrOpt<MACGrid >("fractions",2,0,&_lock); Grid<Real>* phiObs = _args.getPtrOpt<Grid<Real> >("phiObs",3,0,&_lock); int boundaryWidth = _args.getOpt<int >("boundaryWidth",4,0,&_lock);   _retval = getPyNone(); setWallBcs(flags,vel,fractions,phiObs,boundaryWidth);  _args.check(); } pbFinalizePlugin(parent,"setWallBcs", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setWallBcs",e.what()); return 0; } } static const Pb::Register _RP_setWallBcs ("","setWallBcs",_W_5);  extern "C" { void PbRegister_setWallBcs() { KEEP_UNUSED(_RP_setWallBcs); } } 
 
-//! add obstacle velocity between obs/obs, obs/fl and/or obs,em cells. expects centered obsvels, sets staggered vels
+//! add obstacle velocity between obs/obs, obs/fl and/or obs,em cells. expects centered obvels, sets staggered vels
 
- struct KnSetObstacleVelocity : public KernelBase { KnSetObstacleVelocity(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& obsvel, int boundaryWidth, int borderWidth) :  KernelBase(&flags,boundaryWidth) ,flags(flags),vel(vel),obsvel(obsvel),boundaryWidth(boundaryWidth),borderWidth(borderWidth)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, Grid<Vec3>& obsvel, int boundaryWidth, int borderWidth )  {
+ struct KnSetObstacleVelocity : public KernelBase { KnSetObstacleVelocity(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& obvel, int boundaryWidth, int borderWidth) :  KernelBase(&flags,boundaryWidth) ,flags(flags),vel(vel),obvel(obvel),boundaryWidth(boundaryWidth),borderWidth(borderWidth)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, Grid<Vec3>& obvel, int boundaryWidth, int borderWidth )  {
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curObs   = flags.isObstacle(i,j,k);
 	if (!curFluid && !curObs) return;
 
-	// Set vel for obstacles: getting centered vels and setting staggered
-	// Affects all cells inside obstacle. obsvels end exactly at obs/fl or obs/em border
-	if (flags.isObstacle(i-1,j,k) || (curObs && flags.isFluid(i-1,j,k)) || (curObs && flags.isEmpty(i-1,j,k)))
-		vel(i,j,k).x = 0.5*(obsvel(i-1,j,k).x + obsvel(i,j,k).x);
-	if (flags.isObstacle(i,j-1,k) || (curObs && flags.isFluid(i,j-1,k)) || (curObs && flags.isEmpty(i,j-1,k)))
-		vel(i,j,k).y = 0.5*(obsvel(i,j-1,k).y + obsvel(i,j,k).y);
-	if (vel.is3D() && (flags.isObstacle(i,j,k-1) || (curObs && flags.isFluid(i,j,k-1)) || (curObs && flags.isEmpty(i,j,k-1))))
-		vel(i,j,k).z = 0.5*(obsvel(i,j,k-1).z + obsvel(i,j,k).z);
+	// Set vel for obstacle cells: getting centered vels and setting staggered
+	// Affects all cells inside obstacle. obvels end exactly at obs/fl or obs/em border
+	if (flags.isObstacle(i-1,j,k) || (curObs && flags.isFluid(i-1,j,k)) || (curObs && flags.isEmpty(i-1,j,k))) {
+
+		// Sanity check: if neighbour cell has no velocity, then do not interpolate. Just use centered obvel of current cell
+		// Should not happen if obvels are present in all obstacle cell inside and some around obstacle
+		if (obvel(i-1,j,k).x == 0.)
+			vel(i,j,k).x = obvel(i,j,k).x;
+		else
+			vel(i,j,k).x = 0.5*(obvel(i-1,j,k).x + obvel(i,j,k).x);
+	}
+	if (flags.isObstacle(i,j-1,k) || (curObs && flags.isFluid(i,j-1,k)) || (curObs && flags.isEmpty(i,j-1,k))) {
+		if (obvel(i,j-1,k).y == 0.)
+			vel(i,j,k).y = obvel(i,j,k).y;
+		else
+			vel(i,j,k).y = 0.5*(obvel(i,j-1,k).y + obvel(i,j,k).y);
+		
+	}
+	if (vel.is3D() && (flags.isObstacle(i,j,k-1) || (curObs && flags.isFluid(i,j,k-1)) || (curObs && flags.isEmpty(i,j,k-1)))) {
+		if (obvel(i,j,k-1).z == 0.)
+			vel(i,j,k).z = obvel(i,j,k).z;
+		else
+			vel(i,j,k).z = 0.5*(obvel(i,j,k-1).z + obvel(i,j,k).z);
+	}
 
 	// Optional border velocities outside of obstacle
-	if (!borderWidth) return;
+	if (borderWidth <= 0) return;
 	for (int d=1; d<1+borderWidth; ++d)
 	{
+		// Sanity check: do not check cells that dont exist
+		if (i-d<0 || i+d>=vel.getSizeX() || j-d<0 || j+d>=vel.getSizeY()) return;
+		if (vel.is3D() && (k-d<0 || k+d>=vel.getSizeZ())) return;
+
+		// Is the neighbour cell an obstacle and has obvel (i.e. is it a moving obstacle cell)?
 		bool rObs = flags.isObstacle(i+d,j,k); // right
 		bool lObs = flags.isObstacle(i-d,j,k); // left
 		bool uObs = flags.isObstacle(i,j+d,k); // up
@@ -409,28 +430,41 @@ void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* fractions = 0, Grid<Real
 
 		if (rObs || lObs || uObs || dObs || tObs || bObs
 			|| rupObs || rdtObs || lupObs || ldtObs || rubObs || rdbObs || lubObs || ldbObs) {
-			vel(i,j,k).x = 0.5*(obsvel(i-1,j,k).x + obsvel(i,j,k).x);
-			vel(i,j,k).y = 0.5*(obsvel(i,j-1,k).y + obsvel(i,j,k).y);
-			if (vel.is3D()) {
-			vel(i,j,k).z = 0.5*(obsvel(i,j,k-1).z + obsvel(i,j,k).z); }
+
+			// Sanity check: if neighbour cell has no obvel, then do not interpolate. Just use centered obvel of current cell
+			// Should not happen if obvels were extrapolated outside of obstacle beforehand
+			if (obvel(i-1,j,k).x == 0.)
+				vel(i,j,k).x = obvel(i,j,k).x;
+			else
+				vel(i,j,k).x = 0.5*(obvel(i-1,j,k).x + obvel(i,j,k).x);
+
+			if (obvel(i,j-1,k).y == 0.)
+				vel(i,j,k).y = obvel(i,j,k).y;
+			else
+				vel(i,j,k).y = 0.5*(obvel(i,j-1,k).y + obvel(i,j,k).y);
+
+			if (vel.is3D() && obvel(i,j,k-1).z == 0.)
+				vel(i,j,k).z = obvel(i,j,k).z;
+			else
+				vel(i,j,k).z = 0.5*(obvel(i,j,k-1).z + obvel(i,j,k).z);
 		}
 	}
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<Vec3>& getArg2() { return obsvel; } typedef Grid<Vec3> type2;inline int& getArg3() { return boundaryWidth; } typedef int type3;inline int& getArg4() { return borderWidth; } typedef int type4; void runMessage() { debMsg("Executing kernel KnSetObstacleVelocity ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<Vec3>& getArg2() { return obvel; } typedef Grid<Vec3> type2;inline int& getArg3() { return boundaryWidth; } typedef int type3;inline int& getArg4() { return borderWidth; } typedef int type4; void runMessage() { debMsg("Executing kernel KnSetObstacleVelocity ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
 #pragma omp for  
-  for (int k=minZ; k < maxZ; k++) for (int j=boundaryWidth; j < _maxY; j++) for (int i=boundaryWidth; i < _maxX; i++) op(i,j,k,flags,vel,obsvel,boundaryWidth,borderWidth);  } } else { const int k=0; 
+  for (int k=minZ; k < maxZ; k++) for (int j=boundaryWidth; j < _maxY; j++) for (int i=boundaryWidth; i < _maxX; i++) op(i,j,k,flags,vel,obvel,boundaryWidth,borderWidth);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
 #pragma omp for  
-  for (int j=boundaryWidth; j < _maxY; j++) for (int i=boundaryWidth; i < _maxX; i++) op(i,j,k,flags,vel,obsvel,boundaryWidth,borderWidth);  } }  } FlagGrid& flags; MACGrid& vel; Grid<Vec3>& obsvel; int boundaryWidth; int borderWidth;   };
+  for (int j=boundaryWidth; j < _maxY; j++) for (int i=boundaryWidth; i < _maxX; i++) op(i,j,k,flags,vel,obvel,boundaryWidth,borderWidth);  } }  } FlagGrid& flags; MACGrid& vel; Grid<Vec3>& obvel; int boundaryWidth; int borderWidth;   };
 #line 297 "plugin/extforces.cpp"
 
 
 
-void setObstacleVelocity(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& obsvel, int boundaryWidth=1, int borderWidth=0) {
-	KnSetObstacleVelocity(flags, vel, obsvel, boundaryWidth, borderWidth);
-} static PyObject* _W_6 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setObstacleVelocity" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); Grid<Vec3>& obsvel = *_args.getPtr<Grid<Vec3> >("obsvel",2,&_lock); int boundaryWidth = _args.getOpt<int >("boundaryWidth",3,1,&_lock); int borderWidth = _args.getOpt<int >("borderWidth",4,0,&_lock);   _retval = getPyNone(); setObstacleVelocity(flags,vel,obsvel,boundaryWidth,borderWidth);  _args.check(); } pbFinalizePlugin(parent,"setObstacleVelocity", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setObstacleVelocity",e.what()); return 0; } } static const Pb::Register _RP_setObstacleVelocity ("","setObstacleVelocity",_W_6);  extern "C" { void PbRegister_setObstacleVelocity() { KEEP_UNUSED(_RP_setObstacleVelocity); } } 
+void setObstacleVelocity(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& obvel, int boundaryWidth=1, int borderWidth=0) {
+	KnSetObstacleVelocity(flags, vel, obvel, boundaryWidth, borderWidth);
+} static PyObject* _W_6 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setObstacleVelocity" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); Grid<Vec3>& obvel = *_args.getPtr<Grid<Vec3> >("obvel",2,&_lock); int boundaryWidth = _args.getOpt<int >("boundaryWidth",3,1,&_lock); int borderWidth = _args.getOpt<int >("borderWidth",4,0,&_lock);   _retval = getPyNone(); setObstacleVelocity(flags,vel,obvel,boundaryWidth,borderWidth);  _args.check(); } pbFinalizePlugin(parent,"setObstacleVelocity", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setObstacleVelocity",e.what()); return 0; } } static const Pb::Register _RP_setObstacleVelocity ("","setObstacleVelocity",_W_6);  extern "C" { void PbRegister_setObstacleVelocity() { KEEP_UNUSED(_RP_setObstacleVelocity); } } 
 
 //! Kernel: gradient norm operator
  struct KnConfForce : public KernelBase { KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str) :  KernelBase(&force,1) ,force(force),grid(grid),curl(curl),str(str)   { runMessage(); run(); }  inline void op(int i, int j, int k, Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str )  {
@@ -448,7 +482,7 @@ void setObstacleVelocity(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& obsvel, int 
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,force,grid,curl,str);  } }  } Grid<Vec3>& force; const Grid<Real>& grid; const Grid<Vec3>& curl; Real str;   };
-#line 347 "plugin/extforces.cpp"
+#line 381 "plugin/extforces.cpp"
 
 
 

@@ -254,8 +254,8 @@ def step_low_$ID$():\n\
     mantaMsg('Adding object velocity')\n\
     # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
     extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
-    extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=obvelBorderWidth_s$ID$, inside=False)\n\
-    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obsvel=obvel_s$ID$, boundaryWidth=1, borderWidth=obvelBorderWidth_s$ID$-1)\n\
+    extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=obvelBorderWidth_s$ID$+1, inside=False)\n\
+    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$, boundaryWidth=1, borderWidth=obvelBorderWidth_s$ID$)\n\
     \n\
     mantaMsg('Advecting density')\n\
     advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=density_s$ID$, order=$ADVECT_ORDER$)\n\
