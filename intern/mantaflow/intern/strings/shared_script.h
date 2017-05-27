@@ -66,7 +66,7 @@ if dim_s$ID$ == 2:\n\
 doOpen_s$ID$              = $DO_OPEN$\n\
 boundConditions_s$ID$     = '$BOUNDCONDITIONS$'\n\
 boundaryWidth_s$ID$       = 1\n\
-obvelBorderWidth_s$ID$    = 2\n\
+obvelBorderWidth_s$ID$    = 0 # obvels inside are sufficient - not needed for now\n\
 \n\
 using_highres_s$ID$   = $USING_HIGHRES$\n\
 using_adaptTime_s$ID$ = $USING_ADAPTIVETIME$\n";
