@@ -494,12 +494,13 @@ class PHYSICS_PT_smoke_display_settings(PhysicButtonsPanel, Panel):
 classes = (
     PHYSICS_PT_smoke,
     PHYSICS_PT_smoke_flow_advanced,
-    PHYSICS_PT_smoke_fire,
     PHYSICS_PT_smoke_adaptive_domain,
     PHYSICS_PT_smoke_highres,
     PHYSICS_PT_smoke_groups,
     PHYSICS_PT_smoke_cache,
     PHYSICS_PT_smoke_field_weights,
+	OBJECT_OT_RunMantaButton,
+	PHYSICS_PT_smoke_manta_settings,
     PHYSICS_PT_smoke_display_settings,
 )
 
