@@ -695,7 +695,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
             update=devices_update_callback
             )
 
-        cls.debug_opencl_kernel_single_program = BoolProperty(name="Single Program", default=False, update=devices_update_callback);
+        cls.debug_opencl_kernel_single_program = BoolProperty(name="Single Program", default=True, update=devices_update_callback);
 
         cls.debug_use_opencl_debug = BoolProperty(name="Debug OpenCL", default=False)
 
@@ -1096,6 +1096,12 @@ class CyclesObjectSettings(bpy.types.PropertyGroup):
                 default=1.0,
                 )
 
+        cls.is_shadow_catcher = BoolProperty(
+                name="Shadow Catcher",
+                description="Only render shadows on this object, for compositing renders into real footage",
+                default=False,
+                )
+
     @classmethod
     def unregister(cls):
         del bpy.types.Object.cycles
@@ -1159,6 +1165,124 @@ class CyclesCurveRenderSettings(bpy.types.PropertyGroup):
     @classmethod
     def unregister(cls):
         del bpy.types.Scene.cycles_curves
+
+def update_render_passes(self, context):
+    scene = context.scene
+    rd = scene.render
+    rl = rd.layers.active
+    rl.update_render_passes()
+
+class CyclesRenderLayerSettings(bpy.types.PropertyGroup):
+    @classmethod
+    def register(cls):
+        bpy.types.SceneRenderLayer.cycles = PointerProperty(
+                name="Cycles SceneRenderLayer Settings",
+                description="Cycles SceneRenderLayer Settings",
+                type=cls,
+                )
+        cls.pass_debug_bvh_traversed_nodes = BoolProperty(
+                name="Debug BVH Traversed Nodes",
+                description="Store Debug BVH Traversed Nodes pass",
+                default=False,
+                update=update_render_passes,
+                )
+        cls.pass_debug_bvh_traversed_instances = BoolProperty(
+                name="Debug BVH Traversed Instances",
+                description="Store Debug BVH Traversed Instances pass",
+                default=False,
+                update=update_render_passes,
+                )
+        cls.pass_debug_bvh_intersections = BoolProperty(
+                name="Debug BVH Intersections",
+                description="Store Debug BVH Intersections",
+                default=False,
+                update=update_render_passes,
+                )
+        cls.pass_debug_ray_bounces = BoolProperty(
+                name="Debug Ray Bounces",
+                description="Store Debug Ray Bounces pass",
+                default=False,
+                update=update_render_passes,
+                )
+
+        cls.use_denoising = BoolProperty(
+                name="Use Denoising",
+                description="Denoise the rendered image",
+                default=False,
+                )
+        cls.denoising_diffuse_direct = BoolProperty(
+                name="Diffuse Direct",
+                description="Denoise the direct diffuse lighting",
+                default=True,
+                )
+        cls.denoising_diffuse_indirect = BoolProperty(
+                name="Diffuse Indirect",
+                description="Denoise the indirect diffuse lighting",
+                default=True,
+                )
+        cls.denoising_glossy_direct = BoolProperty(
+                name="Glossy Direct",
+                description="Denoise the direct glossy lighting",
+                default=True,
+                )
+        cls.denoising_glossy_indirect = BoolProperty(
+                name="Glossy Indirect",
+                description="Denoise the indirect glossy lighting",
+                default=True,
+                )
+        cls.denoising_transmission_direct = BoolProperty(
+                name="Transmission Direct",
+                description="Denoise the direct transmission lighting",
+                default=True,
+                )
+        cls.denoising_transmission_indirect = BoolProperty(
+                name="Transmission Indirect",
+                description="Denoise the indirect transmission lighting",
+                default=True,
+                )
+        cls.denoising_subsurface_direct = BoolProperty(
+                name="Subsurface Direct",
+                description="Denoise the direct subsurface lighting",
+                default=True,
+                )
+        cls.denoising_subsurface_indirect = BoolProperty(
+                name="Subsurface Indirect",
+                description="Denoise the indirect subsurface lighting",
+                default=True,
+                )
+        cls.denoising_strength = FloatProperty(
+                name="Denoising Strength",
+                description="Controls neighbor pixel weighting for the denoising filter (lower values preserve more detail, but aren't as smooth)",
+                min=0.0, max=1.0,
+                default=0.5,
+                )
+        cls.denoising_feature_strength = FloatProperty(
+                name="Denoising Feature Strength",
+                description="Controls removal of noisy image feature passes (lower values preserve more detail, but aren't as smooth)",
+                min=0.0, max=1.0,
+                default=0.5,
+                )
+        cls.denoising_radius = IntProperty(
+                name="Denoising Radius",
+                description="Size of the image area that's used to denoise a pixel (higher values are smoother, but might lose detail and are slower)",
+                min=1, max=25,
+                default=8,
+        )
+        cls.denoising_relative_pca = BoolProperty(
+                name="Relative filter",
+                description="When removing pixels that don't carry information, use a relative threshold instead of an absolute one (can help to reduce artifacts, but might cause detail loss around edges)",
+                default=False,
+        )
+        cls.denoising_store_passes = BoolProperty(
+                name="Store denoising passes",
+                description="Store the denoising feature passes and the noisy image",
+                default=False,
+                update=update_render_passes,
+        )
+
+    @classmethod
+    def unregister(cls):
+        del bpy.types.SceneRenderLayer.cycles
 
 
 class CyclesCurveSettings(bpy.types.PropertyGroup):
@@ -1291,14 +1415,14 @@ class CyclesPreferences(bpy.types.AddonPreferences):
         row = layout.row()
 
         if self.compute_device_type == 'CUDA' and cuda_devices:
-            col = row.column(align=True)
+            box = row.box()
             for device in cuda_devices:
-                col.prop(device, "use", text=device.name, toggle=True)
+                box.prop(device, "use", text=device.name)
 
         if self.compute_device_type == 'OPENCL' and opencl_devices:
-            col = row.column(align=True)
+            box = row.box()
             for device in opencl_devices:
-                col.prop(device, "use", text=device.name, toggle=True)
+                box.prop(device, "use", text=device.name)
 
 
     def draw(self, context):
@@ -1318,6 +1442,7 @@ def register():
     bpy.utils.register_class(CyclesCurveSettings)
     bpy.utils.register_class(CyclesDeviceSettings)
     bpy.utils.register_class(CyclesPreferences)
+    bpy.utils.register_class(CyclesRenderLayerSettings)
 
 
 def unregister():
@@ -1333,3 +1458,4 @@ def unregister():
     bpy.utils.unregister_class(CyclesCurveSettings)
     bpy.utils.unregister_class(CyclesDeviceSettings)
     bpy.utils.unregister_class(CyclesPreferences)
+    bpy.utils.unregister_class(CyclesRenderLayerSettings)

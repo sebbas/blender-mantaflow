@@ -88,7 +88,8 @@ EnumPropertyItem rna_enum_exr_codec_items[] = {
 	{R_IMF_EXR_CODEC_B44, "B44", 0, "B44 (lossy)", ""},
 	{R_IMF_EXR_CODEC_B44A, "B44A", 0, "B44A (lossy)", ""},
 	{R_IMF_EXR_CODEC_DWAA, "DWAA", 0, "DWAA (lossy)", ""},
-	{R_IMF_EXR_CODEC_DWAB, "DWAB", 0, "DWAB (lossy)", ""},
+	/* NOTE: Commented out for until new OpenEXR is released, see T50673. */
+	/* {R_IMF_EXR_CODEC_DWAB, "DWAB", 0, "DWAB (lossy)", ""}, */
 	{0, NULL, 0, NULL, NULL}
 };
 #endif
@@ -448,6 +449,7 @@ EnumPropertyItem rna_enum_gpencil_interpolation_mode_items[] = {
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
+#include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_main.h"
 #include "BKE_node.h"
@@ -1608,6 +1610,18 @@ static void rna_Scene_use_view_map_cache_update(Main *UNUSED(bmain), Scene *UNUS
 #endif
 }
 
+static IDProperty *rna_SceneRenderLayer_idprops(PointerRNA *ptr, bool create)
+{
+	SceneRenderLayer *srl = (SceneRenderLayer *)ptr->data;
+
+	if (create && !srl->prop) {
+		IDPropertyTemplate val = {0};
+		srl->prop = IDP_New(IDP_GROUP, &val, "SceneRenderLayer ID properties");
+	}
+
+	return srl->prop;
+}
+
 static void rna_SceneRenderLayer_name_set(PointerRNA *ptr, const char *value)
 {
 	Scene *scene = (Scene *)ptr->id.data;
@@ -1712,9 +1726,16 @@ static void rna_SceneRenderLayer_pass_update(Main *bmain, Scene *activescene, Po
 	Scene *scene = (Scene *)ptr->id.data;
 
 	if (scene->nodetree)
-		ntreeCompositForceHidden(scene->nodetree);
-	
+		ntreeCompositUpdateRLayers(scene->nodetree);
+
 	rna_Scene_glsl_update(bmain, activescene, ptr);
+}
+
+static void rna_SceneRenderLayer_update_render_passes(ID *id)
+{
+	Scene *scene = (Scene *)id;
+	if (scene->nodetree)
+		ntreeCompositUpdateRLayers(scene->nodetree);
 }
 
 static void rna_Scene_use_nodes_update(bContext *C, PointerRNA *ptr)
@@ -1795,7 +1816,7 @@ static void object_simplify_update(Object *ob)
 	}
 }
 
-static void rna_Scene_use_simplify_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_Scene_use_simplify_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
 	Scene *sce = ptr->id.data;
 	Scene *sce_iter;
@@ -1806,6 +1827,7 @@ static void rna_Scene_use_simplify_update(Main *bmain, Scene *UNUSED(scene), Poi
 		object_simplify_update(base->object);
 	
 	WM_main_add_notifier(NC_GEOM | ND_DATA, NULL);
+	DAG_id_tag_update(&scene->id, 0);
 }
 
 static void rna_Scene_simplify_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
@@ -5072,13 +5094,19 @@ static void rna_def_scene_render_layer(BlenderRNA *brna)
 {
 	StructRNA *srna;
 	PropertyRNA *prop;
+	FunctionRNA *func;
 
 	srna = RNA_def_struct(brna, "SceneRenderLayer", NULL);
 	RNA_def_struct_ui_text(srna, "Scene Render Layer", "Render layer");
 	RNA_def_struct_ui_icon(srna, ICON_RENDERLAYERS);
 	RNA_def_struct_path_func(srna, "rna_SceneRenderLayer_path");
+	RNA_def_struct_idprops_func(srna, "rna_SceneRenderLayer_idprops");
 
 	rna_def_render_layer_common(srna, 1);
+
+	func = RNA_def_function(srna, "update_render_passes", "rna_SceneRenderLayer_update_render_passes");
+	RNA_def_function_ui_description(func, "Requery the enabled render passes from the render engine");
+	RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_NO_SELF);
 
 	/* Freestyle */
 	rna_def_freestyle_settings(brna);
@@ -5390,7 +5418,7 @@ static void rna_def_scene_image_format_data(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "jpeg2k_codec", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "jp2_codec");
 	RNA_def_property_enum_items(prop, jp2_codec_items);
-	RNA_def_property_ui_text(prop, "Codec", "Codec settings for Jpek2000");
+	RNA_def_property_ui_text(prop, "Codec", "Codec settings for Jpeg2000");
 	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
 #endif
 
@@ -6741,14 +6769,6 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
 	RNA_def_property_pointer_sdna(prop, NULL, "bake");
 	RNA_def_property_struct_type(prop, "BakeSettings");
 	RNA_def_property_ui_text(prop, "Bake Data", "");
-
-	/* Debugging settings. */
-#ifdef WITH_CYCLES_DEBUG
-	prop = RNA_def_property(srna, "debug_pass_type", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_items(prop, rna_enum_render_pass_debug_type_items);
-	RNA_def_property_ui_text(prop, "Debug Pass Type", "Type of the debug pass to use");
-	RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
-#endif
 
 	/* Nestled Data  */
 	/* *** Non-Animated *** */

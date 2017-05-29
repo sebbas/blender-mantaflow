@@ -431,6 +431,13 @@ static void object_delete_cb(
 		tselem->id = NULL;
 #endif
 	}
+	else {
+		/* No base, means object is no more instantiated in any scene.
+		 * Should not happen ideally, but does happens, see T51625.
+		 * Rather than twisting in all kind of ways to address all possible cases leading to that situation, simpler
+		 * to allow deleting such object as a mere generic data-block. */
+		WM_operator_name_call(C, "OUTLINER_OT_id_delete", WM_OP_INVOKE_REGION_WIN, NULL);
+	}
 }
 
 static void id_local_cb(
@@ -1254,6 +1261,7 @@ static int outliner_id_operation_exec(bContext *C, wmOperator *op)
 		{
 			if (idlevel > 0) {
 				outliner_do_libdata_operation(C, op->reports, scene, soops, &soops->tree, id_delete_cb, NULL);
+				ED_undo_push(C, "Delete");
 			}
 			break;
 		}
@@ -1261,6 +1269,7 @@ static int outliner_id_operation_exec(bContext *C, wmOperator *op)
 		{
 			if (idlevel > 0) {
 				outliner_do_libdata_operation(C, op->reports, scene, soops, &soops->tree, id_remap_cb, NULL);
+				ED_undo_push(C, "Remap");
 			}
 			break;
 		}
@@ -1369,18 +1378,20 @@ static int outliner_lib_operation_exec(bContext *C, wmOperator *op)
 			outliner_do_libdata_operation(C, op->reports, scene, soops, &soops->tree, item_rename_cb, NULL);
 
 			WM_event_add_notifier(C, NC_ID | NA_EDITED, NULL);
-			ED_undo_push(C, "Rename");
+			ED_undo_push(C, "Rename Library");
 			break;
 		}
 		case OL_LIB_DELETE:
 		{
 			outliner_do_libdata_operation(C, op->reports, scene, soops, &soops->tree, id_delete_cb, NULL);
+			ED_undo_push(C, "Delete Library");
 			break;
 		}
 		case OL_LIB_RELOCATE:
 		{
 			/* rename */
 			outliner_do_libdata_operation(C, op->reports, scene, soops, &soops->tree, lib_relocate_cb, NULL);
+			ED_undo_push(C, "Relocate Library");
 			break;
 		}
 		case OL_LIB_RELOAD:

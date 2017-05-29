@@ -28,12 +28,14 @@
  * other devices this is a pointer to device memory, where we will copy memory
  * to and from. */
 
-#include "util_debug.h"
-#include "util_half.h"
-#include "util_types.h"
-#include "util_vector.h"
+#include "util/util_debug.h"
+#include "util/util_half.h"
+#include "util/util_types.h"
+#include "util/util_vector.h"
 
 CCL_NAMESPACE_BEGIN
+
+class Device;
 
 enum MemoryType {
 	MEM_READ_ONLY,
@@ -48,7 +50,8 @@ enum DataType {
 	TYPE_UINT,
 	TYPE_INT,
 	TYPE_FLOAT,
-	TYPE_HALF
+	TYPE_HALF,
+	TYPE_UINT64,
 };
 
 static inline size_t datatype_size(DataType datatype) 
@@ -59,6 +62,7 @@ static inline size_t datatype_size(DataType datatype)
 		case TYPE_UINT: return sizeof(uint);
 		case TYPE_INT: return sizeof(int);
 		case TYPE_HALF: return sizeof(half);
+		case TYPE_UINT64: return sizeof(uint64_t);
 		default: return 0;
 	}
 }
@@ -142,7 +146,7 @@ template<> struct device_type_traits<float2> {
 
 template<> struct device_type_traits<float3> {
 	static const DataType data_type = TYPE_FLOAT;
-	static const int num_elements = 3;
+	static const int num_elements = 4;
 };
 
 template<> struct device_type_traits<float4> {
@@ -160,12 +164,20 @@ template<> struct device_type_traits<half4> {
 	static const int num_elements = 4;
 };
 
+template<> struct device_type_traits<uint64_t> {
+	static const DataType data_type = TYPE_UINT64;
+	static const int num_elements = 1;
+};
+
 /* Device Memory */
 
 class device_memory
 {
 public:
 	size_t memory_size() { return data_size*data_elements*datatype_size(data_type); }
+	size_t memory_elements_size(int elements) {
+		return elements*data_elements*datatype_size(data_type);
+	}
 
 	/* data information */
 	DataType data_type;
@@ -204,6 +216,22 @@ protected:
 	/* no copying */
 	device_memory(const device_memory&);
 	device_memory& operator = (const device_memory&);
+};
+
+template<typename T>
+class device_only_memory : public device_memory
+{
+public:
+	device_only_memory()
+	{
+		data_type = device_type_traits<T>::data_type;
+		data_elements = max(device_type_traits<T>::num_elements, 1);
+	}
+
+	void resize(size_t num)
+	{
+		device_memory::resize(num*sizeof(T));
+	}
 };
 
 /* Device Vector */
@@ -290,6 +318,27 @@ public:
 
 private:
 	array<T> data;
+};
+
+/* A device_sub_ptr is a pointer into another existing memory.
+ * Therefore, it is not allocated separately, but just created from the already allocated base memory.
+ * It is freed automatically when it goes out of scope, which should happen before the base memory is freed.
+ * Note that some devices require the offset and size of the sub_ptr to be properly aligned. */
+class device_sub_ptr
+{
+public:
+	device_sub_ptr(Device *device, device_memory& mem, int offset, int size, MemoryType type);
+	~device_sub_ptr();
+	/* No copying. */
+	device_sub_ptr& operator = (const device_sub_ptr&);
+
+	device_ptr operator*() const
+	{
+		return ptr;
+	}
+protected:
+	Device *device;
+	device_ptr ptr;
 };
 
 CCL_NAMESPACE_END

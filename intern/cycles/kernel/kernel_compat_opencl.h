@@ -50,6 +50,8 @@
 #  define ccl_addr_space
 #endif
 
+#define ATTR_FALLTHROUGH
+
 #define ccl_local_id(d) get_local_id(d)
 #define ccl_global_id(d) get_global_id(d)
 
@@ -143,8 +145,8 @@
 /* define NULL */
 #define NULL 0
 
-#include "util_half.h"
-#include "util_types.h"
+#include "util/util_half.h"
+#include "util/util_types.h"
 
 #endif /* __KERNEL_COMPAT_OPENCL_H__ */
 

@@ -16,64 +16,33 @@
 
 CCL_NAMESPACE_BEGIN
 
-/* Note on kernel_background_buffer_update kernel.
- * This is the fourth kernel in the ray tracing logic, and the third
- * of the path iteration kernels. This kernel takes care of rays that hit
- * the background (sceneintersect kernel), and for the rays of
- * state RAY_UPDATE_BUFFER it updates the ray's accumulated radiance in
- * the output buffer. This kernel also takes care of rays that have been determined
- * to-be-regenerated.
+/* This kernel takes care of rays that hit the background (sceneintersect
+ * kernel), and for the rays of state RAY_UPDATE_BUFFER it updates the ray's
+ * accumulated radiance in the output buffer. This kernel also takes care of
+ * rays that have been determined to-be-regenerated.
  *
- * We will empty QUEUE_HITBG_BUFF_UPDATE_TOREGEN_RAYS queue in this kernel
+ * We will empty QUEUE_HITBG_BUFF_UPDATE_TOREGEN_RAYS queue in this kernel.
  *
  * Typically all rays that are in state RAY_HIT_BACKGROUND, RAY_UPDATE_BUFFER
- * will be eventually set to RAY_TO_REGENERATE state in this kernel. Finally all rays of ray_state
- * RAY_TO_REGENERATE will be regenerated and put in queue QUEUE_ACTIVE_AND_REGENERATED_RAYS.
+ * will be eventually set to RAY_TO_REGENERATE state in this kernel.
+ * Finally all rays of ray_state RAY_TO_REGENERATE will be regenerated and put
+ * in queue QUEUE_ACTIVE_AND_REGENERATED_RAYS.
  *
- * The input and output are as follows,
- *
- * rng_coop ---------------------------------------------|--- kernel_background_buffer_update --|--- PathRadiance_coop
- * throughput_coop --------------------------------------|                                      |--- L_transparent_coop
- * per_sample_output_buffers ----------------------------|                                      |--- per_sample_output_buffers
- * Ray_coop ---------------------------------------------|                                      |--- ray_state
- * PathState_coop ---------------------------------------|                                      |--- Queue_data (QUEUE_HITBG_BUFF_UPDATE_TOREGEN_RAYS)
- * L_transparent_coop -----------------------------------|                                      |--- Queue_data (QUEUE_ACTIVE_AND_REGENERATED_RAYS)
- * ray_state --------------------------------------------|                                      |--- Queue_index (QUEUE_HITBG_BUFF_UPDATE_TOREGEN_RAYS)
- * Queue_data (QUEUE_HITBG_BUFF_UPDATE_TOREGEN_RAYS) ----|                                      |--- Queue_index (QUEUE_ACTIVE_AND_REGENERATED_RAYS)
- * Queue_index (QUEUE_ACTIVE_AND_REGENERATED_RAYS) ------|                                      |--- work_array
- * parallel_samples -------------------------------------|                                      |--- PathState_coop
- * end_sample -------------------------------------------|                                      |--- throughput_coop
- * kg (globals) -----------------------------------------|                                      |--- rng_coop
- * rng_state --------------------------------------------|                                      |--- Ray
- * PathRadiance_coop ------------------------------------|                                      |
- * sw ---------------------------------------------------|                                      |
- * sh ---------------------------------------------------|                                      |
- * sx ---------------------------------------------------|                                      |
- * sy ---------------------------------------------------|                                      |
- * stride -----------------------------------------------|                                      |
- * work_array -------------------------------------------|                                      |--- work_array
- * queuesize --------------------------------------------|                                      |
- * start_sample -----------------------------------------|                                      |--- work_pool_wgs
- * work_pool_wgs ----------------------------------------|                                      |
- * num_samples ------------------------------------------|                                      |
- *
- * note on sd : sd argument is neither an input nor an output for this kernel. It is just filled and consumed here itself.
- * Note on Queues :
- * This kernel fetches rays from QUEUE_HITBG_BUFF_UPDATE_TOREGEN_RAYS queue.
- *
- * State of queues when this kernel is called :
+ * State of queues when this kernel is called:
  * At entry,
- * QUEUE_ACTIVE_AND_REGENERATED_RAYS will be filled with RAY_ACTIVE rays
- * QUEUE_HITBG_BUFF_UPDATE_TOREGEN_RAYS will be filled with RAY_UPDATE_BUFFER, RAY_HIT_BACKGROUND, RAY_TO_REGENERATE rays
+ *   - QUEUE_ACTIVE_AND_REGENERATED_RAYS will be filled with RAY_ACTIVE rays.
+ *   - QUEUE_HITBG_BUFF_UPDATE_TOREGEN_RAYS will be filled with
+ *     RAY_UPDATE_BUFFER, RAY_HIT_BACKGROUND, RAY_TO_REGENERATE rays.
  * At exit,
- * QUEUE_ACTIVE_AND_REGENERATED_RAYS will be filled with RAY_ACTIVE and RAY_REGENERATED rays
- * QUEUE_HITBG_BUFF_UPDATE_TOREGEN_RAYS will be empty
+ *   - QUEUE_ACTIVE_AND_REGENERATED_RAYS will be filled with RAY_ACTIVE and
+ *     RAY_REGENERATED rays.
+ *   - QUEUE_HITBG_BUFF_UPDATE_TOREGEN_RAYS will be empty.
  */
-ccl_device void kernel_buffer_update(KernelGlobals *kg)
+ccl_device void kernel_buffer_update(KernelGlobals *kg,
+                                     ccl_local_param unsigned int *local_queue_atomics)
 {
-	ccl_local unsigned int local_queue_atomics;
 	if(ccl_local_id(0) == 0 && ccl_local_id(1) == 0) {
-		local_queue_atomics = 0;
+		*local_queue_atomics = 0;
 	}
 	ccl_barrier(CCL_LOCAL_MEM_FENCE);
 
@@ -118,7 +87,7 @@ ccl_device void kernel_buffer_update(KernelGlobals *kg)
 	ccl_global Ray *ray = &kernel_split_state.ray[ray_index];
 	ccl_global float3 *throughput = &kernel_split_state.throughput[ray_index];
 	ccl_global float *L_transparent = &kernel_split_state.L_transparent[ray_index];
-	ccl_global uint *rng = &kernel_split_state.rng[ray_index];
+	RNG rng = kernel_split_state.rng[ray_index];
 	ccl_global float *buffer = kernel_split_params.buffer;
 
 	unsigned int work_index;
@@ -142,16 +111,15 @@ ccl_device void kernel_buffer_update(KernelGlobals *kg)
 	buffer += (kernel_split_params.offset + pixel_x + pixel_y*stride) * kernel_data.film.pass_stride;
 
 	if(IS_STATE(ray_state, ray_index, RAY_UPDATE_BUFFER)) {
-		float3 L_sum = path_radiance_clamp_and_sum(kg, L);
-		kernel_write_light_passes(kg, buffer, L, sample);
 #ifdef __KERNEL_DEBUG__
 		kernel_write_debug_passes(kg, buffer, state, debug_data, sample);
 #endif
-		float4 L_rad = make_float4(L_sum.x, L_sum.y, L_sum.z, 1.0f - (*L_transparent));
 
 		/* accumulate result in output buffer */
-		kernel_write_pass_float4(buffer, sample, L_rad);
-		path_rng_end(kg, rng_state, *rng);
+		bool is_shadow_catcher = (state->flag & PATH_RAY_SHADOW_CATCHER);
+		kernel_write_result(kg, buffer, sample, L, 1.0f - (*L_transparent), is_shadow_catcher);
+
+		path_rng_end(kg, rng_state, rng);
 
 		ASSIGN_RAY_STATE(ray_state, ray_index, RAY_TO_REGENERATE);
 	}
@@ -177,7 +145,7 @@ ccl_device void kernel_buffer_update(KernelGlobals *kg)
 			buffer += (kernel_split_params.offset + pixel_x + pixel_y*stride) * kernel_data.film.pass_stride;
 
 			/* Initialize random numbers and ray. */
-			kernel_path_trace_setup(kg, rng_state, sample, pixel_x, pixel_y, rng, ray);
+			kernel_path_trace_setup(kg, rng_state, sample, pixel_x, pixel_y, &rng, ray);
 
 			if(ray->t != 0.0f) {
 				/* Initialize throughput, L_transparent, Ray, PathState;
@@ -186,7 +154,7 @@ ccl_device void kernel_buffer_update(KernelGlobals *kg)
 				*throughput = make_float3(1.0f, 1.0f, 1.0f);
 				*L_transparent = 0.0f;
 				path_radiance_init(L, kernel_data.film.use_light_pass);
-				path_state_init(kg, &kernel_split_state.sd_DL_shadow[ray_index], state, rng, sample, ray);
+				path_state_init(kg, &kernel_split_state.sd_DL_shadow[ray_index], state, &rng, sample, ray);
 #ifdef __SUBSURFACE__
 				kernel_path_subsurface_init_indirect(&kernel_split_state.ss_rays[ray_index]);
 #endif
@@ -201,12 +169,13 @@ ccl_device void kernel_buffer_update(KernelGlobals *kg)
 				float4 L_rad = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
 				/* Accumulate result in output buffer. */
 				kernel_write_pass_float4(buffer, sample, L_rad);
-				path_rng_end(kg, rng_state, *rng);
+				path_rng_end(kg, rng_state, rng);
 
 				ASSIGN_RAY_STATE(ray_state, ray_index, RAY_TO_REGENERATE);
 			}
 		}
 	}
+	kernel_split_state.rng[ray_index] = rng;
 
 #ifndef __COMPUTE_DEVICE_GPU__
 	}
@@ -219,10 +188,9 @@ ccl_device void kernel_buffer_update(KernelGlobals *kg)
 	                        QUEUE_ACTIVE_AND_REGENERATED_RAYS,
 	                        enqueue_flag,
 	                        kernel_split_params.queue_size,
-	                        &local_queue_atomics,
+	                        local_queue_atomics,
 	                        kernel_split_state.queue_data,
 	                        kernel_split_params.queue_index);
 }
 
 CCL_NAMESPACE_END
-

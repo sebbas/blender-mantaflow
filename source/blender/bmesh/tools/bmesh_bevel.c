@@ -205,6 +205,15 @@ static int bev_debug_flags = 0;
 #define DEBUG_OLD_PROJ_TO_PERP_PLANE (bev_debug_flags & 2)
 #define DEBUG_OLD_FLAT_MID (bev_debug_flags & 4)
 
+/* Are d1 and d2 parallel or nearly so? */
+static bool nearly_parallel(const float d1[3], const float d2[3])
+{
+	float ang;
+
+	ang = angle_v3v3(d1, d2);
+	return (fabsf(ang) < BEVEL_EPSILON_ANG) || (fabsf(ang - M_PI) < BEVEL_EPSILON_ANG);
+}
+
 /* Make a new BoundVert of the given kind, insert it at the end of the circular linked
  * list with entry point bv->boundstart, and return it. */
 static BoundVert *add_new_bound_vert(MemArena *mem_arena, VMesh *vm, const float co[3])
@@ -916,8 +925,12 @@ static bool offset_meet_edge(EdgeHalf *e1, EdgeHalf *e2, BMVert *v,  float meetc
 		return false;
 	}
 	cross_v3_v3v3(fno, dir1, dir2);
-	if (dot_v3v3(fno, v->no) < 0.0f)
+	if (dot_v3v3(fno, v->no) < 0.0f) {
 		ang = 2.0f * (float)M_PI - ang;  /* angle is reflex */
+		if (r_angle)
+			*r_angle = ang;
+		return false;
+	}
 	if (r_angle)
 		*r_angle = ang;
 
@@ -1055,7 +1068,7 @@ static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
 {
 	EdgeHalf *e;
 	Profile *pro;
-	float co1[3], co2[3], co3[3], d1[3], d2[3], l;
+	float co1[3], co2[3], co3[3], d1[3], d2[3];
 	bool do_linear_interp;
 
 	copy_v3_v3(co1, bndv->nv.co);
@@ -1093,8 +1106,8 @@ static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
 		normalize_v3(d1);
 		normalize_v3(d2);
 		cross_v3_v3v3(pro->plane_no, d1, d2);
-		l = normalize_v3(pro->plane_no);
-		if (l  <= BEVEL_EPSILON_BIG) {
+		normalize_v3(pro->plane_no);
+		if (nearly_parallel(d1, d2)) {
 			/* co1 - midco -co2 are collinear.
 			 * Should be case that beveled edge is coplanar with two boundary verts.
 			 * We want to move the profile to that common plane, if possible.
@@ -1126,16 +1139,23 @@ static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
 						sub_v3_v3v3(d4, e->next->e->v1->co, e->next->e->v2->co);
 						normalize_v3(d3);
 						normalize_v3(d4);
-						add_v3_v3v3(co3, co1, d3);
-						add_v3_v3v3(co4, co2, d4);
-						isect_kind = isect_line_line_v3(co1, co3, co2, co4, meetco, isect2);
-						if (isect_kind != 0) {
-							copy_v3_v3(pro->midco, meetco);
-						}
-						else {
+						if (nearly_parallel(d3, d4)) {
 							/* offset lines are collinear - want linear interpolation */
 							mid_v3_v3v3(pro->midco, co1, co2);
 							do_linear_interp = true;
+						}
+						else {
+							add_v3_v3v3(co3, co1, d3);
+							add_v3_v3v3(co4, co2, d4);
+							isect_kind = isect_line_line_v3(co1, co3, co2, co4, meetco, isect2);
+							if (isect_kind != 0) {
+								copy_v3_v3(pro->midco, meetco);
+							}
+							else {
+								/* offset lines don't intersect - want linear interpolation */
+								mid_v3_v3v3(pro->midco, co1, co2);
+								do_linear_interp = true;
+							}
 						}
 					}
 				}
@@ -1145,8 +1165,8 @@ static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
 				sub_v3_v3v3(d2, pro->midco, co2);
 				normalize_v3(d2);
 				cross_v3_v3v3(pro->plane_no, d1, d2);
-				l = normalize_v3(pro->plane_no);
-				if (l <= BEVEL_EPSILON_BIG) {
+				normalize_v3(pro->plane_no);
+				if (nearly_parallel(d1, d2)) {
 					/* whole profile is collinear with edge: just interpolate */
 					do_linear_interp = true;
 				}
@@ -2295,7 +2315,7 @@ static int interp_range(const float *frac, int n, const float f, float *r_rest)
 /* Interpolate given vmesh to make one with target nseg border vertices on the profiles */
 static VMesh *interp_vmesh(BevelParams *bp, VMesh *vm0, int nseg)
 {
-	int n, ns0, nseg2, odd, i, j, k, j0, k0, k0prev;
+	int n, ns0, nseg2, odd, i, j, k, j0, k0, k0prev, j0inc, k0inc;
 	float *prev_frac, *frac, *new_frac, *prev_new_frac;
 	float f, restj, restk, restkprev;
 	float quad[4][3], co[3], center[3];
@@ -2339,10 +2359,12 @@ static VMesh *interp_vmesh(BevelParams *bp, VMesh *vm0, int nseg)
 					copy_v3_v3(co, mesh_vert_canon(vm0, i, j0, k0)->co);
 				}
 				else {
+					j0inc = (restj < BEVEL_EPSILON || j0 == ns0) ? 0 : 1;
+					k0inc = (restk < BEVEL_EPSILON || k0 == ns0) ? 0 : 1;
 					copy_v3_v3(quad[0], mesh_vert_canon(vm0, i, j0, k0)->co);
-					copy_v3_v3(quad[1], mesh_vert_canon(vm0, i, j0, k0 + 1)->co);
-					copy_v3_v3(quad[2], mesh_vert_canon(vm0, i, j0 + 1, k0 + 1)->co);
-					copy_v3_v3(quad[3], mesh_vert_canon(vm0, i, j0 + 1, k0)->co);
+					copy_v3_v3(quad[1], mesh_vert_canon(vm0, i, j0, k0 + k0inc)->co);
+					copy_v3_v3(quad[2], mesh_vert_canon(vm0, i, j0 + j0inc, k0 + k0inc)->co);
+					copy_v3_v3(quad[3], mesh_vert_canon(vm0, i, j0 + j0inc, k0)->co);
 					interp_bilinear_quad_v3(quad, restk, restj, co);
 				}
 				copy_v3_v3(mesh_vert(vm1, i, j, k)->co, co);

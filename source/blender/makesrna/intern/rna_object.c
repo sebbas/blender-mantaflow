@@ -432,11 +432,7 @@ static void rna_Object_parent_set(PointerRNA *ptr, PointerRNA value)
 {
 	Object *ob = (Object *)ptr->data;
 	Object *par = (Object *)value.data;
-	
-#ifdef FREE_WINDOWS
-	/* NOTE: this dummy check here prevents this method causing weird runtime errors on mingw 4.6.2 */
-	if (ob)
-#endif
+
 	{
 		ED_object_parent(ob, par, ob->partype, ob->parsubstr);
 	}
@@ -532,8 +528,9 @@ static void rna_Object_dup_group_set(PointerRNA *ptr, PointerRNA value)
 	 * thus causing a cycle/infinite-recursion leading to crashes on load [#25298]
 	 */
 	if (BKE_group_object_exists(grp, ob) == 0) {
+		id_us_min(&ob->dup_group->id);
 		ob->dup_group = grp;
-		id_lib_extern((ID *)grp);
+		id_us_plus(&ob->dup_group->id);
 	}
 	else {
 		BKE_report(NULL, RPT_ERROR,
@@ -2897,6 +2894,10 @@ static void rna_def_dupli_object(BlenderRNA *brna)
 	RNA_def_property_enum_items(prop, dupli_items);
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
 	RNA_def_property_ui_text(prop, "Dupli Type", "Duplicator type that generated this dupli object");
+
+	prop = RNA_def_property(srna, "random_id", PROP_INT, PROP_UNSIGNED);
+	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
+	RNA_def_property_ui_text(prop, "Dupli random id", "Random id for this dupli object");
 }
 
 static void rna_def_object_base(BlenderRNA *brna)

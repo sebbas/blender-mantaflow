@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include "kernel_compat_opencl.h"
-#include "split/kernel_split_common.h"
-#include "split/kernel_shader_eval.h"
+#include "kernel/kernel_compat_opencl.h"
+#include "kernel/split/kernel_split_common.h"
+#include "kernel/split/kernel_shader_eval.h"
 
 __kernel void kernel_ocl_path_trace_shader_eval(
-        KernelGlobals *kg,
+        ccl_global char *kg,
         ccl_constant KernelData *data)
 {
-	kernel_shader_eval(kg);
+	kernel_shader_eval((KernelGlobals*)kg);
 }

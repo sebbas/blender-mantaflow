@@ -22,12 +22,12 @@ from mathutils import Vector
 import bpy
 from bpy.types import Operator
 from bpy.props import (
-        BoolProperty,
-        EnumProperty,
-        IntProperty,
-        FloatProperty,
-        FloatVectorProperty,
-        )
+    BoolProperty,
+    EnumProperty,
+    IntProperty,
+    FloatProperty,
+    FloatVectorProperty,
+)
 
 
 def object_ensure_material(obj, mat_name):
@@ -647,7 +647,6 @@ class QuickFluid(Operator):
 
         return {'FINISHED'}
 
-
 class QuickLiquid(Operator):
     bl_idname = "object.quick_liquid"
     bl_label = "Quick Liquid"
@@ -727,3 +726,10 @@ class QuickLiquid(Operator):
         mat.raytrace_transparency.depth = 4
 
         return {'FINISHED'}
+
+classes = (
+    QuickExplode,
+    QuickFluid,
+    QuickFur,
+    QuickSmoke,
+)

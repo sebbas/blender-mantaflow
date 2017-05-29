@@ -56,6 +56,7 @@ AbcHairWriter::AbcHairWriter(Scene *scene,
                              ExportSettings &settings,
                              ParticleSystem *psys)
     : AbcObjectWriter(scene, ob, time_sampling, settings, parent)
+    , m_uv_warning_shown(false)
 {
 	m_psys = psys;
 
@@ -75,7 +76,7 @@ void AbcHairWriter::do_write()
 		return;
 	}
 
-	DerivedMesh *dm = mesh_create_derived_view(m_scene, m_object, CD_MASK_MESH);
+	DerivedMesh *dm = mesh_create_derived_render(m_scene, m_object, CD_MASK_MESH);
 	DM_ensure_tessface(dm);
 
 	std::vector<Imath::V3f> verts;
@@ -132,8 +133,10 @@ void AbcHairWriter::write_hair_sample(DerivedMesh *dm,
 	MFace *mface = dm->getTessFaceArray(dm);
 	MVert *mverts = dm->getVertArray(dm);
 
-	if (!mtface || !mface) {
-		std::fprintf(stderr, "Warning, no UV set found for underlying geometry.\n");
+	if ((!mtface || !mface) && !m_uv_warning_shown) {
+		std::fprintf(stderr, "Warning, no UV set found for underlying geometry of %s.\n",
+		             m_object->id.name + 2);
+		m_uv_warning_shown = true;
 	}
 
 	ParticleData * pa = m_psys->particles;
@@ -238,12 +241,7 @@ void AbcHairWriter::write_hair_child_sample(DerivedMesh *dm,
 	invert_m4_m4_safe(inv_mat, m_object->obmat);
 
 	MTFace *mtface = static_cast<MTFace *>(CustomData_get_layer(&dm->faceData, CD_MTFACE));
-	MFace *mface = dm->getTessFaceArray(dm);
 	MVert *mverts = dm->getVertArray(dm);
-
-	if (!mtface || !mface) {
-		std::fprintf(stderr, "Warning, no UV set found for underlying geometry.\n");
-	}
 
 	ParticleCacheKey **cache = m_psys->childcache;
 	ParticleCacheKey *path;
@@ -253,22 +251,37 @@ void AbcHairWriter::write_hair_child_sample(DerivedMesh *dm,
 	for (int p = 0; p < m_psys->totchild; ++p, ++pc) {
 		path = cache[p];
 
-		if (part->from == PART_FROM_FACE) {
+		if (part->from == PART_FROM_FACE &&
+		        part->childtype != PART_CHILD_PARTICLES &&
+		        mtface) {
 			const int num = pc->num;
+			if (num < 0) {
+				ABC_LOG(m_settings.logger)
+				        << "Warning, child particle of hair system " << m_psys->name
+				        << " has unknown face index of geometry of "<< (m_object->id.name + 2)
+				        << ", skipping child hair." << std::endl;
+				continue;
+			}
 
 			MFace *face = static_cast<MFace *>(dm->getTessFaceData(dm, num, CD_MFACE));
 			MTFace *tface = mtface + num;
 
-			if (mface && mtface) {
-				float r_uv[2], tmpnor[3], mapfw[4], vec[3];
+			float r_uv[2], tmpnor[3], mapfw[4], vec[3];
 
-				psys_interpolate_uvs(tface, face->v4, pc->fuv, r_uv);
-				uv_values.push_back(Imath::V2f(r_uv[0], r_uv[1]));
+			psys_interpolate_uvs(tface, face->v4, pc->fuv, r_uv);
+			uv_values.push_back(Imath::V2f(r_uv[0], r_uv[1]));
 
-				psys_interpolate_face(mverts, face, tface, NULL, mapfw, vec, tmpnor, NULL, NULL, NULL, NULL);
+			psys_interpolate_face(mverts, face, tface, NULL, mapfw, vec, tmpnor, NULL, NULL, NULL, NULL);
 
-				/* Convert Z-up to Y-up. */
-				norm_values.push_back(Imath::V3f(tmpnor[0], tmpnor[2], -tmpnor[1]));
+			/* Convert Z-up to Y-up. */
+			norm_values.push_back(Imath::V3f(tmpnor[0], tmpnor[2], -tmpnor[1]));
+		}
+		else {
+			if (uv_values.size()) {
+				uv_values.push_back(uv_values[pc->parent]);
+			}
+			if (norm_values.size()) {
+				norm_values.push_back(norm_values[pc->parent]);
 			}
 		}
 

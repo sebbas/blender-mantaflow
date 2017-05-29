@@ -74,7 +74,7 @@ static short plane_point_test_v3(const float plane[4], const float co[3], const 
 #define BM_VERT_DIST(v)    ((v)->no[0])         /* Distance from the plane. */
 #define BM_VERT_SORTVAL(v) ((v)->no[1])         /* Temp value for sorting. */
 #define BM_VERT_LOOPINDEX(v)                    /* The verts index within a face (temp var) */ \
-	(*((unsigned int *)(&(v)->no[2])))
+	(*((uint *)(&(v)->no[2])))
 
 /**
  * Hide flag access
@@ -110,10 +110,10 @@ static int bm_vert_sortval_cb(const void *v_a_v, const void *v_b_v)
 }
 
 
-static void bm_face_bisect_verts(BMesh *bm, BMFace *f, const float plane[4], const short oflag_center)
+static void bm_face_bisect_verts(BMesh *bm, BMFace *f, const float plane[4], const short oflag_center, const short oflag_new)
 {
 	/* unlikely more than 2 verts are needed */
-	const unsigned int f_len_orig = (unsigned int)f->len;
+	const uint f_len_orig = (uint)f->len;
 	BMVert **vert_split_arr = BLI_array_alloca(vert_split_arr, f_len_orig);
 	STACK_DECLARE(vert_split_arr);
 	BMLoop *l_iter, *l_first;
@@ -154,10 +154,11 @@ static void bm_face_bisect_verts(BMesh *bm, BMFace *f, const float plane[4], con
 			/* common case, just cut the face once */
 			BM_face_split(bm, f, l_a, l_b, &l_new, NULL, true);
 			if (l_new) {
-				if (oflag_center) {
-					BMO_edge_flag_enable(bm, l_new->e, oflag_center);
-					BMO_face_flag_enable(bm, l_new->f, oflag_center);
-					BMO_face_flag_enable(bm, f,        oflag_center);
+				if (oflag_center | oflag_new) {
+					BMO_edge_flag_enable(bm, l_new->e, oflag_center | oflag_new);
+				}
+				if (oflag_new) {
+					BMO_face_flag_enable(bm, l_new->f, oflag_new);
 				}
 			}
 		}
@@ -170,7 +171,7 @@ static void bm_face_bisect_verts(BMesh *bm, BMFace *f, const float plane[4], con
 			STACK_DECLARE(face_split_arr);
 
 			float sort_dir[3];
-			unsigned int i;
+			uint i;
 
 
 			/* ---- */
@@ -245,7 +246,7 @@ static void bm_face_bisect_verts(BMesh *bm, BMFace *f, const float plane[4], con
 				if (is_inside) {
 					BMLoop *l_a, *l_b;
 					bool found = false;
-					unsigned int j;
+					uint j;
 
 					for (j = 0; j < STACK_SIZE(face_split_arr); j++) {
 						/* would be nice to avoid loop lookup here,
@@ -269,10 +270,11 @@ static void bm_face_bisect_verts(BMesh *bm, BMFace *f, const float plane[4], con
 						f_tmp = BM_face_split(bm, face_split_arr[j], l_a, l_b, &l_new, NULL, true);
 
 						if (l_new) {
-							if (oflag_center) {
-								BMO_edge_flag_enable(bm, l_new->e,          oflag_center);
-								BMO_face_flag_enable(bm, l_new->f,          oflag_center);
-								BMO_face_flag_enable(bm, face_split_arr[j], oflag_center);
+							if (oflag_center | oflag_new) {
+								BMO_edge_flag_enable(bm, l_new->e, oflag_center | oflag_new);
+							}
+							if (oflag_new) {
+								BMO_face_flag_enable(bm, l_new->f, oflag_new);
 							}
 						}
 
@@ -307,10 +309,10 @@ finally:
 void BM_mesh_bisect_plane(
         BMesh *bm, const float plane[4],
         const bool use_snap_center, const bool use_tag,
-        const short oflag_center, const float eps)
+        const short oflag_center, const short oflag_new, const float eps)
 {
-	unsigned int einput_len;
-	unsigned int i;
+	uint einput_len;
+	uint i;
 	BMEdge **edges_arr = MEM_mallocN(sizeof(*edges_arr) * (size_t)bm->totedge, __func__);
 
 	BLI_LINKSTACK_DECLARE(face_stack, BMFace *);
@@ -343,7 +345,7 @@ void BM_mesh_bisect_plane(
 	}
 	else {
 		BMEdge *e;
-		einput_len = (unsigned int)bm->totedge;
+		einput_len = (uint)bm->totedge;
 		BM_ITER_MESH_INDEX (e, &iter, bm, BM_EDGES_OF_MESH, i) {
 			edge_is_cut_enable(e);
 			edges_arr[i] = e;
@@ -390,7 +392,7 @@ void BM_mesh_bisect_plane(
 		const float dist[2] = {BM_VERT_DIST(e->v1), BM_VERT_DIST(e->v2)};
 
 		if (side[0] && side[1] && (side[0] != side[1])) {
-			const float e_fac = fabsf(dist[0]) / fabsf(dist[0] - dist[1]);
+			const float e_fac = dist[0] / (dist[0] - dist[1]);
 			BMVert *v_new;
 
 			if (e->l) {
@@ -404,10 +406,17 @@ void BM_mesh_bisect_plane(
 				} while ((l_iter = l_iter->radial_next) != l_first);
 			}
 
-			v_new = BM_edge_split(bm, e, e->v1, NULL, e_fac);
+			{
+				BMEdge *e_new;
+				v_new = BM_edge_split(bm, e, e->v1, &e_new, e_fac);
+				if (oflag_new) {
+					BMO_edge_flag_enable(bm, e_new, oflag_new);
+				}
+			}
+
 			vert_is_center_enable(v_new);
-			if (oflag_center) {
-				BMO_vert_flag_enable(bm, v_new, oflag_center);
+			if (oflag_new | oflag_center) {
+				BMO_vert_flag_enable(bm, v_new, oflag_new | oflag_center);
 			}
 
 			BM_VERT_DIR(v_new) = 0;
@@ -416,7 +425,7 @@ void BM_mesh_bisect_plane(
 		else if (side[0] == 0 || side[1] == 0) {
 			/* check if either edge verts are aligned,
 			 * if so - tag and push all faces that use it into the stack */
-			unsigned int j;
+			uint j;
 			BM_ITER_ELEM_INDEX (v, &iter, e, BM_VERTS_OF_EDGE, j) {
 				if (side[j] == 0) {
 					if (vert_is_center_test(v) == 0) {
@@ -448,7 +457,7 @@ void BM_mesh_bisect_plane(
 	MEM_freeN(edges_arr);
 
 	while ((f = BLI_LINKSTACK_POP(face_stack))) {
-		bm_face_bisect_verts(bm, f, plane, oflag_center);
+		bm_face_bisect_verts(bm, f, plane, oflag_center, oflag_new);
 	}
 
 	/* now we have all faces to split in the stack */

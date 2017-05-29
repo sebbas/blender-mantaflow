@@ -44,6 +44,8 @@
 #include "BKE_main.h"
 #include "BKE_node.h"
 #include "BKE_report.h"
+#include "BKE_scene.h"
+#include "BKE_texture.h"
 
 #include "ED_node.h"  /* own include */
 #include "ED_screen.h"
@@ -105,13 +107,15 @@ static bool add_reroute_intersect_check(bNodeLink *link, float mcoords[][2], int
 
 	if (node_link_bezier_points(NULL, NULL, link, coord_array, NODE_LINK_RESOL)) {
 
-		for (i = 0; i < tot - 1; i++)
-			for (b = 0; b < NODE_LINK_RESOL; b++)
+		for (i = 0; i < tot - 1; i++) {
+			for (b = 0; b < NODE_LINK_RESOL; b++) {
 				if (isect_seg_seg_v2(mcoords[i], mcoords[i + 1], coord_array[b], coord_array[b + 1]) > 0) {
 					result[0] = (mcoords[i][0] + mcoords[i + 1][0]) / 2.0f;
 					result[1] = (mcoords[i][1] + mcoords[i + 1][1]) / 2.0f;
 					return 1;
 				}
+			}
+		}
 	}
 	return 0;
 }
@@ -312,7 +316,10 @@ static int node_add_file_exec(bContext *C, wmOperator *op)
 
 	switch (snode->nodetree->type) {
 		case NTREE_SHADER:
-			type = SH_NODE_TEX_IMAGE;
+			if (BKE_scene_use_new_shading_nodes(CTX_data_scene(C)))
+				type = SH_NODE_TEX_IMAGE;
+			else
+				type = SH_NODE_TEXTURE;
 			break;
 		case NTREE_TEXTURE:
 			type = TEX_NODE_IMAGE;
@@ -333,7 +340,14 @@ static int node_add_file_exec(bContext *C, wmOperator *op)
 		return OPERATOR_CANCELLED;
 	}
 	
-	node->id = (ID *)ima;
+	if (type == SH_NODE_TEXTURE) {
+		Tex *tex = BKE_texture_add(CTX_data_main(C), DATA_(ima->id.name));
+		tex->ima = ima;
+		node->id = (ID *)tex;
+		WM_event_add_notifier(C, NC_TEXTURE | NA_ADDED, node->id);
+	}
+	else
+		node->id = (ID *)ima;
 
 	/* When adding new image file via drag-drop we need to load imbuf in order
 	 * to get proper image source.

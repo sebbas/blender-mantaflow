@@ -29,6 +29,7 @@
  *  \ingroup gpu
  */
 
+#include "BLI_compiler_attrs.h"
 #include "BLI_utildefines.h"
 #include "BLI_sys_types.h"
 #include "BLI_system.h"
@@ -161,7 +162,7 @@ const char *gpuErrorString(GLenum err)
 #endif
 
 
-static const char* source_name(GLenum source)
+static const char *source_name(GLenum source)
 {
 	switch (source) {
 		case GL_DEBUG_SOURCE_API: return "API";
@@ -174,7 +175,7 @@ static const char* source_name(GLenum source)
 	}
 }
 
-static const char* message_type_name(GLenum message)
+static const char *message_type_name(GLenum message)
 {
 	switch (message) {
 		case GL_DEBUG_TYPE_ERROR: return "error";
@@ -188,7 +189,7 @@ static const char* message_type_name(GLenum message)
 	}
 }
 
-static const char* category_name_amd(GLenum category)
+static const char *category_name_amd(GLenum category)
 {
 	switch (category) {
 		case GL_DEBUG_CATEGORY_API_ERROR_AMD: return "API error";
@@ -219,7 +220,7 @@ static void APIENTRY gpu_debug_proc(
 	switch (severity) {
 		case GL_DEBUG_SEVERITY_HIGH:
 			backtrace = true;
-			/* fall through */
+			ATTR_FALLTHROUGH;
 		case GL_DEBUG_SEVERITY_MEDIUM:
 		case GL_DEBUG_SEVERITY_LOW:
 		case GL_DEBUG_SEVERITY_NOTIFICATION: /* KHR has this, ARB does not */
@@ -249,7 +250,7 @@ static void APIENTRY gpu_debug_proc_amd(
 	switch (severity) {
 		case GL_DEBUG_SEVERITY_HIGH:
 			backtrace = true;
-			/* fall through */
+			ATTR_FALLTHROUGH;
 		case GL_DEBUG_SEVERITY_MEDIUM:
 		case GL_DEBUG_SEVERITY_LOW:
 			fprintf(stderr, "GL %s: %s\n", category_name_amd(category), message);

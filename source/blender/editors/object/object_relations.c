@@ -72,6 +72,7 @@
 #include "BKE_global.h"
 #include "BKE_group.h"
 #include "BKE_fcurve.h"
+#include "BKE_idprop.h"
 #include "BKE_lamp.h"
 #include "BKE_lattice.h"
 #include "BKE_library.h"
@@ -82,6 +83,7 @@
 #include "BKE_mball.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+#include "BKE_node.h"
 #include "BKE_object.h"
 #include "BKE_report.h"
 #include "BKE_sca.h"
@@ -2101,6 +2103,46 @@ void ED_object_single_users(Main *bmain, Scene *scene, const bool full, const bo
 		single_tex_users_expand(bmain);
 	}
 
+	/* Relink nodetrees' pointers that have been duplicated. */
+	FOREACH_NODETREE(bmain, ntree, id)
+	{
+		/* This is a bit convoluted, we want to root ntree of copied IDs and only those,
+		 * so we first check that old ID has been copied and that ntree is root tree of old ID,
+		 * then get root tree of new ID and remap its pointers to new ID... */
+		if (id->newid && (&ntree->id != id)) {
+			ntree = ntreeFromID(id->newid);
+			BKE_libblock_relink_to_newid(&ntree->id);
+		}
+	} FOREACH_NODETREE_END
+
+	/* Relink datablock pointer properties */
+	{
+		IDP_RelinkProperty(scene->id.properties);
+
+		for (Base *base = scene->base.first; base; base = base->next) {
+			Object *ob = base->object;
+			if (!ID_IS_LINKED_DATABLOCK(ob)) {
+				IDP_RelinkProperty(ob->id.properties);
+			}
+		}
+
+		if (scene->nodetree) {
+			IDP_RelinkProperty(scene->nodetree->id.properties);
+			for (bNode *node = scene->nodetree->nodes.first; node; node = node->next) {
+				IDP_RelinkProperty(node->prop);
+			}
+		}
+
+		if (scene->gpd) {
+			IDP_RelinkProperty(scene->gpd->id.properties);
+		}
+
+		IDP_RelinkProperty(scene->world->id.properties);
+
+		if (scene->clip) {
+			IDP_RelinkProperty(scene->clip->id.properties);
+		}
+	}
 	BKE_main_id_clear_newpoins(bmain);
 	DAG_relations_tag_update(bmain);
 }

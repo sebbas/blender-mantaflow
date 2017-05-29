@@ -35,7 +35,7 @@
  
 #include "RAS_OpenGLRasterizer.h"
 
-#include "glew-mx.h"
+#include "GPU_glew.h"
 
 #include "RAS_ICanvas.h"
 #include "RAS_Rect.h"
@@ -994,8 +994,8 @@ void RAS_OpenGLRasterizer::SetViewMatrix(const MT_Matrix4x4 &mat,
 	}
 
 	bool negX = (scale[0] < 0.0f);
-	bool negY = (scale[0] < 0.0f);
-	bool negZ = (scale[0] < 0.0f);
+	bool negY = (scale[1] < 0.0f);
+	bool negZ = (scale[2] < 0.0f);
 	if (negX || negY || negZ) {
 		m_viewmatrix.tscale((negX)?-1.0f:1.0f, (negY)?-1.0f:1.0f, (negZ)?-1.0f:1.0f, 1.0);
 	}

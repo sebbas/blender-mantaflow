@@ -31,7 +31,7 @@
 
 #include <set>
 
-#if defined(WIN32) && !defined(FREE_WINDOWS)
+#if defined(WIN32)
 #include "utfconv.h"
 #endif
 
@@ -213,7 +213,7 @@ struct ImBuf *imb_load_photoshop(const char *filename, int flags, char colorspac
 	in = ImageInput::create(filename);
 	if (!in) {
 		std::cerr << __func__ << ": ImageInput::create() failed:" << std::endl
-		          << OpenImageIO::geterror() << std::endl;
+		          << OIIO_NAMESPACE::geterror() << std::endl;
 		return NULL;
 	}
 

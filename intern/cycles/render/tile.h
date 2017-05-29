@@ -19,8 +19,8 @@
 
 #include <limits.h>
 
-#include "buffers.h"
-#include "util_list.h"
+#include "render/buffers.h"
+#include "util/util_list.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -31,12 +31,20 @@ public:
 	int index;
 	int x, y, w, h;
 	int device;
+	/* RENDER: The tile has to be rendered.
+	 * RENDERED: The tile has been rendered, but can't be denoised yet (waiting for neighbors).
+	 * DENOISE: The tile can be denoised now.
+	 * DENOISED: The tile has been denoised, but can't be freed yet (waiting for neighbors).
+	 * DONE: The tile is finished and has been freed. */
+	typedef enum { RENDER = 0, RENDERED, DENOISE, DENOISED, DONE } State;
+	State state;
+	RenderBuffers *buffers;
 
 	Tile()
 	{}
 
-	Tile(int index_, int x_, int y_, int w_, int h_, int device_)
-	: index(index_), x(x_), y(y_), w(w_), h(h_), device(device_) {}
+	Tile(int index_, int x_, int y_, int w_, int h_, int device_, State state_ = RENDER)
+	: index(index_), x(x_), y(y_), w(w_), h(h_), device(device_), state(state_), buffers(NULL) {}
 };
 
 /* Tile order */
@@ -58,19 +66,23 @@ public:
 	BufferParams params;
 
 	struct State {
+		vector<Tile> tiles;
+		int tile_stride;
 		BufferParams buffer;
 		int sample;
 		int num_samples;
 		int resolution_divider;
 		int num_tiles;
-		int num_rendered_tiles;
 
 		/* Total samples over all pixels: Generally num_samples*num_pixels,
 		 * but can be higher due to the initial resolution division for previews. */
 		uint64_t total_pixel_samples;
-		/* This vector contains a list of tiles for every logical device in the session.
-		 * In each list, the tiles are sorted according to the tile order setting. */
-		vector<list<Tile> > tiles;
+
+		/* These lists contain the indices of the tiles to be rendered/denoised and are used
+		 * when acquiring a new tile for the device.
+		 * Each list in each vector is for one logical device. */
+		vector<list<int> > render_tiles;
+		vector<list<int> > denoising_tiles;
 	} state;
 
 	int num_samples;
@@ -79,10 +91,12 @@ public:
 	            bool preserve_tile_device, bool background, TileOrder tile_order, int num_devices = 1);
 	~TileManager();
 
+	void free_device();
 	void reset(BufferParams& params, int num_samples);
 	void set_samples(int num_samples);
 	bool next();
-	bool next_tile(Tile& tile, int device = 0);
+	bool next_tile(Tile* &tile, int device = 0);
+	bool finish_tile(int index, bool& delete_tile);
 	bool done();
 
 	void set_tile_order(TileOrder tile_order_) { tile_order = tile_order_; }
@@ -97,6 +111,9 @@ public:
 
 	/* Get number of actual samples to render. */
 	int get_num_effective_samples();
+
+	/* Schedule tiles for denoising after they've been rendered. */
+	bool schedule_denoising;
 protected:
 
 	void set_tiles();
@@ -128,6 +145,9 @@ protected:
 
 	/* Generate tile list, return number of tiles. */
 	int gen_tiles(bool sliced);
+
+	int get_neighbor_index(int index, int neighbor);
+	bool check_neighbor_state(int index, Tile::State state);
 };
 
 CCL_NAMESPACE_END

@@ -33,8 +33,14 @@ endmacro()
 macro(windows_find_package package_name
 	)
 	if(WITH_WINDOWS_FIND_MODULES)
-		find_package( ${package_name})
+		find_package(${package_name})
 	endif(WITH_WINDOWS_FIND_MODULES)
+endmacro()
+
+macro(find_package_wrapper)
+	if(WITH_WINDOWS_FIND_MODULES)
+		find_package(${ARGV})
+	endif()
 endmacro()
 
 add_definitions(-DWIN32)
@@ -110,7 +116,6 @@ set(PLATFORM_LINKFLAGS "${PLATFORM_LINKFLAGS} /NODEFAULTLIB:msvcrt.lib /NODEFAUL
 set(PLATFORM_LINKFLAGS "${PLATFORM_LINKFLAGS} /ignore:4049 /ignore:4217 /ignore:4221")
 set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /ignore:4221")
 
-# MSVC only, Mingw doesnt need
 if(CMAKE_CL_64)
 	set(PLATFORM_LINKFLAGS "/MACHINE:X64 ${PLATFORM_LINKFLAGS}")
 else()
@@ -432,6 +437,7 @@ if(WITH_ALEMBIC)
 	set(ALEMBIC_INCLUDE_DIRS ${ALEMBIC_INCLUDE_DIR})
 	set(ALEMBIC_LIBPATH ${ALEMBIC}/lib)
 	set(ALEMBIC_LIBRARIES optimized alembic debug alembic_d)
+	set(ALEMBIC_FOUND 1)
 endif()
 
 if(WITH_MOD_CLOTH_ELTOPO)
@@ -466,12 +472,7 @@ if(WITH_SDL)
 	set(SDL ${LIBDIR}/sdl)
 	set(SDL_INCLUDE_DIR ${SDL}/include)
 	set(SDL_LIBPATH ${SDL}/lib)
-	# MinGW TODO: Update MinGW to SDL2
-	if(NOT CMAKE_COMPILER_IS_GNUCC)
-		set(SDL_LIBRARY SDL2)
-	else()
-		set(SDL_LIBRARY SDL)
-	endif()
+	set(SDL_LIBRARY SDL2)
 endif()
 
 # Audio IO

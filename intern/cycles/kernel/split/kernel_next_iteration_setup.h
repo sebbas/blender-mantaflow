@@ -16,54 +16,85 @@
 
 CCL_NAMESPACE_BEGIN
 
-/* Note on kernel_setup_next_iteration kernel.
- * This is the tenth kernel in the ray tracing logic. This is the ninth
- * of the path iteration kernels. This kernel takes care of setting up
- * Ray for the next iteration of path-iteration and accumulating radiance
- * corresponding to AO and direct-lighting
+/*This kernel takes care of setting up ray for the next iteration of
+ * path-iteration and accumulating radiance corresponding to AO and
+ * direct-lighting
  *
- * Ray state of rays that are terminated in this kernel are changed to RAY_UPDATE_BUFFER
+ * Ray state of rays that are terminated in this kernel are changed
+ * to RAY_UPDATE_BUFFER.
  *
- * The input and output are as follows,
+ * Note on queues:
+ * This kernel fetches rays from the queue QUEUE_ACTIVE_AND_REGENERATED_RAYS
+ * and processes only the rays of state RAY_ACTIVE.
+ * There are different points in this kernel where a ray may terminate and
+ * reach RAY_UPDATE_BUFF state. These rays are enqueued into
+ * QUEUE_HITBG_BUFF_UPDATE_TOREGEN_RAYS queue. These rays will still be present
+ * in QUEUE_ACTIVE_AND_REGENERATED_RAYS queue, but since their ray-state has
+ * been changed to RAY_UPDATE_BUFF, there is no problem.
  *
- * rng_coop ---------------------------------------------|--- kernel_next_iteration_setup -|--- Queue_index (QUEUE_HITBG_BUFF_UPDATE_TOREGEN_RAYS)
- * throughput_coop --------------------------------------|                                 |--- Queue_data (QUEUE_HITBF_BUFF_UPDATE_TOREGEN_RAYS)
- * PathRadiance_coop ------------------------------------|                                 |--- throughput_coop
- * PathState_coop ---------------------------------------|                                 |--- PathRadiance_coop
- * sd ---------------------------------------------------|                                 |--- PathState_coop
- * ray_state --------------------------------------------|                                 |--- ray_state
- * Queue_data (QUEUE_ACTIVE_AND_REGENERATD_RAYS) --------|                                 |--- Ray_coop
- * Queue_index (QUEUE_HITBG_BUFF_UPDATE_TOREGEN_RAYS) ---|                                 |--- use_queues_flag
- * Ray_coop ---------------------------------------------|                                 |
- * kg (globals) -----------------------------------------|                                 |
- * LightRay_dl_coop -------------------------------------|
- * ISLamp_coop ------------------------------------------|
- * BSDFEval_coop ----------------------------------------|
- * LightRay_ao_coop -------------------------------------|
- * AOBSDF_coop ------------------------------------------|
- * AOAlpha_coop -----------------------------------------|
- *
- * Note on queues,
- * This kernel fetches rays from the queue QUEUE_ACTIVE_AND_REGENERATED_RAYS and processes only
- * the rays of state RAY_ACTIVE.
- * There are different points in this kernel where a ray may terminate and reach RAY_UPDATE_BUFF
- * state. These rays are enqueued into QUEUE_HITBG_BUFF_UPDATE_TOREGEN_RAYS queue. These rays will
- * still be present in QUEUE_ACTIVE_AND_REGENERATED_RAYS queue, but since their ray-state has been
- * changed to RAY_UPDATE_BUFF, there is no problem.
- *
- * State of queues when this kernel is called :
+ * State of queues when this kernel is called:
  * At entry,
- * QUEUE_ACTIVE_AND_REGENERATED_RAYS will be filled with RAY_ACTIVE, RAY_REGENERATED, RAY_UPDATE_BUFFER rays.
- * QUEUE_HITBG_BUFF_UPDATE_TOREGEN_RAYS will be filled with RAY_TO_REGENERATE and RAY_UPDATE_BUFFER rays
+ *   - QUEUE_ACTIVE_AND_REGENERATED_RAYS will be filled with RAY_ACTIVE,
+ *     RAY_REGENERATED, RAY_UPDATE_BUFFER rays.
+ *   - QUEUE_HITBG_BUFF_UPDATE_TOREGEN_RAYS will be filled with
+ *     RAY_TO_REGENERATE and RAY_UPDATE_BUFFER rays.
  * At exit,
- * QUEUE_ACTIVE_AND_REGENERATED_RAYS will be filled with RAY_ACTIVE, RAY_REGENERATED and more RAY_UPDATE_BUFFER rays.
- * QUEUE_HITBG_BUFF_UPDATE_TOREGEN_RAYS will be filled with RAY_TO_REGENERATE and more RAY_UPDATE_BUFFER rays
+ *   - QUEUE_ACTIVE_AND_REGENERATED_RAYS will be filled with RAY_ACTIVE,
+ *     RAY_REGENERATED and more RAY_UPDATE_BUFFER rays.
+ *   - QUEUE_HITBG_BUFF_UPDATE_TOREGEN_RAYS will be filled with
+ *     RAY_TO_REGENERATE and more RAY_UPDATE_BUFFER rays.
  */
-ccl_device void kernel_next_iteration_setup(KernelGlobals *kg)
+
+#ifdef __BRANCHED_PATH__
+ccl_device_inline void kernel_split_branched_indirect_light_init(KernelGlobals *kg, int ray_index)
 {
-	ccl_local unsigned int local_queue_atomics;
+	kernel_split_branched_path_indirect_loop_init(kg, ray_index);
+
+	ADD_RAY_FLAG(kernel_split_state.ray_state, ray_index, RAY_BRANCHED_LIGHT_INDIRECT);
+}
+
+ccl_device void kernel_split_branched_indirect_light_end(KernelGlobals *kg, int ray_index)
+{
+	kernel_split_branched_path_indirect_loop_end(kg, ray_index);
+
+	ccl_global float3 *throughput = &kernel_split_state.throughput[ray_index];
+	ShaderData *sd = &kernel_split_state.sd[ray_index];
+	ccl_global PathState *state = &kernel_split_state.path_state[ray_index];
+	ccl_global Ray *ray = &kernel_split_state.ray[ray_index];
+
+	/* continue in case of transparency */
+	*throughput *= shader_bsdf_transparency(kg, sd);
+
+	if(is_zero(*throughput)) {
+		kernel_split_path_end(kg, ray_index);
+	}
+	else {
+		/* Update Path State */
+		state->flag |= PATH_RAY_TRANSPARENT;
+		state->transparent_bounce++;
+
+		ray->P = ray_offset(sd->P, -sd->Ng);
+		ray->t -= sd->ray_length; /* clipping works through transparent */
+
+#  ifdef __RAY_DIFFERENTIALS__
+		ray->dP = sd->dP;
+		ray->dD.dx = -sd->dI.dx;
+		ray->dD.dy = -sd->dI.dy;
+#  endif  /* __RAY_DIFFERENTIALS__ */
+
+#  ifdef __VOLUME__
+		/* enter/exit volume */
+		kernel_volume_stack_enter_exit(kg, sd, state->volume_stack);
+#  endif  /* __VOLUME__ */
+	}
+}
+#endif  /* __BRANCHED_PATH__ */
+
+ccl_device void kernel_next_iteration_setup(KernelGlobals *kg,
+                                            ccl_local_param unsigned int *local_queue_atomics)
+{
 	if(ccl_local_id(0) == 0 && ccl_local_id(1) == 0) {
-		local_queue_atomics = 0;
+		*local_queue_atomics = 0;
 	}
 	ccl_barrier(CCL_LOCAL_MEM_FENCE);
 
@@ -82,7 +113,6 @@ ccl_device void kernel_next_iteration_setup(KernelGlobals *kg)
 		kernel_split_params.queue_index[QUEUE_SHADOW_RAY_CAST_DL_RAYS] = 0;
 	}
 
-	char enqueue_flag = 0;
 	int ray_index = ccl_global_id(1) * ccl_global_size(0) + ccl_global_id(0);
 	ray_index = get_ray_index(kg, ray_index,
 	                          QUEUE_ACTIVE_AND_REGENERATED_RAYS,
@@ -90,96 +120,125 @@ ccl_device void kernel_next_iteration_setup(KernelGlobals *kg)
 	                          kernel_split_params.queue_size,
 	                          0);
 
-#ifdef __COMPUTE_DEVICE_GPU__
-	/* If we are executing on a GPU device, we exit all threads that are not
-	 * required.
-	 *
-	 * If we are executing on a CPU device, then we need to keep all threads
-	 * active since we have barrier() calls later in the kernel. CPU devices,
-	 * expect all threads to execute barrier statement.
-	 */
-	if(ray_index == QUEUE_EMPTY_SLOT) {
-		return;
-	}
-#endif
-
-#ifndef __COMPUTE_DEVICE_GPU__
-	if(ray_index != QUEUE_EMPTY_SLOT) {
-#endif
-
-	/* Load ShaderData structure. */
-	PathRadiance *L = NULL;
-	ccl_global PathState *state = NULL;
 	ccl_global char *ray_state = kernel_split_state.ray_state;
 
-	/* Path radiance update for AO/Direct_lighting's shadow blocked. */
-	if(IS_FLAG(ray_state, ray_index, RAY_SHADOW_RAY_CAST_DL) ||
-	   IS_FLAG(ray_state, ray_index, RAY_SHADOW_RAY_CAST_AO))
-	{
-		state = &kernel_split_state.path_state[ray_index];
-		L = &kernel_split_state.path_radiance[ray_index];
-		float3 _throughput = kernel_split_state.throughput[ray_index];
-
-		if(IS_FLAG(ray_state, ray_index, RAY_SHADOW_RAY_CAST_AO)) {
-			float3 shadow = kernel_split_state.ao_light_ray[ray_index].P;
-			// TODO(mai): investigate correctness here
-			char update_path_radiance = (char)kernel_split_state.ao_light_ray[ray_index].t;
-			if(update_path_radiance) {
-				path_radiance_accum_ao(L,
-				                       _throughput,
-				                       kernel_split_state.ao_alpha[ray_index],
-				                       kernel_split_state.ao_bsdf[ray_index],
-				                       shadow,
-				                       state->bounce);
-			}
-			REMOVE_RAY_FLAG(ray_state, ray_index, RAY_SHADOW_RAY_CAST_AO);
-		}
-
-		if(IS_FLAG(ray_state, ray_index, RAY_SHADOW_RAY_CAST_DL)) {
-			float3 shadow = kernel_split_state.light_ray[ray_index].P;
-			// TODO(mai): investigate correctness here
-			char update_path_radiance = (char)kernel_split_state.light_ray[ray_index].t;
-			if(update_path_radiance) {
-				BsdfEval L_light = kernel_split_state.bsdf_eval[ray_index];
-				path_radiance_accum_light(L,
-				                          _throughput,
-				                          &L_light,
-				                          shadow,
-				                          1.0f,
-				                          state->bounce,
-				                          kernel_split_state.is_lamp[ray_index]);
-			}
-			REMOVE_RAY_FLAG(ray_state, ray_index, RAY_SHADOW_RAY_CAST_DL);
-		}
-	}
-
-	if(IS_STATE(ray_state, ray_index, RAY_ACTIVE)) {
+	bool active = IS_STATE(ray_state, ray_index, RAY_ACTIVE);
+	if(active) {
 		ccl_global float3 *throughput = &kernel_split_state.throughput[ray_index];
 		ccl_global Ray *ray = &kernel_split_state.ray[ray_index];
-		ccl_global RNG *rng = &kernel_split_state.rng[ray_index];
-		state = &kernel_split_state.path_state[ray_index];
-		L = &kernel_split_state.path_radiance[ray_index];
+		RNG rng = kernel_split_state.rng[ray_index];
+		ShaderData *sd = &kernel_split_state.sd[ray_index];
+		ccl_global PathState *state = &kernel_split_state.path_state[ray_index];
+		PathRadiance *L = &kernel_split_state.path_radiance[ray_index];
 
-		/* Compute direct lighting and next bounce. */
-		if(!kernel_path_surface_bounce(kg, rng, &kernel_split_state.sd[ray_index], throughput, state, L, ray)) {
-			ASSIGN_RAY_STATE(ray_state, ray_index, RAY_UPDATE_BUFFER);
-			enqueue_flag = 1;
-		}
-	}
-
-#ifndef __COMPUTE_DEVICE_GPU__
-	}
+#ifdef __BRANCHED_PATH__
+		if(!kernel_data.integrator.branched || IS_FLAG(ray_state, ray_index, RAY_BRANCHED_INDIRECT)) {
 #endif
+			/* Compute direct lighting and next bounce. */
+			if(!kernel_path_surface_bounce(kg, &rng, sd, throughput, state, L, ray)) {
+				kernel_split_path_end(kg, ray_index);
+			}
+#ifdef __BRANCHED_PATH__
+		}
+		else {
+			kernel_split_branched_indirect_light_init(kg, ray_index);
+
+			if(kernel_split_branched_path_surface_indirect_light_iter(kg,
+			                                                          ray_index,
+			                                                          1.0f,
+			                                                          &kernel_split_state.branched_state[ray_index].sd,
+			                                                          true))
+			{
+				ASSIGN_RAY_STATE(ray_state, ray_index, RAY_REGENERATED);
+			}
+			else {
+				kernel_split_branched_indirect_light_end(kg, ray_index);
+			}
+		}
+#endif  /* __BRANCHED_PATH__ */
+
+		kernel_split_state.rng[ray_index] = rng;
+	}
 
 	/* Enqueue RAY_UPDATE_BUFFER rays. */
 	enqueue_ray_index_local(ray_index,
 	                        QUEUE_HITBG_BUFF_UPDATE_TOREGEN_RAYS,
-	                        enqueue_flag,
+	                        IS_STATE(ray_state, ray_index, RAY_UPDATE_BUFFER) && active,
 	                        kernel_split_params.queue_size,
-	                        &local_queue_atomics,
+	                        local_queue_atomics,
 	                        kernel_split_state.queue_data,
 	                        kernel_split_params.queue_index);
+
+#ifdef __BRANCHED_PATH__
+	/* iter loop */
+	if(ccl_global_id(0) == 0 && ccl_global_id(1) == 0) {
+		kernel_split_params.queue_index[QUEUE_LIGHT_INDIRECT_ITER] = 0;
+	}
+
+	ray_index = get_ray_index(kg, ccl_global_id(1) * ccl_global_size(0) + ccl_global_id(0),
+	                          QUEUE_LIGHT_INDIRECT_ITER,
+	                          kernel_split_state.queue_data,
+	                          kernel_split_params.queue_size,
+	                          1);
+
+	if(IS_STATE(ray_state, ray_index, RAY_LIGHT_INDIRECT_NEXT_ITER)) {
+		/* for render passes, sum and reset indirect light pass variables
+		 * for the next samples */
+		PathRadiance *L = &kernel_split_state.path_radiance[ray_index];
+
+		path_radiance_sum_indirect(L);
+		path_radiance_reset_indirect(L);
+
+		if(kernel_split_branched_path_surface_indirect_light_iter(kg,
+		                                                          ray_index,
+		                                                          1.0f,
+		                                                          &kernel_split_state.branched_state[ray_index].sd,
+		                                                          true))
+		{
+			ASSIGN_RAY_STATE(ray_state, ray_index, RAY_REGENERATED);
+		}
+		else {
+			kernel_split_branched_indirect_light_end(kg, ray_index);
+		}
+	}
+
+#  ifdef __VOLUME__
+	/* Enqueue RAY_VOLUME_INDIRECT_NEXT_ITER rays */
+	ccl_barrier(CCL_LOCAL_MEM_FENCE);
+	if(ccl_local_id(0) == 0 && ccl_local_id(1) == 0) {
+		*local_queue_atomics = 0;
+	}
+	ccl_barrier(CCL_LOCAL_MEM_FENCE);
+
+	ray_index = ccl_global_id(1) * ccl_global_size(0) + ccl_global_id(0);
+	enqueue_ray_index_local(ray_index,
+	                        QUEUE_VOLUME_INDIRECT_ITER,
+	                        IS_STATE(kernel_split_state.ray_state, ray_index, RAY_VOLUME_INDIRECT_NEXT_ITER),
+	                        kernel_split_params.queue_size,
+	                        local_queue_atomics,
+	                        kernel_split_state.queue_data,
+	                        kernel_split_params.queue_index);
+
+#  endif  /* __VOLUME__ */
+
+#  ifdef __SUBSURFACE__
+	/* Enqueue RAY_SUBSURFACE_INDIRECT_NEXT_ITER rays */
+	ccl_barrier(CCL_LOCAL_MEM_FENCE);
+	if(ccl_local_id(0) == 0 && ccl_local_id(1) == 0) {
+		*local_queue_atomics = 0;
+	}
+	ccl_barrier(CCL_LOCAL_MEM_FENCE);
+
+	ray_index = ccl_global_id(1) * ccl_global_size(0) + ccl_global_id(0);
+	enqueue_ray_index_local(ray_index,
+	                        QUEUE_SUBSURFACE_INDIRECT_ITER,
+	                        IS_STATE(kernel_split_state.ray_state, ray_index, RAY_SUBSURFACE_INDIRECT_NEXT_ITER),
+	                        kernel_split_params.queue_size,
+	                        local_queue_atomics,
+	                        kernel_split_state.queue_data,
+	                        kernel_split_params.queue_index);
+#  endif  /* __SUBSURFACE__ */
+#endif  /* __BRANCHED_PATH__ */
 }
 
 CCL_NAMESPACE_END
-

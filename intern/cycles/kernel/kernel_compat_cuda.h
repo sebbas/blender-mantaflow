@@ -33,12 +33,13 @@
 #include <cuda.h>
 #include <cuda_fp16.h>
 #include <float.h>
+#include <stdint.h>
 
 /* Qualifier wrappers for different names on different devices */
 
 #define ccl_device  __device__ __inline__
 #  define ccl_device_forceinline  __device__ __forceinline__
-#if (__KERNEL_CUDA_VERSION__ == 80) && (__CUDA_ARCH__ < 500)
+#if __CUDA_ARCH__ < 500
 #  define ccl_device_inline  __device__ __forceinline__
 #else
 #  define ccl_device_inline  __device__ __inline__
@@ -54,14 +55,19 @@
 #define ccl_restrict __restrict__
 #define ccl_align(n) __align__(n)
 
+#define ATTR_FALLTHROUGH
+
+#define CCL_MAX_LOCAL_SIZE (CUDA_THREADS_BLOCK_WIDTH*CUDA_THREADS_BLOCK_WIDTH)
+
+
 /* No assert supported for CUDA */
 
 #define kernel_assert(cond)
 
 /* Types */
 
-#include "util_half.h"
-#include "util_types.h"
+#include "util/util_half.h"
+#include "util/util_types.h"
 
 /* Work item functions */
 

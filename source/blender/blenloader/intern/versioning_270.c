@@ -80,6 +80,7 @@
 
 #include "NOD_common.h"
 #include "NOD_socket.h"
+#include "NOD_composite.h"
 
 #include "readfile.h"
 
@@ -246,6 +247,41 @@ static void do_version_hue_sat_node(bNodeTree *ntree, bNode *node)
 	/* Free storage, it is no longer used. */
 	MEM_freeN(node->storage);
 	node->storage = NULL;
+}
+
+static void do_versions_compositor_render_passes_storage(bNode *node)
+{
+	int pass_index = 0;
+	const char *sockname;
+	for (bNodeSocket *sock = node->outputs.first; sock && pass_index < 31; sock = sock->next, pass_index++) {
+		if (sock->storage == NULL) {
+			NodeImageLayer *sockdata = MEM_callocN(sizeof(NodeImageLayer), "node image layer");
+			sock->storage = sockdata;
+			BLI_strncpy(sockdata->pass_name, node_cmp_rlayers_sock_to_pass(pass_index), sizeof(sockdata->pass_name));
+
+			if (pass_index == 0) sockname = "Image";
+			else if (pass_index == 1) sockname = "Alpha";
+			else sockname = node_cmp_rlayers_sock_to_pass(pass_index);
+			BLI_strncpy(sock->name, sockname, sizeof(sock->name));
+		}
+	}
+}
+
+static void do_versions_compositor_render_passes(bNodeTree *ntree)
+{
+	for (bNode *node = ntree->nodes.first; node; node = node->next) {
+		if (node->type == CMP_NODE_R_LAYERS) {
+			/* First we make sure existing sockets have proper names.
+			 * This is important because otherwise verification will
+			 * drop links from sockets which were renamed.
+			 */
+			do_versions_compositor_render_passes_storage(node);
+			/* Make sure new sockets are properly created. */
+			node_verify_socket_templates(ntree, node);
+			/* Make sure all possibly created sockets have proper storage. */
+			do_versions_compositor_render_passes_storage(node);
+		}
+	}
 }
 
 void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *main)
@@ -1259,7 +1295,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *main)
 
 		for (Camera *camera = main->camera.first; camera != NULL; camera = camera->id.next) {
 			if (camera->stereo.pole_merge_angle_from == 0.0f &&
-				camera->stereo.pole_merge_angle_to == 0.0f)
+			    camera->stereo.pole_merge_angle_to == 0.0f)
 			{
 				camera->stereo.pole_merge_angle_from = DEG2RADF(60.0f);
 				camera->stereo.pole_merge_angle_to = DEG2RADF(75.0f);
@@ -1559,8 +1595,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *main)
 		}
 	}
 
-	/* To be added to next subversion bump! */
-	{
+	if (!MAIN_VERSION_ATLEAST(main, 278, 5)) {
 		/* Mask primitive adding code was not initializing correctly id_type of its points' parent. */
 		for (Mask *mask = main->mask.first; mask; mask = mask->id.next) {
 			for (MaskLayer *mlayer = mask->masklayers.first; mlayer; mlayer = mlayer->next) {
@@ -1608,6 +1643,25 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *main)
 					}
 				}
 			}
+		}
+
+		FOREACH_NODETREE(main, ntree, id) {
+			if (ntree->type == NTREE_COMPOSIT) {
+				do_versions_compositor_render_passes(ntree);
+			}
+		} FOREACH_NODETREE_END
+	}
+
+	{
+		for (Scene *scene = main->scene.first; scene; scene = scene->id.next) {
+			if (scene->r.im_format.exr_codec == R_IMF_EXR_CODEC_DWAB) {
+				scene->r.im_format.exr_codec = R_IMF_EXR_CODEC_DWAA;
+			}
+		}
+
+		/* Fix related to VGroup modifiers creating named defgroup CD layers! See T51520. */
+		for (Mesh *me = main->mesh.first; me; me = me->id.next) {
+			CustomData_set_layer_name(&me->vdata, CD_MDEFORMVERT, 0, "");
 		}
 	}
 }

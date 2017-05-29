@@ -49,7 +49,7 @@ def get_platform(filename):
     tokens = filename.split("-")
     platforms = ('osx', 'mac', 'bsd',
                  'win', 'linux', 'source',
-                 'irix', 'solaris', 'mingw')
+                 'irix', 'solaris')
     platform_tokens = []
     found = False
 
@@ -67,6 +67,9 @@ def get_platform(filename):
 
 
 def get_branch(filename):
+    if filename.startswith("blender-2.8"):
+        return "blender2.8"
+
     tokens = filename.split("-")
     branch = ""
 

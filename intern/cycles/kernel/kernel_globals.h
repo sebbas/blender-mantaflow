@@ -19,6 +19,10 @@
 #ifndef __KERNEL_GLOBALS_H__
 #define __KERNEL_GLOBALS_H__
 
+#ifdef __KERNEL_CPU__
+#  include "util/util_vector.h"
+#endif
+
 CCL_NAMESPACE_BEGIN
 
 /* On the CPU, we pass along the struct KernelGlobals to nearly everywhere in
@@ -38,16 +42,16 @@ struct Intersection;
 struct VolumeStep;
 
 typedef struct KernelGlobals {
-	texture_image_uchar4 texture_byte4_images[TEX_NUM_BYTE4_CPU];
-	texture_image_float4 texture_float4_images[TEX_NUM_FLOAT4_CPU];
-	texture_image_half4 texture_half4_images[TEX_NUM_HALF4_CPU];
-	texture_image_float texture_float_images[TEX_NUM_FLOAT_CPU];
-	texture_image_uchar texture_byte_images[TEX_NUM_BYTE_CPU];
-	texture_image_half texture_half_images[TEX_NUM_HALF_CPU];
+	vector<texture_image_float4> texture_float4_images;
+	vector<texture_image_uchar4> texture_byte4_images;
+	vector<texture_image_half4> texture_half4_images;
+	vector<texture_image_float> texture_float_images;
+	vector<texture_image_uchar> texture_byte_images;
+	vector<texture_image_half> texture_half_images;
 
 #  define KERNEL_TEX(type, ttype, name) ttype name;
 #  define KERNEL_IMAGE_TEX(type, ttype, name)
-#  include "kernel_textures.h"
+#  include "kernel/kernel_textures.h"
 
 	KernelData __data;
 
@@ -97,7 +101,7 @@ typedef struct KernelGlobals {
 #    define KERNEL_TEX(type, ttype, name) const __constant__ __device__ type *name;
 #  endif
 #  define KERNEL_IMAGE_TEX(type, ttype, name) ttype name;
-#  include "kernel_textures.h"
+#  include "kernel/kernel_textures.h"
 
 #endif  /* __KERNEL_CUDA__ */
 
@@ -110,7 +114,7 @@ typedef ccl_addr_space struct KernelGlobals {
 
 #  define KERNEL_TEX(type, ttype, name) \
 	ccl_global type *name;
-#  include "kernel_textures.h"
+#  include "kernel/kernel_textures.h"
 
 #  ifdef __SPLIT_KERNEL__
 	SplitData split_data;

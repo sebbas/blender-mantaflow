@@ -748,10 +748,10 @@ static int gp_blank_frame_add_exec(bContext *C, wmOperator *op)
 void GPENCIL_OT_blank_frame_add(wmOperatorType *ot)
 {
 	/* identifiers */
-	ot->name = "Add Blank Frame";
+	ot->name = "Insert Blank Frame";
 	ot->idname = "GPENCIL_OT_blank_frame_add";
-	ot->description = "Add a new frame with nothing in it on the current frame. "
-	                  "If there is already a frame, all existing frames are shifted one frame later";
+	ot->description = "Inserts a blank frame on the current frame. "
+	                  "All subsequently existing frames (if there are any) are shifted right by one frame.";
 	
 	/* callbacks */
 	ot->exec = gp_blank_frame_add_exec;
@@ -2126,10 +2126,10 @@ static int gp_count_subdivision_cuts(bGPDstroke *gps)
 	int totnewpoints = 0;
 	for (i = 0, pt = gps->points; i < gps->totpoints && pt; i++, pt++) {
 		if (pt->flag & GP_SPOINT_SELECT) {
-			if (i + 1 < gps->totpoints){
+			if (i + 1 < gps->totpoints) {
 				if (gps->points[i + 1].flag & GP_SPOINT_SELECT) {
 					++totnewpoints;
-				};
+				}
 			}
 		}
 	}
@@ -2184,7 +2184,7 @@ static int gp_stroke_subdivide_exec(bContext *C, wmOperator *op)
 
 					/* if next point is selected add a half way point */
 					if (pt->flag & GP_SPOINT_SELECT) {
-						if (i + 1 < oldtotpoints){
+						if (i + 1 < oldtotpoints) {
 							if (temp_points[i + 1].flag & GP_SPOINT_SELECT) {
 								pt_final = &gps->points[i2];
 								/* Interpolate all values */
@@ -2196,7 +2196,7 @@ static int gp_stroke_subdivide_exec(bContext *C, wmOperator *op)
 								pt_final->time = interpf(pt->time, next->time, 0.5f);
 								pt_final->flag |= GP_SPOINT_SELECT;
 								++i2;
-							};
+							}
 						}
 					}
 				}

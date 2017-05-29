@@ -16,19 +16,19 @@
 
 #ifdef WITH_OPENCL
 
-#include "opencl.h"
+#include "device/opencl/opencl.h"
 
-#include "buffers.h"
+#include "render/buffers.h"
 
-#include "kernel_types.h"
-#include "kernel_split_data_types.h"
+#include "kernel/kernel_types.h"
+#include "kernel/split/kernel_split_data_types.h"
 
-#include "device_split_kernel.h"
+#include "device/device_split_kernel.h"
 
-#include "util_logging.h"
-#include "util_md5.h"
-#include "util_path.h"
-#include "util_time.h"
+#include "util/util_logging.h"
+#include "util/util_md5.h"
+#include "util/util_path.h"
+#include "util/util_time.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -41,11 +41,7 @@ static string get_build_options(OpenCLDeviceBase *device, const DeviceRequestedF
 
 	/* Set compute device build option. */
 	cl_device_type device_type;
-	device->ciErr = clGetDeviceInfo(device->cdDevice,
-	                        CL_DEVICE_TYPE,
-	                        sizeof(cl_device_type),
-	                        &device_type,
-	                        NULL);
+	OpenCLInfo::get_device_type(device->cdDevice, &device_type, &device->ciErr);
 	assert(device->ciErr == CL_SUCCESS);
 	if(device_type == CL_DEVICE_TYPE_GPU) {
 		build_options += " -D__COMPUTE_DEVICE_GPU__";
@@ -72,6 +68,10 @@ public:
 		program_data_init.release();
 
 		delete split_kernel;
+	}
+
+	virtual bool show_samples() const {
+		return true;
 	}
 
 	virtual bool load_kernels(const DeviceRequestedFeatures& requested_features,
@@ -104,7 +104,7 @@ public:
 		else if(task->type == DeviceTask::SHADER) {
 			shader(*task);
 		}
-		else if(task->type == DeviceTask::PATH_TRACE) {
+		else if(task->type == DeviceTask::RENDER) {
 			RenderTile tile;
 
 			/* Copy dummy KernelGlobals related to OpenCL from kernel_globals.h to
@@ -114,7 +114,7 @@ public:
 				ccl_constant KernelData *data;
 #define KERNEL_TEX(type, ttype, name) \
 				ccl_global type *name;
-#include "kernel_textures.h"
+#include "kernel/kernel_textures.h"
 #undef KERNEL_TEX
 				SplitData split_data;
 				SplitParams split_param_data;
@@ -127,27 +127,40 @@ public:
 
 			/* Keep rendering tiles until done. */
 			while(task->acquire_tile(this, tile)) {
-				split_kernel->path_trace(task,
-				                         tile,
-				                         kgbuffer,
-				                         *const_mem_map["__data"]);
+				if(tile.task == RenderTile::PATH_TRACE) {
+					assert(tile.task == RenderTile::PATH_TRACE);
+					split_kernel->path_trace(task,
+					                         tile,
+					                         kgbuffer,
+					                         *const_mem_map["__data"]);
 
-				/* Complete kernel execution before release tile. */
-				/* This helps in multi-device render;
-				 * The device that reaches the critical-section function
-				 * release_tile waits (stalling other devices from entering
-				 * release_tile) for all kernels to complete. If device1 (a
-				 * slow-render device) reaches release_tile first then it would
-				 * stall device2 (a fast-render device) from proceeding to render
-				 * next tile.
-				 */
-				clFinish(cqCommandQueue);
+					/* Complete kernel execution before release tile. */
+					/* This helps in multi-device render;
+					 * The device that reaches the critical-section function
+					 * release_tile waits (stalling other devices from entering
+					 * release_tile) for all kernels to complete. If device1 (a
+					 * slow-render device) reaches release_tile first then it would
+					 * stall device2 (a fast-render device) from proceeding to render
+					 * next tile.
+					 */
+					clFinish(cqCommandQueue);
+				}
+				else if(tile.task == RenderTile::DENOISE) {
+					tile.sample = tile.start_sample + tile.num_samples;
+					denoise(tile, *task);
+					task->update_progress(&tile, tile.w*tile.h);
+				}
 
 				task->release_tile(tile);
 			}
 
 			mem_free(kgbuffer);
 		}
+	}
+
+	bool is_split_kernel()
+	{
+		return true;
 	}
 
 protected:
@@ -227,9 +240,9 @@ public:
 		return kernel;
 	}
 
-	virtual size_t state_buffer_size(device_memory& kg, device_memory& data, size_t num_threads)
+	virtual uint64_t state_buffer_size(device_memory& kg, device_memory& data, size_t num_threads)
 	{
-		device_vector<uint> size_buffer;
+		device_vector<uint64_t> size_buffer;
 		size_buffer.resize(1);
 		device->mem_alloc(NULL, size_buffer, MEM_READ_WRITE);
 
@@ -249,7 +262,7 @@ public:
 
 		device->opencl_assert_err(device->ciErr, "clEnqueueNDRangeKernel");
 
-		device->mem_copy_from(size_buffer, 0, 1, 1, sizeof(uint));
+		device->mem_copy_from(size_buffer, 0, 1, 1, sizeof(uint64_t));
 		device->mem_free(size_buffer);
 
 		if(device->ciErr != CL_SUCCESS) {
@@ -295,7 +308,7 @@ public:
 /* TODO(sergey): Avoid map lookup here. */
 #define KERNEL_TEX(type, ttype, name) \
 	device->set_kernel_arg_mem(device->program_data_init(), &start_arg_index, #name);
-#include "kernel_textures.h"
+#include "kernel/kernel_textures.h"
 #undef KERNEL_TEX
 
 		start_arg_index +=
@@ -344,11 +357,18 @@ public:
 		return make_int2(64, 1);
 	}
 
-	virtual int2 split_kernel_global_size(device_memory& kg, device_memory& data, DeviceTask */*task*/)
+	virtual int2 split_kernel_global_size(device_memory& kg, device_memory& data, DeviceTask * /*task*/)
 	{
-		size_t max_buffer_size;
-		clGetDeviceInfo(device->cdDevice, CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(size_t), &max_buffer_size, NULL);
-		VLOG(1) << "Maximum device allocation side: "
+		cl_device_type type = OpenCLInfo::get_device_type(device->cdDevice);
+		/* Use small global size on CPU devices as it seems to be much faster. */
+		if(type == CL_DEVICE_TYPE_CPU) {
+			VLOG(1) << "Global size: (64, 64).";
+			return make_int2(64, 64);
+		}
+
+		cl_ulong max_buffer_size;
+		clGetDeviceInfo(device->cdDevice, CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(cl_ulong), &max_buffer_size, NULL);
+		VLOG(1) << "Maximum device allocation size: "
 		        << string_human_readable_number(max_buffer_size) << " bytes. ("
 		        << string_human_readable_size(max_buffer_size) << ").";
 

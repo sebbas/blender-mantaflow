@@ -50,6 +50,24 @@ def _workaround_buggy_drivers():
             _cycles.opencl_disable()
 
 
+def _configure_argument_parser():
+    import argparse
+    parser = argparse.ArgumentParser(description="Cycles Addon argument parser")
+    parser.add_argument("--cycles-resumable-num-chunks",
+                        help="Number of chunks to split sample range into",
+                        default=None)
+    parser.add_argument("--cycles-resumable-current-chunk",
+                        help="Current chunk of samples range to render",
+                        default=None)
+    parser.add_argument("--cycles-resumable-start-chunk",
+                        help="Start chunk to render",
+                        default=None)
+    parser.add_argument("--cycles-resumable-end-chunk",
+                        help="End chunk to render",
+                        default=None)
+    return parser
+
+
 def _parse_command_line():
     import sys
 
@@ -57,25 +75,22 @@ def _parse_command_line():
     if "--" not in argv:
         return
 
-    argv = argv[argv.index("--") + 1:]
+    parser = _configure_argument_parser()
+    args, unknown = parser.parse_known_args(argv[argv.index("--") + 1:])
 
-    num_resumable_chunks = None
-    current_resumable_chunk = None
-
-    # TODO(sergey): Add some nice error prints if argument is not used properly.
-    idx = 0
-    while idx < len(argv) - 1:
-        arg = argv[idx]
-        if arg == '--cycles-resumable-num-chunks':
-            num_resumable_chunks = int(argv[idx + 1])
-        elif arg == '--cycles-resumable-current-chunk':
-            current_resumable_chunk = int(argv[idx + 1])
-        idx += 1
-
-    if num_resumable_chunks is not None and current_resumable_chunk is not None:
-        import _cycles
-        _cycles.set_resumable_chunks(num_resumable_chunks,
-                                     current_resumable_chunk)
+    if args.cycles_resumable_num_chunks is not None:
+        if args.cycles_resumable_current_chunk is not None:
+            import _cycles
+            _cycles.set_resumable_chunk(
+                    int(args.cycles_resumable_num_chunks),
+                    int(args.cycles_resumable_current_chunk))
+        elif args.cycles_resumable_start_chunk is not None and \
+             args.cycles_resumable_end_chunk:
+            import _cycles
+            _cycles.set_resumable_chunk_range(
+                    int(args.cycles_resumable_num_chunks),
+                    int(args.cycles_resumable_start_chunk),
+                    int(args.cycles_resumable_end_chunk))
 
 
 def init():
@@ -190,3 +205,48 @@ def with_network():
 def system_info():
     import _cycles
     return _cycles.system_info()
+
+def register_passes(engine, scene, srl):
+    engine.register_pass(scene, srl, "Combined", 4, "RGBA", 'COLOR')
+
+    if srl.use_pass_z:                     engine.register_pass(scene, srl, "Depth",         1, "Z",    'VALUE')
+    if srl.use_pass_mist:                  engine.register_pass(scene, srl, "Mist",          1, "Z",    'VALUE')
+    if srl.use_pass_normal:                engine.register_pass(scene, srl, "Normal",        3, "XYZ",  'VECTOR')
+    if srl.use_pass_vector:                engine.register_pass(scene, srl, "Vector",        4, "XYZW", 'VECTOR')
+    if srl.use_pass_uv:                    engine.register_pass(scene, srl, "UV",            3, "UVA",  'VECTOR')
+    if srl.use_pass_object_index:          engine.register_pass(scene, srl, "IndexOB",       1, "X",    'VALUE')
+    if srl.use_pass_material_index:        engine.register_pass(scene, srl, "IndexMA",       1, "X",    'VALUE')
+    if srl.use_pass_shadow:                engine.register_pass(scene, srl, "Shadow",        3, "RGB",  'COLOR')
+    if srl.use_pass_ambient_occlusion:     engine.register_pass(scene, srl, "AO",            3, "RGB",  'COLOR')
+    if srl.use_pass_diffuse_direct:        engine.register_pass(scene, srl, "DiffDir",       3, "RGB",  'COLOR')
+    if srl.use_pass_diffuse_indirect:      engine.register_pass(scene, srl, "DiffInd",       3, "RGB",  'COLOR')
+    if srl.use_pass_diffuse_color:         engine.register_pass(scene, srl, "DiffCol",       3, "RGB",  'COLOR')
+    if srl.use_pass_glossy_direct:         engine.register_pass(scene, srl, "GlossDir",      3, "RGB",  'COLOR')
+    if srl.use_pass_glossy_indirect:       engine.register_pass(scene, srl, "GlossInd",      3, "RGB",  'COLOR')
+    if srl.use_pass_glossy_color:          engine.register_pass(scene, srl, "GlossCol",      3, "RGB",  'COLOR')
+    if srl.use_pass_transmission_direct:   engine.register_pass(scene, srl, "TransDir",      3, "RGB",  'COLOR')
+    if srl.use_pass_transmission_indirect: engine.register_pass(scene, srl, "TransInd",      3, "RGB",  'COLOR')
+    if srl.use_pass_transmission_color:    engine.register_pass(scene, srl, "TransCol",      3, "RGB",  'COLOR')
+    if srl.use_pass_subsurface_direct:     engine.register_pass(scene, srl, "SubsurfaceDir", 3, "RGB",  'COLOR')
+    if srl.use_pass_subsurface_indirect:   engine.register_pass(scene, srl, "SubsurfaceInd", 3, "RGB",  'COLOR')
+    if srl.use_pass_subsurface_color:      engine.register_pass(scene, srl, "SubsurfaceCol", 3, "RGB",  'COLOR')
+    if srl.use_pass_emit:                  engine.register_pass(scene, srl, "Emit",          3, "RGB",  'COLOR')
+    if srl.use_pass_environment:           engine.register_pass(scene, srl, "Env",           3, "RGB",  'COLOR')
+
+    crl = srl.cycles
+    if crl.pass_debug_bvh_traversed_nodes:     engine.register_pass(scene, srl, "Debug BVH Traversed Nodes",     1, "X", 'VALUE')
+    if crl.pass_debug_bvh_traversed_instances: engine.register_pass(scene, srl, "Debug BVH Traversed Instances", 1, "X", 'VALUE')
+    if crl.pass_debug_bvh_intersections:       engine.register_pass(scene, srl, "Debug BVH Intersections",       1, "X", 'VALUE')
+    if crl.pass_debug_ray_bounces:             engine.register_pass(scene, srl, "Debug Ray Bounces",             1, "X", 'VALUE')
+
+    if crl.use_denoising and crl.denoising_store_passes:
+        engine.register_pass(scene, srl, "Denoising Normal",          3, "XYZ", 'VECTOR')
+        engine.register_pass(scene, srl, "Denoising Normal Variance", 3, "XYZ", 'VECTOR')
+        engine.register_pass(scene, srl, "Denoising Albedo",          3, "RGB", 'COLOR')
+        engine.register_pass(scene, srl, "Denoising Albedo Variance", 3, "RGB", 'COLOR')
+        engine.register_pass(scene, srl, "Denoising Depth",           1, "Z",   'VALUE')
+        engine.register_pass(scene, srl, "Denoising Depth Variance",  1, "Z",   'VALUE')
+        engine.register_pass(scene, srl, "Denoising Shadow A",        3, "XYV", 'VECTOR')
+        engine.register_pass(scene, srl, "Denoising Shadow B",        3, "XYV", 'VECTOR')
+        engine.register_pass(scene, srl, "Denoising Image",           3, "RGB", 'COLOR')
+        engine.register_pass(scene, srl, "Denoising Image Variance",  3, "RGB", 'COLOR')

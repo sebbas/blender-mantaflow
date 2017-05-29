@@ -21,12 +21,12 @@
 import bpy
 from bpy.types import Operator
 from bpy.props import (
-        StringProperty,
-        BoolProperty,
-        EnumProperty,
-        IntProperty,
-        FloatProperty,
-        )
+    BoolProperty,
+    EnumProperty,
+    FloatProperty,
+    IntProperty,
+    StringProperty,
+)
 
 
 class SelectPattern(Operator):
@@ -864,7 +864,7 @@ class DupliOffsetFromCursor(Operator):
     """Set offset used for DupliGroup based on cursor position"""
     bl_idname = "object.dupli_offset_from_cursor"
     bl_label = "Set Offset From Cursor"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {'INTERNAL', 'UNDO'}
 
     @classmethod
     def poll(cls, context):
@@ -1034,3 +1034,22 @@ class LodGenerate(Operator):
         scene.objects.active = ob
 
         return {'FINISHED'}
+
+
+classes = (
+    ClearAllRestrictRender,
+    DupliOffsetFromCursor,
+    IsolateTypeRender,
+    JoinUVs,
+    LodByName,
+    LodClearAll,
+    LodGenerate,
+    MakeDupliFace,
+    SelectCamera,
+    SelectHierarchy,
+    SelectPattern,
+    ShapeTransfer,
+    SubdivisionSet,
+    TransformsToDeltas,
+    TransformsToDeltasAnim,
+)

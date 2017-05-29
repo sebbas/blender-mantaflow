@@ -20,8 +20,8 @@
 #include <cstddef>
 #include <memory>
 
-#include "util_debug.h"
-#include "util_types.h"
+#include "util/util_debug.h"
+#include "util/util_types.h"
 
 #ifdef WITH_BLENDER_GUARDEDALLOC
 #  include "../../guardedalloc/MEM_guardedalloc.h"
@@ -50,9 +50,9 @@ public:
 
 	T *allocate(size_t n, const void *hint = 0)
 	{
+		(void)hint;
 		size_t size = n * sizeof(T);
 		util_guarded_mem_alloc(size);
-		(void)hint;
 		if(n == 0) {
 			return NULL;
 		}

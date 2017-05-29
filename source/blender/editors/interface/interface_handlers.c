@@ -87,6 +87,7 @@
 
 #include "WM_api.h"
 #include "WM_types.h"
+#include "wm_event_system.h"
 
 #ifdef WITH_INPUT_IME
 #  include "wm_window.h"
@@ -380,6 +381,7 @@ typedef struct uiAfterFunc {
 	void *butm_func_arg;
 	int a2;
 
+	wmOperator *popup_op;
 	wmOperatorType *optype;
 	int opcontext;
 	PointerRNA *opptr;
@@ -635,13 +637,24 @@ PointerRNA *ui_handle_afterfunc_add_operator(wmOperatorType *ot, int opcontext, 
 	return ptr;
 }
 
+static void popup_check(bContext *C, wmOperator *op)
+{
+	if (op && op->type->check && op->type->check(C, op)) {
+		/* check for popup and re-layout buttons */
+		ARegion *ar_menu = CTX_wm_menu(C);
+		if (ar_menu)
+			ED_region_tag_refresh_ui(ar_menu);
+	}
+}
+
 /**
  * Check if a #uiAfterFunc is needed for this button.
  */
 static bool ui_afterfunc_check(const uiBlock *block, const uiBut *but)
 {
 	return (but->func || but->funcN || but->rename_func || but->optype || but->rnaprop || block->handle_func ||
-	        (but->type == UI_BTYPE_BUT_MENU && block->butm_func));
+	        (but->type == UI_BTYPE_BUT_MENU && block->butm_func) ||
+	        (block->handle && block->handle->popup_op));
 }
 
 static void ui_apply_but_func(bContext *C, uiBut *but)
@@ -682,6 +695,9 @@ static void ui_apply_but_func(bContext *C, uiBut *but)
 			after->butm_func_arg = block->butm_func_arg;
 			after->a2 = but->a2;
 		}
+		
+		if (block->handle)
+			after->popup_op = block->handle->popup_op;
 
 		after->optype = but->optype;
 		after->opcontext = but->opcontext;
@@ -766,6 +782,9 @@ static void ui_apply_but_funcs_after(bContext *C)
 		if (after.context)
 			CTX_store_set(C, after.context);
 
+		if (after.popup_op)
+			popup_check(C, after.popup_op);
+		
 		if (after.opptr) {
 			/* free in advance to avoid leak on exit */
 			opptr = *after.opptr;
@@ -3359,7 +3378,7 @@ static void ui_do_but_textedit(
 				if (event->type == WHEELDOWNMOUSE) {
 					break;
 				}
-				/* fall-through */
+				ATTR_FALLTHROUGH;
 			case ENDKEY:
 				ui_textedit_move(but, data, STRCUR_DIR_NEXT,
 				                 event->shift != 0, STRCUR_JUMP_ALL);
@@ -3377,7 +3396,7 @@ static void ui_do_but_textedit(
 				if (event->type == WHEELUPMOUSE) {
 					break;
 				}
-				/* fall-through */
+				ATTR_FALLTHROUGH;
 			case HOMEKEY:
 				ui_textedit_move(but, data, STRCUR_DIR_PREV,
 				                 event->shift != 0, STRCUR_JUMP_ALL);
@@ -6665,7 +6684,7 @@ static void remove_shortcut_func(bContext *C, void *arg1, void *UNUSED(arg2))
 static void popup_add_shortcut_func(bContext *C, void *arg1, void *UNUSED(arg2))
 {
 	uiBut *but = (uiBut *)arg1;
-	UI_popup_block_ex(C, menu_add_shortcut, NULL, menu_add_shortcut_cancel, but);
+	UI_popup_block_ex(C, menu_add_shortcut, NULL, menu_add_shortcut_cancel, but, NULL);
 }
 
 /**
@@ -6738,6 +6757,7 @@ static bool ui_but_menu(bContext *C, uiBut *but)
 {
 	uiPopupMenu *pup;
 	uiLayout *layout;
+	MenuType *mt = WM_menutype_find("WM_MT_button_context", true);
 	bool is_array, is_array_component;
 	uiStringInfo label = {BUT_GET_LABEL, NULL};
 
@@ -6768,6 +6788,12 @@ static bool ui_but_menu(bContext *C, uiBut *but)
 		bool is_editable = RNA_property_editable(ptr, prop);
 		/*bool is_idprop = RNA_property_is_idprop(prop);*/ /* XXX does not work as expected, not strictly needed */
 		bool is_set = RNA_property_is_set(ptr, prop);
+
+		/* set the prop and pointer data for python access to the hovered ui element; TODO, index could be supported as well*/
+		PointerRNA temp_ptr;
+		RNA_pointer_create(NULL, &RNA_Property, but->rnaprop, &temp_ptr);
+		uiLayoutSetContextPointer(layout,"button_prop", &temp_ptr);
+		uiLayoutSetContextPointer(layout,"button_pointer", ptr);
 
 		/* second slower test, saved people finding keyframe items in menus when its not possible */
 		if (is_anim)
@@ -6984,7 +7010,11 @@ static bool ui_but_menu(bContext *C, uiBut *but)
 			                        0, 0, w, UI_UNIT_Y, NULL, 0, 0, 0, 0, "");
 			UI_but_func_set(but2, popup_add_shortcut_func, but, NULL);
 		}
-		
+
+		/* Set the operator pointer for python access */
+		if (but->opptr)
+			uiLayoutSetContextPointer(layout,"button_operator", but->opptr);
+
 		uiItemS(layout);
 	}
 
@@ -7005,20 +7035,17 @@ static bool ui_but_menu(bContext *C, uiBut *but)
 			uiItemO(layout, CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Online Manual"),
 			        ICON_URL, "WM_OT_doc_view_manual_ui_context");
 
-			WM_operator_properties_create(&ptr_props, "WM_OT_doc_view");
+			ptr_props = uiItemFullO(layout, "WM_OT_doc_view",
+			                            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Online Python Reference"),
+			                            ICON_NONE, NULL, WM_OP_EXEC_DEFAULT, UI_ITEM_O_RETURN_PROPS);
 			RNA_string_set(&ptr_props, "doc_id", buf);
-			uiItemFullO(layout, "WM_OT_doc_view",
-			            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Online Python Reference"),
-			            ICON_NONE, ptr_props.data, WM_OP_EXEC_DEFAULT, 0);
 
 			/* XXX inactive option, not for public! */
 #if 0
-			WM_operator_properties_create(&ptr_props, "WM_OT_doc_edit");
+			ptr_props = uiItemFullO(layout, "WM_OT_doc_edit",
+			                            "Submit Description", ICON_NONE, NULL, WM_OP_INVOKE_DEFAULT, UI_ITEM_O_RETURN_PROPS);
 			RNA_string_set(&ptr_props, "doc_id", buf);
 			RNA_string_set(&ptr_props, "doc_new", RNA_property_description(but->rnaprop));
-
-			uiItemFullO(layout, "WM_OT_doc_edit",
-			            "Submit Description", ICON_NONE, ptr_props.data, WM_OP_INVOKE_DEFAULT, 0);
 #endif
 		}
 	}
@@ -7033,6 +7060,14 @@ static bool ui_but_menu(bContext *C, uiBut *but)
 		uiItemFullO(layout, "UI_OT_editsource", NULL, ICON_NONE, NULL, WM_OP_INVOKE_DEFAULT, 0);
 	}
 	uiItemFullO(layout, "UI_OT_edittranslation_init", NULL, ICON_NONE, NULL, WM_OP_INVOKE_DEFAULT, 0);
+
+	mt = WM_menutype_find("WM_MT_button_context", false);
+	if (mt) {
+		Menu menu = {NULL};
+		menu.layout = uiLayoutColumn(layout, false);
+		menu.type = mt;
+		mt->draw(C, &menu);
+	}
 
 	UI_popup_menu_end(C, pup);
 
@@ -8373,7 +8408,7 @@ static int ui_handle_button_event(bContext *C, const wmEvent *event, uiBut *but)
 			case MIDDLEMOUSE:
 			case MOUSEPAN:
 				UI_but_tooltip_timer_remove(C, but);
-				/* fall-through */
+				ATTR_FALLTHROUGH;
 			default:
 				/* handle button type specific events */
 				retval = ui_do_button(C, block, but, event);
@@ -9167,23 +9202,23 @@ static int ui_handle_menu_event(
 					break;
 
 				case ONEKEY:    case PAD1:
-					act = 1;
+					act = 1; ATTR_FALLTHROUGH;
 				case TWOKEY:    case PAD2:
-					if (act == 0) act = 2;
+					if (act == 0) act = 2; ATTR_FALLTHROUGH;
 				case THREEKEY:  case PAD3:
-					if (act == 0) act = 3;
+					if (act == 0) act = 3; ATTR_FALLTHROUGH;
 				case FOURKEY:   case PAD4:
-					if (act == 0) act = 4;
+					if (act == 0) act = 4; ATTR_FALLTHROUGH;
 				case FIVEKEY:   case PAD5:
-					if (act == 0) act = 5;
+					if (act == 0) act = 5; ATTR_FALLTHROUGH;
 				case SIXKEY:    case PAD6:
-					if (act == 0) act = 6;
+					if (act == 0) act = 6; ATTR_FALLTHROUGH;
 				case SEVENKEY:  case PAD7:
-					if (act == 0) act = 7;
+					if (act == 0) act = 7; ATTR_FALLTHROUGH;
 				case EIGHTKEY:  case PAD8:
-					if (act == 0) act = 8;
+					if (act == 0) act = 8; ATTR_FALLTHROUGH;
 				case NINEKEY:   case PAD9:
-					if (act == 0) act = 9;
+					if (act == 0) act = 9; ATTR_FALLTHROUGH;
 				case ZEROKEY:   case PAD0:
 					if (act == 0) act = 10;
 
@@ -9778,13 +9813,13 @@ static int ui_pie_handler(bContext *C, const wmEvent *event, uiPopupBlockHandle 
 			case (ZEROKEY + n): case (PAD0 + n): \
 				{ if (num_dir == UI_RADIAL_NONE) num_dir = d; } (void)0
 
-				CASE_NUM_TO_DIR(1, UI_RADIAL_SW);
-				CASE_NUM_TO_DIR(2, UI_RADIAL_S);
-				CASE_NUM_TO_DIR(3, UI_RADIAL_SE);
-				CASE_NUM_TO_DIR(4, UI_RADIAL_W);
-				CASE_NUM_TO_DIR(6, UI_RADIAL_E);
-				CASE_NUM_TO_DIR(7, UI_RADIAL_NW);
-				CASE_NUM_TO_DIR(8, UI_RADIAL_N);
+				CASE_NUM_TO_DIR(1, UI_RADIAL_SW); ATTR_FALLTHROUGH;
+				CASE_NUM_TO_DIR(2, UI_RADIAL_S);  ATTR_FALLTHROUGH;
+				CASE_NUM_TO_DIR(3, UI_RADIAL_SE); ATTR_FALLTHROUGH;
+				CASE_NUM_TO_DIR(4, UI_RADIAL_W);  ATTR_FALLTHROUGH;
+				CASE_NUM_TO_DIR(6, UI_RADIAL_E);  ATTR_FALLTHROUGH;
+				CASE_NUM_TO_DIR(7, UI_RADIAL_NW); ATTR_FALLTHROUGH;
+				CASE_NUM_TO_DIR(8, UI_RADIAL_N);  ATTR_FALLTHROUGH;
 				CASE_NUM_TO_DIR(9, UI_RADIAL_NE);
 				{
 					but = ui_block_pie_dir_activate(block, event, num_dir);
@@ -10182,6 +10217,25 @@ void UI_popup_handlers_add(bContext *C, ListBase *handlers, uiPopupBlockHandle *
 
 void UI_popup_handlers_remove(ListBase *handlers, uiPopupBlockHandle *popup)
 {
+	wmEventHandler *handler;
+
+	for (handler = handlers->first; handler; handler = handler->next) {
+		if (handler->ui_handle == ui_popup_handler &&
+		    handler->ui_remove == ui_popup_handler_remove &&
+		    handler->ui_userdata == popup)
+		{
+			/* tag refresh parent popup */
+			if (handler->next && 
+				handler->next->ui_handle == ui_popup_handler && 
+				handler->next->ui_remove == ui_popup_handler_remove) 
+			{
+				uiPopupBlockHandle *parent_popup = handler->next->ui_userdata;
+				ED_region_tag_refresh_ui(parent_popup->region);
+			}
+			break;
+		}
+	}
+
 	WM_event_remove_ui_handler(handlers, ui_popup_handler, ui_popup_handler_remove, popup, false);
 }
 

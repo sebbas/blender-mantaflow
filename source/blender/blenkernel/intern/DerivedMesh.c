@@ -2123,6 +2123,8 @@ static void mesh_calc_modifiers(
 				DM_update_weight_mcol(ob, dm, draw_flag, NULL, 0, NULL);
 				append_mask |= CD_MASK_PREVIEW_MLOOPCOL;
 			}
+
+			dm->deformedOnly = false;
 		}
 
 		isPrevDeform = (mti->type == eModifierTypeType_OnlyDeform);
@@ -2463,6 +2465,8 @@ static void editbmesh_calc_modifiers(
 					deformedVerts = NULL;
 				}
 			}
+
+			dm->deformedOnly = false;
 		}
 
 		/* In case of active preview modifier, make sure preview mask remains for following modifiers. */
@@ -2912,9 +2916,6 @@ DerivedMesh *editbmesh_get_derived_base(Object *obedit, BMEditMesh *em, CustomDa
 /* get derived mesh from an object, using editbmesh if available. */
 DerivedMesh *object_get_derived_final(Object *ob, const bool for_render)
 {
-	Mesh *me = ob->data;
-	BMEditMesh *em = me->edit_btmesh;
-
 	if (for_render) {
 		/* TODO(sergey): use proper derived render here in the future. */
 		return ob->derivedFinal;
@@ -2922,9 +2923,13 @@ DerivedMesh *object_get_derived_final(Object *ob, const bool for_render)
 
 	/* only return the editmesh if its from this object because
 	 * we don't a mesh from another object's modifier stack: T43122 */
-	if (em && (em->ob == ob)) {
-		DerivedMesh *dm = em->derivedFinal;
-		return dm;
+	if (ob->type == OB_MESH) {
+		Mesh *me = ob->data;
+		BMEditMesh *em = me->edit_btmesh;
+		if (em && (em->ob == ob)) {
+			DerivedMesh *dm = em->derivedFinal;
+			return dm;
+		}
 	}
 
 	return ob->derivedFinal;
@@ -3455,7 +3460,7 @@ void DM_calc_loop_tangents(
 				 * have to check this is valid...
 				 */
 				mesh2tangent->precomputedLoopNormals = dm->getLoopDataArray(dm, CD_NORMAL);
-				mesh2tangent->precomputedFaceNormals = CustomData_get_layer(&dm->faceData, CD_NORMAL);
+				mesh2tangent->precomputedFaceNormals = CustomData_get_layer(&dm->polyData, CD_NORMAL);
 
 				mesh2tangent->orco = NULL;
 				mesh2tangent->mloopuv = CustomData_get_layer_named(&dm->loopData, CD_MLOOPUV, dm->loopData.layers[index].name);

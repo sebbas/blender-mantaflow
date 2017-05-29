@@ -18,40 +18,38 @@ CCL_NAMESPACE_BEGIN
 
 ccl_device void kernel_indirect_background(KernelGlobals *kg)
 {
-	/*
-	ccl_local unsigned int local_queue_atomics;
-	if(ccl_local_id(0) == 0 && ccl_local_id(1) == 0) {
-		local_queue_atomics = 0;
-	}
-	ccl_barrier(CCL_LOCAL_MEM_FENCE);
-	// */
+	ccl_global char *ray_state = kernel_split_state.ray_state;
 
-	int ray_index = ccl_global_id(1) * ccl_global_size(0) + ccl_global_id(0);
-	ray_index = get_ray_index(kg, ray_index,
+	int thread_index = ccl_global_id(1) * ccl_global_size(0) + ccl_global_id(0);
+	int ray_index;
+
+	if(kernel_data.integrator.ao_bounces != INT_MAX) {
+		ray_index = get_ray_index(kg, thread_index,
+		                          QUEUE_ACTIVE_AND_REGENERATED_RAYS,
+		                          kernel_split_state.queue_data,
+		                          kernel_split_params.queue_size,
+		                          0);
+
+		if(ray_index != QUEUE_EMPTY_SLOT) {
+			if(IS_STATE(ray_state, ray_index, RAY_ACTIVE)) {
+				ccl_global PathState *state = &kernel_split_state.path_state[ray_index];
+				if(state->bounce > kernel_data.integrator.ao_bounces) {
+					kernel_split_path_end(kg, ray_index);
+				}
+			}
+		}
+	}
+
+	ray_index = get_ray_index(kg, thread_index,
 	                          QUEUE_HITBG_BUFF_UPDATE_TOREGEN_RAYS,
 	                          kernel_split_state.queue_data,
 	                          kernel_split_params.queue_size,
 	                          0);
 
-#ifdef __COMPUTE_DEVICE_GPU__
-	/* If we are executing on a GPU device, we exit all threads that are not
-	 * required.
-	 *
-	 * If we are executing on a CPU device, then we need to keep all threads
-	 * active since we have barrier() calls later in the kernel. CPU devices,
-	 * expect all threads to execute barrier statement.
-	 */
 	if(ray_index == QUEUE_EMPTY_SLOT) {
 		return;
 	}
-#endif
 
-#ifndef __COMPUTE_DEVICE_GPU__
-	if(ray_index != QUEUE_EMPTY_SLOT) {
-#endif
-
-
-	ccl_global char *ray_state = kernel_split_state.ray_state;
 	ccl_global PathState *state = &kernel_split_state.path_state[ray_index];
 	PathRadiance *L = &kernel_split_state.path_radiance[ray_index];
 	ccl_global Ray *ray = &kernel_split_state.ray[ray_index];
@@ -65,22 +63,19 @@ ccl_device void kernel_indirect_background(KernelGlobals *kg)
 #ifdef __PASSES__
 			if(!(kernel_data.film.pass_flag & PASS_BACKGROUND))
 #endif
-				ASSIGN_RAY_STATE(ray_state, ray_index, RAY_UPDATE_BUFFER);
+				kernel_split_path_end(kg, ray_index);
 		}
 
 		if(IS_STATE(ray_state, ray_index, RAY_HIT_BACKGROUND)) {
 #ifdef __BACKGROUND__
 			/* sample background shader */
 			float3 L_background = indirect_background(kg, &kernel_split_state.sd_DL_shadow[ray_index], state, ray);
-			path_radiance_accum_background(L, (*throughput), L_background, state->bounce);
+			path_radiance_accum_background(L, state, (*throughput), L_background);
 #endif
-			ASSIGN_RAY_STATE(ray_state, ray_index, RAY_UPDATE_BUFFER);
+			kernel_split_path_end(kg, ray_index);
 		}
 	}
 
-#ifndef __COMPUTE_DEVICE_GPU__
-	}
-#endif
 
 }
 

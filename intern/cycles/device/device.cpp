@@ -17,18 +17,18 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "device.h"
-#include "device_intern.h"
+#include "device/device.h"
+#include "device/device_intern.h"
 
-#include "util_debug.h"
-#include "util_foreach.h"
-#include "util_half.h"
-#include "util_math.h"
-#include "util_opengl.h"
-#include "util_time.h"
-#include "util_types.h"
-#include "util_vector.h"
-#include "util_string.h"
+#include "util/util_debug.h"
+#include "util/util_foreach.h"
+#include "util/util_half.h"
+#include "util/util_math.h"
+#include "util/util_opengl.h"
+#include "util/util_time.h"
+#include "util/util_types.h"
+#include "util/util_vector.h"
+#include "util/util_string.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -48,11 +48,11 @@ std::ostream& operator <<(std::ostream &os,
 	os << "Max nodes group: " << requested_features.max_nodes_group << std::endl;
 	/* TODO(sergey): Decode bitflag into list of names. */
 	os << "Nodes features: " << requested_features.nodes_features << std::endl;
-	os << "Use hair: "
+	os << "Use Hair: "
 	   << string_from_bool(requested_features.use_hair) << std::endl;
-	os << "Use object motion: "
+	os << "Use Object Motion: "
 	   << string_from_bool(requested_features.use_object_motion) << std::endl;
-	os << "Use camera motion: "
+	os << "Use Camera Motion: "
 	   << string_from_bool(requested_features.use_camera_motion) << std::endl;
 	os << "Use Baking: "
 	   << string_from_bool(requested_features.use_baking) << std::endl;
@@ -66,6 +66,8 @@ std::ostream& operator <<(std::ostream &os,
 	   << string_from_bool(requested_features.use_patch_evaluation) << std::endl;
 	os << "Use Transparent Shadows: "
 	   << string_from_bool(requested_features.use_transparent) << std::endl;
+	os << "Use Principled BSDF: "
+	   << string_from_bool(requested_features.use_principled) << std::endl;
 	return os;
 }
 
@@ -398,6 +400,18 @@ void Device::free_memory()
 	need_devices_update = true;
 	types.free_memory();
 	devices.free_memory();
+}
+
+
+device_sub_ptr::device_sub_ptr(Device *device, device_memory& mem, int offset, int size, MemoryType type)
+ : device(device)
+{
+	ptr = device->mem_alloc_sub_ptr(mem, offset, size, type);
+}
+
+device_sub_ptr::~device_sub_ptr()
+{
+	device->mem_free_sub_ptr(ptr);
 }
 
 CCL_NAMESPACE_END

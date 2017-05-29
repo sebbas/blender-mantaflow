@@ -51,6 +51,11 @@ enum {
 	 * This means callback shall not *do* anything, only use this as informative data if it needs it. */
 	IDWALK_CB_PRIVATE = (1 << 3),
 
+	/** That ID is not really used by its owner, it's just an internal hint/helper.
+	 * This addresses Their Highest Ugliness the 'from' pointers: Object->from_proxy and Key->from.
+	 * How to handle that kind of cases totally depends on what caller code is doing... */
+	IDWALK_CB_LOOPBACK = (1 << 4),
+
 	/**
 	 * Adjusts #ID.us reference-count.
 	 * \note keep in sync with 'newlibadr_us' use in readfile.c
@@ -87,7 +92,7 @@ void BKE_library_update_ID_link_user(struct ID *id_dst, struct ID *id_src, const
 
 int BKE_library_ID_use_ID(struct ID *id_user, struct ID *id_used);
 
-bool BKE_library_idtype_can_use_idtype(const short id_type_owner, const short id_type_used);
+bool BKE_library_id_can_use_idtype(struct ID *id_owner, const short id_type_used);
 
 bool BKE_library_ID_is_locally_used(struct Main *bmain, void *idv);
 bool BKE_library_ID_is_indirectly_used(struct Main *bmain, void *idv);

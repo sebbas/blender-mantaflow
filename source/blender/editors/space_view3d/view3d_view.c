@@ -449,7 +449,7 @@ void ED_view3d_smooth_view_force_finish(
 		/* force update of view matrix so tools that run immediately after
 		 * can use them without redrawing first */
 		Scene *scene = CTX_data_scene(C);
-		ED_view3d_update_viewmat(scene, v3d, ar, NULL, NULL);
+		ED_view3d_update_viewmat(scene, v3d, ar, NULL, NULL, NULL);
 	}
 }
 
@@ -1172,9 +1172,10 @@ int view3d_opengl_select(
 
 	G.f |= G_PICKSEL;
 
-	view3d_winmatrix_set(ar, v3d, &rect);
-	mul_m4_m4m4(vc->rv3d->persmat, vc->rv3d->winmat, vc->rv3d->viewmat);
-	
+	/* Important we use the 'viewmat' and don't re-calculate since
+	 * the object & bone view locking takes 'rect' into account, see: T51629. */
+	ED_view3d_draw_setup_view(vc->win, scene, ar, v3d, vc->rv3d->viewmat, NULL, &rect);
+
 	if (v3d->drawtype > OB_WIRE) {
 		v3d->zbuf = true;
 		glEnable(GL_DEPTH_TEST);
@@ -1199,8 +1200,7 @@ int view3d_opengl_select(
 	}
 
 	G.f &= ~G_PICKSEL;
-	view3d_winmatrix_set(ar, v3d, NULL);
-	mul_m4_m4m4(vc->rv3d->persmat, vc->rv3d->winmat, vc->rv3d->viewmat);
+	ED_view3d_draw_setup_view(vc->win, scene, ar, v3d, vc->rv3d->viewmat, NULL, NULL);
 	
 	if (v3d->drawtype > OB_WIRE) {
 		v3d->zbuf = 0;
@@ -1404,6 +1404,8 @@ static bool view3d_localview_init(
 			}
 		}
 	}
+
+	DAG_on_visible_update(bmain, false);
 
 	return ok;
 }

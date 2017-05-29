@@ -17,8 +17,8 @@
 #ifndef __DEVICE_SPLIT_KERNEL_H__
 #define __DEVICE_SPLIT_KERNEL_H__
 
-#include "device.h"
-#include "buffers.h"
+#include "device/device.h"
+#include "render/buffers.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -61,6 +61,8 @@ private:
 	SplitKernelFunction *kernel_do_volume;
 	SplitKernelFunction *kernel_queue_enqueue;
 	SplitKernelFunction *kernel_indirect_background;
+	SplitKernelFunction *kernel_shader_setup;
+	SplitKernelFunction *kernel_shader_sort;
 	SplitKernelFunction *kernel_shader_eval;
 	SplitKernelFunction *kernel_holdout_emission_blurring_pathtermination_ao;
 	SplitKernelFunction *kernel_subsurface_scatter;
@@ -78,22 +80,25 @@ private:
 	 */
 	device_memory split_data;
 	device_vector<uchar> ray_state;
-	device_memory queue_index; /* Array of size num_queues * sizeof(int) that tracks the size of each queue. */
+	device_only_memory<int> queue_index; /* Array of size num_queues that tracks the size of each queue. */
 
 	/* Flag to make sceneintersect and lampemission kernel use queues. */
-	device_memory use_queues_flag;
+	device_only_memory<char> use_queues_flag;
 
 	/* Approximate time it takes to complete one sample */
 	double avg_time_per_sample;
 
 	/* Work pool with respect to each work group. */
-	device_memory work_pool_wgs;
+	device_only_memory<unsigned int> work_pool_wgs;
 
 	/* clos_max value for which the kernels have been loaded currently. */
 	int current_max_closure;
 
 	/* Marked True in constructor and marked false at the end of path_trace(). */
 	bool first_tile;
+
+	/* Cached global size */
+	size_t global_size[2];
 
 public:
 	explicit DeviceSplitKernel(Device* device);
@@ -105,8 +110,8 @@ public:
 	                device_memory& kgbuffer,
 	                device_memory& kernel_data);
 
-	virtual size_t state_buffer_size(device_memory& kg, device_memory& data, size_t num_threads) = 0;
-	size_t max_elements_for_max_buffer_size(device_memory& kg, device_memory& data, size_t max_buffer_size);
+	virtual uint64_t state_buffer_size(device_memory& kg, device_memory& data, size_t num_threads) = 0;
+	size_t max_elements_for_max_buffer_size(device_memory& kg, device_memory& data, uint64_t max_buffer_size);
 
 	virtual bool enqueue_split_kernel_data_init(const KernelDimensions& dim,
 	                                            RenderTile& rtile,

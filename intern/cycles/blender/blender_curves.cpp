@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-#include "attribute.h"
-#include "camera.h"
-#include "curves.h"
-#include "mesh.h"
-#include "object.h"
-#include "scene.h"
+#include "render/attribute.h"
+#include "render/camera.h"
+#include "render/curves.h"
+#include "render/mesh.h"
+#include "render/object.h"
+#include "render/scene.h"
 
-#include "blender_sync.h"
-#include "blender_util.h"
+#include "blender/blender_sync.h"
+#include "blender/blender_util.h"
 
-#include "util_foreach.h"
-#include "util_logging.h"
+#include "util/util_foreach.h"
+#include "util/util_logging.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -411,7 +411,7 @@ static void ExportCurveTrianglePlanes(Mesh *mesh, ParticleCurveData *CData,
 		}
 	}
 
-	mesh->resize_mesh(mesh->verts.size(), mesh->triangles.size());
+	mesh->resize_mesh(mesh->verts.size(), mesh->num_triangles());
 	mesh->attributes.remove(ATTR_STD_VERTEX_NORMAL);
 	mesh->attributes.remove(ATTR_STD_FACE_NORMAL);
 	mesh->add_face_normals();
@@ -546,7 +546,7 @@ static void ExportCurveTriangleGeometry(Mesh *mesh,
 		}
 	}
 
-	mesh->resize_mesh(mesh->verts.size(), mesh->triangles.size());
+	mesh->resize_mesh(mesh->verts.size(), mesh->num_triangles());
 	mesh->attributes.remove(ATTR_STD_VERTEX_NORMAL);
 	mesh->attributes.remove(ATTR_STD_FACE_NORMAL);
 	mesh->add_face_normals();
@@ -776,17 +776,17 @@ static void ExportCurveTriangleVcol(ParticleCurveData *CData,
 
 			for(int curvekey = CData->curve_firstkey[curve]; curvekey < CData->curve_firstkey[curve] + CData->curve_keynum[curve] - 1; curvekey++) {
 				for(int section = 0; section < resol; section++) {
-					cdata[vertexindex] = color_float_to_byte(color_srgb_to_scene_linear(CData->curve_vcol[curve]));
+					cdata[vertexindex] = color_float_to_byte(color_srgb_to_scene_linear_v3(CData->curve_vcol[curve]));
 					vertexindex++;
-					cdata[vertexindex] = color_float_to_byte(color_srgb_to_scene_linear(CData->curve_vcol[curve]));
+					cdata[vertexindex] = color_float_to_byte(color_srgb_to_scene_linear_v3(CData->curve_vcol[curve]));
 					vertexindex++;
-					cdata[vertexindex] = color_float_to_byte(color_srgb_to_scene_linear(CData->curve_vcol[curve]));
+					cdata[vertexindex] = color_float_to_byte(color_srgb_to_scene_linear_v3(CData->curve_vcol[curve]));
 					vertexindex++;
-					cdata[vertexindex] = color_float_to_byte(color_srgb_to_scene_linear(CData->curve_vcol[curve]));
+					cdata[vertexindex] = color_float_to_byte(color_srgb_to_scene_linear_v3(CData->curve_vcol[curve]));
 					vertexindex++;
-					cdata[vertexindex] = color_float_to_byte(color_srgb_to_scene_linear(CData->curve_vcol[curve]));
+					cdata[vertexindex] = color_float_to_byte(color_srgb_to_scene_linear_v3(CData->curve_vcol[curve]));
 					vertexindex++;
-					cdata[vertexindex] = color_float_to_byte(color_srgb_to_scene_linear(CData->curve_vcol[curve]));
+					cdata[vertexindex] = color_float_to_byte(color_srgb_to_scene_linear_v3(CData->curve_vcol[curve]));
 					vertexindex++;
 				}
 			}
@@ -1004,7 +1004,7 @@ void BlenderSync::sync_curves(Mesh *mesh,
 
 					for(size_t curve = 0; curve < CData.curve_vcol.size(); curve++)
 						if(!(CData.curve_keynum[curve] <= 1 || CData.curve_length[curve] == 0.0f))
-							fdata[i++] = color_srgb_to_scene_linear(CData.curve_vcol[curve]);
+							fdata[i++] = color_srgb_to_scene_linear_v3(CData.curve_vcol[curve]);
 				}
 			}
 		}
