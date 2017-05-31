@@ -499,8 +499,8 @@ classes = (
     PHYSICS_PT_smoke_groups,
     PHYSICS_PT_smoke_cache,
     PHYSICS_PT_smoke_field_weights,
-	OBJECT_OT_RunMantaButton,
-	PHYSICS_PT_smoke_manta_settings,
+    OBJECT_OT_RunMantaButton,
+    PHYSICS_PT_smoke_manta_settings,
     PHYSICS_PT_smoke_display_settings,
 )
 

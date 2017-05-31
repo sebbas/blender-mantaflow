@@ -732,5 +732,5 @@ classes = (
     QuickFluid,
     QuickFur,
     QuickSmoke,
-	QuickLiquid,
+    QuickLiquid,
 )
