@@ -853,7 +853,7 @@ void FLUID::updateMeshData(const char* filename)
 
 	gzf = (gzFile) BLI_gzopen(filename, "rb1"); // do some compression
 	if (!gzf)
-		std::cout << "readBobj: unable to open file" << std::endl;
+		std::cout << "updateMeshData: unable to open file" << std::endl;
 	
 	// Num vertices
 	mNumVertices = 0;
@@ -917,7 +917,71 @@ void FLUID::updateMeshData(const char* filename)
 		}
 	}
 
-	gzclose( gzf );
+	gzclose(gzf);
+}
+
+void FLUID::updateParticleData(const char* filename)
+{
+	gzFile gzf;
+	float fbuffer[3];
+	int ibuffer;
+
+	gzf = (gzFile) BLI_gzopen(filename, "rb1"); // do some compression
+	if (!gzf)
+		std::cout << "updateParticleData: unable to open file" << std::endl;
+
+	char ID[5] = {0,0,0,0,0};
+	gzread(gzf, ID, 4);
+
+	if (!strcmp(ID, "PB01")) {
+		std::cout << "particle uni file format v01 not supported anymore" << std::endl;
+		return;
+	}
+
+	// pdata uni header
+	const int STR_LEN_PDATA = 256;
+	int elementType, bytesPerElement; // type id and byte size
+	char info[STR_LEN_PDATA]; // mantaflow build information
+	unsigned long long timestamp; // creation time
+
+	// read particle header
+	gzread(gzf, &mNumParticles, sizeof(int));
+	gzread(gzf, &ibuffer, sizeof(int)); // Skipping dimX
+	gzread(gzf, &ibuffer, sizeof(int)); // Skipping dimY
+	gzread(gzf, &ibuffer, sizeof(int)); // Skipping dimZ
+	gzread(gzf, &elementType, sizeof(int));
+	gzread(gzf, &bytesPerElement, sizeof(int));
+	gzread(gzf, &info, sizeof(info));
+	gzread(gzf, &timestamp, sizeof(unsigned long long));
+
+	std::cout << "num particles: " << mNumParticles << std::endl;
+
+	// Sanity check
+	const int partSysSize = sizeof(float) * 3 + sizeof(int);
+	if (! (bytesPerElement == partSysSize) && (elementType == 0)){
+		std::cout << "particle type doesn't match" << std::endl;
+	}
+
+	if (mNumParticles)
+	{
+		mParticlePositionsX.resize(mNumParticles);
+		mParticlePositionsY.resize(mNumParticles);
+		mParticlePositionsZ.resize(mNumParticles);
+		mParticleFlags.resize(mNumParticles);
+
+		for (int i = 0; i < mNumParticles; ++i) {
+			gzread(gzf, fbuffer, sizeof(float) * 3);
+
+			mParticlePositionsX[i] = fbuffer[0];
+			mParticlePositionsY[i] = fbuffer[1];
+			mParticlePositionsZ[i] = fbuffer[2];
+
+			gzread(gzf, &ibuffer, sizeof(int));
+			mParticleFlags[i] = ibuffer;
+		}
+	}
+
+	gzclose(gzf);
 }
 
 void FLUID::updatePointers()

@@ -145,6 +145,7 @@ public:
 	inline int getTriangleZAt(int i) { return mTrianglesZ[i]; }
 	
 	void updateMeshData(const char* filename);
+	void updateParticleData(const char* filename);
 
 private:
 	// simulation constants
@@ -227,6 +228,13 @@ private:
 	std::vector<int> mTrianglesY;
 	std::vector<int> mTrianglesZ;
 	
+	// Particle fields
+	int mNumParticles;
+	std::vector<int> mParticleFlags;
+	std::vector<float> mParticlePositionsX;
+	std::vector<float> mParticlePositionsY;
+	std::vector<float> mParticlePositionsZ;
+
 	void initDomain(struct SmokeModifierData *smd);
 	void initDomainHigh(struct SmokeModifierData *smd);
 	void initSmoke(struct SmokeModifierData *smd);
