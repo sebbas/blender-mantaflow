@@ -103,6 +103,12 @@
 
 #endif // WITH_MOD_FLUID
 
+/* manta sim particle import */
+#ifdef WITH_MANTA
+	#include "DNA_smoke_types.h"
+	#include "manta_fluid_API.h"
+#endif // WITH_MANTA
+
 static ThreadRWMutex psys_bvhtree_rwlock = BLI_RWLOCK_INITIALIZER;
 
 /************************************************/
@@ -541,6 +547,8 @@ static void initialize_particle_texture(ParticleSimulationData *sim, ParticleDat
 		pa->time = 0.f;
 		break;
 	case PART_FLUID:
+		break;
+	case PART_MANTA:
 		break;
 	}
 }
@@ -3741,6 +3749,78 @@ static void cached_step(ParticleSimulationData *sim, float cfra)
 	}
 }
 
+static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), const bool use_render_params)
+{
+	ParticleSystem *psys = sim->psys;
+	if (psys->particles) {
+		MEM_freeN(psys->particles);
+		psys->particles = 0;
+		psys->totpart = 0;
+	}
+
+	/* manta sim particle import handling, actual loading of particles from file happens in FLUID helper. Here just pointer exchange */
+#ifdef WITH_MANTA
+	{
+		SmokeModifierData *smd = (SmokeModifierData *)modifiers_findByType(sim->ob, eModifierType_Smoke);
+
+		if (smd && smd->domain) {
+			SmokeDomainSettings *sds= smd->domain;
+			ParticleSettings *part = psys->part;
+			ParticleData *pa=NULL;
+
+			int  p, totpart;
+			int activeParts = 0, fileParts = 0;
+
+			totpart = liquid_get_num_particles(sds->fluid);
+			totpart = (use_render_params) ? totpart : (part->disp*totpart) / 100;
+
+			printf("totpart: %d\n", totpart);
+
+			part->totpart = totpart;
+			part->sta = part->end = 1.0f;
+			part->lifetime = sim->scene->r.efra + 1;
+
+			/* allocate particles */
+			realloc_particles(sim, part->totpart);
+
+			for (p=0, pa=psys->particles; p<totpart; p++, pa++) {
+
+				pa->size = 0.05; // TODO (sebbas): manta doesnt store particle sizes -> new field in domainsettings
+				pa->size /= 10.0f;
+
+				// set particle position
+				pa->state.co[0] = liquid_get_particle_position_x_at(sds->fluid, p);
+				pa->state.co[1] = liquid_get_particle_position_y_at(sds->fluid, p);
+				pa->state.co[2] = liquid_get_particle_position_z_at(sds->fluid, p);
+
+//				printf("pa->state.co[0]: %f, pa->state.co[1]: %f, pa->state.co[2]: %f\n", pa->state.co[0], pa->state.co[1], pa->state.co[2]);
+
+				// set particle velocity
+				pa->state.vel[0] = 1; // TODO (sebbas): manta store particle velocities in separate pvel vector.
+				pa->state.vel[1] = 1;
+				pa->state.vel[2] = 1;
+
+				// set default angular velocity and particle rotation
+				zero_v3(pa->state.ave);
+				unit_qt(pa->state.rot);
+
+				pa->time = 1.f;
+				pa->dietime = sim->scene->r.efra + 1;
+				pa->lifetime = sim->scene->r.efra;
+				pa->alive = PARS_ALIVE;
+
+				fileParts++;
+			}
+
+			totpart = psys->totpart = activeParts;
+
+		} // manta sim particles done
+	}
+#else
+	UNUSED_VARS(use_render_params);
+#endif // WITH_MANTA
+}
+
 static void particles_fluid_step(ParticleSimulationData *sim, int UNUSED(cfra), const bool use_render_params)
 {	
 	ParticleSystem *psys = sim->psys;
@@ -4247,6 +4327,11 @@ void particle_system_update(Scene *scene, Object *ob, ParticleSystem *psys, cons
 		case PART_FLUID:
 		{
 			particles_fluid_step(&sim, (int)cfra, use_render_params);
+			break;
+		}
+		case PART_MANTA:
+		{
+			particles_manta_step(&sim, (int)cfra, use_render_params);
 			break;
 		}
 		default:
