@@ -285,6 +285,10 @@ const std::string liquid_save_mesh_high = "\n\
 def save_mesh_high_$ID$(path):\n\
     mesh_xl$ID$.save(path)\n";
 
+const std::string liquid_save_particles_low = "\n\
+def save_particles_low_$ID$(path):\n\
+    pp_s$ID$.save(path)\n";
+
 const std::string liquid_import_low = "\n\
 def load_liquid_data_low_$ID$(path):\n\
     flags_s$ID$.load(os.path.join(path, 'flags_s$ID$.uni'))\n\

@@ -75,7 +75,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mConstantScaling    = 64.0f / mMaxRes;
 	mConstantScaling    = (mConstantScaling < 1.0f) ? 1.0f : mConstantScaling;
 	mTotalCells         = mResX * mResY * mResZ;
-	
+
 	// Smoke low res grids
 	mDensity        = NULL;
 	mHeat           = NULL;
@@ -95,7 +95,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mColorG         = NULL;
 	mColorB         = NULL;
 	mObstacle       = NULL;
-	
+
 	// Smoke high res grids
 	mDensityHigh    = NULL;
 	mFlameHigh      = NULL;
@@ -110,12 +110,12 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mTextureU2      = NULL;
 	mTextureV2      = NULL;
 	mTextureW2      = NULL;
-	
+
 	// Liquid low res grids
 	mPhiIn          = NULL;
 	mPhiObs         = NULL;
 	mPhiOut         = NULL;
-	
+
 	mNumVertices  = 0;
 	mNumNormals   = 0;
 	mNumTriangles = 0;
@@ -326,6 +326,7 @@ void FLUID::initLiquid(SmokeModifierData *smd)
 			+ liquid_bounds_low
 			+ liquid_init_phi
 			+ liquid_save_mesh_low
+			+ liquid_save_particles_low
 			+ liquid_export_low
 			+ liquid_import_low
 			+ liquid_adaptive_step
@@ -388,7 +389,7 @@ FLUID::~FLUID()
 
 	tmpString += liquid_delete_variables_high;
 	tmpString += liquid_delete_grids_high;
-	
+
 	// Smoke
 	tmpString += smoke_delete_variables_low;
 	tmpString += smoke_delete_grids_low;
@@ -411,7 +412,7 @@ FLUID::~FLUID()
 	// Solvers always have to be the last objects to be deleted
 	tmpString += fluid_delete_solver_low;
 	if (mUsingHighRes) tmpString += fluid_delete_solver_high;
-	
+
 	// Just in case: gc again
 	tmpString += gc_collect;
 
@@ -1096,6 +1097,19 @@ void FLUID::saveMeshHigh(char *filename)
 	save_mesh_high <<  "save_mesh_high_" << mCurrentID << "(r'" << path << "')";
 	mCommands.push_back(save_mesh_high.str());
 	
+	runPythonString(mCommands);
+}
+
+void FLUID::saveParticles(char* filename)
+{
+	std::string path(filename);
+
+	mCommands.clear();
+	std::ostringstream save_particles_low;
+
+	save_particles_low << "save_particles_low_" << mCurrentID << "(r'" << path << "')";
+	mCommands.push_back(save_particles_low.str());
+
 	runPythonString(mCommands);
 }
 

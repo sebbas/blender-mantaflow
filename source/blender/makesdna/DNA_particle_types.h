@@ -356,6 +356,7 @@ typedef enum eParticleDrawFlag {
 //#define PART_REACTOR		1
 #define PART_HAIR			2
 #define PART_FLUID			3
+#define PART_MANTA			4
 
 /* part->flag */
 #define PART_REACT_STA_END	1

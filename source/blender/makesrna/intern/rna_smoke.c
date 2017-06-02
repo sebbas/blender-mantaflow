@@ -129,6 +129,12 @@ static EnumPropertyItem *rna_Smoke_cachetype_itemf(
 		tmp.name = "Object files";
 		tmp.description = "Obj file format";
 		RNA_enum_item_add(&item, &totitem, &tmp);
+
+		tmp.value = PTCACHE_FILE_PARTICLE;
+		tmp.identifier = "PARTICLE";
+		tmp.name = "FLIP particles";
+		tmp.description = "Uni file format";
+		RNA_enum_item_add(&item, &totitem, &tmp);
 	}
 
 	RNA_enum_item_end(&item, &totitem);

@@ -1242,17 +1242,40 @@ static int ptcache_liquid_read(void *smoke_v, char *filename, char *pathname)
 		liquid_load_data(sds->fluid, pathname);
 		
 		if (sds->flags & MOD_SMOKE_HIGHRES) {
-			
+			liquid_load_data_high(sds->fluid, pathname);
+		}
+		liquid_update_mesh_data(sds->fluid, filename);
+		return 1;
+	}
+	return 0;
+}
+
+static int ptcache_mantaparticle_read(void *smoke_v, char *filename, char *pathname)
+{
+	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
+	int i;
+
+	if (!smd) {
+		return 0;
+	}
+
+	SmokeDomainSettings *sds = smd->domain;
+
+	if (sds->fluid) {
+		liquid_load_data(sds->fluid, pathname);
+
+		if (sds->flags & MOD_SMOKE_HIGHRES) {
+
 			i = strlen(filename);
 			/* remove .bobj.gz ...*/
 			if (i > 8)
 				filename[i-8] = '\0';
 			/* ... and add _HIGH.bobj.gz ending */
 			strcat(filename, "_HIGH.bobj.gz");
-			
+
 			liquid_load_data_high(sds->fluid, pathname);
 		}
-		liquid_update_mesh_data(sds->fluid, filename);
+		liquid_update_particle_data(sds->fluid, filename);
 		return 1;
 	}
 	return 0;
@@ -1288,6 +1311,32 @@ static int ptcache_liquid_write(void *smoke_v, char *filename, char* pathname)
 		/* After writing mesh data make sure that fields in fluid object
 		 * are up-to-date (necessary for instant replay functionality) */
 		liquid_update_mesh_data(sds->fluid, filename);
+		return 1;
+	}
+	return 0;
+}
+
+static int ptcache_mantaparticle_write(void *smoke_v, char *filename, char* pathname)
+{
+	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
+	int i;
+
+	if (!smd) {
+		return 0;
+	}
+
+	SmokeDomainSettings *sds = smd->domain;
+
+	if (sds->fluid) {
+		liquid_save_particles(sds->fluid, filename);
+		liquid_save_data(sds->fluid, pathname);
+
+		if (sds->flags & MOD_SMOKE_HIGHRES) {
+			liquid_save_data_high(sds->fluid, pathname);
+		}
+		/* After writing particle data make sure that fields in fluid object
+		 * are up-to-date (necessary for instant replay functionality) */
+		liquid_update_particle_data(sds->fluid, filename);
 		return 1;
 	}
 	return 0;
@@ -1575,7 +1624,7 @@ void BKE_ptcache_id_from_particles(PTCacheID *pid, Object *ob, ParticleSystem *p
 	pid->totwrite				= ptcache_particle_totwrite;
 	pid->error					= ptcache_particle_error;
 
-	pid->write_point				= ptcache_particle_write;
+	pid->write_point			= ptcache_particle_write;
 	pid->read_point				= ptcache_particle_read;
 	pid->interpolate_point		= ptcache_particle_interpolate;
 
@@ -1587,6 +1636,9 @@ void BKE_ptcache_id_from_particles(PTCacheID *pid, Object *ob, ParticleSystem *p
 	
 	pid->write_liquid_stream	= NULL;
 	pid->read_liquid_stream		= NULL;
+
+	pid->write_particle_stream	= NULL;
+	pid->read_particle_stream	= NULL;
 
 	pid->write_extra_data		= NULL;
 	pid->read_extra_data		= NULL;
@@ -1648,6 +1700,9 @@ void BKE_ptcache_id_from_cloth(PTCacheID *pid, Object *ob, ClothModifierData *cl
 	pid->write_liquid_stream	= NULL;
 	pid->read_liquid_stream		= NULL;
 
+	pid->write_liquid_stream	= NULL;
+	pid->read_liquid_stream		= NULL;
+
 	pid->write_extra_data		= NULL;
 	pid->read_extra_data		= NULL;
 	pid->interpolate_extra_data	= NULL;
@@ -1700,6 +1755,9 @@ void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct SmokeMo
 		
 		pid->write_liquid_stream	= ptcache_liquid_write;
 		pid->read_liquid_stream		= ptcache_liquid_read;
+
+		pid->write_particle_stream	= ptcache_mantaparticle_write;
+		pid->read_particle_stream	= ptcache_mantaparticle_read;
 	}
 
 	pid->write_openvdb_stream	= ptcache_smoke_openvdb_write;
@@ -1912,6 +1970,8 @@ static const char *ptcache_file_extension(const PTCacheID *pid)
 			return ".vdb";
 		case PTCACHE_FILE_LIQUID:
 			return ".bobj.gz";
+		case PTCACHE_FILE_PARTICLE:
+			return ".uni";
 	}
 }
 
@@ -2714,6 +2774,29 @@ static int ptcache_read_liquid_stream(PTCacheID *pid, int cfra)
 	return 1;
 }
 
+static int ptcache_read_particle_stream(PTCacheID *pid, int cfra)
+{
+	char filename[FILE_MAX * 2];
+	char pathname[FILE_MAX * 2];
+
+	/* save blend file before using disk pointcache */
+	if (!G.relbase_valid && (pid->cache->flag & PTCACHE_EXTERNAL) == 0)
+		return 0;
+
+	ptcache_filename(pid, filename, cfra, 1, 1);
+	ptcache_path(pid, pathname);
+
+	if (!BLI_exists(filename)) {
+		return 0;
+	}
+
+	if (!pid->read_particle_stream(pid->calldata, filename, pathname)) {
+		return 0;
+	}
+
+	return 1;
+}
+
 static int ptcache_read(PTCacheID *pid, int cfra)
 {
 	PTCacheMem *pm = NULL;
@@ -2872,6 +2955,11 @@ int BKE_ptcache_read(PTCacheID *pid, float cfra, bool no_extrapolate_old)
 				return 0;
 			}
 		}
+		else if (pid->file_type == PTCACHE_FILE_PARTICLE && pid->read_particle_stream) {
+			if (!ptcache_read_particle_stream(pid, cfra1)) {
+				return 0;
+			}
+		}
 		else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->read_stream) {
 			if (!ptcache_read_stream(pid, cfra1))
 				return 0;
@@ -2997,6 +3085,25 @@ static int ptcache_write_liquid_stream(PTCacheID *pid, int cfra)
 	if (error && G.debug & G_DEBUG)
 		printf("Error writing to disk cache\n");
 	
+	return error == 0;
+}
+static int ptcache_write_particle_stream(PTCacheID *pid, int cfra)
+{
+	char filename[FILE_MAX * 2];
+	char pathname[FILE_MAX * 2];
+
+	BKE_ptcache_id_clear(pid, PTCACHE_CLEAR_FRAME, cfra);
+
+	ptcache_filename(pid, filename, cfra, 1, 1);
+	ptcache_path(pid, pathname);
+
+	BLI_make_existing_file(filename);
+
+	int error = pid->write_particle_stream(pid->calldata, filename, pathname);
+
+	if (error && G.debug & G_DEBUG)
+		printf("Error writing to disk cache\n");
+
 	return error == 0;
 }
 static int ptcache_write(PTCacheID *pid, int cfra, int overwrite)
@@ -3136,6 +3243,10 @@ int BKE_ptcache_write(PTCacheID *pid, unsigned int cfra)
 	else if (pid->file_type == PTCACHE_FILE_LIQUID && pid->write_liquid_stream) {
 		printf("write liquid\n");
 		ptcache_write_liquid_stream(pid, cfra);
+	}
+	else if (pid->file_type == PTCACHE_FILE_PARTICLE && pid->write_particle_stream) {
+		printf("write liquid\n");
+		ptcache_write_particle_stream(pid, cfra);
 	}
 	else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->write_stream) {
 		printf("write smoke\n");

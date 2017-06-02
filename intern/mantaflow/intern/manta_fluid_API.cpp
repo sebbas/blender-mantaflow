@@ -500,6 +500,13 @@ extern "C" void liquid_save_mesh(FLUID *liquid, char *filename)
 	}
 }
 
+extern "C" void liquid_save_particles(FLUID *liquid, char *filename)
+{
+	if (liquid) {
+		liquid->saveParticles(filename);
+	}
+}
+
 extern "C" void liquid_save_mesh_high(FLUID *liquid, char *filename)
 {
 	if (liquid) {
@@ -595,9 +602,39 @@ extern "C" float liquid_get_triangle_z_at(FLUID *liquid, int i)
 	return liquid->getTriangleZAt(i);
 }
 
+extern "C" int liquid_get_num_particles(FLUID *liquid)
+{
+	return liquid->getNumParticles();
+}
+
+extern "C" int liquid_get_particle_flag_at(FLUID *liquid, int i)
+{
+	return liquid->getParticleFlagAt(i);
+}
+
+extern "C" float liquid_get_particle_position_x_at(FLUID *liquid, int i)
+{
+	return liquid->getParticlePositionXAt(i);
+}
+
+extern "C" float liquid_get_particle_position_y_at(FLUID *liquid, int i)
+{
+	return liquid->getParticlePositionYAt(i);
+}
+
+extern "C" float liquid_get_particle_position_z_at(FLUID *liquid, int i)
+{
+	return liquid->getParticlePositionZAt(i);
+}
+
 extern "C" void liquid_update_mesh_data(FLUID *liquid, char* filename)
 {
 	liquid->updateMeshData(filename);
+}
+
+extern "C" void liquid_update_particle_data(FLUID *liquid, char* filename)
+{
+	liquid->updateParticleData(filename);
 }
 
 extern "C" void liquid_manta_export(FLUID* liquid, SmokeModifierData *smd)

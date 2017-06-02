@@ -70,6 +70,9 @@ public:
 	void saveSmokeData(char *pathname);
 	void saveSmokeDataHigh(char *pathname);
 
+	// Write files for particles
+	void saveParticles(char* filename);
+
 	// Load files for liquids
 	void loadLiquidData(char *pathname);
 	void loadLiquidDataHigh(char *pathname);
@@ -144,6 +147,13 @@ public:
 	inline int getTriangleYAt(int i) { return mTrianglesY[i]; }
 	inline int getTriangleZAt(int i) { return mTrianglesZ[i]; }
 	
+	// Particle getters
+	inline int   getNumParticles()             { return mNumParticles; }
+	inline int   getParticleFlagAt(int i)      { return mParticleFlags[i]; }
+	inline float getParticlePositionXAt(int i) { return mParticlePositionsX[i]; }
+	inline float getParticlePositionYAt(int i) { return mParticlePositionsY[i]; }
+	inline float getParticlePositionZAt(int i) { return mParticlePositionsZ[i]; }
+
 	void updateMeshData(const char* filename);
 	void updateParticleData(const char* filename);
 

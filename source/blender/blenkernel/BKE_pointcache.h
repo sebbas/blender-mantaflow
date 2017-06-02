@@ -126,6 +126,7 @@ enum {
 	PTCACHE_FILE_PTCACHE = 0,
 	PTCACHE_FILE_OPENVDB = 1,
 	PTCACHE_FILE_LIQUID = 2,
+	PTCACHE_FILE_PARTICLE = 3,
 };
 
 typedef struct PTCacheID {
@@ -146,25 +147,30 @@ typedef struct PTCacheID {
 
 	/* copies point data to cache data */
 	int (*write_point)(int index, void *calldata, void **data, int cfra);
-	/* copies cache cata to point data */
+	/* copies cache data to point data */
 	void (*read_point)(int index, void *calldata, void **data, float cfra, float *old_data);
 	/* interpolated between previously read point data and cache data */
 	void (*interpolate_point)(int index, void *calldata, void **data, float cfra, float cfra1, float cfra2, float *old_data);
 
 	/* copies point data to cache data */
 	int (*write_stream)(PTCacheFile *pf, void *calldata);
-	/* copies cache cata to point data */
+	/* copies cache data to point data */
 	int (*read_stream)(PTCacheFile *pf, void *calldata);
 
 	/* copies point data to cache data */
 	int (*write_openvdb_stream)(struct OpenVDBWriter *writer, void *calldata);
-	/* copies cache cata to point data */
+	/* copies cache data to point data */
 	int (*read_openvdb_stream)(struct OpenVDBReader *reader, void *calldata);
 	
-	/* copies point data to cache data */
+	/* copies mesj data to cache data */
 	int (*write_liquid_stream)(void *calldata, char *filename, char *pathname);
-	/* copies cache cata to point data */
+	/* copies cache data to mesh data */
 	int (*read_liquid_stream)(void *calldata, char *filename, char *pathname);
+
+	/* copies point data to cache data */
+	int (*write_particle_stream)(void *calldata, char *filename, char *pathname);
+	/* copies cache data to point data */
+	int (*read_particle_stream)(void *calldata, char *filename, char *pathname);
 
 	/* copies custom extradata to cache data */
 	void (*write_extra_data)(void *calldata, struct PTCacheMem *pm, int cfra);
