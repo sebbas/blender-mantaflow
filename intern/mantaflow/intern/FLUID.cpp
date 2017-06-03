@@ -49,10 +49,13 @@
 
 std::atomic<bool> FLUID::mantaInitialized(false);
 std::atomic<int> FLUID::solverID(0);
+int FLUID::DEBUG(0);
 
 FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 {
-	std::cout << "FLUID: " << mCurrentID << std::endl;
+	if (DEBUG)
+		std::cout << "FLUID: " << mCurrentID << std::endl;
+
 	smd->domain->fluid = this;
 	smd->domain->manta_solver_res = 3; // Why do we need to set this explicitly? When not set, fluidsolver throws exception (occurs when loading a new .blend file)
 	
@@ -188,6 +191,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 void FLUID::initDomain(SmokeModifierData *smd)
 {
 	std::string tmpString = manta_import
+		+ manta_debuglevel
 		+ fluid_variables_low
 		+ fluid_solver_low
 		+ fluid_adaptive_time_stepping_low;
@@ -195,6 +199,10 @@ void FLUID::initDomain(SmokeModifierData *smd)
 	mCommands.clear();
 	mCommands.push_back(finalString);
 	
+	// Set manta debug level
+	std::ostringstream debuglevel;
+	debuglevel <<  "set_manta_debuglevel(" << DEBUG << ")";
+	mCommands.push_back(debuglevel.str());
 	runPythonString(mCommands);
 }
 
@@ -374,7 +382,8 @@ void FLUID::step(int framenr)
 
 FLUID::~FLUID()
 {
-	std::cout << "FLUID: " << mCurrentID << std::endl;
+	if (DEBUG)
+		std::cout << "FLUID: " << mCurrentID << std::endl;
 
 	// Destruction string for Python
 	std::string tmpString = "";
@@ -492,7 +501,9 @@ void FLUID::runPythonString(std::vector<std::string> commands)
 
 void FLUID::initializeMantaflow()
 {
-	std::cout << "Initializing  Mantaflow" << std::endl;
+	if (DEBUG)
+		std::cout << "Initializing  Mantaflow" << std::endl;
+
 	std::string filename = "manta_scene_" + std::to_string(mCurrentID) + ".py";
 	std::vector<std::string> fill = std::vector<std::string>();
 	
@@ -506,7 +517,8 @@ void FLUID::initializeMantaflow()
 
 void FLUID::terminateMantaflow()
 {
-	std::cout << "Terminating Mantaflow" << std::endl;
+	if (DEBUG)
+		std::cout << "Terminating Mantaflow" << std::endl;
 
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 	Pb::finalize();  // Namespace from Mantaflow (registry)
@@ -860,7 +872,8 @@ void FLUID::updateMeshData(const char* filename)
 	mNumVertices = 0;
 	gzread(gzf, &mNumVertices, sizeof(int));
 	
-	std::cout << "read mesh , verts " << mNumVertices << std::endl;
+	if (DEBUG)
+		std::cout << "read mesh , num verts: " << mNumVertices << std::endl;
 
 	if (mNumVertices)
 	{
@@ -955,7 +968,8 @@ void FLUID::updateParticleData(const char* filename)
 	gzread(gzf, &info, sizeof(info));
 	gzread(gzf, &timestamp, sizeof(unsigned long long));
 
-	std::cout << "num particles: " << mNumParticles << std::endl;
+	if (DEBUG)
+		std::cout << "read particles , num particles " << mNumParticles << std::endl;
 
 	// Sanity check
 	const int partSysSize = sizeof(float) * 3 + sizeof(int);
@@ -987,7 +1001,9 @@ void FLUID::updateParticleData(const char* filename)
 
 void FLUID::updatePointers()
 {
-	std::cout << "Updating pointers low res, ID: " << mCurrentID << std::endl;
+	if (DEBUG)
+		std::cout << "Updating pointers low res, ID: " << mCurrentID << std::endl;
+
 	std::string id = std::to_string(mCurrentID);
 	std::string solver = "s" + id;
 	std::string solver_ext = "_" + solver;
@@ -1038,7 +1054,9 @@ void FLUID::updatePointers()
 
 void FLUID::updatePointersHigh()
 {
-	std::cout << "Updating pointers high res" << std::endl;
+	if (DEBUG)
+		std::cout << "Updating pointers high res" << std::endl;
+
 	std::string id = std::to_string(mCurrentID);
 	std::string solver = "s" + id;
 	std::string solver_ext = "_" + solver;

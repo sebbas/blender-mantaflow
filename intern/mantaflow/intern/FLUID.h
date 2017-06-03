@@ -129,6 +129,7 @@ public:
 	
 	static std::atomic<bool> mantaInitialized;
 	static std::atomic<int> solverID;
+	static int DEBUG; // on or off (1 or 0), also sets manta debug level
 	
 	// Liquid getters
 	inline int getNumVertices()  { return mNumVertices; }
