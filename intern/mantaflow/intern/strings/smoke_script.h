@@ -381,109 +381,109 @@ def update_flame_high_$ID$():\n\
 
 const std::string smoke_import_low = "\n\
 def load_smoke_data_low_$ID$(path):\n\
-    density_s$ID$.load(os.path.join(path, 'density_s$ID$.uni'))\n\
-    flags_s$ID$.load(os.path.join(path, 'flags_s$ID$.uni'))\n\
-    vel_s$ID$.load(os.path.join(path, 'vel_s$ID$.uni'))\n\
-    obvel_s$ID$.load(os.path.join(path, 'obvel_s$ID$.uni'))\n\
-    pressure_s$ID$.load(os.path.join(path, 'pressure_s$ID$.uni'))\n\
-    forces_s$ID$.load(os.path.join(path, 'forces_s$ID$.uni'))\n\
-    x_force_s$ID$.load(os.path.join(path, 'x_force_s$ID$.uni'))\n\
-    y_force_s$ID$.load(os.path.join(path, 'y_force_s$ID$.uni'))\n\
-    z_force_s$ID$.load(os.path.join(path, 'z_force_s$ID$.uni'))\n\
-    inflow_s$ID$.load(os.path.join(path, 'inflow_s$ID$.uni'))\n\
-    x_vel_s$ID$.load(os.path.join(path, 'x_vel_s$ID$.uni'))\n\
-    y_vel_s$ID$.load(os.path.join(path, 'y_vel_s$ID$.uni'))\n\
-    z_vel_s$ID$.load(os.path.join(path, 'z_vel_s$ID$.uni'))\n\
-    x_obvel_s$ID$.load(os.path.join(path, 'x_obvel_s$ID$.uni'))\n\
-    y_obvel_s$ID$.load(os.path.join(path, 'y_obvel_s$ID$.uni'))\n\
-    z_obvel_s$ID$.load(os.path.join(path, 'z_obvel_s$ID$.uni'))\n\
-    phiObsIn_s$ID$.load(os.path.join(path, 'phiObsIn_s$ID$.uni'))\n\
-    phiOut_s$ID$.load(os.path.join(path, 'phiOut_s$ID$.uni'))\n\
-    numObs_s$ID$.load(os.path.join(path, 'numObs_s$ID$.uni'))\n\
+    density_s$ID$.load(path + '_density.uni')\n\
+    flags_s$ID$.load(path + '_flags.uni')\n\
+    vel_s$ID$.load(path + '_vel.uni')\n\
+    obvel_s$ID$.load(path + '_obvel.uni')\n\
+    pressure_s$ID$.load(path + '_pressure.uni')\n\
+    forces_s$ID$.load(path + '_forces.uni')\n\
+    x_force_s$ID$.load(path + '_x_force.uni')\n\
+    y_force_s$ID$.load(path + '_y_force.uni')\n\
+    z_force_s$ID$.load(path + '_z_force.uni')\n\
+    inflow_s$ID$.load(path + '_inflow.uni')\n\
+    x_vel_s$ID$.load(path + '_x_vel.uni')\n\
+    y_vel_s$ID$.load(path + '_y_vel.uni')\n\
+    z_vel_s$ID$.load(path + '_z_vel.uni')\n\
+    x_obvel_s$ID$.load(path + '_x_obvel.uni')\n\
+    y_obvel_s$ID$.load(path + '_y_obvel.uni')\n\
+    z_obvel_s$ID$.load(path + '_z_obvel.uni')\n\
+    phiObsIn_s$ID$.load(path + '_phiObsIn.uni')\n\
+    phiOut_s$ID$.load(path + '_phiOut.uni')\n\
+    numObs_s$ID$.load(path + '_numObs.uni')\n\
     if using_colors_s$ID$:\n\
-        color_r_s$ID$.load(os.path.join(path, 'color_r_s$ID$.uni'))\n\
-        color_g_s$ID$.load(os.path.join(path, 'color_g_s$ID$.uni'))\n\
-        color_b_s$ID$.load(os.path.join(path, 'color_b_s$ID$.uni'))\n\
+        color_r_s$ID$.load(path + '_color_r.uni')\n\
+        color_g_s$ID$.load(path + '_color_g.uni')\n\
+        color_b_s$ID$.load(path + '_color_b.uni')\n\
     if using_heat_s$ID$:\n\
-        heat_s$ID$.load(os.path.join(path, 'heat_s$ID$.uni'))\n\
+        heat_s$ID$.load(path + '_heat.uni')\n\
     if using_fire_s$ID$:\n\
-        flame_s$ID$.load(os.path.join(path, 'flame_s$ID$.uni'))\n\
-        fuel_s$ID$.load(os.path.join(path, 'fuel_s$ID$.uni'))\n\
-        react_s$ID$.load(os.path.join(path, 'react_s$ID$.uni'))\n";
+        flame_s$ID$.load(path + '_flame.uni')\n\
+        fuel_s$ID$.load(path + '_fuel.uni')\n\
+        react_s$ID$.load(path + '_react.uni')\n";
 
 const std::string smoke_import_high = "\n\
 def load_smoke_data_high_$ID$(path):\n\
-    density_xl$ID$.load(os.path.join(path, 'density_xl$ID$.uni'))\n\
-    flags_xl$ID$.load(os.path.join(path, 'flags_xl$ID$.uni'))\n\
+    density_xl$ID$.load(path + '_density_xl.uni')\n\
+    flags_xl$ID$.load(path + '_flags_xl.uni')\n\
     \n\
-    texture_u_s$ID$.load(os.path.join(path, 'texture_u_s$ID$.uni'))\n\
-    texture_v_s$ID$.load(os.path.join(path, 'texture_v_s$ID$.uni'))\n\
-    texture_w_s$ID$.load(os.path.join(path, 'texture_w_s$ID$.uni'))\n\
-    texture_u2_s$ID$.load(os.path.join(path, 'texture_u2_s$ID$.uni'))\n\
-    texture_v2_s$ID$.load(os.path.join(path, 'texture_v2_s$ID$.uni'))\n\
-    texture_w2_s$ID$.load(os.path.join(path, 'texture_w2_s$ID$.uni'))\n\
+    texture_u_s$ID$.load(path + '_texture_u.uni')\n\
+    texture_v_s$ID$.load(path + '_texture_v.uni')\n\
+    texture_w_s$ID$.load(path + '_texture_w.uni')\n\
+    texture_u2_s$ID$.load(path + '_texture_u2.uni')\n\
+    texture_v2_s$ID$.load(path + '_texture_v2.uni')\n\
+    texture_w2_s$ID$.load(path + '_texture_w2.uni')\n\
     \n\
     if using_colors_s$ID$:\n\
-        color_r_xl$ID$.load(os.path.join(path, 'color_r_xl$ID$.uni'))\n\
-        color_g_xl$ID$.load(os.path.join(path, 'color_g_xl$ID$.uni'))\n\
-        color_b_xl$ID$.load(os.path.join(path, 'color_b_xl$ID$.uni'))\n\
+        color_r_xl$ID$.load(path + '_color_r_xl.uni')\n\
+        color_g_xl$ID$.load(path + '_color_g_xl.uni')\n\
+        color_b_xl$ID$.load(path + '_color_b_xl.uni')\n\
     if using_fire_s$ID$:\n\
-        flame_xl$ID$.load(os.path.join(path, 'flame_xl$ID$.uni'))\n\
-        fuel_xl$ID$.load(os.path.join(path, 'fuel_xl$ID$.uni'))\n\
-        react_xl$ID$.load(os.path.join(path, 'react_xl$ID$.uni'))\n";
+        flame_xl$ID$.load(path + '_flame_xl.uni')\n\
+        fuel_xl$ID$.load(path + '_fuel_xl.uni')\n\
+        react_xl$ID$.load(path + '_react_xl.uni')\n";
 
 const std::string smoke_export_low = "\n\
 def save_smoke_data_low_$ID$(path):\n\
-    density_s$ID$.save(os.path.join(path, 'density_s$ID$.uni'))\n\
-    flags_s$ID$.save(os.path.join(path, 'flags_s$ID$.uni'))\n\
-    vel_s$ID$.save(os.path.join(path, 'vel_s$ID$.uni'))\n\
-    obvel_s$ID$.save(os.path.join(path, 'obvel_s$ID$.uni'))\n\
-    pressure_s$ID$.save(os.path.join(path, 'pressure_s$ID$.uni'))\n\
-    forces_s$ID$.save(os.path.join(path, 'forces_s$ID$.uni'))\n\
-    x_force_s$ID$.save(os.path.join(path, 'x_force_s$ID$.uni'))\n\
-    y_force_s$ID$.save(os.path.join(path, 'y_force_s$ID$.uni'))\n\
-    z_force_s$ID$.save(os.path.join(path, 'z_force_s$ID$.uni'))\n\
-    inflow_s$ID$.save(os.path.join(path, 'inflow_s$ID$.uni'))\n\
-    x_vel_s$ID$.save(os.path.join(path, 'x_vel_s$ID$.uni'))\n\
-    y_vel_s$ID$.save(os.path.join(path, 'y_vel_s$ID$.uni'))\n\
-    z_vel_s$ID$.save(os.path.join(path, 'z_vel_s$ID$.uni'))\n\
-    x_obvel_s$ID$.save(os.path.join(path, 'x_obvel_s$ID$.uni'))\n\
-    y_obvel_s$ID$.save(os.path.join(path, 'y_obvel_s$ID$.uni'))\n\
-    z_obvel_s$ID$.save(os.path.join(path, 'z_obvel_s$ID$.uni'))\n\
-    phiObsIn_s$ID$.save(os.path.join(path, 'phiObsIn_s$ID$.uni'))\n\
-    phiOut_s$ID$.save(os.path.join(path, 'phiOut_s$ID$.uni'))\n\
-    numObs_s$ID$.save(os.path.join(path, 'numObs_s$ID$.uni'))\n\
+    density_s$ID$.save(path + '_density.uni')\n\
+    flags_s$ID$.save(path + '_flags.uni')\n\
+    vel_s$ID$.save(path + '_vel.uni')\n\
+    obvel_s$ID$.save(path + '_obvel.uni')\n\
+    pressure_s$ID$.save(path + '_pressure.uni')\n\
+    forces_s$ID$.save(path + '_forces.uni')\n\
+    x_force_s$ID$.save(path + '_x_force.uni')\n\
+    y_force_s$ID$.save(path + '_y_force.uni')\n\
+    z_force_s$ID$.save(path + '_z_force.uni')\n\
+    inflow_s$ID$.save(path + '_inflow.uni')\n\
+    x_vel_s$ID$.save(path + '_x_vel.uni')\n\
+    y_vel_s$ID$.save(path + '_y_vel.uni')\n\
+    z_vel_s$ID$.save(path + '_z_vel.uni')\n\
+    x_obvel_s$ID$.save(path + '_x_obvel.uni')\n\
+    y_obvel_s$ID$.save(path + '_y_obvel.uni')\n\
+    z_obvel_s$ID$.save(path + '_z_obvel.uni')\n\
+    phiObsIn_s$ID$.save(path + '_phiObsIn.uni')\n\
+    phiOut_s$ID$.save(path + '_phiOut.uni')\n\
+    numObs_s$ID$.save(path + '_numObs.uni')\n\
     if using_colors_s$ID$:\n\
-        color_r_s$ID$.save(os.path.join(path, 'color_r_s$ID$.uni'))\n\
-        color_g_s$ID$.save(os.path.join(path, 'color_g_s$ID$.uni'))\n\
-        color_b_s$ID$.save(os.path.join(path, 'color_b_s$ID$.uni'))\n\
+        color_r_s$ID$.save(path + '_color_r.uni')\n\
+        color_g_s$ID$.save(path + '_color_g.uni')\n\
+        color_b_s$ID$.save(path + '_color_b.uni')\n\
     if using_heat_s$ID$:\n\
-        heat_s$ID$.save(os.path.join(path, 'heat_s$ID$.uni'))\n\
+        heat_s$ID$.save(path + '_heat.uni')\n\
     if using_fire_s$ID$:\n\
-        flame_s$ID$.save(os.path.join(path, 'flame_s$ID$.uni'))\n\
-        fuel_s$ID$.save(os.path.join(path, 'fuel_s$ID$.uni'))\n\
-        react_s$ID$.save(os.path.join(path, 'react_s$ID$.uni'))\n";
+        flame_s$ID$.save(path + '_flame.uni')\n\
+        fuel_s$ID$.save(path + '_fuel.uni')\n\
+        react_s$ID$.save(path + '_react.uni')\n";
 
 const std::string smoke_export_high = "\n\
 def save_smoke_data_high_$ID$(path):\n\
-    density_xl$ID$.save(os.path.join(path, 'density_xl$ID$.uni'))\n\
-    flags_xl$ID$.save(os.path.join(path, 'flags_xl$ID$.uni'))\n\
+    density_xl$ID$.save(path + '_density_xl.uni')\n\
+    flags_xl$ID$.save(path + '_flags_xl.uni')\n\
     \n\
-    texture_u_s$ID$.save(os.path.join(path, 'texture_u_s$ID$.uni'))\n\
-    texture_v_s$ID$.save(os.path.join(path, 'texture_v_s$ID$.uni'))\n\
-    texture_w_s$ID$.save(os.path.join(path, 'texture_w_s$ID$.uni'))\n\
-    texture_u2_s$ID$.save(os.path.join(path, 'texture_u2_s$ID$.uni'))\n\
-    texture_v2_s$ID$.save(os.path.join(path, 'texture_v2_s$ID$.uni'))\n\
-    texture_w2_s$ID$.save(os.path.join(path, 'texture_w2_s$ID$.uni'))\n\
+    texture_u_s$ID$.save(path + '_texture_u.uni')\n\
+    texture_v_s$ID$.save(path + '_texture_v.uni')\n\
+    texture_w_s$ID$.save(path + '_texture_w.uni')\n\
+    texture_u2_s$ID$.save(path + '_texture_u2.uni')\n\
+    texture_v2_s$ID$.save(path + '_texture_v2.uni')\n\
+    texture_w2_s$ID$.save(path + '_texture_w2.uni')\n\
     \n\
     if using_colors_s$ID$:\n\
-        color_r_xl$ID$.save(os.path.join(path, 'color_r_xl$ID$.uni'))\n\
-        color_g_xl$ID$.save(os.path.join(path, 'color_g_xl$ID$.uni'))\n\
-        color_b_xl$ID$.save(os.path.join(path, 'color_b_xl$ID$.uni'))\n\
+        color_r_xl$ID$.save(path + '_color_r_xl.uni')\n\
+        color_g_xl$ID$.save(path + '_color_g_xl.uni')\n\
+        color_b_xl$ID$.save(path + '_color_b_xl.uni')\n\
     if using_fire_s$ID$:\n\
-        flame_xl$ID$.save(os.path.join(path, 'flame_xl$ID$.uni'))\n\
-        fuel_xl$ID$.save(os.path.join(path, 'fuel_xl$ID$.uni'))\n\
-        react_xl$ID$.save(os.path.join(path, 'react_xl$ID$.uni'))\n";
+        flame_xl$ID$.save(path + '_flame_xl.uni')\n\
+        fuel_xl$ID$.save(path + '_fuel_xl.uni')\n\
+        react_xl$ID$.save(path + '_react_xl.uni')\n";
 
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION

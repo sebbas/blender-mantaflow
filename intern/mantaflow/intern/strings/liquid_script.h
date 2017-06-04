@@ -291,83 +291,83 @@ def save_particles_low_$ID$(path):\n\
 
 const std::string liquid_import_low = "\n\
 def load_liquid_data_low_$ID$(path):\n\
-    flags_s$ID$.load(os.path.join(path, 'flags_s$ID$.uni'))\n\
+    flags_s$ID$.load(path + '_flags.uni')\n\
     \n\
-    phiParts_s$ID$.load(os.path.join(path, 'phiParts_s$ID$.uni'))\n\
-    phi_s$ID$.load(os.path.join(path, 'phi_s$ID$.uni'))\n\
-    phiIn_s$ID$.load(os.path.join(path, 'phiIn_s$ID$.uni'))\n\
-    phiObs_s$ID$.load(os.path.join(path, 'phiObs_s$ID$.uni'))\n\
-    phiObsIn_s$ID$.load(os.path.join(path, 'phiObsIn_s$ID$.uni'))\n\
-    phiOut_s$ID$.load(os.path.join(path, 'phiOut_s$ID$.uni'))\n\
-    fractions_s$ID$.load(os.path.join(path, 'fractions_s$ID$.uni'))\n\
-    pressure_s$ID$.load(os.path.join(path, 'pressure_s$ID$.uni'))\n\
+    phiParts_s$ID$.load(path + '_phiParts.uni')\n\
+    phi_s$ID$.load(path + '_phi.uni')\n\
+    phiIn_s$ID$.load(path + '_phiIn.uni')\n\
+    phiObs_s$ID$.load(path + '_phiObs.uni')\n\
+    phiObsIn_s$ID$.load(path + '_phiObsIn.uni')\n\
+    phiOut_s$ID$.load(path + '_phiOut.uni')\n\
+    fractions_s$ID$.load(path + '_fractions.uni')\n\
+    pressure_s$ID$.load(path + '_pressure.uni')\n\
     \n\
-    vel_s$ID$.load(os.path.join(path, 'vel_s$ID$.uni'))\n\
-    obvel_s$ID$.load(os.path.join(path, 'obvel_s$ID$.uni'))\n\
-    velOld_s$ID$.load(os.path.join(path, 'velOld_s$ID$.uni'))\n\
-    velParts_s$ID$.load(os.path.join(path, 'velParts_s$ID$.uni'))\n\
-    mapWeights_s$ID$.load(os.path.join(path, 'mapWeights_s$ID$.uni'))\n\
+    vel_s$ID$.load(path + '_vel.uni')\n\
+    obvel_s$ID$.load(path + '_obvel.uni')\n\
+    velOld_s$ID$.load(path + '_velOld.uni')\n\
+    velParts_s$ID$.load(path + '_velParts.uni')\n\
+    mapWeights_s$ID$.load(path + '_mapWeights.uni')\n\
     \n\
-    x_vel_s$ID$.load(os.path.join(path, 'x_vel_s$ID$.uni'))\n\
-    y_vel_s$ID$.load(os.path.join(path, 'y_vel_s$ID$.uni'))\n\
-    z_vel_s$ID$.load(os.path.join(path, 'z_vel_s$ID$.uni'))\n\
-    x_obvel_s$ID$.load(os.path.join(path, 'x_obvel_s$ID$.uni'))\n\
-    y_obvel_s$ID$.load(os.path.join(path, 'y_obvel_s$ID$.uni'))\n\
-    z_obvel_s$ID$.load(os.path.join(path, 'z_obvel_s$ID$.uni'))\n\
+    x_vel_s$ID$.load(path + '_x_vel.uni')\n\
+    y_vel_s$ID$.load(path + '_y_vel.uni')\n\
+    z_vel_s$ID$.load(path + '_z_vel.uni')\n\
+    x_obvel_s$ID$.load(path + '_x_obvel.uni')\n\
+    y_obvel_s$ID$.load(path + '_y_obvel.uni')\n\
+    z_obvel_s$ID$.load(path + '_z_obvel.uni')\n\
     \n\
-    pp_s$ID$.load(os.path.join(path, 'pp_s$ID$.uni'))\n\
-    pVel_s$ID$.load(os.path.join(path, 'pVel_s$ID$.uni'))\n\
+    pp_s$ID$.load(path + '_pp.uni')\n\
+    pVel_s$ID$.load(path + '_pVel.uni')\n\
     \n\
-    gpi_s$ID$.load(os.path.join(path, 'gpi_s$ID$.uni'))\n";
+    gpi_s$ID$.load(path + '_gpi.uni')\n";
 
 const std::string liquid_import_high = "\n\
 def load_liquid_data_high_$ID$(path):\n\
-    flags_xl$ID$.load(os.path.join(path, 'flags_xl$ID$.uni'))\n\
+    flags_xl$ID$.load(path + '_flags_xl.uni')\n\
     \n\
-    phiParts_xl$ID$.load(os.path.join(path, 'phiParts_xl$ID$.uni'))\n\
-    phi_xl$ID$.load(os.path.join(path, 'phi_xl$ID$.uni'))\n\
+    phiParts_xl$ID$.load(path + '_phiParts_xl.uni')\n\
+    phi_xl$ID$.load(path + '_phi_xl.uni')\n\
     \n\
-    pp_xl$ID$.load(os.path.join(path, 'pp_xl$ID$.uni'))\n";
+    pp_xl$ID$.load(path + '_pp_xl.uni')\n";
 
 const std::string liquid_export_low = "\n\
 def save_liquid_data_low_$ID$(path):\n\
-    flags_s$ID$.save(os.path.join(path, 'flags_s$ID$.uni'))\n\
+    flags_s$ID$.save(path + '_flags.uni')\n\
     \n\
-    phiParts_s$ID$.save(os.path.join(path, 'phiParts_s$ID$.uni'))\n\
-    phi_s$ID$.save(os.path.join(path, 'phi_s$ID$.uni'))\n\
-    phiIn_s$ID$.save(os.path.join(path, 'phiIn_s$ID$.uni'))\n\
-    phiObs_s$ID$.save(os.path.join(path, 'phiObs_s$ID$.uni'))\n\
-    phiObsIn_s$ID$.save(os.path.join(path, 'phiObsIn_s$ID$.uni'))\n\
-    phiOut_s$ID$.save(os.path.join(path, 'phiOut_s$ID$.uni'))\n\
-    fractions_s$ID$.save(os.path.join(path, 'fractions_s$ID$.uni'))\n\
-    pressure_s$ID$.save(os.path.join(path, 'pressure_s$ID$.uni'))\n\
+    phiParts_s$ID$.save(path + '_phiParts.uni')\n\
+    phi_s$ID$.save(path + '_phi.uni')\n\
+    phiIn_s$ID$.save(path + '_phiIn.uni')\n\
+    phiObs_s$ID$.save(path + '_phiObs.uni')\n\
+    phiObsIn_s$ID$.save(path + '_phiObsIn.uni')\n\
+    phiOut_s$ID$.save(path + '_phiOut.uni')\n\
+    fractions_s$ID$.save(path + '_fractions.uni')\n\
+    pressure_s$ID$.save(path + '_pressure.uni')\n\
     \n\
-    vel_s$ID$.save(os.path.join(path, 'vel_s$ID$.uni'))\n\
-    obvel_s$ID$.save(os.path.join(path, 'obvel_s$ID$.uni'))\n\
-    velOld_s$ID$.save(os.path.join(path, 'velOld_s$ID$.uni'))\n\
-    velParts_s$ID$.save(os.path.join(path, 'velParts_s$ID$.uni'))\n\
-    mapWeights_s$ID$.save(os.path.join(path, 'mapWeights_s$ID$.uni'))\n\
+    vel_s$ID$.save(path + '_vel.uni')\n\
+    obvel_s$ID$.save(path + '_obvel.uni')\n\
+    velOld_s$ID$.save(path + '_velOld.uni')\n\
+    velParts_s$ID$.save(path + '_velParts.uni')\n\
+    mapWeights_s$ID$.save(path + '_mapWeights.uni')\n\
     \n\
-    x_vel_s$ID$.save(os.path.join(path, 'x_vel_s$ID$.uni'))\n\
-    y_vel_s$ID$.save(os.path.join(path, 'y_vel_s$ID$.uni'))\n\
-    z_vel_s$ID$.save(os.path.join(path, 'z_vel_s$ID$.uni'))\n\
-    x_obvel_s$ID$.save(os.path.join(path, 'x_obvel_s$ID$.uni'))\n\
-    y_obvel_s$ID$.save(os.path.join(path, 'y_obvel_s$ID$.uni'))\n\
-    z_obvel_s$ID$.save(os.path.join(path, 'z_obvel_s$ID$.uni'))\n\
+    x_vel_s$ID$.save(path + '_x_vel.uni')\n\
+    y_vel_s$ID$.save(path + '_y_vel.uni')\n\
+    z_vel_s$ID$.save(path + '_z_vel.uni')\n\
+    x_obvel_s$ID$.save(path + '_x_obvel.uni')\n\
+    y_obvel_s$ID$.save(path + '_y_obvel.uni')\n\
+    z_obvel_s$ID$.save(path + '_z_obvel.uni')\n\
     \n\
-    pp_s$ID$.save(os.path.join(path, 'pp_s$ID$.uni'))\n\
-    pVel_s$ID$.save(os.path.join(path, 'pVel_s$ID$.uni'))\n\
+    pp_s$ID$.save(path + '_pp.uni')\n\
+    pVel_s$ID$.save(path + '_pVel.uni')\n\
     \n\
-    gpi_s$ID$.save(os.path.join(path, 'gpi_s$ID$.uni'))\n";
+    gpi_s$ID$.save(path + '_gpi.uni')\n";
 
 const std::string liquid_export_high = "\n\
 def save_liquid_data_high_$ID$(path):\n\
-    flags_xl$ID$.save(os.path.join(path, 'flags_xl$ID$.uni'))\n\
+    flags_xl$ID$.save(path + '_flags_xl.uni')\n\
     \n\
-    phiParts_xl$ID$.save(os.path.join(path, 'phiParts_xl$ID$.uni'))\n\
-    phi_xl$ID$.save(os.path.join(path, 'phi_xl$ID$.uni'))\n\
+    phiParts_xl$ID$.save(path + '_phiParts_xl.uni')\n\
+    phi_xl$ID$.save(path + '_phi_xl.uni')\n\
     \n\
-    pp_xl$ID$.save(os.path.join(path, 'pp_xl$ID$.uni'))\n";
+    pp_xl$ID$.save(path + '_pp_xl.uni')\n";
 
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION

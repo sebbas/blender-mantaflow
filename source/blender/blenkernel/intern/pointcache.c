@@ -1700,8 +1700,8 @@ void BKE_ptcache_id_from_cloth(PTCacheID *pid, Object *ob, ClothModifierData *cl
 	pid->write_liquid_stream	= NULL;
 	pid->read_liquid_stream		= NULL;
 
-	pid->write_liquid_stream	= NULL;
-	pid->read_liquid_stream		= NULL;
+	pid->write_particle_stream	= NULL;
+	pid->read_particle_stream	= NULL;
 
 	pid->write_extra_data		= NULL;
 	pid->read_extra_data		= NULL;
@@ -1747,6 +1747,9 @@ void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct SmokeMo
 		
 		pid->write_liquid_stream	= NULL;
 		pid->read_liquid_stream		= NULL;
+
+		pid->write_particle_stream	= NULL;
+		pid->read_particle_stream	= NULL;
 	}
 	else if (smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
 	{
@@ -2761,7 +2764,7 @@ static int ptcache_read_liquid_stream(PTCacheID *pid, int cfra)
 		return 0;
 
 	ptcache_filename(pid, filename, cfra, 1, 1);
-	ptcache_path(pid, pathname);
+	ptcache_filename(pid, pathname, cfra, 1, 0);
 
 	if (!BLI_exists(filename)) {
 		return 0;
@@ -2784,7 +2787,7 @@ static int ptcache_read_particle_stream(PTCacheID *pid, int cfra)
 		return 0;
 
 	ptcache_filename(pid, filename, cfra, 1, 1);
-	ptcache_path(pid, pathname);
+	ptcache_filename(pid, pathname, cfra, 1, 0);
 
 	if (!BLI_exists(filename)) {
 		return 0;
@@ -2980,6 +2983,11 @@ int BKE_ptcache_read(PTCacheID *pid, float cfra, bool no_extrapolate_old)
 				return 0;
 			}
 		}
+		else if (pid->file_type == PTCACHE_FILE_PARTICLE && pid->read_particle_stream) {
+			if (!ptcache_read_particle_stream(pid, cfra2)) {
+				return 0;
+			}
+		}
 		else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->read_stream) {
 			if (!ptcache_read_stream(pid, cfra2))
 				return 0;
@@ -3076,7 +3084,7 @@ static int ptcache_write_liquid_stream(PTCacheID *pid, int cfra)
 	BKE_ptcache_id_clear(pid, PTCACHE_CLEAR_FRAME, cfra);
 
 	ptcache_filename(pid, filename, cfra, 1, 1);
-	ptcache_path(pid, pathname);
+	ptcache_filename(pid, pathname, cfra, 1, 0);
 	
 	BLI_make_existing_file(filename);
 
@@ -3095,7 +3103,7 @@ static int ptcache_write_particle_stream(PTCacheID *pid, int cfra)
 	BKE_ptcache_id_clear(pid, PTCACHE_CLEAR_FRAME, cfra);
 
 	ptcache_filename(pid, filename, cfra, 1, 1);
-	ptcache_path(pid, pathname);
+	ptcache_filename(pid, pathname, cfra, 1, 0);
 
 	BLI_make_existing_file(filename);
 
@@ -3241,15 +3249,12 @@ int BKE_ptcache_write(PTCacheID *pid, unsigned int cfra)
 		ptcache_write_openvdb_stream(pid, cfra);
 	}
 	else if (pid->file_type == PTCACHE_FILE_LIQUID && pid->write_liquid_stream) {
-		printf("write liquid\n");
 		ptcache_write_liquid_stream(pid, cfra);
 	}
 	else if (pid->file_type == PTCACHE_FILE_PARTICLE && pid->write_particle_stream) {
-		printf("write liquid\n");
 		ptcache_write_particle_stream(pid, cfra);
 	}
 	else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->write_stream) {
-		printf("write smoke\n");
 		ptcache_write_stream(pid, cfra, totpoint);
 	}
 	else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->write_point) {
