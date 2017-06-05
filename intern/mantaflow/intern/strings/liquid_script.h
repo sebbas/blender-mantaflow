@@ -200,7 +200,7 @@ def liquid_step_$ID$():\n\
     # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
     extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
     extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=obvelBorderWidth_s$ID$+1, inside=False)\n\
-    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$, boundaryWidth=2, borderWidth=obvelBorderWidth_s$ID$)\n\
+    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$, boundaryWidth=1, borderWidth=obvelBorderWidth_s$ID$)\n\
     \n\
     mantaMsg('Advecting particles')\n\
     pp_s$ID$.advectInGrid(flags=flags_s$ID$, vel=vel_s$ID$, integrationMode=IntRK4, deleteInObstacle=False, stopInObstacle=False)\n\
@@ -238,7 +238,7 @@ def liquid_step_$ID$():\n\
     \n\
     #extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, intoObs=True) # TODO: uncomment for fractions\n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$)#, fractions=fractions_s$ID$, phiObs=phiObs_s$ID$) # TODO: uncomment for fractions\n\
-    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$, boundaryWidth=2, borderWidth=obvelBorderWidth_s$ID$)\n\
+    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$, boundaryWidth=1, borderWidth=obvelBorderWidth_s$ID$)\n\
     \n\
     solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$)#, fractions=fractions_s$ID$) # TODO: uncomment for fractions\n\
     \n\
