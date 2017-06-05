@@ -700,7 +700,13 @@ class QuickLiquid(Operator):
         bpy.ops.object.modifier_add(type='SMOKE')
         obj.modifiers[-1].smoke_type = 'DOMAIN'
         obj.modifiers[-1].domain_settings.smoke_domain_type = 'LIQUID'
-        obj.modifiers[-1].domain_settings.collision_extents = 'BORDERCLOSED'
+        # set all domain borders to obstacle 
+        obj.modifiers[-1].domain_settings.use_collision_border_front = True
+        obj.modifiers[-1].domain_settings.use_collision_border_back = True
+        obj.modifiers[-1].domain_settings.use_collision_border_right = True
+        obj.modifiers[-1].domain_settings.use_collision_border_left = True
+        obj.modifiers[-1].domain_settings.use_collision_border_top = True
+        obj.modifiers[-1].domain_settings.use_collision_border_bottom = True
 
         # set correct cache file format for liquid
         obj.modifiers[-1].domain_settings.cache_file_format = 'OBJECT'

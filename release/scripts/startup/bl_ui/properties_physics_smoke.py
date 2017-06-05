@@ -62,11 +62,25 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
             flow = md.flow_settings
 
             layout.prop(domain, "smoke_domain_type", expand=False)
-            layout.prop(domain, "collision_extents", expand=False)
+            layout.label(text="Border collisions:")
 
             split = layout.split()
 
             split.enabled = not domain.point_cache.is_baked
+
+            col = split.column()
+            col.prop(domain, "use_collision_border_front", text="Front")
+            col.prop(domain, "use_collision_border_back", text="Back")
+
+            col = split.column()
+            col.prop(domain, "use_collision_border_right", text="Right")
+            col.prop(domain, "use_collision_border_left", text="Left")
+
+            col = split.column()
+            col.prop(domain, "use_collision_border_top", text="Top")
+            col.prop(domain, "use_collision_border_bottom", text="Bottom")
+
+            split = layout.split()
 
             col = split.column()
             col.label(text="Time:")

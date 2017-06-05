@@ -143,10 +143,15 @@ static EnumPropertyItem *rna_Smoke_cachetype_itemf(
 	return item;
 }
 
-static void rna_Smoke_collisionextents_set(struct PointerRNA *ptr, int value)
+static void rna_Smoke_collisionextents_set(struct PointerRNA *ptr, int value, bool clear)
 {
 	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
-	settings->border_collisions = value;
+	if (clear) {
+		settings->border_collisions &= value;
+	}
+	else {
+		settings->border_collisions |= value;
+	}
 }
 
 static void rna_Smoke_domaintype_set(struct PointerRNA *ptr, int value)
@@ -159,13 +164,23 @@ static void rna_Smoke_domaintype_set(struct PointerRNA *ptr, int value)
 		if (value == MOD_SMOKE_DOMAIN_TYPE_GAS)
 		{
 			rna_Smoke_cachetype_set(ptr, PTCACHE_FILE_PTCACHE);
-			rna_Smoke_collisionextents_set(ptr, SM_BORDER_OPEN);
+			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_FRONT, 1);
+			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_BACK, 1);
+			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_RIGHT, 1);
+			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_LEFT, 1);
+			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_TOP, 1);
+			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_BOTTOM, 1);
 			BKE_object_draw_type_set(ob, OB_WIRE);
 		}
 		else if (value == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
 		{
 			rna_Smoke_cachetype_set(ptr, PTCACHE_FILE_LIQUID);
-			rna_Smoke_collisionextents_set(ptr, SM_BORDER_CLOSED);
+			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_FRONT, 0);
+			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_BACK, 0);
+			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_RIGHT, 0);
+			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_LEFT, 0);
+			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_TOP, 0);
+			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_BOTTOM, 0);
 			BKE_object_draw_type_set(ob, OB_SOLID);
 		}
 
@@ -563,15 +578,6 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 		{0,  "32", 0, "Float (Full)", "Full float (32 bit data)"},  /* default */
 		{0, NULL, 0, NULL, NULL},
 	};
-
-	static EnumPropertyItem smoke_domain_colli_items[] = {
-		{SM_BORDER_OPEN, "BORDEROPEN", 0, "Open", "Fluid doesn't collide with any border"},
-		{SM_BORDER_VERTICAL, "BORDERVERTICAL", 0, "Vertically Open",
-		 "Fluid doesn't collide with top and bottom sides"},
-		{SM_BORDER_CLOSED, "BORDERCLOSED", 0, "Collide All", "Fluid collides with every side"},
-		{SM_BORDER_HORIZONTAL, "BORDERHORIZONTAL", 0, "Horizontally Open", "Fluid doesn't collide with left, right, front and back sides"},
-		{0, NULL, 0, NULL, NULL}
-	};
 	
 	static EnumPropertyItem smoke_quality_items[] = {
 		{SM_VIEWPORT_GEOMETRY, "GEOMETRY", 0, "Geometry", "Display geometry"},
@@ -742,20 +748,42 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	                         "lower values reduce file size");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
 
-	prop = RNA_def_property(srna, "collision_extents", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "border_collisions");
-	RNA_def_property_enum_items(prop, smoke_domain_colli_items);
-	RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_collisionextents_set", NULL);
-	RNA_def_property_ui_text(prop, "Border Collisions",
-	                         "Select which domain border will be treated as collision object");
+	prop = RNA_def_property(srna, "use_collision_border_front", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "border_collisions", MOD_SMOKE_BORDER_FRONT);
+	RNA_def_property_ui_text(prop, "Front", "Enable collisons with front domain border");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
-	
+
+	prop = RNA_def_property(srna, "use_collision_border_back", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "border_collisions", MOD_SMOKE_BORDER_BACK);
+	RNA_def_property_ui_text(prop, "Back", "Enable collisons with back domain border");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
+	prop = RNA_def_property(srna, "use_collision_border_right", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "border_collisions", MOD_SMOKE_BORDER_RIGHT);
+	RNA_def_property_ui_text(prop, "Right", "Enable collisons with right domain border");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
+	prop = RNA_def_property(srna, "use_collision_border_left", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "border_collisions", MOD_SMOKE_BORDER_LEFT);
+	RNA_def_property_ui_text(prop, "Left", "Enable collisons with left domain border");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
+	prop = RNA_def_property(srna, "use_collision_border_top", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "border_collisions", MOD_SMOKE_BORDER_TOP);
+	RNA_def_property_ui_text(prop, "Top", "Enable collisons with top domain border");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
+	prop = RNA_def_property(srna, "use_collision_border_bottom", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "border_collisions", MOD_SMOKE_BORDER_BOTTOM);
+	RNA_def_property_ui_text(prop, "Bottom", "Enable collisons with bottom domain border");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
 	prop = RNA_def_property(srna, "viewport_display_mode", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "viewport_display_mode");
 	RNA_def_property_enum_items(prop, smoke_quality_items);
 	RNA_def_property_ui_text(prop, "Viewport Display Mode", "How to display the mesh in the viewport");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
-	
+
 	prop = RNA_def_property(srna, "render_display_mode", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "render_display_mode");
 	RNA_def_property_enum_items(prop, smoke_quality_items);

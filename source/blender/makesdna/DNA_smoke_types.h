@@ -51,6 +51,16 @@ enum {
 	MOD_SMOKE_ADAPTIVE_DOMAIN = (1 << 7),
 };
 
+/* border collisions */
+enum {
+	MOD_SMOKE_BORDER_FRONT = (1 << 1),
+	MOD_SMOKE_BORDER_BACK = (1 << 2),
+	MOD_SMOKE_BORDER_RIGHT = (1 << 3),
+	MOD_SMOKE_BORDER_LEFT = (1 << 4),
+	MOD_SMOKE_BORDER_TOP = (1 << 5),
+	MOD_SMOKE_BORDER_BOTTOM = (1 << 6),
+};
+
 /* noise */
 #define MOD_SMOKE_NOISEWAVE (1<<0)
 #define MOD_SMOKE_NOISEFFT (1<<1)
@@ -103,6 +113,7 @@ enum {
 #define SM_CACHE_HEAVY		1
 
 /* domain border collision */
+/* TODO (sebbas): deprecated values. kept for possible versioning */
 #define SM_BORDER_OPEN		 0
 #define SM_BORDER_VERTICAL	 1
 #define SM_BORDER_CLOSED	 2

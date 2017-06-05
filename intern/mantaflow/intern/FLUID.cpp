@@ -531,6 +531,7 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 	std::ostringstream ss;
 	bool is2D = false;
 	ModifierData *md;
+	int closedDomain;
 	
 	if (smd) {
 		is2D = (smd->domain->manta_solver_res == 2);
@@ -547,20 +548,25 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << (smd->domain->flags & MOD_SMOKE_HIGHRES ? "True" : "False");
 	else if (varName == "SOLVER_DIM")
 		ss << smd->domain->manta_solver_res;
-	else if (varName == "DO_OPEN")
-		ss << (smd->domain->border_collisions == SM_BORDER_CLOSED ? "False" : "True");
-	else if (varName == "BOUNDCONDITIONS") {
+	else if (varName == "DO_OPEN") {
+		closedDomain = (MOD_SMOKE_BORDER_BACK | MOD_SMOKE_BORDER_FRONT |
+						 MOD_SMOKE_BORDER_LEFT | MOD_SMOKE_BORDER_RIGHT |
+						 MOD_SMOKE_BORDER_BOTTOM | MOD_SMOKE_BORDER_TOP);
+		ss << (((smd->domain->border_collisions & closedDomain) == closedDomain) ? "False" : "True");
+	} else if (varName == "BOUNDCONDITIONS") {
 		if (smd->domain->manta_solver_res == 2) {
-			if (smd->domain->border_collisions == SM_BORDER_OPEN) ss << "xXyY";
-			else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "yY";
-			else if (smd->domain->border_collisions == SM_BORDER_HORIZONTAL) ss << "xX";
-			else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "";
+			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_BACK) == 0) ss << "x";
+			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_FRONT) == 0) ss << "X";
+			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_LEFT) == 0) ss << "y";
+			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_RIGHT) == 0) ss << "Y";
 		}
 		if (smd->domain->manta_solver_res == 3) {
-			if (smd->domain->border_collisions == SM_BORDER_OPEN) ss << "xXyYzZ";
-			else if (smd->domain->border_collisions == SM_BORDER_VERTICAL) ss << "zZ";
-			else if (smd->domain->border_collisions == SM_BORDER_HORIZONTAL) ss << "xXyY";
-			else if (smd->domain->border_collisions == SM_BORDER_CLOSED) ss << "";
+			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_BACK) == 0) ss << "x";
+			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_FRONT) == 0) ss << "X";
+			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_LEFT) == 0) ss << "y";
+			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_RIGHT) == 0) ss << "Y";
+			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_BOTTOM) == 0) ss << "z";
+			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_TOP) == 0) ss << "Z";
 		}
 	} else if (varName == "RES")
 		ss << smd->domain->maxres;
