@@ -49,11 +49,11 @@
 
 std::atomic<bool> FLUID::mantaInitialized(false);
 std::atomic<int> FLUID::solverID(0);
-int FLUID::DEBUG(0);
+int FLUID::with_debug(0);
 
 FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 {
-	if (DEBUG)
+	if (with_debug)
 		std::cout << "FLUID: " << mCurrentID << std::endl;
 
 	smd->domain->fluid = this;
@@ -201,7 +201,7 @@ void FLUID::initDomain(SmokeModifierData *smd)
 	
 	// Set manta debug level
 	std::ostringstream debuglevel;
-	debuglevel <<  "set_manta_debuglevel(" << DEBUG << ")";
+	debuglevel <<  "set_manta_debuglevel(" << with_debug << ")";
 	mCommands.push_back(debuglevel.str());
 	runPythonString(mCommands);
 }
@@ -382,7 +382,7 @@ void FLUID::step(int framenr)
 
 FLUID::~FLUID()
 {
-	if (DEBUG)
+	if (with_debug)
 		std::cout << "FLUID: " << mCurrentID << std::endl;
 
 	// Destruction string for Python
@@ -501,7 +501,7 @@ void FLUID::runPythonString(std::vector<std::string> commands)
 
 void FLUID::initializeMantaflow()
 {
-	if (DEBUG)
+	if (with_debug)
 		std::cout << "Initializing  Mantaflow" << std::endl;
 
 	std::string filename = "manta_scene_" + std::to_string(mCurrentID) + ".py";
@@ -517,7 +517,7 @@ void FLUID::initializeMantaflow()
 
 void FLUID::terminateMantaflow()
 {
-	if (DEBUG)
+	if (with_debug)
 		std::cout << "Terminating Mantaflow" << std::endl;
 
 	PyGILState_STATE gilstate = PyGILState_Ensure();
@@ -878,7 +878,7 @@ void FLUID::updateMeshData(const char* filename)
 	mNumVertices = 0;
 	gzread(gzf, &mNumVertices, sizeof(int));
 	
-	if (DEBUG)
+	if (with_debug)
 		std::cout << "read mesh , num verts: " << mNumVertices << std::endl;
 
 	if (mNumVertices)
@@ -974,7 +974,7 @@ void FLUID::updateParticleData(const char* filename)
 	gzread(gzf, &info, sizeof(info));
 	gzread(gzf, &timestamp, sizeof(unsigned long long));
 
-	if (DEBUG)
+	if (with_debug)
 		std::cout << "read particles , num particles " << mNumParticles << std::endl;
 
 	// Sanity check
@@ -1007,7 +1007,7 @@ void FLUID::updateParticleData(const char* filename)
 
 void FLUID::updatePointers()
 {
-	if (DEBUG)
+	if (with_debug)
 		std::cout << "Updating pointers low res, ID: " << mCurrentID << std::endl;
 
 	std::string id = std::to_string(mCurrentID);
@@ -1060,7 +1060,7 @@ void FLUID::updatePointers()
 
 void FLUID::updatePointersHigh()
 {
-	if (DEBUG)
+	if (with_debug)
 		std::cout << "Updating pointers high res" << std::endl;
 
 	std::string id = std::to_string(mCurrentID);
