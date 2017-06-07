@@ -149,8 +149,14 @@ public:
 	inline int getTriangleZAt(int i) { return mTrianglesZ[i]; }
 	
 	// Particle getters
-	inline int   getNumParticles()             { return mNumParticles; }
-	inline int   getParticleFlagAt(int i)      { return mParticleFlags[i]; }
+	inline int getNumParticles() { return mNumParticles; }
+
+	inline int getParticleDimX() { return mParticleDimX; }
+	inline int getParticleDimY() { return mParticleDimY; }
+	inline int getParticleDimZ() { return mParticleDimZ; }
+
+	inline int getParticleFlagAt(int i) { return mParticleFlags[i]; }
+
 	inline float getParticlePositionXAt(int i) { return mParticlePositionsX[i]; }
 	inline float getParticlePositionYAt(int i) { return mParticlePositionsY[i]; }
 	inline float getParticlePositionZAt(int i) { return mParticlePositionsZ[i]; }
@@ -241,6 +247,9 @@ private:
 	
 	// Particle fields
 	int mNumParticles;
+	int mParticleDimX;
+	int mParticleDimY;
+	int mParticleDimZ;
 	std::vector<int> mParticleFlags;
 	std::vector<float> mParticlePositionsX;
 	std::vector<float> mParticlePositionsY;

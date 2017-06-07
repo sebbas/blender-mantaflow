@@ -607,6 +607,21 @@ extern "C" int liquid_get_num_particles(FLUID *liquid)
 	return liquid->getNumParticles();
 }
 
+extern "C" int liquid_get_particle_dim_x(FLUID *liquid)
+{
+	return liquid->getParticleDimX();
+}
+
+extern "C" int liquid_get_particle_dim_y(FLUID *liquid)
+{
+	return liquid->getParticleDimY();
+}
+
+extern "C" int liquid_get_particle_dim_z(FLUID *liquid)
+{
+	return liquid->getParticleDimZ();
+}
+
 extern "C" int liquid_get_particle_flag_at(FLUID *liquid, int i)
 {
 	return liquid->getParticleFlagAt(i);

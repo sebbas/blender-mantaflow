@@ -966,9 +966,9 @@ void FLUID::updateParticleData(const char* filename)
 
 	// read particle header
 	gzread(gzf, &mNumParticles, sizeof(int));
-	gzread(gzf, &ibuffer, sizeof(int)); // Skipping dimX
-	gzread(gzf, &ibuffer, sizeof(int)); // Skipping dimY
-	gzread(gzf, &ibuffer, sizeof(int)); // Skipping dimZ
+	gzread(gzf, &mParticleDimX, sizeof(int));
+	gzread(gzf, &mParticleDimY, sizeof(int));
+	gzread(gzf, &mParticleDimZ, sizeof(int));
 	gzread(gzf, &elementType, sizeof(int));
 	gzread(gzf, &bytesPerElement, sizeof(int));
 	gzread(gzf, &info, sizeof(info));
