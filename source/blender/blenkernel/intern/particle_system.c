@@ -3761,20 +3761,21 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 	/* manta sim particle import handling, actual loading of particles from file happens in FLUID helper. Here just pointer exchange */
 #ifdef WITH_MANTA
 	{
-		SmokeModifierData *smd = (SmokeModifierData *)modifiers_findByType(sim->ob, eModifierType_Smoke);
+		Object *ob = sim->ob;
+		SmokeModifierData *smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
 
-		if (smd && smd->domain) {
+		if (smd && smd->domain && smd->domain->fluid) {
 			SmokeDomainSettings *sds= smd->domain;
+			int  curFrame = sim->scene->r.cfra -1; // warning - sync with derived mesh fsmesh loading
+
 			ParticleSettings *part = psys->part;
 			ParticleData *pa=NULL;
 
-			int  p, totpart;
+			int p, totpart;
 			int activeParts = 0, fileParts = 0;
 
 			totpart = liquid_get_num_particles(sds->fluid);
 			totpart = (use_render_params) ? totpart : (part->disp*totpart) / 100;
-
-			printf("totpart: %d\n", totpart);
 
 			part->totpart = totpart;
 			part->sta = part->end = 1.0f;
@@ -3785,31 +3786,64 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 
 			for (p=0, pa=psys->particles; p<totpart; p++, pa++) {
 
-				pa->size = 0.05; // TODO (sebbas): manta doesnt store particle sizes -> new field in domainsettings
-				pa->size /= 10.0f;
+				if (curFrame != 0) { // TODO (sebbas): need better way to catch cases where pp is not yet present
+					activeParts++;
 
-				// set particle position
-				pa->state.co[0] = liquid_get_particle_position_x_at(sds->fluid, p);
-				pa->state.co[1] = liquid_get_particle_position_y_at(sds->fluid, p);
-				pa->state.co[2] = liquid_get_particle_position_z_at(sds->fluid, p);
+					pa->size = 0.1; // TODO (sebbas): manta doesnt store particle sizes -> new field in domainsettings
+//					pa->size /= 10.0f;
 
-//				printf("pa->state.co[0]: %f, pa->state.co[1]: %f, pa->state.co[2]: %f\n", pa->state.co[0], pa->state.co[1], pa->state.co[2]);
+					float ob_loc[3] = {0};
+					float ob_cache_loc[3] = {0};
 
-				// set particle velocity
-				pa->state.vel[0] = 1; // TODO (sebbas): manta store particle velocities in separate pvel vector.
-				pa->state.vel[1] = 1;
-				pa->state.vel[2] = 1;
+					// set particle position
+					pa->state.co[0] = liquid_get_particle_position_x_at(sds->fluid, p);
+					pa->state.co[1] = liquid_get_particle_position_y_at(sds->fluid, p);
+					pa->state.co[2] = liquid_get_particle_position_z_at(sds->fluid, p);
 
-				// set default angular velocity and particle rotation
-				zero_v3(pa->state.ave);
-				unit_qt(pa->state.rot);
+					// translate particles coordinates to  origin (0,0,0)
+					pa->state.co[0] -= liquid_get_particle_dim_x(sds->fluid) / 2.0f;
+					pa->state.co[1] -= liquid_get_particle_dim_y(sds->fluid) / 2.0f;
+					pa->state.co[2] -= liquid_get_particle_dim_z(sds->fluid) / 2.0f;
 
-				pa->time = 1.f;
-				pa->dietime = sim->scene->r.efra + 1;
-				pa->lifetime = sim->scene->r.efra;
-				pa->alive = PARS_ALIVE;
+					// scale down
+					pa->state.co[0] *= 1.0f / liquid_get_particle_dim_x(sds->fluid);
+					pa->state.co[1] *= 1.0f / liquid_get_particle_dim_y(sds->fluid);
+					pa->state.co[2] *= 1.0f / liquid_get_particle_dim_z(sds->fluid);
 
-				fileParts++;
+					// scale up
+					mul_v3_fl(pa->state.co, sds->scale);
+					// scale up to match actual domain size. also take care of domain translations globally
+					mul_m4_v3(sds->obmat, pa->state.co);
+
+					/* calculate required shift to match domain's global position
+					 *  it was originally simulated at (if object moves without step) */
+					invert_m4_m4(ob->imat, ob->obmat);
+					mul_m4_v3(ob->obmat, ob_loc);
+					mul_m4_v3(sds->obmat, ob_cache_loc);
+					VECSUB(sds->obj_shift_f, ob_cache_loc, ob_loc);
+					/* convert shift to local space and apply to vertices */
+					mul_mat3_m4_v3(ob->imat, sds->obj_shift_f);
+					/* apply */
+					add_v3_v3(pa->state.co, sds->obj_shift_f);
+
+//					printf("pa->state.co[0]: %f, pa->state.co[1]: %f, pa->state.co[2]: %f\n", pa->state.co[0], pa->state.co[1], pa->state.co[2]);
+
+					// set particle velocity
+					pa->state.vel[0] = 0; // TODO (sebbas): manta stores particle velocities in separate pvel vector.
+					pa->state.vel[1] = 0;
+					pa->state.vel[2] = 0;
+
+					// set default angular velocity and particle rotation
+					zero_v3(pa->state.ave);
+					unit_qt(pa->state.rot);
+
+					pa->time = 1.f;
+					pa->dietime = sim->scene->r.efra + 1;
+					pa->lifetime = sim->scene->r.efra;
+					pa->alive = PARS_ALIVE;
+
+					fileParts++;
+				}
 			}
 
 			totpart = psys->totpart = activeParts;
