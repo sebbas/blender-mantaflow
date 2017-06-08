@@ -82,6 +82,59 @@ static void rna_Smoke_resetCache(Main *UNUSED(bmain), Scene *UNUSED(scene), Poin
 	DAG_id_tag_update(ptr->id.data, OB_RECALC_DATA);
 }
 
+static void rna_Smoke_update_file_format(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+	Object *ob = (Object *)ptr->id.data;
+	SmokeModifierData *smd;
+	ParticleSystemModifierData *psmd;
+	ParticleSystem *psys, *next_psys;
+	ParticleSettings *part;
+
+	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
+
+	/* remove fluidsim particle system */
+	if (smd && smd->domain && smd->domain->cache_file_format == PTCACHE_FILE_PARTICLE) {
+		for (psys = ob->particlesystem.first; psys; psys = psys->next)
+			if (psys->part->type == PART_MANTA)
+				break;
+
+		if (ob->type == OB_MESH && !psys) {
+			/* add particle system */
+			part = psys_new_settings("ParticleSettings", bmain);
+			psys = MEM_callocN(sizeof(ParticleSystem), "particle_system");
+
+			part->type = PART_MANTA;
+			psys->part = part;
+			psys->pointcache = BKE_ptcache_add(&psys->ptcaches);
+			BLI_strncpy(psys->name, "FlipParticles", sizeof(psys->name));
+			BLI_addtail(&ob->particlesystem, psys);
+
+			/* add modifier */
+			psmd = (ParticleSystemModifierData *)modifier_new(eModifierType_ParticleSystem);
+			BLI_strncpy(psmd->modifier.name, "FLIPParticleSystem", sizeof(psmd->modifier.name));
+			psmd->psys = psys;
+			BLI_addtail(&ob->modifiers, psmd);
+			modifier_unique_name(&ob->modifiers, (ModifierData *)psmd);
+		}
+	}
+	else {
+		for (psys = ob->particlesystem.first; psys; psys = next_psys) {
+			next_psys = psys->next;
+			if (psys->part->type == PART_MANTA) {
+				/* clear modifier */
+				psmd = psys_get_modifier(ob, psys);
+				BLI_remlink(&ob->modifiers, psmd);
+				modifier_free((ModifierData *)psmd);
+
+				/* clear particle system */
+				BLI_remlink(&ob->particlesystem, psys);
+				psys_free(ob, psys);
+			}
+		}
+	}
+	rna_Smoke_resetCache(bmain, scene, ptr);
+}
+
 static void rna_Smoke_cachetype_set(struct PointerRNA *ptr, int value)
 {
 	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
@@ -940,7 +993,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_enum_items(prop, cache_file_type_items);
 	RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_cachetype_set", "rna_Smoke_cachetype_itemf");
 	RNA_def_property_ui_text(prop, "File Format", "Select the file format to be used for caching");
-	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_update_file_format");
 	
 	/* mantaflow variables */
 	prop = RNA_def_property(srna, "manta_filepath", PROP_STRING, PROP_FILEPATH);
