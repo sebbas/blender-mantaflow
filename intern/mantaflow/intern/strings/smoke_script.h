@@ -304,7 +304,7 @@ def step_low_$ID$():\n\
     setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$, boundaryWidth=1, borderWidth=obvelBorderWidth_s$ID$)\n\
     \n\
     mantaMsg('Pressure')\n\
-    solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, preconditioner=$PRECONDITIONER$)\n\
+    solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, preconditioner=$PRECONDITIONER$, zeroPressureFixing=not doOpen_s$ID$) # closed domains require pressure fixing\n\
 \n\
 def process_burn_low_$ID$():\n\
     mantaMsg('Process burn low')\n\
