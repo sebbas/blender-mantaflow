@@ -555,16 +555,16 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << (((smd->domain->border_collisions & closedDomain) == closedDomain) ? "False" : "True");
 	} else if (varName == "BOUNDCONDITIONS") {
 		if (smd->domain->manta_solver_res == 2) {
-			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_BACK) == 0) ss << "x";
-			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_FRONT) == 0) ss << "X";
-			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_LEFT) == 0) ss << "y";
-			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_RIGHT) == 0) ss << "Y";
+			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_LEFT) == 0) ss << "x";
+			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_RIGHT) == 0) ss << "X";
+			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_FRONT) == 0) ss << "y";
+			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_BACK) == 0) ss << "Y";
 		}
 		if (smd->domain->manta_solver_res == 3) {
-			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_BACK) == 0) ss << "x";
-			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_FRONT) == 0) ss << "X";
-			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_LEFT) == 0) ss << "y";
-			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_RIGHT) == 0) ss << "Y";
+			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_LEFT) == 0) ss << "x";
+			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_RIGHT) == 0) ss << "X";
+			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_FRONT) == 0) ss << "y";
+			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_BACK) == 0) ss << "Y";
 			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_BOTTOM) == 0) ss << "z";
 			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_TOP) == 0) ss << "Z";
 		}
