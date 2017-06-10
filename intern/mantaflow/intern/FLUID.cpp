@@ -634,6 +634,8 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << smd->domain->particle_number;
 	else if (varName == "PARTICLE_RADIUS")
 		ss << smd->domain->particle_radius;
+	else if (varName == "PARTICLE_BAND_WIDTH")
+		ss << smd->domain->particle_band_width;
 	else if (varName == "GRAVITY_X")
 		ss << smd->domain->gravity[0];
 	else if (varName == "GRAVITY_Y")

@@ -1030,7 +1030,13 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_range(prop, 0.0, 10.0, 0.02, 5);
 	RNA_def_property_ui_text(prop, "Radius", "Particle radius factor (higher value results in larger particles)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
-	
+
+	prop = RNA_def_property(srna, "particle_band_width", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 1000.0);
+	RNA_def_property_ui_range(prop, 0.0, 10.0, 0.02, 5);
+	RNA_def_property_ui_text(prop, "Width", "Particle (narrow) band width (higher value results in thicker band and more particles)");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
 	prop = RNA_def_property(srna, "gravity", PROP_FLOAT, PROP_ACCELERATION);
 	RNA_def_property_float_sdna(prop, NULL, "gravity");
 	RNA_def_property_array(prop, 3);

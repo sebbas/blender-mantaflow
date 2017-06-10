@@ -133,6 +133,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
                 col = split.column()
                 col.label()
                 col.prop(domain, "particle_number")
+                col.prop(domain, "particle_band_width")
 
         elif md.smoke_type == 'FLOW':
             flow = md.flow_settings
