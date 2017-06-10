@@ -3820,8 +3820,6 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 
 					// scale up
 					mul_v3_fl(pa->state.co, sds->scale);
-					// scale up to match actual domain size. also take care of domain translations globally
-					mul_m4_v3(sds->obmat, pa->state.co);
 
 					/* calculate required shift to match domain's global position
 					 *  it was originally simulated at (if object moves without step) */
@@ -3829,10 +3827,13 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 					mul_m4_v3(ob->obmat, ob_loc);
 					mul_m4_v3(sds->obmat, ob_cache_loc);
 					VECSUB(sds->obj_shift_f, ob_cache_loc, ob_loc);
-					/* convert shift to local space and apply to vertices */
+					/* convert shift to local space and apply to particles */
 					mul_mat3_m4_v3(ob->imat, sds->obj_shift_f);
 					/* apply */
-					add_v3_v3(pa->state.co, sds->obj_shift_f);
+					sub_v3_v3(pa->state.co, sds->obj_shift_f);
+
+					// scale up to match actual domain size. also take care of domain translations globally
+					mul_m4_v3(sds->obmat, pa->state.co);
 
 //					printf("pa->state.co[0]: %f, pa->state.co[1]: %f, pa->state.co[2]: %f\n", pa->state.co[0], pa->state.co[1], pa->state.co[2]);
 
