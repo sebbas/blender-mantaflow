@@ -3797,8 +3797,8 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 				if (flagActivePart == 0) { // mantaflow convention: PNONE = 0 (regular, active particle)
 					activeParts++;
 
-					pa->size = 0.1; // TODO (sebbas): manta doesnt store particle sizes -> new field in domainsettings
-//					pa->size /= 10.0f;
+					pa->size = sds->particle_radius;
+					pa->size /= 10.0f;
 
 					float ob_loc[3] = {0};
 					float ob_cache_loc[3] = {0};
