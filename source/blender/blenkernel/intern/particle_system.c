@@ -3774,6 +3774,11 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 			int p, totpart;
 			int flagActivePart, activeParts = 0, fileParts = 0;
 
+			// Sanity check: no particle files present yet
+			// TODO (sebbas): need better way to catch cases where pp is not yet present
+			if (curFrame == 0)
+				return;
+
 			totpart = liquid_get_num_particles(sds->fluid);
 			totpart = (use_render_params) ? totpart : (part->disp*totpart) / 100;
 
@@ -3785,11 +3790,6 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 			realloc_particles(sim, part->totpart);
 
 			for (p=0, pa=psys->particles; p<totpart; p++, pa++) {
-
-				// Sanity check: no particle files present yet
-				// TODO (sebbas): need better way to catch cases where pp is not yet present
-				if (curFrame == 0)
-					return;
 
 				flagActivePart = liquid_get_particle_flag_at(sds->fluid, p);
 
