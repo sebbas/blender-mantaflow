@@ -116,6 +116,8 @@ static void rna_Smoke_update_file_format(Main *bmain, Scene *scene, PointerRNA *
 			BLI_addtail(&ob->modifiers, psmd);
 			modifier_unique_name(&ob->modifiers, (ModifierData *)psmd);
 		}
+		/* wire mode more convenient for particles */
+		ob->dt = OB_WIRE;
 	}
 	else {
 		for (psys = ob->particlesystem.first; psys; psys = next_psys) {
@@ -131,6 +133,8 @@ static void rna_Smoke_update_file_format(Main *bmain, Scene *scene, PointerRNA *
 				psys_free(ob, psys);
 			}
 		}
+		/* solid mode more convenient for meshes */
+		ob->dt = OB_SOLID;
 	}
 	rna_Smoke_resetCache(bmain, scene, ptr);
 }
