@@ -123,6 +123,12 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mNumNormals   = 0;
 	mNumTriangles = 0;
 
+	// Particles
+	mNumParticles = 0;
+	mParticleDimX = 0;
+	mParticleDimY = 0;
+	mParticleDimZ = 0;
+
 	// Only start Mantaflow once. No need to start whenever new FLUID objected is allocated
 	if (!mantaInitialized)
 		initializeMantaflow();
@@ -405,7 +411,7 @@ FLUID::~FLUID()
 	tmpString += smoke_delete_heat_low;
 	tmpString += smoke_delete_fire_low;
 	tmpString += smoke_delete_colors_low;
-		
+
 	tmpString += smoke_delete_variables_high;
 	tmpString += smoke_delete_grids_high;
 	tmpString += smoke_delete_fire_high;
@@ -430,7 +436,7 @@ FLUID::~FLUID()
 	mCommands.clear();
 	mCommands.push_back(finalString);
 	runPythonString(mCommands);
-	
+
 	// Reset pointers to avoid dangling pointers
 	mDensity        = NULL;
 	mHeat           = NULL;
@@ -450,7 +456,7 @@ FLUID::~FLUID()
 	mColorG         = NULL;
 	mColorB         = NULL;
 	mObstacle       = NULL;
-	
+
 	mDensityHigh    = NULL;
 	mFlameHigh      = NULL;
 	mFuelHigh       = NULL;
@@ -464,12 +470,12 @@ FLUID::~FLUID()
 	mTextureU2      = NULL;
 	mTextureV2      = NULL;
 	mTextureW2      = NULL;
-	
+
 	// Liquid
 	mPhiIn  = NULL;
 	mPhiObs = NULL;
 	mPhiOut = NULL;
-	
+
 	// Reset flags
 	mUsingHeat    = false;
 	mUsingFire    = false;
@@ -881,7 +887,7 @@ void FLUID::updateMeshData(const char* filename)
 	gzread(gzf, &mNumVertices, sizeof(int));
 	
 	if (with_debug)
-		std::cout << "read mesh , num verts: " << mNumVertices << std::endl;
+		std::cout << "read mesh , num verts: " << mNumVertices << " , in file: "<< filename << std::endl;
 
 	if (mNumVertices)
 	{
@@ -977,7 +983,7 @@ void FLUID::updateParticleData(const char* filename)
 	gzread(gzf, &timestamp, sizeof(unsigned long long));
 
 	if (with_debug)
-		std::cout << "read particles , num particles " << mNumParticles << std::endl;
+		std::cout << "read particles , num particles " << mNumParticles << " , in file: "<< filename << std::endl;
 
 	// Sanity check
 	const int partSysSize = sizeof(float) * 3 + sizeof(int);
