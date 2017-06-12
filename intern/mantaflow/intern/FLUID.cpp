@@ -586,6 +586,8 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		else { 		ss << mResZ;}
 	} else if (varName == "DT_FACTOR")
 		ss << smd->domain->time_scale;
+	else if (varName == "CFL")
+		ss << smd->domain->cfl_condition;
 	else if (varName == "FPS")
 		ss << md->scene->r.frs_sec / md->scene->r.frs_sec_base;
 	else if (varName == "VORTICITY")

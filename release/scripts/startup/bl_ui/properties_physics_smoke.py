@@ -82,10 +82,13 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
 
             split = layout.split()
 
+            split.enabled = not domain.point_cache.is_baked
+
             col = split.column()
             col.label(text="Time:")
             col.prop(domain, "time_scale", text="Scale")
             col.prop(domain, "use_adaptive_stepping", text="Adaptive stepping")
+            col.prop(domain, "cfl_condition", text="CFL")
             
             col = split.column()
             if scene.use_gravity:

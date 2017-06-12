@@ -875,6 +875,13 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Adaptive stepping", "Enable adaptive time-stepping");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
+	prop = RNA_def_property(srna, "cfl_condition", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_float_sdna(prop, NULL, "cfl_condition");
+	RNA_def_property_range(prop, 0.0, 10.0);
+	RNA_def_property_ui_range(prop, 0.0001, 10.0, 0.02, 5);
+	RNA_def_property_ui_text(prop, "CFL", "Maximal velocity per cell (higher value results in larger timesteps)");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
 	prop = RNA_def_property(srna, "vorticity", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "vorticity");
 	RNA_def_property_range(prop, 0.0, 4.0);

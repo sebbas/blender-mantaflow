@@ -99,7 +99,7 @@ dt0_s$ID$         = dt_default_s$ID$ * (25.0 / fps_s$ID$) * dt_factor_s$ID$\n\
 s$ID$.frameLength = dt0_s$ID$\n\
 s$ID$.timestepMin = dt0_s$ID$ / 10\n\
 s$ID$.timestepMax = dt0_s$ID$\n\
-s$ID$.cfl         = 4.0\n\
+s$ID$.cfl         = $CFL$\n\
 s$ID$.timestep    = (s$ID$.timestepMax+s$ID$.timestepMin)*0.5\n";
 
 const std::string fluid_adaptive_time_stepping_high = "\n\

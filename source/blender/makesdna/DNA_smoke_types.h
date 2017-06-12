@@ -226,9 +226,9 @@ typedef struct SmokeDomainSettings {
 	/* show original meshes, preview or final sim */
 	short viewport_display_mode;
 	short render_display_mode;
-	char pad5[4];
 	
 	float time_scale;
+	float cfl_condition;
 	float vorticity;
 	int active_fields;
 	float active_color[3]; /* monitor color situation of simulation */

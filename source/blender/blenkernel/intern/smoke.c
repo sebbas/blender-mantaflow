@@ -558,6 +558,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->alpha = -0.001;
 			smd->domain->beta = 0.3;
 			smd->domain->time_scale = 1.0;
+			smd->domain->cfl_condition = 4.0;
 			smd->domain->vorticity = 0.2;
 			smd->domain->border_collisions = 0; // open domain
 			smd->domain->flags = MOD_SMOKE_DISSOLVE_LOG;
@@ -707,6 +708,7 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->border_collisions = smd->domain->border_collisions;
 		tsmd->domain->vorticity = smd->domain->vorticity;
 		tsmd->domain->time_scale = smd->domain->time_scale;
+		tsmd->domain->cfl_condition = smd->domain->cfl_condition;
 
 		tsmd->domain->burning_rate = smd->domain->burning_rate;
 		tsmd->domain->flame_smoke = smd->domain->flame_smoke;
