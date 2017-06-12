@@ -93,7 +93,7 @@ static void rna_Smoke_update_file_format(Main *bmain, Scene *scene, PointerRNA *
 	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
 
 	/* remove fluidsim particle system */
-	if (smd && smd->domain && smd->domain->cache_file_format == PTCACHE_FILE_PARTICLE) {
+	if (smd && smd->domain && (smd->domain->cache_file_format == PTCACHE_FILE_FLIP || smd->domain->cache_file_format == PTCACHE_FILE_LIQUIDFLIP)) {
 		for (psys = ob->particlesystem.first; psys; psys = psys->next)
 			if (psys->part->type == PART_MANTA)
 				break;
@@ -183,14 +183,20 @@ static EnumPropertyItem *rna_Smoke_cachetype_itemf(
 	{
 		tmp.value = PTCACHE_FILE_LIQUID;
 		tmp.identifier = "OBJECT";
-		tmp.name = "Object files";
-		tmp.description = "Obj file format";
+		tmp.name = "Mesh files";
+		tmp.description = "Bobj.gz file format";
 		RNA_enum_item_add(&item, &totitem, &tmp);
 
-		tmp.value = PTCACHE_FILE_PARTICLE;
-		tmp.identifier = "PARTICLE";
+		tmp.value = PTCACHE_FILE_FLIP;
+		tmp.identifier = "FLIP";
 		tmp.name = "FLIP particles";
 		tmp.description = "Uni file format";
+		RNA_enum_item_add(&item, &totitem, &tmp);
+
+		tmp.value = PTCACHE_FILE_LIQUIDFLIP;
+		tmp.identifier = "OBJECTFLIP";
+		tmp.name = "Mesh files + FLIP particles";
+		tmp.description = "Bobj.gz + Uni file format";
 		RNA_enum_item_add(&item, &totitem, &tmp);
 	}
 

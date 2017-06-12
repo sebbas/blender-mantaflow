@@ -1227,10 +1227,9 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 #endif
 
 #ifdef WITH_MANTA
-static int ptcache_liquid_read(void *smoke_v, char *filename, char *pathname)
+static int ptcache_liquid_read(void *smoke_v, char *filename, char *pathname, bool load_liquid_data)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
-	int i;
 	
 	if (!smd) {
 		return 0;
@@ -1239,8 +1238,9 @@ static int ptcache_liquid_read(void *smoke_v, char *filename, char *pathname)
 	SmokeDomainSettings *sds = smd->domain;
 	
 	if (sds->fluid) {
-		liquid_load_data(sds->fluid, pathname);
-		
+		if (load_liquid_data) {
+			liquid_load_data(sds->fluid, pathname);
+		}
 		if (sds->flags & MOD_SMOKE_HIGHRES) {
 			liquid_load_data_high(sds->fluid, pathname);
 		}
@@ -1250,10 +1250,9 @@ static int ptcache_liquid_read(void *smoke_v, char *filename, char *pathname)
 	return 0;
 }
 
-static int ptcache_mantaparticle_read(void *smoke_v, char *filename, char *pathname)
+static int ptcache_flip_read(void *smoke_v, char *filename, char *pathname, bool load_liquid_data)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
-	int i;
 
 	if (!smd) {
 		return 0;
@@ -1262,17 +1261,10 @@ static int ptcache_mantaparticle_read(void *smoke_v, char *filename, char *pathn
 	SmokeDomainSettings *sds = smd->domain;
 
 	if (sds->fluid) {
-		liquid_load_data(sds->fluid, pathname);
-
-		if (sds->flags & MOD_SMOKE_HIGHRES) {
-
-			i = strlen(filename);
-			/* remove .bobj.gz ...*/
-			if (i > 8)
-				filename[i-8] = '\0';
-			/* ... and add _HIGH.bobj.gz ending */
-			strcat(filename, "_HIGH.bobj.gz");
-
+		if (load_liquid_data) {
+			liquid_load_data(sds->fluid, pathname);
+		}
+		if (load_liquid_data && sds->flags & MOD_SMOKE_HIGHRES) {
 			liquid_load_data_high(sds->fluid, pathname);
 		}
 		liquid_update_particle_data(sds->fluid, filename);
@@ -1281,7 +1273,7 @@ static int ptcache_mantaparticle_read(void *smoke_v, char *filename, char *pathn
 	return 0;
 }
 
-static int ptcache_liquid_write(void *smoke_v, char *filename, char* pathname)
+static int ptcache_liquid_write(void *smoke_v, char *filename, char* pathname, bool save_liquid_data)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
 	int i;
@@ -1294,10 +1286,10 @@ static int ptcache_liquid_write(void *smoke_v, char *filename, char* pathname)
 	
 	if (sds->fluid) {
 		liquid_save_mesh(sds->fluid, filename);
-		liquid_save_data(sds->fluid, pathname);
-		
+		if (save_liquid_data) {
+			liquid_save_data(sds->fluid, pathname);
+		}
 		if (sds->flags & MOD_SMOKE_HIGHRES) {
-			
 			i = strlen(filename);
 			/* remove .bobj.gz ...*/
 			if (i > 8)
@@ -1306,7 +1298,9 @@ static int ptcache_liquid_write(void *smoke_v, char *filename, char* pathname)
 			strcat(filename, "_HIGH.bobj.gz");
 			
 			liquid_save_mesh_high(sds->fluid, filename);
-			liquid_save_data_high(sds->fluid, pathname);
+			if (save_liquid_data) {
+				liquid_save_data_high(sds->fluid, pathname);
+			}
 		}
 		/* After writing mesh data make sure that fields in fluid object
 		 * are up-to-date (necessary for instant replay functionality) */
@@ -1316,10 +1310,9 @@ static int ptcache_liquid_write(void *smoke_v, char *filename, char* pathname)
 	return 0;
 }
 
-static int ptcache_mantaparticle_write(void *smoke_v, char *filename, char* pathname)
+static int ptcache_flip_write(void *smoke_v, char *filename, char* pathname, bool save_liquid_data)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
-	int i;
 
 	if (!smd) {
 		return 0;
@@ -1329,9 +1322,10 @@ static int ptcache_mantaparticle_write(void *smoke_v, char *filename, char* path
 
 	if (sds->fluid) {
 		liquid_save_particles(sds->fluid, filename);
-		liquid_save_data(sds->fluid, pathname);
-
-		if (sds->flags & MOD_SMOKE_HIGHRES) {
+		if (save_liquid_data) {
+			liquid_save_data(sds->fluid, pathname);
+		}
+		if (save_liquid_data && sds->flags & MOD_SMOKE_HIGHRES) {
 			liquid_save_data_high(sds->fluid, pathname);
 		}
 		/* After writing particle data make sure that fields in fluid object
@@ -1637,8 +1631,8 @@ void BKE_ptcache_id_from_particles(PTCacheID *pid, Object *ob, ParticleSystem *p
 	pid->write_liquid_stream	= NULL;
 	pid->read_liquid_stream		= NULL;
 
-	pid->write_particle_stream	= NULL;
-	pid->read_particle_stream	= NULL;
+	pid->write_flip_stream		= NULL;
+	pid->read_flip_stream		= NULL;
 
 	pid->write_extra_data		= NULL;
 	pid->read_extra_data		= NULL;
@@ -1700,8 +1694,8 @@ void BKE_ptcache_id_from_cloth(PTCacheID *pid, Object *ob, ClothModifierData *cl
 	pid->write_liquid_stream	= NULL;
 	pid->read_liquid_stream		= NULL;
 
-	pid->write_particle_stream	= NULL;
-	pid->read_particle_stream	= NULL;
+	pid->write_flip_stream		= NULL;
+	pid->read_flip_stream		= NULL;
 
 	pid->write_extra_data		= NULL;
 	pid->read_extra_data		= NULL;
@@ -1748,8 +1742,8 @@ void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct SmokeMo
 		pid->write_liquid_stream	= NULL;
 		pid->read_liquid_stream		= NULL;
 
-		pid->write_particle_stream	= NULL;
-		pid->read_particle_stream	= NULL;
+		pid->write_flip_stream		= NULL;
+		pid->read_flip_stream		= NULL;
 	}
 	else if (smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
 	{
@@ -1759,8 +1753,8 @@ void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct SmokeMo
 		pid->write_liquid_stream	= ptcache_liquid_write;
 		pid->read_liquid_stream		= ptcache_liquid_read;
 
-		pid->write_particle_stream	= ptcache_mantaparticle_write;
-		pid->read_particle_stream	= ptcache_mantaparticle_read;
+		pid->write_flip_stream		= ptcache_flip_write;
+		pid->read_flip_stream		= ptcache_flip_read;
 	}
 
 	pid->write_openvdb_stream	= ptcache_smoke_openvdb_write;
@@ -1973,7 +1967,7 @@ static const char *ptcache_file_extension(const PTCacheID *pid)
 			return ".vdb";
 		case PTCACHE_FILE_LIQUID:
 			return ".bobj.gz";
-		case PTCACHE_FILE_PARTICLE:
+		case PTCACHE_FILE_FLIP:
 			return ".uni";
 	}
 }
@@ -2754,7 +2748,7 @@ static int ptcache_read_openvdb_stream(PTCacheID *pid, int cfra)
 #endif
 }
 
-static int ptcache_read_liquid_stream(PTCacheID *pid, int cfra)
+static int ptcache_read_liquid_stream(PTCacheID *pid, int cfra, bool load_liquid_data)
 {
 	char filename[FILE_MAX * 2];
 	char pathname[FILE_MAX * 2];
@@ -2770,14 +2764,14 @@ static int ptcache_read_liquid_stream(PTCacheID *pid, int cfra)
 		return 0;
 	}
 
-	if (!pid->read_liquid_stream(pid->calldata, filename, pathname)) {
+	if (!pid->read_liquid_stream(pid->calldata, filename, pathname, load_liquid_data)) {
 		return 0;
 	}
 
 	return 1;
 }
 
-static int ptcache_read_particle_stream(PTCacheID *pid, int cfra)
+static int ptcache_read_flip_stream(PTCacheID *pid, int cfra, bool load_liquid_data)
 {
 	char filename[FILE_MAX * 2];
 	char pathname[FILE_MAX * 2];
@@ -2793,7 +2787,7 @@ static int ptcache_read_particle_stream(PTCacheID *pid, int cfra)
 		return 0;
 	}
 
-	if (!pid->read_particle_stream(pid->calldata, filename, pathname)) {
+	if (!pid->read_flip_stream(pid->calldata, filename, pathname, load_liquid_data)) {
 		return 0;
 	}
 
@@ -2954,12 +2948,20 @@ int BKE_ptcache_read(PTCacheID *pid, float cfra, bool no_extrapolate_old)
 			}
 		}
 		else if (pid->file_type == PTCACHE_FILE_LIQUID && pid->read_liquid_stream) {
-			if (!ptcache_read_liquid_stream(pid, cfra1)) {
+			if (!ptcache_read_liquid_stream(pid, cfra1, true)) {
 				return 0;
 			}
 		}
-		else if (pid->file_type == PTCACHE_FILE_PARTICLE && pid->read_particle_stream) {
-			if (!ptcache_read_particle_stream(pid, cfra1)) {
+		else if (pid->file_type == PTCACHE_FILE_FLIP && pid->read_flip_stream) {
+			if (!ptcache_read_flip_stream(pid, cfra1, true)) {
+				return 0;
+			}
+		}
+		else if (pid->file_type == PTCACHE_FILE_LIQUIDFLIP && pid->read_liquid_stream && pid->read_flip_stream) {
+			if (!ptcache_read_liquid_stream(pid, cfra1, true)) {
+				return 0;
+			}
+			if (!ptcache_read_flip_stream(pid, cfra1, false)) { // Do not load liquid data again, was loaded above
 				return 0;
 			}
 		}
@@ -2979,12 +2981,20 @@ int BKE_ptcache_read(PTCacheID *pid, float cfra, bool no_extrapolate_old)
 			}
 		}
 		else if (pid->file_type == PTCACHE_FILE_LIQUID && pid->read_liquid_stream) {
-			if (!ptcache_read_liquid_stream(pid, cfra2)) {
+			if (!ptcache_read_liquid_stream(pid, cfra2, true)) {
 				return 0;
 			}
 		}
-		else if (pid->file_type == PTCACHE_FILE_PARTICLE && pid->read_particle_stream) {
-			if (!ptcache_read_particle_stream(pid, cfra2)) {
+		else if (pid->file_type == PTCACHE_FILE_FLIP && pid->read_flip_stream) {
+			if (!ptcache_read_flip_stream(pid, cfra2, true)) {
+				return 0;
+			}
+		}
+		else if (pid->file_type == PTCACHE_FILE_LIQUIDFLIP && pid->read_liquid_stream && pid->read_flip_stream) {
+			if (!ptcache_read_liquid_stream(pid, cfra2, true)) {
+				return 0;
+			}
+			if (!ptcache_read_flip_stream(pid, cfra2, false)) { // Do not load liquid data again, was loaded above
 				return 0;
 			}
 		}
@@ -3076,7 +3086,7 @@ static int ptcache_write_openvdb_stream(PTCacheID *pid, int cfra)
 	return 0;
 #endif
 }
-static int ptcache_write_liquid_stream(PTCacheID *pid, int cfra)
+static int ptcache_write_liquid_stream(PTCacheID *pid, int cfra, bool save_liquid_data)
 {
 	char filename[FILE_MAX * 2];
 	char pathname[FILE_MAX * 2];
@@ -3088,14 +3098,14 @@ static int ptcache_write_liquid_stream(PTCacheID *pid, int cfra)
 	
 	BLI_make_existing_file(filename);
 
-	int error = pid->write_liquid_stream(pid->calldata, filename, pathname);
+	int error = pid->write_liquid_stream(pid->calldata, filename, pathname, save_liquid_data);
 	
 	if (error && G.debug & G_DEBUG)
 		printf("Error writing to disk cache\n");
 	
 	return error == 0;
 }
-static int ptcache_write_particle_stream(PTCacheID *pid, int cfra)
+static int ptcache_write_flip_stream(PTCacheID *pid, int cfra, bool save_liquid_data)
 {
 	char filename[FILE_MAX * 2];
 	char pathname[FILE_MAX * 2];
@@ -3107,7 +3117,7 @@ static int ptcache_write_particle_stream(PTCacheID *pid, int cfra)
 
 	BLI_make_existing_file(filename);
 
-	int error = pid->write_particle_stream(pid->calldata, filename, pathname);
+	int error = pid->write_flip_stream(pid->calldata, filename, pathname, save_liquid_data);
 
 	if (error && G.debug & G_DEBUG)
 		printf("Error writing to disk cache\n");
@@ -3249,10 +3259,16 @@ int BKE_ptcache_write(PTCacheID *pid, unsigned int cfra)
 		ptcache_write_openvdb_stream(pid, cfra);
 	}
 	else if (pid->file_type == PTCACHE_FILE_LIQUID && pid->write_liquid_stream) {
-		ptcache_write_liquid_stream(pid, cfra);
+		ptcache_write_liquid_stream(pid, cfra, true);
 	}
-	else if (pid->file_type == PTCACHE_FILE_PARTICLE && pid->write_particle_stream) {
-		ptcache_write_particle_stream(pid, cfra);
+	else if (pid->file_type == PTCACHE_FILE_FLIP && pid->write_flip_stream) {
+		ptcache_write_flip_stream(pid, cfra, true);
+	}
+	else if (pid->file_type == PTCACHE_FILE_LIQUIDFLIP && pid->write_liquid_stream && pid->write_flip_stream) {
+		pid->file_type = PTCACHE_FILE_LIQUID; // Make sure we get the right file extension
+		ptcache_write_liquid_stream(pid, cfra, true);
+		pid->file_type = PTCACHE_FILE_FLIP; // Make sure we get the right file extension
+		ptcache_write_flip_stream(pid, cfra, false); // Do not load liquid data again, was loaded above
 	}
 	else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->write_stream) {
 		ptcache_write_stream(pid, cfra, totpoint);
