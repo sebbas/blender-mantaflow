@@ -1988,6 +1988,7 @@ static const char *ptcache_file_extension(const PTCacheID *pid)
 		case PTCACHE_FILE_OPENVDB:
 			return ".vdb";
 		case PTCACHE_FILE_LIQUID:
+		case PTCACHE_FILE_LIQUIDFLIP: // dummy: extensions handled by setting file types for mesh and particles manually
 			return ".bobj.gz";
 		case PTCACHE_FILE_FLIP:
 			return ".uni";
@@ -2980,12 +2981,15 @@ int BKE_ptcache_read(PTCacheID *pid, float cfra, bool no_extrapolate_old)
 			}
 		}
 		else if (pid->file_type == PTCACHE_FILE_LIQUIDFLIP && pid->read_liquid_stream && pid->read_flip_stream) {
+			pid->file_type = PTCACHE_FILE_FLIP; // Make sure we get the right file extension
+			if (!ptcache_read_flip_stream(pid, cfra1, false)) { // Mesh handles internal data loading
+				return 0;
+			}
+			pid->file_type = PTCACHE_FILE_LIQUID; // Make sure we get the right file extension
 			if (!ptcache_read_liquid_stream(pid, cfra1, true)) {
 				return 0;
 			}
-			if (!ptcache_read_flip_stream(pid, cfra1, false)) { // Do not load liquid data again, was loaded above
-				return 0;
-			}
+			pid->file_type = PTCACHE_FILE_LIQUIDFLIP; // Switch back to actual file type
 		}
 		else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->read_stream) {
 			if (!ptcache_read_stream(pid, cfra1))
@@ -3013,12 +3017,15 @@ int BKE_ptcache_read(PTCacheID *pid, float cfra, bool no_extrapolate_old)
 			}
 		}
 		else if (pid->file_type == PTCACHE_FILE_LIQUIDFLIP && pid->read_liquid_stream && pid->read_flip_stream) {
-			if (!ptcache_read_liquid_stream(pid, cfra2, true)) {
+			pid->file_type = PTCACHE_FILE_FLIP; // Make sure we get the right file extension
+			if (!ptcache_read_flip_stream(pid, cfra1, false)) { // Mesh handles internal data loading
 				return 0;
 			}
-			if (!ptcache_read_flip_stream(pid, cfra2, false)) { // Do not load liquid data again, was loaded above
+			pid->file_type = PTCACHE_FILE_LIQUID; // Make sure we get the right file extension
+			if (!ptcache_read_liquid_stream(pid, cfra1, true)) {
 				return 0;
 			}
+			pid->file_type = PTCACHE_FILE_LIQUIDFLIP; // Switch back to actual file type
 		}
 		else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->read_stream) {
 			if (!ptcache_read_stream(pid, cfra2))
@@ -3287,10 +3294,11 @@ int BKE_ptcache_write(PTCacheID *pid, unsigned int cfra)
 		ptcache_write_flip_stream(pid, cfra, true);
 	}
 	else if (pid->file_type == PTCACHE_FILE_LIQUIDFLIP && pid->write_liquid_stream && pid->write_flip_stream) {
+		pid->file_type = PTCACHE_FILE_FLIP; // Make sure we get the right file extension
+		ptcache_write_flip_stream(pid, cfra, false); // Mesh handles internal data saving
 		pid->file_type = PTCACHE_FILE_LIQUID; // Make sure we get the right file extension
 		ptcache_write_liquid_stream(pid, cfra, true);
-		pid->file_type = PTCACHE_FILE_FLIP; // Make sure we get the right file extension
-		ptcache_write_flip_stream(pid, cfra, false); // Do not load liquid data again, was loaded above
+		pid->file_type = PTCACHE_FILE_LIQUIDFLIP; // Switch back to actual file type
 	}
 	else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->write_stream) {
 		ptcache_write_stream(pid, cfra, totpoint);
