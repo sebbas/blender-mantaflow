@@ -1230,21 +1230,34 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 static int ptcache_liquid_read(void *smoke_v, char *filename, char *pathname, bool load_liquid_data)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
+	int i;
 	
 	if (!smd) {
 		return 0;
 	}
 
 	SmokeDomainSettings *sds = smd->domain;
-	
+	bool high_res      = sds->flags & MOD_SMOKE_HIGHRES;
+	bool high_res_view = sds->viewport_display_mode == SM_VIEWPORT_FINAL;
+
 	if (sds->fluid) {
+		/* Mantaflow internal data loading */
 		if (load_liquid_data) {
 			liquid_load_data(sds->fluid, pathname);
 		}
-		if (sds->flags & MOD_SMOKE_HIGHRES) {
+		if (load_liquid_data && high_res && high_res_view) {
 			liquid_load_data_high(sds->fluid, pathname);
 		}
+
+		/* Actual mesh loading */
 		liquid_update_mesh_data(sds->fluid, filename);
+		if (high_res && high_res_view) {
+			i = strlen(filename);
+			if (i > 8) filename[i-8] = '\0';   // strip low-res extension
+			strcat(filename, "_HIGH.bobj.gz"); // add high-res extension
+
+			liquid_update_mesh_data(sds->fluid, filename);
+		}
 		return 1;
 	}
 	return 0;
@@ -1261,12 +1274,12 @@ static int ptcache_flip_read(void *smoke_v, char *filename, char *pathname, bool
 	SmokeDomainSettings *sds = smd->domain;
 
 	if (sds->fluid) {
+		/* Mantaflow internal data loading */
 		if (load_liquid_data) {
 			liquid_load_data(sds->fluid, pathname);
 		}
-		if (load_liquid_data && sds->flags & MOD_SMOKE_HIGHRES) {
-			liquid_load_data_high(sds->fluid, pathname);
-		}
+
+		/* Actual particle loading */
 		liquid_update_particle_data(sds->fluid, filename);
 		return 1;
 	}
@@ -1277,34 +1290,43 @@ static int ptcache_liquid_write(void *smoke_v, char *filename, char* pathname, b
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
 	int i;
+	char filenameHigh[256];
 
 	if (!smd) {
 		return 0;
 	}
 
 	SmokeDomainSettings *sds = smd->domain;
-	
+	bool high_res      = sds->flags & MOD_SMOKE_HIGHRES;
+	bool high_res_view = sds->viewport_display_mode == SM_VIEWPORT_FINAL;
+
 	if (sds->fluid) {
-		liquid_save_mesh(sds->fluid, filename);
+		/* Mantaflow internal data saving */
 		if (save_liquid_data) {
 			liquid_save_data(sds->fluid, pathname);
 		}
-		if (sds->flags & MOD_SMOKE_HIGHRES) {
-			i = strlen(filename);
-			/* remove .bobj.gz ...*/
-			if (i > 8)
-				filename[i-8] = '\0';
-			/* ... and add _HIGH.bobj.gz ending */
-			strcat(filename, "_HIGH.bobj.gz");
-			
-			liquid_save_mesh_high(sds->fluid, filename);
-			if (save_liquid_data) {
-				liquid_save_data_high(sds->fluid, pathname);
-			}
+		if (save_liquid_data && high_res) {
+			liquid_save_data_high(sds->fluid, pathname);
 		}
-		/* After writing mesh data make sure that fields in fluid object
-		 * are up-to-date (necessary for instant replay functionality) */
-		liquid_update_mesh_data(sds->fluid, filename);
+
+		/* Actual mesh saving */
+		liquid_save_mesh(sds->fluid, filename);
+		if (high_res) {
+			strcpy(filenameHigh, filename); // copy name, original file name is needed later
+			i = strlen(filenameHigh);
+			if (i > 8) filenameHigh[i-8] = '\0';   // strip low-res extension
+			strcat(filenameHigh, "_HIGH.bobj.gz"); // add high-res extension
+
+			liquid_save_mesh_high(sds->fluid, filenameHigh);
+		}
+
+		/* Update mesh for instant replay functionality */
+		if (high_res && high_res_view) {
+			liquid_update_mesh_data(sds->fluid, filenameHigh);
+		}
+		else {
+			liquid_update_mesh_data(sds->fluid, filename);
+		}
 		return 1;
 	}
 	return 0;
@@ -1321,15 +1343,15 @@ static int ptcache_flip_write(void *smoke_v, char *filename, char* pathname, boo
 	SmokeDomainSettings *sds = smd->domain;
 
 	if (sds->fluid) {
-		liquid_save_particles(sds->fluid, filename);
+		/* Mantaflow internal data saving */
 		if (save_liquid_data) {
 			liquid_save_data(sds->fluid, pathname);
 		}
-		if (save_liquid_data && sds->flags & MOD_SMOKE_HIGHRES) {
-			liquid_save_data_high(sds->fluid, pathname);
-		}
-		/* After writing particle data make sure that fields in fluid object
-		 * are up-to-date (necessary for instant replay functionality) */
+
+		/* Actual particle saving */
+		liquid_save_particles(sds->fluid, filename);
+
+		/* Update particles for instant replay functionality */
 		liquid_update_particle_data(sds->fluid, filename);
 		return 1;
 	}

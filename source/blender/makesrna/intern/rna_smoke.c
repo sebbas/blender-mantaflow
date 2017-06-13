@@ -48,7 +48,7 @@
 #include "DNA_smoke_types.h"
 
 #include "WM_types.h"
-
+#include "WM_api.h"
 
 #ifdef RNA_RUNTIME
 
@@ -66,6 +66,11 @@
 static void rna_Smoke_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
 {
 	DAG_id_tag_update(ptr->id.data, OB_RECALC_DATA);
+
+	// Needed for liquid domain objects
+	Object *ob = ptr->id.data;
+	DAG_id_tag_update(ptr->id.data, OB_RECALC_DATA);
+	WM_main_add_notifier(NC_OBJECT | ND_DRAW, ob);
 }
 
 static void rna_Smoke_dependency_update(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -80,6 +85,28 @@ static void rna_Smoke_resetCache(Main *UNUSED(bmain), Scene *UNUSED(scene), Poin
 	if (settings->smd && settings->smd->domain)
 		settings->point_cache[0]->flag |= PTCACHE_OUTDATED;
 	DAG_id_tag_update(ptr->id.data, OB_RECALC_DATA);
+}
+
+static void rna_Smoke_viewport_set(struct PointerRNA *ptr, int value)
+{
+	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+	Object *ob = (Object *)ptr->id.data;
+	ModifierData *md;
+	float framenr;
+	bool can_simulate;
+	PTCacheID pid;
+
+	/* Reload cache if viewport type changed */
+	if (value != settings->viewport_display_mode) {
+		md = ((ModifierData*) settings->smd);
+		framenr = md->scene->r.cfra;
+		can_simulate = (framenr == (int)settings->smd->time + 1) && (framenr == md->scene->r.cfra);
+
+		BKE_ptcache_id_from_smoke(&pid, ob, settings->smd);
+		BKE_ptcache_read(&pid, framenr, can_simulate);
+
+		settings->viewport_display_mode = value;
+	}
 }
 
 static void rna_Smoke_update_file_format(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -844,8 +871,9 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "viewport_display_mode", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "viewport_display_mode");
 	RNA_def_property_enum_items(prop, smoke_quality_items);
+	RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_viewport_set", NULL);
 	RNA_def_property_ui_text(prop, "Viewport Display Mode", "How to display the mesh in the viewport");
-	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
+	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Smoke_update");
 
 	prop = RNA_def_property(srna, "render_display_mode", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "render_display_mode");
