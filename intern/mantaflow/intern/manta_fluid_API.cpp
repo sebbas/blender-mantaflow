@@ -507,6 +507,13 @@ extern "C" void liquid_save_particles(FLUID *liquid, char *filename)
 	}
 }
 
+extern "C" void liquid_save_particle_velocities(FLUID *liquid, char *filename)
+{
+	if (liquid) {
+		liquid->saveParticleVelocities(filename);
+	}
+}
+
 extern "C" void liquid_save_mesh_high(FLUID *liquid, char *filename)
 {
 	if (liquid) {
@@ -640,6 +647,21 @@ extern "C" float liquid_get_particle_position_y_at(FLUID *liquid, int i)
 extern "C" float liquid_get_particle_position_z_at(FLUID *liquid, int i)
 {
 	return liquid->getParticlePositionZAt(i);
+}
+
+extern "C" float liquid_get_particle_velocity_x_at(FLUID *liquid, int i)
+{
+	return liquid->getParticleVelocityXAt(i);
+}
+
+extern "C" float liquid_get_particle_velocity_y_at(FLUID *liquid, int i)
+{
+	return liquid->getParticleVelocityYAt(i);
+}
+
+extern "C" float liquid_get_particle_velocity_z_at(FLUID *liquid, int i)
+{
+	return liquid->getParticleVelocityZAt(i);
 }
 
 extern "C" void liquid_update_mesh_data(FLUID *liquid, char* filename)

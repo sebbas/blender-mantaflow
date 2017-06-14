@@ -3838,9 +3838,11 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 //					printf("pa->state.co[0]: %f, pa->state.co[1]: %f, pa->state.co[2]: %f\n", pa->state.co[0], pa->state.co[1], pa->state.co[2]);
 
 					// set particle velocity
-					pa->state.vel[0] = 0; // TODO (sebbas): manta stores particle velocities in separate pvel vector.
-					pa->state.vel[1] = 0;
-					pa->state.vel[2] = 0;
+					pa->state.vel[0] = liquid_get_particle_velocity_x_at(sds->fluid, p);
+					pa->state.vel[1] = liquid_get_particle_velocity_y_at(sds->fluid, p);
+					pa->state.vel[2] = liquid_get_particle_velocity_z_at(sds->fluid, p);
+
+//					printf("pa->state.vel[0]: %f, pa->state.vel[1]: %f, pa->state.vel[2]: %f\n", pa->state.vel[0], pa->state.vel[1], pa->state.vel[2]);
 
 					// set default angular velocity and particle rotation
 					zero_v3(pa->state.ave);

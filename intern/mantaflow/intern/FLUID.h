@@ -72,6 +72,7 @@ public:
 
 	// Write files for particles
 	void saveParticles(char* filename);
+	void saveParticleVelocities(char* filename);
 
 	// Load files for liquids
 	void loadLiquidData(char *pathname);
@@ -160,6 +161,10 @@ public:
 	inline float getParticlePositionXAt(int i) { return mParticlePositionsX[i]; }
 	inline float getParticlePositionYAt(int i) { return mParticlePositionsY[i]; }
 	inline float getParticlePositionZAt(int i) { return mParticlePositionsZ[i]; }
+
+	inline float getParticleVelocityXAt(int i) { return mParticleVelocitiesX[i]; }
+	inline float getParticleVelocityYAt(int i) { return mParticleVelocitiesY[i]; }
+	inline float getParticleVelocityZAt(int i) { return mParticleVelocitiesZ[i]; }
 
 	void updateMeshData(const char* filename);
 	void updateParticleData(const char* filename);
@@ -254,6 +259,9 @@ private:
 	std::vector<float> mParticlePositionsX;
 	std::vector<float> mParticlePositionsY;
 	std::vector<float> mParticlePositionsZ;
+	std::vector<float> mParticleVelocitiesX;
+	std::vector<float> mParticleVelocitiesY;
+	std::vector<float> mParticleVelocitiesZ;
 
 	void initDomain(struct SmokeModifierData *smd);
 	void initDomainHigh(struct SmokeModifierData *smd);

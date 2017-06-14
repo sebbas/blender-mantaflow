@@ -1292,6 +1292,7 @@ static int ptcache_mesh_read(void *smoke_v, char *filename, char *pathname, bool
 static int ptcache_uni_read(void *smoke_v, char *filename, char *pathname, bool load_liquid_data)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
+	int i;
 
 	if (!smd) {
 		return 0;
@@ -1310,6 +1311,12 @@ static int ptcache_uni_read(void *smoke_v, char *filename, char *pathname, bool 
 
 		/* Actual particle loading */
 		liquid_update_particle_data(sds->fluid, filename);
+
+		i = strlen(filename);
+		if (i > 4) filename[i-4] = '\0';	// strip .uni extension
+		strcat(filename, "_pVel.uni");		// add particle extension
+		liquid_update_particle_data(sds->fluid, filename);
+
 		return 1;
 	}
 	return 0;
@@ -1319,7 +1326,7 @@ static int ptcache_mesh_write(void *smoke_v, char *filename, char* pathname, boo
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
 	int i;
-	char filenameHigh[256];
+	char filenameTmp[256];
 
 	if (!smd) {
 		return 0;
@@ -1345,17 +1352,17 @@ static int ptcache_mesh_write(void *smoke_v, char *filename, char* pathname, boo
 		/* Actual mesh saving */
 		liquid_save_mesh(sds->fluid, filename);
 		if (high_res) {
-			strcpy(filenameHigh, filename);			// copy name, original file name is needed later
-			i = strlen(filenameHigh);
-			if (i > 8) filenameHigh[i-8] = '\0';	// strip .bobj.gz extension
-			strcat(filenameHigh, "_HIGH.bobj.gz");	// add high-res extension
+			strcpy(filenameTmp, filename);			// copy name, original file name is needed later
+			i = strlen(filenameTmp);
+			if (i > 8) filenameTmp[i-8] = '\0';		// strip .bobj.gz extension
+			strcat(filenameTmp, "_HIGH.bobj.gz");	// add high-res extension
 
-			liquid_save_mesh_high(sds->fluid, filenameHigh);
+			liquid_save_mesh_high(sds->fluid, filenameTmp);
 		}
 
 		/* Update mesh for instant replay functionality */
 		if (high_res && high_res_view) {
-			liquid_update_mesh_data(sds->fluid, filenameHigh);
+			liquid_update_mesh_data(sds->fluid, filenameTmp);
 		}
 		else {
 			liquid_update_mesh_data(sds->fluid, filename);
@@ -1368,6 +1375,8 @@ static int ptcache_mesh_write(void *smoke_v, char *filename, char* pathname, boo
 static int ptcache_uni_write(void *smoke_v, char *filename, char* pathname, bool save_liquid_data)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
+	int i;
+	char filenameTmp[256];
 
 	if (!smd) {
 		return 0;
@@ -1387,8 +1396,15 @@ static int ptcache_uni_write(void *smoke_v, char *filename, char* pathname, bool
 		/* Actual particle saving */
 		liquid_save_particles(sds->fluid, filename);
 
+		strcpy(filenameTmp, filename);			// copy name, original file name is needed later
+		i = strlen(filenameTmp);
+		if (i > 4) filenameTmp[i-4] = '\0';		// strip .uni extension
+		strcat(filenameTmp, "_pVel.uni");		// add particle velocity extension
+		liquid_save_particle_velocities(sds->fluid, filenameTmp);
+
 		/* Update particles for instant replay functionality */
 		liquid_update_particle_data(sds->fluid, filename);
+		liquid_update_particle_data(sds->fluid, filenameTmp);
 		return 1;
 	}
 	return 0;

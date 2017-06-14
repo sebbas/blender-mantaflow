@@ -341,6 +341,7 @@ void FLUID::initLiquid(SmokeModifierData *smd)
 			+ liquid_init_phi
 			+ liquid_save_mesh_low
 			+ liquid_save_particles_low
+			+ liquid_save_particle_velocities
 			+ liquid_export_low
 			+ liquid_import_low
 			+ liquid_adaptive_step
@@ -954,7 +955,7 @@ void FLUID::updateParticleData(const char* filename)
 {
 	gzFile gzf;
 	float fbuffer[3];
-	int ibuffer;
+	int ibuffer[4];
 
 	gzf = (gzFile) BLI_gzopen(filename, "rb1"); // do some compression
 	if (!gzf)
@@ -975,10 +976,7 @@ void FLUID::updateParticleData(const char* filename)
 	unsigned long long timestamp; // creation time
 
 	// read particle header
-	gzread(gzf, &mNumParticles, sizeof(int));
-	gzread(gzf, &mParticleDimX, sizeof(int));
-	gzread(gzf, &mParticleDimY, sizeof(int));
-	gzread(gzf, &mParticleDimZ, sizeof(int));
+	gzread(gzf, &ibuffer, sizeof(int) * 4); // num particles, dimX, dimY, dimZ
 	gzread(gzf, &elementType, sizeof(int));
 	gzread(gzf, &bytesPerElement, sizeof(int));
 	gzread(gzf, &info, sizeof(info));
@@ -987,14 +985,25 @@ void FLUID::updateParticleData(const char* filename)
 	if (with_debug)
 		std::cout << "read particles , num particles " << mNumParticles << " , in file: "<< filename << std::endl;
 
-	// Sanity check
+	// Sanity checks
 	const int partSysSize = sizeof(float) * 3 + sizeof(int);
 	if (! (bytesPerElement == partSysSize) && (elementType == 0)){
 		std::cout << "particle type doesn't match" << std::endl;
 	}
+	if (!ibuffer[0]) { // Any particles present?
+		if (with_debug) std::cout << "no particles present yet" << std::endl;
+		return;
+	}
 
-	if (mNumParticles)
+	// Reading base particle system file v2
+	if (!strcmp(ID, "PB02"))
 	{
+		// Only set head fields when read from particle system and not from pdata files (possibly incomplete)
+		mNumParticles = ibuffer[0];
+		mParticleDimX = ibuffer[1];
+		mParticleDimY = ibuffer[2];
+		mParticleDimZ = ibuffer[3];
+
 		mParticlePositionsX.resize(mNumParticles);
 		mParticlePositionsY.resize(mNumParticles);
 		mParticlePositionsZ.resize(mNumParticles);
@@ -1007,8 +1016,26 @@ void FLUID::updateParticleData(const char* filename)
 			mParticlePositionsY[i] = fbuffer[1];
 			mParticlePositionsZ[i] = fbuffer[2];
 
+//			std::cout << "Positions are: [" << mParticlePositionsX[i] << ", " << mParticlePositionsY[i] << "," << mParticlePositionsZ[i] << "]" << std::endl;
+
 			gzread(gzf, &ibuffer, sizeof(int));
-			mParticleFlags[i] = ibuffer;
+			mParticleFlags[i] = ibuffer[0];
+		}
+	}
+	// Reading particle data file v1 with velocities
+	else if (!strcmp(ID, "PD01")) {
+		mParticleVelocitiesX.resize(mNumParticles);
+		mParticleVelocitiesY.resize(mNumParticles);
+		mParticleVelocitiesZ.resize(mNumParticles);
+
+		for (int i = 0; i < mNumParticles; ++i) {
+			gzread(gzf, fbuffer, sizeof(float) * 3);
+
+			mParticleVelocitiesX[i] = fbuffer[0];
+			mParticleVelocitiesY[i] = fbuffer[1];
+			mParticleVelocitiesZ[i] = fbuffer[2];
+
+//			std::cout << "Velocities are: [" << mParticleVelocitiesX[i] << ", " << mParticleVelocitiesY[i] << "," << mParticleVelocitiesZ[i] << "]" << std::endl;
 		}
 	}
 
@@ -1143,6 +1170,19 @@ void FLUID::saveParticles(char* filename)
 
 	save_particles_low << "save_particles_low_" << mCurrentID << "(r'" << path << "')";
 	mCommands.push_back(save_particles_low.str());
+
+	runPythonString(mCommands);
+}
+
+void FLUID::saveParticleVelocities(char* filename)
+{
+	std::string path(filename);
+
+	mCommands.clear();
+	std::ostringstream save_particles_velocities;
+
+	save_particles_velocities << "save_particles_velocities_" << mCurrentID << "(r'" << path << "')";
+	mCommands.push_back(save_particles_velocities.str());
 
 	runPythonString(mCommands);
 }

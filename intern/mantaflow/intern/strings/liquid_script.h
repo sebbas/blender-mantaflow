@@ -290,6 +290,10 @@ const std::string liquid_save_particles_low = "\n\
 def save_particles_low_$ID$(path):\n\
     pp_s$ID$.save(path)\n";
 
+const std::string liquid_save_particle_velocities = "\n\
+def save_particles_velocities_$ID$(path):\n\
+    pVel_s$ID$.save(path)\n";
+
 const std::string liquid_import_low = "\n\
 def load_liquid_data_low_$ID$(path):\n\
     flags_s$ID$.load(path + '_flags.uni')\n\
