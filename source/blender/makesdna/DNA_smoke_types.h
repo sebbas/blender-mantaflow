@@ -49,6 +49,8 @@ enum {
 #endif
 	MOD_SMOKE_FILE_LOAD = (1 << 6),  /* flag for file load */
 	MOD_SMOKE_ADAPTIVE_DOMAIN = (1 << 7),
+	MOD_SMOKE_USE_SURFACE_CACHE = (1 << 8),
+	MOD_SMOKE_USE_VOLUME_CACHE = (1 << 9),
 };
 
 /* border collisions */
@@ -210,9 +212,10 @@ typedef struct SmokeDomainSettings {
 	int cache_high_comp;
 	/* OpenVDB cache options */
 	int openvdb_comp;
-	char cache_file_format;
+	char cache_surface_format;
+	char cache_volume_format;
 	char data_depth;
-	char pad[2];
+	char pad[1];
 	/* Liquid cache options */
 	int liquid_cache_comp;
 	char mock_pad[4]; /* unused */

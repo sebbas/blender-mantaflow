@@ -616,7 +616,8 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->openvdb_comp = VDB_COMPRESSION_ZIP;
 #endif
 			smd->domain->data_depth = 0;
-			smd->domain->cache_file_format = PTCACHE_FILE_PTCACHE;
+			smd->domain->cache_surface_format = PTCACHE_FILE_OBJECT;
+			smd->domain->cache_volume_format = PTCACHE_FILE_PTCACHE;
 
 			smd->domain->display_thickness = 1.0f;
 			smd->domain->slice_method = MOD_SMOKE_SLICE_VIEW_ALIGNED;
@@ -742,7 +743,8 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->effector_weights = MEM_dupallocN(smd->domain->effector_weights);
 		tsmd->domain->openvdb_comp = smd->domain->openvdb_comp;
 		tsmd->domain->data_depth = smd->domain->data_depth;
-		tsmd->domain->cache_file_format = smd->domain->cache_file_format;
+		tsmd->domain->cache_surface_format = smd->domain->cache_surface_format;
+		tsmd->domain->cache_volume_format = smd->domain->cache_volume_format;
 
 		tsmd->domain->slice_method = smd->domain->slice_method;
 		tsmd->domain->axis_slice_method = smd->domain->axis_slice_method;

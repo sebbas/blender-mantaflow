@@ -109,7 +109,7 @@ static void rna_Smoke_viewport_set(struct PointerRNA *ptr, int value)
 	}
 }
 
-static void rna_Smoke_update_file_format(Main *bmain, Scene *scene, PointerRNA *ptr)
+static void rna_Smoke_update_volume_format(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
 	Object *ob = (Object *)ptr->id.data;
 	SmokeModifierData *smd;
@@ -119,8 +119,14 @@ static void rna_Smoke_update_file_format(Main *bmain, Scene *scene, PointerRNA *
 
 	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
 
+	/* TODO (sebbas): for now, only liquid domains hold particle systems */
+	if (smd->domain->type != MOD_SMOKE_DOMAIN_TYPE_LIQUID) {
+		rna_Smoke_resetCache(bmain, scene, ptr);
+		return;
+	}
+
 	/* remove fluidsim particle system */
-	if (smd && smd->domain && (smd->domain->cache_file_format == PTCACHE_FILE_FLIP || smd->domain->cache_file_format == PTCACHE_FILE_LIQUIDFLIP)) {
+	if (smd && smd->domain && smd->domain->flags & MOD_SMOKE_USE_VOLUME_CACHE) {
 		for (psys = ob->particlesystem.first; psys; psys = psys->next)
 			if (psys->part->type == PART_MANTA)
 				break;
@@ -166,22 +172,69 @@ static void rna_Smoke_update_file_format(Main *bmain, Scene *scene, PointerRNA *
 	rna_Smoke_resetCache(bmain, scene, ptr);
 }
 
-static void rna_Smoke_cachetype_set(struct PointerRNA *ptr, int value)
+static void rna_Smoke_cachetype_surface_set(struct PointerRNA *ptr, int value)
 {
 	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
 	Object *ob = (Object *)ptr->id.data;
 
-	if (value != settings->cache_file_format) {
+	if (value != settings->cache_surface_format) {
 		/* Clear old caches. */
 		PTCacheID id;
 		BKE_ptcache_id_from_smoke(&id, ob, settings->smd);
 		BKE_ptcache_id_clear(&id, PTCACHE_CLEAR_ALL, 0);
 
-		settings->cache_file_format = value;
+		settings->cache_surface_format = value;
 	}
 }
 
-static EnumPropertyItem *rna_Smoke_cachetype_itemf(
+static void rna_Smoke_cachetype_volume_set(struct PointerRNA *ptr, int value)
+{
+	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+	Object *ob = (Object *)ptr->id.data;
+
+	if (value != settings->cache_volume_format) {
+		/* Clear old caches. */
+		PTCacheID id;
+		BKE_ptcache_id_from_smoke(&id, ob, settings->smd);
+		BKE_ptcache_id_clear(&id, PTCACHE_CLEAR_ALL, 0);
+
+		settings->cache_volume_format = value;
+	}
+}
+
+static EnumPropertyItem *rna_Smoke_cachetype_surface_itemf(
+        bContext *UNUSED(C), PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
+{
+	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+
+	EnumPropertyItem *item = NULL;
+	EnumPropertyItem tmp = {0, "", 0, "", ""};
+	int totitem = 0;
+
+	if (settings->type == MOD_SMOKE_DOMAIN_TYPE_GAS)
+	{
+		tmp.value = PTCACHE_FILE_OBJECT;
+		tmp.identifier = "OBJECT";
+		tmp.name = "Object files";
+		tmp.description = "Binary object file format";
+		RNA_enum_item_add(&item, &totitem, &tmp);
+	}
+	else if (settings->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
+	{
+		tmp.value = PTCACHE_FILE_OBJECT;
+		tmp.identifier = "OBJECT";
+		tmp.name = "Object files";
+		tmp.description = "Binary object file format";
+		RNA_enum_item_add(&item, &totitem, &tmp);
+	}
+
+	RNA_enum_item_end(&item, &totitem);
+	*r_free = true;
+
+	return item;
+}
+
+static EnumPropertyItem *rna_Smoke_cachetype_volume_itemf(
         bContext *UNUSED(C), PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
 {
 	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
@@ -208,22 +261,10 @@ static EnumPropertyItem *rna_Smoke_cachetype_itemf(
 	}
 	else if (settings->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
 	{
-		tmp.value = PTCACHE_FILE_LIQUID;
-		tmp.identifier = "OBJECT";
-		tmp.name = "Mesh files";
-		tmp.description = "Bobj.gz file format";
-		RNA_enum_item_add(&item, &totitem, &tmp);
-
-		tmp.value = PTCACHE_FILE_FLIP;
-		tmp.identifier = "FLIP";
-		tmp.name = "FLIP particles";
+		tmp.value = PTCACHE_FILE_UNI;
+		tmp.identifier = "UNI";
+		tmp.name = "Uni files";
 		tmp.description = "Uni file format";
-		RNA_enum_item_add(&item, &totitem, &tmp);
-
-		tmp.value = PTCACHE_FILE_LIQUIDFLIP;
-		tmp.identifier = "OBJECTFLIP";
-		tmp.name = "Mesh files + FLIP particles";
-		tmp.description = "Bobj.gz + Uni file format";
 		RNA_enum_item_add(&item, &totitem, &tmp);
 	}
 
@@ -253,7 +294,8 @@ static void rna_Smoke_domaintype_set(struct PointerRNA *ptr, int value)
 		/* Set common values for liquid/smoke domain: cache type, border collision and viewport drawtype. */
 		if (value == MOD_SMOKE_DOMAIN_TYPE_GAS)
 		{
-			rna_Smoke_cachetype_set(ptr, PTCACHE_FILE_PTCACHE);
+			rna_Smoke_cachetype_surface_set(ptr, PTCACHE_FILE_OBJECT);
+			rna_Smoke_cachetype_volume_set(ptr, PTCACHE_FILE_PTCACHE);
 			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_FRONT, 1);
 			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_BACK, 1);
 			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_RIGHT, 1);
@@ -264,7 +306,8 @@ static void rna_Smoke_domaintype_set(struct PointerRNA *ptr, int value)
 		}
 		else if (value == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
 		{
-			rna_Smoke_cachetype_set(ptr, PTCACHE_FILE_LIQUID);
+			rna_Smoke_cachetype_surface_set(ptr, PTCACHE_FILE_OBJECT);
+			rna_Smoke_cachetype_volume_set(ptr, PTCACHE_FILE_UNI);
 			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_FRONT, 0);
 			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_BACK, 0);
 			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_RIGHT, 0);
@@ -649,12 +692,6 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 		{SM_CACHE_HEAVY, "CACHEHEAVY", 0, "Heavy", "Effective but slow compression"},
 		{0, NULL, 0, NULL, NULL}
 	};
-	
-	static EnumPropertyItem liquid_cache_comp_items[] = {
-		{SM_CACHE_LIGHT, "CACHELIGHT", 0, "Light", "Write .bobj.gz files, smaller in size than .obj"},
-		{SM_CACHE_HEAVY, "CACHEHEAVY", 0, "Heavy", "Write .obj files (not yet implemented)"},
-		{0, NULL, 0, NULL, NULL}
-	};
 
 	static EnumPropertyItem smoke_highres_sampling_items[] = {
 		{SM_HRES_FULLSAMPLE, "FULLSAMPLE", 0, "Full Sample", ""},
@@ -824,11 +861,6 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_enum_sdna(prop, NULL, "openvdb_comp");
 	RNA_def_property_enum_items(prop, prop_compression_items);
 	RNA_def_property_ui_text(prop, "Compression", "Compression method to be used");
-	
-	prop = RNA_def_property(srna, "liquid_cache_compress_type", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "liquid_cache_comp");
-	RNA_def_property_enum_items(prop, liquid_cache_comp_items);
-	RNA_def_property_ui_text(prop, "Cache Compression", "Compression method to be used");
 
 	prop = RNA_def_property(srna, "data_depth", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_bitflag_sdna(prop, NULL, "data_depth");
@@ -1033,13 +1065,30 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	                         "Maximum amount of fluid cell can contain before it is considered empty");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
-	prop = RNA_def_property(srna, "cache_file_format", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "cache_file_format");
+	prop = RNA_def_property(srna, "use_surface_cache", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_SMOKE_USE_SURFACE_CACHE);
+	RNA_def_property_ui_text(prop, "Surface cache", "Enable surface cache");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
+	prop = RNA_def_property(srna, "use_volume_cache", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_SMOKE_USE_VOLUME_CACHE);
+	RNA_def_property_ui_text(prop, "Volumetric cache", "Enable volume cache");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_update_volume_format");
+
+	prop = RNA_def_property(srna, "cache_surface_format", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "cache_surface_format");
 	RNA_def_property_enum_items(prop, cache_file_type_items);
-	RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_cachetype_set", "rna_Smoke_cachetype_itemf");
-	RNA_def_property_ui_text(prop, "File Format", "Select the file format to be used for caching");
-	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_update_file_format");
-	
+	RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_cachetype_surface_set", "rna_Smoke_cachetype_surface_itemf");
+	RNA_def_property_ui_text(prop, "File Format", "Select the file format to be used for caching surface data");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
+	prop = RNA_def_property(srna, "cache_volume_format", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "cache_volume_format");
+	RNA_def_property_enum_items(prop, cache_file_type_items);
+	RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_cachetype_volume_set", "rna_Smoke_cachetype_volume_itemf");
+	RNA_def_property_ui_text(prop, "File Format", "Select the file format to be used for caching volumetric data");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
 	/* mantaflow variables */
 	prop = RNA_def_property(srna, "manta_filepath", PROP_STRING, PROP_FILEPATH);
 	RNA_def_property_string_sdna(prop, NULL, "manta_filepath");

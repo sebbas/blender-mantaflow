@@ -583,6 +583,11 @@ static int ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 {	
 	SmokeModifierData *smd= (SmokeModifierData *)smoke_v;
 	SmokeDomainSettings *sds = smd->domain;
+
+	if (!(sds->flags & MOD_SMOKE_USE_VOLUME_CACHE)) {
+		return 0;
+	}
+
 	int ret = 0;
 	int fluid_fields = smoke_get_data_flags(sds);
 
@@ -711,7 +716,11 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 {
 	SmokeModifierData *smd= (SmokeModifierData *)smoke_v;
 	SmokeDomainSettings *sds = smd->domain;
-	
+
+	if (!(sds->flags & MOD_SMOKE_USE_VOLUME_CACHE)) {
+		return 0;
+	}
+
 	if (sds->fluid) {
 		const size_t res = sds->res[0] * sds->res[1] * sds->res[2];
 		const unsigned int out_len = (unsigned int)res * sizeof(float);
@@ -802,6 +811,11 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 {
 	SmokeModifierData *smd= (SmokeModifierData *)smoke_v;
 	SmokeDomainSettings *sds = smd->domain;
+
+	if (!(sds->flags & MOD_SMOKE_USE_VOLUME_CACHE)) {
+		return 0;
+	}
+
 	char version[4];
 	int ch_res[3];
 	float ch_dx;
@@ -1001,6 +1015,10 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
 	SmokeModifierData *smd = (SmokeModifierData *)smoke_v;
 	SmokeDomainSettings *sds = smd->domain;
 
+	if (!(sds->flags & MOD_SMOKE_USE_VOLUME_CACHE)) {
+		return 0;
+	}
+
 	OpenVDBWriter_set_flags(writer, sds->openvdb_comp, (sds->data_depth == 16));
 
 	OpenVDBWriter_add_meta_int(writer, "blender/smoke/active_fields", sds->active_fields);
@@ -1104,6 +1122,10 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 	}
 
 	SmokeDomainSettings *sds = smd->domain;
+
+	if (!(sds->flags & MOD_SMOKE_USE_VOLUME_CACHE)) {
+		return 0;
+	}
 
 	int fluid_fields = smoke_get_data_flags(sds);
 	int active_fields, cache_fields = 0;
@@ -1227,7 +1249,7 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 #endif
 
 #ifdef WITH_MANTA
-static int ptcache_liquid_read(void *smoke_v, char *filename, char *pathname, bool load_liquid_data)
+static int ptcache_mesh_read(void *smoke_v, char *filename, char *pathname, bool load_liquid_data)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
 	int i;
@@ -1237,6 +1259,10 @@ static int ptcache_liquid_read(void *smoke_v, char *filename, char *pathname, bo
 	}
 
 	SmokeDomainSettings *sds = smd->domain;
+	if (!(sds->flags & MOD_SMOKE_USE_SURFACE_CACHE)) {
+		return 0;
+	}
+
 	bool high_res      = sds->flags & MOD_SMOKE_HIGHRES;
 	bool high_res_view = sds->viewport_display_mode == SM_VIEWPORT_FINAL;
 
@@ -1253,7 +1279,7 @@ static int ptcache_liquid_read(void *smoke_v, char *filename, char *pathname, bo
 		liquid_update_mesh_data(sds->fluid, filename);
 		if (high_res && high_res_view) {
 			i = strlen(filename);
-			if (i > 8) filename[i-8] = '\0';   // strip low-res extension
+			if (i > 8) filename[i-8] = '\0';   // strip .bobj.gz extension
 			strcat(filename, "_HIGH.bobj.gz"); // add high-res extension
 
 			liquid_update_mesh_data(sds->fluid, filename);
@@ -1263,7 +1289,7 @@ static int ptcache_liquid_read(void *smoke_v, char *filename, char *pathname, bo
 	return 0;
 }
 
-static int ptcache_flip_read(void *smoke_v, char *filename, char *pathname, bool load_liquid_data)
+static int ptcache_uni_read(void *smoke_v, char *filename, char *pathname, bool load_liquid_data)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
 
@@ -1272,6 +1298,9 @@ static int ptcache_flip_read(void *smoke_v, char *filename, char *pathname, bool
 	}
 
 	SmokeDomainSettings *sds = smd->domain;
+	if (!(sds->flags & MOD_SMOKE_USE_VOLUME_CACHE)) {
+		return 0;
+	}
 
 	if (sds->fluid) {
 		/* Mantaflow internal data loading */
@@ -1286,7 +1315,7 @@ static int ptcache_flip_read(void *smoke_v, char *filename, char *pathname, bool
 	return 0;
 }
 
-static int ptcache_liquid_write(void *smoke_v, char *filename, char* pathname, bool save_liquid_data)
+static int ptcache_mesh_write(void *smoke_v, char *filename, char* pathname, bool save_liquid_data)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
 	int i;
@@ -1297,6 +1326,10 @@ static int ptcache_liquid_write(void *smoke_v, char *filename, char* pathname, b
 	}
 
 	SmokeDomainSettings *sds = smd->domain;
+	if (!(sds->flags & MOD_SMOKE_USE_SURFACE_CACHE)) {
+		return 0;
+	}
+
 	bool high_res      = sds->flags & MOD_SMOKE_HIGHRES;
 	bool high_res_view = sds->viewport_display_mode == SM_VIEWPORT_FINAL;
 
@@ -1312,10 +1345,10 @@ static int ptcache_liquid_write(void *smoke_v, char *filename, char* pathname, b
 		/* Actual mesh saving */
 		liquid_save_mesh(sds->fluid, filename);
 		if (high_res) {
-			strcpy(filenameHigh, filename); // copy name, original file name is needed later
+			strcpy(filenameHigh, filename);			// copy name, original file name is needed later
 			i = strlen(filenameHigh);
-			if (i > 8) filenameHigh[i-8] = '\0';   // strip low-res extension
-			strcat(filenameHigh, "_HIGH.bobj.gz"); // add high-res extension
+			if (i > 8) filenameHigh[i-8] = '\0';	// strip .bobj.gz extension
+			strcat(filenameHigh, "_HIGH.bobj.gz");	// add high-res extension
 
 			liquid_save_mesh_high(sds->fluid, filenameHigh);
 		}
@@ -1332,7 +1365,7 @@ static int ptcache_liquid_write(void *smoke_v, char *filename, char* pathname, b
 	return 0;
 }
 
-static int ptcache_flip_write(void *smoke_v, char *filename, char* pathname, bool save_liquid_data)
+static int ptcache_uni_write(void *smoke_v, char *filename, char* pathname, bool save_liquid_data)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
 
@@ -1341,6 +1374,9 @@ static int ptcache_flip_write(void *smoke_v, char *filename, char* pathname, boo
 	}
 
 	SmokeDomainSettings *sds = smd->domain;
+	if (!(sds->flags & MOD_SMOKE_USE_VOLUME_CACHE)) {
+		return 0;
+	}
 
 	if (sds->fluid) {
 		/* Mantaflow internal data saving */
@@ -1602,8 +1638,8 @@ void BKE_ptcache_id_from_softbody(PTCacheID *pid, Object *ob, SoftBody *sb)
 	pid->write_openvdb_stream	= NULL;
 	pid->read_openvdb_stream	= NULL;
 	
-	pid->write_liquid_stream	= NULL;
-	pid->read_liquid_stream		= NULL;
+	pid->write_mesh_stream		= NULL;
+	pid->read_mesh_stream		= NULL;
 
 	pid->write_extra_data		= NULL;
 	pid->read_extra_data		= NULL;
@@ -1650,11 +1686,11 @@ void BKE_ptcache_id_from_particles(PTCacheID *pid, Object *ob, ParticleSystem *p
 	pid->write_openvdb_stream	= NULL;
 	pid->read_openvdb_stream	= NULL;
 	
-	pid->write_liquid_stream	= NULL;
-	pid->read_liquid_stream		= NULL;
+	pid->write_mesh_stream		= NULL;
+	pid->read_mesh_stream		= NULL;
 
-	pid->write_flip_stream		= NULL;
-	pid->read_flip_stream		= NULL;
+	pid->write_uni_stream		= NULL;
+	pid->read_uni_stream		= NULL;
 
 	pid->write_extra_data		= NULL;
 	pid->read_extra_data		= NULL;
@@ -1713,11 +1749,11 @@ void BKE_ptcache_id_from_cloth(PTCacheID *pid, Object *ob, ClothModifierData *cl
 	pid->write_stream			= NULL;
 	pid->read_stream			= NULL;
 	
-	pid->write_liquid_stream	= NULL;
-	pid->read_liquid_stream		= NULL;
+	pid->write_mesh_stream		= NULL;
+	pid->read_mesh_stream		= NULL;
 
-	pid->write_flip_stream		= NULL;
-	pid->read_flip_stream		= NULL;
+	pid->write_uni_stream		= NULL;
+	pid->read_uni_stream		= NULL;
 
 	pid->write_extra_data		= NULL;
 	pid->read_extra_data		= NULL;
@@ -1758,25 +1794,25 @@ void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct SmokeMo
 
 	if (smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS)
 	{
-		pid->read_stream			= ptcache_smoke_read;
-		pid->write_stream			= ptcache_smoke_write;
+		pid->read_stream		= ptcache_smoke_read;
+		pid->write_stream		= ptcache_smoke_write;
 		
-		pid->write_liquid_stream	= NULL;
-		pid->read_liquid_stream		= NULL;
+		pid->write_mesh_stream	= NULL;
+		pid->read_mesh_stream	= NULL;
 
-		pid->write_flip_stream		= NULL;
-		pid->read_flip_stream		= NULL;
+		pid->write_uni_stream	= NULL;
+		pid->read_uni_stream	= NULL;
 	}
 	else if (smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
 	{
-		pid->read_stream			= NULL;
-		pid->write_stream			= NULL;
+		pid->read_stream		= NULL;
+		pid->write_stream		= NULL;
 		
-		pid->write_liquid_stream	= ptcache_liquid_write;
-		pid->read_liquid_stream		= ptcache_liquid_read;
+		pid->write_mesh_stream	= ptcache_mesh_write;
+		pid->read_mesh_stream	= ptcache_mesh_read;
 
-		pid->write_flip_stream		= ptcache_flip_write;
-		pid->read_flip_stream		= ptcache_flip_read;
+		pid->write_uni_stream	= ptcache_uni_write;
+		pid->read_uni_stream	= ptcache_uni_read;
 	}
 
 	pid->write_openvdb_stream	= ptcache_smoke_openvdb_write;
@@ -1804,7 +1840,11 @@ void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct SmokeMo
 
 	pid->default_step = 1;
 	pid->max_step = 1;
-	pid->file_type = smd->domain->cache_file_format;
+
+	/*  Encode filetype: combine bitmaps from sds surface and volume cache format */
+	int surface_format = (smd->domain->flags & MOD_SMOKE_USE_SURFACE_CACHE) ? smd->domain->cache_surface_format : 0;
+	int volume_format = (smd->domain->flags & MOD_SMOKE_USE_VOLUME_CACHE) ? smd->domain->cache_volume_format : 0;
+	pid->file_type = (surface_format | volume_format);
 }
 
 void BKE_ptcache_id_from_dynamicpaint(PTCacheID *pid, Object *ob, DynamicPaintSurface *surface)
@@ -1982,17 +2022,27 @@ void BKE_ptcache_ids_from_object(ListBase *lb, Object *ob, Scene *scene, int dup
 static const char *ptcache_file_extension(const PTCacheID *pid)
 {
 	switch (pid->file_type) {
-		default:
 		case PTCACHE_FILE_PTCACHE:
 			return PTCACHE_EXT;
 		case PTCACHE_FILE_OPENVDB:
 			return ".vdb";
-		case PTCACHE_FILE_LIQUID:
-		case PTCACHE_FILE_LIQUIDFLIP: // dummy: extensions handled by setting file types for mesh and particles manually
-			return ".bobj.gz";
-		case PTCACHE_FILE_FLIP:
+		case PTCACHE_FILE_UNI:
 			return ".uni";
+		case PTCACHE_FILE_OBJECT:
+			return ".bobj.gz";
 	}
+
+	/* Handle cases where there is more than one file type. Just return first type found. */
+	if (pid->file_type & PTCACHE_FILE_PTCACHE)
+		return PTCACHE_EXT;
+	if (pid->file_type & PTCACHE_FILE_OPENVDB)
+		return ".vdb";
+	if (pid->file_type & PTCACHE_FILE_UNI)
+		return ".uni";
+	if (pid->file_type & PTCACHE_FILE_OBJECT)
+		return ".bobj.gz";
+
+	return PTCACHE_EXT;
 }
 
 /**
@@ -2771,7 +2821,7 @@ static int ptcache_read_openvdb_stream(PTCacheID *pid, int cfra)
 #endif
 }
 
-static int ptcache_read_liquid_stream(PTCacheID *pid, int cfra, bool load_liquid_data)
+static int ptcache_read_mesh_stream(PTCacheID *pid, int cfra, bool load_liquid_data)
 {
 	char filename[FILE_MAX * 2];
 	char pathname[FILE_MAX * 2];
@@ -2787,14 +2837,14 @@ static int ptcache_read_liquid_stream(PTCacheID *pid, int cfra, bool load_liquid
 		return 0;
 	}
 
-	if (!pid->read_liquid_stream(pid->calldata, filename, pathname, load_liquid_data)) {
+	if (!pid->read_mesh_stream(pid->calldata, filename, pathname, load_liquid_data)) {
 		return 0;
 	}
 
 	return 1;
 }
 
-static int ptcache_read_flip_stream(PTCacheID *pid, int cfra, bool load_liquid_data)
+static int ptcache_read_uni_stream(PTCacheID *pid, int cfra, bool load_liquid_data)
 {
 	char filename[FILE_MAX * 2];
 	char pathname[FILE_MAX * 2];
@@ -2810,7 +2860,7 @@ static int ptcache_read_flip_stream(PTCacheID *pid, int cfra, bool load_liquid_d
 		return 0;
 	}
 
-	if (!pid->read_flip_stream(pid->calldata, filename, pathname, load_liquid_data)) {
+	if (!pid->read_uni_stream(pid->calldata, filename, pathname, load_liquid_data)) {
 		return 0;
 	}
 
@@ -2930,6 +2980,7 @@ int BKE_ptcache_read(PTCacheID *pid, float cfra, bool no_extrapolate_old)
 {
 	int cfrai = (int)floor(cfra), cfra1=0, cfra2=0;
 	int ret = 0;
+	int pid_file_type_orig = pid->file_type;
 
 	/* nothing to read to */
 	if (pid->totpoint(pid->calldata, cfrai) == 0)
@@ -2965,78 +3016,80 @@ int BKE_ptcache_read(PTCacheID *pid, float cfra, bool no_extrapolate_old)
 	}
 
 	if (cfra1) {
-		if (pid->file_type == PTCACHE_FILE_OPENVDB && pid->read_openvdb_stream) {
+		/* Volumetric caching */
+		if (pid->file_type & PTCACHE_FILE_OPENVDB && pid->read_openvdb_stream) {
+			pid->file_type = PTCACHE_FILE_OPENVDB;
 			if (!ptcache_read_openvdb_stream(pid, cfra1)) {
 				return 0;
 			}
 		}
-		else if (pid->file_type == PTCACHE_FILE_LIQUID && pid->read_liquid_stream) {
-			if (!ptcache_read_liquid_stream(pid, cfra1, true)) {
+		else if (pid->file_type & PTCACHE_FILE_UNI && pid->read_uni_stream) {
+			pid->file_type = PTCACHE_FILE_UNI;
+			if (!ptcache_read_uni_stream(pid, cfra1, true)) {
 				return 0;
 			}
 		}
-		else if (pid->file_type == PTCACHE_FILE_FLIP && pid->read_flip_stream) {
-			if (!ptcache_read_flip_stream(pid, cfra1, true)) {
-				return 0;
-			}
-		}
-		else if (pid->file_type == PTCACHE_FILE_LIQUIDFLIP && pid->read_liquid_stream && pid->read_flip_stream) {
-			pid->file_type = PTCACHE_FILE_FLIP; // Make sure we get the right file extension
-			if (!ptcache_read_flip_stream(pid, cfra1, false)) { // Mesh handles internal data loading
-				return 0;
-			}
-			pid->file_type = PTCACHE_FILE_LIQUID; // Make sure we get the right file extension
-			if (!ptcache_read_liquid_stream(pid, cfra1, true)) {
-				return 0;
-			}
-			pid->file_type = PTCACHE_FILE_LIQUIDFLIP; // Switch back to actual file type
-		}
-		else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->read_stream) {
+		else if (pid->file_type & PTCACHE_FILE_PTCACHE && pid->read_stream) {
+			pid->file_type = PTCACHE_FILE_PTCACHE;
 			if (!ptcache_read_stream(pid, cfra1))
 				return 0;
 		}
-		else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->read_point) {
+		else if (pid->file_type & PTCACHE_FILE_PTCACHE && pid->read_point) {
+			pid->file_type = PTCACHE_FILE_PTCACHE;
 			ptcache_read(pid, cfra1);
 		}
+		/* Restore cache file type */
+		pid->file_type = pid_file_type_orig;
+
+		/* Surface caching */
+		if (pid->file_type & PTCACHE_FILE_OBJECT && pid->read_mesh_stream) {
+			pid->file_type = PTCACHE_FILE_OBJECT;
+			if (!ptcache_read_mesh_stream(pid, cfra1, true)) {
+				return 0;
+			}
+		}
+		/* Restore cache file type */
+		pid->file_type = pid_file_type_orig;
 	}
 
 	if (cfra2) {
-		if (pid->file_type == PTCACHE_FILE_OPENVDB && pid->read_openvdb_stream) {
+		/* Volumetric caching */
+		if (pid->file_type & PTCACHE_FILE_OPENVDB && pid->read_openvdb_stream) {
+			pid->file_type = PTCACHE_FILE_OPENVDB;
 			if (!ptcache_read_openvdb_stream(pid, cfra2)) {
 				return 0;
 			}
 		}
-		else if (pid->file_type == PTCACHE_FILE_LIQUID && pid->read_liquid_stream) {
-			if (!ptcache_read_liquid_stream(pid, cfra2, true)) {
+		else if (pid->file_type & PTCACHE_FILE_UNI && pid->read_uni_stream) {
+			pid->file_type = PTCACHE_FILE_UNI;
+			if (!ptcache_read_uni_stream(pid, cfra2, true)) {
 				return 0;
 			}
 		}
-		else if (pid->file_type == PTCACHE_FILE_FLIP && pid->read_flip_stream) {
-			if (!ptcache_read_flip_stream(pid, cfra2, true)) {
-				return 0;
-			}
-		}
-		else if (pid->file_type == PTCACHE_FILE_LIQUIDFLIP && pid->read_liquid_stream && pid->read_flip_stream) {
-			pid->file_type = PTCACHE_FILE_FLIP; // Make sure we get the right file extension
-			if (!ptcache_read_flip_stream(pid, cfra1, false)) { // Mesh handles internal data loading
-				return 0;
-			}
-			pid->file_type = PTCACHE_FILE_LIQUID; // Make sure we get the right file extension
-			if (!ptcache_read_liquid_stream(pid, cfra1, true)) {
-				return 0;
-			}
-			pid->file_type = PTCACHE_FILE_LIQUIDFLIP; // Switch back to actual file type
-		}
-		else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->read_stream) {
+		else if (pid->file_type & PTCACHE_FILE_PTCACHE && pid->read_stream) {
+			pid->file_type = PTCACHE_FILE_PTCACHE;
 			if (!ptcache_read_stream(pid, cfra2))
 				return 0;
 		}
-		else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->read_point) {
+		else if (pid->file_type & PTCACHE_FILE_PTCACHE && pid->read_point) {
+			pid->file_type = PTCACHE_FILE_PTCACHE;
 			if (cfra1 && cfra2 && pid->interpolate_point)
 				ptcache_interpolate(pid, cfra, cfra1, cfra2);
 			else
 				ptcache_read(pid, cfra2);
 		}
+		/* Restore cache file type */
+		pid->file_type = pid_file_type_orig;
+
+		/* Surface caching */
+		if (pid->file_type & PTCACHE_FILE_OBJECT && pid->read_mesh_stream) {
+			pid->file_type = PTCACHE_FILE_OBJECT;
+			if (!ptcache_read_mesh_stream(pid, cfra2, true)) {
+				return 0;
+			}
+		}
+		/* Restore cache file type */
+		pid->file_type = pid_file_type_orig;
 	}
 
 	if (cfra1)
@@ -3115,7 +3168,7 @@ static int ptcache_write_openvdb_stream(PTCacheID *pid, int cfra)
 	return 0;
 #endif
 }
-static int ptcache_write_liquid_stream(PTCacheID *pid, int cfra, bool save_liquid_data)
+static int ptcache_write_mesh_stream(PTCacheID *pid, int cfra, bool save_liquid_data)
 {
 	char filename[FILE_MAX * 2];
 	char pathname[FILE_MAX * 2];
@@ -3127,14 +3180,14 @@ static int ptcache_write_liquid_stream(PTCacheID *pid, int cfra, bool save_liqui
 	
 	BLI_make_existing_file(filename);
 
-	int error = pid->write_liquid_stream(pid->calldata, filename, pathname, save_liquid_data);
+	int error = pid->write_mesh_stream(pid->calldata, filename, pathname, save_liquid_data);
 	
 	if (error && G.debug & G_DEBUG)
 		printf("Error writing to disk cache\n");
 	
 	return error == 0;
 }
-static int ptcache_write_flip_stream(PTCacheID *pid, int cfra, bool save_liquid_data)
+static int ptcache_write_uni_stream(PTCacheID *pid, int cfra, bool save_liquid_data)
 {
 	char filename[FILE_MAX * 2];
 	char pathname[FILE_MAX * 2];
@@ -3146,7 +3199,7 @@ static int ptcache_write_flip_stream(PTCacheID *pid, int cfra, bool save_liquid_
 
 	BLI_make_existing_file(filename);
 
-	int error = pid->write_flip_stream(pid->calldata, filename, pathname, save_liquid_data);
+	int error = pid->write_uni_stream(pid->calldata, filename, pathname, save_liquid_data);
 
 	if (error && G.debug & G_DEBUG)
 		printf("Error writing to disk cache\n");
@@ -3277,6 +3330,7 @@ int BKE_ptcache_write(PTCacheID *pid, unsigned int cfra)
 	PointCache *cache = pid->cache;
 	int totpoint = pid->totpoint(pid->calldata, cfra);
 	int overwrite = 0, error = 0;
+	int pid_file_type_orig = pid->file_type;
 
 	if (totpoint == 0 || (cfra ? pid->data_types == 0 : pid->info_types == 0))
 		return 0;
@@ -3284,28 +3338,33 @@ int BKE_ptcache_write(PTCacheID *pid, unsigned int cfra)
 	if (ptcache_write_needed(pid, cfra, &overwrite)==0)
 		return 0;
 
-	if (pid->file_type == PTCACHE_FILE_OPENVDB && pid->write_openvdb_stream) {
+	/* Volumetric caching */
+	if (pid->file_type & PTCACHE_FILE_OPENVDB && pid->write_openvdb_stream) {
+		pid->file_type = PTCACHE_FILE_OPENVDB;
 		ptcache_write_openvdb_stream(pid, cfra);
 	}
-	else if (pid->file_type == PTCACHE_FILE_LIQUID && pid->write_liquid_stream) {
-		ptcache_write_liquid_stream(pid, cfra, true);
+	else if (pid->file_type & PTCACHE_FILE_UNI && pid->write_uni_stream) {
+		pid->file_type = PTCACHE_FILE_UNI;
+		ptcache_write_uni_stream(pid, cfra, true);
 	}
-	else if (pid->file_type == PTCACHE_FILE_FLIP && pid->write_flip_stream) {
-		ptcache_write_flip_stream(pid, cfra, true);
-	}
-	else if (pid->file_type == PTCACHE_FILE_LIQUIDFLIP && pid->write_liquid_stream && pid->write_flip_stream) {
-		pid->file_type = PTCACHE_FILE_FLIP; // Make sure we get the right file extension
-		ptcache_write_flip_stream(pid, cfra, false); // Mesh handles internal data saving
-		pid->file_type = PTCACHE_FILE_LIQUID; // Make sure we get the right file extension
-		ptcache_write_liquid_stream(pid, cfra, true);
-		pid->file_type = PTCACHE_FILE_LIQUIDFLIP; // Switch back to actual file type
-	}
-	else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->write_stream) {
+	else if (pid->file_type & PTCACHE_FILE_PTCACHE && pid->write_stream) {
+		pid->file_type = PTCACHE_FILE_PTCACHE;
 		ptcache_write_stream(pid, cfra, totpoint);
 	}
-	else if (pid->file_type == PTCACHE_FILE_PTCACHE && pid->write_point) {
+	else if (pid->file_type & PTCACHE_FILE_PTCACHE && pid->write_point) {
+		pid->file_type = PTCACHE_FILE_PTCACHE;
 		error += ptcache_write(pid, cfra, overwrite);
 	}
+	/* Restore cache file type */
+	pid->file_type = pid_file_type_orig;
+
+	/* Surface caching */
+	if (pid->file_type & PTCACHE_FILE_OBJECT && pid->write_mesh_stream) {
+		pid->file_type = PTCACHE_FILE_OBJECT;
+		ptcache_write_mesh_stream(pid, cfra, true);
+	}
+	/* Restore cache file type */
+	pid->file_type = pid_file_type_orig;
 
 	/* Mark frames skipped if more than 1 frame forwards since last non-skipped frame. */
 	if (cfra - cache->last_exact == 1 || cfra == cache->startframe) {

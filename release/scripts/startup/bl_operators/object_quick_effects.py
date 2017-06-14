@@ -363,7 +363,12 @@ class QuickSmoke(Operator):
         if self.style == 'FIRE' or self.style == 'BOTH':
             obj.modifiers[-1].domain_settings.use_high_resolution = True
 
-        # Setup material
+        # set correct cache file format for smoke
+        obj.modifiers[-1].domain_settings.use_surface_cache = False
+        obj.modifiers[-1].domain_settings.use_volume_cache = True
+        obj.modifiers[-1].domain_settings.cache_volume_format = 'POINTCACHE'
+
+		# Setup material
 
         # Cycles
         if context.scene.render.use_shading_nodes:
@@ -709,7 +714,9 @@ class QuickLiquid(Operator):
         obj.modifiers[-1].domain_settings.use_collision_border_bottom = True
 
         # set correct cache file format for liquid
-        obj.modifiers[-1].domain_settings.cache_file_format = 'OBJECT'
+        obj.modifiers[-1].domain_settings.use_surface_cache = True
+        obj.modifiers[-1].domain_settings.use_volume_cache = False
+        obj.modifiers[-1].domain_settings.cache_surface_format = 'OBJECT'
 		
         # make domain solid so that liquid becomes better visible
         obj.draw_type = 'SOLID'

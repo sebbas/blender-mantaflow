@@ -386,14 +386,29 @@ class PHYSICS_PT_smoke_cache(PhysicButtonsPanel, Panel):
         layout = self.layout
 
         domain = context.smoke.domain_settings
-        cache_file_format = domain.cache_file_format
+        cache_surface_format = domain.cache_surface_format
+        cache_volume_format = domain.cache_volume_format
 
-        layout.prop(domain, "cache_file_format")
+        split = layout.split()
 
-        if cache_file_format == 'POINTCACHE':
+        col = split.column()
+        col.prop(domain, "use_surface_cache", text="Surface format:")
+        sub = col.column()
+        sub.active = domain.use_surface_cache
+        sub.prop(domain, "cache_surface_format", text="")
+
+        col = split.column()
+        col.prop(domain, "use_volume_cache", text="Volumetric format:")
+        sub = col.column()
+        sub.active = domain.use_volume_cache
+        sub.prop(domain, "cache_volume_format", text="")
+
+        split = layout.split()
+
+        if cache_volume_format == 'POINTCACHE':
             layout.label(text="Compression:")
             layout.prop(domain, "point_cache_compress_type", expand=True)
-        elif cache_file_format == 'OPENVDB':
+        elif cache_volume_format == 'OPENVDB':
             if not bpy.app.build_options.openvdb:
                 layout.label("Built without OpenVDB support")
                 return
@@ -403,9 +418,6 @@ class PHYSICS_PT_smoke_cache(PhysicButtonsPanel, Panel):
             row = layout.row()
             row.label("Data Depth:")
             row.prop(domain, "data_depth", expand=True, text="Data Depth")
-        elif cache_file_format == 'OBJECT':
-            layout.label(text="Compression:")
-            layout.prop(domain, "liquid_cache_compress_type", expand=True)
 
         cache = domain.point_cache
         point_cache_ui(self, context, cache, (cache.is_baked is False), 'SMOKE')

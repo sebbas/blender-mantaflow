@@ -123,11 +123,13 @@ typedef struct PTCacheFile {
 #define PTCACHE_VEL_PER_SEC     1
 
 enum {
-	PTCACHE_FILE_PTCACHE = 0,
-	PTCACHE_FILE_OPENVDB = 1,
-	PTCACHE_FILE_LIQUID = 2,
-	PTCACHE_FILE_FLIP = 3,
-	PTCACHE_FILE_LIQUIDFLIP = 4,
+	/* Volumetric file formats */
+	PTCACHE_FILE_PTCACHE = (1 << 0),
+	PTCACHE_FILE_OPENVDB = (1 << 1),
+	PTCACHE_FILE_UNI = (1 << 2),
+
+	/* Surface file formats */
+	PTCACHE_FILE_OBJECT = (1 << 3),
 };
 
 typedef struct PTCacheID {
@@ -163,15 +165,15 @@ typedef struct PTCacheID {
 	/* copies cache data to point data */
 	int (*read_openvdb_stream)(struct OpenVDBReader *reader, void *calldata);
 	
-	/* copies mesj data to cache data */
-	int (*write_liquid_stream)(void *calldata, char *filename, char *pathname, bool save_liquid_data);
+	/* copies mesh data to cache data */
+	int (*write_mesh_stream)(void *calldata, char *filename, char *pathname, bool save_liquid_data);
 	/* copies cache data to mesh data */
-	int (*read_liquid_stream)(void *calldata, char *filename, char *pathname, bool load_liquid_data);
+	int (*read_mesh_stream)(void *calldata, char *filename, char *pathname, bool load_liquid_data);
 
 	/* copies point data to cache data */
-	int (*write_flip_stream)(void *calldata, char *filename, char *pathname, bool save_liquid_data);
+	int (*write_uni_stream)(void *calldata, char *filename, char *pathname, bool save_liquid_data);
 	/* copies cache data to point data */
-	int (*read_flip_stream)(void *calldata, char *filename, char *pathname, bool load_liquid_data);
+	int (*read_uni_stream)(void *calldata, char *filename, char *pathname, bool load_liquid_data);
 
 	/* copies custom extradata to cache data */
 	void (*write_extra_data)(void *calldata, struct PTCacheMem *pm, int cfra);
