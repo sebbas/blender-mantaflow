@@ -57,7 +57,6 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 		std::cout << "FLUID: " << mCurrentID << std::endl;
 
 	smd->domain->fluid = this;
-	smd->domain->manta_solver_res = 3; // Why do we need to set this explicitly? When not set, fluidsolver throws exception (occurs when loading a new .blend file)
 	
 	mUsingHeat    = smd->domain->active_fields & SM_ACTIVE_HEAT;
 	mUsingFire    = smd->domain->active_fields & SM_ACTIVE_FIRE;
