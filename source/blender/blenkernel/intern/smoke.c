@@ -561,7 +561,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->cfl_condition = 4.0;
 			smd->domain->vorticity = 0.2;
 			smd->domain->border_collisions = 0; // open domain
-			smd->domain->flags = MOD_SMOKE_DISSOLVE_LOG;
+			smd->domain->flags = MOD_SMOKE_DISSOLVE_LOG | MOD_SMOKE_USE_VOLUME_CACHE;
 			smd->domain->highres_sampling = SM_HRES_FULLSAMPLE;
 			smd->domain->strength = 1.0;
 			smd->domain->noise = MOD_SMOKE_NOISEWAVE;

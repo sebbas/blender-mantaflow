@@ -172,6 +172,30 @@ static void rna_Smoke_update_volume_format(Main *bmain, Scene *scene, PointerRNA
 	rna_Smoke_resetCache(bmain, scene, ptr);
 }
 
+static void rna_Smoke_use_surface_format_set(struct PointerRNA *ptr, int value)
+{
+	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+
+	if (value == 1) {
+		settings->flags |= MOD_SMOKE_USE_SURFACE_CACHE;
+	}
+	else {
+		settings->flags &= ~MOD_SMOKE_USE_SURFACE_CACHE;
+	}
+}
+
+static void rna_Smoke_use_volume_format_set(struct PointerRNA *ptr, int value)
+{
+	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+
+	if (value == 1) {
+		settings->flags |= MOD_SMOKE_USE_VOLUME_CACHE;
+	}
+	else {
+		settings->flags &= ~MOD_SMOKE_USE_VOLUME_CACHE;
+	}
+}
+
 static void rna_Smoke_cachetype_surface_set(struct PointerRNA *ptr, int value)
 {
 	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
@@ -294,6 +318,8 @@ static void rna_Smoke_domaintype_set(struct PointerRNA *ptr, int value)
 		/* Set common values for liquid/smoke domain: cache type, border collision and viewport drawtype. */
 		if (value == MOD_SMOKE_DOMAIN_TYPE_GAS)
 		{
+			rna_Smoke_use_surface_format_set(ptr, 0);
+			rna_Smoke_use_volume_format_set(ptr, 1);
 			rna_Smoke_cachetype_surface_set(ptr, PTCACHE_FILE_OBJECT);
 			rna_Smoke_cachetype_volume_set(ptr, PTCACHE_FILE_PTCACHE);
 			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_FRONT, 1);
@@ -306,6 +332,8 @@ static void rna_Smoke_domaintype_set(struct PointerRNA *ptr, int value)
 		}
 		else if (value == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
 		{
+			rna_Smoke_use_surface_format_set(ptr, 1);
+			rna_Smoke_use_volume_format_set(ptr, 0);
 			rna_Smoke_cachetype_surface_set(ptr, PTCACHE_FILE_OBJECT);
 			rna_Smoke_cachetype_volume_set(ptr, PTCACHE_FILE_UNI);
 			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_FRONT, 0);
@@ -1067,11 +1095,13 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "use_surface_cache", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_SMOKE_USE_SURFACE_CACHE);
+	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_use_surface_format_set");
 	RNA_def_property_ui_text(prop, "Surface cache", "Enable surface cache");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
 	prop = RNA_def_property(srna, "use_volume_cache", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_SMOKE_USE_VOLUME_CACHE);
+	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_use_volume_format_set");
 	RNA_def_property_ui_text(prop, "Volumetric cache", "Enable volume cache");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_update_volume_format");
 
