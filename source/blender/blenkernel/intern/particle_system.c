@@ -3842,6 +3842,11 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 					pa->state.vel[1] = liquid_get_particle_velocity_y_at(sds->fluid, p);
 					pa->state.vel[2] = liquid_get_particle_velocity_z_at(sds->fluid, p);
 
+					// scale down
+					pa->state.vel[0] *= 1.0f / liquid_get_particle_dim_x(sds->fluid);
+					pa->state.vel[1] *= 1.0f / liquid_get_particle_dim_y(sds->fluid);
+					pa->state.vel[2] *= 1.0f / liquid_get_particle_dim_z(sds->fluid);
+
 //					printf("pa->state.vel[0]: %f, pa->state.vel[1]: %f, pa->state.vel[2]: %f\n", pa->state.vel[0], pa->state.vel[1], pa->state.vel[2]);
 
 					// set default angular velocity and particle rotation
