@@ -56,7 +56,7 @@ extern "C" size_t smoke_get_index2d(int x, int max_x, int y /*, int max_y, int z
 
 extern "C" void smoke_manta_export(FLUID* smoke, SmokeModifierData *smd)
 {
-	if (!smoke && !smd) return;
+	if (!smoke || !smd) return;
 	smoke->exportSmokeScript(smd);
 	smoke->exportSmokeData(smd);
 }
@@ -162,7 +162,7 @@ extern "C" void smoke_export(FLUID *smoke, float *dt, float *dx, float **dens, f
 extern "C" void smoke_turbulence_export(FLUID *smoke, float **dens, float **react, float **flame, float **fuel,
                                         float **r, float **g, float **b , float **tcu, float **tcv, float **tcw, float **tcu2, float **tcv2, float **tcw2)
 {
-	if (!smoke && !smoke->usingHighRes())
+	if (!smoke && !(smoke->usingHighRes()))
 		return;
 
 	*dens = smoke->getDensityHigh();
@@ -676,7 +676,7 @@ extern "C" void liquid_update_particle_data(FLUID *liquid, char* filename)
 
 extern "C" void liquid_manta_export(FLUID* liquid, SmokeModifierData *smd)
 {
-	if (!liquid && !smd) return;
+	if (!liquid || !smd) return;
 	liquid->exportLiquidScript(smd);
 	liquid->exportLiquidData(smd);
 }
