@@ -47,7 +47,6 @@ extern "C" {
 		extern void PbRegister_resetOutflow() ;
 		extern void PbRegister_setInflowBcs() ;
 		extern void PbRegister_setWallBcs() ;
-		extern void PbRegister_setObstacleVelocity() ;
 		extern void PbRegister_vorticityConfinement() ;
 		extern void PbRegister_addForceField() ;
 		extern void PbRegister_sampleFlagsWithParticles() ;
@@ -201,7 +200,6 @@ namespace Pb {
 		PbRegister_resetOutflow() ;
 		PbRegister_setInflowBcs() ;
 		PbRegister_setWallBcs() ;
-		PbRegister_setObstacleVelocity() ;
 		PbRegister_vorticityConfinement() ;
 		PbRegister_addForceField() ;
 		PbRegister_sampleFlagsWithParticles() ;

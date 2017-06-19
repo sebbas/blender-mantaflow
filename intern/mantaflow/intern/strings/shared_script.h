@@ -74,7 +74,6 @@ if dim_s$ID$ == 2:\n\
 doOpen_s$ID$              = $DO_OPEN$\n\
 boundConditions_s$ID$     = '$BOUNDCONDITIONS$'\n\
 boundaryWidth_s$ID$       = 1\n\
-obvelBorderWidth_s$ID$    = 0 # obvels inside are sufficient - not needed for now\n\
 \n\
 using_highres_s$ID$   = $USING_HIGHRES$\n\
 using_adaptTime_s$ID$ = $USING_ADAPTIVETIME$\n";
@@ -125,8 +124,7 @@ if 'boundaryWidth_s$ID$'    in globals() : del boundaryWidth_s$ID$\n\
 if 'dt_default_s$ID$'       in globals() : del dt_default_s$ID$\n\
 if 'dt_factor_s$ID$'        in globals() : del dt_factor_s$ID$\n\
 if 'fps_s$ID$'              in globals() : del fps_s$ID$\n\
-if 'dt0_s$ID$'              in globals() : del dt0_s$ID$\n\
-if 'obvelBorderWidth_s$ID$' in globals() : del obvelBorderWidth_s$ID$";
+if 'dt0_s$ID$'              in globals() : del dt0_s$ID$\n";
 
 const std::string fluid_delete_variables_high = "\n\
 mantaMsg('Deleting fluid variables high')\n\

@@ -251,12 +251,6 @@ def step_low_$ID$():\n\
     setObstacleFlags(flags=flags_s$ID$, phiObs=phiObsIn_s$ID$, phiOut=phiOut_s$ID$)\n\
     flags_s$ID$.fillGrid()\n\
     \n\
-    mantaMsg('Adding object velocity')\n\
-    # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
-    extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
-    extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=obvelBorderWidth_s$ID$+1, inside=False)\n\
-    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$, boundaryWidth=1, borderWidth=obvelBorderWidth_s$ID$)\n\
-    \n\
     mantaMsg('Advecting density')\n\
     advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=density_s$ID$, order=$ADVECT_ORDER$)\n\
     \n\
@@ -299,9 +293,13 @@ def step_low_$ID$():\n\
     addForceField(flags=flags_s$ID$, vel=vel_s$ID$, force=forces_s$ID$)\n\
     forces_s$ID$.clear()\n\
     \n\
+    mantaMsg('Extrapolating object velocity')\n\
+    # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
+    extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
+    extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=1, inside=False)\n\
+    \n\
     mantaMsg('Walls')\n\
-    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$)\n\
-    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$, boundaryWidth=1, borderWidth=obvelBorderWidth_s$ID$)\n\
+    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$)\n\
     \n\
     mantaMsg('Pressure')\n\
     solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, preconditioner=$PRECONDITIONER$, zeroPressureFixing=not doOpen_s$ID$) # closed domains require pressure fixing\n\

@@ -165,12 +165,13 @@ def manta_step_$ID$(framenr):\n\
         \n\
         flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$, phiWalls=phiObs_s$ID$)\n\
         \n\
+        #phiObs_s$ID$.addConst(1.) # TODO (sebbas): temp trick: while fractions disabled make border phi wall one cell thinner\n\
         phiObs_s$ID$.join(phiObsIn_s$ID$)\n\
         phi_s$ID$.join(phiIn_s$ID$)\n\
         phi_s$ID$.subtract(phiObsIn_s$ID$)\n\
         \n\
-        #updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$) # TODO: uncomment for fractions\n\
-        setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$)#, fractions=fractions_s$ID$) # TODO: uncomment for fractions\n\
+        updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
+        setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$, fractions=fractions_s$ID$)\n\
         if doOpen_s$ID$:\n\
             setOpenBound(flags=flags_s$ID$, bWidth=boundaryWidth_s$ID$, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty)\n\
         \n\
@@ -196,13 +197,6 @@ def manta_step_$ID$(framenr):\n\
 const std::string liquid_step_low = "\n\
 def liquid_step_$ID$():\n\
     mantaMsg('Liquid step low')\n\
-    # FLIP\n\
-    mantaMsg('Adding object velocity')\n\
-    # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
-    extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
-    extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=obvelBorderWidth_s$ID$+1, inside=False)\n\
-    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$, boundaryWidth=1, borderWidth=obvelBorderWidth_s$ID$)\n\
-    \n\
     mantaMsg('Advecting particles')\n\
     pp_s$ID$.advectInGrid(flags=flags_s$ID$, vel=vel_s$ID$, integrationMode=IntRK4, deleteInObstacle=False, stopInObstacle=False)\n\
     mantaMsg('Pushing particles out of obstacles')\n\
@@ -237,15 +231,18 @@ def liquid_step_$ID$():\n\
     addGravity(flags=flags_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$)\n\
     addForceField(flags=flags_s$ID$, vel=vel_s$ID$, force=forces_s$ID$)\n\
     \n\
-    #extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, intoObs=True) # TODO: uncomment for fractions\n\
-    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$)#, fractions=fractions_s$ID$, phiObs=phiObs_s$ID$) # TODO: uncomment for fractions\n\
-    setObstacleVelocity(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$, boundaryWidth=1, borderWidth=obvelBorderWidth_s$ID$)\n\
+    mantaMsg('Extrapolating object velocity')\n\
+    # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
+    extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
+    extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=1, inside=False)\n\
     \n\
-    solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$)#, fractions=fractions_s$ID$) # TODO: uncomment for fractions\n\
+    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, intoObs=True)\n\
+    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, fractions=fractions_s$ID$, phiObs=phiObs_s$ID$, obvel=obvel_s$ID$)\n\
     \n\
-    #extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4, intoObs=True) # TODO: uncomment for fractions\n\
-    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$)#, fractions=fractions_s$ID$, phiObs=phiObs_s$ID$) # TODO: uncomment for fractions\n\
-    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, intoObs=True) # TODO: remove this line when enabling fractions\n\
+    solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$, fractions=fractions_s$ID$)\n\
+    \n\
+    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4, intoObs=True)\n\
+    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, fractions=fractions_s$ID$, phiObs=phiObs_s$ID$, obvel=obvel_s$ID$)\n\
     \n\
     if (dim_s$ID$==3):\n\
         # mis-use phiParts as temp grid to close the mesh\n\
