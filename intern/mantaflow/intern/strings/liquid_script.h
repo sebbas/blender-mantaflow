@@ -180,8 +180,8 @@ def manta_step_$ID$(framenr):\n\
         \n\
         if using_adaptTime_s$ID$:\n\
             mantaMsg('Adapt timestep')\n\
-            maxvel_s$ID$ = vel_s$ID$.getMaxValue()\n\
-            s$ID$.adaptTimestep(maxvel_s$ID$)\n\
+            maxVel_s$ID$ = vel_s$ID$.getMaxValue()\n\
+            s$ID$.adaptTimestep(maxVel_s$ID$)\n\
         \n\
         mantaMsg('Low step / s$ID$.frame: ' + str(s$ID$.frame))\n\
         liquid_step_$ID$()\n\
