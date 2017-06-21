@@ -3766,20 +3766,18 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 
 		if (smd && smd->domain && smd->domain->fluid) {
 			SmokeDomainSettings *sds= smd->domain;
-			int  curFrame = sim->scene->r.cfra -1; // warning - sync with derived mesh fsmesh loading
 
 			ParticleSettings *part = psys->part;
 			ParticleData *pa=NULL;
 
 			int p, totpart;
 			int flagActivePart, activeParts = 0, fileParts = 0;
+			totpart = liquid_get_num_particles(sds->fluid);
 
 			// Sanity check: no particle files present yet
-			// TODO (sebbas): need better way to catch cases where pp is not yet present
-			if (curFrame == 0)
+			if (!totpart)
 				return;
 
-			totpart = liquid_get_num_particles(sds->fluid);
 			totpart = (use_render_params) ? totpart : (part->disp*totpart) / 100;
 
 			part->totpart = totpart;

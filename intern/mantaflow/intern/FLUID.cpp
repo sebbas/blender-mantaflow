@@ -1022,7 +1022,10 @@ void FLUID::updateParticleData(const char* filename)
 		}
 	}
 	// Reading particle data file v1 with velocities
-	else if (!strcmp(ID, "PD01")) {
+	else if (!strcmp(ID, "PD01"))
+	{
+		mNumParticles = ibuffer[0];
+
 		mParticleVelocitiesX.resize(mNumParticles);
 		mParticleVelocitiesY.resize(mNumParticles);
 		mParticleVelocitiesZ.resize(mNumParticles);
