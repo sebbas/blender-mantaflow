@@ -67,6 +67,7 @@ extern "C" {
 		extern void PbRegister_mapMACToParts() ;
 		extern void PbRegister_flipVelocityUpdate() ;
 		extern void PbRegister_combineGridVel() ;
+		extern void PbRegister_sampleSndParts() ;
 		extern void PbRegister_processBurn() ;
 		extern void PbRegister_updateFlame() ;
 		extern void PbRegister_getSpiralVelocity2D() ;
@@ -220,6 +221,7 @@ namespace Pb {
 		PbRegister_mapMACToParts() ;
 		PbRegister_flipVelocityUpdate() ;
 		PbRegister_combineGridVel() ;
+		PbRegister_sampleSndParts() ;
 		PbRegister_processBurn() ;
 		PbRegister_updateFlame() ;
 		PbRegister_getSpiralVelocity2D() ;

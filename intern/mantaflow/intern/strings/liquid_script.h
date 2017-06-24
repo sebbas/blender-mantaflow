@@ -97,7 +97,9 @@ velParts_s$ID$   = s$ID$.create(MACGrid)\n\
 mapWeights_s$ID$ = s$ID$.create(MACGrid)\n\
 \n\
 pp_s$ID$         = s$ID$.create(BasicParticleSystem)\n\
-pVel_s$ID$       = pp_s$ID$.create(PdataVec3)\n\
+ppSnd_s$ID$      = s$ID$.create(BasicParticleSystem)\n\
+pVel_pp$ID$      = pp_s$ID$.create(PdataVec3)\n\
+pVelSnd_pp$ID$   = ppSnd_s$ID$.create(PdataVec3)\n\
 mesh_s$ID$       = s$ID$.create(Mesh)\n\
 \n\
 # Acceleration data for particle nbs\n\
@@ -223,7 +225,7 @@ def liquid_step_$ID$():\n\
     flags_s$ID$.updateFromLevelset(phi_s$ID$)\n\
     \n\
     # combine particles velocities with advected grid velocities\n\
-    mapPartsToMAC(vel=velParts_s$ID$, flags=flags_s$ID$, velOld=velOld_s$ID$, parts=pp_s$ID$, partVel=pVel_s$ID$, weight=mapWeights_s$ID$)\n\
+    mapPartsToMAC(vel=velParts_s$ID$, flags=flags_s$ID$, velOld=velOld_s$ID$, parts=pp_s$ID$, partVel=pVel_pp$ID$, weight=mapWeights_s$ID$)\n\
     extrapolateMACFromWeight(vel=velParts_s$ID$, distance=2, weight=mapWeights_s$ID$)\n\
     combineGridVel(vel=velParts_s$ID$, weight=mapWeights_s$ID$, combineVel=vel_s$ID$, phi=phi_s$ID$, narrowBand=combineBandWidth_s$ID$, thresh=0)\n\
     velOld_s$ID$.copyFrom(vel_s$ID$)\n\
@@ -256,10 +258,12 @@ def liquid_step_$ID$():\n\
     if using_highres_s$ID$:\n\
         interpolateGrid(target=phi_xl$ID$, source=phiParts_s$ID$)\n\
     \n\
+    sampleSndParts(parts=ppSnd_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, partVel=pVelSnd_pp$ID$, phi=phi_s$ID$, thresh=$SNDPARTICLE_VEL_THRESH$, minParticles=2, maxParticles=8, gravity=gravity_s$ID$)\n\
+    \n\
     # set source grids for resampling, used in adjustNumber!\n\
-    pVel_s$ID$.setSource(vel_s$ID$, isMAC=True)\n\
+    pVel_pp$ID$.setSource(vel_s$ID$, isMAC=True)\n\
     adjustNumber(parts=pp_s$ID$, vel=vel_s$ID$, flags=flags_s$ID$, minParticles=1*minParticles_s$ID$, maxParticles=2*minParticles_s$ID$, phi=phi_s$ID$, exclude=phiObs_s$ID$, radiusFactor=radiusFactor_s$ID$, narrowBand=adjustedNarrowBandWidth_s$ID$)\n\
-    flipVelocityUpdate(vel=vel_s$ID$, velOld=velOld_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, partVel=pVel_s$ID$, flipRatio=0.97)\n";
+    flipVelocityUpdate(vel=vel_s$ID$, velOld=velOld_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, partVel=pVel_pp$ID$, flipRatio=0.97)\n";
 
 const std::string liquid_step_high = "\n\
 def liquid_step_high_$ID$():\n\
@@ -291,7 +295,7 @@ def save_particles_low_$ID$(path):\n\
 
 const std::string liquid_save_particle_velocities = "\n\
 def save_particles_velocities_$ID$(path):\n\
-    pVel_s$ID$.save(path)\n";
+    pVel_pp$ID$.save(path)\n";
 
 const std::string liquid_import_low = "\n\
 def load_liquid_data_low_$ID$(path):\n\
@@ -320,7 +324,7 @@ def load_liquid_data_low_$ID$(path):\n\
     z_obvel_s$ID$.load(path + '_z_obvel.uni')\n\
     \n\
     pp_s$ID$.load(path + '_pp.uni')\n\
-    pVel_s$ID$.load(path + '_pVel.uni')\n\
+    pVel_pp$ID$.load(path + '_pVel.uni')\n\
     \n\
     gpi_s$ID$.load(path + '_gpi.uni')\n";
 
@@ -360,7 +364,7 @@ def save_liquid_data_low_$ID$(path):\n\
     z_obvel_s$ID$.save(path + '_z_obvel.uni')\n\
     \n\
     pp_s$ID$.save(path + '_pp.uni')\n\
-    pVel_s$ID$.save(path + '_pVel.uni')\n\
+    pVel_pp$ID$.save(path + '_pVel.uni')\n\
     \n\
     gpi_s$ID$.save(path + '_gpi.uni')\n";
 
@@ -399,7 +403,9 @@ if 'velOld_s$ID$'     in globals() : del velOld_s$ID$\n\
 if 'velParts_s$ID$'   in globals() : del velParts_s$ID$\n\
 if 'mapWeights_s$ID$' in globals() : del mapWeights_s$ID$\n\
 if 'pp_s$ID$'         in globals() : del pp_s$ID$\n\
-if 'pVel_s$ID$'       in globals() : del pVel_s$ID$\n\
+if 'ppSnd_s$ID$'      in globals() : del ppSnd_s$ID$\n\
+if 'pVel_pp$ID$'       in globals() : del pVel_pp$ID$\n\
+if 'pVelSnd_pp$ID$'    in globals() : del pVelSnd_pp$ID$\n\
 if 'mesh_s$ID$'       in globals() : del mesh_s$ID$\n\
 if 'pindex_s$ID$'     in globals() : del pindex_s$ID$\n\
 if 'gpi_s$ID$'        in globals() : del gpi_s$ID$\n\

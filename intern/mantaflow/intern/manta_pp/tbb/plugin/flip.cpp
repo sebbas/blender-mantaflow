@@ -596,6 +596,74 @@ void combineGridVel( MACGrid& vel, Grid<Vec3>& weight, MACGrid& combineVel, Leve
 	knCombineVels(vel, weight, combineVel, phi, narrowBand, thresh);
 } static PyObject* _W_17 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "combineGridVel" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Vec3>& weight = *_args.getPtr<Grid<Vec3> >("weight",1,&_lock); MACGrid& combineVel = *_args.getPtr<MACGrid >("combineVel",2,&_lock); LevelsetGrid* phi = _args.getPtrOpt<LevelsetGrid >("phi",3,NULL,&_lock); Real narrowBand = _args.getOpt<Real >("narrowBand",4,0.0,&_lock); Real thresh = _args.getOpt<Real >("thresh",5,0.0,&_lock);   _retval = getPyNone(); combineGridVel(vel,weight,combineVel,phi,narrowBand,thresh);  _args.check(); } pbFinalizePlugin(parent,"combineGridVel", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("combineGridVel",e.what()); return 0; } } static const Pb::Register _RP_combineGridVel ("","combineGridVel",_W_17);  extern "C" { void PbRegister_combineGridVel() { KEEP_UNUSED(_RP_combineGridVel); } } 
 
+void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, ParticleDataImpl<Vec3>& partVel, LevelsetGrid& phi, Real thresh, int minParticles, int maxParticles, Vec3 gravity) {
+
+	Real dt = flags.getParent()->getDt();
+	Vec3 grav = gravity * flags.getParent()->getDt() / flags.getDx();
+	Grid<int> tmp( vel.getParent() );
+	RandomStream mRand(9832);
+
+	// Delete drop particles inside fluid. Then set new position to those that survived
+	for (IndexInt idx=0; idx<(int)parts.size(); idx++) {
+		if (parts.isActive(idx)) {
+			Vec3i p = toVec3i(parts.getPos(idx));
+			if (!tmp.isInBounds(p)) {
+				parts.kill(idx); // out of domain, remove
+				continue;
+			}
+			Real phiv = phi.getInterpolated( parts.getPos(idx) );
+			if( phiv < 0 ) { parts.kill(idx); continue; }
+
+			int num = tmp(p);
+			if (num > maxParticles) {
+				parts.kill(idx);
+			} else {
+				tmp(p) = num+1;
+			}
+			
+			// This particle is valid. Set its next position
+			const Vec3 p2 = parts.getPos(idx) + partVel[idx] * dt; // euler step
+			parts.setPos(idx, p2);
+		}
+	}
+
+	// Generate new drop particles
+	FOR_IJK_BND(phi, 0) {
+		if ( flags.isObstacle(i,j,k) ) continue;
+		if ( phi(i,j,k) > 0.3f && phi(i,j,k) < 0.7f ) continue; // Only generate particles at surface
+		if ( fabs(vel(i,j,k).x) < thresh || fabs(vel(i,j,k).y) < thresh || fabs(vel(i,j,k).z) < thresh ) continue;
+
+		int cnt = tmp(i,j,k);
+		if (cnt >= minParticles) continue;
+
+		if ( flags.isFluid(i,j,k) || flags.isEmpty(i,j,k) ) {
+			Vec3 pos = Vec3(i,j,k);
+			const Vec3 pos2 = pos + vel(i,j,k) * dt; // next particle position
+			Real phiv = phi.getInterpolated(pos2);
+			
+			// Ensure that new particle is only added if its next position is valid
+			if (phiv > 0) {
+				parts.addBuffered(pos + mRand.getVec3());
+			}
+		}
+	}
+	parts.doCompress();
+	parts.insertBufferedParticles();
+
+	// Update forces: gravity and initial particle velocity
+	for (IndexInt idx=0; idx<(int)parts.size(); idx++) {
+		if (parts.isActive(idx)) {
+
+			// Initial velocity (only for new particles)
+			if (parts.getStatus(idx) & ParticleBase::PNEW) {
+				partVel[idx] = vel.getInterpolated( parts[idx].pos );
+			}
+
+			partVel[idx] += grav;
+		}
+	}
+} static PyObject* _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "sampleSndParts" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",2,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",3,&_lock); LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",4,&_lock); Real thresh = _args.get<Real >("thresh",5,&_lock); int minParticles = _args.get<int >("minParticles",6,&_lock); int maxParticles = _args.get<int >("maxParticles",7,&_lock); Vec3 gravity = _args.get<Vec3 >("gravity",8,&_lock);   _retval = getPyNone(); sampleSndParts(parts,flags,vel,partVel,phi,thresh,minParticles,maxParticles,gravity);  _args.check(); } pbFinalizePlugin(parent,"sampleSndParts", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("sampleSndParts",e.what()); return 0; } } static const Pb::Register _RP_sampleSndParts ("","sampleSndParts",_W_18);  extern "C" { void PbRegister_sampleSndParts() { KEEP_UNUSED(_RP_sampleSndParts); } } 
+
 
 } // namespace
 
