@@ -66,11 +66,9 @@
 #include "physics_intern.h" // own include
 
 /* enable/disable overall compilation */
-/*mantaflow include*/
-#ifndef WITH_MANTA
-	#include "../../../../intern/smoke/extern/smoke_API.h"
-#else
-	#include "../../../../intern/mantaflow/extern/manta_fluid_API.h"
+/* mantaflow include */
+#ifdef WITH_MANTA
+#	include "manta_fluid_API.h"
 #endif
 #include "DNA_smoke_types.h"
 

@@ -96,10 +96,8 @@
 #	include "PIL_time.h"
 #endif
 
-#ifndef WITH_MANTA
-	#include "smoke_API.h"
-#else
-	#include "manta_fluid_API.h"
+#ifdef WITH_MANTA
+#	include "manta_fluid_API.h"
 #endif
 
 #ifdef WITH_SMOKE
@@ -140,22 +138,6 @@ float smoke_get_velocity_at(struct Object *UNUSED(ob), float UNUSED(position[3])
 
 void smoke_reallocate_fluid(SmokeDomainSettings *sds, float dx, int res[3], int free_old)
 {
-#ifndef WITH_MANTA
-	int use_heat = (sds->active_fields & SM_ACTIVE_HEAT);
-	int use_fire = (sds->active_fields & SM_ACTIVE_FIRE);
-	int use_colors = (sds->active_fields & SM_ACTIVE_COLORS);
-
-	if (free_old && sds->fluid)
-		smoke_free(sds->fluid);
-	if (!min_iii(res[0], res[1], res[2])) {
-		sds->fluid = NULL;
-		return;
-	}
-	
-	sds->fluid = smoke_init(res, dx, DT_DEFAULT, use_heat, use_fire, use_colors);
-	smoke_initBlenderRNA(sds->fluid, &(sds->alpha), &(sds->beta), &(sds->time_scale), &(sds->vorticity), &(sds->border_collisions),
-					 &(sds->burning_rate), &(sds->flame_smoke), sds->flame_smoke_color, &(sds->flame_vorticity), &(sds->flame_ignition), &(sds->flame_max_temp));
-#else
 	if (free_old && sds->fluid)
 		smoke_free(sds->fluid);
 	if (!min_iii(res[0], res[1], res[2])) {
@@ -164,7 +146,6 @@ void smoke_reallocate_fluid(SmokeDomainSettings *sds, float dx, int res[3], int 
 	}
 	
 	sds->fluid = smoke_init(res, sds->smd);
-#endif
 
 	/* reallocate shadow buffer */
 	if (sds->shadow)
@@ -174,33 +155,10 @@ void smoke_reallocate_fluid(SmokeDomainSettings *sds, float dx, int res[3], int 
 
 void smoke_reallocate_highres_fluid(SmokeDomainSettings *sds, float dx, int res[3], int free_old)
 {
-#ifndef WITH_MANTA
-	int use_fire = (sds->active_fields & (SM_ACTIVE_HEAT | SM_ACTIVE_FIRE));
-	int use_colors = (sds->active_fields & SM_ACTIVE_COLORS);
-
-	if (free_old && sds->wt)
-		smoke_turbulence_free(sds->wt);
-	if (!min_iii(res[0], res[1], res[2])) {
-		sds->wt = NULL;
-		return;
-	}
-
-	/* smoke_turbulence_init uses non-threadsafe functions from fftw3 lib (like fftw_plan & co). */
-	BLI_lock_thread(LOCK_FFTW);
-
-	sds->wt = smoke_turbulence_init(res, sds->amplify + 1, sds->noise, BKE_tempdir_session(), use_fire, use_colors);
-
-	BLI_unlock_thread(LOCK_FFTW);
-#endif
-
 	sds->res_wt[0] = res[0] * (sds->amplify + 1);
 	sds->res_wt[1] = res[1] * (sds->amplify + 1);
 	sds->res_wt[2] = res[2] * (sds->amplify + 1);
 	sds->dx_wt = dx / (sds->amplify + 1);
-	
-#ifndef WITH_MANTA
-	smoke_initWaveletBlenderRNA(sds->wt, &(sds->strength));
-#endif
 }
 
 /* convert global position to domain cell space */
@@ -397,11 +355,6 @@ static void smokeModifier_freeDomain(SmokeModifierData *smd)
 		if (smd->domain->fluid_mutex)
 			BLI_rw_mutex_free(smd->domain->fluid_mutex);
 
-#ifndef WITH_MANTA
-		if (smd->domain->wt)
-			smoke_turbulence_free(smd->domain->wt);
-#endif
-
 		if (smd->domain->effector_weights)
 			MEM_freeN(smd->domain->effector_weights);
 		smd->domain->effector_weights = NULL;
@@ -453,17 +406,6 @@ static void smokeModifier_freeCollision(SmokeModifierData *smd)
 	}
 }
 
-void smokeModifier_reset_turbulence(struct SmokeModifierData *smd)
-{
-#ifndef WITH_MANTA
-	if (smd && smd->domain && smd->domain->wt)
-	{
-		smoke_turbulence_free(smd->domain->wt);
-		smd->domain->wt = NULL;
-	}
-#endif
-}
-
 static void smokeModifier_reset_ex(struct SmokeModifierData *smd, bool need_lock)
 {
 	if (smd)
@@ -485,8 +427,6 @@ static void smokeModifier_reset_ex(struct SmokeModifierData *smd, bool need_lock
 				if (need_lock)
 					BLI_rw_mutex_unlock(smd->domain->fluid_mutex);
 			}
-
-			smokeModifier_reset_turbulence(smd);
 
 			smd->time = -1;
 			smd->domain->total_cells = 0;
@@ -2031,27 +1971,16 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 	int x, y, z;
 	float *density = smoke_get_density(sds->fluid);
 	float *fuel = smoke_get_fuel(sds->fluid);
-#ifndef WITH_MANTA
-	float *bigdensity = smoke_turbulence_get_density(sds->wt);
-	float *bigfuel = smoke_turbulence_get_fuel(sds->wt);
-#else
 	float *bigdensity = smoke_turbulence_get_density(sds->fluid);
 	float *bigfuel = smoke_turbulence_get_fuel(sds->fluid);
-#endif
 	float *vx = smoke_get_velocity_x(sds->fluid);
 	float *vy = smoke_get_velocity_y(sds->fluid);
 	float *vz = smoke_get_velocity_z(sds->fluid);
 	int wt_res[3];
 
-#ifndef WITH_MANTA
-	if (sds->flags & MOD_SMOKE_HIGHRES && sds->wt) {
-		smoke_turbulence_get_res(sds->wt, wt_res);
-	}
-#else
 	if (sds->flags & MOD_SMOKE_HIGHRES && sds->fluid) {
 		smoke_turbulence_get_res(sds->fluid, wt_res);
 	}
-#endif
 
 	INIT_MINMAX(min_vel, max_vel);
 
@@ -2074,11 +2003,7 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 				max_den = (fuel) ? MAX2(density[index], fuel[index]) : density[index];
 
 				/* check high resolution bounds if max density isnt already high enough */
-#ifndef WITH_MANTA
-				if (max_den < sds->adapt_threshold && sds->flags & MOD_SMOKE_HIGHRES && sds->wt) {
-#else
 				if (max_den < sds->adapt_threshold && sds->flags & MOD_SMOKE_HIGHRES && sds->fluid) {
-#endif
 					int i, j, k;
 					/* high res grid index */
 					int xx = (x - sds->res_min[0]) * block_size;
@@ -2169,12 +2094,8 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 	}
 
 	if (res_changed || shift_changed) {
-#ifndef WITH_MANTA
-		struct FLUID_3D *fluid_old = sds->fluid;
-		struct WTURBULENCE *turb_old = sds->wt;
-#else
 		struct FLUID *fluid_old = sds->fluid;
-#endif
+
 		/* allocate new fluid data */
 		smoke_reallocate_fluid(sds, sds->dx, res, 0);
 		if (sds->flags & MOD_SMOKE_HIGHRES) {
@@ -2197,15 +2118,9 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 			smoke_export(sds->fluid, &dummy, &dummy, &n_dens, &n_react, &n_flame, &n_fuel, &n_heat, &n_vx, &n_vy, &n_vz, &n_r, &n_g, &n_b, &dummy_p);
 
 			if (sds->flags & MOD_SMOKE_HIGHRES) {
-#ifndef WITH_MANTA
-				smoke_turbulence_export(turb_old, &o_wt_dens, &o_wt_react, &o_wt_flame, &o_wt_fuel, &o_wt_r, &o_wt_g, &o_wt_b, &o_wt_tcu, &o_wt_tcv, &o_wt_tcw);
-				smoke_turbulence_get_res(turb_old, wt_res_old);
-				smoke_turbulence_export(sds->wt, &n_wt_dens, &n_wt_react, &n_wt_flame, &n_wt_fuel, &n_wt_r, &n_wt_g, &n_wt_b, &n_wt_tcu, &n_wt_tcv, &n_wt_tcw);
-#else
 				smoke_turbulence_export(fluid_old, &o_wt_dens, &o_wt_react, &o_wt_flame, &o_wt_fuel, &o_wt_r, &o_wt_g, &o_wt_b, &o_wt_tcu, &o_wt_tcv, &o_wt_tcw, &o_wt_tcu2, &o_wt_tcv2, &o_wt_tcw2);
 				smoke_turbulence_get_res(fluid_old, wt_res_old);
 				smoke_turbulence_export(sds->fluid, &n_wt_dens, &n_wt_react, &n_wt_flame, &n_wt_fuel, &n_wt_r, &n_wt_g, &n_wt_b, &n_wt_tcu, &n_wt_tcv, &n_wt_tcw, &n_wt_tcu2, &n_wt_tcv2, &n_wt_tcw2);
-#endif
 			}
 
 			for (x = sds->res_min[0]; x < sds->res_max[0]; x++)
@@ -2251,11 +2166,7 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 						n_vy[index_new] = o_vy[index_old];
 						n_vz[index_new] = o_vz[index_old];
 
-#ifndef WITH_MANTA
-						if (sds->flags & MOD_SMOKE_HIGHRES && turb_old) {
-#else
 						if (sds->flags & MOD_SMOKE_HIGHRES && fluid_old) {
-#endif
 							int i, j, k;
 							/* old grid index */
 							int xx_o = xo * block_size;
@@ -2270,11 +2181,9 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 							n_wt_tcv[index_new] = o_wt_tcv[index_old];
 							n_wt_tcw[index_new] = o_wt_tcw[index_old];
 							
-#ifdef WITH_MANTA
 							n_wt_tcu2[index_new] = o_wt_tcu2[index_old];
 							n_wt_tcv2[index_new] = o_wt_tcv2[index_old];
 							n_wt_tcw2[index_new] = o_wt_tcw2[index_old];
-#endif
 
 							for (i = 0; i < block_size; i++)
 								for (j = 0; j < block_size; j++)
@@ -2299,10 +2208,6 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 					}
 		}
 		smoke_free(fluid_old);
-#ifndef WITH_MANTA
-		if (turb_old)
-			smoke_turbulence_free(turb_old);
-#endif
 
 		/* set new domain dimensions */
 		VECCOPY(sds->res_min, min);
@@ -2575,19 +2480,6 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 		adjustDomainResolution(sds, new_shift, emaps, numflowobj, dt);
 	}
 	
-#ifndef WITH_MANTA
-	/* Initialize new data fields if any */
-	if (active_fields & SM_ACTIVE_HEAT) {
-		smoke_ensure_heat(sds->fluid);
-	}
-	if (active_fields & SM_ACTIVE_FIRE) {
-		smoke_ensure_fire(sds->fluid, sds->wt);
-	}
-	if (active_fields & SM_ACTIVE_COLORS) {
-		/* initialize all smoke with "active_color" */
-		smoke_ensure_colors(sds->fluid, sds->wt, sds->active_color[0], sds->active_color[1], sds->active_color[2]);
-	}
-#else
 	/* Initialize new data fields if any */
 	if (active_fields & SM_ACTIVE_HEAT) {
 		smoke_ensure_heat(sds->fluid, sds->smd);
@@ -2602,7 +2494,6 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 	if (active_fields & SM_ACTIVE_LIQUID) {
 		liquid_ensure_init(sds->fluid, sds->smd);
 	}
-#endif
 
 	sds->active_fields = active_fields;
 
@@ -2625,21 +2516,12 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				float *color_b = smoke_get_color_b(sds->fluid);
 				float *fuel = smoke_get_fuel(sds->fluid);
 				float *react = smoke_get_react(sds->fluid);
-#ifndef WITH_MANTA
-				float *bigdensity = smoke_turbulence_get_density(sds->wt);
-				float *bigfuel = smoke_turbulence_get_fuel(sds->wt);
-				float *bigreact = smoke_turbulence_get_react(sds->wt);
-				float *bigcolor_r = smoke_turbulence_get_color_r(sds->wt);
-				float *bigcolor_g = smoke_turbulence_get_color_g(sds->wt);
-				float *bigcolor_b = smoke_turbulence_get_color_b(sds->wt);
-#else
 				float *bigdensity = smoke_turbulence_get_density(sds->fluid);
 				float *bigfuel = smoke_turbulence_get_fuel(sds->fluid);
 				float *bigreact = smoke_turbulence_get_react(sds->fluid);
 				float *bigcolor_r = smoke_turbulence_get_color_r(sds->fluid);
 				float *bigcolor_g = smoke_turbulence_get_color_g(sds->fluid);
 				float *bigcolor_b = smoke_turbulence_get_color_b(sds->fluid);
-#endif
 				float *heat = smoke_get_heat(sds->fluid);
 				float *velocity_x = smoke_get_velocity_x(sds->fluid);
 				float *velocity_y = smoke_get_velocity_y(sds->fluid);
@@ -2702,11 +2584,8 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 								// neighbor cell emission densities (for high resolution smoke smooth interpolation)
 								float c000, c001, c010, c011,  c100, c101, c110, c111;
 
-#ifndef WITH_MANTA
-								smoke_turbulence_get_res(sds->wt, bigres);
-#else
 								smoke_turbulence_get_res(sds->fluid, bigres);
-#endif
+
 								block_size = sds->amplify + 1;  // high res block size
 
 								c000 = (ex > 0 && ey > 0 && ez > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey - 1, em->res[1], ez - 1)] : 0;
@@ -2933,21 +2812,7 @@ static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *
 	copy_m4_m4(sds->obmat, ob->obmat);
 	smoke_set_domain_from_derivedmesh(sds, ob, domain_dm, (sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN) != 0);
 	
-#ifndef WITH_MANTA
-	/* use global gravity if enabled */
-	if (scene->physics_settings.flag & PHYS_GLOBAL_GRAVITY) {
-		copy_v3_v3(gravity, scene->physics_settings.gravity);
-		/* map default value to 1.0 */
-		mul_v3_fl(gravity, 1.0f / 9.810f);
-	}
-	/* convert gravity to domain space */
-	gravity_mag = len_v3(gravity);
-	mul_mat3_m4_v3(sds->imat, gravity);
-	normalize_v3(gravity);
-	mul_v3_fl(gravity, gravity_mag);
-#else
 	smoke_set_domain_gravity(scene, sds);
-#endif
 
 	/* adapt timestep for different framerates, dt = 0.1 is at 25fps */
 	dt = DT_DEFAULT * (25.0f / fps);
@@ -2982,11 +2847,8 @@ static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *
 
 		if (sds->total_cells > 1) {
 			update_effectors(scene, ob, sds, dtSubdiv); // DG TODO? problem --> uses forces instead of velocity, need to check how they need to be changed with variable dt
-#ifndef WITH_MANTA
-			smoke_step(sds->fluid, gravity, dtSubdiv);
-#else
+
 			smoke_step(sds->fluid, framenr);
-#endif
 		}
 	}
 }
@@ -3296,15 +3158,9 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 				/* low res dissolve */
 				smoke_dissolve(sds->fluid, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
 				/* high res dissolve */
-#ifndef WITH_MANTA
-				if (sds->wt) {
-					smoke_dissolve_wavelet(sds->wt, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
-				}
-#else
 				if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) {
 					smoke_dissolve_wavelet(sds->fluid, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
 				}
-#endif
 			}
 			step(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base, framenr-1); // framenr-1: manta solver starts frames at 0
 		}
@@ -3313,11 +3169,6 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			smoke_calc_transparency(sds, scene);
 		}
 
-#ifndef WITH_MANTA
-		if (sds->wt && sds->total_cells > 1) {
-			smoke_turbulence_step(sds->wt, sds->fluid);
-		}
-#endif
 		BKE_ptcache_validate(cache, framenr);
 		if (framenr != startframe)
 			BKE_ptcache_write(&pid, framenr);

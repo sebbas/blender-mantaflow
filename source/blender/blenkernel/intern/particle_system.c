@@ -105,8 +105,8 @@
 
 /* manta sim particle import */
 #ifdef WITH_MANTA
-	#include "DNA_smoke_types.h"
-	#include "manta_fluid_API.h"
+#	include "DNA_smoke_types.h"
+#	include "manta_fluid_API.h"
 #endif // WITH_MANTA
 
 static ThreadRWMutex psys_bvhtree_rwlock = BLI_RWLOCK_INITIALIZER;

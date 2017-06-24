@@ -30,6 +30,7 @@ set(INC
 	../../../../intern/elbeem/extern
 	../../../../intern/guardedalloc
 	../../../../intern/glew-mx
+	../../../../intern/mantaflow/extern
 )
 
 set(INC_SYS

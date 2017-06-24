@@ -45,9 +45,7 @@
 #include "BKE_particle.h"
 
 #ifdef WITH_MANTA
-#include "manta_fluid_API.h"
-#else
-#include "smoke_API.h"
+#	include "manta_fluid_API.h"
 #endif
 
 #include "BIF_gl.h"

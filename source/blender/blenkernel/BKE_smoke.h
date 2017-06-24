@@ -41,7 +41,6 @@ void smoke_reallocate_fluid(struct SmokeDomainSettings *sds, float dx, int res[3
 void smoke_reallocate_highres_fluid(struct SmokeDomainSettings *sds, float dx, int res[3], int free_old);
 void smokeModifier_free(struct SmokeModifierData *smd);
 void smokeModifier_reset(struct SmokeModifierData *smd);
-void smokeModifier_reset_turbulence(struct SmokeModifierData *smd);
 void smokeModifier_createType(struct SmokeModifierData *smd);
 void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData *tsmd);
 
