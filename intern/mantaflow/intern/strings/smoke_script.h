@@ -93,7 +93,8 @@ vel_s$ID$         = s$ID$.create(MACGrid)\n\
 x_vel_s$ID$       = s$ID$.create(RealGrid)\n\
 y_vel_s$ID$       = s$ID$.create(RealGrid)\n\
 z_vel_s$ID$       = s$ID$.create(RealGrid)\n\
-obvel_s$ID$       = s$ID$.create(Vec3Grid)\n\
+obvel_s$ID$       = s$ID$.create(MACGrid)\n\
+obvelC_s$ID$      = s$ID$.create(Vec3Grid)\n\
 x_obvel_s$ID$     = s$ID$.create(RealGrid)\n\
 y_obvel_s$ID$     = s$ID$.create(RealGrid)\n\
 z_obvel_s$ID$     = s$ID$.create(RealGrid)\n\
@@ -185,7 +186,7 @@ def smoke_pre_step_low_$ID$():\n\
     z_obvel_s$ID$.multConst(gs_s$ID$.z)\n\
     \n\
     copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
-    copyRealToVec3(sourceX=x_obvel_s$ID$, sourceY=y_obvel_s$ID$, sourceZ=z_obvel_s$ID$, target=obvel_s$ID$)\n\
+    copyRealToVec3(sourceX=x_obvel_s$ID$, sourceY=y_obvel_s$ID$, sourceZ=z_obvel_s$ID$, target=obvelC_s$ID$)\n\
     copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n";
 
 const std::string smoke_pre_step_high = "\n\
@@ -295,8 +296,9 @@ def step_low_$ID$():\n\
     \n\
     mantaMsg('Extrapolating object velocity')\n\
     # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
-    extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
-    extrapolateVec3Simple(vel=obvel_s$ID$, phi=phiObsIn_s$ID$, distance=1, inside=False)\n\
+    extrapolateVec3Simple(vel=obvelC_s$ID$, phi=phiObsIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
+    extrapolateVec3Simple(vel=obvelC_s$ID$, phi=phiObsIn_s$ID$, distance=1, inside=False)\n\
+    resampleVec3ToMac(source=obvelC_s$ID$, target=obvel_s$ID$)\n\
     \n\
     mantaMsg('Walls')\n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$)\n\
@@ -524,6 +526,7 @@ if 'x_vel_s$ID$'       in globals() : del x_vel_s$ID$\n\
 if 'y_vel_s$ID$'       in globals() : del y_vel_s$ID$\n\
 if 'z_vel_s$ID$'       in globals() : del z_vel_s$ID$\n\
 if 'obvel_s$ID$'       in globals() : del obvel_s$ID$\n\
+if 'obvelC_s$ID$'      in globals() : del obvelC_s$ID$\n\
 if 'x_obvel_s$ID$'     in globals() : del x_obvel_s$ID$\n\
 if 'y_obvel_s$ID$'     in globals() : del y_obvel_s$ID$\n\
 if 'z_obvel_s$ID$'     in globals() : del z_obvel_s$ID$\n\

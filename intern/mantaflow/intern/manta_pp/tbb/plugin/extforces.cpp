@@ -180,22 +180,17 @@ void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
 // set obstacle boundary conditions
 
 //! set no-stick wall boundary condition between ob/fl and ob/ob cells
- struct KnSetWallBcs : public KernelBase { KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Grid<Vec3>* obvel) :  KernelBase(&flags,0) ,flags(flags),vel(vel),obvel(obvel)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, Grid<Vec3>* obvel ) const {
+ struct KnSetWallBcs : public KernelBase { KnSetWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* obvel) :  KernelBase(&flags,0) ,flags(flags),vel(vel),obvel(obvel)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, MACGrid* obvel ) const {
 
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curObs   = flags.isObstacle(i,j,k);
 	Vec3 bcsVel(0.,0.,0.);
 	if (!curFluid && !curObs) return;
 
-	// optional obstacle velocities. interpolate centered obvels or just copy obvels (for MAC grids)
 	if (obvel) {
-		bool isMACObvel = obvel->getType() & GridBase::TypeMAC;
-		if (i>0 && (*obvel)(i,j,k).x)
-			bcsVel.x = (isMACObvel || !(*obvel)(i-1,j,k).x) ? (*obvel)(i,j,k).x : 0.5*((*obvel)(i-1,j,k).x + (*obvel)(i,j,k).x);
-		if (j>0 && (*obvel)(i,j,k).y)
-			bcsVel.y = (isMACObvel || !(*obvel)(i,j-1,k).y) ? (*obvel)(i,j,k).y : 0.5*((*obvel)(i,j-1,k).y + (*obvel)(i,j,k).y);
-		if (k>0 && (*obvel)(i,j,k).z)
-			bcsVel.z = (isMACObvel || !(*obvel)(i,j,k-1).z) ? (*obvel)(i,j,k).z : 0.5*((*obvel)(i,j,k-1).z + (*obvel)(i,j,k).z);
+		bcsVel.x = (*obvel)(i,j,k).x;
+		bcsVel.y = (*obvel)(i,j,k).y;
+		if(!(*obvel).is3D()) bcsVel.z = (*obvel)(i,j,k).z;
 	}
 
 	// we use i>0 instead of bnd=1 to check outer wall
@@ -216,16 +211,16 @@ void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
 		if (vel.is3D() && ((k>0 && flags.isStick(i,j,k-1)) || (k<flags.getSizeZ()-1 && flags.isStick(i,j,k+1))))
 			vel(i,j,k).x = vel(i,j,k).y = 0;
 	}
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<Vec3>* getArg2() { return obvel; } typedef Grid<Vec3> type2; void runMessage() { debMsg("Executing kernel KnSetWallBcs ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=0; j<_maxY; j++) for (int i=0; i<_maxX; i++) op(i,j,k,flags,vel,obvel); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=0; i<_maxX; i++) op(i,j,k,flags,vel,obvel); }  } void run() {  if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(0, maxY), *this);  }  FlagGrid& flags; MACGrid& vel; Grid<Vec3>* obvel;   };
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline MACGrid* getArg2() { return obvel; } typedef MACGrid type2; void runMessage() { debMsg("Executing kernel KnSetWallBcs ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=0; j<_maxY; j++) for (int i=0; i<_maxX; i++) op(i,j,k,flags,vel,obvel); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=0; i<_maxX; i++) op(i,j,k,flags,vel,obvel); }  } void run() {  if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(0, maxY), *this);  }  FlagGrid& flags; MACGrid& vel; MACGrid* obvel;   };
 
 //! set wall BCs for fill fraction mode, note - only needs obstacle SDF
 
 
- struct KnSetWallBcsFrac : public KernelBase { KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget, Grid<Real>* phiObs, const int &boundaryWidth=0) :  KernelBase(&flags,0) ,flags(flags),vel(vel),velTarget(velTarget),phiObs(phiObs),boundaryWidth(boundaryWidth)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, MACGrid& velTarget, Grid<Real>* phiObs, const int &boundaryWidth=0 ) const { 
+ struct KnSetWallBcsFrac : public KernelBase { KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget, MACGrid* obvel, Grid<Real>* phiObs, const int &boundaryWidth=0) :  KernelBase(&flags,0) ,flags(flags),vel(vel),velTarget(velTarget),obvel(obvel),phiObs(phiObs),boundaryWidth(boundaryWidth)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, MACGrid& velTarget, MACGrid* obvel, Grid<Real>* phiObs, const int &boundaryWidth=0 ) const { 
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curObs   = flags.isObstacle(i,j,k);
 	velTarget(i,j,k) = vel(i,j,k);
-	if (!curFluid && !curObs) return; 
+	if (!curFluid && !curObs) return;
 
 	// zero normal component in all obstacle regions
 	if(flags.isInBounds(Vec3i(i,j,k),1)) {
@@ -251,7 +246,11 @@ void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
 
 		normalize(dphi); 
 		Vec3 velMAC = vel.getAtMACX(i,j,k);
-		velTarget(i,j,k).x = velMAC.x - dot(dphi, velMAC) * dphi.x; 
+		velTarget(i,j,k).x = velMAC.x - dot(dphi, velMAC) * dphi.x;
+		if (obvel) {
+			Vec3 obvelMAC = (*obvel).getAtMACX(i,j,k);
+			velTarget(i,j,k).x += dot(dphi, obvelMAC) * dphi.x;
+		}
 	}
 
 	if( curObs | flags.isObstacle(i,j-1,k) )  { 
@@ -274,7 +273,11 @@ void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
 
 		normalize(dphi); 
 		Vec3 velMAC = vel.getAtMACY(i,j,k);
-		velTarget(i,j,k).y = velMAC.y - dot(dphi, velMAC) * dphi.y; 
+		velTarget(i,j,k).y = velMAC.y - dot(dphi, velMAC) * dphi.y;
+		if (obvel) {
+			Vec3 obvelMAC = (*obvel).getAtMACY(i,j,k);
+			velTarget(i,j,k).y += dot(dphi, obvelMAC) * dphi.y;
+		}
 	}
 
 	if( phiObs->is3D() && (curObs | flags.isObstacle(i,j,k-1)) )  {
@@ -298,23 +301,27 @@ void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
 
 		normalize(dphi); 
 		Vec3 velMAC = vel.getAtMACZ(i,j,k);
-		velTarget(i,j,k).z = velMAC.z - dot(dphi, velMAC) * dphi.z; 
+		velTarget(i,j,k).z = velMAC.z - dot(dphi, velMAC) * dphi.z;
+		if (obvel) {
+			Vec3 obvelMAC = (*obvel).getAtMACZ(i,j,k);
+			velTarget(i,j,k).z += dot(dphi, obvelMAC) * dphi.z;
+		}
 	}
 	} // not at boundary
 
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline MACGrid& getArg2() { return velTarget; } typedef MACGrid type2;inline Grid<Real>* getArg3() { return phiObs; } typedef Grid<Real> type3;inline const int& getArg4() { return boundaryWidth; } typedef int type4; void runMessage() { debMsg("Executing kernel KnSetWallBcsFrac ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=0; j<_maxY; j++) for (int i=0; i<_maxX; i++) op(i,j,k,flags,vel,velTarget,phiObs,boundaryWidth); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=0; i<_maxX; i++) op(i,j,k,flags,vel,velTarget,phiObs,boundaryWidth); }  } void run() {  if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(0, maxY), *this);  }  FlagGrid& flags; MACGrid& vel; MACGrid& velTarget; Grid<Real>* phiObs; const int& boundaryWidth;   };
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline MACGrid& getArg2() { return velTarget; } typedef MACGrid type2;inline MACGrid* getArg3() { return obvel; } typedef MACGrid type3;inline Grid<Real>* getArg4() { return phiObs; } typedef Grid<Real> type4;inline const int& getArg5() { return boundaryWidth; } typedef int type5; void runMessage() { debMsg("Executing kernel KnSetWallBcsFrac ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=0; j<_maxY; j++) for (int i=0; i<_maxX; i++) op(i,j,k,flags,vel,velTarget,obvel,phiObs,boundaryWidth); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=0; i<_maxX; i++) op(i,j,k,flags,vel,velTarget,obvel,phiObs,boundaryWidth); }  } void run() {  if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(0, maxY), *this);  }  FlagGrid& flags; MACGrid& vel; MACGrid& velTarget; MACGrid* obvel; Grid<Real>* phiObs; const int& boundaryWidth;   };
 
 //! set zero normal velocity boundary condition on walls
 // (optionally with second order accuracy using the obstacle SDF , fractions grid currentlyl not needed)
-void setWallBcs(FlagGrid& flags, MACGrid& vel, Grid<Vec3>* obvel = 0, MACGrid* fractions = 0, Grid<Real>* phiObs = 0, int boundaryWidth=0) {
+void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* obvel = 0, MACGrid* fractions = 0, Grid<Real>* phiObs = 0, int boundaryWidth=0) {
 	if(!phiObs) {
 		KnSetWallBcs(flags, vel, obvel);
 	} else {
 		MACGrid tmpvel(vel.getParent());
-		KnSetWallBcsFrac(flags, vel, tmpvel, phiObs, boundaryWidth);
+		KnSetWallBcsFrac(flags, vel, tmpvel, obvel, phiObs, boundaryWidth);
 		vel.swap(tmpvel);
 	}
-} static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setWallBcs" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); Grid<Vec3>* obvel = _args.getPtrOpt<Grid<Vec3> >("obvel",2,0,&_lock); MACGrid* fractions = _args.getPtrOpt<MACGrid >("fractions",3,0,&_lock); Grid<Real>* phiObs = _args.getPtrOpt<Grid<Real> >("phiObs",4,0,&_lock); int boundaryWidth = _args.getOpt<int >("boundaryWidth",5,0,&_lock);   _retval = getPyNone(); setWallBcs(flags,vel,obvel,fractions,phiObs,boundaryWidth);  _args.check(); } pbFinalizePlugin(parent,"setWallBcs", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setWallBcs",e.what()); return 0; } } static const Pb::Register _RP_setWallBcs ("","setWallBcs",_W_5);  extern "C" { void PbRegister_setWallBcs() { KEEP_UNUSED(_RP_setWallBcs); } } 
+} static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setWallBcs" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); MACGrid* obvel = _args.getPtrOpt<MACGrid >("obvel",2,0,&_lock); MACGrid* fractions = _args.getPtrOpt<MACGrid >("fractions",3,0,&_lock); Grid<Real>* phiObs = _args.getPtrOpt<Grid<Real> >("phiObs",4,0,&_lock); int boundaryWidth = _args.getOpt<int >("boundaryWidth",5,0,&_lock);   _retval = getPyNone(); setWallBcs(flags,vel,obvel,fractions,phiObs,boundaryWidth);  _args.check(); } pbFinalizePlugin(parent,"setWallBcs", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setWallBcs",e.what()); return 0; } } static const Pb::Register _RP_setWallBcs ("","setWallBcs",_W_5);  extern "C" { void PbRegister_setWallBcs() { KEEP_UNUSED(_RP_setWallBcs); } } 
 
 //! Kernel: gradient norm operator
  struct KnConfForce : public KernelBase { KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str) :  KernelBase(&force,1) ,force(force),grid(grid),curl(curl),str(str)   { runMessage(); run(); }  inline void op(int i, int j, int k, Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str ) const {
