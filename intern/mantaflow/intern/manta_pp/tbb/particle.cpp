@@ -239,6 +239,12 @@ void BasicParticleSystem::printParts(IndexInt start, IndexInt stop, bool printIn
 	debMsg( sstr.str() , 1 );
 }
 
+std::string BasicParticleSystem::getDataPointer() {
+	std::ostringstream out;
+	out << &mData;
+	return out.str();
+}
+
 void BasicParticleSystem::readParticles(BasicParticleSystem* from) {
 	// re-allocate all data
 	this->resizeAll( from->size() ); 
@@ -497,6 +503,11 @@ void ParticleDataImpl<T>::printPdata(IndexInt start, IndexInt stop, bool printIn
 		sstr<<mData[i]<<" "<<"\n";
 	} 
 	debMsg( sstr.str() , 1 );
+}
+template<class T> std::string ParticleDataImpl<T>::getDataPointer() {
+	std::ostringstream out;
+	out << &mData;
+	return out.str();
 }
 
 // specials for vec3
