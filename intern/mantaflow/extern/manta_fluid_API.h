@@ -109,9 +109,6 @@ float liquid_get_triangle_x_at(struct FLUID *liquid, int i);
 float liquid_get_triangle_y_at(struct FLUID *liquid, int i);
 float liquid_get_triangle_z_at(struct FLUID *liquid, int i);
 int liquid_get_num_particles(struct FLUID *liquid);
-int liquid_get_particle_dim_x(struct FLUID *liquid);
-int liquid_get_particle_dim_y(struct FLUID *liquid);
-int liquid_get_particle_dim_z(struct FLUID *liquid);
 int liquid_get_particle_flag_at(struct FLUID *liquid, int i);
 float liquid_get_particle_position_x_at(struct FLUID *liquid, int i);
 float liquid_get_particle_position_y_at(struct FLUID *liquid, int i);
@@ -128,6 +125,9 @@ void liquid_manta_export(struct FLUID* smoke, struct SmokeModifierData *smd);
 
 int *fluid_get_num_obstacle(struct FLUID *fluid);
 float *fluid_get_inflow(struct FLUID *fluid);
+int fluid_get_res_x(struct FLUID *fluid);
+int fluid_get_res_y(struct FLUID *fluid);
+int fluid_get_res_z(struct FLUID *fluid);
 
 #ifdef __cplusplus
 }

@@ -614,21 +614,6 @@ extern "C" int liquid_get_num_particles(FLUID *liquid)
 	return liquid->getNumParticles();
 }
 
-extern "C" int liquid_get_particle_dim_x(FLUID *liquid)
-{
-	return liquid->getParticleDimX();
-}
-
-extern "C" int liquid_get_particle_dim_y(FLUID *liquid)
-{
-	return liquid->getParticleDimY();
-}
-
-extern "C" int liquid_get_particle_dim_z(FLUID *liquid)
-{
-	return liquid->getParticleDimZ();
-}
-
 extern "C" int liquid_get_particle_flag_at(FLUID *liquid, int i)
 {
 	return liquid->getParticleFlagAt(i);
@@ -684,4 +669,19 @@ extern "C" void liquid_manta_export(FLUID* liquid, SmokeModifierData *smd)
 extern "C" float *fluid_get_inflow(FLUID* fluid)
 {
 	return fluid->getInflow();
+}
+
+extern "C" int fluid_get_res_x(FLUID* fluid)
+{
+	return fluid->getResX();
+}
+
+extern "C" int fluid_get_res_y(FLUID* fluid)
+{
+	return fluid->getResY();
+}
+
+extern "C" int fluid_get_res_z(FLUID* fluid)
+{
+	return fluid->getResZ();
 }

@@ -3807,14 +3807,14 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 					pa->state.co[2] = liquid_get_particle_position_z_at(sds->fluid, p);
 
 					// translate particles coordinates to  origin (0,0,0)
-					pa->state.co[0] -= liquid_get_particle_dim_x(sds->fluid) / 2.0f;
-					pa->state.co[1] -= liquid_get_particle_dim_y(sds->fluid) / 2.0f;
-					pa->state.co[2] -= liquid_get_particle_dim_z(sds->fluid) / 2.0f;
+					pa->state.co[0] -= fluid_get_res_x(sds->fluid) / 2.0f;
+					pa->state.co[1] -= fluid_get_res_y(sds->fluid) / 2.0f;
+					pa->state.co[2] -= fluid_get_res_z(sds->fluid) / 2.0f;
 
 					// scale down
-					pa->state.co[0] *= 1.0f / liquid_get_particle_dim_x(sds->fluid);
-					pa->state.co[1] *= 1.0f / liquid_get_particle_dim_y(sds->fluid);
-					pa->state.co[2] *= 1.0f / liquid_get_particle_dim_z(sds->fluid);
+					pa->state.co[0] *= 1.0f / fluid_get_res_x(sds->fluid);
+					pa->state.co[1] *= 1.0f / fluid_get_res_y(sds->fluid);
+					pa->state.co[2] *= 1.0f / fluid_get_res_z(sds->fluid);
 
 					// scale up
 					mul_v3_fl(pa->state.co, sds->scale);
@@ -3841,9 +3841,9 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 					pa->state.vel[2] = liquid_get_particle_velocity_z_at(sds->fluid, p);
 
 					// scale down
-					pa->state.vel[0] *= 1.0f / liquid_get_particle_dim_x(sds->fluid);
-					pa->state.vel[1] *= 1.0f / liquid_get_particle_dim_y(sds->fluid);
-					pa->state.vel[2] *= 1.0f / liquid_get_particle_dim_z(sds->fluid);
+					pa->state.vel[0] *= 1.0f / fluid_get_res_x(sds->fluid);
+					pa->state.vel[1] *= 1.0f / fluid_get_res_y(sds->fluid);
+					pa->state.vel[2] *= 1.0f / fluid_get_res_z(sds->fluid);
 
 //					printf("pa->state.vel[0]: %f, pa->state.vel[1]: %f, pa->state.vel[2]: %f\n", pa->state.vel[0], pa->state.vel[1], pa->state.vel[2]);
 
