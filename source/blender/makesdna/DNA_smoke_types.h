@@ -247,6 +247,8 @@ typedef struct SmokeDomainSettings {
 	int particle_number;
 	float particle_radius;
 	float particle_band_width;
+	float particle_velocity_threshold;
+	int particle_type;
 
 	/* Display settings */
 	char slice_method, axis_slice_method;
@@ -296,6 +298,10 @@ typedef struct SmokeDomainSettings {
 /* flow texture type */
 #define MOD_SMOKE_FLOW_TEXTURE_MAP_AUTO 0
 #define MOD_SMOKE_FLOW_TEXTURE_MAP_UV 1
+
+/* particle types */
+#define MOD_SMOKE_PARTICLE_FLIP (1<<0)
+#define MOD_SMOKE_PARTICLE_SND (1<<1)
 
 /* flags */
 #define MOD_SMOKE_FLOW_ABSOLUTE (1<<1) /*old style emission*/

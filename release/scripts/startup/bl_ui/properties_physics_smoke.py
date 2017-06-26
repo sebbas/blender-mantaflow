@@ -278,7 +278,7 @@ class PHYSICS_PT_smoke_adaptive_domain(PhysicButtonsPanel, Panel):
         col.prop(domain, "adapt_threshold")
 
 
-class PHYSICS_PT_smoke_highres(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_smoke_quality(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Quality"
     COMPAT_ENGINES = {'BLENDER_RENDER'}
 
@@ -341,6 +341,36 @@ class PHYSICS_PT_smoke_highres(PhysicButtonsPanel, Panel):
             sub.prop(domain, "strength")
             sub.prop(domain, "noise_pos_scale")
             sub.prop(domain, "noise_time_anim")
+
+class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
+    bl_label = "Fluid Particles"
+    COMPAT_ENGINES = {'BLENDER_RENDER'}
+
+    @classmethod
+    def poll(cls, context):
+        md = context.smoke
+        rd = context.scene.render
+        return md and (md.smoke_type == 'DOMAIN') and (rd.engine in cls.COMPAT_ENGINES)
+
+    def draw(self, context):
+        layout = self.layout
+        domain = context.smoke.domain_settings
+
+        split = layout.split()
+
+        col = split.column()
+        col.enabled = not domain.point_cache.is_baked
+        col.label(text="Type:")
+		#col.prop(domain, "use_flip_particles", text="FLIP")
+        col.prop(domain, "use_drop_particles", text="Secondary")
+        #col.prop(domain, "use_float_particles", text="Floats")
+        #col.prop(domain, "use_tracer_particles", text="Tracer")
+
+        col = split.column()
+        col.label(text="")
+        sub = col.column()
+        sub.active = domain.use_drop_particles
+        sub.prop(domain, "particle_velocity_threshold", text="Threshold")
 
 class PHYSICS_PT_smoke_groups(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Groups"
@@ -446,7 +476,7 @@ class OBJECT_OT_RunMantaButton(bpy.types.Operator):
         bpy.ops.manta.make_file()
         return{'FINISHED'}
 
-class PHYSICS_PT_smoke_manta_settings(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_smoke_export_manta(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Export"
     bl_options = {'DEFAULT_CLOSED'}
 
@@ -525,12 +555,13 @@ classes = (
     PHYSICS_PT_smoke,
     PHYSICS_PT_smoke_flow_advanced,
     PHYSICS_PT_smoke_adaptive_domain,
-    PHYSICS_PT_smoke_highres,
+    PHYSICS_PT_smoke_quality,
+    PHYSICS_PT_smoke_particles,
     PHYSICS_PT_smoke_groups,
     PHYSICS_PT_smoke_cache,
     PHYSICS_PT_smoke_field_weights,
     OBJECT_OT_RunMantaButton,
-    PHYSICS_PT_smoke_manta_settings,
+    PHYSICS_PT_smoke_export_manta,
     PHYSICS_PT_smoke_display_settings,
 )
 

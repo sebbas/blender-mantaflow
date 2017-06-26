@@ -107,7 +107,7 @@ static void rna_Smoke_viewport_set(struct PointerRNA *ptr, int value)
 	}
 }
 
-static void rna_Smoke_update_volume_format(Main *bmain, Scene *scene, PointerRNA *ptr)
+static void rna_Smoke_flip_parts_set(struct PointerRNA *ptr, int value)
 {
 	Object *ob = (Object *)ptr->id.data;
 	SmokeModifierData *smd;
@@ -117,32 +117,26 @@ static void rna_Smoke_update_volume_format(Main *bmain, Scene *scene, PointerRNA
 
 	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
 
-	/* TODO (sebbas): for now, only liquid domains hold particle systems */
-	if (smd->domain->type != MOD_SMOKE_DOMAIN_TYPE_LIQUID) {
-		rna_Smoke_resetCache(bmain, scene, ptr);
-		return;
-	}
-
 	/* remove fluidsim particle system */
-	if (smd && smd->domain && smd->domain->flags & MOD_SMOKE_USE_VOLUME_CACHE) {
+	if (value && smd && smd->domain) {
 		for (psys = ob->particlesystem.first; psys; psys = psys->next)
 			if (psys->part->type == PART_MANTA)
 				break;
 
 		if (ob->type == OB_MESH && !psys) {
 			/* add particle system */
-			part = psys_new_settings("ParticleSettings", bmain);
+			part = psys_new_settings("ParticleSettings", NULL);
 			psys = MEM_callocN(sizeof(ParticleSystem), "particle_system");
 
 			part->type = PART_MANTA;
 			psys->part = part;
 			psys->pointcache = BKE_ptcache_add(&psys->ptcaches);
-			BLI_strncpy(psys->name, "FlipParticles", sizeof(psys->name));
+			BLI_strncpy(psys->name, "Secondary Particles", sizeof(psys->name));
 			BLI_addtail(&ob->particlesystem, psys);
 
 			/* add modifier */
 			psmd = (ParticleSystemModifierData *)modifier_new(eModifierType_ParticleSystem);
-			BLI_strncpy(psmd->modifier.name, "FLIPParticleSystem", sizeof(psmd->modifier.name));
+			BLI_strncpy(psmd->modifier.name, "Secondary Particle System", sizeof(psmd->modifier.name));
 			psmd->psys = psys;
 			BLI_addtail(&ob->modifiers, psmd);
 			modifier_unique_name(&ob->modifiers, (ModifierData *)psmd);
@@ -167,7 +161,18 @@ static void rna_Smoke_update_volume_format(Main *bmain, Scene *scene, PointerRNA
 		/* solid mode more convenient for meshes */
 		ob->dt = OB_SOLID;
 	}
-	rna_Smoke_resetCache(bmain, scene, ptr);
+
+	if (value == 1) {
+		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_SND;
+	}
+	else {
+		/* Clear old caches. */
+		PTCacheID id;
+		BKE_ptcache_id_from_smoke(&id, ob, smd);
+		BKE_ptcache_id_clear(&id, PTCACHE_CLEAR_ALL, 0);
+
+		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_SND;
+	}
 }
 
 static void rna_Smoke_use_surface_format_set(struct PointerRNA *ptr, int value)
@@ -1072,7 +1077,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_SMOKE_USE_VOLUME_CACHE);
 	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_use_volume_format_set");
 	RNA_def_property_ui_text(prop, "Volumetric cache", "Enable volume cache");
-	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_update_volume_format");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
 	prop = RNA_def_property(srna, "cache_surface_format", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "cache_surface_format");
@@ -1135,6 +1140,26 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_array(prop, 3);
 	RNA_def_property_range(prop, -1000.1, 1000.1);
 	RNA_def_property_ui_text(prop, "Gravity", "Gravity in X, Y and Z direction");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
+	prop = RNA_def_property(srna, "use_flip_particles", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", MOD_SMOKE_PARTICLE_FLIP);
+	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_flip_parts_set");
+	RNA_def_property_ui_text(prop, "FLIP", "Create FLIP particle system");
+	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
+	prop = RNA_def_property(srna, "use_drop_particles", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", MOD_SMOKE_PARTICLE_SND);
+	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_flip_parts_set");
+	RNA_def_property_ui_text(prop, "FLIP", "Create secondary particle system");
+	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
+	prop = RNA_def_property(srna, "particle_velocity_threshold", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 10.0);
+	RNA_def_property_ui_range(prop, 0.0, 10.0, 0.02, 5);
+	RNA_def_property_ui_text(prop, "Threshold", "Velocity threshold for drop particle generation (higher value results in fewer drops)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	/* display settings */
