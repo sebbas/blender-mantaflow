@@ -644,6 +644,8 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << smd->domain->particle_radius;
 	else if (varName == "PARTICLE_BAND_WIDTH")
 		ss << smd->domain->particle_band_width;
+	else if (varName == "SNDPARTICLE_VEL_THRESH")
+		ss << smd->domain->particle_velocity_threshold;
 	else if (varName == "GRAVITY_X")
 		ss << smd->domain->gravity[0];
 	else if (varName == "GRAVITY_Y")
@@ -846,15 +848,15 @@ void FLUID::exportLiquidData(SmokeModifierData *smd)
 		FLUID::saveLiquidDataHigh(parent_dir);
 }
 
-void* FLUID::getGridPointer(std::string gridName, std::string solverName)
+void* FLUID::getDataPointer(std::string varName, std::string parentName)
 {
-	if ((gridName == "") && (solverName == "")) return NULL;
+	if ((varName == "") && (parentName == "")) return NULL;
 
 	PyGILState_STATE gilstate = PyGILState_Ensure();
 
 	// Get pyobject that holds pointer address as string
 	PyObject* main = PyImport_AddModule("__main__");
-	PyObject* gridObject = PyObject_GetAttrString(main, gridName.c_str());
+	PyObject* gridObject = PyObject_GetAttrString(main, varName.c_str());
 	PyObject* func = PyObject_GetAttrString(gridObject, (char*) "getDataPointer");
 	PyObject* returnedValue = PyObject_CallObject(func, NULL);
 	PyObject* encoded = PyUnicode_AsUTF8String(returnedValue);
@@ -862,8 +864,8 @@ void* FLUID::getGridPointer(std::string gridName, std::string solverName)
 	// Convert string pointer to void pointer
 	std::string pointerString = PyBytes_AsString(encoded);
 	std::istringstream in(pointerString);
-	void *gridPointer = NULL;
-	in >> gridPointer;
+	void *dataPointer = NULL;
+	in >> dataPointer;
 	
 	Py_DECREF(gridObject);
 	Py_DECREF(func);
@@ -871,7 +873,7 @@ void* FLUID::getGridPointer(std::string gridName, std::string solverName)
 	Py_DECREF(encoded);
 
 	PyGILState_Release(gilstate);
-	return gridPointer;
+	return dataPointer;
 }
 
 void FLUID::updateMeshData(const char* filename)
@@ -1053,46 +1055,46 @@ void FLUID::updatePointers()
 	std::string solver = "s" + id;
 	std::string solver_ext = "_" + solver;
 	
-	mObstacle    = (int*) getGridPointer("flags" + solver_ext,  solver);
-	mNumObstacle = (int*) getGridPointer("numObs" + solver_ext, solver);
+	mObstacle    = (int*) getDataPointer("flags" + solver_ext,  solver);
+	mNumObstacle = (int*) getDataPointer("numObs" + solver_ext, solver);
 	
-	mVelocityX = (float*) getGridPointer("x_vel" + solver_ext, solver);
-	mVelocityY = (float*) getGridPointer("y_vel" + solver_ext, solver);
-	mVelocityZ = (float*) getGridPointer("z_vel" + solver_ext, solver);
+	mVelocityX = (float*) getDataPointer("x_vel" + solver_ext, solver);
+	mVelocityY = (float*) getDataPointer("y_vel" + solver_ext, solver);
+	mVelocityZ = (float*) getDataPointer("z_vel" + solver_ext, solver);
 	
-	mObVelocityX = (float*) getGridPointer("x_obvel" + solver_ext, solver);
-	mObVelocityY = (float*) getGridPointer("y_obvel" + solver_ext, solver);
-	mObVelocityZ = (float*) getGridPointer("z_obvel" + solver_ext, solver);
+	mObVelocityX = (float*) getDataPointer("x_obvel" + solver_ext, solver);
+	mObVelocityY = (float*) getDataPointer("y_obvel" + solver_ext, solver);
+	mObVelocityZ = (float*) getDataPointer("z_obvel" + solver_ext, solver);
 	
-	mForceX    = (float*) getGridPointer("x_force" + solver_ext, solver);
-	mForceY    = (float*) getGridPointer("y_force" + solver_ext, solver);
-	mForceZ    = (float*) getGridPointer("z_force" + solver_ext, solver);
+	mForceX    = (float*) getDataPointer("x_force" + solver_ext, solver);
+	mForceY    = (float*) getDataPointer("y_force" + solver_ext, solver);
+	mForceZ    = (float*) getDataPointer("z_force" + solver_ext, solver);
 	
-	mPhiObs = (float*) getGridPointer("phiObsIn" + solver_ext, solver);
+	mPhiObs = (float*) getDataPointer("phiObsIn" + solver_ext, solver);
 	
 	// Liquid
 	if (mUsingLiquid) {
-		mPhiIn  = (float*) getGridPointer("phiIn" + solver_ext,  solver);
-		mPhiOut = (float*) getGridPointer("phiOut" + solver_ext, solver);
+		mPhiIn  = (float*) getDataPointer("phiIn" + solver_ext,  solver);
+		mPhiOut = (float*) getDataPointer("phiOut" + solver_ext, solver);
 	}
 	
 	// Smoke
 	if (mUsingSmoke) {
-		mDensity        = (float*) getGridPointer("density" + solver_ext,     solver);
-		mInflow         = (float*) getGridPointer("inflow"  + solver_ext,     solver);
+		mDensity        = (float*) getDataPointer("density" + solver_ext, solver);
+		mInflow         = (float*) getDataPointer("inflow"  + solver_ext, solver);
 		
 		if (mUsingHeat) {
-			mHeat       = (float*) getGridPointer("heat" + solver_ext,    solver);
+			mHeat       = (float*) getDataPointer("heat" + solver_ext,    solver);
 		}
 		if (mUsingFire) {
-			mFlame      = (float*) getGridPointer("flame" + solver_ext,   solver);
-			mFuel       = (float*) getGridPointer("fuel" + solver_ext,    solver);
-			mReact      = (float*) getGridPointer("react" + solver_ext,   solver);
+			mFlame      = (float*) getDataPointer("flame" + solver_ext,   solver);
+			mFuel       = (float*) getDataPointer("fuel" + solver_ext,    solver);
+			mReact      = (float*) getDataPointer("react" + solver_ext,   solver);
 		}
 		if (mUsingColors) {
-			mColorR     = (float*) getGridPointer("color_r" + solver_ext, solver);
-			mColorG     = (float*) getGridPointer("color_g" + solver_ext, solver);
-			mColorB     = (float*) getGridPointer("color_b" + solver_ext, solver);
+			mColorR     = (float*) getDataPointer("color_r" + solver_ext, solver);
+			mColorG     = (float*) getDataPointer("color_g" + solver_ext, solver);
+			mColorB     = (float*) getDataPointer("color_b" + solver_ext, solver);
 		}
 	}
 }
@@ -1116,23 +1118,23 @@ void FLUID::updatePointersHigh()
 	
 	// Smoke
 	if (mUsingSmoke) {
-		mDensityHigh    = (float*) getGridPointer("density"    + xlsolver_ext, xlsolver);
-		mTextureU       = (float*) getGridPointer("texture_u"  + solver_ext,   solver);
-		mTextureV       = (float*) getGridPointer("texture_v"  + solver_ext,   solver);
-		mTextureW       = (float*) getGridPointer("texture_w"  + solver_ext,   solver);
-		mTextureU2      = (float*) getGridPointer("texture_u2" + solver_ext,   solver);
-		mTextureV2      = (float*) getGridPointer("texture_v2" + solver_ext,   solver);
-		mTextureW2      = (float*) getGridPointer("texture_w2" + solver_ext,   solver);
+		mDensityHigh    = (float*) getDataPointer("density"    + xlsolver_ext, xlsolver);
+		mTextureU       = (float*) getDataPointer("texture_u"  + solver_ext,   solver);
+		mTextureV       = (float*) getDataPointer("texture_v"  + solver_ext,   solver);
+		mTextureW       = (float*) getDataPointer("texture_w"  + solver_ext,   solver);
+		mTextureU2      = (float*) getDataPointer("texture_u2" + solver_ext,   solver);
+		mTextureV2      = (float*) getDataPointer("texture_v2" + solver_ext,   solver);
+		mTextureW2      = (float*) getDataPointer("texture_w2" + solver_ext,   solver);
 		
 		if (mUsingFire) {
-			mFlameHigh  = (float*) getGridPointer("flame" + xlsolver_ext, xlsolver);
-			mFuelHigh   = (float*) getGridPointer("fuel"  + xlsolver_ext, xlsolver);
-			mReactHigh  = (float*) getGridPointer("react" + xlsolver_ext, xlsolver);
+			mFlameHigh  = (float*) getDataPointer("flame" + xlsolver_ext, xlsolver);
+			mFuelHigh   = (float*) getDataPointer("fuel"  + xlsolver_ext, xlsolver);
+			mReactHigh  = (float*) getDataPointer("react" + xlsolver_ext, xlsolver);
 		}
 		if (mUsingColors) {
-			mColorRHigh = (float*) getGridPointer("color_r" + xlsolver_ext, xlsolver);
-			mColorGHigh = (float*) getGridPointer("color_g" + xlsolver_ext, xlsolver);
-			mColorBHigh = (float*) getGridPointer("color_b" + xlsolver_ext, xlsolver);
+			mColorRHigh = (float*) getDataPointer("color_r" + xlsolver_ext, xlsolver);
+			mColorGHigh = (float*) getDataPointer("color_g" + xlsolver_ext, xlsolver);
+			mColorBHigh = (float*) getDataPointer("color_b" + xlsolver_ext, xlsolver);
 		}
 	}
 }
