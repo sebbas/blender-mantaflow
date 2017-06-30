@@ -117,16 +117,15 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mPhiIn          = NULL;
 	mPhiObs         = NULL;
 	mPhiOut         = NULL;
+	mPhi            = NULL;
 
 	mNumVertices  = 0;
 	mNumNormals   = 0;
 	mNumTriangles = 0;
 
 	// Particles
-	mNumParticles = 0;
-	mParticleDimX = 0;
-	mParticleDimY = 0;
-	mParticleDimZ = 0;
+	mParticleData      = NULL;
+	mParticleVelocity  = NULL;
 
 	// Only start Mantaflow once. No need to start whenever new FLUID objected is allocated
 	if (!mantaInitialized)
@@ -475,6 +474,10 @@ FLUID::~FLUID()
 	mPhiIn  = NULL;
 	mPhiObs = NULL;
 	mPhiOut = NULL;
+	mPhi    = NULL;
+
+	mParticleData      = NULL;
+	mParticleVelocity  = NULL;
 
 	// Reset flags
 	mUsingHeat    = false;
@@ -952,99 +955,99 @@ void FLUID::updateMeshData(const char* filename)
 	gzclose(gzf);
 }
 
-void FLUID::updateParticleData(const char* filename)
-{
-	gzFile gzf;
-	float fbuffer[3];
-	int ibuffer[4];
-
-	gzf = (gzFile) BLI_gzopen(filename, "rb1"); // do some compression
-	if (!gzf)
-		std::cout << "updateParticleData: unable to open file" << std::endl;
-
-	char ID[5] = {0,0,0,0,0};
-	gzread(gzf, ID, 4);
-
-	if (!strcmp(ID, "PB01")) {
-		std::cout << "particle uni file format v01 not supported anymore" << std::endl;
-		return;
-	}
-
-	// pdata uni header
-	const int STR_LEN_PDATA = 256;
-	int elementType, bytesPerElement; // type id and byte size
-	char info[STR_LEN_PDATA]; // mantaflow build information
-	unsigned long long timestamp; // creation time
-
-	// read particle header
-	gzread(gzf, &ibuffer, sizeof(int) * 4); // num particles, dimX, dimY, dimZ
-	gzread(gzf, &elementType, sizeof(int));
-	gzread(gzf, &bytesPerElement, sizeof(int));
-	gzread(gzf, &info, sizeof(info));
-	gzread(gzf, &timestamp, sizeof(unsigned long long));
-
-	if (with_debug)
-		std::cout << "read particles , num particles " << mNumParticles << " , in file: "<< filename << std::endl;
-
-	// Sanity checks
-	const int partSysSize = sizeof(float) * 3 + sizeof(int);
-	if (! (bytesPerElement == partSysSize) && (elementType == 0)){
-		std::cout << "particle type doesn't match" << std::endl;
-	}
-	if (!ibuffer[0]) { // Any particles present?
-		if (with_debug) std::cout << "no particles present yet" << std::endl;
-		return;
-	}
-
-	// Reading base particle system file v2
-	if (!strcmp(ID, "PB02"))
-	{
-		// Only set head fields when read from particle system and not from pdata files (possibly incomplete)
-		mNumParticles = ibuffer[0];
-		mParticleDimX = ibuffer[1];
-		mParticleDimY = ibuffer[2];
-		mParticleDimZ = ibuffer[3];
-
-		mParticlePositionsX.resize(mNumParticles);
-		mParticlePositionsY.resize(mNumParticles);
-		mParticlePositionsZ.resize(mNumParticles);
-		mParticleFlags.resize(mNumParticles);
-
-		for (int i = 0; i < mNumParticles; ++i) {
-			gzread(gzf, fbuffer, sizeof(float) * 3);
-
-			mParticlePositionsX[i] = fbuffer[0];
-			mParticlePositionsY[i] = fbuffer[1];
-			mParticlePositionsZ[i] = fbuffer[2];
-
-//			std::cout << "Positions are: [" << mParticlePositionsX[i] << ", " << mParticlePositionsY[i] << "," << mParticlePositionsZ[i] << "]" << std::endl;
-
-			gzread(gzf, &ibuffer, sizeof(int));
-			mParticleFlags[i] = ibuffer[0];
-		}
-	}
-	// Reading particle data file v1 with velocities
-	else if (!strcmp(ID, "PD01"))
-	{
-		mNumParticles = ibuffer[0];
-
-		mParticleVelocitiesX.resize(mNumParticles);
-		mParticleVelocitiesY.resize(mNumParticles);
-		mParticleVelocitiesZ.resize(mNumParticles);
-
-		for (int i = 0; i < mNumParticles; ++i) {
-			gzread(gzf, fbuffer, sizeof(float) * 3);
-
-			mParticleVelocitiesX[i] = fbuffer[0];
-			mParticleVelocitiesY[i] = fbuffer[1];
-			mParticleVelocitiesZ[i] = fbuffer[2];
-
-//			std::cout << "Velocities are: [" << mParticleVelocitiesX[i] << ", " << mParticleVelocitiesY[i] << "," << mParticleVelocitiesZ[i] << "]" << std::endl;
-		}
-	}
-
-	gzclose(gzf);
-}
+//void FLUID::updateParticleData(const char* filename)
+//{
+//	gzFile gzf;
+//	float fbuffer[3];
+//	int ibuffer[4];
+//
+//	gzf = (gzFile) BLI_gzopen(filename, "rb1"); // do some compression
+//	if (!gzf)
+//		std::cout << "updateParticleData: unable to open file" << std::endl;
+//
+//	char ID[5] = {0,0,0,0,0};
+//	gzread(gzf, ID, 4);
+//
+//	if (!strcmp(ID, "PB01")) {
+//		std::cout << "particle uni file format v01 not supported anymore" << std::endl;
+//		return;
+//	}
+//
+//	// pdata uni header
+//	const int STR_LEN_PDATA = 256;
+//	int elementType, bytesPerElement; // type id and byte size
+//	char info[STR_LEN_PDATA]; // mantaflow build information
+//	unsigned long long timestamp; // creation time
+//
+//	// read particle header
+//	gzread(gzf, &ibuffer, sizeof(int) * 4); // num particles, dimX, dimY, dimZ
+//	gzread(gzf, &elementType, sizeof(int));
+//	gzread(gzf, &bytesPerElement, sizeof(int));
+//	gzread(gzf, &info, sizeof(info));
+//	gzread(gzf, &timestamp, sizeof(unsigned long long));
+//
+//	if (with_debug)
+//		std::cout << "read particles , num particles " << mNumParticles << " , in file: "<< filename << std::endl;
+//
+//	// Sanity checks
+//	const int partSysSize = sizeof(float) * 3 + sizeof(int);
+//	if (! (bytesPerElement == partSysSize) && (elementType == 0)){
+//		std::cout << "particle type doesn't match" << std::endl;
+//	}
+//	if (!ibuffer[0]) { // Any particles present?
+//		if (with_debug) std::cout << "no particles present yet" << std::endl;
+//		return;
+//	}
+//
+//	// Reading base particle system file v2
+//	if (!strcmp(ID, "PB02"))
+//	{
+//		// Only set head fields when read from particle system and not from pdata files (possibly incomplete)
+//		mNumParticles = ibuffer[0];
+//		mParticleDimX = ibuffer[1];
+//		mParticleDimY = ibuffer[2];
+//		mParticleDimZ = ibuffer[3];
+//
+//		mParticlePositionsX.resize(mNumParticles);
+//		mParticlePositionsY.resize(mNumParticles);
+//		mParticlePositionsZ.resize(mNumParticles);
+//		mParticleFlags.resize(mNumParticles);
+//
+//		for (int i = 0; i < mNumParticles; ++i) {
+//			gzread(gzf, fbuffer, sizeof(float) * 3);
+//
+//			mParticlePositionsX[i] = fbuffer[0];
+//			mParticlePositionsY[i] = fbuffer[1];
+//			mParticlePositionsZ[i] = fbuffer[2];
+//
+////			std::cout << "Positions are: [" << mParticlePositionsX[i] << ", " << mParticlePositionsY[i] << "," << mParticlePositionsZ[i] << "]" << std::endl;
+//
+//			gzread(gzf, &ibuffer, sizeof(int));
+//			mParticleFlags[i] = ibuffer[0];
+//		}
+//	}
+//	// Reading particle data file v1 with velocities
+//	else if (!strcmp(ID, "PD01"))
+//	{
+//		mNumParticles = ibuffer[0];
+//
+//		mParticleVelocitiesX.resize(mNumParticles);
+//		mParticleVelocitiesY.resize(mNumParticles);
+//		mParticleVelocitiesZ.resize(mNumParticles);
+//
+//		for (int i = 0; i < mNumParticles; ++i) {
+//			gzread(gzf, fbuffer, sizeof(float) * 3);
+//
+//			mParticleVelocitiesX[i] = fbuffer[0];
+//			mParticleVelocitiesY[i] = fbuffer[1];
+//			mParticleVelocitiesZ[i] = fbuffer[2];
+//
+////			std::cout << "Velocities are: [" << mParticleVelocitiesX[i] << ", " << mParticleVelocitiesY[i] << "," << mParticleVelocitiesZ[i] << "]" << std::endl;
+//		}
+//	}
+//
+//	gzclose(gzf);
+//}
 
 void FLUID::updatePointers()
 {
@@ -1053,7 +1056,9 @@ void FLUID::updatePointers()
 
 	std::string id = std::to_string(mCurrentID);
 	std::string solver = "s" + id;
+	std::string parts  = "pp" + id;
 	std::string solver_ext = "_" + solver;
+	std::string parts_ext = "_" + parts;
 	
 	mObstacle    = (int*) getDataPointer("flags" + solver_ext,  solver);
 	mNumObstacle = (int*) getDataPointer("numObs" + solver_ext, solver);
@@ -1076,6 +1081,10 @@ void FLUID::updatePointers()
 	if (mUsingLiquid) {
 		mPhiIn  = (float*) getDataPointer("phiIn" + solver_ext,  solver);
 		mPhiOut = (float*) getDataPointer("phiOut" + solver_ext, solver);
+		mPhi    = (float*) getDataPointer("phi" + solver_ext, solver);
+
+		mParticleData      = (float*) getDataPointer("ppSnd" + solver_ext, solver);
+		mParticleVelocity  = (float*) getDataPointer("pVelSnd" + parts_ext, parts);
 	}
 	
 	// Smoke
@@ -1137,6 +1146,38 @@ void FLUID::updatePointersHigh()
 			mColorBHigh = (float*) getDataPointer("color_b" + xlsolver_ext, xlsolver);
 		}
 	}
+}
+
+// TODO (sebbas): Using struct in vectors would be nicer
+//void FLUID::setParticleData(float* buffer, int numParts)
+//{
+//	((std::vector<FLUID::pData>*) mParticleData)->resize(numParts*sizeof(FLUID::pData));
+//	FLUID::pData* bufferPData = (FLUID::pData*) buffer;
+//	for (int i = 0; i < numParts; ++i)
+//		((std::vector<FLUID::pData>*) mParticleData)->push_back(bufferPData[i]);
+//
+//}
+//
+//void FLUID::setParticleVelocity(float* buffer, int numParts)
+//{
+//	((std::vector<FLUID::pVel>*) mParticleVelocity)->resize(numParts*sizeof(FLUID::pVel));
+//	FLUID::pVel* bufferPVel = (FLUID::pVel*) buffer;
+//	for (int i = 0; i < numParts; ++i)
+//		((std::vector<FLUID::pVel>*) mParticleVelocity)->push_back(bufferPVel[i]);
+//}
+
+void FLUID::setParticleData(float* buffer, int numParts)
+{
+	((std::vector<float>*) mParticleData)->resize(numParts*3);
+	for (int i = 0; i < numParts*3; ++i)
+		((std::vector<float>*) mParticleData)->push_back(buffer[i]);
+}
+
+void FLUID::setParticleVelocity(float* buffer, int numParts)
+{
+	((std::vector<float>*) mParticleVelocity)->resize(numParts*3);
+	for (int i = 0; i < numParts*3; ++i)
+		((std::vector<float>*) mParticleVelocity)->push_back(buffer[i]);
 }
 
 void FLUID::saveMesh(char *filename)

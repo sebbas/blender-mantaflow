@@ -288,11 +288,17 @@ static EnumPropertyItem *rna_Smoke_cachetype_volume_itemf(
 	}
 	else if (settings->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
 	{
-		tmp.value = PTCACHE_FILE_UNI;
-		tmp.identifier = "UNI";
-		tmp.name = "Uni files";
-		tmp.description = "Uni file format";
+		tmp.value = PTCACHE_FILE_PTCACHE;
+		tmp.identifier = "POINTCACHE";
+		tmp.name = "Point Cache";
+		tmp.description = "Blender specific point cache file format";
 		RNA_enum_item_add(&item, &totitem, &tmp);
+
+//		tmp.value = PTCACHE_FILE_UNI;
+//		tmp.identifier = "UNI";
+//		tmp.name = "Uni files";
+//		tmp.description = "Uni file format";
+//		RNA_enum_item_add(&item, &totitem, &tmp);
 	}
 
 	RNA_enum_item_end(&item, &totitem);

@@ -134,7 +134,7 @@ extern "C" void smoke_dissolve_wavelet(FLUID *smoke, int speed, int log)
 }
 
 extern "C" void smoke_export(FLUID *smoke, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, 
-							 float **vx, float **vy, float **vz, float **r, float **g, float **b, int **obstacle)
+							 float **vx, float **vy, float **vz, float **r, float **g, float **b, int **obstacle, float **phi, float **pp, float **pvel, int *numParts)
 {
 	*dens = smoke->getDensity();
 	if (fuel)
@@ -143,7 +143,7 @@ extern "C" void smoke_export(FLUID *smoke, float *dt, float *dx, float **dens, f
 		*react = smoke->getReact();
 	if (flame)
 		*flame = smoke->getFlame();
-	if( heat)
+	if(heat)
 		*heat = smoke->getHeat();
 	*vx = smoke->getVelocityX();
 	*vy = smoke->getVelocityY();
@@ -157,6 +157,14 @@ extern "C" void smoke_export(FLUID *smoke, float *dt, float *dx, float **dens, f
 	*obstacle = smoke->getObstacle();
 	*dt = 1; //dummy value, not needed for smoke
 	*dx = 1; //dummy value, not needed for smoke
+	if (phi)
+		*phi = smoke->getPhi();
+	if (pp)
+		*pp = smoke->getParticleData();
+	if (numParts)
+		*numParts = smoke->getNumParticles();
+	if (pvel)
+		*pvel = smoke->getParticleVelocity();
 }
 
 extern "C" void smoke_turbulence_export(FLUID *smoke, float **dens, float **react, float **flame, float **fuel,
@@ -649,14 +657,19 @@ extern "C" float liquid_get_particle_velocity_z_at(FLUID *liquid, int i)
 	return liquid->getParticleVelocityZAt(i);
 }
 
+extern "C" float *liquid_get_particle_data(struct FLUID *liquid)
+{
+	return liquid->getParticleData();
+}
+
+extern "C" float *liquid_get_particle_velocity(struct FLUID *liquid)
+{
+	return liquid->getParticleVelocity();
+}
+
 extern "C" void liquid_update_mesh_data(FLUID *liquid, char* filename)
 {
 	liquid->updateMeshData(filename);
-}
-
-extern "C" void liquid_update_particle_data(FLUID *liquid, char* filename)
-{
-	liquid->updateParticleData(filename);
 }
 
 extern "C" void liquid_manta_export(FLUID* liquid, SmokeModifierData *smd)
@@ -664,6 +677,16 @@ extern "C" void liquid_manta_export(FLUID* liquid, SmokeModifierData *smd)
 	if (!liquid || !smd) return;
 	liquid->exportLiquidScript(smd);
 	liquid->exportLiquidData(smd);
+}
+
+extern "C" void liquid_set_particle_data(FLUID* liquid, float* buffer, int numParts)
+{
+	liquid->setParticleData(buffer, numParts);
+}
+
+extern "C" void liquid_set_particle_velocity(FLUID* liquid, float* buffer, int numParts)
+{
+	liquid->setParticleVelocity(buffer, numParts);
 }
 
 extern "C" float *fluid_get_inflow(FLUID* fluid)

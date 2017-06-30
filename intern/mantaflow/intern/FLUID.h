@@ -40,6 +40,10 @@ public:
 	FLUID() {};
 	virtual ~FLUID();
 	
+	// Mirroring Mantaflow structures for particle data
+	typedef struct pData { float pos[3]; int flag; } pData;
+	typedef struct pVel { float pos[3]; } pVel;
+
 	// Manta step, handling everything
 	void step(int startFrame);
 	
@@ -127,7 +131,8 @@ public:
 	inline float* getPhiIn()  { return mPhiIn; }
 	inline float* getPhiObs() { return mPhiObs; }
 	inline float* getPhiOut() { return mPhiOut; }
-	
+	inline float* getPhi()    { return mPhi; }
+
 	static std::atomic<bool> mantaInitialized;
 	static std::atomic<int> solverID;
 	static int with_debug; // on or off (1 or 0), also sets manta debug level
@@ -150,24 +155,24 @@ public:
 	inline int getTriangleZAt(int i) { return mTrianglesZ[i]; }
 	
 	// Particle getters
-	inline int getNumParticles() { return mNumParticles; }
+	inline int getNumParticles() { return (mParticleData) ? ((std::vector<pData>*) mParticleData)->size() : 0; }
+	inline int getParticleFlagAt(int i) { return (mParticleData) ? ((std::vector<pData>*) mParticleData)->at(i).flag : 0.f; }
 
-	inline int getParticleDimX() { return mParticleDimX; }
-	inline int getParticleDimY() { return mParticleDimY; }
-	inline int getParticleDimZ() { return mParticleDimZ; }
+	inline float getParticlePositionXAt(int i) { return (mParticleData) ? ((std::vector<pData>*) mParticleData)->at(i).pos[0] : 0.f; }
+	inline float getParticlePositionYAt(int i) { return (mParticleData) ? ((std::vector<pData>*) mParticleData)->at(i).pos[1] : 0.f; }
+	inline float getParticlePositionZAt(int i) { return (mParticleData) ? ((std::vector<pData>*) mParticleData)->at(i).pos[2] : 0.f; }
 
-	inline int getParticleFlagAt(int i) { return mParticleFlags[i]; }
+	inline float getParticleVelocityXAt(int i) { return (mParticleVelocity) ? ((std::vector<pVel>*) mParticleVelocity)->at(i).pos[0] : 0.f; }
+	inline float getParticleVelocityYAt(int i) { return (mParticleVelocity) ? ((std::vector<pVel>*) mParticleVelocity)->at(i).pos[1] : 0.f; }
+	inline float getParticleVelocityZAt(int i) { return (mParticleVelocity) ? ((std::vector<pVel>*) mParticleVelocity)->at(i).pos[2] : 0.f; }
 
-	inline float getParticlePositionXAt(int i) { return mParticlePositionsX[i]; }
-	inline float getParticlePositionYAt(int i) { return mParticlePositionsY[i]; }
-	inline float getParticlePositionZAt(int i) { return mParticlePositionsZ[i]; }
-
-	inline float getParticleVelocityXAt(int i) { return mParticleVelocitiesX[i]; }
-	inline float getParticleVelocityYAt(int i) { return mParticleVelocitiesY[i]; }
-	inline float getParticleVelocityZAt(int i) { return mParticleVelocitiesZ[i]; }
+	inline float* getParticleData()     { return mParticleData; }
+	inline float* getParticleVelocity() { return mParticleVelocity; }
 
 	void updateMeshData(const char* filename);
-	void updateParticleData(const char* filename);
+//	void updateParticleData(const char* filename);
+	void setParticleData(float* buffer, int numParts);
+	void setParticleVelocity(float* buffer, int numParts);
 
 private:
 	// simulation constants
@@ -235,7 +240,8 @@ private:
 	float* mPhiIn;
 	float* mPhiObs;
 	float* mPhiOut;
-	
+	float* mPhi;
+
 	// Mesh fields for liquid surface
 	int mNumVertices;
 	int mNumNormals;
@@ -251,17 +257,8 @@ private:
 	std::vector<int> mTrianglesZ;
 	
 	// Particle fields
-	int mNumParticles;
-	int mParticleDimX;
-	int mParticleDimY;
-	int mParticleDimZ;
-	std::vector<int> mParticleFlags;
-	std::vector<float> mParticlePositionsX;
-	std::vector<float> mParticlePositionsY;
-	std::vector<float> mParticlePositionsZ;
-	std::vector<float> mParticleVelocitiesX;
-	std::vector<float> mParticleVelocitiesY;
-	std::vector<float> mParticleVelocitiesZ;
+	float* mParticleData;
+	float* mParticleVelocity;
 
 	void initDomain(struct SmokeModifierData *smd);
 	void initDomainHigh(struct SmokeModifierData *smd);
@@ -273,7 +270,7 @@ private:
 	std::string getRealValue(const std::string& varName, SmokeModifierData *smd);
 	std::string parseLine(const std::string& line, SmokeModifierData *smd);
 	std::string parseScript(const std::string& setup_string, SmokeModifierData *smd);
-	void* getGridPointer(std::string gridName, std::string solverName);
+	void* getDataPointer(std::string varName, std::string parentName);
 };
 
 #endif
