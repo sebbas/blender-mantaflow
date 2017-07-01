@@ -606,7 +606,8 @@ static int ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 		int mode=1;		// light
 		if (sds->cache_comp == SM_CACHE_HEAVY) mode=2;	// heavy
 
-		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles, &phi, &pp, &pvel, &numParts);
+		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles, &phi, &pp, &pvel);
+		numParts = liquid_get_num_particles(sds->fluid);
 
 		if (dens) {
 			ptcache_file_compressed_write(pf, (unsigned char *)sds->shadow, in_len, out, mode);
@@ -632,9 +633,6 @@ static int ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 		if (phi) {
 			ptcache_file_compressed_write(pf, (unsigned char *)phi, in_len, out, mode);
 		}
-		if (phi) {
-			ptcache_file_compressed_write(pf, (unsigned char *)phi, in_len, out, mode);
-		}
 		ptcache_file_write(pf, &dt, 1, sizeof(float));
 		ptcache_file_write(pf, &dx, 1, sizeof(float));
 		ptcache_file_write(pf, &sds->p0, 3, sizeof(float));
@@ -643,10 +641,11 @@ static int ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 		ptcache_file_write(pf, &sds->shift, 3, sizeof(int));
 		ptcache_file_write(pf, &sds->obj_shift_f, 3, sizeof(float));
 		ptcache_file_write(pf, &sds->obmat, 16, sizeof(float));
-//		ptcache_file_write(pf, &sds->base_res, 3, sizeof(int));
+		ptcache_file_write(pf, &sds->base_res, 3, sizeof(int));
 		ptcache_file_write(pf, &sds->res_min, 3, sizeof(int));
 		ptcache_file_write(pf, &sds->res_max, 3, sizeof(int));
 		ptcache_file_write(pf, &sds->active_color, 3, sizeof(float));
+		ptcache_file_write(pf, &numParts, 1, sizeof(int));
 		if (pp && numParts) {
 			MEM_freeN(out);
 			printf("write numParts is %d\n", numParts);
@@ -741,7 +740,7 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 		sds->active_color[2] = 0.7f;
 		
 		// TODO (sebbas): add support for liquid caching
-		smoke_export(sds->fluid, &dt, &dx, &dens, NULL, NULL, NULL, &heat, &vx, &vy, &vz, NULL, NULL, NULL, &obstacles, NULL, NULL, NULL, NULL);
+		smoke_export(sds->fluid, &dt, &dx, &dens, NULL, NULL, NULL, &heat, &vx, &vy, &vz, NULL, NULL, NULL, &obstacles, NULL, NULL, NULL);
 
 		ptcache_file_compressed_read(pf, (unsigned char *)sds->shadow, out_len);
 		ptcache_file_compressed_read(pf, (unsigned char*)dens, out_len);
@@ -861,11 +860,11 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 	
 	if (sds->fluid) {
 		size_t res = sds->res[0]*sds->res[1]*sds->res[2];
-		float dt, dx, *dens, *react, *fuel, *flame, *heat, *vx, *vy, *vz, *r, *g, *b, *phi, *pp, *pvel;
+		float dt, dx, *dens, *react, *fuel, *flame, *heat, *vx, *vy, *vz, *r, *g, *b, *phi;
 		int *obstacles, numParts;
 		unsigned int out_len = (unsigned int)res * sizeof(float);
 		
-		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles, &phi, &pp, &pvel, &numParts);
+		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles, &phi, NULL, NULL);
 
 		if (dens) {
 			ptcache_file_compressed_read(pf, (unsigned char *)sds->shadow, out_len);
@@ -899,12 +898,12 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 		ptcache_file_read(pf, &sds->shift, 3, sizeof(int));
 		ptcache_file_read(pf, &sds->obj_shift_f, 3, sizeof(float));
 		ptcache_file_read(pf, &sds->obmat, 16, sizeof(float));
-//		ptcache_file_read(pf, &sds->base_res, 3, sizeof(int));
+		ptcache_file_read(pf, &sds->base_res, 3, sizeof(int));
 		ptcache_file_read(pf, &sds->res_min, 3, sizeof(int));
 		ptcache_file_read(pf, &sds->res_max, 3, sizeof(int));
 		ptcache_file_read(pf, &sds->active_color, 3, sizeof(float));
-		if (pp && numParts) {
-			printf("read numParts is %d\n", numParts);
+		ptcache_file_read(pf, &numParts, 1, sizeof(int));
+		if (numParts) {
 			unsigned char *buffer = (unsigned char *)MEM_callocN(numParts*sizeof(float)*3 + numParts*sizeof(int), "pointcache_lzo_buffer");
 
 			ptcache_file_compressed_read(pf, (unsigned char *)buffer, numParts*sizeof(float)*3 + numParts*sizeof(int));

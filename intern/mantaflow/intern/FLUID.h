@@ -166,8 +166,8 @@ public:
 	inline float getParticleVelocityYAt(int i) { return (mParticleVelocity) ? ((std::vector<pVel>*) mParticleVelocity)->at(i).pos[1] : 0.f; }
 	inline float getParticleVelocityZAt(int i) { return (mParticleVelocity) ? ((std::vector<pVel>*) mParticleVelocity)->at(i).pos[2] : 0.f; }
 
-	inline float* getParticleData()     { return mParticleData; }
-	inline float* getParticleVelocity() { return mParticleVelocity; }
+	inline float* getParticleData()     { return (float*) &mParticleData->front(); }
+	inline float* getParticleVelocity() { return (float*) &mParticleVelocity->front(); }
 
 	void updateMeshData(const char* filename);
 //	void updateParticleData(const char* filename);
@@ -257,8 +257,8 @@ private:
 	std::vector<int> mTrianglesZ;
 	
 	// Particle fields
-	float* mParticleData;
-	float* mParticleVelocity;
+	std::vector<pData>* mParticleData;
+	std::vector<pVel>* mParticleVelocity;
 
 	void initDomain(struct SmokeModifierData *smd);
 	void initDomainHigh(struct SmokeModifierData *smd);

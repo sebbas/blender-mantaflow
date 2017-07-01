@@ -1083,8 +1083,8 @@ void FLUID::updatePointers()
 		mPhiOut = (float*) getDataPointer("phiOut" + solver_ext, solver);
 		mPhi    = (float*) getDataPointer("phi" + solver_ext, solver);
 
-		mParticleData      = (float*) getDataPointer("ppSnd" + solver_ext, solver);
-		mParticleVelocity  = (float*) getDataPointer("pVelSnd" + parts_ext, parts);
+		mParticleData     = (std::vector<pData>*) getDataPointer("ppSnd" + solver_ext, solver);
+		mParticleVelocity = (std::vector<pVel>*) getDataPointer("pVelSnd" + parts_ext, parts);
 	}
 	
 	// Smoke
@@ -1148,36 +1148,29 @@ void FLUID::updatePointersHigh()
 	}
 }
 
-// TODO (sebbas): Using struct in vectors would be nicer
-//void FLUID::setParticleData(float* buffer, int numParts)
-//{
-//	((std::vector<FLUID::pData>*) mParticleData)->resize(numParts*sizeof(FLUID::pData));
-//	FLUID::pData* bufferPData = (FLUID::pData*) buffer;
-//	for (int i = 0; i < numParts; ++i)
-//		((std::vector<FLUID::pData>*) mParticleData)->push_back(bufferPData[i]);
-//
-//}
-//
-//void FLUID::setParticleVelocity(float* buffer, int numParts)
-//{
-//	((std::vector<FLUID::pVel>*) mParticleVelocity)->resize(numParts*sizeof(FLUID::pVel));
-//	FLUID::pVel* bufferPVel = (FLUID::pVel*) buffer;
-//	for (int i = 0; i < numParts; ++i)
-//		((std::vector<FLUID::pVel>*) mParticleVelocity)->push_back(bufferPVel[i]);
-//}
-
 void FLUID::setParticleData(float* buffer, int numParts)
 {
-	((std::vector<float>*) mParticleData)->resize(numParts*3);
-	for (int i = 0; i < numParts*3; ++i)
-		((std::vector<float>*) mParticleData)->push_back(buffer[i]);
+	mParticleData->resize(numParts);
+	FLUID::pData* bufferPData = (FLUID::pData*) buffer;
+	for (std::vector<pData>::iterator it = mParticleData->begin(); it != mParticleData->end(); ++it) {
+		it->pos[0] = bufferPData->pos[0];
+		it->pos[1] = bufferPData->pos[1];
+		it->pos[2] = bufferPData->pos[2];
+		it->flag = bufferPData->flag;
+		bufferPData++;
+	}
 }
 
 void FLUID::setParticleVelocity(float* buffer, int numParts)
 {
-	((std::vector<float>*) mParticleVelocity)->resize(numParts*3);
-	for (int i = 0; i < numParts*3; ++i)
-		((std::vector<float>*) mParticleVelocity)->push_back(buffer[i]);
+	mParticleVelocity->resize(numParts);
+	FLUID::pVel* bufferPVel = (FLUID::pVel*) buffer;
+	for (std::vector<pVel>::iterator it = mParticleVelocity->begin(); it != mParticleVelocity->end(); ++it) {
+		it->pos[0] = bufferPVel->pos[0];
+		it->pos[1] = bufferPVel->pos[1];
+		it->pos[2] = bufferPVel->pos[2];
+		bufferPVel++;
+	}
 }
 
 void FLUID::saveMesh(char *filename)
