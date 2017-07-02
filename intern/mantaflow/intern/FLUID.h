@@ -153,26 +153,44 @@ public:
 	inline int getTriangleXAt(int i) { return mTrianglesX[i]; }
 	inline int getTriangleYAt(int i) { return mTrianglesY[i]; }
 	inline int getTriangleZAt(int i) { return mTrianglesZ[i]; }
-	
+
 	// Particle getters
-	inline int getNumParticles() { return (mParticleData) ? ((std::vector<pData>*) mParticleData)->size() : 0; }
-	inline int getParticleFlagAt(int i) { return (mParticleData) ? ((std::vector<pData>*) mParticleData)->at(i).flag : 0.f; }
+	inline int getFlipParticleFlagAt(int i) { return (mFlipParticleData) ? ((std::vector<pData>*) mFlipParticleData)->at(i).flag : 0.f; }
+	inline int getSndParticleFlagAt(int i) { return (mSndParticleData) ? ((std::vector<pData>*) mSndParticleData)->at(i).flag : 0.f; }
 
-	inline float getParticlePositionXAt(int i) { return (mParticleData) ? ((std::vector<pData>*) mParticleData)->at(i).pos[0] : 0.f; }
-	inline float getParticlePositionYAt(int i) { return (mParticleData) ? ((std::vector<pData>*) mParticleData)->at(i).pos[1] : 0.f; }
-	inline float getParticlePositionZAt(int i) { return (mParticleData) ? ((std::vector<pData>*) mParticleData)->at(i).pos[2] : 0.f; }
+	inline float getFlipParticlePositionXAt(int i) { return (mFlipParticleData) ? mFlipParticleData->at(i).pos[0] : 0.f; }
+	inline float getFlipParticlePositionYAt(int i) { return (mFlipParticleData) ? mFlipParticleData->at(i).pos[1] : 0.f; }
+	inline float getFlipParticlePositionZAt(int i) { return (mFlipParticleData) ? mFlipParticleData->at(i).pos[2] : 0.f; }
 
-	inline float getParticleVelocityXAt(int i) { return (mParticleVelocity) ? ((std::vector<pVel>*) mParticleVelocity)->at(i).pos[0] : 0.f; }
-	inline float getParticleVelocityYAt(int i) { return (mParticleVelocity) ? ((std::vector<pVel>*) mParticleVelocity)->at(i).pos[1] : 0.f; }
-	inline float getParticleVelocityZAt(int i) { return (mParticleVelocity) ? ((std::vector<pVel>*) mParticleVelocity)->at(i).pos[2] : 0.f; }
+	inline float getSndParticlePositionXAt(int i) { return (mSndParticleData) ? mSndParticleData->at(i).pos[0] : 0.f; }
+	inline float getSndParticlePositionYAt(int i) { return (mSndParticleData) ? mSndParticleData->at(i).pos[1] : 0.f; }
+	inline float getSndParticlePositionZAt(int i) { return (mSndParticleData) ? mSndParticleData->at(i).pos[2] : 0.f; }
 
-	inline float* getParticleData()     { return (float*) &mParticleData->front(); }
-	inline float* getParticleVelocity() { return (float*) &mParticleVelocity->front(); }
+	inline float getFlipParticleVelocityXAt(int i) { return (mFlipParticleVelocity) ? mFlipParticleVelocity->at(i).pos[0] : 0.f; }
+	inline float getFlipParticleVelocityYAt(int i) { return (mFlipParticleVelocity) ? mFlipParticleVelocity->at(i).pos[1] : 0.f; }
+	inline float getFlipParticleVelocityZAt(int i) { return (mFlipParticleVelocity) ? mFlipParticleVelocity->at(i).pos[2] : 0.f; }
+
+	inline float getSndParticleVelocityXAt(int i) { return (mSndParticleVelocity) ? mSndParticleVelocity->at(i).pos[0] : 0.f; }
+	inline float getSndParticleVelocityYAt(int i) { return (mSndParticleVelocity) ? mSndParticleVelocity->at(i).pos[1] : 0.f; }
+	inline float getSndParticleVelocityZAt(int i) { return (mSndParticleVelocity) ? mSndParticleVelocity->at(i).pos[2] : 0.f; }
+
+	inline float* getFlipParticleData() { return (mFlipParticleData) ? (float*) &mFlipParticleData->front() : NULL; }
+	inline float* getSndParticleData()  { return (mSndParticleData) ? (float*) &mSndParticleData->front() : NULL; }
+
+	inline float* getFlipParticleVelocity() { return (mFlipParticleVelocity) ? (float*) &mFlipParticleVelocity->front() : NULL; }
+	inline float* getSndParticleVelocity() { return (mSndParticleVelocity) ? (float*) &mSndParticleVelocity->front() : NULL; }
+
+	inline int getNumFlipParticles() { return (mFlipParticleData) ? mFlipParticleData->size() : 0; }
+	inline int getNumSndParticles() { return (mSndParticleData) ? mSndParticleData->size() : 0; }
 
 	void updateMeshData(const char* filename);
 //	void updateParticleData(const char* filename);
-	void setParticleData(float* buffer, int numParts);
-	void setParticleVelocity(float* buffer, int numParts);
+
+	void setFlipParticleData(float* buffer, int numParts);
+	void setSndParticleData(float* buffer, int numParts);
+
+	void setFlipParticleVelocity(float* buffer, int numParts);
+	void setSndParticleVelocity(float* buffer, int numParts);
 
 private:
 	// simulation constants
@@ -257,8 +275,11 @@ private:
 	std::vector<int> mTrianglesZ;
 	
 	// Particle fields
-	std::vector<pData>* mParticleData;
-	std::vector<pVel>* mParticleVelocity;
+	std::vector<pData>* mFlipParticleData;
+	std::vector<pVel>* mFlipParticleVelocity;
+
+	std::vector<pData>* mSndParticleData;
+	std::vector<pVel>* mSndParticleVelocity;
 
 	void initDomain(struct SmokeModifierData *smd);
 	void initDomainHigh(struct SmokeModifierData *smd);

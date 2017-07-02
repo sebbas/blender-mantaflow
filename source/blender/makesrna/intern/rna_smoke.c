@@ -120,15 +120,83 @@ static void rna_Smoke_flip_parts_set(struct PointerRNA *ptr, int value)
 	/* remove fluidsim particle system */
 	if (value && smd && smd->domain) {
 		for (psys = ob->particlesystem.first; psys; psys = psys->next)
-			if (psys->part->type == PART_MANTA)
+			if (psys->part->type == PART_MANTA_FLIP)
 				break;
 
 		if (ob->type == OB_MESH && !psys) {
 			/* add particle system */
-			part = psys_new_settings("ParticleSettings", NULL);
+			part = psys_new_settings("FlipParticleSettings", NULL);
 			psys = MEM_callocN(sizeof(ParticleSystem), "particle_system");
 
-			part->type = PART_MANTA;
+			part->type = PART_MANTA_FLIP;
+			psys->part = part;
+			psys->pointcache = BKE_ptcache_add(&psys->ptcaches);
+			BLI_strncpy(psys->name, "FLIP Particles", sizeof(psys->name));
+			BLI_addtail(&ob->particlesystem, psys);
+
+			/* add modifier */
+			psmd = (ParticleSystemModifierData *)modifier_new(eModifierType_ParticleSystem);
+			BLI_strncpy(psmd->modifier.name, "FLIP Particle System", sizeof(psmd->modifier.name));
+			psmd->psys = psys;
+			BLI_addtail(&ob->modifiers, psmd);
+			modifier_unique_name(&ob->modifiers, (ModifierData *)psmd);
+		}
+		/* wire mode more convenient for particles */
+		ob->dt = OB_WIRE;
+	}
+	else {
+		for (psys = ob->particlesystem.first; psys; psys = next_psys) {
+			next_psys = psys->next;
+			if (psys->part->type == PART_MANTA_FLIP) {
+				/* clear modifier */
+				psmd = psys_get_modifier(ob, psys);
+				BLI_remlink(&ob->modifiers, psmd);
+				modifier_free((ModifierData *)psmd);
+
+				/* clear particle system */
+				BLI_remlink(&ob->particlesystem, psys);
+				psys_free(ob, psys);
+			}
+		}
+		/* solid mode more convenient for meshes (only set if snd parts not enabled) */
+		if (!(smd->domain->particle_type & MOD_SMOKE_PARTICLE_FLIP)) ob->dt = OB_SOLID;
+	}
+
+	if (value == 1) {
+		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_FLIP;
+	}
+	else {
+		/* Clear old caches. */
+		PTCacheID id;
+		BKE_ptcache_id_from_smoke(&id, ob, smd);
+		BKE_ptcache_id_clear(&id, PTCACHE_CLEAR_ALL, 0);
+
+		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_FLIP;
+	}
+}
+
+static void rna_Smoke_snd_parts_set(struct PointerRNA *ptr, int value)
+{
+	Object *ob = (Object *)ptr->id.data;
+	SmokeModifierData *smd;
+	ParticleSystemModifierData *psmd;
+	ParticleSystem *psys, *next_psys;
+	ParticleSettings *part;
+
+	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
+
+	/* remove fluidsim particle system */
+	if (value && smd && smd->domain) {
+		for (psys = ob->particlesystem.first; psys; psys = psys->next)
+			if (psys->part->type == PART_MANTA_SND)
+				break;
+
+		if (ob->type == OB_MESH && !psys) {
+			/* add particle system */
+			part = psys_new_settings("SecondaryParticleSettings", NULL);
+			psys = MEM_callocN(sizeof(ParticleSystem), "particle_system");
+
+			part->type = PART_MANTA_SND;
 			psys->part = part;
 			psys->pointcache = BKE_ptcache_add(&psys->ptcaches);
 			BLI_strncpy(psys->name, "Secondary Particles", sizeof(psys->name));
@@ -147,7 +215,7 @@ static void rna_Smoke_flip_parts_set(struct PointerRNA *ptr, int value)
 	else {
 		for (psys = ob->particlesystem.first; psys; psys = next_psys) {
 			next_psys = psys->next;
-			if (psys->part->type == PART_MANTA) {
+			if (psys->part->type == PART_MANTA_SND) {
 				/* clear modifier */
 				psmd = psys_get_modifier(ob, psys);
 				BLI_remlink(&ob->modifiers, psmd);
@@ -158,8 +226,8 @@ static void rna_Smoke_flip_parts_set(struct PointerRNA *ptr, int value)
 				psys_free(ob, psys);
 			}
 		}
-		/* solid mode more convenient for meshes */
-		ob->dt = OB_SOLID;
+		/* solid mode more convenient for meshes (only set if flip parts not enabled) */
+		if (!(smd->domain->particle_type & MOD_SMOKE_PARTICLE_FLIP)) ob->dt = OB_SOLID;
 	}
 
 	if (value == 1) {
@@ -344,7 +412,7 @@ static void rna_Smoke_domaintype_set(struct PointerRNA *ptr, int value)
 			rna_Smoke_use_surface_format_set(ptr, 1);
 			rna_Smoke_use_volume_format_set(ptr, 0);
 			rna_Smoke_cachetype_surface_set(ptr, PTCACHE_FILE_OBJECT);
-			rna_Smoke_cachetype_volume_set(ptr, PTCACHE_FILE_UNI);
+			rna_Smoke_cachetype_volume_set(ptr, PTCACHE_FILE_PTCACHE);
 			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_FRONT, 0);
 			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_BACK, 0);
 			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_RIGHT, 0);
@@ -1157,7 +1225,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "use_drop_particles", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", MOD_SMOKE_PARTICLE_SND);
-	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_flip_parts_set");
+	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_snd_parts_set");
 	RNA_def_property_ui_text(prop, "FLIP", "Create secondary particle system");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");

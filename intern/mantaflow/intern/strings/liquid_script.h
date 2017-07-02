@@ -404,8 +404,8 @@ if 'velParts_s$ID$'   in globals() : del velParts_s$ID$\n\
 if 'mapWeights_s$ID$' in globals() : del mapWeights_s$ID$\n\
 if 'pp_s$ID$'         in globals() : del pp_s$ID$\n\
 if 'ppSnd_s$ID$'      in globals() : del ppSnd_s$ID$\n\
-if 'pVel_pp$ID$'       in globals() : del pVel_pp$ID$\n\
-if 'pVelSnd_pp$ID$'    in globals() : del pVelSnd_pp$ID$\n\
+if 'pVel_pp$ID$'      in globals() : del pVel_pp$ID$\n\
+if 'pVelSnd_pp$ID$'   in globals() : del pVelSnd_pp$ID$\n\
 if 'mesh_s$ID$'       in globals() : del mesh_s$ID$\n\
 if 'pindex_s$ID$'     in globals() : del pindex_s$ID$\n\
 if 'gpi_s$ID$'        in globals() : del gpi_s$ID$\n\

@@ -361,7 +361,7 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         col = split.column()
         col.enabled = not domain.point_cache.is_baked
         col.label(text="Type:")
-		#col.prop(domain, "use_flip_particles", text="FLIP")
+        col.prop(domain, "use_flip_particles", text="FLIP")
         col.prop(domain, "use_drop_particles", text="Secondary")
         #col.prop(domain, "use_float_particles", text="Floats")
         #col.prop(domain, "use_tracer_particles", text="Tracer")
@@ -370,6 +370,7 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         col.label(text="")
         sub = col.column()
         sub.active = domain.use_drop_particles
+        sub.label()
         sub.prop(domain, "particle_velocity_threshold", text="Threshold")
 
 class PHYSICS_PT_smoke_groups(PhysicButtonsPanel, Panel):

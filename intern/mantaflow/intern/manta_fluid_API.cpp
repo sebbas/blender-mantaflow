@@ -134,16 +134,17 @@ extern "C" void smoke_dissolve_wavelet(FLUID *smoke, int speed, int log)
 }
 
 extern "C" void smoke_export(FLUID *smoke, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, 
-							 float **vx, float **vy, float **vz, float **r, float **g, float **b, int **obstacle, float **phi, float **pp, float **pvel)
+							 float **vx, float **vy, float **vz, float **r, float **g, float **b, int **obstacle)
 {
-	*dens = smoke->getDensity();
+	if (dens)
+		*dens = smoke->getDensity();
 	if (fuel)
 		*fuel = smoke->getFuel();
 	if (react)
 		*react = smoke->getReact();
 	if (flame)
 		*flame = smoke->getFlame();
-	if(heat)
+	if (heat)
 		*heat = smoke->getHeat();
 	*vx = smoke->getVelocityX();
 	*vy = smoke->getVelocityY();
@@ -157,12 +158,20 @@ extern "C" void smoke_export(FLUID *smoke, float *dt, float *dx, float **dens, f
 	*obstacle = smoke->getObstacle();
 	*dt = 1; //dummy value, not needed for smoke
 	*dx = 1; //dummy value, not needed for smoke
+}
+
+extern "C" void liquid_export(FLUID *liquid, float **phi, float **pp, float **pvel, float **ppSnd, float **pvelSnd)
+{
 	if (phi)
-		*phi = smoke->getPhi();
+		*phi = liquid->getPhi();
 	if (pp)
-		*pp = smoke->getParticleData();
+		*pp = liquid->getFlipParticleData();
 	if (pvel)
-		*pvel = smoke->getParticleVelocity();
+		*pvel = liquid->getFlipParticleVelocity();
+	if (ppSnd)
+		*ppSnd = liquid->getSndParticleData();
+	if (pvelSnd)
+		*pvelSnd = liquid->getSndParticleVelocity();
 }
 
 extern "C" void smoke_turbulence_export(FLUID *smoke, float **dens, float **react, float **flame, float **fuel,
@@ -615,54 +624,84 @@ extern "C" float liquid_get_triangle_z_at(FLUID *liquid, int i)
 	return liquid->getTriangleZAt(i);
 }
 
-extern "C" int liquid_get_num_particles(FLUID *liquid)
+extern "C" int liquid_get_num_flip_particles(FLUID *liquid)
 {
-	return liquid->getNumParticles();
+	return liquid->getNumFlipParticles();
 }
 
-extern "C" int liquid_get_particle_flag_at(FLUID *liquid, int i)
+extern "C" int liquid_get_num_snd_particles(FLUID *liquid)
 {
-	return liquid->getParticleFlagAt(i);
+	return liquid->getNumSndParticles();
 }
 
-extern "C" float liquid_get_particle_position_x_at(FLUID *liquid, int i)
+extern "C" int liquid_get_flip_particle_flag_at(FLUID *liquid, int i)
 {
-	return liquid->getParticlePositionXAt(i);
+	return liquid->getFlipParticleFlagAt(i);
 }
 
-extern "C" float liquid_get_particle_position_y_at(FLUID *liquid, int i)
+extern "C" float liquid_get_flip_particle_position_x_at(FLUID *liquid, int i)
 {
-	return liquid->getParticlePositionYAt(i);
+	return liquid->getFlipParticlePositionXAt(i);
 }
 
-extern "C" float liquid_get_particle_position_z_at(FLUID *liquid, int i)
+extern "C" float liquid_get_flip_particle_position_y_at(FLUID *liquid, int i)
 {
-	return liquid->getParticlePositionZAt(i);
+	return liquid->getFlipParticlePositionYAt(i);
 }
 
-extern "C" float liquid_get_particle_velocity_x_at(FLUID *liquid, int i)
+extern "C" float liquid_get_flip_particle_position_z_at(FLUID *liquid, int i)
 {
-	return liquid->getParticleVelocityXAt(i);
+	return liquid->getFlipParticlePositionZAt(i);
 }
 
-extern "C" float liquid_get_particle_velocity_y_at(FLUID *liquid, int i)
+extern "C" float liquid_get_flip_particle_velocity_x_at(FLUID *liquid, int i)
 {
-	return liquid->getParticleVelocityYAt(i);
+	return liquid->getFlipParticleVelocityXAt(i);
 }
 
-extern "C" float liquid_get_particle_velocity_z_at(FLUID *liquid, int i)
+extern "C" float liquid_get_flip_particle_velocity_y_at(FLUID *liquid, int i)
 {
-	return liquid->getParticleVelocityZAt(i);
+	return liquid->getFlipParticleVelocityYAt(i);
 }
 
-extern "C" float *liquid_get_particle_data(struct FLUID *liquid)
+extern "C" float liquid_get_flip_particle_velocity_z_at(FLUID *liquid, int i)
 {
-	return liquid->getParticleData();
+	return liquid->getFlipParticleVelocityZAt(i);
 }
 
-extern "C" float *liquid_get_particle_velocity(struct FLUID *liquid)
+extern "C" int liquid_get_snd_particle_flag_at(FLUID *liquid, int i)
 {
-	return liquid->getParticleVelocity();
+	return liquid->getSndParticleFlagAt(i);
+}
+
+extern "C" float liquid_get_snd_particle_position_x_at(FLUID *liquid, int i)
+{
+	return liquid->getSndParticlePositionXAt(i);
+}
+
+extern "C" float liquid_get_snd_particle_position_y_at(FLUID *liquid, int i)
+{
+	return liquid->getSndParticlePositionYAt(i);
+}
+
+extern "C" float liquid_get_snd_particle_position_z_at(FLUID *liquid, int i)
+{
+	return liquid->getSndParticlePositionZAt(i);
+}
+
+extern "C" float liquid_get_snd_particle_velocity_x_at(FLUID *liquid, int i)
+{
+	return liquid->getSndParticleVelocityXAt(i);
+}
+
+extern "C" float liquid_get_snd_particle_velocity_y_at(FLUID *liquid, int i)
+{
+	return liquid->getSndParticleVelocityYAt(i);
+}
+
+extern "C" float liquid_get_snd_particle_velocity_z_at(FLUID *liquid, int i)
+{
+	return liquid->getSndParticleVelocityZAt(i);
 }
 
 extern "C" void liquid_update_mesh_data(FLUID *liquid, char* filename)
@@ -677,14 +716,24 @@ extern "C" void liquid_manta_export(FLUID* liquid, SmokeModifierData *smd)
 	liquid->exportLiquidData(smd);
 }
 
-extern "C" void liquid_set_particle_data(FLUID* liquid, float* buffer, int numParts)
+extern "C" void liquid_set_flip_particle_data(FLUID* liquid, float* buffer, int numParts)
 {
-	liquid->setParticleData(buffer, numParts);
+	liquid->setFlipParticleData(buffer, numParts);
 }
 
-extern "C" void liquid_set_particle_velocity(FLUID* liquid, float* buffer, int numParts)
+extern "C" void liquid_set_flip_particle_velocity(FLUID* liquid, float* buffer, int numParts)
 {
-	liquid->setParticleVelocity(buffer, numParts);
+	liquid->setFlipParticleVelocity(buffer, numParts);
+}
+
+extern "C" void liquid_set_snd_particle_data(FLUID* liquid, float* buffer, int numParts)
+{
+	liquid->setSndParticleData(buffer, numParts);
+}
+
+extern "C" void liquid_set_snd_particle_velocity(FLUID* liquid, float* buffer, int numParts)
+{
+	liquid->setSndParticleVelocity(buffer, numParts);
 }
 
 extern "C" float *fluid_get_inflow(FLUID* fluid)

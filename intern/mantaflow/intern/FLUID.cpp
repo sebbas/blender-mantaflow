@@ -124,8 +124,10 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mNumTriangles = 0;
 
 	// Particles
-	mParticleData      = NULL;
-	mParticleVelocity  = NULL;
+	mFlipParticleData      = NULL;
+	mFlipParticleVelocity  = NULL;
+	mSndParticleData       = NULL;
+	mSndParticleVelocity   = NULL;
 
 	// Only start Mantaflow once. No need to start whenever new FLUID objected is allocated
 	if (!mantaInitialized)
@@ -476,8 +478,10 @@ FLUID::~FLUID()
 	mPhiOut = NULL;
 	mPhi    = NULL;
 
-	mParticleData      = NULL;
-	mParticleVelocity  = NULL;
+	mFlipParticleData      = NULL;
+	mFlipParticleVelocity  = NULL;
+	mSndParticleData       = NULL;
+	mSndParticleVelocity   = NULL;
 
 	// Reset flags
 	mUsingHeat    = false;
@@ -1083,8 +1087,10 @@ void FLUID::updatePointers()
 		mPhiOut = (float*) getDataPointer("phiOut" + solver_ext, solver);
 		mPhi    = (float*) getDataPointer("phi" + solver_ext, solver);
 
-		mParticleData     = (std::vector<pData>*) getDataPointer("ppSnd" + solver_ext, solver);
-		mParticleVelocity = (std::vector<pVel>*) getDataPointer("pVelSnd" + parts_ext, parts);
+		mFlipParticleData     = (std::vector<pData>*) getDataPointer("pp" + solver_ext, solver);
+		mFlipParticleVelocity = (std::vector<pVel>*) getDataPointer("pVel" + parts_ext, parts);
+		mSndParticleData      = (std::vector<pData>*) getDataPointer("ppSnd" + solver_ext, solver);
+		mSndParticleVelocity  = (std::vector<pVel>*) getDataPointer("pVelSnd" + parts_ext, parts);
 	}
 	
 	// Smoke
@@ -1148,11 +1154,11 @@ void FLUID::updatePointersHigh()
 	}
 }
 
-void FLUID::setParticleData(float* buffer, int numParts)
+void FLUID::setFlipParticleData(float* buffer, int numParts)
 {
-	mParticleData->resize(numParts);
+	mFlipParticleData->resize(numParts);
 	FLUID::pData* bufferPData = (FLUID::pData*) buffer;
-	for (std::vector<pData>::iterator it = mParticleData->begin(); it != mParticleData->end(); ++it) {
+	for (std::vector<pData>::iterator it = mFlipParticleData->begin(); it != mFlipParticleData->end(); ++it) {
 		it->pos[0] = bufferPData->pos[0];
 		it->pos[1] = bufferPData->pos[1];
 		it->pos[2] = bufferPData->pos[2];
@@ -1161,11 +1167,36 @@ void FLUID::setParticleData(float* buffer, int numParts)
 	}
 }
 
-void FLUID::setParticleVelocity(float* buffer, int numParts)
+void FLUID::setSndParticleData(float* buffer, int numParts)
 {
-	mParticleVelocity->resize(numParts);
+	mSndParticleData->resize(numParts);
+	FLUID::pData* bufferPData = (FLUID::pData*) buffer;
+	for (std::vector<pData>::iterator it = mSndParticleData->begin(); it != mSndParticleData->end(); ++it) {
+		it->pos[0] = bufferPData->pos[0];
+		it->pos[1] = bufferPData->pos[1];
+		it->pos[2] = bufferPData->pos[2];
+		it->flag = bufferPData->flag;
+		bufferPData++;
+	}
+}
+
+void FLUID::setFlipParticleVelocity(float* buffer, int numParts)
+{
+	mFlipParticleVelocity->resize(numParts);
 	FLUID::pVel* bufferPVel = (FLUID::pVel*) buffer;
-	for (std::vector<pVel>::iterator it = mParticleVelocity->begin(); it != mParticleVelocity->end(); ++it) {
+	for (std::vector<pVel>::iterator it = mFlipParticleVelocity->begin(); it != mFlipParticleVelocity->end(); ++it) {
+		it->pos[0] = bufferPVel->pos[0];
+		it->pos[1] = bufferPVel->pos[1];
+		it->pos[2] = bufferPVel->pos[2];
+		bufferPVel++;
+	}
+}
+
+void FLUID::setSndParticleVelocity(float* buffer, int numParts)
+{
+	mSndParticleVelocity->resize(numParts);
+	FLUID::pVel* bufferPVel = (FLUID::pVel*) buffer;
+	for (std::vector<pVel>::iterator it = mSndParticleVelocity->begin(); it != mSndParticleVelocity->end(); ++it) {
 		it->pos[0] = bufferPVel->pos[0];
 		it->pos[1] = bufferPVel->pos[1];
 		it->pos[2] = bufferPVel->pos[2];

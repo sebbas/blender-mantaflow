@@ -548,7 +548,8 @@ static void initialize_particle_texture(ParticleSimulationData *sim, ParticleDat
 		break;
 	case PART_FLUID:
 		break;
-	case PART_MANTA:
+	case PART_MANTA_FLIP:
+	case PART_MANTA_SND:
 		break;
 	}
 }
@@ -3770,9 +3771,15 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 			ParticleSettings *part = psys->part;
 			ParticleData *pa=NULL;
 
-			int p, totpart;
+			int p, totpart = 0;
 			int flagActivePart, activeParts = 0, fileParts = 0;
-			totpart = liquid_get_num_particles(sds->fluid);
+			float posX, posY, posZ, velX, velY, velZ;
+			int resX, resY, resZ;
+
+			if (part->type == PART_MANTA_FLIP)
+				totpart = liquid_get_num_flip_particles(sds->fluid);
+			if (part->type == PART_MANTA_SND)
+				totpart = liquid_get_num_snd_particles(sds->fluid);
 
 			// Sanity check: no particle files present yet
 			if (!totpart)
@@ -3789,7 +3796,28 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 
 			for (p=0, pa=psys->particles; p<totpart; p++, pa++) {
 
-				flagActivePart = liquid_get_particle_flag_at(sds->fluid, p);
+				resX = fluid_get_res_x(sds->fluid);
+				resY = fluid_get_res_y(sds->fluid);
+				resZ = fluid_get_res_z(sds->fluid);
+
+				if (part->type == PART_MANTA_FLIP) {
+					posX = liquid_get_flip_particle_position_x_at(sds->fluid, p);
+					posY = liquid_get_flip_particle_position_y_at(sds->fluid, p);
+					posZ = liquid_get_flip_particle_position_z_at(sds->fluid, p);
+					velX = liquid_get_flip_particle_velocity_x_at(sds->fluid, p);
+					velY = liquid_get_flip_particle_velocity_y_at(sds->fluid, p);
+					velZ = liquid_get_flip_particle_velocity_z_at(sds->fluid, p);
+					flagActivePart = liquid_get_flip_particle_flag_at(sds->fluid, p);
+				}
+				else {
+					posX = liquid_get_snd_particle_position_x_at(sds->fluid, p);
+					posY = liquid_get_snd_particle_position_y_at(sds->fluid, p);
+					posZ = liquid_get_snd_particle_position_z_at(sds->fluid, p);
+					velX = liquid_get_snd_particle_velocity_x_at(sds->fluid, p);
+					velY = liquid_get_snd_particle_velocity_y_at(sds->fluid, p);
+					velZ = liquid_get_snd_particle_velocity_z_at(sds->fluid, p);
+					flagActivePart = liquid_get_snd_particle_flag_at(sds->fluid, p);
+				}
 
 				// Only allow active particles, i.e. filter out dead particles that just Mantaflow needs
 				if (flagActivePart == 0) { // mantaflow convention: PNONE = 0 (regular, active particle)
@@ -3802,19 +3830,19 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 					float ob_cache_loc[3] = {0};
 
 					// set particle position
-					pa->state.co[0] = liquid_get_particle_position_x_at(sds->fluid, p);
-					pa->state.co[1] = liquid_get_particle_position_y_at(sds->fluid, p);
-					pa->state.co[2] = liquid_get_particle_position_z_at(sds->fluid, p);
+					pa->state.co[0] = posX;
+					pa->state.co[1] = posY;
+					pa->state.co[2] = posZ;
 
 					// translate particles coordinates to  origin (0,0,0)
-					pa->state.co[0] -= fluid_get_res_x(sds->fluid) / 2.0f;
-					pa->state.co[1] -= fluid_get_res_y(sds->fluid) / 2.0f;
-					pa->state.co[2] -= fluid_get_res_z(sds->fluid) / 2.0f;
+					pa->state.co[0] -= resX / 2.0f;
+					pa->state.co[1] -= resY / 2.0f;
+					pa->state.co[2] -= resZ / 2.0f;
 
 					// scale down
-					pa->state.co[0] *= 1.0f / fluid_get_res_x(sds->fluid);
-					pa->state.co[1] *= 1.0f / fluid_get_res_y(sds->fluid);
-					pa->state.co[2] *= 1.0f / fluid_get_res_z(sds->fluid);
+					pa->state.co[0] *= 1.0f / resX;
+					pa->state.co[1] *= 1.0f / resY;
+					pa->state.co[2] *= 1.0f / resZ;
 
 					// scale up
 					mul_v3_fl(pa->state.co, sds->scale);
@@ -3833,19 +3861,19 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 					// scale up to match actual domain size. also take care of domain translations globally
 					mul_m4_v3(sds->obmat, pa->state.co);
 
-//					printf("pa->state.co[0]: %f, pa->state.co[1]: %f, pa->state.co[2]: %f\n", pa->state.co[0], pa->state.co[1], pa->state.co[2]);
+					// printf("pa->state.co[0]: %f, pa->state.co[1]: %f, pa->state.co[2]: %f\n", pa->state.co[0], pa->state.co[1], pa->state.co[2]);
 
 					// set particle velocity
-					pa->state.vel[0] = liquid_get_particle_velocity_x_at(sds->fluid, p);
-					pa->state.vel[1] = liquid_get_particle_velocity_y_at(sds->fluid, p);
-					pa->state.vel[2] = liquid_get_particle_velocity_z_at(sds->fluid, p);
+					pa->state.vel[0] = velX;
+					pa->state.vel[1] = velY;
+					pa->state.vel[2] = velZ;
 
 					// scale down
-					pa->state.vel[0] *= 1.0f / fluid_get_res_x(sds->fluid);
-					pa->state.vel[1] *= 1.0f / fluid_get_res_y(sds->fluid);
-					pa->state.vel[2] *= 1.0f / fluid_get_res_z(sds->fluid);
+					pa->state.vel[0] *= 1.0f / resX;
+					pa->state.vel[1] *= 1.0f / resY;
+					pa->state.vel[2] *= 1.0f / resZ;
 
-//					printf("pa->state.vel[0]: %f, pa->state.vel[1]: %f, pa->state.vel[2]: %f\n", pa->state.vel[0], pa->state.vel[1], pa->state.vel[2]);
+					// printf("pa->state.vel[0]: %f, pa->state.vel[1]: %f, pa->state.vel[2]: %f\n", pa->state.vel[0], pa->state.vel[1], pa->state.vel[2]);
 
 					// set default angular velocity and particle rotation
 					zero_v3(pa->state.ave);
@@ -4376,7 +4404,8 @@ void particle_system_update(Scene *scene, Object *ob, ParticleSystem *psys, cons
 			particles_fluid_step(&sim, (int)cfra, use_render_params);
 			break;
 		}
-		case PART_MANTA:
+		case PART_MANTA_FLIP:
+		case PART_MANTA_SND:
 		{
 			particles_manta_step(&sim, (int)cfra, use_render_params);
 			break;
