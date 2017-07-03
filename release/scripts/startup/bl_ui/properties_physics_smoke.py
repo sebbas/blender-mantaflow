@@ -367,6 +367,7 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         #col.prop(domain, "use_tracer_particles", text="Tracer")
 
         col = split.column()
+        col.enabled = not domain.point_cache.is_baked
         col.label(text="")
         sub = col.column()
         sub.active = domain.use_drop_particles
