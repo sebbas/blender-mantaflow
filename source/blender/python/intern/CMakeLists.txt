@@ -56,6 +56,7 @@ set(SRC
 	bpy_app_handlers.c
 	bpy_app_ocio.c
 	bpy_app_oiio.c
+	bpy_app_opensubdiv.c
 	bpy_app_openvdb.c
 	bpy_app_sdl.c
 	bpy_app_translations.c
@@ -90,6 +91,7 @@ set(SRC
 	bpy_app_handlers.h
 	bpy_app_ocio.h
 	bpy_app_oiio.h
+	bpy_app_opensubdiv.h
 	bpy_app_openvdb.h
 	bpy_app_sdl.h
 	bpy_app_translations.h
@@ -297,6 +299,13 @@ if(WITH_OPENIMAGEIO)
 	add_definitions(-DWITH_OPENIMAGEIO)
 	list(APPEND INC
 		../../imbuf/intern/oiio
+	)
+endif()
+
+if(WITH_OPENSUBDIV)
+	add_definitions(-DWITH_OPENSUBDIV)
+	list(APPEND INC
+		../../../../intern/opensubdiv
 	)
 endif()
 

@@ -124,9 +124,10 @@ class MATERIAL_PT_context_material(MaterialButtonsPanel, Panel):
         ob = context.object
         slot = context.material_slot
         space = context.space_data
-        is_sortable = (len(ob.material_slots) > 1)
 
         if ob:
+            is_sortable = (len(ob.material_slots) > 1)
+
             rows = 1
             if is_sortable:
                 rows = 4
@@ -170,7 +171,7 @@ class MATERIAL_PT_context_material(MaterialButtonsPanel, Panel):
             split.separator()
 
         if mat:
-            layout.prop(mat, "type", expand=True)
+            layout.row().prop(mat, "type", expand=True)
             if mat.use_nodes:
                 row = layout.row()
                 row.label(text="", icon='NODETREE')
@@ -991,7 +992,7 @@ class MATERIAL_PT_volume_transp(VolumeButtonsPanel, Panel):
 
         mat = context.material  # don't use node material
 
-        layout.prop(mat, "transparency_method", expand=True)
+        layout.row().prop(mat, "transparency_method", expand=True)
 
 
 class MATERIAL_PT_volume_integration(VolumeButtonsPanel, Panel):

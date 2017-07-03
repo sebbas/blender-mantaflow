@@ -332,8 +332,8 @@ bool ABC_export(
 	job->settings.scene = job->scene;
 	job->settings.frame_start = params->frame_start;
 	job->settings.frame_end = params->frame_end;
-	job->settings.frame_step_xform = params->frame_step_xform;
-	job->settings.frame_step_shape = params->frame_step_shape;
+	job->settings.frame_samples_xform = params->frame_samples_xform;
+	job->settings.frame_samples_shape = params->frame_samples_shape;
 	job->settings.shutter_open = params->shutter_open;
 	job->settings.shutter_close = params->shutter_close;
 	job->settings.selected_only = params->selected_only;
@@ -452,7 +452,8 @@ static std::pair<bool, AbcObjectReader *> visit_object(
 		else {
 			if (child_claims_this_object) {
 				claiming_child_readers.push_back(child_reader);
-			} else {
+			}
+			else {
 				nonclaiming_child_readers.push_back(child_reader);
 			}
 		}
@@ -742,7 +743,7 @@ static void import_startjob(void *user_data, short *stop, short *do_update, floa
 		Scene *scene = data->scene;
 
 		if (data->settings.is_sequence) {
-			SFRA = data->settings.offset;
+			SFRA = data->settings.sequence_offset;
 			EFRA = SFRA + (data->settings.sequence_len - 1);
 			CFRA = SFRA;
 		}
@@ -869,7 +870,7 @@ bool ABC_import(bContext *C, const char *filepath, float scale, bool is_sequence
 	job->settings.is_sequence = is_sequence;
 	job->settings.set_frame_range = set_frame_range;
 	job->settings.sequence_len = sequence_len;
-	job->settings.offset = offset;
+	job->settings.sequence_offset = offset;
 	job->settings.validate_meshes = validate_meshes;
 	job->error_code = ABC_NO_ERROR;
 	job->was_cancelled = false;
@@ -944,7 +945,9 @@ DerivedMesh *ABC_read_mesh(CacheReader *reader,
 		return NULL;
 	}
 
-	ISampleSelector sample_sel(time);
+	/* kFloorIndex is used to be compatible with non-interpolating
+	 * properties; they use the floor. */
+	ISampleSelector sample_sel(time, ISampleSelector::kFloorIndex);
 	return abc_reader->read_derivedmesh(dm, sample_sel, read_flag, err_str);
 }
 

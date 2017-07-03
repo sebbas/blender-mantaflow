@@ -116,6 +116,12 @@ struct GHash {
 };
 
 
+/* -------------------------------------------------------------------- */
+/* GHash API */
+
+/** \name Internal Utility API
+ * \{ */
+
 BLI_INLINE void ghash_entry_copy(
         GHash *gh_dst, Entry *dst, GHash *gh_src, Entry *src,
         GHashKeyCopyFP keycopyfp, GHashValCopyFP valcopyfp)
@@ -131,12 +137,6 @@ BLI_INLINE void ghash_entry_copy(
 		}
 	}
 }
-
-/* -------------------------------------------------------------------- */
-/* GHash API */
-
-/** \name Internal Utility API
- * \{ */
 
 /**
  * Get the full hash for a key.
@@ -1223,6 +1223,11 @@ unsigned int BLI_ghashutil_inthash_p_simple(const void *ptr)
 bool BLI_ghashutil_intcmp(const void *a, const void *b)
 {
 	return (a != b);
+}
+
+size_t BLI_ghashutil_combine_hash(size_t hash_a, size_t hash_b)
+{
+	return hash_a ^ (hash_b + 0x9e3779b9 + (hash_a << 6) + (hash_a >> 2));
 }
 
 /**

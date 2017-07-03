@@ -129,6 +129,9 @@ class SimpleImportTest(AbstractAlembicTest):
         bpy.data.cache_files[fname].filepath = relpath.replace('1.abc', '2.abc')
         bpy.context.scene.update()
 
+        if args.with_legacy_depsgraph:
+            bpy.context.scene.frame_set(10)
+
         x, y, z = cube.matrix_world.to_euler('XYZ')
         self.assertAlmostEqual(x, math.pi / 2, places=5)
         self.assertAlmostEqual(y, 0)
@@ -207,12 +210,14 @@ def main():
     import argparse
 
     if '--' in sys.argv:
-        argv = [sys.argv[0]] + sys.argv[sys.argv.index('--')+1:]
+        argv = [sys.argv[0]] + sys.argv[sys.argv.index('--') + 1:]
     else:
         argv = sys.argv
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--testdir', required=True, type=pathlib.Path)
+    parser.add_argument('--with-legacy-depsgraph', default=False,
+                        type=lambda v: v in {'ON', 'YES', 'TRUE'})
     args, remaining = parser.parse_known_args(argv)
 
     unittest.main(argv=remaining)

@@ -80,7 +80,7 @@ class USERPREF_PT_tabs(Panel):
 
         userpref = context.user_preferences
 
-        layout.prop(userpref, "active_section", expand=True)
+        layout.row().prop(userpref, "active_section", expand=True)
 
 
 class USERPREF_MT_interaction_presets(Menu):
@@ -127,7 +127,7 @@ class USERPREF_MT_app_templates(Menu):
                 text=bpy.path.display_name(d),
             )
             props.use_splash = True
-            props.app_template = d;
+            props.app_template = d
 
         if use_install:
             layout.separator()
@@ -560,7 +560,7 @@ class USERPREF_PT_system(Panel):
         # 3. Column
         column = split.column()
 
-        column.label(text="Solid OpenGL lights:")
+        column.label(text="Solid OpenGL Lights:")
 
         split = column.split(percentage=0.1)
         split.label()
