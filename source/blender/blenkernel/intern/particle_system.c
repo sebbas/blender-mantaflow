@@ -549,7 +549,7 @@ static void initialize_particle_texture(ParticleSimulationData *sim, ParticleDat
 	case PART_FLUID:
 		break;
 	case PART_MANTA_FLIP:
-	case PART_MANTA_SND:
+	case PART_MANTA_DROP:
 		break;
 	}
 }
@@ -3778,7 +3778,7 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 
 			if (part->type == PART_MANTA_FLIP)
 				totpart = liquid_get_num_flip_particles(sds->fluid);
-			if (part->type == PART_MANTA_SND)
+			if (part->type == PART_MANTA_DROP)
 				totpart = liquid_get_num_snd_particles(sds->fluid);
 
 			// Sanity check: no particle files present yet
@@ -4405,7 +4405,7 @@ void particle_system_update(Scene *scene, Object *ob, ParticleSystem *psys, cons
 			break;
 		}
 		case PART_MANTA_FLIP:
-		case PART_MANTA_SND:
+		case PART_MANTA_DROP:
 		{
 			particles_manta_step(&sim, (int)cfra, use_render_params);
 			break;

@@ -107,140 +107,114 @@ static void rna_Smoke_viewport_set(struct PointerRNA *ptr, int value)
 	}
 }
 
+static void rna_Smoke_parts_create(PointerRNA *ptr, char *pset_name, char* parts_name, char* psys_name, int psys_type)
+{
+	Object *ob = (Object *)ptr->id.data;
+	ParticleSystemModifierData *psmd;
+	ParticleSystem *psys;
+	ParticleSettings *part;
+
+	/* add particle system */
+	part = psys_new_settings(pset_name, NULL);
+	psys = MEM_callocN(sizeof(ParticleSystem), "particle_system");
+
+	part->type = psys_type;
+	psys->part = part;
+	psys->pointcache = BKE_ptcache_add(&psys->ptcaches);
+	BLI_strncpy(psys->name, parts_name, sizeof(psys->name));
+	BLI_addtail(&ob->particlesystem, psys);
+
+	/* add modifier */
+	psmd = (ParticleSystemModifierData *)modifier_new(eModifierType_ParticleSystem);
+	BLI_strncpy(psmd->modifier.name, psys_name, sizeof(psmd->modifier.name));
+	psmd->psys = psys;
+	BLI_addtail(&ob->modifiers, psmd);
+	modifier_unique_name(&ob->modifiers, (ModifierData *)psmd);
+}
+
+static void rna_Smoke_parts_delete(PointerRNA *ptr, int ptype)
+{
+	Object *ob = (Object *)ptr->id.data;
+	ParticleSystemModifierData *psmd;
+	ParticleSystem *psys, *next_psys;
+
+	for (psys = ob->particlesystem.first; psys; psys = next_psys) {
+		next_psys = psys->next;
+		if (psys && psys->part && psys->part->type == ptype) {
+			/* clear modifier */
+			psmd = psys_get_modifier(ob, psys);
+			BLI_remlink(&ob->modifiers, psmd);
+			modifier_free((ModifierData *)psmd);
+
+			/* clear particle system */
+			BLI_remlink(&ob->particlesystem, psys);
+			psys_free(ob, psys);
+		}
+	}
+}
+
+static bool rna_Smoke_parts_exists(PointerRNA *ptr, int ptype)
+{
+	Object *ob = (Object *)ptr->id.data;
+	ParticleSystem *psys;
+
+	for (psys = ob->particlesystem.first; psys; psys = psys->next) {
+		if (psys->part->type == ptype) return true;
+	}
+	return false;
+}
+
+static void rna_Smoke_draw_type_update(Main *UNUSED(bmain), Scene *UNUSED(scene), struct PointerRNA *ptr)
+{
+	Object *ob = (Object *)ptr->id.data;
+	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+
+	/* Solid mode more convenient for meshes if no parts present */
+	if (settings->particle_type & MOD_SMOKE_PARTICLE_NONE) {
+		ob->dt = OB_SOLID;
+	} else {
+		ob->dt = OB_WIRE;
+	}
+}
+
 static void rna_Smoke_flip_parts_set(struct PointerRNA *ptr, int value)
 {
 	Object *ob = (Object *)ptr->id.data;
 	SmokeModifierData *smd;
-	ParticleSystemModifierData *psmd;
-	ParticleSystem *psys, *next_psys;
-	ParticleSettings *part;
-
 	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
+	bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_FLIP);
 
-	/* remove fluidsim particle system */
-	if (value && smd && smd->domain) {
-		for (psys = ob->particlesystem.first; psys; psys = psys->next)
-			if (psys->part->type == PART_MANTA_FLIP)
-				break;
-
-		if (ob->type == OB_MESH && !psys) {
-			/* add particle system */
-			part = psys_new_settings("FlipParticleSettings", NULL);
-			psys = MEM_callocN(sizeof(ParticleSystem), "particle_system");
-
-			part->type = PART_MANTA_FLIP;
-			psys->part = part;
-			psys->pointcache = BKE_ptcache_add(&psys->ptcaches);
-			BLI_strncpy(psys->name, "FLIP Particles", sizeof(psys->name));
-			BLI_addtail(&ob->particlesystem, psys);
-
-			/* add modifier */
-			psmd = (ParticleSystemModifierData *)modifier_new(eModifierType_ParticleSystem);
-			BLI_strncpy(psmd->modifier.name, "FLIP Particle System", sizeof(psmd->modifier.name));
-			psmd->psys = psys;
-			BLI_addtail(&ob->modifiers, psmd);
-			modifier_unique_name(&ob->modifiers, (ModifierData *)psmd);
-		}
-		/* wire mode more convenient for particles */
-		ob->dt = OB_WIRE;
-	}
-	else {
-		for (psys = ob->particlesystem.first; psys; psys = next_psys) {
-			next_psys = psys->next;
-			if (psys->part->type == PART_MANTA_FLIP) {
-				/* clear modifier */
-				psmd = psys_get_modifier(ob, psys);
-				BLI_remlink(&ob->modifiers, psmd);
-				modifier_free((ModifierData *)psmd);
-
-				/* clear particle system */
-				BLI_remlink(&ob->particlesystem, psys);
-				psys_free(ob, psys);
-			}
-		}
-		/* solid mode more convenient for meshes (only set if snd parts not enabled) */
-		if (!(smd->domain->particle_type & MOD_SMOKE_PARTICLE_FLIP)) ob->dt = OB_SOLID;
-	}
-
-	if (value == 1) {
+	if (value && !exists) {
+		rna_Smoke_parts_create(ptr, "FlipParticleSettings", "FLIP Particles", "FLIP Particle System", PART_MANTA_FLIP);
 		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_FLIP;
 	}
 	else {
-		/* Clear old caches. */
-		PTCacheID id;
-		BKE_ptcache_id_from_smoke(&id, ob, smd);
-		BKE_ptcache_id_clear(&id, PTCACHE_CLEAR_ALL, 0);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_FLIP);
+		rna_Smoke_resetCache(NULL, NULL, ptr);
 
 		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_FLIP;
 	}
+	rna_Smoke_draw_type_update(NULL, NULL, ptr);
 }
 
-static void rna_Smoke_snd_parts_set(struct PointerRNA *ptr, int value)
+static void rna_Smoke_drop_parts_set(struct PointerRNA *ptr, int value)
 {
 	Object *ob = (Object *)ptr->id.data;
 	SmokeModifierData *smd;
-	ParticleSystemModifierData *psmd;
-	ParticleSystem *psys, *next_psys;
-	ParticleSettings *part;
-
 	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
+	bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_DROP);
 
-	/* remove fluidsim particle system */
-	if (value && smd && smd->domain) {
-		for (psys = ob->particlesystem.first; psys; psys = psys->next)
-			if (psys->part->type == PART_MANTA_SND)
-				break;
-
-		if (ob->type == OB_MESH && !psys) {
-			/* add particle system */
-			part = psys_new_settings("SecondaryParticleSettings", NULL);
-			psys = MEM_callocN(sizeof(ParticleSystem), "particle_system");
-
-			part->type = PART_MANTA_SND;
-			psys->part = part;
-			psys->pointcache = BKE_ptcache_add(&psys->ptcaches);
-			BLI_strncpy(psys->name, "Secondary Particles", sizeof(psys->name));
-			BLI_addtail(&ob->particlesystem, psys);
-
-			/* add modifier */
-			psmd = (ParticleSystemModifierData *)modifier_new(eModifierType_ParticleSystem);
-			BLI_strncpy(psmd->modifier.name, "Secondary Particle System", sizeof(psmd->modifier.name));
-			psmd->psys = psys;
-			BLI_addtail(&ob->modifiers, psmd);
-			modifier_unique_name(&ob->modifiers, (ModifierData *)psmd);
-		}
-		/* wire mode more convenient for particles */
-		ob->dt = OB_WIRE;
+	if (value && !exists) {
+		rna_Smoke_parts_create(ptr, "DropParticleSettings", "Drop Particles", "Drop Particle System", PART_MANTA_DROP);
+		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_DROP;
 	}
 	else {
-		for (psys = ob->particlesystem.first; psys; psys = next_psys) {
-			next_psys = psys->next;
-			if (psys->part->type == PART_MANTA_SND) {
-				/* clear modifier */
-				psmd = psys_get_modifier(ob, psys);
-				BLI_remlink(&ob->modifiers, psmd);
-				modifier_free((ModifierData *)psmd);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_DROP);
+		rna_Smoke_resetCache(NULL, NULL, ptr);
 
-				/* clear particle system */
-				BLI_remlink(&ob->particlesystem, psys);
-				psys_free(ob, psys);
-			}
-		}
-		/* solid mode more convenient for meshes (only set if flip parts not enabled) */
-		if (!(smd->domain->particle_type & MOD_SMOKE_PARTICLE_FLIP)) ob->dt = OB_SOLID;
+		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_DROP;
 	}
-
-	if (value == 1) {
-		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_SND;
-	}
-	else {
-		/* Clear old caches. */
-		PTCacheID id;
-		BKE_ptcache_id_from_smoke(&id, ob, smd);
-		BKE_ptcache_id_clear(&id, PTCACHE_CLEAR_ALL, 0);
-
-		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_SND;
-	}
+	rna_Smoke_draw_type_update(NULL, NULL, ptr);
 }
 
 static void rna_Smoke_use_surface_format_set(struct PointerRNA *ptr, int value)
@@ -1224,9 +1198,9 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
 	prop = RNA_def_property(srna, "use_drop_particles", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", MOD_SMOKE_PARTICLE_SND);
-	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_snd_parts_set");
-	RNA_def_property_ui_text(prop, "FLIP", "Create secondary particle system");
+	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", MOD_SMOKE_PARTICLE_DROP);
+	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_drop_parts_set");
+	RNA_def_property_ui_text(prop, "Drop", "Create drop particle system");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 

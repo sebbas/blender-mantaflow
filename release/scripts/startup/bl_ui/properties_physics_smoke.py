@@ -360,15 +360,13 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
 
         col = split.column()
         col.enabled = not domain.point_cache.is_baked
-        col.label(text="Type:")
         col.prop(domain, "use_flip_particles", text="FLIP")
-        col.prop(domain, "use_drop_particles", text="Secondary")
+        col.prop(domain, "use_drop_particles", text="Drop")
         #col.prop(domain, "use_float_particles", text="Floats")
         #col.prop(domain, "use_tracer_particles", text="Tracer")
 
         col = split.column()
         col.enabled = not domain.point_cache.is_baked
-        col.label(text="")
         sub = col.column()
         sub.active = domain.use_drop_particles
         sub.label()

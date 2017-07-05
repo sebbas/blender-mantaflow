@@ -885,7 +885,7 @@ static int rna_PartSettings_is_manta_get(PointerRNA *ptr)
 {
 	ParticleSettings *part = (ParticleSettings *)ptr->data;
 
-	return (part->type == PART_MANTA_FLIP) || (part->type == PART_MANTA_SND);
+	return (part->type == PART_MANTA_FLIP) || (part->type == PART_MANTA_DROP);
 }
 
 static void rna_ParticleSettings_use_clump_curve_update(Main *bmain, Scene *scene, PointerRNA *ptr)
