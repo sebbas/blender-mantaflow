@@ -140,7 +140,7 @@ static void rna_Smoke_parts_delete(PointerRNA *ptr, int ptype)
 
 	for (psys = ob->particlesystem.first; psys; psys = next_psys) {
 		next_psys = psys->next;
-		if (psys && psys->part && psys->part->type == ptype) {
+		if (psys->part->type == ptype) {
 			/* clear modifier */
 			psmd = psys_get_modifier(ob, psys);
 			BLI_remlink(&ob->modifiers, psmd);
@@ -169,8 +169,8 @@ static void rna_Smoke_draw_type_update(Main *UNUSED(bmain), Scene *UNUSED(scene)
 	Object *ob = (Object *)ptr->id.data;
 	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
 
-	/* Solid mode more convenient for meshes if no parts present */
-	if (settings->particle_type & MOD_SMOKE_PARTICLE_NONE) {
+	/* Wire mode more convenient when particles present */
+	if ((settings->particle_type & (MOD_SMOKE_PARTICLE_FLIP | MOD_SMOKE_PARTICLE_DROP)) == 0) {
 		ob->dt = OB_SOLID;
 	} else {
 		ob->dt = OB_WIRE;
@@ -184,8 +184,9 @@ static void rna_Smoke_flip_parts_set(struct PointerRNA *ptr, int value)
 	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
 	bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_FLIP);
 
-	if (value && !exists) {
-		rna_Smoke_parts_create(ptr, "FlipParticleSettings", "FLIP Particles", "FLIP Particle System", PART_MANTA_FLIP);
+	if (value) {
+		if (ob->type == OB_MESH && !exists)
+			rna_Smoke_parts_create(ptr, "FlipParticleSettings", "FLIP Particles", "FLIP Particle System", PART_MANTA_FLIP);
 		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_FLIP;
 	}
 	else {
@@ -204,8 +205,9 @@ static void rna_Smoke_drop_parts_set(struct PointerRNA *ptr, int value)
 	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
 	bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_DROP);
 
-	if (value && !exists) {
-		rna_Smoke_parts_create(ptr, "DropParticleSettings", "Drop Particles", "Drop Particle System", PART_MANTA_DROP);
+	if (value) {
+		if (ob->type == OB_MESH && !exists)
+			rna_Smoke_parts_create(ptr, "DropParticleSettings", "Drop Particles", "Drop Particle System", PART_MANTA_DROP);
 		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_DROP;
 	}
 	else {

@@ -3775,6 +3775,15 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 			int flagActivePart, activeParts = 0, fileParts = 0;
 			float posX, posY, posZ, velX, velY, velZ;
 			int resX, resY, resZ;
+			char debugStrBuffer[256];
+
+			// Sanity check: parts also enabled in fluid domain?
+			if ((part->type == PART_MANTA_FLIP && !(sds->particle_type & MOD_SMOKE_PARTICLE_FLIP)) ||
+				(part->type == PART_MANTA_DROP && !(sds->particle_type & MOD_SMOKE_PARTICLE_DROP)))
+			{
+				BLI_snprintf(debugStrBuffer, sizeof(debugStrBuffer), "particles_manta_step::error - found particle system that is not enabled in fluid domain\n");
+				return;
+			}
 
 			if (part->type == PART_MANTA_FLIP)
 				totpart = liquid_get_num_flip_particles(sds->fluid);

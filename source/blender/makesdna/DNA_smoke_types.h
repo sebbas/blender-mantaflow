@@ -300,9 +300,8 @@ typedef struct SmokeDomainSettings {
 #define MOD_SMOKE_FLOW_TEXTURE_MAP_UV 1
 
 /* particle types */
-#define MOD_SMOKE_PARTICLE_NONE (1<<0)
-#define MOD_SMOKE_PARTICLE_FLIP (1<<1)
-#define MOD_SMOKE_PARTICLE_DROP (1<<2)
+#define MOD_SMOKE_PARTICLE_FLIP (1<<0)
+#define MOD_SMOKE_PARTICLE_DROP (1<<1)
 
 /* flags */
 #define MOD_SMOKE_FLOW_ABSOLUTE (1<<1) /*old style emission*/
