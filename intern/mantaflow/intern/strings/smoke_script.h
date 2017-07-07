@@ -39,7 +39,7 @@ mantaMsg('Smoke domain low')\n\
 flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$)\n\
 flags_s$ID$.fillGrid()\n\
 if doOpen_s$ID$:\n\
-    setOpenBound(flags=flags_s$ID$, bWidth=0, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty)\n";
+    setOpenBound(flags=flags_s$ID$, bWidth=boundaryWidth_s$ID$, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty)\n";
 
 const std::string smoke_bounds_high = "\n\
 # prepare domain high\n\
@@ -47,7 +47,7 @@ mantaMsg('Smoke domain high')\n\
 flags_xl$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$)\n\
 flags_xl$ID$.fillGrid()\n\
 if doOpen_s$ID$:\n\
-    setOpenBound(flags=flags_xl$ID$, bWidth=0, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty)\n";
+    setOpenBound(flags=flags_xl$ID$, bWidth=boundaryWidth_s$ID$, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty)\n";
 
 //////////////////////////////////////////////////////////////////////
 // VARIABLES
@@ -98,6 +98,10 @@ obvelC_s$ID$      = s$ID$.create(Vec3Grid)\n\
 x_obvel_s$ID$     = s$ID$.create(RealGrid)\n\
 y_obvel_s$ID$     = s$ID$.create(RealGrid)\n\
 z_obvel_s$ID$     = s$ID$.create(RealGrid)\n\
+invel_s$ID$       = s$ID$.create(VecGrid)\n\
+x_invel_s$ID$     = s$ID$.create(RealGrid)\n\
+y_invel_s$ID$     = s$ID$.create(RealGrid)\n\
+z_invel_s$ID$     = s$ID$.create(RealGrid)\n\
 density_s$ID$     = s$ID$.create(RealGrid)\n\
 pressure_s$ID$    = s$ID$.create(RealGrid)\n\
 phiObsIn_s$ID$    = s$ID$.create(LevelsetGrid)\n\
@@ -185,8 +189,14 @@ def smoke_pre_step_low_$ID$():\n\
     y_obvel_s$ID$.multConst(gs_s$ID$.y)\n\
     z_obvel_s$ID$.multConst(gs_s$ID$.z)\n\
     \n\
+    # translate invels (world space) to grid space\n\
+    x_invel_s$ID$.multConst(gs_s$ID$.x)\n\
+    y_invel_s$ID$.multConst(gs_s$ID$.y)\n\
+    z_invel_s$ID$.multConst(gs_s$ID$.z)\n\
+    \n\
     copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
     copyRealToVec3(sourceX=x_obvel_s$ID$, sourceY=y_obvel_s$ID$, sourceZ=z_obvel_s$ID$, target=obvelC_s$ID$)\n\
+    copyRealToVec3(sourceX=x_invel_s$ID$, sourceY=y_invel_s$ID$, sourceZ=z_invel_s$ID$, target=invel_s$ID$)\n\
     copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n";
 
 const std::string smoke_pre_step_high = "\n\
@@ -196,6 +206,10 @@ def smoke_pre_step_high_$ID$():\n\
 
 const std::string smoke_post_step_low = "\n\
 def smoke_post_step_low_$ID$():\n\
+    forces_s$ID$.clear()\n\
+    obvelC_s$ID$.clear()\n\
+    invel_s$ID$.clear()\n\
+    \n\
     copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n";
 
 const std::string smoke_post_step_high = "\n\
@@ -276,8 +290,8 @@ def step_low_$ID$():\n\
     # Create interpolated version of original phi grid for later use in (optional) high-res step\n\
     if using_highres_s$ID$:\n\
         interpolateGrid(target=phiObsIn_xl$ID$, source=phiObsIn_s$ID$)\n\
-    #if doOpen_s$ID$:\n\
-    resetOutflow(flags=flags_s$ID$, real=density_s$ID$)\n\
+    if doOpen_s$ID$:\n\
+        resetOutflow(flags=flags_s$ID$, real=density_s$ID$)\n\
     \n\
     mantaMsg('Vorticity')\n\
     vorticityConfinement(vel=vel_s$ID$, flags=flags_s$ID$, strength=$VORTICITY$)\n\
@@ -292,7 +306,9 @@ def step_low_$ID$():\n\
     \n\
     mantaMsg('Adding forces')\n\
     addForceField(flags=flags_s$ID$, vel=vel_s$ID$, force=forces_s$ID$)\n\
-    forces_s$ID$.clear()\n\
+    \n\
+    # add initial velocity\n\
+    setInitialVelocity(flags=flags_s$ID$, vel=vel_s$ID$, invel=invel_s$ID$)\n\
     \n\
     mantaMsg('Extrapolating object velocity')\n\
     # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
@@ -385,6 +401,7 @@ def load_smoke_data_low_$ID$(path):\n\
     flags_s$ID$.load(path + '_flags.uni')\n\
     vel_s$ID$.load(path + '_vel.uni')\n\
     obvel_s$ID$.load(path + '_obvel.uni')\n\
+    invel_s$ID$.load(path + '_invel.uni')\n\
     pressure_s$ID$.load(path + '_pressure.uni')\n\
     forces_s$ID$.load(path + '_forces.uni')\n\
     x_force_s$ID$.load(path + '_x_force.uni')\n\
@@ -397,6 +414,9 @@ def load_smoke_data_low_$ID$(path):\n\
     x_obvel_s$ID$.load(path + '_x_obvel.uni')\n\
     y_obvel_s$ID$.load(path + '_y_obvel.uni')\n\
     z_obvel_s$ID$.load(path + '_z_obvel.uni')\n\
+    x_invel_s$ID$.load(path + '_x_invel.uni')\n\
+    y_invel_s$ID$.load(path + '_y_invel.uni')\n\
+    z_invel_s$ID$.load(path + '_z_invel.uni')\n\
     phiObsIn_s$ID$.load(path + '_phiObsIn.uni')\n\
     phiOut_s$ID$.load(path + '_phiOut.uni')\n\
     numObs_s$ID$.load(path + '_numObs.uni')\n\
@@ -438,6 +458,7 @@ def save_smoke_data_low_$ID$(path):\n\
     flags_s$ID$.save(path + '_flags.uni')\n\
     vel_s$ID$.save(path + '_vel.uni')\n\
     obvel_s$ID$.save(path + '_obvel.uni')\n\
+    invel_s$ID$.save(path + '_invel.uni')\n\
     pressure_s$ID$.save(path + '_pressure.uni')\n\
     forces_s$ID$.save(path + '_forces.uni')\n\
     x_force_s$ID$.save(path + '_x_force.uni')\n\
@@ -450,6 +471,9 @@ def save_smoke_data_low_$ID$(path):\n\
     x_obvel_s$ID$.save(path + '_x_obvel.uni')\n\
     y_obvel_s$ID$.save(path + '_y_obvel.uni')\n\
     z_obvel_s$ID$.save(path + '_z_obvel.uni')\n\
+    x_invel_s$ID$.save(path + '_x_invel.uni')\n\
+    y_invel_s$ID$.save(path + '_y_invel.uni')\n\
+    z_invel_s$ID$.save(path + '_z_invel.uni')\n\
     phiObsIn_s$ID$.save(path + '_phiObsIn.uni')\n\
     phiOut_s$ID$.save(path + '_phiOut.uni')\n\
     numObs_s$ID$.save(path + '_numObs.uni')\n\
@@ -530,6 +554,10 @@ if 'obvelC_s$ID$'      in globals() : del obvelC_s$ID$\n\
 if 'x_obvel_s$ID$'     in globals() : del x_obvel_s$ID$\n\
 if 'y_obvel_s$ID$'     in globals() : del y_obvel_s$ID$\n\
 if 'z_obvel_s$ID$'     in globals() : del z_obvel_s$ID$\n\
+if 'invel_s$ID$'       in globals() : del invel_s$ID$\n\
+if 'x_invel_s$ID$'     in globals() : del x_invel_s$ID$\n\
+if 'y_invel_s$ID$'     in globals() : del y_invel_s$ID$\n\
+if 'z_invel_s$ID$'     in globals() : del z_invel_s$ID$\n\
 if 'density_s$ID$'     in globals() : del density_s$ID$\n\
 if 'pressure_s$ID$'    in globals() : del pressure_s$ID$\n\
 if 'phiObsIn_s$ID$'    in globals() : del phiObsIn_s$ID$\n\

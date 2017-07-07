@@ -2526,9 +2526,9 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				float *bigcolor_g = smoke_turbulence_get_color_g(sds->fluid);
 				float *bigcolor_b = smoke_turbulence_get_color_b(sds->fluid);
 				float *heat = smoke_get_heat(sds->fluid);
-				float *velocity_x = smoke_get_velocity_x(sds->fluid);
-				float *velocity_y = smoke_get_velocity_y(sds->fluid);
-				float *velocity_z = smoke_get_velocity_z(sds->fluid);
+				float *velocity_x_in = smoke_get_in_velocity_x(sds->fluid);
+				float *velocity_y_in = smoke_get_in_velocity_y(sds->fluid);
+				float *velocity_z_in = smoke_get_in_velocity_z(sds->fluid);
 				float *phiin = liquid_get_phiin(sds->fluid);
 				float *phiout = liquid_get_phiout(sds->fluid);
 				float *manta_inflow = fluid_get_inflow(sds->fluid); // Copy of emission map for inflow modeling in Mantaflow standalone
@@ -2575,9 +2575,9 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 									
 									/* initial velocity */
 									if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY) {
-										velocity_x[d_index] = ADD_IF_LOWER(velocity_x[d_index], velocity_map[e_index * 3]);
-										velocity_y[d_index] = ADD_IF_LOWER(velocity_y[d_index], velocity_map[e_index * 3 + 1]);
-										velocity_z[d_index] = ADD_IF_LOWER(velocity_z[d_index], velocity_map[e_index * 3 + 2]);
+										velocity_x_in[d_index] = velocity_map[e_index * 3];
+										velocity_y_in[d_index] = velocity_map[e_index * 3 + 1];
+										velocity_z_in[d_index] = velocity_map[e_index * 3 + 2];
 									}
 								}
 							}

@@ -101,6 +101,9 @@ public:
 	inline float* getObVelocityX() { return mObVelocityX; }
 	inline float* getObVelocityY() { return mObVelocityY; }
 	inline float* getObVelocityZ() { return mObVelocityZ; }
+	inline float* getInVelocityX() { return mInVelocityX; }
+	inline float* getInVelocityY() { return mInVelocityY; }
+	inline float* getInVelocityZ() { return mInVelocityZ; }
 	inline float* getForceX() { return mForceX; }
 	inline float* getForceY() { return mForceY; }
 	inline float* getForceZ() { return mForceZ; }
@@ -228,6 +231,9 @@ private:
 	float* mObVelocityX;
 	float* mObVelocityY;
 	float* mObVelocityZ;
+	float* mInVelocityX;
+	float* mInVelocityY;
+	float* mInVelocityZ;
 	float* mForceX;
 	float* mForceY;
 	float* mForceZ;

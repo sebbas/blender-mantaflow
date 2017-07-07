@@ -87,6 +87,9 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mObVelocityX    = NULL;
 	mObVelocityY    = NULL;
 	mObVelocityZ    = NULL;
+	mInVelocityX    = NULL;
+	mInVelocityY    = NULL;
+	mInVelocityZ    = NULL;
 	mForceX         = NULL;
 	mForceY         = NULL;
 	mForceZ         = NULL;
@@ -447,6 +450,9 @@ FLUID::~FLUID()
 	mObVelocityX    = NULL;
 	mObVelocityY    = NULL;
 	mObVelocityZ    = NULL;
+	mInVelocityX    = NULL;
+	mInVelocityY    = NULL;
+	mInVelocityZ    = NULL;
 	mForceX         = NULL;
 	mForceY         = NULL;
 	mForceZ         = NULL;
@@ -1097,7 +1103,11 @@ void FLUID::updatePointers()
 	if (mUsingSmoke) {
 		mDensity        = (float*) getDataPointer("density" + solver_ext, solver);
 		mInflow         = (float*) getDataPointer("inflow"  + solver_ext, solver);
-		
+
+		mInVelocityX = (float*) getDataPointer("x_invel" + solver_ext, solver);
+		mInVelocityY = (float*) getDataPointer("y_invel" + solver_ext, solver);
+		mInVelocityZ = (float*) getDataPointer("z_invel" + solver_ext, solver);
+
 		if (mUsingHeat) {
 			mHeat       = (float*) getDataPointer("heat" + solver_ext,    solver);
 		}
