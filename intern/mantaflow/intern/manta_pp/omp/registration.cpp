@@ -49,6 +49,7 @@ extern "C" {
 		extern void PbRegister_setWallBcs() ;
 		extern void PbRegister_vorticityConfinement() ;
 		extern void PbRegister_addForceField() ;
+		extern void PbRegister_setInitialVelocity() ;
 		extern void PbRegister_sampleFlagsWithParticles() ;
 		extern void PbRegister_sampleLevelsetWithParticles() ;
 		extern void PbRegister_markFluidCells() ;
@@ -203,6 +204,7 @@ namespace Pb {
 		PbRegister_setWallBcs() ;
 		PbRegister_vorticityConfinement() ;
 		PbRegister_addForceField() ;
+		PbRegister_setInitialVelocity() ;
 		PbRegister_sampleFlagsWithParticles() ;
 		PbRegister_sampleLevelsetWithParticles() ;
 		PbRegister_markFluidCells() ;

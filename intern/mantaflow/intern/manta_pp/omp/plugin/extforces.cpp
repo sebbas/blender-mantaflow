@@ -33,6 +33,46 @@ using namespace std;
 namespace Manta { 
 
 //! add Forces between fl/fl and fl/em cells (interpolate cell centered forces to MAC grid)
+ struct KnAddForceIfLower : public KernelBase { KnAddForceIfLower(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force) :  KernelBase(&flags,1) ,flags(flags),vel(vel),force(force)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force )  {
+	bool curFluid = flags.isFluid(i,j,k);
+	bool curEmpty = flags.isEmpty(i,j,k);
+	if (!curFluid && !curEmpty) return;
+
+	if (flags.isFluid(i-1,j,k) || (curFluid && flags.isEmpty(i-1,j,k))) {
+		Real forceMACX = 0.5*(force(i-1,j,k).x + force(i,j,k).x);
+		Real min = std::min(vel(i,j,k).x, forceMACX);
+		Real max = std::max(vel(i,j,k).x, forceMACX);
+		Real sum = vel(i,j,k).x + forceMACX;
+		vel(i,j,k).x = (forceMACX > 0) ? std::min(sum, max) : std::max(sum, min);
+	}
+	if (flags.isFluid(i,j-1,k) || (curFluid && flags.isEmpty(i,j-1,k))) {
+		Real forceMACY = 0.5*(force(i,j-1,k).y + force(i,j,k).y);
+		Real min = std::min(vel(i,j,k).y, forceMACY);
+		Real max = std::max(vel(i,j,k).y, forceMACY);
+		Real sum = vel(i,j,k).y + forceMACY;
+		vel(i,j,k).y = (forceMACY > 0) ? std::min(sum, max) : std::max(sum, min);
+	}
+	if (vel.is3D() && (flags.isFluid(i,j,k-1) || (curFluid && flags.isEmpty(i,j,k-1)))) {
+		Real forceMACZ = 0.5*(force(i,j,k-1).z + force(i,j,k).z);
+		Real min = std::min(vel(i,j,k).z, forceMACZ);
+		Real max = std::max(vel(i,j,k).z, forceMACZ);
+		Real sum = vel(i,j,k).z + forceMACZ;
+		vel(i,j,k).z = (forceMACZ > 0) ? std::min(sum, max) : std::max(sum, min);
+	}
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<Vec3>& getArg2() { return force; } typedef Grid<Vec3> type2; void runMessage() { debMsg("Executing kernel KnAddForceIfLower ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,force);  } } else { const int k=0; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,force);  } }  } FlagGrid& flags; MACGrid& vel; Grid<Vec3>& force;   };
+#line 24 "plugin/extforces.cpp"
+
+
+	
+//! add Forces between fl/fl and fl/em cells (interpolate cell centered forces to MAC grid)
  struct KnAddForceField : public KernelBase { KnAddForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force) :  KernelBase(&flags,1) ,flags(flags),vel(vel),force(force)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force )  {
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curEmpty = flags.isEmpty(i,j,k);
@@ -53,7 +93,7 @@ namespace Manta {
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,force);  } }  } FlagGrid& flags; MACGrid& vel; Grid<Vec3>& force;   };
-#line 24 "plugin/extforces.cpp"
+#line 53 "plugin/extforces.cpp"
 
 
 
@@ -78,7 +118,7 @@ namespace Manta {
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,force);  } }  } FlagGrid& flags; MACGrid& vel; Vec3 force;   };
-#line 38 "plugin/extforces.cpp"
+#line 67 "plugin/extforces.cpp"
 
 
 
@@ -106,7 +146,7 @@ void addGravity(FlagGrid& flags, MACGrid& vel, Vec3 gravity) {
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,factor,vel,strength);  } }  } FlagGrid& flags; Grid<Real>& factor; MACGrid& vel; Vec3 strength;   };
-#line 58 "plugin/extforces.cpp"
+#line 87 "plugin/extforces.cpp"
 
 
 
@@ -132,7 +172,7 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
 }
 
 //! add empty and outflow flag to cells of open boundaries 
-void setOpenBound(FlagGrid& flags, int bWidth, string openBound = "", int type = FlagGrid::TypeOutflow | FlagGrid::TypeEmpty){
+void setOpenBound(FlagGrid& flags, int bWidth, string openBound = "", int type = FlagGrid::TypeOutflow | FlagGrid::TypeEmpty, Grid<Real>* phiOut=NULL){
 	if (openBound == "") return;
 	Vector3D<bool> lo, up;
 	convertDescToVec(openBound, lo, up);
@@ -156,8 +196,10 @@ void setOpenBound(FlagGrid& flags, int bWidth, string openBound = "", int type =
 				if ((loX || upX || innerI) && (loY || upY || innerJ) && (loZ || upZ || innerK) && flags.isObstacle(i, j, k)) flags(i, j, k) = type;
 			}
 		}
+		// update levelset outflow grid too
+		if (phiOut && flags.isOutflow(i,j,k)) (*phiOut)(i,j,k) = -0.5;
 	}
-} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setOpenBound" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); int bWidth = _args.get<int >("bWidth",1,&_lock); string openBound = _args.getOpt<string >("openBound",2,"",&_lock); int type = _args.getOpt<int >("type",3,FlagGrid::TypeOutflow | FlagGrid::TypeEmpty,&_lock);   _retval = getPyNone(); setOpenBound(flags,bWidth,openBound,type);  _args.check(); } pbFinalizePlugin(parent,"setOpenBound", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setOpenBound",e.what()); return 0; } } static const Pb::Register _RP_setOpenBound ("","setOpenBound",_W_2);  extern "C" { void PbRegister_setOpenBound() { KEEP_UNUSED(_RP_setOpenBound); } } 
+} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setOpenBound" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); int bWidth = _args.get<int >("bWidth",1,&_lock); string openBound = _args.getOpt<string >("openBound",2,"",&_lock); int type = _args.getOpt<int >("type",3,FlagGrid::TypeOutflow | FlagGrid::TypeEmpty,&_lock); Grid<Real>* phiOut = _args.getPtrOpt<Grid<Real> >("phiOut",4,NULL,&_lock);   _retval = getPyNone(); setOpenBound(flags,bWidth,openBound,type,phiOut);  _args.check(); } pbFinalizePlugin(parent,"setOpenBound", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setOpenBound",e.what()); return 0; } } static const Pb::Register _RP_setOpenBound ("","setOpenBound",_W_2);  extern "C" { void PbRegister_setOpenBound() { KEEP_UNUSED(_RP_setOpenBound); } } 
 
 //! delete fluid and ensure empty flag in outflow cells, delete particles and density and set phi to 0.5
 void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSystem* parts = 0, Grid<Real>* real = 0, Grid<int>* index = 0, ParticleIndexSystem* indexSys = 0){
@@ -203,7 +245,7 @@ void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSystem* par
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,vel,dim,p0,val);  } }  } MACGrid& vel; int dim; int p0; const Vec3& val;   };
-#line 148 "plugin/extforces.cpp"
+#line 179 "plugin/extforces.cpp"
 
 
 
@@ -264,7 +306,7 @@ void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,vel,obvel);  } }  } FlagGrid& flags; MACGrid& vel; MACGrid* obvel;   };
-#line 171 "plugin/extforces.cpp"
+#line 202 "plugin/extforces.cpp"
 
 
 
@@ -373,7 +415,7 @@ void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,vel,velTarget,obvel,phiObs,boundaryWidth);  } }  } FlagGrid& flags; MACGrid& vel; MACGrid& velTarget; MACGrid* obvel; Grid<Real>* phiObs; const int& boundaryWidth;   };
-#line 207 "plugin/extforces.cpp"
+#line 238 "plugin/extforces.cpp"
 
 
 
@@ -405,7 +447,7 @@ void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* obvel = 0, MACGrid* frac
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,force,grid,curl,str);  } }  } Grid<Vec3>& force; const Grid<Real>& grid; const Grid<Vec3>& curl; Real str;   };
-#line 315 "plugin/extforces.cpp"
+#line 346 "plugin/extforces.cpp"
 
 
 
@@ -423,6 +465,10 @@ void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength) {
 void addForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force) {
 	KnAddForceField(flags, vel, force);
 } static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "addForceField" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); Grid<Vec3>& force = *_args.getPtr<Grid<Vec3> >("force",2,&_lock);   _retval = getPyNone(); addForceField(flags,vel,force);  _args.check(); } pbFinalizePlugin(parent,"addForceField", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("addForceField",e.what()); return 0; } } static const Pb::Register _RP_addForceField ("","addForceField",_W_7);  extern "C" { void PbRegister_addForceField() { KEEP_UNUSED(_RP_addForceField); } } 
+
+void setInitialVelocity(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& invel) {
+	KnAddForceIfLower(flags, vel, invel);
+} static PyObject* _W_8 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setInitialVelocity" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); Grid<Vec3>& invel = *_args.getPtr<Grid<Vec3> >("invel",2,&_lock);   _retval = getPyNone(); setInitialVelocity(flags,vel,invel);  _args.check(); } pbFinalizePlugin(parent,"setInitialVelocity", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setInitialVelocity",e.what()); return 0; } } static const Pb::Register _RP_setInitialVelocity ("","setInitialVelocity",_W_8);  extern "C" { void PbRegister_setInitialVelocity() { KEEP_UNUSED(_RP_setInitialVelocity); } } 
 
 } // namespace
 
