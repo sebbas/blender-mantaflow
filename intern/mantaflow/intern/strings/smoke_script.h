@@ -105,7 +105,7 @@ z_invel_s$ID$     = s$ID$.create(RealGrid)\n\
 density_s$ID$     = s$ID$.create(RealGrid)\n\
 pressure_s$ID$    = s$ID$.create(RealGrid)\n\
 phiObsIn_s$ID$    = s$ID$.create(LevelsetGrid)\n\
-phiOut_s$ID$      = s$ID$.create(LevelsetGrid)\n\
+phiOutIn_s$ID$    = s$ID$.create(LevelsetGrid)\n\
 forces_s$ID$      = s$ID$.create(Vec3Grid)\n\
 x_force_s$ID$     = s$ID$.create(RealGrid)\n\
 y_force_s$ID$     = s$ID$.create(RealGrid)\n\
@@ -232,6 +232,10 @@ def manta_step_$ID$(framenr):\n\
         smoke_pre_step_high_$ID$()\n\
     \n\
     while s$ID$.frame == last_frame_s$ID$:\n\
+        \n\
+        setObstacleFlags(flags=flags_s$ID$, phiObs=phiObsIn_s$ID$, phiOut=phiOutIn_s$ID$)\n\
+        flags_s$ID$.fillGrid()\n\
+        \n\
         if using_adaptTime_s$ID$:\n\
             mantaMsg('Adapt timestep')\n\
             maxvel_s$ID$ = vel_s$ID$.getMaxValue()\n\
@@ -261,10 +265,6 @@ def manta_step_$ID$(framenr):\n\
 const std::string smoke_step_low = "\n\
 def step_low_$ID$():\n\
     mantaMsg('Smoke step low')\n\
-    \n\
-    mantaMsg('Setting flags')\n\
-    setObstacleFlags(flags=flags_s$ID$, phiObs=phiObsIn_s$ID$, phiOut=phiOut_s$ID$)\n\
-    flags_s$ID$.fillGrid()\n\
     \n\
     mantaMsg('Advecting density')\n\
     advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=density_s$ID$, order=$ADVECT_ORDER$)\n\
@@ -418,7 +418,7 @@ def load_smoke_data_low_$ID$(path):\n\
     y_invel_s$ID$.load(path + '_y_invel.uni')\n\
     z_invel_s$ID$.load(path + '_z_invel.uni')\n\
     phiObsIn_s$ID$.load(path + '_phiObsIn.uni')\n\
-    phiOut_s$ID$.load(path + '_phiOut.uni')\n\
+    phiOutIn_s$ID$.load(path + '_phiOutIn.uni')\n\
     numObs_s$ID$.load(path + '_numObs.uni')\n\
     if using_colors_s$ID$:\n\
         color_r_s$ID$.load(path + '_color_r.uni')\n\
@@ -475,7 +475,7 @@ def save_smoke_data_low_$ID$(path):\n\
     y_invel_s$ID$.save(path + '_y_invel.uni')\n\
     z_invel_s$ID$.save(path + '_z_invel.uni')\n\
     phiObsIn_s$ID$.save(path + '_phiObsIn.uni')\n\
-    phiOut_s$ID$.save(path + '_phiOut.uni')\n\
+    phiOutIn_s$ID$.save(path + '_phiOutIn.uni')\n\
     numObs_s$ID$.save(path + '_numObs.uni')\n\
     if using_colors_s$ID$:\n\
         color_r_s$ID$.save(path + '_color_r.uni')\n\
@@ -561,7 +561,7 @@ if 'z_invel_s$ID$'     in globals() : del z_invel_s$ID$\n\
 if 'density_s$ID$'     in globals() : del density_s$ID$\n\
 if 'pressure_s$ID$'    in globals() : del pressure_s$ID$\n\
 if 'phiObsIn_s$ID$'    in globals() : del phiObsIn_s$ID$\n\
-if 'phiOut_s$ID$'      in globals() : del phiOut_s$ID$\n\
+if 'phiOutIn_s$ID$'    in globals() : del phiOutIn_s$ID$\n\
 if 'forces_s$ID$'      in globals() : del forces_s$ID$\n\
 if 'x_force_s$ID$'     in globals() : del x_force_s$ID$\n\
 if 'y_force_s$ID$'     in globals() : del y_force_s$ID$\n\

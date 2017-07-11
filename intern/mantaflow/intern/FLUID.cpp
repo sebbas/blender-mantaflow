@@ -1086,11 +1086,11 @@ void FLUID::updatePointers()
 	mForceZ    = (float*) getDataPointer("z_force" + solver_ext, solver);
 	
 	mPhiObs = (float*) getDataPointer("phiObsIn" + solver_ext, solver);
-	
+	mPhiOut = (float*) getDataPointer("phiOutIn" + solver_ext, solver);
+
 	// Liquid
 	if (mUsingLiquid) {
 		mPhiIn  = (float*) getDataPointer("phiIn" + solver_ext,  solver);
-		mPhiOut = (float*) getDataPointer("phiOut" + solver_ext, solver);
 		mPhi    = (float*) getDataPointer("phi" + solver_ext, solver);
 
 		mFlipParticleData     = (std::vector<pData>*) getDataPointer("pp" + solver_ext, solver);

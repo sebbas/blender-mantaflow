@@ -1801,10 +1801,8 @@ static void emit_from_derivedmesh_task_cb(void *userdata, const int z)
 							(float)lx, (float)ly, (float)lz);
 				}
 
-				/* Emission for liquid. Result in em->distances */
-				if (data->sfs->type == MOD_SMOKE_FLOW_TYPE_LIQUID) {
-					update_mesh_distances(index, em->distances, data->tree, ray_start);
-				}
+				/* Calculate levelset from meshes. Result in em->distances */
+				update_mesh_distances(index, em->distances, data->tree, ray_start);
 			}
 
 			/* take high res samples if required */
