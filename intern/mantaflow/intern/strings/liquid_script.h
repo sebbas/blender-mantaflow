@@ -38,7 +38,7 @@ const std::string liquid_bounds_low = "\n\
 mantaMsg('Liquid domain low')\n\
 flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$, phiWalls=phiObs_s$ID$)\n\
 if doOpen_s$ID$:\n\
-    setOpenBound(flags=flags_s$ID$, bWidth=boundaryWidth_s$ID$, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty)\n";
+    setOpenBound(flags=flags_s$ID$, bWidth=boundaryWidth_s$ID$, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty, phiOut=phiOut_s$ID$)\n";
 
 const std::string liquid_bounds_high = "\n\
 # prepare domain high\n\
@@ -77,6 +77,7 @@ phiParts_s$ID$   = s$ID$.create(LevelsetGrid)\n\
 phi_s$ID$        = s$ID$.create(LevelsetGrid)\n\
 phiIn_s$ID$      = s$ID$.create(LevelsetGrid)\n\
 phiOut_s$ID$     = s$ID$.create(LevelsetGrid)\n\
+phiOutIn_s$ID$   = s$ID$.create(LevelsetGrid)\n\
 pressure_s$ID$   = s$ID$.create(RealGrid)\n\
 \n\
 phiObs_s$ID$     = s$ID$.create(LevelsetGrid)\n\
@@ -149,6 +150,7 @@ def liquid_post_step_low_$ID$():\n\
     \n\
     phiIn_s$ID$.setConst(9999)\n\
     phiObs_s$ID$.setConst(9999)\n\
+    phiOut_s$ID$.setConst(9999)\n\
     \n\
     copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n";
 
@@ -167,16 +169,17 @@ def manta_step_$ID$(framenr):\n\
     while s$ID$.frame == last_frame_s$ID$:\n\
         \n\
         flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$, phiWalls=phiObs_s$ID$)\n\
+        if doOpen_s$ID$:\n\
+            setOpenBound(flags=flags_s$ID$, bWidth=boundaryWidth_s$ID$, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty, phiOut=phiOut_s$ID$)\n\
         \n\
-        #phiObs_s$ID$.addConst(1.) # TODO (sebbas): temp trick: while fractions disabled make border phi wall one cell thinner\n\
         phiObs_s$ID$.join(phiObsIn_s$ID$)\n\
         phi_s$ID$.join(phiIn_s$ID$)\n\
         phi_s$ID$.subtract(phiObsIn_s$ID$)\n\
         \n\
+        phiOut_s$ID$.join(phiOutIn_s$ID$)\n\
+        \n\
         updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
         setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$, fractions=fractions_s$ID$)\n\
-        if doOpen_s$ID$:\n\
-            setOpenBound(flags=flags_s$ID$, bWidth=boundaryWidth_s$ID$, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty)\n\
         \n\
         sampleLevelsetWithParticles(phi=phiIn_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, discretization=particleNumber_s$ID$, randomness=randomness_s$ID$, refillEmpty=True)\n\
         flags_s$ID$.updateFromLevelset(phi_s$ID$)\n\
@@ -307,6 +310,7 @@ def load_liquid_data_low_$ID$(path):\n\
     phiObs_s$ID$.load(path + '_phiObs.uni')\n\
     phiObsIn_s$ID$.load(path + '_phiObsIn.uni')\n\
     phiOut_s$ID$.load(path + '_phiOut.uni')\n\
+    phiOutIn_s$ID$.load(path + '_phiOutIn.uni')\n\
     fractions_s$ID$.load(path + '_fractions.uni')\n\
     pressure_s$ID$.load(path + '_pressure.uni')\n\
     \n\
@@ -347,6 +351,7 @@ def save_liquid_data_low_$ID$(path):\n\
     phiObs_s$ID$.save(path + '_phiObs.uni')\n\
     phiObsIn_s$ID$.save(path + '_phiObsIn.uni')\n\
     phiOut_s$ID$.save(path + '_phiOut.uni')\n\
+    phiOutIn_s$ID$.save(path + '_phiOutIn.uni')\n\
     fractions_s$ID$.save(path + '_fractions.uni')\n\
     pressure_s$ID$.save(path + '_pressure.uni')\n\
     \n\
@@ -389,6 +394,7 @@ if 'phiParts_s$ID$'   in globals() : del phiParts_s$ID$\n\
 if 'phi_s$ID$'        in globals() : del phi_s$ID$\n\
 if 'phiIn_s$ID$'      in globals() : del phiIn_s$ID$\n\
 if 'phiOut_s$ID$'     in globals() : del phiOut_s$ID$\n\
+if 'phiOutIn_s$ID$'   in globals() : del phiOutIn_s$ID$\n\
 if 'pressure_s$ID$'   in globals() : del pressure_s$ID$\n\
 if 'vel_s$ID$'        in globals() : del vel_s$ID$\n\
 if 'x_vel_s$ID$'      in globals() : del x_vel_s$ID$\n\

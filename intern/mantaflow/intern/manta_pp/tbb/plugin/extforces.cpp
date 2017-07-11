@@ -128,7 +128,7 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
 }
 
 //! add empty and outflow flag to cells of open boundaries 
-void setOpenBound(FlagGrid& flags, int bWidth, string openBound = "", int type = FlagGrid::TypeOutflow | FlagGrid::TypeEmpty){
+void setOpenBound(FlagGrid& flags, int bWidth, string openBound = "", int type = FlagGrid::TypeOutflow | FlagGrid::TypeEmpty, Grid<Real>* phiOut=NULL){
 	if (openBound == "") return;
 	Vector3D<bool> lo, up;
 	convertDescToVec(openBound, lo, up);
@@ -152,8 +152,10 @@ void setOpenBound(FlagGrid& flags, int bWidth, string openBound = "", int type =
 				if ((loX || upX || innerI) && (loY || upY || innerJ) && (loZ || upZ || innerK) && flags.isObstacle(i, j, k)) flags(i, j, k) = type;
 			}
 		}
+		// update levelset outflow grid too
+		if (phiOut && flags.isOutflow(i,j,k)) (*phiOut)(i,j,k) = -0.5;
 	}
-} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setOpenBound" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); int bWidth = _args.get<int >("bWidth",1,&_lock); string openBound = _args.getOpt<string >("openBound",2,"",&_lock); int type = _args.getOpt<int >("type",3,FlagGrid::TypeOutflow | FlagGrid::TypeEmpty,&_lock);   _retval = getPyNone(); setOpenBound(flags,bWidth,openBound,type);  _args.check(); } pbFinalizePlugin(parent,"setOpenBound", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setOpenBound",e.what()); return 0; } } static const Pb::Register _RP_setOpenBound ("","setOpenBound",_W_2);  extern "C" { void PbRegister_setOpenBound() { KEEP_UNUSED(_RP_setOpenBound); } } 
+} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setOpenBound" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); int bWidth = _args.get<int >("bWidth",1,&_lock); string openBound = _args.getOpt<string >("openBound",2,"",&_lock); int type = _args.getOpt<int >("type",3,FlagGrid::TypeOutflow | FlagGrid::TypeEmpty,&_lock); Grid<Real>* phiOut = _args.getPtrOpt<Grid<Real> >("phiOut",4,NULL,&_lock);   _retval = getPyNone(); setOpenBound(flags,bWidth,openBound,type,phiOut);  _args.check(); } pbFinalizePlugin(parent,"setOpenBound", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setOpenBound",e.what()); return 0; } } static const Pb::Register _RP_setOpenBound ("","setOpenBound",_W_2);  extern "C" { void PbRegister_setOpenBound() { KEEP_UNUSED(_RP_setOpenBound); } }
 
 //! delete fluid and ensure empty flag in outflow cells, delete particles and density and set phi to 0.5
 void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSystem* parts = 0, Grid<Real>* real = 0, Grid<int>* index = 0, ParticleIndexSystem* indexSys = 0){
