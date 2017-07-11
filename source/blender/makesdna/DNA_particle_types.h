@@ -358,6 +358,8 @@ typedef enum eParticleDrawFlag {
 #define PART_FLUID			3
 #define PART_MANTA_FLIP		4
 #define PART_MANTA_DROP		5
+#define PART_MANTA_FLOAT	6
+#define PART_MANTA_TRACER	7
 
 /* part->flag */
 #define PART_REACT_STA_END	1

@@ -170,7 +170,8 @@ static void rna_Smoke_draw_type_update(Main *UNUSED(bmain), Scene *UNUSED(scene)
 	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
 
 	/* Wire mode more convenient when particles present */
-	if ((settings->particle_type & (MOD_SMOKE_PARTICLE_FLIP | MOD_SMOKE_PARTICLE_DROP)) == 0) {
+	if ((settings->particle_type & (MOD_SMOKE_PARTICLE_FLIP | MOD_SMOKE_PARTICLE_DROP | MOD_SMOKE_PARTICLE_FLOAT | MOD_SMOKE_PARTICLE_TRACER)) == 0)
+	{
 		ob->dt = OB_SOLID;
 	} else {
 		ob->dt = OB_WIRE;
@@ -215,6 +216,48 @@ static void rna_Smoke_drop_parts_set(struct PointerRNA *ptr, int value)
 		rna_Smoke_resetCache(NULL, NULL, ptr);
 
 		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_DROP;
+	}
+	rna_Smoke_draw_type_update(NULL, NULL, ptr);
+}
+
+static void rna_Smoke_float_parts_set(struct PointerRNA *ptr, int value)
+{
+	Object *ob = (Object *)ptr->id.data;
+	SmokeModifierData *smd;
+	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
+	bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_FLOAT);
+
+	if (value) {
+		if (ob->type == OB_MESH && !exists)
+		rna_Smoke_parts_create(ptr, "FloatParticleSettings", "Float Particles", "Float Particle System", PART_MANTA_FLOAT);
+		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_FLOAT;
+	}
+	else {
+		rna_Smoke_parts_delete(ptr, PART_MANTA_FLOAT);
+		rna_Smoke_resetCache(NULL, NULL, ptr);
+
+		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_FLOAT;
+	}
+	rna_Smoke_draw_type_update(NULL, NULL, ptr);
+}
+
+static void rna_Smoke_tracer_parts_set(struct PointerRNA *ptr, int value)
+{
+	Object *ob = (Object *)ptr->id.data;
+	SmokeModifierData *smd;
+	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
+	bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_TRACER);
+
+	if (value) {
+		if (ob->type == OB_MESH && !exists)
+		rna_Smoke_parts_create(ptr, "TracerParticleSettings", "Tracer Particles", "Tracer Particle System", PART_MANTA_TRACER);
+		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_TRACER;
+	}
+	else {
+		rna_Smoke_parts_delete(ptr, PART_MANTA_TRACER);
+		rna_Smoke_resetCache(NULL, NULL, ptr);
+
+		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_TRACER;
 	}
 	rna_Smoke_draw_type_update(NULL, NULL, ptr);
 }
@@ -1203,6 +1246,20 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", MOD_SMOKE_PARTICLE_DROP);
 	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_drop_parts_set");
 	RNA_def_property_ui_text(prop, "Drop", "Create drop particle system");
+	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
+	prop = RNA_def_property(srna, "use_float_particles", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", MOD_SMOKE_PARTICLE_FLOAT);
+	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_float_parts_set");
+	RNA_def_property_ui_text(prop, "Float", "Create float particle system");
+	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
+	prop = RNA_def_property(srna, "use_tracer_particles", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", MOD_SMOKE_PARTICLE_TRACER);
+	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_tracer_parts_set");
+	RNA_def_property_ui_text(prop, "Tracer", "Create tracer particle system");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
