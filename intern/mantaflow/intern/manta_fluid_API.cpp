@@ -160,7 +160,7 @@ extern "C" void smoke_export(FLUID *smoke, float *dt, float *dx, float **dens, f
 	*dx = 1; //dummy value, not needed for smoke
 }
 
-extern "C" void liquid_export(FLUID *liquid, float **phi, float **pp, float **pvel, float **ppSnd, float **pvelSnd)
+extern "C" void liquid_export(FLUID *liquid, float **phi, float **pp, float **pvel, float **ppSnd, float **pvelSnd, int **ptypeSnd)
 {
 	if (phi)
 		*phi = liquid->getPhi();
@@ -172,6 +172,8 @@ extern "C" void liquid_export(FLUID *liquid, float **phi, float **pp, float **pv
 		*ppSnd = liquid->getSndParticleData();
 	if (pvelSnd)
 		*pvelSnd = liquid->getSndParticleVelocity();
+	if (ptypeSnd)
+		*ptypeSnd = liquid->getSndParticleType();
 }
 
 extern "C" void smoke_turbulence_export(FLUID *smoke, float **dens, float **react, float **flame, float **fuel,
@@ -719,6 +721,11 @@ extern "C" float liquid_get_snd_particle_velocity_z_at(FLUID *liquid, int i)
 	return liquid->getSndParticleVelocityZAt(i);
 }
 
+extern "C" int liquid_get_snd_particle_type_at(FLUID *liquid, int i)
+{
+	return liquid->getSndParticleTypeAt(i);
+}
+
 extern "C" void liquid_update_mesh_data(FLUID *liquid, char* filename)
 {
 	liquid->updateMeshData(filename);
@@ -749,6 +756,11 @@ extern "C" void liquid_set_snd_particle_data(FLUID* liquid, float* buffer, int n
 extern "C" void liquid_set_snd_particle_velocity(FLUID* liquid, float* buffer, int numParts)
 {
 	liquid->setSndParticleVelocity(buffer, numParts);
+}
+
+extern "C" void liquid_set_snd_particle_type(FLUID* liquid, int* buffer, int numParts)
+{
+	liquid->setSndParticleType(buffer, numParts);
 }
 
 extern "C" float *fluid_get_inflow(FLUID* fluid)

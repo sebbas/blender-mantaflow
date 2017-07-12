@@ -550,6 +550,8 @@ static void initialize_particle_texture(ParticleSimulationData *sim, ParticleDat
 		break;
 	case PART_MANTA_FLIP:
 	case PART_MANTA_DROP:
+	case PART_MANTA_FLOAT:
+	case PART_MANTA_TRACER:
 		break;
 	}
 }
@@ -3775,11 +3777,14 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 			int flagActivePart, activeParts = 0, fileParts = 0;
 			float posX, posY, posZ, velX, velY, velZ;
 			int resX, resY, resZ;
+			int type = -1; // initialize with non-existent type
 			char debugStrBuffer[256];
 
 			// Sanity check: parts also enabled in fluid domain?
 			if ((part->type == PART_MANTA_FLIP && !(sds->particle_type & MOD_SMOKE_PARTICLE_FLIP)) ||
-				(part->type == PART_MANTA_DROP && !(sds->particle_type & MOD_SMOKE_PARTICLE_DROP)))
+				(part->type == PART_MANTA_DROP && !(sds->particle_type & MOD_SMOKE_PARTICLE_DROP)) ||
+				(part->type == PART_MANTA_FLOAT && !(sds->particle_type & MOD_SMOKE_PARTICLE_FLOAT)) ||
+				(part->type == PART_MANTA_TRACER && !(sds->particle_type & MOD_SMOKE_PARTICLE_TRACER)) )
 			{
 				BLI_snprintf(debugStrBuffer, sizeof(debugStrBuffer), "particles_manta_step::error - found particle system that is not enabled in fluid domain\n");
 				return;
@@ -3787,7 +3792,7 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 
 			if (part->type == PART_MANTA_FLIP)
 				totpart = liquid_get_num_flip_particles(sds->fluid);
-			if (part->type == PART_MANTA_DROP)
+			if (part->type == PART_MANTA_DROP || part->type == PART_MANTA_FLOAT || part->type == PART_MANTA_TRACER)
 				totpart = liquid_get_num_snd_particles(sds->fluid);
 
 			// Sanity check: no particle files present yet
@@ -3818,7 +3823,7 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 					velZ = liquid_get_flip_particle_velocity_z_at(sds->fluid, p);
 					flagActivePart = liquid_get_flip_particle_flag_at(sds->fluid, p);
 				}
-				else {
+				if (part->type == PART_MANTA_DROP || part->type == PART_MANTA_FLOAT || part->type == PART_MANTA_TRACER) {
 					posX = liquid_get_snd_particle_position_x_at(sds->fluid, p);
 					posY = liquid_get_snd_particle_position_y_at(sds->fluid, p);
 					posZ = liquid_get_snd_particle_position_z_at(sds->fluid, p);
@@ -3826,7 +3831,14 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 					velY = liquid_get_snd_particle_velocity_y_at(sds->fluid, p);
 					velZ = liquid_get_snd_particle_velocity_z_at(sds->fluid, p);
 					flagActivePart = liquid_get_snd_particle_flag_at(sds->fluid, p);
+					type = liquid_get_snd_particle_type_at(sds->fluid, p);
 				}
+
+				// printf("system type is %d and particle type is %d\n", part->type, type);
+				// check if type of particle type matches current particle system type (only important for snd particles)
+				if ((part->type == PART_MANTA_DROP) && type != 0) continue; // // mantaflow convention: ParticleType DROP = 0
+				if ((part->type == PART_MANTA_FLOAT) && type != 1) continue; // // mantaflow convention: ParticleType FLOAT = 1
+				if ((part->type == PART_MANTA_TRACER) && type != 2) continue; // // mantaflow convention: ParticleType TRACER = 2
 
 				// Only allow active particles, i.e. filter out dead particles that just Mantaflow needs
 				if (flagActivePart == 0) { // mantaflow convention: PNONE = 0 (regular, active particle)
@@ -4415,6 +4427,8 @@ void particle_system_update(Scene *scene, Object *ob, ParticleSystem *psys, cons
 		}
 		case PART_MANTA_FLIP:
 		case PART_MANTA_DROP:
+		case PART_MANTA_FLOAT:
+		case PART_MANTA_TRACER:
 		{
 			particles_manta_step(&sim, (int)cfra, use_render_params);
 			break;

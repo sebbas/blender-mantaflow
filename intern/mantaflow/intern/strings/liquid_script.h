@@ -101,6 +101,7 @@ pp_s$ID$         = s$ID$.create(BasicParticleSystem)\n\
 ppSnd_s$ID$      = s$ID$.create(BasicParticleSystem)\n\
 pVel_pp$ID$      = pp_s$ID$.create(PdataVec3)\n\
 pVelSnd_pp$ID$   = ppSnd_s$ID$.create(PdataVec3)\n\
+pTypeSnd_pp$ID$  = ppSnd_s$ID$.create(PdataInt)\n\
 mesh_s$ID$       = s$ID$.create(Mesh)\n\
 \n\
 # Acceleration data for particle nbs\n\
@@ -412,6 +413,7 @@ if 'pp_s$ID$'         in globals() : del pp_s$ID$\n\
 if 'ppSnd_s$ID$'      in globals() : del ppSnd_s$ID$\n\
 if 'pVel_pp$ID$'      in globals() : del pVel_pp$ID$\n\
 if 'pVelSnd_pp$ID$'   in globals() : del pVelSnd_pp$ID$\n\
+if 'pTypeSnd_pp$ID$'  in globals() : del pTypeSnd_pp$ID$\n\
 if 'mesh_s$ID$'       in globals() : del mesh_s$ID$\n\
 if 'pindex_s$ID$'     in globals() : del pindex_s$ID$\n\
 if 'gpi_s$ID$'        in globals() : del gpi_s$ID$\n\

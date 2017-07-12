@@ -177,11 +177,14 @@ public:
 	inline float getSndParticleVelocityYAt(int i) { return (mSndParticleVelocity) ? mSndParticleVelocity->at(i).pos[1] : 0.f; }
 	inline float getSndParticleVelocityZAt(int i) { return (mSndParticleVelocity) ? mSndParticleVelocity->at(i).pos[2] : 0.f; }
 
+	inline int getSndParticleTypeAt(int i) { return (mSndParticleType) ?  mSndParticleType->at(i) : -1; }
+
 	inline float* getFlipParticleData() { return (mFlipParticleData) ? (float*) &mFlipParticleData->front() : NULL; }
 	inline float* getSndParticleData()  { return (mSndParticleData) ? (float*) &mSndParticleData->front() : NULL; }
 
 	inline float* getFlipParticleVelocity() { return (mFlipParticleVelocity) ? (float*) &mFlipParticleVelocity->front() : NULL; }
-	inline float* getSndParticleVelocity() { return (mSndParticleVelocity) ? (float*) &mSndParticleVelocity->front() : NULL; }
+	inline float* getSndParticleVelocity()  { return (mSndParticleVelocity) ? (float*) &mSndParticleVelocity->front() : NULL; }
+	inline int*   getSndParticleType()      { return (mSndParticleType) ? (int*) &mSndParticleType->front() : NULL; }
 
 	inline int getNumFlipParticles() { return (mFlipParticleData) ? mFlipParticleData->size() : 0; }
 	inline int getNumSndParticles() { return (mSndParticleData) ? mSndParticleData->size() : 0; }
@@ -194,6 +197,7 @@ public:
 
 	void setFlipParticleVelocity(float* buffer, int numParts);
 	void setSndParticleVelocity(float* buffer, int numParts);
+	void setSndParticleType(int* buffer, int numParts);
 
 private:
 	// simulation constants
@@ -286,6 +290,7 @@ private:
 
 	std::vector<pData>* mSndParticleData;
 	std::vector<pVel>* mSndParticleVelocity;
+	std::vector<int>* mSndParticleType;
 
 	void initDomain(struct SmokeModifierData *smd);
 	void initDomainHigh(struct SmokeModifierData *smd);
