@@ -30,24 +30,6 @@
 #include <string>
 
 //////////////////////////////////////////////////////////////////////
-// BOUNDS
-//////////////////////////////////////////////////////////////////////
-
-const std::string liquid_bounds_low = "\n\
-# prepare domain low\n\
-mantaMsg('Liquid domain low')\n\
-flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$, phiWalls=phiObs_s$ID$)\n\
-if doOpen_s$ID$:\n\
-    setOpenBound(flags=flags_s$ID$, bWidth=boundaryWidth_s$ID$, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty, phiOut=phiOut_s$ID$)\n";
-
-const std::string liquid_bounds_high = "\n\
-# prepare domain high\n\
-mantaMsg('Liquid domain high')\n\
-flags_xl$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$)\n\
-if doOpen_s$ID$:\n\
-    setOpenBound(flags=flags_xl$ID$, bWidth=boundaryWidth_s$ID$, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty)\n";
-
-//////////////////////////////////////////////////////////////////////
 // VARIABLES
 //////////////////////////////////////////////////////////////////////
 
@@ -152,6 +134,7 @@ def liquid_post_step_low_$ID$():\n\
     phiIn_s$ID$.setConst(9999)\n\
     phiObs_s$ID$.setConst(9999)\n\
     phiOut_s$ID$.setConst(9999)\n\
+    phiOutIn_s$ID$.setConst(9999)\n\
     \n\
     copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n";
 
@@ -169,9 +152,7 @@ def manta_step_$ID$(framenr):\n\
     \n\
     while s$ID$.frame == last_frame_s$ID$:\n\
         \n\
-        flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$, phiWalls=phiObs_s$ID$)\n\
-        if doOpen_s$ID$:\n\
-            setOpenBound(flags=flags_s$ID$, bWidth=boundaryWidth_s$ID$, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty, phiOut=phiOut_s$ID$)\n\
+        flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$, phiWalls=phiObs_s$ID$, outflow=boundConditions_s$ID$)\n\
         \n\
         phiObs_s$ID$.join(phiObsIn_s$ID$)\n\
         phi_s$ID$.join(phiIn_s$ID$)\n\
@@ -208,9 +189,10 @@ def liquid_step_$ID$():\n\
     pp_s$ID$.advectInGrid(flags=flags_s$ID$, vel=vel_s$ID$, integrationMode=IntRK4, deleteInObstacle=False, stopInObstacle=False)\n\
     mantaMsg('Pushing particles out of obstacles')\n\
     pushOutofObs(parts=pp_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$)\n\
+    pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=1.0)\n\
     \n\
     mantaMsg('Advecting phi')\n\
-    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=phi_s$ID$, order=1, openBounds=doOpen_s$ID$, boundaryWidth=boundaryWidth_s$ID$) # first order is usually enough\n\
+    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=phi_s$ID$, order=1) # first order is usually enough\n\
     mantaMsg('Advecting velocity')\n\
     advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=vel_s$ID$, order=2, openBounds=doOpen_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
     \n\
@@ -223,9 +205,11 @@ def liquid_step_$ID$():\n\
     phi_s$ID$.join(phiParts_s$ID$)\n\
     extrapolateLsSimple(phi=phi_s$ID$, distance=narrowBandWidth_s$ID$+2, inside=True)\n\
     extrapolateLsSimple(phi=phi_s$ID$, distance=3)\n\
-    phi_s$ID$.setBoundNeumann(boundaryWidth_s$ID$) # make sure no particles are placed at outer boundary\n\
-    #if doOpen:\n\
-    resetOutflow(flags=flags_s$ID$, phi=phi_s$ID$, parts=pp_s$ID$, index=gpi_s$ID$, indexSys=pindex_s$ID$) # open boundaries\n\
+    phi_s$ID$.setBoundNeumann(1) # make sure no particles are placed at outer boundary\n\
+    \n\
+    if doOpen_s$ID$:\n\
+        resetOutflow(flags=flags_s$ID$, phi=phi_s$ID$, parts=pp_s$ID$, index=gpi_s$ID$, indexSys=pindex_s$ID$)\n\
+        resetOutflow(flags=flags_s$ID$, parts=ppSnd_s$ID$)\n\
     flags_s$ID$.updateFromLevelset(phi_s$ID$)\n\
     \n\
     # combine particles velocities with advected grid velocities\n\
@@ -244,12 +228,12 @@ def liquid_step_$ID$():\n\
     extrapolateVec3Simple(vel=obvelC_s$ID$, phi=phiObsIn_s$ID$, distance=3, inside=False)\n\
     resampleVec3ToMac(source=obvelC_s$ID$, target=obvel_s$ID$)\n\
     \n\
-    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, intoObs=True)\n\
+    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, phiObs=phiObs_s$ID$, intoObs=True)\n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, fractions=fractions_s$ID$, phiObs=phiObs_s$ID$)#, obvel=obvel_s$ID$) # TODO: uncomment for obvel support (once fraction wallbcs works)\n\
     \n\
     solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
-    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4, intoObs=True)\n\
+    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4, phiObs=phiObs_s$ID$, intoObs=True)\n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, fractions=fractions_s$ID$, phiObs=phiObs_s$ID$)#, obvel=obvel_s$ID$) # TODO: uncomment for obvel support (once fraction wallbcs works)\n\
     \n\
     if (dim_s$ID$==3):\n\

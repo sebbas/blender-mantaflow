@@ -341,7 +341,6 @@ void FLUID::initLiquid(SmokeModifierData *smd)
 	if (!mPhiIn) {
 		std::string tmpString = liquid_alloc_low
 			+ liquid_variables_low
-			+ liquid_bounds_low
 			+ liquid_init_phi
 			+ liquid_save_mesh_low
 			+ liquid_save_particles_low
@@ -365,7 +364,6 @@ void FLUID::initLiquidHigh(SmokeModifierData *smd)
 {
 	std::string tmpString = liquid_alloc_high
 		+ liquid_variables_high
-		+ liquid_bounds_high
 		+ liquid_save_mesh_high
 		+ liquid_export_high
 		+ liquid_import_high
@@ -814,7 +812,6 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 		+ fluid_solver_low
 		+ fluid_adaptive_time_stepping_low
 		+ liquid_alloc_low
-		+ liquid_bounds_low
 		+ liquid_init_phi
 		+ liquid_variables_low;
 
@@ -823,7 +820,6 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 			+ fluid_solver_high
 			+ fluid_adaptive_time_stepping_high
 			+ liquid_alloc_high
-			+ liquid_bounds_high
 			+ liquid_variables_high;
 	}
 
