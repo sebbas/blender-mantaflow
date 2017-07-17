@@ -45,6 +45,10 @@ class ParticleBase : public PbClass {public:
 	enum ParticleStatus {
 		PNONE         = 0,
 		PNEW          = (1<<1),  // particles newly created in this step
+		PDROPLET      = (1<<2),  // secondary particle types
+		PBUBBLE       = (1<<3),
+		PFLOAT        = (1<<4),
+		PTRACER       = (1<<5),
 		PDELETE       = (1<<10), // mark as deleted, will be deleted in next compress() step
 		PINVALID      = (1<<30), // unused
 	};

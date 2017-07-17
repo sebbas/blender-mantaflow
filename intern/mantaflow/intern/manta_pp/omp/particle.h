@@ -45,6 +45,10 @@ class ParticleBase : public PbClass {public:
 	enum ParticleStatus {
 		PNONE         = 0,
 		PNEW          = (1<<1),  // particles newly created in this step
+		PDROPLET      = (1<<2),  // secondary particle types
+		PBUBBLE       = (1<<3),
+		PFLOAT        = (1<<4),
+		PTRACER       = (1<<5),
 		PDELETE       = (1<<10), // mark as deleted, will be deleted in next compress() step
 		PINVALID      = (1<<30), // unused
 	};
@@ -437,7 +441,7 @@ template <class S>  struct GridAdvectKernel : public KernelBase { GridAdvectKern
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,p,vel,flags,dt,deleteInObstacle,stopInObstacle,u);  }   } std::vector<S>& p; const MACGrid& vel; const FlagGrid& flags; Real dt; bool deleteInObstacle; bool stopInObstacle;  std::vector<Vec3>  u;  };
-#line 413 "particle.h"
+#line 417 "particle.h"
 
 ;
 
@@ -454,7 +458,7 @@ template <class S>  struct KnDeleteInObstacle : public KernelBase { KnDeleteInOb
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,p,flags);  }   } std::vector<S>& p; const FlagGrid& flags;   };
-#line 435 "particle.h"
+#line 439 "particle.h"
 
 
 
@@ -487,7 +491,7 @@ template <class S>  struct KnClampPositions : public KernelBase { KnClampPositio
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,p,flags,posOld,stopInObstacle);  }   } std::vector<S>& p; const FlagGrid& flags; ParticleDataImpl<Vec3> * posOld; bool stopInObstacle;   };
-#line 458 "particle.h"
+#line 462 "particle.h"
 
 
 

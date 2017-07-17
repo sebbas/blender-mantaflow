@@ -41,6 +41,8 @@ extern "C" {
 		extern void PbRegister_quantizeGrid() ;
 		extern void PbRegister_resetPhiInObs() ;
 		extern void PbRegister_advectSemiLagrange() ;
+		extern void PbRegister_addGridToParts() ;
+		extern void PbRegister_addGridToPartsVec3() ;
 		extern void PbRegister_addGravity() ;
 		extern void PbRegister_addBuoyancy() ;
 		extern void PbRegister_setOpenBound() ;
@@ -196,6 +198,8 @@ namespace Pb {
 		PbRegister_quantizeGrid() ;
 		PbRegister_resetPhiInObs() ;
 		PbRegister_advectSemiLagrange() ;
+		PbRegister_addGridToParts() ;
+		PbRegister_addGridToPartsVec3() ;
 		PbRegister_addGravity() ;
 		PbRegister_addBuoyancy() ;
 		PbRegister_setOpenBound() ;

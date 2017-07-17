@@ -715,73 +715,251 @@ void combineGridVel( MACGrid& vel, Grid<Vec3>& weight, MACGrid& combineVel, Leve
 	knCombineVels(vel, weight, combineVel, phi, narrowBand, thresh);
 } static PyObject* _W_17 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "combineGridVel" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Vec3>& weight = *_args.getPtr<Grid<Vec3> >("weight",1,&_lock); MACGrid& combineVel = *_args.getPtr<MACGrid >("combineVel",2,&_lock); LevelsetGrid* phi = _args.getPtrOpt<LevelsetGrid >("phi",3,NULL,&_lock); Real narrowBand = _args.getOpt<Real >("narrowBand",4,0.0,&_lock); Real thresh = _args.getOpt<Real >("thresh",5,0.0,&_lock);   _retval = getPyNone(); combineGridVel(vel,weight,combineVel,phi,narrowBand,thresh);  _args.check(); } pbFinalizePlugin(parent,"combineGridVel", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("combineGridVel",e.what()); return 0; } } static const Pb::Register _RP_combineGridVel ("","combineGridVel",_W_17);  extern "C" { void PbRegister_combineGridVel() { KEEP_UNUSED(_RP_combineGridVel); } } 
 
-void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, ParticleDataImpl<Vec3>& partVel, LevelsetGrid& phi, Real thresh, int minParticles, int maxParticles, Vec3 gravity) {
 
+
+
+
+void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, ParticleDataImpl<Vec3>& partVel, ParticleDataImpl<int>& partType, Real dropVelThresh, Real bubbleRise, int minParticles, int maxParticles, Vec3 gravity, Real radiusFactor=1., bool drops=true, bool floats=false, bool tracers=false, bool bubbles=true) {
+	bool is3D = flags.is3D();
 	Real dt = flags.getParent()->getDt();
 	Vec3 grav = gravity * flags.getParent()->getDt() / flags.getDx();
 	Grid<int> tmp( vel.getParent() );
 	RandomStream mRand(9832);
 
-	// Delete drop particles inside fluid. Then set new position to those that survived
+	if (!drops && !floats && !tracers)
+		 debMsg("No particle type enabled. Not generating any particles.", 1);
+
+	const Real DROP_THRESH   = -0.866; // -sqrt(3/4)
+	const Real BUBBLE_THRESH = -3.5;
+	const Real FLOAT_THRESH  = 0.866;  // sqrt(3/4)
+
+	// Delete invalid particles. Then set new position to those that survived
 	for (IndexInt idx=0; idx<(int)parts.size(); idx++) {
 		if (parts.isActive(idx)) {
-			Vec3i p = toVec3i(parts.getPos(idx));
-			if (!tmp.isInBounds(p)) {
-				parts.kill(idx); // out of domain, remove
+			Vec3 p1 = parts.getPos(idx);
+			Vec3 p2 = parts.getPos(idx) + partVel[idx] * dt; // next particle position (euler step)
+			Vec3i p1i = toVec3i(p1);
+			Vec3i p2i = toVec3i(p2);
+
+			// Try to save float / tracer particle by pushing it into the valid region
+			Real phiv = phi.getInterpolated( parts.getPos(idx) );
+			if (( partType[idx] & ParticleBase::PFLOAT && (phiv > FLOAT_THRESH || phiv < -FLOAT_THRESH)) ||
+				( partType[idx] & ParticleBase::PTRACER && phiv > 0. ))
+			{
+				Vec3 grad = getGradient( phi, p1i.x,p1i.y,p1i.z );
+				if ( normalize(grad) > VECTOR_EPSILON )
+				{
+					int direction = (phiv > 0.) ? -1 : 1;
+					parts.setPos(idx, parts.getPos(idx) + direction * phiv * grad );
+				}
+			}
+			
+			// Convert drop to bubble
+			if (bubbles && (partType[idx] & ParticleBase::PDROPLET) && phiv < -FLOAT_THRESH)
+			{
+				// Throttle drop particle, is inside fluid now
+				partVel[idx] = partVel[idx] * 0.5;
+
+				// TODO (sebbas): Convert to bubble when particle is slow enough or when it is deep enough in fluid?
+				// Convert drop particle to bubble when partvel falls below damping factor
+//				Vec3 dmpFac = damping * grav;
+//				if ( (partVel[idx].x < dmpFac.x) && (partVel[idx].y < dmpFac.y) && (partVel[idx].z < dmpFac.z) ) {
+				if (phiv < BUBBLE_THRESH) {
+					partType[idx] = ParticleBase::PBUBBLE;
+				}
+			}
+
+			// TODO (sebbas): Currently unreliable. Drop particles might get converted into floats to early
+//			// Convert bubble to float
+//			if (floats && partType[idx] & ParticleBase::PBUBBLE && phiv > -FLOAT_THRESH)
+//			{
+//				partVel[idx] = vel.getInterpolated( parts[idx].pos ); // floats have fluid vel
+//				partType[idx] = ParticleBase::PFLOAT;
+//			}
+
+			// Kill particles depending on type. Especially those that were not converted (see above) to other particle type
+			if ( partType[idx] & ParticleBase::PDROPLET && phiv < BUBBLE_THRESH ) { parts.kill(idx); continue; }
+			if ( partType[idx] & ParticleBase::PFLOAT && (phiv > 0. || phiv < -FLOAT_THRESH)) { parts.kill(idx); continue; }
+			if ( partType[idx] & ParticleBase::PBUBBLE && phiv > 0. ) { parts.kill(idx); continue; }
+			if ( partType[idx] & ParticleBase::PTRACER && phiv > 0. ) { parts.kill(idx); continue; }
+
+			// Kill out of domain particles
+			if (!tmp.isInBounds(p1i)) {
+				parts.kill(idx);
 				continue;
 			}
-			Real phiv = phi.getInterpolated( parts.getPos(idx) );
-			if( phiv < 0 ) { parts.kill(idx); continue; }
 
-			int num = tmp(p);
+			// Kill excess particles in cell
+			int num = tmp(p1i);
 			if (num > maxParticles) {
 				parts.kill(idx);
 			} else {
-				tmp(p) = num+1;
+				tmp(p1i) = num+1;
 			}
-			
+
+			// Kill particle if next position is invalid, ie outside or in obstacle
+			if (!tmp.isInBounds(p2i) || flags.isObstacle(p2i)) {
+				parts.kill(idx);
+			}
+
 			// This particle is valid. Set its next position
-			const Vec3 p2 = parts.getPos(idx) + partVel[idx] * dt; // euler step
 			parts.setPos(idx, p2);
 		}
 	}
 
-	// Generate new drop particles
-	FOR_IJK_BND(phi, 0) {
-		if ( flags.isObstacle(i,j,k) ) continue;
-		if ( phi(i,j,k) > 0.3f && phi(i,j,k) < 0.7f ) continue; // Only generate particles at surface
-		if ( fabs(vel(i,j,k).x) < thresh || fabs(vel(i,j,k).y) < thresh || fabs(vel(i,j,k).z) < thresh ) continue;
+	if (drops) {
+		// Generate new drop particles
+		FOR_IJK_BND(phi, 0) {
+			if ( flags.isObstacle(i,j,k) ) continue;
 
-		int cnt = tmp(i,j,k);
-		if (cnt >= minParticles) continue;
+			// Only generate particles at surface and slightly inside fluid
+			if ( phi(i,j,k) > DROP_THRESH && phi(i,j,k) < 0. ) continue;
 
-		if ( flags.isFluid(i,j,k) || flags.isEmpty(i,j,k) ) {
-			Vec3 pos = Vec3(i,j,k);
-			const Vec3 pos2 = pos + vel(i,j,k) * dt; // next particle position
-			Real phiv = phi.getInterpolated(pos2);
-			
-			// Ensure that new particle is only added if its next position is valid
-			if (phiv > 0) {
-				parts.addBuffered(pos + mRand.getVec3());
+			// Surrounding fluid vel fast enough to generate drop particle?
+			if (fabs(vel(i,j,k).x) < dropVelThresh && fabs(vel(i,j,k).y) < dropVelThresh && fabs(vel(i,j,k).z) < dropVelThresh) continue;
+
+			// Already sufficient particles in cell?
+			int cnt = tmp(i,j,k);
+			if (cnt >= minParticles) continue;
+
+			// Only generate drops in convex regions
+			Vec3 grad = getGradient(phi, i,j,k);
+			Vec3 velC = vel.getCentered(i,j,k);
+			if ( dot( getNormalized(grad), getNormalized(velC) ) < 0.75) continue;
+
+			if (flags.isFluid(i,j,k) || flags.isEmpty(i,j,k)) {
+				// Get phi for next particle position
+				Vec3 pos = Vec3(i,j,k);
+				const Vec3 pos2 = pos + vel(i,j,k) * dt;
+				Real phiv2 = phi.getInterpolated(pos2);
+
+				// Ensure that new particle is only added if its next position is valid: Splash only occurs outside fluid
+				if (phiv2 > 0.) {
+					parts.addBuffered(pos + mRand.getVec3());
+				}
+			}
+		}
+		parts.doCompress();
+		parts.insertBufferedParticles();
+
+		// Update forces: gravity and particle velocity
+		for (IndexInt idx=0; idx<(int)parts.size(); idx++) {
+			if (parts.isActive(idx)) {
+
+				// Update particle type and set initial velocity for new particles
+				if (parts.getStatus(idx) & ParticleBase::PNEW) {
+					partVel[idx] = vel.getInterpolated( parts[idx].pos );
+					partType[idx] = ParticleBase::PDROPLET;
+				}
+
+				// Drop particles are outside fluid (or slightly inside after hitting surface) and susceptible to full gravity
+				if (partType[idx] & ParticleBase::PDROPLET) {
+					partVel[idx] += grav;
+				}
 			}
 		}
 	}
-	parts.doCompress();
-	parts.insertBufferedParticles();
 
-	// Update forces: gravity and initial particle velocity
-	for (IndexInt idx=0; idx<(int)parts.size(); idx++) {
-		if (parts.isActive(idx)) {
+	if (bubbles) {
+		// Update forces: gravity
+		for (IndexInt idx=0; idx<(int)parts.size(); idx++) {
+			if (parts.isActive(idx)) {
 
-			// Initial velocity (only for new particles)
-			if (parts.getStatus(idx) & ParticleBase::PNEW) {
-				partVel[idx] = vel.getInterpolated( parts[idx].pos );
+				if (partType[idx] & ParticleBase::PBUBBLE) {
+					// Let bubbles rise up
+//					partVel[idx] = vel.getInterpolated( parts[idx].pos );
+					partVel[idx] -= bubbleRise * grav;
+				}
 			}
-
-			partVel[idx] += grav;
 		}
 	}
-} static PyObject* _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "sampleSndParts" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",2,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",3,&_lock); LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",4,&_lock); Real thresh = _args.get<Real >("thresh",5,&_lock); int minParticles = _args.get<int >("minParticles",6,&_lock); int maxParticles = _args.get<int >("maxParticles",7,&_lock); Vec3 gravity = _args.get<Vec3 >("gravity",8,&_lock);   _retval = getPyNone(); sampleSndParts(parts,flags,vel,partVel,phi,thresh,minParticles,maxParticles,gravity);  _args.check(); } pbFinalizePlugin(parent,"sampleSndParts", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("sampleSndParts",e.what()); return 0; } } static const Pb::Register _RP_sampleSndParts ("","sampleSndParts",_W_18);  extern "C" { void PbRegister_sampleSndParts() { KEEP_UNUSED(_RP_sampleSndParts); } } 
+
+	if (floats) {
+		// Generate new float particlesd
+		FOR_IJK_BND(phi, 0) {
+			if ( flags.isObstacle(i,j,k) ) continue;
+
+			// Only generate particles at surface and slightly inside fluid
+			if ( phi(i,j,k) > FLOAT_THRESH || phi(i,j,k) < -FLOAT_THRESH ) continue;
+
+			// Already sufficient particles in cell?
+			int cnt = tmp(i,j,k);
+			if (cnt >= minParticles) continue;
+
+			if ( flags.isFluid(i,j,k) || flags.isEmpty(i,j,k) ) {
+				// Get phi for next particle position
+				Vec3 pos = Vec3(i,j,k);
+				const Vec3 pos2 = pos + vel(i,j,k) * dt;
+				Real phiv = phi.getInterpolated(pos2);
+
+				// Ensure that new particle is only added if its next position is valid:
+				if (phiv <= FLOAT_THRESH && phiv >=  -FLOAT_THRESH) {
+					parts.addBuffered(pos + mRand.getVec3());
+				}
+			}
+		}
+		parts.doCompress();
+		parts.insertBufferedParticles();
+
+		// Update forces: gravity and particle velocity
+		for (IndexInt idx=0; idx<(int)parts.size(); idx++) {
+			if (parts.isActive(idx)) {
+
+				// Update particle type
+				if (parts.getStatus(idx) & ParticleBase::PNEW) {
+					partType[idx] = ParticleBase::PFLOAT;
+				}
+
+				// Float particles move with fluid flow
+				if (partType[idx] & ParticleBase::PFLOAT) {
+					partVel[idx] = vel.getInterpolated( parts[idx].pos );
+				}
+			}
+		}
+	}
+
+	if (tracers) {
+		// Generate new tracer particles
+		FOR_IJK_BND(phi, 0) {
+			if ( flags.isObstacle(i,j,k) ) continue;
+			if ( phi(i,j,k) > 0. ) continue; // Only generate particles inside fluid
+
+			// Already sufficient particles in cell?
+			int cnt = tmp(i,j,k);
+			if (cnt >= minParticles) continue;
+
+			if ( flags.isFluid(i,j,k) || flags.isEmpty(i,j,k) ) {
+				// Get phi for next particle position
+				Vec3 pos = Vec3(i,j,k);
+				const Vec3 pos2 = pos + vel(i,j,k) * dt;
+				Real phiv = phi.getInterpolated(pos2);
+
+				// Ensure that new particle is only added if its next position is valid
+				if (phiv < 0.) {
+					parts.addBuffered(pos + mRand.getVec3());
+				}
+			}
+		}
+		parts.doCompress();
+		parts.insertBufferedParticles();
+
+		// Update forces: gravity and initial particle velocity
+		for (IndexInt idx=0; idx<(int)parts.size(); idx++) {
+			if (parts.isActive(idx)) {
+
+				// Initial velocity (only for new particles)
+				if (parts.getStatus(idx) & ParticleBase::PNEW) {
+					partVel[idx] = vel.getInterpolated( parts[idx].pos );
+
+					// Need to initialize flag for this particle
+					partType[idx] = ParticleBase::PTRACER;
+				}
+				if (partType[idx] & ParticleBase::PTRACER)
+					partVel[idx] += 0.5 * grav;
+			}
+		}
+	}
+} static PyObject* _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "sampleSndParts" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",2,&_lock); LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",3,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",4,&_lock); ParticleDataImpl<int>& partType = *_args.getPtr<ParticleDataImpl<int> >("partType",5,&_lock); Real dropVelThresh = _args.get<Real >("dropVelThresh",6,&_lock); Real bubbleRise = _args.get<Real >("bubbleRise",7,&_lock); int minParticles = _args.get<int >("minParticles",8,&_lock); int maxParticles = _args.get<int >("maxParticles",9,&_lock); Vec3 gravity = _args.get<Vec3 >("gravity",10,&_lock); Real radiusFactor = _args.getOpt<Real >("radiusFactor",11,1.,&_lock); bool drops = _args.getOpt<bool >("drops",12,true,&_lock); bool floats = _args.getOpt<bool >("floats",13,false,&_lock); bool tracers = _args.getOpt<bool >("tracers",14,false,&_lock); bool bubbles = _args.getOpt<bool >("bubbles",15,true,&_lock);   _retval = getPyNone(); sampleSndParts(parts,flags,vel,phi,partVel,partType,dropVelThresh,bubbleRise,minParticles,maxParticles,gravity,radiusFactor,drops,floats,tracers,bubbles);  _args.check(); } pbFinalizePlugin(parent,"sampleSndParts", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("sampleSndParts",e.what()); return 0; } } static const Pb::Register _RP_sampleSndParts ("","sampleSndParts",_W_18);  extern "C" { void PbRegister_sampleSndParts() { KEEP_UNUSED(_RP_sampleSndParts); } } 
 
 
 } // namespace
