@@ -372,6 +372,7 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         sub.active = domain.use_drop_particles
         sub.label()
         sub.prop(domain, "particle_velocity_threshold", text="Threshold")
+        sub.prop(domain, "particle_bubble_rise", text="Rise")
 
 class PHYSICS_PT_smoke_groups(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Groups"

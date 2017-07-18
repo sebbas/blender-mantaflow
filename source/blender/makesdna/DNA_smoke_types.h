@@ -248,7 +248,9 @@ typedef struct SmokeDomainSettings {
 	float particle_radius;
 	float particle_band_width;
 	float particle_velocity_threshold;
+	float particle_bubble_rise;
 	int particle_type;
+	float pad4;
 
 	/* Display settings */
 	char slice_method, axis_slice_method;

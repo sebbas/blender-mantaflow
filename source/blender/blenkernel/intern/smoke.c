@@ -543,6 +543,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->particle_radius = 1.0f;
 			smd->domain->particle_band_width = 3.0f;
 			smd->domain->particle_velocity_threshold = 2.0f;
+			smd->domain->particle_bubble_rise = 0.5f;
 			smd->domain->particle_type = 0;
 
 			/*mantaflow settings*/
@@ -669,6 +670,7 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->particle_radius = smd->domain->particle_radius;
 		tsmd->domain->particle_band_width = smd->domain->particle_band_width;
 		tsmd->domain->particle_velocity_threshold = smd->domain->particle_velocity_threshold;
+		tsmd->domain->particle_bubble_rise = smd->domain->particle_bubble_rise;
 
 		tsmd->domain->manta_solver_res = smd->domain->manta_solver_res;
 		tsmd->domain->noise_pos_scale = smd->domain->noise_pos_scale;
