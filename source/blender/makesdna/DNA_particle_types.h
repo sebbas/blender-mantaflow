@@ -358,8 +358,15 @@ typedef enum eParticleDrawFlag {
 #define PART_FLUID			3
 #define PART_MANTA_FLIP		4
 #define PART_MANTA_DROP		5
-#define PART_MANTA_FLOAT	6
-#define PART_MANTA_TRACER	7
+#define PART_MANTA_BUBBLE	6
+#define PART_MANTA_FLOAT	7
+#define PART_MANTA_TRACER	8
+
+/* mirroring manta secondary particle types */
+#define PDROPLET (1<<2)
+#define PBUBBLE  (1<<3)
+#define PFLOAT   (1<<4)
+#define PTRACER  (1<<5)
 
 /* part->flag */
 #define PART_REACT_STA_END	1

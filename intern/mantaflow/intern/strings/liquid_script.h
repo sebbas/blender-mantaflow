@@ -42,7 +42,13 @@ adjustedNarrowBandWidth_s$ID$ = $PARTICLE_BAND_WIDTH$ # only used in adjustNumbe
 particleNumber_s$ID$ = $PARTICLE_NUMBER$\n\
 minParticles_s$ID$   = pow(particleNumber_s$ID$, dim_s$ID$)\n\
 radiusFactor_s$ID$   = $PARTICLE_RADIUS$\n\
-randomness_s$ID$     = $PARTICLE_RANDOMNESS$\n";
+randomness_s$ID$     = $PARTICLE_RANDOMNESS$\n\
+maxVel_s$ID$         = 1 # just declared here, do not set\n\
+\n\
+using_drops_s$ID$   = $USING_DROP_PARTS$\n\
+using_bubbles_s$ID$ = $USING_BUBBLE_PARTS$\n\
+using_floats_s$ID$  = $USING_FLOAT_PARTS$\n\
+using_tracers_s$ID$ = $USING_TRACER_PARTS$\n";
 
 const std::string liquid_variables_high = "\n\
 mantaMsg('Liquid variables high')\n";
@@ -185,8 +191,21 @@ def manta_step_$ID$(framenr):\n\
 const std::string liquid_step_low = "\n\
 def liquid_step_$ID$():\n\
     mantaMsg('Liquid step low')\n\
+    \n\
+    # TODO (sebbas): liquid inflow\n\
+    # add initial velocity\n\
+    #mapWeights_s$ID$.clear() # mis-use mapWeights\n\
+    #setInitialVelocity(flags=flags_s$ID$, vel=vel_s$ID$, invel=invel_s$ID$)\n\
+    #resampleVec3ToMac(source=invel_s$ID$, target=mapWeights_s$ID$)\n\
+    #addGridToPartsVec3(source=invel_s$ID$, parts=pp_s$ID$, target=pVel_pp$ID$)\n\
+    \n\
     mantaMsg('Advecting particles')\n\
     pp_s$ID$.advectInGrid(flags=flags_s$ID$, vel=vel_s$ID$, integrationMode=IntRK4, deleteInObstacle=False, stopInObstacle=False)\n\
+    \n\
+    mantaMsg('Sampling secondary particles')\n\
+    if (using_drops_s$ID$ or using_bubbles_s$ID$ or using_floats_s$ID$ or using_tracers_s$ID$):\n\
+        sampleSndParts(parts=ppSnd_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, partVel=pVelSnd_pp$ID$, partType=pTypeSnd_pp$ID$, phi=phi_s$ID$, dropVelThresh=$SNDPARTICLE_VEL_THRESH$, bubbleRise=0.5, minParticles=2, maxParticles=8, gravity=gravity_s$ID$, drops=using_drops_s$ID$, bubbles=using_bubbles_s$ID$, floats=using_floats_s$ID$, tracers=using_tracers_s$ID$)\n\
+    \n\
     mantaMsg('Pushing particles out of obstacles')\n\
     pushOutofObs(parts=pp_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$)\n\
     pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=1.0)\n\
@@ -245,8 +264,6 @@ def liquid_step_$ID$():\n\
     # Create interpolated version of original phi grid for later use in (optional) high-res step\n\
     if using_highres_s$ID$:\n\
         interpolateGrid(target=phi_xl$ID$, source=phiParts_s$ID$)\n\
-    \n\
-    sampleSndParts(parts=ppSnd_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, partVel=pVelSnd_pp$ID$, phi=phi_s$ID$, thresh=$SNDPARTICLE_VEL_THRESH$, minParticles=2, maxParticles=8, gravity=gravity_s$ID$)\n\
     \n\
     # set source grids for resampling, used in adjustNumber!\n\
     pVel_pp$ID$.setSource(vel_s$ID$, isMAC=True)\n\
@@ -425,7 +442,11 @@ if 'narrowBandWidth_s$ID$'  in globals() : del narrowBandWidth_s$ID$\n\
 if 'combineBandWidth_s$ID$' in globals() : del combineBandWidth_s$ID$\n\
 if 'minParticles_s$ID$'     in globals() : del minParticles_s$ID$\n\
 if 'particleNumber_s$ID$'   in globals() : del particleNumber_s$ID$\n\
-if 'maxVel_s$ID$'           in globals() : del maxVel_s$ID$\n";
+if 'maxVel_s$ID$'           in globals() : del maxVel_s$ID$\n\
+if 'using_drops_s$ID$'      in globals() : del using_drops_s$ID$\n\
+if 'using_bubbles_s$ID$'    in globals() : del using_bubbles_s$ID$\n\
+if 'using_floats_s$ID$'     in globals() : del using_floats_s$ID$\n\
+if 'using_tracers_s$ID$'    in globals() : del using_tracers_s$ID$\n";
 
 const std::string liquid_delete_variables_high = "\n\
 mantaMsg('Deleting highres liquid variables')\n";

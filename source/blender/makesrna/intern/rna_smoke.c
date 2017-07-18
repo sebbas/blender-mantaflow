@@ -169,9 +169,8 @@ static void rna_Smoke_draw_type_update(Main *UNUSED(bmain), Scene *UNUSED(scene)
 	Object *ob = (Object *)ptr->id.data;
 	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
 
-	/* Wire mode more convenient when particles present */
-	if ((settings->particle_type & (MOD_SMOKE_PARTICLE_FLIP | MOD_SMOKE_PARTICLE_DROP | MOD_SMOKE_PARTICLE_FLOAT | MOD_SMOKE_PARTICLE_TRACER)) == 0)
-	{
+	/* Wireframe mode more convenient when particles present */
+	if (settings->particle_type == 0) {
 		ob->dt = OB_SOLID;
 	} else {
 		ob->dt = OB_WIRE;
@@ -216,6 +215,27 @@ static void rna_Smoke_drop_parts_set(struct PointerRNA *ptr, int value)
 		rna_Smoke_resetCache(NULL, NULL, ptr);
 
 		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_DROP;
+	}
+	rna_Smoke_draw_type_update(NULL, NULL, ptr);
+}
+
+static void rna_Smoke_bubble_parts_set(struct PointerRNA *ptr, int value)
+{
+	Object *ob = (Object *)ptr->id.data;
+	SmokeModifierData *smd;
+	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
+	bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_BUBBLE);
+
+	if (value) {
+		if (ob->type == OB_MESH && !exists)
+		rna_Smoke_parts_create(ptr, "BubbleParticleSettings", "Bubble Particles", "Bubble Particle System", PART_MANTA_BUBBLE);
+		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_BUBBLE;
+	}
+	else {
+		rna_Smoke_parts_delete(ptr, PART_MANTA_BUBBLE);
+		rna_Smoke_resetCache(NULL, NULL, ptr);
+
+		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_BUBBLE;
 	}
 	rna_Smoke_draw_type_update(NULL, NULL, ptr);
 }
@@ -1246,6 +1266,13 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", MOD_SMOKE_PARTICLE_DROP);
 	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_drop_parts_set");
 	RNA_def_property_ui_text(prop, "Drop", "Create drop particle system");
+	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
+	prop = RNA_def_property(srna, "use_bubble_particles", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", MOD_SMOKE_PARTICLE_BUBBLE);
+	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_bubble_parts_set");
+	RNA_def_property_ui_text(prop, "Drop", "Create bubble particle system");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 

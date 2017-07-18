@@ -659,6 +659,14 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << smd->domain->particle_band_width;
 	else if (varName == "SNDPARTICLE_VEL_THRESH")
 		ss << smd->domain->particle_velocity_threshold;
+	else if (varName == "USING_DROP_PARTS")
+		ss << (smd->domain->particle_type & MOD_SMOKE_PARTICLE_DROP ? "True" : "False");
+	else if (varName == "USING_BUBBLE_PARTS")
+		ss << (smd->domain->particle_type & MOD_SMOKE_PARTICLE_BUBBLE ? "True" : "False");
+	else if (varName == "USING_FLOAT_PARTS")
+		ss << (smd->domain->particle_type & MOD_SMOKE_PARTICLE_FLOAT ? "True" : "False");
+	else if (varName == "USING_TRACER_PARTS")
+		ss << (smd->domain->particle_type & MOD_SMOKE_PARTICLE_TRACER ? "True" : "False");
 	else if (varName == "GRAVITY_X")
 		ss << smd->domain->gravity[0];
 	else if (varName == "GRAVITY_Y")
