@@ -365,7 +365,7 @@ typedef enum eParticleDrawFlag {
 /* mirroring manta secondary particle types */
 #define PDROPLET (1<<2)
 #define PBUBBLE  (1<<3)
-#define PFLOAT   (1<<4)
+#define PFLOATER (1<<4)
 #define PTRACER  (1<<5)
 
 /* part->flag */

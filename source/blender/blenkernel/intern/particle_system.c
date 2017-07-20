@@ -3840,7 +3840,7 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 				// check if type of particle type matches current particle system type (only important for snd particles)
 				if ((part->type == PART_MANTA_DROP) && (type != PDROPLET)) continue;
 				if ((part->type == PART_MANTA_BUBBLE) && (type != PBUBBLE)) continue;
-				if ((part->type == PART_MANTA_FLOAT) && (type != PFLOAT)) continue;
+				if ((part->type == PART_MANTA_FLOAT) && (type != PFLOATER)) continue;
 				if ((part->type == PART_MANTA_TRACER) && (type != PTRACER)) continue;
 
 				// Only allow active particles, i.e. filter out dead particles that just Mantaflow needs
