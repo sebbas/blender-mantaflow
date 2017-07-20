@@ -364,7 +364,7 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         col.prop(domain, "use_drop_particles", text="Drop")
         col.prop(domain, "use_bubble_particles", text="Bubble")
         col.prop(domain, "use_float_particles", text="Float")
-        #col.prop(domain, "use_tracer_particles", text="Tracer")
+        col.prop(domain, "use_tracer_particles", text="Tracer")
 
         col = split.column()
         col.enabled = not domain.point_cache.is_baked
