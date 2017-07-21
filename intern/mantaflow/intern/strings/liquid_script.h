@@ -170,7 +170,7 @@ def manta_step_$ID$(framenr):\n\
         setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$, fractions=fractions_s$ID$)\n\
         \n\
         sampleLevelsetWithParticles(phi=phiIn_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, discretization=particleNumber_s$ID$, randomness=randomness_s$ID$, refillEmpty=True)\n\
-        flags_s$ID$.updateFromLevelset(phi_s$ID$)\n\
+        flags_s$ID$.updateFromLevelset(phi_s$ID$, phiObs_s$ID$)\n\
         \n\
         if using_adaptTime_s$ID$:\n\
             mantaMsg('Adapt timestep')\n\

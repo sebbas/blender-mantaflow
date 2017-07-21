@@ -601,7 +601,6 @@ void combineGridVel( MACGrid& vel, Grid<Vec3>& weight, MACGrid& combineVel, Leve
 
 
 void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, ParticleDataImpl<Vec3>& partVel, ParticleDataImpl<int>& partType, Real dropVelThresh, Real bubbleRise, Real tracerAmount, int minParticles, int maxParticles, Vec3 gravity, bool drops=true, bool floats=false, bool tracers=false, bool bubbles=true) {
-	bool is3D = flags.is3D();
 	Real dt = flags.getParent()->getDt();
 	Vec3 grav = gravity * flags.getParent()->getDt() / flags.getDx();
 	Grid<int> tmp( vel.getParent() );
@@ -624,7 +623,7 @@ void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, L
 
 			// Try to save float / tracer particle by pushing it into the valid region
 			Real phiv = phi.getInterpolated( parts.getPos(idx) );
-			if (( partType[idx] & ParticleBase::PFLOAT && (phiv > FLOAT_THRESH || phiv < -FLOAT_THRESH)) ||
+			if (( partType[idx] & ParticleBase::PFLOATER && (phiv > FLOAT_THRESH || phiv < -FLOAT_THRESH)) ||
 				( partType[idx] & ParticleBase::PTRACER && phiv > 0. ))
 			{
 				Vec3 grad = getGradient( phi, p1i.x,p1i.y,p1i.z );
@@ -640,12 +639,12 @@ void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, L
 //			if (floats && partType[idx] & ParticleBase::PBUBBLE && phiv > -FLOAT_THRESH)
 //			{
 //				partVel[idx] = vel.getInterpolated( parts[idx].pos ); // floats have fluid vel
-//				partType[idx] = ParticleBase::PFLOAT;
+//				partType[idx] = ParticleBase::PFLOATER;
 //			}
 
 			// Kill particles depending on type. Especially those that were not converted (see above) to other particle type
 			if ( partType[idx] & ParticleBase::PDROPLET && phiv < BUBBLE_THRESH ) { parts.kill(idx); continue; }
-			if ( partType[idx] & ParticleBase::PFLOAT && (phiv > 0. || phiv < -FLOAT_THRESH)) { parts.kill(idx); continue; }
+			if ( partType[idx] & ParticleBase::PFLOATER && (phiv > 0. || phiv < -FLOAT_THRESH)) { parts.kill(idx); continue; }
 			if ( partType[idx] & ParticleBase::PBUBBLE && phiv > 0. ) { parts.kill(idx); continue; }
 			if ( partType[idx] & ParticleBase::PTRACER && phiv > 0. ) { parts.kill(idx); continue; }
 
@@ -736,7 +735,7 @@ void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, L
 				if (partType[idx] & ParticleBase::PDROPLET && phiv < -FLOAT_THRESH) {
 					partVel[idx] = partVel[idx] * 0.5;
 				}
-				
+
 				// Update particle type (convert to bubble) and set initial velocity (now use fluid vel)
 				if (partType[idx] & ParticleBase::PDROPLET && phiv < BUBBLE_THRESH) {
 					partVel[idx] = vel.getInterpolated( parts[idx].pos );
@@ -784,11 +783,11 @@ void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, L
 
 				// Update particle type
 				if (parts.getStatus(idx) & ParticleBase::PNEW) {
-					partType[idx] = ParticleBase::PFLOAT;
+					partType[idx] = ParticleBase::PFLOATER;
 				}
 
 				// Float particles move with fluid flow
-				if (partType[idx] & ParticleBase::PFLOAT) {
+				if (partType[idx] & ParticleBase::PFLOATER) {
 					partVel[idx] = vel.getInterpolated( parts[idx].pos );
 				}
 			}
