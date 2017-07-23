@@ -40,8 +40,8 @@ combineBandWidth_s$ID$        = narrowBandWidth_s$ID$ - 1\n\
 adjustedNarrowBandWidth_s$ID$ = $PARTICLE_BAND_WIDTH$ # only used in adjustNumber to control band width\n\
 \n\
 particleNumber_s$ID$ = $PARTICLE_NUMBER$\n\
-minParticles_s$ID$   = $PARTICLE_SEED$\n\
-maxParticles_s$ID$   = $PARTICLE_KILL$\n\
+minParticles_s$ID$   = $PARTICLE_MINIMUM$\n\
+maxParticles_s$ID$   = $PARTICLE_MAXIMUM$\n\
 radiusFactor_s$ID$   = $PARTICLE_RADIUS$\n\
 randomness_s$ID$     = $PARTICLE_RANDOMNESS$\n\
 maxVel_s$ID$         = 1 # just declared here, do not set\n\

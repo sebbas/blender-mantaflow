@@ -540,8 +540,8 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			/* liquid */
 			smd->domain->particle_randomness = 0.1f;
 			smd->domain->particle_number = 2;
-			smd->domain->particle_seed = 8;
-			smd->domain->particle_kill = 16;
+			smd->domain->particle_minimum = 8;
+			smd->domain->particle_maximum = 16;
 			smd->domain->particle_radius = 1.0f;
 			smd->domain->particle_band_width = 3.0f;
 			smd->domain->particle_velocity_threshold = 2.0f;
@@ -668,8 +668,8 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 
 		tsmd->domain->particle_randomness = smd->domain->particle_randomness;
 		tsmd->domain->particle_number = smd->domain->particle_number;
-		tsmd->domain->particle_seed = smd->domain->particle_seed;
-		tsmd->domain->particle_kill = smd->domain->particle_kill;
+		tsmd->domain->particle_minimum = smd->domain->particle_minimum;
+		tsmd->domain->particle_maximum = smd->domain->particle_maximum;
 		tsmd->domain->particle_radius = smd->domain->particle_radius;
 		tsmd->domain->particle_band_width = smd->domain->particle_band_width;
 		tsmd->domain->particle_velocity_threshold = smd->domain->particle_velocity_threshold;

@@ -653,10 +653,10 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << smd->domain->particle_randomness;
 	else if (varName == "PARTICLE_NUMBER")
 		ss << smd->domain->particle_number;
-	else if (varName == "PARTICLE_SEED")
-		ss << smd->domain->particle_seed;
-	else if (varName == "PARTICLE_KILL")
-		ss << smd->domain->particle_kill;
+	else if (varName == "PARTICLE_MINIMUM")
+		ss << smd->domain->particle_minimum;
+	else if (varName == "PARTICLE_MAXIMUM")
+		ss << smd->domain->particle_maximum;
 	else if (varName == "PARTICLE_RADIUS")
 		ss << smd->domain->particle_radius;
 	else if (varName == "PARTICLE_BAND_WIDTH")

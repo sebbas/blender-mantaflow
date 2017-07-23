@@ -132,13 +132,13 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
                 col.label(text="Liquid:")
                 col.prop(domain, "particle_randomness")
                 col.prop(domain, "particle_radius")
-                col.prop(domain, "particle_seed")
+                col.prop(domain, "particle_minimum")
 
                 col = split.column()
                 col.label()
                 col.prop(domain, "particle_number")
                 col.prop(domain, "particle_band_width")
-                col.prop(domain, "particle_kill")
+                col.prop(domain, "particle_maximum")
 
         elif md.smoke_type == 'FLOW':
             flow = md.flow_settings

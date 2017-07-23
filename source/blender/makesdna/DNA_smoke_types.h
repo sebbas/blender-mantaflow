@@ -245,8 +245,8 @@ typedef struct SmokeDomainSettings {
 	/* liquid parameters */
 	float particle_randomness;
 	int particle_number;
-	int particle_seed;
-	int particle_kill;
+	int particle_minimum;
+	int particle_maximum;
 	float particle_radius;
 	float particle_band_width;
 	float particle_velocity_threshold;
