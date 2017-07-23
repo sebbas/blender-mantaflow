@@ -132,11 +132,13 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
                 col.label(text="Liquid:")
                 col.prop(domain, "particle_randomness")
                 col.prop(domain, "particle_radius")
+                col.prop(domain, "particle_seed")
 
                 col = split.column()
                 col.label()
                 col.prop(domain, "particle_number")
                 col.prop(domain, "particle_band_width")
+                col.prop(domain, "particle_kill")
 
         elif md.smoke_type == 'FLOW':
             flow = md.flow_settings
@@ -362,17 +364,27 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         col.enabled = not domain.point_cache.is_baked
         col.prop(domain, "use_flip_particles", text="FLIP")
         col.prop(domain, "use_drop_particles", text="Drop")
-        col.prop(domain, "use_bubble_particles", text="Bubble")
+        col2 = col.column()
+        col2.active = domain.use_drop_particles
+        col2.prop(domain, "use_bubble_particles", text="Bubble")
         col.prop(domain, "use_float_particles", text="Float")
         col.prop(domain, "use_tracer_particles", text="Tracer")
 
         col = split.column()
         col.enabled = not domain.point_cache.is_baked
         sub = col.column()
-        sub.active = domain.use_drop_particles
         sub.label()
+        sub.active = domain.use_drop_particles
         sub.prop(domain, "particle_velocity_threshold", text="Threshold")
-        sub.prop(domain, "particle_bubble_rise", text="Rise")
+        sub2 = col.column()
+        sub2.active = domain.use_drop_particles and domain.use_bubble_particles
+        sub2.prop(domain, "particle_bubble_rise", text="Rise")
+        #sub3 = col.column()
+        #sub3.active = domain.use_float_particles
+        #sub3.prop(domain, "particle_float_amout", text="Amount")
+        #sub4 = col.column()
+        #sub4.active = domain.use_tracer_particles
+        #sub4.prop(domain, "particle_tracer_amout", text="Amount")
 
 class PHYSICS_PT_smoke_groups(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Groups"

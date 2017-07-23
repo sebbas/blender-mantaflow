@@ -1235,7 +1235,19 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_range(prop, 1, 5, 2, -1);
 	RNA_def_property_ui_text(prop, "Number", "Particle number factor (higher value results in more particles)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
-	
+
+	prop = RNA_def_property(srna, "particle_seed", PROP_INT, PROP_NONE);
+	RNA_def_property_range(prop, 1, 10);
+	RNA_def_property_ui_range(prop, 1, 5, 2, -1);
+	RNA_def_property_ui_text(prop, "Seed", "Amount of particles seeded per cell (higher value results in more particles)");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
+	prop = RNA_def_property(srna, "particle_kill", PROP_INT, PROP_NONE);
+	RNA_def_property_range(prop, 1, 10);
+	RNA_def_property_ui_range(prop, 1, 5, 2, -1);
+	RNA_def_property_ui_text(prop, "Kill", "Maximum number of particles allowed per cell (higher value results in more particles)");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
 	prop = RNA_def_property(srna, "particle_radius", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 10.0);
 	RNA_def_property_ui_range(prop, 0.0, 10.0, 0.02, 5);

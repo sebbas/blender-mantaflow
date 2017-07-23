@@ -540,6 +540,8 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			/* liquid */
 			smd->domain->particle_randomness = 0.1f;
 			smd->domain->particle_number = 2;
+			smd->domain->particle_seed = 8;
+			smd->domain->particle_kill = 16;
 			smd->domain->particle_radius = 1.0f;
 			smd->domain->particle_band_width = 3.0f;
 			smd->domain->particle_velocity_threshold = 2.0f;
@@ -660,13 +662,14 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->flame_ignition = smd->domain->flame_ignition;
 		tsmd->domain->flame_max_temp = smd->domain->flame_max_temp;
 		
-#ifdef WITH_MANTA
 		tsmd->domain->gravity[0] = smd->domain->gravity[0];
 		tsmd->domain->gravity[1] = smd->domain->gravity[1];
 		tsmd->domain->gravity[2] = smd->domain->gravity[2];
 
 		tsmd->domain->particle_randomness = smd->domain->particle_randomness;
 		tsmd->domain->particle_number = smd->domain->particle_number;
+		tsmd->domain->particle_seed = smd->domain->particle_seed;
+		tsmd->domain->particle_kill = smd->domain->particle_kill;
 		tsmd->domain->particle_radius = smd->domain->particle_radius;
 		tsmd->domain->particle_band_width = smd->domain->particle_band_width;
 		tsmd->domain->particle_velocity_threshold = smd->domain->particle_velocity_threshold;
@@ -680,7 +683,6 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->render_display_mode = smd->domain->render_display_mode;
 		tsmd->domain->type = smd->domain->type;
 		tsmd->domain->preconditioner = smd->domain->preconditioner;
-#endif
 
 		copy_v3_v3(tsmd->domain->flame_smoke_color, smd->domain->flame_smoke_color);
 

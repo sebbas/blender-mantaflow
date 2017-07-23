@@ -40,7 +40,8 @@ combineBandWidth_s$ID$        = narrowBandWidth_s$ID$ - 1\n\
 adjustedNarrowBandWidth_s$ID$ = $PARTICLE_BAND_WIDTH$ # only used in adjustNumber to control band width\n\
 \n\
 particleNumber_s$ID$ = $PARTICLE_NUMBER$\n\
-minParticles_s$ID$   = pow(particleNumber_s$ID$, dim_s$ID$)\n\
+minParticles_s$ID$   = $PARTICLE_SEED$\n\
+maxParticles_s$ID$   = $PARTICLE_KILL$\n\
 radiusFactor_s$ID$   = $PARTICLE_RADIUS$\n\
 randomness_s$ID$     = $PARTICLE_RANDOMNESS$\n\
 maxVel_s$ID$         = 1 # just declared here, do not set\n\
@@ -267,7 +268,7 @@ def liquid_step_$ID$():\n\
     \n\
     # set source grids for resampling, used in adjustNumber!\n\
     pVel_pp$ID$.setSource(vel_s$ID$, isMAC=True)\n\
-    adjustNumber(parts=pp_s$ID$, vel=vel_s$ID$, flags=flags_s$ID$, minParticles=1*minParticles_s$ID$, maxParticles=2*minParticles_s$ID$, phi=phi_s$ID$, exclude=phiObs_s$ID$, radiusFactor=radiusFactor_s$ID$, narrowBand=adjustedNarrowBandWidth_s$ID$)\n\
+    adjustNumber(parts=pp_s$ID$, vel=vel_s$ID$, flags=flags_s$ID$, minParticles=minParticles_s$ID$, maxParticles=maxParticles_s$ID$, phi=phi_s$ID$, exclude=phiObs_s$ID$, radiusFactor=radiusFactor_s$ID$, narrowBand=adjustedNarrowBandWidth_s$ID$)\n\
     flipVelocityUpdate(vel=vel_s$ID$, velOld=velOld_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, partVel=pVel_pp$ID$, flipRatio=0.97)\n";
 
 const std::string liquid_step_high = "\n\
@@ -441,6 +442,7 @@ mantaMsg('Deleting lowres liquid variables')\n\
 if 'narrowBandWidth_s$ID$'  in globals() : del narrowBandWidth_s$ID$\n\
 if 'combineBandWidth_s$ID$' in globals() : del combineBandWidth_s$ID$\n\
 if 'minParticles_s$ID$'     in globals() : del minParticles_s$ID$\n\
+if 'maxParticles_s$ID$'     in globals() : del maxParticles_s$ID$\n\
 if 'particleNumber_s$ID$'   in globals() : del particleNumber_s$ID$\n\
 if 'maxVel_s$ID$'           in globals() : del maxVel_s$ID$\n\
 if 'using_drops_s$ID$'      in globals() : del using_drops_s$ID$\n\
