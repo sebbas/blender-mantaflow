@@ -1617,6 +1617,17 @@ static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromM
 		if (mesh_distances[index] > 0) {
 			mesh_distances[index] = MIN2(mesh_distances[index], min_dist);
 		}
+
+		// TODO (sebbas): liquid inflow
+		/* Ensure that planes also get setup */
+//		BVHTreeNearest nearest = {0};
+//		const float surface_distance = 0.5f;
+//		nearest.index = -1;
+//		nearest.dist_sq = surface_distance * surface_distance; /* find_nearest uses squared distance */
+//
+//		if (BLI_bvhtree_find_nearest(treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1) {
+//			mesh_distances[index] = - 5; // very small value at levelset border indicating inside region
+//		}
 	}
 }
 

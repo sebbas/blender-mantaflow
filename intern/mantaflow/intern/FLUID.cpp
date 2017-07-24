@@ -1092,6 +1092,11 @@ void FLUID::updatePointers()
 	mObVelocityX = (float*) getDataPointer("x_obvel" + solver_ext, solver);
 	mObVelocityY = (float*) getDataPointer("y_obvel" + solver_ext, solver);
 	mObVelocityZ = (float*) getDataPointer("z_obvel" + solver_ext, solver);
+
+	// TODO (sebbas): liquid inflow
+//	mInVelocityX = (float*) getDataPointer("x_invel" + solver_ext, solver);
+//	mInVelocityY = (float*) getDataPointer("y_invel" + solver_ext, solver);
+//	mInVelocityZ = (float*) getDataPointer("z_invel" + solver_ext, solver);
 	
 	mForceX    = (float*) getDataPointer("x_force" + solver_ext, solver);
 	mForceY    = (float*) getDataPointer("y_force" + solver_ext, solver);
