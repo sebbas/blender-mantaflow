@@ -379,12 +379,12 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         sub2 = col.column()
         sub2.active = domain.use_drop_particles and domain.use_bubble_particles
         sub2.prop(domain, "particle_bubble_rise", text="Rise")
-        #sub3 = col.column()
-        #sub3.active = domain.use_float_particles
-        #sub3.prop(domain, "particle_float_amout", text="Amount")
-        #sub4 = col.column()
-        #sub4.active = domain.use_tracer_particles
-        #sub4.prop(domain, "particle_tracer_amout", text="Amount")
+        sub3 = col.column()
+        sub3.active = domain.use_float_particles
+        sub3.prop(domain, "particle_float_amount", text="Amount")
+        sub4 = col.column()
+        sub4.active = domain.use_tracer_particles
+        sub4.prop(domain, "particle_tracer_amount", text="Amount")
 
 class PHYSICS_PT_smoke_groups(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Groups"

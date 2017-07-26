@@ -251,6 +251,8 @@ typedef struct SmokeDomainSettings {
 	float particle_band_width;
 	float particle_velocity_threshold;
 	float particle_bubble_rise;
+	float particle_float_amount;
+	float particle_tracer_amount;
 	int particle_type;
 	float pad4;
 

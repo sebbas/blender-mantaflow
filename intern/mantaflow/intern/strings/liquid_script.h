@@ -221,7 +221,7 @@ def liquid_step_$ID$():\n\
     \n\
     mantaMsg('Sampling secondary particles')\n\
     if (using_drops_s$ID$ or using_bubbles_s$ID$ or using_floats_s$ID$ or using_tracers_s$ID$):\n\
-        sampleSndParts(parts=ppSnd_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, partVel=pVelSnd_pp$ID$, partType=pTypeSnd_pp$ID$, phi=phi_s$ID$, dropVelThresh=$SNDPARTICLE_VEL_THRESH$, bubbleRise=$SNDPARTICLE_BUBBLE_RISE$, tracerAmount=0.2, minParticles=2, maxParticles=8, gravity=gravity_s$ID$, drops=using_drops_s$ID$, bubbles=using_bubbles_s$ID$, floats=using_floats_s$ID$, tracers=using_tracers_s$ID$)\n\
+        sampleSndParts(parts=ppSnd_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, partVel=pVelSnd_pp$ID$, partType=pTypeSnd_pp$ID$, phi=phi_s$ID$, dropVelThresh=$SNDPARTICLE_VEL_THRESH$, bubbleRise=$SNDPARTICLE_BUBBLE_RISE$, floatAmount=$SNDPARTICLE_FLOAT_AMOUNT$, tracerAmount=$SNDPARTICLE_TRACER_AMOUNT$, minParticles=2, maxParticles=8, gravity=gravity_s$ID$, drops=using_drops_s$ID$, bubbles=using_bubbles_s$ID$, floats=using_floats_s$ID$, tracers=using_tracers_s$ID$)\n\
     \n\
     mantaMsg('Pushing particles out of obstacles')\n\
     pushOutofObs(parts=pp_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$)\n\

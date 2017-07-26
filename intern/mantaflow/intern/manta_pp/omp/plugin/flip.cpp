@@ -719,7 +719,7 @@ void combineGridVel( MACGrid& vel, Grid<Vec3>& weight, MACGrid& combineVel, Leve
 
 
 
-void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, ParticleDataImpl<Vec3>& partVel, ParticleDataImpl<int>& partType, Real dropVelThresh, Real bubbleRise, Real tracerAmount, int minParticles, int maxParticles, Vec3 gravity, bool drops=true, bool floats=false, bool tracers=false, bool bubbles=true) {
+void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, ParticleDataImpl<Vec3>& partVel, ParticleDataImpl<int>& partType, Real dropVelThresh, Real bubbleRise, Real floatAmount, Real tracerAmount, int minParticles, int maxParticles, Vec3 gravity, bool drops=true, bool floats=false, bool tracers=false, bool bubbles=true) {
 	Real dt = flags.getParent()->getDt();
 	Vec3 grav = gravity * flags.getParent()->getDt() / flags.getDx();
 	Grid<int> tmp( vel.getParent() );
@@ -877,9 +877,8 @@ void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, L
 			// Only generate particles at surface and slightly inside fluid
 			if ( phi(i,j,k) > FLOAT_THRESH || phi(i,j,k) < -FLOAT_THRESH ) continue;
 
-			// Already sufficient particles in cell?
-			int cnt = tmp(i,j,k);
-			if (cnt >= minParticles) continue;
+			// Only seed if random num exceeds given amount probability
+			if (mRand.getFloat(0., 1.) > floatAmount) continue;
 
 			if ( flags.isFluid(i,j,k) || flags.isEmpty(i,j,k) ) {
 				// Get phi for next particle position
@@ -921,10 +920,6 @@ void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, L
 			// Only generate particles inside fluid
 			if ( phi(i,j,k) > 0. ) continue;
 
-			// Already sufficient particles in cell?
-			int cnt = tmp(i,j,k);
-			if (cnt >= minParticles) continue;
-
 			// Only seed if random num exceeds given amount probability
 			if (mRand.getFloat(0., 1.) > tracerAmount) continue;
 
@@ -958,7 +953,7 @@ void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, L
 			}
 		}
 	}
-} static PyObject* _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "sampleSndParts" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",2,&_lock); LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",3,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",4,&_lock); ParticleDataImpl<int>& partType = *_args.getPtr<ParticleDataImpl<int> >("partType",5,&_lock); Real dropVelThresh = _args.get<Real >("dropVelThresh",6,&_lock); Real bubbleRise = _args.get<Real >("bubbleRise",7,&_lock); Real tracerAmount = _args.get<Real >("tracerAmount",8,&_lock); int minParticles = _args.get<int >("minParticles",9,&_lock); int maxParticles = _args.get<int >("maxParticles",10,&_lock); Vec3 gravity = _args.get<Vec3 >("gravity",11,&_lock); bool drops = _args.getOpt<bool >("drops",12,true,&_lock); bool floats = _args.getOpt<bool >("floats",13,false,&_lock); bool tracers = _args.getOpt<bool >("tracers",14,false,&_lock); bool bubbles = _args.getOpt<bool >("bubbles",15,true,&_lock);   _retval = getPyNone(); sampleSndParts(parts,flags,vel,phi,partVel,partType,dropVelThresh,bubbleRise,tracerAmount,minParticles,maxParticles,gravity,drops,floats,tracers,bubbles);  _args.check(); } pbFinalizePlugin(parent,"sampleSndParts", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("sampleSndParts",e.what()); return 0; } } static const Pb::Register _RP_sampleSndParts ("","sampleSndParts",_W_18);  extern "C" { void PbRegister_sampleSndParts() { KEEP_UNUSED(_RP_sampleSndParts); } } 
+} static PyObject* _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "sampleSndParts" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",2,&_lock); LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",3,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",4,&_lock); ParticleDataImpl<int>& partType = *_args.getPtr<ParticleDataImpl<int> >("partType",5,&_lock); Real dropVelThresh = _args.get<Real >("dropVelThresh",6,&_lock); Real bubbleRise = _args.get<Real >("bubbleRise",7,&_lock); Real floatAmount = _args.get<Real >("floatAmount",8,&_lock); Real tracerAmount = _args.get<Real >("tracerAmount",9,&_lock); int minParticles = _args.get<int >("minParticles",10,&_lock); int maxParticles = _args.get<int >("maxParticles",11,&_lock); Vec3 gravity = _args.get<Vec3 >("gravity",12,&_lock); bool drops = _args.getOpt<bool >("drops",13,true,&_lock); bool floats = _args.getOpt<bool >("floats",14,false,&_lock); bool tracers = _args.getOpt<bool >("tracers",15,false,&_lock); bool bubbles = _args.getOpt<bool >("bubbles",16,true,&_lock);   _retval = getPyNone(); sampleSndParts(parts,flags,vel,phi,partVel,partType,dropVelThresh,bubbleRise,floatAmount,tracerAmount,minParticles,maxParticles,gravity,drops,floats,tracers,bubbles);  _args.check(); } pbFinalizePlugin(parent,"sampleSndParts", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("sampleSndParts",e.what()); return 0; } } static const Pb::Register _RP_sampleSndParts ("","sampleSndParts",_W_18);  extern "C" { void PbRegister_sampleSndParts() { KEEP_UNUSED(_RP_sampleSndParts); } } 
 
 
 } // namespace

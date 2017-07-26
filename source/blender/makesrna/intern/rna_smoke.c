@@ -1314,6 +1314,18 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Rise", "How much of inverse gravity to apply on bubbles (higher value results in faster rising bubbles)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
+	prop = RNA_def_property(srna, "particle_float_amount", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 1.0);
+	RNA_def_property_ui_range(prop, 0.0, 1.0, 0.02, 5);
+	RNA_def_property_ui_text(prop, "Amount", "Amount of float particles (probability of sampling a new particle in a cell)");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
+	prop = RNA_def_property(srna, "particle_tracer_amount", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 1.0);
+	RNA_def_property_ui_range(prop, 0.0, 1.0, 0.02, 5);
+	RNA_def_property_ui_text(prop, "Amount", "Amount of tracer particles (probability of sampling a new particle in a cell)");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
 	/* display settings */
 
 	prop = RNA_def_property(srna, "slice_method", PROP_ENUM, PROP_NONE);
