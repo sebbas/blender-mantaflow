@@ -753,14 +753,6 @@ void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, L
 				}
 			}
 
-			// TODO (sebbas): Currently unreliable. Drop particles might get converted into floats to early
-//			// Convert bubble to float
-//			if (floats && partType[idx] & ParticleBase::PBUBBLE && phiv > -FLOAT_THRESH)
-//			{
-//				partVel[idx] = vel.getInterpolated( parts[idx].pos ); // floats have fluid vel
-//				partType[idx] = ParticleBase::PFLOATER;
-//			}
-
 			// Kill particles depending on type. Especially those that were not converted (see above) to other particle type
 			if ( partType[idx] & ParticleBase::PDROPLET && phiv < BUBBLE_THRESH ) { parts.kill(idx); continue; }
 			if ( partType[idx] & ParticleBase::PFLOATER && (phiv > 0. || phiv < -FLOAT_THRESH)) { parts.kill(idx); continue; }
@@ -898,9 +890,16 @@ void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, L
 		// Update forces: gravity and particle velocity
 		for (IndexInt idx=0; idx<(int)parts.size(); idx++) {
 			if (parts.isActive(idx)) {
+				Real phiv = phi.getInterpolated( parts.getPos(idx) );
 
 				// Update particle type
 				if (parts.getStatus(idx) & ParticleBase::PNEW) {
+					partType[idx] = ParticleBase::PFLOATER;
+				}
+
+				// TODO (sebbas): Currently unreliable? Drop particles might get converted into floats to early?
+				// Update particle type (convert to float)
+				if (partType[idx] & ParticleBase::PBUBBLE && phiv > -FLOAT_THRESH) {
 					partType[idx] = ParticleBase::PFLOATER;
 				}
 
