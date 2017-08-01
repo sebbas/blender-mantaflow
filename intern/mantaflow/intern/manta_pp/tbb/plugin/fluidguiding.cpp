@@ -180,26 +180,29 @@ Real getEpsDual(const Real eps_abs, const Real eps_rel, MACGrid &y) {
 	return eps_dual;
 }
 
-//! Create a spiral velocity field in 2D as a test scene
-void getSpiralVelocity2D(const FlagGrid &flags, MACGrid &vel, Real strength = 1.0) {
-	int nx = flags.getSizeX(), ny = flags.getSizeY();
+//! Create a spiral velocity field in 2D as a test scene (optionally in 3D)
+void getSpiralVelocity(const FlagGrid &flags, MACGrid &vel, Real strength = 1.0, bool with3D=false) {
+	int nx = flags.getSizeX(), ny = flags.getSizeY(), nz = 1;
+	if (with3D) nz = flags.getSizeZ();
 	Real midX = 0.5*(Real)(nx - 1);
 	Real midY = 0.5*(Real)(ny - 1);
-	int k = 0;
+	Real midZ = 0.5*(Real)(nz - 1);
 	for (int i = 0; i < nx; i++) {
 		for (int j = 0; j < ny; j++) {
-			int idx = flags.index(i, j, k);
-			Real diffX = midX - i;
-			Real diffY = midY - j;
-			Real hypotenuse = sqrt(diffX*diffX + diffY*diffY);
-			if (hypotenuse > 0) {
-				vel[idx].x = diffY / hypotenuse;
-				vel[idx].y = -diffX / hypotenuse;
+			for (int k = 0; k < nz; k++) {
+				int idx = flags.index(i, j, k);
+				Real diffX = midX - i;
+				Real diffY = midY - j;
+				Real hypotenuse = sqrt(diffX*diffX + diffY*diffY);
+				if (hypotenuse > 0) {
+					vel[idx].x = diffY / hypotenuse;
+					vel[idx].y = -diffX / hypotenuse;
+				}
 			}
 		}
 	}
 	vel.multConst(strength);
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "getSpiralVelocity2D" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); Real strength = _args.getOpt<Real >("strength",2,1.0,&_lock);   _retval = getPyNone(); getSpiralVelocity2D(flags,vel,strength);  _args.check(); } pbFinalizePlugin(parent,"getSpiralVelocity2D", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("getSpiralVelocity2D",e.what()); return 0; } } static const Pb::Register _RP_getSpiralVelocity2D ("","getSpiralVelocity2D",_W_0);  extern "C" { void PbRegister_getSpiralVelocity2D() { KEEP_UNUSED(_RP_getSpiralVelocity2D); } } 
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "getSpiralVelocity" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); Real strength = _args.getOpt<Real >("strength",2,1.0,&_lock); bool with3D = _args.getOpt<bool >("with3D",3,false,&_lock);   _retval = getPyNone(); getSpiralVelocity(flags,vel,strength,with3D);  _args.check(); } pbFinalizePlugin(parent,"getSpiralVelocity", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("getSpiralVelocity",e.what()); return 0; } } static const Pb::Register _RP_getSpiralVelocity ("","getSpiralVelocity",_W_0);  extern "C" { void PbRegister_getSpiralVelocity() { KEEP_UNUSED(_RP_getSpiralVelocity); } } 
 
 //! Set the guiding weight W as a gradient in the y-direction
 void setGradientYWeight(Grid<Real> &W, const int minY, const int maxY, const Real valAtMin, const Real valAtMax) {
