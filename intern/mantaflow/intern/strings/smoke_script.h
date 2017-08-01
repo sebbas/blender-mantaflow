@@ -39,7 +39,12 @@ mantaMsg('Smoke domain low')\n\
 flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$)\n\
 flags_s$ID$.fillGrid()\n\
 if doOpen_s$ID$:\n\
-    setOpenBound(flags=flags_s$ID$, bWidth=boundaryWidth_s$ID$, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty)\n";
+    setOpenBound(flags=flags_s$ID$, bWidth=boundaryWidth_s$ID$, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty)\n\
+\n\
+# TODO (sebbas): just put this code here out of convenience - removing this later anyways\n\
+getSpiralVelocity(flags=flags_s$ID$, vel=velT_s$ID$, strength=6, with3D=True)\n\
+setGradientYWeight(W=weightG_s$ID$, minY=0, maxY=res_s$ID$/2, valAtMin=valAtMin_s$ID$, valAtMax=valAtMin_s$ID$)\n\
+setGradientYWeight(W=weightG_s$ID$, minY=res_s$ID$/2, maxY=res_s$ID$, valAtMin=valAtMax_s$ID$, valAtMax=valAtMax_s$ID$)\n";
 
 const std::string smoke_bounds_high = "\n\
 # prepare domain high\n\
@@ -58,7 +63,16 @@ mantaMsg('Smoke variables low')\n\
 using_colors_s$ID$    = $USING_COLORS$\n\
 using_heat_s$ID$      = $USING_HEAT$\n\
 using_fire_s$ID$      = $USING_FIRE$\n\
-vorticity_s$ID$       = $VORTICITY$\n";
+vorticity_s$ID$       = $VORTICITY$\n\
+\n\
+# fluid guiding params\n\
+scale_s$ID$    = 2\n\
+valAtMin_s$ID$ = 1\n\
+valAtMax_s$ID$ = 5\n\
+beta_s$ID$     = 2\n\
+tau_s$ID$      = 1.0\n\
+sigma_s$ID$    = 0.99/tau_s$ID$\n\
+theta_s$ID$    = 1.0\n";
 
 const std::string smoke_variables_high = "\n\
 mantaMsg('Smoke variables high')\n\
@@ -102,6 +116,8 @@ invel_s$ID$       = s$ID$.create(VecGrid)\n\
 x_invel_s$ID$     = s$ID$.create(RealGrid)\n\
 y_invel_s$ID$     = s$ID$.create(RealGrid)\n\
 z_invel_s$ID$     = s$ID$.create(RealGrid)\n\
+velT_s$ID$        = s$ID$.create(MACGrid)\n\
+weightG_s$ID$     = s$ID$.create(RealGrid)\n\
 density_s$ID$     = s$ID$.create(RealGrid)\n\
 pressure_s$ID$    = s$ID$.create(RealGrid)\n\
 phiObsIn_s$ID$    = s$ID$.create(LevelsetGrid)\n\
@@ -319,8 +335,10 @@ def step_low_$ID$():\n\
     mantaMsg('Walls')\n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$)\n\
     \n\
-    mantaMsg('Pressure')\n\
-    solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, preconditioner=$PRECONDITIONER$, zeroPressureFixing=not doOpen_s$ID$) # closed domains require pressure fixing\n\
+    mantaMsg('Guiding')\n\
+    PD_fluid_guiding(vel=vel_s$ID$, velT=velT_s$ID$, flags=flags_s$ID$, weight=weightG_s$ID$, blurRadius=beta_s$ID$, pressure=pressure_s$ID$, tau=tau_s$ID$, sigma=sigma_s$ID$, theta=theta_s$ID$, preconditioner=$PRECONDITIONER$, zeroPressureFixing=not doOpen_s$ID$)\n\
+    #mantaMsg('Pressure')\n\
+    #solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, preconditioner=$PRECONDITIONER$, zeroPressureFixing=not doOpen_s$ID$) # closed domains require pressure fixing\n\
 \n\
 def process_burn_low_$ID$():\n\
     mantaMsg('Process burn low')\n\
@@ -558,6 +576,8 @@ if 'invel_s$ID$'       in globals() : del invel_s$ID$\n\
 if 'x_invel_s$ID$'     in globals() : del x_invel_s$ID$\n\
 if 'y_invel_s$ID$'     in globals() : del y_invel_s$ID$\n\
 if 'z_invel_s$ID$'     in globals() : del z_invel_s$ID$\n\
+if 'velT_s$ID$'        in globals() : del velT_s$ID$\n\
+if 'weightG_s$ID$'     in globals() : del weightG_s$ID$\n\
 if 'density_s$ID$'     in globals() : del density_s$ID$\n\
 if 'pressure_s$ID$'    in globals() : del pressure_s$ID$\n\
 if 'phiObsIn_s$ID$'    in globals() : del phiObsIn_s$ID$\n\
@@ -602,7 +622,14 @@ if 'using_colors_s$ID$'    in globals() : del using_colors_s$ID$\n\
 if 'using_heat_s$ID$'      in globals() : del using_heat_s$ID$\n\
 if 'using_fire_s$ID$'      in globals() : del using_fire_s$ID$\n\
 if 'last_frame_s$ID$'      in globals() : del last_frame_s$ID$\n\
-if 'maxvel_s$ID$'          in globals() : del maxvel_s$ID$\n";
+if 'maxvel_s$ID$'          in globals() : del maxvel_s$ID$\n\
+if 'scale_s$ID$'           in globals() : del scale_s$ID$\n\
+if 'valAtMin_s$ID$'        in globals() : del valAtMin_s$ID$\n\
+if 'valAtMax_s$ID$'        in globals() : del valAtMax_s$ID$\n\
+if 'beta_s$ID$'            in globals() : del beta_s$ID$\n\
+if 'tau_s$ID$'             in globals() : del tau_s$ID$\n\
+if 'sigma_s$ID$'           in globals() : del sigma_s$ID$\n\
+if 'theta_s$ID$'           in globals() : del theta_s$ID$\n";
 
 const std::string smoke_delete_variables_high = "\n\
 mantaMsg('Deleting variables high')\n\
