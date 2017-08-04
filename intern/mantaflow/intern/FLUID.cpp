@@ -565,6 +565,8 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << (smd->domain->active_fields & SM_ACTIVE_FIRE ? "True" : "False");
 	else if (varName == "USING_HIGHRES")
 		ss << (smd->domain->flags & MOD_SMOKE_HIGHRES ? "True" : "False");
+	else if (varName == "USING_GUIDING")
+		ss << (smd->domain->flags & MOD_SMOKE_GUIDING ? "True" : "False");
 	else if (varName == "SOLVER_DIM")
 		ss << smd->domain->manta_solver_res;
 	else if (varName == "DO_OPEN") {
@@ -677,6 +679,8 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << (smd->domain->particle_type & MOD_SMOKE_PARTICLE_FLOAT ? "True" : "False");
 	else if (varName == "USING_TRACER_PARTS")
 		ss << (smd->domain->particle_type & MOD_SMOKE_PARTICLE_TRACER ? "True" : "False");
+	else if (varName == "GUIDING_STRENGTH")
+		ss << smd->domain->guiding_strength;
 	else if (varName == "GRAVITY_X")
 		ss << smd->domain->gravity[0];
 	else if (varName == "GRAVITY_Y")

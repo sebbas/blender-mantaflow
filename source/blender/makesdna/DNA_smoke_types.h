@@ -51,6 +51,7 @@ enum {
 	MOD_SMOKE_ADAPTIVE_DOMAIN = (1 << 7),
 	MOD_SMOKE_USE_SURFACE_CACHE = (1 << 8),
 	MOD_SMOKE_USE_VOLUME_CACHE = (1 << 9),
+	MOD_SMOKE_GUIDING = (1 << 10),
 };
 
 /* border collisions */
@@ -254,7 +255,9 @@ typedef struct SmokeDomainSettings {
 	float particle_float_amount;
 	float particle_tracer_amount;
 	int particle_type;
-	float pad4;
+
+	/* fluid guiding parameters */
+	float guiding_strength;
 
 	/* Display settings */
 	char slice_method, axis_slice_method;

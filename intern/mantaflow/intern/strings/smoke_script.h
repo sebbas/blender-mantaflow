@@ -42,7 +42,7 @@ if doOpen_s$ID$:\n\
     setOpenBound(flags=flags_s$ID$, bWidth=boundaryWidth_s$ID$, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty)\n\
 \n\
 # TODO (sebbas): just put this code here out of convenience - removing this later anyways\n\
-getSpiralVelocity(flags=flags_s$ID$, vel=velT_s$ID$, strength=6, with3D=True)\n\
+getSpiralVelocity(flags=flags_s$ID$, vel=velT_s$ID$, strength=$GUIDING_STRENGTH$, with3D=True)\n\
 setGradientYWeight(W=weightG_s$ID$, minY=0, maxY=res_s$ID$/2, valAtMin=valAtMin_s$ID$, valAtMax=valAtMin_s$ID$)\n\
 setGradientYWeight(W=weightG_s$ID$, minY=res_s$ID$/2, maxY=res_s$ID$, valAtMin=valAtMax_s$ID$, valAtMax=valAtMax_s$ID$)\n";
 
@@ -63,6 +63,7 @@ mantaMsg('Smoke variables low')\n\
 using_colors_s$ID$    = $USING_COLORS$\n\
 using_heat_s$ID$      = $USING_HEAT$\n\
 using_fire_s$ID$      = $USING_FIRE$\n\
+using_guiding_s$ID$   = $USING_GUIDING$\n\
 vorticity_s$ID$       = $VORTICITY$\n\
 \n\
 # fluid guiding params\n\
@@ -335,10 +336,12 @@ def step_low_$ID$():\n\
     mantaMsg('Walls')\n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$)\n\
     \n\
-    mantaMsg('Guiding')\n\
-    PD_fluid_guiding(vel=vel_s$ID$, velT=velT_s$ID$, flags=flags_s$ID$, weight=weightG_s$ID$, blurRadius=beta_s$ID$, pressure=pressure_s$ID$, tau=tau_s$ID$, sigma=sigma_s$ID$, theta=theta_s$ID$, preconditioner=$PRECONDITIONER$, zeroPressureFixing=not doOpen_s$ID$)\n\
-    #mantaMsg('Pressure')\n\
-    #solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, preconditioner=$PRECONDITIONER$, zeroPressureFixing=not doOpen_s$ID$) # closed domains require pressure fixing\n\
+    if using_guiding_s$ID$:\n\
+        mantaMsg('Guiding')\n\
+        PD_fluid_guiding(vel=vel_s$ID$, velT=velT_s$ID$, flags=flags_s$ID$, weight=weightG_s$ID$, blurRadius=beta_s$ID$, pressure=pressure_s$ID$, tau=tau_s$ID$, sigma=sigma_s$ID$, theta=theta_s$ID$, preconditioner=$PRECONDITIONER$, zeroPressureFixing=not doOpen_s$ID$)\n\
+    else:\n\
+        mantaMsg('Pressure')\n\
+        solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, preconditioner=$PRECONDITIONER$, zeroPressureFixing=not doOpen_s$ID$) # closed domains require pressure fixing\n\
 \n\
 def process_burn_low_$ID$():\n\
     mantaMsg('Process burn low')\n\

@@ -386,6 +386,31 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         sub4.active = domain.use_tracer_particles
         sub4.prop(domain, "particle_tracer_amount", text="Amount")
 
+class PHYSICS_PT_smoke_guiding(PhysicButtonsPanel, Panel):
+    bl_label = "Fluid Guiding"
+    COMPAT_ENGINES = {'BLENDER_RENDER'}
+
+    @classmethod
+    def poll(cls, context):
+        md = context.smoke
+        rd = context.scene.render
+        return md and (md.smoke_type == 'DOMAIN') and (rd.engine in cls.COMPAT_ENGINES)
+
+    def draw(self, context):
+        layout = self.layout
+        domain = context.smoke.domain_settings
+
+        split = layout.split()
+
+        col = split.column()
+        col.enabled = not domain.point_cache.is_baked
+        col.prop(domain, "use_guiding", text="Guiding")
+
+        col = split.column()
+        col.enabled = not domain.point_cache.is_baked
+        col.active = domain.use_guiding
+        col.prop(domain, "guiding_strength", text="Strength")
+
 class PHYSICS_PT_smoke_groups(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Groups"
     bl_options = {'DEFAULT_CLOSED'}
@@ -571,6 +596,7 @@ classes = (
     PHYSICS_PT_smoke_adaptive_domain,
     PHYSICS_PT_smoke_quality,
     PHYSICS_PT_smoke_particles,
+    PHYSICS_PT_smoke_guiding,
     PHYSICS_PT_smoke_groups,
     PHYSICS_PT_smoke_cache,
     PHYSICS_PT_smoke_field_weights,
