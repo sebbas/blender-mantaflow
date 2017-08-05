@@ -73,7 +73,7 @@ extern "C" {
 		extern void PbRegister_sampleSndParts() ;
 		extern void PbRegister_processBurn() ;
 		extern void PbRegister_updateFlame() ;
-		extern void PbRegister_getSpiralVelocity2D() ;
+		extern void PbRegister_getSpiralVelocity() ;
 		extern void PbRegister_setGradientYWeight() ;
 		extern void PbRegister_PD_fluid_guiding() ;
 		extern void PbRegister_KEpsilonComputeProduction() ;
@@ -230,7 +230,7 @@ namespace Pb {
 		PbRegister_sampleSndParts() ;
 		PbRegister_processBurn() ;
 		PbRegister_updateFlame() ;
-		PbRegister_getSpiralVelocity2D() ;
+		PbRegister_getSpiralVelocity() ;
 		PbRegister_setGradientYWeight() ;
 		PbRegister_PD_fluid_guiding() ;
 		PbRegister_KEpsilonComputeProduction() ;
