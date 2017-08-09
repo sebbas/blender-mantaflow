@@ -1571,18 +1571,87 @@ static void emit_from_particles(
 	}
 }
 
+//static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromMesh *treeData, const float ray_start[3]) {
+//
+//	/* Calculate map of (minimum) distances to flow/obstacle surface. Distances outside mesh are positive, inside negative */
+//	float min_dist = 9999;
+//	float inv_ray[3] = {0.0f};
+//	/* Raycasts in 14 directions (6 axis + 8 quadrant diagonals) are at least necessary */
+//	float ray_dirs[14][3] = { {  1.0f, 0.0f,  0.0f }, { 0.0f,  1.0f,  0.0f }, {  0.0f, 0.0f,  1.0f },
+//							  { -1.0f, 0.0f,  0.0f }, { 0.0f, -1.0f,  0.0f }, {  0.0f, 0.0f, -1.0f },
+//							  {  1.0f, 1.0f,  1.0f }, { 1.0f, -1.0f,  1.0f }, { -1.0f, 1.0f,  1.0f }, { -1.0f, -1.0f,  1.0f },
+//							  {  1.0f, 1.0f, -1.0f }, { 1.0f, -1.0f, -1.0f }, { -1.0f, 1.0f, -1.0f }, { -1.0f, -1.0f, -1.0f } };
+//	size_t ray_cnt = sizeof ray_dirs / sizeof ray_dirs[0];
+//
+//	for (int i = 0; i < ray_cnt; i++) {
+//		BVHTreeRayHit hit_tree = {0};
+//		hit_tree.index = -1;
+//		hit_tree.dist = 9999;
+//
+//		BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dirs[i], 0.0f, &hit_tree, treeData->raycast_callback, treeData);
+//
+//		/* Save hit dist first time */
+//		min_dist = normalize_v3(&hit_tree.dist);
+//
+//		if (hit_tree.index != -1) {
+//			/* Is dot > 0? Are we inside the mesh? */
+//			if (dot_v3v3(ray_dirs[i], hit_tree.no) > 0) {
+//
+//				/* Also cast a ray in opposite direction to make sure
+//				 * point is at least surrounded by two faces */
+//				hit_tree.index = -1;
+//				hit_tree.dist = 9999;
+//
+//				negate_v3_v3(inv_ray, ray_dirs[i]);
+//				BLI_bvhtree_ray_cast(treeData->tree, ray_start, inv_ray, 0.0f, &hit_tree, treeData->raycast_callback, treeData);
+//
+//				/* Save hit dist second time */
+//				min_dist = MIN2(min_dist, normalize_v3(&hit_tree.dist));
+//
+//				if (hit_tree.index != -1) {
+//					if (dot_v3v3(inv_ray, hit_tree.no) > 0) {
+//						/* Current index is inside mesh, place negative mesh distance */
+//						/* If map previously contained pos value (outside), use only neg min_dist to ensure neg inside mesh. Otherwise evaluate min2 as usual */
+//						mesh_distances[index] = (mesh_distances[index] > 0) ? -1.0f * min_dist : -1.0f * MIN2(fabsf(mesh_distances[index]), min_dist);
+//					}
+//				}
+//			}
+//		}
+//		/* No negative, previously written distance at index,
+//		 * so just write positive value corresponding to outside distance into map */
+//		if (mesh_distances[index] > 0) {
+//			mesh_distances[index] = MIN2(mesh_distances[index], min_dist);
+//		}
+//
+//		// TODO (sebbas): liquid inflow
+//		/* Ensure that planes also get setup */
+////		BVHTreeNearest nearest = {0};
+////		const float surface_distance = 0.5f;
+////		nearest.index = -1;
+////		nearest.dist_sq = surface_distance * surface_distance; /* find_nearest uses squared distance */
+////
+////		if (BLI_bvhtree_find_nearest(treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1) {
+////			mesh_distances[index] = - 5; // very small value at levelset border indicating inside region
+////		}
+//	}
+//}
+
+/* Calculate map of (minimum) distances to flow/obstacle surface. Distances outside mesh are positive, inside negative */
 static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromMesh *treeData, const float ray_start[3]) {
 
-	/* Calculate map of (minimum) distances to flow/obstacle surface. Distances outside mesh are positive, inside negative */
 	float min_dist = 9999;
-	float inv_ray[3] = {0.0f};
-	/* Raycasts in 14 directions (6 axis + 8 quadrant diagonals) are at least necessary */
+
+	/* Raycasts in 14 directions (6 axis + 8 quadrant diagonals) */
 	float ray_dirs[14][3] = { {  1.0f, 0.0f,  0.0f }, { 0.0f,  1.0f,  0.0f }, {  0.0f, 0.0f,  1.0f },
 							  { -1.0f, 0.0f,  0.0f }, { 0.0f, -1.0f,  0.0f }, {  0.0f, 0.0f, -1.0f },
 							  {  1.0f, 1.0f,  1.0f }, { 1.0f, -1.0f,  1.0f }, { -1.0f, 1.0f,  1.0f }, { -1.0f, -1.0f,  1.0f },
 							  {  1.0f, 1.0f, -1.0f }, { 1.0f, -1.0f, -1.0f }, { -1.0f, 1.0f, -1.0f }, { -1.0f, -1.0f, -1.0f } };
 	size_t ray_cnt = sizeof ray_dirs / sizeof ray_dirs[0];
 
+	/* If stays true, a point is considered to be inside the mesh */
+	bool inside = true;
+
+	/* Check all ray directions */
 	for (int i = 0; i < ray_cnt; i++) {
 		BVHTreeRayHit hit_tree = {0};
 		hit_tree.index = -1;
@@ -1590,50 +1659,28 @@ static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromM
 
 		BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dirs[i], 0.0f, &hit_tree, treeData->raycast_callback, treeData);
 
-		/* Save hit dist first time */
-		min_dist = normalize_v3(&hit_tree.dist);
+		/* Ray did not hit mesh. Current point definitely not inside mesh. */
+		if (hit_tree.index == -1) { inside = false; continue; }
 
-		if (hit_tree.index != -1) {
-			/* Is dot > 0? Are we inside the mesh? */
-			if (dot_v3v3(ray_dirs[i], hit_tree.no) > 0) {
+		/* Save new minimum hit dist */
+		min_dist = MIN2(min_dist, hit_tree.dist);
 
-				/* Also cast a ray in opposite direction to make sure
-				 * point is at least surrounded by two faces */
-				hit_tree.index = -1;
-				hit_tree.dist = 9999;
-
-				negate_v3_v3(inv_ray, ray_dirs[i]);
-				BLI_bvhtree_ray_cast(treeData->tree, ray_start, inv_ray, 0.0f, &hit_tree, treeData->raycast_callback, treeData);
-
-				/* Save hit dist second time */
-				min_dist = MIN2(min_dist, normalize_v3(&hit_tree.dist));
-
-				if (hit_tree.index != -1) {
-					if (dot_v3v3(inv_ray, hit_tree.no) > 0) {
-						/* Current index is inside mesh, place negative mesh distance */
-						/* If map previously contained pos value (outside), use only neg min_dist to ensure neg inside mesh. Otherwise evaluate min2 as usual */
-						mesh_distances[index] = (mesh_distances[index] > 0) ? -1.0f * min_dist : -1.0f * MIN2(fabsf(mesh_distances[index]), min_dist);
-					}
-				}
-			}
-		}
-		/* No negative, previously written distance at index,
-		 * so just write positive value corresponding to outside distance into map */
-		if (mesh_distances[index] > 0) {
-			mesh_distances[index] = MIN2(mesh_distances[index], min_dist);
-		}
-
-		// TODO (sebbas): liquid inflow
-		/* Ensure that planes also get setup */
-//		BVHTreeNearest nearest = {0};
-//		const float surface_distance = 0.5f;
-//		nearest.index = -1;
-//		nearest.dist_sq = surface_distance * surface_distance; /* find_nearest uses squared distance */
-//
-//		if (BLI_bvhtree_find_nearest(treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1) {
-//			mesh_distances[index] = - 5; // very small value at levelset border indicating inside region
-//		}
+		/* Ray and normal are in opposing directions. Current point definitely not inside mesh. */
+		if (dot_v3v3(ray_dirs[i], hit_tree.no) < 0) { inside = false; }
 	}
+
+	/* Update mesh distance in map */
+	mesh_distances[index] = MIN2(fabsf(mesh_distances[index]), min_dist);
+
+	/* If point is on surface it is also considered to be "inside" the mesh (negative levelset) */
+	BVHTreeNearest nearest = {0};
+	const float surface_distance = 0.5f;
+	nearest.index = -1;
+	nearest.dist_sq = surface_distance * surface_distance;
+	inside |= (BLI_bvhtree_find_nearest(treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1);
+
+	/* Levelset is negative inside mesh */
+	if (inside) mesh_distances[index] *= -1.0f;
 }
 
 static void sample_derivedmesh(
@@ -2339,6 +2386,15 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 	unsigned int flowIndex;
 	int new_shift[3] = {0};
 	int active_fields = sds->active_fields;
+
+	float *phiIn = liquid_get_phiin(sds->fluid);
+	unsigned int z;
+
+	/* Resetting levelset grid representation of domain */
+	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++) {
+		if (phiIn)
+			phiIn[z] = 9999;
+	}
 
 	/* calculate domain shift for current frame if using adaptive domain */
 	if (sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN) {
