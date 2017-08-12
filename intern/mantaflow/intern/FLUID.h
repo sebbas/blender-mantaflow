@@ -131,10 +131,10 @@ public:
 	inline float* getTextureV2() { return mTextureV2; }
 	inline float* getTextureW2() { return mTextureW2; }
 	
-	inline float* getPhiIn()  { return mPhiIn; }
-	inline float* getPhiObs() { return mPhiObs; }
-	inline float* getPhiOut() { return mPhiOut; }
-	inline float* getPhi()    { return mPhi; }
+	inline float* getPhiIn()      { return mPhiIn; }
+	inline float* getPhiObsIn()   { return mPhiObsIn; }
+	inline float* getPhiOutIn()   { return mPhiOutIn; }
+	inline float* getPhi()        { return mPhi; }
 
 	static std::atomic<bool> mantaInitialized;
 	static std::atomic<int> solverID;
@@ -266,8 +266,8 @@ private:
 
 	// Liquids
 	float* mPhiIn;
-	float* mPhiObs;
-	float* mPhiOut;
+	float* mPhiObsIn;
+	float* mPhiOutIn;
 	float* mPhi;
 
 	// Mesh fields for liquid surface

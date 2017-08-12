@@ -93,8 +93,8 @@ void smoke_ensure_colors(struct FLUID *smoke, struct SmokeModifierData *smd);
 
 // Liquid grids
 float *liquid_get_phiin(struct FLUID *liquid);
-float *liquid_get_phiobs(struct FLUID *liquid);
-float *liquid_get_phiout(struct FLUID *liquid);
+float *liquid_get_phiobsin(struct FLUID *liquid);
+float *liquid_get_phioutin(struct FLUID *liquid);
 void liquid_ensure_init(struct FLUID *liquid, struct SmokeModifierData *smd);
 void liquid_manta_export(struct FLUID* smoke, struct SmokeModifierData *smd);
 

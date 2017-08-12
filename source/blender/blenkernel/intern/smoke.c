@@ -2604,7 +2604,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				float *velocity_y_in = smoke_get_in_velocity_y(sds->fluid);
 				float *velocity_z_in = smoke_get_in_velocity_z(sds->fluid);
 				float *phiin = liquid_get_phiin(sds->fluid);
-				float *phiout = liquid_get_phiout(sds->fluid);
+				float *phioutin = liquid_get_phioutin(sds->fluid);
 				float *manta_inflow = fluid_get_inflow(sds->fluid); // Copy of emission map for inflow modeling in Mantaflow standalone
 
 				int bigres[3];
@@ -2637,7 +2637,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 							if (dx < 0 || dy < 0 || dz < 0 || dx >= sds->res[0] || dy >= sds->res[1] || dz >= sds->res[2]) continue;
 
 							if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) { // outflow
-								apply_outflow_fields(d_index, distance_map[e_index], density, heat, fuel, react, color_r, color_g, color_b, phiout);
+								apply_outflow_fields(d_index, distance_map[e_index], density, heat, fuel, react, color_r, color_g, color_b, phioutin);
 							}
 							else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time > 2) {
 								apply_inflow_fields(sfs, 0.0f, 0.5f, d_index, density, heat, fuel, react, color_r, color_g, color_b, phiin, manta_inflow);
@@ -2772,7 +2772,7 @@ typedef struct UpdateEffectorsData {
 	float *velocity_y;
 	float *velocity_z;
 	int *flags;
-	float *phiObs;
+	float *phiObsIn;
 } UpdateEffectorsData;
 
 static void update_effectors_task_cb(void *userdata, const int x)
@@ -2790,7 +2790,7 @@ static void update_effectors_task_cb(void *userdata, const int x)
 
 			if ((data->fuel && MAX2(data->density[index], data->fuel[index]) < FLT_EPSILON) ||
 				(data->density && data->density[index] < FLT_EPSILON) ||
-				(data->phiObs  && data->phiObs[index] < 0.0f) ||
+				(data->phiObsIn  && data->phiObsIn[index] < 0.0f) ||
 				// TODO (sebbas): isnt checking phiobs enough? maybe remove flags check
 				 data->flags[index] & 2) // mantaflow convention: 2 == FlagObstacle
 			{
@@ -2851,7 +2851,7 @@ static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 		data.velocity_y = smoke_get_velocity_y(sds->fluid);
 		data.velocity_z = smoke_get_velocity_z(sds->fluid);
 		data.flags = smoke_get_obstacle(sds->fluid);
-		data.phiObs = liquid_get_phiobs(sds->fluid);
+		data.phiObsIn = liquid_get_phiobsin(sds->fluid);
 
 		BLI_task_parallel_range(0, sds->res[0], &data, update_effectors_task_cb, true);
 	}

@@ -515,14 +515,14 @@ extern "C" float *liquid_get_phiin(FLUID *liquid)
 	return liquid->getPhiIn();
 }
 
-extern "C" float *liquid_get_phiobs(FLUID *liquid)
+extern "C" float *liquid_get_phiobsin(FLUID *liquid)
 {
-	return liquid->getPhiObs();
+	return liquid->getPhiObsIn();
 }
 
-extern "C" float *liquid_get_phiout(FLUID *liquid)
+extern "C" float *liquid_get_phioutin(FLUID *liquid)
 {
-	return liquid->getPhiOut();
+	return liquid->getPhiOutIn();
 }
 
 extern "C" void liquid_save_mesh(FLUID *liquid, char *filename)

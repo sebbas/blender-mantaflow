@@ -118,8 +118,8 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 
 	// Liquid low res grids
 	mPhiIn          = NULL;
-	mPhiObs         = NULL;
-	mPhiOut         = NULL;
+	mPhiObsIn       = NULL;
+	mPhiOutIn       = NULL;
 	mPhi            = NULL;
 
 	mNumVertices  = 0;
@@ -478,10 +478,10 @@ FLUID::~FLUID()
 	mTextureW2      = NULL;
 
 	// Liquid
-	mPhiIn  = NULL;
-	mPhiObs = NULL;
-	mPhiOut = NULL;
-	mPhi    = NULL;
+	mPhiIn      = NULL;
+	mPhiObsIn   = NULL;
+	mPhiOutIn   = NULL;
+	mPhi        = NULL;
 
 	mFlipParticleData      = NULL;
 	mFlipParticleVelocity  = NULL;
@@ -1110,8 +1110,8 @@ void FLUID::updatePointers()
 	mForceY    = (float*) getDataPointer("y_force" + solver_ext, solver);
 	mForceZ    = (float*) getDataPointer("z_force" + solver_ext, solver);
 	
-	mPhiObs = (float*) getDataPointer("phiObsIn" + solver_ext, solver);
-	mPhiOut = (float*) getDataPointer("phiOutIn" + solver_ext, solver);
+	mPhiObsIn = (float*) getDataPointer("phiObsIn" + solver_ext, solver);
+	mPhiOutIn = (float*) getDataPointer("phiOutIn" + solver_ext, solver);
 
 	// Liquid
 	if (mUsingLiquid) {
