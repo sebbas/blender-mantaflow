@@ -154,6 +154,7 @@ def liquid_post_step_low_$ID$():\n\
     # TODO (sebbas): liquid inflow\n\
     #invel_s$ID$.clear()\n\
     \n\
+    phiIn_s$ID$.setConst(9999)\n\
     phiObs_s$ID$.setConst(9999)\n\
     phiOut_s$ID$.setConst(9999)\n\
     phiOutIn_s$ID$.setConst(9999)\n\

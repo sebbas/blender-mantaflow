@@ -254,6 +254,21 @@ extern "C" float *smoke_get_ob_velocity_z(FLUID *fluid)
 	return fluid->getObVelocityZ();
 }
 
+extern "C" float *smoke_get_guide_velocity_x(FLUID *smoke)
+{
+	return smoke->getGuideVelocityX();
+}
+
+extern "C" float *smoke_get_guide_velocity_y(FLUID *smoke)
+{
+	return smoke->getGuideVelocityY();
+}
+
+extern "C" float *smoke_get_guide_velocity_z(FLUID *smoke)
+{
+	return smoke->getGuideVelocityZ();
+}
+
 extern "C" float *smoke_get_in_velocity_x(FLUID *fluid)
 {
 	return fluid->getInVelocityX();
@@ -444,6 +459,11 @@ extern "C" int *fluid_get_num_obstacle(FLUID *fluid)
 	return fluid->getNumObstacle();
 }
 
+extern "C" int *smoke_get_num_guide(FLUID *fluid)
+{
+	return fluid->getNumGuide();
+}
+
 extern "C" int smoke_has_heat(FLUID *smoke)
 {
 	return (smoke->getHeat()) ? 1 : 0;
@@ -500,6 +520,11 @@ extern "C" void smoke_ensure_colors(FLUID *smoke, struct SmokeModifierData *smd)
 		smoke->initColorsHigh(smd);
 		smoke->updatePointersHigh();
 	}
+}
+
+extern "C" float *smoke_get_phiguidein(FLUID *smoke)
+{
+	return smoke->getPhiGuideIn();
 }
 
 extern "C" void liquid_ensure_init(FLUID *smoke, struct SmokeModifierData *smd)

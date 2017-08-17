@@ -324,9 +324,9 @@ static int smokeModifier_init(SmokeModifierData *smd, Object *ob, Scene *scene, 
 
 		return 1;
 	}
-	else if ((smd->type & MOD_SMOKE_TYPE_COLL))
+	else if ((smd->type & MOD_SMOKE_TYPE_EFFEC))
 	{
-		if (!smd->coll)
+		if (!smd->effec)
 		{
 			smokeModifier_createType(smd);
 		}
@@ -384,9 +384,9 @@ static void smokeModifier_freeFlow(SmokeModifierData *smd)
 
 static void smokeModifier_freeCollision(SmokeModifierData *smd)
 {
-	if (smd->coll)
+	if (smd->effec)
 	{
-		SmokeCollSettings *scs = smd->coll;
+		SmokeCollSettings *scs = smd->effec;
 
 		if (scs->numverts)
 		{
@@ -397,12 +397,12 @@ static void smokeModifier_freeCollision(SmokeModifierData *smd)
 			}
 		}
 
-		if (smd->coll->dm)
-			smd->coll->dm->release(smd->coll->dm);
-		smd->coll->dm = NULL;
+		if (smd->effec->dm)
+			smd->effec->dm->release(smd->effec->dm);
+		smd->effec->dm = NULL;
 
-		MEM_freeN(smd->coll);
-		smd->coll = NULL;
+		MEM_freeN(smd->effec);
+		smd->effec = NULL;
 	}
 }
 
@@ -438,9 +438,9 @@ static void smokeModifier_reset_ex(struct SmokeModifierData *smd, bool need_lock
 			smd->flow->verts_old = NULL;
 			smd->flow->numverts = 0;
 		}
-		else if (smd->coll)
+		else if (smd->effec)
 		{
-			SmokeCollSettings *scs = smd->coll;
+			SmokeCollSettings *scs = smd->effec;
 
 			if (scs->numverts && scs->verts_old)
 			{
@@ -608,21 +608,21 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->flow->psys = NULL;
 
 		}
-		else if (smd->type & MOD_SMOKE_TYPE_COLL)
+		else if (smd->type & MOD_SMOKE_TYPE_EFFEC)
 		{
-			if (smd->coll)
+			if (smd->effec)
 				smokeModifier_freeCollision(smd);
 
-			smd->coll = MEM_callocN(sizeof(SmokeCollSettings), "SmokeColl");
+			smd->effec = MEM_callocN(sizeof(SmokeCollSettings), "SmokeColl");
 
-			smd->coll->smd = smd;
-			smd->coll->verts_old = NULL;
-			smd->coll->numverts = 0;
-			smd->coll->type = 0; // static obstacle
-			smd->coll->dm = NULL;
+			smd->effec->smd = smd;
+			smd->effec->verts_old = NULL;
+			smd->effec->numverts = 0;
+			smd->effec->type = 0; // static obstacle
+			smd->effec->dm = NULL;
 
 #ifdef USE_SMOKE_COLLISION_DM
-			smd->coll->dm = NULL;
+			smd->effec->dm = NULL;
 #endif
 		}
 	}
@@ -738,7 +738,7 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->flow->texture_type = smd->flow->texture_type;
 		tsmd->flow->flags = smd->flow->flags;
 	}
-	else if (tsmd->coll) {
+	else if (tsmd->effec) {
 		/* leave it as initialized, collision settings is mostly caches */
 	}
 }
@@ -841,7 +841,9 @@ static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
 			}
 
 			/* Get distance to mesh surface from both within and outside grid (mantaflow phi grid) */
-			update_mesh_distances(index, data->distances_map, data->tree, ray_start);
+			if (data->distances_map) {
+				update_mesh_distances(index, data->distances_map, data->tree, ray_start);
+			}
 		}
 	}
 }
@@ -946,6 +948,9 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	float *velx = smoke_get_ob_velocity_x(sds->fluid);
 	float *vely = smoke_get_ob_velocity_y(sds->fluid);
 	float *velz = smoke_get_ob_velocity_z(sds->fluid);
+	float *velxGuide = smoke_get_guide_velocity_x(sds->fluid);
+	float *velyGuide = smoke_get_guide_velocity_y(sds->fluid);
+	float *velzGuide = smoke_get_guide_velocity_z(sds->fluid);
 	float *velxOrig = smoke_get_velocity_x(sds->fluid);
 	float *velyOrig = smoke_get_velocity_y(sds->fluid);
 	float *velzOrig = smoke_get_velocity_z(sds->fluid);
@@ -955,23 +960,32 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	float *r = smoke_get_color_r(sds->fluid);
 	float *g = smoke_get_color_g(sds->fluid);
 	float *b = smoke_get_color_b(sds->fluid);
-	float *phiObs = liquid_get_phiobs(sds->fluid);
+	float *phiObsIn = liquid_get_phiobsin(sds->fluid);
+	float *phiGuideIn = smoke_get_phiguidein(sds->fluid);
 	int *obstacles = smoke_get_obstacle(sds->fluid);
 	int *num_obstacles = fluid_get_num_obstacle(sds->fluid);
+	int *num_guides = smoke_get_num_guide(sds->fluid);
 	unsigned int z;
 
-	/* Resetting all grids related to moving obstacles */
+	/* Resetting all grids related to moving objects */
 	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
 	{
-		if (phiObs)
-			phiObs[z] = 9999;
+		if (phiObsIn)
+			phiObsIn[z] = 9999;
+		if (phiGuideIn)
+			phiGuideIn[z] = 9999;
 		if (num_obstacles)
 			num_obstacles[z] = 0;
 
-		if (velx && velz && velz) {
+		if (velx && vely && velz) {
 			velx[z] = 0.0f;
 			vely[z] = 0.0f;
 			velz[z] = 0.0f;
+		}
+		if (velxGuide && velyGuide && velzGuide) {
+			velxGuide[z] = 0.0f;
+			velyGuide[z] = 0.0f;
+			velzGuide[z] = 0.0f;
 		}
 	}
 
@@ -985,10 +999,17 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 
 		// DG TODO: check if modifier is active?
 
-		if ((smd2->type & MOD_SMOKE_TYPE_COLL) && smd2->coll)
+		if ((smd2->type & MOD_SMOKE_TYPE_EFFEC) && smd2->effec)
 		{
-			SmokeCollSettings *scs = smd2->coll;
-			obstacles_from_derivedmesh(collob, sds, scs, phiObs, velx, vely, velz, num_obstacles, dt);
+			SmokeCollSettings *scs = smd2->effec;
+			if (scs && (scs->type == SM_EFFECTOR_COLLISION))
+			{
+				obstacles_from_derivedmesh(collob, sds, scs, phiObsIn, velx, vely, velz, num_obstacles, dt);
+			}
+			if (scs && (scs->type == SM_EFFECTOR_GUIDE))
+			{
+				obstacles_from_derivedmesh(collob, sds, scs, phiGuideIn, velxGuide, velyGuide, velzGuide, num_guides, dt);
+			}
 		}
 	}
 
@@ -1021,6 +1042,12 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 			velx[z] /= num_obstacles[z];
 			vely[z] /= num_obstacles[z];
 			velz[z] /= num_obstacles[z];
+		}
+		/* average velocities from multiple guides in one cell */
+		if (num_guides[z]) {
+			velxGuide[z] /= num_guides[z];
+			velyGuide[z] /= num_guides[z];
+			velzGuide[z] /= num_guides[z];
 		}
 	}
 }
@@ -1674,7 +1701,7 @@ static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromM
 
 	/* If point is on surface it is also considered to be "inside" the mesh (negative levelset) */
 	BVHTreeNearest nearest = {0};
-	const float surface_distance = 0.5f;
+	const float surface_distance = 1.5f;
 	nearest.index = -1;
 	nearest.dist_sq = surface_distance * surface_distance;
 	inside |= (BLI_bvhtree_find_nearest(treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1);
@@ -3139,18 +3166,18 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			smokeModifier_reset_ex(smd, false);
 		}
 	}
-	else if (smd->type & MOD_SMOKE_TYPE_COLL)
+	else if (smd->type & MOD_SMOKE_TYPE_EFFEC)
 	{
 		if (scene->r.cfra >= smd->time)
 			smokeModifier_init(smd, ob, scene, dm);
 
-		if (smd->coll)
+		if (smd->effec)
 		{
-			if (smd->coll->dm)
-				smd->coll->dm->release(smd->coll->dm);
+			if (smd->effec->dm)
+				smd->effec->dm->release(smd->effec->dm);
 
-			smd->coll->dm = CDDM_copy(dm);
-			DM_ensure_looptri(smd->coll->dm);
+			smd->effec->dm = CDDM_copy(dm);
+			DM_ensure_looptri(smd->effec->dm);
 		}
 
 		smd->time = scene->r.cfra;

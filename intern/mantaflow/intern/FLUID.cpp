@@ -87,6 +87,9 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mObVelocityX    = NULL;
 	mObVelocityY    = NULL;
 	mObVelocityZ    = NULL;
+	mGuideVelocityX = NULL;
+	mGuideVelocityY = NULL;
+	mGuideVelocityZ = NULL;
 	mInVelocityX    = NULL;
 	mInVelocityY    = NULL;
 	mInVelocityZ    = NULL;
@@ -119,6 +122,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	// Liquid low res grids
 	mPhiIn          = NULL;
 	mPhiObsIn       = NULL;
+	mPhiGuideIn     = NULL;
 	mPhiOutIn       = NULL;
 	mPhi            = NULL;
 
@@ -233,6 +237,7 @@ void FLUID::initSmoke(SmokeModifierData *smd)
 	std::string tmpString = smoke_alloc_low
 		+ smoke_variables_low
 		+ smoke_bounds_low
+		+ smoke_guiding
 		+ smoke_adaptive_step
 		+ smoke_export_low
 		+ smoke_pre_step_low
@@ -449,6 +454,9 @@ FLUID::~FLUID()
 	mObVelocityX    = NULL;
 	mObVelocityY    = NULL;
 	mObVelocityZ    = NULL;
+	mGuideVelocityX = NULL;
+	mGuideVelocityY = NULL;
+	mGuideVelocityZ = NULL;
 	mInVelocityX    = NULL;
 	mInVelocityY    = NULL;
 	mInVelocityZ    = NULL;
@@ -480,6 +488,7 @@ FLUID::~FLUID()
 	// Liquid
 	mPhiIn      = NULL;
 	mPhiObsIn   = NULL;
+	mPhiGuideIn = NULL;
 	mPhiOutIn   = NULL;
 	mPhi        = NULL;
 
@@ -1133,6 +1142,13 @@ void FLUID::updatePointers()
 		mInVelocityX = (float*) getDataPointer("x_invel" + solver_ext, solver);
 		mInVelocityY = (float*) getDataPointer("y_invel" + solver_ext, solver);
 		mInVelocityZ = (float*) getDataPointer("z_invel" + solver_ext, solver);
+
+		mPhiGuideIn = (float*) getDataPointer("phiGuideIn" + solver_ext, solver);
+		mNumGuide = (int*) getDataPointer("numGuides" + solver_ext, solver);
+
+		mGuideVelocityX = (float*) getDataPointer("x_guidevel" + solver_ext, solver);
+		mGuideVelocityY = (float*) getDataPointer("y_guidevel" + solver_ext, solver);
+		mGuideVelocityZ = (float*) getDataPointer("z_guidevel" + solver_ext, solver);
 
 		if (mUsingHeat) {
 			mHeat       = (float*) getDataPointer("heat" + solver_ext,    solver);

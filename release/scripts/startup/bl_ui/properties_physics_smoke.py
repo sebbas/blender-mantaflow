@@ -178,13 +178,13 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
                 if flow.smoke_flow_type in {'SMOKE', 'BOTH'}:
                     col.prop(flow, "smoke_color")
 
-        elif md.smoke_type == 'COLLISION':
-            coll = md.coll_settings
+        elif md.smoke_type == 'EFFECTOR':
+            effec = md.effec_settings
 
             split = layout.split()
 
             col = split.column()
-            col.prop(coll, "collision_type")
+            col.prop(effec, "effec_type")
 
 class PHYSICS_PT_smoke_flow_advanced(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Source"

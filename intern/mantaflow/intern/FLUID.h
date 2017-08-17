@@ -101,6 +101,9 @@ public:
 	inline float* getObVelocityX() { return mObVelocityX; }
 	inline float* getObVelocityY() { return mObVelocityY; }
 	inline float* getObVelocityZ() { return mObVelocityZ; }
+	inline float* getGuideVelocityX() { return mGuideVelocityX; }
+	inline float* getGuideVelocityY() { return mGuideVelocityY; }
+	inline float* getGuideVelocityZ() { return mGuideVelocityZ; }
 	inline float* getInVelocityX() { return mInVelocityX; }
 	inline float* getInVelocityY() { return mInVelocityY; }
 	inline float* getInVelocityZ() { return mInVelocityZ; }
@@ -109,8 +112,9 @@ public:
 	inline float* getForceZ() { return mForceZ; }
 	inline int* getObstacle() { return mObstacle; }
 	inline int* getNumObstacle() { return mNumObstacle; }
+	inline int* getNumGuide()    { return mNumGuide; }
 	inline float* getFlame() { return mFlame; }
-	inline float* getFuel() { return mFuel; }
+	inline float* getFuel()  { return mFuel; }
 	inline float* getReact() { return mReact; }
 	inline float* getColorR() { return mColorR; }
 	inline float* getColorG() { return mColorG; }
@@ -133,6 +137,7 @@ public:
 	
 	inline float* getPhiIn()      { return mPhiIn; }
 	inline float* getPhiObsIn()   { return mPhiObsIn; }
+	inline float* getPhiGuideIn() { return mPhiGuideIn; }
 	inline float* getPhiOutIn()   { return mPhiOutIn; }
 	inline float* getPhi()        { return mPhi; }
 
@@ -235,14 +240,18 @@ private:
 	float* mObVelocityX;
 	float* mObVelocityY;
 	float* mObVelocityZ;
+	float* mGuideVelocityX;
+	float* mGuideVelocityY;
+	float* mGuideVelocityZ;
 	float* mInVelocityX;
 	float* mInVelocityY;
 	float* mInVelocityZ;
 	float* mForceX;
 	float* mForceY;
 	float* mForceZ;
-	int* mObstacle; /* only used (useful) for static obstacles like domain boundaries */
+	int* mObstacle;
 	int* mNumObstacle;
+	int* mNumGuide;
 	float *mFlame;
 	float *mFuel;
 	float *mReact;
@@ -267,6 +276,7 @@ private:
 	// Liquids
 	float* mPhiIn;
 	float* mPhiObsIn;
+	float* mPhiGuideIn;
 	float* mPhiOutIn;
 	float* mPhi;
 

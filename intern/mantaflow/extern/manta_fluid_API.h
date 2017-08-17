@@ -90,6 +90,11 @@ int smoke_turbulence_has_colors(struct FLUID *smoke);
 void smoke_ensure_heat(struct FLUID *smoke, struct SmokeModifierData *smd);
 void smoke_ensure_fire(struct FLUID *smoke, struct SmokeModifierData *smd);
 void smoke_ensure_colors(struct FLUID *smoke, struct SmokeModifierData *smd);
+float *smoke_get_guide_velocity_x(struct FLUID *smoke);
+float *smoke_get_guide_velocity_y(struct FLUID *smoke);
+float *smoke_get_guide_velocity_z(struct FLUID *smoke);
+float *smoke_get_phiguidein(struct FLUID *smoke);
+int *smoke_get_num_guide(struct FLUID *fluid);
 
 // Liquid grids
 float *liquid_get_phiin(struct FLUID *liquid);

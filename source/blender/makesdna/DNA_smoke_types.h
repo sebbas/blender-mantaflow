@@ -127,10 +127,9 @@ enum {
 #define SM_VIEWPORT_PREVIEW	 1
 #define SM_VIEWPORT_FINAL	 2
 
-/* collision types */
-#define SM_COLL_STATIC		0
-#define SM_COLL_RIGID		1
-#define SM_COLL_ANIMATED	2
+/* effector types */
+#define SM_EFFECTOR_COLLISION 0
+#define SM_EFFECTOR_GUIDE	  1
 
 /* high resolution sampling types */
 #define SM_HRES_NEAREST		0
@@ -369,7 +368,7 @@ typedef struct SmokeCollSettings {
 	struct DerivedMesh *dm;
 	float *verts_old;
 	int numverts;
-	short type; // static = 0, rigid = 1, dynamic = 2
+	short type;
 	short pad;
 } SmokeCollSettings;
 

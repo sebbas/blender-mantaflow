@@ -39,12 +39,7 @@ mantaMsg('Smoke domain low')\n\
 flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$)\n\
 flags_s$ID$.fillGrid()\n\
 if doOpen_s$ID$:\n\
-    setOpenBound(flags=flags_s$ID$, bWidth=boundaryWidth_s$ID$, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty)\n\
-\n\
-# TODO (sebbas): just put this code here out of convenience - removing this later anyways\n\
-getSpiralVelocity(flags=flags_s$ID$, vel=velT_s$ID$, strength=$GUIDING_STRENGTH$, with3D=True)\n\
-setGradientYWeight(W=weightG_s$ID$, minY=0, maxY=res_s$ID$/2, valAtMin=valAtMin_s$ID$, valAtMax=valAtMin_s$ID$)\n\
-setGradientYWeight(W=weightG_s$ID$, minY=res_s$ID$/2, maxY=res_s$ID$, valAtMin=valAtMax_s$ID$, valAtMax=valAtMax_s$ID$)\n";
+    setOpenBound(flags=flags_s$ID$, bWidth=boundaryWidth_s$ID$, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty)\n";
 
 const std::string smoke_bounds_high = "\n\
 # prepare domain high\n\
@@ -67,7 +62,7 @@ using_guiding_s$ID$   = $USING_GUIDING$\n\
 vorticity_s$ID$       = $VORTICITY$\n\
 \n\
 # fluid guiding params\n\
-scale_s$ID$    = 2\n\
+factorGuiding_s$ID$ = $GUIDING_STRENGTH$\n\
 valAtMin_s$ID$ = 1\n\
 valAtMax_s$ID$ = 5\n\
 beta_s$ID$     = 2\n\
@@ -96,6 +91,17 @@ const std::string smoke_with_fire = "\n\
 using_fire_s$ID$ = True\n";
 
 //////////////////////////////////////////////////////////////////////
+// GUIDING
+//////////////////////////////////////////////////////////////////////
+
+const std::string smoke_guiding = "\n\
+    weightGuide_s$ID$.multConst(0)\n\
+    weightGuide_s$ID$.addConst(2)\n\
+#getSpiralVelocity(flags=flags_s$ID$, vel=guidevel_s$ID$, strength=$GUIDING_STRENGTH$, with3D=True)\n\
+#setGradientYWeight(W=weightGuide_s$ID$, minY=0, maxY=res_s$ID$/2, valAtMin=valAtMin_s$ID$, valAtMax=valAtMin_s$ID$)\n\
+#setGradientYWeight(W=weightGuide_s$ID$, minY=res_s$ID$/2, maxY=res_s$ID$, valAtMin=valAtMax_s$ID$, valAtMax=valAtMax_s$ID$)\n";
+
+//////////////////////////////////////////////////////////////////////
 // GRIDS
 //////////////////////////////////////////////////////////////////////
 
@@ -104,6 +110,7 @@ const std::string smoke_alloc_low = "\n\
 mantaMsg('Smoke alloc low')\n\
 flags_s$ID$       = s$ID$.create(FlagGrid)\n\
 numObs_s$ID$      = s$ID$.create(IntGrid)\n\
+numGuides_s$ID$   = s$ID$.create(IntGrid)\n\
 vel_s$ID$         = s$ID$.create(MACGrid)\n\
 x_vel_s$ID$       = s$ID$.create(RealGrid)\n\
 y_vel_s$ID$       = s$ID$.create(RealGrid)\n\
@@ -117,11 +124,16 @@ invel_s$ID$       = s$ID$.create(VecGrid)\n\
 x_invel_s$ID$     = s$ID$.create(RealGrid)\n\
 y_invel_s$ID$     = s$ID$.create(RealGrid)\n\
 z_invel_s$ID$     = s$ID$.create(RealGrid)\n\
-velT_s$ID$        = s$ID$.create(MACGrid)\n\
-weightG_s$ID$     = s$ID$.create(RealGrid)\n\
+guidevel_s$ID$    = s$ID$.create(MACGrid)\n\
+guidevelC_s$ID$   = s$ID$.create(Vec3Grid)\n\
+x_guidevel_s$ID$  = s$ID$.create(RealGrid)\n\
+y_guidevel_s$ID$  = s$ID$.create(RealGrid)\n\
+z_guidevel_s$ID$  = s$ID$.create(RealGrid)\n\
+weightGuide_s$ID$ = s$ID$.create(RealGrid)\n\
 density_s$ID$     = s$ID$.create(RealGrid)\n\
 pressure_s$ID$    = s$ID$.create(RealGrid)\n\
 phiObsIn_s$ID$    = s$ID$.create(LevelsetGrid)\n\
+phiGuideIn_s$ID$  = s$ID$.create(LevelsetGrid)\n\
 phiOutIn_s$ID$    = s$ID$.create(LevelsetGrid)\n\
 forces_s$ID$      = s$ID$.create(Vec3Grid)\n\
 x_force_s$ID$     = s$ID$.create(RealGrid)\n\
@@ -206,6 +218,11 @@ def smoke_pre_step_low_$ID$():\n\
     y_obvel_s$ID$.multConst(gs_s$ID$.y)\n\
     z_obvel_s$ID$.multConst(gs_s$ID$.z)\n\
     \n\
+    # translate guiding vels (world space) to grid space\n\
+    x_guidevel_s$ID$.multConst(gs_s$ID$.x)\n\
+    y_guidevel_s$ID$.multConst(gs_s$ID$.y)\n\
+    z_guidevel_s$ID$.multConst(gs_s$ID$.z)\n\
+    \n\
     # translate invels (world space) to grid space\n\
     x_invel_s$ID$.multConst(gs_s$ID$.x)\n\
     y_invel_s$ID$.multConst(gs_s$ID$.y)\n\
@@ -213,6 +230,7 @@ def smoke_pre_step_low_$ID$():\n\
     \n\
     copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
     copyRealToVec3(sourceX=x_obvel_s$ID$, sourceY=y_obvel_s$ID$, sourceZ=z_obvel_s$ID$, target=obvelC_s$ID$)\n\
+    copyRealToVec3(sourceX=x_guidevel_s$ID$, sourceY=y_guidevel_s$ID$, sourceZ=z_guidevel_s$ID$, target=guidevelC_s$ID$)\n\
     copyRealToVec3(sourceX=x_invel_s$ID$, sourceY=y_invel_s$ID$, sourceZ=z_invel_s$ID$, target=invel_s$ID$)\n\
     copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n";
 
@@ -225,7 +243,12 @@ const std::string smoke_post_step_low = "\n\
 def smoke_post_step_low_$ID$():\n\
     forces_s$ID$.clear()\n\
     obvelC_s$ID$.clear()\n\
+    guidevelC_s$ID$.clear()\n\
     invel_s$ID$.clear()\n\
+    \n\
+    phiObsIn_s$ID$.setConst(9999)\n\
+    phiGuideIn_s$ID$.setConst(9999)\n\
+    phiOutIn_s$ID$.setConst(9999)\n\
     \n\
     copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n";
 
@@ -333,12 +356,19 @@ def step_low_$ID$():\n\
     extrapolateVec3Simple(vel=obvelC_s$ID$, phi=phiObsIn_s$ID$, distance=1, inside=False)\n\
     resampleVec3ToMac(source=obvelC_s$ID$, target=obvel_s$ID$)\n\
     \n\
+    mantaMsg('Extrapolating guiding velocity')\n\
+    # ensure velocities inside of guiding object, slightly add guiding vels outside of object too\n\
+    extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
+    extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=1, inside=False)\n\
+    resampleVec3ToMac(source=guidevelC_s$ID$, target=guidevel_s$ID$)\n\
+    guidevel_s$ID$.multConst(vec3(factorGuiding_s$ID$))\n\
+    \n\
     mantaMsg('Walls')\n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$)\n\
     \n\
     if using_guiding_s$ID$:\n\
         mantaMsg('Guiding')\n\
-        PD_fluid_guiding(vel=vel_s$ID$, velT=velT_s$ID$, flags=flags_s$ID$, weight=weightG_s$ID$, blurRadius=beta_s$ID$, pressure=pressure_s$ID$, tau=tau_s$ID$, sigma=sigma_s$ID$, theta=theta_s$ID$, preconditioner=$PRECONDITIONER$, zeroPressureFixing=not doOpen_s$ID$)\n\
+        PD_fluid_guiding(vel=vel_s$ID$, velT=guidevel_s$ID$, flags=flags_s$ID$, weight=weightGuide_s$ID$, blurRadius=beta_s$ID$, pressure=pressure_s$ID$, tau=tau_s$ID$, sigma=sigma_s$ID$, theta=theta_s$ID$, preconditioner=$PRECONDITIONER$, zeroPressureFixing=not doOpen_s$ID$)\n\
     else:\n\
         mantaMsg('Pressure')\n\
         solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, preconditioner=$PRECONDITIONER$, zeroPressureFixing=not doOpen_s$ID$) # closed domains require pressure fixing\n\
@@ -422,6 +452,7 @@ def load_smoke_data_low_$ID$(path):\n\
     flags_s$ID$.load(path + '_flags.uni')\n\
     vel_s$ID$.load(path + '_vel.uni')\n\
     obvel_s$ID$.load(path + '_obvel.uni')\n\
+    guidevel_s$ID$.load(path + '_guidevel.uni')\n\
     invel_s$ID$.load(path + '_invel.uni')\n\
     pressure_s$ID$.load(path + '_pressure.uni')\n\
     forces_s$ID$.load(path + '_forces.uni')\n\
@@ -435,12 +466,17 @@ def load_smoke_data_low_$ID$(path):\n\
     x_obvel_s$ID$.load(path + '_x_obvel.uni')\n\
     y_obvel_s$ID$.load(path + '_y_obvel.uni')\n\
     z_obvel_s$ID$.load(path + '_z_obvel.uni')\n\
+    x_guidevel_s$ID$.load(path + '_x_guidevel.uni')\n\
+    y_guidevel_s$ID$.load(path + '_y_guidevel.uni')\n\
+    z_guidevel_s$ID$.load(path + '_z_guidevel.uni')\n\
     x_invel_s$ID$.load(path + '_x_invel.uni')\n\
     y_invel_s$ID$.load(path + '_y_invel.uni')\n\
     z_invel_s$ID$.load(path + '_z_invel.uni')\n\
     phiObsIn_s$ID$.load(path + '_phiObsIn.uni')\n\
+    phiGuideIn_s$ID$.load(path + '_phiGuideIn.uni')\n\
     phiOutIn_s$ID$.load(path + '_phiOutIn.uni')\n\
     numObs_s$ID$.load(path + '_numObs.uni')\n\
+    numGuides_s$ID$.load(path + '_numGuides.uni')\n\
     if using_colors_s$ID$:\n\
         color_r_s$ID$.load(path + '_color_r.uni')\n\
         color_g_s$ID$.load(path + '_color_g.uni')\n\
@@ -479,6 +515,7 @@ def save_smoke_data_low_$ID$(path):\n\
     flags_s$ID$.save(path + '_flags.uni')\n\
     vel_s$ID$.save(path + '_vel.uni')\n\
     obvel_s$ID$.save(path + '_obvel.uni')\n\
+    guidevel_s$ID$.save(path + '_guidevel.uni')\n\
     invel_s$ID$.save(path + '_invel.uni')\n\
     pressure_s$ID$.save(path + '_pressure.uni')\n\
     forces_s$ID$.save(path + '_forces.uni')\n\
@@ -492,12 +529,17 @@ def save_smoke_data_low_$ID$(path):\n\
     x_obvel_s$ID$.save(path + '_x_obvel.uni')\n\
     y_obvel_s$ID$.save(path + '_y_obvel.uni')\n\
     z_obvel_s$ID$.save(path + '_z_obvel.uni')\n\
+    x_guidevel_s$ID$.save(path + '_x_guidevel.uni')\n\
+    y_guidevel_s$ID$.save(path + '_y_guidevel.uni')\n\
+    z_guidevel_s$ID$.save(path + '_z_guidevel.uni')\n\
     x_invel_s$ID$.save(path + '_x_invel.uni')\n\
     y_invel_s$ID$.save(path + '_y_invel.uni')\n\
     z_invel_s$ID$.save(path + '_z_invel.uni')\n\
     phiObsIn_s$ID$.save(path + '_phiObsIn.uni')\n\
+    phiGuideIn_s$ID$.save(path + '_phiGuideIn.uni')\n\
     phiOutIn_s$ID$.save(path + '_phiOutIn.uni')\n\
     numObs_s$ID$.save(path + '_numObs.uni')\n\
+    numGuides_s$ID$.save(path + '_numGuides.uni')\n\
     if using_colors_s$ID$:\n\
         color_r_s$ID$.save(path + '_color_r.uni')\n\
         color_g_s$ID$.save(path + '_color_g.uni')\n\
@@ -566,6 +608,7 @@ const std::string smoke_delete_grids_low = "\n\
 mantaMsg('Deleting base grids low')\n\
 if 'flags_s$ID$'       in globals() : del flags_s$ID$\n\
 if 'numObs_s$ID$'      in globals() : del numObs_s$ID$\n\
+if 'numGuides_s$ID$'   in globals() : del numGuides_s$ID$\n\
 if 'vel_s$ID$'         in globals() : del vel_s$ID$\n\
 if 'x_vel_s$ID$'       in globals() : del x_vel_s$ID$\n\
 if 'y_vel_s$ID$'       in globals() : del y_vel_s$ID$\n\
@@ -579,11 +622,16 @@ if 'invel_s$ID$'       in globals() : del invel_s$ID$\n\
 if 'x_invel_s$ID$'     in globals() : del x_invel_s$ID$\n\
 if 'y_invel_s$ID$'     in globals() : del y_invel_s$ID$\n\
 if 'z_invel_s$ID$'     in globals() : del z_invel_s$ID$\n\
-if 'velT_s$ID$'        in globals() : del velT_s$ID$\n\
-if 'weightG_s$ID$'     in globals() : del weightG_s$ID$\n\
+if 'guidevel_s$ID$'    in globals() : del guidevel_s$ID$\n\
+if 'guidevelC_s$ID$'   in globals() : del guidevelC_s$ID$\n\
+if 'x_guidevel_s$ID$'  in globals() : del x_guidevel_s$ID$\n\
+if 'y_guidevel_s$ID$'  in globals() : del y_guidevel_s$ID$\n\
+if 'z_guidevel_s$ID$'  in globals() : del z_guidevel_s$ID$\n\
+if 'weightGuide_s$ID$' in globals() : del weightGuide_s$ID$\n\
 if 'density_s$ID$'     in globals() : del density_s$ID$\n\
 if 'pressure_s$ID$'    in globals() : del pressure_s$ID$\n\
 if 'phiObsIn_s$ID$'    in globals() : del phiObsIn_s$ID$\n\
+if 'phiGuideIn_s$ID$'  in globals() : del phiGuideIn_s$ID$\n\
 if 'phiOutIn_s$ID$'    in globals() : del phiOutIn_s$ID$\n\
 if 'forces_s$ID$'      in globals() : del forces_s$ID$\n\
 if 'x_force_s$ID$'     in globals() : del x_force_s$ID$\n\
@@ -626,7 +674,7 @@ if 'using_heat_s$ID$'      in globals() : del using_heat_s$ID$\n\
 if 'using_fire_s$ID$'      in globals() : del using_fire_s$ID$\n\
 if 'last_frame_s$ID$'      in globals() : del last_frame_s$ID$\n\
 if 'maxvel_s$ID$'          in globals() : del maxvel_s$ID$\n\
-if 'scale_s$ID$'           in globals() : del scale_s$ID$\n\
+if 'factorGuiding_s$ID$'   in globals() : del factorGuiding_s$ID$\n\
 if 'valAtMin_s$ID$'        in globals() : del valAtMin_s$ID$\n\
 if 'valAtMax_s$ID$'        in globals() : del valAtMax_s$ID$\n\
 if 'beta_s$ID$'            in globals() : del beta_s$ID$\n\

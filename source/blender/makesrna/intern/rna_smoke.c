@@ -515,7 +515,7 @@ static char *rna_SmokeCollSettings_path(PointerRNA *ptr)
 	char name_esc[sizeof(md->name) * 2];
 
 	BLI_strescape(name_esc, md->name, sizeof(name_esc));
-	return BLI_sprintfN("modifiers[\"%s\"].coll_settings", name_esc);
+	return BLI_sprintfN("modifiers[\"%s\"].effec_settings", name_esc);
 }
 
 static int rna_SmokeModifier_grid_get_length(PointerRNA *ptr, int length[RNA_MAX_ARRAY_DIMENSION])
@@ -1630,12 +1630,11 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 }
 
-static void rna_def_smoke_coll_settings(BlenderRNA *brna)
+static void rna_def_smoke_effec_settings(BlenderRNA *brna)
 {
-	static EnumPropertyItem smoke_coll_type_items[] = {
-		{SM_COLL_STATIC, "COLLSTATIC", 0, "Static", "Non moving obstacle"},
-		{SM_COLL_RIGID, "COLLRIGID", 0, "Rigid", "Rigid obstacle"},
-		{SM_COLL_ANIMATED, "COLLANIMATED", 0, "Animated", "Animated obstacle"},
+	static EnumPropertyItem smoke_effec_type_items[] = {
+		{SM_EFFECTOR_COLLISION, "COLLISION", 0, "Collision", "Create collision object"},
+		{SM_EFFECTOR_GUIDE, "GUIDE", 0, "Guide", "Create guiding object"},
 		{0, NULL, 0, NULL, NULL}
 	};
 
@@ -1647,10 +1646,10 @@ static void rna_def_smoke_coll_settings(BlenderRNA *brna)
 	RNA_def_struct_sdna(srna, "SmokeCollSettings");
 	RNA_def_struct_path_func(srna, "rna_SmokeCollSettings_path");
 
-	prop = RNA_def_property(srna, "collision_type", PROP_ENUM, PROP_NONE);
+	prop = RNA_def_property(srna, "effec_type", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "type");
-	RNA_def_property_enum_items(prop, smoke_coll_type_items);
-	RNA_def_property_ui_text(prop, "Collision type", "Collision type");
+	RNA_def_property_enum_items(prop, smoke_effec_type_items);
+	RNA_def_property_ui_text(prop, "Effector type", "Effector type");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 }
 
@@ -1658,7 +1657,7 @@ void RNA_def_smoke(BlenderRNA *brna)
 {
 	rna_def_smoke_domain_settings(brna);
 	rna_def_smoke_flow_settings(brna);
-	rna_def_smoke_coll_settings(brna);
+	rna_def_smoke_effec_settings(brna);
 }
 
 #endif

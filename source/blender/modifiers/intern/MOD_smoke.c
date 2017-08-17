@@ -62,7 +62,7 @@ static void initData(ModifierData *md)
 	
 	smd->domain = NULL;
 	smd->flow = NULL;
-	smd->coll = NULL;
+	smd->effec = NULL;
 	smd->type = 0;
 	smd->time = -1;
 }
@@ -126,7 +126,7 @@ static bool is_flow_cb(Object *UNUSED(ob), ModifierData *md)
 static bool is_coll_cb(Object *UNUSED(ob), ModifierData *md)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) md;
-	return (smd->type & MOD_SMOKE_TYPE_COLL) && smd->coll;
+	return (smd->type & MOD_SMOKE_TYPE_EFFEC) && smd->effec;
 }
 
 static void updateDepgraph(ModifierData *md, DagForest *forest,

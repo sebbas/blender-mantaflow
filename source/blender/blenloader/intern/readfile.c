@@ -5140,7 +5140,7 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 			
 			if (smd->type == MOD_SMOKE_TYPE_DOMAIN) {
 				smd->flow = NULL;
-				smd->coll = NULL;
+				smd->effec = NULL;
 				smd->domain = newdataadr(fd, smd->domain);
 				smd->domain->smd = smd;
 				
@@ -5177,7 +5177,7 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 			}
 			else if (smd->type == MOD_SMOKE_TYPE_FLOW) {
 				smd->domain = NULL;
-				smd->coll = NULL;
+				smd->effec = NULL;
 				smd->flow = newdataadr(fd, smd->flow);
 				smd->flow->smd = smd;
 				smd->flow->dm = NULL;
@@ -5185,21 +5185,21 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 				smd->flow->numverts = 0;
 				smd->flow->psys = newdataadr(fd, smd->flow->psys);
 			}
-			else if (smd->type == MOD_SMOKE_TYPE_COLL) {
+			else if (smd->type == MOD_SMOKE_TYPE_EFFEC) {
 				smd->flow = NULL;
 				smd->domain = NULL;
-				smd->coll = newdataadr(fd, smd->coll);
-				if (smd->coll) {
-					smd->coll->smd = smd;
-					smd->coll->verts_old = NULL;
-					smd->coll->numverts = 0;
-					smd->coll->dm = NULL;
+				smd->effec = newdataadr(fd, smd->effec);
+				if (smd->effec) {
+					smd->effec->smd = smd;
+					smd->effec->verts_old = NULL;
+					smd->effec->numverts = 0;
+					smd->effec->dm = NULL;
 				}
 				else {
 					smd->type = 0;
 					smd->flow = NULL;
 					smd->domain = NULL;
-					smd->coll = NULL;
+					smd->effec = NULL;
 				}
 			}
 		}
