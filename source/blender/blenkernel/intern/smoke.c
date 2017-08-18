@@ -1697,7 +1697,7 @@ static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromM
 	}
 
 	/* Update mesh distance in map */
-	mesh_distances[index] = MIN2(fabsf(mesh_distances[index]), min_dist);
+	mesh_distances[index] = MIN2(mesh_distances[index], min_dist);
 
 	/* If point is on surface it is also considered to be "inside" the mesh (negative levelset) */
 	BVHTreeNearest nearest = {0};
@@ -1707,7 +1707,7 @@ static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromM
 	inside |= (BLI_bvhtree_find_nearest(treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1);
 
 	/* Levelset is negative inside mesh */
-	if (inside) mesh_distances[index] *= -1.0f;
+	if (inside) mesh_distances[index] = fabs(mesh_distances[index]) * (-1.0f);
 }
 
 static void sample_derivedmesh(
