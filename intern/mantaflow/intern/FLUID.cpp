@@ -61,6 +61,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mUsingHeat    = smd->domain->active_fields & SM_ACTIVE_HEAT;
 	mUsingFire    = smd->domain->active_fields & SM_ACTIVE_FIRE;
 	mUsingColors  = smd->domain->active_fields & SM_ACTIVE_COLORS;
+	mUsingGuiding = smd->domain->active_fields & SM_ACTIVE_GUIDING;
 	mUsingHighRes = smd->domain->flags & MOD_SMOKE_HIGHRES;
 	mUsingLiquid  = smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID;
 	mUsingSmoke   = smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS;
@@ -126,6 +127,8 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mPhiOutIn       = NULL;
 	mPhi            = NULL;
 
+	mNumGuide = NULL;
+
 	mNumVertices  = 0;
 	mNumNormals   = 0;
 	mNumTriangles = 0;
@@ -146,6 +149,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	if (mUsingLiquid) {
 		initDomain(smd);
 		initLiquid(smd);
+		if (mUsingGuiding) initGuiding(smd);
 
 		updatePointers();
 		
@@ -174,9 +178,10 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	if (mUsingSmoke) {
 		initDomain(smd);
 		initSmoke(smd);
-		if (mUsingHeat)   initHeat(smd);
-		if (mUsingFire)   initFire(smd);
-		if (mUsingColors) initColors(smd);
+		if (mUsingHeat)    initHeat(smd);
+		if (mUsingFire)    initFire(smd);
+		if (mUsingColors)  initColors(smd);
+		if (mUsingGuiding) initGuiding(smd);
 
 		updatePointers(); // Needs to be after heat, fire, color init
 
@@ -237,7 +242,6 @@ void FLUID::initSmoke(SmokeModifierData *smd)
 	std::string tmpString = smoke_alloc_low
 		+ smoke_variables_low
 		+ smoke_bounds_low
-		+ smoke_guiding
 		+ smoke_adaptive_step
 		+ smoke_export_low
 		+ smoke_pre_step_low
@@ -381,6 +385,20 @@ void FLUID::initLiquidHigh(SmokeModifierData *smd)
 	mUsingHighRes = true;
 }
 
+void FLUID::initGuiding(SmokeModifierData *smd)
+{
+	if (!mPhiGuideIn) {
+		std::string tmpString = fluid_alloc_guiding_low
+			+ fluid_with_guiding;
+		std::string finalString = parseScript(tmpString, smd);
+		mCommands.clear();
+		mCommands.push_back(finalString);
+
+		runPythonString(mCommands);
+		mUsingGuiding = true;
+	}
+}
+
 void FLUID::step(int framenr)
 {
 	// manta_write_effectors(this);                         // TODO in Mantaflow
@@ -424,6 +442,9 @@ FLUID::~FLUID()
 	tmpString += smoke_delete_grids_high;
 	tmpString += smoke_delete_fire_high;
 	tmpString += smoke_delete_colors_high;
+
+	// Guiding
+	tmpString += fluid_delete_guiding_low;
 
 	// Cleanup multigrid
 	tmpString += fluid_multigrid_cleanup_low;
@@ -485,6 +506,8 @@ FLUID::~FLUID()
 	mTextureV2      = NULL;
 	mTextureW2      = NULL;
 
+	mNumGuide = NULL;
+
 	// Liquid
 	mPhiIn      = NULL;
 	mPhiObsIn   = NULL;
@@ -502,6 +525,7 @@ FLUID::~FLUID()
 	mUsingHeat    = false;
 	mUsingFire    = false;
 	mUsingColors  = false;
+	mUsingGuiding = false;
 	mUsingHighRes = false;
 }
 
@@ -575,7 +599,7 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 	else if (varName == "USING_HIGHRES")
 		ss << (smd->domain->flags & MOD_SMOKE_HIGHRES ? "True" : "False");
 	else if (varName == "USING_GUIDING")
-		ss << (smd->domain->flags & MOD_SMOKE_GUIDING ? "True" : "False");
+		ss << (smd->domain->active_fields & SM_ACTIVE_GUIDING ? "True" : "False");
 	else if (varName == "SOLVER_DIM")
 		ss << smd->domain->manta_solver_res;
 	else if (varName == "DO_OPEN") {
@@ -755,6 +779,7 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 	bool heat    = smd->domain->active_fields & SM_ACTIVE_HEAT;
 	bool colors  = smd->domain->active_fields & SM_ACTIVE_COLORS;
 	bool fire    = smd->domain->active_fields & SM_ACTIVE_FIRE;
+	bool guiding = smd->domain->active_fields & SM_ACTIVE_GUIDING;
 
 	std::string manta_script;
 
@@ -772,6 +797,8 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 		manta_script += smoke_alloc_colors_low;
 	if (fire)
 		manta_script += smoke_alloc_fire_low;
+	if (guiding)
+		manta_script += fluid_alloc_guiding_low;
 
 	if (highres) {
 		manta_script += fluid_variables_high
@@ -790,6 +817,8 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 	}
 	
 	manta_script += smoke_import_low;
+	if (guiding)
+	    manta_script += fluid_import_low;
 	if (highres)
 		manta_script += smoke_import_high;
 	
@@ -835,6 +864,7 @@ void FLUID::exportSmokeData(SmokeModifierData *smd)
 void FLUID::exportLiquidScript(SmokeModifierData *smd)
 {
 	bool highres = smd->domain->flags & MOD_SMOKE_HIGHRES;
+	bool guiding = smd->domain->active_fields & SM_ACTIVE_GUIDING;
 
 	std::string manta_script;
 	
@@ -855,6 +885,7 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 	}
 
 	manta_script += liquid_import_low;
+	manta_script += fluid_import_low;
 	if (highres)
 		manta_script += liquid_import_high;
 	
@@ -862,6 +893,8 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 	manta_script += liquid_post_step_low;
 	
 	manta_script += liquid_step_low;
+	if (guiding)
+		manta_script += fluid_import_low;
 	if (highres)
 		manta_script += liquid_step_high;
 
@@ -1122,6 +1155,15 @@ void FLUID::updatePointers()
 	mPhiObsIn = (float*) getDataPointer("phiObsIn" + solver_ext, solver);
 	mPhiOutIn = (float*) getDataPointer("phiOutIn" + solver_ext, solver);
 
+	if (mUsingGuiding) {
+		mPhiGuideIn = (float*) getDataPointer("phiGuideIn" + solver_ext, solver);
+		mNumGuide = (int*) getDataPointer("numGuides" + solver_ext, solver);
+
+		mGuideVelocityX = (float*) getDataPointer("x_guidevel" + solver_ext, solver);
+		mGuideVelocityY = (float*) getDataPointer("y_guidevel" + solver_ext, solver);
+		mGuideVelocityZ = (float*) getDataPointer("z_guidevel" + solver_ext, solver);
+	}
+
 	// Liquid
 	if (mUsingLiquid) {
 		mPhiIn  = (float*) getDataPointer("phiIn" + solver_ext,  solver);
@@ -1142,13 +1184,6 @@ void FLUID::updatePointers()
 		mInVelocityX = (float*) getDataPointer("x_invel" + solver_ext, solver);
 		mInVelocityY = (float*) getDataPointer("y_invel" + solver_ext, solver);
 		mInVelocityZ = (float*) getDataPointer("z_invel" + solver_ext, solver);
-
-		mPhiGuideIn = (float*) getDataPointer("phiGuideIn" + solver_ext, solver);
-		mNumGuide = (int*) getDataPointer("numGuides" + solver_ext, solver);
-
-		mGuideVelocityX = (float*) getDataPointer("x_guidevel" + solver_ext, solver);
-		mGuideVelocityY = (float*) getDataPointer("y_guidevel" + solver_ext, solver);
-		mGuideVelocityZ = (float*) getDataPointer("z_guidevel" + solver_ext, solver);
 
 		if (mUsingHeat) {
 			mHeat       = (float*) getDataPointer("heat" + solver_ext,    solver);

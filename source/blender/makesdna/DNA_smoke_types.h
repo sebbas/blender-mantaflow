@@ -51,7 +51,6 @@ enum {
 	MOD_SMOKE_ADAPTIVE_DOMAIN = (1 << 7),
 	MOD_SMOKE_USE_SURFACE_CACHE = (1 << 8),
 	MOD_SMOKE_USE_VOLUME_CACHE = (1 << 9),
-	MOD_SMOKE_GUIDING = (1 << 10),
 };
 
 /* border collisions */
@@ -142,6 +141,8 @@ enum {
 #define SM_ACTIVE_COLORS	(1<<2)
 #define SM_ACTIVE_COLOR_SET	(1<<3)
 #define SM_ACTIVE_LIQUID	(1<<4)
+#define SM_ACTIVE_OBSTACLE	(1<<5)
+#define SM_ACTIVE_GUIDING	(1<<6)
 
 enum {
 	VDB_COMPRESSION_BLOSC = 0,

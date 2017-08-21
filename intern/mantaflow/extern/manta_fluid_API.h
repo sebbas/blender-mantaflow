@@ -93,8 +93,6 @@ void smoke_ensure_colors(struct FLUID *smoke, struct SmokeModifierData *smd);
 float *smoke_get_guide_velocity_x(struct FLUID *smoke);
 float *smoke_get_guide_velocity_y(struct FLUID *smoke);
 float *smoke_get_guide_velocity_z(struct FLUID *smoke);
-float *smoke_get_phiguidein(struct FLUID *smoke);
-int *smoke_get_num_guide(struct FLUID *fluid);
 
 // Liquid grids
 float *liquid_get_phiin(struct FLUID *liquid);
@@ -160,9 +158,13 @@ void liquid_set_snd_particle_type(struct FLUID* liquid, int* buffer, int numPart
 // Fluids in general
 int *fluid_get_num_obstacle(struct FLUID *fluid);
 float *fluid_get_inflow(struct FLUID *fluid);
+float *fluid_get_phiguidein(struct FLUID *fluid);
+int *fluid_get_num_guide(struct FLUID *fluid);
 int fluid_get_res_x(struct FLUID *fluid);
 int fluid_get_res_y(struct FLUID *fluid);
 int fluid_get_res_z(struct FLUID *fluid);
+void fluid_ensure_guiding(struct FLUID *fluid, struct SmokeModifierData *smd);
+
 
 #ifdef __cplusplus
 }

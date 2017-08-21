@@ -459,7 +459,7 @@ extern "C" int *fluid_get_num_obstacle(FLUID *fluid)
 	return fluid->getNumObstacle();
 }
 
-extern "C" int *smoke_get_num_guide(FLUID *fluid)
+extern "C" int *fluid_get_num_guide(FLUID *fluid)
 {
 	return fluid->getNumGuide();
 }
@@ -522,17 +522,25 @@ extern "C" void smoke_ensure_colors(FLUID *smoke, struct SmokeModifierData *smd)
 	}
 }
 
-extern "C" float *smoke_get_phiguidein(FLUID *smoke)
-{
-	return smoke->getPhiGuideIn();
-}
-
 extern "C" void liquid_ensure_init(FLUID *smoke, struct SmokeModifierData *smd)
 {
 	if (smoke) {
 		smoke->initLiquid(smd);
 		smoke->updatePointers();
 	}
+}
+
+extern "C" void fluid_ensure_guiding(FLUID *fluid, struct SmokeModifierData *smd)
+{
+	if (fluid) {
+		fluid->initGuiding(smd);
+		fluid->updatePointers();
+	}
+}
+
+extern "C" float *fluid_get_phiguidein(FLUID *fluid)
+{
+	return fluid->getPhiGuideIn();
 }
 
 extern "C" float *liquid_get_phiin(FLUID *liquid)

@@ -76,7 +76,15 @@ boundConditions_s$ID$     = '$BOUNDCONDITIONS$'\n\
 boundaryWidth_s$ID$       = 1\n\
 \n\
 using_highres_s$ID$   = $USING_HIGHRES$\n\
-using_adaptTime_s$ID$ = $USING_ADAPTIVETIME$\n";
+using_adaptTime_s$ID$ = $USING_ADAPTIVETIME$\n\
+using_guiding_s$ID$   = $USING_GUIDING$\n\
+\n\
+\n\
+# fluid guiding params\n\
+beta_s$ID$     = 2\n\
+tau_s$ID$      = 1.0\n\
+sigma_s$ID$    = 0.99/tau_s$ID$\n\
+theta_s$ID$    = 1.0\n";
 
 const std::string fluid_variables_high= "\n\
 upres_xl$ID$  = $UPRES$\n\
@@ -84,6 +92,9 @@ gs_xl$ID$     = vec3($HRESX$, $HRESY$, $HRESZ$)\n\
 \n\
 if dim_s$ID$ == 2:\n\
     gs_xl$ID$.z = 1\n";
+
+const std::string fluid_with_guiding = "\n\
+using_guiding_s$ID$ = True\n";
 
 //////////////////////////////////////////////////////////////////////
 // ADAPTIVE TIME STEPPING
@@ -109,6 +120,21 @@ xl$ID$.timestepMax = s$ID$.timestepMax\n\
 xl$ID$.cfl         = s$ID$.cfl\n";
 
 //////////////////////////////////////////////////////////////////////
+// GRIDS
+//////////////////////////////////////////////////////////////////////
+
+const std::string fluid_alloc_guiding_low = "\n\
+mantaMsg('Allocating guiding low')\n\
+numGuides_s$ID$   = s$ID$.create(IntGrid)\n\
+phiGuideIn_s$ID$  = s$ID$.create(LevelsetGrid)\n\
+guidevel_s$ID$    = s$ID$.create(MACGrid)\n\
+guidevelC_s$ID$   = s$ID$.create(Vec3Grid)\n\
+x_guidevel_s$ID$  = s$ID$.create(RealGrid)\n\
+y_guidevel_s$ID$  = s$ID$.create(RealGrid)\n\
+z_guidevel_s$ID$  = s$ID$.create(RealGrid)\n\
+weightGuide_s$ID$ = s$ID$.create(RealGrid)\n";
+
+//////////////////////////////////////////////////////////////////////
 // DESTRUCTION
 //////////////////////////////////////////////////////////////////////
 
@@ -124,7 +150,11 @@ if 'boundaryWidth_s$ID$'    in globals() : del boundaryWidth_s$ID$\n\
 if 'dt_default_s$ID$'       in globals() : del dt_default_s$ID$\n\
 if 'dt_factor_s$ID$'        in globals() : del dt_factor_s$ID$\n\
 if 'fps_s$ID$'              in globals() : del fps_s$ID$\n\
-if 'dt0_s$ID$'              in globals() : del dt0_s$ID$\n";
+if 'dt0_s$ID$'              in globals() : del dt0_s$ID$\n\
+if 'beta_s$ID$'             in globals() : del beta_s$ID$\n\
+if 'tau_s$ID$'              in globals() : del tau_s$ID$\n\
+if 'sigma_s$ID$'            in globals() : del sigma_s$ID$\n\
+if 'theta_s$ID$'            in globals() : del theta_s$ID$\n";
 
 const std::string fluid_delete_variables_high = "\n\
 mantaMsg('Deleting fluid variables high')\n\
@@ -139,6 +169,17 @@ const std::string fluid_delete_solver_high = "\n\
 mantaMsg('Deleting solver high')\n\
 if 'xl$ID$' in globals() : del xl$ID$\n";
 
+const std::string fluid_delete_guiding_low = "\n\
+mantaMsg('Deleting guiding low')\n\
+if 'numGuides_s$ID$'   in globals() : del numGuides_s$ID$\n\
+if 'phiGuideIn_s$ID$'  in globals() : del phiGuideIn_s$ID$\n\
+if 'guidevel_s$ID$'    in globals() : del guidevel_s$ID$\n\
+if 'guidevelC_s$ID$'   in globals() : del guidevelC_s$ID$\n\
+if 'x_guidevel_s$ID$'  in globals() : del x_guidevel_s$ID$\n\
+if 'y_guidevel_s$ID$'  in globals() : del y_guidevel_s$ID$\n\
+if 'z_guidevel_s$ID$'  in globals() : del z_guidevel_s$ID$\n\
+if 'weightGuide_s$ID$' in globals() : del weightGuide_s$ID$\n";
+
 const std::string fluid_multigrid_cleanup_low = "\n\
 mantaMsg('Cleanup multigrid low')\n\
 releaseMG(s$ID$)\n";
@@ -149,6 +190,31 @@ releaseMG(xl$ID$)\n";
 
 const std::string gc_collect = "\n\
 gc.collect()\n";
+
+//////////////////////////////////////////////////////////////////////
+// IMPORT / EXPORT
+//////////////////////////////////////////////////////////////////////
+
+const std::string fluid_import_low = "\n\
+def load_fluid_data_low_$ID$(path):\n\
+    numGuides_s$ID$.load(path + '_numGuides.uni')\n\
+    phiGuideIn_s$ID$.load(path + '_phiGuideIn.uni')\n\
+    guidevel_s$ID$.load(path + '_guidevel.uni')\n\
+    x_guidevel_s$ID$.load(path + '_x_guidevel.uni')\n\
+    y_guidevel_s$ID$.load(path + '_y_guidevel.uni')\n\
+    z_guidevel_s$ID$.load(path + '_z_guidevel.uni')\n\
+    weightGuide_s$ID$.load(path + '_weightGuide.uni')\n";
+
+const std::string fluid_export_low = "\n\
+def save_fluid_data_low_$ID$(path):\n\
+    numGuides_s$ID$.save(path + '_numGuides.uni')\n\
+    phiGuideIn_s$ID$.save(path + '_phiGuideIn.uni')\n\
+    guidevel_s$ID$.save(path + '_guidevel.uni')\n\
+    x_guidevel_s$ID$.save(path + '_x_guidevel.uni')\n\
+    y_guidevel_s$ID$.save(path + '_y_guidevel.uni')\n\
+    z_guidevel_s$ID$.save(path + '_z_guidevel.uni')\n\
+    weightGuide_s$ID$.save(path + '_weightGuide.uni')\n";
+
 
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE

@@ -788,7 +788,7 @@ typedef struct ObstaclesFromDMData {
 	bool has_velocity;
 	float *vert_vel;
 	float *velocityX, *velocityY, *velocityZ;
-	int *num_obstacles;
+	int *num_objects;
 	float *distances_map;
 } ObstaclesFromDMData;
 
@@ -836,7 +836,7 @@ static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
 				}
 
 				if (data->has_velocity) {
-					data->num_obstacles[index]++;
+					data->num_objects[index]++;
 				}
 			}
 
@@ -850,7 +850,7 @@ static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
 
 static void obstacles_from_derivedmesh(
         Object *coll_ob, SmokeDomainSettings *sds, SmokeCollSettings *scs,
-        float *distances_map, float *velocityX, float *velocityY, float *velocityZ, int *num_obstacles, float dt)
+        float *distances_map, float *velocityX, float *velocityY, float *velocityZ, int *num_objects, float dt)
 {
 	if (!scs->dm) return;
 	{
@@ -924,7 +924,7 @@ static void obstacles_from_derivedmesh(
 			    .sds = sds, .mvert = mvert, .mloop = mloop, .looptri = looptri,
 			    .tree = &treeData, .has_velocity = has_velocity, .vert_vel = vert_vel,
 			    .velocityX = velocityX, .velocityY = velocityY, .velocityZ = velocityZ,
-			    .num_obstacles = num_obstacles, .distances_map = distances_map
+			    .num_objects = num_objects, .distances_map = distances_map
 			};
 			BLI_task_parallel_range(
 			            sds->res_min[2], sds->res_max[2], &data, obstacles_from_derivedmesh_task_cb, true);
@@ -945,6 +945,33 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	unsigned int numcollobj = 0;
 
 	unsigned int collIndex;
+	int active_fields = sds->active_fields;
+
+	collobjs = get_collisionobjects(scene, ob, sds->coll_group, &numcollobj, eModifierType_Smoke);
+
+	// check what type of effector objects present. then init according grids
+	for (collIndex = 0; collIndex < numcollobj; collIndex++)
+	{
+		Object *collob = collobjs[collIndex];
+		SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(collob, eModifierType_Smoke);
+
+		if ((smd2->type & MOD_SMOKE_TYPE_EFFEC) && smd2->effec)
+		{
+			SmokeCollSettings *scs = smd2->effec;
+			if (scs && (scs->type == SM_EFFECTOR_COLLISION))
+			{
+				active_fields |= SM_ACTIVE_OBSTACLE;
+				// TODO (sebbas): ensure obstacles function
+//				fluid_ensure_obstacle(sds->fluid, sds->smd);
+			}
+			if (scs && (scs->type == SM_EFFECTOR_GUIDE))
+			{
+				active_fields |= SM_ACTIVE_GUIDING;
+				fluid_ensure_guiding(sds->fluid, sds->smd);
+			}
+		}
+	}
+
 	float *velx = smoke_get_ob_velocity_x(sds->fluid);
 	float *vely = smoke_get_ob_velocity_y(sds->fluid);
 	float *velz = smoke_get_ob_velocity_z(sds->fluid);
@@ -961,10 +988,10 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	float *g = smoke_get_color_g(sds->fluid);
 	float *b = smoke_get_color_b(sds->fluid);
 	float *phiObsIn = liquid_get_phiobsin(sds->fluid);
-	float *phiGuideIn = smoke_get_phiguidein(sds->fluid);
+	float *phiGuideIn = fluid_get_phiguidein(sds->fluid);
 	int *obstacles = smoke_get_obstacle(sds->fluid);
 	int *num_obstacles = fluid_get_num_obstacle(sds->fluid);
-	int *num_guides = smoke_get_num_guide(sds->fluid);
+	int *num_guides = fluid_get_num_guide(sds->fluid);
 	unsigned int z;
 
 	/* Resetting all grids related to moving objects */
@@ -976,6 +1003,8 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 			phiGuideIn[z] = 9999;
 		if (num_obstacles)
 			num_obstacles[z] = 0;
+		if (num_guides)
+			num_guides[z] = 0;
 
 		if (velx && vely && velz) {
 			velx[z] = 0.0f;
@@ -988,8 +1017,6 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 			velzGuide[z] = 0.0f;
 		}
 	}
-
-	collobjs = get_collisionobjects(scene, ob, sds->coll_group, &numcollobj, eModifierType_Smoke);
 
 	// update obstacle tags in cells
 	for (collIndex = 0; collIndex < numcollobj; collIndex++)
@@ -1012,6 +1039,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 			}
 		}
 	}
+	sds->active_fields = active_fields;
 
 	if (collobjs)
 		MEM_freeN(collobjs);
@@ -1038,13 +1066,13 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 			}
 		}
 		/* average velocities from multiple obstacles in one cell */
-		if (num_obstacles[z]) {
+		if (num_obstacles && num_obstacles[z]) {
 			velx[z] /= num_obstacles[z];
 			vely[z] /= num_obstacles[z];
 			velz[z] /= num_obstacles[z];
 		}
 		/* average velocities from multiple guides in one cell */
-		if (num_guides[z]) {
+		if (num_guides && num_guides[z]) {
 			velxGuide[z] /= num_guides[z];
 			velyGuide[z] /= num_guides[z];
 			velzGuide[z] /= num_guides[z];
