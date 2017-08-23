@@ -369,7 +369,7 @@ inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
 // only fluid velocities, not those at obstacles)
 
 
-void extrapolateMACSimple(FlagGrid& flags, MACGrid& vel, int distance = 4, LevelsetGrid* phiObs=NULL , bool intoObs = false ) {
+void extrapolateMACSimple(FlagGrid& flags, MACGrid& vel, int distance = 4, LevelsetGrid* phiObs=NULL , bool intoObs = false, Grid<Real>* exclude=NULL ) {
 	Grid<int> tmp( flags.getParent() );
 	int dim = (flags.is3D() ? 3:2);
 
@@ -404,7 +404,7 @@ void extrapolateMACSimple(FlagGrid& flags, MACGrid& vel, int distance = 4, Level
 
 	// copy tangential values into sides
 	knExtrapolateIntoBnd(flags, vel);
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "extrapolateMACSimple" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); int distance = _args.getOpt<int >("distance",2,4,&_lock); LevelsetGrid* phiObs = _args.getPtrOpt<LevelsetGrid >("phiObs",3,NULL ,&_lock); bool intoObs = _args.getOpt<bool >("intoObs",4,false ,&_lock);   _retval = getPyNone(); extrapolateMACSimple(flags,vel,distance,phiObs,intoObs);  _args.check(); } pbFinalizePlugin(parent,"extrapolateMACSimple", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateMACSimple",e.what()); return 0; } } static const Pb::Register _RP_extrapolateMACSimple ("","extrapolateMACSimple",_W_0);  extern "C" { void PbRegister_extrapolateMACSimple() { KEEP_UNUSED(_RP_extrapolateMACSimple); } } 
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "extrapolateMACSimple" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); int distance = _args.getOpt<int >("distance",2,4,&_lock); LevelsetGrid* phiObs = _args.getPtrOpt<LevelsetGrid >("phiObs",3,NULL ,&_lock); bool intoObs = _args.getOpt<bool >("intoObs",4,false,&_lock); Grid<Real>* exclude = _args.getPtrOpt<Grid<Real> >("exclude",5,NULL ,&_lock);   _retval = getPyNone(); extrapolateMACSimple(flags,vel,distance,phiObs,intoObs,exclude);  _args.check(); } pbFinalizePlugin(parent,"extrapolateMACSimple", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateMACSimple",e.what()); return 0; } } static const Pb::Register _RP_extrapolateMACSimple ("","extrapolateMACSimple",_W_0);  extern "C" { void PbRegister_extrapolateMACSimple() { KEEP_UNUSED(_RP_extrapolateMACSimple); } } 
 
 
 

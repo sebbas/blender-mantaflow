@@ -52,6 +52,7 @@ extern "C" {
 		extern void PbRegister_vorticityConfinement() ;
 		extern void PbRegister_addForceField() ;
 		extern void PbRegister_setInitialVelocity() ;
+		extern void PbRegister_setForceIn() ;
 		extern void PbRegister_sampleFlagsWithParticles() ;
 		extern void PbRegister_sampleLevelsetWithParticles() ;
 		extern void PbRegister_markFluidCells() ;
@@ -76,6 +77,7 @@ extern "C" {
 		extern void PbRegister_getSpiralVelocity() ;
 		extern void PbRegister_setGradientYWeight() ;
 		extern void PbRegister_PD_fluid_guiding() ;
+		extern void PbRegister_releaseBlurPrecomp() ;
 		extern void PbRegister_KEpsilonComputeProduction() ;
 		extern void PbRegister_KEpsilonSources() ;
 		extern void PbRegister_KEpsilonBcs() ;
@@ -209,6 +211,7 @@ namespace Pb {
 		PbRegister_vorticityConfinement() ;
 		PbRegister_addForceField() ;
 		PbRegister_setInitialVelocity() ;
+		PbRegister_setForceIn() ;
 		PbRegister_sampleFlagsWithParticles() ;
 		PbRegister_sampleLevelsetWithParticles() ;
 		PbRegister_markFluidCells() ;
@@ -233,6 +236,7 @@ namespace Pb {
 		PbRegister_getSpiralVelocity() ;
 		PbRegister_setGradientYWeight() ;
 		PbRegister_PD_fluid_guiding() ;
+		PbRegister_releaseBlurPrecomp() ;
 		PbRegister_KEpsilonComputeProduction() ;
 		PbRegister_KEpsilonSources() ;
 		PbRegister_KEpsilonBcs() ;

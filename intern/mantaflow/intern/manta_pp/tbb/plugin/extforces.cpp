@@ -392,7 +392,19 @@ void addForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force) {
 void setInitialVelocity(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& invel) {
 	KnAddForceIfLower(flags, vel, invel);
 } static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setInitialVelocity" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); Grid<Vec3>& invel = *_args.getPtr<Grid<Vec3> >("invel",2,&_lock);   _retval = getPyNone(); setInitialVelocity(flags,vel,invel);  _args.check(); } pbFinalizePlugin(parent,"setInitialVelocity", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setInitialVelocity",e.what()); return 0; } } static const Pb::Register _RP_setInitialVelocity ("","setInitialVelocity",_W_10);  extern "C" { void PbRegister_setInitialVelocity() { KEEP_UNUSED(_RP_setInitialVelocity); } } 
-
+	
+ struct knSetForceIn : public KernelBase { knSetForceIn(const Grid<Real> &phiIn, MACGrid& vel, const Vec3 &force) :  KernelBase(&phiIn,0) ,phiIn(phiIn),vel(vel),force(force)   { runMessage(); run(); }  inline void op(int i, int j, int k, const Grid<Real> &phiIn, MACGrid& vel, const Vec3 &force ) const {
+	if(phiIn(i,j,k) < 0.) {
+		vel(i,j,k).x = force.x;
+		vel(i,j,k).y = force.y;
+		vel(i,j,k).z = force.z;
+	}
+}   inline const Grid<Real> & getArg0() { return phiIn; } typedef Grid<Real>  type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline const Vec3& getArg2() { return force; } typedef Vec3 type2; void runMessage() { debMsg("Executing kernel knSetForceIn ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=0; j<_maxY; j++) for (int i=0; i<_maxX; i++) op(i,j,k,phiIn,vel,force); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=0; i<_maxX; i++) op(i,j,k,phiIn,vel,force); }  } void run() {  if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(0, maxY), *this);  }  const Grid<Real> & phiIn; MACGrid& vel; const Vec3& force;   };
+	
+void setForceIn(Grid<Real> &region, MACGrid& vel, const Vec3 &force) {
+	knSetForceIn(region, vel, force);
+} static PyObject* _W_11 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setForceIn" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real> & region = *_args.getPtr<Grid<Real>  >("region",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); const Vec3& force = _args.get<Vec3 >("force",2,&_lock);   _retval = getPyNone(); setForceIn(region,vel,force);  _args.check(); } pbFinalizePlugin(parent,"setForceIn", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setForceIn",e.what()); return 0; } } static const Pb::Register _RP_setForceIn ("","setForceIn",_W_11);  extern "C" { void PbRegister_setForceIn() { KEEP_UNUSED(_RP_setForceIn); } } 
+	
 } // namespace
 
 
