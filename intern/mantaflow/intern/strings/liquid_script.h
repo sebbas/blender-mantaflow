@@ -211,6 +211,8 @@ def liquid_step_$ID$():\n\
     \n\
     # TODO (sebbas): liquid inflow\n\
     # add initial velocity\n\
+    #setForceIn(region=phiIn_s$ID$, vel=vel_s$ID$, force=vec3(0.01,0.01,-5))\n\
+    #mapGridToPartsVec3(source=vel_s$ID$, parts=pp_s$ID$, target=pVel_pp$ID$)\n\
     #mapWeights_s$ID$.clear() # mis-use mapWeights\n\
     #setInitialVelocity(flags=flags_s$ID$, vel=vel_s$ID$, invel=invel_s$ID$)\n\
     #resampleVec3ToMac(source=invel_s$ID$, target=mapWeights_s$ID$)\n\

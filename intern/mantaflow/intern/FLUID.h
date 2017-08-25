@@ -74,6 +74,7 @@ public:
 	void saveLiquidDataHigh(char *pathname);
 	void saveSmokeData(char *pathname);
 	void saveSmokeDataHigh(char *pathname);
+	void saveFluidData(char *pathname);
 
 	// Write files for particles
 	void saveParticles(char* filename);
@@ -254,13 +255,13 @@ private:
 	int* mObstacle;
 	int* mNumObstacle;
 	int* mNumGuide;
-	float *mFlame;
-	float *mFuel;
-	float *mReact;
-	float *mColorR;
-	float *mColorG;
-	float *mColorB;
-	float *mInflow;
+	float* mFlame;
+	float* mFuel;
+	float* mReact;
+	float* mColorR;
+	float* mColorG;
+	float* mColorB;
+	float* mInflow;
 	float* mDensityHigh;
 	float* mFlameHigh;
 	float* mFuelHigh;

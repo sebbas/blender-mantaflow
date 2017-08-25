@@ -127,7 +127,8 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mPhiOutIn       = NULL;
 	mPhi            = NULL;
 
-	mNumGuide = NULL;
+	// Fluid guiding
+	mNumGuide    = NULL;
 
 	mNumVertices  = 0;
 	mNumNormals   = 0;
@@ -213,6 +214,7 @@ void FLUID::initDomain(SmokeModifierData *smd)
 		+ manta_debuglevel
 		+ fluid_variables_low
 		+ fluid_solver_low
+		+ fluid_export_low
 		+ fluid_adaptive_time_stepping_low;
 	std::string finalString = parseScript(tmpString, smd);
 	mCommands.clear();
@@ -448,6 +450,7 @@ FLUID::~FLUID()
 
 	// Cleanup multigrid
 	tmpString += fluid_multigrid_cleanup_low;
+	tmpString += fluid_guiding_cleanup_low;
 	if (mUsingHighRes) tmpString += fluid_multigrid_cleanup_high;
 
 	// Make sure that everything is garbage collected
@@ -506,7 +509,8 @@ FLUID::~FLUID()
 	mTextureV2      = NULL;
 	mTextureW2      = NULL;
 
-	mNumGuide = NULL;
+	// Fluid guiding
+	mNumGuide    = NULL;
 
 	// Liquid
 	mPhiIn      = NULL;
@@ -712,8 +716,10 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << (smd->domain->particle_type & MOD_SMOKE_PARTICLE_FLOAT ? "True" : "False");
 	else if (varName == "USING_TRACER_PARTS")
 		ss << (smd->domain->particle_type & MOD_SMOKE_PARTICLE_TRACER ? "True" : "False");
-	else if (varName == "GUIDING_STRENGTH")
-		ss << smd->domain->guiding_strength;
+	else if (varName == "GUIDING_ALPHA")
+		ss << smd->domain->guiding_alpha;
+	else if (varName == "GUIDING_BETA")
+		ss << smd->domain->guiding_beta;
 	else if (varName == "GRAVITY_X")
 		ss << smd->domain->gravity[0];
 	else if (varName == "GRAVITY_Y")
@@ -855,8 +861,9 @@ void FLUID::exportSmokeData(SmokeModifierData *smd)
 
 	char parent_dir[1024];
 	BLI_split_dir_part(smd->domain->manta_filepath, parent_dir, sizeof(parent_dir));
-	
+
 	FLUID::saveSmokeData(parent_dir);
+	FLUID::saveFluidData(parent_dir);
 	if (highres)
 		FLUID::saveSmokeDataHigh(parent_dir);
 }
@@ -1349,6 +1356,18 @@ void FLUID::saveParticleVelocities(char* filename)
 
 	save_particles_velocities << "save_particles_velocities_" << mCurrentID << "(r'" << path << "')";
 	mCommands.push_back(save_particles_velocities.str());
+
+	runPythonString(mCommands);
+}
+
+void FLUID::saveFluidData(char *pathname)
+{
+	std::string path(pathname);
+
+	mCommands.clear();
+	std::ostringstream save_fluid_data_low_;
+	save_fluid_data_low_ <<  "save_fluid_data_low_" << mCurrentID << "(r'" << path << "')";
+	mCommands.push_back(save_fluid_data_low_.str());
 
 	runPythonString(mCommands);
 }

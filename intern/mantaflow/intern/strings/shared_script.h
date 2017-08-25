@@ -81,10 +81,11 @@ using_guiding_s$ID$   = $USING_GUIDING$\n\
 \n\
 \n\
 # fluid guiding params\n\
-beta_s$ID$     = 2\n\
-tau_s$ID$      = 1.0\n\
-sigma_s$ID$    = 0.99/tau_s$ID$\n\
-theta_s$ID$    = 1.0\n";
+alpha_s$ID$ = $GUIDING_ALPHA$\n\
+beta_s$ID$  = $GUIDING_BETA$\n\
+tau_s$ID$   = 1.0\n\
+sigma_s$ID$ = 0.99/tau_s$ID$\n\
+theta_s$ID$ = 1.0\n";
 
 const std::string fluid_variables_high= "\n\
 upres_xl$ID$  = $UPRES$\n\
@@ -151,6 +152,7 @@ if 'dt_default_s$ID$'       in globals() : del dt_default_s$ID$\n\
 if 'dt_factor_s$ID$'        in globals() : del dt_factor_s$ID$\n\
 if 'fps_s$ID$'              in globals() : del fps_s$ID$\n\
 if 'dt0_s$ID$'              in globals() : del dt0_s$ID$\n\
+if 'alpha_s$ID$'             in globals() : del alpha_s$ID$\n\
 if 'beta_s$ID$'             in globals() : del beta_s$ID$\n\
 if 'tau_s$ID$'              in globals() : del tau_s$ID$\n\
 if 'sigma_s$ID$'            in globals() : del sigma_s$ID$\n\
@@ -187,6 +189,10 @@ releaseMG(s$ID$)\n";
 const std::string fluid_multigrid_cleanup_high = "\n\
 mantaMsg('Cleanup multigrid high')\n\
 releaseMG(xl$ID$)\n";
+
+const std::string fluid_guiding_cleanup_low = "\n\
+mantaMsg('Cleanup guiding low')\n\
+releaseBlurPrecomp()\n";
 
 const std::string gc_collect = "\n\
 gc.collect()\n";

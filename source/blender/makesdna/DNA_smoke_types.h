@@ -257,7 +257,9 @@ typedef struct SmokeDomainSettings {
 	int particle_type;
 
 	/* fluid guiding parameters */
-	float guiding_strength;
+	float guiding_alpha; // guiding weight scalar (determines strength)
+	int guiding_beta; // global guiding blur radius (affects size of vortices)
+	int pad4;
 
 	/* Display settings */
 	char slice_method, axis_slice_method;

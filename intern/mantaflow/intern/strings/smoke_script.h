@@ -335,7 +335,6 @@ def step_low_$ID$():\n\
         extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
         extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=1, inside=False)\n\
         resampleVec3ToMac(source=guidevelC_s$ID$, target=guidevel_s$ID$)\n\
-        guidevel_s$ID$.multConst(vec3(factorGuiding_s$ID$))\n\
     \n\
     mantaMsg('Walls')\n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$)\n\
@@ -343,7 +342,7 @@ def step_low_$ID$():\n\
     if using_guiding_s$ID$:\n\
         mantaMsg('Guiding and pressure')\n\
         weightGuide_s$ID$.multConst(0)\n\
-        weightGuide_s$ID$.addConst(2)\n\
+        weightGuide_s$ID$.addConst(alpha_s$ID$)\n\
         PD_fluid_guiding(vel=vel_s$ID$, velT=guidevel_s$ID$, flags=flags_s$ID$, weight=weightGuide_s$ID$, blurRadius=beta_s$ID$, pressure=pressure_s$ID$, tau=tau_s$ID$, sigma=sigma_s$ID$, theta=theta_s$ID$, preconditioner=$PRECONDITIONER$, zeroPressureFixing=not doOpen_s$ID$)\n\
     else:\n\
         mantaMsg('Pressure')\n\
@@ -693,5 +692,6 @@ const std::string smoke_standalone_load = "\n\
 # import *.uni files\n\
 path_prefix = '$MANTA_EXPORT_PATH$'\n\
 load_smoke_data_low_$ID$(path_prefix)\n\
+load_fluid_data_low_$ID$(path_prefix)\n\
 if using_highres_s$ID$:\n\
     load_smoke_data_high_$ID$(path_prefix)\n";

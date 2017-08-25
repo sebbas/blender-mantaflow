@@ -549,7 +549,8 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->particle_type = 0;
 
 			/* guiding */
-			smd->domain->guiding_strength = 6.0f;
+			smd->domain->guiding_alpha = 2.0f;
+			smd->domain->guiding_beta = 5;
 
 			/*mantaflow settings*/
 			smd->domain->manta_solver_res = 3;
@@ -678,7 +679,8 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->particle_velocity_threshold = smd->domain->particle_velocity_threshold;
 		tsmd->domain->particle_bubble_rise = smd->domain->particle_bubble_rise;
 
-		tsmd->domain->guiding_strength = smd->domain->guiding_strength;
+		tsmd->domain->guiding_alpha = smd->domain->guiding_alpha;
+		tsmd->domain->guiding_beta = smd->domain->guiding_beta;
 
 		tsmd->domain->manta_solver_res = smd->domain->manta_solver_res;
 		tsmd->domain->noise_pos_scale = smd->domain->noise_pos_scale;
@@ -826,16 +828,13 @@ static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
 				if (data->has_velocity)
 				{
 					/* apply object velocity */
-					{
-						float hit_vel[3];
-						interp_v3_v3v3v3(hit_vel, &data->vert_vel[v1 * 3], &data->vert_vel[v2 * 3], &data->vert_vel[v3 * 3], weights);
-						data->velocityX[index] += hit_vel[0];
-						data->velocityY[index] += hit_vel[1];
-						data->velocityZ[index] += hit_vel[2];
-					}
-				}
+					float hit_vel[3];
+					interp_v3_v3v3v3(hit_vel, &data->vert_vel[v1 * 3], &data->vert_vel[v2 * 3], &data->vert_vel[v3 * 3], weights);
+					data->velocityX[index] += hit_vel[0];
+					data->velocityY[index] += hit_vel[1];
+					data->velocityZ[index] += hit_vel[2];
 
-				if (data->has_velocity) {
+					/* increase object count */
 					data->num_objects[index]++;
 				}
 			}
