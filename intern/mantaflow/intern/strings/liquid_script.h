@@ -135,6 +135,13 @@ def liquid_pre_step_low_$ID$():\n\
     y_obvel_s$ID$.multConst(gs_s$ID$.y)\n\
     z_obvel_s$ID$.multConst(gs_s$ID$.z)\n\
     \n\
+    # translate guiding vels (world space) to grid space\n\
+    if using_guiding_s$ID$:\n\
+        x_guidevel_s$ID$.multConst(gs_s$ID$.x)\n\
+        y_guidevel_s$ID$.multConst(gs_s$ID$.y)\n\
+        z_guidevel_s$ID$.multConst(gs_s$ID$.z)\n\
+        copyRealToVec3(sourceX=x_guidevel_s$ID$, sourceY=y_guidevel_s$ID$, sourceZ=z_guidevel_s$ID$, target=guidevelC_s$ID$)\n\
+    \n\
     # TODO (sebbas): liquid inflow\n\
     # translate invels (world space) to grid space\n\
     #x_invel_s$ID$.multConst(gs_s$ID$.x)\n\
@@ -159,6 +166,9 @@ def liquid_post_step_low_$ID$():\n\
     phiOut_s$ID$.setConst(9999)\n\
     phiOutIn_s$ID$.setConst(9999)\n\
     \n\
+    if using_guiding_s$ID$:\n\
+        phiGuideIn_s$ID$.setConst(9999)\n\
+        guidevelC_s$ID$.clear()\n\
     copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n";
 
 //////////////////////////////////////////////////////////////////////
@@ -266,10 +276,24 @@ def liquid_step_$ID$():\n\
     extrapolateVec3Simple(vel=obvelC_s$ID$, phi=phiObsIn_s$ID$, distance=3, inside=False)\n\
     resampleVec3ToMac(source=obvelC_s$ID$, target=obvel_s$ID$)\n\
     \n\
+    if using_guiding_s$ID$:\n\
+        mantaMsg('Extrapolating guiding velocity')\n\
+        # ensure velocities inside of guiding object, slightly add guiding vels outside of object too\n\
+        extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
+        extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=1, inside=False)\n\
+        resampleVec3ToMac(source=guidevelC_s$ID$, target=guidevel_s$ID$)\n\
+    \n\
     #extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, phiObs=phiObs_s$ID$, intoObs=True)\n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$, obvel=obvel_s$ID$)#, fractions=fractions_s$ID$) # TODO: uncomment for obvel support (once fraction wallbcs works)\n\
     \n\
-    solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$)#, fractions=fractions_s$ID$)\n\
+    if using_guiding_s$ID$:\n\
+        mantaMsg('Guiding and pressure')\n\
+        weightGuide_s$ID$.multConst(0)\n\
+        weightGuide_s$ID$.addConst(alpha_s$ID$)\n\
+        PD_fluid_guiding(vel=vel_s$ID$, velT=guidevel_s$ID$, flags=flags_s$ID$, weight=weightGuide_s$ID$, blurRadius=beta_s$ID$, pressure=pressure_s$ID$, tau=tau_s$ID$, sigma=sigma_s$ID$, theta=theta_s$ID$, zeroPressureFixing=not doOpen_s$ID$)\n\
+    else:\n\
+        mantaMsg('Pressure')\n\
+        solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$)#, fractions=fractions_s$ID$)\n\
     \n\
     #extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4, phiObs=phiObs_s$ID$, intoObs=False)\n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$, obvel=obvel_s$ID$)#, fractions=fractions_s$ID$) # TODO: uncomment for obvel support (once fraction wallbcs works)\n\
