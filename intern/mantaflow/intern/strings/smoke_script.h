@@ -55,6 +55,7 @@ if doOpen_s$ID$:\n\
 
 const std::string smoke_variables_low = "\n\
 mantaMsg('Smoke variables low')\n\
+preconditioner_s$ID$  = PcMGStatic\n\
 using_colors_s$ID$    = $USING_COLORS$\n\
 using_heat_s$ID$      = $USING_HEAT$\n\
 using_fire_s$ID$      = $USING_FIRE$\n\
@@ -204,7 +205,15 @@ def smoke_pre_step_low_$ID$():\n\
     copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
     copyRealToVec3(sourceX=x_obvel_s$ID$, sourceY=y_obvel_s$ID$, sourceZ=z_obvel_s$ID$, target=obvelC_s$ID$)\n\
     copyRealToVec3(sourceX=x_invel_s$ID$, sourceY=y_invel_s$ID$, sourceZ=z_invel_s$ID$, target=invel_s$ID$)\n\
-    copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n";
+    copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n\
+    \n\
+    # If obstacle has velocity, i.e. is moving switch to dynamic preconditioner\n\
+    if obvelC_s$ID$.getMaxValue() > 0:\n\
+        mantaMsg('Using dynamic preconditioner')\n\
+        preconditioner_s$ID$ = PcMGDynamic\n\
+    else:\n\
+        mantaMsg('Using static preconditioner')\n\
+        preconditioner_s$ID$ = PcMGStatic\n";
 
 const std::string smoke_pre_step_high = "\n\
 def smoke_pre_step_high_$ID$():\n\
@@ -343,10 +352,10 @@ def step_low_$ID$():\n\
         mantaMsg('Guiding and pressure')\n\
         weightGuide_s$ID$.multConst(0)\n\
         weightGuide_s$ID$.addConst(alpha_s$ID$)\n\
-        PD_fluid_guiding(vel=vel_s$ID$, velT=guidevel_s$ID$, flags=flags_s$ID$, weight=weightGuide_s$ID$, blurRadius=beta_s$ID$, pressure=pressure_s$ID$, tau=tau_s$ID$, sigma=sigma_s$ID$, theta=theta_s$ID$, preconditioner=$PRECONDITIONER$, zeroPressureFixing=not doOpen_s$ID$)\n\
+        PD_fluid_guiding(vel=vel_s$ID$, velT=guidevel_s$ID$, flags=flags_s$ID$, weight=weightGuide_s$ID$, blurRadius=beta_s$ID$, pressure=pressure_s$ID$, tau=tau_s$ID$, sigma=sigma_s$ID$, theta=theta_s$ID$, preconditioner=preconditioner_s$ID$, zeroPressureFixing=not doOpen_s$ID$)\n\
     else:\n\
         mantaMsg('Pressure')\n\
-        solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, preconditioner=$PRECONDITIONER$, zeroPressureFixing=not doOpen_s$ID$) # closed domains require pressure fixing\n\
+        solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, preconditioner=preconditioner_s$ID$, zeroPressureFixing=not doOpen_s$ID$) # closed domains require pressure fixing\n\
 \n\
 def process_burn_low_$ID$():\n\
     mantaMsg('Process burn low')\n\

@@ -404,7 +404,7 @@ class PHYSICS_PT_smoke_guiding(PhysicButtonsPanel, Panel):
 
         col = split.column()
         col.enabled = not domain.point_cache.is_baked
-        col.prop(domain, "guiding_alpha", text="Strength")
+        col.prop(domain, "guiding_alpha", text="Weight")
 
         col = split.column()
         col.enabled = not domain.point_cache.is_baked

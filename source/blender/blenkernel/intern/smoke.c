@@ -530,7 +530,6 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->viewport_display_mode = SM_VIEWPORT_PREVIEW;
 			smd->domain->render_display_mode = SM_VIEWPORT_FINAL;
 			smd->domain->type = MOD_SMOKE_DOMAIN_TYPE_GAS;
-			smd->domain->preconditioner = MOD_SMOKE_PC_MG_STATIC;
 			
 #ifdef WITH_MANTA
 			smd->domain->gravity[0] = 0.0f;
@@ -546,6 +545,8 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->particle_band_width = 3.0f;
 			smd->domain->particle_velocity_threshold = 2.0f;
 			smd->domain->particle_bubble_rise = 0.5f;
+			smd->domain->particle_float_amount = 0.5f;
+			smd->domain->particle_tracer_amount = 0.5f;
 			smd->domain->particle_type = 0;
 
 			/* guiding */
@@ -678,6 +679,8 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->particle_band_width = smd->domain->particle_band_width;
 		tsmd->domain->particle_velocity_threshold = smd->domain->particle_velocity_threshold;
 		tsmd->domain->particle_bubble_rise = smd->domain->particle_bubble_rise;
+		tsmd->domain->particle_float_amount = smd->domain->particle_float_amount;
+		tsmd->domain->particle_tracer_amount = smd->domain->particle_tracer_amount;
 
 		tsmd->domain->guiding_alpha = smd->domain->guiding_alpha;
 		tsmd->domain->guiding_beta = smd->domain->guiding_beta;
@@ -689,7 +692,6 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->viewport_display_mode = smd->domain->viewport_display_mode;
 		tsmd->domain->render_display_mode = smd->domain->render_display_mode;
 		tsmd->domain->type = smd->domain->type;
-		tsmd->domain->preconditioner = smd->domain->preconditioner;
 
 		copy_v3_v3(tsmd->domain->flame_smoke_color, smd->domain->flame_smoke_color);
 
@@ -887,9 +889,6 @@ static void obstacles_from_derivedmesh(
 				has_velocity = true;
 			}
 		}
-		
-		/* Manta CG precoditioner */
-		sds->preconditioner = (has_velocity) ? MOD_SMOKE_PC_MG_DYNAMIC : MOD_SMOKE_PC_MG_STATIC;
 
 		/*	Transform collider vertices to
 		 *   domain grid space for fast lookups */
@@ -954,22 +953,20 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 		Object *collob = collobjs[collIndex];
 		SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(collob, eModifierType_Smoke);
 
-		if ((smd2->type & MOD_SMOKE_TYPE_EFFEC) && smd2->effec)
-		{
+		if ((smd2->type & MOD_SMOKE_TYPE_EFFEC) && smd2->effec) {
 			SmokeCollSettings *scs = smd2->effec;
-			if (scs && (scs->type == SM_EFFECTOR_COLLISION))
-			{
+			if (scs && (scs->type == SM_EFFECTOR_COLLISION)) {
 				active_fields |= SM_ACTIVE_OBSTACLE;
 				// TODO (sebbas): ensure obstacles function
 //				fluid_ensure_obstacle(sds->fluid, sds->smd);
 			}
-			if (scs && (scs->type == SM_EFFECTOR_GUIDE))
-			{
+			if (scs && (scs->type == SM_EFFECTOR_GUIDE)) {
 				active_fields |= SM_ACTIVE_GUIDING;
 				fluid_ensure_guiding(sds->fluid, sds->smd);
 			}
 		}
 	}
+	sds->active_fields = active_fields;
 
 	float *velx = smoke_get_ob_velocity_x(sds->fluid);
 	float *vely = smoke_get_ob_velocity_y(sds->fluid);
@@ -1025,20 +1022,16 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 
 		// DG TODO: check if modifier is active?
 
-		if ((smd2->type & MOD_SMOKE_TYPE_EFFEC) && smd2->effec)
-		{
+		if ((smd2->type & MOD_SMOKE_TYPE_EFFEC) && smd2->effec) {
 			SmokeCollSettings *scs = smd2->effec;
-			if (scs && (scs->type == SM_EFFECTOR_COLLISION))
-			{
+			if (scs && (scs->type == SM_EFFECTOR_COLLISION)) {
 				obstacles_from_derivedmesh(collob, sds, scs, phiObsIn, velx, vely, velz, num_obstacles, dt);
 			}
-			if (scs && (scs->type == SM_EFFECTOR_GUIDE))
-			{
+			if (scs && (scs->type == SM_EFFECTOR_GUIDE)) {
 				obstacles_from_derivedmesh(collob, sds, scs, phiGuideIn, velxGuide, velyGuide, velzGuide, num_guides, dt);
 			}
 		}
 	}
-	sds->active_fields = active_fields;
 
 	if (collobjs)
 		MEM_freeN(collobjs);
@@ -1734,7 +1727,7 @@ static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromM
 	inside |= (BLI_bvhtree_find_nearest(treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1);
 
 	/* Levelset is negative inside mesh */
-	if (inside) mesh_distances[index] = fabs(mesh_distances[index]) * (-1.0f);
+	if (inside) mesh_distances[index] = fabsf(mesh_distances[index]) * (-1.0f);
 }
 
 static void sample_derivedmesh(
@@ -2565,18 +2558,18 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 			if (em->total_cells && sfs->behavior != MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) {
 				/* activate liquid field. cannot be combined with anything else */
 				if (sfs->type == MOD_SMOKE_FLOW_TYPE_LIQUID) {
-					active_fields &= SM_ACTIVE_LIQUID;
+					active_fields |= SM_ACTIVE_LIQUID;
 				}
 				/* activate heat field if flow produces any heat */
-				if (sfs->temp && sfs->type != MOD_SMOKE_FLOW_TYPE_LIQUID) {
+				if (sfs->temp && (sfs->type == MOD_SMOKE_FLOW_TYPE_SMOKE || sfs->type == MOD_SMOKE_FLOW_TYPE_FIRE || sfs->type == MOD_SMOKE_FLOW_TYPE_SMOKEFIRE)) {
 					active_fields |= SM_ACTIVE_HEAT;
 				}
 				/* activate fuel field if flow adds any fuel */
-				if (sfs->type != MOD_SMOKE_FLOW_TYPE_SMOKE && sfs->type != MOD_SMOKE_FLOW_TYPE_LIQUID && sfs->fuel_amount) {
+				if (sfs->fuel_amount && (sfs->type == MOD_SMOKE_FLOW_TYPE_FIRE || sfs->type == MOD_SMOKE_FLOW_TYPE_SMOKEFIRE)) {
 					active_fields |= SM_ACTIVE_FIRE;
 				}
 				/* activate color field if flows add smoke with varying colors */
-				if (sfs->type != MOD_SMOKE_FLOW_TYPE_FIRE && sfs->type != MOD_SMOKE_FLOW_TYPE_LIQUID && sfs->density) {
+				if (sfs->density && (sfs->type == MOD_SMOKE_FLOW_TYPE_SMOKE || sfs->type == MOD_SMOKE_FLOW_TYPE_SMOKEFIRE)) {
 					if (!(active_fields & SM_ACTIVE_COLOR_SET)) {
 						copy_v3_v3(sds->active_color, sfs->color);
 						active_fields |= SM_ACTIVE_COLOR_SET;

@@ -194,8 +194,6 @@ typedef struct SmokeDomainSettings {
 	int adapt_margin;
 	int adapt_res;
 	float adapt_threshold;
-	char pad3[4]; /* unused */
-
 	float alpha;
 	float beta;
 	int amplify; /* wavelet amplification */
@@ -216,10 +214,9 @@ typedef struct SmokeDomainSettings {
 	char cache_surface_format;
 	char cache_volume_format;
 	char data_depth;
-	char pad[1];
+	char pad[1]; /* unused */
 	/* Liquid cache options */
 	int liquid_cache_comp;
-	char mock_pad[4]; /* unused */
 
 	/* Smoke uses only one cache from now on (index [0]), but keeping the array for now for reading old files. */
 	struct PointCache *point_cache[2];	/* definition is in DNA_object_force.h */
@@ -257,9 +254,9 @@ typedef struct SmokeDomainSettings {
 	int particle_type;
 
 	/* fluid guiding parameters */
-	float guiding_alpha; // guiding weight scalar (determines strength)
-	int guiding_beta; // global guiding blur radius (affects size of vortices)
-	int pad4;
+	float guiding_alpha; /* guiding weight scalar (determines strength) */
+	int guiding_beta; /* guiding blur radius (affects size of vortices) */
+	char pad2[4]; /* unused */
 
 	/* Display settings */
 	char slice_method, axis_slice_method;
@@ -273,7 +270,7 @@ typedef struct SmokeDomainSettings {
 	char vector_draw_type;
 	char use_coba;
 	char coba_field;  /* simulation field used for the color mapping */
-	char pad2;
+	char pad3; /* unused */
 
 	/* mantaflow settings */
 	struct FLUID *fluid;
@@ -282,7 +279,7 @@ typedef struct SmokeDomainSettings {
 	int manta_solver_res;	/* dimension of manta solver, 2d or 3d */
 	char manta_filepath[1024];
 	short type; /* gas, liquid */
-	short preconditioner; /* cg preconditioner */
+	char pad4[2]; /* unused */
 } SmokeDomainSettings;
 
 /* type */
