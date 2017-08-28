@@ -89,23 +89,17 @@ const std::string smoke_alloc_low = "\n\
 # prepare grids low\n\
 mantaMsg('Smoke alloc low')\n\
 flags_s$ID$       = s$ID$.create(FlagGrid)\n\
-numObs_s$ID$      = s$ID$.create(IntGrid)\n\
 vel_s$ID$         = s$ID$.create(MACGrid)\n\
 x_vel_s$ID$       = s$ID$.create(RealGrid)\n\
 y_vel_s$ID$       = s$ID$.create(RealGrid)\n\
 z_vel_s$ID$       = s$ID$.create(RealGrid)\n\
-obvel_s$ID$       = s$ID$.create(MACGrid)\n\
-obvelC_s$ID$      = s$ID$.create(Vec3Grid)\n\
-x_obvel_s$ID$     = s$ID$.create(RealGrid)\n\
-y_obvel_s$ID$     = s$ID$.create(RealGrid)\n\
-z_obvel_s$ID$     = s$ID$.create(RealGrid)\n\
 invel_s$ID$       = s$ID$.create(VecGrid)\n\
 x_invel_s$ID$     = s$ID$.create(RealGrid)\n\
 y_invel_s$ID$     = s$ID$.create(RealGrid)\n\
 z_invel_s$ID$     = s$ID$.create(RealGrid)\n\
 density_s$ID$     = s$ID$.create(RealGrid)\n\
 pressure_s$ID$    = s$ID$.create(RealGrid)\n\
-phiObsIn_s$ID$    = s$ID$.create(LevelsetGrid)\n\
+phiObs_s$ID$      = s$ID$.create(LevelsetGrid)\n\
 phiOutIn_s$ID$    = s$ID$.create(LevelsetGrid)\n\
 forces_s$ID$      = s$ID$.create(Vec3Grid)\n\
 x_force_s$ID$     = s$ID$.create(RealGrid)\n\
@@ -119,7 +113,7 @@ mantaMsg('Smoke alloc high')\n\
 flags_xl$ID$     = xl$ID$.create(FlagGrid)\n\
 vel_xl$ID$       = xl$ID$.create(MACGrid)\n\
 density_xl$ID$   = xl$ID$.create(RealGrid)\n\
-phiObsIn_xl$ID$  = xl$ID$.create(LevelsetGrid)\n\
+phiObs_xl$ID$    = xl$ID$.create(LevelsetGrid)\n\
 energy_s$ID$     = s$ID$.create(RealGrid)\n\
 tempFlag_s$ID$   = s$ID$.create(FlagGrid)\n\
 texture_u_s$ID$  = s$ID$.create(RealGrid)\n\
@@ -185,10 +179,12 @@ react_xl$ID$ = xl$ID$.create(RealGrid)\n";
 
 const std::string smoke_pre_step_low = "\n\
 def smoke_pre_step_low_$ID$():\n\
+    mantaMsg('Smoke pre step low')\n\
     # translate obvels (world space) to grid space\n\
-    x_obvel_s$ID$.multConst(gs_s$ID$.x)\n\
-    y_obvel_s$ID$.multConst(gs_s$ID$.y)\n\
-    z_obvel_s$ID$.multConst(gs_s$ID$.z)\n\
+    if using_obstacle_s$ID$:\n\
+        x_obvel_s$ID$.multConst(gs_s$ID$.x)\n\
+        y_obvel_s$ID$.multConst(gs_s$ID$.y)\n\
+        z_obvel_s$ID$.multConst(gs_s$ID$.z)\n\
     \n\
     # translate guiding vels (world space) to grid space\n\
     if using_guiding_s$ID$:\n\
@@ -203,12 +199,14 @@ def smoke_pre_step_low_$ID$():\n\
     z_invel_s$ID$.multConst(gs_s$ID$.z)\n\
     \n\
     copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
-    copyRealToVec3(sourceX=x_obvel_s$ID$, sourceY=y_obvel_s$ID$, sourceZ=z_obvel_s$ID$, target=obvelC_s$ID$)\n\
     copyRealToVec3(sourceX=x_invel_s$ID$, sourceY=y_invel_s$ID$, sourceZ=z_invel_s$ID$, target=invel_s$ID$)\n\
     copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n\
     \n\
+    if using_obstacle_s$ID$:\n\
+        copyRealToVec3(sourceX=x_obvel_s$ID$, sourceY=y_obvel_s$ID$, sourceZ=z_obvel_s$ID$, target=obvelC_s$ID$)\n\
+    \n\
     # If obstacle has velocity, i.e. is moving switch to dynamic preconditioner\n\
-    if obvelC_s$ID$.getMaxValue() > 0:\n\
+    if using_obstacle_s$ID$ and obvelC_s$ID$.getMaxValue() > 0:\n\
         mantaMsg('Using dynamic preconditioner')\n\
         preconditioner_s$ID$ = PcMGDynamic\n\
     else:\n\
@@ -223,11 +221,12 @@ def smoke_pre_step_high_$ID$():\n\
 const std::string smoke_post_step_low = "\n\
 def smoke_post_step_low_$ID$():\n\
     forces_s$ID$.clear()\n\
-    obvelC_s$ID$.clear()\n\
     invel_s$ID$.clear()\n\
-    \n\
-    phiObsIn_s$ID$.setConst(9999)\n\
     phiOutIn_s$ID$.setConst(9999)\n\
+    \n\
+    if using_obstacle_s$ID$:\n\
+        phiObsIn_s$ID$.setConst(9999)\n\
+        obvelC_s$ID$.clear()\n\
     \n\
     if using_guiding_s$ID$:\n\
         phiGuideIn_s$ID$.setConst(9999)\n\
@@ -255,7 +254,9 @@ def manta_step_$ID$(framenr):\n\
     \n\
     while s$ID$.frame == last_frame_s$ID$:\n\
         \n\
-        setObstacleFlags(flags=flags_s$ID$, phiObs=phiObsIn_s$ID$, phiOut=phiOutIn_s$ID$)\n\
+        if using_obstacle_s$ID$: # TODO (sebbas): allow outflow objects when no obstacle set\n\
+            phiObs_s$ID$.join(phiObsIn_s$ID$)\n\
+        setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOutIn_s$ID$)\n\
         flags_s$ID$.fillGrid()\n\
         \n\
         if using_adaptTime_s$ID$:\n\
@@ -310,8 +311,8 @@ def step_low_$ID$():\n\
     advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=vel_s$ID$, order=$ADVECT_ORDER$, openBounds=doOpen_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
     \n\
     # Create interpolated version of original phi grid for later use in (optional) high-res step\n\
-    if using_highres_s$ID$:\n\
-        interpolateGrid(target=phiObsIn_xl$ID$, source=phiObsIn_s$ID$)\n\
+    if using_obstacle_s$ID$ and using_highres_s$ID$:\n\
+        interpolateGrid(target=phiObs_xl$ID$, source=phiObs_s$ID$)\n\
     if doOpen_s$ID$:\n\
         resetOutflow(flags=flags_s$ID$, real=density_s$ID$)\n\
     \n\
@@ -332,11 +333,12 @@ def step_low_$ID$():\n\
     # add initial velocity\n\
     setInitialVelocity(flags=flags_s$ID$, vel=vel_s$ID$, invel=invel_s$ID$)\n\
     \n\
-    mantaMsg('Extrapolating object velocity')\n\
-    # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
-    extrapolateVec3Simple(vel=obvelC_s$ID$, phi=phiObsIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
-    extrapolateVec3Simple(vel=obvelC_s$ID$, phi=phiObsIn_s$ID$, distance=1, inside=False)\n\
-    resampleVec3ToMac(source=obvelC_s$ID$, target=obvel_s$ID$)\n\
+    if using_obstacle_s$ID$:\n\
+        mantaMsg('Extrapolating object velocity')\n\
+        # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
+        extrapolateVec3Simple(vel=obvelC_s$ID$, phi=phiObsIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
+        extrapolateVec3Simple(vel=obvelC_s$ID$, phi=phiObsIn_s$ID$, distance=1, inside=False)\n\
+        resampleVec3ToMac(source=obvelC_s$ID$, target=obvel_s$ID$)\n\
     \n\
     if using_guiding_s$ID$:\n\
         mantaMsg('Extrapolating guiding velocity')\n\
@@ -346,7 +348,10 @@ def step_low_$ID$():\n\
         resampleVec3ToMac(source=guidevelC_s$ID$, target=guidevel_s$ID$)\n\
     \n\
     mantaMsg('Walls')\n\
-    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$)\n\
+    if using_obstacle_s$ID$:\n\
+        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$)\n\
+    else:\n\
+        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$)\n\
     \n\
     if using_guiding_s$ID$:\n\
         mantaMsg('Guiding and pressure')\n\
@@ -371,7 +376,8 @@ def update_flame_low_$ID$():\n\
 const std::string smoke_step_high = "\n\
 def step_high_$ID$():\n\
     mantaMsg('Smoke step high')\n\
-    setObstacleFlags(flags=flags_xl$ID$, phiObs=phiObsIn_xl$ID$)\n\
+    if using_obstacle_s$ID$: # TODO (sebbas): allow outflow objects when no obstacle set\n\
+        setObstacleFlags(flags=flags_xl$ID$, phiObs=phiObs_xl$ID$)\n\
     flags_xl$ID$.fillGrid()\n\
     \n\
     interpolateMACGrid(source=vel_s$ID$, target=vel_xl$ID$)\n\
@@ -435,7 +441,6 @@ def load_smoke_data_low_$ID$(path):\n\
     density_s$ID$.load(path + '_density.uni')\n\
     flags_s$ID$.load(path + '_flags.uni')\n\
     vel_s$ID$.load(path + '_vel.uni')\n\
-    obvel_s$ID$.load(path + '_obvel.uni')\n\
     invel_s$ID$.load(path + '_invel.uni')\n\
     pressure_s$ID$.load(path + '_pressure.uni')\n\
     forces_s$ID$.load(path + '_forces.uni')\n\
@@ -446,15 +451,11 @@ def load_smoke_data_low_$ID$(path):\n\
     x_vel_s$ID$.load(path + '_x_vel.uni')\n\
     y_vel_s$ID$.load(path + '_y_vel.uni')\n\
     z_vel_s$ID$.load(path + '_z_vel.uni')\n\
-    x_obvel_s$ID$.load(path + '_x_obvel.uni')\n\
-    y_obvel_s$ID$.load(path + '_y_obvel.uni')\n\
-    z_obvel_s$ID$.load(path + '_z_obvel.uni')\n\
     x_invel_s$ID$.load(path + '_x_invel.uni')\n\
     y_invel_s$ID$.load(path + '_y_invel.uni')\n\
     z_invel_s$ID$.load(path + '_z_invel.uni')\n\
-    phiObsIn_s$ID$.load(path + '_phiObsIn.uni')\n\
+    phiObs_s$ID$.load(path + '_phiObs.uni')\n\
     phiOutIn_s$ID$.load(path + '_phiOutIn.uni')\n\
-    numObs_s$ID$.load(path + '_numObs.uni')\n\
     if using_colors_s$ID$:\n\
         color_r_s$ID$.load(path + '_color_r.uni')\n\
         color_g_s$ID$.load(path + '_color_g.uni')\n\
@@ -492,7 +493,6 @@ def save_smoke_data_low_$ID$(path):\n\
     density_s$ID$.save(path + '_density.uni')\n\
     flags_s$ID$.save(path + '_flags.uni')\n\
     vel_s$ID$.save(path + '_vel.uni')\n\
-    obvel_s$ID$.save(path + '_obvel.uni')\n\
     invel_s$ID$.save(path + '_invel.uni')\n\
     pressure_s$ID$.save(path + '_pressure.uni')\n\
     forces_s$ID$.save(path + '_forces.uni')\n\
@@ -503,15 +503,11 @@ def save_smoke_data_low_$ID$(path):\n\
     x_vel_s$ID$.save(path + '_x_vel.uni')\n\
     y_vel_s$ID$.save(path + '_y_vel.uni')\n\
     z_vel_s$ID$.save(path + '_z_vel.uni')\n\
-    x_obvel_s$ID$.save(path + '_x_obvel.uni')\n\
-    y_obvel_s$ID$.save(path + '_y_obvel.uni')\n\
-    z_obvel_s$ID$.save(path + '_z_obvel.uni')\n\
     x_invel_s$ID$.save(path + '_x_invel.uni')\n\
     y_invel_s$ID$.save(path + '_y_invel.uni')\n\
     z_invel_s$ID$.save(path + '_z_invel.uni')\n\
-    phiObsIn_s$ID$.save(path + '_phiObsIn.uni')\n\
+    phiObs_s$ID$.save(path + '_phiObs.uni')\n\
     phiOutIn_s$ID$.save(path + '_phiOutIn.uni')\n\
-    numObs_s$ID$.save(path + '_numObs.uni')\n\
     if using_colors_s$ID$:\n\
         color_r_s$ID$.save(path + '_color_r.uni')\n\
         color_g_s$ID$.save(path + '_color_g.uni')\n\
@@ -579,24 +575,18 @@ if 'heat_s$ID$' in globals() : del heat_s$ID$\n";
 const std::string smoke_delete_grids_low = "\n\
 mantaMsg('Deleting base grids low')\n\
 if 'flags_s$ID$'       in globals() : del flags_s$ID$\n\
-if 'numObs_s$ID$'      in globals() : del numObs_s$ID$\n\
 if 'vel_s$ID$'         in globals() : del vel_s$ID$\n\
 if 'x_vel_s$ID$'       in globals() : del x_vel_s$ID$\n\
 if 'y_vel_s$ID$'       in globals() : del y_vel_s$ID$\n\
 if 'z_vel_s$ID$'       in globals() : del z_vel_s$ID$\n\
-if 'obvel_s$ID$'       in globals() : del obvel_s$ID$\n\
-if 'obvelC_s$ID$'      in globals() : del obvelC_s$ID$\n\
-if 'x_obvel_s$ID$'     in globals() : del x_obvel_s$ID$\n\
-if 'y_obvel_s$ID$'     in globals() : del y_obvel_s$ID$\n\
-if 'z_obvel_s$ID$'     in globals() : del z_obvel_s$ID$\n\
 if 'invel_s$ID$'       in globals() : del invel_s$ID$\n\
 if 'x_invel_s$ID$'     in globals() : del x_invel_s$ID$\n\
 if 'y_invel_s$ID$'     in globals() : del y_invel_s$ID$\n\
 if 'z_invel_s$ID$'     in globals() : del z_invel_s$ID$\n\
 if 'density_s$ID$'     in globals() : del density_s$ID$\n\
 if 'pressure_s$ID$'    in globals() : del pressure_s$ID$\n\
-if 'phiObsIn_s$ID$'    in globals() : del phiObsIn_s$ID$\n\
 if 'phiOutIn_s$ID$'    in globals() : del phiOutIn_s$ID$\n\
+if 'phiObs_s$ID$'      in globals() : del phiObs_s$ID$\n\
 if 'forces_s$ID$'      in globals() : del forces_s$ID$\n\
 if 'x_force_s$ID$'     in globals() : del x_force_s$ID$\n\
 if 'y_force_s$ID$'     in globals() : del y_force_s$ID$\n\
@@ -608,7 +598,7 @@ mantaMsg('Deleting base grids high')\n\
 if 'flags_xl$ID$'      in globals() : del flags_xl$ID$\n\
 if 'vel_xl$ID$'        in globals() : del vel_xl$ID$\n\
 if 'density_xl$ID$'    in globals() : del density_xl$ID$\n\
-if 'phiObsIn_xl$ID$'   in globals() : del phiObsIn_xl$ID$\n\
+if 'phiObs_xl$ID$'     in globals() : del phiObs_xl$ID$\n\
 if 'energy_s$ID$'      in globals() : del energy_s$ID$\n\
 if 'tempFlag_s$ID$'    in globals() : del tempFlag_s$ID$\n\
 if 'uvGrid_s$ID$'      in globals() : del uvGrid_s$ID$\n\

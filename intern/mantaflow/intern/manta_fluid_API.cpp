@@ -530,6 +530,14 @@ extern "C" void liquid_ensure_init(FLUID *smoke, struct SmokeModifierData *smd)
 	}
 }
 
+extern "C" void fluid_ensure_obstacle(FLUID *fluid, struct SmokeModifierData *smd)
+{
+	if (fluid) {
+		fluid->initObstacle(smd);
+		fluid->updatePointers();
+	}
+}
+
 extern "C" void fluid_ensure_guiding(FLUID *fluid, struct SmokeModifierData *smd)
 {
 	if (fluid) {

@@ -61,7 +61,6 @@ mantaMsg('Liquid variables high')\n";
 const std::string liquid_alloc_low = "\n\
 mantaMsg('Liquid alloc low')\n\
 flags_s$ID$      = s$ID$.create(FlagGrid)\n\
-numObs_s$ID$     = s$ID$.create(IntGrid)\n\
 phiParts_s$ID$   = s$ID$.create(LevelsetGrid)\n\
 phi_s$ID$        = s$ID$.create(LevelsetGrid)\n\
 phiIn_s$ID$      = s$ID$.create(LevelsetGrid)\n\
@@ -70,24 +69,18 @@ phiOutIn_s$ID$   = s$ID$.create(LevelsetGrid)\n\
 pressure_s$ID$   = s$ID$.create(RealGrid)\n\
 \n\
 phiObs_s$ID$     = s$ID$.create(LevelsetGrid)\n\
-phiObsIn_s$ID$   = s$ID$.create(LevelsetGrid)\n\
 fractions_s$ID$  = s$ID$.create(MACGrid)\n\
 \n\
 vel_s$ID$        = s$ID$.create(MACGrid)\n\
 x_vel_s$ID$      = s$ID$.create(RealGrid)\n\
 y_vel_s$ID$      = s$ID$.create(RealGrid)\n\
 z_vel_s$ID$      = s$ID$.create(RealGrid)\n\
-obvel_s$ID$      = s$ID$.create(MACGrid)\n\
-obvelC_s$ID$     = s$ID$.create(Vec3Grid)\n\
-x_obvel_s$ID$    = s$ID$.create(RealGrid)\n\
-y_obvel_s$ID$    = s$ID$.create(RealGrid)\n\
-z_obvel_s$ID$    = s$ID$.create(RealGrid)\n\
 \n\
 # TODO (sebbas): liquid inflow\n\
-#invel_s$ID$      = s$ID$.create(VecGrid)\n\
-#invel_s$ID$    = s$ID$.create(RealGrid)\n\
-#y_invel_s$ID$    = s$ID$.create(RealGrid)\n\
-#z_invel_s$ID$    = s$ID$.create(RealGrid)\n\
+#invel_s$ID$     = s$ID$.create(VecGrid)\n\
+#invel_s$ID$     = s$ID$.create(RealGrid)\n\
+#y_invel_s$ID$   = s$ID$.create(RealGrid)\n\
+#z_invel_s$ID$   = s$ID$.create(RealGrid)\n\
 velOld_s$ID$     = s$ID$.create(MACGrid)\n\
 velParts_s$ID$   = s$ID$.create(MACGrid)\n\
 mapWeights_s$ID$ = s$ID$.create(MACGrid)\n\
@@ -131,9 +124,10 @@ phiIn_s$ID$.initFromFlags(flags_s$ID$)\n";
 const std::string liquid_pre_step_low = "\n\
 def liquid_pre_step_low_$ID$():\n\
     # translate obvels (world space) to grid space\n\
-    x_obvel_s$ID$.multConst(gs_s$ID$.x)\n\
-    y_obvel_s$ID$.multConst(gs_s$ID$.y)\n\
-    z_obvel_s$ID$.multConst(gs_s$ID$.z)\n\
+    if using_obstacle_s$ID$:\n\
+        x_obvel_s$ID$.multConst(gs_s$ID$.x)\n\
+        y_obvel_s$ID$.multConst(gs_s$ID$.y)\n\
+        z_obvel_s$ID$.multConst(gs_s$ID$.z)\n\
     \n\
     # translate guiding vels (world space) to grid space\n\
     if using_guiding_s$ID$:\n\
@@ -149,15 +143,16 @@ def liquid_pre_step_low_$ID$():\n\
     #z_invel_s$ID$.multConst(gs_s$ID$.z)\n\
     \n\
     copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
-    copyRealToVec3(sourceX=x_obvel_s$ID$, sourceY=y_obvel_s$ID$, sourceZ=z_obvel_s$ID$, target=obvelC_s$ID$)\n\
     # TODO (sebbas): liquid inflow\n\
     #copyRealToVec3(sourceX=x_invel_s$ID$, sourceY=y_invel_s$ID$, sourceZ=z_invel_s$ID$, target=invel_s$ID$)\n\
-    copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n";
+    copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n\
+    \n\
+    if using_obstacle_s$ID$:\n\
+        copyRealToVec3(sourceX=x_obvel_s$ID$, sourceY=y_obvel_s$ID$, sourceZ=z_obvel_s$ID$, target=obvelC_s$ID$)\n";
 
 const std::string liquid_post_step_low = "\n\
 def liquid_post_step_low_$ID$():\n\
     forces_s$ID$.clear()\n\
-    obvelC_s$ID$.clear()\n\
     # TODO (sebbas): liquid inflow\n\
     #invel_s$ID$.clear()\n\
     \n\
@@ -165,6 +160,10 @@ def liquid_post_step_low_$ID$():\n\
     phiObs_s$ID$.setConst(9999)\n\
     phiOut_s$ID$.setConst(9999)\n\
     phiOutIn_s$ID$.setConst(9999)\n\
+    \n\
+    if using_obstacle_s$ID$:\n\
+        phiObsIn_s$ID$.setConst(9999)\n\
+        obvelC_s$ID$.clear()\n\
     \n\
     if using_guiding_s$ID$:\n\
         phiGuideIn_s$ID$.setConst(9999)\n\
@@ -187,9 +186,11 @@ def manta_step_$ID$(framenr):\n\
         \n\
         flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$, phiWalls=phiObs_s$ID$, outflow=boundConditions_s$ID$)\n\
         \n\
-        phiObs_s$ID$.join(phiObsIn_s$ID$)\n\
+        if using_obstacle_s$ID$:\n\
+            phiObs_s$ID$.join(phiObsIn_s$ID$)\n\
         phi_s$ID$.join(phiIn_s$ID$)\n\
-        phi_s$ID$.subtract(phiObsIn_s$ID$)\n\
+        if using_obstacle_s$ID$:\n\
+            phi_s$ID$.subtract(phiObsIn_s$ID$)\n\
         \n\
         phiOut_s$ID$.join(phiOutIn_s$ID$)\n\
         \n\
@@ -270,11 +271,12 @@ def liquid_step_$ID$():\n\
     addGravity(flags=flags_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$)\n\
     addForceField(flags=flags_s$ID$, vel=vel_s$ID$, force=forces_s$ID$)\n\
     \n\
-    mantaMsg('Extrapolating object velocity')\n\
-    # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
-    extrapolateVec3Simple(vel=obvelC_s$ID$, phi=phiObsIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
-    extrapolateVec3Simple(vel=obvelC_s$ID$, phi=phiObsIn_s$ID$, distance=3, inside=False)\n\
-    resampleVec3ToMac(source=obvelC_s$ID$, target=obvel_s$ID$)\n\
+    if using_obstacle_s$ID$:\n\
+        mantaMsg('Extrapolating object velocity')\n\
+        # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
+        extrapolateVec3Simple(vel=obvelC_s$ID$, phi=phiObsIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
+        extrapolateVec3Simple(vel=obvelC_s$ID$, phi=phiObsIn_s$ID$, distance=3, inside=False)\n\
+        resampleVec3ToMac(source=obvelC_s$ID$, target=obvel_s$ID$)\n\
     \n\
     if using_guiding_s$ID$:\n\
         mantaMsg('Extrapolating guiding velocity')\n\
@@ -284,7 +286,10 @@ def liquid_step_$ID$():\n\
         resampleVec3ToMac(source=guidevelC_s$ID$, target=guidevel_s$ID$)\n\
     \n\
     #extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, phiObs=phiObs_s$ID$, intoObs=True)\n\
-    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$, obvel=obvel_s$ID$)#, fractions=fractions_s$ID$) # TODO: uncomment for obvel support (once fraction wallbcs works)\n\
+    if using_obstacle_s$ID$:\n\
+        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$, obvel=obvel_s$ID$)#, fractions=fractions_s$ID$) # TODO: uncomment for obvel support (once fraction wallbcs works)\n\
+    else:\n\
+        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$)#, fractions=fractions_s$ID$) # TODO: uncomment for obvel support (once fraction wallbcs works)\n\
     \n\
     if using_guiding_s$ID$:\n\
         mantaMsg('Guiding and pressure')\n\
@@ -296,7 +301,10 @@ def liquid_step_$ID$():\n\
         solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$)#, fractions=fractions_s$ID$)\n\
     \n\
     #extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4, phiObs=phiObs_s$ID$, intoObs=False)\n\
-    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$, obvel=obvel_s$ID$)#, fractions=fractions_s$ID$) # TODO: uncomment for obvel support (once fraction wallbcs works)\n\
+    if using_obstacle_s$ID$:\n\
+        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$, obvel=obvel_s$ID$)#, fractions=fractions_s$ID$) # TODO: uncomment for obvel support (once fraction wallbcs works)\n\
+    else:\n\
+        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$)#, fractions=fractions_s$ID$) # TODO: uncomment for obvel support (once fraction wallbcs works)\n\
     \n\
     if (dim_s$ID$==3):\n\
         # mis-use phiParts as temp grid to close the mesh\n\
@@ -353,14 +361,12 @@ def load_liquid_data_low_$ID$(path):\n\
     phi_s$ID$.load(path + '_phi.uni')\n\
     phiIn_s$ID$.load(path + '_phiIn.uni')\n\
     phiObs_s$ID$.load(path + '_phiObs.uni')\n\
-    phiObsIn_s$ID$.load(path + '_phiObsIn.uni')\n\
     phiOut_s$ID$.load(path + '_phiOut.uni')\n\
     phiOutIn_s$ID$.load(path + '_phiOutIn.uni')\n\
     fractions_s$ID$.load(path + '_fractions.uni')\n\
     pressure_s$ID$.load(path + '_pressure.uni')\n\
     \n\
     vel_s$ID$.load(path + '_vel.uni')\n\
-    obvel_s$ID$.load(path + '_obvel.uni')\n\
     # TODO (sebbas): liquid inflow\n\
     #invel_s$ID$.load(path + '_invel.uni')\n\
     velOld_s$ID$.load(path + '_velOld.uni')\n\
@@ -370,9 +376,6 @@ def load_liquid_data_low_$ID$(path):\n\
     x_vel_s$ID$.load(path + '_x_vel.uni')\n\
     y_vel_s$ID$.load(path + '_y_vel.uni')\n\
     z_vel_s$ID$.load(path + '_z_vel.uni')\n\
-    x_obvel_s$ID$.load(path + '_x_obvel.uni')\n\
-    y_obvel_s$ID$.load(path + '_y_obvel.uni')\n\
-    z_obvel_s$ID$.load(path + '_z_obvel.uni')\n\
     # TODO (sebbas): liquid inflow\n\
     #x_invel_s$ID$.load(path + '_x_invel.uni')\n\
     #y_invel_s$ID$.load(path + '_y_invel.uni')\n\
@@ -400,14 +403,12 @@ def save_liquid_data_low_$ID$(path):\n\
     phi_s$ID$.save(path + '_phi.uni')\n\
     phiIn_s$ID$.save(path + '_phiIn.uni')\n\
     phiObs_s$ID$.save(path + '_phiObs.uni')\n\
-    phiObsIn_s$ID$.save(path + '_phiObsIn.uni')\n\
     phiOut_s$ID$.save(path + '_phiOut.uni')\n\
     phiOutIn_s$ID$.save(path + '_phiOutIn.uni')\n\
     fractions_s$ID$.save(path + '_fractions.uni')\n\
     pressure_s$ID$.save(path + '_pressure.uni')\n\
     \n\
     vel_s$ID$.save(path + '_vel.uni')\n\
-    obvel_s$ID$.save(path + '_obvel.uni')\n\
     # TODO (sebbas): liquid inflow\n\
     #invel_s$ID$.save(path + '_invel.uni')\n\
     velOld_s$ID$.save(path + '_velOld.uni')\n\
@@ -417,9 +418,6 @@ def save_liquid_data_low_$ID$(path):\n\
     x_vel_s$ID$.save(path + '_x_vel.uni')\n\
     y_vel_s$ID$.save(path + '_y_vel.uni')\n\
     z_vel_s$ID$.save(path + '_z_vel.uni')\n\
-    x_obvel_s$ID$.save(path + '_x_obvel.uni')\n\
-    y_obvel_s$ID$.save(path + '_y_obvel.uni')\n\
-    z_obvel_s$ID$.save(path + '_z_obvel.uni')\n\
     # TODO (sebbas): liquid inflow\n\
     #x_invel_s$ID$.save(path + '_x_invel.uni')\n\
     #y_invel_s$ID$.save(path + '_y_invel.uni')\n\
@@ -446,7 +444,6 @@ def save_liquid_data_high_$ID$(path):\n\
 const std::string liquid_delete_grids_low = "\n\
 mantaMsg('Deleting lowres grids, mesh, particlesystem')\n\
 if 'flags_s$ID$'      in globals() : del flags_s$ID$\n\
-if 'numObs_s$ID$'     in globals() : del numObs_s$ID$\n\
 if 'phiParts_s$ID$'   in globals() : del phiParts_s$ID$\n\
 if 'phi_s$ID$'        in globals() : del phi_s$ID$\n\
 if 'phiIn_s$ID$'      in globals() : del phiIn_s$ID$\n\
@@ -457,11 +454,6 @@ if 'vel_s$ID$'        in globals() : del vel_s$ID$\n\
 if 'x_vel_s$ID$'      in globals() : del x_vel_s$ID$\n\
 if 'y_vel_s$ID$'      in globals() : del y_vel_s$ID$\n\
 if 'z_vel_s$ID$'      in globals() : del z_vel_s$ID$\n\
-if 'obvel_s$ID$'      in globals() : del obvel_s$ID$\n\
-if 'obvelC_s$ID$'     in globals() : del obvelC_s$ID$\n\
-if 'x_obvel_s$ID$'    in globals() : del x_obvel_s$ID$\n\
-if 'y_obvel_s$ID$'    in globals() : del y_obvel_s$ID$\n\
-if 'z_obvel_s$ID$'    in globals() : del z_obvel_s$ID$\n\
 # TODO (sebbas): liquid inflow\n\
 #if 'invel_s$ID$'      in globals() : del invel_s$ID$\n\
 #if 'x_invel_s$ID$'    in globals() : del x_invel_s$ID$\n\
@@ -483,7 +475,6 @@ if 'x_force_s$ID$'    in globals() : del x_force_s$ID$\n\
 if 'y_force_s$ID$'    in globals() : del y_force_s$ID$\n\
 if 'z_force_s$ID$'    in globals() : del z_force_s$ID$\n\
 if 'phiObs_s$ID$'     in globals() : del phiObs_s$ID$\n\
-if 'phiObsIn_s$ID$'   in globals() : del phiObsIn_s$ID$\n\
 if 'fractions_s$ID$'  in globals() : del fractions_s$ID$\n";
 
 const std::string liquid_delete_grids_high = "\n\

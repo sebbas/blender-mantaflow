@@ -957,8 +957,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 			SmokeCollSettings *scs = smd2->effec;
 			if (scs && (scs->type == SM_EFFECTOR_COLLISION)) {
 				active_fields |= SM_ACTIVE_OBSTACLE;
-				// TODO (sebbas): ensure obstacles function
-//				fluid_ensure_obstacle(sds->fluid, sds->smd);
+				fluid_ensure_obstacle(sds->fluid, sds->smd);
 			}
 			if (scs && (scs->type == SM_EFFECTOR_GUIDE)) {
 				active_fields |= SM_ACTIVE_GUIDING;

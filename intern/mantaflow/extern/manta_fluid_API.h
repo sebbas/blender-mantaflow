@@ -163,6 +163,7 @@ int *fluid_get_num_guide(struct FLUID *fluid);
 int fluid_get_res_x(struct FLUID *fluid);
 int fluid_get_res_y(struct FLUID *fluid);
 int fluid_get_res_z(struct FLUID *fluid);
+void fluid_ensure_obstacle(struct FLUID *fluid, struct SmokeModifierData *smd);
 void fluid_ensure_guiding(struct FLUID *fluid, struct SmokeModifierData *smd);
 
 

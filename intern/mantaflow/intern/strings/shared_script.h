@@ -77,6 +77,7 @@ boundaryWidth_s$ID$       = 1\n\
 \n\
 using_highres_s$ID$   = $USING_HIGHRES$\n\
 using_adaptTime_s$ID$ = $USING_ADAPTIVETIME$\n\
+using_obstacle_s$ID$  = $USING_OBSTACLE$\n\
 using_guiding_s$ID$   = $USING_GUIDING$\n\
 \n\
 \n\
@@ -93,6 +94,9 @@ gs_xl$ID$     = vec3($HRESX$, $HRESY$, $HRESZ$)\n\
 \n\
 if dim_s$ID$ == 2:\n\
     gs_xl$ID$.z = 1\n";
+
+const std::string fluid_with_obstacle = "\n\
+using_obstacle_s$ID$ = True\n";
 
 const std::string fluid_with_guiding = "\n\
 using_guiding_s$ID$ = True\n";
@@ -124,6 +128,16 @@ xl$ID$.cfl         = s$ID$.cfl\n";
 // GRIDS
 //////////////////////////////////////////////////////////////////////
 
+const std::string fluid_alloc_obstacle_low = "\n\
+mantaMsg('Allocating obstacle low')\n\
+numObs_s$ID$     = s$ID$.create(IntGrid)\n\
+phiObsIn_s$ID$   = s$ID$.create(LevelsetGrid)\n\
+obvel_s$ID$      = s$ID$.create(MACGrid)\n\
+obvelC_s$ID$     = s$ID$.create(Vec3Grid)\n\
+x_obvel_s$ID$    = s$ID$.create(RealGrid)\n\
+y_obvel_s$ID$    = s$ID$.create(RealGrid)\n\
+z_obvel_s$ID$    = s$ID$.create(RealGrid)\n";
+
 const std::string fluid_alloc_guiding_low = "\n\
 mantaMsg('Allocating guiding low')\n\
 numGuides_s$ID$   = s$ID$.create(IntGrid)\n\
@@ -152,11 +166,13 @@ if 'dt_default_s$ID$'       in globals() : del dt_default_s$ID$\n\
 if 'dt_factor_s$ID$'        in globals() : del dt_factor_s$ID$\n\
 if 'fps_s$ID$'              in globals() : del fps_s$ID$\n\
 if 'dt0_s$ID$'              in globals() : del dt0_s$ID$\n\
-if 'alpha_s$ID$'             in globals() : del alpha_s$ID$\n\
+if 'alpha_s$ID$'            in globals() : del alpha_s$ID$\n\
 if 'beta_s$ID$'             in globals() : del beta_s$ID$\n\
 if 'tau_s$ID$'              in globals() : del tau_s$ID$\n\
 if 'sigma_s$ID$'            in globals() : del sigma_s$ID$\n\
-if 'theta_s$ID$'            in globals() : del theta_s$ID$\n";
+if 'theta_s$ID$'            in globals() : del theta_s$ID$\n\
+if 'using_obstacle_s$ID$'   in globals() : del using_obstacle_s$ID$\n\
+if 'using_guiding_s$ID$'    in globals() : del using_guiding_s$ID$\n";
 
 const std::string fluid_delete_variables_high = "\n\
 mantaMsg('Deleting fluid variables high')\n\
@@ -170,6 +186,16 @@ if 's$ID$' in globals() : del s$ID$\n";
 const std::string fluid_delete_solver_high = "\n\
 mantaMsg('Deleting solver high')\n\
 if 'xl$ID$' in globals() : del xl$ID$\n";
+
+const std::string fluid_delete_obstacle_low = "\n\
+mantaMsg('Deleting obstacle low')\n\
+if 'numObs_s$ID$'   in globals() : del numObs_s$ID$\n\
+if 'phiObsIn_s$ID$' in globals() : del phiObsIn_s$ID$\n\
+if 'obvel_s$ID$'    in globals() : del obvel_s$ID$\n\
+if 'obvelC_s$ID$'   in globals() : del obvelC_s$ID$\n\
+if 'x_obvel_s$ID$'  in globals() : del x_obvel_s$ID$\n\
+if 'y_obvel_s$ID$'  in globals() : del y_obvel_s$ID$\n\
+if 'z_obvel_s$ID$'  in globals() : del z_obvel_s$ID$\n";
 
 const std::string fluid_delete_guiding_low = "\n\
 mantaMsg('Deleting guiding low')\n\
@@ -201,8 +227,17 @@ gc.collect()\n";
 // IMPORT / EXPORT
 //////////////////////////////////////////////////////////////////////
 
-const std::string fluid_import_low = "\n\
-def load_fluid_data_low_$ID$(path):\n\
+const std::string fluid_obstacle_import_low = "\n\
+def load_fluid_obstacle_data_low_$ID$(path):\n\
+    numObs_s$ID$.load(path + '_numObs.uni')\n\
+    phiObsIn_s$ID$.load(path + '_phiObsIn.uni')\n\
+    obvel_s$ID$.load(path + '_obvel.uni')\n\
+    x_obvel_s$ID$.load(path + '_x_obvel.uni')\n\
+    y_obvel_s$ID$.load(path + '_y_obvel.uni')\n\
+    z_obvel_s$ID$.load(path + '_z_obvel.uni')\n";
+
+const std::string fluid_guiding_import_low = "\n\
+def load_fluid_guiding_data_low_$ID$(path):\n\
     numGuides_s$ID$.load(path + '_numGuides.uni')\n\
     phiGuideIn_s$ID$.load(path + '_phiGuideIn.uni')\n\
     guidevel_s$ID$.load(path + '_guidevel.uni')\n\
@@ -211,8 +246,17 @@ def load_fluid_data_low_$ID$(path):\n\
     z_guidevel_s$ID$.load(path + '_z_guidevel.uni')\n\
     weightGuide_s$ID$.load(path + '_weightGuide.uni')\n";
 
-const std::string fluid_export_low = "\n\
-def save_fluid_data_low_$ID$(path):\n\
+const std::string fluid_obstacle_export_low = "\n\
+def save_fluid_obstacle_data_low_$ID$(path):\n\
+    numObs_s$ID$.save(path + '_numObs_s.uni')\n\
+    phiObsIn_s$ID$.save(path + '_phiObsIn.uni')\n\
+    obvel_s$ID$.save(path + '_obvel.uni')\n\
+    x_obvel_s$ID$.save(path + '_x_obvel.uni')\n\
+    y_obvel_s$ID$.save(path + '_y_obvel.uni')\n\
+    z_obvel_s$ID$.save(path + '_z_obvel.uni')\n";
+
+const std::string fluid_guiding_export_low = "\n\
+def save_fluid_guiding_data_low_$ID$(path):\n\
     numGuides_s$ID$.save(path + '_numGuides.uni')\n\
     phiGuideIn_s$ID$.save(path + '_phiGuideIn.uni')\n\
     guidevel_s$ID$.save(path + '_guidevel.uni')\n\
@@ -220,7 +264,6 @@ def save_fluid_data_low_$ID$(path):\n\
     y_guidevel_s$ID$.save(path + '_y_guidevel.uni')\n\
     z_guidevel_s$ID$.save(path + '_z_guidevel.uni')\n\
     weightGuide_s$ID$.save(path + '_weightGuide.uni')\n";
-
 
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE

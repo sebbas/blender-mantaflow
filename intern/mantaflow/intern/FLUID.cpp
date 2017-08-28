@@ -58,13 +58,14 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 
 	smd->domain->fluid = this;
 	
-	mUsingHeat    = smd->domain->active_fields & SM_ACTIVE_HEAT;
-	mUsingFire    = smd->domain->active_fields & SM_ACTIVE_FIRE;
-	mUsingColors  = smd->domain->active_fields & SM_ACTIVE_COLORS;
-	mUsingGuiding = smd->domain->active_fields & SM_ACTIVE_GUIDING;
-	mUsingHighRes = smd->domain->flags & MOD_SMOKE_HIGHRES;
-	mUsingLiquid  = smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID;
-	mUsingSmoke   = smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS;
+	mUsingHeat     = smd->domain->active_fields & SM_ACTIVE_HEAT;
+	mUsingFire     = smd->domain->active_fields & SM_ACTIVE_FIRE;
+	mUsingColors   = smd->domain->active_fields & SM_ACTIVE_COLORS;
+	mUsingObstacle = smd->domain->active_fields & SM_ACTIVE_OBSTACLE;
+	mUsingGuiding  = smd->domain->active_fields & SM_ACTIVE_GUIDING;
+	mUsingHighRes  = smd->domain->flags & MOD_SMOKE_HIGHRES;
+	mUsingLiquid   = smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID;
+	mUsingSmoke    = smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS;
 	
 	// Make sure that string vector does not contain any previous commands
 	mCommands.clear();
@@ -85,12 +86,6 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mVelocityX      = NULL;
 	mVelocityY      = NULL;
 	mVelocityZ      = NULL;
-	mObVelocityX    = NULL;
-	mObVelocityY    = NULL;
-	mObVelocityZ    = NULL;
-	mGuideVelocityX = NULL;
-	mGuideVelocityY = NULL;
-	mGuideVelocityZ = NULL;
 	mInVelocityX    = NULL;
 	mInVelocityY    = NULL;
 	mInVelocityZ    = NULL;
@@ -122,19 +117,28 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 
 	// Liquid low res grids
 	mPhiIn          = NULL;
-	mPhiObsIn       = NULL;
-	mPhiGuideIn     = NULL;
 	mPhiOutIn       = NULL;
 	mPhi            = NULL;
-
-	// Fluid guiding
-	mNumGuide    = NULL;
 
 	mNumVertices  = 0;
 	mNumNormals   = 0;
 	mNumTriangles = 0;
 
-	// Particles
+	// Fluid obstacle
+	mPhiObsIn    = NULL;
+	mNumObstacle = NULL;
+	mObVelocityX = NULL;
+	mObVelocityY = NULL;
+	mObVelocityZ = NULL;
+
+	// Fluid guiding
+	mPhiGuideIn     = NULL;
+	mNumGuide       = NULL;
+	mGuideVelocityX = NULL;
+	mGuideVelocityY = NULL;
+	mGuideVelocityZ = NULL;
+
+	// Secondary particles
 	mFlipParticleData      = NULL;
 	mFlipParticleVelocity  = NULL;
 	mSndParticleData       = NULL;
@@ -150,7 +154,8 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	if (mUsingLiquid) {
 		initDomain(smd);
 		initLiquid(smd);
-		if (mUsingGuiding) initGuiding(smd);
+		if (mUsingObstacle) initObstacle(smd);
+		if (mUsingGuiding)  initGuiding(smd);
 
 		updatePointers();
 		
@@ -179,10 +184,11 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	if (mUsingSmoke) {
 		initDomain(smd);
 		initSmoke(smd);
-		if (mUsingHeat)    initHeat(smd);
-		if (mUsingFire)    initFire(smd);
-		if (mUsingColors)  initColors(smd);
-		if (mUsingGuiding) initGuiding(smd);
+		if (mUsingHeat)     initHeat(smd);
+		if (mUsingFire)     initFire(smd);
+		if (mUsingColors)   initColors(smd);
+		if (mUsingObstacle) initObstacle(smd);
+		if (mUsingGuiding)  initGuiding(smd);
 
 		updatePointers(); // Needs to be after heat, fire, color init
 
@@ -214,7 +220,8 @@ void FLUID::initDomain(SmokeModifierData *smd)
 		+ manta_debuglevel
 		+ fluid_variables_low
 		+ fluid_solver_low
-		+ fluid_export_low
+		+ fluid_obstacle_export_low
+		+ fluid_guiding_export_low
 		+ fluid_adaptive_time_stepping_low;
 	std::string finalString = parseScript(tmpString, smd);
 	mCommands.clear();
@@ -387,6 +394,20 @@ void FLUID::initLiquidHigh(SmokeModifierData *smd)
 	mUsingHighRes = true;
 }
 
+void FLUID::initObstacle(SmokeModifierData *smd)
+{
+	if (!mPhiObsIn) {
+		std::string tmpString = fluid_alloc_obstacle_low
+			+ fluid_with_obstacle;
+		std::string finalString = parseScript(tmpString, smd);
+		mCommands.clear();
+		mCommands.push_back(finalString);
+
+		runPythonString(mCommands);
+		mUsingObstacle = true;
+	}
+}
+
 void FLUID::initGuiding(SmokeModifierData *smd)
 {
 	if (!mPhiGuideIn) {
@@ -445,6 +466,9 @@ FLUID::~FLUID()
 	tmpString += smoke_delete_fire_high;
 	tmpString += smoke_delete_colors_high;
 
+	// Obstacle
+	tmpString += fluid_delete_obstacle_low;
+
 	// Guiding
 	tmpString += fluid_delete_guiding_low;
 
@@ -475,12 +499,6 @@ FLUID::~FLUID()
 	mVelocityX      = NULL;
 	mVelocityY      = NULL;
 	mVelocityZ      = NULL;
-	mObVelocityX    = NULL;
-	mObVelocityY    = NULL;
-	mObVelocityZ    = NULL;
-	mGuideVelocityX = NULL;
-	mGuideVelocityY = NULL;
-	mGuideVelocityZ = NULL;
 	mInVelocityX    = NULL;
 	mInVelocityY    = NULL;
 	mInVelocityZ    = NULL;
@@ -509,16 +527,30 @@ FLUID::~FLUID()
 	mTextureV2      = NULL;
 	mTextureW2      = NULL;
 
-	// Fluid guiding
-	mNumGuide    = NULL;
-
 	// Liquid
 	mPhiIn      = NULL;
-	mPhiObsIn   = NULL;
-	mPhiGuideIn = NULL;
 	mPhiOutIn   = NULL;
 	mPhi        = NULL;
 
+	mNumVertices  = 0;
+	mNumNormals   = 0;
+	mNumTriangles = 0;
+
+	// Fluid obstacle
+	mPhiObsIn    = NULL;
+	mNumObstacle = NULL;
+	mObVelocityX = NULL;
+	mObVelocityY = NULL;
+	mObVelocityZ = NULL;
+
+	// Fluid guiding
+	mPhiGuideIn     = NULL;
+	mNumGuide       = NULL;
+	mGuideVelocityX = NULL;
+	mGuideVelocityY = NULL;
+	mGuideVelocityZ = NULL;
+
+	// Secondary particles
 	mFlipParticleData      = NULL;
 	mFlipParticleVelocity  = NULL;
 	mSndParticleData       = NULL;
@@ -526,11 +558,12 @@ FLUID::~FLUID()
 	mSndParticleType       = NULL;
 
 	// Reset flags
-	mUsingHeat    = false;
-	mUsingFire    = false;
-	mUsingColors  = false;
-	mUsingGuiding = false;
-	mUsingHighRes = false;
+	mUsingHeat     = false;
+	mUsingFire     = false;
+	mUsingColors   = false;
+	mUsingObstacle = false;
+	mUsingGuiding  = false;
+	mUsingHighRes  = false;
 }
 
 void FLUID::runPythonString(std::vector<std::string> commands)
@@ -602,6 +635,8 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << (smd->domain->active_fields & SM_ACTIVE_FIRE ? "True" : "False");
 	else if (varName == "USING_HIGHRES")
 		ss << (smd->domain->flags & MOD_SMOKE_HIGHRES ? "True" : "False");
+	else if (varName == "USING_OBSTACLE")
+		ss << (smd->domain->active_fields & SM_ACTIVE_OBSTACLE ? "True" : "False");
 	else if (varName == "USING_GUIDING")
 		ss << (smd->domain->active_fields & SM_ACTIVE_GUIDING ? "True" : "False");
 	else if (varName == "SOLVER_DIM")
@@ -776,11 +811,12 @@ std::string FLUID::parseScript(const std::string& setup_string, SmokeModifierDat
 
 void FLUID::exportSmokeScript(SmokeModifierData *smd)
 {
-	bool highres = smd->domain->flags & MOD_SMOKE_HIGHRES;
-	bool heat    = smd->domain->active_fields & SM_ACTIVE_HEAT;
-	bool colors  = smd->domain->active_fields & SM_ACTIVE_COLORS;
-	bool fire    = smd->domain->active_fields & SM_ACTIVE_FIRE;
-	bool guiding = smd->domain->active_fields & SM_ACTIVE_GUIDING;
+	bool highres  = smd->domain->flags & MOD_SMOKE_HIGHRES;
+	bool heat     = smd->domain->active_fields & SM_ACTIVE_HEAT;
+	bool colors   = smd->domain->active_fields & SM_ACTIVE_COLORS;
+	bool fire     = smd->domain->active_fields & SM_ACTIVE_FIRE;
+	bool obstacle = smd->domain->active_fields & SM_ACTIVE_OBSTACLE;
+	bool guiding  = smd->domain->active_fields & SM_ACTIVE_GUIDING;
 
 	std::string manta_script;
 
@@ -798,6 +834,8 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 		manta_script += smoke_alloc_colors_low;
 	if (fire)
 		manta_script += smoke_alloc_fire_low;
+	if (obstacle)
+		manta_script += fluid_alloc_obstacle_low;
 	if (guiding)
 		manta_script += fluid_alloc_guiding_low;
 
@@ -818,8 +856,10 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 	}
 	
 	manta_script += smoke_import_low;
+	if (obstacle)
+		manta_script += fluid_obstacle_import_low;
 	if (guiding)
-	    manta_script += fluid_import_low;
+		manta_script += fluid_guiding_import_low;
 	if (highres)
 		manta_script += smoke_import_high;
 	
@@ -853,20 +893,26 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 void FLUID::exportSmokeData(SmokeModifierData *smd)
 {
 	bool highres = smd->domain->flags & MOD_SMOKE_HIGHRES;
+	bool obstacle = smd->domain->active_fields & SM_ACTIVE_OBSTACLE;
+	bool guiding  = smd->domain->active_fields & SM_ACTIVE_GUIDING;
 
 	char parent_dir[1024];
 	BLI_split_dir_part(smd->domain->manta_filepath, parent_dir, sizeof(parent_dir));
 
 	FLUID::saveSmokeData(parent_dir);
-	FLUID::saveFluidData(parent_dir);
+	if (obstacle)
+		FLUID::saveFluidObstacleData(parent_dir);
+	if (guiding)
+		FLUID::saveFluidGuidingData(parent_dir);
 	if (highres)
 		FLUID::saveSmokeDataHigh(parent_dir);
 }
 
 void FLUID::exportLiquidScript(SmokeModifierData *smd)
 {
-	bool highres = smd->domain->flags & MOD_SMOKE_HIGHRES;
-	bool guiding = smd->domain->active_fields & SM_ACTIVE_GUIDING;
+	bool highres  = smd->domain->flags & MOD_SMOKE_HIGHRES;
+	bool obstacle = smd->domain->active_fields & SM_ACTIVE_OBSTACLE;
+	bool guiding  = smd->domain->active_fields & SM_ACTIVE_GUIDING;
 
 	std::string manta_script;
 	
@@ -878,6 +924,11 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 		+ liquid_init_phi
 		+ liquid_variables_low;
 
+	if (obstacle)
+		manta_script += fluid_alloc_obstacle_low;
+	if (guiding)
+		manta_script += fluid_alloc_guiding_low;
+
 	if (highres) {
 		manta_script += fluid_variables_high
 			+ fluid_solver_high
@@ -887,7 +938,6 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 	}
 
 	manta_script += liquid_import_low;
-	manta_script += fluid_import_low;
 	if (highres)
 		manta_script += liquid_import_high;
 	
@@ -895,8 +945,10 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 	manta_script += liquid_post_step_low;
 	
 	manta_script += liquid_step_low;
+	if (obstacle)
+		manta_script += fluid_obstacle_import_low;
 	if (guiding)
-		manta_script += fluid_import_low;
+		manta_script += fluid_guiding_import_low;
 	if (highres)
 		manta_script += liquid_step_high;
 
@@ -1135,15 +1187,10 @@ void FLUID::updatePointers()
 	std::string parts_ext = "_" + parts;
 	
 	mObstacle    = (int*) getDataPointer("flags" + solver_ext,  solver);
-	mNumObstacle = (int*) getDataPointer("numObs" + solver_ext, solver);
 	
 	mVelocityX = (float*) getDataPointer("x_vel" + solver_ext, solver);
 	mVelocityY = (float*) getDataPointer("y_vel" + solver_ext, solver);
 	mVelocityZ = (float*) getDataPointer("z_vel" + solver_ext, solver);
-	
-	mObVelocityX = (float*) getDataPointer("x_obvel" + solver_ext, solver);
-	mObVelocityY = (float*) getDataPointer("y_obvel" + solver_ext, solver);
-	mObVelocityZ = (float*) getDataPointer("z_obvel" + solver_ext, solver);
 
 	// TODO (sebbas): liquid inflow
 //	mInVelocityX = (float*) getDataPointer("x_invel" + solver_ext, solver);
@@ -1154,8 +1201,16 @@ void FLUID::updatePointers()
 	mForceY    = (float*) getDataPointer("y_force" + solver_ext, solver);
 	mForceZ    = (float*) getDataPointer("z_force" + solver_ext, solver);
 	
-	mPhiObsIn = (float*) getDataPointer("phiObsIn" + solver_ext, solver);
 	mPhiOutIn = (float*) getDataPointer("phiOutIn" + solver_ext, solver);
+
+	if (mUsingObstacle) {
+		mPhiObsIn = (float*) getDataPointer("phiObsIn" + solver_ext, solver);
+		mNumObstacle = (int*) getDataPointer("numObs" + solver_ext, solver);
+
+		mObVelocityX = (float*) getDataPointer("x_obvel" + solver_ext, solver);
+		mObVelocityY = (float*) getDataPointer("y_obvel" + solver_ext, solver);
+		mObVelocityZ = (float*) getDataPointer("z_obvel" + solver_ext, solver);
+	}
 
 	if (mUsingGuiding) {
 		mPhiGuideIn = (float*) getDataPointer("phiGuideIn" + solver_ext, solver);
@@ -1355,14 +1410,26 @@ void FLUID::saveParticleVelocities(char* filename)
 	runPythonString(mCommands);
 }
 
-void FLUID::saveFluidData(char *pathname)
+void FLUID::saveFluidObstacleData(char *pathname)
 {
 	std::string path(pathname);
 
 	mCommands.clear();
-	std::ostringstream save_fluid_data_low_;
-	save_fluid_data_low_ <<  "save_fluid_data_low_" << mCurrentID << "(r'" << path << "')";
-	mCommands.push_back(save_fluid_data_low_.str());
+	std::ostringstream save_fluid_obstacle_data_low;
+	save_fluid_obstacle_data_low <<  "save_fluid_obstacle_data_low_" << mCurrentID << "(r'" << path << "')";
+	mCommands.push_back(save_fluid_obstacle_data_low.str());
+
+	runPythonString(mCommands);
+}
+
+void FLUID::saveFluidGuidingData(char *pathname)
+{
+	std::string path(pathname);
+
+	mCommands.clear();
+	std::ostringstream save_fluid_guiding_data_low;
+	save_fluid_guiding_data_low <<  "save_fluid_guiding_data_low_" << mCurrentID << "(r'" << path << "')";
+	mCommands.push_back(save_fluid_guiding_data_low.str());
 
 	runPythonString(mCommands);
 }
