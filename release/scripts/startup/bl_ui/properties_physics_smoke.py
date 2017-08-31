@@ -181,10 +181,15 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
         elif md.smoke_type == 'EFFECTOR':
             effec = md.effec_settings
 
-            split = layout.split()
+            layout.prop(effec, "effec_type")
 
+            split = layout.split()
             col = split.column()
-            col.prop(effec, "effec_type")
+
+            col.label(text="Surface thickness:")
+            col = split.column()
+
+            col.prop(effec, "surface_distance")
 
 class PHYSICS_PT_smoke_flow_advanced(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Source"

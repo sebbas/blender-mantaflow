@@ -370,6 +370,8 @@ typedef struct SmokeCollSettings {
 	int numverts;
 	short type;
 	short pad;
+	float surface_distance; /* thickness of mesh surface, used in obstacle sdf */
+	char pad2[4]; /* unused */
 } SmokeCollSettings;
 
 #endif

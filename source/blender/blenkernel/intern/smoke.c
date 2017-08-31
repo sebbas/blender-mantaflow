@@ -622,6 +622,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->effec->numverts = 0;
 			smd->effec->type = 0; // static obstacle
 			smd->effec->dm = NULL;
+			smd->effec->surface_distance = 0.5f;
 
 #ifdef USE_SMOKE_COLLISION_DM
 			smd->effec->dm = NULL;
@@ -744,6 +745,7 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 	}
 	else if (tsmd->effec) {
 		/* leave it as initialized, collision settings is mostly caches */
+		tsmd->effec->surface_distance = smd->effec->surface_distance;
 	}
 }
 
@@ -752,7 +754,7 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 // forward decleration
 static void smoke_calc_transparency(SmokeDomainSettings *sds, Scene *scene);
 static float calc_voxel_transp(float *result, float *input, int res[3], int *pixel, float *tRay, float correct);
-static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromMesh *treeData, const float ray_start[3]);
+static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromMesh *treeData, const float ray_start[3], float surface_thickness);
 
 static int get_lamp(Scene *scene, float *light)
 {
@@ -794,6 +796,7 @@ typedef struct ObstaclesFromDMData {
 	float *velocityX, *velocityY, *velocityZ;
 	int *num_objects;
 	float *distances_map;
+	float surface_thickness;
 } ObstaclesFromDMData;
 
 static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
@@ -843,7 +846,7 @@ static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
 
 			/* Get distance to mesh surface from both within and outside grid (mantaflow phi grid) */
 			if (data->distances_map) {
-				update_mesh_distances(index, data->distances_map, data->tree, ray_start);
+				update_mesh_distances(index, data->distances_map, data->tree, ray_start, data->surface_thickness);
 			}
 		}
 	}
@@ -922,7 +925,7 @@ static void obstacles_from_derivedmesh(
 			    .sds = sds, .mvert = mvert, .mloop = mloop, .looptri = looptri,
 			    .tree = &treeData, .has_velocity = has_velocity, .vert_vel = vert_vel,
 			    .velocityX = velocityX, .velocityY = velocityY, .velocityZ = velocityZ,
-			    .num_objects = num_objects, .distances_map = distances_map
+			    .num_objects = num_objects, .distances_map = distances_map, .surface_thickness = scs->surface_distance
 			};
 			BLI_task_parallel_range(
 			            sds->res_min[2], sds->res_max[2], &data, obstacles_from_derivedmesh_task_cb, true);
@@ -1683,7 +1686,7 @@ static void emit_from_particles(
 //}
 
 /* Calculate map of (minimum) distances to flow/obstacle surface. Distances outside mesh are positive, inside negative */
-static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromMesh *treeData, const float ray_start[3]) {
+static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromMesh *treeData, const float ray_start[3], float surface_thickness) {
 
 	float min_dist = 9999;
 
@@ -1720,9 +1723,8 @@ static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromM
 
 	/* If point is on surface it is also considered to be "inside" the mesh (negative levelset) */
 	BVHTreeNearest nearest = {0};
-	const float surface_distance = 1.5f;
 	nearest.index = -1;
-	nearest.dist_sq = surface_distance * surface_distance;
+	nearest.dist_sq = surface_thickness * surface_thickness;
 	inside |= (BLI_bvhtree_find_nearest(treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1);
 
 	/* Levelset is negative inside mesh */
@@ -1915,7 +1917,7 @@ static void emit_from_derivedmesh_task_cb(void *userdata, const int z)
 				}
 
 				/* Calculate levelset from meshes. Result in em->distances */
-				update_mesh_distances(index, em->distances, data->tree, ray_start);
+				update_mesh_distances(index, em->distances, data->tree, ray_start, data->sfs->surface_distance);
 			}
 
 			/* take high res samples if required */

@@ -1654,6 +1654,12 @@ static void rna_def_smoke_effec_settings(BlenderRNA *brna)
 	RNA_def_property_enum_items(prop, smoke_effec_type_items);
 	RNA_def_property_ui_text(prop, "Effector type", "Effector type");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
+	prop = RNA_def_property(srna, "surface_distance", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 10.0);
+	RNA_def_property_ui_range(prop, 0.5, 5.0, 0.05, 5);
+	RNA_def_property_ui_text(prop, "Distance", "Distance around mesh surface to consider as effector");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 }
 
 void RNA_def_smoke(BlenderRNA *brna)
