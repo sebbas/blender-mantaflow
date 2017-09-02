@@ -769,6 +769,60 @@ static void rna_Smoke_use_color_ramp_set(PointerRNA *ptr, int value)
 	}
 }
 
+static void rna_Smoke_flowsource_set(struct PointerRNA *ptr, int value)
+{
+	SmokeFlowSettings *settings = (SmokeFlowSettings *)ptr->data;
+
+	if (value != settings->source) {
+		settings->source = value;
+	}
+}
+
+static EnumPropertyItem *rna_Smoke_flowsource_itemf(bContext *UNUSED(C), PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
+{
+	SmokeFlowSettings *settings = (SmokeFlowSettings *)ptr->data;
+
+	EnumPropertyItem *item = NULL;
+	EnumPropertyItem tmp = {0, "", 0, "", ""};
+	int totitem = 0;
+
+	tmp.value = MOD_SMOKE_FLOW_SOURCE_MESH;
+	tmp.identifier = "MESH";
+	tmp.icon = ICON_META_CUBE;
+	tmp.name = "Mesh";
+	tmp.description = "Emit fluid from mesh surface or volume";
+	RNA_enum_item_add(&item, &totitem, &tmp);
+
+	if (settings->type != MOD_SMOKE_FLOW_TYPE_LIQUID)
+	{
+		tmp.value = MOD_SMOKE_FLOW_SOURCE_PARTICLES;
+		tmp.identifier = "PARTICLES";
+		tmp.icon = ICON_PARTICLES;
+		tmp.name = "Particle System";
+		tmp.description = "Emit smoke from particles";
+		RNA_enum_item_add(&item, &totitem, &tmp);
+	}
+
+	RNA_enum_item_end(&item, &totitem);
+	*r_free = true;
+
+	return item;
+}
+
+static void rna_Smoke_flowtype_set(struct PointerRNA *ptr, int value)
+{
+	SmokeFlowSettings *settings = (SmokeFlowSettings *)ptr->data;
+
+	if (value != settings->type) {
+		settings->type = value;
+
+		/* Force flow source to mesh */
+		if (value == MOD_SMOKE_FLOW_TYPE_LIQUID) {
+			rna_Smoke_flowsource_set(ptr, MOD_SMOKE_FLOW_SOURCE_MESH);
+		}
+	}
+}
+
 #else
 
 static void rna_def_smoke_domain_settings(BlenderRNA *brna)
@@ -1457,9 +1511,9 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
 		{0, NULL, 0, NULL, NULL}
 	};
 
+	/*  Flow source - generated dynamically based on flow type */
 	static EnumPropertyItem smoke_flow_sources[] = {
-		{MOD_SMOKE_FLOW_SOURCE_PARTICLES, "PARTICLES", ICON_PARTICLES, "Particle System", "Emit smoke from particles"},
-		{MOD_SMOKE_FLOW_SOURCE_MESH, "MESH", ICON_META_CUBE, "Mesh", "Emit smoke from mesh surface or volume"},
+		{0, "NONE", 0, "", ""},
 		{0, NULL, 0, NULL, NULL}
 	};
 
@@ -1510,6 +1564,7 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "smoke_flow_type", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "type");
 	RNA_def_property_enum_items(prop, smoke_flow_types);
+	RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_flowtype_set", NULL);
 	RNA_def_property_ui_text(prop, "Flow Type", "Change type of fluid in the simulation");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 	
@@ -1522,7 +1577,8 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "smoke_flow_source", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "source");
 	RNA_def_property_enum_items(prop, smoke_flow_sources);
-	RNA_def_property_ui_text(prop, "Source", "Change how smoke is emitted");
+	RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_flowsource_set", "rna_Smoke_flowsource_itemf");
+	RNA_def_property_ui_text(prop, "Source", "Change how fluid is emitted");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
 	prop = RNA_def_property(srna, "use_absolute", PROP_BOOLEAN, PROP_NONE);
@@ -1565,7 +1621,7 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "surface_distance", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 10.0);
 	RNA_def_property_ui_range(prop, 0.5, 5.0, 0.05, 5);
-	RNA_def_property_ui_text(prop, "Surface", "Maximum distance from mesh surface to emit smoke");
+	RNA_def_property_ui_text(prop, "Surface", "Maximum distance from mesh surface to emit fluid");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
 	prop = RNA_def_property(srna, "particle_size", PROP_FLOAT, PROP_NONE);
