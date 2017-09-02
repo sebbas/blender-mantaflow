@@ -1690,11 +1690,14 @@ static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromM
 
 	float min_dist = 9999;
 
-	/* Raycasts in 14 directions (6 axis + 8 quadrant diagonals) */
-	float ray_dirs[14][3] = { {  1.0f, 0.0f,  0.0f }, { 0.0f,  1.0f,  0.0f }, {  0.0f, 0.0f,  1.0f },
-							  { -1.0f, 0.0f,  0.0f }, { 0.0f, -1.0f,  0.0f }, {  0.0f, 0.0f, -1.0f },
-							  {  1.0f, 1.0f,  1.0f }, { 1.0f, -1.0f,  1.0f }, { -1.0f, 1.0f,  1.0f }, { -1.0f, -1.0f,  1.0f },
-							  {  1.0f, 1.0f, -1.0f }, { 1.0f, -1.0f, -1.0f }, { -1.0f, 1.0f, -1.0f }, { -1.0f, -1.0f, -1.0f } };
+	/* Raycasts in 26 directions (6 main axis + 12 quadrant diagonals (2D) + 8 octant diagonals (3D)) */
+	float ray_dirs[26][3] = { {  1.0f, 0.0f,  0.0f }, { 0.0f,  1.0f,  0.0f }, {  0.0f,  0.0f,  1.0f },
+							  { -1.0f, 0.0f,  0.0f }, { 0.0f, -1.0f,  0.0f }, {  0.0f,  0.0f, -1.0f },
+							  {  1.0f, 1.0f,  0.0f }, { 1.0f, -1.0f,  0.0f }, { -1.0f,  1.0f,  0.0f }, { -1.0f, -1.0f,  0.0f },
+							  {  1.0f, 0.0f,  1.0f }, { 1.0f,  0.0f, -1.0f }, { -1.0f,  0.0f,  1.0f }, { -1.0f,  0.0f, -1.0f },
+							  {  0.0f, 1.0f,  1.0f }, { 0.0f,  1.0f, -1.0f }, {  0.0f, -1.0f,  1.0f }, {  0.0f, -1.0f, -1.0f },
+							  {  1.0f, 1.0f,  1.0f }, { 1.0f, -1.0f,  1.0f }, { -1.0f,  1.0f,  1.0f }, { -1.0f, -1.0f,  1.0f },
+							  {  1.0f, 1.0f, -1.0f }, { 1.0f, -1.0f, -1.0f }, { -1.0f,  1.0f, -1.0f }, { -1.0f, -1.0f, -1.0f } };
 	size_t ray_cnt = sizeof ray_dirs / sizeof ray_dirs[0];
 
 	/* If stays true, a point is considered to be inside the mesh */
@@ -1721,14 +1724,21 @@ static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromM
 	/* Update mesh distance in map */
 	mesh_distances[index] = MIN2(mesh_distances[index], min_dist);
 
-	/* If point is on surface it is also considered to be "inside" the mesh (negative levelset) */
-	BVHTreeNearest nearest = {0};
-	nearest.index = -1;
-	nearest.dist_sq = surface_thickness * surface_thickness;
-	inside |= (BLI_bvhtree_find_nearest(treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1);
-
 	/* Levelset is negative inside mesh */
 	if (inside) mesh_distances[index] = fabsf(mesh_distances[index]) * (-1.0f);
+
+	/* Optional object thickening. Checks area around object. Thickness value determines size of search area. */
+	if (surface_thickness) {
+		BVHTreeNearest nearest = {0};
+		nearest.index = -1;
+		nearest.dist_sq = surface_thickness * surface_thickness;
+		bool surface = (BLI_bvhtree_find_nearest(treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1);
+
+		/* Make levelset in area near surface lower. The new 0 border is at those cells that equal the surface thickness value */
+		if (inside || surface) {
+			mesh_distances[index] -= surface_thickness;
+		}
+	}
 }
 
 static void sample_derivedmesh(
