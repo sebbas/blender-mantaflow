@@ -248,7 +248,7 @@ def load_fluid_guiding_data_low_$ID$(path):\n\
 
 const std::string fluid_obstacle_export_low = "\n\
 def save_fluid_obstacle_data_low_$ID$(path):\n\
-    numObs_s$ID$.save(path + '_numObs_s.uni')\n\
+    numObs_s$ID$.save(path + '_numObs.uni')\n\
     phiObsIn_s$ID$.save(path + '_phiObsIn.uni')\n\
     obvel_s$ID$.save(path + '_obvel.uni')\n\
     x_obvel_s$ID$.save(path + '_x_obvel.uni')\n\
@@ -268,6 +268,16 @@ def save_fluid_guiding_data_low_$ID$(path):\n\
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE
 //////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////
+// STANDALONE MODE
+//////////////////////////////////////////////////////////////////////
+
+const std::string fluid_standalone_load = "\n\
+if using_obstacle_s$ID$:\n\
+    load_fluid_obstacle_data_low_$ID$(path_prefix_$ID$)\n\
+if using_guiding_s$ID$:\n\
+    load_fluid_guiding_data_low_$ID$(path_prefix_$ID$)\n";
 
 const std::string fluid_standalone = "\n\
 if (GUI):\n\

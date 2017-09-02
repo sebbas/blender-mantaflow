@@ -878,6 +878,7 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 	manta_script += smoke_adaptive_step
 			+ smoke_inflow_low
 			+ smoke_standalone_load
+			+ fluid_standalone_load
 			+ fluid_standalone;
 	
 	// Fill in missing variables in script
@@ -940,20 +941,21 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 	manta_script += liquid_import_low;
 	if (highres)
 		manta_script += liquid_import_high;
+	if (obstacle)
+		manta_script += fluid_obstacle_import_low;
+	if (guiding)
+		manta_script += fluid_guiding_import_low;
 	
 	manta_script += liquid_pre_step_low;
 	manta_script += liquid_post_step_low;
 	
 	manta_script += liquid_step_low;
-	if (obstacle)
-		manta_script += fluid_obstacle_import_low;
-	if (guiding)
-		manta_script += fluid_guiding_import_low;
 	if (highres)
 		manta_script += liquid_step_high;
 
 	manta_script += liquid_adaptive_step
 			+ liquid_standalone_load
+			+ fluid_standalone_load
 			+ fluid_standalone;
 
 	std::string final_script = FLUID::parseScript(manta_script, smd);
@@ -968,11 +970,17 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 void FLUID::exportLiquidData(SmokeModifierData *smd)
 {
 	bool highres = smd->domain->flags & MOD_SMOKE_HIGHRES;
+	bool obstacle = smd->domain->active_fields & SM_ACTIVE_OBSTACLE;
+	bool guiding  = smd->domain->active_fields & SM_ACTIVE_GUIDING;
 
 	char parent_dir[1024];
 	BLI_split_dir_part(smd->domain->manta_filepath, parent_dir, sizeof(parent_dir));
 	
 	FLUID::saveLiquidData(parent_dir);
+	if (obstacle)
+		FLUID::saveFluidObstacleData(parent_dir);
+	if (guiding)
+		FLUID::saveFluidGuidingData(parent_dir);
 	if (highres)
 		FLUID::saveLiquidDataHigh(parent_dir);
 }

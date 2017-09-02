@@ -161,13 +161,6 @@ def liquid_post_step_low_$ID$():\n\
     phiOut_s$ID$.setConst(9999)\n\
     phiOutIn_s$ID$.setConst(9999)\n\
     \n\
-    if using_obstacle_s$ID$:\n\
-        phiObsIn_s$ID$.setConst(9999)\n\
-        obvelC_s$ID$.clear()\n\
-    \n\
-    if using_guiding_s$ID$:\n\
-        phiGuideIn_s$ID$.setConst(9999)\n\
-        guidevelC_s$ID$.clear()\n\
     copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n";
 
 //////////////////////////////////////////////////////////////////////
