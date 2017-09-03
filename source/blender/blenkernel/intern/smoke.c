@@ -1917,14 +1917,12 @@ static void emit_from_derivedmesh_task_cb(void *userdata, const int z)
 				                      lx - em->min[0], em->res[0], ly - em->min[1], em->res[1], lz - em->min[2]);
 				const float ray_start[3] = {((float)lx) + 0.5f, ((float)ly) + 0.5f, ((float)lz) + 0.5f};
 
-				/* Emission for smoke and fire. Result in em->influence */
-				if (data->sfs->type == MOD_SMOKE_FLOW_TYPE_SMOKE || data->sfs->type == MOD_SMOKE_FLOW_TYPE_FIRE || data->sfs->type == MOD_SMOKE_FLOW_TYPE_SMOKEFIRE) {
-					sample_derivedmesh(
-							data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
-							em->influence, em->velocity, index, data->sds->base_res, data->flow_center,
-							data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
-							(float)lx, (float)ly, (float)lz);
-				}
+				/* Emission for smoke and fire. Result in em->influence. Also, calculate invels */
+				sample_derivedmesh(
+						data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
+						em->influence, em->velocity, index, data->sds->base_res, data->flow_center,
+						data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
+						(float)lx, (float)ly, (float)lz);
 
 				/* Calculate levelset from meshes. Result in em->distances */
 				update_mesh_distances(index, em->distances, data->tree, ray_start, data->sfs->surface_distance);
@@ -2505,6 +2503,12 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 			SmokeFlowSettings *sfs = smd2->flow;
 			int subframes = sfs->subframes;
 			EmissionMap *em = &emaps[flowIndex];
+
+			/* make sure to allocate invel grids if needed */
+			if (sfs && (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY)) {
+				active_fields |= SM_ACTIVE_INVEL;
+				fluid_ensure_invelocity(sds->fluid, sds->smd);
+			}
 
 			/* just sample flow directly to emission map if no subframes */
 			if (!subframes) {

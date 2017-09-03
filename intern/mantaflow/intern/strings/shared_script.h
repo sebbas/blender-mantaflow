@@ -79,7 +79,7 @@ using_highres_s$ID$   = $USING_HIGHRES$\n\
 using_adaptTime_s$ID$ = $USING_ADAPTIVETIME$\n\
 using_obstacle_s$ID$  = $USING_OBSTACLE$\n\
 using_guiding_s$ID$   = $USING_GUIDING$\n\
-\n\
+using_invel_s$ID$     = $USING_INVEL$\n\
 \n\
 # fluid guiding params\n\
 alpha_s$ID$ = $GUIDING_ALPHA$\n\
@@ -100,6 +100,9 @@ using_obstacle_s$ID$ = True\n";
 
 const std::string fluid_with_guiding = "\n\
 using_guiding_s$ID$ = True\n";
+
+const std::string fluid_with_invel = "\n\
+using_invel_s$ID$ = True\n";
 
 //////////////////////////////////////////////////////////////////////
 // ADAPTIVE TIME STEPPING
@@ -149,6 +152,13 @@ y_guidevel_s$ID$  = s$ID$.create(RealGrid)\n\
 z_guidevel_s$ID$  = s$ID$.create(RealGrid)\n\
 weightGuide_s$ID$ = s$ID$.create(RealGrid)\n";
 
+const std::string fluid_alloc_invel_low = "\n\
+mantaMsg('Allocating initial velocity low')\n\
+invel_s$ID$   = s$ID$.create(VecGrid)\n\
+x_invel_s$ID$ = s$ID$.create(RealGrid)\n\
+y_invel_s$ID$ = s$ID$.create(RealGrid)\n\
+z_invel_s$ID$ = s$ID$.create(RealGrid)\n";
+
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION
 //////////////////////////////////////////////////////////////////////
@@ -172,12 +182,13 @@ if 'tau_s$ID$'              in globals() : del tau_s$ID$\n\
 if 'sigma_s$ID$'            in globals() : del sigma_s$ID$\n\
 if 'theta_s$ID$'            in globals() : del theta_s$ID$\n\
 if 'using_obstacle_s$ID$'   in globals() : del using_obstacle_s$ID$\n\
-if 'using_guiding_s$ID$'    in globals() : del using_guiding_s$ID$\n";
+if 'using_guiding_s$ID$'    in globals() : del using_guiding_s$ID$\n\
+if 'using_invel_s$ID$'      in globals() : del using_invel_s$ID$\n";
 
 const std::string fluid_delete_variables_high = "\n\
 mantaMsg('Deleting fluid variables high')\n\
-if 'upres_xl$ID$'          in globals() : del upres_xl$ID$\n\
-if 'gs_xl$ID$'             in globals() : del gs_xl$ID$\n";
+if 'upres_xl$ID$' in globals() : del upres_xl$ID$\n\
+if 'gs_xl$ID$'    in globals() : del gs_xl$ID$\n";
 
 const std::string fluid_delete_solver_low = "\n\
 mantaMsg('Deleting solver low')\n\
@@ -207,6 +218,13 @@ if 'x_guidevel_s$ID$'  in globals() : del x_guidevel_s$ID$\n\
 if 'y_guidevel_s$ID$'  in globals() : del y_guidevel_s$ID$\n\
 if 'z_guidevel_s$ID$'  in globals() : del z_guidevel_s$ID$\n\
 if 'weightGuide_s$ID$' in globals() : del weightGuide_s$ID$\n";
+
+const std::string fluid_delete_invel_low = "\n\
+mantaMsg('Deleting initial velocity low')\n\
+if 'invel_s$ID$'   in globals() : del invel_s$ID$\n\
+if 'x_invel_s$ID$' in globals() : del x_invel_s$ID$\n\
+if 'y_invel_s$ID$' in globals() : del y_invel_s$ID$\n\
+if 'z_invel_s$ID$' in globals() : del z_invel_s$ID$\n";
 
 const std::string fluid_multigrid_cleanup_low = "\n\
 mantaMsg('Cleanup multigrid low')\n\
@@ -246,6 +264,13 @@ def load_fluid_guiding_data_low_$ID$(path):\n\
     z_guidevel_s$ID$.load(path + '_z_guidevel.uni')\n\
     weightGuide_s$ID$.load(path + '_weightGuide.uni')\n";
 
+const std::string fluid_invel_import_low = "\n\
+def load_fluid_invel_data_low_$ID$(path):\n\
+    invel_s$ID$.load(path + '_invel.uni')\n\
+    x_invel_s$ID$.load(path + '_x_invel.uni')\n\
+    y_invel_s$ID$.load(path + '_y_invel.uni')\n\
+    z_invel_s$ID$.load(path + '_z_invel.uni')\n";
+
 const std::string fluid_obstacle_export_low = "\n\
 def save_fluid_obstacle_data_low_$ID$(path):\n\
     numObs_s$ID$.save(path + '_numObs.uni')\n\
@@ -265,6 +290,13 @@ def save_fluid_guiding_data_low_$ID$(path):\n\
     z_guidevel_s$ID$.save(path + '_z_guidevel.uni')\n\
     weightGuide_s$ID$.save(path + '_weightGuide.uni')\n";
 
+const std::string fluid_invel_export_low = "\n\
+def save_fluid_invel_data_low_$ID$(path):\n\
+    invel_s$ID$.save(path + '_invel.uni')\n\
+    x_invel_s$ID$.save(path + '_x_invel.uni')\n\
+    y_invel_s$ID$.save(path + '_y_invel.uni')\n\
+    z_invel_s$ID$.save(path + '_z_invel.uni')\n";
+
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE
 //////////////////////////////////////////////////////////////////////
@@ -277,7 +309,9 @@ const std::string fluid_standalone_load = "\n\
 if using_obstacle_s$ID$:\n\
     load_fluid_obstacle_data_low_$ID$(path_prefix_$ID$)\n\
 if using_guiding_s$ID$:\n\
-    load_fluid_guiding_data_low_$ID$(path_prefix_$ID$)\n";
+    load_fluid_guiding_data_low_$ID$(path_prefix_$ID$)\n\
+if using_invel_s$ID$:\n\
+    load_fluid_invel_data_low_$ID$(path_prefix_$ID$)\n";
 
 const std::string fluid_standalone = "\n\
 if (GUI):\n\

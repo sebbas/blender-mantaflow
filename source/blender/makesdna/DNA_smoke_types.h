@@ -143,6 +143,7 @@ enum {
 #define SM_ACTIVE_LIQUID	(1<<4)
 #define SM_ACTIVE_OBSTACLE	(1<<5)
 #define SM_ACTIVE_GUIDING	(1<<6)
+#define SM_ACTIVE_INVEL		(1<<7)
 
 enum {
 	VDB_COMPRESSION_BLOSC = 0,

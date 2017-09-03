@@ -57,7 +57,8 @@ public:
 	void initLiquidHigh(SmokeModifierData *smd);
 	void initObstacle(SmokeModifierData *smd);
 	void initGuiding(SmokeModifierData *smd);
-	
+	void initInVelocity(SmokeModifierData *smd);
+
 	// Pointer transfer Mantaflow -> Blender
 	void updatePointers();
 	void updatePointersHigh();
@@ -77,6 +78,7 @@ public:
 	void saveSmokeDataHigh(char *pathname);
 	void saveFluidObstacleData(char *pathname);
 	void saveFluidGuidingData(char *pathname);
+	void saveFluidInvelData(char *pathname);
 
 	// Write files for particles
 	void saveParticles(char* filename);
@@ -220,6 +222,7 @@ private:
 	bool mUsingFire;
 	bool mUsingObstacle;
 	bool mUsingGuiding;
+	bool mUsingInvel;
 	bool mUsingHighRes;
 	bool mUsingLiquid;
 	bool mUsingSmoke;

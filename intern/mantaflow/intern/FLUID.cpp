@@ -63,6 +63,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mUsingColors   = smd->domain->active_fields & SM_ACTIVE_COLORS;
 	mUsingObstacle = smd->domain->active_fields & SM_ACTIVE_OBSTACLE;
 	mUsingGuiding  = smd->domain->active_fields & SM_ACTIVE_GUIDING;
+	mUsingInvel    = smd->domain->active_fields & SM_ACTIVE_INVEL;
 	mUsingHighRes  = smd->domain->flags & MOD_SMOKE_HIGHRES;
 	mUsingLiquid   = smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID;
 	mUsingSmoke    = smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS;
@@ -156,6 +157,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 		initLiquid(smd);
 		if (mUsingObstacle) initObstacle(smd);
 		if (mUsingGuiding)  initGuiding(smd);
+		if (mUsingInvel)    initInVelocity(smd);
 
 		updatePointers();
 		
@@ -189,6 +191,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 		if (mUsingColors)   initColors(smd);
 		if (mUsingObstacle) initObstacle(smd);
 		if (mUsingGuiding)  initGuiding(smd);
+		if (mUsingInvel)    initInVelocity(smd);
 
 		updatePointers(); // Needs to be after heat, fire, color init
 
@@ -222,6 +225,7 @@ void FLUID::initDomain(SmokeModifierData *smd)
 		+ fluid_solver_low
 		+ fluid_obstacle_export_low
 		+ fluid_guiding_export_low
+		+ fluid_invel_export_low
 		+ fluid_adaptive_time_stepping_low;
 	std::string finalString = parseScript(tmpString, smd);
 	mCommands.clear();
@@ -422,6 +426,20 @@ void FLUID::initGuiding(SmokeModifierData *smd)
 	}
 }
 
+void FLUID::initInVelocity(SmokeModifierData *smd)
+{
+	if (!mInVelocityX) {
+		std::string tmpString = fluid_alloc_invel_low
+			+ fluid_with_invel;
+		std::string finalString = parseScript(tmpString, smd);
+		mCommands.clear();
+		mCommands.push_back(finalString);
+
+		runPythonString(mCommands);
+		mUsingInvel = true;
+	}
+}
+
 void FLUID::step(int framenr)
 {
 	// manta_write_effectors(this);                         // TODO in Mantaflow
@@ -471,6 +489,9 @@ FLUID::~FLUID()
 
 	// Guiding
 	tmpString += fluid_delete_guiding_low;
+
+	// Initial velocity
+	tmpString += fluid_delete_invel_low;
 
 	// Cleanup multigrid
 	tmpString += fluid_multigrid_cleanup_low;
@@ -563,6 +584,7 @@ FLUID::~FLUID()
 	mUsingColors   = false;
 	mUsingObstacle = false;
 	mUsingGuiding  = false;
+	mUsingInvel    = false;
 	mUsingHighRes  = false;
 }
 
@@ -639,6 +661,8 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << (smd->domain->active_fields & SM_ACTIVE_OBSTACLE ? "True" : "False");
 	else if (varName == "USING_GUIDING")
 		ss << (smd->domain->active_fields & SM_ACTIVE_GUIDING ? "True" : "False");
+	else if (varName == "USING_INVEL")
+		ss << (smd->domain->active_fields & SM_ACTIVE_INVEL ? "True" : "False");
 	else if (varName == "SOLVER_DIM")
 		ss << smd->domain->manta_solver_res;
 	else if (varName == "DO_OPEN") {
@@ -817,6 +841,7 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 	bool fire     = smd->domain->active_fields & SM_ACTIVE_FIRE;
 	bool obstacle = smd->domain->active_fields & SM_ACTIVE_OBSTACLE;
 	bool guiding  = smd->domain->active_fields & SM_ACTIVE_GUIDING;
+	bool invel    = smd->domain->active_fields & SM_ACTIVE_INVEL;
 
 	std::string manta_script;
 
@@ -838,6 +863,8 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 		manta_script += fluid_alloc_obstacle_low;
 	if (guiding)
 		manta_script += fluid_alloc_guiding_low;
+	if (invel)
+		manta_script += fluid_alloc_invel_low;
 
 	if (highres) {
 		manta_script += fluid_variables_high
@@ -860,6 +887,8 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 		manta_script += fluid_obstacle_import_low;
 	if (guiding)
 		manta_script += fluid_guiding_import_low;
+	if (invel)
+		manta_script += fluid_invel_import_low;
 	if (highres)
 		manta_script += smoke_import_high;
 	
@@ -896,6 +925,7 @@ void FLUID::exportSmokeData(SmokeModifierData *smd)
 	bool highres = smd->domain->flags & MOD_SMOKE_HIGHRES;
 	bool obstacle = smd->domain->active_fields & SM_ACTIVE_OBSTACLE;
 	bool guiding  = smd->domain->active_fields & SM_ACTIVE_GUIDING;
+	bool invel    = smd->domain->active_fields & SM_ACTIVE_INVEL;
 
 	char parent_dir[1024];
 	BLI_split_dir_part(smd->domain->manta_filepath, parent_dir, sizeof(parent_dir));
@@ -905,6 +935,8 @@ void FLUID::exportSmokeData(SmokeModifierData *smd)
 		FLUID::saveFluidObstacleData(parent_dir);
 	if (guiding)
 		FLUID::saveFluidGuidingData(parent_dir);
+	if (invel)
+		FLUID::saveFluidInvelData(parent_dir);
 	if (highres)
 		FLUID::saveSmokeDataHigh(parent_dir);
 }
@@ -914,6 +946,7 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 	bool highres  = smd->domain->flags & MOD_SMOKE_HIGHRES;
 	bool obstacle = smd->domain->active_fields & SM_ACTIVE_OBSTACLE;
 	bool guiding  = smd->domain->active_fields & SM_ACTIVE_GUIDING;
+	bool invel    = smd->domain->active_fields & SM_ACTIVE_INVEL;
 
 	std::string manta_script;
 	
@@ -929,6 +962,9 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 		manta_script += fluid_alloc_obstacle_low;
 	if (guiding)
 		manta_script += fluid_alloc_guiding_low;
+	if (invel)
+		manta_script += fluid_alloc_invel_low;
+
 
 	if (highres) {
 		manta_script += fluid_variables_high
@@ -945,6 +981,8 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 		manta_script += fluid_obstacle_import_low;
 	if (guiding)
 		manta_script += fluid_guiding_import_low;
+	if (invel)
+		manta_script += fluid_invel_import_low;
 	
 	manta_script += liquid_pre_step_low;
 	manta_script += liquid_post_step_low;
@@ -969,9 +1007,10 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 
 void FLUID::exportLiquidData(SmokeModifierData *smd)
 {
-	bool highres = smd->domain->flags & MOD_SMOKE_HIGHRES;
+	bool highres  = smd->domain->flags & MOD_SMOKE_HIGHRES;
 	bool obstacle = smd->domain->active_fields & SM_ACTIVE_OBSTACLE;
 	bool guiding  = smd->domain->active_fields & SM_ACTIVE_GUIDING;
+	bool invel    = smd->domain->active_fields & SM_ACTIVE_INVEL;
 
 	char parent_dir[1024];
 	BLI_split_dir_part(smd->domain->manta_filepath, parent_dir, sizeof(parent_dir));
@@ -981,6 +1020,8 @@ void FLUID::exportLiquidData(SmokeModifierData *smd)
 		FLUID::saveFluidObstacleData(parent_dir);
 	if (guiding)
 		FLUID::saveFluidGuidingData(parent_dir);
+	if (invel)
+		FLUID::saveFluidInvelData(parent_dir);
 	if (highres)
 		FLUID::saveLiquidDataHigh(parent_dir);
 }
@@ -1193,22 +1234,17 @@ void FLUID::updatePointers()
 	std::string parts  = "pp" + id;
 	std::string solver_ext = "_" + solver;
 	std::string parts_ext = "_" + parts;
-	
+
 	mObstacle    = (int*) getDataPointer("flags" + solver_ext,  solver);
-	
+
 	mVelocityX = (float*) getDataPointer("x_vel" + solver_ext, solver);
 	mVelocityY = (float*) getDataPointer("y_vel" + solver_ext, solver);
 	mVelocityZ = (float*) getDataPointer("z_vel" + solver_ext, solver);
 
-	// TODO (sebbas): liquid inflow
-//	mInVelocityX = (float*) getDataPointer("x_invel" + solver_ext, solver);
-//	mInVelocityY = (float*) getDataPointer("y_invel" + solver_ext, solver);
-//	mInVelocityZ = (float*) getDataPointer("z_invel" + solver_ext, solver);
-	
 	mForceX    = (float*) getDataPointer("x_force" + solver_ext, solver);
 	mForceY    = (float*) getDataPointer("y_force" + solver_ext, solver);
 	mForceZ    = (float*) getDataPointer("z_force" + solver_ext, solver);
-	
+
 	mPhiOutIn = (float*) getDataPointer("phiOutIn" + solver_ext, solver);
 
 	if (mUsingObstacle) {
@@ -1229,6 +1265,12 @@ void FLUID::updatePointers()
 		mGuideVelocityZ = (float*) getDataPointer("z_guidevel" + solver_ext, solver);
 	}
 
+	if (mUsingInvel) {
+		mInVelocityX = (float*) getDataPointer("x_invel" + solver_ext, solver);
+		mInVelocityY = (float*) getDataPointer("y_invel" + solver_ext, solver);
+		mInVelocityZ = (float*) getDataPointer("z_invel" + solver_ext, solver);
+	}
+
 	// Liquid
 	if (mUsingLiquid) {
 		mPhiIn  = (float*) getDataPointer("phiIn" + solver_ext,  solver);
@@ -1245,10 +1287,6 @@ void FLUID::updatePointers()
 	if (mUsingSmoke) {
 		mDensity        = (float*) getDataPointer("density" + solver_ext, solver);
 		mInflow         = (float*) getDataPointer("inflow"  + solver_ext, solver);
-
-		mInVelocityX = (float*) getDataPointer("x_invel" + solver_ext, solver);
-		mInVelocityY = (float*) getDataPointer("y_invel" + solver_ext, solver);
-		mInVelocityZ = (float*) getDataPointer("z_invel" + solver_ext, solver);
 
 		if (mUsingHeat) {
 			mHeat       = (float*) getDataPointer("heat" + solver_ext,    solver);
@@ -1438,6 +1476,18 @@ void FLUID::saveFluidGuidingData(char *pathname)
 	std::ostringstream save_fluid_guiding_data_low;
 	save_fluid_guiding_data_low <<  "save_fluid_guiding_data_low_" << mCurrentID << "(r'" << path << "')";
 	mCommands.push_back(save_fluid_guiding_data_low.str());
+
+	runPythonString(mCommands);
+}
+
+void FLUID::saveFluidInvelData(char *pathname)
+{
+	std::string path(pathname);
+
+	mCommands.clear();
+	std::ostringstream save_fluid_invel_data_low;
+	save_fluid_invel_data_low <<  "save_fluid_invel_data_low_" << mCurrentID << "(r'" << path << "')";
+	mCommands.push_back(save_fluid_invel_data_low.str());
 
 	runPythonString(mCommands);
 }

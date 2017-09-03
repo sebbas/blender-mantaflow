@@ -546,6 +546,14 @@ extern "C" void fluid_ensure_guiding(FLUID *fluid, struct SmokeModifierData *smd
 	}
 }
 
+extern "C" void fluid_ensure_invelocity(FLUID *fluid, struct SmokeModifierData *smd)
+{
+	if (fluid) {
+		fluid->initInVelocity(smd);
+		fluid->updatePointers();
+	}
+}
+
 extern "C" float *fluid_get_phiguidein(FLUID *fluid)
 {
 	return fluid->getPhiGuideIn();

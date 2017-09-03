@@ -93,10 +93,6 @@ vel_s$ID$         = s$ID$.create(MACGrid)\n\
 x_vel_s$ID$       = s$ID$.create(RealGrid)\n\
 y_vel_s$ID$       = s$ID$.create(RealGrid)\n\
 z_vel_s$ID$       = s$ID$.create(RealGrid)\n\
-invel_s$ID$       = s$ID$.create(VecGrid)\n\
-x_invel_s$ID$     = s$ID$.create(RealGrid)\n\
-y_invel_s$ID$     = s$ID$.create(RealGrid)\n\
-z_invel_s$ID$     = s$ID$.create(RealGrid)\n\
 density_s$ID$     = s$ID$.create(RealGrid)\n\
 pressure_s$ID$    = s$ID$.create(RealGrid)\n\
 phiObs_s$ID$      = s$ID$.create(LevelsetGrid)\n\
@@ -185,6 +181,7 @@ def smoke_pre_step_low_$ID$():\n\
         x_obvel_s$ID$.multConst(gs_s$ID$.x)\n\
         y_obvel_s$ID$.multConst(gs_s$ID$.y)\n\
         z_obvel_s$ID$.multConst(gs_s$ID$.z)\n\
+        copyRealToVec3(sourceX=x_obvel_s$ID$, sourceY=y_obvel_s$ID$, sourceZ=z_obvel_s$ID$, target=obvelC_s$ID$)\n\
     \n\
     # translate guiding vels (world space) to grid space\n\
     if using_guiding_s$ID$:\n\
@@ -194,16 +191,14 @@ def smoke_pre_step_low_$ID$():\n\
         copyRealToVec3(sourceX=x_guidevel_s$ID$, sourceY=y_guidevel_s$ID$, sourceZ=z_guidevel_s$ID$, target=guidevelC_s$ID$)\n\
     \n\
     # translate invels (world space) to grid space\n\
-    x_invel_s$ID$.multConst(gs_s$ID$.x)\n\
-    y_invel_s$ID$.multConst(gs_s$ID$.y)\n\
-    z_invel_s$ID$.multConst(gs_s$ID$.z)\n\
+    if using_invel_s$ID$:\n\
+        x_invel_s$ID$.multConst(gs_s$ID$.x)\n\
+        y_invel_s$ID$.multConst(gs_s$ID$.y)\n\
+        z_invel_s$ID$.multConst(gs_s$ID$.z)\n\
+        copyRealToVec3(sourceX=x_invel_s$ID$, sourceY=y_invel_s$ID$, sourceZ=z_invel_s$ID$, target=invel_s$ID$)\n\
     \n\
     copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
-    copyRealToVec3(sourceX=x_invel_s$ID$, sourceY=y_invel_s$ID$, sourceZ=z_invel_s$ID$, target=invel_s$ID$)\n\
     copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n\
-    \n\
-    if using_obstacle_s$ID$:\n\
-        copyRealToVec3(sourceX=x_obvel_s$ID$, sourceY=y_obvel_s$ID$, sourceZ=z_obvel_s$ID$, target=obvelC_s$ID$)\n\
     \n\
     # If obstacle has velocity, i.e. is moving switch to dynamic preconditioner\n\
     if using_obstacle_s$ID$ and obvelC_s$ID$.getMaxValue() > 0:\n\
@@ -221,7 +216,10 @@ def smoke_pre_step_high_$ID$():\n\
 const std::string smoke_post_step_low = "\n\
 def smoke_post_step_low_$ID$():\n\
     forces_s$ID$.clear()\n\
-    invel_s$ID$.clear()\n\
+    if using_invel_s$ID$:\n\
+        invel_s$ID$.clear()\n\
+    \n\
+    phiObs_s$ID$.setConst(9999)\n\
     phiOutIn_s$ID$.setConst(9999)\n\
     \n\
     copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n";
@@ -323,9 +321,6 @@ def step_low_$ID$():\n\
     mantaMsg('Adding forces')\n\
     addForceField(flags=flags_s$ID$, vel=vel_s$ID$, force=forces_s$ID$)\n\
     \n\
-    # add initial velocity\n\
-    setInitialVelocity(flags=flags_s$ID$, vel=vel_s$ID$, invel=invel_s$ID$)\n\
-    \n\
     if using_obstacle_s$ID$:\n\
         mantaMsg('Extrapolating object velocity')\n\
         # ensure velocities inside of obs object, slightly add obvels outside of obs object\n\
@@ -339,6 +334,10 @@ def step_low_$ID$():\n\
         extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
         extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=1, inside=False)\n\
         resampleVec3ToMac(source=guidevelC_s$ID$, target=guidevel_s$ID$)\n\
+    \n\
+    # add initial velocity\n\
+    if using_invel_s$ID$:\n\
+        setInitialVelocity(flags=flags_s$ID$, vel=vel_s$ID$, invel=invel_s$ID$)\n\
     \n\
     mantaMsg('Walls')\n\
     if using_obstacle_s$ID$:\n\
@@ -434,7 +433,6 @@ def load_smoke_data_low_$ID$(path):\n\
     density_s$ID$.load(path + '_density.uni')\n\
     flags_s$ID$.load(path + '_flags.uni')\n\
     vel_s$ID$.load(path + '_vel.uni')\n\
-    invel_s$ID$.load(path + '_invel.uni')\n\
     pressure_s$ID$.load(path + '_pressure.uni')\n\
     forces_s$ID$.load(path + '_forces.uni')\n\
     x_force_s$ID$.load(path + '_x_force.uni')\n\
@@ -444,9 +442,6 @@ def load_smoke_data_low_$ID$(path):\n\
     x_vel_s$ID$.load(path + '_x_vel.uni')\n\
     y_vel_s$ID$.load(path + '_y_vel.uni')\n\
     z_vel_s$ID$.load(path + '_z_vel.uni')\n\
-    x_invel_s$ID$.load(path + '_x_invel.uni')\n\
-    y_invel_s$ID$.load(path + '_y_invel.uni')\n\
-    z_invel_s$ID$.load(path + '_z_invel.uni')\n\
     phiObs_s$ID$.load(path + '_phiObs.uni')\n\
     phiOutIn_s$ID$.load(path + '_phiOutIn.uni')\n\
     if using_colors_s$ID$:\n\
@@ -486,7 +481,6 @@ def save_smoke_data_low_$ID$(path):\n\
     density_s$ID$.save(path + '_density.uni')\n\
     flags_s$ID$.save(path + '_flags.uni')\n\
     vel_s$ID$.save(path + '_vel.uni')\n\
-    invel_s$ID$.save(path + '_invel.uni')\n\
     pressure_s$ID$.save(path + '_pressure.uni')\n\
     forces_s$ID$.save(path + '_forces.uni')\n\
     x_force_s$ID$.save(path + '_x_force.uni')\n\
@@ -496,9 +490,6 @@ def save_smoke_data_low_$ID$(path):\n\
     x_vel_s$ID$.save(path + '_x_vel.uni')\n\
     y_vel_s$ID$.save(path + '_y_vel.uni')\n\
     z_vel_s$ID$.save(path + '_z_vel.uni')\n\
-    x_invel_s$ID$.save(path + '_x_invel.uni')\n\
-    y_invel_s$ID$.save(path + '_y_invel.uni')\n\
-    z_invel_s$ID$.save(path + '_z_invel.uni')\n\
     phiObs_s$ID$.save(path + '_phiObs.uni')\n\
     phiOutIn_s$ID$.save(path + '_phiOutIn.uni')\n\
     if using_colors_s$ID$:\n\
@@ -572,10 +563,6 @@ if 'vel_s$ID$'         in globals() : del vel_s$ID$\n\
 if 'x_vel_s$ID$'       in globals() : del x_vel_s$ID$\n\
 if 'y_vel_s$ID$'       in globals() : del y_vel_s$ID$\n\
 if 'z_vel_s$ID$'       in globals() : del z_vel_s$ID$\n\
-if 'invel_s$ID$'       in globals() : del invel_s$ID$\n\
-if 'x_invel_s$ID$'     in globals() : del x_invel_s$ID$\n\
-if 'y_invel_s$ID$'     in globals() : del y_invel_s$ID$\n\
-if 'z_invel_s$ID$'     in globals() : del z_invel_s$ID$\n\
 if 'density_s$ID$'     in globals() : del density_s$ID$\n\
 if 'pressure_s$ID$'    in globals() : del pressure_s$ID$\n\
 if 'phiOutIn_s$ID$'    in globals() : del phiOutIn_s$ID$\n\
@@ -682,7 +669,7 @@ const std::string smoke_inflow_high = "\n\
 
 const std::string smoke_standalone_load = "\n\
 # import *.uni files\n\
-path_prefix = '$MANTA_EXPORT_PATH$'\n\
-load_smoke_data_low_$ID$(path_prefix)\n\
+path_prefix_$ID$ = '$MANTA_EXPORT_PATH$'\n\
+load_smoke_data_low_$ID$(path_prefix_$ID$)\n\
 if using_highres_s$ID$:\n\
-    load_smoke_data_high_$ID$(path_prefix)\n";
+    load_smoke_data_high_$ID$(path_prefix_$ID$)\n";

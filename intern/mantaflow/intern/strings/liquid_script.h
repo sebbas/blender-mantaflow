@@ -76,11 +76,6 @@ x_vel_s$ID$      = s$ID$.create(RealGrid)\n\
 y_vel_s$ID$      = s$ID$.create(RealGrid)\n\
 z_vel_s$ID$      = s$ID$.create(RealGrid)\n\
 \n\
-# TODO (sebbas): liquid inflow\n\
-#invel_s$ID$     = s$ID$.create(VecGrid)\n\
-#invel_s$ID$     = s$ID$.create(RealGrid)\n\
-#y_invel_s$ID$   = s$ID$.create(RealGrid)\n\
-#z_invel_s$ID$   = s$ID$.create(RealGrid)\n\
 velOld_s$ID$     = s$ID$.create(MACGrid)\n\
 velParts_s$ID$   = s$ID$.create(MACGrid)\n\
 mapWeights_s$ID$ = s$ID$.create(MACGrid)\n\
@@ -136,15 +131,14 @@ def liquid_pre_step_low_$ID$():\n\
         z_guidevel_s$ID$.multConst(gs_s$ID$.z)\n\
         copyRealToVec3(sourceX=x_guidevel_s$ID$, sourceY=y_guidevel_s$ID$, sourceZ=z_guidevel_s$ID$, target=guidevelC_s$ID$)\n\
     \n\
-    # TODO (sebbas): liquid inflow\n\
     # translate invels (world space) to grid space\n\
-    #x_invel_s$ID$.multConst(gs_s$ID$.x)\n\
-    #y_invel_s$ID$.multConst(gs_s$ID$.y)\n\
-    #z_invel_s$ID$.multConst(gs_s$ID$.z)\n\
+    if using_invel_s$ID$:\n\
+        x_invel_s$ID$.multConst(gs_s$ID$.x)\n\
+        y_invel_s$ID$.multConst(gs_s$ID$.y)\n\
+        z_invel_s$ID$.multConst(gs_s$ID$.z)\n\
+        copyRealToVec3(sourceX=x_invel_s$ID$, sourceY=y_invel_s$ID$, sourceZ=z_invel_s$ID$, target=invel_s$ID$)\n\
     \n\
     copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
-    # TODO (sebbas): liquid inflow\n\
-    #copyRealToVec3(sourceX=x_invel_s$ID$, sourceY=y_invel_s$ID$, sourceZ=z_invel_s$ID$, target=invel_s$ID$)\n\
     copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n\
     \n\
     if using_obstacle_s$ID$:\n\
@@ -153,8 +147,8 @@ def liquid_pre_step_low_$ID$():\n\
 const std::string liquid_post_step_low = "\n\
 def liquid_post_step_low_$ID$():\n\
     forces_s$ID$.clear()\n\
-    # TODO (sebbas): liquid inflow\n\
-    #invel_s$ID$.clear()\n\
+    if using_invel_s$ID$:\n\
+        invel_s$ID$.clear()\n\
     \n\
     phiIn_s$ID$.setConst(9999)\n\
     phiObs_s$ID$.setConst(9999)\n\
@@ -213,15 +207,6 @@ const std::string liquid_step_low = "\n\
 def liquid_step_$ID$():\n\
     mantaMsg('Liquid step low')\n\
     \n\
-    # TODO (sebbas): liquid inflow\n\
-    # add initial velocity\n\
-    #setForceIn(region=phiIn_s$ID$, vel=vel_s$ID$, force=vec3(0.01,0.01,-5))\n\
-    #mapGridToPartsVec3(source=vel_s$ID$, parts=pp_s$ID$, target=pVel_pp$ID$)\n\
-    #mapWeights_s$ID$.clear() # mis-use mapWeights\n\
-    #setInitialVelocity(flags=flags_s$ID$, vel=vel_s$ID$, invel=invel_s$ID$)\n\
-    #resampleVec3ToMac(source=invel_s$ID$, target=mapWeights_s$ID$)\n\
-    #addGridToPartsVec3(source=invel_s$ID$, parts=pp_s$ID$, target=pVel_pp$ID$)\n\
-    \n\
     mantaMsg('Advecting particles')\n\
     pp_s$ID$.advectInGrid(flags=flags_s$ID$, vel=vel_s$ID$, integrationMode=IntRK4, deleteInObstacle=False, stopInObstacle=False)\n\
     \n\
@@ -277,6 +262,12 @@ def liquid_step_$ID$():\n\
         extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
         extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=1, inside=False)\n\
         resampleVec3ToMac(source=guidevelC_s$ID$, target=guidevel_s$ID$)\n\
+    \n\
+    # add initial velocity\n\
+    if using_invel_s$ID$:\n\
+        mapWeights_s$ID$.clear() # mis-use mapWeights\n\
+        resampleVec3ToMac(source=invel_s$ID$, target=mapWeights_s$ID$)\n\
+        mapGridToPartsVec3(source=mapWeights_s$ID$, parts=pp_s$ID$, target=pVel_pp$ID$)\n\
     \n\
     #extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, phiObs=phiObs_s$ID$, intoObs=True)\n\
     if using_obstacle_s$ID$:\n\
@@ -360,8 +351,6 @@ def load_liquid_data_low_$ID$(path):\n\
     pressure_s$ID$.load(path + '_pressure.uni')\n\
     \n\
     vel_s$ID$.load(path + '_vel.uni')\n\
-    # TODO (sebbas): liquid inflow\n\
-    #invel_s$ID$.load(path + '_invel.uni')\n\
     velOld_s$ID$.load(path + '_velOld.uni')\n\
     velParts_s$ID$.load(path + '_velParts.uni')\n\
     mapWeights_s$ID$.load(path + '_mapWeights.uni')\n\
@@ -369,10 +358,6 @@ def load_liquid_data_low_$ID$(path):\n\
     x_vel_s$ID$.load(path + '_x_vel.uni')\n\
     y_vel_s$ID$.load(path + '_y_vel.uni')\n\
     z_vel_s$ID$.load(path + '_z_vel.uni')\n\
-    # TODO (sebbas): liquid inflow\n\
-    #x_invel_s$ID$.load(path + '_x_invel.uni')\n\
-    #y_invel_s$ID$.load(path + '_y_invel.uni')\n\
-    #z_invel_s$ID$.load(path + '_z_invel.uni')\n\
     \n\
     pp_s$ID$.load(path + '_pp.uni')\n\
     pVel_pp$ID$.load(path + '_pVel.uni')\n\
@@ -402,8 +387,6 @@ def save_liquid_data_low_$ID$(path):\n\
     pressure_s$ID$.save(path + '_pressure.uni')\n\
     \n\
     vel_s$ID$.save(path + '_vel.uni')\n\
-    # TODO (sebbas): liquid inflow\n\
-    #invel_s$ID$.save(path + '_invel.uni')\n\
     velOld_s$ID$.save(path + '_velOld.uni')\n\
     velParts_s$ID$.save(path + '_velParts.uni')\n\
     mapWeights_s$ID$.save(path + '_mapWeights.uni')\n\
@@ -411,10 +394,6 @@ def save_liquid_data_low_$ID$(path):\n\
     x_vel_s$ID$.save(path + '_x_vel.uni')\n\
     y_vel_s$ID$.save(path + '_y_vel.uni')\n\
     z_vel_s$ID$.save(path + '_z_vel.uni')\n\
-    # TODO (sebbas): liquid inflow\n\
-    #x_invel_s$ID$.save(path + '_x_invel.uni')\n\
-    #y_invel_s$ID$.save(path + '_y_invel.uni')\n\
-    #z_invel_s$ID$.save(path + '_z_invel.uni')\n\
     \n\
     pp_s$ID$.save(path + '_pp.uni')\n\
     pVel_pp$ID$.save(path + '_pVel.uni')\n\
@@ -447,11 +426,6 @@ if 'vel_s$ID$'        in globals() : del vel_s$ID$\n\
 if 'x_vel_s$ID$'      in globals() : del x_vel_s$ID$\n\
 if 'y_vel_s$ID$'      in globals() : del y_vel_s$ID$\n\
 if 'z_vel_s$ID$'      in globals() : del z_vel_s$ID$\n\
-# TODO (sebbas): liquid inflow\n\
-#if 'invel_s$ID$'      in globals() : del invel_s$ID$\n\
-#if 'x_invel_s$ID$'    in globals() : del x_invel_s$ID$\n\
-#if 'y_invel_s$ID$'    in globals() : del y_invel_s$ID$\n\
-#if 'z_invel_s$ID$'    in globals() : del z_invel_s$ID$\n\
 if 'velOld_s$ID$'     in globals() : del velOld_s$ID$\n\
 if 'velParts_s$ID$'   in globals() : del velParts_s$ID$\n\
 if 'mapWeights_s$ID$' in globals() : del mapWeights_s$ID$\n\

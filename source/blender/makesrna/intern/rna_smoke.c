@@ -819,6 +819,9 @@ static void rna_Smoke_flowtype_set(struct PointerRNA *ptr, int value)
 		/* Force flow source to mesh */
 		if (value == MOD_SMOKE_FLOW_TYPE_LIQUID) {
 			rna_Smoke_flowsource_set(ptr, MOD_SMOKE_FLOW_SOURCE_MESH);
+			settings->surface_distance = 0.5f;
+		} else {
+			settings->surface_distance = 1.5f;
 		}
 	}
 }
@@ -1588,14 +1591,14 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "use_initial_velocity", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_SMOKE_FLOW_INITVELOCITY);
-	RNA_def_property_ui_text(prop, "Initial Velocity", "Smoke has some initial velocity when it is emitted");
+	RNA_def_property_ui_text(prop, "Initial Velocity", "Fluid has some initial velocity when it is emitted");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
 	prop = RNA_def_property(srna, "velocity_factor", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "vel_multi");
 	RNA_def_property_range(prop, -100.0, 100.0);
 	RNA_def_property_ui_range(prop, -2.0, 2.0, 0.05, 5);
-	RNA_def_property_ui_text(prop, "Source", "Multiplier of source velocity passed to smoke");
+	RNA_def_property_ui_text(prop, "Source", "Multiplier of source velocity passed to fluid");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
 	prop = RNA_def_property(srna, "velocity_normal", PROP_FLOAT, PROP_NONE);
