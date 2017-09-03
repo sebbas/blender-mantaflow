@@ -816,6 +816,7 @@ static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
 			BVHTreeNearest nearest = {0};
 			nearest.index = -1;
 			nearest.dist_sq = surface_distance * surface_distance; /* find_nearest uses squared distance */
+			bool hasIncObj = false;
 
 			/* find the nearest point on the mesh */
 			if (BLI_bvhtree_find_nearest(data->tree->tree, ray_start, &nearest, data->tree->nearest_callback, data->tree) != -1) {
@@ -841,12 +842,18 @@ static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
 
 					/* increase object count */
 					data->num_objects[index]++;
+					hasIncObj = true;
 				}
 			}
 
 			/* Get distance to mesh surface from both within and outside grid (mantaflow phi grid) */
 			if (data->distances_map) {
 				update_mesh_distances(index, data->distances_map, data->tree, ray_start, data->surface_thickness);
+
+				/* Ensure that num objects are also counted inside object. But dont count twice (see object inc for nearest point) */
+				if (data->distances_map[index] < 0 && !hasIncObj) {
+					data->num_objects[index]++;
+				}
 			}
 		}
 	}
@@ -1721,11 +1728,11 @@ static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromM
 		if (dot_v3v3(ray_dirs[i], hit_tree.no) < 0) { inside = false; }
 	}
 
+	/* Levelset is negative inside mesh */
+	if (inside) min_dist *= (-1.0f);
+
 	/* Update mesh distance in map */
 	mesh_distances[index] = MIN2(mesh_distances[index], min_dist);
-
-	/* Levelset is negative inside mesh */
-	if (inside) mesh_distances[index] = fabsf(mesh_distances[index]) * (-1.0f);
 
 	/* Optional object thickening. Checks area around object. Thickness value determines size of search area. */
 	if (surface_thickness) {

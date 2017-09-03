@@ -87,9 +87,6 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mVelocityX      = NULL;
 	mVelocityY      = NULL;
 	mVelocityZ      = NULL;
-	mInVelocityX    = NULL;
-	mInVelocityY    = NULL;
-	mInVelocityZ    = NULL;
 	mForceX         = NULL;
 	mForceY         = NULL;
 	mForceZ         = NULL;
@@ -138,6 +135,11 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mGuideVelocityX = NULL;
 	mGuideVelocityY = NULL;
 	mGuideVelocityZ = NULL;
+
+	// Fluid initial velocity
+	mInVelocityX    = NULL;
+	mInVelocityY    = NULL;
+	mInVelocityZ    = NULL;
 
 	// Secondary particles
 	mFlipParticleData      = NULL;
@@ -520,9 +522,6 @@ FLUID::~FLUID()
 	mVelocityX      = NULL;
 	mVelocityY      = NULL;
 	mVelocityZ      = NULL;
-	mInVelocityX    = NULL;
-	mInVelocityY    = NULL;
-	mInVelocityZ    = NULL;
 	mForceX         = NULL;
 	mForceY         = NULL;
 	mForceZ         = NULL;
@@ -570,6 +569,11 @@ FLUID::~FLUID()
 	mGuideVelocityX = NULL;
 	mGuideVelocityY = NULL;
 	mGuideVelocityZ = NULL;
+
+	// Fluid initial velocity
+	mInVelocityX    = NULL;
+	mInVelocityY    = NULL;
+	mInVelocityZ    = NULL;
 
 	// Secondary particles
 	mFlipParticleData      = NULL;

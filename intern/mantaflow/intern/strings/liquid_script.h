@@ -147,6 +147,8 @@ def liquid_pre_step_low_$ID$():\n\
 const std::string liquid_post_step_low = "\n\
 def liquid_post_step_low_$ID$():\n\
     forces_s$ID$.clear()\n\
+    if using_guiding_s$ID$:\n\
+        weightGuide_s$ID$.clear()\n\
     if using_invel_s$ID$:\n\
         invel_s$ID$.clear()\n\
     \n\
@@ -277,7 +279,6 @@ def liquid_step_$ID$():\n\
     \n\
     if using_guiding_s$ID$:\n\
         mantaMsg('Guiding and pressure')\n\
-        weightGuide_s$ID$.multConst(0)\n\
         weightGuide_s$ID$.addConst(alpha_s$ID$)\n\
         PD_fluid_guiding(vel=vel_s$ID$, velT=guidevel_s$ID$, flags=flags_s$ID$, weight=weightGuide_s$ID$, blurRadius=beta_s$ID$, pressure=pressure_s$ID$, tau=tau_s$ID$, sigma=sigma_s$ID$, theta=theta_s$ID$, zeroPressureFixing=not doOpen_s$ID$)\n\
     else:\n\

@@ -109,6 +109,7 @@ mantaMsg('Smoke alloc high')\n\
 flags_xl$ID$     = xl$ID$.create(FlagGrid)\n\
 vel_xl$ID$       = xl$ID$.create(MACGrid)\n\
 density_xl$ID$   = xl$ID$.create(RealGrid)\n\
+phiOut_xl$ID$    = xl$ID$.create(LevelsetGrid)\n\
 phiObs_xl$ID$    = xl$ID$.create(LevelsetGrid)\n\
 energy_s$ID$     = s$ID$.create(RealGrid)\n\
 tempFlag_s$ID$   = s$ID$.create(FlagGrid)\n\
@@ -216,6 +217,8 @@ def smoke_pre_step_high_$ID$():\n\
 const std::string smoke_post_step_low = "\n\
 def smoke_post_step_low_$ID$():\n\
     forces_s$ID$.clear()\n\
+    if using_guiding_s$ID$:\n\
+        weightGuide_s$ID$.clear()\n\
     if using_invel_s$ID$:\n\
         invel_s$ID$.clear()\n\
     \n\
@@ -301,8 +304,9 @@ def step_low_$ID$():\n\
     mantaMsg('Advecting velocity')\n\
     advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=vel_s$ID$, order=$ADVECT_ORDER$, openBounds=doOpen_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
     \n\
-    # Create interpolated version of original phi grid for later use in (optional) high-res step\n\
+    # Create interpolated version of original phi grids for later use in (optional) high-res step\n\
     if using_obstacle_s$ID$ and using_highres_s$ID$:\n\
+        interpolateGrid(target=phiOut_xl$ID$, source=phiOutIn_s$ID$)\n\
         interpolateGrid(target=phiObs_xl$ID$, source=phiObs_s$ID$)\n\
     if doOpen_s$ID$:\n\
         resetOutflow(flags=flags_s$ID$, real=density_s$ID$)\n\
@@ -347,7 +351,6 @@ def step_low_$ID$():\n\
     \n\
     if using_guiding_s$ID$:\n\
         mantaMsg('Guiding and pressure')\n\
-        weightGuide_s$ID$.multConst(0)\n\
         weightGuide_s$ID$.addConst(alpha_s$ID$)\n\
         PD_fluid_guiding(vel=vel_s$ID$, velT=guidevel_s$ID$, flags=flags_s$ID$, weight=weightGuide_s$ID$, blurRadius=beta_s$ID$, pressure=pressure_s$ID$, tau=tau_s$ID$, sigma=sigma_s$ID$, theta=theta_s$ID$, preconditioner=preconditioner_s$ID$, zeroPressureFixing=not doOpen_s$ID$)\n\
     else:\n\
@@ -368,8 +371,7 @@ def update_flame_low_$ID$():\n\
 const std::string smoke_step_high = "\n\
 def step_high_$ID$():\n\
     mantaMsg('Smoke step high')\n\
-    if using_obstacle_s$ID$: # TODO (sebbas): allow outflow objects when no obstacle set\n\
-        setObstacleFlags(flags=flags_xl$ID$, phiObs=phiObs_xl$ID$)\n\
+    setObstacleFlags(flags=flags_xl$ID$, phiObs=phiObs_xl$ID$, phiOut=phiOut_xl$ID$)\n\
     flags_xl$ID$.fillGrid()\n\
     \n\
     interpolateMACGrid(source=vel_s$ID$, target=vel_xl$ID$)\n\
@@ -459,6 +461,8 @@ const std::string smoke_import_high = "\n\
 def load_smoke_data_high_$ID$(path):\n\
     density_xl$ID$.load(path + '_density_xl.uni')\n\
     flags_xl$ID$.load(path + '_flags_xl.uni')\n\
+    phiOut_xl$ID$.load(path + '_phiOut_xl.uni')\n\
+    phiObs_xl$ID$.load(path + '_phiObs_xl.uni')\n\
     \n\
     texture_u_s$ID$.load(path + '_texture_u.uni')\n\
     texture_v_s$ID$.load(path + '_texture_v.uni')\n\
@@ -507,6 +511,8 @@ const std::string smoke_export_high = "\n\
 def save_smoke_data_high_$ID$(path):\n\
     density_xl$ID$.save(path + '_density_xl.uni')\n\
     flags_xl$ID$.save(path + '_flags_xl.uni')\n\
+    phiOut_xl$ID$.save(path + '_phiOut_xl.uni')\n\
+    phiObs_xl$ID$.save(path + '_phiObs_xl.uni')\n\
     \n\
     texture_u_s$ID$.save(path + '_texture_u.uni')\n\
     texture_v_s$ID$.save(path + '_texture_v.uni')\n\
@@ -578,6 +584,7 @@ mantaMsg('Deleting base grids high')\n\
 if 'flags_xl$ID$'      in globals() : del flags_xl$ID$\n\
 if 'vel_xl$ID$'        in globals() : del vel_xl$ID$\n\
 if 'density_xl$ID$'    in globals() : del density_xl$ID$\n\
+if 'phiOut_xl$ID$'     in globals() : del phiOut_xl$ID$\n\
 if 'phiObs_xl$ID$'     in globals() : del phiObs_xl$ID$\n\
 if 'energy_s$ID$'      in globals() : del energy_s$ID$\n\
 if 'tempFlag_s$ID$'    in globals() : del tempFlag_s$ID$\n\
