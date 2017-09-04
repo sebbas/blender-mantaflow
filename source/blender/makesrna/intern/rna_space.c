@@ -1045,6 +1045,8 @@ static void rna_SpaceProperties_pin_id_update(Main *UNUSED(bmain), Scene *UNUSED
 		case ID_LA:
 			WM_main_add_notifier(NC_LAMP, NULL);
 			break;
+		default:
+			break;
 	}
 }
 
@@ -4605,7 +4607,7 @@ static void rna_def_space_clip(BlenderRNA *brna)
 	/* path length */
 	prop = RNA_def_property(srna, "path_length", PROP_INT, PROP_NONE);
 	RNA_def_property_int_sdna(prop, NULL, "path_length");
-	RNA_def_property_range(prop, 0, 50);
+	RNA_def_property_range(prop, 0, INT_MAX);
 	RNA_def_property_ui_text(prop, "Path Length", "Length of displaying path, in frames");
 	RNA_def_property_update(prop, NC_SPACE | ND_SPACE_CLIP, NULL);
 

@@ -176,9 +176,6 @@ typedef enum eDepsOperation_Code {
 	/* XXX: Placeholder - UberEval */
 	DEG_OPCODE_GEOMETRY_UBEREVAL,
 
-	/* Curve Objects - Path Calculation (used for path-following tools, */
-	DEG_OPCODE_GEOMETRY_PATH,
-
 	/* Pose -------------------------------------------- */
 
 	/* Init IK Trees, etc. */
@@ -219,6 +216,7 @@ typedef enum eDepsOperation_Code {
 	/* Particles --------------------------------------- */
 
 	/* XXX: placeholder - Particle System eval */
+	DEG_OPCODE_PSYS_EVAL_INIT,
 	DEG_OPCODE_PSYS_EVAL,
 
 	DEG_NUM_OPCODES,

@@ -177,9 +177,9 @@ static void rna_Panel_unregister(Main *UNUSED(bmain), StructRNA *type)
 		return;
 	
 	RNA_struct_free_extension(type, &pt->ext);
+	RNA_struct_free(&BLENDER_RNA, type);
 
 	BLI_freelinkN(&art->paneltypes, pt);
-	RNA_struct_free(&BLENDER_RNA, type);
 
 	/* update while blender is running */
 	WM_main_add_notifier(NC_WINDOW, NULL);
@@ -228,6 +228,12 @@ static StructRNA *rna_Panel_register(Main *bmain, ReportList *reports, void *dat
 				BLI_freelinkN(&art->paneltypes, pt);
 			break;
 		}
+	}
+	if (!RNA_struct_available_or_report(reports, dummypt.idname)) {
+		return NULL;
+	}
+	if (!RNA_struct_bl_idname_ok_or_report(reports, dummypt.idname, "_PT_")) {
+		return NULL;
 	}
 	
 	/* create a new panel type */
@@ -455,10 +461,9 @@ static void rna_UIList_unregister(Main *UNUSED(bmain), StructRNA *type)
 		return;
 
 	RNA_struct_free_extension(type, &ult->ext);
+	RNA_struct_free(&BLENDER_RNA, type);
 
 	WM_uilisttype_freelink(ult);
-
-	RNA_struct_free(&BLENDER_RNA, type);
 
 	/* update while blender is running */
 	WM_main_add_notifier(NC_WINDOW, NULL);
@@ -489,8 +494,15 @@ static StructRNA *rna_UIList_register(Main *bmain, ReportList *reports, void *da
 
 	/* check if we have registered this uilist type before, and remove it */
 	ult = WM_uilisttype_find(dummyult.idname, true);
-	if (ult && ult->ext.srna)
+	if (ult && ult->ext.srna) {
 		rna_UIList_unregister(bmain, ult->ext.srna);
+	}
+	if (!RNA_struct_available_or_report(reports, dummyult.idname)) {
+		return NULL;
+	}
+	if (!RNA_struct_bl_idname_ok_or_report(reports, dummyult.idname, "_UL_")) {
+		return NULL;
+	}
 
 	/* create a new menu type */
 	ult = MEM_callocN(sizeof(uiListType) + over_alloc, "python uilist");
@@ -551,9 +563,9 @@ static void rna_Header_unregister(Main *UNUSED(bmain), StructRNA *type)
 		return;
 	
 	RNA_struct_free_extension(type, &ht->ext);
+	RNA_struct_free(&BLENDER_RNA, type);
 
 	BLI_freelinkN(&art->headertypes, ht);
-	RNA_struct_free(&BLENDER_RNA, type);
 
 	/* update while blender is running */
 	WM_main_add_notifier(NC_WINDOW, NULL);
@@ -592,6 +604,12 @@ static StructRNA *rna_Header_register(Main *bmain, ReportList *reports, void *da
 				rna_Header_unregister(bmain, ht->ext.srna);
 			break;
 		}
+	}
+	if (!RNA_struct_available_or_report(reports, dummyht.idname)) {
+		return NULL;
+	}
+	if (!RNA_struct_bl_idname_ok_or_report(reports, dummyht.idname, "_HT_")) {
+		return NULL;
 	}
 	
 	/* create a new header type */
@@ -673,10 +691,9 @@ static void rna_Menu_unregister(Main *UNUSED(bmain), StructRNA *type)
 		return;
 	
 	RNA_struct_free_extension(type, &mt->ext);
+	RNA_struct_free(&BLENDER_RNA, type);
 
 	WM_menutype_freelink(mt);
-
-	RNA_struct_free(&BLENDER_RNA, type);
 
 	/* update while blender is running */
 	WM_main_add_notifier(NC_WINDOW, NULL);
@@ -714,8 +731,15 @@ static StructRNA *rna_Menu_register(Main *bmain, ReportList *reports, void *data
 
 	/* check if we have registered this menu type before, and remove it */
 	mt = WM_menutype_find(dummymt.idname, true);
-	if (mt && mt->ext.srna)
+	if (mt && mt->ext.srna) {
 		rna_Menu_unregister(bmain, mt->ext.srna);
+	}
+	if (!RNA_struct_available_or_report(reports, dummymt.idname)) {
+		return NULL;
+	}
+	if (!RNA_struct_bl_idname_ok_or_report(reports, dummymt.idname, "_MT_")) {
+		return NULL;
+	}
 	
 	/* create a new menu type */
 	if (_menu_descr[0]) {
@@ -937,6 +961,7 @@ static void rna_def_panel(BlenderRNA *brna)
 	RNA_def_struct_refine_func(srna, "rna_Panel_refine");
 	RNA_def_struct_register_funcs(srna, "rna_Panel_register", "rna_Panel_unregister", NULL);
 	RNA_def_struct_translation_context(srna, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+	RNA_def_struct_flag(srna, STRUCT_PUBLIC_NAMESPACE_INHERIT);
 
 	/* poll */
 	func = RNA_def_function(srna, "poll", NULL);
@@ -1039,7 +1064,7 @@ static void rna_def_uilist(BlenderRNA *brna)
 	RNA_def_struct_refine_func(srna, "rna_UIList_refine");
 	RNA_def_struct_register_funcs(srna, "rna_UIList_register", "rna_UIList_unregister", NULL);
 	RNA_def_struct_idprops_func(srna, "rna_UIList_idprops");
-	RNA_def_struct_flag(srna, STRUCT_NO_DATABLOCK_IDPROPERTIES);
+	RNA_def_struct_flag(srna, STRUCT_NO_DATABLOCK_IDPROPERTIES | STRUCT_PUBLIC_NAMESPACE_INHERIT);
 
 	/* Registration */
 	prop = RNA_def_property(srna, "bl_idname", PROP_STRING, PROP_NONE);
@@ -1161,6 +1186,7 @@ static void rna_def_header(BlenderRNA *brna)
 	RNA_def_struct_sdna(srna, "Header");
 	RNA_def_struct_refine_func(srna, "rna_Header_refine");
 	RNA_def_struct_register_funcs(srna, "rna_Header_register", "rna_Header_unregister", NULL);
+	RNA_def_struct_flag(srna, STRUCT_PUBLIC_NAMESPACE_INHERIT);
 
 	/* draw */
 	func = RNA_def_function(srna, "draw", NULL);
@@ -1208,6 +1234,7 @@ static void rna_def_menu(BlenderRNA *brna)
 	RNA_def_struct_refine_func(srna, "rna_Menu_refine");
 	RNA_def_struct_register_funcs(srna, "rna_Menu_register", "rna_Menu_unregister", NULL);
 	RNA_def_struct_translation_context(srna, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+	RNA_def_struct_flag(srna, STRUCT_PUBLIC_NAMESPACE_INHERIT);
 
 	/* poll */
 	func = RNA_def_function(srna, "poll", NULL);

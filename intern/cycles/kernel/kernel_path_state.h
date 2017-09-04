@@ -19,12 +19,13 @@ CCL_NAMESPACE_BEGIN
 ccl_device_inline void path_state_init(KernelGlobals *kg,
                                        ShaderData *stack_sd,
                                        ccl_addr_space PathState *state,
-                                       RNG *rng,
+                                       uint rng_hash,
                                        int sample,
                                        ccl_addr_space Ray *ray)
 {
 	state->flag = PATH_RAY_CAMERA|PATH_RAY_MIS_SKIP;
 
+	state->rng_hash = rng_hash;
 	state->rng_offset = PRNG_BASE_NUM;
 	state->sample = sample;
 	state->num_samples = kernel_data.integrator.aa_samples;
@@ -58,15 +59,11 @@ ccl_device_inline void path_state_init(KernelGlobals *kg,
 		/* Initialize volume stack with volume we are inside of. */
 		kernel_volume_stack_init(kg, stack_sd, state, ray, state->volume_stack);
 		/* Seed RNG for cases where we can't use stratified samples .*/
-		state->rng_congruential = lcg_init(*rng + sample*0x51633e2d);
+		state->rng_congruential = lcg_init(rng_hash + sample*0x51633e2d);
 	}
 	else {
 		state->volume_stack[0].shader = SHADER_NONE;
 	}
-#endif
-
-#ifdef __SHADOW_TRICKS__
-	state->catcher_object = OBJECT_NONE;
 #endif
 }
 
@@ -160,17 +157,26 @@ ccl_device_inline uint path_state_ray_visibility(KernelGlobals *kg, PathState *s
 	return flag;
 }
 
-ccl_device_inline float path_state_terminate_probability(KernelGlobals *kg, ccl_addr_space PathState *state, const float3 throughput)
+ccl_device_inline float path_state_continuation_probability(KernelGlobals *kg, ccl_addr_space PathState *state, const float3 throughput)
 {
 	if(state->flag & PATH_RAY_TRANSPARENT) {
-		/* transparent rays treated separately */
-		if(state->transparent_bounce >= kernel_data.integrator.transparent_max_bounce)
+		/* Transparent rays are treated separately with own max bounces. */
+		if(state->transparent_bounce >= kernel_data.integrator.transparent_max_bounce) {
 			return 0.0f;
-		else if(state->transparent_bounce <= kernel_data.integrator.transparent_min_bounce)
+		}
+		/* Do at least one bounce without RR. */
+		else if(state->transparent_bounce <= 1) {
 			return 1.0f;
+		}
+#ifdef __SHADOW_TRICKS__
+		/* Exception for shadow catcher not working correctly with RR. */
+		else if((state->flag & PATH_RAY_SHADOW_CATCHER) && (state->transparent_bounce <= 8)) {
+			return 1.0f;
+		}
+#endif
 	}
 	else {
-		/* other rays */
+		/* Test max bounces for various ray types. */
 		if((state->bounce >= kernel_data.integrator.max_bounce) ||
 		   (state->diffuse_bounce >= kernel_data.integrator.max_diffuse_bounce) ||
 		   (state->glossy_bounce >= kernel_data.integrator.max_glossy_bounce) ||
@@ -181,13 +187,21 @@ ccl_device_inline float path_state_terminate_probability(KernelGlobals *kg, ccl_
 		{
 			return 0.0f;
 		}
-		else if(state->bounce <= kernel_data.integrator.min_bounce) {
+		/* Do at least one bounce without RR. */
+		else if(state->bounce <= 1) {
 			return 1.0f;
 		}
+#ifdef __SHADOW_TRICKS__
+		/* Exception for shadow catcher not working correctly with RR. */
+		else if((state->flag & PATH_RAY_SHADOW_CATCHER) && (state->bounce <= 3)) {
+			return 1.0f;
+		}
+#endif
 	}
 
-	/* probalistic termination */
-	return average(throughput); /* todo: try using max here */
+	/* Probalistic termination: use sqrt() to roughly match typical view
+	 * transform and do path termination a bit later on average. */
+	return sqrtf(max3(fabs(throughput)));
 }
 
 /* TODO(DingTo): Find more meaningful name for this */

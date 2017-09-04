@@ -3196,7 +3196,6 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 
 		if (smd->flow->dm) smd->flow->dm->release(smd->flow->dm);
 		smd->flow->dm = CDDM_copy(dm);
-		DM_ensure_looptri(smd->flow->dm);
 
 		if (scene->r.cfra > smd->time)
 		{
@@ -3219,7 +3218,6 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 				smd->effec->dm->release(smd->effec->dm);
 
 			smd->effec->dm = CDDM_copy(dm);
-			DM_ensure_looptri(smd->effec->dm);
 		}
 
 		smd->time = scene->r.cfra;

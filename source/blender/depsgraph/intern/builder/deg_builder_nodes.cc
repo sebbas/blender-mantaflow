@@ -320,8 +320,11 @@ void DepsgraphNodeBuilder::build_object(Scene *scene, Base *base, Object *ob)
 	if (base != NULL) {
 		id_node->layers |= base->lay;
 	}
-	if (ob == scene->camera) {
-		/* Camera should always be updated, it used directly by viewport. */
+	if (ob->type == OB_CAMERA) {
+		/* Camera should always be updated, it used directly by viewport.
+		 *
+		 * TODO(sergey): Make it only for active scene camera.
+		 */
 		id_node->layers |= (unsigned int)(-1);
 	}
 	/* Skip rest of components if the ID node was already there. */
@@ -671,6 +674,13 @@ void DepsgraphNodeBuilder::build_particles(Scene *scene, Object *ob)
 	ComponentDepsNode *psys_comp =
 	        add_component_node(&ob->id, DEG_NODE_TYPE_EVAL_PARTICLES);
 
+	add_operation_node(psys_comp,
+	                   function_bind(BKE_particle_system_eval_init,
+	                                 _1,
+	                                 scene,
+	                                 ob),
+	                   DEG_OPCODE_PSYS_EVAL_INIT);
+
 	/* particle systems */
 	LINKLIST_FOREACH (ParticleSystem *, psys, &ob->particlesystem) {
 		ParticleSettings *part = psys->part;
@@ -682,11 +692,7 @@ void DepsgraphNodeBuilder::build_particles(Scene *scene, Object *ob)
 		/* this particle system */
 		// TODO: for now, this will just be a placeholder "ubereval" node
 		add_operation_node(psys_comp,
-		                   function_bind(BKE_particle_system_eval,
-		                                 _1,
-		                                 scene,
-		                                 ob,
-		                                 psys),
+		                   NULL,
 		                   DEG_OPCODE_PSYS_EVAL,
 		                   psys->name);
 	}
@@ -845,17 +851,6 @@ void DepsgraphNodeBuilder::build_obdata_geom(Scene *scene, Object *ob)
 			                                           "Geometry Eval");
 			op_node->set_as_entry();
 
-			/* Calculate curve path - this is used by constraints, etc. */
-			if (ELEM(ob->type, OB_CURVE, OB_FONT)) {
-				add_operation_node(obdata,
-				                   DEG_NODE_TYPE_GEOMETRY,
-				                   function_bind(BKE_curve_eval_path,
-				                                 _1,
-				                                 (Curve *)obdata),
-				                   DEG_OPCODE_GEOMETRY_PATH,
-				                   "Path");
-			}
-
 			/* Make sure objects used for bevel.taper are in the graph.
 			 * NOTE: This objects might be not linked to the scene.
 			 */
@@ -965,7 +960,7 @@ void DepsgraphNodeBuilder::build_nodetree(bNodeTree *ntree)
 	LINKLIST_FOREACH (bNode *, bnode, &ntree->nodes) {
 		ID *id = bnode->id;
 		if (id != NULL) {
-			short id_type = GS(id->name);
+			ID_Type id_type = GS(id->name);
 			if (id_type == ID_MA) {
 				build_material((Material *)id);
 			}
