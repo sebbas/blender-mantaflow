@@ -5606,9 +5606,7 @@ static void set_trans_object_base_flags(TransInfo *t)
 	}
 
 	/* all recalc flags get flushed to all layers, so a layer flip later on works fine */
-#ifdef WITH_LEGACY_DEPSGRAPH
 	DAG_scene_flush_update(G.main, t->scene, -1, 0);
-#endif
 
 	/* and we store them temporal in base (only used for transform code) */
 	/* this because after doing updates, the object->recalc is cleared */
@@ -5687,9 +5685,7 @@ static int count_proportional_objects(TransInfo *t)
 
 	/* all recalc flags get flushed to all layers, so a layer flip later on works fine */
 	DAG_scene_relations_update(G.main, t->scene);
-#ifdef WITH_LEGACY_DEPSGRAPH
 	DAG_scene_flush_update(G.main, t->scene, -1, 0);
-#endif
 
 	/* and we store them temporal in base (only used for transform code) */
 	/* this because after doing updates, the object->recalc is cleared */
@@ -7835,7 +7831,7 @@ static void createTransGPencil(bContext *C, TransInfo *t)
 	float mtx[3][3], smtx[3][3];
 	
 	const Scene *scene = CTX_data_scene(C);
-	const int cfra = CFRA;
+	const int cfra_scene = CFRA;
 	
 	const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
 	const bool is_prop_edit_connected = (t->flag & T_PROP_CONNECTED) != 0;
@@ -7860,7 +7856,7 @@ static void createTransGPencil(bContext *C, TransInfo *t)
 		if (gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
 			bGPDframe *gpf = gpl->actframe;
 			bGPDstroke *gps;
-			
+
 			for (gps = gpf->strokes.first; gps; gps = gps->next) {
 				/* skip strokes that are invalid for current view */
 				if (ED_gpencil_stroke_can_use(C, gps) == false) {
@@ -7916,6 +7912,7 @@ static void createTransGPencil(bContext *C, TransInfo *t)
 	for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
 		/* only editable and visible layers are considered */
 		if (gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
+			const int cfra = (gpl->flag & GP_LAYER_FRAMELOCK) ? gpl->actframe->framenum : cfra_scene;
 			bGPDframe *gpf = gpl->actframe;
 			bGPDstroke *gps;
 			float diff_mat[4][4];
@@ -7932,7 +7929,6 @@ static void createTransGPencil(bContext *C, TransInfo *t)
 			 * - This is useful when animating as it saves that "uh-oh" moment when you realize you've
 			 *   spent too much time editing the wrong frame...
 			 */
-			// XXX: should this be allowed when framelock is enabled?
 			if (gpf->framenum != cfra) {
 				gpf = BKE_gpencil_frame_addcopy(gpl, cfra);
 				/* in some weird situations (framelock enabled) return NULL */
