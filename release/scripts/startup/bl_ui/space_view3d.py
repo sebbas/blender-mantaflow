@@ -1612,6 +1612,7 @@ class VIEW3D_MT_object_quick_effects(Menu):
         layout.operator("object.quick_fur")
         layout.operator("object.quick_explode")
         layout.operator("object.quick_smoke")
+        layout.operator("object.quick_liquid")
         layout.operator("object.quick_fluid")
 
 

@@ -183,11 +183,18 @@ def manta_step_$ID$(framenr):\n\
         \n\
         phiOut_s$ID$.join(phiOutIn_s$ID$)\n\
         \n\
-        #updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
-        setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$)#, fractions=fractions_s$ID$)\n\
+        updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
+        setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$, fractions=fractions_s$ID$)\n\
+        \n\
+        # add initial velocity: set invel as source grid to ensure const vels in inflow region, sampling makes use of this\n\
+        mapWeights_s$ID$.clear() # mis-use mapWeights\n\
+        if using_invel_s$ID$:\n\
+            resampleVec3ToMac(source=invel_s$ID$, target=mapWeights_s$ID$)\n\
+        pVel_pp$ID$.setSource(mapWeights_s$ID$, isMAC=True)\n\
         \n\
         sampleLevelsetWithParticles(phi=phiIn_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, discretization=particleNumber_s$ID$, randomness=randomness_s$ID$, refillEmpty=True)\n\
         flags_s$ID$.updateFromLevelset(phi_s$ID$, phiObs_s$ID$)\n\
+        mapWeights_s$ID$.clear() # clean up, mapweights grid used later again\n\
         \n\
         if using_adaptTime_s$ID$:\n\
             mantaMsg('Adapt timestep')\n\
@@ -265,31 +272,25 @@ def liquid_step_$ID$():\n\
         extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=1, inside=False)\n\
         resampleVec3ToMac(source=guidevelC_s$ID$, target=guidevel_s$ID$)\n\
     \n\
-    # add initial velocity\n\
-    if using_invel_s$ID$:\n\
-        mapWeights_s$ID$.clear() # mis-use mapWeights\n\
-        resampleVec3ToMac(source=invel_s$ID$, target=mapWeights_s$ID$)\n\
-        mapGridToPartsVec3(source=mapWeights_s$ID$, parts=pp_s$ID$, target=pVel_pp$ID$)\n\
-    \n\
-    #extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, phiObs=phiObs_s$ID$, intoObs=True)\n\
+    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, phiObs=phiObs_s$ID$, intoObs=True)\n\
     if using_obstacle_s$ID$:\n\
-        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$, obvel=obvel_s$ID$)#, fractions=fractions_s$ID$) # TODO: uncomment for obvel support (once fraction wallbcs works)\n\
+        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)#, obvel=obvel_s$ID$) # TODO: uncomment for obvel support (once fraction wallbcs works)\n\
     else:\n\
-        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$)#, fractions=fractions_s$ID$) # TODO: uncomment for obvel support (once fraction wallbcs works)\n\
+        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
     if using_guiding_s$ID$:\n\
         mantaMsg('Guiding and pressure')\n\
         weightGuide_s$ID$.addConst(alpha_s$ID$)\n\
-        PD_fluid_guiding(vel=vel_s$ID$, velT=guidevel_s$ID$, flags=flags_s$ID$, weight=weightGuide_s$ID$, blurRadius=beta_s$ID$, pressure=pressure_s$ID$, tau=tau_s$ID$, sigma=sigma_s$ID$, theta=theta_s$ID$, zeroPressureFixing=not doOpen_s$ID$)\n\
+        PD_fluid_guiding(vel=vel_s$ID$, velT=guidevel_s$ID$, flags=flags_s$ID$, phi=phi_s$ID$, fractions=fractions_s$ID$, weight=weightGuide_s$ID$, blurRadius=beta_s$ID$, pressure=pressure_s$ID$, tau=tau_s$ID$, sigma=sigma_s$ID$, theta=theta_s$ID$, zeroPressureFixing=not doOpen_s$ID$)\n\
     else:\n\
         mantaMsg('Pressure')\n\
-        solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$)#, fractions=fractions_s$ID$)\n\
+        solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
-    #extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4, phiObs=phiObs_s$ID$, intoObs=False)\n\
+    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4, phiObs=phiObs_s$ID$, intoObs=True)\n\
     if using_obstacle_s$ID$:\n\
-        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$, obvel=obvel_s$ID$)#, fractions=fractions_s$ID$) # TODO: uncomment for obvel support (once fraction wallbcs works)\n\
+        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)#, obvel=obvel_s$ID$) # TODO: uncomment for obvel support (once fraction wallbcs works)\n\
     else:\n\
-        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$)#, fractions=fractions_s$ID$) # TODO: uncomment for obvel support (once fraction wallbcs works)\n\
+        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
     if (dim_s$ID$==3):\n\
         # mis-use phiParts as temp grid to close the mesh\n\
