@@ -2451,12 +2451,21 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 	int active_fields = sds->active_fields;
 
 	float *phiIn = liquid_get_phiin(sds->fluid);
+	float *velxInitial = smoke_get_in_velocity_x(sds->fluid);
+	float *velyInitial = smoke_get_in_velocity_y(sds->fluid);
+	float *velzInitial = smoke_get_in_velocity_z(sds->fluid);
 	unsigned int z;
 
 	/* Resetting levelset grid representation of domain */
 	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++) {
-		if (phiIn)
+		if (phiIn) {
 			phiIn[z] = 9999;
+		}
+		if (velxInitial && velyInitial && velzInitial) {
+			velxInitial[z] = 0.0f;
+			velyInitial[z] = 0.0f;
+			velzInitial[z] = 0.0f;
+		}
 	}
 
 	/* calculate domain shift for current frame if using adaptive domain */
