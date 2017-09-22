@@ -152,11 +152,7 @@ def liquid_post_step_low_$ID$():\n\
     if using_invel_s$ID$:\n\
         invel_s$ID$.clear()\n\
     \n\
-    phiIn_s$ID$.setConst(9999)\n\
-    phiObs_s$ID$.setConst(9999)\n\
     phiOut_s$ID$.setConst(9999)\n\
-    phiOutIn_s$ID$.setConst(9999)\n\
-    \n\
     copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n";
 
 //////////////////////////////////////////////////////////////////////
@@ -174,6 +170,13 @@ def manta_step_$ID$(framenr):\n\
     while s$ID$.frame == last_frame_s$ID$:\n\
         \n\
         flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$, phiWalls=phiObs_s$ID$, outflow=boundConditions_s$ID$)\n\
+        \n\
+        # extrapolate before joining inflow levelsets\n\
+        extrapolateLsSimple(phi=phiIn_s$ID$, distance=narrowBandWidth_s$ID$+2, inside=True)\n\
+        extrapolateLsSimple(phi=phiIn_s$ID$, distance=3)\n\
+        if using_obstacle_s$ID$:\n\
+            extrapolateLsSimple(phi=phiObsIn_s$ID$, distance=9, inside=True)\n\
+            extrapolateLsSimple(phi=phiObsIn_s$ID$, distance=9)\n\
         \n\
         if using_obstacle_s$ID$:\n\
             phiObs_s$ID$.join(phiObsIn_s$ID$)\n\
@@ -272,7 +275,7 @@ def liquid_step_$ID$():\n\
         extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=1, inside=False)\n\
         resampleVec3ToMac(source=guidevelC_s$ID$, target=guidevel_s$ID$)\n\
     \n\
-    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, phiObs=phiObs_s$ID$, intoObs=True)\n\
+    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, phiObs=phiObs_s$ID$, intoObs=using_obstacle_s$ID$)\n\
     if using_obstacle_s$ID$:\n\
         setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)#, obvel=obvel_s$ID$) # TODO: uncomment for obvel support (once fraction wallbcs works)\n\
     else:\n\
@@ -286,7 +289,7 @@ def liquid_step_$ID$():\n\
         mantaMsg('Pressure')\n\
         solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
-    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4, phiObs=phiObs_s$ID$, intoObs=True)\n\
+    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4, phiObs=phiObs_s$ID$, intoObs=using_obstacle_s$ID$)\n\
     if using_obstacle_s$ID$:\n\
         setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)#, obvel=obvel_s$ID$) # TODO: uncomment for obvel support (once fraction wallbcs works)\n\
     else:\n\

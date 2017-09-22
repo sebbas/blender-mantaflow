@@ -607,23 +607,24 @@ void mapPartsToGridVec3( FlagGrid& flags, Grid<Vec3>& target , BasicParticleSyst
 
 
 
-template <class T>  struct knMapFromGrid : public KernelBase { knMapFromGrid( BasicParticleSystem& p, Grid<T>& gsrc, ParticleDataImpl<T>& target ) :  KernelBase(p.size()) ,p(p),gsrc(gsrc),target(target)   { runMessage(); run(); }   inline void op(IndexInt idx,  BasicParticleSystem& p, Grid<T>& gsrc, ParticleDataImpl<T>& target  )  {
+template <class T>  struct knMapFromGrid : public KernelBase { knMapFromGrid( BasicParticleSystem& p, Grid<T>& gsrc, ParticleDataImpl<T>& target, Grid<Real>* region) :  KernelBase(p.size()) ,p(p),gsrc(gsrc),target(target),region(region)   { runMessage(); run(); }   inline void op(IndexInt idx,  BasicParticleSystem& p, Grid<T>& gsrc, ParticleDataImpl<T>& target, Grid<Real>* region )  {
 	if (!p.isActive(idx)) return;
+	if (region && (*region).getInterpolated( p[idx].pos ) > 0.) return;
 	target[idx] = gsrc.getInterpolated( p[idx].pos );
-}    inline BasicParticleSystem& getArg0() { return p; } typedef BasicParticleSystem type0;inline Grid<T>& getArg1() { return gsrc; } typedef Grid<T> type1;inline ParticleDataImpl<T>& getArg2() { return target; } typedef ParticleDataImpl<T> type2; void runMessage() { debMsg("Executing kernel knMapFromGrid ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystem& getArg0() { return p; } typedef BasicParticleSystem type0;inline Grid<T>& getArg1() { return gsrc; } typedef Grid<T> type1;inline ParticleDataImpl<T>& getArg2() { return target; } typedef ParticleDataImpl<T> type2;inline Grid<Real>* getArg3() { return region; } typedef Grid<Real> type3; void runMessage() { debMsg("Executing kernel knMapFromGrid ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
 #pragma omp for  
-  for (IndexInt i = 0; i < _sz; i++) op(i,p,gsrc,target);  }   } BasicParticleSystem& p; Grid<T>& gsrc; ParticleDataImpl<T>& target;   };
+  for (IndexInt i = 0; i < _sz; i++) op(i,p,gsrc,target,region);  }   } BasicParticleSystem& p; Grid<T>& gsrc; ParticleDataImpl<T>& target; Grid<Real>* region;   };
 #line 511 "plugin/flip.cpp"
 
  
-void mapGridToParts( Grid<Real>& source , BasicParticleSystem& parts , ParticleDataImpl<Real>& target ) {
-	knMapFromGrid<Real>(parts, source, target);
-} static PyObject* _W_13 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "mapGridToParts" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",0,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",1,&_lock); ParticleDataImpl<Real>& target = *_args.getPtr<ParticleDataImpl<Real> >("target",2,&_lock);   _retval = getPyNone(); mapGridToParts(source,parts,target);  _args.check(); } pbFinalizePlugin(parent,"mapGridToParts", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("mapGridToParts",e.what()); return 0; } } static const Pb::Register _RP_mapGridToParts ("","mapGridToParts",_W_13);  extern "C" { void PbRegister_mapGridToParts() { KEEP_UNUSED(_RP_mapGridToParts); } } 
-void mapGridToPartsVec3( Grid<Vec3>& source , BasicParticleSystem& parts , ParticleDataImpl<Vec3>& target ) {
-	knMapFromGrid<Vec3>(parts, source, target);
-} static PyObject* _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "mapGridToPartsVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& source = *_args.getPtr<Grid<Vec3> >("source",0,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",1,&_lock); ParticleDataImpl<Vec3>& target = *_args.getPtr<ParticleDataImpl<Vec3> >("target",2,&_lock);   _retval = getPyNone(); mapGridToPartsVec3(source,parts,target);  _args.check(); } pbFinalizePlugin(parent,"mapGridToPartsVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("mapGridToPartsVec3",e.what()); return 0; } } static const Pb::Register _RP_mapGridToPartsVec3 ("","mapGridToPartsVec3",_W_14);  extern "C" { void PbRegister_mapGridToPartsVec3() { KEEP_UNUSED(_RP_mapGridToPartsVec3); } } 
+void mapGridToParts( Grid<Real>& source , BasicParticleSystem& parts , ParticleDataImpl<Real>& target, Grid<Real>* region = 0) {
+	knMapFromGrid<Real>(parts, source, target, region);
+} static PyObject* _W_13 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "mapGridToParts" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",0,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",1,&_lock); ParticleDataImpl<Real>& target = *_args.getPtr<ParticleDataImpl<Real> >("target",2,&_lock); Grid<Real>* region = _args.getPtrOpt<Grid<Real> >("region",3,0,&_lock);   _retval = getPyNone(); mapGridToParts(source,parts,target,region);  _args.check(); } pbFinalizePlugin(parent,"mapGridToParts", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("mapGridToParts",e.what()); return 0; } } static const Pb::Register _RP_mapGridToParts ("","mapGridToParts",_W_13);  extern "C" { void PbRegister_mapGridToParts() { KEEP_UNUSED(_RP_mapGridToParts); } } 
+void mapGridToPartsVec3( Grid<Vec3>& source , BasicParticleSystem& parts , ParticleDataImpl<Vec3>& target, Grid<Real>* region = 0 ) {
+	knMapFromGrid<Vec3>(parts, source, target, region);
+} static PyObject* _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "mapGridToPartsVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& source = *_args.getPtr<Grid<Vec3> >("source",0,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",1,&_lock); ParticleDataImpl<Vec3>& target = *_args.getPtr<ParticleDataImpl<Vec3> >("target",2,&_lock); Grid<Real>* region = _args.getPtrOpt<Grid<Real> >("region",3,0 ,&_lock);   _retval = getPyNone(); mapGridToPartsVec3(source,parts,target,region);  _args.check(); } pbFinalizePlugin(parent,"mapGridToPartsVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("mapGridToPartsVec3",e.what()); return 0; } } static const Pb::Register _RP_mapGridToPartsVec3 ("","mapGridToPartsVec3",_W_14);  extern "C" { void PbRegister_mapGridToPartsVec3() { KEEP_UNUSED(_RP_mapGridToPartsVec3); } } 
 
 
 // Get velocities from grid
@@ -639,7 +640,7 @@ void mapGridToPartsVec3( Grid<Vec3>& source , BasicParticleSystem& parts , Parti
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,p,flags,vel,pvel);  }   } BasicParticleSystem& p; FlagGrid& flags; MACGrid& vel; ParticleDataImpl<Vec3>& pvel;   };
-#line 527 "plugin/flip.cpp"
+#line 528 "plugin/flip.cpp"
 
 
 
@@ -660,7 +661,7 @@ void mapMACToParts(FlagGrid& flags, MACGrid& vel , BasicParticleSystem& parts , 
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,p,flags,vel,oldVel,pvel,flipRatio);  }   } BasicParticleSystem& p; FlagGrid& flags; MACGrid& vel; MACGrid& oldVel; ParticleDataImpl<Vec3>& pvel; Real flipRatio;   };
-#line 540 "plugin/flip.cpp"
+#line 541 "plugin/flip.cpp"
 
 
 
@@ -705,7 +706,7 @@ void flipVelocityUpdate(FlagGrid& flags, MACGrid& vel , MACGrid& velOld , BasicP
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,vel,w,combineVel,phi,narrowBand,thresh);  } }  } MACGrid& vel; Grid<Vec3>& w; MACGrid& combineVel; LevelsetGrid* phi; Real narrowBand; Real thresh;   };
-#line 557 "plugin/flip.cpp"
+#line 558 "plugin/flip.cpp"
 
 
 
@@ -719,16 +720,18 @@ void combineGridVel( MACGrid& vel, Grid<Vec3>& weight, MACGrid& combineVel, Leve
 
 
 
-void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, ParticleDataImpl<Vec3>& partVel, ParticleDataImpl<int>& partType, Real dropVelThresh, Real bubbleRise, Real floatAmount, Real tracerAmount, int minParticles, int maxParticles, Vec3 gravity, bool drops=true, bool floats=false, bool tracers=false, bool bubbles=true) {
+void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, ParticleDataImpl<Vec3>& partVel, ParticleDataImpl<int>& partType, ParticleDataImpl<int>& partLife, Real dropVelThresh, Real bubbleRise, Real floatAmount, Real tracerAmount, int minParticles, int maxParticles, Vec3 gravity, bool drops=true, bool bubbles=true, bool floats=false, bool tracers=false) {
 	Real dt = flags.getParent()->getDt();
 	Vec3 grav = gravity * flags.getParent()->getDt() / flags.getDx();
 	Grid<int> tmp( vel.getParent() );
 	RandomStream mRand(9832);
 
-	if (!drops && !floats && !tracers)
-		 debMsg("No particle type enabled. Not generating any particles.", 1);
+	if (!drops && !bubbles && !floats && !tracers) {
+		debMsg("No particle type enabled. Not generating any particles.", 1);
+		return;
+	}
 
-	const Real DROP_THRESH   = -0.866; // -sqrt(3/4)
+	const Real DROP_THRESH   =  0.2; // -sqrt(3/4)
 	const Real BUBBLE_THRESH = -3.5;
 	const Real FLOAT_THRESH  = 0.866;  // sqrt(3/4)
 
@@ -754,9 +757,9 @@ void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, L
 			}
 
 			// Kill particles depending on type. Especially those that were not converted (see above) to other particle type
-			if ( partType[idx] & ParticleBase::PDROPLET && phiv < BUBBLE_THRESH ) { parts.kill(idx); continue; }
-			if ( partType[idx] & ParticleBase::PFLOATER && (phiv > 0. || phiv < -FLOAT_THRESH)) { parts.kill(idx); continue; }
+			if ( partType[idx] & ParticleBase::PDROPLET && phiv < 0. ) { parts.kill(idx); continue; }
 			if ( partType[idx] & ParticleBase::PBUBBLE && phiv > 0. ) { parts.kill(idx); continue; }
+			if ( partType[idx] & ParticleBase::PFLOATER && (phiv > 0. || phiv < -FLOAT_THRESH)) { parts.kill(idx); continue; }
 			if ( partType[idx] & ParticleBase::PTRACER && phiv > 0. ) { parts.kill(idx); continue; }
 
 			// Kill out of domain particles
@@ -788,8 +791,8 @@ void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, L
 		FOR_IJK_BND(phi, 0) {
 			if ( flags.isObstacle(i,j,k) ) continue;
 
-			// Only generate particles at surface and slightly inside fluid
-			if ( phi(i,j,k) > DROP_THRESH && phi(i,j,k) < 0. ) continue;
+			// Only generate particles at surface and slightly outside fluid
+			if ( phi(i,j,k) < DROP_THRESH && phi(i,j,k) >= 0. ) continue;
 
 			// Surrounding fluid vel fast enough to generate drop particle?
 			if (fabs(vel(i,j,k).x) < dropVelThresh && fabs(vel(i,j,k).y) < dropVelThresh && fabs(vel(i,j,k).z) < dropVelThresh) continue;
@@ -826,11 +829,13 @@ void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, L
 				if (parts.getStatus(idx) & ParticleBase::PNEW) {
 					partVel[idx] = vel.getInterpolated( parts[idx].pos );
 					partType[idx] = ParticleBase::PDROPLET;
+					partLife[idx] = 0;
 				}
 
 				// Drop particles are outside fluid (or slightly inside after hitting surface) and susceptible to full gravity
 				if (partType[idx] & ParticleBase::PDROPLET) {
 					partVel[idx] += grav;
+					partLife[idx] += 1;
 				}
 			}
 		}
@@ -842,20 +847,27 @@ void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, L
 			if (parts.isActive(idx)) {
 				Real phiv = phi.getInterpolated( parts.getPos(idx) );
 
-				// Throttle drop particle, is inside fluid now. Is candidate for bubble
-				if (partType[idx] & ParticleBase::PDROPLET && phiv < -FLOAT_THRESH) {
-					partVel[idx] = partVel[idx] * 0.5;
-				}
-
-				// Update particle type (convert to bubble) and set initial velocity (now use fluid vel)
-				if (partType[idx] & ParticleBase::PDROPLET && phiv < BUBBLE_THRESH) {
-					partVel[idx] = vel.getInterpolated( parts[idx].pos );
+				// Particle is inside fluid now. Convert to bubble and reset life
+				if (partType[idx] & ParticleBase::PDROPLET && phiv < 0) {
 					partType[idx] = ParticleBase::PBUBBLE;
+					partLife[idx] = 0;
+					continue;
 				}
 
-				// Let bubbles rise up
 				if (partType[idx] & ParticleBase::PBUBBLE) {
-					partVel[idx] += bubbleRise * grav * (-1);
+					// Throttle bubble particle as long as its "young"
+					if (partLife[idx] < 7) {
+						partVel[idx] = partVel[idx] * 0.75;
+					}
+					// Turning point. Bubble throtteled enough. Set inital velocity (use fluid vel)
+					else if (partLife[idx] == 7) {
+						partVel[idx] = vel.getInterpolated( parts[idx].pos );
+					}
+					// Let bubbles rise up
+					else {
+						partVel[idx] += bubbleRise * grav * (-1);
+					}
+					partLife[idx] += 1;
 				}
 			}
 		}
@@ -895,12 +907,14 @@ void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, L
 				// Update particle type
 				if (parts.getStatus(idx) & ParticleBase::PNEW) {
 					partType[idx] = ParticleBase::PFLOATER;
+					partLife[idx] = 0;
 				}
 
 				// TODO (sebbas): Currently unreliable? Drop particles might get converted into floats to early?
 				// Update particle type (convert to float)
-				if (partType[idx] & ParticleBase::PBUBBLE && phiv > -FLOAT_THRESH) {
+				if (partType[idx] & ParticleBase::PBUBBLE && phiv > -FLOAT_THRESH && partLife[idx] >= 7) {
 					partType[idx] = ParticleBase::PFLOATER;
+					partLife[idx] = 0;
 				}
 
 				// Float particles move with fluid flow
@@ -952,7 +966,7 @@ void sampleSndParts(BasicParticleSystem& parts, FlagGrid& flags, MACGrid& vel, L
 			}
 		}
 	}
-} static PyObject* _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "sampleSndParts" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",2,&_lock); LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",3,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",4,&_lock); ParticleDataImpl<int>& partType = *_args.getPtr<ParticleDataImpl<int> >("partType",5,&_lock); Real dropVelThresh = _args.get<Real >("dropVelThresh",6,&_lock); Real bubbleRise = _args.get<Real >("bubbleRise",7,&_lock); Real floatAmount = _args.get<Real >("floatAmount",8,&_lock); Real tracerAmount = _args.get<Real >("tracerAmount",9,&_lock); int minParticles = _args.get<int >("minParticles",10,&_lock); int maxParticles = _args.get<int >("maxParticles",11,&_lock); Vec3 gravity = _args.get<Vec3 >("gravity",12,&_lock); bool drops = _args.getOpt<bool >("drops",13,true,&_lock); bool floats = _args.getOpt<bool >("floats",14,false,&_lock); bool tracers = _args.getOpt<bool >("tracers",15,false,&_lock); bool bubbles = _args.getOpt<bool >("bubbles",16,true,&_lock);   _retval = getPyNone(); sampleSndParts(parts,flags,vel,phi,partVel,partType,dropVelThresh,bubbleRise,floatAmount,tracerAmount,minParticles,maxParticles,gravity,drops,floats,tracers,bubbles);  _args.check(); } pbFinalizePlugin(parent,"sampleSndParts", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("sampleSndParts",e.what()); return 0; } } static const Pb::Register _RP_sampleSndParts ("","sampleSndParts",_W_18);  extern "C" { void PbRegister_sampleSndParts() { KEEP_UNUSED(_RP_sampleSndParts); } } 
+} static PyObject* _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "sampleSndParts" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",2,&_lock); LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",3,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",4,&_lock); ParticleDataImpl<int>& partType = *_args.getPtr<ParticleDataImpl<int> >("partType",5,&_lock); ParticleDataImpl<int>& partLife = *_args.getPtr<ParticleDataImpl<int> >("partLife",6,&_lock); Real dropVelThresh = _args.get<Real >("dropVelThresh",7,&_lock); Real bubbleRise = _args.get<Real >("bubbleRise",8,&_lock); Real floatAmount = _args.get<Real >("floatAmount",9,&_lock); Real tracerAmount = _args.get<Real >("tracerAmount",10,&_lock); int minParticles = _args.get<int >("minParticles",11,&_lock); int maxParticles = _args.get<int >("maxParticles",12,&_lock); Vec3 gravity = _args.get<Vec3 >("gravity",13,&_lock); bool drops = _args.getOpt<bool >("drops",14,true,&_lock); bool bubbles = _args.getOpt<bool >("bubbles",15,true,&_lock); bool floats = _args.getOpt<bool >("floats",16,false,&_lock); bool tracers = _args.getOpt<bool >("tracers",17,false,&_lock);   _retval = getPyNone(); sampleSndParts(parts,flags,vel,phi,partVel,partType,partLife,dropVelThresh,bubbleRise,floatAmount,tracerAmount,minParticles,maxParticles,gravity,drops,bubbles,floats,tracers);  _args.check(); } pbFinalizePlugin(parent,"sampleSndParts", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("sampleSndParts",e.what()); return 0; } } static const Pb::Register _RP_sampleSndParts ("","sampleSndParts",_W_18);  extern "C" { void PbRegister_sampleSndParts() { KEEP_UNUSED(_RP_sampleSndParts); } } 
 
 
 } // namespace

@@ -531,7 +531,6 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->render_display_mode = SM_VIEWPORT_FINAL;
 			smd->domain->type = MOD_SMOKE_DOMAIN_TYPE_GAS;
 			
-#ifdef WITH_MANTA
 			smd->domain->gravity[0] = 0.0f;
 			smd->domain->gravity[1] = 0.0f;
 			smd->domain->gravity[2] = -1.0f;
@@ -558,7 +557,6 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->noise_pos_scale = 2.0f;
 			smd->domain->noise_time_anim = 0.1f;
 			BLI_make_file_string("/", smd->domain->manta_filepath, BKE_tempdir_base(), "manta_scene.py");
-#endif
 
 #ifdef WITH_OPENVDB_BLOSC
 			smd->domain->openvdb_comp = VDB_COMPRESSION_BLOSC;
@@ -957,7 +955,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 
 	collobjs = get_collisionobjects(scene, ob, sds->coll_group, &numcollobj, eModifierType_Smoke);
 
-	// check what type of effector objects present. then init according grids
+	/* check what type of effector objects present. then init according grids */
 	for (collIndex = 0; collIndex < numcollobj; collIndex++)
 	{
 		Object *collob = collobjs[collIndex];
@@ -999,7 +997,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	int *num_guides = fluid_get_num_guide(sds->fluid);
 	unsigned int z;
 
-	/* Resetting all grids related to moving objects */
+	/* Grid reset before writing again */
 	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
 	{
 		if (phiObsIn)
@@ -1627,71 +1625,6 @@ static void emit_from_particles(
 	}
 }
 
-//static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromMesh *treeData, const float ray_start[3]) {
-//
-//	/* Calculate map of (minimum) distances to flow/obstacle surface. Distances outside mesh are positive, inside negative */
-//	float min_dist = 9999;
-//	float inv_ray[3] = {0.0f};
-//	/* Raycasts in 14 directions (6 axis + 8 quadrant diagonals) are at least necessary */
-//	float ray_dirs[14][3] = { {  1.0f, 0.0f,  0.0f }, { 0.0f,  1.0f,  0.0f }, {  0.0f, 0.0f,  1.0f },
-//							  { -1.0f, 0.0f,  0.0f }, { 0.0f, -1.0f,  0.0f }, {  0.0f, 0.0f, -1.0f },
-//							  {  1.0f, 1.0f,  1.0f }, { 1.0f, -1.0f,  1.0f }, { -1.0f, 1.0f,  1.0f }, { -1.0f, -1.0f,  1.0f },
-//							  {  1.0f, 1.0f, -1.0f }, { 1.0f, -1.0f, -1.0f }, { -1.0f, 1.0f, -1.0f }, { -1.0f, -1.0f, -1.0f } };
-//	size_t ray_cnt = sizeof ray_dirs / sizeof ray_dirs[0];
-//
-//	for (int i = 0; i < ray_cnt; i++) {
-//		BVHTreeRayHit hit_tree = {0};
-//		hit_tree.index = -1;
-//		hit_tree.dist = 9999;
-//
-//		BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dirs[i], 0.0f, &hit_tree, treeData->raycast_callback, treeData);
-//
-//		/* Save hit dist first time */
-//		min_dist = normalize_v3(&hit_tree.dist);
-//
-//		if (hit_tree.index != -1) {
-//			/* Is dot > 0? Are we inside the mesh? */
-//			if (dot_v3v3(ray_dirs[i], hit_tree.no) > 0) {
-//
-//				/* Also cast a ray in opposite direction to make sure
-//				 * point is at least surrounded by two faces */
-//				hit_tree.index = -1;
-//				hit_tree.dist = 9999;
-//
-//				negate_v3_v3(inv_ray, ray_dirs[i]);
-//				BLI_bvhtree_ray_cast(treeData->tree, ray_start, inv_ray, 0.0f, &hit_tree, treeData->raycast_callback, treeData);
-//
-//				/* Save hit dist second time */
-//				min_dist = MIN2(min_dist, normalize_v3(&hit_tree.dist));
-//
-//				if (hit_tree.index != -1) {
-//					if (dot_v3v3(inv_ray, hit_tree.no) > 0) {
-//						/* Current index is inside mesh, place negative mesh distance */
-//						/* If map previously contained pos value (outside), use only neg min_dist to ensure neg inside mesh. Otherwise evaluate min2 as usual */
-//						mesh_distances[index] = (mesh_distances[index] > 0) ? -1.0f * min_dist : -1.0f * MIN2(fabsf(mesh_distances[index]), min_dist);
-//					}
-//				}
-//			}
-//		}
-//		/* No negative, previously written distance at index,
-//		 * so just write positive value corresponding to outside distance into map */
-//		if (mesh_distances[index] > 0) {
-//			mesh_distances[index] = MIN2(mesh_distances[index], min_dist);
-//		}
-//
-//		// TODO (sebbas): liquid inflow
-//		/* Ensure that planes also get setup */
-////		BVHTreeNearest nearest = {0};
-////		const float surface_distance = 0.5f;
-////		nearest.index = -1;
-////		nearest.dist_sq = surface_distance * surface_distance; /* find_nearest uses squared distance */
-////
-////		if (BLI_bvhtree_find_nearest(treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1) {
-////			mesh_distances[index] = - 5; // very small value at levelset border indicating inside region
-////		}
-//	}
-//}
-
 /* Calculate map of (minimum) distances to flow/obstacle surface. Distances outside mesh are positive, inside negative */
 static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromMesh *treeData, const float ray_start[3], float surface_thickness) {
 
@@ -1732,20 +1665,7 @@ static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromM
 	if (inside) min_dist *= (-1.0f);
 
 	/* Update mesh distance in map */
-	mesh_distances[index] = MIN2(mesh_distances[index], min_dist);
-
-	/* Optional object thickening. Checks area around object. Thickness value determines size of search area. */
-	if (surface_thickness) {
-		BVHTreeNearest nearest = {0};
-		nearest.index = -1;
-		nearest.dist_sq = surface_thickness * surface_thickness;
-		bool surface = (BLI_bvhtree_find_nearest(treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1);
-
-		/* Make levelset in area near surface lower. The new 0 border is at those cells that equal the surface thickness value */
-		if (inside || surface) {
-			mesh_distances[index] -= surface_thickness;
-		}
-	}
+	mesh_distances[index] = MIN2(mesh_distances[index], min_dist-surface_thickness);
 }
 
 static void sample_derivedmesh(
@@ -2004,7 +1924,7 @@ static void emit_from_derivedmesh(Object *flow_ob, SmokeDomainSettings *sds, Smo
 				sfs->numverts = numOfVerts;
 			}
 			else {
-				has_velocity = 1;
+				has_velocity = true;
 			}
 		}
 
@@ -2450,16 +2370,37 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 	int new_shift[3] = {0};
 	int active_fields = sds->active_fields;
 
+	flowobjs = get_collisionobjects(scene, ob, sds->fluid_group, &numflowobj, eModifierType_Smoke);
+
+	/* check what type of flow objects present. then init according grids */
+	for (flowIndex = 0; flowIndex < numflowobj; flowIndex++)
+	{
+		Object *collob = flowobjs[flowIndex];
+		SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(collob, eModifierType_Smoke);
+		
+		if ((smd2->type & MOD_SMOKE_TYPE_FLOW) && smd2->flow) {
+			SmokeFlowSettings *sfs = smd2->flow;
+			if (sfs && (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY)) {
+				active_fields |= SM_ACTIVE_INVEL;
+				fluid_ensure_invelocity(sds->fluid, sds->smd);
+			}
+		}
+	}
+
 	float *phiIn = liquid_get_phiin(sds->fluid);
+	float *phiOutIn = liquid_get_phioutin(sds->fluid);
 	float *velxInitial = smoke_get_in_velocity_x(sds->fluid);
 	float *velyInitial = smoke_get_in_velocity_y(sds->fluid);
 	float *velzInitial = smoke_get_in_velocity_z(sds->fluid);
 	unsigned int z;
 
-	/* Resetting levelset grid representation of domain */
+	/* Grid reset before writing again */
 	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++) {
 		if (phiIn) {
 			phiIn[z] = 9999;
+		}
+		if (phiOutIn) {
+			phiOutIn[z] = 9999;
 		}
 		if (velxInitial && velyInitial && velzInitial) {
 			velxInitial[z] = 0.0f;
@@ -2501,8 +2442,6 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 		sds->p1[2] = sds->p0[2] + sds->cell_size[2] * sds->base_res[2];
 	}
 
-	flowobjs = get_collisionobjects(scene, ob, sds->fluid_group, &numflowobj, eModifierType_Smoke);
-
 	/* init emission maps for each flow */
 	emaps = MEM_callocN(sizeof(struct EmissionMap) * numflowobj, "smoke_flow_maps");
 	
@@ -2519,12 +2458,6 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 			SmokeFlowSettings *sfs = smd2->flow;
 			int subframes = sfs->subframes;
 			EmissionMap *em = &emaps[flowIndex];
-
-			/* make sure to allocate invel grids if needed */
-			if (sfs && (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY)) {
-				active_fields |= SM_ACTIVE_INVEL;
-				fluid_ensure_invelocity(sds->fluid, sds->smd);
-			}
 
 			/* just sample flow directly to emission map if no subframes */
 			if (!subframes) {
@@ -2652,188 +2585,184 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 
 	sds->active_fields = active_fields;
 
+	float *density = smoke_get_density(sds->fluid);
+	float *color_r = smoke_get_color_r(sds->fluid);
+	float *color_g = smoke_get_color_g(sds->fluid);
+	float *color_b = smoke_get_color_b(sds->fluid);
+	float *fuel = smoke_get_fuel(sds->fluid);
+	float *react = smoke_get_react(sds->fluid);
+	float *bigdensity = smoke_turbulence_get_density(sds->fluid);
+	float *bigfuel = smoke_turbulence_get_fuel(sds->fluid);
+	float *bigreact = smoke_turbulence_get_react(sds->fluid);
+	float *bigcolor_r = smoke_turbulence_get_color_r(sds->fluid);
+	float *bigcolor_g = smoke_turbulence_get_color_g(sds->fluid);
+	float *bigcolor_b = smoke_turbulence_get_color_b(sds->fluid);
+	float *heat = smoke_get_heat(sds->fluid);
+	float *velocity_x_in = smoke_get_in_velocity_x(sds->fluid);
+	float *velocity_y_in = smoke_get_in_velocity_y(sds->fluid);
+	float *velocity_z_in = smoke_get_in_velocity_z(sds->fluid);
+	float *phiin = liquid_get_phiin(sds->fluid);
+	float *phioutin = liquid_get_phioutin(sds->fluid);
+	float *manta_inflow = fluid_get_inflow(sds->fluid); // Copy of emission map for inflow modeling in Mantaflow standalone
+
 	/* Apply emission data */
-	if (sds->fluid) {
-		for (flowIndex = 0; flowIndex < numflowobj; flowIndex++)
+	for (flowIndex = 0; flowIndex < numflowobj; flowIndex++)
+	{
+		Object *collob = flowobjs[flowIndex];
+		SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(collob, eModifierType_Smoke);
+
+		// check for initialized smoke object
+		if ((smd2->type & MOD_SMOKE_TYPE_FLOW) && smd2->flow)
 		{
-			Object *collob = flowobjs[flowIndex];
-			SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(collob, eModifierType_Smoke);
+			// we got nice flow object
+			SmokeFlowSettings *sfs = smd2->flow;
+			EmissionMap *em = &emaps[flowIndex];
+			int bigres[3];
+			float *velocity_map = em->velocity;
+			float *emission_map = em->influence;
+			float *emission_map_high = em->influence_high;
+			float* distance_map = em->distances;
+			float* distance_map_high = em->distances_high;
 
-			// check for initialized smoke object
-			if ((smd2->type & MOD_SMOKE_TYPE_FLOW) && smd2->flow)
-			{
-				// we got nice flow object
-				SmokeFlowSettings *sfs = smd2->flow;
-				EmissionMap *em = &emaps[flowIndex];
-				float *density = smoke_get_density(sds->fluid);
-				float *color_r = smoke_get_color_r(sds->fluid);
-				float *color_g = smoke_get_color_g(sds->fluid);
-				float *color_b = smoke_get_color_b(sds->fluid);
-				float *fuel = smoke_get_fuel(sds->fluid);
-				float *react = smoke_get_react(sds->fluid);
-				float *bigdensity = smoke_turbulence_get_density(sds->fluid);
-				float *bigfuel = smoke_turbulence_get_fuel(sds->fluid);
-				float *bigreact = smoke_turbulence_get_react(sds->fluid);
-				float *bigcolor_r = smoke_turbulence_get_color_r(sds->fluid);
-				float *bigcolor_g = smoke_turbulence_get_color_g(sds->fluid);
-				float *bigcolor_b = smoke_turbulence_get_color_b(sds->fluid);
-				float *heat = smoke_get_heat(sds->fluid);
-				float *velocity_x_in = smoke_get_in_velocity_x(sds->fluid);
-				float *velocity_y_in = smoke_get_in_velocity_y(sds->fluid);
-				float *velocity_z_in = smoke_get_in_velocity_z(sds->fluid);
-				float *phiin = liquid_get_phiin(sds->fluid);
-				float *phioutin = liquid_get_phioutin(sds->fluid);
-				float *manta_inflow = fluid_get_inflow(sds->fluid); // Copy of emission map for inflow modeling in Mantaflow standalone
+			int ii, jj, kk, gx, gy, gz, ex, ey, ez, dx, dy, dz, block_size;
+			size_t e_index, d_index, index_big;
 
-				int bigres[3];
-				float *velocity_map = em->velocity;
-				float *emission_map = em->influence;
-				float *emission_map_high = em->influence_high;
-				float* distance_map = em->distances;
-				float* distance_map_high = em->distances_high;
+			// loop through every emission map cell
+			for (gx = em->min[0]; gx < em->max[0]; gx++)
+				for (gy = em->min[1]; gy < em->max[1]; gy++)
+					for (gz = em->min[2]; gz < em->max[2]; gz++)
+					{
+						/* get emission map index */
+						ex = gx - em->min[0];
+						ey = gy - em->min[1];
+						ez = gz - em->min[2];
+						e_index = smoke_get_index(ex, em->res[0], ey, em->res[1], ez);
 
-				int ii, jj, kk, gx, gy, gz, ex, ey, ez, dx, dy, dz, block_size;
-				size_t e_index, d_index, index_big;
+						/* get domain index */
+						dx = gx - sds->res_min[0];
+						dy = gy - sds->res_min[1];
+						dz = gz - sds->res_min[2];
+						d_index = smoke_get_index(dx, sds->res[0], dy, sds->res[1], dz);
+						/* make sure emission cell is inside the new domain boundary */
+						if (dx < 0 || dy < 0 || dz < 0 || dx >= sds->res[0] || dy >= sds->res[1] || dz >= sds->res[2]) continue;
 
-				// loop through every emission map cell
-				for (gx = em->min[0]; gx < em->max[0]; gx++)
-					for (gy = em->min[1]; gy < em->max[1]; gy++)
-						for (gz = em->min[2]; gz < em->max[2]; gz++)
-						{
-							/* get emission map index */
-							ex = gx - em->min[0];
-							ey = gy - em->min[1];
-							ez = gz - em->min[2];
-							e_index = smoke_get_index(ex, em->res[0], ey, em->res[1], ez);
-
-							/* get domain index */
-							dx = gx - sds->res_min[0];
-							dy = gy - sds->res_min[1];
-							dz = gz - sds->res_min[2];
-							d_index = smoke_get_index(dx, sds->res[0], dy, sds->res[1], dz);
-							/* make sure emission cell is inside the new domain boundary */
-							if (dx < 0 || dy < 0 || dz < 0 || dx >= sds->res[0] || dy >= sds->res[1] || dz >= sds->res[2]) continue;
-
-							if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) { // outflow
-								apply_outflow_fields(d_index, distance_map[e_index], density, heat, fuel, react, color_r, color_g, color_b, phioutin);
-							}
-							else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time > 2) {
-								apply_inflow_fields(sfs, 0.0f, 0.5f, d_index, density, heat, fuel, react, color_r, color_g, color_b, phiin, manta_inflow);
-							}
-							else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW || sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY) { // inflow
-								/* only apply inflow if enabled */
-								if (sfs->flags & MOD_SMOKE_FLOW_USE_INFLOW) {
-									apply_inflow_fields(sfs, emission_map[e_index], distance_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b, phiin, manta_inflow);
-									
-									/* initial velocity */
-									if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY) {
-										velocity_x_in[d_index] = velocity_map[e_index * 3];
-										velocity_y_in[d_index] = velocity_map[e_index * 3 + 1];
-										velocity_z_in[d_index] = velocity_map[e_index * 3 + 2];
-									}
+						if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) { // outflow
+							apply_outflow_fields(d_index, distance_map[e_index], density, heat, fuel, react, color_r, color_g, color_b, phioutin);
+						}
+						else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time > 2) {
+							apply_inflow_fields(sfs, 0.0f, 0.5f, d_index, density, heat, fuel, react, color_r, color_g, color_b, phiin, manta_inflow);
+						}
+						else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW || sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY) { // inflow
+							/* only apply inflow if enabled */
+							if (sfs->flags & MOD_SMOKE_FLOW_USE_INFLOW) {
+								apply_inflow_fields(sfs, emission_map[e_index], distance_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b, phiin, manta_inflow);
+								
+								/* initial velocity */
+								if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY) {
+									velocity_x_in[d_index] = velocity_map[e_index * 3];
+									velocity_y_in[d_index] = velocity_map[e_index * 3 + 1];
+									velocity_z_in[d_index] = velocity_map[e_index * 3 + 2];
 								}
 							}
+						}
 
-							/* loop through high res blocks if high res enabled */
-							if (bigdensity) {
-								// neighbor cell emission densities (for high resolution smoke smooth interpolation)
-								float c000, c001, c010, c011,  c100, c101, c110, c111;
+						/* loop through high res blocks if high res enabled */
+						if (bigdensity) {
+							// neighbor cell emission densities (for high resolution smoke smooth interpolation)
+							float c000, c001, c010, c011,  c100, c101, c110, c111;
 
-								smoke_turbulence_get_res(sds->fluid, bigres);
+							smoke_turbulence_get_res(sds->fluid, bigres);
 
-								block_size = sds->amplify + 1;  // high res block size
+							block_size = sds->amplify + 1;  // high res block size
 
-								c000 = (ex > 0 && ey > 0 && ez > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey - 1, em->res[1], ez - 1)] : 0;
-								c001 = (ex > 0 && ey > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey - 1, em->res[1], ez)] : 0;
-								c010 = (ex > 0 && ez > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey, em->res[1], ez - 1)] : 0;
-								c011 = (ex > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey, em->res[1], ez)] : 0;
+							c000 = (ex > 0 && ey > 0 && ez > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey - 1, em->res[1], ez - 1)] : 0;
+							c001 = (ex > 0 && ey > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey - 1, em->res[1], ez)] : 0;
+							c010 = (ex > 0 && ez > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey, em->res[1], ez - 1)] : 0;
+							c011 = (ex > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey, em->res[1], ez)] : 0;
 
-								c100 = (ey > 0 && ez > 0) ? emission_map[smoke_get_index(ex, em->res[0], ey - 1, em->res[1], ez - 1)] : 0;
-								c101 = (ey > 0) ? emission_map[smoke_get_index(ex, em->res[0], ey - 1, em->res[1], ez)] : 0;
-								c110 = (ez > 0) ? emission_map[smoke_get_index(ex, em->res[0], ey, em->res[1], ez - 1)] : 0;
-								c111 = emission_map[smoke_get_index(ex, em->res[0], ey, em->res[1], ez)]; // this cell
+							c100 = (ey > 0 && ez > 0) ? emission_map[smoke_get_index(ex, em->res[0], ey - 1, em->res[1], ez - 1)] : 0;
+							c101 = (ey > 0) ? emission_map[smoke_get_index(ex, em->res[0], ey - 1, em->res[1], ez)] : 0;
+							c110 = (ez > 0) ? emission_map[smoke_get_index(ex, em->res[0], ey, em->res[1], ez - 1)] : 0;
+							c111 = emission_map[smoke_get_index(ex, em->res[0], ey, em->res[1], ez)]; // this cell
 
-								for (ii = 0; ii < block_size; ii++)
-									for (jj = 0; jj < block_size; jj++)
-										for (kk = 0; kk < block_size; kk++)
+							for (ii = 0; ii < block_size; ii++)
+								for (jj = 0; jj < block_size; jj++)
+									for (kk = 0; kk < block_size; kk++)
+									{
+
+										float fx, fy, fz, interpolated_value;
+										int shift_x = 0, shift_y = 0, shift_z = 0;
+
+
+										/* Use full sample emission map if enabled and available */
+										if ((sds->highres_sampling == SM_HRES_FULLSAMPLE) && emission_map_high) {
+											interpolated_value = emission_map_high[smoke_get_index(ex * block_size + ii, em->res[0] * block_size, ey * block_size + jj, em->res[1] * block_size, ez * block_size + kk)]; // this cell
+										}
+										else if (sds->highres_sampling == SM_HRES_NEAREST) {
+											/* without interpolation use same low resolution
+											 * block value for all hi-res blocks */
+											interpolated_value = c111;
+										}
+										/* Fall back to interpolated */
+										else
 										{
+											/* get relative block position
+											 * for interpolation smoothing */
+											fx = (float)ii / block_size + 0.5f / block_size;
+											fy = (float)jj / block_size + 0.5f / block_size;
+											fz = (float)kk / block_size + 0.5f / block_size;
 
-											float fx, fy, fz, interpolated_value;
-											int shift_x = 0, shift_y = 0, shift_z = 0;
+											/* calculate trilinear interpolation */
+											interpolated_value = c000 * (1 - fx) * (1 - fy) * (1 - fz) +
+																 c100 * fx * (1 - fy) * (1 - fz) +
+																 c010 * (1 - fx) * fy * (1 - fz) +
+																 c001 * (1 - fx) * (1 - fy) * fz +
+																 c101 * fx * (1 - fy) * fz +
+																 c011 * (1 - fx) * fy * fz +
+																 c110 * fx * fy * (1 - fz) +
+																 c111 * fx * fy * fz;
 
 
-											/* Use full sample emission map if enabled and available */
-											if ((sds->highres_sampling == SM_HRES_FULLSAMPLE) && emission_map_high) {
-												interpolated_value = emission_map_high[smoke_get_index(ex * block_size + ii, em->res[0] * block_size, ey * block_size + jj, em->res[1] * block_size, ez * block_size + kk)]; // this cell
+											/* add some contrast / sharpness
+											 * depending on hi-res block size */
+											interpolated_value = (interpolated_value - 0.4f) * (block_size / 2) + 0.4f;
+											CLAMP(interpolated_value, 0.0f, 1.0f);
+
+											/* shift smoke block index
+											 * (because pixel center is actually
+											 * in halfway of the low res block) */
+											shift_x = (dx < 1) ? 0 : block_size / 2;
+											shift_y = (dy < 1) ? 0 : block_size / 2;
+											shift_z = (dz < 1) ? 0 : block_size / 2;
+										}
+
+										/* get shifted index for current high resolution block */
+										index_big = smoke_get_index(block_size * dx + ii - shift_x, bigres[0], block_size * dy + jj - shift_y, bigres[1], block_size * dz + kk - shift_z);
+
+										if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) { // outflow
+											if (interpolated_value) {
+												apply_outflow_fields(index_big, distance_map_high[index_big], bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL);
 											}
-											else if (sds->highres_sampling == SM_HRES_NEAREST) {
-												/* without interpolation use same low resolution
-												 * block value for all hi-res blocks */
-												interpolated_value = c111;
-											}
-											/* Fall back to interpolated */
-											else
-											{
-												/* get relative block position
-												 * for interpolation smoothing */
-												fx = (float)ii / block_size + 0.5f / block_size;
-												fy = (float)jj / block_size + 0.5f / block_size;
-												fz = (float)kk / block_size + 0.5f / block_size;
+										}
+										else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time > 2) {
+											apply_inflow_fields(sfs, 0.0f, 0.5f, d_index, density, heat, fuel, react, color_r, color_g, color_b, NULL, NULL);
+										}
+										else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW || sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY) { // inflow
+											// TODO (sebbas) inflow map highres?
+											apply_inflow_fields(sfs, interpolated_value, distance_map_high[index_big], index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL, NULL);
+										}
+									} // hires loop
+						}  // bigdensity
+					} // low res loop
 
-												/* calculate trilinear interpolation */
-												interpolated_value = c000 * (1 - fx) * (1 - fy) * (1 - fz) +
-												                     c100 * fx * (1 - fy) * (1 - fz) +
-												                     c010 * (1 - fx) * fy * (1 - fz) +
-												                     c001 * (1 - fx) * (1 - fy) * fz +
-												                     c101 * fx * (1 - fy) * fz +
-												                     c011 * (1 - fx) * fy * fz +
-												                     c110 * fx * fy * (1 - fz) +
-												                     c111 * fx * fy * fz;
+			// free emission maps
+			em_freeData(em);
 
-
-												/* add some contrast / sharpness
-												 * depending on hi-res block size */
-												interpolated_value = (interpolated_value - 0.4f) * (block_size / 2) + 0.4f;
-												CLAMP(interpolated_value, 0.0f, 1.0f);
-
-												/* shift smoke block index
-												 * (because pixel center is actually
-												 * in halfway of the low res block) */
-												shift_x = (dx < 1) ? 0 : block_size / 2;
-												shift_y = (dy < 1) ? 0 : block_size / 2;
-												shift_z = (dz < 1) ? 0 : block_size / 2;
-											}
-
-											/* get shifted index for current high resolution block */
-											index_big = smoke_get_index(block_size * dx + ii - shift_x, bigres[0], block_size * dy + jj - shift_y, bigres[1], block_size * dz + kk - shift_z);
-
-											if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) { // outflow
-												if (interpolated_value) {
-													apply_outflow_fields(index_big, distance_map_high[index_big], bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL);
-												}
-											}
-											else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time > 2) {
-												apply_inflow_fields(sfs, 0.0f, 0.5f, d_index, density, heat, fuel, react, color_r, color_g, color_b, NULL, NULL);
-											}
-											else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW || sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY) { // inflow
-												// TODO (sebbas) inflow map highres?
-												apply_inflow_fields(sfs, interpolated_value, distance_map_high[index_big], index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL, NULL);
-											}
-										} // hires loop
-							}  // bigdensity
-						} // low res loop
-
-				// free emission maps
-				em_freeData(em);
-
-			} // end emission
-		}
+		} // end emission
 	}
 
-	if (flowobjs)
-		MEM_freeN(flowobjs);
-	if (emaps)
-		MEM_freeN(emaps);
+	if (flowobjs) MEM_freeN(flowobjs);
+	if (emaps) MEM_freeN(emaps);
 }
 
 typedef struct UpdateEffectorsData {
