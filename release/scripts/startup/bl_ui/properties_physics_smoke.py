@@ -375,7 +375,8 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
     def poll(cls, context):
         md = context.smoke
         rd = context.scene.render
-        return md and (md.smoke_type == 'DOMAIN') and (rd.engine in cls.COMPAT_ENGINES)
+        # Fluid particles only enabled for liquids for now. Future update might include particles for gas domain, e.g. fire sparks.
+        return md and (md.smoke_type == 'DOMAIN') and (rd.engine in cls.COMPAT_ENGINES) and (md.domain_settings.smoke_domain_type in {'LIQUID'}) 
 
     def draw(self, context):
         layout = self.layout
@@ -401,10 +402,11 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         sub.prop(domain, "particle_velocity_threshold", text="Threshold")
         sub2 = col.column()
         sub2.active = domain.use_drop_particles and domain.use_bubble_particles
-        sub2.prop(domain, "particle_bubble_rise", text="Rise")
+        #sub2.prop(domain, "particle_bubble_rise", text="Rise")
+        sub2.label()
         sub3 = col.column()
         sub3.active = domain.use_float_particles
-        sub3.prop(domain, "particle_float_amount", text="Amount")
+        sub3.prop(domain, "particle_float_amount", text="Initial")
         sub4 = col.column()
         sub4.active = domain.use_tracer_particles
         sub4.prop(domain, "particle_tracer_amount", text="Amount")
