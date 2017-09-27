@@ -110,15 +110,15 @@ using_invel_s$ID$ = True\n";
 
 const std::string fluid_adaptive_time_stepping_low = "\n\
 mantaMsg('Adaptive time stepping low')\n\
-dt_default_s$ID$  = 0.1\n\
+dt_default_s$ID$  = 0.1 # dt is 0.1 at 25fps\n\
 dt_factor_s$ID$   = $DT_FACTOR$\n\
 fps_s$ID$         = $FPS$\n\
 dt0_s$ID$         = dt_default_s$ID$ * (25.0 / fps_s$ID$) * dt_factor_s$ID$\n\
-s$ID$.frameLength = dt0_s$ID$\n\
-s$ID$.timestepMin = dt0_s$ID$ / 10\n\
-s$ID$.timestepMax = dt0_s$ID$\n\
+s$ID$.frameLength = dt0_s$ID$ \n\
+s$ID$.timestepMin = s$ID$.frameLength / 10.\n\
+s$ID$.timestepMax = s$ID$.frameLength\n\
 s$ID$.cfl         = $CFL$\n\
-s$ID$.timestep    = (s$ID$.timestepMax+s$ID$.timestepMin)*0.5\n";
+s$ID$.timestep    = s$ID$.frameLength\n";
 
 const std::string fluid_adaptive_time_stepping_high = "\n\
 mantaMsg('Adaptive time stepping high')\n\
