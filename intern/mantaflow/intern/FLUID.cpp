@@ -67,7 +67,11 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mUsingHighRes  = smd->domain->flags & MOD_SMOKE_HIGHRES;
 	mUsingLiquid   = smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID;
 	mUsingSmoke    = smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS;
-	
+	mUsingDrops    = smd->domain->particle_type & MOD_SMOKE_PARTICLE_DROP;
+	mUsingBubbles  = smd->domain->particle_type & MOD_SMOKE_PARTICLE_BUBBLE;
+	mUsingFloats   = smd->domain->particle_type & MOD_SMOKE_PARTICLE_FLOAT;
+	mUsingTracers  = smd->domain->particle_type & MOD_SMOKE_PARTICLE_TRACER;
+
 	// Make sure that string vector does not contain any previous commands
 	mCommands.clear();
 
@@ -147,6 +151,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mSndParticleData       = NULL;
 	mSndParticleVelocity   = NULL;
 	mSndParticleType       = NULL;
+	mSndParticleLife       = NULL;
 
 	// Only start Mantaflow once. No need to start whenever new FLUID objected is allocated
 	if (!mantaInitialized)
@@ -160,6 +165,9 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 		if (mUsingObstacle) initObstacle(smd);
 		if (mUsingGuiding)  initGuiding(smd);
 		if (mUsingInvel)    initInVelocity(smd);
+
+		if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers)
+			initSndParts(smd);
 
 		updatePointers();
 		
@@ -228,6 +236,7 @@ void FLUID::initDomain(SmokeModifierData *smd)
 		+ fluid_obstacle_export_low
 		+ fluid_guiding_export_low
 		+ fluid_invel_export_low
+		+ fluid_sndparts_export_low
 		+ fluid_adaptive_time_stepping_low;
 	std::string finalString = parseScript(tmpString, smd);
 	mCommands.clear();
@@ -442,6 +451,18 @@ void FLUID::initInVelocity(SmokeModifierData *smd)
 	}
 }
 
+void FLUID::initSndParts(SmokeModifierData *smd)
+{
+	if (!mSndParticleData) {
+		std::string tmpString = fluid_alloc_sndparts_low;
+		std::string finalString = parseScript(tmpString, smd);
+		mCommands.clear();
+		mCommands.push_back(finalString);
+
+		runPythonString(mCommands);
+	}
+}
+
 void FLUID::step(int framenr)
 {
 	// manta_write_effectors(this);                         // TODO in Mantaflow
@@ -494,6 +515,9 @@ FLUID::~FLUID()
 
 	// Initial velocity
 	tmpString += fluid_delete_invel_low;
+
+	// Snd parts
+	tmpString += fluid_delete_sndparts_low;
 
 	// Cleanup multigrid
 	tmpString += fluid_multigrid_cleanup_low;
@@ -581,6 +605,7 @@ FLUID::~FLUID()
 	mSndParticleData       = NULL;
 	mSndParticleVelocity   = NULL;
 	mSndParticleType       = NULL;
+	mSndParticleLife       = NULL;
 
 	// Reset flags
 	mUsingHeat     = false;
@@ -951,6 +976,10 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 	bool obstacle = smd->domain->active_fields & SM_ACTIVE_OBSTACLE;
 	bool guiding  = smd->domain->active_fields & SM_ACTIVE_GUIDING;
 	bool invel    = smd->domain->active_fields & SM_ACTIVE_INVEL;
+	bool drops    = smd->domain->particle_type & MOD_SMOKE_PARTICLE_DROP;
+	bool bubble   = smd->domain->particle_type & MOD_SMOKE_PARTICLE_BUBBLE;
+	bool floater  = smd->domain->particle_type & MOD_SMOKE_PARTICLE_FLOAT;
+	bool tracer   = smd->domain->particle_type & MOD_SMOKE_PARTICLE_TRACER;
 
 	std::string manta_script;
 	
@@ -968,7 +997,8 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 		manta_script += fluid_alloc_guiding_low;
 	if (invel)
 		manta_script += fluid_alloc_invel_low;
-
+	if (drops || bubble || floater || tracer)
+		manta_script += fluid_alloc_sndparts_low;
 
 	if (highres) {
 		manta_script += fluid_variables_high
@@ -987,7 +1017,9 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 		manta_script += fluid_guiding_import_low;
 	if (invel)
 		manta_script += fluid_invel_import_low;
-	
+	if (drops || bubble || floater || tracer)
+		manta_script += fluid_sndparts_import_low;
+
 	manta_script += liquid_pre_step_low;
 	manta_script += liquid_post_step_low;
 	
@@ -1015,19 +1047,25 @@ void FLUID::exportLiquidData(SmokeModifierData *smd)
 	bool obstacle = smd->domain->active_fields & SM_ACTIVE_OBSTACLE;
 	bool guiding  = smd->domain->active_fields & SM_ACTIVE_GUIDING;
 	bool invel    = smd->domain->active_fields & SM_ACTIVE_INVEL;
+	bool drops    = smd->domain->particle_type & MOD_SMOKE_PARTICLE_DROP;
+	bool bubble   = smd->domain->particle_type & MOD_SMOKE_PARTICLE_BUBBLE;
+	bool floater  = smd->domain->particle_type & MOD_SMOKE_PARTICLE_FLOAT;
+	bool tracer   = smd->domain->particle_type & MOD_SMOKE_PARTICLE_TRACER;
 
 	char parent_dir[1024];
 	BLI_split_dir_part(smd->domain->manta_filepath, parent_dir, sizeof(parent_dir));
 	
 	FLUID::saveLiquidData(parent_dir);
+	if (highres)
+		FLUID::saveLiquidDataHigh(parent_dir);
 	if (obstacle)
 		FLUID::saveFluidObstacleData(parent_dir);
 	if (guiding)
 		FLUID::saveFluidGuidingData(parent_dir);
 	if (invel)
 		FLUID::saveFluidInvelData(parent_dir);
-	if (highres)
-		FLUID::saveLiquidDataHigh(parent_dir);
+	if (drops || bubble || floater || tracer)
+		FLUID::saveFluidSndPartsData(parent_dir);
 }
 
 void* FLUID::getDataPointer(std::string varName, std::string parentName)
@@ -1282,9 +1320,13 @@ void FLUID::updatePointers()
 
 		mFlipParticleData     = (std::vector<pData>*) getDataPointer("pp" + solver_ext, solver);
 		mFlipParticleVelocity = (std::vector<pVel>*)  getDataPointer("pVel" + parts_ext, parts);
-		mSndParticleData      = (std::vector<pData>*) getDataPointer("ppSnd" + solver_ext, solver);
-		mSndParticleVelocity  = (std::vector<pVel>*)  getDataPointer("pVelSnd" + parts_ext, parts);
-		mSndParticleType      = (std::vector<int>*)   getDataPointer("pTypeSnd" + parts_ext, parts);
+
+		if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
+			mSndParticleData     = (std::vector<pData>*) getDataPointer("ppSnd" + solver_ext, solver);
+			mSndParticleVelocity = (std::vector<pVel>*)  getDataPointer("pVelSnd" + parts_ext, parts);
+			mSndParticleType     = (std::vector<int>*)   getDataPointer("pTypeSnd" + parts_ext, parts);
+			mSndParticleLife     = (std::vector<int>*)   getDataPointer("pLifeSnd" + parts_ext, parts);
+		}
 	}
 	
 	// Smoke
@@ -1408,6 +1450,16 @@ void FLUID::setSndParticleType(int* buffer, int numParts)
 	}
 }
 
+void FLUID::setSndParticleLife(int* buffer, int numParts)
+{
+	mSndParticleLife->resize(numParts);
+	int* bufferPType = buffer;
+	for (std::vector<int>::iterator it = mSndParticleLife->begin(); it != mSndParticleLife->end(); ++it) {
+		*it = *bufferPType;
+		bufferPType++;
+	}
+}
+
 void FLUID::saveMesh(char *filename)
 {
 	std::string path(filename);
@@ -1492,6 +1544,18 @@ void FLUID::saveFluidInvelData(char *pathname)
 	std::ostringstream save_fluid_invel_data_low;
 	save_fluid_invel_data_low <<  "save_fluid_invel_data_low_" << mCurrentID << "(r'" << path << "')";
 	mCommands.push_back(save_fluid_invel_data_low.str());
+
+	runPythonString(mCommands);
+}
+
+void FLUID::saveFluidSndPartsData(char *pathname)
+{
+	std::string path(pathname);
+
+	mCommands.clear();
+	std::ostringstream save_fluid_sndparts_data_low;
+	save_fluid_sndparts_data_low <<  "save_fluid_sndparts_data_low_" << mCurrentID << "(r'" << path << "')";
+	mCommands.push_back(save_fluid_sndparts_data_low.str());
 
 	runPythonString(mCommands);
 }

@@ -2582,6 +2582,9 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 	if (active_fields & SM_ACTIVE_LIQUID) {
 		liquid_ensure_init(sds->fluid, sds->smd);
 	}
+	if (sds->particle_type & MOD_SMOKE_PARTICLE_DROP || sds->particle_type & MOD_SMOKE_PARTICLE_FLOAT || sds->particle_type & MOD_SMOKE_PARTICLE_TRACER) {
+		fluid_ensure_sndparts(sds->fluid, sds->smd);
+	}
 
 	sds->active_fields = active_fields;
 

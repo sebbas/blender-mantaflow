@@ -58,6 +58,7 @@ public:
 	void initObstacle(SmokeModifierData *smd);
 	void initGuiding(SmokeModifierData *smd);
 	void initInVelocity(SmokeModifierData *smd);
+	void initSndParts(SmokeModifierData *smd);
 
 	// Pointer transfer Mantaflow -> Blender
 	void updatePointers();
@@ -79,6 +80,7 @@ public:
 	void saveFluidObstacleData(char *pathname);
 	void saveFluidGuidingData(char *pathname);
 	void saveFluidInvelData(char *pathname);
+	void saveFluidSndPartsData(char *pathname);
 
 	// Write files for particles
 	void saveParticles(char* filename);
@@ -169,8 +171,8 @@ public:
 	inline int getTriangleZAt(int i) { return mTrianglesZ[i]; }
 
 	// Particle getters
-	inline int getFlipParticleFlagAt(int i) { return (mFlipParticleData) ? ((std::vector<pData>*) mFlipParticleData)->at(i).flag : 0.f; }
-	inline int getSndParticleFlagAt(int i) { return (mSndParticleData) ? ((std::vector<pData>*) mSndParticleData)->at(i).flag : 0.f; }
+	inline int getFlipParticleFlagAt(int i) { return (mFlipParticleData) ? ((std::vector<pData>*) mFlipParticleData)->at(i).flag : 0; }
+	inline int getSndParticleFlagAt(int i) { return (mSndParticleData) ? ((std::vector<pData>*) mSndParticleData)->at(i).flag : 0; }
 
 	inline float getFlipParticlePositionXAt(int i) { return (mFlipParticleData) ? mFlipParticleData->at(i).pos[0] : 0.f; }
 	inline float getFlipParticlePositionYAt(int i) { return (mFlipParticleData) ? mFlipParticleData->at(i).pos[1] : 0.f; }
@@ -189,6 +191,7 @@ public:
 	inline float getSndParticleVelocityZAt(int i) { return (mSndParticleVelocity) ? mSndParticleVelocity->at(i).pos[2] : 0.f; }
 
 	inline int getSndParticleTypeAt(int i) { return (mSndParticleType) ?  mSndParticleType->at(i) : -1; }
+	inline int getSndParticleLifeAt(int i) { return (mSndParticleLife) ?  mSndParticleLife->at(i) : -1; }
 
 	inline float* getFlipParticleData() { return (mFlipParticleData) ? (float*) &mFlipParticleData->front() : NULL; }
 	inline float* getSndParticleData()  { return (mSndParticleData) ? (float*) &mSndParticleData->front() : NULL; }
@@ -196,6 +199,7 @@ public:
 	inline float* getFlipParticleVelocity() { return (mFlipParticleVelocity) ? (float*) &mFlipParticleVelocity->front() : NULL; }
 	inline float* getSndParticleVelocity()  { return (mSndParticleVelocity) ? (float*) &mSndParticleVelocity->front() : NULL; }
 	inline int*   getSndParticleType()      { return (mSndParticleType) ? (int*) &mSndParticleType->front() : NULL; }
+	inline int*   getSndParticleLife()      { return (mSndParticleLife) ? (int*) &mSndParticleLife->front() : NULL; }
 
 	inline int getNumFlipParticles() { return (mFlipParticleData) ? mFlipParticleData->size() : 0; }
 	inline int getNumSndParticles() { return (mSndParticleData) ? mSndParticleData->size() : 0; }
@@ -209,6 +213,7 @@ public:
 	void setFlipParticleVelocity(float* buffer, int numParts);
 	void setSndParticleVelocity(float* buffer, int numParts);
 	void setSndParticleType(int* buffer, int numParts);
+	void setSndParticleLife(int* buffer, int numParts);
 
 private:
 	// simulation constants
@@ -226,6 +231,10 @@ private:
 	bool mUsingHighRes;
 	bool mUsingLiquid;
 	bool mUsingSmoke;
+	bool mUsingDrops;
+	bool mUsingBubbles;
+	bool mUsingFloats;
+	bool mUsingTracers;
 	
 	int mResX;
 	int mResY;
@@ -310,6 +319,7 @@ private:
 	std::vector<pData>* mSndParticleData;
 	std::vector<pVel>* mSndParticleVelocity;
 	std::vector<int>* mSndParticleType;
+	std::vector<int>* mSndParticleLife;
 
 	void initDomain(struct SmokeModifierData *smd);
 	void initDomainHigh(struct SmokeModifierData *smd);

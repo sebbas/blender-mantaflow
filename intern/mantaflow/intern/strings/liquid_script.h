@@ -44,12 +44,7 @@ minParticles_s$ID$   = $PARTICLE_MINIMUM$\n\
 maxParticles_s$ID$   = $PARTICLE_MAXIMUM$\n\
 radiusFactor_s$ID$   = $PARTICLE_RADIUS$\n\
 randomness_s$ID$     = $PARTICLE_RANDOMNESS$\n\
-maxVel_s$ID$         = 1 # just declared here, do not set\n\
-\n\
-using_drops_s$ID$   = $USING_DROP_PARTS$\n\
-using_bubbles_s$ID$ = $USING_BUBBLE_PARTS$\n\
-using_floats_s$ID$  = $USING_FLOAT_PARTS$\n\
-using_tracers_s$ID$ = $USING_TRACER_PARTS$\n";
+maxVel_s$ID$         = 1 # just declared here, do not set\n";
 
 const std::string liquid_variables_high = "\n\
 mantaMsg('Liquid variables high')\n";
@@ -81,10 +76,7 @@ velParts_s$ID$   = s$ID$.create(MACGrid)\n\
 mapWeights_s$ID$ = s$ID$.create(MACGrid)\n\
 \n\
 pp_s$ID$         = s$ID$.create(BasicParticleSystem)\n\
-ppSnd_s$ID$      = s$ID$.create(BasicParticleSystem)\n\
 pVel_pp$ID$      = pp_s$ID$.create(PdataVec3)\n\
-pVelSnd_pp$ID$   = ppSnd_s$ID$.create(PdataVec3)\n\
-pTypeSnd_pp$ID$  = ppSnd_s$ID$.create(PdataInt)\n\
 mesh_s$ID$       = s$ID$.create(Mesh)\n\
 \n\
 # Acceleration data for particle nbs\n\
@@ -161,6 +153,8 @@ def liquid_post_step_low_$ID$():\n\
 
 const std::string liquid_adaptive_step = "\n\
 def manta_step_$ID$(framenr):\n\
+    mantaMsg('Manta step, frame ' + str(framenr))\n\
+    \n\
     s$ID$.frame = framenr\n\
     s$ID$.timeTotal = s$ID$.frame * dt0_s$ID$\n\
     last_frame_s$ID$ = s$ID$.frame\n\
@@ -169,6 +163,7 @@ def manta_step_$ID$(framenr):\n\
     \n\
     while s$ID$.frame == last_frame_s$ID$:\n\
         \n\
+        mantaMsg('s.frame is ' + str(s$ID$.frame))\n\
         flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$, phiWalls=phiObs_s$ID$, outflow=boundConditions_s$ID$)\n\
         \n\
         # extrapolate before joining inflow levelsets\n\
@@ -219,16 +214,31 @@ const std::string liquid_step_low = "\n\
 def liquid_step_$ID$():\n\
     mantaMsg('Liquid step low')\n\
     \n\
+    if using_drops_s$ID$:\n\
+        mantaMsg('Sampling drop particles')\n\
+        sampleSndParts(type=PtypeDroplet, constraint=$SNDPARTICLE_VEL_THRESH$, phi=phi_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, parts=ppSnd_s$ID$)\n\
+    \n\
+    if using_floats_s$ID$:\n\
+        mantaMsg('Sampling float particles')\n\
+        sampleSndParts(type=PtypeFloater, constraint=$SNDPARTICLE_FLOAT_AMOUNT$, phi=phiIn_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, parts=ppSnd_s$ID$)\n\
+    \n\
+    if using_tracers_s$ID$:\n\
+        mantaMsg('Sampling tracer particles')\n\
+        sampleSndParts(type=PtypeTracer, constraint=$SNDPARTICLE_TRACER_AMOUNT$, phi=phiIn_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, parts=ppSnd_s$ID$)\n\
+    \n\
+    if using_sndparts_s$ID$:\n\
+        mantaMsg('Updating snd particle data (velocity, life count)')\n\
+        updateSndParts(phi=phi_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$, parts=ppSnd_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$)\n\
+        \n\
+        mantaMsg('Adjusting snd particles')\n\
+        pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=1.0)\n\
+        adjustSndParts(parts=ppSnd_s$ID$, flags=flags_s$ID$, phi=phi_s$ID$, partVel=pVelSnd_pp$ID$)\n\
+    \n\
     mantaMsg('Advecting particles')\n\
     pp_s$ID$.advectInGrid(flags=flags_s$ID$, vel=vel_s$ID$, integrationMode=IntRK4, deleteInObstacle=False, stopInObstacle=False)\n\
     \n\
-    mantaMsg('Sampling secondary particles')\n\
-    if (using_drops_s$ID$ or using_bubbles_s$ID$ or using_floats_s$ID$ or using_tracers_s$ID$):\n\
-        sampleSndParts(parts=ppSnd_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, partVel=pVelSnd_pp$ID$, partType=pTypeSnd_pp$ID$, phi=phi_s$ID$, dropVelThresh=$SNDPARTICLE_VEL_THRESH$, bubbleRise=$SNDPARTICLE_BUBBLE_RISE$, floatAmount=$SNDPARTICLE_FLOAT_AMOUNT$, tracerAmount=$SNDPARTICLE_TRACER_AMOUNT$, minParticles=2, maxParticles=8, gravity=gravity_s$ID$, drops=using_drops_s$ID$, bubbles=using_bubbles_s$ID$, floats=using_floats_s$ID$, tracers=using_tracers_s$ID$)\n\
-    \n\
     mantaMsg('Pushing particles out of obstacles')\n\
     pushOutofObs(parts=pp_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$)\n\
-    pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=1.0)\n\
     \n\
     mantaMsg('Advecting phi')\n\
     advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=phi_s$ID$, order=1) # first order is usually enough\n\
@@ -248,7 +258,8 @@ def liquid_step_$ID$():\n\
     \n\
     if doOpen_s$ID$:\n\
         resetOutflow(flags=flags_s$ID$, phi=phi_s$ID$, parts=pp_s$ID$, index=gpi_s$ID$, indexSys=pindex_s$ID$)\n\
-        resetOutflow(flags=flags_s$ID$, parts=ppSnd_s$ID$)\n\
+        if using_sndparts_s$ID$:\n\
+            resetOutflow(flags=flags_s$ID$, parts=ppSnd_s$ID$)\n\
     flags_s$ID$.updateFromLevelset(phi_s$ID$)\n\
     \n\
     # combine particles velocities with advected grid velocities\n\
@@ -435,10 +446,7 @@ if 'velOld_s$ID$'     in globals() : del velOld_s$ID$\n\
 if 'velParts_s$ID$'   in globals() : del velParts_s$ID$\n\
 if 'mapWeights_s$ID$' in globals() : del mapWeights_s$ID$\n\
 if 'pp_s$ID$'         in globals() : del pp_s$ID$\n\
-if 'ppSnd_s$ID$'      in globals() : del ppSnd_s$ID$\n\
 if 'pVel_pp$ID$'      in globals() : del pVel_pp$ID$\n\
-if 'pVelSnd_pp$ID$'   in globals() : del pVelSnd_pp$ID$\n\
-if 'pTypeSnd_pp$ID$'  in globals() : del pTypeSnd_pp$ID$\n\
 if 'mesh_s$ID$'       in globals() : del mesh_s$ID$\n\
 if 'pindex_s$ID$'     in globals() : del pindex_s$ID$\n\
 if 'gpi_s$ID$'        in globals() : del gpi_s$ID$\n\
@@ -466,11 +474,7 @@ if 'combineBandWidth_s$ID$' in globals() : del combineBandWidth_s$ID$\n\
 if 'minParticles_s$ID$'     in globals() : del minParticles_s$ID$\n\
 if 'maxParticles_s$ID$'     in globals() : del maxParticles_s$ID$\n\
 if 'particleNumber_s$ID$'   in globals() : del particleNumber_s$ID$\n\
-if 'maxVel_s$ID$'           in globals() : del maxVel_s$ID$\n\
-if 'using_drops_s$ID$'      in globals() : del using_drops_s$ID$\n\
-if 'using_bubbles_s$ID$'    in globals() : del using_bubbles_s$ID$\n\
-if 'using_floats_s$ID$'     in globals() : del using_floats_s$ID$\n\
-if 'using_tracers_s$ID$'    in globals() : del using_tracers_s$ID$\n";
+if 'maxVel_s$ID$'           in globals() : del maxVel_s$ID$\n";
 
 const std::string liquid_delete_variables_high = "\n\
 mantaMsg('Deleting highres liquid variables')\n";

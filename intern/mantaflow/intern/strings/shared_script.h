@@ -81,6 +81,12 @@ using_obstacle_s$ID$  = $USING_OBSTACLE$\n\
 using_guiding_s$ID$   = $USING_GUIDING$\n\
 using_invel_s$ID$     = $USING_INVEL$\n\
 \n\
+using_drops_s$ID$    = $USING_DROP_PARTS$\n\
+using_bubbles_s$ID$  = $USING_BUBBLE_PARTS$\n\
+using_floats_s$ID$   = $USING_FLOAT_PARTS$\n\
+using_tracers_s$ID$  = $USING_TRACER_PARTS$\n\
+using_sndparts_s$ID$ = using_drops_s$ID$ or using_bubbles_s$ID$ or using_floats_s$ID$ or using_tracers_s$ID$\n\
+\n\
 # fluid guiding params\n\
 alpha_s$ID$ = $GUIDING_ALPHA$\n\
 beta_s$ID$  = $GUIDING_BETA$\n\
@@ -159,6 +165,13 @@ x_invel_s$ID$ = s$ID$.create(RealGrid)\n\
 y_invel_s$ID$ = s$ID$.create(RealGrid)\n\
 z_invel_s$ID$ = s$ID$.create(RealGrid)\n";
 
+const std::string fluid_alloc_sndparts_low = "\n\
+mantaMsg('Allocating snd parts low')\n\
+ppSnd_s$ID$     = s$ID$.create(BasicParticleSystem)\n\
+pVelSnd_pp$ID$  = ppSnd_s$ID$.create(PdataVec3)\n\
+pTypeSnd_pp$ID$ = ppSnd_s$ID$.create(PdataInt)\n\
+pLifeSnd_pp$ID$ = ppSnd_s$ID$.create(PdataInt)\n";
+
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION
 //////////////////////////////////////////////////////////////////////
@@ -183,7 +196,12 @@ if 'sigma_s$ID$'            in globals() : del sigma_s$ID$\n\
 if 'theta_s$ID$'            in globals() : del theta_s$ID$\n\
 if 'using_obstacle_s$ID$'   in globals() : del using_obstacle_s$ID$\n\
 if 'using_guiding_s$ID$'    in globals() : del using_guiding_s$ID$\n\
-if 'using_invel_s$ID$'      in globals() : del using_invel_s$ID$\n";
+if 'using_invel_s$ID$'      in globals() : del using_invel_s$ID$\n\
+if 'using_drops_s$ID$'      in globals() : del using_drops_s$ID$\n\
+if 'using_bubbles_s$ID$'    in globals() : del using_bubbles_s$ID$\n\
+if 'using_floats_s$ID$'     in globals() : del using_floats_s$ID$\n\
+if 'using_tracers_s$ID$'    in globals() : del using_tracers_s$ID$\n\
+if 'using_sndparts_s$ID$'   in globals() : del using_sndparts_s$ID$\n";
 
 const std::string fluid_delete_variables_high = "\n\
 mantaMsg('Deleting fluid variables high')\n\
@@ -225,6 +243,13 @@ if 'invel_s$ID$'   in globals() : del invel_s$ID$\n\
 if 'x_invel_s$ID$' in globals() : del x_invel_s$ID$\n\
 if 'y_invel_s$ID$' in globals() : del y_invel_s$ID$\n\
 if 'z_invel_s$ID$' in globals() : del z_invel_s$ID$\n";
+
+const std::string fluid_delete_sndparts_low = "\n\
+mantaMsg('Deleting snd parts low')\n\
+if 'ppSnd_s$ID$'     in globals() : del ppSnd_s$ID$\n\
+if 'pVelSnd_pp$ID$'  in globals() : del pVelSnd_pp$ID$\n\
+if 'pTypeSnd_pp$ID$' in globals() : del pTypeSnd_pp$ID$\n\
+if 'pLifeSnd_pp$ID$' in globals() : del pLifeSnd_pp$ID$\n";
 
 const std::string fluid_multigrid_cleanup_low = "\n\
 mantaMsg('Cleanup multigrid low')\n\
@@ -271,6 +296,13 @@ def load_fluid_invel_data_low_$ID$(path):\n\
     y_invel_s$ID$.load(path + '_y_invel.uni')\n\
     z_invel_s$ID$.load(path + '_z_invel.uni')\n";
 
+const std::string fluid_sndparts_import_low = "\n\
+def load_fluid_sndparts_data_low_$ID$(path):\n\
+    ppSnd_s$ID$.load(path + '_ppSnd.uni')\n\
+    pVelSnd_pp$ID$.load(path + '_pVelSnd.uni')\n\
+    pTypeSnd_pp$ID$.load(path + '_pTypeSnd.uni')\n\
+    pLifeSnd_pp$ID$.load(path + '_pLifeSnd.uni')\n";
+
 const std::string fluid_obstacle_export_low = "\n\
 def save_fluid_obstacle_data_low_$ID$(path):\n\
     numObs_s$ID$.save(path + '_numObs.uni')\n\
@@ -297,6 +329,13 @@ def save_fluid_invel_data_low_$ID$(path):\n\
     y_invel_s$ID$.save(path + '_y_invel.uni')\n\
     z_invel_s$ID$.save(path + '_z_invel.uni')\n";
 
+const std::string fluid_sndparts_export_low = "\n\
+def save_fluid_sndparts_data_low_$ID$(path):\n\
+    ppSnd_s$ID$.save(path + '_ppSnd.uni')\n\
+    pVelSnd_pp$ID$.save(path + '_pVelSnd.uni')\n\
+    pTypeSnd_pp$ID$.save(path + '_pTypeSnd.uni')\n\
+    pLifeSnd_pp$ID$.save(path + '_pLifeSnd.uni')\n";
+
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE
 //////////////////////////////////////////////////////////////////////
@@ -311,7 +350,9 @@ if using_obstacle_s$ID$:\n\
 if using_guiding_s$ID$:\n\
     load_fluid_guiding_data_low_$ID$(path_prefix_$ID$)\n\
 if using_invel_s$ID$:\n\
-    load_fluid_invel_data_low_$ID$(path_prefix_$ID$)\n";
+    load_fluid_invel_data_low_$ID$(path_prefix_$ID$)\n\
+if using_sndparts_s$ID$:\n\
+    load_fluid_sndparts_data_low_$ID$(path_prefix_$ID$)\n";
 
 const std::string fluid_standalone = "\n\
 if (GUI):\n\

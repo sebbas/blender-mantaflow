@@ -248,6 +248,7 @@ def manta_step_$ID$(framenr):\n\
     \n\
     while s$ID$.frame == last_frame_s$ID$:\n\
         \n\
+        mantaMsg('s.frame is ' + str(s$ID$.frame))\n\
         if using_obstacle_s$ID$: # TODO (sebbas): allow outflow objects when no obstacle set\n\
             phiObs_s$ID$.join(phiObsIn_s$ID$)\n\
         setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOutIn_s$ID$)\n\

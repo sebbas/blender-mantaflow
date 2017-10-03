@@ -160,7 +160,7 @@ extern "C" void smoke_export(FLUID *smoke, float *dt, float *dx, float **dens, f
 	*dx = 1; //dummy value, not needed for smoke
 }
 
-extern "C" void liquid_export(FLUID *liquid, float **phi, float **pp, float **pvel, float **ppSnd, float **pvelSnd, int **ptypeSnd)
+extern "C" void liquid_export(FLUID *liquid, float **phi, float **pp, float **pvel, float **ppSnd, float **pvelSnd, int **ptypeSnd, int **plifeSnd)
 {
 	if (phi)
 		*phi = liquid->getPhi();
@@ -174,6 +174,8 @@ extern "C" void liquid_export(FLUID *liquid, float **phi, float **pp, float **pv
 		*pvelSnd = liquid->getSndParticleVelocity();
 	if (ptypeSnd)
 		*ptypeSnd = liquid->getSndParticleType();
+	if (plifeSnd)
+		*plifeSnd = liquid->getSndParticleLife();
 }
 
 extern "C" void smoke_turbulence_export(FLUID *smoke, float **dens, float **react, float **flame, float **fuel,
@@ -530,6 +532,14 @@ extern "C" void liquid_ensure_init(FLUID *smoke, struct SmokeModifierData *smd)
 	}
 }
 
+extern "C" void fluid_ensure_sndparts(FLUID *fluid, struct SmokeModifierData *smd)
+{
+	if (fluid) {
+		fluid->initSndParts(smd);
+		fluid->updatePointers();
+	}
+}
+
 extern "C" void fluid_ensure_obstacle(FLUID *fluid, struct SmokeModifierData *smd)
 {
 	if (fluid) {
@@ -810,6 +820,11 @@ extern "C" void liquid_set_snd_particle_velocity(FLUID* liquid, float* buffer, i
 extern "C" void liquid_set_snd_particle_type(FLUID* liquid, int* buffer, int numParts)
 {
 	liquid->setSndParticleType(buffer, numParts);
+}
+
+extern "C" void liquid_set_snd_particle_life(FLUID* liquid, int* buffer, int numParts)
+{
+	liquid->setSndParticleLife(buffer, numParts);
 }
 
 extern "C" float *fluid_get_inflow(FLUID* fluid)
