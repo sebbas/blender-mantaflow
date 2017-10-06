@@ -64,7 +64,7 @@ phiOutIn_s$ID$   = s$ID$.create(LevelsetGrid)\n\
 pressure_s$ID$   = s$ID$.create(RealGrid)\n\
 \n\
 phiObs_s$ID$     = s$ID$.create(LevelsetGrid)\n\
-fractions_s$ID$  = s$ID$.create(MACGrid)\n\
+fractions_s$ID$  = 0 # s$ID$.create(MACGrid) # TODO (sebbas): disabling fractions for now - not fracwallbcs not supporting obvels yet\n\
 \n\
 vel_s$ID$        = s$ID$.create(MACGrid)\n\
 x_vel_s$ID$      = s$ID$.create(RealGrid)\n\
@@ -115,6 +115,7 @@ def liquid_pre_step_low_$ID$():\n\
         x_obvel_s$ID$.multConst(gs_s$ID$.x)\n\
         y_obvel_s$ID$.multConst(gs_s$ID$.y)\n\
         z_obvel_s$ID$.multConst(gs_s$ID$.z)\n\
+        copyRealToVec3(sourceX=x_obvel_s$ID$, sourceY=y_obvel_s$ID$, sourceZ=z_obvel_s$ID$, target=obvelC_s$ID$)\n\
     \n\
     # translate guiding vels (world space) to grid space\n\
     if using_guiding_s$ID$:\n\
@@ -131,10 +132,7 @@ def liquid_pre_step_low_$ID$():\n\
         copyRealToVec3(sourceX=x_invel_s$ID$, sourceY=y_invel_s$ID$, sourceZ=z_invel_s$ID$, target=invel_s$ID$)\n\
     \n\
     copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
-    copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n\
-    \n\
-    if using_obstacle_s$ID$:\n\
-        copyRealToVec3(sourceX=x_obvel_s$ID$, sourceY=y_obvel_s$ID$, sourceZ=z_obvel_s$ID$, target=obvelC_s$ID$)\n";
+    copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n";
 
 const std::string liquid_post_step_low = "\n\
 def liquid_post_step_low_$ID$():\n\
@@ -181,7 +179,7 @@ def manta_step_$ID$(framenr):\n\
         \n\
         phiOut_s$ID$.join(phiOutIn_s$ID$)\n\
         \n\
-        updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
+        #updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$) # TODO (sebbas): uncomment for fraction support\n\
         setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$, fractions=fractions_s$ID$)\n\
         \n\
         # add initial velocity: set invel as source grid to ensure const vels in inflow region, sampling makes use of this\n\
@@ -194,9 +192,9 @@ def manta_step_$ID$(framenr):\n\
         flags_s$ID$.updateFromLevelset(phi_s$ID$, phiObs_s$ID$)\n\
         mapWeights_s$ID$.clear() # clean up, mapweights grid used later again\n\
         \n\
+        maxVel_s$ID$ = vel_s$ID$.getMaxValue()\n\
         if using_adaptTime_s$ID$:\n\
             mantaMsg('Adapt timestep')\n\
-            maxVel_s$ID$ = vel_s$ID$.getMaxValue()\n\
             s$ID$.adaptTimestep(maxVel_s$ID$)\n\
         \n\
         mantaMsg('Low step / s$ID$.frame: ' + str(s$ID$.frame))\n\
@@ -235,7 +233,7 @@ def liquid_step_$ID$():\n\
         adjustSndParts(parts=ppSnd_s$ID$, flags=flags_s$ID$, phi=phi_s$ID$, partVel=pVelSnd_pp$ID$)\n\
     \n\
     mantaMsg('Advecting particles')\n\
-    pp_s$ID$.advectInGrid(flags=flags_s$ID$, vel=vel_s$ID$, integrationMode=IntRK4, deleteInObstacle=False, stopInObstacle=False)\n\
+    pp_s$ID$.advectInGrid(flags=flags_s$ID$, vel=vel_s$ID$, integrationMode=IntRK4, deleteInObstacle=using_obstacle_s$ID$, stopInObstacle=False)\n\
     \n\
     mantaMsg('Pushing particles out of obstacles')\n\
     pushOutofObs(parts=pp_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$)\n\
@@ -286,11 +284,8 @@ def liquid_step_$ID$():\n\
         extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=1, inside=False)\n\
         resampleVec3ToMac(source=guidevelC_s$ID$, target=guidevel_s$ID$)\n\
     \n\
-    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, phiObs=phiObs_s$ID$, intoObs=using_obstacle_s$ID$)\n\
-    if using_obstacle_s$ID$:\n\
-        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)#, obvel=obvel_s$ID$) # TODO: uncomment for obvel support (once fraction wallbcs works)\n\
-    else:\n\
-        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
+    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, phiObs=phiObs_s$ID$, intoObs=True)\n\
+    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else 0, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
     if using_guiding_s$ID$:\n\
         mantaMsg('Guiding and pressure')\n\
@@ -300,11 +295,8 @@ def liquid_step_$ID$():\n\
         mantaMsg('Pressure')\n\
         solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
-    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4, phiObs=phiObs_s$ID$, intoObs=using_obstacle_s$ID$)\n\
-    if using_obstacle_s$ID$:\n\
-        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)#, obvel=obvel_s$ID$) # TODO: uncomment for obvel support (once fraction wallbcs works)\n\
-    else:\n\
-        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
+    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4, phiObs=phiObs_s$ID$, intoObs=True)\n\
+    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else 0, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
     if (dim_s$ID$==3):\n\
         # mis-use phiParts as temp grid to close the mesh\n\
@@ -316,6 +308,7 @@ def liquid_step_$ID$():\n\
     if using_highres_s$ID$:\n\
         interpolateGrid(target=phi_xl$ID$, source=phiParts_s$ID$)\n\
     \n\
+    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=(int(maxVel_s$ID$*1.25 )) ) # TODO (sebbas): extrapolation because of no fractions\n\
     # set source grids for resampling, used in adjustNumber!\n\
     pVel_pp$ID$.setSource(vel_s$ID$, isMAC=True)\n\
     adjustNumber(parts=pp_s$ID$, vel=vel_s$ID$, flags=flags_s$ID$, minParticles=minParticles_s$ID$, maxParticles=maxParticles_s$ID$, phi=phi_s$ID$, exclude=phiObs_s$ID$, radiusFactor=radiusFactor_s$ID$, narrowBand=adjustedNarrowBandWidth_s$ID$)\n\
@@ -363,7 +356,7 @@ def load_liquid_data_low_$ID$(path):\n\
     phiObs_s$ID$.load(path + '_phiObs.uni')\n\
     phiOut_s$ID$.load(path + '_phiOut.uni')\n\
     phiOutIn_s$ID$.load(path + '_phiOutIn.uni')\n\
-    fractions_s$ID$.load(path + '_fractions.uni')\n\
+    if fractions_s$ID$: fractions_s$ID$.load(path + '_fractions.uni') # TODO (sebbas)\n\
     pressure_s$ID$.load(path + '_pressure.uni')\n\
     \n\
     vel_s$ID$.load(path + '_vel.uni')\n\
@@ -399,7 +392,7 @@ def save_liquid_data_low_$ID$(path):\n\
     phiObs_s$ID$.save(path + '_phiObs.uni')\n\
     phiOut_s$ID$.save(path + '_phiOut.uni')\n\
     phiOutIn_s$ID$.save(path + '_phiOutIn.uni')\n\
-    fractions_s$ID$.save(path + '_fractions.uni')\n\
+    if fractions_s$ID$: fractions_s$ID$.save(path + '_fractions.uni') # TODO (sebbas)\n\
     pressure_s$ID$.save(path + '_pressure.uni')\n\
     \n\
     vel_s$ID$.save(path + '_vel.uni')\n\

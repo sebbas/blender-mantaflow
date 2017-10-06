@@ -254,10 +254,10 @@ def manta_step_$ID$(framenr):\n\
         setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOutIn_s$ID$)\n\
         flags_s$ID$.fillGrid()\n\
         \n\
+        maxVel_s$ID$ = vel_s$ID$.getMaxValue()\n\
         if using_adaptTime_s$ID$:\n\
             mantaMsg('Adapt timestep')\n\
-            maxvel_s$ID$ = vel_s$ID$.getMaxValue()\n\
-            s$ID$.adaptTimestep(maxvel_s$ID$)\n\
+            s$ID$.adaptTimestep(maxVel_s$ID$)\n\
         \n\
         mantaMsg('Low step / s$ID$.frame: ' + str(s$ID$.frame))\n\
         if using_fire_s$ID$:\n\
@@ -615,7 +615,7 @@ if 'using_colors_s$ID$'    in globals() : del using_colors_s$ID$\n\
 if 'using_heat_s$ID$'      in globals() : del using_heat_s$ID$\n\
 if 'using_fire_s$ID$'      in globals() : del using_fire_s$ID$\n\
 if 'last_frame_s$ID$'      in globals() : del last_frame_s$ID$\n\
-if 'maxvel_s$ID$'          in globals() : del maxvel_s$ID$\n";
+if 'maxVel_s$ID$'          in globals() : del maxVel_s$ID$\n";
 
 const std::string smoke_delete_variables_high = "\n\
 mantaMsg('Deleting variables high')\n\

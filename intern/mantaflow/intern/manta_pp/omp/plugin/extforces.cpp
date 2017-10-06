@@ -446,7 +446,7 @@ void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
 //! set zero normal velocity boundary condition on walls
 // (optionally with second order accuracy using the obstacle SDF , fractions grid currentlyl not needed)
 void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* obvel = 0, MACGrid* fractions = 0, Grid<Real>* phiObs = 0, int boundaryWidth=0) {
-	if(!phiObs) {
+	if(!phiObs || !fractions) {
 		KnSetWallBcs(flags, vel, obvel);
 	} else {
 		MACGrid tmpvel(vel.getParent());
