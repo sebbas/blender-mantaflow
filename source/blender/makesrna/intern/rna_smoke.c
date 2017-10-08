@@ -119,6 +119,7 @@ static void rna_Smoke_parts_create(PointerRNA *ptr, char *pset_name, char* parts
 	psys = MEM_callocN(sizeof(ParticleSystem), "particle_system");
 
 	part->type = psys_type;
+	part->totpart = 0;
 	psys->part = part;
 	psys->pointcache = BKE_ptcache_add(&psys->ptcaches);
 	BLI_strncpy(psys->name, parts_name, sizeof(psys->name));

@@ -3767,6 +3767,11 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 		psys->particles = 0;
 		psys->totpart = 0;
 	}
+	if (psys->part) {
+		psys->part->totpart = 0;
+		psys->part->sta = 0;
+		psys->part->lifetime = 0;
+	}
 
 	/* manta sim particle import handling, actual loading of particles from file happens in FLUID helper. Here just pointer exchange */
 #ifdef WITH_MANTA
