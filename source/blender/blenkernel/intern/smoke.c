@@ -742,7 +742,7 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->flow->flags = smd->flow->flags;
 	}
 	else if (tsmd->effec) {
-		/* leave it as initialized, collision settings is mostly caches */
+		tsmd->effec->type = smd->effec->type;
 		tsmd->effec->surface_distance = smd->effec->surface_distance;
 	}
 }
