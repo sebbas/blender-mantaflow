@@ -52,9 +52,9 @@ struct OpenVDBFloatGrid *OpenVDB_export_grid_fl(
         const int res[3], float matrix[4][4],
         struct OpenVDBFloatGrid *mask);
 
-struct OpenVDBIntGrid *OpenVDB_export_grid_ch(
+struct OpenVDBIntGrid *OpenVDB_export_grid_int(
         struct OpenVDBWriter *writer,
-        const char *name, unsigned char *data,
+        const char *name, int *data,
         const int res[3], float matrix[4][4],
         struct OpenVDBFloatGrid *mask);
 
@@ -71,9 +71,9 @@ void OpenVDB_import_grid_fl(
         const char *name, float **data,
         const int res[3]);
 
-void OpenVDB_import_grid_ch(
+void OpenVDB_import_grid_int(
         struct OpenVDBReader *reader,
-        const char *name, unsigned char **data,
+        const char *name, int **data,
         const int res[3]);
 
 void OpenVDB_import_grid_vec(

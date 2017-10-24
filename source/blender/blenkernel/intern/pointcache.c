@@ -1102,9 +1102,9 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
 		OpenVDBWriter_add_meta_fl(writer, "blender/smoke/dx", dx);
 		OpenVDBWriter_add_meta_fl(writer, "blender/smoke/dt", dt);
 
-		const char *name = (!sds->wt) ? "density" : "density low";
+		const char *name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "density" : "density low";
 		density_grid = OpenVDB_export_grid_fl(writer, name, dens, sds->res, sds->fluidmat, NULL);
-		clip_grid = sds->wt ? clip_grid : density_grid;
+		clip_grid = (sds->flags & MOD_SMOKE_HIGHRES) ? clip_grid : density_grid;
 
 		OpenVDB_export_grid_fl(writer, "shadow", sds->shadow, sds->res, sds->fluidmat, NULL);
 
@@ -1113,21 +1113,21 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
 		}
 
 		if (fluid_fields & SM_ACTIVE_FIRE) {
-			name = (!sds->wt) ? "flame" : "flame low";
+			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "flame" : "flame low";
 			OpenVDB_export_grid_fl(writer, name, flame, sds->res, sds->fluidmat, density_grid);
-			name = (!sds->wt) ? "fuel" : "fuel low";
+			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "fuel" : "fuel low";
 			OpenVDB_export_grid_fl(writer, name, fuel, sds->res, sds->fluidmat, density_grid);
-			name = (!sds->wt) ? "react" : "react low";
+			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "react" : "react low";
 			OpenVDB_export_grid_fl(writer, name, react, sds->res, sds->fluidmat, density_grid);
 		}
 
 		if (fluid_fields & SM_ACTIVE_COLORS) {
-			name = (!sds->wt) ? "color" : "color low";
+			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "color" : "color low";
 			OpenVDB_export_grid_vec(writer, name, r, g, b, sds->res, sds->fluidmat, VEC_INVARIANT, true, density_grid);
 		}
 
 		OpenVDB_export_grid_vec(writer, "velocity", vx, vy, vz, sds->res, sds->fluidmat, VEC_CONTRAVARIANT_RELATIVE, false, clip_grid);
-		OpenVDB_export_grid_ch(writer, "obstacles", obstacles, sds->res, sds->fluidmat, NULL);
+		OpenVDB_export_grid_int(writer, "obstacles", obstacles, sds->res, sds->fluidmat, NULL);
 	}
 
 	return 1;
@@ -1209,7 +1209,7 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 
 		OpenVDB_import_grid_fl(reader, "shadow", &sds->shadow, sds->res);
 
-		const char *name = (!sds->wt) ? "density" : "density low";
+		const char *name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "density" : "density low";
 		OpenVDB_import_grid_fl(reader, name, &dens, sds->res);
 
 		if (cache_fields & SM_ACTIVE_HEAT) {
@@ -1217,21 +1217,21 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 		}
 
 		if (cache_fields & SM_ACTIVE_FIRE) {
-			name = (!sds->wt) ? "flame" : "flame low";
+			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "flame" : "flame low";
 			OpenVDB_import_grid_fl(reader, name, &flame, sds->res);
-			name = (!sds->wt) ? "fuel" : "fuel low";
+			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "fuel" : "fuel low";
 			OpenVDB_import_grid_fl(reader, name, &fuel, sds->res);
-			name = (!sds->wt) ? "react" : "react low";
+			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "react" : "react low";
 			OpenVDB_import_grid_fl(reader, name, &react, sds->res);
 		}
 
 		if (cache_fields & SM_ACTIVE_COLORS) {
-			name = (!sds->wt) ? "color" : "color low";
+			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "color" : "color low";
 			OpenVDB_import_grid_vec(reader, name, &r, &g, &b, sds->res);
 		}
 
 		OpenVDB_import_grid_vec(reader, "velocity", &vx, &vy, &vz, sds->res);
-		OpenVDB_import_grid_ch(reader, "obstacles", &obstacles, sds->res);
+		OpenVDB_import_grid_int(reader, "obstacles", &obstacles, sds->res);
 	}
 
 	if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) {

@@ -58,9 +58,9 @@ OpenVDBFloatGrid *OpenVDB_export_grid_fl(
 	return reinterpret_cast<OpenVDBFloatGrid *>(grid);
 }
 
-OpenVDBIntGrid *OpenVDB_export_grid_ch(
+OpenVDBIntGrid *OpenVDB_export_grid_int(
         OpenVDBWriter *writer,
-        const char *name, unsigned char *data,
+        const char *name, int *data,
         const int res[3], float matrix[4][4],
         OpenVDBFloatGrid *mask)
 {
@@ -120,9 +120,9 @@ void OpenVDB_import_grid_fl(
 	internal::OpenVDB_import_grid<openvdb::FloatGrid>(reader, name, data, res);
 }
 
-void OpenVDB_import_grid_ch(
+void OpenVDB_import_grid_int(
         OpenVDBReader *reader,
-        const char *name, unsigned char **data,
+        const char *name, int **data,
         const int res[3])
 {
 	internal::OpenVDB_import_grid<openvdb::Int32Grid>(reader, name, data, res);
