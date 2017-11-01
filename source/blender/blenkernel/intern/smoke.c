@@ -1649,6 +1649,7 @@ static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromM
 		hit_tree.index = -1;
 		hit_tree.dist = 9999;
 
+		normalize_v3(ray_dirs[i]);
 		BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dirs[i], 0.0f, &hit_tree, treeData->raycast_callback, treeData);
 
 		/* Ray did not hit mesh. Current point definitely not inside mesh. */
