@@ -44,6 +44,8 @@ minParticles_s$ID$   = $PARTICLE_MINIMUM$\n\
 maxParticles_s$ID$   = $PARTICLE_MAXIMUM$\n\
 radiusFactor_s$ID$   = $PARTICLE_RADIUS$\n\
 randomness_s$ID$     = $PARTICLE_RANDOMNESS$\n\
+surfaceTension_s$ID$ = 0.9\n\
+viscosity_s$ID$      = 0.05\n\
 maxVel_s$ID$         = 1 # just declared here, do not set\n";
 
 const std::string liquid_variables_high = "\n\
@@ -62,6 +64,7 @@ phiIn_s$ID$      = s$ID$.create(LevelsetGrid)\n\
 phiOut_s$ID$     = s$ID$.create(LevelsetGrid)\n\
 phiOutIn_s$ID$   = s$ID$.create(LevelsetGrid)\n\
 pressure_s$ID$   = s$ID$.create(RealGrid)\n\
+curvature_s$ID$  = s$ID$.create(RealGrid)\n\
 \n\
 phiObs_s$ID$     = s$ID$.create(LevelsetGrid)\n\
 fractions_s$ID$  = 0 # s$ID$.create(MACGrid) # TODO (sebbas): disabling fractions for now - not fracwallbcs not supporting obvels yet\n\
@@ -192,7 +195,7 @@ def manta_step_$ID$(framenr):\n\
         flags_s$ID$.updateFromLevelset(phi_s$ID$, phiObs_s$ID$)\n\
         mapWeights_s$ID$.clear() # clean up, mapweights grid used later again\n\
         \n\
-        maxVel_s$ID$ = vel_s$ID$.getMaxValue()\n\
+        maxVel_s$ID$ = vel_s$ID$.getMax()\n\
         if using_adaptTime_s$ID$:\n\
             mantaMsg('Adapt timestep')\n\
             s$ID$.adaptTimestep(maxVel_s$ID$)\n\
@@ -285,15 +288,27 @@ def liquid_step_$ID$():\n\
         resampleVec3ToMac(source=guidevelC_s$ID$, target=guidevel_s$ID$)\n\
     \n\
     extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, phiObs=phiObs_s$ID$, intoObs=True)\n\
+    \n\
+    # vel diffusion / viscosity!\n\
+    if viscosity_s$ID$ > 0.:\n\
+        mantaMsg('Viscosity')\n\
+        # diffusion param for solve = const * dt / dx^2\n\
+        alphaV = viscosity_s$ID$ * s$ID$.timestep * float(res_s$ID$*res_s$ID$)\n\
+        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else 0, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
+        cgSolveDiffusion(flags_s$ID$, vel_s$ID$, alphaV)\n\
+    \n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else 0, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
+    \n\
+    mantaMsg('Calculating curvature')\n\
+    getLaplacian(laplacian=curvature_s$ID$, grid=phi_s$ID$)\n\
     \n\
     if using_guiding_s$ID$:\n\
         mantaMsg('Guiding and pressure')\n\
         weightGuide_s$ID$.addConst(alpha_s$ID$)\n\
-        PD_fluid_guiding(vel=vel_s$ID$, velT=guidevel_s$ID$, flags=flags_s$ID$, phi=phi_s$ID$, fractions=fractions_s$ID$, weight=weightGuide_s$ID$, blurRadius=beta_s$ID$, pressure=pressure_s$ID$, tau=tau_s$ID$, sigma=sigma_s$ID$, theta=theta_s$ID$, zeroPressureFixing=not doOpen_s$ID$)\n\
+        PD_fluid_guiding(vel=vel_s$ID$, velT=guidevel_s$ID$, flags=flags_s$ID$, phi=phi_s$ID$, curv=curvature_s$ID$, surfTens=surfaceTension_s$ID$, fractions=fractions_s$ID$, weight=weightGuide_s$ID$, blurRadius=beta_s$ID$, pressure=pressure_s$ID$, tau=tau_s$ID$, sigma=sigma_s$ID$, theta=theta_s$ID$, zeroPressureFixing=not doOpen_s$ID$)\n\
     else:\n\
         mantaMsg('Pressure')\n\
-        solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$, fractions=fractions_s$ID$)\n\
+        solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$, curv=curvature_s$ID$, surfTens=surfaceTension_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
     extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4, phiObs=phiObs_s$ID$, intoObs=True)\n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else 0, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
@@ -431,6 +446,7 @@ if 'phiIn_s$ID$'      in globals() : del phiIn_s$ID$\n\
 if 'phiOut_s$ID$'     in globals() : del phiOut_s$ID$\n\
 if 'phiOutIn_s$ID$'   in globals() : del phiOutIn_s$ID$\n\
 if 'pressure_s$ID$'   in globals() : del pressure_s$ID$\n\
+if 'curvature_s$ID$'  in globals() : del curvature_s$ID$\n\
 if 'vel_s$ID$'        in globals() : del vel_s$ID$\n\
 if 'x_vel_s$ID$'      in globals() : del x_vel_s$ID$\n\
 if 'y_vel_s$ID$'      in globals() : del y_vel_s$ID$\n\
@@ -467,6 +483,7 @@ if 'combineBandWidth_s$ID$' in globals() : del combineBandWidth_s$ID$\n\
 if 'minParticles_s$ID$'     in globals() : del minParticles_s$ID$\n\
 if 'maxParticles_s$ID$'     in globals() : del maxParticles_s$ID$\n\
 if 'particleNumber_s$ID$'   in globals() : del particleNumber_s$ID$\n\
+if 'surfaceTension_s$ID$'   in globals() : del surfaceTension_s$ID$\n\
 if 'maxVel_s$ID$'           in globals() : del maxVel_s$ID$\n";
 
 const std::string liquid_delete_variables_high = "\n\

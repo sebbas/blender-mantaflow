@@ -202,7 +202,7 @@ def smoke_pre_step_low_$ID$():\n\
     copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n\
     \n\
     # If obstacle has velocity, i.e. is moving switch to dynamic preconditioner\n\
-    if using_obstacle_s$ID$ and obvelC_s$ID$.getMaxValue() > 0:\n\
+    if using_obstacle_s$ID$ and obvelC_s$ID$.getMax() > 0:\n\
         mantaMsg('Using dynamic preconditioner')\n\
         preconditioner_s$ID$ = PcMGDynamic\n\
     else:\n\
@@ -254,7 +254,7 @@ def manta_step_$ID$(framenr):\n\
         setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOutIn_s$ID$)\n\
         flags_s$ID$.fillGrid()\n\
         \n\
-        maxVel_s$ID$ = vel_s$ID$.getMaxValue()\n\
+        maxVel_s$ID$ = vel_s$ID$.getMax()\n\
         if using_adaptTime_s$ID$:\n\
             mantaMsg('Adapt timestep')\n\
             s$ID$.adaptTimestep(maxVel_s$ID$)\n\
