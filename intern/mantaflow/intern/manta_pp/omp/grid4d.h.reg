@@ -21,10 +21,7 @@
 +Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","getMin",Grid4d<$CT$>::_W_16); 
 +Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","setBound",Grid4d<$CT$>::_W_17); 
 +Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","setBoundNeumann",Grid4d<$CT$>::_W_18); 
-+Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","getMaxAbsValue",Grid4d<$CT$>::_W_19); 
-+Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","getMaxValue",Grid4d<$CT$>::_W_20); 
-+Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","getMinValue",Grid4d<$CT$>::_W_21); 
-+Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","printGrid",Grid4d<$CT$>::_W_22); 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","printGrid",Grid4d<$CT$>::_W_19); 
 >Grid4d^int
 &static const Pb::Register _R_$IDX$ ("Grid4d<int>","Grid4Int","");
 >Grid4d^Real

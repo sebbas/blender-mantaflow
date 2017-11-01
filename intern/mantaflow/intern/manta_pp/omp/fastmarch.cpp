@@ -279,47 +279,58 @@ template class FastMarch<FmHeapEntryOut, +1>;
 #line 233 "fastmarch.cpp"
 
 
-// NT_DEBUG, todo - test w/o single threaded, should work...
+//! copy velocity into domain side, note - don't read & write same grid, hence velTmp copy
 
 
- struct knExtrapolateIntoBnd : public KernelBase { knExtrapolateIntoBnd(FlagGrid& flags, MACGrid& vel) :  KernelBase(&flags,0) ,flags(flags),vel(vel)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel )  {
+ struct knExtrapolateIntoBnd : public KernelBase { knExtrapolateIntoBnd(FlagGrid& flags, MACGrid& vel, const MACGrid& velTmp) :  KernelBase(&flags,0) ,flags(flags),vel(vel),velTmp(velTmp)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, const MACGrid& velTmp )  {
 	int c=0;
 	Vec3 v(0,0,0);
 	if( i==0 ) { 
-		v = vel(i+1,j,k);
+		v = velTmp(i+1,j,k);
 		if(v[0] < 0.) v[0] = 0.;
 		c++;
 	}
 	else if( i==(flags.getSizeX()-1) ) { 
-		v = vel(i-1,j,k);
+		v = velTmp(i-1,j,k);
 		if(v[0] > 0.) v[0] = 0.;
 		c++;
 	}
 	if( j==0 ) { 
-		v = vel(i,j+1,k);
+		v = velTmp(i,j+1,k);
 		if(v[1] < 0.) v[1] = 0.;
 		c++;
 	}
 	else if( j==(flags.getSizeY()-1) ) { 
-		v = vel(i,j-1,k);
+		v = velTmp(i,j-1,k);
 		if(v[1] > 0.) v[1] = 0.;
 		c++;
 	}
 	if(flags.is3D()) {
 	if( k==0 ) { 
-		v = vel(i,j,k+1);
+		v = velTmp(i,j,k+1);
 		if(v[2] < 0.) v[2] = 0.;
 		c++;
 	}
 	else if( k==(flags.getSizeZ()-1) ) { 
-		v = vel(i,j,k-1);
+		v = velTmp(i,j,k-1);
 		if(v[2] > 0.) v[2] = 0.;
 		c++;
 	} }
 	if(c>0) {
 		vel(i,j,k) = v/(Real)c;
 	}
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1; void runMessage() { debMsg("Executing kernel knExtrapolateIntoBnd ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, flags,vel);  } FlagGrid& flags; MACGrid& vel;   };
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline const MACGrid& getArg2() { return velTmp; } typedef MACGrid type2; void runMessage() { debMsg("Executing kernel knExtrapolateIntoBnd ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,vel,velTmp);  } } else { const int k=0; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,vel,velTmp);  } }  } FlagGrid& flags; MACGrid& vel; const MACGrid& velTmp;   };
+#line 262 "fastmarch.cpp"
+
+
 
 // todo - use getGradient instead?
 inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
@@ -402,8 +413,9 @@ void extrapolateMACSimple(FlagGrid& flags, MACGrid& vel, int distance = 4, Level
 		knUnprojectNormalComp( flags, vel, *phiObs, distance );
 	}
 
-	// copy tangential values into sides
-	knExtrapolateIntoBnd(flags, vel);
+	// copy tangential values into sides of domain
+	MACGrid velTmp( flags.getParent() ); velTmp.copyFrom(vel);
+	knExtrapolateIntoBnd(flags, vel, velTmp);
 } static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "extrapolateMACSimple" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); int distance = _args.getOpt<int >("distance",2,4,&_lock); LevelsetGrid* phiObs = _args.getPtrOpt<LevelsetGrid >("phiObs",3,NULL ,&_lock); bool intoObs = _args.getOpt<bool >("intoObs",4,false ,&_lock);   _retval = getPyNone(); extrapolateMACSimple(flags,vel,distance,phiObs,intoObs);  _args.check(); } pbFinalizePlugin(parent,"extrapolateMACSimple", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateMACSimple",e.what()); return 0; } } static const Pb::Register _RP_extrapolateMACSimple ("","extrapolateMACSimple",_W_0);  extern "C" { void PbRegister_extrapolateMACSimple() { KEEP_UNUSED(_RP_extrapolateMACSimple); } } 
 
 
@@ -441,7 +453,7 @@ void extrapolateMACSimple(FlagGrid& flags, MACGrid& vel, int distance = 4, Level
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,vel,weight,distance,d,c);  } }  } MACGrid& vel; Grid<Vec3>& weight; int distance; const int d; const int c;   };
-#line 377 "fastmarch.cpp"
+#line 378 "fastmarch.cpp"
 
 
 
@@ -509,7 +521,7 @@ template <class S>  struct knExtrapolateLsSimple : public KernelBase { knExtrapo
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,val,distance,tmp,d,direction);  } }  } Grid<S>& val; int distance; Grid<int>& tmp; const int d; S direction;   };
-#line 439 "fastmarch.cpp"
+#line 440 "fastmarch.cpp"
 
 
 
@@ -528,7 +540,7 @@ template <class S>  struct knSetRemaining : public KernelBase { knSetRemaining(G
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,phi,tmp,distance);  } }  } Grid<S>& phi; Grid<int>& tmp; S distance;   };
-#line 463 "fastmarch.cpp"
+#line 464 "fastmarch.cpp"
 
 
 

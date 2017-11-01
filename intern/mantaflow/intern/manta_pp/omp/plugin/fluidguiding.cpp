@@ -22,7 +22,6 @@
  * Plugins for pressure correction: solve_pressure, and ghost fluid helpers
  *
  ******************************************************************************/
-#include <math.h>
 #include "vectorbase.h"
 #include "grid.h"
 #include "kernel.h"
@@ -77,7 +76,7 @@ Matrix get1DGaussianBlurKernel(const int n, const int sigma) {
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,in,out,kernel);  } }  } MACGrid& in; MACGrid& out; const Matrix& kernel;   };
-#line 50 "plugin/fluidguiding.cpp"
+#line 49 "plugin/fluidguiding.cpp"
 
 
 
@@ -101,7 +100,7 @@ Matrix get1DGaussianBlurKernel(const int n, const int sigma) {
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,in,out,kernel);  } }  } MACGrid& in; MACGrid& out; const Matrix& kernel;   };
-#line 63 "plugin/fluidguiding.cpp"
+#line 62 "plugin/fluidguiding.cpp"
 
 
 
@@ -125,7 +124,7 @@ Matrix get1DGaussianBlurKernel(const int n, const int sigma) {
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,in,out,kernel);  } }  } MACGrid& in; MACGrid& out; const Matrix& kernel;   };
-#line 76 "plugin/fluidguiding.cpp"
+#line 75 "plugin/fluidguiding.cpp"
 
 
 
@@ -332,6 +331,8 @@ void solvePressure(
 	bool enforceCompatibility = false,
     bool useL2Norm = false, 
 	bool zeroPressureFixing = false,
+	const Grid<Real> *curv = NULL,
+	const Real surfTens = 0.0,
 	Grid<Real>* retRhs = NULL );
 
 //! Main function for fluid guiding , includes "regular" pressure solve
@@ -376,7 +377,7 @@ void PD_fluid_guiding(MACGrid& vel, MACGrid& velT, Grid<Real>& pressure, FlagGri
 		Real cgAccuracyAdaptive = cgAccuracy;
 
 		solvePressure (z, pressure, flags, cgAccuracyAdaptive, phi, perCellCorr, fractions, gfClamp,
-		    cgMaxIterFac, true, preconditioner, false, false, zeroPressureFixing, NULL );
+		    cgMaxIterFac, true, preconditioner, false, false, zeroPressureFixing );
 
 		// y-update
 		y.copyFrom(z);

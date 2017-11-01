@@ -109,10 +109,13 @@ ostream& operator<<(ostream& os, const MuTime& t) {
 	return os;
 }
 
-// print info about this mantaflow build, used eg by printBuildInfo in fluidsolver.cpp
+//! print info about this mantaflow build, used eg by printBuildInfo in fluidsolver.cpp
 std::string buildInfoString() {
 	std::ostringstream infoStr;
-	infoStr << "mantaflow";
+#	ifndef MANTAVERSION
+#	define MANTAVERSION "<unknown-version>"
+#	endif
+	infoStr << "mantaflow " << MANTAVERSION;
 
 	// os
 #if defined(WIN32) || defined(_WIN32)
@@ -155,6 +158,8 @@ std::string buildInfoString() {
 	infoStr << " from "<< __DATE__<<", "<<__TIME__;
 	return infoStr.str();
 }
+
+//! note - generic PYTHON helpers in fluidsolver.cpp , no python bindings here
 
 } // namespace
 

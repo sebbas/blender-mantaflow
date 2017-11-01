@@ -47,8 +47,10 @@ namespace Manta {
 		sum = v[idx];
 }    inline operator double () { return sum; } inline double  & getRet() { return sum; }  inline const Grid<Real>& getArg0() { return v; } typedef Grid<Real> type0; void runMessage() { debMsg("Executing kernel minReduction ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r)  {   for (IndexInt idx=__r.begin(); idx!=(IndexInt)__r.end(); idx++) op(idx, v,sum);   } void run() {   tbb::parallel_reduce (tbb::blocked_range<IndexInt>(0, size), *this);   }  minReduction (minReduction& o, tbb::split) : KernelBase(o) ,v(o.v) ,sum(0) {} void join(const minReduction & o) { sum = min(sum,o.sum);  }  const Grid<Real>& v;  double sum;  };
 
-// ... add own test code here if necessary ...
 
+
+
+// ... add more test code here if necessary ...
 
 } //namespace
 

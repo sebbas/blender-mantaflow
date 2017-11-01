@@ -2,6 +2,8 @@ extern "C" {
 		extern void PbRegister_mantaMsg() ;
 		extern void PbRegister_printBuildInfo() ;
 		extern void PbRegister_setDebugLevel() ;
+		extern void PbRegister_assertNumpy() ;
+		extern void PbRegister_cgSolveDiffusion() ;
 		extern void PbRegister_gridMaxDiff() ;
 		extern void PbRegister_gridMaxDiffInt() ;
 		extern void PbRegister_gridMaxDiffVec3() ;
@@ -39,11 +41,13 @@ extern "C" {
 		extern void PbRegister_getUniFileSize() ;
 		extern void PbRegister_printUniFileInfoString() ;
 		extern void PbRegister_quantizeGrid() ;
+		extern void PbRegister_quantizeGridVec3() ;
 		extern void PbRegister_resetPhiInObs() ;
 		extern void PbRegister_advectSemiLagrange() ;
 		extern void PbRegister_addGridToParts() ;
 		extern void PbRegister_addGridToPartsVec3() ;
 		extern void PbRegister_addGravity() ;
+		extern void PbRegister_addGravityNoScale() ;
 		extern void PbRegister_addBuoyancy() ;
 		extern void PbRegister_setOpenBound() ;
 		extern void PbRegister_resetOutflow() ;
@@ -54,8 +58,11 @@ extern "C" {
 		extern void PbRegister_setForceField() ;
 		extern void PbRegister_setInitialVelocity() ;
 		extern void PbRegister_setForceIn() ;
+		extern void PbRegister_apicMapPartsToMAC() ;
+		extern void PbRegister_apicMapMACGridToParts() ;
 		extern void PbRegister_sampleFlagsWithParticles() ;
 		extern void PbRegister_sampleLevelsetWithParticles() ;
+		extern void PbRegister_sampleShapeWithParticles() ;
 		extern void PbRegister_markFluidCells() ;
 		extern void PbRegister_testInitGridWithPos() ;
 		extern void PbRegister_adjustNumber() ;
@@ -72,6 +79,7 @@ extern "C" {
 		extern void PbRegister_mapMACToParts() ;
 		extern void PbRegister_flipVelocityUpdate() ;
 		extern void PbRegister_combineGridVel() ;
+		extern void PbRegister_getLaplacian() ;
 		extern void PbRegister_adjustSndParts() ;
 		extern void PbRegister_updateSndParts() ;
 		extern void PbRegister_sampleSndParts() ;
@@ -100,6 +108,7 @@ extern "C" {
 		extern void PbRegister_projectPpmFull() ;
 		extern void PbRegister_addTestParts() ;
 		extern void PbRegister_pdataMaxDiff() ;
+		extern void PbRegister_calcCenterOfMass() ;
 		extern void PbRegister_updateFractions() ;
 		extern void PbRegister_setObstacleFlags() ;
 		extern void PbRegister_initVortexVelocity() ;
@@ -164,6 +173,8 @@ namespace Pb {
 		PbRegister_mantaMsg() ;
 		PbRegister_printBuildInfo() ;
 		PbRegister_setDebugLevel() ;
+		PbRegister_assertNumpy() ;
+		PbRegister_cgSolveDiffusion() ;
 		PbRegister_gridMaxDiff() ;
 		PbRegister_gridMaxDiffInt() ;
 		PbRegister_gridMaxDiffVec3() ;
@@ -201,11 +212,13 @@ namespace Pb {
 		PbRegister_getUniFileSize() ;
 		PbRegister_printUniFileInfoString() ;
 		PbRegister_quantizeGrid() ;
+		PbRegister_quantizeGridVec3() ;
 		PbRegister_resetPhiInObs() ;
 		PbRegister_advectSemiLagrange() ;
 		PbRegister_addGridToParts() ;
 		PbRegister_addGridToPartsVec3() ;
 		PbRegister_addGravity() ;
+		PbRegister_addGravityNoScale() ;
 		PbRegister_addBuoyancy() ;
 		PbRegister_setOpenBound() ;
 		PbRegister_resetOutflow() ;
@@ -216,8 +229,11 @@ namespace Pb {
 		PbRegister_setForceField() ;
 		PbRegister_setInitialVelocity() ;
 		PbRegister_setForceIn() ;
+		PbRegister_apicMapPartsToMAC() ;
+		PbRegister_apicMapMACGridToParts() ;
 		PbRegister_sampleFlagsWithParticles() ;
 		PbRegister_sampleLevelsetWithParticles() ;
+		PbRegister_sampleShapeWithParticles() ;
 		PbRegister_markFluidCells() ;
 		PbRegister_testInitGridWithPos() ;
 		PbRegister_adjustNumber() ;
@@ -234,6 +250,7 @@ namespace Pb {
 		PbRegister_mapMACToParts() ;
 		PbRegister_flipVelocityUpdate() ;
 		PbRegister_combineGridVel() ;
+		PbRegister_getLaplacian() ;
 		PbRegister_adjustSndParts() ;
 		PbRegister_updateSndParts() ;
 		PbRegister_sampleSndParts() ;
@@ -262,6 +279,7 @@ namespace Pb {
 		PbRegister_projectPpmFull() ;
 		PbRegister_addTestParts() ;
 		PbRegister_pdataMaxDiff() ;
+		PbRegister_calcCenterOfMass() ;
 		PbRegister_updateFractions() ;
 		PbRegister_setObstacleFlags() ;
 		PbRegister_initVortexVelocity() ;

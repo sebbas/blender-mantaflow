@@ -38,17 +38,21 @@ namespace Manta {
 //       MGDynamic, but works only if Poisson equation does not change)
 enum Preconditioner { PcNone = 0, PcMIC = 1, PcMGDynamic = 2, PcMGStatic = 3 };
 
+inline static Real surfTensHelper(const IndexInt idx, const int offset, const Grid<Real> &phi, const Grid<Real> &curv, const Real surfTens, const Real gfClamp);
+
 //! Kernel: Construct the right-hand side of the poisson equation
 
 
 
- struct MakeRhs : public KernelBase { MakeRhs(FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, Grid<Real>* perCellCorr, MACGrid* fractions) :  KernelBase(&flags,1) ,flags(flags),rhs(rhs),vel(vel),perCellCorr(perCellCorr),fractions(fractions) ,cnt(0),sum(0)  { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, Grid<Real>* perCellCorr, MACGrid* fractions ,int& cnt,double& sum)  {
+
+
+ struct MakeRhs : public KernelBase { MakeRhs(FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, Grid<Real>* perCellCorr, MACGrid* fractions, const Grid<Real> *phi, const Grid<Real> *curv, const Real surfTens, const Real gfClamp) :  KernelBase(&flags,1) ,flags(flags),rhs(rhs),vel(vel),perCellCorr(perCellCorr),fractions(fractions),phi(phi),curv(curv),surfTens(surfTens),gfClamp(gfClamp) ,cnt(0),sum(0)  { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, Grid<Real>* perCellCorr, MACGrid* fractions, const Grid<Real> *phi, const Grid<Real> *curv, const Real surfTens, const Real gfClamp ,int& cnt,double& sum)  {
 	if (!flags.isFluid(i,j,k)) {
 		rhs(i,j,k) = 0;
 		return;
 	}
 
-	// compute divergence 
+	// compute negative divergence 
 	// no flag checks: assumes vel at obstacle interfaces is set to zero
 	Real set(0);
 	if(!fractions) {
@@ -60,6 +64,20 @@ enum Preconditioner { PcNone = 0, PcMIC = 1, PcMGDynamic = 2, PcMGStatic = 3 };
 							(*fractions)(i,j,k).y * vel(i,j,k).y - (*fractions)(i,j+1,k).y * vel(i,j+1,k).y; 
 		if(vel.is3D()) set+=(*fractions)(i,j,k).z * vel(i,j,k).z - (*fractions)(i,j,k+1).z * vel(i,j,k+1).z;
 	}
+
+	// compute surface tension effect (optional)
+	if(phi && curv) {
+		const IndexInt idx = flags.index(i,j,k);
+		const int X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
+		if(flags.isEmpty(i-1,j,k))     set += surfTensHelper(idx, -X, *phi, *curv, surfTens, gfClamp);
+		if(flags.isEmpty(i+1,j,k))	   set += surfTensHelper(idx, +X, *phi, *curv, surfTens, gfClamp);
+		if(flags.isEmpty(i,j-1,k))	   set += surfTensHelper(idx, -Y, *phi, *curv, surfTens, gfClamp);
+		if(flags.isEmpty(i,j+1,k))	   set += surfTensHelper(idx, +Y, *phi, *curv, surfTens, gfClamp);
+		if(vel.is3D()) {
+			if(flags.isEmpty(i,j,k-1)) set += surfTensHelper(idx, -Z, *phi, *curv, surfTens, gfClamp);
+			if(flags.isEmpty(i,j,k+1)) set += surfTensHelper(idx, +Z, *phi, *curv, surfTens, gfClamp);
+		}
+	}
 	
 	// per cell divergence correction (optional)
 	if(perCellCorr) 
@@ -70,7 +88,7 @@ enum Preconditioner { PcNone = 0, PcMIC = 1, PcMGDynamic = 2, PcMGStatic = 3 };
 	cnt++;
 	
 	rhs(i,j,k) = set;
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return rhs; } typedef Grid<Real> type1;inline MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline Grid<Real>* getArg3() { return perCellCorr; } typedef Grid<Real> type3;inline MACGrid* getArg4() { return fractions; } typedef MACGrid type4; void runMessage() { debMsg("Executing kernel MakeRhs ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r)  {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=1; j<_maxY; j++) for (int i=1; i<_maxX; i++) op(i,j,k,flags,rhs,vel,perCellCorr,fractions,cnt,sum); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=1; i<_maxX; i++) op(i,j,k,flags,rhs,vel,perCellCorr,fractions,cnt,sum); }  } void run() {  if (maxZ>1) tbb::parallel_reduce (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_reduce (tbb::blocked_range<IndexInt>(1, maxY), *this);  }  MakeRhs (MakeRhs& o, tbb::split) : KernelBase(o) ,flags(o.flags),rhs(o.rhs),vel(o.vel),perCellCorr(o.perCellCorr),fractions(o.fractions) ,cnt(0),sum(0) {} void join(const MakeRhs & o) { cnt += o.cnt; sum += o.sum;  }  FlagGrid& flags; Grid<Real>& rhs; MACGrid& vel; Grid<Real>* perCellCorr; MACGrid* fractions;  int cnt; double sum;  };
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return rhs; } typedef Grid<Real> type1;inline MACGrid& getArg2() { return vel; } typedef MACGrid type2;inline Grid<Real>* getArg3() { return perCellCorr; } typedef Grid<Real> type3;inline MACGrid* getArg4() { return fractions; } typedef MACGrid type4;inline const Grid<Real> * getArg5() { return phi; } typedef Grid<Real>  type5;inline const Grid<Real> * getArg6() { return curv; } typedef Grid<Real>  type6;inline const Real& getArg7() { return surfTens; } typedef Real type7;inline const Real& getArg8() { return gfClamp; } typedef Real type8; void runMessage() { debMsg("Executing kernel MakeRhs ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r)  {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=1; j<_maxY; j++) for (int i=1; i<_maxX; i++) op(i,j,k,flags,rhs,vel,perCellCorr,fractions,phi,curv,surfTens,gfClamp,cnt,sum); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=1; i<_maxX; i++) op(i,j,k,flags,rhs,vel,perCellCorr,fractions,phi,curv,surfTens,gfClamp,cnt,sum); }  } void run() {  if (maxZ>1) tbb::parallel_reduce (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_reduce (tbb::blocked_range<IndexInt>(1, maxY), *this);  }  MakeRhs (MakeRhs& o, tbb::split) : KernelBase(o) ,flags(o.flags),rhs(o.rhs),vel(o.vel),perCellCorr(o.perCellCorr),fractions(o.fractions),phi(o.phi),curv(o.curv),surfTens(o.surfTens),gfClamp(o.gfClamp) ,cnt(0),sum(0) {} void join(const MakeRhs & o) { cnt += o.cnt; sum += o.sum;  }  FlagGrid& flags; Grid<Real>& rhs; MACGrid& vel; Grid<Real>* perCellCorr; MACGrid* fractions; const Grid<Real> * phi; const Grid<Real> * curv; const Real surfTens; const Real gfClamp;  int cnt; double sum;  };
 
 //! Kernel: make velocity divergence free by subtracting pressure gradient
 
@@ -119,6 +137,11 @@ inline static Real ghostFluidHelper(IndexInt idx, int offset, const Grid<Real> &
 	return (1-(1/alpha)); 
 }
 
+inline static Real surfTensHelper(const IndexInt idx, const int offset, const Grid<Real> &phi, const Grid<Real> &curv, const Real surfTens, const Real gfClamp)
+{
+	return surfTens*(curv[idx+offset] - ghostFluidHelper(idx, offset, phi, gfClamp) * curv[idx]);
+}
+
 //! Kernel: Adapt A0 for ghost fluid
 
 
@@ -140,16 +163,16 @@ inline static Real ghostFluidHelper(IndexInt idx, int offset, const Grid<Real> &
 //! Kernel: Apply velocity update: ghost fluid contribution
 
 
- struct CorrectVelocityGhostFluid : public KernelBase { CorrectVelocityGhostFluid(MACGrid &vel, const FlagGrid &flags, const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp) :  KernelBase(&vel,1) ,vel(vel),flags(flags),pressure(pressure),phi(phi),gfClamp(gfClamp)   { runMessage(); run(); }  inline void op(int i, int j, int k, MACGrid &vel, const FlagGrid &flags, const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp ) const {
+
+ struct CorrectVelocityGhostFluid : public KernelBase { CorrectVelocityGhostFluid(MACGrid &vel, const FlagGrid &flags, const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp, const Grid<Real> *curv, const Real surfTens) :  KernelBase(&vel,1) ,vel(vel),flags(flags),pressure(pressure),phi(phi),gfClamp(gfClamp),curv(curv),surfTens(surfTens)   { runMessage(); run(); }  inline void op(int i, int j, int k, MACGrid &vel, const FlagGrid &flags, const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp, const Grid<Real> *curv, const Real surfTens ) const {
 	const IndexInt X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
 	const IndexInt idx = flags.index(i,j,k);
-	if (flags.isFluid(idx))
-	{
+	if (flags.isFluid(idx)) {
 		if (flags.isEmpty(i-1,j,k)) vel[idx][0] += pressure[idx] * ghostFluidHelper(idx, -X, phi, gfClamp);
 		if (flags.isEmpty(i,j-1,k)) vel[idx][1] += pressure[idx] * ghostFluidHelper(idx, -Y, phi, gfClamp);
 		if (flags.is3D() && flags.isEmpty(i,j,k-1)) vel[idx][2] += pressure[idx] * ghostFluidHelper(idx, -Z, phi, gfClamp);
 	}
-	else if (flags.isEmpty(idx)&&!flags.isOutflow(idx)) // do not change velocities in outflow cells
+	else if (flags.isEmpty(idx) && !flags.isOutflow(idx)) // do not change velocities in outflow cells
 	{
 		if (flags.isFluid(i-1,j,k)) vel[idx][0] -= pressure(i-1,j,k) * ghostFluidHelper(idx-X, +X, phi, gfClamp);
 		else                        vel[idx].x  = 0.f;
@@ -160,7 +183,23 @@ inline static Real ghostFluidHelper(IndexInt idx, int offset, const Grid<Real> &
 		else                        vel[idx].z  = 0.f;
 		}
 	}
-}   inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline const Grid<Real> & getArg2() { return pressure; } typedef Grid<Real>  type2;inline const Grid<Real> & getArg3() { return phi; } typedef Grid<Real>  type3;inline Real& getArg4() { return gfClamp; } typedef Real type4; void runMessage() { debMsg("Executing kernel CorrectVelocityGhostFluid ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=1; j<_maxY; j++) for (int i=1; i<_maxX; i++) op(i,j,k,vel,flags,pressure,phi,gfClamp); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=1; i<_maxX; i++) op(i,j,k,vel,flags,pressure,phi,gfClamp); }  } void run() {  if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(1, maxY), *this);  }  MACGrid& vel; const FlagGrid& flags; const Grid<Real> & pressure; const Grid<Real> & phi; Real gfClamp;   };
+
+	if(curv) {
+		if(flags.isFluid(idx))	{
+			if(flags.isEmpty(i-1,j,k))                 vel[idx].x += surfTensHelper(idx, -X, phi, *curv, surfTens, gfClamp);
+			if(flags.isEmpty(i,j-1,k))                 vel[idx].y += surfTensHelper(idx, -Y, phi, *curv, surfTens, gfClamp);
+			if(flags.is3D() && flags.isEmpty(i,j,k-1)) vel[idx].z += surfTensHelper(idx, -Z, phi, *curv, surfTens, gfClamp);
+		} 
+		else if (flags.isEmpty(idx) && !flags.isOutflow(idx)) // do not change velocities in outflow cells
+		{
+			vel[idx].x -= (flags.isFluid(i-1,j,k)) ? surfTensHelper(idx-X, +X, phi, *curv, surfTens, gfClamp) : 0.f;
+			vel[idx].y -= (flags.isFluid(i,j-1,k)) ? surfTensHelper(idx-Y, +Y, phi, *curv, surfTens, gfClamp) : 0.f;
+			if(flags.is3D()) {
+			vel[idx].z -= (flags.isFluid(i,j,k-1)) ? surfTensHelper(idx-Z, +Z, phi, *curv, surfTens, gfClamp) : 0.f;
+			}
+		}
+	}
+}   inline MACGrid& getArg0() { return vel; } typedef MACGrid type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline const Grid<Real> & getArg2() { return pressure; } typedef Grid<Real>  type2;inline const Grid<Real> & getArg3() { return phi; } typedef Grid<Real>  type3;inline Real& getArg4() { return gfClamp; } typedef Real type4;inline const Grid<Real> * getArg5() { return curv; } typedef Grid<Real>  type5;inline const Real& getArg6() { return surfTens; } typedef Real type6; void runMessage() { debMsg("Executing kernel CorrectVelocityGhostFluid ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=1; j<_maxY; j++) for (int i=1; i<_maxX; i++) op(i,j,k,vel,flags,pressure,phi,gfClamp,curv,surfTens); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=1; i<_maxX; i++) op(i,j,k,vel,flags,pressure,phi,gfClamp,curv,surfTens); }  } void run() {  if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(1, maxY), *this);  }  MACGrid& vel; const FlagGrid& flags; const Grid<Real> & pressure; const Grid<Real> & phi; Real gfClamp; const Grid<Real> * curv; const Real surfTens;   };
 
 
 // improve behavior of clamping for large time steps:
@@ -258,6 +297,8 @@ void releaseMG(FluidSolver* solver=nullptr) {
 //! preconditioner: MIC, or MG (see Preconditioner enum)
 //! useL2Norm: use max norm by default, can be turned to L2 here
 //! zeroPressureFixing: remove null space by fixing a single pressure value, needed for MG 
+//! curv: curvature for surface tension effects
+//! surfTens: surface tension coefficient
 //! retRhs: return RHS divergence, e.g., for debugging; optional
 
 
@@ -271,7 +312,9 @@ void releaseMG(FluidSolver* solver=nullptr) {
 
 
 
-void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Real cgAccuracy = 1e-3, Grid<Real>* phi = 0, Grid<Real>* perCellCorr = 0, MACGrid* fractions = 0, Real gfClamp = 1e-04, Real cgMaxIterFac = 1.5, bool precondition = true, int preconditioner = PcMIC, bool enforceCompatibility = false, bool useL2Norm = false, bool zeroPressureFixing = false, Grid<Real>* retRhs = NULL ) {
+
+
+void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Real cgAccuracy = 1e-3, Grid<Real>* phi = 0, Grid<Real>* perCellCorr = 0, MACGrid* fractions = 0, Real gfClamp = 1e-04, Real cgMaxIterFac = 1.5, bool precondition = true, int preconditioner = PcMIC, bool enforceCompatibility = false, bool useL2Norm = false, bool zeroPressureFixing = false, const Grid<Real> *curv = NULL, const Real surfTens = 0., Grid<Real>* retRhs = NULL ) {
 	if (precondition==false) preconditioner = PcNone; // for backwards compatibility
 
 	// reserve temp grids
@@ -286,14 +329,14 @@ void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Real cgA
 	Grid<Real> rhs(parent);
 		
 	// setup matrix and boundaries 
-	MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak, fractions);
+	MakeLaplaceMatrix(flags, A0, Ai, Aj, Ak, fractions);
 
 	if (phi) {
 		ApplyGhostFluidDiagonal(A0, flags, *phi, gfClamp);
 	}
 	
 	// compute divergence and init right hand side
-	MakeRhs kernMakeRhs (flags, rhs, vel, perCellCorr, fractions);
+	MakeRhs kernMakeRhs (flags, rhs, vel, perCellCorr, fractions,  phi, curv, surfTens, gfClamp );
 	
 	if (enforceCompatibility)
 		rhs += (Real)(-kernMakeRhs.sum / (Real)kernMakeRhs.cnt);
@@ -401,7 +444,7 @@ void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Real cgA
 
 	CorrectVelocity(flags, vel, pressure ); 
 	if (phi) {
-		CorrectVelocityGhostFluid (vel, flags, pressure, *phi, gfClamp);
+		CorrectVelocityGhostFluid (vel, flags, pressure, *phi, gfClamp,  curv, surfTens );
 		// improve behavior of clamping for large time steps:
 		ReplaceClampedGhostFluidVels (vel, flags, pressure, *phi, gfClamp);
 	}
@@ -410,7 +453,7 @@ void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Real cgA
 	if(retRhs) {
 		retRhs->copyFrom( rhs );
 	}
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "solvePressure" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Real>& pressure = *_args.getPtr<Grid<Real> >("pressure",1,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",2,&_lock); Real cgAccuracy = _args.getOpt<Real >("cgAccuracy",3,1e-3,&_lock); Grid<Real>* phi = _args.getPtrOpt<Grid<Real> >("phi",4,0,&_lock); Grid<Real>* perCellCorr = _args.getPtrOpt<Grid<Real> >("perCellCorr",5,0,&_lock); MACGrid* fractions = _args.getPtrOpt<MACGrid >("fractions",6,0,&_lock); Real gfClamp = _args.getOpt<Real >("gfClamp",7,1e-04,&_lock); Real cgMaxIterFac = _args.getOpt<Real >("cgMaxIterFac",8,1.5,&_lock); bool precondition = _args.getOpt<bool >("precondition",9,true,&_lock); int preconditioner = _args.getOpt<int >("preconditioner",10,PcMIC,&_lock); bool enforceCompatibility = _args.getOpt<bool >("enforceCompatibility",11,false,&_lock); bool useL2Norm = _args.getOpt<bool >("useL2Norm",12,false,&_lock); bool zeroPressureFixing = _args.getOpt<bool >("zeroPressureFixing",13,false,&_lock); Grid<Real>* retRhs = _args.getPtrOpt<Grid<Real> >("retRhs",14,NULL ,&_lock);   _retval = getPyNone(); solvePressure(vel,pressure,flags,cgAccuracy,phi,perCellCorr,fractions,gfClamp,cgMaxIterFac,precondition,preconditioner,enforceCompatibility,useL2Norm,zeroPressureFixing,retRhs);  _args.check(); } pbFinalizePlugin(parent,"solvePressure", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("solvePressure",e.what()); return 0; } } static const Pb::Register _RP_solvePressure ("","solvePressure",_W_1);  extern "C" { void PbRegister_solvePressure() { KEEP_UNUSED(_RP_solvePressure); } } 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "solvePressure" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Real>& pressure = *_args.getPtr<Grid<Real> >("pressure",1,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",2,&_lock); Real cgAccuracy = _args.getOpt<Real >("cgAccuracy",3,1e-3,&_lock); Grid<Real>* phi = _args.getPtrOpt<Grid<Real> >("phi",4,0,&_lock); Grid<Real>* perCellCorr = _args.getPtrOpt<Grid<Real> >("perCellCorr",5,0,&_lock); MACGrid* fractions = _args.getPtrOpt<MACGrid >("fractions",6,0,&_lock); Real gfClamp = _args.getOpt<Real >("gfClamp",7,1e-04,&_lock); Real cgMaxIterFac = _args.getOpt<Real >("cgMaxIterFac",8,1.5,&_lock); bool precondition = _args.getOpt<bool >("precondition",9,true,&_lock); int preconditioner = _args.getOpt<int >("preconditioner",10,PcMIC,&_lock); bool enforceCompatibility = _args.getOpt<bool >("enforceCompatibility",11,false,&_lock); bool useL2Norm = _args.getOpt<bool >("useL2Norm",12,false,&_lock); bool zeroPressureFixing = _args.getOpt<bool >("zeroPressureFixing",13,false,&_lock); const Grid<Real> * curv = _args.getPtrOpt<Grid<Real>  >("curv",14,NULL,&_lock); const Real surfTens = _args.getOpt<Real >("surfTens",15,0.,&_lock); Grid<Real>* retRhs = _args.getPtrOpt<Grid<Real> >("retRhs",16,NULL ,&_lock);   _retval = getPyNone(); solvePressure(vel,pressure,flags,cgAccuracy,phi,perCellCorr,fractions,gfClamp,cgMaxIterFac,precondition,preconditioner,enforceCompatibility,useL2Norm,zeroPressureFixing,curv,surfTens,retRhs);  _args.check(); } pbFinalizePlugin(parent,"solvePressure", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("solvePressure",e.what()); return 0; } } static const Pb::Register _RP_solvePressure ("","solvePressure",_W_1);  extern "C" { void PbRegister_solvePressure() { KEEP_UNUSED(_RP_solvePressure); } } 
 
 } // end namespace
 

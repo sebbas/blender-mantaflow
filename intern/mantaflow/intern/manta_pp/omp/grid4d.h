@@ -184,13 +184,8 @@ template<class T> class Grid4d : public Grid4dBase {public:
 	//! set all boundary cells to last inner value (Neumann)
 	void setBoundNeumann(int boundaryWidth=1); static PyObject* _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); Grid4d* pbo = dynamic_cast<Grid4d*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid4d::setBoundNeumann" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; int boundaryWidth = _args.getOpt<int >("boundaryWidth",0,1,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->setBoundNeumann(boundaryWidth);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"Grid4d::setBoundNeumann" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("Grid4d::setBoundNeumann",e.what()); return 0; } }
 
-	//! for compatibility, old names:
-	Real getMaxAbsValue() { return getMaxAbs(); } static PyObject* _W_19 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); Grid4d* pbo = dynamic_cast<Grid4d*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid4d::getMaxAbsValue" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getMaxAbsValue());  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"Grid4d::getMaxAbsValue" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("Grid4d::getMaxAbsValue",e.what()); return 0; } }
-	Real getMaxValue() { return getMax(); } static PyObject* _W_20 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); Grid4d* pbo = dynamic_cast<Grid4d*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid4d::getMaxValue" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getMaxValue());  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"Grid4d::getMaxValue" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("Grid4d::getMaxValue",e.what()); return 0; } }
-	Real getMinValue() { return getMin(); } static PyObject* _W_21 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); Grid4d* pbo = dynamic_cast<Grid4d*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid4d::getMinValue" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getMinValue());  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"Grid4d::getMinValue" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("Grid4d::getMinValue",e.what()); return 0; } }
-
 	//! debugging helper, print grid from Python
-	void printGrid(int zSlice=-1, int tSlice=-1, bool printIndex=false, int bnd=0); static PyObject* _W_22 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); Grid4d* pbo = dynamic_cast<Grid4d*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid4d::printGrid" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; int zSlice = _args.getOpt<int >("zSlice",0,-1,&_lock); int tSlice = _args.getOpt<int >("tSlice",1,-1,&_lock); bool printIndex = _args.getOpt<bool >("printIndex",2,false,&_lock); int bnd = _args.getOpt<int >("bnd",3,0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->printGrid(zSlice,tSlice,printIndex,bnd);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"Grid4d::printGrid" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("Grid4d::printGrid",e.what()); return 0; } } 
+	void printGrid(int zSlice=-1, int tSlice=-1, bool printIndex=false, int bnd=0); static PyObject* _W_19 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); Grid4d* pbo = dynamic_cast<Grid4d*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid4d::printGrid" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; int zSlice = _args.getOpt<int >("zSlice",0,-1,&_lock); int tSlice = _args.getOpt<int >("tSlice",1,-1,&_lock); bool printIndex = _args.getOpt<bool >("printIndex",2,false,&_lock); int bnd = _args.getOpt<int >("bnd",3,0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->printGrid(zSlice,tSlice,printIndex,bnd);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"Grid4d::printGrid" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("Grid4d::printGrid",e.what()); return 0; } } 
 
 	// c++ only operators
 	template<class S> Grid4d<T>& operator+=(const Grid4d<S>& a);
@@ -276,7 +271,7 @@ template <class T, class S>  struct Grid4dAdd : public KernelBase { Grid4dAdd(Gr
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } Grid4d<T>& me; const Grid4d<S>& other;   };
-#line 264 "grid4d.h"
+#line 259 "grid4d.h"
 
 
 template <class T, class S>  struct Grid4dSub : public KernelBase { Grid4dSub(Grid4d<T>& me, const Grid4d<S>& other) :  KernelBase(&me,0) ,me(me),other(other)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid4d<T>& me, const Grid4d<S>& other )  { me[idx] -= other[idx]; }    inline Grid4d<T>& getArg0() { return me; } typedef Grid4d<T> type0;inline const Grid4d<S>& getArg1() { return other; } typedef Grid4d<S> type1; void runMessage() { debMsg("Executing kernel Grid4dSub ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -284,7 +279,7 @@ template <class T, class S>  struct Grid4dSub : public KernelBase { Grid4dSub(Gr
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } Grid4d<T>& me; const Grid4d<S>& other;   };
-#line 265 "grid4d.h"
+#line 260 "grid4d.h"
 
 
 template <class T, class S>  struct Grid4dMult : public KernelBase { Grid4dMult(Grid4d<T>& me, const Grid4d<S>& other) :  KernelBase(&me,0) ,me(me),other(other)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid4d<T>& me, const Grid4d<S>& other )  { me[idx] *= other[idx]; }    inline Grid4d<T>& getArg0() { return me; } typedef Grid4d<T> type0;inline const Grid4d<S>& getArg1() { return other; } typedef Grid4d<S> type1; void runMessage() { debMsg("Executing kernel Grid4dMult ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -292,7 +287,7 @@ template <class T, class S>  struct Grid4dMult : public KernelBase { Grid4dMult(
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } Grid4d<T>& me; const Grid4d<S>& other;   };
-#line 266 "grid4d.h"
+#line 261 "grid4d.h"
 
 
 template <class T, class S>  struct Grid4dDiv : public KernelBase { Grid4dDiv(Grid4d<T>& me, const Grid4d<S>& other) :  KernelBase(&me,0) ,me(me),other(other)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid4d<T>& me, const Grid4d<S>& other )  { me[idx] /= other[idx]; }    inline Grid4d<T>& getArg0() { return me; } typedef Grid4d<T> type0;inline const Grid4d<S>& getArg1() { return other; } typedef Grid4d<S> type1; void runMessage() { debMsg("Executing kernel Grid4dDiv ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -300,7 +295,7 @@ template <class T, class S>  struct Grid4dDiv : public KernelBase { Grid4dDiv(Gr
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } Grid4d<T>& me; const Grid4d<S>& other;   };
-#line 267 "grid4d.h"
+#line 262 "grid4d.h"
 
 
 template <class T, class S>  struct Grid4dAddScalar : public KernelBase { Grid4dAddScalar(Grid4d<T>& me, const S& other) :  KernelBase(&me,0) ,me(me),other(other)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid4d<T>& me, const S& other )  { me[idx] += other; }    inline Grid4d<T>& getArg0() { return me; } typedef Grid4d<T> type0;inline const S& getArg1() { return other; } typedef S type1; void runMessage() { debMsg("Executing kernel Grid4dAddScalar ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -308,7 +303,7 @@ template <class T, class S>  struct Grid4dAddScalar : public KernelBase { Grid4d
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } Grid4d<T>& me; const S& other;   };
-#line 268 "grid4d.h"
+#line 263 "grid4d.h"
 
 
 template <class T, class S>  struct Grid4dMultScalar : public KernelBase { Grid4dMultScalar(Grid4d<T>& me, const S& other) :  KernelBase(&me,0) ,me(me),other(other)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid4d<T>& me, const S& other )  { me[idx] *= other; }    inline Grid4d<T>& getArg0() { return me; } typedef Grid4d<T> type0;inline const S& getArg1() { return other; } typedef S type1; void runMessage() { debMsg("Executing kernel Grid4dMultScalar ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -316,7 +311,7 @@ template <class T, class S>  struct Grid4dMultScalar : public KernelBase { Grid4
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } Grid4d<T>& me; const S& other;   };
-#line 269 "grid4d.h"
+#line 264 "grid4d.h"
 
 
 template <class T, class S>  struct Grid4dScaledAdd : public KernelBase { Grid4dScaledAdd(Grid4d<T>& me, const Grid4d<T>& other, const S& factor) :  KernelBase(&me,0) ,me(me),other(other),factor(factor)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid4d<T>& me, const Grid4d<T>& other, const S& factor )  { me[idx] += factor * other[idx]; }    inline Grid4d<T>& getArg0() { return me; } typedef Grid4d<T> type0;inline const Grid4d<T>& getArg1() { return other; } typedef Grid4d<T> type1;inline const S& getArg2() { return factor; } typedef S type2; void runMessage() { debMsg("Executing kernel Grid4dScaledAdd ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -324,7 +319,7 @@ template <class T, class S>  struct Grid4dScaledAdd : public KernelBase { Grid4d
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other,factor);  }   } Grid4d<T>& me; const Grid4d<T>& other; const S& factor;   };
-#line 270 "grid4d.h"
+#line 265 "grid4d.h"
 
 
 
@@ -333,7 +328,7 @@ template <class T>  struct Grid4dSafeDiv : public KernelBase { Grid4dSafeDiv(Gri
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } Grid4d<T>& me; const Grid4d<T>& other;   };
-#line 272 "grid4d.h"
+#line 267 "grid4d.h"
 
 
 template <class T>  struct Grid4dSetConst : public KernelBase { Grid4dSetConst(Grid4d<T>& me, T value) :  KernelBase(&me,0) ,me(me),value(value)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid4d<T>& me, T value )  { me[idx] = value; }    inline Grid4d<T>& getArg0() { return me; } typedef Grid4d<T> type0;inline T& getArg1() { return value; } typedef T type1; void runMessage() { debMsg("Executing kernel Grid4dSetConst ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -341,7 +336,7 @@ template <class T>  struct Grid4dSetConst : public KernelBase { Grid4dSetConst(G
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,value);  }   } Grid4d<T>& me; T value;   };
-#line 273 "grid4d.h"
+#line 268 "grid4d.h"
 
 
 
@@ -420,7 +415,7 @@ template <class S>  struct KnInterpolateGrid4dTempl : public KernelBase { KnInte
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,t,target,source,sourceFactor,offset);  } }   } Grid4d<S>& target; Grid4d<S>& source; const Vec4& sourceFactor; Vec4 offset;   };
-#line 332 "grid4d.h"
+#line 327 "grid4d.h"
 
  
 

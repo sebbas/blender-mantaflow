@@ -870,7 +870,8 @@ void readGridVol<Real>(const string& name, Grid<Real>* grid) {
 #	if FLOATINGPOINT_PRECISION!=1
 	errMsg("Not yet supported");
 #	else
-	fread( &((*grid)[0]), 1, sizeof(float)*header.dimX*header.dimY*header.dimZ , fp);
+	const unsigned int s = sizeof(float)*header.dimX*header.dimY*header.dimZ;
+	assertMsg( fread( &((*grid)[0]), 1, s, fp) == s, "can't read file, no / not enough data");
 #	endif
 
 	fclose(fp);
@@ -1070,12 +1071,12 @@ void readGrid4dRaw(const string& name, Grid4d<T>* grid) {
 
 
 //*****************************************************************************
-// particle data
+// particles and particle data
 //*****************************************************************************
 
 static const int PartSysSize = sizeof(Vector3D<float>)+sizeof(int);
 
-void writeParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
+void writeParticlesUni(const std::string& name, const BasicParticleSystem* parts ) {
 	debMsg( "writing particles " << parts->getName() << " to uni file " << name ,1);
 	
 #	if NO_ZLIB!=1
@@ -1108,7 +1109,7 @@ void writeParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
 #	else
 	assertMsg( sizeof(BasicParticleData) == PartSysSize, "particle data size doesn't match" );
 	gzwrite(gzf, &head, sizeof(UniPartHeader));
-	gzwrite(gzf, &(parts->getData()[0]), PartSysSize*head.dim);
+	gzwrite(gzf, &((*parts)[0]), PartSysSize*head.dim);
 #	endif
 	gzclose(gzf);
 #	else
@@ -1232,13 +1233,20 @@ void readPdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
 // helper functions
 
 
-
- struct knQuantize : public KernelBase { knQuantize(Grid<Real>& grid, Real step) :  KernelBase(&grid,0) ,grid(grid),step(step)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid<Real>& grid, Real step ) const {
-	int    q  = int(grid(idx) / step + step*0.5);
+void quantizeReal(Real& v, const Real step) { 
+	int    q  = int(v / step + step*0.5);
 	double qd = q * (double)step;
-	grid(idx) = (Real)qd;
+	v = (Real)qd;
+}
+ struct knQuantize : public KernelBase { knQuantize(Grid<Real>& grid, Real step) :  KernelBase(&grid,0) ,grid(grid),step(step)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid<Real>& grid, Real step ) const {
+	quantizeReal( grid(idx), step );
 }    inline Grid<Real>& getArg0() { return grid; } typedef Grid<Real> type0;inline Real& getArg1() { return step; } typedef Real type1; void runMessage() { debMsg("Executing kernel knQuantize ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {   for (IndexInt idx=__r.begin(); idx!=(IndexInt)__r.end(); idx++) op(idx, grid,step);   } void run() {   tbb::parallel_for (tbb::blocked_range<IndexInt>(0, size), *this);   }  Grid<Real>& grid; Real step;   }; 
 void quantizeGrid(Grid<Real>& grid, Real step) { knQuantize(grid,step); } static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "quantizeGrid" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& grid = *_args.getPtr<Grid<Real> >("grid",0,&_lock); Real step = _args.get<Real >("step",1,&_lock);   _retval = getPyNone(); quantizeGrid(grid,step);  _args.check(); } pbFinalizePlugin(parent,"quantizeGrid", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("quantizeGrid",e.what()); return 0; } } static const Pb::Register _RP_quantizeGrid ("","quantizeGrid",_W_2);  extern "C" { void PbRegister_quantizeGrid() { KEEP_UNUSED(_RP_quantizeGrid); } } 
+
+ struct knQuantizeVec3 : public KernelBase { knQuantizeVec3(Grid<Vec3>& grid, Real step) :  KernelBase(&grid,0) ,grid(grid),step(step)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid<Vec3>& grid, Real step ) const {
+	for(int c=0; c<3; ++c) quantizeReal( grid(idx)[c], step );
+}    inline Grid<Vec3>& getArg0() { return grid; } typedef Grid<Vec3> type0;inline Real& getArg1() { return step; } typedef Real type1; void runMessage() { debMsg("Executing kernel knQuantizeVec3 ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {   for (IndexInt idx=__r.begin(); idx!=(IndexInt)__r.end(); idx++) op(idx, grid,step);   } void run() {   tbb::parallel_for (tbb::blocked_range<IndexInt>(0, size), *this);   }  Grid<Vec3>& grid; Real step;   }; 
+void quantizeGridVec3(Grid<Vec3>& grid, Real step) { knQuantizeVec3(grid,step); } static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "quantizeGridVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& grid = *_args.getPtr<Grid<Vec3> >("grid",0,&_lock); Real step = _args.get<Real >("step",1,&_lock);   _retval = getPyNone(); quantizeGridVec3(grid,step);  _args.check(); } pbFinalizePlugin(parent,"quantizeGridVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("quantizeGridVec3",e.what()); return 0; } } static const Pb::Register _RP_quantizeGridVec3 ("","quantizeGridVec3",_W_3);  extern "C" { void PbRegister_quantizeGridVec3() { KEEP_UNUSED(_RP_quantizeGridVec3); } } 
 
 
 

@@ -112,15 +112,15 @@ void WaveletNoiseField::generateTile( int loadFromFile) {
 	if(loadFromFile) {
 		FILE* fp = fopen(TILENAME,"rb"); 
 		if(fp) {
-			fread(noise3, sizeof(Real), n3d, fp); 
+			assertMsg( fread(noise3, sizeof(Real), n3d, fp) == n3d, "Failed to read wavelet noise tile, file invalid/corrupt? ("<<TILENAME<<") "); 
 			fclose(fp);
-			debMsg("noise tile loaded from file! " , 1);
+			debMsg("Noise tile loaded from file " TILENAME , 1);
 			mNoiseTile = noise3;
 			return;
 		}
 	}
 
-	debMsg("generating 3x " << n << "^3 noise tile " , 1);
+	debMsg("Generating 3x " << n << "^3 noise tile " , 1);
 	Real *temp13 = new Real[n3d];
 	Real *temp23 = new Real[n3d];
 
@@ -193,7 +193,7 @@ void WaveletNoiseField::generateTile( int loadFromFile) {
 		if(fp) {
 			fwrite(noise3, sizeof(Real), n3d, fp); 
 			fclose(fp);
-			debMsg( "saved to file! " , 1);
+			debMsg( "Noise field saved to file " , 1);
 		}
 	}
 }

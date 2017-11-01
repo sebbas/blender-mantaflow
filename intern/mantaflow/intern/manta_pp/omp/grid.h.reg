@@ -16,14 +16,14 @@
 +Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","mult",Grid<$CT$>::_W_11); 
 +Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","multConst",Grid<$CT$>::_W_12); 
 +Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","clamp",Grid<$CT$>::_W_13); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getMaxAbs",Grid<$CT$>::_W_14); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getMax",Grid<$CT$>::_W_15); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getMin",Grid<$CT$>::_W_16); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","setBound",Grid<$CT$>::_W_17); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","setBoundNeumann",Grid<$CT$>::_W_18); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getMaxAbsValue",Grid<$CT$>::_W_19); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getMaxValue",Grid<$CT$>::_W_20); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getMinValue",Grid<$CT$>::_W_21); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","stomp",Grid<$CT$>::_W_14); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getMaxAbs",Grid<$CT$>::_W_15); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getMax",Grid<$CT$>::_W_16); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getMin",Grid<$CT$>::_W_17); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getL1",Grid<$CT$>::_W_18); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getL2",Grid<$CT$>::_W_19); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","setBound",Grid<$CT$>::_W_20); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","setBoundNeumann",Grid<$CT$>::_W_21); 
 +Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getDataPointer",Grid<$CT$>::_W_22); 
 +Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","printGrid",Grid<$CT$>::_W_23); 
 >Grid^int
@@ -44,3 +44,4 @@
 +FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","initDomain",FlagGrid::_W_27); 
 +FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","updateFromLevelset",FlagGrid::_W_28); 
 +FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","fillGrid",FlagGrid::_W_29); 
++FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","countCells",FlagGrid::_W_30); 

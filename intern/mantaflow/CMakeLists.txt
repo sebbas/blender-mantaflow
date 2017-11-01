@@ -135,6 +135,7 @@ set(SRC
 	${MANTA_PP}/particle.h.reg
 	${MANTA_PP}/particle.h.reg.cpp
 	${MANTA_PP}/plugin/advection.cpp
+	${MANTA_PP}/plugin/apic.cpp
 	${MANTA_PP}/plugin/extforces.cpp
 	${MANTA_PP}/plugin/fire.cpp
 	${MANTA_PP}/plugin/flip.cpp
@@ -142,12 +143,16 @@ set(SRC
 	${MANTA_PP}/plugin/initplugins.cpp
 	${MANTA_PP}/plugin/kepsilon.cpp
 	${MANTA_PP}/plugin/meshplugins.cpp
+#	${MANTA_PP}/plugin/numpyconvert.cpp
 	${MANTA_PP}/plugin/pressure.cpp
 	${MANTA_PP}/plugin/surfaceturbulence.cpp
+#	${MANTA_PP}/plugin/tfplugins.cpp
 	${MANTA_PP}/plugin/vortexplugins.cpp
 	${MANTA_PP}/plugin/waveletturbulence.cpp
 	${MANTA_PP}/plugin/waves.cpp
 	${MANTA_PP}/pwrapper/manta.h
+#	${MANTA_PP}/pwrapper/numpyWrap.cpp
+#	${MANTA_PP}/pwrapper/numpyWrap.h
 	${MANTA_PP}/pwrapper/pclass.cpp
 	${MANTA_PP}/pwrapper/pclass.h
 	${MANTA_PP}/pwrapper/pconvert.cpp

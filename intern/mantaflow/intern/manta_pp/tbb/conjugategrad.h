@@ -58,6 +58,9 @@ class GridCgInterface {
 		virtual void setAccuracy(Real set) = 0;
 		virtual Real getAccuracy() const = 0;
 
+		//! force reinit upon next iterate() call, can be used for doing multiple solves
+		virtual void forceReinit() = 0;
+
 		void setUseL2Norm(bool set) { mUseL2Norm = set; }
 
 	protected:
@@ -85,6 +88,7 @@ class GridCg : public GridCgInterface {
 		//! init pointers, and copy values from "normal" matrix
 		void setICPreconditioner(PreconditionType method, Grid<Real> *A0, Grid<Real> *Ai, Grid<Real> *Aj, Grid<Real> *Ak);
 		void setMGPreconditioner(PreconditionType method, GridMg* MG);
+		void forceReinit() { mInited = false; }
 		
 		// Accessors        
 		Real getSigma() const { return mSigma; }
@@ -166,30 +170,30 @@ class GridCg : public GridCgInterface {
 	
 	if(!fractions) {
 		// diagonal, A0
-		if (!flags.isObstacle(i-1,j,k)) A0(i,j,k) += 1.;
-		if (!flags.isObstacle(i+1,j,k)) A0(i,j,k) += 1.;
-		if (!flags.isObstacle(i,j-1,k)) A0(i,j,k) += 1.;
-		if (!flags.isObstacle(i,j+1,k)) A0(i,j,k) += 1.;
+		if (!flags.isObstacle(i-1,j,k))                 A0(i,j,k) += 1.;
+		if (!flags.isObstacle(i+1,j,k))                 A0(i,j,k) += 1.;
+		if (!flags.isObstacle(i,j-1,k))                 A0(i,j,k) += 1.;
+		if (!flags.isObstacle(i,j+1,k))                 A0(i,j,k) += 1.;
 		if (flags.is3D() && !flags.isObstacle(i,j,k-1)) A0(i,j,k) += 1.;
 		if (flags.is3D() && !flags.isObstacle(i,j,k+1)) A0(i,j,k) += 1.;
 		
 		// off-diagonal entries
-		if (flags.isFluid(i+1,j,k)) Ai(i,j,k) = -1.;
-		if (flags.isFluid(i,j+1,k)) Aj(i,j,k) = -1.;
+		if (flags.isFluid(i+1,j,k))                 Ai(i,j,k) = -1.;
+		if (flags.isFluid(i,j+1,k))                 Aj(i,j,k) = -1.;
 		if (flags.is3D() && flags.isFluid(i,j,k+1)) Ak(i,j,k) = -1.;
 	} else {
 		// diagonal
-		A0(i,j,k) += fractions->get(i,j,k).x;
-		A0(i,j,k) += fractions->get(i+1,j,k).x;
-		A0(i,j,k) += fractions->get(i,j,k).y;
-		A0(i,j,k) += fractions->get(i,j+1,k).y;
-		if (flags.is3D()) A0(i,j,k) += fractions->get(i,j,k).z;
+		A0(i,j,k)                   += fractions->get(i  ,j,k).x;
+		A0(i,j,k)                   += fractions->get(i+1,j,k).x;
+		A0(i,j,k)                   += fractions->get(i,j  ,k).y;
+		A0(i,j,k)                   += fractions->get(i,j+1,k).y;
+		if (flags.is3D()) A0(i,j,k) += fractions->get(i,j,k  ).z;
 		if (flags.is3D()) A0(i,j,k) += fractions->get(i,j,k+1).z;
 
 		// off-diagonal entries
-		Ai(i,j,k) = -fractions->get(i+1,j,k).x;
-		Aj(i,j,k) = -fractions->get(i,j+1,k).y;
-		if (flags.is3D()) Ak(i,j,k) = -fractions->get(i,j,k+1).z;
+		if (flags.isFluid(i+1,j,k))                 Ai(i,j,k) = -fractions->get(i+1,j,k).x;
+		if (flags.isFluid(i,j+1,k))                 Aj(i,j,k) = -fractions->get(i,j+1,k).y;
+		if (flags.is3D() && flags.isFluid(i,j,k+1)) Ak(i,j,k) = -fractions->get(i,j,k+1).z;
 	}
 
 }   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return A0; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return Ai; } typedef Grid<Real> type2;inline Grid<Real>& getArg3() { return Aj; } typedef Grid<Real> type3;inline Grid<Real>& getArg4() { return Ak; } typedef Grid<Real> type4;inline MACGrid* getArg5() { return fractions; } typedef MACGrid type5; void runMessage() { debMsg("Executing kernel MakeLaplaceMatrix ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=1; j<_maxY; j++) for (int i=1; i<_maxX; i++) op(i,j,k,flags,A0,Ai,Aj,Ak,fractions); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=1; i<_maxX; i++) op(i,j,k,flags,A0,Ai,Aj,Ak,fractions); }  } void run() {  if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(1, maxY), *this);  }  FlagGrid& flags; Grid<Real>& A0; Grid<Real>& Ai; Grid<Real>& Aj; Grid<Real>& Ak; MACGrid* fractions;   };

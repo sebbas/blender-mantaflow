@@ -22,7 +22,6 @@
  * Plugins for pressure correction: solve_pressure, and ghost fluid helpers
  *
  ******************************************************************************/
-#include <math.h>
 #include "vectorbase.h"
 #include "grid.h"
 #include "kernel.h"
@@ -299,6 +298,8 @@ void solvePressure(
 	bool enforceCompatibility = false,
     bool useL2Norm = false, 
 	bool zeroPressureFixing = false,
+	const Grid<Real> *curv = NULL,
+	const Real surfTens = 0.0,
 	Grid<Real>* retRhs = NULL );
 
 //! Main function for fluid guiding , includes "regular" pressure solve
@@ -343,7 +344,7 @@ void PD_fluid_guiding(MACGrid& vel, MACGrid& velT, Grid<Real>& pressure, FlagGri
 		Real cgAccuracyAdaptive = cgAccuracy;
 
 		solvePressure (z, pressure, flags, cgAccuracyAdaptive, phi, perCellCorr, fractions, gfClamp,
-		    cgMaxIterFac, true, preconditioner, false, false, zeroPressureFixing, NULL );
+		    cgMaxIterFac, true, preconditioner, false, false, zeroPressureFixing );
 
 		// y-update
 		y.copyFrom(z);

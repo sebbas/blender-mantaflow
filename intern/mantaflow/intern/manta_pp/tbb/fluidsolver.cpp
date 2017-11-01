@@ -169,11 +169,6 @@ void FluidSolver::step() {
 	updateQtGui(true, mFrame,mTimeTotal, "FluidSolver::step");
 }
 
-//! helper to unify printing from python scripts and printing internal messages (optionally pass debug level to control amount of output)
-void mantaMsg(const std::string& out, int level=1) {
-	debMsg( out, level );
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "mantaMsg" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const std::string& out = _args.get<std::string >("out",0,&_lock); int level = _args.getOpt<int >("level",1,1,&_lock);   _retval = getPyNone(); mantaMsg(out,level);  _args.check(); } pbFinalizePlugin(parent,"mantaMsg", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("mantaMsg",e.what()); return 0; } } static const Pb::Register _RP_mantaMsg ("","mantaMsg",_W_0);  extern "C" { void PbRegister_mantaMsg() { KEEP_UNUSED(_RP_mantaMsg); } } 
-
 void FluidSolver::printMemInfo() {
 	std::ostringstream msg;
 	msg << "Allocated grids: int " << mGridsInt.used  <<"/"<< mGridsInt.grids.size()  <<", ";
@@ -187,16 +182,6 @@ void FluidSolver::printMemInfo() {
 	msg << "                    vec4 "<< mGrids4dVec4.used <<"/"<< mGrids4dVec4.grids.size() <<". "; }
 	printf("%s\n", msg.str().c_str() );
 }
-
-std::string printBuildInfo() {
-	string infoString = buildInfoString();
-	debMsg( "Build info: "<<infoString.c_str()<<" ",1);
-	return infoString;
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "printBuildInfo" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock;   _retval = toPy(printBuildInfo());  _args.check(); } pbFinalizePlugin(parent,"printBuildInfo", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("printBuildInfo",e.what()); return 0; } } static const Pb::Register _RP_printBuildInfo ("","printBuildInfo",_W_1);  extern "C" { void PbRegister_printBuildInfo() { KEEP_UNUSED(_RP_printBuildInfo); } } 
-
-void setDebugLevel(int level=1) {
-	gDebugLevel = level; 
-} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setDebugLevel" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; int level = _args.getOpt<int >("level",0,1,&_lock);   _retval = getPyNone(); setDebugLevel(level);  _args.check(); } pbFinalizePlugin(parent,"setDebugLevel", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setDebugLevel",e.what()); return 0; } } static const Pb::Register _RP_setDebugLevel ("","setDebugLevel",_W_2);  extern "C" { void PbRegister_setDebugLevel() { KEEP_UNUSED(_RP_setDebugLevel); } } 
 
 //! warning, uses 10^-4 epsilon values, thus only use around "regular" FPS time scales, e.g. 30 frames per time unit
 //! pass max magnitude of current velocity as maxvel, not yet scaled by dt!
@@ -221,6 +206,34 @@ void FluidSolver::adaptTimestep(Real maxVel)
 	// sanity check
 	assertMsg( (mDt > (mDtMin/2.) ) , "Invalid dt encountered! Shouldnt happen..." );
 }
+
+//******************************************************************************
+// Generic helpers (no PYTHON funcs in general.cpp, thus they're here...)
+
+//! helper to unify printing from python scripts and printing internal messages (optionally pass debug level to control amount of output)
+void mantaMsg(const std::string& out, int level=1) {
+	debMsg( out, level );
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "mantaMsg" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const std::string& out = _args.get<std::string >("out",0,&_lock); int level = _args.getOpt<int >("level",1,1,&_lock);   _retval = getPyNone(); mantaMsg(out,level);  _args.check(); } pbFinalizePlugin(parent,"mantaMsg", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("mantaMsg",e.what()); return 0; } } static const Pb::Register _RP_mantaMsg ("","mantaMsg",_W_0);  extern "C" { void PbRegister_mantaMsg() { KEEP_UNUSED(_RP_mantaMsg); } } 
+
+std::string printBuildInfo() {
+	string infoString = buildInfoString();
+	debMsg( "Build info: "<<infoString.c_str()<<" ",1);
+	return infoString;
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "printBuildInfo" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock;   _retval = toPy(printBuildInfo());  _args.check(); } pbFinalizePlugin(parent,"printBuildInfo", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("printBuildInfo",e.what()); return 0; } } static const Pb::Register _RP_printBuildInfo ("","printBuildInfo",_W_1);  extern "C" { void PbRegister_printBuildInfo() { KEEP_UNUSED(_RP_printBuildInfo); } } 
+
+//! set debug level for messages (0 off, 1 regular, higher = more, up to 10)
+void setDebugLevel(int level=1) {
+	gDebugLevel = level; 
+} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setDebugLevel" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; int level = _args.getOpt<int >("level",0,1,&_lock);   _retval = getPyNone(); setDebugLevel(level);  _args.check(); } pbFinalizePlugin(parent,"setDebugLevel", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setDebugLevel",e.what()); return 0; } } static const Pb::Register _RP_setDebugLevel ("","setDebugLevel",_W_2);  extern "C" { void PbRegister_setDebugLevel() { KEEP_UNUSED(_RP_setDebugLevel); } } 
+
+//! helper function to check for numpy compilation
+void assertNumpy() {
+#if NUMPY==1
+	// all good, nothing to do...
+#else
+	errMsg("This scene requires numpy support. Enable compilation in cmake with \"-DNUMPY=1\" ");
+#endif
+} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "assertNumpy" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock;   _retval = getPyNone(); assertNumpy();  _args.check(); } pbFinalizePlugin(parent,"assertNumpy", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("assertNumpy",e.what()); return 0; } } static const Pb::Register _RP_assertNumpy ("","assertNumpy",_W_3);  extern "C" { void PbRegister_assertNumpy() { KEEP_UNUSED(_RP_assertNumpy); } } 
 
 } // manta
 

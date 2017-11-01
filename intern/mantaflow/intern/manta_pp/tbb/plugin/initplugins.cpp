@@ -269,7 +269,7 @@ void addTestParts( BasicParticleSystem& parts, int num) {
 	parts.insertBufferedParticles();
 } static PyObject* _W_13 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "addTestParts" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); int num = _args.get<int >("num",1,&_lock);   _retval = getPyNone(); addTestParts(parts,num);  _args.check(); } pbFinalizePlugin(parent,"addTestParts", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("addTestParts",e.what()); return 0; } } static const Pb::Register _RP_addTestParts ("","addTestParts",_W_13);  extern "C" { void PbRegister_addTestParts() { KEEP_UNUSED(_RP_addTestParts); } } 
 
-// calculate the difference between two pdata fields (note - slow!, not parallelized)
+//! calculate the difference between two pdata fields (note - slow!, not parallelized)
 
 Real pdataMaxDiff( ParticleDataBase* a, ParticleDataBase* b ) {    
 	double maxVal = 0.;
@@ -307,6 +307,22 @@ Real pdataMaxDiff( ParticleDataBase* a, ParticleDataBase* b ) {
 
 	return maxVal;
 } static PyObject* _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "pdataMaxDiff" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; ParticleDataBase* a = _args.getPtr<ParticleDataBase >("a",0,&_lock); ParticleDataBase* b = _args.getPtr<ParticleDataBase >("b",1,&_lock);   _retval = toPy(pdataMaxDiff(a,b));  _args.check(); } pbFinalizePlugin(parent,"pdataMaxDiff", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("pdataMaxDiff",e.what()); return 0; } } static const Pb::Register _RP_pdataMaxDiff ("","pdataMaxDiff",_W_14);  extern "C" { void PbRegister_pdataMaxDiff() { KEEP_UNUSED(_RP_pdataMaxDiff); } } 
+
+
+//! calculate center of mass given density grid, for re-centering
+
+Vec3 calcCenterOfMass(Grid<Real>& density) {
+	Vec3 p(0.0f);
+	Real w = 0.0f;
+	FOR_IJK(density){
+		p += density(i, j, k) * Vec3(i + 0.5f, j + 0.5f, k + 0.5f);
+		w += density(i, j, k);
+	}
+	if (w > 1e-6f)
+		p /= w;
+	return p;
+} static PyObject* _W_15 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "calcCenterOfMass" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& density = *_args.getPtr<Grid<Real> >("density",0,&_lock);   _retval = toPy(calcCenterOfMass(density));  _args.check(); } pbFinalizePlugin(parent,"calcCenterOfMass", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("calcCenterOfMass",e.what()); return 0; } } static const Pb::Register _RP_calcCenterOfMass ("","calcCenterOfMass",_W_15);  extern "C" { void PbRegister_calcCenterOfMass() { KEEP_UNUSED(_RP_calcCenterOfMass); } } 
+
 
 //*****************************************************************************
 // helper functions for volume fractions (which are needed for second order obstacle boundaries)
@@ -393,10 +409,11 @@ inline static Real calcFraction(Real phi1, Real phi2)
 
 }   inline const FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline const Grid<Real>& getArg1() { return phiObs; } typedef Grid<Real> type1;inline MACGrid& getArg2() { return fractions; } typedef MACGrid type2;inline const int& getArg3() { return boundaryWidth; } typedef int type3; void runMessage() { debMsg("Executing kernel KnUpdateFractions ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=1; j<_maxY; j++) for (int i=1; i<_maxX; i++) op(i,j,k,flags,phiObs,fractions,boundaryWidth); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=1; i<_maxX; i++) op(i,j,k,flags,phiObs,fractions,boundaryWidth); }  } void run() {  if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(1, maxY), *this);  }  const FlagGrid& flags; const Grid<Real>& phiObs; MACGrid& fractions; const int& boundaryWidth;   };
 
+//! update fill fraction values
 void updateFractions(const FlagGrid& flags, const Grid<Real>& phiObs, MACGrid& fractions, const int &boundaryWidth=0) {
 	fractions.setConst( Vec3(0.) );
 	KnUpdateFractions(flags, phiObs, fractions, boundaryWidth);
-} static PyObject* _W_15 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "updateFractions" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); const Grid<Real>& phiObs = *_args.getPtr<Grid<Real> >("phiObs",1,&_lock); MACGrid& fractions = *_args.getPtr<MACGrid >("fractions",2,&_lock); const int& boundaryWidth = _args.getOpt<int >("boundaryWidth",3,0,&_lock);   _retval = getPyNone(); updateFractions(flags,phiObs,fractions,boundaryWidth);  _args.check(); } pbFinalizePlugin(parent,"updateFractions", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("updateFractions",e.what()); return 0; } } static const Pb::Register _RP_updateFractions ("","updateFractions",_W_15);  extern "C" { void PbRegister_updateFractions() { KEEP_UNUSED(_RP_updateFractions); } } 
+} static PyObject* _W_16 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "updateFractions" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); const Grid<Real>& phiObs = *_args.getPtr<Grid<Real> >("phiObs",1,&_lock); MACGrid& fractions = *_args.getPtr<MACGrid >("fractions",2,&_lock); const int& boundaryWidth = _args.getOpt<int >("boundaryWidth",3,0,&_lock);   _retval = getPyNone(); updateFractions(flags,phiObs,fractions,boundaryWidth);  _args.check(); } pbFinalizePlugin(parent,"updateFractions", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("updateFractions",e.what()); return 0; } } static const Pb::Register _RP_updateFractions ("","updateFractions",_W_16);  extern "C" { void PbRegister_updateFractions() { KEEP_UNUSED(_RP_updateFractions); } } 
 
 
  struct KnUpdateFlagsObs : public KernelBase { KnUpdateFlagsObs(FlagGrid& flags, const MACGrid* fractions, const Grid<Real>& phiObs, const Grid<Real>* phiOut ) :  KernelBase(&flags,1) ,flags(flags),fractions(fractions),phiObs(phiObs),phiOut(phiOut)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, const MACGrid* fractions, const Grid<Real>& phiObs, const Grid<Real>* phiOut  ) const {
@@ -428,7 +445,7 @@ void updateFractions(const FlagGrid& flags, const Grid<Real>& phiObs, MACGrid& f
 //! optionally uses fill fractions for obstacle
 void setObstacleFlags(FlagGrid& flags, const Grid<Real>& phiObs, const MACGrid* fractions=NULL, const Grid<Real>* phiOut=NULL ) {
 	KnUpdateFlagsObs(flags, fractions, phiObs, phiOut );
-} static PyObject* _W_16 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setObstacleFlags" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); const Grid<Real>& phiObs = *_args.getPtr<Grid<Real> >("phiObs",1,&_lock); const MACGrid* fractions = _args.getPtrOpt<MACGrid >("fractions",2,NULL,&_lock); const Grid<Real>* phiOut = _args.getPtrOpt<Grid<Real> >("phiOut",3,NULL ,&_lock);   _retval = getPyNone(); setObstacleFlags(flags,phiObs,fractions,phiOut);  _args.check(); } pbFinalizePlugin(parent,"setObstacleFlags", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setObstacleFlags",e.what()); return 0; } } static const Pb::Register _RP_setObstacleFlags ("","setObstacleFlags",_W_16);  extern "C" { void PbRegister_setObstacleFlags() { KEEP_UNUSED(_RP_setObstacleFlags); } } 
+} static PyObject* _W_17 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setObstacleFlags" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); const Grid<Real>& phiObs = *_args.getPtr<Grid<Real> >("phiObs",1,&_lock); const MACGrid* fractions = _args.getPtrOpt<MACGrid >("fractions",2,NULL,&_lock); const Grid<Real>* phiOut = _args.getPtrOpt<Grid<Real> >("phiOut",3,NULL ,&_lock);   _retval = getPyNone(); setObstacleFlags(flags,phiObs,fractions,phiOut);  _args.check(); } pbFinalizePlugin(parent,"setObstacleFlags", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setObstacleFlags",e.what()); return 0; } } static const Pb::Register _RP_setObstacleFlags ("","setObstacleFlags",_W_17);  extern "C" { void PbRegister_setObstacleFlags() { KEEP_UNUSED(_RP_setObstacleFlags); } } 
 
 
 //! small helper for test case test_1040_secOrderBnd.py
@@ -456,7 +473,8 @@ void setObstacleFlags(FlagGrid& flags, const Grid<Real>& phiObs, const MACGrid* 
 
 void initVortexVelocity(Grid<Real> &phiObs, MACGrid& vel, const Vec3 &center, const Real &radius) {
 	kninitVortexVelocity(phiObs,  vel, center, radius);
-} static PyObject* _W_17 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "initVortexVelocity" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real> & phiObs = *_args.getPtr<Grid<Real>  >("phiObs",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); const Vec3& center = _args.get<Vec3 >("center",2,&_lock); const Real& radius = _args.get<Real >("radius",3,&_lock);   _retval = getPyNone(); initVortexVelocity(phiObs,vel,center,radius);  _args.check(); } pbFinalizePlugin(parent,"initVortexVelocity", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("initVortexVelocity",e.what()); return 0; } } static const Pb::Register _RP_initVortexVelocity ("","initVortexVelocity",_W_17);  extern "C" { void PbRegister_initVortexVelocity() { KEEP_UNUSED(_RP_initVortexVelocity); } } 
+} static PyObject* _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "initVortexVelocity" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real> & phiObs = *_args.getPtr<Grid<Real>  >("phiObs",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); const Vec3& center = _args.get<Vec3 >("center",2,&_lock); const Real& radius = _args.get<Real >("radius",3,&_lock);   _retval = getPyNone(); initVortexVelocity(phiObs,vel,center,radius);  _args.check(); } pbFinalizePlugin(parent,"initVortexVelocity", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("initVortexVelocity",e.what()); return 0; } } static const Pb::Register _RP_initVortexVelocity ("","initVortexVelocity",_W_18);  extern "C" { void PbRegister_initVortexVelocity() { KEEP_UNUSED(_RP_initVortexVelocity); } } 
+
 
 } // namespace
 
