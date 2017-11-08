@@ -401,7 +401,7 @@ void PD_fluid_guiding(MACGrid& vel, MACGrid& velT, Grid<Real>& pressure, FlagGri
 void releaseBlurPrecomp() {
 	gBlurPrecomputed = false;
 	gBlurKernelRadius = -1;
-	gBlurKernel = NULL;
+	gBlurKernel = 0.f;
 } static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "releaseBlurPrecomp" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock;   _retval = getPyNone(); releaseBlurPrecomp();  _args.check(); } pbFinalizePlugin(parent,"releaseBlurPrecomp", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("releaseBlurPrecomp",e.what()); return 0; } } static const Pb::Register _RP_releaseBlurPrecomp ("","releaseBlurPrecomp",_W_3);  extern "C" { void PbRegister_releaseBlurPrecomp() { KEEP_UNUSED(_RP_releaseBlurPrecomp); } } 
 
 

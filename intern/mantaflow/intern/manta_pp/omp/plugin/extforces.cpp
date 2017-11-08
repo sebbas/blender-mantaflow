@@ -305,7 +305,7 @@ void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
 	if (obvel) {
 		bcsVel.x = (*obvel)(i,j,k).x;
 		bcsVel.y = (*obvel)(i,j,k).y;
-		if(!(*obvel).is3D()) bcsVel.z = (*obvel)(i,j,k).z;
+		if((*obvel).is3D()) bcsVel.z = (*obvel)(i,j,k).z;
 	}
 
 	// we use i>0 instead of bnd=1 to check outer wall
@@ -314,7 +314,7 @@ void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
 	if (j>0 && flags.isObstacle(i,j-1,k))						 vel(i,j,k).y = bcsVel.y;
 	if (j>0 && curObs && flags.isFluid(i,j-1,k))				 vel(i,j,k).y = bcsVel.y;
 
-	if(!vel.is3D()) {                            				vel(i,j,k).z = bcsVel.z; } else {
+	if(!vel.is3D()) {                            				vel(i,j,k).z = 0; } else {
 	if (k>0 && flags.isObstacle(i,j,k-1))		 				vel(i,j,k).z = bcsVel.z;
 	if (k>0 && curObs && flags.isFluid(i,j,k-1)) 				vel(i,j,k).z = bcsVel.z; }
 	
