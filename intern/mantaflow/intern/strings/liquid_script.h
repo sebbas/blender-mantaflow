@@ -215,6 +215,17 @@ const std::string liquid_step_low = "\n\
 def liquid_step_$ID$():\n\
     mantaMsg('Liquid step low')\n\
     \n\
+    mantaMsg('Advecting particles')\n\
+    pp_s$ID$.advectInGrid(flags=flags_s$ID$, vel=vel_s$ID$, integrationMode=IntRK4, deleteInObstacle=using_obstacle_s$ID$, stopInObstacle=False)\n\
+    \n\
+    mantaMsg('Pushing particles out of obstacles')\n\
+    pushOutofObs(parts=pp_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$)\n\
+    \n\
+    mantaMsg('Advecting phi')\n\
+    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=phi_s$ID$, order=1) # first order is usually enough\n\
+    mantaMsg('Advecting velocity')\n\
+    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=vel_s$ID$, order=2, openBounds=doOpen_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
+    \n\
     if using_drops_s$ID$:\n\
         mantaMsg('Sampling drop particles')\n\
         sampleSndParts(type=PtypeDroplet, constraint=$SNDPARTICLE_VEL_THRESH$, phi=phi_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, parts=ppSnd_s$ID$)\n\
@@ -229,22 +240,11 @@ def liquid_step_$ID$():\n\
     \n\
     if using_sndparts_s$ID$:\n\
         mantaMsg('Updating snd particle data (velocity, life count)')\n\
-        updateSndParts(phi=phi_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$, parts=ppSnd_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$)\n\
+        updateSndParts(phi=phi_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$, parts=ppSnd_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, bubbleRise=$SNDPARTICLE_BUBBLE_RISE$)\n\
         \n\
         mantaMsg('Adjusting snd particles')\n\
         pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=1.0)\n\
         adjustSndParts(parts=ppSnd_s$ID$, flags=flags_s$ID$, phi=phi_s$ID$, partVel=pVelSnd_pp$ID$)\n\
-    \n\
-    mantaMsg('Advecting particles')\n\
-    pp_s$ID$.advectInGrid(flags=flags_s$ID$, vel=vel_s$ID$, integrationMode=IntRK4, deleteInObstacle=False, stopInObstacle=False)\n\
-    \n\
-    mantaMsg('Pushing particles out of obstacles')\n\
-    pushOutofObs(parts=pp_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$)\n\
-    \n\
-    mantaMsg('Advecting phi')\n\
-    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=phi_s$ID$, order=1) # first order is usually enough\n\
-    mantaMsg('Advecting velocity')\n\
-    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=vel_s$ID$, order=2, openBounds=doOpen_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
     \n\
     # create level set of particles\n\
     gridParticleIndex(parts=pp_s$ID$, flags=flags_s$ID$, indexSys=pindex_s$ID$, index=gpi_s$ID$)\n\

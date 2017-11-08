@@ -402,8 +402,7 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         sub.prop(domain, "particle_velocity_threshold", text="Threshold")
         sub2 = col.column()
         sub2.active = domain.use_drop_particles and domain.use_bubble_particles
-        #sub2.prop(domain, "particle_bubble_rise", text="Rise")
-        sub2.label()
+        sub2.prop(domain, "particle_bubble_rise", text="Rise")
         sub3 = col.column()
         sub3.active = domain.use_float_particles
         sub3.prop(domain, "particle_float_amount", text="Initial")

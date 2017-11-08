@@ -811,11 +811,9 @@ void adjustSndParts(BasicParticleSystem& parts, FlagGrid& flags, LevelsetGrid& p
 //! update velocities. set new particle position. optional: convert between particle types, partLife update
 
 
-void updateSndParts(LevelsetGrid& phi, FlagGrid& flags, MACGrid& vel, Vec3 gravity, BasicParticleSystem& parts, ParticleDataImpl<Vec3>& partVel, ParticleDataImpl<int>* partLife=NULL) {
+void updateSndParts(LevelsetGrid& phi, FlagGrid& flags, MACGrid& vel, Vec3 gravity, BasicParticleSystem& parts, ParticleDataImpl<Vec3>& partVel, ParticleDataImpl<int>* partLife=NULL, Real bubbleRise=0.5) {
 	RandomStream mRand(9832);
-	Real coefficient = 0.5;
 	Vec3 grav = gravity * flags.getParent()->getDt() / flags.getParent()->getDx();
-	Vec3 buoyancy = (-1) * grav * coefficient;
 	const Real DROP_THRESH  = 0.866;
 
 	// Insert buffered particles now. In sampleSndParts() we buffered them.
@@ -839,6 +837,7 @@ void updateSndParts(LevelsetGrid& phi, FlagGrid& flags, MACGrid& vel, Vec3 gravi
 				partVel[idx] += grav;
 			}
 			else if (parts.isBubble(idx)) {
+				Vec3 buoyancy = (-1) * grav * bubbleRise;
 				Vec3 randomVel = vel.getInterpolated( parts[idx].pos ) * mRand.getFloat(0.25, 0.5);
 				partVel[idx] += buoyancy + randomVel;
 			}
@@ -864,6 +863,7 @@ void updateSndParts(LevelsetGrid& phi, FlagGrid& flags, MACGrid& vel, Vec3 gravi
 		}
 
 		// Get phiv for current and next particle position
+		pos = parts.getPos(idx);
 		const Vec3 pos2 = pos + partVel[idx] * dt;
 		Real phiv = phi.getInterpolated(pos);
 		Real phiv2 = phi.getInterpolated(pos2);
@@ -876,7 +876,7 @@ void updateSndParts(LevelsetGrid& phi, FlagGrid& flags, MACGrid& vel, Vec3 gravi
 			parts.setStatus(idx, ParticleBase::PNEW | ParticleBase::PFLOATER);
 		}
 	}
-} static PyObject* _W_21 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "updateSndParts" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",0,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",2,&_lock); Vec3 gravity = _args.get<Vec3 >("gravity",3,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",4,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",5,&_lock); ParticleDataImpl<int>* partLife = _args.getPtrOpt<ParticleDataImpl<int> >("partLife",6,NULL,&_lock);   _retval = getPyNone(); updateSndParts(phi,flags,vel,gravity,parts,partVel,partLife);  _args.check(); } pbFinalizePlugin(parent,"updateSndParts", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("updateSndParts",e.what()); return 0; } } static const Pb::Register _RP_updateSndParts ("","updateSndParts",_W_21);  extern "C" { void PbRegister_updateSndParts() { KEEP_UNUSED(_RP_updateSndParts); } } 
+} static PyObject* _W_21 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "updateSndParts" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",0,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",2,&_lock); Vec3 gravity = _args.get<Vec3 >("gravity",3,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",4,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",5,&_lock); ParticleDataImpl<int>* partLife = _args.getPtrOpt<ParticleDataImpl<int> >("partLife",6,NULL,&_lock); Real bubbleRise = _args.getOpt<Real >("bubbleRise",7,0.5,&_lock);   _retval = getPyNone(); updateSndParts(phi,flags,vel,gravity,parts,partVel,partLife,bubbleRise);  _args.check(); } pbFinalizePlugin(parent,"updateSndParts", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("updateSndParts",e.what()); return 0; } } static const Pb::Register _RP_updateSndParts ("","updateSndParts",_W_21);  extern "C" { void PbRegister_updateSndParts() { KEEP_UNUSED(_RP_updateSndParts); } } 
 
 //! sample new particles of given type. control amount of particles with constraint and number of samples per cell
 
@@ -896,7 +896,7 @@ void sampleSndParts(LevelsetGrid& phi, FlagGrid& flags, MACGrid& vel, BasicParti
 		const Vec3 pos2 = pos + vel(i,j,k) * dt;
 		Real phiv2 = phi.getInterpolated(pos2);
 
-		for (int i=0; i<number; ++i) {
+		for (int a=0; a<number; ++a) {
 			if (type == ParticleBase::PDROPLET) {
 				// Only generate drop particles at surface, slightly inside fluid
 				if ( phi(i,j,k) < -DROP_THRESH || phi(i,j,k) > 0. ) continue;
