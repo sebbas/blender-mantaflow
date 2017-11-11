@@ -3788,8 +3788,11 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 			int p, totpart, tottypepart = 0;
 			int flagActivePart, activeParts = 0;
 			float posX, posY, posZ, velX, velY, velZ;
-			int resX, resY, resZ;
+			float resX, resY, resZ;
 			char debugStrBuffer[256];
+
+			// Helper for scaling
+			float min[3], max[3], size[3], cell_size_scaled[3], max_size;
 
 			// Sanity check: parts also enabled in fluid domain?
 			if ((part->type == PART_MANTA_FLIP && (sds->particle_type & MOD_SMOKE_PARTICLE_FLIP)==0) ||
@@ -3854,9 +3857,9 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 
 				// printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
 
-				resX = fluid_get_res_x(sds->fluid);
-				resY = fluid_get_res_y(sds->fluid);
-				resZ = fluid_get_res_z(sds->fluid);
+				resX = (float) fluid_get_res_x(sds->fluid);
+				resY = (float) fluid_get_res_y(sds->fluid);
+				resZ = (float) fluid_get_res_z(sds->fluid);
 
 				if (part->type == PART_MANTA_FLIP) {
 					posX = liquid_get_flip_particle_position_x_at(sds->fluid, p);
@@ -3881,41 +3884,35 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 
 					pa->size = sds->particle_radius;
 					pa->size /= 10.0f;
+					
+					// Get size (dimension) but considering scaling scaling
+					copy_v3_v3(cell_size_scaled, sds->cell_size);
+					mul_v3_v3(cell_size_scaled, ob->size);
+					VECMADD(min, sds->p0, cell_size_scaled, sds->res_min);
+					VECMADD(max, sds->p0, cell_size_scaled, sds->res_max);
+					sub_v3_v3v3(size, max, min);
 
-					float ob_loc[3] = {0};
-					float ob_cache_loc[3] = {0};
+					// Biggest dimension will be used for upscaling
+					max_size = MAX3(size[0], size[1], size[2]);
 
 					// set particle position
 					pa->state.co[0] = posX;
 					pa->state.co[1] = posY;
 					pa->state.co[2] = posZ;
 
-					// translate particles coordinates to  origin (0,0,0)
-					pa->state.co[0] -= resX / 2.0f;
-					pa->state.co[1] -= resY / 2.0f;
-					pa->state.co[2] -= resZ / 2.0f;
+					// normalize to unit cube around 0
+					pa->state.co[0] -= resX * 0.5f;
+					pa->state.co[1] -= resY * 0.5f;
+					pa->state.co[2] -= resZ * 0.5f;
+					mul_v3_fl(pa->state.co, sds->dx);
 
-					// scale down
-					pa->state.co[0] *= 1.0f / resX;
-					pa->state.co[1] *= 1.0f / resY;
-					pa->state.co[2] *= 1.0f / resZ;
+					// match domain dimension / size
+					pa->state.co[0] *= max_size / fabsf(ob->size[0]);;
+					pa->state.co[1] *= max_size / fabsf(ob->size[1]);;
+					pa->state.co[2] *= max_size / fabsf(ob->size[2]);;
 
-					// scale up
-					mul_v3_fl(pa->state.co, sds->scale);
-
-					/* calculate required shift to match domain's global position
-					 *  it was originally simulated at (if object moves without step) */
-					invert_m4_m4(ob->imat, ob->obmat);
-					mul_m4_v3(ob->obmat, ob_loc);
-					mul_m4_v3(sds->obmat, ob_cache_loc);
-					VECSUB(sds->obj_shift_f, ob_cache_loc, ob_loc);
-					/* convert shift to local space and apply to particles */
-					mul_mat3_m4_v3(ob->imat, sds->obj_shift_f);
-					/* apply */
-					sub_v3_v3(pa->state.co, sds->obj_shift_f);
-
-					// scale up to match actual domain size. also take care of domain translations globally
-					mul_m4_v3(sds->obmat, pa->state.co);
+					// match domain scale
+					mul_m4_v3(ob->obmat, pa->state.co);
 
 					// printf("pa->state.co[0]: %f, pa->state.co[1]: %f, pa->state.co[2]: %f\n", pa->state.co[0], pa->state.co[1], pa->state.co[2]);
 
@@ -3923,11 +3920,7 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 					pa->state.vel[0] = velX;
 					pa->state.vel[1] = velY;
 					pa->state.vel[2] = velZ;
-
-					// scale down
-					pa->state.vel[0] *= 1.0f / resX;
-					pa->state.vel[1] *= 1.0f / resY;
-					pa->state.vel[2] *= 1.0f / resZ;
+					mul_v3_fl(pa->state.vel, sds->dx);
 
 					// printf("pa->state.vel[0]: %f, pa->state.vel[1]: %f, pa->state.vel[2]: %f\n", pa->state.vel[0], pa->state.vel[1], pa->state.vel[2]);
 

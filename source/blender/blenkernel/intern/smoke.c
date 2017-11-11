@@ -2949,7 +2949,11 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 	MLoop *mloops;
 	short *normals, *no_s;
 	float no[3];
-	
+	float min[3];
+	float max[3];
+	float size[3];
+	float cell_size_scaled[3];
+
 	/* assign material + flags to new dm
 	 * if there's no faces in original dm, keep materials and flags unchanged */
 	MPoly *mpoly;
@@ -2958,54 +2962,63 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 	if (mpoly) {
 		mp_example = *mpoly;
 	}
-	
+
 	const short mp_mat_nr = mp_example.mat_nr;
 	const char mp_flag    = mp_example.flag;
-	
+
 	int i;
 	int num_verts, num_normals, num_faces;
-	
+
 	if (!sds->fluid)
 		return NULL;
-	
+
 	/* just display original object */
 	if (sds->viewport_display_mode == SM_VIEWPORT_GEOMETRY)
 		return NULL;
-	
+
 	num_verts   = liquid_get_num_verts(sds->fluid);
 	num_normals = liquid_get_num_normals(sds->fluid);
 	num_faces   = liquid_get_num_triangles(sds->fluid);
-	
+
 	if (!num_verts || !num_normals || !num_faces)
 		return NULL;
-	
+
 	dm     = CDDM_new(num_verts, 0, 0, num_faces * 3, num_faces);
 	mverts = CDDM_get_verts(dm);
 	mpolys = CDDM_get_polys(dm);
 	mloops = CDDM_get_loops(dm);
-	
+
 	if (!dm)
 		return NULL;
-	
-	float max_size = MAX3(sds->global_size[0], sds->global_size[1], sds->global_size[2]);
-	
+
+	// Get size (dimension) but considering scaling scaling
+	copy_v3_v3(cell_size_scaled, sds->cell_size);
+	mul_v3_v3(cell_size_scaled, ob->size);
+	VECMADD(min, sds->p0, cell_size_scaled, sds->res_min);
+	VECMADD(max, sds->p0, cell_size_scaled, sds->res_max);
+	sub_v3_v3v3(size, max, min);
+
+	// Biggest dimension will be used for upscaling
+	float max_size = MAX3(size[0], size[1], size[2]);
+
 	// Vertices
 	for (i = 0; i < num_verts; i++, mverts++)
 	{
+		// read raw data. is normalized cube around domain origin
 		mverts->co[0] = liquid_get_vertex_x_at(sds->fluid, i);
 		mverts->co[1] = liquid_get_vertex_y_at(sds->fluid, i);
 		mverts->co[2] = liquid_get_vertex_z_at(sds->fluid, i);
-		
+
 		mverts->co[0] *= max_size / fabsf(ob->size[0]);
 		mverts->co[1] *= max_size / fabsf(ob->size[1]);
 		mverts->co[2] *= max_size / fabsf(ob->size[2]);
-		
+
 //		printf("mverts->co[0]: %f, mverts->co[1]: %f, mverts->co[2]: %f\n", mverts->co[0], mverts->co[1], mverts->co[2]);
 	}
-	
+
 	// Normals
 	normals = MEM_callocN(sizeof(short) * num_normals * 3, "liquid_tmp_normals");
-	
+
 	for (i = 0, no_s = normals; i < num_normals; no_s += 3, i++)
 	{
 		no[0] = liquid_get_normal_x_at(sds->fluid, i);
@@ -3013,10 +3026,10 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 		no[2] = liquid_get_normal_z_at(sds->fluid, i);
 
 		normal_float_to_short_v3(no_s, no);
-		
+
 //		printf("no_s[0]: %d, no_s[1]: %d, no_s[2]: %d\n", no_s[0], no_s[1], no_s[2]);
 	}
-	
+
 	// Triangles
 	for (i = 0; i < num_faces; i++, mpolys++, mloops += 3)
 	{
@@ -3026,17 +3039,17 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 
 		mpolys->loopstart = i * 3;
 		mpolys->totloop = 3;
-		
+
 		mloops[0].v = liquid_get_triangle_x_at(sds->fluid, i);
 		mloops[1].v = liquid_get_triangle_y_at(sds->fluid, i);
 		mloops[2].v = liquid_get_triangle_z_at(sds->fluid, i);
-		
+
 //		printf("mloops[0].v: %d, mloops[1].v: %d, mloops[2].v: %d\n", mloops[0].v, mloops[1].v, mloops[2].v);
 	}
-	
+
 	CDDM_calc_edges(dm);
 	CDDM_apply_vert_normals(dm, (short (*)[3])normals);
-	
+
 	MEM_freeN(normals);
 
 	return dm;
