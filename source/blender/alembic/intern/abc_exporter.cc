@@ -42,6 +42,7 @@ extern "C" {
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_space_types.h"  /* for FILE_MAX */
+#include "DNA_smoke_types.h"
 
 #include "BLI_string.h"
 
@@ -102,7 +103,8 @@ static bool object_is_smoke_sim(Object *ob)
 
 	if (md) {
 		SmokeModifierData *smd = reinterpret_cast<SmokeModifierData *>(md);
-		return (smd->type == MOD_SMOKE_TYPE_DOMAIN);
+		return (smd->type == MOD_SMOKE_TYPE_DOMAIN && smd->domain &&
+				smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS);
 	}
 
 	return false;
