@@ -167,13 +167,6 @@ def manta_step_$ID$(framenr):\n\
         mantaMsg('s.frame is ' + str(s$ID$.frame))\n\
         flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$, phiWalls=phiObs_s$ID$, outflow=boundConditions_s$ID$)\n\
         \n\
-        # extrapolate before joining inflow levelsets\n\
-        extrapolateLsSimple(phi=phiIn_s$ID$, distance=narrowBandWidth_s$ID$+2, inside=True)\n\
-        extrapolateLsSimple(phi=phiIn_s$ID$, distance=3)\n\
-        if using_obstacle_s$ID$:\n\
-            extrapolateLsSimple(phi=phiObsIn_s$ID$, distance=9, inside=True)\n\
-            extrapolateLsSimple(phi=phiObsIn_s$ID$, distance=9)\n\
-        \n\
         if using_obstacle_s$ID$:\n\
             phiObs_s$ID$.join(phiObsIn_s$ID$)\n\
         phi_s$ID$.join(phiIn_s$ID$)\n\
@@ -216,7 +209,7 @@ def liquid_step_$ID$():\n\
     mantaMsg('Liquid step low')\n\
     \n\
     mantaMsg('Advecting particles')\n\
-    pp_s$ID$.advectInGrid(flags=flags_s$ID$, vel=vel_s$ID$, integrationMode=IntRK4, deleteInObstacle=using_obstacle_s$ID$, stopInObstacle=False)\n\
+    pp_s$ID$.advectInGrid(flags=flags_s$ID$, vel=vel_s$ID$, integrationMode=IntRK4, deleteInObstacle=False, stopInObstacle=False)\n\
     \n\
     mantaMsg('Pushing particles out of obstacles')\n\
     pushOutofObs(parts=pp_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$)\n\
