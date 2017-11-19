@@ -1244,7 +1244,7 @@ static void em_allocateData(EmissionMap *em, bool use_velocity, int hires_mul)
 		em->velocity = MEM_callocN(sizeof(float) * em->total_cells * 3, "smoke_flow_velocity");
 	
 	em->distances = MEM_callocN(sizeof(float) * em->total_cells, "fluid_flow_distances");
-	memset(em->distances, 9999, sizeof(float) * em->total_cells);
+	memset(em->distances, 0x7f7f7f7f, sizeof(float) * em->total_cells); // init to inf
 
 	/* allocate high resolution map if required */
 	if (hires_mul > 1) {
@@ -1258,7 +1258,7 @@ static void em_allocateData(EmissionMap *em, bool use_velocity, int hires_mul)
 
 		em->influence_high = MEM_callocN(sizeof(float) * total_cells_high, "smoke_flow_influence_high");
 		em->distances_high = MEM_callocN(sizeof(float) * total_cells_high, "fluid_flow_distances_high");
-		memset(em->distances_high, 9999, sizeof(float) * total_cells_high);
+		memset(em->distances_high, 0x7f7f7f7f, sizeof(float) * total_cells_high); // init to inf
 	}
 	em->valid = 1;
 }
@@ -1628,7 +1628,7 @@ static void emit_from_particles(
 /* Calculate map of (minimum) distances to flow/obstacle surface. Distances outside mesh are positive, inside negative */
 static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromMesh *treeData, const float ray_start[3], float surface_thickness) {
 
-	float min_dist = 9999;
+	float min_dist = 9999.f;
 
 	/* Raycasts in 26 directions (6 main axis + 12 quadrant diagonals (2D) + 8 octant diagonals (3D)) */
 	float ray_dirs[26][3] = { {  1.0f, 0.0f,  0.0f }, { 0.0f,  1.0f,  0.0f }, {  0.0f,  0.0f,  1.0f },
