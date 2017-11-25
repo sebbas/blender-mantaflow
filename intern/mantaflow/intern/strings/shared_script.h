@@ -169,7 +169,6 @@ const std::string fluid_alloc_sndparts_low = "\n\
 mantaMsg('Allocating snd parts low')\n\
 ppSnd_s$ID$     = s$ID$.create(BasicParticleSystem)\n\
 pVelSnd_pp$ID$  = ppSnd_s$ID$.create(PdataVec3)\n\
-pTypeSnd_pp$ID$ = ppSnd_s$ID$.create(PdataInt)\n\
 pLifeSnd_pp$ID$ = ppSnd_s$ID$.create(PdataInt)\n";
 
 //////////////////////////////////////////////////////////////////////
@@ -248,7 +247,6 @@ const std::string fluid_delete_sndparts_low = "\n\
 mantaMsg('Deleting snd parts low')\n\
 if 'ppSnd_s$ID$'     in globals() : del ppSnd_s$ID$\n\
 if 'pVelSnd_pp$ID$'  in globals() : del pVelSnd_pp$ID$\n\
-if 'pTypeSnd_pp$ID$' in globals() : del pTypeSnd_pp$ID$\n\
 if 'pLifeSnd_pp$ID$' in globals() : del pLifeSnd_pp$ID$\n";
 
 const std::string fluid_multigrid_cleanup_low = "\n\
@@ -300,7 +298,6 @@ const std::string fluid_sndparts_import_low = "\n\
 def load_fluid_sndparts_data_low_$ID$(path):\n\
     ppSnd_s$ID$.load(path + '_ppSnd.uni')\n\
     pVelSnd_pp$ID$.load(path + '_pVelSnd.uni')\n\
-    pTypeSnd_pp$ID$.load(path + '_pTypeSnd.uni')\n\
     pLifeSnd_pp$ID$.load(path + '_pLifeSnd.uni')\n";
 
 const std::string fluid_obstacle_export_low = "\n\
@@ -333,7 +330,6 @@ const std::string fluid_sndparts_export_low = "\n\
 def save_fluid_sndparts_data_low_$ID$(path):\n\
     ppSnd_s$ID$.save(path + '_ppSnd.uni')\n\
     pVelSnd_pp$ID$.save(path + '_pVelSnd.uni')\n\
-    pTypeSnd_pp$ID$.save(path + '_pTypeSnd.uni')\n\
     pLifeSnd_pp$ID$.save(path + '_pLifeSnd.uni')\n";
 
 //////////////////////////////////////////////////////////////////////

@@ -150,7 +150,6 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mFlipParticleVelocity  = NULL;
 	mSndParticleData       = NULL;
 	mSndParticleVelocity   = NULL;
-	mSndParticleType       = NULL;
 	mSndParticleLife       = NULL;
 
 	// Only start Mantaflow once. No need to start whenever new FLUID objected is allocated
@@ -604,7 +603,6 @@ FLUID::~FLUID()
 	mFlipParticleVelocity  = NULL;
 	mSndParticleData       = NULL;
 	mSndParticleVelocity   = NULL;
-	mSndParticleType       = NULL;
 	mSndParticleLife       = NULL;
 
 	// Reset flags
@@ -1324,7 +1322,6 @@ void FLUID::updatePointers()
 		if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
 			mSndParticleData     = (std::vector<pData>*) getDataPointer("ppSnd" + solver_ext, solver);
 			mSndParticleVelocity = (std::vector<pVel>*)  getDataPointer("pVelSnd" + parts_ext, parts);
-			mSndParticleType     = (std::vector<int>*)   getDataPointer("pTypeSnd" + parts_ext, parts);
 			mSndParticleLife     = (std::vector<int>*)   getDataPointer("pLifeSnd" + parts_ext, parts);
 		}
 	}
@@ -1437,16 +1434,6 @@ void FLUID::setSndParticleVelocity(float* buffer, int numParts)
 		it->pos[1] = bufferPVel->pos[1];
 		it->pos[2] = bufferPVel->pos[2];
 		bufferPVel++;
-	}
-}
-
-void FLUID::setSndParticleType(int* buffer, int numParts)
-{
-	mSndParticleType->resize(numParts);
-	int* bufferPType = buffer;
-	for (std::vector<int>::iterator it = mSndParticleType->begin(); it != mSndParticleType->end(); ++it) {
-		*it = *bufferPType;
-		bufferPType++;
 	}
 }
 
