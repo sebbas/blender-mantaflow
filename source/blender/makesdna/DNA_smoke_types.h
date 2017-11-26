@@ -248,16 +248,24 @@ typedef struct SmokeDomainSettings {
 	int particle_maximum;
 	float particle_radius;
 	float particle_band_width;
-	float particle_velocity_threshold;
+	float particle_droplet_threshold;
+	float particle_droplet_amount;
+	int particle_droplet_life;
+	int particle_droplet_max;
 	float particle_bubble_rise;
-	float particle_float_amount;
+	int particle_bubble_life;
+	int particle_bubble_max;
+	float particle_floater_amount;
+	int particle_floater_life;
+	int particle_floater_max;
 	float particle_tracer_amount;
+	int particle_tracer_life;
+	int particle_tracer_max;
 	int particle_type;
 
 	/* fluid guiding parameters */
 	float guiding_alpha; /* guiding weight scalar (determines strength) */
 	int guiding_beta; /* guiding blur radius (affects size of vortices) */
-	char pad2[4]; /* unused */
 
 	/* Display settings */
 	char slice_method, axis_slice_method;

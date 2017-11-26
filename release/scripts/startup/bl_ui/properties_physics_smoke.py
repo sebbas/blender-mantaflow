@@ -386,29 +386,37 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
 
         col = split.column()
         col.enabled = not domain.point_cache.is_baked
-        col.prop(domain, "use_flip_particles", text="FLIP")
         col.prop(domain, "use_drop_particles", text="Drop")
-        col2 = col.column()
-        col2.active = domain.use_drop_particles
-        col2.prop(domain, "use_bubble_particles", text="Bubble")
-        col.prop(domain, "use_float_particles", text="Float")
-        col.prop(domain, "use_tracer_particles", text="Tracer")
-
+        sub = col.column()
+        sub.active = domain.use_drop_particles
+        sub.prop(domain, "particle_droplet_threshold", text="Threshold")
+        sub.prop(domain, "particle_droplet_amount", text="Generate")
+        sub.prop(domain, "particle_droplet_life", text="Life")
+        sub.prop(domain, "particle_droplet_max", text="Maximum")
+        sub2 = col.column()
+        sub2.active = domain.use_drop_particles
+        sub2.prop(domain, "use_bubble_particles", text="Bubble")
+        sub3 = col.column()
+        sub3.active = domain.use_drop_particles and domain.use_bubble_particles
+        sub3.prop(domain, "particle_bubble_rise", text="Rise")
+        sub3.prop(domain, "particle_bubble_life", text="Life")
+        sub3.prop(domain, "particle_bubble_max", text="Maximum")
         col = split.column()
         col.enabled = not domain.point_cache.is_baked
+        col.prop(domain, "use_floater_particles", text="Float")
         sub = col.column()
-        sub.label()
-        sub.active = domain.use_drop_particles
-        sub.prop(domain, "particle_velocity_threshold", text="Threshold")
+        sub.active = domain.use_floater_particles
+        sub.prop(domain, "particle_floater_amount", text="Generate")
+        sub.prop(domain, "particle_floater_life", text="Life")
+        sub.prop(domain, "particle_floater_max", text="Maximum")
+        col.prop(domain, "use_tracer_particles", text="Tracer")
         sub2 = col.column()
-        sub2.active = domain.use_drop_particles and domain.use_bubble_particles
-        sub2.prop(domain, "particle_bubble_rise", text="Rise")
+        sub2.active = domain.use_tracer_particles
+        sub2.prop(domain, "particle_tracer_amount", text="Amount")
+        sub2.prop(domain, "particle_tracer_life", text="Life")
+        sub2.prop(domain, "particle_tracer_max", text="Maximum")
         sub3 = col.column()
-        sub3.active = domain.use_float_particles
-        sub3.prop(domain, "particle_float_amount", text="Initial")
-        sub4 = col.column()
-        sub4.active = domain.use_tracer_particles
-        sub4.prop(domain, "particle_tracer_amount", text="Amount")
+        sub3.prop(domain, "use_flip_particles", text="FLIP")
 
 class PHYSICS_PT_smoke_guiding(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Guiding"

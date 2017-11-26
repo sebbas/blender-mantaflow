@@ -542,11 +542,24 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->particle_maximum = 16;
 			smd->domain->particle_radius = 1.0f;
 			smd->domain->particle_band_width = 3.0f;
-			smd->domain->particle_velocity_threshold = 2.0f;
-			smd->domain->particle_bubble_rise = 0.5f;
-			smd->domain->particle_float_amount = 0.5f;
-			smd->domain->particle_tracer_amount = 0.5f;
 			smd->domain->particle_type = 0;
+
+			smd->domain->particle_droplet_threshold = 2.0f;
+			smd->domain->particle_droplet_amount = 2.5f;
+			smd->domain->particle_droplet_life = 0;
+			smd->domain->particle_droplet_max = 4;
+
+			smd->domain->particle_bubble_rise = 0.5f;
+			smd->domain->particle_bubble_life = 0;
+			smd->domain->particle_bubble_max = 2;
+
+			smd->domain->particle_floater_amount = 0.5f;
+			smd->domain->particle_floater_life = 0;
+			smd->domain->particle_floater_max = 2;
+
+			smd->domain->particle_tracer_amount = 0.5f;
+			smd->domain->particle_tracer_life = 0;
+			smd->domain->particle_tracer_max = 2;
 
 			/* guiding */
 			smd->domain->guiding_alpha = 2.0f;
@@ -676,10 +689,19 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->particle_maximum = smd->domain->particle_maximum;
 		tsmd->domain->particle_radius = smd->domain->particle_radius;
 		tsmd->domain->particle_band_width = smd->domain->particle_band_width;
-		tsmd->domain->particle_velocity_threshold = smd->domain->particle_velocity_threshold;
+		tsmd->domain->particle_droplet_threshold = smd->domain->particle_droplet_threshold;
+		tsmd->domain->particle_droplet_amount = smd->domain->particle_droplet_amount;
+		tsmd->domain->particle_droplet_life = smd->domain->particle_droplet_life;
+		tsmd->domain->particle_droplet_max = smd->domain->particle_droplet_max;
 		tsmd->domain->particle_bubble_rise = smd->domain->particle_bubble_rise;
-		tsmd->domain->particle_float_amount = smd->domain->particle_float_amount;
+		tsmd->domain->particle_bubble_life = smd->domain->particle_bubble_life;
+		tsmd->domain->particle_bubble_max = smd->domain->particle_bubble_max;
+		tsmd->domain->particle_floater_amount = smd->domain->particle_floater_amount;
+		tsmd->domain->particle_floater_life = smd->domain->particle_floater_life;
+		tsmd->domain->particle_floater_max = smd->domain->particle_floater_max;
 		tsmd->domain->particle_tracer_amount = smd->domain->particle_tracer_amount;
+		tsmd->domain->particle_tracer_life = smd->domain->particle_tracer_life;
+		tsmd->domain->particle_tracer_max = smd->domain->particle_tracer_max;
 
 		tsmd->domain->guiding_alpha = smd->domain->guiding_alpha;
 		tsmd->domain->guiding_beta = smd->domain->guiding_beta;
@@ -2654,7 +2676,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 							apply_outflow_fields(d_index, distance_map[e_index], density, heat, fuel, react, color_r, color_g, color_b, phioutin);
 						}
 						else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time > 2) {
-							apply_inflow_fields(sfs, 0.0f, 0.5f, d_index, density, heat, fuel, react, color_r, color_g, color_b, phiin, manta_inflow);
+							apply_inflow_fields(sfs, 0.0f, 9999.0f, d_index, density, heat, fuel, react, color_r, color_g, color_b, phiin, manta_inflow);
 						}
 						else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW || sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY) { // inflow
 							/* only apply inflow if enabled */
@@ -2870,7 +2892,7 @@ static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	pdEndEffectors(&effectors);
 }
 
-static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *domain_dm, float fps, int framenr)
+static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *domain_dm, float fps, int framenr, int startframe, bool do_first_frame, PTCacheID *pid)
 {
 	SmokeDomainSettings *sds = smd->domain;
 	/* stability values copied from wturbulence.cpp */
@@ -2936,7 +2958,12 @@ static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *
 		if (sds->total_cells > 1) {
 			update_effectors(scene, ob, sds, dtSubdiv); // DG TODO? problem --> uses forces instead of velocity, need to check how they need to be changed with variable dt
 
-			smoke_step(sds->fluid, framenr);
+			/* extra smoke step for first frame: only produce geometry, no advection, then write cache */
+			if (do_first_frame && sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID) {
+				smoke_step(sds->fluid, framenr, true);
+				BKE_ptcache_write(pid, startframe);
+			}
+			smoke_step(sds->fluid, framenr, false);
 		}
 	}
 }
@@ -3240,8 +3267,11 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		double start = PIL_check_seconds_timer();
 #endif
 
-		/* if on second frame, write cache for first frame */
-		if ((int)smd->time == startframe && (cache->flag & PTCACHE_OUTDATED || cache->last_exact == 0)) {
+		/* first frame needs special treatment because it does not have a step */
+		bool do_first_frame = (int)smd->time == startframe && (cache->flag & PTCACHE_OUTDATED || cache->last_exact == 0);
+
+		/* if on second frame, write smoke cache for first frame here (i.e. before simulating) */
+		if (do_first_frame && sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
 			BKE_ptcache_write(&pid, startframe);
 		}
 
@@ -3261,7 +3291,7 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 					smoke_dissolve_wavelet(sds->fluid, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
 				}
 			}
-			step(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base, framenr-1); // framenr-1: manta solver starts frames at 0
+			step(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base, framenr, startframe, do_first_frame, &pid);
 		}
 		// create shadows before writing cache so they get stored
 		if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {

@@ -1257,7 +1257,7 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 #endif
 
 #ifdef WITH_MANTA
-static int ptcache_mesh_read(void *smoke_v, char *filename, char *pathname, bool load_liquid_data)
+static int ptcache_mesh_read(void *smoke_v, char *filename)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
 	int i;
@@ -1275,15 +1275,6 @@ static int ptcache_mesh_read(void *smoke_v, char *filename, char *pathname, bool
 	bool high_res_view = sds->viewport_display_mode == SM_VIEWPORT_FINAL;
 
 	if (sds->fluid) {
-		/* Mantaflow internal data loading */
-//		if (load_liquid_data) {
-//			liquid_load_data(sds->fluid, pathname);
-//		}
-//		if (load_liquid_data && high_res && high_res_view) {
-//			liquid_load_data_high(sds->fluid, pathname);
-//		}
-
-		/* Actual mesh loading */
 		liquid_update_mesh_data(sds->fluid, filename);
 		if (high_res && high_res_view) {
 			i = strlen(filename);
@@ -1330,7 +1321,7 @@ static int ptcache_mesh_read(void *smoke_v, char *filename, char *pathname, bool
 //	return 0;
 //}
 
-static int ptcache_mesh_write(void *smoke_v, char *filename, char* pathname, bool save_liquid_data)
+static int ptcache_mesh_write(void *smoke_v, char *filename)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
 	int i;
@@ -1349,15 +1340,6 @@ static int ptcache_mesh_write(void *smoke_v, char *filename, char* pathname, boo
 	bool high_res_view = sds->viewport_display_mode == SM_VIEWPORT_FINAL;
 
 	if (sds->fluid) {
-		/* Mantaflow internal data saving */
-//		if (save_liquid_data) {
-//			liquid_save_data(sds->fluid, pathname);
-//		}
-//		if (save_liquid_data && high_res) {
-//			liquid_save_data_high(sds->fluid, pathname);
-//		}
-
-		/* Actual mesh saving */
 		liquid_save_mesh(sds->fluid, filename);
 		if (high_res) {
 			strcpy(filenameTmp, filename);			// copy name, original file name is needed later
@@ -2840,7 +2822,7 @@ static int ptcache_read_openvdb_stream(PTCacheID *pid, int cfra)
 #endif
 }
 
-static int ptcache_read_mesh_stream(PTCacheID *pid, int cfra, bool load_liquid_data)
+static int ptcache_read_mesh_stream(PTCacheID *pid, int cfra)
 {
 	char filename[FILE_MAX * 2];
 	char pathname[FILE_MAX * 2];
@@ -2856,7 +2838,7 @@ static int ptcache_read_mesh_stream(PTCacheID *pid, int cfra, bool load_liquid_d
 		return 0;
 	}
 
-	if (!pid->read_mesh_stream(pid->calldata, filename, pathname, load_liquid_data)) {
+	if (!pid->read_mesh_stream(pid->calldata, filename)) {
 		return 0;
 	}
 
@@ -3063,7 +3045,7 @@ int BKE_ptcache_read(PTCacheID *pid, float cfra, bool no_extrapolate_old)
 		/* Surface caching */
 		if (pid->file_type & PTCACHE_FILE_OBJECT && pid->read_mesh_stream) {
 			pid->file_type = PTCACHE_FILE_OBJECT;
-			if (!ptcache_read_mesh_stream(pid, cfra1, true)) {
+			if (!ptcache_read_mesh_stream(pid, cfra1)) {
 				return 0;
 			}
 		}
@@ -3103,7 +3085,7 @@ int BKE_ptcache_read(PTCacheID *pid, float cfra, bool no_extrapolate_old)
 		/* Surface caching */
 		if (pid->file_type & PTCACHE_FILE_OBJECT && pid->read_mesh_stream) {
 			pid->file_type = PTCACHE_FILE_OBJECT;
-			if (!ptcache_read_mesh_stream(pid, cfra2, true)) {
+			if (!ptcache_read_mesh_stream(pid, cfra2)) {
 				return 0;
 			}
 		}
@@ -3187,7 +3169,7 @@ static int ptcache_write_openvdb_stream(PTCacheID *pid, int cfra)
 	return 0;
 #endif
 }
-static int ptcache_write_mesh_stream(PTCacheID *pid, int cfra, bool save_liquid_data)
+static int ptcache_write_mesh_stream(PTCacheID *pid, int cfra)
 {
 	char filename[FILE_MAX * 2];
 	char pathname[FILE_MAX * 2];
@@ -3199,7 +3181,7 @@ static int ptcache_write_mesh_stream(PTCacheID *pid, int cfra, bool save_liquid_
 	
 	BLI_make_existing_file(filename);
 
-	int error = pid->write_mesh_stream(pid->calldata, filename, pathname, save_liquid_data);
+	int error = pid->write_mesh_stream(pid->calldata, filename);
 	
 	if (error && G.debug & G_DEBUG)
 		printf("Error writing to disk cache\n");
@@ -3380,7 +3362,7 @@ int BKE_ptcache_write(PTCacheID *pid, unsigned int cfra)
 	/* Surface caching */
 	if (pid->file_type & PTCACHE_FILE_OBJECT && pid->write_mesh_stream) {
 		pid->file_type = PTCACHE_FILE_OBJECT;
-		ptcache_write_mesh_stream(pid, cfra, true);
+		ptcache_write_mesh_stream(pid, cfra);
 	}
 	/* Restore cache file type */
 	pid->file_type = pid_file_type_orig;

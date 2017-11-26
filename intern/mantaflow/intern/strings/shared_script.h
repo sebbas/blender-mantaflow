@@ -80,12 +80,7 @@ using_adaptTime_s$ID$ = $USING_ADAPTIVETIME$\n\
 using_obstacle_s$ID$  = $USING_OBSTACLE$\n\
 using_guiding_s$ID$   = $USING_GUIDING$\n\
 using_invel_s$ID$     = $USING_INVEL$\n\
-\n\
-using_drops_s$ID$    = $USING_DROP_PARTS$\n\
-using_bubbles_s$ID$  = $USING_BUBBLE_PARTS$\n\
-using_floats_s$ID$   = $USING_FLOAT_PARTS$\n\
-using_tracers_s$ID$  = $USING_TRACER_PARTS$\n\
-using_sndparts_s$ID$ = using_drops_s$ID$ or using_bubbles_s$ID$ or using_floats_s$ID$ or using_tracers_s$ID$\n\
+using_sndparts_s$ID$  = $USING_SNDPARTS$\n\
 \n\
 # fluid guiding params\n\
 alpha_s$ID$ = $GUIDING_ALPHA$\n\
@@ -110,6 +105,9 @@ using_guiding_s$ID$ = True\n";
 const std::string fluid_with_invel = "\n\
 using_invel_s$ID$ = True\n";
 
+const std::string fluid_with_sndparts = "\n\
+using_sndparts_s$ID$ = True\n";
+
 //////////////////////////////////////////////////////////////////////
 // ADAPTIVE TIME STEPPING
 //////////////////////////////////////////////////////////////////////
@@ -132,6 +130,17 @@ xl$ID$.frameLength = s$ID$.frameLength\n\
 xl$ID$.timestepMin = s$ID$.timestepMin\n\
 xl$ID$.timestepMax = s$ID$.timestepMax\n\
 xl$ID$.cfl         = s$ID$.cfl\n";
+
+const std::string fluid_adapt_time_step_low = "\n\
+def fluid_adapt_time_step():\n\
+    maxVel_s$ID$ = vel_s$ID$.getMax()\n\
+    if using_adaptTime_s$ID$:\n\
+        mantaMsg('Adapt timestep')\n\
+        s$ID$.adaptTimestep(maxVel_s$ID$)\n";
+
+const std::string fluid_adapt_time_step_high = "\n\
+def fluid_adapt_time_step_high():\n\
+    xl$ID$.timestep = s$ID$.timestep\n";
 
 //////////////////////////////////////////////////////////////////////
 // GRIDS

@@ -236,6 +236,7 @@ void FLUID::initDomain(SmokeModifierData *smd)
 		+ fluid_guiding_export_low
 		+ fluid_invel_export_low
 		+ fluid_sndparts_export_low
+		+ fluid_adapt_time_step_low
 		+ fluid_adaptive_time_stepping_low;
 	std::string finalString = parseScript(tmpString, smd);
 	mCommands.clear();
@@ -252,6 +253,7 @@ void FLUID::initDomainHigh(SmokeModifierData *smd)
 {
 	std::string tmpString = fluid_variables_high
 		+ fluid_solver_high
+		+ fluid_adapt_time_step_high
 		+ fluid_adaptive_time_stepping_high;
 	std::string finalString = parseScript(tmpString, smd);
 	mCommands.clear();
@@ -381,6 +383,7 @@ void FLUID::initLiquid(SmokeModifierData *smd)
 			+ liquid_import_low
 			+ liquid_adaptive_step
 			+ liquid_pre_step_low
+			+ liquid_geometry_low
 			+ liquid_step_low
 			+ liquid_post_step_low;
 		std::string finalString = parseScript(tmpString, smd);
@@ -453,7 +456,8 @@ void FLUID::initInVelocity(SmokeModifierData *smd)
 void FLUID::initSndParts(SmokeModifierData *smd)
 {
 	if (!mSndParticleData) {
-		std::string tmpString = fluid_alloc_sndparts_low;
+		std::string tmpString = fluid_alloc_sndparts_low
+			+ fluid_with_sndparts;
 		std::string finalString = parseScript(tmpString, smd);
 		mCommands.clear();
 		mCommands.push_back(finalString);
@@ -462,14 +466,18 @@ void FLUID::initSndParts(SmokeModifierData *smd)
 	}
 }
 
-void FLUID::step(int framenr)
+void FLUID::step(int framenr, bool initOnly)
 {
-	// manta_write_effectors(this);                         // TODO in Mantaflow
-
-	// Run manta step and handover current frame number
+	// Run manta step: regular step or init only (sets up geometry only, no vel update, for first frame)
 	mCommands.clear();
 	std::ostringstream manta_step;
-	manta_step <<  "manta_step_" << mCurrentID << "(" << framenr << ")";
+	if (initOnly) {
+		std::string init = (initOnly) ? "True" : "False";
+		manta_step <<  "manta_geometry_" << mCurrentID << "()";
+	}
+	else {
+		manta_step <<  "manta_step_" << mCurrentID << "(" << framenr << ")";
+	}
 	mCommands.push_back(manta_step.str());
 
 	runPythonString(mCommands);
@@ -669,7 +677,7 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 	std::ostringstream ss;
 	bool is2D = false;
 	ModifierData *md;
-	int closedDomain;
+	int tmpVar;
 	
 	if (smd) {
 		is2D = (smd->domain->manta_solver_res == 2);
@@ -693,10 +701,10 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 	else if (varName == "SOLVER_DIM")
 		ss << smd->domain->manta_solver_res;
 	else if (varName == "DO_OPEN") {
-		closedDomain = (MOD_SMOKE_BORDER_BACK | MOD_SMOKE_BORDER_FRONT |
-						 MOD_SMOKE_BORDER_LEFT | MOD_SMOKE_BORDER_RIGHT |
-						 MOD_SMOKE_BORDER_BOTTOM | MOD_SMOKE_BORDER_TOP);
-		ss << (((smd->domain->border_collisions & closedDomain) == closedDomain) ? "False" : "True");
+		tmpVar = (MOD_SMOKE_BORDER_BACK | MOD_SMOKE_BORDER_FRONT |
+				  MOD_SMOKE_BORDER_LEFT | MOD_SMOKE_BORDER_RIGHT |
+				  MOD_SMOKE_BORDER_BOTTOM | MOD_SMOKE_BORDER_TOP);
+		ss << (((smd->domain->border_collisions & tmpVar) == tmpVar) ? "False" : "True");
 	} else if (varName == "BOUNDCONDITIONS") {
 		if (smd->domain->manta_solver_res == 2) {
 			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_LEFT) == 0) ss << "x";
@@ -786,23 +794,55 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << smd->domain->particle_radius;
 	else if (varName == "PARTICLE_BAND_WIDTH")
 		ss << smd->domain->particle_band_width;
-	else if (varName == "SNDPARTICLE_VEL_THRESH")
-		ss << smd->domain->particle_velocity_threshold;
+	else if (varName == "SNDPARTICLE_DROPLET_THRESH")
+		ss << smd->domain->particle_droplet_threshold;
+	else if (varName == "SNDPARTICLE_DROPLET_AMOUNT")
+		ss << smd->domain->particle_droplet_amount;
+	else if (varName == "SNDPARTICLE_DROPLET_LIFE")
+		ss << smd->domain->particle_droplet_life;
+	else if (varName == "SNDPARTICLE_DROPLET_MAX")
+		ss << smd->domain->particle_droplet_max;
 	else if (varName == "SNDPARTICLE_BUBBLE_RISE")
 		ss << smd->domain->particle_bubble_rise;
-	else if (varName == "SNDPARTICLE_FLOAT_AMOUNT")
-		ss << smd->domain->particle_float_amount;
+	else if (varName == "SNDPARTICLE_BUBBLE_LIFE")
+		ss << smd->domain->particle_bubble_life;
+	else if (varName == "SNDPARTICLE_BUBBLE_MAX")
+		ss << smd->domain->particle_bubble_max;
+	else if (varName == "SNDPARTICLE_FLOATER_AMOUNT")
+		ss << smd->domain->particle_floater_amount;
+	else if (varName == "SNDPARTICLE_FLOATER_LIFE")
+		ss << smd->domain->particle_floater_life;
+	else if (varName == "SNDPARTICLE_FLOATER_MAX")
+		ss << smd->domain->particle_floater_max;
 	else if (varName == "SNDPARTICLE_TRACER_AMOUNT")
 		ss << smd->domain->particle_tracer_amount;
-	else if (varName == "USING_DROP_PARTS")
-		ss << (smd->domain->particle_type & MOD_SMOKE_PARTICLE_DROP ? "True" : "False");
-	else if (varName == "USING_BUBBLE_PARTS")
-		ss << (smd->domain->particle_type & MOD_SMOKE_PARTICLE_BUBBLE ? "True" : "False");
-	else if (varName == "USING_FLOAT_PARTS")
-		ss << (smd->domain->particle_type & MOD_SMOKE_PARTICLE_FLOAT ? "True" : "False");
-	else if (varName == "USING_TRACER_PARTS")
-		ss << (smd->domain->particle_type & MOD_SMOKE_PARTICLE_TRACER ? "True" : "False");
-	else if (varName == "GUIDING_ALPHA")
+	else if (varName == "SNDPARTICLE_TRACER_LIFE")
+		ss << smd->domain->particle_tracer_life;
+	else if (varName == "SNDPARTICLE_TRACER_MAX")
+		ss << smd->domain->particle_tracer_max;
+	else if (varName == "SNDPARTICLE_TYPES") {
+		if (smd->domain->particle_type & MOD_SMOKE_PARTICLE_DROP) {
+			ss << "PtypeDroplet";
+		}
+		if (smd->domain->particle_type & MOD_SMOKE_PARTICLE_BUBBLE) {
+			if (!ss.str().empty()) ss << "|";
+			ss << "PtypeBubble";
+		}
+		if (smd->domain->particle_type & MOD_SMOKE_PARTICLE_FLOAT) {
+			if (!ss.str().empty()) ss << "|";
+			ss << "PtypeFloater";
+		}
+		if (smd->domain->particle_type & MOD_SMOKE_PARTICLE_TRACER) {
+			if (!ss.str().empty()) ss << "|";
+			ss << "PtypeTracer";
+		}
+		if (ss.str().empty()) ss << "0";
+
+	} else if (varName == "USING_SNDPARTS") {
+		tmpVar = (MOD_SMOKE_PARTICLE_DROP | MOD_SMOKE_PARTICLE_BUBBLE |
+				  MOD_SMOKE_PARTICLE_FLOAT | MOD_SMOKE_PARTICLE_TRACER);
+		ss << (((smd->domain->particle_type & tmpVar)) ? "True" : "False");
+	} else if (varName == "GUIDING_ALPHA")
 		ss << smd->domain->guiding_alpha;
 	else if (varName == "GUIDING_BETA")
 		ss << smd->domain->guiding_beta;
@@ -1020,7 +1060,8 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 
 	manta_script += liquid_pre_step_low;
 	manta_script += liquid_post_step_low;
-	
+
+	manta_script += liquid_geometry_low;
 	manta_script += liquid_step_low;
 	if (highres)
 		manta_script += liquid_step_high;

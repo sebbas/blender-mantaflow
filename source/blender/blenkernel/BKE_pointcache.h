@@ -166,9 +166,9 @@ typedef struct PTCacheID {
 	int (*read_openvdb_stream)(struct OpenVDBReader *reader, void *calldata);
 	
 	/* copies mesh data to cache data */
-	int (*write_mesh_stream)(void *calldata, char *filename, char *pathname, bool save_liquid_data);
+	int (*write_mesh_stream)(void *calldata, char *filename);
 	/* copies cache data to mesh data */
-	int (*read_mesh_stream)(void *calldata, char *filename, char *pathname, bool load_liquid_data);
+	int (*read_mesh_stream)(void *calldata, char *filename);
 
 	/* copies point data to cache data */
 	int (*write_uni_stream)(void *calldata, char *filename, char *pathname, bool save_liquid_data);

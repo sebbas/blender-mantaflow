@@ -45,7 +45,7 @@ public:
 	typedef struct pVel { float pos[3]; } pVel;
 
 	// Manta step, handling everything
-	void step(int startFrame);
+	void step(int startFrame, bool initOnly);
 	
 	// Grid initialization functions
 	void initHeat(struct SmokeModifierData *smd);
