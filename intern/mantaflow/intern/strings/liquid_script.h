@@ -145,7 +145,7 @@ def liquid_post_step_low_$ID$():\n\
     if using_invel_s$ID$:\n\
         invel_s$ID$.clear()\n\
     \n\
-    #phiIn_s$ID$.setConst(9999)\n\
+    phiIn_s$ID$.setConst(9999)\n\
     phiOut_s$ID$.setConst(9999)\n\
     copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n";
 
