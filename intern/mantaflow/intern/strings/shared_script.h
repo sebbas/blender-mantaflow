@@ -183,7 +183,8 @@ const std::string fluid_alloc_sndparts_low = "\n\
 mantaMsg('Allocating snd parts low')\n\
 ppSnd_s$ID$     = s$ID$.create(BasicParticleSystem)\n\
 pVelSnd_pp$ID$  = ppSnd_s$ID$.create(PdataVec3)\n\
-pLifeSnd_pp$ID$ = ppSnd_s$ID$.create(PdataReal)\n";
+pLifeSnd_pp$ID$ = ppSnd_s$ID$.create(PdataReal)\n\
+pForceSnd_pp$ID$ = ppSnd_s$ID$.create(PdataVec3)\n";
 
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION
@@ -263,7 +264,8 @@ const std::string fluid_delete_sndparts_low = "\n\
 mantaMsg('Deleting snd parts low')\n\
 if 'ppSnd_s$ID$'     in globals() : del ppSnd_s$ID$\n\
 if 'pVelSnd_pp$ID$'  in globals() : del pVelSnd_pp$ID$\n\
-if 'pLifeSnd_pp$ID$' in globals() : del pLifeSnd_pp$ID$\n";
+if 'pLifeSnd_pp$ID$' in globals() : del pLifeSnd_pp$ID$\n\
+if 'pForceSnd_pp$ID$' in globals() : del pForceSnd_pp$ID$\n";
 
 const std::string fluid_multigrid_cleanup_low = "\n\
 mantaMsg('Cleanup multigrid low')\n\
