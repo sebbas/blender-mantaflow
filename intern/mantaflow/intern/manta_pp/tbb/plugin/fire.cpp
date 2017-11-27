@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sebbas/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/plugin/fire.cpp"
+#line 1 "C:/Blender/Mantaflow/source/plugin/fire.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework

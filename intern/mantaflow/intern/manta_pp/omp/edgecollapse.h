@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sebbas/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/edgecollapse.h"
+#line 1 "C:/Blender/Mantaflow/source/edgecollapse.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework

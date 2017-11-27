@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sebbas/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/plugin/vortexplugins.cpp"
+#line 1 "C:/Blender/Mantaflow/source/plugin/vortexplugins.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
