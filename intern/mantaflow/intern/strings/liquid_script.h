@@ -54,7 +54,7 @@ tauMax_ta_s$ID$      = 2\n\
 tauMin_k_s$ID$       = 5\n\
 tauMax_k_s$ID$       = 50\n\
 k_wc_s$ID$           = 800\n\
-k_ta_s$ID$           = 200\n\
+k_ta_s$ID$           = 100\n\
 k_b_s$ID$            = 0.7\n\
 k_d_s$ID$            = 0.6\n\
 lMin_s$ID$           = 5.0\n\
@@ -256,7 +256,7 @@ def liquid_step_$ID$():\n\
         mantaMsg('Updating snd particle data (velocity, life count)')\n\
         flipComputeSecondaryParticlePotentials(potTA=trappedAir_s$ID$, potWC=waveCrest_s$ID$, potKE=kineticEnergy_s$ID$, neighborRatio=neighborRatio_s$ID$, flags=flags_s$ID$, v=vel_s$ID$, normal=normal_s$ID$, phi=phi_s$ID$, radius=1, tauMinTA=tauMin_ta_s$ID$, tauMaxTA=tauMax_ta_s$ID$, tauMinWC=tauMin_wc_s$ID$, tauMaxWC=tauMax_wc_s$ID$, tauMinKE=tauMin_k_s$ID$, tauMaxKE=tauMax_k_s$ID$, scaleFromManta=scaleFromManta_s$ID$)\n\
         flipSampleSecondaryParticles(mode='single', flags=flags_s$ID$, v=vel_s$ID$, pts_sec=ppSnd_s$ID$, v_sec=pVelSnd_pp$ID$, l_sec=pLifetimeSnd_pp$ID$, lMin=lMin_s$ID$, lMax=lMax_s$ID$, potTA=trappedAir_s$ID$, potWC=waveCrest_s$ID$, potKE=kineticEnergy_s$ID$, k_ta=k_ta_s$ID$, k_wc=k_wc_s$ID$, dt=s$ID$.frameLength)\n\
-        flipUpdateSecondaryParticles(mode='linear', pts_sec=ppSnd_s$ID$, v_sec=pVelSnd_pp$ID$, l_sec=pLifetimeSnd_pp$ID$, f_sec=pVelSnd_pp$ID$, flags=flags_s$ID$, v=vel_s$ID$, neighborRatio=neighborRatio_s$ID$, radius=1, gravity=gravity_s$ID$, k_b=k_b_s$ID$, k_d=k_d_s$ID$, c_s=c_s_s$ID$, c_b=c_b_s$ID$, dt=s$ID$.frameLength)\n\
+        flipUpdateSecondaryParticles(mode='linear', pts_sec=ppSnd_s$ID$, v_sec=pVelSnd_pp$ID$, l_sec=pLifetimeSnd_pp$ID$, f_sec=pForceSnd_pp$ID$, flags=flags_s$ID$, v=vel_s$ID$, neighborRatio=neighborRatio_s$ID$, radius=1, gravity=gravity_s$ID$, k_b=k_b_s$ID$, k_d=k_d_s$ID$, c_s=c_s_s$ID$, c_b=c_b_s$ID$, dt=s$ID$.frameLength)\n\
         pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=1.0)\n\
         #updateSndParts(phi=phi_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$, parts=ppSnd_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, bubbleRise=$SNDPARTICLE_BUBBLE_RISE$)\n\
         \n\
