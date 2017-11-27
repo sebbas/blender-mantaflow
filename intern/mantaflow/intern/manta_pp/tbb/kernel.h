@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sebbas/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/kernel.h"
+#line 1 "C:/Blender/Mantaflow/source/kernel.h"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework

@@ -46,7 +46,22 @@ radiusFactor_s$ID$   = $PARTICLE_RADIUS$\n\
 randomness_s$ID$     = $PARTICLE_RANDOMNESS$\n\
 surfaceTension_s$ID$ = 0.0\n\
 viscosity_s$ID$      = 0.0\n\
-maxVel_s$ID$         = 1 # just declared here, do not set\n";
+maxVel_s$ID$         = 1 # just declared here, do not set\n\
+tauMin_wc_s$ID$      = 2\n\
+tauMax_wc_s$ID$      = 8\n\
+tauMin_ta_s$ID$      = 5\n\
+tauMax_ta_s$ID$      = 2\n\
+tauMin_k_s$ID$       = 5\n\
+tauMax_k_s$ID$       = 50\n\
+k_wc_s$ID$           = 800\n\
+k_ta_s$ID$           = 200\n\
+k_b_s$ID$            = 0.7\n\
+k_d_s$ID$            = 0.6\n\
+lMin_s$ID$           = 5.0\n\
+lMax_s$ID$           = 10.0\n\
+c_s_s$ID$            = 0.4\n\
+c_b_s$ID$            = 0.77\n\
+scaleFromManta_s$ID$ = 1 / float(res_s$ID$)\n";
 
 const std::string liquid_variables_high = "\n\
 mantaMsg('Liquid variables high')\n";
@@ -89,7 +104,13 @@ gpi_s$ID$        = s$ID$.create(IntGrid)\n\
 forces_s$ID$     = s$ID$.create(MACGrid)\n\
 x_force_s$ID$    = s$ID$.create(RealGrid)\n\
 y_force_s$ID$    = s$ID$.create(RealGrid)\n\
-z_force_s$ID$    = s$ID$.create(RealGrid)\n";
+z_force_s$ID$    = s$ID$.create(RealGrid)\n\
+\n\
+normal_s$ID$ = s$ID$.create(VecGrid)\n\
+neighborRatio_s$ID$ = s$ID$.create(RealGrid)\n\
+trappedAir_s$ID$ = s$ID$.create(RealGrid)\n\
+waveCrest_s$ID$ = s$ID$.create(RealGrid)\n\
+kineticEnergy_s$ID$ = s$ID$.create(RealGrid)\n";
 
 const std::string liquid_alloc_high = "\n\
 mantaMsg('Liquid alloc high')\n\
@@ -221,23 +242,27 @@ def liquid_step_$ID$():\n\
     \n\
     if using_drops_s$ID$:\n\
         mantaMsg('Sampling drop particles')\n\
-        sampleSndParts(type=PtypeDroplet, constraint=$SNDPARTICLE_VEL_THRESH$, phi=phi_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, parts=ppSnd_s$ID$)\n\
+        #sampleSndParts(type=PtypeDroplet, constraint=$SNDPARTICLE_VEL_THRESH$, phi=phi_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, parts=ppSnd_s$ID$)\n\
     \n\
     if using_floats_s$ID$:\n\
         mantaMsg('Sampling float particles')\n\
-        sampleSndParts(type=PtypeFloater, constraint=$SNDPARTICLE_FLOAT_AMOUNT$, phi=phiIn_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, parts=ppSnd_s$ID$)\n\
+        #sampleSndParts(type=PtypeFloater, constraint=$SNDPARTICLE_FLOAT_AMOUNT$, phi=phiIn_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, parts=ppSnd_s$ID$)\n\
     \n\
     if using_tracers_s$ID$:\n\
         mantaMsg('Sampling tracer particles')\n\
-        sampleSndParts(type=PtypeTracer, constraint=$SNDPARTICLE_TRACER_AMOUNT$, phi=phiIn_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, parts=ppSnd_s$ID$)\n\
+        #sampleSndParts(type=PtypeTracer, constraint=$SNDPARTICLE_TRACER_AMOUNT$, phi=phiIn_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, parts=ppSnd_s$ID$)\n\
     \n\
     if using_sndparts_s$ID$:\n\
         mantaMsg('Updating snd particle data (velocity, life count)')\n\
-        updateSndParts(phi=phi_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$, parts=ppSnd_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, bubbleRise=$SNDPARTICLE_BUBBLE_RISE$)\n\
+        flipComputeSecondaryParticlePotentials(potTA=trappedAir_s$ID$, potWC=waveCrest_s$ID$, potKE=kineticEnergy_s$ID$, neighborRatio=neighborRatio_s$ID$, flags=flags_s$ID$, v=vel_s$ID$, normal=normal_s$ID$, phi=phi_s$ID$, radius=1, tauMinTA=tauMin_ta_s$ID$, tauMaxTA=tauMax_ta_s$ID$, tauMinWC=tauMin_wc_s$ID$, tauMaxWC=tauMax_wc_s$ID$, tauMinKE=tauMin_k_s$ID$, tauMaxKE=tauMax_k_s$ID$, scaleFromManta=scaleFromManta_s$ID$)\n\
+        flipSampleSecondaryParticles(mode='single', flags=flags_s$ID$, v=vel_s$ID$, pts_sec=ppSnd_s$ID$, v_sec=pVelSnd_pp$ID$, l_sec=pLifetimeSnd_pp$ID$, lMin=lMin_s$ID$, lMax=lMax_s$ID$, potTA=trappedAir_s$ID$, potWC=waveCrest_s$ID$, potKE=kineticEnergy_s$ID$, k_ta=k_ta_s$ID$, k_wc=k_wc_s$ID$, dt=s$ID$.frameLength)\n\
+        flipUpdateSecondaryParticles(mode='linear', pts_sec=ppSnd_s$ID$, v_sec=pVelSnd_pp$ID$, l_sec=pLifetimeSnd_pp$ID$, f_sec=pVelSnd_pp$ID$, flags=flags_s$ID$, v=vel_s$ID$, neighborRatio=neighborRatio_s$ID$, radius=1, gravity=gravity_s$ID$, k_b=k_b_s$ID$, k_d=k_d_s$ID$, c_s=c_s_s$ID$, c_b=c_b_s$ID$, dt=s$ID$.frameLength)\n\
+        pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=1.0)\n\
+        #updateSndParts(phi=phi_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$, parts=ppSnd_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, bubbleRise=$SNDPARTICLE_BUBBLE_RISE$)\n\
         \n\
         mantaMsg('Adjusting snd particles')\n\
-        pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=1.0)\n\
-        adjustSndParts(parts=ppSnd_s$ID$, flags=flags_s$ID$, phi=phi_s$ID$, partVel=pVelSnd_pp$ID$)\n\
+        #pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=1.0)\n\
+        #adjustSndParts(parts=ppSnd_s$ID$, flags=flags_s$ID$, phi=phi_s$ID$, partVel=pVelSnd_pp$ID$)\n\
     \n\
     # create level set of particles\n\
     gridParticleIndex(parts=pp_s$ID$, flags=flags_s$ID$, indexSys=pindex_s$ID$, index=gpi_s$ID$)\n\
@@ -457,7 +482,12 @@ if 'x_force_s$ID$'    in globals() : del x_force_s$ID$\n\
 if 'y_force_s$ID$'    in globals() : del y_force_s$ID$\n\
 if 'z_force_s$ID$'    in globals() : del z_force_s$ID$\n\
 if 'phiObs_s$ID$'     in globals() : del phiObs_s$ID$\n\
-if 'fractions_s$ID$'  in globals() : del fractions_s$ID$\n";
+if 'fractions_s$ID$'  in globals() : del fractions_s$ID$\n\
+if 'normal_s$ID$'     in globals() : del normal_s$ID$\n\
+if 'neighborRatio_s$ID$' in globals() : del neighborRatio_s$ID$\n\
+if 'trappedAir_s$ID$'    in globals() : del trappedAir_s$ID$\n\
+if 'waveCrest_s$ID$'     in globals() : del waveCrest_s$ID$\n\
+if 'kineticEnergy_s$ID$' in globals() : del kineticEnergy_s$ID$\n";
 
 const std::string liquid_delete_grids_high = "\n\
 mantaMsg('Deleting highres grids, mesh, particlesystem')\n\
@@ -477,7 +507,22 @@ if 'minParticles_s$ID$'     in globals() : del minParticles_s$ID$\n\
 if 'maxParticles_s$ID$'     in globals() : del maxParticles_s$ID$\n\
 if 'particleNumber_s$ID$'   in globals() : del particleNumber_s$ID$\n\
 if 'surfaceTension_s$ID$'   in globals() : del surfaceTension_s$ID$\n\
-if 'maxVel_s$ID$'           in globals() : del maxVel_s$ID$\n";
+if 'maxVel_s$ID$'           in globals() : del maxVel_s$ID$\n\
+if 'tauMin_wc_s$ID$' in globals() : del tauMin_wc_s$ID$\n\
+if 'tauMax_wc_s$ID$' in globals() : del tauMax_wc_s$ID$\n\
+if 'tauMin_ta_s$ID$' in globals() : del tauMin_ta_s$ID$\n\
+if 'tauMax_ta_s$ID$' in globals() : del tauMax_ta_s$ID$\n\
+if 'tauMin_k_s$ID$' in globals() : del tauMin_k_s$ID$\n\
+if 'tauMax_k_s$ID$' in globals() : del tauMax_k_s$ID$\n\
+if 'k_wc_s$ID$' in globals() : del k_wc_s$ID$\n\
+if 'k_ta_s$ID$' in globals() : del k_ta_s$ID$\n\
+if 'k_b_s$ID$' in globals() : del k_b_s$ID$\n\
+if 'k_d_s$ID$' in globals() : del k_d_s$ID$\n\
+if 'lMin_s$ID$' in globals() : del lMin_s$ID$\n\
+if 'lMax_s$ID$' in globals() : del lMax_s$ID$\n\
+if 'c_s_s$ID$' in globals() : del c_s_s$ID$\n\
+if 'c_b_s$ID$' in globals() : del c_b_s$ID$\n\
+if 'scaleFromManta_s$ID$' in globals() : del scaleFromManta_s$ID$\n";
 
 const std::string liquid_delete_variables_high = "\n\
 mantaMsg('Deleting highres liquid variables')\n";

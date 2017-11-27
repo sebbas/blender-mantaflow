@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sebbas/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/plugin/extforces.cpp"
+#line 1 "C:/Blender/Mantaflow/source/plugin/extforces.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
@@ -32,59 +32,17 @@ using namespace std;
 
 namespace Manta { 
 
-//! add Forces between fl/fl and fl/em cells (interpolate cell centered forces to MAC grid)
- struct KnAddForceIfLower : public KernelBase { KnAddForceIfLower(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force) :  KernelBase(&flags,1) ,flags(flags),vel(vel),force(force)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force ) const {
-	bool curFluid = flags.isFluid(i,j,k);
-	bool curEmpty = flags.isEmpty(i,j,k);
-	if (!curFluid && !curEmpty) return;
-
-	if (flags.isFluid(i-1,j,k) || (curFluid && flags.isEmpty(i-1,j,k))) {
-		Real forceMACX = 0.5*(force(i-1,j,k).x + force(i,j,k).x);
-		Real min = std::min(vel(i,j,k).x, forceMACX);
-		Real max = std::max(vel(i,j,k).x, forceMACX);
-		Real sum = vel(i,j,k).x + forceMACX;
-		vel(i,j,k).x = (forceMACX > 0) ? std::min(sum, max) : std::max(sum, min);
-	}
-	if (flags.isFluid(i,j-1,k) || (curFluid && flags.isEmpty(i,j-1,k))) {
-		Real forceMACY = 0.5*(force(i,j-1,k).y + force(i,j,k).y);
-		Real min = std::min(vel(i,j,k).y, forceMACY);
-		Real max = std::max(vel(i,j,k).y, forceMACY);
-		Real sum = vel(i,j,k).y + forceMACY;
-		vel(i,j,k).y = (forceMACY > 0) ? std::min(sum, max) : std::max(sum, min);
-	}
-	if (vel.is3D() && (flags.isFluid(i,j,k-1) || (curFluid && flags.isEmpty(i,j,k-1)))) {
-		Real forceMACZ = 0.5*(force(i,j,k-1).z + force(i,j,k).z);
-		Real min = std::min(vel(i,j,k).z, forceMACZ);
-		Real max = std::max(vel(i,j,k).z, forceMACZ);
-		Real sum = vel(i,j,k).z + forceMACZ;
-		vel(i,j,k).z = (forceMACZ > 0) ? std::min(sum, max) : std::max(sum, min);
-	}
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<Vec3>& getArg2() { return force; } typedef Grid<Vec3> type2; void runMessage() { debMsg("Executing kernel KnAddForceIfLower ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=1; j<_maxY; j++) for (int i=1; i<_maxX; i++) op(i,j,k,flags,vel,force); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=1; i<_maxX; i++) op(i,j,k,flags,vel,force); }  } void run() {  if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(1, maxY), *this);  }  FlagGrid& flags; MACGrid& vel; Grid<Vec3>& force;   };
-
-
-
-template <class T>  struct knAddFromGrid : public KernelBase { knAddFromGrid( BasicParticleSystem& p, Grid<T>& gsrc, ParticleDataImpl<T>& target ) :  KernelBase(p.size()) ,p(p),gsrc(gsrc),target(target)   { runMessage(); run(); }   inline void op(IndexInt idx,  BasicParticleSystem& p, Grid<T>& gsrc, ParticleDataImpl<T>& target  ) const {
-	if (!p.isActive(idx)) return;
-	target[idx] += gsrc.getInterpolated( p[idx].pos );
-}    inline BasicParticleSystem& getArg0() { return p; } typedef BasicParticleSystem type0;inline Grid<T>& getArg1() { return gsrc; } typedef Grid<T> type1;inline ParticleDataImpl<T>& getArg2() { return target; } typedef ParticleDataImpl<T> type2; void runMessage() { debMsg("Executing kernel knAddFromGrid ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {   for (IndexInt idx=__r.begin(); idx!=(IndexInt)__r.end(); idx++) op(idx, p,gsrc,target);   } void run() {   tbb::parallel_for (tbb::blocked_range<IndexInt>(0, size), *this);   }  BasicParticleSystem& p; Grid<T>& gsrc; ParticleDataImpl<T>& target;   };
-void addGridToParts( Grid<Real>& source , BasicParticleSystem& parts , ParticleDataImpl<Real>& target ) {
-	knAddFromGrid<Real>(parts, source, target);
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "addGridToParts" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",0,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",1,&_lock); ParticleDataImpl<Real>& target = *_args.getPtr<ParticleDataImpl<Real> >("target",2,&_lock);   _retval = getPyNone(); addGridToParts(source,parts,target);  _args.check(); } pbFinalizePlugin(parent,"addGridToParts", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("addGridToParts",e.what()); return 0; } } static const Pb::Register _RP_addGridToParts ("","addGridToParts",_W_0);  extern "C" { void PbRegister_addGridToParts() { KEEP_UNUSED(_RP_addGridToParts); } } 
-void addGridToPartsVec3( Grid<Vec3>& source , BasicParticleSystem& parts , ParticleDataImpl<Vec3>& target ) {
-	knAddFromGrid<Vec3>(parts, source, target);
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "addGridToPartsVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& source = *_args.getPtr<Grid<Vec3> >("source",0,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",1,&_lock); ParticleDataImpl<Vec3>& target = *_args.getPtr<ParticleDataImpl<Vec3> >("target",2,&_lock);   _retval = getPyNone(); addGridToPartsVec3(source,parts,target);  _args.check(); } pbFinalizePlugin(parent,"addGridToPartsVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("addGridToPartsVec3",e.what()); return 0; } } static const Pb::Register _RP_addGridToPartsVec3 ("","addGridToPartsVec3",_W_1);  extern "C" { void PbRegister_addGridToPartsVec3() { KEEP_UNUSED(_RP_addGridToPartsVec3); } } 
-	
 //! add constant force between fl/fl and fl/em cells
  struct KnApplyForceField : public KernelBase { KnApplyForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force, Grid<Real>* include, bool additive, bool isMAC) :  KernelBase(&flags,1) ,flags(flags),vel(vel),force(force),include(include),additive(additive),isMAC(isMAC)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force, Grid<Real>* include, bool additive, bool isMAC ) const {
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curEmpty = flags.isEmpty(i,j,k);
 	if (!curFluid && !curEmpty) return;
 	if (include && ((*include)(i,j,k) > 0.)) return;
-	
+
 	Real forceX = (isMAC) ? force(i,j,k).x : 0.5*(force(i-1,j,k).x + force(i,j,k).x);
 	Real forceY = (isMAC) ? force(i,j,k).y : 0.5*(force(i,j-1,k).y + force(i,j,k).y);
 	Real forceZ = (isMAC) ? force(i,j,k).z : 0.5*(force(i,j,k-1).z + force(i,j,k).z);
-	
+
 	if (flags.isFluid(i-1,j,k) || (curFluid && flags.isEmpty(i-1,j,k))) 
 		vel(i,j,k).x = (additive) ? vel(i,j,k).x+forceX : forceX;
 	if (flags.isFluid(i,j-1,k) || (curFluid && flags.isEmpty(i,j-1,k))) 
@@ -99,7 +57,7 @@ void addGridToPartsVec3( Grid<Vec3>& source , BasicParticleSystem& parts , Parti
 	bool curEmpty = flags.isEmpty(i,j,k);
 	if (!curFluid && !curEmpty) return;
 	if (exclude && ((*exclude)(i,j,k) < 0.)) return;
-	
+
 	if (flags.isFluid(i-1,j,k) || (curFluid && flags.isEmpty(i-1,j,k))) 
 		vel(i,j,k).x = (additive) ? vel(i,j,k).x+force.x : force.x;
 	if (flags.isFluid(i,j-1,k) || (curFluid && flags.isEmpty(i,j-1,k))) 
@@ -112,12 +70,12 @@ void addGridToPartsVec3( Grid<Vec3>& source , BasicParticleSystem& parts , Parti
 void addGravity(FlagGrid& flags, MACGrid& vel, Vec3 gravity, Grid<Real>* exclude=NULL) {
 	Vec3 f = gravity * flags.getParent()->getDt() / flags.getDx();
 	KnApplyForce(flags, vel, f, exclude, true);
-} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "addGravity" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); Vec3 gravity = _args.get<Vec3 >("gravity",2,&_lock); Grid<Real>* exclude = _args.getPtrOpt<Grid<Real> >("exclude",3,NULL,&_lock);   _retval = getPyNone(); addGravity(flags,vel,gravity,exclude);  _args.check(); } pbFinalizePlugin(parent,"addGravity", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("addGravity",e.what()); return 0; } } static const Pb::Register _RP_addGravity ("","addGravity",_W_2);  extern "C" { void PbRegister_addGravity() { KEEP_UNUSED(_RP_addGravity); } } 
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "addGravity" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); Vec3 gravity = _args.get<Vec3 >("gravity",2,&_lock); Grid<Real>* exclude = _args.getPtrOpt<Grid<Real> >("exclude",3,NULL,&_lock);   _retval = getPyNone(); addGravity(flags,vel,gravity,exclude);  _args.check(); } pbFinalizePlugin(parent,"addGravity", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("addGravity",e.what()); return 0; } } static const Pb::Register _RP_addGravity ("","addGravity",_W_0);  extern "C" { void PbRegister_addGravity() { KEEP_UNUSED(_RP_addGravity); } } 
 //! add gravity forces to all fluid cells , but dont account for changing cell size
 void addGravityNoScale(FlagGrid& flags, MACGrid& vel, const Vec3& gravity, Grid<Real>* exclude=NULL) {
 	const Vec3 f = gravity * flags.getParent()->getDt();
 	KnApplyForce(flags, vel, f, exclude, true);
-} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "addGravityNoScale" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); const Vec3& gravity = _args.get<Vec3 >("gravity",2,&_lock); Grid<Real>* exclude = _args.getPtrOpt<Grid<Real> >("exclude",3,NULL,&_lock);   _retval = getPyNone(); addGravityNoScale(flags,vel,gravity,exclude);  _args.check(); } pbFinalizePlugin(parent,"addGravityNoScale", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("addGravityNoScale",e.what()); return 0; } } static const Pb::Register _RP_addGravityNoScale ("","addGravityNoScale",_W_3);  extern "C" { void PbRegister_addGravityNoScale() { KEEP_UNUSED(_RP_addGravityNoScale); } } 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "addGravityNoScale" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); const Vec3& gravity = _args.get<Vec3 >("gravity",2,&_lock); Grid<Real>* exclude = _args.getPtrOpt<Grid<Real> >("exclude",3,NULL,&_lock);   _retval = getPyNone(); addGravityNoScale(flags,vel,gravity,exclude);  _args.check(); } pbFinalizePlugin(parent,"addGravityNoScale", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("addGravityNoScale",e.what()); return 0; } } static const Pb::Register _RP_addGravityNoScale ("","addGravityNoScale",_W_1);  extern "C" { void PbRegister_addGravityNoScale() { KEEP_UNUSED(_RP_addGravityNoScale); } } 
 
 //! kernel to add Buoyancy force 
  struct KnAddBuoyancy : public KernelBase { KnAddBuoyancy(FlagGrid& flags, Grid<Real>& factor, MACGrid& vel, Vec3 strength) :  KernelBase(&flags,1) ,flags(flags),factor(factor),vel(vel),strength(strength)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& factor, MACGrid& vel, Vec3 strength ) const {    
@@ -134,7 +92,7 @@ void addGravityNoScale(FlagGrid& flags, MACGrid& vel, const Vec3& gravity, Grid<
 void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3 gravity, Real coefficient=1.) {
 	Vec3 f = -gravity * flags.getParent()->getDt() / flags.getParent()->getDx() * coefficient;
 	KnAddBuoyancy(flags,density, vel, f);
-} static PyObject* _W_4 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "addBuoyancy" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& density = *_args.getPtr<Grid<Real> >("density",1,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",2,&_lock); Vec3 gravity = _args.get<Vec3 >("gravity",3,&_lock); Real coefficient = _args.getOpt<Real >("coefficient",4,1.,&_lock);   _retval = getPyNone(); addBuoyancy(flags,density,vel,gravity,coefficient);  _args.check(); } pbFinalizePlugin(parent,"addBuoyancy", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("addBuoyancy",e.what()); return 0; } } static const Pb::Register _RP_addBuoyancy ("","addBuoyancy",_W_4);  extern "C" { void PbRegister_addBuoyancy() { KEEP_UNUSED(_RP_addBuoyancy); } } 
+} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "addBuoyancy" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& density = *_args.getPtr<Grid<Real> >("density",1,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",2,&_lock); Vec3 gravity = _args.get<Vec3 >("gravity",3,&_lock); Real coefficient = _args.getOpt<Real >("coefficient",4,1.,&_lock);   _retval = getPyNone(); addBuoyancy(flags,density,vel,gravity,coefficient);  _args.check(); } pbFinalizePlugin(parent,"addBuoyancy", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("addBuoyancy",e.what()); return 0; } } static const Pb::Register _RP_addBuoyancy ("","addBuoyancy",_W_2);  extern "C" { void PbRegister_addBuoyancy() { KEEP_UNUSED(_RP_addBuoyancy); } } 
 
 // inflow / outflow boundaries
 
@@ -177,7 +135,7 @@ void setOpenBound(FlagGrid& flags, int bWidth, string openBound = "", int type =
 			}
 		}
 	}
-} static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setOpenBound" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); int bWidth = _args.get<int >("bWidth",1,&_lock); string openBound = _args.getOpt<string >("openBound",2,"",&_lock); int type = _args.getOpt<int >("type",3,FlagGrid::TypeOutflow | FlagGrid::TypeEmpty,&_lock);   _retval = getPyNone(); setOpenBound(flags,bWidth,openBound,type);  _args.check(); } pbFinalizePlugin(parent,"setOpenBound", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setOpenBound",e.what()); return 0; } } static const Pb::Register _RP_setOpenBound ("","setOpenBound",_W_5);  extern "C" { void PbRegister_setOpenBound() { KEEP_UNUSED(_RP_setOpenBound); } } 
+} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setOpenBound" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); int bWidth = _args.get<int >("bWidth",1,&_lock); string openBound = _args.getOpt<string >("openBound",2,"",&_lock); int type = _args.getOpt<int >("type",3,FlagGrid::TypeOutflow | FlagGrid::TypeEmpty,&_lock);   _retval = getPyNone(); setOpenBound(flags,bWidth,openBound,type);  _args.check(); } pbFinalizePlugin(parent,"setOpenBound", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setOpenBound",e.what()); return 0; } } static const Pb::Register _RP_setOpenBound ("","setOpenBound",_W_3);  extern "C" { void PbRegister_setOpenBound() { KEEP_UNUSED(_RP_setOpenBound); } } 
 
 //! delete fluid and ensure empty flag in outflow cells, delete particles and density and set phi to 0.5
 void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSystem* parts = 0, Grid<Real>* real = 0, Grid<int>* index = 0, ParticleIndexSystem* indexSys = 0){
@@ -207,7 +165,7 @@ void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSystem* par
 		}
 	}
 	if (parts) parts->doCompress();
-} static PyObject* _W_6 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "resetOutflow" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>* phi = _args.getPtrOpt<Grid<Real> >("phi",1,0,&_lock); BasicParticleSystem* parts = _args.getPtrOpt<BasicParticleSystem >("parts",2,0,&_lock); Grid<Real>* real = _args.getPtrOpt<Grid<Real> >("real",3,0,&_lock); Grid<int>* index = _args.getPtrOpt<Grid<int> >("index",4,0,&_lock); ParticleIndexSystem* indexSys = _args.getPtrOpt<ParticleIndexSystem >("indexSys",5,0,&_lock);   _retval = getPyNone(); resetOutflow(flags,phi,parts,real,index,indexSys);  _args.check(); } pbFinalizePlugin(parent,"resetOutflow", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("resetOutflow",e.what()); return 0; } } static const Pb::Register _RP_resetOutflow ("","resetOutflow",_W_6);  extern "C" { void PbRegister_resetOutflow() { KEEP_UNUSED(_RP_resetOutflow); } } 
+} static PyObject* _W_4 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "resetOutflow" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>* phi = _args.getPtrOpt<Grid<Real> >("phi",1,0,&_lock); BasicParticleSystem* parts = _args.getPtrOpt<BasicParticleSystem >("parts",2,0,&_lock); Grid<Real>* real = _args.getPtrOpt<Grid<Real> >("real",3,0,&_lock); Grid<int>* index = _args.getPtrOpt<Grid<int> >("index",4,0,&_lock); ParticleIndexSystem* indexSys = _args.getPtrOpt<ParticleIndexSystem >("indexSys",5,0,&_lock);   _retval = getPyNone(); resetOutflow(flags,phi,parts,real,index,indexSys);  _args.check(); } pbFinalizePlugin(parent,"resetOutflow", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("resetOutflow",e.what()); return 0; } } static const Pb::Register _RP_resetOutflow ("","resetOutflow",_W_4);  extern "C" { void PbRegister_resetOutflow() { KEEP_UNUSED(_RP_resetOutflow); } } 
 
 //! enforce a constant inflow/outflow at the grid boundaries
  struct KnSetInflow : public KernelBase { KnSetInflow(MACGrid& vel, int dim, int p0, const Vec3& val) :  KernelBase(&vel,0) ,vel(vel),dim(dim),p0(p0),val(val)   { runMessage(); run(); }  inline void op(int i, int j, int k, MACGrid& vel, int dim, int p0, const Vec3& val ) const {
@@ -228,7 +186,7 @@ void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
 		} else 
 			errMsg("invalid character in direction string. Only [xyzXYZ] allowed.");
 	}
-} static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setInflowBcs" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); string dir = _args.get<string >("dir",1,&_lock); Vec3 value = _args.get<Vec3 >("value",2,&_lock);   _retval = getPyNone(); setInflowBcs(vel,dir,value);  _args.check(); } pbFinalizePlugin(parent,"setInflowBcs", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setInflowBcs",e.what()); return 0; } } static const Pb::Register _RP_setInflowBcs ("","setInflowBcs",_W_7);  extern "C" { void PbRegister_setInflowBcs() { KEEP_UNUSED(_RP_setInflowBcs); } } 
+} static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setInflowBcs" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); string dir = _args.get<string >("dir",1,&_lock); Vec3 value = _args.get<Vec3 >("value",2,&_lock);   _retval = getPyNone(); setInflowBcs(vel,dir,value);  _args.check(); } pbFinalizePlugin(parent,"setInflowBcs", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setInflowBcs",e.what()); return 0; } } static const Pb::Register _RP_setInflowBcs ("","setInflowBcs",_W_5);  extern "C" { void PbRegister_setInflowBcs() { KEEP_UNUSED(_RP_setInflowBcs); } } 
 
 // set obstacle boundary conditions
 
@@ -300,7 +258,7 @@ void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
 		normalize(dphi); 
 		Vec3 velMAC = vel.getAtMACX(i,j,k);
 		velTarget(i,j,k).x = velMAC.x - dot(dphi, velMAC) * dphi.x;
-		if (obvel) {
+		if (obvel) { // TODO (sebbas): TBC
 			Vec3 obvelMAC = (*obvel).getAtMACX(i,j,k);
 			velTarget(i,j,k).x += dot(dphi, obvelMAC) * dphi.x;
 		}
@@ -327,7 +285,7 @@ void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
 		normalize(dphi); 
 		Vec3 velMAC = vel.getAtMACY(i,j,k);
 		velTarget(i,j,k).y = velMAC.y - dot(dphi, velMAC) * dphi.y;
-		if (obvel) {
+		if (obvel) { // TODO (sebbas): TBC
 			Vec3 obvelMAC = (*obvel).getAtMACY(i,j,k);
 			velTarget(i,j,k).y += dot(dphi, obvelMAC) * dphi.y;
 		}
@@ -355,7 +313,7 @@ void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
 		normalize(dphi); 
 		Vec3 velMAC = vel.getAtMACZ(i,j,k);
 		velTarget(i,j,k).z = velMAC.z - dot(dphi, velMAC) * dphi.z;
-		if (obvel) {
+		if (obvel) { // TODO (sebbas): TBC
 			Vec3 obvelMAC = (*obvel).getAtMACZ(i,j,k);
 			velTarget(i,j,k).z += dot(dphi, obvelMAC) * dphi.z;
 		}
@@ -374,7 +332,41 @@ void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* obvel = 0, MACGrid* frac
 		KnSetWallBcsFrac(flags, vel, tmpvel, obvel, phiObs, boundaryWidth);
 		vel.swap(tmpvel);
 	}
-} static PyObject* _W_8 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setWallBcs" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); MACGrid* obvel = _args.getPtrOpt<MACGrid >("obvel",2,0,&_lock); MACGrid* fractions = _args.getPtrOpt<MACGrid >("fractions",3,0,&_lock); Grid<Real>* phiObs = _args.getPtrOpt<Grid<Real> >("phiObs",4,0,&_lock); int boundaryWidth = _args.getOpt<int >("boundaryWidth",5,0,&_lock);   _retval = getPyNone(); setWallBcs(flags,vel,obvel,fractions,phiObs,boundaryWidth);  _args.check(); } pbFinalizePlugin(parent,"setWallBcs", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setWallBcs",e.what()); return 0; } } static const Pb::Register _RP_setWallBcs ("","setWallBcs",_W_8);  extern "C" { void PbRegister_setWallBcs() { KEEP_UNUSED(_RP_setWallBcs); } } 
+} static PyObject* _W_6 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setWallBcs" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); MACGrid* obvel = _args.getPtrOpt<MACGrid >("obvel",2,0,&_lock); MACGrid* fractions = _args.getPtrOpt<MACGrid >("fractions",3,0,&_lock); Grid<Real>* phiObs = _args.getPtrOpt<Grid<Real> >("phiObs",4,0,&_lock); int boundaryWidth = _args.getOpt<int >("boundaryWidth",5,0,&_lock);   _retval = getPyNone(); setWallBcs(flags,vel,obvel,fractions,phiObs,boundaryWidth);  _args.check(); } pbFinalizePlugin(parent,"setWallBcs", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setWallBcs",e.what()); return 0; } } static const Pb::Register _RP_setWallBcs ("","setWallBcs",_W_6);  extern "C" { void PbRegister_setWallBcs() { KEEP_UNUSED(_RP_setWallBcs); } } 
+
+//! add Forces between fl/fl and fl/em cells (interpolate cell centered forces to MAC grid)
+ struct KnAddForceIfLower : public KernelBase { KnAddForceIfLower(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force) :  KernelBase(&flags,1) ,flags(flags),vel(vel),force(force)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force ) const {
+	bool curFluid = flags.isFluid(i,j,k);
+	bool curEmpty = flags.isEmpty(i,j,k);
+	if (!curFluid && !curEmpty) return;
+
+	if (flags.isFluid(i-1,j,k) || (curFluid && flags.isEmpty(i-1,j,k))) {
+		Real forceMACX = 0.5*(force(i-1,j,k).x + force(i,j,k).x);
+		Real min = std::min(vel(i,j,k).x, forceMACX);
+		Real max = std::max(vel(i,j,k).x, forceMACX);
+		Real sum = vel(i,j,k).x + forceMACX;
+		vel(i,j,k).x = (forceMACX > 0) ? std::min(sum, max) : std::max(sum, min);
+	}
+	if (flags.isFluid(i,j-1,k) || (curFluid && flags.isEmpty(i,j-1,k))) {
+		Real forceMACY = 0.5*(force(i,j-1,k).y + force(i,j,k).y);
+		Real min = std::min(vel(i,j,k).y, forceMACY);
+		Real max = std::max(vel(i,j,k).y, forceMACY);
+		Real sum = vel(i,j,k).y + forceMACY;
+		vel(i,j,k).y = (forceMACY > 0) ? std::min(sum, max) : std::max(sum, min);
+	}
+	if (vel.is3D() && (flags.isFluid(i,j,k-1) || (curFluid && flags.isEmpty(i,j,k-1)))) {
+		Real forceMACZ = 0.5*(force(i,j,k-1).z + force(i,j,k).z);
+		Real min = std::min(vel(i,j,k).z, forceMACZ);
+		Real max = std::max(vel(i,j,k).z, forceMACZ);
+		Real sum = vel(i,j,k).z + forceMACZ;
+		vel(i,j,k).z = (forceMACZ > 0) ? std::min(sum, max) : std::max(sum, min);
+	}
+}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<Vec3>& getArg2() { return force; } typedef Grid<Vec3> type2; void runMessage() { debMsg("Executing kernel KnAddForceIfLower ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=1; j<_maxY; j++) for (int i=1; i<_maxX; i++) op(i,j,k,flags,vel,force); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=1; i<_maxX; i++) op(i,j,k,flags,vel,force); }  } void run() {  if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(1, maxY), *this);  }  FlagGrid& flags; MACGrid& vel; Grid<Vec3>& force;   };
+
+// Initial velocity for smoke
+void setInitialVelocity(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& invel) {
+	KnAddForceIfLower(flags, vel, invel);
+} static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setInitialVelocity" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); Grid<Vec3>& invel = *_args.getPtr<Grid<Vec3> >("invel",2,&_lock);   _retval = getPyNone(); setInitialVelocity(flags,vel,invel);  _args.check(); } pbFinalizePlugin(parent,"setInitialVelocity", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setInitialVelocity",e.what()); return 0; } } static const Pb::Register _RP_setInitialVelocity ("","setInitialVelocity",_W_7);  extern "C" { void PbRegister_setInitialVelocity() { KEEP_UNUSED(_RP_setInitialVelocity); } } 
 
 //! Kernel: gradient norm operator
  struct KnConfForce : public KernelBase { KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str) :  KernelBase(&force,1) ,force(force),grid(grid),curl(curl),str(str)   { runMessage(); run(); }  inline void op(int i, int j, int k, Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str ) const {
@@ -394,31 +386,15 @@ void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength) {
 	GridNorm(norm, curl);
 	KnConfForce(force, norm, curl, strength);
 	KnApplyForceField(flags, vel, force, NULL, true, false);
-} static PyObject* _W_9 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "vorticityConfinement" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); Real strength = _args.get<Real >("strength",2,&_lock);   _retval = getPyNone(); vorticityConfinement(vel,flags,strength);  _args.check(); } pbFinalizePlugin(parent,"vorticityConfinement", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("vorticityConfinement",e.what()); return 0; } } static const Pb::Register _RP_vorticityConfinement ("","vorticityConfinement",_W_9);  extern "C" { void PbRegister_vorticityConfinement() { KEEP_UNUSED(_RP_vorticityConfinement); } } 
+} static PyObject* _W_8 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "vorticityConfinement" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); Real strength = _args.get<Real >("strength",2,&_lock);   _retval = getPyNone(); vorticityConfinement(vel,flags,strength);  _args.check(); } pbFinalizePlugin(parent,"vorticityConfinement", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("vorticityConfinement",e.what()); return 0; } } static const Pb::Register _RP_vorticityConfinement ("","vorticityConfinement",_W_8);  extern "C" { void PbRegister_vorticityConfinement() { KEEP_UNUSED(_RP_vorticityConfinement); } } 
 
 void addForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force, Grid<Real>* region=NULL, bool isMAC=false) {
 	KnApplyForceField(flags, vel, force, region, true, isMAC);
-} static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "addForceField" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); Grid<Vec3>& force = *_args.getPtr<Grid<Vec3> >("force",2,&_lock); Grid<Real>* region = _args.getPtrOpt<Grid<Real> >("region",3,NULL,&_lock); bool isMAC = _args.getOpt<bool >("isMAC",4,false,&_lock);   _retval = getPyNone(); addForceField(flags,vel,force,region,isMAC);  _args.check(); } pbFinalizePlugin(parent,"addForceField", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("addForceField",e.what()); return 0; } } static const Pb::Register _RP_addForceField ("","addForceField",_W_10);  extern "C" { void PbRegister_addForceField() { KEEP_UNUSED(_RP_addForceField); } } 
-	
+} static PyObject* _W_9 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "addForceField" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); Grid<Vec3>& force = *_args.getPtr<Grid<Vec3> >("force",2,&_lock); Grid<Real>* region = _args.getPtrOpt<Grid<Real> >("region",3,NULL,&_lock); bool isMAC = _args.getOpt<bool >("isMAC",4,false,&_lock);   _retval = getPyNone(); addForceField(flags,vel,force,region,isMAC);  _args.check(); } pbFinalizePlugin(parent,"addForceField", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("addForceField",e.what()); return 0; } } static const Pb::Register _RP_addForceField ("","addForceField",_W_9);  extern "C" { void PbRegister_addForceField() { KEEP_UNUSED(_RP_addForceField); } } 
+
 void setForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force, Grid<Real>* region=NULL, bool isMAC=false) {
 	KnApplyForceField(flags, vel, force, region, false, isMAC);
-} static PyObject* _W_11 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setForceField" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); Grid<Vec3>& force = *_args.getPtr<Grid<Vec3> >("force",2,&_lock); Grid<Real>* region = _args.getPtrOpt<Grid<Real> >("region",3,NULL,&_lock); bool isMAC = _args.getOpt<bool >("isMAC",4,false,&_lock);   _retval = getPyNone(); setForceField(flags,vel,force,region,isMAC);  _args.check(); } pbFinalizePlugin(parent,"setForceField", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setForceField",e.what()); return 0; } } static const Pb::Register _RP_setForceField ("","setForceField",_W_11);  extern "C" { void PbRegister_setForceField() { KEEP_UNUSED(_RP_setForceField); } } 
-
-void setInitialVelocity(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& invel) {
-	KnAddForceIfLower(flags, vel, invel);
-} static PyObject* _W_12 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setInitialVelocity" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); Grid<Vec3>& invel = *_args.getPtr<Grid<Vec3> >("invel",2,&_lock);   _retval = getPyNone(); setInitialVelocity(flags,vel,invel);  _args.check(); } pbFinalizePlugin(parent,"setInitialVelocity", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setInitialVelocity",e.what()); return 0; } } static const Pb::Register _RP_setInitialVelocity ("","setInitialVelocity",_W_12);  extern "C" { void PbRegister_setInitialVelocity() { KEEP_UNUSED(_RP_setInitialVelocity); } } 
-	
- struct knSetForceIn : public KernelBase { knSetForceIn(const Grid<Real> &phiIn, MACGrid& vel, const Vec3 &force) :  KernelBase(&phiIn,0) ,phiIn(phiIn),vel(vel),force(force)   { runMessage(); run(); }  inline void op(int i, int j, int k, const Grid<Real> &phiIn, MACGrid& vel, const Vec3 &force ) const {
-	if(phiIn(i,j,k) < 0.) {
-		vel(i,j,k).x = force.x;
-		vel(i,j,k).y = force.y;
-		vel(i,j,k).z = force.z;
-	}
-}   inline const Grid<Real> & getArg0() { return phiIn; } typedef Grid<Real>  type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline const Vec3& getArg2() { return force; } typedef Vec3 type2; void runMessage() { debMsg("Executing kernel knSetForceIn ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=0; j<_maxY; j++) for (int i=0; i<_maxX; i++) op(i,j,k,phiIn,vel,force); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=0; i<_maxX; i++) op(i,j,k,phiIn,vel,force); }  } void run() {  if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(0, maxY), *this);  }  const Grid<Real> & phiIn; MACGrid& vel; const Vec3& force;   };
-	
-void setForceIn(Grid<Real> &region, MACGrid& vel, const Vec3 &force) {
-	knSetForceIn(region, vel, force);
-} static PyObject* _W_13 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setForceIn" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real> & region = *_args.getPtr<Grid<Real>  >("region",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); const Vec3& force = _args.get<Vec3 >("force",2,&_lock);   _retval = getPyNone(); setForceIn(region,vel,force);  _args.check(); } pbFinalizePlugin(parent,"setForceIn", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setForceIn",e.what()); return 0; } } static const Pb::Register _RP_setForceIn ("","setForceIn",_W_13);  extern "C" { void PbRegister_setForceIn() { KEEP_UNUSED(_RP_setForceIn); } } 
+} static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setForceField" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); Grid<Vec3>& force = *_args.getPtr<Grid<Vec3> >("force",2,&_lock); Grid<Real>* region = _args.getPtrOpt<Grid<Real> >("region",3,NULL,&_lock); bool isMAC = _args.getOpt<bool >("isMAC",4,false,&_lock);   _retval = getPyNone(); setForceField(flags,vel,force,region,isMAC);  _args.check(); } pbFinalizePlugin(parent,"setForceField", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setForceField",e.what()); return 0; } } static const Pb::Register _RP_setForceField ("","setForceField",_W_10);  extern "C" { void PbRegister_setForceField() { KEEP_UNUSED(_RP_setForceField); } } 
 
 } // namespace
 
