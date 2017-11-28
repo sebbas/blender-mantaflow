@@ -383,7 +383,6 @@ void FLUID::initLiquid(SmokeModifierData *smd)
 			+ liquid_import_low
 			+ liquid_adaptive_step
 			+ liquid_pre_step_low
-			+ liquid_geometry_low
 			+ liquid_step_low
 			+ liquid_post_step_low;
 		std::string finalString = parseScript(tmpString, smd);
@@ -466,18 +465,12 @@ void FLUID::initSndParts(SmokeModifierData *smd)
 	}
 }
 
-void FLUID::step(int framenr, bool initOnly)
+void FLUID::step(int framenr)
 {
 	// Run manta step: regular step or init only (sets up geometry only, no vel update, for first frame)
 	mCommands.clear();
 	std::ostringstream manta_step;
-	if (initOnly) {
-		std::string init = (initOnly) ? "True" : "False";
-		manta_step <<  "manta_geometry_" << mCurrentID << "()";
-	}
-	else {
-		manta_step <<  "manta_step_" << mCurrentID << "(" << framenr << ")";
-	}
+	manta_step <<  "manta_step_" << mCurrentID << "(" << framenr << ")";
 	mCommands.push_back(manta_step.str());
 
 	runPythonString(mCommands);
@@ -967,6 +960,10 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 	if (highres)
 		manta_script += smoke_post_step_high;
 
+	manta_script += fluid_adapt_time_step_low;
+	if (highres)
+		manta_script += fluid_adapt_time_step_high;
+
 	manta_script += smoke_step_low;
 	if (highres)
 		manta_script += smoke_step_high;
@@ -1061,7 +1058,10 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 	manta_script += liquid_pre_step_low;
 	manta_script += liquid_post_step_low;
 
-	manta_script += liquid_geometry_low;
+	manta_script += fluid_adapt_time_step_low;
+	if (highres)
+		manta_script += fluid_adapt_time_step_high;
+
 	manta_script += liquid_step_low;
 	if (highres)
 		manta_script += liquid_step_high;

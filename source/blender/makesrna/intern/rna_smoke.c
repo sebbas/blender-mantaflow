@@ -1348,7 +1348,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "particle_droplet_amount", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 1000.0);
-	RNA_def_property_ui_text(prop, "Generate", "Drop particle sampling per cell (integral part: number of sampling steps per cell; fractional part = probability of sampling a particle in a cell)");
+	RNA_def_property_ui_text(prop, "Generate", "Drop particle sampling per cell (integral part: number of sampling steps per cell plus one; fractional part: probability of sampling a particle in a cell)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "particle_droplet_life", PROP_INT, PROP_NONE);
@@ -1382,7 +1382,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "particle_floater_amount", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 1000.0);
-	RNA_def_property_ui_text(prop, "Generate", "Float particle sampling per cell (integral part: number of sampling steps per cell; fractional part = probability of sampling a particle in a cell)");
+	RNA_def_property_ui_text(prop, "Generate", "Float particle sampling per cell (integral part: number of sampling steps per cell plus one; fractional part: probability of sampling a particle in a cell)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "particle_floater_life", PROP_INT, PROP_NONE);
@@ -1399,7 +1399,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "particle_tracer_amount", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 1000.0);
-	RNA_def_property_ui_text(prop, "Generate", "Tracer particle sampling per cell (integral part: number of sampling steps per cell; fractional part = probability of sampling a particle in a cell)");
+	RNA_def_property_ui_text(prop, "Generate", "Tracer particle sampling per cell (integral part: number of sampling steps per cell plus one; fractional part: probability of sampling a particle in a cell)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "particle_tracer_life", PROP_INT, PROP_NONE);

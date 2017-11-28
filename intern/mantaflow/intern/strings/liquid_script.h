@@ -166,9 +166,31 @@ def manta_step_$ID$(framenr):\n\
     while s$ID$.frame == last_frame_s$ID$:\n\
         \n\
         mantaMsg('s.frame is ' + str(s$ID$.frame))\n\
+        \n\
+        flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$, phiWalls=phiObs_s$ID$, outflow=boundConditions_s$ID$)\n\
+        \n\
+        if using_obstacle_s$ID$:\n\
+            phiObs_s$ID$.join(phiObsIn_s$ID$)\n\
+        phi_s$ID$.join(phiIn_s$ID$)\n\
+        if using_obstacle_s$ID$:\n\
+            phi_s$ID$.subtract(phiObsIn_s$ID$)\n\
+        \n\
+        phiOut_s$ID$.join(phiOutIn_s$ID$)\n\
+        \n\
+        #updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$) # TODO (sebbas): uncomment for fraction support\n\
+        setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$, fractions=fractions_s$ID$)\n\
+        \n\
+        # add initial velocity: set invel as source grid to ensure const vels in inflow region, sampling makes use of this\n\
+        mapWeights_s$ID$.clear() # mis-use mapWeights\n\
+        if using_invel_s$ID$:\n\
+            resampleVec3ToMac(source=invel_s$ID$, target=mapWeights_s$ID$)\n\
+        pVel_pp$ID$.setSource(mapWeights_s$ID$, isMAC=True)\n\
+        \n\
+        sampleLevelsetWithParticles(phi=phiIn_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, discretization=particleNumber_s$ID$, randomness=randomness_s$ID$, refillEmpty=True)\n\
+        flags_s$ID$.updateFromLevelset(phi_s$ID$, phiObs_s$ID$)\n\
+        mapWeights_s$ID$.clear() # clean up, mapweights grid used later again\n\
         fluid_adapt_time_step()\n\
         \n\
-        liquid_geometry_$ID$()\n\
         mantaMsg('Low step / s$ID$.frame: ' + str(s$ID$.frame))\n\
         liquid_step_$ID$()\n\
         \n\
@@ -178,44 +200,31 @@ def manta_step_$ID$(framenr):\n\
             liquid_step_high_$ID$()\n\
         s$ID$.step()\n\
     \n\
-    liquid_post_step_low_$ID$()\n\
-\n\
-def manta_geometry_$ID$():\n\
-    mantaMsg('Manta geometry')\n\
-    liquid_geometry_$ID$()\n\
-    \n\
-    if using_sndparts_s$ID$:\n\
-        mantaMsg('Sampling (initial) snd particles')\n\
-        sampleSndParts(phi=phi_s$ID$, phiIn=phiIn_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, parts=ppSnd_s$ID$, type=$SNDPARTICLE_TYPES$, amountDroplet=$SNDPARTICLE_DROPLET_AMOUNT$, amountFloater=$SNDPARTICLE_FLOATER_AMOUNT$, amountTracer=$SNDPARTICLE_TRACER_AMOUNT$, thresholdDroplet=$SNDPARTICLE_DROPLET_THRESH$)\n\
-    \n\
     liquid_post_step_low_$ID$()\n";
 
-const std::string liquid_geometry_low = "\n\
-def liquid_geometry_$ID$():\n\
-    mantaMsg('Liquid geometry low')\n\
+const std::string liquid_step_low = "\n\
+def liquid_step_$ID$():\n\
+    mantaMsg('Liquid step low')\n\
     \n\
-    flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$, phiWalls=phiObs_s$ID$, outflow=boundConditions_s$ID$)\n\
+    mantaMsg('Advecting particles')\n\
+    pp_s$ID$.advectInGrid(flags=flags_s$ID$, vel=vel_s$ID$, integrationMode=IntRK4, deleteInObstacle=False, stopInObstacle=False)\n\
     \n\
-    if using_obstacle_s$ID$:\n\
-        phiObs_s$ID$.join(phiObsIn_s$ID$)\n\
-    phi_s$ID$.join(phiIn_s$ID$)\n\
-    if using_obstacle_s$ID$:\n\
-        phi_s$ID$.subtract(phiObsIn_s$ID$)\n\
+    mantaMsg('Pushing particles out of obstacles')\n\
+    pushOutofObs(parts=pp_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$)\n\
     \n\
-    phiOut_s$ID$.join(phiOutIn_s$ID$)\n\
+    mantaMsg('Advecting phi')\n\
+    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=phi_s$ID$, order=1) # first order is usually enough\n\
+    mantaMsg('Advecting velocity')\n\
+    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=vel_s$ID$, order=2, openBounds=doOpen_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
     \n\
-    #updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$) # TODO (sebbas): uncomment for fraction support\n\
-    setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$, fractions=fractions_s$ID$)\n\
-    \n\
-    # add initial velocity: set invel as source grid to ensure const vels in inflow region, sampling makes use of this\n\
-    mapWeights_s$ID$.clear() # mis-use mapWeights\n\
-    if using_invel_s$ID$:\n\
-        resampleVec3ToMac(source=invel_s$ID$, target=mapWeights_s$ID$)\n\
-    pVel_pp$ID$.setSource(mapWeights_s$ID$, isMAC=True)\n\
-    \n\
-    sampleLevelsetWithParticles(phi=phiIn_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, discretization=particleNumber_s$ID$, randomness=randomness_s$ID$, refillEmpty=True)\n\
-    flags_s$ID$.updateFromLevelset(phi_s$ID$, phiObs_s$ID$)\n\
-    mapWeights_s$ID$.clear() # clean up, mapweights grid used later again\n\
+    if using_sndparts_s$ID$:\n\
+        mantaMsg('Sampling snd particles')\n\
+        sampleSndParts(phi=phi_s$ID$, phiIn=phiIn_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, parts=ppSnd_s$ID$, type=$SNDPARTICLE_TYPES$, amountDroplet=$SNDPARTICLE_DROPLET_AMOUNT$, amountFloater=$SNDPARTICLE_FLOATER_AMOUNT$, amountTracer=$SNDPARTICLE_TRACER_AMOUNT$, thresholdDroplet=$SNDPARTICLE_DROPLET_THRESH$)\n\
+        mantaMsg('Updating snd particle data (velocity, life count)')\n\
+        updateSndParts(phi=phi_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$, parts=ppSnd_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, riseBubble=$SNDPARTICLE_BUBBLE_RISE$)\n\
+        mantaMsg('Adjusting snd particles')\n\
+        pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=1.0)\n\
+        adjustSndParts(parts=ppSnd_s$ID$, flags=flags_s$ID$, phi=phi_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, lifeDroplet=$SNDPARTICLE_DROPLET_LIFE$, lifeBubble=$SNDPARTICLE_BUBBLE_LIFE$, lifeFloater=$SNDPARTICLE_FLOATER_LIFE$, lifeTracer=$SNDPARTICLE_TRACER_LIFE$, maxDroplet=$SNDPARTICLE_DROPLET_MAX$, maxBubble=$SNDPARTICLE_BUBBLE_MAX$, maxFloater=$SNDPARTICLE_FLOATER_MAX$, maxTracer=$SNDPARTICLE_TRACER_MAX$)\n\
     \n\
     # create level set of particles\n\
     gridParticleIndex(parts=pp_s$ID$, flags=flags_s$ID$, indexSys=pindex_s$ID$, index=gpi_s$ID$)\n\
@@ -232,11 +241,7 @@ def liquid_geometry_$ID$():\n\
         resetOutflow(flags=flags_s$ID$, phi=phi_s$ID$, parts=pp_s$ID$, index=gpi_s$ID$, indexSys=pindex_s$ID$)\n\
         if using_sndparts_s$ID$:\n\
             resetOutflow(flags=flags_s$ID$, parts=ppSnd_s$ID$)\n\
-    flags_s$ID$.updateFromLevelset(phi_s$ID$)\n";
-
-const std::string liquid_step_low = "\n\
-def liquid_step_$ID$():\n\
-    mantaMsg('Liquid step low')\n\
+    flags_s$ID$.updateFromLevelset(phi_s$ID$)\n\
     \n\
     # combine particles velocities with advected grid velocities\n\
     mapPartsToMAC(vel=velParts_s$ID$, flags=flags_s$ID$, velOld=velOld_s$ID$, parts=pp_s$ID$, partVel=pVel_pp$ID$, weight=mapWeights_s$ID$)\n\
@@ -292,30 +297,7 @@ def liquid_step_$ID$():\n\
     # set source grids for resampling, used in adjustNumber!\n\
     pVel_pp$ID$.setSource(vel_s$ID$, isMAC=True)\n\
     adjustNumber(parts=pp_s$ID$, vel=vel_s$ID$, flags=flags_s$ID$, minParticles=minParticles_s$ID$, maxParticles=maxParticles_s$ID$, phi=phi_s$ID$, exclude=phiObs_s$ID$, radiusFactor=radiusFactor_s$ID$, narrowBand=adjustedNarrowBandWidth_s$ID$)\n\
-    flipVelocityUpdate(vel=vel_s$ID$, velOld=velOld_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, partVel=pVel_pp$ID$, flipRatio=0.97)\n\
-    \n\
-    if using_sndparts_s$ID$:\n\
-        mantaMsg('Adjusting snd particles')\n\
-    \n\
-    mantaMsg('Advecting particles')\n\
-    pp_s$ID$.advectInGrid(flags=flags_s$ID$, vel=vel_s$ID$, integrationMode=IntRK4, deleteInObstacle=False, stopInObstacle=False)\n\
-    \n\
-    mantaMsg('Pushing particles out of obstacles')\n\
-    pushOutofObs(parts=pp_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$)\n\
-    \n\
-    mantaMsg('Advecting phi')\n\
-    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=phi_s$ID$, order=1) # first order is usually enough\n\
-    mantaMsg('Advecting velocity')\n\
-    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=vel_s$ID$, order=2, openBounds=doOpen_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
-    \n\
-    if using_sndparts_s$ID$:\n\
-        mantaMsg('Sampling snd particles')\n\
-        sampleSndParts(phi=phi_s$ID$, phiIn=phiIn_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, parts=ppSnd_s$ID$, type=$SNDPARTICLE_TYPES$, amountDroplet=$SNDPARTICLE_DROPLET_AMOUNT$, amountFloater=$SNDPARTICLE_FLOATER_AMOUNT$, amountTracer=$SNDPARTICLE_TRACER_AMOUNT$, thresholdDroplet=$SNDPARTICLE_DROPLET_THRESH$)\n\
-        mantaMsg('Updating snd particle data (velocity, life count)')\n\
-        updateSndParts(phi=phi_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$, parts=ppSnd_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, riseBubble=$SNDPARTICLE_BUBBLE_RISE$)\n\
-        mantaMsg('Adjusting snd particles')\n\
-        pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=17.0)\n\
-        adjustSndParts(parts=ppSnd_s$ID$, flags=flags_s$ID$, phi=phi_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, lifeDroplet=$SNDPARTICLE_DROPLET_LIFE$, lifeBubble=$SNDPARTICLE_BUBBLE_LIFE$, lifeFloater=$SNDPARTICLE_FLOATER_LIFE$, lifeTracer=$SNDPARTICLE_TRACER_LIFE$, maxDroplet=$SNDPARTICLE_DROPLET_MAX$, maxBubble=$SNDPARTICLE_BUBBLE_MAX$, maxFloater=$SNDPARTICLE_FLOATER_MAX$, maxTracer=$SNDPARTICLE_TRACER_MAX$)\n";
+    flipVelocityUpdate(vel=vel_s$ID$, velOld=velOld_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, partVel=pVel_pp$ID$, flipRatio=0.97)\n";
 
 const std::string liquid_step_high = "\n\
 def liquid_step_high_$ID$():\n\

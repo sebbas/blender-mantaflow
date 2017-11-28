@@ -501,7 +501,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->cfl_condition = 4.0;
 			smd->domain->vorticity = 0.2;
 			smd->domain->border_collisions = 0; // open domain
-			smd->domain->flags = MOD_SMOKE_DISSOLVE_LOG | MOD_SMOKE_USE_VOLUME_CACHE;
+			smd->domain->flags = MOD_SMOKE_DISSOLVE_LOG | MOD_SMOKE_USE_VOLUME_CACHE | MOD_SMOKE_ADAPTIVE_TIME;
 			smd->domain->highres_sampling = SM_HRES_FULLSAMPLE;
 			smd->domain->strength = 1.0;
 			smd->domain->noise = MOD_SMOKE_NOISEWAVE;
@@ -2958,12 +2958,12 @@ static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *
 		if (sds->total_cells > 1) {
 			update_effectors(scene, ob, sds, dtSubdiv); // DG TODO? problem --> uses forces instead of velocity, need to check how they need to be changed with variable dt
 
-			/* extra smoke step for first frame: only produce geometry, no advection, then write cache */
+			/* extra step for first frame */
 			if (do_first_frame && sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID) {
-				smoke_step(sds->fluid, framenr, true);
+				smoke_step(sds->fluid, startframe);
 				BKE_ptcache_write(pid, startframe);
 			}
-			smoke_step(sds->fluid, framenr, false);
+			smoke_step(sds->fluid, framenr);
 		}
 	}
 }
