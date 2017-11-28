@@ -1414,6 +1414,16 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
+	prop = RNA_def_property(srna, "surface_tension", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 100.0);
+	RNA_def_property_ui_text(prop, "Tension", "Surface tension of liquid (higher value results in greater hydrophobic behaviour)");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
+	prop = RNA_def_property(srna, "viscosity", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 100.0);
+	RNA_def_property_ui_text(prop, "Viscosity", "Viscosity of liquid (higher value results in more viscous liquid)");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
 	prop = RNA_def_property(srna, "guiding_alpha", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "guiding_alpha");
 	RNA_def_property_range(prop, 1.0, 100.0);

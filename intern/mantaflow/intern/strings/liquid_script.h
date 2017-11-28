@@ -44,8 +44,8 @@ minParticles_s$ID$   = $PARTICLE_MINIMUM$\n\
 maxParticles_s$ID$   = $PARTICLE_MAXIMUM$\n\
 radiusFactor_s$ID$   = $PARTICLE_RADIUS$\n\
 randomness_s$ID$     = $PARTICLE_RANDOMNESS$\n\
-surfaceTension_s$ID$ = 0.0\n\
-viscosity_s$ID$      = 0.0\n\
+surfaceTension_s$ID$ = $LIQUID_SURFACE_TENSION$\n\
+viscosity_s$ID$      = $LIQUID_VISCOSITY$\n\
 maxVel_s$ID$         = 1 # just declared here, do not set\n";
 
 const std::string liquid_variables_high = "\n\
@@ -64,7 +64,7 @@ phiIn_s$ID$      = s$ID$.create(LevelsetGrid)\n\
 phiOut_s$ID$     = s$ID$.create(LevelsetGrid)\n\
 phiOutIn_s$ID$   = s$ID$.create(LevelsetGrid)\n\
 pressure_s$ID$   = s$ID$.create(RealGrid)\n\
-curvature_s$ID$  = 0 #s$ID$.create(RealGrid)\n\
+curvature_s$ID$  = s$ID$.create(RealGrid)\n\
 \n\
 phiObs_s$ID$     = s$ID$.create(LevelsetGrid)\n\
 fractions_s$ID$  = 0 # s$ID$.create(MACGrid) # TODO (sebbas): disabling fractions for now - not fracwallbcs not supporting obvels yet\n\
@@ -279,8 +279,8 @@ def liquid_step_$ID$():\n\
     \n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else 0, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
-#    mantaMsg('Calculating curvature')\n\
-#    getLaplacian(laplacian=curvature_s$ID$, grid=phi_s$ID$)\n\
+    mantaMsg('Calculating curvature')\n\
+    getLaplacian(laplacian=curvature_s$ID$, grid=phi_s$ID$)\n\
     \n\
     if using_guiding_s$ID$:\n\
         mantaMsg('Guiding and pressure')\n\

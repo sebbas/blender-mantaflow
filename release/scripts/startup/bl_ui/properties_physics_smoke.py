@@ -418,6 +418,31 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         sub3 = col.column()
         sub3.prop(domain, "use_flip_particles", text="FLIP")
 
+class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
+    bl_label = "Fluid Diffusion"
+    COMPAT_ENGINES = {'BLENDER_RENDER'}
+
+    @classmethod
+    def poll(cls, context):
+        md = context.smoke
+        rd = context.scene.render
+        # Fluid diffusion only enabled for liquids (surface tension and viscosity not relevant for smoke)
+        return md and (md.smoke_type == 'DOMAIN') and (rd.engine in cls.COMPAT_ENGINES) and (md.domain_settings.smoke_domain_type in {'LIQUID'}) 
+
+    def draw(self, context):
+        layout = self.layout
+        domain = context.smoke.domain_settings
+
+        split = layout.split()
+
+        col = split.column()
+        col.enabled = not domain.point_cache.is_baked
+        col.prop(domain, "viscosity", text="Viscosity")
+
+        col = split.column()
+        col.enabled = not domain.point_cache.is_baked
+        col.prop(domain, "surface_tension", text="Surface tension")
+
 class PHYSICS_PT_smoke_guiding(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Guiding"
     COMPAT_ENGINES = {'BLENDER_RENDER'}
@@ -628,6 +653,7 @@ classes = (
     PHYSICS_PT_smoke_adaptive_domain,
     PHYSICS_PT_smoke_quality,
     PHYSICS_PT_smoke_particles,
+    PHYSICS_PT_smoke_diffusion,
     PHYSICS_PT_smoke_guiding,
     PHYSICS_PT_smoke_groups,
     PHYSICS_PT_smoke_cache,
