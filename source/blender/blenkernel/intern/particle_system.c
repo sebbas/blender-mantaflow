@@ -3882,8 +3882,10 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 				if ((flagActivePart & PDELETE)==0) { // mantaflow convention: PDELETE == inactive particle
 					activeParts++;
 
-					pa->size = sds->particle_radius;
-					pa->size /= 10.0f;
+					// Use particle system settings for particle size
+					pa->size = part->size;
+					if (part->randsize > 0.0f)
+						pa->size *= 1.0f - part->randsize * psys_frand(psys, p + 1);
 					
 					// Get size (dimension) but considering scaling scaling
 					copy_v3_v3(cell_size_scaled, sds->cell_size);
