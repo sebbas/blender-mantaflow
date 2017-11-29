@@ -20,7 +20,7 @@
  * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/python/intern/bpy_util.h
+/** \file blender/python/intern/bpy_capi_utils.h
  *  \ingroup pythonintern
  */
 
@@ -34,7 +34,7 @@
 struct EnumPropertyItem;
 struct ReportList;
 
-char *BPy_enum_as_string(struct EnumPropertyItem *item);
+char *BPy_enum_as_string(const struct EnumPropertyItem *item);
 
 #define BLANK_PYTHON_TYPE {PyVarObject_HEAD_INIT(NULL, 0) NULL}
 

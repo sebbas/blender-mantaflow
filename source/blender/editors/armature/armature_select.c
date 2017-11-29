@@ -38,7 +38,7 @@
 #include "BLI_string_utils.h"
 
 #include "BKE_context.h"
-//#include "BKE_deform.h"
+#include "BKE_action.h"
 #include "BKE_report.h"
 
 #include "BIF_gl.h"
@@ -801,9 +801,10 @@ enum {
 	SIMEDBONE_PREFIX,
 	SIMEDBONE_SUFFIX,
 	SIMEDBONE_LAYER,
+	SIMEDBONE_SHAPE,
 };
 
-static EnumPropertyItem prop_similar_types[] = {
+static const EnumPropertyItem prop_similar_types[] = {
 	{SIMEDBONE_CHILDREN, "CHILDREN", 0, "Children", ""},
 	{SIMEDBONE_CHILDREN_IMMEDIATE, "CHILDREN_IMMEDIATE", 0, "Immediate children", ""},
 	{SIMEDBONE_SIBLINGS, "SIBLINGS", 0, "Siblings", ""},
@@ -812,6 +813,7 @@ static EnumPropertyItem prop_similar_types[] = {
 	{SIMEDBONE_PREFIX, "PREFIX", 0, "Prefix", ""},
 	{SIMEDBONE_SUFFIX, "SUFFIX", 0, "Suffix", ""},
 	{SIMEDBONE_LAYER, "LAYER", 0, "Layer", ""},
+	{SIMEDBONE_SHAPE, "SHAPE", 0, "Shape", ""},
 	{0, NULL, 0, NULL, NULL}
 };
 
@@ -914,7 +916,27 @@ static void select_similar_suffix(bArmature *arm, EditBone *ebone_act)
 	}
 }
 
-static void is_ancestor(EditBone * bone, EditBone * ancestor)
+/** Use for matching any pose channel data. */
+static void select_similar_data_pchan(
+        bArmature *arm, Object *obj, EditBone *ebone_active,
+        const size_t bytes_size, const int offset)
+{
+	const bPoseChannel *pchan_active = BKE_pose_channel_find_name(obj->pose, ebone_active->name);
+	const char *data_active = (const char *)POINTER_OFFSET(pchan_active, offset);
+	for (EditBone *ebone = arm->edbo->first; ebone; ebone = ebone->next) {
+		if (EBONE_SELECTABLE(arm, ebone)) {
+			const bPoseChannel *pchan = BKE_pose_channel_find_name(obj->pose, ebone->name);
+			if (pchan) {
+				const char *data_test = (const char *)POINTER_OFFSET(pchan, offset);
+				if (memcmp(data_active, data_test, bytes_size) == 0) {
+					ED_armature_ebone_select_set(ebone, true);
+				}
+			}
+		}
+	}
+}
+
+static void is_ancestor(EditBone *bone, EditBone *ancestor)
 {
 	if (bone->temp.ebone == ancestor || bone->temp.ebone == NULL)
 		return;
@@ -1005,6 +1027,11 @@ static int armature_select_similar_exec(bContext *C, wmOperator *op)
 			break;
 		case SIMEDBONE_LAYER:
 			select_similar_layer(arm, ebone_act);
+			break;
+		case SIMEDBONE_SHAPE:
+			select_similar_data_pchan(
+			        arm, obedit, ebone_act,
+			        sizeof(void *), offsetof(bPoseChannel, custom));
 			break;
 	}
 
@@ -1116,7 +1143,7 @@ static int armature_select_hierarchy_exec(bContext *C, wmOperator *op)
 
 void ARMATURE_OT_select_hierarchy(wmOperatorType *ot)
 {
-	static EnumPropertyItem direction_items[] = {
+	static const EnumPropertyItem direction_items[] = {
 		{BONE_SELECT_PARENT, "PARENT", 0, "Select Parent", ""},
 		{BONE_SELECT_CHILD, "CHILD", 0, "Select Child", ""},
 		{0, NULL, 0, NULL, NULL}

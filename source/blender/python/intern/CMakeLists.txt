@@ -46,8 +46,6 @@ set(INC_SYS
 )
 
 set(SRC
-	gpu.c
-	gpu_offscreen.c
 	bpy.c
 	bpy_app.c
 	bpy_app_alembic.c
@@ -60,6 +58,7 @@ set(SRC
 	bpy_app_openvdb.c
 	bpy_app_sdl.c
 	bpy_app_translations.c
+	bpy_capi_utils.c
 	bpy_driver.c
 	bpy_interface.c
 	bpy_interface_atexit.c
@@ -77,12 +76,12 @@ set(SRC
 	bpy_rna_driver.c
 	bpy_rna_id_collection.c
 	bpy_traceback.c
-	bpy_util.c
 	bpy_utils_previews.c
 	bpy_utils_units.c
+	gpu.c
+	gpu_offscreen.c
 	stubs.c
 
-	gpu.h
 	bpy.h
 	bpy_app.h
 	bpy_app_alembic.h
@@ -95,6 +94,7 @@ set(SRC
 	bpy_app_openvdb.h
 	bpy_app_sdl.h
 	bpy_app_translations.h
+	bpy_capi_utils.h
 	bpy_driver.h
 	bpy_intern_string.h
 	bpy_library.h
@@ -108,9 +108,9 @@ set(SRC
 	bpy_rna_driver.h
 	bpy_rna_id_collection.h
 	bpy_traceback.h
-	bpy_util.h
 	bpy_utils_previews.h
 	bpy_utils_units.h
+	gpu.h
 	../BPY_extern.h
 )
 

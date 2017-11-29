@@ -18,28 +18,22 @@
  * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file BKE_utildefines.h
- *  \ingroup bke
- *  \brief blender format specific macros
- *  \note generic defines should go in BLI_utildefines.h
+/** \file blender/editors/interface/interface_regions_intern.h
+ *  \ingroup edinterface
+ *
+ * Share between interface_region_*.c files.
  */
 
+#ifndef __INTERFACE_REGIONS_INTERN_H__
+#define __INTERFACE_REGIONS_INTERN_H__
 
-#ifndef __BKE_UTILDEFINES_H__
-#define __BKE_UTILDEFINES_H__
+#define MENU_PADDING (int)(0.2f * UI_UNIT_Y)
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+/* interface_region_menu_popup.c */
+unsigned int ui_popup_menu_hash(const char *str);
 
-#define BKE_BIT_TEST_SET(value, test, flag) \
-{                                           \
-	if (test) (value) |=  flag;             \
-	else      (value) &= ~flag;             \
-} (void)0
+/* interface_regions_intern.h */
+ARegion *ui_region_temp_add(bScreen *sc);
+void     ui_region_temp_remove(struct bContext *C, bScreen *sc, ARegion *ar);
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif  /* __BKE_UTILDEFINES_H__ */
+#endif  /* __INTERFACE_REGIONS_INTERN_H__ */

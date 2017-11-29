@@ -50,6 +50,7 @@ set(INC
 	../../../intern/atomic
 	../../../intern/libmv
 	../../../intern/mantaflow/extern
+	../../../extern/curve_fit_nd
 )
 
 set(INC_SYS
@@ -92,6 +93,7 @@ set(SRC
 	intern/context.c
 	intern/crazyspace.c
 	intern/curve.c
+	intern/curve_decimate.c
 	intern/customdata.c
 	intern/customdata_file.c
 	intern/data_transfer.c
@@ -291,7 +293,6 @@ set(SRC
 	BKE_texture.h
 	BKE_tracking.h
 	BKE_unit.h
-	BKE_utildefines.h
 	BKE_world.h
 	BKE_writeavi.h
 	BKE_writeframeserver.h
