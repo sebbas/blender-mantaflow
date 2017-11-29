@@ -546,23 +546,24 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 
 			smd->domain->particle_droplet_threshold = 2.0f;
 			smd->domain->particle_droplet_amount = 2.5f;
-			smd->domain->particle_droplet_life = 0;
+			smd->domain->particle_droplet_life = 250.0f;
 			smd->domain->particle_droplet_max = 4;
 
 			smd->domain->particle_bubble_rise = 0.5f;
-			smd->domain->particle_bubble_life = 0;
+			smd->domain->particle_bubble_life = 250.0f;
 			smd->domain->particle_bubble_max = 2;
 
 			smd->domain->particle_floater_amount = 0.5f;
-			smd->domain->particle_floater_life = 0;
+			smd->domain->particle_floater_life = 250.0f;
 			smd->domain->particle_floater_max = 2;
 
 			smd->domain->particle_tracer_amount = 0.5f;
-			smd->domain->particle_tracer_life = 0;
+			smd->domain->particle_tracer_life = 250.0f;
 			smd->domain->particle_tracer_max = 2;
 
 			smd->domain->surface_tension = 0.0f;
 			smd->domain->viscosity = 0.0f;
+			smd->domain->domain_size = 100.0f;
 
 			/* guiding */
 			smd->domain->guiding_alpha = 2.0f;
@@ -708,6 +709,7 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 
 		tsmd->domain->surface_tension = smd->domain->surface_tension;
 		tsmd->domain->viscosity = smd->domain->viscosity;
+		tsmd->domain->domain_size = smd->domain->domain_size;
 
 		tsmd->domain->guiding_alpha = smd->domain->guiding_alpha;
 		tsmd->domain->guiding_beta = smd->domain->guiding_beta;

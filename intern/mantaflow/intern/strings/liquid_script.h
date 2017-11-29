@@ -45,7 +45,6 @@ maxParticles_s$ID$   = $PARTICLE_MAXIMUM$\n\
 radiusFactor_s$ID$   = $PARTICLE_RADIUS$\n\
 randomness_s$ID$     = $PARTICLE_RANDOMNESS$\n\
 surfaceTension_s$ID$ = $LIQUID_SURFACE_TENSION$\n\
-viscosity_s$ID$      = $LIQUID_VISCOSITY$\n\
 maxVel_s$ID$         = 1 # just declared here, do not set\n";
 
 const std::string liquid_variables_high = "\n\
@@ -221,10 +220,10 @@ def liquid_step_$ID$():\n\
         mantaMsg('Sampling snd particles')\n\
         sampleSndParts(phi=phi_s$ID$, phiIn=phiIn_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, parts=ppSnd_s$ID$, type=$SNDPARTICLE_TYPES$, amountDroplet=$SNDPARTICLE_DROPLET_AMOUNT$, amountFloater=$SNDPARTICLE_FLOATER_AMOUNT$, amountTracer=$SNDPARTICLE_TRACER_AMOUNT$, thresholdDroplet=$SNDPARTICLE_DROPLET_THRESH$)\n\
         mantaMsg('Updating snd particle data (velocity, life count)')\n\
-        updateSndParts(phi=phi_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$, parts=ppSnd_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, riseBubble=$SNDPARTICLE_BUBBLE_RISE$)\n\
+        updateSndParts(phi=phi_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$, parts=ppSnd_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, riseBubble=$SNDPARTICLE_BUBBLE_RISE$, lifeDroplet=$SNDPARTICLE_DROPLET_LIFE$, lifeBubble=$SNDPARTICLE_BUBBLE_LIFE$, lifeFloater=$SNDPARTICLE_FLOATER_LIFE$, lifeTracer=$SNDPARTICLE_TRACER_LIFE$)\n\
         mantaMsg('Adjusting snd particles')\n\
         pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=1.0)\n\
-        adjustSndParts(parts=ppSnd_s$ID$, flags=flags_s$ID$, phi=phi_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, lifeDroplet=$SNDPARTICLE_DROPLET_LIFE$, lifeBubble=$SNDPARTICLE_BUBBLE_LIFE$, lifeFloater=$SNDPARTICLE_FLOATER_LIFE$, lifeTracer=$SNDPARTICLE_TRACER_LIFE$, maxDroplet=$SNDPARTICLE_DROPLET_MAX$, maxBubble=$SNDPARTICLE_BUBBLE_MAX$, maxFloater=$SNDPARTICLE_FLOATER_MAX$, maxTracer=$SNDPARTICLE_TRACER_MAX$)\n\
+        adjustSndParts(parts=ppSnd_s$ID$, flags=flags_s$ID$, phi=phi_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, maxDroplet=$SNDPARTICLE_DROPLET_MAX$, maxBubble=$SNDPARTICLE_BUBBLE_MAX$, maxFloater=$SNDPARTICLE_FLOATER_MAX$, maxTracer=$SNDPARTICLE_TRACER_MAX$)\n\
     \n\
     # create level set of particles\n\
     gridParticleIndex(parts=pp_s$ID$, flags=flags_s$ID$, indexSys=pindex_s$ID$, index=gpi_s$ID$)\n\

@@ -815,8 +815,10 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << smd->domain->particle_tracer_max;
 	else if (varName == "LIQUID_SURFACE_TENSION")
 		ss << smd->domain->surface_tension;
-	else if (varName == "LIQUID_VISCOSITY")
+	else if (varName == "FLUID_VISCOSITY")
 		ss << smd->domain->viscosity;
+	else if (varName == "FLUID_DOMAIN_SIZE")
+		ss << smd->domain->domain_size;
 	else if (varName == "SNDPARTICLE_TYPES") {
 		if (smd->domain->particle_type & MOD_SMOKE_PARTICLE_DROP) {
 			ss << "PtypeDroplet";

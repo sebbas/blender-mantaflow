@@ -438,10 +438,11 @@ class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
         col = split.column()
         col.enabled = not domain.point_cache.is_baked
         col.prop(domain, "viscosity", text="Viscosity")
+        col.prop(domain, "domain_size", text="Size")
 
         col = split.column()
         col.enabled = not domain.point_cache.is_baked
-        col.prop(domain, "surface_tension", text="Surface tension")
+        col.prop(domain, "surface_tension", text="Tension")
 
 class PHYSICS_PT_smoke_guiding(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Guiding"

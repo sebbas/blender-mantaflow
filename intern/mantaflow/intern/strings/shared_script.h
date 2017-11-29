@@ -87,7 +87,12 @@ alpha_s$ID$ = $GUIDING_ALPHA$\n\
 beta_s$ID$  = $GUIDING_BETA$\n\
 tau_s$ID$   = 1.0\n\
 sigma_s$ID$ = 0.99/tau_s$ID$\n\
-theta_s$ID$ = 1.0\n";
+theta_s$ID$ = 1.0\n\
+\n\
+# fluid diffusion / viscosity\n\
+domainSize_s$ID$ = $FLUID_DOMAIN_SIZE$ # longest domain side in cm\n\
+if domainSize_s$ID$ == 0: domainSize_s$ID$ = 100 # TODO (sebbas): just for versioning, remove with proper 2.8 versioning\n\
+viscosity_s$ID$  = $FLUID_VISCOSITY$ / (domainSize_s$ID$ / res_s$ID$) * (30.0 / $FPS$) # assuming 30fps\n";
 
 const std::string fluid_variables_high= "\n\
 upres_xl$ID$  = $UPRES$\n\
@@ -178,7 +183,7 @@ const std::string fluid_alloc_sndparts_low = "\n\
 mantaMsg('Allocating snd parts low')\n\
 ppSnd_s$ID$     = s$ID$.create(BasicParticleSystem)\n\
 pVelSnd_pp$ID$  = ppSnd_s$ID$.create(PdataVec3)\n\
-pLifeSnd_pp$ID$ = ppSnd_s$ID$.create(PdataInt)\n";
+pLifeSnd_pp$ID$ = ppSnd_s$ID$.create(PdataReal)\n";
 
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION
@@ -202,6 +207,8 @@ if 'beta_s$ID$'             in globals() : del beta_s$ID$\n\
 if 'tau_s$ID$'              in globals() : del tau_s$ID$\n\
 if 'sigma_s$ID$'            in globals() : del sigma_s$ID$\n\
 if 'theta_s$ID$'            in globals() : del theta_s$ID$\n\
+if 'domainSize_s$ID$'       in globals() : del domainSize_s$ID$\n\
+if 'viscosity_s$ID$'        in globals() : del viscosity_s$ID$\n\
 if 'using_obstacle_s$ID$'   in globals() : del using_obstacle_s$ID$\n\
 if 'using_guiding_s$ID$'    in globals() : del using_guiding_s$ID$\n\
 if 'using_invel_s$ID$'      in globals() : del using_invel_s$ID$\n\

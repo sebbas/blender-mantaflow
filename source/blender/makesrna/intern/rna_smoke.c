@@ -1352,8 +1352,8 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "particle_droplet_life", PROP_INT, PROP_NONE);
-	RNA_def_property_range(prop, 0, 1000);
-	RNA_def_property_ui_text(prop, "Life", "Maximum drop particle life in frames (Life 0: live infinitely)");
+	RNA_def_property_range(prop, 0, 10000);
+	RNA_def_property_ui_text(prop, "Life", "Life span of drop particles");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
@@ -1369,8 +1369,8 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "particle_bubble_life", PROP_INT, PROP_NONE);
-	RNA_def_property_range(prop, 0, 1000);
-	RNA_def_property_ui_text(prop, "Life", "Maximum bubble particle life in frames (Life 0: live infinitely)");
+	RNA_def_property_range(prop, 0, 10000);
+	RNA_def_property_ui_text(prop, "Life", "Life span of bubble particles");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
@@ -1386,8 +1386,8 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "particle_floater_life", PROP_INT, PROP_NONE);
-	RNA_def_property_range(prop, 0, 1000);
-	RNA_def_property_ui_text(prop, "Life", "Maximum float particle life in frames (Life 0: live infinitely)");
+	RNA_def_property_range(prop, 0, 10000);
+	RNA_def_property_ui_text(prop, "Life", "Life span of float particles");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
@@ -1403,8 +1403,8 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "particle_tracer_life", PROP_INT, PROP_NONE);
-	RNA_def_property_range(prop, 0, 1000);
-	RNA_def_property_ui_text(prop, "Life", "Maximum tracer particle life in frames (Life 0: live infinitely)");
+	RNA_def_property_range(prop, 0, 10000);
+	RNA_def_property_ui_text(prop, "Life", "Life span of tracer particles");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
@@ -1421,7 +1421,13 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "viscosity", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 100.0);
+	RNA_def_property_ui_range(prop, 0.0, 100.0, 0.01, 6);
 	RNA_def_property_ui_text(prop, "Viscosity", "Viscosity of liquid (higher value results in more viscous liquid)");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
+	prop = RNA_def_property(srna, "domain_size", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.001, 10000.0);
+	RNA_def_property_ui_text(prop, "Size", "Domain size in cm (longest domain side)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
 	prop = RNA_def_property(srna, "guiding_alpha", PROP_FLOAT, PROP_NONE);
