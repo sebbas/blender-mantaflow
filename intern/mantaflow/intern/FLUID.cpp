@@ -1367,7 +1367,7 @@ void FLUID::updatePointers()
 		if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
 			mSndParticleData     = (std::vector<pData>*) getDataPointer("ppSnd" + solver_ext, solver);
 			mSndParticleVelocity = (std::vector<pVel>*)  getDataPointer("pVelSnd" + parts_ext, parts);
-			mSndParticleLife     = (std::vector<int>*)   getDataPointer("pLifeSnd" + parts_ext, parts);
+			mSndParticleLife     = (std::vector<float>*) getDataPointer("pLifeSnd" + parts_ext, parts);
 		}
 	}
 	
@@ -1482,11 +1482,11 @@ void FLUID::setSndParticleVelocity(float* buffer, int numParts)
 	}
 }
 
-void FLUID::setSndParticleLife(int* buffer, int numParts)
+void FLUID::setSndParticleLife(float* buffer, int numParts)
 {
 	mSndParticleLife->resize(numParts);
-	int* bufferPType = buffer;
-	for (std::vector<int>::iterator it = mSndParticleLife->begin(); it != mSndParticleLife->end(); ++it) {
+	float* bufferPType = buffer;
+	for (std::vector<float>::iterator it = mSndParticleLife->begin(); it != mSndParticleLife->end(); ++it) {
 		*it = *bufferPType;
 		bufferPType++;
 	}

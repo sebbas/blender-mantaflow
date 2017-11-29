@@ -45,7 +45,7 @@ void smoke_step(struct FLUID *smoke, int framenr);
 void smoke_dissolve(struct FLUID *smoke, int speed, int log);
 void smoke_dissolve_wavelet(struct FLUID *smoke, int speed, int log);
 void smoke_export(struct FLUID *smoke, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, float **vx, float **vy, float **vz, float **r, float **g, float **b, int **obstacles);
-void liquid_export(struct FLUID *liquid, float **phi, float **pp, float **pvel, float **ppSnd, float **pvelSnd, int **plifeSnd);
+void liquid_export(struct FLUID *liquid, float **phi, float **pp, float **pvel, float **ppSnd, float **pvelSnd, float **plifeSnd);
 void smoke_turbulence_export(struct FLUID *smoke, float **dens, float **react, float **flame, float **fuel, float **r, float **g, float **b , float **tcu, float **tcv, float **tcw, float **tcu2, float **tcv2, float **tcw2);
 float *smoke_get_density(struct FLUID *smoke);
 float *smoke_get_fuel(struct FLUID *smoke);
@@ -152,7 +152,7 @@ void liquid_set_snd_particle_data(struct FLUID* liquid, float* buffer, int numPa
 
 void liquid_set_flip_particle_velocity(struct FLUID* liquid, float* buffer, int numParts);
 void liquid_set_snd_particle_velocity(struct FLUID* liquid, float* buffer, int numParts);
-void liquid_set_snd_particle_life(struct FLUID* liquid, int* buffer, int numParts);
+void liquid_set_snd_particle_life(struct FLUID* liquid, float* buffer, int numParts);
 
 // Fluids in general
 int *fluid_get_num_obstacle(struct FLUID *fluid);

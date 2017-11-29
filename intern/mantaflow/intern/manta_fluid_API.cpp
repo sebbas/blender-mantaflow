@@ -160,7 +160,7 @@ extern "C" void smoke_export(FLUID *smoke, float *dt, float *dx, float **dens, f
 	*dx = 1; //dummy value, not needed for smoke
 }
 
-extern "C" void liquid_export(FLUID *liquid, float **phi, float **pp, float **pvel, float **ppSnd, float **pvelSnd, int **plifeSnd)
+extern "C" void liquid_export(FLUID *liquid, float **phi, float **pp, float **pvel, float **ppSnd, float **pvelSnd, float **plifeSnd)
 {
 	if (phi)
 		*phi = liquid->getPhi();
@@ -810,7 +810,7 @@ extern "C" void liquid_set_snd_particle_velocity(FLUID* liquid, float* buffer, i
 	liquid->setSndParticleVelocity(buffer, numParts);
 }
 
-extern "C" void liquid_set_snd_particle_life(FLUID* liquid, int* buffer, int numParts)
+extern "C" void liquid_set_snd_particle_life(FLUID* liquid, float* buffer, int numParts)
 {
 	liquid->setSndParticleLife(buffer, numParts);
 }
