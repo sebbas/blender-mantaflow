@@ -67,7 +67,7 @@ class ParticleBase : public PbClass {public:
 	virtual IndexInt getSizeSlow() const { assertMsg( false , "Dont use, override..."); return 0; } 
 
 	//! add a position as potential candidate for new particle (todo, make usable from parallel threads)
-	inline void addBuffered(const Vec3& pos, int flag=0);
+	inline void addBuffered(const Vec3& pos, int flag=PNONE);
 
 	//! particle data functions
 
