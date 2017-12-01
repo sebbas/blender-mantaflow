@@ -650,13 +650,15 @@ static int ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 		ptcache_file_write(pf, &sds->res_min, 3, sizeof(int));
 		ptcache_file_write(pf, &sds->res_max, 3, sizeof(int));
 		ptcache_file_write(pf, &sds->active_color, 3, sizeof(float));
-		if (pp && numParts) {
+
+		if (pp) {
 			MEM_freeN(out);
 			out = (unsigned char *)MEM_callocN(numParts*sizeof(float)*3 + numParts*sizeof(int), "pointcache_lzo_buffer");
 			ptcache_file_compressed_write(pf, (unsigned char *) pp, numParts*sizeof(float)*3 + numParts*sizeof(int), out, mode);
 			ptcache_file_compressed_write(pf, (unsigned char *) pvel, numParts*sizeof(float)*3, out, mode);
 		}
-		if (ppSnd && numPartsSnd) {
+
+		if (ppSnd) {
 			MEM_freeN(out);
 			out = (unsigned char *)MEM_callocN(numPartsSnd*sizeof(float)*3 + numPartsSnd*sizeof(int), "pointcache_lzo_buffer");
 			ptcache_file_compressed_write(pf, (unsigned char *) ppSnd, numPartsSnd*sizeof(float)*3 + numPartsSnd*sizeof(int), out, mode);
@@ -874,7 +876,6 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 		int *obstacles, numParts = 0, numPartsSnd = 0;
 		unsigned int out_len = (unsigned int)res * sizeof(float);
 		unsigned char *buffer;
-		int readPP = 0, readPPSnd = 0; // Set if successfully read pp / ppSnd size
 
 		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles);
 		liquid_export(sds->fluid, &phi, &pp, &pvel, &ppSnd, &pvelSnd, &plifeSnd);
@@ -902,8 +903,8 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 		ptcache_file_compressed_read(pf, (unsigned char *)obstacles, (unsigned int)res);
 		if (phi) {
 			ptcache_file_compressed_read(pf, (unsigned char *)phi, out_len);
-			readPP = ptcache_file_read(pf, &numParts, 1, sizeof(int));
-			readPPSnd = ptcache_file_read(pf, &numPartsSnd, 1, sizeof(int));
+			ptcache_file_read(pf, &numParts, 1, sizeof(int));
+			ptcache_file_read(pf, &numPartsSnd, 1, sizeof(int));
 		}
 		ptcache_file_read(pf, &dt, 1, sizeof(float));
 		ptcache_file_read(pf, &dx, 1, sizeof(float));
@@ -917,7 +918,8 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 		ptcache_file_read(pf, &sds->res_min, 3, sizeof(int));
 		ptcache_file_read(pf, &sds->res_max, 3, sizeof(int));
 		ptcache_file_read(pf, &sds->active_color, 3, sizeof(float));
-		if (readPP) { // cannot use pp in this if since pp vector is still empty
+
+		if (numParts) {
 			buffer = (unsigned char *)MEM_callocN(numParts*sizeof(float)*3 + numParts*sizeof(int), "pointcache_lzo_buffer");
 
 			ptcache_file_compressed_read(pf, (unsigned char *)buffer, numParts*sizeof(float)*3 + numParts*sizeof(int));
@@ -927,8 +929,7 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 			liquid_set_flip_particle_velocity(sds->fluid, (float *) buffer, numParts);
 			MEM_freeN(buffer);
 		}
-
-		if (readPPSnd) { // cannot use ppSnd in this if since pp vector is still empty
+		if (numPartsSnd) {
 			buffer = (unsigned char *)MEM_callocN(numPartsSnd*sizeof(float)*3 + numPartsSnd*sizeof(int), "pointcache_lo_buffer");
 
 			ptcache_file_compressed_read(pf, (unsigned char *)buffer, numPartsSnd*sizeof(float)*3 + numPartsSnd*sizeof(int));

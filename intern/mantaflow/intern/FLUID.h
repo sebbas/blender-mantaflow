@@ -174,31 +174,31 @@ public:
 	inline int getFlipParticleFlagAt(int i) { return (mFlipParticleData) ? ((std::vector<pData>*) mFlipParticleData)->at(i).flag : 0; }
 	inline int getSndParticleFlagAt(int i) { return (mSndParticleData) ? ((std::vector<pData>*) mSndParticleData)->at(i).flag : 0; }
 
-	inline float getFlipParticlePositionXAt(int i) { return (mFlipParticleData) ? mFlipParticleData->at(i).pos[0] : 0.f; }
-	inline float getFlipParticlePositionYAt(int i) { return (mFlipParticleData) ? mFlipParticleData->at(i).pos[1] : 0.f; }
-	inline float getFlipParticlePositionZAt(int i) { return (mFlipParticleData) ? mFlipParticleData->at(i).pos[2] : 0.f; }
+	inline float getFlipParticlePositionXAt(int i) { return (mFlipParticleData && !mFlipParticleData->empty()) ? mFlipParticleData->at(i).pos[0] : 0.f; }
+	inline float getFlipParticlePositionYAt(int i) { return (mFlipParticleData && !mFlipParticleData->empty()) ? mFlipParticleData->at(i).pos[1] : 0.f; }
+	inline float getFlipParticlePositionZAt(int i) { return (mFlipParticleData && !mFlipParticleData->empty()) ? mFlipParticleData->at(i).pos[2] : 0.f; }
 
-	inline float getSndParticlePositionXAt(int i) { return (mSndParticleData) ? mSndParticleData->at(i).pos[0] : 0.f; }
-	inline float getSndParticlePositionYAt(int i) { return (mSndParticleData) ? mSndParticleData->at(i).pos[1] : 0.f; }
-	inline float getSndParticlePositionZAt(int i) { return (mSndParticleData) ? mSndParticleData->at(i).pos[2] : 0.f; }
+	inline float getSndParticlePositionXAt(int i) { return (mSndParticleData && !mSndParticleData->empty()) ? mSndParticleData->at(i).pos[0] : 0.f; }
+	inline float getSndParticlePositionYAt(int i) { return (mSndParticleData && !mSndParticleData->empty()) ? mSndParticleData->at(i).pos[1] : 0.f; }
+	inline float getSndParticlePositionZAt(int i) { return (mSndParticleData && !mSndParticleData->empty()) ? mSndParticleData->at(i).pos[2] : 0.f; }
 
-	inline float getFlipParticleVelocityXAt(int i) { return (mFlipParticleVelocity) ? mFlipParticleVelocity->at(i).pos[0] : 0.f; }
-	inline float getFlipParticleVelocityYAt(int i) { return (mFlipParticleVelocity) ? mFlipParticleVelocity->at(i).pos[1] : 0.f; }
-	inline float getFlipParticleVelocityZAt(int i) { return (mFlipParticleVelocity) ? mFlipParticleVelocity->at(i).pos[2] : 0.f; }
+	inline float getFlipParticleVelocityXAt(int i) { return (mFlipParticleVelocity && !mFlipParticleVelocity->empty()) ? mFlipParticleVelocity->at(i).pos[0] : 0.f; }
+	inline float getFlipParticleVelocityYAt(int i) { return (mFlipParticleVelocity && !mFlipParticleVelocity->empty()) ? mFlipParticleVelocity->at(i).pos[1] : 0.f; }
+	inline float getFlipParticleVelocityZAt(int i) { return (mFlipParticleVelocity && !mFlipParticleVelocity->empty()) ? mFlipParticleVelocity->at(i).pos[2] : 0.f; }
 
-	inline float getSndParticleVelocityXAt(int i) { return (mSndParticleVelocity) ? mSndParticleVelocity->at(i).pos[0] : 0.f; }
-	inline float getSndParticleVelocityYAt(int i) { return (mSndParticleVelocity) ? mSndParticleVelocity->at(i).pos[1] : 0.f; }
-	inline float getSndParticleVelocityZAt(int i) { return (mSndParticleVelocity) ? mSndParticleVelocity->at(i).pos[2] : 0.f; }
+	inline float getSndParticleVelocityXAt(int i) { return (mSndParticleVelocity && !mSndParticleVelocity->empty()) ? mSndParticleVelocity->at(i).pos[0] : 0.f; }
+	inline float getSndParticleVelocityYAt(int i) { return (mSndParticleVelocity && !mSndParticleVelocity->empty()) ? mSndParticleVelocity->at(i).pos[1] : 0.f; }
+	inline float getSndParticleVelocityZAt(int i) { return (mSndParticleVelocity && !mSndParticleVelocity->empty()) ? mSndParticleVelocity->at(i).pos[2] : 0.f; }
 
-	inline float* getFlipParticleData() { return (mFlipParticleData) ? (float*) &mFlipParticleData->front() : NULL; }
-	inline float* getSndParticleData()  { return (mSndParticleData) ? (float*) &mSndParticleData->front() : NULL; }
+	inline float* getFlipParticleData() { return (mFlipParticleData && !mFlipParticleData->empty()) ? (float*) &mFlipParticleData->front() : NULL; }
+	inline float* getSndParticleData()  { return (mSndParticleData && !mSndParticleData->empty()) ? (float*) &mSndParticleData->front() : NULL; }
 
-	inline float* getFlipParticleVelocity() { return (mFlipParticleVelocity) ? (float*) &mFlipParticleVelocity->front() : NULL; }
-	inline float* getSndParticleVelocity()  { return (mSndParticleVelocity) ? (float*) &mSndParticleVelocity->front() : NULL; }
-	inline float* getSndParticleLife()      { return (mSndParticleLife) ? (float*) &mSndParticleLife->front() : NULL; }
+	inline float* getFlipParticleVelocity() { return (mFlipParticleVelocity && !mFlipParticleVelocity->empty()) ? (float*) &mFlipParticleVelocity->front() : NULL; }
+	inline float* getSndParticleVelocity()  { return (mSndParticleVelocity && !mSndParticleVelocity->empty()) ? (float*) &mSndParticleVelocity->front() : NULL; }
+	inline float* getSndParticleLife()      { return (mSndParticleLife && !mSndParticleLife->empty()) ? (float*) &mSndParticleLife->front() : NULL; }
 
-	inline int getNumFlipParticles() { return (mFlipParticleData) ? mFlipParticleData->size() : 0; }
-	inline int getNumSndParticles() { return (mSndParticleData) ? mSndParticleData->size() : 0; }
+	inline int getNumFlipParticles() { return (mFlipParticleData && !mFlipParticleData->empty()) ? mFlipParticleData->size() : 0; }
+	inline int getNumSndParticles() { return (mSndParticleData && !mSndParticleData->empty()) ? mSndParticleData->size() : 0; }
 
 	void updateMeshData(const char* filename);
 //	void updateParticleData(const char* filename);
