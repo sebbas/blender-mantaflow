@@ -263,9 +263,9 @@ typedef struct SmokeDomainSettings {
 	int particle_tracer_max;
 	int particle_type;
 	float surface_tension;
-	float viscosity;
+	float viscosity_base;
+	int viscosity_exponent;
 	float domain_size;
-	char pad2[4];
 
 	/* fluid guiding parameters */
 	float guiding_alpha; /* guiding weight scalar (determines strength) */

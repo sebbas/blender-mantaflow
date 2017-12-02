@@ -20,13 +20,18 @@
 import bpy
 import os
 from copy import deepcopy
-from bpy.types import Panel
+from bpy.types import Panel, Menu
 
 from .properties_physics_common import (
     point_cache_ui,
     effector_weights_ui,
 )
 
+class SMOKE_MT_presets(Menu):
+    bl_label = "Fluid Presets"
+    preset_subdir = "smoke"
+    preset_operator = "script.execute_preset"
+    draw = Menu.draw_preset
 
 class PhysicButtonsPanel:
     bl_space_type = 'PROPERTIES'
@@ -437,11 +442,21 @@ class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
 
         col = split.column()
         col.enabled = not domain.point_cache.is_baked
-        col.prop(domain, "viscosity", text="Viscosity")
-        col.prop(domain, "domain_size", text="Size")
+        col.label(text="Viscosity Presets:")
+        sub = col.row(align=True)
+        sub.menu("SMOKE_MT_presets", text=bpy.types.SMOKE_MT_presets.bl_label)
+        sub.operator("smoke.preset_add", text="", icon='ZOOMIN')
+        sub.operator("smoke.preset_add", text="", icon='ZOOMOUT').remove_active = True
+
+        sub = col.column(align=True)
+        sub.prop(domain, "viscosity_base", text="Base")
+        sub.prop(domain, "viscosity_exponent", text="Exponent", slider=True)
 
         col = split.column()
         col.enabled = not domain.point_cache.is_baked
+        col.label(text="Real World Size:")
+        col.prop(domain, "domain_size", text="Meters")
+        col.label(text="Surface tension:")
         col.prop(domain, "surface_tension", text="Tension")
 
 class PHYSICS_PT_smoke_guiding(PhysicButtonsPanel, Panel):
@@ -648,6 +663,7 @@ class PHYSICS_PT_smoke_display_settings(PhysicButtonsPanel, Panel):
         col.template_color_ramp(domain, "color_ramp", expand=True)
 
 classes = (
+    SMOKE_MT_presets,
     PHYSICS_PT_smoke,
     PHYSICS_PT_smoke_flow_source,
     PHYSICS_PT_smoke_flow_advanced,

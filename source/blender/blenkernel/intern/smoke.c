@@ -562,8 +562,9 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->particle_tracer_max = 2;
 
 			smd->domain->surface_tension = 0.0f;
-			smd->domain->viscosity = 0.0f;
-			smd->domain->domain_size = 100.0f;
+			smd->domain->viscosity_base = 1.0f;
+			smd->domain->viscosity_exponent = 6.0f;
+			smd->domain->domain_size = 0.5f;
 
 			/* guiding */
 			smd->domain->guiding_alpha = 2.0f;
@@ -708,7 +709,8 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->particle_tracer_max = smd->domain->particle_tracer_max;
 
 		tsmd->domain->surface_tension = smd->domain->surface_tension;
-		tsmd->domain->viscosity = smd->domain->viscosity;
+		tsmd->domain->viscosity_base = smd->domain->viscosity_base;
+		tsmd->domain->viscosity_exponent = smd->domain->viscosity_exponent;
 		tsmd->domain->domain_size = smd->domain->domain_size;
 
 		tsmd->domain->guiding_alpha = smd->domain->guiding_alpha;

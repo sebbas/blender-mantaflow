@@ -272,7 +272,9 @@ def liquid_step_$ID$():\n\
     if viscosity_s$ID$ > 0.:\n\
         mantaMsg('Viscosity')\n\
         # diffusion param for solve = const * dt / dx^2\n\
-        alphaV = viscosity_s$ID$ * s$ID$.timestep * float(res_s$ID$*res_s$ID$)\n\
+        #alphaV = viscosity_s$ID$ * s$ID$.timestep * float(res_s$ID$*res_s$ID$)\n\
+        # convert world viscosity (viscosityW) to grid space viscosity (alphaV)\n\
+        alphaV = viscosity_s$ID$ * (Real(res_s$ID$*res_s$ID$) / Real(domainSize_s$ID$*domainSize_s$ID$)) * s$ID$.frameLength * s$ID$.timestep\n\
         setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else 0, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
         cgSolveDiffusion(flags_s$ID$, vel_s$ID$, alphaV)\n\
     \n\
@@ -280,7 +282,7 @@ def liquid_step_$ID$():\n\
     \n\
     mantaMsg('Calculating curvature')\n\
     getLaplacian(laplacian=curvature_s$ID$, grid=phi_s$ID$)\n\
-    \n\
+\n\
     if using_guiding_s$ID$:\n\
         mantaMsg('Guiding and pressure')\n\
         weightGuide_s$ID$.addConst(alpha_s$ID$)\n\

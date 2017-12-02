@@ -366,6 +366,7 @@ class AddPresetCloth(AddPresetBase, Operator):
     preset_subdir = "cloth"
 
 
+# TODO (sebbas): Remove this when removing elbeem fluid modifier
 class AddPresetFluid(AddPresetBase, Operator):
     """Add or remove a Fluid Preset"""
     bl_idname = "fluid.preset_add"
@@ -382,6 +383,24 @@ class AddPresetFluid(AddPresetBase, Operator):
         ]
 
     preset_subdir = "fluid"
+
+
+class AddPresetSmoke(AddPresetBase, Operator):
+    """Add or remove a Smoke Preset"""
+    bl_idname = "smoke.preset_add"
+    bl_label = "Add Smoke Preset"
+    preset_menu = "SMOKE_MT_presets"
+
+    preset_defines = [
+        "smoke = bpy.context.smoke"
+        ]
+
+    preset_values = [
+        "smoke.domain_settings.viscosity_base",
+        "smoke.domain_settings.viscosity_exponent",
+        ]
+
+    preset_subdir = "smoke"
 
 
 class AddPresetHairDynamics(AddPresetBase, Operator):
@@ -686,6 +705,7 @@ classes = (
     AddPresetCamera,
     AddPresetCloth,
     AddPresetFluid,
+    AddPresetSmoke,
     AddPresetHairDynamics,
     AddPresetInteraction,
     AddPresetInterfaceTheme,

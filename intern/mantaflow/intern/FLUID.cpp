@@ -821,7 +821,7 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 	else if (varName == "LIQUID_SURFACE_TENSION")
 		ss << smd->domain->surface_tension;
 	else if (varName == "FLUID_VISCOSITY")
-		ss << smd->domain->viscosity;
+		ss << smd->domain->viscosity_base * pow(10.0f, -smd->domain->viscosity_exponent);
 	else if (varName == "FLUID_DOMAIN_SIZE")
 		ss << smd->domain->domain_size;
 	else if (varName == "SNDPARTICLE_TYPES") {
