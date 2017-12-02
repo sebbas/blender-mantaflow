@@ -267,11 +267,11 @@ if 'pLifeSnd_pp$ID$' in globals() : del pLifeSnd_pp$ID$\n";
 
 const std::string fluid_multigrid_cleanup_low = "\n\
 mantaMsg('Cleanup multigrid low')\n\
-releaseMG(s$ID$)\n";
+if 's$ID$' in globals() : releaseMG(s$ID$)\n";
 
 const std::string fluid_multigrid_cleanup_high = "\n\
 mantaMsg('Cleanup multigrid high')\n\
-releaseMG(xl$ID$)\n";
+if 'xl$ID$' in globals() : releaseMG(xl$ID$)\n";
 
 const std::string fluid_guiding_cleanup_low = "\n\
 mantaMsg('Cleanup guiding low')\n\

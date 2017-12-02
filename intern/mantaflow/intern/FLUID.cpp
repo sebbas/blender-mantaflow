@@ -228,9 +228,17 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 
 void FLUID::initDomain(SmokeModifierData *smd)
 {
-	std::string tmpString = manta_import
-		+ manta_debuglevel
-		+ fluid_variables_low
+	// Set manta debug level first
+	mCommands.clear();
+	mCommands.push_back(manta_import + manta_debuglevel);
+
+	std::ostringstream debuglevel;
+	debuglevel <<  "set_manta_debuglevel(" << with_debug << ")";
+	mCommands.push_back(debuglevel.str());
+	runPythonString(mCommands);
+
+	// Now init basic fluid domain
+	std::string tmpString = fluid_variables_low
 		+ fluid_solver_low
 		+ fluid_obstacle_export_low
 		+ fluid_guiding_export_low
@@ -241,11 +249,6 @@ void FLUID::initDomain(SmokeModifierData *smd)
 	std::string finalString = parseScript(tmpString, smd);
 	mCommands.clear();
 	mCommands.push_back(finalString);
-	
-	// Set manta debug level
-	std::ostringstream debuglevel;
-	debuglevel <<  "set_manta_debuglevel(" << with_debug << ")";
-	mCommands.push_back(debuglevel.str());
 	runPythonString(mCommands);
 }
 
@@ -483,6 +486,8 @@ FLUID::~FLUID()
 
 	// Destruction string for Python
 	std::string tmpString = "";
+
+	tmpString += manta_import;
 
 	// Fluid
 	tmpString += fluid_delete_variables_low;

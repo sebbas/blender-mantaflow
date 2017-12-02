@@ -179,23 +179,23 @@ def smoke_pre_step_low_$ID$():\n\
     mantaMsg('Smoke pre step low')\n\
     # translate obvels (world space) to grid space\n\
     if using_obstacle_s$ID$:\n\
-        x_obvel_s$ID$.multConst(gs_s$ID$.x)\n\
-        y_obvel_s$ID$.multConst(gs_s$ID$.y)\n\
-        z_obvel_s$ID$.multConst(gs_s$ID$.z)\n\
+        x_obvel_s$ID$.multConst(Real(gs_s$ID$.x))\n\
+        y_obvel_s$ID$.multConst(Real(gs_s$ID$.y))\n\
+        z_obvel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
         copyRealToVec3(sourceX=x_obvel_s$ID$, sourceY=y_obvel_s$ID$, sourceZ=z_obvel_s$ID$, target=obvelC_s$ID$)\n\
     \n\
     # translate guiding vels (world space) to grid space\n\
     if using_guiding_s$ID$:\n\
-        x_guidevel_s$ID$.multConst(gs_s$ID$.x)\n\
-        y_guidevel_s$ID$.multConst(gs_s$ID$.y)\n\
-        z_guidevel_s$ID$.multConst(gs_s$ID$.z)\n\
+        x_guidevel_s$ID$.multConst(Real(gs_s$ID$.x))\n\
+        y_guidevel_s$ID$.multConst(Real(gs_s$ID$.y))\n\
+        z_guidevel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
         copyRealToVec3(sourceX=x_guidevel_s$ID$, sourceY=y_guidevel_s$ID$, sourceZ=z_guidevel_s$ID$, target=guidevelC_s$ID$)\n\
     \n\
     # translate invels (world space) to grid space\n\
     if using_invel_s$ID$:\n\
-        x_invel_s$ID$.multConst(gs_s$ID$.x)\n\
-        y_invel_s$ID$.multConst(gs_s$ID$.y)\n\
-        z_invel_s$ID$.multConst(gs_s$ID$.z)\n\
+        x_invel_s$ID$.multConst(Real(gs_s$ID$.x))\n\
+        y_invel_s$ID$.multConst(Real(gs_s$ID$.y))\n\
+        z_invel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
         copyRealToVec3(sourceX=x_invel_s$ID$, sourceY=y_invel_s$ID$, sourceZ=z_invel_s$ID$, target=invel_s$ID$)\n\
     \n\
     copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
