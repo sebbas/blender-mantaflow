@@ -821,7 +821,7 @@ static void rna_Smoke_flowtype_set(struct PointerRNA *ptr, int value)
 		/* Force flow source to mesh */
 		if (value == MOD_SMOKE_FLOW_TYPE_LIQUID) {
 			rna_Smoke_flowsource_set(ptr, MOD_SMOKE_FLOW_SOURCE_MESH);
-			settings->surface_distance = 0.0f;
+			settings->surface_distance = 0.5f;
 		} else {
 			settings->surface_distance = 1.5f;
 		}

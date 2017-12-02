@@ -109,7 +109,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
                 split = layout.split()
                 split.enabled = not domain.point_cache.is_baked
 
-                col = split.column()
+                col = split.column(align=True)
                 col.label(text="Smoke:")
                 col.prop(domain, "alpha")
                 col.prop(domain, "beta", text="Temp. Diff.")
@@ -120,7 +120,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
                 sub.prop(domain, "dissolve_speed", text="Time")
                 sub.prop(domain, "use_dissolve_smoke_log", text="Slow")
 
-                col = split.column()
+                col = split.column(align=True)
                 col.label(text="Fire:")
                 col.prop(domain, "burning_rate")
                 col.prop(domain, "flame_smoke")
@@ -133,13 +133,13 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
                 split = layout.split()
                 split.enabled = not domain.point_cache.is_baked
 
-                col = split.column()
+                col = split.column(align=True)
                 col.label(text="Liquid:")
                 col.prop(domain, "particle_randomness")
                 col.prop(domain, "particle_radius")
                 col.prop(domain, "particle_minimum")
 
-                col = split.column()
+                col = split.column(align=True)
                 col.label()
                 col.prop(domain, "particle_number")
                 col.prop(domain, "particle_band_width")
@@ -362,7 +362,7 @@ class PHYSICS_PT_smoke_quality(PhysicButtonsPanel, Panel):
             sub.label(text="Flow Sampling:")
             sub.row().prop(domain, "highres_sampling", text="")
         
-            sub = split.column()
+            sub = split.column(align=True)
             sub.active = domain.use_high_resolution
             # TODO (sebbas): Mantaflow only supports wavelet noise. Do we really need fft noise? Maybe get rid of noise type ...
             #sub.label(text="Noise Method:")
@@ -392,7 +392,7 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         col = split.column()
         col.enabled = not domain.point_cache.is_baked
         col.prop(domain, "use_drop_particles", text="Drop")
-        sub = col.column()
+        sub = col.column(align=True)
         sub.active = domain.use_drop_particles
         sub.prop(domain, "particle_droplet_threshold", text="Threshold")
         sub.prop(domain, "particle_droplet_amount", text="Generate")
@@ -401,7 +401,7 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         sub2 = col.column()
         sub2.active = domain.use_drop_particles
         sub2.prop(domain, "use_bubble_particles", text="Bubble")
-        sub3 = col.column()
+        sub3 = col.column(align=True)
         sub3.active = domain.use_drop_particles and domain.use_bubble_particles
         sub3.prop(domain, "particle_bubble_rise", text="Rise")
         sub3.prop(domain, "particle_bubble_life", text="Life")
@@ -409,13 +409,13 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         col = split.column()
         col.enabled = not domain.point_cache.is_baked
         col.prop(domain, "use_floater_particles", text="Float")
-        sub = col.column()
+        sub = col.column(align=True)
         sub.active = domain.use_floater_particles
         sub.prop(domain, "particle_floater_amount", text="Generate")
         sub.prop(domain, "particle_floater_life", text="Life")
         sub.prop(domain, "particle_floater_max", text="Maximum")
         col.prop(domain, "use_tracer_particles", text="Tracer")
-        sub2 = col.column()
+        sub2 = col.column(align=True)
         sub2.active = domain.use_tracer_particles
         sub2.prop(domain, "particle_tracer_amount", text="Amount")
         sub2.prop(domain, "particle_tracer_life", text="Life")
