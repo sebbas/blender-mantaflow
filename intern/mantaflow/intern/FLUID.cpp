@@ -804,6 +804,30 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << (smd->domain->particle_type & MOD_SMOKE_PARTICLE_FLOAT ? "True" : "False");
 	else if (varName == "USING_TRACER_PARTS")
 		ss << (smd->domain->particle_type & MOD_SMOKE_PARTICLE_TRACER ? "True" : "False");
+	else if (varName == "SNDPARTICLE_TAUMIN_WC")
+		ss << smd->domain->secondaryparticle_tau_min_wc;
+	else if (varName == "SNDPARTICLE_TAUMAX_WC")
+		ss << smd->domain->secondaryparticle_tau_max_wc;
+	else if (varName == "SNDPARTICLE_TAUMIN_TA")
+		ss << smd->domain->secondaryparticle_tau_min_ta;
+	else if (varName == "SNDPARTICLE_TAUMAX_TA")
+		ss << smd->domain->secondaryparticle_tau_max_ta;
+	else if (varName == "SNDPARTICLE_TAUMIN_K")
+		ss << smd->domain->secondaryparticle_tau_min_k;
+	else if (varName == "SNDPARTICLE_TAUMAX_K")
+		ss << smd->domain->secondaryparticle_tau_max_k;
+	else if (varName == "SNDPARTICLE_K_WC")
+		ss << smd->domain->secondaryparticle_k_wc;
+	else if (varName == "SNDPARTICLE_K_TA")
+		ss << smd->domain->secondaryparticle_k_ta;
+	else if (varName == "SNDPARTICLE_K_B")
+		ss << smd->domain->secondaryparticle_k_b;
+	else if (varName == "SNDPARTICLE_K_D")
+		ss << smd->domain->secondaryparticle_k_d;
+	else if (varName == "SNDPARTICLE_L_MIN")
+		ss << smd->domain->secondaryparticle_l_min;
+	else if (varName == "SNDPARTICLE_L_MAX")
+		ss << smd->domain->secondaryparticle_l_max;
 	else if (varName == "GUIDING_ALPHA")
 		ss << smd->domain->guiding_alpha;
 	else if (varName == "GUIDING_BETA")
