@@ -92,8 +92,7 @@ theta_s$ID$ = 1.0\n\
 # fluid diffusion / viscosity\n\
 domainSize_s$ID$ = $FLUID_DOMAIN_SIZE$ # longest domain side in cm\n\
 if domainSize_s$ID$ == 0: domainSize_s$ID$ = 100 # TODO (sebbas): just for versioning, remove with proper 2.8 versioning\n\
-#viscosity_s$ID$ = $FLUID_VISCOSITY$ / ((domainSize_s$ID$*domainSize_s$ID$) / s$ID$.frameLength)\n\
-viscosity_s$ID$  = $FLUID_VISCOSITY$ # kinmetic viscosity in m^2/s\n";
+viscosity_s$ID$ = $FLUID_VISCOSITY$ / (domainSize_s$ID$*domainSize_s$ID$) # kinematic viscosity in m^2/s\n";
 
 const std::string fluid_variables_high= "\n\
 upres_xl$ID$  = $UPRES$\n\
