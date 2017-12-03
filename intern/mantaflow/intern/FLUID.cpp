@@ -49,7 +49,7 @@
 
 std::atomic<bool> FLUID::mantaInitialized(false);
 std::atomic<int> FLUID::solverID(0);
-int FLUID::with_debug(0);
+int FLUID::with_debug(1);
 
 FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 {
@@ -847,30 +847,30 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 				  MOD_SMOKE_PARTICLE_FLOAT | MOD_SMOKE_PARTICLE_TRACER);
 		ss << (((smd->domain->particle_type & tmpVar)) ? "True" : "False");
 	}
-	else if (varName == "SNDPARTICLE_TAUMIN_WC")
-		ss << smd->domain->secondaryparticle_tau_min_wc;
-	else if (varName == "SNDPARTICLE_TAUMAX_WC")
-		ss << smd->domain->secondaryparticle_tau_max_wc;
-	else if (varName == "SNDPARTICLE_TAUMIN_TA")
-		ss << smd->domain->secondaryparticle_tau_min_ta;
-	else if (varName == "SNDPARTICLE_TAUMAX_TA")
-		ss << smd->domain->secondaryparticle_tau_max_ta;
-	else if (varName == "SNDPARTICLE_TAUMIN_K")
-		ss << smd->domain->secondaryparticle_tau_min_k;
-	else if (varName == "SNDPARTICLE_TAUMAX_K")
-		ss << smd->domain->secondaryparticle_tau_max_k;
+	else if (varName == "SNDPARTICLE_TAU_MIN_WC")
+		ss << smd->domain->sndparticle_tau_min_wc;
+	else if (varName == "SNDPARTICLE_TAU_MAX_WC")
+		ss << smd->domain->sndparticle_tau_max_wc;
+	else if (varName == "SNDPARTICLE_TAU_MIN_TA")
+		ss << smd->domain->sndparticle_tau_min_ta;
+	else if (varName == "SNDPARTICLE_TAU_MAX_TA")
+		ss << smd->domain->sndparticle_tau_max_ta;
+	else if (varName == "SNDPARTICLE_TAU_MIN_K")
+		ss << smd->domain->sndparticle_tau_min_k;
+	else if (varName == "SNDPARTICLE_TAU_MAX_K")
+		ss << smd->domain->sndparticle_tau_max_k;
 	else if (varName == "SNDPARTICLE_K_WC")
-		ss << smd->domain->secondaryparticle_k_wc;
+		ss << smd->domain->sndparticle_k_wc;
 	else if (varName == "SNDPARTICLE_K_TA")
-		ss << smd->domain->secondaryparticle_k_ta;
+		ss << smd->domain->sndparticle_k_ta;
 	else if (varName == "SNDPARTICLE_K_B")
-		ss << smd->domain->secondaryparticle_k_b;
+		ss << smd->domain->sndparticle_k_b;
 	else if (varName == "SNDPARTICLE_K_D")
-		ss << smd->domain->secondaryparticle_k_d;
+		ss << smd->domain->sndparticle_k_d;
 	else if (varName == "SNDPARTICLE_L_MIN")
-		ss << smd->domain->secondaryparticle_l_min;
+		ss << smd->domain->sndparticle_l_min;
 	else if (varName == "SNDPARTICLE_L_MAX")
-		ss << smd->domain->secondaryparticle_l_max;
+		ss << smd->domain->sndparticle_l_max;
 	else if (varName == "GUIDING_ALPHA")
 		ss << smd->domain->guiding_alpha;
 	else if (varName == "GUIDING_BETA")

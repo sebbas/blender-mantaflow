@@ -477,47 +477,38 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
 
         split = layout.split()
 
-        col = split.column()
-        col.enabled = not domain.point_cache.is_baked
-        sub = col.column()
-        sub.active = True
-        sub.prop(domain, "secondaryparticle_tau_min_wc", text="tauMin_wc")
-        sub2 = col.column()
-        sub2.active = True
-        sub2.prop(domain, "secondaryparticle_tau_max_wc", text="tauMax_wc")
-        sub3 = col.column()
-        sub3.active = True
-        sub3.prop(domain, "secondaryparticle_tau_min_k", text="tauMin_k")
-        sub4 = col.column()
-        sub4.active = True
-        sub4.prop(domain, "secondaryparticle_tau_max_k", text="tauMax_k")
-        sub5 = col.column()
-        sub5.active = True
-        sub5.prop(domain, "secondaryparticle_l_min", text="Lifetime(min)")
-        sub6 = col.column()
-        sub6.active = True
-        sub6.prop(domain, "secondaryparticle_l_max", text="Lifetime(max)")
+        first = split.column()
+        first.enabled = not domain.point_cache.is_baked
+        first.label("Exported Particles:")
+        temp = first.split()
+        temp.prop(domain, "use_drop_particles", text="Spray")
+        temp2 = temp.column()
+        temp2.prop(domain, "use_float_particles", text="Foam")
+        temp3 = temp.column()
+        temp3.prop(domain, "use_bubble_particles", text="Bubbles")
+        
+        sub = first.column()
+        sub.active = domain.use_drop_particles or domain.use_float_particles or domain.use_bubble_particles or domain.use_tracer_particles
+        sub.label(text="Potential Clamping:")
+        sub.prop(domain, "sndparticle_tau_min_wc", text="tauMin_wc")
+        sub.prop(domain, "sndparticle_tau_max_wc", text="tauMax_wc")
+        sub.prop(domain, "sndparticle_tau_min_ta", text="tauMin_ta")
+        sub.prop(domain, "sndparticle_tau_max_ta", text="tauMax_ta")
+        sub.prop(domain, "sndparticle_tau_min_k", text="tauMin_k")
+        sub.prop(domain, "sndparticle_tau_max_k", text="tauMax_k")
 
-        col = split.column()
-        col.enabled = not domain.point_cache.is_baked
-        sub = col.column()
-        sub.active = True
-        sub.prop(domain, "secondaryparticle_tau_min_ta", text="tauMin_ta")
-        sub2 = col.column()
-        sub2.active = True
-        sub2.prop(domain, "secondaryparticle_tau_max_ta", text="tauMax_ta")
-        sub3 = col.column()
-        sub3.active = True
-        sub3.prop(domain, "secondaryparticle_k_wc", text="Wave Crest Sampling")
-        sub4 = col.column()
-        sub4.active = True
-        sub4.prop(domain, "secondaryparticle_k_ta", text="Trapped Air Sampling")
-        sub5 = col.column()
-        sub5.active = True
-        sub5.prop(domain, "secondaryparticle_k_b", text="Buoyancy")
-        sub6 = col.column()
-        sub6.active = True
-        sub6.prop(domain, "secondaryparticle_k_d", text="Drag")
+        second = split.column()
+        second.enabled = not domain.point_cache.is_baked
+        second.active =domain.use_float_particles or domain.use_drop_particles or domain.use_bubble_particles or domain.use_tracer_particles
+        second.label(text="Sampling:")
+        second.prop(domain, "sndparticle_k_wc", text="Wave Crest Sampling")
+        second.prop(domain, "sndparticle_k_ta", text="Trapped Air Sampling")
+        second.label(text="Lifetime:")
+        second.prop(domain, "sndparticle_l_min", text="Lifetime (min)")
+        second.prop(domain, "sndparticle_l_max", text="Lifetime (max)")
+        second.label(text="Bubble Movement:")
+        second.prop(domain, "sndparticle_k_b", text="Buoyancy")
+        second.prop(domain, "sndparticle_k_d", text="Drag")
 
 class PHYSICS_PT_smoke_guiding(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Guiding"

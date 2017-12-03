@@ -268,18 +268,18 @@ typedef struct SmokeDomainSettings {
 	float domain_size;
 
 	/* secondary particles */
-	float secondaryparticle_tau_min_wc;
-	float secondaryparticle_tau_max_wc;
-	float secondaryparticle_tau_min_ta;
-	float secondaryparticle_tau_max_ta;
-	float secondaryparticle_tau_min_k;
-	float secondaryparticle_tau_max_k;
-	int secondaryparticle_k_wc;
-	int secondaryparticle_k_ta;
-	float secondaryparticle_k_b;
-	float secondaryparticle_k_d;
-	float secondaryparticle_l_min;
-	float secondaryparticle_l_max;
+	float sndparticle_tau_min_wc;
+	float sndparticle_tau_max_wc;
+	float sndparticle_tau_min_ta;
+	float sndparticle_tau_max_ta;
+	float sndparticle_tau_min_k;
+	float sndparticle_tau_max_k;
+	int sndparticle_k_wc;
+	int sndparticle_k_ta;
+	float sndparticle_k_b;
+	float sndparticle_k_d;
+	float sndparticle_l_min;
+	float sndparticle_l_max;
 
 	/* fluid guiding parameters */
 	float guiding_alpha; /* guiding weight scalar (determines strength) */
@@ -340,6 +340,13 @@ typedef struct SmokeDomainSettings {
 #define MOD_SMOKE_PARTICLE_BUBBLE (1<<2)
 #define MOD_SMOKE_PARTICLE_FLOAT  (1<<3)
 #define MOD_SMOKE_PARTICLE_TRACER (1<<4)
+
+/* secondary particles */
+#define MOD_SMOKE_SNDPARTICLE_USE				(1<<0)
+#define MOD_SMOKE_SNDPARTICLE_EXPORT_SPRAY		(1<<1)
+#define MOD_SMOKE_SNDPARTICLE_EXPORT_FOAM		(1<<2)
+#define MOD_SMOKE_SNDPARTICLE_EXPORT_BUBBLES	(1<<3)
+#define MOD_SMOKE_SNDPARTICLE_EXPORT_TRACER		(1<<4)
 
 /* flags */
 #define MOD_SMOKE_FLOW_ABSOLUTE (1<<1) /*old style emission*/
