@@ -267,6 +267,20 @@ typedef struct SmokeDomainSettings {
 	int viscosity_exponent;
 	float domain_size;
 
+	/* secondary particles */
+	float secondaryparticle_tau_min_wc;
+	float secondaryparticle_tau_max_wc;
+	float secondaryparticle_tau_min_ta;
+	float secondaryparticle_tau_max_ta;
+	float secondaryparticle_tau_min_k;
+	float secondaryparticle_tau_max_k;
+	int secondaryparticle_k_wc;
+	int secondaryparticle_k_ta;
+	float secondaryparticle_k_b;
+	float secondaryparticle_k_d;
+	float secondaryparticle_l_min;
+	float secondaryparticle_l_max;
+
 	/* fluid guiding parameters */
 	float guiding_alpha; /* guiding weight scalar (determines strength) */
 	int guiding_beta; /* guiding blur radius (affects size of vortices) */

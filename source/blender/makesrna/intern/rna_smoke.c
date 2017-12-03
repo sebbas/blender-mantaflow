@@ -1439,6 +1439,78 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Meters", "Domain size in meters (longest domain side)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
+	prop = RNA_def_property(srna, "secondaryparticle_tau_min_wc", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 1000.0);
+	RNA_def_property_ui_range(prop, 0.0, 1000.0, 1.0, 5);
+	RNA_def_property_ui_text(prop, "tauMin_wc", "Lower threshold for marking fluid cells as wave crest (lower value means more marked cells)");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
+	prop = RNA_def_property(srna, "secondaryparticle_tau_max_wc", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 1000.0);
+	RNA_def_property_ui_range(prop, 0.0, 1000.0, 1.0, 5);
+	RNA_def_property_ui_text(prop, "tauMax_wc", "Upper threshold for marking fluid cells as wave crest (higher value means less marked cells)");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
+	prop = RNA_def_property(srna, "secondaryparticle_tau_min_ta", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 1000.0);
+	RNA_def_property_ui_range(prop, 0.0, 10000.0, 1.0, 5);
+	RNA_def_property_ui_text(prop, "tauMin_ta", "Lower threshold for marking fluid cells where air is trapped (lower value means more marked cells)");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
+	prop = RNA_def_property(srna, "secondaryparticle_tau_max_ta", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 1000.0);
+	RNA_def_property_ui_range(prop, 0.0, 1000.0, 1.0, 5);
+	RNA_def_property_ui_text(prop, "tauMax_ta", "Upper threshold for marking fluid cells where air is trapped (higher value means less marked cells)");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
+	prop = RNA_def_property(srna, "secondaryparticle_tau_min_k", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 1000.0);
+	RNA_def_property_ui_range(prop, 0.0, 1000.0, 1.0, 5);
+	RNA_def_property_ui_text(prop, "tauMin_k", "Lower threshold that indicates at what fluid speed each cell starts to emit particles");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
+	prop = RNA_def_property(srna, "secondaryparticle_tau_max_k", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 1000.0);
+	RNA_def_property_ui_range(prop, 0.0, 1000.0, 1.0, 5);
+	RNA_def_property_ui_text(prop, "tauMax_k", "Upper threshold that indicates at what fluid speed each cell emits the maximum amount of particles");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
+	prop = RNA_def_property(srna, "secondaryparticle_k_wc", PROP_INT, PROP_NONE);
+	RNA_def_property_range(prop, 0, 10000);
+	RNA_def_property_ui_range(prop, 0, 10000, 10, -1);
+	RNA_def_property_ui_text(prop, "Wave Crest Sampling", "Sampling constant: maximum number of particles generated per wave crest cell per frame");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
+	prop = RNA_def_property(srna, "secondaryparticle_k_ta", PROP_INT, PROP_NONE);
+	RNA_def_property_range(prop, 0, 10000);
+	RNA_def_property_ui_range(prop, 0, 10000, 10, -1);
+	RNA_def_property_ui_text(prop, "Trapped Air Sampling", "Sampling constant: maximum number of particles generated per trapped air cell per frame");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
+	prop = RNA_def_property(srna, "secondaryparticle_k_b", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 100.0);
+	RNA_def_property_ui_range(prop, 0.0, 100.0, 0.1, 2);
+	RNA_def_property_ui_text(prop, "Buoyancy", "Bubble Movement: amount of buoyancy, leading bubbles to rise");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
+	prop = RNA_def_property(srna, "secondaryparticle_k_d", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 100.0);
+	RNA_def_property_ui_range(prop, 0.0, 100.0, 0.1, 2);
+	RNA_def_property_ui_text(prop, "Drag", "Bubble Movement: amount of drag, leading bubbles to move along with the fluid");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
+	prop = RNA_def_property(srna, "secondaryparticle_l_min", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 1000.0);
+	RNA_def_property_ui_range(prop, 0.0, 1000.0, 10.0, 2);
+	RNA_def_property_ui_text(prop, "Lifetime(min)", "minimum particle lifetime");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
+	prop = RNA_def_property(srna, "secondaryparticle_l_max", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 1000.0);
+	RNA_def_property_ui_range(prop, 0.0, 1000.0, 10.0, 2);
+	RNA_def_property_ui_text(prop, "Lifetime(max)", "maximum particle lifetime");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
 	prop = RNA_def_property(srna, "guiding_alpha", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "guiding_alpha");
 	RNA_def_property_range(prop, 1.0, 100.0);
