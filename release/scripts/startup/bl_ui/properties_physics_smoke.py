@@ -442,6 +442,7 @@ class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
 
         col = split.column()
         col.enabled = not domain.point_cache.is_baked
+        
         col.label(text="Viscosity Presets:")
         sub = col.row(align=True)
         sub.menu("SMOKE_MT_presets", text=bpy.types.SMOKE_MT_presets.bl_label)
@@ -509,6 +510,7 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         second.label(text="Bubble Movement:")
         second.prop(domain, "sndparticle_k_b", text="Buoyancy")
         second.prop(domain, "sndparticle_k_d", text="Drag")
+
 
 class PHYSICS_PT_smoke_guiding(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Guiding"
