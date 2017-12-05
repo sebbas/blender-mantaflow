@@ -9,7 +9,7 @@
 
 
 
-#line 1 "/Users/sebbas/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/plugin/sndparticles.cpp"
+#line 1 "C:/Blender/Mantaflow/source/plugin/sndparticles.cpp"
 /******************************************************************************
  *
  * MantaFlow fluid solver framework

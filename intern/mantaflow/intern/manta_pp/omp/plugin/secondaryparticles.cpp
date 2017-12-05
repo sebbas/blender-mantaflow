@@ -33,167 +33,96 @@ namespace Manta {
 // Secondary Particles for FLIP
 //----------------------------------------------------------------------------------------------------------------------------------------------------
 
-// computes trapped air potential for all fluid cells in &flags and saves it in &pot
+// helper function that clamps the value in potential to the interval [tauMin, tauMax] and normalizes it to [0, 1] afterwards
+Real clampPotential(Real potential, Real tauMin, Real tauMax) {
+	return (std::min(potential, tauMax) - std::min(potential, tauMin)) / (tauMax - tauMin);
+}
+
+// computes all three potentials(trapped air, wave crest, kinetic energy) and the neighbor ratio for every fluid cell and stores it in the respective grid.
+// Is less readable but significantly faster than using seperate potential computation
 
 
 
 
-
- struct knFlipComputePotentialTrappedAir : public KernelBase { knFlipComputePotentialTrappedAir( Grid<Real> &pot, const FlagGrid &flags, const MACGrid &v, const int radius, const Real tauMin, const Real tauMax, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeFluid) :  KernelBase(&pot,1) ,pot(pot),flags(flags),v(v),radius(radius),tauMin(tauMin),tauMax(tauMax),scaleFromManta(scaleFromManta),itype(itype),jtype(jtype)   { runMessage(); run(); }  inline void op(int i, int j, int k,  Grid<Real> &pot, const FlagGrid &flags, const MACGrid &v, const int radius, const Real tauMin, const Real tauMax, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeFluid )  {
-
-	if (!(flags(i,j,k) & itype)) return;
-
-	const Vec3 &xi = scaleFromManta * Vec3(i,j,k);	//scale to unit cube
-	const Vec3 &vi = scaleFromManta * v.getCentered(i, j, k);
-	Real vdiff = 0;
-	for (IndexInt x = i - radius; x <= i + radius; x++) {
-		for (IndexInt y = j - radius; y <= j + radius; y++) {
-			for (IndexInt z = k - radius; z <= k + radius; z++) {
-				if ((x==i && y==j && z==k) || !(flags(x, y, z) & jtype)) continue;
-				
-				const Vec3 &xj = scaleFromManta * Vec3(x, y, z); //scale to unit cube
-				const Vec3 &vj = scaleFromManta * v.getCentered(x, y, z);
-				const Vec3 xij = xi - xj;
-				const Vec3 vij = vi - vj;
-				Real h = !pot.is3D() ? 1.414*radius : 1.732*radius; //estimate sqrt(2)*radius resp. sqrt(3)*radius for h, due to squared resp. cubic neighbor area
-				vdiff += norm(vij) * (1 - dot(getNormalized(vij), getNormalized(xij))) * (1 - norm(xij) / h);
-			}
-		}
-	}
-	pot(i,j,k) = (std::min(vdiff, tauMax) - std::min(vdiff, tauMin)) / (tauMax - tauMin);
-}   inline Grid<Real> & getArg0() { return pot; } typedef Grid<Real>  type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline const MACGrid& getArg2() { return v; } typedef MACGrid type2;inline const int& getArg3() { return radius; } typedef int type3;inline const Real& getArg4() { return tauMin; } typedef Real type4;inline const Real& getArg5() { return tauMax; } typedef Real type5;inline const Real& getArg6() { return scaleFromManta; } typedef Real type6;inline const int& getArg7() { return itype; } typedef int type7;inline const int& getArg8() { return jtype; } typedef int type8; void runMessage() { debMsg("Executing kernel knFlipComputePotentialTrappedAir ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
-#pragma omp parallel 
- {  
-#pragma omp for  
-  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,pot,flags,v,radius,tauMin,tauMax,scaleFromManta,itype,jtype);  } } else { const int k=0; 
-#pragma omp parallel 
- {  
-#pragma omp for  
-  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,pot,flags,v,radius,tauMin,tauMax,scaleFromManta,itype,jtype);  } }  } Grid<Real> & pot; const FlagGrid& flags; const MACGrid& v; const int radius; const Real tauMin; const Real tauMax; const Real scaleFromManta; const int itype; const int jtype;   };
-#line 30 "plugin/secondaryparticles.cpp"
-
-
-
-
-
-
-
-void flipComputePotentialTrappedAir( Grid<Real> &pot, const FlagGrid &flags, const MACGrid &v, const int radius, const Real tauMin, const Real tauMax, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeFluid) {
-	pot.clear();
-	knFlipComputePotentialTrappedAir(pot, flags, v, radius, tauMin, tauMax, scaleFromManta, itype, jtype);
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipComputePotentialTrappedAir" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real> & pot = *_args.getPtr<Grid<Real>  >("pot",0,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); const MACGrid& v = *_args.getPtr<MACGrid >("v",2,&_lock); const int radius = _args.get<int >("radius",3,&_lock); const Real tauMin = _args.get<Real >("tauMin",4,&_lock); const Real tauMax = _args.get<Real >("tauMax",5,&_lock); const Real scaleFromManta = _args.get<Real >("scaleFromManta",6,&_lock); const int itype = _args.getOpt<int >("itype",7,FlagGrid::TypeFluid,&_lock); const int jtype = _args.getOpt<int >("jtype",8,FlagGrid::TypeFluid,&_lock);   _retval = getPyNone(); flipComputePotentialTrappedAir(pot,flags,v,radius,tauMin,tauMax,scaleFromManta,itype,jtype);  _args.check(); } pbFinalizePlugin(parent,"flipComputePotentialTrappedAir", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipComputePotentialTrappedAir",e.what()); return 0; } } static const Pb::Register _RP_flipComputePotentialTrappedAir ("","flipComputePotentialTrappedAir",_W_0);  extern "C" { void PbRegister_flipComputePotentialTrappedAir() { KEEP_UNUSED(_RP_flipComputePotentialTrappedAir); } } 
-
-
-// computes kinetic energy potential for all fluid cells in &flags and saves it in &pot
-
-
-
-
- struct knFlipComputePotentialKineticEnergy : public KernelBase { knFlipComputePotentialKineticEnergy( Grid<Real> &pot, const FlagGrid &flags, const MACGrid &v, const Real tauMin, const Real tauMax, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid) :  KernelBase(&pot,0) ,pot(pot),flags(flags),v(v),tauMin(tauMin),tauMax(tauMax),scaleFromManta(scaleFromManta),itype(itype)   { runMessage(); run(); }  inline void op(int i, int j, int k,  Grid<Real> &pot, const FlagGrid &flags, const MACGrid &v, const Real tauMin, const Real tauMax, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid )  {
-
-	if (!(flags(i,j,k) & itype)) return;
-
-	const Vec3 &vi = scaleFromManta * v.getCentered(i, j, k); //scale to unit cube
-	Real ek = Real(0.5) * 125 * normSquare(vi);	//use arbitrary constant for mass, potential adjusts with thresholds anyways
-	pot(i,j,k) = (std::min(ek, tauMax) - std::min(ek, tauMin)) / (tauMax - tauMin);
-}   inline Grid<Real> & getArg0() { return pot; } typedef Grid<Real>  type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline const MACGrid& getArg2() { return v; } typedef MACGrid type2;inline const Real& getArg3() { return tauMin; } typedef Real type3;inline const Real& getArg4() { return tauMax; } typedef Real type4;inline const Real& getArg5() { return scaleFromManta; } typedef Real type5;inline const int& getArg6() { return itype; } typedef int type6; void runMessage() { debMsg("Executing kernel knFlipComputePotentialKineticEnergy ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
-#pragma omp parallel 
- {  
-#pragma omp for  
-  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,pot,flags,v,tauMin,tauMax,scaleFromManta,itype);  } } else { const int k=0; 
-#pragma omp parallel 
- {  
-#pragma omp for  
-  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,pot,flags,v,tauMin,tauMax,scaleFromManta,itype);  } }  } Grid<Real> & pot; const FlagGrid& flags; const MACGrid& v; const Real tauMin; const Real tauMax; const Real scaleFromManta; const int itype;   };
-#line 69 "plugin/secondaryparticles.cpp"
-
-
-
-
-
-
-void flipComputePotentialKineticEnergy( Grid<Real> &pot, const FlagGrid &flags, const MACGrid &v, const Real tauMin, const Real tauMax, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid) {
-	pot.clear();
-	knFlipComputePotentialKineticEnergy(pot, flags, v, tauMin, tauMax, scaleFromManta, itype);
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipComputePotentialKineticEnergy" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real> & pot = *_args.getPtr<Grid<Real>  >("pot",0,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); const MACGrid& v = *_args.getPtr<MACGrid >("v",2,&_lock); const Real tauMin = _args.get<Real >("tauMin",3,&_lock); const Real tauMax = _args.get<Real >("tauMax",4,&_lock); const Real scaleFromManta = _args.get<Real >("scaleFromManta",5,&_lock); const int itype = _args.getOpt<int >("itype",6,FlagGrid::TypeFluid,&_lock);   _retval = getPyNone(); flipComputePotentialKineticEnergy(pot,flags,v,tauMin,tauMax,scaleFromManta,itype);  _args.check(); } pbFinalizePlugin(parent,"flipComputePotentialKineticEnergy", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipComputePotentialKineticEnergy",e.what()); return 0; } } static const Pb::Register _RP_flipComputePotentialKineticEnergy ("","flipComputePotentialKineticEnergy",_W_1);  extern "C" { void PbRegister_flipComputePotentialKineticEnergy() { KEEP_UNUSED(_RP_flipComputePotentialKineticEnergy); } } 
-
-
-// computes wave crest potential for all fluid cells in &flags and saves it in &pot
-
-
-
-
- struct knFlipComputePotentialWaveCrest : public KernelBase { knFlipComputePotentialWaveCrest( Grid<Real> &pot, const FlagGrid &flags, const MACGrid &v, const int radius, Grid<Vec3> &normal, const Real tauMin, const Real tauMax, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeFluid) :  KernelBase(&pot,1) ,pot(pot),flags(flags),v(v),radius(radius),normal(normal),tauMin(tauMin),tauMax(tauMax),scaleFromManta(scaleFromManta),itype(itype),jtype(jtype)   { runMessage(); run(); }  inline void op(int i, int j, int k,  Grid<Real> &pot, const FlagGrid &flags, const MACGrid &v, const int radius, Grid<Vec3> &normal, const Real tauMin, const Real tauMax, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeFluid )  {
+ struct knFlipComputeSecondaryParticlePotentials : public KernelBase { knFlipComputeSecondaryParticlePotentials( Grid<Real> &potTA, Grid<Real> &potWC, Grid<Real> &potKE, Grid<Real> &neighborRatio, const FlagGrid &flags, const MACGrid &v, const Grid<Vec3> &normal, const int radius, const Real tauMinTA, const Real tauMaxTA, const Real tauMinWC, const Real tauMaxWC, const Real tauMinKE, const Real tauMaxKE, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeObstacle) :  KernelBase(&potTA,1) ,potTA(potTA),potWC(potWC),potKE(potKE),neighborRatio(neighborRatio),flags(flags),v(v),normal(normal),radius(radius),tauMinTA(tauMinTA),tauMaxTA(tauMaxTA),tauMinWC(tauMinWC),tauMaxWC(tauMaxWC),tauMinKE(tauMinKE),tauMaxKE(tauMaxKE),scaleFromManta(scaleFromManta),itype(itype),jtype(jtype)   { runMessage(); run(); }  inline void op(int i, int j, int k,  Grid<Real> &potTA, Grid<Real> &potWC, Grid<Real> &potKE, Grid<Real> &neighborRatio, const FlagGrid &flags, const MACGrid &v, const Grid<Vec3> &normal, const int radius, const Real tauMinTA, const Real tauMaxTA, const Real tauMinWC, const Real tauMaxWC, const Real tauMinKE, const Real tauMaxKE, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeObstacle )  {
 
 	if (!(flags(i, j, k) & itype)) return;
 
+	//compute trapped air potential + wave crest potential + neighbor ratio at once
 	const Vec3 &xi = scaleFromManta * Vec3(i, j, k);	//scale to unit cube
 	const Vec3 &vi = scaleFromManta * v.getCentered(i, j, k);
-	const Vec3 &ni = normal(i, j, k);
-	Real kappa = 0;
+	const Vec3 &ni = getNormalized(normal(i, j, k));
+	Real vdiff = 0;			//for trapped air
+	Real kappa = 0;			//for wave crests
+	int countFluid = 0;		//for neighbor ratio
+	int countMaxFluid = 0;	//for neighbor ratio
+
+							//iterate over neighboring cells within radius
 	for (IndexInt x = i - radius; x <= i + radius; x++) {
 		for (IndexInt y = j - radius; y <= j + radius; y++) {
 			for (IndexInt z = k - radius; z <= k + radius; z++) {
-				if ((x == i && y == j && z == k) || !(flags(x, y, z) & jtype)) continue;
+				if ((x == i && y == j && z == k) || !flags.isInBounds(Vec3i(x, y, z)) || (flags(x, y, z) & jtype)) continue;
+
+				if (flags(x, y, z) & itype) {
+					countFluid++;
+					countMaxFluid++;
+				}
+				else {
+					countMaxFluid++;
+				}
+
 				const Vec3 &xj = scaleFromManta * Vec3(x, y, z); //scale to unit cube
-				const Vec3 &nj = normal(x, y, z);
+				const Vec3 &vj = scaleFromManta * v.getCentered(x, y, z);
+				const Vec3 &nj = getNormalized(normal(x, y, z));
 				const Vec3 xij = xi - xj;
+				const Vec3 vij = vi - vj;
+				Real h = !potTA.is3D() ? 1.414*radius : 1.732*radius; //estimate sqrt(2)*radius resp. sqrt(3)*radius for h, due to squared resp. cubic neighbor area
+				vdiff += norm(vij) * (1 - dot(getNormalized(vij), getNormalized(xij))) * (1 - norm(xij) / h);
+
 				if (dot(getNormalized(xij), ni) < 0) {	//identifies wave crests
-					Real h = !pot.is3D() ? 1.414*radius : 1.732*radius; //estimate sqrt(2)*radius resp. sqrt(3)*radius for h, due to squared resp. cubic neighbor area
 					kappa += (1 - dot(ni, nj)) * (1 - norm(xij) / h);
 				}
 			}
 		}
 	}
 
+	neighborRatio(i, j, k) = float(countFluid) / float(countMaxFluid);
+
+	potTA(i, j, k) = clampPotential(vdiff, tauMinTA, tauMaxTA);
 	if (dot(getNormalized(vi), ni) >= 0.6) {	//avoid to mark boarders of the scene as wave crest
-		pot(i, j, k) = (std::min(kappa, tauMax) - std::min(kappa, tauMin)) / (tauMax - tauMin);
+		potWC(i, j, k) = clampPotential(kappa, tauMinWC, tauMaxWC);
 	}
 	else {
-		pot(i, j, k) = Real(0);
+		potWC(i, j, k) = Real(0);
 	}
-}   inline Grid<Real> & getArg0() { return pot; } typedef Grid<Real>  type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline const MACGrid& getArg2() { return v; } typedef MACGrid type2;inline const int& getArg3() { return radius; } typedef int type3;inline Grid<Vec3> & getArg4() { return normal; } typedef Grid<Vec3>  type4;inline const Real& getArg5() { return tauMin; } typedef Real type5;inline const Real& getArg6() { return tauMax; } typedef Real type6;inline const Real& getArg7() { return scaleFromManta; } typedef Real type7;inline const int& getArg8() { return itype; } typedef int type8;inline const int& getArg9() { return jtype; } typedef int type9; void runMessage() { debMsg("Executing kernel knFlipComputePotentialWaveCrest ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+
+	//compute kinetic energy potential
+	Real ek = Real(0.5) * 125 * normSquare(vi);	//use arbitrary constant for mass, potential adjusts with thresholds anyways
+	potKE(i, j, k) = clampPotential(ek, tauMinKE, tauMaxKE);
+}   inline Grid<Real> & getArg0() { return potTA; } typedef Grid<Real>  type0;inline Grid<Real> & getArg1() { return potWC; } typedef Grid<Real>  type1;inline Grid<Real> & getArg2() { return potKE; } typedef Grid<Real>  type2;inline Grid<Real> & getArg3() { return neighborRatio; } typedef Grid<Real>  type3;inline const FlagGrid& getArg4() { return flags; } typedef FlagGrid type4;inline const MACGrid& getArg5() { return v; } typedef MACGrid type5;inline const Grid<Vec3> & getArg6() { return normal; } typedef Grid<Vec3>  type6;inline const int& getArg7() { return radius; } typedef int type7;inline const Real& getArg8() { return tauMinTA; } typedef Real type8;inline const Real& getArg9() { return tauMaxTA; } typedef Real type9;inline const Real& getArg10() { return tauMinWC; } typedef Real type10;inline const Real& getArg11() { return tauMaxWC; } typedef Real type11;inline const Real& getArg12() { return tauMinKE; } typedef Real type12;inline const Real& getArg13() { return tauMaxKE; } typedef Real type13;inline const Real& getArg14() { return scaleFromManta; } typedef Real type14;inline const int& getArg15() { return itype; } typedef int type15;inline const int& getArg16() { return jtype; } typedef int type16; void runMessage() { debMsg("Executing kernel knFlipComputeSecondaryParticlePotentials ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
 #pragma omp for  
-  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,pot,flags,v,radius,normal,tauMin,tauMax,scaleFromManta,itype,jtype);  } } else { const int k=0; 
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,potTA,potWC,potKE,neighborRatio,flags,v,normal,radius,tauMinTA,tauMaxTA,tauMinWC,tauMaxWC,tauMinKE,tauMaxKE,scaleFromManta,itype,jtype);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
 #pragma omp for  
-  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,pot,flags,v,radius,normal,tauMin,tauMax,scaleFromManta,itype,jtype);  } }  } Grid<Real> & pot; const FlagGrid& flags; const MACGrid& v; const int radius; Grid<Vec3> & normal; const Real tauMin; const Real tauMax; const Real scaleFromManta; const int itype; const int jtype;   };
-#line 92 "plugin/secondaryparticles.cpp"
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,potTA,potWC,potKE,neighborRatio,flags,v,normal,radius,tauMinTA,tauMaxTA,tauMinWC,tauMaxWC,tauMinKE,tauMaxKE,scaleFromManta,itype,jtype);  } }  } Grid<Real> & potTA; Grid<Real> & potWC; Grid<Real> & potKE; Grid<Real> & neighborRatio; const FlagGrid& flags; const MACGrid& v; const Grid<Vec3> & normal; const int radius; const Real tauMinTA; const Real tauMaxTA; const Real tauMinWC; const Real tauMaxWC; const Real tauMinKE; const Real tauMaxKE; const Real scaleFromManta; const int itype; const int jtype;   };
+#line 35 "plugin/secondaryparticles.cpp"
 
 
 
 
 
 
-void flipComputePotentialWaveCrest( Grid<Real> &pot, const FlagGrid &flags, const MACGrid &v, const int radius, Grid<Vec3> &normal, const Real tauMin, const Real tauMax, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeFluid) {
-
-	pot.clear();
-	knFlipComputePotentialWaveCrest(pot, flags, v, radius, normal, tauMin, tauMax, scaleFromManta, itype, jtype);
-} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipComputePotentialWaveCrest" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real> & pot = *_args.getPtr<Grid<Real>  >("pot",0,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); const MACGrid& v = *_args.getPtr<MACGrid >("v",2,&_lock); const int radius = _args.get<int >("radius",3,&_lock); Grid<Vec3> & normal = *_args.getPtr<Grid<Vec3>  >("normal",4,&_lock); const Real tauMin = _args.get<Real >("tauMin",5,&_lock); const Real tauMax = _args.get<Real >("tauMax",6,&_lock); const Real scaleFromManta = _args.get<Real >("scaleFromManta",7,&_lock); const int itype = _args.getOpt<int >("itype",8,FlagGrid::TypeFluid,&_lock); const int jtype = _args.getOpt<int >("jtype",9,FlagGrid::TypeFluid,&_lock);   _retval = getPyNone(); flipComputePotentialWaveCrest(pot,flags,v,radius,normal,tauMin,tauMax,scaleFromManta,itype,jtype);  _args.check(); } pbFinalizePlugin(parent,"flipComputePotentialWaveCrest", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipComputePotentialWaveCrest",e.what()); return 0; } } static const Pb::Register _RP_flipComputePotentialWaveCrest ("","flipComputePotentialWaveCrest",_W_2);  extern "C" { void PbRegister_flipComputePotentialWaveCrest() { KEEP_UNUSED(_RP_flipComputePotentialWaveCrest); } } 
-
-
-// computes normal grid &normal as gradient of levelset &phi and normalizes it
-
- struct knFlipComputeSurfaceNormals : public KernelBase { knFlipComputeSurfaceNormals(Grid<Vec3>& normal, const Grid<Real>& phi) :  KernelBase(&normal,0) ,normal(normal),phi(phi)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid<Vec3>& normal, const Grid<Real>& phi )  {
-	normal[idx] = getNormalized(normal[idx]);
-}    inline Grid<Vec3>& getArg0() { return normal; } typedef Grid<Vec3> type0;inline const Grid<Real>& getArg1() { return phi; } typedef Grid<Real> type1; void runMessage() { debMsg("Executing kernel knFlipComputeSurfaceNormals ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
-#pragma omp parallel 
- {  
-#pragma omp for  
-  for (IndexInt i = 0; i < _sz; i++) op(i,normal,phi);  }   } Grid<Vec3>& normal; const Grid<Real>& phi;   };
-#line 135 "plugin/secondaryparticles.cpp"
-
-
-
-void flipComputeSurfaceNormals(Grid<Vec3>& normal, const Grid<Real>& phi) {
+void flipComputeSecondaryParticlePotentials( Grid<Real> &potTA, Grid<Real> &potWC, Grid<Real> &potKE, Grid<Real> &neighborRatio, const FlagGrid &flags, const MACGrid &v, Grid<Vec3>& normal, const Grid<Real>& phi, const int radius, const Real tauMinTA, const Real tauMaxTA, const Real tauMinWC, const Real tauMaxWC, const Real tauMinKE, const Real tauMaxKE, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeObstacle) {
+	potTA.clear();
+	potWC.clear();
+	potKE.clear();
+	neighborRatio.clear();
 	GradientOp(normal, phi);
-	knFlipComputeSurfaceNormals(normal, phi);
-} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipComputeSurfaceNormals" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& normal = *_args.getPtr<Grid<Vec3> >("normal",0,&_lock); const Grid<Real>& phi = *_args.getPtr<Grid<Real> >("phi",1,&_lock);   _retval = getPyNone(); flipComputeSurfaceNormals(normal,phi);  _args.check(); } pbFinalizePlugin(parent,"flipComputeSurfaceNormals", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipComputeSurfaceNormals",e.what()); return 0; } } static const Pb::Register _RP_flipComputeSurfaceNormals ("","flipComputeSurfaceNormals",_W_3);  extern "C" { void PbRegister_flipComputeSurfaceNormals() { KEEP_UNUSED(_RP_flipComputeSurfaceNormals); } } 
-
-
+	knFlipComputeSecondaryParticlePotentials(potTA, potWC, potKE, neighborRatio, flags, v, normal, radius, tauMinTA, tauMaxTA, tauMinWC, tauMaxWC, tauMinKE, tauMaxKE, scaleFromManta, itype, jtype);
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipComputeSecondaryParticlePotentials" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real> & potTA = *_args.getPtr<Grid<Real>  >("potTA",0,&_lock); Grid<Real> & potWC = *_args.getPtr<Grid<Real>  >("potWC",1,&_lock); Grid<Real> & potKE = *_args.getPtr<Grid<Real>  >("potKE",2,&_lock); Grid<Real> & neighborRatio = *_args.getPtr<Grid<Real>  >("neighborRatio",3,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",4,&_lock); const MACGrid& v = *_args.getPtr<MACGrid >("v",5,&_lock); Grid<Vec3>& normal = *_args.getPtr<Grid<Vec3> >("normal",6,&_lock); const Grid<Real>& phi = *_args.getPtr<Grid<Real> >("phi",7,&_lock); const int radius = _args.get<int >("radius",8,&_lock); const Real tauMinTA = _args.get<Real >("tauMinTA",9,&_lock); const Real tauMaxTA = _args.get<Real >("tauMaxTA",10,&_lock); const Real tauMinWC = _args.get<Real >("tauMinWC",11,&_lock); const Real tauMaxWC = _args.get<Real >("tauMaxWC",12,&_lock); const Real tauMinKE = _args.get<Real >("tauMinKE",13,&_lock); const Real tauMaxKE = _args.get<Real >("tauMaxKE",14,&_lock); const Real scaleFromManta = _args.get<Real >("scaleFromManta",15,&_lock); const int itype = _args.getOpt<int >("itype",16,FlagGrid::TypeFluid,&_lock); const int jtype = _args.getOpt<int >("jtype",17,FlagGrid::TypeObstacle,&_lock);   _retval = getPyNone(); flipComputeSecondaryParticlePotentials(potTA,potWC,potKE,neighborRatio,flags,v,normal,phi,radius,tauMinTA,tauMaxTA,tauMinWC,tauMaxWC,tauMinKE,tauMaxKE,scaleFromManta,itype,jtype);  _args.check(); } pbFinalizePlugin(parent,"flipComputeSecondaryParticlePotentials", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipComputeSecondaryParticlePotentials",e.what()); return 0; } } static const Pb::Register _RP_flipComputeSecondaryParticlePotentials ("","flipComputeSecondaryParticlePotentials",_W_0);  extern "C" { void PbRegister_flipComputeSecondaryParticlePotentials() { KEEP_UNUSED(_RP_flipComputeSecondaryParticlePotentials); } } 
 
 // adds secondary particles to &pts_sec for every fluid cell in &flags according to the potential grids &potTA, &potWC and &potKE
 // secondary particles are uniformly sampled in every fluid cell in a randomly offset cylinder in fluid movement direction
@@ -296,7 +225,7 @@ void flipSampleSecondaryParticles( const std::string mode, const FlagGrid &flags
 	else {
 		throw std::invalid_argument("Unknown mode: use \"single\" or \"multiple\" instead!");
 	}
-} static PyObject* _W_4 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipSampleSecondaryParticles" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const std::string mode = _args.get<std::string >("mode",0,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); const MACGrid& v = *_args.getPtr<MACGrid >("v",2,&_lock); BasicParticleSystem& pts_sec = *_args.getPtr<BasicParticleSystem >("pts_sec",3,&_lock); ParticleDataImpl<Vec3> & v_sec = *_args.getPtr<ParticleDataImpl<Vec3>  >("v_sec",4,&_lock); ParticleDataImpl<Real> & l_sec = *_args.getPtr<ParticleDataImpl<Real>  >("l_sec",5,&_lock); const Real lMin = _args.get<Real >("lMin",6,&_lock); const Real lMax = _args.get<Real >("lMax",7,&_lock); const Grid<Real> & potTA = *_args.getPtr<Grid<Real>  >("potTA",8,&_lock); const Grid<Real> & potWC = *_args.getPtr<Grid<Real>  >("potWC",9,&_lock); const Grid<Real> & potKE = *_args.getPtr<Grid<Real>  >("potKE",10,&_lock); const Real k_ta = _args.get<Real >("k_ta",11,&_lock); const Real k_wc = _args.get<Real >("k_wc",12,&_lock); const Real dt = _args.get<Real >("dt",13,&_lock); const int itype = _args.getOpt<int >("itype",14,FlagGrid::TypeFluid,&_lock);   _retval = getPyNone(); flipSampleSecondaryParticles(mode,flags,v,pts_sec,v_sec,l_sec,lMin,lMax,potTA,potWC,potKE,k_ta,k_wc,dt,itype);  _args.check(); } pbFinalizePlugin(parent,"flipSampleSecondaryParticles", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipSampleSecondaryParticles",e.what()); return 0; } } static const Pb::Register _RP_flipSampleSecondaryParticles ("","flipSampleSecondaryParticles",_W_4);  extern "C" { void PbRegister_flipSampleSecondaryParticles() { KEEP_UNUSED(_RP_flipSampleSecondaryParticles); } } 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipSampleSecondaryParticles" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const std::string mode = _args.get<std::string >("mode",0,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); const MACGrid& v = *_args.getPtr<MACGrid >("v",2,&_lock); BasicParticleSystem& pts_sec = *_args.getPtr<BasicParticleSystem >("pts_sec",3,&_lock); ParticleDataImpl<Vec3> & v_sec = *_args.getPtr<ParticleDataImpl<Vec3>  >("v_sec",4,&_lock); ParticleDataImpl<Real> & l_sec = *_args.getPtr<ParticleDataImpl<Real>  >("l_sec",5,&_lock); const Real lMin = _args.get<Real >("lMin",6,&_lock); const Real lMax = _args.get<Real >("lMax",7,&_lock); const Grid<Real> & potTA = *_args.getPtr<Grid<Real>  >("potTA",8,&_lock); const Grid<Real> & potWC = *_args.getPtr<Grid<Real>  >("potWC",9,&_lock); const Grid<Real> & potKE = *_args.getPtr<Grid<Real>  >("potKE",10,&_lock); const Real k_ta = _args.get<Real >("k_ta",11,&_lock); const Real k_wc = _args.get<Real >("k_wc",12,&_lock); const Real dt = _args.get<Real >("dt",13,&_lock); const int itype = _args.getOpt<int >("itype",14,FlagGrid::TypeFluid,&_lock);   _retval = getPyNone(); flipSampleSecondaryParticles(mode,flags,v,pts_sec,v_sec,l_sec,lMin,lMax,potTA,potWC,potKE,k_ta,k_wc,dt,itype);  _args.check(); } pbFinalizePlugin(parent,"flipSampleSecondaryParticles", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipSampleSecondaryParticles",e.what()); return 0; } } static const Pb::Register _RP_flipSampleSecondaryParticles ("","flipSampleSecondaryParticles",_W_1);  extern "C" { void PbRegister_flipSampleSecondaryParticles() { KEEP_UNUSED(_RP_flipSampleSecondaryParticles); } } 
 
 
 
@@ -393,7 +322,7 @@ Real cubicSpline(const Real h, const Real l, const int dim) {
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,pts_sec,v_sec,l_sec,f_sec,flags,v,neighborRatio,g,k_b,k_d,c_s,c_b,dt,antitunneling);  }   } BasicParticleSystem& pts_sec; ParticleDataImpl<Vec3> & v_sec; ParticleDataImpl<Real> & l_sec; const ParticleDataImpl<Vec3> & f_sec; const FlagGrid& flags; const MACGrid& v; const Grid<Real> & neighborRatio; const Vec3 g; const Real k_b; const Real k_d; const Real c_s; const Real c_b; const Real dt; const int antitunneling;   };
-#line 268 "plugin/secondaryparticles.cpp"
+#line 226 "plugin/secondaryparticles.cpp"
 
 
 // updates position &pts_sec.pos and velocity &v_sec of secondary particles according to the particle type determined by the neighbor ratio with cubic spline interpolation
@@ -514,7 +443,7 @@ Real cubicSpline(const Real h, const Real l, const int dim) {
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,pts_sec,v_sec,l_sec,f_sec,flags,v,neighborRatio,radius,g,k_b,k_d,c_s,c_b,dt,antitunneling,itype);  }   } BasicParticleSystem& pts_sec; ParticleDataImpl<Vec3> & v_sec; ParticleDataImpl<Real> & l_sec; const ParticleDataImpl<Vec3> & f_sec; const FlagGrid& flags; const MACGrid& v; const Grid<Real> & neighborRatio; const int radius; const Vec3 g; const Real k_b; const Real k_d; const Real c_s; const Real c_b; const Real dt; const int antitunneling; const int itype;   };
-#line 346 "plugin/secondaryparticles.cpp"
+#line 304 "plugin/secondaryparticles.cpp"
 
 
 
@@ -533,16 +462,302 @@ void flipUpdateSecondaryParticles( const std::string mode, BasicParticleSystem &
 		throw std::invalid_argument("Unknown mode: use \"linear\" or \"cubic\" instead!");
 	}
 	pts_sec.doCompress();
-} static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipUpdateSecondaryParticles" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const std::string mode = _args.get<std::string >("mode",0,&_lock); BasicParticleSystem& pts_sec = *_args.getPtr<BasicParticleSystem >("pts_sec",1,&_lock); ParticleDataImpl<Vec3> & v_sec = *_args.getPtr<ParticleDataImpl<Vec3>  >("v_sec",2,&_lock); ParticleDataImpl<Real> & l_sec = *_args.getPtr<ParticleDataImpl<Real>  >("l_sec",3,&_lock); const ParticleDataImpl<Vec3> & f_sec = *_args.getPtr<ParticleDataImpl<Vec3>  >("f_sec",4,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",5,&_lock); const MACGrid& v = *_args.getPtr<MACGrid >("v",6,&_lock); const Grid<Real> & neighborRatio = *_args.getPtr<Grid<Real>  >("neighborRatio",7,&_lock); const int radius = _args.get<int >("radius",8,&_lock); const Vec3 gravity = _args.get<Vec3 >("gravity",9,&_lock); const Real k_b = _args.get<Real >("k_b",10,&_lock); const Real k_d = _args.get<Real >("k_d",11,&_lock); const Real c_s = _args.get<Real >("c_s",12,&_lock); const Real c_b = _args.get<Real >("c_b",13,&_lock); const Real dt = _args.get<Real >("dt",14,&_lock); const int antitunneling = _args.getOpt<int >("antitunneling",15,0,&_lock); const int itype = _args.getOpt<int >("itype",16,FlagGrid::TypeFluid,&_lock);   _retval = getPyNone(); flipUpdateSecondaryParticles(mode,pts_sec,v_sec,l_sec,f_sec,flags,v,neighborRatio,radius,gravity,k_b,k_d,c_s,c_b,dt,antitunneling,itype);  _args.check(); } pbFinalizePlugin(parent,"flipUpdateSecondaryParticles", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipUpdateSecondaryParticles",e.what()); return 0; } } static const Pb::Register _RP_flipUpdateSecondaryParticles ("","flipUpdateSecondaryParticles",_W_5);  extern "C" { void PbRegister_flipUpdateSecondaryParticles() { KEEP_UNUSED(_RP_flipUpdateSecondaryParticles); } } 
+} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipUpdateSecondaryParticles" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const std::string mode = _args.get<std::string >("mode",0,&_lock); BasicParticleSystem& pts_sec = *_args.getPtr<BasicParticleSystem >("pts_sec",1,&_lock); ParticleDataImpl<Vec3> & v_sec = *_args.getPtr<ParticleDataImpl<Vec3>  >("v_sec",2,&_lock); ParticleDataImpl<Real> & l_sec = *_args.getPtr<ParticleDataImpl<Real>  >("l_sec",3,&_lock); const ParticleDataImpl<Vec3> & f_sec = *_args.getPtr<ParticleDataImpl<Vec3>  >("f_sec",4,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",5,&_lock); const MACGrid& v = *_args.getPtr<MACGrid >("v",6,&_lock); const Grid<Real> & neighborRatio = *_args.getPtr<Grid<Real>  >("neighborRatio",7,&_lock); const int radius = _args.get<int >("radius",8,&_lock); const Vec3 gravity = _args.get<Vec3 >("gravity",9,&_lock); const Real k_b = _args.get<Real >("k_b",10,&_lock); const Real k_d = _args.get<Real >("k_d",11,&_lock); const Real c_s = _args.get<Real >("c_s",12,&_lock); const Real c_b = _args.get<Real >("c_b",13,&_lock); const Real dt = _args.get<Real >("dt",14,&_lock); const int antitunneling = _args.getOpt<int >("antitunneling",15,0,&_lock); const int itype = _args.getOpt<int >("itype",16,FlagGrid::TypeFluid,&_lock);   _retval = getPyNone(); flipUpdateSecondaryParticles(mode,pts_sec,v_sec,l_sec,f_sec,flags,v,neighborRatio,radius,gravity,k_b,k_d,c_s,c_b,dt,antitunneling,itype);  _args.check(); } pbFinalizePlugin(parent,"flipUpdateSecondaryParticles", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipUpdateSecondaryParticles",e.what()); return 0; } } static const Pb::Register _RP_flipUpdateSecondaryParticles ("","flipUpdateSecondaryParticles",_W_2);  extern "C" { void PbRegister_flipUpdateSecondaryParticles() { KEEP_UNUSED(_RP_flipUpdateSecondaryParticles); } } 
 
 
+// removes secondary particles in &pts_sec that are inside boundaries (cells that are marked as obstacle in &flags)
+
+
+ struct knFlipDeleteSecondaryParticlesInObstacle : public KernelBase { knFlipDeleteSecondaryParticlesInObstacle( BasicParticleSystem &pts_sec, const FlagGrid &flags) :  KernelBase(pts_sec.size()) ,pts_sec(pts_sec),flags(flags)   { runMessage(); run(); }   inline void op(IndexInt idx,  BasicParticleSystem &pts_sec, const FlagGrid &flags )  {
+
+	if (!pts_sec.isActive(idx)) return;
+
+	const Vec3 &xi = pts_sec[idx].pos;
+	const Vec3i xidx = toVec3i(xi);
+	//remove particles that completely left the bounds
+	if (!flags.isInBounds(xidx)) {
+		pts_sec.kill(idx);
+		return;
+	}
+	int gridIndex = flags.index(xidx);
+	//remove particles that penetrate obstacles
+	if (flags[gridIndex] == FlagGrid::TypeObstacle) {
+		pts_sec.kill(idx);
+	}
+}    inline BasicParticleSystem& getArg0() { return pts_sec; } typedef BasicParticleSystem type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1; void runMessage() { debMsg("Executing kernel knFlipDeleteSecondaryParticlesInObstacle ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,pts_sec,flags);  }   } BasicParticleSystem& pts_sec; const FlagGrid& flags;   };
+#line 434 "plugin/secondaryparticles.cpp"
+
+
+
+
+void flipDeleteSecondaryParticlesInObstacle( BasicParticleSystem &pts_sec, const FlagGrid &flags) {
+
+	knFlipDeleteSecondaryParticlesInObstacle(pts_sec, flags);
+	pts_sec.doCompress();
+} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipDeleteSecondaryParticlesInObstacle" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& pts_sec = *_args.getPtr<BasicParticleSystem >("pts_sec",0,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock);   _retval = getPyNone(); flipDeleteSecondaryParticlesInObstacle(pts_sec,flags);  _args.check(); } pbFinalizePlugin(parent,"flipDeleteSecondaryParticlesInObstacle", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipDeleteSecondaryParticlesInObstacle",e.what()); return 0; } } static const Pb::Register _RP_flipDeleteSecondaryParticlesInObstacle ("","flipDeleteSecondaryParticlesInObstacle",_W_3);  extern "C" { void PbRegister_flipDeleteSecondaryParticlesInObstacle() { KEEP_UNUSED(_RP_flipDeleteSecondaryParticlesInObstacle); } } 
+
+//helper method to debug statistical data from grid
+
+
+void debugGridInfo( const FlagGrid &flags, Grid<Real> &grid, std::string name, int step, const int itype = FlagGrid::TypeFluid) {
+	int countFluid = 0;
+	int countLargerZero = 0;
+	Real avg = 0;
+	Real max = 0;
+	Real sum = 0;
+	Real avgLargerZero = 0;
+	FOR_IJK_BND(grid, 1) {
+		if (!(flags(i, j, k) & itype)) continue;
+		countFluid++;
+		if (grid(i, j, k) > 0) countLargerZero++;
+		sum += grid(i, j, k);
+		if (grid(i, j, k) > max) max = grid(i, j, k);
+	}
+	avg = sum / std::max(Real(countFluid), Real(1));
+	avgLargerZero = sum / std::max(Real(countLargerZero), Real(1));
+
+	debMsg("Step: " << step  << " - Grid " << name <<
+		"\n\tcountFluid \t\t" << countFluid <<
+		"\n\tcountLargerZero \t" << countLargerZero <<
+		"\n\tsum \t\t\t" << sum <<
+		"\n\tavg \t\t\t" << avg <<
+		"\n\tavgLargerZero \t\t" << avgLargerZero <<
+		"\n\tmax \t\t\t" << max);
+} static PyObject* _W_4 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "debugGridInfo" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real> & grid = *_args.getPtr<Grid<Real>  >("grid",1,&_lock); std::string name = _args.get<std::string >("name",2,&_lock); int step = _args.get<int >("step",3,&_lock); const int itype = _args.getOpt<int >("itype",4,FlagGrid::TypeFluid,&_lock);   _retval = getPyNone(); debugGridInfo(flags,grid,name,step,itype);  _args.check(); } pbFinalizePlugin(parent,"debugGridInfo", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("debugGridInfo",e.what()); return 0; } } static const Pb::Register _RP_debugGridInfo ("","debugGridInfo",_W_4);  extern "C" { void PbRegister_debugGridInfo() { KEEP_UNUSED(_RP_debugGridInfo); } } 
+
+
+
+// The following methods are helper functions to recreate the velocity and flag grid from the underlying FLIP simulation.
+// They cannot simply be loaded because of the upres to a higher resolution, instead a levelset is used.
+
+
+ struct knSetFlagsFromLevelset : public KernelBase { knSetFlagsFromLevelset( FlagGrid &flags, const Grid<Real> &phi, const int exclude = FlagGrid::TypeObstacle, const int itype = FlagGrid::TypeFluid) :  KernelBase(&flags,0) ,flags(flags),phi(phi),exclude(exclude),itype(itype)   { runMessage(); run(); }   inline void op(IndexInt idx,  FlagGrid &flags, const Grid<Real> &phi, const int exclude = FlagGrid::TypeObstacle, const int itype = FlagGrid::TypeFluid )  {
+	if (phi(idx) < 0 && !(flags(idx) & exclude)) flags(idx) = itype;
+
+}    inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline const Grid<Real> & getArg1() { return phi; } typedef Grid<Real>  type1;inline const int& getArg2() { return exclude; } typedef int type2;inline const int& getArg3() { return itype; } typedef int type3; void runMessage() { debMsg("Executing kernel knSetFlagsFromLevelset ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,flags,phi,exclude,itype);  }   } FlagGrid& flags; const Grid<Real> & phi; const int exclude; const int itype;   };
+#line 494 "plugin/secondaryparticles.cpp"
+
+
+
+
+void setFlagsFromLevelset( FlagGrid &flags, const Grid<Real> &phi, const int exclude = FlagGrid::TypeObstacle, const int itype = FlagGrid::TypeFluid) {
+	knSetFlagsFromLevelset(flags, phi, exclude, itype);
+} static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setFlagsFromLevelset" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); const Grid<Real> & phi = *_args.getPtr<Grid<Real>  >("phi",1,&_lock); const int exclude = _args.getOpt<int >("exclude",2,FlagGrid::TypeObstacle,&_lock); const int itype = _args.getOpt<int >("itype",3,FlagGrid::TypeFluid,&_lock);   _retval = getPyNone(); setFlagsFromLevelset(flags,phi,exclude,itype);  _args.check(); } pbFinalizePlugin(parent,"setFlagsFromLevelset", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setFlagsFromLevelset",e.what()); return 0; } } static const Pb::Register _RP_setFlagsFromLevelset ("","setFlagsFromLevelset",_W_5);  extern "C" { void PbRegister_setFlagsFromLevelset() { KEEP_UNUSED(_RP_setFlagsFromLevelset); } } 
+
+
+
+ struct knSetMACFromLevelset : public KernelBase { knSetMACFromLevelset( MACGrid &v, const Grid<Real> &phi, const Vec3 c) :  KernelBase(&v,0) ,v(v),phi(phi),c(c)   { runMessage(); run(); }  inline void op(int i, int j, int k,  MACGrid &v, const Grid<Real> &phi, const Vec3 c )  {
+	if (phi.getInterpolated(Vec3(i, j, k)) > 0) v(i, j, k) = c;
+}   inline MACGrid& getArg0() { return v; } typedef MACGrid type0;inline const Grid<Real> & getArg1() { return phi; } typedef Grid<Real>  type1;inline const Vec3& getArg2() { return c; } typedef Vec3 type2; void runMessage() { debMsg("Executing kernel knSetMACFromLevelset ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,v,phi,c);  } } else { const int k=0; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,v,phi,c);  } }  } MACGrid& v; const Grid<Real> & phi; const Vec3 c;   };
+#line 506 "plugin/secondaryparticles.cpp"
+
+
+
+
+void setMACFromLevelset( MACGrid &v, const Grid<Real> &phi, const Vec3 c) {
+	knSetMACFromLevelset(v, phi, c);
+} static PyObject* _W_6 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setMACFromLevelset" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& v = *_args.getPtr<MACGrid >("v",0,&_lock); const Grid<Real> & phi = *_args.getPtr<Grid<Real>  >("phi",1,&_lock); const Vec3 c = _args.get<Vec3 >("c",2,&_lock);   _retval = getPyNone(); setMACFromLevelset(v,phi,c);  _args.check(); } pbFinalizePlugin(parent,"setMACFromLevelset", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setMACFromLevelset",e.what()); return 0; } } static const Pb::Register _RP_setMACFromLevelset ("","setMACFromLevelset",_W_6);  extern "C" { void PbRegister_setMACFromLevelset() { KEEP_UNUSED(_RP_setMACFromLevelset); } } 
+
+
+//----------------------------------------------------------------------------------------------------------------------------------------------------
+// END Secondary Particles for FLIP
+//----------------------------------------------------------------------------------------------------------------------------------------------------
+#pragma endregion
+
+
+
+#pragma region Legacy Methods (still useful for debugging)
+//-----------------------------------------------------------------------------------------------------------------------------------	-----------------
+// Legacy Methods (still useful for debugging)
+//----------------------------------------------------------------------------------------------------------------------------------------------------
+
+// LEGACY METHOD! Use flipComputeSecondaryParticlePotentials instead!
+// computes trapped air potential for all fluid cells in &flags and saves it in &pot
+
+
+
+
+
+ struct knFlipComputePotentialTrappedAir : public KernelBase { knFlipComputePotentialTrappedAir( Grid<Real> &pot, const FlagGrid &flags, const MACGrid &v, const int radius, const Real tauMin, const Real tauMax, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeFluid) :  KernelBase(&pot,1) ,pot(pot),flags(flags),v(v),radius(radius),tauMin(tauMin),tauMax(tauMax),scaleFromManta(scaleFromManta),itype(itype),jtype(jtype)   { runMessage(); run(); }  inline void op(int i, int j, int k,  Grid<Real> &pot, const FlagGrid &flags, const MACGrid &v, const int radius, const Real tauMin, const Real tauMax, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeFluid )  {
+
+	if (!(flags(i, j, k) & itype)) return;
+
+	const Vec3 &xi = scaleFromManta * Vec3(i, j, k);	//scale to unit cube
+	const Vec3 &vi = scaleFromManta * v.getCentered(i, j, k);
+	Real vdiff = 0;
+	for (IndexInt x = i - radius; x <= i + radius; x++) {
+		for (IndexInt y = j - radius; y <= j + radius; y++) {
+			for (IndexInt z = k - radius; z <= k + radius; z++) {
+				if ((x == i && y == j && z == k) || !(flags(x, y, z) & jtype)) continue;
+
+				const Vec3 &xj = scaleFromManta * Vec3(x, y, z); //scale to unit cube
+				const Vec3 &vj = scaleFromManta * v.getCentered(x, y, z);
+				const Vec3 xij = xi - xj;
+				const Vec3 vij = vi - vj;
+				Real h = !pot.is3D() ? 1.414*radius : 1.732*radius; //estimate sqrt(2)*radius resp. sqrt(3)*radius for h, due to squared resp. cubic neighbor area
+				vdiff += norm(vij) * (1 - dot(getNormalized(vij), getNormalized(xij))) * (1 - norm(xij) / h);
+			}
+		}
+	}
+	pot(i, j, k) = (std::min(vdiff, tauMax) - std::min(vdiff, tauMin)) / (tauMax - tauMin);
+}   inline Grid<Real> & getArg0() { return pot; } typedef Grid<Real>  type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline const MACGrid& getArg2() { return v; } typedef MACGrid type2;inline const int& getArg3() { return radius; } typedef int type3;inline const Real& getArg4() { return tauMin; } typedef Real type4;inline const Real& getArg5() { return tauMax; } typedef Real type5;inline const Real& getArg6() { return scaleFromManta; } typedef Real type6;inline const int& getArg7() { return itype; } typedef int type7;inline const int& getArg8() { return jtype; } typedef int type8; void runMessage() { debMsg("Executing kernel knFlipComputePotentialTrappedAir ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,pot,flags,v,radius,tauMin,tauMax,scaleFromManta,itype,jtype);  } } else { const int k=0; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,pot,flags,v,radius,tauMin,tauMax,scaleFromManta,itype,jtype);  } }  } Grid<Real> & pot; const FlagGrid& flags; const MACGrid& v; const int radius; const Real tauMin; const Real tauMax; const Real scaleFromManta; const int itype; const int jtype;   };
+#line 535 "plugin/secondaryparticles.cpp"
+
+
+
+
+
+
+
+void flipComputePotentialTrappedAir( Grid<Real> &pot, const FlagGrid &flags, const MACGrid &v, const int radius, const Real tauMin, const Real tauMax, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeFluid) {
+	pot.clear();
+	knFlipComputePotentialTrappedAir(pot, flags, v, radius, tauMin, tauMax, scaleFromManta, itype, jtype);
+} static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipComputePotentialTrappedAir" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real> & pot = *_args.getPtr<Grid<Real>  >("pot",0,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); const MACGrid& v = *_args.getPtr<MACGrid >("v",2,&_lock); const int radius = _args.get<int >("radius",3,&_lock); const Real tauMin = _args.get<Real >("tauMin",4,&_lock); const Real tauMax = _args.get<Real >("tauMax",5,&_lock); const Real scaleFromManta = _args.get<Real >("scaleFromManta",6,&_lock); const int itype = _args.getOpt<int >("itype",7,FlagGrid::TypeFluid,&_lock); const int jtype = _args.getOpt<int >("jtype",8,FlagGrid::TypeFluid,&_lock);   _retval = getPyNone(); flipComputePotentialTrappedAir(pot,flags,v,radius,tauMin,tauMax,scaleFromManta,itype,jtype);  _args.check(); } pbFinalizePlugin(parent,"flipComputePotentialTrappedAir", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipComputePotentialTrappedAir",e.what()); return 0; } } static const Pb::Register _RP_flipComputePotentialTrappedAir ("","flipComputePotentialTrappedAir",_W_7);  extern "C" { void PbRegister_flipComputePotentialTrappedAir() { KEEP_UNUSED(_RP_flipComputePotentialTrappedAir); } } 
+
+
+// LEGACY METHOD! Use flipComputeSecondaryParticlePotentials instead!
+// computes kinetic energy potential for all fluid cells in &flags and saves it in &pot
+
+
+
+
+ struct knFlipComputePotentialKineticEnergy : public KernelBase { knFlipComputePotentialKineticEnergy( Grid<Real> &pot, const FlagGrid &flags, const MACGrid &v, const Real tauMin, const Real tauMax, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid) :  KernelBase(&pot,0) ,pot(pot),flags(flags),v(v),tauMin(tauMin),tauMax(tauMax),scaleFromManta(scaleFromManta),itype(itype)   { runMessage(); run(); }  inline void op(int i, int j, int k,  Grid<Real> &pot, const FlagGrid &flags, const MACGrid &v, const Real tauMin, const Real tauMax, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid )  {
+
+	if (!(flags(i, j, k) & itype)) return;
+
+	const Vec3 &vi = scaleFromManta * v.getCentered(i, j, k); //scale to unit cube
+	Real ek = Real(0.5) * 125 * normSquare(vi);	//use arbitrary constant for mass, potential adjusts with thresholds anyways
+	pot(i, j, k) = (std::min(ek, tauMax) - std::min(ek, tauMin)) / (tauMax - tauMin);
+}   inline Grid<Real> & getArg0() { return pot; } typedef Grid<Real>  type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline const MACGrid& getArg2() { return v; } typedef MACGrid type2;inline const Real& getArg3() { return tauMin; } typedef Real type3;inline const Real& getArg4() { return tauMax; } typedef Real type4;inline const Real& getArg5() { return scaleFromManta; } typedef Real type5;inline const int& getArg6() { return itype; } typedef int type6; void runMessage() { debMsg("Executing kernel knFlipComputePotentialKineticEnergy ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,pot,flags,v,tauMin,tauMax,scaleFromManta,itype);  } } else { const int k=0; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,pot,flags,v,tauMin,tauMax,scaleFromManta,itype);  } }  } Grid<Real> & pot; const FlagGrid& flags; const MACGrid& v; const Real tauMin; const Real tauMax; const Real scaleFromManta; const int itype;   };
+#line 575 "plugin/secondaryparticles.cpp"
+
+
+
+
+
+
+void flipComputePotentialKineticEnergy( Grid<Real> &pot, const FlagGrid &flags, const MACGrid &v, const Real tauMin, const Real tauMax, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid) {
+	pot.clear();
+	knFlipComputePotentialKineticEnergy(pot, flags, v, tauMin, tauMax, scaleFromManta, itype);
+} static PyObject* _W_8 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipComputePotentialKineticEnergy" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real> & pot = *_args.getPtr<Grid<Real>  >("pot",0,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); const MACGrid& v = *_args.getPtr<MACGrid >("v",2,&_lock); const Real tauMin = _args.get<Real >("tauMin",3,&_lock); const Real tauMax = _args.get<Real >("tauMax",4,&_lock); const Real scaleFromManta = _args.get<Real >("scaleFromManta",5,&_lock); const int itype = _args.getOpt<int >("itype",6,FlagGrid::TypeFluid,&_lock);   _retval = getPyNone(); flipComputePotentialKineticEnergy(pot,flags,v,tauMin,tauMax,scaleFromManta,itype);  _args.check(); } pbFinalizePlugin(parent,"flipComputePotentialKineticEnergy", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipComputePotentialKineticEnergy",e.what()); return 0; } } static const Pb::Register _RP_flipComputePotentialKineticEnergy ("","flipComputePotentialKineticEnergy",_W_8);  extern "C" { void PbRegister_flipComputePotentialKineticEnergy() { KEEP_UNUSED(_RP_flipComputePotentialKineticEnergy); } } 
+
+
+// LEGACY METHOD! Use flipComputeSecondaryParticlePotentials instead!
+// computes wave crest potential for all fluid cells in &flags and saves it in &pot
+
+
+
+
+ struct knFlipComputePotentialWaveCrest : public KernelBase { knFlipComputePotentialWaveCrest( Grid<Real> &pot, const FlagGrid &flags, const MACGrid &v, const int radius, Grid<Vec3> &normal, const Real tauMin, const Real tauMax, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeFluid) :  KernelBase(&pot,1) ,pot(pot),flags(flags),v(v),radius(radius),normal(normal),tauMin(tauMin),tauMax(tauMax),scaleFromManta(scaleFromManta),itype(itype),jtype(jtype)   { runMessage(); run(); }  inline void op(int i, int j, int k,  Grid<Real> &pot, const FlagGrid &flags, const MACGrid &v, const int radius, Grid<Vec3> &normal, const Real tauMin, const Real tauMax, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeFluid )  {
+
+	if (!(flags(i, j, k) & itype)) return;
+
+	const Vec3 &xi = scaleFromManta * Vec3(i, j, k);	//scale to unit cube
+	const Vec3 &vi = scaleFromManta * v.getCentered(i, j, k);
+	const Vec3 &ni = normal(i, j, k);
+	Real kappa = 0;
+	for (IndexInt x = i - radius; x <= i + radius; x++) {
+		for (IndexInt y = j - radius; y <= j + radius; y++) {
+			for (IndexInt z = k - radius; z <= k + radius; z++) {
+				if ((x == i && y == j && z == k) || !(flags(x, y, z) & jtype)) continue;
+				const Vec3 &xj = scaleFromManta * Vec3(x, y, z); //scale to unit cube
+				const Vec3 &nj = normal(x, y, z);
+				const Vec3 xij = xi - xj;
+				if (dot(getNormalized(xij), ni) < 0) {	//identifies wave crests
+					Real h = !pot.is3D() ? 1.414*radius : 1.732*radius; //estimate sqrt(2)*radius resp. sqrt(3)*radius for h, due to squared resp. cubic neighbor area
+					kappa += (1 - dot(ni, nj)) * (1 - norm(xij) / h);
+				}
+			}
+		}
+	}
+
+	if (dot(getNormalized(vi), ni) >= 0.6) {	//avoid to mark boarders of the scene as wave crest
+		pot(i, j, k) = (std::min(kappa, tauMax) - std::min(kappa, tauMin)) / (tauMax - tauMin);
+	}
+	else {
+		pot(i, j, k) = Real(0);
+	}
+}   inline Grid<Real> & getArg0() { return pot; } typedef Grid<Real>  type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1;inline const MACGrid& getArg2() { return v; } typedef MACGrid type2;inline const int& getArg3() { return radius; } typedef int type3;inline Grid<Vec3> & getArg4() { return normal; } typedef Grid<Vec3>  type4;inline const Real& getArg5() { return tauMin; } typedef Real type5;inline const Real& getArg6() { return tauMax; } typedef Real type6;inline const Real& getArg7() { return scaleFromManta; } typedef Real type7;inline const int& getArg8() { return itype; } typedef int type8;inline const int& getArg9() { return jtype; } typedef int type9; void runMessage() { debMsg("Executing kernel knFlipComputePotentialWaveCrest ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,pot,flags,v,radius,normal,tauMin,tauMax,scaleFromManta,itype,jtype);  } } else { const int k=0; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,pot,flags,v,radius,normal,tauMin,tauMax,scaleFromManta,itype,jtype);  } }  } Grid<Real> & pot; const FlagGrid& flags; const MACGrid& v; const int radius; Grid<Vec3> & normal; const Real tauMin; const Real tauMax; const Real scaleFromManta; const int itype; const int jtype;   };
+#line 599 "plugin/secondaryparticles.cpp"
+
+
+
+
+
+
+void flipComputePotentialWaveCrest( Grid<Real> &pot, const FlagGrid &flags, const MACGrid &v, const int radius, Grid<Vec3> &normal, const Real tauMin, const Real tauMax, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeFluid) {
+
+	pot.clear();
+	knFlipComputePotentialWaveCrest(pot, flags, v, radius, normal, tauMin, tauMax, scaleFromManta, itype, jtype);
+} static PyObject* _W_9 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipComputePotentialWaveCrest" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real> & pot = *_args.getPtr<Grid<Real>  >("pot",0,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); const MACGrid& v = *_args.getPtr<MACGrid >("v",2,&_lock); const int radius = _args.get<int >("radius",3,&_lock); Grid<Vec3> & normal = *_args.getPtr<Grid<Vec3>  >("normal",4,&_lock); const Real tauMin = _args.get<Real >("tauMin",5,&_lock); const Real tauMax = _args.get<Real >("tauMax",6,&_lock); const Real scaleFromManta = _args.get<Real >("scaleFromManta",7,&_lock); const int itype = _args.getOpt<int >("itype",8,FlagGrid::TypeFluid,&_lock); const int jtype = _args.getOpt<int >("jtype",9,FlagGrid::TypeFluid,&_lock);   _retval = getPyNone(); flipComputePotentialWaveCrest(pot,flags,v,radius,normal,tauMin,tauMax,scaleFromManta,itype,jtype);  _args.check(); } pbFinalizePlugin(parent,"flipComputePotentialWaveCrest", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipComputePotentialWaveCrest",e.what()); return 0; } } static const Pb::Register _RP_flipComputePotentialWaveCrest ("","flipComputePotentialWaveCrest",_W_9);  extern "C" { void PbRegister_flipComputePotentialWaveCrest() { KEEP_UNUSED(_RP_flipComputePotentialWaveCrest); } } 
+
+// LEGACY METHOD! Use flipComputeSecondaryParticlePotentials instead!
+// computes normal grid &normal as gradient of levelset &phi and normalizes it
+
+ struct knFlipComputeSurfaceNormals : public KernelBase { knFlipComputeSurfaceNormals(Grid<Vec3>& normal, const Grid<Real>& phi) :  KernelBase(&normal,0) ,normal(normal),phi(phi)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid<Vec3>& normal, const Grid<Real>& phi )  {
+	normal[idx] = getNormalized(normal[idx]);
+}    inline Grid<Vec3>& getArg0() { return normal; } typedef Grid<Vec3> type0;inline const Grid<Real>& getArg1() { return phi; } typedef Grid<Real> type1; void runMessage() { debMsg("Executing kernel knFlipComputeSurfaceNormals ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,normal,phi);  }   } Grid<Vec3>& normal; const Grid<Real>& phi;   };
+#line 642 "plugin/secondaryparticles.cpp"
+
+
+
+void flipComputeSurfaceNormals(Grid<Vec3>& normal, const Grid<Real>& phi) {
+	GradientOp(normal, phi);
+	knFlipComputeSurfaceNormals(normal, phi);
+} static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipComputeSurfaceNormals" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& normal = *_args.getPtr<Grid<Vec3> >("normal",0,&_lock); const Grid<Real>& phi = *_args.getPtr<Grid<Real> >("phi",1,&_lock);   _retval = getPyNone(); flipComputeSurfaceNormals(normal,phi);  _args.check(); } pbFinalizePlugin(parent,"flipComputeSurfaceNormals", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipComputeSurfaceNormals",e.what()); return 0; } } static const Pb::Register _RP_flipComputeSurfaceNormals ("","flipComputeSurfaceNormals",_W_10);  extern "C" { void PbRegister_flipComputeSurfaceNormals() { KEEP_UNUSED(_RP_flipComputeSurfaceNormals); } } 
+
+// LEGACY METHOD! Use flipComputeSecondaryParticlePotentials instead!
 // computes the neighbor ratio for every fluid cell in &flags as the number of fluid neighbors over the maximum possible number of fluid neighbors
 
 
 
  struct knFlipUpdateNeighborRatio : public KernelBase { knFlipUpdateNeighborRatio( const FlagGrid &flags, Grid<Real> &neighborRatio, const int radius, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeObstacle) :  KernelBase(&flags,1) ,flags(flags),neighborRatio(neighborRatio),radius(radius),itype(itype),jtype(jtype)   { runMessage(); run(); }  inline void op(int i, int j, int k,  const FlagGrid &flags, Grid<Real> &neighborRatio, const int radius, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeObstacle )  {
 
-	if (!(flags(i,j,k) & itype)) return;
+	if (!(flags(i, j, k) & itype)) return;
 
 	int countFluid = 0;
 	int countMaxFluid = 0;
@@ -570,7 +785,7 @@ void flipUpdateSecondaryParticles( const std::string mode, BasicParticleSystem &
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,neighborRatio,radius,itype,jtype);  } }  } const FlagGrid& flags; Grid<Real> & neighborRatio; const int radius; const int itype; const int jtype;   };
-#line 477 "plugin/secondaryparticles.cpp"
+#line 656 "plugin/secondaryparticles.cpp"
 
 
 
@@ -580,199 +795,11 @@ void flipUpdateNeighborRatio( const FlagGrid &flags, Grid<Real> &neighborRatio, 
 
 	neighborRatio.clear();
 	knFlipUpdateNeighborRatio(flags, neighborRatio, radius, itype, jtype);
-} static PyObject* _W_6 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipUpdateNeighborRatio" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real> & neighborRatio = *_args.getPtr<Grid<Real>  >("neighborRatio",1,&_lock); const int radius = _args.get<int >("radius",2,&_lock); const int itype = _args.getOpt<int >("itype",3,FlagGrid::TypeFluid,&_lock); const int jtype = _args.getOpt<int >("jtype",4,FlagGrid::TypeObstacle,&_lock);   _retval = getPyNone(); flipUpdateNeighborRatio(flags,neighborRatio,radius,itype,jtype);  _args.check(); } pbFinalizePlugin(parent,"flipUpdateNeighborRatio", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipUpdateNeighborRatio",e.what()); return 0; } } static const Pb::Register _RP_flipUpdateNeighborRatio ("","flipUpdateNeighborRatio",_W_6);  extern "C" { void PbRegister_flipUpdateNeighborRatio() { KEEP_UNUSED(_RP_flipUpdateNeighborRatio); } } 
-
-
-// removes secondary particles in &pts_sec that are inside boundaries (cells that are marked as obstacle in &flags)
-
-
- struct knFlipDeleteSecondaryParticlesInObstacle : public KernelBase { knFlipDeleteSecondaryParticlesInObstacle( BasicParticleSystem &pts_sec, const FlagGrid &flags) :  KernelBase(pts_sec.size()) ,pts_sec(pts_sec),flags(flags)   { runMessage(); run(); }   inline void op(IndexInt idx,  BasicParticleSystem &pts_sec, const FlagGrid &flags )  {
-
-	if (!pts_sec.isActive(idx)) return;
-
-	const Vec3 &xi = pts_sec[idx].pos;
-	const Vec3i xidx = toVec3i(xi);
-	//remove particles that completely left the bounds
-	if (!flags.isInBounds(xidx)) {
-		pts_sec.kill(idx);
-		return;
-	}
-	int gridIndex = flags.index(xidx);
-	//remove particles that penetrate obstacles
-	if (flags[gridIndex] == FlagGrid::TypeObstacle) {
-		pts_sec.kill(idx);
-	}
-}    inline BasicParticleSystem& getArg0() { return pts_sec; } typedef BasicParticleSystem type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1; void runMessage() { debMsg("Executing kernel knFlipDeleteSecondaryParticlesInObstacle ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
-#pragma omp parallel 
- {  
-#pragma omp for  
-  for (IndexInt i = 0; i < _sz; i++) op(i,pts_sec,flags);  }   } BasicParticleSystem& pts_sec; const FlagGrid& flags;   };
-#line 512 "plugin/secondaryparticles.cpp"
-
-
-
-
-void flipDeleteSecondaryParticlesInObstacle( BasicParticleSystem &pts_sec, const FlagGrid &flags) {
-
-	knFlipDeleteSecondaryParticlesInObstacle(pts_sec, flags);
-	pts_sec.doCompress();
-} static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipDeleteSecondaryParticlesInObstacle" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& pts_sec = *_args.getPtr<BasicParticleSystem >("pts_sec",0,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock);   _retval = getPyNone(); flipDeleteSecondaryParticlesInObstacle(pts_sec,flags);  _args.check(); } pbFinalizePlugin(parent,"flipDeleteSecondaryParticlesInObstacle", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipDeleteSecondaryParticlesInObstacle",e.what()); return 0; } } static const Pb::Register _RP_flipDeleteSecondaryParticlesInObstacle ("","flipDeleteSecondaryParticlesInObstacle",_W_7);  extern "C" { void PbRegister_flipDeleteSecondaryParticlesInObstacle() { KEEP_UNUSED(_RP_flipDeleteSecondaryParticlesInObstacle); } } 
-
-
-
-
-// The following methods are helper functions to recreate the velocity and flag grid from the underlying FLIP simulation.
-// They cannot simply be loaded because of the upres to a higher resolution, instead a levelset is used.
-
-
- struct knSetFlagsFromLevelset : public KernelBase { knSetFlagsFromLevelset( FlagGrid &flags, const Grid<Real> &phi, const int exclude = FlagGrid::TypeObstacle, const int itype = FlagGrid::TypeFluid) :  KernelBase(&flags,0) ,flags(flags),phi(phi),exclude(exclude),itype(itype)   { runMessage(); run(); }   inline void op(IndexInt idx,  FlagGrid &flags, const Grid<Real> &phi, const int exclude = FlagGrid::TypeObstacle, const int itype = FlagGrid::TypeFluid )  {
-	if (phi(idx) < 0 && !(flags(idx) & exclude)) flags(idx) = itype;
-
-}    inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline const Grid<Real> & getArg1() { return phi; } typedef Grid<Real>  type1;inline const int& getArg2() { return exclude; } typedef int type2;inline const int& getArg3() { return itype; } typedef int type3; void runMessage() { debMsg("Executing kernel knSetFlagsFromLevelset ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
-#pragma omp parallel 
- {  
-#pragma omp for  
-  for (IndexInt i = 0; i < _sz; i++) op(i,flags,phi,exclude,itype);  }   } FlagGrid& flags; const Grid<Real> & phi; const int exclude; const int itype;   };
-#line 544 "plugin/secondaryparticles.cpp"
-
-
-
-
-void setFlagsFromLevelset( FlagGrid &flags, const Grid<Real> &phi, const int exclude = FlagGrid::TypeObstacle, const int itype = FlagGrid::TypeFluid) {
-	knSetFlagsFromLevelset(flags, phi, exclude, itype);
-} static PyObject* _W_8 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setFlagsFromLevelset" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); const Grid<Real> & phi = *_args.getPtr<Grid<Real>  >("phi",1,&_lock); const int exclude = _args.getOpt<int >("exclude",2,FlagGrid::TypeObstacle,&_lock); const int itype = _args.getOpt<int >("itype",3,FlagGrid::TypeFluid,&_lock);   _retval = getPyNone(); setFlagsFromLevelset(flags,phi,exclude,itype);  _args.check(); } pbFinalizePlugin(parent,"setFlagsFromLevelset", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setFlagsFromLevelset",e.what()); return 0; } } static const Pb::Register _RP_setFlagsFromLevelset ("","setFlagsFromLevelset",_W_8);  extern "C" { void PbRegister_setFlagsFromLevelset() { KEEP_UNUSED(_RP_setFlagsFromLevelset); } } 
-
-
-
-
- struct knSetMACFromLevelset : public KernelBase { knSetMACFromLevelset( MACGrid &v, const Grid<Real> &phi, const Vec3 c) :  KernelBase(&v,0) ,v(v),phi(phi),c(c)   { runMessage(); run(); }  inline void op(int i, int j, int k,  MACGrid &v, const Grid<Real> &phi, const Vec3 c )  {
-	if (phi.getInterpolated(Vec3(i, j, k)) > 0) v(i, j, k) = c;
-}   inline MACGrid& getArg0() { return v; } typedef MACGrid type0;inline const Grid<Real> & getArg1() { return phi; } typedef Grid<Real>  type1;inline const Vec3& getArg2() { return c; } typedef Vec3 type2; void runMessage() { debMsg("Executing kernel knSetMACFromLevelset ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
-#pragma omp parallel 
- {  
-#pragma omp for  
-  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,v,phi,c);  } } else { const int k=0; 
-#pragma omp parallel 
- {  
-#pragma omp for  
-  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,v,phi,c);  } }  } MACGrid& v; const Grid<Real> & phi; const Vec3 c;   };
-#line 557 "plugin/secondaryparticles.cpp"
-
-
-
-
-void setMACFromLevelset( MACGrid &v, const Grid<Real> &phi, const Vec3 c) {
-	knSetMACFromLevelset(v, phi, c);
-} static PyObject* _W_9 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setMACFromLevelset" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& v = *_args.getPtr<MACGrid >("v",0,&_lock); const Grid<Real> & phi = *_args.getPtr<Grid<Real>  >("phi",1,&_lock); const Vec3 c = _args.get<Vec3 >("c",2,&_lock);   _retval = getPyNone(); setMACFromLevelset(v,phi,c);  _args.check(); } pbFinalizePlugin(parent,"setMACFromLevelset", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setMACFromLevelset",e.what()); return 0; } } static const Pb::Register _RP_setMACFromLevelset ("","setMACFromLevelset",_W_9);  extern "C" { void PbRegister_setMACFromLevelset() { KEEP_UNUSED(_RP_setMACFromLevelset); } } 
-
-
-
+} static PyObject* _W_11 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipUpdateNeighborRatio" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real> & neighborRatio = *_args.getPtr<Grid<Real>  >("neighborRatio",1,&_lock); const int radius = _args.get<int >("radius",2,&_lock); const int itype = _args.getOpt<int >("itype",3,FlagGrid::TypeFluid,&_lock); const int jtype = _args.getOpt<int >("jtype",4,FlagGrid::TypeObstacle,&_lock);   _retval = getPyNone(); flipUpdateNeighborRatio(flags,neighborRatio,radius,itype,jtype);  _args.check(); } pbFinalizePlugin(parent,"flipUpdateNeighborRatio", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipUpdateNeighborRatio",e.what()); return 0; } } static const Pb::Register _RP_flipUpdateNeighborRatio ("","flipUpdateNeighborRatio",_W_11);  extern "C" { void PbRegister_flipUpdateNeighborRatio() { KEEP_UNUSED(_RP_flipUpdateNeighborRatio); } } 
 
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------
-// END Secondary Particles for FLIP
-//----------------------------------------------------------------------------------------------------------------------------------------------------
-#pragma endregion
-
-
-
-#pragma region Secondary Particles for FLIP (with speed optimization)
-//-----------------------------------------------------------------------------------------------------------------------------------	-----------------
-// Secondary Particles for FLIP (with speed optimization)
-//----------------------------------------------------------------------------------------------------------------------------------------------------
-
-// helper function that clamps the value in potential to the interval [tauMin, tauMax] and normalizes it to [0, 1] afterwards
-Real clampPotential(Real potential, Real tauMin, Real tauMax) {
-	return (std::min(potential, tauMax) - std::min(potential, tauMin)) / (tauMax - tauMin);
-}
-
-// computes all three potentials and the neighbor ratio for every fluid cell and stores it in the respective grid
-
-
-
-
- struct knFlipComputeSecondaryParticlePotentials : public KernelBase { knFlipComputeSecondaryParticlePotentials( Grid<Real> &potTA, Grid<Real> &potWC, Grid<Real> &potKE, Grid<Real> &neighborRatio, const FlagGrid &flags, const MACGrid &v, const Grid<Vec3> &normal, const int radius, const Real tauMinTA, const Real tauMaxTA, const Real tauMinWC, const Real tauMaxWC, const Real tauMinKE, const Real tauMaxKE, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeObstacle) :  KernelBase(&potTA,1) ,potTA(potTA),potWC(potWC),potKE(potKE),neighborRatio(neighborRatio),flags(flags),v(v),normal(normal),radius(radius),tauMinTA(tauMinTA),tauMaxTA(tauMaxTA),tauMinWC(tauMinWC),tauMaxWC(tauMaxWC),tauMinKE(tauMinKE),tauMaxKE(tauMaxKE),scaleFromManta(scaleFromManta),itype(itype),jtype(jtype)   { runMessage(); run(); }  inline void op(int i, int j, int k,  Grid<Real> &potTA, Grid<Real> &potWC, Grid<Real> &potKE, Grid<Real> &neighborRatio, const FlagGrid &flags, const MACGrid &v, const Grid<Vec3> &normal, const int radius, const Real tauMinTA, const Real tauMaxTA, const Real tauMinWC, const Real tauMaxWC, const Real tauMinKE, const Real tauMaxKE, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeObstacle )  {
-
-	if (!(flags(i, j, k) & itype)) return;
-
-	//compute trapped air potential + wave crest potential + neighbor ratio at once
-	const Vec3 &xi = scaleFromManta * Vec3(i, j, k);	//scale to unit cube
-	const Vec3 &vi = scaleFromManta * v.getCentered(i, j, k);
-	const Vec3 &ni = getNormalized(normal(i, j, k));
-	Real vdiff = 0;			//for trapped air
-	Real kappa = 0;			//for wave crests
-	int countFluid = 0;		//for neighbor ratio
-	int countMaxFluid = 0;	//for neighbor ratio
-
-	//iterate over neighboring cells within radius
-	for (IndexInt x = i - radius; x <= i + radius; x++) {
-		for (IndexInt y = j - radius; y <= j + radius; y++) {
-			for (IndexInt z = k - radius; z <= k + radius; z++) {
-				if ((x == i && y == j && z == k) || !flags.isInBounds(Vec3i(x, y, z)) || (flags(x, y, z) & jtype)) continue;
-
-				if (flags(x, y, z) & itype) {
-					countFluid++;
-					countMaxFluid++;
-				}
-				else {
-					countMaxFluid++;
-				}
-
-				const Vec3 &xj = scaleFromManta * Vec3(x, y, z); //scale to unit cube
-				const Vec3 &vj = scaleFromManta * v.getCentered(x, y, z);
-				const Vec3 &nj = getNormalized(normal(x, y, z));
-				const Vec3 xij = xi - xj;
-				const Vec3 vij = vi - vj;
-				Real h = !potTA.is3D() ? 1.414*radius : 1.732*radius; //estimate sqrt(2)*radius resp. sqrt(3)*radius for h, due to squared resp. cubic neighbor area
-				vdiff += norm(vij) * (1 - dot(getNormalized(vij), getNormalized(xij))) * (1 - norm(xij) / h);
-
-				if (dot(getNormalized(xij), ni) < 0) {	//identifies wave crests
-					kappa += (1 - dot(ni, nj)) * (1 - norm(xij) / h);
-				}
-			}
-		}
-	}
-
-	neighborRatio(i, j, k) = float(countFluid) / float(countMaxFluid);
-
-	potTA(i, j, k) = clampPotential(vdiff, tauMinTA, tauMaxTA);
-	if (dot(getNormalized(vi), ni) >= 0.6) {	//avoid to mark boarders of the scene as wave crest
-		potWC(i, j, k) = clampPotential(kappa, tauMaxWC, tauMaxWC);
-	}
-	else {
-		potWC(i, j, k) = Real(0);
-	}
-	
-	//compute kinetic energy potential
-	Real ek = Real(0.5) * 125 * normSquare(vi);	//use arbitrary constant for mass, potential adjusts with thresholds anyways
-	potKE(i, j, k) = clampPotential(ek, tauMinKE, tauMaxKE);
-}   inline Grid<Real> & getArg0() { return potTA; } typedef Grid<Real>  type0;inline Grid<Real> & getArg1() { return potWC; } typedef Grid<Real>  type1;inline Grid<Real> & getArg2() { return potKE; } typedef Grid<Real>  type2;inline Grid<Real> & getArg3() { return neighborRatio; } typedef Grid<Real>  type3;inline const FlagGrid& getArg4() { return flags; } typedef FlagGrid type4;inline const MACGrid& getArg5() { return v; } typedef MACGrid type5;inline const Grid<Vec3> & getArg6() { return normal; } typedef Grid<Vec3>  type6;inline const int& getArg7() { return radius; } typedef int type7;inline const Real& getArg8() { return tauMinTA; } typedef Real type8;inline const Real& getArg9() { return tauMaxTA; } typedef Real type9;inline const Real& getArg10() { return tauMinWC; } typedef Real type10;inline const Real& getArg11() { return tauMaxWC; } typedef Real type11;inline const Real& getArg12() { return tauMinKE; } typedef Real type12;inline const Real& getArg13() { return tauMaxKE; } typedef Real type13;inline const Real& getArg14() { return scaleFromManta; } typedef Real type14;inline const int& getArg15() { return itype; } typedef int type15;inline const int& getArg16() { return jtype; } typedef int type16; void runMessage() { debMsg("Executing kernel knFlipComputeSecondaryParticlePotentials ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
-#pragma omp parallel 
- {  
-#pragma omp for  
-  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,potTA,potWC,potKE,neighborRatio,flags,v,normal,radius,tauMinTA,tauMaxTA,tauMinWC,tauMaxWC,tauMinKE,tauMaxKE,scaleFromManta,itype,jtype);  } } else { const int k=0; 
-#pragma omp parallel 
- {  
-#pragma omp for  
-  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,potTA,potWC,potKE,neighborRatio,flags,v,normal,radius,tauMinTA,tauMaxTA,tauMinWC,tauMaxWC,tauMinKE,tauMaxKE,scaleFromManta,itype,jtype);  } }  } Grid<Real> & potTA; Grid<Real> & potWC; Grid<Real> & potKE; Grid<Real> & neighborRatio; const FlagGrid& flags; const MACGrid& v; const Grid<Vec3> & normal; const int radius; const Real tauMinTA; const Real tauMaxTA; const Real tauMinWC; const Real tauMaxWC; const Real tauMinKE; const Real tauMaxKE; const Real scaleFromManta; const int itype; const int jtype;   };
-#line 592 "plugin/secondaryparticles.cpp"
-
-
-
-
-
-
-void flipComputeSecondaryParticlePotentials( Grid<Real> &potTA, Grid<Real> &potWC, Grid<Real> &potKE, Grid<Real> &neighborRatio, const FlagGrid &flags, const MACGrid &v, Grid<Vec3>& normal, const Grid<Real>& phi, const int radius, const Real tauMinTA, const Real tauMaxTA, const Real tauMinWC, const Real tauMaxWC, const Real tauMinKE, const Real tauMaxKE, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeObstacle) {
-	potTA.clear();
-	potWC.clear();
-	potKE.clear();
-	neighborRatio.clear();
-	GradientOp(normal, phi);
-	knFlipComputeSecondaryParticlePotentials(potTA, potWC, potKE, neighborRatio, flags, v, normal, radius, tauMinTA, tauMaxTA, tauMinWC, tauMaxWC, tauMinKE, tauMaxKE, scaleFromManta, itype, jtype);
-} static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipComputeSecondaryParticlePotentials" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real> & potTA = *_args.getPtr<Grid<Real>  >("potTA",0,&_lock); Grid<Real> & potWC = *_args.getPtr<Grid<Real>  >("potWC",1,&_lock); Grid<Real> & potKE = *_args.getPtr<Grid<Real>  >("potKE",2,&_lock); Grid<Real> & neighborRatio = *_args.getPtr<Grid<Real>  >("neighborRatio",3,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",4,&_lock); const MACGrid& v = *_args.getPtr<MACGrid >("v",5,&_lock); Grid<Vec3>& normal = *_args.getPtr<Grid<Vec3> >("normal",6,&_lock); const Grid<Real>& phi = *_args.getPtr<Grid<Real> >("phi",7,&_lock); const int radius = _args.get<int >("radius",8,&_lock); const Real tauMinTA = _args.get<Real >("tauMinTA",9,&_lock); const Real tauMaxTA = _args.get<Real >("tauMaxTA",10,&_lock); const Real tauMinWC = _args.get<Real >("tauMinWC",11,&_lock); const Real tauMaxWC = _args.get<Real >("tauMaxWC",12,&_lock); const Real tauMinKE = _args.get<Real >("tauMinKE",13,&_lock); const Real tauMaxKE = _args.get<Real >("tauMaxKE",14,&_lock); const Real scaleFromManta = _args.get<Real >("scaleFromManta",15,&_lock); const int itype = _args.getOpt<int >("itype",16,FlagGrid::TypeFluid,&_lock); const int jtype = _args.getOpt<int >("jtype",17,FlagGrid::TypeObstacle,&_lock);   _retval = getPyNone(); flipComputeSecondaryParticlePotentials(potTA,potWC,potKE,neighborRatio,flags,v,normal,phi,radius,tauMinTA,tauMaxTA,tauMinWC,tauMaxWC,tauMinKE,tauMaxKE,scaleFromManta,itype,jtype);  _args.check(); } pbFinalizePlugin(parent,"flipComputeSecondaryParticlePotentials", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipComputeSecondaryParticlePotentials",e.what()); return 0; } } static const Pb::Register _RP_flipComputeSecondaryParticlePotentials ("","flipComputeSecondaryParticlePotentials",_W_10);  extern "C" { void PbRegister_flipComputeSecondaryParticlePotentials() { KEEP_UNUSED(_RP_flipComputeSecondaryParticlePotentials); } } 
-
-//----------------------------------------------------------------------------------------------------------------------------------------------------
-// END Secondary Particles for FLIP (with speed optimization)
+// Legacy Methods (still useful for debugging)
 //----------------------------------------------------------------------------------------------------------------------------------------------------
 #pragma endregion
 

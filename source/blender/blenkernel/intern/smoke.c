@@ -566,6 +566,20 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->viscosity_exponent = 6.0f;
 			smd->domain->domain_size = 0.5f;
 
+			/* secondary particles */
+			smd->domain->sndparticle_tau_min_wc = 2.0;
+			smd->domain->sndparticle_tau_max_wc = 8.0;
+			smd->domain->sndparticle_tau_min_ta = 5.0;
+			smd->domain->sndparticle_tau_max_ta = 20.0;
+			smd->domain->sndparticle_tau_min_k = 5.0;
+			smd->domain->sndparticle_tau_max_k = 50.0;
+			smd->domain->sndparticle_k_wc = 200;
+			smd->domain->sndparticle_k_ta = 40;
+			smd->domain->sndparticle_k_b = 1.0;
+			smd->domain->sndparticle_k_d = 0.6;
+			smd->domain->sndparticle_l_min = 25.0;
+			smd->domain->sndparticle_l_max = 50.0;
+
 			/* guiding */
 			smd->domain->guiding_alpha = 2.0f;
 			smd->domain->guiding_beta = 5;
