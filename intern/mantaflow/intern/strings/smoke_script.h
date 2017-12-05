@@ -198,6 +198,9 @@ def smoke_pre_step_low_$ID$():\n\
         z_invel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
         copyRealToVec3(sourceX=x_invel_s$ID$, sourceY=y_invel_s$ID$, sourceZ=z_invel_s$ID$, target=invel_s$ID$)\n\
     \n\
+    x_vel_s$ID$.multConst(Real(gs_s$ID$.x))\n\
+    y_vel_s$ID$.multConst(Real(gs_s$ID$.y))\n\
+    z_vel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
     copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
     copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n\
     \n\
@@ -216,6 +219,7 @@ def smoke_pre_step_high_$ID$():\n\
 
 const std::string smoke_post_step_low = "\n\
 def smoke_post_step_low_$ID$():\n\
+    mantaMsg('Smoke post step low')\n\
     forces_s$ID$.clear()\n\
     if using_guiding_s$ID$:\n\
         weightGuide_s$ID$.clear()\n\
@@ -225,10 +229,14 @@ def smoke_post_step_low_$ID$():\n\
     phiObs_s$ID$.setConst(9999)\n\
     phiOutIn_s$ID$.setConst(9999)\n\
     \n\
-    copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n";
+    copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n\
+    x_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.x) )\n\
+    y_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.y) )\n\
+    z_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.z) )\n";
 
 const std::string smoke_post_step_high = "\n\
 def smoke_post_step_high_$ID$():\n\
+    mantaMsg('Smoke post step high')\n\
     copyVec3ToReal(source=uv_s$ID$[0], targetX=texture_u_s$ID$, targetY=texture_v_s$ID$, targetZ=texture_w_s$ID$)\n\
     copyVec3ToReal(source=uv_s$ID$[1], targetX=texture_u2_s$ID$, targetY=texture_v2_s$ID$, targetZ=texture_w2_s$ID$)\n";
 

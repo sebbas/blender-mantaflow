@@ -461,6 +461,7 @@ class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
 
 class PHYSICS_PT_smoke_guiding(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Guiding"
+    bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
 
     @classmethod

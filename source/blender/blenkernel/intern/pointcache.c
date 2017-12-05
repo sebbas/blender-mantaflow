@@ -861,7 +861,7 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 	/* reallocate fluid if needed*/
 	if (reallocate) {
 		sds->active_fields = active_fields | cache_fields;
-		smoke_reallocate_fluid(sds, ch_dx, ch_res, 1);
+		smoke_reallocate_fluid(sds, ch_res, 1);
 		sds->dx = ch_dx;
 		VECCOPY(sds->res, ch_res);
 		sds->total_cells = ch_res[0]*ch_res[1]*ch_res[2];
@@ -1187,7 +1187,7 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 	/* reallocate fluid if needed*/
 	if (reallocate) {
 		sds->active_fields = active_fields | cache_fields;
-		smoke_reallocate_fluid(sds, cache_dx, cache_res, 1);
+		smoke_reallocate_fluid(sds, cache_res, 1);
 		sds->dx = cache_dx;
 		copy_v3_v3_int(sds->res, cache_res);
 		sds->total_cells = cache_res[0] * cache_res[1] * cache_res[2];

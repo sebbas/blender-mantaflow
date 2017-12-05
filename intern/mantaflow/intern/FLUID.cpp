@@ -54,7 +54,7 @@ int FLUID::with_debug(0);
 FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 {
 	if (with_debug)
-		std::cout << "FLUID: " << mCurrentID << std::endl;
+		std::cout << "FLUID: " << mCurrentID << " with res(" << res[0] << ", " << res[1] << ", " << res[2] << ")" << std::endl;
 
 	smd->domain->fluid = this;
 	
@@ -482,7 +482,7 @@ void FLUID::step(int framenr)
 FLUID::~FLUID()
 {
 	if (with_debug)
-		std::cout << "FLUID: " << mCurrentID << std::endl;
+		std::cout << "~FLUID: " << mCurrentID << " with res(" << mResX << ", " << mResY << ", " << mResZ << ")" << std::endl;
 
 	// Destruction string for Python
 	std::string tmpString = "";
@@ -719,7 +719,7 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 			if ((smd->domain->border_collisions & MOD_SMOKE_BORDER_TOP) == 0) ss << "Z";
 		}
 	} else if (varName == "RES")
-		ss << smd->domain->maxres;
+		ss << mMaxRes;
 	else if (varName == "RESX")
 		ss << mResX;
 	else if (varName == "RESY")
