@@ -66,6 +66,7 @@ mantaMsg('Smoke variables high')\n\
 wltStrength_s$ID$ = $WLT_STR$\n\
 octaves_s$ID$     = 0\n\
 uvs_s$ID$         = 2\n\
+uv_s$ID$          = [] # list for UV grids\n\
 \n\
 if upres_xl$ID$ == 1:\n\
     octaves_s$ID$ = int(math.log(upres_xl$ID$+1)/ math.log(2.0) + 0.5)\n\
@@ -214,8 +215,17 @@ def smoke_pre_step_low_$ID$():\n\
 
 const std::string smoke_pre_step_high = "\n\
 def smoke_pre_step_high_$ID$():\n\
-    copyRealToVec3(sourceX=texture_u_s$ID$, sourceY=texture_v_s$ID$, sourceZ=texture_w_s$ID$, target=uv_s$ID$[0])\n\
-    copyRealToVec3(sourceX=texture_u2_s$ID$, sourceY=texture_v2_s$ID$, sourceZ=texture_w2_s$ID$, target=uv_s$ID$[1])\n";
+    mantaMsg('Smoke pre step high')\n\
+    global uv_s$ID$\n\
+    if len(uv_s$ID$) != 0: # list of uvs already initialized?\n\
+        copyRealToVec3(sourceX=texture_u_s$ID$, sourceY=texture_v_s$ID$, sourceZ=texture_w_s$ID$, target=uv_s$ID$[0])\n\
+        copyRealToVec3(sourceX=texture_u2_s$ID$, sourceY=texture_v2_s$ID$, sourceZ=texture_w2_s$ID$, target=uv_s$ID$[1])\n\
+    else:\n\
+        mantaMsg('Initializing UV Grids')\n\
+        for i in range(uvs_s$ID$):\n\
+            uvGrid_s$ID$ = s$ID$.create(VecGrid)\n\
+            uv_s$ID$.append(uvGrid_s$ID$)\n\
+            resetUvGrid(uv_s$ID$[i])\n";
 
 const std::string smoke_post_step_low = "\n\
 def smoke_post_step_low_$ID$():\n\
@@ -626,19 +636,6 @@ if 'octaves_s$ID$'      in globals() : del octaves_s$ID$\n";
 //////////////////////////////////////////////////////////////////////
 // OTHER SETUPS
 //////////////////////////////////////////////////////////////////////
-
-const std::string smoke_uv_setup = "\n\
-# create the array of uv grids\n\
-uv_s$ID$ = []\n\
-mantaMsg('Initializing UV Grids')\n\
-for i in range(uvs_s$ID$):\n\
-    uvGrid_s$ID$ = s$ID$.create(VecGrid)\n\
-    uv_s$ID$.append(uvGrid_s$ID$)\n\
-    resetUvGrid(uv_s$ID$[i])\n\
-\n\
-# Need to initialize helper grids for uvw as well\n\
-copyVec3ToReal(source=uv_s$ID$[0], targetX=texture_u_s$ID$, targetY=texture_v_s$ID$, targetZ=texture_w_s$ID$)\n\
-copyVec3ToReal(source=uv_s$ID$[1], targetX=texture_u2_s$ID$, targetY=texture_v2_s$ID$, targetZ=texture_w2_s$ID$)\n";
 
 const std::string smoke_wavelet_turbulence_noise = "\n\
 # wavelet turbulence noise field\n\

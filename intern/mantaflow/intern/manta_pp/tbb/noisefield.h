@@ -29,6 +29,7 @@
 #include "vectorbase.h"
 #include "manta.h"
 #include "grid.h"
+#include <atomic>
 
 namespace Manta {
 
@@ -39,7 +40,8 @@ namespace Manta {
 class WaveletNoiseField : public PbClass {	public:     
 		WaveletNoiseField( FluidSolver* parent, int fixedSeed=-1 , int loadFromFile=false ); static int _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(0, "WaveletNoiseField::WaveletNoiseField" , !noTiming ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock); int fixedSeed = _args.getOpt<int >("fixedSeed",1,-1 ,&_lock); int loadFromFile = _args.getOpt<int >("loadFromFile",2,false ,&_lock);  obj = new WaveletNoiseField(parent,fixedSeed,loadFromFile); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"WaveletNoiseField::WaveletNoiseField" , !noTiming ); return 0; } catch(std::exception& e) { pbSetError("WaveletNoiseField::WaveletNoiseField",e.what()); return -1; } }
 		~WaveletNoiseField() {
-			if(mNoiseTile) { delete mNoiseTile; mNoiseTile=NULL; }
+			mNoiseReferenceCount--;
+			if(!mNoiseReferenceCount.load() && mNoiseTile) { debMsg("Deleting noise tile", 1); delete mNoiseTile;  mNoiseTile=NULL; }
 		};
 
 		//! evaluate noise
@@ -70,7 +72,7 @@ class WaveletNoiseField : public PbClass {	public:
 		Real mClampPos;static PyObject* _GET_mClampPos(PyObject* self, void* cl) { WaveletNoiseField* pbo = dynamic_cast<WaveletNoiseField*>(Pb::objFromPy(self)); return toPy(pbo->mClampPos); } static int _SET_mClampPos(PyObject* self, PyObject* val, void* cl) { WaveletNoiseField* pbo = dynamic_cast<WaveletNoiseField*>(Pb::objFromPy(self)); pbo->mClampPos = fromPy<Real  >(val); return 0; }
 		// animated over time
 		Real mTimeAnim;static PyObject* _GET_mTimeAnim(PyObject* self, void* cl) { WaveletNoiseField* pbo = dynamic_cast<WaveletNoiseField*>(Pb::objFromPy(self)); return toPy(pbo->mTimeAnim); } static int _SET_mTimeAnim(PyObject* self, PyObject* val, void* cl) { WaveletNoiseField* pbo = dynamic_cast<WaveletNoiseField*>(Pb::objFromPy(self)); pbo->mTimeAnim = fromPy<Real  >(val); return 0; }
-		
+	
 	protected:
 		// noise evaluation functions
 		static inline Real WNoiseDx (const Vec3& p, Real *data);
@@ -93,14 +95,16 @@ class WaveletNoiseField : public PbClass {	public:
 
 		// pre-compute tile data for wavelet noise
 		void generateTile( int loadFromFile );
-				
+	
 		// animation over time
 		// grid size normalization (inverse size)
 		Real mGsInvX, mGsInvY, mGsInvZ;
 		// random offset into tile to simulate different random seeds
 		Vec3 mSeedOffset;
-		
-		static Real* mNoiseTile; 		// global random seed storage
+
+		static Real* mNoiseTile;
+		static std::atomic<int> mNoiseReferenceCount;
+ 		// global random seed storage
 		static int randomSeed; public: PbArgs _args; }
 #define _C_WaveletNoiseField
 ;

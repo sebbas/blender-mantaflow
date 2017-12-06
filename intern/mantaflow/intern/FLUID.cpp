@@ -286,7 +286,6 @@ void FLUID::initSmokeHigh(SmokeModifierData *smd)
 {
 	std::string tmpString = smoke_alloc_high
 		+ smoke_variables_high
-		+ smoke_uv_setup
 		+ smoke_bounds_high
 		+ smoke_wavelet_turbulence_noise
 		+ smoke_export_high
@@ -943,7 +942,6 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 			+ fluid_adaptive_time_stepping_high
 			+ smoke_variables_high
 			+ smoke_alloc_high
-			+ smoke_uv_setup
 			+ smoke_bounds_high
 			+ smoke_wavelet_turbulence_noise;
 
