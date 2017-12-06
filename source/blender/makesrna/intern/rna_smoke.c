@@ -1490,13 +1490,13 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "sndparticle_k_b", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 100.0);
 	RNA_def_property_ui_range(prop, 0.0, 100.0, 0.1, 2);
-	RNA_def_property_ui_text(prop, "Buoyancy", "Amount of buoyancy force that rises bubbles (high values results in bubble movement mainly upwards)");
+	RNA_def_property_ui_text(prop, "Buoyancy", "Amount of buoyancy force that rises bubbles (high values result in bubble movement mainly upwards)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "sndparticle_k_d", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 100.0);
 	RNA_def_property_ui_range(prop, 0.0, 100.0, 0.1, 2);
-	RNA_def_property_ui_text(prop, "Drag", "Amount of drag force that moves bubbles along with the fluid (high values results in bubble movement mainly along with the fluid)");
+	RNA_def_property_ui_text(prop, "Drag", "Amount of drag force that moves bubbles along with the fluid (high values result in bubble movement mainly along with the fluid)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "sndparticle_l_min", PROP_FLOAT, PROP_NONE);

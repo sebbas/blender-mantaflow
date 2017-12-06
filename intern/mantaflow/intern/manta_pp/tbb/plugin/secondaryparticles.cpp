@@ -443,30 +443,30 @@ void flipUpdateSecondaryParticles( const std::string mode, BasicParticleSystem &
 // removes secondary particles in &pts_sec that are inside boundaries (cells that are marked as obstacle in &flags)
 
 
- struct knFlipDeleteSecondaryParticlesInObstacle : public KernelBase { knFlipDeleteSecondaryParticlesInObstacle( BasicParticleSystem &pts_sec, const FlagGrid &flags) :  KernelBase(pts_sec.size()) ,pts_sec(pts_sec),flags(flags)   { runMessage(); run(); }   inline void op(IndexInt idx,  BasicParticleSystem &pts_sec, const FlagGrid &flags ) const {
+ struct knFlipDeleteParticlesInObstacle : public KernelBase { knFlipDeleteParticlesInObstacle( BasicParticleSystem &pts, const FlagGrid &flags) :  KernelBase(pts.size()) ,pts(pts),flags(flags)   { runMessage(); run(); }   inline void op(IndexInt idx,  BasicParticleSystem &pts, const FlagGrid &flags ) const {
 
-	if (!pts_sec.isActive(idx)) return;
+	if (!pts.isActive(idx)) return;
 
-	const Vec3 &xi = pts_sec[idx].pos;
+	const Vec3 &xi = pts[idx].pos;
 	const Vec3i xidx = toVec3i(xi);
 	//remove particles that completely left the bounds
 	if (!flags.isInBounds(xidx)) {
-		pts_sec.kill(idx);
+		pts.kill(idx);
 		return;
 	}
 	int gridIndex = flags.index(xidx);
 	//remove particles that penetrate obstacles
 	if (flags[gridIndex] == FlagGrid::TypeObstacle) {
-		pts_sec.kill(idx);
+		pts.kill(idx);
 	}
-}    inline BasicParticleSystem& getArg0() { return pts_sec; } typedef BasicParticleSystem type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1; void runMessage() { debMsg("Executing kernel knFlipDeleteSecondaryParticlesInObstacle ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {   for (IndexInt idx=__r.begin(); idx!=(IndexInt)__r.end(); idx++) op(idx, pts_sec,flags);   } void run() {   tbb::parallel_for (tbb::blocked_range<IndexInt>(0, size), *this);   }  BasicParticleSystem& pts_sec; const FlagGrid& flags;   };
+}    inline BasicParticleSystem& getArg0() { return pts; } typedef BasicParticleSystem type0;inline const FlagGrid& getArg1() { return flags; } typedef FlagGrid type1; void runMessage() { debMsg("Executing kernel knFlipDeleteParticlesInObstacle ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {   for (IndexInt idx=__r.begin(); idx!=(IndexInt)__r.end(); idx++) op(idx, pts,flags);   } void run() {   tbb::parallel_for (tbb::blocked_range<IndexInt>(0, size), *this);   }  BasicParticleSystem& pts; const FlagGrid& flags;   };
 
 
-void flipDeleteSecondaryParticlesInObstacle( BasicParticleSystem &pts_sec, const FlagGrid &flags) {
+void flipDeleteParticlesInObstacle( BasicParticleSystem &pts, const FlagGrid &flags) {
 
-	knFlipDeleteSecondaryParticlesInObstacle(pts_sec, flags);
-	pts_sec.doCompress();
-} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipDeleteSecondaryParticlesInObstacle" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& pts_sec = *_args.getPtr<BasicParticleSystem >("pts_sec",0,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock);   _retval = getPyNone(); flipDeleteSecondaryParticlesInObstacle(pts_sec,flags);  _args.check(); } pbFinalizePlugin(parent,"flipDeleteSecondaryParticlesInObstacle", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipDeleteSecondaryParticlesInObstacle",e.what()); return 0; } } static const Pb::Register _RP_flipDeleteSecondaryParticlesInObstacle ("","flipDeleteSecondaryParticlesInObstacle",_W_3);  extern "C" { void PbRegister_flipDeleteSecondaryParticlesInObstacle() { KEEP_UNUSED(_RP_flipDeleteSecondaryParticlesInObstacle); } } 
+	knFlipDeleteParticlesInObstacle(pts, flags);
+	pts.doCompress();
+} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipDeleteParticlesInObstacle" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& pts = *_args.getPtr<BasicParticleSystem >("pts",0,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock);   _retval = getPyNone(); flipDeleteParticlesInObstacle(pts,flags);  _args.check(); } pbFinalizePlugin(parent,"flipDeleteParticlesInObstacle", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipDeleteParticlesInObstacle",e.what()); return 0; } } static const Pb::Register _RP_flipDeleteParticlesInObstacle ("","flipDeleteParticlesInObstacle",_W_3);  extern "C" { void PbRegister_flipDeleteParticlesInObstacle() { KEEP_UNUSED(_RP_flipDeleteParticlesInObstacle); } } 
 
 //helper method to debug statistical data from grid
 

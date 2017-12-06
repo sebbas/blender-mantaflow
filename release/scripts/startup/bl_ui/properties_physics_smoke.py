@@ -424,7 +424,7 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         sub3.prop(domain, "use_flip_particles", text="FLIP")
         
 class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
-    bl_label = "Fluid Particles Secondary"
+    bl_label = "Fluid Secondary Particles"
     COMPAT_ENGINES = {'BLENDER_RENDER'}
 
     @classmethod
@@ -441,13 +441,17 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         split = layout.split()
 
         first = split.column()
+        first.enabled = not domain.point_cache.is_baked
         first.label("Exported Particles:")
-        first.prop(domain, "use_drop_particles", text="Spray")
-        first.prop(domain, "use_float_particles", text="Foam")
-        first.prop(domain, "use_bubble_particles", text="Bubbles")
+        temp = first.split()
+        temp.prop(domain, "use_drop_particles", text="Spray")
+        temp2 = temp.column()
+        temp2.prop(domain, "use_floater_particles", text="Foam")
+        temp3 = temp.column()
+        temp3.prop(domain, "use_bubble_particles", text="Bubbles")
         
         sub = first.column()
-        sub.active = domain.use_drop_particles or domain.use_float_particles or domain.use_bubble_particles or domain.use_tracer_particles
+        sub.active = domain.use_drop_particles or domain.use_floater_particles or domain.use_bubble_particles or domain.use_tracer_particles
         sub.label(text="Potential Clamping:")
         sub.prop(domain, "sndparticle_tau_min_wc", text="tauMin_wc")
         sub.prop(domain, "sndparticle_tau_max_wc", text="tauMax_wc")
@@ -457,7 +461,8 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         sub.prop(domain, "sndparticle_tau_max_k", text="tauMax_k")
 
         second = split.column()
-        second.active = domain.use_drop_particles or domain.use_float_particles or domain.use_bubble_particles or domain.use_tracer_particles
+        second.enabled = not domain.point_cache.is_baked
+        second.active = domain.use_drop_particles or domain.use_floater_particles or domain.use_bubble_particles or domain.use_tracer_particles
         second.label(text="Sampling:")
         second.prop(domain, "sndparticle_k_wc", text="Wave Crest Sampling")
         second.prop(domain, "sndparticle_k_ta", text="Trapped Air Sampling")
