@@ -29,6 +29,7 @@
 #include "vectorbase.h"
 #include "manta.h"
 #include "grid.h"
+#include <atomic>
 
 namespace Manta {
 
@@ -39,7 +40,7 @@ namespace Manta {
 class WaveletNoiseField : public PbClass {	public:     
 		WaveletNoiseField( FluidSolver* parent, int fixedSeed=-1 , int loadFromFile=false ); static int _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(0, "WaveletNoiseField::WaveletNoiseField" , !noTiming ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock); int fixedSeed = _args.getOpt<int >("fixedSeed",1,-1 ,&_lock); int loadFromFile = _args.getOpt<int >("loadFromFile",2,false ,&_lock);  obj = new WaveletNoiseField(parent,fixedSeed,loadFromFile); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"WaveletNoiseField::WaveletNoiseField" , !noTiming ); return 0; } catch(std::exception& e) { pbSetError("WaveletNoiseField::WaveletNoiseField",e.what()); return -1; } }
 		~WaveletNoiseField() {
-			if(mNoiseTile) { delete mNoiseTile; mNoiseTile=NULL; }
+			if(mNoiseTile && !mNoiseReferenceCount) { delete mNoiseTile; mNoiseTile=NULL; }
 		};
 
 		//! evaluate noise
@@ -51,13 +52,13 @@ class WaveletNoiseField : public PbClass {	public:
 
 		//! direct data access
 		Real* data() { return mNoiseTile; }
-		
+
 		//! compute wavelet decomposition of an input grid (stores residual coefficients)
 		static void computeCoefficients(Grid<Real>& input, Grid<Real>& tempIn1, Grid<Real>& tempIn2);
 
 		// helper
 		std::string toString();
-		
+
 		// texcoord position and scale
 		Vec3 mPosOffset;static PyObject* _GET_mPosOffset(PyObject* self, void* cl) { WaveletNoiseField* pbo = dynamic_cast<WaveletNoiseField*>(Pb::objFromPy(self)); return toPy(pbo->mPosOffset); } static int _SET_mPosOffset(PyObject* self, PyObject* val, void* cl) { WaveletNoiseField* pbo = dynamic_cast<WaveletNoiseField*>(Pb::objFromPy(self)); pbo->mPosOffset = fromPy<Vec3  >(val); return 0; }
 		Vec3 mPosScale;static PyObject* _GET_mPosScale(PyObject* self, void* cl) { WaveletNoiseField* pbo = dynamic_cast<WaveletNoiseField*>(Pb::objFromPy(self)); return toPy(pbo->mPosScale); } static int _SET_mPosScale(PyObject* self, PyObject* val, void* cl) { WaveletNoiseField* pbo = dynamic_cast<WaveletNoiseField*>(Pb::objFromPy(self)); pbo->mPosScale = fromPy<Vec3  >(val); return 0; }
@@ -70,7 +71,7 @@ class WaveletNoiseField : public PbClass {	public:
 		Real mClampPos;static PyObject* _GET_mClampPos(PyObject* self, void* cl) { WaveletNoiseField* pbo = dynamic_cast<WaveletNoiseField*>(Pb::objFromPy(self)); return toPy(pbo->mClampPos); } static int _SET_mClampPos(PyObject* self, PyObject* val, void* cl) { WaveletNoiseField* pbo = dynamic_cast<WaveletNoiseField*>(Pb::objFromPy(self)); pbo->mClampPos = fromPy<Real  >(val); return 0; }
 		// animated over time
 		Real mTimeAnim;static PyObject* _GET_mTimeAnim(PyObject* self, void* cl) { WaveletNoiseField* pbo = dynamic_cast<WaveletNoiseField*>(Pb::objFromPy(self)); return toPy(pbo->mTimeAnim); } static int _SET_mTimeAnim(PyObject* self, PyObject* val, void* cl) { WaveletNoiseField* pbo = dynamic_cast<WaveletNoiseField*>(Pb::objFromPy(self)); pbo->mTimeAnim = fromPy<Real  >(val); return 0; }
-		
+
 	protected:
 		// noise evaluation functions
 		static inline Real WNoiseDx (const Vec3& p, Real *data);
@@ -93,15 +94,18 @@ class WaveletNoiseField : public PbClass {	public:
 
 		// pre-compute tile data for wavelet noise
 		void generateTile( int loadFromFile );
-				
+
 		// animation over time
 		// grid size normalization (inverse size)
 		Real mGsInvX, mGsInvY, mGsInvZ;
 		// random offset into tile to simulate different random seeds
 		Vec3 mSeedOffset;
-		
-		static Real* mNoiseTile; 		// global random seed storage
-		static int randomSeed; public: PbArgs _args; }
+
+		static Real* mNoiseTile;
+		// global random seed storage
+		static int randomSeed;
+ 		// global reference count for noise tile
+		static std::atomic<int> mNoiseReferenceCount; public: PbArgs _args; }
 #define _C_WaveletNoiseField
 ;
 

@@ -233,7 +233,7 @@ void flipSampleSecondaryParticles( const std::string mode, const FlagGrid &flags
 // evaluates cubic spline with radius h and distance l in dim dimensions
 Real cubicSpline(const Real h, const Real l, const int dim) {
 	const Real h2 = square(h), h3 = h2*h, h4 = h3*h, h5 = h4*h;
-	const Real c[] = { 2e0 / (3e0*h), 10e0 / (7e0*M_PI*h2), 1e0 / (M_PI*h3) };
+	const Real c[] = { Real(2e0 / (3e0*h)), Real(10e0 / (7e0*M_PI*h2)), Real(1e0 / (M_PI*h3)) };
 	const Real q = l / h;
 	if (q<1e0) return c[dim - 1] * (1e0 - 1.5*square(q) + 0.75*cubed(q));
 	else if (q<2e0) return c[dim - 1] * (0.25*cubed(2e0 - q));
@@ -526,7 +526,7 @@ void debugGridInfo( const FlagGrid &flags, Grid<Real> &grid, std::string name, i
 		"\n\tsum \t\t\t" << sum <<
 		"\n\tavg \t\t\t" << avg <<
 		"\n\tavgLargerZero \t\t" << avgLargerZero <<
-		"\n\tmax \t\t\t" << max);
+		"\n\tmax \t\t\t" << max, 1);
 } static PyObject* _W_4 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "debugGridInfo" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real> & grid = *_args.getPtr<Grid<Real>  >("grid",1,&_lock); std::string name = _args.get<std::string >("name",2,&_lock); int step = _args.get<int >("step",3,&_lock); const int itype = _args.getOpt<int >("itype",4,FlagGrid::TypeFluid,&_lock);   _retval = getPyNone(); debugGridInfo(flags,grid,name,step,itype);  _args.check(); } pbFinalizePlugin(parent,"debugGridInfo", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("debugGridInfo",e.what()); return 0; } } static const Pb::Register _RP_debugGridInfo ("","debugGridInfo",_W_4);  extern "C" { void PbRegister_debugGridInfo() { KEEP_UNUSED(_RP_debugGridInfo); } } 
 
 
