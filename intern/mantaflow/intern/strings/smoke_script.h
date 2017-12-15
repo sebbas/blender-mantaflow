@@ -87,27 +87,19 @@ using_fire_s$ID$ = True\n";
 //////////////////////////////////////////////////////////////////////
 
 const std::string smoke_alloc_low = "\n\
-# prepare grids low\n\
 mantaMsg('Smoke alloc low')\n\
-flags_s$ID$       = s$ID$.create(FlagGrid)\n\
-vel_s$ID$         = s$ID$.create(MACGrid)\n\
-x_vel_s$ID$       = s$ID$.create(RealGrid)\n\
-y_vel_s$ID$       = s$ID$.create(RealGrid)\n\
-z_vel_s$ID$       = s$ID$.create(RealGrid)\n\
-density_s$ID$     = s$ID$.create(RealGrid)\n\
-pressure_s$ID$    = s$ID$.create(RealGrid)\n\
-phiObs_s$ID$      = s$ID$.create(LevelsetGrid)\n\
-phiOutIn_s$ID$    = s$ID$.create(LevelsetGrid)\n\
-forces_s$ID$      = s$ID$.create(Vec3Grid)\n\
-x_force_s$ID$     = s$ID$.create(RealGrid)\n\
-y_force_s$ID$     = s$ID$.create(RealGrid)\n\
-z_force_s$ID$     = s$ID$.create(RealGrid)\n\
-inflow_s$ID$      = s$ID$.create(RealGrid)\n";
+density_s$ID$ = s$ID$.create(RealGrid)\n\
+inflow_s$ID$  = s$ID$.create(RealGrid)\n\
+heat_s$ID$    = 0 # allocated dynamically\n\
+flame_s$ID$   = 0\n\
+fuel_s$ID$    = 0\n\
+react_s$ID$   = 0\n\
+color_r_s$ID$ = 0\n\
+color_g_s$ID$ = 0\n\
+color_b_s$ID$ = 0\n";
 
 const std::string smoke_alloc_high = "\n\
-# prepare grids high\n\
 mantaMsg('Smoke alloc high')\n\
-flags_xl$ID$     = xl$ID$.create(FlagGrid)\n\
 vel_xl$ID$       = xl$ID$.create(MACGrid)\n\
 density_xl$ID$   = xl$ID$.create(RealGrid)\n\
 phiOut_xl$ID$    = xl$ID$.create(LevelsetGrid)\n\
@@ -272,11 +264,7 @@ def manta_step_$ID$(framenr):\n\
         setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOutIn_s$ID$)\n\
         flags_s$ID$.fillGrid()\n\
         \n\
-        maxVel_s$ID$ = vel_s$ID$.getMax()\n\
-        if using_adaptTime_s$ID$:\n\
-            mantaMsg('Adapt timestep')\n\
-            s$ID$.adaptTimestep(maxVel_s$ID$)\n\
-        \n\
+        fluid_adapt_time_step_low()\n\
         mantaMsg('Low step / s$ID$.frame: ' + str(s$ID$.frame))\n\
         if using_fire_s$ID$:\n\
             process_burn_low_$ID$()\n\
@@ -285,7 +273,7 @@ def manta_step_$ID$(framenr):\n\
             update_flame_low_$ID$()\n\
         \n\
         if using_highres_s$ID$:\n\
-            xl$ID$.timestep = s$ID$.timestep\n\
+            fluid_adapt_time_step_high()\n\
             mantaMsg('High step / s$ID$.frame: ' + str(s$ID$.frame))\n\
             if using_fire_s$ID$:\n\
                 process_burn_high_$ID$()\n\
@@ -539,99 +527,6 @@ def save_smoke_data_high_$ID$(path):\n\
         flame_xl$ID$.save(path + '_flame_xl.uni')\n\
         fuel_xl$ID$.save(path + '_fuel_xl.uni')\n\
         react_xl$ID$.save(path + '_react_xl.uni')\n";
-
-//////////////////////////////////////////////////////////////////////
-// DESTRUCTION
-//////////////////////////////////////////////////////////////////////
-
-const std::string smoke_delete_colors_low = "\n\
-mantaMsg('Deleting colors low')\n\
-if 'color_r_s$ID$' in globals() : del color_r_s$ID$\n\
-if 'color_g_s$ID$' in globals() : del color_g_s$ID$\n\
-if 'color_b_s$ID$' in globals() : del color_b_s$ID$\n";
-
-const std::string smoke_delete_colors_high = "\n\
-mantaMsg('Deleting colors high')\n\
-if 'color_r_xl$ID$' in globals() : del color_r_xl$ID$\n\
-if 'color_g_xl$ID$' in globals() : del color_g_xl$ID$\n\
-if 'color_b_xl$ID$' in globals() : del color_b_xl$ID$\n";
-
-const std::string smoke_delete_fire_low = "\n\
-mantaMsg('Deleting fire low')\n\
-if 'flame_s$ID$' in globals() : del flame_s$ID$\n\
-if 'fuel_s$ID$'  in globals() : del fuel_s$ID$\n\
-if 'react_s$ID$' in globals() : del react_s$ID$\n";
-
-const std::string smoke_delete_fire_high = "\n\
-mantaMsg('Deleting fire high')\n\
-if 'flame_xl$ID$' in globals() : del flame_xl$ID$\n\
-if 'fuel_xl$ID$'  in globals() : del fuel_xl$ID$\n\
-if 'react_xl$ID$' in globals() : del react_xl$ID$\n";
-
-const std::string smoke_delete_heat_low = "\n\
-mantaMsg('Deleting heat low')\n\
-if 'heat_s$ID$' in globals() : del heat_s$ID$\n";
-
-const std::string smoke_delete_grids_low = "\n\
-mantaMsg('Deleting base grids low')\n\
-if 'flags_s$ID$'       in globals() : del flags_s$ID$\n\
-if 'vel_s$ID$'         in globals() : del vel_s$ID$\n\
-if 'x_vel_s$ID$'       in globals() : del x_vel_s$ID$\n\
-if 'y_vel_s$ID$'       in globals() : del y_vel_s$ID$\n\
-if 'z_vel_s$ID$'       in globals() : del z_vel_s$ID$\n\
-if 'density_s$ID$'     in globals() : del density_s$ID$\n\
-if 'pressure_s$ID$'    in globals() : del pressure_s$ID$\n\
-if 'phiOutIn_s$ID$'    in globals() : del phiOutIn_s$ID$\n\
-if 'phiObs_s$ID$'      in globals() : del phiObs_s$ID$\n\
-if 'forces_s$ID$'      in globals() : del forces_s$ID$\n\
-if 'x_force_s$ID$'     in globals() : del x_force_s$ID$\n\
-if 'y_force_s$ID$'     in globals() : del y_force_s$ID$\n\
-if 'z_force_s$ID$'     in globals() : del z_force_s$ID$\n\
-if 'inflow_s$ID$'      in globals() : del inflow_s$ID$\n";
-
-const std::string smoke_delete_grids_high = "\n\
-mantaMsg('Deleting base grids high')\n\
-if 'flags_xl$ID$'      in globals() : del flags_xl$ID$\n\
-if 'vel_xl$ID$'        in globals() : del vel_xl$ID$\n\
-if 'density_xl$ID$'    in globals() : del density_xl$ID$\n\
-if 'phiOut_xl$ID$'     in globals() : del phiOut_xl$ID$\n\
-if 'phiObs_xl$ID$'     in globals() : del phiObs_xl$ID$\n\
-if 'energy_s$ID$'      in globals() : del energy_s$ID$\n\
-if 'tempFlag_s$ID$'    in globals() : del tempFlag_s$ID$\n\
-if 'uvGrid_s$ID$'      in globals() : del uvGrid_s$ID$\n\
-if 'texture_u_s$ID$'   in globals() : del texture_u_s$ID$\n\
-if 'texture_v_s$ID$'   in globals() : del texture_v_s$ID$\n\
-if 'texture_w_s$ID$'   in globals() : del texture_w_s$ID$\n\
-if 'texture_u2_s$ID$'  in globals() : del texture_u2_s$ID$\n\
-if 'texture_v2_s$ID$'  in globals() : del texture_v2_s$ID$\n\
-if 'texture_w2_s$ID$'  in globals() : del texture_w2_s$ID$\n\
-if 'wltnoise_xl$ID$'   in globals() : del wltnoise_xl$ID$\n";
-
-const std::string smoke_delete_variables_low = "\n\
-mantaMsg('Deleting variables low')\n\
-if 'res_s$ID$'             in globals() : del res_s$ID$\n\
-if 'dim_s$ID$'             in globals() : del dim_s$ID$\n\
-if 'gs_s$ID$'              in globals() : del gs_s$ID$\n\
-if 'doOpen_s$ID$'          in globals() : del doOpen_s$ID$\n\
-if 'boundConditions_s$ID$' in globals() : del boundConditions_s$ID$\n\
-if 'dt_default_s$ID$'      in globals() : del dt_default_s$ID$\n\
-if 'dt_factor_s$ID$'       in globals() : del dt_factor_s$ID$\n\
-if 'fps_s$ID$'             in globals() : del fps_s$ID$\n\
-if 'dt0_s$ID$'             in globals() : del dt0_s$ID$\n\
-if 'vorticity_s$ID$'       in globals() : del vorticity_s$ID$\n\
-if 'boundaryWidth_s$ID$'   in globals() : del boundaryWidth_s$ID$\n\
-if 'using_colors_s$ID$'    in globals() : del using_colors_s$ID$\n\
-if 'using_heat_s$ID$'      in globals() : del using_heat_s$ID$\n\
-if 'using_fire_s$ID$'      in globals() : del using_fire_s$ID$\n\
-if 'last_frame_s$ID$'      in globals() : del last_frame_s$ID$\n\
-if 'maxVel_s$ID$'          in globals() : del maxVel_s$ID$\n";
-
-const std::string smoke_delete_variables_high = "\n\
-mantaMsg('Deleting variables high')\n\
-if 'wltStrength_s$ID$'  in globals() : del wltStrength_s$ID$\n\
-if 'uvs_s$ID$'          in globals() : del uvs_s$ID$\n\
-if 'uv_s$ID$'           in globals() : del uv_s$ID$\n\
-if 'octaves_s$ID$'      in globals() : del octaves_s$ID$\n";
 
 //////////////////////////////////////////////////////////////////////
 // OTHER SETUPS

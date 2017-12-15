@@ -62,6 +62,7 @@ xl$ID$ = Solver(name='solver_xl$ID$', gridSize=gs_xl$ID$)\n";
 //////////////////////////////////////////////////////////////////////
 
 const std::string fluid_variables_low = "\n\
+mantaMsg('Fluid variables low')\n\
 dim_s$ID$     = $SOLVER_DIM$\n\
 res_s$ID$     = $RES$\n\
 gravity_s$ID$ = vec3($GRAVITY_X$, $GRAVITY_Y$, $GRAVITY_Z$)\n\
@@ -95,6 +96,7 @@ if domainSize_s$ID$ == 0: domainSize_s$ID$ = 100 # TODO (sebbas): just for versi
 viscosity_s$ID$ = $FLUID_VISCOSITY$ / (domainSize_s$ID$*domainSize_s$ID$) # kinematic viscosity in m^2/s\n";
 
 const std::string fluid_variables_high= "\n\
+mantaMsg('Fluid variables high')\n\
 upres_xl$ID$  = $UPRES$\n\
 gs_xl$ID$     = vec3($HRESX$, $HRESY$, $HRESZ$)\n\
 \n\
@@ -118,7 +120,7 @@ using_sndparts_s$ID$ = True\n";
 //////////////////////////////////////////////////////////////////////
 
 const std::string fluid_adaptive_time_stepping_low = "\n\
-mantaMsg('Adaptive time stepping low')\n\
+mantaMsg('Fluid adaptive time stepping low')\n\
 dt_default_s$ID$  = 0.1 # dt is 0.1 at 25fps\n\
 dt_factor_s$ID$   = $DT_FACTOR$\n\
 fps_s$ID$         = $FPS$\n\
@@ -137,8 +139,8 @@ xl$ID$.timestepMax = s$ID$.timestepMax\n\
 xl$ID$.cfl         = s$ID$.cfl\n";
 
 const std::string fluid_adapt_time_step_low = "\n\
-def fluid_adapt_time_step():\n\
-    maxVel_s$ID$ = vel_s$ID$.getMax()\n\
+def fluid_adapt_time_step_low():\n\
+    maxVel_s$ID$ = vel_s$ID$.getMax() if vel_s$ID$ else 0\n\
     if using_adaptTime_s$ID$:\n\
         mantaMsg('Adapt timestep')\n\
         s$ID$.adaptTimestep(maxVel_s$ID$)\n";
@@ -150,6 +152,25 @@ def fluid_adapt_time_step_high():\n\
 //////////////////////////////////////////////////////////////////////
 // GRIDS
 //////////////////////////////////////////////////////////////////////
+
+const std::string fluid_alloc_low = "\n\
+mantaMsg('Fluid alloc low')\n\
+flags_s$ID$       = s$ID$.create(FlagGrid)\n\
+vel_s$ID$         = s$ID$.create(MACGrid)\n\
+x_vel_s$ID$       = s$ID$.create(RealGrid)\n\
+y_vel_s$ID$       = s$ID$.create(RealGrid)\n\
+z_vel_s$ID$       = s$ID$.create(RealGrid)\n\
+pressure_s$ID$    = s$ID$.create(RealGrid)\n\
+phiObs_s$ID$      = s$ID$.create(LevelsetGrid)\n\
+phiOutIn_s$ID$    = s$ID$.create(LevelsetGrid)\n\
+forces_s$ID$      = s$ID$.create(Vec3Grid)\n\
+x_force_s$ID$     = s$ID$.create(RealGrid)\n\
+y_force_s$ID$     = s$ID$.create(RealGrid)\n\
+z_force_s$ID$     = s$ID$.create(RealGrid)\n";
+
+const std::string fluid_alloc_high = "\n\
+mantaMsg('Fluid alloc high')\n\
+flags_xl$ID$     = xl$ID$.create(FlagGrid)\n";
 
 const std::string fluid_alloc_obstacle_low = "\n\
 mantaMsg('Allocating obstacle low')\n\
@@ -189,39 +210,35 @@ pLifeSnd_pp$ID$ = ppSnd_s$ID$.create(PdataReal)\n";
 // DESTRUCTION
 //////////////////////////////////////////////////////////////////////
 
-const std::string fluid_delete_variables_low = "\n\
-mantaMsg('Deleting fluid variables low')\n\
-if 'dim_s$ID$'              in globals() : del dim_s$ID$\n\
-if 'res_s$ID$'              in globals() : del res_s$ID$\n\
-if 'gs_s$ID$'               in globals() : del gs_s$ID$\n\
-if 'gravity_s$ID$'          in globals() : del gravity_s$ID$\n\
-if 'doOpen_s$ID$'           in globals() : del doOpen_s$ID$\n\
-if 'boundConditions_s$ID$'  in globals() : del boundConditions_s$ID$\n\
-if 'boundaryWidth_s$ID$'    in globals() : del boundaryWidth_s$ID$\n\
-if 'dt_default_s$ID$'       in globals() : del dt_default_s$ID$\n\
-if 'dt_factor_s$ID$'        in globals() : del dt_factor_s$ID$\n\
-if 'fps_s$ID$'              in globals() : del fps_s$ID$\n\
-if 'dt0_s$ID$'              in globals() : del dt0_s$ID$\n\
-if 'alpha_s$ID$'            in globals() : del alpha_s$ID$\n\
-if 'beta_s$ID$'             in globals() : del beta_s$ID$\n\
-if 'tau_s$ID$'              in globals() : del tau_s$ID$\n\
-if 'sigma_s$ID$'            in globals() : del sigma_s$ID$\n\
-if 'theta_s$ID$'            in globals() : del theta_s$ID$\n\
-if 'domainSize_s$ID$'       in globals() : del domainSize_s$ID$\n\
-if 'viscosity_s$ID$'        in globals() : del viscosity_s$ID$\n\
-if 'using_obstacle_s$ID$'   in globals() : del using_obstacle_s$ID$\n\
-if 'using_guiding_s$ID$'    in globals() : del using_guiding_s$ID$\n\
-if 'using_invel_s$ID$'      in globals() : del using_invel_s$ID$\n\
-if 'using_drops_s$ID$'      in globals() : del using_drops_s$ID$\n\
-if 'using_bubbles_s$ID$'    in globals() : del using_bubbles_s$ID$\n\
-if 'using_floats_s$ID$'     in globals() : del using_floats_s$ID$\n\
-if 'using_tracers_s$ID$'    in globals() : del using_tracers_s$ID$\n\
-if 'using_sndparts_s$ID$'   in globals() : del using_sndparts_s$ID$\n";
-
-const std::string fluid_delete_variables_high = "\n\
-mantaMsg('Deleting fluid variables high')\n\
-if 'upres_xl$ID$' in globals() : del upres_xl$ID$\n\
-if 'gs_xl$ID$'    in globals() : del gs_xl$ID$\n";
+const std::string fluid_delete_all = "\n\
+mantaMsg('Deleting fluid')\n\
+# Delete childs from pp object first\n\
+for var in list(globals()):\n\
+    if var.endswith('_pp$ID$'):\n\
+        del globals()[var]\n\
+# Now delete childs from s and xl object\n\
+for var in list(globals()):\n\
+    if var.endswith('_s$ID$') or var.endswith('_xl$ID$'):\n\
+        del globals()[var]\n\
+\n\
+# Extra cleanup for multigrid and fluid guiding\n\
+mantaMsg('Release multigrid')\n\
+if 's$ID$' in globals(): releaseMG(s$ID$)\n\
+if 'xl$ID$' in globals(): releaseMG(xl$ID$)\n\
+mantaMsg('Release fluid guiding')\n\
+releaseBlurPrecomp()\n\
+\n\
+# Release unreferenced memory (if there is some left, can in fact happen)\n\
+gc.collect()\n\
+\n\
+# Now it is safe to delete solver objects (always need to be deleted last)\n\
+mantaMsg('Delete solver low')\n\
+if 's$ID$' in globals(): del s$ID$\n\
+mantaMsg('Delete solver high')\n\
+if 'xl$ID$' in globals(): del xl$ID$\n\
+\n\
+# Release unreferenced memory (if there is some left)\n\
+gc.collect()\n";
 
 const std::string fluid_delete_solver_low = "\n\
 mantaMsg('Deleting solver low')\n\
@@ -230,40 +247,6 @@ if 's$ID$' in globals() : del s$ID$\n";
 const std::string fluid_delete_solver_high = "\n\
 mantaMsg('Deleting solver high')\n\
 if 'xl$ID$' in globals() : del xl$ID$\n";
-
-const std::string fluid_delete_obstacle_low = "\n\
-mantaMsg('Deleting obstacle low')\n\
-if 'numObs_s$ID$'   in globals() : del numObs_s$ID$\n\
-if 'phiObsIn_s$ID$' in globals() : del phiObsIn_s$ID$\n\
-if 'obvel_s$ID$'    in globals() : del obvel_s$ID$\n\
-if 'obvelC_s$ID$'   in globals() : del obvelC_s$ID$\n\
-if 'x_obvel_s$ID$'  in globals() : del x_obvel_s$ID$\n\
-if 'y_obvel_s$ID$'  in globals() : del y_obvel_s$ID$\n\
-if 'z_obvel_s$ID$'  in globals() : del z_obvel_s$ID$\n";
-
-const std::string fluid_delete_guiding_low = "\n\
-mantaMsg('Deleting guiding low')\n\
-if 'numGuides_s$ID$'   in globals() : del numGuides_s$ID$\n\
-if 'phiGuideIn_s$ID$'  in globals() : del phiGuideIn_s$ID$\n\
-if 'guidevel_s$ID$'    in globals() : del guidevel_s$ID$\n\
-if 'guidevelC_s$ID$'   in globals() : del guidevelC_s$ID$\n\
-if 'x_guidevel_s$ID$'  in globals() : del x_guidevel_s$ID$\n\
-if 'y_guidevel_s$ID$'  in globals() : del y_guidevel_s$ID$\n\
-if 'z_guidevel_s$ID$'  in globals() : del z_guidevel_s$ID$\n\
-if 'weightGuide_s$ID$' in globals() : del weightGuide_s$ID$\n";
-
-const std::string fluid_delete_invel_low = "\n\
-mantaMsg('Deleting initial velocity low')\n\
-if 'invel_s$ID$'   in globals() : del invel_s$ID$\n\
-if 'x_invel_s$ID$' in globals() : del x_invel_s$ID$\n\
-if 'y_invel_s$ID$' in globals() : del y_invel_s$ID$\n\
-if 'z_invel_s$ID$' in globals() : del z_invel_s$ID$\n";
-
-const std::string fluid_delete_sndparts_low = "\n\
-mantaMsg('Deleting snd parts low')\n\
-if 'ppSnd_s$ID$'     in globals() : del ppSnd_s$ID$\n\
-if 'pVelSnd_pp$ID$'  in globals() : del pVelSnd_pp$ID$\n\
-if 'pLifeSnd_pp$ID$' in globals() : del pLifeSnd_pp$ID$\n";
 
 const std::string fluid_multigrid_cleanup_low = "\n\
 mantaMsg('Cleanup multigrid low')\n\
@@ -347,10 +330,6 @@ def save_fluid_sndparts_data_low_$ID$(path):\n\
     ppSnd_s$ID$.save(path + '_ppSnd.uni')\n\
     pVelSnd_pp$ID$.save(path + '_pVelSnd.uni')\n\
     pLifeSnd_pp$ID$.save(path + '_pLifeSnd.uni')\n";
-
-//////////////////////////////////////////////////////////////////////
-// STANDALONE MODE
-//////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE

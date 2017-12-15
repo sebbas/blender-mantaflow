@@ -240,6 +240,7 @@ void FLUID::initDomain(SmokeModifierData *smd)
 	// Now init basic fluid domain
 	std::string tmpString = fluid_variables_low
 		+ fluid_solver_low
+		+ fluid_alloc_low
 		+ fluid_obstacle_export_low
 		+ fluid_guiding_export_low
 		+ fluid_invel_export_low
@@ -256,6 +257,7 @@ void FLUID::initDomainHigh(SmokeModifierData *smd)
 {
 	std::string tmpString = fluid_variables_high
 		+ fluid_solver_high
+		+ fluid_alloc_high
 		+ fluid_adapt_time_step_high
 		+ fluid_adaptive_time_stepping_high;
 	std::string finalString = parseScript(tmpString, smd);
@@ -487,56 +489,7 @@ FLUID::~FLUID()
 	std::string tmpString = "";
 
 	tmpString += manta_import;
-
-	// Fluid
-	tmpString += fluid_delete_variables_low;
-	tmpString += fluid_delete_variables_high;
-
-	// Liquid
-	tmpString += liquid_delete_variables_low;
-	tmpString += liquid_delete_grids_low;
-
-	tmpString += liquid_delete_variables_high;
-	tmpString += liquid_delete_grids_high;
-
-	// Smoke
-	tmpString += smoke_delete_variables_low;
-	tmpString += smoke_delete_grids_low;
-	tmpString += smoke_delete_heat_low;
-	tmpString += smoke_delete_fire_low;
-	tmpString += smoke_delete_colors_low;
-
-	tmpString += smoke_delete_variables_high;
-	tmpString += smoke_delete_grids_high;
-	tmpString += smoke_delete_fire_high;
-	tmpString += smoke_delete_colors_high;
-
-	// Obstacle
-	tmpString += fluid_delete_obstacle_low;
-
-	// Guiding
-	tmpString += fluid_delete_guiding_low;
-
-	// Initial velocity
-	tmpString += fluid_delete_invel_low;
-
-	// Snd parts
-	tmpString += fluid_delete_sndparts_low;
-
-	// Cleanup multigrid
-	tmpString += fluid_multigrid_cleanup_low;
-	tmpString += fluid_guiding_cleanup_low;
-	if (mUsingHighRes) tmpString += fluid_multigrid_cleanup_high;
-
-	// Make sure that everything is garbage collected
-	tmpString += gc_collect;
-
-	// Solvers always have to be the last objects to be deleted
-	tmpString += fluid_delete_solver_low;
-	if (mUsingHighRes) tmpString += fluid_delete_solver_high;
-
-	// Just in case: gc again
-	tmpString += gc_collect;
+	tmpString += fluid_delete_all;
 
 	// Safe to pass NULL argument since only looking up IDs
 	std::string finalString = parseScript(tmpString, NULL);
@@ -918,6 +871,7 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 	manta_script += manta_import
 		+ fluid_variables_low
 		+ fluid_solver_low
+		+ fluid_alloc_low
 		+ fluid_adaptive_time_stepping_low
 		+ smoke_alloc_low
 		+ smoke_bounds_low
@@ -939,6 +893,7 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 	if (highres) {
 		manta_script += fluid_variables_high
 			+ fluid_solver_high
+			+ fluid_alloc_high
 			+ fluid_adaptive_time_stepping_high
 			+ smoke_variables_high
 			+ smoke_alloc_high
@@ -1030,6 +985,7 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 	manta_script += manta_import
 		+ fluid_variables_low
 		+ fluid_solver_low
+		+ fluid_alloc_low
 		+ fluid_adaptive_time_stepping_low
 		+ liquid_alloc_low
 		+ liquid_init_phi
@@ -1047,6 +1003,7 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 	if (highres) {
 		manta_script += fluid_variables_high
 			+ fluid_solver_high
+			+ fluid_alloc_high
 			+ fluid_adaptive_time_stepping_high
 			+ liquid_alloc_high
 			+ liquid_variables_high;
