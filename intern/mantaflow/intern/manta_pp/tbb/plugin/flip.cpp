@@ -70,7 +70,7 @@ void sampleFlagsWithParticles(const FlagGrid& flags, BasicParticleSystem& parts,
 //! the main loop).
 
 
-void sampleLevelsetWithParticles(const LevelsetGrid& phi, const FlagGrid& flags, BasicParticleSystem& parts, const int discretization, const Real randomness, const bool reset=false, const bool refillEmpty=false) {
+void sampleLevelsetWithParticles(const LevelsetGrid& phi, const FlagGrid& flags, BasicParticleSystem& parts, const int discretization, const Real randomness, const bool reset=false, const bool refillEmpty=false, const int particleFlag=-1) {
 	const bool is3D = phi.is3D();
 	const Real jlen = randomness / discretization;
 	const Vec3 disp (1.0 / discretization, 1.0 / discretization, 1.0/discretization);
@@ -93,13 +93,18 @@ void sampleLevelsetWithParticles(const LevelsetGrid& phi, const FlagGrid& flags,
 				subpos += jlen * (Vec3(1,1,1) - 2.0 * mRand.getVec3());
 				if(!is3D) subpos[2] = 0.5; 
 				if( phi.getInterpolated(subpos) > 0. ) continue; 
-				parts.addBuffered(subpos);
+				if(particleFlag < 0){
+					parts.addBuffered(subpos);
+				}
+				else{
+					parts.addBuffered(subpos, particleFlag);
+				}
 			}
 		}
 	}
 
 	parts.insertBufferedParticles();
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "sampleLevelsetWithParticles" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",0,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",2,&_lock); const int discretization = _args.get<int >("discretization",3,&_lock); const Real randomness = _args.get<Real >("randomness",4,&_lock); const bool reset = _args.getOpt<bool >("reset",5,false,&_lock); const bool refillEmpty = _args.getOpt<bool >("refillEmpty",6,false,&_lock);   _retval = getPyNone(); sampleLevelsetWithParticles(phi,flags,parts,discretization,randomness,reset,refillEmpty);  _args.check(); } pbFinalizePlugin(parent,"sampleLevelsetWithParticles", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("sampleLevelsetWithParticles",e.what()); return 0; } } static const Pb::Register _RP_sampleLevelsetWithParticles ("","sampleLevelsetWithParticles",_W_1);  extern "C" { void PbRegister_sampleLevelsetWithParticles() { KEEP_UNUSED(_RP_sampleLevelsetWithParticles); } } 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "sampleLevelsetWithParticles" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",0,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",2,&_lock); const int discretization = _args.get<int >("discretization",3,&_lock); const Real randomness = _args.get<Real >("randomness",4,&_lock); const bool reset = _args.getOpt<bool >("reset",5,false,&_lock); const bool refillEmpty = _args.getOpt<bool >("refillEmpty",6,false,&_lock); const int particleFlag = _args.getOpt<int >("particleFlag",7,-1,&_lock);   _retval = getPyNone(); sampleLevelsetWithParticles(phi,flags,parts,discretization,randomness,reset,refillEmpty,particleFlag);  _args.check(); } pbFinalizePlugin(parent,"sampleLevelsetWithParticles", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("sampleLevelsetWithParticles",e.what()); return 0; } } static const Pb::Register _RP_sampleLevelsetWithParticles ("","sampleLevelsetWithParticles",_W_1);  extern "C" { void PbRegister_sampleLevelsetWithParticles() { KEEP_UNUSED(_RP_sampleLevelsetWithParticles); } } 
 
 //! sample a shape with particles, use reset to clear the particle buffer,
 //! and skipEmpty for a continuous inflow (in the latter case, only empty cells will

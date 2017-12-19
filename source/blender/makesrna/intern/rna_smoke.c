@@ -1511,6 +1511,18 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Lifetime(max)", "Highest possible particle lifetime");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
+	prop = RNA_def_property(srna, "sndparticle_tracer_number", PROP_INT, PROP_NONE);
+	RNA_def_property_range(prop, 0, 10);
+	RNA_def_property_ui_range(prop, 0, 10, 1, -1);
+	RNA_def_property_ui_text(prop, "Tracer Number", "Number of tracer particles created per cell per dimension (e.g 2 means 2^3 = 8 particles in each cell)");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
+	prop = RNA_def_property(srna, "sndparticle_tracer_jitter", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, 0.0, 1.0);
+	RNA_def_property_ui_range(prop, 0.0, 1.0, 1.0, 2);
+	RNA_def_property_ui_text(prop, "Tracer Jitter", "Amount of random jitter for every tracer particle (0 means equidistant distribution)");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
 	prop = RNA_def_property(srna, "guiding_alpha", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "guiding_alpha");
 	RNA_def_property_range(prop, 1.0, 100.0);

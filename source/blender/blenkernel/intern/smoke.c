@@ -579,6 +579,8 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->sndparticle_k_d = 0.6;
 			smd->domain->sndparticle_l_min = 25.0;
 			smd->domain->sndparticle_l_max = 50.0;
+			smd->domain->sndparticle_tracer_number = 1;
+			smd->domain->sndparticle_tracer_jitter = 0.2;
 
 			/* guiding */
 			smd->domain->guiding_alpha = 2.0f;

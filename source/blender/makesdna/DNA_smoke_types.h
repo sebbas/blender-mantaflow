@@ -280,6 +280,8 @@ typedef struct SmokeDomainSettings {
 	float sndparticle_k_d;
 	float sndparticle_l_min;
 	float sndparticle_l_max;
+	int sndparticle_tracer_number;
+	float sndparticle_tracer_jitter;
 
 	/* fluid guiding parameters */
 	float guiding_alpha; /* guiding weight scalar (determines strength) */

@@ -70,7 +70,7 @@ void sampleFlagsWithParticles(const FlagGrid& flags, BasicParticleSystem& parts,
 //! the main loop).
 
 
-void sampleLevelsetWithParticles(const LevelsetGrid& phi, const FlagGrid& flags, BasicParticleSystem& parts, const int discretization, const Real randomness, const bool reset=false, const bool refillEmpty=false) {
+void sampleLevelsetWithParticles(const LevelsetGrid& phi, const FlagGrid& flags, BasicParticleSystem& parts, const int discretization, const Real randomness, const bool reset=false, const bool refillEmpty=false, const int particleFlag=-1) {
 	const bool is3D = phi.is3D();
 	const Real jlen = randomness / discretization;
 	const Vec3 disp (1.0 / discretization, 1.0 / discretization, 1.0/discretization);
@@ -93,13 +93,18 @@ void sampleLevelsetWithParticles(const LevelsetGrid& phi, const FlagGrid& flags,
 				subpos += jlen * (Vec3(1,1,1) - 2.0 * mRand.getVec3());
 				if(!is3D) subpos[2] = 0.5; 
 				if( phi.getInterpolated(subpos) > 0. ) continue; 
-				parts.addBuffered(subpos);
+				if(particleFlag < 0){
+					parts.addBuffered(subpos);
+				}
+				else{
+					parts.addBuffered(subpos, particleFlag);
+				}
 			}
 		}
 	}
 
 	parts.insertBufferedParticles();
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "sampleLevelsetWithParticles" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",0,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",2,&_lock); const int discretization = _args.get<int >("discretization",3,&_lock); const Real randomness = _args.get<Real >("randomness",4,&_lock); const bool reset = _args.getOpt<bool >("reset",5,false,&_lock); const bool refillEmpty = _args.getOpt<bool >("refillEmpty",6,false,&_lock);   _retval = getPyNone(); sampleLevelsetWithParticles(phi,flags,parts,discretization,randomness,reset,refillEmpty);  _args.check(); } pbFinalizePlugin(parent,"sampleLevelsetWithParticles", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("sampleLevelsetWithParticles",e.what()); return 0; } } static const Pb::Register _RP_sampleLevelsetWithParticles ("","sampleLevelsetWithParticles",_W_1);  extern "C" { void PbRegister_sampleLevelsetWithParticles() { KEEP_UNUSED(_RP_sampleLevelsetWithParticles); } } 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "sampleLevelsetWithParticles" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",0,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",2,&_lock); const int discretization = _args.get<int >("discretization",3,&_lock); const Real randomness = _args.get<Real >("randomness",4,&_lock); const bool reset = _args.getOpt<bool >("reset",5,false,&_lock); const bool refillEmpty = _args.getOpt<bool >("refillEmpty",6,false,&_lock); const int particleFlag = _args.getOpt<int >("particleFlag",7,-1,&_lock);   _retval = getPyNone(); sampleLevelsetWithParticles(phi,flags,parts,discretization,randomness,reset,refillEmpty,particleFlag);  _args.check(); } pbFinalizePlugin(parent,"sampleLevelsetWithParticles", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("sampleLevelsetWithParticles",e.what()); return 0; } } static const Pb::Register _RP_sampleLevelsetWithParticles ("","sampleLevelsetWithParticles",_W_1);  extern "C" { void PbRegister_sampleLevelsetWithParticles() { KEEP_UNUSED(_RP_sampleLevelsetWithParticles); } } 
 
 //! sample a shape with particles, use reset to clear the particle buffer,
 //! and skipEmpty for a continuous inflow (in the latter case, only empty cells will
@@ -152,7 +157,7 @@ void sampleShapeWithParticles(const Shape& shape, const FlagGrid& flags, BasicPa
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,dummy);  } }  } FlagGrid& flags; int dummy;   };
-#line 130 "plugin/flip.cpp"
+#line 135 "plugin/flip.cpp"
 
 
 
@@ -179,7 +184,7 @@ void sampleShapeWithParticles(const Shape& shape, const FlagGrid& flags, BasicPa
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,nflags,flags,phiObs);  } }  } FlagGrid& nflags; const FlagGrid& flags; const Grid<Real>& phiObs;   };
-#line 136 "plugin/flip.cpp"
+#line 141 "plugin/flip.cpp"
 
 
 void markFluidCells(const BasicParticleSystem& parts, FlagGrid& flags, const Grid<Real>* phiObs=NULL, const ParticleDataImpl<int>* ptype=NULL, const int exclude=0) {
@@ -371,7 +376,7 @@ void gridParticleIndex( BasicParticleSystem& parts, ParticleIndexSystem& indexSy
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,index,parts,indexSys,phi,radius,ptype,exclude);  } }  } const Grid<int>& index; const BasicParticleSystem& parts; const ParticleIndexSystem& indexSys; LevelsetGrid& phi; const Real radius; const ParticleDataImpl<int> * ptype; const int exclude;   };
-#line 305 "plugin/flip.cpp"
+#line 310 "plugin/flip.cpp"
 
 
  
@@ -444,7 +449,7 @@ void unionParticleLevelset(const BasicParticleSystem& parts, const ParticleIndex
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,parts,index,indexSys,phi,radius,ptype,exclude);  } }  } const BasicParticleSystem& parts; const Grid<int>& index; const ParticleIndexSystem& indexSys; LevelsetGrid& phi; const Real radius; const ParticleDataImpl<int>* ptype; const int exclude;   };
-#line 351 "plugin/flip.cpp"
+#line 356 "plugin/flip.cpp"
 
 
 
@@ -471,7 +476,7 @@ template <class T>  struct knSmoothGrid : public KernelBase { knSmoothGrid(Grid<
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,me,tmp,factor);  } }  } Grid<T>& me; Grid<T>& tmp; Real factor;   };
-#line 401 "plugin/flip.cpp"
+#line 406 "plugin/flip.cpp"
 
 
 
@@ -495,7 +500,7 @@ template <class T>  struct knSmoothGridNeg : public KernelBase { knSmoothGridNeg
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,me,tmp,factor);  } }  } Grid<T>& me; Grid<T>& tmp; Real factor;   };
-#line 412 "plugin/flip.cpp"
+#line 417 "plugin/flip.cpp"
 
 
 
@@ -542,7 +547,7 @@ void averagedParticleLevelset(const BasicParticleSystem& parts, const ParticleIn
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,parts,flags,phiObs,shift,thresh,ptype,exclude);  }   } BasicParticleSystem& parts; const FlagGrid& flags; const Grid<Real>& phiObs; const Real shift; const Real thresh; const ParticleDataImpl<int>* ptype; const int exclude;   };
-#line 451 "plugin/flip.cpp"
+#line 456 "plugin/flip.cpp"
 
 
 //! push particles out of obstacle levelset
@@ -567,7 +572,7 @@ template <class T>  struct knSafeDivReal : public KernelBase { knSafeDivReal(Gri
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other,cutoff);  }   } Grid<T>& me; const Grid<Real>& other; Real cutoff;   };
-#line 473 "plugin/flip.cpp"
+#line 478 "plugin/flip.cpp"
 
 
 
@@ -647,7 +652,7 @@ template <class T>  struct knMapFromGrid : public KernelBase { knMapFromGrid( Ba
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,p,gsrc,target);  }   } BasicParticleSystem& p; Grid<T>& gsrc; ParticleDataImpl<T>& target;   };
-#line 550 "plugin/flip.cpp"
+#line 555 "plugin/flip.cpp"
 
  
 void mapGridToParts( Grid<Real>& source , BasicParticleSystem& parts , ParticleDataImpl<Real>& target ) {
@@ -672,7 +677,7 @@ void mapGridToPartsVec3( Grid<Vec3>& source , BasicParticleSystem& parts , Parti
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,p,flags,vel,pvel,ptype,exclude);  }   } BasicParticleSystem& p; FlagGrid& flags; MACGrid& vel; ParticleDataImpl<Vec3>& pvel; const ParticleDataImpl<int>* ptype; const int exclude;   };
-#line 567 "plugin/flip.cpp"
+#line 572 "plugin/flip.cpp"
 
 
 
@@ -696,7 +701,7 @@ void mapMACToParts(FlagGrid& flags, MACGrid& vel , BasicParticleSystem& parts , 
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,p,flags,vel,oldVel,pvel,flipRatio,ptype,exclude);  }   } const BasicParticleSystem& p; const FlagGrid& flags; const MACGrid& vel; const MACGrid& oldVel; ParticleDataImpl<Vec3>& pvel; const Real flipRatio; const ParticleDataImpl<int>* ptype; const int exclude;   };
-#line 583 "plugin/flip.cpp"
+#line 588 "plugin/flip.cpp"
 
 
 
@@ -742,7 +747,7 @@ void flipVelocityUpdate(const FlagGrid& flags, const MACGrid& vel, const MACGrid
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,vel,w,combineVel,phi,narrowBand,thresh);  } }  } MACGrid& vel; Grid<Vec3>& w; MACGrid& combineVel; LevelsetGrid* phi; Real narrowBand; Real thresh;   };
-#line 601 "plugin/flip.cpp"
+#line 606 "plugin/flip.cpp"
 
 
 

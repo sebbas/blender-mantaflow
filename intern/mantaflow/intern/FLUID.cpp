@@ -871,6 +871,12 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << smd->domain->sndparticle_l_min;
 	else if (varName == "SNDPARTICLE_L_MAX")
 		ss << smd->domain->sndparticle_l_max;
+	else if (varName == "SNDPARTICLE_TRACER_NUMBER")
+		ss << smd->domain->sndparticle_tracer_number;
+	else if (varName == "SNDPARTICLE_TRACER_JITTER")
+		ss << smd->domain->sndparticle_tracer_jitter;
+	else if (varName == "SNDPARTICLE_L_MAX")
+		ss << smd->domain->sndparticle_l_max;
 	else if (varName == "GUIDING_ALPHA")
 		ss << smd->domain->guiding_alpha;
 	else if (varName == "GUIDING_BETA")

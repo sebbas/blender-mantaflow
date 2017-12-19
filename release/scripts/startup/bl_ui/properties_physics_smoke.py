@@ -459,6 +459,12 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         sub.prop(domain, "sndparticle_tau_max_ta", text="tauMax_ta")
         sub.prop(domain, "sndparticle_tau_min_k", text="tauMin_k")
         sub.prop(domain, "sndparticle_tau_max_k", text="tauMax_k")
+        sub.label()
+        sub.label(text="Other Particles:")
+        temp = first.split()
+        temp.active = True;
+        temp.prop(domain, "use_flip_particles", text="FLIP")
+        temp.prop(domain, "use_tracer_particles", text="Tracer")
 
         second = split.column()
         second.enabled = not domain.point_cache.is_baked
@@ -472,6 +478,13 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         second.label(text="Bubble Movement:")
         second.prop(domain, "sndparticle_k_b", text="Buoyancy")
         second.prop(domain, "sndparticle_k_d", text="Drag")
+        second.label()
+        second.label()
+        sub = second.column()
+        sub.active = domain.use_tracer_particles
+        sub.prop(domain, "sndparticle_tracer_number", text="Tracer Number")
+        sub.prop(domain, "sndparticle_tracer_jitter", text="Tracer Jitter")
+        
 
 class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Diffusion"
