@@ -450,7 +450,7 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         temp3.prop(domain, "use_bubble_particles", text="Bubbles")
         
         sub = first.column()
-        sub.active = domain.use_drop_particles or domain.use_floater_particles or domain.use_bubble_particles or domain.use_tracer_particles
+        sub.active = domain.use_drop_particles or domain.use_floater_particles or domain.use_bubble_particles
         sub.label(text="Potential Clamping:")
         sub.prop(domain, "sndparticle_tau_min_wc", text="tauMin_wc")
         sub.prop(domain, "sndparticle_tau_max_wc", text="tauMax_wc")
@@ -459,15 +459,16 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         sub.prop(domain, "sndparticle_tau_min_k", text="tauMin_k")
         sub.prop(domain, "sndparticle_tau_max_k", text="tauMax_k")
         sub.label()
-        sub.label(text="Other Particles:")
+        temp = first.column()
+        temp.active = True
+        temp.label(text="Other Particles:")
         temp = first.split()
-        temp.active = True;
         temp.prop(domain, "use_flip_particles", text="FLIP")
         temp.prop(domain, "use_tracer_particles", text="Tracer")
 
         second = split.column()
         second.enabled = not domain.point_cache.is_baked
-        second.active = domain.use_drop_particles or domain.use_floater_particles or domain.use_bubble_particles or domain.use_tracer_particles
+        second.active = domain.use_drop_particles or domain.use_floater_particles or domain.use_bubble_particles
         second.label(text="Sampling:")
         second.prop(domain, "sndparticle_k_wc", text="Wave Crest Sampling")
         second.prop(domain, "sndparticle_k_ta", text="Trapped Air Sampling")
@@ -677,7 +678,63 @@ class PHYSICS_PT_smoke_display_settings(PhysicButtonsPanel, Panel):
     @classmethod
     def poll(cls, context):
         md = context.smoke
-	
+
+        rd = context.scene.render
+        return md and (md.smoke_type == 'DOMAIN') and (not rd.use_game_engine)
+
+    def draw(self, context):
+        domain = context.smoke.domain_settings
+        layout = self.layout
+
+        layout.prop(domain, "display_thickness")
+
+        layout.separator()
+        layout.label(text="Slicing:")
+        layout.prop(domain, "slice_method")
+
+        slice_method = domain.slice_method
+        axis_slice_method = domain.axis_slice_method
+
+        do_axis_slicing = (slice_method == 'AXIS_ALIGNED')
+        do_full_slicing = (axis_slice_method == 'FULL')
+
+        row = layout.row()
+        row.enabled = do_axis_slicing
+        row.prop(domain, "axis_slice_method")
+
+        col = layout.column()
+        col.enabled = not do_full_slicing and do_axis_slicing
+        col.prop(domain, "slice_axis")
+        col.prop(domain, "slice_depth")
+
+        row = layout.row()
+        row.enabled = do_full_slicing or not do_axis_slicing
+        row.prop(domain, "slice_per_voxel")
+
+        layout.separator()
+        layout.label(text="Debug:")
+        layout.prop(domain, "draw_velocity")
+        col = layout.column()
+        col.enabled = domain.draw_velocity
+        col.prop(domain, "vector_draw_type")
+        col.prop(domain, "vector_scale")
+
+        layout.separator()
+        layout.label(text="Color Mapping:")
+        layout.prop(domain, "use_color_ramp")
+        col = layout.column()
+        col.enabled = domain.use_color_ramp
+        col.prop(domain, "coba_field")
+        col.template_color_ramp(domain, "color_ramp", expand=True)
+
+class PHYSICS_PT_liquid_display_settings(PhysicButtonsPanel, Panel):
+    bl_label = "Liquid Display Settings"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        md = context.smoke
+
         rd = context.scene.render
         return md and (md.smoke_type == 'DOMAIN') and (not rd.use_game_engine)
 
@@ -743,6 +800,7 @@ classes = (
     OBJECT_OT_RunMantaButton,
     PHYSICS_PT_smoke_export_manta,
     PHYSICS_PT_smoke_display_settings,
+    PHYSICS_PT_liquid_display_settings,
 )
 
 if __name__ == "__main__":  # only for live edit.

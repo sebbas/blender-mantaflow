@@ -550,7 +550,8 @@ void flipDeleteParticlesInObstacle( BasicParticleSystem &pts, const FlagGrid &fl
 //helper method to debug statistical data from grid
 
 
-void debugGridInfo( const FlagGrid &flags, Grid<Real> &grid, std::string name, int step, const int itype = FlagGrid::TypeFluid) {
+void debugGridInfo( const FlagGrid &flags, Grid<Real> &grid, std::string name, const int itype = FlagGrid::TypeFluid) {
+	FluidSolver* s = flags.getParent();
 	int countFluid = 0;
 	int countLargerZero = 0;
 	Real avg = 0;
@@ -567,14 +568,14 @@ void debugGridInfo( const FlagGrid &flags, Grid<Real> &grid, std::string name, i
 	avg = sum / std::max(Real(countFluid), Real(1));
 	avgLargerZero = sum / std::max(Real(countLargerZero), Real(1));
 
-	debMsg("Step: " << step  << " - Grid " << name <<
+	debMsg("Step: " << s->mFrame  << " - Grid " << name <<
 		"\n\tcountFluid \t\t" << countFluid <<
 		"\n\tcountLargerZero \t" << countLargerZero <<
 		"\n\tsum \t\t\t" << sum <<
 		"\n\tavg \t\t\t" << avg <<
 		"\n\tavgLargerZero \t\t" << avgLargerZero <<
 		"\n\tmax \t\t\t" << max, 1);
-} static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "debugGridInfo" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real> & grid = *_args.getPtr<Grid<Real>  >("grid",1,&_lock); std::string name = _args.get<std::string >("name",2,&_lock); int step = _args.get<int >("step",3,&_lock); const int itype = _args.getOpt<int >("itype",4,FlagGrid::TypeFluid,&_lock);   _retval = getPyNone(); debugGridInfo(flags,grid,name,step,itype);  _args.check(); } pbFinalizePlugin(parent,"debugGridInfo", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("debugGridInfo",e.what()); return 0; } } static const Pb::Register _RP_debugGridInfo ("","debugGridInfo",_W_5);  extern "C" { void PbRegister_debugGridInfo() { KEEP_UNUSED(_RP_debugGridInfo); } } 
+} static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "debugGridInfo" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real> & grid = *_args.getPtr<Grid<Real>  >("grid",1,&_lock); std::string name = _args.get<std::string >("name",2,&_lock); const int itype = _args.getOpt<int >("itype",3,FlagGrid::TypeFluid,&_lock);   _retval = getPyNone(); debugGridInfo(flags,grid,name,itype);  _args.check(); } pbFinalizePlugin(parent,"debugGridInfo", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("debugGridInfo",e.what()); return 0; } } static const Pb::Register _RP_debugGridInfo ("","debugGridInfo",_W_5);  extern "C" { void PbRegister_debugGridInfo() { KEEP_UNUSED(_RP_debugGridInfo); } } 
 
 
 
@@ -590,7 +591,7 @@ void debugGridInfo( const FlagGrid &flags, Grid<Real> &grid, std::string name, i
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,flags,phi,exclude,itype);  }   } FlagGrid& flags; const Grid<Real> & phi; const int exclude; const int itype;   };
-#line 534 "plugin/secondaryparticles.cpp"
+#line 535 "plugin/secondaryparticles.cpp"
 
 
 
@@ -612,7 +613,7 @@ void setFlagsFromLevelset( FlagGrid &flags, const Grid<Real> &phi, const int exc
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,v,phi,c);  } }  } MACGrid& v; const Grid<Real> & phi; const Vec3 c;   };
-#line 546 "plugin/secondaryparticles.cpp"
+#line 547 "plugin/secondaryparticles.cpp"
 
 
 
@@ -673,7 +674,7 @@ void setMACFromLevelset( MACGrid &v, const Grid<Real> &phi, const Vec3 c) {
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,pot,flags,v,radius,tauMin,tauMax,scaleFromManta,itype,jtype);  } }  } Grid<Real> & pot; const FlagGrid& flags; const MACGrid& v; const int radius; const Real tauMin; const Real tauMax; const Real scaleFromManta; const int itype; const int jtype;   };
-#line 576 "plugin/secondaryparticles.cpp"
+#line 577 "plugin/secondaryparticles.cpp"
 
 
 
@@ -709,7 +710,7 @@ void flipComputePotentialTrappedAir( Grid<Real> &pot, const FlagGrid &flags, con
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,pot,flags,v,tauMin,tauMax,scaleFromManta,itype);  } }  } Grid<Real> & pot; const FlagGrid& flags; const MACGrid& v; const Real tauMin; const Real tauMax; const Real scaleFromManta; const int itype;   };
-#line 616 "plugin/secondaryparticles.cpp"
+#line 617 "plugin/secondaryparticles.cpp"
 
 
 
@@ -766,7 +767,7 @@ void flipComputePotentialKineticEnergy( Grid<Real> &pot, const FlagGrid &flags, 
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,pot,flags,v,radius,normal,tauMin,tauMax,scaleFromManta,itype,jtype);  } }  } Grid<Real> & pot; const FlagGrid& flags; const MACGrid& v; const int radius; Grid<Vec3> & normal; const Real tauMin; const Real tauMax; const Real scaleFromManta; const int itype; const int jtype;   };
-#line 640 "plugin/secondaryparticles.cpp"
+#line 641 "plugin/secondaryparticles.cpp"
 
 
 
@@ -789,7 +790,7 @@ void flipComputePotentialWaveCrest( Grid<Real> &pot, const FlagGrid &flags, cons
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,normal,phi);  }   } Grid<Vec3>& normal; const Grid<Real>& phi;   };
-#line 683 "plugin/secondaryparticles.cpp"
+#line 684 "plugin/secondaryparticles.cpp"
 
 
 
@@ -833,7 +834,7 @@ void flipComputeSurfaceNormals(Grid<Vec3>& normal, const Grid<Real>& phi) {
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,neighborRatio,radius,itype,jtype);  } }  } const FlagGrid& flags; Grid<Real> & neighborRatio; const int radius; const int itype; const int jtype;   };
-#line 697 "plugin/secondaryparticles.cpp"
+#line 698 "plugin/secondaryparticles.cpp"
 
 
 
