@@ -71,22 +71,13 @@ mantaMsg('Liquid variables high')\n";
 
 const std::string liquid_alloc_low = "\n\
 mantaMsg('Liquid alloc low')\n\
-flags_s$ID$      = s$ID$.create(FlagGrid)\n\
 phiParts_s$ID$   = s$ID$.create(LevelsetGrid)\n\
 phi_s$ID$        = s$ID$.create(LevelsetGrid)\n\
 phiIn_s$ID$      = s$ID$.create(LevelsetGrid)\n\
 phiOut_s$ID$     = s$ID$.create(LevelsetGrid)\n\
-phiOutIn_s$ID$   = s$ID$.create(LevelsetGrid)\n\
-pressure_s$ID$   = s$ID$.create(RealGrid)\n\
 curvature_s$ID$  = s$ID$.create(RealGrid)\n\
 \n\
-phiObs_s$ID$     = s$ID$.create(LevelsetGrid)\n\
 fractions_s$ID$  = 0 # s$ID$.create(MACGrid) # TODO (sebbas): disabling fractions for now - not fracwallbcs not supporting obvels yet\n\
-\n\
-vel_s$ID$        = s$ID$.create(MACGrid)\n\
-x_vel_s$ID$      = s$ID$.create(RealGrid)\n\
-y_vel_s$ID$      = s$ID$.create(RealGrid)\n\
-z_vel_s$ID$      = s$ID$.create(RealGrid)\n\
 \n\
 velOld_s$ID$     = s$ID$.create(MACGrid)\n\
 velParts_s$ID$   = s$ID$.create(MACGrid)\n\
@@ -100,11 +91,6 @@ mesh_s$ID$       = s$ID$.create(Mesh)\n\
 pindex_s$ID$     = s$ID$.create(ParticleIndexSystem)\n\
 gpi_s$ID$        = s$ID$.create(IntGrid)\n\
 \n\
-forces_s$ID$     = s$ID$.create(MACGrid)\n\
-x_force_s$ID$    = s$ID$.create(RealGrid)\n\
-y_force_s$ID$    = s$ID$.create(RealGrid)\n\
-z_force_s$ID$    = s$ID$.create(RealGrid)\n\
-\n\
 normal_s$ID$ = s$ID$.create(VecGrid)\n\
 neighborRatio_s$ID$ = s$ID$.create(RealGrid)\n\
 trappedAir_s$ID$ = s$ID$.create(RealGrid)\n\
@@ -113,7 +99,6 @@ kineticEnergy_s$ID$ = s$ID$.create(RealGrid)\n";
 
 const std::string liquid_alloc_high = "\n\
 mantaMsg('Liquid alloc high')\n\
-flags_xl$ID$    = xl$ID$.create(FlagGrid)\n\
 phiParts_xl$ID$ = xl$ID$.create(LevelsetGrid)\n\
 phi_xl$ID$      = xl$ID$.create(LevelsetGrid)\n\
 pp_xl$ID$       = xl$ID$.create(BasicParticleSystem)\n\
@@ -209,8 +194,8 @@ def manta_step_$ID$(framenr):\n\
         sampleLevelsetWithParticles(phi=phiIn_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, discretization=particleNumber_s$ID$, randomness=randomness_s$ID$, refillEmpty=True)\n\
         flags_s$ID$.updateFromLevelset(phi_s$ID$, phiObs_s$ID$)\n\
         mapWeights_s$ID$.clear() # clean up, mapweights grid used later again\n\
-        fluid_adapt_time_step()\n\
         \n\
+        fluid_adapt_time_step_low()\n\
         mantaMsg('Low step / s$ID$.frame: ' + str(s$ID$.frame))\n\
         liquid_step_$ID$()\n\
         \n\
@@ -436,82 +421,6 @@ def save_liquid_data_high_$ID$(path):\n\
     phi_xl$ID$.save(path + '_phi_xl.uni')\n\
     \n\
     pp_xl$ID$.save(path + '_pp_xl.uni')\n";
-
-//////////////////////////////////////////////////////////////////////
-// DESTRUCTION
-//////////////////////////////////////////////////////////////////////
-
-const std::string liquid_delete_grids_low = "\n\
-mantaMsg('Deleting lowres grids, mesh, particlesystem')\n\
-if 'flags_s$ID$'      in globals() : del flags_s$ID$\n\
-if 'phiParts_s$ID$'   in globals() : del phiParts_s$ID$\n\
-if 'phi_s$ID$'        in globals() : del phi_s$ID$\n\
-if 'phiIn_s$ID$'      in globals() : del phiIn_s$ID$\n\
-if 'phiOut_s$ID$'     in globals() : del phiOut_s$ID$\n\
-if 'phiOutIn_s$ID$'   in globals() : del phiOutIn_s$ID$\n\
-if 'pressure_s$ID$'   in globals() : del pressure_s$ID$\n\
-if 'curvature_s$ID$'  in globals() : del curvature_s$ID$\n\
-if 'vel_s$ID$'        in globals() : del vel_s$ID$\n\
-if 'x_vel_s$ID$'      in globals() : del x_vel_s$ID$\n\
-if 'y_vel_s$ID$'      in globals() : del y_vel_s$ID$\n\
-if 'z_vel_s$ID$'      in globals() : del z_vel_s$ID$\n\
-if 'velOld_s$ID$'     in globals() : del velOld_s$ID$\n\
-if 'velParts_s$ID$'   in globals() : del velParts_s$ID$\n\
-if 'mapWeights_s$ID$' in globals() : del mapWeights_s$ID$\n\
-if 'pp_s$ID$'         in globals() : del pp_s$ID$\n\
-if 'pVel_pp$ID$'      in globals() : del pVel_pp$ID$\n\
-if 'mesh_s$ID$'       in globals() : del mesh_s$ID$\n\
-if 'pindex_s$ID$'     in globals() : del pindex_s$ID$\n\
-if 'gpi_s$ID$'        in globals() : del gpi_s$ID$\n\
-if 'forces_s$ID$'     in globals() : del forces_s$ID$\n\
-if 'x_force_s$ID$'    in globals() : del x_force_s$ID$\n\
-if 'y_force_s$ID$'    in globals() : del y_force_s$ID$\n\
-if 'z_force_s$ID$'    in globals() : del z_force_s$ID$\n\
-if 'phiObs_s$ID$'     in globals() : del phiObs_s$ID$\n\
-if 'fractions_s$ID$'  in globals() : del fractions_s$ID$\n\
-if 'normal_s$ID$'     in globals() : del normal_s$ID$\n\
-if 'neighborRatio_s$ID$' in globals() : del neighborRatio_s$ID$\n\
-if 'trappedAir_s$ID$'    in globals() : del trappedAir_s$ID$\n\
-if 'waveCrest_s$ID$'     in globals() : del waveCrest_s$ID$\n\
-if 'kineticEnergy_s$ID$' in globals() : del kineticEnergy_s$ID$\n";
-
-const std::string liquid_delete_grids_high = "\n\
-mantaMsg('Deleting highres grids, mesh, particlesystem')\n\
-if 'flags_xl$ID$'    in globals() : del flags_xl$ID$\n\
-if 'phiParts_xl$ID$' in globals() : del phiParts_xl$ID$\n\
-if 'phi_xl$ID$'      in globals() : del phi_xl$ID$\n\
-if 'pp_xl$ID$'       in globals() : del pp_xl$ID$\n\
-if 'mesh_xl$ID$'     in globals() : del mesh_xl$ID$\n\
-if 'pindex_xl$ID$'   in globals() : del pindex_xl$ID$\n\
-if 'gpi_xl$ID$'      in globals() : del gpi_xl$ID$\n";
-
-const std::string liquid_delete_variables_low = "\n\
-mantaMsg('Deleting lowres liquid variables')\n\
-if 'narrowBandWidth_s$ID$'  in globals() : del narrowBandWidth_s$ID$\n\
-if 'combineBandWidth_s$ID$' in globals() : del combineBandWidth_s$ID$\n\
-if 'minParticles_s$ID$'     in globals() : del minParticles_s$ID$\n\
-if 'maxParticles_s$ID$'     in globals() : del maxParticles_s$ID$\n\
-if 'particleNumber_s$ID$'   in globals() : del particleNumber_s$ID$\n\
-if 'surfaceTension_s$ID$'   in globals() : del surfaceTension_s$ID$\n\
-if 'maxVel_s$ID$'           in globals() : del maxVel_s$ID$\n\
-if 'tauMin_wc_s$ID$' in globals() : del tauMin_wc_s$ID$\n\
-if 'tauMax_wc_s$ID$' in globals() : del tauMax_wc_s$ID$\n\
-if 'tauMin_ta_s$ID$' in globals() : del tauMin_ta_s$ID$\n\
-if 'tauMax_ta_s$ID$' in globals() : del tauMax_ta_s$ID$\n\
-if 'tauMin_k_s$ID$' in globals() : del tauMin_k_s$ID$\n\
-if 'tauMax_k_s$ID$' in globals() : del tauMax_k_s$ID$\n\
-if 'k_wc_s$ID$' in globals() : del k_wc_s$ID$\n\
-if 'k_ta_s$ID$' in globals() : del k_ta_s$ID$\n\
-if 'k_b_s$ID$' in globals() : del k_b_s$ID$\n\
-if 'k_d_s$ID$' in globals() : del k_d_s$ID$\n\
-if 'lMin_s$ID$' in globals() : del lMin_s$ID$\n\
-if 'lMax_s$ID$' in globals() : del lMax_s$ID$\n\
-if 'c_s_s$ID$' in globals() : del c_s_s$ID$\n\
-if 'c_b_s$ID$' in globals() : del c_b_s$ID$\n\
-if 'scaleFromManta_s$ID$' in globals() : del scaleFromManta_s$ID$\n";
-
-const std::string liquid_delete_variables_high = "\n\
-mantaMsg('Deleting highres liquid variables')\n";
 
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE

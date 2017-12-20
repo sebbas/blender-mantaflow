@@ -273,16 +273,15 @@ class PHYSICS_PT_smoke_flow_advanced(PhysicButtonsPanel, Panel):
         col.prop_search(flow, "density_vertex_group", ob, "vertex_groups", text="")
 
 class PHYSICS_PT_smoke_adaptive_domain(PhysicButtonsPanel, Panel):
-    bl_label = "Smoke Adaptive Domain"
+    bl_label = "Fluid Adaptive Domain"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
 
     @classmethod
     def poll(cls, context):
         md = context.smoke
-        # TODO (sebbas): Adaptive domain currently not supported by mantaflow. Disabling for now
-        return False
-        # return md and (md.smoke_type == 'DOMAIN')
+        # Adaptive domain only for smoke right now
+        return md and (md.smoke_type == 'DOMAIN') and (md.domain_settings.smoke_domain_type in {'GAS'})
 
     def draw_header(self, context):
         md = context.smoke.domain_settings
@@ -525,6 +524,7 @@ class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
 
 class PHYSICS_PT_smoke_guiding(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Guiding"
+    bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
 
     @classmethod

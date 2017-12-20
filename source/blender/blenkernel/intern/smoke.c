@@ -136,7 +136,7 @@ float smoke_get_velocity_at(struct Object *UNUSED(ob), float UNUSED(position[3])
 #ifdef WITH_SMOKE
 
 
-void smoke_reallocate_fluid(SmokeDomainSettings *sds, float dx, int res[3], int free_old)
+void smoke_reallocate_fluid(SmokeDomainSettings *sds, int res[3], int free_old)
 {
 	if (free_old && sds->fluid)
 		smoke_free(sds->fluid);
@@ -304,7 +304,7 @@ static int smokeModifier_init(SmokeModifierData *smd, Object *ob, Scene *scene, 
 		VECCOPY(sds->res_max, res);
 
 		/* allocate fluid */
-		smoke_reallocate_fluid(sds, sds->dx, sds->res, 0);
+		smoke_reallocate_fluid(sds, sds->res, 0);
 
 		smd->time = scene->r.cfra;
 
@@ -2197,7 +2197,7 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 		struct FLUID *fluid_old = sds->fluid;
 
 		/* allocate new fluid data */
-		smoke_reallocate_fluid(sds, sds->dx, res, 0);
+		smoke_reallocate_fluid(sds, res, 0);
 		if (sds->flags & MOD_SMOKE_HIGHRES) {
 			smoke_reallocate_highres_fluid(sds, sds->dx, res, 0);
 		}
@@ -3032,6 +3032,8 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 	num_verts   = liquid_get_num_verts(sds->fluid);
 	num_normals = liquid_get_num_normals(sds->fluid);
 	num_faces   = liquid_get_num_triangles(sds->fluid);
+
+//	printf("num_verts: %d, num_normals: %d, num_faces: %d\n", num_verts, num_normals, num_faces);
 
 	if (!num_verts || !num_normals || !num_faces)
 		return NULL;

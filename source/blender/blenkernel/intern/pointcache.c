@@ -629,7 +629,7 @@ static int ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 		ptcache_file_compressed_write(pf, (unsigned char *)vx, in_len, out, mode);
 		ptcache_file_compressed_write(pf, (unsigned char *)vy, in_len, out, mode);
 		ptcache_file_compressed_write(pf, (unsigned char *)vz, in_len, out, mode);
-		ptcache_file_compressed_write(pf, (unsigned char *)obstacles, (unsigned int)res, out, mode);
+		ptcache_file_compressed_write(pf, (unsigned char *)obstacles, sizeof(int)*(unsigned int)res, out, mode);
 		if (phi) {
 			ptcache_file_compressed_write(pf, (unsigned char *)phi, in_len, out, mode);
 			numParts = liquid_get_num_flip_particles(sds->fluid);
@@ -861,7 +861,7 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 	/* reallocate fluid if needed*/
 	if (reallocate) {
 		sds->active_fields = active_fields | cache_fields;
-		smoke_reallocate_fluid(sds, ch_dx, ch_res, 1);
+		smoke_reallocate_fluid(sds, ch_res, 1);
 		sds->dx = ch_dx;
 		VECCOPY(sds->res, ch_res);
 		sds->total_cells = ch_res[0]*ch_res[1]*ch_res[2];
@@ -900,7 +900,7 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 		ptcache_file_compressed_read(pf, (unsigned char *)vx, out_len);
 		ptcache_file_compressed_read(pf, (unsigned char *)vy, out_len);
 		ptcache_file_compressed_read(pf, (unsigned char *)vz, out_len);
-		ptcache_file_compressed_read(pf, (unsigned char *)obstacles, (unsigned int)res);
+		ptcache_file_compressed_read(pf, (unsigned char *)obstacles, sizeof(int)*(unsigned int)res);
 		if (phi) {
 			ptcache_file_compressed_read(pf, (unsigned char *)phi, out_len);
 			ptcache_file_read(pf, &numParts, 1, sizeof(int));
@@ -1077,17 +1077,18 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
 		wt_density_grid = OpenVDB_export_grid_fl(writer, "density", dens, sds->res_wt, sds->fluidmat_wt, NULL);
 		clip_grid = wt_density_grid;
 
-		if (fluid_fields & SM_ACTIVE_FIRE) {
+		if (flame && fluid_fields & SM_ACTIVE_FIRE) {
 			OpenVDB_export_grid_fl(writer, "flame", flame, sds->res_wt, sds->fluidmat_wt, wt_density_grid);
 			OpenVDB_export_grid_fl(writer, "fuel", fuel, sds->res_wt, sds->fluidmat_wt, wt_density_grid);
 			OpenVDB_export_grid_fl(writer, "react", react, sds->res_wt, sds->fluidmat_wt, wt_density_grid);
 		}
 
-		if (fluid_fields & SM_ACTIVE_COLORS) {
+		if (r && fluid_fields & SM_ACTIVE_COLORS) {
 			OpenVDB_export_grid_vec(writer, "color", r, g, b, sds->res_wt, sds->fluidmat_wt, VEC_INVARIANT, true, wt_density_grid);
 		}
 
 		OpenVDB_export_grid_vec(writer, "texture coordinates", tcu, tcv, tcw, sds->res, sds->fluidmat, VEC_INVARIANT, false, wt_density_grid);
+		OpenVDB_export_grid_vec(writer, "texture coordinates 2", tcu2, tcv2, tcw2, sds->res, sds->fluidmat, VEC_INVARIANT, false, wt_density_grid);
 	}
 
 	if (sds->fluid) {
@@ -1106,11 +1107,11 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
 
 		OpenVDB_export_grid_fl(writer, "shadow", sds->shadow, sds->res, sds->fluidmat, NULL);
 
-		if (fluid_fields & SM_ACTIVE_HEAT) {
+		if (heat && fluid_fields & SM_ACTIVE_HEAT) {
 			OpenVDB_export_grid_fl(writer, "heat", heat, sds->res, sds->fluidmat, clip_grid);
 		}
 
-		if (fluid_fields & SM_ACTIVE_FIRE) {
+		if (flame && fluid_fields & SM_ACTIVE_FIRE) {
 			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "flame" : "flame low";
 			OpenVDB_export_grid_fl(writer, name, flame, sds->res, sds->fluidmat, density_grid);
 			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "fuel" : "fuel low";
@@ -1119,7 +1120,7 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
 			OpenVDB_export_grid_fl(writer, name, react, sds->res, sds->fluidmat, density_grid);
 		}
 
-		if (fluid_fields & SM_ACTIVE_COLORS) {
+		if (r && fluid_fields & SM_ACTIVE_COLORS) {
 			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "color" : "color low";
 			OpenVDB_export_grid_vec(writer, name, r, g, b, sds->res, sds->fluidmat, VEC_INVARIANT, true, density_grid);
 		}
@@ -1187,7 +1188,7 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 	/* reallocate fluid if needed*/
 	if (reallocate) {
 		sds->active_fields = active_fields | cache_fields;
-		smoke_reallocate_fluid(sds, cache_dx, cache_res, 1);
+		smoke_reallocate_fluid(sds, cache_res, 1);
 		sds->dx = cache_dx;
 		copy_v3_v3_int(sds->res, cache_res);
 		sds->total_cells = cache_res[0] * cache_res[1] * cache_res[2];
@@ -1210,11 +1211,11 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 		const char *name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "density" : "density low";
 		OpenVDB_import_grid_fl(reader, name, &dens, sds->res);
 
-		if (cache_fields & SM_ACTIVE_HEAT) {
+		if (heat && cache_fields & SM_ACTIVE_HEAT) {
 			OpenVDB_import_grid_fl(reader, "heat", &heat, sds->res);
 		}
 
-		if (cache_fields & SM_ACTIVE_FIRE) {
+		if (flame && cache_fields & SM_ACTIVE_FIRE) {
 			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "flame" : "flame low";
 			OpenVDB_import_grid_fl(reader, name, &flame, sds->res);
 			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "fuel" : "fuel low";
@@ -1223,7 +1224,7 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 			OpenVDB_import_grid_fl(reader, name, &react, sds->res);
 		}
 
-		if (cache_fields & SM_ACTIVE_COLORS) {
+		if (r && cache_fields & SM_ACTIVE_COLORS) {
 			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "color" : "color low";
 			OpenVDB_import_grid_vec(reader, name, &r, &g, &b, sds->res);
 		}
@@ -1239,17 +1240,18 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 
 		OpenVDB_import_grid_fl(reader, "density", &dens, sds->res_wt);
 
-		if (cache_fields & SM_ACTIVE_FIRE) {
+		if (flame && cache_fields & SM_ACTIVE_FIRE) {
 			OpenVDB_import_grid_fl(reader, "flame", &flame, sds->res_wt);
 			OpenVDB_import_grid_fl(reader, "fuel", &fuel, sds->res_wt);
 			OpenVDB_import_grid_fl(reader, "react", &react, sds->res_wt);
 		}
 
-		if (cache_fields & SM_ACTIVE_COLORS) {
+		if (r && cache_fields & SM_ACTIVE_COLORS) {
 			OpenVDB_import_grid_vec(reader, "color", &r, &g, &b, sds->res_wt);
 		}
 
 		OpenVDB_import_grid_vec(reader, "texture coordinates", &tcu, &tcv, &tcw, sds->res);
+		OpenVDB_import_grid_vec(reader, "texture coordinates 2", &tcu2, &tcv2, &tcw2, sds->res);
 	}
 
 	OpenVDBReader_free(reader);
