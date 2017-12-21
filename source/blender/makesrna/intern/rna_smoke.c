@@ -1441,79 +1441,79 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "sndparticle_tau_min_wc", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 1000.0);
-	RNA_def_property_ui_range(prop, 0.0, 1000.0, 1.0, 5);
+	RNA_def_property_ui_range(prop, 0.0, 1000.0, 100.0, 5);
 	RNA_def_property_ui_text(prop, "tauMin_wc", "Lower threshold for marking fluid cells as wave crest (lower values result in more marked cells)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "sndparticle_tau_max_wc", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 1000.0);
-	RNA_def_property_ui_range(prop, 0.0, 1000.0, 1.0, 5);
+	RNA_def_property_ui_range(prop, 0.0, 1000.0, 100.0, 5);
 	RNA_def_property_ui_text(prop, "tauMax_wc", "Upper threshold for marking fluid cells as wave crest (higher values result in less marked cells)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "sndparticle_tau_min_ta", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 1000.0);
-	RNA_def_property_ui_range(prop, 0.0, 10000.0, 1.0, 5);
+	RNA_def_property_ui_range(prop, 0.0, 10000.0, 100.0, 5);
 	RNA_def_property_ui_text(prop, "tauMin_ta", "Lower threshold for marking fluid cells where air is trapped (lower values result in more marked cells)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "sndparticle_tau_max_ta", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 1000.0);
-	RNA_def_property_ui_range(prop, 0.0, 1000.0, 1.0, 5);
+	RNA_def_property_ui_range(prop, 0.0, 1000.0, 100.0, 5);
 	RNA_def_property_ui_text(prop, "tauMax_ta", "Upper threshold for marking fluid cells where air is trapped (higher values result in less marked cells)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "sndparticle_tau_min_k", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 1000.0);
-	RNA_def_property_ui_range(prop, 0.0, 1000.0, 1.0, 5);
+	RNA_def_property_ui_range(prop, 0.0, 1000.0, 100.0, 5);
 	RNA_def_property_ui_text(prop, "tauMin_k", "Lower threshold that indicates the fluid speed where cells start to emit particles (lower values result in generally more particles)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "sndparticle_tau_max_k", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 1000.0);
-	RNA_def_property_ui_range(prop, 0.0, 1000.0, 1.0, 5);
+	RNA_def_property_ui_range(prop, 0.0, 1000.0, 100.0, 5);
 	RNA_def_property_ui_text(prop, "tauMax_k", "Upper threshold that indicates the fluid speed where cells no longer emit more particles (higher values result in generally less particles)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "sndparticle_k_wc", PROP_INT, PROP_NONE);
 	RNA_def_property_range(prop, 0, 10000);
-	RNA_def_property_ui_range(prop, 0, 10000, 10, -1);
+	RNA_def_property_ui_range(prop, 0, 10000, 1.0, -1);
 	RNA_def_property_ui_text(prop, "Wave Crest Sampling", "Maximum number of particles generated per wave crest cell per frame");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "sndparticle_k_ta", PROP_INT, PROP_NONE);
 	RNA_def_property_range(prop, 0, 10000);
-	RNA_def_property_ui_range(prop, 0, 10000, 10, -1);
+	RNA_def_property_ui_range(prop, 0, 10000, 1.0, -1);
 	RNA_def_property_ui_text(prop, "Trapped Air Sampling", "Maximum number of particles generated per trapped air cell per frame");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "sndparticle_k_b", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 100.0);
-	RNA_def_property_ui_range(prop, 0.0, 100.0, 0.1, 2);
+	RNA_def_property_ui_range(prop, 0.0, 100.0, 10.0, 2);
 	RNA_def_property_ui_text(prop, "Buoyancy", "Amount of buoyancy force that rises bubbles (high values result in bubble movement mainly upwards)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "sndparticle_k_d", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 100.0);
-	RNA_def_property_ui_range(prop, 0.0, 100.0, 0.1, 2);
+	RNA_def_property_ui_range(prop, 0.0, 100.0, 10.0, 2);
 	RNA_def_property_ui_text(prop, "Drag", "Amount of drag force that moves bubbles along with the fluid (high values result in bubble movement mainly along with the fluid)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "sndparticle_l_min", PROP_FLOAT, PROP_NONE);
-	RNA_def_property_range(prop, 0.0, 1000.0);
-	RNA_def_property_ui_range(prop, 0.0, 1000.0, 10.0, 2);
+	RNA_def_property_range(prop, 0.0, 10000.0);
+	RNA_def_property_ui_range(prop, 0.0, 10000.0, 100.0, 1);
 	RNA_def_property_ui_text(prop, "Lifetime(min)", "Lowest possible particle lifetime");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "sndparticle_l_max", PROP_FLOAT, PROP_NONE);
-	RNA_def_property_range(prop, 0.0, 1000.0);
-	RNA_def_property_ui_range(prop, 0.0, 1000.0, 10.0, 2);
+	RNA_def_property_range(prop, 0.0, 10000.0);
+	RNA_def_property_ui_range(prop, 0.0, 10000.0, 100.0, 1);
 	RNA_def_property_ui_text(prop, "Lifetime(max)", "Highest possible particle lifetime");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "sndparticle_tracer_number", PROP_INT, PROP_NONE);
 	RNA_def_property_range(prop, 0, 10);
-	RNA_def_property_ui_range(prop, 0, 10, 1, -1);
+	RNA_def_property_ui_range(prop, 0, 10, 1.0, -1);
 	RNA_def_property_ui_text(prop, "Tracer Number", "Number of tracer particles created per cell per dimension (e.g 2 means 2^3 = 8 particles in each cell)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 

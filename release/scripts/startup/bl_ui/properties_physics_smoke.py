@@ -438,52 +438,49 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         domain = context.smoke.domain_settings
 
         split = layout.split()
+        split.enabled = not domain.point_cache.is_baked
 
         first = split.column()
-        first.enabled = not domain.point_cache.is_baked
-        first.label("Exported Particles:")
-        temp = first.split()
-        temp.prop(domain, "use_drop_particles", text="Spray")
-        temp2 = temp.column()
-        temp2.prop(domain, "use_floater_particles", text="Foam")
-        temp3 = temp.column()
-        temp3.prop(domain, "use_bubble_particles", text="Bubbles")
-        
-        sub = first.column()
-        sub.active = domain.use_drop_particles or domain.use_floater_particles or domain.use_bubble_particles
-        sub.label(text="Potential Clamping:")
-        sub.prop(domain, "sndparticle_tau_min_wc", text="tauMin_wc")
-        sub.prop(domain, "sndparticle_tau_max_wc", text="tauMax_wc")
-        sub.prop(domain, "sndparticle_tau_min_ta", text="tauMin_ta")
-        sub.prop(domain, "sndparticle_tau_max_ta", text="tauMax_ta")
-        sub.prop(domain, "sndparticle_tau_min_k", text="tauMin_k")
-        sub.prop(domain, "sndparticle_tau_max_k", text="tauMax_k")
-        sub.label()
-        temp = first.column()
-        temp.active = True
-        temp.label(text="Other Particles:")
-        temp = first.split()
-        temp.prop(domain, "use_flip_particles", text="FLIP")
-        temp.prop(domain, "use_tracer_particles", text="Tracer")
+        sub1 = first.row()
+        sub1.label("Exported Particles:")
+        sub1.prop(domain, "use_drop_particles", text="Spray")
+        sub1.prop(domain, "use_floater_particles", text="Foam")
+        sub1.prop(domain, "use_bubble_particles", text="Bubbles")
+        sub2 = first.column()
+        sub2.active = domain.use_drop_particles or domain.use_floater_particles or domain.use_bubble_particles
+        sub2.label(text="Potential Clamping:")
+        sub2.prop(domain, "sndparticle_tau_min_wc", text="tauMin_wc")
+        sub2.prop(domain, "sndparticle_tau_max_wc", text="tauMax_wc")
+        sub2.prop(domain, "sndparticle_tau_min_ta", text="tauMin_ta")
+        sub2.prop(domain, "sndparticle_tau_max_ta", text="tauMax_ta")
+        sub2.prop(domain, "sndparticle_tau_min_k", text="tauMin_k")
+        sub2.prop(domain, "sndparticle_tau_max_k", text="tauMax_k")
+        sub2.label()
+        sub3 = first.column()
+        sub3.active = True
+        sub3.label(text="Other Particles:")
+        sub3 = first.split()
+        sub3.prop(domain, "use_flip_particles", text="FLIP")
+        sub3.prop(domain, "use_tracer_particles", text="Tracer")
 
         second = split.column()
-        second.enabled = not domain.point_cache.is_baked
-        second.active = domain.use_drop_particles or domain.use_floater_particles or domain.use_bubble_particles
-        second.label(text="Sampling:")
-        second.prop(domain, "sndparticle_k_wc", text="Wave Crest Sampling")
-        second.prop(domain, "sndparticle_k_ta", text="Trapped Air Sampling")
-        second.label(text="Lifetime:")
-        second.prop(domain, "sndparticle_l_min", text="Lifetime (min)")
-        second.prop(domain, "sndparticle_l_max", text="Lifetime (max)")
-        second.label(text="Bubble Movement:")
-        second.prop(domain, "sndparticle_k_b", text="Buoyancy")
-        second.prop(domain, "sndparticle_k_d", text="Drag")
-        second.label()
-        second.label()
-        sub = second.column()
-        sub.active = domain.use_tracer_particles
-        sub.prop(domain, "sndparticle_tracer_number", text="Tracer Number")
-        sub.prop(domain, "sndparticle_tracer_jitter", text="Tracer Jitter")
+        sub1 = second.column()
+        sub1.active = domain.use_drop_particles or domain.use_floater_particles or domain.use_bubble_particles
+        sub1.label(text="Sampling:")
+        sub1.prop(domain, "sndparticle_k_wc", text="Wave Crest Sampling")
+        sub1.prop(domain, "sndparticle_k_ta", text="Trapped Air Sampling")
+        sub1.label(text="Lifetime:")
+        sub1.prop(domain, "sndparticle_l_min", text="Lifetime (min)")
+        sub1.prop(domain, "sndparticle_l_max", text="Lifetime (max)")
+        sub1.label(text="Bubble Movement:")
+        sub1.prop(domain, "sndparticle_k_b", text="Buoyancy")
+        sub1.prop(domain, "sndparticle_k_d", text="Drag")
+        sub1.label()
+        sub1.label()
+        sub2 = second.column()
+        sub2.active = domain.use_tracer_particles
+        sub2.prop(domain, "sndparticle_tracer_number", text="Tracer Number")
+        sub2.prop(domain, "sndparticle_tracer_jitter", text="Tracer Jitter")
         
 
 class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
