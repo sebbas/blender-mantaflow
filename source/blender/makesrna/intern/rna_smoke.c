@@ -1616,6 +1616,9 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	    {FLUID_FIELD_VELOCITY_X, "VELOCITY_X", 0, "X Velocity", "X component of the velocity field"},
 	    {FLUID_FIELD_VELOCITY_Y, "VELOCITY_Y", 0, "Y Velocity", "Y component of the velocity field"},
 	    {FLUID_FIELD_VELOCITY_Z, "VELOCITY_Z", 0, "Z Velocity", "Z component of the velocity field"},
+		{FLUID_FIELD_KINETIC_ENERGY, "KINETIC_ENERGY", 0, "Kinetic Energy Potential", "Kinetic energy potential grid for secondary particle generation"},
+		{FLUID_FIELD_TRAPPED_AIR, "TRAPPED_AIR", 0, "Trapped Air Potential", "Trapped air potential grid for secondary particle generation"},
+		{FLUID_FIELD_WAVE_CREST, "WAVE_CREST", 0, "Wave Crest Potential", "Wave crest potential grid for secondary particle generation"},
 	    {0, NULL, 0, NULL, NULL}
 	};
 

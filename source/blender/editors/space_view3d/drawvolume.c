@@ -159,6 +159,9 @@ static GPUTexture *create_field_texture(SmokeDomainSettings *sds)
 		case FLUID_FIELD_FORCE_Y:    field = smoke_get_force_y(sds->fluid); break;
 		case FLUID_FIELD_FORCE_Z:    field = smoke_get_force_z(sds->fluid); break;
 #endif
+		case FLUID_FIELD_KINETIC_ENERGY:	field = liquid_get_kinetic_energy_potential(sds->fluid); break;
+		case FLUID_FIELD_TRAPPED_AIR:		field = liquid_get_trapped_air_potential(sds->fluid); break;
+		case FLUID_FIELD_WAVE_CREST:		field = liquid_get_wave_crest_potential(sds->fluid); break;
 		default: return NULL;
 	}
 

@@ -127,6 +127,9 @@ float liquid_get_triangle_y_at(struct FLUID *liquid, int i);
 float liquid_get_triangle_z_at(struct FLUID *liquid, int i);
 
 // Liquids particles
+float* liquid_get_kinetic_energy_potential(struct FLUID *liquid);
+float* liquid_get_trapped_air_potential(struct FLUID *liquid);
+float* liquid_get_wave_crest_potential(struct FLUID *liquid);
 int liquid_get_num_flip_particles(struct FLUID *liquid);
 int liquid_get_num_snd_particles(struct FLUID *liquid);
 

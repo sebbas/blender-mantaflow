@@ -152,6 +152,11 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mSndParticleVelocity   = NULL;
 	mSndParticleLife       = NULL;
 
+	// Grids for secondary particle potentials
+	mKineticEnergyPotential = NULL;
+	mTrappedAirPotential = NULL;
+	mWaveCrestPotential = NULL;
+
 	// Only start Mantaflow once. No need to start whenever new FLUID objected is allocated
 	if (!mantaInitialized)
 		initializeMantaflow();
@@ -562,6 +567,11 @@ FLUID::~FLUID()
 	mSndParticleData       = NULL;
 	mSndParticleVelocity   = NULL;
 	mSndParticleLife       = NULL;
+
+	// Grids for secondary particle potentials
+	mKineticEnergyPotential = NULL;
+	mTrappedAirPotential	= NULL;
+	mWaveCrestPotential		= NULL;
 
 	// Reset flags
 	mUsingHeat     = false;
@@ -1360,7 +1370,12 @@ void FLUID::updatePointers()
 		if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
 			mSndParticleData     = (std::vector<pData>*) getDataPointer("ppSnd" + solver_ext, solver);
 			mSndParticleVelocity = (std::vector<pVel>*)  getDataPointer("pVelSnd" + parts_ext, parts);
-			mSndParticleLife     = (std::vector<float>*) getDataPointer("pLifeSnd" + parts_ext, parts);
+			mSndParticleLife     = (std::vector<float>*) getDataPointer("pLifeSnd" + parts_ext, parts);			
+		}
+		if (mUsingDrops || mUsingBubbles || mUsingFloats) {
+			mKineticEnergyPotential = (float*)getDataPointer("kineticEnergy" + solver_ext, solver);
+			mTrappedAirPotential = (float*)getDataPointer("trappedAir" + solver_ext, solver);
+			mWaveCrestPotential = (float*)getDataPointer("waveCrest" + solver_ext, solver);
 		}
 	}
 	

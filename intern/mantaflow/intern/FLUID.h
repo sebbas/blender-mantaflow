@@ -170,6 +170,10 @@ public:
 	inline int getTriangleYAt(int i) { return mTrianglesY[i]; }
 	inline int getTriangleZAt(int i) { return mTrianglesZ[i]; }
 
+	inline float* getKineticEnergyPotential() { return mKineticEnergyPotential; }
+	inline float* getTrappedAirPotential() { return mTrappedAirPotential; }
+	inline float* getWaveCrestPotential() { return mWaveCrestPotential; }
+
 	// Particle getters
 	inline int getFlipParticleFlagAt(int i) { return (mFlipParticleData) ? ((std::vector<pData>*) mFlipParticleData)->at(i).flag : 0; }
 	inline int getSndParticleFlagAt(int i) { return (mSndParticleData) ? ((std::vector<pData>*) mSndParticleData)->at(i).flag : 0; }
@@ -292,6 +296,11 @@ private:
 	float* mPhiGuideIn;
 	float* mPhiOutIn;
 	float* mPhi;
+	// Grids for secondary particle potentials
+	float* mKineticEnergyPotential;
+	float* mTrappedAirPotential;
+	float* mWaveCrestPotential;
+
 
 	// Mesh fields for liquid surface
 	int mNumVertices;

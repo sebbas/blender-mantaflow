@@ -778,6 +778,21 @@ extern "C" float liquid_get_snd_particle_velocity_z_at(FLUID *liquid, int i)
 	return liquid->getSndParticleVelocityZAt(i);
 }
 
+extern "C" float* liquid_get_kinetic_energy_potential(FLUID *liquid)
+{
+	return liquid->getKineticEnergyPotential();
+}
+
+extern "C" float* liquid_get_trapped_air_potential(FLUID *liquid)
+{
+	return liquid->getTrappedAirPotential();
+}
+
+extern "C" float* liquid_get_wave_crest_potential(FLUID *liquid)
+{
+	return liquid->getWaveCrestPotential();
+}
+
 extern "C" void liquid_update_mesh_data(FLUID *liquid, char* filename)
 {
 	liquid->updateMeshData(filename);
