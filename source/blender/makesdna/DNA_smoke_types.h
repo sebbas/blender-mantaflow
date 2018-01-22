@@ -111,6 +111,7 @@ enum {
 	FLUID_FIELD_KINETIC_ENERGY = 14,
 	FLUID_FIELD_TRAPPED_AIR = 15,
 	FLUID_FIELD_WAVE_CREST = 16,
+	FLUID_FIELD_PRESSURE = 17,
 };
 
 /* cache compression */
@@ -302,7 +303,8 @@ typedef struct SmokeDomainSettings {
 	char vector_draw_type;
 	char use_coba;
 	char coba_field;  /* simulation field used for the color mapping */
-	char pad3; /* unused */
+	char coba_field_liquid;
+	//char pad3; /* unused */
 
 	/* mantaflow settings */
 	struct FLUID *fluid;

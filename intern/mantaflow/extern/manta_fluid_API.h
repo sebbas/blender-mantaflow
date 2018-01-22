@@ -98,6 +98,7 @@ float *smoke_get_guide_velocity_z(struct FLUID *smoke);
 float *liquid_get_phiin(struct FLUID *liquid);
 float *liquid_get_phiobsin(struct FLUID *liquid);
 float *liquid_get_phioutin(struct FLUID *liquid);
+float *liquid_get_pressure(struct FLUID *liquid);
 void liquid_ensure_init(struct FLUID *liquid, struct SmokeModifierData *smd);
 void liquid_manta_export(struct FLUID* smoke, struct SmokeModifierData *smd);
 

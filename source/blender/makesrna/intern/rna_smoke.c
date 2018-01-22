@@ -1622,9 +1622,23 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	    {0, NULL, 0, NULL, NULL}
 	};
 
+	static const EnumPropertyItem coba_field_items_liquid[] = {
+		{ FLUID_FIELD_PRESSURE, "PRESSURE", 0, "Pressure", "Pressure grid inside the liquid" },
+		{ FLUID_FIELD_KINETIC_ENERGY, "KINETIC_ENERGY", 0, "Kinetic Energy Potential", "Kinetic energy potential grid for secondary particle generation" },
+		{ FLUID_FIELD_TRAPPED_AIR, "TRAPPED_AIR", 0, "Trapped Air Potential", "Trapped air potential grid for secondary particle generation" },
+		{ FLUID_FIELD_WAVE_CREST, "WAVE_CREST", 0, "Wave Crest Potential", "Wave crest potential grid for secondary particle generation" },
+		{ 0, NULL, 0, NULL, NULL }
+	};
+
 	prop = RNA_def_property(srna, "coba_field", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "coba_field");
 	RNA_def_property_enum_items(prop, coba_field_items);
+	RNA_def_property_ui_text(prop, "Field", "Simulation field to color map");
+	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
+
+	prop = RNA_def_property(srna, "coba_field_liquid", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "coba_field_liquid");
+	RNA_def_property_enum_items(prop, coba_field_items_liquid);
 	RNA_def_property_ui_text(prop, "Field", "Simulation field to color map");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 

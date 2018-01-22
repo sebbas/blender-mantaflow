@@ -142,27 +142,34 @@ static GPUTexture *create_field_texture(SmokeDomainSettings *sds)
 {
 	float *field = NULL;
 
-	switch (sds->coba_field) {
+	if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS){
+		switch (sds->coba_field) {
 #ifdef WITH_SMOKE
-		case FLUID_FIELD_DENSITY:    field = smoke_get_density(sds->fluid); break;
-		case FLUID_FIELD_HEAT:       field = smoke_get_heat(sds->fluid); break;
-		case FLUID_FIELD_FUEL:       field = smoke_get_fuel(sds->fluid); break;
-		case FLUID_FIELD_REACT:      field = smoke_get_react(sds->fluid); break;
-		case FLUID_FIELD_FLAME:      field = smoke_get_flame(sds->fluid); break;
-		case FLUID_FIELD_VELOCITY_X: field = smoke_get_velocity_x(sds->fluid); break;
-		case FLUID_FIELD_VELOCITY_Y: field = smoke_get_velocity_y(sds->fluid); break;
-		case FLUID_FIELD_VELOCITY_Z: field = smoke_get_velocity_z(sds->fluid); break;
-		case FLUID_FIELD_COLOR_R:    field = smoke_get_color_r(sds->fluid); break;
-		case FLUID_FIELD_COLOR_G:    field = smoke_get_color_g(sds->fluid); break;
-		case FLUID_FIELD_COLOR_B:    field = smoke_get_color_b(sds->fluid); break;
-		case FLUID_FIELD_FORCE_X:    field = smoke_get_force_x(sds->fluid); break;
-		case FLUID_FIELD_FORCE_Y:    field = smoke_get_force_y(sds->fluid); break;
-		case FLUID_FIELD_FORCE_Z:    field = smoke_get_force_z(sds->fluid); break;
+			case FLUID_FIELD_DENSITY:    field = smoke_get_density(sds->fluid); break;
+			case FLUID_FIELD_HEAT:       field = smoke_get_heat(sds->fluid); break;
+			case FLUID_FIELD_FUEL:       field = smoke_get_fuel(sds->fluid); break;
+			case FLUID_FIELD_REACT:      field = smoke_get_react(sds->fluid); break;
+			case FLUID_FIELD_FLAME:      field = smoke_get_flame(sds->fluid); break;
+			case FLUID_FIELD_VELOCITY_X: field = smoke_get_velocity_x(sds->fluid); break;
+			case FLUID_FIELD_VELOCITY_Y: field = smoke_get_velocity_y(sds->fluid); break;
+			case FLUID_FIELD_VELOCITY_Z: field = smoke_get_velocity_z(sds->fluid); break;
+			case FLUID_FIELD_COLOR_R:    field = smoke_get_color_r(sds->fluid); break;
+			case FLUID_FIELD_COLOR_G:    field = smoke_get_color_g(sds->fluid); break;
+			case FLUID_FIELD_COLOR_B:    field = smoke_get_color_b(sds->fluid); break;
+			case FLUID_FIELD_FORCE_X:    field = smoke_get_force_x(sds->fluid); break;
+			case FLUID_FIELD_FORCE_Y:    field = smoke_get_force_y(sds->fluid); break;
+			case FLUID_FIELD_FORCE_Z:    field = smoke_get_force_z(sds->fluid); break;
 #endif
-		case FLUID_FIELD_KINETIC_ENERGY:	field = liquid_get_kinetic_energy_potential(sds->fluid); break;
-		case FLUID_FIELD_TRAPPED_AIR:		field = liquid_get_trapped_air_potential(sds->fluid); break;
-		case FLUID_FIELD_WAVE_CREST:		field = liquid_get_wave_crest_potential(sds->fluid); break;
-		default: return NULL;
+		}
+	}
+	else if (sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID){
+		switch (sds->coba_field_liquid){
+			case FLUID_FIELD_PRESSURE:			field = liquid_get_pressure(sds->fluid); break;
+			case FLUID_FIELD_KINETIC_ENERGY:	field = liquid_get_kinetic_energy_potential(sds->fluid); break;
+			case FLUID_FIELD_TRAPPED_AIR:		field = liquid_get_trapped_air_potential(sds->fluid); break;
+			case FLUID_FIELD_WAVE_CREST:		field = liquid_get_wave_crest_potential(sds->fluid); break;
+			default: return NULL;
+		}
 	}
 
 	return GPU_texture_create_3D(sds->res[0], sds->res[1], sds->res[2], 1, field);

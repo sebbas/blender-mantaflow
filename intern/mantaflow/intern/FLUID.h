@@ -170,6 +170,8 @@ public:
 	inline int getTriangleYAt(int i) { return mTrianglesY[i]; }
 	inline int getTriangleZAt(int i) { return mTrianglesZ[i]; }
 
+	inline float* getPressure() { return mPressure; }
+
 	inline float* getKineticEnergyPotential() { return mKineticEnergyPotential; }
 	inline float* getTrappedAirPotential() { return mTrappedAirPotential; }
 	inline float* getWaveCrestPotential() { return mWaveCrestPotential; }
@@ -296,6 +298,7 @@ private:
 	float* mPhiGuideIn;
 	float* mPhiOutIn;
 	float* mPhi;
+	float* mPressure;
 	// Grids for secondary particle potentials
 	float* mKineticEnergyPotential;
 	float* mTrappedAirPotential;

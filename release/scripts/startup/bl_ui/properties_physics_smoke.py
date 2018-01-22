@@ -443,6 +443,7 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         first = split.column()
         sub1 = first.row()
         sub1.label("Exported Particles:")
+        sub1 = first.row()
         sub1.prop(domain, "use_drop_particles", text="Spray")
         sub1.prop(domain, "use_floater_particles", text="Foam")
         sub1.prop(domain, "use_bubble_particles", text="Bubbles")
@@ -777,7 +778,7 @@ class PHYSICS_PT_liquid_display_settings(PhysicButtonsPanel, Panel):
         layout.prop(domain, "use_color_ramp")
         col = layout.column()
         col.enabled = domain.use_color_ramp
-        col.prop(domain, "coba_field")
+        col.prop(domain, "coba_field_liquid")
         col.template_color_ramp(domain, "color_ramp", expand=True)
 
 classes = (

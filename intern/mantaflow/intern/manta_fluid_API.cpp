@@ -778,6 +778,11 @@ extern "C" float liquid_get_snd_particle_velocity_z_at(FLUID *liquid, int i)
 	return liquid->getSndParticleVelocityZAt(i);
 }
 
+extern "C" float* liquid_get_pressure(FLUID *liquid)
+{
+	return liquid->getPressure();
+}
+
 extern "C" float* liquid_get_kinetic_energy_potential(FLUID *liquid)
 {
 	return liquid->getKineticEnergyPotential();

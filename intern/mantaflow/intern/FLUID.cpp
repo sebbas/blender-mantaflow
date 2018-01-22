@@ -121,6 +121,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mPhiIn          = NULL;
 	mPhiOutIn       = NULL;
 	mPhi            = NULL;
+	mPressure		= NULL;
 
 	mNumVertices  = 0;
 	mNumNormals   = 0;
@@ -537,6 +538,7 @@ FLUID::~FLUID()
 	mPhiIn      = NULL;
 	mPhiOutIn   = NULL;
 	mPhi        = NULL;
+	mPressure   = NULL;
 
 	mNumVertices  = 0;
 	mNumNormals   = 0;
@@ -1366,6 +1368,7 @@ void FLUID::updatePointers()
 
 		mFlipParticleData     = (std::vector<pData>*) getDataPointer("pp" + solver_ext, solver);
 		mFlipParticleVelocity = (std::vector<pVel>*)  getDataPointer("pVel" + parts_ext, parts);
+		mPressure = (float*)getDataPointer("pressure" + solver_ext, solver);
 
 		if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
 			mSndParticleData     = (std::vector<pData>*) getDataPointer("ppSnd" + solver_ext, solver);
