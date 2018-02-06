@@ -7917,7 +7917,7 @@ void draw_object(Scene *scene, ARegion *ar, View3D *v3d, Base *base, const short
 					GPU_free_smoke(smd);
 				}
 			}
-			if (smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID) {
+			if (smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID && sds->use_coba) {
 				sds->tex = NULL;
 				GPU_create_smoke(smd, 0);
 				draw_smoke_volume(sds, ob, p0, p1, viewnormal);
