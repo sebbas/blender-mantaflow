@@ -869,6 +869,7 @@ static void obstacles_from_derivedmesh_task_cb(void *userdata, const int z)
 					data->velocityX[index] += hit_vel[0];
 					data->velocityY[index] += hit_vel[1];
 					data->velocityZ[index] += hit_vel[2];
+					// printf("adding obvel: [%f, %f, %f], dx is: %f\n", hit_vel[0], hit_vel[1], hit_vel[2], sds->dx);
 
 					/* increase object count */
 					data->num_objects[index]++;
@@ -921,7 +922,6 @@ static void obstacles_from_derivedmesh(
 
 			if (scs->numverts != numverts || !scs->verts_old) {
 				if (scs->verts_old) MEM_freeN(scs->verts_old);
-
 				scs->verts_old = MEM_callocN(sizeof(float) * numverts * 3, "smoke_obs_verts_old");
 				scs->numverts = numverts;
 			}
@@ -949,8 +949,7 @@ static void obstacles_from_derivedmesh(
 
 			/* vert velocity */
 			VECADD(co, mvert[i].co, sds->shift);
-			if (has_velocity)
-			{
+			if (has_velocity) {
 				sub_v3_v3v3(&vert_vel[i * 3], co, &scs->verts_old[i * 3]);
 				mul_v3_fl(&vert_vel[i * 3], sds->dx / dt);
 			}
@@ -1965,15 +1964,18 @@ static void emit_from_derivedmesh(Object *flow_ob, SmokeDomainSettings *sds, Smo
 		 *   domain grid space for fast lookups */
 		for (i = 0; i < numOfVerts; i++) {
 			float n[3];
+
 			/* vert pos */
 			mul_m4_v3(flow_ob->obmat, mvert[i].co);
 			smoke_pos_to_cell(sds, mvert[i].co);
+
 			/* vert normal */
 			normal_short_to_float_v3(n, mvert[i].no);
 			mul_mat3_m4_v3(flow_ob->obmat, n);
 			mul_mat3_m4_v3(sds->imat, n);
 			normalize_v3(n);
 			normal_float_to_short_v3(mvert[i].no, n);
+
 			/* vert velocity */
 			if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY) {
 				float co[3];
