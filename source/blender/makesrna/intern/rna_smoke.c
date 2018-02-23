@@ -116,7 +116,7 @@ static void rna_Smoke_parts_create(PointerRNA *ptr, char *pset_name, char* parts
 	ParticleSettings *part;
 
 	/* add particle system */
-	part = psys_new_settings(pset_name, NULL);
+	part = BKE_particlesettings_add(NULL, pset_name);
 	psys = MEM_callocN(sizeof(ParticleSystem), "particle_system");
 
 	part->type = psys_type;
