@@ -88,6 +88,7 @@ set(SRC
 	intern/cdderivedmesh.c
 	intern/cloth.c
 	intern/collision.c
+	intern/colorband.c
 	intern/colortools.c
 	intern/constraint.c
 	intern/context.c
@@ -217,6 +218,7 @@ set(SRC
 	BKE_cdderivedmesh.h
 	BKE_cloth.h
 	BKE_collision.h
+	BKE_colorband.h
 	BKE_colortools.h
 	BKE_constraint.h
 	BKE_context.h
@@ -300,6 +302,7 @@ set(SRC
 	depsgraph_private.h
 	nla_private.h
 	tracking_private.h
+	particle_private.h
 	intern/CCGSubSurf.h
 	intern/CCGSubSurf_inline.h
 	intern/CCGSubSurf_intern.h

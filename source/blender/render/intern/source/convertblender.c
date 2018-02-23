@@ -56,7 +56,7 @@
 #include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
-#include "DNA_object_fluidsim.h"
+#include "DNA_object_fluidsim_types.h"
 #include "DNA_particle_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_texture_types.h"
@@ -3794,12 +3794,13 @@ static GroupObject *add_render_lamp(Render *re, Object *ob)
 			copy_v3_v3(vec, ob->obmat[2]);
 			normalize_v3(vec);
 
-			InitSunSky(lar->sunsky, la->atm_turbidity, vec, la->horizon_brightness, 
-					la->spread, la->sun_brightness, la->sun_size, la->backscattered_light,
-					   la->skyblendfac, la->skyblendtype, la->sky_exposure, la->sky_colorspace);
-			
-			InitAtmosphere(lar->sunsky, la->sun_intensity, 1.0, 1.0, la->atm_inscattering_factor, la->atm_extinction_factor,
-					la->atm_distance_factor);
+			InitSunSky(
+			        lar->sunsky, la->atm_turbidity, vec, la->horizon_brightness,
+			        la->spread, la->sun_brightness, la->sun_size, la->backscattered_light,
+			        la->skyblendfac, la->skyblendtype, la->sky_exposure, la->sky_colorspace);
+			InitAtmosphere(
+			        lar->sunsky, la->sun_intensity, 1.0, 1.0, la->atm_inscattering_factor, la->atm_extinction_factor,
+			        la->atm_distance_factor);
 		}
 	}
 	else lar->ray_totsamp= 0;

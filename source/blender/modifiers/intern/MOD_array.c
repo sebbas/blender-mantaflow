@@ -102,60 +102,53 @@ static void foreachObjectLink(
 	walk(userData, ob, &amd->offset_ob, IDWALK_CB_NOP);
 }
 
-static void updateDepgraph(ModifierData *md, DagForest *forest,
-                           struct Main *UNUSED(bmain),
-                           struct Scene *UNUSED(scene),
-                           Object *UNUSED(ob), DagNode *obNode)
+static void updateDepgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
 	ArrayModifierData *amd = (ArrayModifierData *) md;
 
 	if (amd->start_cap) {
-		DagNode *curNode = dag_get_node(forest, amd->start_cap);
+		DagNode *curNode = dag_get_node(ctx->forest, amd->start_cap);
 
-		dag_add_relation(forest, curNode, obNode,
+		dag_add_relation(ctx->forest, curNode, ctx->obNode,
 		                 DAG_RL_DATA_DATA | DAG_RL_OB_DATA, "Array Modifier");
 	}
 	if (amd->end_cap) {
-		DagNode *curNode = dag_get_node(forest, amd->end_cap);
+		DagNode *curNode = dag_get_node(ctx->forest, amd->end_cap);
 
-		dag_add_relation(forest, curNode, obNode,
+		dag_add_relation(ctx->forest, curNode, ctx->obNode,
 		                 DAG_RL_DATA_DATA | DAG_RL_OB_DATA, "Array Modifier");
 	}
 	if (amd->curve_ob) {
-		DagNode *curNode = dag_get_node(forest, amd->curve_ob);
+		DagNode *curNode = dag_get_node(ctx->forest, amd->curve_ob);
 		curNode->eval_flags |= DAG_EVAL_NEED_CURVE_PATH;
 
-		dag_add_relation(forest, curNode, obNode,
+		dag_add_relation(ctx->forest, curNode, ctx->obNode,
 		                 DAG_RL_DATA_DATA | DAG_RL_OB_DATA, "Array Modifier");
 	}
 	if (amd->offset_ob) {
-		DagNode *curNode = dag_get_node(forest, amd->offset_ob);
+		DagNode *curNode = dag_get_node(ctx->forest, amd->offset_ob);
 
-		dag_add_relation(forest, curNode, obNode,
+		dag_add_relation(ctx->forest, curNode, ctx->obNode,
 		                 DAG_RL_DATA_DATA | DAG_RL_OB_DATA, "Array Modifier");
 	}
 }
 
-static void updateDepsgraph(ModifierData *md,
-                            struct Main *UNUSED(bmain),
-                            struct Scene *UNUSED(scene),
-                            Object *UNUSED(ob),
-                            struct DepsNodeHandle *node)
+static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
 	ArrayModifierData *amd = (ArrayModifierData *)md;
 	if (amd->start_cap != NULL) {
-		DEG_add_object_relation(node, amd->start_cap, DEG_OB_COMP_TRANSFORM, "Array Modifier Start Cap");
+		DEG_add_object_relation(ctx->node, amd->start_cap, DEG_OB_COMP_TRANSFORM, "Array Modifier Start Cap");
 	}
 	if (amd->end_cap != NULL) {
-		DEG_add_object_relation(node, amd->end_cap, DEG_OB_COMP_TRANSFORM, "Array Modifier End Cap");
+		DEG_add_object_relation(ctx->node, amd->end_cap, DEG_OB_COMP_TRANSFORM, "Array Modifier End Cap");
 	}
 	if (amd->curve_ob) {
-		struct Depsgraph *depsgraph = DEG_get_graph_from_handle(node);
-		DEG_add_object_relation(node, amd->curve_ob, DEG_OB_COMP_GEOMETRY, "Array Modifier Curve");
+		struct Depsgraph *depsgraph = DEG_get_graph_from_handle(ctx->node);
+		DEG_add_object_relation(ctx->node, amd->curve_ob, DEG_OB_COMP_GEOMETRY, "Array Modifier Curve");
 		DEG_add_special_eval_flag(depsgraph, &amd->curve_ob->id, DAG_EVAL_NEED_CURVE_PATH);
 	}
 	if (amd->offset_ob != NULL) {
-		DEG_add_object_relation(node, amd->offset_ob, DEG_OB_COMP_TRANSFORM, "Array Modifier Offset");
+		DEG_add_object_relation(ctx->node, amd->offset_ob, DEG_OB_COMP_TRANSFORM, "Array Modifier Offset");
 	}
 }
 
@@ -217,8 +210,8 @@ static void dm_mvert_map_doubles(
 	source_end = source_start + source_num_verts;
 
 	/* build array of MVerts to be tested for merging */
-	sorted_verts_target = MEM_mallocN(sizeof(SortVertsElem) * target_num_verts, __func__);
-	sorted_verts_source = MEM_mallocN(sizeof(SortVertsElem) * source_num_verts, __func__);
+	sorted_verts_target = MEM_malloc_arrayN(target_num_verts, sizeof(SortVertsElem), __func__);
+	sorted_verts_source = MEM_malloc_arrayN(source_num_verts, sizeof(SortVertsElem), __func__);
 
 	/* Copy target vertices index and cos into SortVertsElem array */
 	svert_from_mvert(sorted_verts_target, mverts + target_start, target_start, target_end);
@@ -538,7 +531,7 @@ static DerivedMesh *arrayModifier_doArray(
 
 	if (use_merge) {
 		/* Will need full_doubles_map for handling merge */
-		full_doubles_map = MEM_mallocN(sizeof(int) * result_nverts, "mod array doubles map");
+		full_doubles_map = MEM_malloc_arrayN(result_nverts, sizeof(int), "mod array doubles map");
 		copy_vn_i(full_doubles_map, result_nverts, -1);
 	}
 
@@ -651,6 +644,26 @@ static DerivedMesh *arrayModifier_doArray(
 				        c * chunk_nverts,
 				        chunk_nverts,
 				        amd->merge_dist);
+			}
+		}
+	}
+
+	/* handle UVs */
+	if (chunk_nloops > 0 && is_zero_v2(amd->uv_offset) == false) {
+		const int totuv = CustomData_number_of_layers(&result->loopData, CD_MLOOPUV);
+		for (i = 0; i < totuv; i++) {
+			MLoopUV *dmloopuv = CustomData_get_layer_n(&result->loopData, CD_MLOOPUV, i);
+			dmloopuv += chunk_nloops;
+			for (c = 1; c < count; c++) {
+				const float uv_offset[2] = {
+					amd->uv_offset[0] * (float)c,
+					amd->uv_offset[1] * (float)c,
+				};
+				int l_index = chunk_nloops;
+				for (; l_index-- != 0; dmloopuv++) {
+					dmloopuv->uv[0] += uv_offset[0];
+					dmloopuv->uv[1] += uv_offset[1];
+				}
 			}
 		}
 	}

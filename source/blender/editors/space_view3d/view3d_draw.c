@@ -48,7 +48,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
-#include "BLI_jitter.h"
+#include "BLI_jitter_2d.h"
 #include "BLI_utildefines.h"
 #include "BLI_endian_switch.h"
 #include "BLI_threads.h"
@@ -2751,10 +2751,17 @@ void ED_view3d_update_viewmat(
 		view3d_winmatrix_set(ar, v3d, rect);
 
 	/* setup view matrix */
-	if (viewmat)
+	if (viewmat) {
 		copy_m4_m4(rv3d->viewmat, viewmat);
-	else
-		view3d_viewmatrix_set(scene, v3d, rv3d);  /* note: calls BKE_object_where_is_calc for camera... */
+	}
+	else {
+		float rect_scale[2];
+		if (rect) {
+			rect_scale[0] = (float)BLI_rcti_size_x(rect) / (float)ar->winx;
+			rect_scale[1] = (float)BLI_rcti_size_y(rect) / (float)ar->winy;
+		}
+		view3d_viewmatrix_set(scene, v3d, rv3d, rect ? rect_scale : NULL);  /* note: calls BKE_object_where_is_calc for camera... */
+	}
 
 	/* update utility matrices */
 	mul_m4_m4m4(rv3d->persmat, rv3d->winmat, rv3d->viewmat);
@@ -3577,14 +3584,16 @@ void ED_scene_draw_fps(Scene *scene, const rcti *rect)
 #endif
 }
 
-static bool view3d_main_region_do_render_draw(Scene *scene)
+static bool view3d_main_region_do_render_draw(const Scene *scene)
 {
 	RenderEngineType *type = RE_engines_find(scene->r.engine);
 
 	return (type && type->view_update && type->view_draw);
 }
 
-bool ED_view3d_calc_render_border(Scene *scene, View3D *v3d, ARegion *ar, rcti *rect)
+bool ED_view3d_calc_render_border(
+        const Scene *scene, const View3D *v3d, const ARegion *ar,
+        rcti *rect)
 {
 	RegionView3D *rv3d = ar->regiondata;
 	rctf viewborder;
@@ -3784,28 +3793,28 @@ static void view3d_stereo3d_setup(Scene *scene, View3D *v3d, ARegion *ar, const 
 		data = (Camera *)v3d->camera->data;
 		shiftx = data->shiftx;
 
-		BLI_lock_thread(LOCK_VIEW3D);
+		BLI_thread_lock(LOCK_VIEW3D);
 		data->shiftx = BKE_camera_multiview_shift_x(&scene->r, v3d->camera, viewname);
 
 		BKE_camera_multiview_view_matrix(&scene->r, v3d->camera, is_left, viewmat);
 		view3d_main_region_setup_view(scene, v3d, ar, viewmat, NULL, rect);
 
 		data->shiftx = shiftx;
-		BLI_unlock_thread(LOCK_VIEW3D);
+		BLI_thread_unlock(LOCK_VIEW3D);
 	}
 	else { /* SCE_VIEWS_FORMAT_MULTIVIEW */
 		float viewmat[4][4];
 		Object *view_ob = v3d->camera;
 		Object *camera = BKE_camera_multiview_render(scene, v3d->camera, viewname);
 
-		BLI_lock_thread(LOCK_VIEW3D);
+		BLI_thread_lock(LOCK_VIEW3D);
 		v3d->camera = camera;
 
 		BKE_camera_multiview_view_matrix(&scene->r, camera, false, viewmat);
 		view3d_main_region_setup_view(scene, v3d, ar, viewmat, NULL, rect);
 
 		v3d->camera = view_ob;
-		BLI_unlock_thread(LOCK_VIEW3D);
+		BLI_thread_unlock(LOCK_VIEW3D);
 	}
 }
 
@@ -3934,6 +3943,10 @@ static void view3d_main_region_draw_objects(const bContext *C, Scene *scene, Vie
 
 static bool is_cursor_visible(Scene *scene)
 {
+	if (U.app_flag & USER_APP_VIEW3D_HIDE_CURSOR) {
+		return false;
+	}
+
 	Object *ob = OBACT;
 
 	/* don't draw cursor in paint modes, but with a few exceptions */

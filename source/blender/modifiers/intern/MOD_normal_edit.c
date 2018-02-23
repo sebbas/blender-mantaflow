@@ -119,7 +119,7 @@ static void mix_normals(
 	int i;
 
 	if (dvert) {
-		facs = MEM_mallocN(sizeof(*facs) * (size_t)num_loops, __func__);
+		facs = MEM_malloc_arrayN((size_t)num_loops, sizeof(*facs), __func__);
 		BKE_defvert_extract_vgroup_to_loopweights(
 		            dvert, defgrp_index, num_verts, mloop, num_loops, facs, use_invert_vgroup);
 	}
@@ -197,8 +197,8 @@ static void normalEditModifier_do_radial(
 {
 	int i;
 
-	float (*cos)[3] = MEM_mallocN(sizeof(*cos) * num_verts, __func__);
-	float (*nos)[3] = MEM_mallocN(sizeof(*nos) * num_loops, __func__);
+	float (*cos)[3] = MEM_malloc_arrayN((size_t)num_verts, sizeof(*cos), __func__);
+	float (*nos)[3] = MEM_malloc_arrayN((size_t)num_loops, sizeof(*nos), __func__);
 	float size[3];
 
 	BLI_bitmap *done_verts = BLI_BITMAP_NEW((size_t)num_verts, __func__);
@@ -296,8 +296,8 @@ static void normalEditModifier_do_directional(
 {
 	const bool use_parallel_normals = (enmd->flag & MOD_NORMALEDIT_USE_DIRECTION_PARALLEL) != 0;
 
-	float (*cos)[3] = MEM_mallocN(sizeof(*cos) * num_verts, __func__);
-	float (*nos)[3] = MEM_mallocN(sizeof(*nos) * num_loops, __func__);
+	float (*cos)[3] = MEM_malloc_arrayN((size_t)num_verts, sizeof(*cos), __func__);
+	float (*nos)[3] = MEM_malloc_arrayN((size_t)num_loops, sizeof(*nos), __func__);
 
 	float target_co[3];
 	int i;
@@ -436,7 +436,7 @@ static DerivedMesh *normalEditModifier_do(NormalEditModifierData *enmd, Object *
 
 	polynors = dm->getPolyDataArray(dm, CD_NORMAL);
 	if (!polynors) {
-		polynors = MEM_mallocN(sizeof(*polynors) * num_polys, __func__);
+		polynors = MEM_malloc_arrayN((size_t)num_polys, sizeof(*polynors), __func__);
 		BKE_mesh_calc_normals_poly(mvert, NULL, num_verts, mloop, mpoly, num_loops, num_polys, polynors, false);
 		free_polynors = true;
 	}
@@ -511,29 +511,22 @@ static bool isDisabled(ModifierData *md, int UNUSED(useRenderParams))
 	return !is_valid_target(enmd);
 }
 
-static void updateDepgraph(ModifierData *md, DagForest *forest,
-                           struct Main *UNUSED(bmain),
-                           struct Scene *UNUSED(scene),
-                           Object *UNUSED(ob), DagNode *obNode)
+static void updateDepgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
 	NormalEditModifierData *enmd = (NormalEditModifierData *) md;
 
 	if (enmd->target) {
-		DagNode *Node = dag_get_node(forest, enmd->target);
+		DagNode *Node = dag_get_node(ctx->forest, enmd->target);
 
-		dag_add_relation(forest, Node, obNode, DAG_RL_OB_DATA, "NormalEdit Modifier");
+		dag_add_relation(ctx->forest, Node, ctx->obNode, DAG_RL_OB_DATA, "NormalEdit Modifier");
 	}
 }
 
-static void updateDepsgraph(ModifierData *md,
-                            struct Main *UNUSED(bmain),
-                            struct Scene *UNUSED(scene),
-                            Object *UNUSED(ob),
-                            struct DepsNodeHandle *node)
+static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
 	NormalEditModifierData *enmd = (NormalEditModifierData *) md;
 	if (enmd->target) {
-		DEG_add_object_relation(node, enmd->target, DEG_OB_COMP_TRANSFORM, "NormalEdit Modifier");
+		DEG_add_object_relation(ctx->node, enmd->target, DEG_OB_COMP_TRANSFORM, "NormalEdit Modifier");
 	}
 }
 

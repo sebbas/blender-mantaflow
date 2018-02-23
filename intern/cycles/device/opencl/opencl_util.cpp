@@ -18,6 +18,7 @@
 
 #include "device/opencl/opencl.h"
 
+#include "util/util_debug.h"
 #include "util/util_logging.h"
 #include "util/util_md5.h"
 #include "util/util_path.h"
@@ -1135,7 +1136,7 @@ bool OpenCLInfo::get_driver_version(cl_device_id device_id,
 	return true;
 }
 
-int OpenCLInfo::mem_address_alignment(cl_device_id device_id)
+int OpenCLInfo::mem_sub_ptr_alignment(cl_device_id device_id)
 {
 	int base_align_bits;
 	if(clGetDeviceInfo(device_id,

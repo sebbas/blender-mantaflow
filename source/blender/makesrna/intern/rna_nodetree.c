@@ -3293,10 +3293,17 @@ static const EnumPropertyItem node_script_mode_items[] = {
 };
 
 static const EnumPropertyItem node_principled_distribution_items[] = {
-	{ SHD_GLOSSY_GGX, "GGX", 0, "GGX", "" },
-	{ SHD_GLOSSY_MULTI_GGX, "MULTI_GGX", 0, "Multiscatter GGX", "" },
+	{SHD_GLOSSY_GGX, "GGX", 0, "GGX", ""},
+	{SHD_GLOSSY_MULTI_GGX, "MULTI_GGX", 0, "Multiscatter GGX", ""},
+	{0, NULL, 0, NULL, NULL}
+};
+
+static const EnumPropertyItem node_subsurface_method_items[] = {
+	{SHD_SUBSURFACE_BURLEY, "BURLEY", 0, "Christensen-Burley", "Approximation to physically based volume scattering"},
+	{SHD_SUBSURFACE_RANDOM_WALK, "RANDOM_WALK", 0, "Random Walk", "Volumetric approximation to physically based volume scattering"},
 	{ 0, NULL, 0, NULL, NULL }
 };
+
 
 /* -- Common nodes ---------------------------------------------------------- */
 
@@ -4241,6 +4248,12 @@ static void def_principled(StructRNA *srna)
 	RNA_def_property_enum_items(prop, node_principled_distribution_items);
 	RNA_def_property_ui_text(prop, "Distribution", "");
 	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_ShaderNodePrincipled_update");
+
+	prop = RNA_def_property(srna, "subsurface_method", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "custom2");
+	RNA_def_property_enum_items(prop, node_subsurface_method_items);
+	RNA_def_property_ui_text(prop, "Subsurface Method", "Method for rendering subsurface scattering");
+	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_ShaderNodePrincipled_update");
 }
 
 static void def_refraction(StructRNA *srna)
@@ -4328,11 +4341,11 @@ static void def_sh_uvalongstroke(StructRNA *srna)
 static void def_sh_normal_map(StructRNA *srna)
 {
 	static const EnumPropertyItem prop_space_items[] = {
-		{SHD_NORMAL_MAP_TANGENT, "TANGENT", 0, "Tangent Space", "Tangent space normal mapping"},
-		{SHD_NORMAL_MAP_OBJECT, "OBJECT", 0, "Object Space", "Object space normal mapping"},
-		{SHD_NORMAL_MAP_WORLD, "WORLD", 0, "World Space", "World space normal mapping"},
-		{SHD_NORMAL_MAP_BLENDER_OBJECT, "BLENDER_OBJECT", 0, "Blender Object Space", "Object space normal mapping, compatible with Blender render baking"},
-		{SHD_NORMAL_MAP_BLENDER_WORLD, "BLENDER_WORLD", 0, "Blender World Space", "World space normal mapping, compatible with Blender render baking"},
+		{SHD_SPACE_TANGENT, "TANGENT", 0, "Tangent Space", "Tangent space normal mapping"},
+		{SHD_SPACE_OBJECT, "OBJECT", 0, "Object Space", "Object space normal mapping"},
+		{SHD_SPACE_WORLD, "WORLD", 0, "World Space", "World space normal mapping"},
+		{SHD_SPACE_BLENDER_OBJECT, "BLENDER_OBJECT", 0, "Blender Object Space", "Object space normal mapping, compatible with Blender render baking"},
+		{SHD_SPACE_BLENDER_WORLD, "BLENDER_WORLD", 0, "Blender World Space", "World space normal mapping, compatible with Blender render baking"},
 		{0, NULL, 0, NULL, NULL}
 	};
 
@@ -4348,6 +4361,45 @@ static void def_sh_normal_map(StructRNA *srna)
 	prop = RNA_def_property(srna, "uv_map", PROP_STRING, PROP_NONE);
 	RNA_def_property_ui_text(prop, "UV Map", "UV Map for tangent space maps");
 	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+	RNA_def_struct_sdna_from(srna, "bNode", NULL);
+}
+
+static void def_sh_displacement(StructRNA *srna)
+{
+	static const EnumPropertyItem prop_space_items[] = {
+		{SHD_SPACE_OBJECT, "OBJECT", 0, "Object Space", "Displacement is in object space, affected by object scale"},
+		{SHD_SPACE_WORLD, "WORLD", 0, "World Space", "Displacement is in world space, not affected by object scale"},
+		{0, NULL, 0, NULL, NULL}
+	};
+
+	PropertyRNA *prop;
+
+	prop = RNA_def_property(srna, "space", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "custom1");
+	RNA_def_property_enum_items(prop, prop_space_items);
+	RNA_def_property_ui_text(prop, "Space", "Space of the input height");
+	RNA_def_property_update(prop, 0, "rna_Node_update");
+
+	RNA_def_struct_sdna_from(srna, "bNode", NULL);
+}
+
+static void def_sh_vector_displacement(StructRNA *srna)
+{
+	static const EnumPropertyItem prop_space_items[] = {
+		{SHD_SPACE_TANGENT, "TANGENT", 0, "Tangent Space", "Tagent space vector displacement mapping"},
+		{SHD_SPACE_OBJECT, "OBJECT", 0, "Object Space", "Object space vector displacement mapping"},
+		{SHD_SPACE_WORLD, "WORLD", 0, "World Space", "World space vector displacement mapping"},
+		{0, NULL, 0, NULL, NULL}
+	};
+
+	PropertyRNA *prop;
+
+	prop = RNA_def_property(srna, "space", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "custom1");
+	RNA_def_property_enum_items(prop, prop_space_items);
+	RNA_def_property_ui_text(prop, "Space", "Space of the input height");
+	RNA_def_property_update(prop, 0, "rna_Node_update");
 
 	RNA_def_struct_sdna_from(srna, "bNode", NULL);
 }
@@ -4405,6 +4457,7 @@ static void def_sh_subsurface(StructRNA *srna)
 		{SHD_SUBSURFACE_CUBIC, "CUBIC", 0, "Cubic", "Simple cubic falloff function"},
 		{SHD_SUBSURFACE_GAUSSIAN, "GAUSSIAN", 0, "Gaussian", "Normal distribution, multiple can be combined to fit more complex profiles"},
 		{SHD_SUBSURFACE_BURLEY, "BURLEY", 0, "Christensen-Burley", "Approximation to physically based volume scattering"},
+		{SHD_SUBSURFACE_RANDOM_WALK, "RANDOM_WALK", 0, "Random Walk", "Volumetric approximation to physically based volume scattering"},
 		{0, NULL, 0, NULL, NULL}
 	};
 
@@ -5264,14 +5317,14 @@ static void def_cmp_luma_matte(StructRNA *srna)
 	prop = RNA_def_property(srna, "limit_max", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "t1");
 	RNA_def_property_float_funcs(prop, NULL, "rna_Matte_t1_set", NULL);
-	RNA_def_property_range(prop, 0.0f, 1.0f);
+	RNA_def_property_ui_range(prop, 0, 1, 0.1f, 3);
 	RNA_def_property_ui_text(prop, "High", "Values higher than this setting are 100% opaque");
 	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 	
 	prop = RNA_def_property(srna, "limit_min", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "t2");
 	RNA_def_property_float_funcs(prop, NULL, "rna_Matte_t2_set", NULL);
-	RNA_def_property_range(prop, 0.0f, 1.0f);
+	RNA_def_property_ui_range(prop, 0, 1, 0.1f, 3);
 	RNA_def_property_ui_text(prop, "Low", "Values lower than this setting are 100% keyed");
 	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
@@ -5374,14 +5427,14 @@ static void def_cmp_channel_matte(StructRNA *srna)
 	prop = RNA_def_property(srna, "limit_max", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "t1");
 	RNA_def_property_float_funcs(prop, NULL, "rna_Matte_t1_set", NULL);
-	RNA_def_property_range(prop, 0.0f, 1.0f);
+	RNA_def_property_ui_range(prop, 0, 1, 0.1f, 3);
 	RNA_def_property_ui_text(prop, "High", "Values higher than this setting are 100% opaque");
 	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 	
 	prop = RNA_def_property(srna, "limit_min", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "t2");
 	RNA_def_property_float_funcs(prop, NULL, "rna_Matte_t2_set", NULL);
-	RNA_def_property_range(prop, 0.0f, 1.0f);
+	RNA_def_property_ui_range(prop, 0, 1, 0.1f, 3);
 	RNA_def_property_ui_text(prop, "Low", "Values lower than this setting are 100% keyed");
 	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }

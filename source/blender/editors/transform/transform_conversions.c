@@ -1905,7 +1905,6 @@ static void createTransParticleVerts(bContext *C, TransInfo *t)
 {
 	TransData *td = NULL;
 	TransDataExtension *tx;
-	Base *base = CTX_data_active_base(C);
 	Object *ob = CTX_data_active_object(C);
 	ParticleEditSettings *pset = PE_settings(t->scene);
 	PTCacheEdit *edit = PE_get_current(t->scene, ob);
@@ -1924,8 +1923,6 @@ static void createTransParticleVerts(bContext *C, TransInfo *t)
 
 	if (psys)
 		psmd = psys_get_modifier(ob, psys);
-
-	base->flag |= BA_HAS_RECALC_DATA;
 
 	for (i = 0, point = edit->points; i < edit->totpoint; i++, point++) {
 		point->flag &= ~PEP_TRANSFORM;
@@ -3515,65 +3512,134 @@ static void posttrans_mask_clean(Mask *mask)
 	}
 }
 
+/* Time + Average value */
+typedef struct tRetainedKeyframe {
+	struct tRetainedKeyframe *next, *prev;
+	float frame;      /* frame to cluster around */
+	float val;        /* average value */
+	
+	size_t tot_count; /* number of keyframes that have been averaged */
+	size_t del_count; /* number of keyframes of this sort that have been deleted so far */
+} tRetainedKeyframe;
+
 /* Called during special_aftertrans_update to make sure selected keyframes replace
  * any other keyframes which may reside on that frame (that is not selected).
  */
 static void posttrans_fcurve_clean(FCurve *fcu, const bool use_handle)
 {
-	float *selcache;    /* cache for frame numbers of selected frames (fcu->totvert*sizeof(float)) */
-	int len, index, i;  /* number of frames in cache, item index */
-
-	/* allocate memory for the cache */
-	// TODO: investigate using BezTriple columns instead?
-	if (fcu->totvert == 0 || fcu->bezt == NULL)
+	/* NOTE: We assume that all keys are sorted */
+	ListBase retained_keys = {NULL, NULL};
+	const bool can_average_points = ((fcu->flag & (FCURVE_INT_VALUES | FCURVE_DISCRETE_VALUES)) == 0);
+	
+	/* sanity checks */
+	if ((fcu->totvert == 0) || (fcu->bezt == NULL))
 		return;
-	selcache = MEM_callocN(sizeof(float) * fcu->totvert, "FCurveSelFrameNums");
-	len = 0;
-	index = 0;
-
-	/* We do 2 loops, 1 for marking keyframes for deletion, one for deleting
-	 * as there is no guarantee what order the keyframes are exactly, even though
-	 * they have been sorted by time.
+	
+	/* 1) Identify selected keyframes, and average the values on those
+	 * in case there are collisions due to multiple keys getting scaled
+	 * to all end up on the same frame
 	 */
-
-	/*	Loop 1: find selected keyframes   */
-	for (i = 0; i < fcu->totvert; i++) {
+	for (int i = 0; i < fcu->totvert; i++) {
 		BezTriple *bezt = &fcu->bezt[i];
 		
 		if (BEZT_ISSEL_ANY(bezt)) {
-			selcache[index] = bezt->vec[1][0];
-			index++;
-			len++;
-		}
-	}
-
-	/* Loop 2: delete unselected keyframes on the same frames 
-	 * (if any keyframes were found, or the whole curve wasn't affected) 
-	 */
-	if ((len) && (len != fcu->totvert)) {
-		for (i = fcu->totvert - 1; i >= 0; i--) {
-			BezTriple *bezt = &fcu->bezt[i];
+			bool found = false;
 			
-			if (BEZT_ISSEL_ANY(bezt) == 0) {
-				/* check beztriple should be removed according to cache */
-				for (index = 0; index < len; index++) {
-					if (IS_EQF(bezt->vec[1][0], selcache[index])) {
-						delete_fcurve_key(fcu, i, 0);
-						break;
-					}
-					else if (bezt->vec[1][0] < selcache[index])
-						break;
+			/* If there's another selected frame here, merge it */
+			for (tRetainedKeyframe *rk = retained_keys.last; rk; rk = rk->prev) {
+				if (IS_EQT(rk->frame, bezt->vec[1][0], BEZT_BINARYSEARCH_THRESH)) {
+					rk->val += bezt->vec[1][1];
+					rk->tot_count++;
+					
+					found = true;
+					break;
+				}
+				else if (rk->frame < bezt->vec[1][0]) {
+					/* Terminate early if have passed the supposed insertion point? */
+					break;
 				}
 			}
+			
+			/* If nothing found yet, create a new one */
+			if (found == false) {
+				tRetainedKeyframe *rk = MEM_callocN(sizeof(tRetainedKeyframe), "tRetainedKeyframe");
+				
+				rk->frame = bezt->vec[1][0];
+				rk->val   = bezt->vec[1][1];
+				rk->tot_count = 1;
+				
+				BLI_addtail(&retained_keys, rk);
+			}
 		}
-		
-		testhandles_fcurve(fcu, use_handle);
 	}
-
-	/* free cache */
-	MEM_freeN(selcache);
+	
+	if (BLI_listbase_is_empty(&retained_keys)) {
+		/* This may happen if none of the points were selected... */
+		if (G.debug & G_DEBUG) {
+			printf("%s: nothing to do for FCurve %p (rna_path = '%s')\n", __func__, fcu, fcu->rna_path);
+		}
+		return;
+	}
+	else {
+		/* Compute the average values for each retained keyframe */
+		for (tRetainedKeyframe *rk = retained_keys.first; rk; rk = rk->next) {
+			rk->val = rk->val / (float)rk->tot_count;
+		}
+	}
+	
+	/* 2) Delete all keyframes duplicating the "retained keys" found above
+	 *   - Most of these will be unselected keyframes
+	 *   - Some will be selected keyframes though. For those, we only keep the last one
+	 *     (or else everything is gone), and replace its value with the averaged value. 
+	 */
+	for (int i = fcu->totvert - 1; i >= 0; i--) {
+		BezTriple *bezt = &fcu->bezt[i];
+		
+		/* Is this keyframe a candidate for deletion? */
+		/* TODO: Replace loop with an O(1) lookup instead */
+		for (tRetainedKeyframe *rk = retained_keys.last; rk; rk = rk->prev) {
+			if (IS_EQT(bezt->vec[1][0], rk->frame, BEZT_BINARYSEARCH_THRESH)) {
+				/* Selected keys are treated with greater care than unselected ones... */
+				if (BEZT_ISSEL_ANY(bezt)) {
+					/* - If this is the last selected key left (based on rk->del_count) ==> UPDATE IT
+					 *   (or else we wouldn't have any keyframe left here)
+					 * - Otherwise, there are still other selected keyframes on this frame
+					 *   to be merged down still ==> DELETE IT
+					 */
+					if (rk->del_count == rk->tot_count - 1) {
+						/* Update keyframe... */
+						if (can_average_points) {
+							/* TODO: update handles too? */
+							bezt->vec[1][1] = rk->val;
+						}
+					}
+					else {
+						/* Delete Keyframe */
+						delete_fcurve_key(fcu, i, 0);
+					}
+					
+					/* Update count of how many we've deleted
+					 * - It should only matter that we're doing this for all but the last one
+					 */
+					rk->del_count++;
+				}
+				else {
+					/* Always delete - Unselected keys don't matter */
+					delete_fcurve_key(fcu, i, 0);
+				}
+								
+				/* Stop the RK search... we've found our match now */
+				break;
+			}
+		}
+	}
+	
+	/* 3) Recalculate handles */
+	testhandles_fcurve(fcu, use_handle);
+	
+	/* cleanup */
+	BLI_freelistN(&retained_keys);
 }
-
 
 
 /* Called by special_aftertrans_update to make sure selected keyframes replace
@@ -5611,10 +5677,9 @@ static void set_trans_object_base_flags(TransInfo *t)
 	/* and we store them temporal in base (only used for transform code) */
 	/* this because after doing updates, the object->recalc is cleared */
 	for (base = scene->base.first; base; base = base->next) {
-		if (base->object->recalc & OB_RECALC_OB)
-			base->flag |= BA_HAS_RECALC_OB;
-		if (base->object->recalc & OB_RECALC_DATA)
-			base->flag |= BA_HAS_RECALC_DATA;
+		if (base->object->recalc & (OB_RECALC_OB | OB_RECALC_DATA)) {
+			base->flag |= BA_SNAP_FIX_DEPS_FIASCO;
+		}
 	}
 }
 
@@ -5690,10 +5755,9 @@ static int count_proportional_objects(TransInfo *t)
 	/* and we store them temporal in base (only used for transform code) */
 	/* this because after doing updates, the object->recalc is cleared */
 	for (base = scene->base.first; base; base = base->next) {
-		if (base->object->recalc & OB_RECALC_OB)
-			base->flag |= BA_HAS_RECALC_OB;
-		if (base->object->recalc & OB_RECALC_DATA)
-			base->flag |= BA_HAS_RECALC_DATA;
+		if (base->object->recalc & (OB_RECALC_OB | OB_RECALC_DATA)) {
+			base->flag |= BA_SNAP_FIX_DEPS_FIASCO;
+		}
 	}
 
 	return total;
@@ -5708,7 +5772,7 @@ static void clear_trans_object_base_flags(TransInfo *t)
 		if (base->flag & BA_WAS_SEL)
 			base->flag |= SELECT;
 
-		base->flag &= ~(BA_WAS_SEL | BA_HAS_RECALC_OB | BA_HAS_RECALC_DATA | BA_TEMP_TAG | BA_TRANSFORM_CHILD | BA_TRANSFORM_PARENT);
+		base->flag &= ~(BA_WAS_SEL | BA_SNAP_FIX_DEPS_FIASCO | BA_TEMP_TAG | BA_TRANSFORM_CHILD | BA_TRANSFORM_PARENT);
 	}
 }
 

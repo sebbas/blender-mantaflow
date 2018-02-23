@@ -461,8 +461,9 @@ typedef struct wmEvent {
 	short keymodifier;				/* rawkey modifier */
 	
 	/* set in case a KM_PRESS went by unhandled */
-	short check_click;
-	
+	char check_click;
+	char is_motion_absolute;
+
 	/* keymap item, set by handler (weak?) */
 	const char *keymap_idname;
 
@@ -507,6 +508,10 @@ typedef struct wmNDOFMotionData {
 } wmNDOFMotionData;
 #endif /* WITH_INPUT_NDOF */
 
+typedef enum {  /* Timer flags */
+	WM_TIMER_NO_FREE_CUSTOM_DATA  = 1 << 0,  /* Do not attempt to free customdata pointer even if non-NULL. */
+} wmTimerFlags;
+
 typedef struct wmTimer {
 	struct wmTimer *next, *prev;
 	
@@ -514,6 +519,7 @@ typedef struct wmTimer {
 
 	double timestep;		/* set by timer user */
 	int event_type;			/* set by timer user, goes to event system */
+	wmTimerFlags flags;		/* Various flags controlling timer options, see below. */
 	void *customdata;		/* set by timer user, to allow custom values */
 	
 	double duration;		/* total running time in seconds */
@@ -522,7 +528,7 @@ typedef struct wmTimer {
 	double ltime;			/* internal, last time timer was activated */
 	double ntime;			/* internal, next time we want to activate the timer */
 	double stime;			/* internal, when the timer started */
-	int sleep;				/* internal, put timers to sleep when needed */
+	bool sleep;				/* internal, put timers to sleep when needed */
 } wmTimer;
 
 typedef struct wmOperatorType {
@@ -688,6 +694,23 @@ typedef struct wmDropBox {
 	short opcontext;				/* default invoke */
 
 } wmDropBox;
+
+/**
+ * Struct to store tool-tip timer and possible creation if the time is reached.
+ * Allows UI code to call #WM_tooltip_timer_init without each user having to handle the timer.
+ */
+typedef struct wmTooltipState {
+	/** Create tooltip on this event. */
+	struct wmTimer *timer;
+	/** The region the tooltip is created in. */
+	struct ARegion *region_from;
+	/** The tooltip region. */
+	struct ARegion *region;
+	/** Create the tooltip region (assign to 'region'). */
+	struct ARegion *(*init)(struct bContext *, struct ARegion *, bool *r_exit_on_event);
+	/** Exit on any event, not needed for buttons since their highlight state is used. */
+	bool exit_on_event;
+} wmTooltipState;
 
 /* *************** migrated stuff, clean later? ************** */
 

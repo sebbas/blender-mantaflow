@@ -9,6 +9,7 @@ endif()
 # External Libraries
 
 include(cmake/external_libs.cmake)
+include(cmake/macros.cmake)
 
 # Build Flags
 # todo: this code could be refactored a bit to avoid duplication
@@ -21,8 +22,11 @@ if(WITH_CYCLES_NATIVE_ONLY)
 	add_definitions(
 		-DWITH_KERNEL_NATIVE
 	)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
-	set(CYCLES_KERNEL_FLAGS "-march=native")
+
+	if(NOT MSVC)
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+		set(CYCLES_KERNEL_FLAGS "-march=native")
+	endif()
 elseif(NOT WITH_CPU_SSE)
 	set(CXX_HAS_SSE FALSE)
 	set(CXX_HAS_AVX FALSE)
@@ -163,8 +167,13 @@ if(WITH_CYCLES_OPENSUBDIV)
 	)
 endif()
 
-set(WITH_CYCLES_DEVICE_OPENCL TRUE)
-set(WITH_CYCLES_DEVICE_CUDA TRUE)
+if(WITH_CYCLES_STANDALONE)
+	set(WITH_CYCLES_DEVICE_OPENCL TRUE)
+	set(WITH_CYCLES_DEVICE_CUDA TRUE)
+	# Experimental and unfinished.
+	set(WITH_CYCLES_NETWORK FALSE)
+endif()
+# TODO(sergey): Consider removing it, only causes confusion in interface.
 set(WITH_CYCLES_DEVICE_MULTI TRUE)
 
 if(CYCLES_STANDALONE_REPOSITORY)
@@ -239,6 +248,24 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 	unset(_has_no_error_unused_macros)
 endif()
 
+if(WITH_CYCLES_CUDA_BINARIES AND (NOT WITH_CYCLES_CUBIN_COMPILER))
+	if(MSVC)
+		set(MAX_MSVC 1800)
+		if(${CUDA_VERSION} EQUAL "8.0")
+			set(MAX_MSVC 1900)
+		elseif(${CUDA_VERSION} EQUAL "9.0")
+			set(MAX_MSVC 1910)
+		elseif(${CUDA_VERSION} EQUAL "9.1")
+			set(MAX_MSVC 1911)
+		endif()
+		if(NOT MSVC_VERSION LESS ${MAX_MSVC})
+			message(STATUS "nvcc not supported for this compiler version, using cycles_cubin_cc instead.")
+			set(WITH_CYCLES_CUBIN_COMPILER ON)
+		endif()
+		unset(MAX_MSVC)
+	endif()
+endif()
+
 
 # Subdirectories
 
@@ -251,7 +278,7 @@ if(WITH_CYCLES_NETWORK)
 	add_definitions(-DWITH_NETWORK)
 endif()
 
-if(WITH_CYCLES_STANDALONE OR WITH_CYCLES_NETWORK)
+if(WITH_CYCLES_STANDALONE OR WITH_CYCLES_NETWORK OR WITH_CYCLES_CUBIN_COMPILER)
 	add_subdirectory(app)
 endif()
 

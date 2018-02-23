@@ -208,7 +208,7 @@ NODE_DEFINE(ImageTextureNode)
 
 	TEXTURE_MAPPING_DEFINE(ImageTextureNode);
 
-	SOCKET_STRING(filename, "Filename", ustring(""));
+	SOCKET_STRING(filename, "Filename", ustring());
 
 	static NodeEnum color_space_enum;
 	color_space_enum.insert("none", NODE_COLOR_SPACE_NONE);
@@ -419,7 +419,7 @@ NODE_DEFINE(EnvironmentTextureNode)
 
 	TEXTURE_MAPPING_DEFINE(EnvironmentTextureNode);
 
-	SOCKET_STRING(filename, "Filename", ustring(""));
+	SOCKET_STRING(filename, "Filename", ustring());
 
 	static NodeEnum color_space_enum;
 	color_space_enum.insert("none", NODE_COLOR_SPACE_NONE);
@@ -1348,7 +1348,7 @@ NODE_DEFINE(PointDensityTextureNode)
 {
 	NodeType* type = NodeType::add("point_density_texture", create, NodeType::SHADER);
 
-	SOCKET_STRING(filename, "Filename", ustring(""));
+	SOCKET_STRING(filename, "Filename", ustring());
 
 	static NodeEnum space_enum;
 	space_enum.insert("object", NODE_TEX_VOXEL_SPACE_OBJECT);
@@ -2312,6 +2312,12 @@ NODE_DEFINE(PrincipledBsdfNode)
 	distribution_enum.insert("GGX", CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);
 	distribution_enum.insert("Multiscatter GGX", CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
 	SOCKET_ENUM(distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
+
+	static NodeEnum subsurface_method_enum;
+	subsurface_method_enum.insert("burley", CLOSURE_BSSRDF_PRINCIPLED_ID);
+	subsurface_method_enum.insert("random_walk", CLOSURE_BSSRDF_PRINCIPLED_RANDOM_WALK_ID);
+	SOCKET_ENUM(subsurface_method, "Subsurface Method", subsurface_method_enum, CLOSURE_BSSRDF_PRINCIPLED_ID);
+
 	SOCKET_IN_COLOR(base_color, "Base Color", make_float3(0.8f, 0.8f, 0.8f));
 	SOCKET_IN_COLOR(subsurface_color, "Subsurface Color", make_float3(0.8f, 0.8f, 0.8f));
 	SOCKET_IN_FLOAT(metallic, "Metallic", 0.0f);
@@ -2410,7 +2416,7 @@ void PrincipledBsdfNode::compile(SVMCompiler& compiler, ShaderInput *p_metallic,
 		compiler.encode_uchar4(sheen_offset, sheen_tint_offset, clearcoat_offset, clearcoat_roughness_offset));
 
 	compiler.add_node(compiler.encode_uchar4(ior_offset, transmission_offset, anisotropic_rotation_offset, transmission_roughness_offset),
-		distribution, SVM_STACK_INVALID, SVM_STACK_INVALID);
+		distribution, subsurface_method, SVM_STACK_INVALID);
 
 	float3 bc_default = get_float3(base_color_in->socket_type);
 
@@ -2442,6 +2448,7 @@ void PrincipledBsdfNode::compile(SVMCompiler& compiler)
 void PrincipledBsdfNode::compile(OSLCompiler& compiler)
 {
 	compiler.parameter(this, "distribution");
+	compiler.parameter(this, "subsurface_method");
 	compiler.add(this, "node_principled_bsdf");
 }
 
@@ -2525,6 +2532,7 @@ NODE_DEFINE(SubsurfaceScatteringNode)
 	falloff_enum.insert("cubic", CLOSURE_BSSRDF_CUBIC_ID);
 	falloff_enum.insert("gaussian", CLOSURE_BSSRDF_GAUSSIAN_ID);
 	falloff_enum.insert("burley", CLOSURE_BSSRDF_BURLEY_ID);
+	falloff_enum.insert("random_walk", CLOSURE_BSSRDF_RANDOM_WALK_ID);
 	SOCKET_ENUM(falloff, "Falloff", falloff_enum, CLOSURE_BSSRDF_BURLEY_ID);
 	SOCKET_IN_FLOAT(scale, "Scale", 0.01f);
 	SOCKET_IN_VECTOR(radius, "Radius", make_float3(0.1f, 0.1f, 0.1f));
@@ -2834,6 +2842,120 @@ void ScatterVolumeNode::compile(SVMCompiler& compiler)
 void ScatterVolumeNode::compile(OSLCompiler& compiler)
 {
 	compiler.add(this, "node_scatter_volume");
+}
+
+/* Principled Volume Closure */
+
+NODE_DEFINE(PrincipledVolumeNode)
+{
+	NodeType* type = NodeType::add("principled_volume", create, NodeType::SHADER);
+
+	SOCKET_IN_STRING(density_attribute, "Density Attribute", ustring());
+	SOCKET_IN_STRING(color_attribute, "Color Attribute", ustring());
+	SOCKET_IN_STRING(temperature_attribute, "Temperature Attribute", ustring());
+
+	SOCKET_IN_COLOR(color, "Color", make_float3(0.5f, 0.5f, 0.5f));
+	SOCKET_IN_FLOAT(density, "Density", 1.0f);
+	SOCKET_IN_FLOAT(anisotropy, "Anisotropy", 0.0f);
+	SOCKET_IN_COLOR(absorption_color, "Absorption Color", make_float3(0.0f, 0.0f, 0.0f));
+	SOCKET_IN_FLOAT(emission_strength, "Emission Strength", 0.0f);
+	SOCKET_IN_COLOR(emission_color, "Emission Color", make_float3(1.0f, 1.0f, 1.0f));
+	SOCKET_IN_FLOAT(blackbody_intensity, "Blackbody Intensity", 0.0f);
+	SOCKET_IN_COLOR(blackbody_tint, "Blackbody Tint", make_float3(1.0f, 1.0f, 1.0f));
+	SOCKET_IN_FLOAT(temperature, "Temperature", 1500.0f);
+	SOCKET_IN_FLOAT(volume_mix_weight, "VolumeMixWeight", 0.0f, SocketType::SVM_INTERNAL);
+
+	SOCKET_OUT_CLOSURE(volume, "Volume");
+
+	return type;
+}
+
+PrincipledVolumeNode::PrincipledVolumeNode()
+: VolumeNode(node_type)
+{
+	closure = CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID;
+}
+
+void PrincipledVolumeNode::attributes(Shader *shader, AttributeRequestSet *attributes)
+{
+	if(shader->has_volume) {
+		ShaderInput *density_in = input("Density");
+		ShaderInput *blackbody_in = input("Blackbody Intensity");
+
+		if(density_in->link || density > 0.0f) {
+			attributes->add_standard(density_attribute);
+			attributes->add_standard(color_attribute);
+		}
+
+		if(blackbody_in->link || blackbody_intensity > 0.0f) {
+			attributes->add_standard(temperature_attribute);
+		}
+
+		attributes->add(ATTR_STD_GENERATED_TRANSFORM);
+	}
+
+	ShaderNode::attributes(shader, attributes);
+}
+
+void PrincipledVolumeNode::compile(SVMCompiler& compiler)
+{
+	ShaderInput *color_in = input("Color");
+	ShaderInput *density_in = input("Density");
+	ShaderInput *anisotropy_in = input("Anisotropy");
+	ShaderInput *absorption_color_in = input("Absorption Color");
+	ShaderInput *emission_in = input("Emission Strength");
+	ShaderInput *emission_color_in = input("Emission Color");
+	ShaderInput *blackbody_in = input("Blackbody Intensity");
+	ShaderInput *blackbody_tint_in = input("Blackbody Tint");
+	ShaderInput *temperature_in = input("Temperature");
+
+	if(color_in->link)
+		compiler.add_node(NODE_CLOSURE_WEIGHT, compiler.stack_assign(color_in));
+	else
+		compiler.add_node(NODE_CLOSURE_SET_WEIGHT, color);
+
+	compiler.add_node(NODE_PRINCIPLED_VOLUME,
+		compiler.encode_uchar4(
+			compiler.stack_assign_if_linked(density_in),
+			compiler.stack_assign_if_linked(anisotropy_in),
+			compiler.stack_assign(absorption_color_in),
+			compiler.closure_mix_weight_offset()),
+		compiler.encode_uchar4(
+			compiler.stack_assign_if_linked(emission_in),
+			compiler.stack_assign(emission_color_in),
+			compiler.stack_assign_if_linked(blackbody_in),
+			compiler.stack_assign(temperature_in)),
+		compiler.stack_assign(blackbody_tint_in));
+
+	int attr_density = compiler.attribute_standard(density_attribute);
+	int attr_color = compiler.attribute_standard(color_attribute);
+	int attr_temperature = compiler.attribute_standard(temperature_attribute);
+
+	compiler.add_node(
+		__float_as_int(density),
+		__float_as_int(anisotropy),
+		__float_as_int(emission_strength),
+		__float_as_int(blackbody_intensity));
+
+	compiler.add_node(
+		attr_density,
+		attr_color,
+		attr_temperature);
+}
+
+void PrincipledVolumeNode::compile(OSLCompiler& compiler)
+{
+	if(Attribute::name_standard(density_attribute.c_str())) {
+		density_attribute = ustring("geom:" + density_attribute.string());
+	}
+	if(Attribute::name_standard(color_attribute.c_str())) {
+		color_attribute = ustring("geom:" + color_attribute.string());
+	}
+	if(Attribute::name_standard(temperature_attribute.c_str())) {
+		temperature_attribute = ustring("geom:" + temperature_attribute.string());
+	}
+
+	compiler.add(this, "node_principled_volume");
 }
 
 /* Hair BSDF Closure */
@@ -3159,7 +3281,7 @@ NODE_DEFINE(UVMapNode)
 {
 	NodeType* type = NodeType::add("uvmap", create, NodeType::SHADER);
 
-	SOCKET_IN_STRING(attribute, "attribute", ustring(""));
+	SOCKET_STRING(attribute, "attribute", ustring());
 	SOCKET_IN_BOOLEAN(from_dupli, "from dupli", false);
 
 	SOCKET_OUT_POINT(UV, "UV");
@@ -3456,6 +3578,7 @@ NODE_DEFINE(ParticleInfoNode)
 	NodeType* type = NodeType::add("particle_info", create, NodeType::SHADER);
 
 	SOCKET_OUT_FLOAT(index, "Index");
+	SOCKET_OUT_FLOAT(random, "Random");
 	SOCKET_OUT_FLOAT(age, "Age");
 	SOCKET_OUT_FLOAT(lifetime, "Lifetime");
 	SOCKET_OUT_POINT(location, "Location");
@@ -3477,6 +3600,8 @@ ParticleInfoNode::ParticleInfoNode()
 void ParticleInfoNode::attributes(Shader *shader, AttributeRequestSet *attributes)
 {
 	if(!output("Index")->links.empty())
+		attributes->add(ATTR_STD_PARTICLE);
+	if(!output("Random")->links.empty())
 		attributes->add(ATTR_STD_PARTICLE);
 	if(!output("Age")->links.empty())
 		attributes->add(ATTR_STD_PARTICLE);
@@ -3505,6 +3630,11 @@ void ParticleInfoNode::compile(SVMCompiler& compiler)
 	out = output("Index");
 	if(!out->links.empty()) {
 		compiler.add_node(NODE_PARTICLE_INFO, NODE_INFO_PAR_INDEX, compiler.stack_assign(out));
+	}
+
+	out = output("Random");
+	if(!out->links.empty()) {
+		compiler.add_node(NODE_PARTICLE_INFO, NODE_INFO_PAR_RANDOM, compiler.stack_assign(out));
 	}
 	
 	out = output("Age");
@@ -3560,10 +3690,11 @@ NODE_DEFINE(HairInfoNode)
 	SOCKET_OUT_FLOAT(is_strand, "Is Strand");
 	SOCKET_OUT_FLOAT(intercept, "Intercept");
 	SOCKET_OUT_FLOAT(thickness, "Thickness");
-	SOCKET_OUT_NORMAL(tangent Normal, "Tangent Normal");
+	SOCKET_OUT_NORMAL(tangent_normal, "Tangent Normal");
 #if 0 /*output for minimum hair width transparency - deactivated */
 	SOCKET_OUT_FLOAT(fade, "Fade");
 #endif
+	SOCKET_OUT_FLOAT(index, "Random");
 
 	return type;
 }
@@ -3580,6 +3711,9 @@ void HairInfoNode::attributes(Shader *shader, AttributeRequestSet *attributes)
 
 		if(!intercept_out->links.empty())
 			attributes->add(ATTR_STD_CURVE_INTERCEPT);
+
+		if(!output("Random")->links.empty())
+			attributes->add(ATTR_STD_CURVE_RANDOM);
 	}
 
 	ShaderNode::attributes(shader, attributes);
@@ -3615,6 +3749,11 @@ void HairInfoNode::compile(SVMCompiler& compiler)
 		compiler.add_node(NODE_HAIR_INFO, NODE_INFO_CURVE_FADE, compiler.stack_assign(out));
 	}*/
 
+	out = output("Random");
+	if(!out->links.empty()) {
+		int attr = compiler.attribute(ATTR_STD_CURVE_RANDOM);
+		compiler.add_node(NODE_ATTR, attr, compiler.stack_assign(out), NODE_ATTR_FLOAT);
+	}
 }
 
 void HairInfoNode::compile(OSLCompiler& compiler)
@@ -4440,7 +4579,7 @@ NODE_DEFINE(AttributeNode)
 {
 	NodeType* type = NodeType::add("attribute", create, NodeType::SHADER);
 
-	SOCKET_STRING(attribute, "Attribute", ustring(""));
+	SOCKET_STRING(attribute, "Attribute", ustring());
 
 	SOCKET_OUT_COLOR(color, "Color");
 	SOCKET_OUT_VECTOR(vector, "Vector");
@@ -4461,16 +4600,12 @@ void AttributeNode::attributes(Shader *shader, AttributeRequestSet *attributes)
 	ShaderOutput *fac_out = output("Fac");
 
 	if(!color_out->links.empty() || !vector_out->links.empty() || !fac_out->links.empty()) {
-		AttributeStandard std = Attribute::name_standard(attribute.c_str());
-
-		if(std != ATTR_STD_NONE)
-			attributes->add(std);
-		else
-			attributes->add(attribute);
+		attributes->add_standard(attribute);
 	}
 
-	if(shader->has_volume)
+	if(shader->has_volume) {
 		attributes->add(ATTR_STD_GENERATED_TRANSFORM);
+	}
 
 	ShaderNode::attributes(shader, attributes);
 }
@@ -4481,13 +4616,7 @@ void AttributeNode::compile(SVMCompiler& compiler)
 	ShaderOutput *vector_out = output("Vector");
 	ShaderOutput *fac_out = output("Fac");
 	ShaderNodeType attr_node = NODE_ATTR;
-	AttributeStandard std = Attribute::name_standard(attribute.c_str());
-	int attr;
-
-	if(std != ATTR_STD_NONE)
-		attr = compiler.attribute(std);
-	else
-		attr = compiler.attribute(attribute);
+	int attr = compiler.attribute_standard(attribute);;
 
 	if(bump == SHADER_BUMP_DX)
 		attr_node = NODE_ATTR_BUMP_DX;
@@ -4780,7 +4909,7 @@ NODE_DEFINE(OutputNode)
 
 	SOCKET_IN_CLOSURE(surface, "Surface");
 	SOCKET_IN_CLOSURE(volume, "Volume");
-	SOCKET_IN_FLOAT(displacement, "Displacement", 0.0f);
+	SOCKET_IN_VECTOR(displacement, "Displacement", make_float3(0.0f, 0.0f, 0.0f));
 	SOCKET_IN_NORMAL(normal, "Normal", make_float3(0.0f, 0.0f, 0.0f));
 
 	return type;
@@ -5445,7 +5574,7 @@ NODE_DEFINE(NormalMapNode)
 	space_enum.insert("blender_world", NODE_NORMAL_MAP_BLENDER_WORLD);
 	SOCKET_ENUM(space, "Space", space_enum, NODE_TANGENT_RADIAL);
 
-	SOCKET_STRING(attribute, "Attribute", ustring(""));
+	SOCKET_STRING(attribute, "Attribute", ustring());
 
 	SOCKET_IN_NORMAL(normal_osl, "NormalIn", make_float3(0.0f, 0.0f, 0.0f), SocketType::LINK_NORMAL | SocketType::OSL_INTERNAL);
 	SOCKET_IN_FLOAT(strength, "Strength", 1.0f);
@@ -5464,7 +5593,7 @@ NormalMapNode::NormalMapNode()
 void NormalMapNode::attributes(Shader *shader, AttributeRequestSet *attributes)
 {
 	if(shader->has_surface && space == NODE_NORMAL_MAP_TANGENT) {
-		if(attribute == ustring("")) {
+		if(attribute.empty()) {
 			attributes->add(ATTR_STD_UV_TANGENT);
 			attributes->add(ATTR_STD_UV_TANGENT_SIGN);
 		}
@@ -5487,7 +5616,7 @@ void NormalMapNode::compile(SVMCompiler& compiler)
 	int attr = 0, attr_sign = 0;
 
 	if(space == NODE_NORMAL_MAP_TANGENT) {
-		if(attribute == ustring("")) {
+		if(attribute.empty()) {
 			attr = compiler.attribute(ATTR_STD_UV_TANGENT);
 			attr_sign = compiler.attribute(ATTR_STD_UV_TANGENT_SIGN);
 		}
@@ -5509,7 +5638,7 @@ void NormalMapNode::compile(SVMCompiler& compiler)
 void NormalMapNode::compile(OSLCompiler& compiler)
 {
 	if(space == NODE_NORMAL_MAP_TANGENT) {
-		if(attribute == ustring("")) {
+		if(attribute.empty()) {
 			compiler.parameter("attr_name", ustring("geom:tangent"));
 			compiler.parameter("attr_sign_name", ustring("geom:tangent_sign"));
 		}
@@ -5540,7 +5669,7 @@ NODE_DEFINE(TangentNode)
 	axis_enum.insert("z", NODE_TANGENT_AXIS_Z);
 	SOCKET_ENUM(axis, "Axis", axis_enum, NODE_TANGENT_AXIS_X);
 
-	SOCKET_STRING(attribute, "Attribute", ustring(""));
+	SOCKET_STRING(attribute, "Attribute", ustring());
 
 	SOCKET_IN_NORMAL(normal_osl, "NormalIn", make_float3(0.0f, 0.0f, 0.0f), SocketType::LINK_NORMAL | SocketType::OSL_INTERNAL);
 	SOCKET_OUT_NORMAL(tangent, "Tangent");
@@ -5557,7 +5686,7 @@ void TangentNode::attributes(Shader *shader, AttributeRequestSet *attributes)
 {
 	if(shader->has_surface) {
 		if(direction_type == NODE_TANGENT_UVMAP) {
-			if(attribute == ustring(""))
+			if(attribute.empty())
 				attributes->add(ATTR_STD_UV_TANGENT);
 			else
 				attributes->add(ustring((string(attribute.c_str()) + ".tangent").c_str()));
@@ -5575,7 +5704,7 @@ void TangentNode::compile(SVMCompiler& compiler)
 	int attr;
 
 	if(direction_type == NODE_TANGENT_UVMAP) {
-		if(attribute == ustring(""))
+		if(attribute.empty())
 			attr = compiler.attribute(ATTR_STD_UV_TANGENT);
 		else
 			attr = compiler.attribute(ustring((string(attribute.c_str()) + ".tangent").c_str()));
@@ -5593,7 +5722,7 @@ void TangentNode::compile(SVMCompiler& compiler)
 void TangentNode::compile(OSLCompiler& compiler)
 {
 	if(direction_type == NODE_TANGENT_UVMAP) {
-		if(attribute == ustring(""))
+		if(attribute.empty())
 			compiler.parameter("attr_name", ustring("geom:tangent"));
 		else
 			compiler.parameter("attr_name", ustring((string(attribute.c_str()) + ".tangent").c_str()));
@@ -5642,6 +5771,148 @@ void BevelNode::compile(OSLCompiler& compiler)
 {
 	compiler.parameter(this, "samples");
 	compiler.add(this, "node_bevel");
+}
+
+/* Displacement */
+
+NODE_DEFINE(DisplacementNode)
+{
+	NodeType* type = NodeType::add("displacement", create, NodeType::SHADER);
+
+	static NodeEnum space_enum;
+	space_enum.insert("object", NODE_NORMAL_MAP_OBJECT);
+	space_enum.insert("world", NODE_NORMAL_MAP_WORLD);
+
+	SOCKET_ENUM(space, "Space", space_enum, NODE_NORMAL_MAP_TANGENT);
+
+	SOCKET_IN_FLOAT(height, "Height", 0.0f);
+	SOCKET_IN_FLOAT(midlevel, "Midlevel", 0.5f);
+	SOCKET_IN_FLOAT(scale, "Scale", 1.0f);
+	SOCKET_IN_NORMAL(normal, "Normal", make_float3(0.0f, 0.0f, 0.0f), SocketType::LINK_NORMAL);
+
+	SOCKET_OUT_VECTOR(displacement, "Displacement");
+
+	return type;
+}
+
+DisplacementNode::DisplacementNode()
+: ShaderNode(node_type)
+{
+}
+
+void DisplacementNode::compile(SVMCompiler& compiler)
+{
+	ShaderInput *height_in = input("Height");
+	ShaderInput *midlevel_in = input("Midlevel");
+	ShaderInput *scale_in = input("Scale");
+	ShaderInput *normal_in = input("Normal");
+	ShaderOutput *displacement_out = output("Displacement");
+
+	compiler.add_node(NODE_DISPLACEMENT,
+		compiler.encode_uchar4(compiler.stack_assign(height_in),
+		                       compiler.stack_assign(midlevel_in),
+		                       compiler.stack_assign(scale_in),
+		                       compiler.stack_assign_if_linked(normal_in)),
+	    compiler.stack_assign(displacement_out),
+		space);
+}
+
+void DisplacementNode::compile(OSLCompiler& compiler)
+{
+	compiler.parameter(this, "space");
+	compiler.add(this, "node_displacement");
+}
+
+/* Vector Displacement */
+
+NODE_DEFINE(VectorDisplacementNode)
+{
+	NodeType* type = NodeType::add("vector_displacement", create, NodeType::SHADER);
+
+	static NodeEnum space_enum;
+	space_enum.insert("tangent", NODE_NORMAL_MAP_TANGENT);
+	space_enum.insert("object", NODE_NORMAL_MAP_OBJECT);
+	space_enum.insert("world", NODE_NORMAL_MAP_WORLD);
+
+	SOCKET_ENUM(space, "Space", space_enum, NODE_NORMAL_MAP_TANGENT);
+	SOCKET_STRING(attribute, "Attribute", ustring());
+
+	SOCKET_IN_COLOR(vector, "Vector", make_float3(0.0f, 0.0f, 0.0f));
+	SOCKET_IN_FLOAT(midlevel, "Midlevel", 0.0f);
+	SOCKET_IN_FLOAT(scale, "Scale", 1.0f);
+
+	SOCKET_OUT_VECTOR(displacement, "Displacement");
+
+	return type;
+}
+
+VectorDisplacementNode::VectorDisplacementNode()
+: ShaderNode(node_type)
+{
+}
+
+void VectorDisplacementNode::attributes(Shader *shader, AttributeRequestSet *attributes)
+{
+	if(shader->has_surface && space == NODE_NORMAL_MAP_TANGENT) {
+		if(attribute.empty()) {
+			attributes->add(ATTR_STD_UV_TANGENT);
+			attributes->add(ATTR_STD_UV_TANGENT_SIGN);
+		}
+		else {
+			attributes->add(ustring((string(attribute.c_str()) + ".tangent").c_str()));
+			attributes->add(ustring((string(attribute.c_str()) + ".tangent_sign").c_str()));
+		}
+
+		attributes->add(ATTR_STD_VERTEX_NORMAL);
+	}
+
+	ShaderNode::attributes(shader, attributes);
+}
+
+void VectorDisplacementNode::compile(SVMCompiler& compiler)
+{
+	ShaderInput *vector_in = input("Vector");
+	ShaderInput *midlevel_in = input("Midlevel");
+	ShaderInput *scale_in = input("Scale");
+	ShaderOutput *displacement_out = output("Displacement");
+	int attr = 0, attr_sign = 0;
+
+	if(space == NODE_NORMAL_MAP_TANGENT) {
+		if(attribute.empty()) {
+			attr = compiler.attribute(ATTR_STD_UV_TANGENT);
+			attr_sign = compiler.attribute(ATTR_STD_UV_TANGENT_SIGN);
+		}
+		else {
+			attr = compiler.attribute(ustring((string(attribute.c_str()) + ".tangent").c_str()));
+			attr_sign = compiler.attribute(ustring((string(attribute.c_str()) + ".tangent_sign").c_str()));
+		}
+	}
+
+	compiler.add_node(NODE_VECTOR_DISPLACEMENT,
+		compiler.encode_uchar4(compiler.stack_assign(vector_in),
+		                       compiler.stack_assign(midlevel_in),
+		                       compiler.stack_assign(scale_in),
+		                       compiler.stack_assign(displacement_out)),
+		attr, attr_sign);
+
+	compiler.add_node(space);
+}
+
+void VectorDisplacementNode::compile(OSLCompiler& compiler)
+{
+	if(space == NODE_NORMAL_MAP_TANGENT) {
+		if(attribute.empty()) {
+			compiler.parameter("attr_name", ustring("geom:tangent"));
+			compiler.parameter("attr_sign_name", ustring("geom:tangent_sign"));
+		}
+		else {
+			compiler.parameter("attr_name", ustring((string(attribute.c_str()) + ".tangent").c_str()));
+			compiler.parameter("attr_sign_name", ustring((string(attribute.c_str()) + ".tangent_sign").c_str()));
+		}
+	}
+
+	compiler.parameter(this, "space");
+	compiler.add(this, "node_vector_displacement");
 }
 
 CCL_NAMESPACE_END

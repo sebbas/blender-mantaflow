@@ -735,7 +735,8 @@ void BKE_scene_init(Scene *sce)
 	pset->draw_step = 2;
 	pset->fade_frames = 2;
 	pset->selectmode = SCE_SELECT_PATH;
-	for (a = 0; a < PE_TOT_BRUSH; a++) {
+
+	for (a = 0; a < ARRAY_SIZE(pset->brush); a++) {
 		pset->brush[a].strength = 0.5f;
 		pset->brush[a].size = 50;
 		pset->brush[a].step = 10;
@@ -1138,6 +1139,10 @@ Object *BKE_scene_camera_find(Scene *sc)
 #ifdef DURIAN_CAMERA_SWITCH
 Object *BKE_scene_camera_switch_find(Scene *scene)
 {
+	if (scene->r.mode & R_NO_CAMERA_SWITCH) {
+		return NULL;
+	}
+
 	TimeMarker *m;
 	int cfra = scene->r.cfra;
 	int frame = -(MAXFRAME + 1);
@@ -1513,6 +1518,8 @@ typedef struct ThreadedObjectUpdateState {
 	bool has_mballs;
 #endif
 
+	int num_threads;
+
 	/* Execution statistics */
 	bool has_updated_objects;
 	ListBase *statistics;
@@ -1561,7 +1568,7 @@ static void scene_update_object_func(TaskPool * __restrict pool, void *taskdata,
 		double start_time = 0.0;
 		bool add_to_stats = false;
 
-		if (G.debug & G_DEBUG_DEPSGRAPH) {
+		if (G.debug & G_DEBUG_DEPSGRAPH_EVAL) {
 			if (object->recalc & OB_RECALC_ALL) {
 				printf("Thread %d: update object %s\n", threadid, object->id.name);
 			}
@@ -1612,10 +1619,9 @@ static void scene_update_object_add_task(void *node, void *user_data)
 
 static void print_threads_statistics(ThreadedObjectUpdateState *state)
 {
-	int i, tot_thread;
 	double finish_time;
 
-	if ((G.debug & G_DEBUG_DEPSGRAPH) == 0) {
+	if ((G.debug & G_DEBUG_DEPSGRAPH_EVAL) == 0) {
 		return;
 	}
 
@@ -1640,10 +1646,9 @@ static void print_threads_statistics(ThreadedObjectUpdateState *state)
 	}
 #else
 	finish_time = PIL_check_seconds_timer();
-	tot_thread = BLI_system_thread_count();
 	int total_objects = 0;
 
-	for (i = 0; i < tot_thread; i++) {
+	for (int i = 0; i < state->num_threads; i++) {
 		int thread_total_objects = 0;
 		double thread_total_time = 0.0;
 		StatisicsEntry *entry;
@@ -1734,12 +1739,13 @@ static void scene_update_objects(EvaluationContext *eval_ctx, Main *bmain, Scene
 	}
 
 	/* Those are only needed when blender is run with --debug argument. */
-	if (G.debug & G_DEBUG_DEPSGRAPH) {
+	if (G.debug & G_DEBUG_DEPSGRAPH_EVAL) {
 		const int tot_thread = BLI_task_scheduler_num_threads(task_scheduler);
 		state.statistics = MEM_callocN(tot_thread * sizeof(*state.statistics),
 		                               "scene update objects stats");
 		state.has_updated_objects = false;
 		state.base_time = PIL_check_seconds_timer();
+		state.num_threads = tot_thread;
 	}
 
 #ifdef MBALL_SINGLETHREAD_HACK
@@ -1752,7 +1758,7 @@ static void scene_update_objects(EvaluationContext *eval_ctx, Main *bmain, Scene
 	BLI_task_pool_work_and_wait(task_pool);
 	BLI_task_pool_free(task_pool);
 
-	if (G.debug & G_DEBUG_DEPSGRAPH) {
+	if (G.debug & G_DEBUG_DEPSGRAPH_EVAL) {
 		print_threads_statistics(&state);
 		MEM_freeN(state.statistics);
 	}
@@ -1841,12 +1847,16 @@ static void prepare_mesh_for_viewport_render(Main *bmain, Scene *scene)
 	if (obedit) {
 		Mesh *mesh = obedit->data;
 		if ((obedit->type == OB_MESH) &&
-		    ((obedit->id.tag & LIB_TAG_ID_RECALC_ALL) ||
-		     (mesh->id.tag & LIB_TAG_ID_RECALC_ALL)))
+		    ((obedit->id.recalc & ID_RECALC_ALL) ||
+		     (mesh->id.recalc & ID_RECALC_ALL)))
 		{
 			if (check_rendered_viewport_visible(bmain)) {
 				BMesh *bm = mesh->edit_btmesh->bm;
-				BM_mesh_bm_to_me(bm, mesh, (&(struct BMeshToMeshParams){0}));
+				BM_mesh_bm_to_me(
+				        bm, mesh,
+				        (&(struct BMeshToMeshParams){
+				            .calc_object_remap = true,
+				        }));
 				DAG_id_tag_update(&mesh->id, 0);
 			}
 		}
@@ -1866,7 +1876,7 @@ void BKE_scene_update_tagged(EvaluationContext *eval_ctx, Main *bmain, Scene *sc
 	/* (re-)build dependency graph if needed */
 	for (sce_iter = scene; sce_iter; sce_iter = sce_iter->set) {
 		DAG_scene_relations_update(bmain, sce_iter);
-		/* Uncomment this to check if graph was properly tagged for update. */
+		/* Uncomment this to check if dependency graph was properly tagged for update. */
 #if 0
 #ifdef WITH_LEGACY_DEPSGRAPH
 		if (use_new_eval)
@@ -1978,7 +1988,7 @@ void BKE_scene_update_for_newframe_ex(EvaluationContext *eval_ctx, Main *bmain, 
 #ifdef WITH_LEGACY_DEPSGRAPH
 	bool use_new_eval = !DEG_depsgraph_use_legacy();
 #else
-	/* TODO(sergey): Pass to evaluation routines instead of storing layer in the graph? */
+	/* TODO(sergey): Pass to evaluation routines instead of storing layer in the dependency graph? */
 	(void) do_invisible_flush;
 #endif
 

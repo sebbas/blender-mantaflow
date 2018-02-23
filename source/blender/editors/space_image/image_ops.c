@@ -1148,9 +1148,10 @@ static int image_cmp_frame(const void *a, const void *b)
 }
 
 /**
- * \brief Return the start (offset) and the length of the sequence of continuous frames in the list of frames
- * \param frames [in] the list of frame numbers, as a side-effect the list is sorted
- * \param ofs [out] offest, the first frame number in the sequence
+ * Return the start (offset) and the length of the sequence of continuous frames in the list of frames
+ *
+ * \param frames: [in] the list of frame numbers, as a side-effect the list is sorted.
+ * \param ofs: [out] offset the first frame number in the sequence.
  * \return the number of contiguous frames in the sequence
  */
 static int image_sequence_get_len(ListBase *frames, int *ofs)
@@ -1851,7 +1852,7 @@ static bool save_image_doit(bContext *C, SpaceImage *sima, wmOperator *op, SaveI
 		scene = CTX_data_scene(C);
 		rr = BKE_image_acquire_renderresult(scene, ima);
 		bool is_mono = rr ? BLI_listbase_count_ex(&rr->views, 2) < 2 : BLI_listbase_count_ex(&ima->views, 2) < 2;
-		bool is_exr_rr = rr && ELEM(imf->imtype, R_IMF_IMTYPE_OPENEXR, R_IMF_IMTYPE_MULTILAYER);
+		bool is_exr_rr = rr && ELEM(imf->imtype, R_IMF_IMTYPE_OPENEXR, R_IMF_IMTYPE_MULTILAYER) && RE_HasFloatPixels(rr);
 
 		/* error handling */
 		if (!rr) {

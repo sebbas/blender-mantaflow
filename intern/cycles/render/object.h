@@ -93,8 +93,7 @@ public:
 	~ObjectManager();
 
 	void device_update(Device *device, DeviceScene *dscene, Scene *scene, Progress& progress);
-	void device_update_transforms(Device *device,
-	                              DeviceScene *dscene,
+	void device_update_transforms(DeviceScene *dscene,
 	                              Scene *scene,
 	                              uint *object_flag,
 	                              Progress& progress);
@@ -114,7 +113,7 @@ public:
 
 protected:
 	/* Global state of object transform update. */
-	struct UpdateObejctTransformState {
+	struct UpdateObjectTransformState {
 		/* Global state used by device_update_object_transform().
 		 * Common for both threaded and non-threaded update.
 		 */
@@ -153,12 +152,12 @@ protected:
 		/* First unused object index in the queue. */
 		int queue_start_object;
 	};
-	void device_update_object_transform(UpdateObejctTransformState *state,
+	void device_update_object_transform(UpdateObjectTransformState *state,
 	                                    Object *ob,
 	                                    const int object_index);
-	void device_update_object_transform_task(UpdateObejctTransformState *state);
+	void device_update_object_transform_task(UpdateObjectTransformState *state);
 	bool device_update_object_transform_pop_work(
-	        UpdateObejctTransformState *state,
+	        UpdateObjectTransformState *state,
 	        int *start_index,
 	        int *num_objects);
 };

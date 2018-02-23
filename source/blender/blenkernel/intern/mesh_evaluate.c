@@ -43,7 +43,7 @@
 #include "BLI_math.h"
 #include "BLI_edgehash.h"
 #include "BLI_bitmap.h"
-#include "BLI_polyfill2d.h"
+#include "BLI_polyfill_2d.h"
 #include "BLI_linklist.h"
 #include "BLI_linklist_stack.h"
 #include "BLI_alloca.h"
@@ -127,8 +127,8 @@ void BKE_mesh_calc_normals_mapping_ex(
 		return;
 	}
 
-	if (!pnors) pnors = MEM_callocN(sizeof(float[3]) * (size_t)numPolys, __func__);
-	/* if (!fnors) fnors = MEM_callocN(sizeof(float[3]) * numFaces, "face nors mesh.c"); */ /* NO NEED TO ALLOC YET */
+	if (!pnors) pnors = MEM_calloc_arrayN((size_t)numPolys, sizeof(float[3]), __func__);
+	/* if (!fnors) fnors = MEM_calloc_arrayN(numFaces, sizeof(float[3]), "face nors mesh.c"); */ /* NO NEED TO ALLOC YET */
 
 
 	if (only_face_normals == false) {
@@ -173,10 +173,14 @@ typedef struct MeshCalcNormalsData {
 	const MLoop *mloop;
 	MVert *mverts;
 	float (*pnors)[3];
+	float (*lnors_weighted)[3];
 	float (*vnors)[3];
 } MeshCalcNormalsData;
 
-static void mesh_calc_normals_poly_task_cb(void *userdata, const int pidx)
+static void mesh_calc_normals_poly_cb(
+        void *__restrict userdata, 
+        const int pidx,
+        const ParallelRangeTLS *__restrict UNUSED(tls))
 {
 	MeshCalcNormalsData *data = userdata;
 	const MPoly *mp = &data->mpolys[pidx];
@@ -184,7 +188,10 @@ static void mesh_calc_normals_poly_task_cb(void *userdata, const int pidx)
 	BKE_mesh_calc_poly_normal(mp, data->mloop + mp->loopstart, data->mverts, data->pnors[pidx]);
 }
 
-static void mesh_calc_normals_poly_accum_task_cb(void *userdata, const int pidx)
+static void mesh_calc_normals_poly_prepare_cb(
+        void *__restrict userdata, 
+        const int pidx,
+        const ParallelRangeTLS *__restrict UNUSED(tls))
 {
 	MeshCalcNormalsData *data = userdata;
 	const MPoly *mp = &data->mpolys[pidx];
@@ -193,7 +200,7 @@ static void mesh_calc_normals_poly_accum_task_cb(void *userdata, const int pidx)
 
 	float pnor_temp[3];
 	float *pnor = data->pnors ? data->pnors[pidx] : pnor_temp;
-	float (*vnors)[3] = data->vnors;
+	float (*lnors_weighted)[3] = data->lnors_weighted;
 
 	const int nverts = mp->totloop;
 	float (*edgevecbuf)[3] = BLI_array_alloca(edgevecbuf, (size_t)nverts);
@@ -220,42 +227,61 @@ static void mesh_calc_normals_poly_accum_task_cb(void *userdata, const int pidx)
 			v_prev = v_curr;
 		}
 		if (UNLIKELY(normalize_v3(pnor) == 0.0f)) {
-			pnor[2] = 1.0f; /* other axis set to 0.0 */
+			pnor[2] = 1.0f; /* other axes set to 0.0 */
 		}
 	}
 
 	/* accumulate angle weighted face normal */
-	/* inline version of #accumulate_vertex_normals_poly_v3 */
+	/* inline version of #accumulate_vertex_normals_poly_v3,
+	 * split between this threaded callback and #mesh_calc_normals_poly_accum_cb. */
 	{
 		const float *prev_edge = edgevecbuf[nverts - 1];
 
 		for (i = 0; i < nverts; i++) {
+			const int lidx = mp->loopstart + i;
 			const float *cur_edge = edgevecbuf[i];
 
 			/* calculate angle between the two poly edges incident on
 			 * this vertex */
 			const float fac = saacos(-dot_v3v3(cur_edge, prev_edge));
 
-			/* accumulate */
-			for (int k = 3; k--; ) {
-				atomic_add_and_fetch_fl(&vnors[ml[i].v][k], pnor[k] * fac);
-			}
+			/* Store for later accumulation */
+			mul_v3_v3fl(lnors_weighted[lidx], pnor, fac);
+
 			prev_edge = cur_edge;
 		}
 	}
+}
 
+static void mesh_calc_normals_poly_finalize_cb(
+        void *__restrict userdata,
+        const int vidx,
+        const ParallelRangeTLS *__restrict UNUSED(tls))
+{
+	MeshCalcNormalsData *data = userdata;
+
+	MVert *mv = &data->mverts[vidx];
+	float *no = data->vnors[vidx];
+
+	if (UNLIKELY(normalize_v3(no) == 0.0f)) {
+		/* following Mesh convention; we use vertex coordinate itself for normal in this case */
+		normalize_v3_v3(no, mv->co);
+	}
+
+	normal_float_to_short_v3(mv->no, no);
 }
 
 void BKE_mesh_calc_normals_poly(
         MVert *mverts, float (*r_vertnors)[3], int numVerts,
         const MLoop *mloop, const MPoly *mpolys,
-        int UNUSED(numLoops), int numPolys, float (*r_polynors)[3],
+        int numLoops, int numPolys, float (*r_polynors)[3],
         const bool only_face_normals)
 {
 	float (*pnors)[3] = r_polynors;
-	float (*vnors)[3] = r_vertnors;
-	bool free_vnors = false;
-	int i;
+
+	ParallelRangeSettings settings;
+	BLI_parallel_range_settings_defaults(&settings);
+	settings.min_iter_per_thread = 1024;
 
 	if (only_face_normals) {
 		BLI_assert((pnors != NULL) || (numPolys == 0));
@@ -265,13 +291,17 @@ void BKE_mesh_calc_normals_poly(
 		    .mpolys = mpolys, .mloop = mloop, .mverts = mverts, .pnors = pnors,
 		};
 
-		BLI_task_parallel_range(0, numPolys, &data, mesh_calc_normals_poly_task_cb, (numPolys > BKE_MESH_OMP_LIMIT));
+		BLI_task_parallel_range(0, numPolys, &data, mesh_calc_normals_poly_cb, &settings);
 		return;
 	}
 
+	float (*vnors)[3] = r_vertnors;
+	float (*lnors_weighted)[3] = MEM_malloc_arrayN((size_t)numLoops, sizeof(*lnors_weighted), __func__);
+	bool free_vnors = false;
+
 	/* first go through and calculate normals for all the polys */
 	if (vnors == NULL) {
-		vnors = MEM_callocN(sizeof(*vnors) * (size_t)numVerts, __func__);
+		vnors = MEM_calloc_arrayN((size_t)numVerts, sizeof(*vnors), __func__);
 		free_vnors = true;
 	}
 	else {
@@ -279,26 +309,27 @@ void BKE_mesh_calc_normals_poly(
 	}
 
 	MeshCalcNormalsData data = {
-	    .mpolys = mpolys, .mloop = mloop, .mverts = mverts, .pnors = pnors, .vnors = vnors,
+	    .mpolys = mpolys, .mloop = mloop, .mverts = mverts,
+	    .pnors = pnors, .lnors_weighted = lnors_weighted, .vnors = vnors
 	};
 
-	BLI_task_parallel_range(0, numPolys, &data, mesh_calc_normals_poly_accum_task_cb, (numPolys > BKE_MESH_OMP_LIMIT));
+	/* Compute poly normals, and prepare weighted loop normals. */
+	BLI_task_parallel_range(0, numPolys, &data, mesh_calc_normals_poly_prepare_cb, &settings);
 
-	for (i = 0; i < numVerts; i++) {
-		MVert *mv = &mverts[i];
-		float *no = vnors[i];
-
-		if (UNLIKELY(normalize_v3(no) == 0.0f)) {
-			/* following Mesh convention; we use vertex coordinate itself for normal in this case */
-			normalize_v3_v3(no, mv->co);
-		}
-
-		normal_float_to_short_v3(mv->no, no);
+	/* Actually accumulate weighted loop normals into vertex ones. */
+	/* Unfortunately, not possible to thread that (not in a reasonable, totally lock- and barrier-free fashion),
+	 * since several loops will point to the same vertex... */
+	for (int lidx = 0; lidx < numLoops; lidx++) {
+		add_v3_v3(vnors[mloop[lidx].v], data.lnors_weighted[lidx]);
 	}
+
+	/* Normalize and validate computed vertex normals. */
+	BLI_task_parallel_range(0, numVerts, &data, mesh_calc_normals_poly_finalize_cb, &settings);
 
 	if (free_vnors) {
 		MEM_freeN(vnors);
 	}
+	MEM_freeN(lnors_weighted);
 }
 
 void BKE_mesh_calc_normals(Mesh *mesh)
@@ -319,9 +350,13 @@ void BKE_mesh_calc_normals_tessface(
         const MFace *mfaces, int numFaces,
         float (*r_faceNors)[3])
 {
-	float (*tnorms)[3] = MEM_callocN(sizeof(*tnorms) * (size_t)numVerts, "tnorms");
-	float (*fnors)[3] = (r_faceNors) ? r_faceNors : MEM_callocN(sizeof(*fnors) * (size_t)numFaces, "meshnormals");
+	float (*tnorms)[3] = MEM_calloc_arrayN((size_t)numVerts, sizeof(*tnorms), "tnorms");
+	float (*fnors)[3] = (r_faceNors) ? r_faceNors : MEM_calloc_arrayN((size_t)numFaces, sizeof(*fnors), "meshnormals");
 	int i;
+
+	if (!tnorms || !fnors) {
+		goto cleanup;
+	}
 
 	for (i = 0; i < numFaces; i++) {
 		const MFace *mf = &mfaces[i];
@@ -351,6 +386,7 @@ void BKE_mesh_calc_normals_tessface(
 		normal_float_to_short_v3(mv->no, no);
 	}
 	
+cleanup:
 	MEM_freeN(tnorms);
 
 	if (fnors != r_faceNors)
@@ -363,9 +399,13 @@ void BKE_mesh_calc_normals_looptri(
         const MLoopTri *looptri, int looptri_num,
         float (*r_tri_nors)[3])
 {
-	float (*tnorms)[3] = MEM_callocN(sizeof(*tnorms) * (size_t)numVerts, "tnorms");
-	float (*fnors)[3] = (r_tri_nors) ? r_tri_nors : MEM_callocN(sizeof(*fnors) * (size_t)looptri_num, "meshnormals");
+	float (*tnorms)[3] = MEM_calloc_arrayN((size_t)numVerts, sizeof(*tnorms), "tnorms");
+	float (*fnors)[3] = (r_tri_nors) ? r_tri_nors : MEM_calloc_arrayN((size_t)looptri_num, sizeof(*fnors), "meshnormals");
 	int i;
+
+	if (!tnorms || !fnors) {
+		goto cleanup;
+	}
 
 	for (i = 0; i < looptri_num; i++) {
 		const MLoopTri *lt = &looptri[i];
@@ -397,6 +437,7 @@ void BKE_mesh_calc_normals_looptri(
 		normal_float_to_short_v3(mv->no, no);
 	}
 
+cleanup:
 	MEM_freeN(tnorms);
 
 	if (fnors != r_tri_nors)
@@ -639,10 +680,11 @@ typedef struct LoopSplitTaskDataCommon {
 	const MEdge *medges;
 	const MLoop *mloops;
 	const MPoly *mpolys;
-	const int (*edge_to_loops)[2];
-	const int *loop_to_poly;
+	int (*edge_to_loops)[2];
+	int *loop_to_poly;
 	const float (*polynors)[3];
 
+	int numEdges;
 	int numLoops;
 	int numPolys;
 } LoopSplitTaskDataCommon;
@@ -651,6 +693,153 @@ typedef struct LoopSplitTaskDataCommon {
 #define INDEX_INVALID -1
 /* See comment about edge_to_loops below. */
 #define IS_EDGE_SHARP(_e2l) (ELEM((_e2l)[1], INDEX_UNSET, INDEX_INVALID))
+
+static void mesh_edges_sharp_tag(
+        LoopSplitTaskDataCommon *data,
+        const bool check_angle, const float split_angle, const bool do_sharp_edges_tag)
+{
+	const MVert *mverts = data->mverts;
+	const MEdge *medges = data->medges;
+	const MLoop *mloops = data->mloops;
+
+	const MPoly *mpolys = data->mpolys;
+
+	const int numEdges = data->numEdges;
+	const int numPolys = data->numPolys;
+
+	float (*loopnors)[3] = data->loopnors;  /* Note: loopnors may be NULL here. */
+	const float (*polynors)[3] = data->polynors;
+
+	int (*edge_to_loops)[2] = data->edge_to_loops;
+	int *loop_to_poly = data->loop_to_poly;
+
+	BLI_bitmap *sharp_edges = do_sharp_edges_tag ? BLI_BITMAP_NEW(numEdges, __func__) : NULL;
+
+	const MPoly *mp;
+	int mp_index;
+
+	const float split_angle_cos = check_angle ? cosf(split_angle) : -1.0f;
+
+	for (mp = mpolys, mp_index = 0; mp_index < numPolys; mp++, mp_index++) {
+		const MLoop *ml_curr;
+		int *e2l;
+		int ml_curr_index = mp->loopstart;
+		const int ml_last_index = (ml_curr_index + mp->totloop) - 1;
+
+		ml_curr = &mloops[ml_curr_index];
+
+		for (; ml_curr_index <= ml_last_index; ml_curr++, ml_curr_index++) {
+			e2l = edge_to_loops[ml_curr->e];
+
+			loop_to_poly[ml_curr_index] = mp_index;
+
+			/* Pre-populate all loop normals as if their verts were all-smooth, this way we don't have to compute
+			 * those later!
+			 */
+			if (loopnors) {
+				normal_short_to_float_v3(loopnors[ml_curr_index], mverts[ml_curr->v].no);
+			}
+
+			/* Check whether current edge might be smooth or sharp */
+			if ((e2l[0] | e2l[1]) == 0) {
+				/* 'Empty' edge until now, set e2l[0] (and e2l[1] to INDEX_UNSET to tag it as unset). */
+				e2l[0] = ml_curr_index;
+				/* We have to check this here too, else we might miss some flat faces!!! */
+				e2l[1] = (mp->flag & ME_SMOOTH) ? INDEX_UNSET : INDEX_INVALID;
+			}
+			else if (e2l[1] == INDEX_UNSET) {
+				const bool is_angle_sharp = (check_angle &&
+				                             dot_v3v3(polynors[loop_to_poly[e2l[0]]], polynors[mp_index]) < split_angle_cos);
+
+				/* Second loop using this edge, time to test its sharpness.
+				 * An edge is sharp if it is tagged as such, or its face is not smooth,
+				 * or both poly have opposed (flipped) normals, i.e. both loops on the same edge share the same vertex,
+				 * or angle between both its polys' normals is above split_angle value.
+				 */
+				if (!(mp->flag & ME_SMOOTH) || (medges[ml_curr->e].flag & ME_SHARP) ||
+				    ml_curr->v == mloops[e2l[0]].v ||
+				    is_angle_sharp)
+				{
+					/* Note: we are sure that loop != 0 here ;) */
+					e2l[1] = INDEX_INVALID;
+
+					/* We want to avoid tagging edges as sharp when it is already defined as such by
+					 * other causes than angle threshold... */
+					if (do_sharp_edges_tag && is_angle_sharp) {
+						BLI_BITMAP_SET(sharp_edges, ml_curr->e, true);
+					}
+				}
+				else {
+					e2l[1] = ml_curr_index;
+				}
+			}
+			else if (!IS_EDGE_SHARP(e2l)) {
+				/* More than two loops using this edge, tag as sharp if not yet done. */
+				e2l[1] = INDEX_INVALID;
+
+				/* We want to avoid tagging edges as sharp when it is already defined as such by
+				 * other causes than angle threshold... */
+				if (do_sharp_edges_tag) {
+					BLI_BITMAP_SET(sharp_edges, ml_curr->e, false);
+				}
+			}
+			/* Else, edge is already 'disqualified' (i.e. sharp)! */
+		}
+	}
+
+	/* If requested, do actual tagging of edges as sharp in another loop. */
+	if (do_sharp_edges_tag) {
+		MEdge *me;
+		int me_index;
+		for (me = (MEdge *)medges, me_index = 0; me_index < numEdges; me++, me_index++) {
+			if (BLI_BITMAP_TEST(sharp_edges, me_index)) {
+				me->flag |= ME_SHARP;
+			}
+		}
+
+		MEM_freeN(sharp_edges);
+	}
+}
+
+/** Define sharp edges as needed to mimic 'autosmooth' from angle threshold.
+ *
+ * Used when defining an empty custom loop normals data layer, to keep same shading as with autosmooth!
+ */
+void BKE_edges_sharp_from_angle_set(
+        const struct MVert *mverts, const int UNUSED(numVerts),
+        struct MEdge *medges, const int numEdges,
+        struct MLoop *mloops, const int numLoops,
+        struct MPoly *mpolys, const float (*polynors)[3], const int numPolys,
+        const float split_angle)
+{
+	if (split_angle >= (float)M_PI) {
+		/* Nothing to do! */
+		return;
+	}
+
+	/* Mapping edge -> loops. See BKE_mesh_normals_loop_split() for details. */
+	int (*edge_to_loops)[2] = MEM_calloc_arrayN((size_t)numEdges, sizeof(*edge_to_loops), __func__);
+
+	/* Simple mapping from a loop to its polygon index. */
+	int *loop_to_poly = MEM_malloc_arrayN((size_t)numLoops, sizeof(*loop_to_poly), __func__);
+
+	LoopSplitTaskDataCommon common_data = {
+	    .mverts = mverts,
+	    .medges = medges,
+	    .mloops = mloops,
+	    .mpolys = mpolys,
+	    .edge_to_loops = edge_to_loops,
+	    .loop_to_poly = loop_to_poly,
+	    .polynors = polynors,
+	    .numEdges = numEdges,
+	    .numPolys = numPolys,
+	};
+
+	mesh_edges_sharp_tag(&common_data, true, split_angle, true);
+
+	MEM_freeN(edge_to_loops);
+	MEM_freeN(loop_to_poly);
+}
 
 static void loop_manifold_fan_around_vert_next(
         const MLoop *mloops, const MPoly *mpolys,
@@ -1137,7 +1326,7 @@ static void loop_split_generator(TaskPool *pool, LoopSplitTaskDataCommon *common
 
 				if (pool) {
 					if (data_idx == 0) {
-						data_buff = MEM_callocN(sizeof(*data_buff) * LOOP_SPLIT_TASK_BLOCK_SIZE, __func__);
+						data_buff = MEM_calloc_arrayN(LOOP_SPLIT_TASK_BLOCK_SIZE, sizeof(*data_buff), __func__);
 					}
 					data = &data_buff[data_idx];
 				}
@@ -1223,7 +1412,7 @@ void BKE_mesh_normals_loop_split(
         const MVert *mverts, const int UNUSED(numVerts), MEdge *medges, const int numEdges,
         MLoop *mloops, float (*r_loopnors)[3], const int numLoops,
         MPoly *mpolys, const float (*polynors)[3], const int numPolys,
-        const bool use_split_normals, float split_angle,
+        const bool use_split_normals, const float split_angle,
         MLoopNorSpaceArray *r_lnors_spacearr, short (*clnors_data)[2], int *r_loop_to_poly)
 {
 	/* For now this is not supported. If we do not use split normals, we do not generate anything fancy! */
@@ -1267,13 +1456,10 @@ void BKE_mesh_normals_loop_split(
 	 * store the negated value of loop index instead of INDEX_INVALID to retrieve the real value later in code).
 	 * Note also that lose edges always have both values set to 0!
 	 */
-	int (*edge_to_loops)[2] = MEM_callocN(sizeof(*edge_to_loops) * (size_t)numEdges, __func__);
+	int (*edge_to_loops)[2] = MEM_calloc_arrayN((size_t)numEdges, sizeof(*edge_to_loops), __func__);
 
 	/* Simple mapping from a loop to its polygon index. */
-	int *loop_to_poly = r_loop_to_poly ? r_loop_to_poly : MEM_mallocN(sizeof(*loop_to_poly) * (size_t)numLoops, __func__);
-
-	MPoly *mp;
-	int mp_index;
+	int *loop_to_poly = r_loop_to_poly ? r_loop_to_poly : MEM_malloc_arrayN((size_t)numLoops, sizeof(*loop_to_poly), __func__);
 
 	/* When using custom loop normals, disable the angle feature! */
 	const bool check_angle = (split_angle < (float)M_PI) && (clnors_data == NULL);
@@ -1284,67 +1470,12 @@ void BKE_mesh_normals_loop_split(
 	TIMEIT_START_AVERAGED(BKE_mesh_normals_loop_split);
 #endif
 
-	if (check_angle) {
-		split_angle = cosf(split_angle);
-	}
-
 	if (!r_lnors_spacearr && clnors_data) {
 		/* We need to compute lnor spacearr if some custom lnor data are given to us! */
 		r_lnors_spacearr = &_lnors_spacearr;
 	}
 	if (r_lnors_spacearr) {
 		BKE_lnor_spacearr_init(r_lnors_spacearr, numLoops);
-	}
-
-	/* This first loop check which edges are actually smooth, and compute edge vectors. */
-	for (mp = mpolys, mp_index = 0; mp_index < numPolys; mp++, mp_index++) {
-		MLoop *ml_curr;
-		int *e2l;
-		int ml_curr_index = mp->loopstart;
-		const int ml_last_index = (ml_curr_index + mp->totloop) - 1;
-
-		ml_curr = &mloops[ml_curr_index];
-
-		for (; ml_curr_index <= ml_last_index; ml_curr++, ml_curr_index++) {
-			e2l = edge_to_loops[ml_curr->e];
-
-			loop_to_poly[ml_curr_index] = mp_index;
-
-			/* Pre-populate all loop normals as if their verts were all-smooth, this way we don't have to compute
-			 * those later!
-			 */
-			normal_short_to_float_v3(r_loopnors[ml_curr_index], mverts[ml_curr->v].no);
-
-			/* Check whether current edge might be smooth or sharp */
-			if ((e2l[0] | e2l[1]) == 0) {
-				/* 'Empty' edge until now, set e2l[0] (and e2l[1] to INDEX_UNSET to tag it as unset). */
-				e2l[0] = ml_curr_index;
-				/* We have to check this here too, else we might miss some flat faces!!! */
-				e2l[1] = (mp->flag & ME_SMOOTH) ? INDEX_UNSET : INDEX_INVALID;
-			}
-			else if (e2l[1] == INDEX_UNSET) {
-				/* Second loop using this edge, time to test its sharpness.
-				 * An edge is sharp if it is tagged as such, or its face is not smooth,
-				 * or both poly have opposed (flipped) normals, i.e. both loops on the same edge share the same vertex,
-				 * or angle between both its polys' normals is above split_angle value.
-				 */
-				if (!(mp->flag & ME_SMOOTH) || (medges[ml_curr->e].flag & ME_SHARP) ||
-				    ml_curr->v == mloops[e2l[0]].v ||
-				    (check_angle && dot_v3v3(polynors[loop_to_poly[e2l[0]]], polynors[mp_index]) < split_angle))
-				{
-					/* Note: we are sure that loop != 0 here ;) */
-					e2l[1] = INDEX_INVALID;
-				}
-				else {
-					e2l[1] = ml_curr_index;
-				}
-			}
-			else if (!IS_EDGE_SHARP(e2l)) {
-				/* More than two loops using this edge, tag as sharp if not yet done. */
-				e2l[1] = INDEX_INVALID;
-			}
-			/* Else, edge is already 'disqualified' (i.e. sharp)! */
-		}
 	}
 
 	/* Init data common to all tasks. */
@@ -1356,12 +1487,16 @@ void BKE_mesh_normals_loop_split(
 	    .medges = medges,
 	    .mloops = mloops,
 	    .mpolys = mpolys,
-	    .edge_to_loops = (const int(*)[2])edge_to_loops,
+	    .edge_to_loops = edge_to_loops,
 	    .loop_to_poly = loop_to_poly,
 	    .polynors = polynors,
+	    .numEdges = numEdges,
 	    .numLoops = numLoops,
 	    .numPolys = numPolys,
 	};
+
+	/* This first loop check which edges are actually smooth, and compute edge vectors. */
+	mesh_edges_sharp_tag(&common_data, check_angle, split_angle, false);
 
 	if (numLoops < LOOP_SPLIT_TASK_BLOCK_SIZE * 8) {
 		/* Not enough loops to be worth the whole threading overhead... */
@@ -1424,8 +1559,8 @@ static void mesh_normals_loop_custom_set(
 	 */
 	MLoopNorSpaceArray lnors_spacearr = {NULL};
 	BLI_bitmap *done_loops = BLI_BITMAP_NEW((size_t)numLoops, __func__);
-	float (*lnors)[3] = MEM_callocN(sizeof(*lnors) * (size_t)numLoops, __func__);
-	int *loop_to_poly = MEM_mallocN(sizeof(int) * (size_t)numLoops, __func__);
+	float (*lnors)[3] = MEM_calloc_arrayN((size_t)numLoops, sizeof(*lnors), __func__);
+	int *loop_to_poly = MEM_malloc_arrayN((size_t)numLoops, sizeof(int), __func__);
 	/* In this case we always consider split nors as ON, and do not want to use angle to define smooth fans! */
 	const bool use_split_normals = true;
 	const float split_angle = (float)M_PI;
@@ -1640,7 +1775,7 @@ void BKE_mesh_normals_loop_to_vertex(
 	const MLoop *ml;
 	int i;
 
-	int *vert_loops_nbr = MEM_callocN(sizeof(*vert_loops_nbr) * (size_t)numVerts, __func__);
+	int *vert_loops_nbr = MEM_calloc_arrayN((size_t)numVerts, sizeof(*vert_loops_nbr), __func__);
 
 	copy_vn_fl((float *)r_vert_clnors, 3 * numVerts, 0.0f);
 
@@ -2632,9 +2767,9 @@ int BKE_mesh_recalc_tessellation(
 	/* allocate the length of totfaces, avoid many small reallocs,
 	 * if all faces are tri's it will be correct, quads == 2x allocs */
 	/* take care. we are _not_ calloc'ing so be sure to initialize each field */
-	mface_to_poly_map = MEM_mallocN(sizeof(*mface_to_poly_map) * (size_t)looptri_num, __func__);
-	mface             = MEM_mallocN(sizeof(*mface) *             (size_t)looptri_num, __func__);
-	lindices          = MEM_mallocN(sizeof(*lindices) *          (size_t)looptri_num, __func__);
+	mface_to_poly_map = MEM_malloc_arrayN((size_t)looptri_num, sizeof(*mface_to_poly_map), __func__);
+	mface             = MEM_malloc_arrayN((size_t)looptri_num, sizeof(*mface), __func__);
+	lindices          = MEM_malloc_arrayN((size_t)looptri_num, sizeof(*lindices), __func__);
 
 	mface_index = 0;
 	mp = mpoly;
@@ -2904,9 +3039,22 @@ void BKE_mesh_recalc_looptri(
 		}
 		else if (mp_totloop == 4) {
 			ML_TO_MLT(0, 1, 2);
+			MLoopTri *mlt_a = mlt;
 			mlooptri_index++;
 			ML_TO_MLT(0, 2, 3);
+			MLoopTri *mlt_b = mlt;
 			mlooptri_index++;
+
+			if (UNLIKELY(is_quad_flip_v3_first_third_fast(
+			                     mvert[mloop[mlt_a->tri[0]].v].co,
+			                     mvert[mloop[mlt_a->tri[1]].v].co,
+			                     mvert[mloop[mlt_a->tri[2]].v].co,
+			                     mvert[mloop[mlt_b->tri[2]].v].co)))
+			{
+				/* flip out of degenerate 0-2 state. */
+				mlt_a->tri[2] = mlt_b->tri[2];
+				mlt_b->tri[0] = mlt_a->tri[1];
+			}
 		}
 #endif /* USE_TESSFACE_SPEEDUP */
 		else {
@@ -3014,7 +3162,7 @@ int BKE_mesh_mpoly_to_mface(struct CustomData *fdata, struct CustomData *ldata,
 	const bool hasLNor = CustomData_has_layer(ldata, CD_NORMAL);
 
 	/* over-alloc, ngons will be skipped */
-	mface = MEM_mallocN(sizeof(*mface) * (size_t)totpoly, __func__);
+	mface = MEM_malloc_arrayN((size_t)totpoly, sizeof(*mface), __func__);
 
 	mpoly = CustomData_get_layer(pdata, CD_MPOLY);
 	mloop = CustomData_get_layer(ldata, CD_MLOOP);
@@ -3182,7 +3330,6 @@ static void bm_corners_to_loops_ex(ID *id, CustomData *fdata, CustomData *ldata,
 		else {
 			const int side = (int)sqrtf((float)(fd->totdisp / corners));
 			const int side_sq = side * side;
-			const size_t disps_size = sizeof(float[3]) * (size_t)side_sq;
 
 			for (i = 0; i < tot; i++, disps += side_sq, ld++) {
 				ld->totdisp = side_sq;
@@ -3191,12 +3338,12 @@ static void bm_corners_to_loops_ex(ID *id, CustomData *fdata, CustomData *ldata,
 				if (ld->disps)
 					MEM_freeN(ld->disps);
 
-				ld->disps = MEM_mallocN(disps_size, "converted loop mdisps");
+				ld->disps = MEM_malloc_arrayN((size_t)side_sq, sizeof(float[3]), "converted loop mdisps");
 				if (fd->disps) {
-					memcpy(ld->disps, disps, disps_size);
+					memcpy(ld->disps, disps, (size_t)side_sq * sizeof(float[3]));
 				}
 				else {
-					memset(ld->disps, 0, disps_size);
+					memset(ld->disps, 0, (size_t)side_sq * sizeof(float[3]));
 				}
 			}
 		}
@@ -3258,7 +3405,7 @@ void BKE_mesh_convert_mfaces_to_mpolys_ex(ID *id, CustomData *fdata, CustomData 
 	CustomData_free(pdata, totpoly_i);
 
 	totpoly = totface_i;
-	mpoly = MEM_callocN(sizeof(MPoly) * (size_t)totpoly, "mpoly converted");
+	mpoly = MEM_calloc_arrayN((size_t)totpoly, sizeof(MPoly), "mpoly converted");
 	CustomData_add_layer(pdata, CD_MPOLY, CD_ASSIGN, mpoly, totpoly);
 
 	numTex = CustomData_number_of_layers(fdata, CD_MTFACE);
@@ -3270,7 +3417,7 @@ void BKE_mesh_convert_mfaces_to_mpolys_ex(ID *id, CustomData *fdata, CustomData 
 		totloop += mf->v4 ? 4 : 3;
 	}
 
-	mloop = MEM_callocN(sizeof(MLoop) * (size_t)totloop, "mloop converted");
+	mloop = MEM_calloc_arrayN((size_t)totloop, sizeof(MLoop), "mloop converted");
 
 	CustomData_add_layer(ldata, CD_MLOOP, CD_ASSIGN, mloop, totloop);
 
@@ -3669,7 +3816,7 @@ void BKE_mesh_calc_relative_deform(
 	const MPoly *mp;
 	int i;
 
-	int *vert_accum = MEM_callocN(sizeof(*vert_accum) * (size_t)totvert, __func__);
+	int *vert_accum = MEM_calloc_arrayN((size_t)totvert, sizeof(*vert_accum), __func__);
 
 	memset(vert_cos_new, '\0', sizeof(*vert_cos_new) * (size_t)totvert);
 

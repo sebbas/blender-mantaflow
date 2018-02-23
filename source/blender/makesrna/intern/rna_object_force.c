@@ -28,7 +28,7 @@
 
 #include "DNA_cloth_types.h"
 #include "DNA_object_types.h"
-#include "DNA_object_force.h"
+#include "DNA_object_force_types.h"
 #include "DNA_particle_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_smoke_types.h"
@@ -1262,7 +1262,8 @@ static void rna_def_field(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "size", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "f_size");
-	RNA_def_property_range(prop, 0.0f, 10.0f);
+	RNA_def_property_range(prop, 0.0f, FLT_MAX);
+	RNA_def_property_ui_range(prop, 0.0f, 10.0f, 1.0f, 3);
 	RNA_def_property_ui_text(prop, "Size", "Size of the turbulence");
 	RNA_def_property_update(prop, 0, "rna_FieldSettings_update");
 
@@ -1286,7 +1287,8 @@ static void rna_def_field(BlenderRNA *brna)
 	
 	prop = RNA_def_property(srna, "distance_max", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "maxdist");
-	RNA_def_property_range(prop, 0.0f, 1000.0f);
+	RNA_def_property_range(prop, 0.0f, FLT_MAX);
+	RNA_def_property_ui_range(prop, 0.0f, 1000.0f, 1.0f, 3);
 	RNA_def_property_ui_text(prop, "Maximum Distance", "Maximum distance for the field to work");
 	RNA_def_property_update(prop, 0, "rna_FieldSettings_update");
 	

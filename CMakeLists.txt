@@ -45,7 +45,7 @@ if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
 	endif()
 endif()
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.5)
 
 if(NOT EXECUTABLE_OUTPUT_PATH)
 	set(FIRST_RUN TRUE)
@@ -195,7 +195,7 @@ endif()
 # Options
 
 # First platform specific non-cached vars
-if(UNIX AND NOT APPLE)
+if(UNIX AND NOT (APPLE OR HAIKU))
 	set(WITH_X11 ON)
 endif()
 
@@ -311,7 +311,6 @@ endif()
 # Modifiers
 option(WITH_MOD_FLUID           "Enable Elbeem Modifier (Fluid Simulation)" ON)
 option(WITH_MOD_SMOKE           "Enable Smoke Modifier (Smoke Simulation)" ON)
-option(WITH_MOD_BOOLEAN         "Enable Boolean Modifier" ON)
 option(WITH_MOD_REMESH          "Enable Remesh Modifier" ON)
 # option(WITH_MOD_CLOTH_ELTOPO    "Enable Experimental cloth solver" OFF)  # this is now only available in a branch
 # mark_as_advanced(WITH_MOD_CLOTH_ELTOPO)
@@ -410,15 +409,24 @@ option(WITH_CYCLES_STANDALONE_GUI	"Build Cycles standalone with GUI" OFF)
 option(WITH_CYCLES_OSL				"Build Cycles with OSL support" ${_init_CYCLES_OSL})
 option(WITH_CYCLES_OPENSUBDIV		"Build Cycles with OpenSubdiv support" ${_init_CYCLES_OPENSUBDIV})
 option(WITH_CYCLES_CUDA_BINARIES	"Build Cycles CUDA binaries" OFF)
-set(CYCLES_CUDA_BINARIES_ARCH sm_20 sm_21 sm_30 sm_35 sm_37 sm_50 sm_52 sm_60 sm_61 CACHE STRING "CUDA architectures to build binaries for")
+option(WITH_CYCLES_CUBIN_COMPILER	"Build cubins with nvrtc based compiler instead of nvcc" OFF)
+set(CYCLES_CUDA_BINARIES_ARCH sm_30 sm_35 sm_37 sm_50 sm_52 sm_60 sm_61 CACHE STRING "CUDA architectures to build binaries for")
 mark_as_advanced(CYCLES_CUDA_BINARIES_ARCH)
 unset(PLATFORM_DEFAULT)
 option(WITH_CYCLES_LOGGING	"Build Cycles with logging support" ON)
 option(WITH_CYCLES_DEBUG	"Build Cycles with extra debug capabilities" OFF)
 option(WITH_CYCLES_NATIVE_ONLY	"Build Cycles with native kernel only (which fits current CPU, use for development only)" OFF)
+mark_as_advanced(WITH_CYCLES_CUBIN_COMPILER)
 mark_as_advanced(WITH_CYCLES_LOGGING)
 mark_as_advanced(WITH_CYCLES_DEBUG)
 mark_as_advanced(WITH_CYCLES_NATIVE_ONLY)
+
+option(WITH_CYCLES_DEVICE_CUDA				"Enable Cycles CUDA compute support" ON)
+option(WITH_CYCLES_DEVICE_OPENCL			"Enable Cycles OpenCL compute support" ON)
+option(WITH_CYCLES_NETWORK				"Enable Cycles compute over network support (EXPERIMENTAL and unfinished)" OFF)
+mark_as_advanced(WITH_CYCLES_DEVICE_CUDA)
+mark_as_advanced(WITH_CYCLES_DEVICE_OPENCL)
+mark_as_advanced(WITH_CYCLES_NETWORK)
 
 option(WITH_CUDA_DYNLOAD "Dynamically load CUDA libraries at runtime" ON)
 mark_as_advanced(WITH_CUDA_DYNLOAD)
@@ -451,7 +459,8 @@ option(WITH_BOOST					"Enable features depending on boost" ON)
 
 # Unit testsing
 option(WITH_GTESTS "Enable GTest unit testing" OFF)
-option(WITH_OPENGL_TESTS "Enable OpenGL related unit testing (Experimental)" OFF)
+option(WITH_OPENGL_RENDER_TESTS "Enable OpenGL render related unit testing (Experimental)" OFF)
+option(WITH_OPENGL_DRAW_TESTS "Enable OpenGL UI drawing related unit testing (Experimental)" OFF)
 
 
 # Documentation
@@ -543,6 +552,9 @@ if(WIN32)
 
 	set(WINDOWS_CODESIGN_PFX_PASSWORD CACHE STRING  "password for pfx file used for codesigning.")
 	mark_as_advanced(WINDOWS_CODESIGN_PFX_PASSWORD)
+
+	option(WINDOWS_USE_VISUAL_STUDIO_FOLDERS "Organize the visual studio project according to source folders." ON)
+	mark_as_advanced(WINDOWS_USE_VISUAL_STUDIO_FOLDERS)
 endif()
 
 # avoid using again
@@ -641,13 +653,12 @@ if(NOT WITH_BOOST)
 	set_and_warn(WITH_INTERNATIONAL  OFF)
 	set_and_warn(WITH_OPENVDB        OFF)
 	set_and_warn(WITH_OPENCOLORIO    OFF)
-	set_and_warn(WITH_MOD_BOOLEAN    OFF)
 
 	set_and_warn(WITH_OPENAL         OFF)  # depends on AUDASPACE
 	set_and_warn(WITH_GAMEENGINE     OFF)  # depends on AUDASPACE
 	set_and_warn(WITH_PLAYER         OFF)  # depends on GAMEENGINE
 elseif(WITH_CYCLES OR WITH_OPENIMAGEIO OR WITH_AUDASPACE OR WITH_INTERNATIONAL OR
-       WITH_OPENVDB OR WITH_OPENCOLORIO OR WITH_MOD_BOOLEAN)
+       WITH_OPENVDB OR WITH_OPENCOLORIO)
 	# Keep enabled
 else()
 	# New dependency graph needs either Boost or C++11 for function bindings.
@@ -742,6 +753,15 @@ if(WITH_AUDASPACE)
 	endif()
 endif()
 
+# Auto-enable CUDA dynload if toolkit is not found.
+if(NOT WITH_CUDA_DYNLOAD)
+	find_package(CUDA)
+	if (NOT CUDA_FOUND)
+		message("CUDA toolkit not found, using dynamic runtime loading of libraries instead")
+		set(WITH_CUDA_DYNLOAD ON)
+	endif()
+endif()
+
 #-----------------------------------------------------------------------------
 # Check for valid directories
 # ... a partial checkout may cause this.
@@ -761,7 +781,7 @@ if(WITH_INTERNATIONAL)
 endif()
 
 if(WITH_PYTHON)
-	# While we have this as an '#error' in bpy_util.h,
+	# While we have this as an '#error' in 'bpy_capi_utils.h',
 	# upgrading Python tends to cause confusion for users who build.
 	# Give the error message early to make this more obvious.
 	#
@@ -1761,7 +1781,6 @@ if(FIRST_RUN)
 	endif()
 
 	info_cfg_text("Modifiers:")
-	info_cfg_option(WITH_MOD_BOOLEAN)
 	info_cfg_option(WITH_MOD_REMESH)
 	info_cfg_option(WITH_MOD_FLUID)
 	info_cfg_option(WITH_MOD_OCEANSIM)

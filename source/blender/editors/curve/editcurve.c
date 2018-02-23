@@ -527,7 +527,7 @@ static GHash *dupli_keyIndexHash(GHash *keyindex)
 	GHash *gh;
 	GHashIterator gh_iter;
 
-	gh = BLI_ghash_ptr_new_ex("dupli_keyIndex gh", BLI_ghash_size(keyindex));
+	gh = BLI_ghash_ptr_new_ex("dupli_keyIndex gh", BLI_ghash_len(keyindex));
 
 	GHASH_ITER (gh_iter, keyindex) {
 		void *cv = BLI_ghashIterator_getKey(&gh_iter);
@@ -6131,8 +6131,10 @@ int join_curve_exec(bContext *C, wmOperator *op)
 	cu = ob->data;
 	BLI_movelisttolist(&cu->nurb, &tempbase);
 	
-	/* Account for mixed 2D/3D curves when joining */
-	BKE_curve_curve_dimension_update(cu);
+	if (ob->type == OB_CURVE) {
+		/* Account for mixed 2D/3D curves when joining */
+		BKE_curve_curve_dimension_update(cu);
+	}
 
 	DAG_relations_tag_update(bmain);   // because we removed object(s), call before editmode!
 

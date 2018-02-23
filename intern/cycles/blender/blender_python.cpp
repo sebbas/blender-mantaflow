@@ -21,6 +21,7 @@
 #include "blender/blender_sync.h"
 #include "blender/blender_session.h"
 
+#include "util/util_debug.h"
 #include "util/util_foreach.h"
 #include "util/util_logging.h"
 #include "util/util_md5.h"
@@ -68,7 +69,7 @@ bool debug_flags_sync_from_scene(BL::Scene b_scene)
 	flags.cpu.sse41 = get_boolean(cscene, "debug_use_cpu_sse41");
 	flags.cpu.sse3 = get_boolean(cscene, "debug_use_cpu_sse3");
 	flags.cpu.sse2 = get_boolean(cscene, "debug_use_cpu_sse2");
-	flags.cpu.qbvh = get_boolean(cscene, "debug_use_qbvh");
+	flags.cpu.bvh_layout = (BVHLayout)get_enum(cscene, "debug_bvh_layout");
 	flags.cpu.split_kernel = get_boolean(cscene, "debug_use_cpu_split_kernel");
 	/* Synchronize CUDA flags. */
 	flags.cuda.adaptive_compile = get_boolean(cscene, "debug_use_cuda_adaptive_compile");

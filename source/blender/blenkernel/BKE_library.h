@@ -51,9 +51,9 @@ struct PointerRNA;
 struct PropertyRNA;
 
 size_t BKE_libblock_get_alloc_info(short type, const char **name);
-void *BKE_libblock_alloc_notest(short type);
-void *BKE_libblock_alloc(struct Main *bmain, short type, const char *name, const int flag) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
-void  BKE_libblock_init_empty(struct ID *id);
+void *BKE_libblock_alloc_notest(short type) ATTR_WARN_UNUSED_RESULT;
+void *BKE_libblock_alloc(struct Main *bmain, short type, const char *name, const int flag) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
+void  BKE_libblock_init_empty(struct ID *id) ATTR_NONNULL(1);
 
 /**
  * New ID creation/copying options.
@@ -77,6 +77,7 @@ enum {
 	LIB_ID_COPY_CACHES             = 1 << 18,  /* Copy runtime data caches. */
 	/* XXX TODO Do we want to keep that? would rather try to get rid of it... */
 	LIB_ID_COPY_ACTIONS            = 1 << 19,  /* EXCEPTION! Deep-copy actions used by animdata of copied ID. */
+	LIB_ID_COPY_KEEP_LIB           = 1 << 20,  /* Keep the library pointer when copying datablock outside of bmain. */
 };
 
 void BKE_libblock_copy_ex(struct Main *bmain, const struct ID *id, struct ID **r_newid, const int flag);

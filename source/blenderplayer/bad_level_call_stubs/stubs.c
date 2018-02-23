@@ -481,12 +481,12 @@ void ED_node_tree_pop(struct SpaceNode *snode) RET_NONE
 int ED_view3d_scene_layer_set(int lay, const int *values, int *active) RET_ZERO
 void ED_view3d_quadview_update(struct ScrArea *sa, struct ARegion *ar, bool do_clip) RET_NONE
 void ED_view3d_from_m4(float mat[4][4], float ofs[3], float quat[4], float *dist) RET_NONE
-struct BGpic *ED_view3D_background_image_new(struct View3D *v3d) RET_NULL
-void ED_view3D_background_image_remove(struct View3D *v3d, struct BGpic *bgpic) RET_NONE
-void ED_view3D_background_image_clear(struct View3D *v3d) RET_NONE
+struct BGpic *ED_view3d_background_image_new(struct View3D *v3d) RET_NULL
+void ED_view3d_background_image_remove(struct View3D *v3d, struct BGpic *bgpic) RET_NONE
+void ED_view3d_background_image_clear(struct View3D *v3d) RET_NONE
 void ED_view3d_update_viewmat(struct Scene *scene, struct View3D *v3d, struct ARegion *ar, float viewmat[4][4], float winmat[4][4], const struct rcti *rect) RET_NONE
 float ED_view3d_grid_scale(struct Scene *scene, struct View3D *v3d, const char **grid_unit) RET_ZERO
-void ED_view3d_shade_update(struct Main *bmain, struct Scene *scene, struct View3D *v3d, struct ScrArea *sa) RET_NONE
+void ED_view3d_shade_update(struct Main *bmain, struct View3D *v3d, struct ScrArea *sa) RET_NONE
 void ED_node_shader_default(const struct bContext *C, struct ID *id) RET_NONE
 void ED_screen_animation_timer_update(struct bScreen *screen, int redraws, int refresh) RET_NONE
 struct bScreen *ED_screen_animation_playing(const struct wmWindowManager *wm) RET_NULL
@@ -607,12 +607,12 @@ struct bTheme *UI_GetTheme(void) RET_NULL
 void uiTemplateAnyID(uiLayout *layout, struct PointerRNA *ptr, const char *propname, const char *proptypename, const char *text) RET_NONE
 void uiTemplatePathBuilder(uiLayout *layout, struct PointerRNA *ptr, const char *propname, struct PointerRNA *root_ptr, const char *text) RET_NONE
 void uiTemplateHeader(struct uiLayout *layout, struct bContext *C) RET_NONE
-void uiTemplateID(uiLayout *layout, struct bContext *C, struct PointerRNA *ptr, const char *propname, const char *newop, const char *openop, const char *unlinkop) RET_NONE
+void uiTemplateID(uiLayout *layout, struct bContext *C, struct PointerRNA *ptr, const char *propname, const char *newop, const char *openop, const char *unlinkop, int filter) RET_NONE
 struct uiLayout *uiTemplateModifier(uiLayout *layout, struct bContext *C, struct PointerRNA *ptr) RET_NULL
 struct uiLayout *uiTemplateConstraint(struct uiLayout *layout, struct PointerRNA *ptr) RET_NULL
 void uiTemplatePreview(struct uiLayout *layout, struct bContext *C, struct ID *id, int show_buttons, struct ID *parent,
                        struct MTex *slot, const char *preview_id) RET_NONE
-void uiTemplateIDPreview(uiLayout *layout, struct bContext *C, struct PointerRNA *ptr, const char *propname, const char *newop, const char *openop, const char *unlinkop, int rows, int cols) RET_NONE
+void uiTemplateIDPreview(uiLayout *layout, struct bContext *C, struct PointerRNA *ptr, const char *propname, const char *newop, const char *openop, const char *unlinkop, int rows, int cols, int filter) RET_NONE
 void uiTemplateCurveMapping(uiLayout *layout, struct PointerRNA *ptr, const char *propname, int type, int levels, int brush, int neg_slope) RET_NONE
 void uiTemplateColorRamp(uiLayout *layout, struct PointerRNA *ptr, const char *propname, int expand) RET_NONE
 void uiTemplateLayers(uiLayout *layout, struct PointerRNA *ptr, const char *propname, PointerRNA *used_ptr, const char *used_propname, int active_layer) RET_NONE
@@ -681,7 +681,7 @@ void RE_point_density_cache(struct Scene *scene, struct PointDensity *pd, const 
 void RE_point_density_minmax(struct Scene *scene, struct PointDensity *pd, const bool use_render_params, float r_min[3], float r_max[3]) RET_NONE
 void RE_point_density_sample(struct Scene *scene, struct PointDensity *pd, int resolution, const bool use_render_params, float *values) RET_NONE
 void RE_point_density_free(struct PointDensity *pd) RET_NONE
-void RE_instance_get_particle_info(struct ObjectInstanceRen *obi, float *index, float *age, float *lifetime, float co[3], float *size, float vel[3], float angvel[3]) RET_NONE
+void RE_instance_get_particle_info(struct ObjectInstanceRen *obi, float *index, float *random, float *age, float *lifetime, float co[3], float *size, float vel[3], float angvel[3]) RET_NONE
 void RE_FreeAllPersistentData(void) RET_NONE
 float RE_fresnel_dielectric(float incoming[3], float normal[3], float eta) RET_ZERO
 void RE_engine_register_pass(struct RenderEngine *engine, struct Scene *scene, struct SceneRenderLayer *srl, const char *name, int channels, const char *chanid, int type) RET_NONE
@@ -766,6 +766,7 @@ int BPY_context_member_get(struct bContext *C, const char *member, struct bConte
 void BPY_pyconstraint_target(struct bPythonConstraint *con, struct bConstraintTarget *ct) RET_NONE
 float BPY_driver_exec(PathResolvedRNA *anim_rna, struct ChannelDriver *driver, const float evaltime) RET_ZERO /* might need this one! */
 void BPY_DECREF(void *pyob_ptr) RET_NONE
+void BPY_DECREF_RNA_INVALIDATE(void *pyob_ptr) RET_NONE;
 void BPY_pyconstraint_exec(struct bPythonConstraint *con, struct bConstraintOb *cob, struct ListBase *targets) RET_NONE
 bool pyrna_id_FromPyObject(struct PyObject *obj, struct ID **id) RET_ZERO
 struct PyObject *pyrna_id_CreatePyObject(struct ID *id) RET_NULL

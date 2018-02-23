@@ -244,6 +244,7 @@ shader_node_categories = [
         NodeItem("ShaderNodeHoldout", poll=object_shader_nodes_poll),
         NodeItem("ShaderNodeVolumeAbsorption"),
         NodeItem("ShaderNodeVolumeScatter"),
+        NodeItem("ShaderNodeVolumePrincipled"),
         ]),
     ShaderNewNodeCategory("SH_NEW_TEXTURE", "Texture", items=[
         NodeItem("ShaderNodeTexImage"),
@@ -271,6 +272,8 @@ shader_node_categories = [
     ShaderNewNodeCategory("SH_NEW_OP_VECTOR", "Vector", items=[
         NodeItem("ShaderNodeMapping"),
         NodeItem("ShaderNodeBump"),
+        NodeItem("ShaderNodeDisplacement"),
+        NodeItem("ShaderNodeVectorDisplacement"),
         NodeItem("ShaderNodeNormalMap"),
         NodeItem("ShaderNodeNormal"),
         NodeItem("ShaderNodeVectorCurve"),

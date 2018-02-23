@@ -85,6 +85,7 @@ Scene::Scene(const SceneParams& params_, Device *device)
 	memset(&dscene.data, 0, sizeof(dscene.data));
 
 	camera = new Camera();
+	dicing_camera = new Camera();
 	lookup_tables = new LookupTables();
 	film = new Film();
 	background = new Background();
@@ -155,6 +156,7 @@ void Scene::free_memory(bool final)
 	if(final) {
 		delete lookup_tables;
 		delete camera;
+		delete dicing_camera;
 		delete film;
 		delete background;
 		delete integrator;
@@ -212,6 +214,11 @@ void Scene::device_update(Device *device_, Progress& progress)
 
 	if(progress.get_cancel() || device->have_error()) return;
 
+	progress.set_status("Updating Particle Systems");
+	particle_system_manager->device_update(device, &dscene, this, progress);
+
+	if(progress.get_cancel() || device->have_error()) return;
+
 	progress.set_status("Updating Meshes");
 	mesh_manager->device_update(device, &dscene, this, progress);
 
@@ -244,11 +251,6 @@ void Scene::device_update(Device *device_, Progress& progress)
 
 	progress.set_status("Updating Lights");
 	light_manager->device_update(device, &dscene, this, progress);
-
-	if(progress.get_cancel() || device->have_error()) return;
-
-	progress.set_status("Updating Particle Systems");
-	particle_system_manager->device_update(device, &dscene, this, progress);
 
 	if(progress.get_cancel() || device->have_error()) return;
 
@@ -289,10 +291,10 @@ void Scene::device_update(Device *device_, Progress& progress)
 	}
 }
 
-Scene::MotionType Scene::need_motion(bool advanced_shading)
+Scene::MotionType Scene::need_motion()
 {
 	if(integrator->motion_blur)
-		return (advanced_shading)? MOTION_BLUR: MOTION_NONE;
+		return MOTION_BLUR;
 	else if(Pass::contains(film->passes, PASS_MOTION))
 		return MOTION_PASS;
 	else
@@ -359,6 +361,7 @@ void Scene::reset()
 
 	/* ensure all objects are updated */
 	camera->tag_update();
+	dicing_camera->tag_update();
 	film->tag_update(this);
 	background->tag_update(this);
 	integrator->tag_update(this);

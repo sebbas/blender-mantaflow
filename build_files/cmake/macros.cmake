@@ -242,6 +242,13 @@ function(blender_add_lib__impl
 	# listed is helpful for IDE's (QtCreator/MSVC)
 	blender_source_group("${sources}")
 
+	#if enabled, set the FOLDER property for visual studio projects 
+	if(WINDOWS_USE_VISUAL_STUDIO_FOLDERS)
+		get_filename_component(FolderDir ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
+		string(REPLACE ${CMAKE_SOURCE_DIR} "" FolderDir ${FolderDir})
+		set_target_properties(${name} PROPERTIES FOLDER ${FolderDir})
+	endif()
+
 	list_assert_duplicates("${sources}")
 	list_assert_duplicates("${includes}")
 	# Not for system includes because they can resolve to the same path
@@ -716,10 +723,6 @@ function(SETUP_BLENDER_SORTED_LIBS)
 
 	if(WITH_IK_ITASC)
 		list(APPEND BLENDER_SORTED_LIBS bf_intern_itasc)
-	endif()
-
-	if(WITH_MOD_BOOLEAN)
-		list(APPEND BLENDER_SORTED_LIBS extern_carve)
 	endif()
 
 	if(WITH_GHOST_XDND)
@@ -1376,7 +1379,7 @@ endfunction()
 
 # macro for converting pixmap directory to a png and then a c file
 function(data_to_c_simple_icons
-	path_from
+	path_from icon_prefix icon_names
 	list_to_add
 	)
 
@@ -1394,8 +1397,11 @@ function(data_to_c_simple_icons
 
 	get_filename_component(_file_to_path ${_file_to} PATH)
 
-	# ideally we wouldn't glob, but storing all names for all pixmaps is a bit heavy
-	file(GLOB _icon_files "${path_from}/*.dat")
+	# Construct a list of absolute paths from input
+	set(_icon_files)
+	foreach(_var ${icon_names})
+		list(APPEND _icon_files "${_path_from_abs}/${icon_prefix}${_var}.dat")
+	endforeach()
 
 	add_custom_command(
 		OUTPUT  ${_file_from} ${_file_to}
@@ -1507,6 +1513,7 @@ function(find_python_package
 		  PATH_SUFFIXES
 		    site-packages
 		    dist-packages
+		    vendor-packages
 		   NO_DEFAULT_PATH
 		)
 
@@ -1517,6 +1524,8 @@ function(find_python_package
 				"'${PYTHON_LIBPATH}/python${_PY_VER_MAJOR}/site-packages/${package}', "
 				"'${PYTHON_LIBPATH}/python${PYTHON_VERSION}/dist-packages/${package}', "
 				"'${PYTHON_LIBPATH}/python${_PY_VER_MAJOR}/dist-packages/${package}', "
+				"'${PYTHON_LIBPATH}/python${PYTHON_VERSION}/vendor-packages/${package}', "
+				"'${PYTHON_LIBPATH}/python${_PY_VER_MAJOR}/vendor-packages/${package}', "
 				"\n"
 				"The 'WITH_PYTHON_INSTALL_${_upper_package}' option will be ignored when installing Python.\n"
 				"The build will be usable, only add-ons that depend on this package won't be functional."
@@ -1554,7 +1563,7 @@ macro(openmp_delayload
 		endif()
 endmacro()
 
-MACRO(WINDOWS_SIGN_TARGET target)
+macro(WINDOWS_SIGN_TARGET target)
 	if(WITH_WINDOWS_CODESIGN)
 		if(!SIGNTOOL_EXE)
 			error("Codesigning is enabled, but signtool is not found")
@@ -1575,4 +1584,4 @@ MACRO(WINDOWS_SIGN_TARGET target)
 			)
 		endif()
 	endif()
-ENDMACRO()
+endmacro()
