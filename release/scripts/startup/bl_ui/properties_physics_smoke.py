@@ -730,47 +730,48 @@ class PHYSICS_PT_liquid_display_settings(PhysicButtonsPanel, Panel):
     def draw(self, context):
         domain = context.smoke.domain_settings
         layout = self.layout
+        split = layout.split()
+        first = split.column()
+        first.prop(domain, "use_color_ramp", text="Enable Display")
 
-        layout.prop(domain, "display_thickness")
+        second = split.column()
+        second.enabled = domain.use_color_ramp
+        second.prop(domain, "coba_field_liquid", text="")
 
-        layout.separator()
-        layout.label(text="Slicing:")
-        layout.prop(domain, "slice_method")
+        do_axis_slicing = (domain.slice_method == 'AXIS_ALIGNED')
+        do_full_slicing = (domain.axis_slice_method == 'FULL')
+        sub1 = layout.column()
+        sub1.enabled = do_axis_slicing and domain.use_color_ramp
+        sub1.prop(domain, "axis_slice_method")
+        sub2 = layout.column()
+        sub2.enabled = (not do_full_slicing and do_axis_slicing) and domain.use_color_ramp
+        sub2.prop(domain, "slice_axis")
 
-        slice_method = domain.slice_method
-        axis_slice_method = domain.axis_slice_method
+        split = layout.split()
+        first = split.column()
+        first.enabled = (not do_full_slicing and do_axis_slicing) and domain.use_color_ramp
+        first.prop(domain, "slice_depth")
+        second = split.column()
+        second.enabled = (do_full_slicing or not do_axis_slicing) and domain.use_color_ramp
+        second.prop(domain, "slice_per_voxel")
 
-        do_axis_slicing = (slice_method == 'AXIS_ALIGNED')
-        do_full_slicing = (axis_slice_method == 'FULL')
+        layout.label()
+        sub3 = layout.column()
+        sub3.enabled = domain.use_color_ramp 
+        sub3.prop(domain, "draw_velocity")
+        sub4 = layout.column()
+        sub4.enabled = domain.draw_velocity and domain.use_color_ramp
+        sub4.prop(domain, "vector_draw_type")
+        sub4.prop(domain, "vector_scale")
 
-        row = layout.row()
-        row.enabled = do_axis_slicing
-        row.prop(domain, "axis_slice_method")
+        layout.label()
+        sub5 = layout.column()
+        sub5.enabled = domain.use_color_ramp
+        sub5.label(text="Color Mapping:")
+        sub5.template_color_ramp(domain, "color_ramp", expand=True)
+        sub5.prop(domain, "display_thickness", text="Displayed Density")
 
-        col = layout.column()
-        col.enabled = not do_full_slicing and do_axis_slicing
-        col.prop(domain, "slice_axis")
-        col.prop(domain, "slice_depth")
-
-        row = layout.row()
-        row.enabled = do_full_slicing or not do_axis_slicing
-        row.prop(domain, "slice_per_voxel")
-
-        layout.separator()
-        layout.label(text="Debug:")
-        layout.prop(domain, "draw_velocity")
-        col = layout.column()
-        col.enabled = domain.draw_velocity
-        col.prop(domain, "vector_draw_type")
-        col.prop(domain, "vector_scale")
-
-        layout.separator()
-        layout.label(text="Color Mapping:")
-        layout.prop(domain, "use_color_ramp")
-        col = layout.column()
-        col.enabled = domain.use_color_ramp
-        col.prop(domain, "coba_field_liquid")
-        col.template_color_ramp(domain, "color_ramp", expand=True)
+        
 
 classes = (
     SMOKE_MT_presets,

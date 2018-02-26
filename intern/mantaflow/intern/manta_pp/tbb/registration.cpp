@@ -114,7 +114,6 @@ extern "C" {
 		extern void PbRegister_flipComputeSecondaryParticlePotentials() ;
 		extern void PbRegister_flipSampleSecondaryParticles() ;
 		extern void PbRegister_flipUpdateSecondaryParticles() ;
-		extern void PbRegister_flipUpdateSecondaryParticlesTracer() ;
 		extern void PbRegister_flipDeleteParticlesInObstacle() ;
 		extern void PbRegister_debugGridInfo() ;
 		extern void PbRegister_setFlagsFromLevelset() ;
@@ -295,7 +294,6 @@ namespace Pb {
 		PbRegister_flipComputeSecondaryParticlePotentials() ;
 		PbRegister_flipSampleSecondaryParticles() ;
 		PbRegister_flipUpdateSecondaryParticles() ;
-		PbRegister_flipUpdateSecondaryParticlesTracer() ;
 		PbRegister_flipDeleteParticlesInObstacle() ;
 		PbRegister_debugGridInfo() ;
 		PbRegister_setFlagsFromLevelset() ;

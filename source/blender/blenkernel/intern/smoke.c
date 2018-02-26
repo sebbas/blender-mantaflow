@@ -600,7 +600,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->cache_volume_format = PTCACHE_FILE_PTCACHE;
 
 			smd->domain->display_thickness = 1.0f;
-			smd->domain->slice_method = MOD_SMOKE_SLICE_VIEW_ALIGNED;
+			smd->domain->slice_method = MOD_SMOKE_SLICE_AXIS_ALIGNED;
 			smd->domain->axis_slice_method = AXIS_SLICE_FULL;
 			smd->domain->slice_per_voxel = 5.0f;
 			smd->domain->slice_depth = 0.5f;
