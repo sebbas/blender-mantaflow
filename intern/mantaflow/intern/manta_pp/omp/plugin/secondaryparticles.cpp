@@ -256,14 +256,14 @@ Real cubicSpline(const Real h, const Real l, const int dim) {
 
 
 
- struct knFlipUpdateSecondaryParticlesLinear : public KernelBase { knFlipUpdateSecondaryParticlesLinear( BasicParticleSystem &pts_sec, ParticleDataImpl<Vec3> &v_sec, ParticleDataImpl<Real> &l_sec, const ParticleDataImpl<Vec3> &f_sec, const FlagGrid &flags, const MACGrid &v, const Grid<Real> &neighborRatio, const Vec3 g, const Real k_b, const Real k_d, const Real c_s, const Real c_b, const Real dt, const int antitunneling = 0) :  KernelBase(pts_sec.size()) ,pts_sec(pts_sec),v_sec(v_sec),l_sec(l_sec),f_sec(f_sec),flags(flags),v(v),neighborRatio(neighborRatio),g(g),k_b(k_b),k_d(k_d),c_s(c_s),c_b(c_b),dt(dt),antitunneling(antitunneling)   { runMessage(); run(); }   inline void op(IndexInt idx,  BasicParticleSystem &pts_sec, ParticleDataImpl<Vec3> &v_sec, ParticleDataImpl<Real> &l_sec, const ParticleDataImpl<Vec3> &f_sec, const FlagGrid &flags, const MACGrid &v, const Grid<Real> &neighborRatio, const Vec3 g, const Real k_b, const Real k_d, const Real c_s, const Real c_b, const Real dt, const int antitunneling = 0 )  {
+ struct knFlipUpdateSecondaryParticlesLinear : public KernelBase { knFlipUpdateSecondaryParticlesLinear( BasicParticleSystem &pts_sec, ParticleDataImpl<Vec3> &v_sec, ParticleDataImpl<Real> &l_sec, const ParticleDataImpl<Vec3> &f_sec, const FlagGrid &flags, const MACGrid &v, const Grid<Real> &neighborRatio, const Vec3 gravity, const Real k_b, const Real k_d, const Real c_s, const Real c_b, const Real dt, const int antitunneling = 0) :  KernelBase(pts_sec.size()) ,pts_sec(pts_sec),v_sec(v_sec),l_sec(l_sec),f_sec(f_sec),flags(flags),v(v),neighborRatio(neighborRatio),gravity(gravity),k_b(k_b),k_d(k_d),c_s(c_s),c_b(c_b),dt(dt),antitunneling(antitunneling)   { runMessage(); run(); }   inline void op(IndexInt idx,  BasicParticleSystem &pts_sec, ParticleDataImpl<Vec3> &v_sec, ParticleDataImpl<Real> &l_sec, const ParticleDataImpl<Vec3> &f_sec, const FlagGrid &flags, const MACGrid &v, const Grid<Real> &neighborRatio, const Vec3 gravity, const Real k_b, const Real k_d, const Real c_s, const Real c_b, const Real dt, const int antitunneling = 0 )  {
 
 	if (!pts_sec.isActive(idx)) return;
 	if (!flags.isInBounds(pts_sec[idx].pos)) {
 		pts_sec.kill(idx);
 		return;
 	}
-
+	Vec3 g = gravity * flags.getParent()->getDt() / flags.getParent()->getDx();
 	Vec3i gridpos = toVec3i(pts_sec[idx].pos);
 	int i = gridpos.x;
 	int j = gridpos.y;
@@ -327,11 +327,11 @@ Real cubicSpline(const Real h, const Real l, const int dim) {
 	if (l_sec[idx] <= Real(0)) {
 		pts_sec.kill(idx);
 	}
-}    inline BasicParticleSystem& getArg0() { return pts_sec; } typedef BasicParticleSystem type0;inline ParticleDataImpl<Vec3> & getArg1() { return v_sec; } typedef ParticleDataImpl<Vec3>  type1;inline ParticleDataImpl<Real> & getArg2() { return l_sec; } typedef ParticleDataImpl<Real>  type2;inline const ParticleDataImpl<Vec3> & getArg3() { return f_sec; } typedef ParticleDataImpl<Vec3>  type3;inline const FlagGrid& getArg4() { return flags; } typedef FlagGrid type4;inline const MACGrid& getArg5() { return v; } typedef MACGrid type5;inline const Grid<Real> & getArg6() { return neighborRatio; } typedef Grid<Real>  type6;inline const Vec3& getArg7() { return g; } typedef Vec3 type7;inline const Real& getArg8() { return k_b; } typedef Real type8;inline const Real& getArg9() { return k_d; } typedef Real type9;inline const Real& getArg10() { return c_s; } typedef Real type10;inline const Real& getArg11() { return c_b; } typedef Real type11;inline const Real& getArg12() { return dt; } typedef Real type12;inline const int& getArg13() { return antitunneling; } typedef int type13; void runMessage() { debMsg("Executing kernel knFlipUpdateSecondaryParticlesLinear ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystem& getArg0() { return pts_sec; } typedef BasicParticleSystem type0;inline ParticleDataImpl<Vec3> & getArg1() { return v_sec; } typedef ParticleDataImpl<Vec3>  type1;inline ParticleDataImpl<Real> & getArg2() { return l_sec; } typedef ParticleDataImpl<Real>  type2;inline const ParticleDataImpl<Vec3> & getArg3() { return f_sec; } typedef ParticleDataImpl<Vec3>  type3;inline const FlagGrid& getArg4() { return flags; } typedef FlagGrid type4;inline const MACGrid& getArg5() { return v; } typedef MACGrid type5;inline const Grid<Real> & getArg6() { return neighborRatio; } typedef Grid<Real>  type6;inline const Vec3& getArg7() { return gravity; } typedef Vec3 type7;inline const Real& getArg8() { return k_b; } typedef Real type8;inline const Real& getArg9() { return k_d; } typedef Real type9;inline const Real& getArg10() { return c_s; } typedef Real type10;inline const Real& getArg11() { return c_b; } typedef Real type11;inline const Real& getArg12() { return dt; } typedef Real type12;inline const int& getArg13() { return antitunneling; } typedef int type13; void runMessage() { debMsg("Executing kernel knFlipUpdateSecondaryParticlesLinear ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
 #pragma omp for  
-  for (IndexInt i = 0; i < _sz; i++) op(i,pts_sec,v_sec,l_sec,f_sec,flags,v,neighborRatio,g,k_b,k_d,c_s,c_b,dt,antitunneling);  }   } BasicParticleSystem& pts_sec; ParticleDataImpl<Vec3> & v_sec; ParticleDataImpl<Real> & l_sec; const ParticleDataImpl<Vec3> & f_sec; const FlagGrid& flags; const MACGrid& v; const Grid<Real> & neighborRatio; const Vec3 g; const Real k_b; const Real k_d; const Real c_s; const Real c_b; const Real dt; const int antitunneling;   };
+  for (IndexInt i = 0; i < _sz; i++) op(i,pts_sec,v_sec,l_sec,f_sec,flags,v,neighborRatio,gravity,k_b,k_d,c_s,c_b,dt,antitunneling);  }   } BasicParticleSystem& pts_sec; ParticleDataImpl<Vec3> & v_sec; ParticleDataImpl<Real> & l_sec; const ParticleDataImpl<Vec3> & f_sec; const FlagGrid& flags; const MACGrid& v; const Grid<Real> & neighborRatio; const Vec3 gravity; const Real k_b; const Real k_d; const Real c_s; const Real c_b; const Real dt; const int antitunneling;   };
 #line 236 "plugin/secondaryparticles.cpp"
 
 
@@ -341,7 +341,7 @@ Real cubicSpline(const Real h, const Real l, const int dim) {
 
 
 
- struct knFlipUpdateSecondaryParticlesCubic : public KernelBase { knFlipUpdateSecondaryParticlesCubic( BasicParticleSystem &pts_sec, ParticleDataImpl<Vec3> &v_sec, ParticleDataImpl<Real> &l_sec, const ParticleDataImpl<Vec3> &f_sec, const FlagGrid &flags, const MACGrid &v, const Grid<Real> &neighborRatio, const int radius, const Vec3 g, const Real k_b, const Real k_d, const Real c_s, const Real c_b, const Real dt, const int antitunneling = 0, const int itype = FlagGrid::TypeFluid) :  KernelBase(pts_sec.size()) ,pts_sec(pts_sec),v_sec(v_sec),l_sec(l_sec),f_sec(f_sec),flags(flags),v(v),neighborRatio(neighborRatio),radius(radius),g(g),k_b(k_b),k_d(k_d),c_s(c_s),c_b(c_b),dt(dt),antitunneling(antitunneling),itype(itype)   { runMessage(); run(); }   inline void op(IndexInt idx,  BasicParticleSystem &pts_sec, ParticleDataImpl<Vec3> &v_sec, ParticleDataImpl<Real> &l_sec, const ParticleDataImpl<Vec3> &f_sec, const FlagGrid &flags, const MACGrid &v, const Grid<Real> &neighborRatio, const int radius, const Vec3 g, const Real k_b, const Real k_d, const Real c_s, const Real c_b, const Real dt, const int antitunneling = 0, const int itype = FlagGrid::TypeFluid )  {
+ struct knFlipUpdateSecondaryParticlesCubic : public KernelBase { knFlipUpdateSecondaryParticlesCubic( BasicParticleSystem &pts_sec, ParticleDataImpl<Vec3> &v_sec, ParticleDataImpl<Real> &l_sec, const ParticleDataImpl<Vec3> &f_sec, const FlagGrid &flags, const MACGrid &v, const Grid<Real> &neighborRatio, const int radius, const Vec3 gravity, const Real k_b, const Real k_d, const Real c_s, const Real c_b, const Real dt, const int antitunneling = 0, const int itype = FlagGrid::TypeFluid) :  KernelBase(pts_sec.size()) ,pts_sec(pts_sec),v_sec(v_sec),l_sec(l_sec),f_sec(f_sec),flags(flags),v(v),neighborRatio(neighborRatio),radius(radius),gravity(gravity),k_b(k_b),k_d(k_d),c_s(c_s),c_b(c_b),dt(dt),antitunneling(antitunneling),itype(itype)   { runMessage(); run(); }   inline void op(IndexInt idx,  BasicParticleSystem &pts_sec, ParticleDataImpl<Vec3> &v_sec, ParticleDataImpl<Real> &l_sec, const ParticleDataImpl<Vec3> &f_sec, const FlagGrid &flags, const MACGrid &v, const Grid<Real> &neighborRatio, const int radius, const Vec3 gravity, const Real k_b, const Real k_d, const Real c_s, const Real c_b, const Real dt, const int antitunneling = 0, const int itype = FlagGrid::TypeFluid )  {
 
 	if (!pts_sec.isActive(idx)) return;
 	if (!flags.isInBounds(pts_sec[idx].pos)) {
@@ -349,6 +349,7 @@ Real cubicSpline(const Real h, const Real l, const int dim) {
 		return;
 	}
 
+	Vec3 g = gravity * flags.getParent()->getDt() / flags.getParent()->getDx();
 	Vec3i gridpos = toVec3i(pts_sec[idx].pos);
 	int i = gridpos.x;
 	int j = gridpos.y;
@@ -448,11 +449,11 @@ Real cubicSpline(const Real h, const Real l, const int dim) {
 	if (l_sec[idx] <= Real(0)) {
 		pts_sec.kill(idx);
 	}
-}    inline BasicParticleSystem& getArg0() { return pts_sec; } typedef BasicParticleSystem type0;inline ParticleDataImpl<Vec3> & getArg1() { return v_sec; } typedef ParticleDataImpl<Vec3>  type1;inline ParticleDataImpl<Real> & getArg2() { return l_sec; } typedef ParticleDataImpl<Real>  type2;inline const ParticleDataImpl<Vec3> & getArg3() { return f_sec; } typedef ParticleDataImpl<Vec3>  type3;inline const FlagGrid& getArg4() { return flags; } typedef FlagGrid type4;inline const MACGrid& getArg5() { return v; } typedef MACGrid type5;inline const Grid<Real> & getArg6() { return neighborRatio; } typedef Grid<Real>  type6;inline const int& getArg7() { return radius; } typedef int type7;inline const Vec3& getArg8() { return g; } typedef Vec3 type8;inline const Real& getArg9() { return k_b; } typedef Real type9;inline const Real& getArg10() { return k_d; } typedef Real type10;inline const Real& getArg11() { return c_s; } typedef Real type11;inline const Real& getArg12() { return c_b; } typedef Real type12;inline const Real& getArg13() { return dt; } typedef Real type13;inline const int& getArg14() { return antitunneling; } typedef int type14;inline const int& getArg15() { return itype; } typedef int type15; void runMessage() { debMsg("Executing kernel knFlipUpdateSecondaryParticlesCubic ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+}    inline BasicParticleSystem& getArg0() { return pts_sec; } typedef BasicParticleSystem type0;inline ParticleDataImpl<Vec3> & getArg1() { return v_sec; } typedef ParticleDataImpl<Vec3>  type1;inline ParticleDataImpl<Real> & getArg2() { return l_sec; } typedef ParticleDataImpl<Real>  type2;inline const ParticleDataImpl<Vec3> & getArg3() { return f_sec; } typedef ParticleDataImpl<Vec3>  type3;inline const FlagGrid& getArg4() { return flags; } typedef FlagGrid type4;inline const MACGrid& getArg5() { return v; } typedef MACGrid type5;inline const Grid<Real> & getArg6() { return neighborRatio; } typedef Grid<Real>  type6;inline const int& getArg7() { return radius; } typedef int type7;inline const Vec3& getArg8() { return gravity; } typedef Vec3 type8;inline const Real& getArg9() { return k_b; } typedef Real type9;inline const Real& getArg10() { return k_d; } typedef Real type10;inline const Real& getArg11() { return c_s; } typedef Real type11;inline const Real& getArg12() { return c_b; } typedef Real type12;inline const Real& getArg13() { return dt; } typedef Real type13;inline const int& getArg14() { return antitunneling; } typedef int type14;inline const int& getArg15() { return itype; } typedef int type15; void runMessage() { debMsg("Executing kernel knFlipUpdateSecondaryParticlesCubic ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
 #pragma omp for  
-  for (IndexInt i = 0; i < _sz; i++) op(i,pts_sec,v_sec,l_sec,f_sec,flags,v,neighborRatio,radius,g,k_b,k_d,c_s,c_b,dt,antitunneling,itype);  }   } BasicParticleSystem& pts_sec; ParticleDataImpl<Vec3> & v_sec; ParticleDataImpl<Real> & l_sec; const ParticleDataImpl<Vec3> & f_sec; const FlagGrid& flags; const MACGrid& v; const Grid<Real> & neighborRatio; const int radius; const Vec3 g; const Real k_b; const Real k_d; const Real c_s; const Real c_b; const Real dt; const int antitunneling; const int itype;   };
+  for (IndexInt i = 0; i < _sz; i++) op(i,pts_sec,v_sec,l_sec,f_sec,flags,v,neighborRatio,radius,gravity,k_b,k_d,c_s,c_b,dt,antitunneling,itype);  }   } BasicParticleSystem& pts_sec; ParticleDataImpl<Vec3> & v_sec; ParticleDataImpl<Real> & l_sec; const ParticleDataImpl<Vec3> & f_sec; const FlagGrid& flags; const MACGrid& v; const Grid<Real> & neighborRatio; const int radius; const Vec3 gravity; const Real k_b; const Real k_d; const Real c_s; const Real c_b; const Real dt; const int antitunneling; const int itype;   };
 #line 314 "plugin/secondaryparticles.cpp"
 
 
@@ -499,7 +500,7 @@ void flipUpdateSecondaryParticles( const std::string mode, BasicParticleSystem &
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,pts,flags);  }   } BasicParticleSystem& pts; const FlagGrid& flags;   };
-#line 444 "plugin/secondaryparticles.cpp"
+#line 445 "plugin/secondaryparticles.cpp"
 
 
 
@@ -554,7 +555,7 @@ void debugGridInfo( const FlagGrid &flags, Grid<Real> &grid, std::string name, c
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,flags,phi,exclude,itype);  }   } FlagGrid& flags; const Grid<Real> & phi; const int exclude; const int itype;   };
-#line 505 "plugin/secondaryparticles.cpp"
+#line 506 "plugin/secondaryparticles.cpp"
 
 
 
@@ -576,7 +577,7 @@ void setFlagsFromLevelset( FlagGrid &flags, const Grid<Real> &phi, const int exc
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,v,phi,c);  } }  } MACGrid& v; const Grid<Real> & phi; const Vec3 c;   };
-#line 517 "plugin/secondaryparticles.cpp"
+#line 518 "plugin/secondaryparticles.cpp"
 
 
 
@@ -637,7 +638,7 @@ void setMACFromLevelset( MACGrid &v, const Grid<Real> &phi, const Vec3 c) {
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,pot,flags,v,radius,tauMin,tauMax,scaleFromManta,itype,jtype);  } }  } Grid<Real> & pot; const FlagGrid& flags; const MACGrid& v; const int radius; const Real tauMin; const Real tauMax; const Real scaleFromManta; const int itype; const int jtype;   };
-#line 547 "plugin/secondaryparticles.cpp"
+#line 548 "plugin/secondaryparticles.cpp"
 
 
 
@@ -673,7 +674,7 @@ void flipComputePotentialTrappedAir( Grid<Real> &pot, const FlagGrid &flags, con
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,pot,flags,v,tauMin,tauMax,scaleFromManta,itype);  } }  } Grid<Real> & pot; const FlagGrid& flags; const MACGrid& v; const Real tauMin; const Real tauMax; const Real scaleFromManta; const int itype;   };
-#line 587 "plugin/secondaryparticles.cpp"
+#line 588 "plugin/secondaryparticles.cpp"
 
 
 
@@ -730,7 +731,7 @@ void flipComputePotentialKineticEnergy( Grid<Real> &pot, const FlagGrid &flags, 
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,pot,flags,v,radius,normal,tauMin,tauMax,scaleFromManta,itype,jtype);  } }  } Grid<Real> & pot; const FlagGrid& flags; const MACGrid& v; const int radius; Grid<Vec3> & normal; const Real tauMin; const Real tauMax; const Real scaleFromManta; const int itype; const int jtype;   };
-#line 611 "plugin/secondaryparticles.cpp"
+#line 612 "plugin/secondaryparticles.cpp"
 
 
 
@@ -753,7 +754,7 @@ void flipComputePotentialWaveCrest( Grid<Real> &pot, const FlagGrid &flags, cons
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,normal,phi);  }   } Grid<Vec3>& normal; const Grid<Real>& phi;   };
-#line 654 "plugin/secondaryparticles.cpp"
+#line 655 "plugin/secondaryparticles.cpp"
 
 
 
@@ -797,7 +798,7 @@ void flipComputeSurfaceNormals(Grid<Vec3>& normal, const Grid<Real>& phi) {
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,neighborRatio,radius,itype,jtype);  } }  } const FlagGrid& flags; Grid<Real> & neighborRatio; const int radius; const int itype; const int jtype;   };
-#line 668 "plugin/secondaryparticles.cpp"
+#line 669 "plugin/secondaryparticles.cpp"
 
 
 
