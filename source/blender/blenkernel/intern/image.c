@@ -112,9 +112,9 @@ static void image_add_view(Image *ima, const char *viewname, const char *filepat
 /* quick lookup: supports 1 million frames, thousand passes */
 #define IMA_MAKE_INDEX(frame, index)    (((frame) << 10) + (index))
 #define IMA_INDEX_FRAME(index)           ((index) >> 10)
-/*
+#if 0
 #define IMA_INDEX_PASS(index)           (index & ~1023)
-*/
+#endif
 
 /* ******** IMAGE CACHE ************* */
 
@@ -1695,7 +1695,7 @@ static void stampdata(Scene *scene, Object *camera, StampData *stamp_data, int d
 		int digits = 1;
 
 		if (scene->r.efra > 9)
-			digits = 1 + (int) log10(scene->r.efra);
+			digits = integer_digits_i(scene->r.efra);
 
 		BLI_snprintf(fmtstr, sizeof(fmtstr), do_prefix ? "Frame %%0%di" : "%%0%di", digits);
 		BLI_snprintf(stamp_data->frame, sizeof(stamp_data->frame), fmtstr, scene->r.cfra);
@@ -2547,7 +2547,7 @@ void BKE_image_verify_viewer_views(const RenderData *rd, Image *ima, ImageUser *
 	bool do_reset;
 	const bool is_multiview = (rd->scemode & R_MULTIVIEW) != 0;
 
-	BLI_lock_thread(LOCK_DRAW_IMAGE);
+	BLI_thread_lock(LOCK_DRAW_IMAGE);
 
 	if (!BKE_scene_multiview_is_stereo3d(rd))
 		iuser->flag &= ~IMA_SHOW_STEREO;
@@ -2581,7 +2581,7 @@ void BKE_image_verify_viewer_views(const RenderData *rd, Image *ima, ImageUser *
 		BLI_spin_unlock(&image_spin);
 	}
 
-	BLI_unlock_thread(LOCK_DRAW_IMAGE);
+	BLI_thread_unlock(LOCK_DRAW_IMAGE);
 }
 
 void BKE_image_walk_all_users(const Main *mainp, void *customdata,
@@ -3662,7 +3662,7 @@ static ImBuf *image_get_render_result(Image *ima, ImageUser *iuser, void **r_loc
 
 	/* release is done in BKE_image_release_ibuf using r_lock */
 	if (from_render) {
-		BLI_lock_thread(LOCK_VIEWER);
+		BLI_thread_lock(LOCK_VIEWER);
 		*r_lock = re;
 		rv = NULL;
 	}
@@ -3755,7 +3755,7 @@ static ImBuf *image_get_render_result(Image *ima, ImageUser *iuser, void **r_loc
 	}
 
 	/* invalidate color managed buffers if render result changed */
-	BLI_lock_thread(LOCK_COLORMANAGE);
+	BLI_thread_lock(LOCK_COLORMANAGE);
 	if (ibuf->x != rres.rectx || ibuf->y != rres.recty || ibuf->rect_float != rectf) {
 		ibuf->userflags |= IB_DISPLAY_BUFFER_INVALID;
 	}
@@ -3796,7 +3796,7 @@ static ImBuf *image_get_render_result(Image *ima, ImageUser *iuser, void **r_loc
 		ibuf->flags &= ~IB_zbuffloat;
 	}
 
-	BLI_unlock_thread(LOCK_COLORMANAGE);
+	BLI_thread_unlock(LOCK_COLORMANAGE);
 
 	ibuf->dither = dither;
 
@@ -3998,7 +3998,7 @@ static ImBuf *image_acquire_ibuf(Image *ima, ImageUser *iuser, void **r_lock)
 				/* requires lock/unlock, otherwise don't return image */
 				if (r_lock) {
 					/* unlock in BKE_image_release_ibuf */
-					BLI_lock_thread(LOCK_VIEWER);
+					BLI_thread_lock(LOCK_VIEWER);
 					*r_lock = ima;
 
 					/* XXX anim play for viewer nodes not yet supported */
@@ -4051,11 +4051,11 @@ void BKE_image_release_ibuf(Image *ima, ImBuf *ibuf, void *lock)
 	if (lock) {
 		/* for getting image during threaded render / compositing, need to release */
 		if (lock == ima) {
-			BLI_unlock_thread(LOCK_VIEWER); /* viewer image */
+			BLI_thread_unlock(LOCK_VIEWER); /* viewer image */
 		}
 		else if (lock) {
 			RE_ReleaseResultImage(lock); /* render result */
-			BLI_unlock_thread(LOCK_VIEWER); /* view image imbuf */
+			BLI_thread_unlock(LOCK_VIEWER); /* view image imbuf */
 		}
 	}
 

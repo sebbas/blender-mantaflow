@@ -18,7 +18,7 @@
  * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/bmesh/operators/bmo_rotate_edge.c
+/** \file blender/bmesh/operators/bmo_rotate_edges.c
  *  \ingroup bmesh
  *
  * Rotate edges topology that share two faces.
@@ -180,7 +180,7 @@ static void bm_rotate_edges_shared(
 
 		const int edges_len_rotate_prev = edges_len_rotate;
 		while (!BLI_heap_is_empty(heap)) {
-			BMEdge *e_best = BLI_heap_popmin(heap);
+			BMEdge *e_best = BLI_heap_pop_min(heap);
 			eheap_table[BM_elem_index_get(e_best)] = NULL;
 
 			/* No problem if this fails, re-evaluate if faces connected to this edge are touched. */

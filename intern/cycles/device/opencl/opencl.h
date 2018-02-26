@@ -140,7 +140,7 @@ public:
 	                               int *minor,
 	                               cl_int* error = NULL);
 
-	static int mem_address_alignment(cl_device_id device_id);
+	static int mem_sub_ptr_alignment(cl_device_id device_id);
 
 	/* Get somewhat more readable device name.
 	 * Main difference is AMD OpenCL here which only gives code name
@@ -346,14 +346,16 @@ public:
 	void mem_zero(device_memory& mem);
 	void mem_free(device_memory& mem);
 
-	int mem_address_alignment();
+	int mem_sub_ptr_alignment();
 
 	void const_copy_to(const char *name, void *host, size_t size);
 	void tex_alloc(device_memory& mem);
 	void tex_free(device_memory& mem);
 
 	size_t global_size_round_up(int group_size, int global_size);
-	void enqueue_kernel(cl_kernel kernel, size_t w, size_t h, size_t max_workgroup_size = -1);
+	void enqueue_kernel(cl_kernel kernel, size_t w, size_t h,
+	                    bool x_workgroups = false,
+	                    size_t max_workgroup_size = -1);
 	void set_kernel_arg_mem(cl_kernel kernel, cl_uint *narg, const char *name);
 	void set_kernel_arg_buffers(cl_kernel kernel, cl_uint *narg);
 

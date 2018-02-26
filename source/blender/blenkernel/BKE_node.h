@@ -446,6 +446,7 @@ struct bNodeSocket *nodeInsertStaticSocket(struct bNodeTree *ntree, struct bNode
                                            struct bNodeSocket *next_sock, const char *identifier, const char *name);
 void nodeRemoveSocket(struct bNodeTree *ntree, struct bNode *node, struct bNodeSocket *sock);
 void nodeRemoveAllSockets(struct bNodeTree *ntree, struct bNode *node);
+void nodeModifySocketType(struct bNodeTree *ntree, struct bNode *node, struct bNodeSocket *sock, int type, int subtype);
 
 struct bNode	*nodeAddNode(const struct bContext *C, struct bNodeTree *ntree, const char *idname);
 struct bNode	*nodeAddStaticNode(const struct bContext *C, struct bNodeTree *ntree, int type);
@@ -512,7 +513,7 @@ int                    BKE_node_clipboard_get_type(void);
 
 /* Node Instance Hash */
 typedef struct bNodeInstanceHash {
-	 GHash *ghash;	/* XXX should be made a direct member, GHash allocation needs to support it */
+	GHash *ghash;	/* XXX should be made a direct member, GHash allocation needs to support it */
 } bNodeInstanceHash;
 
 typedef void (*bNodeInstanceValueFP)(void *value);
@@ -789,6 +790,9 @@ struct ShadeResult;
 #define SH_NODE_TEX_POINTDENSITY		192
 #define SH_NODE_BSDF_PRINCIPLED         193
 #define SH_NODE_BEVEL                   197
+#define SH_NODE_DISPLACEMENT            198
+#define SH_NODE_VECTOR_DISPLACEMENT     199
+#define SH_NODE_VOLUME_PRINCIPLED       200
 
 /* custom defines options for Material node */
 #define SH_NODE_MAT_DIFF   1

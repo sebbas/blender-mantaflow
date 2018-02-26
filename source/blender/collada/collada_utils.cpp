@@ -377,6 +377,35 @@ void bc_decompose(float mat[4][4], float *loc, float eul[3], float quat[4], floa
 	}
 }
 
+/*
+* Create rotation_quaternion from a delta rotation and a reference quat
+*
+* Input:
+* mat_from: The rotation matrix before rotation
+* mat_to  : The rotation matrix after rotation
+* qref    : the quat corresponding to mat_from
+*
+* Output:
+* rot     : the calculated result (quaternion)
+*
+*/
+void bc_rotate_from_reference_quat(float quat_to[4], float quat_from[4], float mat_to[4][4])
+{
+	float qd[4];
+	float matd[4][4];
+	float mati[4][4];
+	float mat_from[4][4];
+	quat_to_mat4(mat_from, quat_from);
+
+	// Calculate the difference matrix matd between mat_from and mat_to
+	invert_m4_m4(mati, mat_from);
+	mul_m4_m4m4(matd, mati, mat_to);
+
+	mat4_to_quat(qd, matd);
+
+	mul_qt_qtqt(quat_to, qd, quat_from); // rot is the final rotation corresponding to mat_to
+}
+
 void bc_triangulate_mesh(Mesh *me)
 {
 	bool use_beauty  = false;
@@ -835,6 +864,13 @@ void bc_sanitize_mat(float mat[4][4], int precision)
 			mat[i][j] = double_round(mat[i][j], precision);
 }
 
+void bc_sanitize_mat(double mat[4][4], int precision)
+{
+	for (int i = 0; i < 4; i++)
+		for (int j = 0; j < 4; j++)
+			mat[i][j] = double_round(mat[i][j], precision);
+}
+
 /*
 * Returns name of Active UV Layer or empty String if no active UV Layer defined.
 * Assuming the Object is of type MESH
@@ -852,7 +888,10 @@ std::string bc_get_active_uvlayer_name(Mesh *me)
 {
 	int num_layers = CustomData_number_of_layers(&me->fdata, CD_MTFACE);
 	if (num_layers) {
-		return std::string(bc_CustomData_get_active_layer_name(&me->fdata, CD_MTFACE));
+		char *layer_name = bc_CustomData_get_active_layer_name(&me->fdata, CD_MTFACE);
+		if (layer_name) {
+			return std::string(layer_name);
+		}
 	}
 	return "";
 }
@@ -864,7 +903,10 @@ std::string bc_get_uvlayer_name(Mesh *me, int layer)
 {
 	int num_layers = CustomData_number_of_layers(&me->fdata, CD_MTFACE);
 	if (num_layers && layer < num_layers) {
-		return std::string(bc_CustomData_get_layer_name(&me->fdata, CD_MTFACE, layer));
+		char *layer_name = bc_CustomData_get_layer_name(&me->fdata, CD_MTFACE, layer);
+		if (layer_name) {
+			return std::string(layer_name);
+		}
 	}
 	return "";
 }

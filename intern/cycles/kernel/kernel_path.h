@@ -32,12 +32,12 @@
 #include "kernel/kernel_light.h"
 #include "kernel/kernel_passes.h"
 
-#ifdef __SUBSURFACE__
-#  include "kernel/kernel_subsurface.h"
+#if defined(__VOLUME__) || defined(__SUBSURFACE__)
+#  include "kernel/kernel_volume.h"
 #endif
 
-#ifdef __VOLUME__
-#  include "kernel/kernel_volume.h"
+#ifdef __SUBSURFACE__
+#  include "kernel/kernel_subsurface.h"
 #endif
 
 #include "kernel/kernel_path_state.h"
@@ -136,7 +136,7 @@ ccl_device_forceinline void kernel_path_background(
 	PathRadiance *L)
 {
 	/* eval background shader if nothing hit */
-	if(kernel_data.background.transparent && (state->flag & PATH_RAY_CAMERA)) {
+	if(kernel_data.background.transparent && (state->flag & PATH_RAY_TRANSPARENT_BACKGROUND)) {
 		L->transparent += average(throughput);
 
 #ifdef __PASSES__
@@ -280,7 +280,7 @@ ccl_device_forceinline bool kernel_path_shader_apply(
 {
 #ifdef __SHADOW_TRICKS__
 	if((sd->object_flag & SD_OBJECT_SHADOW_CATCHER)) {
-		if(state->flag & PATH_RAY_CAMERA) {
+		if(state->flag & PATH_RAY_TRANSPARENT_BACKGROUND) {
 			state->flag |= (PATH_RAY_SHADOW_CATCHER |
 						   PATH_RAY_STORE_SHADOW_INFO);
 
@@ -302,7 +302,7 @@ ccl_device_forceinline bool kernel_path_shader_apply(
 #ifdef __HOLDOUT__
 	if(((sd->flag & SD_HOLDOUT) ||
 		(sd->object_flag & SD_OBJECT_HOLDOUT_MASK)) &&
-	   (state->flag & PATH_RAY_CAMERA))
+	   (state->flag & PATH_RAY_TRANSPARENT_BACKGROUND))
 	{
 		if(kernel_data.background.transparent) {
 			float3 holdout_weight;
@@ -400,6 +400,13 @@ ccl_device void kernel_path_indirect(KernelGlobals *kg,
                                      PathState *state,
                                      PathRadiance *L)
 {
+#ifdef __SUBSURFACE__
+	SubsurfaceIndirectRays ss_indirect;
+	kernel_path_subsurface_init_indirect(&ss_indirect);
+
+	for(;;) {
+#endif  /* __SUBSURFACE__ */
+
 	/* path iteration */
 	for(;;) {
 		/* Find intersection with objects in scene. */
@@ -439,11 +446,8 @@ ccl_device void kernel_path_indirect(KernelGlobals *kg,
 		}
 
 		/* Setup and evaluate shader. */
-		shader_setup_from_ray(kg,
-		                      sd,
-		                      &isect,
-		                      ray);
-		shader_eval_surface(kg, sd, state, state->flag, kernel_data.integrator.max_closures);
+		shader_setup_from_ray(kg, sd, &isect, ray);
+		shader_eval_surface(kg, sd, state, state->flag);
 		shader_prepare_closures(sd, state);
 
 		/* Apply shadow catcher, holdout, emission. */
@@ -485,30 +489,21 @@ ccl_device void kernel_path_indirect(KernelGlobals *kg,
 		}
 #endif  /* __AO__ */
 
+
 #ifdef __SUBSURFACE__
 		/* bssrdf scatter to a different location on the same object, replacing
 		 * the closures with a diffuse BSDF */
 		if(sd->flag & SD_BSSRDF) {
-			float bssrdf_u, bssrdf_v;
-			path_state_rng_2D(kg,
-			                  state,
-			                  PRNG_BSDF_U,
-			                  &bssrdf_u, &bssrdf_v);
-
-			const ShaderClosure *sc = shader_bssrdf_pick(sd, &throughput, &bssrdf_u);
-
-			/* do bssrdf scatter step if we picked a bssrdf closure */
-			if(sc) {
-				uint lcg_state = lcg_state_init(state, 0x68bc21eb);
-
-				subsurface_scatter_step(kg,
-				                        sd,
-				                        state,
-				                        state->flag,
-				                        sc,
-				                        &lcg_state,
-				                        bssrdf_u, bssrdf_v,
-				                        false);
+			if(kernel_path_subsurface_scatter(kg,
+			                                  sd,
+			                                  emission_sd,
+			                                  L,
+			                                  state,
+			                                  ray,
+			                                  &throughput,
+			                                  &ss_indirect))
+			{
+				break;
 			}
 		}
 #endif  /* __SUBSURFACE__ */
@@ -531,6 +526,24 @@ ccl_device void kernel_path_indirect(KernelGlobals *kg,
 		if(!kernel_path_surface_bounce(kg, sd, &throughput, state, &L->state, ray))
 			break;
 	}
+
+#ifdef __SUBSURFACE__
+		/* Trace indirect subsurface rays by restarting the loop. this uses less
+		 * stack memory than invoking kernel_path_indirect.
+		 */
+		if(ss_indirect.num_rays) {
+			kernel_path_subsurface_setup_indirect(kg,
+			                                      &ss_indirect,
+			                                      state,
+			                                      ray,
+			                                      L,
+			                                      &throughput);
+		}
+		else {
+			break;
+		}
+	}
+#endif  /* __SUBSURFACE__ */
 }
 
 #endif /* defined(__BRANCHED_PATH__) || defined(__BAKING__) */
@@ -594,7 +607,7 @@ ccl_device_forceinline void kernel_path_integrate(
 
 		/* Setup and evaluate shader. */
 		shader_setup_from_ray(kg, &sd, &isect, ray);
-		shader_eval_surface(kg, &sd, state, state->flag, kernel_data.integrator.max_closures);
+		shader_eval_surface(kg, &sd, state, state->flag);
 		shader_prepare_closures(&sd, state);
 
 		/* Apply shadow catcher, holdout, emission. */

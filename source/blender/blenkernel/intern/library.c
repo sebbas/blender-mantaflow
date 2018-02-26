@@ -661,7 +661,11 @@ bool BKE_id_copy_ex(Main *bmain, const ID *id, ID **r_newid, const int flag, con
 	/* Do not make new copy local in case we are copying outside of main...
 	 * XXX TODO: is this behavior OK, or should we need own flag to control that? */
 	if ((flag & LIB_ID_CREATE_NO_MAIN) == 0) {
+		BLI_assert((flag & LIB_ID_COPY_KEEP_LIB) == 0);
 		BKE_id_copy_ensure_local(bmain, id, *r_newid);
+	}
+	else {
+		(*r_newid)->lib = id->lib;
 	}
 
 	return true;
@@ -2022,7 +2026,7 @@ void BKE_library_make_local(
 	GSet *loop_tags = BLI_gset_ptr_new(__func__);
 	for (LinkNode *it = todo_ids; it; it = it->next) {
 		library_make_local_copying_check(it->link, loop_tags, bmain->relations, done_ids);
-		BLI_assert(BLI_gset_size(loop_tags) == 0);
+		BLI_assert(BLI_gset_len(loop_tags) == 0);
 	}
 	BLI_gset_free(loop_tags, NULL);
 	BLI_gset_free(done_ids, NULL);
@@ -2142,8 +2146,8 @@ void BKE_library_make_local(
 			 * was not used locally would be a nasty bug! */
 			if (is_local || is_lib) {
 				printf("Warning, made-local proxy object %s will loose its link to %s, "
-					   "because the linked-in proxy is referenced (is_local=%i, is_lib=%i).\n",
-					   id->newid->name, ob->proxy->id.name, is_local, is_lib);
+				       "because the linked-in proxy is referenced (is_local=%i, is_lib=%i).\n",
+				       id->newid->name, ob->proxy->id.name, is_local, is_lib);
 			}
 			else {
 				/* we can switch the proxy'ing from the linked-in to the made-local proxy.
@@ -2199,8 +2203,8 @@ void BKE_library_make_local(
 				 * was not used locally would be a nasty bug! */
 				else if (is_local || is_lib) {
 					printf("Warning, made-local proxy object %s will loose its link to %s, "
-						   "because the linked-in proxy is referenced (is_local=%i, is_lib=%i).\n",
-						   id->newid->name, ob->proxy->id.name, is_local, is_lib);
+					       "because the linked-in proxy is referenced (is_local=%i, is_lib=%i).\n",
+					       id->newid->name, ob->proxy->id.name, is_local, is_lib);
 				}
 				else {
 					/* we can switch the proxy'ing from the linked-in to the made-local proxy.

@@ -139,6 +139,9 @@ def liquid_pre_step_low_$ID$():\n\
         z_invel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
         copyRealToVec3(sourceX=x_invel_s$ID$, sourceY=y_invel_s$ID$, sourceZ=z_invel_s$ID$, target=invel_s$ID$)\n\
     \n\
+    x_vel_s$ID$.multConst(Real(gs_s$ID$.x))\n\
+    y_vel_s$ID$.multConst(Real(gs_s$ID$.y))\n\
+    z_vel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
     copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
     copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n";
 
@@ -161,7 +164,10 @@ def liquid_post_step_low_$ID$():\n\
     \n\
     phiIn_s$ID$.setConst(9999)\n\
     phiOut_s$ID$.setConst(9999)\n\
-    copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n";
+    copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n\
+    x_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.x) )\n\
+    y_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.y) )\n\
+    z_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.z) )\n";
 
 //////////////////////////////////////////////////////////////////////
 // STEP FUNCTIONS
@@ -295,7 +301,7 @@ def liquid_step_$ID$():\n\
     \n\
     mantaMsg('Calculating curvature')\n\
     getLaplacian(laplacian=curvature_s$ID$, grid=phi_s$ID$)\n\
-\n\
+    \n\
     if using_guiding_s$ID$:\n\
         mantaMsg('Guiding and pressure')\n\
         weightGuide_s$ID$.addConst(alpha_s$ID$)\n\

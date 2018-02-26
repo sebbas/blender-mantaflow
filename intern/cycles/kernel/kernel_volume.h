@@ -35,6 +35,8 @@ typedef struct VolumeShaderCoefficients {
 	float3 emission;
 } VolumeShaderCoefficients;
 
+#ifdef __VOLUME__
+
 /* evaluate shader to get extinction coefficient at P */
 ccl_device_inline bool volume_shader_extinction_sample(KernelGlobals *kg,
                                                        ShaderData *sd,
@@ -43,7 +45,7 @@ ccl_device_inline bool volume_shader_extinction_sample(KernelGlobals *kg,
                                                        float3 *extinction)
 {
 	sd->P = P;
-	shader_eval_volume(kg, sd, state, state->volume_stack, PATH_RAY_SHADOW, 0);
+	shader_eval_volume(kg, sd, state, state->volume_stack, PATH_RAY_SHADOW);
 
 	if(sd->flag & SD_EXTINCTION) {
 		*extinction = sd->closure_transparent_extinction;
@@ -62,7 +64,7 @@ ccl_device_inline bool volume_shader_sample(KernelGlobals *kg,
                                             VolumeShaderCoefficients *coeff)
 {
 	sd->P = P;
-	shader_eval_volume(kg, sd, state, state->volume_stack, state->flag, kernel_data.integrator.max_closures);
+	shader_eval_volume(kg, sd, state, state->volume_stack, state->flag);
 
 	if(!(sd->flag & (SD_EXTINCTION|SD_SCATTER|SD_EMISSION)))
 		return false;
@@ -74,23 +76,18 @@ ccl_device_inline bool volume_shader_sample(KernelGlobals *kg,
 	                                            make_float3(0.0f, 0.0f, 0.0f);
 
 	if(sd->flag & SD_SCATTER) {
-		if(state->bounce < kernel_data.integrator.max_bounce &&
-		   state->volume_bounce < kernel_data.integrator.max_volume_bounce) {
-			for(int i = 0; i < sd->num_closure; i++) {
-				const ShaderClosure *sc = &sd->closure[i];
+		for(int i = 0; i < sd->num_closure; i++) {
+			const ShaderClosure *sc = &sd->closure[i];
 
-				if(CLOSURE_IS_VOLUME(sc->type))
-					coeff->sigma_s += sc->weight;
-			}
-		}
-		else {
-			/* When at the max number of bounces, clear scattering. */
-			sd->flag &= ~SD_SCATTER;
+			if(CLOSURE_IS_VOLUME(sc->type))
+				coeff->sigma_s += sc->weight;
 		}
 	}
 
 	return true;
 }
+
+#endif /* __VOLUME__ */
 
 ccl_device float3 volume_color_transmittance(float3 sigma, float t)
 {
@@ -102,13 +99,28 @@ ccl_device float kernel_volume_channel_get(float3 value, int channel)
 	return (channel == 0)? value.x: ((channel == 1)? value.y: value.z);
 }
 
+#ifdef __VOLUME__
+
 ccl_device bool volume_stack_is_heterogeneous(KernelGlobals *kg, ccl_addr_space VolumeStack *stack)
 {
 	for(int i = 0; stack[i].shader != SHADER_NONE; i++) {
 		int shader_flag = kernel_tex_fetch(__shader_flag, (stack[i].shader & SHADER_MASK)*SHADER_SIZE);
 
-		if(shader_flag & SD_HETEROGENEOUS_VOLUME)
+		if(shader_flag & SD_HETEROGENEOUS_VOLUME) {
 			return true;
+		}
+		else if(shader_flag & SD_NEED_ATTRIBUTES) {
+			/* We want to render world or objects without any volume grids
+			 * as homogenous, but can only verify this at runtime since other
+			 * heterogenous volume objects may be using the same shader. */
+			int object = stack[i].object;
+			if(object != OBJECT_NONE) {
+				int object_flag = kernel_tex_fetch(__object_flag, object);
+				if(object_flag & SD_OBJECT_HAS_VOLUME_ATTRIBUTES) {
+					return true;
+				}
+			}
+		}
 	}
 
 	return false;
@@ -239,6 +251,8 @@ ccl_device_noinline void kernel_volume_shadow(KernelGlobals *kg,
 		kernel_volume_shadow_homogeneous(kg, state, ray, shadow_sd, throughput);
 }
 
+#endif /* __VOLUME__ */
+
 /* Equi-angular sampling as in:
  * "Importance Sampling Techniques for Path Tracing in Participating Media" */
 
@@ -368,6 +382,8 @@ ccl_device int kernel_volume_sample_channel(float3 albedo, float3 throughput, fl
 		return 2;
 	}
 }
+
+#ifdef __VOLUME__
 
 /* homogeneous volume: assume shader evaluation at the start gives
  * the volume shading coefficient for the entire line segment */
@@ -1345,5 +1361,7 @@ ccl_device_inline void kernel_volume_clean_stack(KernelGlobals *kg,
 		volume_stack[0].shader = SHADER_NONE;
 	}
 }
+
+#endif /* __VOLUME__ */
 
 CCL_NAMESPACE_END

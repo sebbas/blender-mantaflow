@@ -551,6 +551,9 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
 	BLI_argsPrintArgDoc(ba, "--debug-jobs");
 	BLI_argsPrintArgDoc(ba, "--debug-python");
 	BLI_argsPrintArgDoc(ba, "--debug-depsgraph");
+	BLI_argsPrintArgDoc(ba, "--debug-depsgraph-eval");
+	BLI_argsPrintArgDoc(ba, "--debug-depsgraph-build");
+	BLI_argsPrintArgDoc(ba, "--debug-depsgraph-tag");
 	BLI_argsPrintArgDoc(ba, "--debug-depsgraph-no-threads");
 
 	BLI_argsPrintArgDoc(ba, "--debug-gpumem");
@@ -747,7 +750,13 @@ static const char arg_handle_debug_mode_generic_set_doc_jobs[] =
 static const char arg_handle_debug_mode_generic_set_doc_gpu[] =
 "\n\tEnable gpu debug context and information for OpenGL 4.3+.";
 static const char arg_handle_debug_mode_generic_set_doc_depsgraph[] =
-"\n\tEnable debug messages from dependency graph.";
+"\n\tEnable all debug messages from dependency graph.";
+static const char arg_handle_debug_mode_generic_set_doc_depsgraph_build[] =
+"\n\tEnable debug messages from dependency graph related on graph construction.";
+static const char arg_handle_debug_mode_generic_set_doc_depsgraph_tag[] =
+"\n\tEnable debug messages from dependency graph related on tagging.";
+static const char arg_handle_debug_mode_generic_set_doc_depsgraph_eval[] =
+"\n\tEnable debug messages from dependency graph related on evaluation.";
 static const char arg_handle_debug_mode_generic_set_doc_depsgraph_no_threads[] =
 "\n\tSwitch dependency graph to a single threaded evaluation.";
 static const char arg_handle_debug_mode_generic_set_doc_gpumem[] =
@@ -1351,7 +1360,7 @@ static const char arg_handle_render_frame_doc[] =
 "\n"
 "\t* +<frame> start frame relative, -<frame> end frame relative.\n"
 "\t* A comma separated list of frames can also be used (no spaces).\n"
-"\t* A range of frames can be expressed using '..' seperator between the first and last frames (inclusive).\n"
+"\t* A range of frames can be expressed using '..' separator between the first and last frames (inclusive).\n"
 ;
 static int arg_handle_render_frame(int argc, const char **argv, void *data)
 {
@@ -1376,7 +1385,7 @@ static int arg_handle_render_frame(int argc, const char **argv, void *data)
 			}
 
 			re = RE_NewSceneRender(scene);
-			BLI_begin_threaded_malloc();
+			BLI_threaded_malloc_begin();
 			BKE_reports_init(&reports, RPT_STORE);
 
 			RE_SetReports(re, &reports);
@@ -1393,7 +1402,7 @@ static int arg_handle_render_frame(int argc, const char **argv, void *data)
 			}
 			RE_SetReports(re, NULL);
 			BKE_reports_clear(&reports);
-			BLI_end_threaded_malloc();
+			BLI_threaded_malloc_end();
 			MEM_freeN(frame_range_arr);
 			return 1;
 		}
@@ -1419,13 +1428,13 @@ static int arg_handle_render_animation(int UNUSED(argc), const char **UNUSED(arg
 		Main *bmain = CTX_data_main(C);
 		Render *re = RE_NewSceneRender(scene);
 		ReportList reports;
-		BLI_begin_threaded_malloc();
+		BLI_threaded_malloc_begin();
 		BKE_reports_init(&reports, RPT_STORE);
 		RE_SetReports(re, &reports);
 		RE_BlenderAnim(re, bmain, scene, NULL, scene->lay, scene->r.sfra, scene->r.efra, scene->r.frame_step);
 		RE_SetReports(re, NULL);
 		BKE_reports_clear(&reports);
-		BLI_end_threaded_malloc();
+		BLI_threaded_malloc_end();
 	}
 	else {
 		printf("\nError: no blend loaded. cannot use '-a'.\n");
@@ -1857,6 +1866,12 @@ void main_args_setup(bContext *C, bArgs *ba, SYS_SystemHandle *syshandle)
 	            CB_EX(arg_handle_debug_mode_generic_set, gpu), (void *)G_DEBUG_GPU);
 	BLI_argsAdd(ba, 1, NULL, "--debug-depsgraph",
 	            CB_EX(arg_handle_debug_mode_generic_set, depsgraph), (void *)G_DEBUG_DEPSGRAPH);
+	BLI_argsAdd(ba, 1, NULL, "--debug-depsgraph-build",
+	            CB_EX(arg_handle_debug_mode_generic_set, depsgraph_build), (void *)G_DEBUG_DEPSGRAPH_BUILD);
+	BLI_argsAdd(ba, 1, NULL, "--debug-depsgraph-eval",
+	            CB_EX(arg_handle_debug_mode_generic_set, depsgraph_eval), (void *)G_DEBUG_DEPSGRAPH_EVAL);
+	BLI_argsAdd(ba, 1, NULL, "--debug-depsgraph-tag",
+	            CB_EX(arg_handle_debug_mode_generic_set, depsgraph_tag), (void *)G_DEBUG_DEPSGRAPH_TAG);
 	BLI_argsAdd(ba, 1, NULL, "--debug-depsgraph-no-threads",
 	            CB_EX(arg_handle_debug_mode_generic_set, depsgraph_no_threads), (void *)G_DEBUG_DEPSGRAPH_NO_THREADS);
 	BLI_argsAdd(ba, 1, NULL, "--debug-gpumem",

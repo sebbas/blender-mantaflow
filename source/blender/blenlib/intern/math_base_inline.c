@@ -315,6 +315,36 @@ MINLINE int max_iiii(int a, int b, int c, int d)
 	return max_ii(max_iii(a, b, c), d);
 }
 
+MINLINE size_t min_zz(size_t a, size_t b)
+{
+	return (a < b) ? a : b;
+}
+MINLINE size_t max_zz(size_t a, size_t b)
+{
+	return (b < a) ? a : b;
+}
+
+MINLINE int clamp_i(int value, int min, int max)
+{
+	return min_ii(max_ii(value, min), max);
+}
+
+MINLINE float clamp_f(float value, float min, float max)
+{
+	if (value > max) {
+		return max;
+	}
+	else if (value < min) {
+		return min;
+	}
+	return value;
+}
+
+MINLINE size_t clamp_z(size_t value, size_t min, size_t max)
+{
+	return min_zz(max_zz(value, min), max);
+}
+
 /**
  * Almost-equal for IEEE floats, using absolute difference method.
  *
@@ -388,6 +418,10 @@ MINLINE int integer_digits_d(const double d)
 	return (d == 0.0) ? 0 : (int)floor(log10(fabs(d))) + 1;
 }
 
+MINLINE int integer_digits_i(const int i)
+{
+	return (int)log10((double)i) + 1;
+}
 
 /* Internal helpers for SSE2 implementation.
  *

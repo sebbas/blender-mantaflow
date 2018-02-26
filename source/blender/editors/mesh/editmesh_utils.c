@@ -380,7 +380,10 @@ void EDBM_mesh_load(Object *ob)
 		bm->shapenr = 1;
 	}
 
-	BM_mesh_bm_to_me(bm, me, (&(struct BMeshToMeshParams){0}));
+	BM_mesh_bm_to_me(
+	        bm, me, (&(struct BMeshToMeshParams){
+	            .calc_object_remap = true,
+	        }));
 
 #ifdef USE_TESSFACE_DEFAULT
 	BKE_mesh_tessface_calc(me);
@@ -397,7 +400,7 @@ void EDBM_mesh_load(Object *ob)
 	 * of freed data on scene update, especially in cases when there are dependency
 	 * cycles.
 	 */
-	/*
+#if 0
 	for (Object *other_object = G.main->object.first;
 	     other_object != NULL;
 	     other_object = other_object->id.next)
@@ -406,7 +409,7 @@ void EDBM_mesh_load(Object *ob)
 			BKE_object_free_derived_caches(other_object);
 		}
 	}
-	*/
+#endif
 }
 
 /**

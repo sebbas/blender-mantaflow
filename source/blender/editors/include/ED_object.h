@@ -54,6 +54,8 @@ struct PointerRNA;
 struct PropertyRNA;
 struct EnumPropertyItem;
 
+#include "DNA_object_enums.h"
+
 /* object_edit.c */
 struct Object *ED_object_context(struct bContext *C);               /* context.object */
 struct Object *ED_object_active_context(struct bContext *C); /* context.object or context.active_object */
@@ -109,8 +111,8 @@ struct Base *ED_object_add_duplicate(struct Main *bmain, struct Scene *scene, st
 
 void ED_object_parent(struct Object *ob, struct Object *parent, const int type, const char *substr);
 
-bool ED_object_mode_compat_set(struct bContext *C, struct Object *ob, int mode, struct ReportList *reports);
-void ED_object_toggle_modes(struct bContext *C, int mode);
+bool ED_object_mode_compat_set(struct bContext *C, struct Object *ob, eObjectMode mode, struct ReportList *reports);
+void ED_object_toggle_modes(struct bContext *C, eObjectMode mode);
 
 /* bitflags for enter/exit editmode */
 #define EM_FREEDATA     1
@@ -118,11 +120,31 @@ void ED_object_toggle_modes(struct bContext *C, int mode);
 #define EM_WAITCURSOR   4
 #define EM_DO_UNDO      8
 #define EM_IGNORE_LAYER 16
+void ED_object_editmode_exit_ex(struct bContext *C, struct Scene *scene, struct Object *obedit, int flag);
 void ED_object_editmode_exit(struct bContext *C, int flag);
 void ED_object_editmode_enter(struct bContext *C, int flag);
 bool ED_object_editmode_load(struct Object *obedit);
 
 bool ED_object_editmode_calc_active_center(struct Object *obedit, const bool select_only, float r_center[3]);
+
+
+void ED_object_vpaintmode_enter_ex(
+        struct wmWindowManager *wm,
+        struct Scene *scene, struct Object *ob);
+void ED_object_vpaintmode_enter(struct bContext *C);
+void ED_object_wpaintmode_enter_ex(
+        struct wmWindowManager *wm,
+        struct Scene *scene, struct Object *ob);
+void ED_object_wpaintmode_enter(struct bContext *C);
+
+void ED_object_vpaintmode_exit_ex(struct Object *ob);
+void ED_object_vpaintmode_exit(struct bContext *C);
+void ED_object_wpaintmode_exit_ex(struct Object *ob);
+void ED_object_wpaintmode_exit(struct bContext *C);
+
+void ED_object_sculptmode_exit_ex(
+        struct Scene *scene, struct Object *ob);
+void ED_object_sculptmode_exit(struct bContext *C);
 
 void ED_object_location_from_view(struct bContext *C, float loc[3]);
 void ED_object_rotation_from_view(struct bContext *C, float rot[3], const char align_axis);
@@ -183,22 +205,25 @@ enum {
 	MODIFIER_APPLY_SHAPE
 };
 
-struct ModifierData *ED_object_modifier_add(struct ReportList *reports, struct Main *bmain, struct Scene *scene,
-                                            struct Object *ob, const char *name, int type);
+struct ModifierData *ED_object_modifier_add(
+        struct ReportList *reports, struct Main *bmain, struct Scene *scene,
+        struct Object *ob, const char *name, int type);
 bool ED_object_modifier_remove(struct ReportList *reports, struct Main *bmain,
                                struct Object *ob, struct ModifierData *md);
 void ED_object_modifier_clear(struct Main *bmain, struct Object *ob);
 int ED_object_modifier_move_down(struct ReportList *reports, struct Object *ob, struct ModifierData *md);
 int ED_object_modifier_move_up(struct ReportList *reports, struct Object *ob, struct ModifierData *md);
-int ED_object_modifier_convert(struct ReportList *reports, struct Main *bmain, struct Scene *scene,
-                               struct Object *ob, struct ModifierData *md);
+int ED_object_modifier_convert(
+        struct ReportList *reports, struct Main *bmain, struct Scene *scene,
+        struct Object *ob, struct ModifierData *md);
 int ED_object_modifier_apply(struct ReportList *reports, struct Scene *scene,
                              struct Object *ob, struct ModifierData *md, int mode);
 int ED_object_modifier_copy(struct ReportList *reports, struct Object *ob, struct ModifierData *md);
 
-bool ED_object_iter_other(struct Main *bmain, struct Object *orig_ob, const bool include_orig,
-                          bool (*callback)(struct Object *ob, void *callback_data),
-                          void *callback_data);
+bool ED_object_iter_other(
+        struct Main *bmain, struct Object *orig_ob, const bool include_orig,
+        bool (*callback)(struct Object *ob, void *callback_data),
+        void *callback_data);
 
 bool ED_object_multires_update_totlevels_cb(struct Object *ob, void *totlevel_v);
 
@@ -212,7 +237,8 @@ const struct EnumPropertyItem *ED_object_vgroup_selection_itemf_helper(
         bool *r_free,
         const unsigned int selection_mask);
 
-void ED_object_check_force_modifiers(struct Main *bmain, struct Scene *scene, struct Object *object);
+void ED_object_check_force_modifiers(
+        struct Main *bmain, struct Scene *scene, struct Object *object);
 
 #ifdef __cplusplus
 }

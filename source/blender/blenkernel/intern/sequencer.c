@@ -1160,6 +1160,7 @@ static const char *give_seqname_by_type(int type)
 		case SEQ_TYPE_ALPHAOVER:     return "Alpha Over";
 		case SEQ_TYPE_ALPHAUNDER:    return "Alpha Under";
 		case SEQ_TYPE_OVERDROP:      return "Over Drop";
+		case SEQ_TYPE_COLORMIX:      return "Color Mix";
 		case SEQ_TYPE_WIPE:          return "Wipe";
 		case SEQ_TYPE_GLOW:          return "Glow";
 		case SEQ_TYPE_TRANSFORM:     return "Transform";
@@ -1674,6 +1675,11 @@ static bool seq_proxy_get_fname(Editing *ed, Sequence *seq, int cfra, int render
 		}
 		else if (seq->type == SEQ_TYPE_IMAGE) {
 			fname[0] = 0;
+		}
+		else {
+			/* We could make a name here, except non-movie's don't generate proxies,
+			 * cancel until other types of sequence strips are supported. */
+			return false;
 		}
 		BLI_path_append(dir, sizeof(dir), fname);
 		BLI_path_abs(name, G.main->name);
@@ -3198,11 +3204,12 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context, Sequence *seq
 		int scemode;
 		int cfra;
 		float subframe;
+
 #ifdef DURIAN_CAMERA_SWITCH
-		ListBase markers;
+		int mode;
 #endif
 	} orig_data;
-	
+
 	/* Old info:
 	 * Hack! This function can be called from do_render_seq(), in that case
 	 * the seq->scene can already have a Render initialized with same name,
@@ -3262,7 +3269,7 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context, Sequence *seq
 	orig_data.cfra = scene->r.cfra;
 	orig_data.subframe = scene->r.subframe;
 #ifdef DURIAN_CAMERA_SWITCH
-	orig_data.markers = scene->markers;
+	orig_data.mode = scene->r.mode;
 #endif
 
 	BKE_scene_frame_set(scene, frame);
@@ -3285,10 +3292,10 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context, Sequence *seq
 
 	/* prevent eternal loop */
 	scene->r.scemode &= ~R_DOSEQ;
-	
+
 #ifdef DURIAN_CAMERA_SWITCH
 	/* stooping to new low's in hackyness :( */
-	BLI_listbase_clear(&scene->markers);
+	scene->r.mode |= R_NO_CAMERA_SWITCH;
 #endif
 
 	is_frame_update = (orig_data.cfra != scene->r.cfra) || (orig_data.subframe != scene->r.subframe);
@@ -3408,7 +3415,7 @@ finally:
 
 #ifdef DURIAN_CAMERA_SWITCH
 	/* stooping to new low's in hackyness :( */
-	scene->markers = orig_data.markers;
+	scene->r.mode &= ~(orig_data.mode & R_NO_CAMERA_SWITCH);
 #endif
 
 	return ibuf;
@@ -4483,8 +4490,11 @@ Sequence *BKE_sequencer_foreground_frame_get(Scene *scene, int frame)
 	for (seq = ed->seqbasep->first; seq; seq = seq->next) {
 		if (seq->flag & SEQ_MUTE || seq->startdisp > frame || seq->enddisp <= frame)
 			continue;
-		/* only use elements you can see - not */
-		if (ELEM(seq->type, SEQ_TYPE_IMAGE, SEQ_TYPE_META, SEQ_TYPE_SCENE, SEQ_TYPE_MOVIE, SEQ_TYPE_COLOR)) {
+		/* Only use strips that generate an image, not ones that combine
+		 * other strips or apply some effect. */
+		if (ELEM(seq->type, SEQ_TYPE_IMAGE, SEQ_TYPE_META, SEQ_TYPE_SCENE,
+		         SEQ_TYPE_MOVIE, SEQ_TYPE_COLOR, SEQ_TYPE_TEXT))
+		{
 			if (seq->machine > best_machine) {
 				best_seq = seq;
 				best_machine = seq->machine;

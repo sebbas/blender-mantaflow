@@ -86,35 +86,35 @@ public:
 		(void)kernel_avx;
 		(void)kernel_avx2;
 #ifdef WITH_CYCLES_OPTIMIZED_KERNEL_AVX2
-		if(system_cpu_support_avx2()) {
+		if(DebugFlags().cpu.has_avx2() && system_cpu_support_avx2()) {
 			architecture_name = "AVX2";
 			kernel = kernel_avx2;
 		}
 		else
 #endif
 #ifdef WITH_CYCLES_OPTIMIZED_KERNEL_AVX
-		if(system_cpu_support_avx()) {
+		if(DebugFlags().cpu.has_avx() && system_cpu_support_avx()) {
 			architecture_name = "AVX";
 			kernel = kernel_avx;
 		}
 		else
 #endif
 #ifdef WITH_CYCLES_OPTIMIZED_KERNEL_SSE41
-		if(system_cpu_support_sse41()) {
+		if(DebugFlags().cpu.has_sse41() && system_cpu_support_sse41()) {
 			architecture_name = "SSE4.1";
 			kernel = kernel_sse41;
 		}
 		else
 #endif
 #ifdef WITH_CYCLES_OPTIMIZED_KERNEL_SSE3
-		if(system_cpu_support_sse3()) {
+		if(DebugFlags().cpu.has_sse3() && system_cpu_support_sse3()) {
 			architecture_name = "SSE3";
 			kernel = kernel_sse3;
 		}
 		else
 #endif
 #ifdef WITH_CYCLES_OPTIMIZED_KERNEL_SSE2
-		if(system_cpu_support_sse2()) {
+		if(DebugFlags().cpu.has_sse2() && system_cpu_support_sse2()) {
 			architecture_name = "SSE2";
 			kernel = kernel_sse2;
 		}
@@ -190,9 +190,9 @@ public:
 	KernelFunctions<void(*)(int, int, float*, float*, float*, float*, int*, int, int)>       filter_nlm_update_output_kernel;
 	KernelFunctions<void(*)(float*, float*, int*, int)>                                      filter_nlm_normalize_kernel;
 
-	KernelFunctions<void(*)(float*, int, int, int, float*, int*, int*, int, int, float)>                              filter_construct_transform_kernel;
-	KernelFunctions<void(*)(int, int, float*, float*, float*, int*, float*, float3*, int*, int*, int, int, int, int)> filter_nlm_construct_gramian_kernel;
-	KernelFunctions<void(*)(int, int, int, int, int, float*, int*, float*, float3*, int*, int)>                       filter_finalize_kernel;
+	KernelFunctions<void(*)(float*, int, int, int, float*, int*, int*, int, int, float)>                         filter_construct_transform_kernel;
+	KernelFunctions<void(*)(int, int, float*, float*, float*, int*, float*, float3*, int*, int*, int, int, int)> filter_nlm_construct_gramian_kernel;
+	KernelFunctions<void(*)(int, int, int, float*, int*, float*, float3*, int*, int)>                            filter_finalize_kernel;
 
 	KernelFunctions<void(*)(KernelGlobals *, ccl_constant KernelData*, ccl_global void*, int, ccl_global char*,
 	                       int, int, int, int, int, int, int, int, ccl_global int*, int,
@@ -299,7 +299,7 @@ public:
 
 			if(mem.type == MEM_DEVICE_ONLY) {
 				assert(!mem.host_pointer);
-				size_t alignment = mem_address_alignment();
+				size_t alignment = MIN_ALIGNMENT_CPU_DATA_TYPES;
 				void *data = util_aligned_malloc(mem.memory_size(), alignment);
 				mem.device_pointer = (device_ptr)data;
 			}
@@ -565,13 +565,13 @@ public:
 			                                    (float*) color_variance_ptr,
 			                                    difference,
 			                                    local_rect,
-			                                    task->buffer.w,
+			                                    task->buffer.stride,
 			                                    task->buffer.pass_stride,
 			                                    1.0f,
 			                                    task->nlm_k_2);
-			filter_nlm_blur_kernel()(difference, blurDifference, local_rect, task->buffer.w, 4);
-			filter_nlm_calc_weight_kernel()(blurDifference, difference, local_rect, task->buffer.w, 4);
-			filter_nlm_blur_kernel()(difference, blurDifference, local_rect, task->buffer.w, 4);
+			filter_nlm_blur_kernel()(difference, blurDifference, local_rect, task->buffer.stride, 4);
+			filter_nlm_calc_weight_kernel()(blurDifference, difference, local_rect, task->buffer.stride, 4);
+			filter_nlm_blur_kernel()(difference, blurDifference, local_rect, task->buffer.stride, 4);
 			filter_nlm_construct_gramian_kernel()(dx, dy,
 			                                      blurDifference,
 			                                      (float*)  task->buffer.mem.device_pointer,
@@ -580,9 +580,8 @@ public:
 			                                      (float*)  task->storage.XtWX.device_pointer,
 			                                      (float3*) task->storage.XtWY.device_pointer,
 			                                      local_rect,
-			                                      &task->reconstruction_state.filter_rect.x,
-			                                      task->buffer.w,
-			                                      task->buffer.h,
+			                                      &task->reconstruction_state.filter_window.x,
+			                                      task->buffer.stride,
 			                                      4,
 			                                      task->buffer.pass_stride);
 		}
@@ -591,8 +590,6 @@ public:
 				filter_finalize_kernel()(x,
 				                         y,
 				                         y*task->filter_area.z + x,
-				                         task->buffer.w,
-				                         task->buffer.h,
 				                         (float*)  output_ptr,
 				                         (int*)    task->storage.rank.device_pointer,
 				                         (float*)  task->storage.XtWX.device_pointer,
@@ -921,7 +918,7 @@ protected:
 #endif
 	}
 
-	virtual bool load_kernels(DeviceRequestedFeatures& requested_features_) {
+	virtual bool load_kernels(const DeviceRequestedFeatures& requested_features_) {
 		requested_features = requested_features_;
 
 		return true;
@@ -1049,7 +1046,10 @@ void device_cpu_info(vector<DeviceInfo>& devices)
 	info.id = "CPU";
 	info.num = 0;
 	info.advanced_shading = true;
-	info.has_qbvh = system_cpu_support_sse2();
+	info.bvh_layout_mask = BVH_LAYOUT_BVH2;
+	if (system_cpu_support_sse2()) {
+		info.bvh_layout_mask |= BVH_LAYOUT_BVH4;
+	}
 	info.has_volume_decoupled = true;
 	info.has_osl = true;
 	info.has_half_images = true;

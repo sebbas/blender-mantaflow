@@ -112,7 +112,10 @@ typedef struct UVWarpData {
 	int axis_v;
 } UVWarpData;
 
-static void uv_warp_compute(void *userdata, const int i)
+static void uv_warp_compute(
+        void *__restrict userdata,
+        const int i,
+        const ParallelRangeTLS *__restrict UNUSED(tls))
 {
 	const UVWarpData *data = userdata;
 
@@ -210,7 +213,13 @@ static DerivedMesh *applyModifier(ModifierData *md, Object *ob,
 	UVWarpData data = {.mpoly = mpoly, .mloop = mloop, .mloopuv = mloopuv,
 	                   .dvert = dvert, .defgrp_index = defgrp_index,
 	                   .warp_mat = warp_mat, .axis_u = axis_u, .axis_v = axis_v};
-	BLI_task_parallel_range(0, numPolys, &data, uv_warp_compute, numPolys > 1000);
+	ParallelRangeSettings settings;
+	BLI_parallel_range_settings_defaults(&settings);
+	settings.use_threading = (numPolys > 1000);
+	BLI_task_parallel_range(0, numPolys,
+	                        &data,
+	                        uv_warp_compute,
+	                        &settings);
 
 	dm->dirty |= DM_DIRTY_TESS_CDLAYERS;
 
@@ -226,7 +235,7 @@ static void foreachObjectLink(ModifierData *md, Object *ob, ObjectWalkFunc walk,
 }
 
 static void uv_warp_deps_object_bone(DagForest *forest, DagNode *obNode,
-                                Object *obj, const char *bonename)
+                                     Object *obj, const char *bonename)
 {
 	if (obj) {
 		DagNode *curNode = dag_get_node(forest, obj);
@@ -238,16 +247,12 @@ static void uv_warp_deps_object_bone(DagForest *forest, DagNode *obNode,
 	}
 }
 
-static void updateDepgraph(ModifierData *md, DagForest *forest,
-                           struct Main *UNUSED(bmain),
-                           struct Scene *UNUSED(scene),
-                           Object *UNUSED(ob),
-                           DagNode *obNode)
+static void updateDepgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
 	UVWarpModifierData *umd = (UVWarpModifierData *) md;
 
-	uv_warp_deps_object_bone(forest, obNode, umd->object_src, umd->bone_src);
-	uv_warp_deps_object_bone(forest, obNode, umd->object_dst, umd->bone_dst);
+	uv_warp_deps_object_bone(ctx->forest, ctx->obNode, umd->object_src, umd->bone_src);
+	uv_warp_deps_object_bone(ctx->forest, ctx->obNode, umd->object_dst, umd->bone_dst);
 }
 
 static void uv_warp_deps_object_bone_new(struct DepsNodeHandle *node,
@@ -262,16 +267,12 @@ static void uv_warp_deps_object_bone_new(struct DepsNodeHandle *node,
 	}
 }
 
-static void updateDepsgraph(ModifierData *md,
-                            struct Main *UNUSED(bmain),
-                            struct Scene *UNUSED(scene),
-                            Object *UNUSED(ob),
-                            struct DepsNodeHandle *node)
+static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
 	UVWarpModifierData *umd = (UVWarpModifierData *) md;
 
-	uv_warp_deps_object_bone_new(node, umd->object_src, umd->bone_src);
-	uv_warp_deps_object_bone_new(node, umd->object_dst, umd->bone_dst);
+	uv_warp_deps_object_bone_new(ctx->node, umd->object_src, umd->bone_src);
+	uv_warp_deps_object_bone_new(ctx->node, umd->object_dst, umd->bone_dst);
 }
 
 ModifierTypeInfo modifierType_UVWarp = {
