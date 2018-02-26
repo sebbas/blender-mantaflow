@@ -579,8 +579,6 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->sndparticle_k_d = 0.6;
 			smd->domain->sndparticle_l_min = 25.0;
 			smd->domain->sndparticle_l_max = 50.0;
-			smd->domain->sndparticle_tracer_number = 1;
-			smd->domain->sndparticle_tracer_jitter = 0.2;
 
 			/* guiding */
 			smd->domain->guiding_alpha = 2.0f;
@@ -724,6 +722,19 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->particle_tracer_amount = smd->domain->particle_tracer_amount;
 		tsmd->domain->particle_tracer_life = smd->domain->particle_tracer_life;
 		tsmd->domain->particle_tracer_max = smd->domain->particle_tracer_max;
+
+		tsmd->domain->sndparticle_k_b = smd->domain->sndparticle_k_b;
+		tsmd->domain->sndparticle_k_d = smd->domain->sndparticle_k_d;
+		tsmd->domain->sndparticle_k_ta = smd->domain->sndparticle_k_ta;
+		tsmd->domain->sndparticle_k_wc = smd->domain->sndparticle_k_wc;
+		tsmd->domain->sndparticle_l_max = smd->domain->sndparticle_l_max;
+		tsmd->domain->sndparticle_l_min = smd->domain->sndparticle_l_min;
+		tsmd->domain->sndparticle_tau_max_k = smd->domain->sndparticle_tau_max_k;
+		tsmd->domain->sndparticle_tau_max_ta = smd->domain->sndparticle_tau_max_ta;
+		tsmd->domain->sndparticle_tau_max_wc = smd->domain->sndparticle_tau_max_wc;
+		tsmd->domain->sndparticle_tau_min_k = smd->domain->sndparticle_tau_min_k;
+		tsmd->domain->sndparticle_tau_min_ta = smd->domain->sndparticle_tau_min_ta;
+		tsmd->domain->sndparticle_tau_min_wc = smd->domain->sndparticle_tau_min_wc;
 
 		tsmd->domain->surface_tension = smd->domain->surface_tension;
 		tsmd->domain->viscosity_base = smd->domain->viscosity_base;
