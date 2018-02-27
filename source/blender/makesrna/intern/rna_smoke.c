@@ -955,6 +955,18 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	    {0, NULL, 0, NULL, NULL}
 	};
 
+	static const EnumPropertyItem sndparticle_boundary_items[] = {
+		{ SNDPARTICLE_BOUNDARY_DELETE, "DELETE", 0, "Delete", "Delete secondary particles that are inside obstacles or left the domain" },
+		{ SNDPARTICLE_BOUNDARY_PUSHOUT, "PUSHOUT", 0, "Push Out", "Push secondary particles that left the domain back into the domain" },
+		{ 0, NULL, 0, NULL, NULL }
+	};
+
+	static const EnumPropertyItem sndparticle_potential_quality_items[] = {
+		{ SNDPARTICLE_POTENTIAL_QUALITY_LOW, "LOW", 0, "Low", "Compute potential grids with low accuracy" },
+		{ SNDPARTICLE_POTENTIAL_QUALITY_HIGH, "HIGH", 0, "High", "Compute potential grids with high accuracy" },
+		{ 0, NULL, 0, NULL, NULL }
+	};
+
 	srna = RNA_def_struct(brna, "SmokeDomainSettings", NULL);
 	RNA_def_struct_ui_text(srna, "Domain Settings", "Smoke domain settings");
 	RNA_def_struct_sdna(srna, "SmokeDomainSettings");
@@ -1554,6 +1566,18 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_range(prop, 0.0, 10000.0, 100.0, 1);
 	RNA_def_property_ui_text(prop, "Lifetime(max)", "Highest possible particle lifetime");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
+	prop = RNA_def_property(srna, "sndparticle_boundary", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "sndparticle_boundary");
+	RNA_def_property_enum_items(prop, sndparticle_boundary_items);
+	RNA_def_property_ui_text(prop, "Particles in Boundary", "How particles that left the domain are treated");
+	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
+
+	prop = RNA_def_property(srna, "sndparticle_potential_quality", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "sndparticle_potential_quality");
+	RNA_def_property_enum_items(prop, sndparticle_potential_quality_items);
+	RNA_def_property_ui_text(prop, "Potential Quality", "How accurately are the potential grids computed");
+	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
 	prop = RNA_def_property(srna, "guiding_alpha", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "guiding_alpha");

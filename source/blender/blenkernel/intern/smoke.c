@@ -575,10 +575,12 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->sndparticle_tau_max_k = 50.0;
 			smd->domain->sndparticle_k_wc = 200;
 			smd->domain->sndparticle_k_ta = 40;
-			smd->domain->sndparticle_k_b = 1.0;
+			smd->domain->sndparticle_k_b = 0.5;
 			smd->domain->sndparticle_k_d = 0.6;
-			smd->domain->sndparticle_l_min = 25.0;
-			smd->domain->sndparticle_l_max = 50.0;
+			smd->domain->sndparticle_l_min = 10.0;
+			smd->domain->sndparticle_l_max = 25.0;
+			smd->domain->sndparticle_boundary = SNDPARTICLE_BOUNDARY_DELETE;
+			smd->domain->sndparticle_potential_quality = SNDPARTICLE_POTENTIAL_QUALITY_HIGH;
 
 			/* guiding */
 			smd->domain->guiding_alpha = 2.0f;
@@ -735,6 +737,8 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->sndparticle_tau_min_k = smd->domain->sndparticle_tau_min_k;
 		tsmd->domain->sndparticle_tau_min_ta = smd->domain->sndparticle_tau_min_ta;
 		tsmd->domain->sndparticle_tau_min_wc = smd->domain->sndparticle_tau_min_wc;
+		tsmd->domain->sndparticle_boundary = smd->domain->sndparticle_boundary;
+		tsmd->domain->sndparticle_potential_quality = smd->domain->sndparticle_potential_quality;
 
 		tsmd->domain->surface_tension = smd->domain->surface_tension;
 		tsmd->domain->viscosity_base = smd->domain->viscosity_base;

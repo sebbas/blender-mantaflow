@@ -94,6 +94,16 @@ enum {
 };
 
 enum {
+	SNDPARTICLE_BOUNDARY_DELETE = 0,
+	SNDPARTICLE_BOUNDARY_PUSHOUT = 1,
+};
+
+enum {
+	SNDPARTICLE_POTENTIAL_QUALITY_LOW = 0,
+	SNDPARTICLE_POTENTIAL_QUALITY_HIGH = 1,
+};
+
+enum {
 	FLUID_FIELD_DENSITY    = 0,
 	FLUID_FIELD_HEAT       = 1,
 	FLUID_FIELD_FUEL       = 2,
@@ -284,8 +294,9 @@ typedef struct SmokeDomainSettings {
 	float sndparticle_k_d;
 	float sndparticle_l_min;
 	float sndparticle_l_max;
-	int sndparticle_tracer_number;
-	float sndparticle_tracer_jitter;
+	char sndparticle_boundary;
+	char sndparticle_potential_quality;
+	char pad5[6]; /* unused */
 
 	/* fluid guiding parameters */
 	float guiding_alpha; /* guiding weight scalar (determines strength) */

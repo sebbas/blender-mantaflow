@@ -148,10 +148,12 @@ def liquid_pre_step_low_$ID$():\n\
 const std::string liquid_post_step_low = "\n\
 def liquid_post_step_low_$ID$():\n\
     if using_sndparts_s$ID$:\n\
-        flipComputeSecondaryParticlePotentials(potTA=trappedAir_s$ID$, potWC=waveCrest_s$ID$, potKE=kineticEnergy_s$ID$, neighborRatio=neighborRatio_s$ID$, flags=flags_s$ID$, v=vel_s$ID$, normal=normal_s$ID$, phi=phi_s$ID$, radius=1, tauMinTA=tauMin_ta_s$ID$, tauMaxTA=tauMax_ta_s$ID$, tauMinWC=tauMin_wc_s$ID$, tauMaxWC=tauMax_wc_s$ID$, tauMinKE=tauMin_k_s$ID$, tauMaxKE=tauMax_k_s$ID$, scaleFromManta=scaleFromManta_s$ID$)\n\
+        radius = 2 if $SNDPARTICLE_POTENTIAL_QUALITY_HIGH$ else 1\n\
+        flipComputeSecondaryParticlePotentials(potTA=trappedAir_s$ID$, potWC=waveCrest_s$ID$, potKE=kineticEnergy_s$ID$, neighborRatio=neighborRatio_s$ID$, flags=flags_s$ID$, v=vel_s$ID$, normal=normal_s$ID$, phi=phi_s$ID$, radius=radius, tauMinTA=tauMin_ta_s$ID$, tauMaxTA=tauMax_ta_s$ID$, tauMinWC=tauMin_wc_s$ID$, tauMaxWC=tauMax_wc_s$ID$, tauMinKE=tauMin_k_s$ID$, tauMaxKE=tauMax_k_s$ID$, scaleFromManta=scaleFromManta_s$ID$)\n\
         flipSampleSecondaryParticles(mode='single', flags=flags_s$ID$, v=vel_s$ID$, pts_sec=ppSnd_s$ID$, v_sec=pVelSnd_pp$ID$, l_sec=pLifeSnd_pp$ID$, lMin=lMin_s$ID$, lMax=lMax_s$ID$, potTA=trappedAir_s$ID$, potWC=waveCrest_s$ID$, potKE=kineticEnergy_s$ID$, neighborRatio=neighborRatio_s$ID$, c_s=c_s_s$ID$, c_b=c_b_s$ID$, k_ta=k_ta_s$ID$, k_wc=k_wc_s$ID$, dt=s$ID$.frameLength)\n\
         flipUpdateSecondaryParticles(mode='linear', pts_sec=ppSnd_s$ID$, v_sec=pVelSnd_pp$ID$, l_sec=pLifeSnd_pp$ID$, f_sec=pForceSnd_pp$ID$, flags=flags_s$ID$, v=vel_s$ID$, neighborRatio=neighborRatio_s$ID$, radius=1, gravity=gravity_s$ID$, k_b=k_b_s$ID$, k_d=k_d_s$ID$, c_s=c_s_s$ID$, c_b=c_b_s$ID$, dt=s$ID$.frameLength)\n\
-        #pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=1.0)\n\
+        if $SNDPARTICLE_BOUNDARY_PUSHOUT$:\n\
+            pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=1.0)\n\
         flipDeleteParticlesInObstacle(pts=ppSnd_s$ID$, flags=flags_s$ID$)\n\
         debugGridInfo(flags=flags_s$ID$, grid=trappedAir_s$ID$, name='Trapped Air')\n\
         debugGridInfo(flags=flags_s$ID$, grid=waveCrest_s$ID$, name='Wave Crest')\n\

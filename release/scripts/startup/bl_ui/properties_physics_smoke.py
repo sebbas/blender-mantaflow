@@ -459,6 +459,9 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         sub4.prop(domain, "sndparticle_tau_max_ta", text="tauMax_ta")
         sub4.prop(domain, "sndparticle_tau_min_k", text="tauMin_k")
         sub4.prop(domain, "sndparticle_tau_max_k", text="tauMax_k")
+        sub4.label()
+        sub4.label("Potential Quality:")
+        sub4.prop(domain, "sndparticle_potential_quality", text="")
 
         second = split.column()
         sub1 = second.column()
@@ -473,6 +476,9 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         sub1.label(text="Bubble Movement:")
         sub1.prop(domain, "sndparticle_k_b", text="Buoyancy")
         sub1.prop(domain, "sndparticle_k_d", text="Drag")
+        sub1.label()
+        sub1.label("Particles in Boundary:")
+        sub1.prop(domain, "sndparticle_boundary", text="")
         
 
 class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
@@ -733,45 +739,50 @@ class PHYSICS_PT_liquid_display_settings(PhysicButtonsPanel, Panel):
         split = layout.split()
         first = split.column()
         first.prop(domain, "use_color_ramp", text="Enable Display")
-
         second = split.column()
         second.enabled = domain.use_color_ramp
         second.prop(domain, "coba_field_liquid", text="")
 
-        do_axis_slicing = (domain.slice_method == 'AXIS_ALIGNED')
-        do_full_slicing = (domain.axis_slice_method == 'FULL')
-        sub1 = layout.column()
-        sub1.enabled = do_axis_slicing and domain.use_color_ramp
-        sub1.prop(domain, "axis_slice_method")
-        sub2 = layout.column()
-        sub2.enabled = (not do_full_slicing and do_axis_slicing) and domain.use_color_ramp
-        sub2.prop(domain, "slice_axis")
 
         split = layout.split()
         first = split.column()
-        first.enabled = (not do_full_slicing and do_axis_slicing) and domain.use_color_ramp
-        first.prop(domain, "slice_depth")
+        first.enabled = domain.use_color_ramp
+        first.label("Method:")
+        first.prop(domain, "axis_slice_method", text="")
+        first2 = first.column()
+        first2.enabled = (domain.axis_slice_method == 'FULL')
+        first2.prop(domain, "slice_per_voxel", text="Slices per Voxel")
         second = split.column()
-        second.enabled = (do_full_slicing or not do_axis_slicing) and domain.use_color_ramp
-        second.prop(domain, "slice_per_voxel")
+        second.enabled =  domain.use_color_ramp and (domain.axis_slice_method == 'SINGLE')
+        second.label("Axis:")
+        second.prop(domain, "slice_axis", text="")
+        second.prop(domain, "slice_depth")
+
 
         layout.label()
-        sub3 = layout.column()
-        sub3.enabled = domain.use_color_ramp 
-        sub3.prop(domain, "draw_velocity")
+        split = layout.split()
+        first = split.column()
+        first.enabled = domain.use_color_ramp 
+        first.prop(domain, "draw_velocity")
+        second = split.column()
+        second.enabled = domain.draw_velocity and domain.use_color_ramp
+        second.prop(domain, "vector_draw_type", text="")
         sub4 = layout.column()
         sub4.enabled = domain.draw_velocity and domain.use_color_ramp
-        sub4.prop(domain, "vector_draw_type")
         sub4.prop(domain, "vector_scale")
+
 
         layout.label()
         sub5 = layout.column()
         sub5.enabled = domain.use_color_ramp
-        sub5.label(text="Color Mapping:")
+        split = sub5.split()
+        first = split.column() 
+        first.label(text="Color Mapping:")
+        second = split.column()
+        second.prop(domain, "display_thickness", text="Density")
         sub5.template_color_ramp(domain, "color_ramp", expand=True)
-        sub5.prop(domain, "display_thickness", text="Displayed Density")
 
-        
+
 
 classes = (
     SMOKE_MT_presets,

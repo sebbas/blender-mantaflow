@@ -44,7 +44,7 @@ Real clampPotential(Real potential, Real tauMin, Real tauMax) {
 
 
 
- struct knFlipComputeSecondaryParticlePotentials : public KernelBase { knFlipComputeSecondaryParticlePotentials( Grid<Real> &potTA, Grid<Real> &potWC, Grid<Real> &potKE, Grid<Real> &neighborRatio, const FlagGrid &flags, const MACGrid &v, const Grid<Vec3> &normal, const int radius, const Real tauMinTA, const Real tauMaxTA, const Real tauMinWC, const Real tauMaxWC, const Real tauMinKE, const Real tauMaxKE, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeObstacle) :  KernelBase(&potTA,1) ,potTA(potTA),potWC(potWC),potKE(potKE),neighborRatio(neighborRatio),flags(flags),v(v),normal(normal),radius(radius),tauMinTA(tauMinTA),tauMaxTA(tauMaxTA),tauMinWC(tauMinWC),tauMaxWC(tauMaxWC),tauMinKE(tauMinKE),tauMaxKE(tauMaxKE),scaleFromManta(scaleFromManta),itype(itype),jtype(jtype)   { runMessage(); run(); }  inline void op(int i, int j, int k,  Grid<Real> &potTA, Grid<Real> &potWC, Grid<Real> &potKE, Grid<Real> &neighborRatio, const FlagGrid &flags, const MACGrid &v, const Grid<Vec3> &normal, const int radius, const Real tauMinTA, const Real tauMaxTA, const Real tauMinWC, const Real tauMaxWC, const Real tauMinKE, const Real tauMaxKE, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeObstacle )  {
+ struct knFlipComputeSecondaryParticlePotentials : public KernelBase { knFlipComputeSecondaryParticlePotentials( Grid<Real> &potTA, Grid<Real> &potWC, Grid<Real> &potKE, Grid<Real> &neighborRatio, const FlagGrid &flags, const MACGrid &v, const Grid<Vec3> &normal, const int radius, const Real tauMinTA, const Real tauMaxTA, const Real tauMinWC, const Real tauMaxWC, const Real tauMinKE, const Real tauMaxKE, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeObstacle) :  KernelBase(&potTA,radius) ,potTA(potTA),potWC(potWC),potKE(potKE),neighborRatio(neighborRatio),flags(flags),v(v),normal(normal),radius(radius),tauMinTA(tauMinTA),tauMaxTA(tauMaxTA),tauMinWC(tauMinWC),tauMaxWC(tauMaxWC),tauMinKE(tauMinKE),tauMaxKE(tauMaxKE),scaleFromManta(scaleFromManta),itype(itype),jtype(jtype)   { runMessage(); run(); }  inline void op(int i, int j, int k,  Grid<Real> &potTA, Grid<Real> &potWC, Grid<Real> &potKE, Grid<Real> &neighborRatio, const FlagGrid &flags, const MACGrid &v, const Grid<Vec3> &normal, const int radius, const Real tauMinTA, const Real tauMaxTA, const Real tauMinWC, const Real tauMaxWC, const Real tauMinKE, const Real tauMaxKE, const Real scaleFromManta, const int itype = FlagGrid::TypeFluid, const int jtype = FlagGrid::TypeObstacle )  {
 
 	if (!(flags(i, j, k) & itype)) return;
 
@@ -103,11 +103,11 @@ Real clampPotential(Real potential, Real tauMin, Real tauMax) {
 #pragma omp parallel 
  {  
 #pragma omp for  
-  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,potTA,potWC,potKE,neighborRatio,flags,v,normal,radius,tauMinTA,tauMaxTA,tauMinWC,tauMaxWC,tauMinKE,tauMaxKE,scaleFromManta,itype,jtype);  } } else { const int k=0; 
+  for (int k=minZ; k < maxZ; k++) for (int j=radius; j < _maxY; j++) for (int i=radius; i < _maxX; i++) op(i,j,k,potTA,potWC,potKE,neighborRatio,flags,v,normal,radius,tauMinTA,tauMaxTA,tauMinWC,tauMaxWC,tauMinKE,tauMaxKE,scaleFromManta,itype,jtype);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
 #pragma omp for  
-  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,potTA,potWC,potKE,neighborRatio,flags,v,normal,radius,tauMinTA,tauMaxTA,tauMinWC,tauMaxWC,tauMinKE,tauMaxKE,scaleFromManta,itype,jtype);  } }  } Grid<Real> & potTA; Grid<Real> & potWC; Grid<Real> & potKE; Grid<Real> & neighborRatio; const FlagGrid& flags; const MACGrid& v; const Grid<Vec3> & normal; const int radius; const Real tauMinTA; const Real tauMaxTA; const Real tauMinWC; const Real tauMaxWC; const Real tauMinKE; const Real tauMaxKE; const Real scaleFromManta; const int itype; const int jtype;   };
+  for (int j=radius; j < _maxY; j++) for (int i=radius; i < _maxX; i++) op(i,j,k,potTA,potWC,potKE,neighborRatio,flags,v,normal,radius,tauMinTA,tauMaxTA,tauMinWC,tauMaxWC,tauMinKE,tauMaxKE,scaleFromManta,itype,jtype);  } }  } Grid<Real> & potTA; Grid<Real> & potWC; Grid<Real> & potKE; Grid<Real> & neighborRatio; const FlagGrid& flags; const MACGrid& v; const Grid<Vec3> & normal; const int radius; const Real tauMinTA; const Real tauMaxTA; const Real tauMinWC; const Real tauMaxWC; const Real tauMinKE; const Real tauMaxKE; const Real scaleFromManta; const int itype; const int jtype;   };
 #line 35 "plugin/secondaryparticles.cpp"
 
 
@@ -263,7 +263,7 @@ Real cubicSpline(const Real h, const Real l, const int dim) {
 		pts_sec.kill(idx);
 		return;
 	}
-	Vec3 g = gravity * flags.getParent()->getDt() / flags.getParent()->getDx();
+
 	Vec3i gridpos = toVec3i(pts_sec[idx].pos);
 	int i = gridpos.x;
 	int j = gridpos.y;
@@ -273,9 +273,9 @@ Real cubicSpline(const Real h, const Real l, const int dim) {
 	if (neighborRatio(gridpos) < c_s) {
 		pts_sec[idx].flag |= ParticleBase::PDROPLET;
 		pts_sec[idx].flag &= ~(ParticleBase::PBUBBLE | ParticleBase::PFLOATER);
-		v_sec[idx] += dt * ((f_sec[idx] / 1) + g);		//TODO: adjust force division with useful value for particle
-														// mass if external forces are used(e.g. fluid guiding)
-														//anti tunneling for small obstacles
+		v_sec[idx] += dt * ((f_sec[idx] / 1) + gravity);	//TODO: if forces are added (e.g. fluid guiding), add parameter for mass instead of 1
+
+		//anti tunneling for small obstacles
 		for (int ct = 1; ct < antitunneling; ct++) {
 			Vec3i tempPos = toVec3i(pts_sec[idx].pos + ct * (1 / Real(antitunneling)) * dt * v_sec[idx]);
 			if (!flags.isInBounds(tempPos) || flags(tempPos) & FlagGrid::TypeObstacle) {
@@ -292,7 +292,7 @@ Real cubicSpline(const Real h, const Real l, const int dim) {
 		pts_sec[idx].flag &= ~(ParticleBase::PDROPLET | ParticleBase::PFLOATER);
 		
 		const Vec3 vj = (v.getInterpolated(pts_sec[idx].pos) - v_sec[idx]) / dt;
-		v_sec[idx] += dt * (k_b * -g + k_d * vj);
+		v_sec[idx] += dt * (k_b * -gravity + k_d * vj);
 
 		//anti tunneling for small obstacles
 		for (int ct = 1; ct < antitunneling; ct++) {
@@ -349,7 +349,6 @@ Real cubicSpline(const Real h, const Real l, const int dim) {
 		return;
 	}
 
-	Vec3 g = gravity * flags.getParent()->getDt() / flags.getParent()->getDx();
 	Vec3i gridpos = toVec3i(pts_sec[idx].pos);
 	int i = gridpos.x;
 	int j = gridpos.y;
@@ -359,8 +358,8 @@ Real cubicSpline(const Real h, const Real l, const int dim) {
 	if (neighborRatio(gridpos) < c_s) {
 		pts_sec[idx].flag |= ParticleBase::PDROPLET;
 		pts_sec[idx].flag &= ~(ParticleBase::PBUBBLE | ParticleBase::PFLOATER);
-		v_sec[idx] += dt * ((f_sec[idx] / 1) + g);		//TODO: adjust force division with useful value for particle
-														// mass if external forces are used(e.g. fluid guiding)
+		v_sec[idx] += dt * ((f_sec[idx] / 1) + gravity);	//TODO: if forces are added (e.g. fluid guiding), add parameter for mass instead of 1
+
 		//anti tunneling for small obstacles
 		for (int ct = 1; ct < antitunneling; ct++) {
 			Vec3i tempPos = toVec3i(pts_sec[idx].pos + ct * (1 / Real(antitunneling)) * dt * v_sec[idx]);
@@ -396,7 +395,7 @@ Real cubicSpline(const Real h, const Real l, const int dim) {
 			}
 		}
 		const Vec3 temp = ((sumNumerator / sumDenominator) - v_sec[idx]) / dt;
-		v_sec[idx] += dt * (k_b * -g + k_d * temp);
+		v_sec[idx] += dt * (k_b * -gravity + k_d * temp);
 
 		//anti tunneling for small obstacles
 		for (int ct = 1; ct < antitunneling; ct++) {
@@ -462,18 +461,21 @@ Real cubicSpline(const Real h, const Real l, const int dim) {
 
 
 
-void flipUpdateSecondaryParticles( const std::string mode, BasicParticleSystem &pts_sec, ParticleDataImpl<Vec3> &v_sec, ParticleDataImpl<Real> &l_sec, const ParticleDataImpl<Vec3> &f_sec, const FlagGrid &flags, const MACGrid &v, const Grid<Real> &neighborRatio, const int radius, const Vec3 gravity, const Real k_b, const Real k_d, const Real c_s, const Real c_b, const Real dt, const int antitunneling=0, const int itype = FlagGrid::TypeFluid) {
+void flipUpdateSecondaryParticles( const std::string mode, BasicParticleSystem &pts_sec, ParticleDataImpl<Vec3> &v_sec, ParticleDataImpl<Real> &l_sec, const ParticleDataImpl<Vec3> &f_sec, FlagGrid &flags, const MACGrid &v, const Grid<Real> &neighborRatio, const int radius, const Vec3 gravity, const Real k_b, const Real k_d, const Real c_s, const Real c_b, const Real dt, const int antitunneling=0, const int itype = FlagGrid::TypeFluid) {
+
+	Vec3 g = gravity / flags.getDx();
 	if (mode == "linear") {
-		knFlipUpdateSecondaryParticlesLinear(pts_sec, v_sec, l_sec, f_sec, flags, v, neighborRatio, gravity, k_b, k_d, c_s, c_b, dt, antitunneling);
+		debMsg(flags.getDx(), 1);
+		knFlipUpdateSecondaryParticlesLinear(pts_sec, v_sec, l_sec, f_sec, flags, v, neighborRatio, g, k_b, k_d, c_s, c_b, dt, antitunneling);
 	}
 	else if (mode == "cubic") {
-		knFlipUpdateSecondaryParticlesCubic(pts_sec, v_sec, l_sec, f_sec, flags, v, neighborRatio, radius, gravity, k_b, k_d, c_s, c_b, dt, antitunneling, itype);
+		knFlipUpdateSecondaryParticlesCubic(pts_sec, v_sec, l_sec, f_sec, flags, v, neighborRatio, radius, g, k_b, k_d, c_s, c_b, dt, antitunneling, itype);
 	}
 	else {
 		throw std::invalid_argument("Unknown mode: use \"linear\" or \"cubic\" instead!");
 	}
 	pts_sec.doCompress();
-} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipUpdateSecondaryParticles" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const std::string mode = _args.get<std::string >("mode",0,&_lock); BasicParticleSystem& pts_sec = *_args.getPtr<BasicParticleSystem >("pts_sec",1,&_lock); ParticleDataImpl<Vec3> & v_sec = *_args.getPtr<ParticleDataImpl<Vec3>  >("v_sec",2,&_lock); ParticleDataImpl<Real> & l_sec = *_args.getPtr<ParticleDataImpl<Real>  >("l_sec",3,&_lock); const ParticleDataImpl<Vec3> & f_sec = *_args.getPtr<ParticleDataImpl<Vec3>  >("f_sec",4,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",5,&_lock); const MACGrid& v = *_args.getPtr<MACGrid >("v",6,&_lock); const Grid<Real> & neighborRatio = *_args.getPtr<Grid<Real>  >("neighborRatio",7,&_lock); const int radius = _args.get<int >("radius",8,&_lock); const Vec3 gravity = _args.get<Vec3 >("gravity",9,&_lock); const Real k_b = _args.get<Real >("k_b",10,&_lock); const Real k_d = _args.get<Real >("k_d",11,&_lock); const Real c_s = _args.get<Real >("c_s",12,&_lock); const Real c_b = _args.get<Real >("c_b",13,&_lock); const Real dt = _args.get<Real >("dt",14,&_lock); const int antitunneling = _args.getOpt<int >("antitunneling",15,0,&_lock); const int itype = _args.getOpt<int >("itype",16,FlagGrid::TypeFluid,&_lock);   _retval = getPyNone(); flipUpdateSecondaryParticles(mode,pts_sec,v_sec,l_sec,f_sec,flags,v,neighborRatio,radius,gravity,k_b,k_d,c_s,c_b,dt,antitunneling,itype);  _args.check(); } pbFinalizePlugin(parent,"flipUpdateSecondaryParticles", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipUpdateSecondaryParticles",e.what()); return 0; } } static const Pb::Register _RP_flipUpdateSecondaryParticles ("","flipUpdateSecondaryParticles",_W_2);  extern "C" { void PbRegister_flipUpdateSecondaryParticles() { KEEP_UNUSED(_RP_flipUpdateSecondaryParticles); } } 
+} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipUpdateSecondaryParticles" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const std::string mode = _args.get<std::string >("mode",0,&_lock); BasicParticleSystem& pts_sec = *_args.getPtr<BasicParticleSystem >("pts_sec",1,&_lock); ParticleDataImpl<Vec3> & v_sec = *_args.getPtr<ParticleDataImpl<Vec3>  >("v_sec",2,&_lock); ParticleDataImpl<Real> & l_sec = *_args.getPtr<ParticleDataImpl<Real>  >("l_sec",3,&_lock); const ParticleDataImpl<Vec3> & f_sec = *_args.getPtr<ParticleDataImpl<Vec3>  >("f_sec",4,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",5,&_lock); const MACGrid& v = *_args.getPtr<MACGrid >("v",6,&_lock); const Grid<Real> & neighborRatio = *_args.getPtr<Grid<Real>  >("neighborRatio",7,&_lock); const int radius = _args.get<int >("radius",8,&_lock); const Vec3 gravity = _args.get<Vec3 >("gravity",9,&_lock); const Real k_b = _args.get<Real >("k_b",10,&_lock); const Real k_d = _args.get<Real >("k_d",11,&_lock); const Real c_s = _args.get<Real >("c_s",12,&_lock); const Real c_b = _args.get<Real >("c_b",13,&_lock); const Real dt = _args.get<Real >("dt",14,&_lock); const int antitunneling = _args.getOpt<int >("antitunneling",15,0,&_lock); const int itype = _args.getOpt<int >("itype",16,FlagGrid::TypeFluid,&_lock);   _retval = getPyNone(); flipUpdateSecondaryParticles(mode,pts_sec,v_sec,l_sec,f_sec,flags,v,neighborRatio,radius,gravity,k_b,k_d,c_s,c_b,dt,antitunneling,itype);  _args.check(); } pbFinalizePlugin(parent,"flipUpdateSecondaryParticles", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipUpdateSecondaryParticles",e.what()); return 0; } } static const Pb::Register _RP_flipUpdateSecondaryParticles ("","flipUpdateSecondaryParticles",_W_2);  extern "C" { void PbRegister_flipUpdateSecondaryParticles() { KEEP_UNUSED(_RP_flipUpdateSecondaryParticles); } } 
 
 
 // removes secondary particles in &pts_sec that are inside boundaries (cells that are marked as obstacle in &flags)
@@ -500,7 +502,7 @@ void flipUpdateSecondaryParticles( const std::string mode, BasicParticleSystem &
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,pts,flags);  }   } BasicParticleSystem& pts; const FlagGrid& flags;   };
-#line 445 "plugin/secondaryparticles.cpp"
+#line 447 "plugin/secondaryparticles.cpp"
 
 
 
@@ -555,7 +557,7 @@ void debugGridInfo( const FlagGrid &flags, Grid<Real> &grid, std::string name, c
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,flags,phi,exclude,itype);  }   } FlagGrid& flags; const Grid<Real> & phi; const int exclude; const int itype;   };
-#line 506 "plugin/secondaryparticles.cpp"
+#line 508 "plugin/secondaryparticles.cpp"
 
 
 
@@ -577,7 +579,7 @@ void setFlagsFromLevelset( FlagGrid &flags, const Grid<Real> &phi, const int exc
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,v,phi,c);  } }  } MACGrid& v; const Grid<Real> & phi; const Vec3 c;   };
-#line 518 "plugin/secondaryparticles.cpp"
+#line 520 "plugin/secondaryparticles.cpp"
 
 
 
@@ -638,7 +640,7 @@ void setMACFromLevelset( MACGrid &v, const Grid<Real> &phi, const Vec3 c) {
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,pot,flags,v,radius,tauMin,tauMax,scaleFromManta,itype,jtype);  } }  } Grid<Real> & pot; const FlagGrid& flags; const MACGrid& v; const int radius; const Real tauMin; const Real tauMax; const Real scaleFromManta; const int itype; const int jtype;   };
-#line 548 "plugin/secondaryparticles.cpp"
+#line 550 "plugin/secondaryparticles.cpp"
 
 
 
@@ -674,7 +676,7 @@ void flipComputePotentialTrappedAir( Grid<Real> &pot, const FlagGrid &flags, con
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,pot,flags,v,tauMin,tauMax,scaleFromManta,itype);  } }  } Grid<Real> & pot; const FlagGrid& flags; const MACGrid& v; const Real tauMin; const Real tauMax; const Real scaleFromManta; const int itype;   };
-#line 588 "plugin/secondaryparticles.cpp"
+#line 590 "plugin/secondaryparticles.cpp"
 
 
 
@@ -731,7 +733,7 @@ void flipComputePotentialKineticEnergy( Grid<Real> &pot, const FlagGrid &flags, 
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,pot,flags,v,radius,normal,tauMin,tauMax,scaleFromManta,itype,jtype);  } }  } Grid<Real> & pot; const FlagGrid& flags; const MACGrid& v; const int radius; Grid<Vec3> & normal; const Real tauMin; const Real tauMax; const Real scaleFromManta; const int itype; const int jtype;   };
-#line 612 "plugin/secondaryparticles.cpp"
+#line 614 "plugin/secondaryparticles.cpp"
 
 
 
@@ -754,7 +756,7 @@ void flipComputePotentialWaveCrest( Grid<Real> &pot, const FlagGrid &flags, cons
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,normal,phi);  }   } Grid<Vec3>& normal; const Grid<Real>& phi;   };
-#line 655 "plugin/secondaryparticles.cpp"
+#line 657 "plugin/secondaryparticles.cpp"
 
 
 
@@ -798,7 +800,7 @@ void flipComputeSurfaceNormals(Grid<Vec3>& normal, const Grid<Real>& phi) {
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,neighborRatio,radius,itype,jtype);  } }  } const FlagGrid& flags; Grid<Real> & neighborRatio; const int radius; const int itype; const int jtype;   };
-#line 669 "plugin/secondaryparticles.cpp"
+#line 671 "plugin/secondaryparticles.cpp"
 
 
 
