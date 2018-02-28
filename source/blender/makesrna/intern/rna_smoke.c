@@ -747,7 +747,7 @@ static void rna_SmokeModifier_temperature_grid_get(PointerRNA *ptr, float *value
 	BLI_rw_mutex_lock(sds->fluid_mutex, THREAD_LOCK_READ);
 
 	if (sds->flags & MOD_SMOKE_HIGHRES && sds->wt) {
-		flame = smoke_turbulence_get_flame(sds->wt);
+		flame = smoke_turbulence_get_flame(sds->fluid);
 	}
 	else {
 		flame = smoke_get_flame(sds->fluid);
