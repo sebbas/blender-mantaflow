@@ -580,6 +580,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->sndparticle_l_min = 10.0;
 			smd->domain->sndparticle_l_max = 25.0;
 			smd->domain->sndparticle_boundary = SNDPARTICLE_BOUNDARY_DELETE;
+			smd->domain->sndparticle_potential_resolution = SNDPARTICLE_POTENTIAL_RESOLUTION_LOW;
 			smd->domain->sndparticle_potential_quality = SNDPARTICLE_POTENTIAL_QUALITY_HIGH;
 
 			/* guiding */
@@ -738,6 +739,7 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->sndparticle_tau_min_ta = smd->domain->sndparticle_tau_min_ta;
 		tsmd->domain->sndparticle_tau_min_wc = smd->domain->sndparticle_tau_min_wc;
 		tsmd->domain->sndparticle_boundary = smd->domain->sndparticle_boundary;
+		tsmd->domain->sndparticle_potential_resolution = smd->domain->sndparticle_potential_resolution;
 		tsmd->domain->sndparticle_potential_quality = smd->domain->sndparticle_potential_quality;
 
 		tsmd->domain->surface_tension = smd->domain->surface_tension;

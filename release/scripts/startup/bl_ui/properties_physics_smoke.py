@@ -441,10 +441,10 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         top.enabled = not domain.point_cache.is_baked
         top.label("Exported Particles:")
         sub1 = top.row()
+        sub1.prop(domain, "use_flip_particles", text="FLIP")
         sub1.prop(domain, "use_drop_particles", text="Spray")
         sub1.prop(domain, "use_floater_particles", text="Foam")
         sub1.prop(domain, "use_bubble_particles", text="Bubbles")
-        sub1.prop(domain, "use_flip_particles", text="FLIP")
         sub1.label()
 
         split = layout.split()
@@ -463,9 +463,10 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         sub4.label(text="Kinetic Energy Potential:")
         sub4.prop(domain, "sndparticle_tau_min_k", text="min")
         sub4.prop(domain, "sndparticle_tau_max_k", text="max")
-        sub1.label()
-        sub1.label("Potential Quality:")
-        sub1.prop(domain, "sndparticle_potential_quality", text="")
+        sub1.label("Potential Resolution:")
+        sub1.prop(domain, "sndparticle_potential_resolution", text="")
+        sub1.label("Particles in Boundary:")
+        sub1.prop(domain, "sndparticle_boundary", text="")
 
         second = split.column()
         sub1 = second.column()
@@ -482,9 +483,8 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         sub4.label(text="Bubble Movement:")
         sub4.prop(domain, "sndparticle_k_b", text="Buoyancy")
         sub4.prop(domain, "sndparticle_k_d", text="Drag")
-        sub1.label()
-        sub1.label("Particles in Boundary:")
-        sub1.prop(domain, "sndparticle_boundary", text="")
+        sub1.label("Potential Quality:")
+        sub1.prop(domain, "sndparticle_potential_quality", text="")
         
 
 class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
@@ -797,7 +797,7 @@ classes = (
     PHYSICS_PT_smoke_flow_advanced,
     PHYSICS_PT_smoke_adaptive_domain,
     PHYSICS_PT_smoke_quality,
-    PHYSICS_PT_smoke_particles,
+    #PHYSICS_PT_smoke_particles,
     PHYSICS_PT_smoke_secondary_particles,
     PHYSICS_PT_smoke_diffusion,
     PHYSICS_PT_smoke_guiding,

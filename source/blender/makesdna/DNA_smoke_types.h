@@ -99,6 +99,11 @@ enum {
 };
 
 enum {
+	SNDPARTICLE_POTENTIAL_RESOLUTION_LOW = 0,
+	SNDPARTICLE_POTENTIAL_RESOLUTION_HIGH = 1,
+};
+
+enum {
 	SNDPARTICLE_POTENTIAL_QUALITY_LOW = 0,
 	SNDPARTICLE_POTENTIAL_QUALITY_HIGH = 1,
 };
@@ -295,8 +300,9 @@ typedef struct SmokeDomainSettings {
 	float sndparticle_l_min;
 	float sndparticle_l_max;
 	char sndparticle_boundary;
+	char sndparticle_potential_resolution;
 	char sndparticle_potential_quality;
-	char pad5[6]; /* unused */
+	char pad5[5]; /* unused */
 
 	/* fluid guiding parameters */
 	float guiding_alpha; /* guiding weight scalar (determines strength) */

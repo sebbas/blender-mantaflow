@@ -961,6 +961,12 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 		{ 0, NULL, 0, NULL, NULL }
 	};
 
+	static const EnumPropertyItem sndparticle_potential_resolution_items[] = {
+		{ SNDPARTICLE_POTENTIAL_RESOLUTION_LOW, "LOW", 0, "Low", "Use the same resolution as the base fluid grid (faster simulation, but less accurate)" },
+		{ SNDPARTICLE_POTENTIAL_RESOLUTION_HIGH, "HIGH", 0, "High", "Use twice the resolution as the base fluid grid (slower simulation, but very accurate)" },
+		{ 0, NULL, 0, NULL, NULL }
+	};
+
 	static const EnumPropertyItem sndparticle_potential_quality_items[] = {
 		{ SNDPARTICLE_POTENTIAL_QUALITY_LOW, "LOW", 0, "Low", "Compute potential grids with low accuracy" },
 		{ SNDPARTICLE_POTENTIAL_QUALITY_HIGH, "HIGH", 0, "High", "Compute potential grids with high accuracy" },
@@ -1571,6 +1577,12 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_enum_sdna(prop, NULL, "sndparticle_boundary");
 	RNA_def_property_enum_items(prop, sndparticle_boundary_items);
 	RNA_def_property_ui_text(prop, "Particles in Boundary", "How particles that left the domain are treated");
+	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
+
+	prop = RNA_def_property(srna, "sndparticle_potential_resolution", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "sndparticle_potential_resolution");
+	RNA_def_property_enum_items(prop, sndparticle_potential_resolution_items);
+	RNA_def_property_ui_text(prop, "Potential Resolution", "Resolution of the potential grids");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
 	prop = RNA_def_property(srna, "sndparticle_potential_quality", PROP_ENUM, PROP_NONE);
