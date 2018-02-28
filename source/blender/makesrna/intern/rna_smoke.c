@@ -209,7 +209,7 @@ static void rna_Smoke_drop_parts_set(struct PointerRNA *ptr, int value)
 
 	if (value) {
 		if (ob->type == OB_MESH && !exists)
-			rna_Smoke_parts_create(ptr, "DropParticleSettings", "Drop Particles", "Drop Particle System", PART_MANTA_DROP);
+			rna_Smoke_parts_create(ptr, "SprayParticleSettings", "Spray Particles", "Spray Particle System", PART_MANTA_DROP);
 		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_DROP;
 	}
 	else {
@@ -251,7 +251,7 @@ static void rna_Smoke_float_parts_set(struct PointerRNA *ptr, int value)
 
 	if (value) {
 		if (ob->type == OB_MESH && !exists)
-		rna_Smoke_parts_create(ptr, "FloatParticleSettings", "Float Particles", "Float Particle System", PART_MANTA_FLOAT);
+		rna_Smoke_parts_create(ptr, "FoamParticleSettings", "Foam Particles", "Foam Particle System", PART_MANTA_FLOAT);
 		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_FLOAT;
 	}
 	else {
@@ -1373,21 +1373,21 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "use_drop_particles", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", MOD_SMOKE_PARTICLE_DROP);
 	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_drop_parts_set");
-	RNA_def_property_ui_text(prop, "Drop", "Create drop particle system");
+	RNA_def_property_ui_text(prop, "Spray", "Create spray particle system");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
 	prop = RNA_def_property(srna, "use_bubble_particles", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", MOD_SMOKE_PARTICLE_BUBBLE);
 	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_bubble_parts_set");
-	RNA_def_property_ui_text(prop, "Drop", "Create bubble particle system");
+	RNA_def_property_ui_text(prop, "Bubbles", "Create bubble particle system");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
 	prop = RNA_def_property(srna, "use_floater_particles", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", MOD_SMOKE_PARTICLE_FLOAT);
 	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_float_parts_set");
-	RNA_def_property_ui_text(prop, "Float", "Create float particle system");
+	RNA_def_property_ui_text(prop, "Foam", "Create foam particle system");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
@@ -1497,38 +1497,38 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "sndparticle_tau_min_wc", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 1000.0);
-	RNA_def_property_ui_range(prop, 0.0, 1000.0, 100.0, 5);
-	RNA_def_property_ui_text(prop, "tauMin_wc", "Lower threshold for marking fluid cells as wave crest (lower values result in more marked cells)");
+	RNA_def_property_ui_range(prop, 0.0, 1000.0, 100.0, 3);
+	RNA_def_property_ui_text(prop, "tauMin_wc", "Lower clamping threshold for marking fluid cells as wave crests (lower values result in more marked cells)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "sndparticle_tau_max_wc", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 1000.0);
-	RNA_def_property_ui_range(prop, 0.0, 1000.0, 100.0, 5);
-	RNA_def_property_ui_text(prop, "tauMax_wc", "Upper threshold for marking fluid cells as wave crest (higher values result in less marked cells)");
+	RNA_def_property_ui_range(prop, 0.0, 1000.0, 100.0, 3);
+	RNA_def_property_ui_text(prop, "tauMax_wc", "Upper clamping threshold for marking fluid cells as wave crests (higher values result in less marked cells)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "sndparticle_tau_min_ta", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 1000.0);
-	RNA_def_property_ui_range(prop, 0.0, 10000.0, 100.0, 5);
-	RNA_def_property_ui_text(prop, "tauMin_ta", "Lower threshold for marking fluid cells where air is trapped (lower values result in more marked cells)");
+	RNA_def_property_ui_range(prop, 0.0, 10000.0, 100.0, 3);
+	RNA_def_property_ui_text(prop, "tauMin_ta", "Lower clamping threshold for marking fluid cells where air is trapped (lower values result in more marked cells)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "sndparticle_tau_max_ta", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 1000.0);
-	RNA_def_property_ui_range(prop, 0.0, 1000.0, 100.0, 5);
-	RNA_def_property_ui_text(prop, "tauMax_ta", "Upper threshold for marking fluid cells where air is trapped (higher values result in less marked cells)");
+	RNA_def_property_ui_range(prop, 0.0, 1000.0, 100.0, 3);
+	RNA_def_property_ui_text(prop, "tauMax_ta", "Upper clamping threshold for marking fluid cells where air is trapped (higher values result in less marked cells)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "sndparticle_tau_min_k", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 1000.0);
-	RNA_def_property_ui_range(prop, 0.0, 1000.0, 100.0, 5);
-	RNA_def_property_ui_text(prop, "tauMin_k", "Lower threshold that indicates the fluid speed where cells start to emit particles (lower values result in generally more particles)");
+	RNA_def_property_ui_range(prop, 0.0, 1000.0, 100.0, 3);
+	RNA_def_property_ui_text(prop, "tauMin_k", "Lower clamping threshold that indicates the fluid speed where cells start to emit particles (lower values result in generally more particles)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "sndparticle_tau_max_k", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 1000.0);
-	RNA_def_property_ui_range(prop, 0.0, 1000.0, 100.0, 5);
-	RNA_def_property_ui_text(prop, "tauMax_k", "Upper threshold that indicates the fluid speed where cells no longer emit more particles (higher values result in generally less particles)");
+	RNA_def_property_ui_range(prop, 0.0, 1000.0, 100.0, 3);
+	RNA_def_property_ui_text(prop, "tauMax_k", "Upper clamping threshold that indicates the fluid speed where cells no longer emit more particles (higher values result in generally less particles)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "sndparticle_k_wc", PROP_INT, PROP_NONE);
