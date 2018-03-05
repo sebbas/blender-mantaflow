@@ -681,7 +681,7 @@ class PHYSICS_PT_smoke_display_settings(PhysicButtonsPanel, Panel):
         md = context.smoke
 
         rd = context.scene.render
-        return md and (md.smoke_type == 'DOMAIN') and (not rd.use_game_engine)
+        return md and (md.smoke_type == 'DOMAIN') and (not rd.use_game_engine) and (md.domain_settings.smoke_domain_type in {'GAS'})
 
     def draw(self, context):
         domain = context.smoke.domain_settings
@@ -737,7 +737,7 @@ class PHYSICS_PT_liquid_display_settings(PhysicButtonsPanel, Panel):
         md = context.smoke
 
         rd = context.scene.render
-        return md and (md.smoke_type == 'DOMAIN') and (not rd.use_game_engine)
+        return md and (md.smoke_type == 'DOMAIN') and (not rd.use_game_engine) and (md.domain_settings.smoke_domain_type in {'LIQUID'})
 
     def draw(self, context):
         domain = context.smoke.domain_settings
