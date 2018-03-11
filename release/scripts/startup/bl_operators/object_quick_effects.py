@@ -651,10 +651,175 @@ class QuickLiquid(Operator):
 
         return {'FINISHED'}
 
+
+class QuickLiquidParticles(Operator):
+    bl_idname = "object.quick_liquid_particles"
+    bl_label = "Quick Liquid with Particles"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    style = EnumProperty(
+        name="Particle Style",
+        items=(('SECONDARY', "Spray, Foam and Bubbles", "Enhance the liquid with particles for secondary effects"),
+               ('FLIP', "FLIP Particles", "Directly use the FLIP particles to render the liquid instead of a mesh")),
+               default='SECONDARY',)
+
+    show_flows = BoolProperty(
+            name="Render Liquid Objects",
+            description="Keep the liquid objects visible during rendering",
+            default=False,
+            )
+
+    def execute(self, context):
+        fake_context = context.copy()
+        mesh_objects = [obj for obj in context.selected_objects
+                        if obj.type == 'MESH']
+        min_co = Vector((100000.0, 100000.0, 100000.0))
+        max_co = -min_co
+
+        if not mesh_objects:
+            self.report({'ERROR'}, "Select at least one mesh object")
+            return {'CANCELLED'}
+
+        for obj in mesh_objects:
+            fake_context["object"] = obj
+            # make each selected object a liquid flow
+            bpy.ops.object.modifier_add(fake_context, type='SMOKE')
+            obj.modifiers[-1].smoke_type = 'FLOW'
+
+            # set type
+            obj.modifiers[-1].flow_settings.smoke_flow_type = 'LIQUID'
+
+            # set flow behavior
+            obj.modifiers[-1].flow_settings.smoke_flow_behavior = 'GEOMETRY'
+
+            if not self.show_flows:
+                obj.draw_type = 'WIRE'
+
+            # store bounding box min/max for the domain object
+            obj_bb_minmax(obj, min_co, max_co)
+
+        # -----------------------
+        # ADD LIQUID DOMAIN
+        # -----------------------
+        bpy.ops.mesh.primitive_cube_add()
+        dom = context.active_object
+        dom.name = "Liquid Domain"
+
+        # give the liquid some room above the flows
+        dom.location = 0.5 * (max_co + min_co) + Vector((0.0, 0.0, -1.0))
+        dom.scale = 0.5 * (max_co - min_co) + Vector((1.0, 1.0, 2.0))
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+
+        # setup liquid domain
+        bpy.ops.object.modifier_add(type='SMOKE')
+        dom.modifiers[-1].smoke_type = 'DOMAIN'
+        dom.modifiers[-1].domain_settings.smoke_domain_type = 'LIQUID'
+
+        # set correct cache file format for liquid
+        dom.modifiers[-1].domain_settings.use_surface_cache = True
+        dom.modifiers[-1].domain_settings.use_volume_cache = True
+        dom.modifiers[-1].domain_settings.cache_surface_format = 'OBJECT'
+        dom.modifiers[-1].domain_settings.cache_volume_format = 'POINTCACHE'
+
+        # make domain solid so that liquid becomes better visible
+        dom.draw_type = 'SOLID'
+
+        # make the domain smooth so it renders nicely
+        bpy.ops.object.shade_smooth()
+
+        # setup options according to style
+        if self.style == 'SECONDARY':
+            dom.modifiers[0].domain_settings.use_drop_particles = True
+            dom.modifiers[0].domain_settings.use_floater_particles = True
+            dom.modifiers[0].domain_settings.use_bubble_particles = True
+            # Cycles: Material setup
+            if context.scene.render.use_shading_nodes:
+                bpy.ops.object.material_slot_add()
+
+                mat = bpy.data.materials.new("Liquid Material")
+                dom.material_slots[0].material = mat
+
+                # Make sure we use nodes
+                mat.use_nodes = True
+
+                # Set node variables and clear the default nodes
+                nodes = mat.node_tree.nodes
+                links = mat.node_tree.links
+
+                nodes.clear()
+
+                # Material output
+                node_out = nodes.new(type='ShaderNodeOutputMaterial')
+                node_out.location = grid_location(6, 1)
+
+                # Add Glass Shader
+                node_glass = nodes.new(type='ShaderNodeBsdfGlass')
+                node_glass.location = grid_location(4, 2)
+                node_glass.inputs["IOR"].default_value = 1.33
+                node_glass.inputs["Color"].default_value = (0.48, 0.64, 0.79, 1)
+                links.new(node_glass.outputs[0], node_out.inputs[0])
+
+                # Add Volume Absorption Shader
+                node_abs = nodes.new(type='ShaderNodeVolumeAbsorption')
+                node_abs.location = grid_location(4, 0)
+                node_abs.inputs["Color"].default_value = (0.86, 0.93, 0.96, 1)
+                links.new(node_abs.outputs[0], node_out.inputs[1])
+                
+            # -----------------------
+            # ADD SPRAY VOLUME
+            # -----------------------
+            bpy.ops.mesh.primitive_cube_add()
+            spray = context.active_object
+            spray.name = "Volume Spray"
+
+            # Set volume as child of liquid domain
+            spray.location = (0,0,0)
+            spray.scale = (1,1,1)
+            spray.parent = dom
+
+            # only draw volume edges
+            spray.draw_type = 'WIRE'
+
+            # Cycles: Material setup
+            if context.scene.render.use_shading_nodes:
+                bpy.ops.object.material_slot_add()
+
+                mat = bpy.data.materials.new("Particle Spray Material")
+                spray.material_slots[0].material = mat
+
+                # Make sure we use nodes
+                mat.use_nodes = True
+
+                # Set node variables and clear the default nodes
+                tree = mat.node_tree
+                nodes = tree.nodes
+                links = tree.links
+
+                nodes.clear()
+
+                # Material output TODO: setup starting here
+                node_out = nodes.new(type='ShaderNodeOutputMaterial')
+                node_out.location = grid_location(6, 1)
+
+                # Add Glass Shader
+                node_glass = nodes.new(type='ShaderNodeBsdfGlass')
+                node_glass.location = grid_location(4, 2)
+                node_glass.inputs["IOR"].default_value = 1.33
+                node_glass.inputs["Color"].default_value = (0.48, 0.64, 0.79, 1)
+                links.new(node_glass.outputs[0], node_out.inputs[0])
+
+                # Add Volume Absorption Shader
+                node_abs = nodes.new(type='ShaderNodeVolumeAbsorption')
+                node_abs.location = grid_location(4, 0)
+                node_abs.inputs["Color"].default_value = (0.86, 0.93, 0.96, 1)
+                links.new(node_abs.outputs[0], node_out.inputs[1])
+
+        return {'FINISHED'}
 classes = (
     QuickExplode,
     QuickFluid,
     QuickFur,
     QuickSmoke,
     QuickLiquid,
+    QuickLiquidParticles,
 )
