@@ -663,11 +663,15 @@ class QuickLiquidParticles(Operator):
                ('FLIP', "FLIP Particles", "Directly use the FLIP particles to render the liquid instead of a mesh")),
                default='SECONDARY',)
 
+    color_coding = BoolProperty(
+            name="Enable Color Coding",
+            description="Display some particle attribute like speed or age in the particle color",
+            default=False,)
+
     show_flows = BoolProperty(
             name="Render Liquid Objects",
             description="Keep the liquid objects visible during rendering",
-            default=False,
-            )
+            default=False,)
 
     def execute(self, context):
         fake_context = context.copy()
@@ -693,6 +697,7 @@ class QuickLiquidParticles(Operator):
             obj.modifiers[-1].flow_settings.smoke_flow_behavior = 'GEOMETRY'
 
             if not self.show_flows:
+                obj.hide_render = True
                 obj.draw_type = 'WIRE'
 
             # store bounding box min/max for the domain object
@@ -774,8 +779,9 @@ class QuickLiquidParticles(Operator):
 
             # Set volume as child of liquid domain
             spray.location = (0,0,0)
-            spray.scale = (1,1,1)
             spray.parent = dom
+            spray.dimensions = dom.dimensions
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 
             # only draw volume edges
             spray.draw_type = 'WIRE'
@@ -797,22 +803,235 @@ class QuickLiquidParticles(Operator):
 
                 nodes.clear()
 
-                # Material output TODO: setup starting here
+                # Material output
                 node_out = nodes.new(type='ShaderNodeOutputMaterial')
                 node_out.location = grid_location(6, 1)
 
-                # Add Glass Shader
-                node_glass = nodes.new(type='ShaderNodeBsdfGlass')
-                node_glass.location = grid_location(4, 2)
-                node_glass.inputs["IOR"].default_value = 1.33
-                node_glass.inputs["Color"].default_value = (0.48, 0.64, 0.79, 1)
-                links.new(node_glass.outputs[0], node_out.inputs[0])
+                # Include Add Shader
+                node_add = nodes.new(type='ShaderNodeAddShader')
+                node_add.location = grid_location(5, 1)
+                links.new(node_add.outputs[0], node_out.inputs[1])
 
                 # Add Volume Absorption Shader
                 node_abs = nodes.new(type='ShaderNodeVolumeAbsorption')
-                node_abs.location = grid_location(4, 0)
-                node_abs.inputs["Color"].default_value = (0.86, 0.93, 0.96, 1)
-                links.new(node_abs.outputs[0], node_out.inputs[1])
+                node_abs.location = grid_location(4, 2)
+                links.new(node_abs.outputs[0], node_add.inputs[0])
+
+                # Add Volume Scatter Shader
+                node_scatter = nodes.new(type='ShaderNodeVolumeScatter')
+                node_scatter.location = grid_location(4, 0)
+                links.new(node_scatter.outputs[0], node_add.inputs[1])
+
+                # Add Math Node to control density
+                node_math = nodes.new(type='ShaderNodeMath')
+                node_math.location = grid_location(3, 0)
+                node_math.label = 'Density Control'
+                node_math.operation = 'MULTIPLY'
+                node_math.inputs[1].default_value = 10
+                links.new(node_math.outputs[0], node_abs.inputs[1])
+                links.new(node_math.outputs[0], node_scatter.inputs[1])
+
+                # Add Point Density Texture Node to create renderable representation from particles
+                node_dens = nodes.new(type='ShaderNodeTexPointDensity')
+                node_dens.location = grid_location(1, 1)
+                node_dens.width = 250
+                node_dens.point_source = 'PARTICLE_SYSTEM'
+                node_dens.object = dom
+                node_dens.particle_system = dom.particle_systems['Spray Particles']
+                node_dens.space = 'WORLD'
+                node_dens.radius = 0.05
+                node_dens.interpolation = 'Linear'
+                node_dens.resolution = 128
+                node_dens.particle_color_source = 'PARTICLE_VELOCITY'
+                links.new(node_dens.outputs[1], node_math.inputs[0])
+
+                if self.color_coding:
+                    links.new(node_dens.outputs[0], node_abs.inputs[0])
+                    links.new(node_dens.outputs[0], node_scatter.inputs[0])
+                else:
+                    # Add RGB node to control spray color
+                    node_rgb = nodes.new(type='ShaderNodeRGB')
+                    node_rgb.location = grid_location(3, 2)
+                    node_rgb.label = 'Spray Color'
+                    node_rgb.outputs[0].default_value = (0.9, 0.9, 0.9, 1)
+                    links.new(node_rgb.outputs[0], node_abs.inputs[0])
+                    links.new(node_rgb.outputs[0], node_scatter.inputs[0])
+
+            # -----------------------
+            # ADD FOAM VOLUME
+            # -----------------------
+            bpy.ops.mesh.primitive_cube_add()
+            foam = context.active_object
+            foam.name = "Volume Foam"
+
+            # Set volume as child of liquid domain
+            foam.location = (0,0,0)
+            foam.parent = dom
+            foam.dimensions = dom.dimensions
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+
+            # only draw volume edges
+            foam.draw_type = 'WIRE'
+
+            # Cycles: Material setup
+            if context.scene.render.use_shading_nodes:
+                bpy.ops.object.material_slot_add()
+
+                mat = bpy.data.materials.new("Particle Foam Material")
+                foam.material_slots[0].material = mat
+
+                # Make sure we use nodes
+                mat.use_nodes = True
+
+                # Set node variables and clear the default nodes
+                tree = mat.node_tree
+                nodes = tree.nodes
+                links = tree.links
+
+                nodes.clear()
+
+                # Material output
+                node_out = nodes.new(type='ShaderNodeOutputMaterial')
+                node_out.location = grid_location(6, 1)
+
+                # Include Add Shader
+                node_add = nodes.new(type='ShaderNodeAddShader')
+                node_add.location = grid_location(5, 1)
+                links.new(node_add.outputs[0], node_out.inputs[1])
+
+                # Add Volume Absorption Shader
+                node_abs = nodes.new(type='ShaderNodeVolumeAbsorption')
+                node_abs.location = grid_location(4, 2)
+                links.new(node_abs.outputs[0], node_add.inputs[0])
+
+                # Add Volume Scatter Shader
+                node_scatter = nodes.new(type='ShaderNodeVolumeScatter')
+                node_scatter.location = grid_location(4, 0)
+                links.new(node_scatter.outputs[0], node_add.inputs[1])
+
+                # Add Math Node to control density
+                node_math = nodes.new(type='ShaderNodeMath')
+                node_math.location = grid_location(3, 0)
+                node_math.label = 'Density Control'
+                node_math.operation = 'MULTIPLY'
+                node_math.inputs[1].default_value = 10
+                links.new(node_math.outputs[0], node_abs.inputs[1])
+                links.new(node_math.outputs[0], node_scatter.inputs[1])
+
+                # Add Point Density Texture Node to create renderable representation from particles
+                node_dens = nodes.new(type='ShaderNodeTexPointDensity')
+                node_dens.location = grid_location(1, 1)
+                node_dens.width = 250
+                node_dens.point_source = 'PARTICLE_SYSTEM'
+                node_dens.object = dom
+                node_dens.particle_system = dom.particle_systems['Foam Particles']
+                node_dens.space = 'WORLD'
+                node_dens.radius = 0.05
+                node_dens.interpolation = 'Linear'
+                node_dens.resolution = 128
+                node_dens.particle_color_source = 'PARTICLE_VELOCITY'
+                links.new(node_dens.outputs[1], node_math.inputs[0])
+
+                if self.color_coding:
+                    links.new(node_dens.outputs[0], node_abs.inputs[0])
+                    links.new(node_dens.outputs[0], node_scatter.inputs[0])
+                else:
+                    # Add RGB node to control foam color
+                    node_rgb = nodes.new(type='ShaderNodeRGB')
+                    node_rgb.location = grid_location(3, 2)
+                    node_rgb.label = 'Foam Color'
+                    node_rgb.outputs[0].default_value = (0.9, 0.9, 0.9, 1)
+                    links.new(node_rgb.outputs[0], node_abs.inputs[0])
+                    links.new(node_rgb.outputs[0], node_scatter.inputs[0])
+
+            # -----------------------
+            # ADD BUBBLE VOLUME
+            # -----------------------
+            bpy.ops.mesh.primitive_cube_add()
+            bubbles = context.active_object
+            bubbles.name = "Volume Bubbles"
+
+            # Set volume as child of liquid domain
+            bubbles.location = (0,0,0)
+            bubbles.parent = dom
+            bubbles.dimensions = dom.dimensions
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+
+            # only draw volume edges
+            bubbles.draw_type = 'WIRE'
+
+            # Cycles: Material setup
+            if context.scene.render.use_shading_nodes:
+                bpy.ops.object.material_slot_add()
+
+                mat = bpy.data.materials.new("Particle Bubble Material")
+                bubbles.material_slots[0].material = mat
+
+                # Make sure we use nodes
+                mat.use_nodes = True
+
+                # Set node variables and clear the default nodes
+                tree = mat.node_tree
+                nodes = tree.nodes
+                links = tree.links
+
+                nodes.clear()
+
+                # Material output
+                node_out = nodes.new(type='ShaderNodeOutputMaterial')
+                node_out.location = grid_location(6, 1)
+
+                # Include Add Shader
+                node_add = nodes.new(type='ShaderNodeAddShader')
+                node_add.location = grid_location(5, 1)
+                links.new(node_add.outputs[0], node_out.inputs[1])
+
+                # Add Volume Absorption Shader
+                node_abs = nodes.new(type='ShaderNodeVolumeAbsorption')
+                node_abs.location = grid_location(4, 2)
+                links.new(node_abs.outputs[0], node_add.inputs[0])
+
+                # Add Volume Scatter Shader
+                node_scatter = nodes.new(type='ShaderNodeVolumeScatter')
+                node_scatter.location = grid_location(4, 0)
+                links.new(node_scatter.outputs[0], node_add.inputs[1])
+
+                # Add Math Node to control density
+                node_math = nodes.new(type='ShaderNodeMath')
+                node_math.location = grid_location(3, 0)
+                node_math.label = 'Density Control'
+                node_math.operation = 'MULTIPLY'
+                node_math.inputs[1].default_value = 10
+                links.new(node_math.outputs[0], node_abs.inputs[1])
+                links.new(node_math.outputs[0], node_scatter.inputs[1])
+
+                # Add Point Density Texture Node to create renderable representation from particles
+                node_dens = nodes.new(type='ShaderNodeTexPointDensity')
+                node_dens.location = grid_location(1, 1)
+                node_dens.width = 250
+                node_dens.point_source = 'PARTICLE_SYSTEM'
+                node_dens.object = dom
+                node_dens.particle_system = dom.particle_systems['Bubble Particles']
+                node_dens.space = 'WORLD'
+                node_dens.radius = 0.05
+                node_dens.interpolation = 'Linear'
+                node_dens.resolution = 128
+                node_dens.particle_color_source = 'PARTICLE_VELOCITY'
+                links.new(node_dens.outputs[1], node_math.inputs[0])
+
+                if self.color_coding:
+                    links.new(node_dens.outputs[0], node_abs.inputs[0])
+                    links.new(node_dens.outputs[0], node_scatter.inputs[0])
+                else:
+                    # Add RGB node to control bubble color
+                    node_rgb = nodes.new(type='ShaderNodeRGB')
+                    node_rgb.location = grid_location(3, 2)
+                    node_rgb.label = 'Bubble Color'
+                    node_rgb.outputs[0].default_value = (0.9, 0.9, 0.9, 1)
+                    links.new(node_rgb.outputs[0], node_abs.inputs[0])
+                    links.new(node_rgb.outputs[0], node_scatter.inputs[0])
+
+                
 
         return {'FINISHED'}
 classes = (
