@@ -95,6 +95,20 @@ void BOID_OT_state_move_down(struct wmOperatorType *ot);
 
 /* physics_fluid.c */
 void FLUID_OT_bake(struct wmOperatorType *ot);
+void MANTA_OT_bake_geometry(struct wmOperatorType *ot);
+void MANTA_OT_free_geometry(struct wmOperatorType *ot);
+void MANTA_OT_bake_simulation_low(struct wmOperatorType *ot);
+void MANTA_OT_free_simulation_low(struct wmOperatorType *ot);
+void MANTA_OT_bake_simulation_high(struct wmOperatorType *ot);
+void MANTA_OT_free_simulation_high(struct wmOperatorType *ot);
+void MANTA_OT_bake_mesh_low(struct wmOperatorType *ot);
+void MANTA_OT_free_mesh_low(struct wmOperatorType *ot);
+void MANTA_OT_bake_mesh_high(struct wmOperatorType *ot);
+void MANTA_OT_free_mesh_high(struct wmOperatorType *ot);
+void MANTA_OT_bake_particles_low(struct wmOperatorType *ot);
+void MANTA_OT_free_particles_low(struct wmOperatorType *ot);
+void MANTA_OT_bake_particles_high(struct wmOperatorType *ot);
+void MANTA_OT_free_particles_high(struct wmOperatorType *ot);
 void MANTA_OT_make_file(struct wmOperatorType *ot);
 
 /* dynamicpaint.c */

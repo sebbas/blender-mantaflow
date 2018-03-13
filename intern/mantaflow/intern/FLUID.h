@@ -45,7 +45,7 @@ public:
 	typedef struct pVel { float pos[3]; } pVel;
 
 	// Manta step, handling everything
-	void step(int startFrame);
+	void step(struct SmokeModifierData *smd, int startFrame);
 	
 	// Grid initialization functions
 	void initHeat(struct SmokeModifierData *smd);
@@ -63,6 +63,22 @@ public:
 	// Pointer transfer Mantaflow -> Blender
 	void updatePointers();
 	void updatePointersHigh();
+
+	// Bake
+	int readCache(SmokeModifierData *smd, int framenr);
+	void freeGeometry(SmokeModifierData *smd);
+	void bakeSimulationLow(SmokeModifierData *smd);
+	void freeSimulationLow(SmokeModifierData *smd);
+	void bakeSimulationHigh(SmokeModifierData *smd);
+	void freeSimulationHigh(SmokeModifierData *smd);
+	void bakeMeshLow(SmokeModifierData *smd);
+	void freeMeshLow(SmokeModifierData *smd);
+	void bakeMeshHigh(SmokeModifierData *smd);
+	void freeMeshHigh(SmokeModifierData *smd);
+	void bakeParticlesLow(SmokeModifierData *smd);
+	void freeParticlesLow(SmokeModifierData *smd);
+	void bakeParticlesHigh(SmokeModifierData *smd);
+	void freeParticlesHigh(SmokeModifierData *smd);
 
 	// IO for Mantaflow scene script
 	void exportSmokeScript(struct SmokeModifierData *smd);
@@ -326,6 +342,7 @@ private:
 	std::string parseLine(const std::string& line, SmokeModifierData *smd);
 	std::string parseScript(const std::string& setup_string, SmokeModifierData *smd);
 	void* getDataPointer(std::string varName, std::string parentName);
+	void updateMeshDataFromBobj(const char* filename);
 };
 
 #endif

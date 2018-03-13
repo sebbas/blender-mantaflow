@@ -584,6 +584,10 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->data_depth = 0;
 			smd->domain->cache_surface_format = PTCACHE_FILE_OBJECT;
 			smd->domain->cache_volume_format = PTCACHE_FILE_PTCACHE;
+			smd->domain->cache_frame_start = 1;
+			smd->domain->cache_frame_end = 250;
+			BLI_make_file_string("/", smd->domain->cache_directory, BKE_tempdir_base(), "");
+			smd->domain->cache_flag = 0;
 
 			smd->domain->display_thickness = 1.0f;
 			smd->domain->slice_method = MOD_SMOKE_SLICE_VIEW_ALIGNED;
@@ -3007,12 +3011,13 @@ static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *
 		if (sds->total_cells > 1) {
 			update_effectors(scene, ob, sds, dtSubdiv); // DG TODO? problem --> uses forces instead of velocity, need to check how they need to be changed with variable dt
 
+			// TODO (sebbas): do we need this extra step with modular cache setup?
 			/* extra step for first frame */
 			if (do_first_frame && sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID) {
-				smoke_step(sds->fluid, startframe);
+				smoke_step(sds->fluid, sds->smd, startframe);
 				BKE_ptcache_write(pid, startframe);
 			}
-			smoke_step(sds->fluid, framenr);
+			smoke_step(sds->fluid, sds->smd, framenr);
 		}
 	}
 }

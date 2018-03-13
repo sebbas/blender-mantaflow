@@ -246,15 +246,13 @@ def smoke_post_step_high_$ID$():\n\
 // STEP FUNCTIONS
 //////////////////////////////////////////////////////////////////////
 
-const std::string smoke_adaptive_step = "\n\
-def manta_step_$ID$(framenr):\n\
+const std::string smoke_adaptive_step_low = "\n\
+def fluid_step_low_$ID$(framenr):\n\
     s$ID$.frame = framenr\n\
     s$ID$.timeTotal = s$ID$.frame * dt0_s$ID$\n\
     last_frame_s$ID$ = s$ID$.frame\n\
     \n\
     smoke_pre_step_low_$ID$()\n\
-    if using_highres_s$ID$:\n\
-        smoke_pre_step_high_$ID$()\n\
     \n\
     while s$ID$.frame == last_frame_s$ID$:\n\
         \n\
@@ -272,23 +270,59 @@ def manta_step_$ID$(framenr):\n\
         if using_fire_s$ID$:\n\
             update_flame_low_$ID$()\n\
         \n\
-        if using_highres_s$ID$:\n\
-            fluid_adapt_time_step_high()\n\
-            mantaMsg('High step / s$ID$.frame: ' + str(s$ID$.frame))\n\
-            if using_fire_s$ID$:\n\
-                process_burn_high_$ID$()\n\
-            step_high_$ID$()\n\
-            if using_fire_s$ID$:\n\
-                update_flame_high_$ID$()\n\
         s$ID$.step()\n\
     \n\
-    smoke_post_step_low_$ID$()\n\
-    if using_highres_s$ID$:\n\
-        smoke_post_step_high_$ID$()\n";
+    smoke_post_step_low_$ID$()\n";
+
+const std::string smoke_adaptive_step_high = "\n\
+def fluid_step_high_$ID$(framenr):\n\
+    xl$ID$.frame = framenr\n\
+    xl$ID$.timeTotal = xl$ID$.frame * dt0_s$ID$\n\
+    last_frame_s$ID$ = xl$ID$.frame\n\
+    \n\
+    smoke_pre_step_high_$ID$()\n\
+    \n\
+    while xl$ID$.frame == last_frame_s$ID$:\n\
+        \n\
+        mantaMsg('xl.frame is ' + str(xl$ID$.frame))\n\
+        setObstacleFlags(flags=flags_xl$ID$, phiObs=phiObs_xl$ID$, phiOut=phiOut_xl$ID$)\n\
+        flags_xl$ID$.fillGrid()\n\
+        \n\
+        fluid_adapt_time_step_high()\n\
+        mantaMsg('High step / xl$ID$.frame: ' + str(xl$ID$.frame))\n\
+        if using_fire_s$ID$:\n\
+            process_burn_high_$ID$()\n\
+        step_high_$ID$()\n\
+        if using_fire_s$ID$:\n\
+            update_flame_high_$ID$()\n\
+        \n\
+        xl$ID$.step()\n\
+    \n\
+    smoke_post_step_high_$ID$()\n";
 
 const std::string smoke_step_low = "\n\
 def step_low_$ID$():\n\
     mantaMsg('Smoke step low')\n\
+    mantaMsg('Advecting density')\n\
+    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=density_s$ID$, order=$ADVECT_ORDER$)\n\
+    \n\
+    if using_heat_s$ID$:\n\
+        mantaMsg('Advecting heat')\n\
+        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=heat_s$ID$, order=$ADVECT_ORDER$)\n\
+    \n\
+    if using_fire_s$ID$:\n\
+        mantaMsg('Advecting fire')\n\
+        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=fuel_s$ID$, order=$ADVECT_ORDER$)\n\
+        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=react_s$ID$, order=$ADVECT_ORDER$)\n\
+    \n\
+    if using_colors_s$ID$:\n\
+        mantaMsg('Advecting colors')\n\
+        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=color_r_s$ID$, order=$ADVECT_ORDER$)\n\
+        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=color_g_s$ID$, order=$ADVECT_ORDER$)\n\
+        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=color_b_s$ID$, order=$ADVECT_ORDER$)\n\
+    \n\
+    mantaMsg('Advecting velocity')\n\
+    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=vel_s$ID$, order=$ADVECT_ORDER$, openBounds=doOpen_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
     \n\
     # Create interpolated version of original phi grids for later use in (optional) high-res step\n\
     if using_obstacle_s$ID$ and using_highres_s$ID$:\n\
@@ -339,27 +373,6 @@ def step_low_$ID$():\n\
     else:\n\
         mantaMsg('Pressure')\n\
         solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, preconditioner=preconditioner_s$ID$, zeroPressureFixing=not doOpen_s$ID$) # closed domains require pressure fixing\n\
-    mantaMsg('Advecting density')\n\
-    \n\
-    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=density_s$ID$, order=$ADVECT_ORDER$)\n\
-    \n\
-    if using_heat_s$ID$:\n\
-        mantaMsg('Advecting heat')\n\
-        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=heat_s$ID$, order=$ADVECT_ORDER$)\n\
-    \n\
-    if using_fire_s$ID$:\n\
-        mantaMsg('Advecting fire')\n\
-        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=fuel_s$ID$, order=$ADVECT_ORDER$)\n\
-        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=react_s$ID$, order=$ADVECT_ORDER$)\n\
-    \n\
-    if using_colors_s$ID$:\n\
-        mantaMsg('Advecting colors')\n\
-        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=color_r_s$ID$, order=$ADVECT_ORDER$)\n\
-        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=color_g_s$ID$, order=$ADVECT_ORDER$)\n\
-        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=color_b_s$ID$, order=$ADVECT_ORDER$)\n\
-    \n\
-    mantaMsg('Advecting velocity')\n\
-    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=vel_s$ID$, order=$ADVECT_ORDER$, openBounds=doOpen_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
 \n\
 def process_burn_low_$ID$():\n\
     mantaMsg('Process burn low')\n\
@@ -372,9 +385,6 @@ def update_flame_low_$ID$():\n\
 const std::string smoke_step_high = "\n\
 def step_high_$ID$():\n\
     mantaMsg('Smoke step high')\n\
-    setObstacleFlags(flags=flags_xl$ID$, phiObs=phiObs_xl$ID$, phiOut=phiOut_xl$ID$)\n\
-    flags_xl$ID$.fillGrid()\n\
-    \n\
     interpolateMACGrid(source=vel_s$ID$, target=vel_xl$ID$)\n\
     for i in range(uvs_s$ID$):\n\
         mantaMsg('Advecting UV')\n\
@@ -425,108 +435,90 @@ def update_flame_high_$ID$():\n\
     updateFlame(react=react_xl$ID$, flame=flame_xl$ID$)\n";
 
 //////////////////////////////////////////////////////////////////////
-// IMPORT / EXPORT
+// IMPORT
 //////////////////////////////////////////////////////////////////////
 
-const std::string smoke_import_low = "\n\
-def load_smoke_data_low_$ID$(path):\n\
-    density_s$ID$.load(path + '_density.uni')\n\
-    flags_s$ID$.load(path + '_flags.uni')\n\
-    vel_s$ID$.load(path + '_vel.uni')\n\
-    pressure_s$ID$.load(path + '_pressure.uni')\n\
-    forces_s$ID$.load(path + '_forces.uni')\n\
-    x_force_s$ID$.load(path + '_x_force.uni')\n\
-    y_force_s$ID$.load(path + '_y_force.uni')\n\
-    z_force_s$ID$.load(path + '_z_force.uni')\n\
-    inflow_s$ID$.load(path + '_inflow.uni')\n\
-    x_vel_s$ID$.load(path + '_x_vel.uni')\n\
-    y_vel_s$ID$.load(path + '_y_vel.uni')\n\
-    z_vel_s$ID$.load(path + '_z_vel.uni')\n\
-    phiObs_s$ID$.load(path + '_phiObs.uni')\n\
-    phiOutIn_s$ID$.load(path + '_phiOutIn.uni')\n\
+const std::string smoke_load_data_low = "\n\
+def smoke_load_data_low_$ID$(path, framenr):\n\
+    mantaMsg('Smoke import low')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    density_s$ID$.load(path + 'density_' + framenr + '.uni')\n\
     if using_colors_s$ID$:\n\
-        color_r_s$ID$.load(path + '_color_r.uni')\n\
-        color_g_s$ID$.load(path + '_color_g.uni')\n\
-        color_b_s$ID$.load(path + '_color_b.uni')\n\
+        color_r_s$ID$.load(path + 'color_r_' + framenr + '.uni')\n\
+        color_g_s$ID$.load(path + 'color_g_' + framenr + '.uni')\n\
+        color_b_s$ID$.load(path + 'color_b_' + framenr + '.uni')\n\
     if using_heat_s$ID$:\n\
-        heat_s$ID$.load(path + '_heat.uni')\n\
+        heat_s$ID$.load(path + 'heat_' + framenr + '.uni')\n\
     if using_fire_s$ID$:\n\
-        flame_s$ID$.load(path + '_flame.uni')\n\
-        fuel_s$ID$.load(path + '_fuel.uni')\n\
-        react_s$ID$.load(path + '_react.uni')\n";
+        flame_s$ID$.load(path + 'flame_' + framenr + '.uni')\n\
+        fuel_s$ID$.load(path + 'fuel_' + framenr + '.uni')\n\
+        react_s$ID$.load(path + 'react_' + framenr + '.uni')\n";
 
-const std::string smoke_import_high = "\n\
-def load_smoke_data_high_$ID$(path):\n\
-    density_xl$ID$.load(path + '_density_xl.uni')\n\
-    flags_xl$ID$.load(path + '_flags_xl.uni')\n\
-    phiOut_xl$ID$.load(path + '_phiOut_xl.uni')\n\
-    phiObs_xl$ID$.load(path + '_phiObs_xl.uni')\n\
-    \n\
-    texture_u_s$ID$.load(path + '_texture_u.uni')\n\
-    texture_v_s$ID$.load(path + '_texture_v.uni')\n\
-    texture_w_s$ID$.load(path + '_texture_w.uni')\n\
-    texture_u2_s$ID$.load(path + '_texture_u2.uni')\n\
-    texture_v2_s$ID$.load(path + '_texture_v2.uni')\n\
-    texture_w2_s$ID$.load(path + '_texture_w2.uni')\n\
-    \n\
+const std::string smoke_load_data_high = "\n\
+def smoke_load_data_high_$ID$(path, framenr):\n\
+    mantaMsg('Smoke export high')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    density_xl$ID$.load(path + 'density_xl_' + framenr + '.uni')\n\
+    texture_u_s$ID$.load(path + 'texture_u_' + framenr + '.uni')\n\
+    texture_v_s$ID$.load(path + 'texture_v_' + framenr + '.uni')\n\
+    texture_w_s$ID$.load(path + 'texture_w_' + framenr + '.uni')\n\
+    texture_u2_s$ID$.load(path + 'texture_u2_' + framenr + '.uni')\n\
+    texture_v2_s$ID$.load(path + 'texture_v2_' + framenr + '.uni')\n\
+    texture_w2_s$ID$.load(path + 'texture_w2_' + framenr + '.uni')\n\
     if using_colors_s$ID$:\n\
-        color_r_xl$ID$.load(path + '_color_r_xl.uni')\n\
-        color_g_xl$ID$.load(path + '_color_g_xl.uni')\n\
-        color_b_xl$ID$.load(path + '_color_b_xl.uni')\n\
+        color_r_xl$ID$.load(path + 'color_r_xl_' + framenr + '.uni')\n\
+        color_g_xl$ID$.load(path + 'color_g_xl_' + framenr + '.uni')\n\
+        color_b_xl$ID$.load(path + 'color_b_xl_' + framenr + '.uni')\n\
     if using_fire_s$ID$:\n\
-        flame_xl$ID$.load(path + '_flame_xl.uni')\n\
-        fuel_xl$ID$.load(path + '_fuel_xl.uni')\n\
-        react_xl$ID$.load(path + '_react_xl.uni')\n";
+        flame_xl$ID$.load(path + 'flame_xl_' + framenr + '.uni')\n\
+        fuel_xl$ID$.load(path + 'fuel_xl_' + framenr + '.uni')\n\
+        react_xl$ID$.load(path + 'react_xl_' + framenr + '.uni')\n";
 
-const std::string smoke_export_low = "\n\
-def save_smoke_data_low_$ID$(path):\n\
-    density_s$ID$.save(path + '_density.uni')\n\
-    flags_s$ID$.save(path + '_flags.uni')\n\
-    vel_s$ID$.save(path + '_vel.uni')\n\
-    pressure_s$ID$.save(path + '_pressure.uni')\n\
-    forces_s$ID$.save(path + '_forces.uni')\n\
-    x_force_s$ID$.save(path + '_x_force.uni')\n\
-    y_force_s$ID$.save(path + '_y_force.uni')\n\
-    z_force_s$ID$.save(path + '_z_force.uni')\n\
-    inflow_s$ID$.save(path + '_inflow.uni')\n\
-    x_vel_s$ID$.save(path + '_x_vel.uni')\n\
-    y_vel_s$ID$.save(path + '_y_vel.uni')\n\
-    z_vel_s$ID$.save(path + '_z_vel.uni')\n\
-    phiObs_s$ID$.save(path + '_phiObs.uni')\n\
-    phiOutIn_s$ID$.save(path + '_phiOutIn.uni')\n\
+//////////////////////////////////////////////////////////////////////
+// EXPORT
+//////////////////////////////////////////////////////////////////////
+
+const std::string smoke_save_data_low = "\n\
+def smoke_save_data_low_$ID$(path, framenr):\n\
+    mantaMsg('Smoke export low')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    density_s$ID$.save(path + 'density_' + framenr + '.uni')\n\
     if using_colors_s$ID$:\n\
-        color_r_s$ID$.save(path + '_color_r.uni')\n\
-        color_g_s$ID$.save(path + '_color_g.uni')\n\
-        color_b_s$ID$.save(path + '_color_b.uni')\n\
+        color_r_s$ID$.save(path + 'color_r_' + framenr + '.uni')\n\
+        color_g_s$ID$.save(path + 'color_g_' + framenr + '.uni')\n\
+        color_b_s$ID$.save(path + 'color_b_' + framenr + '.uni')\n\
     if using_heat_s$ID$:\n\
-        heat_s$ID$.save(path + '_heat.uni')\n\
+        heat_s$ID$.save(path + 'heat_' + framenr + '.uni')\n\
     if using_fire_s$ID$:\n\
-        flame_s$ID$.save(path + '_flame.uni')\n\
-        fuel_s$ID$.save(path + '_fuel.uni')\n\
-        react_s$ID$.save(path + '_react.uni')\n";
+        flame_s$ID$.save(path + 'flame_' + framenr + '.uni')\n\
+        fuel_s$ID$.save(path + 'fuel_' + framenr + '.uni')\n\
+        react_s$ID$.save(path + 'react_' + framenr + '.uni')\n";
 
-const std::string smoke_export_high = "\n\
-def save_smoke_data_high_$ID$(path):\n\
-    density_xl$ID$.save(path + '_density_xl.uni')\n\
-    flags_xl$ID$.save(path + '_flags_xl.uni')\n\
-    phiOut_xl$ID$.save(path + '_phiOut_xl.uni')\n\
-    phiObs_xl$ID$.save(path + '_phiObs_xl.uni')\n\
-    \n\
-    texture_u_s$ID$.save(path + '_texture_u.uni')\n\
-    texture_v_s$ID$.save(path + '_texture_v.uni')\n\
-    texture_w_s$ID$.save(path + '_texture_w.uni')\n\
-    texture_u2_s$ID$.save(path + '_texture_u2.uni')\n\
-    texture_v2_s$ID$.save(path + '_texture_v2.uni')\n\
-    texture_w2_s$ID$.save(path + '_texture_w2.uni')\n\
-    \n\
+const std::string smoke_save_data_high = "\n\
+def smoke_save_data_high_$ID$(path, framenr):\n\
+    mantaMsg('Smoke export high')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    density_xl$ID$.save(path + 'density_xl_' + framenr + '.uni')\n\
+    texture_u_s$ID$.save(path + 'texture_u_' + framenr + '.uni')\n\
+    texture_v_s$ID$.save(path + 'texture_v_' + framenr + '.uni')\n\
+    texture_w_s$ID$.save(path + 'texture_w_' + framenr + '.uni')\n\
+    texture_u2_s$ID$.save(path + 'texture_u2_' + framenr + '.uni')\n\
+    texture_v2_s$ID$.save(path + 'texture_v2_' + framenr + '.uni')\n\
+    texture_w2_s$ID$.save(path + 'texture_w2_' + framenr + '.uni')\n\
     if using_colors_s$ID$:\n\
-        color_r_xl$ID$.save(path + '_color_r_xl.uni')\n\
-        color_g_xl$ID$.save(path + '_color_g_xl.uni')\n\
-        color_b_xl$ID$.save(path + '_color_b_xl.uni')\n\
+        color_r_xl$ID$.save(path + 'color_r_xl_' + framenr + '.uni')\n\
+        color_g_xl$ID$.save(path + 'color_g_xl_' + framenr + '.uni')\n\
+        color_b_xl$ID$.save(path + 'color_b_xl_' + framenr + '.uni')\n\
     if using_fire_s$ID$:\n\
-        flame_xl$ID$.save(path + '_flame_xl.uni')\n\
-        fuel_xl$ID$.save(path + '_fuel_xl.uni')\n\
-        react_xl$ID$.save(path + '_react_xl.uni')\n";
+        flame_xl$ID$.save(path + 'flame_xl_' + framenr + '.uni')\n\
+        fuel_xl$ID$.save(path + 'fuel_xl_' + framenr + '.uni')\n\
+        react_xl$ID$.save(path + 'react_xl_' + framenr + '.uni')\n";
+
+const std::string smoke_save_geometry_low = "\n\
+def smoke_save_geometry_low_$ID$(path, framenr):\n\
+    mantaMsg('Smoke save geometry')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    inflow_s$ID$.save(path + 'inflow_' + framenr + '.uni')\n";
 
 //////////////////////////////////////////////////////////////////////
 // OTHER SETUPS

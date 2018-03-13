@@ -1123,9 +1123,8 @@ void FLUID_OT_bake(wmOperatorType *ot)
 	ot->poll = ED_operator_object_active_editable;
 }
 
-static int manta_make_file_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int manta_bake_geometry_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
 {
-	Scene *scene= CTX_data_scene(C);
 	SmokeModifierData *smd;
 	Object * smokeDomain = CTX_data_active_object(C);
 	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
@@ -1133,22 +1132,575 @@ static int manta_make_file_invoke(bContext *C, wmOperator *op, const wmEvent *UN
 	return OPERATOR_FINISHED;
 }
 
-static int manta_make_file_exec(bContext *C, wmOperator *op)
+static int manta_bake_geometry_exec(bContext *C, wmOperator *UNUSED(op))
 {
-	Scene *scene= CTX_data_scene(C);
+	SmokeModifierData *smd;
+	Scene *scene = CTX_data_scene(C);
+	Main *bmain = CTX_data_main(C);
+
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+	
+	if (smd->domain->fluid == NULL)
+		smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
+	
+	smd->domain->cache_flag |= FLUID_CACHE_BAKING_GEOMETRY;
+
+	int start_frame = smd->domain->cache_frame_start;
+	int end_frame = smd->domain->cache_frame_end;
+
+	// TODO (sebbas): loop over all frames, i.e. run loop not just once
+//	for (int i = start_frame; i < end_frame; i++) {
+		BKE_scene_update_for_newframe(bmain->eval_ctx, bmain, scene, scene->lay);
+//	}
+
+	return OPERATOR_FINISHED;
+}
+
+void MANTA_OT_bake_geometry(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Bake Geometry";
+	ot->description = "Bake Fluid Geometry";
+	ot->idname = "MANTA_OT_bake_geometry";
+	
+	/* api callbacks */
+	ot->invoke = manta_bake_geometry_invoke;
+	ot->exec = manta_bake_geometry_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+static int manta_free_geometry_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+	
+	return OPERATOR_FINISHED;
+}
+
+static int manta_free_geometry_exec(bContext *C, wmOperator *UNUSED(op))
+{
 	SmokeModifierData *smd;
 	Object * smokeDomain = CTX_data_active_object(C);
 	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
 	
 	if (smd->domain->fluid == NULL)
 		smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
+	
+//	if (smd->domain->cache_flag & (FLUID_CACHE_BAKING_MESH_LOW|FLUID_CACHE_BAKING_PARTICLES_LOW))
+//		return OPERATOR_CANCELLED;
+	
+	smd->domain->cache_flag = 0;
+	fluid_free_geometry(smd->domain->fluid, smd);
+	
+	/* Free data, mesh and particles as well - otherwise they would not be in sync with data cache */
+	fluid_free_low(smd->domain->fluid, smd);
+	fluid_free_mesh_low(smd->domain->fluid, smd);
+	fluid_free_particles_low(smd->domain->fluid, smd);
+	
+	return OPERATOR_FINISHED;
+}
+
+void MANTA_OT_free_geometry(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Free Geometry";
+	ot->description = "Free Fluid Geometry";
+	ot->idname = "MANTA_OT_free_geometry";
+	
+	/* api callbacks */
+	ot->invoke = manta_free_geometry_invoke;
+	ot->exec = manta_free_geometry_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+static int manta_bake_simulation_low_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	return OPERATOR_FINISHED;
+}
+
+static int manta_bake_simulation_low_exec(bContext *C, wmOperator *UNUSED(op))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	if (smd->domain->fluid == NULL)
+		smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
+
+	smd->domain->cache_flag |= FLUID_CACHE_BAKING_LOW;
+	fluid_bake_low(smd->domain->fluid, smd);
+
+	return OPERATOR_FINISHED;
+}
+
+void MANTA_OT_bake_simulation_low(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Bake Low";
+	ot->description = "Bake Fluid Simulation Low";
+	ot->idname = "MANTA_OT_bake_simulation_low";
+
+	/* api callbacks */
+	ot->invoke = manta_bake_simulation_low_invoke;
+	ot->exec = manta_bake_simulation_low_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+static int manta_free_simulation_low_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	return OPERATOR_FINISHED;
+}
+
+static int manta_free_simulation_low_exec(bContext *C, wmOperator *UNUSED(op))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	if (smd->domain->fluid == NULL)
+		smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
+
+	if (smd->domain->cache_flag & (FLUID_CACHE_BAKING_MESH_LOW|FLUID_CACHE_BAKING_PARTICLES_LOW))
+		return OPERATOR_CANCELLED;
+
+	smd->domain->cache_flag &= ~(FLUID_CACHE_BAKING_LOW|FLUID_CACHE_BAKED_LOW|
+								 FLUID_CACHE_BAKING_MESH_LOW|FLUID_CACHE_BAKED_MESH_LOW|
+								 FLUID_CACHE_BAKING_PARTICLES_LOW|FLUID_CACHE_BAKED_PARTICLES_LOW);
+	fluid_free_low(smd->domain->fluid, smd);
+
+	/* Free optional mesh and particles as well - otherwise they would not be in sync with data cache */
+	fluid_free_mesh_low(smd->domain->fluid, smd);
+	fluid_free_particles_low(smd->domain->fluid, smd);
+
+	return OPERATOR_FINISHED;
+}
+
+void MANTA_OT_free_simulation_low(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Free Low";
+	ot->description = "Free Fluid Simulation Low";
+	ot->idname = "MANTA_OT_free_simulation_low";
+
+	/* api callbacks */
+	ot->invoke = manta_free_simulation_low_invoke;
+	ot->exec = manta_free_simulation_low_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+static int manta_bake_simulation_high_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	return OPERATOR_FINISHED;
+}
+
+static int manta_bake_simulation_high_exec(bContext *C, wmOperator *UNUSED(op))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	if (smd->domain->fluid == NULL)
+		smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
+
+	if (smd->domain->cache_flag & (FLUID_CACHE_BAKING_MESH_HIGH|FLUID_CACHE_BAKING_PARTICLES_HIGH))
+		return OPERATOR_CANCELLED;
+
+	smd->domain->cache_flag |= FLUID_CACHE_BAKING_HIGH;
+	fluid_bake_high(smd->domain->fluid, smd);
+
+	return OPERATOR_FINISHED;
+}
+
+void MANTA_OT_bake_simulation_high(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Bake High";
+	ot->description = "Bake Fluid Simulation High";
+	ot->idname = "MANTA_OT_bake_simulation_high";
+
+	/* api callbacks */
+	ot->invoke = manta_bake_simulation_high_invoke;
+	ot->exec = manta_bake_simulation_high_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+static int manta_free_simulation_high_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	return OPERATOR_FINISHED;
+}
+
+static int manta_free_simulation_high_exec(bContext *C, wmOperator *UNUSED(op))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	if (smd->domain->fluid == NULL)
+		smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
+
+	smd->domain->cache_flag &= ~(FLUID_CACHE_BAKING_HIGH|FLUID_CACHE_BAKED_HIGH|
+								 FLUID_CACHE_BAKING_MESH_HIGH|FLUID_CACHE_BAKED_MESH_HIGH|
+								 FLUID_CACHE_BAKING_PARTICLES_HIGH|FLUID_CACHE_BAKED_PARTICLES_HIGH);
+	fluid_free_high(smd->domain->fluid, smd);
+
+	/* Free optional mesh and particles as well - otherwise they would not be in sync with data cache */
+	fluid_free_mesh_high(smd->domain->fluid, smd);
+	fluid_free_particles_high(smd->domain->fluid, smd);
+
+	return OPERATOR_FINISHED;
+}
+
+void MANTA_OT_free_simulation_high(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Free High";
+	ot->description = "Free Fluid Simulation High";
+	ot->idname = "MANTA_OT_free_simulation_high";
+
+	/* api callbacks */
+	ot->invoke = manta_free_simulation_high_invoke;
+	ot->exec = manta_free_simulation_high_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+static int manta_bake_mesh_low_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	return OPERATOR_FINISHED;
+}
+
+static int manta_bake_mesh_low_exec(bContext *C, wmOperator *UNUSED(op))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	if (smd->domain->fluid == NULL)
+		smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
+
+	smd->domain->cache_flag |= FLUID_CACHE_BAKING_MESH_LOW;
+	fluid_bake_mesh_low(smd->domain->fluid, smd);
+
+	return OPERATOR_FINISHED;
+}
+
+void MANTA_OT_bake_mesh_low(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Bake Mesh Low";
+	ot->description = "Bake Mesh for Low Simulation";
+	ot->idname = "MANTA_OT_bake_mesh_low";
+
+	/* api callbacks */
+	ot->invoke = manta_bake_mesh_low_invoke;
+	ot->exec = manta_bake_mesh_low_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+static int manta_free_mesh_low_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	return OPERATOR_FINISHED;
+}
+
+static int manta_free_mesh_low_exec(bContext *C, wmOperator *UNUSED(op))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	if (smd->domain->fluid == NULL)
+		smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
+
+	smd->domain->cache_flag &= ~(FLUID_CACHE_BAKING_MESH_LOW|FLUID_CACHE_BAKED_MESH_LOW);
+	fluid_free_mesh_low(smd->domain->fluid, smd);
+
+	return OPERATOR_FINISHED;
+}
+
+void MANTA_OT_free_mesh_low(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Free Mesh Low";
+	ot->description = "Free Mesh for Low Simulation";
+	ot->idname = "MANTA_OT_free_mesh_low";
+
+	/* api callbacks */
+	ot->invoke = manta_free_mesh_low_invoke;
+	ot->exec = manta_free_mesh_low_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+static int manta_bake_mesh_high_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	return OPERATOR_FINISHED;
+}
+
+static int manta_bake_mesh_high_exec(bContext *C, wmOperator *UNUSED(op))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	if (smd->domain->fluid == NULL)
+		smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
+
+	smd->domain->cache_flag |= FLUID_CACHE_BAKING_MESH_HIGH;
+	fluid_bake_mesh_high(smd->domain->fluid, smd);
+
+	return OPERATOR_FINISHED;
+}
+
+void MANTA_OT_bake_mesh_high(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Bake Mesh High";
+	ot->description = "Bake Mesh for High Simulation";
+	ot->idname = "MANTA_OT_bake_mesh_high";
+
+	/* api callbacks */
+	ot->invoke = manta_bake_mesh_high_invoke;
+	ot->exec = manta_bake_mesh_high_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+static int manta_free_mesh_high_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	return OPERATOR_FINISHED;
+}
+
+static int manta_free_mesh_high_exec(bContext *C, wmOperator *UNUSED(op))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	if (smd->domain->fluid == NULL)
+		smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
+
+	smd->domain->cache_flag &= ~(FLUID_CACHE_BAKING_MESH_HIGH|FLUID_CACHE_BAKED_MESH_HIGH);
+	fluid_free_mesh_high(smd->domain->fluid, smd);
+
+	return OPERATOR_FINISHED;
+}
+
+void MANTA_OT_free_mesh_high(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Free Mesh High";
+	ot->description = "Free Mesh for High Simulation";
+	ot->idname = "MANTA_OT_free_mesh_high";
+
+	/* api callbacks */
+	ot->invoke = manta_free_mesh_high_invoke;
+	ot->exec = manta_free_mesh_high_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+static int manta_bake_particles_low_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	return OPERATOR_FINISHED;
+}
+
+static int manta_bake_particles_low_exec(bContext *C, wmOperator *UNUSED(op))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	if (smd->domain->fluid == NULL)
+		smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
+
+	smd->domain->cache_flag |= FLUID_CACHE_BAKING_PARTICLES_LOW;
+	fluid_bake_particles_low(smd->domain->fluid, smd);
+
+	return OPERATOR_FINISHED;
+}
+
+void MANTA_OT_bake_particles_low(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Bake Particles Low";
+	ot->description = "Bake Particles for Low Simulation";
+	ot->idname = "MANTA_OT_bake_particles_low";
+
+	/* api callbacks */
+	ot->invoke = manta_bake_particles_low_invoke;
+	ot->exec = manta_bake_particles_low_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+static int manta_free_particles_low_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	return OPERATOR_FINISHED;
+}
+
+static int manta_free_particles_low_exec(bContext *C, wmOperator *UNUSED(op))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	if (smd->domain->fluid == NULL)
+		smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
+
+	smd->domain->cache_flag &= ~(FLUID_CACHE_BAKING_PARTICLES_LOW|FLUID_CACHE_BAKED_PARTICLES_LOW);
+	fluid_free_particles_low(smd->domain->fluid, smd);
+
+	return OPERATOR_FINISHED;
+}
+
+void MANTA_OT_free_particles_low(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Free Particles Low";
+	ot->description = "Free Particles for Low Simulation";
+	ot->idname = "MANTA_OT_free_particles_low";
+
+	/* api callbacks */
+	ot->invoke = manta_free_particles_low_invoke;
+	ot->exec = manta_free_particles_low_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+static int manta_bake_particles_high_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	return OPERATOR_FINISHED;
+}
+
+static int manta_bake_particles_high_exec(bContext *C, wmOperator *UNUSED(op))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	if (smd->domain->fluid == NULL)
+		smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
+
+	smd->domain->cache_flag |= FLUID_CACHE_BAKING_PARTICLES_HIGH;
+	fluid_bake_particles_high(smd->domain->fluid, smd);
+
+	return OPERATOR_FINISHED;
+}
+
+void MANTA_OT_bake_particles_high(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Bake Particles High";
+	ot->description = "Bake Particles for High Simulation";
+	ot->idname = "MANTA_OT_bake_particles_high";
+
+	/* api callbacks */
+	ot->invoke = manta_bake_particles_high_invoke;
+	ot->exec = manta_bake_particles_high_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+static int manta_free_particles_high_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	return OPERATOR_FINISHED;
+}
+
+static int manta_free_particles_high_exec(bContext *C, wmOperator *UNUSED(op))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	if (smd->domain->fluid == NULL)
+		smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
+
+	smd->domain->cache_flag &= ~(FLUID_CACHE_BAKING_PARTICLES_HIGH|FLUID_CACHE_BAKED_PARTICLES_HIGH);
+	fluid_free_particles_high(smd->domain->fluid, smd);
+
+	return OPERATOR_FINISHED;
+}
+
+void MANTA_OT_free_particles_high(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Free Particles High";
+	ot->description = "Free Particles for High Simulation";
+	ot->idname = "MANTA_OT_free_particles_high";
+
+	/* api callbacks */
+	ot->invoke = manta_free_particles_high_invoke;
+	ot->exec = manta_free_particles_high_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+static int manta_make_file_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	return OPERATOR_FINISHED;
+}
+
+static int manta_make_file_exec(bContext *C, wmOperator *UNUSED(op))
+{
+	SmokeModifierData *smd;
+	Object * smokeDomain = CTX_data_active_object(C);
+	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
+
+	if (smd->domain->fluid == NULL)
+		smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
 
 	if (smd->domain->fluid && smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS)
 		smoke_manta_export(smd->domain->fluid, smd);
-	
+
 	if (smd->domain->fluid && smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
 		liquid_manta_export(smd->domain->fluid, smd);
-	
+
 	return OPERATOR_FINISHED;
 }
 
@@ -1158,7 +1710,7 @@ void MANTA_OT_make_file(wmOperatorType *ot)
 	ot->name = "Create Mantaflow File";
 	ot->description = "Create Python Script for Simulation";
 	ot->idname = "MANTA_OT_make_file";
-	
+
 	/* api callbacks */
 	ot->invoke = manta_make_file_invoke;
 	ot->exec = manta_make_file_exec;

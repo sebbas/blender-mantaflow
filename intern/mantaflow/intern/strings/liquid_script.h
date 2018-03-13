@@ -143,9 +143,9 @@ def liquid_post_step_low_$ID$():\n\
 // STEP FUNCTIONS
 //////////////////////////////////////////////////////////////////////
 
-const std::string liquid_adaptive_step = "\n\
-def manta_step_$ID$(framenr):\n\
-    mantaMsg('Manta step, frame ' + str(framenr))\n\
+const std::string liquid_adaptive_step_low = "\n\
+def fluid_step_low_$ID$(framenr):\n\
+    mantaMsg('Manta step low, frame ' + str(framenr))\n\
     \n\
     s$ID$.frame = framenr\n\
     s$ID$.timeTotal = s$ID$.frame * dt0_s$ID$\n\
@@ -184,13 +184,28 @@ def manta_step_$ID$(framenr):\n\
         mantaMsg('Low step / s$ID$.frame: ' + str(s$ID$.frame))\n\
         liquid_step_$ID$()\n\
         \n\
-        if using_highres_s$ID$:\n\
-            fluid_adapt_time_step_high()\n\
-            mantaMsg('High step / s$ID$.frame: ' + str(s$ID$.frame))\n\
-            liquid_step_high_$ID$()\n\
         s$ID$.step()\n\
     \n\
     liquid_post_step_low_$ID$()\n";
+
+const std::string liquid_adaptive_step_high = "\n\
+def fluid_step_high_$ID$(framenr):\n\
+    mantaMsg('Manta step high, frame ' + str(framenr))\n\
+    \n\
+    xl$ID$.frame = framenr\n\
+    xl$ID$.timeTotal = xl$ID$.frame * dt0_s$ID$\n\
+    last_frame_s$ID$ = xl$ID$.frame\n\
+    \n\
+    liquid_pre_step_low_$ID$()\n\
+    \n\
+    while xl$ID$.frame == last_frame_s$ID$:\n\
+        \n\
+        mantaMsg('xl.frame is ' + str(xl$ID$.frame))\n\
+        \n\
+        fluid_adapt_time_step_high()\n\
+        mantaMsg('High step / xl$ID$.frame: ' + str(xl$ID$.frame))\n\
+        liquid_step_high_$ID$()\n\
+        xl$ID$.step()\n";
 
 const std::string liquid_step_low = "\n\
 def liquid_step_$ID$():\n\
@@ -206,15 +221,6 @@ def liquid_step_$ID$():\n\
     advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=phi_s$ID$, order=1) # first order is usually enough\n\
     mantaMsg('Advecting velocity')\n\
     advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=vel_s$ID$, order=2, openBounds=doOpen_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
-    \n\
-    if using_sndparts_s$ID$:\n\
-        mantaMsg('Sampling snd particles')\n\
-        sampleSndParts(phi=phi_s$ID$, phiIn=phiIn_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, parts=ppSnd_s$ID$, type=$SNDPARTICLE_TYPES$, amountDroplet=$SNDPARTICLE_DROPLET_AMOUNT$, amountFloater=$SNDPARTICLE_FLOATER_AMOUNT$, amountTracer=$SNDPARTICLE_TRACER_AMOUNT$, thresholdDroplet=$SNDPARTICLE_DROPLET_THRESH$)\n\
-        mantaMsg('Updating snd particle data (velocity, life count)')\n\
-        updateSndParts(phi=phi_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$, parts=ppSnd_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, riseBubble=$SNDPARTICLE_BUBBLE_RISE$, lifeDroplet=$SNDPARTICLE_DROPLET_LIFE$, lifeBubble=$SNDPARTICLE_BUBBLE_LIFE$, lifeFloater=$SNDPARTICLE_FLOATER_LIFE$, lifeTracer=$SNDPARTICLE_TRACER_LIFE$)\n\
-        mantaMsg('Adjusting snd particles')\n\
-        pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=1.0)\n\
-        adjustSndParts(parts=ppSnd_s$ID$, flags=flags_s$ID$, phi=phi_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, maxDroplet=$SNDPARTICLE_DROPLET_MAX$, maxBubble=$SNDPARTICLE_BUBBLE_MAX$, maxFloater=$SNDPARTICLE_FLOATER_MAX$, maxTracer=$SNDPARTICLE_TRACER_MAX$)\n\
     \n\
     # create level set of particles\n\
     gridParticleIndex(parts=pp_s$ID$, flags=flags_s$ID$, indexSys=pindex_s$ID$, index=gpi_s$ID$)\n\
@@ -298,105 +304,100 @@ def liquid_step_high_$ID$():\n\
     gridParticleIndex(parts=pp_xl$ID$, flags=flags_xl$ID$, indexSys=pindex_xl$ID$, index=gpi_xl$ID$)\n\
     averagedParticleLevelset(pp_xl$ID$, pindex_xl$ID$, flags_xl$ID$, gpi_xl$ID$, phiParts_xl$ID$, radiusFactor_s$ID$ , 1, 1)\n";
 
+const std::string liquid_step_particles_low = "\n\
+def liquid_step_particles_low_$ID$():\n\
+    mantaMsg('Sampling snd particles')\n\
+    sampleSndParts(phi=phi_s$ID$, phiIn=phiIn_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, parts=ppSnd_s$ID$, type=$SNDPARTICLE_TYPES$, amountDroplet=$SNDPARTICLE_DROPLET_AMOUNT$, amountFloater=$SNDPARTICLE_FLOATER_AMOUNT$, amountTracer=$SNDPARTICLE_TRACER_AMOUNT$, thresholdDroplet=$SNDPARTICLE_DROPLET_THRESH$)\n\
+    mantaMsg('Updating snd particle data (velocity, life count)')\n\
+    updateSndParts(phi=phi_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$, parts=ppSnd_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, riseBubble=$SNDPARTICLE_BUBBLE_RISE$, lifeDroplet=$SNDPARTICLE_DROPLET_LIFE$, lifeBubble=$SNDPARTICLE_BUBBLE_LIFE$, lifeFloater=$SNDPARTICLE_FLOATER_LIFE$, lifeTracer=$SNDPARTICLE_TRACER_LIFE$)\n\
+    mantaMsg('Adjusting snd particles')\n\
+    pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=1.0)\n\
+    adjustSndParts(parts=ppSnd_s$ID$, flags=flags_s$ID$, phi=phi_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, maxDroplet=$SNDPARTICLE_DROPLET_MAX$, maxBubble=$SNDPARTICLE_BUBBLE_MAX$, maxFloater=$SNDPARTICLE_FLOATER_MAX$, maxTracer=$SNDPARTICLE_TRACER_MAX$)\n";
+
 //////////////////////////////////////////////////////////////////////
-// IMPORT / EXPORT
+// IMPORT
+//////////////////////////////////////////////////////////////////////
+
+const std::string liquid_load_mesh_low = "\n\
+def liquid_load_mesh_low_$ID$(path, framenr):\n\
+    mantaMsg('Liquid load mesh low')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    mesh_s$ID$.load(path + 'mesh_low_' + framenr + '.bobj.gz')\n";
+
+const std::string liquid_load_mesh_high = "\n\
+def liquid_load_mesh_high_$ID$(path, framenr):\n\
+    mantaMsg('Liquid load mesh high')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    mesh_xl$ID$.load(path + 'mesh_high_' + framenr + '.bobj.gz')\n";
+
+const std::string liquid_load_particles_low = "\n\
+def liquid_load_particles_low_$ID$(path, framenr):\n\
+    mantaMsg('Liquid load particles low')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    ppSnd_s$ID$.load(path + 'ppSnd_' + framenr + '.uni')\n\
+    pVelSnd_pp$ID$.load(path + 'pVelSnd_' + framenr + '.uni')\n";
+
+const std::string liquid_load_data_low = "\n\
+def liquid_load_data_low_$ID$(path, framenr):\n\
+    mantaMsg('Liquid load data low')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    phi_s$ID$.load(path + 'phi_' + framenr +'.uni')\n\
+    pp_s$ID$.load(path + 'pp_' + framenr +'.uni')\n\
+    pVel_pp$ID$.load(path + 'pVel_' + framenr +'.uni')\n\
+\n\
+def liquid_load_levelset_low_$ID$(path, framenr):\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    phi_s$ID$.load(path + 'phi_' + framenr + '.uni') # reload file from cache\n\
+    phiIn_s$ID$.load(path + 'phi_' + framenr + '.uni') # TODO (sebbas): dummy\n\
+\n\
+def liquid_load_inflow_low_$ID$(path, framenr):\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    phiIn_s$ID$.load(path + 'phi_' + framenr + '.uni')\n";
+
+//////////////////////////////////////////////////////////////////////
+// EXPORT
 //////////////////////////////////////////////////////////////////////
 
 const std::string liquid_save_mesh_low = "\n\
-def save_mesh_low_$ID$(path):\n\
+def liquid_save_mesh_low_$ID$(path, framenr):\n\
     mantaMsg('Liquid save mesh low')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
     phiParts_s$ID$.copyFrom(phi_s$ID$) # mis-use phiParts as temp grid to close the mesh\n\
     phiParts_s$ID$.setBound(0.5,0)\n\
     phiParts_s$ID$.createMesh(mesh_s$ID$)\n\
-    mesh_s$ID$.save(path)\n";
+    mesh_s$ID$.save(path + 'mesh_low_' + framenr + '.bobj.gz')\n";
 
 const std::string liquid_save_mesh_high = "\n\
-def save_mesh_high_$ID$(path):\n\
+def liquid_save_mesh_high_$ID$(path, framenr):\n\
     mantaMsg('Liquid save mesh high')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    phiParts_s$ID$.copyFrom(phi_s$ID$) # mis-use phiParts as temp grid to close the mesh\n\
+    phiParts_s$ID$.setBound(0.5,0)\n\
     interpolateGrid(target=phi_xl$ID$, source=phiParts_s$ID$)\n\
     phi_xl$ID$.join(phiParts_xl$ID$)\n\
     phi_xl$ID$.createMesh(mesh_xl$ID$)\n\
-    mesh_xl$ID$.save(path)\n";
+    mesh_xl$ID$.save(path + 'mesh_high_' + framenr + '.bobj.gz')\n";
 
 const std::string liquid_save_particles_low = "\n\
-def save_particles_low_$ID$(path):\n\
-    pp_s$ID$.save(path)\n";
+def liquid_save_particles_low_$ID$(path, framenr):\n\
+    mantaMsg('Liquid save particles low')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    ppSnd_s$ID$.save(path + 'ppSnd_' + framenr + '.uni')\n\
+    pVelSnd_pp$ID$.save(path + 'pVelSnd_' + framenr + '.uni')\n";
 
-const std::string liquid_save_particle_velocities = "\n\
-def save_particles_velocities_$ID$(path):\n\
-    pVel_pp$ID$.save(path)\n";
+const std::string liquid_save_data_low = "\n\
+def liquid_save_data_low_$ID$(path, framenr):\n\
+    mantaMsg('Liquid save data low')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    phi_s$ID$.save(path + 'phi_' + framenr +'.uni')\n\
+    pp_s$ID$.save(path + 'pp_' + framenr +'.uni')\n\
+    pVel_pp$ID$.save(path + 'pVel_' + framenr +'.uni')\n";
 
-const std::string liquid_import_low = "\n\
-def load_liquid_data_low_$ID$(path):\n\
-    flags_s$ID$.load(path + '_flags.uni')\n\
-    \n\
-    phiParts_s$ID$.load(path + '_phiParts.uni')\n\
-    phi_s$ID$.load(path + '_phi.uni')\n\
-    phiIn_s$ID$.load(path + '_phiIn.uni')\n\
-    phiObs_s$ID$.load(path + '_phiObs.uni')\n\
-    phiOut_s$ID$.load(path + '_phiOut.uni')\n\
-    phiOutIn_s$ID$.load(path + '_phiOutIn.uni')\n\
-    if fractions_s$ID$: fractions_s$ID$.load(path + '_fractions.uni') # TODO (sebbas)\n\
-    pressure_s$ID$.load(path + '_pressure.uni')\n\
-    \n\
-    vel_s$ID$.load(path + '_vel.uni')\n\
-    velOld_s$ID$.load(path + '_velOld.uni')\n\
-    velParts_s$ID$.load(path + '_velParts.uni')\n\
-    mapWeights_s$ID$.load(path + '_mapWeights.uni')\n\
-    \n\
-    x_vel_s$ID$.load(path + '_x_vel.uni')\n\
-    y_vel_s$ID$.load(path + '_y_vel.uni')\n\
-    z_vel_s$ID$.load(path + '_z_vel.uni')\n\
-    \n\
-    pp_s$ID$.load(path + '_pp.uni')\n\
-    pVel_pp$ID$.load(path + '_pVel.uni')\n\
-    \n\
-    gpi_s$ID$.load(path + '_gpi.uni')\n";
-
-const std::string liquid_import_high = "\n\
-def load_liquid_data_high_$ID$(path):\n\
-    flags_xl$ID$.load(path + '_flags_xl.uni')\n\
-    \n\
-    phiParts_xl$ID$.load(path + '_phiParts_xl.uni')\n\
-    phi_xl$ID$.load(path + '_phi_xl.uni')\n\
-    \n\
-    pp_xl$ID$.load(path + '_pp_xl.uni')\n";
-
-const std::string liquid_export_low = "\n\
-def save_liquid_data_low_$ID$(path):\n\
-    flags_s$ID$.save(path + '_flags.uni')\n\
-    \n\
-    phiParts_s$ID$.save(path + '_phiParts.uni')\n\
-    phi_s$ID$.save(path + '_phi.uni')\n\
-    phiIn_s$ID$.save(path + '_phiIn.uni')\n\
-    phiObs_s$ID$.save(path + '_phiObs.uni')\n\
-    phiOut_s$ID$.save(path + '_phiOut.uni')\n\
-    phiOutIn_s$ID$.save(path + '_phiOutIn.uni')\n\
-    if fractions_s$ID$: fractions_s$ID$.save(path + '_fractions.uni') # TODO (sebbas)\n\
-    pressure_s$ID$.save(path + '_pressure.uni')\n\
-    \n\
-    vel_s$ID$.save(path + '_vel.uni')\n\
-    velOld_s$ID$.save(path + '_velOld.uni')\n\
-    velParts_s$ID$.save(path + '_velParts.uni')\n\
-    mapWeights_s$ID$.save(path + '_mapWeights.uni')\n\
-    \n\
-    x_vel_s$ID$.save(path + '_x_vel.uni')\n\
-    y_vel_s$ID$.save(path + '_y_vel.uni')\n\
-    z_vel_s$ID$.save(path + '_z_vel.uni')\n\
-    \n\
-    pp_s$ID$.save(path + '_pp.uni')\n\
-    pVel_pp$ID$.save(path + '_pVel.uni')\n\
-    \n\
-    gpi_s$ID$.save(path + '_gpi.uni')\n";
-
-const std::string liquid_export_high = "\n\
-def save_liquid_data_high_$ID$(path):\n\
-    flags_xl$ID$.save(path + '_flags_xl.uni')\n\
-    \n\
-    phiParts_xl$ID$.save(path + '_phiParts_xl.uni')\n\
-    phi_xl$ID$.save(path + '_phi_xl.uni')\n\
-    \n\
-    pp_xl$ID$.save(path + '_pp_xl.uni')\n";
+const std::string liquid_save_geometry_low = "\n\
+def liquid_save_geometry_low_$ID$(path, framenr):\n\
+    mantaMsg('Liquid save geometry')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    phiIn_s$ID$.save(path + 'phiIn_' + framenr + '.uni')\n";
 
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE

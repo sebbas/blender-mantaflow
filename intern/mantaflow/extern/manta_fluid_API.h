@@ -41,7 +41,7 @@ void smoke_free(struct FLUID *smoke);
 size_t smoke_get_index(int x, int max_x, int y, int max_y, int z /*, int max_z */);
 size_t smoke_get_index2d(int x, int max_x, int y /*, int max_y, int z, int max_z */);
 void smoke_manta_export(struct FLUID* smoke, struct SmokeModifierData *smd);
-void smoke_step(struct FLUID *smoke, int framenr);
+void smoke_step(struct FLUID *smoke, struct SmokeModifierData *smd, int framenr);
 void smoke_dissolve(struct FLUID *smoke, int speed, int log);
 void smoke_dissolve_wavelet(struct FLUID *smoke, int speed, int log);
 void smoke_export(struct FLUID *smoke, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, float **vx, float **vy, float **vz, float **r, float **g, float **b, int **obstacles);
@@ -166,6 +166,20 @@ void fluid_ensure_obstacle(struct FLUID *fluid, struct SmokeModifierData *smd);
 void fluid_ensure_guiding(struct FLUID *fluid, struct SmokeModifierData *smd);
 void fluid_ensure_invelocity(struct FLUID *fluid, struct SmokeModifierData *smd);
 void fluid_ensure_sndparts(struct FLUID *fluid, struct SmokeModifierData *smd);
+int fluid_read_cache(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
+void fluid_free_geometry(struct FLUID* fluid, struct SmokeModifierData *smd);
+void fluid_bake_low(struct FLUID* fluid, struct SmokeModifierData *smd);
+void fluid_free_low(struct FLUID* fluid, struct SmokeModifierData *smd);
+void fluid_bake_high(struct FLUID* fluid, struct SmokeModifierData *smd);
+void fluid_free_high(struct FLUID* fluid, struct SmokeModifierData *smd);
+void fluid_bake_mesh_low(struct FLUID* fluid, struct SmokeModifierData *smd);
+void fluid_free_mesh_low(struct FLUID* fluid, struct SmokeModifierData *smd);
+void fluid_bake_mesh_high(struct FLUID* fluid, struct SmokeModifierData *smd);
+void fluid_free_mesh_high(struct FLUID* fluid, struct SmokeModifierData *smd);
+void fluid_bake_particles_low(struct FLUID* fluid, struct SmokeModifierData *smd);
+void fluid_free_particles_low(struct FLUID* fluid, struct SmokeModifierData *smd);
+void fluid_bake_particles_high(struct FLUID* fluid, struct SmokeModifierData *smd);
+void fluid_free_particles_high(struct FLUID* fluid, struct SmokeModifierData *smd);
 
 #ifdef __cplusplus
 }

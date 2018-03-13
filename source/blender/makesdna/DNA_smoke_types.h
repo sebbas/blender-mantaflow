@@ -145,6 +145,21 @@ enum {
 #define SM_ACTIVE_GUIDING	(1<<6)
 #define SM_ACTIVE_INVEL		(1<<7)
 
+#define FLUID_CACHE_BAKING_GEOMETRY            1
+#define FLUID_CACHE_BAKED_GEOMETRY             2
+#define FLUID_CACHE_BAKING_LOW                 4
+#define FLUID_CACHE_BAKED_LOW                  8
+#define FLUID_CACHE_BAKING_MESH_LOW           16
+#define FLUID_CACHE_BAKED_MESH_LOW            32
+#define FLUID_CACHE_BAKING_HIGH               64
+#define FLUID_CACHE_BAKED_HIGH               128
+#define FLUID_CACHE_BAKING_MESH_HIGH         256
+#define FLUID_CACHE_BAKED_MESH_HIGH          512
+#define FLUID_CACHE_BAKING_PARTICLES_LOW    1024
+#define FLUID_CACHE_BAKED_PARTICLES_LOW     2048
+#define FLUID_CACHE_BAKING_PARTICLES_HIGH   4096
+#define FLUID_CACHE_BAKED_PARTICLES_HIGH    8192
+
 enum {
 	VDB_COMPRESSION_BLOSC = 0,
 	VDB_COMPRESSION_ZIP   = 1,
@@ -207,6 +222,12 @@ typedef struct SmokeDomainSettings {
 	float strength;
 	int res_wt[3];
 	float dx_wt;
+	/* manta cache */
+	int cache_frame_start;
+	int cache_frame_end;
+	char cache_directory[1024];
+	int cache_flag;
+	char pad2[4];
 	/* point cache options */
 	int cache_comp;
 	int cache_high_comp;

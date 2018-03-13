@@ -46,7 +46,7 @@ class PhysicButtonsPanel:
 
 
 class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
-    bl_label = "Fluid"
+    bl_label = "Fluid Simulation"
     COMPAT_ENGINES = {'BLENDER_RENDER'}
 
     def draw(self, context):
@@ -511,7 +511,6 @@ class PHYSICS_PT_smoke_groups(PhysicButtonsPanel, Panel):
         col.label(text="Collision Group:")
         col.prop(domain, "collision_group", text="")
 
-
 class PHYSICS_PT_smoke_cache(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Cache"
     bl_options = {'DEFAULT_CLOSED'}
@@ -563,6 +562,198 @@ class PHYSICS_PT_smoke_cache(PhysicButtonsPanel, Panel):
         cache = domain.point_cache
         point_cache_ui(self, context, cache, (cache.is_baked is False), 'SMOKE')
 
+class OBJECT_OT_fluid_bake_geometry(bpy.types.Operator):
+    bl_idname = "fluid_bake_geometry.button"
+    bl_label = "Bake Fluid Geometry"
+            
+    def execute(self, context):
+        bpy.ops.manta.bake_geometry()
+        return{'FINISHED'}
+
+class OBJECT_OT_fluid_free_geometry(bpy.types.Operator):
+    bl_idname = "fluid_free_geometry.button"
+    bl_label = "Free Fluid Geometry"
+            
+    def execute(self, context):
+        bpy.ops.manta.free_geometry()
+        return{'FINISHED'}
+
+class OBJECT_OT_fluid_bake_low(bpy.types.Operator):
+    bl_idname = "fluid_bake_low.button"
+    bl_label = "Bake Fluid Low"
+            
+    def execute(self, context):
+        bpy.ops.manta.bake_simulation_low()
+        return{'FINISHED'}
+
+class OBJECT_OT_fluid_free_low(bpy.types.Operator):
+    bl_idname = "fluid_free_low.button"
+    bl_label = "Free Fluid Low"
+            
+    def execute(self, context):
+        bpy.ops.manta.free_simulation_low()
+        return{'FINISHED'}
+
+class OBJECT_OT_fluid_bake_high(bpy.types.Operator):
+    bl_idname = "fluid_bake_high.button"
+    bl_label = "Bake Fluid High"
+            
+    def execute(self, context):
+        bpy.ops.manta.bake_simulation_high()
+        return{'FINISHED'}
+
+class OBJECT_OT_fluid_free_high(bpy.types.Operator):
+    bl_idname = "fluid_free_high.button"
+    bl_label = "Free Fluid High"
+            
+    def execute(self, context):
+        bpy.ops.manta.free_simulation_high()
+        return{'FINISHED'}
+
+class OBJECT_OT_fluid_bake_mesh_low(bpy.types.Operator):
+    bl_idname = "fluid_bake_mesh_low.button"
+    bl_label = "Bake Mesh Low"
+            
+    def execute(self, context):
+        bpy.ops.manta.bake_mesh_low()
+        return{'FINISHED'}
+
+class OBJECT_OT_fluid_free_mesh_low(bpy.types.Operator):
+    bl_idname = "fluid_free_mesh_low.button"
+    bl_label = "Free Mesh Low"
+            
+    def execute(self, context):
+        bpy.ops.manta.free_mesh_low()
+        return{'FINISHED'}
+
+class OBJECT_OT_fluid_bake_mesh_high(bpy.types.Operator):
+    bl_idname = "fluid_bake_mesh_high.button"
+    bl_label = "Bake Mesh High"
+            
+    def execute(self, context):
+        bpy.ops.manta.bake_mesh_high()
+        return{'FINISHED'}
+
+class OBJECT_OT_fluid_free_mesh_high(bpy.types.Operator):
+    bl_idname = "fluid_free_mesh_high.button"
+    bl_label = "Free Mesh High"
+            
+    def execute(self, context):
+        bpy.ops.manta.free_mesh_high()
+        return{'FINISHED'}
+
+class OBJECT_OT_fluid_bake_particles_low(bpy.types.Operator):
+    bl_idname = "fluid_bake_particles_low.button"
+    bl_label = "Bake Particles Low"
+            
+    def execute(self, context):
+        bpy.ops.manta.bake_particles_low()
+        return{'FINISHED'}
+
+class OBJECT_OT_fluid_free_particles_low(bpy.types.Operator):
+    bl_idname = "fluid_free_particles_low.button"
+    bl_label = "Free Particles Low"
+            
+    def execute(self, context):
+        bpy.ops.manta.free_particles_low()
+        return{'FINISHED'}
+
+class OBJECT_OT_fluid_bake_particles_high(bpy.types.Operator):
+    bl_idname = "fluid_bake_particles_high.button"
+    bl_label = "Bake Particles High"
+            
+    def execute(self, context):
+        bpy.ops.manta.bake_particles_high()
+        return{'FINISHED'}
+
+class OBJECT_OT_fluid_free_particles_high(bpy.types.Operator):
+    bl_idname = "fluid_free_particles_high.button"
+    bl_label = "Free Particles High"
+            
+    def execute(self, context):
+        bpy.ops.manta.free_particles_high()
+        return{'FINISHED'}
+
+class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
+    bl_label = "Fluid Decoupled Cache"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_RENDER'}
+
+    @classmethod
+    def poll(cls, context):
+        md = context.smoke
+        rd = context.scene.render
+        return md and (md.smoke_type == 'DOMAIN') and (rd.engine in cls.COMPAT_ENGINES)
+
+    def draw(self, context):
+        layout = self.layout
+        md = context.smoke
+        domain = context.smoke.domain_settings
+
+        split = layout.split()
+        col = split.column()
+        #sub = col.column()
+        #sub.enabled = not domain.cache_baking_geometry and not domain.cache_baked_geometry
+        #if domain.cache_baked_geometry is True:
+        #    sub.operator("fluid_free_geometry.button", text="Free Geometry")
+        #else:
+        #    sub.operator("fluid_bake_geometry.button", text="Bake Geometry")
+
+        sub2 = col.column()
+        sub2.enabled = not domain.cache_baking_low and not domain.cache_baking_mesh_low and not domain.cache_baking_particles_low
+        if domain.cache_baked_low is True:
+            sub2.operator("fluid_free_low.button", text="Free Data Low")
+        else:
+            sub2.operator("fluid_bake_low.button", text="Bake Data Low")
+
+        if (md.domain_settings.smoke_domain_type in {'LIQUID'}):
+            sub3 = col.column()
+            sub3.enabled = domain.cache_baked_low and not domain.cache_baking_mesh_low
+            if domain.cache_baked_mesh_low is True:
+                sub3.operator("fluid_free_mesh_low.button", text="Free Mesh Low")
+            else:
+                sub3.operator("fluid_bake_mesh_low.button", text="Bake Mesh Low")
+
+            sub4 = col.column()
+            sub4.enabled = domain.cache_baked_low and not domain.cache_baking_particles_low and (domain.use_drop_particles or domain.use_bubble_particles or domain.use_floater_particles or domain.use_tracer_particles)
+            if domain.cache_baked_particles_low is True:
+                sub4.operator("fluid_free_particles_low.button", text="Free Particles Low")
+            else:
+                sub4.operator("fluid_bake_particles_low.button", text="Bake Particles Low")
+
+        col = split.column()
+        col.enabled = domain.use_high_resolution
+
+        sub5 = col.column()
+        #sub5.label()
+        sub5.enabled = domain.cache_baked_low and not domain.cache_baking_high and not domain.cache_baking_mesh_high and not domain.cache_baking_particles_high
+        if domain.cache_baked_high is True:
+            sub5.operator("fluid_free_high.button", text="Free Data High")
+        else:
+            sub5.operator("fluid_bake_high.button", text="Bake Data High")
+
+        if (md.domain_settings.smoke_domain_type in {'LIQUID'}):
+            sub6 = col.column()
+            sub6.enabled = domain.cache_baked_low and domain.cache_baked_high and not domain.cache_baking_mesh_high
+            if domain.cache_baked_mesh_high is True:
+                sub6.operator("fluid_free_mesh_high.button", text="Free Mesh High")
+            else:
+                sub6.operator("fluid_bake_mesh_high.button", text="Bake Mesh High")
+
+            sub7 = col.column()
+            sub7.enabled = domain.cache_baked_low and domain.cache_baked_high and not domain.cache_baking_particles_high and (domain.use_drop_particles or domain.use_bubble_particles or domain.use_floater_particles or domain.use_tracer_particles)
+            if domain.cache_baked_particles_high is True:
+                sub7.operator("fluid_free_particles_high.button", text="Free Particles High")
+            else:
+                sub7.operator("fluid_bake_particles_high.button", text="Bake Particles High")
+
+        split = layout.split()
+        domain = context.smoke.domain_settings
+        split.prop(domain, "cache_directory")
+
+        row = layout.row(align=True)
+        row.prop(domain, "cache_frame_start")
+        row.prop(domain, "cache_frame_end")
 
 class PHYSICS_PT_smoke_field_weights(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Field Weights"
@@ -613,7 +804,7 @@ class PHYSICS_PT_smoke_display_settings(PhysicButtonsPanel, Panel):
     @classmethod
     def poll(cls, context):
         md = context.smoke
-	
+
         rd = context.scene.render
         return md and (md.smoke_type == 'DOMAIN') and (not rd.use_game_engine)
 
@@ -674,6 +865,21 @@ classes = (
     PHYSICS_PT_smoke_guiding,
     PHYSICS_PT_smoke_groups,
     PHYSICS_PT_smoke_cache,
+    OBJECT_OT_fluid_bake_geometry,
+    OBJECT_OT_fluid_free_geometry,
+    OBJECT_OT_fluid_bake_low,
+    OBJECT_OT_fluid_free_low,
+    OBJECT_OT_fluid_bake_high,
+    OBJECT_OT_fluid_free_high,
+    OBJECT_OT_fluid_bake_mesh_low,
+    OBJECT_OT_fluid_free_mesh_low,
+    OBJECT_OT_fluid_bake_mesh_high,
+    OBJECT_OT_fluid_free_mesh_high,
+    OBJECT_OT_fluid_bake_particles_low,
+    OBJECT_OT_fluid_free_particles_low,
+    OBJECT_OT_fluid_bake_particles_high,
+    OBJECT_OT_fluid_free_particles_high,
+    PHYSICS_PT_manta_cache,
     PHYSICS_PT_smoke_field_weights,
     OBJECT_OT_RunMantaButton,
     PHYSICS_PT_smoke_export_manta,

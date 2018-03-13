@@ -35,7 +35,7 @@
 
 const std::string manta_import = "\
 from manta import *\n\
-import os, shutil, math, sys, gc\n";
+import os, shutil, math, sys, gc, multiprocessing, errno, bpy\n";
 
 //////////////////////////////////////////////////////////////////////
 // DEBUG
@@ -76,6 +76,8 @@ doOpen_s$ID$              = $DO_OPEN$\n\
 boundConditions_s$ID$     = '$BOUNDCONDITIONS$'\n\
 boundaryWidth_s$ID$       = 1\n\
 \n\
+using_smoke_s$ID$     = $USING_SMOKE$\n\
+using_liquid_s$ID$    = $USING_LIQUID$\n\
 using_highres_s$ID$   = $USING_HIGHRES$\n\
 using_adaptTime_s$ID$ = $USING_ADAPTIVETIME$\n\
 using_obstacle_s$ID$  = $USING_OBSTACLE$\n\
@@ -264,8 +266,449 @@ const std::string gc_collect = "\n\
 gc.collect()\n";
 
 //////////////////////////////////////////////////////////////////////
-// IMPORT / EXPORT
+// BAKE
 //////////////////////////////////////////////////////////////////////
+
+const std::string fluid_bake_helper = "\n\
+def fluid_cache_free_$ID$(cache_dir):\n\
+    for file in os.listdir(cache_dir):\n\
+        file_path = os.path.join(cache_dir, file)\n\
+        try:\n\
+            if os.path.isfile(file_path):\n\
+                os.unlink(file_path)\n\
+        except Exception as e:\n\
+            print(e)\n\
+            return False\n\
+    return True\n\
+\n\
+def fluid_cache_create_sub_$ID$(path, cache_dir):\n\
+    try:\n\
+        os.makedirs(cache_dir)\n\
+    except OSError as e:\n\
+        if e.errno != errno.EEXIST:\n\
+            print(e)\n\
+\n\
+def fluid_cache_get_framenr_formatted_$ID$(framenr):\n\
+    return str(framenr).zfill(4) # framenr with leading zeroes\n\
+\n\
+def fluid_cache_get_geometry_dir_$ID$(path):\n\
+    return os.path.join(path, 'geometry/')\n\
+\n\
+def fluid_cache_get_data_low_dir_$ID$(path):\n\
+    return os.path.join(path, 'data_low/')\n\
+\n\
+def fluid_cache_get_data_high_dir_$ID$(path):\n\
+    return os.path.join(path, 'data_high/')\n\
+\n\
+def fluid_cache_get_mesh_low_dir_$ID$(path):\n\
+    return os.path.join(path, 'mesh_low/')\n\
+\n\
+def fluid_cache_get_mesh_high_dir_$ID$(path):\n\
+    return os.path.join(path, 'mesh_high/')\n\
+\n\
+def fluid_cache_get_particles_low_dir_$ID$(path):\n\
+    return os.path.join(path, 'particles_low/')\n\
+\n\
+def fluid_cache_get_particles_high_dir_$ID$(path):\n\
+    return os.path.join(path, 'particles_high/')\n";
+
+const std::string fluid_bake_geometry = "\n\
+def bake_geometry_process_$ID$(path, framenr):\n\
+    mantaMsg('Bake geometry')\n\
+    subdir_data = fluid_cache_get_geometry_dir_$ID$(path)\n\
+    fluid_cache_create_sub_$ID$(path, subdir_data)\n\
+    \n\
+    fluid_save_geometry_low_$ID$(subdir_data, framenr)\n\
+    if using_smoke_s$ID$:\n\
+        smoke_save_geometry_low_$ID$(subdir_data, framenr)\n\
+    if using_liquid_s$ID$:\n\
+        liquid_save_geometry_low_$ID$(subdir_data, framenr)\n\
+    return True\n\
+\n\
+def bake_geometry_callback_$ID$(result):\n\
+    if not result:\n\
+        global fluid_domain_$ID$\n\
+        fluid_domain_$ID$.cache_baking_low = False\n\
+        if result:\n\
+            fluid_domain_$ID$.cache_baked_geometry = True\n\
+        else:\n\
+            fluid_domain_$ID$.cache_baked_geometry = False\n\
+            mantaMsg('ERROR: Could not bake fluid geometry cache')\n\
+\n\
+def bake_geometry_$ID$(path, framenr):\n\
+    #global fluid_domain_$ID$\n\
+    #fluid_domain_$ID$ = bpy.context.active_object.modifiers['Smoke'].domain_settings\n\
+    pool$ID$ = multiprocessing.Pool()\n\
+    pool$ID$.apply_async(bake_geometry_process_$ID$, args=(path, framenr,), callback=bake_geometry_callback_$ID$)\n\
+    pool$ID$.close()\n";
+
+const std::string fluid_bake_low = "\n\
+def bake_fluid_process_low_$ID$(path, start_frame, end_frame):\n\
+    mantaMsg('Bake fluid low')\n\
+    subdir_data = fluid_cache_get_data_low_dir_$ID$(path)\n\
+    fluid_cache_create_sub_$ID$(path, subdir_data)\n\
+    \n\
+    for framenr in range(start_frame, end_frame+1):\n\
+        # TODO (sebbas): load grids before stepping\n\
+        #if using_smoke_s$ID$:\n\
+        #    smoke_load_data_low_$ID$(subdir_data, framenr)\n\
+        #if using_liquid_s$ID$:\n\
+        #    liquid_load_inflow_low_$ID$(subdir_data, framenr)\n\
+        \n\
+        fluid_step_low_$ID$(framenr)\n\
+        \n\
+        fluid_save_data_low_$ID$(subdir_data, framenr)\n\
+        if using_smoke_s$ID$:\n\
+            smoke_save_data_low_$ID$(subdir_data, framenr)\n\
+        if using_liquid_s$ID$:\n\
+            liquid_save_data_low_$ID$(subdir_data, framenr)\n\
+    return True\n\
+\n\
+def bake_fluid_callback_low_$ID$(result):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$.cache_baking_low = False\n\
+    if result:\n\
+        fluid_domain_$ID$.cache_baked_low = True\n\
+    else:\n\
+        fluid_domain_$ID$.cache_baked_low = False\n\
+        mantaMsg('ERROR: Could not bake fluid data low cache')\n\
+\n\
+def bake_fluid_low_$ID$(path, start_frame, end_frame):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$ = bpy.context.active_object.modifiers['Smoke'].domain_settings\n\
+    pool$ID$ = multiprocessing.Pool()\n\
+    pool$ID$.apply_async(bake_fluid_process_low_$ID$, args=(path, start_frame, end_frame,), callback=bake_fluid_callback_low_$ID$)\n\
+    pool$ID$.close()\n";
+
+const std::string fluid_bake_high = "\n\
+def bake_fluid_process_high_$ID$(path, start_frame, end_frame):\n\
+    mantaMsg('Bake fluid high')\n\
+    subdir_data = fluid_cache_get_data_high_dir_$ID$(path)\n\
+    fluid_cache_create_sub_$ID$(path, subdir_data)\n\
+    \n\
+    for framenr in range(start_frame, end_frame+1):\n\
+        fluid_step_high_$ID$(framenr)\n\
+        fluid_save_data_high_$ID$(subdir_data, framenr)\n\
+        if using_smoke_s$ID$:\n\
+            smoke_save_data_high_$ID$(subdir_data, framenr)\n\
+    return True\n\
+\n\
+def bake_fluid_callback_high_$ID$(result):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$.cache_baking_high = False\n\
+    if result:\n\
+        fluid_domain_$ID$.cache_baked_high = True\n\
+    else:\n\
+        fluid_domain_$ID$.cache_baked_high = False\n\
+        mantaMsg('ERROR: Could not bake fluid data high cache')\n\
+\n\
+def bake_fluid_high_$ID$(path, start_frame, end_frame):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$ = bpy.context.active_object.modifiers['Smoke'].domain_settings\n\
+    pool$ID$ = multiprocessing.Pool()\n\
+    pool$ID$.apply_async(bake_fluid_process_high_$ID$, args=(path, start_frame, end_frame,), callback=bake_fluid_callback_high_$ID$)\n\
+    pool$ID$.close()\n";
+
+const std::string fluid_bake_mesh_low = "\n\
+def bake_mesh_process_low_$ID$(path, start_frame, end_frame):\n\
+    mantaMsg('Bake mesh low')\n\
+    subdir_data = fluid_cache_get_data_low_dir_$ID$(path)\n\
+    subdir_mesh = fluid_cache_get_mesh_low_dir_$ID$(path)\n\
+    fluid_cache_create_sub_$ID$(path, subdir_mesh)\n\
+    \n\
+    for framenr in range(start_frame, end_frame+1):\n\
+        #if using_smoke_s$ID$:\n\
+            # TODO (sebbas): Future update could include smoke mesh (vortex sheets)\n\
+        if using_liquid_s$ID$:\n\
+            liquid_load_levelset_low_$ID$(subdir_data, framenr)\n\
+            liquid_save_mesh_low_$ID$(subdir_mesh, framenr)\n\
+    return True\n\
+\n\
+def bake_mesh_callback_low_$ID$(result):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$.cache_baking_mesh_low = False\n\
+    if result:\n\
+        fluid_domain_$ID$.cache_baked_mesh_low = True\n\
+    else:\n\
+        fluid_domain_$ID$.cache_baked_mesh_low = False\n\
+        mantaMsg('ERROR: Could not bake fluid data low cache')\n\
+\n\
+def bake_mesh_low_$ID$(path, start_frame, end_frame):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$ = bpy.context.active_object.modifiers['Smoke'].domain_settings\n\
+    pool$ID$ = multiprocessing.Pool()\n\
+    pool$ID$.apply_async(bake_mesh_process_low_$ID$, args=(path, start_frame, end_frame,), callback=bake_mesh_callback_low_$ID$)\n\
+    pool$ID$.close()\n";
+
+const std::string fluid_bake_mesh_high = "\n\
+def bake_mesh_process_high_$ID$(path, start_frame, end_frame):\n\
+    mantaMsg('Bake mesh high')\n\
+    subdir_data = fluid_cache_get_data_low_dir_$ID$(path)\n\
+    subdir_mesh = fluid_cache_get_mesh_high_dir_$ID$(path)\n\
+    fluid_cache_create_sub_$ID$(path, subdir_mesh)\n\
+    \n\
+    for framenr in range(start_frame, end_frame+1):\n\
+        #if using_smoke_s$ID$:\n\
+            # TODO (sebbas): Future update could include smoke mesh (vortex sheets)\n\
+        if using_liquid_s$ID$:\n\
+            liquid_load_levelset_low_$ID$(subdir_data, framenr)\n\
+            liquid_save_mesh_high_$ID$(subdir_mesh, framenr)\n\
+    return True\n\
+\n\
+def bake_mesh_callback_high_$ID$(result):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$.cache_baking_mesh_high = False\n\
+    if result:\n\
+        fluid_domain_$ID$.cache_baked_mesh_high = True\n\
+    else:\n\
+        fluid_domain_$ID$.cache_baked_mesh_high = False\n\
+        mantaMsg('ERROR: Could not free fluid mesh high cache')\n\
+\n\
+def bake_mesh_high_$ID$(path, start_frame, end_frame):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$ = bpy.context.active_object.modifiers['Smoke'].domain_settings\n\
+    pool$ID$ = multiprocessing.Pool()\n\
+    pool$ID$.apply_async(bake_mesh_process_high_$ID$, args=(path, start_frame, end_frame,), callback=bake_mesh_callback_high_$ID$)\n\
+    pool$ID$.close()\n";
+
+const std::string fluid_bake_particles_low = "\n\
+def bake_particles_process_low_$ID$(path, start_frame, end_frame):\n\
+    mantaMsg('Bake secondary particles low')\n\
+    subdir_data = fluid_cache_get_data_low_dir_$ID$(path)\n\
+    subdir_parts = fluid_cache_get_particles_low_dir_$ID$(path)\n\
+    fluid_cache_create_sub_$ID$(path, subdir_parts)\n\
+    \n\
+    for framenr in range(start_frame, end_frame+1):\n\
+        #if using_smoke_s$ID$:\n\
+            # TODO (sebbas): Future update could include smoke particles (e.g. fire sparks)\n\
+        if using_liquid_s$ID$:\n\
+            fluid_load_data_low_$ID$(subdir_data, framenr) # reload from cache\n\
+            liquid_load_levelset_low_$ID$(subdir_data, framenr)\n\
+            \n\
+            liquid_step_particles_low_$ID$()\n\
+            liquid_save_particles_low_$ID$(subdir_parts, framenr)\n\
+    return True\n\
+\n\
+def bake_particles_callback_low_$ID$(result):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$.cache_baking_particles_low = False\n\
+    if result:\n\
+        fluid_domain_$ID$.cache_baked_particles_low = True\n\
+    else:\n\
+        fluid_domain_$ID$.cache_baked_particles_low = False\n\
+        mantaMsg('ERROR: Could not bake fluid particle low cache')\n\
+\n\
+def bake_particles_low_$ID$(path, start_frame, end_frame):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$ = bpy.context.active_object.modifiers['Smoke'].domain_settings\n\
+    pool$ID$ = multiprocessing.Pool()\n\
+    pool$ID$.apply_async(bake_particles_process_low_$ID$, args=(path, start_frame, end_frame,), callback=bake_particles_callback_low_$ID$)\n\
+    pool$ID$.close()\n";
+
+const std::string fluid_bake_particles_high = "\n\
+def bake_particles_process_high_$ID$(path, start_frame, end_frame):\n\
+    mantaMsg('Bake secondary particles high')\n\
+    subdir_data = fluid_cache_get_data_high_dir_$ID$(path)\n\
+    subdir_parts = fluid_cache_get_particles_high_dir_$ID$(path)\n\
+    fluid_cache_create_sub_$ID$(path, subdir_parts)\n\
+    \n\
+    #for framenr in range(start_frame, end_frame+1):\n\
+        #if using_smoke_s$ID$:\n\
+            # TODO (sebbas): Future update could include smoke particles (e.g. fire sparks)\n\
+        #if using_liquid_s$ID$:\n\
+            # TODO (sebbas): Add support for high res particles\n\
+    return True\n\
+\n\
+def bake_particles_callback_high_$ID$(result):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$.cache_baking_particles_high = False\n\
+    if result:\n\
+        fluid_domain_$ID$.cache_baked_particles_high = True\n\
+    else:\n\
+        fluid_domain_$ID$.cache_baked_particles_high = False\n\
+        mantaMsg('ERROR: Could not bake fluid particle high cache')\n\
+\n\
+def bake_particles_high_$ID$(path, start_frame, end_frame):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$ = bpy.context.active_object.modifiers['Smoke'].domain_settings\n\
+    pool$ID$ = multiprocessing.Pool()\n\
+    pool$ID$.apply_async(bake_particles_process_high_$ID$, args=(path, start_frame, end_frame,), callback=bake_particles_callback_high_$ID$)\n\
+    pool$ID$.close()\n";
+
+//////////////////////////////////////////////////////////////////////
+// FREE
+//////////////////////////////////////////////////////////////////////
+
+const std::string fluid_free_geometry = "\n\
+def free_geometry_process_$ID$(path):\n\
+    mantaMsg('Free geometry')\n\
+    subdir = fluid_cache_get_data_low_dir_$ID$(path)\n\
+    return fluid_cache_free_$ID$(subdir)\n\
+\n\
+def free_geometry_callback_$ID$(result):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$.cache_baking_geometry = False\n\
+    if result:\n\
+        fluid_domain_$ID$.cache_baked_geometry = False\n\
+    else:\n\
+        fluid_domain_$ID$.cache_baked_geometry = True\n\
+        mantaMsg('ERROR: Could not free fluid geometry cache')\n\
+\n\
+def free_fluid_low_$ID$(path):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$ = bpy.context.active_object.modifiers['Smoke'].domain_settings\n\
+    pool$ID$ = multiprocessing.Pool()\n\
+    pool$ID$.apply_async(free_geometry_process_$ID$, args=(path,), callback=free_geometry_callback_$ID$)\n\
+    pool$ID$.close()\n";
+
+const std::string fluid_free_low = "\n\
+def free_fluid_process_low_$ID$(path):\n\
+    mantaMsg('Free fluid low')\n\
+    subdir = fluid_cache_get_data_low_dir_$ID$(path)\n\
+    return fluid_cache_free_$ID$(subdir)\n\
+\n\
+def free_fluid_callback_low_$ID$(result):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$.cache_baking_low = False\n\
+    if result:\n\
+        fluid_domain_$ID$.cache_baked_low = False\n\
+    else:\n\
+        fluid_domain_$ID$.cache_baked_low = True\n\
+        mantaMsg('ERROR: Could not free fluid data low cache')\n\
+\n\
+def free_fluid_low_$ID$(path):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$ = bpy.context.active_object.modifiers['Smoke'].domain_settings\n\
+    pool$ID$ = multiprocessing.Pool()\n\
+    pool$ID$.apply_async(free_fluid_process_low_$ID$, args=(path,), callback=free_fluid_callback_low_$ID$)\n\
+    pool$ID$.close()\n";
+
+const std::string fluid_free_high = "\n\
+def free_fluid_process_high_$ID$(path):\n\
+    mantaMsg('Free fluid high')\n\
+    subdir = fluid_cache_get_data_high_dir_$ID$(path)\n\
+    return fluid_cache_free_$ID$(subdir)\n\
+\n\
+def free_fluid_callback_high_$ID$(result):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$.cache_baking_high = False\n\
+    if result:\n\
+        fluid_domain_$ID$.cache_baked_high = False\n\
+    else:\n\
+        fluid_domain_$ID$.cache_baked_low = True\n\
+        mantaMsg('ERROR: Could not free fluid data high cache')\n\
+\n\
+def free_fluid_high_$ID$(path):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$ = bpy.context.active_object.modifiers['Smoke'].domain_settings\n\
+    pool$ID$ = multiprocessing.Pool()\n\
+    pool$ID$.apply_async(free_fluid_process_high_$ID$, args=(path,), callback=free_fluid_callback_high_$ID$)\n\
+    pool$ID$.close()\n";
+
+const std::string fluid_free_mesh_low = "\n\
+def free_mesh_process_low_$ID$(path):\n\
+    mantaMsg('Free mesh low')\n\
+    subdir = fluid_cache_get_mesh_low_dir_$ID$(path)\n\
+    return fluid_cache_free_$ID$(subdir)\n\
+\n\
+def free_mesh_callback_low_$ID$(result):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$.cache_baking_mesh_low = False\n\
+    if result:\n\
+        fluid_domain_$ID$.cache_baked_mesh_low = False\n\
+    else:\n\
+        fluid_domain_$ID$.cache_baked_mesh_low = True\n\
+        mantaMsg('ERROR: Could not free fluid mesh low cache')\n\
+\n\
+def free_mesh_low_$ID$(path):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$ = bpy.context.active_object.modifiers['Smoke'].domain_settings\n\
+    pool$ID$ = multiprocessing.Pool()\n\
+    pool$ID$.apply_async(free_mesh_process_low_$ID$, args=(path,), callback=free_mesh_callback_low_$ID$)\n\
+    pool$ID$.close()\n";
+
+const std::string fluid_free_mesh_high = "\n\
+def free_mesh_process_high_$ID$(path):\n\
+    mantaMsg('Free mesh high')\n\
+    subdir = fluid_cache_get_mesh_high_dir_$ID$(path)\n\
+    return fluid_cache_free_$ID$(subdir)\n\
+\n\
+def free_mesh_callback_high_$ID$(result):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$.cache_baking_mesh_high = False\n\
+    if result:\n\
+        fluid_domain_$ID$.cache_baked_mesh_high = False\n\
+    else:\n\
+        fluid_domain_$ID$.cache_baked_mesh_high = True\n\
+        mantaMsg('ERROR: Could not free fluid mesh high cache')\n\
+\n\
+def free_mesh_high_$ID$(path):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$ = bpy.context.active_object.modifiers['Smoke'].domain_settings\n\
+    pool$ID$ = multiprocessing.Pool()\n\
+    pool$ID$.apply_async(free_mesh_process_high_$ID$, args=(path,), callback=free_mesh_callback_high_$ID$)\n\
+    pool$ID$.close()\n";
+
+const std::string fluid_free_particles_low = "\n\
+def free_particles_process_low_$ID$(path):\n\
+    mantaMsg('Free secondary particles low')\n\
+    subdir_parts = fluid_cache_get_particles_low_dir_$ID$(path)\n\
+    return fluid_cache_free_$ID$(subdir_parts)\n\
+\n\
+def free_particles_callback_low_$ID$(result):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$.cache_baking_particles_low = False\n\
+    if result:\n\
+        fluid_domain_$ID$.cache_baked_particles_low = False\n\
+    else:\n\
+        fluid_domain_$ID$.cache_baked_particles_low = True\n\
+        mantaMsg('ERROR: Could not free fluid particle low cache')\n\
+\n\
+def free_particles_low_$ID$(path):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$ = bpy.context.active_object.modifiers['Smoke'].domain_settings\n\
+    pool$ID$ = multiprocessing.Pool()\n\
+    pool$ID$.apply_async(free_particles_process_low_$ID$, args=(path,), callback=free_particles_callback_low_$ID$)\n\
+    pool$ID$.close()\n";
+
+const std::string fluid_free_particles_high = "\n\
+def free_particles_process_high_$ID$(path):\n\
+    mantaMsg('Free secondary particles high')\n\
+    subdir_parts = fluid_cache_get_particles_high_dir_$ID$(path)\n\
+    return fluid_cache_free_$ID$(subdir_parts)\n\
+\n\
+def free_particles_callback_high_$ID$(result):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$.cache_baking_particles_high = False\n\
+    if result:\n\
+        fluid_domain_$ID$.cache_baked_particles_high = False\n\
+    else:\n\
+        fluid_domain_$ID$.cache_baked_particles_high = True\n\
+        mantaMsg('ERROR: Could not free fluid particle high cache')\n\
+\n\
+def free_particles_high_$ID$(path):\n\
+    global fluid_domain_$ID$\n\
+    fluid_domain_$ID$ = bpy.context.active_object.modifiers['Smoke'].domain_settings\n\
+    pool$ID$ = multiprocessing.Pool()\n\
+    pool$ID$.apply_async(free_particles_process_high_$ID$, args=(path,), callback=free_particles_callback_high_$ID$)\n\
+    pool$ID$.close()\n";
+
+//////////////////////////////////////////////////////////////////////
+// IMPORT
+//////////////////////////////////////////////////////////////////////
+
+const std::string fluid_load_data_low = "\n\
+def fluid_load_data_low_$ID$(path, framenr):\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    flags_s$ID$.load(path + 'flags_' + framenr + '.uni')\n\
+    vel_s$ID$.load(path + 'vel_' + framenr + '.uni')\n";
+
+const std::string fluid_load_data_high = "\n\
+def fluid_load_data_high_$ID$(path, framenr):\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    flags_xl$ID$.load(path + 'flags_xl_' + framenr + '.uni')\n";
+
+/* BEGIN TODO (sebbas): refactor */
 
 const std::string fluid_obstacle_import_low = "\n\
 def load_fluid_obstacle_data_low_$ID$(path):\n\
@@ -330,6 +773,28 @@ def save_fluid_sndparts_data_low_$ID$(path):\n\
     ppSnd_s$ID$.save(path + '_ppSnd.uni')\n\
     pVelSnd_pp$ID$.save(path + '_pVelSnd.uni')\n\
     pLifeSnd_pp$ID$.save(path + '_pLifeSnd.uni')\n";
+
+/* END TODO (sebbas): refactor */
+
+//////////////////////////////////////////////////////////////////////
+// EXPORT
+//////////////////////////////////////////////////////////////////////
+
+const std::string fluid_save_data_low = "\n\
+def fluid_save_data_low_$ID$(path, framenr):\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    flags_s$ID$.save(path + 'flags_' + framenr + '.uni')\n\
+    vel_s$ID$.save(path + 'vel_' + framenr + '.uni')\n";
+
+const std::string fluid_save_data_high = "\n\
+def fluid_save_data_high_$ID$(path, framenr):\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n";
+
+const std::string fluid_save_geometry_low = "\n\
+def fluid_save_geometry_low_$ID$(path, framenr):\n\
+    mantaMsg('Fluid save geometry')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    phiOutIn_s$ID$.save(path + 'phiOutIn_' + framenr + '.uni')\n";
 
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE

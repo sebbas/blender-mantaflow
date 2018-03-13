@@ -61,9 +61,9 @@ extern "C" void smoke_manta_export(FLUID* smoke, SmokeModifierData *smd)
 	smoke->exportSmokeData(smd);
 }
 
-extern "C" void smoke_step(FLUID *fluid, int framenr)
+extern "C" void smoke_step(FLUID *fluid, SmokeModifierData *smd, int framenr)
 {
-	fluid->step(framenr);
+	fluid->step(smd, framenr);
 	fluid->updatePointers();
 	if (fluid->usingHighRes())
 		fluid->updatePointersHigh();
@@ -833,4 +833,88 @@ extern "C" int fluid_get_res_y(FLUID* fluid)
 extern "C" int fluid_get_res_z(FLUID* fluid)
 {
 	return fluid->getResZ();
+}
+
+extern "C" int fluid_read_cache(FLUID* fluid, SmokeModifierData *smd, int framenr)
+{
+	if (!fluid || !smd) return;
+	return fluid->readCache(smd, framenr);
+}
+
+extern "C" void fluid_free_geometry(FLUID* fluid, SmokeModifierData *smd)
+{
+	if (!fluid || !smd) return;
+	fluid->freeGeometry(smd);
+}
+
+extern "C" void fluid_bake_low(FLUID* fluid, SmokeModifierData *smd)
+{
+	if (!fluid || !smd) return;
+	fluid->bakeSimulationLow(smd);
+}
+
+extern "C" void fluid_free_low(FLUID* fluid, SmokeModifierData *smd)
+{
+	if (!fluid || !smd) return;
+	fluid->freeSimulationLow(smd);
+}
+
+extern "C" void fluid_bake_high(FLUID* fluid, SmokeModifierData *smd)
+{
+	if (!fluid || !smd) return;
+	fluid->bakeSimulationHigh(smd);
+}
+
+extern "C" void fluid_free_high(FLUID* fluid, SmokeModifierData *smd)
+{
+	if (!fluid || !smd) return;
+	fluid->freeSimulationHigh(smd);
+}
+
+extern "C" void fluid_bake_mesh_low(FLUID* fluid, SmokeModifierData *smd)
+{
+	if (!fluid || !smd) return;
+	fluid->bakeMeshLow(smd);
+}
+
+extern "C" void fluid_free_mesh_low(FLUID* fluid, SmokeModifierData *smd)
+{
+	if (!fluid || !smd) return;
+	fluid->freeMeshLow(smd);
+}
+
+extern "C" void fluid_bake_mesh_high(FLUID* fluid, SmokeModifierData *smd)
+{
+	if (!fluid || !smd) return;
+	fluid->bakeMeshHigh(smd);
+}
+
+extern "C" void fluid_free_mesh_high(FLUID* fluid, SmokeModifierData *smd)
+{
+	if (!fluid || !smd) return;
+	fluid->freeMeshHigh(smd);
+}
+
+extern "C" void fluid_bake_particles_low(FLUID* fluid, SmokeModifierData *smd)
+{
+	if (!fluid || !smd) return;
+	fluid->bakeParticlesLow(smd);
+}
+
+extern "C" void fluid_free_particles_low(FLUID* fluid, SmokeModifierData *smd)
+{
+	if (!fluid || !smd) return;
+	fluid->freeParticlesLow(smd);
+}
+
+extern "C" void fluid_bake_particles_high(FLUID* fluid, SmokeModifierData *smd)
+{
+	if (!fluid || !smd) return;
+	fluid->bakeParticlesHigh(smd);
+}
+
+extern "C" void fluid_free_particles_high(FLUID* fluid, SmokeModifierData *smd)
+{
+	if (!fluid || !smd) return;
+	fluid->freeParticlesHigh(smd);
 }
