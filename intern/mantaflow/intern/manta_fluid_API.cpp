@@ -837,7 +837,7 @@ extern "C" int fluid_get_res_z(FLUID* fluid)
 
 extern "C" int fluid_read_cache(FLUID* fluid, SmokeModifierData *smd, int framenr)
 {
-	if (!fluid || !smd) return;
+	if (!fluid || !smd) return 0;
 	return fluid->readCache(smd, framenr);
 }
 
