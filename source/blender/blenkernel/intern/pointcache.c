@@ -1292,7 +1292,7 @@ static int ptcache_mesh_read(void *smoke_v, char *filename)
 	return 0;
 }
 
-static int ptcache_mesh_write(void *smoke_v, char *filename)
+static int ptcache_mesh_write(void *smoke_v, char *filename, int cfra)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
 	int i;
@@ -1311,7 +1311,7 @@ static int ptcache_mesh_write(void *smoke_v, char *filename)
 	bool high_res_view = sds->viewport_display_mode == SM_VIEWPORT_FINAL;
 
 	if (sds->fluid) {
-		liquid_save_mesh(sds->fluid, filename);
+		liquid_save_mesh(sds->fluid, filename, cfra);
 		if (high_res) {
 			strcpy(filenameTmp, filename);			// copy name, original file name is needed later
 			i = strlen(filenameTmp);
@@ -3115,7 +3115,7 @@ static int ptcache_write_mesh_stream(PTCacheID *pid, int cfra)
 	
 	BLI_make_existing_file(filename);
 
-	int error = pid->write_mesh_stream(pid->calldata, filename);
+	int error = pid->write_mesh_stream(pid->calldata, filename, cfra);
 	
 	if (error && G.debug & G_DEBUG)
 		printf("Error writing to disk cache\n");

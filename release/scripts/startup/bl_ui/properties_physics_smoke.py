@@ -691,16 +691,18 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
         domain = context.smoke.domain_settings
 
         split = layout.split()
+        split.enabled = not domain.cache_baking_geometry and not domain.cache_baking_mesh_low and not domain.cache_baking_particles_low and not domain.cache_baking_mesh_high and not domain.cache_baking_particles_high and not domain.cache_baking_low and not domain.cache_baking_high
+        if domain.cache_baked_geometry is True:
+            split.operator("fluid_free_geometry.button", text="Free Geometry")
+        else:
+            split.operator("fluid_bake_geometry.button", text="Bake Geometry")
+
+        split = layout.split()
+        split.enabled = domain.cache_baked_geometry
         col = split.column()
-        #sub = col.column()
-        #sub.enabled = not domain.cache_baking_geometry and not domain.cache_baked_geometry
-        #if domain.cache_baked_geometry is True:
-        #    sub.operator("fluid_free_geometry.button", text="Free Geometry")
-        #else:
-        #    sub.operator("fluid_bake_geometry.button", text="Bake Geometry")
 
         sub2 = col.column()
-        sub2.enabled = not domain.cache_baking_low and not domain.cache_baking_mesh_low and not domain.cache_baking_particles_low
+        sub2.enabled = not domain.cache_baking_low and not domain.cache_baking_mesh_low and not domain.cache_baking_particles_low and not domain.cache_baking_high
         if domain.cache_baked_low is True:
             sub2.operator("fluid_free_low.button", text="Free Data Low")
         else:
@@ -725,7 +727,6 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
         col.enabled = domain.use_high_resolution
 
         sub5 = col.column()
-        #sub5.label()
         sub5.enabled = domain.cache_baked_low and not domain.cache_baking_high and not domain.cache_baking_mesh_high and not domain.cache_baking_particles_high
         if domain.cache_baked_high is True:
             sub5.operator("fluid_free_high.button", text="Free Data High")

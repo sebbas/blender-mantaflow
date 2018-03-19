@@ -586,7 +586,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->cache_volume_format = PTCACHE_FILE_PTCACHE;
 			smd->domain->cache_frame_start = 1;
 			smd->domain->cache_frame_end = 250;
-			BLI_make_file_string("/", smd->domain->cache_directory, BKE_tempdir_base(), "");
+			BLI_make_file_string("/", 	BLI_path_make_safe(smd->domain->cache_directory), BKE_tempdir_base(), "");
 			smd->domain->cache_flag = 0;
 
 			smd->domain->display_thickness = 1.0f;
@@ -643,10 +643,6 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->effec->type = 0; // static obstacle
 			smd->effec->dm = NULL;
 			smd->effec->surface_distance = 0.5f;
-
-#ifdef USE_SMOKE_COLLISION_DM
-			smd->effec->dm = NULL;
-#endif
 		}
 	}
 }
@@ -986,37 +982,49 @@ static void obstacles_from_derivedmesh(
 	}
 }
 
+static void update_obstacleflags(SmokeDomainSettings *sds, Object **collobjs, int numcollobj)
+{
+	int active_fields = sds->active_fields;
+	unsigned int collIndex;
+	
+	/* Monitor active fields based on flow settings */
+	for (collIndex = 0; collIndex < numcollobj; collIndex++)
+	{
+		Object *collob = collobjs[collIndex];
+		SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(collob, eModifierType_Smoke);
+		
+		if ((smd2->type & MOD_SMOKE_TYPE_EFFEC) && smd2->effec) {
+			SmokeCollSettings *scs = smd2->effec;
+			if (!scs) break;
+			if (scs->type == SM_EFFECTOR_COLLISION) {
+				active_fields |= SM_ACTIVE_OBSTACLE;
+			}
+			if (scs->type == SM_EFFECTOR_GUIDE) {
+				active_fields |= SM_ACTIVE_GUIDING;
+			}
+		}
+	}
+	/* Finally, initialize new data fields if any */
+	if (active_fields & SM_ACTIVE_OBSTACLE) {
+		fluid_ensure_obstacle(sds->fluid, sds->smd);
+	}
+	if (active_fields & SM_ACTIVE_GUIDING) {
+		fluid_ensure_guiding(sds->fluid, sds->smd);
+	}
+	sds->active_fields = active_fields;
+}
+
 /* Animated obstacles: dx_step = ((x_new - x_old) / totalsteps) * substep */
 static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds, float dt,
                              int UNUSED(substep), int UNUSED(totalsteps))
 {
 	Object **collobjs = NULL;
-	unsigned int numcollobj = 0;
-
-	unsigned int collIndex;
-	int active_fields = sds->active_fields;
+	unsigned int numcollobj = 0, collIndex = 0;
 
 	collobjs = get_collisionobjects(scene, ob, sds->coll_group, &numcollobj, eModifierType_Smoke);
 
-	/* check what type of effector objects present. then init according grids */
-	for (collIndex = 0; collIndex < numcollobj; collIndex++)
-	{
-		Object *collob = collobjs[collIndex];
-		SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(collob, eModifierType_Smoke);
-
-		if ((smd2->type & MOD_SMOKE_TYPE_EFFEC) && smd2->effec) {
-			SmokeCollSettings *scs = smd2->effec;
-			if (scs && (scs->type == SM_EFFECTOR_COLLISION)) {
-				active_fields |= SM_ACTIVE_OBSTACLE;
-				fluid_ensure_obstacle(sds->fluid, sds->smd);
-			}
-			if (scs && (scs->type == SM_EFFECTOR_GUIDE)) {
-				active_fields |= SM_ACTIVE_GUIDING;
-				fluid_ensure_guiding(sds->fluid, sds->smd);
-			}
-		}
-	}
-	sds->active_fields = active_fields;
+	/* Update all flow related flags and ensure that corresponding grids get initialized */
+	update_obstacleflags(sds, collobjs, numcollobj);
 
 	float *velx = smoke_get_ob_velocity_x(sds->fluid);
 	float *vely = smoke_get_ob_velocity_y(sds->fluid);
@@ -1064,7 +1072,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 		}
 	}
 
-	// update obstacle tags in cells
+	/* Prepare grids from effector objects */
 	for (collIndex = 0; collIndex < numcollobj; collIndex++)
 	{
 		Object *collob = collobjs[collIndex];
@@ -1083,8 +1091,7 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 		}
 	}
 
-	if (collobjs)
-		MEM_freeN(collobjs);
+	if (collobjs) MEM_freeN(collobjs);
 
 	/* obstacle cells should not contain any velocity from the smoke simulation */
 	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
@@ -2428,18 +2435,12 @@ BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value
 	}
 }
 
-static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sds, float dt)
+static void update_flowsflags(SmokeDomainSettings *sds, Object **flowobjs, int numflowobj)
 {
-	Object **flowobjs = NULL;
-	EmissionMap *emaps = NULL;
-	unsigned int numflowobj = 0;
-	unsigned int flowIndex;
-	int new_shift[3] = {0};
 	int active_fields = sds->active_fields;
+	unsigned int flowIndex;
 
-	flowobjs = get_collisionobjects(scene, ob, sds->fluid_group, &numflowobj, eModifierType_Smoke);
-
-	/* check what type of flow objects present. then init according grids */
+	/* Monitor active fields based on flow settings */
 	for (flowIndex = 0; flowIndex < numflowobj; flowIndex++)
 	{
 		Object *collob = flowobjs[flowIndex];
@@ -2447,12 +2448,83 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 		
 		if ((smd2->type & MOD_SMOKE_TYPE_FLOW) && smd2->flow) {
 			SmokeFlowSettings *sfs = smd2->flow;
-			if (sfs && (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY)) {
+			if (!sfs) break;
+			if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY) {
 				active_fields |= SM_ACTIVE_INVEL;
-				fluid_ensure_invelocity(sds->fluid, sds->smd);
+			}
+			/* activate liquid fields if flow produces any liquid */
+			if (sfs->type == MOD_SMOKE_FLOW_TYPE_LIQUID) {
+				active_fields |= SM_ACTIVE_LIQUID;
+			}
+			/* activate heat field if flow produces any heat */
+			if (sfs->temp && sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
+				active_fields |= SM_ACTIVE_HEAT;
+			}
+			/* activate fuel field if flow adds any fuel */
+			if (sfs->fuel_amount && (sfs->type == MOD_SMOKE_FLOW_TYPE_FIRE || sfs->type == MOD_SMOKE_FLOW_TYPE_SMOKEFIRE)) {
+				active_fields |= SM_ACTIVE_FIRE;
+			}
+			/* activate color field if flows add smoke with varying colors */
+			if (sfs->density && (sfs->type == MOD_SMOKE_FLOW_TYPE_SMOKE || sfs->type == MOD_SMOKE_FLOW_TYPE_SMOKEFIRE)) {
+				if (!(active_fields & SM_ACTIVE_COLOR_SET)) {
+					copy_v3_v3(sds->active_color, sfs->color);
+					active_fields |= SM_ACTIVE_COLOR_SET;
+				}
+				else if (!equals_v3v3(sds->active_color, sfs->color)) {
+					copy_v3_v3(sds->active_color, sfs->color);
+					active_fields |= SM_ACTIVE_COLORS;
+				}
 			}
 		}
 	}
+	/* Monitor active fields based on domain settings */
+	if (active_fields & SM_ACTIVE_FIRE) {
+		/* heat is always needed for fire */
+		active_fields |= SM_ACTIVE_HEAT;
+		/* also activate colors if domain smoke color differs from active color */
+		if (!(active_fields & SM_ACTIVE_COLOR_SET)) {
+			copy_v3_v3(sds->active_color, sds->flame_smoke_color);
+			active_fields |= SM_ACTIVE_COLOR_SET;
+		}
+		else if (!equals_v3v3(sds->active_color, sds->flame_smoke_color)) {
+			copy_v3_v3(sds->active_color, sds->flame_smoke_color);
+			active_fields |= SM_ACTIVE_COLORS;
+		}
+	}
+	/* Finally, initialize new data fields if any */
+	if (active_fields & SM_ACTIVE_INVEL) {
+		fluid_ensure_invelocity(sds->fluid, sds->smd);
+	}
+	if (active_fields & SM_ACTIVE_LIQUID) {
+		liquid_ensure_init(sds->fluid, sds->smd);
+	}
+	if (active_fields & SM_ACTIVE_HEAT) {
+		smoke_ensure_heat(sds->fluid, sds->smd);
+	}
+	if (active_fields & SM_ACTIVE_FIRE) {
+		smoke_ensure_fire(sds->fluid, sds->smd);
+	}
+	if (active_fields & SM_ACTIVE_COLORS) {
+		/* initialize all smoke with "active_color" */
+		smoke_ensure_colors(sds->fluid, sds->smd);
+	}
+	if (sds->particle_type & MOD_SMOKE_PARTICLE_DROP || sds->particle_type & MOD_SMOKE_PARTICLE_FLOAT || sds->particle_type & MOD_SMOKE_PARTICLE_TRACER) {
+		fluid_ensure_sndparts(sds->fluid, sds->smd);
+	}
+	sds->active_fields = active_fields;
+}
+
+static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sds, float dt)
+{
+	EmissionMap *emaps = NULL;
+	int new_shift[3] = {0};
+	Object **flowobjs = NULL;
+	unsigned int numflowobj = 0, flowIndex = 0;
+
+	flowobjs = get_collisionobjects(scene, ob, sds->fluid_group, &numflowobj, eModifierType_Smoke);
+
+	/* Update all flow related flags and ensure that corresponding grids get initialized */
+	update_flowsflags(sds, flowobjs, numflowobj);
 
 	float *phiIn = liquid_get_phiin(sds->fluid);
 	float *phiOutIn = liquid_get_phioutin(sds->fluid);
@@ -2515,13 +2587,11 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 	/* Prepare flow emission maps */
 	for (flowIndex = 0; flowIndex < numflowobj; flowIndex++)
 	{
-		Object *collob = flowobjs[flowIndex];
-		SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(collob, eModifierType_Smoke);
+		Object *flowobj = flowobjs[flowIndex];
+		SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(flowobj, eModifierType_Smoke);
 
 		// check for initialized smoke object
-		if ((smd2->type & MOD_SMOKE_TYPE_FLOW) && smd2->flow)
-		{
-			// we got nice flow object
+		if ((smd2->type & MOD_SMOKE_TYPE_FLOW) && smd2->flow) {
 			SmokeFlowSettings *sfs = smd2->flow;
 			int subframes = sfs->subframes;
 			EmissionMap *em = &emaps[flowIndex];
@@ -2529,10 +2599,10 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 			/* just sample flow directly to emission map if no subframes */
 			if (!subframes) {
 				if (sfs->source == MOD_SMOKE_FLOW_SOURCE_PARTICLES) {
-					emit_from_particles(collob, sds, sfs, em, scene, dt);
+					emit_from_particles(flowobj, sds, sfs, em, scene, dt);
 				}
 				else {
-					emit_from_derivedmesh(collob, sds, sfs, em, dt);
+					emit_from_derivedmesh(flowobj, sds, sfs, em, dt);
 				}
 			}
 			/* sample subframes */
@@ -2564,7 +2634,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 
 					if (sfs->source == MOD_SMOKE_FLOW_SOURCE_PARTICLES) {
 						/* emit_from_particles() updates timestep internally */
-						emit_from_particles(collob, sds, sfs, &em_temp, scene, sdt);
+						emit_from_particles(flowobj, sds, sfs, &em_temp, scene, sdt);
 						if (!(sfs->flags & MOD_SMOKE_FLOW_USE_PART_SIZE)) {
 							hires_multiplier = 1;
 						}
@@ -2572,11 +2642,11 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 					else { /* MOD_SMOKE_FLOW_SOURCE_MESH */
 						/* update flow object frame */
 						BLI_mutex_lock(&object_update_lock);
-						BKE_object_modifier_update_subframe(scene, collob, true, 5, BKE_scene_frame_get(scene), eModifierType_Smoke);
+						BKE_object_modifier_update_subframe(scene, flowobj, true, 5, BKE_scene_frame_get(scene), eModifierType_Smoke);
 						BLI_mutex_unlock(&object_update_lock);
 
 						/* apply flow */
-						emit_from_derivedmesh(collob, sds, sfs, &em_temp, sdt);
+						emit_from_derivedmesh(flowobj, sds, sfs, &em_temp, sdt);
 					}
 
 					/* combine emission maps */
@@ -2584,49 +2654,6 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 					em_freeData(&em_temp);
 				}
 			}
-
-			/* update required data fields */
-			if (em->total_cells && sfs->behavior != MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) {
-				/* activate liquid field. cannot be combined with anything else */
-				if (sfs->type == MOD_SMOKE_FLOW_TYPE_LIQUID) {
-					active_fields |= SM_ACTIVE_LIQUID;
-				}
-				/* activate heat field if flow produces any heat */
-				if (sfs->temp && (sfs->type == MOD_SMOKE_FLOW_TYPE_SMOKE || sfs->type == MOD_SMOKE_FLOW_TYPE_FIRE || sfs->type == MOD_SMOKE_FLOW_TYPE_SMOKEFIRE)) {
-					active_fields |= SM_ACTIVE_HEAT;
-				}
-				/* activate fuel field if flow adds any fuel */
-				if (sfs->fuel_amount && (sfs->type == MOD_SMOKE_FLOW_TYPE_FIRE || sfs->type == MOD_SMOKE_FLOW_TYPE_SMOKEFIRE)) {
-					active_fields |= SM_ACTIVE_FIRE;
-				}
-				/* activate color field if flows add smoke with varying colors */
-				if (sfs->density && (sfs->type == MOD_SMOKE_FLOW_TYPE_SMOKE || sfs->type == MOD_SMOKE_FLOW_TYPE_SMOKEFIRE)) {
-					if (!(active_fields & SM_ACTIVE_COLOR_SET)) {
-						copy_v3_v3(sds->active_color, sfs->color);
-						active_fields |= SM_ACTIVE_COLOR_SET;
-					}
-					else if (!equals_v3v3(sds->active_color, sfs->color)) {
-						copy_v3_v3(sds->active_color, sfs->color);
-						active_fields |= SM_ACTIVE_COLORS;
-					}
-				}
-			}
-		}
-	}
-
-	/* monitor active fields based on domain settings */
-	/* if domain has fire, activate new fields if required */
-	if (active_fields & SM_ACTIVE_FIRE) {
-		/* heat is always needed for fire */
-		active_fields |= SM_ACTIVE_HEAT;
-		/* also activate colors if domain smoke color differs from active color */
-		if (!(active_fields & SM_ACTIVE_COLOR_SET)) {
-			copy_v3_v3(sds->active_color, sds->flame_smoke_color);
-			active_fields |= SM_ACTIVE_COLOR_SET;
-		}
-		else if (!equals_v3v3(sds->active_color, sds->flame_smoke_color)) {
-			copy_v3_v3(sds->active_color, sds->flame_smoke_color);
-			active_fields |= SM_ACTIVE_COLORS;
 		}
 	}
 
@@ -2634,26 +2661,6 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 	if (sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN) {
 		adjustDomainResolution(sds, new_shift, emaps, numflowobj, dt);
 	}
-	
-	/* Initialize new data fields if any */
-	if (active_fields & SM_ACTIVE_HEAT) {
-		smoke_ensure_heat(sds->fluid, sds->smd);
-	}
-	if (active_fields & SM_ACTIVE_FIRE) {
-		smoke_ensure_fire(sds->fluid, sds->smd);
-	}
-	if (active_fields & SM_ACTIVE_COLORS) {
-		/* initialize all smoke with "active_color" */
-		smoke_ensure_colors(sds->fluid, sds->smd);
-	}
-	if (active_fields & SM_ACTIVE_LIQUID) {
-		liquid_ensure_init(sds->fluid, sds->smd);
-	}
-	if (sds->particle_type & MOD_SMOKE_PARTICLE_DROP || sds->particle_type & MOD_SMOKE_PARTICLE_FLOAT || sds->particle_type & MOD_SMOKE_PARTICLE_TRACER) {
-		fluid_ensure_sndparts(sds->fluid, sds->smd);
-	}
-
-	sds->active_fields = active_fields;
 
 	float *density = smoke_get_density(sds->fluid);
 	float *color_r = smoke_get_color_r(sds->fluid);
@@ -2678,13 +2685,11 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 	/* Apply emission data */
 	for (flowIndex = 0; flowIndex < numflowobj; flowIndex++)
 	{
-		Object *collob = flowobjs[flowIndex];
-		SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(collob, eModifierType_Smoke);
+		Object *flowobj = flowobjs[flowIndex];
+		SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(flowobj, eModifierType_Smoke);
 
 		// check for initialized smoke object
-		if ((smd2->type & MOD_SMOKE_TYPE_FLOW) && smd2->flow)
-		{
-			// we got nice flow object
+		if ((smd2->type & MOD_SMOKE_TYPE_FLOW) && smd2->flow) {
 			SmokeFlowSettings *sfs = smd2->flow;
 			EmissionMap *em = &emaps[flowIndex];
 			int bigres[3];
@@ -2909,7 +2914,7 @@ static void update_effectors_task_cb(
 	}
 }
 
-static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds, float UNUSED(dt))
+static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds)
 {
 	ListBase *effectors;
 	/* make sure smoke flow influence is 0.0f */
@@ -2945,81 +2950,29 @@ static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	pdEndEffectors(&effectors);
 }
 
-static void step(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *domain_dm, float fps, int framenr, int startframe, bool do_first_frame, PTCacheID *pid)
+static void smoke_init_geometry(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *domain_dm, float fps, int framenr, int startframe)
 {
 	SmokeDomainSettings *sds = smd->domain;
-	/* stability values copied from wturbulence.cpp */
-	const int maxSubSteps = 25;
-	float maxVel;
-	// maxVel should be 1.5 (1.5 cell max movement) * dx (cell size)
 
 	float dt;
-	float maxVelMag = 0.0f;
 	int totalSubsteps;
 	int substep = 0;
 	float dtSubdiv;
-	float gravity[3] = {0.0f, 0.0f, -1.0f};
-	float gravity_mag;
-
-#if 0  /* UNUSED */
-	   /* get max velocity and lower the dt value if it is too high */
-	size_t size = sds->res[0] * sds->res[1] * sds->res[2];
-	float *velX = smoke_get_velocity_x(sds->fluid);
-	float *velY = smoke_get_velocity_y(sds->fluid);
-	float *velZ = smoke_get_velocity_z(sds->fluid);
-	size_t i;
-#endif
 
 	/* update object state */
 	invert_m4_m4(sds->imat, ob->obmat);
 	copy_m4_m4(sds->obmat, ob->obmat);
 	smoke_set_domain_from_derivedmesh(sds, ob, domain_dm, (sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN) != 0);
-	
 	smoke_set_domain_gravity(scene, sds);
 
 	/* adapt timestep for different framerates, dt = 0.1 is at 25fps */
 	dt = DT_DEFAULT * (25.0f / fps);
-	// maximum timestep/"CFL" constraint: dt < 5.0 *dx / maxVel
-	maxVel = (sds->dx * 5.0f);
-
-#if 0
-	for (i = 0; i < size; i++) {
-		float vtemp = (velX[i] * velX[i] + velY[i] * velY[i] + velZ[i] * velZ[i]);
-		if (vtemp > maxVelMag)
-			maxVelMag = vtemp;
-	}
-#endif
-
-	maxVelMag = sqrtf(maxVelMag) * dt * sds->time_scale;
-	totalSubsteps = (int)((maxVelMag / maxVel) + 1.0f); /* always round up */
-	totalSubsteps = (totalSubsteps < 1) ? 1 : totalSubsteps;
-	totalSubsteps = (totalSubsteps > maxSubSteps) ? maxSubSteps : totalSubsteps;
-
 	/* Disable substeps for now, since it results in numerical instability */
 	totalSubsteps = 1.0f;
-
 	dtSubdiv = (float)dt / (float)totalSubsteps;
 
-	// printf("totalSubsteps: %d, maxVelMag: %f, dt: %f\n", totalSubsteps, maxVelMag, dt);
-
-	for (substep = 0; substep < totalSubsteps; substep++)
-	{
-		// calc animated obstacle velocities
-		update_flowsfluids(scene, ob, sds, dtSubdiv);
-		update_obstacles(scene, ob, sds, dtSubdiv, substep, totalSubsteps);
-
-		if (sds->total_cells > 1) {
-			update_effectors(scene, ob, sds, dtSubdiv); // DG TODO? problem --> uses forces instead of velocity, need to check how they need to be changed with variable dt
-
-			// TODO (sebbas): do we need this extra step with modular cache setup?
-			/* extra step for first frame */
-			if (do_first_frame && sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID) {
-				smoke_step(sds->fluid, sds->smd, startframe);
-				BKE_ptcache_write(pid, startframe);
-			}
-			smoke_step(sds->fluid, sds->smd, framenr);
-		}
-	}
+	update_flowsfluids(scene, ob, sds, dtSubdiv);
+	update_obstacles(scene, ob, sds, dtSubdiv, substep, totalSubsteps);
 }
 
 static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgdm, Object* ob)
@@ -3278,15 +3231,19 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 
 		cache = sds->point_cache[0];
 
-		BKE_ptcache_id_from_smoke(&pid, ob, smd);
-		BKE_ptcache_id_time(&pid, scene, framenr, &startframe, &endframe, &timescale);
+		// TODO (sebbas): reenable pointcache or not?
+//		BKE_ptcache_id_from_smoke(&pid, ob, smd);
+//		BKE_ptcache_id_time(&pid, scene, framenr, &startframe, &endframe, &timescale);
+		startframe = sds->cache_frame_start;
+		endframe = sds->cache_frame_end;
 
 		if (!smd->domain->fluid || framenr == startframe)
 		{
-			BKE_ptcache_id_reset(scene, &pid, PTCACHE_RESET_OUTDATED);
+			// TODO (sebbas): reenable pointcache or not?
+//			BKE_ptcache_id_reset(scene, &pid, PTCACHE_RESET_OUTDATED);
 			smokeModifier_reset_ex(smd, false);
-			BKE_ptcache_validate(cache, framenr);
-			cache->flag &= ~PTCACHE_REDO_NEEDED;
+//			BKE_ptcache_validate(cache, framenr);
+//			cache->flag &= ~PTCACHE_REDO_NEEDED;
 		}
 
 		if (!smd->domain->fluid && (framenr != startframe) && (smd->domain->flags & MOD_SMOKE_FILE_LOAD) == 0 && (cache->flag & PTCACHE_BAKED) == 0)
@@ -3310,58 +3267,63 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		bool can_simulate = (framenr == (int)smd->time + 1) && (framenr == scene->r.cfra);
 
 		/* try to read from cache */
-		if (BKE_ptcache_read(&pid, (float)framenr, can_simulate) == PTCACHE_READ_EXACT) {
-			BKE_ptcache_validate(cache, framenr);
-			smd->time = framenr;
-			return;
+		if (smd->domain->flags & MOD_SMOKE_HIGHRES && smd->domain->viewport_display_mode == SM_VIEWPORT_FINAL)
+		{
+			if (fluid_read_cache(sds->fluid, smd, framenr)) {
+				smd->time = (float) framenr;
+				return;
+			}
+		} else {
+			if (fluid_read_cache(sds->fluid, smd, framenr)) {
+				smd->time = (float) framenr;
+				return;
+			}
 		}
 
-		if (!can_simulate)
-			return;
-
-#ifdef DEBUG_TIME
-		double start = PIL_check_seconds_timer();
-#endif
+		// TODO (sebbas): reenable pointcache or not?
+//		if (BKE_ptcache_read(&pid, (float)framenr, can_simulate) == PTCACHE_READ_EXACT) {
+//			BKE_ptcache_validate(cache, framenr);
+//			smd->time = framenr;
+//			return;
+//		}
+		// TODO (sebbas): if this is uncommented the first frame from geometry wont get saved
+//		if (!can_simulate)
+//			return;
 
 		/* first frame needs special treatment because it does not have a step */
 		bool do_first_frame = (int)smd->time == startframe && (cache->flag & PTCACHE_OUTDATED || cache->last_exact == 0);
 
+		// TODO (sebbas): reenable pointcache or not?
 		/* if on second frame, write smoke cache for first frame here (i.e. before simulating) */
-		if (do_first_frame && sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
-			BKE_ptcache_write(&pid, startframe);
-		}
+//		if (do_first_frame && sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
+//			BKE_ptcache_write(&pid, startframe);
+//		}
 
-		// set new time
 		smd->time = scene->r.cfra;
 
-		/* do simulation */
-
-		// simulate the actual smoke (c++ code in intern/smoke)
 		// DG: interesting commenting this line + deactivating loading of noise files
-		if (framenr != startframe){
-			if (sds->flags & MOD_SMOKE_DISSOLVE) {
-				/* low res dissolve */
-				smoke_dissolve(sds->fluid, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
-				/* high res dissolve */
-				if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) {
-					smoke_dissolve_wavelet(sds->fluid, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
-				}
+//		if (framenr != startframe){
+
+			smoke_init_geometry(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base, framenr, startframe);
+
+			if (sds->total_cells > 1) {
+				update_effectors(scene, ob, sds); // DG TODO? problem --> uses forces instead of velocity, need to check how they need to be changed with variable dt
+
+				// TODO (sebbas): refactor
+				/* extra step for first frame */
+				//		if (pid && do_first_frame && sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID) {
+				//			smoke_step(sds->fluid, sds->smd, startframe);
+				//			BKE_ptcache_write(pid, startframe);
+				//		}
+				smoke_step(sds->fluid, sds->smd, framenr);
 			}
-			step(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base, framenr, startframe, do_first_frame, &pid);
-		}
-		// create shadows before writing cache so they get stored
-		if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
-			smoke_calc_transparency(sds, scene);
-		}
+//		}
 
-		BKE_ptcache_validate(cache, framenr);
-		if (framenr != startframe)
-			BKE_ptcache_write(&pid, framenr);
 
-#ifdef DEBUG_TIME
-		double end = PIL_check_seconds_timer();
-		printf("Frame: %d, Time: %f\n\n", (int)smd->time, (float)(end - start));
-#endif
+		// TODO (sebbas): reenable pointcache or not?
+//		BKE_ptcache_validate(cache, framenr);
+//		if (framenr != startframe)
+//			BKE_ptcache_write(&pid, framenr);
 	}
 }
 
@@ -3562,6 +3524,39 @@ static void smoke_calc_transparency(SmokeDomainSettings *sds, Scene *scene)
 			}
 	}
 }
+
+int smoke_make_step(Scene *scene, Object *ob, SmokeModifierData *smd, int framenr)
+{
+	SmokeDomainSettings *sds = smd->domain;
+	int startframe, endframe;
+
+	startframe = sds->cache_frame_start;
+	endframe = sds->cache_frame_end;
+
+	/* TODO (sebbas): Move dissolve smoke code to mantaflow */
+	if (sds->flags & MOD_SMOKE_DISSOLVE) {
+		smoke_dissolve(sds->fluid, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
+		if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) {
+			smoke_dissolve_wavelet(sds->fluid, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
+		}
+	}
+
+	if (sds->total_cells > 1) {
+		update_effectors(scene, ob, sds);
+
+		/* Call to Mantaflow fluid simulation */
+//		smoke_step(sds->fluid, sds->smd, framenr);
+		fluid_bake_low(sds->fluid, sds->smd, framenr);
+
+	}
+
+	/* TODO (sebbas): Move shadows memory management to mantaflow. Is easier for grid io operations */
+	if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
+		smoke_calc_transparency(sds, scene);
+	}
+	return 1;
+}
+
 
 /* get smoke velocity and density at given coordinates
  *  returns fluid density or -1.0f if outside domain*/

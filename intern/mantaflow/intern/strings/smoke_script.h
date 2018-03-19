@@ -474,6 +474,12 @@ def smoke_load_data_high_$ID$(path, framenr):\n\
         fuel_xl$ID$.load(path + 'fuel_xl_' + framenr + '.uni')\n\
         react_xl$ID$.load(path + 'react_xl_' + framenr + '.uni')\n";
 
+const std::string smoke_load_geometry_low = "\n\
+def smoke_load_geometry_low_$ID$(path, framenr):\n\
+    mantaMsg('Smoke load geometry')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    inflow_s$ID$.load(path + 'inflow_' + framenr + '.uni')\n";
+
 //////////////////////////////////////////////////////////////////////
 // EXPORT
 //////////////////////////////////////////////////////////////////////
@@ -518,7 +524,7 @@ const std::string smoke_save_geometry_low = "\n\
 def smoke_save_geometry_low_$ID$(path, framenr):\n\
     mantaMsg('Smoke save geometry')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    inflow_s$ID$.save(path + 'inflow_' + framenr + '.uni')\n";
+    inflow_s$ID$.save(os.path.join(path, 'inflow_' + framenr + '.uni'))\n";
 
 //////////////////////////////////////////////////////////////////////
 // OTHER SETUPS

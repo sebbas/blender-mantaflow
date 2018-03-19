@@ -160,6 +160,15 @@ enum {
 #define FLUID_CACHE_BAKING_PARTICLES_HIGH   4096
 #define FLUID_CACHE_BAKED_PARTICLES_HIGH    8192
 
+#define FLUID_CACHE_DIR_DEFAULT        "fluid_cache"
+#define FLUID_CACHE_DIR_GEOMETRY       "geometry"
+#define FLUID_CACHE_DIR_DATA_LOW       "data_low"
+#define FLUID_CACHE_DIR_DATA_HIGH      "data_high"
+#define FLUID_CACHE_DIR_MESH_LOW       "mesh_low"
+#define FLUID_CACHE_DIR_MESH_HIGH      "mesh_high"
+#define FLUID_CACHE_DIR_PARTICLES_LOW  "particles_low"
+#define FLUID_CACHE_DIR_PARTICLES_HIGH "particles_high"
+
 enum {
 	VDB_COMPRESSION_BLOSC = 0,
 	VDB_COMPRESSION_ZIP   = 1,
@@ -313,6 +322,8 @@ typedef struct SmokeDomainSettings {
 	int manta_solver_res;	/* dimension of manta solver, 2d or 3d */
 	char manta_filepath[1024];
 	short type; /* gas, liquid */
+
+	char error[64];		/* Bake error description */
 	char pad4[2]; /* unused */
 } SmokeDomainSettings;
 

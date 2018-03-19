@@ -65,38 +65,36 @@ public:
 	void updatePointersHigh();
 
 	// Bake
-	int readCache(SmokeModifierData *smd, int framenr);
-	void freeGeometry(SmokeModifierData *smd);
-	void bakeSimulationLow(SmokeModifierData *smd);
-	void freeSimulationLow(SmokeModifierData *smd);
-	void bakeSimulationHigh(SmokeModifierData *smd);
-	void freeSimulationHigh(SmokeModifierData *smd);
-	void bakeMeshLow(SmokeModifierData *smd);
-	void freeMeshLow(SmokeModifierData *smd);
-	void bakeMeshHigh(SmokeModifierData *smd);
-	void freeMeshHigh(SmokeModifierData *smd);
-	void bakeParticlesLow(SmokeModifierData *smd);
-	void freeParticlesLow(SmokeModifierData *smd);
-	void bakeParticlesHigh(SmokeModifierData *smd);
-	void freeParticlesHigh(SmokeModifierData *smd);
+	int readCacheLow(SmokeModifierData *smd, int framenr);
+	int readCacheHigh(SmokeModifierData *smd, int framenr);
+	int bakeSimulationLow(SmokeModifierData *smd, int framenr);
+	int bakeSimulationHigh(SmokeModifierData *smd, int framenr);
+	int bakeMeshLow(SmokeModifierData *smd, int framenr);
+	int bakeMeshHigh(SmokeModifierData *smd, int framenr);
+	int bakeParticlesLow(SmokeModifierData *smd, int framenr);
+	int bakeParticlesHigh(SmokeModifierData *smd, int framenr);
 
 	// IO for Mantaflow scene script
 	void exportSmokeScript(struct SmokeModifierData *smd);
 	void exportSmokeData(struct SmokeModifierData *smd);
 	void exportLiquidScript(struct SmokeModifierData *smd);
 	void exportLiquidData(struct SmokeModifierData *smd);
-	
-	// Write files for liquids
-	void saveMesh(char *filename);
-	void saveMeshHigh(char *filename);
-	void saveLiquidData(char *pathname);
-	void saveLiquidDataHigh(char *pathname);
-	void saveSmokeData(char *pathname);
-	void saveSmokeDataHigh(char *pathname);
+
+	// Write files for fluid
 	void saveFluidObstacleData(char *pathname);
 	void saveFluidGuidingData(char *pathname);
 	void saveFluidInvelData(char *pathname);
 	void saveFluidSndPartsData(char *pathname);
+
+	// Write files for smoke
+	void saveSmokeData(char *pathname);
+	void saveSmokeDataHigh(char *pathname);
+
+	// Write files for liquids
+	void saveMesh(char *filename, int framenr);
+	void saveMeshHigh(char *filename);
+	void saveLiquidData(char *pathname);
+	void saveLiquidDataHigh(char *pathname);
 
 	// Write files for particles
 	void saveParticles(char* filename);
@@ -217,7 +215,7 @@ public:
 	inline int getNumSndParticles() { return (mSndParticleData && !mSndParticleData->empty()) ? mSndParticleData->size() : 0; }
 
 	void updateMeshData(const char* filename);
-//	void updateParticleData(const char* filename);
+	void updateParticleData(const char* filename, bool isSecondary);
 
 	void setFlipParticleData(float* buffer, int numParts);
 	void setSndParticleData(float* buffer, int numParts);

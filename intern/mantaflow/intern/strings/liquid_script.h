@@ -118,10 +118,10 @@ def liquid_pre_step_low_$ID$():\n\
         z_invel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
         copyRealToVec3(sourceX=x_invel_s$ID$, sourceY=y_invel_s$ID$, sourceZ=z_invel_s$ID$, target=invel_s$ID$)\n\
     \n\
-    x_vel_s$ID$.multConst(Real(gs_s$ID$.x))\n\
-    y_vel_s$ID$.multConst(Real(gs_s$ID$.y))\n\
-    z_vel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
-    copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
+    #x_vel_s$ID$.multConst(Real(gs_s$ID$.x))\n\
+    #y_vel_s$ID$.multConst(Real(gs_s$ID$.y))\n\
+    #z_vel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
+    #copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
     copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n";
 
 const std::string liquid_post_step_low = "\n\
@@ -134,10 +134,10 @@ def liquid_post_step_low_$ID$():\n\
     \n\
     phiIn_s$ID$.setConst(9999)\n\
     phiOut_s$ID$.setConst(9999)\n\
-    copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n\
-    x_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.x) )\n\
-    y_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.y) )\n\
-    z_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.z) )\n";
+    #copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n\
+    #x_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.x) )\n\
+    #y_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.y) )\n\
+    #z_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.z) )\n";
 
 //////////////////////////////////////////////////////////////////////
 // STEP FUNCTIONS
@@ -298,6 +298,7 @@ def liquid_step_$ID$():\n\
 const std::string liquid_step_high = "\n\
 def liquid_step_high_$ID$():\n\
     mantaMsg('Liquid step high')\n\
+    # interpolateGrid(target=flags_xl$ID$, source=flags_s$ID$) # TODO (sebbas): needs interpolation?\n\
     pp_xl$ID$.readParticles(pp_s$ID$)\n\
     \n\
     # create surface\n\
@@ -318,41 +319,53 @@ def liquid_step_particles_low_$ID$():\n\
 // IMPORT
 //////////////////////////////////////////////////////////////////////
 
+const std::string liquid_load_geometry_low = "\n\
+def liquid_load_geometry_low_$ID$(path, framenr):\n\
+    mantaMsg('Liquid load geometry low')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    phiIn_s$ID$.load(os.path.join(path, 'phiIn_' + framenr + '.uni'))\n";
+
 const std::string liquid_load_mesh_low = "\n\
 def liquid_load_mesh_low_$ID$(path, framenr):\n\
     mantaMsg('Liquid load mesh low')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    mesh_s$ID$.load(path + 'mesh_low_' + framenr + '.bobj.gz')\n";
+    mesh_s$ID$.load(os.path.join(path, 'mesh_low_' + framenr + '.bobj.gz'))\n";
 
 const std::string liquid_load_mesh_high = "\n\
 def liquid_load_mesh_high_$ID$(path, framenr):\n\
     mantaMsg('Liquid load mesh high')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    mesh_xl$ID$.load(path + 'mesh_high_' + framenr + '.bobj.gz')\n";
+    mesh_xl$ID$.load(os.path.join(path, 'mesh_high_' + framenr + '.bobj.gz'))\n";
 
 const std::string liquid_load_particles_low = "\n\
 def liquid_load_particles_low_$ID$(path, framenr):\n\
     mantaMsg('Liquid load particles low')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    ppSnd_s$ID$.load(path + 'ppSnd_' + framenr + '.uni')\n\
-    pVelSnd_pp$ID$.load(path + 'pVelSnd_' + framenr + '.uni')\n";
+    ppSnd_s$ID$.load(os.path.join(path, 'ppSnd_' + framenr + '.uni'))\n\
+    pVelSnd_pp$ID$.load(os.path.join(path, 'pVelSnd_' + framenr + '.uni'))\n\
+    pLifeSnd_pp$ID$.load(os.path.join(path, 'pLifeSnd_' + framenr + '.uni'))\n";
+
+const std::string liquid_load_particles_high = "\n\
+def liquid_load_particles_high_$ID$(path, framenr):\n\
+    mantaMsg('Liquid load particles high')\n\
+    # Nothing to do here yet!\n";
 
 const std::string liquid_load_data_low = "\n\
-def liquid_load_data_low_$ID$(path, framenr):\n\
+def liquid_load_data_low_$ID$(path, framenr, withParticles):\n\
     mantaMsg('Liquid load data low')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    phi_s$ID$.load(path + 'phi_' + framenr +'.uni')\n\
-    pp_s$ID$.load(path + 'pp_' + framenr +'.uni')\n\
-    pVel_pp$ID$.load(path + 'pVel_' + framenr +'.uni')\n\
-\n\
-def liquid_load_levelset_low_$ID$(path, framenr):\n\
+    phi_s$ID$.load(os.path.join(path, 'phi_' + framenr +'.uni'))\n\
+    if withParticles:\n\
+        pp_s$ID$.load(os.path.join(path, 'pp_' + framenr +'.uni'))\n\
+        pVel_pp$ID$.load(os.path.join(path, 'pVel_' + framenr +'.uni'))\n";
+
+const std::string liquid_load_data_high = "\n\
+def liquid_load_data_high_$ID$(path, framenr, withParticles):\n\
+    mantaMsg('Liquid load data high')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    phi_s$ID$.load(path + 'phi_' + framenr + '.uni') # reload file from cache\n\
-    phiIn_s$ID$.load(path + 'phi_' + framenr + '.uni') # TODO (sebbas): dummy\n\
-\n\
-def liquid_load_inflow_low_$ID$(path, framenr):\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    phiIn_s$ID$.load(path + 'phi_' + framenr + '.uni')\n";
+    phi_xl$ID$.load(os.path.join(path, 'phi_xl_' + framenr +'.uni'))\n\
+    if withParticles:\n\
+        pp_xl$ID$.load(os.path.join(path, 'pp_xl_' + framenr +'.uni'))\n";
 
 //////////////////////////////////////////////////////////////////////
 // EXPORT
@@ -365,7 +378,7 @@ def liquid_save_mesh_low_$ID$(path, framenr):\n\
     phiParts_s$ID$.copyFrom(phi_s$ID$) # mis-use phiParts as temp grid to close the mesh\n\
     phiParts_s$ID$.setBound(0.5,0)\n\
     phiParts_s$ID$.createMesh(mesh_s$ID$)\n\
-    mesh_s$ID$.save(path + 'mesh_low_' + framenr + '.bobj.gz')\n";
+    mesh_s$ID$.save(os.path.join(path, 'mesh_low_' + framenr + '.bobj.gz'))\n";
 
 const std::string liquid_save_mesh_high = "\n\
 def liquid_save_mesh_high_$ID$(path, framenr):\n\
@@ -376,28 +389,36 @@ def liquid_save_mesh_high_$ID$(path, framenr):\n\
     interpolateGrid(target=phi_xl$ID$, source=phiParts_s$ID$)\n\
     phi_xl$ID$.join(phiParts_xl$ID$)\n\
     phi_xl$ID$.createMesh(mesh_xl$ID$)\n\
-    mesh_xl$ID$.save(path + 'mesh_high_' + framenr + '.bobj.gz')\n";
+    mesh_xl$ID$.save(os.path.join(path, 'mesh_high_' + framenr + '.bobj.gz'))\n";
 
 const std::string liquid_save_particles_low = "\n\
 def liquid_save_particles_low_$ID$(path, framenr):\n\
     mantaMsg('Liquid save particles low')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    ppSnd_s$ID$.save(path + 'ppSnd_' + framenr + '.uni')\n\
-    pVelSnd_pp$ID$.save(path + 'pVelSnd_' + framenr + '.uni')\n";
+    ppSnd_s$ID$.save(os.path.join(path, 'ppSnd_' + framenr + '.uni'))\n\
+    pVelSnd_pp$ID$.save(os.path.join(path, 'pVelSnd_' + framenr + '.uni'))\n\
+    pLifeSnd_pp$ID$.save(os.path.join(path, 'pLifeSnd_' + framenr + '.uni'))\n";
 
 const std::string liquid_save_data_low = "\n\
 def liquid_save_data_low_$ID$(path, framenr):\n\
     mantaMsg('Liquid save data low')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    phi_s$ID$.save(path + 'phi_' + framenr +'.uni')\n\
-    pp_s$ID$.save(path + 'pp_' + framenr +'.uni')\n\
-    pVel_pp$ID$.save(path + 'pVel_' + framenr +'.uni')\n";
+    phi_s$ID$.save(os.path.join(path, 'phi_' + framenr +'.uni'))\n\
+    pp_s$ID$.save(os.path.join(path, 'pp_' + framenr +'.uni'))\n\
+    pVel_pp$ID$.save(os.path.join(path, 'pVel_' + framenr +'.uni'))\n";
+
+const std::string liquid_save_data_high = "\n\
+def liquid_save_data_high_$ID$(path, framenr):\n\
+    mantaMsg('Liquid save data high')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    phi_xl$ID$.save(os.path.join(path, 'phi_xl_' + framenr +'.uni'))\n\
+    pp_s$ID$.save(os.path.join(path, 'pp_xl_' + framenr +'.uni'))\n";
 
 const std::string liquid_save_geometry_low = "\n\
 def liquid_save_geometry_low_$ID$(path, framenr):\n\
     mantaMsg('Liquid save geometry')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    phiIn_s$ID$.save(path + 'phiIn_' + framenr + '.uni')\n";
+    phiIn_s$ID$.save(os.path.join(path, 'phiIn_' + framenr + '.uni'))\n";
 
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE

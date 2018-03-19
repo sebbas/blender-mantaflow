@@ -30,6 +30,7 @@
 #include <sstream>
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 #include <zlib.h>
 
 #include "FLUID.h"
@@ -243,20 +244,14 @@ void FLUID::initDomain(SmokeModifierData *smd)
 		+ fluid_alloc_low
 		+ fluid_bake_helper
 		+ fluid_bake_geometry
-		+ fluid_free_geometry
 		+ fluid_bake_low
-		+ fluid_free_low
 		+ fluid_bake_high
-		+ fluid_free_high
 		+ fluid_bake_mesh_low
-		+ fluid_free_mesh_low
 		+ fluid_bake_mesh_high
-		+ fluid_free_mesh_high
 		+ fluid_bake_particles_low
-		+ fluid_free_particles_low
 		+ fluid_bake_particles_high
-		+ fluid_free_particles_high
 		+ fluid_save_geometry_low
+		+ fluid_load_geometry_low
 		+ fluid_save_data_low
 		+ fluid_load_data_low
 		+ fluid_obstacle_export_low
@@ -294,7 +289,9 @@ void FLUID::initSmoke(SmokeModifierData *smd)
 		+ smoke_bounds_low
 		+ smoke_adaptive_step_low
 		+ smoke_save_geometry_low
+		+ smoke_load_geometry_low
 		+ smoke_save_data_low
+		+ smoke_load_data_low
 		+ smoke_pre_step_low
 		+ smoke_step_low
 		+ smoke_post_step_low;
@@ -403,6 +400,7 @@ void FLUID::initLiquid(SmokeModifierData *smd)
 			+ liquid_variables_low
 			+ liquid_init_phi
 			+ liquid_save_geometry_low
+			+ liquid_load_geometry_low
 			+ liquid_save_mesh_low
 			+ liquid_save_particles_low
 			+ liquid_save_data_low
@@ -428,7 +426,9 @@ void FLUID::initLiquidHigh(SmokeModifierData *smd)
 	std::string tmpString = liquid_alloc_high
 		+ liquid_variables_high
 		+ liquid_save_mesh_high
+		+ liquid_save_data_high
 		+ liquid_load_mesh_high
+		+ liquid_load_data_high
 		+ liquid_adaptive_step_high
 		+ liquid_step_high;
 	std::string finalString = parseScript(tmpString, smd);
@@ -496,20 +496,17 @@ void FLUID::initSndParts(SmokeModifierData *smd)
 
 void FLUID::step(SmokeModifierData *smd, int framenr)
 {
-	// TODO (sebbas): Use geometry bake instead of fluid_step
-//	std::string path(smd->domain->cache_directory);
-//
-//	mCommands.clear();
-//	std::ostringstream ss;
-//	ss <<  "bake_geometry_" << mCurrentID << "(r'" << path << "'," << framenr << ")";
-//	mCommands.push_back(ss.str());
-//
-//	runPythonString(mCommands);
+	if (with_debug)
+		std::cout << "FLUID::step()" << std::endl;
 
-	// Run manta step: regular step or init only (sets up geometry only, no vel update, for first frame)
+	char cacheDir[FILE_MAX];
+	cacheDir[0] = '\0';
+
+	BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_GEOMETRY, NULL);
+
 	mCommands.clear();
 	std::ostringstream ss;
-	ss <<  "fluid_step_low_" << mCurrentID << "(" << framenr << ")";
+	ss << "bake_geometry_" << mCurrentID << "(r'" << cacheDir << "', " << framenr << ")";
 	mCommands.push_back(ss.str());
 
 	runPythonString(mCommands);
@@ -987,206 +984,296 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 	myfile.close();
 }
 
-/* BEGIN TODO (sebbas): read decoupled uni cache */
-int FLUID::readCache(SmokeModifierData *smd, int framenr)
+int FLUID::readCacheLow(SmokeModifierData *smd, int framenr)
 {
-	std::string path(smd->domain->cache_directory);
+	if (with_debug)
+		std::cout << "FLUID::readCacheLow()" << std::endl;
+
+	std::ostringstream ss;
+	bool readSuccess = false;
+
+	/* Helper cacheDir used to navigate to cache subdirs, ie data, mesh, particles */
+	char cacheDir[FILE_MAX], helperDir[FILE_MAX];
+	cacheDir[0] = '\0';
+	helperDir[0] = '\0';
+
+	mCommands.clear();
+
+	if (mUsingSmoke) {
+		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
+		if (!BLI_exists(cacheDir)) return 0;
+		printf("READCACHE 2()\n");
+
+		ss.str("");
+		ss << "smoke_load_geometry_low_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
+		mCommands.push_back(ss.str());
+		runPythonString(mCommands);
+	}
+	if (mUsingLiquid) {
+		/* First try loading the mesh */
+		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_MESH_LOW, NULL);
+		if (BLI_exists(cacheDir)) {
+
+			ss.str("");
+			ss << "liquid_load_mesh_low_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
+			mCommands.push_back(ss.str());
+			runPythonString(mCommands);
+
+			ss.str("");
+			ss << "mesh_low_" << std::setw(4) << std::setfill('0') << framenr << ".bobj.gz";
+			BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
+			updateMeshData(helperDir);
+
+			readSuccess = true;
+		}
+		/* If no mesh found, try loading FLIP particles */
+		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
+		if (BLI_exists(cacheDir)) {
+
+			ss.str("");
+			ss << "liquid_load_data_low_" << mCurrentID << "('" << cacheDir << "', " << framenr << ", True)";
+			mCommands.push_back(ss.str());
+			runPythonString(mCommands);
+			
+			ss.str("");
+			ss << "pp_" << std::setw(4) << std::setfill('0') << framenr << ".uni";
+			BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
+			updateParticleData(helperDir, false);
+
+			ss.str("");
+			ss << "pVel_" << std::setw(4) << std::setfill('0') << framenr << ".uni";
+			BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
+			updateParticleData(helperDir, false);
+
+			readSuccess = true;
+		}
+	}
+	if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
+		/* Optional liquid particles all live in one particle system */
+		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_PARTICLES_LOW, NULL);
+		if (BLI_exists(cacheDir)) {
+
+			ss.str("");
+			ss << "liquid_load_particles_low_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
+			mCommands.push_back(ss.str());
+			runPythonString(mCommands);
+			
+			ss.str("");
+			ss << "ppSnd_" << std::setw(4) << std::setfill('0') << framenr << ".uni";
+			BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
+			updateParticleData(helperDir, true);
+			
+			ss.str("");
+			ss << "pVelSnd_" << std::setw(4) << std::setfill('0') << framenr << ".uni";
+			BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
+			updateParticleData(helperDir, true);
+
+			ss.str("");
+			ss << "pLifeSnd_" << std::setw(4) << std::setfill('0') << framenr << ".uni";
+			BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
+			updateParticleData(helperDir, true);
+
+			readSuccess = true;
+		}
+		
+	}
+	return readSuccess;
+}
+
+int FLUID::readCacheHigh(SmokeModifierData *smd, int framenr)
+{
+	if (with_debug)
+		std::cout << "FLUID::readCacheHigh()" << std::endl;
+	
+	std::ostringstream ss;
+	
+	/* Helper cacheDir used to navigate to cache subdirs, ie data, mesh, particles */
+	char cacheDir[FILE_MAX], helperDir[FILE_MAX];
+	cacheDir[0] = '\0';
+	helperDir[0] = '\0';
+	
+	mCommands.clear();
+	
+	if (mUsingSmoke) {
+		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
+		if (!BLI_exists(cacheDir)) return 0;
+		printf("READCACHE 2()\n");
+		
+		ss.str("");
+		ss << "smoke_load_geometry_low_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
+		mCommands.push_back(ss.str());
+		runPythonString(mCommands);
+	}
+	if (mUsingLiquid) {
+		/* Try to load the mesh */
+		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_MESH_HIGH, NULL);
+		if (BLI_exists(cacheDir)) {
+			
+			ss.str("");
+			ss << "liquid_load_mesh_high_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
+			mCommands.push_back(ss.str());
+			runPythonString(mCommands);
+			
+			ss.str("");
+			ss << "mesh_high_" << std::setw(4) << std::setfill('0') << framenr << ".bobj.gz";
+			BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
+			updateMeshData(helperDir);
+			
+			return 1;
+		}
+		/* If no mesh found, try to load FLIP particles */
+		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_HIGH, NULL);
+		if (BLI_exists(cacheDir)) {
+			
+			ss.str("");
+			ss << "liquid_load_data_high_" << mCurrentID << "('" << cacheDir << "', " << framenr << ", True)";
+			mCommands.push_back(ss.str());
+			runPythonString(mCommands);
+			
+			ss.str("");
+			ss << "pp_xl_" << std::setw(4) << std::setfill('0') << framenr << ".uni";
+			BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
+			updateParticleData(helperDir, false);
+			
+			return 1;
+		}
+	}
+	return 0;
+
+}
+
+int FLUID::bakeSimulationLow(SmokeModifierData *smd, int framenr)
+{
+	if (with_debug)
+		std::cout << "FLUID::bakeSimulationLow()" << std::endl;
+
+	char cacheDirGeometry[FILE_MAX], cacheDirData[FILE_MAX];
+	cacheDirGeometry[0] = '\0';
+	cacheDirData[0] = '\0';
+
+	mCommands.clear();
 	std::ostringstream ss;
 
-	try {
-		mCommands.clear();
-		ss <<  "fluid_load_data_low_" << mCurrentID << "(r'" << path << "'," << framenr << ")";
-		mCommands.push_back(ss.str());
+	BLI_path_join(cacheDirGeometry, sizeof(cacheDirGeometry), smd->domain->cache_directory, FLUID_CACHE_DIR_GEOMETRY, NULL);
+	BLI_path_join(cacheDirData, sizeof(cacheDirData), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
 
-		if (mUsingSmoke) {
-			ss.str("");
-			ss <<  "smoke_load_data_low_" << mCurrentID << "(r'" << path << "'," << framenr << ")";
-			mCommands.push_back(ss.str());
-		}
+	ss << "bake_fluid_low_" << mCurrentID << "('" << cacheDirGeometry << "', '" << cacheDirData << "', " << framenr << ")";
+	mCommands.push_back(ss.str());
 
-		if (mUsingLiquid) {
-			ss.str("");
-			ss <<  "liquid_load_data_low_" << mCurrentID << "(r'" << path << "'," << framenr << ")";
-			mCommands.push_back(ss.str());
-		}
-
-		mCommands.push_back(ss.str());
-
-		runPythonString(mCommands);
-	} catch (const std::runtime_error& error) {
-		std::cout << "Missing cache files. Continue with simulation" << std::endl;
-		return 0;
-	}
+	runPythonString(mCommands);
 	return 1;
 }
 
-void FLUID::freeGeometry(SmokeModifierData *smd)
+int FLUID::bakeSimulationHigh(SmokeModifierData *smd, int framenr)
 {
-	std::string path(smd->domain->cache_directory);
+	if (with_debug)
+		std::cout << "FLUID::bakeSimulationHigh()" << std::endl;
+
+	char cacheDirDataLow[FILE_MAX], cacheDirDataHigh[FILE_MAX];
+	cacheDirDataLow[0] = '\0';
+	cacheDirDataHigh[0] = '\0';
 
 	mCommands.clear();
 	std::ostringstream ss;
-	ss <<  "free_geometry_" << mCurrentID << "(r'" << path << "')";
+
+	BLI_path_join(cacheDirDataLow, sizeof(cacheDirDataLow), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
+	BLI_path_join(cacheDirDataHigh, sizeof(cacheDirDataHigh), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_HIGH, NULL);
+
+	ss << "bake_fluid_high_" << mCurrentID << "('" << cacheDirDataLow << "', '" << cacheDirDataHigh << "', " << framenr << ")";
 	mCommands.push_back(ss.str());
 
 	runPythonString(mCommands);
-}
-/* END TODO (sebbas) */
-
-void FLUID::bakeSimulationLow(SmokeModifierData *smd)
-{
-	int start_frame = smd->domain->cache_frame_start;
-	int end_frame = smd->domain->cache_frame_end;
-	std::string path(smd->domain->cache_directory);
-
-	mCommands.clear();
-	std::ostringstream ss;
-	ss <<  "bake_fluid_low_" << mCurrentID << "(r'" << path << "'," << start_frame << ", " << end_frame << ")";
-	mCommands.push_back(ss.str());
-
-	runPythonString(mCommands);
+	return 1;
 }
 
-void FLUID::freeSimulationLow(SmokeModifierData *smd)
+int FLUID::bakeMeshLow(SmokeModifierData *smd, int framenr)
 {
-	std::string path(smd->domain->cache_directory);
+	if (with_debug)
+		std::cout << "FLUID::bakeMeshLow()" << std::endl;
+
+	char cacheDirData[FILE_MAX], cacheDirMesh[FILE_MAX];
+	cacheDirData[0] = '\0';
+	cacheDirMesh[0] = '\0';
 
 	mCommands.clear();
 	std::ostringstream ss;
-	ss <<  "free_fluid_low_" << mCurrentID << "(r'" << path << "')";
+
+	BLI_path_join(cacheDirMesh, sizeof(cacheDirMesh), smd->domain->cache_directory, FLUID_CACHE_DIR_MESH_LOW, NULL);
+	BLI_path_join(cacheDirData, sizeof(cacheDirData), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
+
+	ss << "bake_mesh_low_" << mCurrentID << "('" << cacheDirMesh << "', '" << cacheDirData << "', " << framenr << ")";
 	mCommands.push_back(ss.str());
 
 	runPythonString(mCommands);
+	return 1;
 }
 
-void FLUID::bakeSimulationHigh(SmokeModifierData *smd)
+int FLUID::bakeMeshHigh(SmokeModifierData *smd, int framenr)
 {
-	int start_frame = smd->domain->cache_frame_start;
-	int end_frame = smd->domain->cache_frame_end;
-	std::string path(smd->domain->cache_directory);
+	if (with_debug)
+		std::cout << "FLUID::bakeMeshHigh()" << std::endl;
+
+	char cacheDirData[FILE_MAX], cacheDirMesh[FILE_MAX];
+	cacheDirData[0] = '\0';
+	cacheDirMesh[0] = '\0';
 
 	mCommands.clear();
 	std::ostringstream ss;
-	ss <<  "bake_fluid_high_" << mCurrentID << "(r'" << path << "'," << start_frame << ", " << end_frame << ")";
+
+	BLI_path_join(cacheDirMesh, sizeof(cacheDirMesh), smd->domain->cache_directory, FLUID_CACHE_DIR_MESH_HIGH, NULL);
+	BLI_path_join(cacheDirData, sizeof(cacheDirData), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
+
+	ss << "bake_mesh_high_" << mCurrentID << "('" << cacheDirMesh << "', '" << cacheDirData << "', " << framenr << ")";
 	mCommands.push_back(ss.str());
 
 	runPythonString(mCommands);
+	return 1;
 }
 
-void FLUID::freeSimulationHigh(SmokeModifierData *smd)
+int FLUID::bakeParticlesLow(SmokeModifierData *smd, int framenr)
 {
-	std::string path(smd->domain->cache_directory);
+	if (with_debug)
+		std::cout << "FLUID::bakeParticlesLow()" << std::endl;
+
+	char cacheDirData[FILE_MAX], cacheDirParticles[FILE_MAX], cacheDirGeometry[FILE_MAX];;
+	cacheDirData[0] = '\0';
+	cacheDirParticles[0] = '\0';
+	cacheDirGeometry[0] = '\0';
 
 	mCommands.clear();
 	std::ostringstream ss;
-	ss <<  "free_fluid_high_" << mCurrentID << "(r'" << path << "')";
+
+	BLI_path_join(cacheDirParticles, sizeof(cacheDirParticles), smd->domain->cache_directory, FLUID_CACHE_DIR_PARTICLES_LOW, NULL);
+	BLI_path_join(cacheDirData, sizeof(cacheDirData), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
+	BLI_path_join(cacheDirGeometry, sizeof(cacheDirGeometry), smd->domain->cache_directory, FLUID_CACHE_DIR_GEOMETRY, NULL);
+
+	ss << "bake_particles_low_" << mCurrentID << "('" << cacheDirParticles << "', '" << cacheDirData << "', '" << cacheDirGeometry << "', " << framenr << ")";
 	mCommands.push_back(ss.str());
 
 	runPythonString(mCommands);
+	return 1;
 }
 
-void FLUID::bakeMeshLow(SmokeModifierData *smd)
+int FLUID::bakeParticlesHigh(SmokeModifierData *smd, int framenr)
 {
-	int start_frame = smd->domain->cache_frame_start;
-	int end_frame = smd->domain->cache_frame_end;
-	std::string path(smd->domain->cache_directory);
+	if (with_debug)
+		std::cout << "FLUID::bakeParticlesHigh()" << std::endl;
+
+	char cacheDirData[FILE_MAX], cacheDirParticles[FILE_MAX];
+	cacheDirData[0] = '\0';
+	cacheDirParticles[0] = '\0';
 
 	mCommands.clear();
 	std::ostringstream ss;
-	ss <<  "bake_mesh_low_" << mCurrentID << "(r'" << path << "'," << start_frame << ", " << end_frame << ")";
+
+	BLI_path_join(cacheDirParticles, sizeof(cacheDirParticles), smd->domain->cache_directory, FLUID_CACHE_DIR_PARTICLES_HIGH, NULL);
+	BLI_path_join(cacheDirData, sizeof(cacheDirData), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_HIGH, NULL);
+
+	ss << "bake_particles_high_" << mCurrentID << "('" << cacheDirParticles << "', '" << cacheDirData << "', " << framenr << ")";
 	mCommands.push_back(ss.str());
 
 	runPythonString(mCommands);
-}
-
-void FLUID::freeMeshLow(SmokeModifierData *smd)
-{
-	std::string path(smd->domain->cache_directory);
-
-	mCommands.clear();
-	std::ostringstream ss;
-	ss <<  "free_mesh_low_" << mCurrentID << "(r'" << path << "')";
-	mCommands.push_back(ss.str());
-
-	runPythonString(mCommands);
-}
-
-void FLUID::bakeMeshHigh(SmokeModifierData *smd)
-{
-	int start_frame = smd->domain->cache_frame_start;
-	int end_frame = smd->domain->cache_frame_end;
-	std::string path(smd->domain->cache_directory);
-
-	mCommands.clear();
-	std::ostringstream ss;
-	ss <<  "bake_mesh_high_" << mCurrentID << "(r'" << path << "'," << start_frame << ", " << end_frame << ")";
-	mCommands.push_back(ss.str());
-
-	runPythonString(mCommands);
-}
-
-void FLUID::freeMeshHigh(SmokeModifierData *smd)
-{
-	std::string path(smd->domain->cache_directory);
-
-	mCommands.clear();
-	std::ostringstream ss;
-	ss <<  "free_mesh_high_" << mCurrentID << "(r'" << path << "')";
-	mCommands.push_back(ss.str());
-
-	runPythonString(mCommands);
-}
-
-void FLUID::bakeParticlesLow(SmokeModifierData *smd)
-{
-	int start_frame = smd->domain->cache_frame_start;
-	int end_frame = smd->domain->cache_frame_end;
-	std::string path(smd->domain->cache_directory);
-
-	mCommands.clear();
-	std::ostringstream ss;
-	ss <<  "bake_particles_low_" << mCurrentID << "(r'" << path << "'," << start_frame << ", " << end_frame << ")";
-	mCommands.push_back(ss.str());
-
-	runPythonString(mCommands);
-}
-
-void FLUID::freeParticlesLow(SmokeModifierData *smd)
-{
-	std::string path(smd->domain->cache_directory);
-
-	mCommands.clear();
-	std::ostringstream ss;
-	ss <<  "free_particles_low_" << mCurrentID << "(r'" << path << "')";
-	mCommands.push_back(ss.str());
-
-	runPythonString(mCommands);
-}
-
-void FLUID::bakeParticlesHigh(SmokeModifierData *smd)
-{
-	int start_frame = smd->domain->cache_frame_start;
-	int end_frame = smd->domain->cache_frame_end;
-	std::string path(smd->domain->cache_directory);
-
-	mCommands.clear();
-	std::ostringstream ss;
-	ss <<  "bake_particles_high_" << mCurrentID << "(r'" << path << "'," << start_frame << ", " << end_frame << ")";
-	mCommands.push_back(ss.str());
-
-	runPythonString(mCommands);
-}
-
-void FLUID::freeParticlesHigh(SmokeModifierData *smd)
-{
-	std::string path(smd->domain->cache_directory);
-
-	mCommands.clear();
-	std::ostringstream ss;
-	ss <<  "free_particles_high_" << mCurrentID << "(r'" << path << "')";
-	mCommands.push_back(ss.str());
-
-	runPythonString(mCommands);
+	return 1;
 }
 
 void FLUID::exportSmokeData(SmokeModifierData *smd)
@@ -1365,6 +1452,9 @@ void FLUID::updateMeshData(const char* filename)
 
 void FLUID::updateMeshDataFromBobj(const char* filename)
 {
+	if (with_debug)
+		std::cout << "FLUID::updateMeshDataFromBobj()" << std::endl;
+
 	gzFile gzf;
 	float fbuffer[3];
 	int ibuffer[3];
@@ -1439,99 +1529,118 @@ void FLUID::updateMeshDataFromBobj(const char* filename)
 	gzclose(gzf);
 }
 
-//void FLUID::updateParticleData(const char* filename)
-//{
-//	gzFile gzf;
-//	float fbuffer[3];
-//	int ibuffer[4];
-//
-//	gzf = (gzFile) BLI_gzopen(filename, "rb1"); // do some compression
-//	if (!gzf)
-//		std::cout << "updateParticleData: unable to open file" << std::endl;
-//
-//	char ID[5] = {0,0,0,0,0};
-//	gzread(gzf, ID, 4);
-//
-//	if (!strcmp(ID, "PB01")) {
-//		std::cout << "particle uni file format v01 not supported anymore" << std::endl;
-//		return;
-//	}
-//
-//	// pdata uni header
-//	const int STR_LEN_PDATA = 256;
-//	int elementType, bytesPerElement; // type id and byte size
-//	char info[STR_LEN_PDATA]; // mantaflow build information
-//	unsigned long long timestamp; // creation time
-//
-//	// read particle header
-//	gzread(gzf, &ibuffer, sizeof(int) * 4); // num particles, dimX, dimY, dimZ
-//	gzread(gzf, &elementType, sizeof(int));
-//	gzread(gzf, &bytesPerElement, sizeof(int));
-//	gzread(gzf, &info, sizeof(info));
-//	gzread(gzf, &timestamp, sizeof(unsigned long long));
-//
-//	if (with_debug)
-//		std::cout << "read particles , num particles " << mNumParticles << " , in file: "<< filename << std::endl;
-//
-//	// Sanity checks
-//	const int partSysSize = sizeof(float) * 3 + sizeof(int);
-//	if (! (bytesPerElement == partSysSize) && (elementType == 0)){
-//		std::cout << "particle type doesn't match" << std::endl;
-//	}
-//	if (!ibuffer[0]) { // Any particles present?
-//		if (with_debug) std::cout << "no particles present yet" << std::endl;
-//		return;
-//	}
-//
-//	// Reading base particle system file v2
-//	if (!strcmp(ID, "PB02"))
-//	{
-//		// Only set head fields when read from particle system and not from pdata files (possibly incomplete)
-//		mNumParticles = ibuffer[0];
-//		mParticleDimX = ibuffer[1];
-//		mParticleDimY = ibuffer[2];
-//		mParticleDimZ = ibuffer[3];
-//
-//		mParticlePositionsX.resize(mNumParticles);
-//		mParticlePositionsY.resize(mNumParticles);
-//		mParticlePositionsZ.resize(mNumParticles);
-//		mParticleFlags.resize(mNumParticles);
-//
-//		for (int i = 0; i < mNumParticles; ++i) {
-//			gzread(gzf, fbuffer, sizeof(float) * 3);
-//
-//			mParticlePositionsX[i] = fbuffer[0];
-//			mParticlePositionsY[i] = fbuffer[1];
-//			mParticlePositionsZ[i] = fbuffer[2];
-//
-////			std::cout << "Positions are: [" << mParticlePositionsX[i] << ", " << mParticlePositionsY[i] << "," << mParticlePositionsZ[i] << "]" << std::endl;
-//
-//			gzread(gzf, &ibuffer, sizeof(int));
-//			mParticleFlags[i] = ibuffer[0];
-//		}
-//	}
-//	// Reading particle data file v1 with velocities
-//	else if (!strcmp(ID, "PD01"))
-//	{
-//		mNumParticles = ibuffer[0];
-//
-//		mParticleVelocitiesX.resize(mNumParticles);
-//		mParticleVelocitiesY.resize(mNumParticles);
-//		mParticleVelocitiesZ.resize(mNumParticles);
-//
-//		for (int i = 0; i < mNumParticles; ++i) {
-//			gzread(gzf, fbuffer, sizeof(float) * 3);
-//
-//			mParticleVelocitiesX[i] = fbuffer[0];
-//			mParticleVelocitiesY[i] = fbuffer[1];
-//			mParticleVelocitiesZ[i] = fbuffer[2];
-//
-////			std::cout << "Velocities are: [" << mParticleVelocitiesX[i] << ", " << mParticleVelocitiesY[i] << "," << mParticleVelocitiesZ[i] << "]" << std::endl;
-//		}
-//	}
-//
-//	gzclose(gzf);
-//}
+void FLUID::updateParticleData(const char* filename, bool isSecondary)
+{
+	if (with_debug)
+		std::cout << "FLUID::updateParticleData()" << std::endl;
+
+	gzFile gzf;
+	float fbuffer[4];
+	int ibuffer[4];
+
+	gzf = (gzFile) BLI_gzopen(filename, "rb1"); // do some compression
+	if (!gzf)
+		std::cout << "updateParticleData: unable to open file" << std::endl;
+
+	char ID[5] = {0,0,0,0,0};
+	gzread(gzf, ID, 4);
+
+	if (!strcmp(ID, "PB01")) {
+		std::cout << "particle uni file format v01 not supported anymore" << std::endl;
+		return;
+	}
+
+	// Pointer to FLIP system or to secondary particle system
+	std::vector<pData>* dataPointer;
+	std::vector<pVel>* velocityPointer;
+	std::vector<float>* lifePointer;
+	if (isSecondary) {
+		dataPointer = mSndParticleData;
+		velocityPointer = mSndParticleVelocity;
+		lifePointer = mSndParticleLife;
+	}
+	else {
+		dataPointer = mFlipParticleData;
+		velocityPointer = mFlipParticleVelocity;
+	}
+
+	// pdata uni header
+	const int STR_LEN_PDATA = 256;
+	int elementType, bytesPerElement, numParticles, dimX, dimY, dimZ;
+	char info[STR_LEN_PDATA]; // mantaflow build information
+	unsigned long long timestamp; // creation time
+
+	// read particle header
+	gzread(gzf, &ibuffer, sizeof(int) * 4); // num particles, dimX, dimY, dimZ
+	gzread(gzf, &elementType, sizeof(int));
+	gzread(gzf, &bytesPerElement, sizeof(int));
+	gzread(gzf, &info, sizeof(info));
+	gzread(gzf, &timestamp, sizeof(unsigned long long));
+
+	if (with_debug)
+		std::cout << "read " << ibuffer[0] << " particles in file: "<< filename << std::endl;
+
+	// Sanity checks
+	const int partSysSize = sizeof(float) * 3 + sizeof(int);
+	if (! (bytesPerElement == partSysSize) && (elementType == 0)){
+		std::cout << "particle type doesn't match" << std::endl;
+	}
+	if (!ibuffer[0]) { // Any particles present?
+		if (with_debug) std::cout << "no particles present yet" << std::endl;
+		return;
+	}
+
+	// Reading base particle system file v2
+	if (!strcmp(ID, "PB02"))
+	{
+		// Only set head fields when read from particle system and not from pdata files (possibly incomplete)
+		numParticles = ibuffer[0];
+		dimX = ibuffer[1];
+		dimY = ibuffer[2];
+		dimZ = ibuffer[3];
+
+		dataPointer->resize(numParticles);
+		FLUID::pData* bufferPData;
+		for (std::vector<pData>::iterator it = dataPointer->begin(); it != dataPointer->end(); ++it) {
+			gzread(gzf, fbuffer, sizeof(float) * 3 + sizeof(int));
+			bufferPData = (FLUID::pData*) fbuffer;
+			it->pos[0] = bufferPData->pos[0];
+			it->pos[1] = bufferPData->pos[1];
+			it->pos[2] = bufferPData->pos[2];
+			it->flag = bufferPData->flag;
+		}
+	}
+	// Reading particle data file v1 with velocities
+	else if (!strcmp(ID, "PD01"))
+	{
+		numParticles = ibuffer[0];
+
+		velocityPointer->resize(numParticles);
+		FLUID::pVel* bufferPVel;
+		for (std::vector<pVel>::iterator it = velocityPointer->begin(); it != velocityPointer->end(); ++it) {
+			gzread(gzf, fbuffer, sizeof(float) * 3);
+			bufferPVel = (FLUID::pVel*) fbuffer;
+			it->pos[0] = bufferPVel->pos[0];
+			it->pos[1] = bufferPVel->pos[1];
+			it->pos[2] = bufferPVel->pos[2];
+		}
+	}
+	// Reading secondary particle data extras
+	else if (!strcmp(ID, "PD01"))
+	{
+		numParticles = ibuffer[0];
+
+		lifePointer->resize(numParticles);
+		float* bufferPLife;
+		for (std::vector<float>::iterator it = lifePointer->begin(); it != lifePointer->end(); ++it) {
+			gzread(gzf, fbuffer, sizeof(float));
+			bufferPLife = (float*) fbuffer;
+			*it = *bufferPLife;
+		}
+	}
+
+	gzclose(gzf);
+}
 
 void FLUID::updatePointers()
 {
@@ -1658,6 +1767,9 @@ void FLUID::updatePointersHigh()
 
 void FLUID::setFlipParticleData(float* buffer, int numParts)
 {
+	if (with_debug)
+		std::cout << "setFlipParticleData()" << std::endl;
+
 	mFlipParticleData->resize(numParts);
 	FLUID::pData* bufferPData = (FLUID::pData*) buffer;
 	for (std::vector<pData>::iterator it = mFlipParticleData->begin(); it != mFlipParticleData->end(); ++it) {
@@ -1671,6 +1783,9 @@ void FLUID::setFlipParticleData(float* buffer, int numParts)
 
 void FLUID::setSndParticleData(float* buffer, int numParts)
 {
+	if (with_debug)
+		std::cout << "setSndParticleData()" << std::endl;
+
 	mSndParticleData->resize(numParts);
 	FLUID::pData* bufferPData = (FLUID::pData*) buffer;
 	for (std::vector<pData>::iterator it = mSndParticleData->begin(); it != mSndParticleData->end(); ++it) {
@@ -1684,6 +1799,9 @@ void FLUID::setSndParticleData(float* buffer, int numParts)
 
 void FLUID::setFlipParticleVelocity(float* buffer, int numParts)
 {
+	if (with_debug)
+		std::cout << "setFlipParticleVelocity()" << std::endl;
+
 	mFlipParticleVelocity->resize(numParts);
 	FLUID::pVel* bufferPVel = (FLUID::pVel*) buffer;
 	for (std::vector<pVel>::iterator it = mFlipParticleVelocity->begin(); it != mFlipParticleVelocity->end(); ++it) {
@@ -1696,6 +1814,9 @@ void FLUID::setFlipParticleVelocity(float* buffer, int numParts)
 
 void FLUID::setSndParticleVelocity(float* buffer, int numParts)
 {
+	if (with_debug)
+		std::cout << "setSndParticleVelocity()" << std::endl;
+
 	mSndParticleVelocity->resize(numParts);
 	FLUID::pVel* bufferPVel = (FLUID::pVel*) buffer;
 	for (std::vector<pVel>::iterator it = mSndParticleVelocity->begin(); it != mSndParticleVelocity->end(); ++it) {
@@ -1708,6 +1829,9 @@ void FLUID::setSndParticleVelocity(float* buffer, int numParts)
 
 void FLUID::setSndParticleLife(float* buffer, int numParts)
 {
+	if (with_debug)
+		std::cout << "setSndParticleLife()" << std::endl;
+
 	mSndParticleLife->resize(numParts);
 	float* bufferPType = buffer;
 	for (std::vector<float>::iterator it = mSndParticleLife->begin(); it != mSndParticleLife->end(); ++it) {
@@ -1716,14 +1840,26 @@ void FLUID::setSndParticleLife(float* buffer, int numParts)
 	}
 }
 
-void FLUID::saveMesh(char *filename)
+/* Dirty hack: Needed to format paths from python code that is run via PyRun_SimpleString */
+static std::string escape_slashes(std::string const& s) {
+	std::string Result = "";
+	for (std::string::const_iterator i = s.begin(), end = s.end(); i != end; ++i) {
+		unsigned char c = *i;
+		if (c == '\\')
+			Result += "\\\\";
+		else
+			Result += c;
+	}
+	return Result;
+}
+
+void FLUID::saveMesh(char *filename, int framenr)
 {
 	std::string path(filename);
 	
 	mCommands.clear();
 	std::ostringstream ss;
-	
-	ss <<  "liquid_save_mesh_low_" << mCurrentID << "(r'" << path << "')";
+	ss << "liquid_save_mesh_low_" << mCurrentID << "(\"" << escape_slashes(path) << "\", " << framenr << ")\r\n";
 	mCommands.push_back(ss.str());
 	
 	runPythonString(mCommands);
@@ -1735,8 +1871,7 @@ void FLUID::saveMeshHigh(char *filename)
 	
 	mCommands.clear();
 	std::ostringstream ss;
-	
-	ss <<  "liquid_save_mesh_high_" << mCurrentID << "(r'" << path << "')";
+	ss << "liquid_save_mesh_high_" << mCurrentID << "(\"" << escape_slashes(path) << "\")\r\n";
 	mCommands.push_back(ss.str());
 	
 	runPythonString(mCommands);
@@ -1748,8 +1883,7 @@ void FLUID::saveParticles(char* filename)
 
 	mCommands.clear();
 	std::ostringstream ss;
-
-	ss << "liquid_save_particles_low" << mCurrentID << "(r'" << path << "')";
+	ss << "liquid_save_particles_low_" << mCurrentID << "(\"" << escape_slashes(path) << "\")\r\n";
 	mCommands.push_back(ss.str());
 
 	runPythonString(mCommands);
@@ -1761,8 +1895,7 @@ void FLUID::saveParticleVelocities(char* filename)
 
 	mCommands.clear();
 	std::ostringstream ss;
-
-	ss << "save_particles_velocities_" << mCurrentID << "(r'" << path << "')";
+	ss << "save_particles_velocities_" << mCurrentID << "(\"" << escape_slashes(path) << "\")\r\n";
 	mCommands.push_back(ss.str());
 
 	runPythonString(mCommands);
@@ -1846,7 +1979,7 @@ void FLUID::saveLiquidData(char *pathname)
 	
 	mCommands.clear();
 	std::ostringstream ss;
-	ss <<  "save_liquid_data_low_" << mCurrentID << "(r'" << path << "')";
+	ss << "liquid_save_mesh_high_" << mCurrentID << "(\"" << escape_slashes(path) << "\")\r\n";
 	mCommands.push_back(ss.str());
 	
 	runPythonString(mCommands);
