@@ -571,8 +571,8 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->sndparticle_tau_max_wc = 8.0;
 			smd->domain->sndparticle_tau_min_ta = 5.0;
 			smd->domain->sndparticle_tau_max_ta = 20.0;
-			smd->domain->sndparticle_tau_min_k = 5.0;
-			smd->domain->sndparticle_tau_max_k = 50.0;
+			smd->domain->sndparticle_tau_min_k = 1.0;
+			smd->domain->sndparticle_tau_max_k = 5.0;
 			smd->domain->sndparticle_k_wc = 200;
 			smd->domain->sndparticle_k_ta = 40;
 			smd->domain->sndparticle_k_b = 0.5;

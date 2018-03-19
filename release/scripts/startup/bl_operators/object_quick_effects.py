@@ -659,13 +659,19 @@ class QuickLiquidParticles(Operator):
 
     style = EnumProperty(
         name="Particle Style",
-        items=(('SECONDARY', "Spray, Foam and Bubbles", "Enhance the liquid with particles for secondary effects"),
-               ('FLIP', "FLIP Particles", "Directly use the FLIP particles to render the liquid instead of a mesh")),
+        items=(('SECONDARY', "Spray, Foam and Bubbles", "Enhance the liquid with particles for a secondary whitewater effect"),
+               ('TRACER', "Tracer", "Use tracer particles to simulate tiny objects floating along with the liquid (e.g. dirt)")),
                default='SECONDARY',)
+
+    if 
+    liquid_display = BoolProperty(
+        name="Use Liquid Display",
+        description="Display simulation grids for easier parameter adjustment",
+        default=True,)
 
     color_coding = BoolProperty(
             name="Enable Color Coding",
-            description="Display some particle attribute like speed or age in the particle color",
+            description="Render some particle attribute like speed or age in the particle color",
             default=False,)
 
     show_flows = BoolProperty(
@@ -725,6 +731,24 @@ class QuickLiquidParticles(Operator):
         dom.modifiers[-1].domain_settings.use_volume_cache = True
         dom.modifiers[-1].domain_settings.cache_surface_format = 'OBJECT'
         dom.modifiers[-1].domain_settings.cache_volume_format = 'POINTCACHE'
+
+        # setup liquid display
+        if self.liquid_display:
+            dom.modifiers[0].domain_settings.axis_slice_method = "SINGLE"
+            dom.modifiers[0].domain_settings.slice_axis = "X"
+            dom.modifiers[0].domain_settings.coba_field_liquid = "KINETIC_ENERGY"
+            dom.modifiers[0].domain_settings.use_color_ramp = True
+            dom.modifiers[0].domain_settings.color_ramp.color_mode = "HSV"
+            dom.modifiers[0].domain_settings.color_ramp.hue_interpolation = "CCW"
+
+            alpha = 0.7
+            el = dom.modifiers[-1].domain_settings.color_ramp.elements
+            el[0].position = 0.01
+            el[0].color = (0, 0, 0, 0) #first point transparent
+            el[1].position = 0.011
+            el[1].color = (0.05, 0.05, 1.0, 0.7) # desaturated blue
+            el.new(1.0)
+            el[2].color = (1.0, 0.05, 0.15, 0.7) # desaturated red
 
         # make domain solid so that liquid becomes better visible
         dom.draw_type = 'SOLID'
@@ -1031,7 +1055,8 @@ class QuickLiquidParticles(Operator):
                     links.new(node_rgb.outputs[0], node_abs.inputs[0])
                     links.new(node_rgb.outputs[0], node_scatter.inputs[0])
 
-                
+        # TODO after tracers are added
+        #if self.style == 'TRACER':
 
         return {'FINISHED'}
 classes = (

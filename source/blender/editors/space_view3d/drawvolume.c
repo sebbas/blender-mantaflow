@@ -458,7 +458,7 @@ static void bind_shader(SmokeDomainSettings *sds, GPUShader *shader, GPUTexture 
 		GPU_shader_uniform_texture(shader, spec_location, tex_spec);
 	}
 	else {
-		float density_scale = 10.0f * sds->display_thickness;
+		float density_scale = 1.0f * sds->display_thickness;
 
 		GPU_shader_uniform_vector(shader, stepsize_location, 1, 1, &sds->dx);
 		GPU_shader_uniform_vector(shader, densityscale_location, 1, 1, &density_scale);
