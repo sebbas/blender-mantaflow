@@ -562,118 +562,6 @@ class PHYSICS_PT_smoke_cache(PhysicButtonsPanel, Panel):
         cache = domain.point_cache
         point_cache_ui(self, context, cache, (cache.is_baked is False), 'SMOKE')
 
-class OBJECT_OT_fluid_bake_geometry(bpy.types.Operator):
-    bl_idname = "fluid_bake_geometry.button"
-    bl_label = "Bake Fluid Geometry"
-            
-    def execute(self, context):
-        bpy.ops.manta.bake_geometry()
-        return{'FINISHED'}
-
-class OBJECT_OT_fluid_free_geometry(bpy.types.Operator):
-    bl_idname = "fluid_free_geometry.button"
-    bl_label = "Free Fluid Geometry"
-            
-    def execute(self, context):
-        bpy.ops.manta.free_geometry()
-        return{'FINISHED'}
-
-class OBJECT_OT_fluid_bake_low(bpy.types.Operator):
-    bl_idname = "fluid_bake_low.button"
-    bl_label = "Bake Fluid Low"
-            
-    def execute(self, context):
-        bpy.ops.manta.bake_simulation_low()
-        return{'FINISHED'}
-
-class OBJECT_OT_fluid_free_low(bpy.types.Operator):
-    bl_idname = "fluid_free_low.button"
-    bl_label = "Free Fluid Low"
-            
-    def execute(self, context):
-        bpy.ops.manta.free_simulation_low()
-        return{'FINISHED'}
-
-class OBJECT_OT_fluid_bake_high(bpy.types.Operator):
-    bl_idname = "fluid_bake_high.button"
-    bl_label = "Bake Fluid High"
-            
-    def execute(self, context):
-        bpy.ops.manta.bake_simulation_high()
-        return{'FINISHED'}
-
-class OBJECT_OT_fluid_free_high(bpy.types.Operator):
-    bl_idname = "fluid_free_high.button"
-    bl_label = "Free Fluid High"
-            
-    def execute(self, context):
-        bpy.ops.manta.free_simulation_high()
-        return{'FINISHED'}
-
-class OBJECT_OT_fluid_bake_mesh_low(bpy.types.Operator):
-    bl_idname = "fluid_bake_mesh_low.button"
-    bl_label = "Bake Mesh Low"
-            
-    def execute(self, context):
-        bpy.ops.manta.bake_mesh_low()
-        return{'FINISHED'}
-
-class OBJECT_OT_fluid_free_mesh_low(bpy.types.Operator):
-    bl_idname = "fluid_free_mesh_low.button"
-    bl_label = "Free Mesh Low"
-            
-    def execute(self, context):
-        bpy.ops.manta.free_mesh_low()
-        return{'FINISHED'}
-
-class OBJECT_OT_fluid_bake_mesh_high(bpy.types.Operator):
-    bl_idname = "fluid_bake_mesh_high.button"
-    bl_label = "Bake Mesh High"
-            
-    def execute(self, context):
-        bpy.ops.manta.bake_mesh_high()
-        return{'FINISHED'}
-
-class OBJECT_OT_fluid_free_mesh_high(bpy.types.Operator):
-    bl_idname = "fluid_free_mesh_high.button"
-    bl_label = "Free Mesh High"
-            
-    def execute(self, context):
-        bpy.ops.manta.free_mesh_high()
-        return{'FINISHED'}
-
-class OBJECT_OT_fluid_bake_particles_low(bpy.types.Operator):
-    bl_idname = "fluid_bake_particles_low.button"
-    bl_label = "Bake Particles Low"
-            
-    def execute(self, context):
-        bpy.ops.manta.bake_particles_low()
-        return{'FINISHED'}
-
-class OBJECT_OT_fluid_free_particles_low(bpy.types.Operator):
-    bl_idname = "fluid_free_particles_low.button"
-    bl_label = "Free Particles Low"
-            
-    def execute(self, context):
-        bpy.ops.manta.free_particles_low()
-        return{'FINISHED'}
-
-class OBJECT_OT_fluid_bake_particles_high(bpy.types.Operator):
-    bl_idname = "fluid_bake_particles_high.button"
-    bl_label = "Bake Particles High"
-            
-    def execute(self, context):
-        bpy.ops.manta.bake_particles_high()
-        return{'FINISHED'}
-
-class OBJECT_OT_fluid_free_particles_high(bpy.types.Operator):
-    bl_idname = "fluid_free_particles_high.button"
-    bl_label = "Free Particles High"
-            
-    def execute(self, context):
-        bpy.ops.manta.free_particles_high()
-        return{'FINISHED'}
-
 class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Decoupled Cache"
     bl_options = {'DEFAULT_CLOSED'}
@@ -693,9 +581,9 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
         split = layout.split()
         split.enabled = not domain.cache_baking_geometry and not domain.cache_baking_mesh_low and not domain.cache_baking_particles_low and not domain.cache_baking_mesh_high and not domain.cache_baking_particles_high and not domain.cache_baking_low and not domain.cache_baking_high
         if domain.cache_baked_geometry is True:
-            split.operator("fluid_free_geometry.button", text="Free Geometry")
+            split.operator("manta.free_geometry", text="Free Geometry")
         else:
-            split.operator("fluid_bake_geometry.button", text="Bake Geometry")
+            split.operator("manta.bake_geometry", text="Bake Geometry")
 
         split = layout.split()
         split.enabled = domain.cache_baked_geometry
@@ -704,24 +592,24 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
         sub2 = col.column()
         sub2.enabled = not domain.cache_baking_low and not domain.cache_baking_mesh_low and not domain.cache_baking_particles_low and not domain.cache_baking_high
         if domain.cache_baked_low is True:
-            sub2.operator("fluid_free_low.button", text="Free Data Low")
+            sub2.operator("manta.free_data_low", text="Free Data Low")
         else:
-            sub2.operator("fluid_bake_low.button", text="Bake Data Low")
+            sub2.operator("manta.bake_data_low", text="Bake Data Low")
 
         if (md.domain_settings.smoke_domain_type in {'LIQUID'}):
             sub3 = col.column()
             sub3.enabled = domain.cache_baked_low and not domain.cache_baking_mesh_low
             if domain.cache_baked_mesh_low is True:
-                sub3.operator("fluid_free_mesh_low.button", text="Free Mesh Low")
+                sub3.operator("manta.free_mesh_low", text="Free Mesh Low")
             else:
-                sub3.operator("fluid_bake_mesh_low.button", text="Bake Mesh Low")
+                sub3.operator("manta.bake_mesh_low", text="Bake Mesh Low")
 
             sub4 = col.column()
             sub4.enabled = domain.cache_baked_low and not domain.cache_baking_particles_low and (domain.use_drop_particles or domain.use_bubble_particles or domain.use_floater_particles or domain.use_tracer_particles)
             if domain.cache_baked_particles_low is True:
-                sub4.operator("fluid_free_particles_low.button", text="Free Particles Low")
+                sub4.operator("manta.free_particles_low", text="Free Particles Low")
             else:
-                sub4.operator("fluid_bake_particles_low.button", text="Bake Particles Low")
+                sub4.operator("manta.bake_particles_low", text="Bake Particles Low")
 
         col = split.column()
         col.enabled = domain.use_high_resolution
@@ -729,24 +617,24 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
         sub5 = col.column()
         sub5.enabled = domain.cache_baked_low and not domain.cache_baking_high and not domain.cache_baking_mesh_high and not domain.cache_baking_particles_high
         if domain.cache_baked_high is True:
-            sub5.operator("fluid_free_high.button", text="Free Data High")
+            sub5.operator("manta.free_data_high", text="Free Data High")
         else:
-            sub5.operator("fluid_bake_high.button", text="Bake Data High")
+            sub5.operator("manta.bake_data_high", text="Bake Data High")
 
         if (md.domain_settings.smoke_domain_type in {'LIQUID'}):
             sub6 = col.column()
             sub6.enabled = domain.cache_baked_low and domain.cache_baked_high and not domain.cache_baking_mesh_high
             if domain.cache_baked_mesh_high is True:
-                sub6.operator("fluid_free_mesh_high.button", text="Free Mesh High")
+                sub6.operator("manta.free_mesh_high", text="Free Mesh High")
             else:
-                sub6.operator("fluid_bake_mesh_high.button", text="Bake Mesh High")
+                sub6.operator("manta.bake_mesh_high", text="Bake Mesh High")
 
             sub7 = col.column()
             sub7.enabled = domain.cache_baked_low and domain.cache_baked_high and not domain.cache_baking_particles_high and (domain.use_drop_particles or domain.use_bubble_particles or domain.use_floater_particles or domain.use_tracer_particles)
             if domain.cache_baked_particles_high is True:
-                sub7.operator("fluid_free_particles_high.button", text="Free Particles High")
+                sub7.operator("manta.free_particles_high", text="Free Particles High")
             else:
-                sub7.operator("fluid_bake_particles_high.button", text="Bake Particles High")
+                sub7.operator("manta.bake_particles_high", text="Bake Particles High")
 
         split = layout.split()
         domain = context.smoke.domain_settings
@@ -771,14 +659,6 @@ class PHYSICS_PT_smoke_field_weights(PhysicButtonsPanel, Panel):
         domain = context.smoke.domain_settings
         effector_weights_ui(self, context, domain.effector_weights, 'SMOKE')
 
-class OBJECT_OT_RunMantaButton(bpy.types.Operator):
-    bl_idname = "manta_export_scene.button"
-    bl_label = "Create Python Script"
-    
-    def execute(self, context):
-        bpy.ops.manta.make_file()
-        return{'FINISHED'}
-
 class PHYSICS_PT_smoke_export_manta(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Export"
     bl_options = {'DEFAULT_CLOSED'}
@@ -793,7 +673,7 @@ class PHYSICS_PT_smoke_export_manta(PhysicButtonsPanel, Panel):
         
         domain = context.smoke.domain_settings
         split = layout.split()
-        split.operator("manta_export_scene.button", text="Export Mantaflow Script")
+        split.operator("manta.make_file", text="Export Mantaflow Script")
         split = layout.split()
         split.prop(domain, "manta_filepath")
         split = layout.split()
@@ -866,23 +746,8 @@ classes = (
     PHYSICS_PT_smoke_guiding,
     PHYSICS_PT_smoke_groups,
     PHYSICS_PT_smoke_cache,
-    OBJECT_OT_fluid_bake_geometry,
-    OBJECT_OT_fluid_free_geometry,
-    OBJECT_OT_fluid_bake_low,
-    OBJECT_OT_fluid_free_low,
-    OBJECT_OT_fluid_bake_high,
-    OBJECT_OT_fluid_free_high,
-    OBJECT_OT_fluid_bake_mesh_low,
-    OBJECT_OT_fluid_free_mesh_low,
-    OBJECT_OT_fluid_bake_mesh_high,
-    OBJECT_OT_fluid_free_mesh_high,
-    OBJECT_OT_fluid_bake_particles_low,
-    OBJECT_OT_fluid_free_particles_low,
-    OBJECT_OT_fluid_bake_particles_high,
-    OBJECT_OT_fluid_free_particles_high,
     PHYSICS_PT_manta_cache,
     PHYSICS_PT_smoke_field_weights,
-    OBJECT_OT_RunMantaButton,
     PHYSICS_PT_smoke_export_manta,
     PHYSICS_PT_smoke_display_settings,
 )

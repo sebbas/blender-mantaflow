@@ -2950,7 +2950,7 @@ static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds)
 	pdEndEffectors(&effectors);
 }
 
-static void smoke_init_geometry(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *domain_dm, float fps, int framenr, int startframe)
+static void smoke_init_geometry(Scene *scene, Object *ob, SmokeModifierData *smd, DerivedMesh *domain_dm, float fps)
 {
 	SmokeDomainSettings *sds = smd->domain;
 
@@ -3221,29 +3221,17 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 	{
 		SmokeDomainSettings *sds = smd->domain;
 		PointCache *cache = NULL;
-		PTCacheID pid;
 		int startframe, endframe, framenr;
-		float timescale;
 
 		framenr = scene->r.cfra;
-
-		//printf("time: %d\n", scene->r.cfra);
-
 		cache = sds->point_cache[0];
 
-		// TODO (sebbas): reenable pointcache or not?
-//		BKE_ptcache_id_from_smoke(&pid, ob, smd);
-//		BKE_ptcache_id_time(&pid, scene, framenr, &startframe, &endframe, &timescale);
 		startframe = sds->cache_frame_start;
 		endframe = sds->cache_frame_end;
 
 		if (!smd->domain->fluid || framenr == startframe)
 		{
-			// TODO (sebbas): reenable pointcache or not?
-//			BKE_ptcache_id_reset(scene, &pid, PTCACHE_RESET_OUTDATED);
 			smokeModifier_reset_ex(smd, false);
-//			BKE_ptcache_validate(cache, framenr);
-//			cache->flag &= ~PTCACHE_REDO_NEEDED;
 		}
 
 		if (!smd->domain->fluid && (framenr != startframe) && (smd->domain->flags & MOD_SMOKE_FILE_LOAD) == 0 && (cache->flag & PTCACHE_BAKED) == 0)
@@ -3262,10 +3250,6 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			return;
 		}
 
-		/* only calculate something when we advanced a single frame */
-		/* don't simulate if viewing start frame, but scene frame is not real start frame */
-		bool can_simulate = (framenr == (int)smd->time + 1) && (framenr == scene->r.cfra);
-
 		/* try to read from cache */
 		if (smd->domain->flags & MOD_SMOKE_HIGHRES && smd->domain->viewport_display_mode == SM_VIEWPORT_FINAL)
 		{
@@ -3279,51 +3263,7 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 				return;
 			}
 		}
-
-		// TODO (sebbas): reenable pointcache or not?
-//		if (BKE_ptcache_read(&pid, (float)framenr, can_simulate) == PTCACHE_READ_EXACT) {
-//			BKE_ptcache_validate(cache, framenr);
-//			smd->time = framenr;
-//			return;
-//		}
-		// TODO (sebbas): if this is uncommented the first frame from geometry wont get saved
-//		if (!can_simulate)
-//			return;
-
-		/* first frame needs special treatment because it does not have a step */
-		bool do_first_frame = (int)smd->time == startframe && (cache->flag & PTCACHE_OUTDATED || cache->last_exact == 0);
-
-		// TODO (sebbas): reenable pointcache or not?
-		/* if on second frame, write smoke cache for first frame here (i.e. before simulating) */
-//		if (do_first_frame && sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
-//			BKE_ptcache_write(&pid, startframe);
-//		}
-
 		smd->time = scene->r.cfra;
-
-		// DG: interesting commenting this line + deactivating loading of noise files
-//		if (framenr != startframe){
-
-			smoke_init_geometry(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base, framenr, startframe);
-
-			if (sds->total_cells > 1) {
-				update_effectors(scene, ob, sds); // DG TODO? problem --> uses forces instead of velocity, need to check how they need to be changed with variable dt
-
-				// TODO (sebbas): refactor
-				/* extra step for first frame */
-				//		if (pid && do_first_frame && sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID) {
-				//			smoke_step(sds->fluid, sds->smd, startframe);
-				//			BKE_ptcache_write(pid, startframe);
-				//		}
-				smoke_step(sds->fluid, sds->smd, framenr);
-			}
-//		}
-
-
-		// TODO (sebbas): reenable pointcache or not?
-//		BKE_ptcache_validate(cache, framenr);
-//		if (framenr != startframe)
-//			BKE_ptcache_write(&pid, framenr);
 	}
 }
 
@@ -3525,13 +3465,22 @@ static void smoke_calc_transparency(SmokeDomainSettings *sds, Scene *scene)
 	}
 }
 
+int smoke_make_geometry(Scene *scene, Object *ob, SmokeModifierData *smd, int framenr)
+{
+	SmokeDomainSettings *sds = smd->domain;
+	DerivedMesh *dm = ob->derivedDeform;
+
+	smd->time = scene->r.cfra;
+	smoke_init_geometry(scene, ob, smd, dm, scene->r.frs_sec / scene->r.frs_sec_base);
+
+	/* Call to Mantaflow fluid simulation - save geometry */
+	smoke_step(sds->fluid, sds->smd, framenr);
+	return 1;
+}
+
 int smoke_make_step(Scene *scene, Object *ob, SmokeModifierData *smd, int framenr)
 {
 	SmokeDomainSettings *sds = smd->domain;
-	int startframe, endframe;
-
-	startframe = sds->cache_frame_start;
-	endframe = sds->cache_frame_end;
 
 	/* TODO (sebbas): Move dissolve smoke code to mantaflow */
 	if (sds->flags & MOD_SMOKE_DISSOLVE) {
@@ -3544,10 +3493,8 @@ int smoke_make_step(Scene *scene, Object *ob, SmokeModifierData *smd, int framen
 	if (sds->total_cells > 1) {
 		update_effectors(scene, ob, sds);
 
-		/* Call to Mantaflow fluid simulation */
-//		smoke_step(sds->fluid, sds->smd, framenr);
+		/* Call to Mantaflow fluid simulation - run simulation and save in cache */
 		fluid_bake_low(sds->fluid, sds->smd, framenr);
-
 	}
 
 	/* TODO (sebbas): Move shadows memory management to mantaflow. Is easier for grid io operations */

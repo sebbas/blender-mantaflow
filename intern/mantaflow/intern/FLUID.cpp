@@ -1002,12 +1002,14 @@ int FLUID::readCacheLow(SmokeModifierData *smd, int framenr)
 	if (mUsingSmoke) {
 		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
 		if (!BLI_exists(cacheDir)) return 0;
-		printf("READCACHE 2()\n");
 
 		ss.str("");
-		ss << "smoke_load_geometry_low_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
+		ss << "smoke_load_data_low_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
 		mCommands.push_back(ss.str());
 		runPythonString(mCommands);
+		updatePointers();
+
+		readSuccess = true;
 	}
 	if (mUsingLiquid) {
 		/* First try loading the mesh */
@@ -1097,7 +1099,6 @@ int FLUID::readCacheHigh(SmokeModifierData *smd, int framenr)
 	if (mUsingSmoke) {
 		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
 		if (!BLI_exists(cacheDir)) return 0;
-		printf("READCACHE 2()\n");
 		
 		ss.str("");
 		ss << "smoke_load_geometry_low_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
@@ -1235,7 +1236,7 @@ int FLUID::bakeParticlesLow(SmokeModifierData *smd, int framenr)
 	if (with_debug)
 		std::cout << "FLUID::bakeParticlesLow()" << std::endl;
 
-	char cacheDirData[FILE_MAX], cacheDirParticles[FILE_MAX], cacheDirGeometry[FILE_MAX];;
+	char cacheDirData[FILE_MAX], cacheDirParticles[FILE_MAX], cacheDirGeometry[FILE_MAX];
 	cacheDirData[0] = '\0';
 	cacheDirParticles[0] = '\0';
 	cacheDirGeometry[0] = '\0';
@@ -1259,17 +1260,19 @@ int FLUID::bakeParticlesHigh(SmokeModifierData *smd, int framenr)
 	if (with_debug)
 		std::cout << "FLUID::bakeParticlesHigh()" << std::endl;
 
-	char cacheDirData[FILE_MAX], cacheDirParticles[FILE_MAX];
+	char cacheDirData[FILE_MAX], cacheDirParticles[FILE_MAX], cacheDirGeometry[FILE_MAX];;;
 	cacheDirData[0] = '\0';
 	cacheDirParticles[0] = '\0';
+	cacheDirGeometry[0] = '\0';
 
 	mCommands.clear();
 	std::ostringstream ss;
 
 	BLI_path_join(cacheDirParticles, sizeof(cacheDirParticles), smd->domain->cache_directory, FLUID_CACHE_DIR_PARTICLES_HIGH, NULL);
 	BLI_path_join(cacheDirData, sizeof(cacheDirData), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_HIGH, NULL);
+	BLI_path_join(cacheDirGeometry, sizeof(cacheDirGeometry), smd->domain->cache_directory, FLUID_CACHE_DIR_GEOMETRY, NULL);
 
-	ss << "bake_particles_high_" << mCurrentID << "('" << cacheDirParticles << "', '" << cacheDirData << "', " << framenr << ")";
+	ss << "bake_particles_high_" << mCurrentID << "('" << cacheDirParticles << "', '" << cacheDirData << "', '" << cacheDirGeometry << "', " << framenr << ")";
 	mCommands.push_back(ss.str());
 
 	runPythonString(mCommands);

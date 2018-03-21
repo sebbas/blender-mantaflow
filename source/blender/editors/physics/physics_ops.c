@@ -201,10 +201,10 @@ static void operatortypes_manta(void)
 {
 	WM_operatortype_append(MANTA_OT_bake_geometry);
 	WM_operatortype_append(MANTA_OT_free_geometry);
-	WM_operatortype_append(MANTA_OT_bake_simulation_low);
-	WM_operatortype_append(MANTA_OT_free_simulation_low);
-	WM_operatortype_append(MANTA_OT_bake_simulation_high);
-	WM_operatortype_append(MANTA_OT_free_simulation_high);
+	WM_operatortype_append(MANTA_OT_bake_data_low);
+	WM_operatortype_append(MANTA_OT_free_data_low);
+	WM_operatortype_append(MANTA_OT_bake_data_high);
+	WM_operatortype_append(MANTA_OT_free_data_high);
 	WM_operatortype_append(MANTA_OT_bake_mesh_low);
 	WM_operatortype_append(MANTA_OT_free_mesh_low);
 	WM_operatortype_append(MANTA_OT_bake_mesh_high);

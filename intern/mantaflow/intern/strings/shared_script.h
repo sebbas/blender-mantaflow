@@ -35,7 +35,19 @@
 
 const std::string manta_import = "\
 from manta import *\n\
-import os, shutil, math, sys, gc, multiprocessing, errno, bpy\n";
+import os.path, shutil, math, sys, gc, multiprocessing, platform\n\
+\n\
+# TODO (sebbas): Use this to simulate Windows multiprocessing (has default mode spawn)\n\
+debugMp = False\n\
+#try:\n\
+#    multiprocessing.set_start_method('spawn')\n\
+#except:\n\
+#    pass\n\
+\n\
+bpy = sys.modules.get('bpy')\n\
+if bpy is not None:\n\
+    sys.executable = bpy.app.binary_path_python\n\
+del bpy\n";
 
 //////////////////////////////////////////////////////////////////////
 // DEBUG
@@ -301,8 +313,10 @@ def bake_fluid_process_low_$ID$(framenr, path_geometry, path_data):\n\
     # Load grids before stepping - because every process has its own memory space!\n\
     if framenr>1:\n\
         fluid_load_data_low_$ID$(path_data, framenr-1) # load data from previous frame\n\
-    #if using_smoke_s$ID$:\n\
-    #    smoke_load_data_low_$ID$(path_geometry, framenr)\n\
+    if using_smoke_s$ID$:\n\
+        smoke_load_geometry_low_$ID$(path_geometry, framenr)\n\
+        if framenr>1:\n\
+            smoke_load_data_low_$ID$(path_data, framenr-1) # load data from previous frame\n\
     if using_liquid_s$ID$:\n\
         liquid_load_geometry_low_$ID$(path_geometry, framenr)\n\
         if framenr>1:\n\
@@ -318,7 +332,10 @@ def bake_fluid_process_low_$ID$(framenr, path_geometry, path_data):\n\
     return True\n\
 \n\
 def bake_fluid_low_$ID$(path_geometry, path_data, framenr):\n\
-    fluid_cache_multiprocessing_start_$ID$(framenr, bake_fluid_process_low_$ID$, path_geometry, path_data)\n";
+    if debugMp or platform.system() != 'Darwin' and platform.system() != 'Linux':\n\
+        bake_fluid_process_low_$ID$(framenr, path_geometry, path_data)\n\
+    else:\n\
+        fluid_cache_multiprocessing_start_$ID$(framenr, bake_fluid_process_low_$ID$, path_geometry, path_data)\n";
 
 const std::string fluid_bake_high = "\n\
 def bake_fluid_process_high_$ID$(framenr, path_data_low, path_data_high):\n\
@@ -338,7 +355,10 @@ def bake_fluid_process_high_$ID$(framenr, path_data_low, path_data_high):\n\
         liquid_save_data_high_$ID$(path_data_high, framenr)\n\
 \n\
 def bake_fluid_high_$ID$(path_data_low, path_data_high, framenr):\n\
-    fluid_cache_multiprocessing_start_$ID$(framenr, bake_fluid_process_high_$ID$, path_data_low, path_data_high)\n";
+    if debugMp or platform.system() != 'Darwin' and platform.system() != 'Linux':\n\
+        bake_fluid_process_high_$ID$(framenr, path_data_low, path_data_high)\n\
+    else:\n\
+        fluid_cache_multiprocessing_start_$ID$(framenr, bake_fluid_process_high_$ID$, path_data_low, path_data_high)\n";
 
 const std::string fluid_bake_mesh_low = "\n\
 def bake_mesh_process_low_$ID$(framenr, path_data, path_mesh):\n\
@@ -351,7 +371,10 @@ def bake_mesh_process_low_$ID$(framenr, path_data, path_mesh):\n\
         liquid_save_mesh_low_$ID$(path_mesh, framenr)\n\
 \n\
 def bake_mesh_low_$ID$(path_mesh, path_data, framenr):\n\
-    fluid_cache_multiprocessing_start_$ID$(framenr, bake_mesh_process_low_$ID$, path_data, path_mesh)\n";
+    if debugMp or platform.system() != 'Darwin' and platform.system() != 'Linux':\n\
+        bake_mesh_process_low_$ID$(framenr, path_data, path_mesh)\n\
+    else:\n\
+        fluid_cache_multiprocessing_start_$ID$(framenr, bake_mesh_process_low_$ID$, path_data, path_mesh)\n";
 
 const std::string fluid_bake_mesh_high = "\n\
 def bake_mesh_process_high_$ID$(framenr, path_data, path_mesh):\n\
@@ -364,7 +387,10 @@ def bake_mesh_process_high_$ID$(framenr, path_data, path_mesh):\n\
         liquid_save_mesh_high_$ID$(path_mesh, framenr)\n\
 \n\
 def bake_mesh_high_$ID$(path_mesh, path_data, framenr):\n\
-    fluid_cache_multiprocessing_start_$ID$(framenr, bake_mesh_process_high_$ID$, path_data, path_mesh)\n";
+    if debugMp or platform.system() != 'Darwin' and platform.system() != 'Linux':\n\
+        bake_mesh_process_high_$ID$(framenr, path_data, path_mesh)\n\
+    else:\n\
+        fluid_cache_multiprocessing_start_$ID$(framenr, bake_mesh_process_high_$ID$, path_data, path_mesh)\n";
 
 const std::string fluid_bake_particles_low = "\n\
 def bake_particles_process_low_$ID$(framenr, path_data, path_particles, path_geometry):\n\
@@ -384,7 +410,10 @@ def bake_particles_process_low_$ID$(framenr, path_data, path_particles, path_geo
         liquid_save_particles_low_$ID$(path_particles, framenr)\n\
 \n\
 def bake_particles_low_$ID$(path_particles, path_data, path_geometry, framenr):\n\
-    fluid_cache_multiprocessing_start_$ID$(framenr, bake_particles_process_low_$ID$, path_data, path_particles, path_geometry)\n";
+    if debugMp or platform.system() != 'Darwin' and platform.system() != 'Linux':\n\
+        bake_particles_process_low_$ID$(framenr, path_data, path_particles, path_geometry)\n\
+    else:\n\
+        fluid_cache_multiprocessing_start_$ID$(framenr, bake_particles_process_low_$ID$, path_data, path_particles, path_geometry)\n";
 
 const std::string fluid_bake_particles_high = "\n\
 def bake_particles_process_high_$ID$(framenr, path_data, path_particles, path_geometry):\n\
@@ -396,7 +425,10 @@ def bake_particles_process_high_$ID$(framenr, path_data, path_particles, path_ge
         # TODO (sebbas): Add support for high res particles\n\
 \n\
 def bake_particles_high_$ID$(path_particles, path_data, path_geometry, framenr):\n\
-    fluid_cache_multiprocessing_start_$ID$(framenr, bake_particles_process_high_$ID$, path_data, path_particles)\n";
+    if debugMp or platform.system() != 'Darwin' and platform.system() != 'Linux':\n\
+        bake_particles_process_high_$ID$(framenr, path_data, path_particles)\n\
+    else:\n\
+        fluid_cache_multiprocessing_start_$ID$(framenr, bake_particles_process_high_$ID$, path_data, path_particles, path_geometry)\n";
 
 //////////////////////////////////////////////////////////////////////
 // IMPORT
@@ -411,7 +443,8 @@ def fluid_load_data_low_$ID$(path, framenr):\n\
 
 const std::string fluid_load_data_high = "\n\
 def fluid_load_data_high_$ID$(path, framenr):\n\
-    mantaMsg('Fluid load data high')\n";
+    mantaMsg('Fluid load data high')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n";
 
 const std::string fluid_load_geometry_low = "\n\
 def fluid_load_geometry_low_$ID$(path, framenr):\n\
@@ -502,7 +535,8 @@ def fluid_save_data_low_$ID$(path, framenr):\n\
 
 const std::string fluid_save_data_high = "\n\
 def fluid_save_data_high_$ID$(path, framenr):\n\
-    mantaMsg('Fluid save data high')\n";
+    mantaMsg('Fluid save data high')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n";
 
 const std::string fluid_save_geometry_low = "\n\
 def fluid_save_geometry_low_$ID$(path, framenr):\n\

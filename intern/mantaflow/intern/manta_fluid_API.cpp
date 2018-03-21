@@ -850,9 +850,7 @@ extern "C" int fluid_bake_low(FLUID* fluid, SmokeModifierData *smd, int framenr)
 
 extern "C" int fluid_bake_high(FLUID* fluid, SmokeModifierData *smd, int framenr)
 {
-	printf("fluid_bake_high 2\n");
 	if (!fluid || !smd) return 0;
-	printf("fluid_bake_high 3\n");
 	return fluid->bakeSimulationHigh(smd, framenr);
 }
 

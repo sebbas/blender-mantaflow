@@ -325,6 +325,23 @@ def liquid_load_geometry_low_$ID$(path, framenr):\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
     phiIn_s$ID$.load(os.path.join(path, 'phiIn_' + framenr + '.uni'))\n";
 
+const std::string liquid_load_data_low = "\n\
+def liquid_load_data_low_$ID$(path, framenr, withParticles):\n\
+    mantaMsg('Liquid load data low')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    phi_s$ID$.load(os.path.join(path, 'phi_' + framenr +'.uni'))\n\
+    if withParticles:\n\
+        pp_s$ID$.load(os.path.join(path, 'pp_' + framenr +'.uni'))\n\
+        pVel_pp$ID$.load(os.path.join(path, 'pVel_' + framenr +'.uni'))\n";
+
+const std::string liquid_load_data_high = "\n\
+def liquid_load_data_high_$ID$(path, framenr, withParticles):\n\
+    mantaMsg('Liquid load data high')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    phi_xl$ID$.load(os.path.join(path, 'phi_xl_' + framenr +'.uni'))\n\
+    if withParticles:\n\
+        pp_xl$ID$.load(os.path.join(path, 'pp_xl_' + framenr +'.uni'))\n";
+
 const std::string liquid_load_mesh_low = "\n\
 def liquid_load_mesh_low_$ID$(path, framenr):\n\
     mantaMsg('Liquid load mesh low')\n\
@@ -350,26 +367,30 @@ def liquid_load_particles_high_$ID$(path, framenr):\n\
     mantaMsg('Liquid load particles high')\n\
     # Nothing to do here yet!\n";
 
-const std::string liquid_load_data_low = "\n\
-def liquid_load_data_low_$ID$(path, framenr, withParticles):\n\
-    mantaMsg('Liquid load data low')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    phi_s$ID$.load(os.path.join(path, 'phi_' + framenr +'.uni'))\n\
-    if withParticles:\n\
-        pp_s$ID$.load(os.path.join(path, 'pp_' + framenr +'.uni'))\n\
-        pVel_pp$ID$.load(os.path.join(path, 'pVel_' + framenr +'.uni'))\n";
-
-const std::string liquid_load_data_high = "\n\
-def liquid_load_data_high_$ID$(path, framenr, withParticles):\n\
-    mantaMsg('Liquid load data high')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    phi_xl$ID$.load(os.path.join(path, 'phi_xl_' + framenr +'.uni'))\n\
-    if withParticles:\n\
-        pp_xl$ID$.load(os.path.join(path, 'pp_xl_' + framenr +'.uni'))\n";
-
 //////////////////////////////////////////////////////////////////////
 // EXPORT
 //////////////////////////////////////////////////////////////////////
+
+const std::string liquid_save_geometry_low = "\n\
+def liquid_save_geometry_low_$ID$(path, framenr):\n\
+    mantaMsg('Liquid save geometry')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    phiIn_s$ID$.save(os.path.join(path, 'phiIn_' + framenr + '.uni'))\n";
+
+const std::string liquid_save_data_low = "\n\
+def liquid_save_data_low_$ID$(path, framenr):\n\
+    mantaMsg('Liquid save data low')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    phi_s$ID$.save(os.path.join(path, 'phi_' + framenr +'.uni'))\n\
+    pp_s$ID$.save(os.path.join(path, 'pp_' + framenr +'.uni'))\n\
+    pVel_pp$ID$.save(os.path.join(path, 'pVel_' + framenr +'.uni'))\n";
+
+const std::string liquid_save_data_high = "\n\
+def liquid_save_data_high_$ID$(path, framenr):\n\
+    mantaMsg('Liquid save data high')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    phi_xl$ID$.save(os.path.join(path, 'phi_xl_' + framenr +'.uni'))\n\
+    pp_s$ID$.save(os.path.join(path, 'pp_xl_' + framenr +'.uni'))\n";
 
 const std::string liquid_save_mesh_low = "\n\
 def liquid_save_mesh_low_$ID$(path, framenr):\n\
@@ -399,26 +420,10 @@ def liquid_save_particles_low_$ID$(path, framenr):\n\
     pVelSnd_pp$ID$.save(os.path.join(path, 'pVelSnd_' + framenr + '.uni'))\n\
     pLifeSnd_pp$ID$.save(os.path.join(path, 'pLifeSnd_' + framenr + '.uni'))\n";
 
-const std::string liquid_save_data_low = "\n\
-def liquid_save_data_low_$ID$(path, framenr):\n\
-    mantaMsg('Liquid save data low')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    phi_s$ID$.save(os.path.join(path, 'phi_' + framenr +'.uni'))\n\
-    pp_s$ID$.save(os.path.join(path, 'pp_' + framenr +'.uni'))\n\
-    pVel_pp$ID$.save(os.path.join(path, 'pVel_' + framenr +'.uni'))\n";
-
-const std::string liquid_save_data_high = "\n\
-def liquid_save_data_high_$ID$(path, framenr):\n\
-    mantaMsg('Liquid save data high')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    phi_xl$ID$.save(os.path.join(path, 'phi_xl_' + framenr +'.uni'))\n\
-    pp_s$ID$.save(os.path.join(path, 'pp_xl_' + framenr +'.uni'))\n";
-
-const std::string liquid_save_geometry_low = "\n\
-def liquid_save_geometry_low_$ID$(path, framenr):\n\
-    mantaMsg('Liquid save geometry')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    phiIn_s$ID$.save(os.path.join(path, 'phiIn_' + framenr + '.uni'))\n";
+const std::string liquid_save_particles_high = "\n\
+def liquid_save_particles_high$ID$(path, framenr):\n\
+    mantaMsg('Liquid save particles high')\n\
+    # Nothing to do here yet!\n";
 
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE
