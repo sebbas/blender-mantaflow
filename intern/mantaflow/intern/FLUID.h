@@ -269,7 +269,6 @@ private:
 	
 	float mTempAmb; /* ambient temperature */
 	float mConstantScaling;
-	std::vector<std::string> mCommands;
 
 	// Smoke grids
 	float* mDensity;

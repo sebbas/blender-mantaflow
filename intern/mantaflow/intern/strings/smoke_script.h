@@ -60,6 +60,8 @@ using_colors_s$ID$    = $USING_COLORS$\n\
 using_heat_s$ID$      = $USING_HEAT$\n\
 using_fire_s$ID$      = $USING_FIRE$\n\
 vorticity_s$ID$       = $VORTICITY$\n\
+buoyancy_dens_s$ID$   = $BUOYANCY_ALPHA$\n\
+buoyancy_heat_s$ID$   = $BUOYANCY_BETA$\n\
 absoluteFlow_s$ID$    = True\n";
 
 const std::string smoke_variables_high = "\n\
@@ -349,12 +351,12 @@ def step_low_$ID$():\n\
         resetOutflow(flags=flags_s$ID$, real=density_s$ID$)\n\
     \n\
     mantaMsg('Vorticity')\n\
-    vorticityConfinement(vel=vel_s$ID$, flags=flags_s$ID$, strength=$VORTICITY$)\n\
+    vorticityConfinement(vel=vel_s$ID$, flags=flags_s$ID$, strength=vorticity_s$ID$)\n\
     \n\
     if using_heat_s$ID$:\n\
         mantaMsg('Adding heat buoyancy')\n\
-        addBuoyancy(flags=flags_s$ID$, density=density_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$, coefficient=$ALPHA$)\n\
-        addBuoyancy(flags=flags_s$ID$, density=heat_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$, coefficient=$BETA$)\n\
+        addBuoyancy(flags=flags_s$ID$, density=density_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$, coefficient=buoyancy_dens_s$ID$)\n\
+        addBuoyancy(flags=flags_s$ID$, density=heat_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$, coefficient=buoyancy_heat_s$ID$)\n\
     else:\n\
         mantaMsg('Adding buoyancy')\n\
         addBuoyancy(density=density_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$, flags=flags_s$ID$)\n\

@@ -44,8 +44,7 @@ minParticles_s$ID$   = $PARTICLE_MINIMUM$\n\
 maxParticles_s$ID$   = $PARTICLE_MAXIMUM$\n\
 radiusFactor_s$ID$   = $PARTICLE_RADIUS$\n\
 randomness_s$ID$     = $PARTICLE_RANDOMNESS$\n\
-surfaceTension_s$ID$ = $LIQUID_SURFACE_TENSION$\n\
-maxVel_s$ID$         = 1 # just declared here, do not set\n";
+surfaceTension_s$ID$ = $LIQUID_SURFACE_TENSION$\n";
 
 const std::string liquid_variables_high = "\n\
 mantaMsg('Liquid variables high')\n";

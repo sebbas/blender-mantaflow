@@ -104,6 +104,12 @@ tau_s$ID$   = 1.0\n\
 sigma_s$ID$ = 0.99/tau_s$ID$\n\
 theta_s$ID$ = 1.0\n\
 \n\
+# fluid time params\n\
+dt_default_s$ID$ = 0.1 # dt is 0.1 at 25fps\n\
+dt_factor_s$ID$  = $DT_FACTOR$\n\
+fps_s$ID$        = $FPS$\n\
+dt0_s$ID$        = dt_default_s$ID$ * (25.0 / fps_s$ID$) * dt_factor_s$ID$\n\
+\n\
 # fluid diffusion / viscosity\n\
 domainSize_s$ID$ = $FLUID_DOMAIN_SIZE$ # longest domain side in cm\n\
 if domainSize_s$ID$ == 0: domainSize_s$ID$ = 100 # TODO (sebbas): just for versioning, remove with proper 2.8 versioning\n\
@@ -135,10 +141,6 @@ using_sndparts_s$ID$ = True\n";
 
 const std::string fluid_adaptive_time_stepping_low = "\n\
 mantaMsg('Fluid adaptive time stepping low')\n\
-dt_default_s$ID$  = 0.1 # dt is 0.1 at 25fps\n\
-dt_factor_s$ID$   = $DT_FACTOR$\n\
-fps_s$ID$         = $FPS$\n\
-dt0_s$ID$         = dt_default_s$ID$ * (25.0 / fps_s$ID$) * dt_factor_s$ID$\n\
 s$ID$.frameLength = dt0_s$ID$ \n\
 s$ID$.timestepMin = s$ID$.frameLength / 10.\n\
 s$ID$.timestepMax = s$ID$.frameLength\n\
@@ -146,7 +148,7 @@ s$ID$.cfl         = $CFL$\n\
 s$ID$.timestep    = s$ID$.frameLength\n";
 
 const std::string fluid_adaptive_time_stepping_high = "\n\
-mantaMsg('Adaptive time stepping high')\n\
+mantaMsg('Fluid adaptive time stepping high')\n\
 xl$ID$.frameLength = s$ID$.frameLength\n\
 xl$ID$.timestepMin = s$ID$.timestepMin\n\
 xl$ID$.timestepMax = s$ID$.timestepMax\n\

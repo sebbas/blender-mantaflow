@@ -3469,7 +3469,7 @@ int smoke_make_step(Scene *scene, Object *ob, SmokeModifierData *smd, int framen
 		update_effectors(scene, ob, sds);
 
 		/* Call to Mantaflow fluid simulation - run simulation and save in cache */
-		fluid_bake_low(sds->fluid, sds->smd, framenr);
+		fluid_bake_low(sds->fluid, smd, framenr);
 	}
 
 	/* TODO (sebbas): Move shadows memory management to mantaflow. Is easier for grid io operations */

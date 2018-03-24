@@ -1241,23 +1241,23 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 		}
 		else if (STREQ(job->type, "MANTA_OT_bake_data_high"))
 		{
-			success = fluid_bake_high(sds->fluid, job->smd, frame);
+			success = fluid_bake_high(sds->fluid, smd, frame);
 		}
 		else if (STREQ(job->type, "MANTA_OT_bake_mesh_low"))
 		{
-			success = fluid_bake_mesh_low(sds->fluid, job->smd, frame);
+			success = fluid_bake_mesh_low(sds->fluid, smd, frame);
 		}
 		else if (STREQ(job->type, "MANTA_OT_bake_mesh_high"))
 		{
-			success = fluid_bake_mesh_high(sds->fluid, job->smd, frame);
+			success = fluid_bake_mesh_high(sds->fluid, smd, frame);
 		}
 		else if (STREQ(job->type, "MANTA_OT_bake_particles_low"))
 		{
-			success = fluid_bake_particles_low(sds->fluid, job->smd, frame);
+			success = fluid_bake_particles_low(sds->fluid, smd, frame);
 		}
 		else if (STREQ(job->type, "MANTA_OT_bake_particles_high"))
 		{
-			success = fluid_bake_particles_high(sds->fluid, job->smd, frame);
+			success = fluid_bake_particles_high(sds->fluid, smd, frame);
 		}
 
 		/* Exit loop early if one step is unsucessful */
