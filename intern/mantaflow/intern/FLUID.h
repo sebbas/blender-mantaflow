@@ -67,8 +67,12 @@ public:
 	// Bake
 	int readCacheLow(SmokeModifierData *smd, int framenr);
 	int readCacheHigh(SmokeModifierData *smd, int framenr);
-	int bakeSimulationLow(SmokeModifierData *smd, int framenr);
-	int bakeSimulationHigh(SmokeModifierData *smd, int framenr);
+	int writeCacheLow(SmokeModifierData *smd, int framenr);
+//	int writeCacheHigh(SmokeModifierData *smd, int framenr);
+	int bakeGeometryLow(SmokeModifierData *smd, int framenr);
+//	int bakeGeometryHigh(SmokeModifierData *smd, int framenr);
+	int bakeDataLow(SmokeModifierData *smd, int framenr);
+	int bakeDataHigh(SmokeModifierData *smd, int framenr);
 	int bakeMeshLow(SmokeModifierData *smd, int framenr);
 	int bakeMeshHigh(SmokeModifierData *smd, int framenr);
 	int bakeParticlesLow(SmokeModifierData *smd, int framenr);
@@ -116,7 +120,9 @@ public:
 	inline int getResZHigh() { return mResZHigh; }
 	
 	inline float* getDensity() { return mDensity; }
+	inline float* getDensityIn() { return mDensityIn; }
 	inline float* getHeat() { return mHeat; }
+	inline float* getHeatIn() { return mHeatIn; }
 	inline float* getVelocityX() { return mVelocityX; }
 	inline float* getVelocityY() { return mVelocityY; }
 	inline float* getVelocityZ() { return mVelocityZ; }
@@ -137,11 +143,18 @@ public:
 	inline int* getNumGuide()    { return mNumGuide; }
 	inline float* getFlame() { return mFlame; }
 	inline float* getFuel()  { return mFuel; }
+	inline float* getFuelIn()  { return mFuelIn; }
 	inline float* getReact() { return mReact; }
 	inline float* getColorR() { return mColorR; }
 	inline float* getColorG() { return mColorG; }
 	inline float* getColorB() { return mColorB; }
-	inline float* getInflow() { return mInflow; }
+	inline float* getColorRIn() { return mColorRIn; }
+	inline float* getColorGIn() { return mColorGIn; }
+	inline float* getColorBIn() { return mColorBIn; }
+	inline float* getEmissionIn() { return mEmissionIn; }
+	inline float* getShadow() { return mShadow; }
+	inline int* getFlowType() { return mFlowType; }
+	inline int* getNumFlow()  { return mNumFlow; }
 
 	inline float* getDensityHigh() { return mDensityHigh; }
 	inline float* getFlameHigh() { return mFlameHigh; }
@@ -260,7 +273,9 @@ private:
 
 	// Smoke grids
 	float* mDensity;
+	float* mDensityIn;
 	float* mHeat;
+	float* mHeatIn;
 	float* mVelocityX;
 	float* mVelocityY;
 	float* mVelocityZ;
@@ -281,11 +296,18 @@ private:
 	int* mNumGuide;
 	float* mFlame;
 	float* mFuel;
+	float* mFuelIn;
 	float* mReact;
 	float* mColorR;
 	float* mColorG;
 	float* mColorB;
-	float* mInflow;
+	float* mColorRIn;
+	float* mColorGIn;
+	float* mColorBIn;
+	float* mEmissionIn;
+	float* mShadow;
+	int* mFlowType;
+	int* mNumFlow;
 	float* mDensityHigh;
 	float* mFlameHigh;
 	float* mFuelHigh;

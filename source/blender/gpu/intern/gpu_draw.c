@@ -1461,7 +1461,7 @@ void GPU_create_smoke(SmokeModifierData *smd, int highres)
 			sds->tex_flame = (smoke_turbulence_has_fuel(sds->fluid)) ? GPU_texture_create_3D(sds->res_wt[0], sds->res_wt[1], sds->res_wt[2], 1, smoke_turbulence_get_flame(sds->fluid)) : NULL;
 		}
 
-		sds->tex_shadow = GPU_texture_create_3D(sds->res[0], sds->res[1], sds->res[2], 1, sds->shadow);
+		sds->tex_shadow = GPU_texture_create_3D(sds->res[0], sds->res[1], sds->res[2], 1, smoke_get_shadow(sds->fluid));
 	}
 #else // WITH_SMOKE
 	(void)highres;

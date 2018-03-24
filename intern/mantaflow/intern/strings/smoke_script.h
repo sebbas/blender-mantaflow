@@ -59,7 +59,8 @@ preconditioner_s$ID$  = PcMGStatic\n\
 using_colors_s$ID$    = $USING_COLORS$\n\
 using_heat_s$ID$      = $USING_HEAT$\n\
 using_fire_s$ID$      = $USING_FIRE$\n\
-vorticity_s$ID$       = $VORTICITY$\n";
+vorticity_s$ID$       = $VORTICITY$\n\
+absoluteFlow_s$ID$    = True\n";
 
 const std::string smoke_variables_high = "\n\
 mantaMsg('Smoke variables high')\n\
@@ -88,15 +89,23 @@ using_fire_s$ID$ = True\n";
 
 const std::string smoke_alloc_low = "\n\
 mantaMsg('Smoke alloc low')\n\
-density_s$ID$ = s$ID$.create(RealGrid)\n\
-inflow_s$ID$  = s$ID$.create(RealGrid)\n\
+density_s$ID$    = s$ID$.create(RealGrid)\n\
+emissionIn_s$ID$ = s$ID$.create(RealGrid)\n\
+shadow_s$ID$     = s$ID$.create(RealGrid)\n\
 heat_s$ID$    = 0 # allocated dynamically\n\
 flame_s$ID$   = 0\n\
 fuel_s$ID$    = 0\n\
 react_s$ID$   = 0\n\
 color_r_s$ID$ = 0\n\
 color_g_s$ID$ = 0\n\
-color_b_s$ID$ = 0\n";
+color_b_s$ID$ = 0\n\
+\n\
+densityIn_s$ID$ = s$ID$.create(RealGrid)\n\
+heatIn_s$ID$    = s$ID$.create(RealGrid)\n\
+fuelIn_s$ID$    = 0 # allocated dynamically\n\
+colorIn_r_s$ID$ = 0\n\
+colorIn_g_s$ID$ = 0\n\
+colorIn_b_s$ID$ = 0\n";
 
 const std::string smoke_alloc_high = "\n\
 mantaMsg('Smoke alloc high')\n\
@@ -119,9 +128,12 @@ texture_w2_s$ID$ = s$ID$.create(RealGrid)\n";
 
 const std::string smoke_alloc_colors_low = "\n\
 mantaMsg('Allocating colors low')\n\
-color_r_s$ID$ = s$ID$.create(RealGrid)\n\
-color_g_s$ID$ = s$ID$.create(RealGrid)\n\
-color_b_s$ID$ = s$ID$.create(RealGrid)\n";
+color_r_s$ID$   = s$ID$.create(RealGrid)\n\
+color_g_s$ID$   = s$ID$.create(RealGrid)\n\
+color_b_s$ID$   = s$ID$.create(RealGrid)\n\
+colorIn_r_s$ID$ = s$ID$.create(RealGrid)\n\
+colorIn_g_s$ID$ = s$ID$.create(RealGrid)\n\
+colorIn_b_s$ID$ = s$ID$.create(RealGrid)\n";
 
 const std::string smoke_alloc_colors_high = "\
 mantaMsg('Allocating colors high')\n\
@@ -149,13 +161,15 @@ color_b_xl$ID$.multConst($COLOR_B$)\n";
 
 const std::string smoke_alloc_heat_low = "\n\
 mantaMsg('Allocating heat low')\n\
-heat_s$ID$ = s$ID$.create(RealGrid)\n";
+heat_s$ID$   = s$ID$.create(RealGrid)\n\
+heatIn_s$ID$ = s$ID$.create(RealGrid)\n";
 
 const std::string smoke_alloc_fire_low = "\n\
 mantaMsg('Allocating fire low')\n\
-flame_s$ID$ = s$ID$.create(RealGrid)\n\
-fuel_s$ID$  = s$ID$.create(RealGrid)\n\
-react_s$ID$ = s$ID$.create(RealGrid)\n";
+flame_s$ID$  = s$ID$.create(RealGrid)\n\
+fuel_s$ID$   = s$ID$.create(RealGrid)\n\
+fuelIn_s$ID$ = s$ID$.create(RealGrid)\n\
+react_s$ID$  = s$ID$.create(RealGrid)\n";
 
 const std::string smoke_alloc_fire_high = "\n\
 mantaMsg('Allocating fire high')\n\
@@ -256,6 +270,8 @@ def fluid_step_low_$ID$(framenr):\n\
     smoke_pre_step_low_$ID$()\n\
     \n\
     while s$ID$.frame == last_frame_s$ID$:\n\
+        \n\
+        applyGasInflow(emission=emissionIn_s$ID$, density=density_s$ID$, densityIn=densityIn_s$ID$, heat=heat_s$ID$, heatIn=heatIn_s$ID$, fuel=fuel_s$ID$, fuelIn=fuelIn_s$ID$, react=react_s$ID$, red=color_r_s$ID$, redIn=colorIn_r_s$ID$, green=color_g_s$ID$, greenIn=colorIn_g_s$ID$, blue=color_b_s$ID$, blueIn=colorIn_b_s$ID$, flowType=flowType_s$ID$, absoluteFlow=absoluteFlow_s$ID$)\n\
         \n\
         mantaMsg('s.frame is ' + str(s$ID$.frame))\n\
         if using_obstacle_s$ID$: # TODO (sebbas): allow outflow objects when no obstacle set\n\
@@ -443,23 +459,23 @@ const std::string smoke_load_geometry_low = "\n\
 def smoke_load_geometry_low_$ID$(path, framenr):\n\
     mantaMsg('Smoke load geometry')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    density_s$ID$.load(os.path.join(path, 'densityIn_' + framenr + '.uni'))\n\
+    densityIn_s$ID$.load(os.path.join(path, 'densityIn_' + framenr + '.uni'))\n\
     if using_colors_s$ID$:\n\
-        color_r_s$ID$.load(os.path.join(path, 'colorIn_r_' + framenr + '.uni'))\n\
-        color_g_s$ID$.load(os.path.join(path, 'colorIn_g_' + framenr + '.uni'))\n\
-        color_b_s$ID$.load(os.path.join(path, 'colorIn_b_' + framenr + '.uni'))\n\
+        colorIn_r_s$ID$.load(os.path.join(path, 'colorIn_r_' + framenr + '.uni'))\n\
+        colorIn_g_s$ID$.load(os.path.join(path, 'colorIn_g_' + framenr + '.uni'))\n\
+        colorIn_b_s$ID$.load(os.path.join(path, 'colorIn_b_' + framenr + '.uni'))\n\
     if using_heat_s$ID$:\n\
-        heat_s$ID$.load(os.path.join(path, 'heatIn_' + framenr + '.uni'))\n\
+        heatIn_s$ID$.load(os.path.join(path, 'heatIn_' + framenr + '.uni'))\n\
     if using_fire_s$ID$:\n\
-        fuel_s$ID$.load(os.path.join(path, 'fuelIn_' + framenr + '.uni'))\n\
-        react_s$ID$.load(os.path.join(path, 'reactIn_' + framenr + '.uni'))\n\
-    inflow_s$ID$.load(os.path.join(path, 'inflow_' + framenr + '.uni'))\n";
+        fuelIn_s$ID$.load(os.path.join(path, 'fuelIn_' + framenr + '.uni'))\n\
+    emissionIn_s$ID$.load(os.path.join(path, 'emissionIn_' + framenr + '.uni'))\n";
 
 const std::string smoke_load_data_low = "\n\
 def smoke_load_data_low_$ID$(path, framenr):\n\
-    mantaMsg('Smoke import low')\n\
+    mantaMsg('Smoke load data low')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
     density_s$ID$.load(os.path.join(path, 'density_' + framenr + '.uni'))\n\
+    shadow_s$ID$.load(os.path.join(path, 'shadow_' + framenr + '.uni'))\n\
     if using_colors_s$ID$:\n\
         color_r_s$ID$.load(os.path.join(path, 'color_r_' + framenr + '.uni'))\n\
         color_g_s$ID$.load(os.path.join(path, 'color_g_' + framenr + '.uni'))\n\
@@ -473,7 +489,7 @@ def smoke_load_data_low_$ID$(path, framenr):\n\
 
 const std::string smoke_load_data_high = "\n\
 def smoke_load_data_high_$ID$(path, framenr):\n\
-    mantaMsg('Smoke export high')\n\
+    mantaMsg('Smoke load data high')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
     density_xl$ID$.load(os.path.join(path, 'density_xl_' + framenr + '.uni'))\n\
     texture_u_s$ID$.load(os.path.join(path, 'texture_u_' + framenr + '.uni'))\n\
@@ -499,21 +515,20 @@ const std::string smoke_save_geometry_low = "\n\
 def smoke_save_geometry_low_$ID$(path, framenr):\n\
     mantaMsg('Smoke save geometry')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    density_s$ID$.save(os.path.join(path, 'densityIn_' + framenr + '.uni'))\n\
+    densityIn_s$ID$.save(os.path.join(path, 'densityIn_' + framenr + '.uni'))\n\
     if using_colors_s$ID$:\n\
-        color_r_s$ID$.save(os.path.join(path, 'colorIn_r_' + framenr + '.uni'))\n\
-        color_g_s$ID$.save(os.path.join(path, 'colorIn_g_' + framenr + '.uni'))\n\
-        color_b_s$ID$.save(os.path.join(path, 'colorIn_b_' + framenr + '.uni'))\n\
+        colorIn_r_s$ID$.save(os.path.join(path, 'colorIn_r_' + framenr + '.uni'))\n\
+        colorIn_g_s$ID$.save(os.path.join(path, 'colorIn_g_' + framenr + '.uni'))\n\
+        colorIn_b_s$ID$.save(os.path.join(path, 'colorIn_b_' + framenr + '.uni'))\n\
     if using_heat_s$ID$:\n\
-        heat_s$ID$.save(os.path.join(path, 'heatIn_' + framenr + '.uni'))\n\
+        heatIn_s$ID$.save(os.path.join(path, 'heatIn_' + framenr + '.uni'))\n\
     if using_fire_s$ID$:\n\
-        fuel_s$ID$.save(os.path.join(path, 'fuelIn_' + framenr + '.uni'))\n\
-        react_s$ID$.save(os.path.join(path, 'reactIn_' + framenr + '.uni'))\n\
-    inflow_s$ID$.save(os.path.join(path, 'inflow_' + framenr + '.uni'))\n";
+        fuelIn_s$ID$.save(os.path.join(path, 'fuelIn_' + framenr + '.uni'))\n\
+    emissionIn_s$ID$.save(os.path.join(path, 'emissionIn_' + framenr + '.uni'))\n";
 
 const std::string smoke_save_data_low = "\n\
 def smoke_save_data_low_$ID$(path, framenr):\n\
-    mantaMsg('Smoke export low')\n\
+    mantaMsg('Smoke save data low')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
     density_s$ID$.save(os.path.join(path, 'density_' + framenr + '.uni'))\n\
     if using_colors_s$ID$:\n\
@@ -525,11 +540,16 @@ def smoke_save_data_low_$ID$(path, framenr):\n\
     if using_fire_s$ID$:\n\
         flame_s$ID$.save(os.path.join(path, 'flame_' + framenr + '.uni'))\n\
         fuel_s$ID$.save(os.path.join(path, 'fuel_' + framenr + '.uni'))\n\
-        react_s$ID$.save(os.path.join(path, 'react_' + framenr + '.uni'))\n";
+        react_s$ID$.save(os.path.join(path, 'react_' + framenr + '.uni'))\n\
+\n\
+def smoke_save_shadow_$ID$(path, framenr):\n\
+    mantaMsg('Smoke save shadow')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    shadow_s$ID$.save(os.path.join(path, 'shadow_' + framenr + '.uni'))\n";
 
 const std::string smoke_save_data_high = "\n\
 def smoke_save_data_high_$ID$(path, framenr):\n\
-    mantaMsg('Smoke export high')\n\
+    mantaMsg('Smoke save data high')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
     density_xl$ID$.save(os.path.join(path, 'density_xl_' + framenr + '.uni'))\n\
     texture_u_s$ID$.save(os.path.join(path, 'texture_u_' + framenr + '.uni'))\n\

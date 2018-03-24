@@ -30,6 +30,7 @@
 #include "randomstream.h"
 #include "levelset.h"
 #include "shapes.h"
+#include "matrixbase.h"
 
 using namespace std;
 namespace Manta {
@@ -70,7 +71,7 @@ void sampleFlagsWithParticles(const FlagGrid& flags, BasicParticleSystem& parts,
 //! the main loop).
 
 
-void sampleLevelsetWithParticles(const LevelsetGrid& phi, const FlagGrid& flags, BasicParticleSystem& parts, const int discretization, const Real randomness, const bool reset=false, const bool refillEmpty=false) {
+void sampleLevelsetWithParticles(const LevelsetGrid& phi, const FlagGrid& flags, BasicParticleSystem& parts, const int discretization, const Real randomness, const bool reset=false, const bool refillEmpty=false, const int particleFlag=-1) {
 	const bool is3D = phi.is3D();
 	const Real jlen = randomness / discretization;
 	const Vec3 disp (1.0 / discretization, 1.0 / discretization, 1.0/discretization);
@@ -93,13 +94,18 @@ void sampleLevelsetWithParticles(const LevelsetGrid& phi, const FlagGrid& flags,
 				subpos += jlen * (Vec3(1,1,1) - 2.0 * mRand.getVec3());
 				if(!is3D) subpos[2] = 0.5; 
 				if( phi.getInterpolated(subpos) > 0. ) continue; 
-				parts.addBuffered(subpos);
+				if(particleFlag < 0){
+					parts.addBuffered(subpos);
+				}
+				else{
+					parts.addBuffered(subpos, particleFlag);
+				}
 			}
 		}
 	}
 
 	parts.insertBufferedParticles();
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "sampleLevelsetWithParticles" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",0,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",2,&_lock); const int discretization = _args.get<int >("discretization",3,&_lock); const Real randomness = _args.get<Real >("randomness",4,&_lock); const bool reset = _args.getOpt<bool >("reset",5,false,&_lock); const bool refillEmpty = _args.getOpt<bool >("refillEmpty",6,false,&_lock);   _retval = getPyNone(); sampleLevelsetWithParticles(phi,flags,parts,discretization,randomness,reset,refillEmpty);  _args.check(); } pbFinalizePlugin(parent,"sampleLevelsetWithParticles", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("sampleLevelsetWithParticles",e.what()); return 0; } } static const Pb::Register _RP_sampleLevelsetWithParticles ("","sampleLevelsetWithParticles",_W_1);  extern "C" { void PbRegister_sampleLevelsetWithParticles() { KEEP_UNUSED(_RP_sampleLevelsetWithParticles); } } 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "sampleLevelsetWithParticles" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",0,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",2,&_lock); const int discretization = _args.get<int >("discretization",3,&_lock); const Real randomness = _args.get<Real >("randomness",4,&_lock); const bool reset = _args.getOpt<bool >("reset",5,false,&_lock); const bool refillEmpty = _args.getOpt<bool >("refillEmpty",6,false,&_lock); const int particleFlag = _args.getOpt<int >("particleFlag",7,-1,&_lock);   _retval = getPyNone(); sampleLevelsetWithParticles(phi,flags,parts,discretization,randomness,reset,refillEmpty,particleFlag);  _args.check(); } pbFinalizePlugin(parent,"sampleLevelsetWithParticles", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("sampleLevelsetWithParticles",e.what()); return 0; } } static const Pb::Register _RP_sampleLevelsetWithParticles ("","sampleLevelsetWithParticles",_W_1);  extern "C" { void PbRegister_sampleLevelsetWithParticles() { KEEP_UNUSED(_RP_sampleLevelsetWithParticles); } } 
 
 //! sample a shape with particles, use reset to clear the particle buffer,
 //! and skipEmpty for a continuous inflow (in the latter case, only empty cells will
@@ -152,7 +158,7 @@ void sampleShapeWithParticles(const Shape& shape, const FlagGrid& flags, BasicPa
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,dummy);  } }  } FlagGrid& flags; int dummy;   };
-#line 130 "plugin/flip.cpp"
+#line 136 "plugin/flip.cpp"
 
 
 
@@ -179,7 +185,7 @@ void sampleShapeWithParticles(const Shape& shape, const FlagGrid& flags, BasicPa
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,nflags,flags,phiObs);  } }  } FlagGrid& nflags; const FlagGrid& flags; const Grid<Real>& phiObs;   };
-#line 136 "plugin/flip.cpp"
+#line 142 "plugin/flip.cpp"
 
 
 void markFluidCells(const BasicParticleSystem& parts, FlagGrid& flags, const Grid<Real>* phiObs=NULL, const ParticleDataImpl<int>* ptype=NULL, const int exclude=0) {
@@ -371,7 +377,7 @@ void gridParticleIndex( BasicParticleSystem& parts, ParticleIndexSystem& indexSy
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,index,parts,indexSys,phi,radius,ptype,exclude);  } }  } const Grid<int>& index; const BasicParticleSystem& parts; const ParticleIndexSystem& indexSys; LevelsetGrid& phi; const Real radius; const ParticleDataImpl<int> * ptype; const int exclude;   };
-#line 305 "plugin/flip.cpp"
+#line 311 "plugin/flip.cpp"
 
 
  
@@ -393,7 +399,8 @@ void unionParticleLevelset(const BasicParticleSystem& parts, const ParticleIndex
 
 
 
- struct ComputeAveragedLevelsetWeight : public KernelBase { ComputeAveragedLevelsetWeight(const BasicParticleSystem& parts, const Grid<int>& index, const ParticleIndexSystem& indexSys, LevelsetGrid& phi, const Real radius, const ParticleDataImpl<int>* ptype, const int exclude) :  KernelBase(&index,0) ,parts(parts),index(index),indexSys(indexSys),phi(phi),radius(radius),ptype(ptype),exclude(exclude)   { runMessage(); run(); }  inline void op(int i, int j, int k, const BasicParticleSystem& parts, const Grid<int>& index, const ParticleIndexSystem& indexSys, LevelsetGrid& phi, const Real radius, const ParticleDataImpl<int>* ptype, const int exclude )  {
+
+ struct ComputeAveragedLevelsetWeight : public KernelBase { ComputeAveragedLevelsetWeight(const BasicParticleSystem& parts, const Grid<int>& index, const ParticleIndexSystem& indexSys, LevelsetGrid& phi, const Real radius, const ParticleDataImpl<int>* ptype, const int exclude, Grid<Vec3>* save_pAcc = NULL, Grid<Real>* save_rAcc = NULL) :  KernelBase(&index,0) ,parts(parts),index(index),indexSys(indexSys),phi(phi),radius(radius),ptype(ptype),exclude(exclude),save_pAcc(save_pAcc),save_rAcc(save_rAcc)   { runMessage(); run(); }  inline void op(int i, int j, int k, const BasicParticleSystem& parts, const Grid<int>& index, const ParticleIndexSystem& indexSys, LevelsetGrid& phi, const Real radius, const ParticleDataImpl<int>* ptype, const int exclude, Grid<Vec3>* save_pAcc = NULL, Grid<Real>* save_rAcc = NULL )  {
 	const Vec3 gridPos = Vec3(i,j,k) + Vec3(0.5); // shifted by half cell
 	Real phiv = radius * 1.0; // outside 
 
@@ -433,18 +440,21 @@ void unionParticleLevelset(const BasicParticleSystem& parts, const ParticleIndex
 		racc /= wacc;
 		pacc /= wacc;
 		phiv = fabs( norm(gridPos-pacc) )-racc;
+
+		if (save_pAcc) (*save_pAcc)(i, j, k) = pacc;
+		if (save_rAcc) (*save_rAcc)(i, j, k) = racc;
 	}
 	phi(i,j,k) = phiv;
-}   inline const BasicParticleSystem& getArg0() { return parts; } typedef BasicParticleSystem type0;inline const Grid<int>& getArg1() { return index; } typedef Grid<int> type1;inline const ParticleIndexSystem& getArg2() { return indexSys; } typedef ParticleIndexSystem type2;inline LevelsetGrid& getArg3() { return phi; } typedef LevelsetGrid type3;inline const Real& getArg4() { return radius; } typedef Real type4;inline const ParticleDataImpl<int>* getArg5() { return ptype; } typedef ParticleDataImpl<int> type5;inline const int& getArg6() { return exclude; } typedef int type6; void runMessage() { debMsg("Executing kernel ComputeAveragedLevelsetWeight ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline const BasicParticleSystem& getArg0() { return parts; } typedef BasicParticleSystem type0;inline const Grid<int>& getArg1() { return index; } typedef Grid<int> type1;inline const ParticleIndexSystem& getArg2() { return indexSys; } typedef ParticleIndexSystem type2;inline LevelsetGrid& getArg3() { return phi; } typedef LevelsetGrid type3;inline const Real& getArg4() { return radius; } typedef Real type4;inline const ParticleDataImpl<int>* getArg5() { return ptype; } typedef ParticleDataImpl<int> type5;inline const int& getArg6() { return exclude; } typedef int type6;inline Grid<Vec3>* getArg7() { return save_pAcc; } typedef Grid<Vec3> type7;inline Grid<Real>* getArg8() { return save_rAcc; } typedef Grid<Real> type8; void runMessage() { debMsg("Executing kernel ComputeAveragedLevelsetWeight ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
 #pragma omp for  
-  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,parts,index,indexSys,phi,radius,ptype,exclude);  } } else { const int k=0; 
+  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,parts,index,indexSys,phi,radius,ptype,exclude,save_pAcc,save_rAcc);  } } else { const int k=0; 
 #pragma omp parallel 
  {  
 #pragma omp for  
-  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,parts,index,indexSys,phi,radius,ptype,exclude);  } }  } const BasicParticleSystem& parts; const Grid<int>& index; const ParticleIndexSystem& indexSys; LevelsetGrid& phi; const Real radius; const ParticleDataImpl<int>* ptype; const int exclude;   };
-#line 351 "plugin/flip.cpp"
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,parts,index,indexSys,phi,radius,ptype,exclude,save_pAcc,save_rAcc);  } }  } const BasicParticleSystem& parts; const Grid<int>& index; const ParticleIndexSystem& indexSys; LevelsetGrid& phi; const Real radius; const ParticleDataImpl<int>* ptype; const int exclude; Grid<Vec3>* save_pAcc; Grid<Real>* save_rAcc;   };
+#line 358 "plugin/flip.cpp"
 
 
 
@@ -471,7 +481,7 @@ template <class T>  struct knSmoothGrid : public KernelBase { knSmoothGrid(Grid<
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,me,tmp,factor);  } }  } Grid<T>& me; Grid<T>& tmp; Real factor;   };
-#line 401 "plugin/flip.cpp"
+#line 411 "plugin/flip.cpp"
 
 
 
@@ -495,7 +505,7 @@ template <class T>  struct knSmoothGridNeg : public KernelBase { knSmoothGridNeg
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,me,tmp,factor);  } }  } Grid<T>& me; Grid<T>& tmp; Real factor;   };
-#line 412 "plugin/flip.cpp"
+#line 422 "plugin/flip.cpp"
 
 
 
@@ -526,6 +536,90 @@ void averagedParticleLevelset(const BasicParticleSystem& parts, const ParticleIn
 
 
 
+
+
+ struct correctLevelset : public KernelBase { correctLevelset(LevelsetGrid& phi, const Grid<Vec3>& pAcc, const Grid<Real>& rAcc, const Real radius, const Real t_low, const Real t_high) :  KernelBase(&phi,1) ,phi(phi),pAcc(pAcc),rAcc(rAcc),radius(radius),t_low(t_low),t_high(t_high)   { runMessage(); run(); }  inline void op(int i, int j, int k, LevelsetGrid& phi, const Grid<Vec3>& pAcc, const Grid<Real>& rAcc, const Real radius, const Real t_low, const Real t_high )  {
+	if (rAcc(i, j, k) <= VECTOR_EPSILON) return; //outside nothing happens
+	Real x = pAcc(i, j, k).x;
+	
+	// create jacobian of pAcc via central differences
+	Matrix3x3f jacobian = Matrix3x3f(
+		0.5 * (pAcc(i+1, j,   k  ).x - pAcc(i-1, j,   k  ).x),
+		0.5 * (pAcc(i,   j+1, k  ).x - pAcc(i,   j-1, k  ).x),
+		0.5 * (pAcc(i,   j  , k+1).x - pAcc(i,   j,   k-1).x),
+		0.5 * (pAcc(i+1, j,   k  ).y - pAcc(i-1, j,   k  ).y),
+		0.5 * (pAcc(i,   j+1, k  ).y - pAcc(i,   j-1, k  ).y),
+		0.5 * (pAcc(i,   j,   k+1).y - pAcc(i,   j,   k-1).y),
+		0.5 * (pAcc(i+1, j,   k  ).z - pAcc(i-1, j,   k  ).z),
+		0.5 * (pAcc(i,   j+1, k  ).z - pAcc(i,   j-1, k  ).z),
+		0.5 * (pAcc(i,   j,   k+1).z - pAcc(i,   j,   k-1).z)
+	);
+
+	// compute largest eigenvalue of jacobian
+	Vec3 EV = jacobian.eigenvalues();
+	Real maxEV = std::max(std::max(EV.x, EV.y), EV.z);
+
+	// calculate correction factor
+	Real correction = 1;
+	if (maxEV >= t_low) {
+		Real t = (t_high - maxEV) / (t_high - t_low);
+		correction = t*t*t - 3 * t*t + 3 * t;
+	}
+	correction = (correction < 0) ? 0 : correction; // enforce correction factor to [0,1] (not explicitly in paper)
+
+	const Vec3 gridPos = Vec3(i, j, k) + Vec3(0.5); // shifted by half cell
+	const Real correctedPhi = fabs(norm(gridPos - pAcc(i, j, k))) - rAcc(i, j, k) * correction;
+	phi(i, j, k) = (correctedPhi > radius) ? radius : correctedPhi; // adjust too high outside values when too few particles are
+																	// nearby to make smoothing possible (not in paper)
+}   inline LevelsetGrid& getArg0() { return phi; } typedef LevelsetGrid type0;inline const Grid<Vec3>& getArg1() { return pAcc; } typedef Grid<Vec3> type1;inline const Grid<Real>& getArg2() { return rAcc; } typedef Grid<Real> type2;inline const Real& getArg3() { return radius; } typedef Real type3;inline const Real& getArg4() { return t_low; } typedef Real type4;inline const Real& getArg5() { return t_high; } typedef Real type5; void runMessage() { debMsg("Executing kernel correctLevelset ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,phi,pAcc,rAcc,radius,t_low,t_high);  } } else { const int k=0; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,phi,pAcc,rAcc,radius,t_low,t_high);  } }  } LevelsetGrid& phi; const Grid<Vec3>& pAcc; const Grid<Real>& rAcc; const Real radius; const Real t_low; const Real t_high;   };
+#line 463 "plugin/flip.cpp"
+
+
+
+// Approach from "A unified particle model for fluid-solid interactions" by Solenthaler et al. in 2007
+// that uses the eigenvalues of the jacobian of the center of mass around the current cell to correct the levelset.
+// This results in a better surface reconstruction, especially in concave regions or for splashes.
+// The parameters t_low and t_high determine how the mesh behaves in concave regions: High values tend to smoothen and 
+// fill out concave regions, while low values give a more concave impression (too low values may result in artifacts
+// when even the normal spacing between particles is kept as a concave region in the mesh)
+
+
+
+void improvedAveragedParticleLevelset(const BasicParticleSystem& parts, const ParticleIndexSystem& indexSys, const FlagGrid& flags, const Grid<int>& index, LevelsetGrid& phi, const Real radiusFactor = 1., const int smoothen = 1,const int smoothenNeg = 1, const Real t_low = 0.4, const Real t_high = 3.5, const ParticleDataImpl<int>* ptype = NULL, const int exclude = 0) {
+	// create temporary grids to store values from levelset weight computation
+	Grid<Vec3> save_pAcc(flags.getParent());
+	Grid<Real> save_rAcc(flags.getParent());
+
+	const Real radius = 0.5 * calculateRadiusFactor(phi, radiusFactor); // use half a cell diagonal as base radius
+	ComputeAveragedLevelsetWeight(parts, index, indexSys, phi, radius, ptype, exclude, &save_pAcc, &save_rAcc);
+	correctLevelset(phi, save_pAcc, save_rAcc, radius, t_low, t_high);
+
+	// post-process level-set
+	for (int i = 0; i<std::max(smoothen, smoothenNeg); ++i) {
+		LevelsetGrid tmp(flags.getParent());
+		if (i<smoothen) {
+			knSmoothGrid    <Real>(phi, tmp, 1. / (phi.is3D() ? 7. : 5.));
+			phi.swap(tmp);
+		}
+		if (i<smoothenNeg) {
+			knSmoothGridNeg <Real>(phi, tmp, 1. / (phi.is3D() ? 7. : 5.));
+			phi.swap(tmp);
+		}
+	}
+	phi.setBound(0.5, 0);
+} static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "improvedAveragedParticleLevelset" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); const ParticleIndexSystem& indexSys = *_args.getPtr<ParticleIndexSystem >("indexSys",1,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",2,&_lock); const Grid<int>& index = *_args.getPtr<Grid<int> >("index",3,&_lock); LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",4,&_lock); const Real radiusFactor = _args.getOpt<Real >("radiusFactor",5,1.,&_lock); const int smoothen = _args.getOpt<int >("smoothen",6,1,&_lock); const int smoothenNeg = _args.getOpt<int >("smoothenNeg",7,1,&_lock); const Real t_low = _args.getOpt<Real >("t_low",8,0.4,&_lock); const Real t_high = _args.getOpt<Real >("t_high",9,3.5,&_lock); const ParticleDataImpl<int>* ptype = _args.getPtrOpt<ParticleDataImpl<int> >("ptype",10,NULL,&_lock); const int exclude = _args.getOpt<int >("exclude",11,0,&_lock);   _retval = getPyNone(); improvedAveragedParticleLevelset(parts,indexSys,flags,index,phi,radiusFactor,smoothen,smoothenNeg,t_low,t_high,ptype,exclude);  _args.check(); } pbFinalizePlugin(parent,"improvedAveragedParticleLevelset", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("improvedAveragedParticleLevelset",e.what()); return 0; } } static const Pb::Register _RP_improvedAveragedParticleLevelset ("","improvedAveragedParticleLevelset",_W_10);  extern "C" { void PbRegister_improvedAveragedParticleLevelset() { KEEP_UNUSED(_RP_improvedAveragedParticleLevelset); } } 
+
+
+
+
  struct knPushOutofObs : public KernelBase { knPushOutofObs(BasicParticleSystem& parts, const FlagGrid& flags, const Grid<Real>& phiObs, const Real shift, const Real thresh, const ParticleDataImpl<int>* ptype, const int exclude) :  KernelBase(parts.size()) ,parts(parts),flags(flags),phiObs(phiObs),shift(shift),thresh(thresh),ptype(ptype),exclude(exclude)   { runMessage(); run(); }   inline void op(IndexInt idx, BasicParticleSystem& parts, const FlagGrid& flags, const Grid<Real>& phiObs, const Real shift, const Real thresh, const ParticleDataImpl<int>* ptype, const int exclude )  {
 	if (!parts.isActive(idx) || (ptype && ((*ptype)[idx] & exclude))) return;
 	Vec3i p = toVec3i( parts.getPos(idx) );
@@ -542,14 +636,14 @@ void averagedParticleLevelset(const BasicParticleSystem& parts, const ParticleIn
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,parts,flags,phiObs,shift,thresh,ptype,exclude);  }   } BasicParticleSystem& parts; const FlagGrid& flags; const Grid<Real>& phiObs; const Real shift; const Real thresh; const ParticleDataImpl<int>* ptype; const int exclude;   };
-#line 451 "plugin/flip.cpp"
+#line 534 "plugin/flip.cpp"
 
 
 //! push particles out of obstacle levelset
 
 void pushOutofObs(BasicParticleSystem& parts, const FlagGrid& flags, const Grid<Real>& phiObs, const Real shift=0, const Real thresh=0, const ParticleDataImpl<int>* ptype=NULL, const int exclude=0) {
 	knPushOutofObs(parts, flags, phiObs, shift, thresh, ptype, exclude);
-} static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "pushOutofObs" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); const Grid<Real>& phiObs = *_args.getPtr<Grid<Real> >("phiObs",2,&_lock); const Real shift = _args.getOpt<Real >("shift",3,0,&_lock); const Real thresh = _args.getOpt<Real >("thresh",4,0,&_lock); const ParticleDataImpl<int>* ptype = _args.getPtrOpt<ParticleDataImpl<int> >("ptype",5,NULL,&_lock); const int exclude = _args.getOpt<int >("exclude",6,0,&_lock);   _retval = getPyNone(); pushOutofObs(parts,flags,phiObs,shift,thresh,ptype,exclude);  _args.check(); } pbFinalizePlugin(parent,"pushOutofObs", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("pushOutofObs",e.what()); return 0; } } static const Pb::Register _RP_pushOutofObs ("","pushOutofObs",_W_10);  extern "C" { void PbRegister_pushOutofObs() { KEEP_UNUSED(_RP_pushOutofObs); } } 
+} static PyObject* _W_11 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "pushOutofObs" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); const Grid<Real>& phiObs = *_args.getPtr<Grid<Real> >("phiObs",2,&_lock); const Real shift = _args.getOpt<Real >("shift",3,0,&_lock); const Real thresh = _args.getOpt<Real >("thresh",4,0,&_lock); const ParticleDataImpl<int>* ptype = _args.getPtrOpt<ParticleDataImpl<int> >("ptype",5,NULL,&_lock); const int exclude = _args.getOpt<int >("exclude",6,0,&_lock);   _retval = getPyNone(); pushOutofObs(parts,flags,phiObs,shift,thresh,ptype,exclude);  _args.check(); } pbFinalizePlugin(parent,"pushOutofObs", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("pushOutofObs",e.what()); return 0; } } static const Pb::Register _RP_pushOutofObs ("","pushOutofObs",_W_11);  extern "C" { void PbRegister_pushOutofObs() { KEEP_UNUSED(_RP_pushOutofObs); } } 
 
 //******************************************************************************
 // grid interpolation functions
@@ -567,7 +661,7 @@ template <class T>  struct knSafeDivReal : public KernelBase { knSafeDivReal(Gri
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other,cutoff);  }   } Grid<T>& me; const Grid<Real>& other; Real cutoff;   };
-#line 473 "plugin/flip.cpp"
+#line 556 "plugin/flip.cpp"
 
 
 
@@ -606,7 +700,7 @@ void mapPartsToMAC(const FlagGrid& flags, MACGrid& vel, MACGrid& velOld, const B
 	// store original state
 	velOld.copyFrom( vel );
 	if(freeTmp) delete weight;
-} static PyObject* _W_11 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "mapPartsToMAC" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); MACGrid& velOld = *_args.getPtr<MACGrid >("velOld",2,&_lock); const BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",3,&_lock); const ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",4,&_lock); Grid<Vec3>* weight = _args.getPtrOpt<Grid<Vec3> >("weight",5,NULL,&_lock); const ParticleDataImpl<int>* ptype = _args.getPtrOpt<ParticleDataImpl<int> >("ptype",6,NULL,&_lock); const int exclude = _args.getOpt<int >("exclude",7,0,&_lock);   _retval = getPyNone(); mapPartsToMAC(flags,vel,velOld,parts,partVel,weight,ptype,exclude);  _args.check(); } pbFinalizePlugin(parent,"mapPartsToMAC", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("mapPartsToMAC",e.what()); return 0; } } static const Pb::Register _RP_mapPartsToMAC ("","mapPartsToMAC",_W_11);  extern "C" { void PbRegister_mapPartsToMAC() { KEEP_UNUSED(_RP_mapPartsToMAC); } } 
+} static PyObject* _W_12 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "mapPartsToMAC" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); MACGrid& velOld = *_args.getPtr<MACGrid >("velOld",2,&_lock); const BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",3,&_lock); const ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",4,&_lock); Grid<Vec3>* weight = _args.getPtrOpt<Grid<Vec3> >("weight",5,NULL,&_lock); const ParticleDataImpl<int>* ptype = _args.getPtrOpt<ParticleDataImpl<int> >("ptype",6,NULL,&_lock); const int exclude = _args.getOpt<int >("exclude",7,0,&_lock);   _retval = getPyNone(); mapPartsToMAC(flags,vel,velOld,parts,partVel,weight,ptype,exclude);  _args.check(); } pbFinalizePlugin(parent,"mapPartsToMAC", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("mapPartsToMAC",e.what()); return 0; } } static const Pb::Register _RP_mapPartsToMAC ("","mapPartsToMAC",_W_12);  extern "C" { void PbRegister_mapPartsToMAC() { KEEP_UNUSED(_RP_mapPartsToMAC); } } 
 
 
 
@@ -628,10 +722,10 @@ void mapLinearRealHelper( FlagGrid& flags, Grid<T>& target ,
 
 void mapPartsToGrid( FlagGrid& flags, Grid<Real>& target , BasicParticleSystem& parts , ParticleDataImpl<Real>& source ) {
 	mapLinearRealHelper<Real>(flags,target,parts,source);
-} static PyObject* _W_12 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "mapPartsToGrid" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& target = *_args.getPtr<Grid<Real> >("target",1,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",2,&_lock); ParticleDataImpl<Real>& source = *_args.getPtr<ParticleDataImpl<Real> >("source",3,&_lock);   _retval = getPyNone(); mapPartsToGrid(flags,target,parts,source);  _args.check(); } pbFinalizePlugin(parent,"mapPartsToGrid", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("mapPartsToGrid",e.what()); return 0; } } static const Pb::Register _RP_mapPartsToGrid ("","mapPartsToGrid",_W_12);  extern "C" { void PbRegister_mapPartsToGrid() { KEEP_UNUSED(_RP_mapPartsToGrid); } } 
+} static PyObject* _W_13 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "mapPartsToGrid" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& target = *_args.getPtr<Grid<Real> >("target",1,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",2,&_lock); ParticleDataImpl<Real>& source = *_args.getPtr<ParticleDataImpl<Real> >("source",3,&_lock);   _retval = getPyNone(); mapPartsToGrid(flags,target,parts,source);  _args.check(); } pbFinalizePlugin(parent,"mapPartsToGrid", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("mapPartsToGrid",e.what()); return 0; } } static const Pb::Register _RP_mapPartsToGrid ("","mapPartsToGrid",_W_13);  extern "C" { void PbRegister_mapPartsToGrid() { KEEP_UNUSED(_RP_mapPartsToGrid); } } 
 void mapPartsToGridVec3( FlagGrid& flags, Grid<Vec3>& target , BasicParticleSystem& parts , ParticleDataImpl<Vec3>& source ) {
 	mapLinearRealHelper<Vec3>(flags,target,parts,source);
-} static PyObject* _W_13 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "mapPartsToGridVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",2,&_lock); ParticleDataImpl<Vec3>& source = *_args.getPtr<ParticleDataImpl<Vec3> >("source",3,&_lock);   _retval = getPyNone(); mapPartsToGridVec3(flags,target,parts,source);  _args.check(); } pbFinalizePlugin(parent,"mapPartsToGridVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("mapPartsToGridVec3",e.what()); return 0; } } static const Pb::Register _RP_mapPartsToGridVec3 ("","mapPartsToGridVec3",_W_13);  extern "C" { void PbRegister_mapPartsToGridVec3() { KEEP_UNUSED(_RP_mapPartsToGridVec3); } } 
+} static PyObject* _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "mapPartsToGridVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",2,&_lock); ParticleDataImpl<Vec3>& source = *_args.getPtr<ParticleDataImpl<Vec3> >("source",3,&_lock);   _retval = getPyNone(); mapPartsToGridVec3(flags,target,parts,source);  _args.check(); } pbFinalizePlugin(parent,"mapPartsToGridVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("mapPartsToGridVec3",e.what()); return 0; } } static const Pb::Register _RP_mapPartsToGridVec3 ("","mapPartsToGridVec3",_W_14);  extern "C" { void PbRegister_mapPartsToGridVec3() { KEEP_UNUSED(_RP_mapPartsToGridVec3); } } 
 // integers need "max" mode, not yet implemented
 //PYTHON() void mapPartsToGridInt ( FlagGrid& flags, Grid<int >& target , BasicParticleSystem& parts , ParticleDataImpl<int >& source ) {
 //	mapLinearRealHelper<int >(flags,target,parts,source);
@@ -647,15 +741,15 @@ template <class T>  struct knMapFromGrid : public KernelBase { knMapFromGrid( Ba
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,p,gsrc,target);  }   } BasicParticleSystem& p; Grid<T>& gsrc; ParticleDataImpl<T>& target;   };
-#line 550 "plugin/flip.cpp"
+#line 633 "plugin/flip.cpp"
 
  
 void mapGridToParts( Grid<Real>& source , BasicParticleSystem& parts , ParticleDataImpl<Real>& target ) {
 	knMapFromGrid<Real>(parts, source, target);
-} static PyObject* _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "mapGridToParts" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",0,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",1,&_lock); ParticleDataImpl<Real>& target = *_args.getPtr<ParticleDataImpl<Real> >("target",2,&_lock);   _retval = getPyNone(); mapGridToParts(source,parts,target);  _args.check(); } pbFinalizePlugin(parent,"mapGridToParts", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("mapGridToParts",e.what()); return 0; } } static const Pb::Register _RP_mapGridToParts ("","mapGridToParts",_W_14);  extern "C" { void PbRegister_mapGridToParts() { KEEP_UNUSED(_RP_mapGridToParts); } } 
+} static PyObject* _W_15 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "mapGridToParts" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",0,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",1,&_lock); ParticleDataImpl<Real>& target = *_args.getPtr<ParticleDataImpl<Real> >("target",2,&_lock);   _retval = getPyNone(); mapGridToParts(source,parts,target);  _args.check(); } pbFinalizePlugin(parent,"mapGridToParts", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("mapGridToParts",e.what()); return 0; } } static const Pb::Register _RP_mapGridToParts ("","mapGridToParts",_W_15);  extern "C" { void PbRegister_mapGridToParts() { KEEP_UNUSED(_RP_mapGridToParts); } } 
 void mapGridToPartsVec3( Grid<Vec3>& source , BasicParticleSystem& parts , ParticleDataImpl<Vec3>& target ) {
 	knMapFromGrid<Vec3>(parts, source, target);
-} static PyObject* _W_15 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "mapGridToPartsVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& source = *_args.getPtr<Grid<Vec3> >("source",0,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",1,&_lock); ParticleDataImpl<Vec3>& target = *_args.getPtr<ParticleDataImpl<Vec3> >("target",2,&_lock);   _retval = getPyNone(); mapGridToPartsVec3(source,parts,target);  _args.check(); } pbFinalizePlugin(parent,"mapGridToPartsVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("mapGridToPartsVec3",e.what()); return 0; } } static const Pb::Register _RP_mapGridToPartsVec3 ("","mapGridToPartsVec3",_W_15);  extern "C" { void PbRegister_mapGridToPartsVec3() { KEEP_UNUSED(_RP_mapGridToPartsVec3); } } 
+} static PyObject* _W_16 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "mapGridToPartsVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& source = *_args.getPtr<Grid<Vec3> >("source",0,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",1,&_lock); ParticleDataImpl<Vec3>& target = *_args.getPtr<ParticleDataImpl<Vec3> >("target",2,&_lock);   _retval = getPyNone(); mapGridToPartsVec3(source,parts,target);  _args.check(); } pbFinalizePlugin(parent,"mapGridToPartsVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("mapGridToPartsVec3",e.what()); return 0; } } static const Pb::Register _RP_mapGridToPartsVec3 ("","mapGridToPartsVec3",_W_16);  extern "C" { void PbRegister_mapGridToPartsVec3() { KEEP_UNUSED(_RP_mapGridToPartsVec3); } } 
 
 
 // Get velocities from grid
@@ -672,14 +766,14 @@ void mapGridToPartsVec3( Grid<Vec3>& source , BasicParticleSystem& parts , Parti
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,p,flags,vel,pvel,ptype,exclude);  }   } BasicParticleSystem& p; FlagGrid& flags; MACGrid& vel; ParticleDataImpl<Vec3>& pvel; const ParticleDataImpl<int>* ptype; const int exclude;   };
-#line 567 "plugin/flip.cpp"
+#line 650 "plugin/flip.cpp"
 
 
 
 
 void mapMACToParts(FlagGrid& flags, MACGrid& vel , BasicParticleSystem& parts , ParticleDataImpl<Vec3>& partVel, const ParticleDataImpl<int>* ptype=NULL, const int exclude=0) {
 	knMapLinearMACGridToVec3_PIC( parts, flags, vel, partVel, ptype, exclude );
-} static PyObject* _W_16 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "mapMACToParts" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",2,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",3,&_lock); const ParticleDataImpl<int>* ptype = _args.getPtrOpt<ParticleDataImpl<int> >("ptype",4,NULL,&_lock); const int exclude = _args.getOpt<int >("exclude",5,0,&_lock);   _retval = getPyNone(); mapMACToParts(flags,vel,parts,partVel,ptype,exclude);  _args.check(); } pbFinalizePlugin(parent,"mapMACToParts", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("mapMACToParts",e.what()); return 0; } } static const Pb::Register _RP_mapMACToParts ("","mapMACToParts",_W_16);  extern "C" { void PbRegister_mapMACToParts() { KEEP_UNUSED(_RP_mapMACToParts); } } 
+} static PyObject* _W_17 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "mapMACToParts" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",2,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",3,&_lock); const ParticleDataImpl<int>* ptype = _args.getPtrOpt<ParticleDataImpl<int> >("ptype",4,NULL,&_lock); const int exclude = _args.getOpt<int >("exclude",5,0,&_lock);   _retval = getPyNone(); mapMACToParts(flags,vel,parts,partVel,ptype,exclude);  _args.check(); } pbFinalizePlugin(parent,"mapMACToParts", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("mapMACToParts",e.what()); return 0; } } static const Pb::Register _RP_mapMACToParts ("","mapMACToParts",_W_17);  extern "C" { void PbRegister_mapMACToParts() { KEEP_UNUSED(_RP_mapMACToParts); } } 
 
 // with flip delta interpolation 
 
@@ -696,7 +790,7 @@ void mapMACToParts(FlagGrid& flags, MACGrid& vel , BasicParticleSystem& parts , 
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,p,flags,vel,oldVel,pvel,flipRatio,ptype,exclude);  }   } const BasicParticleSystem& p; const FlagGrid& flags; const MACGrid& vel; const MACGrid& oldVel; ParticleDataImpl<Vec3>& pvel; const Real flipRatio; const ParticleDataImpl<int>* ptype; const int exclude;   };
-#line 583 "plugin/flip.cpp"
+#line 666 "plugin/flip.cpp"
 
 
 
@@ -704,7 +798,7 @@ void mapMACToParts(FlagGrid& flags, MACGrid& vel , BasicParticleSystem& parts , 
 
 void flipVelocityUpdate(const FlagGrid& flags, const MACGrid& vel, const MACGrid& velOld, const BasicParticleSystem& parts, ParticleDataImpl<Vec3>& partVel, const Real flipRatio, const ParticleDataImpl<int>* ptype=NULL, const int exclude=0) {
 	knMapLinearMACGridToVec3_FLIP( parts, flags, vel, velOld, partVel, flipRatio, ptype, exclude );
-} static PyObject* _W_17 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipVelocityUpdate" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); const MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); const MACGrid& velOld = *_args.getPtr<MACGrid >("velOld",2,&_lock); const BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",3,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",4,&_lock); const Real flipRatio = _args.get<Real >("flipRatio",5,&_lock); const ParticleDataImpl<int>* ptype = _args.getPtrOpt<ParticleDataImpl<int> >("ptype",6,NULL,&_lock); const int exclude = _args.getOpt<int >("exclude",7,0,&_lock);   _retval = getPyNone(); flipVelocityUpdate(flags,vel,velOld,parts,partVel,flipRatio,ptype,exclude);  _args.check(); } pbFinalizePlugin(parent,"flipVelocityUpdate", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipVelocityUpdate",e.what()); return 0; } } static const Pb::Register _RP_flipVelocityUpdate ("","flipVelocityUpdate",_W_17);  extern "C" { void PbRegister_flipVelocityUpdate() { KEEP_UNUSED(_RP_flipVelocityUpdate); } } 
+} static PyObject* _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "flipVelocityUpdate" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); const MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); const MACGrid& velOld = *_args.getPtr<MACGrid >("velOld",2,&_lock); const BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",3,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",4,&_lock); const Real flipRatio = _args.get<Real >("flipRatio",5,&_lock); const ParticleDataImpl<int>* ptype = _args.getPtrOpt<ParticleDataImpl<int> >("ptype",6,NULL,&_lock); const int exclude = _args.getOpt<int >("exclude",7,0,&_lock);   _retval = getPyNone(); flipVelocityUpdate(flags,vel,velOld,parts,partVel,flipRatio,ptype,exclude);  _args.check(); } pbFinalizePlugin(parent,"flipVelocityUpdate", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("flipVelocityUpdate",e.what()); return 0; } } static const Pb::Register _RP_flipVelocityUpdate ("","flipVelocityUpdate",_W_18);  extern "C" { void PbRegister_flipVelocityUpdate() { KEEP_UNUSED(_RP_flipVelocityUpdate); } } 
 
 
 //******************************************************************************
@@ -742,7 +836,7 @@ void flipVelocityUpdate(const FlagGrid& flags, const MACGrid& vel, const MACGrid
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,vel,w,combineVel,phi,narrowBand,thresh);  } }  } MACGrid& vel; Grid<Vec3>& w; MACGrid& combineVel; LevelsetGrid* phi; Real narrowBand; Real thresh;   };
-#line 601 "plugin/flip.cpp"
+#line 684 "plugin/flip.cpp"
 
 
 
@@ -750,12 +844,12 @@ void flipVelocityUpdate(const FlagGrid& flags, const MACGrid& vel, const MACGrid
 
 void combineGridVel( MACGrid& vel, Grid<Vec3>& weight, MACGrid& combineVel, LevelsetGrid* phi=NULL, Real narrowBand=0.0, Real thresh=0.0) {
 	knCombineVels(vel, weight, combineVel, phi, narrowBand, thresh);
-} static PyObject* _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "combineGridVel" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Vec3>& weight = *_args.getPtr<Grid<Vec3> >("weight",1,&_lock); MACGrid& combineVel = *_args.getPtr<MACGrid >("combineVel",2,&_lock); LevelsetGrid* phi = _args.getPtrOpt<LevelsetGrid >("phi",3,NULL,&_lock); Real narrowBand = _args.getOpt<Real >("narrowBand",4,0.0,&_lock); Real thresh = _args.getOpt<Real >("thresh",5,0.0,&_lock);   _retval = getPyNone(); combineGridVel(vel,weight,combineVel,phi,narrowBand,thresh);  _args.check(); } pbFinalizePlugin(parent,"combineGridVel", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("combineGridVel",e.what()); return 0; } } static const Pb::Register _RP_combineGridVel ("","combineGridVel",_W_18);  extern "C" { void PbRegister_combineGridVel() { KEEP_UNUSED(_RP_combineGridVel); } } 
+} static PyObject* _W_19 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "combineGridVel" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Vec3>& weight = *_args.getPtr<Grid<Vec3> >("weight",1,&_lock); MACGrid& combineVel = *_args.getPtr<MACGrid >("combineVel",2,&_lock); LevelsetGrid* phi = _args.getPtrOpt<LevelsetGrid >("phi",3,NULL,&_lock); Real narrowBand = _args.getOpt<Real >("narrowBand",4,0.0,&_lock); Real thresh = _args.getOpt<Real >("thresh",5,0.0,&_lock);   _retval = getPyNone(); combineGridVel(vel,weight,combineVel,phi,narrowBand,thresh);  _args.check(); } pbFinalizePlugin(parent,"combineGridVel", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("combineGridVel",e.what()); return 0; } } static const Pb::Register _RP_combineGridVel ("","combineGridVel",_W_19);  extern "C" { void PbRegister_combineGridVel() { KEEP_UNUSED(_RP_combineGridVel); } } 
 
 //! surface tension helper
 void getLaplacian(Grid<Real> &laplacian, const Grid<Real> &grid) {
 	LaplaceOp(laplacian, grid);
-} static PyObject* _W_19 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "getLaplacian" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real> & laplacian = *_args.getPtr<Grid<Real>  >("laplacian",0,&_lock); const Grid<Real> & grid = *_args.getPtr<Grid<Real>  >("grid",1,&_lock);   _retval = getPyNone(); getLaplacian(laplacian,grid);  _args.check(); } pbFinalizePlugin(parent,"getLaplacian", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("getLaplacian",e.what()); return 0; } } static const Pb::Register _RP_getLaplacian ("","getLaplacian",_W_19);  extern "C" { void PbRegister_getLaplacian() { KEEP_UNUSED(_RP_getLaplacian); } } 
+} static PyObject* _W_20 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "getLaplacian" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real> & laplacian = *_args.getPtr<Grid<Real>  >("laplacian",0,&_lock); const Grid<Real> & grid = *_args.getPtr<Grid<Real>  >("grid",1,&_lock);   _retval = getPyNone(); getLaplacian(laplacian,grid);  _args.check(); } pbFinalizePlugin(parent,"getLaplacian", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("getLaplacian",e.what()); return 0; } } static const Pb::Register _RP_getLaplacian ("","getLaplacian",_W_20);  extern "C" { void PbRegister_getLaplacian() { KEEP_UNUSED(_RP_getLaplacian); } } 
 
 
 } // namespace

@@ -67,6 +67,7 @@ extern "C" {
 		extern void PbRegister_gridParticleIndex() ;
 		extern void PbRegister_unionParticleLevelset() ;
 		extern void PbRegister_averagedParticleLevelset() ;
+		extern void PbRegister_improvedAveragedParticleLevelset() ;
 		extern void PbRegister_pushOutofObs() ;
 		extern void PbRegister_mapPartsToMAC() ;
 		extern void PbRegister_mapPartsToGrid() ;
@@ -106,6 +107,7 @@ extern "C" {
 		extern void PbRegister_updateFractions() ;
 		extern void PbRegister_setObstacleFlags() ;
 		extern void PbRegister_initVortexVelocity() ;
+		extern void PbRegister_applyGasInflow() ;
 		extern void PbRegister_smoothMesh() ;
 		extern void PbRegister_subdivideMesh() ;
 		extern void PbRegister_killSmallComponents() ;
@@ -235,6 +237,7 @@ namespace Pb {
 		PbRegister_gridParticleIndex() ;
 		PbRegister_unionParticleLevelset() ;
 		PbRegister_averagedParticleLevelset() ;
+		PbRegister_improvedAveragedParticleLevelset() ;
 		PbRegister_pushOutofObs() ;
 		PbRegister_mapPartsToMAC() ;
 		PbRegister_mapPartsToGrid() ;
@@ -274,6 +277,7 @@ namespace Pb {
 		PbRegister_updateFractions() ;
 		PbRegister_setObstacleFlags() ;
 		PbRegister_initVortexVelocity() ;
+		PbRegister_applyGasInflow() ;
 		PbRegister_smoothMesh() ;
 		PbRegister_subdivideMesh() ;
 		PbRegister_killSmallComponents() ;

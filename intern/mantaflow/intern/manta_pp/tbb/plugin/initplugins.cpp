@@ -475,6 +475,73 @@ void initVortexVelocity(Grid<Real> &phiObs, MACGrid& vel, const Vec3 &center, co
 	kninitVortexVelocity(phiObs,  vel, center, radius);
 } static PyObject* _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "initVortexVelocity" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real> & phiObs = *_args.getPtr<Grid<Real>  >("phiObs",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); const Vec3& center = _args.get<Vec3 >("center",2,&_lock); const Real& radius = _args.get<Real >("radius",3,&_lock);   _retval = getPyNone(); initVortexVelocity(phiObs,vel,center,radius);  _args.check(); } pbFinalizePlugin(parent,"initVortexVelocity", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("initVortexVelocity",e.what()); return 0; } } static const Pb::Register _RP_initVortexVelocity ("","initVortexVelocity",_W_18);  extern "C" { void PbRegister_initVortexVelocity() { KEEP_UNUSED(_RP_initVortexVelocity); } } 
 
+#define ADD_IF_LOWER_POS(a, b) (std::min((a) + (b), std::max((a), (b))))
+#define ADD_IF_LOWER_NEG(a, b) (std::max((a) + (b), std::min((a), (b))))
+#define ADD_IF_LOWER(a, b) (((b) > 0) ? ADD_IF_LOWER_POS((a), (b)) : ADD_IF_LOWER_NEG((a), (b)))
+
+#define FLOW_TYPE_SMOKE 1
+#define FLOW_TYPE_FIRE 2
+
+
+void applyGasInflow(Grid<Real>& emission, Grid<Real>& density, Grid<Real>& densityIn, Grid<Real>* heat, Grid<Real>* heatIn, Grid<Real>* fuel, Grid<Real>* fuelIn, Grid<Real>* react, Grid<Real>* red, Grid<Real>* redIn, Grid<Real>* green, Grid<Real>* greenIn, Grid<Real>* blue, Grid<Real>* blueIn, Grid<int>& flowType, bool absoluteFlow=true) {
+	FOR_IJK_BND(emission, 1) {
+
+		Real densityOld = density(i,j,k);
+		// Real fuelOld = (fuel) ? fuel(i,j,k) : 0.0f;  /* UNUSED */
+
+		Real densityFlow = (flowType(i,j,k) == FLOW_TYPE_FIRE) ? 0.0f : emission(i,j,k) * densityIn(i,j,k);
+		Real fuelFlow = (fuel && fuelIn) ? emission(i,j,k) * (*fuelIn)(i,j,k) : 0.0f;
+
+		/* add heat */
+		if (heat && emission(i,j,k) > 0.0f) {
+			(*heat)(i,j,k) = ADD_IF_LOWER((*heat)(i,j,k), (*heatIn)(i,j,k));
+		}
+		/* absolute */
+		if (absoluteFlow) {
+			if ( flowType(i,j,k) != FLOW_TYPE_FIRE) {
+				if (densityFlow > density(i,j,k))
+					density(i,j,k) = densityFlow;
+			}
+			if ( flowType(i,j,k) != FLOW_TYPE_SMOKE && fuel && fuelFlow ) {
+				if (fuelFlow > (*fuel)(i,j,k))
+					(*fuel)(i,j,k) = fuelFlow;
+			}
+		}
+		/* additive */
+		else {
+			if ( flowType(i,j,k) != FLOW_TYPE_FIRE) {
+				density(i,j,k) += densityFlow;
+				clamp(density(i,j,k), (Real) 0.0f, (Real) 1.0f);
+			}
+			if ( flowType(i,j,k) != FLOW_TYPE_SMOKE && fuel && (*fuelIn)(i,j,k)) {
+				(*fuel)(i,j,k) += fuelFlow;
+				clamp((*fuel)(i,j,k), (Real) 0.0f, (Real) 10.0f);
+			}
+		}
+
+		/* set color */
+		if (red && densityFlow) {
+			Real totalDensity = density(i,j,k) / (densityOld + densityFlow);
+			(*red)(i,j,k)   = ( (*red)(i,j,k)   + (*redIn)(i,j,k)   * densityFlow) * totalDensity;
+			(*green)(i,j,k) = ( (*green)(i,j,k) + (*greenIn)(i,j,k) * densityFlow) * totalDensity;
+			(*blue)(i,j,k)  = ( (*blue)(i,j,k)  + (*blueIn)(i,j,k)  * densityFlow) * totalDensity;
+		}
+
+		/* set fire reaction coordinate */
+		if (fuel && (*fuel)(i,j,k) > VECTOR_EPSILON) {
+			/* instead of using 1.0 for all new fuel add slight falloff
+			 * to reduce flow blockiness */
+			Real value = 1.0f - pow(1.0f - emission(i,j,k), 2);
+
+			if (value > (*react)(i,j,k)) {
+				Real f = fuelFlow / (*fuel)(i,j,k);
+				(*react)(i,j,k) = value * f + (1.0f - f) * (*react)(i,j,k);
+				clamp((*react)(i,j,k), (Real) 0.0f, value);
+			}
+		}
+	}
+} static PyObject* _W_19 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "applyGasInflow" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& emission = *_args.getPtr<Grid<Real> >("emission",0,&_lock); Grid<Real>& density = *_args.getPtr<Grid<Real> >("density",1,&_lock); Grid<Real>& densityIn = *_args.getPtr<Grid<Real> >("densityIn",2,&_lock); Grid<Real>* heat = _args.getPtr<Grid<Real> >("heat",3,&_lock); Grid<Real>* heatIn = _args.getPtr<Grid<Real> >("heatIn",4,&_lock); Grid<Real>* fuel = _args.getPtr<Grid<Real> >("fuel",5,&_lock); Grid<Real>* fuelIn = _args.getPtr<Grid<Real> >("fuelIn",6,&_lock); Grid<Real>* react = _args.getPtr<Grid<Real> >("react",7,&_lock); Grid<Real>* red = _args.getPtr<Grid<Real> >("red",8,&_lock); Grid<Real>* redIn = _args.getPtr<Grid<Real> >("redIn",9,&_lock); Grid<Real>* green = _args.getPtr<Grid<Real> >("green",10,&_lock); Grid<Real>* greenIn = _args.getPtr<Grid<Real> >("greenIn",11,&_lock); Grid<Real>* blue = _args.getPtr<Grid<Real> >("blue",12,&_lock); Grid<Real>* blueIn = _args.getPtr<Grid<Real> >("blueIn",13,&_lock); Grid<int>& flowType = *_args.getPtr<Grid<int> >("flowType",14,&_lock); bool absoluteFlow = _args.getOpt<bool >("absoluteFlow",15,true,&_lock);   _retval = getPyNone(); applyGasInflow(emission,density,densityIn,heat,heatIn,fuel,fuelIn,react,red,redIn,green,greenIn,blue,blueIn,flowType,absoluteFlow);  _args.check(); } pbFinalizePlugin(parent,"applyGasInflow", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("applyGasInflow",e.what()); return 0; } } static const Pb::Register _RP_applyGasInflow ("","applyGasInflow",_W_19);  extern "C" { void PbRegister_applyGasInflow() { KEEP_UNUSED(_RP_applyGasInflow); } } 
+
 
 } // namespace
 

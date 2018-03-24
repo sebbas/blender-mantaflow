@@ -182,6 +182,7 @@ set(SRC
 	${MANTA_PP}/util/integrator.h
 	${MANTA_PP}/util/interpol.h
 	${MANTA_PP}/util/interpolHigh.h
+	${MANTA_PP}/util/matrixbase.h
 	${MANTA_PP}/util/mcubes.h
 	${MANTA_PP}/util/quaternion.h
 	${MANTA_PP}/util/randomstream.h

@@ -61,14 +61,6 @@ extern "C" void smoke_manta_export(FLUID* smoke, SmokeModifierData *smd)
 	smoke->exportSmokeData(smd);
 }
 
-extern "C" void smoke_step(FLUID *fluid, SmokeModifierData *smd, int framenr)
-{
-	fluid->step(smd, framenr);
-	fluid->updatePointers();
-	if (fluid->usingHighRes())
-		fluid->updatePointersHigh();
-}
-
 static void data_dissolve(float *density, float *heat, float *r, float *g, float *b, int total_cells, int speed, int log)
 {
 	if (log) {
@@ -134,7 +126,7 @@ extern "C" void smoke_dissolve_wavelet(FLUID *smoke, int speed, int log)
 }
 
 extern "C" void smoke_export(FLUID *smoke, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, 
-							 float **vx, float **vy, float **vz, float **r, float **g, float **b, int **obstacle)
+							 float **vx, float **vy, float **vz, float **r, float **g, float **b, int **obstacle, float **shadow)
 {
 	if (dens)
 		*dens = smoke->getDensity();
@@ -156,6 +148,7 @@ extern "C" void smoke_export(FLUID *smoke, float *dt, float *dx, float **dens, f
 	if (b)
 		*b = smoke->getColorB();
 	*obstacle = smoke->getObstacle();
+	*shadow = smoke->getShadow();
 	*dt = 1; //dummy value, not needed for smoke
 	*dx = 1; //dummy value, not needed for smoke
 }
@@ -209,9 +202,19 @@ extern "C" float *smoke_get_density(FLUID *smoke)
 	return smoke->getDensity();
 }
 
+extern "C" float *smoke_get_density_in(FLUID *smoke)
+{
+	return smoke->getDensityIn();
+}
+
 extern "C" float *smoke_get_fuel(FLUID *smoke)
 {
 	return smoke->getFuel();
+}
+
+extern "C" float *smoke_get_fuel_in(FLUID *smoke)
+{
+	return smoke->getFuelIn();
 }
 
 extern "C" float *smoke_get_react(FLUID *smoke)
@@ -222,6 +225,11 @@ extern "C" float *smoke_get_react(FLUID *smoke)
 extern "C" float *smoke_get_heat(FLUID *smoke)
 {
 	return smoke->getHeat();
+}
+
+extern "C" float *smoke_get_heat_in(FLUID *smoke)
+{
+	return smoke->getHeatIn();
 }
 
 extern "C" float *smoke_get_velocity_x(FLUID *smoke)
@@ -317,6 +325,26 @@ extern "C" float *smoke_get_color_g(FLUID *smoke)
 extern "C" float *smoke_get_color_b(FLUID *smoke)
 {
 	return smoke->getColorB();
+}
+
+extern "C" float *smoke_get_color_r_in(FLUID *smoke)
+{
+	return smoke->getColorRIn();
+}
+
+extern "C" float *smoke_get_color_g_in(FLUID *smoke)
+{
+	return smoke->getColorGIn();
+}
+
+extern "C" float *smoke_get_color_b_in(FLUID *smoke)
+{
+	return smoke->getColorBIn();
+}
+
+extern "C" float *smoke_get_shadow(FLUID* fluid)
+{
+	return fluid->getShadow();
 }
 
 static void get_rgba(float *r, float *g, float *b, float *a, int total_cells, float *data, int sequential)
@@ -815,9 +843,19 @@ extern "C" void liquid_set_snd_particle_life(FLUID* liquid, float* buffer, int n
 	liquid->setSndParticleLife(buffer, numParts);
 }
 
-extern "C" float *fluid_get_inflow(FLUID* fluid)
+extern "C" float *fluid_get_emission_in(FLUID* fluid)
 {
-	return fluid->getInflow();
+	return fluid->getEmissionIn();
+}
+
+extern "C" int *fluid_get_flow_type(FLUID* fluid)
+{
+	return fluid->getFlowType();
+}
+
+extern "C" int *fluid_get_num_flow(FLUID* fluid)
+{
+	return fluid->getNumFlow();
 }
 
 extern "C" int fluid_get_res_x(FLUID* fluid)
@@ -842,16 +880,31 @@ extern "C" int fluid_read_cache(FLUID* fluid, SmokeModifierData *smd, int framen
 	return fluid->readCacheLow(smd, framenr);
 }
 
+extern "C" int fluid_write_cache(FLUID* fluid, SmokeModifierData *smd, int framenr)
+{
+	if (!fluid || !smd) return 0;
+	return fluid->writeCacheLow(smd, framenr);
+	// High-res cache handled separately
+}
+
+extern "C" int fluid_bake_geometry(FLUID *fluid, SmokeModifierData *smd, int framenr)
+{
+	fluid->bakeGeometryLow(smd, framenr);
+	fluid->updatePointers();
+	//	if (fluid->usingHighRes())
+	//		fluid->bakeGeometryHigh();
+}
+
 extern "C" int fluid_bake_low(FLUID* fluid, SmokeModifierData *smd, int framenr)
 {
 	if (!fluid || !smd) return 0;
-	return fluid->bakeSimulationLow(smd, framenr);
+	return fluid->bakeDataLow(smd, framenr);
 }
 
 extern "C" int fluid_bake_high(FLUID* fluid, SmokeModifierData *smd, int framenr)
 {
 	if (!fluid || !smd) return 0;
-	return fluid->bakeSimulationHigh(smd, framenr);
+	return fluid->bakeDataHigh(smd, framenr);
 }
 
 extern "C" int fluid_bake_mesh_low(FLUID* fluid, SmokeModifierData *smd, int framenr)

@@ -1197,7 +1197,8 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 	}
 
 	/* Show progress bar. */
-	*(job->do_update) = true;
+	if (job->do_update)
+		*(job->do_update) = true;
 
 	/* Set frame to start point */
 	frame = sds->cache_frame_start;
@@ -1219,8 +1220,10 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 		}
 
 		/* Update progress bar */
-		*(job->do_update) = true;
-		*(job->progress) = progress;
+		if (job->do_update)
+			*(job->do_update) = true;
+		if (job->progress)
+			*(job->progress) = progress;
 
 		scene->r.cfra = (int)frame;
 
@@ -1407,8 +1410,10 @@ static void fluid_manta_bake_startjob(void *customdata, short *stop, short *do_u
 	}
 	fluid_manta_bake_sequence(job);
 
-	*do_update = true;
-	*stop = 0;
+	if (do_update)
+		*do_update = true;
+	if (stop)
+		*stop = 0;
 }
 
 static int fluid_manta_bake_exec(bContext *C, wmOperator *op)

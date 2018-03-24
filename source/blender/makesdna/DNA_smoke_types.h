@@ -187,7 +187,6 @@ typedef struct SmokeDomainSettings {
 	struct GPUTexture *tex_wt;
 	struct GPUTexture *tex_shadow;
 	struct GPUTexture *tex_flame;
-	float *shadow;
 
 	/* simulation data */
 	float p0[3]; /* start point of BB in local space (includes sub-cell shift for adaptive domain)*/
@@ -328,10 +327,10 @@ typedef struct SmokeDomainSettings {
 } SmokeDomainSettings;
 
 /* type */
-#define MOD_SMOKE_FLOW_TYPE_SMOKE 0
-#define MOD_SMOKE_FLOW_TYPE_FIRE 1
-#define MOD_SMOKE_FLOW_TYPE_SMOKEFIRE 2
-#define MOD_SMOKE_FLOW_TYPE_LIQUID 3
+#define MOD_SMOKE_FLOW_TYPE_SMOKE 1
+#define MOD_SMOKE_FLOW_TYPE_FIRE 2
+#define MOD_SMOKE_FLOW_TYPE_SMOKEFIRE 3
+#define MOD_SMOKE_FLOW_TYPE_LIQUID 4
 
 /* preconditioner */
 #define MOD_SMOKE_PC_NONE 0

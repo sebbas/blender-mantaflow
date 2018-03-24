@@ -35,7 +35,7 @@
 
 const std::string manta_import = "\
 from manta import *\n\
-import os.path, shutil, math, sys, gc, multiprocessing, platform\n\
+import os.path, shutil, math, sys, gc, multiprocessing, platform, time\n\
 \n\
 # TODO (sebbas): Use this to simulate Windows multiprocessing (has default mode spawn)\n\
 debugMp = False\n\
@@ -170,6 +170,8 @@ def fluid_adapt_time_step_high():\n\
 const std::string fluid_alloc_low = "\n\
 mantaMsg('Fluid alloc low')\n\
 flags_s$ID$       = s$ID$.create(FlagGrid)\n\
+numFlow_s$ID$     = s$ID$.create(IntGrid)\n\
+flowType_s$ID$    = s$ID$.create(IntGrid)\n\
 vel_s$ID$         = s$ID$.create(MACGrid)\n\
 x_vel_s$ID$       = s$ID$.create(RealGrid)\n\
 y_vel_s$ID$       = s$ID$.create(RealGrid)\n\
@@ -311,6 +313,7 @@ def bake_fluid_process_low_$ID$(framenr, path_geometry, path_data):\n\
     mantaMsg('Bake fluid low')\n\
     \n\
     # Load grids before stepping - because every process has its own memory space!\n\
+    start_time = time.time()\n\
     if framenr>1:\n\
         fluid_load_data_low_$ID$(path_data, framenr-1) # load data from previous frame\n\
     if using_smoke_s$ID$:\n\
@@ -321,15 +324,19 @@ def bake_fluid_process_low_$ID$(framenr, path_geometry, path_data):\n\
         liquid_load_geometry_low_$ID$(path_geometry, framenr)\n\
         if framenr>1:\n\
             liquid_load_data_low_$ID$(path_data, framenr-1, True) # load data from previous frame\n\
+    mantaMsg('--- Loading: %s seconds ---' % (time.time() - start_time))\n\
     \n\
+    start_time = time.time()\n\
     fluid_step_low_$ID$(framenr)\n\
+    mantaMsg('--- Step: %s seconds ---' % (time.time() - start_time))\n\
     \n\
+    start_time = time.time()\n\
     fluid_save_data_low_$ID$(path_data, framenr)\n\
     if using_smoke_s$ID$:\n\
         smoke_save_data_low_$ID$(path_data, framenr)\n\
     if using_liquid_s$ID$:\n\
         liquid_save_data_low_$ID$(path_data, framenr)\n\
-    return True\n\
+    mantaMsg('--- Writing: %s seconds ---' % (time.time() - start_time))\n\
 \n\
 def bake_fluid_low_$ID$(path_geometry, path_data, framenr):\n\
     if debugMp or platform.system() != 'Darwin' and platform.system() != 'Linux':\n\
@@ -450,6 +457,8 @@ const std::string fluid_load_geometry_low = "\n\
 def fluid_load_geometry_low_$ID$(path, framenr):\n\
     mantaMsg('Fluid load geometry')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    numFlow_s$ID$.load(os.path.join(path, 'numFlow_' + framenr + '.uni'))\n\
+    flowType_s$ID$.load(os.path.join(path, 'flowType_' + framenr + '.uni'))\n\
     if using_obstacle_s$ID$:\n\
         phiObsIn_s$ID$.load(os.path.join(path, 'phiObsIn_' + framenr + '.uni'))\n\
     #phiOutIn_s$ID$.load(os.path.join(path, 'phiOutIn_' + framenr + '.uni'))\n";
@@ -542,6 +551,8 @@ const std::string fluid_save_geometry_low = "\n\
 def fluid_save_geometry_low_$ID$(path, framenr):\n\
     mantaMsg('Fluid save geometry')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    numFlow_s$ID$.save(os.path.join(path, 'numFlow_' + framenr + '.uni'))\n\
+    flowType_s$ID$.save(os.path.join(path, 'flowType_' + framenr + '.uni'))\n\
     if using_obstacle_s$ID$:\n\
         phiObsIn_s$ID$.save(os.path.join(path, 'phiObsIn_' + framenr + '.uni'))\n\
     #phiOutIn_s$ID$.save(os.path.join(path, 'phiOutIn_' + framenr + '.uni'))\n";

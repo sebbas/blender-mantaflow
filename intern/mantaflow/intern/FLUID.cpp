@@ -88,7 +88,13 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 
 	// Smoke low res grids
 	mDensity        = NULL;
+	mDensityIn      = NULL;
+	mEmissionIn     = NULL;
+	mShadow         = NULL;
+	mFlowType       = NULL;
+	mNumFlow        = NULL;
 	mHeat           = NULL;
+	mHeatIn         = NULL;
 	mVelocityX      = NULL;
 	mVelocityY      = NULL;
 	mVelocityZ      = NULL;
@@ -97,10 +103,14 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mForceZ         = NULL;
 	mFlame          = NULL;
 	mFuel           = NULL;
+	mFuelIn         = NULL;
 	mReact          = NULL;
 	mColorR         = NULL;
 	mColorG         = NULL;
 	mColorB         = NULL;
+	mColorRIn       = NULL;
+	mColorGIn       = NULL;
+	mColorBIn       = NULL;
 	mObstacle       = NULL;
 
 	// Smoke high res grids
@@ -494,24 +504,6 @@ void FLUID::initSndParts(SmokeModifierData *smd)
 	}
 }
 
-void FLUID::step(SmokeModifierData *smd, int framenr)
-{
-	if (with_debug)
-		std::cout << "FLUID::step()" << std::endl;
-
-	char cacheDir[FILE_MAX];
-	cacheDir[0] = '\0';
-
-	BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_GEOMETRY, NULL);
-
-	mCommands.clear();
-	std::ostringstream ss;
-	ss << "bake_geometry_" << mCurrentID << "(r'" << cacheDir << "', " << framenr << ")";
-	mCommands.push_back(ss.str());
-
-	runPythonString(mCommands);
-}
-
 FLUID::~FLUID()
 {
 	if (with_debug)
@@ -531,7 +523,13 @@ FLUID::~FLUID()
 
 	// Reset pointers to avoid dangling pointers
 	mDensity        = NULL;
+	mDensityIn      = NULL;
+	mEmissionIn     = NULL;
+	mShadow         = NULL;
+	mFlowType       = NULL;
+	mNumFlow        = NULL;
 	mHeat           = NULL;
+	mHeatIn         = NULL;
 	mVelocityX      = NULL;
 	mVelocityY      = NULL;
 	mVelocityZ      = NULL;
@@ -540,10 +538,14 @@ FLUID::~FLUID()
 	mForceZ         = NULL;
 	mFlame          = NULL;
 	mFuel           = NULL;
+	mFuelIn         = NULL;
 	mReact          = NULL;
 	mColorR         = NULL;
 	mColorG         = NULL;
 	mColorB         = NULL;
+	mColorRIn       = NULL;
+	mColorGIn       = NULL;
+	mColorBIn       = NULL;
 	mObstacle       = NULL;
 
 	mDensityHigh    = NULL;
@@ -1140,13 +1142,90 @@ int FLUID::readCacheHigh(SmokeModifierData *smd, int framenr)
 		}
 	}
 	return 0;
-
 }
 
-int FLUID::bakeSimulationLow(SmokeModifierData *smd, int framenr)
+int FLUID::writeCacheLow(SmokeModifierData *smd, int framenr)
 {
 	if (with_debug)
-		std::cout << "FLUID::bakeSimulationLow()" << std::endl;
+		std::cout << "FLUID::writeCacheLow()" << std::endl;
+
+	std::ostringstream ss;
+	bool writeSuccess = false;
+
+	/* Helper cacheDir used to navigate to cache subdirs, ie data, mesh, particles */
+	char cacheDir[FILE_MAX];
+	cacheDir[0] = '\0';
+
+	mCommands.clear();
+
+	BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
+	if (!BLI_exists(cacheDir)) return 0;
+
+	if (mUsingSmoke) {
+		ss << "smoke_save_shadow_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
+		mCommands.push_back(ss.str());
+
+		writeSuccess = true;
+	}
+	if (mUsingLiquid) {
+		writeSuccess = true;
+	}
+
+//	ss.str("");
+//	ss << "fluid_save_data_low_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
+//	mCommands.push_back(ss.str());
+//
+//	if (mUsingSmoke) {
+//
+//		ss.str("");
+//		ss << "smoke_save_data_low_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
+//		mCommands.push_back(ss.str());
+//
+//		writeSuccess = true;
+//	}
+//	if (mUsingLiquid) {
+//
+//		ss.str("");
+//		ss << "liquid_save_data_low_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
+//		mCommands.push_back(ss.str());
+//
+//		writeSuccess = true;
+//	}
+	runPythonString(mCommands);
+
+	return writeSuccess;
+}
+
+//int FLUID::writeCacheHigh(SmokeModifierData *smd, int framenr)
+//{
+//	// TODO (sebbas):
+//	return 1;
+//}
+
+int FLUID::bakeGeometryLow(SmokeModifierData *smd, int framenr)
+{
+	if (with_debug)
+		std::cout << "FLUID::bakeGeometryLow()" << std::endl;
+
+	char cacheDirGeometry[FILE_MAX];
+	cacheDirGeometry[0] = '\0';
+
+	BLI_path_join(cacheDirGeometry, sizeof(cacheDirGeometry), smd->domain->cache_directory, FLUID_CACHE_DIR_GEOMETRY, NULL);
+
+	mCommands.clear();
+	std::ostringstream ss;
+
+	ss << "bake_geometry_" << mCurrentID << "('" << cacheDirGeometry << "', " << framenr << ")";
+	mCommands.push_back(ss.str());
+
+	runPythonString(mCommands);
+	return 1;
+}
+
+int FLUID::bakeDataLow(SmokeModifierData *smd, int framenr)
+{
+	if (with_debug)
+		std::cout << "FLUID::bakeDataLow()" << std::endl;
 
 	char cacheDirGeometry[FILE_MAX], cacheDirData[FILE_MAX];
 	cacheDirGeometry[0] = '\0';
@@ -1165,10 +1244,10 @@ int FLUID::bakeSimulationLow(SmokeModifierData *smd, int framenr)
 	return 1;
 }
 
-int FLUID::bakeSimulationHigh(SmokeModifierData *smd, int framenr)
+int FLUID::bakeDataHigh(SmokeModifierData *smd, int framenr)
 {
 	if (with_debug)
-		std::cout << "FLUID::bakeSimulationHigh()" << std::endl;
+		std::cout << "FLUID::bakeDataHigh()" << std::endl;
 
 	char cacheDirDataLow[FILE_MAX], cacheDirDataHigh[FILE_MAX];
 	cacheDirDataLow[0] = '\0';
@@ -1667,10 +1746,12 @@ void FLUID::updatePointers()
 	mForceZ    = (float*) getDataPointer("z_force" + solver_ext, solver);
 
 	mPhiOutIn = (float*) getDataPointer("phiOutIn" + solver_ext, solver);
+	mFlowType       = (int*)   getDataPointer("flowType"   + solver_ext, solver);
+	mNumFlow        = (int*)   getDataPointer("numFlow"    + solver_ext, solver);
 
 	if (mUsingObstacle) {
 		mPhiObsIn = (float*) getDataPointer("phiObsIn" + solver_ext, solver);
-		mNumObstacle = (int*) getDataPointer("numObs" + solver_ext, solver);
+		mNumObstacle = (int*) getDataPointer("numObs"  + solver_ext, solver);
 
 		mObVelocityX = (float*) getDataPointer("x_obvel" + solver_ext, solver);
 		mObVelocityY = (float*) getDataPointer("y_obvel" + solver_ext, solver);
@@ -1679,7 +1760,7 @@ void FLUID::updatePointers()
 
 	if (mUsingGuiding) {
 		mPhiGuideIn = (float*) getDataPointer("phiGuideIn" + solver_ext, solver);
-		mNumGuide = (int*) getDataPointer("numGuides" + solver_ext, solver);
+		mNumGuide = (int*) getDataPointer("numGuides"      + solver_ext, solver);
 
 		mGuideVelocityX = (float*) getDataPointer("x_guidevel" + solver_ext, solver);
 		mGuideVelocityY = (float*) getDataPointer("y_guidevel" + solver_ext, solver);
@@ -1694,36 +1775,43 @@ void FLUID::updatePointers()
 
 	// Liquid
 	if (mUsingLiquid) {
-		mPhiIn  = (float*) getDataPointer("phiIn" + solver_ext,  solver);
-		mPhi    = (float*) getDataPointer("phi" + solver_ext, solver);
+		mPhi    = (float*) getDataPointer("phi"   + solver_ext, solver);
+		mPhiIn  = (float*) getDataPointer("phiIn" + solver_ext, solver);
 
-		mFlipParticleData     = (std::vector<pData>*) getDataPointer("pp" + solver_ext, solver);
-		mFlipParticleVelocity = (std::vector<pVel>*)  getDataPointer("pVel" + parts_ext, parts);
+		mFlipParticleData     = (std::vector<pData>*) getDataPointer("pp"   + solver_ext, solver);
+		mFlipParticleVelocity = (std::vector<pVel>*)  getDataPointer("pVel" + parts_ext,  parts);
 
 		if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
-			mSndParticleData     = (std::vector<pData>*) getDataPointer("ppSnd" + solver_ext, solver);
-			mSndParticleVelocity = (std::vector<pVel>*)  getDataPointer("pVelSnd" + parts_ext, parts);
-			mSndParticleLife     = (std::vector<float>*) getDataPointer("pLifeSnd" + parts_ext, parts);
+			mSndParticleData     = (std::vector<pData>*) getDataPointer("ppSnd"    + solver_ext, solver);
+			mSndParticleVelocity = (std::vector<pVel>*)  getDataPointer("pVelSnd"  + parts_ext,  parts);
+			mSndParticleLife     = (std::vector<float>*) getDataPointer("pLifeSnd" + parts_ext,  parts);
 		}
 	}
 	
 	// Smoke
 	if (mUsingSmoke) {
-		mDensity        = (float*) getDataPointer("density" + solver_ext, solver);
-		mInflow         = (float*) getDataPointer("inflow"  + solver_ext, solver);
+		mDensity        = (float*) getDataPointer("density"    + solver_ext, solver);
+		mDensityIn      = (float*) getDataPointer("densityIn"  + solver_ext, solver);
+		mEmissionIn     = (float*) getDataPointer("emissionIn" + solver_ext, solver);
+		mShadow         = (float*) getDataPointer("shadow"     + solver_ext, solver);
 
 		if (mUsingHeat) {
-			mHeat       = (float*) getDataPointer("heat" + solver_ext,    solver);
+			mHeat       = (float*) getDataPointer("heat"   + solver_ext,    solver);
+			mHeatIn     = (float*) getDataPointer("heatIn" + solver_ext,    solver);
 		}
 		if (mUsingFire) {
-			mFlame      = (float*) getDataPointer("flame" + solver_ext,   solver);
-			mFuel       = (float*) getDataPointer("fuel" + solver_ext,    solver);
-			mReact      = (float*) getDataPointer("react" + solver_ext,   solver);
+			mFlame      = (float*) getDataPointer("flame"  + solver_ext,   solver);
+			mFuel       = (float*) getDataPointer("fuel"   + solver_ext,   solver);
+			mFuelIn     = (float*) getDataPointer("fuelIn" + solver_ext,   solver);
+			mReact      = (float*) getDataPointer("react"  + solver_ext,   solver);
 		}
 		if (mUsingColors) {
-			mColorR     = (float*) getDataPointer("color_r" + solver_ext, solver);
-			mColorG     = (float*) getDataPointer("color_g" + solver_ext, solver);
-			mColorB     = (float*) getDataPointer("color_b" + solver_ext, solver);
+			mColorR     = (float*) getDataPointer("color_r"   + solver_ext, solver);
+			mColorRIn   = (float*) getDataPointer("colorIn_r" + solver_ext, solver);
+			mColorG     = (float*) getDataPointer("color_g"   + solver_ext, solver);
+			mColorGIn   = (float*) getDataPointer("colorIn_g" + solver_ext, solver);
+			mColorB     = (float*) getDataPointer("color_b"   + solver_ext, solver);
+			mColorBIn   = (float*) getDataPointer("colorIn_b" + solver_ext, solver);
 		}
 	}
 }
