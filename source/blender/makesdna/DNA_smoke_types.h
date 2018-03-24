@@ -136,14 +136,13 @@ enum {
 #define SM_HRES_FULLSAMPLE	2
 
 /* smoke data fileds (active_fields) */
-#define SM_ACTIVE_HEAT		(1<<0)
-#define SM_ACTIVE_FIRE		(1<<1)
-#define SM_ACTIVE_COLORS	(1<<2)
-#define SM_ACTIVE_COLOR_SET	(1<<3)
-#define SM_ACTIVE_LIQUID	(1<<4)
-#define SM_ACTIVE_OBSTACLE	(1<<5)
-#define SM_ACTIVE_GUIDING	(1<<6)
-#define SM_ACTIVE_INVEL		(1<<7)
+#define SM_ACTIVE_HEAT      (1<<0)
+#define SM_ACTIVE_FIRE      (1<<1)
+#define SM_ACTIVE_COLORS    (1<<2)
+#define SM_ACTIVE_COLOR_SET (1<<3)
+#define SM_ACTIVE_OBSTACLE  (1<<4)
+#define SM_ACTIVE_GUIDING   (1<<5)
+#define SM_ACTIVE_INVEL     (1<<6)
 
 #define FLUID_CACHE_BAKING_GEOMETRY            1
 #define FLUID_CACHE_BAKED_GEOMETRY             2

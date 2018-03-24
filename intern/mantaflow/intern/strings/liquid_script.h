@@ -144,7 +144,7 @@ def liquid_post_step_low_$ID$():\n\
 //////////////////////////////////////////////////////////////////////
 
 const std::string liquid_adaptive_step_low = "\n\
-def fluid_step_low_$ID$(framenr):\n\
+def liquid_adaptive_step_low_$ID$(framenr):\n\
     mantaMsg('Manta step low, frame ' + str(framenr))\n\
     \n\
     s$ID$.frame = framenr\n\

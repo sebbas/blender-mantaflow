@@ -327,7 +327,10 @@ def bake_fluid_process_low_$ID$(framenr, path_geometry, path_data):\n\
     mantaMsg('--- Loading: %s seconds ---' % (time.time() - start_time))\n\
     \n\
     start_time = time.time()\n\
-    fluid_step_low_$ID$(framenr)\n\
+    if using_smoke_s$ID$:\n\
+        smoke_adaptive_step_low_$ID$(framenr)\n\
+    if using_liquid_s$ID$:\n\
+        liquid_adaptive_step_low_$ID$(framenr)\n\
     mantaMsg('--- Step: %s seconds ---' % (time.time() - start_time))\n\
     \n\
     start_time = time.time()\n\

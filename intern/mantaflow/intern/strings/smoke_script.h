@@ -262,7 +262,7 @@ def smoke_post_step_high_$ID$():\n\
 //////////////////////////////////////////////////////////////////////
 
 const std::string smoke_adaptive_step_low = "\n\
-def fluid_step_low_$ID$(framenr):\n\
+def smoke_adaptive_step_low_$ID$(framenr):\n\
     s$ID$.frame = framenr\n\
     s$ID$.timeTotal = s$ID$.frame * dt0_s$ID$\n\
     last_frame_s$ID$ = s$ID$.frame\n\

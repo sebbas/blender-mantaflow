@@ -550,14 +550,6 @@ extern "C" void smoke_ensure_colors(FLUID *smoke, struct SmokeModifierData *smd)
 	}
 }
 
-extern "C" void liquid_ensure_init(FLUID *smoke, struct SmokeModifierData *smd)
-{
-	if (smoke) {
-		smoke->initLiquid(smd);
-		smoke->updatePointers();
-	}
-}
-
 extern "C" void fluid_ensure_sndparts(FLUID *fluid, struct SmokeModifierData *smd)
 {
 	if (fluid) {
