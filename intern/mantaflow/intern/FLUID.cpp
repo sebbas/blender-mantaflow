@@ -1235,11 +1235,11 @@ int FLUID::bakeDataLow(SmokeModifierData *smd, int framenr)
 
 	// Get variables at every step -> every property is animatable!
 	tmpString += fluid_variables_low;
+	tmpString += fluid_adaptive_time_stepping_low;
 	if (mUsingSmoke)
 		tmpString += smoke_variables_low;
 	if (mUsingLiquid)
 		tmpString += liquid_variables_low;
-	tmpString += fluid_adaptive_time_stepping_low;
 	finalString = parseScript(tmpString, smd);
 	pythonCommands.push_back(finalString);
 	runPythonString(pythonCommands);
@@ -1269,9 +1269,12 @@ int FLUID::bakeDataHigh(SmokeModifierData *smd, int framenr)
 	cacheDirDataHigh[0] = '\0';
 
 	// Get variables at every step -> every property is animatable!
-	if (mUsingHighRes)
-		tmpString += fluid_variables_high;
-		tmpString += fluid_adaptive_time_stepping_high;
+	tmpString += fluid_variables_high;
+	tmpString += fluid_adaptive_time_stepping_high;
+	if (mUsingSmoke)
+		tmpString += smoke_variables_high;
+	if (mUsingLiquid)
+		tmpString += liquid_variables_high;
 	finalString = parseScript(tmpString, smd);
 	pythonCommands.push_back(finalString);
 

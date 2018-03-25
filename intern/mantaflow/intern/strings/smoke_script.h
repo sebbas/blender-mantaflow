@@ -74,7 +74,11 @@ uv_s$ID$          = [] # list for UV grids\n\
 if upres_xl$ID$ == 1:\n\
     octaves_s$ID$ = int(math.log(upres_xl$ID$+1)/ math.log(2.0) + 0.5)\n\
 elif upres_xl$ID$ > 1:\n\
-    octaves_s$ID$ = int(math.log(upres_xl$ID$)/ math.log(2.0) + 0.5)\n";
+    octaves_s$ID$ = int(math.log(upres_xl$ID$)/ math.log(2.0) + 0.5)\n\
+\n\
+# wavelet noise params\n\
+wltnoise_xl$ID$.posScale = vec3(int(1.0*gs_s$ID$.x)) / $NOISE_POSSCALE$\n\
+wltnoise_xl$ID$.timeAnim = $NOISE_TIMEANIM$\n";
 
 const std::string smoke_with_heat = "\n\
 using_heat_s$ID$ = True\n";
@@ -576,9 +580,7 @@ def smoke_save_data_high_$ID$(path, framenr):\n\
 const std::string smoke_wavelet_turbulence_noise = "\n\
 # wavelet turbulence noise field\n\
 mantaMsg('Smoke wavelet noise')\n\
-wltnoise_xl$ID$ = xl$ID$.create(NoiseField, loadFromFile=True)\n\
-wltnoise_xl$ID$.posScale = vec3(int(1.0*gs_s$ID$.x)) / $NOISE_POSSCALE$\n\
-wltnoise_xl$ID$.timeAnim = $NOISE_TIMEANIM$\n";
+wltnoise_xl$ID$ = xl$ID$.create(NoiseField, loadFromFile=True)\n";
 
 const std::string smoke_inflow_low = "\n\
 def apply_inflow_$ID$():\n\
