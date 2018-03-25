@@ -3201,22 +3201,15 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 	}
 	else if (smd->type & MOD_SMOKE_TYPE_DOMAIN)
 	{
-		SmokeDomainSettings *sds = smd->domain;
-		PointCache *cache = NULL;
 		int startframe, endframe, framenr;
-
 		framenr = scene->r.cfra;
-		cache = sds->point_cache[0];
+		startframe = smd->domain->cache_frame_start;
+		endframe = smd->domain->cache_frame_end;
 
-		startframe = sds->cache_frame_start;
-		endframe = sds->cache_frame_end;
-
-		if (!smd->domain->fluid || framenr == startframe)
-		{
+		if (!smd->domain->fluid || framenr == startframe) {
 			smokeModifier_reset_ex(smd, false);
 		}
-
-		if (!smd->domain->fluid && (framenr != startframe) && (smd->domain->flags & MOD_SMOKE_FILE_LOAD) == 0 && (cache->flag & PTCACHE_BAKED) == 0)
+		if (!smd->domain->fluid && (framenr != startframe) && (smd->domain->flags & MOD_SMOKE_FILE_LOAD) == 0)
 			return;
 
 		smd->domain->flags &= ~MOD_SMOKE_FILE_LOAD;
@@ -3227,15 +3220,11 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			return;
 
 		if (smokeModifier_init(smd, ob, scene, dm) == 0)
-		{
-			printf("bad smokeModifier_init\n");
 			return;
-		}
 
-		/* try to read from cache */
-//		if (smd->domain->flags & MOD_SMOKE_HIGHRES && smd->domain->viewport_display_mode == SM_VIEWPORT_FINAL)
-		if (fluid_read_cache(sds->fluid, smd, framenr)) {
-			smd->time = (float) framenr;
+		/* Try to read from cache */
+		if (fluid_read_cache(smd->domain->fluid, smd, framenr)) {
+			smd->time = framenr;
 			return;
 		}
 		smd->time = scene->r.cfra;

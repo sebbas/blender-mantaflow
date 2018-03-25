@@ -1204,10 +1204,13 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 	frame = sds->cache_frame_start;
 	orig_frame = scene->r.cfra;
 	scene->r.cfra = (int)frame;
-	if (STREQ(job->type, "MANTA_OT_bake_geometry"))
-	{
-		ED_update_for_newframe(job->bmain, scene, 1);
-	}
+
+	/* Update animation system - needs annoying lock */
+	G.is_rendering = true;
+	BKE_spacedata_draw_locks(true);
+	ED_update_for_newframe(job->bmain, scene, 1);
+	G.is_rendering = false;
+	BKE_spacedata_draw_locks(false);
 
 	/* Loop through selected frames */
 	for (frame = sds->cache_frame_start; frame <= sds->cache_frame_end; frame++) {
@@ -1230,10 +1233,21 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 		if (smd->domain->fluid == NULL)
 			smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
 
+		/* Update animation system - needs annoying lock */
+		G.is_rendering = true;
+		BKE_spacedata_draw_locks(true);
+		ED_update_for_newframe(job->bmain, scene, 1);
+		G.is_rendering = false;
+		BKE_spacedata_draw_locks(false);
+
 		if (STREQ(job->type, "MANTA_OT_bake_geometry"))
 		{
-			ED_update_for_newframe(job->bmain, scene, 1);
+			/* Prevent scene changes during geometry bake by locking UI */
+			G.is_rendering = true;
+			BKE_spacedata_draw_locks(true);
 			success = smoke_make_geometry(scene, cObject, smd, frame);
+			G.is_rendering = false;
+			BKE_spacedata_draw_locks(false);
 		}
 		else if (STREQ(job->type, "MANTA_OT_bake_data_low"))
 		{
@@ -1292,9 +1306,6 @@ static void fluid_manta_bake_endjob(void *customdata)
 
 	if (STREQ(job->type, "MANTA_OT_bake_geometry"))
 	{
-		G.is_rendering = false;
-		BKE_spacedata_draw_locks(false);
-
 		sds->cache_flag &= ~FLUID_CACHE_BAKING_GEOMETRY;
 		sds->cache_flag |= FLUID_CACHE_BAKED_GEOMETRY;
 	}
@@ -1365,9 +1376,6 @@ static void fluid_manta_bake_startjob(void *customdata, short *stop, short *do_u
 
 	if (STREQ(job->type, "MANTA_OT_bake_geometry"))
 	{
-		G.is_rendering = true;
-		BKE_spacedata_draw_locks(true);
-
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_GEOMETRY, NULL);
 		BLI_dir_create_recursive(tmpDir); /* Create 'geometry' subdir if it does not exist already */
 		sds->cache_flag |= FLUID_CACHE_BAKING_GEOMETRY;

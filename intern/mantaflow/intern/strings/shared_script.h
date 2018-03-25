@@ -79,6 +79,7 @@ dim_s$ID$     = $SOLVER_DIM$\n\
 res_s$ID$     = $RES$\n\
 gravity_s$ID$ = vec3($GRAVITY_X$, $GRAVITY_Y$, $GRAVITY_Z$)\n\
 gs_s$ID$      = vec3($RESX$, $RESY$, $RESZ$)\n\
+maxVel_s$ID$  = 0\n\
 \n\
 if dim_s$ID$ == 2:\n\
     gs_s$ID$.z    = 1\n\

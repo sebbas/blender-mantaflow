@@ -990,23 +990,27 @@ int FLUID::readCacheLow(SmokeModifierData *smd, int framenr)
 	cacheDir[0] = '\0';
 	helperDir[0] = '\0';
 
-	if (mUsingSmoke) {
+	if (mUsingSmoke)
+	{
+		// Data (smoke volume) loading
 		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
-		if (!BLI_exists(cacheDir)) return 0;
+		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_LOW))
+		{
+			ss.str("");
+			ss << "smoke_load_data_low_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
+			pythonCommands.push_back(ss.str());
+			runPythonString(pythonCommands);
+			updatePointers();
 
-		ss.str("");
-		ss << "smoke_load_data_low_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
-		pythonCommands.push_back(ss.str());
-		runPythonString(pythonCommands);
-		updatePointers();
-
-		readSuccess = true;
+			readSuccess = true;
+		}
 	}
-	if (mUsingLiquid) {
-		// First try loading the mesh
+	if (mUsingLiquid)
+	{
+		// Mesh loading
 		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_MESH_LOW, NULL);
-		if (BLI_exists(cacheDir)) {
-
+		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & (FLUID_CACHE_BAKED_MESH_LOW | FLUID_CACHE_BAKED_LOW)))
+		{
 			ss.str("");
 			ss << "liquid_load_mesh_low_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
 			pythonCommands.push_back(ss.str());
@@ -1019,10 +1023,11 @@ int FLUID::readCacheLow(SmokeModifierData *smd, int framenr)
 
 			readSuccess = true;
 		}
-		// If no mesh found, try loading FLIP particles
-		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
-		if (BLI_exists(cacheDir)) {
 
+		// Data (flip particles) loading
+		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
+		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_LOW))
+		{
 			ss.str("");
 			ss << "liquid_load_data_low_" << mCurrentID << "('" << cacheDir << "', " << framenr << ", True)";
 			pythonCommands.push_back(ss.str());
@@ -1042,10 +1047,10 @@ int FLUID::readCacheLow(SmokeModifierData *smd, int framenr)
 		}
 	}
 	if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
-		// Optional liquid particles all live in one particle system
+		// Secondary particles loading
 		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_PARTICLES_LOW, NULL);
-		if (BLI_exists(cacheDir)) {
-
+		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & (FLUID_CACHE_BAKED_PARTICLES_LOW | FLUID_CACHE_BAKED_LOW)))
+		{
 			ss.str("");
 			ss << "liquid_load_particles_low_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
 			pythonCommands.push_back(ss.str());
@@ -1079,26 +1084,34 @@ int FLUID::readCacheHigh(SmokeModifierData *smd, int framenr)
 
 	std::ostringstream ss;
 	std::vector<std::string> pythonCommands;
+	bool readSuccess = false;
 
 	// Helper cacheDir used to navigate to cache subdirs, ie data, mesh, particles
 	char cacheDir[FILE_MAX], helperDir[FILE_MAX];
 	cacheDir[0] = '\0';
 	helperDir[0] = '\0';
 
-	if (mUsingSmoke) {
+	if (mUsingSmoke)
+	{
+		// Data (smoke volume) loading
 		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
-		if (!BLI_exists(cacheDir)) return 0;
+		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_HIGH))
+		{
+			ss.str("");
+			ss << "smoke_load_geometry_low_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
+			pythonCommands.push_back(ss.str());
+			runPythonString(pythonCommands);
+			updatePointersHigh();
 
-		ss.str("");
-		ss << "smoke_load_geometry_low_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
-		pythonCommands.push_back(ss.str());
-		runPythonString(pythonCommands);
+			readSuccess = true;
+		}
 	}
-	if (mUsingLiquid) {
-		// Try to load the mesh
+	if (mUsingLiquid)
+	{
+		// Mesh loading
 		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_MESH_HIGH, NULL);
-		if (BLI_exists(cacheDir)) {
-
+		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & (FLUID_CACHE_BAKED_MESH_HIGH | FLUID_CACHE_BAKED_HIGH)))
+		{
 			ss.str("");
 			ss << "liquid_load_mesh_high_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
 			pythonCommands.push_back(ss.str());
@@ -1109,12 +1122,12 @@ int FLUID::readCacheHigh(SmokeModifierData *smd, int framenr)
 			BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
 			updateMeshData(helperDir);
 
-			return 1;
+			readSuccess = true;
 		}
-		// If no mesh found, try to load FLIP particles
+		// Data (flip particles) loading
 		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_HIGH, NULL);
-		if (BLI_exists(cacheDir)) {
-
+		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & (FLUID_CACHE_BAKED_PARTICLES_HIGH | FLUID_CACHE_BAKED_HIGH)))
+		{
 			ss.str("");
 			ss << "liquid_load_data_high_" << mCurrentID << "('" << cacheDir << "', " << framenr << ", True)";
 			pythonCommands.push_back(ss.str());
@@ -1125,10 +1138,10 @@ int FLUID::readCacheHigh(SmokeModifierData *smd, int framenr)
 			BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
 			updateParticleData(helperDir, false);
 
-			return 1;
+			readSuccess = true;
 		}
 	}
-	return 0;
+	return readSuccess;
 }
 
 int FLUID::writeCacheLow(SmokeModifierData *smd, int framenr)
