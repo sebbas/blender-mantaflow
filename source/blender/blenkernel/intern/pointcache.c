@@ -1629,9 +1629,6 @@ void BKE_ptcache_id_from_particles(PTCacheID *pid, Object *ob, ParticleSystem *p
 	pid->write_mesh_stream		= NULL;
 	pid->read_mesh_stream		= NULL;
 
-	pid->write_uni_stream		= NULL;
-	pid->read_uni_stream		= NULL;
-
 	pid->write_extra_data		= NULL;
 	pid->read_extra_data		= NULL;
 	pid->interpolate_extra_data	= NULL;
@@ -1692,9 +1689,6 @@ void BKE_ptcache_id_from_cloth(PTCacheID *pid, Object *ob, ClothModifierData *cl
 	pid->write_mesh_stream		= NULL;
 	pid->read_mesh_stream		= NULL;
 
-	pid->write_uni_stream		= NULL;
-	pid->read_uni_stream		= NULL;
-
 	pid->write_extra_data		= NULL;
 	pid->read_extra_data		= NULL;
 	pid->interpolate_extra_data	= NULL;
@@ -1740,8 +1734,6 @@ void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct SmokeMo
 		pid->write_mesh_stream	= NULL;
 		pid->read_mesh_stream	= NULL;
 
-		pid->write_uni_stream	= NULL;
-		pid->read_uni_stream	= NULL;
 	}
 	else if (smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
 	{
@@ -1750,9 +1742,6 @@ void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct SmokeMo
 		
 		pid->write_mesh_stream	= ptcache_mesh_write;
 		pid->read_mesh_stream	= ptcache_mesh_read;
-
-		pid->write_uni_stream	= NULL; // ptcache_uni_write;
-		pid->read_uni_stream	= NULL; // ptcache_uni_read;
 	}
 
 	pid->write_openvdb_stream	= ptcache_smoke_openvdb_write;
@@ -1961,8 +1950,6 @@ static const char *ptcache_file_extension(const PTCacheID *pid)
 			return PTCACHE_EXT;
 		case PTCACHE_FILE_OPENVDB:
 			return ".vdb";
-		case PTCACHE_FILE_UNI:
-			return ".uni";
 		case PTCACHE_FILE_OBJECT:
 			return ".bobj.gz";
 	}
@@ -1972,8 +1959,6 @@ static const char *ptcache_file_extension(const PTCacheID *pid)
 		return PTCACHE_EXT;
 	if (pid->file_type & PTCACHE_FILE_OPENVDB)
 		return ".vdb";
-	if (pid->file_type & PTCACHE_FILE_UNI)
-		return ".uni";
 	if (pid->file_type & PTCACHE_FILE_OBJECT)
 		return ".bobj.gz";
 
@@ -2779,29 +2764,6 @@ static int ptcache_read_mesh_stream(PTCacheID *pid, int cfra)
 	return 1;
 }
 
-static int ptcache_read_uni_stream(PTCacheID *pid, int cfra, bool load_liquid_data)
-{
-	char filename[FILE_MAX * 2];
-	char pathname[FILE_MAX * 2];
-
-	/* save blend file before using disk pointcache */
-	if (!G.relbase_valid && (pid->cache->flag & PTCACHE_EXTERNAL) == 0)
-		return 0;
-
-	ptcache_filename(pid, filename, cfra, 1, 1);
-	ptcache_filename(pid, pathname, cfra, 1, 0);
-
-	if (!BLI_exists(filename)) {
-		return 0;
-	}
-
-	if (!pid->read_uni_stream(pid->calldata, filename, pathname, load_liquid_data)) {
-		return 0;
-	}
-
-	return 1;
-}
-
 static int ptcache_read(PTCacheID *pid, int cfra)
 {
 	PTCacheMem *pm = NULL;
@@ -2958,12 +2920,6 @@ int BKE_ptcache_read(PTCacheID *pid, float cfra, bool no_extrapolate_old)
 				return 0;
 			}
 		}
-		else if (pid->file_type & PTCACHE_FILE_UNI && pid->read_uni_stream) {
-			pid->file_type = PTCACHE_FILE_UNI;
-			if (!ptcache_read_uni_stream(pid, cfra1, true)) {
-				return 0;
-			}
-		}
 		else if (pid->file_type & PTCACHE_FILE_PTCACHE && pid->read_stream) {
 			pid->file_type = PTCACHE_FILE_PTCACHE;
 			if (!ptcache_read_stream(pid, cfra1))
@@ -2992,12 +2948,6 @@ int BKE_ptcache_read(PTCacheID *pid, float cfra, bool no_extrapolate_old)
 		if (pid->file_type & PTCACHE_FILE_OPENVDB && pid->read_openvdb_stream) {
 			pid->file_type = PTCACHE_FILE_OPENVDB;
 			if (!ptcache_read_openvdb_stream(pid, cfra2)) {
-				return 0;
-			}
-		}
-		else if (pid->file_type & PTCACHE_FILE_UNI && pid->read_uni_stream) {
-			pid->file_type = PTCACHE_FILE_UNI;
-			if (!ptcache_read_uni_stream(pid, cfra2, true)) {
 				return 0;
 			}
 		}
@@ -3120,25 +3070,6 @@ static int ptcache_write_mesh_stream(PTCacheID *pid, int cfra)
 	if (error && G.debug & G_DEBUG)
 		printf("Error writing to disk cache\n");
 	
-	return error == 0;
-}
-static int ptcache_write_uni_stream(PTCacheID *pid, int cfra, bool save_liquid_data)
-{
-	char filename[FILE_MAX * 2];
-	char pathname[FILE_MAX * 2];
-
-	BKE_ptcache_id_clear(pid, PTCACHE_CLEAR_FRAME, cfra);
-
-	ptcache_filename(pid, filename, cfra, 1, 1);
-	ptcache_filename(pid, pathname, cfra, 1, 0);
-
-	BLI_make_existing_file(filename);
-
-	int error = pid->write_uni_stream(pid->calldata, filename, pathname, save_liquid_data);
-
-	if (error && G.debug & G_DEBUG)
-		printf("Error writing to disk cache\n");
-
 	return error == 0;
 }
 static int ptcache_write(PTCacheID *pid, int cfra, int overwrite)
@@ -3277,10 +3208,6 @@ int BKE_ptcache_write(PTCacheID *pid, unsigned int cfra)
 	if (pid->file_type & PTCACHE_FILE_OPENVDB && pid->write_openvdb_stream) {
 		pid->file_type = PTCACHE_FILE_OPENVDB;
 		ptcache_write_openvdb_stream(pid, cfra);
-	}
-	else if (pid->file_type & PTCACHE_FILE_UNI && pid->write_uni_stream) {
-		pid->file_type = PTCACHE_FILE_UNI;
-		ptcache_write_uni_stream(pid, cfra, true);
 	}
 	else if (pid->file_type & PTCACHE_FILE_PTCACHE && pid->write_stream) {
 		pid->file_type = PTCACHE_FILE_PTCACHE;

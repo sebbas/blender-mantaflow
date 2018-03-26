@@ -3206,9 +3206,17 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		startframe = smd->domain->cache_frame_start;
 		endframe = smd->domain->cache_frame_end;
 
-		if (!smd->domain->fluid || framenr == startframe) {
+		/* Baking can be any of geometry, data, mesh or particles */
+		bool isBaking = (smd->domain->cache_flag & (FLUID_CACHE_BAKING_GEOMETRY|FLUID_CACHE_BAKING_LOW|FLUID_CACHE_BAKING_HIGH|
+													FLUID_CACHE_BAKING_MESH_LOW|FLUID_CACHE_BAKING_MESH_HIGH|
+													FLUID_CACHE_BAKING_PARTICLES_LOW|FLUID_CACHE_BAKING_PARTICLES_HIGH));
+
+		if (isBaking) return;
+
+		/* Reset fluid if no fluid present (obviously) or if timeline gets reset to startframe when no (!) baking is running */
+		if (!smd->domain->fluid || (framenr == startframe && !isBaking))
 			smokeModifier_reset_ex(smd, false);
-		}
+
 		if (!smd->domain->fluid && (framenr != startframe) && (smd->domain->flags & MOD_SMOKE_FILE_LOAD) == 0)
 			return;
 
@@ -3461,7 +3469,6 @@ int smoke_make_step(Scene *scene, Object *ob, SmokeModifierData *smd, int framen
 		fluid_bake_low(sds->fluid, smd, framenr);
 	}
 
-	/* TODO (sebbas): Move shadows memory management to mantaflow. Is easier for grid io operations */
 	if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
 		smoke_calc_transparency(sds, scene);
 	}

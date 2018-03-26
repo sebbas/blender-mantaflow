@@ -298,7 +298,7 @@ def smoke_adaptive_step_low_$ID$(framenr):\n\
     smoke_post_step_low_$ID$()\n";
 
 const std::string smoke_adaptive_step_high = "\n\
-def fluid_step_high_$ID$(framenr):\n\
+def smoke_adaptive_step_high_$ID$(framenr):\n\
     xl$ID$.frame = framenr\n\
     xl$ID$.timeTotal = xl$ID$.frame * dt0_s$ID$\n\
     last_frame_s$ID$ = xl$ID$.frame\n\
@@ -563,7 +563,7 @@ def smoke_save_data_high_$ID$(path, framenr):\n\
     texture_w_s$ID$.save(os.path.join(path, 'texture_w_' + framenr + '.uni'))\n\
     texture_u2_s$ID$.save(os.path.join(path, 'texture_u2_' + framenr + '.uni'))\n\
     texture_v2_s$ID$.save(os.path.join(path, 'texture_v2_' + framenr + '.uni'))\n\
-    texture_w2_s$ID$.save(os.path.join(path, 'texture_w2_' + framenr + '.uni')\n\
+    texture_w2_s$ID$.save(os.path.join(path, 'texture_w2_' + framenr + '.uni'))\n\
     if using_colors_s$ID$:\n\
         color_r_xl$ID$.save(os.path.join(path, 'color_r_xl_' + framenr + '.uni'))\n\
         color_g_xl$ID$.save(os.path.join(path, 'color_g_xl_' + framenr + '.uni'))\n\

@@ -355,12 +355,15 @@ def bake_fluid_process_high_$ID$(framenr, path_data_low, path_data_high):\n\
     mantaMsg('Bake fluid high')\n\
     \n\
     # Load grids before stepping - because every process has its own memory space!\n\
-    if framenr>1:\n\
+    if using_smoke_s$ID$ and framenr>1: # smoke needs low-res vel grid\n\
         fluid_load_data_low_$ID$(path_data_low, framenr-1) # load data from previous frame\n\
     if using_liquid_s$ID$ and framenr>1:\n\
         liquid_load_data_low_$ID$(path_data_low, framenr-1, True)\n\
     \n\
-    fluid_step_high_$ID$(framenr)\n\
+    if using_smoke_s$ID$:\n\
+        smoke_adaptive_step_high_$ID$(framenr)\n\
+    if using_liquid_s$ID$:\n\
+        liquid_adaptive_step_high_$ID$(framenr)\n\
     \n\
     if using_smoke_s$ID$:\n\
         smoke_save_data_high_$ID$(path_data_high, framenr)\n\

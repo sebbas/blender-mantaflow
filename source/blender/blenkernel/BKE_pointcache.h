@@ -126,7 +126,6 @@ enum {
 	/* Volumetric file formats */
 	PTCACHE_FILE_PTCACHE = (1 << 0),
 	PTCACHE_FILE_OPENVDB = (1 << 1),
-	PTCACHE_FILE_UNI = (1 << 2),
 
 	/* Surface file formats */
 	PTCACHE_FILE_OBJECT = (1 << 3),

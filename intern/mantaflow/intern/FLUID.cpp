@@ -306,9 +306,9 @@ void FLUID::initSmokeHigh(SmokeModifierData *smd)
 {
 	std::vector<std::string> pythonCommands;
 	std::string tmpString = smoke_alloc_high
+		+ smoke_wavelet_turbulence_noise
 		+ smoke_variables_high
 		+ smoke_bounds_high
-		+ smoke_wavelet_turbulence_noise
 		+ smoke_adaptive_step_high
 		+ smoke_save_data_high
 		+ smoke_pre_step_high
@@ -1009,7 +1009,7 @@ int FLUID::readCacheLow(SmokeModifierData *smd, int framenr)
 	{
 		// Mesh loading
 		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_MESH_LOW, NULL);
-		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & (FLUID_CACHE_BAKED_MESH_LOW | FLUID_CACHE_BAKED_LOW)))
+		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_MESH_LOW ))
 		{
 			ss.str("");
 			ss << "liquid_load_mesh_low_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
@@ -1049,7 +1049,7 @@ int FLUID::readCacheLow(SmokeModifierData *smd, int framenr)
 	if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
 		// Secondary particles loading
 		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_PARTICLES_LOW, NULL);
-		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & (FLUID_CACHE_BAKED_PARTICLES_LOW | FLUID_CACHE_BAKED_LOW)))
+		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_PARTICLES_LOW))
 		{
 			ss.str("");
 			ss << "liquid_load_particles_low_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
@@ -1110,7 +1110,7 @@ int FLUID::readCacheHigh(SmokeModifierData *smd, int framenr)
 	{
 		// Mesh loading
 		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_MESH_HIGH, NULL);
-		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & (FLUID_CACHE_BAKED_MESH_HIGH | FLUID_CACHE_BAKED_HIGH)))
+		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_MESH_HIGH))
 		{
 			ss.str("");
 			ss << "liquid_load_mesh_high_" << mCurrentID << "('" << cacheDir << "', " << framenr << ")";
@@ -1126,7 +1126,7 @@ int FLUID::readCacheHigh(SmokeModifierData *smd, int framenr)
 		}
 		// Data (flip particles) loading
 		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_HIGH, NULL);
-		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & (FLUID_CACHE_BAKED_PARTICLES_HIGH | FLUID_CACHE_BAKED_HIGH)))
+		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_HIGH))
 		{
 			ss.str("");
 			ss << "liquid_load_data_high_" << mCurrentID << "('" << cacheDir << "', " << framenr << ", True)";

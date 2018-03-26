@@ -1539,23 +1539,32 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 	else if (STREQ(job->type, "MANTA_OT_free_data_low"))
 	{
 		sds->cache_flag &= ~(FLUID_CACHE_BAKING_LOW|FLUID_CACHE_BAKED_LOW|
-									 FLUID_CACHE_BAKING_MESH_LOW|FLUID_CACHE_BAKED_MESH_LOW|
-									 FLUID_CACHE_BAKING_PARTICLES_LOW|FLUID_CACHE_BAKED_PARTICLES_LOW);
+							 FLUID_CACHE_BAKING_MESH_LOW|FLUID_CACHE_BAKED_MESH_LOW|
+							 FLUID_CACHE_BAKING_PARTICLES_LOW|FLUID_CACHE_BAKED_PARTICLES_LOW|
+							 FLUID_CACHE_BAKING_HIGH|FLUID_CACHE_BAKED_HIGH|
+							 FLUID_CACHE_BAKING_MESH_HIGH|FLUID_CACHE_BAKED_MESH_HIGH|
+							 FLUID_CACHE_BAKING_PARTICLES_HIGH|FLUID_CACHE_BAKED_PARTICLES_HIGH);
 
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
+		BLI_delete(tmpDir, true, true);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_DATA_HIGH, NULL);
 		BLI_delete(tmpDir, true, true);
 
 		/* Free optional mesh and particles as well - otherwise they would not be in sync with data cache */
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_MESH_LOW, NULL);
 		BLI_delete(tmpDir, true, true);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_MESH_HIGH, NULL);
+		BLI_delete(tmpDir, true, true);
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_PARTICLES_LOW, NULL);
+		BLI_delete(tmpDir, true, true);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_PARTICLES_HIGH, NULL);
 		BLI_delete(tmpDir, true, true);
 	}
 	else if (STREQ(job->type, "MANTA_OT_free_data_high"))
 	{
 		sds->cache_flag &= ~(FLUID_CACHE_BAKING_HIGH|FLUID_CACHE_BAKED_HIGH|
-									 FLUID_CACHE_BAKING_MESH_HIGH|FLUID_CACHE_BAKED_MESH_HIGH|
-									 FLUID_CACHE_BAKING_PARTICLES_HIGH|FLUID_CACHE_BAKED_PARTICLES_HIGH);
+							 FLUID_CACHE_BAKING_MESH_HIGH|FLUID_CACHE_BAKED_MESH_HIGH|
+							 FLUID_CACHE_BAKING_PARTICLES_HIGH|FLUID_CACHE_BAKED_PARTICLES_HIGH);
 
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_DATA_HIGH, NULL);
 		BLI_delete(tmpDir, true, true);
