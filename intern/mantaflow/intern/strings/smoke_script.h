@@ -269,36 +269,39 @@ def smoke_post_step_high_$ID$():\n\
 
 const std::string smoke_adaptive_step_low = "\n\
 def smoke_adaptive_step_low_$ID$(framenr):\n\
-    s$ID$.frame = framenr\n\
-    s$ID$.timeTotal = s$ID$.frame * dt0_s$ID$\n\
-    last_frame_s$ID$ = s$ID$.frame\n\
+    mantaMsg('Manta step low, frame ' + str(framenr))\n\
+    \n\
+    # time params are animatable\n\
+    s$ID$.frameLength = dt0_s$ID$ \n\
+    s$ID$.cfl = cfl_cond_s$ID$\n\
+    \n\
+    mantaMsg('s.frame is ' + str(s$ID$.frame))\n\
+    mantaMsg('s.timestep is ' + str(s$ID$.timestep))\n\
+    mantaMsg('s.cfl is ' + str(s$ID$.cfl))\n\
+    mantaMsg('s.frameLength is ' + str(s$ID$.frameLength))\n\
     \n\
     smoke_pre_step_low_$ID$()\n\
     \n\
-    while s$ID$.frame == last_frame_s$ID$:\n\
-        \n\
-        applyGasInflow(emission=emissionIn_s$ID$, density=density_s$ID$, densityIn=densityIn_s$ID$, heat=heat_s$ID$, heatIn=heatIn_s$ID$, fuel=fuel_s$ID$, fuelIn=fuelIn_s$ID$, react=react_s$ID$, red=color_r_s$ID$, redIn=colorIn_r_s$ID$, green=color_g_s$ID$, greenIn=colorIn_g_s$ID$, blue=color_b_s$ID$, blueIn=colorIn_b_s$ID$, flowType=flowType_s$ID$, absoluteFlow=absoluteFlow_s$ID$)\n\
-        \n\
-        mantaMsg('s.frame is ' + str(s$ID$.frame))\n\
-        if using_obstacle_s$ID$: # TODO (sebbas): allow outflow objects when no obstacle set\n\
-            phiObs_s$ID$.join(phiObsIn_s$ID$)\n\
-        setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOutIn_s$ID$)\n\
-        flags_s$ID$.fillGrid()\n\
-        \n\
-        fluid_adapt_time_step_low()\n\
-        mantaMsg('Low step / s$ID$.frame: ' + str(s$ID$.frame))\n\
-        if using_fire_s$ID$:\n\
-            process_burn_low_$ID$()\n\
-        step_low_$ID$()\n\
-        if using_fire_s$ID$:\n\
-            update_flame_low_$ID$()\n\
-        \n\
-        s$ID$.step()\n\
+    if using_obstacle_s$ID$: # TODO (sebbas): allow outflow objects when no obstacle set\n\
+        phiObs_s$ID$.join(phiObsIn_s$ID$)\n\
+    setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOutIn_s$ID$)\n\
+    flags_s$ID$.fillGrid()\n\
+    \n\
+    mantaMsg('Low step / s$ID$.frame: ' + str(s$ID$.frame))\n\
+    if using_fire_s$ID$:\n\
+        process_burn_low_$ID$()\n\
+    step_low_$ID$()\n\
+    if using_fire_s$ID$:\n\
+        update_flame_low_$ID$()\n\
+    \n\
+    s$ID$.step()\n\
     \n\
     smoke_post_step_low_$ID$()\n";
 
 const std::string smoke_adaptive_step_high = "\n\
 def smoke_adaptive_step_high_$ID$(framenr):\n\
+    mantaMsg('Manta step high, frame ' + str(framenr))\n\
+    \n\
     xl$ID$.frame = framenr\n\
     xl$ID$.timeTotal = xl$ID$.frame * dt0_s$ID$\n\
     last_frame_s$ID$ = xl$ID$.frame\n\
@@ -311,7 +314,7 @@ def smoke_adaptive_step_high_$ID$(framenr):\n\
         setObstacleFlags(flags=flags_xl$ID$, phiObs=phiObs_xl$ID$, phiOut=phiOut_xl$ID$)\n\
         flags_xl$ID$.fillGrid()\n\
         \n\
-        fluid_adapt_time_step_high()\n\
+        fluid_adapt_time_step_high_$ID$()\n\
         mantaMsg('High step / xl$ID$.frame: ' + str(xl$ID$.frame))\n\
         if using_fire_s$ID$:\n\
             process_burn_high_$ID$()\n\

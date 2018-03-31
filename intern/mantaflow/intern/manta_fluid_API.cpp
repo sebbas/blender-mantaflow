@@ -881,10 +881,12 @@ extern "C" int fluid_write_cache(FLUID* fluid, SmokeModifierData *smd, int frame
 
 extern "C" int fluid_bake_geometry(FLUID *fluid, SmokeModifierData *smd, int framenr)
 {
+	if (!fluid || !smd) return 0;
 	fluid->bakeGeometryLow(smd, framenr);
 	fluid->updatePointers();
 	//	if (fluid->usingHighRes())
 	//		fluid->bakeGeometryHigh();
+	return 1;
 }
 
 extern "C" int fluid_bake_low(FLUID* fluid, SmokeModifierData *smd, int framenr)
@@ -921,5 +923,35 @@ extern "C" int fluid_bake_particles_high(FLUID* fluid, SmokeModifierData *smd, i
 {
 	if (!fluid || !smd) return 0;
 	return fluid->bakeParticlesHigh(smd, framenr);
+}
+
+extern "C" void fluid_update_variables_low(FLUID* fluid, SmokeModifierData *smd)
+{
+	if (fluid)
+		fluid->updateVariablesLow(smd);
+}
+
+extern "C" void fluid_update_variables_high(FLUID* fluid, SmokeModifierData *smd)
+{
+	if (fluid)
+		fluid->updateVariablesHigh(smd);
+}
+
+extern "C" int fluid_get_frame(FLUID* fluid)
+{
+	if (!fluid) return 0;
+	return fluid->getFrame();
+}
+
+extern "C" float fluid_get_timestep(FLUID* fluid)
+{
+	if (!fluid) return 0;
+	return fluid->getTimestep();
+}
+
+extern "C" void fluid_adapt_timestep(FLUID* fluid)
+{
+	if (fluid);
+		fluid->adaptTimestep();
 }
 

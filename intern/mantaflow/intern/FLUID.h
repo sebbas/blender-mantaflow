@@ -77,6 +77,8 @@ public:
 	int bakeMeshHigh(SmokeModifierData *smd, int framenr);
 	int bakeParticlesLow(SmokeModifierData *smd, int framenr);
 	int bakeParticlesHigh(SmokeModifierData *smd, int framenr);
+	void updateVariablesLow(SmokeModifierData *smd);
+	void updateVariablesHigh(SmokeModifierData *smd);
 
 	// IO for Mantaflow scene script
 	void exportSmokeScript(struct SmokeModifierData *smd);
@@ -237,6 +239,11 @@ public:
 	void setSndParticleVelocity(float* buffer, int numParts);
 	void setSndParticleLife(float* buffer, int numParts);
 
+	// Direct access to solver time attributes
+	int getFrame();
+	float getTimestep();
+	void adaptTimestep();
+
 private:
 	// simulation constants
 	size_t mTotalCells;
@@ -360,7 +367,6 @@ private:
 	std::string getRealValue(const std::string& varName, SmokeModifierData *smd);
 	std::string parseLine(const std::string& line, SmokeModifierData *smd);
 	std::string parseScript(const std::string& setup_string, SmokeModifierData *smd);
-	void* getDataPointer(std::string varName, std::string parentName);
 	void updateMeshDataFromBobj(const char* filename);
 };
 

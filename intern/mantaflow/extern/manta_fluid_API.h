@@ -182,6 +182,11 @@ int fluid_bake_mesh_low(struct FLUID* fluid, struct SmokeModifierData *smd, int 
 int fluid_bake_mesh_high(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_bake_particles_low(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_bake_particles_high(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
+void fluid_update_variables_low(struct FLUID* fluid, struct SmokeModifierData *smd);
+void fluid_update_variables_high(struct FLUID* fluid, struct SmokeModifierData *smd);
+int fluid_get_frame(struct FLUID* fluid);
+float fluid_get_timestep(struct FLUID* fluid);
+void fluid_adapt_timestep(struct FLUID* fluid);
 
 #ifdef __cplusplus
 }

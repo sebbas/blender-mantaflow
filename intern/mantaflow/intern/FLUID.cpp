@@ -1233,22 +1233,10 @@ int FLUID::bakeDataLow(SmokeModifierData *smd, int framenr)
 	cacheDirGeometry[0] = '\0';
 	cacheDirData[0] = '\0';
 
-	// Get variables at every step -> every property is animatable!
-	tmpString += fluid_variables_low;
-	tmpString += fluid_adaptive_time_stepping_low;
-	if (mUsingSmoke)
-		tmpString += smoke_variables_low;
-	if (mUsingLiquid)
-		tmpString += liquid_variables_low;
-	finalString = parseScript(tmpString, smd);
-	pythonCommands.push_back(finalString);
-	runPythonString(pythonCommands);
-
 	// Actual call to bake routine
 	BLI_path_join(cacheDirGeometry, sizeof(cacheDirGeometry), smd->domain->cache_directory, FLUID_CACHE_DIR_GEOMETRY, NULL);
 	BLI_path_join(cacheDirData, sizeof(cacheDirData), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
 	ss << "bake_fluid_low_" << mCurrentID << "('" << cacheDirGeometry << "', '" << cacheDirData << "', " << framenr << ")";
-	pythonCommands.clear();
 	pythonCommands.push_back(ss.str());
 
 	runPythonString(pythonCommands);
@@ -1260,23 +1248,12 @@ int FLUID::bakeDataHigh(SmokeModifierData *smd, int framenr)
 	if (with_debug)
 		std::cout << "FLUID::bakeDataHigh()" << std::endl;
 
-	std::string tmpString, finalString;
 	std::ostringstream ss;
 	std::vector<std::string> pythonCommands;
 
 	char cacheDirDataLow[FILE_MAX], cacheDirDataHigh[FILE_MAX];
 	cacheDirDataLow[0] = '\0';
 	cacheDirDataHigh[0] = '\0';
-
-	// Get variables at every step -> every property is animatable!
-	tmpString += fluid_variables_high;
-	tmpString += fluid_adaptive_time_stepping_high;
-	if (mUsingSmoke)
-		tmpString += smoke_variables_high;
-	if (mUsingLiquid)
-		tmpString += liquid_variables_high;
-	finalString = parseScript(tmpString, smd);
-	pythonCommands.push_back(finalString);
 
 	// Actual call to bake routine
 	BLI_path_join(cacheDirDataLow, sizeof(cacheDirDataLow), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
@@ -1379,6 +1356,37 @@ int FLUID::bakeParticlesHigh(SmokeModifierData *smd, int framenr)
 
 	runPythonString(pythonCommands);
 	return 1;
+}
+void FLUID::updateVariablesLow(SmokeModifierData *smd)
+{
+	std::string tmpString, finalString;
+	std::vector<std::string> pythonCommands;
+
+	tmpString += fluid_variables_low;
+	if (mUsingSmoke)
+		tmpString += smoke_variables_low;
+	if (mUsingLiquid)
+		tmpString += liquid_variables_low;
+	finalString = parseScript(tmpString, smd);
+	pythonCommands.push_back(finalString);
+
+	runPythonString(pythonCommands);
+}
+
+void FLUID::updateVariablesHigh(SmokeModifierData *smd)
+{
+	std::string tmpString, finalString;
+	std::vector<std::string> pythonCommands;
+
+	tmpString += fluid_variables_high;
+	if (mUsingSmoke)
+		tmpString += smoke_variables_high;
+	if (mUsingLiquid)
+		tmpString += liquid_variables_high;
+	finalString = parseScript(tmpString, smd);
+	pythonCommands.push_back(finalString);
+
+	runPythonString(pythonCommands);
 }
 
 void FLUID::exportSmokeData(SmokeModifierData *smd)
@@ -1506,32 +1514,99 @@ void FLUID::exportLiquidData(SmokeModifierData *smd)
 		FLUID::saveFluidSndPartsData(parent_dir);
 }
 
-void* FLUID::getDataPointer(std::string varName, std::string parentName)
+/* Call Mantaflow python functions through this function. Use isAttribute for object attributes, e.g. s.cfl (here 's' is varname, 'cfl' functionName, and isAttribute true) */
+static PyObject* callPythonFunction(std::string varName, std::string functionName, bool isAttribute=false)
 {
-	if ((varName == "") && (parentName == "")) return NULL;
+	if ((varName == "") || (functionName == "")) {
+		if (FLUID::with_debug)
+			std::cout << "Missing Python variable name and/or function name -- name is: " << varName << ", function name is: " << functionName << std::endl;
+		return NULL;
+	}
 
 	PyGILState_STATE gilstate = PyGILState_Ensure();
+	PyObject *main, *var, *func, *returnedValue;
 
-	// Get pyobject that holds pointer address as string
-	PyObject* main = PyImport_AddModule("__main__");
-	PyObject* gridObject = PyObject_GetAttrString(main, varName.c_str());
-	PyObject* func = PyObject_GetAttrString(gridObject, (char*) "getDataPointer");
-	PyObject* returnedValue = PyObject_CallObject(func, NULL);
-	PyObject* encoded = PyUnicode_AsUTF8String(returnedValue);
+	// Get pyobject that holds result value
+	main = PyImport_AddModule("__main__");
+	var = PyObject_GetAttrString(main, varName.c_str());
+	func = PyObject_GetAttrString(var, functionName.c_str());
 
-	// Convert string pointer to void pointer
-	std::string pointerString = PyBytes_AsString(encoded);
-	std::istringstream in(pointerString);
-	void *dataPointer = NULL;
-	in >> dataPointer;
-	
-	Py_DECREF(gridObject);
-	Py_DECREF(func);
-	Py_DECREF(returnedValue);
-	Py_DECREF(encoded);
+	Py_DECREF(var);
+
+	if (!isAttribute) {
+		returnedValue = PyObject_CallObject(func, NULL);
+		Py_DECREF(func);
+	}
 
 	PyGILState_Release(gilstate);
+	return (!isAttribute) ? returnedValue : func;
+}
+
+static char* pyObjectToString(PyObject* inputObject)
+{
+	PyObject* encoded = PyUnicode_AsUTF8String(inputObject);
+	char *result = PyBytes_AsString(encoded);
+	Py_DECREF(encoded);
+	Py_DECREF(inputObject);
+	return result;
+}
+
+static double pyObjectToDouble(PyObject* inputObject)
+{
+	// Cannot use PyFloat_AsDouble() since its error check crashes - likely because of Real (aka float) type in Mantaflow
+	return PyFloat_AS_DOUBLE(inputObject);
+}
+
+static long pyObjectToLong(PyObject* inputObject)
+{
+	return PyLong_AsLong(inputObject);
+}
+
+static void* stringToPointer(char* inputString)
+{
+	std::string str(inputString);
+	std::istringstream in(str);
+	void *dataPointer = NULL;
+	in >> dataPointer;
 	return dataPointer;
+}
+
+int FLUID::getFrame()
+{
+	if (with_debug)
+		std::cout << "FLUID::getFrame()" << std::endl;
+	
+	std::string func = "frame";
+	std::string id = std::to_string(mCurrentID);
+	std::string solver = "s" + id;
+
+	return pyObjectToLong(callPythonFunction(solver, func, true));
+}
+
+float FLUID::getTimestep()
+{
+	if (with_debug)
+		std::cout << "FLUID::getTimestep()" << std::endl;
+
+	std::string func = "timestep";
+	std::string id = std::to_string(mCurrentID);
+	std::string solver = "s" + id;
+
+	return pyObjectToDouble(callPythonFunction(solver, func, true));
+}
+
+void FLUID::adaptTimestep()
+{
+	if (with_debug)
+		std::cout << "FLUID::adaptTimestep()" << std::endl;
+
+	std::vector<std::string> pythonCommands;
+	std::ostringstream ss;
+
+	ss << "fluid_adapt_time_step_low_" << mCurrentID << "()";
+	pythonCommands.push_back(ss.str());
+
+	runPythonString(pythonCommands);
 }
 
 void FLUID::updateMeshData(const char* filename)
@@ -1750,100 +1825,103 @@ void FLUID::updateParticleData(const char* filename, bool isSecondary)
 void FLUID::updatePointers()
 {
 	if (with_debug)
-		std::cout << "Updating pointers low res, ID: " << mCurrentID << std::endl;
+		std::cout << "FLUID::updatePointers()" << std::endl;
 
+	std::string func = "getDataPointer";
 	std::string id = std::to_string(mCurrentID);
 	std::string solver = "s" + id;
 	std::string parts  = "pp" + id;
 	std::string solver_ext = "_" + solver;
 	std::string parts_ext = "_" + parts;
 
-	mObstacle    = (int*) getDataPointer("flags" + solver_ext,  solver);
+	mObstacle  = (int*)   stringToPointer(pyObjectToString(callPythonFunction("flags" + solver_ext, func)));
 
-	mVelocityX = (float*) getDataPointer("x_vel" + solver_ext, solver);
-	mVelocityY = (float*) getDataPointer("y_vel" + solver_ext, solver);
-	mVelocityZ = (float*) getDataPointer("z_vel" + solver_ext, solver);
+	mVelocityX = (float*) stringToPointer(pyObjectToString(callPythonFunction("x_vel" + solver_ext, func)));
+	mVelocityY = (float*) stringToPointer(pyObjectToString(callPythonFunction("y_vel" + solver_ext, func)));
+	mVelocityZ = (float*) stringToPointer(pyObjectToString(callPythonFunction("z_vel" + solver_ext, func)));
 
-	mForceX    = (float*) getDataPointer("x_force" + solver_ext, solver);
-	mForceY    = (float*) getDataPointer("y_force" + solver_ext, solver);
-	mForceZ    = (float*) getDataPointer("z_force" + solver_ext, solver);
+	mForceX    = (float*) stringToPointer(pyObjectToString(callPythonFunction("x_force" + solver_ext, func)));
+	mForceY    = (float*) stringToPointer(pyObjectToString(callPythonFunction("y_force" + solver_ext, func)));
+	mForceZ    = (float*) stringToPointer(pyObjectToString(callPythonFunction("z_force" + solver_ext, func)));
 
-	mPhiOutIn = (float*) getDataPointer("phiOutIn" + solver_ext, solver);
-	mFlowType       = (int*)   getDataPointer("flowType"   + solver_ext, solver);
-	mNumFlow        = (int*)   getDataPointer("numFlow"    + solver_ext, solver);
+	mPhiOutIn  = (float*) stringToPointer(pyObjectToString(callPythonFunction("phiOutIn" + solver_ext, func)));
+	mFlowType  = (int*)   stringToPointer(pyObjectToString(callPythonFunction("flowType"   + solver_ext, func)));
+	mNumFlow   = (int*)   stringToPointer(pyObjectToString(callPythonFunction("numFlow"    + solver_ext, func)));
 
 	if (mUsingObstacle) {
-		mPhiObsIn = (float*) getDataPointer("phiObsIn" + solver_ext, solver);
-		mNumObstacle = (int*) getDataPointer("numObs"  + solver_ext, solver);
+		mPhiObsIn    = (float*) stringToPointer(pyObjectToString(callPythonFunction("phiObsIn" + solver_ext, func)));
+		mNumObstacle = (int*)   stringToPointer(pyObjectToString(callPythonFunction("numObs"  + solver_ext, func)));
 
-		mObVelocityX = (float*) getDataPointer("x_obvel" + solver_ext, solver);
-		mObVelocityY = (float*) getDataPointer("y_obvel" + solver_ext, solver);
-		mObVelocityZ = (float*) getDataPointer("z_obvel" + solver_ext, solver);
+		mObVelocityX = (float*) stringToPointer(pyObjectToString(callPythonFunction("x_obvel" + solver_ext, func)));
+		mObVelocityY = (float*) stringToPointer(pyObjectToString(callPythonFunction("y_obvel" + solver_ext, func)));
+		mObVelocityZ = (float*) stringToPointer(pyObjectToString(callPythonFunction("z_obvel" + solver_ext, func)));
 	}
 
 	if (mUsingGuiding) {
-		mPhiGuideIn = (float*) getDataPointer("phiGuideIn" + solver_ext, solver);
-		mNumGuide = (int*) getDataPointer("numGuides"      + solver_ext, solver);
+		mPhiGuideIn = (float*) stringToPointer(pyObjectToString(callPythonFunction("phiGuideIn" + solver_ext, func)));
+		mNumGuide   = (int*)   stringToPointer(pyObjectToString(callPythonFunction("numGuides"      + solver_ext, func)));
 
-		mGuideVelocityX = (float*) getDataPointer("x_guidevel" + solver_ext, solver);
-		mGuideVelocityY = (float*) getDataPointer("y_guidevel" + solver_ext, solver);
-		mGuideVelocityZ = (float*) getDataPointer("z_guidevel" + solver_ext, solver);
+		mGuideVelocityX = (float*) stringToPointer(pyObjectToString(callPythonFunction("x_guidevel" + solver_ext, func)));
+		mGuideVelocityY = (float*) stringToPointer(pyObjectToString(callPythonFunction("y_guidevel" + solver_ext, func)));
+		mGuideVelocityZ = (float*) stringToPointer(pyObjectToString(callPythonFunction("z_guidevel" + solver_ext, func)));
 	}
 
 	if (mUsingInvel) {
-		mInVelocityX = (float*) getDataPointer("x_invel" + solver_ext, solver);
-		mInVelocityY = (float*) getDataPointer("y_invel" + solver_ext, solver);
-		mInVelocityZ = (float*) getDataPointer("z_invel" + solver_ext, solver);
+		mInVelocityX = (float*) stringToPointer(pyObjectToString(callPythonFunction("x_invel" + solver_ext, func)));
+		mInVelocityY = (float*) stringToPointer(pyObjectToString(callPythonFunction("y_invel" + solver_ext, func)));
+		mInVelocityZ = (float*) stringToPointer(pyObjectToString(callPythonFunction("z_invel" + solver_ext, func)));
 	}
 
 	// Liquid
 	if (mUsingLiquid) {
-		mPhi    = (float*) getDataPointer("phi"   + solver_ext, solver);
-		mPhiIn  = (float*) getDataPointer("phiIn" + solver_ext, solver);
+		mPhi   = (float*) stringToPointer(pyObjectToString(callPythonFunction("phi"   + solver_ext, func)));
+		mPhiIn = (float*) stringToPointer(pyObjectToString(callPythonFunction("phiIn" + solver_ext, func)));
 
-		mFlipParticleData     = (std::vector<pData>*) getDataPointer("pp"   + solver_ext, solver);
-		mFlipParticleVelocity = (std::vector<pVel>*)  getDataPointer("pVel" + parts_ext,  parts);
+		mFlipParticleData     = (std::vector<pData>*) stringToPointer(pyObjectToString(callPythonFunction("pp"   + solver_ext, func)));
+		mFlipParticleVelocity = (std::vector<pVel>*)  stringToPointer(pyObjectToString(callPythonFunction("pVel" + parts_ext,  func)));
 
 		if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
-			mSndParticleData     = (std::vector<pData>*) getDataPointer("ppSnd"    + solver_ext, solver);
-			mSndParticleVelocity = (std::vector<pVel>*)  getDataPointer("pVelSnd"  + parts_ext,  parts);
-			mSndParticleLife     = (std::vector<float>*) getDataPointer("pLifeSnd" + parts_ext,  parts);
+			mSndParticleData     = (std::vector<pData>*) stringToPointer(pyObjectToString(callPythonFunction("ppSnd"    + solver_ext, func)));
+			mSndParticleVelocity = (std::vector<pVel>*)  stringToPointer(pyObjectToString(callPythonFunction("pVelSnd"  + parts_ext,  func)));
+			mSndParticleLife     = (std::vector<float>*) stringToPointer(pyObjectToString(callPythonFunction("pLifeSnd" + parts_ext,  func)));
 		}
 	}
 	
 	// Smoke
 	if (mUsingSmoke) {
-		mDensity        = (float*) getDataPointer("density"    + solver_ext, solver);
-		mDensityIn      = (float*) getDataPointer("densityIn"  + solver_ext, solver);
-		mEmissionIn     = (float*) getDataPointer("emissionIn" + solver_ext, solver);
-		mShadow         = (float*) getDataPointer("shadow"     + solver_ext, solver);
+		mDensity        = (float*) stringToPointer(pyObjectToString(callPythonFunction("density"    + solver_ext, func)));
+		mDensityIn      = (float*) stringToPointer(pyObjectToString(callPythonFunction("densityIn"  + solver_ext, func)));
+		mEmissionIn     = (float*) stringToPointer(pyObjectToString(callPythonFunction("emissionIn" + solver_ext, func)));
+		mShadow         = (float*) stringToPointer(pyObjectToString(callPythonFunction("shadow"     + solver_ext, func)));
 
 		if (mUsingHeat) {
-			mHeat       = (float*) getDataPointer("heat"   + solver_ext,    solver);
-			mHeatIn     = (float*) getDataPointer("heatIn" + solver_ext,    solver);
+			mHeat       = (float*) stringToPointer(pyObjectToString(callPythonFunction("heat"   + solver_ext,    func)));
+			mHeatIn     = (float*) stringToPointer(pyObjectToString(callPythonFunction("heatIn" + solver_ext,    func)));
 		}
 		if (mUsingFire) {
-			mFlame      = (float*) getDataPointer("flame"  + solver_ext,   solver);
-			mFuel       = (float*) getDataPointer("fuel"   + solver_ext,   solver);
-			mFuelIn     = (float*) getDataPointer("fuelIn" + solver_ext,   solver);
-			mReact      = (float*) getDataPointer("react"  + solver_ext,   solver);
+			mFlame      = (float*) stringToPointer(pyObjectToString(callPythonFunction("flame"  + solver_ext,   func)));
+			mFuel       = (float*) stringToPointer(pyObjectToString(callPythonFunction("fuel"   + solver_ext,   func)));
+			mFuelIn     = (float*) stringToPointer(pyObjectToString(callPythonFunction("fuelIn" + solver_ext,   func)));
+			mReact      = (float*) stringToPointer(pyObjectToString(callPythonFunction("react"  + solver_ext,   func)));
 		}
 		if (mUsingColors) {
-			mColorR     = (float*) getDataPointer("color_r"   + solver_ext, solver);
-			mColorRIn   = (float*) getDataPointer("colorIn_r" + solver_ext, solver);
-			mColorG     = (float*) getDataPointer("color_g"   + solver_ext, solver);
-			mColorGIn   = (float*) getDataPointer("colorIn_g" + solver_ext, solver);
-			mColorB     = (float*) getDataPointer("color_b"   + solver_ext, solver);
-			mColorBIn   = (float*) getDataPointer("colorIn_b" + solver_ext, solver);
+			mColorR     = (float*) stringToPointer(pyObjectToString(callPythonFunction("color_r"   + solver_ext, func)));
+			mColorRIn   = (float*) stringToPointer(pyObjectToString(callPythonFunction("colorIn_r" + solver_ext, func)));
+			mColorG     = (float*) stringToPointer(pyObjectToString(callPythonFunction("color_g"   + solver_ext, func)));
+			mColorGIn   = (float*) stringToPointer(pyObjectToString(callPythonFunction("colorIn_g" + solver_ext, func)));
+			mColorB     = (float*) stringToPointer(pyObjectToString(callPythonFunction("color_b"   + solver_ext, func)));
+			mColorBIn   = (float*) stringToPointer(pyObjectToString(callPythonFunction("colorIn_b" + solver_ext, func)));
 		}
 	}
+	std::cout << "FLUID::updatePointers() done" << std::endl;
 }
 
 void FLUID::updatePointersHigh()
 {
 	if (with_debug)
-		std::cout << "Updating pointers high res" << std::endl;
+		std::cout << "FLUID::updatePointersHigh()" << std::endl;
 
+	std::string func = "getDataPointer";
 	std::string id = std::to_string(mCurrentID);
 	std::string solver = "s" + id;
 	std::string solver_ext = "_" + solver;
@@ -1858,23 +1936,23 @@ void FLUID::updatePointersHigh()
 	
 	// Smoke
 	if (mUsingSmoke) {
-		mDensityHigh    = (float*) getDataPointer("density"    + xlsolver_ext, xlsolver);
-		mTextureU       = (float*) getDataPointer("texture_u"  + solver_ext,   solver);
-		mTextureV       = (float*) getDataPointer("texture_v"  + solver_ext,   solver);
-		mTextureW       = (float*) getDataPointer("texture_w"  + solver_ext,   solver);
-		mTextureU2      = (float*) getDataPointer("texture_u2" + solver_ext,   solver);
-		mTextureV2      = (float*) getDataPointer("texture_v2" + solver_ext,   solver);
-		mTextureW2      = (float*) getDataPointer("texture_w2" + solver_ext,   solver);
+		mDensityHigh    = (float*) stringToPointer(pyObjectToString(callPythonFunction("density"    + xlsolver_ext, func)));
+		mTextureU       = (float*) stringToPointer(pyObjectToString(callPythonFunction("texture_u"  + solver_ext,   func)));
+		mTextureV       = (float*) stringToPointer(pyObjectToString(callPythonFunction("texture_v"  + solver_ext,   func)));
+		mTextureW       = (float*) stringToPointer(pyObjectToString(callPythonFunction("texture_w"  + solver_ext,   func)));
+		mTextureU2      = (float*) stringToPointer(pyObjectToString(callPythonFunction("texture_u2" + solver_ext,   func)));
+		mTextureV2      = (float*) stringToPointer(pyObjectToString(callPythonFunction("texture_v2" + solver_ext,   func)));
+		mTextureW2      = (float*) stringToPointer(pyObjectToString(callPythonFunction("texture_w2" + solver_ext,   func)));
 		
 		if (mUsingFire) {
-			mFlameHigh  = (float*) getDataPointer("flame" + xlsolver_ext, xlsolver);
-			mFuelHigh   = (float*) getDataPointer("fuel"  + xlsolver_ext, xlsolver);
-			mReactHigh  = (float*) getDataPointer("react" + xlsolver_ext, xlsolver);
+			mFlameHigh  = (float*) stringToPointer(pyObjectToString(callPythonFunction("flame" + xlsolver_ext, func)));
+			mFuelHigh   = (float*) stringToPointer(pyObjectToString(callPythonFunction("fuel"  + xlsolver_ext, func)));
+			mReactHigh  = (float*) stringToPointer(pyObjectToString(callPythonFunction("react" + xlsolver_ext, func)));
 		}
 		if (mUsingColors) {
-			mColorRHigh = (float*) getDataPointer("color_r" + xlsolver_ext, xlsolver);
-			mColorGHigh = (float*) getDataPointer("color_g" + xlsolver_ext, xlsolver);
-			mColorBHigh = (float*) getDataPointer("color_b" + xlsolver_ext, xlsolver);
+			mColorRHigh = (float*) stringToPointer(pyObjectToString(callPythonFunction("color_r" + xlsolver_ext, func)));
+			mColorGHigh = (float*) stringToPointer(pyObjectToString(callPythonFunction("color_g" + xlsolver_ext, func)));
+			mColorBHigh = (float*) stringToPointer(pyObjectToString(callPythonFunction("color_b" + xlsolver_ext, func)));
 		}
 	}
 }
@@ -1882,7 +1960,7 @@ void FLUID::updatePointersHigh()
 void FLUID::setFlipParticleData(float* buffer, int numParts)
 {
 	if (with_debug)
-		std::cout << "setFlipParticleData()" << std::endl;
+		std::cout << "FLUID::setFlipParticleData()" << std::endl;
 
 	mFlipParticleData->resize(numParts);
 	FLUID::pData* bufferPData = (FLUID::pData*) buffer;
@@ -1898,7 +1976,7 @@ void FLUID::setFlipParticleData(float* buffer, int numParts)
 void FLUID::setSndParticleData(float* buffer, int numParts)
 {
 	if (with_debug)
-		std::cout << "setSndParticleData()" << std::endl;
+		std::cout << "FLUID::setSndParticleData()" << std::endl;
 
 	mSndParticleData->resize(numParts);
 	FLUID::pData* bufferPData = (FLUID::pData*) buffer;
@@ -1914,7 +1992,7 @@ void FLUID::setSndParticleData(float* buffer, int numParts)
 void FLUID::setFlipParticleVelocity(float* buffer, int numParts)
 {
 	if (with_debug)
-		std::cout << "setFlipParticleVelocity()" << std::endl;
+		std::cout << "FLUID::setFlipParticleVelocity()" << std::endl;
 
 	mFlipParticleVelocity->resize(numParts);
 	FLUID::pVel* bufferPVel = (FLUID::pVel*) buffer;
@@ -1929,7 +2007,7 @@ void FLUID::setFlipParticleVelocity(float* buffer, int numParts)
 void FLUID::setSndParticleVelocity(float* buffer, int numParts)
 {
 	if (with_debug)
-		std::cout << "setSndParticleVelocity()" << std::endl;
+		std::cout << "FLUID::setSndParticleVelocity()" << std::endl;
 
 	mSndParticleVelocity->resize(numParts);
 	FLUID::pVel* bufferPVel = (FLUID::pVel*) buffer;
@@ -1944,7 +2022,7 @@ void FLUID::setSndParticleVelocity(float* buffer, int numParts)
 void FLUID::setSndParticleLife(float* buffer, int numParts)
 {
 	if (with_debug)
-		std::cout << "setSndParticleLife()" << std::endl;
+		std::cout << "FLUID::setSndParticleLife()" << std::endl;
 
 	mSndParticleLife->resize(numParts);
 	float* bufferPType = buffer;

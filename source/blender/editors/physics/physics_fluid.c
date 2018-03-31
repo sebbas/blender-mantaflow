@@ -1228,8 +1228,6 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 		if (job->progress)
 			*(job->progress) = progress;
 
-		scene->r.cfra = (int)frame;
-
 		if (smd->domain->fluid == NULL)
 			smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
 
@@ -1242,16 +1240,16 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 
 		if (STREQ(job->type, "MANTA_OT_bake_geometry"))
 		{
-			/* Prevent scene changes during geometry bake by locking UI */
-			G.is_rendering = true;
-			BKE_spacedata_draw_locks(true);
-			success = smoke_make_geometry(scene, cObject, smd, frame);
-			G.is_rendering = false;
-			BKE_spacedata_draw_locks(false);
+//			/* Prevent scene changes during geometry bake by locking UI */
+//			G.is_rendering = true;
+//			BKE_spacedata_draw_locks(true);
+//			success = smoke_make_geometry(scene, cObject, smd, frame);
+//			G.is_rendering = false;
+//			BKE_spacedata_draw_locks(false);
 		}
 		else if (STREQ(job->type, "MANTA_OT_bake_data_low"))
 		{
-			success = smoke_make_step(scene, cObject, smd, frame);
+			success = smoke_step(scene, cObject, smd, frame);
 		}
 		else if (STREQ(job->type, "MANTA_OT_bake_data_high"))
 		{
@@ -1273,6 +1271,8 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 		{
 			success = fluid_bake_particles_high(sds->fluid, smd, frame);
 		}
+
+		scene->r.cfra = (int)frame;
 
 		/* Exit loop early if one step is unsucessful */
 		if (!success) {

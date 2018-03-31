@@ -146,44 +146,44 @@ const std::string liquid_adaptive_step_low = "\n\
 def liquid_adaptive_step_low_$ID$(framenr):\n\
     mantaMsg('Manta step low, frame ' + str(framenr))\n\
     \n\
-    s$ID$.frame = framenr\n\
-    s$ID$.timeTotal = s$ID$.frame * dt0_s$ID$\n\
-    last_frame_s$ID$ = s$ID$.frame\n\
+    # time params are animatable\n\
+    s$ID$.frameLength = dt0_s$ID$ \n\
+    s$ID$.cfl = cfl_cond_s$ID$\n\
+    \n\
+    mantaMsg('s.frame is ' + str(s$ID$.frame))\n\
+    mantaMsg('s.timestep is ' + str(s$ID$.timestep))\n\
+    mantaMsg('s.cfl is ' + str(s$ID$.cfl))\n\
+    mantaMsg('s.frameLength is ' + str(s$ID$.frameLength))\n\
     \n\
     liquid_pre_step_low_$ID$()\n\
     \n\
-    while s$ID$.frame == last_frame_s$ID$:\n\
-        \n\
-        mantaMsg('s.frame is ' + str(s$ID$.frame))\n\
-        \n\
-        flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$, phiWalls=phiObs_s$ID$, outflow=boundConditions_s$ID$)\n\
-        \n\
-        if using_obstacle_s$ID$:\n\
-            phiObs_s$ID$.join(phiObsIn_s$ID$)\n\
-        phi_s$ID$.join(phiIn_s$ID$)\n\
-        if using_obstacle_s$ID$:\n\
-            phi_s$ID$.subtract(phiObsIn_s$ID$)\n\
-        \n\
-        phiOut_s$ID$.join(phiOutIn_s$ID$)\n\
-        \n\
-        #updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$) # TODO (sebbas): uncomment for fraction support\n\
-        setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$, fractions=fractions_s$ID$)\n\
-        \n\
-        # add initial velocity: set invel as source grid to ensure const vels in inflow region, sampling makes use of this\n\
-        mapWeights_s$ID$.clear() # mis-use mapWeights\n\
-        if using_invel_s$ID$:\n\
-            resampleVec3ToMac(source=invel_s$ID$, target=mapWeights_s$ID$)\n\
-        pVel_pp$ID$.setSource(mapWeights_s$ID$, isMAC=True)\n\
-        \n\
-        sampleLevelsetWithParticles(phi=phiIn_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, discretization=particleNumber_s$ID$, randomness=randomness_s$ID$, refillEmpty=True)\n\
-        flags_s$ID$.updateFromLevelset(phi_s$ID$, phiObs_s$ID$)\n\
-        mapWeights_s$ID$.clear() # clean up, mapweights grid used later again\n\
-        \n\
-        fluid_adapt_time_step_low()\n\
-        mantaMsg('Low step / s$ID$.frame: ' + str(s$ID$.frame))\n\
-        liquid_step_$ID$()\n\
-        \n\
-        s$ID$.step()\n\
+    flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$, phiWalls=phiObs_s$ID$, outflow=boundConditions_s$ID$)\n\
+    \n\
+    if using_obstacle_s$ID$:\n\
+        phiObs_s$ID$.join(phiObsIn_s$ID$)\n\
+    phi_s$ID$.join(phiIn_s$ID$)\n\
+    if using_obstacle_s$ID$:\n\
+        phi_s$ID$.subtract(phiObsIn_s$ID$)\n\
+    \n\
+    phiOut_s$ID$.join(phiOutIn_s$ID$)\n\
+    \n\
+    #updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$) # TODO (sebbas): uncomment for fraction support\n\
+    setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$, fractions=fractions_s$ID$)\n\
+    \n\
+    # add initial velocity: set invel as source grid to ensure const vels in inflow region, sampling makes use of this\n\
+    mapWeights_s$ID$.clear() # mis-use mapWeights\n\
+    if using_invel_s$ID$:\n\
+        resampleVec3ToMac(source=invel_s$ID$, target=mapWeights_s$ID$)\n\
+    pVel_pp$ID$.setSource(mapWeights_s$ID$, isMAC=True)\n\
+    \n\
+    sampleLevelsetWithParticles(phi=phiIn_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, discretization=particleNumber_s$ID$, randomness=randomness_s$ID$, refillEmpty=True)\n\
+    flags_s$ID$.updateFromLevelset(phi_s$ID$, phiObs_s$ID$)\n\
+    mapWeights_s$ID$.clear() # clean up, mapweights grid used later again\n\
+    \n\
+    mantaMsg('Low step / s$ID$.frame: ' + str(s$ID$.frame))\n\
+    liquid_step_$ID$()\n\
+    \n\
+    s$ID$.step()\n\
     \n\
     liquid_post_step_low_$ID$()\n";
 

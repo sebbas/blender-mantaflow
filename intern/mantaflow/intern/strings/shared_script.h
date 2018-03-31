@@ -38,7 +38,7 @@ from manta import *\n\
 import os.path, shutil, math, sys, gc, multiprocessing, platform, time\n\
 \n\
 # TODO (sebbas): Use this to simulate Windows multiprocessing (has default mode spawn)\n\
-debugMp = False\n\
+debugMp = True\n\
 #try:\n\
 #    multiprocessing.set_start_method('spawn')\n\
 #except:\n\
@@ -85,9 +85,9 @@ if dim_s$ID$ == 2:\n\
     gs_s$ID$.z    = 1\n\
     gravity_s$ID$ = vec3($GRAVITY_X$,$GRAVITY_Z$,0)\n\
 \n\
-doOpen_s$ID$              = $DO_OPEN$\n\
-boundConditions_s$ID$     = '$BOUNDCONDITIONS$'\n\
-boundaryWidth_s$ID$       = 1\n\
+doOpen_s$ID$          = $DO_OPEN$\n\
+boundConditions_s$ID$ = '$BOUNDCONDITIONS$'\n\
+boundaryWidth_s$ID$   = 1\n\
 \n\
 using_smoke_s$ID$     = $USING_SMOKE$\n\
 using_liquid_s$ID$    = $USING_LIQUID$\n\
@@ -110,6 +110,7 @@ dt_default_s$ID$ = 0.1 # dt is 0.1 at 25fps\n\
 dt_factor_s$ID$  = $DT_FACTOR$\n\
 fps_s$ID$        = $FPS$\n\
 dt0_s$ID$        = dt_default_s$ID$ * (25.0 / fps_s$ID$) * dt_factor_s$ID$\n\
+cfl_cond_s$ID$   = $CFL$\n\
 \n\
 # fluid diffusion / viscosity\n\
 domainSize_s$ID$ = $FLUID_DOMAIN_SIZE$ # longest domain side in cm\n\
@@ -145,7 +146,7 @@ mantaMsg('Fluid adaptive time stepping low')\n\
 s$ID$.frameLength = dt0_s$ID$ \n\
 s$ID$.timestepMin = s$ID$.frameLength / 10.\n\
 s$ID$.timestepMax = s$ID$.frameLength\n\
-s$ID$.cfl         = $CFL$\n\
+s$ID$.cfl         = cfl_cond_s$ID$\n\
 s$ID$.timestep    = s$ID$.frameLength\n";
 
 const std::string fluid_adaptive_time_stepping_high = "\n\
@@ -156,15 +157,23 @@ xl$ID$.timestepMax = s$ID$.timestepMax\n\
 xl$ID$.cfl         = s$ID$.cfl\n";
 
 const std::string fluid_adapt_time_step_low = "\n\
-def fluid_adapt_time_step_low():\n\
+def fluid_adapt_time_step_low_$ID$():\n\
+    mantaMsg('Fluid adapt time step')\n\
+    \n\
+    # time params are animatable\n\
+    s$ID$.frameLength = dt0_s$ID$ \n\
+    s$ID$.cfl = cfl_cond_s$ID$\n\
+    \n\
     maxVel_s$ID$ = vel_s$ID$.getMax() if vel_s$ID$ else 0\n\
     if using_adaptTime_s$ID$:\n\
-        mantaMsg('Adapt timestep')\n\
+        mantaMsg('Adapt timestep, maxvel: ' + str(maxVel_s$ID$))\n\
         s$ID$.adaptTimestep(maxVel_s$ID$)\n";
 
 const std::string fluid_adapt_time_step_high = "\n\
-def fluid_adapt_time_step_high():\n\
-    xl$ID$.timestep = s$ID$.timestep\n";
+def fluid_adapt_time_step_high_$ID$():\n\
+    xl$ID$.timestep    = s$ID$.timestep\n\
+    xl$ID$.frameLength = dt0_s$ID$ \n\
+    xl$ID$.cfl         = cfl_cond_s$ID$\n";
 
 //////////////////////////////////////////////////////////////////////
 // GRIDS
@@ -317,14 +326,14 @@ def bake_fluid_process_low_$ID$(framenr, path_geometry, path_data):\n\
     \n\
     # Load grids before stepping - because every process has its own memory space!\n\
     start_time = time.time()\n\
-    if framenr>1:\n\
-        fluid_load_data_low_$ID$(path_data, framenr-1) # load data from previous frame\n\
-    if using_smoke_s$ID$:\n\
-        smoke_load_geometry_low_$ID$(path_geometry, framenr)\n\
-        if framenr>1:\n\
-            smoke_load_data_low_$ID$(path_data, framenr-1) # load data from previous frame\n\
+    #if framenr>1:\n\
+        #fluid_load_data_low_$ID$(path_data, framenr-1) # load data from previous frame\n\
+    #if using_smoke_s$ID$:\n\
+        #smoke_load_geometry_low_$ID$(path_geometry, framenr)\n\
+        #if framenr>1:\n\
+            #smoke_load_data_low_$ID$(path_data, framenr-1) # load data from previous frame\n\
     if using_liquid_s$ID$:\n\
-        liquid_load_geometry_low_$ID$(path_geometry, framenr)\n\
+        #liquid_load_geometry_low_$ID$(path_geometry, framenr)\n\
         if framenr>1:\n\
             liquid_load_data_low_$ID$(path_data, framenr-1, True) # load data from previous frame\n\
     mantaMsg('--- Loading: %s seconds ---' % (time.time() - start_time))\n\
