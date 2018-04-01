@@ -2351,7 +2351,7 @@ BLI_INLINE void apply_outflow_fields(int index, float distance_value, float *den
 	}
 }
 
-BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value, float distance_value, int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi, float *manta_inflow)
+BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value, float distance_value, int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi, float *emission_in)
 {
 	/* add liquid inflow */
 	if (phi) {
@@ -2360,8 +2360,8 @@ BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value
 	}
 
 	/* save inflow value for mantaflow standalone */
-	if (manta_inflow) {
-		manta_inflow[index] = emission_value;
+	if (emission_in) {
+		emission_in[index] = emission_value;
 	}
 
 	/* add smoke inflow */
@@ -2369,7 +2369,7 @@ BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value
 	float dens_old = density[index];
 	// float fuel_old = (fuel) ? fuel[index] : 0.0f;  /* UNUSED */
 	float dens_flow = (sfs->type == MOD_SMOKE_FLOW_TYPE_FIRE) ? 0.0f : emission_value * sfs->density;
-	float fuel_flow = emission_value * sfs->fuel_amount;
+	float fuel_flow = (fuel) ? emission_value * sfs->fuel_amount : 0.0f;
 	/* add heat */
 	if (heat && emission_value > 0.0f) {
 		heat[index] = ADD_IF_LOWER(heat[index], sfs->temp);
@@ -2503,23 +2503,6 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 	/* Update all flow related flags and ensure that corresponding grids get initialized */
 	update_flowsflags(sds, flowobjs, numflowobj);
 
-	float *phi_in = liquid_get_phiin(sds->fluid);
-	float *phiout_in = liquid_get_phioutin(sds->fluid);
-	float *velx_initial = smoke_get_in_velocity_x(sds->fluid);
-	float *vely_initial = smoke_get_in_velocity_y(sds->fluid);
-	float *velz_initial = smoke_get_in_velocity_z(sds->fluid);
-	float *density = smoke_get_density(sds->fluid);
-	float *color_r = smoke_get_color_r(sds->fluid);
-	float *color_g = smoke_get_color_g(sds->fluid);
-	float *color_b = smoke_get_color_b(sds->fluid);
-	float *fuel = smoke_get_fuel(sds->fluid);
-	float *heat = smoke_get_heat(sds->fluid);
-	float *react = smoke_get_react(sds->fluid);
-	float *emission_in = fluid_get_emission_in(sds->fluid);
-	int *flow_type = fluid_get_flow_type(sds->fluid);
-	int *num_flowobj = fluid_get_num_flow(sds->fluid);
-	unsigned int z;
-
 	/* calculate domain shift for current frame if using adaptive domain */
 	if (sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN) {
 		int total_shift[3];
@@ -2589,10 +2572,6 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				/* Temporary emission map used when subframes are enabled, i.e. at least one subframe */
 				EmissionMap em_temp = {NULL};
 
-				/* Helper em pointer - will holder either em_temp (when using subframes) or just the original emission map em (no subframes) */
-				EmissionMap *em2;
-				em2 = (subframes) ? &em_temp : em;
-
 				/* Set scene time */
 				/* Handle emission subframe */
 				if (subframe < subframes) {
@@ -2615,7 +2594,13 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				/* Emission from particles */
 				if (sfs->source == MOD_SMOKE_FLOW_SOURCE_PARTICLES) {
 					/* emit_from_particles() updates timestep internally */
-					emit_from_particles(flowobj, sds, sfs, em2, scene, sdt);
+					if (subframes) {
+						emit_from_particles(flowobj, sds, sfs, &em_temp, scene, sdt);
+					}
+					else {
+						emit_from_particles(flowobj, sds, sfs, em, scene, sdt);
+					}
+
 					if (!(sfs->flags & MOD_SMOKE_FLOW_USE_PART_SIZE)) {
 						hires_multiplier = 1;
 					}
@@ -2628,7 +2613,12 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 					BLI_mutex_unlock(&object_update_lock);
 
 					/* Apply flow */
-					emit_from_derivedmesh(flowobj, sds, sfs, em2, sdt);
+					if (subframes) {
+						emit_from_derivedmesh(flowobj, sds, sfs, &em_temp, sdt);
+					}
+					else {
+						emit_from_derivedmesh(flowobj, sds, sfs, em, sdt);
+					}
 				}
 				else {
 					printf("Error: unknown flow emission source\n");
@@ -2637,7 +2627,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				/* If this we emitted with temp emission map in this loop (subframe emission), we combine the temp map with the original emission map */
 				if (subframes) {
 					/* Combine emission maps */
-					em_combineMaps(em, em2, hires_multiplier, !(sfs->flags & MOD_SMOKE_FLOW_ABSOLUTE), sample_size);
+					em_combineMaps(em, &em_temp, hires_multiplier, !(sfs->flags & MOD_SMOKE_FLOW_ABSOLUTE), sample_size);
 					em_freeData(&em_temp);
 				}
 			}
@@ -2649,6 +2639,21 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 		adjustDomainResolution(sds, new_shift, emaps, numflowobj, time_per_frame);
 	}
 
+	float *phi_in = liquid_get_phiin(sds->fluid);
+	float *phiout_in = liquid_get_phioutin(sds->fluid);
+	float *velx_initial = smoke_get_in_velocity_x(sds->fluid);
+	float *vely_initial = smoke_get_in_velocity_y(sds->fluid);
+	float *velz_initial = smoke_get_in_velocity_z(sds->fluid);
+	float *density = smoke_get_density(sds->fluid);
+	float *color_r = smoke_get_color_r(sds->fluid);
+	float *color_g = smoke_get_color_g(sds->fluid);
+	float *color_b = smoke_get_color_b(sds->fluid);
+	float *fuel = smoke_get_fuel(sds->fluid);
+	float *heat = smoke_get_heat(sds->fluid);
+	float *react = smoke_get_react(sds->fluid);
+	float *emission_in = fluid_get_emission_in(sds->fluid);
+	int *flow_type = fluid_get_flow_type(sds->fluid);
+	int *num_flowobj = fluid_get_num_flow(sds->fluid);
 	float *bigdensity = smoke_turbulence_get_density(sds->fluid);
 	float *bigfuel = smoke_turbulence_get_fuel(sds->fluid);
 	float *bigreact = smoke_turbulence_get_react(sds->fluid);
@@ -2699,7 +2704,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 						if (dx < 0 || dy < 0 || dz < 0 || dx >= sds->res[0] || dy >= sds->res[1] || dz >= sds->res[2]) continue;
 
 						if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) { // outflow
-//							apply_outflow_fields(d_index, distance_map[e_index], density, heat, fuel, react, color_r, color_g, color_b, phiout_in);
+							apply_outflow_fields(d_index, distance_map[e_index], density, heat, fuel, react, color_r, color_g, color_b, phiout_in);
 						}
 						else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time > 2) {
 							apply_inflow_fields(sfs, 0.0f, 9999.0f, d_index, density, heat, fuel, react, color_r, color_g, color_b, phi_in, emission_in);

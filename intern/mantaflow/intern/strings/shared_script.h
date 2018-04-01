@@ -332,10 +332,10 @@ def bake_fluid_process_low_$ID$(framenr, path_geometry, path_data):\n\
         #smoke_load_geometry_low_$ID$(path_geometry, framenr)\n\
         #if framenr>1:\n\
             #smoke_load_data_low_$ID$(path_data, framenr-1) # load data from previous frame\n\
-    if using_liquid_s$ID$:\n\
+    #if using_liquid_s$ID$:\n\
         #liquid_load_geometry_low_$ID$(path_geometry, framenr)\n\
-        if framenr>1:\n\
-            liquid_load_data_low_$ID$(path_data, framenr-1, True) # load data from previous frame\n\
+        #if framenr>1:\n\
+            #liquid_load_data_low_$ID$(path_data, framenr-1, True) # load data from previous frame\n\
     mantaMsg('--- Loading: %s seconds ---' % (time.time() - start_time))\n\
     \n\
     start_time = time.time()\n\

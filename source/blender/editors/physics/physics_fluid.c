@@ -1206,11 +1206,11 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 	scene->r.cfra = (int)frame;
 
 	/* Update animation system - needs annoying lock */
-	G.is_rendering = true;
-	BKE_spacedata_draw_locks(true);
+//	G.is_rendering = true;
+//	BKE_spacedata_draw_locks(true);
 	ED_update_for_newframe(job->bmain, scene, 1);
-	G.is_rendering = false;
-	BKE_spacedata_draw_locks(false);
+//	G.is_rendering = false;
+//	BKE_spacedata_draw_locks(false);
 
 	/* Loop through selected frames */
 	for (frame = sds->cache_frame_start; frame <= sds->cache_frame_end; frame++) {
@@ -1232,11 +1232,11 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 			smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
 
 		/* Update animation system - needs annoying lock */
-		G.is_rendering = true;
-		BKE_spacedata_draw_locks(true);
+//		G.is_rendering = true;
+//		BKE_spacedata_draw_locks(true);
 		ED_update_for_newframe(job->bmain, scene, 1);
-		G.is_rendering = false;
-		BKE_spacedata_draw_locks(false);
+//		G.is_rendering = false;
+//		BKE_spacedata_draw_locks(false);
 
 		if (STREQ(job->type, "MANTA_OT_bake_geometry"))
 		{
@@ -1246,6 +1246,7 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 //			success = smoke_make_geometry(scene, cObject, smd, frame);
 //			G.is_rendering = false;
 //			BKE_spacedata_draw_locks(false);
+			success = true;
 		}
 		else if (STREQ(job->type, "MANTA_OT_bake_data_low"))
 		{
@@ -1373,6 +1374,8 @@ static void fluid_manta_bake_startjob(void *customdata, short *stop, short *do_u
 	job->success = 1;
 
 	G.is_break = false;
+	G.is_rendering = true;
+	BKE_spacedata_draw_locks(true);
 
 	if (STREQ(job->type, "MANTA_OT_bake_geometry"))
 	{

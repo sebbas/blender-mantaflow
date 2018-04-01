@@ -578,15 +578,15 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
         md = context.smoke
         domain = context.smoke.domain_settings
 
-        split = layout.split()
-        split.enabled = not domain.cache_baking_geometry and not domain.cache_baking_mesh_low and not domain.cache_baking_particles_low and not domain.cache_baking_mesh_high and not domain.cache_baking_particles_high and not domain.cache_baking_low and not domain.cache_baking_high
-        if domain.cache_baked_geometry is True:
-            split.operator("manta.free_geometry", text="Free Geometry")
-        else:
-            split.operator("manta.bake_geometry", text="Bake Geometry")
+        #split = layout.split()
+        #split.enabled = not domain.cache_baking_geometry and not domain.cache_baking_mesh_low and not domain.cache_baking_particles_low and not domain.cache_baking_mesh_high and not domain.cache_baking_particles_high and not domain.cache_baking_low and not domain.cache_baking_high
+        #if domain.cache_baked_geometry is True:
+        #    split.operator("manta.free_geometry", text="Free Geometry")
+        #else:
+        #    split.operator("manta.bake_geometry", text="Bake Geometry")
 
         split = layout.split()
-        split.enabled = domain.cache_baked_geometry
+        #split.enabled = domain.cache_baked_geometry
         col = split.column()
 
         sub2 = col.column()
