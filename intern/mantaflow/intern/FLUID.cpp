@@ -1913,7 +1913,6 @@ void FLUID::updatePointers()
 			mColorBIn   = (float*) stringToPointer(pyObjectToString(callPythonFunction("colorIn_b" + solver_ext, func)));
 		}
 	}
-	std::cout << "FLUID::updatePointers() done" << std::endl;
 }
 
 void FLUID::updatePointersHigh()

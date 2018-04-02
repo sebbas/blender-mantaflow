@@ -61,7 +61,7 @@ phiIn_s$ID$      = s$ID$.create(LevelsetGrid)\n\
 phiOut_s$ID$     = s$ID$.create(LevelsetGrid)\n\
 curvature_s$ID$  = s$ID$.create(RealGrid)\n\
 \n\
-fractions_s$ID$  = 0 # s$ID$.create(MACGrid) # TODO (sebbas): disabling fractions for now - not fracwallbcs not supporting obvels yet\n\
+fractions_s$ID$  = s$ID$.create(MACGrid) # TODO (sebbas): disabling fractions for now - not fracwallbcs not supporting obvels yet\n\
 \n\
 velOld_s$ID$     = s$ID$.create(MACGrid)\n\
 velParts_s$ID$   = s$ID$.create(MACGrid)\n\
@@ -167,7 +167,7 @@ def liquid_adaptive_step_low_$ID$(framenr):\n\
     \n\
     phiOut_s$ID$.join(phiOutIn_s$ID$)\n\
     \n\
-    #updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$) # TODO (sebbas): uncomment for fraction support\n\
+    updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$) # TODO (sebbas): uncomment for fraction support\n\
     setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
     # add initial velocity: set invel as source grid to ensure const vels in inflow region, sampling makes use of this\n\
@@ -201,7 +201,7 @@ def liquid_adaptive_step_high_$ID$(framenr):\n\
         \n\
         mantaMsg('xl.frame is ' + str(xl$ID$.frame))\n\
         \n\
-        fluid_adapt_time_step_high()\n\
+        fluid_adapt_time_step_high_$ID$()\n\
         mantaMsg('High step / xl$ID$.frame: ' + str(xl$ID$.frame))\n\
         liquid_step_high_$ID$()\n\
         xl$ID$.step()\n";
@@ -288,7 +288,7 @@ def liquid_step_$ID$():\n\
     extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4, phiObs=phiObs_s$ID$, intoObs=True)\n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else 0, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
-    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=(int(maxVel_s$ID$*1.25 )) ) # TODO (sebbas): extrapolation because of no fractions\n\
+    #extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=(int(maxVel_s$ID$*1.25 )) ) # TODO (sebbas): extrapolation because of no fractions\n\
     # set source grids for resampling, used in adjustNumber!\n\
     pVel_pp$ID$.setSource(vel_s$ID$, isMAC=True)\n\
     adjustNumber(parts=pp_s$ID$, vel=vel_s$ID$, flags=flags_s$ID$, minParticles=minParticles_s$ID$, maxParticles=maxParticles_s$ID$, phi=phi_s$ID$, exclude=phiObs_s$ID$, radiusFactor=radiusFactor_s$ID$, narrowBand=adjustedNarrowBandWidth_s$ID$)\n\
@@ -329,6 +329,7 @@ def liquid_load_data_low_$ID$(path, framenr, withParticles):\n\
     mantaMsg('Liquid load data low')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
     phi_s$ID$.load(os.path.join(path, 'phi_' + framenr +'.uni'))\n\
+    phiIn_s$ID$.load(os.path.join(path, 'phiIn_' + framenr + '.uni'))\n\
     if withParticles:\n\
         pp_s$ID$.load(os.path.join(path, 'pp_' + framenr +'.uni'))\n\
         pVel_pp$ID$.load(os.path.join(path, 'pVel_' + framenr +'.uni'))\n";
@@ -381,6 +382,7 @@ def liquid_save_data_low_$ID$(path, framenr):\n\
     mantaMsg('Liquid save data low')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
     phi_s$ID$.save(os.path.join(path, 'phi_' + framenr +'.uni'))\n\
+    phiIn_s$ID$.save(os.path.join(path, 'phiIn_' + framenr + '.uni'))\n\
     pp_s$ID$.save(os.path.join(path, 'pp_' + framenr +'.uni'))\n\
     pVel_pp$ID$.save(os.path.join(path, 'pVel_' + framenr +'.uni'))\n";
 

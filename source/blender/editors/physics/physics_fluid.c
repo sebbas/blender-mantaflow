@@ -1240,12 +1240,7 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 
 		if (STREQ(job->type, "MANTA_OT_bake_geometry"))
 		{
-//			/* Prevent scene changes during geometry bake by locking UI */
-//			G.is_rendering = true;
-//			BKE_spacedata_draw_locks(true);
-//			success = smoke_make_geometry(scene, cObject, smd, frame);
-//			G.is_rendering = false;
-//			BKE_spacedata_draw_locks(false);
+			/* TODO (sebbas): Use geometry bake for fluid guiding? */
 			success = true;
 		}
 		else if (STREQ(job->type, "MANTA_OT_bake_data_low"))

@@ -425,7 +425,7 @@ def bake_particles_process_low_$ID$(framenr, path_data, path_particles, path_geo
     #if using_smoke_s$ID$:\n\
         # TODO (sebbas): Future update could include smoke particles (e.g. fire sparks)\n\
     if using_liquid_s$ID$:\n\
-        liquid_load_geometry_low_$ID$(path_geometry, framenr)\n\
+        #liquid_load_geometry_low_$ID$(path_geometry, framenr)\n\
         liquid_load_data_low_$ID$(path_data, framenr, True)\n\
         if framenr>1:\n\
             liquid_load_particles_low_$ID$(path_particles, framenr-1)\n\
