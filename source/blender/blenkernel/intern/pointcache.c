@@ -76,7 +76,7 @@
 #endif
 
 /* both in intern */
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 #ifdef WITH_MANTA
 #	include "manta_fluid_API.h"
 #endif
@@ -555,7 +555,7 @@ static void ptcache_cloth_error(void *cloth_v, const char *message)
 	modifier_setError(&clmd->modifier, "%s", message);
 }
 
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 /* Smoke functions */
 static int  ptcache_smoke_totpoint(void *smoke_v, int UNUSED(cfra))
 {
@@ -1335,14 +1335,14 @@ static int ptcache_mesh_write(void *smoke_v, char *filename, int cfra)
 
 #endif // WITH_MANTA
 
-#else // WITH_SMOKE
+#else // WITH_MANTA
 static int  ptcache_smoke_totpoint(void *UNUSED(smoke_v), int UNUSED(cfra)) { return 0; }
 static void ptcache_smoke_error(void *UNUSED(smoke_v), const char *UNUSED(message)) { }
 static int  ptcache_smoke_read(PTCacheFile *UNUSED(pf), void *UNUSED(smoke_v)) { return 0; }
 static int  ptcache_smoke_write(PTCacheFile *UNUSED(pf), void *UNUSED(smoke_v)) { return 0; }
-#endif // WITH_SMOKE
+#endif // WITH_MANTA
 
-#if !defined(WITH_SMOKE) || !defined(WITH_OPENVDB)
+#if !defined(WITH_MANTA) || !defined(WITH_OPENVDB)
 static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke_v)
 {
 	UNUSED_VARS(writer, smoke_v);

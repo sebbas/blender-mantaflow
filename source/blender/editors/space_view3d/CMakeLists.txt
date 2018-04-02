@@ -92,8 +92,8 @@ if(WITH_FREESTYLE)
 	add_definitions(-DWITH_FREESTYLE)
 endif()
 
-if(WITH_MOD_SMOKE)
-	add_definitions(-DWITH_SMOKE)
+if(WITH_MOD_MANTA)
+	add_definitions(-DWITH_MANTA)
 endif()
 
 if(WITH_LEGACY_DEPSGRAPH)

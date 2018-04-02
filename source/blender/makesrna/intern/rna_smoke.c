@@ -522,7 +522,7 @@ static char *rna_SmokeCollSettings_path(PointerRNA *ptr)
 
 static int rna_SmokeModifier_grid_get_length(PointerRNA *ptr, int length[RNA_MAX_ARRAY_DIMENSION])
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
 	float *density = NULL;
 	int size = 0;
@@ -560,7 +560,7 @@ static int rna_SmokeModifier_color_grid_get_length(PointerRNA *ptr, int length[R
 
 static int rna_SmokeModifier_velocity_grid_get_length(PointerRNA *ptr, int length[RNA_MAX_ARRAY_DIMENSION])
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
 	float *vx = NULL;
 	float *vy = NULL;
@@ -587,7 +587,7 @@ static int rna_SmokeModifier_heat_grid_get_length(
         PointerRNA *ptr,
         int length[RNA_MAX_ARRAY_DIMENSION])
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
 	float *heat = NULL;
 	int size = 0;
@@ -608,7 +608,7 @@ static int rna_SmokeModifier_heat_grid_get_length(
 
 static void rna_SmokeModifier_density_grid_get(PointerRNA *ptr, float *values)
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
 	int length[RNA_MAX_ARRAY_DIMENSION];
 	int size = rna_SmokeModifier_grid_get_length(ptr, length);
@@ -631,7 +631,7 @@ static void rna_SmokeModifier_density_grid_get(PointerRNA *ptr, float *values)
 
 static void rna_SmokeModifier_velocity_grid_get(PointerRNA *ptr, float *values)
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
 	int length[RNA_MAX_ARRAY_DIMENSION];
 	int size = rna_SmokeModifier_velocity_grid_get_length(ptr, length);
@@ -658,7 +658,7 @@ static void rna_SmokeModifier_velocity_grid_get(PointerRNA *ptr, float *values)
 
 static void rna_SmokeModifier_color_grid_get(PointerRNA *ptr, float *values)
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
 
 	BLI_rw_mutex_lock(sds->fluid_mutex, THREAD_LOCK_READ);
@@ -684,7 +684,7 @@ static void rna_SmokeModifier_color_grid_get(PointerRNA *ptr, float *values)
 
 static void rna_SmokeModifier_flame_grid_get(PointerRNA *ptr, float *values)
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
 	int length[RNA_MAX_ARRAY_DIMENSION];
 	int size = rna_SmokeModifier_grid_get_length(ptr, length);
@@ -710,7 +710,7 @@ static void rna_SmokeModifier_flame_grid_get(PointerRNA *ptr, float *values)
 
 static void rna_SmokeModifier_heat_grid_get(PointerRNA *ptr, float *values)
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
 	int length[RNA_MAX_ARRAY_DIMENSION];
 	int size = rna_SmokeModifier_heat_grid_get_length(ptr, length);
@@ -738,7 +738,7 @@ static void rna_SmokeModifier_heat_grid_get(PointerRNA *ptr, float *values)
 
 static void rna_SmokeModifier_temperature_grid_get(PointerRNA *ptr, float *values)
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
 	int length[RNA_MAX_ARRAY_DIMENSION];
 	int size = rna_SmokeModifier_grid_get_length(ptr, length);

@@ -1429,7 +1429,7 @@ void GPU_free_smoke(SmokeModifierData *smd)
 
 void GPU_create_smoke(SmokeModifierData *smd, int highres)
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	if (smd->type & MOD_SMOKE_TYPE_DOMAIN) {
 		SmokeDomainSettings *sds = smd->domain;
 		if (!sds->tex && !highres) {
@@ -1463,12 +1463,12 @@ void GPU_create_smoke(SmokeModifierData *smd, int highres)
 
 		sds->tex_shadow = GPU_texture_create_3D(sds->res[0], sds->res[1], sds->res[2], 1, smoke_get_shadow(sds->fluid));
 	}
-#else // WITH_SMOKE
+#else // WITH_MANTA
 	(void)highres;
 	smd->domain->tex = NULL;
 	smd->domain->tex_flame = NULL;
 	smd->domain->tex_shadow = NULL;
-#endif // WITH_SMOKE
+#endif // WITH_MANTA
 }
 
 static LinkNode *image_free_queue = NULL;

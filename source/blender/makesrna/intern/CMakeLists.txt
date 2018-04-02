@@ -250,10 +250,6 @@ if(WITH_FFTW3)
 	add_definitions(-DWITH_FFTW3)
 endif()
 
-if(WITH_MOD_SMOKE)
-	add_definitions(-DWITH_SMOKE)
-endif()
-
 if(WITH_MOD_MANTA)
 	add_definitions(-DWITH_MANTA)
 endif()

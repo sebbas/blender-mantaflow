@@ -230,7 +230,7 @@ static int read_voxeldata_header(FILE *fp, struct VoxelData *vd)
 
 static void init_frame_smoke(VoxelData *vd, int cfra)
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	Object *ob;
 	ModifierData *md;
 	
@@ -361,7 +361,7 @@ static void init_frame_smoke(VoxelData *vd, int cfra)
 	
 	vd->ok = 1;
 
-#else // WITH_SMOKE
+#else // WITH_MANTA
 	(void)vd;
 	(void)cfra;
 

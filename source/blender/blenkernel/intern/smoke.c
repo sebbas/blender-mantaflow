@@ -100,7 +100,7 @@
 #	include "manta_fluid_API.h"
 #endif
 
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 
 static ThreadMutex object_update_lock = BLI_MUTEX_INITIALIZER;
 
@@ -116,7 +116,7 @@ struct SmokeModifierData;
 #define ADD_IF_LOWER_NEG(a, b) (max_ff((a) + (b), min_ff((a), (b))))
 #define ADD_IF_LOWER(a, b) (((b) > 0) ? ADD_IF_LOWER_POS((a), (b)) : ADD_IF_LOWER_NEG((a), (b)))
 
-#else /* WITH_SMOKE */
+#else /* WITH_MANTA */
 
 /* Stubs to use when smoke is disabled */
 struct WTURBULENCE *smoke_turbulence_init(int *UNUSED(res), int UNUSED(amplify), int UNUSED(noisetype), const char *UNUSED(noisefile_path), int UNUSED(use_fire), int UNUSED(use_colors)) { return NULL; }
@@ -131,9 +131,9 @@ void smoke_initBlenderRNA(struct FLUID_3D *UNUSED(fluid), float *UNUSED(alpha), 
 struct DerivedMesh *smokeModifier_do(SmokeModifierData *UNUSED(smd), Scene *UNUSED(scene), Object *UNUSED(ob), DerivedMesh *UNUSED(dm)) { return NULL; }
 float smoke_get_velocity_at(struct Object *UNUSED(ob), float UNUSED(position[3]), float UNUSED(velocity[3])) { return 0.0f; }
 
-#endif /* WITH_SMOKE */
+#endif /* WITH_MANTA */
 
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 
 
 void smoke_reallocate_fluid(SmokeDomainSettings *sds, int res[3], int free_old)
@@ -331,7 +331,7 @@ static int smokeModifier_init(SmokeModifierData *smd, Object *ob, Scene *scene, 
 	return 2;
 }
 
-#endif /* WITH_SMOKE */
+#endif /* WITH_MANTA */
 
 static void smokeModifier_freeDomain(SmokeModifierData *smd)
 {
@@ -765,7 +765,7 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 	}
 }
 
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 
 // forward decleration
 static void smoke_calc_transparency(SmokeDomainSettings *sds, Scene *scene);
@@ -3534,4 +3534,4 @@ int smoke_get_data_flags(SmokeDomainSettings *sds)
 	return flags;
 }
 
-#endif /* WITH_SMOKE */
+#endif /* WITH_MANTA */
