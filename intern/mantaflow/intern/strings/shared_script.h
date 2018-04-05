@@ -443,12 +443,19 @@ def bake_particles_low_$ID$(path_particles, path_data, path_geometry, framenr):\
 
 const std::string fluid_bake_particles_high = "\n\
 def bake_particles_process_high_$ID$(framenr, path_data, path_particles, path_geometry):\n\
-    mantaMsg('Bake secondary particles high')\n\
+    mantaMsg('Bake secondary particles high (NOT SUPPORTED YET)')\n\
     \n\
     #if using_smoke_s$ID$:\n\
         # TODO (sebbas): Future update could include smoke particles (e.g. fire sparks)\n\
-    #if using_liquid_s$ID$:\n\
-        # TODO (sebbas): Add support for high res particles\n\
+    if using_liquid_s$ID$:\n\
+        #liquid_load_geometry_high_$ID$(path_geometry, framenr)\n\
+        liquid_load_data_high_$ID$(path_data, framenr, True)\n\
+        if framenr>1:\n\
+            liquid_load_particles_high_$ID$(path_particles, framenr-1)\n\
+        \n\
+        liquid_step_particles_high_$ID$()\n\
+        \n\
+        liquid_save_particles_high_$ID$(path_particles, framenr)\n\
 \n\
 def bake_particles_high_$ID$(path_particles, path_data, path_geometry, framenr):\n\
     if debugMp or platform.system() != 'Darwin' and platform.system() != 'Linux':\n\

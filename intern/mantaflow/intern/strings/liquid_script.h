@@ -147,17 +147,6 @@ def liquid_pre_step_low_$ID$():\n\
 
 const std::string liquid_post_step_low = "\n\
 def liquid_post_step_low_$ID$():\n\
-    if using_sndparts_s$ID$:\n\
-        radius = 2 if $SNDPARTICLE_POTENTIAL_QUALITY_HIGH$ else 1\n\
-        flipComputeSecondaryParticlePotentials(potTA=trappedAir_s$ID$, potWC=waveCrest_s$ID$, potKE=kineticEnergy_s$ID$, neighborRatio=neighborRatio_s$ID$, flags=flags_s$ID$, v=vel_s$ID$, normal=normal_s$ID$, phi=phi_s$ID$, radius=radius, tauMinTA=tauMin_ta_s$ID$, tauMaxTA=tauMax_ta_s$ID$, tauMinWC=tauMin_wc_s$ID$, tauMaxWC=tauMax_wc_s$ID$, tauMinKE=tauMin_k_s$ID$, tauMaxKE=tauMax_k_s$ID$, scaleFromManta=scaleFromManta_s$ID$)\n\
-        flipSampleSecondaryParticles(mode='single', flags=flags_s$ID$, v=vel_s$ID$, pts_sec=ppSnd_s$ID$, v_sec=pVelSnd_pp$ID$, l_sec=pLifeSnd_pp$ID$, lMin=lMin_s$ID$, lMax=lMax_s$ID$, potTA=trappedAir_s$ID$, potWC=waveCrest_s$ID$, potKE=kineticEnergy_s$ID$, neighborRatio=neighborRatio_s$ID$, c_s=c_s_s$ID$, c_b=c_b_s$ID$, k_ta=k_ta_s$ID$, k_wc=k_wc_s$ID$, dt=s$ID$.frameLength)\n\
-        flipUpdateSecondaryParticles(mode='linear', pts_sec=ppSnd_s$ID$, v_sec=pVelSnd_pp$ID$, l_sec=pLifeSnd_pp$ID$, f_sec=pForceSnd_pp$ID$, flags=flags_s$ID$, v=vel_s$ID$, neighborRatio=neighborRatio_s$ID$, radius=1, gravity=gravity_s$ID$, k_b=k_b_s$ID$, k_d=k_d_s$ID$, c_s=c_s_s$ID$, c_b=c_b_s$ID$, dt=s$ID$.frameLength)\n\
-        if $SNDPARTICLE_BOUNDARY_PUSHOUT$:\n\
-            pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=1.0)\n\
-        flipDeleteParticlesInObstacle(pts=ppSnd_s$ID$, flags=flags_s$ID$)\n\
-        debugGridInfo(flags=flags_s$ID$, grid=trappedAir_s$ID$, name='Trapped Air')\n\
-        debugGridInfo(flags=flags_s$ID$, grid=waveCrest_s$ID$, name='Wave Crest')\n\
-        debugGridInfo(flags=flags_s$ID$, grid=kineticEnergy_s$ID$, name='Kinetic Energy')\n\
     forces_s$ID$.clear()\n\
     if using_guiding_s$ID$:\n\
         weightGuide_s$ID$.clear()\n\
@@ -339,13 +328,23 @@ def liquid_step_high_$ID$():\n\
 
 const std::string liquid_step_particles_low = "\n\
 def liquid_step_particles_low_$ID$():\n\
-    mantaMsg('Sampling snd particles')\n\
-    sampleSndParts(phi=phi_s$ID$, phiIn=phiIn_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, parts=ppSnd_s$ID$, type=$SNDPARTICLE_TYPES$, amountDroplet=$SNDPARTICLE_DROPLET_AMOUNT$, amountFloater=$SNDPARTICLE_FLOATER_AMOUNT$, amountTracer=$SNDPARTICLE_TRACER_AMOUNT$, thresholdDroplet=$SNDPARTICLE_DROPLET_THRESH$)\n\
-    mantaMsg('Updating snd particle data (velocity, life count)')\n\
-    updateSndParts(phi=phi_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$, parts=ppSnd_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, riseBubble=$SNDPARTICLE_BUBBLE_RISE$, lifeDroplet=$SNDPARTICLE_DROPLET_LIFE$, lifeBubble=$SNDPARTICLE_BUBBLE_LIFE$, lifeFloater=$SNDPARTICLE_FLOATER_LIFE$, lifeTracer=$SNDPARTICLE_TRACER_LIFE$)\n\
-    mantaMsg('Adjusting snd particles')\n\
-    pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=1.0)\n\
-    adjustSndParts(parts=ppSnd_s$ID$, flags=flags_s$ID$, phi=phi_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, maxDroplet=$SNDPARTICLE_DROPLET_MAX$, maxBubble=$SNDPARTICLE_BUBBLE_MAX$, maxFloater=$SNDPARTICLE_FLOATER_MAX$, maxTracer=$SNDPARTICLE_TRACER_MAX$)\n";
+    mantaMsg('Secondary particles step low')\n\
+    if using_sndparts_s$ID$:\n\
+        radius = 2 if $SNDPARTICLE_POTENTIAL_QUALITY_HIGH$ else 1\n\
+        flipComputeSecondaryParticlePotentials(potTA=trappedAir_s$ID$, potWC=waveCrest_s$ID$, potKE=kineticEnergy_s$ID$, neighborRatio=neighborRatio_s$ID$, flags=flags_s$ID$, v=vel_s$ID$, normal=normal_s$ID$, phi=phi_s$ID$, radius=radius, tauMinTA=tauMin_ta_s$ID$, tauMaxTA=tauMax_ta_s$ID$, tauMinWC=tauMin_wc_s$ID$, tauMaxWC=tauMax_wc_s$ID$, tauMinKE=tauMin_k_s$ID$, tauMaxKE=tauMax_k_s$ID$, scaleFromManta=scaleFromManta_s$ID$)\n\
+        flipSampleSecondaryParticles(mode='single', flags=flags_s$ID$, v=vel_s$ID$, pts_sec=ppSnd_s$ID$, v_sec=pVelSnd_pp$ID$, l_sec=pLifeSnd_pp$ID$, lMin=lMin_s$ID$, lMax=lMax_s$ID$, potTA=trappedAir_s$ID$, potWC=waveCrest_s$ID$, potKE=kineticEnergy_s$ID$, neighborRatio=neighborRatio_s$ID$, c_s=c_s_s$ID$, c_b=c_b_s$ID$, k_ta=k_ta_s$ID$, k_wc=k_wc_s$ID$, dt=s$ID$.frameLength)\n\
+        flipUpdateSecondaryParticles(mode='linear', pts_sec=ppSnd_s$ID$, v_sec=pVelSnd_pp$ID$, l_sec=pLifeSnd_pp$ID$, f_sec=pForceSnd_pp$ID$, flags=flags_s$ID$, v=vel_s$ID$, neighborRatio=neighborRatio_s$ID$, radius=1, gravity=gravity_s$ID$, k_b=k_b_s$ID$, k_d=k_d_s$ID$, c_s=c_s_s$ID$, c_b=c_b_s$ID$, dt=s$ID$.frameLength)\n\
+        if $SNDPARTICLE_BOUNDARY_PUSHOUT$:\n\
+            pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=1.0)\n\
+        flipDeleteParticlesInObstacle(pts=ppSnd_s$ID$, flags=flags_s$ID$)\n\
+        debugGridInfo(flags=flags_s$ID$, grid=trappedAir_s$ID$, name='Trapped Air')\n\
+        debugGridInfo(flags=flags_s$ID$, grid=waveCrest_s$ID$, name='Wave Crest')\n\
+        debugGridInfo(flags=flags_s$ID$, grid=kineticEnergy_s$ID$, name='Kinetic Energy')\n";
+
+const std::string liquid_step_particles_high = "\n\
+def liquid_step_particles_high_$ID$():\n\
+    mantaMsg('Secondary particles step high (NOT SUPPORTED YET)')\n\
+    # TODO (Georg Kohl) add highres secondary particles\n";
 
 //////////////////////////////////////////////////////////////////////
 // IMPORT
@@ -397,8 +396,8 @@ def liquid_load_particles_low_$ID$(path, framenr):\n\
 
 const std::string liquid_load_particles_high = "\n\
 def liquid_load_particles_high_$ID$(path, framenr):\n\
-    mantaMsg('Liquid load particles high')\n\
-    # Nothing to do here yet!\n";
+    mantaMsg('Liquid load particles high (NOT SUPPORTED YET)')\n\
+    # TODO (Georg Kohl) load highres secondary particles\n";
 
 //////////////////////////////////////////////////////////////////////
 // EXPORT
@@ -456,8 +455,8 @@ def liquid_save_particles_low_$ID$(path, framenr):\n\
 
 const std::string liquid_save_particles_high = "\n\
 def liquid_save_particles_high$ID$(path, framenr):\n\
-    mantaMsg('Liquid save particles high')\n\
-    # Nothing to do here yet!\n";
+    mantaMsg('Liquid save particles high (NOT SUPPORTED YET)')\n\
+    # TODO (Georg Kohl) save highres secondary particles\n";
 
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE

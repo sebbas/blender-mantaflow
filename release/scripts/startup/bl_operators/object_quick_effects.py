@@ -663,7 +663,6 @@ class QuickLiquidParticles(Operator):
                ('TRACER', "Tracer", "Use tracer particles to simulate tiny objects floating along with the liquid (e.g. dirt)")),
                default='SECONDARY',)
 
-    if 
     liquid_display = BoolProperty(
         name="Use Liquid Display",
         description="Display simulation grids for easier parameter adjustment",
