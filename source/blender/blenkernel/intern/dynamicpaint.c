@@ -6103,7 +6103,7 @@ static int dynamicPaint_doStep(Scene *scene, Object *ob, DynamicPaintSurface *su
 					/* Particle brush: */
 					if (brush->collision == MOD_DPAINT_COL_PSYS) {
 						if (brush->psys && brush->psys->part &&
-						    ELEM(brush->psys->part->type, PART_EMITTER, PART_FLUID, PART_MANTA_FLIP, PART_MANTA_DROP, PART_MANTA_BUBBLE, PART_MANTA_FLOAT, PART_MANTA_TRACER) &&
+						    ELEM(brush->psys->part->type, PART_EMITTER, PART_FLUID, PART_MANTA_FLIP, PART_MANTA_SPRAY, PART_MANTA_BUBBLE, PART_MANTA_FOAM, PART_MANTA_TRACER, PART_MANTA_SPRAY_FOAM, PART_MANTA_SPRAY_BUBBLE, PART_MANTA_FOAM_BUBBLE, PART_MANTA_SPRAY_FOAM_BUBBLE) &&
 						    psys_check_enabled(brushObj, brush->psys, G.is_rendering))
 						{
 							/* Paint a particle system */

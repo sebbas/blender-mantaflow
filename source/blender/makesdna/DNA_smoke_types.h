@@ -109,6 +109,14 @@ enum {
 };
 
 enum {
+	SNDPARTICLE_COMBINED_EXPORT_OFF = 0,
+	SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM = 1,
+	SNDPARTICLE_COMBINED_EXPORT_SPRAY_BUBBLE = 2,
+	SNDPARTICLE_COMBINED_EXPORT_FOAM_BUBBLE = 3,
+	SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM_BUBBLE = 4,
+};
+
+enum {
 	FLUID_FIELD_DENSITY    = 0,
 	FLUID_FIELD_HEAT       = 1,
 	FLUID_FIELD_FUEL       = 2,
@@ -330,7 +338,8 @@ typedef struct SmokeDomainSettings {
 	char sndparticle_boundary;
 	char sndparticle_potential_resolution;
 	char sndparticle_potential_quality;
-	char pad5[5]; /* unused */
+	char sndparticle_combined_export;
+	char pad5[4]; /* unused */
 
 	/* fluid guiding parameters */
 	float guiding_alpha; /* guiding weight scalar (determines strength) */
@@ -390,9 +399,9 @@ typedef struct SmokeDomainSettings {
 
 /* particle types */
 #define MOD_SMOKE_PARTICLE_FLIP   (1<<0)
-#define MOD_SMOKE_PARTICLE_DROP   (1<<1)
+#define MOD_SMOKE_PARTICLE_SPRAY  (1<<1)
 #define MOD_SMOKE_PARTICLE_BUBBLE (1<<2)
-#define MOD_SMOKE_PARTICLE_FLOAT  (1<<3)
+#define MOD_SMOKE_PARTICLE_FOAM   (1<<3)
 #define MOD_SMOKE_PARTICLE_TRACER (1<<4)
 
 /* secondary particles */

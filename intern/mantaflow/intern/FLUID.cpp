@@ -68,9 +68,9 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mUsingHighRes  = smd->domain->flags & MOD_SMOKE_HIGHRES;
 	mUsingLiquid   = smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID;
 	mUsingSmoke    = smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS;
-	mUsingDrops    = smd->domain->particle_type & MOD_SMOKE_PARTICLE_DROP;
+	mUsingDrops    = smd->domain->particle_type & MOD_SMOKE_PARTICLE_SPRAY;
 	mUsingBubbles  = smd->domain->particle_type & MOD_SMOKE_PARTICLE_BUBBLE;
-	mUsingFloats   = smd->domain->particle_type & MOD_SMOKE_PARTICLE_FLOAT;
+	mUsingFloats   = smd->domain->particle_type & MOD_SMOKE_PARTICLE_FOAM;
 	mUsingTracers  = smd->domain->particle_type & MOD_SMOKE_PARTICLE_TRACER;
 
 	// Simulation constants
@@ -817,14 +817,14 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 	else if (varName == "FLUID_DOMAIN_SIZE")
 		ss << smd->domain->domain_size;
 	else if (varName == "SNDPARTICLE_TYPES") {
-		if (smd->domain->particle_type & MOD_SMOKE_PARTICLE_DROP) {
+		if (smd->domain->particle_type & MOD_SMOKE_PARTICLE_SPRAY) {
 			ss << "PtypeDroplet";
 		}
 		if (smd->domain->particle_type & MOD_SMOKE_PARTICLE_BUBBLE) {
 			if (!ss.str().empty()) ss << "|";
 			ss << "PtypeBubble";
 		}
-		if (smd->domain->particle_type & MOD_SMOKE_PARTICLE_FLOAT) {
+		if (smd->domain->particle_type & MOD_SMOKE_PARTICLE_FOAM) {
 			if (!ss.str().empty()) ss << "|";
 			ss << "PtypeFloater";
 		}
@@ -835,8 +835,8 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		if (ss.str().empty()) ss << "0";
 
 	} else if (varName == "USING_SNDPARTS") {
-		tmpVar = (MOD_SMOKE_PARTICLE_DROP | MOD_SMOKE_PARTICLE_BUBBLE |
-				  MOD_SMOKE_PARTICLE_FLOAT | MOD_SMOKE_PARTICLE_TRACER);
+		tmpVar = (MOD_SMOKE_PARTICLE_SPRAY | MOD_SMOKE_PARTICLE_BUBBLE |
+				  MOD_SMOKE_PARTICLE_FOAM | MOD_SMOKE_PARTICLE_TRACER);
 		ss << (((smd->domain->particle_type & tmpVar)) ? "True" : "False");
 	}
 	else if (varName == "SNDPARTICLE_TAU_MIN_WC")
@@ -1461,9 +1461,9 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 	bool obstacle = smd->domain->active_fields & SM_ACTIVE_OBSTACLE;
 	bool guiding  = smd->domain->active_fields & SM_ACTIVE_GUIDING;
 	bool invel    = smd->domain->active_fields & SM_ACTIVE_INVEL;
-	bool drops    = smd->domain->particle_type & MOD_SMOKE_PARTICLE_DROP;
+	bool spray    = smd->domain->particle_type & MOD_SMOKE_PARTICLE_SPRAY;
 	bool bubble   = smd->domain->particle_type & MOD_SMOKE_PARTICLE_BUBBLE;
-	bool floater  = smd->domain->particle_type & MOD_SMOKE_PARTICLE_FLOAT;
+	bool foam     = smd->domain->particle_type & MOD_SMOKE_PARTICLE_FOAM;
 	bool tracer   = smd->domain->particle_type & MOD_SMOKE_PARTICLE_TRACER;
 
 	std::string manta_script;
@@ -1483,7 +1483,7 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 		manta_script += fluid_alloc_guiding_low;
 	if (invel)
 		manta_script += fluid_alloc_invel_low;
-	if (drops || bubble || floater || tracer)
+	if (spray || bubble || foam || tracer)
 		manta_script += fluid_alloc_sndparts_low;
 
 	if (highres) {
@@ -1504,7 +1504,7 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 		manta_script += fluid_guiding_import_low;
 	if (invel)
 		manta_script += fluid_invel_import_low;
-	if (drops || bubble || floater || tracer)
+	if (spray || bubble || foam || tracer)
 		manta_script += fluid_sndparts_import_low;
 
 	manta_script += liquid_pre_step_low;
@@ -1538,9 +1538,9 @@ void FLUID::exportLiquidData(SmokeModifierData *smd)
 	bool obstacle = smd->domain->active_fields & SM_ACTIVE_OBSTACLE;
 	bool guiding  = smd->domain->active_fields & SM_ACTIVE_GUIDING;
 	bool invel    = smd->domain->active_fields & SM_ACTIVE_INVEL;
-	bool drops    = smd->domain->particle_type & MOD_SMOKE_PARTICLE_DROP;
+	bool drops    = smd->domain->particle_type & MOD_SMOKE_PARTICLE_SPRAY;
 	bool bubble   = smd->domain->particle_type & MOD_SMOKE_PARTICLE_BUBBLE;
-	bool floater  = smd->domain->particle_type & MOD_SMOKE_PARTICLE_FLOAT;
+	bool floater  = smd->domain->particle_type & MOD_SMOKE_PARTICLE_FOAM;
 	bool tracer   = smd->domain->particle_type & MOD_SMOKE_PARTICLE_TRACER;
 
 	char parent_dir[1024];

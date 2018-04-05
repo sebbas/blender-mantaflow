@@ -168,9 +168,9 @@ void flipComputeSecondaryParticlePotentials( Grid<Real> &potTA, Grid<Real> &potW
 					l_sec[l_sec.size() - 1] = ((lMax - lMin) * temp) + lMin + mRand.getReal()*0.1;	//init lifetime of new particle
 
 					//init type of new particle
-					if (neighborRatio(i, j, k) < c_s) { pts_sec[pts_sec.size() - 1].flag = ParticleBase::PDROPLET; }
+					if (neighborRatio(i, j, k) < c_s) { pts_sec[pts_sec.size() - 1].flag = ParticleBase::PSPRAY; }
 					else if (neighborRatio(i, j, k) > c_b) { pts_sec[pts_sec.size() - 1].flag = ParticleBase::PBUBBLE; }
-					else { pts_sec[pts_sec.size() - 1].flag = ParticleBase::PFLOATER; }
+					else { pts_sec[pts_sec.size() - 1].flag = ParticleBase::PFOAM; }
 				}
 			}
 		}
@@ -215,9 +215,9 @@ void flipComputeSecondaryParticlePotentials( Grid<Real> &potTA, Grid<Real> &potW
 		l_sec[l_sec.size() - 1] = ((lMax - lMin) * temp) + lMin + mRand.getReal()*0.1;	//init lifetime of new particle
 
 		//init type of new particle
-		if (neighborRatio(i, j, k) < c_s) { pts_sec[pts_sec.size() - 1].flag = ParticleBase::PDROPLET; }
+		if (neighborRatio(i, j, k) < c_s) { pts_sec[pts_sec.size() - 1].flag = ParticleBase::PSPRAY; }
 		else if (neighborRatio(i, j, k) > c_b) { pts_sec[pts_sec.size() - 1].flag = ParticleBase::PBUBBLE; }
-		else { pts_sec[pts_sec.size() - 1].flag = ParticleBase::PFLOATER; }
+		else { pts_sec[pts_sec.size() - 1].flag = ParticleBase::PFOAM; }
 	}
 }   inline const FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline const MACGrid& getArg1() { return v; } typedef MACGrid type1;inline BasicParticleSystem& getArg2() { return pts_sec; } typedef BasicParticleSystem type2;inline ParticleDataImpl<Vec3> & getArg3() { return v_sec; } typedef ParticleDataImpl<Vec3>  type3;inline ParticleDataImpl<Real> & getArg4() { return l_sec; } typedef ParticleDataImpl<Real>  type4;inline const Real& getArg5() { return lMin; } typedef Real type5;inline const Real& getArg6() { return lMax; } typedef Real type6;inline const Grid<Real> & getArg7() { return potTA; } typedef Grid<Real>  type7;inline const Grid<Real> & getArg8() { return potWC; } typedef Grid<Real>  type8;inline const Grid<Real> & getArg9() { return potKE; } typedef Grid<Real>  type9;inline const Grid<Real> & getArg10() { return neighborRatio; } typedef Grid<Real>  type10;inline const Real& getArg11() { return c_s; } typedef Real type11;inline const Real& getArg12() { return c_b; } typedef Real type12;inline const Real& getArg13() { return k_ta; } typedef Real type13;inline const Real& getArg14() { return k_wc; } typedef Real type14;inline const Real& getArg15() { return dt; } typedef Real type15;inline const int& getArg16() { return itype; } typedef int type16; void runMessage() { debMsg("Executing kernel knFlipSampleSecondaryParticles ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; for (int k=minZ; k< maxZ; k++) for (int j=0; j< _maxY; j++) for (int i=0; i< _maxX; i++) op(i,j,k, flags,v,pts_sec,v_sec,l_sec,lMin,lMax,potTA,potWC,potKE,neighborRatio,c_s,c_b,k_ta,k_wc,dt,itype);  } const FlagGrid& flags; const MACGrid& v; BasicParticleSystem& pts_sec; ParticleDataImpl<Vec3> & v_sec; ParticleDataImpl<Real> & l_sec; const Real lMin; const Real lMax; const Grid<Real> & potTA; const Grid<Real> & potWC; const Grid<Real> & potKE; const Grid<Real> & neighborRatio; const Real c_s; const Real c_b; const Real k_ta; const Real k_wc; const Real dt; const int itype;   };
 
@@ -271,8 +271,8 @@ Real cubicSpline(const Real h, const Real l, const int dim) {
 
 	//spray particle
 	if (neighborRatio(gridpos) < c_s) {
-		pts_sec[idx].flag |= ParticleBase::PDROPLET;
-		pts_sec[idx].flag &= ~(ParticleBase::PBUBBLE | ParticleBase::PFLOATER);
+		pts_sec[idx].flag |= ParticleBase::PSPRAY;
+		pts_sec[idx].flag &= ~(ParticleBase::PBUBBLE | ParticleBase::PFOAM);
 		v_sec[idx] += dt * ((f_sec[idx] / 1) + gravity);	//TODO: if forces are added (e.g. fluid guiding), add parameter for mass instead of 1
 
 		//anti tunneling for small obstacles
@@ -289,7 +289,7 @@ Real cubicSpline(const Real h, const Real l, const int dim) {
 	//air bubble particle
 	else if (neighborRatio(gridpos) > c_b) {
 		pts_sec[idx].flag |= ParticleBase::PBUBBLE;
-		pts_sec[idx].flag &= ~(ParticleBase::PDROPLET | ParticleBase::PFLOATER);
+		pts_sec[idx].flag &= ~(ParticleBase::PSPRAY | ParticleBase::PFOAM);
 		
 		const Vec3 vj = (v.getInterpolated(pts_sec[idx].pos) - v_sec[idx]) / dt;
 		v_sec[idx] += dt * (k_b * -gravity + k_d * vj);
@@ -307,8 +307,8 @@ Real cubicSpline(const Real h, const Real l, const int dim) {
 
 	//foam particle
 	else {
-		pts_sec[idx].flag |= ParticleBase::PFLOATER;
-		pts_sec[idx].flag &= ~(ParticleBase::PBUBBLE | ParticleBase::PDROPLET);
+		pts_sec[idx].flag |= ParticleBase::PFOAM;
+		pts_sec[idx].flag &= ~(ParticleBase::PBUBBLE | ParticleBase::PSPRAY);
 
 		const Vec3 vj = v.getInterpolated(pts_sec[idx].pos);
 		//anti tunneling for small obstacles
@@ -356,8 +356,8 @@ Real cubicSpline(const Real h, const Real l, const int dim) {
 
 	//spray particle
 	if (neighborRatio(gridpos) < c_s) {
-		pts_sec[idx].flag |= ParticleBase::PDROPLET;
-		pts_sec[idx].flag &= ~(ParticleBase::PBUBBLE | ParticleBase::PFLOATER);
+		pts_sec[idx].flag |= ParticleBase::PSPRAY;
+		pts_sec[idx].flag &= ~(ParticleBase::PBUBBLE | ParticleBase::PFOAM);
 		v_sec[idx] += dt * ((f_sec[idx] / 1) + gravity);	//TODO: if forces are added (e.g. fluid guiding), add parameter for mass instead of 1
 
 		//anti tunneling for small obstacles
@@ -374,7 +374,7 @@ Real cubicSpline(const Real h, const Real l, const int dim) {
 	//air bubble particle
 	else if (neighborRatio(gridpos) > c_b) {
 		pts_sec[idx].flag |= ParticleBase::PBUBBLE;
-		pts_sec[idx].flag &= ~(ParticleBase::PDROPLET | ParticleBase::PFLOATER);
+		pts_sec[idx].flag &= ~(ParticleBase::PSPRAY | ParticleBase::PFOAM);
 		const Vec3 &xi = pts_sec[idx].pos;
 		Vec3 sumNumerator = Vec3(0, 0, 0);
 		Real sumDenominator = 0;
@@ -410,8 +410,8 @@ Real cubicSpline(const Real h, const Real l, const int dim) {
 
 	//foam particle
 	else {
-		pts_sec[idx].flag |= ParticleBase::PFLOATER;
-		pts_sec[idx].flag &= ~(ParticleBase::PBUBBLE | ParticleBase::PDROPLET);
+		pts_sec[idx].flag |= ParticleBase::PFOAM;
+		pts_sec[idx].flag &= ~(ParticleBase::PBUBBLE | ParticleBase::PSPRAY);
 		const Vec3 &xi = pts_sec[idx].pos;
 		Vec3 sumNumerator = Vec3(0, 0, 0);
 		Real sumDenominator = 0;

@@ -362,6 +362,7 @@ def liquid_load_data_low_$ID$(path, framenr, withParticles):\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
     phi_s$ID$.load(os.path.join(path, 'phi_' + framenr +'.uni'))\n\
     phiIn_s$ID$.load(os.path.join(path, 'phiIn_' + framenr + '.uni'))\n\
+    pressure_s$ID$.load(os.path.join(path, 'pressure_' + framenr + '.uni'))\n\
     if withParticles:\n\
         pp_s$ID$.load(os.path.join(path, 'pp_' + framenr +'.uni'))\n\
         pVel_pp$ID$.load(os.path.join(path, 'pVel_' + framenr +'.uni'))\n";
@@ -392,7 +393,10 @@ def liquid_load_particles_low_$ID$(path, framenr):\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
     ppSnd_s$ID$.load(os.path.join(path, 'ppSnd_' + framenr + '.uni'))\n\
     pVelSnd_pp$ID$.load(os.path.join(path, 'pVelSnd_' + framenr + '.uni'))\n\
-    pLifeSnd_pp$ID$.load(os.path.join(path, 'pLifeSnd_' + framenr + '.uni'))\n";
+    pLifeSnd_pp$ID$.load(os.path.join(path, 'pLifeSnd_' + framenr + '.uni'))\n\
+    trappedAir_s$ID$.load(os.path.join(path, 'potentialTrappedAir' + framenr + '.uni'))\n\
+    waveCrest_s$ID$.load(os.path.join(path, 'potentialWaveCrest' + framenr + '.uni'))\n\
+    kineticEnergy_s$ID$.load(os.path.join(path, 'potentialKineticEnergy' + framenr + '.uni'))\n";
 
 const std::string liquid_load_particles_high = "\n\
 def liquid_load_particles_high_$ID$(path, framenr):\n\
@@ -416,7 +420,8 @@ def liquid_save_data_low_$ID$(path, framenr):\n\
     phi_s$ID$.save(os.path.join(path, 'phi_' + framenr +'.uni'))\n\
     phiIn_s$ID$.save(os.path.join(path, 'phiIn_' + framenr + '.uni'))\n\
     pp_s$ID$.save(os.path.join(path, 'pp_' + framenr +'.uni'))\n\
-    pVel_pp$ID$.save(os.path.join(path, 'pVel_' + framenr +'.uni'))\n";
+    pVel_pp$ID$.save(os.path.join(path, 'pVel_' + framenr +'.uni'))\n\
+    pressure_s$ID$.save(os.path.join(path, 'pressure_' + framenr + '.uni'))\n";
 
 const std::string liquid_save_data_high = "\n\
 def liquid_save_data_high_$ID$(path, framenr):\n\
@@ -451,7 +456,10 @@ def liquid_save_particles_low_$ID$(path, framenr):\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
     ppSnd_s$ID$.save(os.path.join(path, 'ppSnd_' + framenr + '.uni'))\n\
     pVelSnd_pp$ID$.save(os.path.join(path, 'pVelSnd_' + framenr + '.uni'))\n\
-    pLifeSnd_pp$ID$.save(os.path.join(path, 'pLifeSnd_' + framenr + '.uni'))\n";
+    pLifeSnd_pp$ID$.save(os.path.join(path, 'pLifeSnd_' + framenr + '.uni'))\n\
+    trappedAir_s$ID$.save(os.path.join(path, 'potentialTrappedAir' + framenr + '.uni'))\n\
+    waveCrest_s$ID$.save(os.path.join(path, 'potentialWaveCrest' + framenr + '.uni'))\n\
+    kineticEnergy_s$ID$.save(os.path.join(path, 'potentialKineticEnergy' + framenr + '.uni'))\n";
 
 const std::string liquid_save_particles_high = "\n\
 def liquid_save_particles_high$ID$(path, framenr):\n\

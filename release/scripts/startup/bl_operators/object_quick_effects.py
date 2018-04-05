@@ -757,8 +757,8 @@ class QuickLiquidParticles(Operator):
 
         # setup options according to style
         if self.style == 'SECONDARY':
-            dom.modifiers[0].domain_settings.use_drop_particles = True
-            dom.modifiers[0].domain_settings.use_floater_particles = True
+            dom.modifiers[0].domain_settings.use_spray_particles = True
+            dom.modifiers[0].domain_settings.use_foam_particles = True
             dom.modifiers[0].domain_settings.use_bubble_particles = True
             # Cycles: Material setup
             if context.scene.render.use_shading_nodes:

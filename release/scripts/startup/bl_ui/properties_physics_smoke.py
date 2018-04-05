@@ -390,26 +390,26 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
 
         col = split.column()
         col.enabled = not domain.point_cache.is_baked
-        col.prop(domain, "use_drop_particles", text="Drop")
+        col.prop(domain, "use_spray_particles", text="Drop")
         sub = col.column(align=True)
-        sub.active = domain.use_drop_particles
+        sub.active = domain.use_spray_particles
         sub.prop(domain, "particle_droplet_threshold", text="Threshold")
         sub.prop(domain, "particle_droplet_amount", text="Generate")
         sub.prop(domain, "particle_droplet_life", text="Life")
         sub.prop(domain, "particle_droplet_max", text="Maximum")
         sub2 = col.column()
-        sub2.active = domain.use_drop_particles
+        sub2.active = domain.use_spray_particles
         sub2.prop(domain, "use_bubble_particles", text="Bubble")
         sub3 = col.column(align=True)
-        sub3.active = domain.use_drop_particles and domain.use_bubble_particles
+        sub3.active = domain.use_spray_particles and domain.use_bubble_particles
         sub3.prop(domain, "particle_bubble_rise", text="Rise")
         sub3.prop(domain, "particle_bubble_life", text="Life")
         sub3.prop(domain, "particle_bubble_max", text="Maximum")
         col = split.column()
         col.enabled = not domain.point_cache.is_baked
-        col.prop(domain, "use_floater_particles", text="Float")
+        col.prop(domain, "use_foam_particles", text="Float")
         sub = col.column(align=True)
-        sub.active = domain.use_floater_particles
+        sub.active = domain.use_foam_particles
         sub.prop(domain, "particle_floater_amount", text="Generate")
         sub.prop(domain, "particle_floater_life", text="Life")
         sub.prop(domain, "particle_floater_max", text="Maximum")
@@ -442,15 +442,18 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         top.label("Exported Particles:")
         sub1 = top.row()
         sub1.prop(domain, "use_flip_particles", text="FLIP")
-        sub1.prop(domain, "use_drop_particles", text="Spray")
-        sub1.prop(domain, "use_floater_particles", text="Foam")
+        sub1.prop(domain, "use_spray_particles", text="Spray")
+        sub1.prop(domain, "use_foam_particles", text="Foam")
         sub1.prop(domain, "use_bubble_particles", text="Bubbles")
         sub1.label()
+        sub2 = top.row()
+        #sub2.label("Combined Export:")
+        sub2.prop(domain, "sndparticle_combined_export")
 
         split = layout.split()
         split.enabled = not domain.point_cache.is_baked
         sub1 = split.column()
-        sub1.active = domain.use_drop_particles or domain.use_floater_particles or domain.use_bubble_particles
+        sub1.active = domain.use_spray_particles or domain.use_foam_particles or domain.use_bubble_particles
         sub2 = sub1.column(align=True)
         sub2.label(text="Wave Crest Potential:")
         sub2.prop(domain, "sndparticle_tau_min_wc", text="min")
@@ -470,7 +473,7 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
 
         second = split.column()
         sub1 = second.column()
-        sub1.active = domain.use_drop_particles or domain.use_floater_particles or domain.use_bubble_particles
+        sub1.active = domain.use_spray_particles or domain.use_foam_particles or domain.use_bubble_particles
         sub2 = sub1.column(align=True)
         sub2.label(text="Particle Sampling:")
         sub2.prop(domain, "sndparticle_k_wc", text="Wave Crests")
@@ -672,7 +675,7 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
                 sub3.operator("manta.bake_mesh_low", text="Bake Mesh Low")
 
             sub4 = col.column()
-            sub4.enabled = domain.cache_baked_low and not domain.cache_baking_particles_low and (domain.use_drop_particles or domain.use_bubble_particles or domain.use_floater_particles or domain.use_tracer_particles)
+            sub4.enabled = domain.cache_baked_low and not domain.cache_baking_particles_low and (domain.use_spray_particles or domain.use_bubble_particles or domain.use_foam_particles or domain.use_tracer_particles)
             if domain.cache_baked_particles_low is True:
                 sub4.operator("manta.free_particles_low", text="Free Particles Low")
             else:
@@ -697,7 +700,7 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
                 sub6.operator("manta.bake_mesh_high", text="Bake Mesh High")
 
             sub7 = col.column()
-            sub7.enabled = domain.cache_baked_low and domain.cache_baked_high and not domain.cache_baking_particles_high and (domain.use_drop_particles or domain.use_bubble_particles or domain.use_floater_particles or domain.use_tracer_particles)
+            sub7.enabled = domain.cache_baked_low and domain.cache_baked_high and not domain.cache_baking_particles_high and (domain.use_spray_particles or domain.use_bubble_particles or domain.use_foam_particles or domain.use_tracer_particles)
             if domain.cache_baked_particles_high is True:
                 sub7.operator("manta.free_particles_high", text="Free Particles High")
             else:
@@ -842,7 +845,7 @@ class PHYSICS_PT_liquid_display_settings(PhysicButtonsPanel, Panel):
         layout.label()
         split = layout.split()
         first = split.column()
-        first.enabled = domain.use_color_ramp 
+        first.enabled = domain.use_color_ramp and False #disable for now, until velocity components (x_vel, y_vel and z_vel) are saved and loaded or removed
         first.prop(domain, "draw_velocity")
         second = split.column()
         second.enabled = domain.draw_velocity and domain.use_color_ramp

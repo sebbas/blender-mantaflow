@@ -200,23 +200,24 @@ static void rna_Smoke_flip_parts_set(struct PointerRNA *ptr, int value)
 	rna_Smoke_draw_type_update(NULL, NULL, ptr);
 }
 
-static void rna_Smoke_drop_parts_set(struct PointerRNA *ptr, int value)
+static void rna_Smoke_spray_parts_set(struct PointerRNA *ptr, int value)
 {
+	// TODO (Georg Kohl) finish combined export
 	Object *ob = (Object *)ptr->id.data;
 	SmokeModifierData *smd;
 	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
-	bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_DROP);
+	bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_SPRAY);
 
 	if (value) {
 		if (ob->type == OB_MESH && !exists)
-			rna_Smoke_parts_create(ptr, "SprayParticleSettings", "Spray Particles", "Spray Particle System", PART_MANTA_DROP);
-		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_DROP;
+			rna_Smoke_parts_create(ptr, "SprayParticleSettings", "Spray Particles", "Spray Particle System", PART_MANTA_SPRAY);
+		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_SPRAY;
 	}
 	else {
-		rna_Smoke_parts_delete(ptr, PART_MANTA_DROP);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY);
 		rna_Smoke_resetCache(NULL, NULL, ptr);
 
-		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_DROP;
+		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_SPRAY;
 	}
 	rna_Smoke_draw_type_update(NULL, NULL, ptr);
 }
@@ -242,23 +243,23 @@ static void rna_Smoke_bubble_parts_set(struct PointerRNA *ptr, int value)
 	rna_Smoke_draw_type_update(NULL, NULL, ptr);
 }
 
-static void rna_Smoke_float_parts_set(struct PointerRNA *ptr, int value)
+static void rna_Smoke_foam_parts_set(struct PointerRNA *ptr, int value)
 {
 	Object *ob = (Object *)ptr->id.data;
 	SmokeModifierData *smd;
 	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
-	bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_FLOAT);
+	bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_FOAM);
 
 	if (value) {
 		if (ob->type == OB_MESH && !exists)
-		rna_Smoke_parts_create(ptr, "FoamParticleSettings", "Foam Particles", "Foam Particle System", PART_MANTA_FLOAT);
-		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_FLOAT;
+		rna_Smoke_parts_create(ptr, "FoamParticleSettings", "Foam Particles", "Foam Particle System", PART_MANTA_FOAM);
+		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_FOAM;
 	}
 	else {
-		rna_Smoke_parts_delete(ptr, PART_MANTA_FLOAT);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_FOAM);
 		rna_Smoke_resetCache(NULL, NULL, ptr);
 
-		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_FLOAT;
+		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_FOAM;
 	}
 	rna_Smoke_draw_type_update(NULL, NULL, ptr);
 }
@@ -973,6 +974,15 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 		{ 0, NULL, 0, NULL, NULL }
 	};
 
+	static const EnumPropertyItem sndparticle_combined_export_items[] = {
+		{ SNDPARTICLE_COMBINED_EXPORT_OFF, "OFF", 0, "Off", "Create a seperate particle system for every secondary particle type" },
+		{ SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM, "SPRAY & FOAM", 0, "Spray & Foam", "Spray and foam particles are saved in the same particle system" },
+		{ SNDPARTICLE_COMBINED_EXPORT_SPRAY_BUBBLE, "SPRAY & BUBBLES", 0, "Spray & Bubbles", "Spray and bubble particles are saved in the same particle system" },
+		{ SNDPARTICLE_COMBINED_EXPORT_FOAM_BUBBLE, "FOAM & BUBBLES", 0, "Foam & Bubbles", "Foam and bubbles particles are saved in the same particle system" },
+		{ SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM_BUBBLE, "SPRAY & FOAM & BUBBLES", 0, "Spray & Foam & Bubbles", "Create one particle system that contains all three secondary particle types" },
+		{ 0, NULL, 0, NULL, NULL }
+	};
+
 	srna = RNA_def_struct(brna, "SmokeDomainSettings", NULL);
 	RNA_def_struct_ui_text(srna, "Domain Settings", "Smoke domain settings");
 	RNA_def_struct_sdna(srna, "SmokeDomainSettings");
@@ -1447,9 +1457,9 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
-	prop = RNA_def_property(srna, "use_drop_particles", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", MOD_SMOKE_PARTICLE_DROP);
-	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_drop_parts_set");
+	prop = RNA_def_property(srna, "use_spray_particles", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", MOD_SMOKE_PARTICLE_SPRAY);
+	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_spray_parts_set");
 	RNA_def_property_ui_text(prop, "Spray", "Create spray particle system");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
@@ -1461,9 +1471,9 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
-	prop = RNA_def_property(srna, "use_floater_particles", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", MOD_SMOKE_PARTICLE_FLOAT);
-	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_float_parts_set");
+	prop = RNA_def_property(srna, "use_foam_particles", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", MOD_SMOKE_PARTICLE_FOAM);
+	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_foam_parts_set");
 	RNA_def_property_ui_text(prop, "Foam", "Create foam particle system");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
@@ -1662,6 +1672,12 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Potential Quality", "How accurately are the potential grids computed");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
+	prop = RNA_def_property(srna, "sndparticle_combined_export", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "sndparticle_combined_export");
+	RNA_def_property_enum_items(prop, sndparticle_combined_export_items);
+	RNA_def_property_ui_text(prop, "Combined Export", "Determines which particle systems are created from secondary particles");
+	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
+
 	prop = RNA_def_property(srna, "guiding_alpha", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "guiding_alpha");
 	RNA_def_property_range(prop, 1.0, 100.0);
@@ -1713,7 +1729,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "display_thickness", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "display_thickness");
 	RNA_def_property_range(prop, 0.001, 1000.0);
-	RNA_def_property_ui_range(prop, 0.1, 100.0, 0.1, 3);
+	RNA_def_property_ui_range(prop, 0.01, 100.0, 0.1, 3);
 	RNA_def_property_ui_text(prop, "Thickness", "Thickness of smoke drawing in the viewport");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
 

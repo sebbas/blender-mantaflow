@@ -538,7 +538,7 @@ void averagedParticleLevelset(const BasicParticleSystem& parts, const ParticleIn
 
 
 
-struct correctLevelset : public KernelBase { correctLevelset(LevelsetGrid& phi, const Grid<Vec3>& pAcc, const Grid<Real>& rAcc, const Real radius, const Real t_low, const Real t_high) :  KernelBase(&phi,1) ,phi(phi),pAcc(pAcc),rAcc(rAcc),radius(radius),t_low(t_low),t_high(t_high)   { runMessage(); run(); }  inline void op(int i, int j, int k, LevelsetGrid& phi, const Grid<Vec3>& pAcc, const Grid<Real>& rAcc, const Real radius, const Real t_low, const Real t_high )  {
+ struct correctLevelset : public KernelBase { correctLevelset(LevelsetGrid& phi, const Grid<Vec3>& pAcc, const Grid<Real>& rAcc, const Real radius, const Real t_low, const Real t_high) :  KernelBase(&phi,1) ,phi(phi),pAcc(pAcc),rAcc(rAcc),radius(radius),t_low(t_low),t_high(t_high)   { runMessage(); run(); }  inline void op(int i, int j, int k, LevelsetGrid& phi, const Grid<Vec3>& pAcc, const Grid<Real>& rAcc, const Real radius, const Real t_low, const Real t_high )  {
 	if (rAcc(i, j, k) <= VECTOR_EPSILON) return; //outside nothing happens
 	Real x = pAcc(i, j, k).x;
 	
@@ -565,7 +565,6 @@ struct correctLevelset : public KernelBase { correctLevelset(LevelsetGrid& phi, 
 		Real t = (t_high - maxEV) / (t_high - t_low);
 		correction = t*t*t - 3 * t*t + 3 * t;
 	}
-
 	correction = (correction < 0) ? 0 : correction; // enforce correction factor to [0,1] (not explicitly in paper)
 
 	const Vec3 gridPos = Vec3(i, j, k) + Vec3(0.5); // shifted by half cell
@@ -582,6 +581,7 @@ struct correctLevelset : public KernelBase { correctLevelset(LevelsetGrid& phi, 
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,phi,pAcc,rAcc,radius,t_low,t_high);  } }  } LevelsetGrid& phi; const Grid<Vec3>& pAcc; const Grid<Real>& rAcc; const Real radius; const Real t_low; const Real t_high;   };
 #line 463 "plugin/flip.cpp"
+
 
 
 // Approach from "A unified particle model for fluid-solid interactions" by Solenthaler et al. in 2007

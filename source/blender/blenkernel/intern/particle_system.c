@@ -554,10 +554,14 @@ static void initialize_particle_texture(ParticleSimulationData *sim, ParticleDat
 	case PART_FLUID:
 		break;
 	case PART_MANTA_FLIP:
-	case PART_MANTA_DROP:
+	case PART_MANTA_SPRAY:
 	case PART_MANTA_BUBBLE:
-	case PART_MANTA_FLOAT:
+	case PART_MANTA_FOAM:
 	case PART_MANTA_TRACER:
+	case PART_MANTA_SPRAY_FOAM:
+	case PART_MANTA_SPRAY_BUBBLE:
+	case PART_MANTA_FOAM_BUBBLE:
+	case PART_MANTA_SPRAY_FOAM_BUBBLE:
 		break;
 	}
 }
@@ -3839,12 +3843,17 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 			// Helper for scaling
 			float min[3], max[3], size[3], cell_size_scaled[3], max_size;
 
+			char comExp = sds->sndparticle_combined_export;
 			// Sanity check: parts also enabled in fluid domain?
 			if ((part->type == PART_MANTA_FLIP && (sds->particle_type & MOD_SMOKE_PARTICLE_FLIP)==0) ||
-				(part->type == PART_MANTA_DROP && (sds->particle_type & MOD_SMOKE_PARTICLE_DROP)==0) ||
-				(part->type == PART_MANTA_BUBBLE && (sds->particle_type & MOD_SMOKE_PARTICLE_BUBBLE)==0) ||
-				(part->type == PART_MANTA_FLOAT && (sds->particle_type & MOD_SMOKE_PARTICLE_FLOAT)==0) ||
-				(part->type == PART_MANTA_TRACER && (sds->particle_type & MOD_SMOKE_PARTICLE_TRACER)==0) )
+				(part->type == PART_MANTA_SPRAY		&& (sds->particle_type & MOD_SMOKE_PARTICLE_SPRAY)==0	&& !(comExp == SNDPARTICLE_COMBINED_EXPORT_OFF)) ||
+				(part->type == PART_MANTA_BUBBLE	&& (sds->particle_type & MOD_SMOKE_PARTICLE_BUBBLE)==0	&& !(comExp == SNDPARTICLE_COMBINED_EXPORT_OFF)) ||
+				(part->type == PART_MANTA_FOAM		&& (sds->particle_type & MOD_SMOKE_PARTICLE_FOAM)==0	&& !(comExp == SNDPARTICLE_COMBINED_EXPORT_OFF)) ||
+				(part->type == PART_MANTA_TRACER	&& (sds->particle_type & MOD_SMOKE_PARTICLE_TRACER)==0	&& !(comExp == SNDPARTICLE_COMBINED_EXPORT_OFF)) ||
+				(part->type == PART_MANTA_SPRAY_FOAM		&& !(comExp == SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM)) ||
+				(part->type == PART_MANTA_SPRAY_BUBBLE		&& !(comExp == SNDPARTICLE_COMBINED_EXPORT_SPRAY_BUBBLE)) ||
+				(part->type == PART_MANTA_FOAM_BUBBLE		&& !(comExp == SNDPARTICLE_COMBINED_EXPORT_FOAM_BUBBLE)) || 
+				(part->type == PART_MANTA_SPRAY_FOAM_BUBBLE && !(comExp == SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM_BUBBLE)) )
 			{
 				BLI_snprintf(debugStrBuffer, sizeof(debugStrBuffer), "particles_manta_step::error - found particle system that is not enabled in fluid domain\n");
 				return;
@@ -3854,16 +3863,23 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 			if (part->type == PART_MANTA_FLIP) {
 				tottypepart = totpart = liquid_get_num_flip_particles(sds->fluid);
 			}
-			if (part->type == PART_MANTA_DROP || part->type == PART_MANTA_BUBBLE || part->type == PART_MANTA_FLOAT || part->type == PART_MANTA_TRACER) {
+			if (part->type == PART_MANTA_SPRAY || part->type == PART_MANTA_BUBBLE || part->type == PART_MANTA_FOAM || part->type == PART_MANTA_TRACER
+				|| part->type == PART_MANTA_SPRAY_FOAM || part->type == PART_MANTA_SPRAY_BUBBLE || part->type == PART_MANTA_FOAM_BUBBLE || part->type == PART_MANTA_SPRAY_FOAM_BUBBLE) {
 				totpart = liquid_get_num_snd_particles(sds->fluid);
 
 				// tottypepart is the amount of particles of a snd particle type
 				for (p=0; p<totpart; p++) {
 					flagActivePart = liquid_get_snd_particle_flag_at(sds->fluid, p);
-					if ((part->type == PART_MANTA_DROP) && (flagActivePart & PDROPLET)) tottypepart++;
-					if ((part->type == PART_MANTA_BUBBLE) && (flagActivePart & PBUBBLE)) tottypepart++;
-					if ((part->type == PART_MANTA_FLOAT) && (flagActivePart & PFLOATER)) tottypepart++;
-					if ((part->type == PART_MANTA_TRACER) && (flagActivePart & PTRACER)) tottypepart++;
+					if ((part->type == PART_MANTA_SPRAY)	&& (flagActivePart & PSPRAY)	&& comExp == SNDPARTICLE_COMBINED_EXPORT_OFF) tottypepart++;
+					if ((part->type == PART_MANTA_BUBBLE)	&& (flagActivePart & PBUBBLE)	&& comExp == SNDPARTICLE_COMBINED_EXPORT_OFF) tottypepart++;
+					if ((part->type == PART_MANTA_FOAM)		&& (flagActivePart & PFOAM)		&& comExp == SNDPARTICLE_COMBINED_EXPORT_OFF) tottypepart++;
+					if ((part->type == PART_MANTA_TRACER)	&& (flagActivePart & PTRACER)	&& comExp == SNDPARTICLE_COMBINED_EXPORT_OFF) tottypepart++;
+
+					if ((part->type == PART_MANTA_SPRAY_FOAM)	&& ((flagActivePart & PSPRAY) || (flagActivePart & PFOAM))	 && comExp == SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM) tottypepart++;
+					if ((part->type == PART_MANTA_SPRAY_BUBBLE)	&& ((flagActivePart & PSPRAY) || (flagActivePart & PBUBBLE)) && comExp == SNDPARTICLE_COMBINED_EXPORT_SPRAY_BUBBLE) tottypepart++;
+					if ((part->type == PART_MANTA_FOAM_BUBBLE)	&& ((flagActivePart & PFOAM)  || (flagActivePart & PBUBBLE)) && comExp == SNDPARTICLE_COMBINED_EXPORT_FOAM_BUBBLE) tottypepart++;
+
+					if ((part->type == PART_MANTA_SPRAY_FOAM_BUBBLE) && ((flagActivePart & PSPRAY) || (flagActivePart & PFOAM) || (flagActivePart & PBUBBLE)) && comExp == SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM_BUBBLE) tottypepart++;
 				}
 			}
 
@@ -3885,7 +3901,8 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 				if (part->type == PART_MANTA_FLIP) {
 					flagActivePart = liquid_get_flip_particle_flag_at(sds->fluid, p);
 				}
-				else if (part->type == PART_MANTA_DROP || part->type == PART_MANTA_BUBBLE || part->type == PART_MANTA_FLOAT || part->type == PART_MANTA_TRACER) {
+				else if (part->type == PART_MANTA_SPRAY || part->type == PART_MANTA_BUBBLE || part->type == PART_MANTA_FOAM || part->type == PART_MANTA_TRACER
+					|| part->type == PART_MANTA_SPRAY_FOAM || part->type == PART_MANTA_SPRAY_BUBBLE || part->type == PART_MANTA_FOAM_BUBBLE || part->type == PART_MANTA_SPRAY_FOAM_BUBBLE) {
 					flagActivePart = liquid_get_snd_particle_flag_at(sds->fluid, p);
 				}
 				else {
@@ -3895,10 +3912,14 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 				// printf("part->type: %d, flagActivePart: %d\n", part->type, flagActivePart);
 
 				// check if type of particle type matches current particle system type (only important for snd particles)
-				if ((part->type == PART_MANTA_DROP) && (flagActivePart & PDROPLET)==0) continue;
+				if ((part->type == PART_MANTA_SPRAY) && (flagActivePart & PSPRAY)==0) continue;
 				if ((part->type == PART_MANTA_BUBBLE) && (flagActivePart & PBUBBLE)==0) continue;
-				if ((part->type == PART_MANTA_FLOAT) && (flagActivePart & PFLOATER)==0) continue;
+				if ((part->type == PART_MANTA_FOAM) && (flagActivePart & PFOAM)==0) continue;
 				if ((part->type == PART_MANTA_TRACER) && (flagActivePart & PTRACER)==0) continue;
+				if ((part->type == PART_MANTA_SPRAY_FOAM && (flagActivePart & PSPRAY)==0) && (flagActivePart & PSPRAY)==0) continue;
+				if ((part->type == PART_MANTA_SPRAY_BUBBLE && (flagActivePart & PSPRAY)==0) && (flagActivePart & PBUBBLE)==0) continue;
+				if ((part->type == PART_MANTA_FOAM_BUBBLE && (flagActivePart & PFOAM)==0) && (flagActivePart & PBUBBLE)==0) continue;
+				if ((part->type == PART_MANTA_SPRAY_FOAM_BUBBLE && (flagActivePart & PSPRAY)==0) && (flagActivePart & PSPRAY)==0 && (flagActivePart & PSPRAY) == 0) continue;
 
 				// printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
 
@@ -3914,7 +3935,8 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 					velY = liquid_get_flip_particle_velocity_y_at(sds->fluid, p);
 					velZ = liquid_get_flip_particle_velocity_z_at(sds->fluid, p);
 				}
-				else if (part->type == PART_MANTA_DROP || part->type == PART_MANTA_BUBBLE || part->type == PART_MANTA_FLOAT || part->type == PART_MANTA_TRACER) {
+				else if (part->type == PART_MANTA_SPRAY || part->type == PART_MANTA_BUBBLE || part->type == PART_MANTA_FOAM || part->type == PART_MANTA_TRACER 
+					|| part->type == PART_MANTA_SPRAY_FOAM || part->type == PART_MANTA_SPRAY_BUBBLE || part->type == PART_MANTA_FOAM_BUBBLE || part->type == PART_MANTA_SPRAY_FOAM_BUBBLE) {
 					posX = liquid_get_snd_particle_position_x_at(sds->fluid, p);
 					posY = liquid_get_snd_particle_position_y_at(sds->fluid, p);
 					posZ = liquid_get_snd_particle_position_z_at(sds->fluid, p);
@@ -4502,10 +4524,14 @@ void particle_system_update(Scene *scene, Object *ob, ParticleSystem *psys, cons
 			break;
 		}
 		case PART_MANTA_FLIP:
-		case PART_MANTA_DROP:
+		case PART_MANTA_SPRAY:
 		case PART_MANTA_BUBBLE:
-		case PART_MANTA_FLOAT:
+		case PART_MANTA_FOAM:
 		case PART_MANTA_TRACER:
+		case PART_MANTA_SPRAY_FOAM:
+		case PART_MANTA_SPRAY_BUBBLE:
+		case PART_MANTA_FOAM_BUBBLE:
+		case PART_MANTA_SPRAY_FOAM_BUBBLE:
 		{
 			particles_manta_step(&sim, (int)cfra, use_render_params);
 			break;

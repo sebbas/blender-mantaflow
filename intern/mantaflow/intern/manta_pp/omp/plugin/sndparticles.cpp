@@ -59,7 +59,7 @@ void adjustSndParts(BasicParticleSystem& parts, FlagGrid& flags, LevelsetGrid& p
 
 		// Try to save float / tracer particle by pushing it into the valid region
 		Real phiv = phi.getInterpolated( parts.getPos(idx) );
-		if (( parts.getStatus(idx) & ParticleBase::PFLOATER && (phiv > FLOAT_THRESH || phiv < -FLOAT_THRESH)) ||
+		if (( parts.getStatus(idx) & ParticleBase::PFOAM && (phiv > FLOAT_THRESH || phiv < -FLOAT_THRESH)) ||
 			( parts.getStatus(idx) & ParticleBase::PTRACER && phiv > 0. ))
 		{
 			Vec3 grad = getGradient( phi, p1i.x,p1i.y,p1i.z );
@@ -80,9 +80,9 @@ void adjustSndParts(BasicParticleSystem& parts, FlagGrid& flags, LevelsetGrid& p
 		Vec3i p2i = toVec3i(p2);
 
 		// Kill particles depending on type. Especially those that were not converted to other particle type
-		if ( parts.isDroplet(idx) && phiv < -DROP_THRESH ) { parts.kill(idx); continue; }
+		if ( parts.isSpray(idx) && phiv < -DROP_THRESH ) { parts.kill(idx); continue; }
 		if ( parts.isBubble(idx)  && phiv > 0. ) { parts.kill(idx); continue; }
-		if ( parts.isFloater(idx) && (phiv > FLOAT_THRESH || phiv < -FLOAT_THRESH)) { parts.kill(idx); continue; }
+		if ( parts.isFoam(idx) && (phiv > FLOAT_THRESH || phiv < -FLOAT_THRESH)) { parts.kill(idx); continue; }
 		if ( parts.isTracer(idx)  && phiv > 0. ) { parts.kill(idx); continue; }
 
 		// Kill particles depending on current age
@@ -95,9 +95,9 @@ void adjustSndParts(BasicParticleSystem& parts, FlagGrid& flags, LevelsetGrid& p
 		}
 
 		// Kill excess particles
-		if ( parts.isDroplet(idx) && numDroplet(p1i) > maxDroplet ) { parts.kill(idx); continue; } else { numDroplet(p1i) += 1; }
+		if ( parts.isSpray(idx) && numDroplet(p1i) > maxDroplet ) { parts.kill(idx); continue; } else { numDroplet(p1i) += 1; }
 		if ( parts.isBubble(idx)  && numBubble(p1i) > maxBubble ) { parts.kill(idx); continue; } else { numBubble(p1i) += 1; }
-		if ( parts.isFloater(idx) && numFloater(p1i) > maxFloater ) { parts.kill(idx); continue; } else { numFloater(p1i) += 1; }
+		if ( parts.isFoam(idx) && numFloater(p1i) > maxFloater ) { parts.kill(idx); continue; } else { numFloater(p1i) += 1; }
 		if ( parts.isTracer(idx)  && numTracer(p1i) > maxTracer ) { parts.kill(idx); continue; } else { numTracer(p1i) += 1; }
 	}
 	parts.doCompress();
@@ -123,7 +123,7 @@ void updateSndParts(LevelsetGrid& phi, FlagGrid& flags, MACGrid& vel, Vec3 gravi
 		if ((parts.getStatus(idx) & ParticleBase::PNEW)==0) {
 
 			// Update particle velocity
-			if (parts.isDroplet(idx)) {
+			if (parts.isSpray(idx)) {
 				partVel[idx] += grav;
 			}
 			else if (parts.isBubble(idx)) {
@@ -131,7 +131,7 @@ void updateSndParts(LevelsetGrid& phi, FlagGrid& flags, MACGrid& vel, Vec3 gravi
 				Vec3 randomVel = vel.getInterpolated( parts[idx].pos ) * mRand.getFloat(0.25, 0.5);
 				partVel[idx] += buoyancy + randomVel;
 			}
-			else if (parts.isFloater(idx) || parts.isTracer(idx)) {
+			else if (parts.isFoam(idx) || parts.isTracer(idx)) {
 				partVel[idx] = vel.getInterpolated( parts[idx].pos );
 			}
 
@@ -149,9 +149,9 @@ void updateSndParts(LevelsetGrid& phi, FlagGrid& flags, MACGrid& vel, Vec3 gravi
 
 			// Init particle life
 			if (partLife) {
-				if (parts.isDroplet(idx)) (*partLife)[idx] = lifeDroplet;
+				if (parts.isSpray(idx)) (*partLife)[idx] = lifeDroplet;
 				if (parts.isBubble(idx))  (*partLife)[idx] = lifeBubble;
-				if (parts.isFloater(idx)) (*partLife)[idx] = lifeFloater;
+				if (parts.isFoam(idx)) (*partLife)[idx] = lifeFloater;
 				if (parts.isTracer(idx))  (*partLife)[idx] = lifeTracer;
 			}
 			// Make sure "new" flag gets removed
@@ -170,11 +170,11 @@ void updateSndParts(LevelsetGrid& phi, FlagGrid& flags, MACGrid& vel, Vec3 gravi
 		Real phiv = phi.getInterpolated(pos);
 
 		// Convert particle type
-		if (parts.isDroplet(idx) && phiv < -DROP_THRESH) {
+		if (parts.isSpray(idx) && phiv < -DROP_THRESH) {
 			parts.setStatus(idx, ParticleBase::PNEW | ParticleBase::PBUBBLE);
 		}
 		else if (parts.isBubble(idx) && phiv > 0.) {
-			parts.setStatus(idx, ParticleBase::PNEW | ParticleBase::PFLOATER);
+			parts.setStatus(idx, ParticleBase::PNEW | ParticleBase::PFOAM);
 		}
 	}
 } static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "updateSndParts" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",0,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",1,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",2,&_lock); Vec3 gravity = _args.get<Vec3 >("gravity",3,&_lock); BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",4,&_lock); ParticleDataImpl<Vec3>& partVel = *_args.getPtr<ParticleDataImpl<Vec3> >("partVel",5,&_lock); ParticleDataImpl<Real>* partLife = _args.getPtrOpt<ParticleDataImpl<Real> >("partLife",6,NULL,&_lock); Real riseBubble = _args.getOpt<Real >("riseBubble",7,0.5,&_lock); Real lifeDroplet = _args.getOpt<Real >("lifeDroplet",8,30.0,&_lock); Real lifeBubble = _args.getOpt<Real >("lifeBubble",9,30.0,&_lock); Real lifeFloater = _args.getOpt<Real >("lifeFloater",10,30.0,&_lock); Real lifeTracer = _args.getOpt<Real >("lifeTracer",11,30.0,&_lock);   _retval = getPyNone(); updateSndParts(phi,flags,vel,gravity,parts,partVel,partLife,riseBubble,lifeDroplet,lifeBubble,lifeFloater,lifeTracer);  _args.check(); } pbFinalizePlugin(parent,"updateSndParts", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("updateSndParts",e.what()); return 0; } } static const Pb::Register _RP_updateSndParts ("","updateSndParts",_W_1);  extern "C" { void PbRegister_updateSndParts() { KEEP_UNUSED(_RP_updateSndParts); } } 
@@ -220,7 +220,7 @@ void sampleSndParts(LevelsetGrid& phi, LevelsetGrid& phiIn, FlagGrid& flags, MAC
 			// Only seed if random num exceeds given amount probability
 			if (mRand.getFloat(0., 1.) > probDroplet) continue;
 
-			if (type & ParticleBase::PDROPLET) {
+			if (type & ParticleBase::PSPRAY) {
 				// Only generate drop particles at surface
 				if ( phi(i,j,k) < -DROP_THRESH || phi(i,j,k) > 0. ) continue;
 
@@ -229,7 +229,7 @@ void sampleSndParts(LevelsetGrid& phi, LevelsetGrid& phiIn, FlagGrid& flags, MAC
 				Vec3 velC = vel.getCentered(i,j,k);
 				if ( dot( getNormalized(grad), getNormalized(velC) ) < 0.75) continue;
 
-				parts.addBuffered(pos + mRand.getVec3(), ParticleBase::PDROPLET);
+				parts.addBuffered(pos + mRand.getVec3(), ParticleBase::PSPRAY);
 			}
 		}
 
@@ -239,11 +239,11 @@ void sampleSndParts(LevelsetGrid& phi, LevelsetGrid& phiIn, FlagGrid& flags, MAC
 			// Only seed if random num exceeds given amount probability
 			if (mRand.getFloat(0., 1.) > probFloater) continue;
 
-			if (type & ParticleBase::PFLOATER) {
+			if (type & ParticleBase::PFOAM) {
 				// Only generate float particles at surface
 				if ( phiIn(i,j,k) < -FLOAT_THRESH || phiIn(i,j,k) > FLOAT_THRESH ) continue;
 
-				parts.addBuffered(pos + mRand.getVec3(), ParticleBase::PFLOATER);
+				parts.addBuffered(pos + mRand.getVec3(), ParticleBase::PFOAM);
 			}
 		}
 

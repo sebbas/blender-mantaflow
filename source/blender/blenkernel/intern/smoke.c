@@ -566,6 +566,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->sndparticle_boundary = SNDPARTICLE_BOUNDARY_DELETE;
 			smd->domain->sndparticle_potential_resolution = SNDPARTICLE_POTENTIAL_RESOLUTION_LOW;
 			smd->domain->sndparticle_potential_quality = SNDPARTICLE_POTENTIAL_QUALITY_HIGH;
+			smd->domain->sndparticle_combined_export = SNDPARTICLE_COMBINED_EXPORT_OFF;
 
 			/* guiding */
 			smd->domain->guiding_alpha = 2.0f;
@@ -727,6 +728,7 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->sndparticle_boundary = smd->domain->sndparticle_boundary;
 		tsmd->domain->sndparticle_potential_resolution = smd->domain->sndparticle_potential_resolution;
 		tsmd->domain->sndparticle_potential_quality = smd->domain->sndparticle_potential_quality;
+		tsmd->domain->sndparticle_combined_export = smd->domain->sndparticle_combined_export;
 
 		tsmd->domain->surface_tension = smd->domain->surface_tension;
 		tsmd->domain->viscosity_base = smd->domain->viscosity_base;
@@ -2520,7 +2522,7 @@ static void update_flowsflags(SmokeDomainSettings *sds, Object **flowobjs, int n
 		/* initialize all smoke with "active_color" */
 		smoke_ensure_colors(sds->fluid, sds->smd);
 	}
-	if (sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID && (sds->particle_type & MOD_SMOKE_PARTICLE_DROP || sds->particle_type & MOD_SMOKE_PARTICLE_FLOAT || sds->particle_type & MOD_SMOKE_PARTICLE_TRACER)) {
+	if (sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID && (sds->particle_type & MOD_SMOKE_PARTICLE_SPRAY || sds->particle_type & MOD_SMOKE_PARTICLE_FOAM || sds->particle_type & MOD_SMOKE_PARTICLE_TRACER)) {
 		fluid_ensure_sndparts(sds->fluid, sds->smd);
 	}
 	sds->active_fields = active_fields;
