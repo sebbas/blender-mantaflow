@@ -318,8 +318,8 @@ class QuickSmoke(Operator):
             )
 
     def execute(self, context):
-        if not bpy.app.build_options.mod_smoke:
-            self.report({'ERROR'}, "Built without Smoke modifier support")
+        if not bpy.app.build_options.manta:
+            self.report({'ERROR'}, "Built without Fluid Mantaflow modifier")
             return {'CANCELLED'}
 
         fake_context = context.copy()

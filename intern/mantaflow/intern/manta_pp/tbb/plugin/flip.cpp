@@ -471,8 +471,10 @@ void averagedParticleLevelset(const BasicParticleSystem& parts, const ParticleIn
 
 
 
- struct correctLevelset : public KernelBase { correctLevelset(LevelsetGrid& phi, Grid<Vec3>& pAcc, Grid<Real>& rAcc, Real t_low, Real t_high) :  KernelBase(&phi,1) ,phi(phi),pAcc(pAcc),rAcc(rAcc),t_low(t_low),t_high(t_high)   { runMessage(); run(); }  inline void op(int i, int j, int k, LevelsetGrid& phi, Grid<Vec3>& pAcc, Grid<Real>& rAcc, Real t_low, Real t_high ) const {
-	if (rAcc(i, j, k) <= FLT_EPSILON) return; //outside nothing happens
+
+
+struct correctLevelset : public KernelBase { correctLevelset(LevelsetGrid& phi, const Grid<Vec3>& pAcc, const Grid<Real>& rAcc, const Real radius, const Real t_low, const Real t_high) :  KernelBase(&phi,1) ,phi(phi),pAcc(pAcc),rAcc(rAcc),radius(radius),t_low(t_low),t_high(t_high)   { runMessage(); run(); }  inline void op(int i, int j, int k, LevelsetGrid& phi, const Grid<Vec3>& pAcc, const Grid<Real>& rAcc, const Real radius, const Real t_low, const Real t_high ) const {
+	if (rAcc(i, j, k) <= VECTOR_EPSILON) return; //outside nothing happens
 	Real x = pAcc(i, j, k).x;
 	
 	// create jacobian of pAcc via central differences
@@ -499,10 +501,14 @@ void averagedParticleLevelset(const BasicParticleSystem& parts, const ParticleIn
 		correction = t*t*t - 3 * t*t + 3 * t;
 	}
 
-	const Vec3 gridPos = Vec3(i, j, k) + Vec3(0.5); // shifted by half cell
-	phi(i, j, k) = fabs(norm(gridPos - pAcc(i, j, k))) - rAcc(i, j, k) * correction;
+	correction = (correction < 0) ? 0 : correction; // enforce correction factor to [0,1] (not explicitly in paper)
 
-}   inline LevelsetGrid& getArg0() { return phi; } typedef LevelsetGrid type0;inline Grid<Vec3>& getArg1() { return pAcc; } typedef Grid<Vec3> type1;inline Grid<Real>& getArg2() { return rAcc; } typedef Grid<Real> type2;inline Real& getArg3() { return t_low; } typedef Real type3;inline Real& getArg4() { return t_high; } typedef Real type4; void runMessage() { debMsg("Executing kernel correctLevelset ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=1; j<_maxY; j++) for (int i=1; i<_maxX; i++) op(i,j,k,phi,pAcc,rAcc,t_low,t_high); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=1; i<_maxX; i++) op(i,j,k,phi,pAcc,rAcc,t_low,t_high); }  } void run() {  if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(1, maxY), *this);  }  LevelsetGrid& phi; Grid<Vec3>& pAcc; Grid<Real>& rAcc; Real t_low; Real t_high;   };
+	const Vec3 gridPos = Vec3(i, j, k) + Vec3(0.5); // shifted by half cell
+	const Real correctedPhi = fabs(norm(gridPos - pAcc(i, j, k))) - rAcc(i, j, k) * correction;
+	phi(i, j, k) = (correctedPhi > radius) ? radius : correctedPhi; // adjust too high outside values when too few particles are
+																	// nearby to make smoothing possible (not in paper)
+}   inline LevelsetGrid& getArg0() { return phi; } typedef LevelsetGrid type0;inline const Grid<Vec3>& getArg1() { return pAcc; } typedef Grid<Vec3> type1;inline const Grid<Real>& getArg2() { return rAcc; } typedef Grid<Real> type2;inline const Real& getArg3() { return radius; } typedef Real type3;inline const Real& getArg4() { return t_low; } typedef Real type4;inline const Real& getArg5() { return t_high; } typedef Real type5; void runMessage() { debMsg("Executing kernel correctLevelset ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=1; j<_maxY; j++) for (int i=1; i<_maxX; i++) op(i,j,k,phi,pAcc,rAcc,radius,t_low,t_high); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=1; i<_maxX; i++) op(i,j,k,phi,pAcc,rAcc,radius,t_low,t_high); }  } void run() {  if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(1, maxY), *this);  }  LevelsetGrid& phi; const Grid<Vec3>& pAcc; const Grid<Real>& rAcc; const Real radius; const Real t_low; const Real t_high;   };
+
 
 // Approach from "A unified particle model for fluid-solid interactions" by Solenthaler et al. in 2007
 // that uses the eigenvalues of the jacobian of the center of mass around the current cell to correct the levelset.
@@ -513,17 +519,31 @@ void averagedParticleLevelset(const BasicParticleSystem& parts, const ParticleIn
 
 
 
-void improvedAveragedParticleLevelset(const BasicParticleSystem& parts, const ParticleIndexSystem& indexSys, const FlagGrid& flags, const Grid<int>& index, LevelsetGrid& phi, const Real radiusFactor = 1., Real t_low = 0.4, Real t_high = 3.5, const ParticleDataImpl<int>* ptype = NULL, const int exclude = 0) {
+
+void improvedAveragedParticleLevelset(const BasicParticleSystem& parts, const ParticleIndexSystem& indexSys, const FlagGrid& flags, const Grid<int>& index, LevelsetGrid& phi, const Real radiusFactor = 1., const int smoothen = 1,const int smoothenNeg = 1, const Real t_low = 0.4, const Real t_high = 3.5, const ParticleDataImpl<int>* ptype = NULL, const int exclude = 0) {
 	// create temporary grids to store values from levelset weight computation
 	Grid<Vec3> save_pAcc(flags.getParent());
 	Grid<Real> save_rAcc(flags.getParent());
 
 	const Real radius = 0.5 * calculateRadiusFactor(phi, radiusFactor); // use half a cell diagonal as base radius
 	ComputeAveragedLevelsetWeight(parts, index, indexSys, phi, radius, ptype, exclude, &save_pAcc, &save_rAcc);
-	correctLevelset(phi, save_pAcc, save_rAcc, t_low, t_high);
+	correctLevelset(phi, save_pAcc, save_rAcc, radius, t_low, t_high);
 
+	// post-process level-set
+	for (int i = 0; i<std::max(smoothen, smoothenNeg); ++i) {
+		LevelsetGrid tmp(flags.getParent());
+		if (i<smoothen) {
+			knSmoothGrid    <Real>(phi, tmp, 1. / (phi.is3D() ? 7. : 5.));
+			phi.swap(tmp);
+		}
+		if (i<smoothenNeg) {
+			knSmoothGridNeg <Real>(phi, tmp, 1. / (phi.is3D() ? 7. : 5.));
+			phi.swap(tmp);
+		}
+	}
 	phi.setBound(0.5, 0);
-} static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "improvedAveragedParticleLevelset" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); const ParticleIndexSystem& indexSys = *_args.getPtr<ParticleIndexSystem >("indexSys",1,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",2,&_lock); const Grid<int>& index = *_args.getPtr<Grid<int> >("index",3,&_lock); LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",4,&_lock); const Real radiusFactor = _args.getOpt<Real >("radiusFactor",5,1.,&_lock); Real t_low = _args.getOpt<Real >("t_low",6,0.4,&_lock); Real t_high = _args.getOpt<Real >("t_high",7,3.5,&_lock); const ParticleDataImpl<int>* ptype = _args.getPtrOpt<ParticleDataImpl<int> >("ptype",8,NULL,&_lock); const int exclude = _args.getOpt<int >("exclude",9,0,&_lock);   _retval = getPyNone(); improvedAveragedParticleLevelset(parts,indexSys,flags,index,phi,radiusFactor,t_low,t_high,ptype,exclude);  _args.check(); } pbFinalizePlugin(parent,"improvedAveragedParticleLevelset", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("improvedAveragedParticleLevelset",e.what()); return 0; } } static const Pb::Register _RP_improvedAveragedParticleLevelset ("","improvedAveragedParticleLevelset",_W_10);  extern "C" { void PbRegister_improvedAveragedParticleLevelset() { KEEP_UNUSED(_RP_improvedAveragedParticleLevelset); } } 
+} static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "improvedAveragedParticleLevelset" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const BasicParticleSystem& parts = *_args.getPtr<BasicParticleSystem >("parts",0,&_lock); const ParticleIndexSystem& indexSys = *_args.getPtr<ParticleIndexSystem >("indexSys",1,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",2,&_lock); const Grid<int>& index = *_args.getPtr<Grid<int> >("index",3,&_lock); LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",4,&_lock); const Real radiusFactor = _args.getOpt<Real >("radiusFactor",5,1.,&_lock); const int smoothen = _args.getOpt<int >("smoothen",6,1,&_lock); const int smoothenNeg = _args.getOpt<int >("smoothenNeg",7,1,&_lock); const Real t_low = _args.getOpt<Real >("t_low",8,0.4,&_lock); const Real t_high = _args.getOpt<Real >("t_high",9,3.5,&_lock); const ParticleDataImpl<int>* ptype = _args.getPtrOpt<ParticleDataImpl<int> >("ptype",10,NULL,&_lock); const int exclude = _args.getOpt<int >("exclude",11,0,&_lock);   _retval = getPyNone(); improvedAveragedParticleLevelset(parts,indexSys,flags,index,phi,radiusFactor,smoothen,smoothenNeg,t_low,t_high,ptype,exclude);  _args.check(); } pbFinalizePlugin(parent,"improvedAveragedParticleLevelset", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("improvedAveragedParticleLevelset",e.what()); return 0; } } static const Pb::Register _RP_improvedAveragedParticleLevelset ("","improvedAveragedParticleLevelset",_W_10);  extern "C" { void PbRegister_improvedAveragedParticleLevelset() { KEEP_UNUSED(_RP_improvedAveragedParticleLevelset); } } 
+
 
 
 

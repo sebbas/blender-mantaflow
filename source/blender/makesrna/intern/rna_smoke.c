@@ -522,7 +522,7 @@ static char *rna_SmokeCollSettings_path(PointerRNA *ptr)
 
 static int rna_SmokeModifier_grid_get_length(PointerRNA *ptr, int length[RNA_MAX_ARRAY_DIMENSION])
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
 	float *density = NULL;
 	int size = 0;
@@ -560,7 +560,7 @@ static int rna_SmokeModifier_color_grid_get_length(PointerRNA *ptr, int length[R
 
 static int rna_SmokeModifier_velocity_grid_get_length(PointerRNA *ptr, int length[RNA_MAX_ARRAY_DIMENSION])
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
 	float *vx = NULL;
 	float *vy = NULL;
@@ -587,7 +587,7 @@ static int rna_SmokeModifier_heat_grid_get_length(
         PointerRNA *ptr,
         int length[RNA_MAX_ARRAY_DIMENSION])
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
 	float *heat = NULL;
 	int size = 0;
@@ -608,7 +608,7 @@ static int rna_SmokeModifier_heat_grid_get_length(
 
 static void rna_SmokeModifier_density_grid_get(PointerRNA *ptr, float *values)
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
 	int length[RNA_MAX_ARRAY_DIMENSION];
 	int size = rna_SmokeModifier_grid_get_length(ptr, length);
@@ -631,7 +631,7 @@ static void rna_SmokeModifier_density_grid_get(PointerRNA *ptr, float *values)
 
 static void rna_SmokeModifier_velocity_grid_get(PointerRNA *ptr, float *values)
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
 	int length[RNA_MAX_ARRAY_DIMENSION];
 	int size = rna_SmokeModifier_velocity_grid_get_length(ptr, length);
@@ -658,7 +658,7 @@ static void rna_SmokeModifier_velocity_grid_get(PointerRNA *ptr, float *values)
 
 static void rna_SmokeModifier_color_grid_get(PointerRNA *ptr, float *values)
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
 
 	BLI_rw_mutex_lock(sds->fluid_mutex, THREAD_LOCK_READ);
@@ -684,7 +684,7 @@ static void rna_SmokeModifier_color_grid_get(PointerRNA *ptr, float *values)
 
 static void rna_SmokeModifier_flame_grid_get(PointerRNA *ptr, float *values)
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
 	int length[RNA_MAX_ARRAY_DIMENSION];
 	int size = rna_SmokeModifier_grid_get_length(ptr, length);
@@ -710,7 +710,7 @@ static void rna_SmokeModifier_flame_grid_get(PointerRNA *ptr, float *values)
 
 static void rna_SmokeModifier_heat_grid_get(PointerRNA *ptr, float *values)
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
 	int length[RNA_MAX_ARRAY_DIMENSION];
 	int size = rna_SmokeModifier_heat_grid_get_length(ptr, length);
@@ -738,7 +738,7 @@ static void rna_SmokeModifier_heat_grid_get(PointerRNA *ptr, float *values)
 
 static void rna_SmokeModifier_temperature_grid_get(PointerRNA *ptr, float *values)
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
 	int length[RNA_MAX_ARRAY_DIMENSION];
 	int size = rna_SmokeModifier_grid_get_length(ptr, length);
@@ -746,7 +746,7 @@ static void rna_SmokeModifier_temperature_grid_get(PointerRNA *ptr, float *value
 
 	BLI_rw_mutex_lock(sds->fluid_mutex, THREAD_LOCK_READ);
 
-	if (sds->flags & MOD_SMOKE_HIGHRES && sds->wt) {
+	if (sds->flags & MOD_SMOKE_HIGHRES && sds->fluid) {
 		flame = smoke_turbulence_get_flame(sds->fluid);
 	}
 	else {
@@ -1315,6 +1315,77 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_cachetype_volume_set", "rna_Smoke_cachetype_volume_itemf");
 	RNA_def_property_ui_text(prop, "File Format", "Select the file format to be used for caching volumetric data");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
+	prop = RNA_def_property(srna, "cache_frame_start", PROP_INT, PROP_TIME);
+	RNA_def_property_int_sdna(prop, NULL, "cache_frame_start");
+	RNA_def_property_range(prop, -MAXFRAME, MAXFRAME);
+	RNA_def_property_ui_range(prop, 1, MAXFRAME, 1, 1);
+	RNA_def_property_ui_text(prop, "Start", "Frame on which the simulation starts");
+
+	prop = RNA_def_property(srna, "cache_frame_end", PROP_INT, PROP_TIME);
+	RNA_def_property_int_sdna(prop, NULL, "cache_frame_end");
+	RNA_def_property_range(prop, 1, MAXFRAME);
+	RNA_def_property_ui_text(prop, "End", "Frame on which the simulation stops");
+
+	prop = RNA_def_property(srna, "cache_directory", PROP_STRING, PROP_FILEPATH);
+	RNA_def_property_string_sdna(prop, NULL, "cache_directory");
+	RNA_def_property_ui_text(prop, "Cache directory", "Directory that contains fluid cache files");
+
+	prop = RNA_def_property(srna, "cache_baking_geometry", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", FLUID_CACHE_BAKING_GEOMETRY);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
+	prop = RNA_def_property(srna, "cache_baked_geometry", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", FLUID_CACHE_BAKED_GEOMETRY);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
+	prop = RNA_def_property(srna, "cache_baking_low", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", FLUID_CACHE_BAKING_LOW);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
+	prop = RNA_def_property(srna, "cache_baked_low", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", FLUID_CACHE_BAKED_LOW);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
+	prop = RNA_def_property(srna, "cache_baking_mesh_low", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", FLUID_CACHE_BAKING_MESH_LOW);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
+	prop = RNA_def_property(srna, "cache_baked_mesh_low", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", FLUID_CACHE_BAKED_MESH_LOW);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
+	prop = RNA_def_property(srna, "cache_baking_high", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", FLUID_CACHE_BAKING_HIGH);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
+	prop = RNA_def_property(srna, "cache_baked_high", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", FLUID_CACHE_BAKED_HIGH);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
+	prop = RNA_def_property(srna, "cache_baking_mesh_high", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", FLUID_CACHE_BAKING_MESH_HIGH);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
+	prop = RNA_def_property(srna, "cache_baked_mesh_high", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", FLUID_CACHE_BAKED_MESH_HIGH);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
+	prop = RNA_def_property(srna, "cache_baking_particles_low", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", FLUID_CACHE_BAKING_PARTICLES_LOW);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
+	prop = RNA_def_property(srna, "cache_baked_particles_low", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", FLUID_CACHE_BAKED_PARTICLES_LOW);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
+	prop = RNA_def_property(srna, "cache_baking_particles_high", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", FLUID_CACHE_BAKING_PARTICLES_HIGH);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
+	prop = RNA_def_property(srna, "cache_baked_particles_high", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", FLUID_CACHE_BAKED_PARTICLES_HIGH);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
 
 	/* mantaflow variables */
 	prop = RNA_def_property(srna, "manta_filepath", PROP_STRING, PROP_FILEPATH);

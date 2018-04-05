@@ -76,7 +76,7 @@
 #endif
 
 /* both in intern */
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 #ifdef WITH_MANTA
 #	include "manta_fluid_API.h"
 #endif
@@ -555,7 +555,7 @@ static void ptcache_cloth_error(void *cloth_v, const char *message)
 	modifier_setError(&clmd->modifier, "%s", message);
 }
 
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 /* Smoke functions */
 static int  ptcache_smoke_totpoint(void *smoke_v, int UNUSED(cfra))
 {
@@ -598,7 +598,7 @@ static int ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 	
 	if (sds->fluid) {
 		size_t res = sds->res[0]*sds->res[1]*sds->res[2];
-		float dt, dx, *dens, *react, *fuel, *flame, *heat, *vx, *vy, *vz, *r, *g, *b, *phi, *pp, *pvel, *ppSnd, *pvelSnd, *plifeSnd;
+		float dt, dx, *dens, *react, *fuel, *flame, *heat, *vx, *vy, *vz, *r, *g, *b, *phi, *pp, *pvel, *ppSnd, *pvelSnd, *plifeSnd, *shadow;
 		int *obstacles, numParts = 0, numPartsSnd = 0;
 		unsigned int in_len = sizeof(float)*(unsigned int)res;
 		unsigned char *out = (unsigned char *)MEM_callocN(LZO_OUT_LEN(in_len) * 4, "pointcache_lzo_buffer");
@@ -606,11 +606,11 @@ static int ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 		int mode=1;		// light
 		if (sds->cache_comp == SM_CACHE_HEAVY) mode=2;	// heavy
 
-		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles);
+		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles, &shadow);
 		liquid_export(sds->fluid, &phi, &pp, &pvel, &ppSnd, &pvelSnd, &plifeSnd);
 
 		if (dens) {
-			ptcache_file_compressed_write(pf, (unsigned char *)sds->shadow, in_len, out, mode);
+			ptcache_file_compressed_write(pf, (unsigned char *)shadow, in_len, out, mode);
 			ptcache_file_compressed_write(pf, (unsigned char *)dens, in_len, out, mode);
 		}
 		if (heat && fluid_fields & SM_ACTIVE_HEAT) {
@@ -740,7 +740,7 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 	if (sds->fluid) {
 		const size_t res = sds->res[0] * sds->res[1] * sds->res[2];
 		const unsigned int out_len = (unsigned int)res * sizeof(float);
-		float dt, dx, *dens, *heat, *vx, *vy, *vz;
+		float dt, dx, *dens, *heat, *vx, *vy, *vz, *shadow;
 		int *obstacles;
 		float *tmp_array = MEM_callocN(out_len, "Smoke old cache tmp");
 
@@ -752,9 +752,9 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 		sds->active_color[2] = 0.7f;
 		
 		// TODO (sebbas): add support for liquid caching
-		smoke_export(sds->fluid, &dt, &dx, &dens, NULL, NULL, NULL, &heat, &vx, &vy, &vz, NULL, NULL, NULL, &obstacles);
+		smoke_export(sds->fluid, &dt, &dx, &dens, NULL, NULL, NULL, &heat, &vx, &vy, &vz, NULL, NULL, NULL, &obstacles, &shadow);
 
-		ptcache_file_compressed_read(pf, (unsigned char *)sds->shadow, out_len);
+		ptcache_file_compressed_read(pf, (unsigned char *)shadow, out_len);
 		ptcache_file_compressed_read(pf, (unsigned char*)dens, out_len);
 		ptcache_file_compressed_read(pf, (unsigned char*)tmp_array, out_len);
 
@@ -866,22 +866,22 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 		VECCOPY(sds->res, ch_res);
 		sds->total_cells = ch_res[0]*ch_res[1]*ch_res[2];
 		if (sds->flags & MOD_SMOKE_HIGHRES) {
-			smoke_reallocate_highres_fluid(sds, ch_dx, ch_res, 1);
+			smoke_reallocate_highres_fluid(sds, ch_dx, ch_res);
 		}
 	}
 	
 	if (sds->fluid) {
 		size_t res = sds->res[0]*sds->res[1]*sds->res[2];
-		float dt, dx, *dens, *react, *fuel, *flame, *heat, *vx, *vy, *vz, *r, *g, *b, *phi, *pp, *pvel, *ppSnd, *pvelSnd, *plifeSnd;
+		float dt, dx, *dens, *react, *fuel, *flame, *heat, *vx, *vy, *vz, *r, *g, *b, *phi, *pp, *pvel, *ppSnd, *pvelSnd, *plifeSnd, *shadow;
 		int *obstacles, numParts = 0, numPartsSnd = 0;
 		unsigned int out_len = (unsigned int)res * sizeof(float);
 		unsigned char *buffer;
 
-		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles);
+		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles, &shadow);
 		liquid_export(sds->fluid, &phi, &pp, &pvel, &ppSnd, &pvelSnd, &plifeSnd);
 
 		if (dens) {
-			ptcache_file_compressed_read(pf, (unsigned char *)sds->shadow, out_len);
+			ptcache_file_compressed_read(pf, (unsigned char *)shadow, out_len);
 			ptcache_file_compressed_read(pf, (unsigned char *)dens, out_len);
 		}
 		if (heat && cache_fields & SM_ACTIVE_HEAT) {
@@ -1093,10 +1093,10 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
 
 	if (sds->fluid) {
 		struct OpenVDBFloatGrid *density_grid;
-		float dt, dx, *dens, *react, *fuel, *flame, *heat, *vx, *vy, *vz, *r, *g, *b;
+		float dt, dx, *dens, *react, *fuel, *flame, *heat, *vx, *vy, *vz, *r, *g, *b, *shadow;
 		int *obstacles;
 
-		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles);
+		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles, &shadow);
 
 		OpenVDBWriter_add_meta_fl(writer, "blender/smoke/dx", dx);
 		OpenVDBWriter_add_meta_fl(writer, "blender/smoke/dt", dt);
@@ -1105,7 +1105,7 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
 		density_grid = OpenVDB_export_grid_fl(writer, name, dens, sds->res, sds->fluidmat, NULL);
 		clip_grid = (sds->flags & MOD_SMOKE_HIGHRES) ? clip_grid : density_grid;
 
-		OpenVDB_export_grid_fl(writer, "shadow", sds->shadow, sds->res, sds->fluidmat, NULL);
+		OpenVDB_export_grid_fl(writer, "shadow", shadow, sds->res, sds->fluidmat, NULL);
 
 		if (heat && fluid_fields & SM_ACTIVE_HEAT) {
 			OpenVDB_export_grid_fl(writer, "heat", heat, sds->res, sds->fluidmat, clip_grid);
@@ -1194,19 +1194,19 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 		sds->total_cells = cache_res[0] * cache_res[1] * cache_res[2];
 
 		if (sds->flags & MOD_SMOKE_HIGHRES) {
-			smoke_reallocate_highres_fluid(sds, cache_dx, cache_res, 1);
+			smoke_reallocate_highres_fluid(sds, cache_dx, cache_res);
 		}
 	}
 
 	if (sds->fluid) {
-		float dt, dx, *dens, *react, *fuel, *flame, *heat, *vx, *vy, *vz, *r, *g, *b;
+		float dt, dx, *dens, *react, *fuel, *flame, *heat, *vx, *vy, *vz, *r, *g, *b, *shadow;
 		int *obstacles;
 
-		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles);
+		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles, &shadow);
 
 		OpenVDBReader_get_meta_fl(reader, "blender/smoke/dt", &dt);
 
-		OpenVDB_import_grid_fl(reader, "shadow", &sds->shadow, sds->res);
+		OpenVDB_import_grid_fl(reader, "shadow", &shadow, sds->res);
 
 		const char *name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "density" : "density low";
 		OpenVDB_import_grid_fl(reader, name, &dens, sds->res);
@@ -1292,40 +1292,7 @@ static int ptcache_mesh_read(void *smoke_v, char *filename)
 	return 0;
 }
 
-//static int ptcache_uni_read(void *smoke_v, char *filename, char *pathname, bool load_liquid_data)
-//{
-//	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
-//	int i;
-//
-//	if (!smd) {
-//		return 0;
-//	}
-//
-//	SmokeDomainSettings *sds = smd->domain;
-//	if (!(sds->flags & MOD_SMOKE_USE_VOLUME_CACHE)) {
-//		return 0;
-//	}
-//
-//	if (sds->fluid) {
-//		/* Mantaflow internal data loading */
-////		if (load_liquid_data) {
-////			liquid_load_data(sds->fluid, pathname);
-////		}
-//
-//		/* Actual particle loading */
-//		liquid_update_particle_data(sds->fluid, filename);
-//
-//		i = strlen(filename);
-//		if (i > 4) filename[i-4] = '\0';	// strip .uni extension
-//		strcat(filename, "_pVel.uni");		// add particle extension
-//		liquid_update_particle_data(sds->fluid, filename);
-//
-//		return 1;
-//	}
-//	return 0;
-//}
-
-static int ptcache_mesh_write(void *smoke_v, char *filename)
+static int ptcache_mesh_write(void *smoke_v, char *filename, int cfra)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
 	int i;
@@ -1344,7 +1311,7 @@ static int ptcache_mesh_write(void *smoke_v, char *filename)
 	bool high_res_view = sds->viewport_display_mode == SM_VIEWPORT_FINAL;
 
 	if (sds->fluid) {
-		liquid_save_mesh(sds->fluid, filename);
+		liquid_save_mesh(sds->fluid, filename, cfra);
 		if (high_res) {
 			strcpy(filenameTmp, filename);			// copy name, original file name is needed later
 			i = strlen(filenameTmp);
@@ -1366,53 +1333,16 @@ static int ptcache_mesh_write(void *smoke_v, char *filename)
 	return 0;
 }
 
-//static int ptcache_uni_write(void *smoke_v, char *filename, char* pathname, bool save_liquid_data)
-//{
-//	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
-//	int i;
-//	char filenameTmp[256];
-//
-//	if (!smd) {
-//		return 0;
-//	}
-//
-//	SmokeDomainSettings *sds = smd->domain;
-//	if (!(sds->flags & MOD_SMOKE_USE_VOLUME_CACHE)) {
-//		return 0;
-//	}
-//
-//	if (sds->fluid) {
-//		/* Mantaflow internal data saving */
-////		if (save_liquid_data) {
-////			liquid_save_data(sds->fluid, pathname);
-////		}
-//
-//		/* Actual particle saving */
-//		liquid_save_particles(sds->fluid, filename);
-//
-//		strcpy(filenameTmp, filename);			// copy name, original file name is needed later
-//		i = strlen(filenameTmp);
-//		if (i > 4) filenameTmp[i-4] = '\0';		// strip .uni extension
-//		strcat(filenameTmp, "_pVel.uni");		// add particle velocity extension
-//		liquid_save_particle_velocities(sds->fluid, filenameTmp);
-//
-//		/* Update particles for instant replay functionality */
-//		liquid_update_particle_data(sds->fluid, filename);
-//		liquid_update_particle_data(sds->fluid, filenameTmp);
-//		return 1;
-//	}
-//	return 0;
-//}
 #endif // WITH_MANTA
 
-#else // WITH_SMOKE
+#else // WITH_MANTA
 static int  ptcache_smoke_totpoint(void *UNUSED(smoke_v), int UNUSED(cfra)) { return 0; }
 static void ptcache_smoke_error(void *UNUSED(smoke_v), const char *UNUSED(message)) { }
 static int  ptcache_smoke_read(PTCacheFile *UNUSED(pf), void *UNUSED(smoke_v)) { return 0; }
 static int  ptcache_smoke_write(PTCacheFile *UNUSED(pf), void *UNUSED(smoke_v)) { return 0; }
-#endif // WITH_SMOKE
+#endif // WITH_MANTA
 
-#if !defined(WITH_SMOKE) || !defined(WITH_OPENVDB)
+#if !defined(WITH_MANTA) || !defined(WITH_OPENVDB)
 static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke_v)
 {
 	UNUSED_VARS(writer, smoke_v);
@@ -1699,9 +1629,6 @@ void BKE_ptcache_id_from_particles(PTCacheID *pid, Object *ob, ParticleSystem *p
 	pid->write_mesh_stream		= NULL;
 	pid->read_mesh_stream		= NULL;
 
-	pid->write_uni_stream		= NULL;
-	pid->read_uni_stream		= NULL;
-
 	pid->write_extra_data		= NULL;
 	pid->read_extra_data		= NULL;
 	pid->interpolate_extra_data	= NULL;
@@ -1762,9 +1689,6 @@ void BKE_ptcache_id_from_cloth(PTCacheID *pid, Object *ob, ClothModifierData *cl
 	pid->write_mesh_stream		= NULL;
 	pid->read_mesh_stream		= NULL;
 
-	pid->write_uni_stream		= NULL;
-	pid->read_uni_stream		= NULL;
-
 	pid->write_extra_data		= NULL;
 	pid->read_extra_data		= NULL;
 	pid->interpolate_extra_data	= NULL;
@@ -1810,8 +1734,6 @@ void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct SmokeMo
 		pid->write_mesh_stream	= NULL;
 		pid->read_mesh_stream	= NULL;
 
-		pid->write_uni_stream	= NULL;
-		pid->read_uni_stream	= NULL;
 	}
 	else if (smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
 	{
@@ -1820,9 +1742,6 @@ void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct SmokeMo
 		
 		pid->write_mesh_stream	= ptcache_mesh_write;
 		pid->read_mesh_stream	= ptcache_mesh_read;
-
-		pid->write_uni_stream	= NULL; // ptcache_uni_write;
-		pid->read_uni_stream	= NULL; // ptcache_uni_read;
 	}
 
 	pid->write_openvdb_stream	= ptcache_smoke_openvdb_write;
@@ -2031,8 +1950,6 @@ static const char *ptcache_file_extension(const PTCacheID *pid)
 			return PTCACHE_EXT;
 		case PTCACHE_FILE_OPENVDB:
 			return ".vdb";
-		case PTCACHE_FILE_UNI:
-			return ".uni";
 		case PTCACHE_FILE_OBJECT:
 			return ".bobj.gz";
 	}
@@ -2042,8 +1959,6 @@ static const char *ptcache_file_extension(const PTCacheID *pid)
 		return PTCACHE_EXT;
 	if (pid->file_type & PTCACHE_FILE_OPENVDB)
 		return ".vdb";
-	if (pid->file_type & PTCACHE_FILE_UNI)
-		return ".uni";
 	if (pid->file_type & PTCACHE_FILE_OBJECT)
 		return ".bobj.gz";
 
@@ -2849,29 +2764,6 @@ static int ptcache_read_mesh_stream(PTCacheID *pid, int cfra)
 	return 1;
 }
 
-static int ptcache_read_uni_stream(PTCacheID *pid, int cfra, bool load_liquid_data)
-{
-	char filename[FILE_MAX * 2];
-	char pathname[FILE_MAX * 2];
-
-	/* save blend file before using disk pointcache */
-	if (!G.relbase_valid && (pid->cache->flag & PTCACHE_EXTERNAL) == 0)
-		return 0;
-
-	ptcache_filename(pid, filename, cfra, 1, 1);
-	ptcache_filename(pid, pathname, cfra, 1, 0);
-
-	if (!BLI_exists(filename)) {
-		return 0;
-	}
-
-	if (!pid->read_uni_stream(pid->calldata, filename, pathname, load_liquid_data)) {
-		return 0;
-	}
-
-	return 1;
-}
-
 static int ptcache_read(PTCacheID *pid, int cfra)
 {
 	PTCacheMem *pm = NULL;
@@ -3028,12 +2920,6 @@ int BKE_ptcache_read(PTCacheID *pid, float cfra, bool no_extrapolate_old)
 				return 0;
 			}
 		}
-		else if (pid->file_type & PTCACHE_FILE_UNI && pid->read_uni_stream) {
-			pid->file_type = PTCACHE_FILE_UNI;
-			if (!ptcache_read_uni_stream(pid, cfra1, true)) {
-				return 0;
-			}
-		}
 		else if (pid->file_type & PTCACHE_FILE_PTCACHE && pid->read_stream) {
 			pid->file_type = PTCACHE_FILE_PTCACHE;
 			if (!ptcache_read_stream(pid, cfra1))
@@ -3062,12 +2948,6 @@ int BKE_ptcache_read(PTCacheID *pid, float cfra, bool no_extrapolate_old)
 		if (pid->file_type & PTCACHE_FILE_OPENVDB && pid->read_openvdb_stream) {
 			pid->file_type = PTCACHE_FILE_OPENVDB;
 			if (!ptcache_read_openvdb_stream(pid, cfra2)) {
-				return 0;
-			}
-		}
-		else if (pid->file_type & PTCACHE_FILE_UNI && pid->read_uni_stream) {
-			pid->file_type = PTCACHE_FILE_UNI;
-			if (!ptcache_read_uni_stream(pid, cfra2, true)) {
 				return 0;
 			}
 		}
@@ -3185,30 +3065,11 @@ static int ptcache_write_mesh_stream(PTCacheID *pid, int cfra)
 	
 	BLI_make_existing_file(filename);
 
-	int error = pid->write_mesh_stream(pid->calldata, filename);
+	int error = pid->write_mesh_stream(pid->calldata, filename, cfra);
 	
 	if (error && G.debug & G_DEBUG)
 		printf("Error writing to disk cache\n");
 	
-	return error == 0;
-}
-static int ptcache_write_uni_stream(PTCacheID *pid, int cfra, bool save_liquid_data)
-{
-	char filename[FILE_MAX * 2];
-	char pathname[FILE_MAX * 2];
-
-	BKE_ptcache_id_clear(pid, PTCACHE_CLEAR_FRAME, cfra);
-
-	ptcache_filename(pid, filename, cfra, 1, 1);
-	ptcache_filename(pid, pathname, cfra, 1, 0);
-
-	BLI_make_existing_file(filename);
-
-	int error = pid->write_uni_stream(pid->calldata, filename, pathname, save_liquid_data);
-
-	if (error && G.debug & G_DEBUG)
-		printf("Error writing to disk cache\n");
-
 	return error == 0;
 }
 static int ptcache_write(PTCacheID *pid, int cfra, int overwrite)
@@ -3347,10 +3208,6 @@ int BKE_ptcache_write(PTCacheID *pid, unsigned int cfra)
 	if (pid->file_type & PTCACHE_FILE_OPENVDB && pid->write_openvdb_stream) {
 		pid->file_type = PTCACHE_FILE_OPENVDB;
 		ptcache_write_openvdb_stream(pid, cfra);
-	}
-	else if (pid->file_type & PTCACHE_FILE_UNI && pid->write_uni_stream) {
-		pid->file_type = PTCACHE_FILE_UNI;
-		ptcache_write_uni_stream(pid, cfra, true);
 	}
 	else if (pid->file_type & PTCACHE_FILE_PTCACHE && pid->write_stream) {
 		pid->file_type = PTCACHE_FILE_PTCACHE;

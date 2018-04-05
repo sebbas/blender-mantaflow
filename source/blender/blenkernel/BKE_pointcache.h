@@ -126,7 +126,6 @@ enum {
 	/* Volumetric file formats */
 	PTCACHE_FILE_PTCACHE = (1 << 0),
 	PTCACHE_FILE_OPENVDB = (1 << 1),
-	PTCACHE_FILE_UNI = (1 << 2),
 
 	/* Surface file formats */
 	PTCACHE_FILE_OBJECT = (1 << 3),
@@ -166,7 +165,7 @@ typedef struct PTCacheID {
 	int (*read_openvdb_stream)(struct OpenVDBReader *reader, void *calldata);
 	
 	/* copies mesh data to cache data */
-	int (*write_mesh_stream)(void *calldata, char *filename);
+	int (*write_mesh_stream)(void *calldata, char *filename, int cfra);
 	/* copies cache data to mesh data */
 	int (*read_mesh_stream)(void *calldata, char *filename);
 

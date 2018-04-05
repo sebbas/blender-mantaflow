@@ -155,14 +155,37 @@ enum {
 #define SM_HRES_FULLSAMPLE	2
 
 /* smoke data fileds (active_fields) */
-#define SM_ACTIVE_HEAT		(1<<0)
-#define SM_ACTIVE_FIRE		(1<<1)
-#define SM_ACTIVE_COLORS	(1<<2)
-#define SM_ACTIVE_COLOR_SET	(1<<3)
-#define SM_ACTIVE_LIQUID	(1<<4)
-#define SM_ACTIVE_OBSTACLE	(1<<5)
-#define SM_ACTIVE_GUIDING	(1<<6)
-#define SM_ACTIVE_INVEL		(1<<7)
+#define SM_ACTIVE_HEAT      (1<<0)
+#define SM_ACTIVE_FIRE      (1<<1)
+#define SM_ACTIVE_COLORS    (1<<2)
+#define SM_ACTIVE_COLOR_SET (1<<3)
+#define SM_ACTIVE_OBSTACLE  (1<<4)
+#define SM_ACTIVE_GUIDING   (1<<5)
+#define SM_ACTIVE_INVEL     (1<<6)
+
+#define FLUID_CACHE_BAKING_GEOMETRY            1
+#define FLUID_CACHE_BAKED_GEOMETRY             2
+#define FLUID_CACHE_BAKING_LOW                 4
+#define FLUID_CACHE_BAKED_LOW                  8
+#define FLUID_CACHE_BAKING_MESH_LOW           16
+#define FLUID_CACHE_BAKED_MESH_LOW            32
+#define FLUID_CACHE_BAKING_HIGH               64
+#define FLUID_CACHE_BAKED_HIGH               128
+#define FLUID_CACHE_BAKING_MESH_HIGH         256
+#define FLUID_CACHE_BAKED_MESH_HIGH          512
+#define FLUID_CACHE_BAKING_PARTICLES_LOW    1024
+#define FLUID_CACHE_BAKED_PARTICLES_LOW     2048
+#define FLUID_CACHE_BAKING_PARTICLES_HIGH   4096
+#define FLUID_CACHE_BAKED_PARTICLES_HIGH    8192
+
+#define FLUID_CACHE_DIR_DEFAULT        "fluid_cache"
+#define FLUID_CACHE_DIR_GEOMETRY       "geometry"
+#define FLUID_CACHE_DIR_DATA_LOW       "data_low"
+#define FLUID_CACHE_DIR_DATA_HIGH      "data_high"
+#define FLUID_CACHE_DIR_MESH_LOW       "mesh_low"
+#define FLUID_CACHE_DIR_MESH_HIGH      "mesh_high"
+#define FLUID_CACHE_DIR_PARTICLES_LOW  "particles_low"
+#define FLUID_CACHE_DIR_PARTICLES_HIGH "particles_high"
 
 enum {
 	VDB_COMPRESSION_BLOSC = 0,
@@ -182,7 +205,6 @@ typedef struct SmokeDomainSettings {
 	struct GPUTexture *tex_wt;
 	struct GPUTexture *tex_shadow;
 	struct GPUTexture *tex_flame;
-	float *shadow;
 
 	/* simulation data */
 	float p0[3]; /* start point of BB in local space (includes sub-cell shift for adaptive domain)*/
@@ -226,6 +248,12 @@ typedef struct SmokeDomainSettings {
 	float strength;
 	int res_wt[3];
 	float dx_wt;
+	/* manta cache */
+	int cache_frame_start;
+	int cache_frame_end;
+	char cache_directory[1024];
+	int cache_flag;
+	char pad2[4];
 	/* point cache options */
 	int cache_comp;
 	int cache_high_comp;
@@ -330,14 +358,16 @@ typedef struct SmokeDomainSettings {
 	int manta_solver_res;	/* dimension of manta solver, 2d or 3d */
 	char manta_filepath[1024];
 	short type; /* gas, liquid */
+
+	char error[64];		/* Bake error description */
 	char pad4[2]; /* unused */
 } SmokeDomainSettings;
 
 /* type */
-#define MOD_SMOKE_FLOW_TYPE_SMOKE 0
-#define MOD_SMOKE_FLOW_TYPE_FIRE 1
-#define MOD_SMOKE_FLOW_TYPE_SMOKEFIRE 2
-#define MOD_SMOKE_FLOW_TYPE_LIQUID 3
+#define MOD_SMOKE_FLOW_TYPE_SMOKE 1
+#define MOD_SMOKE_FLOW_TYPE_FIRE 2
+#define MOD_SMOKE_FLOW_TYPE_SMOKEFIRE 3
+#define MOD_SMOKE_FLOW_TYPE_LIQUID 4
 
 /* preconditioner */
 #define MOD_SMOKE_PC_NONE 0

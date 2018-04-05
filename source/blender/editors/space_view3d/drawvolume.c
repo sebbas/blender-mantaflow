@@ -1,4 +1,4 @@
-﻿/*
+/*
  * ***** BEGIN GPL LICENSE BLOCK *****
  *
  * This program is free software; you can redistribute it and/or
@@ -144,7 +144,7 @@ static GPUTexture *create_field_texture(SmokeDomainSettings *sds)
 
 	if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS){
 		switch (sds->coba_field) {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 			case FLUID_FIELD_DENSITY:    field = smoke_get_density(sds->fluid); break;
 			case FLUID_FIELD_HEAT:       field = smoke_get_heat(sds->fluid); break;
 			case FLUID_FIELD_FUEL:       field = smoke_get_fuel(sds->fluid); break;
@@ -676,7 +676,7 @@ void draw_smoke_volume(SmokeDomainSettings *sds, Object *ob,
 	}
 }
 
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 static void add_tri(float (*verts)[3], float(*colors)[3], int *offset,
                     float p1[3], float p2[3], float p3[3], float rgb[3])
 {
@@ -750,11 +750,11 @@ static void add_streamline(float (*verts)[3], float(*colors)[3], float center[3]
 }
 
 typedef void (*vector_draw_func)(float(*)[3], float(*)[3], float *, float *, float, float, int *);
-#endif  /* WITH_SMOKE */
+#endif  /* WITH_MANTA */
 
 void draw_smoke_velocity(SmokeDomainSettings *domain, float viewnormal[3])
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	const float *vel_x = smoke_get_velocity_x(domain->fluid);
 	const float *vel_y = smoke_get_velocity_y(domain->fluid);
 	const float *vel_z = smoke_get_velocity_z(domain->fluid);

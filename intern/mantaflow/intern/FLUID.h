@@ -45,7 +45,7 @@ public:
 	typedef struct pVel { float pos[3]; } pVel;
 
 	// Manta step, handling everything
-	void step(int startFrame);
+	void step(struct SmokeModifierData *smd, int startFrame);
 	
 	// Grid initialization functions
 	void initHeat(struct SmokeModifierData *smd);
@@ -64,23 +64,43 @@ public:
 	void updatePointers();
 	void updatePointersHigh();
 
+	// Bake
+	int readCacheLow(SmokeModifierData *smd, int framenr);
+	int readCacheHigh(SmokeModifierData *smd, int framenr);
+	int writeCacheLow(SmokeModifierData *smd, int framenr);
+//	int writeCacheHigh(SmokeModifierData *smd, int framenr);
+	int bakeGeometryLow(SmokeModifierData *smd, int framenr);
+//	int bakeGeometryHigh(SmokeModifierData *smd, int framenr);
+	int bakeDataLow(SmokeModifierData *smd, int framenr);
+	int bakeDataHigh(SmokeModifierData *smd, int framenr);
+	int bakeMeshLow(SmokeModifierData *smd, int framenr);
+	int bakeMeshHigh(SmokeModifierData *smd, int framenr);
+	int bakeParticlesLow(SmokeModifierData *smd, int framenr);
+	int bakeParticlesHigh(SmokeModifierData *smd, int framenr);
+	void updateVariablesLow(SmokeModifierData *smd);
+	void updateVariablesHigh(SmokeModifierData *smd);
+
 	// IO for Mantaflow scene script
 	void exportSmokeScript(struct SmokeModifierData *smd);
 	void exportSmokeData(struct SmokeModifierData *smd);
 	void exportLiquidScript(struct SmokeModifierData *smd);
 	void exportLiquidData(struct SmokeModifierData *smd);
-	
-	// Write files for liquids
-	void saveMesh(char *filename);
-	void saveMeshHigh(char *filename);
-	void saveLiquidData(char *pathname);
-	void saveLiquidDataHigh(char *pathname);
-	void saveSmokeData(char *pathname);
-	void saveSmokeDataHigh(char *pathname);
+
+	// Write files for fluid
 	void saveFluidObstacleData(char *pathname);
 	void saveFluidGuidingData(char *pathname);
 	void saveFluidInvelData(char *pathname);
 	void saveFluidSndPartsData(char *pathname);
+
+	// Write files for smoke
+	void saveSmokeData(char *pathname);
+	void saveSmokeDataHigh(char *pathname);
+
+	// Write files for liquids
+	void saveMesh(char *filename, int framenr);
+	void saveMeshHigh(char *filename);
+	void saveLiquidData(char *pathname);
+	void saveLiquidDataHigh(char *pathname);
 
 	// Write files for particles
 	void saveParticles(char* filename);
@@ -102,7 +122,9 @@ public:
 	inline int getResZHigh() { return mResZHigh; }
 	
 	inline float* getDensity() { return mDensity; }
+	inline float* getDensityIn() { return mDensityIn; }
 	inline float* getHeat() { return mHeat; }
+	inline float* getHeatIn() { return mHeatIn; }
 	inline float* getVelocityX() { return mVelocityX; }
 	inline float* getVelocityY() { return mVelocityY; }
 	inline float* getVelocityZ() { return mVelocityZ; }
@@ -123,11 +145,18 @@ public:
 	inline int* getNumGuide()    { return mNumGuide; }
 	inline float* getFlame() { return mFlame; }
 	inline float* getFuel()  { return mFuel; }
+	inline float* getFuelIn()  { return mFuelIn; }
 	inline float* getReact() { return mReact; }
 	inline float* getColorR() { return mColorR; }
 	inline float* getColorG() { return mColorG; }
 	inline float* getColorB() { return mColorB; }
-	inline float* getInflow() { return mInflow; }
+	inline float* getColorRIn() { return mColorRIn; }
+	inline float* getColorGIn() { return mColorGIn; }
+	inline float* getColorBIn() { return mColorBIn; }
+	inline float* getEmissionIn() { return mEmissionIn; }
+	inline float* getShadow() { return mShadow; }
+	inline int* getFlowType() { return mFlowType; }
+	inline int* getNumFlow()  { return mNumFlow; }
 
 	inline float* getDensityHigh() { return mDensityHigh; }
 	inline float* getFlameHigh() { return mFlameHigh; }
@@ -207,7 +236,7 @@ public:
 	inline int getNumSndParticles() { return (mSndParticleData && !mSndParticleData->empty()) ? mSndParticleData->size() : 0; }
 
 	void updateMeshData(const char* filename);
-//	void updateParticleData(const char* filename);
+	void updateParticleData(const char* filename, bool isSecondary);
 
 	void setFlipParticleData(float* buffer, int numParts);
 	void setSndParticleData(float* buffer, int numParts);
@@ -215,6 +244,11 @@ public:
 	void setFlipParticleVelocity(float* buffer, int numParts);
 	void setSndParticleVelocity(float* buffer, int numParts);
 	void setSndParticleLife(float* buffer, int numParts);
+
+	// Direct access to solver time attributes
+	int getFrame();
+	float getTimestep();
+	void adaptTimestep();
 
 private:
 	// simulation constants
@@ -248,11 +282,12 @@ private:
 	
 	float mTempAmb; /* ambient temperature */
 	float mConstantScaling;
-	std::vector<std::string> mCommands;
 
 	// Smoke grids
 	float* mDensity;
+	float* mDensityIn;
 	float* mHeat;
+	float* mHeatIn;
 	float* mVelocityX;
 	float* mVelocityY;
 	float* mVelocityZ;
@@ -273,11 +308,18 @@ private:
 	int* mNumGuide;
 	float* mFlame;
 	float* mFuel;
+	float* mFuelIn;
 	float* mReact;
 	float* mColorR;
 	float* mColorG;
 	float* mColorB;
-	float* mInflow;
+	float* mColorRIn;
+	float* mColorGIn;
+	float* mColorBIn;
+	float* mEmissionIn;
+	float* mShadow;
+	int* mFlowType;
+	int* mNumFlow;
 	float* mDensityHigh;
 	float* mFlameHigh;
 	float* mFuelHigh;
@@ -337,7 +379,7 @@ private:
 	std::string getRealValue(const std::string& varName, SmokeModifierData *smd);
 	std::string parseLine(const std::string& line, SmokeModifierData *smd);
 	std::string parseScript(const std::string& setup_string, SmokeModifierData *smd);
-	void* getDataPointer(std::string varName, std::string parentName);
+	void updateMeshDataFromBobj(const char* filename);
 };
 
 #endif

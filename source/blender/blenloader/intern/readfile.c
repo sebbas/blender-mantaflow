@@ -5178,7 +5178,6 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 				smd->domain->fluid = NULL;
 				smd->domain->fluid_mutex = BLI_rw_mutex_alloc();
 				smd->domain->wt = NULL;
-				smd->domain->shadow = NULL;
 				smd->domain->tex = NULL;
 				smd->domain->tex_shadow = NULL;
 				smd->domain->tex_wt = NULL;

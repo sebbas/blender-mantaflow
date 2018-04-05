@@ -45,6 +45,8 @@
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
 
+#include "BLT_translation.h"
+
 #include "BKE_context.h"
 #include "BKE_customdata.h"
 #include "BKE_fluidsim.h"
@@ -54,11 +56,13 @@
 #include "BKE_object.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
+#include "BKE_screen.h"
 #include "BKE_smoke.h"
 
 #include "LBM_fluidsim.h"
 
 #include "ED_screen.h"
+#include "PIL_time.h"
 
 #include "WM_types.h"
 #include "WM_api.h"
@@ -1123,32 +1127,735 @@ void FLUID_OT_bake(wmOperatorType *ot)
 	ot->poll = ED_operator_object_active_editable;
 }
 
-static int manta_make_file_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
-{
-	Scene *scene= CTX_data_scene(C);
+/***************************** Bake Fluid Mantaflow ******************************/
+
+typedef struct FluidMantaflowJob {
+	/* from wmJob */
+	void *owner;
+	short *stop, *do_update;
+	float *progress;
+	const char *type;
+	const char *name;
+
+	struct Main *bmain;
+	Scene *scene;
+	Object *ob;
+
 	SmokeModifierData *smd;
-	Object * smokeDomain = CTX_data_active_object(C);
-	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
 	
+	int success;
+	double start;
+} FluidMantaflowJob;
+
+static bool fluid_manta_initjob(bContext *C, FluidMantaflowJob *job, wmOperator *op, char *error_msg, int error_size)
+{
+	SmokeModifierData *smd = NULL;
+	SmokeDomainSettings *sds;
+	Object *ob = CTX_data_active_object(C);
+
+	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
+	if (!smd) {
+		BLI_strncpy(error_msg, N_("Bake failed: no Fluid modifier found"), error_size);
+		return false;
+	}
+	sds = smd->domain;
+	if (!sds) {
+		BLI_strncpy(error_msg, N_("Bake failed: invalid domain"), error_size);
+		return false;
+	}
+
+	job->bmain = CTX_data_main(C);
+	job->scene = CTX_data_scene(C);
+	job->ob = CTX_data_active_object(C);
+	job->smd = smd;
+	job->type = op->type->idname;
+	job->name = op->type->name;
+
+	return true;
+}
+static void fluid_manta_bake_free(void *customdata)
+{
+	FluidMantaflowJob *job = customdata;
+	MEM_freeN(job);
+}
+
+static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
+{
+	SmokeDomainSettings *sds = job->smd->domain;
+	SmokeModifierData *smd = job->smd;
+	Scene *scene = job->scene;
+	Object *cObject = job->ob;
+	int frame = 1, orig_frame;
+	int frames;
+	bool success;
+
+	frames = sds->cache_frame_end - sds->cache_frame_start + 1;
+
+	if (frames <= 0) {
+		BLI_strncpy(sds->error, N_("No frames to bake"), sizeof(sds->error));
+		return;
+	}
+
+	/* Show progress bar. */
+	if (job->do_update)
+		*(job->do_update) = true;
+
+	/* Set frame to start point */
+	frame = sds->cache_frame_start;
+	orig_frame = scene->r.cfra;
+	scene->r.cfra = (int)frame;
+
+	/* Update animation system - needs annoying lock */
+//	G.is_rendering = true;
+//	BKE_spacedata_draw_locks(true);
+	ED_update_for_newframe(job->bmain, scene, 1);
+//	G.is_rendering = false;
+//	BKE_spacedata_draw_locks(false);
+
+	/* Loop through selected frames */
+	for (frame = sds->cache_frame_start; frame <= sds->cache_frame_end; frame++) {
+		const float progress = (frame - sds->cache_frame_start) / (float)frames;
+
+		/* If user requested stop, quit baking */
+		if (G.is_break) {
+			job->success = 0;
+			return;
+		}
+
+		/* Update progress bar */
+		if (job->do_update)
+			*(job->do_update) = true;
+		if (job->progress)
+			*(job->progress) = progress;
+
+		if (smd->domain->fluid == NULL)
+			smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
+
+		/* Update animation system - needs annoying lock */
+//		G.is_rendering = true;
+//		BKE_spacedata_draw_locks(true);
+		ED_update_for_newframe(job->bmain, scene, 1);
+//		G.is_rendering = false;
+//		BKE_spacedata_draw_locks(false);
+
+		if (STREQ(job->type, "MANTA_OT_bake_geometry"))
+		{
+			/* TODO (sebbas): Use geometry bake for fluid guiding? */
+			success = true;
+		}
+		else if (STREQ(job->type, "MANTA_OT_bake_data_low"))
+		{
+			success = smoke_step(scene, cObject, smd, frame);
+		}
+		else if (STREQ(job->type, "MANTA_OT_bake_data_high"))
+		{
+			success = fluid_bake_high(sds->fluid, smd, frame);
+		}
+		else if (STREQ(job->type, "MANTA_OT_bake_mesh_low"))
+		{
+			success = fluid_bake_mesh_low(sds->fluid, smd, frame);
+		}
+		else if (STREQ(job->type, "MANTA_OT_bake_mesh_high"))
+		{
+			success = fluid_bake_mesh_high(sds->fluid, smd, frame);
+		}
+		else if (STREQ(job->type, "MANTA_OT_bake_particles_low"))
+		{
+			success = fluid_bake_particles_low(sds->fluid, smd, frame);
+		}
+		else if (STREQ(job->type, "MANTA_OT_bake_particles_high"))
+		{
+			success = fluid_bake_particles_high(sds->fluid, smd, frame);
+		}
+
+		scene->r.cfra = (int)frame;
+
+		/* Exit loop early if one step is unsucessful */
+		if (!success) {
+			job->success = 0;
+			return;
+		}
+	}
+	scene->r.cfra = orig_frame;
+}
+
+static int fluid_manta_bake_modal(bContext *C, wmOperator *UNUSED(op), const wmEvent *event)
+{
+	/* no running blender, remove handler and pass through */
+	if (0 == WM_jobs_test(CTX_wm_manager(C), CTX_data_scene(C), WM_JOB_TYPE_OBJECT_SIM_MANTA))
+		return OPERATOR_FINISHED | OPERATOR_PASS_THROUGH;
+
+	switch (event->type) {
+		case ESCKEY:
+			return OPERATOR_RUNNING_MODAL;
+	}
+	return OPERATOR_PASS_THROUGH;
+}
+
+static void fluid_manta_bake_endjob(void *customdata)
+{
+	FluidMantaflowJob *job = customdata;
+	SmokeDomainSettings *sds = job->smd->domain;
+
+	G.is_rendering = false;
+	BKE_spacedata_draw_locks(false);
+
+	if (STREQ(job->type, "MANTA_OT_bake_geometry"))
+	{
+		sds->cache_flag &= ~FLUID_CACHE_BAKING_GEOMETRY;
+		sds->cache_flag |= FLUID_CACHE_BAKED_GEOMETRY;
+	}
+	else if (STREQ(job->type, "MANTA_OT_bake_data_low"))
+	{
+		sds->cache_flag &= ~FLUID_CACHE_BAKING_LOW;
+		sds->cache_flag |= FLUID_CACHE_BAKED_LOW;
+	}
+	else if (STREQ(job->type, "MANTA_OT_bake_data_high"))
+	{
+		sds->cache_flag &= ~FLUID_CACHE_BAKING_HIGH;
+		sds->cache_flag |= FLUID_CACHE_BAKED_HIGH;
+	}
+	else if (STREQ(job->type, "MANTA_OT_bake_mesh_low"))
+	{
+		sds->cache_flag &= ~FLUID_CACHE_BAKING_MESH_LOW;
+		sds->cache_flag |= FLUID_CACHE_BAKED_MESH_LOW;
+	}
+	else if (STREQ(job->type, "MANTA_OT_bake_mesh_high"))
+	{
+		sds->cache_flag &= ~FLUID_CACHE_BAKING_MESH_HIGH;
+		sds->cache_flag |= FLUID_CACHE_BAKED_MESH_HIGH;
+	}
+	else if (STREQ(job->type, "MANTA_OT_bake_particles_low"))
+	{
+		sds->cache_flag &= ~FLUID_CACHE_BAKING_PARTICLES_LOW;
+		sds->cache_flag |= FLUID_CACHE_BAKED_PARTICLES_LOW;
+	}
+	else if (STREQ(job->type, "MANTA_OT_bake_particles_high"))
+	{
+		sds->cache_flag &= ~FLUID_CACHE_BAKING_PARTICLES_HIGH;
+		sds->cache_flag |= FLUID_CACHE_BAKED_PARTICLES_HIGH;
+	}
+
+//	WM_set_locked_interface(G.main->wm.first, false);
+	
+	/* Bake was successful:
+	 *  Report for ended bake and how long it took */
+	if (job->success) {
+		/* Show bake info */
+		WM_reportf(RPT_INFO, "Fluid Mantaflow: %s complete! (%.2f)", job->name, PIL_check_seconds_timer() - job->start);
+	}
+	else {
+		if (strlen(sds->error)) { /* If an error occurred */
+			WM_reportf(RPT_ERROR, "Fluid Mantaflow: %s failed: %s", job->name, sds->error);
+		}
+		else { /* User canceled the bake */
+			WM_reportf(RPT_WARNING, "Fluid Mantaflow: %s canceled!", job->name);
+		}
+	}
+}
+
+static void fluid_manta_bake_startjob(void *customdata, short *stop, short *do_update, float *progress)
+{
+	FluidMantaflowJob *job = customdata;
+	SmokeDomainSettings *sds = job->smd->domain;
+
+	char tmpDir[FILE_MAX];
+	tmpDir[0] = '\0';
+
+	job->stop = stop;
+	job->do_update = do_update;
+	job->progress = progress;
+	job->start = PIL_check_seconds_timer();
+	job->success = 1;
+
+	G.is_break = false;
+	G.is_rendering = true;
+	BKE_spacedata_draw_locks(true);
+
+	if (STREQ(job->type, "MANTA_OT_bake_geometry"))
+	{
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_GEOMETRY, NULL);
+		BLI_dir_create_recursive(tmpDir); /* Create 'geometry' subdir if it does not exist already */
+		sds->cache_flag |= FLUID_CACHE_BAKING_GEOMETRY;
+	}
+	else if (STREQ(job->type, "MANTA_OT_bake_data_low"))
+	{
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
+		BLI_dir_create_recursive(tmpDir); /* Create 'data_low' subdir if it does not exist already */
+		sds->cache_flag |= FLUID_CACHE_BAKING_LOW;
+	}
+	else if (STREQ(job->type, "MANTA_OT_bake_data_high"))
+	{
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_DATA_HIGH, NULL);
+		BLI_dir_create_recursive(tmpDir); /* Create 'data_high' subdir if it does not exist already */
+		sds->cache_flag |= FLUID_CACHE_BAKING_HIGH;
+	}
+	else if (STREQ(job->type, "MANTA_OT_bake_mesh_low"))
+	{
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_MESH_LOW, NULL);
+		BLI_dir_create_recursive(tmpDir); /* Create 'mesh_low' subdir if it does not exist already */
+		sds->cache_flag |= FLUID_CACHE_BAKING_MESH_LOW;
+	}
+	else if (STREQ(job->type, "MANTA_OT_bake_mesh_high"))
+	{
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_MESH_HIGH, NULL);
+		BLI_dir_create_recursive(tmpDir); /* Create 'mesh_high' subdir if it does not exist already */
+		sds->cache_flag |= FLUID_CACHE_BAKING_MESH_HIGH;
+	}
+	else if (STREQ(job->type, "MANTA_OT_bake_particles_low"))
+	{
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_PARTICLES_LOW, NULL);
+		BLI_dir_create_recursive(tmpDir); /* Create 'particles_low' subdir if it does not exist already */
+		sds->cache_flag |= FLUID_CACHE_BAKING_PARTICLES_LOW;
+	}
+	else if (STREQ(job->type, "MANTA_OT_bake_particles_high"))
+	{
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_PARTICLES_HIGH, NULL);
+		BLI_dir_create_recursive(tmpDir); /* Create 'particles_high' subdir if it does not exist already */
+		sds->cache_flag |= FLUID_CACHE_BAKING_PARTICLES_HIGH;
+	}
+	fluid_manta_bake_sequence(job);
+
+	if (do_update)
+		*do_update = true;
+	if (stop)
+		*stop = 0;
+}
+
+static int fluid_manta_bake_exec(bContext *C, wmOperator *op)
+{
+	FluidMantaflowJob *job = MEM_mallocN(sizeof(FluidMantaflowJob), "FluidMantaflowJob");
+	char error_msg[256] = "\0";
+
+	if (!fluid_manta_initjob(C, job, op, error_msg, sizeof(error_msg))) {
+		if (error_msg[0]) {
+			BKE_report(op->reports, RPT_ERROR, error_msg);
+		}
+		fluid_manta_bake_free(job);
+		return OPERATOR_CANCELLED;
+	}
+	fluid_manta_bake_startjob(job, NULL, NULL, NULL);
+	fluid_manta_bake_endjob(job);
+	fluid_manta_bake_free(job);
+
 	return OPERATOR_FINISHED;
 }
 
-static int manta_make_file_exec(bContext *C, wmOperator *op)
+static int fluid_manta_bake_invoke(struct bContext *C, struct wmOperator *op, const wmEvent *UNUSED(_event))
 {
-	Scene *scene= CTX_data_scene(C);
+	Scene *scene = CTX_data_scene(C);
+	FluidMantaflowJob *job = MEM_mallocN(sizeof(FluidMantaflowJob), "FluidMantaflowJob");
+	char error_msg[256] = "\0";
+
+	if (!fluid_manta_initjob(C, job, op, error_msg, sizeof(error_msg))) {
+		if (error_msg[0]) {
+			BKE_report(op->reports, RPT_ERROR, error_msg);
+		}
+		fluid_manta_bake_free(job);
+		return OPERATOR_CANCELLED;
+	}
+
+	wmJob *wm_job = WM_jobs_get(CTX_wm_manager(C), CTX_wm_window(C), scene,
+								"Fluid Mantaflow Bake", WM_JOB_PROGRESS,
+								WM_JOB_TYPE_OBJECT_SIM_MANTA);
+
+	WM_jobs_customdata_set(wm_job, job, fluid_manta_bake_free);
+	WM_jobs_timer(wm_job, 0.1, NC_OBJECT | ND_MODIFIER, NC_OBJECT | ND_MODIFIER);
+	WM_jobs_callbacks(wm_job, fluid_manta_bake_startjob, NULL, NULL, fluid_manta_bake_endjob);
+
+//	WM_set_locked_interface(CTX_wm_manager(C), true);
+
+	/*  Bake Fluid Geometry	*/
+	WM_jobs_start(CTX_wm_manager(C), wm_job);
+
+	WM_event_add_modal_handler(C, op);
+
+	return OPERATOR_RUNNING_MODAL;
+}
+
+static void fluid_manta_free_endjob(void *customdata)
+{
+	FluidMantaflowJob *job = customdata;
+	SmokeDomainSettings *sds = job->smd->domain;
+
+	G.is_rendering = false;
+
+	/* Free was successful:
+	 *  Report for ended free job and how long it took */
+	if (job->success) {
+		/* Show free job info */
+		WM_reportf(RPT_INFO, "Fluid Mantaflow: %s complete! (%.2f)", job->name, PIL_check_seconds_timer() - job->start);
+	}
+	else {
+		if (strlen(sds->error)) { /* If an error occurred */
+			WM_reportf(RPT_ERROR, "Fluid Mantaflow: %s failed: %s", job->name, sds->error);
+		}
+		else { /* User canceled the free job */
+			WM_reportf(RPT_WARNING, "Fluid Mantaflow: %s canceled!", job->name);
+		}
+	}
+}
+
+static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_update, float *progress)
+{
+	FluidMantaflowJob *job = customdata;
+	SmokeModifierData *smd = job->smd;
+	SmokeDomainSettings *sds = job->smd->domain;
+
+	char tmpDir[FILE_MAX];
+	tmpDir[0] = '\0';
+
+	job->stop = stop;
+	job->do_update = do_update;
+	job->progress = progress;
+	job->start = PIL_check_seconds_timer();
+	job->success = 1;
+
+	G.is_break = false;
+
+	if (STREQ(job->type, "MANTA_OT_free_geometry"))
+	{
+		smd->domain->cache_flag = 0;
+
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_GEOMETRY, NULL);
+		BLI_delete(tmpDir, true, true);
+
+		/* Free data, mesh and particles as well - otherwise they would not be in sync with data cache */
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
+		BLI_delete(tmpDir, true, true);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_DATA_HIGH, NULL);
+		BLI_delete(tmpDir, true, true);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_MESH_LOW, NULL);
+		BLI_delete(tmpDir, true, true);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_MESH_HIGH, NULL);
+		BLI_delete(tmpDir, true, true);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_PARTICLES_LOW, NULL);
+		BLI_delete(tmpDir, true, true);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_PARTICLES_HIGH, NULL);
+		BLI_delete(tmpDir, true, true);
+	}
+	else if (STREQ(job->type, "MANTA_OT_free_data_low"))
+	{
+		sds->cache_flag &= ~(FLUID_CACHE_BAKING_LOW|FLUID_CACHE_BAKED_LOW|
+							 FLUID_CACHE_BAKING_MESH_LOW|FLUID_CACHE_BAKED_MESH_LOW|
+							 FLUID_CACHE_BAKING_PARTICLES_LOW|FLUID_CACHE_BAKED_PARTICLES_LOW|
+							 FLUID_CACHE_BAKING_HIGH|FLUID_CACHE_BAKED_HIGH|
+							 FLUID_CACHE_BAKING_MESH_HIGH|FLUID_CACHE_BAKED_MESH_HIGH|
+							 FLUID_CACHE_BAKING_PARTICLES_HIGH|FLUID_CACHE_BAKED_PARTICLES_HIGH);
+
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_DATA_LOW, NULL);
+		BLI_delete(tmpDir, true, true);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_DATA_HIGH, NULL);
+		BLI_delete(tmpDir, true, true);
+
+		/* Free optional mesh and particles as well - otherwise they would not be in sync with data cache */
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_MESH_LOW, NULL);
+		BLI_delete(tmpDir, true, true);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_MESH_HIGH, NULL);
+		BLI_delete(tmpDir, true, true);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_PARTICLES_LOW, NULL);
+		BLI_delete(tmpDir, true, true);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_PARTICLES_HIGH, NULL);
+		BLI_delete(tmpDir, true, true);
+	}
+	else if (STREQ(job->type, "MANTA_OT_free_data_high"))
+	{
+		sds->cache_flag &= ~(FLUID_CACHE_BAKING_HIGH|FLUID_CACHE_BAKED_HIGH|
+							 FLUID_CACHE_BAKING_MESH_HIGH|FLUID_CACHE_BAKED_MESH_HIGH|
+							 FLUID_CACHE_BAKING_PARTICLES_HIGH|FLUID_CACHE_BAKED_PARTICLES_HIGH);
+
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_DATA_HIGH, NULL);
+		BLI_delete(tmpDir, true, true);
+
+		/* Free optional mesh and particles as well - otherwise they would not be in sync with data cache */
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_MESH_HIGH, NULL);
+		BLI_delete(tmpDir, true, true);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_PARTICLES_HIGH, NULL);
+		BLI_delete(tmpDir, true, true);
+	}
+	else if (STREQ(job->type, "MANTA_OT_free_mesh_low"))
+	{
+		sds->cache_flag &= ~(FLUID_CACHE_BAKING_MESH_LOW|FLUID_CACHE_BAKED_MESH_LOW);
+
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_MESH_LOW, NULL);
+		BLI_delete(tmpDir, true, true);
+	}
+	else if (STREQ(job->type, "MANTA_OT_free_mesh_high"))
+	{
+		sds->cache_flag &= ~(FLUID_CACHE_BAKING_MESH_HIGH|FLUID_CACHE_BAKED_MESH_HIGH);
+
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_MESH_HIGH, NULL);
+		BLI_delete(tmpDir, true, true);
+	}
+	else if (STREQ(job->type, "MANTA_OT_free_particles_low"))
+	{
+		sds->cache_flag &= ~(FLUID_CACHE_BAKING_PARTICLES_LOW|FLUID_CACHE_BAKED_PARTICLES_LOW);
+
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_PARTICLES_LOW, NULL);
+		BLI_delete(tmpDir, true, true);
+	}
+	else if (STREQ(job->type, "MANTA_OT_free_particles_high"))
+	{
+		sds->cache_flag &= ~(FLUID_CACHE_BAKING_PARTICLES_HIGH|FLUID_CACHE_BAKED_PARTICLES_HIGH);
+
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_PARTICLES_HIGH, NULL);
+		BLI_delete(tmpDir, true, true);
+	}
+
+	*do_update = true;
+	*stop = 0;
+}
+
+static int fluid_manta_free_exec(struct bContext *C, struct wmOperator *op)
+{
+	SmokeModifierData *smd = NULL;
+	SmokeDomainSettings *sds;
+	Object *ob = CTX_data_active_object(C);
+	Scene *scene = CTX_data_scene(C);
+
+	/*
+	 * Get modifier data
+	 */
+	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
+	if (!smd) {
+		BKE_report(op->reports, RPT_ERROR, "Bake free failed: no Fluid modifier found");
+		return OPERATOR_CANCELLED;
+	}
+	sds = smd->domain;
+	if (!sds) {
+		BKE_report(op->reports, RPT_ERROR, "Bake free failed: invalid domain");
+		return OPERATOR_CANCELLED;
+	}
+
+	/* Cannot free data if other bakes currently working */
+	if (smd->domain->cache_flag & (FLUID_CACHE_BAKING_LOW|FLUID_CACHE_BAKING_HIGH|
+								   FLUID_CACHE_BAKING_MESH_LOW|FLUID_CACHE_BAKING_MESH_HIGH|
+								   FLUID_CACHE_BAKING_PARTICLES_LOW|FLUID_CACHE_BAKING_PARTICLES_HIGH))
+	{
+		BKE_report(op->reports, RPT_ERROR, "Bake free failed: pending bake jobs found");
+		return OPERATOR_CANCELLED;
+	}
+
+	FluidMantaflowJob *job = MEM_mallocN(sizeof(FluidMantaflowJob), "FluidMantaflowJob");
+	job->bmain = CTX_data_main(C);
+	job->scene = scene;
+	job->ob = ob;
+	job->smd = smd;
+	job->type = op->type->idname;
+	job->name = op->type->name;
+
+	wmJob *wm_job = WM_jobs_get(CTX_wm_manager(C), CTX_wm_window(C), scene,
+								"Fluid Mantaflow Free", WM_JOB_PROGRESS,
+								WM_JOB_TYPE_OBJECT_SIM_MANTA);
+
+	WM_jobs_customdata_set(wm_job, job, fluid_manta_bake_free);
+	WM_jobs_timer(wm_job, 0.1, NC_OBJECT | ND_MODIFIER, NC_OBJECT | ND_MODIFIER);
+	WM_jobs_callbacks(wm_job, fluid_manta_free_startjob, NULL, NULL, fluid_manta_free_endjob);
+
+	/*  Free Fluid Geometry	*/
+	WM_jobs_start(CTX_wm_manager(C), wm_job);
+
+	return OPERATOR_FINISHED;
+}
+
+
+void MANTA_OT_bake_geometry(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Bake Geometry";
+	ot->description = "Bake Fluid Geometry";
+	ot->idname = "MANTA_OT_bake_geometry";
+
+	/* api callbacks */
+	ot->exec = fluid_manta_bake_exec;
+	ot->invoke = fluid_manta_bake_invoke;
+	ot->modal = fluid_manta_bake_modal;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+void MANTA_OT_free_geometry(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Free Geometry";
+	ot->description = "Free Fluid Geometry";
+	ot->idname = "MANTA_OT_free_geometry";
+
+	/* api callbacks */
+	ot->exec = fluid_manta_free_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+void MANTA_OT_bake_data_low(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Bake Simulation Low";
+	ot->description = "Bake Fluid Simulation Low";
+	ot->idname = "MANTA_OT_bake_data_low";
+
+	/* api callbacks */
+	ot->exec = fluid_manta_bake_exec;
+	ot->invoke = fluid_manta_bake_invoke;
+	ot->modal = fluid_manta_bake_modal;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+void MANTA_OT_free_data_low(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Free Simulation Low";
+	ot->description = "Free Fluid Simulation Low";
+	ot->idname = "MANTA_OT_free_data_low";
+
+	/* api callbacks */
+	ot->exec = fluid_manta_free_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+void MANTA_OT_bake_data_high(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Bake Simulation High";
+	ot->description = "Bake Fluid Simulation High";
+	ot->idname = "MANTA_OT_bake_data_high";
+
+	/* api callbacks */
+	ot->exec = fluid_manta_bake_exec;
+	ot->invoke = fluid_manta_bake_invoke;
+	ot->modal = fluid_manta_bake_modal;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+void MANTA_OT_free_data_high(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Free Simulation High";
+	ot->description = "Free Fluid Simulation High";
+	ot->idname = "MANTA_OT_free_data_high";
+
+	/* api callbacks */
+	ot->exec = fluid_manta_free_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+void MANTA_OT_bake_mesh_low(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Bake Mesh Low";
+	ot->description = "Bake Mesh for Low Simulation";
+	ot->idname = "MANTA_OT_bake_mesh_low";
+
+	/* api callbacks */
+	ot->exec = fluid_manta_bake_exec;
+	ot->invoke = fluid_manta_bake_invoke;
+	ot->modal = fluid_manta_bake_modal;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+void MANTA_OT_free_mesh_low(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Free Mesh Low";
+	ot->description = "Free Mesh for Low Simulation";
+	ot->idname = "MANTA_OT_free_mesh_low";
+
+	/* api callbacks */
+	ot->exec = fluid_manta_free_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+void MANTA_OT_bake_mesh_high(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Bake Mesh High";
+	ot->description = "Bake Mesh for High Simulation";
+	ot->idname = "MANTA_OT_bake_mesh_high";
+
+	/* api callbacks */
+	ot->exec = fluid_manta_bake_exec;
+	ot->invoke = fluid_manta_bake_invoke;
+	ot->modal = fluid_manta_bake_modal;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+void MANTA_OT_free_mesh_high(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Free Mesh High";
+	ot->description = "Free Mesh for High Simulation";
+	ot->idname = "MANTA_OT_free_mesh_high";
+
+	/* api callbacks */
+	ot->exec = fluid_manta_free_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+void MANTA_OT_bake_particles_low(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Bake Particles Low";
+	ot->description = "Bake Particles for Low Simulation";
+	ot->idname = "MANTA_OT_bake_particles_low";
+
+	/* api callbacks */
+	ot->exec = fluid_manta_bake_exec;
+	ot->invoke = fluid_manta_bake_invoke;
+	ot->modal = fluid_manta_bake_modal;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+void MANTA_OT_free_particles_low(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Free Particles Low";
+	ot->description = "Free Particles for Low Simulation";
+	ot->idname = "MANTA_OT_free_particles_low";
+
+	/* api callbacks */
+	ot->exec = fluid_manta_free_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+void MANTA_OT_bake_particles_high(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Bake Particles High";
+	ot->description = "Bake Particles for High Simulation";
+	ot->idname = "MANTA_OT_bake_particles_high";
+
+	/* api callbacks */
+	ot->exec = fluid_manta_bake_exec;
+	ot->invoke = fluid_manta_bake_invoke;
+	ot->modal = fluid_manta_bake_modal;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+void MANTA_OT_free_particles_high(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Free Particles High";
+	ot->description = "Free Particles for High Simulation";
+	ot->idname = "MANTA_OT_free_particles_high";
+
+	/* api callbacks */
+	ot->exec = fluid_manta_free_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+static int manta_make_file_exec(bContext *C, wmOperator *UNUSED(op))
+{
 	SmokeModifierData *smd;
 	Object * smokeDomain = CTX_data_active_object(C);
 	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
-	
+
 	if (smd->domain->fluid == NULL)
 		smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
 
 	if (smd->domain->fluid && smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS)
 		smoke_manta_export(smd->domain->fluid, smd);
-	
+
 	if (smd->domain->fluid && smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
 		liquid_manta_export(smd->domain->fluid, smd);
-	
+
 	return OPERATOR_FINISHED;
 }
 
@@ -1158,9 +1865,8 @@ void MANTA_OT_make_file(wmOperatorType *ot)
 	ot->name = "Create Mantaflow File";
 	ot->description = "Create Python Script for Simulation";
 	ot->idname = "MANTA_OT_make_file";
-	
+
 	/* api callbacks */
-	ot->invoke = manta_make_file_invoke;
 	ot->exec = manta_make_file_exec;
 	ot->poll = ED_operator_object_active_editable;
 }

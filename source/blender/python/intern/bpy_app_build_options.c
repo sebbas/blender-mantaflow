@@ -61,7 +61,6 @@ static PyStructSequence_Field app_builtopts_info_fields[] = {
 	{(char *)"mod_fluid", NULL},
 	{(char *)"mod_oceansim", NULL},
 	{(char *)"mod_remesh", NULL},
-	{(char *)"mod_smoke", NULL},
 	{(char *)"collada", NULL},
 	{(char *)"opencolorio", NULL},
 	{(char *)"player", NULL},
@@ -250,12 +249,6 @@ static PyObject *make_builtopts_info(void)
 #endif
 
 #ifdef WITH_MOD_REMESH
-	SetObjIncref(Py_True);
-#else
-	SetObjIncref(Py_False);
-#endif
-
-#ifdef WITH_SMOKE
 	SetObjIncref(Py_True);
 #else
 	SetObjIncref(Py_False);
