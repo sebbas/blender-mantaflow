@@ -202,24 +202,26 @@ static void rna_Smoke_flip_parts_set(struct PointerRNA *ptr, int value)
 
 static void rna_Smoke_spray_parts_set(struct PointerRNA *ptr, int value)
 {
-	// TODO (Georg Kohl) finish combined export
 	Object *ob = (Object *)ptr->id.data;
 	SmokeModifierData *smd;
 	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
 	bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_SPRAY);
+	bool notCombined = (smd->domain->sndparticle_combined_export == SNDPARTICLE_COMBINED_EXPORT_OFF) || (smd->domain->sndparticle_combined_export == SNDPARTICLE_COMBINED_EXPORT_FOAM_BUBBLE);
 
-	if (value) {
-		if (ob->type == OB_MESH && !exists)
-			rna_Smoke_parts_create(ptr, "SprayParticleSettings", "Spray Particles", "Spray Particle System", PART_MANTA_SPRAY);
-		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_SPRAY;
-	}
-	else {
-		rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY);
-		rna_Smoke_resetCache(NULL, NULL, ptr);
+	if (notCombined) {
+		if (value) {
+			if (ob->type == OB_MESH && !exists)
+				rna_Smoke_parts_create(ptr, "SprayParticleSettings", "Spray Particles", "Spray Particle System", PART_MANTA_SPRAY);
+			smd->domain->particle_type |= MOD_SMOKE_PARTICLE_SPRAY;
+		}
+		else {
+			rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY);
+			rna_Smoke_resetCache(NULL, NULL, ptr);
 
-		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_SPRAY;
+			smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_SPRAY;
+		}
+		rna_Smoke_draw_type_update(NULL, NULL, ptr);
 	}
-	rna_Smoke_draw_type_update(NULL, NULL, ptr);
 }
 
 static void rna_Smoke_bubble_parts_set(struct PointerRNA *ptr, int value)
@@ -228,19 +230,22 @@ static void rna_Smoke_bubble_parts_set(struct PointerRNA *ptr, int value)
 	SmokeModifierData *smd;
 	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
 	bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_BUBBLE);
+	bool notCombined = (smd->domain->sndparticle_combined_export == SNDPARTICLE_COMBINED_EXPORT_OFF) || (smd->domain->sndparticle_combined_export == SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM);
 
-	if (value) {
-		if (ob->type == OB_MESH && !exists)
-		rna_Smoke_parts_create(ptr, "BubbleParticleSettings", "Bubble Particles", "Bubble Particle System", PART_MANTA_BUBBLE);
-		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_BUBBLE;
-	}
-	else {
-		rna_Smoke_parts_delete(ptr, PART_MANTA_BUBBLE);
-		rna_Smoke_resetCache(NULL, NULL, ptr);
+	if (notCombined) {
+		if (value) {
+			if (ob->type == OB_MESH && !exists)
+				rna_Smoke_parts_create(ptr, "BubbleParticleSettings", "Bubble Particles", "Bubble Particle System", PART_MANTA_BUBBLE);
+			smd->domain->particle_type |= MOD_SMOKE_PARTICLE_BUBBLE;
+		}
+		else {
+			rna_Smoke_parts_delete(ptr, PART_MANTA_BUBBLE);
+			rna_Smoke_resetCache(NULL, NULL, ptr);
 
-		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_BUBBLE;
+			smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_BUBBLE;
+		}
+		rna_Smoke_draw_type_update(NULL, NULL, ptr);
 	}
-	rna_Smoke_draw_type_update(NULL, NULL, ptr);
 }
 
 static void rna_Smoke_foam_parts_set(struct PointerRNA *ptr, int value)
@@ -249,19 +254,22 @@ static void rna_Smoke_foam_parts_set(struct PointerRNA *ptr, int value)
 	SmokeModifierData *smd;
 	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
 	bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_FOAM);
+	bool notCombined = (smd->domain->sndparticle_combined_export == SNDPARTICLE_COMBINED_EXPORT_OFF) || (smd->domain->sndparticle_combined_export == SNDPARTICLE_COMBINED_EXPORT_SPRAY_BUBBLE);
 
-	if (value) {
-		if (ob->type == OB_MESH && !exists)
-		rna_Smoke_parts_create(ptr, "FoamParticleSettings", "Foam Particles", "Foam Particle System", PART_MANTA_FOAM);
-		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_FOAM;
-	}
-	else {
-		rna_Smoke_parts_delete(ptr, PART_MANTA_FOAM);
-		rna_Smoke_resetCache(NULL, NULL, ptr);
+	if (notCombined) {
+		if (value) {
+			if (ob->type == OB_MESH && !exists)
+				rna_Smoke_parts_create(ptr, "FoamParticleSettings", "Foam Particles", "Foam Particle System", PART_MANTA_FOAM);
+			smd->domain->particle_type |= MOD_SMOKE_PARTICLE_FOAM;
+		}
+		else {
+			rna_Smoke_parts_delete(ptr, PART_MANTA_FOAM);
+			rna_Smoke_resetCache(NULL, NULL, ptr);
 
-		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_FOAM;
+			smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_FOAM;
+		}
+		rna_Smoke_draw_type_update(NULL, NULL, ptr);
 	}
-	rna_Smoke_draw_type_update(NULL, NULL, ptr);
 }
 
 static void rna_Smoke_tracer_parts_set(struct PointerRNA *ptr, int value)
@@ -283,6 +291,116 @@ static void rna_Smoke_tracer_parts_set(struct PointerRNA *ptr, int value)
 		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_TRACER;
 	}
 	rna_Smoke_draw_type_update(NULL, NULL, ptr);
+}
+
+static void rna_Smoke_combined_export_set(struct PointerRNA *ptr, int value)
+{
+	Object *ob = (Object *)ptr->id.data;
+	SmokeModifierData *smd;
+	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
+	bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_SPRAY);
+
+	if (value == SNDPARTICLE_COMBINED_EXPORT_OFF) {
+		rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY_FOAM);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY_BUBBLE);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_FOAM_BUBBLE);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY_FOAM_BUBBLE);
+
+		// re-add each particle type if enabled
+		if ((smd->domain->particle_type & MOD_SMOKE_PARTICLE_SPRAY) != 0) {
+			if (ob->type == OB_MESH && !rna_Smoke_parts_exists(ptr, PART_MANTA_SPRAY)) {
+				rna_Smoke_parts_create(ptr, "SprayParticleSettings", "Spray Particles", "Spray Particle System", PART_MANTA_SPRAY);
+			}
+		}
+		if ((smd->domain->particle_type & MOD_SMOKE_PARTICLE_FOAM) != 0) {
+			if (ob->type == OB_MESH && !rna_Smoke_parts_exists(ptr, PART_MANTA_FOAM)) {
+				rna_Smoke_parts_create(ptr, "FoamParticleSettings", "Foam Particles", "Foam Particle System", PART_MANTA_FOAM);
+			}
+		}
+		if ((smd->domain->particle_type & MOD_SMOKE_PARTICLE_BUBBLE) != 0) {
+			if (ob->type == OB_MESH && !rna_Smoke_parts_exists(ptr, PART_MANTA_BUBBLE)) {
+				rna_Smoke_parts_create(ptr, "BubbleParticleSettings", "Bubble Particles", "Bubble Particle System", PART_MANTA_BUBBLE);
+			}
+		}
+	}
+	else if (value == SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM) {
+		if (ob->type == OB_MESH && !rna_Smoke_parts_exists(ptr, PART_MANTA_SPRAY_FOAM))
+			rna_Smoke_parts_create(ptr, "SprayFoamParticleSettings", "Spray + Foam Particles", "Spray + Foam Particle System", PART_MANTA_SPRAY_FOAM);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_FOAM);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY_BUBBLE);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_FOAM_BUBBLE);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY_FOAM_BUBBLE);
+
+		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_SPRAY;
+		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_FOAM;
+
+		// re-add bubbles if enabled
+		if ((smd->domain->particle_type & MOD_SMOKE_PARTICLE_BUBBLE) != 0) {
+			if (ob->type == OB_MESH && !rna_Smoke_parts_exists(ptr, PART_MANTA_BUBBLE)) {
+				rna_Smoke_parts_create(ptr, "BubbleParticleSettings", "Bubble Particles", "Bubble Particle System", PART_MANTA_BUBBLE);
+			}
+		}
+	}
+	else if (value == SNDPARTICLE_COMBINED_EXPORT_SPRAY_BUBBLE) {
+		if (ob->type == OB_MESH && !rna_Smoke_parts_exists(ptr, PART_MANTA_SPRAY_BUBBLE))
+			rna_Smoke_parts_create(ptr, "SprayBubbleParticleSettings", "Spray + Bubble Particles", "Spray + Bubble Particle System", PART_MANTA_SPRAY_BUBBLE);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_BUBBLE);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY_FOAM);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_FOAM_BUBBLE);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY_FOAM_BUBBLE);
+
+		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_SPRAY;
+		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_BUBBLE;
+
+		// re-add foam if enabled
+		if ((smd->domain->particle_type & MOD_SMOKE_PARTICLE_FOAM) != 0) {
+			if (ob->type == OB_MESH && !rna_Smoke_parts_exists(ptr, PART_MANTA_FOAM)) {
+				rna_Smoke_parts_create(ptr, "FoamParticleSettings", "Foam Particles", "Foam Particle System", PART_MANTA_FOAM);
+			}
+		}
+	}
+	else if (value == SNDPARTICLE_COMBINED_EXPORT_FOAM_BUBBLE) {
+		if (ob->type == OB_MESH && !rna_Smoke_parts_exists(ptr, PART_MANTA_FOAM_BUBBLE))
+			rna_Smoke_parts_create(ptr, "FoamBubbleParticleSettings", "Foam + Bubble Particles", "Foam + Bubble Particle System", PART_MANTA_FOAM_BUBBLE);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_FOAM);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_BUBBLE);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY_FOAM);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY_BUBBLE);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY_FOAM_BUBBLE);
+
+		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_FOAM;
+		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_BUBBLE;
+
+		// re-add spray if enabled
+		if ((smd->domain->particle_type & MOD_SMOKE_PARTICLE_SPRAY) != 0) {
+			if (ob->type == OB_MESH && !rna_Smoke_parts_exists(ptr, PART_MANTA_SPRAY)) {
+				rna_Smoke_parts_create(ptr, "SprayParticleSettings", "Spray Particles", "Spray Particle System", PART_MANTA_SPRAY);
+			}
+		}
+	}
+	else if (value == SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM_BUBBLE) {
+		if (ob->type == OB_MESH && !rna_Smoke_parts_exists(ptr, PART_MANTA_SPRAY_FOAM_BUBBLE))
+			rna_Smoke_parts_create(ptr, "SprayFoamBubbleParticleSettings", "Spray + Foam + Bubble Particles", "Spray + Foam + Bubble Particle System", PART_MANTA_SPRAY_FOAM_BUBBLE);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_FOAM);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_BUBBLE);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY_FOAM);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY_BUBBLE);
+		rna_Smoke_parts_delete(ptr, PART_MANTA_FOAM_BUBBLE);
+		
+		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_SPRAY;
+		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_FOAM;
+		smd->domain->particle_type |= MOD_SMOKE_PARTICLE_BUBBLE;
+	}
+	else {
+		// sanity check, should not occur
+		printf("ERROR: Unexpected combined export setting encountered!");
+	}
+	rna_Smoke_resetCache(NULL, NULL, ptr);
+	rna_Smoke_draw_type_update(NULL, NULL, ptr);
+	smd->domain->sndparticle_combined_export = value;
 }
 
 static void rna_Smoke_use_surface_format_set(struct PointerRNA *ptr, int value)
@@ -976,10 +1094,10 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 
 	static const EnumPropertyItem sndparticle_combined_export_items[] = {
 		{ SNDPARTICLE_COMBINED_EXPORT_OFF, "OFF", 0, "Off", "Create a seperate particle system for every secondary particle type" },
-		{ SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM, "SPRAY & FOAM", 0, "Spray & Foam", "Spray and foam particles are saved in the same particle system" },
-		{ SNDPARTICLE_COMBINED_EXPORT_SPRAY_BUBBLE, "SPRAY & BUBBLES", 0, "Spray & Bubbles", "Spray and bubble particles are saved in the same particle system" },
-		{ SNDPARTICLE_COMBINED_EXPORT_FOAM_BUBBLE, "FOAM & BUBBLES", 0, "Foam & Bubbles", "Foam and bubbles particles are saved in the same particle system" },
-		{ SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM_BUBBLE, "SPRAY & FOAM & BUBBLES", 0, "Spray & Foam & Bubbles", "Create one particle system that contains all three secondary particle types" },
+		{ SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM, "SPRAY + FOAM", 0, "Spray + Foam", "Spray and foam particles are saved in the same particle system" },
+		{ SNDPARTICLE_COMBINED_EXPORT_SPRAY_BUBBLE, "SPRAY + BUBBLES", 0, "Spray + Bubbles", "Spray and bubble particles are saved in the same particle system" },
+		{ SNDPARTICLE_COMBINED_EXPORT_FOAM_BUBBLE, "FOAM + BUBBLES", 0, "Foam + Bubbles", "Foam and bubbles particles are saved in the same particle system" },
+		{ SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM_BUBBLE, "SPRAY + FOAM + BUBBLES", 0, "Spray + Foam + Bubbles", "Create one particle system that contains all three secondary particle types" },
 		{ 0, NULL, 0, NULL, NULL }
 	};
 
@@ -1675,6 +1793,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "sndparticle_combined_export", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "sndparticle_combined_export");
 	RNA_def_property_enum_items(prop, sndparticle_combined_export_items);
+	RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_combined_export_set", NULL);
 	RNA_def_property_ui_text(prop, "Combined Export", "Determines which particle systems are created from secondary particles");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 

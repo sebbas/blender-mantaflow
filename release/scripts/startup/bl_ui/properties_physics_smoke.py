@@ -438,22 +438,29 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         domain = context.smoke.domain_settings
 
         top = layout.column()
-        top.enabled = not domain.point_cache.is_baked
+        top.enabled = not domain.cache_baked_particles_low
         top.label("Exported Particles:")
         sub1 = top.row()
         sub1.prop(domain, "use_flip_particles", text="FLIP")
-        sub1.prop(domain, "use_spray_particles", text="Spray")
-        sub1.prop(domain, "use_foam_particles", text="Foam")
-        sub1.prop(domain, "use_bubble_particles", text="Bubbles")
+        subSpray = sub1.column()
+        subSpray.enabled = (domain.sndparticle_combined_export == 'OFF') or (domain.sndparticle_combined_export == 'FOAM + BUBBLES')
+        subSpray.prop(domain, "use_spray_particles", text="Spray")
+        subFoam = sub1.column()
+        subFoam.enabled = (domain.sndparticle_combined_export == 'OFF') or (domain.sndparticle_combined_export == 'SPRAY + BUBBLES')
+        subFoam.prop(domain, "use_foam_particles", text="Foam")
+        subBubbles = sub1.column()
+        subBubbles.enabled = (domain.sndparticle_combined_export == 'OFF') or (domain.sndparticle_combined_export == 'SPRAY + FOAM')
+        subBubbles.prop(domain, "use_bubble_particles", text="Bubbles")
         sub1.label()
         sub2 = top.row()
+        sub2.enabled = domain.use_spray_particles or domain.use_foam_particles or domain.use_bubble_particles
         #sub2.label("Combined Export:")
         sub2.prop(domain, "sndparticle_combined_export")
 
         split = layout.split()
-        split.enabled = not domain.point_cache.is_baked
+        split.enabled = not domain.cache_baked_particles_low
         sub1 = split.column()
-        sub1.active = domain.use_spray_particles or domain.use_foam_particles or domain.use_bubble_particles
+        sub1.enabled = domain.use_spray_particles or domain.use_foam_particles or domain.use_bubble_particles
         sub2 = sub1.column(align=True)
         sub2.label(text="Wave Crest Potential:")
         sub2.prop(domain, "sndparticle_tau_min_wc", text="min")
@@ -473,7 +480,7 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
 
         second = split.column()
         sub1 = second.column()
-        sub1.active = domain.use_spray_particles or domain.use_foam_particles or domain.use_bubble_particles
+        sub1.enabled = domain.use_spray_particles or domain.use_foam_particles or domain.use_bubble_particles
         sub2 = sub1.column(align=True)
         sub2.label(text="Particle Sampling:")
         sub2.prop(domain, "sndparticle_k_wc", text="Wave Crests")
