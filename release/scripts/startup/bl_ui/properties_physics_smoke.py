@@ -451,11 +451,9 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         subBubbles = sub1.column()
         subBubbles.enabled = (domain.sndparticle_combined_export == 'OFF') or (domain.sndparticle_combined_export == 'SPRAY + FOAM')
         subBubbles.prop(domain, "use_bubble_particles", text="Bubbles")
-        sub1.label()
-        sub2 = top.row()
-        sub2.enabled = domain.use_spray_particles or domain.use_foam_particles or domain.use_bubble_particles
-        #sub2.label("Combined Export:")
-        sub2.prop(domain, "sndparticle_combined_export")
+        middle = top.row()
+        middle.enabled = domain.use_spray_particles or domain.use_foam_particles or domain.use_bubble_particles
+        middle.prop(domain, "sndparticle_combined_export")
 
         split = layout.split()
         split.enabled = not domain.cache_baked_particles_low
@@ -495,6 +493,11 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         sub4.prop(domain, "sndparticle_k_d", text="Drag")
         sub1.label("Potential Quality:")
         sub1.prop(domain, "sndparticle_potential_quality", text="")
+        sub1.label("Save Potential Grids:")
+        sub1.prop(domain, "sndparticle_potential_grid_save", text="")
+
+        #bottom = layout.column()
+        #bottom.enabled = domain.use_spray_particles or domain.use_foam_particles or domain.use_bubble_particles
         
 
 class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
@@ -825,12 +828,12 @@ class PHYSICS_PT_liquid_display_settings(PhysicButtonsPanel, Panel):
     def draw(self, context):
         domain = context.smoke.domain_settings
         layout = self.layout
-        layout.enabled = not domain.point_cache.is_baked
+        layout.enabled = domain.cache_baked_particles_low
         split = layout.split()
         first = split.column()
         first.prop(domain, "use_color_ramp", text="Enable Display")
         second = split.column()
-        second.enabled = domain.use_color_ramp
+        second.enabled = domain.use_color_ramp and (domain.sndparticle_potential_grid_save == 'LOW ONLY' or domain.sndparticle_potential_grid_save == 'ON')
         second.prop(domain, "coba_field_liquid", text="")
 
 

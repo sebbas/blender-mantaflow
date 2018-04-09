@@ -394,9 +394,10 @@ def liquid_load_particles_low_$ID$(path, framenr):\n\
     ppSnd_s$ID$.load(os.path.join(path, 'ppSnd_' + framenr + '.uni'))\n\
     pVelSnd_pp$ID$.load(os.path.join(path, 'pVelSnd_' + framenr + '.uni'))\n\
     pLifeSnd_pp$ID$.load(os.path.join(path, 'pLifeSnd_' + framenr + '.uni'))\n\
-    trappedAir_s$ID$.load(os.path.join(path, 'potentialTrappedAir' + framenr + '.uni'))\n\
-    waveCrest_s$ID$.load(os.path.join(path, 'potentialWaveCrest' + framenr + '.uni'))\n\
-    kineticEnergy_s$ID$.load(os.path.join(path, 'potentialKineticEnergy' + framenr + '.uni'))\n";
+    if os.path.isfile(os.path.join(path, 'potentialTrappedAir' + framenr + '.uni')):\n\
+        trappedAir_s$ID$.load(os.path.join(path, 'potentialTrappedAir' + framenr + '.uni'))\n\
+        waveCrest_s$ID$.load(os.path.join(path, 'potentialWaveCrest' + framenr + '.uni'))\n\
+        kineticEnergy_s$ID$.load(os.path.join(path, 'potentialKineticEnergy' + framenr + '.uni'))\n";
 
 const std::string liquid_load_particles_high = "\n\
 def liquid_load_particles_high_$ID$(path, framenr):\n\
@@ -457,9 +458,10 @@ def liquid_save_particles_low_$ID$(path, framenr):\n\
     ppSnd_s$ID$.save(os.path.join(path, 'ppSnd_' + framenr + '.uni'))\n\
     pVelSnd_pp$ID$.save(os.path.join(path, 'pVelSnd_' + framenr + '.uni'))\n\
     pLifeSnd_pp$ID$.save(os.path.join(path, 'pLifeSnd_' + framenr + '.uni'))\n\
-    trappedAir_s$ID$.save(os.path.join(path, 'potentialTrappedAir' + framenr + '.uni'))\n\
-    waveCrest_s$ID$.save(os.path.join(path, 'potentialWaveCrest' + framenr + '.uni'))\n\
-    kineticEnergy_s$ID$.save(os.path.join(path, 'potentialKineticEnergy' + framenr + '.uni'))\n";
+    if $SNDPARTICLE_POTENTIAL_GRID_SAVE_LOW$ or $SNDPARTICLE_POTENTIAL_GRID_SAVE_ON$:\n\
+        trappedAir_s$ID$.save(os.path.join(path, 'potentialTrappedAir' + framenr + '.uni'))\n\
+        waveCrest_s$ID$.save(os.path.join(path, 'potentialWaveCrest' + framenr + '.uni'))\n\
+        kineticEnergy_s$ID$.save(os.path.join(path, 'potentialKineticEnergy' + framenr + '.uni'))\n";
 
 const std::string liquid_save_particles_high = "\n\
 def liquid_save_particles_high$ID$(path, framenr):\n\

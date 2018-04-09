@@ -293,6 +293,18 @@ static void rna_Smoke_tracer_parts_set(struct PointerRNA *ptr, int value)
 	rna_Smoke_draw_type_update(NULL, NULL, ptr);
 }
 
+static void rna_Smoke_sndparticle_potential_grid_save_set(struct PointerRNA *ptr, int value)
+{
+	Object *ob = (Object *)ptr->id.data;
+	SmokeModifierData *smd;
+	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
+
+	if (value == SNDPARTICLE_POTENTIAL_GRID_SAVE_OFF) {
+		smd->domain->coba_field_liquid = FLUID_FIELD_PRESSURE;
+	}
+	smd->domain->sndparticle_potential_grid_save = value;
+}
+
 static void rna_Smoke_combined_export_set(struct PointerRNA *ptr, int value)
 {
 	Object *ob = (Object *)ptr->id.data;
@@ -1092,6 +1104,13 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 		{ 0, NULL, 0, NULL, NULL }
 	};
 
+	static const EnumPropertyItem sndparticle_potential_grid_save_items[] = {
+		{ SNDPARTICLE_POTENTIAL_GRID_SAVE_OFF, "OFF", 0, "Off", "Do not save the potential grids" },
+		{ SNDPARTICLE_POTENTIAL_GRID_SAVE_LOW, "LOW ONLY", 0, "Low Only", "Save the potential grids only for the low resolution simulation" },
+		{ SNDPARTICLE_POTENTIAL_GRID_SAVE_ON, "ON", 0, "On", "Save the potential grids for both resolutions" },
+		{ 0, NULL, 0, NULL, NULL }
+	};
+
 	static const EnumPropertyItem sndparticle_combined_export_items[] = {
 		{ SNDPARTICLE_COMBINED_EXPORT_OFF, "OFF", 0, "Off", "Create a seperate particle system for every secondary particle type" },
 		{ SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM, "SPRAY + FOAM", 0, "Spray + Foam", "Spray and foam particles are saved in the same particle system" },
@@ -1788,6 +1807,13 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_enum_sdna(prop, NULL, "sndparticle_potential_quality");
 	RNA_def_property_enum_items(prop, sndparticle_potential_quality_items);
 	RNA_def_property_ui_text(prop, "Potential Quality", "How accurately are the potential grids computed");
+	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
+
+	prop = RNA_def_property(srna, "sndparticle_potential_grid_save", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "sndparticle_potential_grid_save");
+	RNA_def_property_enum_items(prop, sndparticle_potential_grid_save_items);
+	RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_sndparticle_potential_grid_save_set", NULL);
+	RNA_def_property_ui_text(prop, "Save Potential Grids", "Determines if the potential grids are saved. The saved grids are only used for the liquid display");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
 	prop = RNA_def_property(srna, "sndparticle_combined_export", PROP_ENUM, PROP_NONE);

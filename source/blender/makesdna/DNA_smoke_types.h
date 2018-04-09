@@ -109,6 +109,12 @@ enum {
 };
 
 enum {
+	SNDPARTICLE_POTENTIAL_GRID_SAVE_OFF = 0,
+	SNDPARTICLE_POTENTIAL_GRID_SAVE_LOW = 1,
+	SNDPARTICLE_POTENTIAL_GRID_SAVE_ON = 2,
+};
+
+enum {
 	SNDPARTICLE_COMBINED_EXPORT_OFF = 0,
 	SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM = 1,
 	SNDPARTICLE_COMBINED_EXPORT_SPRAY_BUBBLE = 2,
@@ -338,8 +344,9 @@ typedef struct SmokeDomainSettings {
 	char sndparticle_boundary;
 	char sndparticle_potential_resolution;
 	char sndparticle_potential_quality;
+	char sndparticle_potential_grid_save;
 	char sndparticle_combined_export;
-	char pad5[4]; /* unused */
+	char pad5[3]; /* unused */
 
 	/* fluid guiding parameters */
 	float guiding_alpha; /* guiding weight scalar (determines strength) */
