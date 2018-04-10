@@ -50,7 +50,7 @@
 
 std::atomic<bool> FLUID::mantaInitialized(false);
 std::atomic<int> FLUID::solverID(0);
-int FLUID::with_debug(0);
+int FLUID::with_debug(1);
 
 FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 {
@@ -433,11 +433,14 @@ void FLUID::initLiquidHigh(SmokeModifierData *smd)
 	std::string tmpString = liquid_alloc_high
 		+ liquid_variables_high
 		+ liquid_save_mesh_high
+		+ liquid_save_particles_high
 		+ liquid_save_data_high
 		+ liquid_load_mesh_high
+		+ liquid_load_particles_high
 		+ liquid_load_data_high
 		+ liquid_adaptive_step_high
-		+ liquid_step_high;
+		+ liquid_step_high
+		+ liquid_step_particles_high;
 	std::string finalString = parseScript(tmpString, smd);
 	pythonCommands.push_back(finalString);
 

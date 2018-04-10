@@ -337,13 +337,14 @@ def liquid_step_particles_low_$ID$():\n\
         if $SNDPARTICLE_BOUNDARY_PUSHOUT$:\n\
             pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=1.0)\n\
         flipDeleteParticlesInObstacle(pts=ppSnd_s$ID$, flags=flags_s$ID$)\n\
-        debugGridInfo(flags=flags_s$ID$, grid=trappedAir_s$ID$, name='Trapped Air')\n\
-        debugGridInfo(flags=flags_s$ID$, grid=waveCrest_s$ID$, name='Wave Crest')\n\
-        debugGridInfo(flags=flags_s$ID$, grid=kineticEnergy_s$ID$, name='Kinetic Energy')\n";
+        #debugGridInfo(flags=flags_s$ID$, grid=trappedAir_s$ID$, name='Trapped Air')\n\
+        #debugGridInfo(flags=flags_s$ID$, grid=waveCrest_s$ID$, name='Wave Crest')\n\
+        #debugGridInfo(flags=flags_s$ID$, grid=kineticEnergy_s$ID$, name='Kinetic Energy')\n";
 
 const std::string liquid_step_particles_high = "\n\
 def liquid_step_particles_high_$ID$():\n\
     mantaMsg('Secondary particles step high (NOT SUPPORTED YET)')\n\
+    mantaMsg('      Grid size: ' + str(xl$ID$.getGridSize()))\n\
     # TODO (Georg Kohl) add highres secondary particles\n";
 
 //////////////////////////////////////////////////////////////////////
@@ -464,7 +465,7 @@ def liquid_save_particles_low_$ID$(path, framenr):\n\
         kineticEnergy_s$ID$.save(os.path.join(path, 'potentialKineticEnergy' + framenr + '.uni'))\n";
 
 const std::string liquid_save_particles_high = "\n\
-def liquid_save_particles_high$ID$(path, framenr):\n\
+def liquid_save_particles_high_$ID$(path, framenr):\n\
     mantaMsg('Liquid save particles high (NOT SUPPORTED YET)')\n\
     # TODO (Georg Kohl) save highres secondary particles\n";
 

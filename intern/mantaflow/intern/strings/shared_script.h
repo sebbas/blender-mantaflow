@@ -459,7 +459,7 @@ def bake_particles_process_high_$ID$(framenr, path_data, path_particles, path_ge
 \n\
 def bake_particles_high_$ID$(path_particles, path_data, path_geometry, framenr):\n\
     if debugMp or platform.system() != 'Darwin' and platform.system() != 'Linux':\n\
-        bake_particles_process_high_$ID$(framenr, path_data, path_particles)\n\
+        bake_particles_process_high_$ID$(framenr, path_data, path_particles, path_geometry)\n\
     else:\n\
         fluid_cache_multiprocessing_start_$ID$(framenr, bake_particles_process_high_$ID$, path_data, path_particles, path_geometry)\n";
 
