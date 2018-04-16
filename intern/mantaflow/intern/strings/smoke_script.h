@@ -115,10 +115,7 @@ colorIn_b_s$ID$ = 0\n";
 
 const std::string smoke_alloc_high = "\n\
 mantaMsg('Smoke alloc high')\n\
-vel_xl$ID$       = xl$ID$.create(MACGrid)\n\
 density_xl$ID$   = xl$ID$.create(RealGrid)\n\
-phiOut_xl$ID$    = xl$ID$.create(LevelsetGrid)\n\
-phiObs_xl$ID$    = xl$ID$.create(LevelsetGrid)\n\
 energy_s$ID$     = s$ID$.create(RealGrid)\n\
 tempFlag_s$ID$   = s$ID$.create(FlagGrid)\n\
 texture_u_s$ID$  = s$ID$.create(RealGrid)\n\

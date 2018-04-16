@@ -58,9 +58,9 @@ k_b_s$ID$            = $SNDPARTICLE_K_B$\n\
 k_d_s$ID$            = $SNDPARTICLE_K_D$\n\
 lMin_s$ID$           = $SNDPARTICLE_L_MIN$\n\
 lMax_s$ID$           = $SNDPARTICLE_L_MAX$\n\
-c_s_s$ID$            = 0.4\n\
-c_b_s$ID$            = 0.77\n\
-scaleFromManta_s$ID$ = $FLUID_DOMAIN_SIZE$ / float(res_s$ID$)\n";
+c_s_s$ID$            = 0.4   # classification constant for snd parts\n\
+c_b_s$ID$            = 0.77  # classification constant for snd parts\n\
+scaleFromManta_s$ID$ = $FLUID_DOMAIN_SIZE$ / float(res_s$ID$) # resize factor for snd parts\n";
 
 const std::string liquid_variables_high = "\n\
 mantaMsg('Liquid variables high')\n";
@@ -106,7 +106,13 @@ mesh_xl$ID$     = xl$ID$.create(Mesh)\n\
 \n\
 # Acceleration data for particle nbs\n\
 pindex_xl$ID$  = xl$ID$.create(ParticleIndexSystem)\n\
-gpi_xl$ID$     = xl$ID$.create(IntGrid)\n";
+gpi_xl$ID$     = xl$ID$.create(IntGrid)\n\
+\n\
+normal_xl$ID$ = s$ID$.create(VecGrid)\n\
+neighborRatio_xl$ID$ = s$ID$.create(RealGrid)\n\
+trappedAir_xl$ID$ = s$ID$.create(RealGrid)\n\
+waveCrest_xl$ID$ = s$ID$.create(RealGrid)\n\
+kineticEnergy_xl$ID$ = s$ID$.create(RealGrid)\n";
 
 const std::string liquid_init_phi = "\n\
 phi_s$ID$.initFromFlags(flags_s$ID$)\n\
@@ -343,9 +349,26 @@ def liquid_step_particles_low_$ID$():\n\
 
 const std::string liquid_step_particles_high = "\n\
 def liquid_step_particles_high_$ID$():\n\
-    mantaMsg('Secondary particles step high (NOT SUPPORTED YET)')\n\
+    mantaMsg('Secondary particles step high (WORK IN PROGRESS)')\n\
     mantaMsg('      Grid size: ' + str(xl$ID$.getGridSize()))\n\
-    # TODO (Georg Kohl) add highres secondary particles\n";
+    if using_sndparts_s$ID$:\n\
+        setFlagsFromLevelset(flags=flags_xl$ID$, phi=phi_xl$ID$)\n\
+        #flags_xl$ID$.printGrid(5, false)\n\
+        pVel_pp$ID$.multConst(Vec3(2,2,2))\n\
+        mapPartsToMAC(vel=vel_xl$ID$, flags=flags_xl$ID$, velOld=vel_xl$ID$, parts=pp_s$ID$, partVel=pVel_pp$ID$)\n\
+        radius = 3 if $SNDPARTICLE_POTENTIAL_QUALITY_HIGH$ else 2\n\
+        flipComputeSecondaryParticlePotentials(potTA=trappedAir_xl$ID$, potWC=waveCrest_xl$ID$, potKE=kineticEnergy_xl$ID$, neighborRatio=neighborRatio_xl$ID$, flags=flags_xl$ID$, v=vel_xl$ID$, normal=normal_xl$ID$, phi=phi_xl$ID$, radius=radius, tauMinTA=tauMin_ta_s$ID$, tauMaxTA=tauMax_ta_s$ID$, tauMinWC=tauMin_wc_s$ID$, tauMaxWC=tauMax_wc_s$ID$, tauMinKE=tauMin_k_s$ID$, tauMaxKE=tauMax_k_s$ID$, scaleFromManta=scaleFromManta_s$ID$)\n\
+        flipSampleSecondaryParticles(mode='single', flags=flags_xl$ID$, v=vel_xl$ID$, pts_sec=ppSnd_s$ID$, v_sec=pVelSnd_pp$ID$, l_sec=pLifeSnd_pp$ID$, lMin=lMin_s$ID$, lMax=lMax_s$ID$, potTA=trappedAir_xl$ID$, potWC=waveCrest_xl$ID$, potKE=kineticEnergy_xl$ID$, neighborRatio=neighborRatio_xl$ID$, c_s=c_s_s$ID$, c_b=c_b_s$ID$, k_ta=k_ta_s$ID$, k_wc=k_wc_s$ID$, dt=s$ID$.frameLength)\n\
+        flipUpdateSecondaryParticles(mode='linear', pts_sec=ppSnd_s$ID$, v_sec=pVelSnd_pp$ID$, l_sec=pLifeSnd_pp$ID$, f_sec=pForceSnd_pp$ID$, flags=flags_xl$ID$, v=vel_xl$ID$, neighborRatio=neighborRatio_xl$ID$, radius=1, gravity=gravity_s$ID$, k_b=k_b_s$ID$, k_d=k_d_s$ID$, c_s=c_s_s$ID$, c_b=c_b_s$ID$, dt=s$ID$.frameLength)\n\
+        if $SNDPARTICLE_BOUNDARY_PUSHOUT$:\n\
+            interpolateGrid(target=phiOut_xl$ID$, source=phiOutIn_s$ID$)\n\
+            interpolateGrid(target=phiObs_xl$ID$, source=phiObs_s$ID$)\n\
+            setObstacleFlags(flags=flags_xl$ID$, phiObs=phiObs_xl$ID$, phiOut=phiOut_xl$ID$)\n\
+            pushOutofObs(parts=ppSnd_s$ID$, flags=flags_xl$ID$, phiObs=phiObs_xl$ID$, shift=1.0)\n\
+        flipDeleteParticlesInObstacle(pts=ppSnd_s$ID$, flags=flags_s$ID$)\n\
+        debugGridInfo(flags=flags_xl$ID$, grid=trappedAir_xl$ID$, name='Trapped Air')\n\
+        debugGridInfo(flags=flags_xl$ID$, grid=waveCrest_xl$ID$, name='Wave Crest')\n\
+        debugGridInfo(flags=flags_xl$ID$, grid=kineticEnergy_xl$ID$, name='Kinetic Energy')\n";
 
 //////////////////////////////////////////////////////////////////////
 // IMPORT
@@ -395,15 +418,23 @@ def liquid_load_particles_low_$ID$(path, framenr):\n\
     ppSnd_s$ID$.load(os.path.join(path, 'ppSnd_' + framenr + '.uni'))\n\
     pVelSnd_pp$ID$.load(os.path.join(path, 'pVelSnd_' + framenr + '.uni'))\n\
     pLifeSnd_pp$ID$.load(os.path.join(path, 'pLifeSnd_' + framenr + '.uni'))\n\
-    if os.path.isfile(os.path.join(path, 'potentialTrappedAir' + framenr + '.uni')):\n\
-        trappedAir_s$ID$.load(os.path.join(path, 'potentialTrappedAir' + framenr + '.uni'))\n\
-        waveCrest_s$ID$.load(os.path.join(path, 'potentialWaveCrest' + framenr + '.uni'))\n\
-        kineticEnergy_s$ID$.load(os.path.join(path, 'potentialKineticEnergy' + framenr + '.uni'))\n";
+    if os.path.isfile(os.path.join(path, 'sndTrappedAir_' + framenr + '.uni')):\n\
+        trappedAir_s$ID$.load(os.path.join(path, 'sndTrappedAir_' + framenr + '.uni'))\n\
+        waveCrest_s$ID$.load(os.path.join(path, 'sndWaveCrest_' + framenr + '.uni'))\n\
+        kineticEnergy_s$ID$.load(os.path.join(path, 'sndKineticEnergy_' + framenr + '.uni'))\n";
 
 const std::string liquid_load_particles_high = "\n\
 def liquid_load_particles_high_$ID$(path, framenr):\n\
-    mantaMsg('Liquid load particles high (NOT SUPPORTED YET)')\n\
-    # TODO (Georg Kohl) load highres secondary particles\n";
+    mantaMsg('Liquid load particles high (WORK IN PROGRESS)')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    ppSnd_s$ID$.load(os.path.join(path, 'ppSnd_xl_' + framenr + '.uni'))\n\
+    pVelSnd_pp$ID$.load(os.path.join(path, 'pVelSnd_xl_' + framenr + '.uni'))\n\
+    pLifeSnd_pp$ID$.load(os.path.join(path, 'pLifeSnd_xl_' + framenr + '.uni'))\n\
+    if os.path.isfile(os.path.join(path, 'sndTrappedAir_xl_' + framenr + '.uni')):\n\
+        trappedAir_xl$ID$.load(os.path.join(path, 'sndTrappedAir_xl_' + framenr + '.uni'))\n\
+        waveCrest_xl$ID$.load(os.path.join(path, 'sndWaveCrest_xl_' + framenr + '.uni'))\n\
+        kineticEnergy_xl$ID$.load(os.path.join(path, 'sndKineticEnergy_xl_' + framenr + '.uni'))\n";
+
 
 //////////////////////////////////////////////////////////////////////
 // EXPORT
@@ -466,8 +497,15 @@ def liquid_save_particles_low_$ID$(path, framenr):\n\
 
 const std::string liquid_save_particles_high = "\n\
 def liquid_save_particles_high_$ID$(path, framenr):\n\
-    mantaMsg('Liquid save particles high (NOT SUPPORTED YET)')\n\
-    # TODO (Georg Kohl) save highres secondary particles\n";
+    mantaMsg('Liquid save particles high (WORK IN PROGRESS)')\n\
+    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    ppSnd_s$ID$.save(os.path.join(path, 'ppSnd_xl_' + framenr + '.uni'))\n\
+    pVelSnd_pp$ID$.save(os.path.join(path, 'pVelSnd_xl_' + framenr + '.uni'))\n\
+    pLifeSnd_pp$ID$.save(os.path.join(path, 'pLifeSnd_xl_' + framenr + '.uni'))\n\
+    if $SNDPARTICLE_POTENTIAL_GRID_SAVE_ON$:\n\
+        trappedAir_xl$ID$.save(os.path.join(path, 'sndTrappedAir_xl_' + framenr + '.uni'))\n\
+        waveCrest_xl$ID$.save(os.path.join(path, 'sndWaveCrest_xl_' + framenr + '.uni'))\n\
+        kineticEnergy_xl$ID$.save(os.path.join(path, 'sndKineticEnergy_xl_' + framenr + '.uni'))\n";
 
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE

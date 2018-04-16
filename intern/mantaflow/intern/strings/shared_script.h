@@ -198,7 +198,10 @@ z_force_s$ID$     = s$ID$.create(RealGrid)\n";
 
 const std::string fluid_alloc_high = "\n\
 mantaMsg('Fluid alloc high')\n\
-flags_xl$ID$     = xl$ID$.create(FlagGrid)\n";
+flags_xl$ID$     = xl$ID$.create(FlagGrid)\n\
+vel_xl$ID$       = xl$ID$.create(MACGrid)\n\
+phiOut_xl$ID$    = xl$ID$.create(LevelsetGrid)\n\
+phiObs_xl$ID$    = xl$ID$.create(LevelsetGrid)\n";
 
 const std::string fluid_alloc_obstacle_low = "\n\
 mantaMsg('Allocating obstacle low')\n\
@@ -443,7 +446,7 @@ def bake_particles_low_$ID$(path_particles, path_data, path_geometry, framenr):\
 
 const std::string fluid_bake_particles_high = "\n\
 def bake_particles_process_high_$ID$(framenr, path_data, path_particles, path_geometry):\n\
-    mantaMsg('Bake secondary particles high (NOT SUPPORTED YET)')\n\
+    mantaMsg('Bake secondary particles high (WORK IN PROGRESS)')\n\
     \n\
     #if using_smoke_s$ID$:\n\
         # TODO (sebbas): Future update could include smoke particles (e.g. fire sparks)\n\
