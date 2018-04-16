@@ -460,9 +460,9 @@ def liquid_save_particles_low_$ID$(path, framenr):\n\
     pVelSnd_pp$ID$.save(os.path.join(path, 'pVelSnd_' + framenr + '.uni'))\n\
     pLifeSnd_pp$ID$.save(os.path.join(path, 'pLifeSnd_' + framenr + '.uni'))\n\
     if $SNDPARTICLE_POTENTIAL_GRID_SAVE_LOW$ or $SNDPARTICLE_POTENTIAL_GRID_SAVE_ON$:\n\
-        trappedAir_s$ID$.save(os.path.join(path, 'potentialTrappedAir' + framenr + '.uni'))\n\
-        waveCrest_s$ID$.save(os.path.join(path, 'potentialWaveCrest' + framenr + '.uni'))\n\
-        kineticEnergy_s$ID$.save(os.path.join(path, 'potentialKineticEnergy' + framenr + '.uni'))\n";
+        trappedAir_s$ID$.save(os.path.join(path, 'sndTrappedAir_' + framenr + '.uni'))\n\
+        waveCrest_s$ID$.save(os.path.join(path, 'sndWaveCrest_' + framenr + '.uni'))\n\
+        kineticEnergy_s$ID$.save(os.path.join(path, 'sndKineticEnergy_' + framenr + '.uni'))\n";
 
 const std::string liquid_save_particles_high = "\n\
 def liquid_save_particles_high_$ID$(path, framenr):\n\
