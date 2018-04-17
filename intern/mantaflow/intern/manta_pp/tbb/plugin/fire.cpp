@@ -16,8 +16,8 @@
  * Copyright 2016 Sebastian Barschkis, Nils Thuerey
  *
  * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL)
- * http://www.gnu.org/licenses
+ * Apache License, Version 2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Fire modeling plugin
  *
@@ -89,17 +89,17 @@ void processBurn(Grid<Real>& fuel, Grid<Real>& density, Grid<Real>& react, Grid<
 
 
 
- struct KnUpdateFlame : public KernelBase { KnUpdateFlame(Grid<Real>& react, Grid<Real>& flame) :  KernelBase(&react,1) ,react(react),flame(flame)   { runMessage(); run(); }  inline void op(int i, int j, int k, Grid<Real>& react, Grid<Real>& flame ) const {
+ struct KnUpdateFlame : public KernelBase { KnUpdateFlame(const Grid<Real>& react, Grid<Real>& flame) :  KernelBase(&react,1) ,react(react),flame(flame)   { runMessage(); run(); }  inline void op(int i, int j, int k, const Grid<Real>& react, Grid<Real>& flame ) const {
 	if (react(i,j,k) > 0.0f)
 		flame(i,j,k) = pow(react(i,j,k), 0.5f);
 	else
 		flame(i,j,k) = 0.0f;
-}   inline Grid<Real>& getArg0() { return react; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return flame; } typedef Grid<Real> type1; void runMessage() { debMsg("Executing kernel KnUpdateFlame ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=1; j<_maxY; j++) for (int i=1; i<_maxX; i++) op(i,j,k,react,flame); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=1; i<_maxX; i++) op(i,j,k,react,flame); }  } void run() {  if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(1, maxY), *this);  }  Grid<Real>& react; Grid<Real>& flame;   };
+}   inline const Grid<Real>& getArg0() { return react; } typedef Grid<Real> type0;inline Grid<Real>& getArg1() { return flame; } typedef Grid<Real> type1; void runMessage() { debMsg("Executing kernel KnUpdateFlame ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=1; j<_maxY; j++) for (int i=1; i<_maxX; i++) op(i,j,k,react,flame); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=1; i<_maxX; i++) op(i,j,k,react,flame); }  } void run() {  if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(1, maxY), *this);  }  const Grid<Real>& react; Grid<Real>& flame;   };
 
 
-void updateFlame(Grid<Real>& react, Grid<Real>& flame) {
+void updateFlame(const Grid<Real>& react, Grid<Real>& flame) {
 	KnUpdateFlame(react, flame);
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "updateFlame" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& react = *_args.getPtr<Grid<Real> >("react",0,&_lock); Grid<Real>& flame = *_args.getPtr<Grid<Real> >("flame",1,&_lock);   _retval = getPyNone(); updateFlame(react,flame);  _args.check(); } pbFinalizePlugin(parent,"updateFlame", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("updateFlame",e.what()); return 0; } } static const Pb::Register _RP_updateFlame ("","updateFlame",_W_1);  extern "C" { void PbRegister_updateFlame() { KEEP_UNUSED(_RP_updateFlame); } } 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "updateFlame" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const Grid<Real>& react = *_args.getPtr<Grid<Real> >("react",0,&_lock); Grid<Real>& flame = *_args.getPtr<Grid<Real> >("flame",1,&_lock);   _retval = getPyNone(); updateFlame(react,flame);  _args.check(); } pbFinalizePlugin(parent,"updateFlame", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("updateFlame",e.what()); return 0; } } static const Pb::Register _RP_updateFlame ("","updateFlame",_W_1);  extern "C" { void PbRegister_updateFlame() { KEEP_UNUSED(_RP_updateFlame); } } 
 
 } // namespace
 

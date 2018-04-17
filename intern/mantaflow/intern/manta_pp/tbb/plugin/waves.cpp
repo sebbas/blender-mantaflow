@@ -16,8 +16,8 @@
  * Copyright 2011 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL) 
- * http://www.gnu.org/licenses
+ * Apache License, Version 2.0 
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Wave equation
  *
@@ -84,12 +84,12 @@ void normalizeSumTo(Grid<Real>& height, Real target) {
 
 
 
- struct MakeRhsWE : public KernelBase { MakeRhsWE(FlagGrid& flags, Grid<Real>& rhs, Grid<Real>& ut, Grid<Real>& utm1, Real s, bool crankNic=false) :  KernelBase(&flags,1) ,flags(flags),rhs(rhs),ut(ut),utm1(utm1),s(s),crankNic(crankNic)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& rhs, Grid<Real>& ut, Grid<Real>& utm1, Real s, bool crankNic=false ) const {
+ struct MakeRhsWE : public KernelBase { MakeRhsWE(const FlagGrid& flags, Grid<Real>& rhs, const Grid<Real>& ut, const Grid<Real>& utm1, Real s, bool crankNic=false) :  KernelBase(&flags,1) ,flags(flags),rhs(rhs),ut(ut),utm1(utm1),s(s),crankNic(crankNic)   { runMessage(); run(); }  inline void op(int i, int j, int k, const FlagGrid& flags, Grid<Real>& rhs, const Grid<Real>& ut, const Grid<Real>& utm1, Real s, bool crankNic=false ) const {
 	rhs(i,j,k) = ( 2.*ut(i,j,k) - utm1(i,j,k) );
 	if(crankNic) {
 		rhs(i,j,k) += s * ( -4.*ut(i,j,k) + 1.*ut(i-1,j,k) + 1.*ut(i+1,j,k) + 1.*ut(i,j-1,k) + 1.*ut(i,j+1,k) );
 	} 
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return rhs; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return ut; } typedef Grid<Real> type2;inline Grid<Real>& getArg3() { return utm1; } typedef Grid<Real> type3;inline Real& getArg4() { return s; } typedef Real type4;inline bool& getArg5() { return crankNic; } typedef bool type5; void runMessage() { debMsg("Executing kernel MakeRhsWE ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=1; j<_maxY; j++) for (int i=1; i<_maxX; i++) op(i,j,k,flags,rhs,ut,utm1,s,crankNic); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=1; i<_maxX; i++) op(i,j,k,flags,rhs,ut,utm1,s,crankNic); }  } void run() {  if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(1, maxY), *this);  }  FlagGrid& flags; Grid<Real>& rhs; Grid<Real>& ut; Grid<Real>& utm1; Real s; bool crankNic;   };
+}   inline const FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return rhs; } typedef Grid<Real> type1;inline const Grid<Real>& getArg2() { return ut; } typedef Grid<Real> type2;inline const Grid<Real>& getArg3() { return utm1; } typedef Grid<Real> type3;inline Real& getArg4() { return s; } typedef Real type4;inline bool& getArg5() { return crankNic; } typedef bool type5; void runMessage() { debMsg("Executing kernel MakeRhsWE ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=1; j<_maxY; j++) for (int i=1; i<_maxX; i++) op(i,j,k,flags,rhs,ut,utm1,s,crankNic); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=1; i<_maxX; i++) op(i,j,k,flags,rhs,ut,utm1,s,crankNic); }  } void run() {  if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(1, maxY), *this);  }  const FlagGrid& flags; Grid<Real>& rhs; const Grid<Real>& ut; const Grid<Real>& utm1; Real s; bool crankNic;   };
 
 
 
@@ -101,7 +101,7 @@ void normalizeSumTo(Grid<Real>& height, Real target) {
 
 
 
-void cgSolveWE(FlagGrid& flags, Grid<Real>& ut, Grid<Real>& utm1, Grid<Real>& out, bool crankNic = false, Real cSqr = 0.25, Real cgMaxIterFac = 1.5, Real cgAccuracy = 1e-5 ) {
+void cgSolveWE(const FlagGrid& flags, Grid<Real>& ut, Grid<Real>& utm1, Grid<Real>& out, bool crankNic = false, Real cSqr = 0.25, Real cgMaxIterFac = 1.5, Real cgAccuracy = 1e-5 ) {
 	// reserve temp grids
 	FluidSolver* parent = flags.getParent();
 	Grid<Real> rhs(parent);
@@ -156,7 +156,7 @@ void cgSolveWE(FlagGrid& flags, Grid<Real>& ut, Grid<Real>& utm1, Grid<Real>& ou
 	ut.copyFrom( out );
 
 	delete gcg;
-} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "cgSolveWE" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& ut = *_args.getPtr<Grid<Real> >("ut",1,&_lock); Grid<Real>& utm1 = *_args.getPtr<Grid<Real> >("utm1",2,&_lock); Grid<Real>& out = *_args.getPtr<Grid<Real> >("out",3,&_lock); bool crankNic = _args.getOpt<bool >("crankNic",4,false,&_lock); Real cSqr = _args.getOpt<Real >("cSqr",5,0.25,&_lock); Real cgMaxIterFac = _args.getOpt<Real >("cgMaxIterFac",6,1.5,&_lock); Real cgAccuracy = _args.getOpt<Real >("cgAccuracy",7,1e-5 ,&_lock);   _retval = getPyNone(); cgSolveWE(flags,ut,utm1,out,crankNic,cSqr,cgMaxIterFac,cgAccuracy);  _args.check(); } pbFinalizePlugin(parent,"cgSolveWE", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("cgSolveWE",e.what()); return 0; } } static const Pb::Register _RP_cgSolveWE ("","cgSolveWE",_W_3);  extern "C" { void PbRegister_cgSolveWE() { KEEP_UNUSED(_RP_cgSolveWE); } } 
+} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "cgSolveWE" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& ut = *_args.getPtr<Grid<Real> >("ut",1,&_lock); Grid<Real>& utm1 = *_args.getPtr<Grid<Real> >("utm1",2,&_lock); Grid<Real>& out = *_args.getPtr<Grid<Real> >("out",3,&_lock); bool crankNic = _args.getOpt<bool >("crankNic",4,false,&_lock); Real cSqr = _args.getOpt<Real >("cSqr",5,0.25,&_lock); Real cgMaxIterFac = _args.getOpt<Real >("cgMaxIterFac",6,1.5,&_lock); Real cgAccuracy = _args.getOpt<Real >("cgAccuracy",7,1e-5 ,&_lock);   _retval = getPyNone(); cgSolveWE(flags,ut,utm1,out,crankNic,cSqr,cgMaxIterFac,cgAccuracy);  _args.check(); } pbFinalizePlugin(parent,"cgSolveWE", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("cgSolveWE",e.what()); return 0; } } static const Pb::Register _RP_cgSolveWE ("","cgSolveWE",_W_3);  extern "C" { void PbRegister_cgSolveWE() { KEEP_UNUSED(_RP_cgSolveWE); } } 
 
 
 

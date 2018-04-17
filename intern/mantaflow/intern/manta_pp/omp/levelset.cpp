@@ -16,8 +16,8 @@
  * Copyright 2011 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL) 
- * http://www.gnu.org/licenses
+ * Apache License, Version 2.0 
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Levelset
  *
@@ -138,6 +138,12 @@ LevelsetGrid::LevelsetGrid(FluidSolver* parent, bool show)
 	mType = (GridType)(TypeLevelset | TypeReal);    
 }    
 
+LevelsetGrid::LevelsetGrid(FluidSolver* parent, Real* data, bool show)
+        : Grid<Real>(parent, data, show)
+{
+        mType = (GridType)(TypeLevelset | TypeReal);
+}
+
 Real LevelsetGrid::invalidTimeValue() {
 	return FastMarch<FmHeapEntryOut, 1>::InvalidTime();
 }
@@ -150,7 +156,7 @@ Real LevelsetGrid::invalidTimeValue() {
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,a,b);  }   } Grid<Real>& a; const Grid<Real>& b;   };
-#line 101 "levelset.cpp"
+#line 107 "levelset.cpp"
 
  
 void LevelsetGrid::join(const LevelsetGrid& o) { KnJoin(*this, o); }
@@ -163,7 +169,7 @@ void LevelsetGrid::join(const LevelsetGrid& o) { KnJoin(*this, o); }
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,a,b);  }   } Grid<Real>& a; const Grid<Real>& b;   };
-#line 107 "levelset.cpp"
+#line 113 "levelset.cpp"
 
  
 void LevelsetGrid::subtract(const LevelsetGrid& o) { KnSubtract(*this, o); }

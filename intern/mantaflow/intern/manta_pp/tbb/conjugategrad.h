@@ -16,8 +16,8 @@
  * Copyright 2011 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL) 
- * http://www.gnu.org/licenses
+ * Apache License, Version 2.0 
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Conjugate gradient solver
  *
@@ -78,7 +78,7 @@ template<class APPLYMAT>
 class GridCg : public GridCgInterface {
 	public:
 		//! constructor
-		GridCg(Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& residual, Grid<Real>& search, FlagGrid& flags, Grid<Real>& tmp, 
+		GridCg(Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& residual, Grid<Real>& search, const FlagGrid& flags, Grid<Real>& tmp, 
 				Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk);
 		~GridCg() {}
 		
@@ -107,7 +107,7 @@ class GridCg : public GridCgInterface {
 		Grid<Real>& mRhs;
 		Grid<Real>& mResidual;
 		Grid<Real>& mSearch;
-		FlagGrid& mFlags;
+		const FlagGrid& mFlags;
 		Grid<Real>& mTmp;
 
 		Grid<Real> *mpA0, *mpAi, *mpAj, *mpAk;
@@ -130,7 +130,7 @@ class GridCg : public GridCgInterface {
 
 
 
- struct ApplyMatrix : public KernelBase { ApplyMatrix(FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak) :  KernelBase(&flags,0) ,flags(flags),dst(dst),src(src),A0(A0),Ai(Ai),Aj(Aj),Ak(Ak)   { runMessage(); run(); }   inline void op(IndexInt idx, FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak ) const {
+ struct ApplyMatrix : public KernelBase { ApplyMatrix(const FlagGrid& flags, Grid<Real>& dst, const Grid<Real>& src, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak) :  KernelBase(&flags,0) ,flags(flags),dst(dst),src(src),A0(A0),Ai(Ai),Aj(Aj),Ak(Ak)   { runMessage(); run(); }   inline void op(IndexInt idx, const FlagGrid& flags, Grid<Real>& dst, const Grid<Real>& src, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak ) const {
 	if (!flags.isFluid(idx)) {
 		dst[idx] = src[idx]; return;
 	}    
@@ -142,13 +142,13 @@ class GridCg : public GridCgInterface {
 				+ src[idx+Y] * Aj[idx]
 				+ src[idx-Z] * Ak[idx-Z] 
 				+ src[idx+Z] * Ak[idx];
-}    inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return dst; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return src; } typedef Grid<Real> type2;inline Grid<Real>& getArg3() { return A0; } typedef Grid<Real> type3;inline Grid<Real>& getArg4() { return Ai; } typedef Grid<Real> type4;inline Grid<Real>& getArg5() { return Aj; } typedef Grid<Real> type5;inline Grid<Real>& getArg6() { return Ak; } typedef Grid<Real> type6; void runMessage() { debMsg("Executing kernel ApplyMatrix ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {   for (IndexInt idx=__r.begin(); idx!=(IndexInt)__r.end(); idx++) op(idx, flags,dst,src,A0,Ai,Aj,Ak);   } void run() {   tbb::parallel_for (tbb::blocked_range<IndexInt>(0, size), *this);   }  FlagGrid& flags; Grid<Real>& dst; Grid<Real>& src; Grid<Real>& A0; Grid<Real>& Ai; Grid<Real>& Aj; Grid<Real>& Ak;   };
+}    inline const FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return dst; } typedef Grid<Real> type1;inline const Grid<Real>& getArg2() { return src; } typedef Grid<Real> type2;inline Grid<Real>& getArg3() { return A0; } typedef Grid<Real> type3;inline Grid<Real>& getArg4() { return Ai; } typedef Grid<Real> type4;inline Grid<Real>& getArg5() { return Aj; } typedef Grid<Real> type5;inline Grid<Real>& getArg6() { return Ak; } typedef Grid<Real> type6; void runMessage() { debMsg("Executing kernel ApplyMatrix ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {   for (IndexInt idx=__r.begin(); idx!=(IndexInt)__r.end(); idx++) op(idx, flags,dst,src,A0,Ai,Aj,Ak);   } void run() {   tbb::parallel_for (tbb::blocked_range<IndexInt>(0, size), *this);   }  const FlagGrid& flags; Grid<Real>& dst; const Grid<Real>& src; Grid<Real>& A0; Grid<Real>& Ai; Grid<Real>& Aj; Grid<Real>& Ak;   };
 
 //! Kernel: Apply symmetric stored Matrix. 2D version
 
 
 
- struct ApplyMatrix2D : public KernelBase { ApplyMatrix2D(FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak) :  KernelBase(&flags,0) ,flags(flags),dst(dst),src(src),A0(A0),Ai(Ai),Aj(Aj),Ak(Ak)   { runMessage(); run(); }   inline void op(IndexInt idx, FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak ) const {
+ struct ApplyMatrix2D : public KernelBase { ApplyMatrix2D(const FlagGrid& flags, Grid<Real>& dst, const Grid<Real>& src, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak) :  KernelBase(&flags,0) ,flags(flags),dst(dst),src(src),A0(A0),Ai(Ai),Aj(Aj),Ak(Ak)   { runMessage(); run(); }   inline void op(IndexInt idx, const FlagGrid& flags, Grid<Real>& dst, const Grid<Real>& src, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak ) const {
 	unusedParameter(Ak); // only there for parameter compatibility with ApplyMatrix
 	
 	if (!flags.isFluid(idx)) {
@@ -160,11 +160,11 @@ class GridCg : public GridCgInterface {
 				+ src[idx+X] * Ai[idx]
 				+ src[idx-Y] * Aj[idx-Y]
 				+ src[idx+Y] * Aj[idx];
-}    inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return dst; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return src; } typedef Grid<Real> type2;inline Grid<Real>& getArg3() { return A0; } typedef Grid<Real> type3;inline Grid<Real>& getArg4() { return Ai; } typedef Grid<Real> type4;inline Grid<Real>& getArg5() { return Aj; } typedef Grid<Real> type5;inline Grid<Real>& getArg6() { return Ak; } typedef Grid<Real> type6; void runMessage() { debMsg("Executing kernel ApplyMatrix2D ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {   for (IndexInt idx=__r.begin(); idx!=(IndexInt)__r.end(); idx++) op(idx, flags,dst,src,A0,Ai,Aj,Ak);   } void run() {   tbb::parallel_for (tbb::blocked_range<IndexInt>(0, size), *this);   }  FlagGrid& flags; Grid<Real>& dst; Grid<Real>& src; Grid<Real>& A0; Grid<Real>& Ai; Grid<Real>& Aj; Grid<Real>& Ak;   };
+}    inline const FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return dst; } typedef Grid<Real> type1;inline const Grid<Real>& getArg2() { return src; } typedef Grid<Real> type2;inline Grid<Real>& getArg3() { return A0; } typedef Grid<Real> type3;inline Grid<Real>& getArg4() { return Ai; } typedef Grid<Real> type4;inline Grid<Real>& getArg5() { return Aj; } typedef Grid<Real> type5;inline Grid<Real>& getArg6() { return Ak; } typedef Grid<Real> type6; void runMessage() { debMsg("Executing kernel ApplyMatrix2D ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {   for (IndexInt idx=__r.begin(); idx!=(IndexInt)__r.end(); idx++) op(idx, flags,dst,src,A0,Ai,Aj,Ak);   } void run() {   tbb::parallel_for (tbb::blocked_range<IndexInt>(0, size), *this);   }  const FlagGrid& flags; Grid<Real>& dst; const Grid<Real>& src; Grid<Real>& A0; Grid<Real>& Ai; Grid<Real>& Aj; Grid<Real>& Ak;   };
 
 //! Kernel: Construct the matrix for the poisson equation
 
- struct MakeLaplaceMatrix : public KernelBase { MakeLaplaceMatrix(FlagGrid& flags, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak, MACGrid* fractions = 0) :  KernelBase(&flags,1) ,flags(flags),A0(A0),Ai(Ai),Aj(Aj),Ak(Ak),fractions(fractions)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak, MACGrid* fractions = 0 ) const {
+ struct MakeLaplaceMatrix : public KernelBase { MakeLaplaceMatrix(const FlagGrid& flags, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak, const MACGrid* fractions = 0) :  KernelBase(&flags,1) ,flags(flags),A0(A0),Ai(Ai),Aj(Aj),Ak(Ak),fractions(fractions)   { runMessage(); run(); }  inline void op(int i, int j, int k, const FlagGrid& flags, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak, const MACGrid* fractions = 0 ) const {
 	if (!flags.isFluid(i,j,k))
 		return;
 	
@@ -196,7 +196,7 @@ class GridCg : public GridCgInterface {
 		if (flags.is3D() && flags.isFluid(i,j,k+1)) Ak(i,j,k) = -fractions->get(i,j,k+1).z;
 	}
 
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return A0; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return Ai; } typedef Grid<Real> type2;inline Grid<Real>& getArg3() { return Aj; } typedef Grid<Real> type3;inline Grid<Real>& getArg4() { return Ak; } typedef Grid<Real> type4;inline MACGrid* getArg5() { return fractions; } typedef MACGrid type5; void runMessage() { debMsg("Executing kernel MakeLaplaceMatrix ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=1; j<_maxY; j++) for (int i=1; i<_maxX; i++) op(i,j,k,flags,A0,Ai,Aj,Ak,fractions); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=1; i<_maxX; i++) op(i,j,k,flags,A0,Ai,Aj,Ak,fractions); }  } void run() {  if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(1, maxY), *this);  }  FlagGrid& flags; Grid<Real>& A0; Grid<Real>& Ai; Grid<Real>& Aj; Grid<Real>& Ak; MACGrid* fractions;   };
+}   inline const FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return A0; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return Ai; } typedef Grid<Real> type2;inline Grid<Real>& getArg3() { return Aj; } typedef Grid<Real> type3;inline Grid<Real>& getArg4() { return Ak; } typedef Grid<Real> type4;inline const MACGrid* getArg5() { return fractions; } typedef MACGrid type5; void runMessage() { debMsg("Executing kernel MakeLaplaceMatrix ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) { for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=1; j<_maxY; j++) for (int i=1; i<_maxX; i++) op(i,j,k,flags,A0,Ai,Aj,Ak,fractions); } else { const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=1; i<_maxX; i++) op(i,j,k,flags,A0,Ai,Aj,Ak,fractions); }  } void run() {  if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(1, maxY), *this);  }  const FlagGrid& flags; Grid<Real>& A0; Grid<Real>& Ai; Grid<Real>& Aj; Grid<Real>& Ak; const MACGrid* fractions;   };
 
 
 

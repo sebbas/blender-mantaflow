@@ -16,8 +16,8 @@
  * Multigrid solver
  *
  * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL) 
- * http://www.gnu.org/licenses
+ * Apache License, Version 2.0 
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Copyright 2016, by Florian Ferstl (florian.ferstl.ff@gmail.com)
  *
@@ -347,11 +347,11 @@ void GridMg::analyzeStencil(int v, bool is3D, bool& isStencilSumNonZero, bool& i
 	Real stencilMax = Real(0), stencilSum = Real(0);
 	for (int i=0; i<7; i++) {
 		stencilSum += A[i];
-		stencilMax = max(stencilMax, abs(A[i]));
+		stencilMax = max(stencilMax, std::abs(A[i]));
 	}
 
 	// check if sum is numerically zero
-	isStencilSumNonZero = abs(stencilSum / stencilMax) > Real(1E-6);
+	isStencilSumNonZero = std::abs(stencilSum / stencilMax) > Real(1E-6);
 
 	// check for trivial equation (exact comparisons)
 	isEquationTrivial = A[0]==Real(1) 

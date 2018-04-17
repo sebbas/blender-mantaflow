@@ -16,8 +16,8 @@
  * Copyright 2011 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL) 
- * http://www.gnu.org/licenses
+ * Apache License, Version 2.0 
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Levelset
  *
@@ -34,6 +34,8 @@ class Mesh;
 //! Special function for levelsets
 class LevelsetGrid : public Grid<Real> {public:
 	LevelsetGrid(FluidSolver* parent, bool show = true); static int _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(0, "LevelsetGrid::LevelsetGrid" , !noTiming ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock); bool show = _args.getOpt<bool >("show",1,true,&_lock);  obj = new LevelsetGrid(parent,show); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"LevelsetGrid::LevelsetGrid" , !noTiming ); return 0; } catch(std::exception& e) { pbSetError("LevelsetGrid::LevelsetGrid",e.what()); return -1; } }
+
+        LevelsetGrid(FluidSolver* parent, Real* data, bool show = true);
 	
 	//! reconstruct the levelset using fast marching
 	

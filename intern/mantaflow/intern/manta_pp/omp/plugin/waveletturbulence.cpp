@@ -16,8 +16,8 @@
  * Copyright 2011 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL) 
- * http://www.gnu.org/licenses
+ * Apache License, Version 2.0 
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Functions for calculating wavelet turbulence,
  * plus helpers to compute vorticity, and strain rate magnitude 
@@ -47,7 +47,7 @@ inline void calcGridSizeFactorMod(Vec3i s1, Vec3i s2, Vec3i optSize, Vec3 scale,
 }
 
 
-void interpolateGrid( Grid<Real>& target, Grid<Real>& source , Vec3 scale=Vec3(1.), Vec3 offset=Vec3(0.), Vec3i size=Vec3i(-1,-1,-1) , int orderSpace=1 ) {
+void interpolateGrid( Grid<Real>& target, const Grid<Real>& source , Vec3 scale=Vec3(1.), Vec3 offset=Vec3(0.), Vec3i size=Vec3i(-1,-1,-1) , int orderSpace=1 ) {
 	Vec3 sourceFactor(1.), off2 = offset;
 	calcGridSizeFactorMod(source.getSize(), target.getSize(), size, scale, sourceFactor, off2);
 
@@ -58,20 +58,20 @@ void interpolateGrid( Grid<Real>& target, Grid<Real>& source , Vec3 scale=Vec3(1
 
 	// sourceFactor offset necessary to shift eval points by half a small cell width
 	knInterpolateGridTempl<Real>(target, source, sourceFactor, off2, orderSpace);
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "interpolateGrid" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& target = *_args.getPtr<Grid<Real> >("target",0,&_lock); Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",1,&_lock); Vec3 scale = _args.getOpt<Vec3 >("scale",2,Vec3(1.),&_lock); Vec3 offset = _args.getOpt<Vec3 >("offset",3,Vec3(0.),&_lock); Vec3i size = _args.getOpt<Vec3i >("size",4,Vec3i(-1,-1,-1) ,&_lock); int orderSpace = _args.getOpt<int >("orderSpace",5,1 ,&_lock);   _retval = getPyNone(); interpolateGrid(target,source,scale,offset,size,orderSpace);  _args.check(); } pbFinalizePlugin(parent,"interpolateGrid", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("interpolateGrid",e.what()); return 0; } } static const Pb::Register _RP_interpolateGrid ("","interpolateGrid",_W_0);  extern "C" { void PbRegister_interpolateGrid() { KEEP_UNUSED(_RP_interpolateGrid); } } 
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "interpolateGrid" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& target = *_args.getPtr<Grid<Real> >("target",0,&_lock); const Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",1,&_lock); Vec3 scale = _args.getOpt<Vec3 >("scale",2,Vec3(1.),&_lock); Vec3 offset = _args.getOpt<Vec3 >("offset",3,Vec3(0.),&_lock); Vec3i size = _args.getOpt<Vec3i >("size",4,Vec3i(-1,-1,-1) ,&_lock); int orderSpace = _args.getOpt<int >("orderSpace",5,1 ,&_lock);   _retval = getPyNone(); interpolateGrid(target,source,scale,offset,size,orderSpace);  _args.check(); } pbFinalizePlugin(parent,"interpolateGrid", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("interpolateGrid",e.what()); return 0; } } static const Pb::Register _RP_interpolateGrid ("","interpolateGrid",_W_0);  extern "C" { void PbRegister_interpolateGrid() { KEEP_UNUSED(_RP_interpolateGrid); } } 
 
 
-void interpolateGridVec3( Grid<Vec3>& target, Grid<Vec3>& source , Vec3 scale=Vec3(1.), Vec3 offset=Vec3(0.), Vec3i size=Vec3i(-1,-1,-1) , int orderSpace=1 ) {
+void interpolateGridVec3( Grid<Vec3>& target, const Grid<Vec3>& source , Vec3 scale=Vec3(1.), Vec3 offset=Vec3(0.), Vec3i size=Vec3i(-1,-1,-1) , int orderSpace=1 ) {
 	Vec3 sourceFactor(1.), off2 = offset;
 	calcGridSizeFactorMod(source.getSize(), target.getSize(), size, scale, sourceFactor, off2);
 	knInterpolateGridTempl<Vec3>(target, source, sourceFactor, off2, orderSpace);
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "interpolateGridVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",0,&_lock); Grid<Vec3>& source = *_args.getPtr<Grid<Vec3> >("source",1,&_lock); Vec3 scale = _args.getOpt<Vec3 >("scale",2,Vec3(1.),&_lock); Vec3 offset = _args.getOpt<Vec3 >("offset",3,Vec3(0.),&_lock); Vec3i size = _args.getOpt<Vec3i >("size",4,Vec3i(-1,-1,-1) ,&_lock); int orderSpace = _args.getOpt<int >("orderSpace",5,1 ,&_lock);   _retval = getPyNone(); interpolateGridVec3(target,source,scale,offset,size,orderSpace);  _args.check(); } pbFinalizePlugin(parent,"interpolateGridVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("interpolateGridVec3",e.what()); return 0; } } static const Pb::Register _RP_interpolateGridVec3 ("","interpolateGridVec3",_W_1);  extern "C" { void PbRegister_interpolateGridVec3() { KEEP_UNUSED(_RP_interpolateGridVec3); } } 
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "interpolateGridVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",0,&_lock); const Grid<Vec3>& source = *_args.getPtr<Grid<Vec3> >("source",1,&_lock); Vec3 scale = _args.getOpt<Vec3 >("scale",2,Vec3(1.),&_lock); Vec3 offset = _args.getOpt<Vec3 >("offset",3,Vec3(0.),&_lock); Vec3i size = _args.getOpt<Vec3i >("size",4,Vec3i(-1,-1,-1) ,&_lock); int orderSpace = _args.getOpt<int >("orderSpace",5,1 ,&_lock);   _retval = getPyNone(); interpolateGridVec3(target,source,scale,offset,size,orderSpace);  _args.check(); } pbFinalizePlugin(parent,"interpolateGridVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("interpolateGridVec3",e.what()); return 0; } } static const Pb::Register _RP_interpolateGridVec3 ("","interpolateGridVec3",_W_1);  extern "C" { void PbRegister_interpolateGridVec3() { KEEP_UNUSED(_RP_interpolateGridVec3); } } 
 
 
 //!interpolate a mac velocity grid from one size to another size
 
 
- struct KnInterpolateMACGrid : public KernelBase { KnInterpolateMACGrid(MACGrid& target, MACGrid& source, const Vec3& sourceFactor, const Vec3& off, int orderSpace) :  KernelBase(&target,0) ,target(target),source(source),sourceFactor(sourceFactor),off(off),orderSpace(orderSpace)   { runMessage(); run(); }  inline void op(int i, int j, int k, MACGrid& target, MACGrid& source, const Vec3& sourceFactor, const Vec3& off, int orderSpace )  {
+ struct KnInterpolateMACGrid : public KernelBase { KnInterpolateMACGrid(MACGrid& target, const MACGrid& source, const Vec3& sourceFactor, const Vec3& off, int orderSpace) :  KernelBase(&target,0) ,target(target),source(source),sourceFactor(sourceFactor),off(off),orderSpace(orderSpace)   { runMessage(); run(); }  inline void op(int i, int j, int k, MACGrid& target, const MACGrid& source, const Vec3& sourceFactor, const Vec3& off, int orderSpace )  {
 	Vec3 pos = Vec3(i,j,k) * sourceFactor + off;
 
 	Real vx = source.getInterpolatedHi(pos - Vec3(0.5,0,0), orderSpace)[0];
@@ -80,7 +80,7 @@ void interpolateGridVec3( Grid<Vec3>& target, Grid<Vec3>& source , Vec3 scale=Ve
 	if(source.is3D()) vz = source.getInterpolatedHi(pos - Vec3(0,0,0.5), orderSpace)[2];
 
 	target(i,j,k) = Vec3(vx,vy,vz);
-}   inline MACGrid& getArg0() { return target; } typedef MACGrid type0;inline MACGrid& getArg1() { return source; } typedef MACGrid type1;inline const Vec3& getArg2() { return sourceFactor; } typedef Vec3 type2;inline const Vec3& getArg3() { return off; } typedef Vec3 type3;inline int& getArg4() { return orderSpace; } typedef int type4; void runMessage() { debMsg("Executing kernel KnInterpolateMACGrid ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline MACGrid& getArg0() { return target; } typedef MACGrid type0;inline const MACGrid& getArg1() { return source; } typedef MACGrid type1;inline const Vec3& getArg2() { return sourceFactor; } typedef Vec3 type2;inline const Vec3& getArg3() { return off; } typedef Vec3 type3;inline int& getArg4() { return orderSpace; } typedef int type4; void runMessage() { debMsg("Executing kernel KnInterpolateMACGrid ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
 #pragma omp for  
@@ -88,17 +88,17 @@ void interpolateGridVec3( Grid<Vec3>& target, Grid<Vec3>& source , Vec3 scale=Ve
 #pragma omp parallel 
  {  
 #pragma omp for  
-  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,target,source,sourceFactor,off,orderSpace);  } }  } MACGrid& target; MACGrid& source; const Vec3& sourceFactor; const Vec3& off; int orderSpace;   };
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,target,source,sourceFactor,off,orderSpace);  } }  } MACGrid& target; const MACGrid& source; const Vec3& sourceFactor; const Vec3& off; int orderSpace;   };
 #line 62 "plugin/waveletturbulence.cpp"
 
 
 
 
-void interpolateMACGrid(MACGrid& target, MACGrid& source, Vec3 scale=Vec3(1.), Vec3 offset=Vec3(0.), Vec3i size=Vec3i(-1,-1,-1) , int orderSpace=1) {
+void interpolateMACGrid(MACGrid& target, const MACGrid& source, Vec3 scale=Vec3(1.), Vec3 offset=Vec3(0.), Vec3i size=Vec3i(-1,-1,-1) , int orderSpace=1) {
 	Vec3 sourceFactor(1.), off2 = offset;
 	calcGridSizeFactorMod(source.getSize(), target.getSize(), size, scale, sourceFactor, off2);
 	KnInterpolateMACGrid(target, source, sourceFactor, off2, orderSpace);
-} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "interpolateMACGrid" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& target = *_args.getPtr<MACGrid >("target",0,&_lock); MACGrid& source = *_args.getPtr<MACGrid >("source",1,&_lock); Vec3 scale = _args.getOpt<Vec3 >("scale",2,Vec3(1.),&_lock); Vec3 offset = _args.getOpt<Vec3 >("offset",3,Vec3(0.),&_lock); Vec3i size = _args.getOpt<Vec3i >("size",4,Vec3i(-1,-1,-1) ,&_lock); int orderSpace = _args.getOpt<int >("orderSpace",5,1,&_lock);   _retval = getPyNone(); interpolateMACGrid(target,source,scale,offset,size,orderSpace);  _args.check(); } pbFinalizePlugin(parent,"interpolateMACGrid", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("interpolateMACGrid",e.what()); return 0; } } static const Pb::Register _RP_interpolateMACGrid ("","interpolateMACGrid",_W_2);  extern "C" { void PbRegister_interpolateMACGrid() { KEEP_UNUSED(_RP_interpolateMACGrid); } } 
+} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "interpolateMACGrid" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& target = *_args.getPtr<MACGrid >("target",0,&_lock); const MACGrid& source = *_args.getPtr<MACGrid >("source",1,&_lock); Vec3 scale = _args.getOpt<Vec3 >("scale",2,Vec3(1.),&_lock); Vec3 offset = _args.getOpt<Vec3 >("offset",3,Vec3(0.),&_lock); Vec3i size = _args.getOpt<Vec3i >("size",4,Vec3i(-1,-1,-1) ,&_lock); int orderSpace = _args.getOpt<int >("orderSpace",5,1,&_lock);   _retval = getPyNone(); interpolateMACGrid(target,source,scale,offset,size,orderSpace);  _args.check(); } pbFinalizePlugin(parent,"interpolateMACGrid", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("interpolateMACGrid",e.what()); return 0; } } static const Pb::Register _RP_interpolateMACGrid ("","interpolateMACGrid",_W_2);  extern "C" { void PbRegister_interpolateMACGrid() { KEEP_UNUSED(_RP_interpolateMACGrid); } } 
 
 
 
@@ -108,12 +108,12 @@ void interpolateMACGrid(MACGrid& target, MACGrid& source, Vec3 scale=Vec3(1.), V
 
 
 
- struct knApplySimpleNoiseVec3 : public KernelBase { knApplySimpleNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, Real scale, Grid<Real>* weight ) :  KernelBase(&flags,0) ,flags(flags),target(target),noise(noise),scale(scale),weight(weight)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, Real scale, Grid<Real>* weight  )  {
+ struct knApplySimpleNoiseVec3 : public KernelBase { knApplySimpleNoiseVec3(const FlagGrid& flags, Grid<Vec3>& target, const WaveletNoiseField& noise, Real scale, const Grid<Real>* weight ) :  KernelBase(&flags,0) ,flags(flags),target(target),noise(noise),scale(scale),weight(weight)   { runMessage(); run(); }  inline void op(int i, int j, int k, const FlagGrid& flags, Grid<Vec3>& target, const WaveletNoiseField& noise, Real scale, const Grid<Real>* weight  )  {
 	if ( !flags.isFluid(i,j,k) ) return; 
 	Real factor = 1;
 	if(weight) factor = (*weight)(i,j,k);
 	target(i,j,k) += noise.evaluateCurl( Vec3(i,j,k)+Vec3(0.5) ) * scale * factor;
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Vec3>& getArg1() { return target; } typedef Grid<Vec3> type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Real& getArg3() { return scale; } typedef Real type3;inline Grid<Real>* getArg4() { return weight; } typedef Grid<Real> type4; void runMessage() { debMsg("Executing kernel knApplySimpleNoiseVec3 ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline const FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Vec3>& getArg1() { return target; } typedef Grid<Vec3> type1;inline const WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Real& getArg3() { return scale; } typedef Real type3;inline const Grid<Real>* getArg4() { return weight; } typedef Grid<Real> type4; void runMessage() { debMsg("Executing kernel knApplySimpleNoiseVec3 ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
 #pragma omp for  
@@ -121,28 +121,28 @@ void interpolateMACGrid(MACGrid& target, MACGrid& source, Vec3 scale=Vec3(1.), V
 #pragma omp parallel 
  {  
 #pragma omp for  
-  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,target,noise,scale,weight);  } }  } FlagGrid& flags; Grid<Vec3>& target; WaveletNoiseField& noise; Real scale; Grid<Real>* weight;   };
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,target,noise,scale,weight);  } }  } const FlagGrid& flags; Grid<Vec3>& target; const WaveletNoiseField& noise; Real scale; const Grid<Real>* weight;   };
 #line 88 "plugin/waveletturbulence.cpp"
 
 
 
 
-void applySimpleNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, Real scale=1.0 , Grid<Real>* weight=NULL ) {
+void applySimpleNoiseVec3(const FlagGrid& flags, Grid<Vec3>& target, const WaveletNoiseField& noise, Real scale=1.0 , const Grid<Real>* weight=NULL ) {
 	// note - passing a MAC grid here is slightly inaccurate, we should evaluate each component separately
 	knApplySimpleNoiseVec3(flags, target, noise, scale , weight );
-} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "applySimpleNoiseVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock); WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Real scale = _args.getOpt<Real >("scale",3,1.0 ,&_lock); Grid<Real>* weight = _args.getPtrOpt<Grid<Real> >("weight",4,NULL ,&_lock);   _retval = getPyNone(); applySimpleNoiseVec3(flags,target,noise,scale,weight);  _args.check(); } pbFinalizePlugin(parent,"applySimpleNoiseVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("applySimpleNoiseVec3",e.what()); return 0; } } static const Pb::Register _RP_applySimpleNoiseVec3 ("","applySimpleNoiseVec3",_W_3);  extern "C" { void PbRegister_applySimpleNoiseVec3() { KEEP_UNUSED(_RP_applySimpleNoiseVec3); } } 
+} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "applySimpleNoiseVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock); const WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Real scale = _args.getOpt<Real >("scale",3,1.0 ,&_lock); const Grid<Real>* weight = _args.getPtrOpt<Grid<Real> >("weight",4,NULL ,&_lock);   _retval = getPyNone(); applySimpleNoiseVec3(flags,target,noise,scale,weight);  _args.check(); } pbFinalizePlugin(parent,"applySimpleNoiseVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("applySimpleNoiseVec3",e.what()); return 0; } } static const Pb::Register _RP_applySimpleNoiseVec3 ("","applySimpleNoiseVec3",_W_3);  extern "C" { void PbRegister_applySimpleNoiseVec3() { KEEP_UNUSED(_RP_applySimpleNoiseVec3); } } 
 
 
 //! Simple noise for a real grid , follows applySimpleNoiseVec3
 
 
 
- struct knApplySimpleNoiseReal : public KernelBase { knApplySimpleNoiseReal(FlagGrid& flags, Grid<Real>& target, WaveletNoiseField& noise, Real scale, Grid<Real>* weight ) :  KernelBase(&flags,0) ,flags(flags),target(target),noise(noise),scale(scale),weight(weight)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Real>& target, WaveletNoiseField& noise, Real scale, Grid<Real>* weight  )  {
+ struct knApplySimpleNoiseReal : public KernelBase { knApplySimpleNoiseReal(const FlagGrid& flags, Grid<Real>& target, const WaveletNoiseField& noise, Real scale, const Grid<Real>* weight ) :  KernelBase(&flags,0) ,flags(flags),target(target),noise(noise),scale(scale),weight(weight)   { runMessage(); run(); }  inline void op(int i, int j, int k, const FlagGrid& flags, Grid<Real>& target, const WaveletNoiseField& noise, Real scale, const Grid<Real>* weight  )  {
 	if ( !flags.isFluid(i,j,k) ) return; 
 	Real factor = 1;
 	if(weight) factor = (*weight)(i,j,k);
 	target(i,j,k) += noise.evaluate( Vec3(i,j,k)+Vec3(0.5) ) * scale * factor;
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return target; } typedef Grid<Real> type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Real& getArg3() { return scale; } typedef Real type3;inline Grid<Real>* getArg4() { return weight; } typedef Grid<Real> type4; void runMessage() { debMsg("Executing kernel knApplySimpleNoiseReal ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline const FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return target; } typedef Grid<Real> type1;inline const WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Real& getArg3() { return scale; } typedef Real type3;inline const Grid<Real>* getArg4() { return weight; } typedef Grid<Real> type4; void runMessage() { debMsg("Executing kernel knApplySimpleNoiseReal ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
 #pragma omp for  
@@ -150,15 +150,15 @@ void applySimpleNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField
 #pragma omp parallel 
  {  
 #pragma omp for  
-  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,target,noise,scale,weight);  } }  } FlagGrid& flags; Grid<Real>& target; WaveletNoiseField& noise; Real scale; Grid<Real>* weight;   };
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,target,noise,scale,weight);  } }  } const FlagGrid& flags; Grid<Real>& target; const WaveletNoiseField& noise; Real scale; const Grid<Real>* weight;   };
 #line 106 "plugin/waveletturbulence.cpp"
 
 
 
 
-void applySimpleNoiseReal(FlagGrid& flags, Grid<Real>& target, WaveletNoiseField& noise, Real scale=1.0 , Grid<Real>* weight=NULL ) {
+void applySimpleNoiseReal(const FlagGrid& flags, Grid<Real>& target, const WaveletNoiseField& noise, Real scale=1.0 , const Grid<Real>* weight=NULL ) {
 	knApplySimpleNoiseReal(flags, target, noise, scale , weight );
-} static PyObject* _W_4 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "applySimpleNoiseReal" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& target = *_args.getPtr<Grid<Real> >("target",1,&_lock); WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Real scale = _args.getOpt<Real >("scale",3,1.0 ,&_lock); Grid<Real>* weight = _args.getPtrOpt<Grid<Real> >("weight",4,NULL ,&_lock);   _retval = getPyNone(); applySimpleNoiseReal(flags,target,noise,scale,weight);  _args.check(); } pbFinalizePlugin(parent,"applySimpleNoiseReal", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("applySimpleNoiseReal",e.what()); return 0; } } static const Pb::Register _RP_applySimpleNoiseReal ("","applySimpleNoiseReal",_W_4);  extern "C" { void PbRegister_applySimpleNoiseReal() { KEEP_UNUSED(_RP_applySimpleNoiseReal); } } 
+} static PyObject* _W_4 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "applySimpleNoiseReal" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& target = *_args.getPtr<Grid<Real> >("target",1,&_lock); const WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Real scale = _args.getOpt<Real >("scale",3,1.0 ,&_lock); const Grid<Real>* weight = _args.getPtrOpt<Grid<Real> >("weight",4,NULL ,&_lock);   _retval = getPyNone(); applySimpleNoiseReal(flags,target,noise,scale,weight);  _args.check(); } pbFinalizePlugin(parent,"applySimpleNoiseReal", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("applySimpleNoiseReal",e.what()); return 0; } } static const Pb::Register _RP_applySimpleNoiseReal ("","applySimpleNoiseReal",_W_4);  extern "C" { void PbRegister_applySimpleNoiseReal() { KEEP_UNUSED(_RP_applySimpleNoiseReal); } } 
 
 
 
@@ -168,7 +168,7 @@ void applySimpleNoiseReal(FlagGrid& flags, Grid<Real>& target, WaveletNoiseField
 
 
 
- struct knApplyNoiseVec3 : public KernelBase { knApplyNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, Real scale, Real scaleSpatial, Grid<Real>* weight, Grid<Vec3>* uv, bool uvInterpol, const Vec3& sourceFactor ) :  KernelBase(&flags,0) ,flags(flags),target(target),noise(noise),scale(scale),scaleSpatial(scaleSpatial),weight(weight),uv(uv),uvInterpol(uvInterpol),sourceFactor(sourceFactor)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, Real scale, Real scaleSpatial, Grid<Real>* weight, Grid<Vec3>* uv, bool uvInterpol, const Vec3& sourceFactor  )  {
+ struct knApplyNoiseVec3 : public KernelBase { knApplyNoiseVec3(const FlagGrid& flags, Grid<Vec3>& target, const WaveletNoiseField& noise, Real scale, Real scaleSpatial, const Grid<Real>* weight, const Grid<Vec3>* uv, bool uvInterpol, const Vec3& sourceFactor ) :  KernelBase(&flags,0) ,flags(flags),target(target),noise(noise),scale(scale),scaleSpatial(scaleSpatial),weight(weight),uv(uv),uvInterpol(uvInterpol),sourceFactor(sourceFactor)   { runMessage(); run(); }  inline void op(int i, int j, int k, const FlagGrid& flags, Grid<Vec3>& target, const WaveletNoiseField& noise, Real scale, Real scaleSpatial, const Grid<Real>* weight, const Grid<Vec3>* uv, bool uvInterpol, const Vec3& sourceFactor  )  {
 	if ( !flags.isFluid(i,j,k) ) return;
 
 	// get weighting, interpolate if necessary
@@ -197,7 +197,7 @@ void applySimpleNoiseReal(FlagGrid& flags, Grid<Real>& target, WaveletNoiseField
 	Vec3 noiseVec3 = noise.evaluateCurl( pos ) * scale * w; 
 	//noiseVec3=pos; // debug , show interpolated positions
 	target(i,j,k) += noiseVec3;
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Vec3>& getArg1() { return target; } typedef Grid<Vec3> type1;inline WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Real& getArg3() { return scale; } typedef Real type3;inline Real& getArg4() { return scaleSpatial; } typedef Real type4;inline Grid<Real>* getArg5() { return weight; } typedef Grid<Real> type5;inline Grid<Vec3>* getArg6() { return uv; } typedef Grid<Vec3> type6;inline bool& getArg7() { return uvInterpol; } typedef bool type7;inline const Vec3& getArg8() { return sourceFactor; } typedef Vec3 type8; void runMessage() { debMsg("Executing kernel knApplyNoiseVec3 ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline const FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Vec3>& getArg1() { return target; } typedef Grid<Vec3> type1;inline const WaveletNoiseField& getArg2() { return noise; } typedef WaveletNoiseField type2;inline Real& getArg3() { return scale; } typedef Real type3;inline Real& getArg4() { return scaleSpatial; } typedef Real type4;inline const Grid<Real>* getArg5() { return weight; } typedef Grid<Real> type5;inline const Grid<Vec3>* getArg6() { return uv; } typedef Grid<Vec3> type6;inline bool& getArg7() { return uvInterpol; } typedef bool type7;inline const Vec3& getArg8() { return sourceFactor; } typedef Vec3 type8; void runMessage() { debMsg("Executing kernel knApplyNoiseVec3 ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
 #pragma omp for  
@@ -205,13 +205,13 @@ void applySimpleNoiseReal(FlagGrid& flags, Grid<Real>& target, WaveletNoiseField
 #pragma omp parallel 
  {  
 #pragma omp for  
-  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,target,noise,scale,scaleSpatial,weight,uv,uvInterpol,sourceFactor);  } }  } FlagGrid& flags; Grid<Vec3>& target; WaveletNoiseField& noise; Real scale; Real scaleSpatial; Grid<Real>* weight; Grid<Vec3>* uv; bool uvInterpol; const Vec3& sourceFactor;   };
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,target,noise,scale,scaleSpatial,weight,uv,uvInterpol,sourceFactor);  } }  } const FlagGrid& flags; Grid<Vec3>& target; const WaveletNoiseField& noise; Real scale; Real scaleSpatial; const Grid<Real>* weight; const Grid<Vec3>* uv; bool uvInterpol; const Vec3& sourceFactor;   };
 #line 126 "plugin/waveletturbulence.cpp"
 
  
 
 
-void applyNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, Real scale=1.0 , Real scaleSpatial=1.0 , Grid<Real>* weight=NULL , Grid<Vec3>* uv=NULL ) {
+void applyNoiseVec3(const FlagGrid& flags, Grid<Vec3>& target, const WaveletNoiseField& noise, Real scale=1.0 , Real scaleSpatial=1.0 , const Grid<Real>* weight=NULL , const Grid<Vec3>* uv=NULL ) {
 	// check whether the uv grid has a different resolution
 	bool uvInterpol = false; 
 	// and pre-compute conversion (only used if uvInterpol==true)
@@ -228,21 +228,21 @@ void applyNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& nois
 
 	// note - passing a MAC grid here is slightly inaccurate, we should evaluate each component separately
 	knApplyNoiseVec3(flags, target, noise, scale, scaleSpatial, weight , uv,uvInterpol,sourceFactor );
-} static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "applyNoiseVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock); WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Real scale = _args.getOpt<Real >("scale",3,1.0 ,&_lock); Real scaleSpatial = _args.getOpt<Real >("scaleSpatial",4,1.0 ,&_lock); Grid<Real>* weight = _args.getPtrOpt<Grid<Real> >("weight",5,NULL ,&_lock); Grid<Vec3>* uv = _args.getPtrOpt<Grid<Vec3> >("uv",6,NULL ,&_lock);   _retval = getPyNone(); applyNoiseVec3(flags,target,noise,scale,scaleSpatial,weight,uv);  _args.check(); } pbFinalizePlugin(parent,"applyNoiseVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("applyNoiseVec3",e.what()); return 0; } } static const Pb::Register _RP_applyNoiseVec3 ("","applyNoiseVec3",_W_5);  extern "C" { void PbRegister_applyNoiseVec3() { KEEP_UNUSED(_RP_applyNoiseVec3); } } 
+} static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "applyNoiseVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock); const WaveletNoiseField& noise = *_args.getPtr<WaveletNoiseField >("noise",2,&_lock); Real scale = _args.getOpt<Real >("scale",3,1.0 ,&_lock); Real scaleSpatial = _args.getOpt<Real >("scaleSpatial",4,1.0 ,&_lock); const Grid<Real>* weight = _args.getPtrOpt<Grid<Real> >("weight",5,NULL ,&_lock); const Grid<Vec3>* uv = _args.getPtrOpt<Grid<Vec3> >("uv",6,NULL ,&_lock);   _retval = getPyNone(); applyNoiseVec3(flags,target,noise,scale,scaleSpatial,weight,uv);  _args.check(); } pbFinalizePlugin(parent,"applyNoiseVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("applyNoiseVec3",e.what()); return 0; } } static const Pb::Register _RP_applyNoiseVec3 ("","applyNoiseVec3",_W_5);  extern "C" { void PbRegister_applyNoiseVec3() { KEEP_UNUSED(_RP_applyNoiseVec3); } } 
 
 
 
 //! Compute energy of a staggered velocity field (at cell center)
 
 
- struct KnApplyComputeEnergy : public KernelBase { KnApplyComputeEnergy( FlagGrid& flags, MACGrid& vel, Grid<Real>& energy ) :  KernelBase(&flags,0) ,flags(flags),vel(vel),energy(energy)   { runMessage(); run(); }  inline void op(int i, int j, int k,  FlagGrid& flags, MACGrid& vel, Grid<Real>& energy  )  {
+ struct KnApplyComputeEnergy : public KernelBase { KnApplyComputeEnergy( const FlagGrid& flags, const MACGrid& vel, Grid<Real>& energy ) :  KernelBase(&flags,0) ,flags(flags),vel(vel),energy(energy)   { runMessage(); run(); }  inline void op(int i, int j, int k,  const FlagGrid& flags, const MACGrid& vel, Grid<Real>& energy  )  {
 	Real e = 0.f;
 	if ( flags.isFluid(i,j,k) ) {
 		Vec3 v = vel.getCentered(i,j,k);
 		e = 0.5 * (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
 	}
 	energy(i,j,k) = e;
-}   inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<Real>& getArg2() { return energy; } typedef Grid<Real> type2; void runMessage() { debMsg("Executing kernel KnApplyComputeEnergy ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+}   inline const FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline const MACGrid& getArg1() { return vel; } typedef MACGrid type1;inline Grid<Real>& getArg2() { return energy; } typedef Grid<Real> type2; void runMessage() { debMsg("Executing kernel KnApplyComputeEnergy ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
 #pragma omp parallel 
  {  
 #pragma omp for  
@@ -250,15 +250,15 @@ void applyNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& nois
 #pragma omp parallel 
  {  
 #pragma omp for  
-  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,vel,energy);  } }  } FlagGrid& flags; MACGrid& vel; Grid<Real>& energy;   };
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,vel,energy);  } }  } const FlagGrid& flags; const MACGrid& vel; Grid<Real>& energy;   };
 #line 182 "plugin/waveletturbulence.cpp"
 
 
 
 
-void computeEnergy( FlagGrid& flags, MACGrid& vel, Grid<Real>& energy ) {
+void computeEnergy( const FlagGrid& flags, const MACGrid& vel, Grid<Real>& energy ) {
 	KnApplyComputeEnergy( flags, vel, energy );
-} static PyObject* _W_6 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "computeEnergy" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); Grid<Real>& energy = *_args.getPtr<Grid<Real> >("energy",2,&_lock);   _retval = getPyNone(); computeEnergy(flags,vel,energy);  _args.check(); } pbFinalizePlugin(parent,"computeEnergy", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("computeEnergy",e.what()); return 0; } } static const Pb::Register _RP_computeEnergy ("","computeEnergy",_W_6);  extern "C" { void PbRegister_computeEnergy() { KEEP_UNUSED(_RP_computeEnergy); } } 
+} static PyObject* _W_6 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "computeEnergy" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); const MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); Grid<Real>& energy = *_args.getPtr<Grid<Real> >("energy",2,&_lock);   _retval = getPyNone(); computeEnergy(flags,vel,energy);  _args.check(); } pbFinalizePlugin(parent,"computeEnergy", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("computeEnergy",e.what()); return 0; } } static const Pb::Register _RP_computeEnergy ("","computeEnergy",_W_6);  extern "C" { void PbRegister_computeEnergy() { KEEP_UNUSED(_RP_computeEnergy); } } 
 
 
 
@@ -268,12 +268,12 @@ void computeWaveletCoeffs(Grid<Real>& input) {
 } static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "computeWaveletCoeffs" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& input = *_args.getPtr<Grid<Real> >("input",0,&_lock);   _retval = getPyNone(); computeWaveletCoeffs(input);  _args.check(); } pbFinalizePlugin(parent,"computeWaveletCoeffs", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("computeWaveletCoeffs",e.what()); return 0; } } static const Pb::Register _RP_computeWaveletCoeffs ("","computeWaveletCoeffs",_W_7);  extern "C" { void PbRegister_computeWaveletCoeffs() { KEEP_UNUSED(_RP_computeWaveletCoeffs); } } 
 
 // note - alomst the same as for vorticity confinement
-void computeVorticity(MACGrid& vel, Grid<Vec3>& vorticity, Grid<Real>* norm) {
+void computeVorticity(const MACGrid& vel, Grid<Vec3>& vorticity, Grid<Real>* norm=NULL) {
 	Grid<Vec3> velCenter(vel.getParent());
 	GetCentered(velCenter, vel);
 	CurlOp(velCenter, vorticity);
 	if(norm) GridNorm( *norm, vorticity);
-} static PyObject* _W_8 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "computeVorticity" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Vec3>& vorticity = *_args.getPtr<Grid<Vec3> >("vorticity",1,&_lock); Grid<Real>* norm = _args.getPtr<Grid<Real> >("norm",2,&_lock);   _retval = getPyNone(); computeVorticity(vel,vorticity,norm);  _args.check(); } pbFinalizePlugin(parent,"computeVorticity", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("computeVorticity",e.what()); return 0; } } static const Pb::Register _RP_computeVorticity ("","computeVorticity",_W_8);  extern "C" { void PbRegister_computeVorticity() { KEEP_UNUSED(_RP_computeVorticity); } } 
+} static PyObject* _W_8 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "computeVorticity" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Vec3>& vorticity = *_args.getPtr<Grid<Vec3> >("vorticity",1,&_lock); Grid<Real>* norm = _args.getPtrOpt<Grid<Real> >("norm",2,NULL,&_lock);   _retval = getPyNone(); computeVorticity(vel,vorticity,norm);  _args.check(); } pbFinalizePlugin(parent,"computeVorticity", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("computeVorticity",e.what()); return 0; } } static const Pb::Register _RP_computeVorticity ("","computeVorticity",_W_8);  extern "C" { void PbRegister_computeVorticity() { KEEP_UNUSED(_RP_computeVorticity); } } 
 
 // note - very similar to KnComputeProductionStrain, but for use as wavelet turb weighting
 
@@ -307,17 +307,17 @@ void computeVorticity(MACGrid& vel, Grid<Vec3>& vorticity, Grid<Real>* norm) {
 #line 214 "plugin/waveletturbulence.cpp"
 
 
-void computeStrainRateMag(MACGrid& vel, Grid<Real>& mag) {
+void computeStrainRateMag(const MACGrid& vel, Grid<Real>& mag) {
 	Grid<Vec3> velCenter(vel.getParent());
 	GetCentered(velCenter, vel);
 	KnComputeStrainRateMag(vel, velCenter, mag);
-} static PyObject* _W_9 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "computeStrainRateMag" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Real>& mag = *_args.getPtr<Grid<Real> >("mag",1,&_lock);   _retval = getPyNone(); computeStrainRateMag(vel,mag);  _args.check(); } pbFinalizePlugin(parent,"computeStrainRateMag", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("computeStrainRateMag",e.what()); return 0; } } static const Pb::Register _RP_computeStrainRateMag ("","computeStrainRateMag",_W_9);  extern "C" { void PbRegister_computeStrainRateMag() { KEEP_UNUSED(_RP_computeStrainRateMag); } } 
+} static PyObject* _W_9 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "computeStrainRateMag" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Real>& mag = *_args.getPtr<Grid<Real> >("mag",1,&_lock);   _retval = getPyNone(); computeStrainRateMag(vel,mag);  _args.check(); } pbFinalizePlugin(parent,"computeStrainRateMag", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("computeStrainRateMag",e.what()); return 0; } } static const Pb::Register _RP_computeStrainRateMag ("","computeStrainRateMag",_W_9);  extern "C" { void PbRegister_computeStrainRateMag() { KEEP_UNUSED(_RP_computeStrainRateMag); } } 
 
 
 // extrapolate a real grid into a flagged region (based on initial flags)
 // by default extrapolates from fluid to obstacle cells
 template<class T> 
-void extrapolSimpleFlagsHelper (FlagGrid& flags, Grid<T>& val, int distance = 4, 
+void extrapolSimpleFlagsHelper (const FlagGrid& flags, Grid<T>& val, int distance = 4,
 									int flagFrom=FlagGrid::TypeFluid, int flagTo=FlagGrid::TypeObstacle ) 
 {
 	Grid<int> tmp( flags.getParent() );
@@ -370,7 +370,7 @@ void extrapolSimpleFlagsHelper (FlagGrid& flags, Grid<T>& val, int distance = 4,
 }
 
 
-void extrapolateSimpleFlags(FlagGrid& flags, GridBase* val, int distance = 4, int flagFrom=FlagGrid::TypeFluid, int flagTo=FlagGrid::TypeObstacle ) {
+void extrapolateSimpleFlags(const FlagGrid& flags, GridBase* val, int distance = 4, int flagFrom=FlagGrid::TypeFluid, int flagTo=FlagGrid::TypeObstacle ) {
 	if (val->getType() & GridBase::TypeReal) {
 		extrapolSimpleFlagsHelper<Real>(flags,*((Grid<Real>*) val),distance,flagFrom,flagTo);
 	}
@@ -382,16 +382,16 @@ void extrapolateSimpleFlags(FlagGrid& flags, GridBase* val, int distance = 4, in
 	}
 	else
 		errMsg("extrapolateSimpleFlags: Grid Type is not supported (only int, Real, Vec3)");    
-} static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "extrapolateSimpleFlags" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); GridBase* val = _args.getPtr<GridBase >("val",1,&_lock); int distance = _args.getOpt<int >("distance",2,4,&_lock); int flagFrom = _args.getOpt<int >("flagFrom",3,FlagGrid::TypeFluid,&_lock); int flagTo = _args.getOpt<int >("flagTo",4,FlagGrid::TypeObstacle ,&_lock);   _retval = getPyNone(); extrapolateSimpleFlags(flags,val,distance,flagFrom,flagTo);  _args.check(); } pbFinalizePlugin(parent,"extrapolateSimpleFlags", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateSimpleFlags",e.what()); return 0; } } static const Pb::Register _RP_extrapolateSimpleFlags ("","extrapolateSimpleFlags",_W_10);  extern "C" { void PbRegister_extrapolateSimpleFlags() { KEEP_UNUSED(_RP_extrapolateSimpleFlags); } } 
+} static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "extrapolateSimpleFlags" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); GridBase* val = _args.getPtr<GridBase >("val",1,&_lock); int distance = _args.getOpt<int >("distance",2,4,&_lock); int flagFrom = _args.getOpt<int >("flagFrom",3,FlagGrid::TypeFluid,&_lock); int flagTo = _args.getOpt<int >("flagTo",4,FlagGrid::TypeObstacle ,&_lock);   _retval = getPyNone(); extrapolateSimpleFlags(flags,val,distance,flagFrom,flagTo);  _args.check(); } pbFinalizePlugin(parent,"extrapolateSimpleFlags", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("extrapolateSimpleFlags",e.what()); return 0; } } static const Pb::Register _RP_extrapolateSimpleFlags ("","extrapolateSimpleFlags",_W_10);  extern "C" { void PbRegister_extrapolateSimpleFlags() { KEEP_UNUSED(_RP_extrapolateSimpleFlags); } } 
 
 //! convert vel to a centered grid, then compute its curl
-void getCurl(MACGrid& vel, Grid<Real>& vort, int comp) {
+void getCurl(const MACGrid& vel, Grid<Real>& vort, int comp) {
 	Grid<Vec3> velCenter(vel.getParent()), curl(vel.getParent());
 	
 	GetCentered(velCenter, vel);
 	CurlOp(velCenter, curl);
 	GetComponent(curl, vort, comp);
-} static PyObject* _W_11 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "getCurl" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Real>& vort = *_args.getPtr<Grid<Real> >("vort",1,&_lock); int comp = _args.get<int >("comp",2,&_lock);   _retval = getPyNone(); getCurl(vel,vort,comp);  _args.check(); } pbFinalizePlugin(parent,"getCurl", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("getCurl",e.what()); return 0; } } static const Pb::Register _RP_getCurl ("","getCurl",_W_11);  extern "C" { void PbRegister_getCurl() { KEEP_UNUSED(_RP_getCurl); } } 
+} static PyObject* _W_11 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "getCurl" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Real>& vort = *_args.getPtr<Grid<Real> >("vort",1,&_lock); int comp = _args.get<int >("comp",2,&_lock);   _retval = getPyNone(); getCurl(vel,vort,comp);  _args.check(); } pbFinalizePlugin(parent,"getCurl", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("getCurl",e.what()); return 0; } } static const Pb::Register _RP_getCurl ("","getCurl",_W_11);  extern "C" { void PbRegister_getCurl() { KEEP_UNUSED(_RP_getCurl); } } 
 
 } // namespace
 

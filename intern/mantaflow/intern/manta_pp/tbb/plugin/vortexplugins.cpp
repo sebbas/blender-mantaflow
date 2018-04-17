@@ -16,8 +16,8 @@
  * Copyright 2011 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL) 
- * http://www.gnu.org/licenses
+ * Apache License, Version 2.0 
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Plugins for using vortex sheet meshes 
  *
@@ -39,19 +39,19 @@ namespace Manta {
 //! Mark area of mesh inside shape as fixed nodes. 
 //! Remove all other fixed nodes if 'exclusive' is set
 
-void markAsFixed(Mesh& mesh, Shape* shape, bool exclusive=true) {
+void markAsFixed(Mesh& mesh, const Shape* shape, bool exclusive=true) {
 	for (int i=0; i<mesh.numNodes(); i++) {
 		if (shape->isInside(mesh.nodes(i).pos))
 			mesh.nodes(i).flags |= Mesh::NfFixed;
 		else if (exclusive)
 			mesh.nodes(i).flags &= ~Mesh::NfFixed;
 	}
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "markAsFixed" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Mesh& mesh = *_args.getPtr<Mesh >("mesh",0,&_lock); Shape* shape = _args.getPtr<Shape >("shape",1,&_lock); bool exclusive = _args.getOpt<bool >("exclusive",2,true,&_lock);   _retval = getPyNone(); markAsFixed(mesh,shape,exclusive);  _args.check(); } pbFinalizePlugin(parent,"markAsFixed", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("markAsFixed",e.what()); return 0; } } static const Pb::Register _RP_markAsFixed ("","markAsFixed",_W_0);  extern "C" { void PbRegister_markAsFixed() { KEEP_UNUSED(_RP_markAsFixed); } } 
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "markAsFixed" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Mesh& mesh = *_args.getPtr<Mesh >("mesh",0,&_lock); const Shape* shape = _args.getPtr<Shape >("shape",1,&_lock); bool exclusive = _args.getOpt<bool >("exclusive",2,true,&_lock);   _retval = getPyNone(); markAsFixed(mesh,shape,exclusive);  _args.check(); } pbFinalizePlugin(parent,"markAsFixed", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("markAsFixed",e.what()); return 0; } } static const Pb::Register _RP_markAsFixed ("","markAsFixed",_W_0);  extern "C" { void PbRegister_markAsFixed() { KEEP_UNUSED(_RP_markAsFixed); } } 
 
 //! Adapt texture coordinates of mesh inside shape
 //! to obtain an effective inflow effect
 
-void texcoordInflow(VortexSheetMesh& mesh, Shape* shape, MACGrid& vel) {
+void texcoordInflow(VortexSheetMesh& mesh, const Shape* shape, const MACGrid& vel) {
 	static Vec3 t0 = Vec3::Zero;
 	
 	// get mean velocity
@@ -75,16 +75,16 @@ void texcoordInflow(VortexSheetMesh& mesh, Shape* shape, MACGrid& vel) {
 			mesh.tex2(i) = tc;
 		}
 	}
-} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "texcoordInflow" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; VortexSheetMesh& mesh = *_args.getPtr<VortexSheetMesh >("mesh",0,&_lock); Shape* shape = _args.getPtr<Shape >("shape",1,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",2,&_lock);   _retval = getPyNone(); texcoordInflow(mesh,shape,vel);  _args.check(); } pbFinalizePlugin(parent,"texcoordInflow", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("texcoordInflow",e.what()); return 0; } } static const Pb::Register _RP_texcoordInflow ("","texcoordInflow",_W_1);  extern "C" { void PbRegister_texcoordInflow() { KEEP_UNUSED(_RP_texcoordInflow); } } ;
+} static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "texcoordInflow" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; VortexSheetMesh& mesh = *_args.getPtr<VortexSheetMesh >("mesh",0,&_lock); const Shape* shape = _args.getPtr<Shape >("shape",1,&_lock); const MACGrid& vel = *_args.getPtr<MACGrid >("vel",2,&_lock);   _retval = getPyNone(); texcoordInflow(mesh,shape,vel);  _args.check(); } pbFinalizePlugin(parent,"texcoordInflow", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("texcoordInflow",e.what()); return 0; } } static const Pb::Register _RP_texcoordInflow ("","texcoordInflow",_W_1);  extern "C" { void PbRegister_texcoordInflow() { KEEP_UNUSED(_RP_texcoordInflow); } } ;
 
 //! Init smoke density values of the mesh surface inside source shape
 
-void meshSmokeInflow(VortexSheetMesh& mesh, Shape* shape, Real amount) {
+void meshSmokeInflow(VortexSheetMesh& mesh, const Shape* shape, Real amount) {
 	for (int t=0; t<mesh.numTris(); t++) {
 		if (shape->isInside(mesh.getFaceCenter(t)))
 			mesh.sheet(t).smokeAmount = amount;
 	}    
-} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "meshSmokeInflow" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; VortexSheetMesh& mesh = *_args.getPtr<VortexSheetMesh >("mesh",0,&_lock); Shape* shape = _args.getPtr<Shape >("shape",1,&_lock); Real amount = _args.get<Real >("amount",2,&_lock);   _retval = getPyNone(); meshSmokeInflow(mesh,shape,amount);  _args.check(); } pbFinalizePlugin(parent,"meshSmokeInflow", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("meshSmokeInflow",e.what()); return 0; } } static const Pb::Register _RP_meshSmokeInflow ("","meshSmokeInflow",_W_2);  extern "C" { void PbRegister_meshSmokeInflow() { KEEP_UNUSED(_RP_meshSmokeInflow); } } 
+} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "meshSmokeInflow" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; VortexSheetMesh& mesh = *_args.getPtr<VortexSheetMesh >("mesh",0,&_lock); const Shape* shape = _args.getPtr<Shape >("shape",1,&_lock); Real amount = _args.get<Real >("amount",2,&_lock);   _retval = getPyNone(); meshSmokeInflow(mesh,shape,amount);  _args.check(); } pbFinalizePlugin(parent,"meshSmokeInflow", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("meshSmokeInflow",e.what()); return 0; } } static const Pb::Register _RP_meshSmokeInflow ("","meshSmokeInflow",_W_2);  extern "C" { void PbRegister_meshSmokeInflow() { KEEP_UNUSED(_RP_meshSmokeInflow); } } 
 
 
  struct KnAcceleration : public KernelBase { KnAcceleration(MACGrid& a, const MACGrid& v1, const MACGrid& v0, const Real idt) :  KernelBase(&a,0) ,a(a),v1(v1),v0(v0),idt(idt)   { runMessage(); run(); }   inline void op(IndexInt idx, MACGrid& a, const MACGrid& v1, const MACGrid& v0, const Real idt ) const { 
@@ -95,7 +95,7 @@ void meshSmokeInflow(VortexSheetMesh& mesh, Shape* shape, Real amount) {
 
 
 
-void vorticitySource(VortexSheetMesh& mesh, Vec3 gravity, MACGrid* vel=NULL, MACGrid* velOld=NULL, Real scale = 0.1, Real maxAmount = 0, Real mult = 1.0) {
+void vorticitySource(VortexSheetMesh& mesh, Vec3 gravity, const MACGrid* vel=NULL, const MACGrid* velOld=NULL, Real scale = 0.1, Real maxAmount = 0, Real mult = 1.0) {
 	Real dt = mesh.getParent()->getDt();
 	Real dx = mesh.getParent()->getDx();
 	MACGrid acceleration(mesh.getParent());
@@ -129,7 +129,7 @@ void vorticitySource(VortexSheetMesh& mesh, Vec3 gravity, MACGrid* vel=NULL, MAC
 	}
 	
 	cout << "vorticity: max " << maxV << " / mean " << meanV/mesh.numTris() << endl;
-} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "vorticitySource" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; VortexSheetMesh& mesh = *_args.getPtr<VortexSheetMesh >("mesh",0,&_lock); Vec3 gravity = _args.get<Vec3 >("gravity",1,&_lock); MACGrid* vel = _args.getPtrOpt<MACGrid >("vel",2,NULL,&_lock); MACGrid* velOld = _args.getPtrOpt<MACGrid >("velOld",3,NULL,&_lock); Real scale = _args.getOpt<Real >("scale",4,0.1,&_lock); Real maxAmount = _args.getOpt<Real >("maxAmount",5,0,&_lock); Real mult = _args.getOpt<Real >("mult",6,1.0,&_lock);   _retval = getPyNone(); vorticitySource(mesh,gravity,vel,velOld,scale,maxAmount,mult);  _args.check(); } pbFinalizePlugin(parent,"vorticitySource", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("vorticitySource",e.what()); return 0; } } static const Pb::Register _RP_vorticitySource ("","vorticitySource",_W_3);  extern "C" { void PbRegister_vorticitySource() { KEEP_UNUSED(_RP_vorticitySource); } } 
+} static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "vorticitySource" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; VortexSheetMesh& mesh = *_args.getPtr<VortexSheetMesh >("mesh",0,&_lock); Vec3 gravity = _args.get<Vec3 >("gravity",1,&_lock); const MACGrid* vel = _args.getPtrOpt<MACGrid >("vel",2,NULL,&_lock); const MACGrid* velOld = _args.getPtrOpt<MACGrid >("velOld",3,NULL,&_lock); Real scale = _args.getOpt<Real >("scale",4,0.1,&_lock); Real maxAmount = _args.getOpt<Real >("maxAmount",5,0,&_lock); Real mult = _args.getOpt<Real >("mult",6,1.0,&_lock);   _retval = getPyNone(); vorticitySource(mesh,gravity,vel,velOld,scale,maxAmount,mult);  _args.check(); } pbFinalizePlugin(parent,"vorticitySource", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("vorticitySource",e.what()); return 0; } } static const Pb::Register _RP_vorticitySource ("","vorticitySource",_W_3);  extern "C" { void PbRegister_vorticitySource() { KEEP_UNUSED(_RP_vorticitySource); } } 
 
 
 void smoothVorticity(VortexSheetMesh& mesh, int iter=1, Real sigma=0.2, Real alpha=0.8) {
@@ -178,7 +178,7 @@ void smoothVorticity(VortexSheetMesh& mesh, int iter=1, Real sigma=0.2, Real alp
 } static PyObject* _W_4 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "smoothVorticity" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; VortexSheetMesh& mesh = *_args.getPtr<VortexSheetMesh >("mesh",0,&_lock); int iter = _args.getOpt<int >("iter",1,1,&_lock); Real sigma = _args.getOpt<Real >("sigma",2,0.2,&_lock); Real alpha = _args.getOpt<Real >("alpha",3,0.8,&_lock);   _retval = getPyNone(); smoothVorticity(mesh,iter,sigma,alpha);  _args.check(); } pbFinalizePlugin(parent,"smoothVorticity", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("smoothVorticity",e.what()); return 0; } } static const Pb::Register _RP_smoothVorticity ("","smoothVorticity",_W_4);  extern "C" { void PbRegister_smoothVorticity() { KEEP_UNUSED(_RP_smoothVorticity); } } 
 
 //! Seed Vortex Particles inside shape with K41 characteristics
-void VPseedK41(VortexParticleSystem& system, Shape* shape, Real strength=0, Real sigma0=0.2, Real sigma1=1.0, Real probability=1.0, Real N=3.0) {
+void VPseedK41(VortexParticleSystem& system, const Shape* shape, Real strength=0, Real sigma0=0.2, Real sigma1=1.0, Real probability=1.0, Real N=3.0) {
 	Grid<Real> temp(system.getParent());
 	const Real dt = system.getParent()->getDt();
 	static RandomStream rand(3489572);
@@ -198,11 +198,11 @@ void VPseedK41(VortexParticleSystem& system, Shape* shape, Real strength=0, Real
 			}
 		}
 	}    
-} static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "VPseedK41" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; VortexParticleSystem& system = *_args.getPtr<VortexParticleSystem >("system",0,&_lock); Shape* shape = _args.getPtr<Shape >("shape",1,&_lock); Real strength = _args.getOpt<Real >("strength",2,0,&_lock); Real sigma0 = _args.getOpt<Real >("sigma0",3,0.2,&_lock); Real sigma1 = _args.getOpt<Real >("sigma1",4,1.0,&_lock); Real probability = _args.getOpt<Real >("probability",5,1.0,&_lock); Real N = _args.getOpt<Real >("N",6,3.0,&_lock);   _retval = getPyNone(); VPseedK41(system,shape,strength,sigma0,sigma1,probability,N);  _args.check(); } pbFinalizePlugin(parent,"VPseedK41", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("VPseedK41",e.what()); return 0; } } static const Pb::Register _RP_VPseedK41 ("","VPseedK41",_W_5);  extern "C" { void PbRegister_VPseedK41() { KEEP_UNUSED(_RP_VPseedK41); } } 
+} static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "VPseedK41" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; VortexParticleSystem& system = *_args.getPtr<VortexParticleSystem >("system",0,&_lock); const Shape* shape = _args.getPtr<Shape >("shape",1,&_lock); Real strength = _args.getOpt<Real >("strength",2,0,&_lock); Real sigma0 = _args.getOpt<Real >("sigma0",3,0.2,&_lock); Real sigma1 = _args.getOpt<Real >("sigma1",4,1.0,&_lock); Real probability = _args.getOpt<Real >("probability",5,1.0,&_lock); Real N = _args.getOpt<Real >("N",6,3.0,&_lock);   _retval = getPyNone(); VPseedK41(system,shape,strength,sigma0,sigma1,probability,N);  _args.check(); } pbFinalizePlugin(parent,"VPseedK41", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("VPseedK41",e.what()); return 0; } } static const Pb::Register _RP_VPseedK41 ("","VPseedK41",_W_5);  extern "C" { void PbRegister_VPseedK41() { KEEP_UNUSED(_RP_VPseedK41); } } 
 		
 //! Vortex-in-cell integration
 
-void VICintegration(VortexSheetMesh& mesh, Real sigma, Grid<Vec3>& vel, FlagGrid& flags, Grid<Vec3>* vorticity=NULL, Real cgMaxIterFac=1.5, Real cgAccuracy=1e-3, Real scale = 0.01, int precondition=0) {
+void VICintegration(VortexSheetMesh& mesh, Real sigma, Grid<Vec3>& vel, const FlagGrid& flags, Grid<Vec3>* vorticity=NULL, Real cgMaxIterFac=1.5, Real cgAccuracy=1e-3, Real scale = 0.01, int precondition=0) {
 	
 	MuTime t0;
 	const Real fac = 16.0; // experimental factor to balance out regularization
@@ -304,10 +304,10 @@ void VICintegration(VortexSheetMesh& mesh, Real sigma, Grid<Vec3>& vel, FlagGrid
 		solution *= scale;
 		SetComponent(vel, solution, c);
 	}
-} static PyObject* _W_6 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "VICintegration" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; VortexSheetMesh& mesh = *_args.getPtr<VortexSheetMesh >("mesh",0,&_lock); Real sigma = _args.get<Real >("sigma",1,&_lock); Grid<Vec3>& vel = *_args.getPtr<Grid<Vec3> >("vel",2,&_lock); FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",3,&_lock); Grid<Vec3>* vorticity = _args.getPtrOpt<Grid<Vec3> >("vorticity",4,NULL,&_lock); Real cgMaxIterFac = _args.getOpt<Real >("cgMaxIterFac",5,1.5,&_lock); Real cgAccuracy = _args.getOpt<Real >("cgAccuracy",6,1e-3,&_lock); Real scale = _args.getOpt<Real >("scale",7,0.01,&_lock); int precondition = _args.getOpt<int >("precondition",8,0,&_lock);   _retval = getPyNone(); VICintegration(mesh,sigma,vel,flags,vorticity,cgMaxIterFac,cgAccuracy,scale,precondition);  _args.check(); } pbFinalizePlugin(parent,"VICintegration", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("VICintegration",e.what()); return 0; } } static const Pb::Register _RP_VICintegration ("","VICintegration",_W_6);  extern "C" { void PbRegister_VICintegration() { KEEP_UNUSED(_RP_VICintegration); } } 
+} static PyObject* _W_6 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "VICintegration" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; VortexSheetMesh& mesh = *_args.getPtr<VortexSheetMesh >("mesh",0,&_lock); Real sigma = _args.get<Real >("sigma",1,&_lock); Grid<Vec3>& vel = *_args.getPtr<Grid<Vec3> >("vel",2,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",3,&_lock); Grid<Vec3>* vorticity = _args.getPtrOpt<Grid<Vec3> >("vorticity",4,NULL,&_lock); Real cgMaxIterFac = _args.getOpt<Real >("cgMaxIterFac",5,1.5,&_lock); Real cgAccuracy = _args.getOpt<Real >("cgAccuracy",6,1e-3,&_lock); Real scale = _args.getOpt<Real >("scale",7,0.01,&_lock); int precondition = _args.getOpt<int >("precondition",8,0,&_lock);   _retval = getPyNone(); VICintegration(mesh,sigma,vel,flags,vorticity,cgMaxIterFac,cgAccuracy,scale,precondition);  _args.check(); } pbFinalizePlugin(parent,"VICintegration", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("VICintegration",e.what()); return 0; } } static const Pb::Register _RP_VICintegration ("","VICintegration",_W_6);  extern "C" { void PbRegister_VICintegration() { KEEP_UNUSED(_RP_VICintegration); } } 
 
 //! Obtain density field from levelset with linear gradient of size sigma over the interface
-void densityFromLevelset(LevelsetGrid& phi, Grid<Real>& density, Real value=1.0, Real sigma=1.0) {
+void densityFromLevelset(const LevelsetGrid& phi, Grid<Real>& density, Real value=1.0, Real sigma=1.0) {
 	FOR_IJK(phi) {
 		// remove boundary
 		if (i<2 || j<2 || k<2 || i>=phi.getSizeX()-2 || j>=phi.getSizeY()-2 || k>=phi.getSizeZ()-2)
@@ -319,7 +319,7 @@ void densityFromLevelset(LevelsetGrid& phi, Grid<Real>& density, Real value=1.0,
 		else
 			density(i,j,k) = clamp((Real)(0.5*value/sigma*(1.0-phi(i,j,k))), (Real)0.0, value);
 	}    
-} static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "densityFromLevelset" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",0,&_lock); Grid<Real>& density = *_args.getPtr<Grid<Real> >("density",1,&_lock); Real value = _args.getOpt<Real >("value",2,1.0,&_lock); Real sigma = _args.getOpt<Real >("sigma",3,1.0,&_lock);   _retval = getPyNone(); densityFromLevelset(phi,density,value,sigma);  _args.check(); } pbFinalizePlugin(parent,"densityFromLevelset", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("densityFromLevelset",e.what()); return 0; } } static const Pb::Register _RP_densityFromLevelset ("","densityFromLevelset",_W_7);  extern "C" { void PbRegister_densityFromLevelset() { KEEP_UNUSED(_RP_densityFromLevelset); } } 
+} static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "densityFromLevelset" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const LevelsetGrid& phi = *_args.getPtr<LevelsetGrid >("phi",0,&_lock); Grid<Real>& density = *_args.getPtr<Grid<Real> >("density",1,&_lock); Real value = _args.getOpt<Real >("value",2,1.0,&_lock); Real sigma = _args.getOpt<Real >("sigma",3,1.0,&_lock);   _retval = getPyNone(); densityFromLevelset(phi,density,value,sigma);  _args.check(); } pbFinalizePlugin(parent,"densityFromLevelset", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("densityFromLevelset",e.what()); return 0; } } static const Pb::Register _RP_densityFromLevelset ("","densityFromLevelset",_W_7);  extern "C" { void PbRegister_densityFromLevelset() { KEEP_UNUSED(_RP_densityFromLevelset); } } 
 
 } // namespace
 
