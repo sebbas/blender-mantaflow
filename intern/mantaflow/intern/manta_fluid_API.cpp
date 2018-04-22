@@ -602,6 +602,11 @@ extern "C" float *liquid_get_phioutin(FLUID *liquid)
 	return liquid->getPhiOutIn();
 }
 
+extern "C" float *liquid_get_phi(FLUID *liquid)
+{
+	return liquid->getPhi();
+}
+
 extern "C" void liquid_save_mesh(FLUID *liquid, char *filename, int framenr)
 {
 	if (liquid) {

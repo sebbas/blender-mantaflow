@@ -141,6 +141,7 @@ enum {
 	FLUID_FIELD_TRAPPED_AIR = 15,
 	FLUID_FIELD_WAVE_CREST = 16,
 	FLUID_FIELD_PRESSURE = 17,
+	FLUID_FIELD_PHI = 18,
 };
 
 /* cache compression */

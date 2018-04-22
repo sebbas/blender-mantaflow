@@ -475,7 +475,8 @@ def fluid_load_data_low_$ID$(path, framenr):\n\
     mantaMsg('Fluid load data low')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
     flags_s$ID$.load(os.path.join(path, 'flags_' + framenr + '.uni'))\n\
-    vel_s$ID$.load(os.path.join(path, 'vel_' + framenr + '.uni'))\n";
+    vel_s$ID$.load(os.path.join(path, 'vel_' + framenr + '.uni'))\n\
+    phi_s$ID$.load(os.path.join(path, 'phi_' + framenr + '.uni'))\n";
 
 const std::string fluid_load_data_high = "\n\
 def fluid_load_data_high_$ID$(path, framenr):\n\
@@ -569,7 +570,8 @@ def fluid_save_data_low_$ID$(path, framenr):\n\
     mantaMsg('Fluid save data low')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
     flags_s$ID$.save(os.path.join(path, 'flags_' + framenr + '.uni'))\n\
-    vel_s$ID$.save(os.path.join(path, 'vel_' + framenr + '.uni'))\n";
+    vel_s$ID$.save(os.path.join(path, 'vel_' + framenr + '.uni'))\n\
+    phi_s$ID$.save(os.path.join(path, 'phi_' + framenr + '.uni'))\n";
 
 const std::string fluid_save_data_high = "\n\
 def fluid_save_data_high_$ID$(path, framenr):\n\

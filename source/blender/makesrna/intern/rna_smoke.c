@@ -1921,6 +1921,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 
 	static const EnumPropertyItem coba_field_items_liquid[] = {
 		{ FLUID_FIELD_PRESSURE, "PRESSURE", 0, "Pressure", "Pressure grid inside the liquid" },
+		{ FLUID_FIELD_PHI, "PHI", 0, "Levelset", "Levelset grid to indicate the position of the liquid" },
 		{ FLUID_FIELD_KINETIC_ENERGY, "KINETIC_ENERGY", 0, "Kinetic Energy Potential", "Kinetic energy potential grid for secondary particle generation" },
 		{ FLUID_FIELD_TRAPPED_AIR, "TRAPPED_AIR", 0, "Trapped Air Potential", "Trapped air potential grid for secondary particle generation" },
 		{ FLUID_FIELD_WAVE_CREST, "WAVE_CREST", 0, "Wave Crest Potential", "Wave crest potential grid for secondary particle generation" },

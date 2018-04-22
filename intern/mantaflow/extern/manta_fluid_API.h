@@ -104,6 +104,7 @@ float *smoke_get_shadow(struct FLUID *fluid);
 float *liquid_get_phiin(struct FLUID *liquid);
 float *liquid_get_phiobsin(struct FLUID *liquid);
 float *liquid_get_phioutin(struct FLUID *liquid);
+float *liquid_get_phi(struct FLUID *liquid);
 float *liquid_get_pressure(struct FLUID *liquid);
 void liquid_manta_export(struct FLUID* smoke, struct SmokeModifierData *smd);
 

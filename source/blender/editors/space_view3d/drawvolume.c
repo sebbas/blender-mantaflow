@@ -165,6 +165,7 @@ static GPUTexture *create_field_texture(SmokeDomainSettings *sds)
 	else if (sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID){
 		switch (sds->coba_field_liquid){
 			case FLUID_FIELD_PRESSURE:			field = liquid_get_pressure(sds->fluid); break;
+			case FLUID_FIELD_PHI:				field = liquid_get_phi(sds->fluid); break;
 			case FLUID_FIELD_KINETIC_ENERGY:	field = liquid_get_kinetic_energy_potential(sds->fluid); break;
 			case FLUID_FIELD_TRAPPED_AIR:		field = liquid_get_trapped_air_potential(sds->fluid); break;
 			case FLUID_FIELD_WAVE_CREST:		field = liquid_get_wave_crest_potential(sds->fluid); break;
