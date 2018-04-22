@@ -50,7 +50,7 @@
 
 std::atomic<bool> FLUID::mantaInitialized(false);
 std::atomic<int> FLUID::solverID(0);
-int FLUID::with_debug(1);
+int FLUID::with_debug(0);
 
 FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 {
