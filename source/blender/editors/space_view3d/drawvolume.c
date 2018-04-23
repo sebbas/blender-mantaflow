@@ -138,6 +138,17 @@ static GPUTexture *create_transfer_function(int type, const ColorBand *coba)
 	return tex;
 }
 
+/* Remaps the field texture to allow the display of negative values and values that
+   are larger than one according to user defined parameters */
+static float* remap_field_texture(SmokeDomainSettings* sds, float* field) {
+	size_t size = sds->res[0] * sds->res[1] * sds->res[2];
+	float* copy = MEM_mallocN(size * sizeof(float), "");	//calling method MUST free the allocated memory!!!
+	for (size_t i = 0; i < size; i++) {
+		copy[i] = (field[i] + 4) / 2;
+	}
+	return copy;
+}
+
 static GPUTexture *create_field_texture(SmokeDomainSettings *sds)
 {
 	float *field = NULL;
@@ -165,7 +176,7 @@ static GPUTexture *create_field_texture(SmokeDomainSettings *sds)
 	else if (sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID){
 		switch (sds->coba_field_liquid){
 			case FLUID_FIELD_PRESSURE:			field = liquid_get_pressure(sds->fluid); break;
-			case FLUID_FIELD_PHI:				field = liquid_get_phi(sds->fluid); break;
+			case FLUID_FIELD_PHI:				field = remap_field_texture(sds, liquid_get_phi(sds->fluid)); break;
 			case FLUID_FIELD_KINETIC_ENERGY:	field = liquid_get_kinetic_energy_potential(sds->fluid); break;
 			case FLUID_FIELD_TRAPPED_AIR:		field = liquid_get_trapped_air_potential(sds->fluid); break;
 			case FLUID_FIELD_WAVE_CREST:		field = liquid_get_wave_crest_potential(sds->fluid); break;
@@ -173,7 +184,11 @@ static GPUTexture *create_field_texture(SmokeDomainSettings *sds)
 		}
 	}
 
-	return GPU_texture_create_3D(sds->res[0], sds->res[1], sds->res[2], 1, field);
+	GPUTexture* result = GPU_texture_create_3D(sds->res[0], sds->res[1], sds->res[2], 1, field);
+	if (sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID && sds->coba_field_liquid == FLUID_FIELD_PHI) {
+		MEM_freeN(field);
+	}
+	return result;
 }
 
 typedef struct VolumeSlicer {
