@@ -33,7 +33,7 @@
 // VARIABLES
 //////////////////////////////////////////////////////////////////////
 
-const std::string liquid_variables_low = "\n\
+const std::string liquid_variables = "\n\
 mantaMsg('Liquid variables low')\n\
 narrowBandWidth_s$ID$         = 3\n\
 combineBandWidth_s$ID$        = narrowBandWidth_s$ID$ - 1\n\
@@ -43,22 +43,24 @@ particleNumber_s$ID$ = $PARTICLE_NUMBER$\n\
 minParticles_s$ID$   = $PARTICLE_MINIMUM$\n\
 maxParticles_s$ID$   = $PARTICLE_MAXIMUM$\n\
 radiusFactor_s$ID$   = $PARTICLE_RADIUS$\n\
+smoothenUpper_s$ID$  = $MESH_SMOOTHEN_UPPER$\n\
+smoothenLower_s$ID$  = $MESH_SMOOTHEN_LOWER$\n\
 randomness_s$ID$     = $PARTICLE_RANDOMNESS$\n\
 surfaceTension_s$ID$ = $LIQUID_SURFACE_TENSION$\n";
 
-const std::string liquid_variables_high = "\n\
+const std::string liquid_variables_mesh = "\n\
 mantaMsg('Liquid variables high')\n";
 
 //////////////////////////////////////////////////////////////////////
 // GRIDS & MESH & PARTICLESYSTEM
 //////////////////////////////////////////////////////////////////////
 
-const std::string liquid_alloc_low = "\n\
+const std::string liquid_alloc = "\n\
 mantaMsg('Liquid alloc low')\n\
 phiParts_s$ID$   = s$ID$.create(LevelsetGrid)\n\
 phi_s$ID$        = s$ID$.create(LevelsetGrid)\n\
+phiTmp_s$ID$     = s$ID$.create(LevelsetGrid)\n\
 phiIn_s$ID$      = s$ID$.create(LevelsetGrid)\n\
-phiOut_s$ID$     = s$ID$.create(LevelsetGrid)\n\
 curvature_s$ID$  = s$ID$.create(RealGrid)\n\
 \n\
 fractions_s$ID$  = s$ID$.create(MACGrid) # TODO (sebbas): disabling fractions for now - not fracwallbcs not supporting obvels yet\n\
@@ -69,22 +71,22 @@ mapWeights_s$ID$ = s$ID$.create(MACGrid)\n\
 \n\
 pp_s$ID$         = s$ID$.create(BasicParticleSystem)\n\
 pVel_pp$ID$      = pp_s$ID$.create(PdataVec3)\n\
-mesh_s$ID$       = s$ID$.create(Mesh)\n\
 \n\
 # Acceleration data for particle nbs\n\
 pindex_s$ID$     = s$ID$.create(ParticleIndexSystem)\n\
 gpi_s$ID$        = s$ID$.create(IntGrid)\n";
 
-const std::string liquid_alloc_high = "\n\
+const std::string liquid_alloc_mesh = "\n\
 mantaMsg('Liquid alloc high')\n\
-phiParts_xl$ID$ = xl$ID$.create(LevelsetGrid)\n\
-phi_xl$ID$      = xl$ID$.create(LevelsetGrid)\n\
-pp_xl$ID$       = xl$ID$.create(BasicParticleSystem)\n\
-mesh_xl$ID$     = xl$ID$.create(Mesh)\n\
+phiParts_xl$ID$ = sm$ID$.create(LevelsetGrid)\n\
+phi_xl$ID$      = sm$ID$.create(LevelsetGrid)\n\
+pp_xl$ID$       = sm$ID$.create(BasicParticleSystem)\n\
+flags_xl$ID$    = sm$ID$.create(FlagGrid)\n\
+mesh_xl$ID$     = sm$ID$.create(Mesh)\n\
 \n\
 # Acceleration data for particle nbs\n\
-pindex_xl$ID$  = xl$ID$.create(ParticleIndexSystem)\n\
-gpi_xl$ID$     = xl$ID$.create(IntGrid)\n";
+pindex_xl$ID$  = sm$ID$.create(ParticleIndexSystem)\n\
+gpi_xl$ID$     = sm$ID$.create(IntGrid)\n";
 
 const std::string liquid_init_phi = "\n\
 phi_s$ID$.initFromFlags(flags_s$ID$)\n\
@@ -94,8 +96,8 @@ phiIn_s$ID$.initFromFlags(flags_s$ID$)\n";
 // PRE / POST STEP
 //////////////////////////////////////////////////////////////////////
 
-const std::string liquid_pre_step_low = "\n\
-def liquid_pre_step_low_$ID$():\n\
+const std::string liquid_pre_step = "\n\
+def liquid_pre_step_$ID$():\n\
     # translate obvels (world space) to grid space\n\
     if using_obstacle_s$ID$:\n\
         x_obvel_s$ID$.multConst(Real(gs_s$ID$.x))\n\
@@ -123,16 +125,17 @@ def liquid_pre_step_low_$ID$():\n\
     #copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
     copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n";
 
-const std::string liquid_post_step_low = "\n\
-def liquid_post_step_low_$ID$():\n\
+const std::string liquid_post_step = "\n\
+def liquid_post_step_$ID$():\n\
     forces_s$ID$.clear()\n\
     if using_guiding_s$ID$:\n\
         weightGuide_s$ID$.clear()\n\
     if using_invel_s$ID$:\n\
         invel_s$ID$.clear()\n\
     \n\
-    phiIn_s$ID$.setConst(9999)\n\
-    phiOut_s$ID$.setConst(9999)\n\
+#    phiIn_s$ID$.setConst(9999)\n\
+#    phiOutIn_s$ID$.setConst(9999)\n\
+    \n\
     #copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n\
     #x_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.x) )\n\
     #y_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.y) )\n\
@@ -142,20 +145,15 @@ def liquid_post_step_low_$ID$():\n\
 // STEP FUNCTIONS
 //////////////////////////////////////////////////////////////////////
 
-const std::string liquid_adaptive_step_low = "\n\
-def liquid_adaptive_step_low_$ID$(framenr):\n\
-    mantaMsg('Manta step low, frame ' + str(framenr))\n\
+const std::string liquid_adaptive_step = "\n\
+def liquid_adaptive_step_$ID$(framenr):\n\
+    mantaMsg('Manta step, frame ' + str(framenr))\n\
     \n\
     # time params are animatable\n\
     s$ID$.frameLength = dt0_s$ID$ \n\
     s$ID$.cfl = cfl_cond_s$ID$\n\
     \n\
-    mantaMsg('s.frame is ' + str(s$ID$.frame))\n\
-    mantaMsg('s.timestep is ' + str(s$ID$.timestep))\n\
-    mantaMsg('s.cfl is ' + str(s$ID$.cfl))\n\
-    mantaMsg('s.frameLength is ' + str(s$ID$.frameLength))\n\
-    \n\
-    liquid_pre_step_low_$ID$()\n\
+    liquid_pre_step_$ID$()\n\
     \n\
     flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$, phiWalls=phiObs_s$ID$, outflow=boundConditions_s$ID$)\n\
     \n\
@@ -185,28 +183,9 @@ def liquid_adaptive_step_low_$ID$(framenr):\n\
     \n\
     s$ID$.step()\n\
     \n\
-    liquid_post_step_low_$ID$()\n";
+    liquid_post_step_$ID$()\n";
 
-const std::string liquid_adaptive_step_high = "\n\
-def liquid_adaptive_step_high_$ID$(framenr):\n\
-    mantaMsg('Manta step high, frame ' + str(framenr))\n\
-    \n\
-    xl$ID$.frame = framenr\n\
-    xl$ID$.timeTotal = xl$ID$.frame * dt0_s$ID$\n\
-    last_frame_s$ID$ = xl$ID$.frame\n\
-    \n\
-    liquid_pre_step_low_$ID$()\n\
-    \n\
-    while xl$ID$.frame == last_frame_s$ID$:\n\
-        \n\
-        mantaMsg('xl.frame is ' + str(xl$ID$.frame))\n\
-        \n\
-        fluid_adapt_time_step_high_$ID$()\n\
-        mantaMsg('High step / xl$ID$.frame: ' + str(xl$ID$.frame))\n\
-        liquid_step_high_$ID$()\n\
-        xl$ID$.step()\n";
-
-const std::string liquid_step_low = "\n\
+const std::string liquid_step = "\n\
 def liquid_step_$ID$():\n\
     mantaMsg('Liquid step low')\n\
     \n\
@@ -220,6 +199,8 @@ def liquid_step_$ID$():\n\
     advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=phi_s$ID$, order=1) # first order is usually enough\n\
     mantaMsg('Advecting velocity')\n\
     advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=vel_s$ID$, order=2, openBounds=doOpen_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
+    \n\
+    phiTmp_s$ID$.copyFrom(phi_s$ID$) # save original phi for later use in mesh creation\n\
     \n\
     # create level set of particles\n\
     gridParticleIndex(parts=pp_s$ID$, flags=flags_s$ID$, indexSys=pindex_s$ID$, index=gpi_s$ID$)\n\
@@ -235,7 +216,7 @@ def liquid_step_$ID$():\n\
     if doOpen_s$ID$:\n\
         resetOutflow(flags=flags_s$ID$, phi=phi_s$ID$, parts=pp_s$ID$, index=gpi_s$ID$, indexSys=pindex_s$ID$)\n\
         if using_sndparts_s$ID$:\n\
-            resetOutflow(flags=flags_s$ID$, parts=ppSnd_s$ID$)\n\
+            resetOutflow(flags=flags_s$ID$, parts=ppSnd_sp$ID$)\n\
     flags_s$ID$.updateFromLevelset(phi_s$ID$)\n\
     \n\
     # combine particles velocities with advected grid velocities\n\
@@ -291,133 +272,105 @@ def liquid_step_$ID$():\n\
     #extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=(int(maxVel_s$ID$*1.25 )) ) # TODO (sebbas): extrapolation because of no fractions\n\
     # set source grids for resampling, used in adjustNumber!\n\
     pVel_pp$ID$.setSource(vel_s$ID$, isMAC=True)\n\
-    adjustNumber(parts=pp_s$ID$, vel=vel_s$ID$, flags=flags_s$ID$, minParticles=minParticles_s$ID$, maxParticles=maxParticles_s$ID$, phi=phi_s$ID$, exclude=phiObs_s$ID$, radiusFactor=radiusFactor_s$ID$, narrowBand=adjustedNarrowBandWidth_s$ID$)\n\
+    adjustNumber(parts=pp_s$ID$, vel=vel_s$ID$, flags=flags_s$ID$, minParticles=minParticles_s$ID$, maxParticles=maxParticles_s$ID$, phi=phi_s$ID$, exclude=phiObs_s$ID$, radiusFactor=1., narrowBand=adjustedNarrowBandWidth_s$ID$)\n\
     flipVelocityUpdate(vel=vel_s$ID$, velOld=velOld_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, partVel=pVel_pp$ID$, flipRatio=0.97)\n";
 
-const std::string liquid_step_high = "\n\
-def liquid_step_high_$ID$():\n\
-    mantaMsg('Liquid step high')\n\
-    # interpolateGrid(target=flags_xl$ID$, source=flags_s$ID$) # TODO (sebbas): needs interpolation?\n\
-    pp_xl$ID$.readParticles(pp_s$ID$)\n\
-    \n\
-    # create surface\n\
-    gridParticleIndex(parts=pp_xl$ID$, flags=flags_xl$ID$, indexSys=pindex_xl$ID$, index=gpi_xl$ID$)\n\
-    averagedParticleLevelset(pp_xl$ID$, pindex_xl$ID$, flags_xl$ID$, gpi_xl$ID$, phiParts_xl$ID$, radiusFactor_s$ID$ , 1, 1)\n";
-
-const std::string liquid_step_particles_low = "\n\
-def liquid_step_particles_low_$ID$():\n\
+const std::string liquid_step_particles = "\n\
+def liquid_step_particles_$ID$():\n\
     mantaMsg('Sampling snd particles')\n\
-    sampleSndParts(phi=phi_s$ID$, phiIn=phiIn_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, parts=ppSnd_s$ID$, type=$SNDPARTICLE_TYPES$, amountDroplet=$SNDPARTICLE_DROPLET_AMOUNT$, amountFloater=$SNDPARTICLE_FLOATER_AMOUNT$, amountTracer=$SNDPARTICLE_TRACER_AMOUNT$, thresholdDroplet=$SNDPARTICLE_DROPLET_THRESH$)\n\
+    interpolateMACGrid(target=vel_sp$ID$, source=vel_s$ID$)\n\
+    interpolateGrid(target=phi_sp$ID$, source=phi_s$ID$)\n\
+    interpolateGrid(target=phiIn_sp$ID$, source=phiIn_s$ID$)\n\
+    \n\
+    # Manually recreate phiObs levelset to ensure correct values at border. Then use that to create upscaled flags grid\n\
+    flags_sp$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$, phiWalls=phiObs_sp$ID$, outflow=boundConditions_s$ID$)\n\
+    if using_obstacle_s$ID$:\n\
+        interpolateGrid(target=phiObsIn_sp$ID$, source=phiObsIn_s$ID$)\n\
+        phiObs_sp$ID$.join(phiObsIn_sp$ID$)\n\
+    setObstacleFlags(flags=flags_sp$ID$, phiObs=phiObs_sp$ID$) #, phiOut=phiOut_sp$ID$) # TODO (sebbas): outflow for snd parts\n\
+    \n\
+    sampleSndParts(phi=phi_sp$ID$, phiIn=phiIn_sp$ID$, flags=flags_sp$ID$, vel=vel_sp$ID$, parts=ppSnd_sp$ID$, type=$SNDPARTICLE_TYPES$, amountDroplet=$SNDPARTICLE_DROPLET_AMOUNT$, amountFloater=$SNDPARTICLE_FLOATER_AMOUNT$, amountTracer=$SNDPARTICLE_TRACER_AMOUNT$, thresholdDroplet=$SNDPARTICLE_DROPLET_THRESH$)\n\
     mantaMsg('Updating snd particle data (velocity, life count)')\n\
-    updateSndParts(phi=phi_s$ID$, flags=flags_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$, parts=ppSnd_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, riseBubble=$SNDPARTICLE_BUBBLE_RISE$, lifeDroplet=$SNDPARTICLE_DROPLET_LIFE$, lifeBubble=$SNDPARTICLE_BUBBLE_LIFE$, lifeFloater=$SNDPARTICLE_FLOATER_LIFE$, lifeTracer=$SNDPARTICLE_TRACER_LIFE$)\n\
+    updateSndParts(phi=phi_sp$ID$, flags=flags_sp$ID$, vel=vel_sp$ID$, gravity=gravity_s$ID$, parts=ppSnd_sp$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, riseBubble=$SNDPARTICLE_BUBBLE_RISE$, lifeDroplet=$SNDPARTICLE_DROPLET_LIFE$, lifeBubble=$SNDPARTICLE_BUBBLE_LIFE$, lifeFloater=$SNDPARTICLE_FLOATER_LIFE$, lifeTracer=$SNDPARTICLE_TRACER_LIFE$)\n\
     mantaMsg('Adjusting snd particles')\n\
-    pushOutofObs(parts=ppSnd_s$ID$, flags=flags_s$ID$, phiObs=phiObs_s$ID$, shift=1.0)\n\
-    adjustSndParts(parts=ppSnd_s$ID$, flags=flags_s$ID$, phi=phi_s$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, maxDroplet=$SNDPARTICLE_DROPLET_MAX$, maxBubble=$SNDPARTICLE_BUBBLE_MAX$, maxFloater=$SNDPARTICLE_FLOATER_MAX$, maxTracer=$SNDPARTICLE_TRACER_MAX$)\n";
+    pushOutofObs(parts=ppSnd_sp$ID$, flags=flags_sp$ID$, phiObs=phiObs_sp$ID$, shift=1.0)\n\
+    adjustSndParts(parts=ppSnd_sp$ID$, flags=flags_sp$ID$, phi=phi_sp$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, maxDroplet=$SNDPARTICLE_DROPLET_MAX$, maxBubble=$SNDPARTICLE_BUBBLE_MAX$, maxFloater=$SNDPARTICLE_FLOATER_MAX$, maxTracer=$SNDPARTICLE_TRACER_MAX$)\n";
 
 //////////////////////////////////////////////////////////////////////
 // IMPORT
 //////////////////////////////////////////////////////////////////////
 
-const std::string liquid_load_geometry_low = "\n\
-def liquid_load_geometry_low_$ID$(path, framenr):\n\
-    mantaMsg('Liquid load geometry low')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    phiIn_s$ID$.load(os.path.join(path, 'phiIn_' + framenr + '.uni'))\n";
-
-const std::string liquid_load_data_low = "\n\
-def liquid_load_data_low_$ID$(path, framenr, withParticles):\n\
-    mantaMsg('Liquid load data low')\n\
+const std::string liquid_load_data = "\n\
+def liquid_load_data_$ID$(path, framenr, withParticles):\n\
+    mantaMsg('Liquid load data')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
     phi_s$ID$.load(os.path.join(path, 'phi_' + framenr +'.uni'))\n\
+    phiTmp_s$ID$.load(os.path.join(path, 'phiTmp_' + framenr +'.uni'))\n\
     phiIn_s$ID$.load(os.path.join(path, 'phiIn_' + framenr + '.uni'))\n\
+    phiParts_s$ID$.load(os.path.join(path, 'phiParts_' + framenr + '.uni'))\n\
     if withParticles:\n\
         pp_s$ID$.load(os.path.join(path, 'pp_' + framenr +'.uni'))\n\
         pVel_pp$ID$.load(os.path.join(path, 'pVel_' + framenr +'.uni'))\n";
 
-const std::string liquid_load_data_high = "\n\
-def liquid_load_data_high_$ID$(path, framenr, withParticles):\n\
-    mantaMsg('Liquid load data high')\n\
+const std::string liquid_load_mesh = "\n\
+def liquid_load_mesh_$ID$(path, framenr):\n\
+    mantaMsg('Liquid load mesh')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    phi_xl$ID$.load(os.path.join(path, 'phi_xl_' + framenr +'.uni'))\n\
-    if withParticles:\n\
-        pp_xl$ID$.load(os.path.join(path, 'pp_xl_' + framenr +'.uni'))\n";
+    mesh_xl$ID$.load(os.path.join(path, 'liquid_mesh_' + framenr + '.bobj.gz'))\n\
+    pp_xl$ID$.load(os.path.join(path, 'pp_xl_' + framenr +'.uni'))\n";
 
-const std::string liquid_load_mesh_low = "\n\
-def liquid_load_mesh_low_$ID$(path, framenr):\n\
-    mantaMsg('Liquid load mesh low')\n\
+const std::string liquid_load_particles = "\n\
+def liquid_load_particles_$ID$(path, framenr):\n\
+    mantaMsg('Liquid load particles')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    mesh_s$ID$.load(os.path.join(path, 'mesh_low_' + framenr + '.bobj.gz'))\n";
-
-const std::string liquid_load_mesh_high = "\n\
-def liquid_load_mesh_high_$ID$(path, framenr):\n\
-    mantaMsg('Liquid load mesh high')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    mesh_xl$ID$.load(os.path.join(path, 'mesh_high_' + framenr + '.bobj.gz'))\n";
-
-const std::string liquid_load_particles_low = "\n\
-def liquid_load_particles_low_$ID$(path, framenr):\n\
-    mantaMsg('Liquid load particles low')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    ppSnd_s$ID$.load(os.path.join(path, 'ppSnd_' + framenr + '.uni'))\n\
+    ppSnd_sp$ID$.load(os.path.join(path, 'ppSnd_' + framenr + '.uni'))\n\
     pVelSnd_pp$ID$.load(os.path.join(path, 'pVelSnd_' + framenr + '.uni'))\n\
     pLifeSnd_pp$ID$.load(os.path.join(path, 'pLifeSnd_' + framenr + '.uni'))\n";
-
-const std::string liquid_load_particles_high = "\n\
-def liquid_load_particles_high_$ID$(path, framenr):\n\
-    mantaMsg('Liquid load particles high')\n\
-    # Nothing to do here yet!\n";
 
 //////////////////////////////////////////////////////////////////////
 // EXPORT
 //////////////////////////////////////////////////////////////////////
 
-const std::string liquid_save_geometry_low = "\n\
-def liquid_save_geometry_low_$ID$(path, framenr):\n\
-    mantaMsg('Liquid save geometry')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    phiIn_s$ID$.save(os.path.join(path, 'phiIn_' + framenr + '.uni'))\n";
-
-const std::string liquid_save_data_low = "\n\
-def liquid_save_data_low_$ID$(path, framenr):\n\
+const std::string liquid_save_data = "\n\
+def liquid_save_data_$ID$(path, framenr):\n\
     mantaMsg('Liquid save data low')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
     phi_s$ID$.save(os.path.join(path, 'phi_' + framenr +'.uni'))\n\
+    phiTmp_s$ID$.save(os.path.join(path, 'phiTmp_' + framenr +'.uni'))\n\
     phiIn_s$ID$.save(os.path.join(path, 'phiIn_' + framenr + '.uni'))\n\
+    phiParts_s$ID$.save(os.path.join(path, 'phiParts_' + framenr + '.uni'))\n\
     pp_s$ID$.save(os.path.join(path, 'pp_' + framenr +'.uni'))\n\
     pVel_pp$ID$.save(os.path.join(path, 'pVel_' + framenr +'.uni'))\n";
 
-const std::string liquid_save_data_high = "\n\
-def liquid_save_data_high_$ID$(path, framenr):\n\
-    mantaMsg('Liquid save data high')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    phi_xl$ID$.save(os.path.join(path, 'phi_xl_' + framenr +'.uni'))\n\
-    pp_s$ID$.save(os.path.join(path, 'pp_xl_' + framenr +'.uni'))\n";
-
-const std::string liquid_save_mesh_low = "\n\
-def liquid_save_mesh_low_$ID$(path, framenr):\n\
-    mantaMsg('Liquid save mesh low')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    phiParts_s$ID$.copyFrom(phi_s$ID$) # mis-use phiParts as temp grid to close the mesh\n\
-    phiParts_s$ID$.setBound(0.5,0)\n\
-    phiParts_s$ID$.createMesh(mesh_s$ID$)\n\
-    mesh_s$ID$.save(os.path.join(path, 'mesh_low_' + framenr + '.bobj.gz'))\n";
-
-const std::string liquid_save_mesh_high = "\n\
-def liquid_save_mesh_high_$ID$(path, framenr):\n\
+const std::string liquid_save_mesh = "\n\
+def liquid_save_mesh_$ID$(path, framenr):\n\
     mantaMsg('Liquid save mesh high')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    phiParts_s$ID$.copyFrom(phi_s$ID$) # mis-use phiParts as temp grid to close the mesh\n\
-    phiParts_s$ID$.setBound(0.5,0)\n\
-    interpolateGrid(target=phi_xl$ID$, source=phiParts_s$ID$)\n\
+    \n\
+    interpolateGrid(target=phi_xl$ID$, source=phiTmp_s$ID$) # mis-use phiParts as temp grid\n\
+    \n\
+    # create surface\n\
+    pp_xl$ID$.readParticles(pp_s$ID$)\n\
+    gridParticleIndex(parts=pp_xl$ID$, flags=flags_xl$ID$, indexSys=pindex_xl$ID$, index=gpi_xl$ID$)\n\
+    averagedParticleLevelset(pp_xl$ID$, pindex_xl$ID$, flags_xl$ID$, gpi_xl$ID$, phiParts_xl$ID$, radiusFactor_s$ID$, 1, 1)\n\
+#    unionParticleLevelset(pp_xl$ID$, pindex_xl$ID$, flags_xl$ID$, gpi_xl$ID$, phiParts_xl$ID$, radiusFactor_s$ID$)\n\
+    \n\
+    phi_xl$ID$.addConst(1.) # shrink slightly\n\
     phi_xl$ID$.join(phiParts_xl$ID$)\n\
+    extrapolateLsSimple(phi=phi_xl$ID$, distance=narrowBandWidth_s$ID$+2, inside=True)\n\
+    extrapolateLsSimple(phi=phi_xl$ID$, distance=3)\n\
+    phi_xl$ID$.setBoundNeumann(boundaryWidth_s$ID$) # make sure no particles are placed at outer boundary\n\
+    \n\
+    phi_xl$ID$.setBound(0.5,int(((upres_sm$ID$)*2)-2) )\n\
     phi_xl$ID$.createMesh(mesh_xl$ID$)\n\
-    mesh_xl$ID$.save(os.path.join(path, 'mesh_high_' + framenr + '.bobj.gz'))\n";
+    mesh_xl$ID$.save(os.path.join(path, 'liquid_mesh_' + framenr + '.bobj.gz'))\n\
+    pp_xl$ID$.save(os.path.join(path, 'pp_xl_' + framenr +'.uni'))\n";
 
-const std::string liquid_save_particles_low = "\n\
-def liquid_save_particles_low_$ID$(path, framenr):\n\
+const std::string liquid_save_particles = "\n\
+def liquid_save_particles_$ID$(path, framenr):\n\
     mantaMsg('Liquid save particles low')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    ppSnd_s$ID$.save(os.path.join(path, 'ppSnd_' + framenr + '.uni'))\n\
+    ppSnd_sp$ID$.save(os.path.join(path, 'ppSnd_' + framenr + '.uni'))\n\
     pVelSnd_pp$ID$.save(os.path.join(path, 'pVelSnd_' + framenr + '.uni'))\n\
     pLifeSnd_pp$ID$.save(os.path.join(path, 'pLifeSnd_' + framenr + '.uni'))\n";
 
@@ -433,6 +386,6 @@ def liquid_save_particles_high$ID$(path, framenr):\n\
 const std::string liquid_standalone_load = "\n\
 # import *.uni files\n\
 path_prefix_$ID$ = '$MANTA_EXPORT_PATH$'\n\
-load_liquid_data_low_$ID$(path_prefix_$ID$)\n\
+load_liquid_data_$ID$(path_prefix_$ID$)\n\
 if using_highres_s$ID$:\n\
     load_liquid_data_high_$ID$(path_prefix_$ID$)\n";

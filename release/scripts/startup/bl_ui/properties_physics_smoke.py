@@ -89,9 +89,10 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
 
             split.enabled = not domain.point_cache.is_baked
 
-            col = split.column()
-            col.label(text="Time:")
-            col.prop(domain, "time_scale", text="Scale")
+            col = split.column(align=True)
+            col.label(text="Domain:")
+            col.prop(domain, "resolution_max", text="Resolution")
+            col.prop(domain, "time_scale", text="Time")
             col.prop(domain, "use_adaptive_stepping", text="Adaptive stepping")
             col.prop(domain, "cfl_condition", text="CFL")
             
@@ -136,7 +137,6 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
                 col = split.column(align=True)
                 col.label(text="Liquid:")
                 col.prop(domain, "particle_randomness")
-                col.prop(domain, "particle_radius")
                 col.prop(domain, "particle_minimum")
 
                 col = split.column(align=True)
@@ -144,6 +144,13 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
                 col.prop(domain, "particle_number")
                 col.prop(domain, "particle_band_width")
                 col.prop(domain, "particle_maximum")
+
+            split = layout.split()
+            split.enabled = not domain.cache_baking_data and not domain.cache_baking_mesh and not domain.cache_baking_particles and not domain.cache_baking_noise
+            if domain.cache_baked_data is True:
+                split.operator("manta.free_data", text="Free Data")
+            else:
+                split.operator("manta.bake_data", text="Bake Data")
 
         elif md.smoke_type == 'FLOW':
             flow = md.flow_settings
@@ -285,7 +292,6 @@ class PHYSICS_PT_smoke_adaptive_domain(PhysicButtonsPanel, Panel):
 
     def draw_header(self, context):
         md = context.smoke.domain_settings
-
         self.layout.prop(md, "use_adaptive_domain", text="")
         
     def draw(self, context):
@@ -315,7 +321,8 @@ class PHYSICS_PT_smoke_quality(PhysicButtonsPanel, Panel):
     def poll(cls, context):
         md = context.smoke
         rd = context.scene.render
-        return md and (md.smoke_type == 'DOMAIN') and (rd.engine in cls.COMPAT_ENGINES)
+        # Disable for now
+        return False #md and (md.smoke_type == 'DOMAIN') and (rd.engine in cls.COMPAT_ENGINES)
 
     def draw(self, context):
         layout = self.layout
@@ -324,52 +331,100 @@ class PHYSICS_PT_smoke_quality(PhysicButtonsPanel, Panel):
         split = layout.split()
 
         col = split.column()
-        col.enabled = not domain.point_cache.is_baked
-        col.label(text="Resolution:")
-        col.prop(domain, "resolution_max", text="Divisions")
         # TODO (sebbas): Disabling render display switch for now. Needs some more consideration
-        #col.label(text="Render Display:")
-        #col.prop(domain, "render_display_mode", text="")
+        col.label(text="Render Display:")
+        col.prop(domain, "render_display_mode", text="")
 
         col = split.column()
-        #col.label()
-        #col.label()
         col.label(text="Viewport Display:")
         col.prop(domain, "viewport_display_mode", text="")
+
+class PHYSICS_PT_smoke_noise(PhysicButtonsPanel, Panel):
+    bl_label = "Fluid Noise"
+    COMPAT_ENGINES = {'BLENDER_RENDER'}
+
+    @classmethod
+    def poll(cls, context):
+        md = context.smoke
+        rd = context.scene.render
+        return md and (md.smoke_type == 'DOMAIN') and (md.domain_settings.smoke_domain_type in {'GAS'})
+
+    def draw_header(self, context):
+        md = context.smoke.domain_settings
+        self.layout.prop(md, "use_high_resolution", text="")
+
+    def draw(self, context):
+        layout = self.layout
+        domain = context.smoke.domain_settings
+
+        layout.active = domain.use_high_resolution
+
+        split = layout.split()
+        split.prop(domain, "noise_scale", text="Upres")
 
         split = layout.split()
         split.enabled = not domain.point_cache.is_baked
 
-        if domain.smoke_domain_type == 'LIQUID':
-            col = split.column()
-            col.prop(domain, "use_high_resolution", text="High resolution")
-            sub = col.column()
-            sub.active = domain.use_high_resolution
-            sub.prop(domain, "amplify", text="Divisions")
-            
-            sub = split.column()
-            sub.active = domain.use_high_resolution
-            sub.label(text="Flow Sampling:")
-            sub.row().prop(domain, "highres_sampling", text="")
-            
-        if domain.smoke_domain_type == 'GAS':
-            col = split.column()
-            col.prop(domain, "use_high_resolution", text="High resolution")
-            sub = col.column()
-            sub.active = domain.use_high_resolution
-            sub.prop(domain, "amplify", text="Divisions")
-            sub.label(text="Flow Sampling:")
-            sub.row().prop(domain, "highres_sampling", text="")
-        
-            sub = split.column(align=True)
-            sub.active = domain.use_high_resolution
-            # TODO (sebbas): Mantaflow only supports wavelet noise. Do we really need fft noise? Maybe get rid of noise type ...
-            #sub.label(text="Noise Method:")
-            #sub.row().prop(domain, "noise_type", text="")
-            sub.label(text="Noise:")
-            sub.prop(domain, "strength")
-            sub.prop(domain, "noise_pos_scale")
-            sub.prop(domain, "noise_time_anim")
+        col = split.column(align=True)
+        # TODO (sebbas): Mantaflow only supports wavelet noise. Do we really need fft noise? Maybe get rid of noise type ...
+        col.label(text="Noise Method:")
+        col.prop(domain, "noise_type", text="")
+
+        col = split.column(align=True)
+        col.prop(domain, "strength")
+        col.prop(domain, "noise_pos_scale")
+        col.prop(domain, "noise_time_anim")
+
+        split = layout.split()
+        split.enabled = domain.cache_baked_data and not domain.cache_baking_noise and not domain.cache_baking_mesh and not domain.cache_baking_particles
+        if domain.cache_baked_noise is True:
+            split.operator("manta.free_noise", text="Free Noise")
+        else:
+            split.operator("manta.bake_noise", text="Bake Noise")
+
+class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
+    bl_label = "Fluid Mesh"
+    COMPAT_ENGINES = {'BLENDER_RENDER'}
+
+    @classmethod
+    def poll(cls, context):
+        md = context.smoke
+        rd = context.scene.render
+        return md and (md.smoke_type == 'DOMAIN') and (md.domain_settings.smoke_domain_type in {'LIQUID'})
+
+    def draw_header(self, context):
+        md = context.smoke.domain_settings
+        self.layout.prop(md, "use_mesh", text="")
+
+    def draw(self, context):
+        layout = self.layout
+        domain = context.smoke.domain_settings
+
+        layout.active = domain.use_mesh
+
+        split = layout.split()
+        split.enabled = not domain.point_cache.is_baked
+
+        col = split.column(align=True)
+        col.prop(domain, "mesh_scale", text="Upres")
+        col.prop(domain, "particle_radius")
+
+        col = split.column(align=True)
+        col.prop(domain, "mesh_smoothen_upper")
+        col.prop(domain, "mesh_smoothen_lower")
+
+        # TODO (sebbas): for now just interpolate any upres grids, ie not sampling highres grids 
+        #col = split.column()
+        #col.label(text="Flow Sampling:")
+        #col.prop(domain, "highres_sampling", text="")
+
+        split = layout.split()
+        split.enabled = domain.cache_baked_data and not domain.cache_baking_mesh
+        if domain.cache_baked_mesh is True:
+            split.operator("manta.free_mesh", text="Free Mesh")
+        else:
+            split.operator("manta.bake_mesh", text="Bake Mesh")
+
 
 class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Particles"
@@ -385,6 +440,9 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
         domain = context.smoke.domain_settings
+
+        split = layout.split()
+        split.prop(domain, "particle_scale", text="Upres")
 
         split = layout.split()
 
@@ -405,6 +463,7 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         sub3.prop(domain, "particle_bubble_rise", text="Rise")
         sub3.prop(domain, "particle_bubble_life", text="Life")
         sub3.prop(domain, "particle_bubble_max", text="Maximum")
+
         col = split.column()
         col.enabled = not domain.point_cache.is_baked
         col.prop(domain, "use_floater_particles", text="Float")
@@ -421,6 +480,13 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         sub2.prop(domain, "particle_tracer_max", text="Maximum")
         sub3 = col.column()
         sub3.prop(domain, "use_flip_particles", text="FLIP")
+
+        split = layout.split()
+        split.enabled = domain.cache_baked_data and not domain.cache_baking_particles and (domain.use_drop_particles or domain.use_bubble_particles or domain.use_floater_particles or domain.use_tracer_particles)
+        if domain.cache_baked_particles is True:
+            split.operator("manta.free_particles", text="Free Particles")
+        else:
+            split.operator("manta.bake_particles", text="Bake Particles")
 
 class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Diffusion"
@@ -564,7 +630,7 @@ class PHYSICS_PT_smoke_cache(PhysicButtonsPanel, Panel):
         point_cache_ui(self, context, cache, (cache.is_baked is False), 'SMOKE')
 
 class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
-    bl_label = "Fluid Decoupled Cache"
+    bl_label = "Fluid Cache"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
 
@@ -579,67 +645,8 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
         md = context.smoke
         domain = context.smoke.domain_settings
 
-        #split = layout.split()
-        #split.enabled = not domain.cache_baking_geometry and not domain.cache_baking_mesh_low and not domain.cache_baking_particles_low and not domain.cache_baking_mesh_high and not domain.cache_baking_particles_high and not domain.cache_baking_low and not domain.cache_baking_high
-        #if domain.cache_baked_geometry is True:
-        #    split.operator("manta.free_geometry", text="Free Geometry")
-        #else:
-        #    split.operator("manta.bake_geometry", text="Bake Geometry")
-
         split = layout.split()
-        #split.enabled = domain.cache_baked_geometry
-        col = split.column()
-
-        sub2 = col.column()
-        sub2.enabled = not domain.cache_baking_low and not domain.cache_baking_mesh_low and not domain.cache_baking_particles_low and not domain.cache_baking_high
-        if domain.cache_baked_low is True:
-            sub2.operator("manta.free_data_low", text="Free Data Low")
-        else:
-            sub2.operator("manta.bake_data_low", text="Bake Data Low")
-
-        if (md.domain_settings.smoke_domain_type in {'LIQUID'}):
-            sub3 = col.column()
-            sub3.enabled = domain.cache_baked_low and not domain.cache_baking_mesh_low
-            if domain.cache_baked_mesh_low is True:
-                sub3.operator("manta.free_mesh_low", text="Free Mesh Low")
-            else:
-                sub3.operator("manta.bake_mesh_low", text="Bake Mesh Low")
-
-            sub4 = col.column()
-            sub4.enabled = domain.cache_baked_low and not domain.cache_baking_particles_low and (domain.use_drop_particles or domain.use_bubble_particles or domain.use_floater_particles or domain.use_tracer_particles)
-            if domain.cache_baked_particles_low is True:
-                sub4.operator("manta.free_particles_low", text="Free Particles Low")
-            else:
-                sub4.operator("manta.bake_particles_low", text="Bake Particles Low")
-
-        col = split.column()
-        col.enabled = domain.use_high_resolution
-
-        sub5 = col.column()
-        sub5.enabled = domain.cache_baked_low and not domain.cache_baking_high and not domain.cache_baking_mesh_high and not domain.cache_baking_particles_high
-        if domain.cache_baked_high is True:
-            sub5.operator("manta.free_data_high", text="Free Data High")
-        else:
-            sub5.operator("manta.bake_data_high", text="Bake Data High")
-
-        if (md.domain_settings.smoke_domain_type in {'LIQUID'}):
-            sub6 = col.column()
-            sub6.enabled = domain.cache_baked_low and domain.cache_baked_high and not domain.cache_baking_mesh_high
-            if domain.cache_baked_mesh_high is True:
-                sub6.operator("manta.free_mesh_high", text="Free Mesh High")
-            else:
-                sub6.operator("manta.bake_mesh_high", text="Bake Mesh High")
-
-            sub7 = col.column()
-            sub7.enabled = domain.cache_baked_low and domain.cache_baked_high and not domain.cache_baking_particles_high and (domain.use_drop_particles or domain.use_bubble_particles or domain.use_floater_particles or domain.use_tracer_particles)
-            if domain.cache_baked_particles_high is True:
-                sub7.operator("manta.free_particles_high", text="Free Particles High")
-            else:
-                sub7.operator("manta.bake_particles_high", text="Bake Particles High")
-
-        split = layout.split()
-        domain = context.smoke.domain_settings
-        split.prop(domain, "cache_directory")
+        split.prop(domain, "cache_directory", text="")
 
         row = layout.row(align=True)
         row.prop(domain, "cache_frame_start")
@@ -742,6 +749,8 @@ classes = (
     PHYSICS_PT_smoke_flow_advanced,
     PHYSICS_PT_smoke_adaptive_domain,
     PHYSICS_PT_smoke_quality,
+    PHYSICS_PT_smoke_noise,
+    PHYSICS_PT_smoke_mesh,
     PHYSICS_PT_smoke_particles,
     PHYSICS_PT_smoke_diffusion,
     PHYSICS_PT_smoke_guiding,

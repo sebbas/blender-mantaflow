@@ -150,10 +150,10 @@ void smoke_reallocate_fluid(SmokeDomainSettings *sds, int res[3], int free_old)
 
 void smoke_reallocate_highres_fluid(SmokeDomainSettings *sds, float dx, int res[3])
 {
-	sds->res_wt[0] = res[0] * (sds->amplify + 1);
-	sds->res_wt[1] = res[1] * (sds->amplify + 1);
-	sds->res_wt[2] = res[2] * (sds->amplify + 1);
-	sds->dx_wt = dx / (sds->amplify + 1);
+	sds->res_wt[0] = res[0] * sds->noise_scale;
+	sds->res_wt[1] = res[1] * sds->noise_scale;
+	sds->res_wt[2] = res[2] * sds->noise_scale;
+	sds->dx_wt = dx / sds->noise_scale;
 }
 
 /* convert global position to domain cell space */
@@ -304,7 +304,7 @@ static int smokeModifier_init(SmokeModifierData *smd, Object *ob, Scene *scene, 
 		smd->time = scene->r.cfra;
 
 		/* allocate highres fluid */
-		if (sds->flags & MOD_SMOKE_HIGHRES) {
+		if (sds->flags & MOD_SMOKE_NOISE) {
 			smoke_reallocate_highres_fluid(sds, sds->dx, sds->res);
 		}
 
@@ -478,7 +478,9 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->fluid_group = NULL;
 			smd->domain->coll_group = NULL;
 			smd->domain->maxres = 32;
-			smd->domain->amplify = 1;
+			smd->domain->noise_scale = 2;
+			smd->domain->mesh_scale = 2;
+			smd->domain->particle_scale = 4;
 			smd->domain->alpha = -0.001;
 			smd->domain->beta = 0.3;
 			smd->domain->time_scale = 1.0;
@@ -525,6 +527,9 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->particle_minimum = 8;
 			smd->domain->particle_maximum = 16;
 			smd->domain->particle_radius = 1.0f;
+			smd->domain->mesh_smoothen_upper = 3.5f;
+			smd->domain->mesh_smoothen_lower = 0.4f;
+
 			smd->domain->particle_band_width = 3.0f;
 			smd->domain->particle_type = 0;
 
@@ -650,7 +655,9 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 
 		tsmd->domain->alpha = smd->domain->alpha;
 		tsmd->domain->beta = smd->domain->beta;
-		tsmd->domain->amplify = smd->domain->amplify;
+		tsmd->domain->noise_scale = smd->domain->noise_scale;
+		tsmd->domain->mesh_scale = smd->domain->mesh_scale;
+		tsmd->domain->particle_scale = smd->domain->particle_scale;
 		tsmd->domain->maxres = smd->domain->maxres;
 		tsmd->domain->flags = smd->domain->flags;
 		tsmd->domain->highres_sampling = smd->domain->highres_sampling;
@@ -679,6 +686,8 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->particle_minimum = smd->domain->particle_minimum;
 		tsmd->domain->particle_maximum = smd->domain->particle_maximum;
 		tsmd->domain->particle_radius = smd->domain->particle_radius;
+		tsmd->domain->mesh_smoothen_upper = smd->domain->mesh_smoothen_upper;
+		tsmd->domain->mesh_smoothen_lower = smd->domain->mesh_smoothen_lower;
 		tsmd->domain->particle_band_width = smd->domain->particle_band_width;
 		tsmd->domain->particle_droplet_threshold = smd->domain->particle_droplet_threshold;
 		tsmd->domain->particle_droplet_amount = smd->domain->particle_droplet_amount;
@@ -1547,8 +1556,8 @@ static void emit_from_particles(
 			tree = BLI_kdtree_new(psys->totpart + psys->totchild);
 
 			/* check need for high resolution map */
-			if ((sds->flags & MOD_SMOKE_HIGHRES) && (sds->highres_sampling == SM_HRES_FULLSAMPLE)) {
-				hires_multiplier = sds->amplify + 1;
+			if ((sds->flags & MOD_SMOKE_NOISE) && (sds->highres_sampling == SM_HRES_FULLSAMPLE)) {
+				hires_multiplier = sds->noise_scale;
 			}
 
 			bounds_margin = (int)ceil(solid + smooth);
@@ -2012,8 +2021,8 @@ static void emit_from_derivedmesh(Object *flow_ob, SmokeDomainSettings *sds, Smo
 		smoke_pos_to_cell(sds, flow_center);
 
 		/* check need for high resolution map */
-		if ((sds->flags & MOD_SMOKE_HIGHRES) && (sds->highres_sampling == SM_HRES_FULLSAMPLE)) {
-			hires_multiplier = sds->amplify + 1;
+		if ((sds->flags & MOD_SMOKE_NOISE) && (sds->highres_sampling == SM_HRES_FULLSAMPLE)) {
+			hires_multiplier = sds->noise_scale;
 		}
 
 		/* set emission map */
@@ -2074,7 +2083,7 @@ static void emit_from_derivedmesh(Object *flow_ob, SmokeDomainSettings *sds, Smo
 
 static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], EmissionMap *emaps, unsigned int numflowobj, float dt)
 {
-	const int block_size = sds->amplify + 1;
+	const int block_size = sds->noise_scale;
 	int min[3] = {32767, 32767, 32767}, max[3] = {-32767, -32767, -32767}, res[3];
 	int total_cells = 1, res_changed = 0, shift_changed = 0;
 	float min_vel[3], max_vel[3];
@@ -2088,7 +2097,7 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 	float *vz = smoke_get_velocity_z(sds->fluid);
 	int wt_res[3];
 
-	if (sds->flags & MOD_SMOKE_HIGHRES && sds->fluid) {
+	if (sds->flags & MOD_SMOKE_NOISE && sds->fluid) {
 		smoke_turbulence_get_res(sds->fluid, wt_res);
 	}
 
@@ -2113,7 +2122,7 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 				max_den = (fuel) ? MAX2(density[index], fuel[index]) : density[index];
 
 				/* check high resolution bounds if max density isnt already high enough */
-				if (max_den < sds->adapt_threshold && sds->flags & MOD_SMOKE_HIGHRES && sds->fluid) {
+				if (max_den < sds->adapt_threshold && sds->flags & MOD_SMOKE_NOISE && sds->fluid) {
 					int i, j, k;
 					/* high res grid index */
 					int xx = (x - sds->res_min[0]) * block_size;
@@ -2208,7 +2217,7 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 
 		/* allocate new fluid data */
 		smoke_reallocate_fluid(sds, res, 0);
-		if (sds->flags & MOD_SMOKE_HIGHRES) {
+		if (sds->flags & MOD_SMOKE_NOISE) {
 			smoke_reallocate_highres_fluid(sds, sds->dx, res);
 		}
 
@@ -2227,7 +2236,7 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 			smoke_export(fluid_old, &dummy, &dummy, &o_dens, &o_react, &o_flame, &o_fuel, &o_heat, &o_vx, &o_vy, &o_vz, &o_r, &o_g, &o_b, &dummy_p, &dummy_s);
 			smoke_export(sds->fluid, &dummy, &dummy, &n_dens, &n_react, &n_flame, &n_fuel, &n_heat, &n_vx, &n_vy, &n_vz, &n_r, &n_g, &n_b, &dummy_p, &dummy_s);
 
-			if (sds->flags & MOD_SMOKE_HIGHRES) {
+			if (sds->flags & MOD_SMOKE_NOISE) {
 				smoke_turbulence_export(fluid_old, &o_wt_dens, &o_wt_react, &o_wt_flame, &o_wt_fuel, &o_wt_r, &o_wt_g, &o_wt_b, &o_wt_tcu, &o_wt_tcv, &o_wt_tcw, &o_wt_tcu2, &o_wt_tcv2, &o_wt_tcw2);
 				smoke_turbulence_get_res(fluid_old, wt_res_old);
 				smoke_turbulence_export(sds->fluid, &n_wt_dens, &n_wt_react, &n_wt_flame, &n_wt_fuel, &n_wt_r, &n_wt_g, &n_wt_b, &n_wt_tcu, &n_wt_tcv, &n_wt_tcw, &n_wt_tcu2, &n_wt_tcv2, &n_wt_tcw2);
@@ -2276,7 +2285,7 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 						n_vy[index_new] = o_vy[index_old];
 						n_vz[index_new] = o_vz[index_old];
 
-						if (sds->flags & MOD_SMOKE_HIGHRES && fluid_old) {
+						if (sds->flags & MOD_SMOKE_NOISE && fluid_old) {
 							int i, j, k;
 							/* old grid index */
 							int xx_o = xo * block_size;
@@ -2725,7 +2734,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 
 							smoke_turbulence_get_res(sds->fluid, bigres);
 
-							block_size = sds->amplify + 1;  // high res block size
+							block_size = sds->noise_scale;  // high res block size
 
 							c000 = (ex > 0 && ey > 0 && ez > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey - 1, em->res[1], ez - 1)] : 0;
 							c001 = (ex > 0 && ey > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey - 1, em->res[1], ez)] : 0;
@@ -2797,7 +2806,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 											}
 										}
 										else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time > 2) {
-											apply_inflow_fields(sfs, 0.0f, 0.5f, d_index, density, heat, fuel, react, color_r, color_g, color_b, NULL, NULL);
+											apply_inflow_fields(sfs, 0.0f, 0.5f, index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL, NULL);
 										}
 										else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW || sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY) { // inflow
 											// TODO (sebbas) inflow map highres?
@@ -3176,10 +3185,8 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		startframe = smd->domain->cache_frame_start;
 		endframe = smd->domain->cache_frame_end;
 
-		/* Baking can be any of geometry, data, mesh or particles */
-		bool isBaking = (smd->domain->cache_flag & (FLUID_CACHE_BAKING_GEOMETRY|FLUID_CACHE_BAKING_LOW|FLUID_CACHE_BAKING_HIGH|
-													FLUID_CACHE_BAKING_MESH_LOW|FLUID_CACHE_BAKING_MESH_HIGH|
-													FLUID_CACHE_BAKING_PARTICLES_LOW|FLUID_CACHE_BAKING_PARTICLES_HIGH));
+		bool isBaking = (smd->domain->cache_flag & (FLUID_CACHE_BAKING_DATA|FLUID_CACHE_BAKING_NOISE|
+													FLUID_CACHE_BAKING_MESH|FLUID_CACHE_BAKING_PARTICLES));
 
 		if (isBaking) return;
 
@@ -3420,7 +3427,7 @@ int smoke_step(Scene *scene, Object *ob, SmokeModifierData *smd, int frame)
 	/* TODO (sebbas): Move dissolve smoke code to mantaflow */
 	if (sds->flags & MOD_SMOKE_DISSOLVE) {
 		smoke_dissolve(sds->fluid, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
-		if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) {
+		if (sds->fluid && sds->flags & MOD_SMOKE_NOISE) {
 			smoke_dissolve_wavelet(sds->fluid, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
 		}
 	}
@@ -3451,13 +3458,13 @@ int smoke_step(Scene *scene, Object *ob, SmokeModifierData *smd, int frame)
 
 		if (sds->total_cells > 1) {
 			update_effectors(scene, ob, sds, sdt); // DG TODO? problem --> uses forces instead of velocity, need to check how they need to be changed with variable dt
-			fluid_bake_low(sds->fluid, smd, frame);
-		}
-
-		if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
-			smoke_calc_transparency(sds, scene);
+			fluid_bake_data(sds->fluid, smd, frame);
 		}
 	}
+	if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
+		smoke_calc_transparency(sds, scene);
+	}
+
 	/* Write call currently only writes shadow grid */
 	return fluid_write_cache(sds->fluid, smd, frame);
 }

@@ -553,7 +553,7 @@ extern "C" void smoke_ensure_colors(FLUID *smoke, struct SmokeModifierData *smd)
 extern "C" void fluid_ensure_sndparts(FLUID *fluid, struct SmokeModifierData *smd)
 {
 	if (fluid) {
-		fluid->initSndParts(smd);
+		fluid->initLiquidSndParts(smd);
 		fluid->updatePointers();
 	}
 }
@@ -600,62 +600,6 @@ extern "C" float *liquid_get_phiobsin(FLUID *liquid)
 extern "C" float *liquid_get_phioutin(FLUID *liquid)
 {
 	return liquid->getPhiOutIn();
-}
-
-extern "C" void liquid_save_mesh(FLUID *liquid, char *filename, int framenr)
-{
-	if (liquid) {
-		liquid->saveMesh(filename, framenr);
-	}
-}
-
-extern "C" void liquid_save_particles(FLUID *liquid, char *filename)
-{
-	if (liquid) {
-		liquid->saveParticles(filename);
-	}
-}
-
-extern "C" void liquid_save_particle_velocities(FLUID *liquid, char *filename)
-{
-	if (liquid) {
-		liquid->saveParticleVelocities(filename);
-	}
-}
-
-extern "C" void liquid_save_mesh_high(FLUID *liquid, char *filename)
-{
-	if (liquid) {
-		liquid->saveMeshHigh(filename);
-	}
-}
-
-extern "C" void liquid_save_data(FLUID *liquid, char *pathname)
-{
-	if (liquid) {
-		liquid->saveLiquidData(pathname);
-	}
-}
-
-extern "C" void liquid_save_data_high(FLUID *liquid, char *pathname)
-{
-	if (liquid) {
-		liquid->saveLiquidDataHigh(pathname);
-	}
-}
-
-extern "C" void liquid_load_data(FLUID *liquid, char *pathname)
-{
-	if (liquid) {
-		liquid->loadLiquidData(pathname);
-	}
-}
-
-extern "C" void liquid_load_data_high(FLUID *liquid, char *pathname)
-{
-	if (liquid) {
-		liquid->loadLiquidDataHigh(pathname);
-	}
 }
 
 extern "C" int liquid_get_num_verts(FLUID *liquid)
@@ -865,64 +809,81 @@ extern "C" int fluid_get_res_z(FLUID* fluid)
 	return fluid->getResZ();
 }
 
+extern "C" int fluid_get_particle_res_x(FLUID* fluid)
+{
+	return fluid->getParticleResX();
+}
+
+extern "C" int fluid_get_particle_res_y(FLUID* fluid)
+{
+	return fluid->getParticleResY();
+}
+
+extern "C" int fluid_get_particle_res_z(FLUID* fluid)
+{
+	return fluid->getParticleResZ();
+}
+
+extern "C" int fluid_get_mesh_res_x(FLUID* fluid)
+{
+	return fluid->getMeshResX();
+}
+
+extern "C" int fluid_get_mesh_res_y(FLUID* fluid)
+{
+	return fluid->getMeshResY();
+}
+
+extern "C" int fluid_get_mesh_res_z(FLUID* fluid)
+{
+	return fluid->getMeshResZ();
+}
+
+extern "C" int fluid_get_particle_upres(FLUID* fluid)
+{
+	return fluid->getParticleUpres();
+}
+
+extern "C" int fluid_get_mesh_upres(FLUID* fluid)
+{
+	return fluid->getMeshUpres();
+}
+
 extern "C" int fluid_read_cache(FLUID* fluid, SmokeModifierData *smd, int framenr)
 {
 	if (!fluid || !smd) return 0;
-	if (fluid->usingHighRes()) return fluid->readCacheHigh(smd, framenr);
-	return fluid->readCacheLow(smd, framenr);
+	return fluid->readCache(smd, framenr);
 }
 
 extern "C" int fluid_write_cache(FLUID* fluid, SmokeModifierData *smd, int framenr)
 {
 	if (!fluid || !smd) return 0;
-	return fluid->writeCacheLow(smd, framenr);
+	return fluid->writeCache(smd, framenr);
 	// High-res cache handled separately
 }
 
-extern "C" int fluid_bake_geometry(FLUID *fluid, SmokeModifierData *smd, int framenr)
+extern "C" int fluid_bake_data(FLUID* fluid, SmokeModifierData *smd, int framenr)
 {
 	if (!fluid || !smd) return 0;
-	fluid->bakeGeometryLow(smd, framenr);
-	fluid->updatePointers();
-	//	if (fluid->usingHighRes())
-	//		fluid->bakeGeometryHigh();
-	return 1;
+	return fluid->bakeData(smd, framenr);
 }
 
-extern "C" int fluid_bake_low(FLUID* fluid, SmokeModifierData *smd, int framenr)
+extern "C" int fluid_bake_noise(FLUID* fluid, SmokeModifierData *smd, int framenr)
 {
 	if (!fluid || !smd) return 0;
-	return fluid->bakeDataLow(smd, framenr);
+	return fluid->bakeNoise(smd, framenr);
 }
 
-extern "C" int fluid_bake_high(FLUID* fluid, SmokeModifierData *smd, int framenr)
+extern "C" int fluid_bake_mesh(FLUID* fluid, SmokeModifierData *smd, int framenr)
 {
 	if (!fluid || !smd) return 0;
-	return fluid->bakeDataHigh(smd, framenr);
+	return fluid->bakeMesh(smd, framenr);
 }
 
-extern "C" int fluid_bake_mesh_low(FLUID* fluid, SmokeModifierData *smd, int framenr)
+extern "C" int fluid_bake_particles(FLUID* fluid, SmokeModifierData *smd, int framenr)
 {
 	if (!fluid || !smd) return 0;
-	return fluid->bakeMeshLow(smd, framenr);
-}
-
-extern "C" int fluid_bake_mesh_high(FLUID* fluid, SmokeModifierData *smd, int framenr)
-{
-	if (!fluid || !smd) return 0;
-	return fluid->bakeMeshHigh(smd, framenr);
-}
-
-extern "C" int fluid_bake_particles_low(FLUID* fluid, SmokeModifierData *smd, int framenr)
-{
-	if (!fluid || !smd) return 0;
-	return fluid->bakeParticlesLow(smd, framenr);
-}
-
-extern "C" int fluid_bake_particles_high(FLUID* fluid, SmokeModifierData *smd, int framenr)
-{
-	if (!fluid || !smd) return 0;
-	return fluid->bakeParticlesHigh(smd, framenr);
+	return fluid->bakeParticles(smd, framenr);
 }
 
 extern "C" void fluid_update_variables_low(FLUID* fluid, SmokeModifierData *smd)

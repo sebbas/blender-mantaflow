@@ -54,29 +54,24 @@ public:
 	void initFireHigh(struct SmokeModifierData *smd);
 	void initColorsHigh(struct SmokeModifierData *smd);
 	void initLiquid(SmokeModifierData *smd);
-	void initLiquidHigh(SmokeModifierData *smd);
+	void initLiquidMesh(SmokeModifierData *smd);
 	void initObstacle(SmokeModifierData *smd);
 	void initGuiding(SmokeModifierData *smd);
 	void initInVelocity(SmokeModifierData *smd);
 	void initSndParts(SmokeModifierData *smd);
+	void initLiquidSndParts(SmokeModifierData *smd);
 
 	// Pointer transfer Mantaflow -> Blender
 	void updatePointers();
 	void updatePointersHigh();
 
 	// Bake
-	int readCacheLow(SmokeModifierData *smd, int framenr);
-	int readCacheHigh(SmokeModifierData *smd, int framenr);
-	int writeCacheLow(SmokeModifierData *smd, int framenr);
-//	int writeCacheHigh(SmokeModifierData *smd, int framenr);
-	int bakeGeometryLow(SmokeModifierData *smd, int framenr);
-//	int bakeGeometryHigh(SmokeModifierData *smd, int framenr);
-	int bakeDataLow(SmokeModifierData *smd, int framenr);
-	int bakeDataHigh(SmokeModifierData *smd, int framenr);
-	int bakeMeshLow(SmokeModifierData *smd, int framenr);
-	int bakeMeshHigh(SmokeModifierData *smd, int framenr);
-	int bakeParticlesLow(SmokeModifierData *smd, int framenr);
-	int bakeParticlesHigh(SmokeModifierData *smd, int framenr);
+	int readCache(SmokeModifierData *smd, int framenr);
+	int writeCache(SmokeModifierData *smd, int framenr);
+	int bakeData(SmokeModifierData *smd, int framenr);
+	int bakeNoise(SmokeModifierData *smd, int framenr);
+	int bakeMesh(SmokeModifierData *smd, int framenr);
+	int bakeParticles(SmokeModifierData *smd, int framenr);
 	void updateVariablesLow(SmokeModifierData *smd);
 	void updateVariablesHigh(SmokeModifierData *smd);
 
@@ -98,7 +93,6 @@ public:
 
 	// Write files for liquids
 	void saveMesh(char *filename, int framenr);
-	void saveMeshHigh(char *filename);
 	void saveLiquidData(char *pathname);
 	void saveLiquidDataHigh(char *pathname);
 
@@ -113,13 +107,21 @@ public:
 	// Smoke getters
 	inline size_t getTotalCells() { return mTotalCells; }
 	inline size_t getTotalCellsHigh() { return mTotalCellsHigh; }
-	inline bool usingHighRes() { return mUsingHighRes; }
+	inline bool usingHighRes() { return mUsingNoise; }
 	inline int getResX() { return mResX; }
 	inline int getResY() { return mResY; }
 	inline int getResZ() { return mResZ; }
-	inline int getResXHigh() { return mResXHigh; }
-	inline int getResYHigh() { return mResYHigh; }
-	inline int getResZHigh() { return mResZHigh; }
+	inline int getParticleResX() { return mResXParticle; }
+	inline int getParticleResY() { return mResYParticle; }
+	inline int getParticleResZ() { return mResZParticle; }
+	inline int getMeshResX() { return mResXMesh; }
+	inline int getMeshResY() { return mResYMesh; }
+	inline int getMeshResZ() { return mResZMesh; }
+	inline int getResXHigh() { return mResXNoise; }
+	inline int getResYHigh() { return mResYNoise; }
+	inline int getResZHigh() { return mResZNoise; }
+	inline int getMeshUpres() { return mUpresMesh; }
+	inline int getParticleUpres() { return mUpresParticle; }
 	
 	inline float* getDensity() { return mDensity; }
 	inline float* getDensityIn() { return mDensityIn; }
@@ -248,6 +250,8 @@ private:
 	// simulation constants
 	size_t mTotalCells;
 	size_t mTotalCellsHigh;
+	size_t mTotalCellsMesh;
+	size_t mTotalCellsParticles;
 
 	int mCurrentID;
 	
@@ -257,23 +261,33 @@ private:
 	bool mUsingObstacle;
 	bool mUsingGuiding;
 	bool mUsingInvel;
-	bool mUsingHighRes;
+	bool mUsingNoise;
+	bool mUsingMesh;
 	bool mUsingLiquid;
 	bool mUsingSmoke;
 	bool mUsingDrops;
 	bool mUsingBubbles;
 	bool mUsingFloats;
 	bool mUsingTracers;
-	
+
 	int mResX;
 	int mResY;
 	int mResZ;
 	int mMaxRes;
-	
-	int mResXHigh;
-	int mResYHigh;
-	int mResZHigh;
-	
+
+	int mResXNoise;
+	int mResYNoise;
+	int mResZNoise;
+	int mResXMesh;
+	int mResYMesh;
+	int mResZMesh;
+	int mResXParticle;
+	int mResYParticle;
+	int mResZParticle;
+
+	int mUpresMesh;
+	int mUpresParticle;
+
 	float mTempAmb; /* ambient temperature */
 	float mConstantScaling;
 
@@ -358,9 +372,10 @@ private:
 	std::vector<float>* mSndParticleLife;
 
 	void initDomain(struct SmokeModifierData *smd);
-	void initDomainHigh(struct SmokeModifierData *smd);
+	void initNoise(struct SmokeModifierData *smd);
+	void initMesh(struct SmokeModifierData *smd);
 	void initSmoke(struct SmokeModifierData *smd);
-	void initSmokeHigh(struct SmokeModifierData *smd);
+	void initSmokeNoise(struct SmokeModifierData *smd);
 	void initializeMantaflow();
 	void terminateMantaflow();
 	void runPythonString(std::vector<std::string> commands);

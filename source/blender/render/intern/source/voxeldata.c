@@ -297,7 +297,7 @@ static void init_frame_smoke(VoxelData *vd, int cfra)
 				size_t totRes;
 				float *flame;
 
-				if (sds->flags & MOD_SMOKE_HIGHRES) {
+				if (sds->flags & MOD_SMOKE_NOISE) {
 					if (!smoke_turbulence_has_fuel(sds->fluid)) {
 						BLI_rw_mutex_unlock(sds->fluid_mutex);
 						return;
@@ -325,7 +325,7 @@ static void init_frame_smoke(VoxelData *vd, int cfra)
 				vd->data_type = TEX_VD_RGBA_PREMUL;
 
 				/* data resolution */
-				if (sds->flags & MOD_SMOKE_HIGHRES) {
+				if (sds->flags & MOD_SMOKE_NOISE) {
 					smoke_turbulence_get_res(sds->fluid, vd->resol);
 				}
 				else {
@@ -337,7 +337,7 @@ static void init_frame_smoke(VoxelData *vd, int cfra)
 				/* always store copy, as smoke internal data can change */
 				vd->dataset = MEM_mapallocN(sizeof(float) * totCells, "smoke data");
 
-				if (sds->flags & MOD_SMOKE_HIGHRES) {
+				if (sds->flags & MOD_SMOKE_NOISE) {
 					if (smoke_turbulence_has_colors(sds->fluid)) {
 						smoke_turbulence_get_rgba(sds->fluid, vd->dataset, 1);
 					}

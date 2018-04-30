@@ -253,8 +253,7 @@ void BasicParticleSystem::readParticles(BasicParticleSystem* from) {
 		(*this)[i].pos  = (*from)[i].pos;
 		(*this)[i].flag = (*from)[i].flag;
 	}
-	Vec3i gridSize = from->getParent()->getGridSize();
-	this->transformPositions( Vec3i(gridSize.x,gridSize.y,gridSize.z), this->size() );
+	this->transformPositions( from->getParent()->getGridSize(), this->getParent()->getGridSize() );
 }
 
 

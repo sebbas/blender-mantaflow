@@ -3834,6 +3834,7 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 			int flagActivePart, activeParts = 0;
 			float posX, posY, posZ, velX, velY, velZ;
 			float resX, resY, resZ;
+			int upres[3] = {1};
 			char debugStrBuffer[256];
 
 			// Helper for scaling
@@ -3884,9 +3885,31 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 
 				if (part->type == PART_MANTA_FLIP) {
 					flagActivePart = liquid_get_flip_particle_flag_at(sds->fluid, p);
+
+					// Upres FLIP have custom (upscaled) res values
+					if (sds->flags & MOD_SMOKE_MESH) {
+						resX = (float) fluid_get_mesh_res_x(sds->fluid);
+						resY = (float) fluid_get_mesh_res_y(sds->fluid);
+						resZ = (float) fluid_get_mesh_res_z(sds->fluid);
+
+						upres[0] = upres[1] = upres[2] = fluid_get_mesh_upres(sds->fluid);
+					}
+					else {
+						resX = (float) fluid_get_res_x(sds->fluid);
+						resY = (float) fluid_get_res_y(sds->fluid);
+						resZ = (float) fluid_get_res_z(sds->fluid);
+
+						upres[0] = upres[1] = upres[2] = 1;
+					}
 				}
 				else if (part->type == PART_MANTA_DROP || part->type == PART_MANTA_BUBBLE || part->type == PART_MANTA_FLOAT || part->type == PART_MANTA_TRACER) {
 					flagActivePart = liquid_get_snd_particle_flag_at(sds->fluid, p);
+
+					resX = (float) fluid_get_particle_res_x(sds->fluid);
+					resY = (float) fluid_get_particle_res_y(sds->fluid);
+					resZ = (float) fluid_get_particle_res_z(sds->fluid);
+
+					upres[0] = upres[1] = upres[2] = fluid_get_particle_upres(sds->fluid);
 				}
 				else {
 					BLI_snprintf(debugStrBuffer, sizeof(debugStrBuffer), "particles_manta_step::error - unknown particle system type\n");
@@ -3901,10 +3924,6 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 				if ((part->type == PART_MANTA_TRACER) && (flagActivePart & PTRACER)==0) continue;
 
 				// printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
-
-				resX = (float) fluid_get_res_x(sds->fluid);
-				resY = (float) fluid_get_res_y(sds->fluid);
-				resZ = (float) fluid_get_res_z(sds->fluid);
 
 				if (part->type == PART_MANTA_FLIP) {
 					posX = liquid_get_flip_particle_position_x_at(sds->fluid, p);
@@ -3931,7 +3950,7 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 					pa->size = part->size;
 					if (part->randsize > 0.0f)
 						pa->size *= 1.0f - part->randsize * psys_frand(psys, p + 1);
-					
+
 					// Get size (dimension) but considering scaling scaling
 					copy_v3_v3(cell_size_scaled, sds->cell_size);
 					mul_v3_v3(cell_size_scaled, ob->size);
@@ -3940,7 +3959,8 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 					sub_v3_v3v3(size, max, min);
 
 					// Biggest dimension will be used for upscaling
-					max_size = MAX3(size[0], size[1], size[2]);
+					max_size = MAX3(size[0] / (float) upres[0], size[1] / (float) upres[1], size[2] / (float) upres[2]);
+//					max_size = MAX3(size[0], size[1], size[2]);
 
 					// set particle position
 					pa->state.co[0] = posX;
@@ -3954,9 +3974,9 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 					mul_v3_fl(pa->state.co, sds->dx);
 
 					// match domain dimension / size
-					pa->state.co[0] *= max_size / fabsf(ob->size[0]);;
-					pa->state.co[1] *= max_size / fabsf(ob->size[1]);;
-					pa->state.co[2] *= max_size / fabsf(ob->size[2]);;
+					pa->state.co[0] *= max_size / fabsf(ob->size[0]);
+					pa->state.co[1] *= max_size / fabsf(ob->size[1]);
+					pa->state.co[2] *= max_size / fabsf(ob->size[2]);
 
 					// match domain scale
 					mul_m4_v3(ob->obmat, pa->state.co);

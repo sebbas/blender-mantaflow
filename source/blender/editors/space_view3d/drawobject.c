@@ -7871,8 +7871,8 @@ void draw_object(Scene *scene, ARegion *ar, View3D *v3d, Base *base, const short
 			/* draw a single voxel to hint the user about the resolution of the fluid */
 			copy_v3_v3(p0, sds->p0);
 
-			if (sds->flags & MOD_SMOKE_HIGHRES) {
-				madd_v3_v3v3fl(p1, p0, sds->cell_size, 1.0f / (sds->amplify + 1));
+			if (sds->flags & MOD_SMOKE_NOISE) {
+				madd_v3_v3v3fl(p1, p0, sds->cell_size, 1.0f / sds->noise_scale);
 			}
 			else {
 				add_v3_v3v3(p1, p0, sds->cell_size);
@@ -7905,13 +7905,13 @@ void draw_object(Scene *scene, ARegion *ar, View3D *v3d, Base *base, const short
 				if (sds->fluid && sds->viewport_display_mode == SM_VIEWPORT_GEOMETRY) {
 					// Nothing to do here
 				}
-				else if (!(sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) || sds->viewport_display_mode == SM_VIEWPORT_PREVIEW) {
+				else if (!(sds->fluid && sds->flags & MOD_SMOKE_NOISE)) {
 					sds->tex = NULL;
 					GPU_create_smoke(smd, 0);
 					draw_smoke_volume(sds, ob, p0, p1, viewnormal);
 					GPU_free_smoke(smd);
 				}
-				else if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES && sds->viewport_display_mode == SM_VIEWPORT_FINAL) {
+				else if (sds->fluid && sds->flags & MOD_SMOKE_NOISE) {
 					sds->tex = NULL;
 					GPU_create_smoke(smd, 1);
 					draw_smoke_volume(sds, ob, p0, p1, viewnormal);
