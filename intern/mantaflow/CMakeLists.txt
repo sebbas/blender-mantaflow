@@ -39,6 +39,7 @@ set(INC
 	extern
 	intern/strings
 	${MANTA_PP}
+	${MANTA_PP}/fileio
 	${MANTA_PP}/python
 	${MANTA_PP}/plugin
 	${MANTA_PP}/pwrapper
@@ -85,10 +86,12 @@ set(SRC
 	${MANTA_PP}/fastmarch.h
 	${MANTA_PP}/fastmarch.h.reg
 	${MANTA_PP}/fastmarch.h.reg.cpp
-	${MANTA_PP}/fileio.cpp
-	${MANTA_PP}/fileio.h
-	${MANTA_PP}/fileio.h.reg
-	${MANTA_PP}/fileio.h.reg.cpp
+	${MANTA_PP}/fileio/iogrids.cpp
+	${MANTA_PP}/fileio/iomeshes.cpp
+	${MANTA_PP}/fileio/ioparticles.cpp
+	${MANTA_PP}/fileio/mantaio.h
+	${MANTA_PP}/fileio/mantaio.h.reg
+	${MANTA_PP}/fileio/mantaio.h.reg.cpp
 	${MANTA_PP}/fluidsolver.cpp
 	${MANTA_PP}/fluidsolver.h
 	${MANTA_PP}/fluidsolver.h.reg

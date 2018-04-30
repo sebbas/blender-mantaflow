@@ -16,8 +16,8 @@
  * Copyright 2011 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL) 
- * http://www.gnu.org/licenses
+ * Apache License, Version 2.0 
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Conjugate gradient solver, for pressure and viscosity
  *
@@ -35,7 +35,7 @@ const int CG_DEBUGLEVEL = 2;
 //  Precondition helpers
 
 //! Preconditioning a la Wavelet Turbulence (needs 4 add. grids)
-void InitPreconditionIncompCholesky(FlagGrid& flags,
+void InitPreconditionIncompCholesky(const FlagGrid& flags,
 				Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak,
 				Grid<Real>& orgA0, Grid<Real>& orgAi, Grid<Real>& orgAj, Grid<Real>& orgAk) 
 {
@@ -75,7 +75,7 @@ void InitPreconditionIncompCholesky(FlagGrid& flags,
 };
 
 //! Preconditioning using modified IC ala Bridson (needs 1 add. grid)
-void InitPreconditionModifiedIncompCholesky2(FlagGrid& flags,
+void InitPreconditionModifiedIncompCholesky2(const FlagGrid& flags,
 				Grid<Real>&Aprecond, 
 				Grid<Real>&A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak) 
 {
@@ -118,7 +118,7 @@ void InitPreconditionMultigrid(GridMg* MG, Grid<Real>&A0, Grid<Real>& Ai, Grid<R
 };
 
 //! Apply WT-style ICP
-void ApplyPreconditionIncompCholesky(Grid<Real>& dst, Grid<Real>& Var1, FlagGrid& flags,
+void ApplyPreconditionIncompCholesky(Grid<Real>& dst, Grid<Real>& Var1, const FlagGrid& flags,
 				Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak,
 				Grid<Real>& orgA0, Grid<Real>& orgAi, Grid<Real>& orgAj, Grid<Real>& orgAk)
 {
@@ -144,7 +144,7 @@ void ApplyPreconditionIncompCholesky(Grid<Real>& dst, Grid<Real>& Var1, FlagGrid
 }
 
 //! Apply Bridson-style mICP
-void ApplyPreconditionModifiedIncompCholesky2(Grid<Real>& dst, Grid<Real>& Var1, FlagGrid& flags,
+void ApplyPreconditionModifiedIncompCholesky2(Grid<Real>& dst, Grid<Real>& Var1, const FlagGrid& flags,
 				Grid<Real>& Aprecond, 
 				Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak) 
 {
@@ -201,20 +201,20 @@ void ApplyPreconditionMultigrid(GridMg* pMG, Grid<Real>& dst, Grid<Real>& Var1)
 //! Kernel: compute residual (init) and add to sigma
 
 
- struct InitSigma : public KernelBase { InitSigma(FlagGrid& flags, Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& temp) :  KernelBase(&flags,0) ,flags(flags),dst(dst),rhs(rhs),temp(temp) ,sigma(0)  { runMessage(); run(); }   inline void op(IndexInt idx, FlagGrid& flags, Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& temp ,double& sigma)  {    
+ struct InitSigma : public KernelBase { InitSigma(const FlagGrid& flags, Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& temp) :  KernelBase(&flags,0) ,flags(flags),dst(dst),rhs(rhs),temp(temp) ,sigma(0)  { runMessage(); run(); }   inline void op(IndexInt idx, const FlagGrid& flags, Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& temp ,double& sigma)  {    
 	const double res = rhs[idx] - temp[idx]; 
 	dst[idx] = (Real)res;
 
 	// only compute residual in fluid region
 	if(flags.isFluid(idx)) 
 		sigma += res*res;
-}    inline operator double () { return sigma; } inline double  & getRet() { return sigma; }  inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return dst; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return rhs; } typedef Grid<Real> type2;inline Grid<Real>& getArg3() { return temp; } typedef Grid<Real> type3; void runMessage() { debMsg("Executing kernel InitSigma ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+}    inline operator double () { return sigma; } inline double  & getRet() { return sigma; }  inline const FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return dst; } typedef Grid<Real> type1;inline Grid<Real>& getArg2() { return rhs; } typedef Grid<Real> type2;inline Grid<Real>& getArg3() { return temp; } typedef Grid<Real> type3; void runMessage() { debMsg("Executing kernel InitSigma ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  double sigma = 0; 
 #pragma omp for nowait  
   for (IndexInt i = 0; i < _sz; i++) op(i,flags,dst,rhs,temp,sigma); 
 #pragma omp critical
-{this->sigma += sigma; } }   } FlagGrid& flags; Grid<Real>& dst; Grid<Real>& rhs; Grid<Real>& temp;  double sigma;  };
+{this->sigma += sigma; } }   } const FlagGrid& flags; Grid<Real>& dst; Grid<Real>& rhs; Grid<Real>& temp;  double sigma;  };
 #line 183 "conjugategrad.cpp"
 
 ;
@@ -236,7 +236,7 @@ void ApplyPreconditionMultigrid(GridMg* pMG, Grid<Real>& dst, Grid<Real>& Var1)
 //  CG class
 
 template<class APPLYMAT>
-GridCg<APPLYMAT>::GridCg(Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& residual, Grid<Real>& search, FlagGrid& flags, Grid<Real>& tmp, 
+GridCg<APPLYMAT>::GridCg(Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& residual, Grid<Real>& search, const FlagGrid& flags, Grid<Real>& tmp,
 			   Grid<Real>* pA0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk) :
 	GridCgInterface(), mInited(false), mIterations(0), mDst(dst), mRhs(rhs), mResidual(residual),
 	mSearch(search), mFlags(flags), mTmp(tmp), mpA0(pA0), mpAi(pAi), mpAj(pAj), mpAk(pAk),
@@ -386,7 +386,7 @@ template class GridCg<ApplyMatrix2D>;
 //  see lidDrivenCavity.py for an example
 
 
-void cgSolveDiffusion(FlagGrid& flags, GridBase& grid, Real alpha = 0.25, Real cgMaxIterFac = 1.0, Real cgAccuracy = 1e-4 ) {
+void cgSolveDiffusion(const FlagGrid& flags, GridBase& grid, Real alpha = 0.25, Real cgMaxIterFac = 1.0, Real cgAccuracy = 1e-4 ) {
 	// reserve temp grids
 	FluidSolver* parent = flags.getParent();
 	Grid<Real> rhs(parent);
@@ -457,7 +457,7 @@ void cgSolveDiffusion(FlagGrid& flags, GridBase& grid, Real alpha = 0.25, Real c
 	}
 
 	delete gcg;
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "cgSolveDiffusion" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); GridBase& grid = *_args.getPtr<GridBase >("grid",1,&_lock); Real alpha = _args.getOpt<Real >("alpha",2,0.25,&_lock); Real cgMaxIterFac = _args.getOpt<Real >("cgMaxIterFac",3,1.0,&_lock); Real cgAccuracy = _args.getOpt<Real >("cgAccuracy",4,1e-4 ,&_lock);   _retval = getPyNone(); cgSolveDiffusion(flags,grid,alpha,cgMaxIterFac,cgAccuracy);  _args.check(); } pbFinalizePlugin(parent,"cgSolveDiffusion", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("cgSolveDiffusion",e.what()); return 0; } } static const Pb::Register _RP_cgSolveDiffusion ("","cgSolveDiffusion",_W_0);  extern "C" { void PbRegister_cgSolveDiffusion() { KEEP_UNUSED(_RP_cgSolveDiffusion); } } 
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "cgSolveDiffusion" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); GridBase& grid = *_args.getPtr<GridBase >("grid",1,&_lock); Real alpha = _args.getOpt<Real >("alpha",2,0.25,&_lock); Real cgMaxIterFac = _args.getOpt<Real >("cgMaxIterFac",3,1.0,&_lock); Real cgAccuracy = _args.getOpt<Real >("cgAccuracy",4,1e-4 ,&_lock);   _retval = getPyNone(); cgSolveDiffusion(flags,grid,alpha,cgMaxIterFac,cgAccuracy);  _args.check(); } pbFinalizePlugin(parent,"cgSolveDiffusion", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("cgSolveDiffusion",e.what()); return 0; } } static const Pb::Register _RP_cgSolveDiffusion ("","cgSolveDiffusion",_W_0);  extern "C" { void PbRegister_cgSolveDiffusion() { KEEP_UNUSED(_RP_cgSolveDiffusion); } } 
 
 
 

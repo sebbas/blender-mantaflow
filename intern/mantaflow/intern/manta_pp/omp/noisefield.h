@@ -16,8 +16,8 @@
  * Copyright 2011 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL) 
- * http://www.gnu.org/licenses
+ * Apache License, Version 2.0 
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Wavelet noise field
  *
@@ -44,11 +44,11 @@ class WaveletNoiseField : public PbClass {	public:
 		};
 
 		//! evaluate noise
-		inline Real evaluate(Vec3 pos, int tile=0);
+		inline Real evaluate(Vec3 pos, int tile=0) const;
 		//! evaluate noise as a vector
-		inline Vec3 evaluateVec(Vec3 pos, int tile=0);
+		inline Vec3 evaluateVec(Vec3 pos, int tile=0) const;
 		//! evaluate curl noise
-		inline Vec3 evaluateCurl(Vec3 pos);
+		inline Vec3 evaluateCurl(Vec3 pos) const;
 
 		//! direct data access
 		Real* data() { return mNoiseTile; }
@@ -90,7 +90,7 @@ class WaveletNoiseField : public PbClass {	public:
 		// warning - noiseTileSize has to be 128^3!
 		#define modFast128(x)  ((x) & 127)
 
-		inline Real getTime() { return mParent->getTime() * mParent->getDx() * mTimeAnim; }
+		inline Real getTime() const { return mParent->getTime() * mParent->getDx() * mTimeAnim; }
 
 		// pre-compute tile data for wavelet noise
 		void generateTile( int loadFromFile );
@@ -340,7 +340,7 @@ inline Vec3 WaveletNoiseField::WNoiseVec(const Vec3& p, Real *data)
 #undef ADD_WEIGHTEDY
 #undef ADD_WEIGHTEDZ
 
-inline Real WaveletNoiseField::evaluate(Vec3 pos, int tile) { 
+inline Real WaveletNoiseField::evaluate(Vec3 pos, int tile) const { 
 	pos[0] *= mGsInvX;
 	pos[1] *= mGsInvY;
 	pos[2] *= mGsInvZ;
@@ -366,7 +366,7 @@ inline Real WaveletNoiseField::evaluate(Vec3 pos, int tile) {
 	return v;
 }
 
-inline Vec3 WaveletNoiseField::evaluateVec(Vec3 pos, int tile) { 
+inline Vec3 WaveletNoiseField::evaluateVec(Vec3 pos, int tile) const { 
 	pos[0] *= mGsInvX;
 	pos[1] *= mGsInvY;
 	pos[2] *= mGsInvZ;
@@ -395,7 +395,7 @@ inline Vec3 WaveletNoiseField::evaluateVec(Vec3 pos, int tile) {
 	return v;
 }
 
-inline Vec3 WaveletNoiseField::evaluateCurl(Vec3 pos) {
+inline Vec3 WaveletNoiseField::evaluateCurl(Vec3 pos) const {
 	// gradients of w0-w2
 	Vec3 d0 = evaluateVec(pos,0), 
 		 d1 = evaluateVec(pos,1), 

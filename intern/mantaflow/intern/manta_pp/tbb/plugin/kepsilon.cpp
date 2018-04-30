@@ -16,8 +16,8 @@
  * Copyright 2011 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL) 
- * http://www.gnu.org/licenses
+ * Apache License, Version 2.0 
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Turbulence modeling plugins
  *
@@ -96,7 +96,7 @@ const Real keNuMax = 5.0;
 	
 //! Compute k-epsilon production term P = 2*nu_T*sum_ij(Sij^2) and the turbulent viscosity nu_T=C_mu*k^2/eps
 
-void KEpsilonComputeProduction(MACGrid& vel, Grid<Real>& k, Grid<Real>& eps, Grid<Real>& prod, Grid<Real>& nuT, Grid<Real>* strain=0, Real pscale = 1.0f) {
+void KEpsilonComputeProduction(const MACGrid& vel, Grid<Real>& k, Grid<Real>& eps, Grid<Real>& prod, Grid<Real>& nuT, Grid<Real>* strain=0, Real pscale = 1.0f) {
 	// get centered velocity grid
 	Grid<Vec3> vcenter(k.getParent());
 	GetCentered(vcenter, vel);
@@ -108,7 +108,7 @@ void KEpsilonComputeProduction(MACGrid& vel, Grid<Real>& k, Grid<Real>& eps, Gri
 	KnTurbulenceClamp(k, eps, minK, maxK, keNuMin, keNuMax);
 	
 	KnComputeProduction(vel, vcenter, k, eps, prod, nuT, strain, pscale);    
-} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "KEpsilonComputeProduction" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Real>& k = *_args.getPtr<Grid<Real> >("k",1,&_lock); Grid<Real>& eps = *_args.getPtr<Grid<Real> >("eps",2,&_lock); Grid<Real>& prod = *_args.getPtr<Grid<Real> >("prod",3,&_lock); Grid<Real>& nuT = *_args.getPtr<Grid<Real> >("nuT",4,&_lock); Grid<Real>* strain = _args.getPtrOpt<Grid<Real> >("strain",5,0,&_lock); Real pscale = _args.getOpt<Real >("pscale",6,1.0f,&_lock);   _retval = getPyNone(); KEpsilonComputeProduction(vel,k,eps,prod,nuT,strain,pscale);  _args.check(); } pbFinalizePlugin(parent,"KEpsilonComputeProduction", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("KEpsilonComputeProduction",e.what()); return 0; } } static const Pb::Register _RP_KEpsilonComputeProduction ("","KEpsilonComputeProduction",_W_0);  extern "C" { void PbRegister_KEpsilonComputeProduction() { KEEP_UNUSED(_RP_KEpsilonComputeProduction); } } 
+} static PyObject* _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "KEpsilonComputeProduction" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const MACGrid& vel = *_args.getPtr<MACGrid >("vel",0,&_lock); Grid<Real>& k = *_args.getPtr<Grid<Real> >("k",1,&_lock); Grid<Real>& eps = *_args.getPtr<Grid<Real> >("eps",2,&_lock); Grid<Real>& prod = *_args.getPtr<Grid<Real> >("prod",3,&_lock); Grid<Real>& nuT = *_args.getPtr<Grid<Real> >("nuT",4,&_lock); Grid<Real>* strain = _args.getPtrOpt<Grid<Real> >("strain",5,0,&_lock); Real pscale = _args.getOpt<Real >("pscale",6,1.0f,&_lock);   _retval = getPyNone(); KEpsilonComputeProduction(vel,k,eps,prod,nuT,strain,pscale);  _args.check(); } pbFinalizePlugin(parent,"KEpsilonComputeProduction", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("KEpsilonComputeProduction",e.what()); return 0; } } static const Pb::Register _RP_KEpsilonComputeProduction ("","KEpsilonComputeProduction",_W_0);  extern "C" { void PbRegister_KEpsilonComputeProduction() { KEEP_UNUSED(_RP_KEpsilonComputeProduction); } } 
 
 //! Integrate source terms of k-epsilon equation
 
@@ -138,7 +138,7 @@ void KEpsilonSources(Grid<Real>& k, Grid<Real>& eps, Grid<Real>& prod) {
 } static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "KEpsilonSources" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& k = *_args.getPtr<Grid<Real> >("k",0,&_lock); Grid<Real>& eps = *_args.getPtr<Grid<Real> >("eps",1,&_lock); Grid<Real>& prod = *_args.getPtr<Grid<Real> >("prod",2,&_lock);   _retval = getPyNone(); KEpsilonSources(k,eps,prod);  _args.check(); } pbFinalizePlugin(parent,"KEpsilonSources", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("KEpsilonSources",e.what()); return 0; } } static const Pb::Register _RP_KEpsilonSources ("","KEpsilonSources",_W_1);  extern "C" { void PbRegister_KEpsilonSources() { KEEP_UNUSED(_RP_KEpsilonSources); } } 
 
 //! Initialize the domain or boundary conditions
-void KEpsilonBcs(FlagGrid& flags, Grid<Real>& k, Grid<Real>& eps, Real intensity, Real nu, bool fillArea) {
+void KEpsilonBcs(const FlagGrid& flags, Grid<Real>& k, Grid<Real>& eps, Real intensity, Real nu, bool fillArea) {
 	// compute limits
 	const Real vk = 1.5*square(keU0)*square(intensity);
 	const Real ve = keCmu*square(vk) / nu;
@@ -149,7 +149,7 @@ void KEpsilonBcs(FlagGrid& flags, Grid<Real>& k, Grid<Real>& eps, Real intensity
 			eps[idx] = ve;
 		}
 	}
-} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "KEpsilonBcs" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& k = *_args.getPtr<Grid<Real> >("k",1,&_lock); Grid<Real>& eps = *_args.getPtr<Grid<Real> >("eps",2,&_lock); Real intensity = _args.get<Real >("intensity",3,&_lock); Real nu = _args.get<Real >("nu",4,&_lock); bool fillArea = _args.get<bool >("fillArea",5,&_lock);   _retval = getPyNone(); KEpsilonBcs(flags,k,eps,intensity,nu,fillArea);  _args.check(); } pbFinalizePlugin(parent,"KEpsilonBcs", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("KEpsilonBcs",e.what()); return 0; } } static const Pb::Register _RP_KEpsilonBcs ("","KEpsilonBcs",_W_2);  extern "C" { void PbRegister_KEpsilonBcs() { KEEP_UNUSED(_RP_KEpsilonBcs); } } 
+} static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "KEpsilonBcs" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& k = *_args.getPtr<Grid<Real> >("k",1,&_lock); Grid<Real>& eps = *_args.getPtr<Grid<Real> >("eps",2,&_lock); Real intensity = _args.get<Real >("intensity",3,&_lock); Real nu = _args.get<Real >("nu",4,&_lock); bool fillArea = _args.get<bool >("fillArea",5,&_lock);   _retval = getPyNone(); KEpsilonBcs(flags,k,eps,intensity,nu,fillArea);  _args.check(); } pbFinalizePlugin(parent,"KEpsilonBcs", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("KEpsilonBcs",e.what()); return 0; } } static const Pb::Register _RP_KEpsilonBcs ("","KEpsilonBcs",_W_2);  extern "C" { void PbRegister_KEpsilonBcs() { KEEP_UNUSED(_RP_KEpsilonBcs); } } 
 
 //! Gradient diffusion smoothing. Not unconditionally stable -- should probably do substepping etc.
 void ApplyGradDiff(const Grid<Real>& grid, Grid<Real>& res, const Grid<Real>& nu, Real dt, Real sigma) {
@@ -193,4 +193,5 @@ void KEpsilonGradientDiffusion(Grid<Real>& k, Grid<Real>& eps, Grid<Real>& nuT, 
 
 
 } // namespace
+
 

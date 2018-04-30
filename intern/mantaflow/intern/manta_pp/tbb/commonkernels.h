@@ -16,8 +16,8 @@
  * Copyright 2011 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL) 
- * http://www.gnu.org/licenses
+ * Apache License, Version 2.0 
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Common grid kernels
  *
@@ -35,16 +35,16 @@ namespace Manta {
 //! Kernel: Invert real values, if positive and fluid
 
 
- struct InvertCheckFluid : public KernelBase { InvertCheckFluid(FlagGrid& flags, Grid<Real>& grid) :  KernelBase(&flags,0) ,flags(flags),grid(grid)   { runMessage(); run(); }   inline void op(IndexInt idx, FlagGrid& flags, Grid<Real>& grid ) const {
+ struct InvertCheckFluid : public KernelBase { InvertCheckFluid(const FlagGrid& flags, Grid<Real>& grid) :  KernelBase(&flags,0) ,flags(flags),grid(grid)   { runMessage(); run(); }   inline void op(IndexInt idx, const FlagGrid& flags, Grid<Real>& grid ) const {
 	if (flags.isFluid(idx) && grid[idx] > 0)
 		grid[idx] = 1.0 / grid[idx];
-}    inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return grid; } typedef Grid<Real> type1; void runMessage() { debMsg("Executing kernel InvertCheckFluid ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {   for (IndexInt idx=__r.begin(); idx!=(IndexInt)__r.end(); idx++) op(idx, flags,grid);   } void run() {   tbb::parallel_for (tbb::blocked_range<IndexInt>(0, size), *this);   }  FlagGrid& flags; Grid<Real>& grid;   };
+}    inline const FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return grid; } typedef Grid<Real> type1; void runMessage() { debMsg("Executing kernel InvertCheckFluid ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {   for (IndexInt idx=__r.begin(); idx!=(IndexInt)__r.end(); idx++) op(idx, flags,grid);   } void run() {   tbb::parallel_for (tbb::blocked_range<IndexInt>(0, size), *this);   }  const FlagGrid& flags; Grid<Real>& grid;   };
 
 //! Kernel: Squared sum over grid
 
- struct GridSumSqr : public KernelBase { GridSumSqr(Grid<Real>& grid) :  KernelBase(&grid,0) ,grid(grid) ,sum(0)  { runMessage(); run(); }   inline void op(IndexInt idx, Grid<Real>& grid ,double& sum)  {
+ struct GridSumSqr : public KernelBase { GridSumSqr(const Grid<Real>& grid) :  KernelBase(&grid,0) ,grid(grid) ,sum(0)  { runMessage(); run(); }   inline void op(IndexInt idx, const Grid<Real>& grid ,double& sum)  {
 	sum += square((double)grid[idx]);
-}    inline operator double () { return sum; } inline double  & getRet() { return sum; }  inline Grid<Real>& getArg0() { return grid; } typedef Grid<Real> type0; void runMessage() { debMsg("Executing kernel GridSumSqr ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r)  {   for (IndexInt idx=__r.begin(); idx!=(IndexInt)__r.end(); idx++) op(idx, grid,sum);   } void run() {   tbb::parallel_reduce (tbb::blocked_range<IndexInt>(0, size), *this);   }  GridSumSqr (GridSumSqr& o, tbb::split) : KernelBase(o) ,grid(o.grid) ,sum(0) {} void join(const GridSumSqr & o) { sum += o.sum;  }  Grid<Real>& grid;  double sum;  };
+}    inline operator double () { return sum; } inline double  & getRet() { return sum; }  inline const Grid<Real>& getArg0() { return grid; } typedef Grid<Real> type0; void runMessage() { debMsg("Executing kernel GridSumSqr ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r)  {   for (IndexInt idx=__r.begin(); idx!=(IndexInt)__r.end(); idx++) op(idx, grid,sum);   } void run() {   tbb::parallel_reduce (tbb::blocked_range<IndexInt>(0, size), *this);   }  GridSumSqr (GridSumSqr& o, tbb::split) : KernelBase(o) ,grid(o.grid) ,sum(0) {} void join(const GridSumSqr & o) { sum += o.sum;  }  const Grid<Real>& grid;  double sum;  };
 
 //! Kernel: rotation operator \nabla x v for centered vector fields
 

@@ -16,8 +16,8 @@
  * Copyright 2011 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL) 
- * http://www.gnu.org/licenses
+ * Apache License, Version 2.0 
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Levelset
  *
@@ -104,6 +104,12 @@ LevelsetGrid::LevelsetGrid(FluidSolver* parent, bool show)
 { 
 	mType = (GridType)(TypeLevelset | TypeReal);    
 }    
+
+LevelsetGrid::LevelsetGrid(FluidSolver* parent, Real* data, bool show)
+        : Grid<Real>(parent, data, show)
+{
+        mType = (GridType)(TypeLevelset | TypeReal);
+}
 
 Real LevelsetGrid::invalidTimeValue() {
 	return FastMarch<FmHeapEntryOut, 1>::InvalidTime();

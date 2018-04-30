@@ -16,8 +16,8 @@
  * Copyright 2011 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL) 
- * http://www.gnu.org/licenses
+ * Apache License, Version 2.0 
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Grid representation
  *
@@ -26,11 +26,11 @@
 #include <limits>
 #include <sstream>
 #include <cstring>
-#include "fileio.h"
 
 #include "grid4d.h"
 #include "levelset.h"
 #include "kernel.h"
+#include "mantaio.h" 
 
 using namespace std;
 namespace Manta {

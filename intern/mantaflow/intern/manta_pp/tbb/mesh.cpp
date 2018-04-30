@@ -16,8 +16,8 @@
  * Copyright 2011 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL) 
- * http://www.gnu.org/licenses
+ * Apache License, Version 2.0 
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Meshes
  *
@@ -28,7 +28,7 @@
 
 #include "mesh.h"
 #include "integrator.h"
-#include "fileio.h"
+#include "mantaio.h"
 #include "kernel.h"
 #include "shapes.h"
 #include "noisefield.h"

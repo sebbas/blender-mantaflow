@@ -16,8 +16,8 @@
  * Copyright 2011 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL) 
- * http://www.gnu.org/licenses
+ * Apache License, Version 2.0 
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Common grid kernels
  *
@@ -35,29 +35,29 @@ namespace Manta {
 //! Kernel: Invert real values, if positive and fluid
 
 
- struct InvertCheckFluid : public KernelBase { InvertCheckFluid(FlagGrid& flags, Grid<Real>& grid) :  KernelBase(&flags,0) ,flags(flags),grid(grid)   { runMessage(); run(); }   inline void op(IndexInt idx, FlagGrid& flags, Grid<Real>& grid )  {
+ struct InvertCheckFluid : public KernelBase { InvertCheckFluid(const FlagGrid& flags, Grid<Real>& grid) :  KernelBase(&flags,0) ,flags(flags),grid(grid)   { runMessage(); run(); }   inline void op(IndexInt idx, const FlagGrid& flags, Grid<Real>& grid )  {
 	if (flags.isFluid(idx) && grid[idx] > 0)
 		grid[idx] = 1.0 / grid[idx];
-}    inline FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return grid; } typedef Grid<Real> type1; void runMessage() { debMsg("Executing kernel InvertCheckFluid ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+}    inline const FlagGrid& getArg0() { return flags; } typedef FlagGrid type0;inline Grid<Real>& getArg1() { return grid; } typedef Grid<Real> type1; void runMessage() { debMsg("Executing kernel InvertCheckFluid ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  
 #pragma omp for  
-  for (IndexInt i = 0; i < _sz; i++) op(i,flags,grid);  }   } FlagGrid& flags; Grid<Real>& grid;   };
+  for (IndexInt i = 0; i < _sz; i++) op(i,flags,grid);  }   } const FlagGrid& flags; Grid<Real>& grid;   };
 #line 26 "commonkernels.h"
 
 
 
 //! Kernel: Squared sum over grid
 
- struct GridSumSqr : public KernelBase { GridSumSqr(Grid<Real>& grid) :  KernelBase(&grid,0) ,grid(grid) ,sum(0)  { runMessage(); run(); }   inline void op(IndexInt idx, Grid<Real>& grid ,double& sum)  {
+ struct GridSumSqr : public KernelBase { GridSumSqr(const Grid<Real>& grid) :  KernelBase(&grid,0) ,grid(grid) ,sum(0)  { runMessage(); run(); }   inline void op(IndexInt idx, const Grid<Real>& grid ,double& sum)  {
 	sum += square((double)grid[idx]);
-}    inline operator double () { return sum; } inline double  & getRet() { return sum; }  inline Grid<Real>& getArg0() { return grid; } typedef Grid<Real> type0; void runMessage() { debMsg("Executing kernel GridSumSqr ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+}    inline operator double () { return sum; } inline double  & getRet() { return sum; }  inline const Grid<Real>& getArg0() { return grid; } typedef Grid<Real> type0; void runMessage() { debMsg("Executing kernel GridSumSqr ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
 #pragma omp parallel 
  {  double sum = 0; 
 #pragma omp for nowait  
   for (IndexInt i = 0; i < _sz; i++) op(i,grid,sum); 
 #pragma omp critical
-{this->sum += sum; } }   } Grid<Real>& grid;  double sum;  };
+{this->sum += sum; } }   } const Grid<Real>& grid;  double sum;  };
 #line 33 "commonkernels.h"
 
 

@@ -16,8 +16,8 @@
  * Copyright 2011 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL) 
- * http://www.gnu.org/licenses
+ * Apache License, Version 2.0 
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Smoothing etc. for meshes
  *
@@ -105,7 +105,7 @@ void smoothMesh(Mesh& mesh, Real strength, int steps = 1, Real minLength=1e-5) {
 	// preserve volume : scale relative to CM
 	Real beta;
 #if defined(WIN32) || defined(_WIN32)
-	beta = pow( (Real)abs(origVolume/newVolume), (Real)(1./3.) );
+	beta = pow( (Real)std::abs(origVolume/newVolume), (Real)(1./3.) );
 #else
 	beta = cbrt( origVolume/newVolume );
 #	endif
