@@ -352,7 +352,8 @@ def liquid_save_mesh_$ID$(path, framenr):\n\
     # create surface\n\
     pp_xl$ID$.readParticles(pp_s$ID$)\n\
     gridParticleIndex(parts=pp_xl$ID$, flags=flags_xl$ID$, indexSys=pindex_xl$ID$, index=gpi_xl$ID$)\n\
-    averagedParticleLevelset(pp_xl$ID$, pindex_xl$ID$, flags_xl$ID$, gpi_xl$ID$, phiParts_xl$ID$, radiusFactor_s$ID$, 1, 1)\n\
+    improvedParticleLevelset(pp_xl$ID$, pindex_xl$ID$, flags_xl$ID$, gpi_xl$ID$, phiParts_xl$ID$, radiusFactor_s$ID$, 1, 1, smoothenLower_s$ID$, smoothenUpper_s$ID$)\n\
+#    averagedParticleLevelset(pp_xl$ID$, pindex_xl$ID$, flags_xl$ID$, gpi_xl$ID$, phiParts_xl$ID$, radiusFactor_s$ID$, 1, 1)\n\
 #    unionParticleLevelset(pp_xl$ID$, pindex_xl$ID$, flags_xl$ID$, gpi_xl$ID$, phiParts_xl$ID$, radiusFactor_s$ID$)\n\
     \n\
     phi_xl$ID$.addConst(1.) # shrink slightly\n\

@@ -138,6 +138,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
                 col.label(text="Liquid:")
                 col.prop(domain, "particle_randomness")
                 col.prop(domain, "particle_minimum")
+                col.prop(domain, "use_flip_particles", text="Show FLIP")
 
                 col = split.column(align=True)
                 col.label()
@@ -478,8 +479,6 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         sub2.prop(domain, "particle_tracer_amount", text="Amount")
         sub2.prop(domain, "particle_tracer_life", text="Life")
         sub2.prop(domain, "particle_tracer_max", text="Maximum")
-        sub3 = col.column()
-        sub3.prop(domain, "use_flip_particles", text="FLIP")
 
         split = layout.split()
         split.enabled = domain.cache_baked_data and not domain.cache_baking_particles and (domain.use_drop_particles or domain.use_bubble_particles or domain.use_floater_particles or domain.use_tracer_particles)
