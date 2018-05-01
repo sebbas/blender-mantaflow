@@ -332,7 +332,7 @@ def liquid_load_mesh_$ID$(path, framenr, file_format):\n\
     try:\n\
         mantaMsg('Liquid load mesh')\n\
         framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-        mesh_xl$ID$.load(os.path.join(path, 'liquid_mesh_' + framenr + '.bobj.gz'))\n\
+        mesh_xl$ID$.load(os.path.join(path, 'liquid_mesh_' + framenr + file_format))\n\
         #pp_xl$ID$.load(os.path.join(path, 'pp_xl_' + framenr + file_format))\n\
     except RuntimeError as e:\n\
         mantaMsg(str(e))\n\
@@ -396,7 +396,7 @@ def liquid_save_mesh_$ID$(path, framenr, file_format):\n\
     \n\
     phi_xl$ID$.setBound(0.5,int(((upres_sm$ID$)*2)-2) )\n\
     phi_xl$ID$.createMesh(mesh_xl$ID$)\n\
-    mesh_xl$ID$.save(os.path.join(path, 'liquid_mesh_' + framenr + '.bobj.gz'))\n\
+    mesh_xl$ID$.save(os.path.join(path, 'liquid_mesh_' + framenr + file_format))\n\
     #pp_xl$ID$.save(os.path.join(path, 'pp_xl_' + framenr + file_format))\n";
 
 const std::string liquid_save_particles = "\n\

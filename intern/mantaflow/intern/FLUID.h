@@ -383,6 +383,8 @@ private:
 	std::string parseLine(const std::string& line, SmokeModifierData *smd);
 	std::string parseScript(const std::string& setup_string, SmokeModifierData *smd);
 	void updateMeshDataFromBobj(const char* filename);
+	void updateMeshDataFromObj(const char* filename);
+
 };
 
 #endif

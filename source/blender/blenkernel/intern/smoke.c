@@ -2984,7 +2984,7 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 
 //	printf("num_verts: %d, num_normals: %d, num_faces: %d\n", num_verts, num_normals, num_faces);
 
-	if (!num_verts || !num_normals || !num_faces)
+	if (!num_verts || !num_faces)
 		return NULL;
 
 	dm     = CDDM_new(num_verts, 0, 0, num_faces * 3, num_faces);
@@ -3051,6 +3051,8 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 //		printf("mloops[0].v: %d, mloops[1].v: %d, mloops[2].v: %d\n", mloops[0].v, mloops[1].v, mloops[2].v);
 	}
 
+	if (!num_normals)
+		CDDM_calc_normals(dm);
 	CDDM_calc_edges(dm);
 	CDDM_apply_vert_normals(dm, (short (*)[3])normals);
 

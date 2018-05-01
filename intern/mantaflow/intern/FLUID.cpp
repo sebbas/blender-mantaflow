@@ -1563,8 +1563,8 @@ void FLUID::updateMeshData(const char* filename)
 
 		if (extension.compare("gz")==0)
 			updateMeshDataFromBobj(filename);
-//		else if (extension.compare("obj")==0)
-//			updateMeshDataFromObj(filename);
+		else if (extension.compare("obj")==0)
+			updateMeshDataFromObj(filename);
 		else
 			std::cerr << "updateMeshDataFrom: invalid file extension in file: " << filename << std::endl;
 	}
@@ -1650,6 +1650,85 @@ void FLUID::updateMeshDataFromBobj(const char* filename)
 	}
 
 	gzclose(gzf);
+}
+
+void FLUID::updateMeshDataFromObj(const char* filename)
+{
+	std::ifstream ifs (filename);
+	float fbuffer[3];
+	int ibuffer[3];
+
+	mNumNormals = 0;
+	mNumVertices = 0;
+	mNumTriangles = 0;
+
+	mNormalsX.clear();
+	mNormalsY.clear();
+	mNormalsZ.clear();
+
+	mVerticesX.clear();
+	mVerticesY.clear();
+	mVerticesZ.clear();
+
+	mTrianglesX.clear();
+	mTrianglesY.clear();
+	mTrianglesZ.clear();
+
+	if (!ifs.good())
+		std::cerr << "updateMeshDataFromObj: unable to open file: " << filename << std::endl;
+
+	while(ifs.good() && !ifs.eof()) {
+		std::string id;
+		ifs >> id;
+
+		if (id[0] == '#') {
+			// comment
+			getline(ifs, id);
+			continue;
+		}
+		if (id == "vt") {
+			// tex coord, ignore
+		} else if (id == "vn") {
+			// normals
+			ifs >> fbuffer[0] >> fbuffer[1] >> fbuffer[2];
+			mNormalsX.push_back(fbuffer[0]);
+			mNormalsY.push_back(fbuffer[1]);
+			mNormalsZ.push_back(fbuffer[2]);
+			mNumNormals++;
+		} else if (id == "v") {
+			// vertex
+			ifs >> fbuffer[0] >> fbuffer[1] >> fbuffer[2];
+			mVerticesX.push_back(fbuffer[0]);
+			mVerticesY.push_back(fbuffer[1]);
+			mVerticesZ.push_back(fbuffer[2]);
+			mNumVertices++;
+		} else if (id == "g") {
+			// group
+			std::string group;
+			ifs >> group;
+		} else if (id == "f") {
+			// face
+			std::string face;
+			for (int i=0; i<3; i++) {
+				ifs >> face;
+				if (face.find('/') != std::string::npos)
+					face = face.substr(0, face.find('/')); // ignore other indices
+				int idx = atoi(face.c_str()) - 1;
+				if (idx < 0)
+					std::cerr << "updateMeshDataFromObj: invalid face encountered" << std::endl;
+				ibuffer[i] = idx;
+			}
+			mTrianglesX.push_back(ibuffer[0]);
+			mTrianglesY.push_back(ibuffer[1]);
+			mTrianglesZ.push_back(ibuffer[2]);
+			mNumTriangles++;
+		} else {
+			// whatever, ignore
+		}
+		// kill rest of line
+		getline(ifs, id);
+	}
+	ifs.close();
 }
 
 void FLUID::updateParticleData(const char* filename, bool isSecondary)
