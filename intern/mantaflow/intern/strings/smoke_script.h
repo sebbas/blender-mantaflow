@@ -473,86 +473,94 @@ def update_flame_high_$ID$():\n\
 //////////////////////////////////////////////////////////////////////
 
 const std::string smoke_load_data = "\n\
-def smoke_load_data_$ID$(path, framenr):\n\
-    mantaMsg('Smoke load data low')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    density_s$ID$.load(os.path.join(path, 'density_' + framenr + '.uni'))\n\
-    shadow_s$ID$.load(os.path.join(path, 'shadow_' + framenr + '.uni'))\n\
-    if using_colors_s$ID$:\n\
-        color_r_s$ID$.load(os.path.join(path, 'color_r_' + framenr + '.uni'))\n\
-        color_g_s$ID$.load(os.path.join(path, 'color_g_' + framenr + '.uni'))\n\
-        color_b_s$ID$.load(os.path.join(path, 'color_b_' + framenr + '.uni'))\n\
-    if using_heat_s$ID$:\n\
-        heat_s$ID$.load(os.path.join(path, 'heat_' + framenr + '.uni'))\n\
-    if using_fire_s$ID$:\n\
-        flame_s$ID$.load(os.path.join(path, 'flame_' + framenr + '.uni'))\n\
-        fuel_s$ID$.load(os.path.join(path, 'fuel_' + framenr + '.uni'))\n\
-        react_s$ID$.load(os.path.join(path, 'react_' + framenr + '.uni'))\n";
+def smoke_load_data_$ID$(path, framenr, file_format):\n\
+    try:\n\
+        mantaMsg('Smoke load data low')\n\
+        framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+        density_s$ID$.load(os.path.join(path, 'density_' + framenr + file_format))\n\
+        shadow_s$ID$.load(os.path.join(path, 'shadow_' + framenr + file_format))\n\
+        if using_colors_s$ID$:\n\
+            color_r_s$ID$.load(os.path.join(path, 'color_r_' + framenr + file_format))\n\
+            color_g_s$ID$.load(os.path.join(path, 'color_g_' + framenr + file_format))\n\
+            color_b_s$ID$.load(os.path.join(path, 'color_b_' + framenr + file_format))\n\
+        if using_heat_s$ID$:\n\
+            heat_s$ID$.load(os.path.join(path, 'heat_' + framenr + file_format))\n\
+        if using_fire_s$ID$:\n\
+            flame_s$ID$.load(os.path.join(path, 'flame_' + framenr + file_format))\n\
+            fuel_s$ID$.load(os.path.join(path, 'fuel_' + framenr + file_format))\n\
+            react_s$ID$.load(os.path.join(path, 'react_' + framenr + file_format))\n\
+    except RuntimeError as e:\n\
+        mantaMsg(str(e))\n\
+        pass # Just skip file load errors for now\n";
 
 const std::string smoke_load_noise = "\n\
-def smoke_load_noise_$ID$(path, framenr):\n\
-    mantaMsg('Smoke load noise')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    density_sn$ID$.load(os.path.join(path, 'density_sn_' + framenr + '.uni'))\n\
-    texture_u_s$ID$.load(os.path.join(path, 'texture_u_' + framenr + '.uni'))\n\
-    texture_v_s$ID$.load(os.path.join(path, 'texture_v_' + framenr + '.uni'))\n\
-    texture_w_s$ID$.load(os.path.join(path, 'texture_w_' + framenr + '.uni'))\n\
-    texture_u2_s$ID$.load(os.path.join(path, 'texture_u2_' + framenr + '.uni'))\n\
-    texture_v2_s$ID$.load(os.path.join(path, 'texture_v2_' + framenr + '.uni'))\n\
-    texture_w2_s$ID$.load(os.path.join(path, 'texture_w2_' + framenr + '.uni'))\n\
-    if using_colors_s$ID$:\n\
-        color_r_sn$ID$.load(os.path.join(path, 'color_r_sn_' + framenr + '.uni'))\n\
-        color_g_sn$ID$.load(os.path.join(path, 'color_g_sn_' + framenr + '.uni'))\n\
-        color_b_sn$ID$.load(os.path.join(path, 'color_b_sn_' + framenr + '.uni'))\n\
-    if using_fire_s$ID$:\n\
-        flame_sn$ID$.load(os.path.join(path, 'flame_sn_' + framenr + '.uni'))\n\
-        fuel_sn$ID$.load(os.path.join(path, 'fuel_sn_' + framenr + '.uni'))\n\
-        react_sn$ID$.load(os.path.join(path, 'react_sn_' + framenr + '.uni'))\n";
+def smoke_load_noise_$ID$(path, framenr, file_format):\n\
+    try:\n\
+        mantaMsg('Smoke load noise')\n\
+        framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+        density_sn$ID$.load(os.path.join(path, 'density_sn_' + framenr + file_format))\n\
+        texture_u_s$ID$.load(os.path.join(path, 'texture_u_' + framenr + file_format))\n\
+        texture_v_s$ID$.load(os.path.join(path, 'texture_v_' + framenr + file_format))\n\
+        texture_w_s$ID$.load(os.path.join(path, 'texture_w_' + framenr + file_format))\n\
+        texture_u2_s$ID$.load(os.path.join(path, 'texture_u2_' + framenr + file_format))\n\
+        texture_v2_s$ID$.load(os.path.join(path, 'texture_v2_' + framenr + file_format))\n\
+        texture_w2_s$ID$.load(os.path.join(path, 'texture_w2_' + framenr + file_format))\n\
+        if using_colors_s$ID$:\n\
+            color_r_sn$ID$.load(os.path.join(path, 'color_r_sn_' + framenr + file_format))\n\
+            color_g_sn$ID$.load(os.path.join(path, 'color_g_sn_' + framenr + file_format))\n\
+            color_b_sn$ID$.load(os.path.join(path, 'color_b_sn_' + framenr + file_format))\n\
+        if using_fire_s$ID$:\n\
+            flame_sn$ID$.load(os.path.join(path, 'flame_sn_' + framenr + file_format))\n\
+            fuel_sn$ID$.load(os.path.join(path, 'fuel_sn_' + framenr + file_format))\n\
+            react_sn$ID$.load(os.path.join(path, 'react_sn_' + framenr + file_format))\n\
+    except RuntimeError as e:\n\
+        mantaMsg(str(e))\n\
+        pass # Just skip file load errors for now\n";
 
 //////////////////////////////////////////////////////////////////////
 // EXPORT
 //////////////////////////////////////////////////////////////////////
 
 const std::string smoke_save_data = "\n\
-def smoke_save_data_$ID$(path, framenr):\n\
+def smoke_save_data_$ID$(path, framenr, file_format):\n\
     mantaMsg('Smoke save data low')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    density_s$ID$.save(os.path.join(path, 'density_' + framenr + '.uni'))\n\
+    density_s$ID$.save(os.path.join(path, 'density_' + framenr + file_format))\n\
     if using_colors_s$ID$:\n\
-        color_r_s$ID$.save(os.path.join(path, 'color_r_' + framenr + '.uni'))\n\
-        color_g_s$ID$.save(os.path.join(path, 'color_g_' + framenr + '.uni'))\n\
-        color_b_s$ID$.save(os.path.join(path, 'color_b_' + framenr + '.uni'))\n\
+        color_r_s$ID$.save(os.path.join(path, 'color_r_' + framenr + file_format))\n\
+        color_g_s$ID$.save(os.path.join(path, 'color_g_' + framenr + file_format))\n\
+        color_b_s$ID$.save(os.path.join(path, 'color_b_' + framenr + file_format))\n\
     if using_heat_s$ID$:\n\
-        heat_s$ID$.save(os.path.join(path, 'heat_' + framenr + '.uni'))\n\
+        heat_s$ID$.save(os.path.join(path, 'heat_' + framenr + file_format))\n\
     if using_fire_s$ID$:\n\
-        flame_s$ID$.save(os.path.join(path, 'flame_' + framenr + '.uni'))\n\
-        fuel_s$ID$.save(os.path.join(path, 'fuel_' + framenr + '.uni'))\n\
-        react_s$ID$.save(os.path.join(path, 'react_' + framenr + '.uni'))\n\
+        flame_s$ID$.save(os.path.join(path, 'flame_' + framenr + file_format))\n\
+        fuel_s$ID$.save(os.path.join(path, 'fuel_' + framenr + file_format))\n\
+        react_s$ID$.save(os.path.join(path, 'react_' + framenr + file_format))\n\
 \n\
-def smoke_save_shadow_$ID$(path, framenr):\n\
+def smoke_save_shadow_$ID$(path, framenr, file_format):\n\
     mantaMsg('Smoke save shadow')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    shadow_s$ID$.save(os.path.join(path, 'shadow_' + framenr + '.uni'))\n";
+    shadow_s$ID$.save(os.path.join(path, 'shadow_' + framenr + file_format))\n";
 
 const std::string smoke_save_noise = "\n\
-def smoke_save_noise_$ID$(path, framenr):\n\
-    mantaMsg('Smoke save data high')\n\
+def smoke_save_noise_$ID$(path, framenr, file_format):\n\
+    mantaMsg('Smoke save noise')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    density_sn$ID$.save(os.path.join(path, 'density_sn_' + framenr + '.uni'))\n\
-    texture_u_s$ID$.save(os.path.join(path, 'texture_u_' + framenr + '.uni'))\n\
-    texture_v_s$ID$.save(os.path.join(path, 'texture_v_' + framenr + '.uni'))\n\
-    texture_w_s$ID$.save(os.path.join(path, 'texture_w_' + framenr + '.uni'))\n\
-    texture_u2_s$ID$.save(os.path.join(path, 'texture_u2_' + framenr + '.uni'))\n\
-    texture_v2_s$ID$.save(os.path.join(path, 'texture_v2_' + framenr + '.uni'))\n\
-    texture_w2_s$ID$.save(os.path.join(path, 'texture_w2_' + framenr + '.uni'))\n\
+    density_sn$ID$.save(os.path.join(path, 'density_sn_' + framenr + file_format))\n\
+    texture_u_s$ID$.save(os.path.join(path, 'texture_u_' + framenr + file_format))\n\
+    texture_v_s$ID$.save(os.path.join(path, 'texture_v_' + framenr + file_format))\n\
+    texture_w_s$ID$.save(os.path.join(path, 'texture_w_' + framenr + file_format))\n\
+    texture_u2_s$ID$.save(os.path.join(path, 'texture_u2_' + framenr + file_format))\n\
+    texture_v2_s$ID$.save(os.path.join(path, 'texture_v2_' + framenr + file_format))\n\
+    texture_w2_s$ID$.save(os.path.join(path, 'texture_w2_' + framenr + file_format))\n\
     if using_colors_s$ID$:\n\
-        color_r_sn$ID$.save(os.path.join(path, 'color_r_sn_' + framenr + '.uni'))\n\
-        color_g_sn$ID$.save(os.path.join(path, 'color_g_sn_' + framenr + '.uni'))\n\
-        color_b_sn$ID$.save(os.path.join(path, 'color_b_sn_' + framenr + '.uni'))\n\
+        color_r_sn$ID$.save(os.path.join(path, 'color_r_sn_' + framenr + file_format))\n\
+        color_g_sn$ID$.save(os.path.join(path, 'color_g_sn_' + framenr + file_format))\n\
+        color_b_sn$ID$.save(os.path.join(path, 'color_b_sn_' + framenr + file_format))\n\
     if using_fire_s$ID$:\n\
-        flame_sn$ID$.save(os.path.join(path, 'flame_sn_' + framenr + '.uni'))\n\
-        fuel_sn$ID$.save(os.path.join(path, 'fuel_sn_' + framenr + '.uni'))\n\
-        react_sn$ID$.save(os.path.join(path, 'react_sn_' + framenr + '.uni'))\n";
+        flame_sn$ID$.save(os.path.join(path, 'flame_sn_' + framenr + file_format))\n\
+        fuel_sn$ID$.save(os.path.join(path, 'fuel_sn_' + framenr + file_format))\n\
+        react_sn$ID$.save(os.path.join(path, 'react_sn_' + framenr + file_format))\n";
 
 //////////////////////////////////////////////////////////////////////
 // OTHER SETUPS

@@ -35,6 +35,10 @@ else()
 	add_definitions(-DTBB=1)
 endif()
 
+if(WITH_OPENVDB)
+	add_definitions(-DOPENVDB=1)
+endif()
+
 set(INC
 	extern
 	intern/strings
@@ -56,6 +60,14 @@ set(INC_SYS
 if(NOT WITH_OPENMP)
 	list(APPEND INC_SYS
 		${TBB_INCLUDE_DIRS}
+	)
+endif()
+
+if(WITH_OPENVDB)
+	list(APPEND INC_SYS
+		${BOOST_INCLUDE_DIR}
+		${OPENEXR_INCLUDE_DIRS}
+		${OPENVDB_INCLUDE_DIRS}
 	)
 endif()
 

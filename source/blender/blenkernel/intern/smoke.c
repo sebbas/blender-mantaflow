@@ -571,8 +571,10 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->openvdb_comp = VDB_COMPRESSION_ZIP;
 #endif
 			smd->domain->data_depth = 0;
-			smd->domain->cache_surface_format = PTCACHE_FILE_OBJECT;
-			smd->domain->cache_volume_format = PTCACHE_FILE_PTCACHE;
+			smd->domain->cache_surface_format = MANTA_FILE_BIN_OBJECT;
+			smd->domain->cache_volume_format = MANTA_FILE_UNI;
+			smd->domain->cache_particle_format = MANTA_FILE_UNI;
+			smd->domain->cache_noise_format = MANTA_FILE_UNI;
 			smd->domain->cache_frame_start = 1;
 			smd->domain->cache_frame_end = 250;
 			BLI_path_make_safe(smd->domain->cache_directory);
@@ -727,7 +729,8 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->data_depth = smd->domain->data_depth;
 		tsmd->domain->cache_surface_format = smd->domain->cache_surface_format;
 		tsmd->domain->cache_volume_format = smd->domain->cache_volume_format;
-
+		tsmd->domain->cache_particle_format = smd->domain->cache_particle_format;
+		tsmd->domain->cache_noise_format = smd->domain->cache_noise_format;
 		tsmd->domain->slice_method = smd->domain->slice_method;
 		tsmd->domain->axis_slice_method = smd->domain->axis_slice_method;
 		tsmd->domain->slice_per_voxel = smd->domain->slice_per_voxel;

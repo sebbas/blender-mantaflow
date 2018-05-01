@@ -1453,7 +1453,6 @@ static void fluid_manta_free_endjob(void *customdata)
 static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_update, float *progress)
 {
 	FluidMantaflowJob *job = customdata;
-	SmokeModifierData *smd = job->smd;
 	SmokeDomainSettings *sds = job->smd->domain;
 
 	char tmpDir[FILE_MAX];

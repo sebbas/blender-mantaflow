@@ -3886,15 +3886,17 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 				if (part->type == PART_MANTA_FLIP) {
 					flagActivePart = liquid_get_flip_particle_flag_at(sds->fluid, p);
 
-					// Upres FLIP have custom (upscaled) res values
-					if (sds->flags & MOD_SMOKE_MESH) {
-						resX = (float) fluid_get_mesh_res_x(sds->fluid);
-						resY = (float) fluid_get_mesh_res_y(sds->fluid);
-						resZ = (float) fluid_get_mesh_res_z(sds->fluid);
-
-						upres[0] = upres[1] = upres[2] = fluid_get_mesh_upres(sds->fluid);
-					}
-					else {
+//					// Upres FLIP have custom (upscaled) res values
+					// TODO (sebbas): Future option might load highres FLIP particle system
+//					if (sds->flags & MOD_SMOKE_MESH) {
+//						resX = (float) fluid_get_mesh_res_x(sds->fluid);
+//						resY = (float) fluid_get_mesh_res_y(sds->fluid);
+//						resZ = (float) fluid_get_mesh_res_z(sds->fluid);
+//
+//						upres[0] = upres[1] = upres[2] = fluid_get_mesh_upres(sds->fluid);
+//					}
+//					else
+					{
 						resX = (float) fluid_get_res_x(sds->fluid);
 						resY = (float) fluid_get_res_y(sds->fluid);
 						resZ = (float) fluid_get_res_z(sds->fluid);

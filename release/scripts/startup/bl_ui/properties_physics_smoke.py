@@ -71,7 +71,8 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
 
             split = layout.split()
 
-            split.enabled = not domain.point_cache.is_baked
+            baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
+            split.enabled = not domain.cache_baked_data and not baking_any
 
             col = split.column()
             col.prop(domain, "use_collision_border_front", text="Front")
@@ -87,7 +88,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
 
             split = layout.split()
 
-            split.enabled = not domain.point_cache.is_baked
+            split.enabled = not domain.cache_baked_data and not baking_any
 
             col = split.column(align=True)
             col.label(text="Domain:")
@@ -108,7 +109,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
 
             if domain.smoke_domain_type in {'GAS'}:
                 split = layout.split()
-                split.enabled = not domain.point_cache.is_baked
+                split.enabled = not domain.cache_baked_data and not baking_any
 
                 col = split.column(align=True)
                 col.label(text="Smoke:")
@@ -132,11 +133,11 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
 
             if domain.smoke_domain_type in {'LIQUID'}:
                 split = layout.split()
-                split.enabled = not domain.point_cache.is_baked
+                split.enabled = not domain.cache_baked_data and not baking_any
 
                 col = split.column(align=True)
                 col.label(text="Liquid:")
-                col.prop(domain, "particle_randomness")
+                col.prop(domain, "particle_maximum")
                 col.prop(domain, "particle_minimum")
                 col.prop(domain, "use_flip_particles", text="Show FLIP")
 
@@ -144,10 +145,10 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
                 col.label()
                 col.prop(domain, "particle_number")
                 col.prop(domain, "particle_band_width")
-                col.prop(domain, "particle_maximum")
+                col.prop(domain, "particle_randomness")
 
             split = layout.split()
-            split.enabled = not domain.cache_baking_data and not domain.cache_baking_mesh and not domain.cache_baking_particles and not domain.cache_baking_noise
+            split.enabled = not baking_any
             if domain.cache_baked_data is True:
                 split.operator("manta.free_data", text="Free Data")
             else:
@@ -302,7 +303,8 @@ class PHYSICS_PT_smoke_adaptive_domain(PhysicButtonsPanel, Panel):
         layout.active = domain.use_adaptive_domain
         
         split = layout.split()
-        split.enabled = (not domain.point_cache.is_baked)
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
+        split.enabled = not domain.cache_baked_data and not baking_any
 
         col = split.column(align=True)
         col.label(text="Resolution:")
@@ -352,19 +354,22 @@ class PHYSICS_PT_smoke_noise(PhysicButtonsPanel, Panel):
 
     def draw_header(self, context):
         md = context.smoke.domain_settings
-        self.layout.prop(md, "use_high_resolution", text="")
+        self.layout.prop(md, "use_noise", text="")
 
     def draw(self, context):
         layout = self.layout
         domain = context.smoke.domain_settings
 
-        layout.active = domain.use_high_resolution
+        layout.active = domain.use_noise
+
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
 
         split = layout.split()
+        split.enabled = not domain.cache_baked_noise and not baking_any
         split.prop(domain, "noise_scale", text="Upres")
 
         split = layout.split()
-        split.enabled = not domain.point_cache.is_baked
+        split.enabled = not domain.cache_baked_noise and not baking_any
 
         col = split.column(align=True)
         # TODO (sebbas): Mantaflow only supports wavelet noise. Do we really need fft noise? Maybe get rid of noise type ...
@@ -404,7 +409,8 @@ class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
         layout.active = domain.use_mesh
 
         split = layout.split()
-        split.enabled = not domain.point_cache.is_baked
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
+        split.enabled = not domain.cache_baked_mesh and not baking_any
 
         col = split.column(align=True)
         col.prop(domain, "mesh_scale", text="Upres")
@@ -446,9 +452,10 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         split.prop(domain, "particle_scale", text="Upres")
 
         split = layout.split()
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
+        split.enabled = not domain.cache_baked_particles and not baking_any
 
         col = split.column()
-        col.enabled = not domain.point_cache.is_baked
         col.prop(domain, "use_drop_particles", text="Drop")
         sub = col.column(align=True)
         sub.active = domain.use_drop_particles
@@ -466,7 +473,6 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         sub3.prop(domain, "particle_bubble_max", text="Maximum")
 
         col = split.column()
-        col.enabled = not domain.point_cache.is_baked
         col.prop(domain, "use_floater_particles", text="Float")
         sub = col.column(align=True)
         sub.active = domain.use_floater_particles
@@ -503,9 +509,10 @@ class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
         domain = context.smoke.domain_settings
 
         split = layout.split()
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
+        split.enabled = not domain.cache_baked_data and not baking_any
 
         col = split.column()
-        col.enabled = not domain.point_cache.is_baked
         col.label(text="Viscosity Presets:")
         sub = col.row(align=True)
         sub.menu("SMOKE_MT_presets", text=bpy.types.SMOKE_MT_presets.bl_label)
@@ -517,7 +524,6 @@ class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
         sub.prop(domain, "viscosity_exponent", text="Exponent", slider=True)
 
         col = split.column()
-        col.enabled = not domain.point_cache.is_baked
         col.label(text="Real World Size:")
         col.prop(domain, "domain_size", text="Meters")
         col.label(text="Surface tension:")
@@ -539,13 +545,13 @@ class PHYSICS_PT_smoke_guiding(PhysicButtonsPanel, Panel):
         domain = context.smoke.domain_settings
 
         split = layout.split()
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
+        split.enabled = not domain.cache_baked_data and not baking_any
 
         col = split.column()
-        col.enabled = not domain.point_cache.is_baked
         col.prop(domain, "guiding_alpha", text="Weight")
 
         col = split.column()
-        col.enabled = not domain.point_cache.is_baked
         col.prop(domain, "guiding_beta", text="Size")
 
 class PHYSICS_PT_smoke_groups(PhysicButtonsPanel, Panel):
@@ -650,6 +656,30 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
         row = layout.row(align=True)
         row.prop(domain, "cache_frame_start")
         row.prop(domain, "cache_frame_end")
+
+        split = layout.split()
+
+        row = layout.row(align=True)
+        row.label(text="Data file format:")
+        row.prop(domain, "cache_volume_format", text="")
+
+        if md.domain_settings.smoke_domain_type in {'GAS'}:
+            if domain.use_noise:
+                row = layout.row(align=True)
+                row.label(text="Noise file format:")
+                row.prop(domain, "cache_noise_format", text="")
+
+        if md.domain_settings.smoke_domain_type in {'LIQUID'}:
+            # File format for all particle systemes (FLIP and secondary)
+            row = layout.row(align=True)
+            row.label(text="Particle file format:")
+            row.prop(domain, "cache_particle_format", text="")
+
+            if domain.use_mesh:
+                row = layout.row(align=True)
+                row.label(text="Mesh file format:")
+                row.prop(domain, "cache_surface_format", text="")
+
 
 class PHYSICS_PT_smoke_field_weights(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Field Weights"

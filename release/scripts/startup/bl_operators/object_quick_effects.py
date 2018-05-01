@@ -363,7 +363,7 @@ class QuickSmoke(Operator):
         # set correct cache file format for smoke
         obj.modifiers[-1].domain_settings.use_surface_cache = False
         obj.modifiers[-1].domain_settings.use_volume_cache = True
-        obj.modifiers[-1].domain_settings.cache_volume_format = 'POINTCACHE'
+        obj.modifiers[-1].domain_settings.cache_volume_format = 'UNI'
 
 		# Setup material
 
@@ -627,7 +627,7 @@ class QuickLiquid(Operator):
         # set correct cache file format for liquid
         obj.modifiers[-1].domain_settings.use_surface_cache = True
         obj.modifiers[-1].domain_settings.use_volume_cache = False
-        obj.modifiers[-1].domain_settings.cache_surface_format = 'OBJECT'
+        obj.modifiers[-1].domain_settings.cache_surface_format = 'BOBJECT'
 		
         # make domain solid so that liquid becomes better visible
         obj.draw_type = 'SOLID'

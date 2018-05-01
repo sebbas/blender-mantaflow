@@ -64,6 +64,17 @@ enum {
 	MOD_SMOKE_BORDER_BOTTOM = (1 << 6),
 };
 
+/* cache file formats */
+enum {
+	/* Volumetric file formats */
+	MANTA_FILE_UNI = (1 << 0),
+	MANTA_FILE_OPENVDB = (1 << 1),
+	MANTA_FILE_RAW = (1 << 2),
+	/* Surface file formats */
+	MANTA_FILE_OBJECT = (1 << 3),
+	MANTA_FILE_BIN_OBJECT = (1 << 4),
+};
+
 /* noise */
 #define MOD_SMOKE_NOISEWAVE (1<<0)
 #define MOD_SMOKE_NOISEFFT (1<<1)
@@ -230,7 +241,6 @@ typedef struct SmokeDomainSettings {
 	int cache_frame_end;
 	char cache_directory[1024];
 	int cache_flag;
-	char pad2[4];
 	/* point cache options */
 	int cache_comp;
 	int cache_high_comp;
@@ -238,8 +248,10 @@ typedef struct SmokeDomainSettings {
 	int openvdb_comp;
 	char cache_surface_format;
 	char cache_volume_format;
+	char cache_particle_format;
+	char cache_noise_format;
 	char data_depth;
-	char pad[1]; /* unused */
+	char pad[3]; /* unused */
 	/* Liquid cache options */
 	int liquid_cache_comp;
 

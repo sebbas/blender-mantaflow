@@ -294,19 +294,31 @@ const std::string fluid_bake_helper = "\n\
 def fluid_cache_get_framenr_formatted_$ID$(framenr):\n\
     return str(framenr).zfill(4) # framenr with leading zeroes\n\
 \n\
-def fluid_cache_multiprocessing_start_$ID$(framenr, function, pathOne, pathTwo=None, pathThree=None):\n\
+def fluid_cache_multiprocessing_start_$ID$(function, framenr, format_data=None, format_noise=None, format_mesh=None, format_particles=None, path_data=None, path_noise=None, path_mesh=None, path_particles=None):\n\
     if __name__ == '__main__':\n\
-        args = (framenr, pathOne,)\n\
-        if pathTwo:\n\
-            args += (pathTwo,)\n\
-        if pathThree:\n\
-            args += (pathThree,)\n\
+        args = (framenr,)\n\
+        if format_data:\n\
+            args += (format_data,)\n\
+        if format_noise:\n\
+            args += (format_noise,)\n\
+        if format_mesh:\n\
+            args += (format_mesh,)\n\
+        if format_particles:\n\
+            args += (format_particles,)\n\
+        if path_data:\n\
+            args += (path_data,)\n\
+        if path_noise:\n\
+            args += (path_noise,)\n\
+        if path_mesh:\n\
+            args += (path_mesh,)\n\
+        if path_particles:\n\
+            args += (path_particles,)\n\
         p$ID$ = multiprocessing.Process(target=function, args=args)\n\
         p$ID$.start()\n\
         p$ID$.join()\n";
 
 const std::string fluid_bake_data = "\n\
-def bake_fluid_process_data_$ID$(framenr, path_data):\n\
+def bake_fluid_process_data_$ID$(framenr, format_data, format_particles, path_data):\n\
     mantaMsg('Bake fluid data')\n\
     \n\
     start_time = time.time()\n\
@@ -317,91 +329,100 @@ def bake_fluid_process_data_$ID$(framenr, path_data):\n\
     mantaMsg('--- Step: %s seconds ---' % (time.time() - start_time))\n\
     \n\
     start_time = time.time()\n\
-    fluid_save_data_$ID$(path_data, framenr)\n\
+    fluid_save_data_$ID$(path_data, framenr, format_data)\n\
     if using_smoke_s$ID$:\n\
-        smoke_save_data_$ID$(path_data, framenr)\n\
+        smoke_save_data_$ID$(path_data, framenr, format_data)\n\
     if using_liquid_s$ID$:\n\
-        liquid_save_data_$ID$(path_data, framenr)\n\
+        liquid_save_data_$ID$(path_data, framenr, format_data)\n\
+        liquid_save_flip_$ID$(path_data, framenr, format_particles)\n\
     mantaMsg('--- Writing: %s seconds ---' % (time.time() - start_time))\n\
 \n\
-def bake_fluid_data_$ID$(path_data, framenr):\n\
+def bake_fluid_data_$ID$(path_data, framenr, format_data, format_particles):\n\
     if debugMp or platform.system() != 'Darwin' and platform.system() != 'Linux':\n\
-        bake_fluid_process_data_$ID$(framenr, path_data)\n\
+        bake_fluid_process_data_$ID$(framenr, format_data, format_particles, path_data)\n\
     else:\n\
-        fluid_cache_multiprocessing_start_$ID$(framenr, bake_fluid_process_data_$ID$, path_data)\n";
+        fluid_cache_multiprocessing_start_$ID$(function=bake_fluid_process_data_$ID$, framenr=framenr, format_data=format_data, format_particles=format_particles, path_data=path_data)\n";
 
 const std::string fluid_bake_noise = "\n\
-def bake_fluid_process_noise_$ID$(framenr, path_data, path_noise):\n\
+def bake_noise_process_$ID$(framenr, format_data, format_noise, path_data, path_noise):\n\
     mantaMsg('Bake fluid noise')\n\
-    fluid_load_data_$ID$(path_data, framenr)\n\
-    smoke_load_data_$ID$(path_data, framenr)\n\
+    fluid_load_data_$ID$(path_data, framenr, format_data)\n\
+    smoke_load_data_$ID$(path_data, framenr, format_data)\n\
     smoke_adaptive_step_noise_$ID$(framenr)\n\
-    smoke_save_noise_$ID$(path_noise, framenr)\n\
+    smoke_save_noise_$ID$(path_noise, framenr, format_noise)\n\
 \n\
-def bake_fluid_noise_$ID$(path_data, path_noise, framenr):\n\
+def bake_noise_$ID$(path_data, path_noise, framenr, format_data, format_noise):\n\
     if debugMp or platform.system() != 'Darwin' and platform.system() != 'Linux':\n\
-        bake_fluid_process_noise_$ID$(framenr, path_data, path_noise)\n\
+        bake_noise_process_$ID$(framenr, format_data, format_noise, path_data, path_noise)\n\
     else:\n\
-        fluid_cache_multiprocessing_start_$ID$(framenr, bake_fluid_process_noise_$ID$, path_data, path_noise)\n";
+        fluid_cache_multiprocessing_start_$ID$(function=bake_noise_process_$ID$, framenr=framenr, format_data=format_data, format_noise=format_noise, path_data=path_data, path_noise=path_noise)\n";
 
 const std::string fluid_bake_mesh = "\n\
-def bake_mesh_process_$ID$(framenr, path_data, path_mesh):\n\
+def bake_mesh_process_$ID$(framenr, format_data, format_mesh, format_particles, path_data, path_mesh):\n\
     mantaMsg('Bake fluid mesh')\n\
     \n\
-    fluid_load_data_$ID$(path_data, framenr)\n\
+    fluid_load_data_$ID$(path_data, framenr, format_data)\n\
     #if using_smoke_s$ID$:\n\
         # TODO (sebbas): Future update could include smoke mesh (vortex sheets)\n\
     if using_liquid_s$ID$:\n\
-        liquid_load_data_$ID$(path_data, framenr, True)\n\
-        liquid_save_mesh_$ID$(path_mesh, framenr)\n\
+        liquid_load_data_$ID$(path_data, framenr, format_data)\n\
+        liquid_load_flip_$ID$(path_data, framenr, format_particles)\n\
+        liquid_save_mesh_$ID$(path_mesh, framenr, format_mesh)\n\
 \n\
-def bake_mesh_$ID$(path_mesh, path_data, framenr):\n\
+def bake_mesh_$ID$(path_data, path_mesh, framenr, format_data, format_mesh, format_particles):\n\
     if debugMp or platform.system() != 'Darwin' and platform.system() != 'Linux':\n\
-        bake_mesh_process_$ID$(framenr, path_data, path_mesh)\n\
+        bake_mesh_process_$ID$(framenr, format_data, format_mesh, format_particles, path_data, path_mesh)\n\
     else:\n\
-        fluid_cache_multiprocessing_start_$ID$(framenr, bake_mesh_process_$ID$, path_data, path_mesh)\n";
+        fluid_cache_multiprocessing_start_$ID$(function=bake_mesh_process_$ID$, framenr=framenr, format_data=format_data, format_mesh=format_mesh, format_particles=format_particles, path_data=path_data, path_mesh=path_mesh)\n";
 
 const std::string fluid_bake_particles = "\n\
-def bake_particles_process_$ID$(framenr, path_data, path_particles):\n\
+def bake_particles_process_$ID$(framenr, format_data, format_particles, path_data, path_particles):\n\
     mantaMsg('Bake secondary particles')\n\
     \n\
-    fluid_load_data_$ID$(path_data, framenr)\n\
+    fluid_load_data_$ID$(path_data, framenr, format_data)\n\
     #if using_smoke_s$ID$:\n\
         # TODO (sebbas): Future update could include smoke particles (e.g. fire sparks)\n\
     if using_liquid_s$ID$:\n\
-        liquid_load_data_$ID$(path_data, framenr, True)\n\
+        liquid_load_data_$ID$(path_data, framenr, format_data)\n\
         if framenr>1:\n\
-            liquid_load_particles_$ID$(path_particles, framenr-1)\n\
+            liquid_load_particles_$ID$(path_particles, framenr-1, format_particles)\n\
         \n\
         liquid_step_particles_$ID$()\n\
-        \n\
-        liquid_save_particles_$ID$(path_particles, framenr)\n\
+        liquid_save_particles_$ID$(path_particles, framenr, format_particles)\n\
 \n\
-def bake_particles_$ID$(path_particles, path_data, framenr):\n\
+def bake_particles_$ID$(path_data, path_particles, framenr, format_data, format_particles):\n\
     if debugMp or platform.system() != 'Darwin' and platform.system() != 'Linux':\n\
-        bake_particles_process_$ID$(framenr, path_data, path_particles)\n\
+        bake_particles_process_$ID$(framenr, format_data, format_particles, path_data, path_particles)\n\
     else:\n\
-        fluid_cache_multiprocessing_start_$ID$(framenr, bake_particles_process_$ID$, path_data, path_particles)\n";
+        fluid_cache_multiprocessing_start_$ID$(function=bake_particles_process_$ID$, framenr=framenr, format_data=format_data, format_particles=format_particles, path_data=path_data, path_particles=path_particles)\n";
 
 //////////////////////////////////////////////////////////////////////
 // IMPORT
 //////////////////////////////////////////////////////////////////////
 
 const std::string fluid_load_data = "\n\
-def fluid_load_data_$ID$(path, framenr):\n\
-    mantaMsg('Fluid load data low')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    flags_s$ID$.load(os.path.join(path, 'flags_' + framenr + '.uni'))\n\
-    vel_s$ID$.load(os.path.join(path, 'vel_' + framenr + '.uni'))\n\
-    phiObs_s$ID$.load(os.path.join(path, 'phiObs_' + framenr + '.uni'))\n\
-    if using_obstacle_s$ID$:\n\
-        phiObsIn_s$ID$.load(os.path.join(path, 'phiObsIn_' + framenr + '.uni'))\n\
-    phiOut_s$ID$.load(os.path.join(path, 'phiOut_' + framenr + '.uni'))\n";
+def fluid_load_data_$ID$(path, framenr, file_format):\n\
+    try:\n\
+        mantaMsg('Fluid load data')\n\
+        framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+        flags_s$ID$.load(os.path.join(path, 'flags_' + framenr + file_format))\n\
+        vel_s$ID$.load(os.path.join(path, 'vel_' + framenr + file_format))\n\
+        phiObs_s$ID$.load(os.path.join(path, 'phiObs_' + framenr + file_format))\n\
+        if using_obstacle_s$ID$:\n\
+            phiObsIn_s$ID$.load(os.path.join(path, 'phiObsIn_' + framenr + file_format))\n\
+        phiOut_s$ID$.load(os.path.join(path, 'phiOut_' + framenr + file_format))\n\
+    except RuntimeError as e:\n\
+        mantaMsg(str(e))\n\
+        pass # Just skip file load errors for now\n";
 
 const std::string fluid_load_noise = "\n\
-def fluid_load_data_high_$ID$(path, framenr):\n\
-    mantaMsg('Fluid load data high')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n";
+def fluid_load_data_noise_$ID$(path, framenr, file_format):\n\
+    try:\n\
+        mantaMsg('Fluid load data high')\n\
+        framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+    except RuntimeError as e:\n\
+        mantaMsg(str(e))\n\
+        pass # Just skip file load errors for now\n";
 
 /* BEGIN TODO (sebbas): refactor */
 
@@ -476,15 +497,15 @@ def save_fluid_sndparts_data_low_$ID$(path):\n\
 //////////////////////////////////////////////////////////////////////
 
 const std::string fluid_save_data = "\n\
-def fluid_save_data_$ID$(path, framenr):\n\
+def fluid_save_data_$ID$(path, framenr, file_format):\n\
     mantaMsg('Fluid save data low')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    flags_s$ID$.save(os.path.join(path, 'flags_' + framenr + '.uni'))\n\
-    vel_s$ID$.save(os.path.join(path, 'vel_' + framenr + '.uni'))\n\
-    phiObs_s$ID$.save(os.path.join(path, 'phiObs_' + framenr + '.uni'))\n\
+    flags_s$ID$.save(os.path.join(path, 'flags_' + framenr + file_format))\n\
+    vel_s$ID$.save(os.path.join(path, 'vel_' + framenr + file_format))\n\
+    phiObs_s$ID$.save(os.path.join(path, 'phiObs_' + framenr + file_format))\n\
     if using_obstacle_s$ID$:\n\
-        phiObsIn_s$ID$.save(os.path.join(path, 'phiObsIn_' + framenr + '.uni'))\n\
-    phiOut_s$ID$.save(os.path.join(path, 'phiOut_' + framenr + '.uni'))\n";
+        phiObsIn_s$ID$.save(os.path.join(path, 'phiObsIn_' + framenr + file_format))\n\
+    phiOut_s$ID$.save(os.path.join(path, 'phiOut_' + framenr + file_format))\n";
 
 const std::string fluid_save_noise = "\n\
 def fluid_save_noise_$ID$(path, framenr):\n\
