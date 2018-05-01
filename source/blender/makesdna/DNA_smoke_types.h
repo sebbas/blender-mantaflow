@@ -138,6 +138,10 @@ enum {
 #define SM_VIEWPORT_PREVIEW	 1
 #define SM_VIEWPORT_FINAL	 2
 
+/* mesh levelset generator types */
+#define SM_MESH_IMPROVED    0
+#define SM_MESH_UNION       1
+
 /* effector types */
 #define SM_EFFECTOR_COLLISION 0
 #define SM_EFFECTOR_GUIDE	  1
@@ -264,7 +268,9 @@ typedef struct SmokeDomainSettings {
 	/* show original meshes, preview or final sim */
 	short viewport_display_mode;
 	short render_display_mode;
-	
+	short mesh_generator;
+	char pad5[6];
+
 	float time_scale;
 	float cfl_condition;
 	float vorticity;
@@ -285,6 +291,8 @@ typedef struct SmokeDomainSettings {
 	float particle_radius;
 	float mesh_smoothen_upper;
 	float mesh_smoothen_lower;
+	int mesh_smoothen_pos;
+	int mesh_smoothen_neg;
 	float particle_band_width;
 	float particle_droplet_threshold;
 	float particle_droplet_amount;

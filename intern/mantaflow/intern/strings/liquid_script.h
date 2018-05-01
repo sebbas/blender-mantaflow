@@ -39,14 +39,17 @@ narrowBandWidth_s$ID$         = 3\n\
 combineBandWidth_s$ID$        = narrowBandWidth_s$ID$ - 1\n\
 adjustedNarrowBandWidth_s$ID$ = $PARTICLE_BAND_WIDTH$ # only used in adjustNumber to control band width\n\
 \n\
-particleNumber_s$ID$ = $PARTICLE_NUMBER$\n\
-minParticles_s$ID$   = $PARTICLE_MINIMUM$\n\
-maxParticles_s$ID$   = $PARTICLE_MAXIMUM$\n\
-radiusFactor_s$ID$   = $PARTICLE_RADIUS$\n\
-smoothenUpper_s$ID$  = $MESH_SMOOTHEN_UPPER$\n\
-smoothenLower_s$ID$  = $MESH_SMOOTHEN_LOWER$\n\
-randomness_s$ID$     = $PARTICLE_RANDOMNESS$\n\
-surfaceTension_s$ID$ = $LIQUID_SURFACE_TENSION$\n";
+particleNumber_s$ID$   = $PARTICLE_NUMBER$\n\
+minParticles_s$ID$     = $PARTICLE_MINIMUM$\n\
+maxParticles_s$ID$     = $PARTICLE_MAXIMUM$\n\
+radiusFactor_s$ID$     = $PARTICLE_RADIUS$\n\
+using_final_mesh_s$ID$ = $USING_IMPROVED_MESH$\n\
+smoothenUpper_s$ID$    = $MESH_SMOOTHEN_UPPER$\n\
+smoothenLower_s$ID$    = $MESH_SMOOTHEN_LOWER$\n\
+smoothenPos_s$ID$      = $MESH_SMOOTHEN_POS$\n\
+smoothenNeg_s$ID$      = $MESH_SMOOTHEN_NEG$\n\
+randomness_s$ID$       = $PARTICLE_RANDOMNESS$\n\
+surfaceTension_s$ID$   = $LIQUID_SURFACE_TENSION$\n";
 
 const std::string liquid_variables_mesh = "\n\
 mantaMsg('Liquid variables high')\n";
@@ -377,9 +380,13 @@ def liquid_save_mesh_$ID$(path, framenr, file_format):\n\
     # create surface\n\
     pp_xl$ID$.readParticles(pp_s$ID$)\n\
     gridParticleIndex(parts=pp_xl$ID$, flags=flags_xl$ID$, indexSys=pindex_xl$ID$, index=gpi_xl$ID$)\n\
-    improvedParticleLevelset(pp_xl$ID$, pindex_xl$ID$, flags_xl$ID$, gpi_xl$ID$, phiParts_xl$ID$, radiusFactor_s$ID$, 1, 1, smoothenLower_s$ID$, smoothenUpper_s$ID$)\n\
-#    averagedParticleLevelset(pp_xl$ID$, pindex_xl$ID$, flags_xl$ID$, gpi_xl$ID$, phiParts_xl$ID$, radiusFactor_s$ID$, 1, 1)\n\
-#    unionParticleLevelset(pp_xl$ID$, pindex_xl$ID$, flags_xl$ID$, gpi_xl$ID$, phiParts_xl$ID$, radiusFactor_s$ID$)\n\
+    \n\
+    if using_final_mesh_s$ID$:\n\
+        mantaMsg('Liquid using improved particle levelset')\n\
+        improvedParticleLevelset(pp_xl$ID$, pindex_xl$ID$, flags_xl$ID$, gpi_xl$ID$, phiParts_xl$ID$, radiusFactor_s$ID$, smoothenPos_s$ID$, smoothenNeg_s$ID$, smoothenLower_s$ID$, smoothenUpper_s$ID$)\n\
+    else:\n\
+        mantaMsg('Liquid using union particle levelset')\n\
+        unionParticleLevelset(pp_xl$ID$, pindex_xl$ID$, flags_xl$ID$, gpi_xl$ID$, phiParts_xl$ID$, radiusFactor_s$ID$)\n\
     \n\
     phi_xl$ID$.addConst(1.) # shrink slightly\n\
     phi_xl$ID$.join(phiParts_xl$ID$)\n\

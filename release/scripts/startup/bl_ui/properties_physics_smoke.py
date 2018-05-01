@@ -290,7 +290,8 @@ class PHYSICS_PT_smoke_adaptive_domain(PhysicButtonsPanel, Panel):
     def poll(cls, context):
         md = context.smoke
         # Adaptive domain only for smoke right now
-        return md and (md.smoke_type == 'DOMAIN') and (md.domain_settings.smoke_domain_type in {'GAS'})
+        # TODO (sebbas): Disable for now - not working with new manta cache right now
+        return False #md and (md.smoke_type == 'DOMAIN') and (md.domain_settings.smoke_domain_type in {'GAS'})
 
     def draw_header(self, context):
         md = context.smoke.domain_settings
@@ -417,8 +418,22 @@ class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
         col.prop(domain, "particle_radius")
 
         col = split.column(align=True)
-        col.prop(domain, "mesh_smoothen_upper")
-        col.prop(domain, "mesh_smoothen_lower")
+        col.label(text="Generator:")
+        col.prop(domain, "mesh_generator", text="")
+
+        if domain.mesh_generator in {'IMPROVED'}:
+            split = layout.split()
+            split.enabled = not domain.cache_baked_mesh and not baking_any
+
+            col = split.column(align=True)
+            col.label(text="Smoothening")
+            col.prop(domain, "mesh_smoothen_pos")
+            col.prop(domain, "mesh_smoothen_neg")
+
+            col = split.column(align=True)
+            col.label(text="")
+            col.prop(domain, "mesh_smoothen_upper")
+            col.prop(domain, "mesh_smoothen_lower")
 
         # TODO (sebbas): for now just interpolate any upres grids, ie not sampling highres grids 
         #col = split.column()

@@ -956,6 +956,12 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 		{0, NULL, 0, NULL, NULL}
 	};
 
+	static EnumPropertyItem fluid_mesh_quality_items[] = {
+		{SM_MESH_IMPROVED, "IMPROVED", 0, "Final", "Use improved particle levelset (slower but more precise and with mesh smoothening options)"},
+		{SM_MESH_UNION, "UNION", 0, "Preview", "Use union particle levelset (faster but lower quality)"},
+		{0, NULL, 0, NULL, NULL}
+	};
+
 	/*  Cache type - generated dynamically based on domain type */
 	static EnumPropertyItem cache_file_type_items[] = {
 		{0, "NONE", 0, "", ""},
@@ -1177,6 +1183,12 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_enum_items(prop, smoke_quality_items);
 	RNA_def_property_ui_text(prop, "Render Display Mode", "How to display the mesh for rendering");
 	RNA_def_property_update(prop, 0, "rna_Smoke_update");
+
+	prop = RNA_def_property(srna, "mesh_generator", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "mesh_generator");
+	RNA_def_property_enum_items(prop, fluid_mesh_quality_items);
+	RNA_def_property_ui_text(prop, "Mesh generator", "Which particle levelset generator to use");
+	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Smoke_update");
 
 	prop = RNA_def_property(srna, "effector_weights", PROP_POINTER, PROP_NONE);
 	RNA_def_property_struct_type(prop, "EffectorWeights");
@@ -1463,6 +1475,16 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "mesh_smoothen_lower", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 10.0);
 	RNA_def_property_ui_text(prop, "Smoothen Lower", "Lower mesh smoothening bound (high values tend to smoothen and fill out concave regions)");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
+	prop = RNA_def_property(srna, "mesh_smoothen_pos", PROP_INT, PROP_NONE);
+	RNA_def_property_range(prop, 0, 100);
+	RNA_def_property_ui_text(prop, "Smoothen Pos", "Positive mesh smoothening");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
+	prop = RNA_def_property(srna, "mesh_smoothen_neg", PROP_INT, PROP_NONE);
+	RNA_def_property_range(prop, 0, 100);
+	RNA_def_property_ui_text(prop, "Smoothen Neg", "Negative mesh smoothening");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "particle_band_width", PROP_FLOAT, PROP_NONE);

@@ -529,6 +529,8 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->particle_radius = 1.0f;
 			smd->domain->mesh_smoothen_upper = 3.5f;
 			smd->domain->mesh_smoothen_lower = 0.4f;
+			smd->domain->mesh_smoothen_pos = 1;
+			smd->domain->mesh_smoothen_neg = 1;
 
 			smd->domain->particle_band_width = 3.0f;
 			smd->domain->particle_type = 0;
@@ -690,6 +692,8 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->particle_radius = smd->domain->particle_radius;
 		tsmd->domain->mesh_smoothen_upper = smd->domain->mesh_smoothen_upper;
 		tsmd->domain->mesh_smoothen_lower = smd->domain->mesh_smoothen_lower;
+		tsmd->domain->mesh_smoothen_pos = smd->domain->mesh_smoothen_pos;
+		tsmd->domain->mesh_smoothen_neg = smd->domain->mesh_smoothen_neg;
 		tsmd->domain->particle_band_width = smd->domain->particle_band_width;
 		tsmd->domain->particle_droplet_threshold = smd->domain->particle_droplet_threshold;
 		tsmd->domain->particle_droplet_amount = smd->domain->particle_droplet_amount;

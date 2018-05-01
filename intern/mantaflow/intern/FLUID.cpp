@@ -810,6 +810,12 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << smd->domain->mesh_smoothen_upper;
 	else if (varName == "MESH_SMOOTHEN_LOWER")
 		ss << smd->domain->mesh_smoothen_lower;
+	else if (varName == "MESH_SMOOTHEN_POS")
+		ss << smd->domain->mesh_smoothen_pos;
+	else if (varName == "MESH_SMOOTHEN_NEG")
+		ss << smd->domain->mesh_smoothen_neg;
+	else if (varName == "USING_IMPROVED_MESH")
+		ss << (smd->domain->mesh_generator == SM_MESH_IMPROVED ? "True" : "False");
 	else if (varName == "PARTICLE_BAND_WIDTH")
 		ss << smd->domain->particle_band_width;
 	else if (varName == "SNDPARTICLE_DROPLET_THRESH")
