@@ -1206,11 +1206,11 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 	scene->r.cfra = (int)frame;
 
 	/* Update animation system - needs annoying lock */
-//	G.is_rendering = true;
-//	BKE_spacedata_draw_locks(true);
+	G.is_rendering = true;
+	BKE_spacedata_draw_locks(true);
 	ED_update_for_newframe(job->bmain, scene, 1);
-//	G.is_rendering = false;
-//	BKE_spacedata_draw_locks(false);
+	G.is_rendering = false;
+	BKE_spacedata_draw_locks(false);
 
 	/* Loop through selected frames */
 	for (frame = sds->cache_frame_start; frame <= sds->cache_frame_end; frame++) {
@@ -1232,11 +1232,11 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 			smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
 
 		/* Update animation system - needs annoying lock */
-//		G.is_rendering = true;
-//		BKE_spacedata_draw_locks(true);
+		G.is_rendering = true;
+		BKE_spacedata_draw_locks(true);
 		ED_update_for_newframe(job->bmain, scene, 1);
-//		G.is_rendering = false;
-//		BKE_spacedata_draw_locks(false);
+		G.is_rendering = false;
+		BKE_spacedata_draw_locks(false);
 
 		if (STREQ(job->type, "MANTA_OT_bake_data"))
 		{
@@ -1285,7 +1285,9 @@ static void fluid_manta_bake_endjob(void *customdata)
 	SmokeDomainSettings *sds = job->smd->domain;
 
 	G.is_rendering = false;
-	BKE_spacedata_draw_locks(false);
+	if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
+		BKE_spacedata_draw_locks(false);
+	}
 
 	if (STREQ(job->type, "MANTA_OT_bake_data"))
 	{
@@ -1342,7 +1344,10 @@ static void fluid_manta_bake_startjob(void *customdata, short *stop, short *do_u
 
 	G.is_break = false;
 	G.is_rendering = true;
-	BKE_spacedata_draw_locks(true);
+
+	if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
+		BKE_spacedata_draw_locks(true);
+	}
 
 	if (STREQ(job->type, "MANTA_OT_bake_data"))
 	{
@@ -1564,8 +1569,8 @@ static int fluid_manta_free_exec(struct bContext *C, struct wmOperator *op)
 void MANTA_OT_bake_data(wmOperatorType *ot)
 {
 	/* identifiers */
-	ot->name = "Bake Simulation Low";
-	ot->description = "Bake Fluid Simulation";
+	ot->name = "Bake Data";
+	ot->description = "Bake Fluid Data";
 	ot->idname = "MANTA_OT_bake_data";
 
 	/* api callbacks */
@@ -1578,8 +1583,8 @@ void MANTA_OT_bake_data(wmOperatorType *ot)
 void MANTA_OT_free_data(wmOperatorType *ot)
 {
 	/* identifiers */
-	ot->name = "Free Simulation Low";
-	ot->description = "Free Fluid Simulation";
+	ot->name = "Free Data";
+	ot->description = "Free Fluid Data";
 	ot->idname = "MANTA_OT_free_data";
 
 	/* api callbacks */
@@ -1643,7 +1648,7 @@ void MANTA_OT_bake_particles(wmOperatorType *ot)
 {
 	/* identifiers */
 	ot->name = "Bake Particles";
-	ot->description = "Bake Secondary Particles";
+	ot->description = "Bake Fluid Particles";
 	ot->idname = "MANTA_OT_bake_particles";
 
 	/* api callbacks */
@@ -1657,7 +1662,7 @@ void MANTA_OT_free_particles(wmOperatorType *ot)
 {
 	/* identifiers */
 	ot->name = "Free Particles";
-	ot->description = "Free Secondary Particles";
+	ot->description = "Free Fluid Particles";
 	ot->idname = "MANTA_OT_free_particles";
 
 	/* api callbacks */

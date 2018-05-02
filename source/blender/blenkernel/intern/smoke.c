@@ -2625,9 +2625,8 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				/* Emission from mesh */
 				else if (sfs->source == MOD_SMOKE_FLOW_SOURCE_MESH) {
 					/* Update flow object frame */
-					BLI_mutex_lock(&object_update_lock);
+					// BLI_mutex_lock() called in smoke_step(), so safe to update subframe here
 					BKE_object_modifier_update_subframe(scene, flowobj, true, 5, BKE_scene_frame_get(scene), eModifierType_Smoke);
-					BLI_mutex_unlock(&object_update_lock);
 
 					/* Apply flow */
 					if (subframes) {
@@ -3451,6 +3450,8 @@ int smoke_step(Scene *scene, Object *ob, SmokeModifierData *smd, int frame)
 
 	time_per_frame = 0;
 
+	BLI_mutex_lock(&object_update_lock);
+
 	// loop as long as time_per_frame (sum of sudivdt) does not exceed dt (actual framelength)
 	while (time_per_frame < dt)
 	{
@@ -3473,6 +3474,7 @@ int smoke_step(Scene *scene, Object *ob, SmokeModifierData *smd, int frame)
 	if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
 		smoke_calc_transparency(sds, scene);
 	}
+	BLI_mutex_unlock(&object_update_lock);
 
 	/* Write call currently only writes shadow grid */
 	return fluid_write_cache(sds->fluid, smd, frame);

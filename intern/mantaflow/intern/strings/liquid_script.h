@@ -356,7 +356,7 @@ def liquid_load_particles_$ID$(path, framenr, file_format):\n\
 
 const std::string liquid_save_data = "\n\
 def liquid_save_data_$ID$(path, framenr, file_format):\n\
-    mantaMsg('Liquid save data low')\n\
+    mantaMsg('Liquid save data')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
     phi_s$ID$.save(os.path.join(path, 'phi_' + framenr + file_format))\n\
     phiTmp_s$ID$.save(os.path.join(path, 'phiTmp_' + framenr + file_format))\n\
@@ -365,14 +365,14 @@ def liquid_save_data_$ID$(path, framenr, file_format):\n\
 
 const std::string liquid_save_flip = "\n\
 def liquid_save_flip_$ID$(path, framenr, file_format):\n\
-    mantaMsg('Liquid save data low')\n\
+    mantaMsg('Liquid save flip')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
     pp_s$ID$.save(os.path.join(path, 'pp_' + framenr + file_format))\n\
     pVel_pp$ID$.save(os.path.join(path, 'pVel_' + framenr + file_format))\n";
 
 const std::string liquid_save_mesh = "\n\
 def liquid_save_mesh_$ID$(path, framenr, file_format):\n\
-    mantaMsg('Liquid save mesh high')\n\
+    mantaMsg('Liquid save mesh')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
     \n\
     interpolateGrid(target=phi_xl$ID$, source=phiTmp_s$ID$) # mis-use phiParts as temp grid\n\
@@ -401,7 +401,7 @@ def liquid_save_mesh_$ID$(path, framenr, file_format):\n\
 
 const std::string liquid_save_particles = "\n\
 def liquid_save_particles_$ID$(path, framenr, file_format):\n\
-    mantaMsg('Liquid save particles low')\n\
+    mantaMsg('Liquid save particles')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
     ppSnd_sp$ID$.save(os.path.join(path, 'ppSnd_' + framenr + file_format))\n\
     pVelSnd_pp$ID$.save(os.path.join(path, 'pVelSnd_' + framenr + file_format))\n\

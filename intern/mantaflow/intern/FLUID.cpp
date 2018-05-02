@@ -1181,6 +1181,11 @@ int FLUID::writeCache(SmokeModifierData *smd, int framenr)
 	if (with_debug)
 		std::cout << "FLUID::writeCacheLow()" << std::endl;
 
+	// Exit liquids early - no shadows to write
+	if (mUsingLiquid) {
+		return true;
+	}
+
 	std::ostringstream ss;
 	std::vector<std::string> pythonCommands;
 	bool writeSuccess = false;
@@ -1198,9 +1203,6 @@ int FLUID::writeCache(SmokeModifierData *smd, int framenr)
 		ss << "smoke_save_shadow_" << mCurrentID << "('" << cacheDir << "', " << framenr << ", '" << dformat << "')";
 		pythonCommands.push_back(ss.str());
 
-		writeSuccess = true;
-	}
-	if (mUsingLiquid) {
 		writeSuccess = true;
 	}
 	runPythonString(pythonCommands);

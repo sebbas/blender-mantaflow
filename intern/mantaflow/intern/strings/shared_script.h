@@ -37,8 +37,9 @@ const std::string manta_import = "\
 from manta import *\n\
 import os.path, shutil, math, sys, gc, multiprocessing, platform, time\n\
 \n\
-# TODO (sebbas): Use this to simulate Windows multiprocessing (has default mode spawn)\n\
 debugMp = True\n\
+isWindows = platform.system() != 'Darwin' and platform.system() != 'Linux'\n\
+# TODO (sebbas): Use this to simulate Windows multiprocessing (has default mode spawn)\n\
 #try:\n\
 #    multiprocessing.set_start_method('spawn')\n\
 #except:\n\
@@ -321,6 +322,8 @@ const std::string fluid_bake_data = "\n\
 def bake_fluid_process_data_$ID$(framenr, format_data, format_particles, path_data):\n\
     mantaMsg('Bake fluid data')\n\
     \n\
+    s$ID$.frame = framenr\n\
+    \n\
     start_time = time.time()\n\
     if using_smoke_s$ID$:\n\
         smoke_adaptive_step_$ID$(framenr)\n\
@@ -338,7 +341,7 @@ def bake_fluid_process_data_$ID$(framenr, format_data, format_particles, path_da
     mantaMsg('--- Writing: %s seconds ---' % (time.time() - start_time))\n\
 \n\
 def bake_fluid_data_$ID$(path_data, framenr, format_data, format_particles):\n\
-    if debugMp or platform.system() != 'Darwin' and platform.system() != 'Linux':\n\
+    if debugMp or isWindows:\n\
         bake_fluid_process_data_$ID$(framenr, format_data, format_particles, path_data)\n\
     else:\n\
         fluid_cache_multiprocessing_start_$ID$(function=bake_fluid_process_data_$ID$, framenr=framenr, format_data=format_data, format_particles=format_particles, path_data=path_data)\n";
@@ -346,13 +349,16 @@ def bake_fluid_data_$ID$(path_data, framenr, format_data, format_particles):\n\
 const std::string fluid_bake_noise = "\n\
 def bake_noise_process_$ID$(framenr, format_data, format_noise, path_data, path_noise):\n\
     mantaMsg('Bake fluid noise')\n\
+    \n\
+    sn$ID$.frame = framenr\n\
+    \n\
     fluid_load_data_$ID$(path_data, framenr, format_data)\n\
     smoke_load_data_$ID$(path_data, framenr, format_data)\n\
     smoke_adaptive_step_noise_$ID$(framenr)\n\
     smoke_save_noise_$ID$(path_noise, framenr, format_noise)\n\
 \n\
 def bake_noise_$ID$(path_data, path_noise, framenr, format_data, format_noise):\n\
-    if debugMp or platform.system() != 'Darwin' and platform.system() != 'Linux':\n\
+    if debugMp or isWindows:\n\
         bake_noise_process_$ID$(framenr, format_data, format_noise, path_data, path_noise)\n\
     else:\n\
         fluid_cache_multiprocessing_start_$ID$(function=bake_noise_process_$ID$, framenr=framenr, format_data=format_data, format_noise=format_noise, path_data=path_data, path_noise=path_noise)\n";
@@ -361,7 +367,8 @@ const std::string fluid_bake_mesh = "\n\
 def bake_mesh_process_$ID$(framenr, format_data, format_mesh, format_particles, path_data, path_mesh):\n\
     mantaMsg('Bake fluid mesh')\n\
     \n\
-    fluid_load_data_$ID$(path_data, framenr, format_data)\n\
+    sm$ID$.frame = framenr\n\
+    \n\
     #if using_smoke_s$ID$:\n\
         # TODO (sebbas): Future update could include smoke mesh (vortex sheets)\n\
     if using_liquid_s$ID$:\n\
@@ -370,7 +377,7 @@ def bake_mesh_process_$ID$(framenr, format_data, format_mesh, format_particles, 
         liquid_save_mesh_$ID$(path_mesh, framenr, format_mesh)\n\
 \n\
 def bake_mesh_$ID$(path_data, path_mesh, framenr, format_data, format_mesh, format_particles):\n\
-    if debugMp or platform.system() != 'Darwin' and platform.system() != 'Linux':\n\
+    if debugMp or isWindows:\n\
         bake_mesh_process_$ID$(framenr, format_data, format_mesh, format_particles, path_data, path_mesh)\n\
     else:\n\
         fluid_cache_multiprocessing_start_$ID$(function=bake_mesh_process_$ID$, framenr=framenr, format_data=format_data, format_mesh=format_mesh, format_particles=format_particles, path_data=path_data, path_mesh=path_mesh)\n";
@@ -378,6 +385,8 @@ def bake_mesh_$ID$(path_data, path_mesh, framenr, format_data, format_mesh, form
 const std::string fluid_bake_particles = "\n\
 def bake_particles_process_$ID$(framenr, format_data, format_particles, path_data, path_particles):\n\
     mantaMsg('Bake secondary particles')\n\
+    \n\
+    sp$ID$.frame = framenr\n\
     \n\
     fluid_load_data_$ID$(path_data, framenr, format_data)\n\
     #if using_smoke_s$ID$:\n\
@@ -391,7 +400,7 @@ def bake_particles_process_$ID$(framenr, format_data, format_particles, path_dat
         liquid_save_particles_$ID$(path_particles, framenr, format_particles)\n\
 \n\
 def bake_particles_$ID$(path_data, path_particles, framenr, format_data, format_particles):\n\
-    if debugMp or platform.system() != 'Darwin' and platform.system() != 'Linux':\n\
+    if debugMp or isWindows:\n\
         bake_particles_process_$ID$(framenr, format_data, format_particles, path_data, path_particles)\n\
     else:\n\
         fluid_cache_multiprocessing_start_$ID$(function=bake_particles_process_$ID$, framenr=framenr, format_data=format_data, format_particles=format_particles, path_data=path_data, path_particles=path_particles)\n";
