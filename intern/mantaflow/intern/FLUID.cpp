@@ -1058,13 +1058,14 @@ int FLUID::readCache(SmokeModifierData *smd, int framenr)
 	cacheDir[0] = '\0';
 	helperDir[0] = '\0';
 
-	std::string dformat = getCacheFileEnding(smd->domain->cache_volume_format);
-	std::string mformat = getCacheFileEnding(smd->domain->cache_surface_format);
-	std::string pformat = getCacheFileEnding(smd->domain->cache_particle_format);
-	std::string nformat = getCacheFileEnding(smd->domain->cache_noise_format);
+	// File extension for different fluid types: data, mesh, particles, noise
+	std::string dformat, mformat, pformat, nformat;
+	dformat = getCacheFileEnding(smd->domain->cache_volume_format);
 
 	if (mUsingSmoke)
 	{
+		nformat = getCacheFileEnding(smd->domain->cache_noise_format);
+
 		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
 		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_DATA))
 		{
@@ -1093,6 +1094,9 @@ int FLUID::readCache(SmokeModifierData *smd, int framenr)
 	}
 	if (mUsingLiquid)
 	{
+		mformat = getCacheFileEnding(smd->domain->cache_surface_format);
+		pformat = getCacheFileEnding(smd->domain->cache_particle_format);
+
 		// Data (flip particles) loading
 		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
 		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_DATA))
@@ -1103,12 +1107,12 @@ int FLUID::readCache(SmokeModifierData *smd, int framenr)
 			runPythonString(pythonCommands);
 
 			ss.str("");
-			ss << "pp_" << std::setw(4) << std::setfill('0') << framenr << dformat;
+			ss << "pp_" << std::setw(4) << std::setfill('0') << framenr << pformat;
 			BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
 			updateParticleData(helperDir, false);
 
 			ss.str("");
-			ss << "pVel_" << std::setw(4) << std::setfill('0') << framenr << dformat;
+			ss << "pVel_" << std::setw(4) << std::setfill('0') << framenr << pformat;
 			BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
 			updateParticleData(helperDir, false);
 
@@ -1138,7 +1142,10 @@ int FLUID::readCache(SmokeModifierData *smd, int framenr)
 			}
 		}
 	}
-	if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
+	if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers)
+	{
+		pformat = getCacheFileEnding(smd->domain->cache_particle_format);
+
 		// Secondary particles loading
 		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_PARTICLES, NULL);
 		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_PARTICLES))
@@ -1149,17 +1156,17 @@ int FLUID::readCache(SmokeModifierData *smd, int framenr)
 			runPythonString(pythonCommands);
 
 			ss.str("");
-			ss << "ppSnd_" << std::setw(4) << std::setfill('0') << framenr << dformat;
+			ss << "ppSnd_" << std::setw(4) << std::setfill('0') << framenr << pformat;
 			BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
 			updateParticleData(helperDir, true);
 
 			ss.str("");
-			ss << "pVelSnd_" << std::setw(4) << std::setfill('0') << framenr << dformat;
+			ss << "pVelSnd_" << std::setw(4) << std::setfill('0') << framenr << pformat;
 			BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
 			updateParticleData(helperDir, true);
 
 			ss.str("");
-			ss << "pLifeSnd_" << std::setw(4) << std::setfill('0') << framenr << dformat;
+			ss << "pLifeSnd_" << std::setw(4) << std::setfill('0') << framenr << pformat;
 			BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
 			updateParticleData(helperDir, true);
 
