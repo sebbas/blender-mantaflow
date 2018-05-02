@@ -133,15 +133,19 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
 
             if domain.smoke_domain_type in {'LIQUID'}:
                 split = layout.split()
-                split.enabled = not domain.cache_baked_data and not baking_any
 
                 col = split.column(align=True)
-                col.label(text="Liquid:")
-                col.prop(domain, "particle_maximum")
-                col.prop(domain, "particle_minimum")
-                col.prop(domain, "use_flip_particles", text="Show FLIP")
+                col1 = col.column()
+                col1.enabled = not domain.cache_baked_data and not baking_any
+                col1.label(text="Liquid:")
+                col1.prop(domain, "particle_maximum")
+                col1.prop(domain, "particle_minimum")
+                col2 = col.column()
+                col2.enabled = not baking_any
+                col2.prop(domain, "use_flip_particles", text="Show FLIP")
 
                 col = split.column(align=True)
+                col.enabled = not domain.cache_baked_data and not baking_any
                 col.label()
                 col.prop(domain, "particle_number")
                 col.prop(domain, "particle_band_width")
