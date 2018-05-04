@@ -1018,7 +1018,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_int_sdna(prop, NULL, "noise_scale");
 	RNA_def_property_range(prop, 1, 100);
 	RNA_def_property_ui_range(prop, 1, 10, 1, -1);
-	RNA_def_property_ui_text(prop, "Noise scale", "Scale underlying noise grids by this factor. Noise grids have size factor times base resolution.");
+	RNA_def_property_ui_text(prop, "Noise scale", "Scale underlying noise grids by this factor. Noise grids have size factor times base resolution");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
@@ -1026,7 +1026,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_int_sdna(prop, NULL, "mesh_scale");
 	RNA_def_property_range(prop, 1, 100);
 	RNA_def_property_ui_range(prop, 1, 10, 1, -1);
-	RNA_def_property_ui_text(prop, "Mesh scale", "Scale underlying mesh grids by this factor. Mesh grids have size factor times base resolution.");
+	RNA_def_property_ui_text(prop, "Mesh scale", "Scale underlying mesh grids by this factor. Mesh grids have size factor times base resolution");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
@@ -1034,7 +1034,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_int_sdna(prop, NULL, "particle_scale");
 	RNA_def_property_range(prop, 1, 100);
 	RNA_def_property_ui_range(prop, 1, 10, 1, -1);
-	RNA_def_property_ui_text(prop, "Mesh scale", "Scale underlying particle grids by this factor. Particle grids have size factor times base resolution.");
+	RNA_def_property_ui_text(prop, "Mesh scale", "Scale underlying particle grids by this factor. Particle grids have size factor times base resolution");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 

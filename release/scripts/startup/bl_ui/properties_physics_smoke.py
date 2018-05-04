@@ -66,12 +66,17 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
             domain = md.domain_settings
             flow = md.flow_settings
 
-            layout.prop(domain, "smoke_domain_type", expand=False)
-            layout.label(text="Border collisions:")
+            baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
 
             split = layout.split()
+            split.enabled = not domain.cache_baked_data and not baking_any
+            split.prop(domain, "smoke_domain_type", expand=False)
 
-            baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
+            split = layout.split()
+            split.enabled = not domain.cache_baked_data and not baking_any
+            split.label(text="Border collisions:")
+
+            split = layout.split()
             split.enabled = not domain.cache_baked_data and not baking_any
 
             col = split.column()
