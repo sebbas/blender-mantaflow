@@ -15,32 +15,21 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 2008 Blender Foundation.
- * All rights reserved.
- *
- * 
- * Contributor(s): Blender Foundation
- *
  * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/util/util_intern.h
- *  \ingroup edutil
+/** \file blender/editors/undo/undo_intern.h
+ *  \ingroup edundo
  */
 
-
-#ifndef __UTIL_INTERN_H__
-#define __UTIL_INTERN_H__
+#ifndef __UNDO_INTERN_H__
+#define __UNDO_INTERN_H__
 
 /* internal exports only */
 
-/* editmode_undo.c */
-void        undo_editmode_name(struct bContext *C, const char *undoname);
-bool        undo_editmode_is_valid(const char *undoname);
-const char *undo_editmode_get_name(struct bContext *C, int nr, bool *r_active);
-void       *undo_editmode_get_prev(struct Object *ob);
-void        undo_editmode_step(struct bContext *C, int step);
-void        undo_editmode_number(struct bContext *C, int nr);
+struct UndoType;
 
-#endif /* __UTIL_INTERN_H__ */
+/* memfile_undo.c */
+void ED_memfile_undosys_type(struct UndoType *ut);
 
+#endif /* __UNDO_INTERN_H__ */

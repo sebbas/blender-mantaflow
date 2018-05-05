@@ -54,7 +54,7 @@
 
 #include "BKE_animsys.h"
 #include "BKE_armature.h"
-#include "BKE_bvhutils.h"   /* bvh tree	*/
+#include "BKE_bvhutils.h"   /* bvh tree */
 #include "BKE_colorband.h"
 #include "BKE_cdderivedmesh.h"
 #include "BKE_constraint.h"
@@ -4270,7 +4270,7 @@ static int dynamicPaint_paintMesh(DynamicPaintSurface *surface,
 		/* check bounding box collision */
 		if (grid && meshBrush_boundsIntersect(&grid->grid_bounds, &mesh_bb, brush, brush_radius)) {
 			/* Build a bvh tree from transformed vertices	*/
-			if (bvhtree_from_mesh_looptri(&treeData, dm, 0.0f, 4, 8)) {
+			if (bvhtree_from_mesh_get(&treeData, dm, BVHTREE_FROM_LOOPTRI, 4)) {
 				int c_index;
 				int total_cells = grid->dim[0] * grid->dim[1] * grid->dim[2];
 
@@ -4518,7 +4518,7 @@ static int dynamicPaint_paintParticles(DynamicPaintSurface *surface,
 	 */
 	tree = BLI_kdtree_new(psys->totpart);
 
-	/* loop through particles and insert valid ones	to the tree	*/
+	/* loop through particles and insert valid ones to the tree */
 	p = 0;
 	for (ParticleData *pa = psys->particles; p < psys->totpart; p++, pa++) {
 		/* Proceed only if particle is active	*/

@@ -114,39 +114,6 @@ extern "C" {
 
 namespace DEG {
 
-namespace {
-
-struct BuilderWalkUserData {
-	DepsgraphRelationBuilder *builder;
-};
-
-void modifier_walk(void *user_data,
-                   struct Object * /*object*/,
-                   struct Object **obpoin,
-                   int /*cb_flag*/)
-{
-	BuilderWalkUserData *data = (BuilderWalkUserData *)user_data;
-	if (*obpoin) {
-		data->builder->build_object(*obpoin);
-	}
-}
-
-void constraint_walk(bConstraint * /*con*/,
-                     ID **idpoin,
-                     bool /*is_reference*/,
-                     void *user_data)
-{
-	BuilderWalkUserData *data = (BuilderWalkUserData *)user_data;
-	if (*idpoin) {
-		ID *id = *idpoin;
-		if (GS(id->name) == ID_OB) {
-			data->builder->build_object((Object *)id);
-		}
-	}
-}
-
-}  /* namespace */
-
 /* ***************** */
 /* Relations Builder */
 
@@ -273,13 +240,14 @@ bool DepsgraphRelationBuilder::has_node(const OperationKey &key) const
 	return find_node(key) != NULL;
 }
 
-void DepsgraphRelationBuilder::add_time_relation(TimeSourceDepsNode *timesrc,
-                                                 DepsNode *node_to,
-                                                 const char *description,
-                                                 bool check_unique)
+DepsRelation *DepsgraphRelationBuilder::add_time_relation(
+        TimeSourceDepsNode *timesrc,
+        DepsNode *node_to,
+        const char *description,
+        bool check_unique)
 {
 	if (timesrc && node_to) {
-		graph_->add_new_relation(timesrc, node_to, description, check_unique);
+		return graph_->add_new_relation(timesrc, node_to, description, check_unique);
 	}
 	else {
 		DEG_DEBUG_PRINTF(BUILD, "add_time_relation(%p = %s, %p = %s, %s) Failed\n",
@@ -287,16 +255,20 @@ void DepsgraphRelationBuilder::add_time_relation(TimeSourceDepsNode *timesrc,
 		                 node_to,   (node_to) ? node_to->identifier().c_str() : "<None>",
 		                 description);
 	}
+	return NULL;
 }
 
-void DepsgraphRelationBuilder::add_operation_relation(
+DepsRelation *DepsgraphRelationBuilder::add_operation_relation(
         OperationDepsNode *node_from,
         OperationDepsNode *node_to,
         const char *description,
         bool check_unique)
 {
 	if (node_from && node_to) {
-		graph_->add_new_relation(node_from, node_to, description, check_unique);
+		return graph_->add_new_relation(node_from,
+		                                node_to,
+		                                description,
+		                                check_unique);
 	}
 	else {
 		DEG_DEBUG_PRINTF(BUILD, "add_operation_relation(%p = %s, %p = %s, %s) Failed\n",
@@ -304,6 +276,7 @@ void DepsgraphRelationBuilder::add_operation_relation(
 		                 node_to,   (node_to)   ? node_to->identifier().c_str() : "<None>",
 		                 description);
 	}
+	return NULL;
 }
 
 void DepsgraphRelationBuilder::add_collision_relations(
@@ -448,6 +421,8 @@ void DepsgraphRelationBuilder::build_object(Object *object)
 	                             DEG_OPCODE_TRANSFORM_OBJECT_UBEREVAL);
 	/* Parenting. */
 	if (object->parent != NULL) {
+		/* Make sure parent object's relations are built. */
+		build_object(object->parent);
 		/* Parent relationship. */
 		build_object_parent(object);
 		/* Local -> parent. */
@@ -459,7 +434,7 @@ void DepsgraphRelationBuilder::build_object(Object *object)
 	if (object->modifiers.first != NULL) {
 		BuilderWalkUserData data;
 		data.builder = this;
-		modifiers_foreachObjectLink(object, modifier_walk, &data);
+		modifiers_foreachIDLink(object, modifier_walk, &data);
 	}
 	/* Constraints. */
 	if (object->constraints.first != NULL) {
@@ -534,7 +509,9 @@ void DepsgraphRelationBuilder::build_object_data(Object *object)
 	}
 	ID *obdata_id = (ID *)object->data;
 	/* Object data animation. */
-	build_animdata(obdata_id);
+	if (!built_map_.checkIsBuilt(obdata_id)) {
+		build_animdata(obdata_id);
+	}
 	/* type-specific data. */
 	switch (object->type) {
 		case OB_MESH:
@@ -552,7 +529,7 @@ void DepsgraphRelationBuilder::build_object_data(Object *object)
 				build_proxy_rig(object);
 			}
 			else {
-				build_rig(object);
+				 build_rig(object);
 			}
 			break;
 		case OB_LAMP:
@@ -1126,7 +1103,26 @@ void DepsgraphRelationBuilder::build_driver_data(ID *id, FCurve *fcu)
 	}
 	else {
 		RNAPathKey target_key(id, rna_path);
-		add_relation(driver_key, target_key, "Driver -> Target");
+		if (RNA_pointer_is_null(&target_key.ptr)) {
+			/* TODO(sergey): This would only mean that driver is broken.
+			 * so we can't create relation anyway. However, we need to avoid
+			 * adding drivers which are known to be buggy to a dependency
+			 * graph, in order to save computational power.
+			 */
+		}
+		else {
+			if (target_key.prop != NULL &&
+			    RNA_property_is_idprop(target_key.prop))
+			{
+				OperationKey parameters_key(id,
+				                            DEG_NODE_TYPE_PARAMETERS,
+				                            DEG_OPCODE_PARAMETERS_EVAL);
+				add_relation(target_key,
+				             parameters_key,
+				             "Driver Target -> Properties");
+			}
+			add_relation(driver_key, target_key, "Driver -> Target");
+		}
 	}
 }
 
@@ -1853,6 +1849,45 @@ void DepsgraphRelationBuilder::build_movieclip(MovieClip *clip)
 {
 	/* Animation. */
 	build_animdata(&clip->id);
+}
+
+/* **** ID traversal callbacks functions **** */
+
+void DepsgraphRelationBuilder::modifier_walk(void *user_data,
+                                             struct Object * /*object*/,
+                                             struct ID **idpoin,
+                                             int /*cb_flag*/)
+{
+	BuilderWalkUserData *data = (BuilderWalkUserData *)user_data;
+	ID *id = *idpoin;
+	if (id == NULL) {
+		return;
+	}
+	switch (GS(id->name)) {
+		case ID_OB:
+			data->builder->build_object((Object *)id);
+			break;
+		case ID_TE:
+			data->builder->build_texture((Tex *)id);
+			break;
+		default:
+			/* pass */
+			break;
+	}
+}
+
+void DepsgraphRelationBuilder::constraint_walk(bConstraint * /*con*/,
+                                               ID **idpoin,
+                                               bool /*is_reference*/,
+                                               void *user_data)
+{
+	BuilderWalkUserData *data = (BuilderWalkUserData *)user_data;
+	if (*idpoin) {
+		ID *id = *idpoin;
+		if (GS(id->name) == ID_OB) {
+			data->builder->build_object((Object *)id);
+		}
+	}
 }
 
 }  // namespace DEG

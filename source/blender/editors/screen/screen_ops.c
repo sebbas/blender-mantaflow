@@ -74,6 +74,7 @@
 #include "ED_screen_types.h"
 #include "ED_sequencer.h"
 #include "ED_util.h"
+#include "ED_undo.h"
 #include "ED_view3d.h"
 
 #include "RNA_access.h"
@@ -869,23 +870,23 @@ static void SCREEN_OT_actionzone(wmOperatorType *ot)
 /** \name Swap Area Operator
  * \{ */
 
-/* operator state vars used:  
- * sa1		start area
- * sa2		area to swap with
- * 
+/* operator state vars used:
+ * sa1      start area
+ * sa2      area to swap with
+ *
  * functions:
- * 
+ *
  * init()   set custom data for operator, based on actionzone event custom data
- * 
- * cancel()	cancel the operator
- * 
- * exit()	cleanup, send notifier
- * 
+ *
+ * cancel() cancel the operator
+ *
+ * exit()   cleanup, send notifier
+ *
  * callbacks:
- * 
+ *
  * invoke() gets called on shift+lmb drag in actionzone
  * call init(), add handler
- * 
+ *
  * modal()  accept modal events while doing it
  */
 
@@ -1416,35 +1417,35 @@ static void SCREEN_OT_area_move(wmOperatorType *ot)
 /** \name Split Area Operator
  * \{ */
 
-/* 
- * operator state vars:  
+/*
+ * operator state vars:
  * fac              spit point
  * dir              direction 'v' or 'h'
- * 
+ *
  * operator customdata:
  * area             pointer to (active) area
- * x, y			last used mouse pos
+ * x, y             last used mouse pos
  * (more, see below)
- * 
+ *
  * functions:
- * 
+ *
  * init()   set default property values, find area based on context
- * 
- * apply()	split area based on state vars
- * 
- * exit()	cleanup, send notifier
- * 
+ *
+ * apply()  split area based on state vars
+ *
+ * exit()   cleanup, send notifier
+ *
  * cancel() remove duplicated area
- * 
+ *
  * callbacks:
- * 
+ *
  * exec()   execute without any user interaction, based on state vars
  * call init(), apply(), exit()
- * 
+ *
  * invoke() gets called on mouse click in action-widget
  * call init(), add modal handler
  * call apply() with initial motion
- * 
+ *
  * modal()  accept modal events while doing it
  * call move-areas code with delta motion
  * call exit() or cancel() and remove handler
@@ -1740,6 +1741,7 @@ static void area_split_cancel(bContext *C, wmOperator *op)
 	sAreaSplitData *sd = (sAreaSplitData *)op->customdata;
 	
 	if (sd->previewmode) {
+		/* pass */
 	}
 	else {
 		if (screen_area_join(C, CTX_wm_screen(C), sd->sarea, sd->narea)) {

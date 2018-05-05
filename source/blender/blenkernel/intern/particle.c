@@ -3165,7 +3165,7 @@ ModifierData *object_add_particle_system(Scene *scene, Object *ob, const char *n
 
 	psys->part = BKE_particlesettings_add(NULL, DATA_("ParticleSettings"));
 
-	if (BLI_listbase_count_ex(&ob->particlesystem, 2) > 1)
+	if (BLI_listbase_count_at_most(&ob->particlesystem, 2) > 1)
 		BLI_snprintf(psys->name, sizeof(psys->name), DATA_("ParticleSystem %i"), BLI_listbase_count(&ob->particlesystem));
 	else
 		BLI_strncpy(psys->name, DATA_("ParticleSystem"), sizeof(psys->name));
@@ -3724,10 +3724,17 @@ float psys_get_child_size(ParticleSystem *psys, ChildParticle *cpa, float UNUSED
 	ParticleSettings *part = psys->part;
 	float size; // time XXX
 	
-	if (part->childtype == PART_CHILD_FACES)
-		size = part->size;
-	else
+	if (part->childtype == PART_CHILD_FACES) {
+		int w = 0;
+		size = 0.0;
+		while (w < 4 && cpa->pa[w] >= 0) {
+			size += cpa->w[w] * (psys->particles + cpa->pa[w])->size;
+			w++;
+		}
+	}
+	else {
 		size = psys->particles[cpa->parent].size;
+	}
 
 	size *= part->childsize;
 

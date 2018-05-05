@@ -1499,15 +1499,16 @@ static int project_paint_undo_subtiles(const TileInfo *tinf, int tx, int ty)
 
 
 	if (generate_tile) {
+		ListBase *undo_tiles = ED_image_undo_get_tiles();
 		volatile void *undorect;
 		if (tinf->masked) {
 			undorect = image_undo_push_tile(
-			        pjIma->ima, pjIma->ibuf, tinf->tmpibuf,
+			        undo_tiles, pjIma->ima, pjIma->ibuf, tinf->tmpibuf,
 			        tx, ty, &pjIma->maskRect[tile_index], &pjIma->valid[tile_index], true, false);
 		}
 		else {
 			undorect = image_undo_push_tile(
-			        pjIma->ima, pjIma->ibuf, tinf->tmpibuf,
+			        undo_tiles, pjIma->ima, pjIma->ibuf, tinf->tmpibuf,
 			        tx, ty, NULL, &pjIma->valid[tile_index], true, false);
 		}
 
@@ -5384,8 +5385,7 @@ static int texture_paint_camera_project_exec(bContext *C, wmOperator *op)
 
 	scene->toolsettings->imapaint.flag |= IMAGEPAINT_DRAWING;
 
-	ED_undo_paint_push_begin(UNDO_PAINT_IMAGE, op->type->name,
-	                         ED_image_undo_restore, ED_image_undo_free, NULL);
+	ED_image_undo_push_begin(op->type->name);
 
 	/* allocate and initialize spatial data structures */
 	project_paint_begin(&ps, false, 0);

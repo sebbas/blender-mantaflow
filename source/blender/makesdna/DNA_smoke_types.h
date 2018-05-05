@@ -341,6 +341,9 @@ typedef struct SmokeDomainSettings {
 
 	char error[64];		/* Bake error description */
 	char pad4[2]; /* unused */
+
+	float clipping;
+	float pad6;
 } SmokeDomainSettings;
 
 /* type */

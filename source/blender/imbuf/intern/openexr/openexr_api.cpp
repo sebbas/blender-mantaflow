@@ -1621,14 +1621,13 @@ static bool exr_has_alpha(MultiPartInputFile& file)
 
 static bool imb_exr_is_multilayer_file(MultiPartInputFile& file)
 {
-	const StringAttribute *comments = file.header(0).findTypedAttribute<StringAttribute>("BlenderMultiChannel");
 	const ChannelList& channels = file.header(0).channels();
 	std::set <std::string> layerNames;
 
 	/* will not include empty layer names */
 	channels.layers(layerNames);
 
-	if (comments || layerNames.size() > 1)
+	if (layerNames.size() > 1)
 		return true;
 
 	if (layerNames.size()) {
@@ -1667,7 +1666,7 @@ static void imb_exr_type_by_channels(ChannelList& channels, StringVector& views,
 	}
 	else {
 		*r_singlelayer = false;
-		*r_multilayer = true;
+		*r_multilayer = (layerNames.size() > 1);
 		*r_multiview = false;
 		return;
 	}
@@ -1791,12 +1790,13 @@ struct ImBuf *imb_load_openexr(const unsigned char *mem, size_t size, int flags,
 					const Header & header = file->header(0);
 					Header::ConstIterator iter;
 
+					IMB_metadata_ensure(&ibuf->metadata);
 					for (iter = header.begin(); iter != header.end(); iter++) {
 						const StringAttribute *attrib = file->header(0).findTypedAttribute <StringAttribute> (iter.name());
 
 						/* not all attributes are string attributes so we might get some NULLs here */
 						if (attrib) {
-							IMB_metadata_add_field(ibuf, iter.name(), attrib->value().c_str());
+							IMB_metadata_set_field(ibuf->metadata, iter.name(), attrib->value().c_str());
 							ibuf->flags |= IB_metadata;
 						}
 					}

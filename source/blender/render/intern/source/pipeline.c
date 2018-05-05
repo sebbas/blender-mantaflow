@@ -84,6 +84,7 @@
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
+#include "IMB_metadata.h"
 
 #include "RE_engine.h"
 #include "RE_pipeline.h"
@@ -257,6 +258,11 @@ RenderLayer *RE_GetRenderLayer(RenderResult *rr, const char *name)
 	}
 }
 
+bool RE_HasSingleLayer(Render *re)
+{
+	return (re->r.scemode & R_SINGLE_LAYER);
+}
+
 RenderResult *RE_MultilayerConvert(void *exrhandle, const char *colorspace, bool predivide, int rectx, int recty)
 {
 	return render_result_new_from_exr(exrhandle, colorspace, predivide, rectx, recty);
@@ -264,12 +270,19 @@ RenderResult *RE_MultilayerConvert(void *exrhandle, const char *colorspace, bool
 
 RenderLayer *render_get_active_layer(Render *re, RenderResult *rr)
 {
-	RenderLayer *rl = BLI_findlink(&rr->layers, re->r.actlay);
-	
-	if (rl)
-		return rl;
-	else 
-		return rr->layers.first;
+	SceneRenderLayer *srl = BLI_findlink(&re->r.layers, re->r.actlay);
+
+	if (srl) {
+		RenderLayer *rl = BLI_findstring(&rr->layers,
+		                                 srl->name,
+		                                 offsetof(RenderLayer, name));
+
+		if (rl) {
+			return rl;
+		}
+	}
+
+	return rr->layers.first;
 }
 
 static int render_scene_needs_vector(Render *re)
@@ -2045,76 +2058,102 @@ bool RE_allow_render_generic_object(Object *ob)
 #define DEPSGRAPH_WORKAROUND_HACK
 
 #ifdef DEPSGRAPH_WORKAROUND_HACK
-static void tag_dependend_objects_for_render(Scene *scene, int renderlay)
+static void tag_dependend_object_for_render(Scene *scene, Object *object);
+
+static void tag_dependend_group_for_render(Scene *scene, Group *group)
 {
-	Scene *sce_iter;
-	Base *base;
-	for (SETLOOPER(scene, sce_iter, base)) {
-		Object *object = base->object;
+	if (group->id.tag & LIB_TAG_DOIT) {
+		return;
+	}
+	group->id.tag |= LIB_TAG_DOIT;
 
-		if ((base->lay & renderlay) == 0) {
-			continue;
-		}
+	for (GroupObject *go = group->gobject.first; go != NULL; go = go->next) {
+		Object *object = go->ob;
+		tag_dependend_object_for_render(scene, object);
+	}
+}
 
-		if (object->type == OB_MESH) {
-			if (RE_allow_render_generic_object(object)) {
-				ModifierData *md;
-				VirtualModifierData virtualModifierData;
+static void tag_dependend_object_for_render(Scene *scene, Object *object)
+{
+	if (object->type == OB_MESH) {
+		if (RE_allow_render_generic_object(object)) {
+			ModifierData *md;
+			VirtualModifierData virtualModifierData;
 
-				for (md = modifiers_getVirtualModifierList(object, &virtualModifierData);
-				     md;
-				     md = md->next)
-				{
-					if (!modifier_isEnabled(scene, md, eModifierMode_Render)) {
-						continue;
-					}
+			if (object->particlesystem.first) {
+				DAG_id_tag_update(&object->id, OB_RECALC_DATA);
+			}
 
-					if (md->type == eModifierType_Boolean) {
-						BooleanModifierData *bmd = (BooleanModifierData *)md;
-						if (bmd->object && bmd->object->type == OB_MESH) {
-							DAG_id_tag_update(&bmd->object->id, OB_RECALC_DATA);
-						}
+			for (md = modifiers_getVirtualModifierList(object, &virtualModifierData);
+			     md;
+			     md = md->next)
+			{
+				if (!modifier_isEnabled(scene, md, eModifierMode_Render)) {
+					continue;
+				}
+
+				if (md->type == eModifierType_Boolean) {
+					BooleanModifierData *bmd = (BooleanModifierData *)md;
+					if (bmd->object && bmd->object->type == OB_MESH) {
+						DAG_id_tag_update(&bmd->object->id, OB_RECALC_DATA);
 					}
-					else if (md->type == eModifierType_Array) {
-						ArrayModifierData *amd = (ArrayModifierData *)md;
-						if (amd->start_cap && amd->start_cap->type == OB_MESH) {
-							DAG_id_tag_update(&amd->start_cap->id, OB_RECALC_DATA);
-						}
-						if (amd->end_cap && amd->end_cap->type == OB_MESH) {
-							DAG_id_tag_update(&amd->end_cap->id, OB_RECALC_DATA);
-						}
+				}
+				else if (md->type == eModifierType_Array) {
+					ArrayModifierData *amd = (ArrayModifierData *)md;
+					if (amd->start_cap && amd->start_cap->type == OB_MESH) {
+						DAG_id_tag_update(&amd->start_cap->id, OB_RECALC_DATA);
 					}
-					else if (md->type == eModifierType_Shrinkwrap) {
-						ShrinkwrapModifierData *smd = (ShrinkwrapModifierData *)md;
-						if (smd->target  && smd->target->type == OB_MESH) {
-							DAG_id_tag_update(&smd->target->id, OB_RECALC_DATA);
-						}
+					if (amd->end_cap && amd->end_cap->type == OB_MESH) {
+						DAG_id_tag_update(&amd->end_cap->id, OB_RECALC_DATA);
 					}
-					else if (md->type == eModifierType_ParticleSystem) {
-						ParticleSystemModifierData *psmd = (ParticleSystemModifierData *)md;
-						ParticleSystem *psys = psmd->psys;
-						ParticleSettings *part = psys->part;
-						switch (part->ren_as) {
-							case PART_DRAW_OB:
-								if (part->dup_ob != NULL) {
-									DAG_id_tag_update(&part->dup_ob->id, OB_RECALC_DATA);
+				}
+				else if (md->type == eModifierType_Shrinkwrap) {
+					ShrinkwrapModifierData *smd = (ShrinkwrapModifierData *)md;
+					if (smd->target  && smd->target->type == OB_MESH) {
+						DAG_id_tag_update(&smd->target->id, OB_RECALC_DATA);
+					}
+				}
+				else if (md->type == eModifierType_ParticleSystem) {
+					ParticleSystemModifierData *psmd = (ParticleSystemModifierData *)md;
+					ParticleSystem *psys = psmd->psys;
+					ParticleSettings *part = psys->part;
+					switch (part->ren_as) {
+						case PART_DRAW_OB:
+							if (part->dup_ob != NULL) {
+								DAG_id_tag_update(&part->dup_ob->id, OB_RECALC_DATA);
+							}
+							break;
+						case PART_DRAW_GR:
+							if (part->dup_group != NULL) {
+								for (GroupObject *go = part->dup_group->gobject.first;
+								     go != NULL;
+								     go = go->next)
+								{
+									DAG_id_tag_update(&go->ob->id, OB_RECALC_DATA);
 								}
-								break;
-							case PART_DRAW_GR:
-								if (part->dup_group != NULL) {
-									for (GroupObject *go = part->dup_group->gobject.first;
-									     go != NULL;
-									     go = go->next)
-									{
-										DAG_id_tag_update(&go->ob->id, OB_RECALC_DATA);
-									}
-								}
-								break;
-						}
+							}
+							break;
 					}
 				}
 			}
 		}
+	}
+	if (object->dup_group != NULL) {
+		tag_dependend_group_for_render(scene, object->dup_group);
+	}
+}
+
+static void tag_dependend_objects_for_render(Main *bmain, Scene *scene, int renderlay)
+{
+	Scene *sce_iter;
+	Base *base;
+	BKE_main_id_tag_idcode(bmain, ID_GR, LIB_TAG_DOIT, false);
+	for (SETLOOPER(scene, sce_iter, base)) {
+		Object *object = base->object;
+		if ((base->lay & renderlay) == 0) {
+			continue;
+		}
+		tag_dependend_object_for_render(scene, object);
 	}
 }
 #endif
@@ -2130,7 +2169,7 @@ static void tag_scenes_for_render(Render *re)
 	for (sce = re->main->scene.first; sce; sce = sce->id.next) {
 		sce->id.tag &= ~LIB_TAG_DOIT;
 #ifdef DEPSGRAPH_WORKAROUND_HACK
-		tag_dependend_objects_for_render(sce, renderlay);
+		tag_dependend_objects_for_render(re->main, sce, renderlay);
 #endif
 	}
 	
@@ -2139,7 +2178,7 @@ static void tag_scenes_for_render(Render *re)
 		for (sce = re->freestyle_bmain->scene.first; sce; sce = sce->id.next) {
 			sce->id.tag &= ~LIB_TAG_DOIT;
 #ifdef DEPSGRAPH_WORKAROUND_HACK
-			tag_dependend_objects_for_render(sce, renderlay);
+			tag_dependend_objects_for_render(re->freestyle_bmain, sce, renderlay);
 #endif
 		}
 	}
@@ -2148,7 +2187,7 @@ static void tag_scenes_for_render(Render *re)
 	if (RE_GetCamera(re) && composite_needs_render(re->scene, 1)) {
 		re->scene->id.tag |= LIB_TAG_DOIT;
 #ifdef DEPSGRAPH_WORKAROUND_HACK
-		tag_dependend_objects_for_render(re->scene, renderlay);
+		tag_dependend_objects_for_render(re->main, re->scene, renderlay);
 #endif
 	}
 	
@@ -2181,7 +2220,7 @@ static void tag_scenes_for_render(Render *re)
 							node->flag |= NODE_TEST;
 							node->id->tag |= LIB_TAG_DOIT;
 #ifdef DEPSGRAPH_WORKAROUND_HACK
-							tag_dependend_objects_for_render(scene, renderlay);
+							tag_dependend_objects_for_render(re->main, scene, renderlay);
 #endif
 						}
 					}
@@ -3337,7 +3376,7 @@ bool RE_WriteRenderViewsImage(ReportList *reports, RenderResult *rr, Scene *scen
 	if (!rr)
 		return false;
 
-	bool is_mono = BLI_listbase_count_ex(&rr->views, 2) < 2;
+	bool is_mono = BLI_listbase_count_at_most(&rr->views, 2) < 2;
 	bool is_exr_rr = ELEM(rd->im_format.imtype, R_IMF_IMTYPE_OPENEXR, R_IMF_IMTYPE_MULTILAYER) &&
 	                 RE_HasFloatPixels(rr);
 
@@ -3454,7 +3493,7 @@ bool RE_WriteRenderViewsMovie(
 	if (!rr)
 		return false;
 
-	is_mono = BLI_listbase_count_ex(&rr->views, 2) < 2;
+	is_mono = BLI_listbase_count_at_most(&rr->views, 2) < 2;
 
 	if (is_mono || (scene->r.im_format.views_format == R_IMF_VIEWS_INDIVIDUAL)) {
 		int view_id;
@@ -4055,7 +4094,7 @@ bool RE_WriteEnvmapResult(struct ReportList *reports, Scene *scene, EnvMap *env,
 /* Used in the interface to decide whether to show layers or passes. */
 bool RE_layers_have_name(struct RenderResult *rr)
 {
-	switch (BLI_listbase_count_ex(&rr->layers, 2)) {
+	switch (BLI_listbase_count_at_most(&rr->layers, 2)) {
 		case 0:
 			return false;
 		case 1:

@@ -442,9 +442,9 @@ static void ptcache_particle_extra_write(void *psys_v, PTCacheMem *pm, int UNUSE
 	PTCacheExtra *extra = NULL;
 
 	if (psys->part->phystype == PART_PHYS_FLUID &&
-		psys->part->fluid && psys->part->fluid->flag & SPH_VISCOELASTIC_SPRINGS &&
-		psys->tot_fluidsprings && psys->fluid_springs) {
-
+	    psys->part->fluid && psys->part->fluid->flag & SPH_VISCOELASTIC_SPRINGS &&
+	    psys->tot_fluidsprings && psys->fluid_springs)
+	{
 		extra = MEM_callocN(sizeof(PTCacheExtra), "Point cache: fluid extra data");
 
 		extra->type = BPHYS_EXTRA_FLUID_SPRINGS;
@@ -846,8 +846,9 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 
 	/* check if resolution has changed */
 	if (sds->res[0] != ch_res[0] ||
-		sds->res[1] != ch_res[1] ||
-		sds->res[2] != ch_res[2]) {
+	    sds->res[1] != ch_res[1] ||
+	    sds->res[2] != ch_res[2])
+	{
 		if (sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN)
 			reallocate = 1;
 		else
@@ -1074,21 +1075,21 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
 
 		smoke_turbulence_export(sds->fluid, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw, &tcu2, &tcv2, &tcw2);
 
-		wt_density_grid = OpenVDB_export_grid_fl(writer, "density", dens, sds->res_wt, sds->fluidmat_wt, NULL);
+		wt_density_grid = OpenVDB_export_grid_fl(writer, "density", dens, sds->res_wt, sds->fluidmat_wt, sds->clipping, NULL);
 		clip_grid = wt_density_grid;
 
 		if (flame && fluid_fields & SM_ACTIVE_FIRE) {
-			OpenVDB_export_grid_fl(writer, "flame", flame, sds->res_wt, sds->fluidmat_wt, wt_density_grid);
-			OpenVDB_export_grid_fl(writer, "fuel", fuel, sds->res_wt, sds->fluidmat_wt, wt_density_grid);
-			OpenVDB_export_grid_fl(writer, "react", react, sds->res_wt, sds->fluidmat_wt, wt_density_grid);
+			OpenVDB_export_grid_fl(writer, "flame", flame, sds->res_wt, sds->fluidmat_wt, sds->clipping, wt_density_grid);
+			OpenVDB_export_grid_fl(writer, "fuel", fuel, sds->res_wt, sds->fluidmat_wt, sds->clipping, wt_density_grid);
+			OpenVDB_export_grid_fl(writer, "react", react, sds->res_wt, sds->fluidmat_wt, sds->clipping, wt_density_grid);
 		}
 
 		if (r && fluid_fields & SM_ACTIVE_COLORS) {
-			OpenVDB_export_grid_vec(writer, "color", r, g, b, sds->res_wt, sds->fluidmat_wt, VEC_INVARIANT, true, wt_density_grid);
+			OpenVDB_export_grid_vec(writer, "color", r, g, b, sds->res_wt, sds->fluidmat_wt, VEC_INVARIANT, true, sds->clipping, wt_density_grid);
 		}
 
-		OpenVDB_export_grid_vec(writer, "texture coordinates", tcu, tcv, tcw, sds->res, sds->fluidmat, VEC_INVARIANT, false, wt_density_grid);
-		OpenVDB_export_grid_vec(writer, "texture coordinates 2", tcu2, tcv2, tcw2, sds->res, sds->fluidmat, VEC_INVARIANT, false, wt_density_grid);
+		OpenVDB_export_grid_vec(writer, "texture coordinates", tcu, tcv, tcw, sds->res, sds->fluidmat, VEC_INVARIANT, false, sds->clipping, wt_density_grid);
+		OpenVDB_export_grid_vec(writer, "texture coordinates 2", tcu2, tcv2, tcw2, sds->res, sds->fluidmat, VEC_INVARIANT, false, sds->clipping, wt_density_grid);
 	}
 
 	if (sds->fluid) {
@@ -1102,31 +1103,31 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
 		OpenVDBWriter_add_meta_fl(writer, "blender/smoke/dt", dt);
 
 		const char *name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "density" : "density low";
-		density_grid = OpenVDB_export_grid_fl(writer, name, dens, sds->res, sds->fluidmat, NULL);
+		density_grid = OpenVDB_export_grid_fl(writer, name, dens, sds->res, sds->fluidmat, sds->clipping, NULL);
 		clip_grid = (sds->flags & MOD_SMOKE_NOISE) ? clip_grid : density_grid;
 
-		OpenVDB_export_grid_fl(writer, "shadow", shadow, sds->res, sds->fluidmat, NULL);
+		OpenVDB_export_grid_fl(writer, "shadow", shadow, sds->res, sds->fluidmat, sds->clipping, NULL);
 
 		if (heat && fluid_fields & SM_ACTIVE_HEAT) {
-			OpenVDB_export_grid_fl(writer, "heat", heat, sds->res, sds->fluidmat, clip_grid);
+			OpenVDB_export_grid_fl(writer, "heat", heat, sds->res, sds->fluidmat, sds->clipping, clip_grid);
 		}
 
 		if (flame && fluid_fields & SM_ACTIVE_FIRE) {
 			name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "flame" : "flame low";
-			OpenVDB_export_grid_fl(writer, name, flame, sds->res, sds->fluidmat, density_grid);
+			OpenVDB_export_grid_fl(writer, name, flame, sds->res, sds->fluidmat, sds->clipping, density_grid);
 			name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "fuel" : "fuel low";
-			OpenVDB_export_grid_fl(writer, name, fuel, sds->res, sds->fluidmat, density_grid);
+			OpenVDB_export_grid_fl(writer, name, fuel, sds->res, sds->fluidmat, sds->clipping, density_grid);
 			name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "react" : "react low";
-			OpenVDB_export_grid_fl(writer, name, react, sds->res, sds->fluidmat, density_grid);
+			OpenVDB_export_grid_fl(writer, name, react, sds->res, sds->fluidmat, sds->clipping, density_grid);
 		}
 
 		if (r && fluid_fields & SM_ACTIVE_COLORS) {
 			name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "color" : "color low";
-			OpenVDB_export_grid_vec(writer, name, r, g, b, sds->res, sds->fluidmat, VEC_INVARIANT, true, density_grid);
+			OpenVDB_export_grid_vec(writer, name, r, g, b, sds->res, sds->fluidmat, VEC_INVARIANT, true, sds->clipping, density_grid);
 		}
 
-		OpenVDB_export_grid_vec(writer, "velocity", vx, vy, vz, sds->res, sds->fluidmat, VEC_CONTRAVARIANT_RELATIVE, false, clip_grid);
-		OpenVDB_export_grid_int(writer, "obstacles", obstacles, sds->res, sds->fluidmat, NULL);
+		OpenVDB_export_grid_vec(writer, "velocity", vx, vy, vz, sds->res, sds->fluidmat, VEC_CONTRAVARIANT_RELATIVE, false, sds->clipping, clip_grid);
+		OpenVDB_export_grid_ch(writer, "obstacles", obstacles, sds->res, sds->fluidmat, sds->clipping, NULL);
 	}
 
 	return 1;
@@ -1209,6 +1210,7 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 		OpenVDB_import_grid_fl(reader, "shadow", &shadow, sds->res);
 
 		const char *name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "density" : "density low";
+
 		OpenVDB_import_grid_fl(reader, name, &dens, sds->res);
 
 		if (heat && cache_fields & SM_ACTIVE_HEAT) {
@@ -2415,8 +2417,8 @@ static void ptcache_data_copy(void *from[], void *to[])
 {
 	int i;
 	for (i=0; i<BPHYS_TOT_DATA; i++) {
-	/* note, durian file 03.4b_comp crashes if to[i] is not tested
-	 * its NULL, not sure if this should be fixed elsewhere but for now its needed */
+		/* note, durian file 03.4b_comp crashes if to[i] is not tested
+		 * its NULL, not sure if this should be fixed elsewhere but for now its needed */
 		if (from[i] && to[i])
 			memcpy(to[i], from[i], ptcache_data_size[i]);
 	}

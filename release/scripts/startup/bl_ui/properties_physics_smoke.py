@@ -111,6 +111,8 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
             else:
                 col.label(text="Gravity:")
                 col.prop(domain, "gravity", text="")
+            # TODO (sebas): Clipping var useful for manta openvdb caching?
+            # col.prop(domain, "clipping")
 
             if domain.smoke_domain_type in {'GAS'}:
                 split = layout.split()

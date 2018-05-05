@@ -1926,14 +1926,15 @@ static void samevolume_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *
 	bSameVolumeConstraint *data = con->data;
 
 	float volume = data->volume;
-	float fac = 1.0f;
+	float fac = 1.0f, total_scale;
 	float obsize[3];
 
 	mat4_to_size(obsize, cob->matrix);
 	
 	/* calculate normalizing scale factor for non-essential values */
-	if (obsize[data->flag] != 0) 
-		fac = sqrtf(volume / obsize[data->flag]);
+	total_scale = obsize[0] * obsize[1] * obsize[2];
+	if (total_scale != 0)
+		fac = sqrtf(volume / total_scale);
 	
 	/* apply scaling factor to the channels not being kept */
 	switch (data->flag) {
@@ -2640,7 +2641,7 @@ static void distlimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *t
 			/* if soft-distance is enabled, start fading once owner is dist+softdist from the target */
 			else if (data->flag & LIMITDIST_USESOFT) {
 				if (dist <= (data->dist + data->soft)) {
-					
+					/* pass */
 				}
 			}
 		}
@@ -3507,9 +3508,9 @@ static void shrinkwrap_get_tarmat(bConstraint *con, bConstraintOb *cob, bConstra
 					nearest.dist_sq = FLT_MAX;
 
 					if (scon->shrinkType == MOD_SHRINKWRAP_NEAREST_VERTEX)
-						bvhtree_from_mesh_verts(&treeData, target, 0.0, 2, 6);
+						bvhtree_from_mesh_get(&treeData, target, BVHTREE_FROM_VERTS, 2);
 					else
-						bvhtree_from_mesh_looptri(&treeData, target, 0.0, 2, 6);
+						bvhtree_from_mesh_get(&treeData, target, BVHTREE_FROM_LOOPTRI, 2);
 					
 					if (treeData.tree == NULL) {
 						fail = true;
@@ -3561,15 +3562,14 @@ static void shrinkwrap_get_tarmat(bConstraint *con, bConstraintOb *cob, bConstra
 						break;
 					}
 
-					bvhtree_from_mesh_looptri(&treeData, target, scon->dist, 4, 6);
+					bvhtree_from_mesh_get(&treeData, target, BVHTREE_FROM_LOOPTRI, 4);
 					if (treeData.tree == NULL) {
 						fail = true;
 						break;
 					}
 
-					
-					if (BKE_shrinkwrap_project_normal(0, co, no, &transform, treeData.tree, &hit,
-					                                  treeData.raycast_callback, &treeData) == false)
+					if (BKE_shrinkwrap_project_normal(0, co, no, scon->dist, &transform, treeData.tree,
+					                                  &hit, treeData.raycast_callback, &treeData) == false)
 					{
 						fail = true;
 						break;
@@ -4177,7 +4177,7 @@ static void followtrack_evaluate(bConstraint *con, bConstraintOb *cob, ListBase 
 					sub_v3_v3v3(ray_nor, ray_end, ray_start);
 					normalize_v3(ray_nor);
 
-					bvhtree_from_mesh_looptri(&treeData, target, 0.0f, 4, 6);
+					bvhtree_from_mesh_get(&treeData, target, BVHTREE_FROM_LOOPTRI, 4);
 
 					hit.dist = BVH_RAYCAST_DIST_MAX;
 					hit.index = -1;

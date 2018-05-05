@@ -757,6 +757,7 @@ void BKE_libblock_management_main_add(Main *bmain, void *idv)
 	new_id(lb, id, NULL);
 	/* alphabetic insertion: is in new_id */
 	id->tag &= ~(LIB_TAG_NO_MAIN | LIB_TAG_NO_USER_REFCOUNT);
+	bmain->is_memfile_undo_written = false;
 	BKE_main_unlock(bmain);
 }
 
@@ -776,6 +777,7 @@ void BKE_libblock_management_main_remove(Main *bmain, void *idv)
 	BKE_main_lock(bmain);
 	BLI_remlink(lb, id);
 	id->tag |= LIB_TAG_NO_MAIN;
+	bmain->is_memfile_undo_written = false;
 	BKE_main_unlock(bmain);
 }
 
@@ -1138,6 +1140,7 @@ void *BKE_libblock_alloc(Main *bmain, short type, const char *name, const int fl
 			BKE_main_lock(bmain);
 			BLI_addtail(lb, id);
 			new_id(lb, id, name);
+			bmain->is_memfile_undo_written = false;
 			/* alphabetic insertion: is in new_id */
 			BKE_main_unlock(bmain);
 
@@ -1323,6 +1326,7 @@ void BKE_libblock_copy_ex(Main *bmain, const ID *id, ID **r_newid, const int fla
 	}
 
 	/* the duplicate should get a copy of the animdata */
+	BLI_assert((flag & LIB_ID_COPY_ACTIONS) == 0 || (flag & LIB_ID_CREATE_NO_MAIN) == 0);
 	id_copy_animdata(bmain, new_id, (flag & LIB_ID_COPY_ACTIONS) != 0 && (flag & LIB_ID_CREATE_NO_MAIN) == 0);
 
 	if ((flag & LIB_ID_CREATE_NO_DEG_TAG) == 0 && (flag & LIB_ID_CREATE_NO_MAIN) == 0) {

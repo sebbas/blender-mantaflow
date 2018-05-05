@@ -38,9 +38,10 @@
 #include "BLT_translation.h"
 
 #include "BKE_animsys.h"
-#include "BKE_global.h"
 #include "BKE_sequencer.h"
 #include "BKE_sound.h"
+
+#include "IMB_metadata.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -75,6 +76,7 @@ const EnumPropertyItem rna_enum_sequence_modifier_type_items[] = {
 
 #include "BKE_report.h"
 #include "BKE_idprop.h"
+#include "BKE_movieclip.h"
 
 #include "WM_api.h"
 
@@ -587,6 +589,27 @@ static IDProperty *rna_Sequence_idprops(PointerRNA *ptr, bool create)
 	return seq->prop;
 }
 
+static PointerRNA rna_MovieSequence_metadata_get(Sequence *seq)
+{
+	if (seq == NULL || seq->anims.first == NULL) {
+		return PointerRNA_NULL;
+	}
+
+	StripAnim *sanim = seq->anims.first;
+	if (sanim->anim == NULL) {
+		return PointerRNA_NULL;
+	}
+
+	IDProperty *metadata = IMB_anim_load_metadata(sanim->anim);
+	if (metadata == NULL) {
+		return PointerRNA_NULL;
+	}
+
+	PointerRNA ptr;
+	RNA_pointer_create(NULL, &RNA_IDPropertyWrapPtr, metadata, &ptr);
+	return ptr;
+}
+
 static PointerRNA rna_SequenceEditor_meta_stack_get(CollectionPropertyIterator *iter)
 {
 	ListBaseIterator *internal = &iter->internal.listbase;
@@ -1083,6 +1106,13 @@ static void rna_Sequence_modifier_clear(Sequence *seq, bContext *C)
 	BKE_sequence_invalidate_cache_for_modifier(scene, seq);
 
 	WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, NULL);
+}
+
+static float rna_Sequence_fps_get(PointerRNA *ptr)
+{
+	Scene *scene = (Scene *)ptr->id.data;
+	Sequence *seq = (Sequence *)(ptr->data);
+	return BKE_sequence_get_fps(scene, seq);
 }
 
 #else
@@ -1840,6 +1870,16 @@ static void rna_def_color_management(StructRNA *srna)
 	RNA_def_property_ui_text(prop, "Color Space Settings", "Input color space settings");
 }
 
+static void rna_def_movie_types(StructRNA *srna)
+{
+	PropertyRNA *prop;
+
+	prop = RNA_def_property(srna, "fps", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_ui_text(prop, "FPS", "Frames per second");
+	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+	RNA_def_property_float_funcs(prop, "rna_Sequence_fps_get", NULL, NULL);
+}
+
 static void rna_def_image(BlenderRNA *brna)
 {
 	StructRNA *srna;
@@ -1939,13 +1979,16 @@ static void rna_def_scene(BlenderRNA *brna)
 	rna_def_filter_video(srna);
 	rna_def_proxy(srna);
 	rna_def_input(srna);
+	rna_def_movie_types(srna);
 }
 
 static void rna_def_movie(BlenderRNA *brna)
 {
 	StructRNA *srna;
 	PropertyRNA *prop;
-	
+	FunctionRNA *func;
+	PropertyRNA *parm;
+
 	srna = RNA_def_struct(brna, "MovieSequence", "Sequence");
 	RNA_def_struct_ui_text(srna, "Movie Sequence", "Sequence strip to load a video");
 	RNA_def_struct_sdna(srna, "Sequence");
@@ -1977,6 +2020,14 @@ static void rna_def_movie(BlenderRNA *brna)
 	                              "rna_Sequence_filepath_set");
 	RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_filepath_update");
 
+	/* metadata */
+	func = RNA_def_function(srna, "metadata", "rna_MovieSequence_metadata_get");
+	RNA_def_function_ui_description(func, "Retrieve metadata of the movie file");
+	/* return type */
+	parm = RNA_def_pointer(func, "metadata", "IDPropertyWrapPtr", "", "Dict-like object containing the metadata");
+	RNA_def_parameter_flags(parm, 0, PARM_RNAPTR);
+	RNA_def_function_return(func, parm);
+
 	/* multiview */
 	prop = RNA_def_property(srna, "use_multiview", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", SEQ_USE_VIEWS);
@@ -1999,6 +2050,7 @@ static void rna_def_movie(BlenderRNA *brna)
 	rna_def_proxy(srna);
 	rna_def_input(srna);
 	rna_def_color_management(srna);
+	rna_def_movie_types(srna);
 }
 
 static void rna_def_movieclip(BlenderRNA *brna)
@@ -2024,6 +2076,7 @@ static void rna_def_movieclip(BlenderRNA *brna)
 
 	rna_def_filter_video(srna);
 	rna_def_input(srna);
+	rna_def_movie_types(srna);
 }
 
 static void rna_def_mask(BlenderRNA *brna)

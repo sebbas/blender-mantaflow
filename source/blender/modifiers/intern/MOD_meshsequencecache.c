@@ -33,7 +33,6 @@
 #include "BKE_cachefile.h"
 #include "BKE_DerivedMesh.h"
 #include "BKE_cdderivedmesh.h"
-#include "BKE_global.h"
 #include "BKE_library.h"
 #include "BKE_library_query.h"
 #include "BKE_scene.h"
@@ -45,6 +44,7 @@
 
 #ifdef WITH_ALEMBIC
 #	include "ABC_alembic.h"
+#	include "BKE_global.h"
 #endif
 
 static void initData(ModifierData *md)
@@ -74,10 +74,6 @@ static void copyData(ModifierData *md, ModifierData *target)
 static void freeData(ModifierData *md)
 {
 	MeshSeqCacheModifierData *mcmd = (MeshSeqCacheModifierData *) md;
-
-	if (mcmd->cache_file) {
-		id_us_min(&mcmd->cache_file->id);
-	}
 
 	if (mcmd->reader) {
 #ifdef WITH_ALEMBIC

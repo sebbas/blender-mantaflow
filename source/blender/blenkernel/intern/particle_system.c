@@ -76,7 +76,6 @@
 #include "BKE_effect.h"
 #include "BKE_library_query.h"
 #include "BKE_particle.h"
-#include "BKE_global.h"
 
 #include "BKE_DerivedMesh.h"
 #include "BKE_object.h"
@@ -93,6 +92,7 @@
 #include "PIL_time.h"
 
 #include "RE_shader_ext.h"
+#include "DEG_depsgraph.h"
 
 /* fluid sim particle import */
 #ifdef WITH_MOD_FLUID
@@ -541,24 +541,26 @@ static void initialize_particle_texture(ParticleSimulationData *sim, ParticleDat
 	psys_get_texture(sim, pa, &ptex, PAMAP_INIT, 0.f);
 	
 	switch (part->type) {
-	case PART_EMITTER:
-		if (ptex.exist < psys_frand(psys, p+125))
-			pa->flag |= PARS_UNEXIST;
-		pa->time = part->sta + (part->end - part->sta)*ptex.time;
-		break;
-	case PART_HAIR:
-		if (ptex.exist < psys_frand(psys, p+125))
-			pa->flag |= PARS_UNEXIST;
-		pa->time = 0.f;
-		break;
-	case PART_FLUID:
-		break;
-	case PART_MANTA_FLIP:
-	case PART_MANTA_DROP:
-	case PART_MANTA_BUBBLE:
-	case PART_MANTA_FLOAT:
-	case PART_MANTA_TRACER:
-		break;
+		case PART_EMITTER:
+			if (ptex.exist < psys_frand(psys, p + 125)) {
+				pa->flag |= PARS_UNEXIST;
+			}
+			pa->time = part->sta + (part->end - part->sta)*ptex.time;
+			break;
+		case PART_HAIR:
+			if (ptex.exist < psys_frand(psys, p + 125)) {
+				pa->flag |= PARS_UNEXIST;
+			}
+			pa->time = 0.f;
+			break;
+		case PART_FLUID:
+			break;
+		case PART_MANTA_FLIP:
+		case PART_MANTA_DROP:
+		case PART_MANTA_BUBBLE:
+		case PART_MANTA_FLOAT:
+		case PART_MANTA_TRACER:
+			break;
 	}
 }
 
@@ -1071,8 +1073,10 @@ void reset_particle(ParticleSimulationData *sim, ParticleData *pa, float dtime, 
 
 	pa->dietime = pa->time + pa->lifetime;
 
-	if (sim->psys->pointcache && sim->psys->pointcache->flag & PTCACHE_BAKED &&
-		sim->psys->pointcache->mem_cache.first) {
+	if ((sim->psys->pointcache) &&
+	    (sim->psys->pointcache->flag & PTCACHE_BAKED) &&
+	    (sim->psys->pointcache->mem_cache.first))
+	{
 		float dietime = psys_get_dietime_from_cache(sim->psys->pointcache, p);
 		pa->dietime = MIN2(pa->dietime, dietime);
 	}
@@ -3696,11 +3700,11 @@ static void dynamics_step(ParticleSimulationData *sim, float cfra)
 				/* Note that we could avoid copying sphdata for each thread here (it's only read here),
 				 * but doubt this would gain us anything except confusion... */
 				{
-				ParallelRangeSettings settings;
-				BLI_parallel_range_settings_defaults(&settings);
-				settings.use_threading = (psys->totpart > 100);
-				settings.userdata_chunk = &sphdata;
-				settings.userdata_chunk_size = sizeof(sphdata);
+					ParallelRangeSettings settings;
+					BLI_parallel_range_settings_defaults(&settings);
+					settings.use_threading = (psys->totpart > 100);
+					settings.userdata_chunk = &sphdata;
+					settings.userdata_chunk_size = sizeof(sphdata);
 					BLI_task_parallel_range(
 					        0, psys->totpart,
 					        &task_data,
@@ -3710,11 +3714,11 @@ static void dynamics_step(ParticleSimulationData *sim, float cfra)
 
 				/* do global forces & effectors */
 				{
-				ParallelRangeSettings settings;
-				BLI_parallel_range_settings_defaults(&settings);
-				settings.use_threading = (psys->totpart > 100);
-				settings.userdata_chunk = &sphdata;
-				settings.userdata_chunk_size = sizeof(sphdata);
+					ParallelRangeSettings settings;
+					BLI_parallel_range_settings_defaults(&settings);
+					settings.use_threading = (psys->totpart > 100);
+					settings.userdata_chunk = &sphdata;
+					settings.userdata_chunk_size = sizeof(sphdata);
 					BLI_task_parallel_range(
 					        0, psys->totpart,
 					        &task_data,
@@ -4637,8 +4641,6 @@ void BKE_particle_system_eval_init(EvaluationContext *UNUSED(eval_ctx),
                                    Scene *scene,
                                    Object *ob)
 {
-	if (G.debug & G_DEBUG_DEPSGRAPH_EVAL) {
-		printf("%s on %s\n", __func__, ob->id.name);
-	}
+	DEG_debug_print_eval(__func__, ob->id.name, ob);
 	BKE_ptcache_object_reset(scene, ob, PTCACHE_RESET_DEPSGRAPH);
 }

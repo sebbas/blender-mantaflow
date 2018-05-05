@@ -2721,7 +2721,7 @@ static int mouse_anim_channels(bContext *C, bAnimContext *ac, int channel_index,
 
 				/* ensure we exit editmode on whatever object was active before to avoid getting stuck there - T48747 */
 				if (ob != sce->obedit)
-					ED_object_editmode_exit(C, EM_FREEDATA | EM_FREEUNDO | EM_WAITCURSOR | EM_DO_UNDO);
+					ED_object_editmode_exit(C, EM_FREEDATA | EM_WAITCURSOR | EM_DO_UNDO);
 
 				notifierFlags |= (ND_ANIMCHAN | NA_SELECTED);
 			}
@@ -2812,7 +2812,7 @@ static int mouse_anim_channels(bContext *C, bAnimContext *ac, int channel_index,
 				
 				/* deselect all other channels */
 				ANIM_deselect_anim_channels(ac, ac->data, ac->datatype, false, ACHANNEL_SETFLAG_CLEAR);
-				if (pchan) ED_pose_de_selectall(ob, SEL_DESELECT, false);
+				if (pchan) ED_pose_deselect_all(ob, SEL_DESELECT, false);
 				
 				/* only select channels in group and group itself */
 				for (fcu = agrp->channels.first; fcu && fcu->grp == agrp; fcu = fcu->next)
@@ -2822,7 +2822,7 @@ static int mouse_anim_channels(bContext *C, bAnimContext *ac, int channel_index,
 			else {
 				/* select group by itself */
 				ANIM_deselect_anim_channels(ac, ac->data, ac->datatype, false, ACHANNEL_SETFLAG_CLEAR);
-				if (pchan) ED_pose_de_selectall(ob, SEL_DESELECT, false);
+				if (pchan) ED_pose_deselect_all(ob, SEL_DESELECT, false);
 				
 				agrp->flag |= AGRP_SELECTED;
 			}
@@ -3085,7 +3085,7 @@ static bool select_anim_channel_keys(bAnimContext *ac, int channel_index, bool e
 			for (ale = anim_data.first; ale; ale = ale->next) {
 				FCurve *fcu_inner = (FCurve *)ale->key_data;
 
-				if (fcu_inner) {
+				if (fcu_inner != NULL && fcu_inner->bezt != NULL) {
 					for (i = 0, bezt = fcu_inner->bezt; i < fcu_inner->totvert; i++, bezt++) {
 						bezt->f2 = bezt->f1 = bezt->f3 = 0;
 					}

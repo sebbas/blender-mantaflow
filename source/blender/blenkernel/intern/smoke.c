@@ -72,7 +72,6 @@
 #include "BKE_customdata.h"
 #include "BKE_deform.h"
 #include "BKE_DerivedMesh.h"
-#include "BKE_global.h"
 #include "BKE_effect.h"
 #include "BKE_main.h"
 #include "BKE_modifier.h"
@@ -587,6 +586,8 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 
 			smd->domain->coba = NULL;
 			smd->domain->coba_field = FLUID_FIELD_DENSITY;
+
+			smd->domain->clipping = 1e-3f;
 		}
 		else if (smd->type & MOD_SMOKE_TYPE_FLOW)
 		{
@@ -955,7 +956,7 @@ static void obstacles_from_derivedmesh(
 			copy_v3_v3(&scs->verts_old[i * 3], co);
 		}
 
-		if (bvhtree_from_mesh_looptri(&treeData, dm, 0.0f, 4, 6)) {
+		if (bvhtree_from_mesh_get(&treeData, dm, BVHTREE_FROM_LOOPTRI, 4)) {
 			ObstaclesFromDMData data = {
 			    .sds = sds, .mvert = mvert, .mloop = mloop, .looptri = looptri,
 			    .tree = &treeData, .has_velocity = has_velocity, .vert_vel = vert_vel,
@@ -1125,97 +1126,6 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 }
 
 /**********************************************************
- *	Object subframe update method from dynamicpaint.c
- **********************************************************/
-
-/* set "ignore cache" flag for all caches on this object */
-static void object_cacheIgnoreClear(Object *ob, bool state)
-{
-	ListBase pidlist;
-	PTCacheID *pid;
-	BKE_ptcache_ids_from_object(&pidlist, ob, NULL, 0);
-
-	for (pid = pidlist.first; pid; pid = pid->next) {
-		if (pid->cache) {
-			if (state)
-				pid->cache->flag |= PTCACHE_IGNORE_CLEAR;
-			else
-				pid->cache->flag &= ~PTCACHE_IGNORE_CLEAR;
-		}
-	}
-
-	BLI_freelistN(&pidlist);
-}
-
-static bool subframe_updateObject(Scene *scene, Object *ob, int update_mesh, int parent_recursion, float frame, bool for_render)
-{
-	SmokeModifierData *smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
-	bConstraint *con;
-
-	/* if other is dynamic paint canvas, don't update */
-	if (smd && (smd->type & MOD_SMOKE_TYPE_DOMAIN))
-		return true;
-
-	/* if object has parents, update them too */
-	if (parent_recursion) {
-		int recursion = parent_recursion - 1;
-		bool is_domain = false;
-		if (ob->parent) is_domain |= subframe_updateObject(scene, ob->parent, 0, recursion, frame, for_render);
-		if (ob->track) is_domain |= subframe_updateObject(scene, ob->track, 0, recursion, frame, for_render);
-
-		/* skip subframe if object is parented
-		 *  to vertex of a dynamic paint canvas */
-		if (is_domain && (ob->partype == PARVERT1 || ob->partype == PARVERT3))
-			return false;
-
-		/* also update constraint targets */
-		for (con = ob->constraints.first; con; con = con->next) {
-			const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(con);
-			ListBase targets = {NULL, NULL};
-
-			if (cti && cti->get_constraint_targets) {
-				bConstraintTarget *ct;
-				cti->get_constraint_targets(con, &targets);
-				for (ct = targets.first; ct; ct = ct->next) {
-					if (ct->tar)
-						subframe_updateObject(scene, ct->tar, 0, recursion, frame, for_render);
-				}
-				/* free temp targets */
-				if (cti->flush_constraint_targets)
-					cti->flush_constraint_targets(con, &targets, 0);
-			}
-		}
-	}
-
-	/* was originally OB_RECALC_ALL - TODO - which flags are really needed??? */
-	ob->recalc |= OB_RECALC_OB | OB_RECALC_DATA | OB_RECALC_TIME;
-	BKE_animsys_evaluate_animdata(scene, &ob->id, ob->adt, frame, ADT_RECALC_ANIM);
-	if (update_mesh) {
-		/* ignore cache clear during subframe updates
-		 *  to not mess up cache validity */
-		object_cacheIgnoreClear(ob, 1);
-		BKE_object_handle_update(G.main->eval_ctx, scene, ob);
-		object_cacheIgnoreClear(ob, 0);
-	}
-	else
-		BKE_object_where_is_calc_time(scene, ob, frame);
-
-	/* for curve following objects, parented curve has to be updated too */
-	if (ob->type == OB_CURVE) {
-		Curve *cu = ob->data;
-		BKE_animsys_evaluate_animdata(scene, &cu->id, cu->adt, frame, ADT_RECALC_ANIM);
-	}
-	/* and armatures... */
-	if (ob->type == OB_ARMATURE) {
-		bArmature *arm = ob->data;
-		BKE_animsys_evaluate_animdata(scene, &arm->id, arm->adt, frame, ADT_RECALC_ANIM);
-		BKE_pose_where_is(scene, ob);
-	}
-
-	return false;
-}
-
-/**********************************************************
  *	Flow emission code
  **********************************************************/
 
@@ -1352,8 +1262,9 @@ static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_mult
 
 				/* initialize with first input if in range */
 				if (x >= em1.min[0] && x < em1.max[0] &&
-					y >= em1.min[1] && y < em1.max[1] &&
-					z >= em1.min[2] && z < em1.max[2]) {
+				    y >= em1.min[1] && y < em1.max[1] &&
+				    z >= em1.min[2] && z < em1.max[2])
+				{
 					int index_in = smoke_get_index(x - em1.min[0], em1.res[0], y - em1.min[1], em1.res[1], z - em1.min[2]);
 
 					/* values */
@@ -1365,8 +1276,9 @@ static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_mult
 
 				/* apply second input if in range */
 				if (x >= em2->min[0] && x < em2->max[0] &&
-					y >= em2->min[1] && y < em2->max[1] &&
-					z >= em2->min[2] && z < em2->max[2]) {
+				    y >= em2->min[1] && y < em2->max[1] &&
+				    z >= em2->min[2] && z < em2->max[2])
+				{
 					int index_in = smoke_get_index(x - em2->min[0], em2->res[0], y - em2->min[1], em2->res[1], z - em2->min[2]);
 
 					/* values */
@@ -1398,8 +1310,9 @@ static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_mult
 
 					/* initialize with first input if in range */
 					if (x >= em1.hmin[0] && x < em1.hmax[0] &&
-						y >= em1.hmin[1] && y < em1.hmax[1] &&
-						z >= em1.hmin[2] && z < em1.hmax[2]) {
+					    y >= em1.hmin[1] && y < em1.hmax[1] &&
+					    z >= em1.hmin[2] && z < em1.hmax[2])
+					{
 						int index_in = smoke_get_index(x - em1.hmin[0], em1.hres[0], y - em1.hmin[1], em1.hres[1], z - em1.hmin[2]);
 						/* values */
 						output->influence_high[index_out] = em1.influence_high[index_in];
@@ -1407,8 +1320,9 @@ static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_mult
 
 					/* apply second input if in range */
 					if (x >= em2->hmin[0] && x < em2->hmax[0] &&
-						y >= em2->hmin[1] && y < em2->hmax[1] &&
-						z >= em2->hmin[2] && z < em2->hmax[2]) {
+					    y >= em2->hmin[1] && y < em2->hmax[1] &&
+					    z >= em2->hmin[2] && z < em2->hmax[2])
+					{
 						int index_in = smoke_get_index(x - em2->hmin[0], em2->hres[0], y - em2->hmin[1], em2->hres[1], z - em2->hmin[2]);
 
 						/* values */
@@ -2037,7 +1951,7 @@ static void emit_from_derivedmesh(Object *flow_ob, SmokeDomainSettings *sds, Smo
 			res[i] = em->res[i] * hires_multiplier;
 		}
 
-		if (bvhtree_from_mesh_looptri(&treeData, dm, 0.0f, 4, 6)) {
+		if (bvhtree_from_mesh_get(&treeData, dm, BVHTREE_FROM_LOOPTRI, 4)) {
 			const float hr = 1.0f / ((float)hires_multiplier);
 
 			EmitFromDMData data = {

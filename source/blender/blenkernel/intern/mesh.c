@@ -1100,7 +1100,7 @@ int BKE_mesh_nurbs_displist_to_mdata(
 	MLoopUV *mloopuv = NULL;
 	MEdge *medge;
 	const float *data;
-	int a, b, ofs, vertcount, startvert, totvert = 0, totedge = 0, totloop = 0, totvlak = 0;
+	int a, b, ofs, vertcount, startvert, totvert = 0, totedge = 0, totloop = 0, totpoly = 0;
 	int p1, p2, p3, p4, *index;
 	const bool conv_polys = ((CU_DO_2DFILL(cu) == false) ||  /* 2d polys are filled with DL_INDEX3 displists */
 	                         (ob->type == OB_SURF));  /* surf polys are never filled */
@@ -1122,14 +1122,14 @@ int BKE_mesh_nurbs_displist_to_mdata(
 			int tot;
 			totvert += dl->parts * dl->nr;
 			tot = (dl->parts - 1 + ((dl->flag & DL_CYCL_V) == 2)) * (dl->nr - 1 + (dl->flag & DL_CYCL_U));
-			totvlak += tot;
+			totpoly += tot;
 			totloop += tot * 4;
 		}
 		else if (dl->type == DL_INDEX3) {
 			int tot;
 			totvert += dl->nr;
 			tot = dl->parts;
-			totvlak += tot;
+			totpoly += tot;
 			totloop += tot * 3;
 		}
 		dl = dl->next;
@@ -1143,11 +1143,11 @@ int BKE_mesh_nurbs_displist_to_mdata(
 
 	*r_allvert = mvert = MEM_calloc_arrayN(totvert, sizeof(MVert), "nurbs_init mvert");
 	*r_alledge = medge = MEM_calloc_arrayN(totedge, sizeof(MEdge), "nurbs_init medge");
-	*r_allloop = mloop = MEM_calloc_arrayN(totvlak, 4 * sizeof(MLoop), "nurbs_init mloop"); // totloop
-	*r_allpoly = mpoly = MEM_calloc_arrayN(totvlak, sizeof(MPoly), "nurbs_init mloop");
+	*r_allloop = mloop = MEM_calloc_arrayN(totpoly, 4 * sizeof(MLoop), "nurbs_init mloop"); // totloop
+	*r_allpoly = mpoly = MEM_calloc_arrayN(totpoly, sizeof(MPoly), "nurbs_init mloop");
 
 	if (r_alluv)
-		*r_alluv = mloopuv = MEM_calloc_arrayN(totvlak, 4 * sizeof(MLoopUV), "nurbs_init mloopuv");
+		*r_alluv = mloopuv = MEM_calloc_arrayN(totpoly, 4 * sizeof(MLoopUV), "nurbs_init mloopuv");
 	
 	/* verts and faces */
 	vertcount = 0;
@@ -1326,13 +1326,14 @@ int BKE_mesh_nurbs_displist_to_mdata(
 
 		dl = dl->next;
 	}
-	
-	if (totvlak) {
-		make_edges_mdata_extend(r_alledge, &totedge,
-		                        *r_allpoly, *r_allloop, totvlak);
+
+	if (totpoly) {
+		make_edges_mdata_extend(
+		        r_alledge, &totedge,
+		        *r_allpoly, *r_allloop, totpoly);
 	}
 
-	*r_totpoly = totvlak;
+	*r_totpoly = totpoly;
 	*r_totloop = totloop;
 	*r_totedge = totedge;
 	*r_totvert = totvert;
@@ -2165,6 +2166,8 @@ static int split_faces_prepare_new_verts(
 	MLoop *ml = mloop;
 	MLoopNorSpace **lnor_space = lnors_spacearr->lspacearr;
 
+	BLI_assert(lnors_spacearr->data_type == MLNOR_SPACEARR_LOOP_INDEX);
+
 	for (int loop_idx = 0; loop_idx < num_loops; loop_idx++, ml++, lnor_space++) {
 		if (!BLI_BITMAP_TEST(done_loops, loop_idx)) {
 			const int vert_idx = ml->v;
@@ -2174,20 +2177,21 @@ static int split_faces_prepare_new_verts(
 
 			BLI_assert(*lnor_space);
 
-			if ((*lnor_space)->loops) {
+			if ((*lnor_space)->flags & MLNOR_SPACE_IS_SINGLE) {
+				/* Single loop in this fan... */
+				BLI_assert(GET_INT_FROM_POINTER((*lnor_space)->loops) == loop_idx);
+				BLI_BITMAP_ENABLE(done_loops, loop_idx);
+				if (vert_used) {
+					ml->v = new_vert_idx;
+				}
+			}
+			else {
 				for (LinkNode *lnode = (*lnor_space)->loops; lnode; lnode = lnode->next) {
 					const int ml_fan_idx = GET_INT_FROM_POINTER(lnode->link);
 					BLI_BITMAP_ENABLE(done_loops, ml_fan_idx);
 					if (vert_used) {
 						mloop[ml_fan_idx].v = new_vert_idx;
 					}
-				}
-			}
-			else {
-				/* Single loop in this fan... */
-				BLI_BITMAP_ENABLE(done_loops, loop_idx);
-				if (vert_used) {
-					ml->v = new_vert_idx;
 				}
 			}
 
@@ -2426,7 +2430,7 @@ Mesh *BKE_mesh_new_from_object(
 
 			/* if getting the original caged mesh, delete object modifiers */
 			if (cage)
-				BKE_object_free_modifiers(tmpobj);
+				BKE_object_free_modifiers(tmpobj, 0);
 
 			/* copies the data */
 			copycu = tmpobj->data = BKE_curve_copy(bmain, (Curve *) ob->data);
@@ -2494,7 +2498,7 @@ Mesh *BKE_mesh_new_from_object(
 				ListBase disp = {NULL, NULL};
 				/* TODO(sergey): This is gonna to work for until EvaluationContext
 				 *               only contains for_render flag. As soon as CoW is
-				 *               implemented, this is to be rethinked.
+				 *               implemented, this is to be rethought.
 				 */
 				EvaluationContext eval_ctx;
 				DEG_evaluation_context_init(&eval_ctx, DAG_EVAL_RENDER);
@@ -2633,9 +2637,7 @@ Mesh *BKE_mesh_new_from_object(
 void BKE_mesh_eval_geometry(EvaluationContext *UNUSED(eval_ctx),
                             Mesh *mesh)
 {
-	if (G.debug & G_DEBUG_DEPSGRAPH_EVAL) {
-		printf("%s on %s\n", __func__, mesh->id.name);
-	}
+	DEG_debug_print_eval(__func__, mesh->id.name, mesh);
 	if (mesh->bb == NULL || (mesh->bb->flag & BOUNDBOX_DIRTY)) {
 		BKE_mesh_texspace_calc(mesh);
 	}
