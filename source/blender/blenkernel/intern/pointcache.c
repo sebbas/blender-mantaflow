@@ -1127,7 +1127,7 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
 		}
 
 		OpenVDB_export_grid_vec(writer, "velocity", vx, vy, vz, sds->res, sds->fluidmat, VEC_CONTRAVARIANT_RELATIVE, false, sds->clipping, clip_grid);
-		OpenVDB_export_grid_ch(writer, "obstacles", obstacles, sds->res, sds->fluidmat, sds->clipping, NULL);
+		OpenVDB_export_grid_int(writer, "obstacles", obstacles, sds->res, sds->fluidmat, sds->clipping, NULL);
 	}
 
 	return 1;

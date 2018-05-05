@@ -61,7 +61,7 @@ OpenVDBFloatGrid *OpenVDB_export_grid_fl(
 
 OpenVDBIntGrid *OpenVDB_export_grid_int(
         OpenVDBWriter *writer,
-        const char *name, unsigned char *data,
+        const char *name, int *data,
 		const int res[3], float matrix[4][4], const float clipping,
         OpenVDBFloatGrid *mask)
 {
