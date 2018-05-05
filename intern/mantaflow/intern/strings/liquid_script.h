@@ -81,15 +81,15 @@ gpi_s$ID$        = s$ID$.create(IntGrid)\n";
 
 const std::string liquid_alloc_mesh = "\n\
 mantaMsg('Liquid alloc high')\n\
-phiParts_xl$ID$ = sm$ID$.create(LevelsetGrid)\n\
-phi_xl$ID$      = sm$ID$.create(LevelsetGrid)\n\
-pp_xl$ID$       = sm$ID$.create(BasicParticleSystem)\n\
-flags_xl$ID$    = sm$ID$.create(FlagGrid)\n\
-mesh_xl$ID$     = sm$ID$.create(Mesh)\n\
+phiParts_sm$ID$ = sm$ID$.create(LevelsetGrid)\n\
+phi_sm$ID$      = sm$ID$.create(LevelsetGrid)\n\
+pp_sm$ID$       = sm$ID$.create(BasicParticleSystem)\n\
+flags_sm$ID$    = sm$ID$.create(FlagGrid)\n\
+mesh_sm$ID$     = sm$ID$.create(Mesh)\n\
 \n\
 # Acceleration data for particle nbs\n\
-pindex_xl$ID$  = sm$ID$.create(ParticleIndexSystem)\n\
-gpi_xl$ID$     = sm$ID$.create(IntGrid)\n";
+pindex_sm$ID$  = sm$ID$.create(ParticleIndexSystem)\n\
+gpi_sm$ID$     = sm$ID$.create(IntGrid)\n";
 
 const std::string liquid_init_phi = "\n\
 phi_s$ID$.initFromFlags(flags_s$ID$)\n\
@@ -310,7 +310,7 @@ def liquid_load_data_$ID$(path, framenr, file_format):\n\
         framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
         phi_s$ID$.load(os.path.join(path, 'phi_' + framenr + file_format))\n\
         phiTmp_s$ID$.load(os.path.join(path, 'phiTmp_' + framenr + file_format))\n\
-        phiIn_s$ID$.load(os.path.join(path, 'phiIn_' + framenr + file_format))\n\
+        #phiIn_s$ID$.load(os.path.join(path, 'phiIn_' + framenr + file_format))\n\
         phiParts_s$ID$.load(os.path.join(path, 'phiParts_' + framenr + file_format))\n\
     except RuntimeError as e:\n\
         mantaMsg(str(e))\n\
@@ -332,8 +332,7 @@ def liquid_load_mesh_$ID$(path, framenr, file_format):\n\
     try:\n\
         mantaMsg('Liquid load mesh')\n\
         framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-        mesh_xl$ID$.load(os.path.join(path, 'liquid_mesh_' + framenr + file_format))\n\
-        #pp_xl$ID$.load(os.path.join(path, 'pp_xl_' + framenr + file_format))\n\
+        mesh_sm$ID$.load(os.path.join(path, 'liquid_mesh_' + framenr + file_format))\n\
     except RuntimeError as e:\n\
         mantaMsg(str(e))\n\
         pass # Just skip file load errors for now\n";
@@ -375,29 +374,28 @@ def liquid_save_mesh_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid save mesh')\n\
     framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
     \n\
-    interpolateGrid(target=phi_xl$ID$, source=phiTmp_s$ID$) # mis-use phiParts as temp grid\n\
+    interpolateGrid(target=phi_sm$ID$, source=phiTmp_s$ID$) # mis-use phiParts as temp grid\n\
     \n\
     # create surface\n\
-    pp_xl$ID$.readParticles(pp_s$ID$)\n\
-    gridParticleIndex(parts=pp_xl$ID$, flags=flags_xl$ID$, indexSys=pindex_xl$ID$, index=gpi_xl$ID$)\n\
+    pp_sm$ID$.readParticles(pp_s$ID$)\n\
+    gridParticleIndex(parts=pp_sm$ID$, flags=flags_sm$ID$, indexSys=pindex_sm$ID$, index=gpi_sm$ID$)\n\
     \n\
     if using_final_mesh_s$ID$:\n\
         mantaMsg('Liquid using improved particle levelset')\n\
-        improvedParticleLevelset(pp_xl$ID$, pindex_xl$ID$, flags_xl$ID$, gpi_xl$ID$, phiParts_xl$ID$, radiusFactor_s$ID$, smoothenPos_s$ID$, smoothenNeg_s$ID$, smoothenLower_s$ID$, smoothenUpper_s$ID$)\n\
+        improvedParticleLevelset(pp_sm$ID$, pindex_sm$ID$, flags_sm$ID$, gpi_sm$ID$, phiParts_sm$ID$, radiusFactor_s$ID$, smoothenPos_s$ID$, smoothenNeg_s$ID$, smoothenLower_s$ID$, smoothenUpper_s$ID$)\n\
     else:\n\
         mantaMsg('Liquid using union particle levelset')\n\
-        unionParticleLevelset(pp_xl$ID$, pindex_xl$ID$, flags_xl$ID$, gpi_xl$ID$, phiParts_xl$ID$, radiusFactor_s$ID$)\n\
+        unionParticleLevelset(pp_sm$ID$, pindex_sm$ID$, flags_sm$ID$, gpi_sm$ID$, phiParts_sm$ID$, radiusFactor_s$ID$)\n\
     \n\
-    phi_xl$ID$.addConst(1.) # shrink slightly\n\
-    phi_xl$ID$.join(phiParts_xl$ID$)\n\
-    extrapolateLsSimple(phi=phi_xl$ID$, distance=narrowBandWidth_s$ID$+2, inside=True)\n\
-    extrapolateLsSimple(phi=phi_xl$ID$, distance=3)\n\
-    phi_xl$ID$.setBoundNeumann(boundaryWidth_s$ID$) # make sure no particles are placed at outer boundary\n\
+    phi_sm$ID$.addConst(1.) # shrink slightly\n\
+    phi_sm$ID$.join(phiParts_sm$ID$)\n\
+    extrapolateLsSimple(phi=phi_sm$ID$, distance=narrowBandWidth_s$ID$+2, inside=True)\n\
+    extrapolateLsSimple(phi=phi_sm$ID$, distance=3)\n\
+    phi_sm$ID$.setBoundNeumann(boundaryWidth_s$ID$) # make sure no particles are placed at outer boundary\n\
     \n\
-    phi_xl$ID$.setBound(0.5,int(((upres_sm$ID$)*2)-2) )\n\
-    phi_xl$ID$.createMesh(mesh_xl$ID$)\n\
-    mesh_xl$ID$.save(os.path.join(path, 'liquid_mesh_' + framenr + file_format))\n\
-    #pp_xl$ID$.save(os.path.join(path, 'pp_xl_' + framenr + file_format))\n";
+    phi_sm$ID$.setBound(0.5,int(((upres_sm$ID$)*2)-2) )\n\
+    phi_sm$ID$.createMesh(mesh_sm$ID$)\n\
+    mesh_sm$ID$.save(os.path.join(path, 'liquid_mesh_' + framenr + file_format))\n";
 
 const std::string liquid_save_particles = "\n\
 def liquid_save_particles_$ID$(path, framenr, file_format):\n\

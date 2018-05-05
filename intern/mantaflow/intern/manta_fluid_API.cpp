@@ -172,7 +172,7 @@ extern "C" void liquid_export(FLUID *liquid, float **phi, float **pp, float **pv
 extern "C" void smoke_turbulence_export(FLUID *smoke, float **dens, float **react, float **flame, float **fuel,
                                         float **r, float **g, float **b , float **tcu, float **tcv, float **tcw, float **tcu2, float **tcv2, float **tcw2)
 {
-	if (!smoke && !(smoke->usingHighRes()))
+	if (!smoke && !(smoke->usingNoise()))
 		return;
 
 	*dens = smoke->getDensityHigh();
@@ -422,42 +422,42 @@ extern "C" void smoke_turbulence_get_rgba_from_density(FLUID *smoke, float color
 
 extern "C" float *smoke_turbulence_get_density(FLUID *smoke)
 {
-	return (smoke && smoke->usingHighRes()) ? smoke->getDensityHigh() : NULL;
+	return (smoke && smoke->usingNoise()) ? smoke->getDensityHigh() : NULL;
 }
 
 extern "C" float *smoke_turbulence_get_fuel(FLUID *smoke)
 {
-	return (smoke && smoke->usingHighRes()) ? smoke->getFuelHigh() : NULL;
+	return (smoke && smoke->usingNoise()) ? smoke->getFuelHigh() : NULL;
 }
 
 extern "C" float *smoke_turbulence_get_react(FLUID *smoke)
 {
-	return (smoke && smoke->usingHighRes()) ? smoke->getReactHigh() : NULL;
+	return (smoke && smoke->usingNoise()) ? smoke->getReactHigh() : NULL;
 }
 
 extern "C" float *smoke_turbulence_get_color_r(FLUID *smoke)
 {
-	return (smoke && smoke->usingHighRes()) ? smoke->getColorRHigh() : NULL;
+	return (smoke && smoke->usingNoise()) ? smoke->getColorRHigh() : NULL;
 }
 
 extern "C" float *smoke_turbulence_get_color_g(FLUID *smoke)
 {
-	return (smoke && smoke->usingHighRes()) ? smoke->getColorGHigh() : NULL;
+	return (smoke && smoke->usingNoise()) ? smoke->getColorGHigh() : NULL;
 }
 
 extern "C" float *smoke_turbulence_get_color_b(FLUID *smoke)
 {
-	return (smoke && smoke->usingHighRes()) ? smoke->getColorBHigh() : NULL;
+	return (smoke && smoke->usingNoise()) ? smoke->getColorBHigh() : NULL;
 }
 
 extern "C" float *smoke_turbulence_get_flame(FLUID *smoke)
 {
-	return (smoke && smoke->usingHighRes()) ? smoke->getFlameHigh() : NULL;
+	return (smoke && smoke->usingNoise()) ? smoke->getFlameHigh() : NULL;
 }
 
 extern "C" void smoke_turbulence_get_res(FLUID *smoke, int *res)
 {
-	if (smoke && smoke->usingHighRes()) {
+	if (smoke && smoke->usingNoise()) {
 		res[0] = smoke->getResXHigh();
 		res[1] = smoke->getResYHigh();
 		res[2] = smoke->getResZHigh();
@@ -467,7 +467,7 @@ extern "C" void smoke_turbulence_get_res(FLUID *smoke, int *res)
 extern "C" int smoke_turbulence_get_cells(FLUID *smoke)
 {
 	int total_cells_high = smoke->getResXHigh() * smoke->getResYHigh() * smoke->getResZHigh();
-	return (smoke && smoke->usingHighRes()) ? total_cells_high : 0;
+	return (smoke && smoke->usingNoise()) ? total_cells_high : 0;
 }
 
 extern "C" int *smoke_get_obstacle(FLUID *smoke)
@@ -532,7 +532,7 @@ extern "C" void smoke_ensure_fire(FLUID *smoke, struct SmokeModifierData *smd)
 		smoke->initFire(smd);
 		smoke->updatePointers();
 	}
-	if (smoke && smoke->usingHighRes()) {
+	if (smoke && smoke->usingNoise()) {
 		smoke->initFireHigh(smd);
 		smoke->updatePointersHigh();
 	}
@@ -544,7 +544,7 @@ extern "C" void smoke_ensure_colors(FLUID *smoke, struct SmokeModifierData *smd)
 		smoke->initColors(smd);
 		smoke->updatePointers();
 	}
-	if (smoke && smoke->usingHighRes()) {
+	if (smoke && smoke->usingNoise()) {
 		smoke->initColorsHigh(smd);
 		smoke->updatePointersHigh();
 	}

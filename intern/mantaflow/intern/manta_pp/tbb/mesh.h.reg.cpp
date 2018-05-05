@@ -23,6 +23,8 @@ namespace Manta {
  static const Pb::Register _R_17 ("Mesh","offset",Mesh::_W_7); 
  static const Pb::Register _R_18 ("Mesh","computeLevelset",Mesh::_W_8); 
  static const Pb::Register _R_19 ("Mesh","applyMeshToGrid",Mesh::_W_9); 
+ static const Pb::Register _R_20 ("Mesh","getNodesDataPointer",Mesh::_W_10); 
+ static const Pb::Register _R_21 ("Mesh","getTrisDataPointer",Mesh::_W_11); 
 #endif
 extern "C" {
 void PbRegister_file_9()
@@ -38,5 +40,7 @@ void PbRegister_file_9()
 	KEEP_UNUSED(_R_17);
 	KEEP_UNUSED(_R_18);
 	KEEP_UNUSED(_R_19);
+	KEEP_UNUSED(_R_20);
+	KEEP_UNUSED(_R_21);
 }
 }}

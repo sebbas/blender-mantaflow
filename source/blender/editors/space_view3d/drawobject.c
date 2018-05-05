@@ -7905,7 +7905,7 @@ void draw_object(Scene *scene, ARegion *ar, View3D *v3d, Base *base, const short
 				if (sds->fluid && sds->viewport_display_mode == SM_VIEWPORT_GEOMETRY) {
 					// Nothing to do here
 				}
-				else if (!(sds->fluid && sds->flags & MOD_SMOKE_NOISE)) {
+				else if (sds->fluid && (sds->flags & MOD_SMOKE_NOISE)==0) {
 					sds->tex = NULL;
 					GPU_create_smoke(smd, 0);
 					draw_smoke_volume(sds, ob, p0, p1, viewnormal);

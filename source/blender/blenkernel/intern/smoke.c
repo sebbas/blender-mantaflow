@@ -310,24 +310,23 @@ static int smokeModifier_init(SmokeModifierData *smd, Object *ob, Scene *scene, 
 
 		return 1;
 	}
-	else if ((smd->type & MOD_SMOKE_TYPE_FLOW) && smd->flow)
+	else if (smd->type & MOD_SMOKE_TYPE_FLOW)
 	{
-		smd->time = scene->r.cfra;
-
-		return 1;
-	}
-	else if ((smd->type & MOD_SMOKE_TYPE_EFFEC))
-	{
-		if (!smd->effec)
-		{
+		if (!smd->flow) {
 			smokeModifier_createType(smd);
 		}
-
+		smd->time = scene->r.cfra;
+		return 1;
+	}
+	else if (smd->type & MOD_SMOKE_TYPE_EFFEC)
+	{
+		if (!smd->effec) {
+			smokeModifier_createType(smd);
+		}
 		smd->time = scene->r.cfra;
 
 		return 1;
 	}
-
 	return 2;
 }
 
@@ -363,8 +362,14 @@ static void smokeModifier_freeFlow(SmokeModifierData *smd)
 {
 	if (smd->flow)
 	{
-		if (smd->flow->dm) smd->flow->dm->release(smd->flow->dm);
+		if (smd->flow->dm)
+			smd->flow->dm->release(smd->flow->dm);
+		smd->flow->dm = NULL;
+
 		if (smd->flow->verts_old) MEM_freeN(smd->flow->verts_old);
+		smd->flow->verts_old = NULL;
+		smd->flow->numverts = 0;
+
 		MEM_freeN(smd->flow);
 		smd->flow = NULL;
 	}
@@ -374,20 +379,13 @@ static void smokeModifier_freeCollision(SmokeModifierData *smd)
 {
 	if (smd->effec)
 	{
-		SmokeCollSettings *scs = smd->effec;
-
-		if (scs->numverts)
-		{
-			if (scs->verts_old)
-			{
-				MEM_freeN(scs->verts_old);
-				scs->verts_old = NULL;
-			}
-		}
-
 		if (smd->effec->dm)
 			smd->effec->dm->release(smd->effec->dm);
 		smd->effec->dm = NULL;
+
+		if (smd->effec->verts_old) MEM_freeN(smd->effec->verts_old);
+		smd->effec->verts_old = NULL;
+		smd->effec->numverts = 0;
 
 		MEM_freeN(smd->effec);
 		smd->effec = NULL;
@@ -424,13 +422,9 @@ static void smokeModifier_reset_ex(struct SmokeModifierData *smd, bool need_lock
 		}
 		else if (smd->effec)
 		{
-			SmokeCollSettings *scs = smd->effec;
-
-			if (scs->numverts && scs->verts_old)
-			{
-				MEM_freeN(scs->verts_old);
-				scs->verts_old = NULL;
-			}
+			if (smd->effec->verts_old) MEM_freeN(smd->effec->verts_old);
+			smd->effec->verts_old = NULL;
+			smd->effec->numverts = 0;
 		}
 	}
 }
@@ -2603,7 +2597,6 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 					}
 					/* Handle absolute endframe (ie no subframe fraction). Need to set the scene subframe parameter to 0 and advance current scene frame */
 					else {
-						scene->r.cfra = frame;
 						scene->r.subframe = 0.0f;
 					}
 				}
@@ -2974,8 +2967,8 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 		return NULL;
 
 	/* just display original object */
-	if (sds->viewport_display_mode == SM_VIEWPORT_GEOMETRY)
-		return NULL;
+//	if (sds->viewport_display_mode == SM_VIEWPORT_GEOMETRY)
+//		return NULL;
 
 	num_verts   = liquid_get_num_verts(sds->fluid);
 	num_normals = liquid_get_num_normals(sds->fluid);
@@ -3011,6 +3004,19 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 		mverts->co[0] = liquid_get_vertex_x_at(sds->fluid, i);
 		mverts->co[1] = liquid_get_vertex_y_at(sds->fluid, i);
 		mverts->co[2] = liquid_get_vertex_z_at(sds->fluid, i);
+
+		// TODO (sebbas): Allow mesh creation with raw data from manta mesh? Then we need this normalization
+//		// if reading raw data directly from manta, normalize now
+//		if ((sds->cache_flag & FLUID_CACHE_BAKED_MESH) == 0)
+//		{
+//			// normalize to unit cube around 0
+//			mverts->co[0] -= ((float) sds->res[0]*sds->mesh_scale)*0.5f;
+//			mverts->co[1] -= ((float) sds->res[1]*sds->mesh_scale)*0.5f;
+//			mverts->co[2] -= ((float) sds->res[2]*sds->mesh_scale)*0.5f;
+//			mverts->co[0] *= sds->dx / sds->mesh_scale;
+//			mverts->co[1] *= sds->dx / sds->mesh_scale;
+//			mverts->co[2] *= sds->dx / sds->mesh_scale;
+//		}
 
 		mverts->co[0] *= max_size / fabsf(ob->size[0]);
 		mverts->co[1] *= max_size / fabsf(ob->size[1]);
@@ -3154,8 +3160,13 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		if (scene->r.cfra >= smd->time)
 			smokeModifier_init(smd, ob, scene, dm);
 
-		if (smd->flow->dm) smd->flow->dm->release(smd->flow->dm);
-		smd->flow->dm = CDDM_copy(dm);
+		if (smd->flow)
+		{
+			if (smd->flow->dm)
+				smd->flow->dm->release(smd->flow->dm);
+
+			smd->flow->dm = CDDM_copy(dm);
+		}
 
 		if (scene->r.cfra > smd->time)
 		{
@@ -3180,9 +3191,13 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			smd->effec->dm = CDDM_copy(dm);
 		}
 
-		smd->time = scene->r.cfra;
-		if (scene->r.cfra < smd->time)
+		if (scene->r.cfra > smd->time)
 		{
+			smd->time = scene->r.cfra;
+		}
+		else if (scene->r.cfra < smd->time)
+		{
+			smd->time = scene->r.cfra;
 			smokeModifier_reset_ex(smd, false);
 		}
 	}
@@ -3195,8 +3210,6 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 
 		bool isBaking = (smd->domain->cache_flag & (FLUID_CACHE_BAKING_DATA|FLUID_CACHE_BAKING_NOISE|
 													FLUID_CACHE_BAKING_MESH|FLUID_CACHE_BAKING_PARTICLES));
-
-		if (isBaking) return;
 
 		/* Reset fluid if no fluid present (obviously) or if timeline gets reset to startframe when no (!) baking is running */
 		if (!smd->domain->fluid || (framenr == startframe && !isBaking))
@@ -3215,11 +3228,21 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		if (smokeModifier_init(smd, ob, scene, dm) == 0)
 			return;
 
-		/* Try to read from cache */
-		if (fluid_read_cache(smd->domain->fluid, smd, framenr)) {
-			smd->time = framenr;
+		if (isBaking) {
+			if (smd->domain->cache_flag & FLUID_CACHE_BAKING_DATA)
+				smoke_step(scene, ob, smd, framenr);
+			if (smd->domain->cache_flag & FLUID_CACHE_BAKING_NOISE)
+				fluid_bake_noise(smd->domain->fluid, smd, framenr);
+			if (smd->domain->cache_flag & FLUID_CACHE_BAKING_MESH)
+				fluid_bake_mesh(smd->domain->fluid, smd, framenr);
+			if (smd->domain->cache_flag & FLUID_CACHE_BAKING_PARTICLES)
+				fluid_bake_particles(smd->domain->fluid, smd, framenr);
 			return;
 		}
+
+		/* Try to read from cache */
+		fluid_read_cache(smd->domain->fluid, smd, framenr);
+
 		smd->time = scene->r.cfra;
 	}
 }

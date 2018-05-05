@@ -131,9 +131,9 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mPhiOutIn       = NULL;
 	mPhi            = NULL;
 
-	mNumVertices  = 0;
-	mNumNormals   = 0;
-	mNumTriangles = 0;
+	// Mesh
+	mMeshNodes      = NULL;
+	mMeshTriangles  = NULL;
 
 	// Fluid obstacle
 	mPhiObsIn    = NULL;
@@ -184,8 +184,6 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 			initSndParts(smd);
 			initLiquidSndParts(smd);
 		}
-
-		updatePointers();
 		
 		if (mUsingMesh) {
 			mUpresMesh      = smd->domain->mesh_scale;
@@ -198,6 +196,8 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 			initMesh(smd);
 			initLiquidMesh(smd);
 		}
+		updatePointers();
+
 		return;
 	}
 	
@@ -572,9 +572,9 @@ FLUID::~FLUID()
 	mPhiOutIn   = NULL;
 	mPhi        = NULL;
 
-	mNumVertices  = 0;
-	mNumNormals   = 0;
-	mNumTriangles = 0;
+	// Mesh
+	mMeshNodes      = NULL;
+	mMeshTriangles  = NULL;
 
 	// Fluid obstacle
 	mPhiObsIn    = NULL;
@@ -1067,11 +1067,16 @@ int FLUID::readCache(SmokeModifierData *smd, int framenr)
 		nformat = getCacheFileEnding(smd->domain->cache_noise_format);
 
 		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
-		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_DATA))
+		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_DATA || smd->domain->cache_flag & FLUID_CACHE_BAKING_DATA))
 		{
 			ss.str("");
 			ss << "smoke_load_data_" << mCurrentID << "('" << cacheDir << "', " << framenr << ", '" << dformat << "')";
 			pythonCommands.push_back(ss.str());
+
+			ss.str("");
+			ss << "smoke_load_shadow_" << mCurrentID << "('" << cacheDir << "', " << framenr << ", '" << dformat << "')";
+			pythonCommands.push_back(ss.str());
+
 			runPythonString(pythonCommands);
 			updatePointers();
 
@@ -1080,7 +1085,7 @@ int FLUID::readCache(SmokeModifierData *smd, int framenr)
 		if (mUsingNoise)
 		{
 			BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_NOISE, NULL);
-			if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_NOISE))
+			if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_NOISE || smd->domain->cache_flag & FLUID_CACHE_BAKING_NOISE))
 			{
 				ss.str("");
 				ss << "smoke_load_noise_" << mCurrentID << "('" << cacheDir << "', " << framenr << ", '" << nformat  << "')";
@@ -1099,7 +1104,7 @@ int FLUID::readCache(SmokeModifierData *smd, int framenr)
 
 		// Data (flip particles) loading
 		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
-		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_DATA))
+		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_DATA || smd->domain->cache_flag & FLUID_CACHE_BAKING_DATA))
 		{
 			ss.str("");
 			ss << "liquid_load_flip_" << mCurrentID << "('" << cacheDir << "', " << framenr << ", '" << pformat << "')";
@@ -1120,7 +1125,7 @@ int FLUID::readCache(SmokeModifierData *smd, int framenr)
 		}
 		if (mUsingMesh) {
 			BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_MESH, NULL);
-			if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_MESH))
+			if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_MESH || smd->domain->cache_flag & FLUID_CACHE_BAKING_MESH))
 			{
 				ss.str("");
 				ss << "liquid_load_mesh_" << mCurrentID << "('" << cacheDir << "', " << framenr << ", '" << mformat << "')";
@@ -1148,7 +1153,7 @@ int FLUID::readCache(SmokeModifierData *smd, int framenr)
 
 		// Secondary particles loading
 		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_PARTICLES, NULL);
-		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_PARTICLES))
+		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_PARTICLES || smd->domain->cache_flag & FLUID_CACHE_BAKING_PARTICLES))
 		{
 			ss.str("");
 			ss << "liquid_load_particles_" << mCurrentID << "('" << cacheDir << "', " << framenr << ", '" << pformat << "')";
@@ -1590,74 +1595,70 @@ void FLUID::updateMeshDataFromBobj(const char* filename)
 	gzFile gzf;
 	float fbuffer[3];
 	int ibuffer[3];
+	int numBuffer = 0;
+
+	mMeshNodes->clear();
+	mMeshTriangles->clear();
 
 	gzf = (gzFile) BLI_gzopen(filename, "rb1"); // do some compression
 	if (!gzf)
 		std::cerr << "updateMeshData: unable to open file: " << filename << std::endl;
 	
 	// Num vertices
-	mNumVertices = 0;
-	gzread(gzf, &mNumVertices, sizeof(int));
-	
-	if (with_debug)
-		std::cout << "read mesh , num verts: " << mNumVertices << " , in file: "<< filename << std::endl;
+	gzread(gzf, &numBuffer, sizeof(int));
 
-	if (mNumVertices)
+	if (with_debug)
+		std::cout << "read mesh , num verts: " << numBuffer << " , in file: "<< filename << std::endl;
+
+	if (numBuffer)
 	{
-		mVerticesX.resize(mNumVertices);
-		mVerticesY.resize(mNumVertices);
-		mVerticesZ.resize(mNumVertices);
-		
 		// Vertices
-		for (int i = 0; i < mNumVertices; i++) {
+		mMeshNodes->resize(numBuffer);
+		for (std::vector<Node>::iterator it = mMeshNodes->begin(); it != mMeshNodes->end(); ++it) {
 			gzread(gzf, fbuffer, sizeof(float) * 3);
-			
-			mVerticesX[i] = fbuffer[0];
-			mVerticesY[i] = fbuffer[1];
-			mVerticesZ[i] = fbuffer[2];
+			it->pos[0] = fbuffer[0];
+			it->pos[1] = fbuffer[1];
+			it->pos[2] = fbuffer[2];
 		}
 	}
 	
 	// Num normals
-	mNumNormals = 0;
-	gzread(gzf, &mNumNormals, sizeof(float));
-	
-	if (mNumNormals)
+	gzread(gzf, &numBuffer, sizeof(int));
+
+	if (with_debug)
+		std::cout << "read mesh , num normals : " << numBuffer << " , in file: "<< filename << std::endl;
+
+	if (numBuffer)
 	{
-		mNormalsX.resize(mNumNormals);
-		mNormalsY.resize(mNumNormals);
-		mNormalsZ.resize(mNumNormals);
-		
 		// Normals
-		for (int i = 0; i < mNumNormals; i++) {
+		if (!getNumVertices()) mMeshNodes->resize(numBuffer);
+		for (std::vector<Node>::iterator it = mMeshNodes->begin(); it != mMeshNodes->end(); ++it) {
 			gzread(gzf, fbuffer, sizeof(float) * 3);
-			
-			mNormalsX[i] = fbuffer[0];
-			mNormalsY[i] = fbuffer[1];
-			mNormalsZ[i] = fbuffer[2];
+			it->normal[0] = fbuffer[0];
+			it->normal[1] = fbuffer[1];
+			it->normal[2] = fbuffer[2];
 		}
 	}
 	
 	// Num triangles
-	mNumTriangles = 0;
-	gzread(gzf, &mNumTriangles, sizeof(int));
-	
-	if (mNumTriangles)
+	gzread(gzf, &numBuffer, sizeof(int));
+
+	if (with_debug)
+		std::cout << "read mesh , num triangles : " << numBuffer << " , in file: "<< filename << std::endl;
+
+	if (numBuffer)
 	{
-		mTrianglesX.resize(mNumTriangles);
-		mTrianglesY.resize(mNumTriangles);
-		mTrianglesZ.resize(mNumTriangles);
-		
 		// Triangles
-		for (int i = 0; i < mNumTriangles; i++) {
+		mMeshTriangles->resize(numBuffer);
+		FLUID::Triangle* bufferTriangle;
+		for (std::vector<Triangle>::iterator it = mMeshTriangles->begin(); it != mMeshTriangles->end(); ++it) {
 			gzread(gzf, ibuffer, sizeof(int) * 3);
-			
-			mTrianglesX[i] = ibuffer[0];
-			mTrianglesY[i] = ibuffer[1];
-			mTrianglesZ[i] = ibuffer[2];
+			bufferTriangle = (FLUID::Triangle*) ibuffer;
+			it->c[0] = bufferTriangle->c[0];
+			it->c[1] = bufferTriangle->c[1];
+			it->c[2] = bufferTriangle->c[2];
 		}
 	}
-
 	gzclose(gzf);
 }
 
@@ -1666,22 +1667,10 @@ void FLUID::updateMeshDataFromObj(const char* filename)
 	std::ifstream ifs (filename);
 	float fbuffer[3];
 	int ibuffer[3];
+	int cntVerts = 0, cntNormals = 0, cntTris = 0;
 
-	mNumNormals = 0;
-	mNumVertices = 0;
-	mNumTriangles = 0;
-
-	mNormalsX.clear();
-	mNormalsY.clear();
-	mNormalsZ.clear();
-
-	mVerticesX.clear();
-	mVerticesY.clear();
-	mVerticesZ.clear();
-
-	mTrianglesX.clear();
-	mTrianglesY.clear();
-	mTrianglesZ.clear();
+	mMeshNodes->clear();
+	mMeshTriangles->clear();
 
 	if (!ifs.good())
 		std::cerr << "updateMeshDataFromObj: unable to open file: " << filename << std::endl;
@@ -1699,18 +1688,24 @@ void FLUID::updateMeshDataFromObj(const char* filename)
 			// tex coord, ignore
 		} else if (id == "vn") {
 			// normals
+			if (getNumVertices() != cntVerts)
+				std::cerr << "updateMeshDataFromObj: invalid amount of mesh nodes" << std::endl;
+
 			ifs >> fbuffer[0] >> fbuffer[1] >> fbuffer[2];
-			mNormalsX.push_back(fbuffer[0]);
-			mNormalsY.push_back(fbuffer[1]);
-			mNormalsZ.push_back(fbuffer[2]);
-			mNumNormals++;
+			FLUID::Node* node = &mMeshNodes->at(cntNormals);
+			(*node).normal[0] = fbuffer[0];
+			(*node).normal[1] = fbuffer[1];
+			(*node).normal[2] = fbuffer[2];
+			cntNormals++;
 		} else if (id == "v") {
 			// vertex
 			ifs >> fbuffer[0] >> fbuffer[1] >> fbuffer[2];
-			mVerticesX.push_back(fbuffer[0]);
-			mVerticesY.push_back(fbuffer[1]);
-			mVerticesZ.push_back(fbuffer[2]);
-			mNumVertices++;
+			FLUID::Node node;
+			node.pos[0] = fbuffer[0];
+			node.pos[1] = fbuffer[1];
+			node.pos[2] = fbuffer[2];
+			mMeshNodes->push_back(node);
+			cntVerts++;
 		} else if (id == "g") {
 			// group
 			std::string group;
@@ -1727,10 +1722,12 @@ void FLUID::updateMeshDataFromObj(const char* filename)
 					std::cerr << "updateMeshDataFromObj: invalid face encountered" << std::endl;
 				ibuffer[i] = idx;
 			}
-			mTrianglesX.push_back(ibuffer[0]);
-			mTrianglesY.push_back(ibuffer[1]);
-			mTrianglesZ.push_back(ibuffer[2]);
-			mNumTriangles++;
+			FLUID::Triangle triangle;
+			triangle.c[0] = ibuffer[0];
+			triangle.c[1] = ibuffer[1];
+			triangle.c[2] = ibuffer[2];
+			mMeshTriangles->push_back(triangle);
+			cntTris++;
 		} else {
 			// whatever, ignore
 		}
@@ -1859,13 +1856,18 @@ void FLUID::updatePointers()
 		std::cout << "FLUID::updatePointers()" << std::endl;
 
 	std::string func = "getDataPointer";
+	std::string funcNodes = "getNodesDataPointer";
+	std::string funcTris  = "getTrisDataPointer";
+
 	std::string id = std::to_string(mCurrentID);
 	std::string solver = "s" + id;
 	std::string parts  = "pp" + id;
 	std::string snd    = "sp" + id;
+	std::string mesh   = "sm" + id;
 	std::string solver_ext = "_" + solver;
 	std::string parts_ext  = "_" + parts;
 	std::string snd_ext    = "_" + snd;
+	std::string mesh_ext   = "_" + mesh;
 
 	mObstacle  = (int*)   stringToPointer(pyObjectToString(callPythonFunction("flags" + solver_ext, func)));
 
@@ -1912,6 +1914,11 @@ void FLUID::updatePointers()
 
 		mFlipParticleData     = (std::vector<pData>*) stringToPointer(pyObjectToString(callPythonFunction("pp"   + solver_ext, func)));
 		mFlipParticleVelocity = (std::vector<pVel>*)  stringToPointer(pyObjectToString(callPythonFunction("pVel" + parts_ext,  func)));
+
+		if (mUsingMesh) {
+			mMeshNodes     = (std::vector<Node>*)     stringToPointer(pyObjectToString(callPythonFunction("mesh" + mesh_ext, funcNodes)));
+			mMeshTriangles = (std::vector<Triangle>*) stringToPointer(pyObjectToString(callPythonFunction("mesh" + mesh_ext, funcTris)));
+		}
 
 		if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
 			mSndParticleData     = (std::vector<pData>*) stringToPointer(pyObjectToString(callPythonFunction("ppSnd"    + snd_ext, func)));

@@ -11,3 +11,5 @@
 +Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","offset",Mesh::_W_7); 
 +Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","computeLevelset",Mesh::_W_8); 
 +Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","applyMeshToGrid",Mesh::_W_9); 
++Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","getNodesDataPointer",Mesh::_W_10); 
++Mesh^ static const Pb::Register _R_$IDX$ ("Mesh","getTrisDataPointer",Mesh::_W_11); 

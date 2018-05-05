@@ -405,7 +405,7 @@ def step_low_$ID$():\n\
         solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, preconditioner=preconditioner_s$ID$, zeroPressureFixing=not doOpen_s$ID$) # closed domains require pressure fixing\n\
 \n\
 def process_burn_low_$ID$():\n\
-    mantaMsg('Process burn low')\n\
+    mantaMsg('Process burn')\n\
     processBurn(fuel=fuel_s$ID$, density=density_s$ID$, react=react_s$ID$, red=color_r_s$ID$ if using_colors_s$ID$ else 0, green=color_g_s$ID$ if using_colors_s$ID$ else 0, blue=color_b_s$ID$ if using_colors_s$ID$ else 0, heat=heat_s$ID$ if using_heat_s$ID$ else 0, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
 \n\
 def update_flame_low_$ID$():\n\
@@ -478,7 +478,6 @@ def smoke_load_data_$ID$(path, framenr, file_format):\n\
         mantaMsg('Smoke load data low')\n\
         framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
         density_s$ID$.load(os.path.join(path, 'density_' + framenr + file_format))\n\
-        shadow_s$ID$.load(os.path.join(path, 'shadow_' + framenr + file_format))\n\
         if using_colors_s$ID$:\n\
             color_r_s$ID$.load(os.path.join(path, 'color_r_' + framenr + file_format))\n\
             color_g_s$ID$.load(os.path.join(path, 'color_g_' + framenr + file_format))\n\
@@ -489,6 +488,15 @@ def smoke_load_data_$ID$(path, framenr, file_format):\n\
             flame_s$ID$.load(os.path.join(path, 'flame_' + framenr + file_format))\n\
             fuel_s$ID$.load(os.path.join(path, 'fuel_' + framenr + file_format))\n\
             react_s$ID$.load(os.path.join(path, 'react_' + framenr + file_format))\n\
+    except RuntimeError as e:\n\
+        mantaMsg(str(e))\n\
+        pass # Just skip file load errors for now\n\
+\n\
+def smoke_load_shadow_$ID$(path, framenr, file_format):\n\
+    try:\n\
+        mantaMsg('Smoke load shadow')\n\
+        framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+        shadow_s$ID$.load(os.path.join(path, 'shadow_' + framenr + file_format))\n\
     except RuntimeError as e:\n\
         mantaMsg(str(e))\n\
         pass # Just skip file load errors for now\n";

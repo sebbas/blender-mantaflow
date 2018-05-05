@@ -1184,10 +1184,8 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 	SmokeDomainSettings *sds = job->smd->domain;
 	SmokeModifierData *smd = job->smd;
 	Scene *scene = job->scene;
-	Object *cObject = job->ob;
 	int frame = 1, orig_frame;
 	int frames;
-	bool success;
 
 	frames = sds->cache_frame_end - sds->cache_frame_start + 1;
 
@@ -1204,13 +1202,6 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 	frame = sds->cache_frame_start;
 	orig_frame = scene->r.cfra;
 	scene->r.cfra = (int)frame;
-
-	/* Update animation system - needs annoying lock */
-	G.is_rendering = true;
-	BKE_spacedata_draw_locks(true);
-	ED_update_for_newframe(job->bmain, scene, 1);
-	G.is_rendering = false;
-	BKE_spacedata_draw_locks(false);
 
 	/* Loop through selected frames */
 	for (frame = sds->cache_frame_start; frame <= sds->cache_frame_end; frame++) {
@@ -1231,37 +1222,10 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 		if (smd->domain->fluid == NULL)
 			smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
 
-		/* Update animation system - needs annoying lock */
-		G.is_rendering = true;
-		BKE_spacedata_draw_locks(true);
-		ED_update_for_newframe(job->bmain, scene, 1);
-		G.is_rendering = false;
-		BKE_spacedata_draw_locks(false);
-
-		if (STREQ(job->type, "MANTA_OT_bake_data"))
-		{
-			success = smoke_step(scene, cObject, smd, frame);
-		}
-		else if (STREQ(job->type, "MANTA_OT_bake_noise"))
-		{
-			success = fluid_bake_noise(sds->fluid, smd, frame);
-		}
-		else if (STREQ(job->type, "MANTA_OT_bake_mesh"))
-		{
-			success = fluid_bake_mesh(sds->fluid, smd, frame);
-		}
-		else if (STREQ(job->type, "MANTA_OT_bake_particles"))
-		{
-			success = fluid_bake_particles(sds->fluid, smd, frame);
-		}
-
 		scene->r.cfra = (int)frame;
 
-		/* Exit loop early if one step is unsucessful */
-		if (!success) {
-			job->success = 0;
-			return;
-		}
+		/* Update animation system - needs annoying lock */
+		ED_update_for_newframe(job->bmain, scene, 1);
 	}
 	scene->r.cfra = orig_frame;
 }
@@ -1285,9 +1249,7 @@ static void fluid_manta_bake_endjob(void *customdata)
 	SmokeDomainSettings *sds = job->smd->domain;
 
 	G.is_rendering = false;
-	if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
-		BKE_spacedata_draw_locks(false);
-	}
+	BKE_spacedata_draw_locks(false);
 
 	if (STREQ(job->type, "MANTA_OT_bake_data"))
 	{
@@ -1309,8 +1271,6 @@ static void fluid_manta_bake_endjob(void *customdata)
 		sds->cache_flag &= ~FLUID_CACHE_BAKING_PARTICLES;
 		sds->cache_flag |= FLUID_CACHE_BAKED_PARTICLES;
 	}
-
-//	WM_set_locked_interface(G.main->wm.first, false);
 	
 	/* Bake was successful:
 	 *  Report for ended bake and how long it took */
@@ -1343,34 +1303,33 @@ static void fluid_manta_bake_startjob(void *customdata, short *stop, short *do_u
 	job->success = 1;
 
 	G.is_break = false;
-	G.is_rendering = true;
 
-	if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
-		BKE_spacedata_draw_locks(true);
-	}
+	/* same annoying hack as in physics_pointcache.c and dynamicpaint_ops.c to prevent data corruption*/
+	G.is_rendering = true;
+	BKE_spacedata_draw_locks(true);
 
 	if (STREQ(job->type, "MANTA_OT_bake_data"))
 	{
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
-		BLI_dir_create_recursive(tmpDir); /* Create 'data_low' subdir if it does not exist already */
+		BLI_dir_create_recursive(tmpDir); /* Create 'data' subdir if it does not exist already */
 		sds->cache_flag |= FLUID_CACHE_BAKING_DATA;
 	}
 	else if (STREQ(job->type, "MANTA_OT_bake_noise"))
 	{
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_NOISE, NULL);
-		BLI_dir_create_recursive(tmpDir); /* Create 'data_high' subdir if it does not exist already */
+		BLI_dir_create_recursive(tmpDir); /* Create 'noise' subdir if it does not exist already */
 		sds->cache_flag |= FLUID_CACHE_BAKING_NOISE;
 	}
 	else if (STREQ(job->type, "MANTA_OT_bake_mesh"))
 	{
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_MESH, NULL);
-		BLI_dir_create_recursive(tmpDir); /* Create 'mesh_high' subdir if it does not exist already */
+		BLI_dir_create_recursive(tmpDir); /* Create 'mesh' subdir if it does not exist already */
 		sds->cache_flag |= FLUID_CACHE_BAKING_MESH;
 	}
 	else if (STREQ(job->type, "MANTA_OT_bake_particles"))
 	{
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_PARTICLES, NULL);
-		BLI_dir_create_recursive(tmpDir); /* Create 'particles_low' subdir if it does not exist already */
+		BLI_dir_create_recursive(tmpDir); /* Create 'particles' subdir if it does not exist already */
 		sds->cache_flag |= FLUID_CACHE_BAKING_PARTICLES;
 	}
 	fluid_manta_bake_sequence(job);
@@ -1422,11 +1381,7 @@ static int fluid_manta_bake_invoke(struct bContext *C, struct wmOperator *op, co
 	WM_jobs_timer(wm_job, 0.1, NC_OBJECT | ND_MODIFIER, NC_OBJECT | ND_MODIFIER);
 	WM_jobs_callbacks(wm_job, fluid_manta_bake_startjob, NULL, NULL, fluid_manta_bake_endjob);
 
-//	WM_set_locked_interface(CTX_wm_manager(C), true);
-
-	/*  Bake Fluid Geometry	*/
 	WM_jobs_start(CTX_wm_manager(C), wm_job);
-
 	WM_event_add_modal_handler(C, op);
 
 	return OPERATOR_RUNNING_MODAL;
@@ -1513,6 +1468,9 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 
 	*do_update = true;
 	*stop = 0;
+
+	/* Update scene so that viewport shows freed up scene */
+	ED_update_for_newframe(job->bmain, job->scene, 1);
 }
 
 static int fluid_manta_free_exec(struct bContext *C, struct wmOperator *op)

@@ -771,12 +771,12 @@ void readGrid4dRaw(const string& name, Grid4d<T>* grid) {
 
 template <class T>
 void writeGridVDB(const string& name, Grid<T>* grid) { 
-	debMsg("Writing grid " << grid->getName() << " to vdb file " << name <<" not yet supported!", 1);
+	debMsg("Writing grid " << grid->getName() << " to vdb file " << name << " not yet supported!", 1);
 }
 
 template <class T>
 void readGridVDB(const string& name, Grid<T>* grid) {
-	debMsg("Reading grid " << grid->getName() << " from vdb file " << name <<" not yet supported!", 1);
+	debMsg("Reading grid " << grid->getName() << " from vdb file " << name << " not yet supported!", 1);
 }
 
 template <>
@@ -879,7 +879,7 @@ void writeGridVDB(const string& name, Grid<Vec3>* grid) {
 	file.write(gridsVDB);
 	file.close();
 };
-	
+
 template <>
 void readGridVDB(const string& name, Grid<Vec3>* grid) {
 	debMsg("Reading vec3 grid " << grid->getName() << " from vdb file " << name, 1);

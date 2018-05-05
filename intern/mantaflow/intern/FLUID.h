@@ -44,6 +44,10 @@ public:
 	typedef struct pData { float pos[3]; int flag; } pData;
 	typedef struct pVel { float pos[3]; } pVel;
 
+	// Mirroring Mantaflow structures for meshes
+	typedef struct Node { int flags; float pos[3], normal[3]; } Node;
+	typedef struct Triangle { int c[3]; int flags; } Triangle;
+
 	// Manta step, handling everything
 	void step(struct SmokeModifierData *smd, int startFrame);
 	
@@ -107,7 +111,7 @@ public:
 	// Smoke getters
 	inline size_t getTotalCells() { return mTotalCells; }
 	inline size_t getTotalCellsHigh() { return mTotalCellsHigh; }
-	inline bool usingHighRes() { return mUsingNoise; }
+	inline bool usingNoise() { return mUsingNoise; }
 	inline int getResX() { return mResX; }
 	inline int getResY() { return mResY; }
 	inline int getResZ() { return mResZ; }
@@ -184,42 +188,42 @@ public:
 	static std::atomic<int> solverID;
 	static int with_debug; // on or off (1 or 0), also sets manta debug level
 	
-	// Liquid getters
-	inline int getNumVertices()  { return mNumVertices; }
-	inline int getNumNormals()   { return mNumNormals; }
-	inline int getNumTriangles() { return mNumTriangles; }
-	
-	inline float getVertexXAt(int i) { return mVerticesX[i]; }
-	inline float getVertexYAt(int i) { return mVerticesY[i]; }
-	inline float getVertexZAt(int i) { return mVerticesZ[i]; }
+	// Mesh getters
+	inline int getNumVertices()  { return (mMeshNodes && !mMeshNodes->empty()) ? mMeshNodes->size() : 0; }
+	inline int getNumNormals()   { return (mMeshNodes && !mMeshNodes->empty()) ? mMeshNodes->size() : 0; }
+	inline int getNumTriangles() { return (mMeshTriangles && !mMeshTriangles->empty()) ? mMeshTriangles->size() : 0; }
 
-	inline float getNormalXAt(int i) { return mNormalsX[i]; }
-	inline float getNormalYAt(int i) { return mNormalsY[i]; }
-	inline float getNormalZAt(int i) { return mNormalsZ[i]; }
+	inline float getVertexXAt(int i) { return (mMeshNodes && !mMeshNodes->empty() && mMeshNodes->size() > i) ? mMeshNodes->at(i).pos[0] : 0.f; }
+	inline float getVertexYAt(int i) { return (mMeshNodes && !mMeshNodes->empty() && mMeshNodes->size() > i) ? mMeshNodes->at(i).pos[1] : 0.f; }
+	inline float getVertexZAt(int i) { return (mMeshNodes && !mMeshNodes->empty() && mMeshNodes->size() > i) ? mMeshNodes->at(i).pos[2] : 0.f; }
 
-	inline int getTriangleXAt(int i) { return mTrianglesX[i]; }
-	inline int getTriangleYAt(int i) { return mTrianglesY[i]; }
-	inline int getTriangleZAt(int i) { return mTrianglesZ[i]; }
+	inline float getNormalXAt(int i) { return (mMeshNodes && !mMeshNodes->empty() && mMeshNodes->size() > i) ? mMeshNodes->at(i).normal[0] : 0.f; }
+	inline float getNormalYAt(int i) { return (mMeshNodes && !mMeshNodes->empty() && mMeshNodes->size() > i) ? mMeshNodes->at(i).normal[1] : 0.f; }
+	inline float getNormalZAt(int i) { return (mMeshNodes && !mMeshNodes->empty() && mMeshNodes->size() > i) ? mMeshNodes->at(i).normal[2] : 0.f; }
+
+	inline int getTriangleXAt(int i) { return (mMeshTriangles && !mMeshTriangles->empty() && mMeshTriangles->size() > i) ? mMeshTriangles->at(i).c[0] : 0; }
+	inline int getTriangleYAt(int i) { return (mMeshTriangles && !mMeshTriangles->empty() && mMeshTriangles->size() > i) ? mMeshTriangles->at(i).c[1] : 0; }
+	inline int getTriangleZAt(int i) { return (mMeshTriangles && !mMeshTriangles->empty() && mMeshTriangles->size() > i) ? mMeshTriangles->at(i).c[2] : 0; }
 
 	// Particle getters
-	inline int getFlipParticleFlagAt(int i) { return (mFlipParticleData) ? ((std::vector<pData>*) mFlipParticleData)->at(i).flag : 0; }
-	inline int getSndParticleFlagAt(int i) { return (mSndParticleData) ? ((std::vector<pData>*) mSndParticleData)->at(i).flag : 0; }
+	inline int getFlipParticleFlagAt(int i) { return (mFlipParticleData && !mFlipParticleData->empty() && mFlipParticleData->size() > i) ? ((std::vector<pData>*) mFlipParticleData)->at(i).flag : 0; }
+	inline int getSndParticleFlagAt(int i) { return (mSndParticleData && !mSndParticleData->empty() && mSndParticleData->size() > i) ? ((std::vector<pData>*) mSndParticleData)->at(i).flag : 0; }
 
-	inline float getFlipParticlePositionXAt(int i) { return (mFlipParticleData && !mFlipParticleData->empty()) ? mFlipParticleData->at(i).pos[0] : 0.f; }
-	inline float getFlipParticlePositionYAt(int i) { return (mFlipParticleData && !mFlipParticleData->empty()) ? mFlipParticleData->at(i).pos[1] : 0.f; }
-	inline float getFlipParticlePositionZAt(int i) { return (mFlipParticleData && !mFlipParticleData->empty()) ? mFlipParticleData->at(i).pos[2] : 0.f; }
+	inline float getFlipParticlePositionXAt(int i) { return (mFlipParticleData && !mFlipParticleData->empty() && mFlipParticleData->size() > i) ? mFlipParticleData->at(i).pos[0] : 0.f; }
+	inline float getFlipParticlePositionYAt(int i) { return (mFlipParticleData && !mFlipParticleData->empty() && mFlipParticleData->size() > i) ? mFlipParticleData->at(i).pos[1] : 0.f; }
+	inline float getFlipParticlePositionZAt(int i) { return (mFlipParticleData && !mFlipParticleData->empty() && mFlipParticleData->size() > i) ? mFlipParticleData->at(i).pos[2] : 0.f; }
 
-	inline float getSndParticlePositionXAt(int i) { return (mSndParticleData && !mSndParticleData->empty()) ? mSndParticleData->at(i).pos[0] : 0.f; }
-	inline float getSndParticlePositionYAt(int i) { return (mSndParticleData && !mSndParticleData->empty()) ? mSndParticleData->at(i).pos[1] : 0.f; }
-	inline float getSndParticlePositionZAt(int i) { return (mSndParticleData && !mSndParticleData->empty()) ? mSndParticleData->at(i).pos[2] : 0.f; }
+	inline float getSndParticlePositionXAt(int i) { return (mSndParticleData && !mSndParticleData->empty() && mSndParticleData->size() > i) ? mSndParticleData->at(i).pos[0] : 0.f; }
+	inline float getSndParticlePositionYAt(int i) { return (mSndParticleData && !mSndParticleData->empty() && mSndParticleData->size() > i) ? mSndParticleData->at(i).pos[1] : 0.f; }
+	inline float getSndParticlePositionZAt(int i) { return (mSndParticleData && !mSndParticleData->empty() && mSndParticleData->size() > i) ? mSndParticleData->at(i).pos[2] : 0.f; }
 
-	inline float getFlipParticleVelocityXAt(int i) { return (mFlipParticleVelocity && !mFlipParticleVelocity->empty()) ? mFlipParticleVelocity->at(i).pos[0] : 0.f; }
-	inline float getFlipParticleVelocityYAt(int i) { return (mFlipParticleVelocity && !mFlipParticleVelocity->empty()) ? mFlipParticleVelocity->at(i).pos[1] : 0.f; }
-	inline float getFlipParticleVelocityZAt(int i) { return (mFlipParticleVelocity && !mFlipParticleVelocity->empty()) ? mFlipParticleVelocity->at(i).pos[2] : 0.f; }
+	inline float getFlipParticleVelocityXAt(int i) { return (mFlipParticleVelocity && !mFlipParticleVelocity->empty() && mFlipParticleVelocity->size() > i) ? mFlipParticleVelocity->at(i).pos[0] : 0.f; }
+	inline float getFlipParticleVelocityYAt(int i) { return (mFlipParticleVelocity && !mFlipParticleVelocity->empty() && mFlipParticleVelocity->size() > i) ? mFlipParticleVelocity->at(i).pos[1] : 0.f; }
+	inline float getFlipParticleVelocityZAt(int i) { return (mFlipParticleVelocity && !mFlipParticleVelocity->empty() && mFlipParticleVelocity->size() > i) ? mFlipParticleVelocity->at(i).pos[2] : 0.f; }
 
-	inline float getSndParticleVelocityXAt(int i) { return (mSndParticleVelocity && !mSndParticleVelocity->empty()) ? mSndParticleVelocity->at(i).pos[0] : 0.f; }
-	inline float getSndParticleVelocityYAt(int i) { return (mSndParticleVelocity && !mSndParticleVelocity->empty()) ? mSndParticleVelocity->at(i).pos[1] : 0.f; }
-	inline float getSndParticleVelocityZAt(int i) { return (mSndParticleVelocity && !mSndParticleVelocity->empty()) ? mSndParticleVelocity->at(i).pos[2] : 0.f; }
+	inline float getSndParticleVelocityXAt(int i) { return (mSndParticleVelocity && !mSndParticleVelocity->empty() && mSndParticleVelocity->size() > i) ? mSndParticleVelocity->at(i).pos[0] : 0.f; }
+	inline float getSndParticleVelocityYAt(int i) { return (mSndParticleVelocity && !mSndParticleVelocity->empty() && mSndParticleVelocity->size() > i) ? mSndParticleVelocity->at(i).pos[1] : 0.f; }
+	inline float getSndParticleVelocityZAt(int i) { return (mSndParticleVelocity && !mSndParticleVelocity->empty() && mSndParticleVelocity->size() > i) ? mSndParticleVelocity->at(i).pos[2] : 0.f; }
 
 	inline float* getFlipParticleData() { return (mFlipParticleData && !mFlipParticleData->empty()) ? (float*) &mFlipParticleData->front() : NULL; }
 	inline float* getSndParticleData()  { return (mSndParticleData && !mSndParticleData->empty()) ? (float*) &mSndParticleData->front() : NULL; }
@@ -349,19 +353,9 @@ private:
 	float* mPhiOutIn;
 	float* mPhi;
 
-	// Mesh fields for liquid surface
-	int mNumVertices;
-	int mNumNormals;
-	int mNumTriangles;
-	std::vector<float> mVerticesX;
-	std::vector<float> mVerticesY;
-	std::vector<float> mVerticesZ;
-	std::vector<float> mNormalsX;
-	std::vector<float> mNormalsY;
-	std::vector<float> mNormalsZ;
-	std::vector<int> mTrianglesX;
-	std::vector<int> mTrianglesY;
-	std::vector<int> mTrianglesZ;
+	// Mesh fields
+	std::vector<Node>* mMeshNodes;
+	std::vector<Triangle>* mMeshTriangles;
 	
 	// Particle fields
 	std::vector<pData>* mFlipParticleData;
