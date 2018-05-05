@@ -366,6 +366,9 @@ class PHYSICS_PT_smoke_noise(PhysicButtonsPanel, Panel):
 
     def draw_header(self, context):
         md = context.smoke.domain_settings
+        domain = context.smoke.domain_settings
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
+        self.layout.enabled = not baking_any
         self.layout.prop(md, "use_noise", text="")
 
     def draw(self, context):
@@ -378,12 +381,9 @@ class PHYSICS_PT_smoke_noise(PhysicButtonsPanel, Panel):
 
         split = layout.split()
         split.enabled = not domain.cache_baked_noise and not baking_any
-        split.prop(domain, "noise_scale", text="Upres")
-
-        split = layout.split()
-        split.enabled = not domain.cache_baked_noise and not baking_any
 
         col = split.column(align=True)
+        col.prop(domain, "noise_scale", text="Upres")
         # TODO (sebbas): Mantaflow only supports wavelet noise. Do we really need fft noise? Maybe get rid of noise type ...
         col.label(text="Noise Method:")
         col.prop(domain, "noise_type", text="")
@@ -412,6 +412,9 @@ class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
 
     def draw_header(self, context):
         md = context.smoke.domain_settings
+        domain = context.smoke.domain_settings
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
+        self.layout.enabled = not baking_any
         self.layout.prop(md, "use_mesh", text="")
 
     def draw(self, context):
@@ -474,11 +477,13 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         layout = self.layout
         domain = context.smoke.domain_settings
 
-        split = layout.split()
-        split.prop(domain, "particle_scale", text="Upres")
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
 
         split = layout.split()
-        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
+        split.prop(domain, "particle_scale", text="Upres")
+        split.enabled = not domain.cache_baked_particles and not baking_any
+
+        split = layout.split()
         split.enabled = not domain.cache_baked_particles and not baking_any
 
         col = split.column()
