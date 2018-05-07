@@ -849,6 +849,24 @@ extern "C" int fluid_read_particles(FLUID* fluid, SmokeModifierData *smd, int fr
 	return fluid->readParticles(smd, framenr);
 }
 
+extern "C" int fluid_update_liquid_structures(FLUID* fluid, SmokeModifierData *smd, int framenr)
+{
+	if (!fluid || !smd) return 0;
+	return fluid->updateFlipStructures(smd, framenr);
+}
+
+extern "C" int fluid_update_mesh_structures(FLUID* fluid, SmokeModifierData *smd, int framenr)
+{
+	if (!fluid || !smd) return 0;
+	return fluid->updateMeshStructures(smd, framenr);
+}
+
+extern "C" int fluid_update_particle_structures(FLUID* fluid, SmokeModifierData *smd, int framenr)
+{
+	if (!fluid || !smd) return 0;
+	return fluid->updateParticleStructures(smd, framenr);
+}
+
 extern "C" int fluid_bake_data(FLUID* fluid, SmokeModifierData *smd, int framenr)
 {
 	if (!fluid || !smd) return 0;

@@ -93,10 +93,7 @@ mesh_sm$ID$     = sm$ID$.create(Mesh)\n\
 \n\
 # Acceleration data for particle nbs\n\
 pindex_sm$ID$  = sm$ID$.create(ParticleIndexSystem)\n\
-gpi_sm$ID$     = sm$ID$.create(IntGrid)\n\
-\n\
-# Keep track of important objects in dict to load them later on\n\
-liquid_mesh_dict_s$ID$ = dict(mesh=mesh_sm$ID$)\n";
+gpi_sm$ID$     = sm$ID$.create(IntGrid)\n";
 
 const std::string liquid_init_phi = "\n\
 phi_s$ID$.initFromFlags(flags_s$ID$)\n\
@@ -319,11 +316,6 @@ const std::string liquid_load_flip = "\n\
 def liquid_load_flip_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid load flip')\n\
     fluid_file_import_s$ID$(dict=liquid_flip_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
-
-const std::string liquid_load_mesh = "\n\
-def liquid_load_mesh_$ID$(path, framenr, file_format):\n\
-    mantaMsg('Liquid load mesh')\n\
-    fluid_file_import_s$ID$(dict=liquid_mesh_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
 //////////////////////////////////////////////////////////////////////
 // EXPORT

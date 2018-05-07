@@ -172,6 +172,9 @@ int fluid_read_data(struct FLUID* fluid, struct SmokeModifierData *smd, int fram
 int fluid_read_noise(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_read_mesh(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_read_particles(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
+int fluid_update_liquid_structures(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
+int fluid_update_mesh_structures(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
+int fluid_update_particle_structures(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_bake_data(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_bake_noise(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_bake_mesh(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);

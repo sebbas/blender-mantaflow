@@ -3099,7 +3099,6 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		else if (scene->r.cfra < smd->time)
 		{
 			smd->time = scene->r.cfra;
-			smokeModifier_reset_ex(smd, false);
 		}
 	}
 	else if (smd->type & MOD_SMOKE_TYPE_EFFEC)
@@ -3122,57 +3121,102 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		else if (scene->r.cfra < smd->time)
 		{
 			smd->time = scene->r.cfra;
-			smokeModifier_reset_ex(smd, false);
 		}
 	}
 	else if (smd->type & MOD_SMOKE_TYPE_DOMAIN)
 	{
+		SmokeDomainSettings *sds = smd->domain;
 		int startframe, endframe, framenr;
 		framenr = scene->r.cfra;
-		startframe = smd->domain->cache_frame_start;
-		endframe = smd->domain->cache_frame_end;
+		startframe = sds->cache_frame_start;
+		endframe = sds->cache_frame_end;
 
-		bool is_baking = (smd->domain->cache_flag & (FLUID_CACHE_BAKING_DATA|FLUID_CACHE_BAKING_NOISE|
-													FLUID_CACHE_BAKING_MESH|FLUID_CACHE_BAKING_PARTICLES));
-		bool is_baked = (smd->domain->cache_flag & (FLUID_CACHE_BAKED_DATA|FLUID_CACHE_BAKED_NOISE|
-												   FLUID_CACHE_BAKED_MESH|FLUID_CACHE_BAKED_PARTICLES));
+		bool is_baking = (sds->cache_flag & (FLUID_CACHE_BAKING_DATA|FLUID_CACHE_BAKING_NOISE|
+											 FLUID_CACHE_BAKING_MESH|FLUID_CACHE_BAKING_PARTICLES));
+		bool is_baked = (sds->cache_flag & (FLUID_CACHE_BAKED_DATA|FLUID_CACHE_BAKED_NOISE|
+											FLUID_CACHE_BAKED_MESH|FLUID_CACHE_BAKED_PARTICLES));
 
 		/* Reset fluid if no fluid present (obviously)
 		 * or if timeline gets reset to startframe when no (!) baking is running
 		 * or if no baking is running and also there is no baked data present */
-		if (!smd->domain->fluid || (framenr == startframe && !is_baking) || (!is_baking && !is_baked))
+		if (!sds->fluid || (framenr == startframe && !is_baking && !is_baked) || (!is_baking && !is_baked)) {
 			smokeModifier_reset_ex(smd, false);
+		}
 
-		if (!smd->domain->fluid && (framenr != startframe) && (smd->domain->flags & MOD_SMOKE_FILE_LOAD) == 0)
+		if (!sds->fluid && (framenr != startframe) && (sds->flags & MOD_SMOKE_FILE_LOAD) == 0)
 			return;
 
-		smd->domain->flags &= ~MOD_SMOKE_FILE_LOAD;
+		sds->flags &= ~MOD_SMOKE_FILE_LOAD;
 		CLAMP(framenr, startframe, endframe);
 
 		if (smokeModifier_init(smd, ob, scene, dm) == 0)
 			return;
 
-		if (is_baking) {
-			if (smd->domain->cache_flag & FLUID_CACHE_BAKING_DATA) {
-				smoke_step(scene, ob, smd, framenr);
-				fluid_write_data(smd->domain->fluid, smd, framenr);
+		/* Read cache. For liquids update data directly (i.e. not via python) */
+		if (!is_baking)
+		{
+			if (sds->cache_flag & FLUID_CACHE_BAKED_DATA)
+			{
+				if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS)
+					fluid_read_data(sds->fluid, smd, framenr);
+				if (sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
+					fluid_update_liquid_structures(sds->fluid, smd, framenr);
 			}
-			if (smd->domain->cache_flag & FLUID_CACHE_BAKING_NOISE)
-				fluid_bake_noise(smd->domain->fluid, smd, framenr);
-			if (smd->domain->cache_flag & FLUID_CACHE_BAKING_MESH)
-				fluid_bake_mesh(smd->domain->fluid, smd, framenr);
-			if (smd->domain->cache_flag & FLUID_CACHE_BAKING_PARTICLES)
-				fluid_bake_particles(smd->domain->fluid, smd, framenr);
+			if (sds->cache_flag & FLUID_CACHE_BAKED_NOISE)
+			{
+				fluid_read_noise(sds->fluid, smd, framenr);
+			}
+			if (sds->cache_flag & FLUID_CACHE_BAKED_MESH)
+			{
+				//if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS)
+					// TODO (sebbas)
+				if (sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
+					fluid_update_mesh_structures(sds->fluid, smd, framenr);
+			}
+			if (sds->cache_flag & FLUID_CACHE_BAKED_PARTICLES)
+			{
+				//if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS)
+					// TODO (sebbas)
+				if (sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
+					fluid_update_particle_structures(sds->fluid, smd, framenr);
+			}
 		}
-		else {
-			if (smd->domain->cache_flag & FLUID_CACHE_BAKED_DATA)
-				fluid_read_data(smd->domain->fluid, smd, framenr);
-			if (smd->domain->cache_flag & FLUID_CACHE_BAKED_NOISE)
-				fluid_read_noise(smd->domain->fluid, smd, framenr);
-			if (smd->domain->cache_flag & FLUID_CACHE_BAKED_MESH)
-				fluid_read_mesh(smd->domain->fluid, smd, framenr);
-			if (smd->domain->cache_flag & FLUID_CACHE_BAKED_PARTICLES)
-				fluid_read_particles(smd->domain->fluid, smd, framenr);
+
+		/* Simulate step and write cache. Optionally also read py objects once from previous frame (bake started from resume operator) */
+		if (is_baking)
+		{
+			if (sds->cache_flag & FLUID_CACHE_BAKING_DATA)
+			{
+				/* Refresh all objects if we start baking from a resumed frame */
+				if (sds->cache_frame_pause_data == framenr)
+					fluid_read_data(sds->fluid, smd, framenr-1);
+
+				/* Base step needs separated bake and write calls - reason being that transparency calculation is after fluid step */
+				smoke_step(scene, ob, smd, framenr);
+				fluid_write_data(sds->fluid, smd, framenr);
+			}
+			if (sds->cache_flag & FLUID_CACHE_BAKING_NOISE)
+			{
+				/* Refresh all objects if we start baking from a resumed frame */
+				if (sds->cache_frame_pause_data == framenr)
+					fluid_read_noise(sds->fluid, smd, framenr-1);
+
+				fluid_bake_noise(sds->fluid, smd, framenr);
+			}
+			if (sds->cache_flag & FLUID_CACHE_BAKING_MESH)
+			{
+				/* Note: Mesh bake does not need object refresh from cache */
+
+				fluid_bake_mesh(sds->fluid, smd, framenr);
+			}
+			if (sds->cache_flag & FLUID_CACHE_BAKING_PARTICLES)
+			{
+				/* Refresh all objects if we start baking from a resumed frame */
+				if (sds->cache_frame_pause_data == framenr)
+					fluid_read_particles(sds->fluid, smd, framenr-1);
+
+				fluid_bake_particles(sds->fluid, smd, framenr);
+			}
 		}
 
 		smd->time = scene->r.cfra;

@@ -68,20 +68,21 @@ public:
 	// Pointer transfer: Mantaflow -> Blender
 	void updatePointers();
 	void updatePointersHigh();
-	// Data transfer: disk file -> Blender
-	void updateMeshStructures(SmokeModifierData *smd, int framenr);
-	void updateFlipStructures(SmokeModifierData *smd, int framenr);
-	void updateParticleStructures(SmokeModifierData *smd, int framenr);
 
 	// Write cache
 	int writeData(SmokeModifierData *smd, int framenr);
 	// write call for noise, mesh and particles were left in bake calls for now
 
-	// Read cache
+	// Read cache (via Manta save/load)
 	int readData(SmokeModifierData *smd, int framenr);
 	int readNoise(SmokeModifierData *smd, int framenr);
 	int readMesh(SmokeModifierData *smd, int framenr);
 	int readParticles(SmokeModifierData *smd, int framenr);
+
+	// Read cache (via file read functions in FLUID - e.g. read .bobj.gz meshes, .uni particles)
+	int updateMeshStructures(SmokeModifierData *smd, int framenr);
+	int updateFlipStructures(SmokeModifierData *smd, int framenr);
+	int updateParticleStructures(SmokeModifierData *smd, int framenr);
 
 	// Bake cache
 	int bakeData(SmokeModifierData *smd, int framenr);
@@ -232,6 +233,7 @@ public:
 	inline int getNumFlipParticles() { return (mFlipParticleData && !mFlipParticleData->empty()) ? mFlipParticleData->size() : 0; }
 	inline int getNumSndParticles() { return (mSndParticleData && !mSndParticleData->empty()) ? mSndParticleData->size() : 0; }
 
+	// TODO (sebbas): make these private once pointcache is refactored
 	void updateMeshFromFile(const char* filename);
 	void updateParticlesFromFile(const char* filename, bool isSecondary);
 

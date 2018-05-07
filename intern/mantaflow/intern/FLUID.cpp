@@ -422,8 +422,7 @@ void FLUID::initLiquidMesh(SmokeModifierData *smd)
 	std::vector<std::string> pythonCommands;
 	std::string tmpString = liquid_alloc_mesh
 		+ liquid_variables_mesh
-		+ liquid_save_mesh
-		+ liquid_load_mesh;
+		+ liquid_save_mesh;
 	std::string finalString = parseScript(tmpString, smd);
 	pythonCommands.push_back(finalString);
 
@@ -1022,7 +1021,7 @@ static std::string getCacheFileEnding(char cache_format)
 	}
 }
 
-void FLUID::updateFlipStructures(SmokeModifierData *smd, int framenr)
+int FLUID::updateFlipStructures(SmokeModifierData *smd, int framenr)
 {
 	if (FLUID::with_debug)
 		std::cout << "FLUID::updateFlipStructures()" << std::endl;
@@ -1049,9 +1048,10 @@ void FLUID::updateFlipStructures(SmokeModifierData *smd, int framenr)
 	if (BLI_exists(helperDir)) {
 		updateParticlesFromFile(helperDir, false);
 	}
+	return 1;
 }
 
-void FLUID::updateMeshStructures(SmokeModifierData *smd, int framenr)
+int FLUID::updateMeshStructures(SmokeModifierData *smd, int framenr)
 {
 	if (FLUID::with_debug)
 		std::cout << "FLUID::updateMeshStructures()" << std::endl;
@@ -1069,9 +1069,10 @@ void FLUID::updateMeshStructures(SmokeModifierData *smd, int framenr)
 	if (BLI_exists(helperDir)) {
 		updateMeshFromFile(helperDir);
 	}
+	return 1;
 }
 
-void FLUID::updateParticleStructures(SmokeModifierData *smd, int framenr)
+int FLUID::updateParticleStructures(SmokeModifierData *smd, int framenr)
 {
 	if (FLUID::with_debug)
 		std::cout << "FLUID::updateParticleStructures()" << std::endl;
@@ -1103,6 +1104,7 @@ void FLUID::updateParticleStructures(SmokeModifierData *smd, int framenr)
 	if (BLI_exists(helperDir)) {
 		updateParticlesFromFile(helperDir, true);
 	}
+	return 1;
 }
 
 int FLUID::writeData(SmokeModifierData *smd, int framenr)
@@ -1158,9 +1160,6 @@ int FLUID::readData(SmokeModifierData *smd, int framenr)
 	if (mUsingSmoke) {
 		ss << "smoke_load_data_" << mCurrentID << "('" << cacheDirData << "', " << framenr << ", '" << dformat << "')";
 		pythonCommands.push_back(ss.str());
-
-		runPythonString(pythonCommands);
-		updatePointers();
 	}
 	if (mUsingLiquid) {
 		ss << "liquid_load_data_" << mCurrentID << "('" << cacheDirData << "', " << framenr << ", '" << dformat << "')";
@@ -1168,10 +1167,9 @@ int FLUID::readData(SmokeModifierData *smd, int framenr)
 		ss.str("");
 		ss << "liquid_load_flip_" << mCurrentID << "('" << cacheDirData << "', " << framenr << ", '" << pformat << "')";
 		pythonCommands.push_back(ss.str());
-
-		runPythonString(pythonCommands);
-		updateFlipStructures(smd, framenr);
 	}
+	runPythonString(pythonCommands);
+	updatePointers();
 	return 1;
 }
 
@@ -1195,7 +1193,6 @@ int FLUID::readNoise(SmokeModifierData *smd, int framenr)
 		ss << "smoke_load_noise_" << mCurrentID << "('" << cacheDirNoise << "', " << framenr << ", '" << nformat  << "')";
 		pythonCommands.push_back(ss.str());
 	}
-
 	runPythonString(pythonCommands);
 	updatePointersHigh();
 	return 1;
@@ -1203,27 +1200,9 @@ int FLUID::readNoise(SmokeModifierData *smd, int framenr)
 
 int FLUID::readMesh(SmokeModifierData *smd, int framenr)
 {
+	// dummmy function, use updateMeshFromFile
 	if (with_debug)
-		std::cout << "FLUID::readMesh()" << std::endl;
-
-	if (!mUsingMesh) return 0;
-
-	std::ostringstream ss;
-	std::vector<std::string> pythonCommands;
-
-	char cacheDirMesh[FILE_MAX];
-	cacheDirMesh[0] = '\0';
-
-	std::string mformat = getCacheFileEnding(smd->domain->cache_surface_format);
-
-	BLI_path_join(cacheDirMesh, sizeof(cacheDirMesh), smd->domain->cache_directory, FLUID_CACHE_DIR_MESH, NULL);
-	if (mUsingMesh) {
-		ss << "liquid_load_mesh_" << mCurrentID << "('" << cacheDirMesh << "', " << framenr << ", '" << mformat << "')";
-		pythonCommands.push_back(ss.str());
-	}
-
-	runPythonString(pythonCommands);
-	updateMeshStructures(smd, framenr);
+		std::cout << "FLUID::readMesh() - dummmy function, use updateMeshFromFile()" << std::endl;
 	return 1;
 }
 
@@ -1248,7 +1227,7 @@ int FLUID::readParticles(SmokeModifierData *smd, int framenr)
 		pythonCommands.push_back(ss.str());
 	}
 	runPythonString(pythonCommands);
-	updateParticleStructures(smd, framenr);
+	updatePointers();
 	return 1;
 }
 
