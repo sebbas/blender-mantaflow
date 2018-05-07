@@ -251,10 +251,6 @@ void FLUID::initDomain(SmokeModifierData *smd)
 		+ fluid_file_export
 		+ fluid_save_data
 		+ fluid_load_data
-		+ fluid_obstacle_export
-		+ fluid_guiding_export
-		+ fluid_invel_export
-		+ fluid_sndparts_export
 		+ fluid_adapt_time_step
 		+ fluid_adaptive_time_stepping;
 	std::string finalString = parseScript(tmpString, smd);
@@ -968,12 +964,6 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 	}
 	
 	manta_script += smoke_load_data;
-	if (obstacle)
-		manta_script += fluid_obstacle_import_low;
-	if (guiding)
-		manta_script += fluid_guiding_import_low;
-	if (invel)
-		manta_script += fluid_invel_import_low;
 	if (highres)
 		manta_script += smoke_load_noise;
 	
@@ -1459,14 +1449,6 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 	manta_script += liquid_load_flip;
 //	if (highres)
 //		manta_script += liquid_load_data_high;
-	if (obstacle)
-		manta_script += fluid_obstacle_import_low;
-	if (guiding)
-		manta_script += fluid_guiding_import_low;
-	if (invel)
-		manta_script += fluid_invel_import_low;
-	if (drops || bubble || floater || tracer)
-		manta_script += fluid_sndparts_import_low;
 
 	manta_script += liquid_pre_step;
 	manta_script += liquid_post_step;
@@ -2126,42 +2108,6 @@ static std::string escape_slashes(std::string const& s) {
 	return Result;
 }
 
-void FLUID::saveMesh(char *filename, int framenr)
-{
-	std::string path(filename);
-	std::vector<std::string> pythonCommands;
-	std::ostringstream ss;
-
-	ss << "liquid_save_mesh_" << mCurrentID << "(\"" << escape_slashes(path) << "\")\r\n";
-	pythonCommands.push_back(ss.str());
-	
-	runPythonString(pythonCommands);
-}
-
-void FLUID::saveParticles(char* filename)
-{
-	std::string path(filename);
-	std::vector<std::string> pythonCommands;
-	std::ostringstream ss;
-
-	ss << "fluid_save_particles_" << mCurrentID << "(\"" << escape_slashes(path) << "\")\r\n";
-	pythonCommands.push_back(ss.str());
-
-	runPythonString(pythonCommands);
-}
-
-void FLUID::saveParticleVelocities(char* filename)
-{
-	std::string path(filename);
-	std::vector<std::string> pythonCommands;
-	std::ostringstream ss;
-
-	ss << "save_particles_velocities_" << mCurrentID << "(\"" << escape_slashes(path) << "\")\r\n";
-	pythonCommands.push_back(ss.str());
-
-	runPythonString(pythonCommands);
-}
-
 void FLUID::saveFluidObstacleData(char *pathname)
 {
 	std::string path(pathname);
@@ -2258,27 +2204,5 @@ void FLUID::saveLiquidDataHigh(char *pathname)
 	runPythonString(pythonCommands);
 }
 
-void FLUID::loadLiquidData(char *pathname)
-{
-	std::string path(pathname);
-	std::vector<std::string> pythonCommands;
-	std::ostringstream ss;
 
-	ss << "load_liquid_data_low_" << mCurrentID << "(r'" << path << "')";
-	pythonCommands.push_back(ss.str());
-
-	runPythonString(pythonCommands);
-}
-
-void FLUID::loadLiquidDataHigh(char *pathname)
-{
-	std::string path(pathname);
-	std::vector<std::string> pythonCommands;
-	std::ostringstream ss;
-
-	ss << "load_liquid_data_high_" << mCurrentID << "(r'" << path << "')";
-	pythonCommands.push_back(ss.str());
-
-	runPythonString(pythonCommands);
-}
 

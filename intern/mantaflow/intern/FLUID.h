@@ -108,17 +108,8 @@ public:
 	void saveSmokeDataHigh(char *pathname);
 
 	// Write files for liquids
-	void saveMesh(char *filename, int framenr);
 	void saveLiquidData(char *pathname);
 	void saveLiquidDataHigh(char *pathname);
-
-	// Write files for particles
-	void saveParticles(char* filename);
-	void saveParticleVelocities(char* filename);
-
-	// Load files for liquids
-	void loadLiquidData(char *pathname);
-	void loadLiquidDataHigh(char *pathname);
 
 	// Smoke getters
 	inline size_t getTotalCells() { return mTotalCells; }
