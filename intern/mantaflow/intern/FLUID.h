@@ -65,13 +65,25 @@ public:
 	void initSndParts(SmokeModifierData *smd);
 	void initLiquidSndParts(SmokeModifierData *smd);
 
-	// Pointer transfer Mantaflow -> Blender
+	// Pointer transfer: Mantaflow -> Blender
 	void updatePointers();
 	void updatePointersHigh();
+	// Data transfer: disk file -> Blender
+	void updateMeshStructures(SmokeModifierData *smd, int framenr);
+	void updateFlipStructures(SmokeModifierData *smd, int framenr);
+	void updateParticleStructures(SmokeModifierData *smd, int framenr);
 
-	// Bake
-	int readCache(SmokeModifierData *smd, int framenr);
-	int writeCache(SmokeModifierData *smd, int framenr);
+	// Write cache
+	int writeData(SmokeModifierData *smd, int framenr);
+	// write call for noise, mesh and particles were left in bake calls for now
+
+	// Read cache
+	int readData(SmokeModifierData *smd, int framenr);
+	int readNoise(SmokeModifierData *smd, int framenr);
+	int readMesh(SmokeModifierData *smd, int framenr);
+	int readParticles(SmokeModifierData *smd, int framenr);
+
+	// Bake cache
 	int bakeData(SmokeModifierData *smd, int framenr);
 	int bakeNoise(SmokeModifierData *smd, int framenr);
 	int bakeMesh(SmokeModifierData *smd, int framenr);
@@ -128,9 +140,7 @@ public:
 	inline int getParticleUpres() { return mUpresParticle; }
 	
 	inline float* getDensity() { return mDensity; }
-	inline float* getDensityIn() { return mDensityIn; }
 	inline float* getHeat() { return mHeat; }
-	inline float* getHeatIn() { return mHeatIn; }
 	inline float* getVelocityX() { return mVelocityX; }
 	inline float* getVelocityY() { return mVelocityY; }
 	inline float* getVelocityZ() { return mVelocityZ; }
@@ -151,14 +161,10 @@ public:
 	inline int* getNumGuide()    { return mNumGuide; }
 	inline float* getFlame() { return mFlame; }
 	inline float* getFuel()  { return mFuel; }
-	inline float* getFuelIn()  { return mFuelIn; }
 	inline float* getReact() { return mReact; }
 	inline float* getColorR() { return mColorR; }
 	inline float* getColorG() { return mColorG; }
 	inline float* getColorB() { return mColorB; }
-	inline float* getColorRIn() { return mColorRIn; }
-	inline float* getColorGIn() { return mColorGIn; }
-	inline float* getColorBIn() { return mColorBIn; }
 	inline float* getEmissionIn() { return mEmissionIn; }
 	inline float* getShadow() { return mShadow; }
 	inline int* getFlowType() { return mFlowType; }
@@ -235,8 +241,8 @@ public:
 	inline int getNumFlipParticles() { return (mFlipParticleData && !mFlipParticleData->empty()) ? mFlipParticleData->size() : 0; }
 	inline int getNumSndParticles() { return (mSndParticleData && !mSndParticleData->empty()) ? mSndParticleData->size() : 0; }
 
-	void updateMeshData(const char* filename);
-	void updateParticleData(const char* filename, bool isSecondary);
+	void updateMeshFromFile(const char* filename);
+	void updateParticlesFromFile(const char* filename, bool isSecondary);
 
 	void setFlipParticleData(float* buffer, int numParts);
 	void setSndParticleData(float* buffer, int numParts);
@@ -297,9 +303,7 @@ private:
 
 	// Smoke grids
 	float* mDensity;
-	float* mDensityIn;
 	float* mHeat;
-	float* mHeatIn;
 	float* mVelocityX;
 	float* mVelocityY;
 	float* mVelocityZ;
@@ -320,14 +324,10 @@ private:
 	int* mNumGuide;
 	float* mFlame;
 	float* mFuel;
-	float* mFuelIn;
 	float* mReact;
 	float* mColorR;
 	float* mColorG;
 	float* mColorB;
-	float* mColorRIn;
-	float* mColorGIn;
-	float* mColorBIn;
 	float* mEmissionIn;
 	float* mShadow;
 	int* mFlowType;

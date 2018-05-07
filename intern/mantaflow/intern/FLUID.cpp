@@ -86,13 +86,11 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 
 	// Smoke low res grids
 	mDensity        = NULL;
-	mDensityIn      = NULL;
 	mEmissionIn     = NULL;
 	mShadow         = NULL;
 	mFlowType       = NULL;
 	mNumFlow        = NULL;
 	mHeat           = NULL;
-	mHeatIn         = NULL;
 	mVelocityX      = NULL;
 	mVelocityY      = NULL;
 	mVelocityZ      = NULL;
@@ -101,14 +99,10 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mForceZ         = NULL;
 	mFlame          = NULL;
 	mFuel           = NULL;
-	mFuelIn         = NULL;
 	mReact          = NULL;
 	mColorR         = NULL;
 	mColorG         = NULL;
 	mColorB         = NULL;
-	mColorRIn       = NULL;
-	mColorGIn       = NULL;
-	mColorBIn       = NULL;
 	mObstacle       = NULL;
 
 	// Smoke high res grids
@@ -253,6 +247,8 @@ void FLUID::initDomain(SmokeModifierData *smd)
 		+ fluid_bake_noise
 		+ fluid_bake_mesh
 		+ fluid_bake_particles
+		+ fluid_file_import
+		+ fluid_file_export
 		+ fluid_save_data
 		+ fluid_load_data
 		+ fluid_obstacle_export
@@ -272,8 +268,6 @@ void FLUID::initNoise(SmokeModifierData *smd)
 	std::string tmpString = fluid_variables_noise
 		+ fluid_solver_noise
 		+ fluid_adapt_time_step_noise
-		+ fluid_save_noise
-		+ fluid_load_noise
 		+ fluid_adaptive_time_stepping_noise;
 	std::string finalString = parseScript(tmpString, smd);
 	pythonCommands.push_back(finalString);
@@ -398,10 +392,8 @@ void FLUID::initLiquid(SmokeModifierData *smd)
 		std::string tmpString = liquid_alloc
 			+ liquid_variables
 			+ liquid_init_phi
-			+ liquid_save_particles
 			+ liquid_save_data
 			+ liquid_save_flip
-			+ liquid_load_particles
 			+ liquid_load_data
 			+ liquid_load_flip
 			+ liquid_adaptive_step
@@ -489,7 +481,9 @@ void FLUID::initSndParts(SmokeModifierData *smd)
 {
 	std::vector<std::string> pythonCommands;
 	std::string tmpString = fluid_variables_particles
-		+ fluid_solver_particles;
+		+ fluid_solver_particles
+		+ fluid_load_particles
+		+ fluid_save_particles;
 	std::string finalString = parseScript(tmpString, smd);
 	pythonCommands.push_back(finalString);
 
@@ -528,13 +522,11 @@ FLUID::~FLUID()
 
 	// Reset pointers to avoid dangling pointers
 	mDensity        = NULL;
-	mDensityIn      = NULL;
 	mEmissionIn     = NULL;
 	mShadow         = NULL;
 	mFlowType       = NULL;
 	mNumFlow        = NULL;
 	mHeat           = NULL;
-	mHeatIn         = NULL;
 	mVelocityX      = NULL;
 	mVelocityY      = NULL;
 	mVelocityZ      = NULL;
@@ -543,14 +535,10 @@ FLUID::~FLUID()
 	mForceZ         = NULL;
 	mFlame          = NULL;
 	mFuel           = NULL;
-	mFuelIn         = NULL;
 	mReact          = NULL;
 	mColorR         = NULL;
 	mColorG         = NULL;
 	mColorB         = NULL;
-	mColorRIn       = NULL;
-	mColorGIn       = NULL;
-	mColorBIn       = NULL;
 	mObstacle       = NULL;
 
 	mDensityHigh    = NULL;
@@ -1044,175 +1032,234 @@ static std::string getCacheFileEnding(char cache_format)
 	}
 }
 
-int FLUID::readCache(SmokeModifierData *smd, int framenr)
+void FLUID::updateFlipStructures(SmokeModifierData *smd, int framenr)
 {
-	if (with_debug)
-		std::cout << "FLUID::readCache()" << std::endl;
+	if (FLUID::with_debug)
+		std::cout << "FLUID::updateFlipStructures()" << std::endl;
 
 	std::ostringstream ss;
-	std::vector<std::string> pythonCommands;
-	bool readSuccess = false;
-
-	// Helper cacheDir used to navigate to cache subdirs, ie data, mesh, particles
 	char cacheDir[FILE_MAX], helperDir[FILE_MAX];
 	cacheDir[0] = '\0';
 	helperDir[0] = '\0';
 
-	// File extension for different fluid types: data, mesh, particles, noise
-	std::string dformat, mformat, pformat, nformat;
-	dformat = getCacheFileEnding(smd->domain->cache_volume_format);
+	std::string pformat = getCacheFileEnding(smd->domain->cache_particle_format);
+	BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
 
-	if (mUsingSmoke)
-	{
-		nformat = getCacheFileEnding(smd->domain->cache_noise_format);
+	// TODO (sebbas): Use pp_xl and pVel_xl when using upres simulation?
 
-		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
-		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_DATA || smd->domain->cache_flag & FLUID_CACHE_BAKING_DATA))
-		{
-			ss.str("");
-			ss << "smoke_load_data_" << mCurrentID << "('" << cacheDir << "', " << framenr << ", '" << dformat << "')";
-			pythonCommands.push_back(ss.str());
-
-			ss.str("");
-			ss << "smoke_load_shadow_" << mCurrentID << "('" << cacheDir << "', " << framenr << ", '" << dformat << "')";
-			pythonCommands.push_back(ss.str());
-
-			runPythonString(pythonCommands);
-			updatePointers();
-
-			readSuccess = true;
-		}
-		if (mUsingNoise)
-		{
-			BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_NOISE, NULL);
-			if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_NOISE || smd->domain->cache_flag & FLUID_CACHE_BAKING_NOISE))
-			{
-				ss.str("");
-				ss << "smoke_load_noise_" << mCurrentID << "('" << cacheDir << "', " << framenr << ", '" << nformat  << "')";
-				pythonCommands.push_back(ss.str());
-				runPythonString(pythonCommands);
-				updatePointersHigh();
-
-				readSuccess = true;
-			}
-		}
+	ss << "pp_" << std::setw(4) << std::setfill('0') << framenr << pformat;
+	BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
+	if (BLI_exists(helperDir)) {
+		updateParticlesFromFile(helperDir, false);
 	}
-	if (mUsingLiquid)
-	{
-		mformat = getCacheFileEnding(smd->domain->cache_surface_format);
-		pformat = getCacheFileEnding(smd->domain->cache_particle_format);
 
-		// Data (flip particles) loading
-		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
-		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_DATA || smd->domain->cache_flag & FLUID_CACHE_BAKING_DATA))
-		{
-			ss.str("");
-			ss << "liquid_load_flip_" << mCurrentID << "('" << cacheDir << "', " << framenr << ", '" << pformat << "')";
-			pythonCommands.push_back(ss.str());
-			runPythonString(pythonCommands);
-
-			ss.str("");
-			ss << "pp_" << std::setw(4) << std::setfill('0') << framenr << pformat;
-			BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
-			updateParticleData(helperDir, false);
-
-			ss.str("");
-			ss << "pVel_" << std::setw(4) << std::setfill('0') << framenr << pformat;
-			BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
-			updateParticleData(helperDir, false);
-
-			readSuccess = true;
-		}
-		if (mUsingMesh) {
-			BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_MESH, NULL);
-			if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_MESH || smd->domain->cache_flag & FLUID_CACHE_BAKING_MESH))
-			{
-				ss.str("");
-				ss << "liquid_load_mesh_" << mCurrentID << "('" << cacheDir << "', " << framenr << ", '" << mformat << "')";
-				pythonCommands.push_back(ss.str());
-				runPythonString(pythonCommands);
-
-				ss.str("");
-				ss << "liquid_mesh_" << std::setw(4) << std::setfill('0') << framenr << mformat;
-				BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
-				updateMeshData(helperDir);
-
-				// TODO (sebbas): load high res FLIP?
-//				ss.str("");
-//				ss << "pp_xl_" << std::setw(4) << std::setfill('0') << framenr << dformat;
-//				BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
-//				updateParticleData(helperDir, false);
-
-				readSuccess = true;
-			}
-		}
+	ss.str("");
+	ss << "pVel_" << std::setw(4) << std::setfill('0') << framenr << pformat;
+	BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
+	if (BLI_exists(helperDir)) {
+		updateParticlesFromFile(helperDir, false);
 	}
-	if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers)
-	{
-		pformat = getCacheFileEnding(smd->domain->cache_particle_format);
-
-		// Secondary particles loading
-		BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_PARTICLES, NULL);
-		if (BLI_exists(cacheDir) && (smd->domain->cache_flag & FLUID_CACHE_BAKED_PARTICLES || smd->domain->cache_flag & FLUID_CACHE_BAKING_PARTICLES))
-		{
-			ss.str("");
-			ss << "liquid_load_particles_" << mCurrentID << "('" << cacheDir << "', " << framenr << ", '" << pformat << "')";
-			pythonCommands.push_back(ss.str());
-			runPythonString(pythonCommands);
-
-			ss.str("");
-			ss << "ppSnd_" << std::setw(4) << std::setfill('0') << framenr << pformat;
-			BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
-			updateParticleData(helperDir, true);
-
-			ss.str("");
-			ss << "pVelSnd_" << std::setw(4) << std::setfill('0') << framenr << pformat;
-			BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
-			updateParticleData(helperDir, true);
-
-			ss.str("");
-			ss << "pLifeSnd_" << std::setw(4) << std::setfill('0') << framenr << pformat;
-			BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
-			updateParticleData(helperDir, true);
-
-			readSuccess = true;
-		}
-	}
-	return readSuccess;
 }
 
-int FLUID::writeCache(SmokeModifierData *smd, int framenr)
+void FLUID::updateMeshStructures(SmokeModifierData *smd, int framenr)
+{
+	if (FLUID::with_debug)
+		std::cout << "FLUID::updateMeshStructures()" << std::endl;
+
+	std::ostringstream ss;
+	char cacheDir[FILE_MAX], helperDir[FILE_MAX];
+	cacheDir[0] = '\0';
+	helperDir[0] = '\0';
+
+	std::string mformat = getCacheFileEnding(smd->domain->cache_surface_format);
+	BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_MESH, NULL);
+
+	ss << "liquid_mesh_" << std::setw(4) << std::setfill('0') << framenr << mformat;
+	BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
+	if (BLI_exists(helperDir)) {
+		updateMeshFromFile(helperDir);
+	}
+}
+
+void FLUID::updateParticleStructures(SmokeModifierData *smd, int framenr)
+{
+	if (FLUID::with_debug)
+		std::cout << "FLUID::updateParticleStructures()" << std::endl;
+
+	std::ostringstream ss;
+	char cacheDir[FILE_MAX], helperDir[FILE_MAX];
+	cacheDir[0] = '\0';
+	helperDir[0] = '\0';
+
+	std::string pformat = getCacheFileEnding(smd->domain->cache_particle_format);
+	BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_PARTICLES, NULL);
+
+	ss << "ppSnd_" << std::setw(4) << std::setfill('0') << framenr << pformat;
+	BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
+	if (BLI_exists(helperDir)) {
+		updateParticlesFromFile(helperDir, true);
+	}
+
+	ss.str("");
+	ss << "pVelSnd_" << std::setw(4) << std::setfill('0') << framenr << pformat;
+	BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
+	if (BLI_exists(helperDir)) {
+		updateParticlesFromFile(helperDir, true);
+	}
+
+	ss.str("");
+	ss << "pLifeSnd_" << std::setw(4) << std::setfill('0') << framenr << pformat;
+	BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
+	if (BLI_exists(helperDir)) {
+		updateParticlesFromFile(helperDir, true);
+	}
+}
+
+int FLUID::writeData(SmokeModifierData *smd, int framenr)
 {
 	if (with_debug)
-		std::cout << "FLUID::writeCacheLow()" << std::endl;
-
-	// Exit liquids early - no shadows to write
-	if (mUsingLiquid) {
-		return true;
-	}
+		std::cout << "FLUID::writeData()" << std::endl;
 
 	std::ostringstream ss;
 	std::vector<std::string> pythonCommands;
-	bool writeSuccess = false;
 
-	// Helper cacheDir used to navigate to cache subdirs, ie data, mesh, particles
-	char cacheDir[FILE_MAX];
-	cacheDir[0] = '\0';
+	char cacheDirData[FILE_MAX];
+	cacheDirData[0] = '\0';
 
 	std::string dformat = getCacheFileEnding(smd->domain->cache_volume_format);
+	std::string pformat = getCacheFileEnding(smd->domain->cache_particle_format);
 
-	BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
-	if (!BLI_exists(cacheDir)) return 0;
+	BLI_path_join(cacheDirData, sizeof(cacheDirData), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
+	ss << "fluid_save_data_" << mCurrentID << "('" << cacheDirData << "', " << framenr << ", '" << dformat << "')";
+	pythonCommands.push_back(ss.str());
 
 	if (mUsingSmoke) {
-		ss << "smoke_save_shadow_" << mCurrentID << "('" << cacheDir << "', " << framenr << ", '" << dformat << "')";
+		ss.str("");
+		ss << "smoke_save_data_" << mCurrentID << "('" << cacheDirData << "', " << framenr << ", '" << dformat << "')";
 		pythonCommands.push_back(ss.str());
-
-		writeSuccess = true;
+	}
+	if (mUsingLiquid) {
+		ss.str("");
+		ss << "liquid_save_data_" << mCurrentID << "('" << cacheDirData << "', " << framenr << ", '" << dformat << "')";
+		pythonCommands.push_back(ss.str());
+		ss.str("");
+		ss << "liquid_save_flip_" << mCurrentID << "('" << cacheDirData << "', " << framenr << ", '" << pformat << "')";
+		pythonCommands.push_back(ss.str());
 	}
 	runPythonString(pythonCommands);
+	return 1;
+}
 
-	return writeSuccess;
+int FLUID::readData(SmokeModifierData *smd, int framenr)
+{
+	if (with_debug)
+		std::cout << "FLUID::readData()" << std::endl;
+
+	std::ostringstream ss;
+	std::vector<std::string> pythonCommands;
+
+	char cacheDirData[FILE_MAX];
+	cacheDirData[0] = '\0';
+
+	std::string dformat = getCacheFileEnding(smd->domain->cache_volume_format);
+	std::string pformat = getCacheFileEnding(smd->domain->cache_particle_format);
+
+	BLI_path_join(cacheDirData, sizeof(cacheDirData), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
+	if (mUsingSmoke) {
+		ss << "smoke_load_data_" << mCurrentID << "('" << cacheDirData << "', " << framenr << ", '" << dformat << "')";
+		pythonCommands.push_back(ss.str());
+
+		runPythonString(pythonCommands);
+		updatePointers();
+	}
+	if (mUsingLiquid) {
+		ss << "liquid_load_data_" << mCurrentID << "('" << cacheDirData << "', " << framenr << ", '" << dformat << "')";
+		pythonCommands.push_back(ss.str());
+		ss.str("");
+		ss << "liquid_load_flip_" << mCurrentID << "('" << cacheDirData << "', " << framenr << ", '" << pformat << "')";
+		pythonCommands.push_back(ss.str());
+
+		runPythonString(pythonCommands);
+		updateFlipStructures(smd, framenr);
+	}
+	return 1;
+}
+
+int FLUID::readNoise(SmokeModifierData *smd, int framenr)
+{
+	if (with_debug)
+		std::cout << "FLUID::readNoise()" << std::endl;
+
+	if (!mUsingNoise) return 0;
+
+	std::ostringstream ss;
+	std::vector<std::string> pythonCommands;
+
+	char cacheDirNoise[FILE_MAX];
+	cacheDirNoise[0] = '\0';
+
+	std::string nformat = getCacheFileEnding(smd->domain->cache_noise_format);
+
+	BLI_path_join(cacheDirNoise, sizeof(cacheDirNoise), smd->domain->cache_directory, FLUID_CACHE_DIR_NOISE, NULL);
+	if (mUsingSmoke && mUsingNoise) {
+		ss << "smoke_load_noise_" << mCurrentID << "('" << cacheDirNoise << "', " << framenr << ", '" << nformat  << "')";
+		pythonCommands.push_back(ss.str());
+	}
+
+	runPythonString(pythonCommands);
+	updatePointersHigh();
+	return 1;
+}
+
+int FLUID::readMesh(SmokeModifierData *smd, int framenr)
+{
+	if (with_debug)
+		std::cout << "FLUID::readMesh()" << std::endl;
+
+	if (!mUsingMesh) return 0;
+
+	std::ostringstream ss;
+	std::vector<std::string> pythonCommands;
+
+	char cacheDirMesh[FILE_MAX];
+	cacheDirMesh[0] = '\0';
+
+	std::string mformat = getCacheFileEnding(smd->domain->cache_surface_format);
+
+	BLI_path_join(cacheDirMesh, sizeof(cacheDirMesh), smd->domain->cache_directory, FLUID_CACHE_DIR_MESH, NULL);
+	if (mUsingMesh) {
+		ss << "liquid_load_mesh_" << mCurrentID << "('" << cacheDirMesh << "', " << framenr << ", '" << mformat << "')";
+		pythonCommands.push_back(ss.str());
+	}
+
+	runPythonString(pythonCommands);
+	updateMeshStructures(smd, framenr);
+	return 1;
+}
+
+int FLUID::readParticles(SmokeModifierData *smd, int framenr)
+{
+	if (with_debug)
+		std::cout << "FLUID::readParticles()" << std::endl;
+
+	if (!mUsingDrops && !mUsingBubbles && !mUsingFloats && !mUsingTracers) return 0;
+
+	std::ostringstream ss;
+	std::vector<std::string> pythonCommands;
+
+	char cacheDirParticles[FILE_MAX];
+	cacheDirParticles[0] = '\0';
+
+	std::string pformat = getCacheFileEnding(smd->domain->cache_particle_format);
+
+	BLI_path_join(cacheDirParticles, sizeof(cacheDirParticles), smd->domain->cache_directory, FLUID_CACHE_DIR_PARTICLES, NULL);
+	if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
+		ss << "fluid_load_particles_" << mCurrentID << "('" << cacheDirParticles << "', " << framenr << ", '" << pformat << "')";
+		pythonCommands.push_back(ss.str());
+	}
+	runPythonString(pythonCommands);
+	updateParticleStructures(smd, framenr);
+	return 1;
 }
 
 int FLUID::bakeData(SmokeModifierData *smd, int framenr)
@@ -1566,7 +1613,7 @@ void FLUID::adaptTimestep()
 	runPythonString(pythonCommands);
 }
 
-void FLUID::updateMeshData(const char* filename)
+void FLUID::updateMeshFromFile(const char* filename)
 {
 	std::string fname(filename);
 	std::string::size_type idx;
@@ -1737,7 +1784,7 @@ void FLUID::updateMeshDataFromObj(const char* filename)
 	ifs.close();
 }
 
-void FLUID::updateParticleData(const char* filename, bool isSecondary)
+void FLUID::updateParticlesFromFile(const char* filename, bool isSecondary)
 {
 	if (with_debug)
 		std::cout << "FLUID::updateParticleData()" << std::endl;
@@ -1930,27 +1977,21 @@ void FLUID::updatePointers()
 	// Smoke
 	if (mUsingSmoke) {
 		mDensity        = (float*) stringToPointer(pyObjectToString(callPythonFunction("density"    + solver_ext, func)));
-		mDensityIn      = (float*) stringToPointer(pyObjectToString(callPythonFunction("densityIn"  + solver_ext, func)));
 		mEmissionIn     = (float*) stringToPointer(pyObjectToString(callPythonFunction("emissionIn" + solver_ext, func)));
 		mShadow         = (float*) stringToPointer(pyObjectToString(callPythonFunction("shadow"     + solver_ext, func)));
 
 		if (mUsingHeat) {
 			mHeat       = (float*) stringToPointer(pyObjectToString(callPythonFunction("heat"   + solver_ext,    func)));
-			mHeatIn     = (float*) stringToPointer(pyObjectToString(callPythonFunction("heatIn" + solver_ext,    func)));
 		}
 		if (mUsingFire) {
 			mFlame      = (float*) stringToPointer(pyObjectToString(callPythonFunction("flame"  + solver_ext,   func)));
 			mFuel       = (float*) stringToPointer(pyObjectToString(callPythonFunction("fuel"   + solver_ext,   func)));
-			mFuelIn     = (float*) stringToPointer(pyObjectToString(callPythonFunction("fuelIn" + solver_ext,   func)));
 			mReact      = (float*) stringToPointer(pyObjectToString(callPythonFunction("react"  + solver_ext,   func)));
 		}
 		if (mUsingColors) {
 			mColorR     = (float*) stringToPointer(pyObjectToString(callPythonFunction("color_r"   + solver_ext, func)));
-			mColorRIn   = (float*) stringToPointer(pyObjectToString(callPythonFunction("colorIn_r" + solver_ext, func)));
 			mColorG     = (float*) stringToPointer(pyObjectToString(callPythonFunction("color_g"   + solver_ext, func)));
-			mColorGIn   = (float*) stringToPointer(pyObjectToString(callPythonFunction("colorIn_g" + solver_ext, func)));
 			mColorB     = (float*) stringToPointer(pyObjectToString(callPythonFunction("color_b"   + solver_ext, func)));
-			mColorBIn   = (float*) stringToPointer(pyObjectToString(callPythonFunction("colorIn_b" + solver_ext, func)));
 		}
 	}
 }
@@ -2103,7 +2144,7 @@ void FLUID::saveParticles(char* filename)
 	std::vector<std::string> pythonCommands;
 	std::ostringstream ss;
 
-	ss << "liquid_save_particles_" << mCurrentID << "(\"" << escape_slashes(path) << "\")\r\n";
+	ss << "fluid_save_particles_" << mCurrentID << "(\"" << escape_slashes(path) << "\")\r\n";
 	pythonCommands.push_back(ss.str());
 
 	runPythonString(pythonCommands);

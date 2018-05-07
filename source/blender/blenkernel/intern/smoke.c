@@ -2640,93 +2640,94 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 							}
 						}
 
+						// TODO (sebbas): For now, just using manta interpolated grids for noise
 						/* loop through high res blocks if high res enabled */
-						if (bigdensity) {
-							// neighbor cell emission densities (for high resolution smoke smooth interpolation)
-							float c000, c001, c010, c011,  c100, c101, c110, c111;
-
-							smoke_turbulence_get_res(sds->fluid, bigres);
-
-							block_size = sds->noise_scale;  // high res block size
-
-							c000 = (ex > 0 && ey > 0 && ez > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey - 1, em->res[1], ez - 1)] : 0;
-							c001 = (ex > 0 && ey > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey - 1, em->res[1], ez)] : 0;
-							c010 = (ex > 0 && ez > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey, em->res[1], ez - 1)] : 0;
-							c011 = (ex > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey, em->res[1], ez)] : 0;
-
-							c100 = (ey > 0 && ez > 0) ? emission_map[smoke_get_index(ex, em->res[0], ey - 1, em->res[1], ez - 1)] : 0;
-							c101 = (ey > 0) ? emission_map[smoke_get_index(ex, em->res[0], ey - 1, em->res[1], ez)] : 0;
-							c110 = (ez > 0) ? emission_map[smoke_get_index(ex, em->res[0], ey, em->res[1], ez - 1)] : 0;
-							c111 = emission_map[smoke_get_index(ex, em->res[0], ey, em->res[1], ez)]; // this cell
-
-							for (ii = 0; ii < block_size; ii++)
-								for (jj = 0; jj < block_size; jj++)
-									for (kk = 0; kk < block_size; kk++)
-									{
-
-										float fx, fy, fz, interpolated_value;
-										int shift_x = 0, shift_y = 0, shift_z = 0;
-
-
-										/* Use full sample emission map if enabled and available */
-										if ((sds->highres_sampling == SM_HRES_FULLSAMPLE) && emission_map_high) {
-											interpolated_value = emission_map_high[smoke_get_index(ex * block_size + ii, em->res[0] * block_size, ey * block_size + jj, em->res[1] * block_size, ez * block_size + kk)]; // this cell
-										}
-										else if (sds->highres_sampling == SM_HRES_NEAREST) {
-											/* without interpolation use same low resolution
-											 * block value for all hi-res blocks */
-											interpolated_value = c111;
-										}
-										/* Fall back to interpolated */
-										else
-										{
-											/* get relative block position
-											 * for interpolation smoothing */
-											fx = (float)ii / block_size + 0.5f / block_size;
-											fy = (float)jj / block_size + 0.5f / block_size;
-											fz = (float)kk / block_size + 0.5f / block_size;
-
-											/* calculate trilinear interpolation */
-											interpolated_value = c000 * (1 - fx) * (1 - fy) * (1 - fz) +
-																 c100 * fx * (1 - fy) * (1 - fz) +
-																 c010 * (1 - fx) * fy * (1 - fz) +
-																 c001 * (1 - fx) * (1 - fy) * fz +
-																 c101 * fx * (1 - fy) * fz +
-																 c011 * (1 - fx) * fy * fz +
-																 c110 * fx * fy * (1 - fz) +
-																 c111 * fx * fy * fz;
-
-
-											/* add some contrast / sharpness
-											 * depending on hi-res block size */
-											interpolated_value = (interpolated_value - 0.4f) * (block_size / 2) + 0.4f;
-											CLAMP(interpolated_value, 0.0f, 1.0f);
-
-											/* shift smoke block index
-											 * (because pixel center is actually
-											 * in halfway of the low res block) */
-											shift_x = (dx < 1) ? 0 : block_size / 2;
-											shift_y = (dy < 1) ? 0 : block_size / 2;
-											shift_z = (dz < 1) ? 0 : block_size / 2;
-										}
-
-										/* get shifted index for current high resolution block */
-										index_big = smoke_get_index(block_size * dx + ii - shift_x, bigres[0], block_size * dy + jj - shift_y, bigres[1], block_size * dz + kk - shift_z);
-
-										if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) { // outflow
-											if (interpolated_value) {
-												apply_outflow_fields(index_big, distance_map_high[index_big], bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL);
-											}
-										}
-										else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time > 2) {
-											apply_inflow_fields(sfs, 0.0f, 0.5f, index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL, NULL);
-										}
-										else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW || sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY) { // inflow
-											// TODO (sebbas) inflow map highres?
-											apply_inflow_fields(sfs, interpolated_value, distance_map_high[index_big], index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL, NULL);
-										}
-									} // hires loop
-						}  // bigdensity
+//						if (bigdensity && sds->noise_scale > 1) {
+//							// neighbor cell emission densities (for high resolution smoke smooth interpolation)
+//							float c000, c001, c010, c011,  c100, c101, c110, c111;
+//
+//							smoke_turbulence_get_res(sds->fluid, bigres);
+//
+//							block_size = sds->noise_scale;  // high res block size
+//
+//							c000 = (ex > 0 && ey > 0 && ez > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey - 1, em->res[1], ez - 1)] : 0;
+//							c001 = (ex > 0 && ey > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey - 1, em->res[1], ez)] : 0;
+//							c010 = (ex > 0 && ez > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey, em->res[1], ez - 1)] : 0;
+//							c011 = (ex > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey, em->res[1], ez)] : 0;
+//
+//							c100 = (ey > 0 && ez > 0) ? emission_map[smoke_get_index(ex, em->res[0], ey - 1, em->res[1], ez - 1)] : 0;
+//							c101 = (ey > 0) ? emission_map[smoke_get_index(ex, em->res[0], ey - 1, em->res[1], ez)] : 0;
+//							c110 = (ez > 0) ? emission_map[smoke_get_index(ex, em->res[0], ey, em->res[1], ez - 1)] : 0;
+//							c111 = emission_map[smoke_get_index(ex, em->res[0], ey, em->res[1], ez)]; // this cell
+//
+//							for (ii = 0; ii < block_size; ii++)
+//								for (jj = 0; jj < block_size; jj++)
+//									for (kk = 0; kk < block_size; kk++)
+//									{
+//
+//										float fx, fy, fz, interpolated_value;
+//										int shift_x = 0, shift_y = 0, shift_z = 0;
+//
+//
+//										/* Use full sample emission map if enabled and available */
+//										if ((sds->highres_sampling == SM_HRES_FULLSAMPLE) && emission_map_high) {
+//											interpolated_value = emission_map_high[smoke_get_index(ex * block_size + ii, em->res[0] * block_size, ey * block_size + jj, em->res[1] * block_size, ez * block_size + kk)]; // this cell
+//										}
+//										else if (sds->highres_sampling == SM_HRES_NEAREST) {
+//											/* without interpolation use same low resolution
+//											 * block value for all hi-res blocks */
+//											interpolated_value = c111;
+//										}
+//										/* Fall back to interpolated */
+//										else
+//										{
+//											/* get relative block position
+//											 * for interpolation smoothing */
+//											fx = (float)ii / block_size + 0.5f / block_size;
+//											fy = (float)jj / block_size + 0.5f / block_size;
+//											fz = (float)kk / block_size + 0.5f / block_size;
+//
+//											/* calculate trilinear interpolation */
+//											interpolated_value = c000 * (1 - fx) * (1 - fy) * (1 - fz) +
+//																 c100 * fx * (1 - fy) * (1 - fz) +
+//																 c010 * (1 - fx) * fy * (1 - fz) +
+//																 c001 * (1 - fx) * (1 - fy) * fz +
+//																 c101 * fx * (1 - fy) * fz +
+//																 c011 * (1 - fx) * fy * fz +
+//																 c110 * fx * fy * (1 - fz) +
+//																 c111 * fx * fy * fz;
+//
+//
+//											/* add some contrast / sharpness
+//											 * depending on hi-res block size */
+//											interpolated_value = (interpolated_value - 0.4f) * (block_size / 2) + 0.4f;
+//											CLAMP(interpolated_value, 0.0f, 1.0f);
+//
+//											/* shift smoke block index
+//											 * (because pixel center is actually
+//											 * in halfway of the low res block) */
+//											shift_x = (dx < 1) ? 0 : block_size / 2;
+//											shift_y = (dy < 1) ? 0 : block_size / 2;
+//											shift_z = (dz < 1) ? 0 : block_size / 2;
+//										}
+//
+//										/* get shifted index for current high resolution block */
+//										index_big = smoke_get_index(block_size * dx + ii - shift_x, bigres[0], block_size * dy + jj - shift_y, bigres[1], block_size * dz + kk - shift_z);
+//
+//										if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_OUTFLOW) { // outflow
+//											if (interpolated_value) {
+//												apply_outflow_fields(index_big, distance_map_high[index_big], bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL);
+//											}
+//										}
+//										else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY && smd2->time > 2) {
+//											apply_inflow_fields(sfs, 0.0f, 0.5f, index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL, NULL);
+//										}
+//										else if (sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_INFLOW || sfs->behavior == MOD_SMOKE_FLOW_BEHAVIOR_GEOMETRY) { // inflow
+//											// TODO (sebbas) inflow map highres?
+//											apply_inflow_fields(sfs, interpolated_value, distance_map_high[index_big], index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL, NULL);
+//										}
+//									} // hires loop
+//						}  // bigdensity
 					} // low res loop
 
 			// free emission maps
@@ -3143,19 +3144,27 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			return;
 
 		if (isBaking) {
-			if (smd->domain->cache_flag & FLUID_CACHE_BAKING_DATA)
+			if (smd->domain->cache_flag & FLUID_CACHE_BAKING_DATA) {
 				smoke_step(scene, ob, smd, framenr);
+				fluid_write_data(smd->domain->fluid, smd, framenr);
+			}
 			if (smd->domain->cache_flag & FLUID_CACHE_BAKING_NOISE)
 				fluid_bake_noise(smd->domain->fluid, smd, framenr);
 			if (smd->domain->cache_flag & FLUID_CACHE_BAKING_MESH)
 				fluid_bake_mesh(smd->domain->fluid, smd, framenr);
 			if (smd->domain->cache_flag & FLUID_CACHE_BAKING_PARTICLES)
 				fluid_bake_particles(smd->domain->fluid, smd, framenr);
-			return;
 		}
-
-		/* Try to read from cache */
-		fluid_read_cache(smd->domain->fluid, smd, framenr);
+		else {
+			if (smd->domain->cache_flag & FLUID_CACHE_BAKED_DATA)
+				fluid_read_data(smd->domain->fluid, smd, framenr);
+			if (smd->domain->cache_flag & FLUID_CACHE_BAKED_NOISE)
+				fluid_read_noise(smd->domain->fluid, smd, framenr);
+			if (smd->domain->cache_flag & FLUID_CACHE_BAKED_MESH)
+				fluid_read_mesh(smd->domain->fluid, smd, framenr);
+			if (smd->domain->cache_flag & FLUID_CACHE_BAKED_PARTICLES)
+				fluid_read_particles(smd->domain->fluid, smd, framenr);
+		}
 
 		smd->time = scene->r.cfra;
 	}
@@ -3360,7 +3369,7 @@ static void smoke_calc_transparency(SmokeDomainSettings *sds, Scene *scene)
 	}
 }
 
-int smoke_step(Scene *scene, Object *ob, SmokeModifierData *smd, int frame)
+void smoke_step(Scene *scene, Object *ob, SmokeModifierData *smd, int frame)
 {
 	SmokeDomainSettings *sds = smd->domain;
 	DerivedMesh *domain_dm = ob->derivedDeform;
@@ -3412,9 +3421,6 @@ int smoke_step(Scene *scene, Object *ob, SmokeModifierData *smd, int frame)
 		smoke_calc_transparency(sds, scene);
 	}
 	BLI_mutex_unlock(&object_update_lock);
-
-	/* Write call currently only writes shadow grid */
-	return fluid_write_cache(sds->fluid, smd, frame);
 }
 
 /* get smoke velocity and density at given coordinates

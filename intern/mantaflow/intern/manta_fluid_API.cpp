@@ -202,19 +202,9 @@ extern "C" float *smoke_get_density(FLUID *smoke)
 	return smoke->getDensity();
 }
 
-extern "C" float *smoke_get_density_in(FLUID *smoke)
-{
-	return smoke->getDensityIn();
-}
-
 extern "C" float *smoke_get_fuel(FLUID *smoke)
 {
 	return smoke->getFuel();
-}
-
-extern "C" float *smoke_get_fuel_in(FLUID *smoke)
-{
-	return smoke->getFuelIn();
 }
 
 extern "C" float *smoke_get_react(FLUID *smoke)
@@ -225,11 +215,6 @@ extern "C" float *smoke_get_react(FLUID *smoke)
 extern "C" float *smoke_get_heat(FLUID *smoke)
 {
 	return smoke->getHeat();
-}
-
-extern "C" float *smoke_get_heat_in(FLUID *smoke)
-{
-	return smoke->getHeatIn();
 }
 
 extern "C" float *smoke_get_velocity_x(FLUID *smoke)
@@ -325,21 +310,6 @@ extern "C" float *smoke_get_color_g(FLUID *smoke)
 extern "C" float *smoke_get_color_b(FLUID *smoke)
 {
 	return smoke->getColorB();
-}
-
-extern "C" float *smoke_get_color_r_in(FLUID *smoke)
-{
-	return smoke->getColorRIn();
-}
-
-extern "C" float *smoke_get_color_g_in(FLUID *smoke)
-{
-	return smoke->getColorGIn();
-}
-
-extern "C" float *smoke_get_color_b_in(FLUID *smoke)
-{
-	return smoke->getColorBIn();
 }
 
 extern "C" float *smoke_get_shadow(FLUID* fluid)
@@ -744,7 +714,7 @@ extern "C" float liquid_get_snd_particle_velocity_z_at(FLUID *liquid, int i)
 
 extern "C" void liquid_update_mesh_data(FLUID *liquid, char* filename)
 {
-	liquid->updateMeshData(filename);
+	liquid->updateMeshFromFile(filename);
 }
 
 extern "C" void liquid_manta_export(FLUID* liquid, SmokeModifierData *smd)
@@ -849,17 +819,34 @@ extern "C" int fluid_get_mesh_upres(FLUID* fluid)
 	return fluid->getMeshUpres();
 }
 
-extern "C" int fluid_read_cache(FLUID* fluid, SmokeModifierData *smd, int framenr)
+extern "C" int fluid_write_data(FLUID* fluid, SmokeModifierData *smd, int framenr)
 {
 	if (!fluid || !smd) return 0;
-	return fluid->readCache(smd, framenr);
+	return fluid->writeData(smd, framenr);
 }
 
-extern "C" int fluid_write_cache(FLUID* fluid, SmokeModifierData *smd, int framenr)
+extern "C" int fluid_read_data(FLUID* fluid, SmokeModifierData *smd, int framenr)
 {
 	if (!fluid || !smd) return 0;
-	return fluid->writeCache(smd, framenr);
-	// High-res cache handled separately
+	return fluid->readData(smd, framenr);
+}
+
+extern "C" int fluid_read_noise(FLUID* fluid, SmokeModifierData *smd, int framenr)
+{
+	if (!fluid || !smd) return 0;
+	return fluid->readNoise(smd, framenr);
+}
+
+extern "C" int fluid_read_mesh(FLUID* fluid, SmokeModifierData *smd, int framenr)
+{
+	if (!fluid || !smd) return 0;
+	return fluid->readMesh(smd, framenr);
+}
+
+extern "C" int fluid_read_particles(FLUID* fluid, SmokeModifierData *smd, int framenr)
+{
+	if (!fluid || !smd) return 0;
+	return fluid->readParticles(smd, framenr);
 }
 
 extern "C" int fluid_bake_data(FLUID* fluid, SmokeModifierData *smd, int framenr)

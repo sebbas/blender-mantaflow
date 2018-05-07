@@ -207,7 +207,10 @@ phiOutIn_s$ID$    = s$ID$.create(LevelsetGrid) # TODO (sebbas): Move phiOutIn to
 forces_s$ID$      = s$ID$.create(Vec3Grid)\n\
 x_force_s$ID$     = s$ID$.create(RealGrid)\n\
 y_force_s$ID$     = s$ID$.create(RealGrid)\n\
-z_force_s$ID$     = s$ID$.create(RealGrid)\n";
+z_force_s$ID$     = s$ID$.create(RealGrid)\n\
+\n\
+# Keep track of important objects in dict to load them later on\n\
+fluid_data_dict_s$ID$ = dict(vel=vel_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$)\n";
 
 const std::string fluid_alloc_obstacle_low = "\n\
 mantaMsg('Allocating obstacle low')\n\
@@ -217,7 +220,10 @@ obvel_s$ID$      = s$ID$.create(MACGrid)\n\
 obvelC_s$ID$     = s$ID$.create(Vec3Grid)\n\
 x_obvel_s$ID$    = s$ID$.create(RealGrid)\n\
 y_obvel_s$ID$    = s$ID$.create(RealGrid)\n\
-z_obvel_s$ID$    = s$ID$.create(RealGrid)\n";
+z_obvel_s$ID$    = s$ID$.create(RealGrid)\n\
+\n\
+tmpDict_s$ID$ = dict(phiObsIn=phiObsIn_s$ID$)\n\
+fluid_data_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
 const std::string fluid_alloc_guiding_low = "\n\
 mantaMsg('Allocating guiding low')\n\
@@ -247,7 +253,10 @@ flags_sp$ID$    = sp$ID$.create(FlagGrid)\n\
 phi_sp$ID$      = sp$ID$.create(LevelsetGrid)\n\
 phiIn_sp$ID$    = sp$ID$.create(LevelsetGrid)\n\
 phiObs_sp$ID$   = sp$ID$.create(LevelsetGrid)\n\
-phiObsIn_sp$ID$ = sp$ID$.create(LevelsetGrid)\n";
+phiObsIn_sp$ID$ = sp$ID$.create(LevelsetGrid)\n\
+\n\
+# Keep track of important objects in dict to load them later on\n\
+fluid_particles_dict_s$ID$ = dict(ppSnd=ppSnd_sp$ID$, pVelSnd=pVelSnd_pp$ID$, pLifeSnd=pLifeSnd_pp$ID$)\n";
 
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION
@@ -261,7 +270,7 @@ for var in list(globals()):\n\
         del globals()[var]\n\
 # Now delete childs from solver objects\n\
 for var in list(globals()):\n\
-    if var.endswith('_s$ID$') or var.endswith('_xl$ID$') or var.endswith('_sn$ID$') or var.endswith('_sm$ID$') or var.endswith('_sp$ID$'):\n\
+    if var.endswith('_s$ID$') or var.endswith('_sn$ID$') or var.endswith('_sm$ID$') or var.endswith('_sp$ID$'):\n\
         del globals()[var]\n\
 \n\
 # Extra cleanup for multigrid and fluid guiding\n\
@@ -330,15 +339,6 @@ def bake_fluid_process_data_$ID$(framenr, format_data, format_particles, path_da
     if using_liquid_s$ID$:\n\
         liquid_adaptive_step_$ID$(framenr)\n\
     mantaMsg('--- Step: %s seconds ---' % (time.time() - start_time))\n\
-    \n\
-    start_time = time.time()\n\
-    fluid_save_data_$ID$(path_data, framenr, format_data)\n\
-    if using_smoke_s$ID$:\n\
-        smoke_save_data_$ID$(path_data, framenr, format_data)\n\
-    if using_liquid_s$ID$:\n\
-        liquid_save_data_$ID$(path_data, framenr, format_data)\n\
-        liquid_save_flip_$ID$(path_data, framenr, format_particles)\n\
-    mantaMsg('--- Writing: %s seconds ---' % (time.time() - start_time))\n\
 \n\
 def bake_fluid_data_$ID$(path_data, framenr, format_data, format_particles):\n\
     if not withMP or isWindows:\n\
@@ -394,10 +394,10 @@ def bake_particles_process_$ID$(framenr, format_data, format_particles, path_dat
     if using_liquid_s$ID$:\n\
         liquid_load_data_$ID$(path_data, framenr, format_data)\n\
         if framenr>1:\n\
-            liquid_load_particles_$ID$(path_particles, framenr-1, format_particles)\n\
+            fluid_load_particles_$ID$(path_particles, framenr-1, format_particles)\n\
         \n\
         liquid_step_particles_$ID$()\n\
-        liquid_save_particles_$ID$(path_particles, framenr, format_particles)\n\
+        fluid_save_particles_$ID$(path_particles, framenr, format_particles)\n\
 \n\
 def bake_particles_$ID$(path_data, path_particles, framenr, format_data, format_particles):\n\
     if not withMP or isWindows:\n\
@@ -409,29 +409,26 @@ def bake_particles_$ID$(path_data, path_particles, framenr, format_data, format_
 // IMPORT
 //////////////////////////////////////////////////////////////////////
 
-const std::string fluid_load_data = "\n\
-def fluid_load_data_$ID$(path, framenr, file_format):\n\
+const std::string fluid_file_import = "\n\
+def fluid_file_import_s$ID$(dict, path, framenr, file_format):\n\
     try:\n\
-        mantaMsg('Fluid load data')\n\
         framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-        flags_s$ID$.load(os.path.join(path, 'flags_' + framenr + file_format))\n\
-        vel_s$ID$.load(os.path.join(path, 'vel_' + framenr + file_format))\n\
-        phiObs_s$ID$.load(os.path.join(path, 'phiObs_' + framenr + file_format))\n\
-        if using_obstacle_s$ID$:\n\
-            phiObsIn_s$ID$.load(os.path.join(path, 'phiObsIn_' + framenr + file_format))\n\
-        phiOut_s$ID$.load(os.path.join(path, 'phiOut_' + framenr + file_format))\n\
-    except RuntimeError as e:\n\
+        for name, object in dict.items():\n\
+            file = os.path.join(path, name + '_' + framenr + file_format)\n\
+            if os.path.isfile(file): object.load(file)\n\
+    except Exception as e:\n\
         mantaMsg(str(e))\n\
         pass # Just skip file load errors for now\n";
 
-const std::string fluid_load_noise = "\n\
-def fluid_load_data_noise_$ID$(path, framenr, file_format):\n\
-    try:\n\
-        mantaMsg('Fluid load data high')\n\
-        framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    except RuntimeError as e:\n\
-        mantaMsg(str(e))\n\
-        pass # Just skip file load errors for now\n";
+const std::string fluid_load_particles = "\n\
+def fluid_load_particles_$ID$(path, framenr, file_format):\n\
+    mantaMsg('Fluid load particles')\n\
+    fluid_file_import_s$ID$(dict=fluid_particles_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
+
+const std::string fluid_load_data = "\n\
+def fluid_load_data_$ID$(path, framenr, file_format):\n\
+    mantaMsg('Fluid load data')\n\
+    fluid_file_import_s$ID$(dict=fluid_data_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
 /* BEGIN TODO (sebbas): refactor */
 
@@ -505,21 +502,26 @@ def save_fluid_sndparts_data_low_$ID$(path):\n\
 // EXPORT
 //////////////////////////////////////////////////////////////////////
 
+const std::string fluid_file_export = "\n\
+def fluid_file_export_s$ID$(dict, path, framenr, file_format, mode_override=False):\n\
+    try:\n\
+        framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+        for name, object in dict.items():\n\
+            file = os.path.join(path, name + '_' + framenr + file_format)\n\
+            if not os.path.isfile(file) or mode_override: object.save(file)\n\
+    except Exception as e:\n\
+        mantaMsg(str(e))\n\
+        pass # Just skip file save errors for now\n";
+
+const std::string fluid_save_particles = "\n\
+def fluid_save_particles_$ID$(path, framenr, file_format):\n\
+    mantaMsg('Liquid save particles')\n\
+    fluid_file_export_s$ID$(dict=fluid_particles_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
+
 const std::string fluid_save_data = "\n\
 def fluid_save_data_$ID$(path, framenr, file_format):\n\
     mantaMsg('Fluid save data low')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    flags_s$ID$.save(os.path.join(path, 'flags_' + framenr + file_format))\n\
-    vel_s$ID$.save(os.path.join(path, 'vel_' + framenr + file_format))\n\
-    phiObs_s$ID$.save(os.path.join(path, 'phiObs_' + framenr + file_format))\n\
-    if using_obstacle_s$ID$:\n\
-        phiObsIn_s$ID$.save(os.path.join(path, 'phiObsIn_' + framenr + file_format))\n\
-    phiOut_s$ID$.save(os.path.join(path, 'phiOut_' + framenr + file_format))\n";
-
-const std::string fluid_save_noise = "\n\
-def fluid_save_noise_$ID$(path, framenr):\n\
-    mantaMsg('Fluid save noise')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n";
+    fluid_file_export_s$ID$(dict=fluid_data_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE

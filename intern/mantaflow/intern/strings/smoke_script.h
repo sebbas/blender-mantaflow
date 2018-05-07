@@ -106,12 +106,8 @@ color_r_s$ID$ = 0\n\
 color_g_s$ID$ = 0\n\
 color_b_s$ID$ = 0\n\
 \n\
-densityIn_s$ID$ = s$ID$.create(RealGrid)\n\
-heatIn_s$ID$    = s$ID$.create(RealGrid)\n\
-fuelIn_s$ID$    = 0 # allocated dynamically\n\
-colorIn_r_s$ID$ = 0\n\
-colorIn_g_s$ID$ = 0\n\
-colorIn_b_s$ID$ = 0\n";
+# Keep track of important objects in dict to load them later on\n\
+smoke_data_dict_s$ID$ = dict(density=density_s$ID$, shadow=shadow_s$ID$)\n";
 
 const std::string smoke_alloc_noise = "\n\
 mantaMsg('Smoke alloc noise')\n\
@@ -127,7 +123,14 @@ texture_v_s$ID$  = s$ID$.create(RealGrid)\n\
 texture_w_s$ID$  = s$ID$.create(RealGrid)\n\
 texture_u2_s$ID$ = s$ID$.create(RealGrid)\n\
 texture_v2_s$ID$ = s$ID$.create(RealGrid)\n\
-texture_w2_s$ID$ = s$ID$.create(RealGrid)\n";
+texture_w2_s$ID$ = s$ID$.create(RealGrid)\n\
+\n\
+# Keep track of important objects in dict to load them later on\n\
+smoke_noise_dict_s$ID$ = dict(density_noise=density_sn$ID$)\n\
+tmpDict_s$ID$ = dict(texture_u=texture_u_s$ID$, texture_v=texture_v_s$ID$, texture_w=texture_w_s$ID$)\n\
+smoke_noise_dict_s$ID$.update(tmpDict_s$ID$)\n\
+tmpDict_s$ID$ = dict(texture_u2=texture_u2_s$ID$, texture_v2=texture_v2_s$ID$, texture_w2=texture_w2_s$ID$)\n\
+smoke_noise_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
 //////////////////////////////////////////////////////////////////////
 // ADDITIONAL GRIDS
@@ -138,15 +141,20 @@ mantaMsg('Allocating colors low')\n\
 color_r_s$ID$   = s$ID$.create(RealGrid)\n\
 color_g_s$ID$   = s$ID$.create(RealGrid)\n\
 color_b_s$ID$   = s$ID$.create(RealGrid)\n\
-colorIn_r_s$ID$ = s$ID$.create(RealGrid)\n\
-colorIn_g_s$ID$ = s$ID$.create(RealGrid)\n\
-colorIn_b_s$ID$ = s$ID$.create(RealGrid)\n";
+\n\
+# Add objects to dict to load them later on\n\
+tmpDict_s$ID$ = dict(color_r=color_r_s$ID$, color_g=color_g_s$ID$, color_b=color_b_s$ID$)\n\
+smoke_data_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
 const std::string smoke_alloc_colors_high = "\
 mantaMsg('Allocating colors high')\n\
 color_r_sn$ID$ = sn$ID$.create(RealGrid)\n\
 color_g_sn$ID$ = sn$ID$.create(RealGrid)\n\
-color_b_sn$ID$ = sn$ID$.create(RealGrid)\n";
+color_b_sn$ID$ = sn$ID$.create(RealGrid)\n\
+\n\
+# Add objects to dict to load them later on\n\
+tmpDict_s$ID$ = dict(color_r_noise=color_r_sn$ID$, color_g_noise=color_g_sn$ID$, color_b_noise=color_b_sn$ID$)\n\
+smoke_noise_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
 const std::string smoke_init_colors_low = "\n\
 mantaMsg('Initializing colors low')\n\
@@ -169,20 +177,30 @@ color_b_sn$ID$.multConst($COLOR_B$)\n";
 const std::string smoke_alloc_heat_low = "\n\
 mantaMsg('Allocating heat low')\n\
 heat_s$ID$   = s$ID$.create(RealGrid)\n\
-heatIn_s$ID$ = s$ID$.create(RealGrid)\n";
+\n\
+# Add objects to dict to load them later on\n\
+tmpDict_s$ID$ = dict(heat=heat_s$ID$)\n\
+smoke_data_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
 const std::string smoke_alloc_fire_low = "\n\
 mantaMsg('Allocating fire low')\n\
 flame_s$ID$  = s$ID$.create(RealGrid)\n\
 fuel_s$ID$   = s$ID$.create(RealGrid)\n\
-fuelIn_s$ID$ = s$ID$.create(RealGrid)\n\
-react_s$ID$  = s$ID$.create(RealGrid)\n";
+react_s$ID$  = s$ID$.create(RealGrid)\n\
+\n\
+# Add objects to dict to load them later on\n\
+tmpDict_s$ID$ = dict(flame=flame_s$ID$, fuel=fuel_s$ID$, react=react_s$ID$,)\n\
+smoke_data_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
 const std::string smoke_alloc_fire_high = "\n\
 mantaMsg('Allocating fire high')\n\
 flame_sn$ID$ = sn$ID$.create(RealGrid)\n\
 fuel_sn$ID$  = sn$ID$.create(RealGrid)\n\
-react_sn$ID$ = sn$ID$.create(RealGrid)\n";
+react_sn$ID$ = sn$ID$.create(RealGrid)\n\
+\n\
+# Add objects to dict to load them later on\n\
+tmpDict_s$ID$ = dict(react_noise=react_sn$ID$, fuel_noise=fuel_sn$ID$, flame_noise=flame_sn$ID$)\n\
+smoke_noise_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
 //////////////////////////////////////////////////////////////////////
 // PRE / POST STEP
@@ -474,56 +492,13 @@ def update_flame_high_$ID$():\n\
 
 const std::string smoke_load_data = "\n\
 def smoke_load_data_$ID$(path, framenr, file_format):\n\
-    try:\n\
-        mantaMsg('Smoke load data low')\n\
-        framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-        density_s$ID$.load(os.path.join(path, 'density_' + framenr + file_format))\n\
-        if using_colors_s$ID$:\n\
-            color_r_s$ID$.load(os.path.join(path, 'color_r_' + framenr + file_format))\n\
-            color_g_s$ID$.load(os.path.join(path, 'color_g_' + framenr + file_format))\n\
-            color_b_s$ID$.load(os.path.join(path, 'color_b_' + framenr + file_format))\n\
-        if using_heat_s$ID$:\n\
-            heat_s$ID$.load(os.path.join(path, 'heat_' + framenr + file_format))\n\
-        if using_fire_s$ID$:\n\
-            flame_s$ID$.load(os.path.join(path, 'flame_' + framenr + file_format))\n\
-            fuel_s$ID$.load(os.path.join(path, 'fuel_' + framenr + file_format))\n\
-            react_s$ID$.load(os.path.join(path, 'react_' + framenr + file_format))\n\
-    except RuntimeError as e:\n\
-        mantaMsg(str(e))\n\
-        pass # Just skip file load errors for now\n\
-\n\
-def smoke_load_shadow_$ID$(path, framenr, file_format):\n\
-    try:\n\
-        mantaMsg('Smoke load shadow')\n\
-        framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-        shadow_s$ID$.load(os.path.join(path, 'shadow_' + framenr + file_format))\n\
-    except RuntimeError as e:\n\
-        mantaMsg(str(e))\n\
-        pass # Just skip file load errors for now\n";
+    mantaMsg('Smoke load data')\n\
+    fluid_file_import_s$ID$(dict=smoke_data_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
 const std::string smoke_load_noise = "\n\
 def smoke_load_noise_$ID$(path, framenr, file_format):\n\
-    try:\n\
-        mantaMsg('Smoke load noise')\n\
-        framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-        density_sn$ID$.load(os.path.join(path, 'density_sn_' + framenr + file_format))\n\
-        texture_u_s$ID$.load(os.path.join(path, 'texture_u_' + framenr + file_format))\n\
-        texture_v_s$ID$.load(os.path.join(path, 'texture_v_' + framenr + file_format))\n\
-        texture_w_s$ID$.load(os.path.join(path, 'texture_w_' + framenr + file_format))\n\
-        texture_u2_s$ID$.load(os.path.join(path, 'texture_u2_' + framenr + file_format))\n\
-        texture_v2_s$ID$.load(os.path.join(path, 'texture_v2_' + framenr + file_format))\n\
-        texture_w2_s$ID$.load(os.path.join(path, 'texture_w2_' + framenr + file_format))\n\
-        if using_colors_s$ID$:\n\
-            color_r_sn$ID$.load(os.path.join(path, 'color_r_sn_' + framenr + file_format))\n\
-            color_g_sn$ID$.load(os.path.join(path, 'color_g_sn_' + framenr + file_format))\n\
-            color_b_sn$ID$.load(os.path.join(path, 'color_b_sn_' + framenr + file_format))\n\
-        if using_fire_s$ID$:\n\
-            flame_sn$ID$.load(os.path.join(path, 'flame_sn_' + framenr + file_format))\n\
-            fuel_sn$ID$.load(os.path.join(path, 'fuel_sn_' + framenr + file_format))\n\
-            react_sn$ID$.load(os.path.join(path, 'react_sn_' + framenr + file_format))\n\
-    except RuntimeError as e:\n\
-        mantaMsg(str(e))\n\
-        pass # Just skip file load errors for now\n";
+    mantaMsg('Smoke load noise')\n\
+    fluid_file_import_s$ID$(dict=smoke_noise_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
 //////////////////////////////////////////////////////////////////////
 // EXPORT
@@ -531,44 +506,13 @@ def smoke_load_noise_$ID$(path, framenr, file_format):\n\
 
 const std::string smoke_save_data = "\n\
 def smoke_save_data_$ID$(path, framenr, file_format):\n\
-    mantaMsg('Smoke save data low')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    density_s$ID$.save(os.path.join(path, 'density_' + framenr + file_format))\n\
-    if using_colors_s$ID$:\n\
-        color_r_s$ID$.save(os.path.join(path, 'color_r_' + framenr + file_format))\n\
-        color_g_s$ID$.save(os.path.join(path, 'color_g_' + framenr + file_format))\n\
-        color_b_s$ID$.save(os.path.join(path, 'color_b_' + framenr + file_format))\n\
-    if using_heat_s$ID$:\n\
-        heat_s$ID$.save(os.path.join(path, 'heat_' + framenr + file_format))\n\
-    if using_fire_s$ID$:\n\
-        flame_s$ID$.save(os.path.join(path, 'flame_' + framenr + file_format))\n\
-        fuel_s$ID$.save(os.path.join(path, 'fuel_' + framenr + file_format))\n\
-        react_s$ID$.save(os.path.join(path, 'react_' + framenr + file_format))\n\
-\n\
-def smoke_save_shadow_$ID$(path, framenr, file_format):\n\
-    mantaMsg('Smoke save shadow')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    shadow_s$ID$.save(os.path.join(path, 'shadow_' + framenr + file_format))\n";
+    mantaMsg('Smoke save data')\n\
+    fluid_file_export_s$ID$(dict=smoke_data_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
 const std::string smoke_save_noise = "\n\
 def smoke_save_noise_$ID$(path, framenr, file_format):\n\
     mantaMsg('Smoke save noise')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    density_sn$ID$.save(os.path.join(path, 'density_sn_' + framenr + file_format))\n\
-    texture_u_s$ID$.save(os.path.join(path, 'texture_u_' + framenr + file_format))\n\
-    texture_v_s$ID$.save(os.path.join(path, 'texture_v_' + framenr + file_format))\n\
-    texture_w_s$ID$.save(os.path.join(path, 'texture_w_' + framenr + file_format))\n\
-    texture_u2_s$ID$.save(os.path.join(path, 'texture_u2_' + framenr + file_format))\n\
-    texture_v2_s$ID$.save(os.path.join(path, 'texture_v2_' + framenr + file_format))\n\
-    texture_w2_s$ID$.save(os.path.join(path, 'texture_w2_' + framenr + file_format))\n\
-    if using_colors_s$ID$:\n\
-        color_r_sn$ID$.save(os.path.join(path, 'color_r_sn_' + framenr + file_format))\n\
-        color_g_sn$ID$.save(os.path.join(path, 'color_g_sn_' + framenr + file_format))\n\
-        color_b_sn$ID$.save(os.path.join(path, 'color_b_sn_' + framenr + file_format))\n\
-    if using_fire_s$ID$:\n\
-        flame_sn$ID$.save(os.path.join(path, 'flame_sn_' + framenr + file_format))\n\
-        fuel_sn$ID$.save(os.path.join(path, 'fuel_sn_' + framenr + file_format))\n\
-        react_sn$ID$.save(os.path.join(path, 'react_sn_' + framenr + file_format))\n";
+    fluid_file_export_s$ID$(dict=smoke_noise_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
 //////////////////////////////////////////////////////////////////////
 // OTHER SETUPS

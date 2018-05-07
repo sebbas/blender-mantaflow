@@ -1207,8 +1207,12 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 	for (frame = sds->cache_frame_start; frame <= sds->cache_frame_end; frame++) {
 		const float progress = (frame - sds->cache_frame_start) / (float)frames;
 
+		/* Is simulation still baking, may have gotten interrupted by user */
+		bool is_baking = sds->cache_flag & (FLUID_CACHE_BAKING_DATA|FLUID_CACHE_BAKING_NOISE|
+											FLUID_CACHE_BAKING_MESH|FLUID_CACHE_BAKING_PARTICLES);
+
 		/* If user requested stop, quit baking */
-		if (G.is_break) {
+		if (G.is_break || !is_baking) {
 			job->success = 0;
 			return;
 		}
@@ -1224,7 +1228,7 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 
 		scene->r.cfra = (int)frame;
 
-		/* Update animation system - needs annoying lock */
+		/* Update animation system */
 		ED_update_for_newframe(job->bmain, scene, 1);
 	}
 	scene->r.cfra = orig_frame;
@@ -1524,6 +1528,60 @@ static int fluid_manta_free_exec(struct bContext *C, struct wmOperator *op)
 	return OPERATOR_FINISHED;
 }
 
+static int fluid_manta_pause_exec(struct bContext *C, struct wmOperator *op)
+{
+	SmokeModifierData *smd = NULL;
+	SmokeDomainSettings *sds;
+	Object *ob = CTX_data_active_object(C);
+
+	/*
+	 * Get modifier data
+	 */
+	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
+	if (!smd) {
+		BKE_report(op->reports, RPT_ERROR, "Bake free failed: no Fluid modifier found");
+		return OPERATOR_CANCELLED;
+	}
+	sds = smd->domain;
+	if (!sds) {
+		BKE_report(op->reports, RPT_ERROR, "Bake free failed: invalid domain");
+		return OPERATOR_CANCELLED;
+	}
+
+	/* Remove all 'is baking' flags to signal bake to stop */
+	sds->cache_flag &= ~(FLUID_CACHE_BAKING_DATA|FLUID_CACHE_BAKING_NOISE|
+						 FLUID_CACHE_BAKING_MESH|FLUID_CACHE_BAKING_PARTICLES);
+
+	return OPERATOR_FINISHED;
+}
+
+static int fluid_manta_cancel_exec(struct bContext *C, struct wmOperator *op)
+{
+	SmokeModifierData *smd = NULL;
+	SmokeDomainSettings *sds;
+	Object *ob = CTX_data_active_object(C);
+
+	/*
+	 * Get modifier data
+	 */
+	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
+	if (!smd) {
+		BKE_report(op->reports, RPT_ERROR, "Bake free failed: no Fluid modifier found");
+		return OPERATOR_CANCELLED;
+	}
+	sds = smd->domain;
+	if (!sds) {
+		BKE_report(op->reports, RPT_ERROR, "Bake free failed: invalid domain");
+		return OPERATOR_CANCELLED;
+	}
+
+	/* Remove all 'is baking' flags to signal bake to stop */
+	sds->cache_flag &= ~(FLUID_CACHE_BAKING_DATA|FLUID_CACHE_BAKING_NOISE|
+						 FLUID_CACHE_BAKING_MESH|FLUID_CACHE_BAKING_PARTICLES);
+
+	return OPERATOR_FINISHED;
+}
+
 void MANTA_OT_bake_data(wmOperatorType *ot)
 {
 	/* identifiers */
@@ -1625,6 +1683,30 @@ void MANTA_OT_free_particles(wmOperatorType *ot)
 
 	/* api callbacks */
 	ot->exec = fluid_manta_free_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+void MANTA_OT_pause_bake(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Pause Bake";
+	ot->description = "Pause Bake";
+	ot->idname = "MANTA_OT_pause_bake";
+
+	/* api callbacks */
+	ot->exec = fluid_manta_pause_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+void MANTA_OT_cancel_bake(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Cancel Bake";
+	ot->description = "Cancel Bake";
+	ot->idname = "MANTA_OT_cancel_bake";
+
+	/* api callbacks */
+	ot->exec = fluid_manta_cancel_exec;
 	ot->poll = ED_operator_object_active_editable;
 }
 

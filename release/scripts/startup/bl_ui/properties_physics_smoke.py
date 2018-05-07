@@ -159,9 +159,10 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
                 col.prop(domain, "particle_randomness")
 
             split = layout.split()
-            split.enabled = not baking_any
-            if domain.cache_baked_data is True:
+            if domain.cache_baked_data:
                 split.operator("manta.free_data", text="Free Data")
+            elif domain.cache_baking_data:
+                split.operator("manta.cancel_bake", text="Cancel")
             else:
                 split.operator("manta.bake_data", text="Bake Data")
 
@@ -394,9 +395,11 @@ class PHYSICS_PT_smoke_noise(PhysicButtonsPanel, Panel):
         col.prop(domain, "noise_time_anim")
 
         split = layout.split()
-        split.enabled = domain.cache_baked_data and not domain.cache_baking_noise and not domain.cache_baking_mesh and not domain.cache_baking_particles
-        if domain.cache_baked_noise is True:
+        split.enabled = domain.cache_baked_data
+        if domain.cache_baked_noise:
             split.operator("manta.free_noise", text="Free Noise")
+        elif domain.cache_baking_noise:
+            split.operator("manta.cancel_bake", text="Cancel")
         else:
             split.operator("manta.bake_noise", text="Bake Noise")
 
@@ -455,9 +458,11 @@ class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
         #col.prop(domain, "highres_sampling", text="")
 
         split = layout.split()
-        split.enabled = domain.cache_baked_data and not domain.cache_baking_mesh
-        if domain.cache_baked_mesh is True:
+        split.enabled = domain.cache_baked_data
+        if domain.cache_baked_mesh:
             split.operator("manta.free_mesh", text="Free Mesh")
+        elif domain.cache_baking_mesh:
+            split.operator("manta.cancel_bake", text="Cancel")
         else:
             split.operator("manta.bake_mesh", text="Bake Mesh")
 
@@ -518,9 +523,11 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         sub2.prop(domain, "particle_tracer_max", text="Maximum")
 
         split = layout.split()
-        split.enabled = domain.cache_baked_data and not domain.cache_baking_particles and (domain.use_drop_particles or domain.use_bubble_particles or domain.use_floater_particles or domain.use_tracer_particles)
-        if domain.cache_baked_particles is True:
+        split.enabled = domain.cache_baked_data and (domain.use_drop_particles or domain.use_bubble_particles or domain.use_floater_particles or domain.use_tracer_particles)
+        if domain.cache_baked_particles:
             split.operator("manta.free_particles", text="Free Particles")
+        elif domain.cache_baking_particles:
+            split.operator("manta.cancel_bake", text="Cancel")
         else:
             split.operator("manta.bake_particles", text="Bake Particles")
 
