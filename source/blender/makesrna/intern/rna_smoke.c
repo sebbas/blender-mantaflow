@@ -1391,6 +1391,18 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_range(prop, 1, MAXFRAME);
 	RNA_def_property_ui_text(prop, "End", "Frame on which the simulation stops");
 
+	prop = RNA_def_property(srna, "cache_frame_pause_data", PROP_INT, PROP_TIME);
+	RNA_def_property_int_sdna(prop, NULL, "cache_frame_pause_data");
+
+	prop = RNA_def_property(srna, "cache_frame_pause_noise", PROP_INT, PROP_TIME);
+	RNA_def_property_int_sdna(prop, NULL, "cache_frame_pause_noise");
+
+	prop = RNA_def_property(srna, "cache_frame_pause_mesh", PROP_INT, PROP_TIME);
+	RNA_def_property_int_sdna(prop, NULL, "cache_frame_pause_mesh");
+
+	prop = RNA_def_property(srna, "cache_frame_pause_particles", PROP_INT, PROP_TIME);
+	RNA_def_property_int_sdna(prop, NULL, "cache_frame_pause_particles");
+
 	prop = RNA_def_property(srna, "cache_directory", PROP_STRING, PROP_FILEPATH);
 	RNA_def_property_string_sdna(prop, NULL, "cache_directory");
 	RNA_def_property_ui_text(prop, "Cache directory", "Directory that contains fluid cache files");

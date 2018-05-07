@@ -114,7 +114,6 @@ void MANTA_OT_free_mesh(struct wmOperatorType *ot);
 void MANTA_OT_bake_particles(struct wmOperatorType *ot);
 void MANTA_OT_free_particles(struct wmOperatorType *ot);
 void MANTA_OT_pause_bake(struct wmOperatorType *ot);
-void MANTA_OT_cancel_bake(struct wmOperatorType *ot);
 void MANTA_OT_make_file(struct wmOperatorType *ot);
 
 /* dynamicpaint.c */

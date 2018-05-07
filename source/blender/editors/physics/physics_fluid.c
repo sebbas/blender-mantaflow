@@ -1145,6 +1145,8 @@ typedef struct FluidMantaflowJob {
 	
 	int success;
 	double start;
+
+	int* pause_frame;
 } FluidMantaflowJob;
 
 static bool fluid_manta_initjob(bContext *C, FluidMantaflowJob *job, wmOperator *op, char *error_msg, int error_size)
@@ -1182,10 +1184,10 @@ static void fluid_manta_bake_free(void *customdata)
 static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 {
 	SmokeDomainSettings *sds = job->smd->domain;
-	SmokeModifierData *smd = job->smd;
 	Scene *scene = job->scene;
 	int frame = 1, orig_frame;
 	int frames;
+	int *pause_frame = NULL;
 
 	frames = sds->cache_frame_end - sds->cache_frame_start + 1;
 
@@ -1198,21 +1200,27 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 	if (job->do_update)
 		*(job->do_update) = true;
 
+	/* Get current pause frame (pointer) - depending on bake type */
+	pause_frame = job->pause_frame;
+
 	/* Set frame to start point */
-	frame = sds->cache_frame_start;
+	frame = (*pause_frame);
+	if (frame == -1)
+		frame = sds->cache_frame_start;
+
+	/* Save orig frame and update scene frame */
 	orig_frame = scene->r.cfra;
 	scene->r.cfra = (int)frame;
 
 	/* Loop through selected frames */
-	for (frame = sds->cache_frame_start; frame <= sds->cache_frame_end; frame++) {
+	for ( ; frame <= sds->cache_frame_end; frame++) {
 		const float progress = (frame - sds->cache_frame_start) / (float)frames;
 
-		/* Is simulation still baking, may have gotten interrupted by user */
-		bool is_baking = sds->cache_flag & (FLUID_CACHE_BAKING_DATA|FLUID_CACHE_BAKING_NOISE|
-											FLUID_CACHE_BAKING_MESH|FLUID_CACHE_BAKING_PARTICLES);
+		/* Keep track of pause frame - needed to init future loop */
+		(*pause_frame) = frame;
 
 		/* If user requested stop, quit baking */
-		if (G.is_break || !is_baking) {
+		if (G.is_break) {
 			job->success = 0;
 			return;
 		}
@@ -1223,14 +1231,16 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 		if (job->progress)
 			*(job->progress) = progress;
 
-		if (smd->domain->fluid == NULL)
-			smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
-
 		scene->r.cfra = (int)frame;
 
 		/* Update animation system */
 		ED_update_for_newframe(job->bmain, scene, 1);
 	}
+	/* Reset pause frame - bake is complete */
+	if ((*pause_frame) == sds->cache_frame_end)
+		(*pause_frame) = -1;
+
+	/* Restore frame position that we were on before bake */
 	scene->r.cfra = orig_frame;
 }
 
@@ -1316,25 +1326,33 @@ static void fluid_manta_bake_startjob(void *customdata, short *stop, short *do_u
 	{
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
 		BLI_dir_create_recursive(tmpDir); /* Create 'data' subdir if it does not exist already */
+		sds->cache_flag &= ~FLUID_CACHE_BAKED_DATA;
 		sds->cache_flag |= FLUID_CACHE_BAKING_DATA;
+		job->pause_frame = &sds->cache_frame_pause_data;
 	}
 	else if (STREQ(job->type, "MANTA_OT_bake_noise"))
 	{
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_NOISE, NULL);
 		BLI_dir_create_recursive(tmpDir); /* Create 'noise' subdir if it does not exist already */
+		sds->cache_flag &= ~FLUID_CACHE_BAKED_NOISE;
 		sds->cache_flag |= FLUID_CACHE_BAKING_NOISE;
+		job->pause_frame = &sds->cache_frame_pause_noise;
 	}
 	else if (STREQ(job->type, "MANTA_OT_bake_mesh"))
 	{
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_MESH, NULL);
 		BLI_dir_create_recursive(tmpDir); /* Create 'mesh' subdir if it does not exist already */
+		sds->cache_flag &= ~FLUID_CACHE_BAKED_MESH;
 		sds->cache_flag |= FLUID_CACHE_BAKING_MESH;
+		job->pause_frame = &sds->cache_frame_pause_mesh;
 	}
 	else if (STREQ(job->type, "MANTA_OT_bake_particles"))
 	{
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_PARTICLES, NULL);
 		BLI_dir_create_recursive(tmpDir); /* Create 'particles' subdir if it does not exist already */
+		sds->cache_flag &= ~FLUID_CACHE_BAKED_PARTICLES;
 		sds->cache_flag |= FLUID_CACHE_BAKING_PARTICLES;
+		job->pause_frame = &sds->cache_frame_pause_particles;
 	}
 	fluid_manta_bake_sequence(job);
 
@@ -1397,6 +1415,7 @@ static void fluid_manta_free_endjob(void *customdata)
 	SmokeDomainSettings *sds = job->smd->domain;
 
 	G.is_rendering = false;
+	BKE_spacedata_draw_locks(false);
 
 	/* Free was successful:
 	 *  Report for ended free job and how long it took */
@@ -1418,6 +1437,7 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 {
 	FluidMantaflowJob *job = customdata;
 	SmokeDomainSettings *sds = job->smd->domain;
+	Scene *scene = job->scene;
 
 	char tmpDir[FILE_MAX];
 	tmpDir[0] = '\0';
@@ -1429,6 +1449,9 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 	job->success = 1;
 
 	G.is_break = false;
+
+	G.is_rendering = true;
+	BKE_spacedata_draw_locks(true);
 
 	if (STREQ(job->type, "MANTA_OT_free_data"))
 	{
@@ -1447,6 +1470,9 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 		BLI_delete(tmpDir, true, true);
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_PARTICLES, NULL);
 		BLI_delete(tmpDir, true, true);
+
+		/* Reset pause frame */
+		sds->cache_frame_pause_data = -1;
 	}
 	else if (STREQ(job->type, "MANTA_OT_free_noise"))
 	{
@@ -1454,6 +1480,9 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_NOISE, NULL);
 		BLI_delete(tmpDir, true, true);
+
+		/* Reset pause frame */
+		sds->cache_frame_pause_noise = -1;
 	}
 	else if (STREQ(job->type, "MANTA_OT_free_mesh"))
 	{
@@ -1461,6 +1490,9 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_MESH, NULL);
 		BLI_delete(tmpDir, true, true);
+
+		/* Reset pause frame */
+		sds->cache_frame_pause_mesh = -1;
 	}
 	else if (STREQ(job->type, "MANTA_OT_free_particles"))
 	{
@@ -1468,6 +1500,9 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_PARTICLES, NULL);
 		BLI_delete(tmpDir, true, true);
+
+		/* Reset pause frame */
+		sds->cache_frame_pause_particles = -1;
 	}
 
 	*do_update = true;
@@ -1475,6 +1510,9 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 
 	/* Update scene so that viewport shows freed up scene */
 	ED_update_for_newframe(job->bmain, job->scene, 1);
+
+	/* Reset scene frame to cache frame start */
+	scene->r.cfra = sds->cache_frame_start;
 }
 
 static int fluid_manta_free_exec(struct bContext *C, struct wmOperator *op)
@@ -1548,36 +1586,7 @@ static int fluid_manta_pause_exec(struct bContext *C, struct wmOperator *op)
 		return OPERATOR_CANCELLED;
 	}
 
-	/* Remove all 'is baking' flags to signal bake to stop */
-	sds->cache_flag &= ~(FLUID_CACHE_BAKING_DATA|FLUID_CACHE_BAKING_NOISE|
-						 FLUID_CACHE_BAKING_MESH|FLUID_CACHE_BAKING_PARTICLES);
-
-	return OPERATOR_FINISHED;
-}
-
-static int fluid_manta_cancel_exec(struct bContext *C, struct wmOperator *op)
-{
-	SmokeModifierData *smd = NULL;
-	SmokeDomainSettings *sds;
-	Object *ob = CTX_data_active_object(C);
-
-	/*
-	 * Get modifier data
-	 */
-	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
-	if (!smd) {
-		BKE_report(op->reports, RPT_ERROR, "Bake free failed: no Fluid modifier found");
-		return OPERATOR_CANCELLED;
-	}
-	sds = smd->domain;
-	if (!sds) {
-		BKE_report(op->reports, RPT_ERROR, "Bake free failed: invalid domain");
-		return OPERATOR_CANCELLED;
-	}
-
-	/* Remove all 'is baking' flags to signal bake to stop */
-	sds->cache_flag &= ~(FLUID_CACHE_BAKING_DATA|FLUID_CACHE_BAKING_NOISE|
-						 FLUID_CACHE_BAKING_MESH|FLUID_CACHE_BAKING_PARTICLES);
+	G.is_break = true;
 
 	return OPERATOR_FINISHED;
 }
@@ -1695,18 +1704,6 @@ void MANTA_OT_pause_bake(wmOperatorType *ot)
 
 	/* api callbacks */
 	ot->exec = fluid_manta_pause_exec;
-	ot->poll = ED_operator_object_active_editable;
-}
-
-void MANTA_OT_cancel_bake(wmOperatorType *ot)
-{
-	/* identifiers */
-	ot->name = "Cancel Bake";
-	ot->description = "Cancel Bake";
-	ot->idname = "MANTA_OT_cancel_bake";
-
-	/* api callbacks */
-	ot->exec = fluid_manta_cancel_exec;
 	ot->poll = ED_operator_object_active_editable;
 }
 

@@ -572,6 +572,10 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->cache_noise_format = MANTA_FILE_UNI;
 			smd->domain->cache_frame_start = 1;
 			smd->domain->cache_frame_end = 250;
+			smd->domain->cache_frame_pause_data = -1;
+			smd->domain->cache_frame_pause_noise = -1;
+			smd->domain->cache_frame_pause_mesh = -1;
+			smd->domain->cache_frame_pause_particles = -1;
 			BLI_path_make_safe(smd->domain->cache_directory);
 			BLI_make_file_string("/", smd->domain->cache_directory, BKE_tempdir_base(), "");
 			smd->domain->cache_flag = 0;
@@ -730,6 +734,12 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->cache_volume_format = smd->domain->cache_volume_format;
 		tsmd->domain->cache_particle_format = smd->domain->cache_particle_format;
 		tsmd->domain->cache_noise_format = smd->domain->cache_noise_format;
+		tsmd->domain->cache_frame_start = smd->domain->cache_frame_start;
+		tsmd->domain->cache_frame_end = smd->domain->cache_frame_end;
+		tsmd->domain->cache_frame_pause_data = smd->domain->cache_frame_pause_data;
+		tsmd->domain->cache_frame_pause_noise = smd->domain->cache_frame_pause_noise;
+		tsmd->domain->cache_frame_pause_mesh = smd->domain->cache_frame_pause_mesh;
+		tsmd->domain->cache_frame_pause_particles = smd->domain->cache_frame_pause_particles;
 		tsmd->domain->slice_method = smd->domain->slice_method;
 		tsmd->domain->axis_slice_method = smd->domain->axis_slice_method;
 		tsmd->domain->slice_per_voxel = smd->domain->slice_per_voxel;
@@ -3123,11 +3133,15 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		startframe = smd->domain->cache_frame_start;
 		endframe = smd->domain->cache_frame_end;
 
-		bool isBaking = (smd->domain->cache_flag & (FLUID_CACHE_BAKING_DATA|FLUID_CACHE_BAKING_NOISE|
+		bool is_baking = (smd->domain->cache_flag & (FLUID_CACHE_BAKING_DATA|FLUID_CACHE_BAKING_NOISE|
 													FLUID_CACHE_BAKING_MESH|FLUID_CACHE_BAKING_PARTICLES));
+		bool is_baked = (smd->domain->cache_flag & (FLUID_CACHE_BAKED_DATA|FLUID_CACHE_BAKED_NOISE|
+												   FLUID_CACHE_BAKED_MESH|FLUID_CACHE_BAKED_PARTICLES));
 
-		/* Reset fluid if no fluid present (obviously) or if timeline gets reset to startframe when no (!) baking is running */
-		if (!smd->domain->fluid || (framenr == startframe && !isBaking))
+		/* Reset fluid if no fluid present (obviously)
+		 * or if timeline gets reset to startframe when no (!) baking is running
+		 * or if no baking is running and also there is no baked data present */
+		if (!smd->domain->fluid || (framenr == startframe && !is_baking) || (!is_baking && !is_baked))
 			smokeModifier_reset_ex(smd, false);
 
 		if (!smd->domain->fluid && (framenr != startframe) && (smd->domain->flags & MOD_SMOKE_FILE_LOAD) == 0)
@@ -3136,14 +3150,10 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		smd->domain->flags &= ~MOD_SMOKE_FILE_LOAD;
 		CLAMP(framenr, startframe, endframe);
 
-		/* If already viewing a pre/after frame, no need to reload */
-		if ((smd->time == framenr) && (framenr != scene->r.cfra))
-			return;
-
 		if (smokeModifier_init(smd, ob, scene, dm) == 0)
 			return;
 
-		if (isBaking) {
+		if (is_baking) {
 			if (smd->domain->cache_flag & FLUID_CACHE_BAKING_DATA) {
 				smoke_step(scene, ob, smd, framenr);
 				fluid_write_data(smd->domain->fluid, smd, framenr);

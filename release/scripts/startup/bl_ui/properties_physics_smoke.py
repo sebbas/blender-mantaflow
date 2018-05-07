@@ -159,12 +159,18 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
                 col.prop(domain, "particle_randomness")
 
             split = layout.split()
-            if domain.cache_baked_data:
-                split.operator("manta.free_data", text="Free Data")
-            elif domain.cache_baking_data:
-                split.operator("manta.cancel_bake", text="Cancel")
-            else:
+            bake_incomplete = domain.cache_frame_pause_data != -1
+            if domain.cache_baked_data and not domain.cache_baking_data and bake_incomplete:
+                col = split.column()
+                col.operator("manta.bake_data", text="Resume")
+                col = split.column()
+                col.operator("manta.free_data", text="Free")
+            elif not domain.cache_baked_data and domain.cache_baking_data:
+                split.operator("manta.pause_bake", text="Pause Data")
+            elif not domain.cache_baked_data and not domain.cache_baking_data:
                 split.operator("manta.bake_data", text="Bake Data")
+            else:
+                split.operator("manta.free_data", text="Free Data")
 
         elif md.smoke_type == 'FLOW':
             flow = md.flow_settings
@@ -396,12 +402,18 @@ class PHYSICS_PT_smoke_noise(PhysicButtonsPanel, Panel):
 
         split = layout.split()
         split.enabled = domain.cache_baked_data
-        if domain.cache_baked_noise:
-            split.operator("manta.free_noise", text="Free Noise")
-        elif domain.cache_baking_noise:
-            split.operator("manta.cancel_bake", text="Cancel")
-        else:
+        bake_incomplete = domain.cache_frame_pause_noise != -1
+        if domain.cache_baked_noise and not domain.cache_baking_noise and bake_incomplete:
+            col = split.column()
+            col.operator("manta.bake_noise", text="Resume")
+            col = split.column()
+            col.operator("manta.free_noise", text="Free")
+        elif not domain.cache_baked_noise and domain.cache_baking_noise:
+            split.operator("manta.pause_bake", text="Pause Noise")
+        elif not domain.cache_baked_noise and not domain.cache_baking_noise:
             split.operator("manta.bake_noise", text="Bake Noise")
+        else:
+            split.operator("manta.free_noise", text="Free Noise")
 
 class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Mesh"
@@ -459,13 +471,18 @@ class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
 
         split = layout.split()
         split.enabled = domain.cache_baked_data
-        if domain.cache_baked_mesh:
-            split.operator("manta.free_mesh", text="Free Mesh")
-        elif domain.cache_baking_mesh:
-            split.operator("manta.cancel_bake", text="Cancel")
-        else:
+        bake_incomplete = domain.cache_frame_pause_mesh != -1
+        if domain.cache_baked_mesh and not domain.cache_baking_mesh and bake_incomplete:
+            col = split.column()
+            col.operator("manta.bake_mesh", text="Resume")
+            col = split.column()
+            col.operator("manta.free_mesh", text="Free")
+        elif not domain.cache_baked_mesh and domain.cache_baking_mesh:
+            split.operator("manta.pause_bake", text="Pause Mesh")
+        elif not domain.cache_baked_mesh and not domain.cache_baking_mesh:
             split.operator("manta.bake_mesh", text="Bake Mesh")
-
+        else:
+            split.operator("manta.free_mesh", text="Free Mesh")
 
 class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Particles"
@@ -524,12 +541,19 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
 
         split = layout.split()
         split.enabled = domain.cache_baked_data and (domain.use_drop_particles or domain.use_bubble_particles or domain.use_floater_particles or domain.use_tracer_particles)
-        if domain.cache_baked_particles:
-            split.operator("manta.free_particles", text="Free Particles")
-        elif domain.cache_baking_particles:
-            split.operator("manta.cancel_bake", text="Cancel")
-        else:
+        bake_incomplete = domain.cache_frame_pause_particles != -1
+        if domain.cache_baked_particles and not domain.cache_baking_particles and bake_incomplete:
+            if domain.cache_frame_pause_particles != -1: # only show resume operator when bake is not complete
+                col = split.column()
+                col.operator("manta.bake_particles", text="Resume")
+            col = split.column()
+            col.operator("manta.free_particles", text="Free")
+        elif not domain.cache_baked_particles and domain.cache_baking_particles:
+            split.operator("manta.pause_bake", text="Pause Particles")
+        elif not domain.cache_baked_particles and not domain.cache_baking_particles:
             split.operator("manta.bake_particles", text="Bake Particles")
+        else:
+            split.operator("manta.free_particles", text="Free Particles")
 
 class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Diffusion"

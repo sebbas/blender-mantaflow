@@ -243,6 +243,10 @@ typedef struct SmokeDomainSettings {
 	/* manta cache */
 	int cache_frame_start;
 	int cache_frame_end;
+	int cache_frame_pause_data;
+	int cache_frame_pause_noise;
+	int cache_frame_pause_mesh;
+	int cache_frame_pause_particles;
 	char cache_directory[1024];
 	int cache_flag;
 	/* point cache options */
