@@ -2930,18 +2930,17 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 		mverts->co[1] = liquid_get_vertex_y_at(sds->fluid, i);
 		mverts->co[2] = liquid_get_vertex_z_at(sds->fluid, i);
 
-		// TODO (sebbas): Allow mesh creation with raw data from manta mesh? Then we need this normalization
-//		// if reading raw data directly from manta, normalize now
-//		if ((sds->cache_flag & FLUID_CACHE_BAKED_MESH) == 0)
-//		{
-//			// normalize to unit cube around 0
-//			mverts->co[0] -= ((float) sds->res[0]*sds->mesh_scale)*0.5f;
-//			mverts->co[1] -= ((float) sds->res[1]*sds->mesh_scale)*0.5f;
-//			mverts->co[2] -= ((float) sds->res[2]*sds->mesh_scale)*0.5f;
-//			mverts->co[0] *= sds->dx / sds->mesh_scale;
-//			mverts->co[1] *= sds->dx / sds->mesh_scale;
-//			mverts->co[2] *= sds->dx / sds->mesh_scale;
-//		}
+		// if reading raw data directly from manta, normalize now
+		if ((sds->cache_flag & FLUID_CACHE_BAKED_MESH) == 0)
+		{
+			// normalize to unit cube around 0
+			mverts->co[0] -= ((float) sds->res[0]*sds->mesh_scale)*0.5f;
+			mverts->co[1] -= ((float) sds->res[1]*sds->mesh_scale)*0.5f;
+			mverts->co[2] -= ((float) sds->res[2]*sds->mesh_scale)*0.5f;
+			mverts->co[0] *= sds->dx / sds->mesh_scale;
+			mverts->co[1] *= sds->dx / sds->mesh_scale;
+			mverts->co[2] *= sds->dx / sds->mesh_scale;
+		}
 
 		mverts->co[0] *= max_size / fabsf(ob->size[0]);
 		mverts->co[1] *= max_size / fabsf(ob->size[1]);
