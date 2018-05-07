@@ -57,6 +57,10 @@ void adjustSndParts(BasicParticleSystem& parts, FlagGrid& flags, LevelsetGrid& p
 		Vec3 p1 = parts.getPos(idx);
 		Vec3i p1i = toVec3i(p1);
 
+		// Kill parts at invalid positions
+		if (p1i.x < 0 || p1i.y < 0 || p1i.z < 0) { parts.kill(idx); continue; }
+		if (p1i.x > flags.getSizeX()-1 || p1i.y > flags.getSizeY()-1 || p1i.z > flags.getSizeZ()-1) { parts.kill(idx); continue; }
+
 		// Try to save float / tracer particle by pushing it into the valid region
 		Real phiv = phi.getInterpolated( parts.getPos(idx) );
 		if (( parts.getStatus(idx) & ParticleBase::PFOAM && (phiv > FLOAT_THRESH || phiv < -FLOAT_THRESH)) ||
