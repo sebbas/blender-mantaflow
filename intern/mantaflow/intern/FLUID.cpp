@@ -1026,6 +1026,8 @@ int FLUID::updateFlipStructures(SmokeModifierData *smd, int framenr)
 	if (FLUID::with_debug)
 		std::cout << "FLUID::updateFlipStructures()" << std::endl;
 
+	if (!mUsingLiquid) return 0;
+
 	std::ostringstream ss;
 	char cacheDir[FILE_MAX], helperDir[FILE_MAX];
 	cacheDir[0] = '\0';
@@ -1056,6 +1058,8 @@ int FLUID::updateMeshStructures(SmokeModifierData *smd, int framenr)
 	if (FLUID::with_debug)
 		std::cout << "FLUID::updateMeshStructures()" << std::endl;
 
+	if (!mUsingMesh) return 0;
+
 	std::ostringstream ss;
 	char cacheDir[FILE_MAX], helperDir[FILE_MAX];
 	cacheDir[0] = '\0';
@@ -1076,6 +1080,8 @@ int FLUID::updateParticleStructures(SmokeModifierData *smd, int framenr)
 {
 	if (FLUID::with_debug)
 		std::cout << "FLUID::updateParticleStructures()" << std::endl;
+
+	if (!mUsingDrops && !mUsingBubbles && !mUsingFloats && !mUsingTracers) return 0;
 
 	std::ostringstream ss;
 	char cacheDir[FILE_MAX], helperDir[FILE_MAX];
@@ -1147,6 +1153,8 @@ int FLUID::readData(SmokeModifierData *smd, int framenr)
 	if (with_debug)
 		std::cout << "FLUID::readData()" << std::endl;
 
+	if (!mUsingSmoke && !mUsingLiquid) return 0;
+
 	std::ostringstream ss;
 	std::vector<std::string> pythonCommands;
 
@@ -1203,6 +1211,9 @@ int FLUID::readMesh(SmokeModifierData *smd, int framenr)
 	// dummmy function, use updateMeshFromFile
 	if (with_debug)
 		std::cout << "FLUID::readMesh() - dummmy function, use updateMeshFromFile()" << std::endl;
+
+	if (!mUsingMesh) return 0;
+
 	return 1;
 }
 
