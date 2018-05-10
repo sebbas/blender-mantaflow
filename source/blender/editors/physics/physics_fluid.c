@@ -1461,15 +1461,15 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 							 FLUID_CACHE_BAKING_PARTICLES|FLUID_CACHE_BAKED_PARTICLES);
 
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
-		BLI_delete(tmpDir, true, true);
+		if (BLI_exists(tmpDir)) BLI_delete(tmpDir, true, true);
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_NOISE, NULL);
-		BLI_delete(tmpDir, true, true);
+		if (BLI_exists(tmpDir)) BLI_delete(tmpDir, true, true);
 
 		/* Free optional mesh and particles as well - otherwise they would not be in sync with data cache */
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_MESH, NULL);
-		BLI_delete(tmpDir, true, true);
+		if (BLI_exists(tmpDir)) BLI_delete(tmpDir, true, true);
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_PARTICLES, NULL);
-		BLI_delete(tmpDir, true, true);
+		if (BLI_exists(tmpDir)) BLI_delete(tmpDir, true, true);
 
 		/* Reset pause frame */
 		sds->cache_frame_pause_data = -1;
@@ -1479,7 +1479,7 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 		sds->cache_flag &= ~(FLUID_CACHE_BAKING_NOISE|FLUID_CACHE_BAKED_NOISE);
 
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_NOISE, NULL);
-		BLI_delete(tmpDir, true, true);
+		if (BLI_exists(tmpDir)) BLI_delete(tmpDir, true, true);
 
 		/* Reset pause frame */
 		sds->cache_frame_pause_noise = -1;
@@ -1489,7 +1489,7 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 		sds->cache_flag &= ~(FLUID_CACHE_BAKING_MESH|FLUID_CACHE_BAKED_MESH);
 
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_MESH, NULL);
-		BLI_delete(tmpDir, true, true);
+		if (BLI_exists(tmpDir)) BLI_delete(tmpDir, true, true);
 
 		/* Reset pause frame */
 		sds->cache_frame_pause_mesh = -1;
@@ -1499,7 +1499,7 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 		sds->cache_flag &= ~(FLUID_CACHE_BAKING_PARTICLES|FLUID_CACHE_BAKED_PARTICLES);
 
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_PARTICLES, NULL);
-		BLI_delete(tmpDir, true, true);
+		if (BLI_exists(tmpDir)) BLI_delete(tmpDir, true, true);
 
 		/* Reset pause frame */
 		sds->cache_frame_pause_particles = -1;
