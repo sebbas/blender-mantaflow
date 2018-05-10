@@ -409,7 +409,7 @@ void FLUID::initMesh(SmokeModifierData *smd)
 {
 	std::vector<std::string> pythonCommands;
 	std::string tmpString = fluid_variables_mesh
-	+ fluid_solver_mesh;
+		+ fluid_solver_mesh;
 	std::string finalString = parseScript(tmpString, smd);
 	pythonCommands.push_back(finalString);
 
@@ -1029,26 +1029,30 @@ int FLUID::updateFlipStructures(SmokeModifierData *smd, int framenr)
 	if (!mUsingLiquid) return 0;
 
 	std::ostringstream ss;
-	char cacheDir[FILE_MAX], helperDir[FILE_MAX];
+	char cacheDir[FILE_MAX], targetFile[FILE_MAX];
 	cacheDir[0] = '\0';
-	helperDir[0] = '\0';
+	targetFile[0] = '\0';
 
 	std::string pformat = getCacheFileEnding(smd->domain->cache_particle_format);
 	BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
 
 	// TODO (sebbas): Use pp_xl and pVel_xl when using upres simulation?
 
-	ss << "pp_" << std::setw(4) << std::setfill('0') << framenr << pformat;
-	BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
-	if (BLI_exists(helperDir)) {
-		updateParticlesFromFile(helperDir, false);
+	ss << "pp_####" << pformat;
+	BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDir, ss.str().c_str());
+	BLI_path_frame(targetFile, framenr, 0);
+
+	if (BLI_exists(targetFile)) {
+		updateParticlesFromFile(targetFile, false);
 	}
 
 	ss.str("");
-	ss << "pVel_" << std::setw(4) << std::setfill('0') << framenr << pformat;
-	BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
-	if (BLI_exists(helperDir)) {
-		updateParticlesFromFile(helperDir, false);
+	ss << "pVel_####" << pformat;
+	BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDir, ss.str().c_str());
+	BLI_path_frame(targetFile, framenr, 0);
+
+	if (BLI_exists(targetFile)) {
+		updateParticlesFromFile(targetFile, false);
 	}
 	return 1;
 }
@@ -1061,17 +1065,19 @@ int FLUID::updateMeshStructures(SmokeModifierData *smd, int framenr)
 	if (!mUsingMesh) return 0;
 
 	std::ostringstream ss;
-	char cacheDir[FILE_MAX], helperDir[FILE_MAX];
+	char cacheDir[FILE_MAX], targetFile[FILE_MAX];
 	cacheDir[0] = '\0';
-	helperDir[0] = '\0';
+	targetFile[0] = '\0';
 
 	std::string mformat = getCacheFileEnding(smd->domain->cache_surface_format);
 	BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_MESH, NULL);
 
-	ss << "liquid_mesh_" << std::setw(4) << std::setfill('0') << framenr << mformat;
-	BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
-	if (BLI_exists(helperDir)) {
-		updateMeshFromFile(helperDir);
+	ss << "liquid_mesh_####" << mformat;
+	BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDir, ss.str().c_str());
+	BLI_path_frame(targetFile, framenr, 0);
+
+	if (BLI_exists(targetFile)) {
+		updateMeshFromFile(targetFile);
 	}
 	return 1;
 }
@@ -1084,31 +1090,37 @@ int FLUID::updateParticleStructures(SmokeModifierData *smd, int framenr)
 	if (!mUsingDrops && !mUsingBubbles && !mUsingFloats && !mUsingTracers) return 0;
 
 	std::ostringstream ss;
-	char cacheDir[FILE_MAX], helperDir[FILE_MAX];
+	char cacheDir[FILE_MAX], targetFile[FILE_MAX];
 	cacheDir[0] = '\0';
-	helperDir[0] = '\0';
+	targetFile[0] = '\0';
 
 	std::string pformat = getCacheFileEnding(smd->domain->cache_particle_format);
 	BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_PARTICLES, NULL);
 
-	ss << "ppSnd_" << std::setw(4) << std::setfill('0') << framenr << pformat;
-	BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
-	if (BLI_exists(helperDir)) {
-		updateParticlesFromFile(helperDir, true);
+	ss << "ppSnd_####" << pformat;
+	BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDir, ss.str().c_str());
+	BLI_path_frame(targetFile, framenr, 0);
+
+	if (BLI_exists(targetFile)) {
+		updateParticlesFromFile(targetFile, true);
 	}
 
 	ss.str("");
-	ss << "pVelSnd_" << std::setw(4) << std::setfill('0') << framenr << pformat;
-	BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
-	if (BLI_exists(helperDir)) {
-		updateParticlesFromFile(helperDir, true);
+	ss << "pVelSnd_####" << pformat;
+	BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDir, ss.str().c_str());
+	BLI_path_frame(targetFile, framenr, 0);
+
+	if (BLI_exists(targetFile)) {
+		updateParticlesFromFile(targetFile, true);
 	}
 
 	ss.str("");
-	ss << "pLifeSnd_" << std::setw(4) << std::setfill('0') << framenr << pformat;
-	BLI_join_dirfile(helperDir, sizeof(helperDir), cacheDir, ss.str().c_str());
-	if (BLI_exists(helperDir)) {
-		updateParticlesFromFile(helperDir, true);
+	ss << "pLifeSnd_####" << pformat;
+	BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDir, ss.str().c_str());
+	BLI_path_frame(targetFile, framenr, 0);
+
+	if (BLI_exists(targetFile)) {
+		updateParticlesFromFile(targetFile, true);
 	}
 	return 1;
 }
