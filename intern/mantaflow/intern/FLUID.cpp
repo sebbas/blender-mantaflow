@@ -1113,6 +1113,19 @@ int FLUID::updateParticleStructures(SmokeModifierData *smd, int framenr)
 	return 1;
 }
 
+/* Dirty hack: Needed to format paths from python code that is run via PyRun_SimpleString */
+static std::string escapeSlashes(std::string const& s) {
+	std::string result = "";
+	for (std::string::const_iterator i = s.begin(), end = s.end(); i != end; ++i) {
+		unsigned char c = *i;
+		if (c == '\\')
+			result += "\\\\";
+		else
+			result += c;
+	}
+	return result;
+}
+
 int FLUID::writeData(SmokeModifierData *smd, int framenr)
 {
 	if (with_debug)
@@ -1128,20 +1141,22 @@ int FLUID::writeData(SmokeModifierData *smd, int framenr)
 	std::string pformat = getCacheFileEnding(smd->domain->cache_particle_format);
 
 	BLI_path_join(cacheDirData, sizeof(cacheDirData), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
-	ss << "fluid_save_data_" << mCurrentID << "('" << cacheDirData << "', " << framenr << ", '" << dformat << "')";
+	BLI_path_make_safe(cacheDirData);
+
+	ss << "fluid_save_data_" << mCurrentID << "('" << escapeSlashes(cacheDirData) << "', " << framenr << ", '" << dformat << "')";
 	pythonCommands.push_back(ss.str());
 
 	if (mUsingSmoke) {
 		ss.str("");
-		ss << "smoke_save_data_" << mCurrentID << "('" << cacheDirData << "', " << framenr << ", '" << dformat << "')";
+		ss << "smoke_save_data_" << mCurrentID << "('" << escapeSlashes(cacheDirData) << "', " << framenr << ", '" << dformat << "')";
 		pythonCommands.push_back(ss.str());
 	}
 	if (mUsingLiquid) {
 		ss.str("");
-		ss << "liquid_save_data_" << mCurrentID << "('" << cacheDirData << "', " << framenr << ", '" << dformat << "')";
+		ss << "liquid_save_data_" << mCurrentID << "('" << escapeSlashes(cacheDirData) << "', " << framenr << ", '" << dformat << "')";
 		pythonCommands.push_back(ss.str());
 		ss.str("");
-		ss << "liquid_save_flip_" << mCurrentID << "('" << cacheDirData << "', " << framenr << ", '" << pformat << "')";
+		ss << "liquid_save_flip_" << mCurrentID << "('" << escapeSlashes(cacheDirData) << "', " << framenr << ", '" << pformat << "')";
 		pythonCommands.push_back(ss.str());
 	}
 	runPythonString(pythonCommands);
@@ -1165,15 +1180,17 @@ int FLUID::readData(SmokeModifierData *smd, int framenr)
 	std::string pformat = getCacheFileEnding(smd->domain->cache_particle_format);
 
 	BLI_path_join(cacheDirData, sizeof(cacheDirData), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
+	BLI_path_make_safe(cacheDirData);
+
 	if (mUsingSmoke) {
-		ss << "smoke_load_data_" << mCurrentID << "('" << cacheDirData << "', " << framenr << ", '" << dformat << "')";
+		ss << "smoke_load_data_" << mCurrentID << "('" << escapeSlashes(cacheDirData) << "', " << framenr << ", '" << dformat << "')";
 		pythonCommands.push_back(ss.str());
 	}
 	if (mUsingLiquid) {
-		ss << "liquid_load_data_" << mCurrentID << "('" << cacheDirData << "', " << framenr << ", '" << dformat << "')";
+		ss << "liquid_load_data_" << mCurrentID << "('" << escapeSlashes(cacheDirData) << "', " << framenr << ", '" << dformat << "')";
 		pythonCommands.push_back(ss.str());
 		ss.str("");
-		ss << "liquid_load_flip_" << mCurrentID << "('" << cacheDirData << "', " << framenr << ", '" << pformat << "')";
+		ss << "liquid_load_flip_" << mCurrentID << "('" << escapeSlashes(cacheDirData) << "', " << framenr << ", '" << pformat << "')";
 		pythonCommands.push_back(ss.str());
 	}
 	runPythonString(pythonCommands);
@@ -1197,8 +1214,10 @@ int FLUID::readNoise(SmokeModifierData *smd, int framenr)
 	std::string nformat = getCacheFileEnding(smd->domain->cache_noise_format);
 
 	BLI_path_join(cacheDirNoise, sizeof(cacheDirNoise), smd->domain->cache_directory, FLUID_CACHE_DIR_NOISE, NULL);
+	BLI_path_make_safe(cacheDirNoise);
+
 	if (mUsingSmoke && mUsingNoise) {
-		ss << "smoke_load_noise_" << mCurrentID << "('" << cacheDirNoise << "', " << framenr << ", '" << nformat  << "')";
+		ss << "smoke_load_noise_" << mCurrentID << "('" << escapeSlashes(cacheDirNoise) << "', " << framenr << ", '" << nformat  << "')";
 		pythonCommands.push_back(ss.str());
 	}
 	runPythonString(pythonCommands);
@@ -1233,8 +1252,10 @@ int FLUID::readParticles(SmokeModifierData *smd, int framenr)
 	std::string pformat = getCacheFileEnding(smd->domain->cache_particle_format);
 
 	BLI_path_join(cacheDirParticles, sizeof(cacheDirParticles), smd->domain->cache_directory, FLUID_CACHE_DIR_PARTICLES, NULL);
+	BLI_path_make_safe(cacheDirParticles);
+
 	if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
-		ss << "fluid_load_particles_" << mCurrentID << "('" << cacheDirParticles << "', " << framenr << ", '" << pformat << "')";
+		ss << "fluid_load_particles_" << mCurrentID << "('" << escapeSlashes(cacheDirParticles) << "', " << framenr << ", '" << pformat << "')";
 		pythonCommands.push_back(ss.str());
 	}
 	runPythonString(pythonCommands);
@@ -1257,9 +1278,10 @@ int FLUID::bakeData(SmokeModifierData *smd, int framenr)
 	std::string dformat = getCacheFileEnding(smd->domain->cache_volume_format);
 	std::string pformat = getCacheFileEnding(smd->domain->cache_particle_format);
 
-	// Actual call to bake routine
 	BLI_path_join(cacheDirData, sizeof(cacheDirData), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
-	ss << "bake_fluid_data_" << mCurrentID << "('" << cacheDirData << "', " << framenr << ", '" << dformat << "', '" << pformat << "')";
+	BLI_path_make_safe(cacheDirData);
+
+	ss << "bake_fluid_data_" << mCurrentID << "('" << escapeSlashes(cacheDirData) << "', " << framenr << ", '" << dformat << "', '" << pformat << "')";
 	pythonCommands.push_back(ss.str());
 
 	runPythonString(pythonCommands);
@@ -1281,11 +1303,12 @@ int FLUID::bakeNoise(SmokeModifierData *smd, int framenr)
 	std::string dformat = getCacheFileEnding(smd->domain->cache_volume_format);
 	std::string nformat = getCacheFileEnding(smd->domain->cache_noise_format);
 
-	// Actual call to bake routine
 	BLI_path_join(cacheDirData, sizeof(cacheDirData), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
 	BLI_path_join(cacheDirNoise, sizeof(cacheDirNoise), smd->domain->cache_directory, FLUID_CACHE_DIR_NOISE, NULL);
+	BLI_path_make_safe(cacheDirData);
+	BLI_path_make_safe(cacheDirNoise);
 
-	ss << "bake_noise_" << mCurrentID << "('" << cacheDirData << "', '" << cacheDirNoise << "', " << framenr << ", '" << dformat << "', '" << nformat << "')";
+	ss << "bake_noise_" << mCurrentID << "('" << escapeSlashes(cacheDirData) << "', '" << escapeSlashes(cacheDirNoise) << "', " << framenr << ", '" << dformat << "', '" << nformat << "')";
 	pythonCommands.push_back(ss.str());
 
 	runPythonString(pythonCommands);
@@ -1308,10 +1331,12 @@ int FLUID::bakeMesh(SmokeModifierData *smd, int framenr)
 	std::string mformat = getCacheFileEnding(smd->domain->cache_surface_format);
 	std::string pformat = getCacheFileEnding(smd->domain->cache_particle_format);
 
-	BLI_path_join(cacheDirMesh, sizeof(cacheDirMesh), smd->domain->cache_directory, FLUID_CACHE_DIR_MESH, NULL);
 	BLI_path_join(cacheDirData, sizeof(cacheDirData), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
+	BLI_path_join(cacheDirMesh, sizeof(cacheDirMesh), smd->domain->cache_directory, FLUID_CACHE_DIR_MESH, NULL);
+	BLI_path_make_safe(cacheDirData);
+	BLI_path_make_safe(cacheDirMesh);
 
-	ss << "bake_mesh_" << mCurrentID << "('" << cacheDirData << "', '" << cacheDirMesh << "', " << framenr << ", '" << dformat << "', '" << mformat << "', '" << pformat << "')";
+	ss << "bake_mesh_" << mCurrentID << "('" << escapeSlashes(cacheDirData) << "', '" << escapeSlashes(cacheDirMesh) << "', " << framenr << ", '" << dformat << "', '" << mformat << "', '" << pformat << "')";
 	pythonCommands.push_back(ss.str());
 
 	runPythonString(pythonCommands);
@@ -1333,10 +1358,12 @@ int FLUID::bakeParticles(SmokeModifierData *smd, int framenr)
 	std::string dformat = getCacheFileEnding(smd->domain->cache_volume_format);
 	std::string pformat = getCacheFileEnding(smd->domain->cache_particle_format);
 
-	BLI_path_join(cacheDirParticles, sizeof(cacheDirParticles), smd->domain->cache_directory, FLUID_CACHE_DIR_PARTICLES, NULL);
 	BLI_path_join(cacheDirData, sizeof(cacheDirData), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
+	BLI_path_join(cacheDirParticles, sizeof(cacheDirParticles), smd->domain->cache_directory, FLUID_CACHE_DIR_PARTICLES, NULL);
+	BLI_path_make_safe(cacheDirData);
+	BLI_path_make_safe(cacheDirParticles);
 
-	ss << "bake_particles_" << mCurrentID << "('" << cacheDirData << "', '" << cacheDirParticles << "', " << framenr << ", '" << dformat << "', '" << pformat << "')";
+	ss << "bake_particles_" << mCurrentID << "('" << escapeSlashes(cacheDirData) << "', '" << escapeSlashes(cacheDirParticles) << "', " << framenr << ", '" << dformat << "', '" << pformat << "')";
 	pythonCommands.push_back(ss.str());
 
 	runPythonString(pythonCommands);
@@ -2085,19 +2112,6 @@ void FLUID::setSndParticleLife(float* buffer, int numParts)
 	}
 }
 
-/* Dirty hack: Needed to format paths from python code that is run via PyRun_SimpleString */
-static std::string escape_slashes(std::string const& s) {
-	std::string Result = "";
-	for (std::string::const_iterator i = s.begin(), end = s.end(); i != end; ++i) {
-		unsigned char c = *i;
-		if (c == '\\')
-			Result += "\\\\";
-		else
-			Result += c;
-	}
-	return Result;
-}
-
 void FLUID::saveFluidObstacleData(char *pathname)
 {
 	std::string path(pathname);
@@ -2176,7 +2190,7 @@ void FLUID::saveLiquidData(char *pathname)
 	std::vector<std::string> pythonCommands;
 	std::ostringstream ss;
 
-	ss << "liquid_save_mesh_high_" << mCurrentID << "(\"" << escape_slashes(path) << "\")\r\n";
+	ss << "liquid_save_mesh_high_" << mCurrentID << "(\"" << escapeSlashes(path) << "\")\r\n";
 	pythonCommands.push_back(ss.str());
 
 	runPythonString(pythonCommands);

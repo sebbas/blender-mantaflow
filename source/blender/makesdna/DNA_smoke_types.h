@@ -169,7 +169,7 @@ enum {
 #define FLUID_CACHE_BAKING_PARTICLES    64
 #define FLUID_CACHE_BAKED_PARTICLES     128
 
-#define FLUID_CACHE_DIR_DEFAULT    "fluid_cache"
+#define FLUID_CACHE_DIR_DEFAULT    "cache_fluid"
 #define FLUID_CACHE_DIR_DATA       "data"
 #define FLUID_CACHE_DIR_NOISE      "noise"
 #define FLUID_CACHE_DIR_MESH       "mesh"

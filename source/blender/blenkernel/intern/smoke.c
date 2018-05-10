@@ -576,8 +576,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->cache_frame_pause_noise = -1;
 			smd->domain->cache_frame_pause_mesh = -1;
 			smd->domain->cache_frame_pause_particles = -1;
-			BLI_path_make_safe(smd->domain->cache_directory);
-			BLI_make_file_string("/", smd->domain->cache_directory, BKE_tempdir_base(), "");
+			modifier_path_init(smd->domain->cache_directory, sizeof(smd->domain->cache_directory), FLUID_CACHE_DIR_DEFAULT);
 			smd->domain->cache_flag = 0;
 
 			smd->domain->display_thickness = 1.0f;
