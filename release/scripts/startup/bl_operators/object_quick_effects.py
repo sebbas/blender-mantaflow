@@ -628,9 +628,9 @@ class QuickLiquid(Operator):
         obj.modifiers[-1].domain_settings.use_surface_cache = True
         obj.modifiers[-1].domain_settings.use_volume_cache = False
         obj.modifiers[-1].domain_settings.cache_surface_format = 'BOBJECT'
-		
-        # make domain solid so that liquid becomes better visible
-        obj.draw_type = 'SOLID'
+
+        # allocate and show particle system for FLIP 
+        obj.modifiers[-1].domain_settings.use_flip_particles = True
 
         # make the domain smooth so it renders nicely
         bpy.ops.object.shade_smooth()

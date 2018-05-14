@@ -1278,6 +1278,7 @@ static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_mult
 
 					/* values */
 					output->influence[index_out] = em1.influence[index_in];
+					output->distances[index_out] = em1.distances[index_in];
 					if (output->velocity && em1.velocity) {
 						copy_v3_v3(&output->velocity[index_out * 3], &em1.velocity[index_in * 3]);
 					}
@@ -1293,12 +1294,11 @@ static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_mult
 					/* values */
 					if (additive) {
 						output->influence[index_out] += em2->influence[index_in] * sample_size;
-						output->distances[index_out] += em2->distances[index_in] * sample_size;
 					}
 					else {
 						output->influence[index_out] = MAX2(em2->influence[index_in], output->influence[index_out]);
-						output->distances[index_out] = MAX2(em2->distances[index_in], output->distances[index_out]);
 					}
+					output->distances[index_out] = MIN2(em2->distances[index_in], output->distances[index_out]);
 					if (output->velocity && em2->velocity) {
 						/* last sample replaces the velocity */
 						output->velocity[index_out * 3]		= ADD_IF_LOWER(output->velocity[index_out * 3], em2->velocity[index_in * 3]);
@@ -1337,12 +1337,11 @@ static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_mult
 						/* values */
 						if (additive) {
 							output->influence_high[index_out] += em2->distances_high[index_in] * sample_size;
-							output->distances_high[index_out] += em2->distances_high[index_in] * sample_size;
 						}
 						else {
 							output->distances_high[index_out] = MAX2(em2->distances_high[index_in], output->distances_high[index_out]);
-							output->distances_high[index_out] = MAX2(em2->distances_high[index_in], output->distances_high[index_out]);
 						}
+						output->distances_high[index_out] = MIN2(em2->distances_high[index_in], output->distances_high[index_out]);
 					}
 		} // high res loop
 	}
@@ -2494,7 +2493,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 			int hires_multiplier = 1;
 
 			/* First frame cannot have any subframes because there is (obviously) no previous frame from where subframes could come from */
-			bool is_first_frame = (scene->r.cfra == frame);
+			bool is_first_frame = (frame == sds->cache_frame_start);
 			if (is_first_frame) subframes = 0;
 
 			int subframe;
@@ -2590,6 +2589,16 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 	float *velx_initial = smoke_get_in_velocity_x(sds->fluid);
 	float *vely_initial = smoke_get_in_velocity_y(sds->fluid);
 	float *velz_initial = smoke_get_in_velocity_z(sds->fluid);
+	unsigned int z;
+
+	/* Grid reset before writing again */
+	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
+	{
+		if (phi_in)
+			phi_in[z] = 9999;
+		if (phiout_in)
+			phiout_in[z] = 9999;
+	}
 
 	/* Apply emission data */
 	for (flowIndex = 0; flowIndex < numflowobj; flowIndex++)

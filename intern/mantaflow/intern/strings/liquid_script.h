@@ -51,9 +51,6 @@ smoothenNeg_s$ID$      = $MESH_SMOOTHEN_NEG$\n\
 randomness_s$ID$       = $PARTICLE_RANDOMNESS$\n\
 surfaceTension_s$ID$   = $LIQUID_SURFACE_TENSION$\n";
 
-const std::string liquid_variables_mesh = "\n\
-mantaMsg('Liquid variables high')\n";
-
 //////////////////////////////////////////////////////////////////////
 // GRIDS & MESH & PARTICLESYSTEM
 //////////////////////////////////////////////////////////////////////
@@ -93,7 +90,10 @@ mesh_sm$ID$     = sm$ID$.create(Mesh)\n\
 \n\
 # Acceleration data for particle nbs\n\
 pindex_sm$ID$  = sm$ID$.create(ParticleIndexSystem)\n\
-gpi_sm$ID$     = sm$ID$.create(IntGrid)\n";
+gpi_sm$ID$     = sm$ID$.create(IntGrid)\n\
+\n\
+# Keep track of important objects in dict to load them later on\n\
+liquid_mesh_dict_s$ID$ = dict(liquid_mesh=mesh_sm$ID$)\n";
 
 const std::string liquid_init_phi = "\n\
 phi_s$ID$.initFromFlags(flags_s$ID$)\n\
@@ -139,9 +139,6 @@ def liquid_post_step_$ID$():\n\
         weightGuide_s$ID$.clear()\n\
     if using_invel_s$ID$:\n\
         invel_s$ID$.clear()\n\
-    \n\
-#    phiIn_s$ID$.setConst(9999)\n\
-#    phiOutIn_s$ID$.setConst(9999)\n\
     \n\
     #copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n\
     #x_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.x) )\n\
@@ -282,6 +279,32 @@ def liquid_step_$ID$():\n\
     adjustNumber(parts=pp_s$ID$, vel=vel_s$ID$, flags=flags_s$ID$, minParticles=minParticles_s$ID$, maxParticles=maxParticles_s$ID$, phi=phi_s$ID$, exclude=phiObs_s$ID$, radiusFactor=1., narrowBand=adjustedNarrowBandWidth_s$ID$)\n\
     flipVelocityUpdate(vel=vel_s$ID$, velOld=velOld_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, partVel=pVel_pp$ID$, flipRatio=0.97)\n";
 
+const std::string liquid_step_mesh = "\n\
+def liquid_step_mesh_$ID$():\n\
+    mantaMsg('Liquid step mesh')\n\
+    \n\
+    interpolateGrid(target=phi_sm$ID$, source=phiTmp_s$ID$) # mis-use phiParts as temp grid\n\
+    \n\
+    # create surface\n\
+    pp_sm$ID$.readParticles(pp_s$ID$)\n\
+    gridParticleIndex(parts=pp_sm$ID$, flags=flags_sm$ID$, indexSys=pindex_sm$ID$, index=gpi_sm$ID$)\n\
+    \n\
+    if using_final_mesh_s$ID$:\n\
+        mantaMsg('Liquid using improved particle levelset')\n\
+        improvedParticleLevelset(pp_sm$ID$, pindex_sm$ID$, flags_sm$ID$, gpi_sm$ID$, phiParts_sm$ID$, radiusFactor_s$ID$, smoothenPos_s$ID$, smoothenNeg_s$ID$, smoothenLower_s$ID$, smoothenUpper_s$ID$)\n\
+    else:\n\
+        mantaMsg('Liquid using union particle levelset')\n\
+        unionParticleLevelset(pp_sm$ID$, pindex_sm$ID$, flags_sm$ID$, gpi_sm$ID$, phiParts_sm$ID$, radiusFactor_s$ID$)\n\
+    \n\
+    phi_sm$ID$.addConst(1.) # shrink slightly\n\
+    phi_sm$ID$.join(phiParts_sm$ID$)\n\
+    extrapolateLsSimple(phi=phi_sm$ID$, distance=narrowBandWidth_s$ID$+2, inside=True)\n\
+    extrapolateLsSimple(phi=phi_sm$ID$, distance=3)\n\
+    phi_sm$ID$.setBoundNeumann(boundaryWidth_s$ID$) # make sure no particles are placed at outer boundary\n\
+    \n\
+    phi_sm$ID$.setBound(0.5,int(((upres_sm$ID$)*2)-2) )\n\
+    phi_sm$ID$.createMesh(mesh_sm$ID$)\n";
+
 const std::string liquid_step_particles = "\n\
 def liquid_step_particles_$ID$():\n\
     mantaMsg('Sampling snd particles')\n\
@@ -317,6 +340,11 @@ def liquid_load_flip_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid load flip')\n\
     fluid_file_import_s$ID$(dict=liquid_flip_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
+const std::string liquid_load_mesh = "\n\
+def liquid_save_mesh_$ID$(path, framenr, file_format):\n\
+    mantaMsg('Liquid load mesh')\n\
+    fluid_file_import_s$ID$(dict=liquid_mesh_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
+
 //////////////////////////////////////////////////////////////////////
 // EXPORT
 //////////////////////////////////////////////////////////////////////
@@ -334,30 +362,7 @@ def liquid_save_flip_$ID$(path, framenr, file_format):\n\
 const std::string liquid_save_mesh = "\n\
 def liquid_save_mesh_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid save mesh')\n\
-    framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
-    \n\
-    interpolateGrid(target=phi_sm$ID$, source=phiTmp_s$ID$) # mis-use phiParts as temp grid\n\
-    \n\
-    # create surface\n\
-    pp_sm$ID$.readParticles(pp_s$ID$)\n\
-    gridParticleIndex(parts=pp_sm$ID$, flags=flags_sm$ID$, indexSys=pindex_sm$ID$, index=gpi_sm$ID$)\n\
-    \n\
-    if using_final_mesh_s$ID$:\n\
-        mantaMsg('Liquid using improved particle levelset')\n\
-        improvedParticleLevelset(pp_sm$ID$, pindex_sm$ID$, flags_sm$ID$, gpi_sm$ID$, phiParts_sm$ID$, radiusFactor_s$ID$, smoothenPos_s$ID$, smoothenNeg_s$ID$, smoothenLower_s$ID$, smoothenUpper_s$ID$)\n\
-    else:\n\
-        mantaMsg('Liquid using union particle levelset')\n\
-        unionParticleLevelset(pp_sm$ID$, pindex_sm$ID$, flags_sm$ID$, gpi_sm$ID$, phiParts_sm$ID$, radiusFactor_s$ID$)\n\
-    \n\
-    phi_sm$ID$.addConst(1.) # shrink slightly\n\
-    phi_sm$ID$.join(phiParts_sm$ID$)\n\
-    extrapolateLsSimple(phi=phi_sm$ID$, distance=narrowBandWidth_s$ID$+2, inside=True)\n\
-    extrapolateLsSimple(phi=phi_sm$ID$, distance=3)\n\
-    phi_sm$ID$.setBoundNeumann(boundaryWidth_s$ID$) # make sure no particles are placed at outer boundary\n\
-    \n\
-    phi_sm$ID$.setBound(0.5,int(((upres_sm$ID$)*2)-2) )\n\
-    phi_sm$ID$.createMesh(mesh_sm$ID$)\n\
-    mesh_sm$ID$.save(os.path.join(path, 'liquid_mesh_' + framenr + file_format))\n";
+    fluid_file_export_s$ID$(dict=liquid_mesh_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE

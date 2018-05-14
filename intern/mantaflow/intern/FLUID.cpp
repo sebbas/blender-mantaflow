@@ -421,7 +421,7 @@ void FLUID::initLiquidMesh(SmokeModifierData *smd)
 {
 	std::vector<std::string> pythonCommands;
 	std::string tmpString = liquid_alloc_mesh
-		+ liquid_variables_mesh
+		+ liquid_step_mesh
 		+ liquid_save_mesh;
 	std::string finalString = parseScript(tmpString, smd);
 	pythonCommands.push_back(finalString);
@@ -1406,8 +1406,6 @@ void FLUID::updateVariablesHigh(SmokeModifierData *smd)
 	tmpString += fluid_variables_noise;
 	if (mUsingSmoke)
 		tmpString += smoke_variables_noise;
-	if (mUsingLiquid)
-		tmpString += liquid_variables_mesh;
 	finalString = parseScript(tmpString, smd);
 	pythonCommands.push_back(finalString);
 
@@ -1470,8 +1468,7 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 		manta_script += fluid_variables_noise
 			+ fluid_solver_noise
 			+ fluid_adaptive_time_stepping_noise
-			+ liquid_alloc_mesh
-			+ liquid_variables_mesh;
+			+ liquid_alloc_mesh;
 	}
 
 	manta_script += liquid_load_data;

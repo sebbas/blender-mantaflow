@@ -374,6 +374,7 @@ def bake_mesh_process_$ID$(framenr, format_data, format_mesh, format_particles, 
     if using_liquid_s$ID$:\n\
         liquid_load_data_$ID$(path_data, framenr, format_data)\n\
         liquid_load_flip_$ID$(path_data, framenr, format_particles)\n\
+        liquid_step_mesh_$ID$()\n\
         liquid_save_mesh_$ID$(path_mesh, framenr, format_mesh)\n\
 \n\
 def bake_mesh_$ID$(path_data, path_mesh, framenr, format_data, format_mesh, format_particles):\n\
