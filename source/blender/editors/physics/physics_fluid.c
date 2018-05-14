@@ -1188,6 +1188,7 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 	int frame = 1, orig_frame;
 	int frames;
 	int *pause_frame = NULL;
+	bool is_first_frame;
 
 	frames = sds->cache_frame_end - sds->cache_frame_start + 1;
 
@@ -1203,14 +1204,13 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 	/* Get current pause frame (pointer) - depending on bake type */
 	pause_frame = job->pause_frame;
 
-	/* Set frame to start point */
-	frame = (*pause_frame);
-	if (frame == -1)
-		frame = sds->cache_frame_start;
+	/* Set frame to start point (depending on current pause frame value) */
+	is_first_frame = ((*pause_frame) == 0);
+	frame = is_first_frame ? sds->cache_frame_start : (*pause_frame);
 
 	/* Save orig frame and update scene frame */
 	orig_frame = scene->r.cfra;
-	scene->r.cfra = (int)frame;
+	scene->r.cfra = frame;
 
 	/* Loop through selected frames */
 	for ( ; frame <= sds->cache_frame_end; frame++) {
@@ -1231,14 +1231,14 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 		if (job->progress)
 			*(job->progress) = progress;
 
-		scene->r.cfra = (int)frame;
+		scene->r.cfra = frame;
 
 		/* Update animation system */
 		ED_update_for_newframe(job->bmain, scene, 1);
 	}
 	/* Reset pause frame - bake is complete */
-	if (frame-1 == sds->cache_frame_end) // frame-1 because when loop stop, it already increased frame cnt by 1
-		(*pause_frame) = -1;
+	if (frame-1 == sds->cache_frame_end) // frame-1 because when loop stop, it already increased frame cnt by 1 (frame++)
+		(*pause_frame) = 0;
 
 	/* Restore frame position that we were on before bake */
 	scene->r.cfra = orig_frame;
@@ -1472,7 +1472,7 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 		if (BLI_exists(tmpDir)) BLI_delete(tmpDir, true, true);
 
 		/* Reset pause frame */
-		sds->cache_frame_pause_data = -1;
+		sds->cache_frame_pause_data = 0;
 	}
 	else if (STREQ(job->type, "MANTA_OT_free_noise"))
 	{
@@ -1482,7 +1482,7 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 		if (BLI_exists(tmpDir)) BLI_delete(tmpDir, true, true);
 
 		/* Reset pause frame */
-		sds->cache_frame_pause_noise = -1;
+		sds->cache_frame_pause_noise = 0;
 	}
 	else if (STREQ(job->type, "MANTA_OT_free_mesh"))
 	{
@@ -1492,7 +1492,7 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 		if (BLI_exists(tmpDir)) BLI_delete(tmpDir, true, true);
 
 		/* Reset pause frame */
-		sds->cache_frame_pause_mesh = -1;
+		sds->cache_frame_pause_mesh = 0;
 	}
 	else if (STREQ(job->type, "MANTA_OT_free_particles"))
 	{
@@ -1502,7 +1502,7 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 		if (BLI_exists(tmpDir)) BLI_delete(tmpDir, true, true);
 
 		/* Reset pause frame */
-		sds->cache_frame_pause_particles = -1;
+		sds->cache_frame_pause_particles = 0;
 	}
 
 	*do_update = true;

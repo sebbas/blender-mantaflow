@@ -572,10 +572,10 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->cache_noise_format = MANTA_FILE_UNI;
 			smd->domain->cache_frame_start = 1;
 			smd->domain->cache_frame_end = 250;
-			smd->domain->cache_frame_pause_data = -1;
-			smd->domain->cache_frame_pause_noise = -1;
-			smd->domain->cache_frame_pause_mesh = -1;
-			smd->domain->cache_frame_pause_particles = -1;
+			smd->domain->cache_frame_pause_data = 0;
+			smd->domain->cache_frame_pause_noise = 0;
+			smd->domain->cache_frame_pause_mesh = 0;
+			smd->domain->cache_frame_pause_particles = 0;
 			modifier_path_init(smd->domain->cache_directory, sizeof(smd->domain->cache_directory), FLUID_CACHE_DIR_DEFAULT);
 			smd->domain->cache_flag = 0;
 
@@ -2424,7 +2424,7 @@ static void update_flowsflags(SmokeDomainSettings *sds, Object **flowobjs, int n
 	sds->active_fields = active_fields;
 }
 
-static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sds, float time_per_frame, float frame_length, int frame)
+static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sds, float time_per_frame, float frame_length, int frame, bool is_first_frame)
 {
 	EmissionMap *emaps = NULL;
 	int new_shift[3] = {0};
@@ -2493,7 +2493,6 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 			int hires_multiplier = 1;
 
 			/* First frame cannot have any subframes because there is (obviously) no previous frame from where subframes could come from */
-			bool is_first_frame = (frame == sds->cache_frame_start);
 			if (is_first_frame) subframes = 0;
 
 			int subframe;
@@ -2507,21 +2506,25 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 
 				/* Set scene time */
 				/* Handle emission subframe */
-				if (subframe < subframes) {
+				if (subframe < subframes && !is_first_frame) {
 					prev_frame_pos = sdt * (float)(subframe+1);
 					scene->r.subframe = prev_frame_pos;
+					scene->r.cfra = frame - 1;
 				}
 				/* Last frame in this loop (subframe == suframes). Can be real end frame or in between frames (adaptive frame) */
 				else {
 					/* Handle adaptive subframe (ie has subframe fraction). Need to set according scene subframe parameter */
 					if (time_per_frame < frame_length) {
 						scene->r.subframe = adaptframe_length;
+						scene->r.cfra = frame - 1;
 					}
 					/* Handle absolute endframe (ie no subframe fraction). Need to set the scene subframe parameter to 0 and advance current scene frame */
 					else {
 						scene->r.subframe = 0.0f;
+						scene->r.cfra = frame;
 					}
 				}
+//				printf("frame (is first: %d): %d // scene current frame: %d // scene current subframe: %f\n", is_first_frame, frame, scene->r.cfra, scene->r.subframe);
 
 				/* Emission from particles */
 				if (sfs->source == MOD_SMOKE_FLOW_SOURCE_PARTICLES) {
@@ -3135,9 +3138,13 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 	{
 		SmokeDomainSettings *sds = smd->domain;
 		int startframe, endframe, framenr;
+		bool is_first_frame;
 		framenr = scene->r.cfra;
 		startframe = sds->cache_frame_start;
 		endframe = sds->cache_frame_end;
+
+		is_first_frame = (scene->r.cfra == startframe);
+		CLAMP(framenr, startframe, endframe);
 
 		bool is_baking = (sds->cache_flag & (FLUID_CACHE_BAKING_DATA|FLUID_CACHE_BAKING_NOISE|
 											 FLUID_CACHE_BAKING_MESH|FLUID_CACHE_BAKING_PARTICLES));
@@ -3155,7 +3162,6 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			return;
 
 		sds->flags &= ~MOD_SMOKE_FILE_LOAD;
-		CLAMP(framenr, startframe, endframe);
 
 		if (smokeModifier_init(smd, ob, scene, dm) == 0)
 			return;
@@ -3200,7 +3206,7 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 					fluid_read_data(sds->fluid, smd, framenr-1);
 
 				/* Base step needs separated bake and write calls - reason being that transparency calculation is after fluid step */
-				smoke_step(scene, ob, smd, framenr);
+				smoke_step(scene, ob, smd, framenr, is_first_frame);
 				fluid_write_data(sds->fluid, smd, framenr);
 			}
 			if (sds->cache_flag & FLUID_CACHE_BAKING_NOISE)
@@ -3226,7 +3232,6 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 				fluid_bake_particles(sds->fluid, smd, framenr);
 			}
 		}
-
 		smd->time = scene->r.cfra;
 	}
 }
@@ -3430,7 +3435,7 @@ static void smoke_calc_transparency(SmokeDomainSettings *sds, Scene *scene)
 	}
 }
 
-void smoke_step(Scene *scene, Object *ob, SmokeModifierData *smd, int frame)
+void smoke_step(Scene *scene, Object *ob, SmokeModifierData *smd, int frame, bool is_first_frame)
 {
 	SmokeDomainSettings *sds = smd->domain;
 	DerivedMesh *domain_dm = ob->derivedDeform;
@@ -3468,7 +3473,7 @@ void smoke_step(Scene *scene, Object *ob, SmokeModifierData *smd, int frame)
 		time_per_frame += sdt;
 
 		// Calculate inflow geometry
-		update_flowsfluids(scene, ob, sds, time_per_frame, dt, frame);
+		update_flowsfluids(scene, ob, sds, time_per_frame, dt, frame, is_first_frame);
 
 		// Calculate obstacle geometry
 		update_obstacles(scene, ob, sds, sdt);

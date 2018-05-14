@@ -159,7 +159,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
                 col.prop(domain, "particle_randomness")
 
             split = layout.split()
-            bake_incomplete = domain.cache_frame_pause_data != -1
+            bake_incomplete = domain.cache_frame_pause_data
             if domain.cache_baked_data and not domain.cache_baking_data and bake_incomplete:
                 col = split.column()
                 col.operator("manta.bake_data", text="Resume")
@@ -402,7 +402,7 @@ class PHYSICS_PT_smoke_noise(PhysicButtonsPanel, Panel):
 
         split = layout.split()
         split.enabled = domain.cache_baked_data
-        bake_incomplete = domain.cache_frame_pause_noise != -1
+        bake_incomplete = domain.cache_frame_pause_noise
         if domain.cache_baked_noise and not domain.cache_baking_noise and bake_incomplete:
             col = split.column()
             col.operator("manta.bake_noise", text="Resume")
@@ -471,7 +471,7 @@ class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
 
         split = layout.split()
         split.enabled = domain.cache_baked_data
-        bake_incomplete = domain.cache_frame_pause_mesh != -1
+        bake_incomplete = domain.cache_frame_pause_mesh
         if domain.cache_baked_mesh and not domain.cache_baking_mesh and bake_incomplete:
             col = split.column()
             col.operator("manta.bake_mesh", text="Resume")
@@ -541,11 +541,10 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
 
         split = layout.split()
         split.enabled = domain.cache_baked_data and (domain.use_drop_particles or domain.use_bubble_particles or domain.use_floater_particles or domain.use_tracer_particles)
-        bake_incomplete = domain.cache_frame_pause_particles != -1
+        bake_incomplete = domain.cache_frame_pause_particles
         if domain.cache_baked_particles and not domain.cache_baking_particles and bake_incomplete:
-            if domain.cache_frame_pause_particles != -1: # only show resume operator when bake is not complete
-                col = split.column()
-                col.operator("manta.bake_particles", text="Resume")
+            col = split.column()
+            col.operator("manta.bake_particles", text="Resume")
             col = split.column()
             col.operator("manta.free_particles", text="Free")
         elif not domain.cache_baked_particles and domain.cache_baking_particles:
