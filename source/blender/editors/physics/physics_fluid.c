@@ -1508,11 +1508,11 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 	*do_update = true;
 	*stop = 0;
 
-	/* Update scene so that viewport shows freed up scene */
-	ED_update_for_newframe(job->bmain, job->scene, 1);
-
 	/* Reset scene frame to cache frame start */
 	scene->r.cfra = sds->cache_frame_start;
+
+	/* Update scene so that viewport shows freed up scene */
+	ED_update_for_newframe(job->bmain, job->scene, 1);
 }
 
 static int fluid_manta_free_exec(struct bContext *C, struct wmOperator *op)

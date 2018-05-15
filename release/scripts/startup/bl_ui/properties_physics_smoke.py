@@ -68,16 +68,16 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
 
             baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
 
-            split = layout.split()
-            split.enabled = not domain.cache_baked_data and not baking_any
-            split.prop(domain, "smoke_domain_type", expand=False)
+            row = layout.row()
+            row.enabled = not  domain.cache_baked_data and not baking_any
+            row.prop(domain, "smoke_domain_type", expand=False)
 
             split = layout.split()
-            split.enabled = not domain.cache_baked_data and not baking_any
+            split.enabled = not baking_any
             split.label(text="Border collisions:")
 
             split = layout.split()
-            split.enabled = not domain.cache_baked_data and not baking_any
+            split.enabled = not baking_any
 
             col = split.column()
             col.prop(domain, "use_collision_border_front", text="Front")
@@ -92,10 +92,10 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
             col.prop(domain, "use_collision_border_bottom", text="Bottom")
 
             split = layout.split()
-
-            split.enabled = not domain.cache_baked_data and not baking_any
+            split.enabled = not baking_any
 
             col = split.column(align=True)
+            col1 = col.column(align=True)
             col.label(text="Domain:")
             col.prop(domain, "resolution_max", text="Resolution")
             col.prop(domain, "time_scale", text="Time")
@@ -116,7 +116,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
 
             if domain.smoke_domain_type in {'GAS'}:
                 split = layout.split()
-                split.enabled = not domain.cache_baked_data and not baking_any
+                split.enabled = not baking_any
 
                 col = split.column(align=True)
                 col.label(text="Smoke:")
@@ -140,19 +140,15 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
 
             if domain.smoke_domain_type in {'LIQUID'}:
                 split = layout.split()
+                split.enabled = not baking_any
 
                 col = split.column(align=True)
-                col1 = col.column()
-                col1.enabled = not domain.cache_baked_data and not baking_any
-                col1.label(text="Liquid:")
-                col1.prop(domain, "particle_maximum")
-                col1.prop(domain, "particle_minimum")
-                col2 = col.column()
-                col2.enabled = not baking_any
-                col2.prop(domain, "use_flip_particles", text="Show FLIP")
+                col.label(text="Liquid:")
+                col.prop(domain, "particle_maximum")
+                col.prop(domain, "particle_minimum")
+                col.prop(domain, "use_flip_particles", text="Show FLIP")
 
                 col = split.column(align=True)
-                col.enabled = not domain.cache_baked_data and not baking_any
                 col.label()
                 col.prop(domain, "particle_number")
                 col.prop(domain, "particle_band_width")
@@ -387,7 +383,7 @@ class PHYSICS_PT_smoke_noise(PhysicButtonsPanel, Panel):
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
 
         split = layout.split()
-        split.enabled = not domain.cache_baked_noise and not baking_any
+        split.enabled = not baking_any
 
         col = split.column(align=True)
         col.prop(domain, "noise_scale", text="Upres")
@@ -438,9 +434,10 @@ class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
 
         layout.active = domain.use_mesh
 
-        split = layout.split()
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
-        split.enabled = not domain.cache_baked_mesh and not baking_any
+
+        split = layout.split()
+        split.enabled = not baking_any
 
         col = split.column(align=True)
         col.prop(domain, "mesh_scale", text="Upres")
@@ -452,7 +449,7 @@ class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
 
         if domain.mesh_generator in {'IMPROVED'}:
             split = layout.split()
-            split.enabled = not domain.cache_baked_mesh and not baking_any
+            split.enabled = not baking_any
 
             col = split.column(align=True)
             col.label(text="Smoothening")
@@ -503,10 +500,10 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
 
         split = layout.split()
         split.prop(domain, "particle_scale", text="Upres")
-        split.enabled = not domain.cache_baked_particles and not baking_any
+        split.enabled = not baking_any
 
         split = layout.split()
-        split.enabled = not domain.cache_baked_particles and not baking_any
+        split.enabled = not baking_any
 
         col = split.column()
         col.prop(domain, "use_drop_particles", text="Drop")
@@ -571,7 +568,7 @@ class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
 
         split = layout.split()
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
-        split.enabled = not domain.cache_baked_data and not baking_any
+        split.enabled = not baking_any
 
         col = split.column()
         col.label(text="Viscosity Presets:")
@@ -607,7 +604,7 @@ class PHYSICS_PT_smoke_guiding(PhysicButtonsPanel, Panel):
 
         split = layout.split()
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
-        split.enabled = not domain.cache_baked_data and not baking_any
+        split.enabled = not baking_any
 
         col = split.column()
         col.prop(domain, "guiding_alpha", text="Weight")
