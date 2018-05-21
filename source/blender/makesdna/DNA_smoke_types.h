@@ -362,10 +362,13 @@ typedef struct SmokeDomainSettings {
 
 	struct ColorBand *coba;
 	float vector_scale;
+	float coba_field_remap_offset;
+	float coba_field_remap_slope;
 	char vector_draw_type;
 	char use_coba;
 	char coba_field;  /* simulation field used for the color mapping */
 	char coba_field_liquid;
+
 	//char pad3; /* unused */
 
 	/* mantaflow settings */

@@ -601,6 +601,8 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->slice_depth = 0.5f;
 			smd->domain->slice_axis = 0;
 			smd->domain->vector_scale = 1.0f;
+			smd->domain->coba_field_remap_offset = 0.0f;
+			smd->domain->coba_field_remap_slope = 1.0f;
 
 			smd->domain->coba = NULL;
 			smd->domain->coba_field = FLUID_FIELD_DENSITY;
@@ -766,6 +768,8 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->draw_velocity = smd->domain->draw_velocity;
 		tsmd->domain->vector_draw_type = smd->domain->vector_draw_type;
 		tsmd->domain->vector_scale = smd->domain->vector_scale;
+		tsmd->domain->coba_field_remap_offset = smd->domain->coba_field_remap_offset;
+		tsmd->domain->coba_field_remap_slope = smd->domain->coba_field_remap_slope;
 
 		if (smd->domain->coba) {
 			tsmd->domain->coba = MEM_dupallocN(smd->domain->coba);

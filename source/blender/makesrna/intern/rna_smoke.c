@@ -1860,8 +1860,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_float_sdna(prop, NULL, "slice_per_voxel");
 	RNA_def_property_range(prop, 0.0, 100.0);
 	RNA_def_property_ui_range(prop, 0.0, 5.0, 0.1, 1);
-	RNA_def_property_ui_text(prop, "Slice Per Voxel",
-	                         "How many slices per voxel should be generated");
+	RNA_def_property_ui_text(prop, "Slice Per Voxel", "How many slices per voxel should be generated");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
 	prop = RNA_def_property(srna, "slice_depth", PROP_FLOAT, PROP_NONE);
@@ -1895,14 +1894,25 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_range(prop, 0.0, 100.0, 0.1, 3);
 	RNA_def_property_ui_text(prop, "Scale", "Multiplier for scaling the vectors");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
+	
+	prop = RNA_def_property(srna, "coba_field_remap_offset", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, -1000.0, 1000.0);
+	RNA_def_property_ui_range(prop, -1000.0, 1000.0, 10.0, 1);
+	RNA_def_property_ui_text(prop, "Offset", "Offset that remaps the values of the displayed field according to field * slope + offset for the color ramp");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
+	prop = RNA_def_property(srna, "coba_field_remap_slope", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_range(prop, -1000.0, 1000.0);
+	RNA_def_property_ui_range(prop, -1000.0, 1000.0, 10.0, 1);
+	RNA_def_property_ui_text(prop, "Slope", "Slope that remaps the values of the displayed field according to field * slope + offset for the color ramp");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
 
 	/* --------- Color mapping. --------- */
 
 	prop = RNA_def_property(srna, "use_color_ramp", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "use_coba", 0);
 	RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_use_color_ramp_set");
-	RNA_def_property_ui_text(prop, "Use Color Ramp",
-	                         "Render a simulation field while mapping its voxels values to the colors of a ramp");
+	RNA_def_property_ui_text(prop, "Use Color Ramp", "Render a simulation field while mapping its voxels values to the colors of a ramp");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
 	static const EnumPropertyItem coba_field_items[] = {

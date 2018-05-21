@@ -864,16 +864,21 @@ class PHYSICS_PT_liquid_display_settings(PhysicButtonsPanel, Panel):
         sub4.enabled = domain.draw_velocity and domain.use_color_ramp
         sub4.prop(domain, "vector_scale")
 
-
         layout.label()
         sub5 = layout.column()
         sub5.enabled = domain.use_color_ramp
-        split = sub5.split()
+        split = sub5.split(percentage=0.33)
         first = split.column() 
         first.label(text="Color Mapping:")
         second = split.column()
         second.prop(domain, "display_thickness", text="Density")
         sub5.template_color_ramp(domain, "color_ramp", expand=True)
+
+        sub6 = layout.row(align=True)
+        sub6.enabled = domain.use_color_ramp and (domain.coba_field_liquid == "PHI")
+        sub6.label(text="Field Remapping:")
+        sub6.prop(domain, "coba_field_remap_offset")
+        sub6.prop(domain, "coba_field_remap_slope")
 
 
 

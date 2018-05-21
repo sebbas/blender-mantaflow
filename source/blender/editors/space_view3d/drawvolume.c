@@ -144,7 +144,7 @@ static float* remap_field_texture(SmokeDomainSettings* sds, float* field) {
 	size_t size = sds->res[0] * sds->res[1] * sds->res[2];
 	float* copy = MEM_mallocN(size * sizeof(float), "");	//calling method MUST free the allocated memory!!!
 	for (size_t i = 0; i < size; i++) {
-		copy[i] = (field[i] + 4) / 2;
+		copy[i] = sds->coba_field_remap_slope * (field[i] + sds->coba_field_remap_offset);
 	}
 	return copy;
 }
