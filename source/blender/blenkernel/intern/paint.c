@@ -208,27 +208,8 @@ Paint *BKE_paint_get_active_from_context(const bContext *C)
 				return &ts->imapaint.paint;
 			}
 		}
-		else if (obact) {
-			switch (obact->mode) {
-				case OB_MODE_SCULPT:
-					return &ts->sculpt->paint;
-				case OB_MODE_VERTEX_PAINT:
-					return &ts->vpaint->paint;
-				case OB_MODE_WEIGHT_PAINT:
-					return &ts->wpaint->paint;
-				case OB_MODE_TEXTURE_PAINT:
-					return &ts->imapaint.paint;
-				case OB_MODE_EDIT:
-					if (ts->use_uv_sculpt)
-						return &ts->uvsculpt->paint;
-					return &ts->imapaint.paint;
-				default:
-					return &ts->imapaint.paint;
-			}
-		}
 		else {
-			/* default to image paint */
-			return &ts->imapaint.paint;
+			return BKE_paint_get_active(sce);
 		}
 	}
 
@@ -373,7 +354,7 @@ void BKE_paint_curve_clamp_endpoint_add_index(PaintCurve *pc, const int add_inde
 /* remove colour from palette. Must be certain color is inside the palette! */
 void BKE_palette_color_remove(Palette *palette, PaletteColor *color)
 {
-	if (BLI_listbase_count_ex(&palette->colors, palette->active_color) == palette->active_color) {
+	if (BLI_listbase_count_at_most(&palette->colors, palette->active_color) == palette->active_color) {
 		palette->active_color--;
 	}
 
@@ -898,7 +879,7 @@ void BKE_sculpt_update_mesh_elements(Scene *scene, Sculpt *sd, Object *ob,
 			if (!CustomData_has_layer(&me->ldata, CD_GRID_PAINT_MASK)) {
 #if 1
 				BKE_sculpt_mask_layers_ensure(ob, mmd);
-#else				/* if we wanted to support adding mask data while multi-res painting, we would need to do this */
+#else			/* if we wanted to support adding mask data while multi-res painting, we would need to do this */
 				if ((ED_sculpt_mask_layers_ensure(ob, mmd) & ED_SCULPT_MASK_LAYER_CALC_LOOP)) {
 					/* remake the derived mesh */
 					ob->recalc |= OB_RECALC_DATA;

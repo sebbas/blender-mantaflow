@@ -55,12 +55,11 @@ ccl_device_inline void path_state_init(KernelGlobals *kg,
 
 #ifdef __VOLUME__
 	state->volume_bounce = 0;
+	state->volume_bounds_bounce = 0;
 
 	if(kernel_data.integrator.use_volumes) {
 		/* Initialize volume stack with volume we are inside of. */
 		kernel_volume_stack_init(kg, stack_sd, state, ray, state->volume_stack);
-		/* Seed RNG for cases where we can't use stratified samples .*/
-		state->rng_congruential = lcg_init(rng_hash + sample*0x51633e2d);
 	}
 	else {
 		state->volume_stack[0].shader = SHADER_NONE;
@@ -164,6 +163,25 @@ ccl_device_inline void path_state_next(KernelGlobals *kg, ccl_addr_space PathSta
 	}
 #endif
 }
+
+#ifdef __VOLUME__
+ccl_device_inline bool path_state_volume_next(KernelGlobals *kg, ccl_addr_space PathState *state)
+{
+	/* For volume bounding meshes we pass through without counting transparent
+	 * bounces, only sanity check in case self intersection gets us stuck. */
+	state->volume_bounds_bounce++;
+	if (state->volume_bounds_bounce > VOLUME_BOUNDS_MAX) {
+		return false;
+	}
+
+	/* Random number generator next bounce. */
+	if(state->volume_bounds_bounce > 1) {
+		state->rng_offset += PRNG_BOUNCE_NUM;
+	}
+
+	return true;
+}
+#endif
 
 ccl_device_inline uint path_state_ray_visibility(KernelGlobals *kg, ccl_addr_space PathState *state)
 {

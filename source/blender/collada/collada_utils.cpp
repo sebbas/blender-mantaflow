@@ -53,6 +53,7 @@ extern "C" {
 #include "BKE_mesh.h"
 #include "BKE_scene.h"
 #include "BKE_DerivedMesh.h"
+#include "BKE_main.h"
 
 #include "ED_armature.h"
 
@@ -130,6 +131,25 @@ int bc_set_parent(Object *ob, Object *par, bContext *C, bool is_parent_space)
 #endif
 
 	return true;
+}
+
+Main *bc_get_main()
+{
+	return G.main;
+}
+
+EvaluationContext *bc_get_evaluation_context()
+{
+	Main *bmain = G.main;
+	return bmain->eval_ctx;
+}
+
+void bc_update_scene(Scene *scene, float ctime)
+{
+	BKE_scene_frame_set(scene, ctime);
+	Main *bmain = bc_get_main();
+	EvaluationContext *ev_context = bc_get_evaluation_context();
+	BKE_scene_update_for_newframe(ev_context, bmain, scene, scene->lay);
 }
 
 Object *bc_add_object(Scene *scene, int type, const char *name)
@@ -735,17 +755,17 @@ float bc_get_property(Bone *bone, std::string key, float def)
 	IDProperty *property = bc_get_IDProperty(bone, key);
 	if (property) {
 		switch (property->type) {
-		case IDP_INT:
-			result = (float)(IDP_Int(property));
-			break;
-		case IDP_FLOAT:
-			result = (float)(IDP_Float(property));
-			break;
-		case IDP_DOUBLE:
-			result = (float)(IDP_Double(property));
-			break;
-		default:
-			result = def;
+			case IDP_INT:
+				result = (float)(IDP_Int(property));
+				break;
+			case IDP_FLOAT:
+				result = (float)(IDP_Float(property));
+				break;
+			case IDP_DOUBLE:
+				result = (float)(IDP_Double(property));
+				break;
+			default:
+				result = def;
 		}
 	}
 	return result;
@@ -869,6 +889,21 @@ void bc_sanitize_mat(double mat[4][4], int precision)
 	for (int i = 0; i < 4; i++)
 		for (int j = 0; j < 4; j++)
 			mat[i][j] = double_round(mat[i][j], precision);
+}
+
+void bc_copy_m4_farray(float r[4][4], float *a)
+{
+	for (int i = 0; i < 4; i++)
+		for (int j = 0; j < 4; j++)
+			r[i][j] = *a++;
+}
+
+void bc_copy_farray_m4(float *r, float a[4][4])
+{
+	for (int i = 0; i < 4; i++)
+		for (int j = 0; j < 4; j++)
+			*r++ = a[i][j];
+
 }
 
 /*

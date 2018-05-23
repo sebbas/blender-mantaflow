@@ -27,6 +27,7 @@
 set(USE_EXPERIMENTAL_TESTS FALSE)
 
 set(TEST_SRC_DIR ${CMAKE_SOURCE_DIR}/../lib/tests)
+set(TEST_DATA_SRC_DIR ${CMAKE_SOURCE_DIR}/../lib/tests_data)
 set(TEST_OUT_DIR ${CMAKE_BINARY_DIR}/tests)
 
 # ugh, any better way to do this on testing only?
@@ -546,20 +547,22 @@ if(WITH_CYCLES)
 			add_cycles_render_test(opengl)
 		endif()
 		add_cycles_render_test(bake)
+		add_cycles_render_test(bsdf)
 		add_cycles_render_test(denoise)
 		add_cycles_render_test(displacement)
+		add_cycles_render_test(hair)
 		add_cycles_render_test(image_data_types)
 		add_cycles_render_test(image_mapping)
 		add_cycles_render_test(image_texture_limit)
+		add_cycles_render_test(integrator)
 		add_cycles_render_test(light)
-		add_cycles_render_test(mblur)
+		add_cycles_render_test(mesh)
+		add_cycles_render_test(motion_blur)
+		add_cycles_render_test(render_layer)
 		add_cycles_render_test(reports)
-		add_cycles_render_test(render)
 		add_cycles_render_test(shader)
-		add_cycles_render_test(shader_tangent)
 		add_cycles_render_test(shadow_catcher)
 		add_cycles_render_test(sss)
-		add_cycles_render_test(texture_space)
 		add_cycles_render_test(volume)
 	else()
 		MESSAGE(STATUS "Disabling Cycles tests because tests folder does not exist")
@@ -616,3 +619,14 @@ if(WITH_ALEMBIC)
 		--with-legacy-depsgraph=${WITH_LEGACY_DEPSGRAPH}
 	)
 endif()
+
+if(WITH_CODEC_FFMPEG)
+	add_python_test(
+		ffmpeg_tests
+		${CMAKE_CURRENT_LIST_DIR}/ffmpeg_tests.py
+		--blender "$<TARGET_FILE:blender>"
+		--testdir "${TEST_DATA_SRC_DIR}/ffmpeg"
+	)
+endif()
+
+add_subdirectory(collada)

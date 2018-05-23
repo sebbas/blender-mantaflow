@@ -442,9 +442,9 @@ static void ptcache_particle_extra_write(void *psys_v, PTCacheMem *pm, int UNUSE
 	PTCacheExtra *extra = NULL;
 
 	if (psys->part->phystype == PART_PHYS_FLUID &&
-		psys->part->fluid && psys->part->fluid->flag & SPH_VISCOELASTIC_SPRINGS &&
-		psys->tot_fluidsprings && psys->fluid_springs) {
-
+	    psys->part->fluid && psys->part->fluid->flag & SPH_VISCOELASTIC_SPRINGS &&
+	    psys->tot_fluidsprings && psys->fluid_springs)
+	{
 		extra = MEM_callocN(sizeof(PTCacheExtra), "Point cache: fluid extra data");
 
 		extra->type = BPHYS_EXTRA_FLUID_SPRINGS;
@@ -671,7 +671,7 @@ static int ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 		ret = 1;
 	}
 
-	if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) {
+	if (sds->fluid && sds->flags & MOD_SMOKE_NOISE) {
 		int res_big_array[3];
 		int res_big;
 		int res = sds->res[0]*sds->res[1]*sds->res[2];
@@ -779,7 +779,7 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 
 		MEM_freeN(tmp_array);
 
-		if (pf->data_types & (1<<BPHYS_DATA_SMOKE_HIGH) && sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) {
+		if (pf->data_types & (1<<BPHYS_DATA_SMOKE_HIGH) && sds->fluid && sds->flags & MOD_SMOKE_NOISE) {
 			int res_big, res_big_array[3];
 			float *tcu, *tcv, *tcw, *tcu2, *tcv2, *tcw2;
 			unsigned int out_len_big;
@@ -846,8 +846,9 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 
 	/* check if resolution has changed */
 	if (sds->res[0] != ch_res[0] ||
-		sds->res[1] != ch_res[1] ||
-		sds->res[2] != ch_res[2]) {
+	    sds->res[1] != ch_res[1] ||
+	    sds->res[2] != ch_res[2])
+	{
 		if (sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN)
 			reallocate = 1;
 		else
@@ -865,7 +866,7 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 		sds->dx = ch_dx;
 		VECCOPY(sds->res, ch_res);
 		sds->total_cells = ch_res[0]*ch_res[1]*ch_res[2];
-		if (sds->flags & MOD_SMOKE_HIGHRES) {
+		if (sds->flags & MOD_SMOKE_NOISE) {
 			smoke_reallocate_highres_fluid(sds, ch_dx, ch_res);
 		}
 	}
@@ -944,7 +945,7 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 		}
 	}
 
-	if (pf->data_types & (1<<BPHYS_DATA_SMOKE_HIGH) && sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) {
+	if (pf->data_types & (1<<BPHYS_DATA_SMOKE_HIGH) && sds->fluid && sds->flags & MOD_SMOKE_NOISE) {
 		int res = sds->res[0]*sds->res[1]*sds->res[2];
 		int res_big, res_big_array[3];
 		float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *tcu2, *tcv2, *tcw2, *r, *g, *b;
@@ -1022,10 +1023,10 @@ static void compute_fluid_matrices(SmokeDomainSettings *sds)
 
 	mul_m4_m4m4(sds->fluidmat, sds->obmat, sds->fluidmat);
 
-	if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) {
+	if (sds->fluid && sds->flags & MOD_SMOKE_NOISE) {
 		float voxel_size_high[3];
 		/* construct high res matrix */
-		mul_v3_v3fl(voxel_size_high, sds->cell_size, 1.0f / (float)(sds->amplify + 1));
+		mul_v3_v3fl(voxel_size_high, sds->cell_size, 1.0f / sds->noise_scale);
 		size_to_mat4(sds->fluidmat_wt, voxel_size_high);
 		copy_v3_v3(sds->fluidmat_wt[3], bbox_min);
 
@@ -1068,27 +1069,27 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
 
 	OpenVDBWriter_add_meta_int(writer, "blender/smoke/fluid_fields", fluid_fields);
 
-	if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) {
+	if (sds->fluid && sds->flags & MOD_SMOKE_NOISE) {
 		struct OpenVDBFloatGrid *wt_density_grid;
 		float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *tcu2, *tcv2, *tcw2, *r, *g, *b;
 
 		smoke_turbulence_export(sds->fluid, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw, &tcu2, &tcv2, &tcw2);
 
-		wt_density_grid = OpenVDB_export_grid_fl(writer, "density", dens, sds->res_wt, sds->fluidmat_wt, NULL);
+		wt_density_grid = OpenVDB_export_grid_fl(writer, "density", dens, sds->res_wt, sds->fluidmat_wt, sds->clipping, NULL);
 		clip_grid = wt_density_grid;
 
 		if (flame && fluid_fields & SM_ACTIVE_FIRE) {
-			OpenVDB_export_grid_fl(writer, "flame", flame, sds->res_wt, sds->fluidmat_wt, wt_density_grid);
-			OpenVDB_export_grid_fl(writer, "fuel", fuel, sds->res_wt, sds->fluidmat_wt, wt_density_grid);
-			OpenVDB_export_grid_fl(writer, "react", react, sds->res_wt, sds->fluidmat_wt, wt_density_grid);
+			OpenVDB_export_grid_fl(writer, "flame", flame, sds->res_wt, sds->fluidmat_wt, sds->clipping, wt_density_grid);
+			OpenVDB_export_grid_fl(writer, "fuel", fuel, sds->res_wt, sds->fluidmat_wt, sds->clipping, wt_density_grid);
+			OpenVDB_export_grid_fl(writer, "react", react, sds->res_wt, sds->fluidmat_wt, sds->clipping, wt_density_grid);
 		}
 
 		if (r && fluid_fields & SM_ACTIVE_COLORS) {
-			OpenVDB_export_grid_vec(writer, "color", r, g, b, sds->res_wt, sds->fluidmat_wt, VEC_INVARIANT, true, wt_density_grid);
+			OpenVDB_export_grid_vec(writer, "color", r, g, b, sds->res_wt, sds->fluidmat_wt, VEC_INVARIANT, true, sds->clipping, wt_density_grid);
 		}
 
-		OpenVDB_export_grid_vec(writer, "texture coordinates", tcu, tcv, tcw, sds->res, sds->fluidmat, VEC_INVARIANT, false, wt_density_grid);
-		OpenVDB_export_grid_vec(writer, "texture coordinates 2", tcu2, tcv2, tcw2, sds->res, sds->fluidmat, VEC_INVARIANT, false, wt_density_grid);
+		OpenVDB_export_grid_vec(writer, "texture coordinates", tcu, tcv, tcw, sds->res, sds->fluidmat, VEC_INVARIANT, false, sds->clipping, wt_density_grid);
+		OpenVDB_export_grid_vec(writer, "texture coordinates 2", tcu2, tcv2, tcw2, sds->res, sds->fluidmat, VEC_INVARIANT, false, sds->clipping, wt_density_grid);
 	}
 
 	if (sds->fluid) {
@@ -1101,32 +1102,32 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
 		OpenVDBWriter_add_meta_fl(writer, "blender/smoke/dx", dx);
 		OpenVDBWriter_add_meta_fl(writer, "blender/smoke/dt", dt);
 
-		const char *name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "density" : "density low";
-		density_grid = OpenVDB_export_grid_fl(writer, name, dens, sds->res, sds->fluidmat, NULL);
-		clip_grid = (sds->flags & MOD_SMOKE_HIGHRES) ? clip_grid : density_grid;
+		const char *name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "density" : "density low";
+		density_grid = OpenVDB_export_grid_fl(writer, name, dens, sds->res, sds->fluidmat, sds->clipping, NULL);
+		clip_grid = (sds->flags & MOD_SMOKE_NOISE) ? clip_grid : density_grid;
 
-		OpenVDB_export_grid_fl(writer, "shadow", shadow, sds->res, sds->fluidmat, NULL);
+		OpenVDB_export_grid_fl(writer, "shadow", shadow, sds->res, sds->fluidmat, sds->clipping, NULL);
 
 		if (heat && fluid_fields & SM_ACTIVE_HEAT) {
-			OpenVDB_export_grid_fl(writer, "heat", heat, sds->res, sds->fluidmat, clip_grid);
+			OpenVDB_export_grid_fl(writer, "heat", heat, sds->res, sds->fluidmat, sds->clipping, clip_grid);
 		}
 
 		if (flame && fluid_fields & SM_ACTIVE_FIRE) {
-			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "flame" : "flame low";
-			OpenVDB_export_grid_fl(writer, name, flame, sds->res, sds->fluidmat, density_grid);
-			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "fuel" : "fuel low";
-			OpenVDB_export_grid_fl(writer, name, fuel, sds->res, sds->fluidmat, density_grid);
-			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "react" : "react low";
-			OpenVDB_export_grid_fl(writer, name, react, sds->res, sds->fluidmat, density_grid);
+			name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "flame" : "flame low";
+			OpenVDB_export_grid_fl(writer, name, flame, sds->res, sds->fluidmat, sds->clipping, density_grid);
+			name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "fuel" : "fuel low";
+			OpenVDB_export_grid_fl(writer, name, fuel, sds->res, sds->fluidmat, sds->clipping, density_grid);
+			name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "react" : "react low";
+			OpenVDB_export_grid_fl(writer, name, react, sds->res, sds->fluidmat, sds->clipping, density_grid);
 		}
 
 		if (r && fluid_fields & SM_ACTIVE_COLORS) {
-			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "color" : "color low";
-			OpenVDB_export_grid_vec(writer, name, r, g, b, sds->res, sds->fluidmat, VEC_INVARIANT, true, density_grid);
+			name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "color" : "color low";
+			OpenVDB_export_grid_vec(writer, name, r, g, b, sds->res, sds->fluidmat, VEC_INVARIANT, true, sds->clipping, density_grid);
 		}
 
-		OpenVDB_export_grid_vec(writer, "velocity", vx, vy, vz, sds->res, sds->fluidmat, VEC_CONTRAVARIANT_RELATIVE, false, clip_grid);
-		OpenVDB_export_grid_int(writer, "obstacles", obstacles, sds->res, sds->fluidmat, NULL);
+		OpenVDB_export_grid_vec(writer, "velocity", vx, vy, vz, sds->res, sds->fluidmat, VEC_CONTRAVARIANT_RELATIVE, false, sds->clipping, clip_grid);
+		OpenVDB_export_grid_int(writer, "obstacles", obstacles, sds->res, sds->fluidmat, sds->clipping, NULL);
 	}
 
 	return 1;
@@ -1193,7 +1194,7 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 		copy_v3_v3_int(sds->res, cache_res);
 		sds->total_cells = cache_res[0] * cache_res[1] * cache_res[2];
 
-		if (sds->flags & MOD_SMOKE_HIGHRES) {
+		if (sds->flags & MOD_SMOKE_NOISE) {
 			smoke_reallocate_highres_fluid(sds, cache_dx, cache_res);
 		}
 	}
@@ -1208,7 +1209,8 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 
 		OpenVDB_import_grid_fl(reader, "shadow", &shadow, sds->res);
 
-		const char *name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "density" : "density low";
+		const char *name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "density" : "density low";
+
 		OpenVDB_import_grid_fl(reader, name, &dens, sds->res);
 
 		if (heat && cache_fields & SM_ACTIVE_HEAT) {
@@ -1216,16 +1218,16 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 		}
 
 		if (flame && cache_fields & SM_ACTIVE_FIRE) {
-			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "flame" : "flame low";
+			name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "flame" : "flame low";
 			OpenVDB_import_grid_fl(reader, name, &flame, sds->res);
-			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "fuel" : "fuel low";
+			name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "fuel" : "fuel low";
 			OpenVDB_import_grid_fl(reader, name, &fuel, sds->res);
-			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "react" : "react low";
+			name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "react" : "react low";
 			OpenVDB_import_grid_fl(reader, name, &react, sds->res);
 		}
 
 		if (r && cache_fields & SM_ACTIVE_COLORS) {
-			name = (!(sds->flags & MOD_SMOKE_HIGHRES)) ? "color" : "color low";
+			name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "color" : "color low";
 			OpenVDB_import_grid_vec(reader, name, &r, &g, &b, sds->res);
 		}
 
@@ -1233,7 +1235,7 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 		OpenVDB_import_grid_int(reader, "obstacles", &obstacles, sds->res);
 	}
 
-	if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES) {
+	if (sds->fluid && sds->flags & MOD_SMOKE_NOISE) {
 		float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *tcu2, *tcv2, *tcw2, *r, *g, *b;
 
 		smoke_turbulence_export(sds->fluid, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw, &tcu2, &tcv2, &tcw2);
@@ -1275,7 +1277,7 @@ static int ptcache_mesh_read(void *smoke_v, char *filename)
 		return 0;
 	}
 
-	bool high_res      = sds->flags & MOD_SMOKE_HIGHRES;
+	bool high_res      = sds->flags & MOD_SMOKE_NOISE;
 	bool high_res_view = sds->viewport_display_mode == SM_VIEWPORT_FINAL;
 
 	if (sds->fluid) {
@@ -1307,18 +1309,18 @@ static int ptcache_mesh_write(void *smoke_v, char *filename, int cfra)
 		return 0;
 	}
 
-	bool high_res      = sds->flags & MOD_SMOKE_HIGHRES;
+	bool high_res      = sds->flags & MOD_SMOKE_NOISE;
 	bool high_res_view = sds->viewport_display_mode == SM_VIEWPORT_FINAL;
 
 	if (sds->fluid) {
-		liquid_save_mesh(sds->fluid, filename, cfra);
+//		liquid_save_mesh(sds->fluid, filename, cfra);
 		if (high_res) {
 			strcpy(filenameTmp, filename);			// copy name, original file name is needed later
 			i = strlen(filenameTmp);
 			if (i > 8) filenameTmp[i-8] = '\0';		// strip .bobj.gz extension
 			strcat(filenameTmp, "_HIGH.bobj.gz");	// add high-res extension
 
-			liquid_save_mesh_high(sds->fluid, filenameTmp);
+//			liquid_save_mesh_high(sds->fluid, filenameTmp);
 		}
 
 		/* Update mesh for instant replay functionality */
@@ -1759,7 +1761,7 @@ void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct SmokeMo
 
 	if (sds->fluid)
 		pid->data_types |= (1<<BPHYS_DATA_SMOKE_LOW);
-	if (sds->fluid && sds->flags & MOD_SMOKE_HIGHRES)
+	if (sds->fluid && sds->flags & MOD_SMOKE_NOISE)
 		pid->data_types |= (1<<BPHYS_DATA_SMOKE_HIGH);
 
 	pid->default_step = 1;
@@ -2415,8 +2417,8 @@ static void ptcache_data_copy(void *from[], void *to[])
 {
 	int i;
 	for (i=0; i<BPHYS_TOT_DATA; i++) {
-	/* note, durian file 03.4b_comp crashes if to[i] is not tested
-	 * its NULL, not sure if this should be fixed elsewhere but for now its needed */
+		/* note, durian file 03.4b_comp crashes if to[i] is not tested
+		 * its NULL, not sure if this should be fixed elsewhere but for now its needed */
 		if (from[i] && to[i])
 			memcpy(to[i], from[i], ptcache_data_size[i]);
 	}

@@ -771,7 +771,12 @@ void readGrid4dRaw(const string& name, Grid4d<T>* grid) {
 
 template <class T>
 void writeGridVDB(const string& name, Grid<T>* grid) { 
-	debMsg("Writing grid " << grid->getName() << " to vdb file " << name <<" not yet supported!", 1);
+	debMsg("Writing grid " << grid->getName() << " to vdb file " << name << " not yet supported!", 1);
+}
+
+template <class T>
+void readGridVDB(const string& name, Grid<T>* grid) {
+	debMsg("Reading grid " << grid->getName() << " from vdb file " << name << " not yet supported!", 1);
 }
 
 template <>
@@ -809,8 +814,44 @@ void writeGridVDB(const string& name, Grid<Real>* grid) {
 };
 
 template <>
+void readGridVDB(const string& name, Grid<Real>* grid) {
+	debMsg("Reading real grid " << grid->getName() << " from vdb file " << name, 1);
+
+	openvdb::initialize();
+	openvdb::io::File file(name);
+	file.open();
+
+	openvdb::GridBase::Ptr baseGrid;
+	for (openvdb::io::File::NameIterator nameIter = file.beginName(); nameIter != file.endName(); ++nameIter)
+	{
+	#ifndef BLENDER
+		// Read in only the grid we are interested in.
+		if (nameIter.gridName() == grid->getName()) {
+			baseGrid = file.readGrid(nameIter.gridName());
+		} else {
+			debMsg("skipping grid " << nameIter.gridName(), 1);
+		}
+	#else
+		// For Blender, skip name check and pick first grid from loop
+		baseGrid = file.readGrid(nameIter.gridName());
+		break;
+	#endif
+	}
+	file.close();
+	openvdb::FloatGrid::Ptr gridVDB = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
+
+	openvdb::FloatGrid::Accessor accessor = gridVDB->getAccessor();
+
+	FOR_IJK(*grid) {
+		openvdb::Coord xyz(i, j, k);
+		float v = accessor.getValue(xyz);
+		(*grid)(i, j, k) = v;
+	}
+};
+
+template <>
 void writeGridVDB(const string& name, Grid<Vec3>* grid) {
-	debMsg("Writing real grid " << grid->getName() << " to vdb file " << name, 1);
+	debMsg("Writing vec3 grid " << grid->getName() << " to vdb file " << name, 1);
 
 	openvdb::initialize(); 
 	openvdb::Vec3SGrid::Ptr gridVDB = openvdb::Vec3SGrid::create();
@@ -839,6 +880,44 @@ void writeGridVDB(const string& name, Grid<Vec3>* grid) {
 	file.close();
 };
 
+template <>
+void readGridVDB(const string& name, Grid<Vec3>* grid) {
+	debMsg("Reading vec3 grid " << grid->getName() << " from vdb file " << name, 1);
+
+	openvdb::initialize();
+	openvdb::io::File file(name);
+	file.open();
+
+	openvdb::GridBase::Ptr baseGrid;
+	for (openvdb::io::File::NameIterator nameIter = file.beginName(); nameIter != file.endName(); ++nameIter)
+	{
+	#ifndef BLENDER
+		// Read in only the grid we are interested in.
+		if (nameIter.gridName() == grid->getName()) {
+			baseGrid = file.readGrid(nameIter.gridName());
+		} else {
+			debMsg("skipping grid " << nameIter.gridName(), 1);
+		}
+	#else
+		// For Blender, skip name check and pick first grid from loop
+		baseGrid = file.readGrid(nameIter.gridName());
+		break;
+	#endif
+	}
+	file.close();
+	openvdb::Vec3SGrid::Ptr gridVDB = openvdb::gridPtrCast<openvdb::Vec3SGrid>(baseGrid);
+
+	openvdb::Vec3SGrid::Accessor accessor = gridVDB->getAccessor();
+
+	FOR_IJK(*grid) {
+		openvdb::Coord xyz(i, j, k);
+		openvdb::Vec3f v = accessor.getValue(xyz);
+		(*grid)(i, j, k).x = (float)v[0];
+		(*grid)(i, j, k).y = (float)v[1];
+		(*grid)(i, j, k).z = (float)v[2];
+	}
+};
+
 #endif // OPENVDB==1
 
 
@@ -859,7 +938,7 @@ void quantizeReal(Real& v, const Real step) {
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,grid,step);  }   } Grid<Real>& grid; Real step;   };
-#line 843 "fileio/iogrids.cpp"
+#line 922 "fileio/iogrids.cpp"
 
  
 void quantizeGrid(Grid<Real>& grid, Real step) { knQuantize(grid,step); } static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "quantizeGrid" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Real>& grid = *_args.getPtr<Grid<Real> >("grid",0,&_lock); Real step = _args.get<Real >("step",1,&_lock);   _retval = getPyNone(); quantizeGrid(grid,step);  _args.check(); } pbFinalizePlugin(parent,"quantizeGrid", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("quantizeGrid",e.what()); return 0; } } static const Pb::Register _RP_quantizeGrid ("","quantizeGrid",_W_2);  extern "C" { void PbRegister_quantizeGrid() { KEEP_UNUSED(_RP_quantizeGrid); } } 
@@ -871,7 +950,7 @@ void quantizeGrid(Grid<Real>& grid, Real step) { knQuantize(grid,step); } static
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,grid,step);  }   } Grid<Vec3>& grid; Real step;   };
-#line 848 "fileio/iogrids.cpp"
+#line 927 "fileio/iogrids.cpp"
 
  
 void quantizeGridVec3(Grid<Vec3>& grid, Real step) { knQuantizeVec3(grid,step); } static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "quantizeGridVec3" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; Grid<Vec3>& grid = *_args.getPtr<Grid<Vec3> >("grid",0,&_lock); Real step = _args.get<Real >("step",1,&_lock);   _retval = getPyNone(); quantizeGridVec3(grid,step);  _args.check(); } pbFinalizePlugin(parent,"quantizeGridVec3", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("quantizeGridVec3",e.what()); return 0; } } static const Pb::Register _RP_quantizeGridVec3 ("","quantizeGridVec3",_W_3);  extern "C" { void PbRegister_quantizeGridVec3() { KEEP_UNUSED(_RP_quantizeGridVec3); } } 
@@ -922,6 +1001,10 @@ template void writeGrid4dRaw<Vec4>(const string& name, Grid4d<Vec4>* grid);
 template void writeGridVDB<int>(const string& name, Grid<int>*  grid);
 template void writeGridVDB<Vec3>(const string& name, Grid<Vec3>* grid);
 template void writeGridVDB<Real>(const string& name, Grid<Real>* grid);
+
+template void readGridVDB<int>(const string& name, Grid<int>*  grid);
+template void readGridVDB<Vec3>(const string& name, Grid<Vec3>* grid);
+template void readGridVDB<Real>(const string& name, Grid<Real>* grid);
 #endif // OPENVDB==1
 
 } //namespace

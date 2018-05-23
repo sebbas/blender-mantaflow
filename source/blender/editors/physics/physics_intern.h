@@ -33,6 +33,11 @@
 #ifndef __PHYSICS_INTERN_H__
 #define __PHYSICS_INTERN_H__
 
+struct Object;
+struct PTCacheEdit;
+struct ParticleSystem;
+struct PointCache;
+struct Scene;
 struct wmOperatorType;
 
 /* particle_edit.c */
@@ -62,6 +67,11 @@ void PARTICLE_OT_particle_edit_toggle(struct wmOperatorType *ot);
 void PARTICLE_OT_edited_clear(struct wmOperatorType *ot);
 
 void PARTICLE_OT_unify_length(struct wmOperatorType *ot);
+
+void PE_create_particle_edit(struct Scene *scene, struct Object *ob, struct PointCache *cache, struct ParticleSystem *psys);
+void recalc_lengths(struct PTCacheEdit *edit);
+void recalc_emitter_field(struct Object *ob, struct ParticleSystem *psys);
+void update_world_cos(struct Object *ob, struct PTCacheEdit *edit);
 
 /* particle_object.c */
 void OBJECT_OT_particle_system_add(struct wmOperatorType *ot);
@@ -95,20 +105,15 @@ void BOID_OT_state_move_down(struct wmOperatorType *ot);
 
 /* physics_fluid.c */
 void FLUID_OT_bake(struct wmOperatorType *ot);
-void MANTA_OT_bake_geometry(struct wmOperatorType *ot);
-void MANTA_OT_free_geometry(struct wmOperatorType *ot);
-void MANTA_OT_bake_data_low(struct wmOperatorType *ot);
-void MANTA_OT_free_data_low(struct wmOperatorType *ot);
-void MANTA_OT_bake_data_high(struct wmOperatorType *ot);
-void MANTA_OT_free_data_high(struct wmOperatorType *ot);
-void MANTA_OT_bake_mesh_low(struct wmOperatorType *ot);
-void MANTA_OT_free_mesh_low(struct wmOperatorType *ot);
-void MANTA_OT_bake_mesh_high(struct wmOperatorType *ot);
-void MANTA_OT_free_mesh_high(struct wmOperatorType *ot);
-void MANTA_OT_bake_particles_low(struct wmOperatorType *ot);
-void MANTA_OT_free_particles_low(struct wmOperatorType *ot);
-void MANTA_OT_bake_particles_high(struct wmOperatorType *ot);
-void MANTA_OT_free_particles_high(struct wmOperatorType *ot);
+void MANTA_OT_bake_data(struct wmOperatorType *ot);
+void MANTA_OT_free_data(struct wmOperatorType *ot);
+void MANTA_OT_bake_noise(struct wmOperatorType *ot);
+void MANTA_OT_free_noise(struct wmOperatorType *ot);
+void MANTA_OT_bake_mesh(struct wmOperatorType *ot);
+void MANTA_OT_free_mesh(struct wmOperatorType *ot);
+void MANTA_OT_bake_particles(struct wmOperatorType *ot);
+void MANTA_OT_free_particles(struct wmOperatorType *ot);
+void MANTA_OT_pause_bake(struct wmOperatorType *ot);
 void MANTA_OT_make_file(struct wmOperatorType *ot);
 
 /* dynamicpaint.c */

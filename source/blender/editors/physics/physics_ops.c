@@ -199,20 +199,15 @@ static void operatortypes_fluid(void)
 
 static void operatortypes_manta(void)
 {
-	WM_operatortype_append(MANTA_OT_bake_geometry);
-	WM_operatortype_append(MANTA_OT_free_geometry);
-	WM_operatortype_append(MANTA_OT_bake_data_low);
-	WM_operatortype_append(MANTA_OT_free_data_low);
-	WM_operatortype_append(MANTA_OT_bake_data_high);
-	WM_operatortype_append(MANTA_OT_free_data_high);
-	WM_operatortype_append(MANTA_OT_bake_mesh_low);
-	WM_operatortype_append(MANTA_OT_free_mesh_low);
-	WM_operatortype_append(MANTA_OT_bake_mesh_high);
-	WM_operatortype_append(MANTA_OT_free_mesh_high);
-	WM_operatortype_append(MANTA_OT_bake_particles_low);
-	WM_operatortype_append(MANTA_OT_free_particles_low);
-	WM_operatortype_append(MANTA_OT_bake_particles_high);
-	WM_operatortype_append(MANTA_OT_free_particles_high);
+	WM_operatortype_append(MANTA_OT_bake_data);
+	WM_operatortype_append(MANTA_OT_free_data);
+	WM_operatortype_append(MANTA_OT_bake_noise);
+	WM_operatortype_append(MANTA_OT_free_noise);
+	WM_operatortype_append(MANTA_OT_bake_mesh);
+	WM_operatortype_append(MANTA_OT_free_mesh);
+	WM_operatortype_append(MANTA_OT_bake_particles);
+	WM_operatortype_append(MANTA_OT_free_particles);
+	WM_operatortype_append(MANTA_OT_pause_bake);
 	WM_operatortype_append(MANTA_OT_make_file);
 }
 

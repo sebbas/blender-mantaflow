@@ -129,6 +129,10 @@ void Grid<T>::load(string name) {
 		readGridUni(name, this);
 	else if (ext == ".vol")
 		readGridVol(name, this);
+#	if OPENVDB==1
+	else if (ext == ".vdb")
+		readGridVDB(name, this);
+#	endif // OPENVDB==1
 	else
 		errMsg("file '" + name +"' filetype not supported");
 }
@@ -169,7 +173,7 @@ void Grid<T>::save(string name) {
   for (IndexInt i = 0; i < _sz; i++) op(i,val,minVal); 
 #pragma omp critical
 {this->minVal = min(minVal, this->minVal); } }   } const Grid<Real>& val;  Real minVal;  };
-#line 150 "grid.cpp"
+#line 154 "grid.cpp"
 
 
 
@@ -185,7 +189,7 @@ void Grid<T>::save(string name) {
   for (IndexInt i = 0; i < _sz; i++) op(i,val,maxVal); 
 #pragma omp critical
 {this->maxVal = max(maxVal, this->maxVal); } }   } const Grid<Real>& val;  Real maxVal;  };
-#line 157 "grid.cpp"
+#line 161 "grid.cpp"
 
 
 
@@ -201,7 +205,7 @@ void Grid<T>::save(string name) {
   for (IndexInt i = 0; i < _sz; i++) op(i,val,minVal); 
 #pragma omp critical
 {this->minVal = min(minVal, this->minVal); } }   } const Grid<int>& val;  int minVal;  };
-#line 164 "grid.cpp"
+#line 168 "grid.cpp"
 
 
 
@@ -217,7 +221,7 @@ void Grid<T>::save(string name) {
   for (IndexInt i = 0; i < _sz; i++) op(i,val,maxVal); 
 #pragma omp critical
 {this->maxVal = max(maxVal, this->maxVal); } }   } const Grid<int>& val;  int maxVal;  };
-#line 171 "grid.cpp"
+#line 175 "grid.cpp"
 
 
 
@@ -234,7 +238,7 @@ void Grid<T>::save(string name) {
   for (IndexInt i = 0; i < _sz; i++) op(i,val,minVal); 
 #pragma omp critical
 {this->minVal = min(minVal, this->minVal); } }   } const Grid<Vec3>& val;  Real minVal;  };
-#line 178 "grid.cpp"
+#line 182 "grid.cpp"
 
 
 
@@ -251,7 +255,7 @@ void Grid<T>::save(string name) {
   for (IndexInt i = 0; i < _sz; i++) op(i,val,maxVal); 
 #pragma omp critical
 {this->maxVal = max(maxVal, this->maxVal); } }   } const Grid<Vec3>& val;  Real maxVal;  };
-#line 186 "grid.cpp"
+#line 190 "grid.cpp"
 
 
 
@@ -270,7 +274,7 @@ template <class T>  struct knGridSetConstReal : public KernelBase { knGridSetCon
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,val);  }   } Grid<T>& me; T val;   };
-#line 202 "grid.cpp"
+#line 206 "grid.cpp"
 
 
 template <class T>  struct knGridAddConstReal : public KernelBase { knGridAddConstReal(Grid<T>& me, T val) :  KernelBase(&me,0) ,me(me),val(val)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid<T>& me, T val )  { me[idx] += val; }    inline Grid<T>& getArg0() { return me; } typedef Grid<T> type0;inline T& getArg1() { return val; } typedef T type1; void runMessage() { debMsg("Executing kernel knGridAddConstReal ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -278,7 +282,7 @@ template <class T>  struct knGridAddConstReal : public KernelBase { knGridAddCon
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,val);  }   } Grid<T>& me; T val;   };
-#line 203 "grid.cpp"
+#line 207 "grid.cpp"
 
 
 template <class T>  struct knGridMultConst : public KernelBase { knGridMultConst(Grid<T>& me, T val) :  KernelBase(&me,0) ,me(me),val(val)   { runMessage(); run(); }   inline void op(IndexInt idx, Grid<T>& me, T val )  { me[idx] *= val; }    inline Grid<T>& getArg0() { return me; } typedef Grid<T> type0;inline T& getArg1() { return val; } typedef T type1; void runMessage() { debMsg("Executing kernel knGridMultConst ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -286,7 +290,7 @@ template <class T>  struct knGridMultConst : public KernelBase { knGridMultConst
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,val);  }   } Grid<T>& me; T val;   };
-#line 204 "grid.cpp"
+#line 208 "grid.cpp"
 
 
 
@@ -295,7 +299,7 @@ template <class T>  struct knGridSafeDiv : public KernelBase { knGridSafeDiv(Gri
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } Grid<T>& me; const Grid<T>& other;   };
-#line 206 "grid.cpp"
+#line 210 "grid.cpp"
 
 
 //KERNEL(idx) template<class T> void gridSafeDiv (Grid<T>& me, const Grid<T>& other) { me[idx] = safeDivide(me[idx], other[idx]); }
@@ -305,7 +309,7 @@ template <class T>  struct knGridClamp : public KernelBase { knGridClamp(Grid<T>
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,min,max);  }   } Grid<T>& me; const T& min; const T& max;   };
-#line 209 "grid.cpp"
+#line 213 "grid.cpp"
 
 
 
@@ -316,7 +320,7 @@ template <class T>  struct knGridStomp : public KernelBase { knGridStomp(Grid<T>
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,threshold);  }   } Grid<T>& me; const T& threshold;   };
-#line 213 "grid.cpp"
+#line 217 "grid.cpp"
 
 
 
@@ -446,7 +450,7 @@ template<class T> Real Grid<T>::getL2(int bnd) {
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,flags,flag,bnd,mask,cnt); 
 #pragma omp critical
 {this->cnt += cnt; } } }  } const FlagGrid& flags; int flag; int bnd; Grid<Real>* mask;  int cnt;  };
-#line 321 "grid.cpp"
+#line 325 "grid.cpp"
 
 
 
@@ -594,7 +598,7 @@ static inline Real computeUvRamp(Real t) {
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,target);  } }  } Grid<Vec3>& target;   };
-#line 465 "grid.cpp"
+#line 469 "grid.cpp"
 
 
 
@@ -643,7 +647,7 @@ template <class T>  struct knSetBoundary : public KernelBase { knSetBoundary(Gri
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,value,w);  } }  } Grid<T>& grid; T value; int w;   };
-#line 499 "grid.cpp"
+#line 503 "grid.cpp"
 
 
 
@@ -686,7 +690,7 @@ template <class T>  struct knSetBoundaryNeumann : public KernelBase { knSetBound
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,w);  } }  } Grid<T>& grid; int w;   };
-#line 510 "grid.cpp"
+#line 514 "grid.cpp"
 
 
 
@@ -711,7 +715,7 @@ template<class T> void Grid<T>::setBoundNeumann(int boundaryWidth) {
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,value,w);  } }  } Grid<Vec3>& grid; Vec3 value; int w;   };
-#line 542 "grid.cpp"
+#line 546 "grid.cpp"
 
  
 
@@ -729,7 +733,7 @@ template<class T> void Grid<T>::setBoundNeumann(int boundaryWidth) {
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,value,w);  } }  } Grid<Vec3>& grid; Vec3 value; int w;   };
-#line 552 "grid.cpp"
+#line 556 "grid.cpp"
 
  
 
@@ -752,7 +756,7 @@ void MACGrid::setBoundMAC(Vec3 value, int boundaryWidth, bool normalOnly) {
   for (IndexInt i = 0; i < _sz; i++) op(i,a,flags,result); 
 #pragma omp critical
 {this->result += result; } }   } const Grid<Real>& a; FlagGrid* flags;  double result;  };
-#line 567 "grid.cpp"
+#line 571 "grid.cpp"
 
 
 
@@ -764,7 +768,7 @@ void MACGrid::setBoundMAC(Vec3 value, int boundaryWidth, bool normalOnly) {
   for (IndexInt i = 0; i < _sz; i++) op(i,flags,numEmpty); 
 #pragma omp critical
 {this->numEmpty += numEmpty; } }   } FlagGrid& flags;  int numEmpty;  };
-#line 573 "grid.cpp"
+#line 577 "grid.cpp"
 
 
 
@@ -791,7 +795,7 @@ Real getGridAvg(Grid<Real>& source, FlagGrid* flags=NULL) {
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,source,target,component);  }   } const Grid<Vec3>& source; Grid<Real>& target; int component;   };
-#line 591 "grid.cpp"
+#line 595 "grid.cpp"
 
 
 void getComponent(const Grid<Vec3>& source, Grid<Real>& target, int component) { knGetComponent(source, target, component); } static PyObject* _W_16 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "getComponent" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const Grid<Vec3>& source = *_args.getPtr<Grid<Vec3> >("source",0,&_lock); Grid<Real>& target = *_args.getPtr<Grid<Real> >("target",1,&_lock); int component = _args.get<int >("component",2,&_lock);   _retval = getPyNone(); getComponent(source,target,component);  _args.check(); } pbFinalizePlugin(parent,"getComponent", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("getComponent",e.what()); return 0; } } static const Pb::Register _RP_getComponent ("","getComponent",_W_16);  extern "C" { void PbRegister_getComponent() { KEEP_UNUSED(_RP_getComponent); } } 
@@ -803,7 +807,7 @@ void getComponent(const Grid<Vec3>& source, Grid<Real>& target, int component) {
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,source,target,component);  }   } const Grid<Real>& source; Grid<Vec3>& target; int component;   };
-#line 596 "grid.cpp"
+#line 600 "grid.cpp"
 
 
 void setComponent(const Grid<Real>& source, Grid<Vec3>& target, int component) { knSetComponent(source, target, component); } static PyObject* _W_17 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setComponent" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",0,&_lock); Grid<Vec3>& target = *_args.getPtr<Grid<Vec3> >("target",1,&_lock); int component = _args.get<int >("component",2,&_lock);   _retval = getPyNone(); setComponent(source,target,component);  _args.check(); } pbFinalizePlugin(parent,"setComponent", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setComponent",e.what()); return 0; } } static const Pb::Register _RP_setComponent ("","setComponent",_W_17);  extern "C" { void PbRegister_setComponent() { KEEP_UNUSED(_RP_setComponent); } } 

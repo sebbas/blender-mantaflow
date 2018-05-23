@@ -146,7 +146,6 @@ struct wmWindowManager;
 #include "../../intern/elbeem/extern/elbeem.h"
 #include "../blender/blenkernel/BKE_modifier.h"
 #include "../blender/blenkernel/BKE_paint.h"
-#include "../blender/collada/collada.h"
 #include "../blender/compositor/COM_compositor.h"
 #include "../blender/editors/include/ED_armature.h"
 #include "../blender/editors/include/ED_anim_api.h"
@@ -225,10 +224,10 @@ bool BPY_string_is_keyword(const char *str) { return false; }
 /*new render funcs */
 void EDBM_selectmode_set(struct BMEditMesh *em) RET_NONE
 void EDBM_mesh_load(struct Object *ob) RET_NONE
-void EDBM_mesh_make(struct ToolSettings *ts, struct Object *ob, const bool use_key_index) RET_NONE
+void EDBM_mesh_make(struct Object *ob, const int select_mode, const bool use_key_index) RET_NONE
 void EDBM_mesh_normals_update(struct BMEditMesh *em) RET_NONE
 void *g_system;
-bool EDBM_mtexpoly_check(struct BMEditMesh *em) RET_ZERO
+bool EDBM_uv_check(struct BMEditMesh *em) RET_ZERO
 
 float *RE_RenderLayerGetPass(volatile struct RenderLayer *rl, const char *name, const char *viewname) RET_NULL
 float RE_filter_value(int type, float x) RET_ZERO
@@ -247,10 +246,6 @@ void RE_SetActiveRenderView(struct Render *re, const char *viewname) RET_NONE
 struct RenderPass *RE_pass_find_by_name(volatile struct RenderLayer *rl, const char *name, const char *viewname) RET_NULL
 struct RenderPass *RE_pass_find_by_type(volatile struct RenderLayer *rl, int passtype, const char *viewname) RET_NULL
 bool RE_HasCombinedLayer(RenderResult *res) RET_ZERO
-
-/* zbuf.c stub */
-void antialias_tagbuf(int xsize, int ysize, char *rectmove) RET_NONE
-void RE_zbuf_accumulate_vecblur(struct NodeBlurData *nbd, int xsize, int ysize, float *newrect, const float *imgrect, float *vecbufrect, const float *zbufrect) RET_NONE
 
 /* imagetexture.c stub */
 void ibuf_sample(struct ImBuf *ibuf, float fx, float fy, float dx, float dy, float *result) RET_NONE
@@ -363,7 +358,7 @@ struct wmTimer *WM_event_add_timer(struct wmWindowManager *wm, struct wmWindow *
 void WM_event_remove_timer(struct wmWindowManager *wm, struct wmWindow *win, struct wmTimer *timer) RET_NONE
 float WM_event_tablet_data(const struct wmEvent *event, int *pen_flip, float tilt[2]) RET_ZERO
 bool WM_event_is_tablet(const struct wmEvent *event) RET_ZERO
-void ED_armature_edit_bone_remove(struct bArmature *arm, struct EditBone *exBone) RET_NONE
+void ED_armature_ebone_remove(struct bArmature *arm, struct EditBone *exBone) RET_NONE
 void object_test_constraints(struct Object *owner) RET_NONE
 void ED_armature_ebone_to_mat4(struct EditBone *ebone, float mat[4][4]) RET_NONE
 void ED_armature_ebone_from_mat4(EditBone *ebone, float mat[4][4]) RET_NONE
@@ -380,8 +375,8 @@ bool UI_view2d_view_to_region_clip(struct View2D *v2d, float x, float y, int *re
 void UI_view2d_view_to_region(struct View2D *v2d, float x, float y, int *regionx, int *region_y) RET_NONE
 void UI_view2d_sync(struct bScreen *screen, struct ScrArea *sa, struct View2D *v2dcur, int flag) RET_NONE
 
-struct EditBone *ED_armature_bone_get_mirrored(const struct ListBase *edbo, EditBone *ebo) RET_NULL
-struct EditBone *ED_armature_edit_bone_add(struct bArmature *arm, const char *name) RET_NULL
+struct EditBone *ED_armature_ebone_get_mirrored(const struct ListBase *edbo, EditBone *ebo) RET_NULL
+struct EditBone *ED_armature_ebone_add(struct bArmature *arm, const char *name) RET_NULL
 struct ListBase *get_active_constraints (struct Object *ob) RET_NULL
 struct ListBase *get_constraint_lb(struct Object *ob, struct bConstraint *con, struct bPoseChannel **r_pchan) RET_NULL
 
@@ -441,7 +436,7 @@ int	WM_keymap_map_type_get(struct wmKeyMapItem *kmi) RET_ZERO
 /* rna editors */
 
 struct FCurve *verify_fcurve(struct bAction *act, const char group[], struct PointerRNA *ptr, const char rna_path[], const int array_index, short add) RET_NULL
-int insert_vert_fcurve(struct FCurve *fcu, float x, float y, char keytype, short flag) RET_ZERO
+int insert_vert_fcurve(struct FCurve *fcu, float x, float y, eBezTriple_KeyframeType keytype, eInsertKeyFlags flag) RET_ZERO
 void delete_fcurve_key(struct FCurve *fcu, int index, bool do_recalc) RET_NONE
 struct KeyingSetInfo *ANIM_keyingset_info_find_name (const char name[]) RET_NULL
 struct KeyingSet *ANIM_scene_get_active_keyingset (struct Scene *scene) RET_NULL
@@ -535,7 +530,7 @@ float ED_vgroup_vert_weight(struct Object *ob, struct bDeformGroup *dg, int vert
 int ED_mesh_mirror_topo_table(struct Object *ob, struct DerivedMesh *dm, char mode) RET_ZERO
 int ED_mesh_mirror_spatial_table(struct Object *ob, struct BMEditMesh *em, struct DerivedMesh *dm, const float co[3], char mode) RET_ZERO
 
-float ED_rollBoneToVector(EditBone *bone, const float new_up_axis[3], const bool axis_only) RET_ZERO
+float ED_armature_ebone_roll_to_vector(const EditBone *bone, const float new_up_axis[3], const bool axis_only) RET_ZERO
 void ED_space_image_get_size(struct SpaceImage *sima, int *width, int *height) RET_NONE
 bool ED_space_image_check_show_maskedit(struct Scene *scene, struct SpaceImage *sima) RET_ZERO
 
@@ -561,12 +556,8 @@ bool ED_transform_snap_object_project_ray_ex(
         float r_loc[3], float r_no[3], int *r_index,
         struct Object **r_ob, float r_obmat[4][4]) RET_ZERO
 
-void ED_lattice_editlatt_make(struct Object *obedit) RET_NONE
-void ED_lattice_editlatt_load(struct Object *obedit) RET_NONE
-
 void ED_curve_editnurb_load(struct Object *obedit) RET_NONE
 void ED_curve_editnurb_make(struct Object *obedit) RET_NONE
-
 
 void uiItemR(uiLayout *layout, struct PointerRNA *ptr, const char *propname, int flag, const char *name, int icon) RET_NONE
 
@@ -707,8 +698,8 @@ void WM_operator_py_idname(char *to, const char *from) RET_NONE
 bool WM_operator_py_idname_ok_or_report(struct ReportList *reports, const char *classname, const char *idname) RET_ZERO
 int WM_operator_ui_popup(struct bContext *C, struct wmOperator *op, int width, int height) RET_ZERO
 void update_autoflags_fcurve(struct FCurve *fcu, struct bContext *C, struct ReportList *reports, struct PointerRNA *ptr) RET_NONE
-short insert_keyframe(struct ReportList *reports, struct ID *id, struct bAction *act, const char group[], const char rna_path[], int array_index, float cfra, char keytype, short flag) RET_ZERO
-short delete_keyframe(struct ReportList *reports, struct ID *id, struct bAction *act, const char group[], const char rna_path[], int array_index, float cfra, short flag) RET_ZERO
+short insert_keyframe(struct ReportList *reports, struct ID *id, struct bAction *act, const char group[], const char rna_path[], int array_index, float cfra, eBezTriple_KeyframeType keytype, eInsertKeyFlags flag) RET_ZERO
+short delete_keyframe(struct ReportList *reports, struct ID *id, struct bAction *act, const char group[], const char rna_path[], int array_index, float cfra, eInsertKeyFlags flag) RET_ZERO
 struct bAction *verify_adt_action(struct ID *id, short add) RET_NULL
 char *WM_operator_pystring_ex(struct bContext *C, struct wmOperator *op, const bool all_args, const bool macro_args, struct wmOperatorType *ot, struct PointerRNA *opptr) RET_NULL
 char *WM_operator_pystring(struct bContext *C, struct wmOperator *op, const bool all_args, const bool macro_args) RET_NULL
@@ -725,33 +716,6 @@ void UI_pie_menu_end(struct bContext *C, uiPieMenu *pie) RET_NONE
 struct uiLayout *uiLayoutRadial(struct uiLayout *layout) RET_NULL
 int UI_pie_menu_invoke_from_operator_enum(struct bContext *C, const char *title, const char *opname,
                              const char *propname, const struct wmEvent *event) RET_ZERO
-
-/* RNA COLLADA dependency                                       */
-/* XXX (gaia) Why do we need this declaration here?             */
-/*     The collada header is included anyways further up...     */
-int collada_export(struct Scene *sce,
-                   const char *filepath,
-                   int apply_modifiers,
-                   BC_export_mesh_type export_mesh_type,
-
-                   int selected,
-                   int include_children,
-                   int include_armatures,
-                   int include_shapekeys,
-                   int deform_bones_only,
-
-                   int active_uv_only,
-                   BC_export_texture_type export_texture_type,
-                   int use_texture_copies,
-
-                   int triangulate,
-                   int use_object_instantiation,
-                   int use_blender_profile,
-                   int sort_by_name,
-                   BC_export_transformation_type export_transformation_type,
-                   int open_sim,
-                   int limit_precision,
-                   int keep_bind_info) RET_ZERO
 
 void ED_mesh_calc_tessface(struct Mesh *mesh, bool free_mpoly) RET_NONE
 

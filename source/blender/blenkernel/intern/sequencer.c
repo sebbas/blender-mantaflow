@@ -84,6 +84,7 @@
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 #include "IMB_colormanagement.h"
+#include "IMB_metadata.h"
 
 #include "BKE_context.h"
 #include "BKE_sound.h"
@@ -941,6 +942,8 @@ void BKE_sequence_reload_new_file(Scene *scene, Sequence *seq, const bool lock_r
 			if ((!sanim) || (!sanim->anim)) {
 				return;
 			}
+
+			IMB_anim_load_metadata(sanim->anim);
 
 			seq->len = IMB_anim_get_duration(sanim->anim, seq->strip->proxy ? seq->strip->proxy->tc : IMB_TC_RECORD_RUN);
 
@@ -2955,7 +2958,7 @@ static ImBuf *seq_render_movie_strip(const SeqRenderData *context, Sequence *seq
 		int totviews;
 		int i;
 
-		if (totfiles != BLI_listbase_count_ex(&seq->anims, totfiles + 1))
+		if (totfiles != BLI_listbase_count_at_most(&seq->anims, totfiles + 1))
 			goto monoview_movie;
 
 		totviews = BKE_scene_multiview_num_views_get(&context->scene->r);
@@ -5155,6 +5158,40 @@ void BKE_sequence_init_colorspace(Sequence *seq)
 	}
 }
 
+float BKE_sequence_get_fps(Scene *scene, Sequence *seq)
+{
+	switch (seq->type) {
+		case SEQ_TYPE_MOVIE:
+		{
+			seq_open_anim_file(scene, seq, true);
+			if (BLI_listbase_is_empty(&seq->anims)) {
+				return 0.0f;
+			}
+			StripAnim *strip_anim = seq->anims.first;
+			if (strip_anim->anim == NULL) {
+				return 0.0f;
+			}
+			short frs_sec;
+			float frs_sec_base;
+			if (IMB_anim_get_fps(strip_anim->anim, &frs_sec, &frs_sec_base, true)) {
+				return (float)frs_sec / frs_sec_base;
+			}
+			break;
+		}
+		case SEQ_TYPE_MOVIECLIP:
+			if (seq->clip != NULL) {
+				return BKE_movieclip_get_fps(seq->clip);
+			}
+			break;
+		case SEQ_TYPE_SCENE:
+			if (seq->scene != NULL) {
+				return (float)seq->scene->r.frs_sec / seq->scene->r.frs_sec_base;
+			}
+			break;
+	}
+	return 0.0f;
+}
+
 /* NOTE: this function doesn't fill in image names */
 Sequence *BKE_sequencer_add_image_strip(bContext *C, ListBase *seqbasep, SeqLoadInfo *seq_load)
 {
@@ -5346,6 +5383,8 @@ Sequence *BKE_sequencer_add_movie_strip(bContext *C, ListBase *seqbasep, SeqLoad
 			break;
 		}
 	}
+
+	IMB_anim_load_metadata(anim_arr[0]);
 
 	seq->anim_preseek = IMB_anim_get_preseek(anim_arr[0]);
 	BLI_strncpy(seq->name + 2, "Movie", SEQ_NAME_MAXSTR - 2);

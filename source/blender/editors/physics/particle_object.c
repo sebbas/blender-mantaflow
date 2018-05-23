@@ -67,32 +67,9 @@
 
 #include "UI_resources.h"
 
+#include "particle_edit_utildefines.h"
+
 #include "physics_intern.h"
-
-extern void PE_create_particle_edit(Scene *scene, Object *ob, PointCache *cache, ParticleSystem *psys);
-extern void PTCacheUndo_clear(PTCacheEdit *edit);
-extern void recalc_lengths(PTCacheEdit *edit);
-extern void recalc_emitter_field(Object *ob, ParticleSystem *psys);
-extern void update_world_cos(Object *ob, PTCacheEdit *edit);
-
-#define KEY_K					PTCacheEditKey *key; int k
-#define POINT_P					PTCacheEditPoint *point; int p
-#define LOOP_POINTS				for (p=0, point=edit->points; p<edit->totpoint; p++, point++)
-#if 0
-#define LOOP_VISIBLE_POINTS		for (p=0, point=edit->points; p<edit->totpoint; p++, point++) if (!(point->flag & PEP_HIDE))
-#define LOOP_SELECTED_POINTS	for (p=0, point=edit->points; p<edit->totpoint; p++, point++) if (point_is_selected(point))
-#define LOOP_UNSELECTED_POINTS	for (p=0, point=edit->points; p<edit->totpoint; p++, point++) if (!point_is_selected(point))
-#define LOOP_EDITED_POINTS		for (p=0, point=edit->points; p<edit->totpoint; p++, point++) if (point->flag & PEP_EDIT_RECALC)
-#define LOOP_TAGGED_POINTS		for (p=0, point=edit->points; p<edit->totpoint; p++, point++) if (point->flag & PEP_TAG)
-#endif
-#define LOOP_KEYS				for (k=0, key=point->keys; k<point->totkey; k++, key++)
-#if 0
-#define LOOP_VISIBLE_KEYS		for (k=0, key=point->keys; k<point->totkey; k++, key++) if (!(key->flag & PEK_HIDE))
-#define LOOP_SELECTED_KEYS		for (k=0, key=point->keys; k<point->totkey; k++, key++) if ((key->flag & PEK_SELECT) && !(key->flag & PEK_HIDE))
-#define LOOP_TAGGED_KEYS		for (k=0, key=point->keys; k<point->totkey; k++, key++) if (key->flag & PEK_TAG)
-
-#define KEY_WCO					(key->flag & PEK_USE_WCO ? key->world_co : key->co)
-#endif
 
 static float I[4][4] = {{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
 
@@ -715,11 +692,11 @@ static bool remap_hair_emitter(Scene *scene, Object *ob, ParticleSystem *psys,
 
 	if (dm->getNumTessFaces(dm) != 0) {
 		mface = dm->getTessFaceArray(dm);
-		bvhtree_from_mesh_faces(&bvhtree, dm, 0.0, 2, 6);
+		bvhtree_from_mesh_get(&bvhtree, dm, BVHTREE_FROM_FACES, 2);
 	}
 	else if (dm->getNumEdges(dm) != 0) {
 		medge = dm->getEdgeArray(dm);
-		bvhtree_from_mesh_edges(&bvhtree, dm, 0.0, 2, 6);
+		bvhtree_from_mesh_get(&bvhtree, dm, BVHTREE_FROM_EDGES, 2);
 	}
 	else {
 		dm->release(dm);
@@ -728,8 +705,8 @@ static bool remap_hair_emitter(Scene *scene, Object *ob, ParticleSystem *psys,
 
 	for (i = 0, tpa = target_psys->particles, pa = psys->particles;
 	     i < target_psys->totpart;
-	     i++, tpa++, pa++) {
-
+	     i++, tpa++, pa++)
+	{
 		float from_co[3];
 		BVHTreeNearest nearest;
 
@@ -934,10 +911,7 @@ static void copy_particle_edit(Scene *scene, Object *ob, ParticleSystem *psys, P
 	
 	edit->emitter_field = NULL;
 	edit->emitter_cosnos = NULL;
-	
-	BLI_listbase_clear(&edit->undo);
-	edit->curundo = NULL;
-	
+
 	edit->points = MEM_dupallocN(edit_from->points);
 	pa = psys->particles;
 	LOOP_POINTS {
@@ -966,9 +940,6 @@ static void copy_particle_edit(Scene *scene, Object *ob, ParticleSystem *psys, P
 	recalc_lengths(edit);
 	recalc_emitter_field(ob, psys);
 	PE_update_object(scene, ob, true);
-	
-	PTCacheUndo_clear(edit);
-	PE_undo_push(scene, "Original");
 }
 
 static void remove_particle_systems_from_object(Object *ob_to)
@@ -1033,8 +1004,8 @@ static bool copy_particle_systems_to_object(Main *bmain,
 	cdmask = 0;
 	for (psys_from = PSYS_FROM_FIRST, i = 0;
 	     psys_from;
-	     psys_from = PSYS_FROM_NEXT(psys_from), ++i) {
-		
+	     psys_from = PSYS_FROM_NEXT(psys_from), ++i)
+	{
 		psys = BKE_object_copy_particlesystem(psys_from, 0);
 		tmp_psys[i] = psys;
 		
@@ -1054,8 +1025,8 @@ static bool copy_particle_systems_to_object(Main *bmain,
 	/* now append psys to the object and make modifiers */
 	for (i = 0, psys_from = PSYS_FROM_FIRST;
 	     i < totpsys;
-	     ++i, psys_from = PSYS_FROM_NEXT(psys_from)) {
-		
+	     ++i, psys_from = PSYS_FROM_NEXT(psys_from))
+	{
 		ParticleSystemModifierData *psmd;
 		
 		psys = tmp_psys[i];
@@ -1092,8 +1063,8 @@ static bool copy_particle_systems_to_object(Main *bmain,
 	 */
 	for (psys = psys_start, psys_from = PSYS_FROM_FIRST, i = 0;
 	     psys;
-	     psys = psys->next, psys_from = PSYS_FROM_NEXT(psys_from), ++i) {
-		
+	     psys = psys->next, psys_from = PSYS_FROM_NEXT(psys_from), ++i)
+	{
 		float (*from_mat)[4], (*to_mat)[4];
 		
 		switch (space) {

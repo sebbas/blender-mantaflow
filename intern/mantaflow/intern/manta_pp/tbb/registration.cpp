@@ -67,7 +67,7 @@ extern "C" {
 		extern void PbRegister_gridParticleIndex() ;
 		extern void PbRegister_unionParticleLevelset() ;
 		extern void PbRegister_averagedParticleLevelset() ;
-		extern void PbRegister_improvedAveragedParticleLevelset() ;
+		extern void PbRegister_improvedParticleLevelset() ;
 		extern void PbRegister_pushOutofObs() ;
 		extern void PbRegister_mapPartsToMAC() ;
 		extern void PbRegister_mapPartsToGrid() ;
@@ -253,7 +253,7 @@ namespace Pb {
 		PbRegister_gridParticleIndex() ;
 		PbRegister_unionParticleLevelset() ;
 		PbRegister_averagedParticleLevelset() ;
-		PbRegister_improvedAveragedParticleLevelset() ;
+		PbRegister_improvedParticleLevelset() ;
 		PbRegister_pushOutofObs() ;
 		PbRegister_mapPartsToMAC() ;
 		PbRegister_mapPartsToGrid() ;

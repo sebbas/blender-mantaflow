@@ -117,8 +117,7 @@ Transform TextureMapping::compute_transform()
 		case NORMAL:
 			/* no translation for normals, and inverse transpose */
 			mat = rmat*smat;
-			mat = transform_inverse(mat);
-			mat = transform_transpose(mat);
+			mat = transform_transposed_inverse(mat);
 			break;
 	}
 
@@ -153,7 +152,6 @@ void TextureMapping::compile(SVMCompiler& compiler, int offset_in, int offset_ou
 	compiler.add_node(tfm.x);
 	compiler.add_node(tfm.y);
 	compiler.add_node(tfm.z);
-	compiler.add_node(tfm.w);
 
 	if(use_minmax) {
 		compiler.add_node(NODE_MIN_MAX, offset_out, offset_out);
@@ -193,9 +191,7 @@ void TextureMapping::compile_end(SVMCompiler& compiler, ShaderInput *vector_in, 
 void TextureMapping::compile(OSLCompiler &compiler)
 {
 	if(!skip()) {
-		Transform tfm = transform_transpose(compute_transform());
-
-		compiler.parameter("mapping", tfm);
+		compiler.parameter("mapping", compute_transform());
 		compiler.parameter("use_mapping", 1);
 	}
 }
@@ -302,17 +298,17 @@ void ImageTextureNode::compile(SVMCompiler& compiler)
 
 	image_manager = compiler.image_manager;
 	if(is_float == -1) {
-		bool is_float_bool;
+		ImageMetaData metadata;
 		slot = image_manager->add_image(filename.string(),
 		                                builtin_data,
 		                                animated,
 		                                0,
-		                                is_float_bool,
-		                                is_linear,
 		                                interpolation,
 		                                extension,
-		                                use_alpha);
-		is_float = (int)is_float_bool;
+		                                use_alpha,
+		                                metadata);
+		is_float = metadata.is_float;
+		is_linear = metadata.is_linear;
 	}
 
 	if(slot != -1) {
@@ -363,26 +359,22 @@ void ImageTextureNode::compile(OSLCompiler& compiler)
 
 	image_manager = compiler.image_manager;
 	if(is_float == -1) {
+		ImageMetaData metadata;
 		if(builtin_data == NULL) {
-			ImageDataType type;
-			bool builtin_free_cache;
-			type = image_manager->get_image_metadata(filename.string(), NULL, is_linear, builtin_free_cache);
-			if(type == IMAGE_DATA_TYPE_FLOAT || type == IMAGE_DATA_TYPE_FLOAT4)
-				is_float = 1;
+			image_manager->get_image_metadata(filename.string(), NULL, metadata);
 		}
 		else {
-			bool is_float_bool;
 			slot = image_manager->add_image(filename.string(),
 			                                builtin_data,
 			                                animated,
 			                                0,
-			                                is_float_bool,
-			                                is_linear,
 			                                interpolation,
 			                                extension,
-			                                use_alpha);
-			is_float = (int)is_float_bool;
+			                                use_alpha,
+			                                metadata);
 		}
+		is_float = metadata.is_float;
+		is_linear = metadata.is_linear;
 	}
 
 	if(slot == -1) {
@@ -501,17 +493,17 @@ void EnvironmentTextureNode::compile(SVMCompiler& compiler)
 
 	image_manager = compiler.image_manager;
 	if(slot == -1) {
-		bool is_float_bool;
+		ImageMetaData metadata;
 		slot = image_manager->add_image(filename.string(),
 		                                builtin_data,
 		                                animated,
 		                                0,
-		                                is_float_bool,
-		                                is_linear,
 		                                interpolation,
 		                                EXTENSION_REPEAT,
-		                                use_alpha);
-		is_float = (int)is_float_bool;
+		                                use_alpha,
+		                                metadata);
+		is_float = metadata.is_float;
+		is_linear = metadata.is_linear;
 	}
 
 	if(slot != -1) {
@@ -553,26 +545,22 @@ void EnvironmentTextureNode::compile(OSLCompiler& compiler)
 	 */
 	image_manager = compiler.image_manager;
 	if(is_float == -1) {
+		ImageMetaData metadata;
 		if(builtin_data == NULL) {
-			ImageDataType type;
-			bool builtin_free_cache;
-			type = image_manager->get_image_metadata(filename.string(), NULL, is_linear, builtin_free_cache);
-			if(type == IMAGE_DATA_TYPE_FLOAT || type == IMAGE_DATA_TYPE_FLOAT4)
-				is_float = 1;
+			image_manager->get_image_metadata(filename.string(), NULL, metadata);
 		}
 		else {
-			bool is_float_bool;
 			slot = image_manager->add_image(filename.string(),
 			                                builtin_data,
 			                                animated,
 			                                0,
-			                                is_float_bool,
-			                                is_linear,
 			                                interpolation,
 			                                EXTENSION_REPEAT,
-			                                use_alpha);
-			is_float = (int)is_float_bool;
+			                                use_alpha,
+			                                metadata);
 		}
+		is_float = metadata.is_float;
+		is_linear = metadata.is_linear;
 	}
 
 	if(slot == -1) {
@@ -1421,13 +1409,13 @@ void PointDensityTextureNode::compile(SVMCompiler& compiler)
 
 	if(use_density || use_color) {
 		if(slot == -1) {
-			bool is_float, is_linear;
+			ImageMetaData metadata;
 			slot = image_manager->add_image(filename.string(), builtin_data,
 			                                false, 0,
-			                                is_float, is_linear,
 			                                interpolation,
 			                                EXTENSION_CLIP,
-			                                true);
+			                                true,
+			                                metadata);
 		}
 
 		if(slot != -1) {
@@ -1442,7 +1430,6 @@ void PointDensityTextureNode::compile(SVMCompiler& compiler)
 				compiler.add_node(tfm.x);
 				compiler.add_node(tfm.y);
 				compiler.add_node(tfm.z);
-				compiler.add_node(tfm.w);
 			}
 		}
 		else {
@@ -1473,20 +1460,20 @@ void PointDensityTextureNode::compile(OSLCompiler& compiler)
 
 	if(use_density || use_color) {
 		if(slot == -1) {
-			bool is_float, is_linear;
+			ImageMetaData metadata;
 			slot = image_manager->add_image(filename.string(), builtin_data,
 			                                false, 0,
-			                                is_float, is_linear,
 			                                interpolation,
 			                                EXTENSION_CLIP,
-			                                true);
+			                                true,
+			                                metadata);
 		}
 
 		if(slot != -1) {
 			compiler.parameter("filename", string_printf("@%d", slot).c_str());
 		}
 		if(space == NODE_TEX_VOXEL_SPACE_WORLD) {
-			compiler.parameter("mapping", transform_transpose(tfm));
+			compiler.parameter("mapping", tfm);
 			compiler.parameter("use_mapping", 1);
 		}
 		compiler.parameter(this, "interpolation");
@@ -1566,8 +1553,7 @@ void MappingNode::compile(SVMCompiler& compiler)
 
 void MappingNode::compile(OSLCompiler& compiler)
 {
-	Transform tfm = transform_transpose(tex_mapping.compute_transform());
-	compiler.parameter("Matrix", tfm);
+	compiler.parameter("Matrix", tex_mapping.compute_transform());
 	compiler.parameter_point("mapping_min", tex_mapping.min);
 	compiler.parameter_point("mapping_max", tex_mapping.max);
 	compiler.parameter("use_minmax", tex_mapping.use_minmax);
@@ -1872,7 +1858,7 @@ NODE_DEFINE(AnisotropicBsdfNode)
 
 	SOCKET_IN_VECTOR(tangent, "Tangent", make_float3(0.0f, 0.0f, 0.0f), SocketType::LINK_TANGENT);
 
-	SOCKET_IN_FLOAT(roughness, "Roughness", 0.2f);
+	SOCKET_IN_FLOAT(roughness, "Roughness", 0.5f);
 	SOCKET_IN_FLOAT(anisotropy, "Anisotropy", 0.5f);
 	SOCKET_IN_FLOAT(rotation, "Rotation", 0.0f);
 
@@ -1932,7 +1918,7 @@ NODE_DEFINE(GlossyBsdfNode)
 	distribution_enum.insert("ashikhmin_shirley", CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID);
 	distribution_enum.insert("Multiscatter GGX", CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
 	SOCKET_ENUM(distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_GGX_ID);
-	SOCKET_IN_FLOAT(roughness, "Roughness", 0.2f);
+	SOCKET_IN_FLOAT(roughness, "Roughness", 0.5f);
 
 	SOCKET_OUT_CLOSURE(BSDF, "BSDF");
 
@@ -3228,7 +3214,6 @@ void TextureCoordinateNode::compile(SVMCompiler& compiler)
 			compiler.add_node(ob_itfm.x);
 			compiler.add_node(ob_itfm.y);
 			compiler.add_node(ob_itfm.z);
-			compiler.add_node(ob_itfm.w);
 		}
 	}
 
@@ -3267,7 +3252,7 @@ void TextureCoordinateNode::compile(OSLCompiler& compiler)
 	if(compiler.output_type() == SHADER_TYPE_VOLUME)
 		compiler.parameter("is_volume", true);
 	compiler.parameter(this, "use_transform");
-	Transform ob_itfm = transform_transpose(transform_inverse(ob_tfm));
+	Transform ob_itfm = transform_transposed_inverse(ob_tfm);
 	compiler.parameter("object_itfm", ob_itfm);
 
 	compiler.parameter(this, "from_dupli");
@@ -4616,7 +4601,7 @@ void AttributeNode::compile(SVMCompiler& compiler)
 	ShaderOutput *vector_out = output("Vector");
 	ShaderOutput *fac_out = output("Fac");
 	ShaderNodeType attr_node = NODE_ATTR;
-	int attr = compiler.attribute_standard(attribute);;
+	int attr = compiler.attribute_standard(attribute);
 
 	if(bump == SHADER_BUMP_DX)
 		attr_node = NODE_ATTR_BUMP_DX;
@@ -5800,6 +5785,15 @@ DisplacementNode::DisplacementNode()
 {
 }
 
+void DisplacementNode::constant_fold(const ConstantFolder& folder)
+{
+	if(folder.all_inputs_constant()) {
+		if((height - midlevel == 0.0f) || (scale == 0.0f)) {
+			folder.make_zero();
+		}
+	}
+}
+
 void DisplacementNode::compile(SVMCompiler& compiler)
 {
 	ShaderInput *height_in = input("Height");
@@ -5849,6 +5843,16 @@ NODE_DEFINE(VectorDisplacementNode)
 VectorDisplacementNode::VectorDisplacementNode()
 : ShaderNode(node_type)
 {
+}
+
+void VectorDisplacementNode::constant_fold(const ConstantFolder& folder)
+{
+	if(folder.all_inputs_constant()) {
+		if((vector == make_float3(0.0f, 0.0f, 0.0f) && midlevel == 0.0f) ||
+		   (scale == 0.0f)) {
+			folder.make_zero();
+		}
+	}
 }
 
 void VectorDisplacementNode::attributes(Shader *shader, AttributeRequestSet *attributes)

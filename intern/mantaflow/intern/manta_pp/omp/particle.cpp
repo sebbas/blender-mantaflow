@@ -253,8 +253,7 @@ void BasicParticleSystem::readParticles(BasicParticleSystem* from) {
 		(*this)[i].pos  = (*from)[i].pos;
 		(*this)[i].flag = (*from)[i].flag;
 	}
-	Vec3i gridSize = from->getParent()->getGridSize();
-	this->transformPositions( Vec3i(gridSize.x,gridSize.y,gridSize.z), this->size() );
+	this->transformPositions( from->getParent()->getGridSize(), this->getParent()->getGridSize() );
 }
 
 
@@ -396,7 +395,7 @@ template <class T>  struct knSetPdataConst : public KernelBase { knSetPdataConst
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,pdata,value);  }   } ParticleDataImpl<T>& pdata; T value;   };
-#line 382 "particle.cpp"
+#line 381 "particle.cpp"
 
 
 
@@ -405,7 +404,7 @@ template <class T, class S>  struct knPdataSet : public KernelBase { knPdataSet(
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } ParticleDataImpl<T>& me; const ParticleDataImpl<S>& other;   };
-#line 384 "particle.cpp"
+#line 383 "particle.cpp"
 
 
 template <class T, class S>  struct knPdataAdd : public KernelBase { knPdataAdd(ParticleDataImpl<T>& me, const ParticleDataImpl<S>& other) :  KernelBase(me.size()) ,me(me),other(other)   { runMessage(); run(); }   inline void op(IndexInt idx, ParticleDataImpl<T>& me, const ParticleDataImpl<S>& other )  { me[idx] += other[idx]; }    inline ParticleDataImpl<T>& getArg0() { return me; } typedef ParticleDataImpl<T> type0;inline const ParticleDataImpl<S>& getArg1() { return other; } typedef ParticleDataImpl<S> type1; void runMessage() { debMsg("Executing kernel knPdataAdd ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -413,7 +412,7 @@ template <class T, class S>  struct knPdataAdd : public KernelBase { knPdataAdd(
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } ParticleDataImpl<T>& me; const ParticleDataImpl<S>& other;   };
-#line 385 "particle.cpp"
+#line 384 "particle.cpp"
 
 
 template <class T, class S>  struct knPdataSub : public KernelBase { knPdataSub(ParticleDataImpl<T>& me, const ParticleDataImpl<S>& other) :  KernelBase(me.size()) ,me(me),other(other)   { runMessage(); run(); }   inline void op(IndexInt idx, ParticleDataImpl<T>& me, const ParticleDataImpl<S>& other )  { me[idx] -= other[idx]; }    inline ParticleDataImpl<T>& getArg0() { return me; } typedef ParticleDataImpl<T> type0;inline const ParticleDataImpl<S>& getArg1() { return other; } typedef ParticleDataImpl<S> type1; void runMessage() { debMsg("Executing kernel knPdataSub ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -421,7 +420,7 @@ template <class T, class S>  struct knPdataSub : public KernelBase { knPdataSub(
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } ParticleDataImpl<T>& me; const ParticleDataImpl<S>& other;   };
-#line 386 "particle.cpp"
+#line 385 "particle.cpp"
 
 
 template <class T, class S>  struct knPdataMult : public KernelBase { knPdataMult(ParticleDataImpl<T>& me, const ParticleDataImpl<S>& other) :  KernelBase(me.size()) ,me(me),other(other)   { runMessage(); run(); }   inline void op(IndexInt idx, ParticleDataImpl<T>& me, const ParticleDataImpl<S>& other )  { me[idx] *= other[idx]; }    inline ParticleDataImpl<T>& getArg0() { return me; } typedef ParticleDataImpl<T> type0;inline const ParticleDataImpl<S>& getArg1() { return other; } typedef ParticleDataImpl<S> type1; void runMessage() { debMsg("Executing kernel knPdataMult ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -429,7 +428,7 @@ template <class T, class S>  struct knPdataMult : public KernelBase { knPdataMul
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } ParticleDataImpl<T>& me; const ParticleDataImpl<S>& other;   };
-#line 387 "particle.cpp"
+#line 386 "particle.cpp"
 
 
 template <class T, class S>  struct knPdataDiv : public KernelBase { knPdataDiv(ParticleDataImpl<T>& me, const ParticleDataImpl<S>& other) :  KernelBase(me.size()) ,me(me),other(other)   { runMessage(); run(); }   inline void op(IndexInt idx, ParticleDataImpl<T>& me, const ParticleDataImpl<S>& other )  { me[idx] /= other[idx]; }    inline ParticleDataImpl<T>& getArg0() { return me; } typedef ParticleDataImpl<T> type0;inline const ParticleDataImpl<S>& getArg1() { return other; } typedef ParticleDataImpl<S> type1; void runMessage() { debMsg("Executing kernel knPdataDiv ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -437,7 +436,7 @@ template <class T, class S>  struct knPdataDiv : public KernelBase { knPdataDiv(
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } ParticleDataImpl<T>& me; const ParticleDataImpl<S>& other;   };
-#line 388 "particle.cpp"
+#line 387 "particle.cpp"
 
 
 
@@ -446,7 +445,7 @@ template <class T, class S>  struct knPdataSetScalar : public KernelBase { knPda
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } ParticleDataImpl<T>& me; const S& other;   };
-#line 390 "particle.cpp"
+#line 389 "particle.cpp"
 
 
 template <class T, class S>  struct knPdataAddScalar : public KernelBase { knPdataAddScalar(ParticleDataImpl<T>& me, const S& other) :  KernelBase(me.size()) ,me(me),other(other)   { runMessage(); run(); }   inline void op(IndexInt idx, ParticleDataImpl<T>& me, const S& other )  { me[idx] += other; }    inline ParticleDataImpl<T>& getArg0() { return me; } typedef ParticleDataImpl<T> type0;inline const S& getArg1() { return other; } typedef S type1; void runMessage() { debMsg("Executing kernel knPdataAddScalar ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -454,7 +453,7 @@ template <class T, class S>  struct knPdataAddScalar : public KernelBase { knPda
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } ParticleDataImpl<T>& me; const S& other;   };
-#line 391 "particle.cpp"
+#line 390 "particle.cpp"
 
 
 template <class T, class S>  struct knPdataMultScalar : public KernelBase { knPdataMultScalar(ParticleDataImpl<T>& me, const S& other) :  KernelBase(me.size()) ,me(me),other(other)   { runMessage(); run(); }   inline void op(IndexInt idx, ParticleDataImpl<T>& me, const S& other )  { me[idx] *= other; }    inline ParticleDataImpl<T>& getArg0() { return me; } typedef ParticleDataImpl<T> type0;inline const S& getArg1() { return other; } typedef S type1; void runMessage() { debMsg("Executing kernel knPdataMultScalar ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -462,7 +461,7 @@ template <class T, class S>  struct knPdataMultScalar : public KernelBase { knPd
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } ParticleDataImpl<T>& me; const S& other;   };
-#line 392 "particle.cpp"
+#line 391 "particle.cpp"
 
 
 template <class T, class S>  struct knPdataScaledAdd : public KernelBase { knPdataScaledAdd(ParticleDataImpl<T>& me, const ParticleDataImpl<T>& other, const S& factor) :  KernelBase(me.size()) ,me(me),other(other),factor(factor)   { runMessage(); run(); }   inline void op(IndexInt idx, ParticleDataImpl<T>& me, const ParticleDataImpl<T>& other, const S& factor )  { me[idx] += factor * other[idx]; }    inline ParticleDataImpl<T>& getArg0() { return me; } typedef ParticleDataImpl<T> type0;inline const ParticleDataImpl<T>& getArg1() { return other; } typedef ParticleDataImpl<T> type1;inline const S& getArg2() { return factor; } typedef S type2; void runMessage() { debMsg("Executing kernel knPdataScaledAdd ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -470,7 +469,7 @@ template <class T, class S>  struct knPdataScaledAdd : public KernelBase { knPda
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other,factor);  }   } ParticleDataImpl<T>& me; const ParticleDataImpl<T>& other; const S& factor;   };
-#line 393 "particle.cpp"
+#line 392 "particle.cpp"
 
 
 
@@ -479,7 +478,7 @@ template <class T>  struct knPdataSafeDiv : public KernelBase { knPdataSafeDiv(P
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } ParticleDataImpl<T>& me; const ParticleDataImpl<T>& other;   };
-#line 395 "particle.cpp"
+#line 394 "particle.cpp"
 
 
 template <class T>  struct knPdataSetConst : public KernelBase { knPdataSetConst(ParticleDataImpl<T>& pdata, T value) :  KernelBase(pdata.size()) ,pdata(pdata),value(value)   { runMessage(); run(); }   inline void op(IndexInt idx, ParticleDataImpl<T>& pdata, T value )  { pdata[idx] = value; }    inline ParticleDataImpl<T>& getArg0() { return pdata; } typedef ParticleDataImpl<T> type0;inline T& getArg1() { return value; } typedef T type1; void runMessage() { debMsg("Executing kernel knPdataSetConst ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -487,7 +486,7 @@ template <class T>  struct knPdataSetConst : public KernelBase { knPdataSetConst
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,pdata,value);  }   } ParticleDataImpl<T>& pdata; T value;   };
-#line 396 "particle.cpp"
+#line 395 "particle.cpp"
 
 
 
@@ -496,7 +495,7 @@ template <class T>  struct knPdataClamp : public KernelBase { knPdataClamp(Parti
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,min,max);  }   } ParticleDataImpl<T>& me; T min; T max;   };
-#line 398 "particle.cpp"
+#line 397 "particle.cpp"
 
 
 template <class T>  struct knPdataClampMin : public KernelBase { knPdataClampMin(ParticleDataImpl<T>& me, const T vmin) :  KernelBase(me.size()) ,me(me),vmin(vmin)   { runMessage(); run(); }   inline void op(IndexInt idx, ParticleDataImpl<T>& me, const T vmin )  { me[idx] = std::max(vmin, me[idx]); }    inline ParticleDataImpl<T>& getArg0() { return me; } typedef ParticleDataImpl<T> type0;inline const T& getArg1() { return vmin; } typedef T type1; void runMessage() { debMsg("Executing kernel knPdataClampMin ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -504,7 +503,7 @@ template <class T>  struct knPdataClampMin : public KernelBase { knPdataClampMin
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,vmin);  }   } ParticleDataImpl<T>& me; const T vmin;   };
-#line 399 "particle.cpp"
+#line 398 "particle.cpp"
 
 
 template <class T>  struct knPdataClampMax : public KernelBase { knPdataClampMax(ParticleDataImpl<T>& me, const T vmax) :  KernelBase(me.size()) ,me(me),vmax(vmax)   { runMessage(); run(); }   inline void op(IndexInt idx, ParticleDataImpl<T>& me, const T vmax )  { me[idx] = std::min(vmax, me[idx]); }    inline ParticleDataImpl<T>& getArg0() { return me; } typedef ParticleDataImpl<T> type0;inline const T& getArg1() { return vmax; } typedef T type1; void runMessage() { debMsg("Executing kernel knPdataClampMax ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -512,7 +511,7 @@ template <class T>  struct knPdataClampMax : public KernelBase { knPdataClampMax
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,vmax);  }   } ParticleDataImpl<T>& me; const T vmax;   };
-#line 400 "particle.cpp"
+#line 399 "particle.cpp"
 
 
  struct knPdataClampMinVec3 : public KernelBase { knPdataClampMinVec3(ParticleDataImpl<Vec3>& me, const Real vmin) :  KernelBase(me.size()) ,me(me),vmin(vmin)   { runMessage(); run(); }   inline void op(IndexInt idx, ParticleDataImpl<Vec3>& me, const Real vmin )  {
@@ -524,7 +523,7 @@ template <class T>  struct knPdataClampMax : public KernelBase { knPdataClampMax
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,vmin);  }   } ParticleDataImpl<Vec3>& me; const Real vmin;   };
-#line 401 "particle.cpp"
+#line 400 "particle.cpp"
 
 
  struct knPdataClampMaxVec3 : public KernelBase { knPdataClampMaxVec3(ParticleDataImpl<Vec3>& me, const Real vmax) :  KernelBase(me.size()) ,me(me),vmax(vmax)   { runMessage(); run(); }   inline void op(IndexInt idx, ParticleDataImpl<Vec3>& me, const Real vmax )  {
@@ -536,7 +535,7 @@ template <class T>  struct knPdataClampMax : public KernelBase { knPdataClampMax
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,vmax);  }   } ParticleDataImpl<Vec3>& me; const Real vmax;   };
-#line 406 "particle.cpp"
+#line 405 "particle.cpp"
 
 
 
@@ -568,7 +567,7 @@ template <class T, class S>  struct knPdataSetScalarIntFlag : public KernelBase 
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,me,other,t,itype);  }   } ParticleDataImpl<T>& me; const S& other; const ParticleDataImpl<int>& t; const int itype;   };
-#line 433 "particle.cpp"
+#line 432 "particle.cpp"
 
  
 template<typename T>
@@ -641,7 +640,7 @@ template<typename T>  struct KnPtsSum : public KernelBase { KnPtsSum(const Parti
   for (IndexInt i = 0; i < _sz; i++) op(i,val,t,itype,result); 
 #pragma omp critical
 {this->result += result; } }   } const ParticleDataImpl<T>& val; const ParticleDataImpl<int> * t; const int itype;  T result;  };
-#line 499 "particle.cpp"
+#line 498 "particle.cpp"
 
 
 template<typename T>  struct KnPtsSumSquare : public KernelBase { KnPtsSumSquare(const ParticleDataImpl<T>& val) :  KernelBase(val.size()) ,val(val) ,result(0.)  { runMessage(); run(); }   inline void op(IndexInt idx, const ParticleDataImpl<T>& val ,Real& result)  { result += normSquare(val[idx]); }    inline operator Real () { return result; } inline Real  & getRet() { return result; }  inline const ParticleDataImpl<T>& getArg0() { return val; } typedef ParticleDataImpl<T> type0; void runMessage() { debMsg("Executing kernel KnPtsSumSquare ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -651,7 +650,7 @@ template<typename T>  struct KnPtsSumSquare : public KernelBase { KnPtsSumSquare
   for (IndexInt i = 0; i < _sz; i++) op(i,val,result); 
 #pragma omp critical
 {this->result += result; } }   } const ParticleDataImpl<T>& val;  Real result;  };
-#line 500 "particle.cpp"
+#line 499 "particle.cpp"
 
 
 template<typename T>  struct KnPtsSumMagnitude : public KernelBase { KnPtsSumMagnitude(const ParticleDataImpl<T>& val) :  KernelBase(val.size()) ,val(val) ,result(0.)  { runMessage(); run(); }   inline void op(IndexInt idx, const ParticleDataImpl<T>& val ,Real& result)  { result += norm(val[idx]); }    inline operator Real () { return result; } inline Real  & getRet() { return result; }  inline const ParticleDataImpl<T>& getArg0() { return val; } typedef ParticleDataImpl<T> type0; void runMessage() { debMsg("Executing kernel KnPtsSumMagnitude ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
@@ -661,7 +660,7 @@ template<typename T>  struct KnPtsSumMagnitude : public KernelBase { KnPtsSumMag
   for (IndexInt i = 0; i < _sz; i++) op(i,val,result); 
 #pragma omp critical
 {this->result += result; } }   } const ParticleDataImpl<T>& val;  Real result;  };
-#line 501 "particle.cpp"
+#line 500 "particle.cpp"
 
 
 
@@ -690,7 +689,7 @@ template<typename T>
   for (IndexInt i = 0; i < _sz; i++) op(i,val,minVal); 
 #pragma omp critical
 {this->minVal = min(minVal, this->minVal); } }   } const ParticleDataImpl<T>& val;  Real minVal;  };
-#line 518 "particle.cpp"
+#line 517 "particle.cpp"
 
 
 
@@ -706,7 +705,7 @@ template<typename T>
   for (IndexInt i = 0; i < _sz; i++) op(i,val,maxVal); 
 #pragma omp critical
 {this->maxVal = max(maxVal, this->maxVal); } }   } const ParticleDataImpl<T>& val;  Real maxVal;  };
-#line 525 "particle.cpp"
+#line 524 "particle.cpp"
 
 
 
@@ -763,7 +762,7 @@ template<class T> std::string ParticleDataImpl<T>::getDataPointer() {
   for (IndexInt i = 0; i < _sz; i++) op(i,val,minVal); 
 #pragma omp critical
 {this->minVal = min(minVal, this->minVal); } }   } const ParticleDataImpl<Vec3>& val;  Real minVal;  };
-#line 572 "particle.cpp"
+#line 571 "particle.cpp"
 
 
 
@@ -779,7 +778,7 @@ template<class T> std::string ParticleDataImpl<T>::getDataPointer() {
   for (IndexInt i = 0; i < _sz; i++) op(i,val,maxVal); 
 #pragma omp critical
 {this->maxVal = max(maxVal, this->maxVal); } }   } const ParticleDataImpl<Vec3>& val;  Real maxVal;  };
-#line 579 "particle.cpp"
+#line 578 "particle.cpp"
 
 
 

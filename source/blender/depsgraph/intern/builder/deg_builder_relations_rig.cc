@@ -51,6 +51,7 @@ extern "C" {
 
 #include "BKE_action.h"
 #include "BKE_armature.h"
+#include "BKE_constraint.h"
 } /* extern "C" */
 
 #include "DEG_depsgraph.h"
@@ -315,11 +316,13 @@ void DepsgraphRelationBuilder::build_rig(Object *object)
 	add_relation(init_ik_key, flush_key, "Pose Init IK -> Pose Cleanup");
 
 	/* Make sure pose is up-to-date with armature updates. */
-	OperationKey armature_key(&arm->id,
-	                          DEG_NODE_TYPE_PARAMETERS,
-	                          DEG_OPCODE_PLACEHOLDER,
-	                          "Armature Eval");
-	add_relation(armature_key, init_key, "Data dependency");
+	if (!built_map_.checkIsBuiltAndTag(arm)) {
+		OperationKey armature_key(&arm->id,
+		                          DEG_NODE_TYPE_PARAMETERS,
+		                          DEG_OPCODE_PLACEHOLDER,
+		                          "Armature Eval");
+		add_relation(armature_key, init_key, "Data dependency");
+	}
 
 	/* IK Solvers...
 	 * - These require separate processing steps are pose-level
@@ -411,6 +414,11 @@ void DepsgraphRelationBuilder::build_rig(Object *object)
 
 		/* constraints */
 		if (pchan->constraints.first != NULL) {
+			/* Build relations for indirectly linked objects. */
+			BuilderWalkUserData data;
+			data.builder = this;
+			BKE_constraints_id_loop(&pchan->constraints, constraint_walk, &data);
+
 			/* constraints stack and constraint dependencies */
 			build_constraints(&object->id, DEG_NODE_TYPE_BONE, pchan->name, &pchan->constraints, &root_map);
 
@@ -436,6 +444,11 @@ void DepsgraphRelationBuilder::build_rig(Object *object)
 
 		/* assume that all bones must be done for the pose to be ready (for deformers) */
 		add_relation(bone_done_key, flush_key, "PoseEval Result-Bone Link");
+
+		/* Custom shape. */
+		if (pchan->custom != NULL) {
+			build_object(pchan->custom);
+		}
 	}
 }
 

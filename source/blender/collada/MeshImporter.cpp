@@ -552,7 +552,7 @@ void MeshImporter::mesh_add_edges(Mesh *mesh, int len)
 {
 	CustomData edata;
 	MEdge *medge;
-	int i, totedge;
+	int totedge;
 
 	if (len == 0)
 		return;
@@ -572,7 +572,7 @@ void MeshImporter::mesh_add_edges(Mesh *mesh, int len)
 
 	/* set default flags */
 	medge = &mesh->medge[mesh->totedge];
-	for (i = 0; i < len; i++, medge++)
+	for (int i = 0; i < len; i++, medge++)
 		medge->flag = ME_EDGEDRAW | ME_EDGERENDER | SELECT;
 
 	mesh->totedge = totedge;
@@ -606,12 +606,12 @@ void MeshImporter::read_lines(COLLADAFW::Mesh *mesh, Mesh *me)
 				unsigned int edge_count  = mp->getFaceCount();
 				unsigned int *indices    = mp->getPositionIndices().getData();
 				
-				for (int i = 0; i < edge_count; i++, med++) {
+				for (int j = 0; j < edge_count; j++, med++) {
 					med->bweight = 0;
 					med->crease  = 0;
 					med->flag   |= ME_LOOSEEDGE;
-					med->v1      = indices[2 * i];
-					med->v2      = indices[2 * i + 1];
+					med->v1      = indices[2 * j];
+					med->v2      = indices[2 * j + 1];
 				}
 			}
 		}
@@ -703,8 +703,9 @@ void MeshImporter::read_polys(COLLADAFW::Mesh *collada_mesh, Mesh *me)
 		}
 
 		if (collada_meshtype == COLLADAFW::MeshPrimitive::POLYLIST ||
-			collada_meshtype == COLLADAFW::MeshPrimitive::POLYGONS ||
-			collada_meshtype == COLLADAFW::MeshPrimitive::TRIANGLES) {
+		    collada_meshtype == COLLADAFW::MeshPrimitive::POLYGONS ||
+		    collada_meshtype == COLLADAFW::MeshPrimitive::TRIANGLES)
+		{
 			COLLADAFW::Polygons *mpvc = (COLLADAFW::Polygons *)mp;
 			unsigned int start_index = 0;
 
@@ -1092,7 +1093,8 @@ MTFace *MeshImporter::assign_material_to_geom(COLLADAFW::MaterialBinding cmateri
 	// set texture face
 	if (color_texture &&
 	    strlen((color_texture)->uvname) &&
-	    !STREQ(layername, color_texture->uvname)) {
+	    !STREQ(layername, color_texture->uvname))
+	{
 		texture_face = (MTFace *)CustomData_get_layer_named(&me->fdata, CD_MTFACE,
 		                                                    color_texture->uvname);
 		strcpy(layername, color_texture->uvname);

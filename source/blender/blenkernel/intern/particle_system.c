@@ -76,7 +76,6 @@
 #include "BKE_effect.h"
 #include "BKE_library_query.h"
 #include "BKE_particle.h"
-#include "BKE_global.h"
 
 #include "BKE_DerivedMesh.h"
 #include "BKE_object.h"
@@ -93,6 +92,7 @@
 #include "PIL_time.h"
 
 #include "RE_shader_ext.h"
+#include "DEG_depsgraph.h"
 
 /* fluid sim particle import */
 #ifdef WITH_MOD_FLUID
@@ -542,13 +542,15 @@ static void initialize_particle_texture(ParticleSimulationData *sim, ParticleDat
 	
 	switch (part->type) {
 	case PART_EMITTER:
-		if (ptex.exist < psys_frand(psys, p+125))
+		if (ptex.exist < psys_frand(psys, p + 125)) {
 			pa->flag |= PARS_UNEXIST;
+		}
 		pa->time = part->sta + (part->end - part->sta)*ptex.time;
 		break;
 	case PART_HAIR:
-		if (ptex.exist < psys_frand(psys, p+125))
+		if (ptex.exist < psys_frand(psys, p + 125)) {
 			pa->flag |= PARS_UNEXIST;
+		}
 		pa->time = 0.f;
 		break;
 	case PART_FLUID:
@@ -1075,8 +1077,10 @@ void reset_particle(ParticleSimulationData *sim, ParticleData *pa, float dtime, 
 
 	pa->dietime = pa->time + pa->lifetime;
 
-	if (sim->psys->pointcache && sim->psys->pointcache->flag & PTCACHE_BAKED &&
-		sim->psys->pointcache->mem_cache.first) {
+	if ((sim->psys->pointcache) &&
+	    (sim->psys->pointcache->flag & PTCACHE_BAKED) &&
+	    (sim->psys->pointcache->mem_cache.first))
+	{
 		float dietime = psys_get_dietime_from_cache(sim->psys->pointcache, p);
 		pa->dietime = MIN2(pa->dietime, dietime);
 	}
@@ -3700,11 +3704,11 @@ static void dynamics_step(ParticleSimulationData *sim, float cfra)
 				/* Note that we could avoid copying sphdata for each thread here (it's only read here),
 				 * but doubt this would gain us anything except confusion... */
 				{
-				ParallelRangeSettings settings;
-				BLI_parallel_range_settings_defaults(&settings);
-				settings.use_threading = (psys->totpart > 100);
-				settings.userdata_chunk = &sphdata;
-				settings.userdata_chunk_size = sizeof(sphdata);
+					ParallelRangeSettings settings;
+					BLI_parallel_range_settings_defaults(&settings);
+					settings.use_threading = (psys->totpart > 100);
+					settings.userdata_chunk = &sphdata;
+					settings.userdata_chunk_size = sizeof(sphdata);
 					BLI_task_parallel_range(
 					        0, psys->totpart,
 					        &task_data,
@@ -3714,11 +3718,11 @@ static void dynamics_step(ParticleSimulationData *sim, float cfra)
 
 				/* do global forces & effectors */
 				{
-				ParallelRangeSettings settings;
-				BLI_parallel_range_settings_defaults(&settings);
-				settings.use_threading = (psys->totpart > 100);
-				settings.userdata_chunk = &sphdata;
-				settings.userdata_chunk_size = sizeof(sphdata);
+					ParallelRangeSettings settings;
+					BLI_parallel_range_settings_defaults(&settings);
+					settings.use_threading = (psys->totpart > 100);
+					settings.userdata_chunk = &sphdata;
+					settings.userdata_chunk_size = sizeof(sphdata);
 					BLI_task_parallel_range(
 					        0, psys->totpart,
 					        &task_data,
@@ -3838,6 +3842,7 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 			int flagActivePart, activeParts = 0;
 			float posX, posY, posZ, velX, velY, velZ;
 			float resX, resY, resZ;
+			int upres[3] = {1};
 			char debugStrBuffer[256];
 
 			// Helper for scaling
@@ -3900,10 +3905,34 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 
 				if (part->type == PART_MANTA_FLIP) {
 					flagActivePart = liquid_get_flip_particle_flag_at(sds->fluid, p);
+
+//					// Upres FLIP have custom (upscaled) res values
+					// TODO (sebbas): Future option might load highres FLIP particle system
+//					if (sds->flags & MOD_SMOKE_MESH) {
+//						resX = (float) fluid_get_mesh_res_x(sds->fluid);
+//						resY = (float) fluid_get_mesh_res_y(sds->fluid);
+//						resZ = (float) fluid_get_mesh_res_z(sds->fluid);
+//
+//						upres[0] = upres[1] = upres[2] = fluid_get_mesh_upres(sds->fluid);
+//					}
+//					else
+					{
+						resX = (float) fluid_get_res_x(sds->fluid);
+						resY = (float) fluid_get_res_y(sds->fluid);
+						resZ = (float) fluid_get_res_z(sds->fluid);
+
+						upres[0] = upres[1] = upres[2] = 1;
+					}
 				}
 				else if (part->type == PART_MANTA_SPRAY || part->type == PART_MANTA_BUBBLE || part->type == PART_MANTA_FOAM || part->type == PART_MANTA_TRACER
 					|| part->type == PART_MANTA_SPRAY_FOAM || part->type == PART_MANTA_SPRAY_BUBBLE || part->type == PART_MANTA_FOAM_BUBBLE || part->type == PART_MANTA_SPRAY_FOAM_BUBBLE) {
 					flagActivePart = liquid_get_snd_particle_flag_at(sds->fluid, p);
+
+					resX = (float) fluid_get_particle_res_x(sds->fluid);
+					resY = (float) fluid_get_particle_res_y(sds->fluid);
+					resZ = (float) fluid_get_particle_res_z(sds->fluid);
+
+					upres[0] = upres[1] = upres[2] = fluid_get_particle_upres(sds->fluid);
 				}
 				else {
 					BLI_snprintf(debugStrBuffer, sizeof(debugStrBuffer), "particles_manta_step::error - unknown particle system type\n");
@@ -3922,10 +3951,6 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 				if ((part->type == PART_MANTA_SPRAY_FOAM_BUBBLE) && (flagActivePart & PSPRAY)==0 && (flagActivePart & PFOAM)==0 && (flagActivePart & PBUBBLE)==0) continue;
 
 				//printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
-
-				resX = (float) fluid_get_res_x(sds->fluid);
-				resY = (float) fluid_get_res_y(sds->fluid);
-				resZ = (float) fluid_get_res_z(sds->fluid);
 
 				if (part->type == PART_MANTA_FLIP) {
 					posX = liquid_get_flip_particle_position_x_at(sds->fluid, p);
@@ -3953,7 +3978,7 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 					pa->size = part->size;
 					if (part->randsize > 0.0f)
 						pa->size *= 1.0f - part->randsize * psys_frand(psys, p + 1);
-					
+
 					// Get size (dimension) but considering scaling scaling
 					copy_v3_v3(cell_size_scaled, sds->cell_size);
 					mul_v3_v3(cell_size_scaled, ob->size);
@@ -3962,7 +3987,8 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 					sub_v3_v3v3(size, max, min);
 
 					// Biggest dimension will be used for upscaling
-					max_size = MAX3(size[0], size[1], size[2]);
+					max_size = MAX3(size[0] / (float) upres[0], size[1] / (float) upres[1], size[2] / (float) upres[2]);
+//					max_size = MAX3(size[0], size[1], size[2]);
 
 					// set particle position
 					pa->state.co[0] = posX;
@@ -3976,9 +4002,9 @@ static void particles_manta_step(ParticleSimulationData *sim, int UNUSED(cfra), 
 					mul_v3_fl(pa->state.co, sds->dx);
 
 					// match domain dimension / size
-					pa->state.co[0] *= max_size / fabsf(ob->size[0]);;
-					pa->state.co[1] *= max_size / fabsf(ob->size[1]);;
-					pa->state.co[2] *= max_size / fabsf(ob->size[2]);;
+					pa->state.co[0] *= max_size / fabsf(ob->size[0]);
+					pa->state.co[1] *= max_size / fabsf(ob->size[1]);
+					pa->state.co[2] *= max_size / fabsf(ob->size[2]);
 
 					// match domain scale
 					mul_m4_v3(ob->obmat, pa->state.co);
@@ -4641,8 +4667,6 @@ void BKE_particle_system_eval_init(EvaluationContext *UNUSED(eval_ctx),
                                    Scene *scene,
                                    Object *ob)
 {
-	if (G.debug & G_DEBUG_DEPSGRAPH_EVAL) {
-		printf("%s on %s\n", __func__, ob->id.name);
-	}
+	DEG_debug_print_eval(__func__, ob->id.name, ob);
 	BKE_ptcache_object_reset(scene, ob, PTCACHE_RESET_DEPSGRAPH);
 }

@@ -44,6 +44,10 @@ public:
 	typedef struct pData { float pos[3]; int flag; } pData;
 	typedef struct pVel { float pos[3]; } pVel;
 
+	// Mirroring Mantaflow structures for meshes
+	typedef struct Node { int flags; float pos[3], normal[3]; } Node;
+	typedef struct Triangle { int c[3]; int flags; } Triangle;
+
 	// Manta step, handling everything
 	void step(struct SmokeModifierData *smd, int startFrame);
 	
@@ -54,29 +58,37 @@ public:
 	void initFireHigh(struct SmokeModifierData *smd);
 	void initColorsHigh(struct SmokeModifierData *smd);
 	void initLiquid(SmokeModifierData *smd);
-	void initLiquidHigh(SmokeModifierData *smd);
+	void initLiquidMesh(SmokeModifierData *smd);
 	void initObstacle(SmokeModifierData *smd);
 	void initGuiding(SmokeModifierData *smd);
 	void initInVelocity(SmokeModifierData *smd);
 	void initSndParts(SmokeModifierData *smd);
+	void initLiquidSndParts(SmokeModifierData *smd);
 
-	// Pointer transfer Mantaflow -> Blender
+	// Pointer transfer: Mantaflow -> Blender
 	void updatePointers();
 	void updatePointersHigh();
 
-	// Bake
-	int readCacheLow(SmokeModifierData *smd, int framenr);
-	int readCacheHigh(SmokeModifierData *smd, int framenr);
-	int writeCacheLow(SmokeModifierData *smd, int framenr);
-//	int writeCacheHigh(SmokeModifierData *smd, int framenr);
-	int bakeGeometryLow(SmokeModifierData *smd, int framenr);
-//	int bakeGeometryHigh(SmokeModifierData *smd, int framenr);
-	int bakeDataLow(SmokeModifierData *smd, int framenr);
-	int bakeDataHigh(SmokeModifierData *smd, int framenr);
-	int bakeMeshLow(SmokeModifierData *smd, int framenr);
-	int bakeMeshHigh(SmokeModifierData *smd, int framenr);
-	int bakeParticlesLow(SmokeModifierData *smd, int framenr);
-	int bakeParticlesHigh(SmokeModifierData *smd, int framenr);
+	// Write cache
+	int writeData(SmokeModifierData *smd, int framenr);
+	// write call for noise, mesh and particles were left in bake calls for now
+
+	// Read cache (via Manta save/load)
+	int readData(SmokeModifierData *smd, int framenr);
+	int readNoise(SmokeModifierData *smd, int framenr);
+	int readMesh(SmokeModifierData *smd, int framenr);
+	int readParticles(SmokeModifierData *smd, int framenr);
+
+	// Read cache (via file read functions in FLUID - e.g. read .bobj.gz meshes, .uni particles)
+	int updateMeshStructures(SmokeModifierData *smd, int framenr);
+	int updateFlipStructures(SmokeModifierData *smd, int framenr);
+	int updateParticleStructures(SmokeModifierData *smd, int framenr);
+
+	// Bake cache
+	int bakeData(SmokeModifierData *smd, int framenr);
+	int bakeNoise(SmokeModifierData *smd, int framenr);
+	int bakeMesh(SmokeModifierData *smd, int framenr);
+	int bakeParticles(SmokeModifierData *smd, int framenr);
 	void updateVariablesLow(SmokeModifierData *smd);
 	void updateVariablesHigh(SmokeModifierData *smd);
 
@@ -97,34 +109,30 @@ public:
 	void saveSmokeDataHigh(char *pathname);
 
 	// Write files for liquids
-	void saveMesh(char *filename, int framenr);
-	void saveMeshHigh(char *filename);
 	void saveLiquidData(char *pathname);
 	void saveLiquidDataHigh(char *pathname);
-
-	// Write files for particles
-	void saveParticles(char* filename);
-	void saveParticleVelocities(char* filename);
-
-	// Load files for liquids
-	void loadLiquidData(char *pathname);
-	void loadLiquidDataHigh(char *pathname);
 
 	// Smoke getters
 	inline size_t getTotalCells() { return mTotalCells; }
 	inline size_t getTotalCellsHigh() { return mTotalCellsHigh; }
-	inline bool usingHighRes() { return mUsingHighRes; }
+	inline bool usingNoise() { return mUsingNoise; }
 	inline int getResX() { return mResX; }
 	inline int getResY() { return mResY; }
 	inline int getResZ() { return mResZ; }
-	inline int getResXHigh() { return mResXHigh; }
-	inline int getResYHigh() { return mResYHigh; }
-	inline int getResZHigh() { return mResZHigh; }
+	inline int getParticleResX() { return mResXParticle; }
+	inline int getParticleResY() { return mResYParticle; }
+	inline int getParticleResZ() { return mResZParticle; }
+	inline int getMeshResX() { return mResXMesh; }
+	inline int getMeshResY() { return mResYMesh; }
+	inline int getMeshResZ() { return mResZMesh; }
+	inline int getResXHigh() { return mResXNoise; }
+	inline int getResYHigh() { return mResYNoise; }
+	inline int getResZHigh() { return mResZNoise; }
+	inline int getMeshUpres() { return mUpresMesh; }
+	inline int getParticleUpres() { return mUpresParticle; }
 	
 	inline float* getDensity() { return mDensity; }
-	inline float* getDensityIn() { return mDensityIn; }
 	inline float* getHeat() { return mHeat; }
-	inline float* getHeatIn() { return mHeatIn; }
 	inline float* getVelocityX() { return mVelocityX; }
 	inline float* getVelocityY() { return mVelocityY; }
 	inline float* getVelocityZ() { return mVelocityZ; }
@@ -145,14 +153,10 @@ public:
 	inline int* getNumGuide()    { return mNumGuide; }
 	inline float* getFlame() { return mFlame; }
 	inline float* getFuel()  { return mFuel; }
-	inline float* getFuelIn()  { return mFuelIn; }
 	inline float* getReact() { return mReact; }
 	inline float* getColorR() { return mColorR; }
 	inline float* getColorG() { return mColorG; }
 	inline float* getColorB() { return mColorB; }
-	inline float* getColorRIn() { return mColorRIn; }
-	inline float* getColorGIn() { return mColorGIn; }
-	inline float* getColorBIn() { return mColorBIn; }
 	inline float* getEmissionIn() { return mEmissionIn; }
 	inline float* getShadow() { return mShadow; }
 	inline int* getFlowType() { return mFlowType; }
@@ -182,22 +186,22 @@ public:
 	static std::atomic<int> solverID;
 	static int with_debug; // on or off (1 or 0), also sets manta debug level
 	
-	// Liquid getters
-	inline int getNumVertices()  { return mNumVertices; }
-	inline int getNumNormals()   { return mNumNormals; }
-	inline int getNumTriangles() { return mNumTriangles; }
-	
-	inline float getVertexXAt(int i) { return mVerticesX[i]; }
-	inline float getVertexYAt(int i) { return mVerticesY[i]; }
-	inline float getVertexZAt(int i) { return mVerticesZ[i]; }
+	// Mesh getters
+	inline int getNumVertices()  { return (mMeshNodes && !mMeshNodes->empty()) ? mMeshNodes->size() : 0; }
+	inline int getNumNormals()   { return (mMeshNodes && !mMeshNodes->empty()) ? mMeshNodes->size() : 0; }
+	inline int getNumTriangles() { return (mMeshTriangles && !mMeshTriangles->empty()) ? mMeshTriangles->size() : 0; }
 
-	inline float getNormalXAt(int i) { return mNormalsX[i]; }
-	inline float getNormalYAt(int i) { return mNormalsY[i]; }
-	inline float getNormalZAt(int i) { return mNormalsZ[i]; }
+	inline float getVertexXAt(int i) { return (mMeshNodes && !mMeshNodes->empty() && mMeshNodes->size() > i) ? mMeshNodes->at(i).pos[0] : 0.f; }
+	inline float getVertexYAt(int i) { return (mMeshNodes && !mMeshNodes->empty() && mMeshNodes->size() > i) ? mMeshNodes->at(i).pos[1] : 0.f; }
+	inline float getVertexZAt(int i) { return (mMeshNodes && !mMeshNodes->empty() && mMeshNodes->size() > i) ? mMeshNodes->at(i).pos[2] : 0.f; }
 
-	inline int getTriangleXAt(int i) { return mTrianglesX[i]; }
-	inline int getTriangleYAt(int i) { return mTrianglesY[i]; }
-	inline int getTriangleZAt(int i) { return mTrianglesZ[i]; }
+	inline float getNormalXAt(int i) { return (mMeshNodes && !mMeshNodes->empty() && mMeshNodes->size() > i) ? mMeshNodes->at(i).normal[0] : 0.f; }
+	inline float getNormalYAt(int i) { return (mMeshNodes && !mMeshNodes->empty() && mMeshNodes->size() > i) ? mMeshNodes->at(i).normal[1] : 0.f; }
+	inline float getNormalZAt(int i) { return (mMeshNodes && !mMeshNodes->empty() && mMeshNodes->size() > i) ? mMeshNodes->at(i).normal[2] : 0.f; }
+
+	inline int getTriangleXAt(int i) { return (mMeshTriangles && !mMeshTriangles->empty() && mMeshTriangles->size() > i) ? mMeshTriangles->at(i).c[0] : 0; }
+	inline int getTriangleYAt(int i) { return (mMeshTriangles && !mMeshTriangles->empty() && mMeshTriangles->size() > i) ? mMeshTriangles->at(i).c[1] : 0; }
+	inline int getTriangleZAt(int i) { return (mMeshTriangles && !mMeshTriangles->empty() && mMeshTriangles->size() > i) ? mMeshTriangles->at(i).c[2] : 0; }
 
 	inline float* getPressure() { return mPressure; }
 
@@ -206,24 +210,24 @@ public:
 	inline float* getWaveCrestPotential() { return mWaveCrestPotential; }
 
 	// Particle getters
-	inline int getFlipParticleFlagAt(int i) { return (mFlipParticleData) ? ((std::vector<pData>*) mFlipParticleData)->at(i).flag : 0; }
-	inline int getSndParticleFlagAt(int i) { return (mSndParticleData) ? ((std::vector<pData>*) mSndParticleData)->at(i).flag : 0; }
+	inline int getFlipParticleFlagAt(int i) { return (mFlipParticleData && !mFlipParticleData->empty() && mFlipParticleData->size() > i) ? ((std::vector<pData>*) mFlipParticleData)->at(i).flag : 0; }
+	inline int getSndParticleFlagAt(int i) { return (mSndParticleData && !mSndParticleData->empty() && mSndParticleData->size() > i) ? ((std::vector<pData>*) mSndParticleData)->at(i).flag : 0; }
 
-	inline float getFlipParticlePositionXAt(int i) { return (mFlipParticleData && !mFlipParticleData->empty()) ? mFlipParticleData->at(i).pos[0] : 0.f; }
-	inline float getFlipParticlePositionYAt(int i) { return (mFlipParticleData && !mFlipParticleData->empty()) ? mFlipParticleData->at(i).pos[1] : 0.f; }
-	inline float getFlipParticlePositionZAt(int i) { return (mFlipParticleData && !mFlipParticleData->empty()) ? mFlipParticleData->at(i).pos[2] : 0.f; }
+	inline float getFlipParticlePositionXAt(int i) { return (mFlipParticleData && !mFlipParticleData->empty() && mFlipParticleData->size() > i) ? mFlipParticleData->at(i).pos[0] : 0.f; }
+	inline float getFlipParticlePositionYAt(int i) { return (mFlipParticleData && !mFlipParticleData->empty() && mFlipParticleData->size() > i) ? mFlipParticleData->at(i).pos[1] : 0.f; }
+	inline float getFlipParticlePositionZAt(int i) { return (mFlipParticleData && !mFlipParticleData->empty() && mFlipParticleData->size() > i) ? mFlipParticleData->at(i).pos[2] : 0.f; }
 
-	inline float getSndParticlePositionXAt(int i) { return (mSndParticleData && !mSndParticleData->empty()) ? mSndParticleData->at(i).pos[0] : 0.f; }
-	inline float getSndParticlePositionYAt(int i) { return (mSndParticleData && !mSndParticleData->empty()) ? mSndParticleData->at(i).pos[1] : 0.f; }
-	inline float getSndParticlePositionZAt(int i) { return (mSndParticleData && !mSndParticleData->empty()) ? mSndParticleData->at(i).pos[2] : 0.f; }
+	inline float getSndParticlePositionXAt(int i) { return (mSndParticleData && !mSndParticleData->empty() && mSndParticleData->size() > i) ? mSndParticleData->at(i).pos[0] : 0.f; }
+	inline float getSndParticlePositionYAt(int i) { return (mSndParticleData && !mSndParticleData->empty() && mSndParticleData->size() > i) ? mSndParticleData->at(i).pos[1] : 0.f; }
+	inline float getSndParticlePositionZAt(int i) { return (mSndParticleData && !mSndParticleData->empty() && mSndParticleData->size() > i) ? mSndParticleData->at(i).pos[2] : 0.f; }
 
-	inline float getFlipParticleVelocityXAt(int i) { return (mFlipParticleVelocity && !mFlipParticleVelocity->empty()) ? mFlipParticleVelocity->at(i).pos[0] : 0.f; }
-	inline float getFlipParticleVelocityYAt(int i) { return (mFlipParticleVelocity && !mFlipParticleVelocity->empty()) ? mFlipParticleVelocity->at(i).pos[1] : 0.f; }
-	inline float getFlipParticleVelocityZAt(int i) { return (mFlipParticleVelocity && !mFlipParticleVelocity->empty()) ? mFlipParticleVelocity->at(i).pos[2] : 0.f; }
+	inline float getFlipParticleVelocityXAt(int i) { return (mFlipParticleVelocity && !mFlipParticleVelocity->empty() && mFlipParticleVelocity->size() > i) ? mFlipParticleVelocity->at(i).pos[0] : 0.f; }
+	inline float getFlipParticleVelocityYAt(int i) { return (mFlipParticleVelocity && !mFlipParticleVelocity->empty() && mFlipParticleVelocity->size() > i) ? mFlipParticleVelocity->at(i).pos[1] : 0.f; }
+	inline float getFlipParticleVelocityZAt(int i) { return (mFlipParticleVelocity && !mFlipParticleVelocity->empty() && mFlipParticleVelocity->size() > i) ? mFlipParticleVelocity->at(i).pos[2] : 0.f; }
 
-	inline float getSndParticleVelocityXAt(int i) { return (mSndParticleVelocity && !mSndParticleVelocity->empty()) ? mSndParticleVelocity->at(i).pos[0] : 0.f; }
-	inline float getSndParticleVelocityYAt(int i) { return (mSndParticleVelocity && !mSndParticleVelocity->empty()) ? mSndParticleVelocity->at(i).pos[1] : 0.f; }
-	inline float getSndParticleVelocityZAt(int i) { return (mSndParticleVelocity && !mSndParticleVelocity->empty()) ? mSndParticleVelocity->at(i).pos[2] : 0.f; }
+	inline float getSndParticleVelocityXAt(int i) { return (mSndParticleVelocity && !mSndParticleVelocity->empty() && mSndParticleVelocity->size() > i) ? mSndParticleVelocity->at(i).pos[0] : 0.f; }
+	inline float getSndParticleVelocityYAt(int i) { return (mSndParticleVelocity && !mSndParticleVelocity->empty() && mSndParticleVelocity->size() > i) ? mSndParticleVelocity->at(i).pos[1] : 0.f; }
+	inline float getSndParticleVelocityZAt(int i) { return (mSndParticleVelocity && !mSndParticleVelocity->empty() && mSndParticleVelocity->size() > i) ? mSndParticleVelocity->at(i).pos[2] : 0.f; }
 
 	inline float* getFlipParticleData() { return (mFlipParticleData && !mFlipParticleData->empty()) ? (float*) &mFlipParticleData->front() : NULL; }
 	inline float* getSndParticleData()  { return (mSndParticleData && !mSndParticleData->empty()) ? (float*) &mSndParticleData->front() : NULL; }
@@ -235,8 +239,9 @@ public:
 	inline int getNumFlipParticles() { return (mFlipParticleData && !mFlipParticleData->empty()) ? mFlipParticleData->size() : 0; }
 	inline int getNumSndParticles() { return (mSndParticleData && !mSndParticleData->empty()) ? mSndParticleData->size() : 0; }
 
-	void updateMeshData(const char* filename);
-	void updateParticleData(const char* filename, bool isSecondary);
+	// TODO (sebbas): make these private once pointcache is refactored
+	void updateMeshFromFile(const char* filename);
+	void updateParticlesFromFile(const char* filename, bool isSecondary);
 
 	void setFlipParticleData(float* buffer, int numParts);
 	void setSndParticleData(float* buffer, int numParts);
@@ -254,6 +259,8 @@ private:
 	// simulation constants
 	size_t mTotalCells;
 	size_t mTotalCellsHigh;
+	size_t mTotalCellsMesh;
+	size_t mTotalCellsParticles;
 
 	int mCurrentID;
 	
@@ -263,31 +270,39 @@ private:
 	bool mUsingObstacle;
 	bool mUsingGuiding;
 	bool mUsingInvel;
-	bool mUsingHighRes;
+	bool mUsingNoise;
+	bool mUsingMesh;
 	bool mUsingLiquid;
 	bool mUsingSmoke;
 	bool mUsingDrops;
 	bool mUsingBubbles;
 	bool mUsingFloats;
 	bool mUsingTracers;
-	
+
 	int mResX;
 	int mResY;
 	int mResZ;
 	int mMaxRes;
-	
-	int mResXHigh;
-	int mResYHigh;
-	int mResZHigh;
-	
+
+	int mResXNoise;
+	int mResYNoise;
+	int mResZNoise;
+	int mResXMesh;
+	int mResYMesh;
+	int mResZMesh;
+	int mResXParticle;
+	int mResYParticle;
+	int mResZParticle;
+
+	int mUpresMesh;
+	int mUpresParticle;
+
 	float mTempAmb; /* ambient temperature */
 	float mConstantScaling;
 
 	// Smoke grids
 	float* mDensity;
-	float* mDensityIn;
 	float* mHeat;
-	float* mHeatIn;
 	float* mVelocityX;
 	float* mVelocityY;
 	float* mVelocityZ;
@@ -308,14 +323,10 @@ private:
 	int* mNumGuide;
 	float* mFlame;
 	float* mFuel;
-	float* mFuelIn;
 	float* mReact;
 	float* mColorR;
 	float* mColorG;
 	float* mColorB;
-	float* mColorRIn;
-	float* mColorGIn;
-	float* mColorBIn;
 	float* mEmissionIn;
 	float* mShadow;
 	int* mFlowType;
@@ -347,19 +358,9 @@ private:
 	float* mWaveCrestPotential;
 
 
-	// Mesh fields for liquid surface
-	int mNumVertices;
-	int mNumNormals;
-	int mNumTriangles;
-	std::vector<float> mVerticesX;
-	std::vector<float> mVerticesY;
-	std::vector<float> mVerticesZ;
-	std::vector<float> mNormalsX;
-	std::vector<float> mNormalsY;
-	std::vector<float> mNormalsZ;
-	std::vector<int> mTrianglesX;
-	std::vector<int> mTrianglesY;
-	std::vector<int> mTrianglesZ;
+	// Mesh fields
+	std::vector<Node>* mMeshNodes;
+	std::vector<Triangle>* mMeshTriangles;
 	
 	// Particle fields
 	std::vector<pData>* mFlipParticleData;
@@ -370,9 +371,10 @@ private:
 	std::vector<float>* mSndParticleLife;
 
 	void initDomain(struct SmokeModifierData *smd);
-	void initDomainHigh(struct SmokeModifierData *smd);
+	void initNoise(struct SmokeModifierData *smd);
+	void initMesh(struct SmokeModifierData *smd);
 	void initSmoke(struct SmokeModifierData *smd);
-	void initSmokeHigh(struct SmokeModifierData *smd);
+	void initSmokeNoise(struct SmokeModifierData *smd);
 	void initializeMantaflow();
 	void terminateMantaflow();
 	void runPythonString(std::vector<std::string> commands);
@@ -380,6 +382,8 @@ private:
 	std::string parseLine(const std::string& line, SmokeModifierData *smd);
 	std::string parseScript(const std::string& setup_string, SmokeModifierData *smd);
 	void updateMeshDataFromBobj(const char* filename);
+	void updateMeshDataFromObj(const char* filename);
+
 };
 
 #endif

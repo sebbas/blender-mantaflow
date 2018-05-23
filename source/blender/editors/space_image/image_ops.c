@@ -1851,7 +1851,7 @@ static bool save_image_doit(bContext *C, SpaceImage *sima, wmOperator *op, SaveI
 		/* we need renderresult for exr and rendered multiview */
 		scene = CTX_data_scene(C);
 		rr = BKE_image_acquire_renderresult(scene, ima);
-		bool is_mono = rr ? BLI_listbase_count_ex(&rr->views, 2) < 2 : BLI_listbase_count_ex(&ima->views, 2) < 2;
+		bool is_mono = rr ? BLI_listbase_count_at_most(&rr->views, 2) < 2 : BLI_listbase_count_at_most(&ima->views, 2) < 2;
 		bool is_exr_rr = rr && ELEM(imf->imtype, R_IMF_IMTYPE_OPENEXR, R_IMF_IMTYPE_MULTILAYER) && RE_HasFloatPixels(rr);
 
 		/* error handling */
@@ -2617,8 +2617,7 @@ static int image_invert_exec(bContext *C, wmOperator *op)
 		return OPERATOR_CANCELLED;
 
 	if (support_undo) {
-		ED_undo_paint_push_begin(UNDO_PAINT_IMAGE, op->type->name,
-		                         ED_image_undo_restore, ED_image_undo_free, NULL);
+		ED_image_undo_push_begin(op->type->name);
 		/* not strictly needed, because we only imapaint_dirty_region to invalidate all tiles
 		 * but better do this right in case someone copies this for a tool that uses partial redraw better */
 		ED_imapaint_clear_partial_redraw();
@@ -2659,8 +2658,9 @@ static int image_invert_exec(bContext *C, wmOperator *op)
 	if (ibuf->mipmap[0])
 		ibuf->userflags |= IB_MIPMAP_INVALID;
 
-	if (support_undo)
-		ED_undo_paint_push_end(UNDO_PAINT_IMAGE);
+	if (support_undo) {
+		ED_image_undo_push_end();
+	}
 
 	/* force GPU reupload, all image is invalid */
 	GPU_free_image(ima);

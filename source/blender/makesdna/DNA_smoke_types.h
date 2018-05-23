@@ -38,11 +38,10 @@
 
 /* flags */
 enum {
-	MOD_SMOKE_HIGHRES = (1 << 1),  /* enable high resolution */
+	MOD_SMOKE_NOISE = (1 << 1),  /* use noise */
 	MOD_SMOKE_DISSOLVE = (1 << 2),  /* let smoke dissolve */
 	MOD_SMOKE_DISSOLVE_LOG = (1 << 3),  /* using 1/x for dissolve */
 	MOD_SMOKE_USE_MANTA = (1 << 4),
-	MOD_SMOKE_ADAPTIVE_TIME = (1 << 5), /* adaptive time stepping in domain */
 
 #ifdef DNA_DEPRECATED
 	MOD_SMOKE_HIGH_SMOOTH = (1 << 5),  /* -- Deprecated -- */
@@ -51,6 +50,8 @@ enum {
 	MOD_SMOKE_ADAPTIVE_DOMAIN = (1 << 7),
 	MOD_SMOKE_USE_SURFACE_CACHE = (1 << 8),
 	MOD_SMOKE_USE_VOLUME_CACHE = (1 << 9),
+	MOD_SMOKE_ADAPTIVE_TIME = (1 << 10), /* adaptive time stepping in domain */
+	MOD_SMOKE_MESH = (1 << 11),  /* use mesh */
 };
 
 /* border collisions */
@@ -61,6 +62,17 @@ enum {
 	MOD_SMOKE_BORDER_LEFT = (1 << 4),
 	MOD_SMOKE_BORDER_TOP = (1 << 5),
 	MOD_SMOKE_BORDER_BOTTOM = (1 << 6),
+};
+
+/* cache file formats */
+enum {
+	/* Volumetric file formats */
+	MANTA_FILE_UNI = (1 << 0),
+	MANTA_FILE_OPENVDB = (1 << 1),
+	MANTA_FILE_RAW = (1 << 2),
+	/* Surface file formats */
+	MANTA_FILE_OBJECT = (1 << 3),
+	MANTA_FILE_BIN_OBJECT = (1 << 4),
 };
 
 /* noise */
@@ -160,6 +172,10 @@ enum {
 #define SM_VIEWPORT_PREVIEW	 1
 #define SM_VIEWPORT_FINAL	 2
 
+/* mesh levelset generator types */
+#define SM_MESH_IMPROVED    0
+#define SM_MESH_UNION       1
+
 /* effector types */
 #define SM_EFFECTOR_COLLISION 0
 #define SM_EFFECTOR_GUIDE	  1
@@ -178,29 +194,20 @@ enum {
 #define SM_ACTIVE_GUIDING   (1<<5)
 #define SM_ACTIVE_INVEL     (1<<6)
 
-#define FLUID_CACHE_BAKING_GEOMETRY            1
-#define FLUID_CACHE_BAKED_GEOMETRY             2
-#define FLUID_CACHE_BAKING_LOW                 4
-#define FLUID_CACHE_BAKED_LOW                  8
-#define FLUID_CACHE_BAKING_MESH_LOW           16
-#define FLUID_CACHE_BAKED_MESH_LOW            32
-#define FLUID_CACHE_BAKING_HIGH               64
-#define FLUID_CACHE_BAKED_HIGH               128
-#define FLUID_CACHE_BAKING_MESH_HIGH         256
-#define FLUID_CACHE_BAKED_MESH_HIGH          512
-#define FLUID_CACHE_BAKING_PARTICLES_LOW    1024
-#define FLUID_CACHE_BAKED_PARTICLES_LOW     2048
-#define FLUID_CACHE_BAKING_PARTICLES_HIGH   4096
-#define FLUID_CACHE_BAKED_PARTICLES_HIGH    8192
+#define FLUID_CACHE_BAKING_DATA         1
+#define FLUID_CACHE_BAKED_DATA          2
+#define FLUID_CACHE_BAKING_NOISE        4
+#define FLUID_CACHE_BAKED_NOISE         8
+#define FLUID_CACHE_BAKING_MESH         16
+#define FLUID_CACHE_BAKED_MESH          32
+#define FLUID_CACHE_BAKING_PARTICLES    64
+#define FLUID_CACHE_BAKED_PARTICLES     128
 
-#define FLUID_CACHE_DIR_DEFAULT        "fluid_cache"
-#define FLUID_CACHE_DIR_GEOMETRY       "geometry"
-#define FLUID_CACHE_DIR_DATA_LOW       "data_low"
-#define FLUID_CACHE_DIR_DATA_HIGH      "data_high"
-#define FLUID_CACHE_DIR_MESH_LOW       "mesh_low"
-#define FLUID_CACHE_DIR_MESH_HIGH      "mesh_high"
-#define FLUID_CACHE_DIR_PARTICLES_LOW  "particles_low"
-#define FLUID_CACHE_DIR_PARTICLES_HIGH "particles_high"
+#define FLUID_CACHE_DIR_DEFAULT    "cache_fluid"
+#define FLUID_CACHE_DIR_DATA       "data"
+#define FLUID_CACHE_DIR_NOISE      "noise"
+#define FLUID_CACHE_DIR_MESH       "mesh"
+#define FLUID_CACHE_DIR_PARTICLES  "particles"
 
 enum {
 	VDB_COMPRESSION_BLOSC = 0,
@@ -253,7 +260,11 @@ typedef struct SmokeDomainSettings {
 	float adapt_threshold;
 	float alpha;
 	float beta;
-	int amplify; /* wavelet amplification */
+	/* Upres factors (scale up from base res by this factor) */
+	int noise_scale;
+	int mesh_scale;
+	int particle_scale;
+
 	int maxres; /* longest axis on the BB gets this resolution assigned */
 	int flags; /* show up-res or low res, etc */
 	int viewsettings;
@@ -266,9 +277,12 @@ typedef struct SmokeDomainSettings {
 	/* manta cache */
 	int cache_frame_start;
 	int cache_frame_end;
+	int cache_frame_pause_data;
+	int cache_frame_pause_noise;
+	int cache_frame_pause_mesh;
+	int cache_frame_pause_particles;
 	char cache_directory[1024];
 	int cache_flag;
-	char pad2[4];
 	/* point cache options */
 	int cache_comp;
 	int cache_high_comp;
@@ -276,8 +290,10 @@ typedef struct SmokeDomainSettings {
 	int openvdb_comp;
 	char cache_surface_format;
 	char cache_volume_format;
+	char cache_particle_format;
+	char cache_noise_format;
 	char data_depth;
-	char pad[1]; /* unused */
+	char pad[3]; /* unused */
 	/* Liquid cache options */
 	int liquid_cache_comp;
 
@@ -290,7 +306,9 @@ typedef struct SmokeDomainSettings {
 	/* show original meshes, preview or final sim */
 	short viewport_display_mode;
 	short render_display_mode;
-	
+	short mesh_generator;
+	char pad2[6];
+
 	float time_scale;
 	float cfl_condition;
 	float vorticity;
@@ -309,6 +327,10 @@ typedef struct SmokeDomainSettings {
 	int particle_minimum;
 	int particle_maximum;
 	float particle_radius;
+	float mesh_smoothen_upper;
+	float mesh_smoothen_lower;
+	int mesh_smoothen_pos;
+	int mesh_smoothen_neg;
 	float particle_band_width;
 	float particle_droplet_threshold;
 	float particle_droplet_amount;
@@ -381,6 +403,9 @@ typedef struct SmokeDomainSettings {
 
 	char error[64];		/* Bake error description */
 	char pad4[2]; /* unused */
+
+	float clipping;
+	float pad6;
 } SmokeDomainSettings;
 
 /* type */

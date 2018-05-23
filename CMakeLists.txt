@@ -251,6 +251,8 @@ option(WITH_OPENSUBDIV    "Enable OpenSubdiv for surface subdivision" _init_OPEN
 
 option(WITH_OPENVDB       "Enable features relying on OpenVDB" OFF)
 option(WITH_OPENVDB_BLOSC "Enable blosc compression for OpenVDB, only enable if OpenVDB was built with blosc support" OFF)
+option(WITH_OPENVDB_3_ABI_COMPATIBLE "Assume OpenVDB library has been compiled with version 3 ABI compatibility" OFF)
+mark_as_advanced(WITH_OPENVDB_3_ABI_COMPATIBLE)
 
 # GHOST Windowing Library Options
 option(WITH_GHOST_DEBUG   "Enable debugging output for the GHOST library" OFF)
@@ -1301,7 +1303,7 @@ if(WITH_LIBMV OR WITH_GTESTS OR (WITH_CYCLES AND WITH_CYCLES_LOGGING))
 		if(WIN32)
 			set(GLOG_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/extern/glog/src/windows)
 		else()
-			set(GLOG_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/extern/glog/src)
+			set(GLOG_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/extern/glog/include)
 		endif()
 	endif()
 endif()
@@ -1438,6 +1440,7 @@ if(CMAKE_COMPILER_IS_GNUCC)
 	# flags to undo strict flags
 	ADD_CHECK_C_COMPILER_FLAG(CC_REMOVE_STRICT_FLAGS C_WARN_NO_DEPRECATED_DECLARATIONS -Wno-deprecated-declarations)
 	ADD_CHECK_C_COMPILER_FLAG(CC_REMOVE_STRICT_FLAGS C_WARN_NO_UNUSED_PARAMETER        -Wno-unused-parameter)
+	ADD_CHECK_C_COMPILER_FLAG(CC_REMOVE_STRICT_FLAGS C_WARN_NO_UNUSED_FUNCTION         -Wno-unused-function)
 
 	if(CMAKE_COMPILER_IS_GNUCC AND (NOT "${CMAKE_C_COMPILER_VERSION}" VERSION_LESS "7.0"))
 		ADD_CHECK_C_COMPILER_FLAG(CC_REMOVE_STRICT_FLAGS C_WARN_NO_IMPLICIT_FALLTHROUGH    -Wno-implicit-fallthrough)
@@ -1502,8 +1505,8 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Intel")
 	ADD_CHECK_CXX_COMPILER_FLAG(CXX_WARNINGS CXX_WARN_NO_SIGN_COMPARE -Wno-sign-compare)
 
 	# disable numbered, false positives
-	set(C_WARNINGS "${C_WARNINGS} -wd188,186,144,913,556")
-	set(CXX_WARNINGS "${CXX_WARNINGS} -wd188,186,144,913,556")
+	set(C_WARNINGS "${C_WARNINGS} -wd188,186,144,913,556,858,597,177,1292,167,279,592,94,2722,3199")
+	set(CXX_WARNINGS "${CXX_WARNINGS} -wd188,186,144,913,556,858,597,177,1292,167,279,592,94,2722,3199")
 elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
 	# most msvc warnings are C & C++
 	set(_WARNINGS
@@ -1521,6 +1524,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
 		"/wd4267"  # conversion from 'size_t' to 'type', possible loss of data
 		"/wd4305"  # truncation from 'type1' to 'type2'
 		"/wd4800"  # forcing value to bool 'true' or 'false'
+		"/wd4828"  # The file contains a character that is illegal 
 		# errors:
 		"/we4013"  # 'function' undefined; assuming extern returning int
 		"/we4133"  # incompatible pointer types
