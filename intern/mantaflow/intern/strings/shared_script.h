@@ -255,8 +255,14 @@ phiIn_sp$ID$    = sp$ID$.create(LevelsetGrid)\n\
 phiObs_sp$ID$   = sp$ID$.create(LevelsetGrid)\n\
 phiObsIn_sp$ID$ = sp$ID$.create(LevelsetGrid)\n\
 \n\
+normal_sp$ID$        = sp$ID$.create(VecGrid)\n\
+neighborRatio_sp$ID$ = sp$ID$.create(RealGrid)\n\
+trappedAir_sp$ID$    = sp$ID$.create(RealGrid)\n\
+waveCrest_sp$ID$     = sp$ID$.create(RealGrid)\n\
+kineticEnergy_sp$ID$ = sp$ID$.create(RealGrid)\n\
+\n\
 # Keep track of important objects in dict to load them later on\n\
-fluid_particles_dict_s$ID$ = dict(ppSnd=ppSnd_sp$ID$, pVelSnd=pVelSnd_pp$ID$, pLifeSnd=pLifeSnd_pp$ID$)\n";
+fluid_particles_dict_s$ID$ = dict(ppSnd=ppSnd_sp$ID$, pVelSnd=pVelSnd_pp$ID$, pLifeSnd=pLifeSnd_pp$ID$, trappedAir=trappedAir_sp$ID$, waveCrest=waveCrest_sp$ID$, kineticEnergy=kineticEnergy_sp$ID$)\n";
 
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION

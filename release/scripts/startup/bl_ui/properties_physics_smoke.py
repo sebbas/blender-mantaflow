@@ -508,7 +508,6 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         col = split.column()
         col.enabled = not domain.point_cache.is_baked
         col.prop(domain, "use_spray_particles", text="Drop")
-        col.prop(domain, "use_spray_particles", text="Drop")
         sub = col.column(align=True)
         sub.active = domain.use_spray_particles
         sub.prop(domain, "particle_droplet_threshold", text="Threshold")
@@ -541,7 +540,7 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         sub3.prop(domain, "use_flip_particles", text="FLIP")
 
         split = layout.split()
-        split.enabled = domain.cache_baked_data and (domain.use_drop_particles or domain.use_bubble_particles or domain.use_floater_particles or domain.use_tracer_particles)
+        split.enabled = domain.cache_baked_data and (domain.use_spray_particles or domain.use_bubble_particles or domain.use_foam_particles or domain.use_tracer_particles)
         bake_incomplete = domain.cache_frame_pause_particles
         if domain.cache_baked_particles and not domain.cache_baking_particles and bake_incomplete:
             col = split.column()
@@ -572,7 +571,7 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         domain = context.smoke.domain_settings
 
         top = layout.column()
-        top.enabled = not domain.cache_baked_particles_low
+        top.enabled = not domain.cache_baked_particles
         top.label("Exported Particles:")
         sub1 = top.row()
         sub1.prop(domain, "use_flip_particles", text="FLIP")
@@ -590,7 +589,7 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         middle.prop(domain, "sndparticle_combined_export")
 
         split = layout.split()
-        split.enabled = not domain.cache_baked_particles_low
+        split.enabled = not domain.cache_baked_particles
         sub1 = split.column()
         sub1.enabled = domain.use_spray_particles or domain.use_foam_particles or domain.use_bubble_particles
         sub2 = sub1.column(align=True)

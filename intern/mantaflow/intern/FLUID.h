@@ -274,9 +274,9 @@ private:
 	bool mUsingMesh;
 	bool mUsingLiquid;
 	bool mUsingSmoke;
-	bool mUsingDrops;
+	bool mUsingSpray;
 	bool mUsingBubbles;
-	bool mUsingFloats;
+	bool mUsingFoam;
 	bool mUsingTracers;
 
 	int mResX;

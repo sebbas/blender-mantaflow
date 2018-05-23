@@ -735,7 +735,7 @@ class QuickLiquidParticles(Operator):
         dom.modifiers[-1].domain_settings.use_surface_cache = True
         dom.modifiers[-1].domain_settings.use_volume_cache = True
         dom.modifiers[-1].domain_settings.cache_surface_format = 'OBJECT'
-        dom.modifiers[-1].domain_settings.cache_volume_format = 'POINTCACHE'
+        dom.modifiers[-1].domain_settings.cache_volume_format = 'UNI'
 
         # setup liquid display
         if self.liquid_display:

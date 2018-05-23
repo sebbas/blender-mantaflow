@@ -92,12 +92,6 @@ pVel_pp$ID$      = pp_s$ID$.create(PdataVec3)\n\
 pindex_s$ID$     = s$ID$.create(ParticleIndexSystem)\n\
 gpi_s$ID$        = s$ID$.create(IntGrid)\n\
 \n\
-normal_s$ID$ = s$ID$.create(VecGrid)\n\
-neighborRatio_s$ID$ = s$ID$.create(RealGrid)\n\
-trappedAir_s$ID$ = s$ID$.create(RealGrid)\n\
-waveCrest_s$ID$ = s$ID$.create(RealGrid)\n\
-kineticEnergy_s$ID$ = s$ID$.create(RealGrid)\n\
-\n\
 # Keep track of important objects in dict to load them later on\n\
 liquid_data_dict_s$ID$ = dict(phiParts=phiParts_s$ID$, phi=phi_s$ID$, phiIn=phiIn_s$ID$, phiTmp=phiTmp_s$ID$)\n\
 liquid_flip_dict_s$ID$ = dict(pp=pp_s$ID$, pVel=pVel_pp$ID$)\n";

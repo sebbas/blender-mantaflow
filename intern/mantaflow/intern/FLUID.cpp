@@ -50,7 +50,7 @@
 
 std::atomic<bool> FLUID::mantaInitialized(false);
 std::atomic<int> FLUID::solverID(0);
-int FLUID::with_debug(0);
+int FLUID::with_debug(1);
 
 FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 {
@@ -69,9 +69,9 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mUsingMesh     = smd->domain->flags & MOD_SMOKE_MESH;
 	mUsingLiquid   = smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID;
 	mUsingSmoke    = smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS;
-	mUsingDrops    = smd->domain->particle_type & MOD_SMOKE_PARTICLE_SPRAY;
+	mUsingSpray    = smd->domain->particle_type & MOD_SMOKE_PARTICLE_SPRAY;
 	mUsingBubbles  = smd->domain->particle_type & MOD_SMOKE_PARTICLE_BUBBLE;
-	mUsingFloats   = smd->domain->particle_type & MOD_SMOKE_PARTICLE_FOAM;
+	mUsingFoam   = smd->domain->particle_type & MOD_SMOKE_PARTICLE_FOAM;
 	mUsingTracers  = smd->domain->particle_type & MOD_SMOKE_PARTICLE_TRACER;
 
 	// Simulation constants
@@ -174,7 +174,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 		if (mUsingGuiding)  initGuiding(smd);
 		if (mUsingInvel)    initInVelocity(smd);
 
-		if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
+		if (mUsingSpray || mUsingBubbles || mUsingFoam || mUsingTracers) {
 			mUpresParticle       = smd->domain->particle_scale;
 			mResXParticle        = mUpresParticle * mResX;
 			mResYParticle        = mUpresParticle * mResY;
@@ -1140,7 +1140,7 @@ int FLUID::updateParticleStructures(SmokeModifierData *smd, int framenr)
 	if (FLUID::with_debug)
 		std::cout << "FLUID::updateParticleStructures()" << std::endl;
 
-	if (!mUsingDrops && !mUsingBubbles && !mUsingFloats && !mUsingTracers) return 0;
+	if (!mUsingSpray && !mUsingBubbles && !mUsingFoam && !mUsingTracers) return 0;
 
 	std::ostringstream ss;
 	char cacheDir[FILE_MAX], targetFile[FILE_MAX];
@@ -1306,7 +1306,7 @@ int FLUID::readParticles(SmokeModifierData *smd, int framenr)
 	if (with_debug)
 		std::cout << "FLUID::readParticles()" << std::endl;
 
-	if (!mUsingDrops && !mUsingBubbles && !mUsingFloats && !mUsingTracers) return 0;
+	if (!mUsingSpray && !mUsingBubbles && !mUsingFoam && !mUsingTracers) return 0;
 
 	std::ostringstream ss;
 	std::vector<std::string> pythonCommands;
@@ -1319,7 +1319,7 @@ int FLUID::readParticles(SmokeModifierData *smd, int framenr)
 	BLI_path_join(cacheDirParticles, sizeof(cacheDirParticles), smd->domain->cache_directory, FLUID_CACHE_DIR_PARTICLES, NULL);
 	BLI_path_make_safe(cacheDirParticles);
 
-	if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
+	if (mUsingSpray || mUsingBubbles || mUsingFoam || mUsingTracers) {
 		ss << "fluid_load_particles_" << mCurrentID << "('" << escapeSlashes(cacheDirParticles) << "', " << framenr << ", '" << pformat << "')";
 		pythonCommands.push_back(ss.str());
 	}
@@ -1558,9 +1558,9 @@ void FLUID::exportLiquidData(SmokeModifierData *smd)
 	bool obstacle = smd->domain->active_fields & SM_ACTIVE_OBSTACLE;
 	bool guiding  = smd->domain->active_fields & SM_ACTIVE_GUIDING;
 	bool invel    = smd->domain->active_fields & SM_ACTIVE_INVEL;
-	bool drops    = smd->domain->particle_type & MOD_SMOKE_PARTICLE_SPRAY;
+	bool spray    = smd->domain->particle_type & MOD_SMOKE_PARTICLE_SPRAY;
 	bool bubble   = smd->domain->particle_type & MOD_SMOKE_PARTICLE_BUBBLE;
-	bool floater  = smd->domain->particle_type & MOD_SMOKE_PARTICLE_FOAM;
+	bool foam  = smd->domain->particle_type & MOD_SMOKE_PARTICLE_FOAM;
 	bool tracer   = smd->domain->particle_type & MOD_SMOKE_PARTICLE_TRACER;
 
 	char parent_dir[1024];
@@ -1575,7 +1575,7 @@ void FLUID::exportLiquidData(SmokeModifierData *smd)
 		FLUID::saveFluidGuidingData(parent_dir);
 	if (invel)
 		FLUID::saveFluidInvelData(parent_dir);
-	if (drops || bubble || floater || tracer)
+	if (spray || bubble || foam || tracer)
 		FLUID::saveFluidSndPartsData(parent_dir);
 }
 
@@ -2025,22 +2025,26 @@ void FLUID::updatePointers()
 		mPressure				= (float*) stringToPointer(pyObjectToString(callPythonFunction("pressure" + solver_ext, func)));
 
 		if (mUsingMesh) {
+			std::cout << "FLUID::updatePointers()_1" << std::endl;
 			mMeshNodes     = (std::vector<Node>*)     stringToPointer(pyObjectToString(callPythonFunction("mesh" + mesh_ext, funcNodes)));
+			std::cout << "FLUID::updatePointers()_2" << std::endl;
 			mMeshTriangles = (std::vector<Triangle>*) stringToPointer(pyObjectToString(callPythonFunction("mesh" + mesh_ext, funcTris)));
+			std::cout << "FLUID::updatePointers()_3" << std::endl;
 		}
 
-		if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
+		if (mUsingSpray || mUsingBubbles || mUsingFoam || mUsingTracers) {
 			mSndParticleData		= (std::vector<pData>*) stringToPointer(pyObjectToString(callPythonFunction("ppSnd" + snd_ext, func)));
 			mSndParticleVelocity	= (std::vector<pVel>*)  stringToPointer(pyObjectToString(callPythonFunction("pVelSnd" + parts_ext, func)));
 			mSndParticleLife		= (std::vector<float>*) stringToPointer(pyObjectToString(callPythonFunction("pLifeSnd" + parts_ext, func)));
 		}
-		if (mUsingDrops || mUsingBubbles || mUsingFloats) {
-			mKineticEnergyPotential 	= (float*) stringToPointer(pyObjectToString(callPythonFunction("kineticEnergy" + snd_ext, func)));	//TODO(Georg Kohl): rename boolean flags
+
+		if (mUsingSpray || mUsingBubbles || mUsingFoam) {
+			mKineticEnergyPotential = (float*)stringToPointer(pyObjectToString(callPythonFunction("kineticEnergy" + snd_ext, func)));
 			mTrappedAirPotential		= (float*) stringToPointer(pyObjectToString(callPythonFunction("trappedAir" + snd_ext, func)));
 			mWaveCrestPotential			= (float*) stringToPointer(pyObjectToString(callPythonFunction("waveCrest" + snd_ext, func)));
 		}
 	}
-	
+
 	// Smoke
 	if (mUsingSmoke) {
 		mDensity        = (float*) stringToPointer(pyObjectToString(callPythonFunction("density"    + solver_ext, func)));
