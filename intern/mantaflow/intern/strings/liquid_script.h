@@ -49,23 +49,7 @@ smoothenLower_s$ID$    = $MESH_SMOOTHEN_LOWER$\n\
 smoothenPos_s$ID$      = $MESH_SMOOTHEN_POS$\n\
 smoothenNeg_s$ID$      = $MESH_SMOOTHEN_NEG$\n\
 randomness_s$ID$       = $PARTICLE_RANDOMNESS$\n\
-surfaceTension_s$ID$   = $LIQUID_SURFACE_TENSION$\n\
-tauMin_wc_s$ID$ = $SNDPARTICLE_TAU_MIN_WC$\n\
-tauMax_wc_s$ID$ = $SNDPARTICLE_TAU_MAX_WC$\n\
-tauMin_ta_s$ID$ = $SNDPARTICLE_TAU_MIN_TA$\n\
-tauMax_ta_s$ID$ = $SNDPARTICLE_TAU_MAX_TA$\n\
-tauMin_k_s$ID$ = $SNDPARTICLE_TAU_MIN_K$\n\
-tauMax_k_s$ID$ = $SNDPARTICLE_TAU_MAX_K$\n\
-k_wc_s$ID$ = $SNDPARTICLE_K_WC$\n\
-k_ta_s$ID$ = $SNDPARTICLE_K_TA$\n\
-k_b_s$ID$ = $SNDPARTICLE_K_B$\n\
-k_d_s$ID$ = $SNDPARTICLE_K_D$\n\
-lMin_s$ID$ = $SNDPARTICLE_L_MIN$\n\
-lMax_s$ID$ = $SNDPARTICLE_L_MAX$\n\
-c_s_s$ID$ = 0.4   # classification constant for snd parts\n\
-c_b_s$ID$ = 0.77  # classification constant for snd parts\n\
-scaleFromManta_s$ID$ = $FLUID_DOMAIN_SIZE$ / float(res_s$ID$) # resize factor for snd parts\n\
-gravity_rescaled_s$ID$ = gravity_s$ID$ / scaleFromManta_s$ID$\n";
+surfaceTension_s$ID$   = $LIQUID_SURFACE_TENSION$\n";
 
 //////////////////////////////////////////////////////////////////////
 // GRIDS & MESH & PARTICLESYSTEM
@@ -362,8 +346,8 @@ def liquid_step_particles_high_$ID$():\n\
         debugGridInfo(flags=flags_xl$ID$, grid=waveCrest_xl$ID$, name='Wave Crest')\n\
         debugGridInfo(flags=flags_xl$ID$, grid=kineticEnergy_xl$ID$, name='Kinetic Energy')\n";*/
 
-const std::string liquid_step_particles = "\n\
-def liquid_step_particles_$ID$():\n\
+const std::string liquid_step_particles_old = "\n\
+def liquid_step_particles_old_$ID$():\n\
     mantaMsg('Sampling snd particles')\n\
     interpolateMACGrid(target=vel_sp$ID$, source=vel_s$ID$)\n\
     interpolateGrid(target=phi_sp$ID$, source=phi_s$ID$)\n\
@@ -382,6 +366,42 @@ def liquid_step_particles_$ID$():\n\
     mantaMsg('Adjusting snd particles')\n\
     pushOutofObs(parts=ppSnd_sp$ID$, flags=flags_sp$ID$, phiObs=phiObs_sp$ID$, shift=1.0)\n\
     adjustSndParts(parts=ppSnd_sp$ID$, flags=flags_sp$ID$, phi=phi_sp$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, maxDroplet=$SNDPARTICLE_DROPLET_MAX$, maxBubble=$SNDPARTICLE_BUBBLE_MAX$, maxFloater=$SNDPARTICLE_FLOATER_MAX$, maxTracer=$SNDPARTICLE_TRACER_MAX$)\n";
+
+const std::string liquid_step_particles = "\n\
+def liquid_step_particles_$ID$():\n\
+    mantaMsg('Secondary particles step')\n\
+    radius = 2 * $PARTICLE_SCALE$ if $SNDPARTICLE_POTENTIAL_QUALITY_HIGH$ else $PARTICLE_SCALE$\n\
+    \n\
+    # no upres: just use the loaded grids\n\
+    if $PARTICLE_SCALE$ <= 1:\n\
+        flags_sp$ID$.copyFrom(flags_s$ID$)\n\
+        vel_sp$ID$.copyFrom(vel_s$ID$)\n\
+        phiObs_sp$ID$.copyFrom(phiObs_s$ID$)\n\
+        phi_sp$ID$.copyFrom(phi_s$ID$)\n\
+    \n\
+    # with upres: recreate grids\n\
+    else:\n\
+        # create highres grids by interpolation\n\
+        interpolateMACGrid(target = vel_sp$ID$, source = vel_s$ID$)\n\
+        interpolateGrid(target = phi_sp$ID$, source = phi_s$ID$)\n\
+        interpolateGrid(target = phiIn_sp$ID$, source = phiIn_s$ID$)\n\
+        flags_sp$ID$.initDomain(boundaryWidth = boundaryWidth_s$ID$, phiWalls = phiObs_sp$ID$, outflow = boundConditions_s$ID$)\n\
+        if using_obstacle_s$ID$:\n\
+            interpolateGrid(target = phiObsIn_sp$ID$, source = phiObsIn_s$ID$)\n\
+            phiObs_sp$ID$.join(phiObsIn_sp$ID$)\n\
+        setObstacleFlags(flags = flags_sp$ID$, phiObs = phiObs_sp$ID$) #TODO(Georg Kohl): check outflow\n\
+    \n\
+    # actual secondary simulation\n\
+    extrapolateLsSimple(phi = phi_sp$ID$, distance = radius + 1, inside = True)\n\
+    flipComputeSecondaryParticlePotentials(potTA=trappedAir_sp$ID$, potWC=waveCrest_sp$ID$, potKE=kineticEnergy_sp$ID$, neighborRatio=neighborRatio_sp$ID$, flags=flags_sp$ID$, v=vel_sp$ID$, normal=normal_sp$ID$, phi=phi_sp$ID$, radius=radius, tauMinTA=tauMin_ta_sp$ID$, tauMaxTA=tauMax_ta_sp$ID$, tauMinWC=tauMin_wc_sp$ID$, tauMaxWC=tauMax_wc_sp$ID$, tauMinKE=tauMin_k_sp$ID$, tauMaxKE=tauMax_k_sp$ID$, scaleFromManta=scaleFromManta_sp$ID$)\n\
+    flipSampleSecondaryParticles(mode='single', flags=flags_sp$ID$, v=vel_sp$ID$, pts_sec=ppSnd_sp$ID$, v_sec=pVelSnd_pp$ID$, l_sec=pLifeSnd_pp$ID$, lMin=lMin_sp$ID$, lMax=lMax_sp$ID$, potTA=trappedAir_sp$ID$, potWC=waveCrest_sp$ID$, potKE=kineticEnergy_sp$ID$, neighborRatio=neighborRatio_sp$ID$, c_s=c_s_sp$ID$, c_b=c_b_sp$ID$, k_ta=k_ta_sp$ID$, k_wc=k_wc_sp$ID$, dt=s$ID$.frameLength)\n\
+    flipUpdateSecondaryParticles(mode='linear', pts_sec=ppSnd_sp$ID$, v_sec=pVelSnd_pp$ID$, l_sec=pLifeSnd_pp$ID$, f_sec=pForceSnd_pp$ID$, flags=flags_sp$ID$, v=vel_sp$ID$, neighborRatio=neighborRatio_sp$ID$, radius=1, gravity=gravity_s$ID$, k_b=k_b_sp$ID$, k_d=k_d_sp$ID$, c_s=c_s_sp$ID$, c_b=c_b_sp$ID$, dt=s$ID$.frameLength)\n\
+    if $SNDPARTICLE_BOUNDARY_PUSHOUT$:\n\
+        pushOutofObs(parts = ppSnd_sp$ID$, flags = flags_sp$ID$, phiObs = phiObs_sp$ID$, shift = 1.0)\n\
+    flipDeleteParticlesInObstacle(pts = ppSnd_sp$ID$, flags = flags_sp$ID$)\n\
+    #debugGridInfo(flags = flags_sp$ID$, grid = trappedAir_sp$ID$, name = 'Trapped Air')\n\
+    #debugGridInfo(flags = flags_sp$ID$, grid = waveCrest_sp$ID$, name = 'Wave Crest')\n\
+    #debugGridInfo(flags = flags_sp$ID$, grid = kineticEnergy_sp$ID$, name = 'Kinetic Energy')\n";
 
 //////////////////////////////////////////////////////////////////////
 // IMPORT

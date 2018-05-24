@@ -2025,11 +2025,8 @@ void FLUID::updatePointers()
 		mPressure				= (float*) stringToPointer(pyObjectToString(callPythonFunction("pressure" + solver_ext, func)));
 
 		if (mUsingMesh) {
-			std::cout << "FLUID::updatePointers()_1" << std::endl;
 			mMeshNodes     = (std::vector<Node>*)     stringToPointer(pyObjectToString(callPythonFunction("mesh" + mesh_ext, funcNodes)));
-			std::cout << "FLUID::updatePointers()_2" << std::endl;
 			mMeshTriangles = (std::vector<Triangle>*) stringToPointer(pyObjectToString(callPythonFunction("mesh" + mesh_ext, funcTris)));
-			std::cout << "FLUID::updatePointers()_3" << std::endl;
 		}
 
 		if (mUsingSpray || mUsingBubbles || mUsingFoam || mUsingTracers) {

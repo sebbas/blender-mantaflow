@@ -135,7 +135,23 @@ gs_sm$ID$     = vec3($MESH_RESX$, $MESH_RESY$, $MESH_RESZ$)\n";
 const std::string fluid_variables_particles = "\n\
 mantaMsg('Fluid variables particles')\n\
 upres_sp$ID$  = $PARTICLE_SCALE$\n\
-gs_sp$ID$     = vec3($PARTICLE_RESX$, $PARTICLE_RESY$, $PARTICLE_RESZ$)\n";
+gs_sp$ID$     = vec3($PARTICLE_RESX$, $PARTICLE_RESY$, $PARTICLE_RESZ$)\n\
+tauMin_wc_sp$ID$ = $SNDPARTICLE_TAU_MIN_WC$\n\
+tauMax_wc_sp$ID$ = $SNDPARTICLE_TAU_MAX_WC$\n\
+tauMin_ta_sp$ID$ = $SNDPARTICLE_TAU_MIN_TA$\n\
+tauMax_ta_sp$ID$ = $SNDPARTICLE_TAU_MAX_TA$\n\
+tauMin_k_sp$ID$ = $SNDPARTICLE_TAU_MIN_K$\n\
+tauMax_k_sp$ID$ = $SNDPARTICLE_TAU_MAX_K$\n\
+k_wc_sp$ID$ = $SNDPARTICLE_K_WC$\n\
+k_ta_sp$ID$ = $SNDPARTICLE_K_TA$\n\
+k_b_sp$ID$ = $SNDPARTICLE_K_B$\n\
+k_d_sp$ID$ = $SNDPARTICLE_K_D$\n\
+lMin_sp$ID$ = $SNDPARTICLE_L_MIN$\n\
+lMax_sp$ID$ = $SNDPARTICLE_L_MAX$\n\
+c_s_sp$ID$ = 0.4   # classification constant for snd parts\n\
+c_b_sp$ID$ = 0.77  # classification constant for snd parts\n\
+scaleFromManta_sp$ID$ = $FLUID_DOMAIN_SIZE$ / float(res_s$ID$) # resize factor for snd parts\n\
+gravity_rescaled_sp$ID$ = gravity_s$ID$ / scaleFromManta_sp$ID$";
 
 const std::string fluid_with_obstacle = "\n\
 using_obstacle_s$ID$ = True\n";
@@ -245,15 +261,16 @@ z_invel_s$ID$ = s$ID$.create(RealGrid)\n";
 
 const std::string fluid_alloc_sndparts = "\n\
 mantaMsg('Allocating snd parts low')\n\
-ppSnd_sp$ID$    = sp$ID$.create(BasicParticleSystem)\n\
-pVelSnd_pp$ID$  = ppSnd_sp$ID$.create(PdataVec3)\n\
-pLifeSnd_pp$ID$ = ppSnd_sp$ID$.create(PdataReal)\n\
-vel_sp$ID$      = sp$ID$.create(MACGrid)\n\
-flags_sp$ID$    = sp$ID$.create(FlagGrid)\n\
-phi_sp$ID$      = sp$ID$.create(LevelsetGrid)\n\
-phiIn_sp$ID$    = sp$ID$.create(LevelsetGrid)\n\
-phiObs_sp$ID$   = sp$ID$.create(LevelsetGrid)\n\
-phiObsIn_sp$ID$ = sp$ID$.create(LevelsetGrid)\n\
+ppSnd_sp$ID$     = sp$ID$.create(BasicParticleSystem)\n\
+pVelSnd_pp$ID$   = ppSnd_sp$ID$.create(PdataVec3)\n\
+pForceSnd_pp$ID$ = ppSnd_sp$ID$.create(PdataVec3)\n\
+pLifeSnd_pp$ID$  = ppSnd_sp$ID$.create(PdataReal)\n\
+vel_sp$ID$       = sp$ID$.create(MACGrid)\n\
+flags_sp$ID$     = sp$ID$.create(FlagGrid)\n\
+phi_sp$ID$       = sp$ID$.create(LevelsetGrid)\n\
+phiIn_sp$ID$     = sp$ID$.create(LevelsetGrid)\n\
+phiObs_sp$ID$    = sp$ID$.create(LevelsetGrid)\n\
+phiObsIn_sp$ID$  = sp$ID$.create(LevelsetGrid)\n\
 \n\
 normal_sp$ID$        = sp$ID$.create(VecGrid)\n\
 neighborRatio_sp$ID$ = sp$ID$.create(RealGrid)\n\
@@ -262,7 +279,9 @@ waveCrest_sp$ID$     = sp$ID$.create(RealGrid)\n\
 kineticEnergy_sp$ID$ = sp$ID$.create(RealGrid)\n\
 \n\
 # Keep track of important objects in dict to load them later on\n\
-fluid_particles_dict_s$ID$ = dict(ppSnd=ppSnd_sp$ID$, pVelSnd=pVelSnd_pp$ID$, pLifeSnd=pLifeSnd_pp$ID$, trappedAir=trappedAir_sp$ID$, waveCrest=waveCrest_sp$ID$, kineticEnergy=kineticEnergy_sp$ID$)\n";
+fluid_particles_dict_s$ID$ = dict(ppSnd=ppSnd_sp$ID$, pVelSnd=pVelSnd_pp$ID$, pLifeSnd=pLifeSnd_pp$ID$)\n\
+tmpDict_sp$ID$ = dict( trappedAir=trappedAir_sp$ID$, waveCrest=waveCrest_sp$ID$, kineticEnergy=kineticEnergy_sp$ID$)\n\
+fluid_data_dict_s$ID$.update(tmpDict_sp$ID$)\n";
 
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION

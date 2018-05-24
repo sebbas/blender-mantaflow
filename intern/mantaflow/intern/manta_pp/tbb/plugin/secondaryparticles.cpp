@@ -440,7 +440,6 @@ void flipUpdateSecondaryParticles( const std::string mode, BasicParticleSystem &
 
 	Vec3 g = gravity / flags.getDx();
 	if (mode == "linear") {
-		debMsg(flags.getDx(), 1);
 		knFlipUpdateSecondaryParticlesLinear(pts_sec, v_sec, l_sec, f_sec, flags, v, neighborRatio, g, k_b, k_d, c_s, c_b, dt, exclude, antitunneling);
 	}
 	else if (mode == "cubic") {

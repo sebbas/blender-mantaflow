@@ -465,7 +465,6 @@ void flipUpdateSecondaryParticles( const std::string mode, BasicParticleSystem &
 
 	Vec3 g = gravity / flags.getDx();
 	if (mode == "linear") {
-		debMsg(flags.getDx(), 1);
 		knFlipUpdateSecondaryParticlesLinear(pts_sec, v_sec, l_sec, f_sec, flags, v, neighborRatio, g, k_b, k_d, c_s, c_b, dt, exclude, antitunneling);
 	}
 	else if (mode == "cubic") {
@@ -502,7 +501,7 @@ void flipUpdateSecondaryParticles( const std::string mode, BasicParticleSystem &
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,pts,flags);  }   } BasicParticleSystem& pts; const FlagGrid& flags;   };
-#line 447 "plugin/secondaryparticles.cpp"
+#line 446 "plugin/secondaryparticles.cpp"
 
 
 
@@ -557,7 +556,7 @@ void debugGridInfo( const FlagGrid &flags, Grid<Real> &grid, std::string name, c
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,flags,phi,exclude,itype);  }   } FlagGrid& flags; const Grid<Real> & phi; const int exclude; const int itype;   };
-#line 508 "plugin/secondaryparticles.cpp"
+#line 507 "plugin/secondaryparticles.cpp"
 
 
 
@@ -579,7 +578,7 @@ void setFlagsFromLevelset( FlagGrid &flags, const Grid<Real> &phi, const int exc
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,v,phi,c);  } }  } MACGrid& v; const Grid<Real> & phi; const Vec3 c;   };
-#line 520 "plugin/secondaryparticles.cpp"
+#line 519 "plugin/secondaryparticles.cpp"
 
 
 
@@ -640,7 +639,7 @@ void setMACFromLevelset( MACGrid &v, const Grid<Real> &phi, const Vec3 c) {
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,pot,flags,v,radius,tauMin,tauMax,scaleFromManta,itype,jtype);  } }  } Grid<Real> & pot; const FlagGrid& flags; const MACGrid& v; const int radius; const Real tauMin; const Real tauMax; const Real scaleFromManta; const int itype; const int jtype;   };
-#line 550 "plugin/secondaryparticles.cpp"
+#line 549 "plugin/secondaryparticles.cpp"
 
 
 
@@ -676,7 +675,7 @@ void flipComputePotentialTrappedAir( Grid<Real> &pot, const FlagGrid &flags, con
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,pot,flags,v,tauMin,tauMax,scaleFromManta,itype);  } }  } Grid<Real> & pot; const FlagGrid& flags; const MACGrid& v; const Real tauMin; const Real tauMax; const Real scaleFromManta; const int itype;   };
-#line 590 "plugin/secondaryparticles.cpp"
+#line 589 "plugin/secondaryparticles.cpp"
 
 
 
@@ -733,7 +732,7 @@ void flipComputePotentialKineticEnergy( Grid<Real> &pot, const FlagGrid &flags, 
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,pot,flags,v,radius,normal,tauMin,tauMax,scaleFromManta,itype,jtype);  } }  } Grid<Real> & pot; const FlagGrid& flags; const MACGrid& v; const int radius; Grid<Vec3> & normal; const Real tauMin; const Real tauMax; const Real scaleFromManta; const int itype; const int jtype;   };
-#line 614 "plugin/secondaryparticles.cpp"
+#line 613 "plugin/secondaryparticles.cpp"
 
 
 
@@ -756,7 +755,7 @@ void flipComputePotentialWaveCrest( Grid<Real> &pot, const FlagGrid &flags, cons
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,normal,phi);  }   } Grid<Vec3>& normal; const Grid<Real>& phi;   };
-#line 657 "plugin/secondaryparticles.cpp"
+#line 656 "plugin/secondaryparticles.cpp"
 
 
 
@@ -800,7 +799,7 @@ void flipComputeSurfaceNormals(Grid<Vec3>& normal, const Grid<Real>& phi) {
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,neighborRatio,radius,itype,jtype);  } }  } const FlagGrid& flags; Grid<Real> & neighborRatio; const int radius; const int itype; const int jtype;   };
-#line 671 "plugin/secondaryparticles.cpp"
+#line 670 "plugin/secondaryparticles.cpp"
 
 
 

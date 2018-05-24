@@ -926,7 +926,7 @@ class PHYSICS_PT_liquid_display_settings(PhysicButtonsPanel, Panel):
     def draw(self, context):
         domain = context.smoke.domain_settings
         layout = self.layout
-        layout.enabled = domain.cache_baked_particles_low
+        layout.enabled = domain.cache_baked_particles
         split = layout.split()
         first = split.column()
         first.prop(domain, "use_color_ramp", text="Enable Display")
