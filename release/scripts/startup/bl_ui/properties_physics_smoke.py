@@ -452,14 +452,14 @@ class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
             split.enabled = not baking_any
 
             col = split.column(align=True)
-            col.label(text="Smoothening")
+            col.label(text="Smoothing:")
             col.prop(domain, "mesh_smoothen_pos")
             col.prop(domain, "mesh_smoothen_neg")
 
             col = split.column(align=True)
-            col.label(text="")
-            col.prop(domain, "mesh_smoothen_upper")
-            col.prop(domain, "mesh_smoothen_lower")
+            col.label(text="Concavity:")
+            col.prop(domain, "mesh_concave_upper")
+            col.prop(domain, "mesh_concave_lower")
 
         # TODO (sebbas): for now just interpolate any upres grids, ie not sampling highres grids 
         #col = split.column()

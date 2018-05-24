@@ -520,8 +520,8 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->particle_minimum = 8;
 			smd->domain->particle_maximum = 16;
 			smd->domain->particle_radius = 1.0f;
-			smd->domain->mesh_smoothen_upper = 3.5f;
-			smd->domain->mesh_smoothen_lower = 0.4f;
+			smd->domain->mesh_concave_upper = 3.5f;
+			smd->domain->mesh_concave_lower = 0.4f;
 			smd->domain->mesh_smoothen_pos = 1;
 			smd->domain->mesh_smoothen_neg = 1;
 
@@ -710,8 +710,8 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->particle_minimum = smd->domain->particle_minimum;
 		tsmd->domain->particle_maximum = smd->domain->particle_maximum;
 		tsmd->domain->particle_radius = smd->domain->particle_radius;
-		tsmd->domain->mesh_smoothen_upper = smd->domain->mesh_smoothen_upper;
-		tsmd->domain->mesh_smoothen_lower = smd->domain->mesh_smoothen_lower;
+		tsmd->domain->mesh_concave_upper = smd->domain->mesh_concave_upper;
+		tsmd->domain->mesh_concave_lower = smd->domain->mesh_concave_lower;
 		tsmd->domain->mesh_smoothen_pos = smd->domain->mesh_smoothen_pos;
 		tsmd->domain->mesh_smoothen_neg = smd->domain->mesh_smoothen_neg;
 		tsmd->domain->particle_band_width = smd->domain->particle_band_width;

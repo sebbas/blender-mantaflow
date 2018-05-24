@@ -327,8 +327,8 @@ typedef struct SmokeDomainSettings {
 	int particle_minimum;
 	int particle_maximum;
 	float particle_radius;
-	float mesh_smoothen_upper;
-	float mesh_smoothen_lower;
+	float mesh_concave_upper;
+	float mesh_concave_lower;
 	int mesh_smoothen_pos;
 	int mesh_smoothen_neg;
 	float particle_band_width;

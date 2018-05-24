@@ -1088,7 +1088,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	};
 
 	static EnumPropertyItem fluid_mesh_quality_items[] = {
-		{SM_MESH_IMPROVED, "IMPROVED", 0, "Final", "Use improved particle levelset (slower but more precise and with mesh smoothening options)"},
+		{SM_MESH_IMPROVED, "IMPROVED", 0, "Final", "Use improved particle levelset (slower but more precise and with mesh smoothing options)"},
 		{SM_MESH_UNION, "UNION", 0, "Preview", "Use union particle levelset (faster but lower quality)"},
 		{0, NULL, 0, NULL, NULL}
 	};
@@ -1645,14 +1645,14 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Radius", "Particle radius factor (higher value results in larger particles)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
-	prop = RNA_def_property(srna, "mesh_smoothen_upper", PROP_FLOAT, PROP_NONE);
+	prop = RNA_def_property(srna, "mesh_concave_upper", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 10.0);
-	RNA_def_property_ui_text(prop, "Smoothen Upper", "Upper mesh smoothing bound (high values tend to smoothen and fill out concave regions)");
+	RNA_def_property_ui_text(prop, "Upper Concavity", "Upper mesh concavity bound (high values tend to smoothen and fill out concave regions)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
-	prop = RNA_def_property(srna, "mesh_smoothen_lower", PROP_FLOAT, PROP_NONE);
+	prop = RNA_def_property(srna, "mesh_concave_lower", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 10.0);
-	RNA_def_property_ui_text(prop, "Smoothen Lower", "Lower mesh smoothing bound (high values tend to smoothen and fill out concave regions)");
+	RNA_def_property_ui_text(prop, "Lower Concavity", "Lower mesh concavity bound (high values tend to smoothen and fill out concave regions)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "mesh_smoothen_pos", PROP_INT, PROP_NONE);
