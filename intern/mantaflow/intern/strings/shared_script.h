@@ -279,9 +279,7 @@ waveCrest_sp$ID$     = sp$ID$.create(RealGrid)\n\
 kineticEnergy_sp$ID$ = sp$ID$.create(RealGrid)\n\
 \n\
 # Keep track of important objects in dict to load them later on\n\
-fluid_particles_dict_s$ID$ = dict(ppSnd=ppSnd_sp$ID$, pVelSnd=pVelSnd_pp$ID$, pLifeSnd=pLifeSnd_pp$ID$)\n\
-tmpDict_sp$ID$ = dict( trappedAir=trappedAir_sp$ID$, waveCrest=waveCrest_sp$ID$, kineticEnergy=kineticEnergy_sp$ID$)\n\
-fluid_data_dict_s$ID$.update(tmpDict_sp$ID$)\n";
+fluid_particles_dict_s$ID$ = dict(ppSnd=ppSnd_sp$ID$, pVelSnd=pVelSnd_pp$ID$, pLifeSnd=pLifeSnd_pp$ID$, trappedAir=trappedAir_sp$ID$, waveCrest=waveCrest_sp$ID$, kineticEnergy=kineticEnergy_sp$ID$)\n";
 
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION

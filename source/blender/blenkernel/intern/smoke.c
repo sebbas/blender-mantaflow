@@ -3213,10 +3213,10 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 		{
 			if (sds->cache_flag & FLUID_CACHE_BAKED_DATA)
 			{
-				if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS)
-					fluid_read_data(sds->fluid, smd, framenr);
-				if (sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
+				fluid_read_data(sds->fluid, smd, framenr);
+				if (sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID){
 					fluid_update_liquid_structures(sds->fluid, smd, framenr);
+				}
 			}
 			if (sds->cache_flag & FLUID_CACHE_BAKED_NOISE)
 			{
@@ -3233,8 +3233,10 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			{
 				//if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS)
 					// TODO (sebbas)
-				if (sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
+				if (sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID) {
+					fluid_read_particles(sds->fluid, smd, framenr);
 					fluid_update_particle_structures(sds->fluid, smd, framenr);
+				}
 			}
 		}
 
