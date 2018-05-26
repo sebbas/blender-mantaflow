@@ -569,12 +569,16 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
         domain = context.smoke.domain_settings
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
+
+        top = layout.row()
+        top.prop(domain, "particle_scale", text="Upres")
+        top.enabled = not baking_any
 
         top = layout.column()
-        top.enabled = not domain.cache_baked_particles
+        top.enabled = not baking_any and not domain.point_cache.is_baked
         top.label("Exported Particles:")
         sub1 = top.row()
-        sub1.prop(domain, "use_flip_particles", text="FLIP")
         subSpray = sub1.column()
         subSpray.enabled = (domain.sndparticle_combined_export == 'OFF') or (domain.sndparticle_combined_export == 'FOAM + BUBBLES')
         subSpray.prop(domain, "use_spray_particles", text="Spray")
@@ -589,7 +593,7 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         middle.prop(domain, "sndparticle_combined_export")
 
         split = layout.split()
-        split.enabled = not domain.cache_baked_particles
+        split.enabled = not baking_any and not domain.point_cache.is_baked
         sub1 = split.column()
         sub1.enabled = domain.use_spray_particles or domain.use_foam_particles or domain.use_bubble_particles
         sub2 = sub1.column(align=True)
@@ -629,8 +633,20 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         sub1.label("Save Potential Grids:")
         sub1.prop(domain, "sndparticle_potential_grid_save", text="")
 
-        #bottom = layout.column()
-        #bottom.enabled = domain.use_spray_particles or domain.use_foam_particles or domain.use_bubble_particles
+        button = layout.split()
+        button.enabled = domain.cache_baked_data and (domain.use_spray_particles or domain.use_bubble_particles or domain.use_foam_particles or domain.use_tracer_particles)
+        bake_incomplete = domain.cache_frame_pause_particles
+        if domain.cache_baked_particles and not domain.cache_baking_particles and bake_incomplete:
+            col = button.column()
+            col.operator("manta.bake_particles", text="Resume")
+            col = button.column()
+            col.operator("manta.free_particles", text="Free")
+        elif not domain.cache_baked_particles and domain.cache_baking_particles:
+            button.operator("manta.pause_bake", text="Pause Particles")
+        elif not domain.cache_baked_particles and not domain.cache_baking_particles:
+            button.operator("manta.bake_particles", text="Bake Particles")
+        else:
+            button.operator("manta.free_particles", text="Free Particles")
         
 
 class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
@@ -926,12 +942,12 @@ class PHYSICS_PT_liquid_display_settings(PhysicButtonsPanel, Panel):
     def draw(self, context):
         domain = context.smoke.domain_settings
         layout = self.layout
-        layout.enabled = domain.cache_baked_particles
+        layout.enabled = domain.cache_baked_data
         split = layout.split()
         first = split.column()
         first.prop(domain, "use_color_ramp", text="Enable Display")
         second = split.column()
-        second.enabled = domain.use_color_ramp and (domain.sndparticle_potential_grid_save == 'LOW ONLY' or domain.sndparticle_potential_grid_save == 'ON')
+        second.enabled = domain.use_color_ramp and domain.cache_baked_particles
         second.prop(domain, "coba_field_liquid", text="")
 
 
@@ -953,7 +969,7 @@ class PHYSICS_PT_liquid_display_settings(PhysicButtonsPanel, Panel):
         layout.label()
         split = layout.split()
         first = split.column()
-        first.enabled = domain.use_color_ramp and False #disable for now, until velocity components (x_vel, y_vel and z_vel) are saved and loaded or removed
+        first.enabled = domain.use_color_ramp #disable for now, until velocity components (x_vel, y_vel and z_vel) are saved and loaded or removed
         first.prop(domain, "draw_velocity")
         second = split.column()
         second.enabled = domain.draw_velocity and domain.use_color_ramp

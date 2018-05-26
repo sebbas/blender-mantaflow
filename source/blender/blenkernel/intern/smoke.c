@@ -472,8 +472,8 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->coll_group = NULL;
 			smd->domain->maxres = 32;
 			smd->domain->noise_scale = 2;
-			smd->domain->mesh_scale = 2;
-			smd->domain->particle_scale = 4;
+			smd->domain->mesh_scale = 4;
+			smd->domain->particle_scale = 2;
 			smd->domain->alpha = -0.001;
 			smd->domain->beta = 0.3;
 			smd->domain->time_scale = 1.0;
@@ -611,7 +611,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 
 			smd->domain->coba = NULL;
 			smd->domain->coba_field = FLUID_FIELD_DENSITY;
-			smd->domain->coba_field_liquid = FLUID_FIELD_PRESSURE;
+			smd->domain->coba_field_liquid = FLUID_FIELD_PHI;
 			smd->domain->clipping = 1e-3f;
 		}
 		else if (smd->type & MOD_SMOKE_TYPE_FLOW)

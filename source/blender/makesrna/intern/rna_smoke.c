@@ -969,6 +969,12 @@ static void rna_Smoke_use_color_ramp_set(PointerRNA *ptr, int value)
 	if (value && sds->coba == NULL) {
 		sds->coba = BKE_colorband_add(false);
 	}
+	if (value == 0) {
+		sds->draw_velocity = 0;
+	}
+	if (value == 1 && !(sds->cache_flag & FLUID_CACHE_BAKED_PARTICLES)) {
+		sds->coba_field_liquid = FLUID_FIELD_PHI;
+	}
 }
 
 static void rna_Smoke_flowsource_set(struct PointerRNA *ptr, int value)
@@ -2020,7 +2026,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	};
 
 	static const EnumPropertyItem coba_field_items_liquid[] = {
-		{ FLUID_FIELD_PRESSURE, "PRESSURE", 0, "Pressure", "Pressure grid inside the liquid" },
+		//{ FLUID_FIELD_PRESSURE, "PRESSURE", 0, "Pressure", "Pressure grid inside the liquid" },
 		{ FLUID_FIELD_PHI, "PHI", 0, "Levelset", "Levelset grid to indicate the position of the liquid" },
 		{ FLUID_FIELD_KINETIC_ENERGY, "KINETIC_ENERGY", 0, "Kinetic Energy Potential", "Kinetic energy potential grid for secondary particle generation" },
 		{ FLUID_FIELD_TRAPPED_AIR, "TRAPPED_AIR", 0, "Trapped Air Potential", "Trapped air potential grid for secondary particle generation" },

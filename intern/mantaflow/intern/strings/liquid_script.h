@@ -77,7 +77,7 @@ pindex_s$ID$     = s$ID$.create(ParticleIndexSystem)\n\
 gpi_s$ID$        = s$ID$.create(IntGrid)\n\
 \n\
 # Keep track of important objects in dict to load them later on\n\
-liquid_data_dict_s$ID$ = dict(phiParts=phiParts_s$ID$, phi=phi_s$ID$, phiIn=phiIn_s$ID$, phiTmp=phiTmp_s$ID$)\n\
+liquid_data_dict_s$ID$ = dict(phiParts=phiParts_s$ID$, phi=phi_s$ID$, phiIn=phiIn_s$ID$, phiTmp=phiTmp_s$ID$, vel=vel_s$ID$)\n\
 liquid_flip_dict_s$ID$ = dict(pp=pp_s$ID$, pVel=pVel_pp$ID$)\n";
 
 const std::string liquid_alloc_mesh = "\n\
@@ -127,10 +127,10 @@ def liquid_pre_step_$ID$():\n\
         z_invel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
         copyRealToVec3(sourceX=x_invel_s$ID$, sourceY=y_invel_s$ID$, sourceZ=z_invel_s$ID$, target=invel_s$ID$)\n\
     \n\
-    #x_vel_s$ID$.multConst(Real(gs_s$ID$.x))\n\
-    #y_vel_s$ID$.multConst(Real(gs_s$ID$.y))\n\
-    #z_vel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
-    #copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
+    x_vel_s$ID$.multConst(Real(gs_s$ID$.x))\n\
+    y_vel_s$ID$.multConst(Real(gs_s$ID$.y))\n\
+    z_vel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
+    copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
     copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n";
 
 const std::string liquid_post_step = "\n\
@@ -141,10 +141,10 @@ def liquid_post_step_$ID$():\n\
     if using_invel_s$ID$:\n\
         invel_s$ID$.clear()\n\
     \n\
-    #copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n\
-    #x_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.x) )\n\
-    #y_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.y) )\n\
-    #z_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.z) )\n";
+    copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n\
+    x_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.x) )\n\
+    y_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.y) )\n\
+    z_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.z) )\n";
 
 //////////////////////////////////////////////////////////////////////
 // STEP FUNCTIONS

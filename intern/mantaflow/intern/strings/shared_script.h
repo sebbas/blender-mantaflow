@@ -440,6 +440,13 @@ def fluid_file_import_s$ID$(dict, path, framenr, file_format):\n\
         for name, object in dict.items():\n\
             file = os.path.join(path, name + '_' + framenr + file_format)\n\
             if os.path.isfile(file): object.load(file)\n\
+            # for velocity also update x_vel, y_vel and z_vel\n\
+            if name == 'vel':\n\
+                mantaMsg('Load x_vel, y-vel and z_vel')\n\
+                copyVec3ToReal(source = vel_s$ID$, targetX = x_vel_s$ID$, targetY = y_vel_s$ID$, targetZ = z_vel_s$ID$)\n\
+                x_vel_s$ID$.multConst(1.0 / Real(gs_s$ID$.x))\n\
+                y_vel_s$ID$.multConst(1.0 / Real(gs_s$ID$.y))\n\
+                z_vel_s$ID$.multConst(1.0 / Real(gs_s$ID$.z))\n\
     except Exception as e:\n\
         mantaMsg(str(e))\n\
         pass # Just skip file load errors for now\n";
