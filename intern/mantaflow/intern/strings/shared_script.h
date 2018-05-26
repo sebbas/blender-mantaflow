@@ -439,7 +439,12 @@ def fluid_file_import_s$ID$(dict, path, framenr, file_format):\n\
         framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
         for name, object in dict.items():\n\
             file = os.path.join(path, name + '_' + framenr + file_format)\n\
+            #try:\n\
+            #    printGridSize(object, name)\n\
+            #except Exception as e:\n\
+            #    pass\n\
             if os.path.isfile(file): object.load(file)\n\
+            \n\
             # for velocity also update x_vel, y_vel and z_vel\n\
             if name == 'vel':\n\
                 mantaMsg('Load x_vel, y-vel and z_vel')\n\
