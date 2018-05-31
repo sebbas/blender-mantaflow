@@ -370,7 +370,6 @@ def liquid_step_particles_old_$ID$():\n\
 const std::string liquid_step_particles = "\n\
 def liquid_step_particles_$ID$():\n\
     mantaMsg('Secondary particles step')\n\
-    radius = 2 if $SNDPARTICLE_POTENTIAL_QUALITY_HIGH$ else $PARTICLE_SCALE$\n\
     \n\
     # no upres: just use the loaded grids\n\
     if $PARTICLE_SCALE$ <= 1:\n\
@@ -384,15 +383,14 @@ def liquid_step_particles_$ID$():\n\
         # create highres grids by interpolation\n\
         interpolateMACGrid(target = vel_sp$ID$, source = vel_s$ID$)\n\
         interpolateGrid(target = phi_sp$ID$, source = phi_s$ID$)\n\
-        interpolateGrid(target = phiIn_sp$ID$, source = phiIn_s$ID$)\n\
         flags_sp$ID$.initDomain(boundaryWidth = boundaryWidth_s$ID$, phiWalls = phiObs_sp$ID$, outflow = boundConditions_s$ID$)\n\
         flags_sp$ID$.updateFromLevelset(levelset=phi_sp$ID$)\n\
     \n\
     # actual secondary simulation\n\
     #extrapolateLsSimple(phi = phi_sp$ID$, distance = radius + 1, inside = True)\n\
-    flipComputeSecondaryParticlePotentials(potTA=trappedAir_sp$ID$, potWC=waveCrest_sp$ID$, potKE=kineticEnergy_sp$ID$, neighborRatio=neighborRatio_sp$ID$, flags=flags_sp$ID$, v=vel_sp$ID$, normal=normal_sp$ID$, phi=phi_sp$ID$, radius=radius, tauMinTA=tauMin_ta_sp$ID$, tauMaxTA=tauMax_ta_sp$ID$, tauMinWC=tauMin_wc_sp$ID$, tauMaxWC=tauMax_wc_sp$ID$, tauMinKE=tauMin_k_sp$ID$, tauMaxKE=tauMax_k_sp$ID$, scaleFromManta=scaleFromManta_sp$ID$)\n\
+    flipComputeSecondaryParticlePotentials(potTA=trappedAir_sp$ID$, potWC=waveCrest_sp$ID$, potKE=kineticEnergy_sp$ID$, neighborRatio=neighborRatio_sp$ID$, flags=flags_sp$ID$, v=vel_sp$ID$, normal=normal_sp$ID$, phi=phi_sp$ID$, radius=pot_radius_sp$ID$, tauMinTA=tauMin_ta_sp$ID$, tauMaxTA=tauMax_ta_sp$ID$, tauMinWC=tauMin_wc_sp$ID$, tauMaxWC=tauMax_wc_sp$ID$, tauMinKE=tauMin_k_sp$ID$, tauMaxKE=tauMax_k_sp$ID$, scaleFromManta=scaleFromManta_sp$ID$)\n\
     flipSampleSecondaryParticles(mode='single', flags=flags_sp$ID$, v=vel_sp$ID$, pts_sec=ppSnd_sp$ID$, v_sec=pVelSnd_pp$ID$, l_sec=pLifeSnd_pp$ID$, lMin=lMin_sp$ID$, lMax=lMax_sp$ID$, potTA=trappedAir_sp$ID$, potWC=waveCrest_sp$ID$, potKE=kineticEnergy_sp$ID$, neighborRatio=neighborRatio_sp$ID$, c_s=c_s_sp$ID$, c_b=c_b_sp$ID$, k_ta=k_ta_sp$ID$, k_wc=k_wc_sp$ID$, dt=s$ID$.frameLength)\n\
-    flipUpdateSecondaryParticles(mode='linear', pts_sec=ppSnd_sp$ID$, v_sec=pVelSnd_pp$ID$, l_sec=pLifeSnd_pp$ID$, f_sec=pForceSnd_pp$ID$, flags=flags_sp$ID$, v=vel_sp$ID$, neighborRatio=neighborRatio_sp$ID$, radius=1, gravity=gravity_s$ID$, k_b=k_b_sp$ID$, k_d=k_d_sp$ID$, c_s=c_s_sp$ID$, c_b=c_b_sp$ID$, dt=s$ID$.frameLength)\n\
+    flipUpdateSecondaryParticles(mode='linear', pts_sec=ppSnd_sp$ID$, v_sec=pVelSnd_pp$ID$, l_sec=pLifeSnd_pp$ID$, f_sec=pForceSnd_pp$ID$, flags=flags_sp$ID$, v=vel_sp$ID$, neighborRatio=neighborRatio_sp$ID$, radius=update_radius_sp$ID$, gravity=gravity_s$ID$, k_b=k_b_sp$ID$, k_d=k_d_sp$ID$, c_s=c_s_sp$ID$, c_b=c_b_sp$ID$, dt=s$ID$.frameLength)\n\
     if $SNDPARTICLE_BOUNDARY_PUSHOUT$:\n\
         pushOutofObs(parts = ppSnd_sp$ID$, flags = flags_sp$ID$, phiObs = phiObs_sp$ID$, shift = 1.0)\n\
     flipDeleteParticlesInObstacle(pts = ppSnd_sp$ID$, flags = flags_sp$ID$)\n\

@@ -896,18 +896,10 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << (smd->domain->sndparticle_boundary == SNDPARTICLE_BOUNDARY_DELETE);
 	else if (varName == "SNDPARTICLE_BOUNDARY_PUSHOUT")
 		ss << (smd->domain->sndparticle_boundary == SNDPARTICLE_BOUNDARY_PUSHOUT);
-	else if (varName == "SNDPARTICLE_POTENTIAL_QUALITY_LOW")
-		ss << (smd->domain->sndparticle_potential_quality == SNDPARTICLE_POTENTIAL_QUALITY_LOW);
-	else if (varName == "SNDPARTICLE_POTENTIAL_QUALITY_HIGH")
-		ss << (smd->domain->sndparticle_potential_quality == SNDPARTICLE_POTENTIAL_QUALITY_HIGH);
-	else if (varName == "SNDPARTICLE_POTENTIAL_RESOLUTION_LOW")
-		ss << (smd->domain->sndparticle_potential_resolution == SNDPARTICLE_POTENTIAL_RESOLUTION_LOW);
-	else if (varName == "SNDPARTICLE_POTENTIAL_RESOLUTION_HIGH")
-		ss << (smd->domain->sndparticle_potential_resolution == SNDPARTICLE_POTENTIAL_RESOLUTION_HIGH);
-	else if (varName == "SNDPARTICLE_POTENTIAL_GRID_SAVE_LOW")
-		ss << (smd->domain->sndparticle_potential_grid_save == SNDPARTICLE_POTENTIAL_GRID_SAVE_LOW);
-	else if (varName == "SNDPARTICLE_POTENTIAL_GRID_SAVE_ON")
-		ss << (smd->domain->sndparticle_potential_grid_save == SNDPARTICLE_POTENTIAL_GRID_SAVE_ON);
+	else if (varName == "SNDPARTICLE_POTENTIAL_RADIUS")
+		ss << smd->domain->sndparticle_potential_radius;
+	else if (varName == "SNDPARTICLE_UPDATE_RADIUS")
+		ss << smd->domain->sndparticle_update_radius;
 	else if (varName == "GUIDING_ALPHA")
 		ss << smd->domain->guiding_alpha;
 	else if (varName == "GUIDING_BETA")

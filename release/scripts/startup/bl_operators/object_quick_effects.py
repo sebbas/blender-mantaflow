@@ -665,19 +665,19 @@ class QuickLiquidParticles(Operator):
                default='SECONDARY',)
 
     liquid_display = BoolProperty(
-        name="Use Liquid Display",
+        name="Setup Liquid Display",
         description="Display simulation grids for easier parameter adjustment",
         default=True,)
-
-    color_coding = BoolProperty(
-            name="Enable Color Coding",
-            description="Render some particle attribute like speed or age by the particle color",
-            default=False,)
 
     combined_export = BoolProperty(
             name="Combined Particle Export",
             description="Several particle types end up in the same particle system for significantly faster rendering",
             default=True,)
+
+    color_coding = BoolProperty(
+            name="Enable Color Coding",
+            description="Render some particle attribute like speed or age by the particle color",
+            default=False,)
 
     show_flows = BoolProperty(
             name="Render Liquid Objects",

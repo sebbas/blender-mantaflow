@@ -293,18 +293,6 @@ static void rna_Smoke_tracer_parts_set(struct PointerRNA *ptr, int value)
 	rna_Smoke_draw_type_update(NULL, NULL, ptr);
 }
 
-static void rna_Smoke_sndparticle_potential_grid_save_set(struct PointerRNA *ptr, int value)
-{
-	Object *ob = (Object *)ptr->id.data;
-	SmokeModifierData *smd;
-	smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
-
-	if (value == SNDPARTICLE_POTENTIAL_GRID_SAVE_OFF) {
-		smd->domain->coba_field_liquid = FLUID_FIELD_PRESSURE;
-	}
-	smd->domain->sndparticle_potential_grid_save = value;
-}
-
 static void rna_Smoke_combined_export_set(struct PointerRNA *ptr, int value)
 {
 	Object *ob = (Object *)ptr->id.data;
@@ -972,9 +960,6 @@ static void rna_Smoke_use_color_ramp_set(PointerRNA *ptr, int value)
 	if (value == 0) {
 		sds->draw_velocity = 0;
 	}
-	if (value == 1 && !(sds->cache_flag & FLUID_CACHE_BAKED_PARTICLES)) {
-		sds->coba_field_liquid = FLUID_FIELD_PHI;
-	}
 }
 
 static void rna_Smoke_flowsource_set(struct PointerRNA *ptr, int value)
@@ -1137,25 +1122,6 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 		{ 0, NULL, 0, NULL, NULL }
 	};
 
-	static const EnumPropertyItem sndparticle_potential_resolution_items[] = {
-		{ SNDPARTICLE_POTENTIAL_RESOLUTION_LOW, "LOW", 0, "Low", "Use the same resolution as the base fluid grid (faster simulation, but less accurate)" },
-		{ SNDPARTICLE_POTENTIAL_RESOLUTION_HIGH, "HIGH", 0, "High", "Use twice the resolution as the base fluid grid (slower simulation, but very accurate)" },
-		{ 0, NULL, 0, NULL, NULL }
-	};
-
-	static const EnumPropertyItem sndparticle_potential_quality_items[] = {
-		{ SNDPARTICLE_POTENTIAL_QUALITY_LOW, "LOW", 0, "Low", "Compute potential grids with low accuracy" },
-		{ SNDPARTICLE_POTENTIAL_QUALITY_HIGH, "HIGH", 0, "High", "Compute potential grids with high accuracy" },
-		{ 0, NULL, 0, NULL, NULL }
-	};
-
-	static const EnumPropertyItem sndparticle_potential_grid_save_items[] = {
-		{ SNDPARTICLE_POTENTIAL_GRID_SAVE_OFF, "OFF", 0, "Off", "Do not save the potential grids" },
-		{ SNDPARTICLE_POTENTIAL_GRID_SAVE_LOW, "LOW ONLY", 0, "Low Only", "Save the potential grids only for the low resolution simulation" },
-		{ SNDPARTICLE_POTENTIAL_GRID_SAVE_ON, "ON", 0, "On", "Save the potential grids for both resolutions" },
-		{ 0, NULL, 0, NULL, NULL }
-	};
-
 	static const EnumPropertyItem sndparticle_combined_export_items[] = {
 		{ SNDPARTICLE_COMBINED_EXPORT_OFF, "OFF", 0, "Off", "Create a seperate particle system for every secondary particle type" },
 		{ SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM, "SPRAY + FOAM", 0, "Spray + Foam", "Spray and foam particles are saved in the same particle system" },
@@ -1197,15 +1163,15 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_int_sdna(prop, NULL, "mesh_scale");
 	RNA_def_property_range(prop, 1, 100);
 	RNA_def_property_ui_range(prop, 1, 10, 1, -1);
-	RNA_def_property_ui_text(prop, "Mesh scale", "Scale underlying mesh grids by this factor. Mesh grids have size factor times base resolution");
+	RNA_def_property_ui_text(prop, "Mesh scale", "Scale underlying mesh grids by this factor. Mesh grids have a size of upres factor * base resolution");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
 	prop = RNA_def_property(srna, "particle_scale", PROP_INT, PROP_NONE);
 	RNA_def_property_int_sdna(prop, NULL, "particle_scale");
 	RNA_def_property_range(prop, 1, 100);
-	RNA_def_property_ui_range(prop, 1, 10, 1, -1);
-	RNA_def_property_ui_text(prop, "Mesh scale", "Scale underlying particle grids by this factor. Particle grids have size factor times base resolution");
+	RNA_def_property_ui_range(prop, 1, 4, 1, -1);
+	RNA_def_property_ui_text(prop, "Particle scale", "Scale underlying particle grids by this factor. Particle grids have a size of upres factor * base resolution");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
@@ -1893,31 +1859,26 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Particles in Boundary", "How particles that left the domain are treated");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
-	prop = RNA_def_property(srna, "sndparticle_potential_resolution", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "sndparticle_potential_resolution");
-	RNA_def_property_enum_items(prop, sndparticle_potential_resolution_items);
-	RNA_def_property_ui_text(prop, "Potential Resolution", "Resolution of the potential grids");
-	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
-
-	prop = RNA_def_property(srna, "sndparticle_potential_quality", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "sndparticle_potential_quality");
-	RNA_def_property_enum_items(prop, sndparticle_potential_quality_items);
-	RNA_def_property_ui_text(prop, "Potential Quality", "How accurately are the potential grids computed");
-	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
-
-	prop = RNA_def_property(srna, "sndparticle_potential_grid_save", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "sndparticle_potential_grid_save");
-	RNA_def_property_enum_items(prop, sndparticle_potential_grid_save_items);
-	RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_sndparticle_potential_grid_save_set", NULL);
-	RNA_def_property_ui_text(prop, "Save Potential Grids", "Determines if the potential grids are saved. The saved grids are only used for the liquid display");
-	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
-
 	prop = RNA_def_property(srna, "sndparticle_combined_export", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "sndparticle_combined_export");
 	RNA_def_property_enum_items(prop, sndparticle_combined_export_items);
 	RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_combined_export_set", NULL);
 	RNA_def_property_ui_text(prop, "Combined Export", "Determines which particle systems are created from secondary particles");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
+
+	prop = RNA_def_property(srna, "sndparticle_potential_radius", PROP_INT, PROP_NONE);
+	RNA_def_property_int_sdna(prop, NULL, "sndparticle_potential_radius");
+	RNA_def_property_range(prop, 1, 4);
+	RNA_def_property_ui_range(prop, 1, 4, 1, -1);
+	RNA_def_property_ui_text(prop, "Potential Radius", "Radius to compute potential for each cell (higher values are slower but create smoother potential grids)");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+
+	prop = RNA_def_property(srna, "sndparticle_update_radius", PROP_INT, PROP_NONE);
+	RNA_def_property_int_sdna(prop, NULL, "sndparticle_update_radius");
+	RNA_def_property_range(prop, 1, 4);
+	RNA_def_property_ui_range(prop, 1, 4, 1, -1);
+	RNA_def_property_ui_text(prop, "Update Radius", "Radius to compute position update for each particle (higher values are slower but particles move less chaotic)");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "guiding_alpha", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "guiding_alpha");
@@ -1955,7 +1916,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "slice_per_voxel", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "slice_per_voxel");
 	RNA_def_property_range(prop, 0.0, 100.0);
-	RNA_def_property_ui_range(prop, 0.0, 5.0, 0.1, 1);
+	RNA_def_property_ui_range(prop, 0.0, 10.0, 0.1, 1);
 	RNA_def_property_ui_text(prop, "Slice Per Voxel", "How many slices per voxel should be generated");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 

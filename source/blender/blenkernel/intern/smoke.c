@@ -564,10 +564,9 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->sndparticle_l_min = 10.0;
 			smd->domain->sndparticle_l_max = 25.0;
 			smd->domain->sndparticle_boundary = SNDPARTICLE_BOUNDARY_DELETE;
-			smd->domain->sndparticle_potential_resolution = SNDPARTICLE_POTENTIAL_RESOLUTION_LOW;
-			smd->domain->sndparticle_potential_quality = SNDPARTICLE_POTENTIAL_QUALITY_HIGH;
-			smd->domain->sndparticle_potential_grid_save = SNDPARTICLE_POTENTIAL_GRID_SAVE_LOW;
 			smd->domain->sndparticle_combined_export = SNDPARTICLE_COMBINED_EXPORT_OFF;
+			smd->domain->sndparticle_potential_radius = 2;
+			smd->domain->sndparticle_update_radius = 2;
 
 
 			/* guiding */
@@ -742,10 +741,9 @@ void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData 
 		tsmd->domain->sndparticle_tau_min_ta = smd->domain->sndparticle_tau_min_ta;
 		tsmd->domain->sndparticle_tau_min_wc = smd->domain->sndparticle_tau_min_wc;
 		tsmd->domain->sndparticle_boundary = smd->domain->sndparticle_boundary;
-		tsmd->domain->sndparticle_potential_resolution = smd->domain->sndparticle_potential_resolution;
-		tsmd->domain->sndparticle_potential_quality = smd->domain->sndparticle_potential_quality;
-		tsmd->domain->sndparticle_potential_grid_save = smd->domain->sndparticle_potential_grid_save;
 		tsmd->domain->sndparticle_combined_export = smd->domain->sndparticle_combined_export;
+		tsmd->domain->sndparticle_potential_radius = smd->domain->sndparticle_potential_radius;
+		tsmd->domain->sndparticle_update_radius = smd->domain->sndparticle_update_radius;
 
 		tsmd->domain->surface_tension = smd->domain->surface_tension;
 		tsmd->domain->viscosity_base = smd->domain->viscosity_base;

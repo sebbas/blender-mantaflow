@@ -440,7 +440,7 @@ class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
         split.enabled = not baking_any
 
         col = split.column(align=True)
-        col.prop(domain, "mesh_scale", text="Upres")
+        col.prop(domain, "mesh_scale", text="Upres Factor")
         col.prop(domain, "particle_radius")
 
         col = split.column(align=True)
@@ -572,7 +572,7 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
 
         top = layout.row()
-        top.prop(domain, "particle_scale", text="Upres")
+        top.prop(domain, "particle_scale", text="Upres Factor")
         top.enabled = not baking_any
 
         top = layout.column()
@@ -608,10 +608,10 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         sub4.label(text="Kinetic Energy Potential:")
         sub4.prop(domain, "sndparticle_tau_min_k", text="min")
         sub4.prop(domain, "sndparticle_tau_max_k", text="max")
-        sub1.label("Potential Resolution:")
-        sub1.prop(domain, "sndparticle_potential_resolution", text="")
-        sub1.label("Particles in Boundary:")
-        sub1.prop(domain, "sndparticle_boundary", text="")
+        sub4.label(text="")
+        sub4.label(text="Computation Radii:")
+        sub4.prop(domain, "sndparticle_potential_radius", text="Potential")
+        sub4.prop(domain, "sndparticle_update_radius", text="Particle Update")
 
         second = split.column()
         sub1 = second.column()
@@ -628,10 +628,10 @@ class PHYSICS_PT_smoke_secondary_particles(PhysicButtonsPanel, Panel):
         sub4.label(text="Bubble Movement:")
         sub4.prop(domain, "sndparticle_k_b", text="Buoyancy")
         sub4.prop(domain, "sndparticle_k_d", text="Drag")
-        sub1.label("Potential Quality:")
-        sub1.prop(domain, "sndparticle_potential_quality", text="")
-        sub1.label("Save Potential Grids:")
-        sub1.prop(domain, "sndparticle_potential_grid_save", text="")
+        sub4.label(text="")
+        sub4.label(text="Particles in Boundary:")
+        sub4.prop(domain, "sndparticle_boundary", text="")
+        
 
         button = layout.split()
         button.enabled = domain.cache_baked_data and (domain.use_spray_particles or domain.use_bubble_particles or domain.use_foam_particles or domain.use_tracer_particles)
@@ -947,7 +947,7 @@ class PHYSICS_PT_liquid_display_settings(PhysicButtonsPanel, Panel):
         first = split.column()
         first.prop(domain, "use_color_ramp", text="Enable Display")
         second = split.column()
-        second.enabled = domain.use_color_ramp and domain.cache_baked_particles
+        second.enabled = domain.use_color_ramp
         second.prop(domain, "coba_field_liquid", text="")
 
 

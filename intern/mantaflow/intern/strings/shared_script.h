@@ -150,8 +150,9 @@ lMin_sp$ID$ = $SNDPARTICLE_L_MIN$\n\
 lMax_sp$ID$ = $SNDPARTICLE_L_MAX$\n\
 c_s_sp$ID$ = 0.4   # classification constant for snd parts\n\
 c_b_sp$ID$ = 0.77  # classification constant for snd parts\n\
-scaleFromManta_sp$ID$ = $FLUID_DOMAIN_SIZE$ / float(res_s$ID$) # resize factor for snd parts\n\
-gravity_rescaled_sp$ID$ = gravity_s$ID$ / scaleFromManta_sp$ID$";
+pot_radius_sp$ID$ = $SNDPARTICLE_POTENTIAL_RADIUS$\n\
+update_radius_sp$ID$ = $SNDPARTICLE_UPDATE_RADIUS$\n\
+scaleFromManta_sp$ID$ = $FLUID_DOMAIN_SIZE$ / float(res_s$ID$) # resize factor for snd parts\n";
 
 const std::string fluid_with_obstacle = "\n\
 using_obstacle_s$ID$ = True\n";

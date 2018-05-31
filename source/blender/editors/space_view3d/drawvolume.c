@@ -152,6 +152,7 @@ static float* remap_field_texture(SmokeDomainSettings* sds, float* field) {
 static GPUTexture *create_field_texture(SmokeDomainSettings *sds)
 {
 	float *field = NULL;
+	bool highres = false;
 
 	if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS){
 		switch (sds->coba_field) {
@@ -175,20 +176,43 @@ static GPUTexture *create_field_texture(SmokeDomainSettings *sds)
 	}
 	else if (sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID){
 		switch (sds->coba_field_liquid){
-			case FLUID_FIELD_PRESSURE:			field = liquid_get_pressure(sds->fluid); break;
-			case FLUID_FIELD_PHI:				field = remap_field_texture(sds, liquid_get_phi(sds->fluid)); break;
-			case FLUID_FIELD_KINETIC_ENERGY:	field = liquid_get_kinetic_energy_potential(sds->fluid); break;
-			case FLUID_FIELD_TRAPPED_AIR:		field = liquid_get_trapped_air_potential(sds->fluid); break;
-			case FLUID_FIELD_WAVE_CREST:		field = liquid_get_wave_crest_potential(sds->fluid); break;
+			//case FLUID_FIELD_PRESSURE:			field = liquid_get_pressure(sds->fluid); break;
+			case FLUID_FIELD_PHI:
+				if (sds->cache_flag & FLUID_CACHE_BAKED_DATA) {
+					field = remap_field_texture(sds, liquid_get_phi(sds->fluid));
+					break;
+				}
+				else {
+					return NULL;
+				}
+			case FLUID_FIELD_KINETIC_ENERGY:
+				field = liquid_get_kinetic_energy_potential(sds->fluid);
+				highres = true;
+				break;
+			case FLUID_FIELD_TRAPPED_AIR:
+				field = liquid_get_trapped_air_potential(sds->fluid);
+				highres = true;
+				break;
+			case FLUID_FIELD_WAVE_CREST:
+				field = liquid_get_wave_crest_potential(sds->fluid);
+				highres = true;
+				break;
 			default: return NULL;
 		}
 	}
 
-	GPUTexture* result = GPU_texture_create_3D(sds->res[0], sds->res[1], sds->res[2], 1, field);
-	if (sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID && sds->coba_field_liquid == FLUID_FIELD_PHI) {
-		MEM_freeN(field);
+	if (!highres) {
+		GPUTexture* result = GPU_texture_create_3D(sds->res[0], sds->res[1], sds->res[2], 1, field);
+		// free allocated memory for remapped fields
+		if (sds->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID && sds->coba_field_liquid == FLUID_FIELD_PHI) {
+			MEM_freeN(field);
+		}
+		return result;
 	}
-	return result;
+	else {
+		GPUTexture* result = GPU_texture_create_3D(sds->res[0] * sds->particle_scale, sds->res[1] * sds->particle_scale, sds->res[2] * sds->particle_scale, 1, field);
+		return result;
+	}
 }
 
 typedef struct VolumeSlicer {
