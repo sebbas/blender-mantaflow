@@ -42,9 +42,7 @@ void smoke_reallocate_highres_fluid(struct SmokeDomainSettings *sds, float dx, i
 void smokeModifier_free(struct SmokeModifierData *smd);
 void smokeModifier_reset(struct SmokeModifierData *smd);
 void smokeModifier_createType(struct SmokeModifierData *smd);
-void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData *tsmd);
-
-void smoke_step(struct Scene *scene, struct Object *ob, struct SmokeModifierData *smd, int frame, bool is_first_frame);
+void smokeModifier_copy(const SmokeModifierData *smd, struct SmokeModifierData *tsmd);
 
 float smoke_get_velocity_at(struct Object *ob, float position[3], float velocity[3]);
 int smoke_get_data_flags(struct SmokeDomainSettings *sds);

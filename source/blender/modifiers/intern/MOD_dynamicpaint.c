@@ -36,8 +36,10 @@
 
 #include "BKE_cdderivedmesh.h"
 #include "BKE_dynamicpaint.h"
+#include "BKE_global.h"
 #include "BKE_library.h"
 #include "BKE_library_query.h"
+#include "BKE_main.h"
 #include "BKE_modifier.h"
 
 #include "depsgraph_private.h"
@@ -54,21 +56,12 @@ static void initData(ModifierData *md)
 	pmd->type = MOD_DYNAMICPAINT_TYPE_CANVAS;
 }
 
-static void copyData(ModifierData *md, ModifierData *target)
+static void copyData(const ModifierData *md, ModifierData *target)
 {
-	DynamicPaintModifierData *pmd  = (DynamicPaintModifierData *)md;
+	const DynamicPaintModifierData *pmd  = (const DynamicPaintModifierData *)md;
 	DynamicPaintModifierData *tpmd = (DynamicPaintModifierData *)target;
 	
 	dynamicPaint_Modifier_copy(pmd, tpmd);
-
-	if (tpmd->canvas) {
-		for (DynamicPaintSurface *surface = tpmd->canvas->surfaces.first; surface; surface = surface->next) {
-			id_us_plus((ID *)surface->init_texture);
-		}
-	}
-	if (tpmd->brush) {
-		id_us_plus((ID *)tpmd->brush->mat);
-	}
 }
 
 static void freeData(ModifierData *md)
@@ -112,15 +105,16 @@ static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
 	return dataMask;
 }
 
-static DerivedMesh *applyModifier(ModifierData *md, Object *ob, 
-                                  DerivedMesh *dm,
-                                  ModifierApplyFlag flag)
+static DerivedMesh *applyModifier(
+        ModifierData *md, Object *ob,
+        DerivedMesh *dm,
+        ModifierApplyFlag flag)
 {
 	DynamicPaintModifierData *pmd = (DynamicPaintModifierData *) md;
 
 	/* dont apply dynamic paint on orco dm stack */
 	if (!(flag & MOD_APPLY_ORCO)) {
-		return dynamicPaint_Modifier_do(pmd, md->scene, ob, dm);
+		return dynamicPaint_Modifier_do(G.main, G.main->eval_ctx, pmd, md->scene, ob, dm);
 	}
 	return dm;
 }
@@ -172,8 +166,9 @@ static bool dependsOnTime(ModifierData *UNUSED(md))
 	return true;
 }
 
-static void foreachIDLink(ModifierData *md, Object *ob,
-                          IDWalkFunc walk, void *userData)
+static void foreachIDLink(
+        ModifierData *md, Object *ob,
+        IDWalkFunc walk, void *userData)
 {
 	DynamicPaintModifierData *pmd = (DynamicPaintModifierData *) md;
 
@@ -193,8 +188,9 @@ static void foreachIDLink(ModifierData *md, Object *ob,
 	}
 }
 
-static void foreachTexLink(ModifierData *UNUSED(md), Object *UNUSED(ob),
-                           TexWalkFunc UNUSED(walk), void *UNUSED(userData))
+static void foreachTexLink(
+        ModifierData *UNUSED(md), Object *UNUSED(ob),
+        TexWalkFunc UNUSED(walk), void *UNUSED(userData))
 {
 	//walk(userData, ob, md, ""); /* re-enable when possible */
 }

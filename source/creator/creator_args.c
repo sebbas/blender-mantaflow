@@ -45,6 +45,7 @@
 #include "BLI_path_util.h"
 #include "BLI_fileops.h"
 #include "BLI_mempool.h"
+#include "BLI_system.h"
 
 #include "BLO_readfile.h"  /* only for BLO_has_bfile_extension */
 
@@ -536,6 +537,7 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
 	BLI_argsPrintArgDoc(ba, "--log");
 	BLI_argsPrintArgDoc(ba, "--log-level");
 	BLI_argsPrintArgDoc(ba, "--log-show-basename");
+	BLI_argsPrintArgDoc(ba, "--log-show-backtrace");
 	BLI_argsPrintArgDoc(ba, "--log-file");
 
 	printf("\n");
@@ -565,6 +567,7 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
 	BLI_argsPrintArgDoc(ba, "--debug-depsgraph-no-threads");
 
 	BLI_argsPrintArgDoc(ba, "--debug-gpumem");
+	BLI_argsPrintArgDoc(ba, "--debug-gpu-shaders");
 	BLI_argsPrintArgDoc(ba, "--debug-wm");
 	BLI_argsPrintArgDoc(ba, "--debug-all");
 	BLI_argsPrintArgDoc(ba, "--debug-io");
@@ -745,6 +748,17 @@ static const char arg_handle_log_show_basename_set_doc[] =
 static int arg_handle_log_show_basename_set(int UNUSED(argc), const char **UNUSED(argv), void *UNUSED(data))
 {
 	CLG_output_use_basename_set(true);
+	return 0;
+}
+
+static const char arg_handle_log_show_backtrace_set_doc[] =
+"\n\tShow a back trace for each log message (debug builds only)."
+;
+static int arg_handle_log_show_backtrace_set(int UNUSED(argc), const char **UNUSED(argv), void *UNUSED(data))
+{
+	/* Ensure types don't become incompatible. */
+	void (*fn)(FILE *fp) = BLI_system_backtrace;
+	CLG_backtrace_fn_set((void (*)(void *))fn);
 	return 0;
 }
 
@@ -1719,8 +1733,9 @@ static int arg_handle_python_text_run(int argc, const char **argv, void *data)
 
 	/* workaround for scripts not getting a bpy.context.scene, causes internal errors elsewhere */
 	if (argc > 1) {
+		Main *bmain = CTX_data_main(C);
 		/* Make the path absolute because its needed for relative linked blends to be found */
-		struct Text *text = (struct Text *)BKE_libblock_find_name(ID_TXT, argv[1]);
+		struct Text *text = (struct Text *)BKE_libblock_find_name(bmain, ID_TXT, argv[1]);
 		bool ok;
 
 		if (text) {
@@ -1948,6 +1963,7 @@ void main_args_setup(bContext *C, bArgs *ba, SYS_SystemHandle *syshandle)
 	BLI_argsAdd(ba, 1, NULL, "--log", CB(arg_handle_log_set), ba);
 	BLI_argsAdd(ba, 1, NULL, "--log-level", CB(arg_handle_log_level_set), ba);
 	BLI_argsAdd(ba, 1, NULL, "--log-show-basename", CB(arg_handle_log_show_basename_set), ba);
+	BLI_argsAdd(ba, 1, NULL, "--log-show-backtrace", CB(arg_handle_log_show_backtrace_set), ba);
 	BLI_argsAdd(ba, 1, NULL, "--log-file", CB(arg_handle_log_file_set), ba);
 
 	BLI_argsAdd(ba, 1, "-d", "--debug", CB(arg_handle_debug_mode_set), ba);
@@ -2007,6 +2023,8 @@ void main_args_setup(bContext *C, bArgs *ba, SYS_SystemHandle *syshandle)
 	            CB_EX(arg_handle_debug_mode_generic_set, depsgraph_pretty), (void *)G_DEBUG_DEPSGRAPH_PRETTY);
 	BLI_argsAdd(ba, 1, NULL, "--debug-gpumem",
 	            CB_EX(arg_handle_debug_mode_generic_set, gpumem), (void *)G_DEBUG_GPU_MEM);
+	BLI_argsAdd(ba, 1, NULL, "--debug-gpu-shaders",
+	            CB_EX(arg_handle_debug_mode_generic_set, gpumem), (void *)G_DEBUG_GPU_SHADERS);
 
 	BLI_argsAdd(ba, 1, NULL, "--enable-new-depsgraph", CB(arg_handle_depsgraph_use_new), NULL);
 	BLI_argsAdd(ba, 1, NULL, "--enable-new-basic-shader-glsl", CB(arg_handle_basic_shader_glsl_use_new), NULL);

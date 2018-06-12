@@ -51,6 +51,7 @@
 #include "BKE_context.h"
 #include "BKE_font.h"
 #include "BKE_library.h"
+#include "BKE_main.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_report.h"
@@ -126,6 +127,7 @@ static void view3d_operator_properties_common(wmOperatorType *ot, const enum eV3
 
 typedef struct ViewOpsData {
 	/** Context pointers (assigned by #viewops_data_alloc). */
+	Main *bmain;
 	Scene *scene;
 	ScrArea *sa;
 	ARegion *ar;
@@ -215,6 +217,7 @@ static void viewops_data_alloc(bContext *C, wmOperator *op)
 
 	/* store data */
 	op->customdata = vod;
+	vod->bmain = CTX_data_main(C);
 	vod->scene = CTX_data_scene(C);
 	vod->sa = CTX_wm_area(C);
 	vod->ar = CTX_wm_region(C);
@@ -380,7 +383,7 @@ static void viewops_data_create(
 		negate_v3_v3(fallback_depth_pt, rv3d->ofs);
 
 		vod->use_dyn_ofs = ED_view3d_autodist(
-		        vod->scene, vod->ar, vod->v3d,
+		        vod->bmain, vod->scene, vod->ar, vod->v3d,
 		        event->mval, vod->dyn_ofs, true, fallback_depth_pt);
 	}
 	else {
@@ -1098,7 +1101,7 @@ static void view3d_ndof_pan_zoom(
 static void view3d_ndof_orbit(
         const struct wmNDOFMotionData *ndof, ScrArea *sa, ARegion *ar,
         /* optional, can be NULL*/
-        ViewOpsData *vod)
+        ViewOpsData *vod, const bool apply_dyn_ofs)
 {
 	View3D *v3d = sa->spacedata.first;
 	RegionView3D *rv3d = ar->regiondata;
@@ -1161,7 +1164,7 @@ static void view3d_ndof_orbit(
 		mul_qt_qtqt(rv3d->viewquat, rv3d->viewquat, quat);
 	}
 
-	if (vod) {
+	if (apply_dyn_ofs) {
 		viewrotate_apply_dyn_ofs(vod, rv3d->viewquat);
 	}
 }
@@ -1329,7 +1332,7 @@ static int ndof_orbit_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 			}
 
 			if (has_rotation) {
-				view3d_ndof_orbit(ndof, vod->sa, vod->ar, vod);
+				view3d_ndof_orbit(ndof, vod->sa, vod->ar, vod, true);
 			}
 		}
 
@@ -1410,7 +1413,7 @@ static int ndof_orbit_zoom_invoke(bContext *C, wmOperator *op, const wmEvent *ev
 			}
 
 			if (has_rotation) {
-				view3d_ndof_orbit(ndof, vod->sa, vod->ar, vod);
+				view3d_ndof_orbit(ndof, vod->sa, vod->ar, vod, true);
 			}
 		}
 		else {  /* free/explore (like fly mode) */
@@ -1428,7 +1431,7 @@ static int ndof_orbit_zoom_invoke(bContext *C, wmOperator *op, const wmEvent *ev
 			ED_view3d_distance_set(rv3d, 0.0f);
 
 			if (has_rotation) {
-				view3d_ndof_orbit(ndof, vod->sa, vod->ar, NULL);
+				view3d_ndof_orbit(ndof, vod->sa, vod->ar, NULL, false);
 			}
 
 			ED_view3d_distance_set(rv3d, dist_backup);
@@ -2779,6 +2782,7 @@ void VIEW3D_OT_view_all(wmOperatorType *ot)
 /* like a localview without local!, was centerview() in 2.4x */
 static int viewselected_exec(bContext *C, wmOperator *op)
 {
+	Main *bmain = CTX_data_main(C);
 	ARegion *ar = CTX_wm_region(C);
 	View3D *v3d = CTX_wm_view3d(C);
 	Scene *scene = CTX_data_scene(C);
@@ -2858,7 +2862,7 @@ static int viewselected_exec(bContext *C, wmOperator *op)
 				}
 
 				/* account for duplis */
-				if (BKE_object_minmax_dupli(scene, base->object, min, max, false) == 0)
+				if (BKE_object_minmax_dupli(bmain, scene, base->object, min, max, false) == 0)
 					BKE_object_minmax(base->object, min, max, false);  /* use if duplis not found */
 
 				ok = 1;
@@ -3047,6 +3051,7 @@ void VIEW3D_OT_view_center_cursor(wmOperatorType *ot)
 
 static int viewcenter_pick_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
+	Main *bmain = CTX_data_main(C);
 	View3D *v3d = CTX_wm_view3d(C);
 	RegionView3D *rv3d = CTX_wm_region_view3d(C);
 	Scene *scene = CTX_data_scene(C);
@@ -3060,7 +3065,7 @@ static int viewcenter_pick_invoke(bContext *C, wmOperator *op, const wmEvent *ev
 
 		view3d_operator_needs_opengl(C);
 
-		if (ED_view3d_autodist(scene, ar, v3d, event->mval, new_ofs, false, NULL)) {
+		if (ED_view3d_autodist(bmain, scene, ar, v3d, event->mval, new_ofs, false, NULL)) {
 			/* pass */
 		}
 		else {
@@ -3337,6 +3342,7 @@ void VIEW3D_OT_clear_render_border(wmOperatorType *ot)
 
 static int view3d_zoom_border_exec(bContext *C, wmOperator *op)
 {
+	Main *bmain = CTX_data_main(C);
 	ARegion *ar = CTX_wm_region(C);
 	View3D *v3d = CTX_wm_view3d(C);
 	RegionView3D *rv3d = CTX_wm_region_view3d(C);
@@ -3370,7 +3376,7 @@ static int view3d_zoom_border_exec(bContext *C, wmOperator *op)
 
 	/* Get Z Depths, needed for perspective, nice for ortho */
 	bgl_get_mats(&mats);
-	ED_view3d_draw_depth(scene, ar, v3d, true);
+	ED_view3d_draw_depth(bmain, scene, ar, v3d, true);
 
 	{
 		/* avoid allocating the whole depth buffer */
@@ -4525,6 +4531,7 @@ void VIEW3D_OT_clip_border(wmOperatorType *ot)
 /* note: cannot use event->mval here (called by object_add() */
 void ED_view3d_cursor3d_position(bContext *C, float fp[3], const int mval[2])
 {
+	Main *bmain = CTX_data_main(C);
 	Scene *scene = CTX_data_scene(C);
 	ARegion *ar = CTX_wm_region(C);
 	View3D *v3d = CTX_wm_view3d(C);
@@ -4548,7 +4555,7 @@ void ED_view3d_cursor3d_position(bContext *C, float fp[3], const int mval[2])
 
 	if (U.uiflag & USER_DEPTH_CURSOR) {  /* maybe this should be accessed some other way */
 		view3d_operator_needs_opengl(C);
-		if (ED_view3d_autodist(scene, ar, v3d, mval, fp, true, NULL))
+		if (ED_view3d_autodist(bmain, scene, ar, v3d, mval, fp, true, NULL))
 			depth_used = true;
 	}
 

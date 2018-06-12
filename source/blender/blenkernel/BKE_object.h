@@ -78,7 +78,7 @@ void BKE_object_free_modifiers(struct Object *ob, const int flag);
 void BKE_object_make_proxy(struct Object *ob, struct Object *target, struct Object *gob);
 void BKE_object_copy_proxy_drivers(struct Object *ob, struct Object *target);
 
-bool BKE_object_exists_check(const struct Object *obtest);
+bool BKE_object_exists_check(struct Main *bmain, const struct Object *obtest);
 bool BKE_object_is_in_editmode(const struct Object *ob);
 bool BKE_object_is_in_editmode_vgroup(const struct Object *ob);
 bool BKE_object_is_in_wpaint_select_vert(const struct Object *ob);
@@ -146,17 +146,18 @@ struct BoundBox *BKE_object_boundbox_get(struct Object *ob);
 void BKE_object_dimensions_get(struct Object *ob, float vec[3]);
 void BKE_object_dimensions_set(struct Object *ob, const float value[3]);
 void BKE_object_empty_draw_type_set(struct Object *ob, const int value);
-void BKE_object_draw_type_set(struct Object *ob, const int value);
 void BKE_object_boundbox_flag(struct Object *ob, int flag, const bool set);
 void BKE_object_minmax(struct Object *ob, float r_min[3], float r_max[3], const bool use_hidden);
 bool BKE_object_minmax_dupli(
-        struct Scene *scene, struct Object *ob, float r_min[3], float r_max[3], const bool use_hidden);
+        struct Main *bmain, struct Scene *scene,
+        struct Object *ob, float r_min[3], float r_max[3], const bool use_hidden);
 
 /* sometimes min-max isn't enough, we need to loop over each point */
 void BKE_object_foreach_display_point(
         struct Object *ob, float obmat[4][4],
         void (*func_cb)(const float[3], void *), void *user_data);
 void BKE_scene_foreach_display_point(
+        struct Main *bmain,
         struct Scene *scene,
         struct View3D *v3d,
         const short flag,
@@ -206,6 +207,7 @@ void BKE_object_eval_uber_transform(
         struct EvaluationContext *eval_ctx,
         struct Object *ob);
 void BKE_object_eval_uber_data(
+        struct Main *bmain,
         struct EvaluationContext *eval_ctx,
         struct Scene *scene,
         struct Object *ob);
@@ -222,11 +224,17 @@ void BKE_object_eval_transform_all(
         struct Object *object);
 
 void BKE_object_handle_data_update(
+        struct Main *bmain,
         struct EvaluationContext *eval_ctx,
         struct Scene *scene,
         struct Object *ob);
-void BKE_object_handle_update(struct EvaluationContext *eval_ctx, struct Scene *scene, struct Object *ob);
+void BKE_object_handle_update(
+        struct Main *bmain,
+        struct EvaluationContext *eval_ctx,
+        struct Scene *scene,
+        struct Object *ob);
 void BKE_object_handle_update_ex(
+        struct Main *bmain,
         struct EvaluationContext *eval_ctx,
         struct Scene *scene, struct Object *ob,
         struct RigidBodyWorld *rbw,
@@ -283,6 +291,7 @@ struct KDTree *BKE_object_as_kdtree(struct Object *ob, int *r_tot);
 bool BKE_object_modifier_use_time(struct Object *ob, struct ModifierData *md);
 
 bool BKE_object_modifier_update_subframe(
+        struct Main *bmain, struct EvaluationContext *eval_ctx,
         struct Scene *scene, struct Object *ob, bool update_mesh,
         int parent_recursion, float frame,
         int type);

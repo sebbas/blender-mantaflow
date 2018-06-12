@@ -479,7 +479,7 @@ static void rna_Smoke_domaintype_set(struct PointerRNA *ptr, int value)
 			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_LEFT, 1);
 			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_TOP, 1);
 			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_BOTTOM, 1);
-			BKE_object_draw_type_set(ob, OB_WIRE);
+			ob->dt = OB_WIRE;
 		}
 		else if (value == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
 		{
@@ -493,7 +493,7 @@ static void rna_Smoke_domaintype_set(struct PointerRNA *ptr, int value)
 			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_LEFT, 0);
 			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_TOP, 0);
 			rna_Smoke_collisionextents_set(ptr, MOD_SMOKE_BORDER_BOTTOM, 0);
-			BKE_object_draw_type_set(ob, OB_SOLID);
+			ob->dt = OB_SOLID;
 		}
 
 		/* Set actual domain type */
@@ -693,20 +693,27 @@ static void rna_SmokeModifier_color_grid_get(PointerRNA *ptr, float *values)
 {
 #ifdef WITH_MANTA
 	SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
+	int length[RNA_MAX_ARRAY_DIMENSION];
+	int size = rna_SmokeModifier_grid_get_length(ptr, length);
 
 	BLI_rw_mutex_lock(sds->fluid_mutex, THREAD_LOCK_READ);
 
-	if (sds->flags & MOD_SMOKE_NOISE) {
-		if (smoke_turbulence_has_colors(sds->fluid))
-			smoke_turbulence_get_rgba(sds->fluid, values, 0);
-		else
-			smoke_turbulence_get_rgba_from_density(sds->fluid, sds->active_color, values, 0);
+	if (!sds->fluid) {
+		memset(values, 0, size * sizeof(float));
 	}
 	else {
-		if (smoke_has_colors(sds->fluid))
-			smoke_get_rgba(sds->fluid, values, 0);
-		else
-			smoke_get_rgba_from_density(sds->fluid, sds->active_color, values, 0);
+		if (sds->flags & MOD_SMOKE_NOISE) {
+			if (smoke_turbulence_has_colors(sds->fluid))
+				smoke_turbulence_get_rgba(sds->fluid, values, 0);
+			else
+				smoke_turbulence_get_rgba_from_density(sds->fluid, sds->active_color, values, 0);
+		}
+		else {
+			if (smoke_has_colors(sds->fluid))
+				smoke_get_rgba(sds->fluid, values, 0);
+			else
+				smoke_get_rgba_from_density(sds->fluid, sds->active_color, values, 0);
+		}
 	}
 
 	BLI_rw_mutex_unlock(sds->fluid_mutex);
@@ -729,7 +736,7 @@ static void rna_SmokeModifier_flame_grid_get(PointerRNA *ptr, float *values)
 		flame = smoke_turbulence_get_flame(sds->fluid);
 	else
 		flame = smoke_get_flame(sds->fluid);
-	
+
 	if (flame)
 		memcpy(values, flame, size * sizeof(float));
 	else
@@ -1820,7 +1827,7 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
 	RNA_def_property_range(prop, -10, 10);
 	RNA_def_property_ui_text(prop, "Temp. Diff.", "Temperature difference to ambient temperature");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
-	
+
 	prop = RNA_def_property(srna, "particle_system", PROP_POINTER, PROP_NONE);
 	RNA_def_property_pointer_sdna(prop, NULL, "psys");
 	RNA_def_property_struct_type(prop, "ParticleSystem");

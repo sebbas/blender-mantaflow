@@ -15,8 +15,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor: 
- *		Jeroen Bakker 
+ * Contributor:
+ *		Jeroen Bakker
  *		Monique Dewanchand
  */
 
@@ -164,15 +164,15 @@ ConvertRGBToYCCOperation::ConvertRGBToYCCOperation() : ConvertBaseOperation()
 void ConvertRGBToYCCOperation::setMode(int mode)
 {
 	switch (mode) {
-		case 1:
-			this->m_mode = BLI_YCC_ITU_BT709;
+		case 0:
+			this->m_mode = BLI_YCC_ITU_BT601;
 			break;
 		case 2:
 			this->m_mode = BLI_YCC_JFIF_0_255;
 			break;
-		case 0:
+		case 1:
 		default:
-			this->m_mode = BLI_YCC_ITU_BT601;
+			this->m_mode = BLI_YCC_ITU_BT709;
 			break;
 	}
 }
@@ -202,15 +202,15 @@ ConvertYCCToRGBOperation::ConvertYCCToRGBOperation() : ConvertBaseOperation()
 void ConvertYCCToRGBOperation::setMode(int mode)
 {
 	switch (mode) {
-		case 1:
-			this->m_mode = BLI_YCC_ITU_BT709;
+		case 0:
+			this->m_mode = BLI_YCC_ITU_BT601;
 			break;
 		case 2:
 			this->m_mode = BLI_YCC_JFIF_0_255;
 			break;
-		case 0:
+		case 1:
 		default:
-			this->m_mode = BLI_YCC_ITU_BT601;
+			this->m_mode = BLI_YCC_ITU_BT709;
 			break;
 	}
 }

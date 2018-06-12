@@ -4,7 +4,7 @@
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version. 
+ * of the License, or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -955,9 +955,9 @@ void curvemapping_evaluate_premulRGB(const CurveMapping *cumap, unsigned char ve
 
 	curvemapping_evaluate_premulRGBF(cumap, vecout, vecin);
 
-	vecout_byte[0] = FTOCHAR(vecout[0]);
-	vecout_byte[1] = FTOCHAR(vecout[1]);
-	vecout_byte[2] = FTOCHAR(vecout[2]);
+	vecout_byte[0] = unit_float_to_uchar_clamp(vecout[0]);
+	vecout_byte[1] = unit_float_to_uchar_clamp(vecout[1]);
+	vecout_byte[2] = unit_float_to_uchar_clamp(vecout[2]);
 }
 
 int curvemapping_RGBA_does_something(const CurveMapping *cumap)

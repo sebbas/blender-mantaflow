@@ -86,7 +86,7 @@ struct bNodeInstanceHash;
 
 /** Compact definition of a node socket.
  * Can be used to quickly define a list of static sockets for a node,
- * which are added to each new node of that type. 
+ * which are added to each new node of that type.
  *
  * \deprecated This struct is used by C nodes to define templates as simple
  * static struct lists. These are converted to the new template collections
@@ -291,7 +291,7 @@ typedef struct bNodeTreeType {
 	/* calls allowing threaded composite */
 	void (*localize)(struct bNodeTree *localtree, struct bNodeTree *ntree);
 	void (*local_sync)(struct bNodeTree *localtree, struct bNodeTree *ntree);
-	void (*local_merge)(struct bNodeTree *localtree, struct bNodeTree *ntree);
+	void (*local_merge)(struct Main *bmain, struct bNodeTree *localtree, struct bNodeTree *ntree);
 
 	/* Tree update. Overrides nodetype->updatetreefunc! */
 	void (*update)(struct bNodeTree *ntree);
@@ -369,7 +369,7 @@ int             ntreeOutputExists(struct bNode *node, struct bNodeSocket *testso
 void            ntreeNodeFlagSet(const bNodeTree *ntree, const int flag, const bool enable);
 struct bNodeTree *ntreeLocalize(struct bNodeTree *ntree);
 void            ntreeLocalSync(struct bNodeTree *localtree, struct bNodeTree *ntree);
-void            ntreeLocalMerge(struct bNodeTree *localtree, struct bNodeTree *ntree);
+void            ntreeLocalMerge(struct Main *bmain, struct bNodeTree *localtree, struct bNodeTree *ntree);
 
 /** \} */
 
@@ -789,6 +789,7 @@ struct ShadeResult;
 #define SH_NODE_UVALONGSTROKE			191
 #define SH_NODE_TEX_POINTDENSITY		192
 #define SH_NODE_BSDF_PRINCIPLED         193
+#define SH_NODE_TEX_IES                 194
 #define SH_NODE_BEVEL                   197
 #define SH_NODE_DISPLACEMENT            198
 #define SH_NODE_VECTOR_DISPLACEMENT     199

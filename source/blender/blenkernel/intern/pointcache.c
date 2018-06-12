@@ -49,6 +49,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_threads.h"
 #include "BLI_math.h"
+#include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -1926,7 +1927,7 @@ void BKE_ptcache_ids_from_object(ListBase *lb, Object *ob, Scene *scene, int dup
 	if (scene && (duplis-- > 0) && (ob->transflag & OB_DUPLI)) {
 		ListBase *lb_dupli_ob;
 		/* don't update the dupli groups, we only want their pid's */
-		if ((lb_dupli_ob = object_duplilist_ex(G.main->eval_ctx, scene, ob, false))) {
+		if ((lb_dupli_ob = object_duplilist_ex(G.main, G.main->eval_ctx, scene, ob, false))) {
 			DupliObject *dob;
 			for (dob= lb_dupli_ob->first; dob; dob= dob->next) {
 				if (dob->ob != ob) { /* avoids recursive loops with dupliframes: bug 22988 */
@@ -2000,7 +2001,7 @@ static int ptcache_frame_from_filename(const char *filename, const char *ext)
 static int ptcache_path(PTCacheID *pid, char *filename)
 {
 	Library *lib = (pid->ob) ? pid->ob->id.lib : NULL;
-	const char *blendfilename= (lib && (pid->cache->flag & PTCACHE_IGNORE_LIBPATH)==0) ? lib->filepath: G.main->name;
+	const char *blendfilename= (lib && (pid->cache->flag & PTCACHE_IGNORE_LIBPATH)==0) ? lib->filepath: BKE_main_blendfile_path_from_global();
 	size_t i;
 
 	if (pid->cache->flag & PTCACHE_EXTERNAL) {
@@ -3248,7 +3249,7 @@ int BKE_ptcache_write(PTCacheID *pid, unsigned int cfra)
 	return !error;
 }
 /* youll need to close yourself after!
- * mode - PTCACHE_CLEAR_ALL, 
+ * mode - PTCACHE_CLEAR_ALL,
  */
 
 /* Clears & resets */
@@ -4357,9 +4358,11 @@ void BKE_ptcache_update_info(PTCacheID *pid)
 	}
 	else {
 		PTCacheMem *pm = cache->mem_cache.first;
-		float bytes = 0.0f;
-		int i, mb;
-		
+		char formatted_tot[16];
+		char formatted_mem[15];
+		long long int bytes = 0.0f;
+		int i;
+
 		for (; pm; pm=pm->next) {
 			for (i=0; i<BPHYS_TOT_DATA; i++)
 				bytes += MEM_allocN_len(pm->data[i]);
@@ -4374,12 +4377,10 @@ void BKE_ptcache_update_info(PTCacheID *pid)
 			totframes++;
 		}
 
-		mb = (bytes > 1024.0f * 1024.0f);
+		BLI_str_format_int_grouped(formatted_tot, totframes);
+		BLI_str_format_byte_unit(formatted_mem, bytes, true);
 
-		BLI_snprintf(mem_info, sizeof(mem_info), IFACE_("%i frames in memory (%.1f %s)"),
-		             totframes,
-		             bytes / (mb ? 1024.0f * 1024.0f : 1024.0f),
-		             mb ? IFACE_("Mb") : IFACE_("kb"));
+		BLI_snprintf(mem_info, sizeof(mem_info), IFACE_("%s frames in memory (%s)"), formatted_tot, formatted_mem);
 	}
 
 	if (cache->flag & PTCACHE_OUTDATED) {

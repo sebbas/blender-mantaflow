@@ -160,7 +160,7 @@ typedef struct ModifierTypeInfo {
 	/* Copy instance data for this modifier type. Should copy all user
 	 * level settings to the target modifier.
 	 */
-	void (*copyData)(struct ModifierData *md, struct ModifierData *target);
+	void (*copyData)(const struct ModifierData *md, struct ModifierData *target);
 
 	/********************* Deform modifier functions *********************/
 
@@ -430,8 +430,8 @@ void test_object_modifiers(struct Object *ob);
 void modifier_mdef_compact_influences(struct ModifierData *md);
 
 void        modifier_path_init(char *path, int path_maxlen, const char *name);
-const char *modifier_path_relbase(struct Object *ob);
-
+const char *modifier_path_relbase(struct Main *bmain, struct Object *ob);
+const char *modifier_path_relbase_from_global(struct Object *ob);
 
 /* wrappers for modifier callbacks */
 

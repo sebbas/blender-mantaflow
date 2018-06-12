@@ -276,7 +276,7 @@ void animviz_get_object_motionpaths(Object *ob, ListBase *targets)
 /* Note on evaluation optimizations:
  * Optimization's currently used here play tricks with the depsgraph in order to try and
  * evaluate as few objects as strictly necessary to get nicer performance under standard
- * production conditions. For those people who really need the accurate version, 
+ * production conditions. For those people who really need the accurate version,
  * disable the ifdef (i.e. 1 -> 0) and comment out the call to motionpaths_calc_optimise_depsgraph()
  */
 
@@ -340,7 +340,7 @@ static void motionpaths_calc_update_scene(Scene *scene)
 		 * is animated but not attached to/updatable from objects */
 		for (base = scene->base.first; base; base = base->next) {
 			/* update this object */
-			BKE_object_handle_update(G.main->eval_ctx, scene, base->object);
+			BKE_object_handle_update(G.main, G.main->eval_ctx, scene, base->object);
 			
 			/* if this is the last one we need to update, let's stop to save some time */
 			if (base == last)

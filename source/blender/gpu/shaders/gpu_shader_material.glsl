@@ -413,6 +413,11 @@ void math_abs(float val1, out float outval)
 	outval = abs(val1);
 }
 
+void math_atan2(float val1, float val2, out float outval)
+{
+	outval = atan(val1, val2);
+}
+
 void squeeze(float val, float width, float center, out float outval)
 {
 	outval = 1.0 / (1.0 + pow(2.71828183, -((val - center) * width)));
@@ -3882,7 +3887,7 @@ void material_preview_matcap(vec4 color, sampler2D ima, vec4 N, vec4 mask, out v
 {
 	vec3 normal;
 	vec2 tex;
-	
+
 #ifndef USE_OPENSUBDIV
 	/* remap to 0.0 - 1.0 range. This is done because OpenGL 2.0 clamps colors
 	 * between shader stages and we want the full range of the normal */

@@ -71,8 +71,10 @@
 #include "BKE_constraint.h"
 #include "BKE_customdata.h"
 #include "BKE_deform.h"
+#include "BKE_depsgraph.h"
 #include "BKE_DerivedMesh.h"
 #include "BKE_effect.h"
+#include "BKE_global.h"
 #include "BKE_main.h"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
@@ -640,7 +642,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 	}
 }
 
-void smokeModifier_copy(struct SmokeModifierData *smd, struct SmokeModifierData *tsmd)
+void smokeModifier_copy(const struct SmokeModifierData *smd, struct SmokeModifierData *tsmd)
 {
 	tsmd->type = smd->type;
 	tsmd->time = smd->time;
@@ -2424,7 +2426,9 @@ static void update_flowsflags(SmokeDomainSettings *sds, Object **flowobjs, int n
 	sds->active_fields = active_fields;
 }
 
-static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sds, float time_per_frame, float frame_length, int frame, bool is_first_frame)
+static void update_flowsfluids(
+        Main *bmain, EvaluationContext *eval_ctx,
+        Scene *scene, Object *ob, SmokeDomainSettings *sds, float time_per_frame, float frame_length, int frame, bool is_first_frame)
 {
 	EmissionMap *emaps = NULL;
 	int new_shift[3] = {0};
@@ -2544,7 +2548,7 @@ static void update_flowsfluids(Scene *scene, Object *ob, SmokeDomainSettings *sd
 				else if (sfs->source == MOD_SMOKE_FLOW_SOURCE_MESH) {
 					/* Update flow object frame */
 					// BLI_mutex_lock() called in smoke_step(), so safe to update subframe here
-					BKE_object_modifier_update_subframe(scene, flowobj, true, 5, BKE_scene_frame_get(scene), eModifierType_Smoke);
+					BKE_object_modifier_update_subframe(bmain, eval_ctx, scene, flowobj, true, 5, BKE_scene_frame_get(scene), eModifierType_Smoke);
 
 					/* Apply flow */
 					if (subframes) {
@@ -3088,7 +3092,64 @@ static DerivedMesh *createDomainGeometry(SmokeDomainSettings *sds, Object *ob)
 	return result;
 }
 
-static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *ob, DerivedMesh *dm)
+static void smoke_step(
+        Main *bmain, EvaluationContext *eval_ctx,
+        Scene *scene, Object *ob, SmokeModifierData *smd, int frame, bool is_first_frame)
+{
+	SmokeDomainSettings *sds = smd->domain;
+	DerivedMesh *domain_dm = ob->derivedDeform;
+	float fps = scene->r.frs_sec / scene->r.frs_sec_base;
+	float dt;
+	float sdt; // dt after adapted timestep
+	float time_per_frame;
+	
+	/* TODO (sebbas): Move dissolve smoke code to mantaflow */
+	if (sds->flags & MOD_SMOKE_DISSOLVE) {
+		smoke_dissolve(sds->fluid, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
+		if (sds->fluid && sds->flags & MOD_SMOKE_NOISE) {
+			smoke_dissolve_wavelet(sds->fluid, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
+		}
+	}
+	
+	/* update object state */
+	invert_m4_m4(sds->imat, ob->obmat);
+	copy_m4_m4(sds->obmat, ob->obmat);
+	smoke_set_domain_from_derivedmesh(sds, ob, domain_dm, (sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN) != 0);
+	
+	/* adapt timestep for different framerates, dt = 0.1 is at 25fps */
+	dt = DT_DEFAULT * (25.0f / fps);
+	
+	time_per_frame = 0;
+	
+	BLI_mutex_lock(&object_update_lock);
+	
+	// loop as long as time_per_frame (sum of sudivdt) does not exceed dt (actual framelength)
+	while (time_per_frame < dt)
+	{
+		fluid_update_variables_low(sds->fluid, smd);
+		fluid_adapt_timestep(sds->fluid);
+		sdt = fluid_get_timestep(sds->fluid);
+		time_per_frame += sdt;
+		
+		// Calculate inflow geometry
+		update_flowsfluids(bmain, eval_ctx, scene, ob, sds, time_per_frame, dt, frame, is_first_frame);
+		
+		// Calculate obstacle geometry
+		update_obstacles(scene, ob, sds, sdt);
+		
+		if (sds->total_cells > 1) {
+			update_effectors(scene, ob, sds, sdt); // DG TODO? problem --> uses forces instead of velocity, need to check how they need to be changed with variable dt
+			fluid_bake_data(sds->fluid, smd, frame);
+		}
+	}
+	if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
+		smoke_calc_transparency(sds, scene);
+	}
+	BLI_mutex_unlock(&object_update_lock);
+}
+
+static void smokeModifier_process(
+        Main *bmain, EvaluationContext *eval_ctx, SmokeModifierData *smd, Scene *scene, Object *ob, DerivedMesh *dm)
 {
 	if ((smd->type & MOD_SMOKE_TYPE_FLOW))
 	{
@@ -3206,7 +3267,7 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 					fluid_read_data(sds->fluid, smd, framenr-1);
 
 				/* Base step needs separated bake and write calls - reason being that transparency calculation is after fluid step */
-				smoke_step(scene, ob, smd, framenr, is_first_frame);
+				smoke_step(bmain, eval_ctx, scene, ob, smd, framenr, is_first_frame);
 				fluid_write_data(sds->fluid, smd, framenr);
 			}
 			if (sds->cache_flag & FLUID_CACHE_BAKING_NOISE)
@@ -3220,7 +3281,6 @@ static void smokeModifier_process(SmokeModifierData *smd, Scene *scene, Object *
 			if (sds->cache_flag & FLUID_CACHE_BAKING_MESH)
 			{
 				/* Note: Mesh bake does not need object refresh from cache */
-
 				fluid_bake_mesh(sds->fluid, smd, framenr);
 			}
 			if (sds->cache_flag & FLUID_CACHE_BAKING_PARTICLES)
@@ -3242,7 +3302,8 @@ struct DerivedMesh *smokeModifier_do(SmokeModifierData *smd, Scene *scene, Objec
 	if ((smd->type & MOD_SMOKE_TYPE_DOMAIN) && smd->domain)
 		BLI_rw_mutex_lock(smd->domain->fluid_mutex, THREAD_LOCK_WRITE);
 
-	smokeModifier_process(smd, scene, ob, dm);
+	/* Ugly G.main, hopefully won't be needed anymore in 2.8 */
+	smokeModifier_process(G.main, G.main->eval_ctx , smd, scene, ob, dm);
 
 	if ((smd->type & MOD_SMOKE_TYPE_DOMAIN) && smd->domain)
 		BLI_rw_mutex_unlock(smd->domain->fluid_mutex);
@@ -3433,60 +3494,6 @@ static void smoke_calc_transparency(SmokeDomainSettings *sds, Scene *scene)
 				shadow[index] = tRay;
 			}
 	}
-}
-
-void smoke_step(Scene *scene, Object *ob, SmokeModifierData *smd, int frame, bool is_first_frame)
-{
-	SmokeDomainSettings *sds = smd->domain;
-	DerivedMesh *domain_dm = ob->derivedDeform;
-	float fps = scene->r.frs_sec / scene->r.frs_sec_base;
-	float dt;
-	float sdt; // dt after adapted timestep
-	float time_per_frame;
-
-	/* TODO (sebbas): Move dissolve smoke code to mantaflow */
-	if (sds->flags & MOD_SMOKE_DISSOLVE) {
-		smoke_dissolve(sds->fluid, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
-		if (sds->fluid && sds->flags & MOD_SMOKE_NOISE) {
-			smoke_dissolve_wavelet(sds->fluid, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
-		}
-	}
-
-	/* update object state */
-	invert_m4_m4(sds->imat, ob->obmat);
-	copy_m4_m4(sds->obmat, ob->obmat);
-	smoke_set_domain_from_derivedmesh(sds, ob, domain_dm, (sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN) != 0);
-
-	/* adapt timestep for different framerates, dt = 0.1 is at 25fps */
-	dt = DT_DEFAULT * (25.0f / fps);
-
-	time_per_frame = 0;
-
-	BLI_mutex_lock(&object_update_lock);
-
-	// loop as long as time_per_frame (sum of sudivdt) does not exceed dt (actual framelength)
-	while (time_per_frame < dt)
-	{
-		fluid_update_variables_low(sds->fluid, smd);
-		fluid_adapt_timestep(sds->fluid);
-		sdt = fluid_get_timestep(sds->fluid);
-		time_per_frame += sdt;
-
-		// Calculate inflow geometry
-		update_flowsfluids(scene, ob, sds, time_per_frame, dt, frame, is_first_frame);
-
-		// Calculate obstacle geometry
-		update_obstacles(scene, ob, sds, sdt);
-
-		if (sds->total_cells > 1) {
-			update_effectors(scene, ob, sds, sdt); // DG TODO? problem --> uses forces instead of velocity, need to check how they need to be changed with variable dt
-			fluid_bake_data(sds->fluid, smd, frame);
-		}
-	}
-	if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
-		smoke_calc_transparency(sds, scene);
-	}
-	BLI_mutex_unlock(&object_update_lock);
 }
 
 /* get smoke velocity and density at given coordinates

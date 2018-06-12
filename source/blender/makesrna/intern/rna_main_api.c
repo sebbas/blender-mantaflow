@@ -244,7 +244,7 @@ static Object *rna_Main_objects_new(Main *bmain, ReportList *reports, const char
 	id_us_min(&ob->id);
 
 	ob->data = data;
-	test_object_materials(ob, ob->data);
+	test_object_materials(bmain, ob, ob->data);
 
 	return ob;
 }
@@ -338,7 +338,7 @@ static Image *rna_Main_images_load(Main *bmain, ReportList *reports, const char 
 
 	errno = 0;
 	if (check_existing) {
-		ima = BKE_image_load_exists(filepath);
+		ima = BKE_image_load_exists(bmain, filepath);
 	}
 	else {
 		ima = BKE_image_load(bmain, filepath);
@@ -481,7 +481,7 @@ static Text *rna_Main_texts_load(Main *bmain, ReportList *reports, const char *f
 	Text *txt;
 
 	errno = 0;
-	txt = BKE_text_load_ex(bmain, filepath, bmain->name, is_internal);
+	txt = BKE_text_load_ex(bmain, filepath, BKE_main_blendfile_path(bmain), is_internal);
 
 	if (!txt)
 		BKE_reportf(reports, RPT_ERROR, "Cannot read '%s': %s", filepath,

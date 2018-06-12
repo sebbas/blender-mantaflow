@@ -4,7 +4,7 @@
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version. 
+ * of the License, or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,7 +18,7 @@
  * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
  *
- * 
+ *
  * Contributor(s): Blender Foundation
  *
  * ***** END GPL LICENSE BLOCK *****
@@ -245,11 +245,11 @@ GlyphBLF *blf_glyph_add(FontBLF *font, unsigned int index, unsigned int c)
 
 	if (font->flags & BLF_HINTING)
 		flags &= ~FT_LOAD_NO_HINTING;
-	
+
 	if (is_sharp)
 		err = FT_Load_Glyph(font->face, (FT_UInt)index, FT_LOAD_TARGET_MONO);
 	else
-		err = FT_Load_Glyph(font->face, (FT_UInt)index, flags);  
+		err = FT_Load_Glyph(font->face, (FT_UInt)index, flags);
 
 	if (err) {
 		BLI_spin_unlock(font->ft_lib_mutex);
@@ -336,13 +336,13 @@ static void blf_texture_draw(float uv[2][2], float dx, float y1, float dx1, floa
 	glBegin(GL_QUADS);
 	glTexCoord2f(uv[0][0], uv[0][1]);
 	glVertex2f(dx, y1);
-	
+
 	glTexCoord2f(uv[0][0], uv[1][1]);
 	glVertex2f(dx, y2);
-	
+
 	glTexCoord2f(uv[1][0], uv[1][1]);
 	glVertex2f(dx1, y2);
-	
+
 	glTexCoord2f(uv[1][0], uv[0][1]);
 	glVertex2f(dx1, y1);
 	glEnd();
@@ -355,7 +355,7 @@ static void blf_texture5_draw(const float shadow_col[4], float uv[2][2], float x
 	                        2 / 60.0f, 5 / 60.0f, 8 / 60.0f, 5 / 60.0f, 2 / 60.0f,
 	                        1 / 60.0f, 3 / 60.0f, 5 / 60.0f, 3 / 60.0f, 1 / 60.0f,
 	                        1 / 60.0f, 1 / 60.0f, 2 / 60.0f, 1 / 60.0f, 1 / 60.0f};
-	
+
 	const float *fp = soft;
 	float color[4];
 	float dx, dy;
@@ -363,7 +363,7 @@ static void blf_texture5_draw(const float shadow_col[4], float uv[2][2], float x
 	color[0] = shadow_col[0];
 	color[1] = shadow_col[1];
 	color[2] = shadow_col[2];
-	
+
 	for (dx = -2; dx < 3; dx++) {
 		for (dy = -2; dy < 3; dy++, fp++) {
 			color[3] = *(fp) * shadow_col[3];
@@ -371,7 +371,7 @@ static void blf_texture5_draw(const float shadow_col[4], float uv[2][2], float x
 			blf_texture_draw(uv, x1 + dx, y1 + dy, x2 + dx, y2 + dy);
 		}
 	}
-	
+
 	glColor4fv(color);
 }
 
@@ -396,7 +396,7 @@ static void blf_texture3_draw(const float shadow_col[4], float uv[2][2], float x
 			blf_texture_draw(uv, x1 + dx, y1 + dy, x2 + dx, y2 + dy);
 		}
 	}
-	
+
 	glColor4fv(color);
 }
 

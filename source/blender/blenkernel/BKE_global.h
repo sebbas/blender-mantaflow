@@ -54,7 +54,7 @@ typedef struct Global {
 	/* strings: lastsaved */
 	char ima[1024], lib[1024]; /* 1024 = FILE_MAX */
 
-	/* when set: G.main->name contains valid relative base path */
+	/* when set: G_MAIN->name contains valid relative base path */
 	bool relbase_valid;
 	bool file_loaded;
 	bool save_over;
@@ -143,10 +143,11 @@ enum {
 	G_DEBUG_GPU_MEM =   (1 << 15), /* gpu memory in status bar */
 	G_DEBUG_GPU =       (1 << 16), /* gpu debug */
 	G_DEBUG_IO = (1 << 17),   /* IO Debugging (for Collada, ...)*/
+	G_DEBUG_GPU_SHADERS = (1 << 18),   /* GLSL shaders */
 };
 
 #define G_DEBUG_ALL  (G_DEBUG | G_DEBUG_FFMPEG | G_DEBUG_PYTHON | G_DEBUG_EVENTS | G_DEBUG_WM | G_DEBUG_JOBS | \
-                      G_DEBUG_FREESTYLE | G_DEBUG_DEPSGRAPH | G_DEBUG_GPU_MEM | G_DEBUG_IO)
+                      G_DEBUG_FREESTYLE | G_DEBUG_DEPSGRAPH | G_DEBUG_GPU_MEM | G_DEBUG_IO | G_DEBUG_GPU_SHADERS)
 
 
 /* G.fileflags */
@@ -219,6 +220,11 @@ enum {
 
 /* Memory is allocated where? blender.c */
 extern Global G;
+
+/**
+ * Stupid macro to hide the few *valid* usages of G.main (from startup/exit code e.g.), helps with cleanup task.
+ */
+#define G_MAIN (G).main
 
 #ifdef __cplusplus
 }

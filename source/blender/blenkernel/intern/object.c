@@ -529,13 +529,13 @@ bool BKE_object_is_in_wpaint_select_vert(const Object *ob)
 	return false;
 }
 
-bool BKE_object_exists_check(const Object *obtest)
+bool BKE_object_exists_check(Main *bmain, const Object *obtest)
 {
 	Object *ob;
 	
 	if (obtest == NULL) return false;
 	
-	ob = G.main->object.first;
+	ob = bmain->object.first;
 	while (ob) {
 		if (ob == obtest) return true;
 		ob = ob->id.next;
@@ -2421,12 +2421,9 @@ void BKE_object_empty_draw_type_set(Object *ob, const int value)
 	}
 }
 
-void BKE_object_draw_type_set(Object *ob, const int value)
-{
-	ob->dt = value;
-}
-
-bool BKE_object_minmax_dupli(Scene *scene, Object *ob, float r_min[3], float r_max[3], const bool use_hidden)
+bool BKE_object_minmax_dupli(
+        Main *bmain, Scene *scene,
+        Object *ob, float r_min[3], float r_max[3], const bool use_hidden)
 {
 	bool ok = false;
 	if ((ob->transflag & OB_DUPLI) == 0) {
@@ -2435,7 +2432,7 @@ bool BKE_object_minmax_dupli(Scene *scene, Object *ob, float r_min[3], float r_m
 	else {
 		ListBase *lb;
 		DupliObject *dob;
-		lb = object_duplilist(G.main->eval_ctx, scene, ob);
+		lb = object_duplilist(bmain, bmain->eval_ctx, scene, ob);
 		for (dob = lb->first; dob; dob = dob->next) {
 			if ((use_hidden == false) && (dob->no_draw != 0)) {
 				/* pass */
@@ -2495,7 +2492,7 @@ void BKE_object_foreach_display_point(
 }
 
 void BKE_scene_foreach_display_point(
-        Scene *scene, View3D *v3d, const short flag,
+        Main *bmain, Scene *scene, View3D *v3d, const short flag,
         void (*func_cb)(const float[3], void *), void *user_data)
 {
 	Base *base;
@@ -2512,7 +2509,7 @@ void BKE_scene_foreach_display_point(
 				ListBase *lb;
 				DupliObject *dob;
 
-				lb = object_duplilist(G.main->eval_ctx, scene, ob);
+				lb = object_duplilist(bmain, bmain->eval_ctx, scene, ob);
 				for (dob = lb->first; dob; dob = dob->next) {
 					if (dob->no_draw == 0) {
 						BKE_object_foreach_display_point(dob->ob, dob->mat, func_cb, user_data);
@@ -2592,7 +2589,8 @@ bool BKE_object_parent_loop_check(const Object *par, const Object *ob)
 	return BKE_object_parent_loop_check(par->parent, ob);
 }
 
-static void object_handle_update_proxy(EvaluationContext *eval_ctx,
+static void object_handle_update_proxy(Main *bmain,
+                                       EvaluationContext *eval_ctx,
                                        Scene *scene,
                                        Object *object,
                                        const bool do_proxy_update)
@@ -2609,7 +2607,7 @@ static void object_handle_update_proxy(EvaluationContext *eval_ctx,
 	if (object->proxy_group == NULL) {
 		if (do_proxy_update) {
 			// printf("call update, lib ob %s proxy %s\n", ob->proxy->id.name, ob->id.name);
-			BKE_object_handle_update(eval_ctx, scene, object->proxy);
+			BKE_object_handle_update(bmain, eval_ctx, scene, object->proxy);
 		}
 	}
 }
@@ -2622,13 +2620,14 @@ static void object_handle_update_proxy(EvaluationContext *eval_ctx,
 /* the main object update call, for object matrix, constraints, keys and displist (modifiers) */
 /* requires flags to be set! */
 /* Ideally we shouldn't have to pass the rigid body world, but need bigger restructuring to avoid id */
-void BKE_object_handle_update_ex(EvaluationContext *eval_ctx,
+void BKE_object_handle_update_ex(Main *bmain,
+                                 EvaluationContext *eval_ctx,
                                  Scene *scene, Object *ob,
                                  RigidBodyWorld *rbw,
                                  const bool do_proxy_update)
 {
 	if ((ob->recalc & OB_RECALC_ALL) == 0) {
-		object_handle_update_proxy(eval_ctx, scene, ob, do_proxy_update);
+		object_handle_update_proxy(bmain, eval_ctx, scene, ob, do_proxy_update);
 		return;
 	}
 	/* Speed optimization for animation lookups. */
@@ -2662,12 +2661,12 @@ void BKE_object_handle_update_ex(EvaluationContext *eval_ctx,
 	}
 
 	if (ob->recalc & OB_RECALC_DATA) {
-		BKE_object_handle_data_update(eval_ctx, scene, ob);
+		BKE_object_handle_data_update(bmain, eval_ctx, scene, ob);
 	}
 
 	ob->recalc &= ~OB_RECALC_ALL;
 
-	object_handle_update_proxy(eval_ctx, scene, ob, do_proxy_update);
+	object_handle_update_proxy(bmain, eval_ctx, scene, ob, do_proxy_update);
 }
 
 /* WARNING: "scene" here may not be the scene object actually resides in. 
@@ -2675,9 +2674,9 @@ void BKE_object_handle_update_ex(EvaluationContext *eval_ctx,
  * e.g. "scene" <-- set 1 <-- set 2 ("ob" lives here) <-- set 3 <-- ... <-- set n
  * rigid bodies depend on their world so use BKE_object_handle_update_ex() to also pass along the corrent rigid body world
  */
-void BKE_object_handle_update(EvaluationContext *eval_ctx, Scene *scene, Object *ob)
+void BKE_object_handle_update(Main *bmain, EvaluationContext *eval_ctx, Scene *scene, Object *ob)
 {
-	BKE_object_handle_update_ex(eval_ctx, scene, ob, NULL, true);
+	BKE_object_handle_update_ex(bmain, eval_ctx, scene, ob, NULL, true);
 }
 
 void BKE_object_sculpt_modifiers_changed(Object *ob)
@@ -3299,7 +3298,7 @@ static void obrel_list_add(LinkNode **links, Object *ob)
  * Iterates over all objects of the given scene.
  * Depending on the eObjectSet flag:
  * collect either OB_SET_ALL, OB_SET_VISIBLE or OB_SET_SELECTED objects.
- * If OB_SET_VISIBLE or OB_SET_SELECTED are collected, 
+ * If OB_SET_VISIBLE or OB_SET_SELECTED are collected,
  * then also add related objects according to the given includeFilters.
  */
 LinkNode *BKE_object_relational_superset(struct Scene *scene, eObjectSet objectSet, eObRelationTypes includeFilter)
@@ -3608,9 +3607,11 @@ static void object_cacheIgnoreClear(Object *ob, int state)
 /* Note: this function should eventually be replaced by depsgraph functionality.
  * Avoid calling this in new code unless there is a very good reason for it!
  */
-bool BKE_object_modifier_update_subframe(Scene *scene, Object *ob, bool update_mesh,
-                                         int parent_recursion, float frame,
-                                         int type)
+bool BKE_object_modifier_update_subframe(
+        Main *bmain, EvaluationContext *eval_ctx,
+        Scene *scene, Object *ob, bool update_mesh,
+        int parent_recursion, float frame,
+        int type)
 {
 	ModifierData *md = modifiers_findByType(ob, (ModifierType)type);
 	bConstraint *con;
@@ -3633,8 +3634,8 @@ bool BKE_object_modifier_update_subframe(Scene *scene, Object *ob, bool update_m
 	if (parent_recursion) {
 		int recursion = parent_recursion - 1;
 		bool no_update = false;
-		if (ob->parent) no_update |= BKE_object_modifier_update_subframe(scene, ob->parent, 0, recursion, frame, type);
-		if (ob->track) no_update |= BKE_object_modifier_update_subframe(scene, ob->track, 0, recursion, frame, type);
+		if (ob->parent) no_update |= BKE_object_modifier_update_subframe(bmain, eval_ctx, scene, ob->parent, 0, recursion, frame, type);
+		if (ob->track) no_update |= BKE_object_modifier_update_subframe(bmain, eval_ctx, scene, ob->track, 0, recursion, frame, type);
 
 		/* skip subframe if object is parented
 		 *  to vertex of a dynamic paint canvas */
@@ -3651,7 +3652,7 @@ bool BKE_object_modifier_update_subframe(Scene *scene, Object *ob, bool update_m
 				cti->get_constraint_targets(con, &targets);
 				for (ct = targets.first; ct; ct = ct->next) {
 					if (ct->tar)
-						BKE_object_modifier_update_subframe(scene, ct->tar, 0, recursion, frame, type);
+						BKE_object_modifier_update_subframe(bmain, eval_ctx, scene, ct->tar, 0, recursion, frame, type);
 				}
 				/* free temp targets */
 				if (cti->flush_constraint_targets)
@@ -3667,7 +3668,7 @@ bool BKE_object_modifier_update_subframe(Scene *scene, Object *ob, bool update_m
 		/* ignore cache clear during subframe updates
 		 *  to not mess up cache validity */
 		object_cacheIgnoreClear(ob, 1);
-		BKE_object_handle_update(G.main->eval_ctx, scene, ob);
+		BKE_object_handle_update(bmain, eval_ctx, scene, ob);
 		object_cacheIgnoreClear(ob, 0);
 	}
 	else

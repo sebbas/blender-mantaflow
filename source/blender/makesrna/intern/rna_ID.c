@@ -33,6 +33,7 @@
 #include "DNA_object_types.h"
 
 #include "BLI_utildefines.h"
+#include "BLI_math_base.h"
 
 #include "BKE_icons.h"
 #include "BKE_object.h"
@@ -126,13 +127,13 @@ void rna_ID_name_set(PointerRNA *ptr, const char *value)
 static int rna_ID_name_editable(PointerRNA *ptr, const char **UNUSED(r_info))
 {
 	ID *id = (ID *)ptr->data;
-	
+
 	if (GS(id->name) == ID_VF) {
 		VFont *vfont = (VFont *)id;
 		if (BKE_vfont_is_builtin(vfont))
 			return false;
 	}
-	
+
 	return PROP_EDITABLE;
 }
 
@@ -299,7 +300,7 @@ static ID *rna_ID_copy(ID *id, Main *bmain)
 		if (newid) id_us_min(newid);
 		return newid;
 	}
-	
+
 	return NULL;
 }
 
@@ -413,7 +414,7 @@ int rna_IDMaterials_assign_int(PointerRNA *ptr, int key, const PointerRNA *assig
 	short *totcol = give_totcolp_id(id);
 	Material *mat_id = assign_ptr->id.data;
 	if (totcol && (key >= 0 && key < *totcol)) {
-		assign_material_id(id, mat_id, key + 1);
+		assign_material_id(G.main, id, mat_id, key + 1);
 		return 1;
 	}
 	else {
@@ -457,9 +458,9 @@ static Material *rna_IDMaterials_pop_id(ID *id, Main *bmain, ReportList *reports
 	return ma;
 }
 
-static void rna_IDMaterials_clear_id(ID *id, int remove_material_slot)
+static void rna_IDMaterials_clear_id(ID *id, Main *bmain, int remove_material_slot)
 {
-	BKE_material_clear_id(G.main, id, remove_material_slot);
+	BKE_material_clear_id(bmain, id, remove_material_slot);
 
 	DAG_id_tag_update(id, OB_RECALC_DATA);
 	WM_main_add_notifier(NC_OBJECT | ND_DRAW, id);
@@ -469,7 +470,7 @@ static void rna_IDMaterials_clear_id(ID *id, int remove_material_slot)
 static void rna_Library_filepath_set(PointerRNA *ptr, const char *value)
 {
 	Library *lib = (Library *)ptr->data;
-	BKE_library_filepath_set(lib, value);
+	BKE_library_filepath_set(G.main, lib, value);
 }
 
 /* ***** ImagePreview ***** */
@@ -635,7 +636,7 @@ static void rna_ImagePreview_pixels_float_set(PointerRNA *ptr, const float *valu
 	}
 
 	for (i = 0; i < len; i++) {
-		data[i] = FTOCHAR(values[i]);
+		data[i] = unit_float_to_uchar_clamp(values[i]);
 	}
 	prv_img->flag[size] |= PRV_USER_EDITED;
 }
@@ -774,7 +775,7 @@ static void rna_def_ID_properties(BlenderRNA *brna)
 	srna = RNA_def_struct(brna, "PropertyGroupItem", NULL);
 	RNA_def_struct_sdna(srna, "IDProperty");
 	RNA_def_struct_ui_text(srna, "ID Property", "Property that stores arbitrary, user defined properties");
-	
+
 	/* IDP_STRING */
 	prop = RNA_def_property(srna, "string", PROP_STRING, PROP_NONE);
 	RNA_def_property_flag(prop, PROP_EXPORT | PROP_IDPROPERTY);
@@ -860,7 +861,7 @@ static void rna_def_ID_materials(BlenderRNA *brna)
 	StructRNA *srna;
 	FunctionRNA *func;
 	PropertyRNA *parm;
-	
+
 	/* for mesh/mball/curve materials */
 	srna = RNA_def_struct(brna, "IDMaterials", NULL);
 	RNA_def_struct_sdna(srna, "ID");
@@ -881,6 +882,7 @@ static void rna_def_ID_materials(BlenderRNA *brna)
 	RNA_def_function_return(func, parm);
 
 	func = RNA_def_function(srna, "clear", "rna_IDMaterials_clear_id");
+	RNA_def_function_flag(func, FUNC_USE_MAIN);
 	RNA_def_function_ui_description(func, "Remove all materials from the data-block");
 	RNA_def_boolean(func, "update_data", 0, "", "Update data by re-adjusting the material slots assigned");
 }
@@ -1100,7 +1102,7 @@ static void rna_def_library(BlenderRNA *brna)
 	RNA_def_property_string_sdna(prop, NULL, "name");
 	RNA_def_property_ui_text(prop, "File Path", "Path to the library .blend file");
 	RNA_def_property_string_funcs(prop, NULL, NULL, "rna_Library_filepath_set");
-	
+
 	prop = RNA_def_property(srna, "parent", PROP_POINTER, PROP_NONE);
 	RNA_def_property_struct_type(prop, "Library");
 	RNA_def_property_ui_text(prop, "Parent", "");

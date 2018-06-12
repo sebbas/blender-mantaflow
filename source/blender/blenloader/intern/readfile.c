@@ -765,7 +765,9 @@ static BHeadN *get_bhead(FileData *fd)
 						bh8_from_bh4(&bhead, &bhead4);
 					}
 					else {
-						memcpy(&bhead, &bhead4, sizeof(bhead));
+						/* MIN2 is only to quiet '-Warray-bounds' compiler warning. */
+						BLI_assert(sizeof(bhead) == sizeof(bhead4));
+						memcpy(&bhead, &bhead4, MIN2(sizeof(bhead), sizeof(bhead4)));
 					}
 				}
 				else {
@@ -786,7 +788,9 @@ static BHeadN *get_bhead(FileData *fd)
 						bh4_from_bh8(&bhead, &bhead8, (fd->flags & FD_FLAGS_SWITCH_ENDIAN));
 					}
 					else {
-						memcpy(&bhead, &bhead8, sizeof(bhead));
+						/* MIN2 is only to quiet '-Warray-bounds' compiler warning. */
+						BLI_assert(sizeof(bhead) == sizeof(bhead8));
+						memcpy(&bhead, &bhead8, MIN2(sizeof(bhead), sizeof(bhead8)));
 					}
 				}
 				else {
@@ -2659,7 +2663,7 @@ static void lib_link_nladata(FileData *fd, ID *id, ListBase *list)
 }
 
 /* This handles Animato NLA-Strips linking 
- * NOTE: this assumes that link_list has already been called on the list 
+ * NOTE: this assumes that link_list has already been called on the list
  */
 static void direct_link_nladata_strips(FileData *fd, ListBase *list)
 {
@@ -8200,7 +8204,7 @@ static BHead *read_libblock(FileData *fd, Main *main, BHead *bhead, const short 
 		}
 		else {
 			DEBUG_PRINTF("... in %s (%s): ", main->curlib ? main->curlib->id.name : "<NULL>", main->curlib ? main->curlib->name : "<NULL>");
-			if ((id = BKE_libblock_find_name_ex(main, GS(idname), idname + 2))) {
+			if ((id = BKE_libblock_find_name(main, GS(idname), idname + 2))) {
 				DEBUG_PRINTF("FOUND!\n");
 				/* Even though we found our linked ID, there is no guarantee its address is still the same... */
 				if (id != bhead->old) {
@@ -8404,11 +8408,11 @@ static BHead *read_global(BlendFileData *bfd, FileData *fd, BHead *bhead)
 	if (bfd->filename[0] == 0) {
 		if (fd->fileversion < 265 || (fd->fileversion == 265 && fg->subversion < 1))
 			if ((G.fileflags & G_FILE_RECOVER)==0)
-				BLI_strncpy(bfd->filename, bfd->main->name, sizeof(bfd->filename));
+				BLI_strncpy(bfd->filename, BKE_main_blendfile_path(bfd->main), sizeof(bfd->filename));
 		
 		/* early 2.50 version patch - filename not in FileGlobal struct at all */
 		if (fd->fileversion <= 250)
-			BLI_strncpy(bfd->filename, bfd->main->name, sizeof(bfd->filename));
+			BLI_strncpy(bfd->filename, BKE_main_blendfile_path(bfd->main), sizeof(bfd->filename));
 	}
 	
 	if (G.fileflags & G_FILE_RECOVER)
@@ -10304,7 +10308,7 @@ static Main *library_link_begin(Main *mainvar, FileData **fd, const char *filepa
 	blo_split_main((*fd)->mainlist, mainvar);
 	
 	/* which one do we need? */
-	mainl = blo_find_main(*fd, filepath, G.main->name);
+	mainl = blo_find_main(*fd, filepath, BKE_main_blendfile_path(mainvar));
 	
 	/* needed for do_version */
 	mainl->versionfile = (*fd)->fileversion;
@@ -10379,7 +10383,7 @@ static void library_link_end(Main *mainl, FileData **fd, const short flag, Scene
 		BLI_strncpy(curlib->name, curlib->filepath, sizeof(curlib->name));
 
 		/* uses current .blend file as reference */
-		BLI_path_rel(curlib->name, G.main->name);
+		BLI_path_rel(curlib->name, BKE_main_blendfile_path_from_global());
 	}
 
 	blo_join_main((*fd)->mainlist);
@@ -10407,7 +10411,7 @@ static void library_link_end(Main *mainl, FileData **fd, const short flag, Scene
 	BKE_main_id_tag_all(mainvar, LIB_TAG_NEW, false);
 
 	lib_verify_nodetree(mainvar, false);
-	fix_relpaths_library(G.main->name, mainvar); /* make all relative paths, relative to the open blend file */
+	fix_relpaths_library(BKE_main_blendfile_path(mainvar), mainvar); /* make all relative paths, relative to the open blend file */
 
 	/* Give a base to loose objects. If group append, do it for objects too.
 	 * Only directly linked objects & groups are instantiated by `BLO_library_link_named_part_ex()` & co,
@@ -10530,7 +10534,7 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
 						while (fd == NULL) {
 							char newlib_path[FILE_MAX] = {0};
 							printf("Missing library...'\n");
-							printf("	current file: %s\n", G.main->name);
+							printf("	current file: %s\n", BKE_main_blendfile_path_from_global());
 							printf("	absolute lib: %s\n", mainptr->curlib->filepath);
 							printf("	relative lib: %s\n", mainptr->curlib->name);
 							printf("  enter a new path:\n");
@@ -10538,7 +10542,7 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
 							if (scanf("%1023s", newlib_path) > 0) {  /* Warning, keep length in sync with FILE_MAX! */
 								BLI_strncpy(mainptr->curlib->name, newlib_path, sizeof(mainptr->curlib->name));
 								BLI_strncpy(mainptr->curlib->filepath, newlib_path, sizeof(mainptr->curlib->filepath));
-								BLI_cleanup_path(G.main->name, mainptr->curlib->filepath);
+								BLI_cleanup_path(BKE_main_blendfile_path_from_global(), mainptr->curlib->filepath);
 								
 								fd = blo_openblenderfile(mainptr->curlib->filepath, basefd->reports);
 

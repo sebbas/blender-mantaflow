@@ -4,7 +4,7 @@
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version. 
+ * of the License, or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -893,6 +893,12 @@ typedef struct NodeShaderUVMap {
 	char uv_map[64];
 } NodeShaderUVMap;
 
+typedef struct NodeShaderTexIES {
+	int mode;
+
+	char filepath[1024]; /* 1024 = FILE_MAX */
+} NodeShaderTexIES;
+
 typedef struct NodeSunBeams {
 	float source[2];
 
@@ -906,6 +912,9 @@ typedef struct NodeSunBeams {
 /* script node flag */
 #define NODE_SCRIPT_AUTO_UPDATE		1
 
+/* ies node mode */
+#define NODE_IES_INTERNAL		0
+#define NODE_IES_EXTERNAL		1
 
 /* frame node flags */
 #define NODE_FRAME_SHRINK		1	/* keep the bounding box minimal */
@@ -1060,6 +1069,7 @@ enum {
 	NODE_MATH_GREATER = 16,
 	NODE_MATH_MOD     = 17,
 	NODE_MATH_ABS     = 18,
+	NODE_MATH_ATAN2   = 19,
 };
 
 /* mix rgb node flags */

@@ -58,6 +58,7 @@
 #include "BLT_translation.h"
 
 #include "BKE_appdir.h"
+#include "BKE_global.h"
 #include "BKE_key.h"
 #include "BKE_library.h"
 #include "BKE_library_query.h"
@@ -65,7 +66,6 @@
 #include "BKE_DerivedMesh.h"
 
 /* may move these, only for modifier_path_relbase */
-#include "BKE_global.h" /* ugh, G.main->name only */
 #include "BKE_main.h"
 /* end */
 
@@ -286,6 +286,13 @@ void modifiers_foreachTexLink(Object *ob, TexWalkFunc walk, void *userData)
 void modifier_copyData_generic(const ModifierData *md_src, ModifierData *md_dst)
 {
 	const ModifierTypeInfo *mti = modifierType_getInfo(md_src->type);
+
+	/* md_dst may have alredy be fully initialized with some extra allocated data,
+	 * we need to free it now to avoid memleak. */
+	if (mti->freeData) {
+		mti->freeData(md_dst);
+	}
+
 	const size_t data_size = sizeof(ModifierData);
 	const char *md_src_data = ((const char *)md_src) + data_size;
 	char       *md_dst_data =       ((char *)md_dst) + data_size;
@@ -382,9 +389,9 @@ void modifier_setError(ModifierData *md, const char *_format, ...)
 
 /* used for buttons, to find out if the 'draw deformed in editmode' option is
  * there
- * 
+ *
  * also used in transform_conversion.c, to detect CrazySpace [tm] (2nd arg
- * then is NULL) 
+ * then is NULL)
  * also used for some mesh tools to give warnings
  */
 int modifiers_getCageIndex(struct Scene *scene, Object *ob, int *r_lastPossibleCageIndex, bool is_virtual)
@@ -758,10 +765,22 @@ void test_object_modifiers(Object *ob)
  * - else if the file has been saved return the blend file path.
  * - else if the file isn't saved and the ID isn't from a library, return the temp dir.
  */
-const char *modifier_path_relbase(Object *ob)
+const char *modifier_path_relbase(Main *bmain, Object *ob)
 {
 	if (G.relbase_valid || ID_IS_LINKED(ob)) {
-		return ID_BLEND_PATH(G.main, &ob->id);
+		return ID_BLEND_PATH(bmain, &ob->id);
+	}
+	else {
+		/* last resort, better then using "" which resolves to the current
+		 * working directory */
+		return BKE_tempdir_session();
+	}
+}
+
+const char *modifier_path_relbase_from_global(Object *ob)
+{
+	if (G.relbase_valid || ID_IS_LINKED(ob)) {
+		return ID_BLEND_PATH_FROM_GLOBAL(&ob->id);
 	}
 	else {
 		/* last resort, better then using "" which resolves to the current
