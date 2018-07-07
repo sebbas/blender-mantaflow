@@ -58,7 +58,7 @@ extern "C" void smoke_manta_export(FLUID* smoke, SmokeModifierData *smd)
 {
 	if (!smoke || !smd) return;
 	smoke->exportSmokeScript(smd);
-	smoke->exportSmokeData(smd);
+//	smoke->exportSmokeData(smd);
 }
 
 static void data_dissolve(float *density, float *heat, float *r, float *g, float *b, int total_cells, int speed, int log)
@@ -721,7 +721,7 @@ extern "C" void liquid_manta_export(FLUID* liquid, SmokeModifierData *smd)
 {
 	if (!liquid || !smd) return;
 	liquid->exportLiquidScript(smd);
-	liquid->exportLiquidData(smd);
+//	liquid->exportLiquidData(smd);
 }
 
 extern "C" void liquid_set_flip_particle_data(FLUID* liquid, float* buffer, int numParts)
@@ -849,6 +849,12 @@ extern "C" int fluid_read_particles(FLUID* fluid, SmokeModifierData *smd, int fr
 	return fluid->readParticles(smd, framenr);
 }
 
+extern "C" int fluid_read_guiding(FLUID* fluid, SmokeModifierData *smd, int framenr, bool sourceDomain)
+{
+	if (!fluid || !smd) return 0;
+	return fluid->readGuiding(smd, framenr, sourceDomain);
+}
+
 extern "C" int fluid_update_liquid_structures(FLUID* fluid, SmokeModifierData *smd, int framenr)
 {
 	if (!fluid || !smd) return 0;
@@ -891,7 +897,13 @@ extern "C" int fluid_bake_particles(FLUID* fluid, SmokeModifierData *smd, int fr
 	return fluid->bakeParticles(smd, framenr);
 }
 
-extern "C" void fluid_update_variables_low(FLUID* fluid, SmokeModifierData *smd)
+extern "C" int fluid_bake_guiding(FLUID* fluid, SmokeModifierData *smd, int framenr)
+{
+	if (!fluid || !smd) return 0;
+	return fluid->bakeGuiding(smd, framenr);
+}
+
+extern "C" void fluid_update_variables(FLUID* fluid, SmokeModifierData *smd)
 {
 	if (fluid)
 		fluid->updateVariablesLow(smd);

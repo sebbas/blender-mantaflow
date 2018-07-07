@@ -78,6 +78,7 @@ public:
 	int readNoise(SmokeModifierData *smd, int framenr);
 	int readMesh(SmokeModifierData *smd, int framenr);
 	int readParticles(SmokeModifierData *smd, int framenr);
+	int readGuiding(SmokeModifierData *smd, int framenr, bool sourceDomain);
 
 	// Read cache (via file read functions in FLUID - e.g. read .bobj.gz meshes, .uni particles)
 	int updateMeshStructures(SmokeModifierData *smd, int framenr);
@@ -89,6 +90,7 @@ public:
 	int bakeNoise(SmokeModifierData *smd, int framenr);
 	int bakeMesh(SmokeModifierData *smd, int framenr);
 	int bakeParticles(SmokeModifierData *smd, int framenr);
+	int bakeGuiding(SmokeModifierData *smd, int framenr);
 	void updateVariablesLow(SmokeModifierData *smd);
 	void updateVariablesHigh(SmokeModifierData *smd);
 
@@ -287,6 +289,7 @@ private:
 	int mResXParticle;
 	int mResYParticle;
 	int mResZParticle;
+	int* mResGuiding;
 
 	int mUpresMesh;
 	int mUpresParticle;

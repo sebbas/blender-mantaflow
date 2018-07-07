@@ -160,6 +160,7 @@ set(SRC
 	${MANTA_PP}/plugin/meshplugins.cpp
 #	${MANTA_PP}/plugin/numpyconvert.cpp
 	${MANTA_PP}/plugin/pressure.cpp
+	${MANTA_PP}/plugin/secondaryparticles
 	${MANTA_PP}/plugin/sndparticles.cpp
 	${MANTA_PP}/plugin/surfaceturbulence.cpp
 #	${MANTA_PP}/plugin/tfplugins.cpp

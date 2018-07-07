@@ -136,7 +136,7 @@ smoke_noise_dict_s$ID$.update(tmpDict_s$ID$)\n";
 // ADDITIONAL GRIDS
 //////////////////////////////////////////////////////////////////////
 
-const std::string smoke_alloc_colors_low = "\n\
+const std::string smoke_alloc_colors = "\n\
 mantaMsg('Allocating colors low')\n\
 color_r_s$ID$   = s$ID$.create(RealGrid)\n\
 color_g_s$ID$   = s$ID$.create(RealGrid)\n\
@@ -146,7 +146,7 @@ color_b_s$ID$   = s$ID$.create(RealGrid)\n\
 tmpDict_s$ID$ = dict(color_r=color_r_s$ID$, color_g=color_g_s$ID$, color_b=color_b_s$ID$)\n\
 smoke_data_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
-const std::string smoke_alloc_colors_high = "\
+const std::string smoke_alloc_colors_noise = "\
 mantaMsg('Allocating colors high')\n\
 color_r_sn$ID$ = sn$ID$.create(RealGrid)\n\
 color_g_sn$ID$ = sn$ID$.create(RealGrid)\n\
@@ -156,7 +156,7 @@ color_b_sn$ID$ = sn$ID$.create(RealGrid)\n\
 tmpDict_s$ID$ = dict(color_r_noise=color_r_sn$ID$, color_g_noise=color_g_sn$ID$, color_b_noise=color_b_sn$ID$)\n\
 smoke_noise_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
-const std::string smoke_init_colors_low = "\n\
+const std::string smoke_init_colors = "\n\
 mantaMsg('Initializing colors low')\n\
 color_r_s$ID$.copyFrom(density_s$ID$) \n\
 color_r_s$ID$.multConst($COLOR_R$) \n\
@@ -165,7 +165,7 @@ color_g_s$ID$.multConst($COLOR_G$) \n\
 color_b_s$ID$.copyFrom(density_s$ID$) \n\
 color_b_s$ID$.multConst($COLOR_B$)\n";
 
-const std::string smoke_init_colors_high = "\n\
+const std::string smoke_init_colors_noise = "\n\
 mantaMsg('Initializing colors high')\n\
 color_r_sn$ID$.copyFrom(density_sn$ID$) \n\
 color_r_sn$ID$.multConst($COLOR_R$) \n\
@@ -174,7 +174,7 @@ color_g_sn$ID$.multConst($COLOR_G$) \n\
 color_b_sn$ID$.copyFrom(density_sn$ID$) \n\
 color_b_sn$ID$.multConst($COLOR_B$)\n";
 
-const std::string smoke_alloc_heat_low = "\n\
+const std::string smoke_alloc_heat = "\n\
 mantaMsg('Allocating heat low')\n\
 heat_s$ID$   = s$ID$.create(RealGrid)\n\
 \n\
@@ -182,7 +182,7 @@ heat_s$ID$   = s$ID$.create(RealGrid)\n\
 tmpDict_s$ID$ = dict(heat=heat_s$ID$)\n\
 smoke_data_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
-const std::string smoke_alloc_fire_low = "\n\
+const std::string smoke_alloc_fire = "\n\
 mantaMsg('Allocating fire low')\n\
 flame_s$ID$  = s$ID$.create(RealGrid)\n\
 fuel_s$ID$   = s$ID$.create(RealGrid)\n\
@@ -229,6 +229,12 @@ def smoke_pre_step_low_$ID$():\n\
         y_invel_s$ID$.multConst(Real(gs_s$ID$.y))\n\
         z_invel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
         copyRealToVec3(sourceX=x_invel_s$ID$, sourceY=y_invel_s$ID$, sourceZ=z_invel_s$ID$, target=invel_s$ID$)\n\
+    \n\
+    if using_guiding_s$ID$:\n\
+        weightGuide_s$ID$.multConst(0)\n\
+        weightGuide_s$ID$.addConst(alpha_sg$ID$)\n\
+        interpolateMACGrid(source=guidevel_sg$ID$, target=velT_s$ID$)\n\
+        guidevel_s$ID$.multConst(vec3(gamma_sg$ID$))\n\
     \n\
     #x_vel_s$ID$.multConst(Real(gs_s$ID$.x))\n\
     #y_vel_s$ID$.multConst(Real(gs_s$ID$.y))\n\
@@ -400,13 +406,6 @@ def step_low_$ID$():\n\
         extrapolateVec3Simple(vel=obvelC_s$ID$, phi=phiObsIn_s$ID$, distance=1, inside=False)\n\
         resampleVec3ToMac(source=obvelC_s$ID$, target=obvel_s$ID$)\n\
     \n\
-    if using_guiding_s$ID$:\n\
-        mantaMsg('Extrapolating guiding velocity')\n\
-        # ensure velocities inside of guiding object, slightly add guiding vels outside of object too\n\
-        extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
-        extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=4, inside=False)\n\
-        resampleVec3ToMac(source=guidevelC_s$ID$, target=guidevel_s$ID$)\n\
-    \n\
     # add initial velocity\n\
     if using_invel_s$ID$:\n\
         setInitialVelocity(flags=flags_s$ID$, vel=vel_s$ID$, invel=invel_s$ID$)\n\
@@ -416,8 +415,7 @@ def step_low_$ID$():\n\
     \n\
     if using_guiding_s$ID$:\n\
         mantaMsg('Guiding and pressure')\n\
-        weightGuide_s$ID$.addConst(alpha_s$ID$)\n\
-        PD_fluid_guiding(vel=vel_s$ID$, velT=guidevel_s$ID$, flags=flags_s$ID$, weight=weightGuide_s$ID$, blurRadius=beta_s$ID$, pressure=pressure_s$ID$, tau=tau_s$ID$, sigma=sigma_s$ID$, theta=theta_s$ID$, preconditioner=preconditioner_s$ID$, zeroPressureFixing=not doOpen_s$ID$)\n\
+        PD_fluid_guiding(vel=vel_s$ID$, velT=velT_s$ID$, flags=flags_s$ID$, weight=weightGuide_s$ID$, blurRadius=beta_sg$ID$, pressure=pressure_s$ID$, tau=tau_sg$ID$, sigma=sigma_sg$ID$, theta=theta_sg$ID$, preconditioner=preconditioner_s$ID$, zeroPressureFixing=not doOpen_s$ID$)\n\
     else:\n\
         mantaMsg('Pressure')\n\
         solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, preconditioner=preconditioner_s$ID$, zeroPressureFixing=not doOpen_s$ID$) # closed domains require pressure fixing\n\
@@ -550,9 +548,8 @@ const std::string smoke_inflow_high = "\n\
 // STANDALONE MODE
 //////////////////////////////////////////////////////////////////////
 
-const std::string smoke_standalone_load = "\n\
+const std::string smoke_standalone = "\n\
 # import *.uni files\n\
-path_prefix_$ID$ = '$MANTA_EXPORT_PATH$'\n\
 load_smoke_data_low_$ID$(path_prefix_$ID$)\n\
 if using_highres_s$ID$:\n\
     load_smoke_data_high_$ID$(path_prefix_$ID$)\n";

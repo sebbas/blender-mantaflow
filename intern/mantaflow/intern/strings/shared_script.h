@@ -47,8 +47,7 @@ isWindows = platform.system() != 'Darwin' and platform.system() != 'Linux'\n\
 \n\
 bpy = sys.modules.get('bpy')\n\
 if bpy is not None:\n\
-    sys.executable = bpy.app.binary_path_python\n\
-del bpy\n";
+    sys.executable = bpy.app.binary_path_python\n";
 
 //////////////////////////////////////////////////////////////////////
 // DEBUG
@@ -78,12 +77,16 @@ const std::string fluid_solver_particles = "\n\
 mantaMsg('Solver particles')\n\
 sp$ID$ = Solver(name='solver_particles$ID$', gridSize=gs_sp$ID$)\n";
 
+const std::string fluid_solver_guiding = "\n\
+mantaMsg('Solver guiding')\n\
+sg$ID$ = Solver(name='solver_guiding$ID$', gridSize=gs_sg$ID$)\n";
+
 //////////////////////////////////////////////////////////////////////
 // VARIABLES
 //////////////////////////////////////////////////////////////////////
 
 const std::string fluid_variables = "\n\
-mantaMsg('Fluid variables low')\n\
+mantaMsg('Fluid variables')\n\
 dim_s$ID$     = $SOLVER_DIM$\n\
 res_s$ID$     = $RES$\n\
 gravity_s$ID$ = vec3($GRAVITY_X$, $GRAVITY_Y$, $GRAVITY_Z$)\n\
@@ -102,13 +105,6 @@ using_obstacle_s$ID$  = $USING_OBSTACLE$\n\
 using_guiding_s$ID$   = $USING_GUIDING$\n\
 using_invel_s$ID$     = $USING_INVEL$\n\
 using_sndparts_s$ID$  = $USING_SNDPARTS$\n\
-\n\
-# fluid guiding params\n\
-alpha_s$ID$ = $GUIDING_ALPHA$\n\
-beta_s$ID$  = $GUIDING_BETA$\n\
-tau_s$ID$   = 1.0\n\
-sigma_s$ID$ = 0.99/tau_s$ID$\n\
-theta_s$ID$ = 1.0\n\
 \n\
 # fluid time params\n\
 dt_default_s$ID$ = 0.1 # dt is 0.1 at 25fps\n\
@@ -137,6 +133,19 @@ mantaMsg('Fluid variables particles')\n\
 upres_sp$ID$  = $PARTICLE_SCALE$\n\
 gs_sp$ID$     = vec3($PARTICLE_RESX$, $PARTICLE_RESY$, $PARTICLE_RESZ$)\n";
 
+const std::string fluid_variables_guiding = "\n\
+mantaMsg('Fluid variables guiding')\n\
+gs_sg$ID$   = vec3($GUIDING_RESX$, $GUIDING_RESY$, $GUIDING_RESZ$)\n\
+\n\
+guiding_mode_sg$ID$ = $GUIDING_MODE$\n\
+\n\
+alpha_sg$ID$ = $GUIDING_ALPHA$\n\
+beta_sg$ID$  = $GUIDING_BETA$\n\
+gamma_sg$ID$ = $GUIDING_FACTOR$\n\
+tau_sg$ID$   = 1.0\n\
+sigma_sg$ID$ = 0.99/tau_sg$ID$\n\
+theta_sg$ID$ = 1.0\n";
+
 const std::string fluid_with_obstacle = "\n\
 using_obstacle_s$ID$ = True\n";
 
@@ -154,7 +163,7 @@ using_sndparts_s$ID$ = True\n";
 //////////////////////////////////////////////////////////////////////
 
 const std::string fluid_adaptive_time_stepping = "\n\
-mantaMsg('Fluid adaptive time stepping low')\n\
+mantaMsg('Fluid adaptive time stepping')\n\
 s$ID$.frameLength = dt0_s$ID$ \n\
 s$ID$.timestepMin = s$ID$.frameLength / 10.\n\
 s$ID$.timestepMax = s$ID$.frameLength\n\
@@ -192,7 +201,7 @@ def fluid_adapt_time_step_noise_$ID$():\n\
 //////////////////////////////////////////////////////////////////////
 
 const std::string fluid_alloc = "\n\
-mantaMsg('Fluid alloc low')\n\
+mantaMsg('Fluid alloc data')\n\
 flags_s$ID$       = s$ID$.create(FlagGrid)\n\
 numFlow_s$ID$     = s$ID$.create(IntGrid)\n\
 flowType_s$ID$    = s$ID$.create(IntGrid)\n\
@@ -212,8 +221,8 @@ z_force_s$ID$     = s$ID$.create(RealGrid)\n\
 # Keep track of important objects in dict to load them later on\n\
 fluid_data_dict_s$ID$ = dict(vel=vel_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$)\n";
 
-const std::string fluid_alloc_obstacle_low = "\n\
-mantaMsg('Allocating obstacle low')\n\
+const std::string fluid_alloc_obstacle = "\n\
+mantaMsg('Allocating obstacle data')\n\
 numObs_s$ID$     = s$ID$.create(IntGrid)\n\
 phiObsIn_s$ID$   = s$ID$.create(LevelsetGrid)\n\
 obvel_s$ID$      = s$ID$.create(MACGrid)\n\
@@ -225,19 +234,26 @@ z_obvel_s$ID$    = s$ID$.create(RealGrid)\n\
 tmpDict_s$ID$ = dict(phiObsIn=phiObsIn_s$ID$)\n\
 fluid_data_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
-const std::string fluid_alloc_guiding_low = "\n\
-mantaMsg('Allocating guiding low')\n\
+const std::string fluid_alloc_guiding = "\n\
+mantaMsg('Allocating guiding data')\n\
+velT_s$ID$        = s$ID$.create(MACGrid)\n\
+weightGuide_s$ID$ = s$ID$.create(RealGrid)\n\
 numGuides_s$ID$   = s$ID$.create(IntGrid)\n\
 phiGuideIn_s$ID$  = s$ID$.create(LevelsetGrid)\n\
-guidevel_s$ID$    = s$ID$.create(MACGrid)\n\
+guidevelTmp_s$ID$ = s$ID$.create(MACGrid)\n\
 guidevelC_s$ID$   = s$ID$.create(Vec3Grid)\n\
 x_guidevel_s$ID$  = s$ID$.create(RealGrid)\n\
 y_guidevel_s$ID$  = s$ID$.create(RealGrid)\n\
 z_guidevel_s$ID$  = s$ID$.create(RealGrid)\n\
-weightGuide_s$ID$ = s$ID$.create(RealGrid)\n";
+\n\
+# Final guide vel grid needs to have independent size\n\
+guidevel_sg$ID$   = sg$ID$.create(MACGrid)\n\
+\n\
+# Keep track of important objects in dict to load them later on\n\
+fluid_guiding_dict_s$ID$ = dict(guidevel=guidevel_sg$ID$)\n";
 
-const std::string fluid_alloc_invel_low = "\n\
-mantaMsg('Allocating initial velocity low')\n\
+const std::string fluid_alloc_invel = "\n\
+mantaMsg('Allocating initial velocity data')\n\
 invel_s$ID$   = s$ID$.create(VecGrid)\n\
 x_invel_s$ID$ = s$ID$.create(RealGrid)\n\
 y_invel_s$ID$ = s$ID$.create(RealGrid)\n\
@@ -270,7 +286,7 @@ for var in list(globals()):\n\
         del globals()[var]\n\
 # Now delete childs from solver objects\n\
 for var in list(globals()):\n\
-    if var.endswith('_s$ID$') or var.endswith('_sn$ID$') or var.endswith('_sm$ID$') or var.endswith('_sp$ID$'):\n\
+    if var.endswith('_s$ID$') or var.endswith('_sn$ID$') or var.endswith('_sm$ID$') or var.endswith('_sp$ID$') or var.endswith('_sg$ID$'):\n\
         del globals()[var]\n\
 \n\
 # Extra cleanup for multigrid and fluid guiding\n\
@@ -300,11 +316,12 @@ gc.collect()\n";
 // BAKE
 //////////////////////////////////////////////////////////////////////
 
-const std::string fluid_bake_helper = "\n\
+const std::string fluid_cache_helper = "\n\
 def fluid_cache_get_framenr_formatted_$ID$(framenr):\n\
-    return str(framenr).zfill(4) # framenr with leading zeroes\n\
-\n\
-def fluid_cache_multiprocessing_start_$ID$(function, framenr, format_data=None, format_noise=None, format_mesh=None, format_particles=None, path_data=None, path_noise=None, path_mesh=None, path_particles=None):\n\
+    return str(framenr).zfill(4) # framenr with leading zeroes\n";
+
+const std::string fluid_bake_multiprocessing = "\n\
+def fluid_cache_multiprocessing_start_$ID$(function, framenr, format_data=None, format_noise=None, format_mesh=None, format_particles=None, format_guiding=None, path_data=None, path_noise=None, path_mesh=None, path_particles=None, path_guiding=None):\n\
     if __name__ == '__main__':\n\
         args = (framenr,)\n\
         if format_data:\n\
@@ -315,6 +332,8 @@ def fluid_cache_multiprocessing_start_$ID$(function, framenr, format_data=None, 
             args += (format_mesh,)\n\
         if format_particles:\n\
             args += (format_particles,)\n\
+        if format_guiding:\n\
+            args += (format_guiding,)\n\
         if path_data:\n\
             args += (path_data,)\n\
         if path_noise:\n\
@@ -323,28 +342,32 @@ def fluid_cache_multiprocessing_start_$ID$(function, framenr, format_data=None, 
             args += (path_mesh,)\n\
         if path_particles:\n\
             args += (path_particles,)\n\
+        if path_guiding:\n\
+            args += (path_guiding,)\n\
         p$ID$ = multiprocessing.Process(target=function, args=args)\n\
         p$ID$.start()\n\
         p$ID$.join()\n";
 
 const std::string fluid_bake_data = "\n\
-def bake_fluid_process_data_$ID$(framenr, format_data, format_particles, path_data):\n\
+def bake_fluid_process_data_$ID$(framenr, format_data, format_particles, format_guiding, path_data, path_guiding):\n\
     mantaMsg('Bake fluid data')\n\
     \n\
     s$ID$.frame = framenr\n\
     \n\
     start_time = time.time()\n\
+    if using_guiding_s$ID$:\n\
+        fluid_load_guiding_$ID$(path_guiding, framenr, format_guiding)\n\
     if using_smoke_s$ID$:\n\
         smoke_adaptive_step_$ID$(framenr)\n\
     if using_liquid_s$ID$:\n\
         liquid_adaptive_step_$ID$(framenr)\n\
     mantaMsg('--- Step: %s seconds ---' % (time.time() - start_time))\n\
 \n\
-def bake_fluid_data_$ID$(path_data, framenr, format_data, format_particles):\n\
+def bake_fluid_data_$ID$(path_data, path_guiding, framenr, format_data, format_particles, format_guiding):\n\
     if not withMP or isWindows:\n\
-        bake_fluid_process_data_$ID$(framenr, format_data, format_particles, path_data)\n\
+        bake_fluid_process_data_$ID$(framenr, format_data, format_particles, format_guiding, path_data, path_guiding)\n\
     else:\n\
-        fluid_cache_multiprocessing_start_$ID$(function=bake_fluid_process_data_$ID$, framenr=framenr, format_data=format_data, format_particles=format_particles, path_data=path_data)\n";
+        fluid_cache_multiprocessing_start_$ID$(function=bake_fluid_process_data_$ID$, framenr=framenr, format_data=format_data, format_particles=format_particles, format_guiding=format_guiding, path_data=path_data, path_guiding=path_guiding)\n";
 
 const std::string fluid_bake_noise = "\n\
 def bake_noise_process_$ID$(framenr, format_data, format_noise, path_data, path_noise):\n\
@@ -406,6 +429,35 @@ def bake_particles_$ID$(path_data, path_particles, framenr, format_data, format_
     else:\n\
         fluid_cache_multiprocessing_start_$ID$(function=bake_particles_process_$ID$, framenr=framenr, format_data=format_data, format_particles=format_particles, path_data=path_data, path_particles=path_particles)\n";
 
+const std::string fluid_bake_guiding = "\n\
+def bake_guiding_process_$ID$(framenr, format_guiding, path_guiding):\n\
+    mantaMsg('Bake fluid guiding')\n\
+    \n\
+    if framenr>1:\n\
+        fluid_load_guiding_$ID$(path_guiding, framenr-1, format_guiding)\n\
+    \n\
+    x_guidevel_s$ID$.multConst(Real(gs_s$ID$.x))\n\
+    y_guidevel_s$ID$.multConst(Real(gs_s$ID$.y))\n\
+    z_guidevel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
+    copyRealToVec3(sourceX=x_guidevel_s$ID$, sourceY=y_guidevel_s$ID$, sourceZ=z_guidevel_s$ID$, target=guidevelC_s$ID$)\n\
+    \n\
+    mantaMsg('Extrapolating guiding velocity')\n\
+    # ensure velocities inside of guiding object, slightly add guiding vels outside of object too\n\
+    extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
+    extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=4, inside=False)\n\
+    resampleVec3ToMac(source=guidevelC_s$ID$, target=guidevelTmp_s$ID$)\n\
+    \n\
+    mantaMsg('Make guiding velocity field')\n\
+    makeGuidingField(source=guidevelTmp_s$ID$, target=guidevel_sg$ID$, mode=guiding_mode_sg$ID$)\n\
+    \n\
+    fluid_save_guiding_$ID$(path_guiding, framenr, format_guiding)\n\
+\n\
+def bake_guiding_$ID$(path_guiding, framenr, format_guiding):\n\
+    if not withMP or isWindows:\n\
+        bake_guiding_process_$ID$(framenr, format_guiding, path_guiding)\n\
+    else:\n\
+        fluid_cache_multiprocessing_start_$ID$(function=bake_guiding_process_$ID$, framenr=framenr, format_data=format_guiding, path_data=path_guiding)\n";
+
 //////////////////////////////////////////////////////////////////////
 // IMPORT
 //////////////////////////////////////////////////////////////////////
@@ -416,20 +468,34 @@ def fluid_file_import_s$ID$(dict, path, framenr, file_format):\n\
         framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
         for name, object in dict.items():\n\
             file = os.path.join(path, name + '_' + framenr + file_format)\n\
-            if os.path.isfile(file): object.load(file)\n\
+            if os.path.isfile(file):\n\
+                object.load(file)\n\
+            else:\n\
+                mantaMsg('Could not load file ' + str(file))\n\
     except Exception as e:\n\
         mantaMsg(str(e))\n\
         pass # Just skip file load errors for now\n";
 
 const std::string fluid_load_particles = "\n\
 def fluid_load_particles_$ID$(path, framenr, file_format):\n\
-    mantaMsg('Fluid load particles')\n\
+    mantaMsg('Fluid load particles, frame ' + str(framenr))\n\
     fluid_file_import_s$ID$(dict=fluid_particles_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
 const std::string fluid_load_data = "\n\
 def fluid_load_data_$ID$(path, framenr, file_format):\n\
-    mantaMsg('Fluid load data')\n\
+    mantaMsg('Fluid load data, frame ' + str(framenr))\n\
     fluid_file_import_s$ID$(dict=fluid_data_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
+
+const std::string fluid_load_guiding = "\n\
+def fluid_load_guiding_$ID$(path, framenr, file_format):\n\
+    mantaMsg('Fluid load guiding, frame ' + str(framenr))\n\
+    fluid_file_import_s$ID$(dict=fluid_guiding_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
+
+const std::string fluid_load_vel = "\n\
+def fluid_load_vel_$ID$(path, framenr, file_format):\n\
+    mantaMsg('Fluid load vel, frame ' + str(framenr))\n\
+    vel_dict = dict(vel=guidevel_sg$ID$)\n\
+    fluid_file_import_s$ID$(dict=vel_dict, path=path, framenr=framenr, file_format=file_format)\n";
 
 //////////////////////////////////////////////////////////////////////
 // EXPORT
@@ -448,38 +514,17 @@ def fluid_file_export_s$ID$(dict, path, framenr, file_format, mode_override=Fals
 
 const std::string fluid_save_particles = "\n\
 def fluid_save_particles_$ID$(path, framenr, file_format):\n\
-    mantaMsg('Liquid save particles')\n\
+    mantaMsg('Liquid save particles, frame ' + str(framenr))\n\
     fluid_file_export_s$ID$(dict=fluid_particles_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
 const std::string fluid_save_data = "\n\
 def fluid_save_data_$ID$(path, framenr, file_format):\n\
-    mantaMsg('Fluid save data low')\n\
+    mantaMsg('Fluid save data, frame ' + str(framenr))\n\
     fluid_file_export_s$ID$(dict=fluid_data_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
-//////////////////////////////////////////////////////////////////////
-// STANDALONE MODE
-//////////////////////////////////////////////////////////////////////
+const std::string fluid_save_guiding = "\n\
+def fluid_save_guiding_$ID$(path, framenr, file_format):\n\
+    mantaMsg('Fluid save guiding, frame ' + str(framenr))\n\
+    fluid_file_export_s$ID$(dict=fluid_guiding_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
-const std::string fluid_standalone_load = "\n\
-if using_obstacle_s$ID$:\n\
-    load_fluid_obstacle_data_low_$ID$(path_prefix_$ID$)\n\
-if using_guiding_s$ID$:\n\
-    load_fluid_guiding_data_low_$ID$(path_prefix_$ID$)\n\
-if using_invel_s$ID$:\n\
-    load_fluid_invel_data_low_$ID$(path_prefix_$ID$)\n\
-if using_sndparts_s$ID$:\n\
-    load_fluid_sndparts_data_low_$ID$(path_prefix_$ID$)\n";
 
-const std::string fluid_standalone = "\n\
-if (GUI):\n\
-    gui=Gui()\n\
-    gui.show()\n\
-    gui.pause()\n\
-\n\
-start_frame = $CURRENT_FRAME$\n\
-end_frame = 1000\n\
-\n\
-# All low and high res steps\n\
-while start_frame <= end_frame:\n\
-    manta_step_$ID$(start_frame)\n\
-    start_frame += 1\n";

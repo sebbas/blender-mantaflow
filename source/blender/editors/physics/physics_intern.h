@@ -113,6 +113,8 @@ void MANTA_OT_bake_mesh(struct wmOperatorType *ot);
 void MANTA_OT_free_mesh(struct wmOperatorType *ot);
 void MANTA_OT_bake_particles(struct wmOperatorType *ot);
 void MANTA_OT_free_particles(struct wmOperatorType *ot);
+void MANTA_OT_bake_guiding(struct wmOperatorType *ot);
+void MANTA_OT_free_guiding(struct wmOperatorType *ot);
 void MANTA_OT_pause_bake(struct wmOperatorType *ot);
 void MANTA_OT_make_file(struct wmOperatorType *ot);
 

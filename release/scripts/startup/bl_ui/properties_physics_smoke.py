@@ -66,7 +66,8 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
             domain = md.domain_settings
             flow = md.flow_settings
 
-            baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
+            baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
+            baked_any = domain.cache_baked_data or domain.cache_baked_mesh or domain.cache_baked_particles or domain.cache_baked_noise or domain.cache_baked_guiding
 
             row = layout.row()
             row.enabled = not  domain.cache_baked_data and not baking_any
@@ -96,10 +97,12 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
 
             col = split.column(align=True)
             col1 = col.column(align=True)
-            col.label(text="Domain:")
-            col.prop(domain, "resolution_max", text="Resolution")
-            col.prop(domain, "time_scale", text="Time")
+            col2 = col.column(align=True)
+            col1.label(text="Domain:")
+            col2.enabled = not baked_any
+            col2.prop(domain, "resolution_max", text="Resolution")
             col.prop(domain, "use_adaptive_stepping", text="Adaptive stepping")
+            col.prop(domain, "time_scale", text="Time")
             col.prop(domain, "cfl_condition", text="CFL")
             
             col = split.column()
@@ -318,8 +321,8 @@ class PHYSICS_PT_smoke_adaptive_domain(PhysicButtonsPanel, Panel):
         layout.active = domain.use_adaptive_domain
         
         split = layout.split()
-        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
-        split.enabled = not domain.cache_baked_data and not baking_any
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
+        split.enabled = not baking_any
 
         col = split.column(align=True)
         col.label(text="Resolution:")
@@ -370,7 +373,7 @@ class PHYSICS_PT_smoke_noise(PhysicButtonsPanel, Panel):
     def draw_header(self, context):
         md = context.smoke.domain_settings
         domain = context.smoke.domain_settings
-        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
         self.layout.enabled = not baking_any
         self.layout.prop(md, "use_noise", text="")
 
@@ -380,7 +383,7 @@ class PHYSICS_PT_smoke_noise(PhysicButtonsPanel, Panel):
 
         layout.active = domain.use_noise
 
-        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
 
         split = layout.split()
         split.enabled = not baking_any
@@ -424,7 +427,7 @@ class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
     def draw_header(self, context):
         md = context.smoke.domain_settings
         domain = context.smoke.domain_settings
-        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
         self.layout.enabled = not baking_any
         self.layout.prop(md, "use_mesh", text="")
 
@@ -434,7 +437,7 @@ class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
 
         layout.active = domain.use_mesh
 
-        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
 
         split = layout.split()
         split.enabled = not baking_any
@@ -496,7 +499,7 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         layout = self.layout
         domain = context.smoke.domain_settings
 
-        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
 
         split = layout.split()
         split.prop(domain, "particle_scale", text="Upres")
@@ -567,7 +570,7 @@ class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
         domain = context.smoke.domain_settings
 
         split = layout.split()
-        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
         split.enabled = not baking_any
 
         col = split.column()
@@ -598,19 +601,55 @@ class PHYSICS_PT_smoke_guiding(PhysicButtonsPanel, Panel):
         rd = context.scene.render
         return md and (md.smoke_type == 'DOMAIN') and (rd.engine in cls.COMPAT_ENGINES)
 
+    def draw_header(self, context):
+        md = context.smoke.domain_settings
+        domain = context.smoke.domain_settings
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
+        self.layout.enabled = not baking_any
+        self.layout.prop(md, "use_guiding", text="")
+
     def draw(self, context):
         layout = self.layout
         domain = context.smoke.domain_settings
 
+        layout.active = domain.use_guiding
+
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
+        
         split = layout.split()
-        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise
         split.enabled = not baking_any
 
-        col = split.column()
-        col.prop(domain, "guiding_alpha", text="Weight")
+        col = split.column(align=True)
+        col.enabled = not domain.cache_baked_guiding
+        col.label(text="Velocity source:")
+        col.prop(domain, "guiding_source", text="")
+        if domain.guiding_source == "DOMAIN":
+            col.label(text="Guiding parent:")
+            col.prop(domain, "guiding_parent")
+        if domain.guiding_source == "FLOW":
+            col.label(text="Caching mode:")
+            col.prop(domain, "guiding_mode", text="")
 
-        col = split.column()
+        col = split.column(align=True)
+        col.label(text="Simulation parameter:")
+        col.prop(domain, "guiding_alpha", text="Weight")
         col.prop(domain, "guiding_beta", text="Size")
+        col.prop(domain, "guiding_vel_factor", text="Factor")
+
+        if domain.guiding_source == "FLOW":
+            split = layout.split()
+            bake_incomplete = domain.cache_frame_pause_guiding
+            if domain.cache_baked_guiding and not domain.cache_baking_guiding and bake_incomplete:
+                col = split.column()
+                col.operator("manta.bake_guiding", text="Resume")
+                col = split.column()
+                col.operator("manta.free_guiding", text="Free")
+            elif not domain.cache_baked_guiding and domain.cache_baking_guiding:
+                split.operator("manta.pause_bake", text="Pause Guiding")
+            elif not domain.cache_baked_guiding and not domain.cache_baking_guiding:
+                split.operator("manta.bake_guiding", text="Bake Guiding")
+            else:
+                split.operator("manta.free_guiding", text="Free Guiding")
 
 class PHYSICS_PT_smoke_groups(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Groups"
@@ -738,6 +777,8 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
                 row.label(text="Mesh file format:")
                 row.prop(domain, "cache_surface_format", text="")
 
+        row = layout.row()
+        row.operator("manta.make_file", text="Export Mantaflow Script")
 
 class PHYSICS_PT_smoke_field_weights(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Field Weights"
@@ -753,25 +794,6 @@ class PHYSICS_PT_smoke_field_weights(PhysicButtonsPanel, Panel):
     def draw(self, context):
         domain = context.smoke.domain_settings
         effector_weights_ui(self, context, domain.effector_weights, 'SMOKE')
-
-class PHYSICS_PT_smoke_export_manta(PhysicButtonsPanel, Panel):
-    bl_label = "Fluid Export"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(cls, context):
-        md = context.smoke
-        return md and (md.smoke_type == 'DOMAIN')
-        
-    def draw(self, context):
-        layout = self.layout
-        
-        domain = context.smoke.domain_settings
-        split = layout.split()
-        split.operator("manta.make_file", text="Export Mantaflow Script")
-        split = layout.split()
-        split.prop(domain, "manta_filepath")
-        split = layout.split()
 
 class PHYSICS_PT_smoke_display_settings(PhysicButtonsPanel, Panel):
     bl_label = "Smoke Display Settings"
@@ -845,7 +867,6 @@ classes = (
     PHYSICS_PT_smoke_cache,
     PHYSICS_PT_manta_cache,
     PHYSICS_PT_smoke_field_weights,
-    PHYSICS_PT_smoke_export_manta,
     PHYSICS_PT_smoke_display_settings,
 )
 

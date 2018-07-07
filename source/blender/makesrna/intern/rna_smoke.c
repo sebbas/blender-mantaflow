@@ -372,6 +372,25 @@ static void rna_Smoke_cachetype_noise_set(struct PointerRNA *ptr, int value)
 	}
 }
 
+static void rna_Smoke_guiding_parent_set(PointerRNA *ptr, PointerRNA value)
+{
+	SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
+	Object *par = (Object *)value.data;
+
+	SmokeModifierData *smd_par = NULL;
+
+	if (par != NULL) {
+		smd_par = (SmokeModifierData *)modifiers_findByType(par, eModifierType_Smoke);
+		if (smd_par && smd_par->domain) {
+			sds->guiding_parent = value.data;
+			sds->guide_res = smd_par->domain->res;
+		}
+	} else {
+		sds->guiding_parent = NULL;
+		sds->guide_res = NULL;
+	}
+}
+
 static EnumPropertyItem *rna_Smoke_cachetype_surface_itemf(
         bContext *UNUSED(C), PointerRNA *UNUSED(ptr), PropertyRNA *UNUSED(prop), bool *r_free)
 {
@@ -969,6 +988,19 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 		{0, NULL, 0, NULL, NULL}
 	};
 
+	static EnumPropertyItem fluid_guiding_source_items[] = {
+		{SM_GUIDING_SRC_DOMAIN, "DOMAIN", 0, "Domain", "Use a fluid domain for guiding (domain needs to be baked already so that velocities can be extracted but can be of any type)"},
+		{SM_GUIDING_SRC_FLOW, "FLOW", 0, "Flow", "Use guiding (flow) objects to create fluid guiding (guiding objects should be animated and baked once set up completely)"},
+		{0, NULL, 0, NULL, NULL}
+	};
+
+	static EnumPropertyItem fluid_guiding_mode_items[] = {
+		{SM_GUIDING_OVERRIDE, "OVERRIDE", 0, "Override", "Always write new guiding velocities for every frame (each frame only contains current velocities from guiding objects)"},
+		{SM_GUIDING_MAXIMUM, "MAXIMUM", 0, "Maximize", "Compare velocities from previous frame with new velocities from current frame and keep the maximum (velocities will accumulate over time)"},
+		{SM_GUIDING_AVERAGED, "AVERAGED", 0, "Averaged", "Take average of velocities from previous frame and new velocities from current frame (velocities will accumulate over time)"},
+		{0, NULL, 0, NULL, NULL}
+	};
+
 	/*  Cache type - generated dynamically based on domain type */
 	static EnumPropertyItem cache_file_type_items[] = {
 		{0, "NONE", 0, "", ""},
@@ -1410,6 +1442,9 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "cache_frame_pause_particles", PROP_INT, PROP_TIME);
 	RNA_def_property_int_sdna(prop, NULL, "cache_frame_pause_particles");
 
+	prop = RNA_def_property(srna, "cache_frame_pause_guiding", PROP_INT, PROP_TIME);
+	RNA_def_property_int_sdna(prop, NULL, "cache_frame_pause_guiding");
+
 	prop = RNA_def_property(srna, "cache_directory", PROP_STRING, PROP_FILEPATH);
 	RNA_def_property_string_sdna(prop, NULL, "cache_directory");
 	RNA_def_property_ui_text(prop, "Cache directory", "Directory that contains fluid cache files");
@@ -1446,10 +1481,13 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", FLUID_CACHE_BAKED_PARTICLES);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
 
-	/* mantaflow variables */
-	prop = RNA_def_property(srna, "manta_filepath", PROP_STRING, PROP_FILEPATH);
-	RNA_def_property_string_sdna(prop, NULL, "manta_filepath");
-	RNA_def_property_ui_text(prop, "Output Path", "Directory/name to save Mantaflow scene script");
+	prop = RNA_def_property(srna, "cache_baking_guiding", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", FLUID_CACHE_BAKING_GUIDING);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
+	prop = RNA_def_property(srna, "cache_baked_guiding", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "cache_flag", FLUID_CACHE_BAKED_GUIDING);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
 
 	prop = RNA_def_property(srna, "noise_pos_scale", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "noise_pos_scale");
@@ -1646,6 +1684,12 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 							 "e.g. 5*10^-6)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
+	prop = RNA_def_property(srna, "use_guiding", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_SMOKE_GUIDING);
+	RNA_def_property_ui_text(prop, "Use Guiding", "Enable fluid guiding");
+	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
 	prop = RNA_def_property(srna, "domain_size", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.001, 10000.0);
 	RNA_def_property_ui_text(prop, "Meters", "Domain size in meters (longest domain side)");
@@ -1663,6 +1707,33 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Size", "Guiding size (higher value results in larger vortices)");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
+	prop = RNA_def_property(srna, "guiding_vel_factor", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_float_sdna(prop, NULL, "guiding_vel_factor");
+	RNA_def_property_range(prop, 0.0, 100.0);
+	RNA_def_property_ui_text(prop, "Weight", "Guiding velocity factor (higher value results in bigger guiding velocities)");
+	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
+	prop = RNA_def_property(srna, "guiding_source", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "guiding_source");
+	RNA_def_property_enum_items(prop, fluid_guiding_source_items);
+	RNA_def_property_ui_text(prop, "Guiding source", "Choose where to get guiding velocities from");
+	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Smoke_update");
+
+	prop = RNA_def_property(srna, "guiding_mode", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "guiding_mode");
+	RNA_def_property_enum_items(prop, fluid_guiding_mode_items);
+	RNA_def_property_ui_text(prop, "Guiding mode", "How to create guiding velocities");
+	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Smoke_update");
+
+	prop = RNA_def_property(srna, "guiding_parent", PROP_POINTER, PROP_NONE);
+	RNA_def_property_pointer_sdna(prop, NULL, "guiding_parent");
+	RNA_def_property_struct_type(prop, "Object");
+	RNA_def_property_pointer_funcs(prop, NULL, "rna_Smoke_guiding_parent_set", NULL, NULL);
+	RNA_def_property_flag(prop, PROP_EDITABLE);
+	RNA_def_property_ui_text(prop, "", "Use velocities from this object for the guiding effect (object needs to have fluid modifier and be of type domain))");
+	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Smoke_update");
 
 	/* display settings */
 

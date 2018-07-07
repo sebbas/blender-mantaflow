@@ -1287,6 +1287,11 @@ static void fluid_manta_bake_endjob(void *customdata)
 		sds->cache_flag &= ~FLUID_CACHE_BAKING_PARTICLES;
 		sds->cache_flag |= FLUID_CACHE_BAKED_PARTICLES;
 	}
+	else if (STREQ(job->type, "MANTA_OT_bake_guiding"))
+	{
+		sds->cache_flag &= ~FLUID_CACHE_BAKING_GUIDING;
+		sds->cache_flag |= FLUID_CACHE_BAKED_GUIDING;
+	}
 	
 	/* Bake was successful:
 	 *  Report for ended bake and how long it took */
@@ -1355,6 +1360,14 @@ static void fluid_manta_bake_startjob(void *customdata, short *stop, short *do_u
 		sds->cache_flag &= ~FLUID_CACHE_BAKED_PARTICLES;
 		sds->cache_flag |= FLUID_CACHE_BAKING_PARTICLES;
 		job->pause_frame = &sds->cache_frame_pause_particles;
+	}
+	else if (STREQ(job->type, "MANTA_OT_bake_guiding"))
+	{
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_GUIDING, NULL);
+		BLI_dir_create_recursive(tmpDir); /* Create 'particles' subdir if it does not exist already */
+		sds->cache_flag &= ~FLUID_CACHE_BAKED_GUIDING;
+		sds->cache_flag |= FLUID_CACHE_BAKING_GUIDING;
+		job->pause_frame = &sds->cache_frame_pause_guiding;
 	}
 	fluid_manta_bake_sequence(job);
 
@@ -1505,6 +1518,16 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 
 		/* Reset pause frame */
 		sds->cache_frame_pause_particles = 0;
+	}
+	else if (STREQ(job->type, "MANTA_OT_free_guiding"))
+	{
+		sds->cache_flag &= ~(FLUID_CACHE_BAKING_GUIDING|FLUID_CACHE_BAKED_GUIDING);
+		
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_GUIDING, NULL);
+		if (BLI_exists(tmpDir)) BLI_delete(tmpDir, true, true);
+
+		/* Reset pause frame */
+		sds->cache_frame_pause_guiding = 0;
 	}
 
 	*do_update = true;
@@ -1697,6 +1720,32 @@ void MANTA_OT_free_particles(wmOperatorType *ot)
 	ot->poll = ED_operator_object_active_editable;
 }
 
+void MANTA_OT_bake_guiding(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Bake Guiding";
+	ot->description = "Bake Fluid Guiding";
+	ot->idname = "MANTA_OT_bake_guiding";
+
+	/* api callbacks */
+	ot->exec = fluid_manta_bake_exec;
+	ot->invoke = fluid_manta_bake_invoke;
+	ot->modal = fluid_manta_bake_modal;
+	ot->poll = ED_operator_object_active_editable;
+}
+
+void MANTA_OT_free_guiding(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Free Guiding";
+	ot->description = "Free Fluid Guiding";
+	ot->idname = "MANTA_OT_free_guiding";
+
+	/* api callbacks */
+	ot->exec = fluid_manta_free_exec;
+	ot->poll = ED_operator_object_active_editable;
+}
+
 void MANTA_OT_pause_bake(wmOperatorType *ot)
 {
 	/* identifiers */
@@ -1715,8 +1764,14 @@ static int manta_make_file_exec(bContext *C, wmOperator *UNUSED(op))
 	Object * smokeDomain = CTX_data_active_object(C);
 	smd = (SmokeModifierData *)modifiers_findByType(smokeDomain, eModifierType_Smoke);
 
+	char tmpDir[FILE_MAX];
+	tmpDir[0] = '\0';
+
 	if (smd->domain->fluid == NULL)
 		smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
+
+	BLI_path_join(tmpDir, sizeof(tmpDir), smd->domain->cache_directory, FLUID_CACHE_DIR_SCRIPT, NULL);
+	BLI_dir_create_recursive(tmpDir); /* Create 'script' subdir if it does not exist already */
 
 	if (smd->domain->fluid && smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS)
 		smoke_manta_export(smd->domain->fluid, smd);
@@ -1731,7 +1786,7 @@ void MANTA_OT_make_file(wmOperatorType *ot)
 {
 	/* identifiers */
 	ot->name = "Create Mantaflow File";
-	ot->description = "Create Python Script for Simulation";
+	ot->description = "Generate Python script (only needed for external simulation with standalone Mantaflow)";
 	ot->idname = "MANTA_OT_make_file";
 
 	/* api callbacks */

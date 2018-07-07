@@ -143,6 +143,11 @@ static void updateDepgraph(ModifierData *md, const ModifierUpdateDepsgraphContex
 		dag_add_collision_relations(ctx->forest, ctx->scene, ctx->object, ctx->obNode, smd->domain->fluid_group, ctx->object->lay|ctx->scene->lay, eModifierType_Smoke, is_flow_cb, true, "Smoke Flow");
 		dag_add_collision_relations(ctx->forest, ctx->scene, ctx->object, ctx->obNode, smd->domain->coll_group, ctx->object->lay|ctx->scene->lay, eModifierType_Smoke, is_coll_cb, true, "Smoke Coll");
 		dag_add_forcefield_relations(ctx->forest, ctx->scene, ctx->object, ctx->obNode, smd->domain->effector_weights, true, PFIELD_SMOKEFLOW, "Smoke Force Field");
+
+		if (smd->domain->guiding_parent) {
+			DagNode *curNode = dag_get_node(ctx->forest, smd->domain->guiding_parent);
+			dag_add_relation(ctx->forest, curNode, ctx->obNode, DAG_RL_DATA_DATA | DAG_RL_OB_DATA, "Fluid Guiding Object");
+		}
 #else
 	(void)ctx;
 #endif
@@ -159,6 +164,11 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 		DEG_add_collision_relations(ctx->node, ctx->scene, ctx->object, smd->domain->coll_group, ctx->object->lay|ctx->scene->lay, eModifierType_Smoke, is_coll_cb, true, "Smoke Coll");
 
 		DEG_add_forcefield_relations(ctx->node, ctx->scene, ctx->object, smd->domain->effector_weights, true, PFIELD_SMOKEFLOW, "Smoke Force Field");
+
+		if (smd->domain->guiding_parent != NULL) {
+			DEG_add_object_relation(ctx->node, smd->domain->guiding_parent, DEG_OB_COMP_TRANSFORM, "Fluid Guiding Object");
+			DEG_add_object_relation(ctx->node, smd->domain->guiding_parent, DEG_OB_COMP_GEOMETRY, "Fluid Guiding Object");
+		}
 	}
 }
 
@@ -172,6 +182,10 @@ static void foreachIDLink(
 		walk(userData, ob, (ID **)&smd->domain->coll_group, IDWALK_CB_NOP);
 		walk(userData, ob, (ID **)&smd->domain->fluid_group, IDWALK_CB_NOP);
 		walk(userData, ob, (ID **)&smd->domain->eff_group, IDWALK_CB_NOP);
+
+		if (smd->domain->guiding_parent) {
+			walk(userData, ob, (ID **)&smd->domain->guiding_parent, IDWALK_CB_NOP);
+		}
 
 		if (smd->domain->effector_weights) {
 			walk(userData, ob, (ID **)&smd->domain->effector_weights->group, IDWALK_CB_NOP);

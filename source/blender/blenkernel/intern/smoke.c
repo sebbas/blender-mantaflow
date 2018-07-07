@@ -476,6 +476,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->noise_scale = 2;
 			smd->domain->mesh_scale = 2;
 			smd->domain->particle_scale = 4;
+			smd->domain->guide_res = NULL;
 			smd->domain->alpha = -0.001;
 			smd->domain->beta = 0.3;
 			smd->domain->time_scale = 1.0;
@@ -555,12 +556,15 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			/* guiding */
 			smd->domain->guiding_alpha = 2.0f;
 			smd->domain->guiding_beta = 5;
+			smd->domain->guiding_vel_factor = 2.0f;
+			smd->domain->guiding_parent = NULL;
+			smd->domain->guiding_source = SM_GUIDING_SRC_DOMAIN;
+			smd->domain->guiding_mode = SM_GUIDING_MAXIMUM;
 
 			/*mantaflow settings*/
 			smd->domain->manta_solver_res = 3;
 			smd->domain->noise_pos_scale = 2.0f;
 			smd->domain->noise_time_anim = 0.1f;
-			BLI_make_file_string("/", smd->domain->manta_filepath, BKE_tempdir_base(), "manta_scene.py");
 
 #ifdef WITH_OPENVDB_BLOSC
 			smd->domain->openvdb_comp = VDB_COMPRESSION_BLOSC;
@@ -573,11 +577,12 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->cache_particle_format = MANTA_FILE_UNI;
 			smd->domain->cache_noise_format = MANTA_FILE_UNI;
 			smd->domain->cache_frame_start = 1;
-			smd->domain->cache_frame_end = 250;
+			smd->domain->cache_frame_end = 100;
 			smd->domain->cache_frame_pause_data = 0;
 			smd->domain->cache_frame_pause_noise = 0;
 			smd->domain->cache_frame_pause_mesh = 0;
 			smd->domain->cache_frame_pause_particles = 0;
+			smd->domain->cache_frame_pause_guiding = 0;
 			modifier_path_init(smd->domain->cache_directory, sizeof(smd->domain->cache_directory), FLUID_CACHE_DIR_DEFAULT);
 			smd->domain->cache_flag = 0;
 
@@ -662,6 +667,7 @@ void smokeModifier_copy(const struct SmokeModifierData *smd, struct SmokeModifie
 		tsmd->domain->noise_scale = smd->domain->noise_scale;
 		tsmd->domain->mesh_scale = smd->domain->mesh_scale;
 		tsmd->domain->particle_scale = smd->domain->particle_scale;
+		tsmd->domain->guide_res = smd->domain->guide_res;
 		tsmd->domain->maxres = smd->domain->maxres;
 		tsmd->domain->flags = smd->domain->flags;
 		tsmd->domain->highres_sampling = smd->domain->highres_sampling;
@@ -716,6 +722,10 @@ void smokeModifier_copy(const struct SmokeModifierData *smd, struct SmokeModifie
 
 		tsmd->domain->guiding_alpha = smd->domain->guiding_alpha;
 		tsmd->domain->guiding_beta = smd->domain->guiding_beta;
+		tsmd->domain->guiding_vel_factor = smd->domain->guiding_vel_factor;
+		tsmd->domain->guiding_parent = smd->domain->guiding_parent;
+		tsmd->domain->guiding_source = smd->domain->guiding_source;
+		tsmd->domain->guiding_mode = smd->domain->guiding_mode;
 
 		tsmd->domain->manta_solver_res = smd->domain->manta_solver_res;
 		tsmd->domain->noise_pos_scale = smd->domain->noise_pos_scale;
@@ -741,6 +751,7 @@ void smokeModifier_copy(const struct SmokeModifierData *smd, struct SmokeModifie
 		tsmd->domain->cache_frame_pause_noise = smd->domain->cache_frame_pause_noise;
 		tsmd->domain->cache_frame_pause_mesh = smd->domain->cache_frame_pause_mesh;
 		tsmd->domain->cache_frame_pause_particles = smd->domain->cache_frame_pause_particles;
+		tsmd->domain->cache_frame_pause_guiding = smd->domain->cache_frame_pause_guiding;
 		tsmd->domain->slice_method = smd->domain->slice_method;
 		tsmd->domain->axis_slice_method = smd->domain->axis_slice_method;
 		tsmd->domain->slice_per_voxel = smd->domain->slice_per_voxel;
@@ -1105,9 +1116,11 @@ static void update_obstacles(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 	{
 		if (obstacles[z] & 2) // mantaflow convention: FlagObstacle
 		{
-			velxOrig[z] = 0;
-			velyOrig[z] = 0;
-			velzOrig[z] = 0;
+			if (velxOrig && velyOrig && velzOrig) {
+				velxOrig[z] = 0;
+				velyOrig[z] = 0;
+				velzOrig[z] = 0;
+			}
 			if (density) {
 				density[z] = 0;
 			}
@@ -3126,7 +3139,7 @@ static void smoke_step(
 	// loop as long as time_per_frame (sum of sudivdt) does not exceed dt (actual framelength)
 	while (time_per_frame < dt)
 	{
-		fluid_update_variables_low(sds->fluid, smd);
+		fluid_update_variables(sds->fluid, smd);
 		fluid_adapt_timestep(sds->fluid);
 		sdt = fluid_get_timestep(sds->fluid);
 		time_per_frame += sdt;
@@ -3145,6 +3158,20 @@ static void smoke_step(
 	if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
 		smoke_calc_transparency(sds, scene);
 	}
+	BLI_mutex_unlock(&object_update_lock);
+}
+
+static void smoke_guiding(Scene *scene, Object *ob, SmokeModifierData *smd, int frame)
+{
+	SmokeDomainSettings *sds = smd->domain;
+	float fps = scene->r.frs_sec / scene->r.frs_sec_base;
+	float dt = DT_DEFAULT * (25.0f / fps);
+	
+	BLI_mutex_lock(&object_update_lock);
+
+	update_obstacles(scene, ob, sds, dt);
+	fluid_bake_guiding(sds->fluid, smd, frame);
+
 	BLI_mutex_unlock(&object_update_lock);
 }
 
@@ -3171,6 +3198,7 @@ static void smokeModifier_process(
 		else if (scene->r.cfra < smd->time)
 		{
 			smd->time = scene->r.cfra;
+			smokeModifier_reset_ex(smd, false);
 		}
 	}
 	else if (smd->type & MOD_SMOKE_TYPE_EFFEC)
@@ -3193,12 +3221,15 @@ static void smokeModifier_process(
 		else if (scene->r.cfra < smd->time)
 		{
 			smd->time = scene->r.cfra;
+			smokeModifier_reset_ex(smd, false);
 		}
 	}
 	else if (smd->type & MOD_SMOKE_TYPE_DOMAIN)
 	{
 		SmokeDomainSettings *sds = smd->domain;
 		int startframe, endframe, framenr;
+		Object *guiding_parent;
+		SmokeModifierData *smd_parent;
 		bool is_first_frame;
 		framenr = scene->r.cfra;
 		startframe = sds->cache_frame_start;
@@ -3208,14 +3239,14 @@ static void smokeModifier_process(
 		CLAMP(framenr, startframe, endframe);
 
 		bool is_baking = (sds->cache_flag & (FLUID_CACHE_BAKING_DATA|FLUID_CACHE_BAKING_NOISE|
-											 FLUID_CACHE_BAKING_MESH|FLUID_CACHE_BAKING_PARTICLES));
+											 FLUID_CACHE_BAKING_MESH|FLUID_CACHE_BAKING_PARTICLES|FLUID_CACHE_BAKING_GUIDING));
 		bool is_baked = (sds->cache_flag & (FLUID_CACHE_BAKED_DATA|FLUID_CACHE_BAKED_NOISE|
-											FLUID_CACHE_BAKED_MESH|FLUID_CACHE_BAKED_PARTICLES));
+											FLUID_CACHE_BAKED_MESH|FLUID_CACHE_BAKED_PARTICLES|FLUID_CACHE_BAKED_GUIDING));
 
 		/* Reset fluid if no fluid present (obviously)
 		 * or if timeline gets reset to startframe when no (!) baking is running
 		 * or if no baking is running and also there is no baked data present */
-		if (!sds->fluid || (framenr == startframe && !is_baking && !is_baked) || (!is_baking && !is_baked)) {
+		if (!sds->fluid || (framenr == startframe && !is_baking) || (!is_baking && !is_baked)) {
 			smokeModifier_reset_ex(smd, false);
 		}
 
@@ -3226,6 +3257,15 @@ static void smokeModifier_process(
 
 		if (smokeModifier_init(smd, ob, scene, dm) == 0)
 			return;
+
+		/* Guiding parent res pointer needs initialization */
+		guiding_parent = sds->guiding_parent;
+		if (guiding_parent) {
+			smd_parent = (SmokeModifierData *)modifiers_findByType(guiding_parent, eModifierType_Smoke);
+			if (smd_parent->domain) {
+				sds->guide_res = smd_parent->domain->res;
+			}
+		}
 
 		/* Read cache. For liquids update data directly (i.e. not via python) */
 		if (!is_baking)
@@ -3262,6 +3302,14 @@ static void smokeModifier_process(
 		{
 			if (sds->cache_flag & FLUID_CACHE_BAKING_DATA)
 			{
+				/* Load guiding vel from flow object (only if baked) or domain object? */
+				if (sds->guiding_source == SM_GUIDING_SRC_FLOW && sds->cache_flag & FLUID_CACHE_BAKED_GUIDING) {
+					fluid_read_guiding(sds->fluid, smd, framenr, false);
+				}
+				else if (sds->guiding_source == SM_GUIDING_SRC_DOMAIN && smd_parent) {
+					fluid_read_guiding(sds->fluid, smd_parent, framenr, true);
+				}
+
 				/* Refresh all objects if we start baking from a resumed frame */
 				if (sds->cache_frame_pause_data == framenr)
 					fluid_read_data(sds->fluid, smd, framenr-1);
@@ -3290,6 +3338,10 @@ static void smokeModifier_process(
 					fluid_read_particles(sds->fluid, smd, framenr-1);
 
 				fluid_bake_particles(sds->fluid, smd, framenr);
+			}
+			if (sds->cache_flag & FLUID_CACHE_BAKING_GUIDING)
+			{
+				smoke_guiding(scene, ob, smd, framenr);
 			}
 		}
 		smd->time = scene->r.cfra;

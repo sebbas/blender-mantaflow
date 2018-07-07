@@ -207,6 +207,8 @@ static void operatortypes_manta(void)
 	WM_operatortype_append(MANTA_OT_free_mesh);
 	WM_operatortype_append(MANTA_OT_bake_particles);
 	WM_operatortype_append(MANTA_OT_free_particles);
+	WM_operatortype_append(MANTA_OT_bake_guiding);
+	WM_operatortype_append(MANTA_OT_free_guiding);
 	WM_operatortype_append(MANTA_OT_pause_bake);
 	WM_operatortype_append(MANTA_OT_make_file);
 }

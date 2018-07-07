@@ -43,6 +43,7 @@ particleNumber_s$ID$   = $PARTICLE_NUMBER$\n\
 minParticles_s$ID$     = $PARTICLE_MINIMUM$\n\
 maxParticles_s$ID$     = $PARTICLE_MAXIMUM$\n\
 radiusFactor_s$ID$     = $PARTICLE_RADIUS$\n\
+using_mesh_s$ID$       = $USING_MESH$\n\
 using_final_mesh_s$ID$ = $USING_IMPROVED_MESH$\n\
 smoothenUpper_s$ID$    = $MESH_SMOOTHEN_UPPER$\n\
 smoothenLower_s$ID$    = $MESH_SMOOTHEN_LOWER$\n\
@@ -63,7 +64,7 @@ phiTmp_s$ID$     = s$ID$.create(LevelsetGrid)\n\
 phiIn_s$ID$      = s$ID$.create(LevelsetGrid)\n\
 curvature_s$ID$  = s$ID$.create(RealGrid)\n\
 \n\
-fractions_s$ID$  = s$ID$.create(MACGrid) # TODO (sebbas): disabling fractions for now - not fracwallbcs not supporting obvels yet\n\
+fractions_s$ID$  = 0# s$ID$.create(MACGrid) # TODO (sebbas): disabling fractions for now - not fracwallbcs not supporting obvels yet\n\
 \n\
 velOld_s$ID$     = s$ID$.create(MACGrid)\n\
 velParts_s$ID$   = s$ID$.create(MACGrid)\n\
@@ -112,13 +113,6 @@ def liquid_pre_step_$ID$():\n\
         z_obvel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
         copyRealToVec3(sourceX=x_obvel_s$ID$, sourceY=y_obvel_s$ID$, sourceZ=z_obvel_s$ID$, target=obvelC_s$ID$)\n\
     \n\
-    # translate guiding vels (world space) to grid space\n\
-    if using_guiding_s$ID$:\n\
-        x_guidevel_s$ID$.multConst(Real(gs_s$ID$.x))\n\
-        y_guidevel_s$ID$.multConst(Real(gs_s$ID$.y))\n\
-        z_guidevel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
-        copyRealToVec3(sourceX=x_guidevel_s$ID$, sourceY=y_guidevel_s$ID$, sourceZ=z_guidevel_s$ID$, target=guidevelC_s$ID$)\n\
-    \n\
     # translate invels (world space) to grid space\n\
     if using_invel_s$ID$:\n\
         x_invel_s$ID$.multConst(Real(gs_s$ID$.x))\n\
@@ -126,10 +120,15 @@ def liquid_pre_step_$ID$():\n\
         z_invel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
         copyRealToVec3(sourceX=x_invel_s$ID$, sourceY=y_invel_s$ID$, sourceZ=z_invel_s$ID$, target=invel_s$ID$)\n\
     \n\
-    #x_vel_s$ID$.multConst(Real(gs_s$ID$.x))\n\
-    #y_vel_s$ID$.multConst(Real(gs_s$ID$.y))\n\
-    #z_vel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
-    #copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
+    if using_guiding_s$ID$:\n\
+        weightGuide_s$ID$.multConst(0)\n\
+        weightGuide_s$ID$.addConst(alpha_sg$ID$)\n\
+        interpolateMACGrid(source=guidevel_sg$ID$, target=velT_s$ID$)\n\
+        velT_s$ID$.multConst(vec3(gamma_sg$ID$))\n\
+    \n\
+    x_force_s$ID$.multConst(Real(gs_s$ID$.x))\n\
+    y_force_s$ID$.multConst(Real(gs_s$ID$.y))\n\
+    z_force_s$ID$.multConst(Real(gs_s$ID$.z))\n\
     copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n";
 
 const std::string liquid_post_step = "\n\
@@ -138,12 +137,7 @@ def liquid_post_step_$ID$():\n\
     if using_guiding_s$ID$:\n\
         weightGuide_s$ID$.clear()\n\
     if using_invel_s$ID$:\n\
-        invel_s$ID$.clear()\n\
-    \n\
-    #copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n\
-    #x_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.x) )\n\
-    #y_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.y) )\n\
-    #z_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.z) )\n";
+        invel_s$ID$.clear()\n";
 
 //////////////////////////////////////////////////////////////////////
 // STEP FUNCTIONS
@@ -159,7 +153,7 @@ def liquid_adaptive_step_$ID$(framenr):\n\
     \n\
     liquid_pre_step_$ID$()\n\
     \n\
-    flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$, phiWalls=phiObs_s$ID$, outflow=boundConditions_s$ID$)\n\
+    flags_s$ID$.initDomain(boundaryWidth=0, phiWalls=phiObs_s$ID$, outflow=boundConditions_s$ID$)\n\
     \n\
     if using_obstacle_s$ID$:\n\
         phiObs_s$ID$.join(phiObsIn_s$ID$)\n\
@@ -169,7 +163,7 @@ def liquid_adaptive_step_$ID$(framenr):\n\
     \n\
     phiOut_s$ID$.join(phiOutIn_s$ID$)\n\
     \n\
-    updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$) # TODO (sebbas): uncomment for fraction support\n\
+    #updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$) # TODO (sebbas): uncomment for fraction support\n\
     setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
     # add initial velocity: set invel as source grid to ensure const vels in inflow region, sampling makes use of this\n\
@@ -215,12 +209,10 @@ def liquid_step_$ID$():\n\
     phi_s$ID$.join(phiParts_s$ID$)\n\
     extrapolateLsSimple(phi=phi_s$ID$, distance=narrowBandWidth_s$ID$+2, inside=True)\n\
     extrapolateLsSimple(phi=phi_s$ID$, distance=3)\n\
-    phi_s$ID$.setBoundNeumann(boundaryWidth_s$ID$) # make sure no particles are placed at outer boundary\n\
+    phi_s$ID$.setBoundNeumann(0) # make sure no particles are placed at outer boundary\n\
     \n\
     if doOpen_s$ID$:\n\
         resetOutflow(flags=flags_s$ID$, phi=phi_s$ID$, parts=pp_s$ID$, index=gpi_s$ID$, indexSys=pindex_s$ID$)\n\
-        if using_sndparts_s$ID$:\n\
-            resetOutflow(flags=flags_s$ID$, parts=ppSnd_sp$ID$)\n\
     flags_s$ID$.updateFromLevelset(phi_s$ID$)\n\
     \n\
     # combine particles velocities with advected grid velocities\n\
@@ -240,14 +232,7 @@ def liquid_step_$ID$():\n\
         extrapolateVec3Simple(vel=obvelC_s$ID$, phi=phiObsIn_s$ID$, distance=3, inside=False)\n\
         resampleVec3ToMac(source=obvelC_s$ID$, target=obvel_s$ID$)\n\
     \n\
-    if using_guiding_s$ID$:\n\
-        mantaMsg('Extrapolating guiding velocity')\n\
-        # ensure velocities inside of guiding object, slightly add guiding vels outside of object too\n\
-        extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
-        extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=4, inside=False)\n\
-        resampleVec3ToMac(source=guidevelC_s$ID$, target=guidevel_s$ID$)\n\
-    \n\
-    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, phiObs=phiObs_s$ID$, intoObs=True)\n\
+    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2)#, intoObs=True) # TODO (sebbas): uncomment for fraction support\n\
     \n\
     # vel diffusion / viscosity!\n\
     if viscosity_s$ID$ > 0.:\n\
@@ -264,16 +249,15 @@ def liquid_step_$ID$():\n\
     \n\
     if using_guiding_s$ID$:\n\
         mantaMsg('Guiding and pressure')\n\
-        weightGuide_s$ID$.addConst(alpha_s$ID$)\n\
-        PD_fluid_guiding(vel=vel_s$ID$, velT=guidevel_s$ID$, flags=flags_s$ID$, phi=phi_s$ID$, curv=curvature_s$ID$, surfTens=surfaceTension_s$ID$, fractions=fractions_s$ID$, weight=weightGuide_s$ID$, blurRadius=beta_s$ID$, pressure=pressure_s$ID$, tau=tau_s$ID$, sigma=sigma_s$ID$, theta=theta_s$ID$, zeroPressureFixing=not doOpen_s$ID$)\n\
+        PD_fluid_guiding(vel=vel_s$ID$, velT=velT_s$ID$, flags=flags_s$ID$, phi=phi_s$ID$, curv=curvature_s$ID$, surfTens=surfaceTension_s$ID$, fractions=fractions_s$ID$, weight=weightGuide_s$ID$, blurRadius=beta_sg$ID$, pressure=pressure_s$ID$, tau=tau_sg$ID$, sigma=sigma_sg$ID$, theta=theta_sg$ID$, zeroPressureFixing=not doOpen_s$ID$)\n\
     else:\n\
         mantaMsg('Pressure')\n\
         solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$, curv=curvature_s$ID$, surfTens=surfaceTension_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
-    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4, phiObs=phiObs_s$ID$, intoObs=True)\n\
+    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4)#, intoObs=True) # TODO (sebbas): uncomment for fraction support\n\
     setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else 0, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
-    #extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=(int(maxVel_s$ID$*1.25 )) ) # TODO (sebbas): extrapolation because of no fractions\n\
+    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=(int(maxVel_s$ID$*1.25 )) ) # TODO (sebbas): extrapolation because of no fractions\n\
     # set source grids for resampling, used in adjustNumber!\n\
     pVel_pp$ID$.setSource(vel_s$ID$, isMAC=True)\n\
     adjustNumber(parts=pp_s$ID$, vel=vel_s$ID$, flags=flags_s$ID$, minParticles=minParticles_s$ID$, maxParticles=maxParticles_s$ID$, phi=phi_s$ID$, exclude=phiObs_s$ID$, radiusFactor=1., narrowBand=adjustedNarrowBandWidth_s$ID$)\n\
@@ -319,6 +303,9 @@ def liquid_step_particles_$ID$():\n\
         phiObs_sp$ID$.join(phiObsIn_sp$ID$)\n\
     setObstacleFlags(flags=flags_sp$ID$, phiObs=phiObs_sp$ID$) #, phiOut=phiOut_sp$ID$) # TODO (sebbas): outflow for snd parts\n\
     \n\
+    if doOpen_s$ID$:\n\
+        resetOutflow(flags=flags_s$ID$, parts=ppSnd_sp$ID$)\n\
+    \n\
     sampleSndParts(phi=phi_sp$ID$, phiIn=phiIn_sp$ID$, flags=flags_sp$ID$, vel=vel_sp$ID$, parts=ppSnd_sp$ID$, type=$SNDPARTICLE_TYPES$, amountDroplet=$SNDPARTICLE_DROPLET_AMOUNT$, amountFloater=$SNDPARTICLE_FLOATER_AMOUNT$, amountTracer=$SNDPARTICLE_TRACER_AMOUNT$, thresholdDroplet=$SNDPARTICLE_DROPLET_THRESH$)\n\
     mantaMsg('Updating snd particle data (velocity, life count)')\n\
     updateSndParts(phi=phi_sp$ID$, flags=flags_sp$ID$, vel=vel_sp$ID$, gravity=gravity_s$ID$, parts=ppSnd_sp$ID$, partVel=pVelSnd_pp$ID$, partLife=pLifeSnd_pp$ID$, riseBubble=$SNDPARTICLE_BUBBLE_RISE$, lifeDroplet=$SNDPARTICLE_DROPLET_LIFE$, lifeBubble=$SNDPARTICLE_BUBBLE_LIFE$, lifeFloater=$SNDPARTICLE_FLOATER_LIFE$, lifeTracer=$SNDPARTICLE_TRACER_LIFE$)\n\
@@ -341,7 +328,7 @@ def liquid_load_flip_$ID$(path, framenr, file_format):\n\
     fluid_file_import_s$ID$(dict=liquid_flip_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
 const std::string liquid_load_mesh = "\n\
-def liquid_save_mesh_$ID$(path, framenr, file_format):\n\
+def liquid_load_mesh_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid load mesh')\n\
     fluid_file_import_s$ID$(dict=liquid_mesh_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
@@ -368,9 +355,42 @@ def liquid_save_mesh_$ID$(path, framenr, file_format):\n\
 // STANDALONE MODE
 //////////////////////////////////////////////////////////////////////
 
-const std::string liquid_standalone_load = "\n\
-# import *.uni files\n\
-path_prefix_$ID$ = '$MANTA_EXPORT_PATH$'\n\
-load_liquid_data_$ID$(path_prefix_$ID$)\n\
-if using_highres_s$ID$:\n\
-    load_liquid_data_high_$ID$(path_prefix_$ID$)\n";
+const std::string liquid_standalone = "\n\
+gui = None\n\
+if (GUI):\n\
+    gui=Gui()\n\
+    gui.show()\n\
+    gui.pause()\n\
+\n\
+cache_dir = '$CACHE_DIR$'\n\
+file_format_data = '.uni'\n\
+file_format_mesh = '.bobj.gz'\n\
+file_format_particles = '.uni'\n\
+\n\
+start_frame = $CURRENT_FRAME$\n\
+end_frame = 1000\n\
+from_cache = True\n\
+\n\
+while start_frame <= end_frame:\n\
+    if from_cache:\n\
+        fluid_load_data_$ID$(os.path.join(cache_dir, 'data'), start_frame, file_format_data)\n\
+        liquid_load_data_$ID$(os.path.join(cache_dir, 'data'), start_frame, file_format_data)\n\
+        liquid_load_flip_$ID$(os.path.join(cache_dir, 'data'), start_frame, file_format_particles)\n\
+        if using_sndparts_s$ID$:\n\
+            fluid_load_particles_$ID$(os.path.join(cache_dir, 'particles'), start_frame, file_format_particles)\n\
+        if using_mesh_s$ID$:\n\
+            liquid_load_mesh_$ID$(os.path.join(cache_dir, 'mesh'), start_frame, file_format_mesh)\n\
+        if using_guiding_s$ID$:\n\
+            fluid_load_guiding_$ID$(os.path.join(cache_dir, 'guiding'), start_frame, file_format_data)\n\
+        if gui:\n\
+            gui.pause()\n\
+    else:\n\
+        while(s$ID$.frame <= start_frame):\n\
+            fluid_adapt_time_step_$ID$()\n\
+            liquid_adaptive_step_$ID$(start_frame)\n\
+        if using_mesh_s$ID$:\n\
+            liquid_step_mesh_$ID$()\n\
+    start_frame += 1\n";
+
+
+

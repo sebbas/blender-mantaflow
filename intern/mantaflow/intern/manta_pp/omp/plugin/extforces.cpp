@@ -481,6 +481,54 @@ void addForceField(const FlagGrid& flags, MACGrid& vel, const Grid<Vec3>& force,
 void setForceField(const FlagGrid& flags, MACGrid& vel, const Grid<Vec3>& force, const Grid<Real>* region=NULL, bool isMAC=false) {
 	KnApplyForceField(flags, vel, force, region, false, isMAC);
 } static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "setForceField" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); MACGrid& vel = *_args.getPtr<MACGrid >("vel",1,&_lock); const Grid<Vec3>& force = *_args.getPtr<Grid<Vec3> >("force",2,&_lock); const Grid<Real>* region = _args.getPtrOpt<Grid<Real> >("region",3,NULL,&_lock); bool isMAC = _args.getOpt<bool >("isMAC",4,false,&_lock);   _retval = getPyNone(); setForceField(flags,vel,force,region,isMAC);  _args.check(); } pbFinalizePlugin(parent,"setForceField", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("setForceField",e.what()); return 0; } } static const Pb::Register _RP_setForceField ("","setForceField",_W_10);  extern "C" { void PbRegister_setForceField() { KEEP_UNUSED(_RP_setForceField); } } 
+	
+ struct KnMakeGuidingField : public KernelBase { KnMakeGuidingField(const MACGrid& source, MACGrid& target, const Grid<int>* count, const int mode) :  KernelBase(&source,1) ,source(source),target(target),count(count),mode(mode)   { runMessage(); run(); }  inline void op(int i, int j, int k, const MACGrid& source, MACGrid& target, const Grid<int>* count, const int mode )  {
+//	// Skip all cells that do not contain guiding velocities
+//	if ( std::fabs(source(i,j,k).x) < VECTOR_EPSILON && std::fabs(source(i,j,k).y) < VECTOR_EPSILON && std::fabs(source(i,j,k).z) < VECTOR_EPSILON )
+//		return;
+
+	// Mode 0: override existing with new vels, mode 1: override with max, mode 1: override with min
+	switch (mode) {
+		default:
+		case 0:
+			target(i,j,k).x = source(i,j,k).x;
+			target(i,j,k).y = source(i,j,k).y;
+			target(i,j,k).z = source(i,j,k).z;
+			break;
+		case 1:
+			target(i,j,k).x = (std::fabs(source(i,j,k).x) > std::fabs(target(i,j,k).x)) ? source(i,j,k).x : target(i,j,k).x;
+			target(i,j,k).y = (std::fabs(source(i,j,k).y) > std::fabs(target(i,j,k).y)) ? source(i,j,k).y : target(i,j,k).y;
+			target(i,j,k).z = (std::fabs(source(i,j,k).z) > std::fabs(target(i,j,k).z)) ? source(i,j,k).z : target(i,j,k).z;
+			break;
+		case 2:
+			target(i,j,k).x = (std::fabs(source(i,j,k).x) < std::fabs(target(i,j,k).x)) ? source(i,j,k).x : target(i,j,k).x;
+			target(i,j,k).y = (std::fabs(source(i,j,k).y) < std::fabs(target(i,j,k).y)) ? source(i,j,k).y : target(i,j,k).y;
+			target(i,j,k).z = (std::fabs(source(i,j,k).z) < std::fabs(target(i,j,k).z)) ? source(i,j,k).z : target(i,j,k).z;
+			break;
+	}
+
+	// Multiple guiding objects at one cell require averaged vels
+	if (count) {
+		target(i,j,k).x /= (Real) (*count)(i,j,k);
+		target(i,j,k).y /= (Real) (*count)(i,j,k);
+		target(i,j,k).z /= (Real) (*count)(i,j,k);
+	}
+}   inline const MACGrid& getArg0() { return source; } typedef MACGrid type0;inline MACGrid& getArg1() { return target; } typedef MACGrid type1;inline const Grid<int>* getArg2() { return count; } typedef Grid<int> type2;inline const int& getArg3() { return mode; } typedef int type3; void runMessage() { debMsg("Executing kernel KnMakeGuidingField ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {  const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) { 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (int k=minZ; k < maxZ; k++) for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,source,target,count,mode);  } } else { const int k=0; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,source,target,count,mode);  } }  } const MACGrid& source; MACGrid& target; const Grid<int>* count; const int mode;   };
+#line 385 "plugin/extforces.cpp"
+
+
+	
+void makeGuidingField(const MACGrid& source, MACGrid& target, const Grid<int>* count=NULL, const int mode=0) {
+	KnMakeGuidingField(source, target, count, mode);
+} static PyObject* _W_11 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "makeGuidingField" , !noTiming ); PyObject *_retval = 0; { ArgLocker _lock; const MACGrid& source = *_args.getPtr<MACGrid >("source",0,&_lock); MACGrid& target = *_args.getPtr<MACGrid >("target",1,&_lock); const Grid<int>* count = _args.getPtrOpt<Grid<int> >("count",2,NULL,&_lock); const int mode = _args.getOpt<int >("mode",3,0,&_lock);   _retval = getPyNone(); makeGuidingField(source,target,count,mode);  _args.check(); } pbFinalizePlugin(parent,"makeGuidingField", !noTiming ); return _retval; } catch(std::exception& e) { pbSetError("makeGuidingField",e.what()); return 0; } } static const Pb::Register _RP_makeGuidingField ("","makeGuidingField",_W_11);  extern "C" { void PbRegister_makeGuidingField() { KEEP_UNUSED(_RP_makeGuidingField); } } 
 
 } // namespace
 

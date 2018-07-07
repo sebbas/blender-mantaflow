@@ -172,6 +172,7 @@ int fluid_read_data(struct FLUID* fluid, struct SmokeModifierData *smd, int fram
 int fluid_read_noise(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_read_mesh(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_read_particles(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
+int fluid_read_guiding(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr, bool sourceDomain);
 int fluid_update_liquid_structures(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_update_mesh_structures(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_update_particle_structures(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
@@ -179,7 +180,8 @@ int fluid_bake_data(struct FLUID* fluid, struct SmokeModifierData *smd, int fram
 int fluid_bake_noise(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_bake_mesh(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_bake_particles(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
-void fluid_update_variables_low(struct FLUID* fluid, struct SmokeModifierData *smd);
+int fluid_bake_guiding(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
+void fluid_update_variables(struct FLUID* fluid, struct SmokeModifierData *smd);
 void fluid_update_variables_high(struct FLUID* fluid, struct SmokeModifierData *smd);
 int fluid_get_frame(struct FLUID* fluid);
 float fluid_get_timestep(struct FLUID* fluid);

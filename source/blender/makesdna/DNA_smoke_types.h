@@ -52,6 +52,7 @@ enum {
 	MOD_SMOKE_USE_VOLUME_CACHE = (1 << 9),
 	MOD_SMOKE_ADAPTIVE_TIME = (1 << 10), /* adaptive time stepping in domain */
 	MOD_SMOKE_MESH = (1 << 11),  /* use mesh */
+	MOD_SMOKE_GUIDING = (1 << 12),  /* use guiding */
 };
 
 /* border collisions */
@@ -142,6 +143,16 @@ enum {
 #define SM_MESH_IMPROVED    0
 #define SM_MESH_UNION       1
 
+/* guiding velocity source */
+#define SM_GUIDING_SRC_DOMAIN 0
+#define SM_GUIDING_SRC_FLOW   1
+#define SM_GUIDING_EXTERNAL   2
+
+/* guiding velocity modes */
+#define SM_GUIDING_MAXIMUM   0
+#define SM_GUIDING_OVERRIDE  1
+#define SM_GUIDING_AVERAGED  2
+
 /* effector types */
 #define SM_EFFECTOR_COLLISION 0
 #define SM_EFFECTOR_GUIDE	  1
@@ -168,12 +179,17 @@ enum {
 #define FLUID_CACHE_BAKED_MESH          32
 #define FLUID_CACHE_BAKING_PARTICLES    64
 #define FLUID_CACHE_BAKED_PARTICLES     128
+#define FLUID_CACHE_BAKING_GUIDING      256
+#define FLUID_CACHE_BAKED_GUIDING       512
 
 #define FLUID_CACHE_DIR_DEFAULT    "cache_fluid"
 #define FLUID_CACHE_DIR_DATA       "data"
 #define FLUID_CACHE_DIR_NOISE      "noise"
 #define FLUID_CACHE_DIR_MESH       "mesh"
 #define FLUID_CACHE_DIR_PARTICLES  "particles"
+#define FLUID_CACHE_DIR_GUIDING    "guiding"
+#define FLUID_CACHE_DIR_SCRIPT     "script"
+#define FLUID_CACHE_NAME_SCRIPT    "manta_script.py"
 
 enum {
 	VDB_COMPRESSION_BLOSC = 0,
@@ -193,6 +209,9 @@ typedef struct SmokeDomainSettings {
 	struct GPUTexture *tex_wt;
 	struct GPUTexture *tex_shadow;
 	struct GPUTexture *tex_flame;
+	struct Object *guiding_parent;
+	int *guide_res; /* res for velocity guide grids - independent from base res */
+	char pad0[4];
 
 	/* simulation data */
 	float p0[3]; /* start point of BB in local space (includes sub-cell shift for adaptive domain)*/
@@ -208,8 +227,6 @@ typedef struct SmokeDomainSettings {
 	float obmat[4][4]; /* domain obmat */
 	float fluidmat[4][4]; /* low res fluid matrix */
 	float fluidmat_wt[4][4]; /* high res fluid matrix */
-
-	char _manta_filepath[1024]; /* FILE_MAX */
 
 	int base_res[3]; /* initial "non-adapted" resolution */
 	int res_min[3]; /* cell min */
@@ -247,6 +264,7 @@ typedef struct SmokeDomainSettings {
 	int cache_frame_pause_noise;
 	int cache_frame_pause_mesh;
 	int cache_frame_pause_particles;
+	int cache_frame_pause_guiding;
 	char cache_directory[1024];
 	int cache_flag;
 	/* point cache options */
@@ -273,7 +291,7 @@ typedef struct SmokeDomainSettings {
 	short viewport_display_mode;
 	short render_display_mode;
 	short mesh_generator;
-	char pad5[6];
+	char pad5[2];
 
 	float time_scale;
 	float cfl_condition;
@@ -320,6 +338,10 @@ typedef struct SmokeDomainSettings {
 	/* fluid guiding parameters */
 	float guiding_alpha; /* guiding weight scalar (determines strength) */
 	int guiding_beta; /* guiding blur radius (affects size of vortices) */
+	float guiding_vel_factor; /* multiply guiding velocity by this factor */
+	short guiding_source;
+	short guiding_mode;
+	char pad2[4];
 
 	/* Display settings */
 	char slice_method, axis_slice_method;
@@ -340,7 +362,6 @@ typedef struct SmokeDomainSettings {
 	float noise_pos_scale;		/* noise settings */
 	float noise_time_anim;
 	int manta_solver_res;	/* dimension of manta solver, 2d or 3d */
-	char manta_filepath[1024];
 	short type; /* gas, liquid */
 
 	char error[64];		/* Bake error description */
