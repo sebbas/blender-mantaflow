@@ -3228,8 +3228,8 @@ static void smokeModifier_process(
 	{
 		SmokeDomainSettings *sds = smd->domain;
 		int startframe, endframe, framenr;
-		Object *guiding_parent;
-		SmokeModifierData *smd_parent;
+		Object *guiding_parent = NULL;
+		SmokeModifierData *smd_parent = NULL;
 		bool is_first_frame;
 		framenr = scene->r.cfra;
 		startframe = sds->cache_frame_start;
@@ -3302,12 +3302,15 @@ static void smokeModifier_process(
 		{
 			if (sds->cache_flag & FLUID_CACHE_BAKING_DATA)
 			{
-				/* Load guiding vel from flow object (only if baked) or domain object? */
-				if (sds->guiding_source == SM_GUIDING_SRC_FLOW && sds->cache_flag & FLUID_CACHE_BAKED_GUIDING) {
-					fluid_read_guiding(sds->fluid, smd, framenr, false);
-				}
-				else if (sds->guiding_source == SM_GUIDING_SRC_DOMAIN && smd_parent) {
-					fluid_read_guiding(sds->fluid, smd_parent, framenr, true);
+				if (sds->flags & MOD_SMOKE_GUIDING)
+				{
+					/* Load guiding vel from flow object (only if baked) or domain object? */
+					if (sds->guiding_source == SM_GUIDING_SRC_FLOW && sds->cache_flag & FLUID_CACHE_BAKED_GUIDING) {
+						fluid_read_guiding(sds->fluid, smd, framenr, false);
+					}
+					else if (sds->guiding_source == SM_GUIDING_SRC_DOMAIN && smd_parent) {
+						fluid_read_guiding(sds->fluid, smd_parent, framenr, true);
+					}
 				}
 
 				/* Refresh all objects if we start baking from a resumed frame */

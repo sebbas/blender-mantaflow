@@ -50,7 +50,7 @@
 
 std::atomic<bool> FLUID::mantaInitialized(false);
 std::atomic<int> FLUID::solverID(0);
-int FLUID::with_debug(1);
+int FLUID::with_debug(0);
 
 FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 {
@@ -66,7 +66,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mUsingInvel    = smd->domain->active_fields & SM_ACTIVE_INVEL;
 	mUsingNoise    = smd->domain->flags & MOD_SMOKE_NOISE;
 	mUsingMesh     = smd->domain->flags & MOD_SMOKE_MESH;
-	mUsingGuiding  = smd->domain->flags & MOD_SMOKE_GUIDING || smd->domain->active_fields & SM_ACTIVE_GUIDING;
+	mUsingGuiding  = smd->domain->flags & MOD_SMOKE_GUIDING;
 	mUsingLiquid   = smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID;
 	mUsingSmoke    = smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS;
 	mUsingDrops    = smd->domain->particle_type & MOD_SMOKE_PARTICLE_DROP;
@@ -83,6 +83,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mConstantScaling    = 64.0f / mMaxRes;
 	mConstantScaling    = (mConstantScaling < 1.0f) ? 1.0f : mConstantScaling;
 	mTotalCells         = mResX * mResY * mResZ;
+	mResGuiding         = smd->domain->res;
 
 	// Smoke low res grids
 	mDensity        = NULL;
@@ -685,7 +686,7 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 	else if (varName == "USING_OBSTACLE")
 		ss << (smd->domain->active_fields & SM_ACTIVE_OBSTACLE ? "True" : "False");
 	else if (varName == "USING_GUIDING")
-		ss << (smd->domain->flags & MOD_SMOKE_GUIDING || smd->domain->active_fields & SM_ACTIVE_GUIDING ? "True" : "False");
+		ss << (smd->domain->flags & MOD_SMOKE_GUIDING ? "True" : "False");
 	else if (varName == "USING_INVEL")
 		ss << (smd->domain->active_fields & SM_ACTIVE_INVEL ? "True" : "False");
 	else if (varName == "SOLVER_DIM")
