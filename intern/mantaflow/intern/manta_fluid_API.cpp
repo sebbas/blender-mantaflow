@@ -906,13 +906,7 @@ extern "C" int fluid_bake_guiding(FLUID* fluid, SmokeModifierData *smd, int fram
 extern "C" void fluid_update_variables(FLUID* fluid, SmokeModifierData *smd)
 {
 	if (fluid)
-		fluid->updateVariablesLow(smd);
-}
-
-extern "C" void fluid_update_variables_high(FLUID* fluid, SmokeModifierData *smd)
-{
-	if (fluid)
-		fluid->updateVariablesHigh(smd);
+		fluid->updateVariables(smd);
 }
 
 extern "C" int fluid_get_frame(FLUID* fluid)

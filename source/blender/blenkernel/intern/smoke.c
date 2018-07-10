@@ -3139,7 +3139,6 @@ static void smoke_step(
 	// loop as long as time_per_frame (sum of sudivdt) does not exceed dt (actual framelength)
 	while (time_per_frame < dt)
 	{
-		fluid_update_variables(sds->fluid, smd);
 		fluid_adapt_timestep(sds->fluid);
 		sdt = fluid_get_timestep(sds->fluid);
 		time_per_frame += sdt;
@@ -3300,6 +3299,9 @@ static void smokeModifier_process(
 		/* Simulate step and write cache. Optionally also read py objects once from previous frame (bake started from resume operator) */
 		if (is_baking)
 		{
+			/* Ensure fresh variables at every animation step */
+			fluid_update_variables(sds->fluid, smd);
+
 			if (sds->cache_flag & FLUID_CACHE_BAKING_DATA)
 			{
 				if (sds->flags & MOD_SMOKE_GUIDING)

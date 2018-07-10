@@ -1705,14 +1705,12 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_int_sdna(prop, NULL, "guiding_beta");
 	RNA_def_property_range(prop, 1, 50);
 	RNA_def_property_ui_text(prop, "Size", "Guiding size (higher value results in larger vortices)");
-	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
 	prop = RNA_def_property(srna, "guiding_vel_factor", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_float_sdna(prop, NULL, "guiding_vel_factor");
 	RNA_def_property_range(prop, 0.0, 100.0);
 	RNA_def_property_ui_text(prop, "Weight", "Guiding velocity factor (higher value results in bigger guiding velocities)");
-	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
 	prop = RNA_def_property(srna, "guiding_source", PROP_ENUM, PROP_NONE);

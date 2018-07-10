@@ -1393,7 +1393,7 @@ int FLUID::bakeGuiding(SmokeModifierData *smd, int framenr)
 	return 1;
 }
 
-void FLUID::updateVariablesLow(SmokeModifierData *smd)
+void FLUID::updateVariables(SmokeModifierData *smd)
 {
 	std::string tmpString, finalString;
 	std::vector<std::string> pythonCommands;
@@ -1403,20 +1403,17 @@ void FLUID::updateVariablesLow(SmokeModifierData *smd)
 		tmpString += smoke_variables;
 	if (mUsingLiquid)
 		tmpString += liquid_variables;
-	finalString = parseScript(tmpString, smd);
-	pythonCommands.push_back(finalString);
-
-	runPythonString(pythonCommands);
-}
-
-void FLUID::updateVariablesHigh(SmokeModifierData *smd)
-{
-	std::string tmpString, finalString;
-	std::vector<std::string> pythonCommands;
-
-	tmpString += fluid_variables_noise;
-	if (mUsingSmoke)
+	if (mUsingGuiding)
+		tmpString += fluid_variables_guiding;
+	if (mUsingNoise) {
+		tmpString += fluid_variables_noise;
 		tmpString += smoke_variables_noise;
+	}
+	if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers)
+		tmpString += fluid_variables_particles;
+	if (mUsingMesh)
+		tmpString += fluid_variables_mesh;
+
 	finalString = parseScript(tmpString, smd);
 	pythonCommands.push_back(finalString);
 

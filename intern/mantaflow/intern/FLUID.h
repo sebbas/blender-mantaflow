@@ -91,8 +91,7 @@ public:
 	int bakeMesh(SmokeModifierData *smd, int framenr);
 	int bakeParticles(SmokeModifierData *smd, int framenr);
 	int bakeGuiding(SmokeModifierData *smd, int framenr);
-	void updateVariablesLow(SmokeModifierData *smd);
-	void updateVariablesHigh(SmokeModifierData *smd);
+	void updateVariables(SmokeModifierData *smd);
 
 	// IO for Mantaflow scene script
 	void exportSmokeScript(struct SmokeModifierData *smd);
