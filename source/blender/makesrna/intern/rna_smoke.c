@@ -2049,6 +2049,13 @@ static void rna_def_smoke_effec_settings(BlenderRNA *brna)
 	RNA_def_property_range(prop, 0.0, 10.0);
 	RNA_def_property_ui_text(prop, "Distance", "Distance around mesh surface to consider as effector");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
+	prop = RNA_def_property(srna, "velocity_factor", PROP_FLOAT, PROP_NONE);
+	RNA_def_property_float_sdna(prop, NULL, "vel_multi");
+	RNA_def_property_range(prop, -100.0, 100.0);
+	RNA_def_property_ui_text(prop, "Source", "Multiplier of obstacle velocity");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+
 }
 
 void RNA_def_smoke(BlenderRNA *brna)

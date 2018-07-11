@@ -218,9 +218,11 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
             col = split.column()
 
             col.label(text="Surface thickness:")
+            col.label(text="Velocity factor:")
             col = split.column()
 
             col.prop(effec, "surface_distance")
+            col.prop(effec, "velocity_factor")
 
 class PHYSICS_PT_smoke_flow_source(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Source"

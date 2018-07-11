@@ -643,6 +643,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->effec->type = 0; // static obstacle
 			smd->effec->dm = NULL;
 			smd->effec->surface_distance = 0.5f;
+			smd->effec->vel_multi = 1.0f;
 		}
 	}
 }
@@ -795,6 +796,7 @@ void smokeModifier_copy(const struct SmokeModifierData *smd, struct SmokeModifie
 	else if (tsmd->effec) {
 		tsmd->effec->type = smd->effec->type;
 		tsmd->effec->surface_distance = smd->effec->surface_distance;
+		tsmd->effec->vel_multi = smd->effec->vel_multi;
 	}
 }
 
@@ -835,6 +837,7 @@ static int get_lamp(Scene *scene, float *light)
 
 typedef struct ObstaclesFromDMData {
 	SmokeDomainSettings *sds;
+	SmokeCollSettings *scs;
 	const MVert *mvert;
 	const MLoop *mloop;
 	const MLoopTri *looptri;
@@ -845,7 +848,6 @@ typedef struct ObstaclesFromDMData {
 	float *velocityX, *velocityY, *velocityZ;
 	int *num_objects;
 	float *distances_map;
-	float surface_thickness;
 } ObstaclesFromDMData;
 
 static void obstacles_from_derivedmesh_task_cb(
@@ -888,9 +890,9 @@ static void obstacles_from_derivedmesh_task_cb(
 					/* apply object velocity */
 					float hit_vel[3];
 					interp_v3_v3v3v3(hit_vel, &data->vert_vel[v1 * 3], &data->vert_vel[v2 * 3], &data->vert_vel[v3 * 3], weights);
-					data->velocityX[index] += hit_vel[0];
-					data->velocityY[index] += hit_vel[1];
-					data->velocityZ[index] += hit_vel[2];
+					data->velocityX[index] += hit_vel[0] * data->scs->vel_multi;
+					data->velocityY[index] += hit_vel[1] * data->scs->vel_multi;
+					data->velocityZ[index] += hit_vel[2] * data->scs->vel_multi;
 					// printf("adding obvel: [%f, %f, %f], dx is: %f\n", hit_vel[0], hit_vel[1], hit_vel[2], sds->dx);
 
 					/* increase object count */
@@ -901,7 +903,7 @@ static void obstacles_from_derivedmesh_task_cb(
 
 			/* Get distance to mesh surface from both within and outside grid (mantaflow phi grid) */
 			if (data->distances_map) {
-				update_mesh_distances(index, data->distances_map, data->tree, ray_start, data->surface_thickness);
+				update_mesh_distances(index, data->distances_map, data->tree, ray_start, data->scs->surface_distance);
 
 				/* Ensure that num objects are also counted inside object. But dont count twice (see object inc for nearest point) */
 				if (data->distances_map[index] < 0 && !hasIncObj) {
@@ -980,10 +982,10 @@ static void obstacles_from_derivedmesh(
 
 		if (bvhtree_from_mesh_get(&treeData, dm, BVHTREE_FROM_LOOPTRI, 4)) {
 			ObstaclesFromDMData data = {
-			    .sds = sds, .mvert = mvert, .mloop = mloop, .looptri = looptri,
+			    .sds = sds, .scs = scs, .mvert = mvert, .mloop = mloop, .looptri = looptri,
 			    .tree = &treeData, .has_velocity = has_velocity, .vert_vel = vert_vel,
 			    .velocityX = velocityX, .velocityY = velocityY, .velocityZ = velocityZ,
-			    .num_objects = num_objects, .distances_map = distances_map, .surface_thickness = scs->surface_distance
+			    .num_objects = num_objects, .distances_map = distances_map
 			};
 			ParallelRangeSettings settings;
 			BLI_parallel_range_settings_defaults(&settings);
