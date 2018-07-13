@@ -66,19 +66,25 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
             domain = md.domain_settings
             flow = md.flow_settings
 
+            # Deactivate UI if guiding is enabled and not baked yet
+            layout.active = not (domain.use_guiding and not domain.cache_baked_guiding and (domain.guiding_source == "EFFECTOR" or (domain.guiding_source == "DOMAIN" and not domain.guiding_parent)))
+
             baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
+
             baked_any = domain.cache_baked_data or domain.cache_baked_mesh or domain.cache_baked_particles or domain.cache_baked_noise or domain.cache_baked_guiding
 
+            baked_data = domain.cache_baked_data
+
             row = layout.row()
-            row.enabled = not  domain.cache_baked_data and not baking_any
+            row.enabled = not baking_any and not baked_data
             row.prop(domain, "smoke_domain_type", expand=False)
 
             split = layout.split()
-            split.enabled = not baking_any
+            split.enabled = not baking_any and not baked_data
             split.label(text="Border collisions:")
 
             split = layout.split()
-            split.enabled = not baking_any
+            split.enabled = not baking_any and not baked_data
 
             col = split.column()
             col.prop(domain, "use_collision_border_front", text="Front")
@@ -93,7 +99,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
             col.prop(domain, "use_collision_border_bottom", text="Bottom")
 
             split = layout.split()
-            split.enabled = not baking_any
+            split.enabled = not baking_any and not baked_data
 
             col = split.column(align=True)
             col1 = col.column(align=True)
@@ -119,7 +125,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
 
             if domain.smoke_domain_type in {'GAS'}:
                 split = layout.split()
-                split.enabled = not baking_any
+                split.enabled = not baking_any and not baked_data
 
                 col = split.column(align=True)
                 col.label(text="Smoke:")
@@ -143,7 +149,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
 
             if domain.smoke_domain_type in {'LIQUID'}:
                 split = layout.split()
-                split.enabled = not baking_any
+                split.enabled = not baking_any and not baked_data
 
                 col = split.column(align=True)
                 col.label(text="Liquid:")
@@ -218,11 +224,13 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
             col = split.column()
 
             col.label(text="Surface thickness:")
-            col.label(text="Velocity factor:")
+            if effec.effec_type == "GUIDE":
+                col.label(text="Velocity factor:")
             col = split.column()
 
             col.prop(effec, "surface_distance")
-            col.prop(effec, "velocity_factor")
+            if effec.effec_type == "GUIDE":
+                col.prop(effec, "velocity_factor")
 
 class PHYSICS_PT_smoke_flow_source(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Source"
@@ -383,12 +391,15 @@ class PHYSICS_PT_smoke_noise(PhysicButtonsPanel, Panel):
         layout = self.layout
         domain = context.smoke.domain_settings
 
-        layout.active = domain.use_noise
+        # Deactivate UI if guiding is enabled and not baked yet
+        layout.active = domain.use_noise and not (domain.use_guiding and not domain.cache_baked_guiding and (domain.guiding_source == "EFFECTOR" or (domain.guiding_source == "DOMAIN" and not domain.guiding_parent)))
 
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
 
+        baked_noise = domain.cache_baked_noise
+
         split = layout.split()
-        split.enabled = not baking_any
+        split.enabled = not baking_any and not baked_noise
 
         col = split.column(align=True)
         col.prop(domain, "noise_scale", text="Upres")
@@ -437,12 +448,15 @@ class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
         layout = self.layout
         domain = context.smoke.domain_settings
 
-        layout.active = domain.use_mesh
+        # Deactivate UI if guiding is enabled and not baked yet
+        layout.active = domain.use_mesh and not (domain.use_guiding and not domain.cache_baked_guiding and (domain.guiding_source == "EFFECTOR" or (domain.guiding_source == "DOMAIN" and not domain.guiding_parent)))
 
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
 
+        baked_mesh = domain.cache_baked_mesh
+
         split = layout.split()
-        split.enabled = not baking_any
+        split.enabled = not baking_any and not baked_mesh
 
         col = split.column(align=True)
         col.prop(domain, "mesh_scale", text="Upres")
@@ -454,7 +468,7 @@ class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
 
         if domain.mesh_generator in {'IMPROVED'}:
             split = layout.split()
-            split.enabled = not baking_any
+            split.enabled = not baking_any and not baked_mesh
 
             col = split.column(align=True)
             col.label(text="Smoothening")
@@ -501,14 +515,19 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         layout = self.layout
         domain = context.smoke.domain_settings
 
+        # Deactivate UI if guiding is enabled and not baked yet
+        layout.active = not (domain.use_guiding and not domain.cache_baked_guiding and (domain.guiding_source == "EFFECTOR" or (domain.guiding_source == "DOMAIN" and not domain.guiding_parent)))
+
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
+
+        baked_particles = domain.cache_baked_particles
 
         split = layout.split()
         split.prop(domain, "particle_scale", text="Upres")
-        split.enabled = not baking_any
+        split.enabled = not baking_any and not baked_particles
 
         split = layout.split()
-        split.enabled = not baking_any
+        split.enabled = not baking_any and not baked_particles
 
         col = split.column()
         col.prop(domain, "use_drop_particles", text="Drop")
@@ -571,6 +590,9 @@ class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
         layout = self.layout
         domain = context.smoke.domain_settings
 
+        # Deactivate UI if guiding is enabled and not baked yet
+        layout.active = not (domain.use_guiding and not domain.cache_baked_guiding and (domain.guiding_source == "EFFECTOR" or (domain.guiding_source == "DOMAIN" and not domain.guiding_parent)))
+
         split = layout.split()
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
         split.enabled = not baking_any
@@ -628,17 +650,18 @@ class PHYSICS_PT_smoke_guiding(PhysicButtonsPanel, Panel):
         if domain.guiding_source == "DOMAIN":
             col.label(text="Guiding parent:")
             col.prop(domain, "guiding_parent")
-        if domain.guiding_source == "FLOW":
+        if domain.guiding_source == "EFFECTOR":
             col.label(text="Caching mode:")
             col.prop(domain, "guiding_mode", text="")
 
         col = split.column(align=True)
+        col.enabled = not domain.cache_baked_data
         col.label(text="Simulation parameter:")
         col.prop(domain, "guiding_alpha", text="Weight")
         col.prop(domain, "guiding_beta", text="Size")
         col.prop(domain, "guiding_vel_factor", text="Factor")
 
-        if domain.guiding_source == "FLOW":
+        if domain.guiding_source == "EFFECTOR":
             split = layout.split()
             bake_incomplete = domain.cache_frame_pause_guiding
             if domain.cache_baked_guiding and not domain.cache_baking_guiding and bake_incomplete:

@@ -990,7 +990,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 
 	static EnumPropertyItem fluid_guiding_source_items[] = {
 		{SM_GUIDING_SRC_DOMAIN, "DOMAIN", 0, "Domain", "Use a fluid domain for guiding (domain needs to be baked already so that velocities can be extracted but can be of any type)"},
-		{SM_GUIDING_SRC_FLOW, "FLOW", 0, "Flow", "Use guiding (flow) objects to create fluid guiding (guiding objects should be animated and baked once set up completely)"},
+		{SM_GUIDING_SRC_EFFECTOR, "EFFECTOR", 0, "Effector", "Use guiding (effector) objects to create fluid guiding (guiding objects should be animated and baked once set up completely)"},
 		{0, NULL, 0, NULL, NULL}
 	};
 

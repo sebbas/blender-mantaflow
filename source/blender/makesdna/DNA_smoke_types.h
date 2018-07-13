@@ -144,9 +144,9 @@ enum {
 #define SM_MESH_UNION       1
 
 /* guiding velocity source */
-#define SM_GUIDING_SRC_DOMAIN 0
-#define SM_GUIDING_SRC_FLOW   1
-#define SM_GUIDING_EXTERNAL   2
+#define SM_GUIDING_SRC_DOMAIN   0
+#define SM_GUIDING_SRC_EFFECTOR 1
+#define SM_GUIDING_EXTERNAL     2
 
 /* guiding velocity modes */
 #define SM_GUIDING_MAXIMUM   0

@@ -351,7 +351,7 @@ void FLUID::initFireHigh(SmokeModifierData *smd)
 {
 	if (!mFuelHigh) {
 		std::vector<std::string> pythonCommands;
-		std::string tmpString = smoke_alloc_fire_high
+		std::string tmpString = smoke_alloc_fire_noise
 			+ smoke_with_fire;
 		std::string finalString = parseScript(tmpString, smd);
 		pythonCommands.push_back(finalString);
@@ -1476,7 +1476,7 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 		if (colors)
 			manta_script += smoke_alloc_colors_noise;
 		if (fire)
-			manta_script += smoke_alloc_fire_high;
+			manta_script += smoke_alloc_fire_noise;
 	}
 
 	manta_script += smoke_load_data;

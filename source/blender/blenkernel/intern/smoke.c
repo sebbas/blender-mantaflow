@@ -3309,7 +3309,7 @@ static void smokeModifier_process(
 				if (sds->flags & MOD_SMOKE_GUIDING)
 				{
 					/* Load guiding vel from flow object (only if baked) or domain object? */
-					if (sds->guiding_source == SM_GUIDING_SRC_FLOW && sds->cache_flag & FLUID_CACHE_BAKED_GUIDING) {
+					if (sds->guiding_source == SM_GUIDING_SRC_EFFECTOR && sds->cache_flag & FLUID_CACHE_BAKED_GUIDING) {
 						fluid_read_guiding(sds->fluid, smd, framenr, false);
 					}
 					else if (sds->guiding_source == SM_GUIDING_SRC_DOMAIN && smd_parent) {

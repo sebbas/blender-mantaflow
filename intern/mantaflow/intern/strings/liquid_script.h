@@ -34,7 +34,7 @@
 //////////////////////////////////////////////////////////////////////
 
 const std::string liquid_variables = "\n\
-mantaMsg('Liquid variables low')\n\
+mantaMsg('Liquid variables')\n\
 narrowBandWidth_s$ID$         = 3\n\
 combineBandWidth_s$ID$        = narrowBandWidth_s$ID$ - 1\n\
 adjustedNarrowBandWidth_s$ID$ = $PARTICLE_BAND_WIDTH$ # only used in adjustNumber to control band width\n\
@@ -57,7 +57,7 @@ surfaceTension_s$ID$   = $LIQUID_SURFACE_TENSION$\n";
 //////////////////////////////////////////////////////////////////////
 
 const std::string liquid_alloc = "\n\
-mantaMsg('Liquid alloc low')\n\
+mantaMsg('Liquid alloc')\n\
 phiParts_s$ID$   = s$ID$.create(LevelsetGrid)\n\
 phi_s$ID$        = s$ID$.create(LevelsetGrid)\n\
 phiTmp_s$ID$     = s$ID$.create(LevelsetGrid)\n\
@@ -82,7 +82,7 @@ liquid_data_dict_s$ID$ = dict(phiParts=phiParts_s$ID$, phi=phi_s$ID$, phiIn=phiI
 liquid_flip_dict_s$ID$ = dict(pp=pp_s$ID$, pVel=pVel_pp$ID$)\n";
 
 const std::string liquid_alloc_mesh = "\n\
-mantaMsg('Liquid alloc high')\n\
+mantaMsg('Liquid alloc mesh')\n\
 phiParts_sm$ID$ = sm$ID$.create(LevelsetGrid)\n\
 phi_sm$ID$      = sm$ID$.create(LevelsetGrid)\n\
 pp_sm$ID$       = sm$ID$.create(BasicParticleSystem)\n\
@@ -176,7 +176,7 @@ def liquid_adaptive_step_$ID$(framenr):\n\
     flags_s$ID$.updateFromLevelset(phi_s$ID$, phiObs_s$ID$)\n\
     mapWeights_s$ID$.clear() # clean up, mapweights grid used later again\n\
     \n\
-    mantaMsg('Low step / s$ID$.frame: ' + str(s$ID$.frame))\n\
+    mantaMsg('Liquid step / s$ID$.frame: ' + str(s$ID$.frame))\n\
     liquid_step_$ID$()\n\
     \n\
     s$ID$.step()\n\
@@ -185,7 +185,7 @@ def liquid_adaptive_step_$ID$(framenr):\n\
 
 const std::string liquid_step = "\n\
 def liquid_step_$ID$():\n\
-    mantaMsg('Liquid step low')\n\
+    mantaMsg('Liquid step')\n\
     \n\
     mantaMsg('Advecting particles')\n\
     pp_s$ID$.advectInGrid(flags=flags_s$ID$, vel=vel_s$ID$, integrationMode=IntRK4, deleteInObstacle=False, stopInObstacle=False)\n\
