@@ -137,8 +137,6 @@ const std::string fluid_variables_guiding = "\n\
 mantaMsg('Fluid variables guiding')\n\
 gs_sg$ID$   = vec3($GUIDING_RESX$, $GUIDING_RESY$, $GUIDING_RESZ$)\n\
 \n\
-guiding_mode_sg$ID$ = $GUIDING_MODE$\n\
-\n\
 alpha_sg$ID$ = $GUIDING_ALPHA$\n\
 beta_sg$ID$  = $GUIDING_BETA$\n\
 gamma_sg$ID$ = $GUIDING_FACTOR$\n\
@@ -240,7 +238,6 @@ velT_s$ID$        = s$ID$.create(MACGrid)\n\
 weightGuide_s$ID$ = s$ID$.create(RealGrid)\n\
 numGuides_s$ID$   = s$ID$.create(IntGrid)\n\
 phiGuideIn_s$ID$  = s$ID$.create(LevelsetGrid)\n\
-guidevelTmp_s$ID$ = s$ID$.create(MACGrid)\n\
 guidevelC_s$ID$   = s$ID$.create(Vec3Grid)\n\
 x_guidevel_s$ID$  = s$ID$.create(RealGrid)\n\
 y_guidevel_s$ID$  = s$ID$.create(RealGrid)\n\
@@ -445,10 +442,7 @@ def bake_guiding_process_$ID$(framenr, format_guiding, path_guiding):\n\
     # ensure velocities inside of guiding object, slightly add guiding vels outside of object too\n\
     extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
     extrapolateVec3Simple(vel=guidevelC_s$ID$, phi=phiGuideIn_s$ID$, distance=4, inside=False)\n\
-    resampleVec3ToMac(source=guidevelC_s$ID$, target=guidevelTmp_s$ID$)\n\
-    \n\
-    mantaMsg('Make guiding velocity field')\n\
-    makeGuidingField(source=guidevelTmp_s$ID$, target=guidevel_sg$ID$, mode=guiding_mode_sg$ID$)\n\
+    resampleVec3ToMac(source=guidevelC_s$ID$, target=guidevel_sg$ID$)\n\
     \n\
     fluid_save_guiding_$ID$(path_guiding, framenr, format_guiding)\n\
 \n\

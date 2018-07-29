@@ -150,8 +150,9 @@ enum {
 
 /* guiding velocity modes */
 #define SM_GUIDING_MAXIMUM   0
-#define SM_GUIDING_OVERRIDE  1
-#define SM_GUIDING_AVERAGED  2
+#define SM_GUIDING_MINIMUM   1
+#define SM_GUIDING_OVERRIDE  2
+#define SM_GUIDING_AVERAGED  3
 
 /* effector types */
 #define SM_EFFECTOR_COLLISION 0
@@ -340,8 +341,7 @@ typedef struct SmokeDomainSettings {
 	int guiding_beta; /* guiding blur radius (affects size of vortices) */
 	float guiding_vel_factor; /* multiply guiding velocity by this factor */
 	short guiding_source;
-	short guiding_mode;
-	char pad2[4];
+	char pad2[6];
 
 	/* Display settings */
 	char slice_method, axis_slice_method;
@@ -458,7 +458,7 @@ typedef struct SmokeCollSettings {
 	float *verts_old;
 	int numverts;
 	short type;
-	short pad;
+	short guiding_mode;
 	float surface_distance; /* thickness of mesh surface, used in obstacle sdf */
 	float vel_multi; // Multiplier for obstacle velocity
 } SmokeCollSettings;

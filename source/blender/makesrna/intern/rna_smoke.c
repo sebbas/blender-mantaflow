@@ -994,13 +994,6 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 		{0, NULL, 0, NULL, NULL}
 	};
 
-	static EnumPropertyItem fluid_guiding_mode_items[] = {
-		{SM_GUIDING_OVERRIDE, "OVERRIDE", 0, "Override", "Always write new guiding velocities for every frame (each frame only contains current velocities from guiding objects)"},
-		{SM_GUIDING_MAXIMUM, "MAXIMUM", 0, "Maximize", "Compare velocities from previous frame with new velocities from current frame and keep the maximum (velocities will accumulate over time)"},
-		{SM_GUIDING_AVERAGED, "AVERAGED", 0, "Averaged", "Take average of velocities from previous frame and new velocities from current frame (velocities will accumulate over time)"},
-		{0, NULL, 0, NULL, NULL}
-	};
-
 	/*  Cache type - generated dynamically based on domain type */
 	static EnumPropertyItem cache_file_type_items[] = {
 		{0, "NONE", 0, "", ""},
@@ -1719,12 +1712,6 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Guiding source", "Choose where to get guiding velocities from");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Smoke_update");
 
-	prop = RNA_def_property(srna, "guiding_mode", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "guiding_mode");
-	RNA_def_property_enum_items(prop, fluid_guiding_mode_items);
-	RNA_def_property_ui_text(prop, "Guiding mode", "How to create guiding velocities");
-	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Smoke_update");
-
 	prop = RNA_def_property(srna, "guiding_parent", PROP_POINTER, PROP_NONE);
 	RNA_def_property_pointer_sdna(prop, NULL, "guiding_parent");
 	RNA_def_property_struct_type(prop, "Object");
@@ -2031,6 +2018,14 @@ static void rna_def_smoke_effec_settings(BlenderRNA *brna)
 		{0, NULL, 0, NULL, NULL}
 	};
 
+	static EnumPropertyItem fluid_guiding_mode_items[] = {
+		{SM_GUIDING_MAXIMUM, "MAXIMUM", 0, "Maximize", "Compare velocities from previous frame with new velocities from current frame and keep the maximum"},
+		{SM_GUIDING_MINIMUM, "MINIMUM", 0, "Minimize", "Compare velocities from previous frame with new velocities from current frame and keep the minimum"},
+		{SM_GUIDING_OVERRIDE, "OVERRIDE", 0, "Override", "Always write new guiding velocities for every frame (each frame only contains current velocities from guiding objects)"},
+		{SM_GUIDING_AVERAGED, "AVERAGED", 0, "Averaged", "Take average of velocities from previous frame and new velocities from current frame"},
+		{0, NULL, 0, NULL, NULL}
+	};
+
 	StructRNA *srna;
 	PropertyRNA *prop;
 
@@ -2056,6 +2051,11 @@ static void rna_def_smoke_effec_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Source", "Multiplier of obstacle velocity");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
+	prop = RNA_def_property(srna, "guiding_mode", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "guiding_mode");
+	RNA_def_property_enum_items(prop, fluid_guiding_mode_items);
+	RNA_def_property_ui_text(prop, "Guiding mode", "How to create guiding velocities");
+	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Smoke_update");
 }
 
 void RNA_def_smoke(BlenderRNA *brna)

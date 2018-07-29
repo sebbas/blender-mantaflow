@@ -559,7 +559,6 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->guiding_vel_factor = 2.0f;
 			smd->domain->guiding_parent = NULL;
 			smd->domain->guiding_source = SM_GUIDING_SRC_DOMAIN;
-			smd->domain->guiding_mode = SM_GUIDING_MAXIMUM;
 
 			/*mantaflow settings*/
 			smd->domain->manta_solver_res = 3;
@@ -644,6 +643,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->effec->dm = NULL;
 			smd->effec->surface_distance = 0.5f;
 			smd->effec->vel_multi = 1.0f;
+			smd->effec->guiding_mode = SM_GUIDING_MAXIMUM;
 		}
 	}
 }
@@ -726,7 +726,6 @@ void smokeModifier_copy(const struct SmokeModifierData *smd, struct SmokeModifie
 		tsmd->domain->guiding_vel_factor = smd->domain->guiding_vel_factor;
 		tsmd->domain->guiding_parent = smd->domain->guiding_parent;
 		tsmd->domain->guiding_source = smd->domain->guiding_source;
-		tsmd->domain->guiding_mode = smd->domain->guiding_mode;
 
 		tsmd->domain->manta_solver_res = smd->domain->manta_solver_res;
 		tsmd->domain->noise_pos_scale = smd->domain->noise_pos_scale;
@@ -797,6 +796,7 @@ void smokeModifier_copy(const struct SmokeModifierData *smd, struct SmokeModifie
 		tsmd->effec->type = smd->effec->type;
 		tsmd->effec->surface_distance = smd->effec->surface_distance;
 		tsmd->effec->vel_multi = smd->effec->vel_multi;
+		tsmd->effec->guiding_mode = smd->effec->guiding_mode;
 	}
 }
 
@@ -887,17 +887,51 @@ static void obstacles_from_derivedmesh_task_cb(
 				// DG TODO
 				if (data->has_velocity)
 				{
-					/* apply object velocity */
-					float hit_vel[3];
-					interp_v3_v3v3v3(hit_vel, &data->vert_vel[v1 * 3], &data->vert_vel[v2 * 3], &data->vert_vel[v3 * 3], weights);
-					data->velocityX[index] += hit_vel[0] * data->scs->vel_multi;
-					data->velocityY[index] += hit_vel[1] * data->scs->vel_multi;
-					data->velocityZ[index] += hit_vel[2] * data->scs->vel_multi;
-					// printf("adding obvel: [%f, %f, %f], dx is: %f\n", hit_vel[0], hit_vel[1], hit_vel[2], sds->dx);
-
 					/* increase object count */
 					data->num_objects[index]++;
 					hasIncObj = true;
+
+					/* apply object velocity */
+					float hit_vel[3];
+					interp_v3_v3v3v3(hit_vel, &data->vert_vel[v1 * 3], &data->vert_vel[v2 * 3], &data->vert_vel[v3 * 3], weights);
+
+					/* Guiding has additional velocity multiplier */
+					if (data->scs->type == SM_EFFECTOR_GUIDE) {
+						mul_v3_fl(hit_vel, data->scs->vel_multi);
+
+						switch (data->scs->guiding_mode) {
+							case SM_GUIDING_AVERAGED:
+								data->velocityX[index] = (data->velocityX[index] + hit_vel[0]) * 0.5f;
+								data->velocityY[index] = (data->velocityY[index] + hit_vel[1]) * 0.5f;
+								data->velocityZ[index] = (data->velocityZ[index] + hit_vel[2]) * 0.5f;
+								break;
+							case SM_GUIDING_OVERRIDE:
+								data->velocityX[index] = hit_vel[0];
+								data->velocityY[index] = hit_vel[1];
+								data->velocityZ[index] = hit_vel[2];
+								break;
+							case SM_GUIDING_MINIMUM:
+								data->velocityX[index] = MIN2( fabsf(hit_vel[0]), fabsf(data->velocityX[index]) );
+								data->velocityY[index] = MIN2( fabsf(hit_vel[1]), fabsf(data->velocityY[index]) );
+								data->velocityZ[index] = MIN2( fabsf(hit_vel[2]), fabsf(data->velocityZ[index]) );
+								break;
+							case SM_GUIDING_MAXIMUM:
+							default:
+								data->velocityX[index] = MAX2( fabsf(hit_vel[0]), fabsf(data->velocityX[index]) );
+								data->velocityY[index] = MAX2( fabsf(hit_vel[1]), fabsf(data->velocityY[index]) );
+								data->velocityZ[index] = MAX2( fabsf(hit_vel[2]), fabsf(data->velocityZ[index]) );
+								break;
+						}
+					}
+					/* Apply (i.e. add) effector object velocity */
+					data->velocityX[index] += hit_vel[0];
+					data->velocityY[index] += hit_vel[1];
+					data->velocityZ[index] += hit_vel[2];
+					// printf("adding effector object vel: [%f, %f, %f], dx is: %f\n", hit_vel[0], hit_vel[1], hit_vel[2], sds->dx);
+
+					data->velocityX[index] += (data->scs->type == SM_EFFECTOR_GUIDE) ? hit_vel[0] * data->scs->vel_multi : hit_vel[0];
+					data->velocityY[index] += (data->scs->type == SM_EFFECTOR_GUIDE) ? hit_vel[1] * data->scs->vel_multi : hit_vel[1];
+					data->velocityZ[index] += (data->scs->type == SM_EFFECTOR_GUIDE) ? hit_vel[2] * data->scs->vel_multi : hit_vel[2];
 				}
 			}
 

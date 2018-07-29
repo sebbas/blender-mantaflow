@@ -885,12 +885,7 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << smd->domain->guiding_beta;
 	else if (varName == "GUIDING_FACTOR")
 		ss << smd->domain->guiding_vel_factor;
-	else if (varName == "GUIDING_MODE") {
-		if (smd->domain->guiding_mode == SM_GUIDING_OVERRIDE)  { ss << "0"; }
-		else if (smd->domain->guiding_mode == SM_GUIDING_MAXIMUM) { ss << "1"; }
-		else if (smd->domain->guiding_mode == SM_GUIDING_AVERAGED) { ss << "2"; }
-		else { ss << "0"; }
-	} else if (varName == "GRAVITY_X")
+	else if (varName == "GRAVITY_X")
 		ss << smd->domain->gravity[0];
 	else if (varName == "GRAVITY_Y")
 		ss << smd->domain->gravity[1];

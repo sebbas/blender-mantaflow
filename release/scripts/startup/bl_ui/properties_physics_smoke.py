@@ -226,11 +226,13 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
             col.label(text="Surface thickness:")
             if effec.effec_type == "GUIDE":
                 col.label(text="Velocity factor:")
+                col.label(text="Guiding mode:")
             col = split.column()
 
             col.prop(effec, "surface_distance")
             if effec.effec_type == "GUIDE":
                 col.prop(effec, "velocity_factor")
+                col.prop(effec, "guiding_mode", text="")
 
 class PHYSICS_PT_smoke_flow_source(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Source"
@@ -650,9 +652,6 @@ class PHYSICS_PT_smoke_guiding(PhysicButtonsPanel, Panel):
         if domain.guiding_source == "DOMAIN":
             col.label(text="Guiding parent:")
             col.prop(domain, "guiding_parent")
-        if domain.guiding_source == "EFFECTOR":
-            col.label(text="Caching mode:")
-            col.prop(domain, "guiding_mode", text="")
 
         col = split.column(align=True)
         col.enabled = not domain.cache_baked_data
