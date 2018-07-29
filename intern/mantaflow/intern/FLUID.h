@@ -204,6 +204,10 @@ public:
 	inline int getTriangleYAt(int i) { return (mMeshTriangles && !mMeshTriangles->empty() && mMeshTriangles->size() > i) ? mMeshTriangles->at(i).c[1] : 0; }
 	inline int getTriangleZAt(int i) { return (mMeshTriangles && !mMeshTriangles->empty() && mMeshTriangles->size() > i) ? mMeshTriangles->at(i).c[2] : 0; }
 
+	inline float getVertVelXAt(int i) { return (mMeshVelocities && !mMeshVelocities->empty() && mMeshVelocities->size() > i) ? mMeshVelocities->at(i).pos[0] : 0.f; }
+	inline float getVertVelYAt(int i) { return (mMeshVelocities && !mMeshVelocities->empty() && mMeshVelocities->size() > i) ? mMeshVelocities->at(i).pos[1] : 0.f; }
+	inline float getVertVelZAt(int i) { return (mMeshVelocities && !mMeshVelocities->empty() && mMeshVelocities->size() > i) ? mMeshVelocities->at(i).pos[2] : 0.f; }
+
 	// Particle getters
 	inline int getFlipParticleFlagAt(int i) { return (mFlipParticleData && !mFlipParticleData->empty() && mFlipParticleData->size() > i) ? ((std::vector<pData>*) mFlipParticleData)->at(i).flag : 0; }
 	inline int getSndParticleFlagAt(int i) { return (mSndParticleData && !mSndParticleData->empty() && mSndParticleData->size() > i) ? ((std::vector<pData>*) mSndParticleData)->at(i).flag : 0; }
@@ -236,7 +240,7 @@ public:
 
 	// TODO (sebbas): make these private once pointcache is refactored
 	void updateMeshFromFile(const char* filename);
-	void updateParticlesFromFile(const char* filename, bool isSecondary);
+	void updateParticlesFromFile(const char* filename, bool isSecondarySys, bool isVelData);
 
 	void setFlipParticleData(float* buffer, int numParts);
 	void setSndParticleData(float* buffer, int numParts);
@@ -267,6 +271,7 @@ private:
 	bool mUsingInvel;
 	bool mUsingNoise;
 	bool mUsingMesh;
+	bool mUsingMVel;
 	bool mUsingLiquid;
 	bool mUsingSmoke;
 	bool mUsingDrops;
@@ -351,6 +356,7 @@ private:
 	// Mesh fields
 	std::vector<Node>* mMeshNodes;
 	std::vector<Triangle>* mMeshTriangles;
+	std::vector<pVel>* mMeshVelocities;
 	
 	// Particle fields
 	std::vector<pData>* mFlipParticleData;
@@ -371,8 +377,10 @@ private:
 	std::string getRealValue(const std::string& varName, SmokeModifierData *smd);
 	std::string parseLine(const std::string& line, SmokeModifierData *smd);
 	std::string parseScript(const std::string& setup_string, SmokeModifierData *smd);
-	void updateMeshDataFromBobj(const char* filename);
-	void updateMeshDataFromObj(const char* filename);
+	void updateMeshFromBobj(const char* filename);
+	void updateMeshFromObj(const char* filename);
+	void updateMeshFromUni(const char* filename);
+	void updateParticlesFromUni(const char* filename, bool isSecondarySys, bool isVelData);
 
 };
 

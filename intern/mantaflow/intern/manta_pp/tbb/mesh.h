@@ -41,6 +41,9 @@ class LevelsetGrid;
 class FlagGrid;
 class MACGrid;
 class Shape;
+class MeshDataBase;
+template<class T> class MeshDataImpl;
+
 
 //! Node position and flags
 struct Node {
@@ -173,6 +176,12 @@ class Mesh : public PbClass {public:
     inline int numNodes() const { return mNodes.size(); }
     inline int numTriChannels() const { return mTriChannels.size(); }
     inline int numNodeChannels() const { return mNodeChannels.size(); }
+
+	//! return size of container
+	//! note , python binding disabled for now! cannot yet deal with long-long types
+	inline IndexInt size() const { return mNodes.size(); }
+	//! slow virtual function of base class, also returns size
+	virtual IndexInt getSizeSlow() const { return size(); }
     
     inline Triangle& tris(int i) { return mTris[i]; }
     inline Node& nodes(int i) { return mNodes[i]; }    
@@ -213,6 +222,29 @@ class Mesh : public PbClass {public:
     void addTriChannel(TriChannel* c) { mTriChannels.push_back(c); rebuildChannels(); }
     void addNodeChannel(NodeChannel* c) { mNodeChannels.push_back(c); rebuildChannels(); }
 
+	//! mesh data functions
+
+	//! create a mesh data object
+	PbClass* create(PbType type, PbTypeVec T=PbTypeVec(), const std::string& name = ""); static PyObject* _W_12 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); Mesh* pbo = dynamic_cast<Mesh*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Mesh::create" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; PbType type = _args.get<PbType >("type",0,&_lock); PbTypeVec T = _args.getOpt<PbTypeVec >("T",1,PbTypeVec(),&_lock); const std::string& name = _args.getOpt<std::string >("name",2,"",&_lock);  pbo->_args.copy(_args);  _retval = toPy(pbo->create(type,T,name));  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"Mesh::create" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("Mesh::create",e.what()); return 0; } }
+	//! add a mesh data field, set its parent mesh pointer
+	void registerMdata(MeshDataBase* mdata);
+	void registerMdataReal(MeshDataImpl<Real>* mdata);
+	void registerMdataVec3(MeshDataImpl<Vec3>* mdata);
+	void registerMdataInt (MeshDataImpl<int >* mdata);
+	//! remove a mesh data entry
+	void deregister(MeshDataBase* mdata);
+	//! add one zero entry to all data fields
+	void addAllMdata();
+	// note - deletion of mdata is handled in compress function
+
+	//! how many are there?
+	IndexInt getNumMdata() const { return mMeshData.size(); }
+	//! access one of the fields
+	MeshDataBase* getMdata(int i) { return mMeshData[i]; }
+
+	//! update data fields
+	void updateDataFields();
+
 protected:    
     void rebuildChannels();
     
@@ -220,9 +252,126 @@ protected:
     std::vector<Triangle> mTris;
     std::vector<Corner> mCorners;
     std::vector<NodeChannel*> mNodeChannels;
-    std::vector<TriChannel*> mTriChannels;     std::vector<OneRing> m1RingLookup; public: PbArgs _args; }
+    std::vector<TriChannel*> mTriChannels;
+    std::vector<OneRing> m1RingLookup;
+
+	//! store mesh data , each pointer has its own storage vector of a certain type (int, real, vec3)
+	std::vector<MeshDataBase*> mMeshData;
+	//! lists of different types, for fast operations w/o virtual function calls
+	std::vector< MeshDataImpl<Real> *> mMdataReal;
+	std::vector< MeshDataImpl<Vec3> *> mMdataVec3;
+	std::vector< MeshDataImpl<int> *>  mMdataInt; 	//! indicate that mdata of this mesh is copied, and needs to be freed
+	bool mFreeMdata; public: PbArgs _args; }
 #define _C_Mesh
 ;
+
+//******************************************************************************
+
+//! abstract interface for mesh data
+class MeshDataBase : public PbClass {public:
+	MeshDataBase(FluidSolver* parent); static int _W_13 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(0, "MeshDataBase::MeshDataBase" , !noTiming ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock);  obj = new MeshDataBase(parent); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"MeshDataBase::MeshDataBase" , !noTiming ); return 0; } catch(std::exception& e) { pbSetError("MeshDataBase::MeshDataBase",e.what()); return -1; } }
+	virtual ~MeshDataBase();
+
+	//! data type IDs, in line with those for grids
+	enum MdataType { TypeNone = 0, TypeReal = 1, TypeInt = 2, TypeVec3 = 4 };
+
+	//! interface functions, using assert instead of pure virtual for python compatibility
+	virtual IndexInt  getSizeSlow() const { assertMsg( false , "Dont use, override..."); return 0; }
+	virtual void addEntry()   { assertMsg( false , "Dont use, override..."); return;   }
+	virtual MeshDataBase* clone() { assertMsg( false , "Dont use, override..."); return NULL; }
+	virtual MdataType getType() const { assertMsg( false , "Dont use, override..."); return TypeNone; }
+	virtual void resize(IndexInt size)     { assertMsg( false , "Dont use, override..."); return;  }
+	virtual void copyValueSlow(IndexInt from, IndexInt to) { assertMsg( false , "Dont use, override..."); return;  }
+
+	//! set base pointer
+	void setMesh(Mesh* set) { mMesh = set; }
+
+	//! debugging
+	inline void checkNodeIndex(IndexInt idx) const;
+
+protected: 	Mesh* mMesh; public: PbArgs _args; }
+#define _C_MeshDataBase
+;
+
+
+//! abstract interface for mesh data
+
+template<class T> class MeshDataImpl : public MeshDataBase {public:
+	MeshDataImpl(FluidSolver* parent); static int _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try { PbArgs _args(_linargs, _kwds); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(0, "MeshDataImpl::MeshDataImpl" , !noTiming ); { ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock);  obj = new MeshDataImpl(parent); obj->registerObject(_self, &_args); _args.check(); } pbFinalizePlugin(obj->getParent(),"MeshDataImpl::MeshDataImpl" , !noTiming ); return 0; } catch(std::exception& e) { pbSetError("MeshDataImpl::MeshDataImpl",e.what()); return -1; } }
+	MeshDataImpl(FluidSolver* parent, MeshDataImpl<T>* other);
+	virtual ~MeshDataImpl();
+
+	//! access data
+	inline       T& get(IndexInt idx)              { DEBUG_ONLY(checkNodeIndex(idx)); return mData[idx]; }
+	inline const T& get(IndexInt idx) const        { DEBUG_ONLY(checkNodeIndex(idx)); return mData[idx]; }
+	inline       T& operator[](IndexInt idx)       { DEBUG_ONLY(checkNodeIndex(idx)); return mData[idx]; }
+	inline const T& operator[](IndexInt idx) const { DEBUG_ONLY(checkNodeIndex(idx)); return mData[idx]; }
+
+	//! set all values to 0, note - different from meshSystem::clear! doesnt modify size of array (has to stay in sync with parent system)
+	void clear(); static PyObject* _W_15 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::clear" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->clear();  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::clear" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::clear",e.what()); return 0; } }
+
+	//! set grid from which to get data...
+	void setSource(Grid<T>* grid, bool isMAC=false ); static PyObject* _W_16 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::setSource" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; Grid<T>* grid = _args.getPtr<Grid<T> >("grid",0,&_lock); bool isMAC = _args.getOpt<bool >("isMAC",1,false ,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->setSource(grid,isMAC);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::setSource" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::setSource",e.what()); return 0; } }
+
+	//! mesh data base interface
+	virtual IndexInt  getSizeSlow() const;
+	virtual void addEntry();
+	virtual MeshDataBase* clone();
+	virtual MdataType getType() const;
+	virtual void resize(IndexInt s);
+	virtual void copyValueSlow(IndexInt from, IndexInt to);
+
+	IndexInt  size() const { return mData.size(); }
+
+	//! fast inlined functions for per mesh operations
+	inline void copyValue(IndexInt from, IndexInt to) { get(to) = get(from); }
+	void initNewValue(IndexInt idx, Vec3 pos);
+
+	//! python interface (similar to grid data)
+	void setConst(T s); static PyObject* _W_17 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::setConst" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; T s = _args.get<T >("s",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->setConst(s);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::setConst" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::setConst",e.what()); return 0; } }
+	void setConstRange(T s, const int begin, const int end); static PyObject* _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::setConstRange" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; T s = _args.get<T >("s",0,&_lock); const int begin = _args.get<int >("begin",1,&_lock); const int end = _args.get<int >("end",2,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->setConstRange(s,begin,end);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::setConstRange" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::setConstRange",e.what()); return 0; } }
+	MeshDataImpl<T>& copyFrom(const MeshDataImpl<T>& a); static PyObject* _W_19 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::copyFrom" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; const MeshDataImpl<T>& a = *_args.getPtr<MeshDataImpl<T> >("a",0,&_lock);  pbo->_args.copy(_args);  _retval = toPy(pbo->copyFrom(a));  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::copyFrom" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::copyFrom",e.what()); return 0; } }
+	void add(const MeshDataImpl<T>& a); static PyObject* _W_20 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::add" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; const MeshDataImpl<T>& a = *_args.getPtr<MeshDataImpl<T> >("a",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->add(a);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::add" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::add",e.what()); return 0; } }
+	void sub(const MeshDataImpl<T>& a); static PyObject* _W_21 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::sub" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; const MeshDataImpl<T>& a = *_args.getPtr<MeshDataImpl<T> >("a",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->sub(a);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::sub" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::sub",e.what()); return 0; } }
+	void addConst(T s); static PyObject* _W_22 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::addConst" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; T s = _args.get<T >("s",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->addConst(s);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::addConst" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::addConst",e.what()); return 0; } }
+	void addScaled(const MeshDataImpl<T>& a, const T& factor); static PyObject* _W_23 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::addScaled" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; const MeshDataImpl<T>& a = *_args.getPtr<MeshDataImpl<T> >("a",0,&_lock); const T& factor = *_args.getPtr<T >("factor",1,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->addScaled(a,factor);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::addScaled" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::addScaled",e.what()); return 0; } }
+	void mult( const MeshDataImpl<T>& a); static PyObject* _W_24 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::mult" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; const MeshDataImpl<T>& a = *_args.getPtr<MeshDataImpl<T> >("a",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->mult(a);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::mult" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::mult",e.what()); return 0; } }
+	void multConst(T s); static PyObject* _W_25 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::multConst" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; T s = _args.get<T >("s",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->multConst(s);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::multConst" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::multConst",e.what()); return 0; } }
+	void safeDiv(const MeshDataImpl<T>& a); static PyObject* _W_26 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::safeDiv" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; const MeshDataImpl<T>& a = *_args.getPtr<MeshDataImpl<T> >("a",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->safeDiv(a);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::safeDiv" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::safeDiv",e.what()); return 0; } }
+	void clamp(Real min, Real max); static PyObject* _W_27 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::clamp" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; Real min = _args.get<Real >("min",0,&_lock); Real max = _args.get<Real >("max",1,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->clamp(min,max);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::clamp" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::clamp",e.what()); return 0; } }
+	void clampMin(Real vmin); static PyObject* _W_28 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::clampMin" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; Real vmin = _args.get<Real >("vmin",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->clampMin(vmin);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::clampMin" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::clampMin",e.what()); return 0; } }
+	void clampMax(Real vmax); static PyObject* _W_29 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::clampMax" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; Real vmax = _args.get<Real >("vmax",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->clampMax(vmax);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::clampMax" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::clampMax",e.what()); return 0; } }
+
+	Real getMaxAbs(); static PyObject* _W_30 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::getMaxAbs" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getMaxAbs());  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::getMaxAbs" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::getMaxAbs",e.what()); return 0; } }
+	Real getMax(); static PyObject* _W_31 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::getMax" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getMax());  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::getMax" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::getMax",e.what()); return 0; } }
+	Real getMin(); static PyObject* _W_32 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::getMin" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getMin());  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::getMin" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::getMin",e.what()); return 0; } }
+
+	T sum(const MeshDataImpl<int> *t=NULL, const int itype=0) const ; static PyObject* _W_33 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::sum" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; const MeshDataImpl<int> * t = _args.getPtrOpt<MeshDataImpl<int>  >("t",0,NULL,&_lock); const int itype = _args.getOpt<int >("itype",1,0,&_lock);  pbo->_args.copy(_args);  _retval = toPy(pbo->sum(t,itype));  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::sum" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::sum",e.what()); return 0; } }
+	Real sumSquare() const ; static PyObject* _W_34 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::sumSquare" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->sumSquare());  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::sumSquare" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::sumSquare",e.what()); return 0; } }
+	Real sumMagnitude() const ; static PyObject* _W_35 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::sumMagnitude" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->sumMagnitude());  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::sumMagnitude" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::sumMagnitude",e.what()); return 0; } }
+
+	//! special, set if int flag in t has "flag"
+	void setConstIntFlag(T s, const MeshDataImpl<int>& t, const int flag); static PyObject* _W_36 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::setConstIntFlag" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; T s = _args.get<T >("s",0,&_lock); const MeshDataImpl<int>& t = *_args.getPtr<MeshDataImpl<int> >("t",1,&_lock); const int flag = _args.get<int >("flag",2,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->setConstIntFlag(s,t,flag);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::setConstIntFlag" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::setConstIntFlag",e.what()); return 0; } }
+
+	void printMdata(IndexInt start=-1, IndexInt stop=-1, bool printIndex=false); static PyObject* _W_37 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::printMdata" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; IndexInt start = _args.getOpt<IndexInt >("start",0,-1,&_lock); IndexInt stop = _args.getOpt<IndexInt >("stop",1,-1,&_lock); bool printIndex = _args.getOpt<bool >("printIndex",2,false,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->printMdata(start,stop,printIndex);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::printMdata" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::printMdata",e.what()); return 0; } }
+
+	//! file io
+	void save(const std::string name); static PyObject* _W_38 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::save" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; const std::string name = _args.get<std::string >("name",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->save(name);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::save" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::save",e.what()); return 0; } }
+	void load(const std::string name); static PyObject* _W_39 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::load" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock; const std::string name = _args.get<std::string >("name",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->load(name);  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::load" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::load",e.what()); return 0; } }
+
+	//! get data pointer of mesh data
+	std::string getDataPointer(); static PyObject* _W_40 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) { try { PbArgs _args(_linargs, _kwds); MeshDataImpl* pbo = dynamic_cast<MeshDataImpl*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MeshDataImpl::getDataPointer" , !noTiming); PyObject *_retval = 0; { ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getDataPointer());  pbo->_args.check(); } pbFinalizePlugin(pbo->getParent(),"MeshDataImpl::getDataPointer" , !noTiming); return _retval; } catch(std::exception& e) { pbSetError("MeshDataImpl::getDataPointer",e.what()); return 0; } }
+protected:
+	//! data storage
+	std::vector<T> mData;
+
+	//! optionally , we might have an associated grid from which to grab new data
+	Grid<T>* mpGridSource; 	//! unfortunately , we need to distinguish mac vs regular vec3
+	bool mGridSourceMAC; public: PbArgs _args; }
+#define _C_MeshDataImpl
+;
+
+
 
 
 
@@ -239,6 +388,20 @@ void SimpleNodeChannel<T>::renumber(const std::vector<int>& newIndex, int newsiz
     data.resize(newsize);
 }
 
+inline void MeshDataBase::checkNodeIndex(IndexInt idx) const {
+	IndexInt mySize = this->getSizeSlow();
+	if (idx<0 || idx > mySize ) {
+		errMsg( "MeshData " << " size " << mySize << " : index " << idx << " out of bound " );
+	}
+	if ( mMesh && mMesh->getSizeSlow()!=mySize ) {
+		errMsg( "MeshData " << " size " << mySize << " does not match parent! (" << mMesh->getSizeSlow() << ") " );
+	}
+}
+
+template<class T>
+void MeshDataImpl<T>::clear() {
+	for(IndexInt i=0; i<(IndexInt)mData.size(); ++i) mData[i] = 0.;
+}
 
 
 } //namespace

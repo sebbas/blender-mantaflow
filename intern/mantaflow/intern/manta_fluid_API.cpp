@@ -617,19 +617,34 @@ extern "C" float liquid_get_normal_z_at(FLUID *liquid, int i)
 	return liquid->getNormalZAt(i);
 }
 
-extern "C" float liquid_get_triangle_x_at(FLUID *liquid, int i)
+extern "C" int liquid_get_triangle_x_at(FLUID *liquid, int i)
 {
 	return liquid->getTriangleXAt(i);
 }
 
-extern "C" float liquid_get_triangle_y_at(FLUID *liquid, int i)
+extern "C" int liquid_get_triangle_y_at(FLUID *liquid, int i)
 {
 	return liquid->getTriangleYAt(i);
 }
 
-extern "C" float liquid_get_triangle_z_at(FLUID *liquid, int i)
+extern "C" int liquid_get_triangle_z_at(FLUID *liquid, int i)
 {
 	return liquid->getTriangleZAt(i);
+}
+
+extern "C" float liquid_get_vertvel_x_at(FLUID *liquid, int i)
+{
+	return liquid->getVertVelXAt(i);
+}
+
+extern "C" float liquid_get_vertvel_y_at(FLUID *liquid, int i)
+{
+	return liquid->getVertVelYAt(i);
+}
+
+extern "C" float liquid_get_vertvel_z_at(FLUID *liquid, int i)
+{
+	return liquid->getVertVelZAt(i);
 }
 
 extern "C" int liquid_get_num_flip_particles(FLUID *liquid)

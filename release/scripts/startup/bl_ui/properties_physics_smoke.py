@@ -465,7 +465,7 @@ class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
         col.prop(domain, "particle_radius")
 
         col = split.column(align=True)
-        col.label(text="Generator:")
+        col.prop(domain, "use_speed_vectors", text="Speed vectors")
         col.prop(domain, "mesh_generator", text="")
 
         if domain.mesh_generator in {'IMPROVED'}:

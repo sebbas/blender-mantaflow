@@ -350,6 +350,10 @@ static void smokeModifier_freeDomain(SmokeModifierData *smd)
 		BKE_ptcache_free_list(&(smd->domain->ptcaches[0]));
 		smd->domain->point_cache[0] = NULL;
 
+		if (smd->domain->mesh_velocities)
+			MEM_freeN(smd->domain->mesh_velocities);
+		smd->domain->mesh_velocities = NULL;
+
 		if (smd->domain->coba) {
 			MEM_freeN(smd->domain->coba);
 		}
@@ -475,7 +479,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->maxres = 32;
 			smd->domain->noise_scale = 2;
 			smd->domain->mesh_scale = 2;
-			smd->domain->particle_scale = 4;
+			smd->domain->particle_scale = 1;
 			smd->domain->guide_res = NULL;
 			smd->domain->alpha = -0.001;
 			smd->domain->beta = 0.3;
@@ -522,7 +526,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->particle_number = 2;
 			smd->domain->particle_minimum = 8;
 			smd->domain->particle_maximum = 16;
-			smd->domain->particle_radius = 1.0f;
+			smd->domain->particle_radius = 1.8f;
 			smd->domain->mesh_smoothen_upper = 3.5f;
 			smd->domain->mesh_smoothen_lower = 0.4f;
 			smd->domain->mesh_smoothen_pos = 1;
@@ -592,6 +596,9 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->slice_depth = 0.5f;
 			smd->domain->slice_axis = 0;
 			smd->domain->vector_scale = 1.0f;
+
+			smd->domain->mesh_velocities = NULL;
+			smd->domain->totvert = 0;
 
 			smd->domain->coba = NULL;
 			smd->domain->coba_field = FLUID_FIELD_DENSITY;
@@ -760,6 +767,11 @@ void smokeModifier_copy(const struct SmokeModifierData *smd, struct SmokeModifie
 		tsmd->domain->draw_velocity = smd->domain->draw_velocity;
 		tsmd->domain->vector_draw_type = smd->domain->vector_draw_type;
 		tsmd->domain->vector_scale = smd->domain->vector_scale;
+
+		if (smd->domain->mesh_velocities) {
+			tsmd->domain->mesh_velocities = MEM_dupallocN(smd->domain->mesh_velocities);
+		}
+		tsmd->domain->totvert = smd->domain->totvert;
 
 		if (smd->domain->coba) {
 			tsmd->domain->coba = MEM_dupallocN(smd->domain->coba);
@@ -2819,6 +2831,7 @@ typedef struct UpdateEffectorsData {
 	SmokeDomainSettings *sds;
 	ListBase *effectors;
 
+	float dt;
 	float *density;
 	float *fuel;
 	float *force_x;
@@ -2850,15 +2863,16 @@ static void update_effectors_task_cb(
 			if ((data->fuel && MAX2(data->density[index], data->fuel[index]) < FLT_EPSILON) ||
 				(data->density && data->density[index] < FLT_EPSILON) ||
 				(data->phiObsIn  && data->phiObsIn[index] < 0.0f) ||
-				// TODO (sebbas): isnt checking phiobs enough? maybe remove flags check
 				 data->flags[index] & 2) // mantaflow convention: 2 == FlagObstacle
 			{
 				continue;
 			}
 
+			/* get velocities from manta grid space and convert to blender units */
 			vel[0] = data->velocity_x[index];
 			vel[1] = data->velocity_y[index];
 			vel[2] = data->velocity_z[index];
+			mul_v3_fl(vel, sds->dx);
 
 			/* convert vel to global space */
 			mag = len_v3(vel);
@@ -2871,6 +2885,7 @@ static void update_effectors_task_cb(
 			voxelCenter[2] = sds->p0[2] + sds->cell_size[2] * ((float)(z + sds->res_min[2]) + 0.5f);
 			mul_m4_v3(sds->obmat, voxelCenter);
 
+			/* do effectors */
 			pd_point_from_loc(data->scene, voxelCenter, vel, index, &epoint);
 			pdDoEffectors(data->effectors, NULL, sds->effector_weights, &epoint, retvel, NULL);
 
@@ -2880,7 +2895,7 @@ static void update_effectors_task_cb(
 			normalize_v3(retvel);
 			mul_v3_fl(retvel, mag);
 
-			// TODO dg - do in force!
+			/* constrain forces to interval -1 to 1 */
 			data->force_x[index] = min_ff(max_ff(-1.0f, retvel[0] * 0.2f), 1.0f);
 			data->force_y[index] = min_ff(max_ff(-1.0f, retvel[1] * 0.2f), 1.0f);
 			data->force_z[index] = min_ff(max_ff(-1.0f, retvel[2] * 0.2f), 1.0f);
@@ -2888,7 +2903,7 @@ static void update_effectors_task_cb(
 	}
 }
 
-static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds, float UNUSED(dt))
+static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds, float dt)
 {
 	ListBase *effectors;
 	/* make sure smoke flow influence is 0.0f */
@@ -2901,6 +2916,7 @@ static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 		data.scene = scene;
 		data.sds = sds;
 		data.effectors = effectors;
+		data.dt = dt;
 		data.density = smoke_get_density(sds->fluid);
 		data.fuel = smoke_get_fuel(sds->fluid);
 		data.force_x = smoke_get_force_x(sds->fluid);
@@ -3050,6 +3066,30 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 	CDDM_apply_vert_normals(dm, (short (*)[3])normals);
 
 	MEM_freeN(normals);
+
+	/* return early of no mesh vert velocities required */
+	if ((sds->flags & MOD_SMOKE_SPEED_VECTORS) == 0)
+		return dm;
+
+	if (sds->mesh_velocities)
+		MEM_freeN(sds->mesh_velocities);
+
+	sds->mesh_velocities = MEM_calloc_arrayN(dm->getNumVerts(dm), sizeof(SmokeVertexVelocity), "Smokesim_velocities");
+	sds->totvert = dm->getNumVerts(dm);
+
+	SmokeVertexVelocity *velarray = NULL;
+	velarray = sds->mesh_velocities;
+
+	float time_mult = 25.f * DT_DEFAULT;
+
+	for (i = 0; i < num_verts; i++, mverts++)
+	{
+		velarray[i].vel[0] = liquid_get_vertvel_x_at(sds->fluid, i) * (sds->dx / time_mult);
+		velarray[i].vel[1] = liquid_get_vertvel_y_at(sds->fluid, i) * (sds->dx / time_mult);
+		velarray[i].vel[2] = liquid_get_vertvel_z_at(sds->fluid, i) * (sds->dx / time_mult);
+
+//		printf("velarray[%d].vel[0]: %f, velarray[%d].vel[1]: %f, velarray[%d].vel[2]: %f\n", i, velarray[i].vel[0], i, velarray[i].vel[1], i, velarray[i].vel[2]);
+	}
 
 	return dm;
 }

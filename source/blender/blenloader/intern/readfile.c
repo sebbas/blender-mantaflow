@@ -5190,6 +5190,7 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 				smd->domain->tex = NULL;
 				smd->domain->tex_shadow = NULL;
 				smd->domain->tex_wt = NULL;
+				smd->domain->mesh_velocities = NULL;
 				smd->domain->coba = newdataadr(fd, smd->domain->coba);
 				
 				smd->domain->effector_weights = newdataadr(fd, smd->domain->effector_weights);

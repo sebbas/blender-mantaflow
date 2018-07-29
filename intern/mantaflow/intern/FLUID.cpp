@@ -66,6 +66,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mUsingInvel    = smd->domain->active_fields & SM_ACTIVE_INVEL;
 	mUsingNoise    = smd->domain->flags & MOD_SMOKE_NOISE;
 	mUsingMesh     = smd->domain->flags & MOD_SMOKE_MESH;
+	mUsingMVel     = smd->domain->flags & MOD_SMOKE_SPEED_VECTORS;
 	mUsingGuiding  = smd->domain->flags & MOD_SMOKE_GUIDING;
 	mUsingLiquid   = smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID;
 	mUsingSmoke    = smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS;
@@ -129,6 +130,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	// Mesh
 	mMeshNodes      = NULL;
 	mMeshTriangles  = NULL;
+	mMeshVelocities = NULL;
 
 	// Fluid obstacle
 	mPhiObsIn    = NULL;
@@ -261,6 +263,8 @@ void FLUID::initDomain(SmokeModifierData *smd)
 		+ fluid_file_export
 		+ fluid_save_data
 		+ fluid_load_data
+		+ fluid_pre_step
+		+ fluid_post_step
 		+ fluid_adapt_time_step
 		+ fluid_adaptive_time_stepping;
 	std::string finalString = parseScript(tmpString, smd);
@@ -290,9 +294,7 @@ void FLUID::initSmoke(SmokeModifierData *smd)
 		+ smoke_adaptive_step
 		+ smoke_save_data
 		+ smoke_load_data
-		+ smoke_pre_step
-		+ smoke_step
-		+ smoke_post_step;
+		+ smoke_step;
 	std::string finalString = parseScript(tmpString, smd);
 	pythonCommands.push_back(finalString);
 	
@@ -403,10 +405,7 @@ void FLUID::initLiquid(SmokeModifierData *smd)
 			+ liquid_load_data
 			+ liquid_load_flip
 			+ liquid_adaptive_step
-			+ liquid_pre_step
-			+ liquid_step
-			+ liquid_post_step
-			+ liquid_step_particles;
+			+ liquid_step;
 		std::string finalString = parseScript(tmpString, smd);
 		pythonCommands.push_back(finalString);
 
@@ -432,7 +431,8 @@ void FLUID::initLiquidMesh(SmokeModifierData *smd)
 	std::vector<std::string> pythonCommands;
 	std::string tmpString = liquid_alloc_mesh
 		+ liquid_step_mesh
-		+ liquid_save_mesh;
+		+ liquid_save_mesh
+		+ liquid_save_meshvel;
 	std::string finalString = parseScript(tmpString, smd);
 	pythonCommands.push_back(finalString);
 
@@ -504,6 +504,7 @@ void FLUID::initLiquidSndParts(SmokeModifierData *smd)
 	if (!mSndParticleData) {
 		std::vector<std::string> pythonCommands;
 		std::string tmpString = fluid_alloc_sndparts
+			+ liquid_step_particles
 			+ fluid_with_sndparts;
 		std::string finalString = parseScript(tmpString, smd);
 		pythonCommands.push_back(finalString);
@@ -572,6 +573,7 @@ FLUID::~FLUID()
 	// Mesh
 	mMeshNodes      = NULL;
 	mMeshTriangles  = NULL;
+	mMeshVelocities = NULL;
 
 	// Fluid obstacle
 	mPhiObsIn    = NULL;
@@ -899,6 +901,8 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << mCurrentID;
 	else if (varName == "USING_ADAPTIVETIME")
 		ss << (smd->domain->flags & MOD_SMOKE_ADAPTIVE_TIME ? "True" : "False");
+	else if (varName == "USING_SPEEDVECTORS")
+		ss << (smd->domain->flags & MOD_SMOKE_SPEED_VECTORS ? "True" : "False");
 	else
 		std::cout << "ERROR: Unknown option: " << varName << std::endl;
 	return ss.str();
@@ -984,7 +988,7 @@ int FLUID::updateFlipStructures(SmokeModifierData *smd, int framenr)
 	BLI_path_frame(targetFile, framenr, 0);
 
 	if (BLI_exists(targetFile)) {
-		updateParticlesFromFile(targetFile, false);
+		updateParticlesFromFile(targetFile, false, false);
 	}
 
 	ss.str("");
@@ -993,7 +997,7 @@ int FLUID::updateFlipStructures(SmokeModifierData *smd, int framenr)
 	BLI_path_frame(targetFile, framenr, 0);
 
 	if (BLI_exists(targetFile)) {
-		updateParticlesFromFile(targetFile, false);
+		updateParticlesFromFile(targetFile, false, true);
 	}
 	return 1;
 }
@@ -1011,14 +1015,26 @@ int FLUID::updateMeshStructures(SmokeModifierData *smd, int framenr)
 	targetFile[0] = '\0';
 
 	std::string mformat = getCacheFileEnding(smd->domain->cache_surface_format);
+	std::string dformat = getCacheFileEnding(smd->domain->cache_volume_format);
 	BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_MESH, NULL);
 
-	ss << "liquid_mesh_####" << mformat;
+	ss << "lMesh_####" << mformat;
 	BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDir, ss.str().c_str());
 	BLI_path_frame(targetFile, framenr, 0);
 
 	if (BLI_exists(targetFile)) {
 		updateMeshFromFile(targetFile);
+	}
+
+	if (mUsingMVel) {
+		ss.str("");
+		ss << "lVelMesh_####" << dformat;
+		BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDir, ss.str().c_str());
+		BLI_path_frame(targetFile, framenr, 0);
+
+		if (BLI_exists(targetFile)) {
+			updateMeshFromFile(targetFile);
+		}
 	}
 	return 1;
 }
@@ -1043,7 +1059,7 @@ int FLUID::updateParticleStructures(SmokeModifierData *smd, int framenr)
 	BLI_path_frame(targetFile, framenr, 0);
 
 	if (BLI_exists(targetFile)) {
-		updateParticlesFromFile(targetFile, true);
+		updateParticlesFromFile(targetFile, true, false);
 	}
 
 	ss.str("");
@@ -1052,7 +1068,7 @@ int FLUID::updateParticleStructures(SmokeModifierData *smd, int framenr)
 	BLI_path_frame(targetFile, framenr, 0);
 
 	if (BLI_exists(targetFile)) {
-		updateParticlesFromFile(targetFile, true);
+		updateParticlesFromFile(targetFile, true, true);
 	}
 
 	ss.str("");
@@ -1061,7 +1077,7 @@ int FLUID::updateParticleStructures(SmokeModifierData *smd, int framenr)
 	BLI_path_frame(targetFile, framenr, 0);
 
 	if (BLI_exists(targetFile)) {
-		updateParticlesFromFile(targetFile, true);
+		updateParticlesFromFile(targetFile, true, false);
 	}
 	return 1;
 }
@@ -1478,11 +1494,11 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 	if (highres)
 		manta_script += smoke_load_noise;
 
-	manta_script += smoke_pre_step;
+	manta_script += fluid_pre_step;
 	if (highres)
 		manta_script += smoke_pre_step_noise;
 
-	manta_script += smoke_post_step;
+	manta_script += fluid_post_step;
 	if (highres)
 		manta_script += smoke_post_step_noise;
 
@@ -1595,8 +1611,8 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 	if (drops || bubble || floater || tracer)
 		manta_script += fluid_load_particles;
 
-	manta_script += liquid_pre_step;
-	manta_script += liquid_post_step;
+	manta_script += fluid_pre_step;
+	manta_script += fluid_post_step;
 
 	manta_script += fluid_adapt_time_step
 			+ liquid_step
@@ -1744,21 +1760,23 @@ void FLUID::updateMeshFromFile(const char* filename)
 		std::string extension = fname.substr(idx+1);
 
 		if (extension.compare("gz")==0)
-			updateMeshDataFromBobj(filename);
+			updateMeshFromBobj(filename);
 		else if (extension.compare("obj")==0)
-			updateMeshDataFromObj(filename);
+			updateMeshFromObj(filename);
+		else if (extension.compare("uni")==0)
+			updateMeshFromUni(filename);
 		else
-			std::cerr << "updateMeshDataFrom: invalid file extension in file: " << filename << std::endl;
+			std::cerr << "updateMeshFromFile: invalid file extension in file: " << filename << std::endl;
 	}
 	else {
-		std::cerr << "updateMeshDataFrom: unable to open file: " << filename << std::endl;
+		std::cerr << "updateMeshFromFile: unable to open file: " << filename << std::endl;
 	}
 }
 
-void FLUID::updateMeshDataFromBobj(const char* filename)
+void FLUID::updateMeshFromBobj(const char* filename)
 {
 	if (with_debug)
-		std::cout << "FLUID::updateMeshDataFromBobj()" << std::endl;
+		std::cout << "FLUID::updateMeshFromBobj()" << std::endl;
 
 	gzFile gzf;
 	float fbuffer[3];
@@ -1830,8 +1848,11 @@ void FLUID::updateMeshDataFromBobj(const char* filename)
 	gzclose(gzf);
 }
 
-void FLUID::updateMeshDataFromObj(const char* filename)
+void FLUID::updateMeshFromObj(const char* filename)
 {
+	if (with_debug)
+		std::cout << "FLUID::updateMeshFromObj()" << std::endl;
+
 	std::ifstream ifs (filename);
 	float fbuffer[3];
 	int ibuffer[3];
@@ -1905,10 +1926,102 @@ void FLUID::updateMeshDataFromObj(const char* filename)
 	ifs.close();
 }
 
-void FLUID::updateParticlesFromFile(const char* filename, bool isSecondary)
+void FLUID::updateMeshFromUni(const char* filename)
 {
 	if (with_debug)
-		std::cout << "FLUID::updateParticleData()" << std::endl;
+		std::cout << "FLUID::updateMeshFromUni()" << std::endl;
+
+	gzFile gzf;
+	float fbuffer[4];
+	int ibuffer[4];
+
+	mMeshVelocities->clear();
+
+	gzf = (gzFile) BLI_gzopen(filename, "rb1"); // do some compression
+	if (!gzf)
+		std::cout << "updateMeshFromUni: unable to open file" << std::endl;
+
+	char ID[5] = {0,0,0,0,0};
+	gzread(gzf, ID, 4);
+
+	std::vector<pVel>* velocityPointer = mMeshVelocities;
+
+	// mdata uni header
+	const int STR_LEN_PDATA = 256;
+	int elementType, bytesPerElement, numParticles;
+	char info[STR_LEN_PDATA]; // mantaflow build information
+	unsigned long long timestamp; // creation time
+
+	// read mesh header
+	gzread(gzf, &ibuffer, sizeof(int) * 4); // num particles, dimX, dimY, dimZ
+	gzread(gzf, &elementType, sizeof(int));
+	gzread(gzf, &bytesPerElement, sizeof(int));
+	gzread(gzf, &info, sizeof(info));
+	gzread(gzf, &timestamp, sizeof(unsigned long long));
+
+	if (with_debug)
+		std::cout << "read " << ibuffer[0] << " vertices in file: "<< filename << std::endl;
+
+	// Sanity checks
+	const int meshSize = sizeof(float) * 3 + sizeof(int);
+	if (! (bytesPerElement == meshSize) && (elementType == 0)){
+		std::cout << "particle type doesn't match" << std::endl;
+	}
+	if (!ibuffer[0]) { // Any vertices present?
+		if (with_debug) std::cout << "no vertices present yet" << std::endl;
+		return;
+	}
+
+	// Reading mesh
+	if (!strcmp(ID, "MB01"))
+	{
+		// TODO (sebbas): Future update could add uni mesh support
+	}
+	// Reading mesh data file v1 with vec3
+	else if (!strcmp(ID, "MD01"))
+	{
+		numParticles = ibuffer[0];
+
+		velocityPointer->resize(numParticles);
+		FLUID::pVel* bufferPVel;
+		for (std::vector<pVel>::iterator it = velocityPointer->begin(); it != velocityPointer->end(); ++it) {
+			gzread(gzf, fbuffer, sizeof(float) * 3);
+			bufferPVel = (FLUID::pVel*) fbuffer;
+			it->pos[0] = bufferPVel->pos[0];
+			it->pos[1] = bufferPVel->pos[1];
+			it->pos[2] = bufferPVel->pos[2];
+		}
+	}
+
+	gzclose(gzf);
+}
+
+void FLUID::updateParticlesFromFile(const char* filename, bool isSecondarySys, bool isVelData)
+{
+	if (with_debug)
+		std::cout << "FLUID::updateParticlesFromFile()" << std::endl;
+
+	std::string fname(filename);
+	std::string::size_type idx;
+
+	idx = fname.rfind('.');
+	if(idx != std::string::npos) {
+		std::string extension = fname.substr(idx+1);
+
+		if (extension.compare("uni")==0)
+			updateParticlesFromUni(filename, isSecondarySys, isVelData);
+		else
+			std::cerr << "updateParticlesFromFile: invalid file extension in file: " << filename << std::endl;
+	}
+	else {
+		std::cerr << "updateParticlesFromFile: unable to open file: " << filename << std::endl;
+	}
+}
+
+void FLUID::updateParticlesFromUni(const char* filename, bool isSecondarySys, bool isVelData)
+{
+	if (with_debug)
+		std::cout << "FLUID::updateParticlesFromUni()" << std::endl;
 
 	gzFile gzf;
 	float fbuffer[4];
@@ -1916,7 +2029,7 @@ void FLUID::updateParticlesFromFile(const char* filename, bool isSecondary)
 
 	gzf = (gzFile) BLI_gzopen(filename, "rb1"); // do some compression
 	if (!gzf)
-		std::cout << "updateParticleData: unable to open file" << std::endl;
+		std::cout << "updateParticlesFromUni: unable to open file" << std::endl;
 
 	char ID[5] = {0,0,0,0,0};
 	gzread(gzf, ID, 4);
@@ -1930,7 +2043,7 @@ void FLUID::updateParticlesFromFile(const char* filename, bool isSecondary)
 	std::vector<pData>* dataPointer;
 	std::vector<pVel>* velocityPointer;
 	std::vector<float>* lifePointer;
-	if (isSecondary) {
+	if (isSecondarySys) {
 		dataPointer = mSndParticleData;
 		velocityPointer = mSndParticleVelocity;
 		lifePointer = mSndParticleLife;
@@ -1987,7 +2100,7 @@ void FLUID::updateParticlesFromFile(const char* filename, bool isSecondary)
 		}
 	}
 	// Reading particle data file v1 with velocities
-	else if (!strcmp(ID, "PD01"))
+	else if (!strcmp(ID, "PD01") && isVelData)
 	{
 		numParticles = ibuffer[0];
 
@@ -2001,7 +2114,7 @@ void FLUID::updateParticlesFromFile(const char* filename, bool isSecondary)
 			it->pos[2] = bufferPVel->pos[2];
 		}
 	}
-	// Reading secondary particle data extras
+	// Reading particle data file v1 with lifetime
 	else if (!strcmp(ID, "PD01"))
 	{
 		numParticles = ibuffer[0];
@@ -2032,10 +2145,12 @@ void FLUID::updatePointers()
 	std::string parts  = "pp" + id;
 	std::string snd    = "sp" + id;
 	std::string mesh   = "sm" + id;
+	std::string mesh2  = "mesh" + id;
 	std::string solver_ext = "_" + solver;
 	std::string parts_ext  = "_" + parts;
 	std::string snd_ext    = "_" + snd;
 	std::string mesh_ext   = "_" + mesh;
+	std::string mesh_ext2  = "_" + mesh2;
 
 	mObstacle  = (int*)   stringToPointer(pyObjectToString(callPythonFunction("flags" + solver_ext, func)));
 
@@ -2084,8 +2199,10 @@ void FLUID::updatePointers()
 		mFlipParticleVelocity = (std::vector<pVel>*)  stringToPointer(pyObjectToString(callPythonFunction("pVel" + parts_ext,  func)));
 
 		if (mUsingMesh) {
-			mMeshNodes     = (std::vector<Node>*)     stringToPointer(pyObjectToString(callPythonFunction("mesh" + mesh_ext, funcNodes)));
-			mMeshTriangles = (std::vector<Triangle>*) stringToPointer(pyObjectToString(callPythonFunction("mesh" + mesh_ext, funcTris)));
+			mMeshNodes      = (std::vector<Node>*)     stringToPointer(pyObjectToString(callPythonFunction("mesh" + mesh_ext, funcNodes)));
+			mMeshTriangles  = (std::vector<Triangle>*) stringToPointer(pyObjectToString(callPythonFunction("mesh" + mesh_ext, funcTris)));
+			if (mUsingMVel)
+				mMeshVelocities = (std::vector<pVel>*) stringToPointer(pyObjectToString(callPythonFunction("mVel" + mesh_ext2, func)));
 		}
 
 		if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {

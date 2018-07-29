@@ -3959,7 +3959,7 @@ static void particles_manta_step(
 					if (part->randsize > 0.0f)
 						pa->size *= 1.0f - part->randsize * psys_frand(psys, p + 1);
 
-					// Get size (dimension) but considering scaling scaling
+					// Get size (dimension) but considering scaling
 					copy_v3_v3(cell_size_scaled, sds->cell_size);
 					mul_v3_v3(cell_size_scaled, ob->size);
 					VECMADD(min, sds->p0, cell_size_scaled, sds->res_min);
@@ -3968,7 +3968,6 @@ static void particles_manta_step(
 
 					// Biggest dimension will be used for upscaling
 					max_size = MAX3(size[0] / (float) upres[0], size[1] / (float) upres[1], size[2] / (float) upres[2]);
-//					max_size = MAX3(size[0], size[1], size[2]);
 
 					// set particle position
 					pa->state.co[0] = posX;

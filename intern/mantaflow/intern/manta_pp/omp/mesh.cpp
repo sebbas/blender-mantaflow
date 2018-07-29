@@ -33,6 +33,7 @@
 #include "shapes.h"
 #include "noisefield.h"
 #include <stack>
+#include <cstring>
 
 using namespace std;
 namespace Manta {
@@ -40,7 +41,15 @@ namespace Manta {
 Mesh::Mesh(FluidSolver* parent) : PbClass(parent) {  
 }
 
-Mesh::~Mesh() {
+Mesh::~Mesh()
+{
+	for(IndexInt i=0; i<(IndexInt)mMeshData.size(); ++i)
+		mMeshData[i]->setMesh(NULL);
+
+	if(mFreeMdata) {
+		for(IndexInt i=0; i<(IndexInt)mMeshData.size(); ++i)
+			delete mMeshData[i];
+	}
 }
 
 Mesh* Mesh::clone() {
@@ -48,6 +57,78 @@ Mesh* Mesh::clone() {
 	*nm = *this;
 	nm->setName(getName());
 	return nm;
+}
+
+void Mesh::deregister(MeshDataBase* mdata) {
+	bool done = false;
+	// remove pointer from mesh data list
+	for(IndexInt i=0; i<(IndexInt)mMeshData.size(); ++i) {
+		if(mMeshData[i] == mdata) {
+			if(i<(IndexInt)mMeshData.size()-1)
+				mMeshData[i] = mMeshData[mMeshData.size()-1];
+			mMeshData.pop_back();
+			done = true;
+		}
+	}
+	if(!done)
+		errMsg("Invalid pointer given, not registered!");
+}
+
+// create and attach a new mdata field to this mesh
+PbClass* Mesh::create(PbType t, PbTypeVec T, const string& name) {
+#	if NOPYTHON!=1
+	_args.add("nocheck",true);
+	if (t.str() == "")
+		errMsg("Specify mesh data type to create");
+	//debMsg( "Mdata creating '"<< t.str <<" with size "<< this->getSizeSlow(), 5 );
+
+	PbClass* pyObj = PbClass::createPyObject(t.str() + T.str(), name, _args, this->getParent() );
+
+	MeshDataBase* mdata = dynamic_cast<MeshDataBase*>(pyObj);
+	if(!mdata) {
+		errMsg("Unable to get mesh data pointer from newly created object. Only create MeshData type with a Mesh.creat() call, eg, MdataReal, MdataVec3 etc.");
+		delete pyObj;
+		return NULL;
+	} else {
+		this->registerMdata(mdata);
+	}
+
+	// directly init size of new mdata field:
+	mdata->resize( this->getSizeSlow() );
+#	else
+	PbClass* pyObj = NULL;
+#	endif
+	return pyObj;
+}
+
+void Mesh::registerMdata(MeshDataBase* mdata) {
+	mdata->setMesh(this);
+	mMeshData.push_back(mdata);
+
+	if( mdata->getType() == MeshDataBase::TypeReal ) {
+		MeshDataImpl<Real>* pd = dynamic_cast< MeshDataImpl<Real>* >(mdata);
+		if(!pd) errMsg("Invalid mdata object posing as real!");
+		this->registerMdataReal(pd);
+	}
+	else if( mdata->getType() == MeshDataBase::TypeInt ) {
+		MeshDataImpl<int>* pd = dynamic_cast< MeshDataImpl<int>* >(mdata);
+		if(!pd) errMsg("Invalid mdata object posing as int!");
+		this->registerMdataInt(pd);
+	}
+	else if( mdata->getType() == MeshDataBase::TypeVec3 ) {
+		MeshDataImpl<Vec3>* pd = dynamic_cast< MeshDataImpl<Vec3>* >(mdata);
+		if(!pd) errMsg("Invalid mdata object posing as vec3!");
+		this->registerMdataVec3(pd);
+	}
+}
+void Mesh::registerMdataReal(MeshDataImpl<Real>* pd) { mMdataReal.push_back(pd); }
+void Mesh::registerMdataVec3(MeshDataImpl<Vec3>* pd) { mMdataVec3.push_back(pd); }
+void Mesh::registerMdataInt (MeshDataImpl<int >* pd) { mMdataInt .push_back(pd); }
+
+void Mesh::addAllMdata() {
+	for(IndexInt i=0; i<(IndexInt)mMeshData.size(); ++i) {
+		mMeshData[i]->addEntry();
+	}
 }
 
 Real Mesh::computeCenterOfMass(Vec3& cm) const {
@@ -79,6 +160,14 @@ void Mesh::clear() {
 		mNodeChannels[i]->resize(0);
 	for(size_t i=0; i<mTriChannels.size(); i++)
 		mTriChannels[i]->resize(0);
+
+	// clear mdata fields as well
+	for (size_t i=0; i<mMdataReal.size(); i++)
+		mMdataReal[i]->resize(0);
+	for (size_t i=0; i<mMdataVec3.size(); i++)
+		mMdataVec3[i]->resize(0);
+	for (size_t i=0; i<mMdataInt.size(); i++)
+		mMdataInt[i]->resize(0);
 }
 
 Mesh& Mesh::operator=(const Mesh& o) {
@@ -233,7 +322,7 @@ void Mesh::rebuildChannels() {
  {  
 #pragma omp for  
   for (IndexInt i = 0; i < _sz; i++) op(i,nodes,flags,vel,dt,u);  }   } vector<Node>& nodes; const FlagGrid& flags; const MACGrid& vel; const Real dt;  vector<Vec3>  u;  };
-#line 212 "mesh.cpp"
+#line 301 "mesh.cpp"
 
 
 
@@ -449,6 +538,10 @@ int Mesh::addNode(Node a) {
 	mNodes.push_back(a);
 	if (m1RingLookup.size() < mNodes.size())
 		m1RingLookup.resize(mNodes.size());
+
+	// if mdata exists, add zero init for every node
+	addAllMdata();
+
 	return mNodes.size()-1;
 }
 
@@ -694,7 +787,7 @@ template <class T>  struct ApplyMeshToGrid : public KernelBase { ApplyMeshToGrid
  {  
 #pragma omp for  
   for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,grid,sdf,value,respectFlags);  } }  } Grid<T>* grid; Grid<Real>& sdf; T value; FlagGrid* respectFlags;   };
-#line 662 "mesh.cpp"
+#line 755 "mesh.cpp"
 
 
 
@@ -871,6 +964,561 @@ std::string Mesh::getTrisDataPointer() {
 	out << &mTris;
 	return out.str();
 }
+
+// mesh data
+
+MeshDataBase::MeshDataBase(FluidSolver* parent) :
+		PbClass(parent) , mMesh(NULL) {
+}
+
+MeshDataBase::~MeshDataBase()
+{
+	// notify parent of deletion
+	if(mMesh)
+		mMesh->deregister(this);
+}
+
+// actual data implementation
+
+template<class T>
+MeshDataImpl<T>::MeshDataImpl(FluidSolver* parent) :
+	MeshDataBase(parent) , mpGridSource(NULL), mGridSourceMAC(false) {
+}
+
+template<class T>
+MeshDataImpl<T>::MeshDataImpl(FluidSolver* parent, MeshDataImpl<T>* other) :
+	MeshDataBase(parent) , mpGridSource(NULL), mGridSourceMAC(false) {
+	this->mData = other->mData;
+	setName(other->getName());
+}
+
+template<class T>
+MeshDataImpl<T>::~MeshDataImpl() {
+}
+
+template<class T>
+IndexInt MeshDataImpl<T>::getSizeSlow() const {
+	return mData.size();
+}
+template<class T>
+void MeshDataImpl<T>::addEntry() {
+	// add zero'ed entry
+	T tmp = T(0.);
+	// for debugging, force init:
+	//tmp = T(0.02 * mData.size()); // increasing
+	//tmp = T(1.); // constant 1
+	return mData.push_back(tmp);
+}
+template<class T>
+void MeshDataImpl<T>::resize(IndexInt s) {
+	mData.resize(s);
+}
+template<class T>
+void MeshDataImpl<T>::copyValueSlow(IndexInt from, IndexInt to) {
+	this->copyValue(from,to);
+}
+template<class T>
+MeshDataBase* MeshDataImpl<T>::clone() {
+	MeshDataImpl<T>* npd = new MeshDataImpl<T>( getParent(), this );
+	return npd;
+}
+
+template<class T>
+void MeshDataImpl<T>::setSource(Grid<T>* grid, bool isMAC ) {
+	mpGridSource = grid;
+	mGridSourceMAC = isMAC;
+	if(isMAC) assertMsg( dynamic_cast<MACGrid*>(grid) != NULL , "Given grid is not a valid MAC grid");
+}
+
+template<class T>
+void MeshDataImpl<T>::initNewValue(IndexInt idx, Vec3 pos) {
+	if(!mpGridSource)
+		mData[idx] = 0;
+	else {
+		mData[idx] = mpGridSource->getInterpolated(pos);
+	}
+}
+
+// special handling needed for velocities
+template<>
+void MeshDataImpl<Vec3>::initNewValue(IndexInt idx, Vec3 pos) {
+	if(!mpGridSource)
+		mData[idx] = 0;
+	else {
+		if(!mGridSourceMAC)
+			mData[idx] = mpGridSource->getInterpolated(pos);
+		else
+			mData[idx] = ((MACGrid*)mpGridSource)->getInterpolated(pos);
+	}
+}
+
+//! update additional mesh data
+void Mesh::updateDataFields() {
+	for(size_t i=0; i<mNodes.size(); ++i) {
+		Vec3 pos = mNodes[i].pos;
+		for(IndexInt md=0; md<(IndexInt)mMdataReal.size(); ++md)
+			mMdataReal[md]->initNewValue(i, mNodes[i].pos);
+		for(IndexInt md=0; md<(IndexInt)mMdataVec3.size(); ++md)
+			mMdataVec3[md]->initNewValue(i, mNodes[i].pos);
+		for(IndexInt md=0; md<(IndexInt)mMdataInt.size(); ++md)
+			mMdataInt[md]->initNewValue(i, mNodes[i].pos);
+	}
+}
+
+template<typename T>
+void MeshDataImpl<T>::load(string name) {
+	if (name.find_last_of('.') == string::npos)
+		errMsg("file '" + name + "' does not have an extension");
+	string ext = name.substr(name.find_last_of('.'));
+	if ( ext == ".uni")
+		readMdataUni<T>(name, this);
+	else if ( ext == ".raw") // raw = uni for now
+		readMdataUni<T>(name, this);
+	else
+		errMsg("mesh data '" + name +"' filetype not supported for loading");
+}
+
+template<typename T>
+void MeshDataImpl<T>::save(string name) {
+	if (name.find_last_of('.') == string::npos)
+		errMsg("file '" + name + "' does not have an extension");
+	string ext = name.substr(name.find_last_of('.'));
+	if (ext == ".uni")
+		writeMdataUni<T>(name, this);
+	else if (ext == ".raw") // raw = uni for now
+		writeMdataUni<T>(name, this);
+	else
+		errMsg("mesh data '" + name +"' filetype not supported for saving");
+}
+
+// specializations
+
+template<>
+MeshDataBase::MdataType MeshDataImpl<Real>::getType() const {
+	return MeshDataBase::TypeReal;
+}
+template<>
+MeshDataBase::MdataType MeshDataImpl<int>::getType() const {
+	return MeshDataBase::TypeInt;
+}
+template<>
+MeshDataBase::MdataType MeshDataImpl<Vec3>::getType() const {
+	return MeshDataBase::TypeVec3;
+}
+
+template <class T>  struct knSetMdataConst : public KernelBase { knSetMdataConst(MeshDataImpl<T>& mdata, T value) :  KernelBase(mdata.size()) ,mdata(mdata),value(value)   { runMessage(); run(); }   inline void op(IndexInt idx, MeshDataImpl<T>& mdata, T value )  { mdata[idx] = value; }    inline MeshDataImpl<T>& getArg0() { return mdata; } typedef MeshDataImpl<T> type0;inline T& getArg1() { return value; } typedef T type1; void runMessage() { debMsg("Executing kernel knSetMdataConst ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,mdata,value);  }   } MeshDataImpl<T>& mdata; T value;   };
+#line 1079 "mesh.cpp"
+
+
+
+template <class T, class S>  struct knMdataSet : public KernelBase { knMdataSet(MeshDataImpl<T>& me, const MeshDataImpl<S>& other) :  KernelBase(me.size()) ,me(me),other(other)   { runMessage(); run(); }   inline void op(IndexInt idx, MeshDataImpl<T>& me, const MeshDataImpl<S>& other )  { me[idx] += other[idx]; }    inline MeshDataImpl<T>& getArg0() { return me; } typedef MeshDataImpl<T> type0;inline const MeshDataImpl<S>& getArg1() { return other; } typedef MeshDataImpl<S> type1; void runMessage() { debMsg("Executing kernel knMdataSet ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } MeshDataImpl<T>& me; const MeshDataImpl<S>& other;   };
+#line 1081 "mesh.cpp"
+
+
+template <class T, class S>  struct knMdataAdd : public KernelBase { knMdataAdd(MeshDataImpl<T>& me, const MeshDataImpl<S>& other) :  KernelBase(me.size()) ,me(me),other(other)   { runMessage(); run(); }   inline void op(IndexInt idx, MeshDataImpl<T>& me, const MeshDataImpl<S>& other )  { me[idx] += other[idx]; }    inline MeshDataImpl<T>& getArg0() { return me; } typedef MeshDataImpl<T> type0;inline const MeshDataImpl<S>& getArg1() { return other; } typedef MeshDataImpl<S> type1; void runMessage() { debMsg("Executing kernel knMdataAdd ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } MeshDataImpl<T>& me; const MeshDataImpl<S>& other;   };
+#line 1082 "mesh.cpp"
+
+
+template <class T, class S>  struct knMdataSub : public KernelBase { knMdataSub(MeshDataImpl<T>& me, const MeshDataImpl<S>& other) :  KernelBase(me.size()) ,me(me),other(other)   { runMessage(); run(); }   inline void op(IndexInt idx, MeshDataImpl<T>& me, const MeshDataImpl<S>& other )  { me[idx] -= other[idx]; }    inline MeshDataImpl<T>& getArg0() { return me; } typedef MeshDataImpl<T> type0;inline const MeshDataImpl<S>& getArg1() { return other; } typedef MeshDataImpl<S> type1; void runMessage() { debMsg("Executing kernel knMdataSub ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } MeshDataImpl<T>& me; const MeshDataImpl<S>& other;   };
+#line 1083 "mesh.cpp"
+
+
+template <class T, class S>  struct knMdataMult : public KernelBase { knMdataMult(MeshDataImpl<T>& me, const MeshDataImpl<S>& other) :  KernelBase(me.size()) ,me(me),other(other)   { runMessage(); run(); }   inline void op(IndexInt idx, MeshDataImpl<T>& me, const MeshDataImpl<S>& other )  { me[idx] *= other[idx]; }    inline MeshDataImpl<T>& getArg0() { return me; } typedef MeshDataImpl<T> type0;inline const MeshDataImpl<S>& getArg1() { return other; } typedef MeshDataImpl<S> type1; void runMessage() { debMsg("Executing kernel knMdataMult ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } MeshDataImpl<T>& me; const MeshDataImpl<S>& other;   };
+#line 1084 "mesh.cpp"
+
+
+template <class T, class S>  struct knMdataDiv : public KernelBase { knMdataDiv(MeshDataImpl<T>& me, const MeshDataImpl<S>& other) :  KernelBase(me.size()) ,me(me),other(other)   { runMessage(); run(); }   inline void op(IndexInt idx, MeshDataImpl<T>& me, const MeshDataImpl<S>& other )  { me[idx] /= other[idx]; }    inline MeshDataImpl<T>& getArg0() { return me; } typedef MeshDataImpl<T> type0;inline const MeshDataImpl<S>& getArg1() { return other; } typedef MeshDataImpl<S> type1; void runMessage() { debMsg("Executing kernel knMdataDiv ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } MeshDataImpl<T>& me; const MeshDataImpl<S>& other;   };
+#line 1085 "mesh.cpp"
+
+
+
+template <class T, class S>  struct knMdataSetScalar : public KernelBase { knMdataSetScalar(MeshDataImpl<T>& me, const S& other) :  KernelBase(me.size()) ,me(me),other(other)   { runMessage(); run(); }   inline void op(IndexInt idx, MeshDataImpl<T>& me, const S& other )  { me[idx]  = other; }    inline MeshDataImpl<T>& getArg0() { return me; } typedef MeshDataImpl<T> type0;inline const S& getArg1() { return other; } typedef S type1; void runMessage() { debMsg("Executing kernel knMdataSetScalar ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } MeshDataImpl<T>& me; const S& other;   };
+#line 1087 "mesh.cpp"
+
+
+template <class T, class S>  struct knMdataAddScalar : public KernelBase { knMdataAddScalar(MeshDataImpl<T>& me, const S& other) :  KernelBase(me.size()) ,me(me),other(other)   { runMessage(); run(); }   inline void op(IndexInt idx, MeshDataImpl<T>& me, const S& other )  { me[idx] += other; }    inline MeshDataImpl<T>& getArg0() { return me; } typedef MeshDataImpl<T> type0;inline const S& getArg1() { return other; } typedef S type1; void runMessage() { debMsg("Executing kernel knMdataAddScalar ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } MeshDataImpl<T>& me; const S& other;   };
+#line 1088 "mesh.cpp"
+
+
+template <class T, class S>  struct knMdataMultScalar : public KernelBase { knMdataMultScalar(MeshDataImpl<T>& me, const S& other) :  KernelBase(me.size()) ,me(me),other(other)   { runMessage(); run(); }   inline void op(IndexInt idx, MeshDataImpl<T>& me, const S& other )  { me[idx] *= other; }    inline MeshDataImpl<T>& getArg0() { return me; } typedef MeshDataImpl<T> type0;inline const S& getArg1() { return other; } typedef S type1; void runMessage() { debMsg("Executing kernel knMdataMultScalar ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } MeshDataImpl<T>& me; const S& other;   };
+#line 1089 "mesh.cpp"
+
+
+template <class T, class S>  struct knMdataScaledAdd : public KernelBase { knMdataScaledAdd(MeshDataImpl<T>& me, const MeshDataImpl<T>& other, const S& factor) :  KernelBase(me.size()) ,me(me),other(other),factor(factor)   { runMessage(); run(); }   inline void op(IndexInt idx, MeshDataImpl<T>& me, const MeshDataImpl<T>& other, const S& factor )  { me[idx] += factor * other[idx]; }    inline MeshDataImpl<T>& getArg0() { return me; } typedef MeshDataImpl<T> type0;inline const MeshDataImpl<T>& getArg1() { return other; } typedef MeshDataImpl<T> type1;inline const S& getArg2() { return factor; } typedef S type2; void runMessage() { debMsg("Executing kernel knMdataScaledAdd ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,me,other,factor);  }   } MeshDataImpl<T>& me; const MeshDataImpl<T>& other; const S& factor;   };
+#line 1090 "mesh.cpp"
+
+
+
+template <class T>  struct knMdataSafeDiv : public KernelBase { knMdataSafeDiv(MeshDataImpl<T>& me, const MeshDataImpl<T>& other) :  KernelBase(me.size()) ,me(me),other(other)   { runMessage(); run(); }   inline void op(IndexInt idx, MeshDataImpl<T>& me, const MeshDataImpl<T>& other )  { me[idx] = safeDivide(me[idx], other[idx]); }    inline MeshDataImpl<T>& getArg0() { return me; } typedef MeshDataImpl<T> type0;inline const MeshDataImpl<T>& getArg1() { return other; } typedef MeshDataImpl<T> type1; void runMessage() { debMsg("Executing kernel knMdataSafeDiv ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,me,other);  }   } MeshDataImpl<T>& me; const MeshDataImpl<T>& other;   };
+#line 1092 "mesh.cpp"
+
+
+template <class T>  struct knMdataSetConst : public KernelBase { knMdataSetConst(MeshDataImpl<T>& mdata, T value) :  KernelBase(mdata.size()) ,mdata(mdata),value(value)   { runMessage(); run(); }   inline void op(IndexInt idx, MeshDataImpl<T>& mdata, T value )  { mdata[idx] = value; }    inline MeshDataImpl<T>& getArg0() { return mdata; } typedef MeshDataImpl<T> type0;inline T& getArg1() { return value; } typedef T type1; void runMessage() { debMsg("Executing kernel knMdataSetConst ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,mdata,value);  }   } MeshDataImpl<T>& mdata; T value;   };
+#line 1093 "mesh.cpp"
+
+
+
+template <class T>  struct knMdataClamp : public KernelBase { knMdataClamp(MeshDataImpl<T>& me, T min, T max) :  KernelBase(me.size()) ,me(me),min(min),max(max)   { runMessage(); run(); }   inline void op(IndexInt idx, MeshDataImpl<T>& me, T min, T max )  { me[idx] = clamp( me[idx], min, max); }    inline MeshDataImpl<T>& getArg0() { return me; } typedef MeshDataImpl<T> type0;inline T& getArg1() { return min; } typedef T type1;inline T& getArg2() { return max; } typedef T type2; void runMessage() { debMsg("Executing kernel knMdataClamp ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,me,min,max);  }   } MeshDataImpl<T>& me; T min; T max;   };
+#line 1095 "mesh.cpp"
+
+
+template <class T>  struct knMdataClampMin : public KernelBase { knMdataClampMin(MeshDataImpl<T>& me, const T vmin) :  KernelBase(me.size()) ,me(me),vmin(vmin)   { runMessage(); run(); }   inline void op(IndexInt idx, MeshDataImpl<T>& me, const T vmin )  { me[idx] = std::max(vmin, me[idx]); }    inline MeshDataImpl<T>& getArg0() { return me; } typedef MeshDataImpl<T> type0;inline const T& getArg1() { return vmin; } typedef T type1; void runMessage() { debMsg("Executing kernel knMdataClampMin ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,me,vmin);  }   } MeshDataImpl<T>& me; const T vmin;   };
+#line 1096 "mesh.cpp"
+
+
+template <class T>  struct knMdataClampMax : public KernelBase { knMdataClampMax(MeshDataImpl<T>& me, const T vmax) :  KernelBase(me.size()) ,me(me),vmax(vmax)   { runMessage(); run(); }   inline void op(IndexInt idx, MeshDataImpl<T>& me, const T vmax )  { me[idx] = std::min(vmax, me[idx]); }    inline MeshDataImpl<T>& getArg0() { return me; } typedef MeshDataImpl<T> type0;inline const T& getArg1() { return vmax; } typedef T type1; void runMessage() { debMsg("Executing kernel knMdataClampMax ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,me,vmax);  }   } MeshDataImpl<T>& me; const T vmax;   };
+#line 1097 "mesh.cpp"
+
+
+ struct knMdataClampMinVec3 : public KernelBase { knMdataClampMinVec3(MeshDataImpl<Vec3>& me, const Real vmin) :  KernelBase(me.size()) ,me(me),vmin(vmin)   { runMessage(); run(); }   inline void op(IndexInt idx, MeshDataImpl<Vec3>& me, const Real vmin )  {
+	me[idx].x = std::max(vmin, me[idx].x);
+	me[idx].y = std::max(vmin, me[idx].y);
+	me[idx].z = std::max(vmin, me[idx].z);
+}    inline MeshDataImpl<Vec3>& getArg0() { return me; } typedef MeshDataImpl<Vec3> type0;inline const Real& getArg1() { return vmin; } typedef Real type1; void runMessage() { debMsg("Executing kernel knMdataClampMinVec3 ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,me,vmin);  }   } MeshDataImpl<Vec3>& me; const Real vmin;   };
+#line 1098 "mesh.cpp"
+
+
+ struct knMdataClampMaxVec3 : public KernelBase { knMdataClampMaxVec3(MeshDataImpl<Vec3>& me, const Real vmax) :  KernelBase(me.size()) ,me(me),vmax(vmax)   { runMessage(); run(); }   inline void op(IndexInt idx, MeshDataImpl<Vec3>& me, const Real vmax )  {
+	me[idx].x = std::min(vmax, me[idx].x);
+	me[idx].y = std::min(vmax, me[idx].y);
+	me[idx].z = std::min(vmax, me[idx].z);
+}    inline MeshDataImpl<Vec3>& getArg0() { return me; } typedef MeshDataImpl<Vec3> type0;inline const Real& getArg1() { return vmax; } typedef Real type1; void runMessage() { debMsg("Executing kernel knMdataClampMaxVec3 ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,me,vmax);  }   } MeshDataImpl<Vec3>& me; const Real vmax;   };
+#line 1103 "mesh.cpp"
+
+
+
+// python operators
+
+
+template<typename T>
+MeshDataImpl<T>& MeshDataImpl<T>::copyFrom(const MeshDataImpl<T>& a) {
+	assertMsg (a.mData.size() == mData.size() , "different mdata size "<<a.mData.size()<<" vs "<<this->mData.size() );
+	memcpy( &mData[0], &a.mData[0], sizeof(T) * mData.size() );
+	return *this;
+}
+
+template<typename T>
+void MeshDataImpl<T>::setConst(T s) {
+	knMdataSetScalar<T,T> op( *this, s );
+}
+
+template<typename T>
+void MeshDataImpl<T>::setConstRange(T s, const int begin, const int end) {
+	for(int i=begin; i<end; ++i) (*this)[i] = s;
+}
+
+// special set by flag
+template <class T, class S>  struct knMdataSetScalarIntFlag : public KernelBase { knMdataSetScalarIntFlag(MeshDataImpl<T>& me, const S& other, const MeshDataImpl<int>& t, const int itype) :  KernelBase(me.size()) ,me(me),other(other),t(t),itype(itype)   { runMessage(); run(); }   inline void op(IndexInt idx, MeshDataImpl<T>& me, const S& other, const MeshDataImpl<int>& t, const int itype )  {
+	if(t[idx]&itype) me[idx] = other;
+}    inline MeshDataImpl<T>& getArg0() { return me; } typedef MeshDataImpl<T> type0;inline const S& getArg1() { return other; } typedef S type1;inline const MeshDataImpl<int>& getArg2() { return t; } typedef MeshDataImpl<int> type2;inline const int& getArg3() { return itype; } typedef int type3; void runMessage() { debMsg("Executing kernel knMdataSetScalarIntFlag ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  
+#pragma omp for  
+  for (IndexInt i = 0; i < _sz; i++) op(i,me,other,t,itype);  }   } MeshDataImpl<T>& me; const S& other; const MeshDataImpl<int>& t; const int itype;   };
+#line 1130 "mesh.cpp"
+
+
+template<typename T>
+void MeshDataImpl<T>::setConstIntFlag(T s, const MeshDataImpl<int>& t, const int itype) {
+	knMdataSetScalarIntFlag<T,T> op(*this, s, t, itype);
+}
+
+template<typename T>
+void MeshDataImpl<T>::add(const MeshDataImpl<T>& a) {
+	knMdataAdd<T,T> op( *this, a );
+}
+template<typename T>
+void MeshDataImpl<T>::sub(const MeshDataImpl<T>& a) {
+	knMdataSub<T,T> op( *this, a );
+}
+
+template<typename T>
+void MeshDataImpl<T>::addConst(T s) {
+	knMdataAddScalar<T,T> op( *this, s );
+}
+
+template<typename T>
+void MeshDataImpl<T>::addScaled(const MeshDataImpl<T>& a, const T& factor) {
+	knMdataScaledAdd<T,T> op( *this, a, factor );
+}
+
+template<typename T>
+void MeshDataImpl<T>::mult( const MeshDataImpl<T>& a) {
+	knMdataMult<T,T> op( *this, a );
+}
+
+template<typename T>
+void MeshDataImpl<T>::safeDiv(const MeshDataImpl<T>& a) {
+	knMdataSafeDiv<T> op( *this, a );
+}
+
+template<typename T>
+void MeshDataImpl<T>::multConst(T s) {
+	knMdataMultScalar<T,T> op( *this, s );
+}
+
+
+template<typename T>
+void MeshDataImpl<T>::clamp(Real vmin, Real vmax) {
+	knMdataClamp<T> op( *this, vmin, vmax );
+}
+
+template<typename T>
+void MeshDataImpl<T>::clampMin(Real vmin) {
+	knMdataClampMin<T> op( *this, vmin );
+}
+template<typename T>
+void MeshDataImpl<T>::clampMax(Real vmax) {
+	knMdataClampMax<T> op( *this, vmax );
+}
+
+template<>
+void MeshDataImpl<Vec3>::clampMin(Real vmin) {
+	knMdataClampMinVec3 op( *this, vmin );
+}
+template<>
+void MeshDataImpl<Vec3>::clampMax(Real vmax) {
+	knMdataClampMaxVec3 op( *this, vmax );
+}
+
+template<typename T>  struct KnPtsSum : public KernelBase { KnPtsSum(const MeshDataImpl<T>& val, const MeshDataImpl<int> *t, const int itype) :  KernelBase(val.size()) ,val(val),t(t),itype(itype) ,result(T(0.))  { runMessage(); run(); }   inline void op(IndexInt idx, const MeshDataImpl<T>& val, const MeshDataImpl<int> *t, const int itype ,T& result)  { if(t && !((*t)[idx]&itype)) return; result += val[idx]; }    inline operator T () { return result; } inline T  & getRet() { return result; }  inline const MeshDataImpl<T>& getArg0() { return val; } typedef MeshDataImpl<T> type0;inline const MeshDataImpl<int> * getArg1() { return t; } typedef MeshDataImpl<int>  type1;inline const int& getArg2() { return itype; } typedef int type2; void runMessage() { debMsg("Executing kernel KnPtsSum ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  T result = T(0.); 
+#pragma omp for nowait  
+  for (IndexInt i = 0; i < _sz; i++) op(i,val,t,itype,result); 
+#pragma omp critical
+{this->result += result; } }   } const MeshDataImpl<T>& val; const MeshDataImpl<int> * t; const int itype;  T result;  };
+#line 1196 "mesh.cpp"
+
+
+template<typename T>  struct KnPtsSumSquare : public KernelBase { KnPtsSumSquare(const MeshDataImpl<T>& val) :  KernelBase(val.size()) ,val(val) ,result(0.)  { runMessage(); run(); }   inline void op(IndexInt idx, const MeshDataImpl<T>& val ,Real& result)  { result += normSquare(val[idx]); }    inline operator Real () { return result; } inline Real  & getRet() { return result; }  inline const MeshDataImpl<T>& getArg0() { return val; } typedef MeshDataImpl<T> type0; void runMessage() { debMsg("Executing kernel KnPtsSumSquare ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  Real result = 0.; 
+#pragma omp for nowait  
+  for (IndexInt i = 0; i < _sz; i++) op(i,val,result); 
+#pragma omp critical
+{this->result += result; } }   } const MeshDataImpl<T>& val;  Real result;  };
+#line 1197 "mesh.cpp"
+
+
+template<typename T>  struct KnPtsSumMagnitude : public KernelBase { KnPtsSumMagnitude(const MeshDataImpl<T>& val) :  KernelBase(val.size()) ,val(val) ,result(0.)  { runMessage(); run(); }   inline void op(IndexInt idx, const MeshDataImpl<T>& val ,Real& result)  { result += norm(val[idx]); }    inline operator Real () { return result; } inline Real  & getRet() { return result; }  inline const MeshDataImpl<T>& getArg0() { return val; } typedef MeshDataImpl<T> type0; void runMessage() { debMsg("Executing kernel KnPtsSumMagnitude ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  Real result = 0.; 
+#pragma omp for nowait  
+  for (IndexInt i = 0; i < _sz; i++) op(i,val,result); 
+#pragma omp critical
+{this->result += result; } }   } const MeshDataImpl<T>& val;  Real result;  };
+#line 1198 "mesh.cpp"
+
+
+
+template<typename T>
+T MeshDataImpl<T>::sum(const MeshDataImpl<int> *t, const int itype) const {
+	return KnPtsSum<T>(*this, t, itype);
+}
+template<typename T>
+Real MeshDataImpl<T>::sumSquare() const {
+	return KnPtsSumSquare<T>(*this);
+}
+template<typename T>
+Real MeshDataImpl<T>::sumMagnitude() const {
+	return KnPtsSumMagnitude<T>(*this);
+}
+
+template<typename T>
+
+ struct CompMdata_Min : public KernelBase { CompMdata_Min(const MeshDataImpl<T>& val) :  KernelBase(val.size()) ,val(val) ,minVal(std::numeric_limits<Real>::max())  { runMessage(); run(); }   inline void op(IndexInt idx, const MeshDataImpl<T>& val ,Real& minVal)  {
+	if (val[idx] < minVal)
+		minVal = val[idx];
+}    inline operator Real () { return minVal; } inline Real  & getRet() { return minVal; }  inline const MeshDataImpl<T>& getArg0() { return val; } typedef MeshDataImpl<T> type0; void runMessage() { debMsg("Executing kernel CompMdata_Min ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  Real minVal = std::numeric_limits<Real>::max(); 
+#pragma omp for nowait  
+  for (IndexInt i = 0; i < _sz; i++) op(i,val,minVal); 
+#pragma omp critical
+{this->minVal = min(minVal, this->minVal); } }   } const MeshDataImpl<T>& val;  Real minVal;  };
+#line 1215 "mesh.cpp"
+
+
+
+template<typename T>
+
+ struct CompMdata_Max : public KernelBase { CompMdata_Max(const MeshDataImpl<T>& val) :  KernelBase(val.size()) ,val(val) ,maxVal(-std::numeric_limits<Real>::max())  { runMessage(); run(); }   inline void op(IndexInt idx, const MeshDataImpl<T>& val ,Real& maxVal)  {
+	if (val[idx] > maxVal)
+		maxVal = val[idx];
+}    inline operator Real () { return maxVal; } inline Real  & getRet() { return maxVal; }  inline const MeshDataImpl<T>& getArg0() { return val; } typedef MeshDataImpl<T> type0; void runMessage() { debMsg("Executing kernel CompMdata_Max ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  Real maxVal = -std::numeric_limits<Real>::max(); 
+#pragma omp for nowait  
+  for (IndexInt i = 0; i < _sz; i++) op(i,val,maxVal); 
+#pragma omp critical
+{this->maxVal = max(maxVal, this->maxVal); } }   } const MeshDataImpl<T>& val;  Real maxVal;  };
+#line 1222 "mesh.cpp"
+
+
+
+template<typename T>
+Real MeshDataImpl<T>::getMin() {
+	return CompMdata_Min<T> (*this);
+}
+
+template<typename T>
+Real MeshDataImpl<T>::getMaxAbs() {
+	Real amin = CompMdata_Min<T> (*this);
+	Real amax = CompMdata_Max<T> (*this);
+	return max( fabs(amin), fabs(amax));
+}
+
+template<typename T>
+Real MeshDataImpl<T>::getMax() {
+	return CompMdata_Max<T> (*this);
+}
+
+template<typename T>
+void MeshDataImpl<T>::printMdata(IndexInt start, IndexInt stop, bool printIndex)
+{
+	std::ostringstream sstr;
+	IndexInt s = (start>0 ? start : 0                      );
+	IndexInt e = (stop>0  ? stop  : (IndexInt)mData.size() );
+	s = Manta::clamp(s, (IndexInt)0, (IndexInt)mData.size());
+	e = Manta::clamp(e, (IndexInt)0, (IndexInt)mData.size());
+
+	for(IndexInt i=s; i<e; ++i) {
+		if(printIndex) sstr << i<<": ";
+		sstr<<mData[i]<<" "<<"\n";
+	}
+	debMsg( sstr.str() , 1 );
+}
+template<class T> std::string MeshDataImpl<T>::getDataPointer() {
+	std::ostringstream out;
+	out << &mData;
+	return out.str();
+}
+
+// specials for vec3
+// work on length values, ie, always positive (in contrast to scalar versions above)
+
+
+ struct CompMdata_MinVec3 : public KernelBase { CompMdata_MinVec3(const MeshDataImpl<Vec3>& val) :  KernelBase(val.size()) ,val(val) ,minVal(-std::numeric_limits<Real>::max())  { runMessage(); run(); }   inline void op(IndexInt idx, const MeshDataImpl<Vec3>& val ,Real& minVal)  {
+	const Real s = normSquare(val[idx]);
+	if (s < minVal)
+		minVal = s;
+}    inline operator Real () { return minVal; } inline Real  & getRet() { return minVal; }  inline const MeshDataImpl<Vec3>& getArg0() { return val; } typedef MeshDataImpl<Vec3> type0; void runMessage() { debMsg("Executing kernel CompMdata_MinVec3 ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  Real minVal = -std::numeric_limits<Real>::max(); 
+#pragma omp for nowait  
+  for (IndexInt i = 0; i < _sz; i++) op(i,val,minVal); 
+#pragma omp critical
+{this->minVal = min(minVal, this->minVal); } }   } const MeshDataImpl<Vec3>& val;  Real minVal;  };
+#line 1269 "mesh.cpp"
+
+
+
+
+ struct CompMdata_MaxVec3 : public KernelBase { CompMdata_MaxVec3(const MeshDataImpl<Vec3>& val) :  KernelBase(val.size()) ,val(val) ,maxVal(-std::numeric_limits<Real>::min())  { runMessage(); run(); }   inline void op(IndexInt idx, const MeshDataImpl<Vec3>& val ,Real& maxVal)  {
+	const Real s = normSquare(val[idx]);
+	if (s > maxVal)
+		maxVal = s;
+}    inline operator Real () { return maxVal; } inline Real  & getRet() { return maxVal; }  inline const MeshDataImpl<Vec3>& getArg0() { return val; } typedef MeshDataImpl<Vec3> type0; void runMessage() { debMsg("Executing kernel CompMdata_MaxVec3 ", 3); debMsg("Kernel range" <<  " size "<<  size  << " "   , 4); }; void run() {   const IndexInt _sz = size; 
+#pragma omp parallel 
+ {  Real maxVal = -std::numeric_limits<Real>::min(); 
+#pragma omp for nowait  
+  for (IndexInt i = 0; i < _sz; i++) op(i,val,maxVal); 
+#pragma omp critical
+{this->maxVal = max(maxVal, this->maxVal); } }   } const MeshDataImpl<Vec3>& val;  Real maxVal;  };
+#line 1276 "mesh.cpp"
+
+
+
+template<>
+Real MeshDataImpl<Vec3>::getMin() {
+	return sqrt(CompMdata_MinVec3 (*this));
+}
+
+template<>
+Real MeshDataImpl<Vec3>::getMaxAbs() {
+	return sqrt(CompMdata_MaxVec3 (*this));  // no minimum necessary here
+}
+
+template<>
+Real MeshDataImpl<Vec3>::getMax() {
+	return sqrt(CompMdata_MaxVec3 (*this));
+}
+
+
+// explicit instantiation
+template class MeshDataImpl<int>;
+template class MeshDataImpl<Real>;
+template class MeshDataImpl<Vec3>;
+
 
 } //namespace
 

@@ -88,56 +88,19 @@ phi_sm$ID$      = sm$ID$.create(LevelsetGrid)\n\
 pp_sm$ID$       = sm$ID$.create(BasicParticleSystem)\n\
 flags_sm$ID$    = sm$ID$.create(FlagGrid)\n\
 mesh_sm$ID$     = sm$ID$.create(Mesh)\n\
+mVel_mesh$ID$   = mesh_sm$ID$.create(MdataVec3)\n\
 \n\
 # Acceleration data for particle nbs\n\
 pindex_sm$ID$  = sm$ID$.create(ParticleIndexSystem)\n\
 gpi_sm$ID$     = sm$ID$.create(IntGrid)\n\
 \n\
 # Keep track of important objects in dict to load them later on\n\
-liquid_mesh_dict_s$ID$ = dict(liquid_mesh=mesh_sm$ID$)\n";
+liquid_mesh_dict_s$ID$ = dict(lMesh=mesh_sm$ID$)\n\
+liquid_meshvel_dict_s$ID$ = dict(lVelMesh=mVel_mesh$ID$)\n";
 
 const std::string liquid_init_phi = "\n\
 phi_s$ID$.initFromFlags(flags_s$ID$)\n\
 phiIn_s$ID$.initFromFlags(flags_s$ID$)\n";
-
-//////////////////////////////////////////////////////////////////////
-// PRE / POST STEP
-//////////////////////////////////////////////////////////////////////
-
-const std::string liquid_pre_step = "\n\
-def liquid_pre_step_$ID$():\n\
-    # translate obvels (world space) to grid space\n\
-    if using_obstacle_s$ID$:\n\
-        x_obvel_s$ID$.multConst(Real(gs_s$ID$.x))\n\
-        y_obvel_s$ID$.multConst(Real(gs_s$ID$.y))\n\
-        z_obvel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
-        copyRealToVec3(sourceX=x_obvel_s$ID$, sourceY=y_obvel_s$ID$, sourceZ=z_obvel_s$ID$, target=obvelC_s$ID$)\n\
-    \n\
-    # translate invels (world space) to grid space\n\
-    if using_invel_s$ID$:\n\
-        x_invel_s$ID$.multConst(Real(gs_s$ID$.x))\n\
-        y_invel_s$ID$.multConst(Real(gs_s$ID$.y))\n\
-        z_invel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
-        copyRealToVec3(sourceX=x_invel_s$ID$, sourceY=y_invel_s$ID$, sourceZ=z_invel_s$ID$, target=invel_s$ID$)\n\
-    \n\
-    if using_guiding_s$ID$:\n\
-        weightGuide_s$ID$.multConst(0)\n\
-        weightGuide_s$ID$.addConst(alpha_sg$ID$)\n\
-        interpolateMACGrid(source=guidevel_sg$ID$, target=velT_s$ID$)\n\
-        velT_s$ID$.multConst(vec3(gamma_sg$ID$))\n\
-    \n\
-    x_force_s$ID$.multConst(Real(gs_s$ID$.x))\n\
-    y_force_s$ID$.multConst(Real(gs_s$ID$.y))\n\
-    z_force_s$ID$.multConst(Real(gs_s$ID$.z))\n\
-    copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n";
-
-const std::string liquid_post_step = "\n\
-def liquid_post_step_$ID$():\n\
-    forces_s$ID$.clear()\n\
-    if using_guiding_s$ID$:\n\
-        weightGuide_s$ID$.clear()\n\
-    if using_invel_s$ID$:\n\
-        invel_s$ID$.clear()\n";
 
 //////////////////////////////////////////////////////////////////////
 // STEP FUNCTIONS
@@ -151,7 +114,7 @@ def liquid_adaptive_step_$ID$(framenr):\n\
     s$ID$.frameLength = dt0_s$ID$ \n\
     s$ID$.cfl = cfl_cond_s$ID$\n\
     \n\
-    liquid_pre_step_$ID$()\n\
+    fluid_pre_step_$ID$()\n\
     \n\
     flags_s$ID$.initDomain(boundaryWidth=0, phiWalls=phiObs_s$ID$, outflow=boundConditions_s$ID$)\n\
     \n\
@@ -167,21 +130,20 @@ def liquid_adaptive_step_$ID$(framenr):\n\
     setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
     # add initial velocity: set invel as source grid to ensure const vels in inflow region, sampling makes use of this\n\
-    mapWeights_s$ID$.clear() # mis-use mapWeights\n\
     if using_invel_s$ID$:\n\
-        resampleVec3ToMac(source=invel_s$ID$, target=mapWeights_s$ID$)\n\
-    pVel_pp$ID$.setSource(mapWeights_s$ID$, isMAC=True)\n\
+        resampleVec3ToMac(source=invelC_s$ID$, target=invel_s$ID$)\n\
+        mantaMsg('invelC max value: ' + str(invel_s$ID$.getMax()))\n\
+        pVel_pp$ID$.setSource(invel_s$ID$, isMAC=True)\n\
     \n\
     sampleLevelsetWithParticles(phi=phiIn_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, discretization=particleNumber_s$ID$, randomness=randomness_s$ID$, refillEmpty=True)\n\
     flags_s$ID$.updateFromLevelset(phi_s$ID$, phiObs_s$ID$)\n\
-    mapWeights_s$ID$.clear() # clean up, mapweights grid used later again\n\
     \n\
     mantaMsg('Liquid step / s$ID$.frame: ' + str(s$ID$.frame))\n\
     liquid_step_$ID$()\n\
     \n\
     s$ID$.step()\n\
     \n\
-    liquid_post_step_$ID$()\n";
+    fluid_post_step_$ID$()\n";
 
 const std::string liquid_step = "\n\
 def liquid_step_$ID$():\n\
@@ -223,6 +185,8 @@ def liquid_step_$ID$():\n\
     \n\
     # forces & pressure solve\n\
     addGravity(flags=flags_s$ID$, vel=vel_s$ID$, gravity=gravity_s$ID$)\n\
+    \n\
+    mantaMsg('Adding external forces')\n\
     addForceField(flags=flags_s$ID$, vel=vel_s$ID$, force=forces_s$ID$)\n\
     \n\
     if using_obstacle_s$ID$:\n\
@@ -286,6 +250,7 @@ def liquid_step_mesh_$ID$():\n\
     extrapolateLsSimple(phi=phi_sm$ID$, distance=3)\n\
     phi_sm$ID$.setBoundNeumann(boundaryWidth_s$ID$) # make sure no particles are placed at outer boundary\n\
     \n\
+    mVel_mesh$ID$.setSource(vel_s$ID$, isMAC=True)\n\
     phi_sm$ID$.setBound(0.5,int(((upres_sm$ID$)*2)-2) )\n\
     phi_sm$ID$.createMesh(mesh_sm$ID$)\n";
 
@@ -332,6 +297,11 @@ def liquid_load_mesh_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid load mesh')\n\
     fluid_file_import_s$ID$(dict=liquid_mesh_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
+const std::string liquid_load_meshvel = "\n\
+def liquid_load_meshvel_$ID$(path, framenr, file_format):\n\
+    mantaMsg('Liquid load meshvel')\n\
+    fluid_file_import_s$ID$(dict=liquid_meshvel_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
+
 //////////////////////////////////////////////////////////////////////
 // EXPORT
 //////////////////////////////////////////////////////////////////////
@@ -350,6 +320,11 @@ const std::string liquid_save_mesh = "\n\
 def liquid_save_mesh_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid save mesh')\n\
     fluid_file_export_s$ID$(dict=liquid_mesh_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
+
+const std::string liquid_save_meshvel = "\n\
+def liquid_save_meshvel_$ID$(path, framenr, file_format):\n\
+    mantaMsg('Liquid save mesh vel')\n\
+    fluid_file_export_s$ID$(dict=liquid_meshvel_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE

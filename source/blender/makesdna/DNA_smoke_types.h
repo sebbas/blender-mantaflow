@@ -53,6 +53,7 @@ enum {
 	MOD_SMOKE_ADAPTIVE_TIME = (1 << 10), /* adaptive time stepping in domain */
 	MOD_SMOKE_MESH = (1 << 11),  /* use mesh */
 	MOD_SMOKE_GUIDING = (1 << 12),  /* use guiding */
+	MOD_SMOKE_SPEED_VECTORS = (1 << 13),  /* generate mesh speed vectors */
 };
 
 /* border collisions */
@@ -198,6 +199,10 @@ enum {
 	VDB_COMPRESSION_NONE  = 2,
 };
 
+typedef struct SmokeVertexVelocity {
+	float vel[3];
+} SmokeVertexVelocity;
+
 typedef struct SmokeDomainSettings {
 	struct SmokeModifierData *smd; /* for fast RNA access */
 	struct FLUID_3D *fluid_old;
@@ -211,8 +216,10 @@ typedef struct SmokeDomainSettings {
 	struct GPUTexture *tex_shadow;
 	struct GPUTexture *tex_flame;
 	struct Object *guiding_parent;
+	struct SmokeVertexVelocity *mesh_velocities; /* vertex velocities of simulated fluid mesh */
 	int *guide_res; /* res for velocity guide grids - independent from base res */
-	char pad0[4];
+
+	int totvert;	/* number of vertices in simulated fluid mesh */
 
 	/* simulation data */
 	float p0[3]; /* start point of BB in local space (includes sub-cell shift for adaptive domain)*/

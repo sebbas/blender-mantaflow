@@ -97,14 +97,15 @@ doOpen_s$ID$          = $DO_OPEN$\n\
 boundConditions_s$ID$ = '$BOUNDCONDITIONS$'\n\
 boundaryWidth_s$ID$   = 1\n\
 \n\
-using_smoke_s$ID$     = $USING_SMOKE$\n\
-using_liquid_s$ID$    = $USING_LIQUID$\n\
-using_highres_s$ID$   = $USING_HIGHRES$\n\
-using_adaptTime_s$ID$ = $USING_ADAPTIVETIME$\n\
-using_obstacle_s$ID$  = $USING_OBSTACLE$\n\
-using_guiding_s$ID$   = $USING_GUIDING$\n\
-using_invel_s$ID$     = $USING_INVEL$\n\
-using_sndparts_s$ID$  = $USING_SNDPARTS$\n\
+using_smoke_s$ID$        = $USING_SMOKE$\n\
+using_liquid_s$ID$       = $USING_LIQUID$\n\
+using_highres_s$ID$      = $USING_HIGHRES$\n\
+using_adaptTime_s$ID$    = $USING_ADAPTIVETIME$\n\
+using_obstacle_s$ID$     = $USING_OBSTACLE$\n\
+using_guiding_s$ID$      = $USING_GUIDING$\n\
+using_invel_s$ID$        = $USING_INVEL$\n\
+using_sndparts_s$ID$     = $USING_SNDPARTS$\n\
+using_speedvectors_s$ID$ = $USING_SPEEDVECTORS$\n\
 \n\
 # fluid time params\n\
 dt_default_s$ID$ = 0.1 # dt is 0.1 at 25fps\n\
@@ -114,9 +115,11 @@ dt0_s$ID$        = dt_default_s$ID$ * (25.0 / fps_s$ID$) * dt_factor_s$ID$\n\
 cfl_cond_s$ID$   = $CFL$\n\
 \n\
 # fluid diffusion / viscosity\n\
-domainSize_s$ID$ = $FLUID_DOMAIN_SIZE$ # longest domain side in cm\n\
-if domainSize_s$ID$ == 0: domainSize_s$ID$ = 100 # TODO (sebbas): just for versioning, remove with proper 2.8 versioning\n\
-viscosity_s$ID$ = $FLUID_VISCOSITY$ / (domainSize_s$ID$*domainSize_s$ID$) # kinematic viscosity in m^2/s\n";
+domainSize_s$ID$ = $FLUID_DOMAIN_SIZE$ # longest domain side in meters\n\
+if domainSize_s$ID$ == 0: domainSize_s$ID$ = 1 # TODO (sebbas): just for versioning, remove with proper 2.8 versioning\n\
+viscosity_s$ID$ = $FLUID_VISCOSITY$ / (domainSize_s$ID$*domainSize_s$ID$) # kinematic viscosity in m^2/s\n\
+\n\
+toMantaUnitsFac_s$ID$ = Real(dt0_s$ID$) / Real(1./res_s$ID$)\n # dt/dx";
 
 const std::string fluid_variables_noise = "\n\
 mantaMsg('Fluid variables noise')\n\
@@ -204,6 +207,7 @@ flags_s$ID$       = s$ID$.create(FlagGrid)\n\
 numFlow_s$ID$     = s$ID$.create(IntGrid)\n\
 flowType_s$ID$    = s$ID$.create(IntGrid)\n\
 vel_s$ID$         = s$ID$.create(MACGrid)\n\
+velC_s$ID$        = s$ID$.create(MACGrid)\n\
 x_vel_s$ID$       = s$ID$.create(RealGrid)\n\
 y_vel_s$ID$       = s$ID$.create(RealGrid)\n\
 z_vel_s$ID$       = s$ID$.create(RealGrid)\n\
@@ -251,7 +255,8 @@ fluid_guiding_dict_s$ID$ = dict(guidevel=guidevel_sg$ID$)\n";
 
 const std::string fluid_alloc_invel = "\n\
 mantaMsg('Allocating initial velocity data')\n\
-invel_s$ID$   = s$ID$.create(VecGrid)\n\
+invelC_s$ID$  = s$ID$.create(VecGrid)\n\
+invel_s$ID$   = s$ID$.create(MACGrid)\n\
 x_invel_s$ID$ = s$ID$.create(RealGrid)\n\
 y_invel_s$ID$ = s$ID$.create(RealGrid)\n\
 z_invel_s$ID$ = s$ID$.create(RealGrid)\n";
@@ -270,6 +275,70 @@ phiObsIn_sp$ID$ = sp$ID$.create(LevelsetGrid)\n\
 \n\
 # Keep track of important objects in dict to load them later on\n\
 fluid_particles_dict_s$ID$ = dict(ppSnd=ppSnd_sp$ID$, pVelSnd=pVelSnd_pp$ID$, pLifeSnd=pLifeSnd_pp$ID$)\n";
+
+//////////////////////////////////////////////////////////////////////
+// PRE / POST STEP
+//////////////////////////////////////////////////////////////////////
+
+const std::string fluid_pre_step = "\n\
+def fluid_pre_step_$ID$():\n\
+    mantaMsg('Fluid pre step')\n\
+    x_vel_s$ID$.clear()\n\
+    y_vel_s$ID$.clear()\n\
+    z_vel_s$ID$.clear()\n\
+    \n\
+    # translate obvels (world space) to grid space\n\
+    if using_obstacle_s$ID$:\n\
+        x_obvel_s$ID$.multConst(toMantaUnitsFac_s$ID$)\n\
+        y_obvel_s$ID$.multConst(toMantaUnitsFac_s$ID$)\n\
+        z_obvel_s$ID$.multConst(toMantaUnitsFac_s$ID$)\n\
+        copyRealToVec3(sourceX=x_obvel_s$ID$, sourceY=y_obvel_s$ID$, sourceZ=z_obvel_s$ID$, target=obvelC_s$ID$)\n\
+    \n\
+    # translate invels (world space) to grid space\n\
+    if using_invel_s$ID$:\n\
+        x_invel_s$ID$.multConst(toMantaUnitsFac_s$ID$)\n\
+        y_invel_s$ID$.multConst(toMantaUnitsFac_s$ID$)\n\
+        z_invel_s$ID$.multConst(toMantaUnitsFac_s$ID$)\n\
+        copyRealToVec3(sourceX=x_invel_s$ID$, sourceY=y_invel_s$ID$, sourceZ=z_invel_s$ID$, target=invelC_s$ID$)\n\
+    \n\
+    if using_guiding_s$ID$:\n\
+        weightGuide_s$ID$.multConst(0)\n\
+        weightGuide_s$ID$.addConst(alpha_sg$ID$)\n\
+        interpolateMACGrid(source=guidevel_sg$ID$, target=velT_s$ID$)\n\
+        velT_s$ID$.multConst(vec3(gamma_sg$ID$))\n\
+    \n\
+    # translate external forces (world space) to grid space\n\
+    x_force_s$ID$.multConst(toMantaUnitsFac_s$ID$)\n\
+    y_force_s$ID$.multConst(toMantaUnitsFac_s$ID$)\n\
+    z_force_s$ID$.multConst(toMantaUnitsFac_s$ID$)\n\
+    copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n\
+    \n\
+    # If obstacle has velocity, i.e. is a moving obstacle, switch to dynamic preconditioner\n\
+    if using_smoke_s$ID$ and using_obstacle_s$ID$ and obvelC_s$ID$.getMax() > 0:\n\
+        mantaMsg('Using dynamic preconditioner')\n\
+        preconditioner_s$ID$ = PcMGStatic\n\
+    else:\n\
+        mantaMsg('Using static preconditioner')\n\
+        preconditioner_s$ID$ = PcMGStatic\n";
+
+const std::string fluid_post_step = "\n\
+def fluid_post_step_$ID$():\n\
+    mantaMsg('Fluid post step')\n\
+    forces_s$ID$.clear()\n\
+    x_force_s$ID$.clear()\n\
+    y_force_s$ID$.clear()\n\
+    z_force_s$ID$.clear()\n\
+    \n\
+    if using_guiding_s$ID$:\n\
+        weightGuide_s$ID$.clear()\n\
+    if using_invel_s$ID$:\n\
+        invel_s$ID$.clear()\n\
+    \n\
+    phiObs_s$ID$.setConst(9999)\n\
+    phiOutIn_s$ID$.setConst(9999)\n\
+    \n\
+    # Copy vel grid to reals grids (which Blender internal will in turn use for vel access)\n\
+    copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n";
 
 //////////////////////////////////////////////////////////////////////
 // DESTRUCTION
@@ -389,6 +458,7 @@ def bake_mesh_process_$ID$(framenr, format_data, format_mesh, format_particles, 
     \n\
     sm$ID$.frame = framenr\n\
     \n\
+    fluid_load_data_$ID$(path_data, framenr, format_data)\n\
     #if using_smoke_s$ID$:\n\
         # TODO (sebbas): Future update could include smoke mesh (vortex sheets)\n\
     if using_liquid_s$ID$:\n\
@@ -396,6 +466,8 @@ def bake_mesh_process_$ID$(framenr, format_data, format_mesh, format_particles, 
         liquid_load_flip_$ID$(path_data, framenr, format_particles)\n\
         liquid_step_mesh_$ID$()\n\
         liquid_save_mesh_$ID$(path_mesh, framenr, format_mesh)\n\
+        if using_speedvectors_s$ID$:\n\
+            liquid_save_meshvel_$ID$(path_mesh, framenr, format_data)\n\
 \n\
 def bake_mesh_$ID$(path_data, path_mesh, framenr, format_data, format_mesh, format_particles):\n\
     if not withMP or isWindows:\n\

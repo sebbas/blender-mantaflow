@@ -113,9 +113,12 @@ float liquid_get_vertex_z_at(struct FLUID *liquid, int i);
 float liquid_get_normal_x_at(struct FLUID *liquid, int i);
 float liquid_get_normal_y_at(struct FLUID *liquid, int i);
 float liquid_get_normal_z_at(struct FLUID *liquid, int i);
-float liquid_get_triangle_x_at(struct FLUID *liquid, int i);
-float liquid_get_triangle_y_at(struct FLUID *liquid, int i);
-float liquid_get_triangle_z_at(struct FLUID *liquid, int i);
+int liquid_get_triangle_x_at(struct FLUID *liquid, int i);
+int liquid_get_triangle_y_at(struct FLUID *liquid, int i);
+int liquid_get_triangle_z_at(struct FLUID *liquid, int i);
+float liquid_get_vertvel_x_at(struct FLUID *liquid, int i);
+float liquid_get_vertvel_y_at(struct FLUID *liquid, int i);
+float liquid_get_vertvel_z_at(struct FLUID *liquid, int i);
 
 // Liquids particles
 int liquid_get_num_flip_particles(struct FLUID *liquid);

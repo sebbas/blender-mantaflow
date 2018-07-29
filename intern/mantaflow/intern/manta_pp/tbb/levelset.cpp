@@ -329,6 +329,9 @@ void LevelsetGrid::createMesh(Mesh& mesh) {
 	
 	//mesh.rebuildCorners();
 	//mesh.rebuildLookup();
+
+	// Update mdata fields
+	mesh.updateDataFields();
 }
 
 

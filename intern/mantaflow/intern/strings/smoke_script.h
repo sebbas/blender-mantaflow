@@ -206,42 +206,6 @@ smoke_noise_dict_s$ID$.update(tmpDict_s$ID$)\n";
 // PRE / POST STEP
 //////////////////////////////////////////////////////////////////////
 
-const std::string smoke_pre_step = "\n\
-def smoke_pre_step_$ID$():\n\
-    mantaMsg('Smoke pre step')\n\
-    # translate obvels (world space) to grid space\n\
-    if using_obstacle_s$ID$:\n\
-        x_obvel_s$ID$.multConst(Real(gs_s$ID$.x))\n\
-        y_obvel_s$ID$.multConst(Real(gs_s$ID$.y))\n\
-        z_obvel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
-        copyRealToVec3(sourceX=x_obvel_s$ID$, sourceY=y_obvel_s$ID$, sourceZ=z_obvel_s$ID$, target=obvelC_s$ID$)\n\
-    \n\
-    # translate invels (world space) to grid space\n\
-    if using_invel_s$ID$:\n\
-        x_invel_s$ID$.multConst(Real(gs_s$ID$.x))\n\
-        y_invel_s$ID$.multConst(Real(gs_s$ID$.y))\n\
-        z_invel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
-        copyRealToVec3(sourceX=x_invel_s$ID$, sourceY=y_invel_s$ID$, sourceZ=z_invel_s$ID$, target=invel_s$ID$)\n\
-    \n\
-    if using_guiding_s$ID$:\n\
-        weightGuide_s$ID$.multConst(0)\n\
-        weightGuide_s$ID$.addConst(alpha_sg$ID$)\n\
-        interpolateMACGrid(source=guidevel_sg$ID$, target=velT_s$ID$)\n\
-        velT_s$ID$.multConst(vec3(gamma_sg$ID$))\n\
-    \n\
-    x_force_s$ID$.multConst(Real(gs_s$ID$.x))\n\
-    y_force_s$ID$.multConst(Real(gs_s$ID$.y))\n\
-    z_force_s$ID$.multConst(Real(gs_s$ID$.z))\n\
-    copyRealToVec3(sourceX=x_force_s$ID$, sourceY=y_force_s$ID$, sourceZ=z_force_s$ID$, target=forces_s$ID$)\n\
-    \n\
-    # If obstacle has velocity, i.e. is moving switch to dynamic preconditioner\n\
-    if using_obstacle_s$ID$ and obvelC_s$ID$.getMax() > 0:\n\
-        mantaMsg('Using dynamic preconditioner')\n\
-        preconditioner_s$ID$ = PcMGDynamic\n\
-    else:\n\
-        mantaMsg('Using static preconditioner')\n\
-        preconditioner_s$ID$ = PcMGStatic\n";
-
 const std::string smoke_pre_step_noise = "\n\
 def smoke_pre_step_noise_$ID$():\n\
     mantaMsg('Smoke pre step noise')\n\
@@ -260,23 +224,6 @@ def smoke_pre_step_noise_$ID$():\n\
             uvGrid_s$ID$ = s$ID$.create(VecGrid)\n\
             uv_s$ID$.append(uvGrid_s$ID$)\n\
             resetUvGrid(uv_s$ID$[i])\n";
-
-const std::string smoke_post_step = "\n\
-def smoke_post_step_$ID$():\n\
-    mantaMsg('Smoke post step')\n\
-    forces_s$ID$.clear()\n\
-    if using_guiding_s$ID$:\n\
-        weightGuide_s$ID$.clear()\n\
-    if using_invel_s$ID$:\n\
-        invel_s$ID$.clear()\n\
-    \n\
-    phiObs_s$ID$.setConst(9999)\n\
-    phiOutIn_s$ID$.setConst(9999)\n\
-    \n\
-    #copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n\
-    #x_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.x) )\n\
-    #y_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.y) )\n\
-    #z_vel_s$ID$.multConst( 1.0/Real(gs_s$ID$.z) )\n";
 
 const std::string smoke_post_step_noise = "\n\
 def smoke_post_step_noise_$ID$():\n\
@@ -301,7 +248,7 @@ def smoke_adaptive_step_$ID$(framenr):\n\
     mantaMsg('s.cfl is ' + str(s$ID$.cfl))\n\
     mantaMsg('s.frameLength is ' + str(s$ID$.frameLength))\n\
     \n\
-    smoke_pre_step_$ID$()\n\
+    fluid_pre_step_$ID$()\n\
     \n\
     if using_obstacle_s$ID$: # TODO (sebbas): allow outflow objects when no obstacle set\n\
         phiObs_s$ID$.join(phiObsIn_s$ID$)\n\
@@ -320,7 +267,7 @@ def smoke_adaptive_step_$ID$(framenr):\n\
     \n\
     s$ID$.step()\n\
     \n\
-    smoke_post_step_$ID$()\n";
+    fluid_post_step_$ID$()\n";
 
 const std::string smoke_adaptive_step_noise = "\n\
 def smoke_adaptive_step_noise_$ID$(framenr):\n\

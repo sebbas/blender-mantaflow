@@ -37,6 +37,7 @@ template<class T> class Grid;
 template<class T> class Grid4d;
 class BasicParticleSystem;
 template<class T> class ParticleDataImpl;
+template<class T> class MeshDataImpl;
 
 void writeObjFile(const std::string& name, Mesh* mesh);
 void writeBobjFile(const std::string& name, Mesh* mesh);
@@ -68,6 +69,9 @@ void readParticlesUni (const std::string& name, BasicParticleSystem* parts );
 
 template <class T> void writePdataUni(const std::string& name, ParticleDataImpl<T>* pdata );
 template <class T> void readPdataUni (const std::string& name, ParticleDataImpl<T>* pdata );
+
+template <class T> void writeMdataUni(const std::string& name, MeshDataImpl<T>* mdata );
+template <class T> void readMdataUni (const std::string& name, MeshDataImpl<T>* mdata );
 
 void getUniFileSize(const std::string& name, int& x, int& y, int& z, int* t = NULL, std::string* info = NULL);
 
