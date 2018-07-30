@@ -802,7 +802,7 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 	else if (varName == "FLAME_SMOKE_COLOR_Z")
 		ss << smd->domain->flame_smoke_color[2];
 	else if (varName == "CURRENT_FRAME")
-		ss << md->scene->r.cfra - 1;
+		ss << md->scene->r.cfra;
 	else if (varName == "PARTICLE_RANDOMNESS")
 		ss << smd->domain->particle_randomness;
 	else if (varName == "PARTICLE_NUMBER")
@@ -894,9 +894,7 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 	else if (varName == "GRAVITY_Z")
 		ss << smd->domain->gravity[2];
 	else if (varName == "CACHE_DIR") {
-		char parent_dir[1024];
-		BLI_split_dir_part(smd->domain->cache_directory, parent_dir, sizeof(parent_dir));
-		ss << parent_dir;
+		ss << smd->domain->cache_directory;
 	} else if (varName == "ID")
 		ss << mCurrentID;
 	else if (varName == "USING_ADAPTIVETIME")
