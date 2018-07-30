@@ -365,7 +365,7 @@ static bool ED_object_editmode_load_ex(Main *bmain, Object *obedit, const bool f
 			return false;
 		}
 
-		EDBM_mesh_load(obedit);
+		EDBM_mesh_load(bmain, obedit);
 
 		if (freedata) {
 			EDBM_mesh_free(me->edit_btmesh);
@@ -471,7 +471,7 @@ bool ED_object_editmode_exit_ex(Main *bmain, Scene *scene, Object *obedit, int f
 		scene->obedit = NULL; // XXX for context
 
 		/* flag object caches as outdated */
-		BKE_ptcache_ids_from_object(&pidlist, obedit, scene, 0);
+		BKE_ptcache_ids_from_object(bmain, &pidlist, obedit, scene, 0);
 		for (pid = pidlist.first; pid; pid = pid->next) {
 			if (pid->type != PTCACHE_TYPE_PARTICLES) /* particles don't need reset on geometry change */
 				pid->cache->flag |= PTCACHE_OUTDATED;
@@ -654,7 +654,7 @@ static int editmode_toggle_exec(bContext *C, wmOperator *op)
 	return OPERATOR_FINISHED;
 }
 
-static int editmode_toggle_poll(bContext *C)
+static bool editmode_toggle_poll(bContext *C)
 {
 	Object *ob = CTX_data_active_object(C);
 
@@ -1255,6 +1255,7 @@ void OBJECT_OT_forcefield_toggle(wmOperatorType *ot)
  */
 void ED_objects_recalculate_paths(bContext *C, Scene *scene)
 {
+	Main *bmain = CTX_data_main(C);
 	ListBase targets = {NULL, NULL};
 
 	/* loop over objects in scene */
@@ -1267,7 +1268,7 @@ void ED_objects_recalculate_paths(bContext *C, Scene *scene)
 	CTX_DATA_END;
 
 	/* recalculate paths, then free */
-	animviz_calc_motionpaths(scene, &targets);
+	animviz_calc_motionpaths(bmain, scene, &targets);
 	BLI_freelistN(&targets);
 }
 
@@ -1347,7 +1348,7 @@ void OBJECT_OT_paths_calculate(wmOperatorType *ot)
 
 /* --------- */
 
-static int object_update_paths_poll(bContext *C)
+static bool object_update_paths_poll(bContext *C)
 {
 	if (ED_operator_object_active_editable(C)) {
 		Object *ob = ED_object_active_context(C);
@@ -1515,7 +1516,7 @@ static int shade_smooth_exec(bContext *C, wmOperator *op)
 	return (done) ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
-static int shade_poll(bContext *C)
+static bool shade_poll(bContext *C)
 {
 	return (CTX_data_edit_object(C) == NULL);
 }
@@ -1664,7 +1665,7 @@ static const EnumPropertyItem *object_mode_set_itemsf(
 	return item;
 }
 
-static int object_mode_set_poll(bContext *C)
+static bool object_mode_set_poll(bContext *C)
 {
 	/* Since Grease Pencil editmode is also handled here,
 	 * we have a special exception for allowing this operator

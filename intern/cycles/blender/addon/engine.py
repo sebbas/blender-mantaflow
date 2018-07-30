@@ -52,7 +52,9 @@ def _workaround_buggy_drivers():
 
 def _configure_argument_parser():
     import argparse
-    parser = argparse.ArgumentParser(description="Cycles Addon argument parser")
+    # No help because it conflicts with general Python scripts argument parsing
+    parser = argparse.ArgumentParser(description="Cycles Addon argument parser",
+                                     add_help=False)
     parser.add_argument("--cycles-resumable-num-chunks",
                         help="Number of chunks to split sample range into",
                         default=None)
@@ -65,6 +67,9 @@ def _configure_argument_parser():
     parser.add_argument("--cycles-resumable-end-chunk",
                         help="End chunk to render",
                         default=None)
+    parser.add_argument("--cycles-print-stats",
+                        help="Print rendering statistics to stderr",
+                        action='store_true')
     return parser
 
 
@@ -82,15 +87,20 @@ def _parse_command_line():
         if args.cycles_resumable_current_chunk is not None:
             import _cycles
             _cycles.set_resumable_chunk(
-                    int(args.cycles_resumable_num_chunks),
-                    int(args.cycles_resumable_current_chunk))
+                int(args.cycles_resumable_num_chunks),
+                int(args.cycles_resumable_current_chunk),
+            )
         elif args.cycles_resumable_start_chunk is not None and \
-             args.cycles_resumable_end_chunk:
+                args.cycles_resumable_end_chunk:
             import _cycles
             _cycles.set_resumable_chunk_range(
-                    int(args.cycles_resumable_num_chunks),
-                    int(args.cycles_resumable_start_chunk),
-                    int(args.cycles_resumable_end_chunk))
+                int(args.cycles_resumable_num_chunks),
+                int(args.cycles_resumable_start_chunk),
+                int(args.cycles_resumable_end_chunk),
+            )
+    if args.cycles_print_stats:
+        import _cycles
+        _cycles.enable_print_stats()
 
 
 def init():
@@ -205,6 +215,7 @@ def with_network():
 def system_info():
     import _cycles
     return _cycles.system_info()
+
 
 def register_passes(engine, scene, srl):
     engine.register_pass(scene, srl, "Combined", 4, "RGBA", 'COLOR')

@@ -166,6 +166,8 @@ void WM_init(bContext *C, int argc, const char **argv)
 	BKE_addon_pref_type_init();
 
 	wm_operatortype_init();
+	wm_operatortypes_register();
+
 	WM_menutype_init();
 	WM_uilisttype_init();
 
@@ -207,10 +209,10 @@ void WM_init(bContext *C, int argc, const char **argv)
 
 		GPU_init();
 
-		GPU_set_mipmap(!(U.gameflags & USER_DISABLE_MIPMAP));
+		GPU_set_mipmap(G_MAIN, !(U.gameflags & USER_DISABLE_MIPMAP));
 		GPU_set_linear_mipmap(true);
-		GPU_set_anisotropic(U.anisotropic_filter);
-		GPU_set_gpu_mipmapping(U.use_gpu_mipmap);
+		GPU_set_anisotropic(G_MAIN, U.anisotropic_filter);
+		GPU_set_gpu_mipmapping(G_MAIN, U.use_gpu_mipmap);
 
 #ifdef WITH_OPENSUBDIV
 		BKE_subsurf_osd_init();
@@ -260,7 +262,7 @@ void WM_init(bContext *C, int argc, const char **argv)
 	/* allow a path of "", this is what happens when making a new file */
 #if 0
 	if (BKE_main_blendfile_path_from_global()[0] == '\0')
-		BLI_make_file_string("/", G.main->name, BKE_appdir_folder_default(), "untitled.blend");
+		BLI_make_file_string("/", G_MAIN->name, BKE_appdir_folder_default(), "untitled.blend");
 #endif
 
 	BLI_strncpy(G.lib, BKE_main_blendfile_path_from_global(), sizeof(G.lib));
@@ -278,6 +280,7 @@ void WM_init(bContext *C, int argc, const char **argv)
 		/* that prevents loading both the kept session, and the file on the command line */
 	}
 	else {
+		Main *bmain = CTX_data_main(C);
 		/* note, logic here is from wm_file_read_post,
 		 * call functions that depend on Python being initialized. */
 
@@ -288,10 +291,10 @@ void WM_init(bContext *C, int argc, const char **argv)
 		 * note that recovering the last session does its own callbacks. */
 		CTX_wm_window_set(C, CTX_wm_manager(C)->windows.first);
 
-		BLI_callback_exec(CTX_data_main(C), NULL, BLI_CB_EVT_VERSION_UPDATE);
-		BLI_callback_exec(CTX_data_main(C), NULL, BLI_CB_EVT_LOAD_POST);
+		BLI_callback_exec(bmain, NULL, BLI_CB_EVT_VERSION_UPDATE);
+		BLI_callback_exec(bmain, NULL, BLI_CB_EVT_LOAD_POST);
 
-		wm_file_read_report(C);
+		wm_file_read_report(C, bmain);
 
 		if (!G.background) {
 			CTX_wm_window_set(C, NULL);
@@ -589,7 +592,7 @@ void WM_exit_ext(bContext *C, const bool do_python)
 #endif
 
 		GPU_global_buffer_pool_free();
-		GPU_free_unused_buffers();
+		GPU_free_unused_buffers(G_MAIN);
 
 		GPU_exit();
 	}

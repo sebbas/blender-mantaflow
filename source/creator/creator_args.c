@@ -60,6 +60,8 @@
 #include "BKE_sound.h"
 #include "BKE_image.h"
 
+#include "DNA_screen_types.h"
+
 #include "DEG_depsgraph.h"
 
 #ifdef WITH_FFMPEG
@@ -404,7 +406,7 @@ static void arg_py_context_restore(
 	/* script may load a file, check old data is valid before using */
 	if (c_py->has_win) {
 		if ((c_py->win == NULL) ||
-		    ((BLI_findindex(&G.main->wm, c_py->wm) != -1) &&
+		    ((BLI_findindex(&G_MAIN->wm, c_py->wm) != -1) &&
 		     (BLI_findindex(&c_py->wm->windows, c_py->win) != -1)))
 		{
 			CTX_wm_window_set(C, c_py->win);
@@ -412,7 +414,7 @@ static void arg_py_context_restore(
 	}
 
 	if ((c_py->scene == NULL) ||
-	    BLI_findindex(&G.main->scene, c_py->scene) != -1)
+	    BLI_findindex(&G_MAIN->scene, c_py->scene) != -1)
 	{
 		CTX_data_scene_set(C, c_py->scene);
 	}
@@ -1474,11 +1476,11 @@ static int arg_handle_ge_parameters_set(int argc, const char **argv, void *data)
 #endif
 			/* doMipMap */
 			if (STREQ(argv[a], "nomipmap")) {
-				GPU_set_mipmap(0); //doMipMap = 0;
+				GPU_set_mipmap(G_MAIN, 0); //doMipMap = 0;
 			}
 			/* linearMipMap */
 			if (STREQ(argv[a], "linearmipmap")) {
-				GPU_set_mipmap(1);
+				GPU_set_mipmap(G_MAIN, 1);
 				GPU_set_linear_mipmap(1); //linearMipMap = 1;
 			}
 
@@ -1588,6 +1590,16 @@ static int arg_handle_scene_set(int argc, const char **argv, void *data)
 		Scene *scene = BKE_scene_set_name(CTX_data_main(C), argv[1]);
 		if (scene) {
 			CTX_data_scene_set(C, scene);
+
+			/* Set the scene of the first window, see: T55991,
+			 * otherwise scrips that run later won't get this scene back from the context. */
+			wmWindow *win = CTX_wm_window(C);
+			if (win == NULL) {
+				win = CTX_wm_manager(C)->windows.first;
+			}
+			if (win != NULL) {
+				win->screen->scene = scene;
+			}
 		}
 		return 1;
 	}
@@ -1914,7 +1926,7 @@ static int arg_handle_load_file(int UNUSED(argc), const char **argv, void *data)
 
 		if (BLO_has_bfile_extension(filename)) {
 			/* Just pretend a file was loaded, so the user can press Save and it'll save at the filename from the CLI. */
-			BLI_strncpy(G.main->name, filename, FILE_MAX);
+			BLI_strncpy(G_MAIN->name, filename, FILE_MAX);
 			G.relbase_valid = true;
 			G.save_over = true;
 			printf("... opened default scene instead; saving will write to: %s\n", filename);

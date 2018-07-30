@@ -51,12 +51,12 @@ public:
 	 * the inner loop of this program
 	 */
 	void executePixelSampled(float output[4], float x, float y, PixelSampler sampler) = 0;
-	
+
 	/**
 	 * Initialize the execution
 	 */
 	void initExecution();
-	
+
 	/**
 	 * Deinitialize the execution
 	 */
@@ -172,6 +172,30 @@ public:
 class MathArcTan2Operation : public MathBaseOperation {
 public:
 	MathArcTan2Operation() : MathBaseOperation() {}
+	void executePixelSampled(float output[4], float x, float y, PixelSampler sampler);
+};
+
+class MathFloorOperation : public MathBaseOperation {
+public:
+	MathFloorOperation() : MathBaseOperation() {}
+	void executePixelSampled(float output[4], float x, float y, PixelSampler sampler);
+};
+
+class MathCeilOperation : public MathBaseOperation {
+public:
+	MathCeilOperation() : MathBaseOperation() {}
+	void executePixelSampled(float output[4], float x, float y, PixelSampler sampler);
+};
+
+class MathFractOperation : public MathBaseOperation {
+public:
+	MathFractOperation() : MathBaseOperation() {}
+	void executePixelSampled(float output[4], float x, float y, PixelSampler sampler);
+};
+
+class MathSqrtOperation : public MathBaseOperation {
+public:
+	MathSqrtOperation() : MathBaseOperation() {}
 	void executePixelSampled(float output[4], float x, float y, PixelSampler sampler);
 };
 

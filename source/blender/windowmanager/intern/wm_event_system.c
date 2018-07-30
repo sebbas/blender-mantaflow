@@ -210,7 +210,7 @@ void WM_event_add_notifier(const bContext *C, unsigned int type, void *reference
 
 void WM_main_add_notifier(unsigned int type, void *reference)
 {
-	Main *bmain = G.main;
+	Main *bmain = G_MAIN;
 	wmWindowManager *wm = bmain->wm.first;
 	wmNotifier *note;
 
@@ -235,7 +235,7 @@ void WM_main_add_notifier(unsigned int type, void *reference)
  */
 void WM_main_remove_notifier_reference(const void *reference)
 {
-	Main *bmain = G.main;
+	Main *bmain = G_MAIN;
 	wmWindowManager *wm = bmain->wm.first;
 
 	if (wm) {
@@ -255,7 +255,7 @@ void WM_main_remove_notifier_reference(const void *reference)
 
 void WM_main_remap_editor_id_reference(ID *old_id, ID *new_id)
 {
-	Main *bmain = G.main;
+	Main *bmain = G_MAIN;
 	bScreen *sc;
 
 	for (sc = bmain->screen.first; sc; sc = sc->id.next) {
@@ -451,7 +451,7 @@ static int wm_handler_ui_call(bContext *C, wmEventHandler *handler, const wmEven
 	/* UI code doesn't handle return values - it just always returns break.
 	 * to make the DBL_CLICK conversion work, we just don't send this to UI, except mouse clicks */
 	if (((handler->flag & WM_HANDLER_ACCEPT_DBL_CLICK) == 0) &&
-	    (event->type != LEFTMOUSE) &&
+	    !ISMOUSE_BUTTON(event->type) &&
 	    (event->val == KM_DBL_CLICK))
 	{
 		return WM_HANDLER_CONTINUE;
@@ -520,7 +520,7 @@ static void wm_handler_ui_cancel(bContext *C)
 
 /* ********************* operators ******************* */
 
-int WM_operator_poll(bContext *C, wmOperatorType *ot)
+bool WM_operator_poll(bContext *C, wmOperatorType *ot)
 {
 	wmOperatorTypeMacro *otmacro;
 
@@ -541,7 +541,7 @@ int WM_operator_poll(bContext *C, wmOperatorType *ot)
 }
 
 /* sets up the new context and calls 'wm_operator_invoke()' with poll_only */
-int WM_operator_poll_context(bContext *C, wmOperatorType *ot, short context)
+bool WM_operator_poll_context(bContext *C, wmOperatorType *ot, short context)
 {
 	return wm_operator_call_internal(C, ot, NULL, NULL, context, true);
 }
@@ -611,7 +611,7 @@ void WM_event_print(const wmEvent *event)
  */
 void WM_report_banner_show(void)
 {
-	wmWindowManager *wm = G.main->wm.first;
+	wmWindowManager *wm = G_MAIN->wm.first;
 	ReportList *wm_reports = &wm->reports;
 	ReportTimerInfo *rti;
 
@@ -646,7 +646,7 @@ static void wm_add_reports(ReportList *reports)
 {
 	/* if the caller owns them, handle this */
 	if (reports->list.first && (reports->flag & RPT_OP_HOLD) == 0) {
-		wmWindowManager *wm = G.main->wm.first;
+		wmWindowManager *wm = G_MAIN->wm.first;
 
 		/* add reports to the global list, otherwise they are not seen */
 		BLI_movelisttolist(&wm->reports.list, &reports->list);
@@ -2252,24 +2252,34 @@ static int wm_handlers_do(bContext *C, wmEvent *event, ListBase *handlers)
 		return action;
 
 	if (ELEM(event->type, MOUSEMOVE, INBETWEEN_MOUSEMOVE)) {
-		if (event->check_drag) {
+
+		/* Test for CLICK_DRAG events. */
+		if (wm_action_not_handled(action)) {
+			if (event->check_drag) {
+				wmWindow *win = CTX_wm_window(C);
+				if ((abs(event->x - win->eventstate->prevclickx)) >= U.tweak_threshold ||
+				    (abs(event->y - win->eventstate->prevclicky)) >= U.tweak_threshold)
+				{
+					short val = event->val;
+					short type = event->type;
+					event->val = KM_CLICK_DRAG;
+					event->type = win->eventstate->type;
+
+					CLOG_INFO(WM_LOG_HANDLERS, 1, "handling PRESS_DRAG");
+
+					action |= wm_handlers_do_intern(C, event, handlers);
+
+					event->val = val;
+					event->type = type;
+
+					win->eventstate->check_click = 0;
+					win->eventstate->check_drag = 0;
+				}
+			}
+		}
+		else {
 			wmWindow *win = CTX_wm_window(C);
-			if ((abs(event->x - win->eventstate->prevclickx)) >= U.tweak_threshold ||
-			    (abs(event->y - win->eventstate->prevclicky)) >= U.tweak_threshold)
-			{
-				short val = event->val;
-				short type = event->type;
-				event->val = KM_CLICK_DRAG;
-				event->type = win->eventstate->type;
-
-				CLOG_INFO(WM_LOG_HANDLERS, 1, "handling PRESS_DRAG");
-
-				action |= wm_handlers_do_intern(C, event, handlers);
-
-				event->val = val;
-				event->type = type;
-
-				win->eventstate->check_click = 0;
+			if (win) {
 				win->eventstate->check_drag = 0;
 			}
 		}
@@ -2277,7 +2287,7 @@ static int wm_handlers_do(bContext *C, wmEvent *event, ListBase *handlers)
 	else if (ISMOUSE_BUTTON(event->type) || ISKEYBOARD(event->type)) {
 		/* All events that don't set wmEvent.prevtype must be ignored. */
 
-		/* test for CLICK events */
+		/* Test for CLICK events. */
 		if (wm_action_not_handled(action)) {
 			wmWindow *win = CTX_wm_window(C);
 
@@ -2317,6 +2327,7 @@ static int wm_handlers_do(bContext *C, wmEvent *event, ListBase *handlers)
 					}
 				}
 				else if (event->val == KM_DBL_CLICK) {
+					/* The underlying event is a press, so try and handle this. */
 					event->val = KM_PRESS;
 					action |= wm_handlers_do_intern(C, event, handlers);
 
@@ -2329,9 +2340,9 @@ static int wm_handlers_do(bContext *C, wmEvent *event, ListBase *handlers)
 		}
 		else {
 			wmWindow *win = CTX_wm_window(C);
-
-			if (win)
+			if (win) {
 				win->eventstate->check_click = 0;
+			}
 		}
 	}
 
@@ -3559,7 +3570,7 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, int type, int U
 			/* if previous event was same type, and previous was release, and now it presses... */
 			if (wm_event_is_double_click(&event, evt)) {
 				CLOG_INFO(WM_LOG_HANDLERS, 1, "Send double click");
-				evt->val = event.val = KM_DBL_CLICK;
+				event.val = KM_DBL_CLICK;
 			}
 
 			/* this case happens on holding a key pressed, it should not generate

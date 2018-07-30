@@ -405,7 +405,7 @@ static void fluid_init_all_channels(bContext *C, Object *UNUSED(fsDomain), Fluid
 
 		/* XXX: This can't be used due to an anim sys optimization that ignores recalc object animation,
 		 * leaving it for the depgraph (this ignores object animation such as modifier properties though... :/ )
-		 * --> BKE_animsys_evaluate_all_animation(G.main, eval_time);
+		 * --> BKE_animsys_evaluate_all_animation(CTX_data_main(C), eval_time);
 		 * This doesn't work with drivers:
 		 * --> BKE_animsys_evaluate_animdata(&fsDomain->id, fsDomain->adt, eval_time, ADT_RECALC_ALL);
 		 */
@@ -440,7 +440,7 @@ static void fluid_init_all_channels(bContext *C, Object *UNUSED(fsDomain), Fluid
 		for (fobj=fobjects->first; fobj; fobj=fobj->next) {
 			Object *ob = fobj->object;
 			FluidsimModifierData *fluidmd = (FluidsimModifierData *)modifiers_findByType(ob, eModifierType_Fluidsim);
-			float active= (float) ((fluidmd->fss->flag & OB_FLUIDSIM_ACTIVE) > 0 ? 1 : 0);
+			float active = (float) ((fluidmd->fss->flag & OB_FLUIDSIM_ACTIVE) ? 1 : 0);
 			float rot_d[3] = {0.f, 0.f, 0.f}, old_rot[3] = {0.f, 0.f, 0.f};
 
 			if (ELEM(fluidmd->fss->type, OB_FLUIDSIM_DOMAIN, OB_FLUIDSIM_PARTICLE))
@@ -1793,3 +1793,4 @@ void MANTA_OT_make_file(wmOperatorType *ot)
 	ot->exec = manta_make_file_exec;
 	ot->poll = ED_operator_object_active_editable;
 }
+

@@ -3396,11 +3396,6 @@ class VIEW3D_PT_view3d_properties(Panel):
     bl_region_type = 'UI'
     bl_label = "View"
 
-    @classmethod
-    def poll(cls, context):
-        view = context.space_data
-        return (view)
-
     def draw(self, context):
         layout = self.layout
 
@@ -3444,11 +3439,6 @@ class VIEW3D_PT_view3d_cursor(Panel):
     bl_region_type = 'UI'
     bl_label = "3D Cursor"
 
-    @classmethod
-    def poll(cls, context):
-        view = context.space_data
-        return (view is not None)
-
     def draw(self, context):
         layout = self.layout
 
@@ -3463,7 +3453,7 @@ class VIEW3D_PT_view3d_name(Panel):
 
     @classmethod
     def poll(cls, context):
-        return (context.space_data and context.active_object)
+        return (context.active_object is not None)
 
     def draw(self, context):
         layout = self.layout
@@ -3486,11 +3476,6 @@ class VIEW3D_PT_view3d_display(Panel):
     bl_region_type = 'UI'
     bl_label = "Display"
     bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(cls, context):
-        view = context.space_data
-        return (view)
 
     def draw(self, context):
         layout = self.layout
@@ -3554,9 +3539,7 @@ class VIEW3D_PT_view3d_stereo(Panel):
     @classmethod
     def poll(cls, context):
         scene = context.scene
-
-        multiview = scene.render.use_multiview
-        return context.space_data and multiview
+        return scene.render.use_multiview
 
     def draw(self, context):
         layout = self.layout
@@ -3641,11 +3624,6 @@ class VIEW3D_PT_view3d_motion_tracking(Panel):
     bl_label = "Motion Tracking"
     bl_options = {'DEFAULT_CLOSED'}
 
-    @classmethod
-    def poll(cls, context):
-        view = context.space_data
-        return (view)
-
     def draw_header(self, context):
         view = context.space_data
 
@@ -3729,7 +3707,7 @@ class VIEW3D_PT_view3d_meshdisplay(Panel):
         col.label(text="Face Info:")
         col.prop(mesh, "show_extra_face_area", text="Area")
         col.prop(mesh, "show_extra_face_angle", text="Angle")
-        if bpy.app.debug:
+        if context.user_preferences.view.show_developer_ui:
             layout.prop(mesh, "show_extra_indices")
 
 
@@ -3786,8 +3764,7 @@ class VIEW3D_PT_view3d_curvedisplay(Panel):
 
     @classmethod
     def poll(cls, context):
-        editmesh = context.mode == 'EDIT_CURVE'
-        return (editmesh)
+        return (context.mode == 'EDIT_CURVE')
 
     def draw(self, context):
         layout = self.layout
@@ -3913,11 +3890,6 @@ class VIEW3D_PT_transform_orientations(Panel):
     bl_region_type = 'UI'
     bl_label = "Transform Orientations"
     bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(cls, context):
-        view = context.space_data
-        return (view)
 
     def draw(self, context):
         layout = self.layout

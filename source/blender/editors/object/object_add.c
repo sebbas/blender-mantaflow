@@ -321,7 +321,8 @@ bool ED_object_add_generic_get_opts(bContext *C, wmOperator *op, const char view
 
 	/* Get layers! */
 	{
-		int a, layer_values[20];
+		int a;
+		bool layer_values[20];
 		if (!layer)
 			layer = &_layer;
 
@@ -860,7 +861,7 @@ static int empty_drop_named_image_invoke(bContext *C, wmOperator *op, const wmEv
 
 		/* add under the mouse */
 		ED_object_location_from_view(C, ob->loc);
-		ED_view3d_cursor3d_position(C, ob->loc, event->mval);
+		ED_view3d_cursor3d_position(C, event->mval, ob->loc);
 	}
 
 	BKE_object_empty_draw_type_set(ob, OB_EMPTY_IMAGE);
@@ -984,7 +985,7 @@ static int group_instance_add_exec(bContext *C, wmOperator *op)
 			const int mval[2] = {event->x - ar->winrct.xmin,
 			                     event->y - ar->winrct.ymin};
 			ED_object_location_from_view(C, loc);
-			ED_view3d_cursor3d_position(C, loc, mval);
+			ED_view3d_cursor3d_position(C, mval, loc);
 			RNA_float_set_array(op->ptr, "location", loc);
 		}
 	}
@@ -1581,7 +1582,7 @@ static void curvetomesh(Main *bmain, Scene *scene, Object *ob)
 	}
 }
 
-static int convert_poll(bContext *C)
+static bool convert_poll(bContext *C)
 {
 	Object *obact = CTX_data_active_object(C);
 	Scene *scene = CTX_data_scene(C);
@@ -1785,7 +1786,7 @@ static int convert_exec(bContext *C, wmOperator *op)
 			 *               datablock, but for until we've got granular update
 			 *               lets take care by selves.
 			 */
-			BKE_vfont_to_curve(bmain, newob, FO_EDIT);
+			BKE_vfont_to_curve(newob, FO_EDIT);
 
 			newob->type = OB_CURVE;
 			cu->type = OB_CURVE;
@@ -2036,7 +2037,7 @@ static Base *object_add_duplicate_internal(Main *bmain, Scene *scene, Base *base
 
 		/* duplicates using userflags */
 		if (dupflag & USER_DUP_ACT) {
-			BKE_animdata_copy_id_action(&obn->id, true);
+			BKE_animdata_copy_id_action(bmain, &obn->id, true);
 		}
 
 		if (dupflag & USER_DUP_MAT) {
@@ -2050,7 +2051,7 @@ static Base *object_add_duplicate_internal(Main *bmain, Scene *scene, Base *base
 					id_us_min(id);
 
 					if (dupflag & USER_DUP_ACT) {
-						BKE_animdata_copy_id_action(&obn->mat[a]->id, true);
+						BKE_animdata_copy_id_action(bmain, &obn->mat[a]->id, true);
 					}
 				}
 			}
@@ -2066,7 +2067,7 @@ static Base *object_add_duplicate_internal(Main *bmain, Scene *scene, Base *base
 					}
 
 					if (dupflag & USER_DUP_ACT) {
-						BKE_animdata_copy_id_action(&psys->part->id, true);
+						BKE_animdata_copy_id_action(bmain, &psys->part->id, true);
 					}
 
 					id_us_min(id);
@@ -2196,9 +2197,9 @@ static Base *object_add_duplicate_internal(Main *bmain, Scene *scene, Base *base
 			if (dupflag & USER_DUP_ACT) {
 				bActuator *act;
 
-				BKE_animdata_copy_id_action((ID *)obn->data, true);
+				BKE_animdata_copy_id_action(bmain, (ID *)obn->data, true);
 				if (key) {
-					BKE_animdata_copy_id_action((ID *)key, true);
+					BKE_animdata_copy_id_action(bmain, (ID *)key, true);
 				}
 
 				/* Update the duplicated action in the action actuators */
@@ -2384,7 +2385,7 @@ static int add_named_exec(bContext *C, wmOperator *op)
 		const int mval[2] = {event->x - ar->winrct.xmin,
 		                     event->y - ar->winrct.ymin};
 		ED_object_location_from_view(C, basen->object->loc);
-		ED_view3d_cursor3d_position(C, basen->object->loc, mval);
+		ED_view3d_cursor3d_position(C, mval, basen->object->loc);
 	}
 
 	ED_base_object_select(basen, BA_SELECT);
@@ -2424,7 +2425,7 @@ void OBJECT_OT_add_named(wmOperatorType *ot)
 
 /**************************** Join *************************/
 
-static int join_poll(bContext *C)
+static bool join_poll(bContext *C)
 {
 	Object *ob = CTX_data_active_object(C);
 
@@ -2477,7 +2478,7 @@ void OBJECT_OT_join(wmOperatorType *ot)
 
 /**************************** Join as Shape Key*************************/
 
-static int join_shapes_poll(bContext *C)
+static bool join_shapes_poll(bContext *C)
 {
 	Object *ob = CTX_data_active_object(C);
 

@@ -60,7 +60,7 @@ struct LinkNode;
 struct KDTree;
 struct RNG;
 struct BVHTreeRay;
-struct BVHTreeRayHit; 
+struct BVHTreeRayHit;
 struct EdgeHash;
 
 #define PARTICLE_COLLISION_MAX_COLLISIONS 10
@@ -192,7 +192,7 @@ typedef struct ParticleCollisionElement {
 
 	/* values interpolated from original data*/
 	float x0[3], x1[3], x2[3], p[3];
-	
+
 	/* results for found intersection point */
 	float nor[3], vel[3], uv[2];
 
@@ -326,9 +326,10 @@ void psys_particle_on_emitter(struct ParticleSystemModifierData *psmd, int distr
                               float utan[3], float vtan[3], float orco[3], float ornor[3]);
 struct ParticleSystemModifierData *psys_get_modifier(struct Object *ob, struct ParticleSystem *psys);
 
-struct ModifierData *object_add_particle_system(struct Scene *scene, struct Object *ob, const char *name);
-void object_remove_particle_system(struct Scene *scene, struct Object *ob);
-struct ParticleSettings *BKE_particlesettings_add(struct Main *main, const char *name);
+struct ModifierData *object_add_particle_system(
+        struct Main *bmain, struct Scene *scene, struct Object *ob, const char *name);
+void object_remove_particle_system(struct Main *bmain, struct Scene *scene, struct Object *ob);
+struct ParticleSettings *BKE_particlesettings_add(struct Main *bmain, const char *name);
 void BKE_particlesettings_copy_data(
         struct Main *bmain, struct ParticleSettings *part_dst, const struct ParticleSettings *part_src,
         const int flag);

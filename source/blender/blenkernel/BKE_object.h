@@ -245,7 +245,7 @@ int BKE_object_obdata_texspace_get(struct Object *ob, short **r_texflag, float *
 
 int BKE_object_insert_ptcache(struct Object *ob);
 void BKE_object_delete_ptcache(struct Object *ob, int index);
-struct KeyBlock *BKE_object_shapekey_insert(struct Object *ob, const char *name, const bool from_mix);
+struct KeyBlock *BKE_object_shapekey_insert(struct Main *bmain, struct Object *ob, const char *name, const bool from_mix);
 bool BKE_object_shapekey_remove(struct Main *bmain, struct Object *ob, struct KeyBlock *kb);
 bool BKE_object_shapekey_free(struct Main *bmain, struct Object *ob);
 
@@ -283,8 +283,9 @@ typedef enum eObjectSet {
 
 struct LinkNode *BKE_object_relational_superset(
         struct Scene *scene, eObjectSet objectSet, eObRelationTypes includeFilter);
-struct LinkNode *BKE_object_groups(struct Object *ob);
-void             BKE_object_groups_clear(struct Scene *scene, struct Base *base, struct Object *object);
+struct LinkNode *BKE_object_groups(struct Main *bmain, struct Object *ob);
+void             BKE_object_groups_clear(
+        struct Main *bmain, struct Scene *scene, struct Base *base, struct Object *object);
 
 struct KDTree *BKE_object_as_kdtree(struct Object *ob, int *r_tot);
 

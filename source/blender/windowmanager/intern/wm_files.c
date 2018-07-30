@@ -64,7 +64,6 @@
 
 #include "BLF_api.h"
 
-#include "DNA_mesh_types.h" /* only for USE_BMESH_SAVE_AS_COMPAT */
 #include "DNA_object_types.h"
 #include "DNA_space_types.h"
 #include "DNA_userdef_types.h"
@@ -147,8 +146,8 @@ static void wm_window_match_init(bContext *C, ListBase *wmlist)
 	wmWindowManager *wm;
 	wmWindow *win, *active_win;
 
-	*wmlist = G.main->wm;
-	BLI_listbase_clear(&G.main->wm);
+	*wmlist = G_MAIN->wm;
+	BLI_listbase_clear(&G_MAIN->wm);
 
 	active_win = CTX_wm_window(C);
 
@@ -188,7 +187,7 @@ static void wm_window_match_init(bContext *C, ListBase *wmlist)
 	for (win = wm->windows.first; win; win = win->next) {
 		BLI_strncpy(win->screenname, win->screen->id.name, MAX_ID_NAME);
 		if (win != wm->winactive) {
-			BLI_remlink(&G.main->screen, win->screen);
+			BLI_remlink(&G_MAIN->screen, win->screen);
 			//BLI_addtail(screenbase, win->screen);
 		}
 	}
@@ -423,12 +422,12 @@ void WM_file_autoexec_init(const char *filepath)
 	}
 }
 
-void wm_file_read_report(bContext *C)
+void wm_file_read_report(bContext *C, Main *bmain)
 {
 	ReportList *reports = NULL;
 	Scene *sce;
 
-	for (sce = G.main->scene.first; sce; sce = sce->id.next) {
+	for (sce = bmain->scene.first; sce; sce = sce->id.next) {
 		if (sce->r.engine[0] &&
 		    BLI_findstring(&R_engines, sce->r.engine, offsetof(RenderEngineType, idname)) == NULL)
 		{
@@ -455,6 +454,7 @@ void wm_file_read_report(bContext *C)
  */
 static void wm_file_read_post(bContext *C, const bool is_startup_file, const bool use_userdef)
 {
+	Main *bmain = CTX_data_main(C);
 	bool addons_loaded = false;
 	wmWindowManager *wm = CTX_wm_manager(C);
 
@@ -466,7 +466,7 @@ static void wm_file_read_post(bContext *C, const bool is_startup_file, const boo
 	CTX_wm_window_set(C, wm->windows.first);
 
 	ED_editors_init(C);
-	DAG_on_visible_update(CTX_data_main(C), true);
+	DAG_on_visible_update(bmain, true);
 
 #ifdef WITH_PYTHON
 	if (is_startup_file) {
@@ -496,8 +496,8 @@ static void wm_file_read_post(bContext *C, const bool is_startup_file, const boo
 	WM_operatortype_last_properties_clear_all();
 
 	/* important to do before NULL'ing the context */
-	BLI_callback_exec(CTX_data_main(C), NULL, BLI_CB_EVT_VERSION_UPDATE);
-	BLI_callback_exec(CTX_data_main(C), NULL, BLI_CB_EVT_LOAD_POST);
+	BLI_callback_exec(bmain, NULL, BLI_CB_EVT_VERSION_UPDATE);
+	BLI_callback_exec(bmain, NULL, BLI_CB_EVT_LOAD_POST);
 
 	/* Would otherwise be handled by event loop.
 	 *
@@ -505,7 +505,6 @@ static void wm_file_read_post(bContext *C, const bool is_startup_file, const boo
 	 * While its possible state of startup file may be wrong,
 	 * in this case users nearly always load a file to replace the startup file. */
 	if (G.background && (is_startup_file == false)) {
-		Main *bmain = CTX_data_main(C);
 		BKE_scene_update_tagged(bmain->eval_ctx, bmain, CTX_data_scene(C));
 	}
 
@@ -514,7 +513,7 @@ static void wm_file_read_post(bContext *C, const bool is_startup_file, const boo
 	/* report any errors.
 	 * currently disabled if addons aren't yet loaded */
 	if (addons_loaded) {
-		wm_file_read_report(C);
+		wm_file_read_report(C, bmain);
 	}
 
 	if (!G.background) {
@@ -524,7 +523,7 @@ static void wm_file_read_post(bContext *C, const bool is_startup_file, const boo
 		else {
 			BKE_undosys_stack_clear(wm->undo_stack);
 		}
-		BKE_undosys_stack_init_from_main(wm->undo_stack, CTX_data_main(C));
+		BKE_undosys_stack_init_from_main(wm->undo_stack, bmain);
 		BKE_undosys_stack_init_from_context(wm->undo_stack, C);
 	}
 
@@ -659,7 +658,7 @@ int wm_homefile_read(
         bool use_factory_settings, bool use_empty_data, bool use_userdef,
         const char *filepath_startup_override, const char *app_template_override)
 {
-	Main *bmain = G.main;  /* Context does not always have valid main pointer here... */
+	Main *bmain = G_MAIN;  /* Context does not always have valid main pointer here... */
 	ListBase wmbase;
 	bool success = false;
 
@@ -1087,8 +1086,8 @@ bool write_crash_blend(void)
 	int fileflags = G.fileflags & ~(G_FILE_HISTORY); /* don't do file history on crash file */
 
 	BLI_strncpy(path, BKE_main_blendfile_path_from_global(), sizeof(path));
-	BLI_replace_extension(path, sizeof(path), "_crash.blend");
-	if (BLO_write_file(G.main, path, fileflags, NULL, NULL)) {
+	BLI_path_extension_replace(path, sizeof(path), "_crash.blend");
+	if (BLO_write_file(G_MAIN, path, fileflags, NULL, NULL)) {
 		printf("written: %s\n", path);
 		return 1;
 	}
@@ -1146,7 +1145,7 @@ static int wm_file_write(bContext *C, const char *filepath, int fileflags, Repor
 	/* blend file thumbnail */
 	/* save before exit_editmode, otherwise derivedmeshes for shared data corrupt #27765) */
 	/* Main now can store a .blend thumbnail, usefull for background mode or thumbnail customization. */
-	main_thumb = thumb = CTX_data_main(C)->blen_thumb;
+	main_thumb = thumb = bmain->blen_thumb;
 	if ((U.flag & USER_SAVE_PREVIEWS) && BLI_thread_is_main()) {
 		ibuf_thumb = blend_file_thumb(bmain, CTX_data_scene(C), CTX_wm_screen(C), &thumb);
 	}
@@ -1224,7 +1223,7 @@ void wm_autosave_location(char *filepath)
 	const char *savedir;
 #endif
 
-	if (G.main && G.relbase_valid) {
+	if (G_MAIN && G.relbase_valid) {
 		const char *basename = BLI_path_basename(BKE_main_blendfile_path_from_global());
 		int len = strlen(basename) - 6;
 		BLI_snprintf(path, sizeof(path), "%.*s.blend", len, basename);
@@ -1374,7 +1373,7 @@ void wm_open_init_use_scripts(wmOperator *op, bool use_prefs)
 
 void WM_file_tag_modified(void)
 {
-	wmWindowManager *wm = G.main->wm.first;
+	wmWindowManager *wm = G_MAIN->wm.first;
 	if (wm->file_saved) {
 		wm->file_saved = 0;
 		/* notifier that data changed, for save-over warning or header */
@@ -1391,6 +1390,7 @@ void WM_file_tag_modified(void)
  */
 static int wm_homefile_write_exec(bContext *C, wmOperator *op)
 {
+	Main *bmain = CTX_data_main(C);
 	wmWindowManager *wm = CTX_wm_manager(C);
 	wmWindow *win = CTX_wm_window(C);
 	char filepath[FILE_MAX];
@@ -1403,7 +1403,7 @@ static int wm_homefile_write_exec(bContext *C, wmOperator *op)
 		return OPERATOR_CANCELLED;
 	}
 
-	BLI_callback_exec(G.main, NULL, BLI_CB_EVT_SAVE_PRE);
+	BLI_callback_exec(bmain, NULL, BLI_CB_EVT_SAVE_PRE);
 
 	/* check current window and close it if temp */
 	if (win && win->screen->temp)
@@ -1421,7 +1421,7 @@ static int wm_homefile_write_exec(bContext *C, wmOperator *op)
 	/*  force save as regular blend file */
 	fileflags = G.fileflags & ~(G_FILE_COMPRESS | G_FILE_AUTOPLAY | G_FILE_HISTORY);
 
-	if (BLO_write_file(CTX_data_main(C), filepath, fileflags | G_FILE_USERPREFS, op->reports, NULL) == 0) {
+	if (BLO_write_file(bmain, filepath, fileflags | G_FILE_USERPREFS, op->reports, NULL) == 0) {
 		printf("fail\n");
 		return OPERATOR_CANCELLED;
 	}
@@ -1430,7 +1430,7 @@ static int wm_homefile_write_exec(bContext *C, wmOperator *op)
 
 	G.save_over = 0;
 
-	BLI_callback_exec(G.main, NULL, BLI_CB_EVT_SAVE_POST);
+	BLI_callback_exec(bmain, NULL, BLI_CB_EVT_SAVE_POST);
 
 	return OPERATOR_FINISHED;
 }
@@ -1881,7 +1881,7 @@ static int wm_revert_mainfile_exec(bContext *C, wmOperator *op)
 	}
 }
 
-static int wm_revert_mainfile_poll(bContext *UNUSED(C))
+static bool wm_revert_mainfile_poll(bContext *UNUSED(C))
 {
 	return G.relbase_valid;
 }
@@ -2087,16 +2087,6 @@ static int wm_save_as_mainfile_exec(bContext *C, wmOperator *op)
 	         RNA_boolean_get(op->ptr, "copy")),
 	        G_FILE_SAVE_COPY);
 
-#ifdef USE_BMESH_SAVE_AS_COMPAT
-	SET_FLAG_FROM_TEST(
-	        fileflags,
-	        (RNA_struct_find_property(op->ptr, "use_mesh_compat") &&
-	         RNA_boolean_get(op->ptr, "use_mesh_compat")),
-	        G_FILE_MESH_COMPAT);
-#else
-#  error "don't remove by accident"
-#endif
-
 	if (wm_file_write(C, path, fileflags, op->reports) != 0)
 		return OPERATOR_CANCELLED;
 
@@ -2115,9 +2105,9 @@ static bool blend_save_check(bContext *UNUSED(C), wmOperator *op)
 	char filepath[FILE_MAX];
 	RNA_string_get(op->ptr, "filepath", filepath);
 	if (!BLO_has_bfile_extension(filepath)) {
-		/* some users would prefer BLI_replace_extension(),
+		/* some users would prefer BLI_path_extension_replace(),
 		 * we keep getting nitpicking bug reports about this - campbell */
-		BLI_ensure_extension(filepath, FILE_MAX, ".blend");
+		BLI_path_extension_ensure(filepath, FILE_MAX, ".blend");
 		RNA_string_set(op->ptr, "filepath", filepath);
 		return true;
 	}
@@ -2146,11 +2136,6 @@ void WM_OT_save_as_mainfile(wmOperatorType *ot)
 	prop = RNA_def_boolean(ot->srna, "copy", false, "Save Copy",
 	                "Save a copy of the actual working state but does not make saved file active");
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-#ifdef USE_BMESH_SAVE_AS_COMPAT
-	RNA_def_boolean(ot->srna, "use_mesh_compat", false, "Legacy Mesh Format",
-	                "Save using legacy mesh format (no ngons) - WARNING: only saves tris and quads, other ngons will "
-	                "be lost (no implicit triangulation)");
-#endif
 }
 
 static int wm_save_mainfile_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))

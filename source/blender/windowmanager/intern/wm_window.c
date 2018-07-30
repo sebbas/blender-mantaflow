@@ -502,7 +502,7 @@ void wm_window_title(wmWindowManager *wm, wmWindow *win)
 			char str[sizeof(((Main *)NULL)->name) + 24];
 			BLI_snprintf(str, sizeof(str), "Blender%s [%s%s]", wm->file_saved ? "" : "*",
 			             BKE_main_blendfile_path_from_global(),
-			             G.main->recovered ? " (Recovered)" : "");
+			             G_MAIN->recovered ? " (Recovered)" : "");
 			GHOST_SetTitle(win->ghostwin, str);
 		}
 		else
@@ -1215,11 +1215,6 @@ static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr
 				GHOST_TWindowState state;
 				state = GHOST_GetWindowState(win->ghostwin);
 				win->windowstate = state;
-
-				/* stop screencast if resize */
-				if (type == GHOST_kEventWindowSize) {
-					WM_jobs_stop(wm, win->screen, NULL);
-				}
 
 				WM_window_set_dpi(win);
 

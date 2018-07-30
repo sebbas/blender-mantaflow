@@ -351,7 +351,7 @@ static int ui_layout_local_dir(uiLayout *layout)
 	}
 }
 
-static uiLayout *ui_item_local_sublayout(uiLayout *test, uiLayout *layout, int align)
+static uiLayout *ui_item_local_sublayout(uiLayout *test, uiLayout *layout, bool align)
 {
 	uiLayout *sub;
 
@@ -521,7 +521,7 @@ static void ui_item_array(
 			uiDefAutoButR(block, ptr, prop, -1, "", ICON_NONE, 0, 0, w, UI_UNIT_Y);
 		}
 		else {
-			int *boolarr = NULL;
+			bool *boolarr = NULL;
 
 			/* even if 'expand' is fale, expanding anyway */
 
@@ -536,7 +536,7 @@ static void ui_item_array(
 
 			/* show checkboxes for rna on a non-emboss block (menu for eg) */
 			if (type == PROP_BOOLEAN && ELEM(layout->root->block->dt, UI_EMBOSS_NONE, UI_EMBOSS_PULLDOWN)) {
-				boolarr = MEM_callocN(sizeof(int) * len, __func__);
+				boolarr = MEM_callocN(sizeof(bool) * len, __func__);
 				RNA_property_boolean_get_array(ptr, prop, boolarr);
 			}
 
@@ -700,8 +700,9 @@ static uiBut *ui_item_with_label(uiLayout *layout, uiBlock *block, const char *n
 		but = uiDefAutoButR(block, ptr, prop, index, "", icon, x, y, w - UI_UNIT_X, h);
 
 		/* BUTTONS_OT_file_browse calls UI_context_active_but_prop_get_filebrowser */
-		uiDefIconButO(block, UI_BTYPE_BUT, subtype == PROP_DIRPATH ? "BUTTONS_OT_directory_browse" : "BUTTONS_OT_file_browse",
-		              WM_OP_INVOKE_DEFAULT, ICON_FILESEL, x, y, UI_UNIT_X, h, NULL);
+		uiDefIconButO(
+		        block, UI_BTYPE_BUT, subtype == PROP_DIRPATH ? "BUTTONS_OT_directory_browse" : "BUTTONS_OT_file_browse",
+		        WM_OP_INVOKE_DEFAULT, ICON_FILESEL, x, y, UI_UNIT_X, h, NULL);
 	}
 	else if (flag & UI_ITEM_R_EVENT) {
 		but = uiDefButR_prop(block, UI_BTYPE_KEY_EVENT, 0, name, x, y, w, h, ptr, prop, index, 0, 0, -1, -1, NULL);
@@ -1085,8 +1086,9 @@ void uiItemsFullEnumO_items(
 				}
 				else {
 					/* Do not use uiItemL here, as our root layout is a menu one, it will add a fake blank icon! */
-					but = uiDefBut(block, UI_BTYPE_LABEL, 0, item->name, 0, 0, UI_UNIT_X * 5, UI_UNIT_Y, NULL,
-					               0.0, 0.0, 0, 0, "");
+					but = uiDefBut(
+					        block, UI_BTYPE_LABEL, 0, item->name, 0, 0, UI_UNIT_X * 5, UI_UNIT_Y, NULL,
+					        0.0, 0.0, 0, 0, "");
 				}
 				ui_but_tip_from_enum_item(but, item);
 			}
@@ -1486,7 +1488,7 @@ void uiItemFullR(uiLayout *layout, PointerRNA *ptr, PropertyRNA *prop, int index
 	}
 
 	/* Mark non-embossed textfields inside a listbox. */
-	if (but && (block->flag & UI_BLOCK_LIST_ITEM) && (but->dt & UI_EMBOSS_NONE)) {
+	if (but && (block->flag & UI_BLOCK_LIST_ITEM) && (but->type == UI_BTYPE_TEXT) && (but->dt & UI_EMBOSS_NONE)) {
 		UI_but_flag_enable(but, UI_BUT_LIST_ITEM);
 	}
 
@@ -1733,7 +1735,8 @@ static void search_id_collection(StructRNA *ptype, PointerRNA *ptr, PropertyRNA 
 	StructRNA *srna;
 
 	/* look for collection property in Main */
-	RNA_main_pointer_create(G.main, ptr);
+	/* Note: using global Main is OK-ish here, UI shall not access other Mains anyay... */
+	RNA_main_pointer_create(G_MAIN, ptr);
 
 	*prop = NULL;
 
@@ -1888,11 +1891,11 @@ static uiBut *ui_item_menu(
 
 	if (layout->root->type == UI_LAYOUT_HEADER) { /* ugly .. */
 		if (force_menu) {
-			w += UI_UNIT_Y;
+			w += UI_UNIT_X;
 		}
 		else {
 			if (name[0]) {
-				w -= UI_UNIT_Y / 2;
+				w -= UI_UNIT_X / 2;
 			}
 		}
 	}
@@ -1921,7 +1924,7 @@ static uiBut *ui_item_menu(
 	return but;
 }
 
-void uiItemM(uiLayout *layout, bContext *UNUSED(C), const char *menuname, const char *name, int icon)
+void uiItemM(uiLayout *layout, const char *menuname, const char *name, int icon)
 {
 	MenuType *mt;
 
@@ -2085,8 +2088,9 @@ void uiItemMenuEnumO_ptr(
 	BLI_strncpy(lvl->propname, propname, sizeof(lvl->propname));
 	lvl->opcontext = layout->root->opcontext;
 
-	but = ui_item_menu(layout, name, icon, menu_item_enum_opname_menu, NULL, lvl,
-	                   RNA_struct_ui_description(ot->srna), true);
+	but = ui_item_menu(
+	        layout, name, icon, menu_item_enum_opname_menu, NULL, lvl,
+	        RNA_struct_ui_description(ot->srna), true);
 
 	/* add hotkey here, lower UI code can't detect it */
 	if ((layout->root->block->flag & UI_BLOCK_LOOP) &&
@@ -2858,7 +2862,7 @@ static void ui_litem_layout_overlap(uiLayout *litem)
 }
 
 /* layout create functions */
-uiLayout *uiLayoutRow(uiLayout *layout, int align)
+uiLayout *uiLayoutRow(uiLayout *layout, bool align)
 {
 	uiLayout *litem;
 
@@ -2879,7 +2883,7 @@ uiLayout *uiLayoutRow(uiLayout *layout, int align)
 	return litem;
 }
 
-uiLayout *uiLayoutColumn(uiLayout *layout, int align)
+uiLayout *uiLayoutColumn(uiLayout *layout, bool align)
 {
 	uiLayout *litem;
 
@@ -2900,7 +2904,7 @@ uiLayout *uiLayoutColumn(uiLayout *layout, int align)
 	return litem;
 }
 
-uiLayout *uiLayoutColumnFlow(uiLayout *layout, int number, int align)
+uiLayout *uiLayoutColumnFlow(uiLayout *layout, int number, bool align)
 {
 	uiLayoutItemFlow *flow;
 
@@ -3022,7 +3026,7 @@ uiLayout *uiLayoutListBox(
 	return (uiLayout *)box;
 }
 
-uiLayout *uiLayoutAbsolute(uiLayout *layout, int align)
+uiLayout *uiLayoutAbsolute(uiLayout *layout, bool align)
 {
 	uiLayout *litem;
 
@@ -3069,7 +3073,7 @@ uiLayout *uiLayoutOverlap(uiLayout *layout)
 	return litem;
 }
 
-uiLayout *uiLayoutSplit(uiLayout *layout, float percentage, int align)
+uiLayout *uiLayoutSplit(uiLayout *layout, float percentage, bool align)
 {
 	uiLayoutItemSplit *split;
 

@@ -53,8 +53,10 @@ struct wmOperatorType;
 struct PointerRNA;
 struct PropertyRNA;
 struct EnumPropertyItem;
+struct wmWindowManager;
 
 #include "DNA_object_enums.h"
+#include "BLI_compiler_attrs.h"
 
 /* object_edit.c */
 struct Object *ED_object_context(struct bContext *C);               /* context.object */
@@ -216,7 +218,7 @@ int ED_object_modifier_move_up(struct ReportList *reports, struct Object *ob, st
 int ED_object_modifier_convert(
         struct ReportList *reports, struct Main *bmain, struct Scene *scene,
         struct Object *ob, struct ModifierData *md);
-int ED_object_modifier_apply(struct ReportList *reports, struct Scene *scene,
+int ED_object_modifier_apply(struct Main *bmain, struct ReportList *reports, struct Scene *scene,
                              struct Object *ob, struct ModifierData *md, int mode);
 int ED_object_modifier_copy(struct ReportList *reports, struct Object *ob, struct ModifierData *md);
 

@@ -264,6 +264,3 @@ void ED_keymap_physics(wmKeyConfig *keyconf)
 	keymap_particle(keyconf);
 	//keymap_pointcache(keyconf);
 }
-
-
-

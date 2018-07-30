@@ -677,7 +677,7 @@ static void file_ui_region_listener(bScreen *UNUSED(sc), ScrArea *UNUSED(sa), AR
 	}
 }
 
-static int filepath_drop_poll(bContext *C, wmDrag *drag, const wmEvent *UNUSED(event))
+static bool filepath_drop_poll(bContext *C, wmDrag *drag, const wmEvent *UNUSED(event))
 {
 	if (drag->type == WM_DRAG_PATH) {
 		SpaceFile *sfile = CTX_wm_space_file(C);
@@ -811,4 +811,3 @@ void ED_file_read_bookmarks(void)
 		fsmenu_read_bookmarks(ED_fsmenu_get(), name);
 	}
 }
-

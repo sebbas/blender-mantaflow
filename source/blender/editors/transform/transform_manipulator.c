@@ -54,6 +54,7 @@
 #include "BKE_context.h"
 #include "BKE_curve.h"
 #include "BKE_global.h"
+#include "BKE_main.h"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 #include "BKE_editmesh.h"
@@ -263,6 +264,7 @@ bool gimbal_axis(Object *ob, float gmat[3][3])
 /* returns total items selected */
 static int calc_manipulator_stats(const bContext *C, struct TransformBounds *tbounds)
 {
+	Main *bmain = CTX_data_main(C);
 	ScrArea *sa = CTX_wm_area(C);
 	ARegion *ar = CTX_wm_region(C);
 	Scene *scene = CTX_data_scene(C);
@@ -562,7 +564,7 @@ static int calc_manipulator_stats(const bContext *C, struct TransformBounds *tbo
 		/* pass */
 	}
 	else if (ob && ob->mode & OB_MODE_PARTICLE_EDIT) {
-		PTCacheEdit *edit = PE_get_current(scene, ob);
+		PTCacheEdit *edit = PE_get_current(bmain, scene, ob);
 		PTCacheEditPoint *point;
 		PTCacheEditKey *ek;
 		int k;
@@ -1847,7 +1849,7 @@ int BIF_do_manipulator(bContext *C, const struct wmEvent *event, wmOperator *op)
 	ScrArea *sa = CTX_wm_area(C);
 	View3D *v3d = sa->spacedata.first;
 	ARegion *ar = CTX_wm_region(C);
-	int constraint_axis[3] = {0, 0, 0};
+	bool constraint_axis[3] = {false, false, false};
 	int val;
 	const bool use_planar = RNA_boolean_get(op->ptr, "use_planar_constraint");
 
@@ -1978,4 +1980,3 @@ int BIF_do_manipulator(bContext *C, const struct wmEvent *event, wmOperator *op)
 
 	return val;
 }
-

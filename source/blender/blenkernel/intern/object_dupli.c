@@ -126,7 +126,7 @@ static void init_context(
 static void copy_dupli_context(DupliContext *r_ctx, const DupliContext *ctx, Object *ob, float mat[4][4], int index, bool animated)
 {
 	*r_ctx = *ctx;
-	
+
 	r_ctx->animated |= animated; /* object animation makes all children animated */
 
 	/* XXX annoying, previously was done by passing an ID* argument, this at least is more explicit */
@@ -581,7 +581,7 @@ static const DupliGenerator gen_dupli_verts = {
 };
 
 /* OB_DUPLIVERTS - FONT */
-static Object *find_family_object(const char *family, size_t family_len, unsigned int ch, GHash *family_gh)
+static Object *find_family_object(Main *bmain, const char *family, size_t family_len, unsigned int ch, GHash *family_gh)
 {
 	Object **ob_pt;
 	Object *ob;
@@ -598,7 +598,7 @@ static Object *find_family_object(const char *family, size_t family_len, unsigne
 		ch_utf8[ch_utf8_len] = '\0';
 		ch_utf8_len += 1;  /* compare with null terminator */
 
-		for (ob = G.main->object.first; ob; ob = ob->id.next) {
+		for (ob = bmain->object.first; ob; ob = ob->id.next) {
 			if (STREQLEN(ob->id.name + 2 + family_len, ch_utf8, ch_utf8_len)) {
 				if (STREQLEN(ob->id.name + 2, family, family_len)) {
 					break;
@@ -634,7 +634,7 @@ static void make_duplis_font(const DupliContext *ctx)
 
 	/* in par the family name is stored, use this to find the other objects */
 
-	BKE_vfont_to_curve_ex(G.main, par, par->data, FO_DUPLI, NULL,
+	BKE_vfont_to_curve_ex(par, par->data, FO_DUPLI, NULL,
 	                      &text, &text_len, &text_free, &chartransdata);
 
 	if (text == NULL || chartransdata == NULL) {
@@ -655,7 +655,7 @@ static void make_duplis_font(const DupliContext *ctx)
 	/* advance matching BLI_strncpy_wchar_from_utf8 */
 	for (a = 0; a < text_len; a++, ct++) {
 
-		ob = find_family_object(cu->family, family_len, (unsigned int)text[a], family_gh);
+		ob = find_family_object(ctx->bmain, cu->family, family_len, (unsigned int)text[a], family_gh);
 		if (ob) {
 			vec[0] = fsize * (ct->xof - xof);
 			vec[1] = fsize * (ct->yof - yof);
@@ -1281,7 +1281,7 @@ DupliApplyData *duplilist_apply(Object *ob, Scene *scene, ListBase *duplilist)
 {
 	DupliApplyData *apply_data = NULL;
 	int num_objects = BLI_listbase_count(duplilist);
-	
+
 	if (num_objects > 0) {
 		DupliObject *dob;
 		int i;
@@ -1302,7 +1302,7 @@ DupliApplyData *duplilist_apply(Object *ob, Scene *scene, ListBase *duplilist)
 			/* copy obmat from duplis */
 			copy_m4_m4(apply_data->extra[i].obmat, dob->ob->obmat);
 			copy_m4_m4(dob->ob->obmat, dob->mat);
-			
+
 			/* copy layers from the main duplicator object */
 			apply_data->extra[i].lay = dob->ob->lay;
 			dob->ob->lay = ob->lay;
@@ -1322,7 +1322,7 @@ void duplilist_restore(ListBase *duplilist, DupliApplyData *apply_data)
 	for (dob = duplilist->last, i = apply_data->num_objects - 1; dob; dob = dob->prev, --i) {
 		copy_m4_m4(dob->ob->obmat, apply_data->extra[i].obmat);
 		dob->ob->transflag &= ~OB_DUPLICALCDERIVED;
-		
+
 		dob->ob->lay = apply_data->extra[i].lay;
 	}
 }

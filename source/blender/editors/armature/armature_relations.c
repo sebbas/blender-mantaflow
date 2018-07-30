@@ -374,7 +374,7 @@ int join_armature_exec(bContext *C, wmOperator *op)
 				}
 				else {
 					/* merge in data - we'll fix the drivers manually */
-					BKE_animdata_merge_copy(&ob->id, &base->object->id, ADT_MERGECOPY_KEEP_DST, false);
+					BKE_animdata_merge_copy(bmain, &ob->id, &base->object->id, ADT_MERGECOPY_KEEP_DST, false);
 				}
 			}
 
@@ -385,7 +385,7 @@ int join_armature_exec(bContext *C, wmOperator *op)
 				}
 				else {
 					/* merge in data - we'll fix the drivers manually */
-					BKE_animdata_merge_copy(&arm->id, &curarm->id, ADT_MERGECOPY_KEEP_DST, false);
+					BKE_animdata_merge_copy(bmain, &arm->id, &curarm->id, ADT_MERGECOPY_KEEP_DST, false);
 				}
 			}
 
@@ -900,4 +900,3 @@ void ARMATURE_OT_parent_clear(wmOperatorType *ot)
 
 	ot->prop = RNA_def_enum(ot->srna, "type", prop_editarm_clear_parent_types, 0, "ClearType", "What way to clear parenting");
 }
-

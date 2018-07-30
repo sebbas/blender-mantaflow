@@ -197,14 +197,14 @@ static void paint_last_stroke_update(Scene *scene, ARegion *ar, const float mval
 /* polling - retrieve whether cursor should be set or operator should be done */
 
 /* Returns true if vertex paint mode is active */
-int vertex_paint_mode_poll(bContext *C)
+bool vertex_paint_mode_poll(bContext *C)
 {
 	Object *ob = CTX_data_active_object(C);
 
 	return ob && ob->mode == OB_MODE_VERTEX_PAINT && ((Mesh *)ob->data)->totpoly;
 }
 
-int vertex_paint_poll(bContext *C)
+bool vertex_paint_poll(bContext *C)
 {
 	if (vertex_paint_mode_poll(C) &&
 	    BKE_paint_brush(&CTX_data_tool_settings(C)->vpaint->paint))
@@ -219,14 +219,14 @@ int vertex_paint_poll(bContext *C)
 	return 0;
 }
 
-int weight_paint_mode_poll(bContext *C)
+bool weight_paint_mode_poll(bContext *C)
 {
 	Object *ob = CTX_data_active_object(C);
 
 	return ob && ob->mode == OB_MODE_WEIGHT_PAINT && ((Mesh *)ob->data)->totpoly;
 }
 
-int weight_paint_poll(bContext *C)
+bool weight_paint_poll(bContext *C)
 {
 	Object *ob = CTX_data_active_object(C);
 	ScrArea *sa;
@@ -938,15 +938,20 @@ static void do_weight_paint_vertex(
 
 
 /* Toggle operator for turning vertex paint mode on or off (copied from sculpt.c) */
-static void vertex_paint_init_session(Scene *scene, Object *ob)
+static void vertex_paint_init_session(Scene *scene, Object *ob, eObjectMode object_mode)
 {
 	/* Create persistent sculpt mode data */
 	BKE_sculpt_toolsettings_data_ensure(scene);
 
-	if (ob->sculpt == NULL) {
-		ob->sculpt = MEM_callocN(sizeof(SculptSession), "sculpt session");
-		BKE_sculpt_update_mesh_elements(scene, scene->toolsettings->sculpt, ob, false, false);
-	}
+	BLI_assert(ob->sculpt == NULL);
+	ob->sculpt = MEM_callocN(sizeof(SculptSession), "sculpt session");
+	ob->sculpt->mode_type = object_mode;
+	BKE_sculpt_update_mesh_elements(scene, scene->toolsettings->sculpt, ob, false, false);
+}
+
+static void vertex_paint_init_stroke(Scene *scene, Object *ob)
+{
+	BKE_sculpt_update_mesh_elements(scene, scene->toolsettings->sculpt, ob, false, false);
 }
 
 static void vertex_paint_init_session_data(const ToolSettings *ts, Object *ob)
@@ -957,12 +962,12 @@ static void vertex_paint_init_session_data(const ToolSettings *ts, Object *ob)
 	if (ob->mode == OB_MODE_VERTEX_PAINT) {
 		gmap = &ob->sculpt->mode.vpaint.gmap;
 		brush = BKE_paint_brush(&ts->vpaint->paint);
-		ob->sculpt->mode_type = OB_MODE_VERTEX_PAINT;
+		BLI_assert(ob->sculpt->mode_type == OB_MODE_VERTEX_PAINT);
 	}
 	else if (ob->mode == OB_MODE_WEIGHT_PAINT) {
 		gmap = &ob->sculpt->mode.wpaint.gmap;
 		brush = BKE_paint_brush(&ts->wpaint->paint);
-		ob->sculpt->mode_type = OB_MODE_WEIGHT_PAINT;
+		BLI_assert(ob->sculpt->mode_type == OB_MODE_WEIGHT_PAINT);
 	}
 	else {
 		ob->sculpt->mode_type = 0;
@@ -1080,7 +1085,7 @@ static void ed_vwpaintmode_enter_generic(
 		BKE_sculptsession_free(ob);
 	}
 
-	vertex_paint_init_session(scene, ob);
+	vertex_paint_init_session(scene, ob, mode_flag);
 }
 
 void ED_object_vpaintmode_enter_ex(
@@ -1227,7 +1232,7 @@ static int wpaint_mode_toggle_exec(bContext *C, wmOperator *op)
 }
 
 /* for switching to/from mode */
-static int paint_poll_test(bContext *C)
+static bool paint_poll_test(bContext *C)
 {
 	Object *ob = CTX_data_active_object(C);
 	if (ob == NULL || ob->type != OB_MESH)
@@ -1454,8 +1459,9 @@ static bool wpaint_stroke_test_start(bContext *C, wmOperator *op, const float mo
 	wpd = MEM_callocN(sizeof(struct WPaintData), "WPaintData");
 	paint_stroke_set_mode_data(stroke, wpd);
 	ED_view3d_viewcontext_init(C, &wpd->vc);
-	view_angle_limits_init(&wpd->normal_angle_precalc, vp->paint.brush->falloff_angle,
-	                       (vp->paint.brush->flag & BRUSH_FRONTFACE_FALLOFF) != 0);
+	view_angle_limits_init(
+	        &wpd->normal_angle_precalc, vp->paint.brush->falloff_angle,
+	        (vp->paint.brush->flag & BRUSH_FRONTFACE_FALLOFF) != 0);
 
 	wpd->active.index = vgroup_index.active;
 	wpd->mirror.index = vgroup_index.mirror;
@@ -1505,7 +1511,7 @@ static bool wpaint_stroke_test_start(bContext *C, wmOperator *op, const float mo
 	}
 
 	/* If not previously created, create vertex/weight paint mode session data */
-	vertex_paint_init_session(scene, ob);
+	vertex_paint_init_stroke(scene, ob);
 	vwpaint_update_cache_invariants(C, vp, ss, op, mouse);
 	vertex_paint_init_session_data(ts, ob);
 
@@ -2444,13 +2450,13 @@ static bool vpaint_stroke_test_start(bContext *C, struct wmOperator *op, const f
 	vpd = MEM_callocN(sizeof(*vpd), "VPaintData");
 	paint_stroke_set_mode_data(stroke, vpd);
 	ED_view3d_viewcontext_init(C, &vpd->vc);
-	view_angle_limits_init(&vpd->normal_angle_precalc, vp->paint.brush->falloff_angle,
-	                       (vp->paint.brush->flag & BRUSH_FRONTFACE_FALLOFF) != 0);
+	view_angle_limits_init(
+	        &vpd->normal_angle_precalc, vp->paint.brush->falloff_angle,
+	        (vp->paint.brush->flag & BRUSH_FRONTFACE_FALLOFF) != 0);
 
 	vpd->paintcol = vpaint_get_current_col(scene, vp);
 
-	vpd->is_texbrush = !(brush->vertexpaint_tool == PAINT_BLEND_BLUR) &&
-	                   brush->mtex.tex;
+	vpd->is_texbrush = !(brush->vertexpaint_tool == PAINT_BLEND_BLUR) && brush->mtex.tex;
 
 	/* are we painting onto a modified mesh?,
 	 * if not we can skip face map trickiness */
@@ -2482,7 +2488,7 @@ static bool vpaint_stroke_test_start(bContext *C, struct wmOperator *op, const f
 	}
 
 	/* If not previously created, create vertex/weight paint mode session data */
-	vertex_paint_init_session(scene, ob);
+	vertex_paint_init_stroke(scene, ob);
 	vwpaint_update_cache_invariants(C, vp, ss, op, mouse);
 	vertex_paint_init_session_data(ts, ob);
 
@@ -3188,4 +3194,3 @@ void PAINT_OT_vertex_paint(wmOperatorType *ot)
 
 	paint_stroke_operator_properties(ot);
 }
-

@@ -115,7 +115,7 @@ ModifierData *ED_object_modifier_add(ReportList *reports, Main *bmain, Scene *sc
 		/* don't need to worry about the new modifier's name, since that is set to the number
 		 * of particle systems which shouldn't have too many duplicates
 		 */
-		new_md = object_add_particle_system(scene, ob, name);
+		new_md = object_add_particle_system(bmain, scene, ob, name);
 	}
 	else {
 		/* get new modifier data to add */
@@ -520,7 +520,7 @@ int ED_object_modifier_convert(ReportList *UNUSED(reports), Main *bmain, Scene *
 	return 1;
 }
 
-static int modifier_apply_shape(ReportList *reports, Scene *scene, Object *ob, ModifierData *md)
+static int modifier_apply_shape(Main *bmain, ReportList *reports, Scene *scene, Object *ob, ModifierData *md)
 {
 	const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
 
@@ -560,7 +560,7 @@ static int modifier_apply_shape(ReportList *reports, Scene *scene, Object *ob, M
 		}
 
 		if (key == NULL) {
-			key = me->key = BKE_key_add((ID *)me);
+			key = me->key = BKE_key_add(bmain, (ID *)me);
 			key->type = KEY_RELATIVE;
 			/* if that was the first key block added, then it was the basis.
 			 * Initialize it with the mesh, and add another for the modifier */
@@ -667,7 +667,7 @@ static int modifier_apply_obdata(ReportList *reports, Scene *scene, Object *ob, 
 	return 1;
 }
 
-int ED_object_modifier_apply(ReportList *reports, Scene *scene, Object *ob, ModifierData *md, int mode)
+int ED_object_modifier_apply(Main *bmain, ReportList *reports, Scene *scene, Object *ob, ModifierData *md, int mode)
 {
 	int prev_mode;
 
@@ -695,7 +695,7 @@ int ED_object_modifier_apply(ReportList *reports, Scene *scene, Object *ob, Modi
 	md->mode |= eModifierMode_Realtime;
 
 	if (mode == MODIFIER_APPLY_SHAPE) {
-		if (!modifier_apply_shape(reports, scene, ob, md)) {
+		if (!modifier_apply_shape(bmain, reports, scene, ob, md)) {
 			md->mode = prev_mode;
 			return 0;
 		}
@@ -814,7 +814,7 @@ void OBJECT_OT_modifier_add(wmOperatorType *ot)
 
 /************************ generic functions for operators using mod names and data context *********************/
 
-int edit_modifier_poll_generic(bContext *C, StructRNA *rna_type, int obtype_flag)
+bool edit_modifier_poll_generic(bContext *C, StructRNA *rna_type, int obtype_flag)
 {
 	PointerRNA ptr = CTX_data_pointer_get_type(C, "modifier", rna_type);
 	Object *ob = (ptr.id.data) ? ptr.id.data : ED_object_active_context(C);
@@ -826,7 +826,7 @@ int edit_modifier_poll_generic(bContext *C, StructRNA *rna_type, int obtype_flag
 	return 1;
 }
 
-int edit_modifier_poll(bContext *C)
+bool edit_modifier_poll(bContext *C)
 {
 	return edit_modifier_poll_generic(C, &RNA_Modifier, 0);
 }
@@ -998,12 +998,13 @@ void OBJECT_OT_modifier_move_down(wmOperatorType *ot)
 
 static int modifier_apply_exec(bContext *C, wmOperator *op)
 {
+	Main *bmain = CTX_data_main(C);
 	Scene *scene = CTX_data_scene(C);
 	Object *ob = ED_object_active_context(C);
 	ModifierData *md = edit_modifier_property_get(op, ob, 0);
 	int apply_as = RNA_enum_get(op->ptr, "apply_as");
 
-	if (!md || !ED_object_modifier_apply(op->reports, scene, ob, md, apply_as)) {
+	if (!md || !ED_object_modifier_apply(bmain, op->reports, scene, ob, md, apply_as)) {
 		return OPERATOR_CANCELLED;
 	}
 
@@ -1126,7 +1127,7 @@ void OBJECT_OT_modifier_copy(wmOperatorType *ot)
 
 /************* multires delete higher levels operator ****************/
 
-static int multires_poll(bContext *C)
+static bool multires_poll(bContext *C)
 {
 	return edit_modifier_poll_generic(C, &RNA_MultiresModifier, (1 << OB_MESH));
 }
@@ -1451,13 +1452,13 @@ static void modifier_skin_customdata_delete(Object *ob)
 		CustomData_free_layer_active(&me->vdata, CD_MVERT_SKIN, me->totvert);
 }
 
-static int skin_poll(bContext *C)
+static bool skin_poll(bContext *C)
 {
 	return (!CTX_data_edit_object(C) &&
 	        edit_modifier_poll_generic(C, &RNA_SkinModifier, (1 << OB_MESH)));
 }
 
-static int skin_edit_poll(bContext *C)
+static bool skin_edit_poll(bContext *C)
 {
 	return (CTX_data_edit_object(C) &&
 	        edit_modifier_poll_generic(C, &RNA_SkinModifier, (1 << OB_MESH)));
@@ -1823,7 +1824,7 @@ void OBJECT_OT_skin_armature_create(wmOperatorType *ot)
 }
 /************************ delta mush bind operator *********************/
 
-static int correctivesmooth_poll(bContext *C)
+static bool correctivesmooth_poll(bContext *C)
 {
 	return edit_modifier_poll_generic(C, &RNA_CorrectiveSmoothModifier, 0);
 }
@@ -1891,7 +1892,7 @@ void OBJECT_OT_correctivesmooth_bind(wmOperatorType *ot)
 
 /************************ mdef bind operator *********************/
 
-static int meshdeform_poll(bContext *C)
+static bool meshdeform_poll(bContext *C)
 {
 	return edit_modifier_poll_generic(C, &RNA_MeshDeformModifier, 0);
 }
@@ -1987,7 +1988,7 @@ void OBJECT_OT_meshdeform_bind(wmOperatorType *ot)
 
 /****************** explode refresh operator *********************/
 
-static int explode_poll(bContext *C)
+static bool explode_poll(bContext *C)
 {
 	return edit_modifier_poll_generic(C, &RNA_ExplodeModifier, 0);
 }
@@ -2035,7 +2036,7 @@ void OBJECT_OT_explode_refresh(wmOperatorType *ot)
 
 /****************** ocean bake operator *********************/
 
-static int ocean_bake_poll(bContext *C)
+static bool ocean_bake_poll(bContext *C)
 {
 	return edit_modifier_poll_generic(C, &RNA_OceanModifier, 0);
 }
@@ -2253,7 +2254,7 @@ void OBJECT_OT_ocean_bake(wmOperatorType *ot)
 
 /************************ LaplacianDeform bind operator *********************/
 
-static int laplaciandeform_poll(bContext *C)
+static bool laplaciandeform_poll(bContext *C)
 {
 	return edit_modifier_poll_generic(C, &RNA_LaplacianDeformModifier, 0);
 }
@@ -2303,7 +2304,7 @@ void OBJECT_OT_laplaciandeform_bind(wmOperatorType *ot)
 
 /************************ sdef bind operator *********************/
 
-static int surfacedeform_bind_poll(bContext *C)
+static bool surfacedeform_bind_poll(bContext *C)
 {
 	return edit_modifier_poll_generic(C, &RNA_SurfaceDeformModifier, 0);
 }

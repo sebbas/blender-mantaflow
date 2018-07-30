@@ -18,13 +18,13 @@
  * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/bmesh/intern/bmesh_queries_inline.h
+/** \file blender/bmesh/intern/bmesh_query_inline.h
  *  \ingroup bmesh
  */
 
 
-#ifndef __BMESH_QUERIES_INLINE_H__
-#define __BMESH_QUERIES_INLINE_H__
+#ifndef __BMESH_QUERY_INLINE_H__
+#define __BMESH_QUERY_INLINE_H__
 
 /**
  * Returns whether or not a given vertex is
@@ -166,4 +166,4 @@ BLI_INLINE bool BM_vert_is_wire_endpoint(const BMVert *v)
 	return false;
 }
 
-#endif /* __BMESH_QUERIES_INLINE_H__ */
+#endif /* __BMESH_QUERY_INLINE_H__ */

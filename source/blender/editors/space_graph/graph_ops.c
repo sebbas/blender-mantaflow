@@ -67,7 +67,7 @@
  *	2) Value Indicator (stored per Graph Editor instance)
  */
 
-static int graphview_cursor_poll(bContext *C)
+static bool graphview_cursor_poll(bContext *C)
 {
 	/* prevent changes during render */
 	if (G.is_rendering)
@@ -715,4 +715,3 @@ void graphedit_keymap(wmKeyConfig *keyconf)
 	keymap = WM_keymap_find(keyconf, "Graph Editor", SPACE_IPO, 0);
 	graphedit_keymap_keyframes(keyconf, keymap);
 }
-

@@ -961,6 +961,8 @@ static void node_shader_buts_tex_musgrave(uiLayout *layout, bContext *UNUSED(C),
 static void node_shader_buts_tex_voronoi(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
 {
 	uiItemR(layout, ptr, "coloring", 0, "", ICON_NONE);
+	uiItemR(layout, ptr, "distance", 0, "", ICON_NONE);
+	uiItemR(layout, ptr, "feature", 0, "", ICON_NONE);
 }
 
 static void node_shader_buts_tex_pointdensity(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
@@ -1109,6 +1111,11 @@ static void node_shader_buts_hair(uiLayout *layout, bContext *UNUSED(C), Pointer
 	uiItemR(layout, ptr, "component", 0, "", ICON_NONE);
 }
 
+static void node_shader_buts_principled_hair(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
+{
+	uiItemR(layout, ptr, "parametrization", 0, "", ICON_NONE);
+}
+
 static void node_shader_buts_ies(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
 {
 	uiLayout *row;
@@ -1166,6 +1173,13 @@ static void node_buts_output_linestyle(uiLayout *layout, bContext *UNUSED(C), Po
 static void node_shader_buts_bevel(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
 {
 	uiItemR(layout, ptr, "samples", 0, NULL, ICON_NONE);
+}
+
+static void node_shader_buts_ambient_occlusion(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
+{
+	uiItemR(layout, ptr, "samples", 0, NULL, ICON_NONE);
+	uiItemR(layout, ptr, "inside", 0, NULL, ICON_NONE);
+	uiItemR(layout, ptr, "only_local", 0, NULL, ICON_NONE);
 }
 
 /* only once called */
@@ -1292,6 +1306,9 @@ static void node_shader_set_butfunc(bNodeType *ntype)
 		case SH_NODE_BSDF_HAIR:
 			ntype->draw_buttons = node_shader_buts_hair;
 			break;
+		case SH_NODE_BSDF_HAIR_PRINCIPLED:
+			ntype->draw_buttons = 	node_shader_buts_principled_hair;
+			break;
 		case SH_NODE_SCRIPT:
 			ntype->draw_buttons = node_shader_buts_script;
 			ntype->draw_buttons_ex = node_shader_buts_script_ex;
@@ -1310,6 +1327,9 @@ static void node_shader_set_butfunc(bNodeType *ntype)
 			break;
 		case SH_NODE_BEVEL:
 			ntype->draw_buttons = node_shader_buts_bevel;
+			break;
+		case SH_NODE_AMBIENT_OCCLUSION:
+			ntype->draw_buttons = node_shader_buts_ambient_occlusion;
 			break;
 	}
 }
@@ -2532,6 +2552,25 @@ static void node_composit_buts_sunbeams(uiLayout *layout, bContext *UNUSED(C), P
 	uiItemR(layout, ptr, "ray_length", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
 }
 
+static void node_composit_buts_cryptomatte(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
+{
+	uiLayout *col = uiLayoutColumn(layout, true);
+
+	uiItemL(col, IFACE_("Matte Objects:"), ICON_NONE);
+
+	uiLayout *row = uiLayoutRow(col, true);
+	uiTemplateCryptoPicker(row, ptr, "add");
+	uiTemplateCryptoPicker(row, ptr, "remove");
+
+	uiItemR(col, ptr, "matte_id", 0, "", ICON_NONE);
+}
+
+static void node_composit_buts_cryptomatte_ex(uiLayout *layout, bContext *UNUSED(C), PointerRNA *UNUSED(ptr))
+{
+	uiItemO(layout, IFACE_("Add Crypto Layer"), ICON_ZOOMIN, "NODE_OT_cryptomatte_layer_add");
+	uiItemO(layout, IFACE_("Remove Crypto Layer"), ICON_ZOOMOUT, "NODE_OT_cryptomatte_layer_remove");
+}
+
 static void node_composit_buts_brightcontrast(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
 {
 	uiItemR(layout, ptr, "use_premultiply", 0, NULL, ICON_NONE);
@@ -2763,6 +2802,10 @@ static void node_composit_set_butfunc(bNodeType *ntype)
 			break;
 		case CMP_NODE_SUNBEAMS:
 			ntype->draw_buttons = node_composit_buts_sunbeams;
+			break;
+		case CMP_NODE_CRYPTOMATTE:
+			ntype->draw_buttons = node_composit_buts_cryptomatte;
+			ntype->draw_buttons_ex = node_composit_buts_cryptomatte_ex;
 			break;
 		case CMP_NODE_BRIGHTCONTRAST:
 			ntype->draw_buttons = node_composit_buts_brightcontrast;

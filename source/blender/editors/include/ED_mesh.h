@@ -83,7 +83,7 @@ void EDBM_mesh_clear(struct BMEditMesh *em);
 void EDBM_selectmode_to_scene(struct bContext *C);
 void EDBM_mesh_make(struct Object *ob, const int select_mode, const bool add_key_index);
 void EDBM_mesh_free(struct BMEditMesh *em);
-void EDBM_mesh_load(struct Object *ob);
+void EDBM_mesh_load(struct Main *bmain, struct Object *ob);
 struct DerivedMesh *EDBM_mesh_deform_dm_get(struct BMEditMesh *em);
 
 /* flushes based on the current select mode.  if in vertex select mode,
@@ -280,7 +280,7 @@ void ED_mesh_edges_remove(struct Mesh *mesh, struct ReportList *reports, int cou
 void ED_mesh_vertices_remove(struct Mesh *mesh, struct ReportList *reports, int count);
 
 void ED_mesh_calc_tessface(struct Mesh *mesh, bool free_mpoly);
-void ED_mesh_update(struct Mesh *mesh, struct bContext *C, int calc_edges, int calc_tessface);
+void ED_mesh_update(struct Mesh *mesh, struct bContext *C, bool calc_edges, bool calc_tessface);
 
 void ED_mesh_uv_texture_ensure(struct Mesh *me, const char *name);
 int  ED_mesh_uv_texture_add(struct Mesh *me, const char *name, const bool active_set);
