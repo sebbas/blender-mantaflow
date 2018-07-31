@@ -88,7 +88,10 @@ phi_sm$ID$      = sm$ID$.create(LevelsetGrid)\n\
 pp_sm$ID$       = sm$ID$.create(BasicParticleSystem)\n\
 flags_sm$ID$    = sm$ID$.create(FlagGrid)\n\
 mesh_sm$ID$     = sm$ID$.create(Mesh)\n\
-mVel_mesh$ID$   = mesh_sm$ID$.create(MdataVec3)\n\
+\n\
+if using_speedvectors_s$ID$:\n\
+    mVel_mesh$ID$ = mesh_sm$ID$.create(MdataVec3)\n\
+    vel_sm$ID$    = sm$ID$.create(MACGrid)\n\
 \n\
 # Acceleration data for particle nbs\n\
 pindex_sm$ID$  = sm$ID$.create(ParticleIndexSystem)\n\
@@ -250,7 +253,11 @@ def liquid_step_mesh_$ID$():\n\
     extrapolateLsSimple(phi=phi_sm$ID$, distance=3)\n\
     phi_sm$ID$.setBoundNeumann(boundaryWidth_s$ID$) # make sure no particles are placed at outer boundary\n\
     \n\
-    mVel_mesh$ID$.setSource(vel_s$ID$, isMAC=True)\n\
+    # Vert vel vector needs to pull data from vel grid with correct dim\n\
+    if using_speedvectors_s$ID$:\n\
+        interpolateMACGrid(target=vel_sm$ID$, source=vel_s$ID$)\n\
+        mVel_mesh$ID$.setSource(vel_sm$ID$, isMAC=True)\n\
+    \n\
     phi_sm$ID$.setBound(0.5,int(((upres_sm$ID$)*2)-2) )\n\
     phi_sm$ID$.createMesh(mesh_sm$ID$)\n";
 

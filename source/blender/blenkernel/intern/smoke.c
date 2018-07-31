@@ -3074,7 +3074,7 @@ static DerivedMesh *createLiquidMesh(SmokeDomainSettings *sds, DerivedMesh *orgd
 	if (sds->mesh_velocities)
 		MEM_freeN(sds->mesh_velocities);
 
-	sds->mesh_velocities = MEM_calloc_arrayN(dm->getNumVerts(dm), sizeof(SmokeVertexVelocity), "Smokesim_velocities");
+	sds->mesh_velocities = MEM_calloc_arrayN(dm->getNumVerts(dm), sizeof(SmokeVertexVelocity), "Fluidmesh_vertvelocities");
 	sds->totvert = dm->getNumVerts(dm);
 
 	SmokeVertexVelocity *velarray = NULL;

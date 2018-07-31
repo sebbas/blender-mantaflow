@@ -346,9 +346,9 @@ def fluid_post_step_$ID$():\n\
 
 const std::string fluid_delete_all = "\n\
 mantaMsg('Deleting fluid')\n\
-# Delete childs from pp system object first\n\
+# Delete childs from objects first (e.g. pdata for particles)\n\
 for var in list(globals()):\n\
-    if var.endswith('_pp$ID$'):\n\
+    if var.endswith('_pp$ID$') or var.endswith('_mesh$ID$'):\n\
         del globals()[var]\n\
 # Now delete childs from solver objects\n\
 for var in list(globals()):\n\
@@ -366,14 +366,16 @@ releaseBlurPrecomp()\n\
 gc.collect()\n\
 \n\
 # Now it is safe to delete solver objects (always need to be deleted last)\n\
-mantaMsg('Delete solver low')\n\
+mantaMsg('Delete base solver')\n\
 if 's$ID$' in globals(): del s$ID$\n\
 mantaMsg('Delete noise solver')\n\
 if 'sn$ID$' in globals(): del sn$ID$\n\
 mantaMsg('Delete mesh solver')\n\
 if 'sm$ID$' in globals(): del sm$ID$\n\
-mantaMsg('Delete noise particles')\n\
+mantaMsg('Delete particle solver')\n\
 if 'sp$ID$' in globals(): del sp$ID$\n\
+mantaMsg('Delete guiding solver')\n\
+if 'sg$ID$' in globals(): del sg$ID$\n\
 \n\
 # Release unreferenced memory (if there is some left)\n\
 gc.collect()\n";
