@@ -99,7 +99,9 @@ gpi_sm$ID$     = sm$ID$.create(IntGrid)\n\
 \n\
 # Keep track of important objects in dict to load them later on\n\
 liquid_mesh_dict_s$ID$ = dict(lMesh=mesh_sm$ID$)\n\
-liquid_meshvel_dict_s$ID$ = dict(lVelMesh=mVel_mesh$ID$)\n";
+\n\
+if using_speedvectors_s$ID$:\n\
+    liquid_meshvel_dict_s$ID$ = dict(lVelMesh=mVel_mesh$ID$)\n";
 
 const std::string liquid_init_phi = "\n\
 phi_s$ID$.initFromFlags(flags_s$ID$)\n\

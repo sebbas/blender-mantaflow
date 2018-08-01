@@ -346,11 +346,23 @@ def fluid_post_step_$ID$():\n\
 
 const std::string fluid_delete_all = "\n\
 mantaMsg('Deleting fluid')\n\
-# Delete childs from objects first (e.g. pdata for particles)\n\
+# Clear all helper dictionaries first\n\
+mantaMsg('Clear helper dictionaries')\n\
+if 'liquid_data_dict_s$ID$' in globals(): liquid_data_dict_s$ID$.clear()\n\
+if 'liquid_flip_dict_s$ID$' in globals(): liquid_flip_dict_s$ID$.clear()\n\
+if 'liquid_mesh_dict_s$ID$' in globals(): liquid_mesh_dict_s$ID$.clear()\n\
+if 'liquid_meshvel_dict_s$ID$' in globals(): liquid_meshvel_dict_s$ID$.clear()\n\
+if 'smoke_data_dict_s$ID$' in globals(): smoke_data_dict_s$ID$.clear()\n\
+if 'smoke_noise_dict_s$ID$' in globals(): smoke_noise_dict_s$ID$.clear()\n\
+\n\
+# Delete all childs from objects (e.g. pdata for particles)\n\
+mantaMsg('Release solver childs childs')\n\
 for var in list(globals()):\n\
     if var.endswith('_pp$ID$') or var.endswith('_mesh$ID$'):\n\
         del globals()[var]\n\
+\n\
 # Now delete childs from solver objects\n\
+mantaMsg('Release solver childs')\n\
 for var in list(globals()):\n\
     if var.endswith('_s$ID$') or var.endswith('_sn$ID$') or var.endswith('_sm$ID$') or var.endswith('_sp$ID$') or var.endswith('_sg$ID$'):\n\
         del globals()[var]\n\
