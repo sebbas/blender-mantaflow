@@ -164,7 +164,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
                 col.prop(domain, "particle_randomness")
 
             split = layout.split()
-            bake_incomplete = domain.cache_frame_pause_data
+            bake_incomplete = (domain.cache_frame_pause_data < domain.cache_frame_end)
             if domain.cache_baked_data and not domain.cache_baking_data and bake_incomplete:
                 col = split.column()
                 col.operator("manta.bake_data", text="Resume")
@@ -416,7 +416,7 @@ class PHYSICS_PT_smoke_noise(PhysicButtonsPanel, Panel):
 
         split = layout.split()
         split.enabled = domain.cache_baked_data
-        bake_incomplete = domain.cache_frame_pause_noise
+        bake_incomplete = (domain.cache_frame_pause_noise < domain.cache_frame_end)
         if domain.cache_baked_noise and not domain.cache_baking_noise and bake_incomplete:
             col = split.column()
             col.operator("manta.bake_noise", text="Resume")
@@ -489,7 +489,7 @@ class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
 
         split = layout.split()
         split.enabled = domain.cache_baked_data
-        bake_incomplete = domain.cache_frame_pause_mesh
+        bake_incomplete = (domain.cache_frame_pause_mesh < domain.cache_frame_end)
         if domain.cache_baked_mesh and not domain.cache_baking_mesh and bake_incomplete:
             col = split.column()
             col.operator("manta.bake_mesh", text="Resume")
@@ -564,7 +564,7 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
 
         split = layout.split()
         split.enabled = domain.cache_baked_data and (domain.use_drop_particles or domain.use_bubble_particles or domain.use_floater_particles or domain.use_tracer_particles)
-        bake_incomplete = domain.cache_frame_pause_particles
+        bake_incomplete = (domain.cache_frame_pause_particles < domain.cache_frame_end)
         if domain.cache_baked_particles and not domain.cache_baking_particles and bake_incomplete:
             col = split.column()
             col.operator("manta.bake_particles", text="Resume")
@@ -662,7 +662,7 @@ class PHYSICS_PT_smoke_guiding(PhysicButtonsPanel, Panel):
 
         if domain.guiding_source == "EFFECTOR":
             split = layout.split()
-            bake_incomplete = domain.cache_frame_pause_guiding
+            bake_incomplete = (domain.cache_frame_pause_guiding < domain.cache_frame_end)
             if domain.cache_baked_guiding and not domain.cache_baking_guiding and bake_incomplete:
                 col = split.column()
                 col.operator("manta.bake_guiding", text="Resume")

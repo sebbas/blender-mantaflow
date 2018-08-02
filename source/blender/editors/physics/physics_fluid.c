@@ -1218,10 +1218,11 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 	for ( ; frame <= sds->cache_frame_end; frame++) {
 		const float progress = (frame - sds->cache_frame_start) / (float)frames;
 
+		/* Keep track of pause frame - needed to init future loop */
+		(*pause_frame) = frame;
+
 		/* If user requested stop, quit baking */
 		if (G.is_break) {
-			/* Keep track of pause frame - needed to init future loop */
-			(*pause_frame) = frame;
 
 			job->success = 0;
 			return;
@@ -1238,9 +1239,6 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 		/* Update animation system */
 		ED_update_for_newframe(job->bmain, scene, 1);
 	}
-	/* Reset pause frame - bake is complete */
-	if (frame-1 == sds->cache_frame_end) // frame-1 because when loop stop, it already increased frame cnt by 1 (frame++)
-		(*pause_frame) = 0;
 
 	/* Restore frame position that we were on before bake */
 	scene->r.cfra = orig_frame;
