@@ -3304,6 +3304,8 @@ static void smokeModifier_process(
 		SmokeDomainSettings *sds = smd->domain;
 		int startframe, endframe, framenr;
 		Object *guiding_parent = NULL;
+		Object **objs = NULL;
+		unsigned int numobj = 0;
 		SmokeModifierData *smd_parent = NULL;
 		bool is_first_frame;
 		framenr = scene->r.cfra;
@@ -3345,6 +3347,12 @@ static void smokeModifier_process(
 		/* Read cache. For liquids update data directly (i.e. not via python) */
 		if (!is_baking)
 		{
+			/* Cache does not keep track of active fields yet. So refresh them here */
+			objs = get_collisionobjects(scene, ob, sds->fluid_group, &numobj, eModifierType_Smoke);
+			update_flowsflags(sds, objs, numobj);
+			objs = get_collisionobjects(scene, ob, sds->coll_group, &numobj, eModifierType_Smoke);
+			update_obstacleflags(sds, objs, numobj);
+
 			if (sds->cache_flag & FLUID_CACHE_BAKED_DATA)
 			{
 				if (sds->type == MOD_SMOKE_DOMAIN_TYPE_GAS)
