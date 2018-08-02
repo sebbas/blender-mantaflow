@@ -308,14 +308,14 @@ static void rna_Smoke_cachetype_surface_set(struct PointerRNA *ptr, int value)
 	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
 //	Object *ob = (Object *)ptr->id.data;
 
-	if (value != settings->cache_surface_format) {
+	if (value != settings->cache_mesh_format) {
 		/* Clear old caches. */
 		// TODO (sebbas): clear with new manta cache
 //		PTCacheID id;
 //		BKE_ptcache_id_from_smoke(&id, ob, settings->smd);
 //		BKE_ptcache_id_clear(&id, PTCACHE_CLEAR_ALL, 0);
 
-		settings->cache_surface_format = value;
+		settings->cache_mesh_format = value;
 	}
 }
 
@@ -324,14 +324,14 @@ static void rna_Smoke_cachetype_volume_set(struct PointerRNA *ptr, int value)
 	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
 //	Object *ob = (Object *)ptr->id.data;
 
-	if (value != settings->cache_volume_format) {
+	if (value != settings->cache_data_format) {
 		/* Clear old caches. */
 		// TODO (sebbas): clear with new manta cache
 //		PTCacheID id;
 //		BKE_ptcache_id_from_smoke(&id, ob, settings->smd);
 //		BKE_ptcache_id_clear(&id, PTCACHE_CLEAR_ALL, 0);
 
-		settings->cache_volume_format = value;
+		settings->cache_data_format = value;
 	}
 }
 
@@ -949,11 +949,6 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 
 	static const EnumPropertyItem prop_noise_type_items[] = {
 		{MOD_SMOKE_NOISEWAVE, "NOISEWAVE", 0, "Wavelet", ""},
-#ifdef WITH_FFTW3
-#ifndef WITH_MANTA
-		{MOD_SMOKE_NOISEFFT, "NOISEFFT", 0, "FFT", ""},
-#endif
-#endif
 		/*  {MOD_SMOKE_NOISECURL, "NOISECURL", 0, "Curl", ""}, */
 		{0, NULL, 0, NULL, NULL}
 	};
@@ -1401,15 +1396,15 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Volumetric cache", "Enable volume cache");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
-	prop = RNA_def_property(srna, "cache_surface_format", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "cache_surface_format");
+	prop = RNA_def_property(srna, "cache_mesh_format", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "cache_mesh_format");
 	RNA_def_property_enum_items(prop, cache_file_type_items);
 	RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_cachetype_surface_set", "rna_Smoke_cachetype_surface_itemf");
 	RNA_def_property_ui_text(prop, "File Format", "Select the file format to be used for caching surface data");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
-	prop = RNA_def_property(srna, "cache_volume_format", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "cache_volume_format");
+	prop = RNA_def_property(srna, "cache_data_format", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "cache_data_format");
 	RNA_def_property_enum_items(prop, cache_file_type_items);
 	RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_cachetype_volume_set", "rna_Smoke_cachetype_volume_itemf");
 	RNA_def_property_ui_text(prop, "File Format", "Select the file format to be used for caching volumetric data");

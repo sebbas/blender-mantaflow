@@ -79,8 +79,6 @@ enum {
 
 /* noise */
 #define MOD_SMOKE_NOISEWAVE (1<<0)
-#define MOD_SMOKE_NOISEFFT (1<<1)
-#define MOD_SMOKE_NOISECURL (1<<2)
 
 /* slice method */
 enum {
@@ -280,8 +278,8 @@ typedef struct SmokeDomainSettings {
 	int cache_high_comp;
 	/* OpenVDB cache options */
 	int openvdb_comp;
-	char cache_surface_format;
-	char cache_volume_format;
+	char cache_mesh_format;
+	char cache_data_format;
 	char cache_particle_format;
 	char cache_noise_format;
 	char data_depth;

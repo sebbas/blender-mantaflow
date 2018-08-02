@@ -1012,8 +1012,8 @@ int FLUID::updateMeshStructures(SmokeModifierData *smd, int framenr)
 	cacheDir[0] = '\0';
 	targetFile[0] = '\0';
 
-	std::string mformat = getCacheFileEnding(smd->domain->cache_surface_format);
-	std::string dformat = getCacheFileEnding(smd->domain->cache_volume_format);
+	std::string mformat = getCacheFileEnding(smd->domain->cache_mesh_format);
+	std::string dformat = getCacheFileEnding(smd->domain->cache_data_format);
 	BLI_path_join(cacheDir, sizeof(cacheDir), smd->domain->cache_directory, FLUID_CACHE_DIR_MESH, NULL);
 
 	ss << "lMesh_####" << mformat;
@@ -1104,7 +1104,7 @@ int FLUID::writeData(SmokeModifierData *smd, int framenr)
 	char cacheDirData[FILE_MAX];
 	cacheDirData[0] = '\0';
 
-	std::string dformat = getCacheFileEnding(smd->domain->cache_volume_format);
+	std::string dformat = getCacheFileEnding(smd->domain->cache_data_format);
 	std::string pformat = getCacheFileEnding(smd->domain->cache_particle_format);
 
 	BLI_path_join(cacheDirData, sizeof(cacheDirData), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
@@ -1143,7 +1143,7 @@ int FLUID::readData(SmokeModifierData *smd, int framenr)
 	char cacheDirData[FILE_MAX];
 	cacheDirData[0] = '\0';
 
-	std::string dformat = getCacheFileEnding(smd->domain->cache_volume_format);
+	std::string dformat = getCacheFileEnding(smd->domain->cache_data_format);
 	std::string pformat = getCacheFileEnding(smd->domain->cache_particle_format);
 
 	BLI_path_join(cacheDirData, sizeof(cacheDirData), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
@@ -1249,7 +1249,7 @@ int FLUID::readGuiding(SmokeModifierData *smd, int framenr, bool sourceDomain)
 	char cacheDirGuiding[FILE_MAX];
 	cacheDirGuiding[0] = '\0';
 
-	std::string gformat = getCacheFileEnding(smd->domain->cache_volume_format);
+	std::string gformat = getCacheFileEnding(smd->domain->cache_data_format);
 	const char *subdir = (sourceDomain) ? FLUID_CACHE_DIR_DATA : FLUID_CACHE_DIR_GUIDING;
 
 	BLI_path_join(cacheDirGuiding, sizeof(cacheDirGuiding), smd->domain->cache_directory, subdir, NULL);
@@ -1281,7 +1281,7 @@ int FLUID::bakeData(SmokeModifierData *smd, int framenr)
 	cacheDirData[0] = '\0';
 	cacheDirGuiding[0] = '\0';
 
-	std::string dformat = getCacheFileEnding(smd->domain->cache_volume_format);
+	std::string dformat = getCacheFileEnding(smd->domain->cache_data_format);
 	std::string pformat = getCacheFileEnding(smd->domain->cache_particle_format);
 	std::string gformat = dformat; // Use same data format for guiding format
 
@@ -1309,7 +1309,7 @@ int FLUID::bakeNoise(SmokeModifierData *smd, int framenr)
 	cacheDirData[0] = '\0';
 	cacheDirNoise[0] = '\0';
 
-	std::string dformat = getCacheFileEnding(smd->domain->cache_volume_format);
+	std::string dformat = getCacheFileEnding(smd->domain->cache_data_format);
 	std::string nformat = getCacheFileEnding(smd->domain->cache_noise_format);
 
 	BLI_path_join(cacheDirData, sizeof(cacheDirData), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
@@ -1336,8 +1336,8 @@ int FLUID::bakeMesh(SmokeModifierData *smd, int framenr)
 	cacheDirData[0] = '\0';
 	cacheDirMesh[0] = '\0';
 
-	std::string dformat = getCacheFileEnding(smd->domain->cache_volume_format);
-	std::string mformat = getCacheFileEnding(smd->domain->cache_surface_format);
+	std::string dformat = getCacheFileEnding(smd->domain->cache_data_format);
+	std::string mformat = getCacheFileEnding(smd->domain->cache_mesh_format);
 	std::string pformat = getCacheFileEnding(smd->domain->cache_particle_format);
 
 	BLI_path_join(cacheDirData, sizeof(cacheDirData), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
@@ -1364,7 +1364,7 @@ int FLUID::bakeParticles(SmokeModifierData *smd, int framenr)
 	cacheDirData[0] = '\0';
 	cacheDirParticles[0] = '\0';
 
-	std::string dformat = getCacheFileEnding(smd->domain->cache_volume_format);
+	std::string dformat = getCacheFileEnding(smd->domain->cache_data_format);
 	std::string pformat = getCacheFileEnding(smd->domain->cache_particle_format);
 
 	BLI_path_join(cacheDirData, sizeof(cacheDirData), smd->domain->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
@@ -1390,7 +1390,7 @@ int FLUID::bakeGuiding(SmokeModifierData *smd, int framenr)
 	char cacheDirGuiding[FILE_MAX];
 	cacheDirGuiding[0] = '\0';
 
-	std::string gformat = getCacheFileEnding(smd->domain->cache_volume_format);
+	std::string gformat = getCacheFileEnding(smd->domain->cache_data_format);
 
 	BLI_path_join(cacheDirGuiding, sizeof(cacheDirGuiding), smd->domain->cache_directory, FLUID_CACHE_DIR_GUIDING, NULL);
 	BLI_path_make_safe(cacheDirGuiding);

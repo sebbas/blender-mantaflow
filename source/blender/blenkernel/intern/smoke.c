@@ -575,8 +575,8 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->openvdb_comp = VDB_COMPRESSION_ZIP;
 #endif
 			smd->domain->data_depth = 0;
-			smd->domain->cache_surface_format = MANTA_FILE_BIN_OBJECT;
-			smd->domain->cache_volume_format = MANTA_FILE_UNI;
+			smd->domain->cache_mesh_format = MANTA_FILE_BIN_OBJECT;
+			smd->domain->cache_data_format = MANTA_FILE_UNI;
 			smd->domain->cache_particle_format = MANTA_FILE_UNI;
 			smd->domain->cache_noise_format = MANTA_FILE_UNI;
 			smd->domain->cache_frame_start = 1;
@@ -748,8 +748,8 @@ void smokeModifier_copy(const struct SmokeModifierData *smd, struct SmokeModifie
 		tsmd->domain->effector_weights = MEM_dupallocN(smd->domain->effector_weights);
 		tsmd->domain->openvdb_comp = smd->domain->openvdb_comp;
 		tsmd->domain->data_depth = smd->domain->data_depth;
-		tsmd->domain->cache_surface_format = smd->domain->cache_surface_format;
-		tsmd->domain->cache_volume_format = smd->domain->cache_volume_format;
+		tsmd->domain->cache_mesh_format = smd->domain->cache_mesh_format;
+		tsmd->domain->cache_data_format = smd->domain->cache_data_format;
 		tsmd->domain->cache_particle_format = smd->domain->cache_particle_format;
 		tsmd->domain->cache_noise_format = smd->domain->cache_noise_format;
 		tsmd->domain->cache_frame_start = smd->domain->cache_frame_start;
@@ -2632,6 +2632,7 @@ static void update_flowsfluids(
 			}
 		}
 	}
+	if (flowobjs) MEM_freeN(flowobjs);
 
 	/* Adjust domain size if needed */
 	if (sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN) {
@@ -3350,8 +3351,11 @@ static void smokeModifier_process(
 			/* Cache does not keep track of active fields yet. So refresh them here */
 			objs = get_collisionobjects(scene, ob, sds->fluid_group, &numobj, eModifierType_Smoke);
 			update_flowsflags(sds, objs, numobj);
+			if (objs) MEM_freeN(objs);
+
 			objs = get_collisionobjects(scene, ob, sds->coll_group, &numobj, eModifierType_Smoke);
 			update_obstacleflags(sds, objs, numobj);
+			if (objs) MEM_freeN(objs);
 
 			if (sds->cache_flag & FLUID_CACHE_BAKED_DATA)
 			{

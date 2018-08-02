@@ -348,6 +348,7 @@ class PHYSICS_PT_smoke_adaptive_domain(PhysicButtonsPanel, Panel):
 
 class PHYSICS_PT_smoke_quality(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Quality"
+    bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
 
     @classmethod
@@ -374,6 +375,7 @@ class PHYSICS_PT_smoke_quality(PhysicButtonsPanel, Panel):
 
 class PHYSICS_PT_smoke_noise(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Noise"
+    bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
 
     @classmethod
@@ -431,6 +433,7 @@ class PHYSICS_PT_smoke_noise(PhysicButtonsPanel, Panel):
 
 class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Mesh"
+    bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
 
     @classmethod
@@ -504,6 +507,7 @@ class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
 
 class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Particles"
+    bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
 
     @classmethod
@@ -579,6 +583,7 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
 
 class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Diffusion"
+    bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
 
     @classmethod
@@ -719,8 +724,8 @@ class PHYSICS_PT_smoke_cache(PhysicButtonsPanel, Panel):
         layout = self.layout
 
         domain = context.smoke.domain_settings
-        cache_surface_format = domain.cache_surface_format
-        cache_volume_format = domain.cache_volume_format
+        cache_mesh_format = domain.cache_mesh_format
+        cache_data_format = domain.cache_data_format
 
         split = layout.split()
 
@@ -728,20 +733,20 @@ class PHYSICS_PT_smoke_cache(PhysicButtonsPanel, Panel):
         col.prop(domain, "use_surface_cache", text="Surface format:")
         sub = col.column()
         sub.active = domain.use_surface_cache
-        sub.prop(domain, "cache_surface_format", text="")
+        sub.prop(domain, "cache_mesh_format", text="")
 
         col = split.column()
         col.prop(domain, "use_volume_cache", text="Volumetric format:")
         sub = col.column()
         sub.active = domain.use_volume_cache
-        sub.prop(domain, "cache_volume_format", text="")
+        sub.prop(domain, "cache_data_format", text="")
 
         split = layout.split()
 
-        if cache_volume_format == 'POINTCACHE':
+        if cache_data_format == 'POINTCACHE':
             layout.label(text="Compression:")
             layout.row().prop(domain, "point_cache_compress_type", expand=True)
-        elif cache_volume_format == 'OPENVDB':
+        elif cache_data_format == 'OPENVDB':
             if not bpy.app.build_options.openvdb:
                 layout.label("Built without OpenVDB support")
                 return
@@ -757,7 +762,6 @@ class PHYSICS_PT_smoke_cache(PhysicButtonsPanel, Panel):
 
 class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Cache"
-    bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
 
     @classmethod
@@ -782,7 +786,7 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
 
         row = layout.row(align=True)
         row.label(text="Data file format:")
-        row.prop(domain, "cache_volume_format", text="")
+        row.prop(domain, "cache_data_format", text="")
 
         if md.domain_settings.smoke_domain_type in {'GAS'}:
             if domain.use_noise:
@@ -799,7 +803,7 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
             if domain.use_mesh:
                 row = layout.row(align=True)
                 row.label(text="Mesh file format:")
-                row.prop(domain, "cache_surface_format", text="")
+                row.prop(domain, "cache_mesh_format", text="")
 
         row = layout.row()
         row.operator("manta.make_file", text="Export Mantaflow Script")

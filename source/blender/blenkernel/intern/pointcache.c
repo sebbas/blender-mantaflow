@@ -1769,8 +1769,8 @@ void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct SmokeMo
 	pid->max_step = 1;
 
 	/*  Encode filetype: combine bitmaps from sds surface and volume cache format */
-	int surface_format = (smd->domain->flags & MOD_SMOKE_USE_SURFACE_CACHE) ? smd->domain->cache_surface_format : 0;
-	int volume_format = (smd->domain->flags & MOD_SMOKE_USE_VOLUME_CACHE) ? smd->domain->cache_volume_format : 0;
+	int surface_format = (smd->domain->flags & MOD_SMOKE_USE_SURFACE_CACHE) ? smd->domain->cache_mesh_format : 0;
+	int volume_format = (smd->domain->flags & MOD_SMOKE_USE_VOLUME_CACHE) ? smd->domain->cache_data_format : 0;
 	pid->file_type = (surface_format | volume_format);
 }
 
