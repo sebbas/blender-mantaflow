@@ -85,6 +85,27 @@ static void rna_Smoke_resetCache(Main *UNUSED(bmain), Scene *UNUSED(scene), Poin
 		settings->point_cache[0]->flag |= PTCACHE_OUTDATED;
 	DAG_id_tag_update(ptr->id.data, OB_RECALC_DATA);
 }
+static void rna_Smoke_reset(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+
+	smokeModifier_reset(settings->smd);
+	rna_Smoke_resetCache(bmain, scene, ptr);
+
+	rna_Smoke_update(bmain, scene, ptr);
+}
+
+static void rna_Smoke_reset_dependency(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+
+	smokeModifier_reset(settings->smd);
+
+	if (settings->smd && settings->smd->domain)
+		settings->smd->domain->point_cache[0]->flag |= PTCACHE_OUTDATED;
+
+	rna_Smoke_dependency_update(bmain, scene, ptr);
+}
 
 static void rna_Smoke_viewport_set(struct PointerRNA *ptr, int value)
 {
@@ -217,6 +238,7 @@ static void rna_Smoke_drop_parts_update(Main *bmain, Scene *UNUSED(scene), Point
 		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_DROP;
 	}
 	rna_Smoke_draw_type_update(NULL, NULL, ptr);
+	rna_Smoke_reset(NULL, NULL, ptr);
 }
 
 static void rna_Smoke_bubble_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
@@ -237,6 +259,7 @@ static void rna_Smoke_bubble_parts_update(Main *bmain, Scene *UNUSED(scene), Poi
 		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_BUBBLE;
 	}
 	rna_Smoke_draw_type_update(NULL, NULL, ptr);
+	rna_Smoke_reset(NULL, NULL, ptr);
 }
 
 static void rna_Smoke_float_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
@@ -257,6 +280,7 @@ static void rna_Smoke_float_parts_update(Main *bmain, Scene *UNUSED(scene), Poin
 		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_FLOAT;
 	}
 	rna_Smoke_draw_type_update(NULL, NULL, ptr);
+	rna_Smoke_reset(NULL, NULL, ptr);
 }
 
 static void rna_Smoke_tracer_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
@@ -277,6 +301,7 @@ static void rna_Smoke_tracer_parts_update(Main *bmain, Scene *UNUSED(scene), Poi
 		smd->domain->particle_type &= ~MOD_SMOKE_PARTICLE_TRACER;
 	}
 	rna_Smoke_draw_type_update(NULL, NULL, ptr);
+	rna_Smoke_reset(NULL, NULL, ptr);
 }
 
 static void rna_Smoke_use_surface_format_set(struct PointerRNA *ptr, int value)
@@ -513,28 +538,6 @@ static void rna_Smoke_domaintype_set(struct PointerRNA *ptr, int value)
 		/* Set actual domain type */
 		settings->type = value;
 	}
-}
-
-static void rna_Smoke_reset(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
-
-	smokeModifier_reset(settings->smd);
-	rna_Smoke_resetCache(bmain, scene, ptr);
-
-	rna_Smoke_update(bmain, scene, ptr);
-}
-
-static void rna_Smoke_reset_dependency(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
-
-	smokeModifier_reset(settings->smd);
-
-	if (settings->smd && settings->smd->domain)
-		settings->smd->domain->point_cache[0]->flag |= PTCACHE_OUTDATED;
-
-	rna_Smoke_dependency_update(bmain, scene, ptr);
 }
 
 static char *rna_SmokeDomainSettings_path(PointerRNA *ptr)

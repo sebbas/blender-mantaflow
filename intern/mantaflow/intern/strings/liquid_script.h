@@ -38,7 +38,6 @@ mantaMsg('Liquid variables')\n\
 narrowBandWidth_s$ID$         = 3\n\
 combineBandWidth_s$ID$        = narrowBandWidth_s$ID$ - 1\n\
 adjustedNarrowBandWidth_s$ID$ = $PARTICLE_BAND_WIDTH$ # only used in adjustNumber to control band width\n\
-\n\
 particleNumber_s$ID$   = $PARTICLE_NUMBER$\n\
 minParticles_s$ID$     = $PARTICLE_MINIMUM$\n\
 maxParticles_s$ID$     = $PARTICLE_MAXIMUM$\n\
@@ -63,9 +62,7 @@ phi_s$ID$        = s$ID$.create(LevelsetGrid)\n\
 phiTmp_s$ID$     = s$ID$.create(LevelsetGrid)\n\
 phiIn_s$ID$      = s$ID$.create(LevelsetGrid)\n\
 curvature_s$ID$  = s$ID$.create(RealGrid)\n\
-\n\
 fractions_s$ID$  = 0# s$ID$.create(MACGrid) # TODO (sebbas): disabling fractions for now - not fracwallbcs not supporting obvels yet\n\
-\n\
 velOld_s$ID$     = s$ID$.create(MACGrid)\n\
 velParts_s$ID$   = s$ID$.create(MACGrid)\n\
 mapWeights_s$ID$ = s$ID$.create(MACGrid)\n\
@@ -104,6 +101,7 @@ if using_speedvectors_s$ID$:\n\
     liquid_meshvel_dict_s$ID$ = dict(lVelMesh=mVel_mesh$ID$)\n";
 
 const std::string liquid_init_phi = "\n\
+# Prepare domain\n\
 phi_s$ID$.initFromFlags(flags_s$ID$)\n\
 phiIn_s$ID$.initFromFlags(flags_s$ID$)\n";
 
@@ -137,7 +135,6 @@ def liquid_adaptive_step_$ID$(framenr):\n\
     # add initial velocity: set invel as source grid to ensure const vels in inflow region, sampling makes use of this\n\
     if using_invel_s$ID$:\n\
         resampleVec3ToMac(source=invelC_s$ID$, target=invel_s$ID$)\n\
-        mantaMsg('invelC max value: ' + str(invel_s$ID$.getMax()))\n\
         pVel_pp$ID$.setSource(invel_s$ID$, isMAC=True)\n\
     \n\
     sampleLevelsetWithParticles(phi=phiIn_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, discretization=particleNumber_s$ID$, randomness=randomness_s$ID$, refillEmpty=True)\n\
@@ -340,41 +337,25 @@ def liquid_save_meshvel_$ID$(path, framenr, file_format):\n\
 //////////////////////////////////////////////////////////////////////
 
 const std::string liquid_standalone = "\n\
-gui = None\n\
-if (GUI):\n\
-    gui=Gui()\n\
-    gui.show()\n\
-    gui.pause()\n\
+# Helper function to call cache load functions\n\
+def load(frame):\n\
+    fluid_load_data_$ID$(os.path.join(cache_dir, 'data'), frame, file_format_data)\n\
+    liquid_load_data_$ID$(os.path.join(cache_dir, 'data'), frame, file_format_data)\n\
+    liquid_load_flip_$ID$(os.path.join(cache_dir, 'data'), frame, file_format_particles)\n\
+    if using_sndparts_s$ID$:\n\
+        fluid_load_particles_$ID$(os.path.join(cache_dir, 'particles'), frame, file_format_particles)\n\
+    if using_mesh_s$ID$:\n\
+        liquid_load_mesh_$ID$(os.path.join(cache_dir, 'mesh'), frame, file_format_mesh)\n\
+    if using_guiding_s$ID$:\n\
+        fluid_load_guiding_$ID$(os.path.join(cache_dir, 'guiding'), frame, file_format_data)\n\
 \n\
-cache_dir = '$CACHE_DIR$'\n\
-file_format_data = '.uni'\n\
-file_format_mesh = '.bobj.gz'\n\
-file_format_particles = '.uni'\n\
-\n\
-start_frame = $CURRENT_FRAME$\n\
-end_frame = 1000\n\
-from_cache = True\n\
-\n\
-while start_frame <= end_frame:\n\
-    if from_cache:\n\
-        fluid_load_data_$ID$(os.path.join(cache_dir, 'data'), start_frame, file_format_data)\n\
-        liquid_load_data_$ID$(os.path.join(cache_dir, 'data'), start_frame, file_format_data)\n\
-        liquid_load_flip_$ID$(os.path.join(cache_dir, 'data'), start_frame, file_format_particles)\n\
-        if using_sndparts_s$ID$:\n\
-            fluid_load_particles_$ID$(os.path.join(cache_dir, 'particles'), start_frame, file_format_particles)\n\
-        if using_mesh_s$ID$:\n\
-            liquid_load_mesh_$ID$(os.path.join(cache_dir, 'mesh'), start_frame, file_format_mesh)\n\
-        if using_guiding_s$ID$:\n\
-            fluid_load_guiding_$ID$(os.path.join(cache_dir, 'guiding'), start_frame, file_format_data)\n\
-        if gui:\n\
-            gui.pause()\n\
-    else:\n\
-        while(s$ID$.frame <= start_frame):\n\
-            fluid_adapt_time_step_$ID$()\n\
-            liquid_adaptive_step_$ID$(start_frame)\n\
-        if using_mesh_s$ID$:\n\
-            liquid_step_mesh_$ID$()\n\
-    start_frame += 1\n";
+# Helper function to call step functions\n\
+def step(frame):\n\
+    liquid_adaptive_step_$ID$(frame)\n\
+    if using_mesh_s$ID$:\n\
+        liquid_step_mesh_$ID$()\n\
+    if using_sndparts_s$ID$:\n\
+        liquid_step_particles_$ID$()\n";
 
 
 

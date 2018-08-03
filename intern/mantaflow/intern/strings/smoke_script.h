@@ -34,7 +34,7 @@
 //////////////////////////////////////////////////////////////////////
 
 const std::string smoke_bounds = "\n\
-# prepare domain low\n\
+# Prepare domain\n\
 mantaMsg('Smoke domain')\n\
 flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$)\n\
 flags_s$ID$.fillGrid()\n\
@@ -42,7 +42,7 @@ if doOpen_s$ID$:\n\
     setOpenBound(flags=flags_s$ID$, bWidth=boundaryWidth_s$ID$, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty)\n";
 
 const std::string smoke_bounds_noise = "\n\
-# prepare noise domain\n\
+# Prepare noise domain\n\
 mantaMsg('Smoke domain noise')\n\
 flags_sn$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$)\n\
 flags_sn$ID$.fillGrid()\n\
@@ -59,10 +59,10 @@ preconditioner_s$ID$  = PcMGStatic\n\
 using_colors_s$ID$    = $USING_COLORS$\n\
 using_heat_s$ID$      = $USING_HEAT$\n\
 using_fire_s$ID$      = $USING_FIRE$\n\
+using_noise_s$ID$     = $USING_NOISE$\n\
 vorticity_s$ID$       = $VORTICITY$\n\
 buoyancy_dens_s$ID$   = $BUOYANCY_ALPHA$\n\
-buoyancy_heat_s$ID$   = $BUOYANCY_BETA$\n\
-absoluteFlow_s$ID$    = True\n";
+buoyancy_heat_s$ID$   = $BUOYANCY_BETA$\n";
 
 const std::string smoke_variables_noise = "\n\
 mantaMsg('Smoke variables noise')\n\
@@ -94,17 +94,17 @@ using_fire_s$ID$ = True\n";
 //////////////////////////////////////////////////////////////////////
 
 const std::string smoke_alloc = "\n\
-mantaMsg('Smoke alloc low')\n\
+mantaMsg('Smoke alloc')\n\
 density_s$ID$    = s$ID$.create(RealGrid)\n\
 emissionIn_s$ID$ = s$ID$.create(RealGrid)\n\
 shadow_s$ID$     = s$ID$.create(RealGrid)\n\
-heat_s$ID$    = 0 # allocated dynamically\n\
-flame_s$ID$   = 0\n\
-fuel_s$ID$    = 0\n\
-react_s$ID$   = 0\n\
-color_r_s$ID$ = 0\n\
-color_g_s$ID$ = 0\n\
-color_b_s$ID$ = 0\n\
+heat_s$ID$       = 0 # allocated dynamically\n\
+flame_s$ID$      = 0\n\
+fuel_s$ID$       = 0\n\
+react_s$ID$      = 0\n\
+color_r_s$ID$    = 0\n\
+color_g_s$ID$    = 0\n\
+color_b_s$ID$    = 0\n\
 \n\
 # Keep track of important objects in dict to load them later on\n\
 smoke_data_dict_s$ID$ = dict(density=density_s$ID$, shadow=shadow_s$ID$)\n";
@@ -124,6 +124,7 @@ texture_w_s$ID$  = s$ID$.create(RealGrid)\n\
 texture_u2_s$ID$ = s$ID$.create(RealGrid)\n\
 texture_v2_s$ID$ = s$ID$.create(RealGrid)\n\
 texture_w2_s$ID$ = s$ID$.create(RealGrid)\n\
+wltnoise_sn$ID$  = sn$ID$.create(NoiseField, loadFromFile=True)\n\
 \n\
 # Keep track of important objects in dict to load them later on\n\
 smoke_noise_dict_s$ID$ = dict(density_noise=density_sn$ID$)\n\
@@ -242,11 +243,6 @@ def smoke_adaptive_step_$ID$(framenr):\n\
     # time params are animatable\n\
     s$ID$.frameLength = dt0_s$ID$ \n\
     s$ID$.cfl = cfl_cond_s$ID$\n\
-    \n\
-    mantaMsg('s.frame is ' + str(s$ID$.frame))\n\
-    mantaMsg('s.timestep is ' + str(s$ID$.timestep))\n\
-    mantaMsg('s.cfl is ' + str(s$ID$.cfl))\n\
-    mantaMsg('s.frameLength is ' + str(s$ID$.frameLength))\n\
     \n\
     fluid_pre_step_$ID$()\n\
     \n\
@@ -452,43 +448,24 @@ def smoke_save_noise_$ID$(path, framenr, file_format):\n\
     fluid_file_export_s$ID$(dict=smoke_noise_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
 //////////////////////////////////////////////////////////////////////
-// OTHER SETUPS
-//////////////////////////////////////////////////////////////////////
-
-const std::string smoke_wavelet_turbulence_noise = "\n\
-# wavelet turbulence noise field\n\
-mantaMsg('Smoke wavelet noise')\n\
-wltnoise_sn$ID$ = sn$ID$.create(NoiseField, loadFromFile=True)\n";
-
-const std::string smoke_inflow_low = "\n\
-def apply_inflow_$ID$():\n\
-    mantaMsg('Applying inflow')\n\
-    if using_heat_s$ID$ and using_colors_s$ID$ and using_fire_s$ID$:\n\
-        applyInflow(density=density_s$ID$, emission=inflow_s$ID$, heat=heat_s$ID$, fuel=fuel_s$ID$, react=react_s$ID$, red=color_r_s$ID$, green=color_g_s$ID$, blue=color_b_s$ID$)\n\
-    elif using_heat_s$ID$ and using_colors_s$ID$ and not using_fire_s$ID$:\n\
-        applyInflow(density=density_s$ID$, emission=inflow_s$ID$, heat=heat_s$ID$, red=color_r_s$ID$, green=color_g_s$ID$, blue=color_b_s$ID$)\n\
-    elif using_heat_s$ID$ and not using_colors_s$ID$ and using_fire_s$ID$:\n\
-        applyInflow(density=density_s$ID$, emission=inflow_s$ID$, heat=heat_s$ID$, fuel=fuel_s$ID$, react=react_s$ID$)\n\
-    elif using_heat_s$ID$ and not using_colors_s$ID$ and not using_fire_s$ID$:\n\
-        applyInflow(density=density_s$ID$, emission=inflow_s$ID$, heat=heat_s$ID$)\n\
-    elif not using_heat_s$ID$ and using_colors_s$ID$ and using_fire_s$ID$:\n\
-        applyInflow(density=density_s$ID$, emission=inflow_s$ID$, fuel=fuel_s$ID$, react=react_s$ID$, red=color_r_s$ID$, green=color_g_s$ID$, blue=color_b_s$ID$)\n\
-    elif not using_heat_s$ID$ and using_colors_s$ID$ and not using_fire_s$ID$:\n\
-        applyInflow(density=density_s$ID$, emission=inflow_s$ID$, red=color_r_s$ID$, green=color_g_s$ID$, blue=color_b_s$ID$)\n\
-    elif not using_heat_s$ID$ and not using_colors_s$ID$ and using_fire_s$ID$:\n\
-        applyInflow(density=density_s$ID$, emission=inflow_s$ID$, fuel=fuel_s$ID$, react=react_s$ID$)\n\
-    else:\n\
-        applyInflow(density=density_s$ID$, emission=inflow_s$ID$)\n";
-
-const std::string smoke_inflow_high = "\n\
-# TODO\n";
-
-//////////////////////////////////////////////////////////////////////
 // STANDALONE MODE
 //////////////////////////////////////////////////////////////////////
 
 const std::string smoke_standalone = "\n\
-# import *.uni files\n\
-load_smoke_data_low_$ID$(path_prefix_$ID$)\n\
-if using_highres_s$ID$:\n\
-    load_smoke_data_high_$ID$(path_prefix_$ID$)\n";
+# Helper function to call cache load functions\n\
+def load(frame):\n\
+    fluid_load_data_$ID$(os.path.join(cache_dir, 'data'), frame, file_format_data)\n\
+    smoke_load_data_$ID$(os.path.join(cache_dir, 'data'), frame, file_format_data)\n\
+    if using_noise_s$ID$:\n\
+        smoke_load_noise_$ID$(os.path.join(cache_dir, 'particles'), frame, file_format_noise)\n\
+    if using_guiding_s$ID$:\n\
+        fluid_load_guiding_$ID$(os.path.join(cache_dir, 'guiding'), frame, file_format_data)\n\
+\n\
+# Helper function to call step functions\n\
+def step(frame):\n\
+    smoke_adaptive_step_$ID$(frame)\n\
+    if using_noise_s$ID$:\n\
+        smoke_adaptive_step_noise_$ID$(frame)\n";
+
+
+

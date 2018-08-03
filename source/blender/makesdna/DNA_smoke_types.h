@@ -189,7 +189,8 @@ enum {
 #define FLUID_CACHE_DIR_PARTICLES  "particles"
 #define FLUID_CACHE_DIR_GUIDING    "guiding"
 #define FLUID_CACHE_DIR_SCRIPT     "script"
-#define FLUID_CACHE_NAME_SCRIPT    "manta_script.py"
+#define FLUID_CACHE_SMOKE_SCRIPT   "smoke_script.py"
+#define FLUID_CACHE_LIQUID_SCRIPT  "liquid_script.py"
 
 enum {
 	VDB_COMPRESSION_BLOSC = 0,

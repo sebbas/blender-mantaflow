@@ -99,7 +99,7 @@ boundaryWidth_s$ID$   = 1\n\
 \n\
 using_smoke_s$ID$        = $USING_SMOKE$\n\
 using_liquid_s$ID$       = $USING_LIQUID$\n\
-using_highres_s$ID$      = $USING_HIGHRES$\n\
+using_noise_s$ID$        = $USING_NOISE$\n\
 using_adaptTime_s$ID$    = $USING_ADAPTIVETIME$\n\
 using_obstacle_s$ID$     = $USING_OBSTACLE$\n\
 using_guiding_s$ID$      = $USING_GUIDING$\n\
@@ -107,19 +107,19 @@ using_invel_s$ID$        = $USING_INVEL$\n\
 using_sndparts_s$ID$     = $USING_SNDPARTS$\n\
 using_speedvectors_s$ID$ = $USING_SPEEDVECTORS$\n\
 \n\
-# fluid time params\n\
+# Fluid time params\n\
 dt_default_s$ID$ = 0.1 # dt is 0.1 at 25fps\n\
 dt_factor_s$ID$  = $DT_FACTOR$\n\
 fps_s$ID$        = $FPS$\n\
 dt0_s$ID$        = dt_default_s$ID$ * (25.0 / fps_s$ID$) * dt_factor_s$ID$\n\
 cfl_cond_s$ID$   = $CFL$\n\
 \n\
-# fluid diffusion / viscosity\n\
+# Fluid diffusion / viscosity\n\
 domainSize_s$ID$ = $FLUID_DOMAIN_SIZE$ # longest domain side in meters\n\
-if domainSize_s$ID$ == 0: domainSize_s$ID$ = 1 # TODO (sebbas): just for versioning, remove with proper 2.8 versioning\n\
 viscosity_s$ID$ = $FLUID_VISCOSITY$ / (domainSize_s$ID$*domainSize_s$ID$) # kinematic viscosity in m^2/s\n\
 \n\
-toMantaUnitsFac_s$ID$ = Real(dt0_s$ID$) / Real(1./res_s$ID$)\n # dt/dx";
+# Factor to convert blender velocities to manta velocities\n\
+toMantaUnitsFac_s$ID$ = Real(dt0_s$ID$) / Real(1./res_s$ID$) # dt/dx\n";
 
 const std::string fluid_variables_noise = "\n\
 mantaMsg('Fluid variables noise')\n\
@@ -219,6 +219,7 @@ forces_s$ID$      = s$ID$.create(Vec3Grid)\n\
 x_force_s$ID$     = s$ID$.create(RealGrid)\n\
 y_force_s$ID$     = s$ID$.create(RealGrid)\n\
 z_force_s$ID$     = s$ID$.create(RealGrid)\n\
+obvel_s$ID$       = 0\n\
 \n\
 # Keep track of important objects in dict to load them later on\n\
 fluid_data_dict_s$ID$ = dict(vel=vel_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$)\n";
@@ -607,4 +608,101 @@ def fluid_save_guiding_$ID$(path, framenr, file_format):\n\
     mantaMsg('Fluid save guiding, frame ' + str(framenr))\n\
     fluid_file_export_s$ID$(dict=fluid_guiding_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
+//////////////////////////////////////////////////////////////////////
+// STANDALONE MODE
+//////////////////////////////////////////////////////////////////////
+
+const std::string fluid_standalone = "\n\
+gui = None\n\
+if (GUI):\n\
+    gui=Gui()\n\
+    gui.show()\n\
+    gui.pause()\n\
+\n\
+cache_dir = '$CACHE_DIR$'\n\
+file_format_data      = '.uni'\n\
+file_format_noise     = '.uni'\n\
+file_format_particles = '.uni'\n\
+file_format_mesh      = '.bobj.gz'\n\
+\n\
+# Start and stop for simulation\n\
+current_frame  = $CURRENT_FRAME$\n\
+end_frame      = $END_FRAME$\n\
+\n\
+# How many frame to load from cache\n\
+from_cache_cnt = 100\n\
+\n\
+loop_cnt = 0\n\
+while current_frame <= end_frame:\n\
+    \n\
+    # Load already simulated data from cache:\n\
+    if loop_cnt < from_cache_cnt:\n\
+        load(current_frame)\n\
+    \n\
+    # Otherwise simulate new data\n\
+    else:\n\
+        while(s$ID$.frame <= current_frame):\n\
+            if using_adaptTime_s$ID$:\n\
+                fluid_adapt_time_step_$ID$()\n\
+            step(current_frame)\n\
+    \n\
+    current_frame += 1\n\
+    loop_cnt += 1\n\
+    \n\
+    if gui:\n\
+        gui.pause()\n";
+
+//////////////////////////////////////////////////////////////////////
+// SCRIPT SECTION HEADERS
+//////////////////////////////////////////////////////////////////////
+
+const std::string header_libraries = "\n\
+######################################################################\n\
+## LIBRARIES\n\
+######################################################################\n";
+
+const std::string header_main = "\n\
+######################################################################\n\
+## MAIN\n\
+######################################################################\n";
+
+const std::string header_prepost = "\n\
+######################################################################\n\
+## PRE/POST STEPS\n\
+######################################################################\n";
+
+const std::string header_steps = "\n\
+######################################################################\n\
+## STEPS\n\
+######################################################################\n";
+
+const std::string header_import = "\n\
+######################################################################\n\
+## IMPORT\n\
+######################################################################\n";
+
+const std::string header_grids = "\n\
+######################################################################\n\
+## GRIDS\n\
+######################################################################\n";
+
+const std::string header_solvers = "\n\
+######################################################################\n\
+## SOLVERS\n\
+######################################################################\n";
+
+const std::string header_variables = "\n\
+######################################################################\n\
+## VARIABLES\n\
+######################################################################\n";
+
+const std::string header_time = "\n\
+######################################################################\n\
+## ADAPTIVE TIME\n\
+######################################################################\n";
+
+const std::string header_gridinit = "\n\
+######################################################################\n\
+## DOMAIN INIT\n\
+######################################################################\n";
 

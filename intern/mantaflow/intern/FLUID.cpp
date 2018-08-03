@@ -305,7 +305,6 @@ void FLUID::initSmokeNoise(SmokeModifierData *smd)
 {
 	std::vector<std::string> pythonCommands;
 	std::string tmpString = smoke_alloc_noise
-		+ smoke_wavelet_turbulence_noise
 		+ smoke_variables_noise
 		+ smoke_bounds_noise
 		+ smoke_adaptive_step_noise
@@ -683,7 +682,7 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << (smd->domain->active_fields & SM_ACTIVE_HEAT ? "True" : "False");
 	else if (varName == "USING_FIRE")
 		ss << (smd->domain->active_fields & SM_ACTIVE_FIRE ? "True" : "False");
-	else if (varName == "USING_HIGHRES")
+	else if (varName == "USING_NOISE")
 		ss << (smd->domain->flags & MOD_SMOKE_NOISE ? "True" : "False");
 	else if (varName == "USING_OBSTACLE")
 		ss << (smd->domain->active_fields & SM_ACTIVE_OBSTACLE ? "True" : "False");
@@ -803,6 +802,8 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << smd->domain->flame_smoke_color[2];
 	else if (varName == "CURRENT_FRAME")
 		ss << md->scene->r.cfra;
+	else if (varName == "END_FRAME")
+		ss << smd->domain->cache_frame_end;
 	else if (varName == "PARTICLE_RANDOMNESS")
 		ss << smd->domain->particle_randomness;
 	else if (varName == "PARTICLE_NUMBER")
@@ -1438,10 +1439,10 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 	cacheDirScript[0] = '\0';
 
 	BLI_path_join(cacheDirScript, sizeof(cacheDirScript), smd->domain->cache_directory, FLUID_CACHE_DIR_SCRIPT, NULL);
-	BLI_path_join(cacheDirScript, sizeof(cacheDirScript), cacheDirScript, FLUID_CACHE_NAME_SCRIPT, NULL);
+	BLI_path_join(cacheDirScript, sizeof(cacheDirScript), cacheDirScript, FLUID_CACHE_SMOKE_SCRIPT, NULL);
 	BLI_path_make_safe(cacheDirScript);
 
-	bool highres  = smd->domain->flags & MOD_SMOKE_NOISE;
+	bool noise    = smd->domain->flags & MOD_SMOKE_NOISE;
 	bool heat     = smd->domain->active_fields & SM_ACTIVE_HEAT;
 	bool colors   = smd->domain->active_fields & SM_ACTIVE_COLORS;
 	bool fire     = smd->domain->active_fields & SM_ACTIVE_FIRE;
@@ -1451,66 +1452,101 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 
 	std::string manta_script;
 
-	manta_script += manta_import
-		+ fluid_variables
-		+ fluid_solver
-		+ fluid_alloc
-		+ fluid_adaptive_time_stepping
-		+ smoke_alloc
-		+ smoke_bounds
-		+ smoke_variables;
+	// Libraries
+	manta_script += header_libraries
+		+ manta_import;
 
+	// Variables
+	manta_script += header_variables
+		+ fluid_variables
+		+ smoke_variables;
+	if (noise) {
+		manta_script += fluid_variables_noise
+			+ smoke_variables_noise;
+	}
+	if (guiding)
+		manta_script += fluid_variables_guiding;
+
+	// Solvers
+	manta_script += header_solvers
+		+ fluid_solver;
+	if (noise)
+		manta_script += fluid_solver_noise;
+	if (guiding)
+		manta_script += fluid_solver_guiding;
+
+	// Grids
+	manta_script += header_grids
+		+ fluid_alloc
+		+ smoke_alloc;
+	if (noise) {
+		manta_script += smoke_alloc_noise;
+		if (colors)
+			manta_script += smoke_alloc_colors_noise;
+		if (fire)
+			manta_script += smoke_alloc_fire_noise;
+	}
 	if (heat)
 		manta_script += smoke_alloc_heat;
 	if (colors)
 		manta_script += smoke_alloc_colors;
 	if (fire)
 		manta_script += smoke_alloc_fire;
-	if (obstacle)
-		manta_script += fluid_alloc_obstacle;
 	if (guiding)
 		manta_script += fluid_alloc_guiding;
+	if (obstacle)
+		manta_script += fluid_alloc_obstacle;
 	if (invel)
 		manta_script += fluid_alloc_invel;
 
-	if (highres) {
-		manta_script += fluid_variables_noise
-			+ fluid_solver_noise
-			+ fluid_adaptive_time_stepping_noise
-			+ smoke_variables_noise
-			+ smoke_alloc_noise
-			+ smoke_bounds_noise
-			+ smoke_wavelet_turbulence_noise;
+	// Domain init
+	manta_script += header_gridinit
+		+ smoke_bounds;
+	if (noise)
+		manta_script += smoke_bounds_noise;
 
-		if (colors)
-			manta_script += smoke_alloc_colors_noise;
-		if (fire)
-			manta_script += smoke_alloc_fire_noise;
+	// Time
+	manta_script += header_time
+		+ fluid_adaptive_time_stepping
+		+ fluid_adapt_time_step;
+	if (noise) {
+		manta_script += fluid_adaptive_time_stepping_noise
+			+ fluid_adapt_time_step_noise;
 	}
 
-	manta_script += smoke_load_data;
-	if (highres)
+	// Import
+	manta_script += header_import
+		+ fluid_file_import
+		+ fluid_cache_helper
+		+ fluid_load_data
+		+ smoke_load_data;
+	if (noise)
 		manta_script += smoke_load_noise;
+	if (guiding)
+		manta_script += fluid_load_guiding;
 
-	manta_script += fluid_pre_step;
-	if (highres)
-		manta_script += smoke_pre_step_noise;
+	// Pre/Post Steps
+	manta_script += header_prepost
+		+ fluid_pre_step
+		+ fluid_post_step;
+	if (noise) {
+		manta_script += smoke_pre_step_noise
+			+ smoke_post_step_noise;
+	}
 
-	manta_script += fluid_post_step;
-	if (highres)
-		manta_script += smoke_post_step_noise;
+	// Steps
+	manta_script += header_steps
+		+ smoke_adaptive_step
+		+ smoke_step;
+	if (noise) {
+		manta_script += smoke_adaptive_step_noise
+			+ smoke_step_noise;
+	}
 
-	manta_script += fluid_adapt_time_step;
-	if (highres)
-		manta_script += fluid_adapt_time_step_noise;
-
-	manta_script += smoke_step;
-	if (highres)
-		manta_script += smoke_step_noise;
-
-	manta_script += smoke_adaptive_step
-			+ smoke_inflow_low
-			+ smoke_standalone;
+	// Main
+	manta_script += header_main
+		+ smoke_standalone
+		+ fluid_standalone;
 
 	// Fill in missing variables in script
 	std::string final_script = FLUID::parseScript(manta_script, smd);
@@ -1522,27 +1558,6 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 	myfile.close();
 }
 
-//void FLUID::exportSmokeData(SmokeModifierData *smd)
-//{
-//	bool highres = smd->domain->flags & MOD_SMOKE_NOISE;
-//	bool obstacle = smd->domain->active_fields & SM_ACTIVE_OBSTACLE;
-//	bool guiding  = smd->domain->active_fields & SM_ACTIVE_GUIDING;
-//	bool invel    = smd->domain->active_fields & SM_ACTIVE_INVEL;
-//
-//	char parent_dir[1024];
-//	BLI_split_dir_part(smd->domain->manta_filepath, parent_dir, sizeof(parent_dir));
-//
-//	FLUID::saveSmokeData(parent_dir);
-//	if (obstacle)
-//		FLUID::saveFluidObstacleData(parent_dir);
-//	if (guiding)
-//		FLUID::saveFluidGuidingData(parent_dir);
-//	if (invel)
-//		FLUID::saveFluidInvelData(parent_dir);
-//	if (highres)
-//		FLUID::saveSmokeDataHigh(parent_dir);
-//}
-
 void FLUID::exportLiquidScript(SmokeModifierData *smd)
 {
 	if (with_debug)
@@ -1552,71 +1567,103 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 	cacheDirScript[0] = '\0';
 
 	BLI_path_join(cacheDirScript, sizeof(cacheDirScript), smd->domain->cache_directory, FLUID_CACHE_DIR_SCRIPT, NULL);
-	BLI_path_join(cacheDirScript, sizeof(cacheDirScript), cacheDirScript, FLUID_CACHE_NAME_SCRIPT, NULL);
+	BLI_path_join(cacheDirScript, sizeof(cacheDirScript), cacheDirScript, FLUID_CACHE_LIQUID_SCRIPT, NULL);
 	BLI_path_make_safe(cacheDirScript);
 
-	bool mesh  = smd->domain->flags & MOD_SMOKE_MESH;
-	bool obstacle = smd->domain->active_fields & SM_ACTIVE_OBSTACLE;
-	bool guiding  = smd->domain->active_fields & SM_ACTIVE_GUIDING;
-	bool invel    = smd->domain->active_fields & SM_ACTIVE_INVEL;
+	bool mesh     = smd->domain->flags & MOD_SMOKE_MESH;
 	bool drops    = smd->domain->particle_type & MOD_SMOKE_PARTICLE_DROP;
 	bool bubble   = smd->domain->particle_type & MOD_SMOKE_PARTICLE_BUBBLE;
 	bool floater  = smd->domain->particle_type & MOD_SMOKE_PARTICLE_FLOAT;
 	bool tracer   = smd->domain->particle_type & MOD_SMOKE_PARTICLE_TRACER;
+	bool obstacle = smd->domain->active_fields & SM_ACTIVE_OBSTACLE;
+	bool guiding  = smd->domain->active_fields & SM_ACTIVE_GUIDING;
+	bool invel    = smd->domain->active_fields & SM_ACTIVE_INVEL;
 
 	std::string manta_script;
-	
-	manta_script += manta_import
-		+ fluid_variables
-		+ fluid_solver
-		+ fluid_alloc
-		+ fluid_adaptive_time_stepping
-		+ liquid_alloc
-		+ liquid_init_phi
-		+ liquid_variables;
 
+	// Libraries
+	manta_script += header_libraries
+		+ manta_import;
+
+	// Variables
+	manta_script += header_variables
+		+ fluid_variables
+		+ liquid_variables;
+	if (mesh)
+		manta_script += fluid_variables_mesh;
+	if (drops || bubble || floater || tracer)
+		manta_script += fluid_variables_particles;
+	if (guiding)
+		manta_script += fluid_variables_guiding;
+
+	// Solvers
+	manta_script += header_solvers
+		+ fluid_solver;
+	if (mesh)
+		manta_script += fluid_solver_mesh;
+	if (drops || bubble || floater || tracer)
+		manta_script += fluid_solver_particles;
+	if (guiding)
+		manta_script += fluid_solver_guiding;
+
+	// Grids
+	manta_script += header_grids
+		+ fluid_alloc
+		+ liquid_alloc;
+	if (mesh)
+		manta_script += liquid_alloc_mesh;
+	if (drops || bubble || floater || tracer)
+		manta_script += fluid_alloc_sndparts;
+	if (guiding)
+		manta_script += fluid_alloc_guiding;
 	if (obstacle)
 		manta_script += fluid_alloc_obstacle;
 	if (invel)
 		manta_script += fluid_alloc_invel;
-	if (drops || bubble || floater || tracer) {
-		manta_script += fluid_variables_particles 
-			+ fluid_solver_particles
-			+ fluid_alloc_sndparts
-			+ liquid_step_particles;
-	}
-	if (mesh) {
-		manta_script += fluid_variables_mesh
-			+ fluid_solver_mesh
-			+ liquid_alloc_mesh
-			+ liquid_step_mesh;
-	}
-	if (guiding) {
-		manta_script += fluid_variables_guiding
-			+ fluid_solver_guiding
-			+ fluid_alloc_guiding;
-	}
 
-	manta_script += fluid_file_import
-			+ fluid_cache_helper
-			+ fluid_load_data
-			+ liquid_load_data
-			+ liquid_load_flip;
+	// Domain init
+	manta_script += header_gridinit
+		+ liquid_init_phi;
+
+	// Time
+	manta_script += header_time
+		+ fluid_adaptive_time_stepping
+		+ fluid_adapt_time_step;
+
+	// Import
+	manta_script += header_import
+		+ fluid_file_import
+		+ fluid_cache_helper
+		+ fluid_load_data
+		+ liquid_load_data
+		+ liquid_load_flip;
 	if (mesh)
 		manta_script += liquid_load_mesh;
+	if (drops || bubble || floater || tracer)
+			manta_script += fluid_load_particles;
 	if (guiding)
 		manta_script += fluid_load_guiding;
+
+	// Pre/Post Steps
+	manta_script += header_prepost
+		+ fluid_pre_step
+		+ fluid_post_step;
+
+	// Steps
+	manta_script += header_steps
+		+ liquid_adaptive_step
+		+ liquid_step;
+	if (mesh)
+		manta_script += liquid_step_mesh;
 	if (drops || bubble || floater || tracer)
-		manta_script += fluid_load_particles;
+		manta_script += liquid_step_particles;
 
-	manta_script += fluid_pre_step;
-	manta_script += fluid_post_step;
+	// Main
+	manta_script += header_main
+		+ liquid_standalone
+		+ fluid_standalone;
 
-	manta_script += fluid_adapt_time_step
-			+ liquid_step
-			+ liquid_adaptive_step
-			+ liquid_standalone;
-
+	// Fill in missing variables in script
 	std::string final_script = FLUID::parseScript(manta_script, smd);
 
 	// Write script
@@ -1625,33 +1672,6 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 	myfile << final_script;
 	myfile.close();
 }
-
-//void FLUID::exportLiquidData(SmokeModifierData *smd)
-//{
-//	bool highres  = smd->domain->flags & MOD_SMOKE_NOISE;
-//	bool obstacle = smd->domain->active_fields & SM_ACTIVE_OBSTACLE;
-//	bool guiding  = smd->domain->active_fields & SM_ACTIVE_GUIDING;
-//	bool invel    = smd->domain->active_fields & SM_ACTIVE_INVEL;
-//	bool drops    = smd->domain->particle_type & MOD_SMOKE_PARTICLE_DROP;
-//	bool bubble   = smd->domain->particle_type & MOD_SMOKE_PARTICLE_BUBBLE;
-//	bool floater  = smd->domain->particle_type & MOD_SMOKE_PARTICLE_FLOAT;
-//	bool tracer   = smd->domain->particle_type & MOD_SMOKE_PARTICLE_TRACER;
-//
-//	char parent_dir[1024];
-//	BLI_split_dir_part(smd->domain->manta_filepath, parent_dir, sizeof(parent_dir));
-//
-//	FLUID::saveLiquidData(parent_dir);
-//	if (highres)
-//		FLUID::saveLiquidDataHigh(parent_dir);
-//	if (obstacle)
-//		FLUID::saveFluidObstacleData(parent_dir);
-//	if (guiding)
-//		FLUID::saveFluidGuidingData(parent_dir);
-//	if (invel)
-//		FLUID::saveFluidInvelData(parent_dir);
-//	if (drops || bubble || floater || tracer)
-//		FLUID::saveFluidSndPartsData(parent_dir);
-//}
 
 /* Call Mantaflow python functions through this function. Use isAttribute for object attributes, e.g. s.cfl (here 's' is varname, 'cfl' functionName, and isAttribute true) */
 static PyObject* callPythonFunction(std::string varName, std::string functionName, bool isAttribute=false)
