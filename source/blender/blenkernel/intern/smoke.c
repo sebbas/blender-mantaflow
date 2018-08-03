@@ -2632,7 +2632,6 @@ static void update_flowsfluids(
 			}
 		}
 	}
-	if (flowobjs) MEM_freeN(flowobjs);
 
 	/* Adjust domain size if needed */
 	if (sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN) {

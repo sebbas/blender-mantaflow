@@ -960,7 +960,7 @@ static std::string getCacheFileEnding(char cache_format)
 		default:
 			if (FLUID::with_debug)
 				std::cout << "Error: Could not find file extension" << std::endl;
-			return "";
+			return ".uni";
 	}
 }
 
