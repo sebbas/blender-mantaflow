@@ -1686,7 +1686,7 @@ static PyObject* callPythonFunction(std::string varName, std::string functionNam
 	PyObject *main, *var, *func, *returnedValue;
 
 	// Get pyobject that holds result value
-	main = PyImport_AddModule("__main__");
+	main = PyImport_ImportModule("__main__");
 	var = PyObject_GetAttrString(main, varName.c_str());
 	func = PyObject_GetAttrString(var, functionName.c_str());
 
