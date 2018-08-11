@@ -144,20 +144,20 @@ static GPUTexture *create_field_texture(SmokeDomainSettings *sds)
 
 	switch (sds->coba_field) {
 #ifdef WITH_MANTA
-		case FLUID_FIELD_DENSITY:    field = smoke_get_density(sds->fluid); break;
-		case FLUID_FIELD_HEAT:       field = smoke_get_heat(sds->fluid); break;
-		case FLUID_FIELD_FUEL:       field = smoke_get_fuel(sds->fluid); break;
-		case FLUID_FIELD_REACT:      field = smoke_get_react(sds->fluid); break;
-		case FLUID_FIELD_FLAME:      field = smoke_get_flame(sds->fluid); break;
-		case FLUID_FIELD_VELOCITY_X: field = smoke_get_velocity_x(sds->fluid); break;
-		case FLUID_FIELD_VELOCITY_Y: field = smoke_get_velocity_y(sds->fluid); break;
-		case FLUID_FIELD_VELOCITY_Z: field = smoke_get_velocity_z(sds->fluid); break;
-		case FLUID_FIELD_COLOR_R:    field = smoke_get_color_r(sds->fluid); break;
-		case FLUID_FIELD_COLOR_G:    field = smoke_get_color_g(sds->fluid); break;
-		case FLUID_FIELD_COLOR_B:    field = smoke_get_color_b(sds->fluid); break;
-		case FLUID_FIELD_FORCE_X:    field = smoke_get_force_x(sds->fluid); break;
-		case FLUID_FIELD_FORCE_Y:    field = smoke_get_force_y(sds->fluid); break;
-		case FLUID_FIELD_FORCE_Z:    field = smoke_get_force_z(sds->fluid); break;
+		case FLUID_DOMAIN_FIELD_DENSITY:    field = smoke_get_density(sds->fluid); break;
+		case FLUID_DOMAIN_FIELD_HEAT:       field = smoke_get_heat(sds->fluid); break;
+		case FLUID_DOMAIN_FIELD_FUEL:       field = smoke_get_fuel(sds->fluid); break;
+		case FLUID_DOMAIN_FIELD_REACT:      field = smoke_get_react(sds->fluid); break;
+		case FLUID_DOMAIN_FIELD_FLAME:      field = smoke_get_flame(sds->fluid); break;
+		case FLUID_DOMAIN_FIELD_VELOCITY_X: field = fluid_get_velocity_x(sds->fluid); break;
+		case FLUID_DOMAIN_FIELD_VELOCITY_Y: field = fluid_get_velocity_y(sds->fluid); break;
+		case FLUID_DOMAIN_FIELD_VELOCITY_Z: field = fluid_get_velocity_z(sds->fluid); break;
+		case FLUID_DOMAIN_FIELD_COLOR_R:    field = smoke_get_color_r(sds->fluid); break;
+		case FLUID_DOMAIN_FIELD_COLOR_G:    field = smoke_get_color_g(sds->fluid); break;
+		case FLUID_DOMAIN_FIELD_COLOR_B:    field = smoke_get_color_b(sds->fluid); break;
+		case FLUID_DOMAIN_FIELD_FORCE_X:    field = fluid_get_force_x(sds->fluid); break;
+		case FLUID_DOMAIN_FIELD_FORCE_Y:    field = fluid_get_force_y(sds->fluid); break;
+		case FLUID_DOMAIN_FIELD_FORCE_Z:    field = fluid_get_force_z(sds->fluid); break;
 #endif
 		default: return NULL;
 	}
@@ -460,7 +460,7 @@ static void bind_shader(SmokeDomainSettings *sds, GPUShader *shader, GPUTexture 
 		GPU_shader_uniform_texture(shader, shadow_location, sds->tex_shadow);
 
 		float active_color[3] = { 0.9, 0.9, 0.9 };
-		if ((sds->active_fields & SM_ACTIVE_COLORS) == 0)
+		if ((sds->active_fields & FLUID_DOMAIN_ACTIVE_COLORS) == 0)
 			mul_v3_v3(active_color, sds->active_color);
 		GPU_shader_uniform_vector(shader, actcol_location, 3, 1, active_color);
 
@@ -542,7 +542,7 @@ void draw_smoke_volume(SmokeDomainSettings *sds, Object *ob,
 		return;
 	}
 
-	const bool use_fire = (sds->active_fields & SM_ACTIVE_FIRE) && sds->tex_flame;
+	const bool use_fire = (sds->active_fields & FLUID_DOMAIN_ACTIVE_FIRE) && sds->tex_flame;
 
 	GPUBuiltinShader builtin_shader;
 
@@ -585,7 +585,7 @@ void draw_smoke_volume(SmokeDomainSettings *sds, Object *ob,
 
 	/* setup slicing information */
 
-	const bool view_aligned = (sds->slice_method == MOD_SMOKE_SLICE_VIEW_ALIGNED);
+	const bool view_aligned = (sds->slice_method == FLUID_DOMAIN_SLICE_VIEW_ALIGNED);
 	int max_slices, max_points, axis = 0;
 
 	if (view_aligned) {
@@ -745,9 +745,9 @@ typedef void (*vector_draw_func)(float(*)[3], float(*)[3], float *, float *, flo
 void draw_smoke_velocity(SmokeDomainSettings *domain, float viewnormal[3])
 {
 #ifdef WITH_MANTA
-	const float *vel_x = smoke_get_velocity_x(domain->fluid);
-	const float *vel_y = smoke_get_velocity_y(domain->fluid);
-	const float *vel_z = smoke_get_velocity_z(domain->fluid);
+	const float *vel_x = fluid_get_velocity_x(domain->fluid);
+	const float *vel_y = fluid_get_velocity_y(domain->fluid);
+	const float *vel_z = fluid_get_velocity_z(domain->fluid);
 
 	if (ELEM(NULL, vel_x, vel_y, vel_z)) {
 		return;
@@ -786,7 +786,7 @@ void draw_smoke_velocity(SmokeDomainSettings *domain, float viewnormal[3])
 	    ((float)(res_max[2] - floor(xyz[2])) / step_size) + 0.5f
 	};
 
-	if (domain->slice_method == MOD_SMOKE_SLICE_AXIS_ALIGNED &&
+	if (domain->slice_method == FLUID_DOMAIN_SLICE_AXIS_ALIGNED &&
 	    domain->axis_slice_method == AXIS_SLICE_SINGLE)
 	{
 		const int axis = (domain->slice_axis == SLICE_AXIS_AUTO) ?

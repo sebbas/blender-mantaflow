@@ -1144,7 +1144,7 @@ typedef struct FluidMantaflowJob {
 	Object *ob;
 
 	SmokeModifierData *smd;
-	
+
 	int success;
 	double start;
 
@@ -1267,30 +1267,30 @@ static void fluid_manta_bake_endjob(void *customdata)
 
 	if (STREQ(job->type, "MANTA_OT_bake_data"))
 	{
-		sds->cache_flag &= ~FLUID_CACHE_BAKING_DATA;
-		sds->cache_flag |= FLUID_CACHE_BAKED_DATA;
+		sds->cache_flag &= ~FLUID_DOMAIN_BAKING_DATA;
+		sds->cache_flag |= FLUID_DOMAIN_BAKED_DATA;
 	}
 	else if (STREQ(job->type, "MANTA_OT_bake_noise"))
 	{
-		sds->cache_flag &= ~FLUID_CACHE_BAKING_NOISE;
-		sds->cache_flag |= FLUID_CACHE_BAKED_NOISE;
+		sds->cache_flag &= ~FLUID_DOMAIN_BAKING_NOISE;
+		sds->cache_flag |= FLUID_DOMAIN_BAKED_NOISE;
 	}
 	else if (STREQ(job->type, "MANTA_OT_bake_mesh"))
 	{
-		sds->cache_flag &= ~FLUID_CACHE_BAKING_MESH;
-		sds->cache_flag |= FLUID_CACHE_BAKED_MESH;
+		sds->cache_flag &= ~FLUID_DOMAIN_BAKING_MESH;
+		sds->cache_flag |= FLUID_DOMAIN_BAKED_MESH;
 	}
 	else if (STREQ(job->type, "MANTA_OT_bake_particles"))
 	{
-		sds->cache_flag &= ~FLUID_CACHE_BAKING_PARTICLES;
-		sds->cache_flag |= FLUID_CACHE_BAKED_PARTICLES;
+		sds->cache_flag &= ~FLUID_DOMAIN_BAKING_PARTICLES;
+		sds->cache_flag |= FLUID_DOMAIN_BAKED_PARTICLES;
 	}
 	else if (STREQ(job->type, "MANTA_OT_bake_guiding"))
 	{
-		sds->cache_flag &= ~FLUID_CACHE_BAKING_GUIDING;
-		sds->cache_flag |= FLUID_CACHE_BAKED_GUIDING;
+		sds->cache_flag &= ~FLUID_DOMAIN_BAKING_GUIDING;
+		sds->cache_flag |= FLUID_DOMAIN_BAKED_GUIDING;
 	}
-	
+
 	/* Bake was successful:
 	 *  Report for ended bake and how long it took */
 	if (job->success) {
@@ -1329,42 +1329,42 @@ static void fluid_manta_bake_startjob(void *customdata, short *stop, short *do_u
 
 	if (STREQ(job->type, "MANTA_OT_bake_data"))
 	{
-		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_DATA, NULL);
 		BLI_dir_create_recursive(tmpDir); /* Create 'data' subdir if it does not exist already */
-		sds->cache_flag &= ~FLUID_CACHE_BAKED_DATA;
-		sds->cache_flag |= FLUID_CACHE_BAKING_DATA;
+		sds->cache_flag &= ~FLUID_DOMAIN_BAKED_DATA;
+		sds->cache_flag |= FLUID_DOMAIN_BAKING_DATA;
 		job->pause_frame = &sds->cache_frame_pause_data;
 	}
 	else if (STREQ(job->type, "MANTA_OT_bake_noise"))
 	{
-		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_NOISE, NULL);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_NOISE, NULL);
 		BLI_dir_create_recursive(tmpDir); /* Create 'noise' subdir if it does not exist already */
-		sds->cache_flag &= ~FLUID_CACHE_BAKED_NOISE;
-		sds->cache_flag |= FLUID_CACHE_BAKING_NOISE;
+		sds->cache_flag &= ~FLUID_DOMAIN_BAKED_NOISE;
+		sds->cache_flag |= FLUID_DOMAIN_BAKING_NOISE;
 		job->pause_frame = &sds->cache_frame_pause_noise;
 	}
 	else if (STREQ(job->type, "MANTA_OT_bake_mesh"))
 	{
-		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_MESH, NULL);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_MESH, NULL);
 		BLI_dir_create_recursive(tmpDir); /* Create 'mesh' subdir if it does not exist already */
-		sds->cache_flag &= ~FLUID_CACHE_BAKED_MESH;
-		sds->cache_flag |= FLUID_CACHE_BAKING_MESH;
+		sds->cache_flag &= ~FLUID_DOMAIN_BAKED_MESH;
+		sds->cache_flag |= FLUID_DOMAIN_BAKING_MESH;
 		job->pause_frame = &sds->cache_frame_pause_mesh;
 	}
 	else if (STREQ(job->type, "MANTA_OT_bake_particles"))
 	{
-		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_PARTICLES, NULL);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_PARTICLES, NULL);
 		BLI_dir_create_recursive(tmpDir); /* Create 'particles' subdir if it does not exist already */
-		sds->cache_flag &= ~FLUID_CACHE_BAKED_PARTICLES;
-		sds->cache_flag |= FLUID_CACHE_BAKING_PARTICLES;
+		sds->cache_flag &= ~FLUID_DOMAIN_BAKED_PARTICLES;
+		sds->cache_flag |= FLUID_DOMAIN_BAKING_PARTICLES;
 		job->pause_frame = &sds->cache_frame_pause_particles;
 	}
 	else if (STREQ(job->type, "MANTA_OT_bake_guiding"))
 	{
-		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_GUIDING, NULL);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_GUIDING, NULL);
 		BLI_dir_create_recursive(tmpDir); /* Create 'particles' subdir if it does not exist already */
-		sds->cache_flag &= ~FLUID_CACHE_BAKED_GUIDING;
-		sds->cache_flag |= FLUID_CACHE_BAKING_GUIDING;
+		sds->cache_flag &= ~FLUID_DOMAIN_BAKED_GUIDING;
+		sds->cache_flag |= FLUID_DOMAIN_BAKING_GUIDING;
 		job->pause_frame = &sds->cache_frame_pause_guiding;
 	}
 	fluid_manta_bake_sequence(job);
@@ -1468,20 +1468,20 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 
 	if (STREQ(job->type, "MANTA_OT_free_data"))
 	{
-		sds->cache_flag &= ~(FLUID_CACHE_BAKING_DATA|FLUID_CACHE_BAKED_DATA|
-							 FLUID_CACHE_BAKING_NOISE|FLUID_CACHE_BAKED_NOISE|
-							 FLUID_CACHE_BAKING_MESH|FLUID_CACHE_BAKED_MESH|
-							 FLUID_CACHE_BAKING_PARTICLES|FLUID_CACHE_BAKED_PARTICLES);
+		sds->cache_flag &= ~(FLUID_DOMAIN_BAKING_DATA|FLUID_DOMAIN_BAKED_DATA|
+							 FLUID_DOMAIN_BAKING_NOISE|FLUID_DOMAIN_BAKED_NOISE|
+							 FLUID_DOMAIN_BAKING_MESH|FLUID_DOMAIN_BAKED_MESH|
+							 FLUID_DOMAIN_BAKING_PARTICLES|FLUID_DOMAIN_BAKED_PARTICLES);
 
-		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_DATA, NULL);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_DATA, NULL);
 		if (BLI_exists(tmpDir)) BLI_delete(tmpDir, true, true);
-		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_NOISE, NULL);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_NOISE, NULL);
 		if (BLI_exists(tmpDir)) BLI_delete(tmpDir, true, true);
 
 		/* Free optional mesh and particles as well - otherwise they would not be in sync with data cache */
-		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_MESH, NULL);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_MESH, NULL);
 		if (BLI_exists(tmpDir)) BLI_delete(tmpDir, true, true);
-		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_PARTICLES, NULL);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_PARTICLES, NULL);
 		if (BLI_exists(tmpDir)) BLI_delete(tmpDir, true, true);
 
 		/* Reset pause frame */
@@ -1489,9 +1489,9 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 	}
 	else if (STREQ(job->type, "MANTA_OT_free_noise"))
 	{
-		sds->cache_flag &= ~(FLUID_CACHE_BAKING_NOISE|FLUID_CACHE_BAKED_NOISE);
+		sds->cache_flag &= ~(FLUID_DOMAIN_BAKING_NOISE|FLUID_DOMAIN_BAKED_NOISE);
 
-		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_NOISE, NULL);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_NOISE, NULL);
 		if (BLI_exists(tmpDir)) BLI_delete(tmpDir, true, true);
 
 		/* Reset pause frame */
@@ -1499,9 +1499,9 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 	}
 	else if (STREQ(job->type, "MANTA_OT_free_mesh"))
 	{
-		sds->cache_flag &= ~(FLUID_CACHE_BAKING_MESH|FLUID_CACHE_BAKED_MESH);
+		sds->cache_flag &= ~(FLUID_DOMAIN_BAKING_MESH|FLUID_DOMAIN_BAKED_MESH);
 
-		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_MESH, NULL);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_MESH, NULL);
 		if (BLI_exists(tmpDir)) BLI_delete(tmpDir, true, true);
 
 		/* Reset pause frame */
@@ -1509,9 +1509,9 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 	}
 	else if (STREQ(job->type, "MANTA_OT_free_particles"))
 	{
-		sds->cache_flag &= ~(FLUID_CACHE_BAKING_PARTICLES|FLUID_CACHE_BAKED_PARTICLES);
+		sds->cache_flag &= ~(FLUID_DOMAIN_BAKING_PARTICLES|FLUID_DOMAIN_BAKED_PARTICLES);
 
-		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_PARTICLES, NULL);
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_PARTICLES, NULL);
 		if (BLI_exists(tmpDir)) BLI_delete(tmpDir, true, true);
 
 		/* Reset pause frame */
@@ -1519,9 +1519,9 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 	}
 	else if (STREQ(job->type, "MANTA_OT_free_guiding"))
 	{
-		sds->cache_flag &= ~(FLUID_CACHE_BAKING_GUIDING|FLUID_CACHE_BAKED_GUIDING);
-		
-		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_CACHE_DIR_GUIDING, NULL);
+		sds->cache_flag &= ~(FLUID_DOMAIN_BAKING_GUIDING|FLUID_DOMAIN_BAKED_GUIDING);
+
+		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_GUIDING, NULL);
 		if (BLI_exists(tmpDir)) BLI_delete(tmpDir, true, true);
 
 		/* Reset pause frame */
@@ -1560,8 +1560,8 @@ static int fluid_manta_free_exec(struct bContext *C, struct wmOperator *op)
 	}
 
 	/* Cannot free data if other bakes currently working */
-	if (smd->domain->cache_flag & (FLUID_CACHE_BAKING_DATA|FLUID_CACHE_BAKING_NOISE|
-								   FLUID_CACHE_BAKING_MESH|FLUID_CACHE_BAKING_PARTICLES))
+	if (smd->domain->cache_flag & (FLUID_DOMAIN_BAKING_DATA|FLUID_DOMAIN_BAKING_NOISE|
+								   FLUID_DOMAIN_BAKING_MESH|FLUID_DOMAIN_BAKING_PARTICLES))
 	{
 		BKE_report(op->reports, RPT_ERROR, "Bake free failed: pending bake jobs found");
 		return OPERATOR_CANCELLED;
@@ -1768,13 +1768,13 @@ static int manta_make_file_exec(bContext *C, wmOperator *UNUSED(op))
 	if (smd->domain->fluid == NULL)
 		smoke_reallocate_fluid(smd->domain, smd->domain->res, 1);
 
-	BLI_path_join(tmpDir, sizeof(tmpDir), smd->domain->cache_directory, FLUID_CACHE_DIR_SCRIPT, NULL);
+	BLI_path_join(tmpDir, sizeof(tmpDir), smd->domain->cache_directory, FLUID_DOMAIN_DIR_SCRIPT, NULL);
 	BLI_dir_create_recursive(tmpDir); /* Create 'script' subdir if it does not exist already */
 
-	if (smd->domain->fluid && smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS)
+	if (smd->domain->fluid && smd->domain->type == FLUID_DOMAIN_TYPE_GAS)
 		smoke_manta_export(smd->domain->fluid, smd);
 
-	if (smd->domain->fluid && smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
+	if (smd->domain->fluid && smd->domain->type == FLUID_DOMAIN_TYPE_LIQUID)
 		liquid_manta_export(smd->domain->fluid, smd);
 
 	return OPERATOR_FINISHED;

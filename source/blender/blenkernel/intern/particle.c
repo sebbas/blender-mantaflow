@@ -740,7 +740,7 @@ void psys_render_restore(Object *ob, ParticleSystem *psys)
 
 	if (disp != render_disp) {
 		/* Hair can and has to be recalculated if everything isn't displayed. */
-		if (ELEM(psys->part->type, PART_HAIR, PART_FLUID, PART_MANTA_FLIP, PART_MANTA_DROP, PART_MANTA_BUBBLE, PART_MANTA_FLOAT, PART_MANTA_TRACER)) {
+		if (ELEM(psys->part->type, PART_HAIR, PART_FLUID, PART_MANTA_FLIP, PART_MANTA_SPRAY, PART_MANTA_BUBBLE, PART_MANTA_FOAM, PART_MANTA_TRACER)) {
 			psys->recalc |= PSYS_RECALC_RESET;
 		}
 		else {

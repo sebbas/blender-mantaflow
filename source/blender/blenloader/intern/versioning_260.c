@@ -2249,7 +2249,7 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
 				if (md->type == eModifierType_Smoke) {
 					SmokeModifierData *smd = (SmokeModifierData *)md;
 					if ((smd->type & MOD_SMOKE_TYPE_DOMAIN) && smd->domain) {
-						if (smd->domain->flags & MOD_SMOKE_HIGH_SMOOTH) {
+						if (smd->domain->flags & FLUID_DOMAIN_USE_HIGH_SMOOTH) {
 							smd->domain->highres_sampling = SM_HRES_LINEAR;
 						}
 						else {

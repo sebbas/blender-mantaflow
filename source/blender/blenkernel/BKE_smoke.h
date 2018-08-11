@@ -38,7 +38,7 @@ typedef float (*bresenham_callback)(float *result, float *input, int res[3], int
 struct DerivedMesh *smokeModifier_do(struct SmokeModifierData *smd, struct Scene *scene, struct Object *ob, struct DerivedMesh *dm);
 
 void smoke_reallocate_fluid(struct SmokeDomainSettings *sds, int res[3], int free_old);
-void smoke_reallocate_highres_fluid(struct SmokeDomainSettings *sds, float dx, int res[3]);
+void smoke_reallocate_highres_fluid(struct SmokeDomainSettings *sds, int res[3]);
 void smokeModifier_free(struct SmokeModifierData *smd);
 void smokeModifier_reset(struct SmokeModifierData *smd);
 void smokeModifier_createType(struct SmokeModifierData *smd);

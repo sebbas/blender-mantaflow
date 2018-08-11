@@ -283,9 +283,9 @@ static void init_frame_smoke(VoxelData *vd, int cfra)
 				totRes = vd_resol_size(vd);
 				vd->dataset = MEM_mapallocN(sizeof(float) * (totRes), "smoke data");
 				/* get velocity data */
-				xvel = smoke_get_velocity_x(sds->fluid);
-				yvel = smoke_get_velocity_y(sds->fluid);
-				zvel = smoke_get_velocity_z(sds->fluid);
+				xvel = fluid_get_velocity_x(sds->fluid);
+				yvel = fluid_get_velocity_y(sds->fluid);
+				zvel = fluid_get_velocity_z(sds->fluid);
 
 				/* map velocities between 0 and 0.3f */
 				for (i = 0; i < totRes; i++) {
@@ -297,7 +297,7 @@ static void init_frame_smoke(VoxelData *vd, int cfra)
 				size_t totRes;
 				float *flame;
 
-				if (sds->flags & MOD_SMOKE_NOISE) {
+				if (sds->flags & FLUID_DOMAIN_USE_NOISE) {
 					if (!smoke_turbulence_has_fuel(sds->fluid)) {
 						BLI_rw_mutex_unlock(sds->fluid_mutex);
 						return;
@@ -325,7 +325,7 @@ static void init_frame_smoke(VoxelData *vd, int cfra)
 				vd->data_type = TEX_VD_RGBA_PREMUL;
 
 				/* data resolution */
-				if (sds->flags & MOD_SMOKE_NOISE) {
+				if (sds->flags & FLUID_DOMAIN_USE_NOISE) {
 					smoke_turbulence_get_res(sds->fluid, vd->resol);
 				}
 				else {
@@ -337,7 +337,7 @@ static void init_frame_smoke(VoxelData *vd, int cfra)
 				/* always store copy, as smoke internal data can change */
 				vd->dataset = MEM_mapallocN(sizeof(float) * totCells, "smoke data");
 
-				if (sds->flags & MOD_SMOKE_NOISE) {
+				if (sds->flags & FLUID_DOMAIN_USE_NOISE) {
 					if (smoke_turbulence_has_colors(sds->fluid)) {
 						smoke_turbulence_get_rgba(sds->fluid, vd->dataset, 1);
 					}

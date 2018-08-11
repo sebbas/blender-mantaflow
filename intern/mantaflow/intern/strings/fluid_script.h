@@ -204,8 +204,6 @@ def fluid_adapt_time_step_noise_$ID$():\n\
 const std::string fluid_alloc = "\n\
 mantaMsg('Fluid alloc data')\n\
 flags_s$ID$       = s$ID$.create(FlagGrid)\n\
-numFlow_s$ID$     = s$ID$.create(IntGrid)\n\
-flowType_s$ID$    = s$ID$.create(IntGrid)\n\
 vel_s$ID$         = s$ID$.create(MACGrid)\n\
 velC_s$ID$        = s$ID$.create(MACGrid)\n\
 x_vel_s$ID$       = s$ID$.create(RealGrid)\n\
@@ -520,9 +518,9 @@ def bake_guiding_process_$ID$(framenr, format_guiding, path_guiding):\n\
     if framenr>1:\n\
         fluid_load_guiding_$ID$(path_guiding, framenr-1, format_guiding)\n\
     \n\
-    x_guidevel_s$ID$.multConst(Real(gs_s$ID$.x))\n\
-    y_guidevel_s$ID$.multConst(Real(gs_s$ID$.y))\n\
-    z_guidevel_s$ID$.multConst(Real(gs_s$ID$.z))\n\
+    x_guidevel_s$ID$.multConst(Real(toMantaUnitsFac_s$ID$))\n\
+    y_guidevel_s$ID$.multConst(Real(toMantaUnitsFac_s$ID$))\n\
+    z_guidevel_s$ID$.multConst(Real(toMantaUnitsFac_s$ID$))\n\
     copyRealToVec3(sourceX=x_guidevel_s$ID$, sourceY=y_guidevel_s$ID$, sourceZ=z_guidevel_s$ID$, target=guidevelC_s$ID$)\n\
     \n\
     mantaMsg('Extrapolating guiding velocity')\n\

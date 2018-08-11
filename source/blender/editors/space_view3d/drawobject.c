@@ -7513,7 +7513,7 @@ void draw_object(Main *bmain, Scene *scene, ARegion *ar, View3D *v3d, Base *base
 	{
 		smd = (SmokeModifierData *)md;
 
-		if (smd->domain && (smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS)) {
+		if (smd->domain && (smd->domain->type == FLUID_DOMAIN_TYPE_GAS)) {
 			if (!v3d->transp && (dflag & DRAW_PICKING) == 0) {
 				if (!v3d->xray && !(ob->dtx & OB_DRAWXRAY)) {
 					/* object has already been drawn so skip drawing it */
@@ -7863,7 +7863,7 @@ void draw_object(Main *bmain, Scene *scene, ARegion *ar, View3D *v3d, Base *base
 			float p0[3], p1[3];
 
 			/* draw max domain bounds */
-			if ((sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN)) {
+			if ((sds->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN)) {
 				VECSUBFAC(p0, sds->p0, sds->cell_size, sds->adapt_res);
 				VECADDFAC(p1, sds->p1, sds->cell_size, sds->adapt_res);
 				BKE_boundbox_init_from_minmax(&bb, p0, p1);
@@ -7873,7 +7873,7 @@ void draw_object(Main *bmain, Scene *scene, ARegion *ar, View3D *v3d, Base *base
 			/* draw a single voxel to hint the user about the resolution of the fluid */
 			copy_v3_v3(p0, sds->p0);
 
-			if (sds->flags & MOD_SMOKE_NOISE) {
+			if (sds->flags & FLUID_DOMAIN_USE_NOISE) {
 				madd_v3_v3v3fl(p1, p0, sds->cell_size, 1.0f / sds->noise_scale);
 			}
 			else {
@@ -7902,18 +7902,18 @@ void draw_object(Main *bmain, Scene *scene, ARegion *ar, View3D *v3d, Base *base
 			p1[0] = (sds->p0[0] + sds->cell_size[0] * sds->res_max[0] + sds->obj_shift_f[0]) * fabsf(ob->size[0]);
 			p1[1] = (sds->p0[1] + sds->cell_size[1] * sds->res_max[1] + sds->obj_shift_f[1]) * fabsf(ob->size[1]);
 			p1[2] = (sds->p0[2] + sds->cell_size[2] * sds->res_max[2] + sds->obj_shift_f[2]) * fabsf(ob->size[2]);
-			
-			if (smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS) {
-				if (sds->fluid && sds->viewport_display_mode == SM_VIEWPORT_GEOMETRY) {
+
+			if (smd->domain->type == FLUID_DOMAIN_TYPE_GAS) {
+				if (sds->fluid && sds->viewport_display_mode == FLUID_DOMAIN_VIEWPORT_GEOMETRY) {
 					// Nothing to do here
 				}
-				else if (sds->fluid && (sds->flags & MOD_SMOKE_NOISE)==0) {
+				else if (sds->fluid && (sds->flags & FLUID_DOMAIN_USE_NOISE)==0) {
 					sds->tex = NULL;
 					GPU_create_smoke(smd, 0);
 					draw_smoke_volume(sds, ob, p0, p1, viewnormal);
 					GPU_free_smoke(smd);
 				}
-				else if (sds->fluid && sds->flags & MOD_SMOKE_NOISE) {
+				else if (sds->fluid && sds->flags & FLUID_DOMAIN_USE_NOISE) {
 					sds->tex = NULL;
 					GPU_create_smoke(smd, 1);
 					draw_smoke_volume(sds, ob, p0, p1, viewnormal);

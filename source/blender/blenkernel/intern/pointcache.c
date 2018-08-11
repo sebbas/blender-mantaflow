@@ -77,10 +77,8 @@
 #endif
 
 /* both in intern */
-#ifdef WITH_MANTA
-#ifdef WITH_MANTA
-#	include "manta_fluid_API.h"
-#endif
+#ifdef WITH_SMOKE
+#include "smoke_API.h"
 #endif
 
 #ifdef WITH_OPENVDB
@@ -556,7 +554,7 @@ static void ptcache_cloth_error(void *cloth_v, const char *message)
 	modifier_setError(&clmd->modifier, "%s", message);
 }
 
-#ifdef WITH_MANTA
+#ifdef WITH_SMOKE
 /* Smoke functions */
 static int  ptcache_smoke_totpoint(void *smoke_v, int UNUSED(cfra))
 {
@@ -578,15 +576,10 @@ static void ptcache_smoke_error(void *smoke_v, const char *message)
 
 #define SMOKE_CACHE_VERSION "1.04"
 
-static int ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
+static int  ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 {
 	SmokeModifierData *smd= (SmokeModifierData *)smoke_v;
 	SmokeDomainSettings *sds = smd->domain;
-
-	if (!(sds->flags & MOD_SMOKE_USE_VOLUME_CACHE)) {
-		return 0;
-	}
-
 	int ret = 0;
 	int fluid_fields = smoke_get_data_flags(sds);
 
@@ -599,30 +592,28 @@ static int ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 
 	if (sds->fluid) {
 		size_t res = sds->res[0]*sds->res[1]*sds->res[2];
-		float dt, dx, *dens, *react, *fuel, *flame, *heat, *vx, *vy, *vz, *r, *g, *b, *phi, *pp, *pvel, *ppSnd, *pvelSnd, *plifeSnd, *shadow;
-		int *obstacles, numParts = 0, numPartsSnd = 0;
+		float dt, dx, *dens, *react, *fuel, *flame, *heat, *heatold, *vx, *vy, *vz, *r, *g, *b;
+		unsigned char *obstacles;
 		unsigned int in_len = sizeof(float)*(unsigned int)res;
 		unsigned char *out = (unsigned char *)MEM_callocN(LZO_OUT_LEN(in_len) * 4, "pointcache_lzo_buffer");
 		//int mode = res >= 1000000 ? 2 : 1;
 		int mode=1;		// light
 		if (sds->cache_comp == SM_CACHE_HEAVY) mode=2;	// heavy
 
-		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles, &shadow);
-		liquid_export(sds->fluid, &phi, &pp, &pvel, &ppSnd, &pvelSnd, &plifeSnd);
+		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &heatold, &vx, &vy, &vz, &r, &g, &b, &obstacles);
 
-		if (dens) {
-			ptcache_file_compressed_write(pf, (unsigned char *)shadow, in_len, out, mode);
-			ptcache_file_compressed_write(pf, (unsigned char *)dens, in_len, out, mode);
-		}
-		if (heat && fluid_fields & SM_ACTIVE_HEAT) {
+		ptcache_file_compressed_write(pf, (unsigned char *)sds->shadow, in_len, out, mode);
+		ptcache_file_compressed_write(pf, (unsigned char *)dens, in_len, out, mode);
+		if (fluid_fields & FLUID_DOMAIN_ACTIVE_HEAT) {
 			ptcache_file_compressed_write(pf, (unsigned char *)heat, in_len, out, mode);
+			ptcache_file_compressed_write(pf, (unsigned char *)heatold, in_len, out, mode);
 		}
-		if (flame && fluid_fields & SM_ACTIVE_FIRE) {
+		if (fluid_fields & FLUID_DOMAIN_ACTIVE_FIRE) {
 			ptcache_file_compressed_write(pf, (unsigned char *)flame, in_len, out, mode);
 			ptcache_file_compressed_write(pf, (unsigned char *)fuel, in_len, out, mode);
 			ptcache_file_compressed_write(pf, (unsigned char *)react, in_len, out, mode);
 		}
-		if (r && fluid_fields & SM_ACTIVE_COLORS) {
+		if (fluid_fields & FLUID_DOMAIN_ACTIVE_COLORS) {
 			ptcache_file_compressed_write(pf, (unsigned char *)r, in_len, out, mode);
 			ptcache_file_compressed_write(pf, (unsigned char *)g, in_len, out, mode);
 			ptcache_file_compressed_write(pf, (unsigned char *)b, in_len, out, mode);
@@ -630,15 +621,7 @@ static int ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 		ptcache_file_compressed_write(pf, (unsigned char *)vx, in_len, out, mode);
 		ptcache_file_compressed_write(pf, (unsigned char *)vy, in_len, out, mode);
 		ptcache_file_compressed_write(pf, (unsigned char *)vz, in_len, out, mode);
-		ptcache_file_compressed_write(pf, (unsigned char *)obstacles, sizeof(int)*(unsigned int)res, out, mode);
-		if (phi) {
-			ptcache_file_compressed_write(pf, (unsigned char *)phi, in_len, out, mode);
-			numParts = liquid_get_num_flip_particles(sds->fluid);
-			ptcache_file_write(pf, &numParts, 1, sizeof(int));
-
-			numPartsSnd = liquid_get_num_snd_particles(sds->fluid);
-			ptcache_file_write(pf, &numPartsSnd, 1, sizeof(int));
-		}
+		ptcache_file_compressed_write(pf, (unsigned char *)obstacles, (unsigned int)res, out, mode);
 		ptcache_file_write(pf, &dt, 1, sizeof(float));
 		ptcache_file_write(pf, &dx, 1, sizeof(float));
 		ptcache_file_write(pf, &sds->p0, 3, sizeof(float));
@@ -652,56 +635,39 @@ static int ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 		ptcache_file_write(pf, &sds->res_max, 3, sizeof(int));
 		ptcache_file_write(pf, &sds->active_color, 3, sizeof(float));
 
-		if (pp) {
-			MEM_freeN(out);
-			out = (unsigned char *)MEM_callocN(numParts*sizeof(float)*3 + numParts*sizeof(int), "pointcache_lzo_buffer");
-			ptcache_file_compressed_write(pf, (unsigned char *) pp, numParts*sizeof(float)*3 + numParts*sizeof(int), out, mode);
-			ptcache_file_compressed_write(pf, (unsigned char *) pvel, numParts*sizeof(float)*3, out, mode);
-		}
-
-		if (ppSnd) {
-			MEM_freeN(out);
-			out = (unsigned char *)MEM_callocN(numPartsSnd*sizeof(float)*3 + numPartsSnd*sizeof(int), "pointcache_lzo_buffer");
-			ptcache_file_compressed_write(pf, (unsigned char *) ppSnd, numPartsSnd*sizeof(float)*3 + numPartsSnd*sizeof(int), out, mode);
-			ptcache_file_compressed_write(pf, (unsigned char *) pvelSnd, numPartsSnd*sizeof(float)*3, out, mode);
-			ptcache_file_compressed_write(pf, (unsigned char *) plifeSnd, numPartsSnd*sizeof(float), out, mode);
-		}
-
 		MEM_freeN(out);
 
 		ret = 1;
 	}
 
-	if (sds->fluid && sds->flags & MOD_SMOKE_NOISE) {
+	if (sds->wt) {
 		int res_big_array[3];
 		int res_big;
 		int res = sds->res[0]*sds->res[1]*sds->res[2];
-		float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *tcu2, *tcv2, *tcw2, *r, *g, *b;
+		float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *r, *g, *b;
 		unsigned int in_len = sizeof(float)*(unsigned int)res;
 		unsigned int in_len_big;
 		unsigned char *out;
 		int mode;
 
-		smoke_turbulence_get_res(sds->fluid, res_big_array);
-
+		smoke_turbulence_get_res(sds->wt, res_big_array);
 		res_big = res_big_array[0]*res_big_array[1]*res_big_array[2];
-		in_len_big = sizeof(float) * (unsigned int)res_big;
-		out = (unsigned char *)MEM_callocN(LZO_OUT_LEN(in_len_big), "pointcache_lzo_buffer");
 		//mode =  res_big >= 1000000 ? 2 : 1;
 		mode = 1;	// light
 		if (sds->cache_high_comp == SM_CACHE_HEAVY) mode=2;	// heavy
 
-		smoke_turbulence_export(sds->fluid, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw, &tcu2, &tcv2, &tcw2);
+		in_len_big = sizeof(float) * (unsigned int)res_big;
 
-		if (dens) {
-			ptcache_file_compressed_write(pf, (unsigned char *)dens, in_len_big, out, mode);
-		}
-		if (fluid_fields & SM_ACTIVE_FIRE) {
+		smoke_turbulence_export(sds->wt, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw);
+
+		out = (unsigned char *)MEM_callocN(LZO_OUT_LEN(in_len_big), "pointcache_lzo_buffer");
+		ptcache_file_compressed_write(pf, (unsigned char *)dens, in_len_big, out, mode);
+		if (fluid_fields & FLUID_DOMAIN_ACTIVE_FIRE) {
 			ptcache_file_compressed_write(pf, (unsigned char *)flame, in_len_big, out, mode);
 			ptcache_file_compressed_write(pf, (unsigned char *)fuel, in_len_big, out, mode);
 			ptcache_file_compressed_write(pf, (unsigned char *)react, in_len_big, out, mode);
 		}
-		if (fluid_fields & SM_ACTIVE_COLORS) {
+		if (fluid_fields & FLUID_DOMAIN_ACTIVE_COLORS) {
 			ptcache_file_compressed_write(pf, (unsigned char *)r, in_len_big, out, mode);
 			ptcache_file_compressed_write(pf, (unsigned char *)g, in_len_big, out, mode);
 			ptcache_file_compressed_write(pf, (unsigned char *)b, in_len_big, out, mode);
@@ -709,17 +675,9 @@ static int ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 		MEM_freeN(out);
 
 		out = (unsigned char *)MEM_callocN(LZO_OUT_LEN(in_len), "pointcache_lzo_buffer");
-		if (tcu) {
-			ptcache_file_compressed_write(pf, (unsigned char *)tcu, in_len, out, mode);
-			ptcache_file_compressed_write(pf, (unsigned char *)tcv, in_len, out, mode);
-			ptcache_file_compressed_write(pf, (unsigned char *)tcw, in_len, out, mode);
-		}
-		if (tcu2) {
-			ptcache_file_compressed_write(pf, (unsigned char *)tcu2, in_len, out, mode);
-			ptcache_file_compressed_write(pf, (unsigned char *)tcv2, in_len, out, mode);
-			ptcache_file_compressed_write(pf, (unsigned char *)tcw2, in_len, out, mode);
-		}
-
+		ptcache_file_compressed_write(pf, (unsigned char *)tcu, in_len, out, mode);
+		ptcache_file_compressed_write(pf, (unsigned char *)tcv, in_len, out, mode);
+		ptcache_file_compressed_write(pf, (unsigned char *)tcw, in_len, out, mode);
 		MEM_freeN(out);
 
 		ret = 1;
@@ -734,15 +692,11 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 	SmokeModifierData *smd= (SmokeModifierData *)smoke_v;
 	SmokeDomainSettings *sds = smd->domain;
 
-	if (!(sds->flags & MOD_SMOKE_USE_VOLUME_CACHE)) {
-		return 0;
-	}
-
 	if (sds->fluid) {
 		const size_t res = sds->res[0] * sds->res[1] * sds->res[2];
 		const unsigned int out_len = (unsigned int)res * sizeof(float);
-		float dt, dx, *dens, *heat, *vx, *vy, *vz, *shadow;
-		int *obstacles;
+		float dt, dx, *dens, *heat, *heatold, *vx, *vy, *vz;
+		unsigned char *obstacles;
 		float *tmp_array = MEM_callocN(out_len, "Smoke old cache tmp");
 
 		int fluid_fields = smoke_get_data_flags(sds);
@@ -751,17 +705,17 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 		sds->active_color[0] = 0.7f;
 		sds->active_color[1] = 0.7f;
 		sds->active_color[2] = 0.7f;
-		
-		// TODO (sebbas): add support for liquid caching
-		smoke_export(sds->fluid, &dt, &dx, &dens, NULL, NULL, NULL, &heat, &vx, &vy, &vz, NULL, NULL, NULL, &obstacles, &shadow);
 
-		ptcache_file_compressed_read(pf, (unsigned char *)shadow, out_len);
+		smoke_export(sds->fluid, &dt, &dx, &dens, NULL, NULL, NULL, &heat, &heatold, &vx, &vy, &vz, NULL, NULL, NULL, &obstacles);
+
+		ptcache_file_compressed_read(pf, (unsigned char *)sds->shadow, out_len);
 		ptcache_file_compressed_read(pf, (unsigned char*)dens, out_len);
 		ptcache_file_compressed_read(pf, (unsigned char*)tmp_array, out_len);
 
-		if (fluid_fields & SM_ACTIVE_HEAT)
+		if (fluid_fields & FLUID_DOMAIN_ACTIVE_HEAT)
 		{
 			ptcache_file_compressed_read(pf, (unsigned char*)heat, out_len);
+			ptcache_file_compressed_read(pf, (unsigned char*)heatold, out_len);
 		}
 		else
 		{
@@ -780,20 +734,18 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 
 		MEM_freeN(tmp_array);
 
-		if (pf->data_types & (1<<BPHYS_DATA_SMOKE_HIGH) && sds->fluid && sds->flags & MOD_SMOKE_NOISE) {
+		if (pf->data_types & (1<<BPHYS_DATA_SMOKE_HIGH) && sds->wt) {
 			int res_big, res_big_array[3];
-			float *tcu, *tcv, *tcw, *tcu2, *tcv2, *tcw2;
+			float *tcu, *tcv, *tcw;
 			unsigned int out_len_big;
 			unsigned char *tmp_array_big;
-
-			smoke_turbulence_get_res(sds->fluid, res_big_array);
-
+			smoke_turbulence_get_res(sds->wt, res_big_array);
 			res_big = res_big_array[0]*res_big_array[1]*res_big_array[2];
 			out_len_big = sizeof(float) * (unsigned int)res_big;
 
 			tmp_array_big = MEM_callocN(out_len_big, "Smoke old cache tmp");
 
-			smoke_turbulence_export(sds->fluid, &dens, NULL, NULL, NULL, NULL, NULL, NULL, &tcu, &tcv, &tcw, &tcu2, &tcv2, &tcw2);
+			smoke_turbulence_export(sds->wt, &dens, NULL, NULL, NULL, NULL, NULL, NULL, &tcu, &tcv, &tcw);
 
 			ptcache_file_compressed_read(pf, (unsigned char*)dens, out_len_big);
 			ptcache_file_compressed_read(pf, (unsigned char*)tmp_array_big, out_len_big);
@@ -801,10 +753,6 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 			ptcache_file_compressed_read(pf, (unsigned char*)tcu, out_len);
 			ptcache_file_compressed_read(pf, (unsigned char*)tcv, out_len);
 			ptcache_file_compressed_read(pf, (unsigned char*)tcw, out_len);
-			
-			ptcache_file_compressed_read(pf, (unsigned char*)tcu2, out_len);
-			ptcache_file_compressed_read(pf, (unsigned char*)tcv2, out_len);
-			ptcache_file_compressed_read(pf, (unsigned char*)tcw2, out_len);
 
 			MEM_freeN(tmp_array_big);
 		}
@@ -817,11 +765,6 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 {
 	SmokeModifierData *smd= (SmokeModifierData *)smoke_v;
 	SmokeDomainSettings *sds = smd->domain;
-
-	if (!(sds->flags & MOD_SMOKE_USE_VOLUME_CACHE)) {
-		return 0;
-	}
-
 	char version[4];
 	int ch_res[3];
 	float ch_dx;
@@ -850,7 +793,7 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 	    sds->res[1] != ch_res[1] ||
 	    sds->res[2] != ch_res[2])
 	{
-		if (sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN)
+		if (sds->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN)
 			reallocate = 1;
 		else
 			return 0;
@@ -863,38 +806,35 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 	/* reallocate fluid if needed*/
 	if (reallocate) {
 		sds->active_fields = active_fields | cache_fields;
-		smoke_reallocate_fluid(sds, ch_res, 1);
+		smoke_reallocate_fluid(sds, ch_dx, ch_res, 1);
 		sds->dx = ch_dx;
 		VECCOPY(sds->res, ch_res);
 		sds->total_cells = ch_res[0]*ch_res[1]*ch_res[2];
-		if (sds->flags & MOD_SMOKE_NOISE) {
-			smoke_reallocate_highres_fluid(sds, ch_dx, ch_res);
+		if (sds->flags & MOD_SMOKE_HIGHRES) {
+			smoke_reallocate_highres_fluid(sds, ch_res, 1);
 		}
 	}
 
 	if (sds->fluid) {
 		size_t res = sds->res[0]*sds->res[1]*sds->res[2];
-		float dt, dx, *dens, *react, *fuel, *flame, *heat, *vx, *vy, *vz, *r, *g, *b, *phi, *pp, *pvel, *ppSnd, *pvelSnd, *plifeSnd, *shadow;
-		int *obstacles, numParts = 0, numPartsSnd = 0;
+		float dt, dx, *dens, *react, *fuel, *flame, *heat, *heatold, *vx, *vy, *vz, *r, *g, *b;
+		unsigned char *obstacles;
 		unsigned int out_len = (unsigned int)res * sizeof(float);
-		unsigned char *buffer;
 
-		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles, &shadow);
-		liquid_export(sds->fluid, &phi, &pp, &pvel, &ppSnd, &pvelSnd, &plifeSnd);
+		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &heatold, &vx, &vy, &vz, &r, &g, &b, &obstacles);
 
-		if (dens) {
-			ptcache_file_compressed_read(pf, (unsigned char *)shadow, out_len);
-			ptcache_file_compressed_read(pf, (unsigned char *)dens, out_len);
-		}
-		if (heat && cache_fields & SM_ACTIVE_HEAT) {
+		ptcache_file_compressed_read(pf, (unsigned char *)sds->shadow, out_len);
+		ptcache_file_compressed_read(pf, (unsigned char *)dens, out_len);
+		if (cache_fields & FLUID_DOMAIN_ACTIVE_HEAT) {
 			ptcache_file_compressed_read(pf, (unsigned char *)heat, out_len);
+			ptcache_file_compressed_read(pf, (unsigned char *)heatold, out_len);
 		}
-		if (flame && cache_fields & SM_ACTIVE_FIRE) {
+		if (cache_fields & FLUID_DOMAIN_ACTIVE_FIRE) {
 			ptcache_file_compressed_read(pf, (unsigned char *)flame, out_len);
 			ptcache_file_compressed_read(pf, (unsigned char *)fuel, out_len);
 			ptcache_file_compressed_read(pf, (unsigned char *)react, out_len);
 		}
-		if (r && cache_fields & SM_ACTIVE_COLORS) {
+		if (cache_fields & FLUID_DOMAIN_ACTIVE_COLORS) {
 			ptcache_file_compressed_read(pf, (unsigned char *)r, out_len);
 			ptcache_file_compressed_read(pf, (unsigned char *)g, out_len);
 			ptcache_file_compressed_read(pf, (unsigned char *)b, out_len);
@@ -902,12 +842,7 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 		ptcache_file_compressed_read(pf, (unsigned char *)vx, out_len);
 		ptcache_file_compressed_read(pf, (unsigned char *)vy, out_len);
 		ptcache_file_compressed_read(pf, (unsigned char *)vz, out_len);
-		ptcache_file_compressed_read(pf, (unsigned char *)obstacles, sizeof(int)*(unsigned int)res);
-		if (phi) {
-			ptcache_file_compressed_read(pf, (unsigned char *)phi, out_len);
-			ptcache_file_read(pf, &numParts, 1, sizeof(int));
-			ptcache_file_read(pf, &numPartsSnd, 1, sizeof(int));
-		}
+		ptcache_file_compressed_read(pf, (unsigned char *)obstacles, (unsigned int)res);
 		ptcache_file_read(pf, &dt, 1, sizeof(float));
 		ptcache_file_read(pf, &dx, 1, sizeof(float));
 		ptcache_file_read(pf, &sds->p0, 3, sizeof(float));
@@ -920,70 +855,37 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 		ptcache_file_read(pf, &sds->res_min, 3, sizeof(int));
 		ptcache_file_read(pf, &sds->res_max, 3, sizeof(int));
 		ptcache_file_read(pf, &sds->active_color, 3, sizeof(float));
-
-		if (numParts) {
-			buffer = (unsigned char *)MEM_callocN(numParts*sizeof(float)*3 + numParts*sizeof(int), "pointcache_lzo_buffer");
-
-			ptcache_file_compressed_read(pf, (unsigned char *)buffer, numParts*sizeof(float)*3 + numParts*sizeof(int));
-			liquid_set_flip_particle_data(sds->fluid, (float*) buffer, numParts);
-
-			ptcache_file_compressed_read(pf, (unsigned char *)buffer, numParts*sizeof(float)*3);
-			liquid_set_flip_particle_velocity(sds->fluid, (float *) buffer, numParts);
-			MEM_freeN(buffer);
-		}
-		if (numPartsSnd) {
-			buffer = (unsigned char *)MEM_callocN(numPartsSnd*sizeof(float)*3 + numPartsSnd*sizeof(int), "pointcache_lo_buffer");
-
-			ptcache_file_compressed_read(pf, (unsigned char *)buffer, numPartsSnd*sizeof(float)*3 + numPartsSnd*sizeof(int));
-			liquid_set_snd_particle_data(sds->fluid, (float*) buffer, numPartsSnd);
-
-			ptcache_file_compressed_read(pf, (unsigned char *)buffer, numPartsSnd*sizeof(float)*3);
-			liquid_set_snd_particle_velocity(sds->fluid, (float *) buffer, numPartsSnd);
-
-			ptcache_file_compressed_read(pf, (unsigned char *)buffer, numPartsSnd*sizeof(float));
-			liquid_set_snd_particle_life(sds->fluid, (float *) buffer, numPartsSnd);
-			MEM_freeN(buffer);
-		}
 	}
 
-	if (pf->data_types & (1<<BPHYS_DATA_SMOKE_HIGH) && sds->fluid && sds->flags & MOD_SMOKE_NOISE) {
-		int res = sds->res[0]*sds->res[1]*sds->res[2];
-		int res_big, res_big_array[3];
-		float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *tcu2, *tcv2, *tcw2, *r, *g, *b;
-		unsigned int out_len = sizeof(float)*(unsigned int)res;
-		unsigned int out_len_big;
+	if (pf->data_types & (1<<BPHYS_DATA_SMOKE_HIGH) && sds->wt) {
+			int res = sds->res[0]*sds->res[1]*sds->res[2];
+			int res_big, res_big_array[3];
+			float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *r, *g, *b;
+			unsigned int out_len = sizeof(float)*(unsigned int)res;
+			unsigned int out_len_big;
 
-		smoke_turbulence_get_res(sds->fluid, res_big_array);
+			smoke_turbulence_get_res(sds->wt, res_big_array);
+			res_big = res_big_array[0]*res_big_array[1]*res_big_array[2];
+			out_len_big = sizeof(float) * (unsigned int)res_big;
 
-		res_big = res_big_array[0]*res_big_array[1]*res_big_array[2];
-		out_len_big = sizeof(float) * (unsigned int)res_big;
+			smoke_turbulence_export(sds->wt, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw);
 
-		smoke_turbulence_export(sds->fluid, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw, &tcu2, &tcv2, &tcw2);
-
-		if (dens) {
 			ptcache_file_compressed_read(pf, (unsigned char *)dens, out_len_big);
-		}
-		if (flame && cache_fields & SM_ACTIVE_FIRE) {
-			ptcache_file_compressed_read(pf, (unsigned char *)flame, out_len_big);
-			ptcache_file_compressed_read(pf, (unsigned char *)fuel, out_len_big);
-			ptcache_file_compressed_read(pf, (unsigned char *)react, out_len_big);
-		}
-		if (r && cache_fields & SM_ACTIVE_COLORS) {
-			ptcache_file_compressed_read(pf, (unsigned char *)r, out_len_big);
-			ptcache_file_compressed_read(pf, (unsigned char *)g, out_len_big);
-			ptcache_file_compressed_read(pf, (unsigned char *)b, out_len_big);
-		}
-		if (tcu) {
+			if (cache_fields & FLUID_DOMAIN_ACTIVE_FIRE) {
+				ptcache_file_compressed_read(pf, (unsigned char *)flame, out_len_big);
+				ptcache_file_compressed_read(pf, (unsigned char *)fuel, out_len_big);
+				ptcache_file_compressed_read(pf, (unsigned char *)react, out_len_big);
+			}
+			if (cache_fields & FLUID_DOMAIN_ACTIVE_COLORS) {
+				ptcache_file_compressed_read(pf, (unsigned char *)r, out_len_big);
+				ptcache_file_compressed_read(pf, (unsigned char *)g, out_len_big);
+				ptcache_file_compressed_read(pf, (unsigned char *)b, out_len_big);
+			}
+
 			ptcache_file_compressed_read(pf, (unsigned char *)tcu, out_len);
 			ptcache_file_compressed_read(pf, (unsigned char *)tcv, out_len);
 			ptcache_file_compressed_read(pf, (unsigned char *)tcw, out_len);
 		}
-		if (tcu2) {
-			ptcache_file_compressed_read(pf, (unsigned char *)tcu2, out_len);
-			ptcache_file_compressed_read(pf, (unsigned char *)tcv2, out_len);
-			ptcache_file_compressed_read(pf, (unsigned char *)tcw2, out_len);
-		}
-	}
 
 	return 1;
 }
@@ -1007,7 +909,7 @@ static void compute_fluid_matrices(SmokeDomainSettings *sds)
 
 	copy_v3_v3(bbox_min, sds->p0);
 
-	if (sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN) {
+	if (sds->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN) {
 		bbox_min[0] += (sds->cell_size[0] * (float)sds->res_min[0]);
 		bbox_min[1] += (sds->cell_size[1] * (float)sds->res_min[1]);
 		bbox_min[2] += (sds->cell_size[2] * (float)sds->res_min[2]);
@@ -1024,10 +926,10 @@ static void compute_fluid_matrices(SmokeDomainSettings *sds)
 
 	mul_m4_m4m4(sds->fluidmat, sds->obmat, sds->fluidmat);
 
-	if (sds->fluid && sds->flags & MOD_SMOKE_NOISE) {
+	if (sds->wt) {
 		float voxel_size_high[3];
 		/* construct high res matrix */
-		mul_v3_v3fl(voxel_size_high, sds->cell_size, 1.0f / sds->noise_scale);
+		mul_v3_v3fl(voxel_size_high, sds->cell_size, 1.0f / (float)(sds->amplify + 1));
 		size_to_mat4(sds->fluidmat_wt, voxel_size_high);
 		copy_v3_v3(sds->fluidmat_wt[3], bbox_min);
 
@@ -1042,10 +944,6 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
 {
 	SmokeModifierData *smd = (SmokeModifierData *)smoke_v;
 	SmokeDomainSettings *sds = smd->domain;
-
-	if (!(sds->flags & MOD_SMOKE_USE_VOLUME_CACHE)) {
-		return 0;
-	}
 
 	OpenVDBWriter_set_flags(writer, sds->openvdb_comp, (sds->data_depth == 16));
 
@@ -1070,65 +968,66 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
 
 	OpenVDBWriter_add_meta_int(writer, "blender/smoke/fluid_fields", fluid_fields);
 
-	if (sds->fluid && sds->flags & MOD_SMOKE_NOISE) {
+	if (sds->wt) {
 		struct OpenVDBFloatGrid *wt_density_grid;
-		float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *tcu2, *tcv2, *tcw2, *r, *g, *b;
+		float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *r, *g, *b;
 
-		smoke_turbulence_export(sds->fluid, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw, &tcu2, &tcv2, &tcw2);
+		smoke_turbulence_export(sds->wt, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw);
 
 		wt_density_grid = OpenVDB_export_grid_fl(writer, "density", dens, sds->res_wt, sds->fluidmat_wt, sds->clipping, NULL);
 		clip_grid = wt_density_grid;
 
-		if (flame && fluid_fields & SM_ACTIVE_FIRE) {
+		if (fluid_fields & FLUID_DOMAIN_ACTIVE_FIRE) {
 			OpenVDB_export_grid_fl(writer, "flame", flame, sds->res_wt, sds->fluidmat_wt, sds->clipping, wt_density_grid);
 			OpenVDB_export_grid_fl(writer, "fuel", fuel, sds->res_wt, sds->fluidmat_wt, sds->clipping, wt_density_grid);
 			OpenVDB_export_grid_fl(writer, "react", react, sds->res_wt, sds->fluidmat_wt, sds->clipping, wt_density_grid);
 		}
 
-		if (r && fluid_fields & SM_ACTIVE_COLORS) {
+		if (fluid_fields & FLUID_DOMAIN_ACTIVE_COLORS) {
 			OpenVDB_export_grid_vec(writer, "color", r, g, b, sds->res_wt, sds->fluidmat_wt, VEC_INVARIANT, true, sds->clipping, wt_density_grid);
 		}
 
 		OpenVDB_export_grid_vec(writer, "texture coordinates", tcu, tcv, tcw, sds->res, sds->fluidmat, VEC_INVARIANT, false, sds->clipping, wt_density_grid);
-		OpenVDB_export_grid_vec(writer, "texture coordinates 2", tcu2, tcv2, tcw2, sds->res, sds->fluidmat, VEC_INVARIANT, false, sds->clipping, wt_density_grid);
 	}
 
 	if (sds->fluid) {
 		struct OpenVDBFloatGrid *density_grid;
-		float dt, dx, *dens, *react, *fuel, *flame, *heat, *vx, *vy, *vz, *r, *g, *b, *shadow;
-		int *obstacles;
+		float dt, dx, *dens, *react, *fuel, *flame, *heat, *heatold, *vx, *vy, *vz, *r, *g, *b;
+		unsigned char *obstacles;
 
-		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles, &shadow);
+		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat,
+		             &heatold, &vx, &vy, &vz, &r, &g, &b, &obstacles);
 
 		OpenVDBWriter_add_meta_fl(writer, "blender/smoke/dx", dx);
 		OpenVDBWriter_add_meta_fl(writer, "blender/smoke/dt", dt);
 
-		const char *name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "density" : "density low";
+		const char *name = (!sds->wt) ? "density" : "density_low";
 		density_grid = OpenVDB_export_grid_fl(writer, name, dens, sds->res, sds->fluidmat, sds->clipping, NULL);
-		clip_grid = (sds->flags & MOD_SMOKE_NOISE) ? clip_grid : density_grid;
+		clip_grid = sds->wt ? clip_grid : density_grid;
 
-		OpenVDB_export_grid_fl(writer, "shadow", shadow, sds->res, sds->fluidmat, sds->clipping, NULL);
+		OpenVDB_export_grid_fl(writer, "shadow", sds->shadow, sds->res, sds->fluidmat, sds->clipping, NULL);
 
-		if (heat && fluid_fields & SM_ACTIVE_HEAT) {
+		if (fluid_fields & FLUID_DOMAIN_ACTIVE_HEAT) {
 			OpenVDB_export_grid_fl(writer, "heat", heat, sds->res, sds->fluidmat, sds->clipping, clip_grid);
+			OpenVDB_export_grid_fl(writer, "heat_old", heatold, sds->res, sds->fluidmat, sds->clipping, clip_grid);
 		}
 
-		if (flame && fluid_fields & SM_ACTIVE_FIRE) {
-			name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "flame" : "flame low";
+		if (fluid_fields & FLUID_DOMAIN_ACTIVE_FIRE) {
+			name = (!sds->wt) ? "flame" : "flame_low";
 			OpenVDB_export_grid_fl(writer, name, flame, sds->res, sds->fluidmat, sds->clipping, density_grid);
-			name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "fuel" : "fuel low";
+			name = (!sds->wt) ? "fuel" : "fuel_low";
 			OpenVDB_export_grid_fl(writer, name, fuel, sds->res, sds->fluidmat, sds->clipping, density_grid);
-			name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "react" : "react low";
+			name = (!sds->wt) ? "react" : "react_low";
 			OpenVDB_export_grid_fl(writer, name, react, sds->res, sds->fluidmat, sds->clipping, density_grid);
 		}
 
-		if (r && fluid_fields & SM_ACTIVE_COLORS) {
-			name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "color" : "color low";
+		if (fluid_fields & FLUID_DOMAIN_ACTIVE_COLORS) {
+			name = (!sds->wt) ? "color" : "color_low";
 			OpenVDB_export_grid_vec(writer, name, r, g, b, sds->res, sds->fluidmat, VEC_INVARIANT, true, sds->clipping, density_grid);
 		}
 
 		OpenVDB_export_grid_vec(writer, "velocity", vx, vy, vz, sds->res, sds->fluidmat, VEC_CONTRAVARIANT_RELATIVE, false, sds->clipping, clip_grid);
-		OpenVDB_export_grid_int(writer, "obstacles", obstacles, sds->res, sds->fluidmat, sds->clipping, NULL);
+		OpenVDB_export_grid_ch(writer, "obstacles", obstacles, sds->res, sds->fluidmat, sds->clipping, NULL);
 	}
 
 	return 1;
@@ -1143,10 +1042,6 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 	}
 
 	SmokeDomainSettings *sds = smd->domain;
-
-	if (!(sds->flags & MOD_SMOKE_USE_VOLUME_CACHE)) {
-		return 0;
-	}
 
 	int fluid_fields = smoke_get_data_flags(sds);
 	int active_fields, cache_fields = 0;
@@ -1174,7 +1069,7 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 		sds->res[1] != cache_res[1] ||
 		sds->res[2] != cache_res[2])
 	{
-		if (sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN) {
+		if (sds->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN) {
 			reallocate = true;
 		}
 		else {
@@ -1190,71 +1085,71 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 	/* reallocate fluid if needed*/
 	if (reallocate) {
 		sds->active_fields = active_fields | cache_fields;
-		smoke_reallocate_fluid(sds, cache_res, 1);
+		smoke_reallocate_fluid(sds, cache_dx, cache_res, 1);
 		sds->dx = cache_dx;
 		copy_v3_v3_int(sds->res, cache_res);
 		sds->total_cells = cache_res[0] * cache_res[1] * cache_res[2];
 
-		if (sds->flags & MOD_SMOKE_NOISE) {
-			smoke_reallocate_highres_fluid(sds, cache_dx, cache_res);
+		if (sds->flags & MOD_SMOKE_HIGHRES) {
+			smoke_reallocate_highres_fluid(sds, cache_res, 1);
 		}
 	}
 
 	if (sds->fluid) {
-		float dt, dx, *dens, *react, *fuel, *flame, *heat, *vx, *vy, *vz, *r, *g, *b, *shadow;
-		int *obstacles;
+		float dt, dx, *dens, *react, *fuel, *flame, *heat, *heatold, *vx, *vy, *vz, *r, *g, *b;
+		unsigned char *obstacles;
 
-		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat, &vx, &vy, &vz, &r, &g, &b, &obstacles, &shadow);
+		smoke_export(sds->fluid, &dt, &dx, &dens, &react, &flame, &fuel, &heat,
+		             &heatold, &vx, &vy, &vz, &r, &g, &b, &obstacles);
 
 		OpenVDBReader_get_meta_fl(reader, "blender/smoke/dt", &dt);
 
-		OpenVDB_import_grid_fl(reader, "shadow", &shadow, sds->res);
+		OpenVDB_import_grid_fl(reader, "shadow", &sds->shadow, sds->res);
 
-		const char *name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "density" : "density low";
-
+		const char *name = (!sds->wt) ? "density" : "density_low";
 		OpenVDB_import_grid_fl(reader, name, &dens, sds->res);
 
-		if (heat && cache_fields & SM_ACTIVE_HEAT) {
+		if (cache_fields & FLUID_DOMAIN_ACTIVE_HEAT) {
 			OpenVDB_import_grid_fl(reader, "heat", &heat, sds->res);
+			OpenVDB_import_grid_fl(reader, "heat_old", &heatold, sds->res);
 		}
 
-		if (flame && cache_fields & SM_ACTIVE_FIRE) {
-			name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "flame" : "flame low";
+		if (cache_fields & FLUID_DOMAIN_ACTIVE_FIRE) {
+			name = (!sds->wt) ? "flame" : "flame_low";
 			OpenVDB_import_grid_fl(reader, name, &flame, sds->res);
-			name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "fuel" : "fuel low";
+			name = (!sds->wt) ? "fuel" : "fuel_low";
 			OpenVDB_import_grid_fl(reader, name, &fuel, sds->res);
-			name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "react" : "react low";
+			name = (!sds->wt) ? "react" : "react_low";
 			OpenVDB_import_grid_fl(reader, name, &react, sds->res);
 		}
 
-		if (r && cache_fields & SM_ACTIVE_COLORS) {
-			name = (!(sds->flags & MOD_SMOKE_NOISE)) ? "color" : "color low";
+		if (cache_fields & FLUID_DOMAIN_ACTIVE_COLORS) {
+			name = (!sds->wt) ? "color" : "color_low";
 			OpenVDB_import_grid_vec(reader, name, &r, &g, &b, sds->res);
 		}
 
 		OpenVDB_import_grid_vec(reader, "velocity", &vx, &vy, &vz, sds->res);
-		OpenVDB_import_grid_int(reader, "obstacles", &obstacles, sds->res);
+		OpenVDB_import_grid_ch(reader, "obstacles", &obstacles, sds->res);
 	}
 
-	if (sds->fluid && sds->flags & MOD_SMOKE_NOISE) {
-		float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *tcu2, *tcv2, *tcw2, *r, *g, *b;
+	if (sds->wt) {
+		float *dens, *react, *fuel, *flame, *tcu, *tcv, *tcw, *r, *g, *b;
 
-		smoke_turbulence_export(sds->fluid, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw, &tcu2, &tcv2, &tcw2);
+		smoke_turbulence_export(sds->wt, &dens, &react, &flame, &fuel, &r, &g, &b, &tcu, &tcv, &tcw);
 
 		OpenVDB_import_grid_fl(reader, "density", &dens, sds->res_wt);
 
-		if (flame && cache_fields & SM_ACTIVE_FIRE) {
+		if (cache_fields & FLUID_DOMAIN_ACTIVE_FIRE) {
 			OpenVDB_import_grid_fl(reader, "flame", &flame, sds->res_wt);
 			OpenVDB_import_grid_fl(reader, "fuel", &fuel, sds->res_wt);
 			OpenVDB_import_grid_fl(reader, "react", &react, sds->res_wt);
 		}
 
-		if (r && cache_fields & SM_ACTIVE_COLORS) {
+		if (cache_fields & FLUID_DOMAIN_ACTIVE_COLORS) {
 			OpenVDB_import_grid_vec(reader, "color", &r, &g, &b, sds->res_wt);
 		}
 
 		OpenVDB_import_grid_vec(reader, "texture coordinates", &tcu, &tcv, &tcw, sds->res);
-		OpenVDB_import_grid_vec(reader, "texture coordinates 2", &tcu2, &tcv2, &tcw2, sds->res);
 	}
 
 	OpenVDBReader_free(reader);
@@ -1263,89 +1158,14 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 }
 #endif
 
-#ifdef WITH_MANTA
-static int ptcache_mesh_read(void *smoke_v, char *filename)
-{
-	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
-	int i;
-	
-	if (!smd) {
-		return 0;
-	}
-
-	SmokeDomainSettings *sds = smd->domain;
-	if (!(sds->flags & MOD_SMOKE_USE_SURFACE_CACHE)) {
-		return 0;
-	}
-
-	bool high_res      = sds->flags & MOD_SMOKE_NOISE;
-	bool high_res_view = sds->viewport_display_mode == SM_VIEWPORT_FINAL;
-
-	if (sds->fluid) {
-		liquid_update_mesh_data(sds->fluid, filename);
-		if (high_res && high_res_view) {
-			i = strlen(filename);
-			if (i > 8) filename[i-8] = '\0';   // strip .bobj.gz extension
-			strcat(filename, "_HIGH.bobj.gz"); // add high-res extension
-
-			liquid_update_mesh_data(sds->fluid, filename);
-		}
-		return 1;
-	}
-	return 0;
-}
-
-static int ptcache_mesh_write(void *smoke_v, char *filename, int cfra)
-{
-	SmokeModifierData *smd = (SmokeModifierData *) smoke_v;
-	int i;
-	char filenameTmp[256];
-
-	if (!smd) {
-		return 0;
-	}
-
-	SmokeDomainSettings *sds = smd->domain;
-	if (!(sds->flags & MOD_SMOKE_USE_SURFACE_CACHE)) {
-		return 0;
-	}
-
-	bool high_res      = sds->flags & MOD_SMOKE_NOISE;
-	bool high_res_view = sds->viewport_display_mode == SM_VIEWPORT_FINAL;
-
-	if (sds->fluid) {
-//		liquid_save_mesh(sds->fluid, filename, cfra);
-		if (high_res) {
-			strcpy(filenameTmp, filename);			// copy name, original file name is needed later
-			i = strlen(filenameTmp);
-			if (i > 8) filenameTmp[i-8] = '\0';		// strip .bobj.gz extension
-			strcat(filenameTmp, "_HIGH.bobj.gz");	// add high-res extension
-
-//			liquid_save_mesh_high(sds->fluid, filenameTmp);
-		}
-
-		/* Update mesh for instant replay functionality */
-		if (high_res && high_res_view) {
-			liquid_update_mesh_data(sds->fluid, filenameTmp);
-		}
-		else {
-			liquid_update_mesh_data(sds->fluid, filename);
-		}
-		return 1;
-	}
-	return 0;
-}
-
-#endif // WITH_MANTA
-
-#else // WITH_MANTA
+#else // WITH_SMOKE
 static int  ptcache_smoke_totpoint(void *UNUSED(smoke_v), int UNUSED(cfra)) { return 0; }
 static void ptcache_smoke_error(void *UNUSED(smoke_v), const char *UNUSED(message)) { }
 static int  ptcache_smoke_read(PTCacheFile *UNUSED(pf), void *UNUSED(smoke_v)) { return 0; }
 static int  ptcache_smoke_write(PTCacheFile *UNUSED(pf), void *UNUSED(smoke_v)) { return 0; }
-#endif // WITH_MANTA
+#endif // WITH_SMOKE
 
-#if !defined(WITH_MANTA) || !defined(WITH_OPENVDB)
+#if !defined(WITH_SMOKE) || !defined(WITH_OPENVDB)
 static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke_v)
 {
 	UNUSED_VARS(writer, smoke_v);
@@ -1580,9 +1400,6 @@ void BKE_ptcache_id_from_softbody(PTCacheID *pid, Object *ob, SoftBody *sb)
 
 	pid->write_openvdb_stream	= NULL;
 	pid->read_openvdb_stream	= NULL;
-	
-	pid->write_mesh_stream		= NULL;
-	pid->read_mesh_stream		= NULL;
 
 	pid->write_extra_data		= NULL;
 	pid->read_extra_data		= NULL;
@@ -1619,7 +1436,7 @@ void BKE_ptcache_id_from_particles(PTCacheID *pid, Object *ob, ParticleSystem *p
 	pid->totwrite				= ptcache_particle_totwrite;
 	pid->error					= ptcache_particle_error;
 
-	pid->write_point			= ptcache_particle_write;
+	pid->write_point				= ptcache_particle_write;
 	pid->read_point				= ptcache_particle_read;
 	pid->interpolate_point		= ptcache_particle_interpolate;
 
@@ -1628,9 +1445,6 @@ void BKE_ptcache_id_from_particles(PTCacheID *pid, Object *ob, ParticleSystem *p
 
 	pid->write_openvdb_stream	= NULL;
 	pid->read_openvdb_stream	= NULL;
-	
-	pid->write_mesh_stream		= NULL;
-	pid->read_mesh_stream		= NULL;
 
 	pid->write_extra_data		= NULL;
 	pid->read_extra_data		= NULL;
@@ -1688,9 +1502,6 @@ void BKE_ptcache_id_from_cloth(PTCacheID *pid, Object *ob, ClothModifierData *cl
 
 	pid->write_stream			= NULL;
 	pid->read_stream			= NULL;
-	
-	pid->write_mesh_stream		= NULL;
-	pid->read_mesh_stream		= NULL;
 
 	pid->write_extra_data		= NULL;
 	pid->read_extra_data		= NULL;
@@ -1729,23 +1540,8 @@ void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct SmokeMo
 	pid->read_point				= NULL;
 	pid->interpolate_point		= NULL;
 
-	if (smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS)
-	{
-		pid->read_stream		= ptcache_smoke_read;
-		pid->write_stream		= ptcache_smoke_write;
-		
-		pid->write_mesh_stream	= NULL;
-		pid->read_mesh_stream	= NULL;
-
-	}
-	else if (smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_LIQUID)
-	{
-		pid->read_stream		= ptcache_smoke_read;
-		pid->write_stream		= ptcache_smoke_write;
-		
-		pid->write_mesh_stream	= ptcache_mesh_write;
-		pid->read_mesh_stream	= ptcache_mesh_read;
-	}
+	pid->read_stream			= ptcache_smoke_read;
+	pid->write_stream			= ptcache_smoke_write;
 
 	pid->write_openvdb_stream	= ptcache_smoke_openvdb_write;
 	pid->read_openvdb_stream	= ptcache_smoke_openvdb_read;
@@ -1762,16 +1558,15 @@ void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct SmokeMo
 
 	if (sds->fluid)
 		pid->data_types |= (1<<BPHYS_DATA_SMOKE_LOW);
-	if (sds->fluid && sds->flags & MOD_SMOKE_NOISE)
-		pid->data_types |= (1<<BPHYS_DATA_SMOKE_HIGH);
+//	(sebbas): Option deprecated in manta cache
+//	if (sds->wt)
+//		pid->data_types |= (1<<BPHYS_DATA_SMOKE_HIGH);
 
 	pid->default_step = 1;
 	pid->max_step = 1;
 
-	/*  Encode filetype: combine bitmaps from sds surface and volume cache format */
-	int surface_format = (smd->domain->flags & MOD_SMOKE_USE_SURFACE_CACHE) ? smd->domain->cache_mesh_format : 0;
-	int volume_format = (smd->domain->flags & MOD_SMOKE_USE_VOLUME_CACHE) ? smd->domain->cache_data_format : 0;
-	pid->file_type = (surface_format | volume_format);
+//	(sebbas): Option deprecated in manta cache
+//	pid->file_type = smd->domain->cache_file_format;
 }
 
 void BKE_ptcache_id_from_dynamicpaint(PTCacheID *pid, Object *ob, DynamicPaintSurface *surface)
@@ -1949,23 +1744,12 @@ void BKE_ptcache_ids_from_object(Main *bmain, ListBase *lb, Object *ob, Scene *s
 static const char *ptcache_file_extension(const PTCacheID *pid)
 {
 	switch (pid->file_type) {
+		default:
 		case PTCACHE_FILE_PTCACHE:
 			return PTCACHE_EXT;
 		case PTCACHE_FILE_OPENVDB:
 			return ".vdb";
-		case PTCACHE_FILE_OBJECT:
-			return ".bobj.gz";
 	}
-
-	/* Handle cases where there is more than one file type. Just return first type found. */
-	if (pid->file_type & PTCACHE_FILE_PTCACHE)
-		return PTCACHE_EXT;
-	if (pid->file_type & PTCACHE_FILE_OPENVDB)
-		return ".vdb";
-	if (pid->file_type & PTCACHE_FILE_OBJECT)
-		return ".bobj.gz";
-
-	return PTCACHE_EXT;
 }
 
 /**
@@ -2744,29 +2528,6 @@ static int ptcache_read_openvdb_stream(PTCacheID *pid, int cfra)
 #endif
 }
 
-static int ptcache_read_mesh_stream(PTCacheID *pid, int cfra)
-{
-	char filename[FILE_MAX * 2];
-	char pathname[FILE_MAX * 2];
-
-	 /* save blend file before using disk pointcache */
-	if (!G.relbase_valid && (pid->cache->flag & PTCACHE_EXTERNAL) == 0)
-		return 0;
-
-	ptcache_filename(pid, filename, cfra, 1, 1);
-	ptcache_filename(pid, pathname, cfra, 1, 0);
-
-	if (!BLI_exists(filename)) {
-		return 0;
-	}
-
-	if (!pid->read_mesh_stream(pid->calldata, filename)) {
-		return 0;
-	}
-
-	return 1;
-}
-
 static int ptcache_read(PTCacheID *pid, int cfra)
 {
 	PTCacheMem *pm = NULL;
@@ -2880,7 +2641,6 @@ int BKE_ptcache_read(PTCacheID *pid, float cfra, bool no_extrapolate_old)
 {
 	int cfrai = (int)floor(cfra), cfra1=0, cfra2=0;
 	int ret = 0;
-	int pid_file_type_orig = pid->file_type;
 
 	/* nothing to read to */
 	if (pid->totpoint(pid->calldata, cfrai) == 0)
@@ -2916,68 +2676,35 @@ int BKE_ptcache_read(PTCacheID *pid, float cfra, bool no_extrapolate_old)
 	}
 
 	if (cfra1) {
-		/* Volumetric caching */
-		if (pid->file_type & PTCACHE_FILE_OPENVDB && pid->read_openvdb_stream) {
-			pid->file_type = PTCACHE_FILE_OPENVDB;
+		if (pid->file_type == PTCACHE_FILE_OPENVDB && pid->read_openvdb_stream) {
 			if (!ptcache_read_openvdb_stream(pid, cfra1)) {
 				return 0;
 			}
 		}
-		else if (pid->file_type & PTCACHE_FILE_PTCACHE && pid->read_stream) {
-			pid->file_type = PTCACHE_FILE_PTCACHE;
+		else if (pid->read_stream) {
 			if (!ptcache_read_stream(pid, cfra1))
 				return 0;
 		}
-		else if (pid->file_type & PTCACHE_FILE_PTCACHE && pid->read_point) {
-			pid->file_type = PTCACHE_FILE_PTCACHE;
+		else if (pid->read_point)
 			ptcache_read(pid, cfra1);
-		}
-		/* Restore cache file type */
-		pid->file_type = pid_file_type_orig;
-
-		/* Surface caching */
-		if (pid->file_type & PTCACHE_FILE_OBJECT && pid->read_mesh_stream) {
-			pid->file_type = PTCACHE_FILE_OBJECT;
-			if (!ptcache_read_mesh_stream(pid, cfra1)) {
-				return 0;
-			}
-		}
-		/* Restore cache file type */
-		pid->file_type = pid_file_type_orig;
 	}
 
 	if (cfra2) {
-		/* Volumetric caching */
-		if (pid->file_type & PTCACHE_FILE_OPENVDB && pid->read_openvdb_stream) {
-			pid->file_type = PTCACHE_FILE_OPENVDB;
+		if (pid->file_type == PTCACHE_FILE_OPENVDB && pid->read_openvdb_stream) {
 			if (!ptcache_read_openvdb_stream(pid, cfra2)) {
 				return 0;
 			}
 		}
-		else if (pid->file_type & PTCACHE_FILE_PTCACHE && pid->read_stream) {
-			pid->file_type = PTCACHE_FILE_PTCACHE;
+		else if (pid->read_stream) {
 			if (!ptcache_read_stream(pid, cfra2))
 				return 0;
 		}
-		else if (pid->file_type & PTCACHE_FILE_PTCACHE && pid->read_point) {
-			pid->file_type = PTCACHE_FILE_PTCACHE;
+		else if (pid->read_point) {
 			if (cfra1 && cfra2 && pid->interpolate_point)
 				ptcache_interpolate(pid, cfra, cfra1, cfra2);
 			else
 				ptcache_read(pid, cfra2);
 		}
-		/* Restore cache file type */
-		pid->file_type = pid_file_type_orig;
-
-		/* Surface caching */
-		if (pid->file_type & PTCACHE_FILE_OBJECT && pid->read_mesh_stream) {
-			pid->file_type = PTCACHE_FILE_OBJECT;
-			if (!ptcache_read_mesh_stream(pid, cfra2)) {
-				return 0;
-			}
-		}
-		/* Restore cache file type */
-		pid->file_type = pid_file_type_orig;
 	}
 
 	if (cfra1)
@@ -3055,25 +2782,6 @@ static int ptcache_write_openvdb_stream(PTCacheID *pid, int cfra)
 	UNUSED_VARS(pid, cfra);
 	return 0;
 #endif
-}
-static int ptcache_write_mesh_stream(PTCacheID *pid, int cfra)
-{
-	char filename[FILE_MAX * 2];
-	char pathname[FILE_MAX * 2];
-
-	BKE_ptcache_id_clear(pid, PTCACHE_CLEAR_FRAME, cfra);
-
-	ptcache_filename(pid, filename, cfra, 1, 1);
-	ptcache_filename(pid, pathname, cfra, 1, 0);
-	
-	BLI_make_existing_file(filename);
-
-	int error = pid->write_mesh_stream(pid->calldata, filename, cfra);
-	
-	if (error && G.debug & G_DEBUG)
-		printf("Error writing to disk cache\n");
-	
-	return error == 0;
 }
 static int ptcache_write(PTCacheID *pid, int cfra, int overwrite)
 {
@@ -3199,7 +2907,6 @@ int BKE_ptcache_write(PTCacheID *pid, unsigned int cfra)
 	PointCache *cache = pid->cache;
 	int totpoint = pid->totpoint(pid->calldata, cfra);
 	int overwrite = 0, error = 0;
-	int pid_file_type_orig = pid->file_type;
 
 	if (totpoint == 0 || (cfra ? pid->data_types == 0 : pid->info_types == 0))
 		return 0;
@@ -3207,29 +2914,15 @@ int BKE_ptcache_write(PTCacheID *pid, unsigned int cfra)
 	if (ptcache_write_needed(pid, cfra, &overwrite)==0)
 		return 0;
 
-	/* Volumetric caching */
-	if (pid->file_type & PTCACHE_FILE_OPENVDB && pid->write_openvdb_stream) {
-		pid->file_type = PTCACHE_FILE_OPENVDB;
+	if (pid->file_type == PTCACHE_FILE_OPENVDB && pid->write_openvdb_stream) {
 		ptcache_write_openvdb_stream(pid, cfra);
 	}
-	else if (pid->file_type & PTCACHE_FILE_PTCACHE && pid->write_stream) {
-		pid->file_type = PTCACHE_FILE_PTCACHE;
+	else if (pid->write_stream) {
 		ptcache_write_stream(pid, cfra, totpoint);
 	}
-	else if (pid->file_type & PTCACHE_FILE_PTCACHE && pid->write_point) {
-		pid->file_type = PTCACHE_FILE_PTCACHE;
+	else if (pid->write_point) {
 		error += ptcache_write(pid, cfra, overwrite);
 	}
-	/* Restore cache file type */
-	pid->file_type = pid_file_type_orig;
-
-	/* Surface caching */
-	if (pid->file_type & PTCACHE_FILE_OBJECT && pid->write_mesh_stream) {
-		pid->file_type = PTCACHE_FILE_OBJECT;
-		ptcache_write_mesh_stream(pid, cfra);
-	}
-	/* Restore cache file type */
-	pid->file_type = pid_file_type_orig;
 
 	/* Mark frames skipped if more than 1 frame forwards since last non-skipped frame. */
 	if (cfra - cache->last_exact == 1 || cfra == cache->startframe) {

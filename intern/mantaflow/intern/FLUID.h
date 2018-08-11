@@ -40,7 +40,7 @@ public:
 	FLUID() {};
 	virtual ~FLUID();
 	
-	// Mirroring Mantaflow structures for particle data
+	// Mirroring Mantaflow structures for particle data (pVel also used for mesh vert vels)
 	typedef struct pData { float pos[3]; int flag; } pData;
 	typedef struct pVel { float pos[3]; } pVel;
 
@@ -67,7 +67,7 @@ public:
 
 	// Pointer transfer: Mantaflow -> Blender
 	void updatePointers();
-	void updatePointersHigh();
+	void updatePointersNoise();
 
 	// Write cache
 	int writeData(SmokeModifierData *smd, int framenr);
@@ -84,6 +84,7 @@ public:
 	int updateMeshStructures(SmokeModifierData *smd, int framenr);
 	int updateFlipStructures(SmokeModifierData *smd, int framenr);
 	int updateParticleStructures(SmokeModifierData *smd, int framenr);
+	void updateVariables(SmokeModifierData *smd);
 
 	// Bake cache
 	int bakeData(SmokeModifierData *smd, int framenr);
@@ -91,27 +92,10 @@ public:
 	int bakeMesh(SmokeModifierData *smd, int framenr);
 	int bakeParticles(SmokeModifierData *smd, int framenr);
 	int bakeGuiding(SmokeModifierData *smd, int framenr);
-	void updateVariables(SmokeModifierData *smd);
 
 	// IO for Mantaflow scene script
 	void exportSmokeScript(struct SmokeModifierData *smd);
-	void exportSmokeData(struct SmokeModifierData *smd);
 	void exportLiquidScript(struct SmokeModifierData *smd);
-	void exportLiquidData(struct SmokeModifierData *smd);
-
-	// Write files for fluid
-	void saveFluidObstacleData(char *pathname);
-	void saveFluidGuidingData(char *pathname);
-	void saveFluidInvelData(char *pathname);
-	void saveFluidSndPartsData(char *pathname);
-
-	// Write files for smoke
-	void saveSmokeData(char *pathname);
-	void saveSmokeDataHigh(char *pathname);
-
-	// Write files for liquids
-	void saveLiquidData(char *pathname);
-	void saveLiquidDataHigh(char *pathname);
 
 	// Smoke getters
 	inline size_t getTotalCells() { return mTotalCells; }
@@ -160,8 +144,6 @@ public:
 	inline float* getColorB() { return mColorB; }
 	inline float* getEmissionIn() { return mEmissionIn; }
 	inline float* getShadow() { return mShadow; }
-	inline int* getFlowType() { return mFlowType; }
-	inline int* getNumFlow()  { return mNumFlow; }
 
 	inline float* getDensityHigh() { return mDensityHigh; }
 	inline float* getFlameHigh() { return mFlameHigh; }
@@ -237,17 +219,6 @@ public:
 
 	inline int getNumFlipParticles() { return (mFlipParticleData && !mFlipParticleData->empty()) ? mFlipParticleData->size() : 0; }
 	inline int getNumSndParticles() { return (mSndParticleData && !mSndParticleData->empty()) ? mSndParticleData->size() : 0; }
-
-	// TODO (sebbas): make these private once pointcache is refactored
-	void updateMeshFromFile(const char* filename);
-	void updateParticlesFromFile(const char* filename, bool isSecondarySys, bool isVelData);
-
-	void setFlipParticleData(float* buffer, int numParts);
-	void setSndParticleData(float* buffer, int numParts);
-
-	void setFlipParticleVelocity(float* buffer, int numParts);
-	void setSndParticleVelocity(float* buffer, int numParts);
-	void setSndParticleLife(float* buffer, int numParts);
 
 	// Direct access to solver time attributes
 	int getFrame();
@@ -330,8 +301,6 @@ private:
 	float* mColorB;
 	float* mEmissionIn;
 	float* mShadow;
-	int* mFlowType;
-	int* mNumFlow;
 	float* mDensityHigh;
 	float* mFlameHigh;
 	float* mFuelHigh;
@@ -381,6 +350,8 @@ private:
 	void updateMeshFromObj(const char* filename);
 	void updateMeshFromUni(const char* filename);
 	void updateParticlesFromUni(const char* filename, bool isSecondarySys, bool isVelData);
+	void updateMeshFromFile(const char* filename);
+	void updateParticlesFromFile(const char* filename, bool isSecondarySys, bool isVelData);
 
 };
 

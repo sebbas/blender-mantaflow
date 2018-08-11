@@ -27,9 +27,9 @@ from .properties_physics_common import (
     effector_weights_ui,
 )
 
-class SMOKE_MT_presets(Menu):
+class MANTA_MT_presets(Menu):
     bl_label = "Fluid Presets"
-    preset_subdir = "smoke"
+    preset_subdir = "mantaflow"
     preset_operator = "script.execute_preset"
     draw = Menu.draw_preset
 
@@ -70,9 +70,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
             layout.active = not (domain.use_guiding and not domain.cache_baked_guiding and (domain.guiding_source == "EFFECTOR" or (domain.guiding_source == "DOMAIN" and not domain.guiding_parent)))
 
             baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
-
             baked_any = domain.cache_baked_data or domain.cache_baked_mesh or domain.cache_baked_particles or domain.cache_baked_noise or domain.cache_baked_guiding
-
             baked_data = domain.cache_baked_data
 
             row = layout.row()
@@ -149,15 +147,19 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
 
             if domain.smoke_domain_type in {'LIQUID'}:
                 split = layout.split()
-                split.enabled = not baking_any and not baked_data
 
                 col = split.column(align=True)
-                col.label(text="Liquid:")
-                col.prop(domain, "particle_maximum")
-                col.prop(domain, "particle_minimum")
-                col.prop(domain, "use_flip_particles", text="Show FLIP")
+                col1 = col.column()
+                col1.enabled = not baking_any and not baked_data
+                col1.label(text="Liquid:")
+                col1.prop(domain, "particle_maximum")
+                col1.prop(domain, "particle_minimum")
+                col2 = col.column()
+                col2.enabled = not baking_any
+                col2.prop(domain, "use_flip_particles", text="Show FLIP")
 
                 col = split.column(align=True)
+                col.enabled = not baking_any and not baked_data
                 col.label()
                 col.prop(domain, "particle_number")
                 col.prop(domain, "particle_band_width")
@@ -607,9 +609,9 @@ class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
         col = split.column()
         col.label(text="Viscosity Presets:")
         sub = col.row(align=True)
-        sub.menu("SMOKE_MT_presets", text=bpy.types.SMOKE_MT_presets.bl_label)
-        sub.operator("smoke.preset_add", text="", icon='ZOOMIN')
-        sub.operator("smoke.preset_add", text="", icon='ZOOMOUT').remove_active = True
+        sub.menu("MANTA_MT_presets", text=bpy.types.MANTA_MT_presets.bl_label)
+        sub.operator("manta.preset_add", text="", icon='ZOOMIN')
+        sub.operator("manta.preset_add", text="", icon='ZOOMOUT').remove_active = True
 
         sub = col.column(align=True)
         sub.prop(domain, "viscosity_base", text="Base")
@@ -880,7 +882,7 @@ class PHYSICS_PT_smoke_display_settings(PhysicButtonsPanel, Panel):
         col.template_color_ramp(domain, "color_ramp", expand=True)
 
 classes = (
-    SMOKE_MT_presets,
+    MANTA_MT_presets,
     PHYSICS_PT_smoke,
     PHYSICS_PT_smoke_flow_source,
     PHYSICS_PT_smoke_flow_advanced,

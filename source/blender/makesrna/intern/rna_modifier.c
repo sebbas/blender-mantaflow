@@ -2927,7 +2927,7 @@ static void rna_def_modifier_smoke(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "flow_settings", PROP_POINTER, PROP_NONE);
 	RNA_def_property_pointer_sdna(prop, NULL, "flow");
 	RNA_def_property_ui_text(prop, "Flow Settings", "");
-	
+
 	prop = RNA_def_property(srna, "effec_settings", PROP_POINTER, PROP_NONE);
 	RNA_def_property_pointer_sdna(prop, NULL, "effec");
 	RNA_def_property_ui_text(prop, "Effector Settings", "");

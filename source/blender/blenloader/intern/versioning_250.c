@@ -2159,7 +2159,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
 										SmokeModifierData *smd2 = (SmokeModifierData *)md2;
 
 										if ((smd2->type & MOD_SMOKE_TYPE_FLOW) && smd2->flow) {
-											smd2->flow->flags |= MOD_SMOKE_FLOW_INITVELOCITY;
+											smd2->flow->flags |= FLUID_FLOW_INITVELOCITY;
 										}
 									}
 								}

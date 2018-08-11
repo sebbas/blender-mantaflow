@@ -227,7 +227,9 @@ def liquid_step_$ID$():\n\
     # set source grids for resampling, used in adjustNumber!\n\
     pVel_pp$ID$.setSource(vel_s$ID$, isMAC=True)\n\
     adjustNumber(parts=pp_s$ID$, vel=vel_s$ID$, flags=flags_s$ID$, minParticles=minParticles_s$ID$, maxParticles=maxParticles_s$ID$, phi=phi_s$ID$, exclude=phiObs_s$ID$, radiusFactor=1., narrowBand=adjustedNarrowBandWidth_s$ID$)\n\
-    flipVelocityUpdate(vel=vel_s$ID$, velOld=velOld_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, partVel=pVel_pp$ID$, flipRatio=0.97)\n";
+    flipVelocityUpdate(vel=vel_s$ID$, velOld=velOld_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, partVel=pVel_pp$ID$, flipRatio=0.97)\n\
+    \n\
+    sampleLevelsetWithParticles(phi=phiIn_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, discretization=particleNumber_s$ID$, randomness=randomness_s$ID$, refillEmpty=True)\n";
 
 const std::string liquid_step_mesh = "\n\
 def liquid_step_mesh_$ID$():\n\

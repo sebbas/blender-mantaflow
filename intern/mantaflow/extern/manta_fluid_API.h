@@ -36,140 +36,12 @@ extern "C" {
 
 struct FLUID;
 
-struct FLUID *smoke_init(int *res, struct SmokeModifierData *smd);
-void smoke_free(struct FLUID *smoke);
-size_t smoke_get_index(int x, int max_x, int y, int max_y, int z /*, int max_z */);
-size_t smoke_get_index2d(int x, int max_x, int y /*, int max_y, int z, int max_z */);
-void smoke_manta_export(struct FLUID* smoke, struct SmokeModifierData *smd);
-void smoke_dissolve(struct FLUID *smoke, int speed, int log);
-void smoke_dissolve_wavelet(struct FLUID *smoke, int speed, int log);
-void smoke_export(struct FLUID *smoke, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, float **vx, float **vy, float **vz, float **r, float **g, float **b, int **obstacles, float **shadow);
-void liquid_export(struct FLUID *liquid, float **phi, float **pp, float **pvel, float **ppSnd, float **pvelSnd, float **plifeSnd);
-void smoke_turbulence_export(struct FLUID *smoke, float **dens, float **react, float **flame, float **fuel, float **r, float **g, float **b , float **tcu, float **tcv, float **tcw, float **tcu2, float **tcv2, float **tcw2);
-float *smoke_get_density(struct FLUID *smoke);
-float *smoke_get_fuel(struct FLUID *smoke);
-float *smoke_get_react(struct FLUID *smoke);
-float *smoke_get_heat(struct FLUID *smoke);
-float *smoke_get_velocity_x(struct FLUID *smoke);
-float *smoke_get_velocity_y(struct FLUID *smoke);
-float *smoke_get_velocity_z(struct FLUID *smoke);
-float *smoke_get_ob_velocity_x(struct FLUID *fluid);
-float *smoke_get_ob_velocity_y(struct FLUID *fluid);
-float *smoke_get_ob_velocity_z(struct FLUID *fluid);
-float *smoke_get_in_velocity_x(struct FLUID *fluid);
-float *smoke_get_in_velocity_y(struct FLUID *fluid);
-float *smoke_get_in_velocity_z(struct FLUID *fluid);
-float *smoke_get_force_x(struct FLUID *smoke);
-float *smoke_get_force_y(struct FLUID *smoke);
-float *smoke_get_force_z(struct FLUID *smoke);
-float *smoke_get_flame(struct FLUID *smoke);
-float *smoke_get_color_r(struct FLUID *smoke);
-float *smoke_get_color_g(struct FLUID *smoke);
-float *smoke_get_color_b(struct FLUID *smoke);
-void smoke_get_rgba(struct FLUID *smoke, float *data, int sequential);
-void smoke_turbulence_get_rgba(struct FLUID *smoke, float *data, int sequential);
-void smoke_get_rgba_from_density(struct FLUID *smoke, float color[3], float *data, int sequential);
-void smoke_turbulence_get_rgba_from_density(struct FLUID *smoke, float color[3], float *data, int sequential);
-float *smoke_turbulence_get_density(struct FLUID *smoke);
-float *smoke_turbulence_get_fuel(struct FLUID *smoke);
-float *smoke_turbulence_get_react(struct FLUID *smoke);
-float *smoke_turbulence_get_color_r(struct FLUID *smoke);
-float *smoke_turbulence_get_color_g(struct FLUID *smoke);
-float *smoke_turbulence_get_color_b(struct FLUID *smoke);
-float *smoke_turbulence_get_flame(struct FLUID *smoke);
-void smoke_turbulence_get_res(struct FLUID *smoke, int *res);
-int smoke_turbulence_get_cells(struct FLUID *smoke);
-int *smoke_get_obstacle(struct FLUID *smoke);
-void smoke_get_ob_velocity(struct FLUID *smoke, float **x, float **y, float **z);
-int smoke_has_heat(struct FLUID *smoke);
-int smoke_has_fuel(struct FLUID *smoke);
-int smoke_has_colors(struct FLUID *smoke);
-int smoke_turbulence_has_fuel(struct FLUID *smoke);
-int smoke_turbulence_has_colors(struct FLUID *smoke);
-void smoke_ensure_heat(struct FLUID *smoke, struct SmokeModifierData *smd);
-void smoke_ensure_fire(struct FLUID *smoke, struct SmokeModifierData *smd);
-void smoke_ensure_colors(struct FLUID *smoke, struct SmokeModifierData *smd);
-float *smoke_get_guide_velocity_x(struct FLUID *smoke);
-float *smoke_get_guide_velocity_y(struct FLUID *smoke);
-float *smoke_get_guide_velocity_z(struct FLUID *smoke);
-float *smoke_get_shadow(struct FLUID *fluid);
-
-// Liquid grids
-float *liquid_get_phiin(struct FLUID *liquid);
-float *liquid_get_phiobsin(struct FLUID *liquid);
-float *liquid_get_phioutin(struct FLUID *liquid);
-void liquid_manta_export(struct FLUID* smoke, struct SmokeModifierData *smd);
-
-// Liquid Mantaflow IO for pointcache
-void liquid_update_mesh_data(struct FLUID *liquid, char *filename);
-
-// Liquid mesh
-int liquid_get_num_verts(struct FLUID *liquid);
-int liquid_get_num_normals(struct FLUID *liquid);
-int liquid_get_num_triangles(struct FLUID *liquid);
-float liquid_get_vertex_x_at(struct FLUID *liquid, int i);
-float liquid_get_vertex_y_at(struct FLUID *liquid, int i);
-float liquid_get_vertex_z_at(struct FLUID *liquid, int i);
-float liquid_get_normal_x_at(struct FLUID *liquid, int i);
-float liquid_get_normal_y_at(struct FLUID *liquid, int i);
-float liquid_get_normal_z_at(struct FLUID *liquid, int i);
-int liquid_get_triangle_x_at(struct FLUID *liquid, int i);
-int liquid_get_triangle_y_at(struct FLUID *liquid, int i);
-int liquid_get_triangle_z_at(struct FLUID *liquid, int i);
-float liquid_get_vertvel_x_at(struct FLUID *liquid, int i);
-float liquid_get_vertvel_y_at(struct FLUID *liquid, int i);
-float liquid_get_vertvel_z_at(struct FLUID *liquid, int i);
-
-// Liquids particles
-int liquid_get_num_flip_particles(struct FLUID *liquid);
-int liquid_get_num_snd_particles(struct FLUID *liquid);
-
-int liquid_get_flip_particle_flag_at(struct FLUID *liquid, int i);
-int liquid_get_snd_particle_flag_at(struct FLUID *liquid, int i);
-
-float liquid_get_flip_particle_position_x_at(struct FLUID *liquid, int i);
-float liquid_get_flip_particle_position_y_at(struct FLUID *liquid, int i);
-float liquid_get_flip_particle_position_z_at(struct FLUID *liquid, int i);
-float liquid_get_snd_particle_position_x_at(struct FLUID *liquid, int i);
-float liquid_get_snd_particle_position_y_at(struct FLUID *liquid, int i);
-float liquid_get_snd_particle_position_z_at(struct FLUID *liquid, int i);
-
-float liquid_get_flip_particle_velocity_x_at(struct FLUID *liquid, int i);
-float liquid_get_flip_particle_velocity_y_at(struct FLUID *liquid, int i);
-float liquid_get_flip_particle_velocity_z_at(struct FLUID *liquid, int i);
-float liquid_get_snd_particle_velocity_x_at(struct FLUID *liquid, int i);
-float liquid_get_snd_particle_velocity_y_at(struct FLUID *liquid, int i);
-float liquid_get_snd_particle_velocity_z_at(struct FLUID *liquid, int i);
-
-void liquid_set_flip_particle_data(struct FLUID* liquid, float* buffer, int numParts);
-void liquid_set_snd_particle_data(struct FLUID* liquid, float* buffer, int numParts);
-
-void liquid_set_flip_particle_velocity(struct FLUID* liquid, float* buffer, int numParts);
-void liquid_set_snd_particle_velocity(struct FLUID* liquid, float* buffer, int numParts);
-void liquid_set_snd_particle_life(struct FLUID* liquid, float* buffer, int numParts);
-
-// Fluids in general
-int *fluid_get_num_obstacle(struct FLUID *fluid);
-float *fluid_get_emission_in(struct FLUID *fluid);
-int *fluid_get_flow_type(struct FLUID *fluid);
-int *fluid_get_num_flow(struct FLUID *fluid);
-float *fluid_get_phiguidein(struct FLUID *fluid);
-int *fluid_get_num_guide(struct FLUID *fluid);
-int fluid_get_res_x(struct FLUID *fluid);
-int fluid_get_res_y(struct FLUID *fluid);
-int fluid_get_res_z(struct FLUID *fluid);
-int fluid_get_particle_res_x(struct FLUID *fluid);
-int fluid_get_particle_res_y(struct FLUID *fluid);
-int fluid_get_particle_res_z(struct FLUID *fluid);
-int fluid_get_mesh_res_x(struct FLUID *fluid);
-int fluid_get_mesh_res_y(struct FLUID *fluid);
-int fluid_get_mesh_res_z(struct FLUID *fluid);
-int fluid_get_particle_upres(struct FLUID *fluid);
-int fluid_get_mesh_upres(struct FLUID *fluid);
+/* Fluid functions */
+struct FLUID *fluid_init(int *res, struct SmokeModifierData *smd);
+void fluid_free(struct FLUID *fluid);
 void fluid_ensure_obstacle(struct FLUID *fluid, struct SmokeModifierData *smd);
 void fluid_ensure_guiding(struct FLUID *fluid, struct SmokeModifierData *smd);
 void fluid_ensure_invelocity(struct FLUID *fluid, struct SmokeModifierData *smd);
-void fluid_ensure_sndparts(struct FLUID *fluid, struct SmokeModifierData *smd);
 int fluid_write_data(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_read_data(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_read_noise(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
@@ -188,6 +60,122 @@ void fluid_update_variables(struct FLUID* fluid, struct SmokeModifierData *smd);
 int fluid_get_frame(struct FLUID* fluid);
 float fluid_get_timestep(struct FLUID* fluid);
 void fluid_adapt_timestep(struct FLUID* fluid);
+
+/* Fluid accessors */
+size_t fluid_get_index(int x, int max_x, int y, int max_y, int z /*, int max_z */);
+size_t fluid_get_index2d(int x, int max_x, int y /*, int max_y, int z, int max_z */);
+float *fluid_get_velocity_x(struct FLUID *fluid);
+float *fluid_get_velocity_y(struct FLUID *fluid);
+float *fluid_get_velocity_z(struct FLUID *fluid);
+float *fluid_get_ob_velocity_x(struct FLUID *fluid);
+float *fluid_get_ob_velocity_y(struct FLUID *fluid);
+float *fluid_get_ob_velocity_z(struct FLUID *fluid);
+float *fluid_get_guide_velocity_x(struct FLUID *fluid);
+float *fluid_get_guide_velocity_y(struct FLUID *fluid);
+float *fluid_get_guide_velocity_z(struct FLUID *fluid);
+float *fluid_get_in_velocity_x(struct FLUID *fluid);
+float *fluid_get_in_velocity_y(struct FLUID *fluid);
+float *fluid_get_in_velocity_z(struct FLUID *fluid);
+float *fluid_get_force_x(struct FLUID *fluid);
+float *fluid_get_force_y(struct FLUID *fluid);
+float *fluid_get_force_z(struct FLUID *fluid);
+float *fluid_get_phiguidein(struct FLUID *fluid);
+int *fluid_get_num_obstacle(struct FLUID *fluid);
+int *fluid_get_num_guide(struct FLUID *fluid);
+int fluid_get_res_x(struct FLUID *fluid);
+int fluid_get_res_y(struct FLUID *fluid);
+int fluid_get_res_z(struct FLUID *fluid);
+
+
+/* Smoke functions */
+void smoke_manta_export(struct FLUID* smoke, struct SmokeModifierData *smd);
+void smoke_dissolve(struct FLUID *smoke, int speed, int log);
+void smoke_dissolve_wavelet(struct FLUID *smoke, int speed, int log);
+void smoke_export(struct FLUID *smoke, float *dt, float *dx, float **dens, float **react, float **flame, float **fuel, float **heat, float **vx, float **vy, float **vz, float **r, float **g, float **b, int **obstacles, float **shadow);
+void smoke_turbulence_export(struct FLUID *smoke, float **dens, float **react, float **flame, float **fuel, float **r, float **g, float **b , float **tcu, float **tcv, float **tcw, float **tcu2, float **tcv2, float **tcw2);
+void smoke_get_rgba(struct FLUID *smoke, float *data, int sequential);
+void smoke_turbulence_get_rgba(struct FLUID *smoke, float *data, int sequential);
+void smoke_get_rgba_from_density(struct FLUID *smoke, float color[3], float *data, int sequential);
+void smoke_turbulence_get_rgba_from_density(struct FLUID *smoke, float color[3], float *data, int sequential);
+void smoke_ensure_heat(struct FLUID *smoke, struct SmokeModifierData *smd);
+void smoke_ensure_fire(struct FLUID *smoke, struct SmokeModifierData *smd);
+void smoke_ensure_colors(struct FLUID *smoke, struct SmokeModifierData *smd);
+
+/* Smoke accessors */
+float *smoke_get_density(struct FLUID *smoke);
+float *smoke_get_fuel(struct FLUID *smoke);
+float *smoke_get_react(struct FLUID *smoke);
+float *smoke_get_heat(struct FLUID *smoke);
+float *smoke_get_flame(struct FLUID *smoke);
+float *smoke_get_shadow(struct FLUID *fluid);
+float *smoke_get_color_r(struct FLUID *smoke);
+float *smoke_get_color_g(struct FLUID *smoke);
+float *smoke_get_color_b(struct FLUID *smoke);
+int *smoke_get_obstacle(struct FLUID *smoke);
+float *smoke_get_emission_in(struct FLUID *fluid);
+int smoke_has_heat(struct FLUID *smoke);
+int smoke_has_fuel(struct FLUID *smoke);
+int smoke_has_colors(struct FLUID *smoke);
+float *smoke_turbulence_get_density(struct FLUID *smoke);
+float *smoke_turbulence_get_fuel(struct FLUID *smoke);
+float *smoke_turbulence_get_react(struct FLUID *smoke);
+float *smoke_turbulence_get_color_r(struct FLUID *smoke);
+float *smoke_turbulence_get_color_g(struct FLUID *smoke);
+float *smoke_turbulence_get_color_b(struct FLUID *smoke);
+float *smoke_turbulence_get_flame(struct FLUID *smoke);
+int smoke_turbulence_has_fuel(struct FLUID *smoke);
+int smoke_turbulence_has_colors(struct FLUID *smoke);
+void smoke_turbulence_get_res(struct FLUID *smoke, int *res);
+int smoke_turbulence_get_cells(struct FLUID *smoke);
+
+
+/* Liquid functions */
+void liquid_manta_export(struct FLUID* smoke, struct SmokeModifierData *smd);
+void liquid_ensure_sndparts(struct FLUID *fluid, struct SmokeModifierData *smd);
+
+/* Liquid accessors */
+int liquid_get_particle_res_x(struct FLUID *fluid);
+int liquid_get_particle_res_y(struct FLUID *fluid);
+int liquid_get_particle_res_z(struct FLUID *fluid);
+int liquid_get_mesh_res_x(struct FLUID *fluid);
+int liquid_get_mesh_res_y(struct FLUID *fluid);
+int liquid_get_mesh_res_z(struct FLUID *fluid);
+int liquid_get_particle_upres(struct FLUID *fluid);
+int liquid_get_mesh_upres(struct FLUID *fluid);
+float *liquid_get_phiin(struct FLUID *liquid);
+float *liquid_get_phiobsin(struct FLUID *liquid);
+float *liquid_get_phioutin(struct FLUID *liquid);
+int liquid_get_num_verts(struct FLUID *liquid);
+int liquid_get_num_normals(struct FLUID *liquid);
+int liquid_get_num_triangles(struct FLUID *liquid);
+float liquid_get_vertex_x_at(struct FLUID *liquid, int i);
+float liquid_get_vertex_y_at(struct FLUID *liquid, int i);
+float liquid_get_vertex_z_at(struct FLUID *liquid, int i);
+float liquid_get_normal_x_at(struct FLUID *liquid, int i);
+float liquid_get_normal_y_at(struct FLUID *liquid, int i);
+float liquid_get_normal_z_at(struct FLUID *liquid, int i);
+int liquid_get_triangle_x_at(struct FLUID *liquid, int i);
+int liquid_get_triangle_y_at(struct FLUID *liquid, int i);
+int liquid_get_triangle_z_at(struct FLUID *liquid, int i);
+float liquid_get_vertvel_x_at(struct FLUID *liquid, int i);
+float liquid_get_vertvel_y_at(struct FLUID *liquid, int i);
+float liquid_get_vertvel_z_at(struct FLUID *liquid, int i);
+int liquid_get_num_flip_particles(struct FLUID *liquid);
+int liquid_get_num_snd_particles(struct FLUID *liquid);
+int liquid_get_flip_particle_flag_at(struct FLUID *liquid, int i);
+int liquid_get_snd_particle_flag_at(struct FLUID *liquid, int i);
+float liquid_get_flip_particle_position_x_at(struct FLUID *liquid, int i);
+float liquid_get_flip_particle_position_y_at(struct FLUID *liquid, int i);
+float liquid_get_flip_particle_position_z_at(struct FLUID *liquid, int i);
+float liquid_get_flip_particle_velocity_x_at(struct FLUID *liquid, int i);
+float liquid_get_flip_particle_velocity_y_at(struct FLUID *liquid, int i);
+float liquid_get_flip_particle_velocity_z_at(struct FLUID *liquid, int i);
+float liquid_get_snd_particle_position_x_at(struct FLUID *liquid, int i);
+float liquid_get_snd_particle_position_y_at(struct FLUID *liquid, int i);
+float liquid_get_snd_particle_position_z_at(struct FLUID *liquid, int i);
+float liquid_get_snd_particle_velocity_x_at(struct FLUID *liquid, int i);
+float liquid_get_snd_particle_velocity_y_at(struct FLUID *liquid, int i);
+float liquid_get_snd_particle_velocity_z_at(struct FLUID *liquid, int i);
 
 #ifdef __cplusplus
 }

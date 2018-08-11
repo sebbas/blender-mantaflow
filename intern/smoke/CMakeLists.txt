@@ -98,5 +98,6 @@ if(WITH_FFTW3)
 	)
 endif()
 
+# (sebbas): Smoke modifier deprecated
 #blender_add_lib(bf_intern_smoke "${SRC}" "${INC}" "${INC_SYS}")
 

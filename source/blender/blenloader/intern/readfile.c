@@ -5038,7 +5038,7 @@ static void lib_link_object(FileData *fd, Main *main)
 				SmokeModifierData *smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
 
 				if (smd && (smd->type == MOD_SMOKE_TYPE_DOMAIN) && smd->domain) {
-					smd->domain->flags |= MOD_SMOKE_FILE_LOAD; /* flag for refreshing the simulation after loading */
+					smd->domain->flags |= FLUID_DOMAIN_FILE_LOAD; /* flag for refreshing the simulation after loading */
 				}
 			}
 
@@ -5191,7 +5191,6 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 
 				smd->domain->fluid = NULL;
 				smd->domain->fluid_mutex = BLI_rw_mutex_alloc();
-				smd->domain->wt = NULL;
 				smd->domain->tex = NULL;
 				smd->domain->tex_shadow = NULL;
 				smd->domain->tex_wt = NULL;

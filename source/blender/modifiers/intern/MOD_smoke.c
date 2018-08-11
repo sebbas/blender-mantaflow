@@ -89,12 +89,12 @@ static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
 	CustomDataMask dataMask = 0;
 
 	if (smd && (smd->type & MOD_SMOKE_TYPE_FLOW) && smd->flow) {
-		if (smd->flow->source == MOD_SMOKE_FLOW_SOURCE_MESH) {
+		if (smd->flow->source == FLUID_FLOW_SOURCE_MESH) {
 			/* vertex groups */
 			if (smd->flow->vgroup_density)
 				dataMask |= CD_MASK_MDEFORMVERT;
 			/* uv layer */
-			if (smd->flow->texture_type == MOD_SMOKE_FLOW_TEXTURE_MAP_UV)
+			if (smd->flow->texture_type == FLUID_FLOW_TEXTURE_MAP_UV)
 				dataMask |= CD_MASK_MTFACE;
 		}
 	}

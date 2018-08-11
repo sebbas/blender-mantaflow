@@ -366,8 +366,6 @@ class QuickSmoke(Operator):
         obj.modifiers[-1].smoke_type = 'DOMAIN'
 
         # set correct cache file format for smoke
-        obj.modifiers[-1].domain_settings.use_surface_cache = False
-        obj.modifiers[-1].domain_settings.use_volume_cache = True
         obj.modifiers[-1].domain_settings.cache_data_format = 'UNI'
 
 		# Setup material
@@ -632,8 +630,6 @@ class QuickLiquid(Operator):
         obj.modifiers[-1].domain_settings.use_collision_border_bottom = True
 
         # set correct cache file format for liquid
-        obj.modifiers[-1].domain_settings.use_surface_cache = True
-        obj.modifiers[-1].domain_settings.use_volume_cache = False
         obj.modifiers[-1].domain_settings.cache_mesh_format = 'BOBJECT'
 
         # allocate and show particle system for FLIP 
