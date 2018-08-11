@@ -66,7 +66,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
             domain = md.domain_settings
             flow = md.flow_settings
 
-            # Deactivate UI if guiding is enabled and not baked yet
+            # Deactivate UI if guiding is enabled but not baked yet
             layout.active = not (domain.use_guiding and not domain.cache_baked_guiding and (domain.guiding_source == "EFFECTOR" or (domain.guiding_source == "DOMAIN" and not domain.guiding_parent)))
 
             baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
@@ -108,7 +108,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
             col.prop(domain, "use_adaptive_stepping", text="Adaptive stepping")
             col.prop(domain, "time_scale", text="Time")
             col.prop(domain, "cfl_condition", text="CFL")
-            
+
             col = split.column()
             if scene.use_gravity:
                 col.label(text="Use Scene Gravity", icon='SCENE_DATA')
@@ -186,12 +186,12 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
 
             split = layout.split()
             col = split.column()
-                
+
             col.label(text="Sampling:")
             col.prop(flow, "subframes")
 
             col = split.column()
-            
+
             col.label(text="Flow behavior:")
             col.prop(flow, "smoke_flow_behavior", expand=False, text="")
 
@@ -250,9 +250,9 @@ class PHYSICS_PT_smoke_flow_source(PhysicButtonsPanel, Panel):
         layout = self.layout
         ob = context.object
         flow = context.smoke.flow_settings
-        
+
         split = layout.split()
-        
+
         col = split.column()
         col.label(text="Flow source:")
         col.prop(flow, "smoke_flow_source", expand=False, text="")
@@ -327,13 +327,13 @@ class PHYSICS_PT_smoke_adaptive_domain(PhysicButtonsPanel, Panel):
     def draw_header(self, context):
         md = context.smoke.domain_settings
         self.layout.prop(md, "use_adaptive_domain", text="")
-        
+
     def draw(self, context):
         layout = self.layout
 
         domain = context.smoke.domain_settings
         layout.active = domain.use_adaptive_domain
-        
+
         split = layout.split()
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
         split.enabled = not baking_any
@@ -357,7 +357,7 @@ class PHYSICS_PT_smoke_quality(PhysicButtonsPanel, Panel):
     def poll(cls, context):
         md = context.smoke
         rd = context.scene.render
-        # Disable for now
+        # Disable for now. Not sure if and how render/ viewport display options needed in 2.8
         return False #md and (md.smoke_type == 'DOMAIN') and (rd.engine in cls.COMPAT_ENGINES)
 
     def draw(self, context):
@@ -367,7 +367,6 @@ class PHYSICS_PT_smoke_quality(PhysicButtonsPanel, Panel):
         split = layout.split()
 
         col = split.column()
-        # TODO (sebbas): Disabling render display switch for now. Needs some more consideration
         col.label(text="Render Display:")
         col.prop(domain, "render_display_mode", text="")
 
@@ -397,11 +396,10 @@ class PHYSICS_PT_smoke_noise(PhysicButtonsPanel, Panel):
         layout = self.layout
         domain = context.smoke.domain_settings
 
-        # Deactivate UI if guiding is enabled and not baked yet
+        # Deactivate UI if guiding is enabled but not baked yet
         layout.active = domain.use_noise and not (domain.use_guiding and not domain.cache_baked_guiding and (domain.guiding_source == "EFFECTOR" or (domain.guiding_source == "DOMAIN" and not domain.guiding_parent)))
 
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
-
         baked_noise = domain.cache_baked_noise
 
         split = layout.split()
@@ -409,7 +407,7 @@ class PHYSICS_PT_smoke_noise(PhysicButtonsPanel, Panel):
 
         col = split.column(align=True)
         col.prop(domain, "noise_scale", text="Upres")
-        # TODO (sebbas): Mantaflow only supports wavelet noise. Do we really need fft noise? Maybe get rid of noise type ...
+        # TODO (sebbas): Mantaflow only supports wavelet noise. Maybe get rid of noise type field.
         col.label(text="Noise Method:")
         col.prop(domain, "noise_type", text="")
 
@@ -455,11 +453,10 @@ class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
         layout = self.layout
         domain = context.smoke.domain_settings
 
-        # Deactivate UI if guiding is enabled and not baked yet
+        # Deactivate UI if guiding is enabled but not baked yet
         layout.active = domain.use_mesh and not (domain.use_guiding and not domain.cache_baked_guiding and (domain.guiding_source == "EFFECTOR" or (domain.guiding_source == "DOMAIN" and not domain.guiding_parent)))
 
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
-
         baked_mesh = domain.cache_baked_mesh
 
         split = layout.split()
@@ -516,18 +513,17 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
     def poll(cls, context):
         md = context.smoke
         rd = context.scene.render
-        # Fluid particles only enabled for liquids for now. Future update might include particles for gas domain, e.g. fire sparks.
+        # TODO (sebbas): Fluid particles only enabled for liquids for now. Future update might include particles for gas domain, e.g. fire sparks.
         return md and (md.smoke_type == 'DOMAIN') and (rd.engine in cls.COMPAT_ENGINES) and (md.domain_settings.smoke_domain_type in {'LIQUID'}) 
 
     def draw(self, context):
         layout = self.layout
         domain = context.smoke.domain_settings
 
-        # Deactivate UI if guiding is enabled and not baked yet
+        # Deactivate UI if guiding is enabled but not baked yet
         layout.active = not (domain.use_guiding and not domain.cache_baked_guiding and (domain.guiding_source == "EFFECTOR" or (domain.guiding_source == "DOMAIN" and not domain.guiding_parent)))
 
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
-
         baked_particles = domain.cache_baked_particles
 
         split = layout.split()
@@ -599,7 +595,7 @@ class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
         layout = self.layout
         domain = context.smoke.domain_settings
 
-        # Deactivate UI if guiding is enabled and not baked yet
+        # Deactivate UI if guiding is enabled but not baked yet
         layout.active = not (domain.use_guiding and not domain.cache_baked_guiding and (domain.guiding_source == "EFFECTOR" or (domain.guiding_source == "DOMAIN" and not domain.guiding_parent)))
 
         split = layout.split()
@@ -648,7 +644,7 @@ class PHYSICS_PT_smoke_guiding(PhysicButtonsPanel, Panel):
         layout.active = domain.use_guiding
 
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
-        
+
         split = layout.split()
         split.enabled = not baking_any
 
@@ -711,58 +707,6 @@ class PHYSICS_PT_smoke_groups(PhysicButtonsPanel, Panel):
         col.prop(domain, "collision_group", text="")
 
 class PHYSICS_PT_smoke_cache(PhysicButtonsPanel, Panel):
-    bl_label = "Fluid Cache"
-    bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER'}
-
-    @classmethod
-    def poll(cls, context):
-        md = context.smoke
-        rd = context.scene.render
-        # TODO (sebbas): Merge old cache with new cache functionality
-        return False #md and (md.smoke_type == 'DOMAIN') and (rd.engine in cls.COMPAT_ENGINES)
-
-    def draw(self, context):
-        layout = self.layout
-
-        domain = context.smoke.domain_settings
-        cache_mesh_format = domain.cache_mesh_format
-        cache_data_format = domain.cache_data_format
-
-        split = layout.split()
-
-        col = split.column()
-        col.prop(domain, "use_surface_cache", text="Surface format:")
-        sub = col.column()
-        sub.active = domain.use_surface_cache
-        sub.prop(domain, "cache_mesh_format", text="")
-
-        col = split.column()
-        col.prop(domain, "use_volume_cache", text="Volumetric format:")
-        sub = col.column()
-        sub.active = domain.use_volume_cache
-        sub.prop(domain, "cache_data_format", text="")
-
-        split = layout.split()
-
-        if cache_data_format == 'POINTCACHE':
-            layout.label(text="Compression:")
-            layout.row().prop(domain, "point_cache_compress_type", expand=True)
-        elif cache_data_format == 'OPENVDB':
-            if not bpy.app.build_options.openvdb:
-                layout.label("Built without OpenVDB support")
-                return
-
-            layout.label(text="Compression:")
-            layout.row().prop(domain, "openvdb_cache_compress_type", expand=True)
-            row = layout.row()
-            row.label("Data Depth:")
-            row.prop(domain, "data_depth", expand=True, text="Data Depth")
-
-        cache = domain.point_cache
-        point_cache_ui(self, context, cache, (cache.is_baked is False), 'SMOKE')
-
-class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Cache"
     COMPAT_ENGINES = {'BLENDER_RENDER'}
 
@@ -895,7 +839,7 @@ classes = (
     PHYSICS_PT_smoke_guiding,
     PHYSICS_PT_smoke_groups,
     PHYSICS_PT_smoke_cache,
-    PHYSICS_PT_manta_cache,
+    PHYSICS_PT_smoke_cache,
     PHYSICS_PT_smoke_field_weights,
     PHYSICS_PT_smoke_display_settings,
 )
