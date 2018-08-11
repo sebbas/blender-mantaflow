@@ -839,7 +839,6 @@ classes = (
     PHYSICS_PT_smoke_guiding,
     PHYSICS_PT_smoke_groups,
     PHYSICS_PT_smoke_cache,
-    PHYSICS_PT_smoke_cache,
     PHYSICS_PT_smoke_field_weights,
     PHYSICS_PT_smoke_display_settings,
 )
