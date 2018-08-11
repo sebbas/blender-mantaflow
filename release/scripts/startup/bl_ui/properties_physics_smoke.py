@@ -18,8 +18,6 @@
 
 # <pep8 compliant>
 import bpy
-import os
-from copy import deepcopy
 from bpy.types import Panel, Menu
 
 from .properties_physics_common import (
@@ -45,7 +43,7 @@ class PhysicButtonsPanel:
         return (ob and ob.type == 'MESH') and (rd.engine in cls.COMPAT_ENGINES) and (context.smoke)
 
 
-class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_manta(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Simulation"
     COMPAT_ENGINES = {'BLENDER_RENDER'}
 
@@ -236,7 +234,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
                 col.prop(effec, "velocity_factor")
                 col.prop(effec, "guiding_mode", text="")
 
-class PHYSICS_PT_smoke_flow_source(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_manta_flow_source(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Source"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
@@ -278,7 +276,7 @@ class PHYSICS_PT_smoke_flow_source(PhysicButtonsPanel, Panel):
             sub.prop(flow, "velocity_normal")
             #sub.prop(flow, "velocity_random")
 
-class PHYSICS_PT_smoke_flow_advanced(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_manta_flow_advanced(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Flow Advanced"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
@@ -312,7 +310,7 @@ class PHYSICS_PT_smoke_flow_advanced(PhysicButtonsPanel, Panel):
         col.label(text="Vertex Group:")
         col.prop_search(flow, "density_vertex_group", ob, "vertex_groups", text="")
 
-class PHYSICS_PT_smoke_adaptive_domain(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_manta_adaptive_domain(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Adaptive Domain"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
@@ -348,7 +346,7 @@ class PHYSICS_PT_smoke_adaptive_domain(PhysicButtonsPanel, Panel):
         col.prop(domain, "adapt_threshold")
 
 
-class PHYSICS_PT_smoke_quality(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_manta_quality(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Quality"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
@@ -374,7 +372,7 @@ class PHYSICS_PT_smoke_quality(PhysicButtonsPanel, Panel):
         col.label(text="Viewport Display:")
         col.prop(domain, "viewport_display_mode", text="")
 
-class PHYSICS_PT_smoke_noise(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_manta_noise(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Noise"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
@@ -431,7 +429,7 @@ class PHYSICS_PT_smoke_noise(PhysicButtonsPanel, Panel):
         else:
             split.operator("manta.free_noise", text="Free Noise")
 
-class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_manta_mesh(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Mesh"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
@@ -504,7 +502,7 @@ class PHYSICS_PT_smoke_mesh(PhysicButtonsPanel, Panel):
         else:
             split.operator("manta.free_mesh", text="Free Mesh")
 
-class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_manta_particles(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Particles"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
@@ -579,7 +577,7 @@ class PHYSICS_PT_smoke_particles(PhysicButtonsPanel, Panel):
         else:
             split.operator("manta.free_particles", text="Free Particles")
 
-class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_manta_diffusion(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Diffusion"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
@@ -619,7 +617,7 @@ class PHYSICS_PT_smoke_diffusion(PhysicButtonsPanel, Panel):
         col.label(text="Surface tension:")
         col.prop(domain, "surface_tension", text="Tension")
 
-class PHYSICS_PT_smoke_guiding(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_manta_guiding(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Guiding"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
@@ -678,7 +676,7 @@ class PHYSICS_PT_smoke_guiding(PhysicButtonsPanel, Panel):
             else:
                 split.operator("manta.free_guiding", text="Free Guiding")
 
-class PHYSICS_PT_smoke_groups(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_manta_groups(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Groups"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
@@ -706,7 +704,7 @@ class PHYSICS_PT_smoke_groups(PhysicButtonsPanel, Panel):
         col.label(text="Collision Group:")
         col.prop(domain, "collision_group", text="")
 
-class PHYSICS_PT_smoke_cache(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Cache"
     COMPAT_ENGINES = {'BLENDER_RENDER'}
 
@@ -754,7 +752,7 @@ class PHYSICS_PT_smoke_cache(PhysicButtonsPanel, Panel):
         row = layout.row()
         row.operator("manta.make_file", text="Export Mantaflow Script")
 
-class PHYSICS_PT_smoke_field_weights(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_manta_field_weights(PhysicButtonsPanel, Panel):
     bl_label = "Fluid Field Weights"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER'}
@@ -769,7 +767,7 @@ class PHYSICS_PT_smoke_field_weights(PhysicButtonsPanel, Panel):
         domain = context.smoke.domain_settings
         effector_weights_ui(self, context, domain.effector_weights, 'SMOKE')
 
-class PHYSICS_PT_smoke_display_settings(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_manta_display_settings(PhysicButtonsPanel, Panel):
     bl_label = "Smoke Display Settings"
     bl_options = {'DEFAULT_CLOSED'}
 
@@ -827,20 +825,20 @@ class PHYSICS_PT_smoke_display_settings(PhysicButtonsPanel, Panel):
 
 classes = (
     MANTA_MT_presets,
-    PHYSICS_PT_smoke,
-    PHYSICS_PT_smoke_flow_source,
-    PHYSICS_PT_smoke_flow_advanced,
-    PHYSICS_PT_smoke_adaptive_domain,
-    PHYSICS_PT_smoke_quality,
-    PHYSICS_PT_smoke_noise,
-    PHYSICS_PT_smoke_mesh,
-    PHYSICS_PT_smoke_particles,
-    PHYSICS_PT_smoke_diffusion,
-    PHYSICS_PT_smoke_guiding,
-    PHYSICS_PT_smoke_groups,
-    PHYSICS_PT_smoke_cache,
-    PHYSICS_PT_smoke_field_weights,
-    PHYSICS_PT_smoke_display_settings,
+    PHYSICS_PT_manta,
+    PHYSICS_PT_manta_flow_source,
+    PHYSICS_PT_manta_flow_advanced,
+    PHYSICS_PT_manta_adaptive_domain,
+    PHYSICS_PT_manta_quality,
+    PHYSICS_PT_manta_noise,
+    PHYSICS_PT_manta_mesh,
+    PHYSICS_PT_manta_particles,
+    PHYSICS_PT_manta_diffusion,
+    PHYSICS_PT_manta_guiding,
+    PHYSICS_PT_manta_groups,
+    PHYSICS_PT_manta_cache,
+    PHYSICS_PT_manta_field_weights,
+    PHYSICS_PT_manta_display_settings,
 )
 
 if __name__ == "__main__":  # only for live edit.
