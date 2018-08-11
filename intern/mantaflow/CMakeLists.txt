@@ -79,7 +79,7 @@ set(SRC
 	extern/manta_python_API.h
 	extern/manta_fluid_API.h
 	intern/FLUID.h
-	intern/strings/shared_script.h
+	intern/strings/fluid_script.h
 	intern/strings/smoke_script.h
 	intern/strings/liquid_script.h
 
