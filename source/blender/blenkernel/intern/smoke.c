@@ -146,7 +146,7 @@ void smoke_reallocate_fluid(SmokeDomainSettings *sds, int res[3], int free_old)
 		sds->fluid = NULL;
 		return;
 	}
-	
+
 	sds->fluid = fluid_init(res, sds->smd);
 }
 
@@ -256,13 +256,13 @@ static void smoke_set_domain_gravity(Scene *scene, SmokeDomainSettings *sds)
 		copy_v3_v3(gravity, scene->physics_settings.gravity);
 		/* map default value to 1.0 */
 		mul_v3_fl(gravity, 1.0f / 9.810f);
-		
+
 		/* convert gravity to domain space */
 		gravity_mag = len_v3(gravity);
 		mul_mat3_m4_v3(sds->imat, gravity);
 		normalize_v3(gravity);
 		mul_v3_fl(gravity, gravity_mag);
-	
+
 		sds->gravity[0] = gravity[0];
 		sds->gravity[1] = gravity[1];
 		sds->gravity[2] = gravity[2];
@@ -574,7 +574,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->cache_particle_format = FLUID_DOMAIN_FILE_UNI;
 			smd->domain->cache_noise_format = FLUID_DOMAIN_FILE_UNI;
 			modifier_path_init(smd->domain->cache_directory, sizeof(smd->domain->cache_directory), FLUID_DOMAIN_DIR_DEFAULT);
-	
+
 			/* viewport display options */
 			smd->domain->viewport_display_mode = FLUID_DOMAIN_VIEWPORT_PREVIEW;
 			smd->domain->render_display_mode = FLUID_DOMAIN_VIEWPORT_FINAL;
@@ -1113,13 +1113,13 @@ static void update_obstacleflags(SmokeDomainSettings *sds, Object **collobjs, in
 {
 	int active_fields = sds->active_fields;
 	unsigned int collIndex;
-	
+
 	/* Monitor active fields based on flow settings */
 	for (collIndex = 0; collIndex < numcollobj; collIndex++)
 	{
 		Object *collob = collobjs[collIndex];
 		SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(collob, eModifierType_Smoke);
-		
+
 		if ((smd2->type & MOD_SMOKE_TYPE_EFFEC) && smd2->effec) {
 			SmokeCollSettings *scs = smd2->effec;
 			if (!scs) break;
@@ -1329,7 +1329,7 @@ static void em_allocateData(EmissionMap *em, bool use_velocity, int hires_mul)
 	em->influence = MEM_callocN(sizeof(float) * em->total_cells, "smoke_flow_influence");
 	if (use_velocity)
 		em->velocity = MEM_callocN(sizeof(float) * em->total_cells * 3, "smoke_flow_velocity");
-	
+
 	em->distances = MEM_callocN(sizeof(float) * em->total_cells, "fluid_flow_distances");
 	memset(em->distances, 0x7f7f7f7f, sizeof(float) * em->total_cells); // init to inf
 
@@ -2338,7 +2338,7 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 							n_wt_tcu[index_new] = o_wt_tcu[index_old];
 							n_wt_tcv[index_new] = o_wt_tcv[index_old];
 							n_wt_tcw[index_new] = o_wt_tcw[index_old];
-							
+
 							n_wt_tcu2[index_new] = o_wt_tcu2[index_old];
 							n_wt_tcv2[index_new] = o_wt_tcv2[index_old];
 							n_wt_tcw2[index_new] = o_wt_tcw2[index_old];
@@ -2478,7 +2478,7 @@ static void update_flowsflags(SmokeDomainSettings *sds, Object **flowobjs, int n
 	{
 		Object *collob = flowobjs[flowIndex];
 		SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(collob, eModifierType_Smoke);
-		
+
 		if ((smd2->type & MOD_SMOKE_TYPE_FLOW) && smd2->flow) {
 			SmokeFlowSettings *sfs = smd2->flow;
 			if (!sfs) break;
@@ -2589,7 +2589,7 @@ static void update_flowsfluids(
 
 	/* init emission maps for each flow */
 	emaps = MEM_callocN(sizeof(struct EmissionMap) * numflowobj, "smoke_flow_maps");
-	
+
 	/* Prepare flow emission maps */
 	for (flowIndex = 0; flowIndex < numflowobj; flowIndex++)
 	{
@@ -2886,7 +2886,6 @@ typedef struct UpdateEffectorsData {
 	SmokeDomainSettings *sds;
 	ListBase *effectors;
 
-	float dt;
 	float *density;
 	float *fuel;
 	float *force_x;
@@ -2958,7 +2957,7 @@ static void update_effectors_task_cb(
 	}
 }
 
-static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds, float dt)
+static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds, float UNUSED(dt))
 {
 	ListBase *effectors;
 	/* make sure smoke flow influence is 0.0f */
@@ -2971,7 +2970,6 @@ static void update_effectors(Scene *scene, Object *ob, SmokeDomainSettings *sds,
 		data.scene = scene;
 		data.sds = sds;
 		data.effectors = effectors;
-		data.dt = dt;
 		data.density = smoke_get_density(sds->fluid);
 		data.fuel = smoke_get_fuel(sds->fluid);
 		data.force_x = fluid_get_force_x(sds->fluid);
@@ -3237,16 +3235,15 @@ static DerivedMesh *createDomainGeometry(SmokeDomainSettings *sds, Object *ob)
 }
 
 static void smoke_step(
-        Main *bmain, EvaluationContext *eval_ctx,
-        Scene *scene, Object *ob, SmokeModifierData *smd, int frame, bool is_first_frame)
+        Main *bmain, EvaluationContext *eval_ctx, Scene *scene, Object *ob,
+        DerivedMesh *dm, SmokeModifierData *smd, int frame, bool is_first_frame)
 {
 	SmokeDomainSettings *sds = smd->domain;
-	DerivedMesh *domain_dm = ob->derivedDeform;
 	float fps = scene->r.frs_sec / scene->r.frs_sec_base;
 	float dt;
 	float sdt; // dt after adapted timestep
 	float time_per_frame;
-	
+
 	/* TODO (sebbas): Move dissolve smoke code to mantaflow */
 	if (sds->flags & FLUID_DOMAIN_USE_DISSOLVE) {
 		smoke_dissolve(sds->fluid, sds->diss_speed, sds->flags & FLUID_DOMAIN_USE_DISSOLVE_LOG);
@@ -3254,32 +3251,32 @@ static void smoke_step(
 			smoke_dissolve_wavelet(sds->fluid, sds->diss_speed, sds->flags & FLUID_DOMAIN_USE_DISSOLVE_LOG);
 		}
 	}
-	
+
 	/* update object state */
 	invert_m4_m4(sds->imat, ob->obmat);
 	copy_m4_m4(sds->obmat, ob->obmat);
-	smoke_set_domain_from_derivedmesh(sds, ob, domain_dm, (sds->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN) != 0);
-	
+	smoke_set_domain_from_derivedmesh(sds, ob, dm, (sds->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN) != 0);
+
 	/* adapt timestep for different framerates, dt = 0.1 is at 25fps */
 	dt = DT_DEFAULT * (25.0f / fps);
-	
+
 	time_per_frame = 0;
-	
+
 	BLI_mutex_lock(&object_update_lock);
-	
+
 	// loop as long as time_per_frame (sum of sudivdt) does not exceed dt (actual framelength)
 	while (time_per_frame < dt)
 	{
 		fluid_adapt_timestep(sds->fluid);
 		sdt = fluid_get_timestep(sds->fluid);
 		time_per_frame += sdt;
-		
+
 		// Calculate inflow geometry
 		update_flowsfluids(bmain, eval_ctx, scene, ob, sds, time_per_frame, dt, frame, is_first_frame);
-		
+
 		// Calculate obstacle geometry
 		update_obstacles(scene, ob, sds, sdt);
-		
+
 		if (sds->total_cells > 1) {
 			update_effectors(scene, ob, sds, sdt); // DG TODO? problem --> uses forces instead of velocity, need to check how they need to be changed with variable dt
 			fluid_bake_data(sds->fluid, smd, frame);
@@ -3296,7 +3293,7 @@ static void smoke_guiding(Scene *scene, Object *ob, SmokeModifierData *smd, int 
 	SmokeDomainSettings *sds = smd->domain;
 	float fps = scene->r.frs_sec / scene->r.frs_sec_base;
 	float dt = DT_DEFAULT * (25.0f / fps);
-	
+
 	BLI_mutex_lock(&object_update_lock);
 
 	update_obstacles(scene, ob, sds, dt);
@@ -3462,7 +3459,7 @@ static void smokeModifier_process(
 					fluid_read_data(sds->fluid, smd, framenr-1);
 
 				/* Base step needs separated bake and write calls - reason being that transparency calculation is after fluid step */
-				smoke_step(bmain, eval_ctx, scene, ob, smd, framenr, is_first_frame);
+				smoke_step(bmain, eval_ctx, scene, ob, dm, smd, framenr, is_first_frame);
 				fluid_write_data(sds->fluid, smd, framenr);
 			}
 			if (sds->cache_flag & FLUID_DOMAIN_BAKING_NOISE)

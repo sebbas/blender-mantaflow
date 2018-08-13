@@ -57,6 +57,7 @@
 #include "BKE_scene.h"
 #include "BKE_screen.h"
 #include "BKE_smoke.h"
+#include "BKE_depsgraph.h"
 
 #include "LBM_fluidsim.h"
 
@@ -1212,7 +1213,7 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 
 	/* Save orig frame and update scene frame */
 	orig_frame = scene->r.cfra;
-	scene->r.cfra = frame;
+	CFRA = frame;
 
 	/* Loop through selected frames */
 	for ( ; frame <= sds->cache_frame_end; frame++) {
@@ -1234,14 +1235,14 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 		if (job->progress)
 			*(job->progress) = progress;
 
-		scene->r.cfra = frame;
+		CFRA = frame;
 
 		/* Update animation system */
 		ED_update_for_newframe(job->bmain, scene, 1);
 	}
 
 	/* Restore frame position that we were on before bake */
-	scene->r.cfra = orig_frame;
+	CFRA = orig_frame;
 }
 
 static int fluid_manta_bake_modal(bContext *C, wmOperator *UNUSED(op), const wmEvent *event)
@@ -1290,6 +1291,7 @@ static void fluid_manta_bake_endjob(void *customdata)
 		sds->cache_flag &= ~FLUID_DOMAIN_BAKING_GUIDING;
 		sds->cache_flag |= FLUID_DOMAIN_BAKED_GUIDING;
 	}
+	DAG_id_tag_update(&job->ob->id, OB_RECALC_DATA);
 
 	/* Bake was successful:
 	 *  Report for ended bake and how long it took */
@@ -1367,6 +1369,8 @@ static void fluid_manta_bake_startjob(void *customdata, short *stop, short *do_u
 		sds->cache_flag |= FLUID_DOMAIN_BAKING_GUIDING;
 		job->pause_frame = &sds->cache_frame_pause_guiding;
 	}
+	DAG_id_tag_update(&job->ob->id, OB_RECALC_DATA);
+
 	fluid_manta_bake_sequence(job);
 
 	if (do_update)
@@ -1527,6 +1531,7 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 		/* Reset pause frame */
 		sds->cache_frame_pause_guiding = 0;
 	}
+	DAG_id_tag_update(&job->ob->id, OB_RECALC_DATA);
 
 	*do_update = true;
 	*stop = 0;

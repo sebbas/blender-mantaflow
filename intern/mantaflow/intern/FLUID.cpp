@@ -728,7 +728,7 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 	else if (varName == "FLAME_SMOKE_COLOR_Z")
 		ss << smd->domain->flame_smoke_color[2];
 	else if (varName == "CURRENT_FRAME")
-		ss << md->scene->r.cfra;
+		ss << smd->time;
 	else if (varName == "END_FRAME")
 		ss << smd->domain->cache_frame_end;
 	else if (varName == "PARTICLE_RANDOMNESS")

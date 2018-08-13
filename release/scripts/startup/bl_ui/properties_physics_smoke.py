@@ -62,7 +62,6 @@ class PHYSICS_PT_manta(PhysicButtonsPanel, Panel):
 
         if md.smoke_type == 'DOMAIN':
             domain = md.domain_settings
-            flow = md.flow_settings
 
             # Deactivate UI if guiding is enabled but not baked yet
             layout.active = not (domain.use_guiding and not domain.cache_baked_guiding and (domain.guiding_source == "EFFECTOR" or (domain.guiding_source == "DOMAIN" and not domain.guiding_parent)))
@@ -768,7 +767,7 @@ class PHYSICS_PT_manta_field_weights(PhysicButtonsPanel, Panel):
         effector_weights_ui(self, context, domain.effector_weights, 'SMOKE')
 
 class PHYSICS_PT_manta_display_settings(PhysicButtonsPanel, Panel):
-    bl_label = "Smoke Display Settings"
+    bl_label = "Fluid Display Settings"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -776,7 +775,7 @@ class PHYSICS_PT_manta_display_settings(PhysicButtonsPanel, Panel):
         md = context.smoke
 
         rd = context.scene.render
-        return md and (md.smoke_type == 'DOMAIN') and (not rd.use_game_engine)
+        return md and (md.smoke_type == 'DOMAIN') and (not rd.use_game_engine) and (md.domain_settings.smoke_domain_type in {'GAS'})
 
     def draw(self, context):
         domain = context.smoke.domain_settings

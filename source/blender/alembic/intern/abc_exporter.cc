@@ -107,7 +107,7 @@ static bool object_is_smoke_sim(Object *ob)
 	if (md) {
 		SmokeModifierData *smd = reinterpret_cast<SmokeModifierData *>(md);
 		return (smd->type == MOD_SMOKE_TYPE_DOMAIN && smd->domain &&
-				smd->domain->type == MOD_SMOKE_DOMAIN_TYPE_GAS);
+				smd->domain->type == FLUID_DOMAIN_TYPE_GAS);
 	}
 
 	return false;
@@ -547,8 +547,8 @@ void AbcExporter::createParticleSystemsWriters(Object *ob, AbcTransformWriter *x
 		}
 		else if (m_settings.export_particles &&
 				 (psys->part->type == PART_EMITTER || psys->part->type == PART_MANTA_FLIP ||
-				  psys->part->type == PART_MANTA_DROP || psys->part->type == PART_MANTA_BUBBLE ||
-				  psys->part->type == PART_MANTA_FLOAT || psys->part->type == PART_MANTA_TRACER))
+				  psys->part->type == PART_MANTA_SPRAY || psys->part->type == PART_MANTA_BUBBLE ||
+				  psys->part->type == PART_MANTA_FOAM || psys->part->type == PART_MANTA_TRACER))
 		{
 			m_shapes.push_back(new AbcPointsWriter(m_scene, ob, xform, m_shape_sampling_index, m_settings, psys));
 		}
