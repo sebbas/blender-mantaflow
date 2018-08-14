@@ -481,11 +481,6 @@ static void rna_Smoke_domaintype_set(struct PointerRNA *ptr, int value)
 	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
 	Object *ob = (Object *)ptr->id.data;
 
-	/* Select all borders */
-	int borders = FLUID_DOMAIN_BORDER_FRONT & FLUID_DOMAIN_BORDER_BACK &
-					FLUID_DOMAIN_BORDER_RIGHT & FLUID_DOMAIN_BORDER_LEFT &
-					FLUID_DOMAIN_BORDER_TOP & FLUID_DOMAIN_BORDER_BOTTOM;
-
 	if (value != settings->type) {
 		/* Set common values for liquid/smoke domain: cache type, border collision and viewport drawtype. */
 		if (value == FLUID_DOMAIN_TYPE_GAS)
@@ -494,7 +489,12 @@ static void rna_Smoke_domaintype_set(struct PointerRNA *ptr, int value)
 			rna_Smoke_cachetype_data_set(ptr, FLUID_DOMAIN_FILE_UNI);
 			rna_Smoke_cachetype_particle_set(ptr, FLUID_DOMAIN_FILE_UNI);
 			rna_Smoke_cachetype_noise_set(ptr, FLUID_DOMAIN_FILE_UNI);
-			rna_Smoke_collisionextents_set(ptr, borders, true);
+			rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_FRONT, 1);
+			rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_BACK, 1);
+			rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_RIGHT, 1);
+			rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_LEFT, 1);
+			rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_TOP, 1);
+			rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_BOTTOM, 1);
 			ob->dt = OB_WIRE;
 		}
 		else if (value == FLUID_DOMAIN_TYPE_LIQUID)
@@ -503,7 +503,12 @@ static void rna_Smoke_domaintype_set(struct PointerRNA *ptr, int value)
 			rna_Smoke_cachetype_data_set(ptr, FLUID_DOMAIN_FILE_UNI);
 			rna_Smoke_cachetype_particle_set(ptr, FLUID_DOMAIN_FILE_UNI);
 			rna_Smoke_cachetype_noise_set(ptr, FLUID_DOMAIN_FILE_UNI);
-			rna_Smoke_collisionextents_set(ptr, borders, false);
+			rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_FRONT, 0);
+			rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_BACK, 0);
+			rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_RIGHT, 0);
+			rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_LEFT, 0);
+			rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_TOP, 0);
+			rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_BOTTOM, 0);
 			ob->dt = OB_SOLID;
 		}
 

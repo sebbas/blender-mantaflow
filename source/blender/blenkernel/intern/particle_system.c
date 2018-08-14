@@ -3883,6 +3883,7 @@ static void particles_manta_step(
 			part->totpart = tottypepart;
 			part->sta = part->end = 1.0f;
 			part->lifetime = sim->scene->r.efra + 1;
+			part->draw_col = PART_DRAW_COL_VEL;
 
 			/* allocate particles */
 			realloc_particles(sim, part->totpart);

@@ -474,7 +474,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->adapt_threshold = 0.02f;
 
 			/* fluid domain options */
-			smd->domain->maxres = 32;
+			smd->domain->maxres = 64;
 			smd->domain->solver_res = 3;
 			smd->domain->border_collisions = 0; // open domain
 			smd->domain->flags = FLUID_DOMAIN_USE_DISSOLVE_LOG | FLUID_DOMAIN_USE_ADAPTIVE_TIME;
