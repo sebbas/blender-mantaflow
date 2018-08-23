@@ -549,7 +549,7 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			smd->domain->particle_tracer_amount = 0.5f;
 			smd->domain->particle_tracer_life = 250.0f;
 			smd->domain->particle_tracer_max = 2;
-			smd->domain->particle_type = 0;
+			smd->domain->particle_type = FLUID_DOMAIN_PARTICLE_FLIP;
 			smd->domain->particle_scale = 1;
 
 			/* fluid guiding options */
@@ -798,6 +798,7 @@ void smokeModifier_copy(const struct SmokeModifierData *smd, struct SmokeModifie
 		tsmd->domain->cache_data_format = smd->domain->cache_data_format;
 		tsmd->domain->cache_particle_format = smd->domain->cache_particle_format;
 		tsmd->domain->cache_noise_format = smd->domain->cache_noise_format;
+		BLI_strncpy(tsmd->domain->cache_directory, smd->domain->cache_directory, sizeof(tsmd->domain->cache_directory));
 
 		/* viewport display options */
 		tsmd->domain->viewport_display_mode = smd->domain->viewport_display_mode;

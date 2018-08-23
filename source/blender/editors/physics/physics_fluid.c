@@ -1178,6 +1178,51 @@ static bool fluid_manta_initjob(bContext *C, FluidMantaflowJob *job, wmOperator 
 
 	return true;
 }
+
+static bool fluid_manta_initpaths(FluidMantaflowJob *job, ReportList *reports)
+{
+	SmokeDomainSettings *sds = job->smd->domain;
+	char tmpDir[FILE_MAX];
+	tmpDir[0] = '\0';
+
+	const char *relbase = modifier_path_relbase(job->bmain, job->ob);
+
+	/* We do not accept empty paths, they can end in random places silently, see T51176. */
+	if (sds->cache_directory[0] == '\0') {
+		modifier_path_init(sds->cache_directory, sizeof(sds->cache_directory), FLUID_DOMAIN_DIR_DEFAULT);
+		BKE_reportf(reports, RPT_WARNING, "Fluid Mantaflow: Empty cache path, reset to default '%s'", sds->cache_directory);
+	}
+
+	BLI_strncpy(tmpDir, sds->cache_directory, FILE_MAXDIR);
+	BLI_path_abs(tmpDir, relbase);
+
+	/* Ensure whole path exists */
+	const bool dir_exists = BLI_dir_create_recursive(tmpDir);
+
+	/* We change path to some presumably valid default value, but do not allow bake process to continue,
+	 * this gives user chance to set manually another path. */
+	if (!dir_exists) {
+		modifier_path_init(sds->cache_directory, sizeof(sds->cache_directory), FLUID_DOMAIN_DIR_DEFAULT);
+
+		BKE_reportf(reports, RPT_ERROR, "Fluid Mantaflow: Could not create cache directory '%s', reset to default '%s'",
+			            tmpDir, sds->cache_directory);
+
+		BLI_strncpy(tmpDir, sds->cache_directory, FILE_MAXDIR);
+		BLI_path_abs(tmpDir, relbase);
+
+		/* Ensure whole path exists and is wirtable. */
+		if (!BLI_dir_create_recursive(tmpDir)) {
+			BKE_reportf(reports, RPT_ERROR, "Fluid Mantaflow: Could not use default cache directory '%s', "
+			                                "please define a valid cache path manually", tmpDir);
+		}
+		return false;
+	}
+
+	/* Copy final dir back into domain settings */
+	BLI_strncpy(sds->cache_directory, tmpDir, FILE_MAXDIR);
+	return true;
+}
+
 static void fluid_manta_bake_free(void *customdata)
 {
 	FluidMantaflowJob *job = customdata;
@@ -1391,6 +1436,7 @@ static int fluid_manta_bake_exec(bContext *C, wmOperator *op)
 		fluid_manta_bake_free(job);
 		return OPERATOR_CANCELLED;
 	}
+	fluid_manta_initpaths(job, op->reports);
 	fluid_manta_bake_startjob(job, NULL, NULL, NULL);
 	fluid_manta_bake_endjob(job);
 	fluid_manta_bake_free(job);
@@ -1411,6 +1457,8 @@ static int fluid_manta_bake_invoke(struct bContext *C, struct wmOperator *op, co
 		fluid_manta_bake_free(job);
 		return OPERATOR_CANCELLED;
 	}
+
+	fluid_manta_initpaths(job, op->reports);
 
 	wmJob *wm_job = WM_jobs_get(CTX_wm_manager(C), CTX_wm_window(C), scene,
 								"Fluid Mantaflow Bake", WM_JOB_PROGRESS,
@@ -1579,6 +1627,8 @@ static int fluid_manta_free_exec(struct bContext *C, struct wmOperator *op)
 	job->smd = smd;
 	job->type = op->type->idname;
 	job->name = op->type->name;
+
+	fluid_manta_initpaths(job, op->reports);
 
 	wmJob *wm_job = WM_jobs_get(CTX_wm_manager(C), CTX_wm_window(C), scene,
 								"Fluid Mantaflow Free", WM_JOB_PROGRESS,

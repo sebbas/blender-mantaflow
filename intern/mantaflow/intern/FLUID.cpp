@@ -896,6 +896,7 @@ int FLUID::updateFlipStructures(SmokeModifierData *smd, int framenr)
 		std::cout << "FLUID::updateFlipStructures()" << std::endl;
 
 	if (!mUsingLiquid) return 0;
+	if (BLI_path_is_rel(smd->domain->cache_directory)) return 0;
 
 	std::ostringstream ss;
 	char cacheDir[FILE_MAX], targetFile[FILE_MAX];
@@ -932,6 +933,7 @@ int FLUID::updateMeshStructures(SmokeModifierData *smd, int framenr)
 		std::cout << "FLUID::updateMeshStructures()" << std::endl;
 
 	if (!mUsingMesh) return 0;
+	if (BLI_path_is_rel(smd->domain->cache_directory)) return 0;
 
 	std::ostringstream ss;
 	char cacheDir[FILE_MAX], targetFile[FILE_MAX];
@@ -969,6 +971,7 @@ int FLUID::updateParticleStructures(SmokeModifierData *smd, int framenr)
 		std::cout << "FLUID::updateParticleStructures()" << std::endl;
 
 	if (!mUsingDrops && !mUsingBubbles && !mUsingFloats && !mUsingTracers) return 0;
+	if (BLI_path_is_rel(smd->domain->cache_directory)) return 0;
 
 	std::ostringstream ss;
 	char cacheDir[FILE_MAX], targetFile[FILE_MAX];
