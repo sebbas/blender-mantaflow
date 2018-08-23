@@ -70,9 +70,9 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mUsingGuiding  = smd->domain->flags & FLUID_DOMAIN_USE_GUIDING;
 	mUsingLiquid   = smd->domain->type == FLUID_DOMAIN_TYPE_LIQUID;
 	mUsingSmoke    = smd->domain->type == FLUID_DOMAIN_TYPE_GAS;
-	mUsingDrops    = smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_DROP;
+	mUsingDrops    = smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY;
 	mUsingBubbles  = smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_BUBBLE;
-	mUsingFloats   = smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_FLOAT;
+	mUsingFloats   = smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_FOAM;
 	mUsingTracers  = smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_TRACER;
 
 	// Simulation constants
@@ -788,14 +788,14 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 	else if (varName == "FLUID_DOMAIN_SIZE")
 		ss << smd->domain->domain_size;
 	else if (varName == "SNDPARTICLE_TYPES") {
-		if (smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_DROP) {
+		if (smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY) {
 			ss << "PtypeSpray";
 		}
 		if (smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_BUBBLE) {
 			if (!ss.str().empty()) ss << "|";
 			ss << "PtypeBubble";
 		}
-		if (smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_FLOAT) {
+		if (smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_FOAM) {
 			if (!ss.str().empty()) ss << "|";
 			ss << "PtypeFoam";
 		}
@@ -806,8 +806,8 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		if (ss.str().empty()) ss << "0";
 
 	} else if (varName == "USING_SNDPARTS") {
-		tmpVar = (FLUID_DOMAIN_PARTICLE_DROP | FLUID_DOMAIN_PARTICLE_BUBBLE |
-				  FLUID_DOMAIN_PARTICLE_FLOAT | FLUID_DOMAIN_PARTICLE_TRACER);
+		tmpVar = (FLUID_DOMAIN_PARTICLE_SPRAY | FLUID_DOMAIN_PARTICLE_BUBBLE |
+				  FLUID_DOMAIN_PARTICLE_FOAM | FLUID_DOMAIN_PARTICLE_TRACER);
 		ss << (((smd->domain->particle_type & tmpVar)) ? "True" : "False");
 	} else if (varName == "GUIDING_ALPHA")
 		ss << smd->domain->guiding_alpha;
@@ -1496,9 +1496,9 @@ void FLUID::exportLiquidScript(SmokeModifierData *smd)
 	BLI_path_make_safe(cacheDirScript);
 
 	bool mesh     = smd->domain->flags & FLUID_DOMAIN_USE_MESH;
-	bool drops    = smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_DROP;
+	bool drops    = smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY;
 	bool bubble   = smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_BUBBLE;
-	bool floater  = smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_FLOAT;
+	bool floater  = smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_FOAM;
 	bool tracer   = smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_TRACER;
 	bool obstacle = smd->domain->active_fields & FLUID_DOMAIN_ACTIVE_OBSTACLE;
 	bool guiding  = smd->domain->active_fields & FLUID_DOMAIN_ACTIVE_GUIDING;

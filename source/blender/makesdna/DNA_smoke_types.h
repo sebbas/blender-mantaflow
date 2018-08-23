@@ -142,9 +142,9 @@ enum {
 
 /* particle types */
 #define FLUID_DOMAIN_PARTICLE_FLIP   (1<<0)
-#define FLUID_DOMAIN_PARTICLE_DROP   (1<<1)
+#define FLUID_DOMAIN_PARTICLE_SPRAY  (1<<1)
 #define FLUID_DOMAIN_PARTICLE_BUBBLE (1<<2)
-#define FLUID_DOMAIN_PARTICLE_FLOAT  (1<<3)
+#define FLUID_DOMAIN_PARTICLE_FOAM   (1<<3)
 #define FLUID_DOMAIN_PARTICLE_TRACER (1<<4)
 
 /* cache options */

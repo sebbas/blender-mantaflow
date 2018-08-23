@@ -3848,9 +3848,9 @@ static void particles_manta_step(
 
 			// Sanity check: parts also enabled in fluid domain?
 			if ((part->type == PART_MANTA_FLIP && (sds->particle_type & FLUID_DOMAIN_PARTICLE_FLIP)==0) ||
-				(part->type == PART_MANTA_SPRAY && (sds->particle_type & FLUID_DOMAIN_PARTICLE_DROP)==0) ||
+				(part->type == PART_MANTA_SPRAY && (sds->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY)==0) ||
 				(part->type == PART_MANTA_BUBBLE && (sds->particle_type & FLUID_DOMAIN_PARTICLE_BUBBLE)==0) ||
-				(part->type == PART_MANTA_FOAM && (sds->particle_type & FLUID_DOMAIN_PARTICLE_FLOAT)==0) ||
+				(part->type == PART_MANTA_FOAM && (sds->particle_type & FLUID_DOMAIN_PARTICLE_FOAM)==0) ||
 				(part->type == PART_MANTA_TRACER && (sds->particle_type & FLUID_DOMAIN_PARTICLE_TRACER)==0) )
 			{
 				BLI_snprintf(debugStrBuffer, sizeof(debugStrBuffer), "particles_manta_step::error - found particle system that is not enabled in fluid domain\n");

@@ -221,7 +221,7 @@ static void rna_Smoke_flip_parts_update(Main *bmain, Scene *UNUSED(scene), Point
 	rna_Smoke_reset(NULL, NULL, ptr);
 }
 
-static void rna_Smoke_drop_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_Smoke_spray_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
 	Object *ob = (Object *)ptr->id.data;
 	SmokeModifierData *smd;
@@ -229,14 +229,14 @@ static void rna_Smoke_drop_parts_update(Main *bmain, Scene *UNUSED(scene), Point
 	bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_SPRAY);
 
 	if (ob->type == OB_MESH && !exists) {
-		rna_Smoke_parts_create(bmain, ptr, "DropParticleSettings", "Drop Particles", "Drop Particle System", PART_MANTA_SPRAY);
-		smd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_DROP;
+		rna_Smoke_parts_create(bmain, ptr, "SprayParticleSettings", "Spray Particles", "Spray Particle System", PART_MANTA_SPRAY);
+		smd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_SPRAY;
 	}
 	else {
 		rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY);
 		rna_Smoke_resetCache(NULL, NULL, ptr);
 
-		smd->domain->particle_type &= ~FLUID_DOMAIN_PARTICLE_DROP;
+		smd->domain->particle_type &= ~FLUID_DOMAIN_PARTICLE_SPRAY;
 	}
 	rna_Smoke_draw_type_update(NULL, NULL, ptr);
 	rna_Smoke_reset(NULL, NULL, ptr);
@@ -263,7 +263,7 @@ static void rna_Smoke_bubble_parts_update(Main *bmain, Scene *UNUSED(scene), Poi
 	rna_Smoke_reset(NULL, NULL, ptr);
 }
 
-static void rna_Smoke_float_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_Smoke_foam_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
 	Object *ob = (Object *)ptr->id.data;
 	SmokeModifierData *smd;
@@ -271,14 +271,14 @@ static void rna_Smoke_float_parts_update(Main *bmain, Scene *UNUSED(scene), Poin
 	bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_FOAM);
 
 	if (ob->type == OB_MESH && !exists) {
-		rna_Smoke_parts_create(bmain, ptr, "FloatParticleSettings", "Float Particles", "Float Particle System", PART_MANTA_FOAM);
-		smd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_FLOAT;
+		rna_Smoke_parts_create(bmain, ptr, "FoamParticleSettings", "Foam Particles", "Foam Particle System", PART_MANTA_FOAM);
+		smd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_FOAM;
 	}
 	else {
 		rna_Smoke_parts_delete(ptr, PART_MANTA_FOAM);
 		rna_Smoke_resetCache(NULL, NULL, ptr);
 
-		smd->domain->particle_type &= ~FLUID_DOMAIN_PARTICLE_FLOAT;
+		smd->domain->particle_type &= ~FLUID_DOMAIN_PARTICLE_FOAM;
 	}
 	rna_Smoke_draw_type_update(NULL, NULL, ptr);
 	rna_Smoke_reset(NULL, NULL, ptr);
@@ -1516,23 +1516,23 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
-	prop = RNA_def_property(srna, "use_drop_particles", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", FLUID_DOMAIN_PARTICLE_DROP);
-	RNA_def_property_ui_text(prop, "Drop", "Create drop particle system");
+	prop = RNA_def_property(srna, "use_spray_particles", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", FLUID_DOMAIN_PARTICLE_SPRAY);
+	RNA_def_property_ui_text(prop, "Spray", "Create spray particle system");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-	RNA_def_property_update(prop, 0, "rna_Smoke_drop_parts_update");
+	RNA_def_property_update(prop, 0, "rna_Smoke_spray_parts_update");
 
 	prop = RNA_def_property(srna, "use_bubble_particles", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", FLUID_DOMAIN_PARTICLE_BUBBLE);
-	RNA_def_property_ui_text(prop, "Drop", "Create bubble particle system");
+	RNA_def_property_ui_text(prop, "Bubble", "Create bubble particle system");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_update(prop, 0, "rna_Smoke_bubble_parts_update");
 
-	prop = RNA_def_property(srna, "use_floater_particles", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", FLUID_DOMAIN_PARTICLE_FLOAT);
-	RNA_def_property_ui_text(prop, "Float", "Create float particle system");
+	prop = RNA_def_property(srna, "use_foam_particles", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", FLUID_DOMAIN_PARTICLE_FOAM);
+	RNA_def_property_ui_text(prop, "Foam", "Create foam particle system");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-	RNA_def_property_update(prop, 0, "rna_Smoke_float_parts_update");
+	RNA_def_property_update(prop, 0, "rna_Smoke_foam_parts_update");
 
 	prop = RNA_def_property(srna, "use_tracer_particles", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "particle_type", FLUID_DOMAIN_PARTICLE_TRACER);

@@ -2534,7 +2534,7 @@ static void update_flowsflags(SmokeDomainSettings *sds, Object **flowobjs, int n
 		/* initialize all smoke with "active_color" */
 		smoke_ensure_colors(sds->fluid, sds->smd);
 	}
-	if (sds->type == FLUID_DOMAIN_TYPE_LIQUID && (sds->particle_type & FLUID_DOMAIN_PARTICLE_DROP || sds->particle_type & FLUID_DOMAIN_PARTICLE_FLOAT || sds->particle_type & FLUID_DOMAIN_PARTICLE_TRACER)) {
+	if (sds->type == FLUID_DOMAIN_TYPE_LIQUID && (sds->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY || sds->particle_type & FLUID_DOMAIN_PARTICLE_FOAM || sds->particle_type & FLUID_DOMAIN_PARTICLE_TRACER)) {
 		liquid_ensure_sndparts(sds->fluid, sds->smd);
 	}
 	sds->active_fields = active_fields;
