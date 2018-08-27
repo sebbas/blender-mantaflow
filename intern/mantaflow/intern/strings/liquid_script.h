@@ -44,8 +44,8 @@ maxParticles_s$ID$     = $PARTICLE_MAXIMUM$\n\
 radiusFactor_s$ID$     = $PARTICLE_RADIUS$\n\
 using_mesh_s$ID$       = $USING_MESH$\n\
 using_final_mesh_s$ID$ = $USING_IMPROVED_MESH$\n\
-smoothenUpper_s$ID$    = $MESH_SMOOTHEN_UPPER$\n\
-smoothenLower_s$ID$    = $MESH_SMOOTHEN_LOWER$\n\
+concaveUpper_s$ID$     = $MESH_CONCAVE_UPPER$\n\
+concaveLower_s$ID$     = $MESH_CONCAVE_LOWER$\n\
 smoothenPos_s$ID$      = $MESH_SMOOTHEN_POS$\n\
 smoothenNeg_s$ID$      = $MESH_SMOOTHEN_NEG$\n\
 randomness_s$ID$       = $PARTICLE_RANDOMNESS$\n\
@@ -243,7 +243,7 @@ def liquid_step_mesh_$ID$():\n\
     \n\
     if using_final_mesh_s$ID$:\n\
         mantaMsg('Liquid using improved particle levelset')\n\
-        improvedParticleLevelset(pp_sm$ID$, pindex_sm$ID$, flags_sm$ID$, gpi_sm$ID$, phiParts_sm$ID$, radiusFactor_s$ID$, smoothenPos_s$ID$, smoothenNeg_s$ID$, smoothenLower_s$ID$, smoothenUpper_s$ID$)\n\
+        improvedParticleLevelset(pp_sm$ID$, pindex_sm$ID$, flags_sm$ID$, gpi_sm$ID$, phiParts_sm$ID$, radiusFactor_s$ID$, smoothenPos_s$ID$, smoothenNeg_s$ID$, concaveLower_s$ID$, concaveUpper_s$ID$)\n\
     else:\n\
         mantaMsg('Liquid using union particle levelset')\n\
         unionParticleLevelset(pp_sm$ID$, pindex_sm$ID$, flags_sm$ID$, gpi_sm$ID$, phiParts_sm$ID$, radiusFactor_s$ID$)\n\

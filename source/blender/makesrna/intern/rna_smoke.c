@@ -1380,14 +1380,14 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 
 	/*  mesh options options */
 
-	prop = RNA_def_property(srna, "mesh_smoothen_upper", PROP_FLOAT, PROP_NONE);
+	prop = RNA_def_property(srna, "mesh_concave_upper", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 10.0);
-	RNA_def_property_ui_text(prop, "Smoothen Upper", "Upper mesh smoothening bound (high values tend to smoothen and fill out concave regions)");
+	RNA_def_property_ui_text(prop, "Upper Concavity", "Upper mesh concavity bound (high values tend to smoothen and fill out concave regions)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
-	prop = RNA_def_property(srna, "mesh_smoothen_lower", PROP_FLOAT, PROP_NONE);
+	prop = RNA_def_property(srna, "mesh_concave_lower", PROP_FLOAT, PROP_NONE);
 	RNA_def_property_range(prop, 0.0, 10.0);
-	RNA_def_property_ui_text(prop, "Smoothen Lower", "Lower mesh smoothening bound (high values tend to smoothen and fill out concave regions)");
+	RNA_def_property_ui_text(prop, "Lower Concavity", "Lower mesh concavity bound (high values tend to smoothen and fill out concave regions)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
 	prop = RNA_def_property(srna, "mesh_smoothen_pos", PROP_INT, PROP_NONE);

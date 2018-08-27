@@ -472,14 +472,14 @@ class PHYSICS_PT_manta_mesh(PhysicButtonsPanel, Panel):
             split.enabled = not baking_any and not baked_mesh
 
             col = split.column(align=True)
-            col.label(text="Smoothening")
+            col.label(text="Smoothing:")
             col.prop(domain, "mesh_smoothen_pos")
             col.prop(domain, "mesh_smoothen_neg")
 
             col = split.column(align=True)
-            col.label(text="")
-            col.prop(domain, "mesh_smoothen_upper")
-            col.prop(domain, "mesh_smoothen_lower")
+            col.label(text="Concavity:")
+            col.prop(domain, "mesh_concave_upper")
+            col.prop(domain, "mesh_concave_lower")
 
         # TODO (sebbas): for now just interpolate any upres grids, ie not sampling highres grids 
         #col = split.column()
@@ -531,26 +531,26 @@ class PHYSICS_PT_manta_particles(PhysicButtonsPanel, Panel):
         split.enabled = not baking_any and not baked_particles
 
         col = split.column()
-        col.prop(domain, "use_drop_particles", text="Drop")
+        col.prop(domain, "use_spray_particles", text="Drop")
         sub = col.column(align=True)
-        sub.active = domain.use_drop_particles
+        sub.active = domain.use_spray_particles
         sub.prop(domain, "particle_droplet_threshold", text="Threshold")
         sub.prop(domain, "particle_droplet_amount", text="Generate")
         sub.prop(domain, "particle_droplet_life", text="Life")
         sub.prop(domain, "particle_droplet_max", text="Maximum")
         sub2 = col.column()
-        sub2.active = domain.use_drop_particles
+        sub2.active = domain.use_spray_particles
         sub2.prop(domain, "use_bubble_particles", text="Bubble")
         sub3 = col.column(align=True)
-        sub3.active = domain.use_drop_particles and domain.use_bubble_particles
+        sub3.active = domain.use_spray_particles and domain.use_bubble_particles
         sub3.prop(domain, "particle_bubble_rise", text="Rise")
         sub3.prop(domain, "particle_bubble_life", text="Life")
         sub3.prop(domain, "particle_bubble_max", text="Maximum")
 
         col = split.column()
-        col.prop(domain, "use_floater_particles", text="Float")
+        col.prop(domain, "use_foam_particles", text="Float")
         sub = col.column(align=True)
-        sub.active = domain.use_floater_particles
+        sub.active = domain.use_foam_particles
         sub.prop(domain, "particle_floater_amount", text="Generate")
         sub.prop(domain, "particle_floater_life", text="Life")
         sub.prop(domain, "particle_floater_max", text="Maximum")
@@ -562,7 +562,7 @@ class PHYSICS_PT_manta_particles(PhysicButtonsPanel, Panel):
         sub2.prop(domain, "particle_tracer_max", text="Maximum")
 
         split = layout.split()
-        split.enabled = domain.cache_baked_data and (domain.use_drop_particles or domain.use_bubble_particles or domain.use_floater_particles or domain.use_tracer_particles)
+        split.enabled = domain.cache_baked_data and (domain.use_spray_particles or domain.use_bubble_particles or domain.use_foam_particles or domain.use_tracer_particles)
         bake_incomplete = (domain.cache_frame_pause_particles < domain.cache_frame_end)
         if domain.cache_baked_particles and not domain.cache_baking_particles and bake_incomplete:
             col = split.column()

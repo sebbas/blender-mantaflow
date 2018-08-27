@@ -527,8 +527,8 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 
 			/* mesh options */
 			smd->domain->mesh_velocities = NULL;
-			smd->domain->mesh_smoothen_upper = 3.5f;
-			smd->domain->mesh_smoothen_lower = 0.4f;
+			smd->domain->mesh_concave_upper = 3.5f;
+			smd->domain->mesh_concave_lower = 0.4f;
 			smd->domain->mesh_smoothen_pos = 1;
 			smd->domain->mesh_smoothen_neg = 1;
 			smd->domain->mesh_scale = 2;
@@ -752,8 +752,8 @@ void smokeModifier_copy(const struct SmokeModifierData *smd, struct SmokeModifie
 		if (smd->domain->mesh_velocities) {
 			tsmd->domain->mesh_velocities = MEM_dupallocN(smd->domain->mesh_velocities);
 		}
-		tsmd->domain->mesh_smoothen_upper = smd->domain->mesh_smoothen_upper;
-		tsmd->domain->mesh_smoothen_lower = smd->domain->mesh_smoothen_lower;
+		tsmd->domain->mesh_concave_upper = smd->domain->mesh_concave_upper;
+		tsmd->domain->mesh_concave_lower = smd->domain->mesh_concave_lower;
 		tsmd->domain->mesh_smoothen_pos = smd->domain->mesh_smoothen_pos;
 		tsmd->domain->mesh_smoothen_neg = smd->domain->mesh_smoothen_neg;
 		tsmd->domain->mesh_scale = smd->domain->mesh_scale;

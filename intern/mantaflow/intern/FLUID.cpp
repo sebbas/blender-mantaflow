@@ -741,10 +741,10 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << smd->domain->particle_maximum;
 	else if (varName == "PARTICLE_RADIUS")
 		ss << smd->domain->particle_radius;
-	else if (varName == "MESH_SMOOTHEN_UPPER")
-		ss << smd->domain->mesh_smoothen_upper;
-	else if (varName == "MESH_SMOOTHEN_LOWER")
-		ss << smd->domain->mesh_smoothen_lower;
+	else if (varName == "MESH_CONCAVE_UPPER")
+		ss << smd->domain->mesh_concave_upper;
+	else if (varName == "MESH_CONCAVE_LOWER")
+		ss << smd->domain->mesh_concave_lower;
 	else if (varName == "MESH_SMOOTHEN_POS")
 		ss << smd->domain->mesh_smoothen_pos;
 	else if (varName == "MESH_SMOOTHEN_NEG")
