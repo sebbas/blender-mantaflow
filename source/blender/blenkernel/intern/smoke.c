@@ -22,6 +22,7 @@
  *
  * Contributor(s): Daniel Genrich
  *                 Blender Foundation
+ *                 Sebastian Barschkis (sebbas)
  *
  * ***** END GPL LICENSE BLOCK *****
  */
@@ -100,9 +101,11 @@
 #	include "PIL_time.h"
 #endif
 
-#include "smoke_API.h"
+#ifdef WITH_MANTA
+#	include "manta_fluid_API.h"
+#endif
 
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 
 static ThreadMutex object_update_lock = BLI_MUTEX_INITIALIZER;
 
@@ -118,71 +121,38 @@ struct SmokeModifierData;
 #define ADD_IF_LOWER_NEG(a, b) (max_ff((a) + (b), min_ff((a), (b))))
 #define ADD_IF_LOWER(a, b) (((b) > 0) ? ADD_IF_LOWER_POS((a), (b)) : ADD_IF_LOWER_NEG((a), (b)))
 
-#else /* WITH_SMOKE */
+#else /* WITH_MANTA */
 
 /* Stubs to use when smoke is disabled */
-struct WTURBULENCE *smoke_turbulence_init(int *UNUSED(res), int UNUSED(amplify), int UNUSED(noisetype), const char *UNUSED(noisefile_path), int UNUSED(use_fire), int UNUSED(use_colors)) { return NULL; }
-//struct FLUID_3D *smoke_init(int *UNUSED(res), float *UNUSED(dx), float *UNUSED(dtdef), int UNUSED(use_heat), int UNUSED(use_fire), int UNUSED(use_colors)) { return NULL; }
-void smoke_free(struct FLUID_3D *UNUSED(fluid)) {}
-float *smoke_get_density(struct FLUID_3D *UNUSED(fluid)) { return NULL; }
-void smoke_turbulence_free(struct WTURBULENCE *UNUSED(wt)) {}
-void smoke_initWaveletBlenderRNA(struct WTURBULENCE *UNUSED(wt), float *UNUSED(strength)) {}
-void smoke_initBlenderRNA(struct FLUID_3D *UNUSED(fluid), float *UNUSED(alpha), float *UNUSED(beta), float *UNUSED(dt_factor), float *UNUSED(vorticity),
-                          int *UNUSED(border_colli), float *UNUSED(burning_rate), float *UNUSED(flame_smoke), float *UNUSED(flame_smoke_color),
-                          float *UNUSED(flame_vorticity), float *UNUSED(flame_ignition_temp), float *UNUSED(flame_max_temp)) {}
+void fluid_free(struct FLUID *UNUSED(fluid));
+float *smoke_get_density(struct FLUID *UNUSED(fluid));
+
+void fluid_free(struct FLUID *UNUSED(fluid)) {}
+float *smoke_get_density(struct FLUID *UNUSED(fluid)) { return NULL; }
 struct Mesh *smokeModifier_do(SmokeModifierData *UNUSED(smd), Depsgraph *UNUSED(depsgraph), Scene *UNUSED(scene), Object *UNUSED(ob), Mesh *UNUSED(me)) { return NULL; }
 float smoke_get_velocity_at(struct Object *UNUSED(ob), float UNUSED(position[3]), float UNUSED(velocity[3])) { return 0.0f; }
 
-#endif /* WITH_SMOKE */
+#endif /* WITH_MANTA */
 
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 
-void smoke_reallocate_fluid(SmokeDomainSettings *sds, float dx, int res[3], int free_old)
+void smoke_reallocate_fluid(SmokeDomainSettings *sds, int res[3], int free_old)
 {
-	int use_heat = (sds->active_fields & SM_ACTIVE_HEAT);
-	int use_fire = (sds->active_fields & SM_ACTIVE_FIRE);
-	int use_colors = (sds->active_fields & SM_ACTIVE_COLORS);
-
 	if (free_old && sds->fluid)
-		smoke_free(sds->fluid);
+		fluid_free(sds->fluid);
 	if (!min_iii(res[0], res[1], res[2])) {
 		sds->fluid = NULL;
 		return;
 	}
-	sds->fluid = smoke_init(res, dx, DT_DEFAULT, use_heat, use_fire, use_colors);
-	smoke_initBlenderRNA(sds->fluid, &(sds->alpha), &(sds->beta), &(sds->time_scale), &(sds->vorticity), &(sds->border_collisions),
-	                     &(sds->burning_rate), &(sds->flame_smoke), sds->flame_smoke_color, &(sds->flame_vorticity), &(sds->flame_ignition), &(sds->flame_max_temp));
 
-	/* reallocate shadow buffer */
-	if (sds->shadow)
-		MEM_freeN(sds->shadow);
-	sds->shadow = MEM_callocN(sizeof(float) * res[0] * res[1] * res[2], "SmokeDomainShadow");
+	sds->fluid = fluid_init(res, sds->smd);
 }
 
-void smoke_reallocate_highres_fluid(SmokeDomainSettings *sds, float dx, int res[3], int free_old)
+void smoke_reallocate_highres_fluid(SmokeDomainSettings *sds, int res[3])
 {
-	int use_fire = (sds->active_fields & (SM_ACTIVE_HEAT | SM_ACTIVE_FIRE));
-	int use_colors = (sds->active_fields & SM_ACTIVE_COLORS);
-
-	if (free_old && sds->wt)
-		smoke_turbulence_free(sds->wt);
-	if (!min_iii(res[0], res[1], res[2])) {
-		sds->wt = NULL;
-		return;
-	}
-
-	/* smoke_turbulence_init uses non-threadsafe functions from fftw3 lib (like fftw_plan & co). */
-	BLI_thread_lock(LOCK_FFTW);
-
-	sds->wt = smoke_turbulence_init(res, sds->amplify + 1, sds->noise, BKE_tempdir_session(), use_fire, use_colors);
-
-	BLI_thread_unlock(LOCK_FFTW);
-
-	sds->res_wt[0] = res[0] * (sds->amplify + 1);
-	sds->res_wt[1] = res[1] * (sds->amplify + 1);
-	sds->res_wt[2] = res[2] * (sds->amplify + 1);
-	sds->dx_wt = dx / (sds->amplify + 1);
-	smoke_initWaveletBlenderRNA(sds->wt, &(sds->strength));
+	sds->res_noise[0] = res[0] * sds->noise_scale;
+	sds->res_noise[1] = res[1] * sds->noise_scale;
+	sds->res_noise[2] = res[2] * sds->noise_scale;
 }
 
 /* convert global position to domain cell space */
@@ -274,14 +244,40 @@ static void smoke_set_domain_from_mesh(SmokeDomainSettings *sds, Object *ob, Mes
 	sds->cell_size[2] /= (float)sds->base_res[2];
 }
 
-static int smokeModifier_init(SmokeModifierData *smd, Object *ob, int scene_framenr, Mesh *me)
+static void smoke_set_domain_gravity(Scene *scene, SmokeDomainSettings *sds)
 {
+	float gravity[3] = {0.0f, 0.0f, -1.0f};
+	float gravity_mag;
+
+	/* use global gravity if enabled */
+	if (scene->physics_settings.flag & PHYS_GLOBAL_GRAVITY) {
+		copy_v3_v3(gravity, scene->physics_settings.gravity);
+		/* map default value to 1.0 */
+		mul_v3_fl(gravity, 1.0f / 9.810f);
+
+		/* convert gravity to domain space */
+		gravity_mag = len_v3(gravity);
+		mul_mat3_m4_v3(sds->imat, gravity);
+		normalize_v3(gravity);
+		mul_v3_fl(gravity, gravity_mag);
+
+		sds->gravity[0] = gravity[0];
+		sds->gravity[1] = gravity[1];
+		sds->gravity[2] = gravity[2];
+	}
+}
+
+static int smokeModifier_init(SmokeModifierData *smd, Depsgraph *depsgraph, Object *ob, Scene *scene, Mesh *me)
+{
+	int scene_framenr = (int) DEG_get_ctime(depsgraph);
 	if ((smd->type & MOD_SMOKE_TYPE_DOMAIN) && smd->domain && !smd->domain->fluid)
 	{
 		SmokeDomainSettings *sds = smd->domain;
 		int res[3];
-		/* set domain dimensions from mesh */
+		/* set domain dimensions from derivedmesh */
 		smoke_set_domain_from_mesh(sds, ob, me, true);
+		/* set domain gravity */
+		smoke_set_domain_gravity(scene, sds);
 		/* reset domain values */
 		zero_v3_int(sds->shift);
 		zero_v3(sds->shift_f);
@@ -291,7 +287,7 @@ static int smokeModifier_init(SmokeModifierData *smd, Object *ob, int scene_fram
 		copy_m4_m4(sds->obmat, ob->obmat);
 
 		/* set resolutions */
-		if (smd->domain->flags & MOD_SMOKE_ADAPTIVE_DOMAIN) {
+		if (smd->domain->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN) {
 			res[0] = res[1] = res[2] = 1; /* use minimum res for adaptive init */
 		}
 		else {
@@ -302,60 +298,52 @@ static int smokeModifier_init(SmokeModifierData *smd, Object *ob, int scene_fram
 		sds->res_min[0] = sds->res_min[1] = sds->res_min[2] = 0;
 		VECCOPY(sds->res_max, res);
 
+		/* set time, dt = 0.1 is at 25fps */
+		float fps = scene->r.frs_sec / scene->r.frs_sec_base;
+		sds->dt = DT_DEFAULT * (25.0f / fps);
+
 		/* allocate fluid */
-		smoke_reallocate_fluid(sds, sds->dx, sds->res, 0);
+		smoke_reallocate_fluid(sds, sds->res, 0);
 
 		smd->time = scene_framenr;
 
 		/* allocate highres fluid */
-		if (sds->flags & MOD_SMOKE_HIGHRES) {
-			smoke_reallocate_highres_fluid(sds, sds->dx, sds->res, 0);
+		if (sds->flags & FLUID_DOMAIN_USE_NOISE) {
+			smoke_reallocate_highres_fluid(sds, sds->res);
 		}
-		/* allocate shadow buffer */
-		if (!sds->shadow)
-			sds->shadow = MEM_callocN(sizeof(float) * sds->res[0] * sds->res[1] * sds->res[2], "SmokeDomainShadow");
 
 		return 1;
 	}
-	else if ((smd->type & MOD_SMOKE_TYPE_FLOW) && smd->flow)
+	else if (smd->type & MOD_SMOKE_TYPE_FLOW)
 	{
-		smd->time = scene_framenr;
-
-		return 1;
-	}
-	else if ((smd->type & MOD_SMOKE_TYPE_COLL))
-	{
-		if (!smd->coll)
-		{
+		if (!smd->flow) {
 			smokeModifier_createType(smd);
 		}
-
 		smd->time = scene_framenr;
-
 		return 1;
 	}
-
+	else if (smd->type & MOD_SMOKE_TYPE_EFFEC)
+	{
+		if (!smd->effec) {
+			smokeModifier_createType(smd);
+		}
+		smd->time = scene_framenr;
+		return 1;
+	}
 	return 2;
 }
 
-#endif /* WITH_SMOKE */
+#endif /* WITH_MANTA */
 
 static void smokeModifier_freeDomain(SmokeModifierData *smd)
 {
 	if (smd->domain)
 	{
-		if (smd->domain->shadow)
-			MEM_freeN(smd->domain->shadow);
-		smd->domain->shadow = NULL;
-
 		if (smd->domain->fluid)
-			smoke_free(smd->domain->fluid);
+			fluid_free(smd->domain->fluid);
 
 		if (smd->domain->fluid_mutex)
 			BLI_rw_mutex_free(smd->domain->fluid_mutex);
-
-		if (smd->domain->wt)
-			smoke_turbulence_free(smd->domain->wt);
 
 		if (smd->domain->effector_weights)
 			MEM_freeN(smd->domain->effector_weights);
@@ -365,6 +353,10 @@ static void smokeModifier_freeDomain(SmokeModifierData *smd)
 			BKE_ptcache_free_list(&(smd->domain->ptcaches[0]));
 			smd->domain->point_cache[0] = NULL;
 		}
+
+		if (smd->domain->mesh_velocities)
+			MEM_freeN(smd->domain->mesh_velocities);
+		smd->domain->mesh_velocities = NULL;
 
 		if (smd->domain->coba) {
 			MEM_freeN(smd->domain->coba);
@@ -379,8 +371,15 @@ static void smokeModifier_freeFlow(SmokeModifierData *smd)
 {
 	if (smd->flow)
 	{
-		if (smd->flow->mesh) BKE_id_free(NULL, smd->flow->mesh);
-		if (smd->flow->verts_old) MEM_freeN(smd->flow->verts_old);
+		if (smd->flow->mesh)
+			BKE_id_free(NULL, smd->flow->mesh);
+		smd->flow->mesh = NULL;
+
+		if (smd->flow->verts_old)
+			MEM_freeN(smd->flow->verts_old);
+		smd->flow->verts_old = NULL;
+		smd->flow->numverts = 0;
+
 		MEM_freeN(smd->flow);
 		smd->flow = NULL;
 	}
@@ -388,34 +387,19 @@ static void smokeModifier_freeFlow(SmokeModifierData *smd)
 
 static void smokeModifier_freeCollision(SmokeModifierData *smd)
 {
-	if (smd->coll)
+	if (smd->effec)
 	{
-		SmokeCollSettings *scs = smd->coll;
+		if (smd->effec->mesh)
+			BKE_id_free(NULL, smd->effec->mesh);
+		smd->effec->mesh = NULL;
 
-		if (scs->numverts)
-		{
-			if (scs->verts_old)
-			{
-				MEM_freeN(scs->verts_old);
-				scs->verts_old = NULL;
-			}
-		}
+		if (smd->effec->verts_old)
+			MEM_freeN(smd->effec->verts_old);
+		smd->effec->verts_old = NULL;
+		smd->effec->numverts = 0;
 
-		if (smd->coll->mesh)
-			BKE_id_free(NULL, smd->coll->mesh);
-		smd->coll->mesh = NULL;
-
-		MEM_freeN(smd->coll);
-		smd->coll = NULL;
-	}
-}
-
-void smokeModifier_reset_turbulence(struct SmokeModifierData *smd)
-{
-	if (smd && smd->domain && smd->domain->wt)
-	{
-		smoke_turbulence_free(smd->domain->wt);
-		smd->domain->wt = NULL;
+		MEM_freeN(smd->effec);
+		smd->effec = NULL;
 	}
 }
 
@@ -425,23 +409,17 @@ static void smokeModifier_reset_ex(struct SmokeModifierData *smd, bool need_lock
 	{
 		if (smd->domain)
 		{
-			if (smd->domain->shadow)
-				MEM_freeN(smd->domain->shadow);
-			smd->domain->shadow = NULL;
-
 			if (smd->domain->fluid)
 			{
 				if (need_lock)
 					BLI_rw_mutex_lock(smd->domain->fluid_mutex, THREAD_LOCK_WRITE);
 
-				smoke_free(smd->domain->fluid);
+				fluid_free(smd->domain->fluid);
 				smd->domain->fluid = NULL;
 
 				if (need_lock)
 					BLI_rw_mutex_unlock(smd->domain->fluid_mutex);
 			}
-
-			smokeModifier_reset_turbulence(smd);
 
 			smd->time = -1;
 			smd->domain->total_cells = 0;
@@ -453,15 +431,11 @@ static void smokeModifier_reset_ex(struct SmokeModifierData *smd, bool need_lock
 			smd->flow->verts_old = NULL;
 			smd->flow->numverts = 0;
 		}
-		else if (smd->coll)
+		else if (smd->effec)
 		{
-			SmokeCollSettings *scs = smd->coll;
-
-			if (scs->numverts && scs->verts_old)
-			{
-				MEM_freeN(scs->verts_old);
-				scs->verts_old = NULL;
-			}
+			if (smd->effec->verts_old) MEM_freeN(smd->effec->verts_old);
+			smd->effec->verts_old = NULL;
+			smd->effec->numverts = 0;
 		}
 	}
 }
@@ -490,118 +464,224 @@ void smokeModifier_createType(struct SmokeModifierData *smd)
 			if (smd->domain)
 				smokeModifier_freeDomain(smd);
 
+			/* domain object data */
 			smd->domain = MEM_callocN(sizeof(SmokeDomainSettings), "SmokeDomain");
-
 			smd->domain->smd = smd;
-
-			smd->domain->point_cache[0] = BKE_ptcache_add(&(smd->domain->ptcaches[0]));
-			smd->domain->point_cache[0]->flag |= PTCACHE_DISK_CACHE;
-			smd->domain->point_cache[0]->step = 1;
-
-			/* Deprecated */
-			smd->domain->point_cache[1] = NULL;
-			BLI_listbase_clear(&smd->domain->ptcaches[1]);
-			/* set some standard values */
+			smd->domain->effector_weights = BKE_add_effector_weights(NULL);
 			smd->domain->fluid = NULL;
 			smd->domain->fluid_mutex = BLI_rw_mutex_alloc();
-			smd->domain->wt = NULL;
 			smd->domain->eff_group = NULL;
 			smd->domain->fluid_group = NULL;
 			smd->domain->coll_group = NULL;
-			smd->domain->maxres = 32;
-			smd->domain->amplify = 1;
-			smd->domain->alpha = -0.001;
-			smd->domain->beta = 0.1;
-			smd->domain->time_scale = 1.0;
-			smd->domain->vorticity = 2.0;
-			smd->domain->border_collisions = SM_BORDER_OPEN; // open domain
-			smd->domain->flags = MOD_SMOKE_DISSOLVE_LOG;
-			smd->domain->highres_sampling = SM_HRES_FULLSAMPLE;
-			smd->domain->strength = 2.0;
-			smd->domain->noise = MOD_SMOKE_NOISEWAVE;
-			smd->domain->diss_speed = 5;
-			smd->domain->active_fields = 0;
 
+			/* adaptive domain options */
 			smd->domain->adapt_margin = 4;
 			smd->domain->adapt_res = 0;
 			smd->domain->adapt_threshold = 0.02f;
 
+			/* fluid domain options */
+			smd->domain->maxres = 64;
+			smd->domain->solver_res = 3;
+			smd->domain->border_collisions = 0; // open domain
+			smd->domain->flags = FLUID_DOMAIN_USE_DISSOLVE_LOG | FLUID_DOMAIN_USE_ADAPTIVE_TIME;
+			smd->domain->gravity[0] = 0.0f;
+			smd->domain->gravity[1] = 0.0f;
+			smd->domain->gravity[2] = -1.0f;
+			smd->domain->active_fields = 0;
+			smd->domain->type = FLUID_DOMAIN_TYPE_GAS;
+
+			/* smoke domain options */
+			smd->domain->alpha = -0.001;
+			smd->domain->beta = 0.3;
+			smd->domain->diss_speed = 5;
+			smd->domain->vorticity = 0;
+			smd->domain->active_color[0] = 0.0f;
+			smd->domain->active_color[1] = 0.0f;
+			smd->domain->active_color[2] = 0.0f;
+			smd->domain->highres_sampling = SM_HRES_FULLSAMPLE;
+
+			/* flame options */
 			smd->domain->burning_rate = 0.75f;
 			smd->domain->flame_smoke = 1.0f;
 			smd->domain->flame_vorticity = 0.5f;
 			smd->domain->flame_ignition = 1.5f;
 			smd->domain->flame_max_temp = 3.0f;
-			/* color */
 			smd->domain->flame_smoke_color[0] = 0.7f;
 			smd->domain->flame_smoke_color[1] = 0.7f;
 			smd->domain->flame_smoke_color[2] = 0.7f;
 
-			smd->domain->viewsettings = MOD_SMOKE_VIEW_SHOWBIG;
-			smd->domain->effector_weights = BKE_add_effector_weights(NULL);
+			/* noise options */
+			smd->domain->noise_strength = 1.0;
+			smd->domain->noise_pos_scale = 2.0f;
+			smd->domain->noise_time_anim = 0.1f;
+			smd->domain->noise_scale = 2;
+			smd->domain->noise_type = FLUID_NOISE_TYPE_WAVELET;
 
+			/* liquid domain options */
+			smd->domain->particle_randomness = 0.1f;
+			smd->domain->particle_number = 2;
+			smd->domain->particle_minimum = 8;
+			smd->domain->particle_maximum = 16;
+			smd->domain->particle_radius = 1.8f;
+			smd->domain->particle_band_width = 3.0f;
+
+			/* diffusion options*/
+			smd->domain->surface_tension = 0.0f;
+			smd->domain->viscosity_base = 1.0f;
+			smd->domain->viscosity_exponent = 6.0f;
+			smd->domain->domain_size = 0.5f;
+
+			/* mesh options */
+			smd->domain->mesh_velocities = NULL;
+			smd->domain->mesh_concave_upper = 3.5f;
+			smd->domain->mesh_concave_lower = 0.4f;
+			smd->domain->mesh_smoothen_pos = 1;
+			smd->domain->mesh_smoothen_neg = 1;
+			smd->domain->mesh_scale = 2;
+			smd->domain->totvert = 0;
+			smd->domain->mesh_generator = FLUID_DOMAIN_MESH_IMPROVED;
+
+			/* secondary particle options */
+			smd->domain->sndparticle_tau_min_wc = 2.0;
+			smd->domain->sndparticle_tau_max_wc = 8.0;
+			smd->domain->sndparticle_tau_min_ta = 5.0;
+			smd->domain->sndparticle_tau_max_ta = 20.0;
+			smd->domain->sndparticle_tau_min_k = 1.0;
+			smd->domain->sndparticle_tau_max_k = 5.0;
+			smd->domain->sndparticle_k_wc = 200;
+			smd->domain->sndparticle_k_ta = 40;
+			smd->domain->sndparticle_k_b = 0.5;
+			smd->domain->sndparticle_k_d = 0.6;
+			smd->domain->sndparticle_l_min = 10.0;
+			smd->domain->sndparticle_l_max = 25.0;
+			smd->domain->sndparticle_boundary = SNDPARTICLE_BOUNDARY_DELETE;
+			smd->domain->sndparticle_combined_export = SNDPARTICLE_COMBINED_EXPORT_OFF;
+			smd->domain->sndparticle_potential_radius = 2;
+			smd->domain->sndparticle_update_radius = 2;
+			smd->domain->particle_type = 0;
+			smd->domain->particle_scale = 1;
+
+			/* fluid guiding options */
+			smd->domain->guiding_parent = NULL;
+			smd->domain->guiding_alpha = 2.0f;
+			smd->domain->guiding_beta = 5;
+			smd->domain->guiding_vel_factor = 2.0f;
+			smd->domain->guide_res = NULL;
+			smd->domain->guiding_source = FLUID_DOMAIN_GUIDING_SRC_DOMAIN;
+
+			/* cache options */
+			smd->domain->cache_frame_start = 1;
+			smd->domain->cache_frame_end = 50;
+			smd->domain->cache_frame_pause_data = 0;
+			smd->domain->cache_frame_pause_noise = 0;
+			smd->domain->cache_frame_pause_mesh = 0;
+			smd->domain->cache_frame_pause_particles = 0;
+			smd->domain->cache_frame_pause_guiding = 0;
+			smd->domain->cache_flag = 0;
+			smd->domain->cache_mesh_format = FLUID_DOMAIN_FILE_BIN_OBJECT;
+			smd->domain->cache_data_format = FLUID_DOMAIN_FILE_UNI;
+			smd->domain->cache_particle_format = FLUID_DOMAIN_FILE_UNI;
+			smd->domain->cache_noise_format = FLUID_DOMAIN_FILE_UNI;
+			modifier_path_init(smd->domain->cache_directory, sizeof(smd->domain->cache_directory), FLUID_DOMAIN_DIR_DEFAULT);
+
+			/* time options */
+			smd->domain->time_scale = 1.0;
+			smd->domain->cfl_condition = 4.0;
+
+			/* display options */
+			smd->domain->slice_method = FLUID_DOMAIN_SLICE_VIEW_ALIGNED;
+			smd->domain->axis_slice_method = AXIS_SLICE_FULL;
+			smd->domain->slice_axis = 0;
+			smd->domain->draw_velocity = false;
+			smd->domain->slice_per_voxel = 5.0f;
+			smd->domain->slice_depth = 0.5f;
+			smd->domain->display_thickness = 1.0f;
+			smd->domain->coba = NULL;
+			smd->domain->vector_scale = 1.0f;
+			smd->domain->vector_draw_type = VECTOR_DRAW_NEEDLE;
+			smd->domain->use_coba = false;
+			smd->domain->coba_field = FLUID_DOMAIN_FIELD_DENSITY;
+
+			/* -- Deprecated / unsed options (below)-- */
+
+			/* pointcache options */
+			BLI_listbase_clear(&smd->domain->ptcaches[1]);
+			smd->domain->point_cache[0] = BKE_ptcache_add(&(smd->domain->ptcaches[0]));
+			smd->domain->point_cache[0]->flag |= PTCACHE_DISK_CACHE;
+			smd->domain->point_cache[0]->step = 1;
+			smd->domain->point_cache[1] = NULL; /* Deprecated */
+			smd->domain->cache_comp = SM_CACHE_LIGHT;
+			smd->domain->cache_high_comp = SM_CACHE_LIGHT;
+
+			/* OpenVDB cache options */
 #ifdef WITH_OPENVDB_BLOSC
 			smd->domain->openvdb_comp = VDB_COMPRESSION_BLOSC;
 #else
 			smd->domain->openvdb_comp = VDB_COMPRESSION_ZIP;
 #endif
-			smd->domain->data_depth = 0;
-			smd->domain->cache_file_format = PTCACHE_FILE_PTCACHE;
-
-			smd->domain->display_thickness = 1.0f;
-			smd->domain->slice_method = MOD_SMOKE_SLICE_VIEW_ALIGNED;
-			smd->domain->axis_slice_method = AXIS_SLICE_FULL;
-			smd->domain->slice_per_voxel = 5.0f;
-			smd->domain->slice_depth = 0.5f;
-			smd->domain->slice_axis = 0;
-			smd->domain->vector_scale = 1.0f;
-
-			smd->domain->coba = NULL;
-			smd->domain->coba_field = FLUID_FIELD_DENSITY;
-
 			smd->domain->clipping = 1e-3f;
+			smd->domain->data_depth = 0;
 		}
 		else if (smd->type & MOD_SMOKE_TYPE_FLOW)
 		{
 			if (smd->flow)
 				smokeModifier_freeFlow(smd);
 
+			/* flow object data */
 			smd->flow = MEM_callocN(sizeof(SmokeFlowSettings), "SmokeFlow");
-
 			smd->flow->smd = smd;
+			smd->flow->mesh = NULL;
+			smd->flow->psys = NULL;
+			smd->flow->noise_texture = NULL;
 
-			/* set some standard values */
-			smd->flow->density = 1.0f;
-			smd->flow->fuel_amount = 1.0f;
-			smd->flow->temp = 1.0f;
-			smd->flow->flags = MOD_SMOKE_FLOW_ABSOLUTE | MOD_SMOKE_FLOW_USE_PART_SIZE;
+			/* initial velocity */
+			smd->flow->verts_old = NULL;
+			smd->flow->numverts = 0;
 			smd->flow->vel_multi = 1.0f;
-			smd->flow->volume_density = 0.0f;
-			smd->flow->surface_distance = 1.5f;
-			smd->flow->source = MOD_SMOKE_FLOW_SOURCE_MESH;
-			smd->flow->texture_size = 1.0f;
-			smd->flow->particle_size = 1.0f;
-			smd->flow->subframes = 0;
+			smd->flow->vel_normal = 0.0f;
+			smd->flow->vel_random = 0.0f;
+			smd->flow->vel_coord[0] = 0.0f;
+			smd->flow->vel_coord[1] = 0.0f;
+			smd->flow->vel_coord[2] = 0.0f;
 
+			/* emission */
+			smd->flow->density = 1.0f;
 			smd->flow->color[0] = 0.7f;
 			smd->flow->color[1] = 0.7f;
 			smd->flow->color[2] = 0.7f;
+			smd->flow->fuel_amount = 1.0f;
+			smd->flow->temp = 1.0f;
+			smd->flow->volume_density = 0.0f;
+			smd->flow->surface_distance = 1.5f;
+			smd->flow->particle_size = 1.0f;
+			smd->flow->subframes = 0;
 
-			smd->flow->mesh = NULL;
-			smd->flow->psys = NULL;
+			/* texture control */
+			smd->flow->source = FLUID_FLOW_SOURCE_MESH;
+			smd->flow->texture_size = 1.0f;
 
+			smd->flow->type = FLUID_FLOW_TYPE_SMOKE;
+			smd->flow->behavior = FLUID_FLOW_BEHAVIOR_GEOMETRY;
+			smd->flow->type = FLUID_FLOW_TYPE_SMOKE;
+			smd->flow->flags = FLUID_FLOW_ABSOLUTE | FLUID_FLOW_USE_PART_SIZE | FLUID_FLOW_USE_INFLOW;
 		}
-		else if (smd->type & MOD_SMOKE_TYPE_COLL)
+		else if (smd->type & MOD_SMOKE_TYPE_EFFEC)
 		{
-			if (smd->coll)
+			if (smd->effec)
 				smokeModifier_freeCollision(smd);
 
-			smd->coll = MEM_callocN(sizeof(SmokeCollSettings), "SmokeColl");
+			/* effector object data */
+			smd->effec = MEM_callocN(sizeof(SmokeCollSettings), "SmokeColl");
+			smd->effec->smd = smd;
+			smd->effec->mesh = NULL;
+			smd->effec->verts_old = NULL;
+			smd->effec->numverts = 0;
+			smd->effec->surface_distance = 0.5f;
+			smd->effec->type = FLUID_EFFECTOR_TYPE_COLLISION;
 
-			smd->coll->smd = smd;
-			smd->coll->verts_old = NULL;
-			smd->coll->numverts = 0;
-			smd->coll->type = 0; // static obstacle
-			smd->coll->mesh = NULL;
+			/* guiding options */
+			smd->effec->guiding_mode = FLUID_EFFECTOR_GUIDING_MAXIMUM;
+			smd->effec->vel_multi = 1.0f;
 		}
 	}
 }
@@ -617,8 +697,144 @@ void smokeModifier_copy(const struct SmokeModifierData *smd, struct SmokeModifie
 		SmokeDomainSettings *tsds = tsmd->domain;
 		SmokeDomainSettings *sds = smd->domain;
 
-		BKE_ptcache_free_list(&(tsds->ptcaches[0]));
+		/* domain object data */
+		tsds->fluid_group = sds->fluid_group;
+		tsds->eff_group = sds->eff_group;
+		tsds->coll_group = sds->coll_group;
+		MEM_freeN(tsds->effector_weights);
+		tsds->effector_weights = MEM_dupallocN(sds->effector_weights);
 
+		/* adaptive domain options */
+		tsds->adapt_margin = sds->adapt_margin;
+		tsds->adapt_res = sds->adapt_res;
+		tsds->adapt_threshold = sds->adapt_threshold;
+
+		/* fluid domain options */
+		tsds->maxres = sds->maxres;
+		tsds->solver_res = sds->solver_res;
+		tsds->border_collisions = sds->border_collisions;
+		tsds->flags = sds->flags;
+		tsds->gravity[0] = sds->gravity[0];
+		tsds->gravity[1] = sds->gravity[1];
+		tsds->gravity[2] = sds->gravity[2];
+		tsds->active_fields = sds->active_fields;
+		tsds->type = sds->type;
+
+		/* smoke domain options */
+		tsds->alpha = sds->alpha;
+		tsds->beta = sds->beta;
+		tsds->diss_speed = sds->diss_speed;
+		tsds->vorticity = sds->vorticity;
+		tsds->highres_sampling = sds->highres_sampling;
+
+		/* flame options */
+		tsds->burning_rate = sds->burning_rate;
+		tsds->flame_smoke = sds->flame_smoke;
+		tsds->flame_vorticity = sds->flame_vorticity;
+		tsds->flame_ignition = sds->flame_ignition;
+		tsds->flame_max_temp = sds->flame_max_temp;
+		copy_v3_v3(tsds->flame_smoke_color, sds->flame_smoke_color);
+
+		/* noise options */
+		tsds->noise_strength = sds->noise_strength;
+		tsds->noise_pos_scale = sds->noise_pos_scale;
+		tsds->noise_time_anim = sds->noise_time_anim;
+		tsds->noise_scale = sds->noise_scale;
+		tsds->noise_type = sds->noise_type;
+
+		/* liquid domain options */
+		tsds->particle_randomness = sds->particle_randomness;
+		tsds->particle_number = sds->particle_number;
+		tsds->particle_minimum = sds->particle_minimum;
+		tsds->particle_maximum = sds->particle_maximum;
+		tsds->particle_radius = sds->particle_radius;
+		tsds->particle_band_width = sds->particle_band_width;
+
+		/* diffusion options*/
+		tsds->surface_tension = sds->surface_tension;
+		tsds->viscosity_base = sds->viscosity_base;
+		tsds->viscosity_exponent = sds->viscosity_exponent;
+		tsds->domain_size = sds->domain_size;
+
+		/* mesh options */
+		if (sds->mesh_velocities) {
+			tsds->mesh_velocities = MEM_dupallocN(sds->mesh_velocities);
+		}
+		tsds->mesh_concave_upper = sds->mesh_concave_upper;
+		tsds->mesh_concave_lower = sds->mesh_concave_lower;
+		tsds->mesh_smoothen_pos = sds->mesh_smoothen_pos;
+		tsds->mesh_smoothen_neg = sds->mesh_smoothen_neg;
+		tsds->mesh_scale = sds->mesh_scale;
+		tsds->totvert = sds->totvert;
+		tsds->mesh_generator = sds->mesh_generator;
+
+		/* secondary particle options */
+		tsds->sndparticle_k_b = sds->sndparticle_k_b;
+		tsds->sndparticle_k_d = sds->sndparticle_k_d;
+		tsds->sndparticle_k_ta = sds->sndparticle_k_ta;
+		tsds->sndparticle_k_wc = sds->sndparticle_k_wc;
+		tsds->sndparticle_l_max = sds->sndparticle_l_max;
+		tsds->sndparticle_l_min = sds->sndparticle_l_min;
+		tsds->sndparticle_tau_max_k = sds->sndparticle_tau_max_k;
+		tsds->sndparticle_tau_max_ta = sds->sndparticle_tau_max_ta;
+		tsds->sndparticle_tau_max_wc = sds->sndparticle_tau_max_wc;
+		tsds->sndparticle_tau_min_k = sds->sndparticle_tau_min_k;
+		tsds->sndparticle_tau_min_ta = sds->sndparticle_tau_min_ta;
+		tsds->sndparticle_tau_min_wc = sds->sndparticle_tau_min_wc;
+		tsds->sndparticle_boundary = sds->sndparticle_boundary;
+		tsds->sndparticle_combined_export = sds->sndparticle_combined_export;
+		tsds->sndparticle_potential_radius = sds->sndparticle_potential_radius;
+		tsds->sndparticle_update_radius = sds->sndparticle_update_radius;
+		tsds->particle_type = sds->particle_type;
+		tsds->particle_scale = sds->particle_scale;
+
+		/* fluid guiding options */
+		tsds->guiding_parent = sds->guiding_parent;
+		tsds->guiding_alpha = sds->guiding_alpha;
+		tsds->guiding_beta = sds->guiding_beta;
+		tsds->guiding_vel_factor = sds->guiding_vel_factor;
+		tsds->guide_res = sds->guide_res;
+		tsds->guiding_source = sds->guiding_source;
+
+		/* cache options */
+		tsds->cache_frame_start = sds->cache_frame_start;
+		tsds->cache_frame_end = sds->cache_frame_end;
+		tsds->cache_frame_pause_data = sds->cache_frame_pause_data;
+		tsds->cache_frame_pause_noise = sds->cache_frame_pause_noise;
+		tsds->cache_frame_pause_mesh = sds->cache_frame_pause_mesh;
+		tsds->cache_frame_pause_particles = sds->cache_frame_pause_particles;
+		tsds->cache_frame_pause_guiding = sds->cache_frame_pause_guiding;
+		tsds->cache_flag = sds->cache_flag;
+		tsds->cache_mesh_format = sds->cache_mesh_format;
+		tsds->cache_data_format = sds->cache_data_format;
+		tsds->cache_particle_format = sds->cache_particle_format;
+		tsds->cache_noise_format = sds->cache_noise_format;
+		BLI_strncpy(tsds->cache_directory, sds->cache_directory, sizeof(tsds->cache_directory));
+
+		/* time options */
+		tsds->time_scale = sds->time_scale;
+		tsds->cfl_condition = sds->cfl_condition;
+
+		/* display options */
+		tsds->slice_method = sds->slice_method;
+		tsds->axis_slice_method = sds->axis_slice_method;
+		tsds->slice_axis = sds->slice_axis;
+		tsds->draw_velocity = sds->draw_velocity;
+		tsds->slice_per_voxel = sds->slice_per_voxel;
+		tsds->slice_depth = sds->slice_depth;
+		tsds->display_thickness = sds->display_thickness;
+		if (sds->coba) {
+			tsds->coba = MEM_dupallocN(sds->coba);
+		}
+		tsds->vector_scale = sds->vector_scale;
+		tsds->vector_draw_type = sds->vector_draw_type;
+		tsds->use_coba = sds->use_coba;
+		tsds->coba_field = sds->coba_field;
+
+		/* -- Deprecated / unsed options (below)-- */
+
+		/* pointcache options */
+		BKE_ptcache_free_list(&(tsds->ptcaches[0]));
 		if (flag & LIB_ID_CREATE_NO_MAIN) {
 			/* Share the cache with the original object's modifier. */
 			tsmd->modifier.flag |= eModifierFlag_SharedCaches;
@@ -629,56 +845,10 @@ void smokeModifier_copy(const struct SmokeModifierData *smd, struct SmokeModifie
 			tsds->point_cache[0] = BKE_ptcache_copy_list(&(tsds->ptcaches[0]), &(sds->ptcaches[0]), flag);
 		}
 
-		tsds->fluid_group = sds->fluid_group;
-		tsds->coll_group = sds->coll_group;
-
-		tsds->adapt_margin = sds->adapt_margin;
-		tsds->adapt_res = sds->adapt_res;
-		tsds->adapt_threshold = sds->adapt_threshold;
-
-		tsds->alpha = sds->alpha;
-		tsds->beta = sds->beta;
-		tsds->amplify = sds->amplify;
-		tsds->maxres = sds->maxres;
-		tsds->flags = sds->flags;
-		tsds->highres_sampling = sds->highres_sampling;
-		tsds->viewsettings = sds->viewsettings;
-		tsds->noise = sds->noise;
-		tsds->diss_speed = sds->diss_speed;
-		tsds->strength = sds->strength;
-
-		tsds->border_collisions = sds->border_collisions;
-		tsds->vorticity = sds->vorticity;
-		tsds->time_scale = sds->time_scale;
-
-		tsds->burning_rate = sds->burning_rate;
-		tsds->flame_smoke = sds->flame_smoke;
-		tsds->flame_vorticity = sds->flame_vorticity;
-		tsds->flame_ignition = sds->flame_ignition;
-		tsds->flame_max_temp = sds->flame_max_temp;
-		copy_v3_v3(tsds->flame_smoke_color, sds->flame_smoke_color);
-
-		MEM_freeN(tsds->effector_weights);
-		tsds->effector_weights = MEM_dupallocN(sds->effector_weights);
+		/* OpenVDB cache options */
 		tsds->openvdb_comp = sds->openvdb_comp;
+		tsds->clipping = sds->clipping;
 		tsds->data_depth = sds->data_depth;
-		tsds->cache_file_format = sds->cache_file_format;
-
-		tsds->display_thickness = sds->display_thickness;
-		tsds->slice_method = sds->slice_method;
-		tsds->axis_slice_method = sds->axis_slice_method;
-		tsds->slice_per_voxel = sds->slice_per_voxel;
-		tsds->slice_depth = sds->slice_depth;
-		tsds->slice_axis = sds->slice_axis;
-		tsds->draw_velocity = sds->draw_velocity;
-		tsds->vector_draw_type = sds->vector_draw_type;
-		tsds->vector_scale = sds->vector_scale;
-
-		tsds->use_coba = sds->use_coba;
-		tsds->coba_field = sds->coba_field;
-		if (sds->coba) {
-			tsds->coba = MEM_dupallocN(sds->coba);
-		}
 	}
 	else if (tsmd->flow) {
 		SmokeFlowSettings *tsfs = tsmd->flow;
@@ -687,10 +857,15 @@ void smokeModifier_copy(const struct SmokeModifierData *smd, struct SmokeModifie
 		tsfs->psys = sfs->psys;
 		tsfs->noise_texture = sfs->noise_texture;
 
+		/* initial velocity */
 		tsfs->vel_multi = sfs->vel_multi;
 		tsfs->vel_normal = sfs->vel_normal;
 		tsfs->vel_random = sfs->vel_random;
+		tsfs->vel_coord[0] = sfs->vel_coord[0];
+		tsfs->vel_coord[1] = sfs->vel_coord[1];
+		tsfs->vel_coord[2] = sfs->vel_coord[2];
 
+		/* emission */
 		tsfs->density = sfs->density;
 		copy_v3_v3(tsfs->color, sfs->color);
 		tsfs->fuel_amount = sfs->fuel_amount;
@@ -700,26 +875,37 @@ void smokeModifier_copy(const struct SmokeModifierData *smd, struct SmokeModifie
 		tsfs->particle_size = sfs->particle_size;
 		tsfs->subframes = sfs->subframes;
 
+		/* texture control */
 		tsfs->texture_size = sfs->texture_size;
 		tsfs->texture_offset = sfs->texture_offset;
 		BLI_strncpy(tsfs->uvlayer_name, sfs->uvlayer_name, sizeof(tsfs->uvlayer_name));
 		tsfs->vgroup_density = sfs->vgroup_density;
 
 		tsfs->type = sfs->type;
+		tsfs->behavior = sfs->behavior;
 		tsfs->source = sfs->source;
 		tsfs->texture_type = sfs->texture_type;
 		tsfs->flags = sfs->flags;
 	}
-	else if (tsmd->coll) {
-		/* leave it as initialized, collision settings is mostly caches */
+	else if (tsmd->effec) {
+		SmokeCollSettings *tscs = tsmd->effec;
+		SmokeCollSettings *scs = smd->effec;
+
+		tscs->surface_distance = scs->surface_distance;
+		tscs->type = scs->type;
+
+		/* guiding options */
+		tscs->guiding_mode = scs->guiding_mode;
+		tscs->vel_multi = scs->vel_multi;
 	}
 }
 
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 
 // forward declaration
 static void smoke_calc_transparency(SmokeDomainSettings *sds, ViewLayer *view_layer);
 static float calc_voxel_transp(float *result, float *input, int res[3], int *pixel, float *tRay, float correct);
+static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromMesh *treeData, const float ray_start[3], float surface_thickness);
 
 static int get_lamp(ViewLayer *view_layer, float *light)
 {
@@ -751,16 +937,17 @@ static int get_lamp(ViewLayer *view_layer, float *light)
 
 typedef struct ObstaclesFromDMData {
 	SmokeDomainSettings *sds;
+	SmokeCollSettings *scs;
 	const MVert *mvert;
 	const MLoop *mloop;
 	const MLoopTri *looptri;
 	BVHTreeFromMesh *tree;
-	unsigned char *obstacle_map;
 
 	bool has_velocity;
 	float *vert_vel;
 	float *velocityX, *velocityY, *velocityZ;
-	int *num_obstacles;
+	int *num_objects;
+	float *distances_map;
 } ObstaclesFromDMData;
 
 static void obstacles_from_mesh_task_cb(
@@ -772,16 +959,18 @@ static void obstacles_from_mesh_task_cb(
 	SmokeDomainSettings *sds = data->sds;
 
 	/* slightly rounded-up sqrt(3 * (0.5)^2) == max. distance of cell boundary along the diagonal */
-	const float surface_distance = 0.867f;
+	const float surface_distance = 2.0f; //0.867f;
+	/* Note: Use larger surface distance to cover larger area with obvel. Manta will use these obvels and extrapolate them (inside and outside obstacle) */
 
 	for (int x = sds->res_min[0]; x < sds->res_max[0]; x++) {
 		for (int y = sds->res_min[1]; y < sds->res_max[1]; y++) {
-			const int index = smoke_get_index(x - sds->res_min[0], sds->res[0], y - sds->res_min[1], sds->res[1], z - sds->res_min[2]);
+			const int index = fluid_get_index(x - sds->res_min[0], sds->res[0], y - sds->res_min[1], sds->res[1], z - sds->res_min[2]);
 
 			float ray_start[3] = {(float)x + 0.5f, (float)y + 0.5f, (float)z + 0.5f};
 			BVHTreeNearest nearest = {0};
 			nearest.index = -1;
 			nearest.dist_sq = surface_distance * surface_distance; /* find_nearest uses squared distance */
+			bool hasIncObj = false;
 
 			/* find the nearest point on the mesh */
 			if (BLI_bvhtree_find_nearest(data->tree->tree, ray_start, &nearest, data->tree->nearest_callback, data->tree) != -1) {
@@ -795,25 +984,61 @@ static void obstacles_from_mesh_task_cb(
 				v3 = data->mloop[lt->tri[2]].v;
 				interp_weights_tri_v3(weights, data->mvert[v1].co, data->mvert[v2].co, data->mvert[v3].co, nearest.co);
 
-				// DG TODO
 				if (data->has_velocity)
 				{
+					/* increase object count */
+					data->num_objects[index]++;
+					hasIncObj = true;
+
 					/* apply object velocity */
-					{
-						float hit_vel[3];
-						interp_v3_v3v3v3(hit_vel, &data->vert_vel[v1 * 3], &data->vert_vel[v2 * 3], &data->vert_vel[v3 * 3], weights);
-						data->velocityX[index] += hit_vel[0];
-						data->velocityY[index] += hit_vel[1];
-						data->velocityZ[index] += hit_vel[2];
+					float hit_vel[3];
+					interp_v3_v3v3v3(hit_vel, &data->vert_vel[v1 * 3], &data->vert_vel[v2 * 3], &data->vert_vel[v3 * 3], weights);
+
+					/* Guiding has additional velocity multiplier */
+					if (data->scs->type == FLUID_EFFECTOR_TYPE_GUIDE) {
+						mul_v3_fl(hit_vel, data->scs->vel_multi);
+
+						switch (data->scs->guiding_mode) {
+							case FLUID_EFFECTOR_GUIDING_AVERAGED:
+								data->velocityX[index] = (data->velocityX[index] + hit_vel[0]) * 0.5f;
+								data->velocityY[index] = (data->velocityY[index] + hit_vel[1]) * 0.5f;
+								data->velocityZ[index] = (data->velocityZ[index] + hit_vel[2]) * 0.5f;
+								break;
+							case FLUID_EFFECTOR_GUIDING_OVERRIDE:
+								data->velocityX[index] = hit_vel[0];
+								data->velocityY[index] = hit_vel[1];
+								data->velocityZ[index] = hit_vel[2];
+								break;
+							case FLUID_EFFECTOR_GUIDING_MINIMUM:
+								data->velocityX[index] = MIN2( fabsf(hit_vel[0]), fabsf(data->velocityX[index]) );
+								data->velocityY[index] = MIN2( fabsf(hit_vel[1]), fabsf(data->velocityY[index]) );
+								data->velocityZ[index] = MIN2( fabsf(hit_vel[2]), fabsf(data->velocityZ[index]) );
+								break;
+							case FLUID_EFFECTOR_GUIDING_MAXIMUM:
+							default:
+								data->velocityX[index] = MAX2( fabsf(hit_vel[0]), fabsf(data->velocityX[index]) );
+								data->velocityY[index] = MAX2( fabsf(hit_vel[1]), fabsf(data->velocityY[index]) );
+								data->velocityZ[index] = MAX2( fabsf(hit_vel[2]), fabsf(data->velocityZ[index]) );
+								break;
+						}
+					}
+					else {
+						/* Apply (i.e. add) effector object velocity */
+						data->velocityX[index] += (data->scs->type == FLUID_EFFECTOR_TYPE_GUIDE) ? hit_vel[0] * data->scs->vel_multi : hit_vel[0];
+						data->velocityY[index] += (data->scs->type == FLUID_EFFECTOR_TYPE_GUIDE) ? hit_vel[1] * data->scs->vel_multi : hit_vel[1];
+						data->velocityZ[index] += (data->scs->type == FLUID_EFFECTOR_TYPE_GUIDE) ? hit_vel[2] * data->scs->vel_multi : hit_vel[2];
+//						printf("adding effector object vel: [%f, %f, %f], dx is: %f\n", hit_vel[0], hit_vel[1], hit_vel[2], sds->dx);
 					}
 				}
+			}
 
-				/* tag obstacle cells */
-				data->obstacle_map[index] = 1;
+			/* Get distance to mesh surface from both within and outside grid (mantaflow phi grid) */
+			if (data->distances_map) {
+				update_mesh_distances(index, data->distances_map, data->tree, ray_start, data->scs->surface_distance);
 
-				if (data->has_velocity) {
-					data->obstacle_map[index] |= 8;
-					data->num_obstacles[index]++;
+				/* Ensure that num objects are also counted inside object. But dont count twice (see object inc for nearest point) */
+				if (data->distances_map[index] < 0 && !hasIncObj) {
+					data->num_objects[index]++;
 				}
 			}
 		}
@@ -822,7 +1047,7 @@ static void obstacles_from_mesh_task_cb(
 
 static void obstacles_from_mesh(
         Object *coll_ob, SmokeDomainSettings *sds, SmokeCollSettings *scs,
-        unsigned char *obstacle_map, float *velocityX, float *velocityY, float *velocityZ, int *num_obstacles, float dt)
+        float *distances_map, float *velocityX, float *velocityY, float *velocityZ, int *num_objects, float dt)
 {
 	if (!scs->mesh) return;
 	{
@@ -837,22 +1062,27 @@ static void obstacles_from_mesh(
 		bool has_velocity = false;
 
 		me = BKE_mesh_copy_for_eval(scs->mesh, true);
+
+		/* Duplicate vertices to modify. */
+		if (me->mvert) {
+			me->mvert = MEM_dupallocN(me->mvert);
+			CustomData_set_layer(&me->vdata, CD_MVERT, me->mvert);
+		}
+
 		BKE_mesh_ensure_normals(me);
 		mvert = me->mvert;
 		mloop = me->mloop;
 		looptri = BKE_mesh_runtime_looptri_ensure(me);
 		numverts = me->totvert;
 
-		// DG TODO
-		// if (scs->type > SM_COLL_STATIC)
-		// if line above is used, the code is in trouble if the object moves but is declared as "does not move"
-
+		/* TODO (sebbas):
+		 * Make vert_vel init optional?
+		 * code is in trouble if the object moves but is declared as "does not move" */
 		{
 			vert_vel = MEM_callocN(sizeof(float) * numverts * 3, "smoke_obs_velocity");
 
 			if (scs->numverts != numverts || !scs->verts_old) {
 				if (scs->verts_old) MEM_freeN(scs->verts_old);
-
 				scs->verts_old = MEM_callocN(sizeof(float) * numverts * 3, "smoke_obs_verts_old");
 				scs->numverts = numverts;
 			}
@@ -880,8 +1110,7 @@ static void obstacles_from_mesh(
 
 			/* vert velocity */
 			VECADD(co, mvert[i].co, sds->shift);
-			if (has_velocity)
-			{
+			if (has_velocity) {
 				sub_v3_v3v3(&vert_vel[i * 3], co, &scs->verts_old[i * 3]);
 				mul_v3_fl(&vert_vel[i * 3], sds->dx / dt);
 			}
@@ -890,11 +1119,10 @@ static void obstacles_from_mesh(
 
 		if (BKE_bvhtree_from_mesh_get(&treeData, me, BVHTREE_FROM_LOOPTRI, 4)) {
 			ObstaclesFromDMData data = {
-			    .sds = sds, .mvert = mvert, .mloop = mloop, .looptri = looptri,
-			    .tree = &treeData, .obstacle_map = obstacle_map,
-			    .has_velocity = has_velocity, .vert_vel = vert_vel,
+			    .sds = sds, .scs = scs, .mvert = mvert, .mloop = mloop, .looptri = looptri,
+			    .tree = &treeData, .has_velocity = has_velocity, .vert_vel = vert_vel,
 			    .velocityX = velocityX, .velocityY = velocityY, .velocityZ = velocityZ,
-			    .num_obstacles = num_obstacles
+			    .num_objects = num_objects, .distances_map = distances_map
 			};
 			ParallelRangeSettings settings;
 			BLI_parallel_range_settings_defaults(&settings);
@@ -909,64 +1137,133 @@ static void obstacles_from_mesh(
 		BKE_id_free(NULL, me);
 
 		if (vert_vel) MEM_freeN(vert_vel);
+		if (me->mvert) MEM_freeN(me->mvert);
 	}
 }
 
+static void update_obstacleflags(SmokeDomainSettings *sds, Object **collobjs, int numcollobj)
+{
+	int active_fields = sds->active_fields;
+	unsigned int collIndex;
+
+	/* Monitor active fields based on flow settings */
+	for (collIndex = 0; collIndex < numcollobj; collIndex++)
+	{
+		Object *collob = collobjs[collIndex];
+		SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(collob, eModifierType_Smoke);
+
+		if ((smd2->type & MOD_SMOKE_TYPE_EFFEC) && smd2->effec) {
+			SmokeCollSettings *scs = smd2->effec;
+			if (!scs) break;
+			if (scs->type == FLUID_EFFECTOR_TYPE_COLLISION) {
+				active_fields |= FLUID_DOMAIN_ACTIVE_OBSTACLE;
+			}
+			if (scs->type == FLUID_EFFECTOR_TYPE_GUIDE) {
+				active_fields |= FLUID_DOMAIN_ACTIVE_GUIDING;
+			}
+		}
+	}
+	/* Finally, initialize new data fields if any */
+	if (active_fields & FLUID_DOMAIN_ACTIVE_OBSTACLE) {
+		fluid_ensure_obstacle(sds->fluid, sds->smd);
+	}
+	if (active_fields & FLUID_DOMAIN_ACTIVE_GUIDING) {
+		fluid_ensure_guiding(sds->fluid, sds->smd);
+	}
+	sds->active_fields = active_fields;
+}
+
 /* Animated obstacles: dx_step = ((x_new - x_old) / totalsteps) * substep */
-static void update_obstacles(Depsgraph *depsgraph, Object *ob, SmokeDomainSettings *sds, float dt,
-                             int UNUSED(substep), int UNUSED(totalsteps))
+static void update_obstacles(Depsgraph *depsgraph, Scene* scene, Object *ob, SmokeDomainSettings *sds, float time_per_frame, float frame_length, int frame, float dt)
 {
 	Object **collobjs = NULL;
-	unsigned int numcollobj = 0;
+	unsigned int numcollobj = 0, collIndex = 0;
 
-	unsigned int collIndex;
-	unsigned char *obstacles = smoke_get_obstacle(sds->fluid);
-	float *velx = NULL;
-	float *vely = NULL;
-	float *velz = NULL;
-	float *velxOrig = smoke_get_velocity_x(sds->fluid);
-	float *velyOrig = smoke_get_velocity_y(sds->fluid);
-	float *velzOrig = smoke_get_velocity_z(sds->fluid);
+	collobjs = BKE_collision_objects_create(depsgraph, ob, sds->coll_group, &numcollobj, eModifierType_Smoke);
+
+	/* Update all flow related flags and ensure that corresponding grids get initialized */
+	update_obstacleflags(sds, collobjs, numcollobj);
+
+	float *velx = fluid_get_ob_velocity_x(sds->fluid);
+	float *vely = fluid_get_ob_velocity_y(sds->fluid);
+	float *velz = fluid_get_ob_velocity_z(sds->fluid);
+	float *velxGuide = fluid_get_guide_velocity_x(sds->fluid);
+	float *velyGuide = fluid_get_guide_velocity_y(sds->fluid);
+	float *velzGuide = fluid_get_guide_velocity_z(sds->fluid);
+	float *velxOrig = fluid_get_velocity_x(sds->fluid);
+	float *velyOrig = fluid_get_velocity_y(sds->fluid);
+	float *velzOrig = fluid_get_velocity_z(sds->fluid);
 	float *density = smoke_get_density(sds->fluid);
 	float *fuel = smoke_get_fuel(sds->fluid);
 	float *flame = smoke_get_flame(sds->fluid);
 	float *r = smoke_get_color_r(sds->fluid);
 	float *g = smoke_get_color_g(sds->fluid);
 	float *b = smoke_get_color_b(sds->fluid);
+	float *phiObsIn = liquid_get_phiobsin(sds->fluid);
+	float *phiGuideIn = fluid_get_phiguidein(sds->fluid);
+	int *obstacles = smoke_get_obstacle(sds->fluid);
+	int *num_obstacles = fluid_get_num_obstacle(sds->fluid);
+	int *num_guides = fluid_get_num_guide(sds->fluid);
 	unsigned int z;
 
-	int *num_obstacles = MEM_callocN(sizeof(int) * sds->res[0] * sds->res[1] * sds->res[2], "smoke_num_obstacles");
-
-	smoke_get_ob_velocity(sds->fluid, &velx, &vely, &velz);
-
-	// TODO: delete old obstacle flags
+	/* Grid reset before writing again */
 	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
 	{
-		if (obstacles[z] & 8) // Do not delete static obstacles
-		{
-			obstacles[z] = 0;
-		}
+		if (phiObsIn)
+			phiObsIn[z] = 9999;
+		if (phiGuideIn)
+			phiGuideIn[z] = 9999;
+		if (num_obstacles)
+			num_obstacles[z] = 0;
+		if (num_guides)
+			num_guides[z] = 0;
 
-		velx[z] = 0;
-		vely[z] = 0;
-		velz[z] = 0;
+		if (velx && vely && velz) {
+			velx[z] = 0.0f;
+			vely[z] = 0.0f;
+			velz[z] = 0.0f;
+		}
+		if (velxGuide && velyGuide && velzGuide) {
+			velxGuide[z] = 0.0f;
+			velyGuide[z] = 0.0f;
+			velzGuide[z] = 0.0f;
+		}
 	}
 
-
-	collobjs = BKE_collision_objects_create(depsgraph, ob, sds->coll_group, &numcollobj, eModifierType_Smoke);
-
-	// update obstacle tags in cells
+	/* Prepare grids from effector objects */
 	for (collIndex = 0; collIndex < numcollobj; collIndex++)
 	{
 		Object *collob = collobjs[collIndex];
 		SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(collob, eModifierType_Smoke);
 
 		// DG TODO: check if modifier is active?
+		if ((smd2->type & MOD_SMOKE_TYPE_EFFEC) && smd2->effec) {
+			SmokeCollSettings *scs = smd2->effec;
 
-		if ((smd2->type & MOD_SMOKE_TYPE_COLL) && smd2->coll)
-		{
-			SmokeCollSettings *scs = smd2->coll;
-			obstacles_from_mesh(collob, sds, scs, obstacles, velx, vely, velz, num_obstacles, dt);
+			/* Length of one frame. If using adaptive stepping, length is smaller than actual frame length */
+			float adaptframe_length = time_per_frame / frame_length;
+
+			/* Handle adaptive subframe (ie has subframe fraction). Need to set according scene subframe parameter */
+			if (time_per_frame < frame_length) {
+				scene->r.subframe = adaptframe_length;
+				scene->r.cfra = frame - 1;
+			}
+			/* Handle absolute endframe (ie no subframe fraction). Need to set the scene subframe parameter to 0 and advance current scene frame */
+			else {
+				scene->r.subframe = 0.0f;
+				scene->r.cfra = frame;
+			}
+//			printf("effector: frame: %d // scene current frame: %d // scene current subframe: %f\n", frame, scene->r.cfra, scene->r.subframe);
+
+			/* TODO (sebbas): Using BKE_scene_frame_get(scene) instead of new DEG_get_ctime(depsgraph) as subframes dont work with the latter yet */
+			BKE_object_modifier_update_subframe(depsgraph, scene, collob, true, 5, BKE_scene_frame_get(scene), eModifierType_Smoke);
+			
+			if (scs && (scs->type == FLUID_EFFECTOR_TYPE_COLLISION)) {
+				obstacles_from_mesh(collob, sds, scs, phiObsIn, velx, vely, velz, num_obstacles, dt);
+			}
+			if (scs && (scs->type == FLUID_EFFECTOR_TYPE_GUIDE)) {
+				obstacles_from_mesh(collob, sds, scs, phiGuideIn, velxGuide, velyGuide, velzGuide, num_guides, dt);
+			}
 		}
 	}
 
@@ -975,12 +1272,16 @@ static void update_obstacles(Depsgraph *depsgraph, Object *ob, SmokeDomainSettin
 	/* obstacle cells should not contain any velocity from the smoke simulation */
 	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
 	{
-		if (obstacles[z])
+		if (obstacles[z] & 2) // mantaflow convention: FlagObstacle
 		{
-			velxOrig[z] = 0;
-			velyOrig[z] = 0;
-			velzOrig[z] = 0;
-			density[z] = 0;
+			if (velxOrig && velyOrig && velzOrig) {
+				velxOrig[z] = 0;
+				velyOrig[z] = 0;
+				velzOrig[z] = 0;
+			}
+			if (density) {
+				density[z] = 0;
+			}
 			if (fuel) {
 				fuel[z] = 0;
 				flame[z] = 0;
@@ -992,14 +1293,18 @@ static void update_obstacles(Depsgraph *depsgraph, Object *ob, SmokeDomainSettin
 			}
 		}
 		/* average velocities from multiple obstacles in one cell */
-		if (num_obstacles[z]) {
+		if (num_obstacles && num_obstacles[z]) {
 			velx[z] /= num_obstacles[z];
 			vely[z] /= num_obstacles[z];
 			velz[z] /= num_obstacles[z];
 		}
+		/* average velocities from multiple guides in one cell */
+		if (num_guides && num_guides[z]) {
+			velxGuide[z] /= num_guides[z];
+			velyGuide[z] /= num_guides[z];
+			velzGuide[z] /= num_guides[z];
+		}
 	}
-
-	MEM_freeN(num_obstacles);
 }
 
 /**********************************************************
@@ -1010,6 +1315,8 @@ typedef struct EmissionMap {
 	float *influence;
 	float *influence_high;
 	float *velocity;
+	float* distances;
+	float* distances_high;
 	int min[3], max[3], res[3];
 	int hmin[3], hmax[3], hres[3];
 	int total_cells, valid;
@@ -1037,7 +1344,7 @@ static void clampBoundsInDomain(SmokeDomainSettings *sds, int min[3], int max[3]
 {
 	int i;
 	for (i = 0; i < 3; i++) {
-		int adapt = (sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN) ? sds->adapt_res : 0;
+		int adapt = (sds->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN) ? sds->adapt_res : 0;
 		/* add margin */
 		min[i] -= margin;
 		max[i] += margin;
@@ -1073,6 +1380,9 @@ static void em_allocateData(EmissionMap *em, bool use_velocity, int hires_mul)
 	if (use_velocity)
 		em->velocity = MEM_callocN(sizeof(float) * em->total_cells * 3, "smoke_flow_velocity");
 
+	em->distances = MEM_callocN(sizeof(float) * em->total_cells, "fluid_flow_distances");
+	memset(em->distances, 0x7f7f7f7f, sizeof(float) * em->total_cells); // init to inf
+
 	/* allocate high resolution map if required */
 	if (hires_mul > 1) {
 		int total_cells_high = em->total_cells * (hires_mul * hires_mul * hires_mul);
@@ -1084,6 +1394,8 @@ static void em_allocateData(EmissionMap *em, bool use_velocity, int hires_mul)
 		}
 
 		em->influence_high = MEM_callocN(sizeof(float) * total_cells_high, "smoke_flow_influence_high");
+		em->distances_high = MEM_callocN(sizeof(float) * total_cells_high, "fluid_flow_distances_high");
+		memset(em->distances_high, 0x7f7f7f7f, sizeof(float) * total_cells_high); // init to inf
 	}
 	em->valid = 1;
 }
@@ -1096,6 +1408,10 @@ static void em_freeData(EmissionMap *em)
 		MEM_freeN(em->influence_high);
 	if (em->velocity)
 		MEM_freeN(em->velocity);
+	if (em->distances)
+		MEM_freeN(em->distances);
+	if (em->distances_high)
+		MEM_freeN(em->distances_high);
 }
 
 static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_multiplier, int additive, float sample_size)
@@ -1124,17 +1440,18 @@ static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_mult
 	for (x = output->min[0]; x < output->max[0]; x++)
 		for (y = output->min[1]; y < output->max[1]; y++)
 			for (z = output->min[2]; z < output->max[2]; z++) {
-				int index_out = smoke_get_index(x - output->min[0], output->res[0], y - output->min[1], output->res[1], z - output->min[2]);
+				int index_out = fluid_get_index(x - output->min[0], output->res[0], y - output->min[1], output->res[1], z - output->min[2]);
 
 				/* initialize with first input if in range */
 				if (x >= em1.min[0] && x < em1.max[0] &&
 				    y >= em1.min[1] && y < em1.max[1] &&
 				    z >= em1.min[2] && z < em1.max[2])
 				{
-					int index_in = smoke_get_index(x - em1.min[0], em1.res[0], y - em1.min[1], em1.res[1], z - em1.min[2]);
+					int index_in = fluid_get_index(x - em1.min[0], em1.res[0], y - em1.min[1], em1.res[1], z - em1.min[2]);
 
 					/* values */
 					output->influence[index_out] = em1.influence[index_in];
+					output->distances[index_out] = em1.distances[index_in];
 					if (output->velocity && em1.velocity) {
 						copy_v3_v3(&output->velocity[index_out * 3], &em1.velocity[index_in * 3]);
 					}
@@ -1145,7 +1462,7 @@ static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_mult
 				    y >= em2->min[1] && y < em2->max[1] &&
 				    z >= em2->min[2] && z < em2->max[2])
 				{
-					int index_in = smoke_get_index(x - em2->min[0], em2->res[0], y - em2->min[1], em2->res[1], z - em2->min[2]);
+					int index_in = fluid_get_index(x - em2->min[0], em2->res[0], y - em2->min[1], em2->res[1], z - em2->min[2]);
 
 					/* values */
 					if (additive) {
@@ -1154,6 +1471,7 @@ static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_mult
 					else {
 						output->influence[index_out] = MAX2(em2->influence[index_in], output->influence[index_out]);
 					}
+					output->distances[index_out] = MIN2(em2->distances[index_in], output->distances[index_out]);
 					if (output->velocity && em2->velocity) {
 						/* last sample replaces the velocity */
 						output->velocity[index_out * 3]		= ADD_IF_LOWER(output->velocity[index_out * 3], em2->velocity[index_in * 3]);
@@ -1163,21 +1481,19 @@ static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_mult
 				}
 	} // low res loop
 
-
-
 	/* initialize high resolution input if available */
 	if (output->influence_high) {
 		for (x = output->hmin[0]; x < output->hmax[0]; x++)
 			for (y = output->hmin[1]; y < output->hmax[1]; y++)
 				for (z = output->hmin[2]; z < output->hmax[2]; z++) {
-					int index_out = smoke_get_index(x - output->hmin[0], output->hres[0], y - output->hmin[1], output->hres[1], z - output->hmin[2]);
+					int index_out = fluid_get_index(x - output->hmin[0], output->hres[0], y - output->hmin[1], output->hres[1], z - output->hmin[2]);
 
 					/* initialize with first input if in range */
 					if (x >= em1.hmin[0] && x < em1.hmax[0] &&
 					    y >= em1.hmin[1] && y < em1.hmax[1] &&
 					    z >= em1.hmin[2] && z < em1.hmax[2])
 					{
-						int index_in = smoke_get_index(x - em1.hmin[0], em1.hres[0], y - em1.hmin[1], em1.hres[1], z - em1.hmin[2]);
+						int index_in = fluid_get_index(x - em1.hmin[0], em1.hres[0], y - em1.hmin[1], em1.hres[1], z - em1.hmin[2]);
 						/* values */
 						output->influence_high[index_out] = em1.influence_high[index_in];
 					}
@@ -1187,15 +1503,16 @@ static void em_combineMaps(EmissionMap *output, EmissionMap *em2, int hires_mult
 					    y >= em2->hmin[1] && y < em2->hmax[1] &&
 					    z >= em2->hmin[2] && z < em2->hmax[2])
 					{
-						int index_in = smoke_get_index(x - em2->hmin[0], em2->hres[0], y - em2->hmin[1], em2->hres[1], z - em2->hmin[2]);
+						int index_in = fluid_get_index(x - em2->hmin[0], em2->hres[0], y - em2->hmin[1], em2->hres[1], z - em2->hmin[2]);
 
 						/* values */
 						if (additive) {
-							output->influence_high[index_out] += em2->influence_high[index_in] * sample_size;
+							output->influence_high[index_out] += em2->distances_high[index_in] * sample_size;
 						}
 						else {
-							output->influence_high[index_out] = MAX2(em2->influence_high[index_in], output->influence_high[index_out]);
+							output->distances_high[index_out] = MAX2(em2->distances_high[index_in], output->distances_high[index_out]);
 						}
+						output->distances_high[index_out] = MIN2(em2->distances_high[index_in], output->distances_high[index_out]);
 					}
 		} // high res loop
 	}
@@ -1239,7 +1556,7 @@ static void emit_from_particles_task_cb(
 				const int ly = y / hires_multiplier;
 				const int lz = z / hires_multiplier;
 
-				const int index = smoke_get_index(lx - em->min[0], em->res[0], ly - em->min[1], em->res[1], lz - em->min[2]);
+				const int index = fluid_get_index(lx - em->min[0], em->res[0], ly - em->min[1], em->res[1], lz - em->min[2]);
 				const float ray_start[3] = {((float)lx) + 0.5f, ((float)ly) + 0.5f, ((float)lz) + 0.5f};
 
 				/* find particle distance from the kdtree */
@@ -1251,7 +1568,7 @@ static void emit_from_particles_task_cb(
 					em->influence[index] = (nearest.dist < data->solid) ?
 					                       1.0f : (1.0f - (nearest.dist - data->solid) / data->smooth);
 					/* Uses particle velocity as initial velocity for smoke */
-					if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY && (sfs->psys->part->phystype != PART_PHYS_NO)) {
+					if (sfs->flags & FLUID_FLOW_INITVELOCITY && (sfs->psys->part->phystype != PART_PHYS_NO)) {
 						VECADDFAC(&em->velocity[index * 3], &em->velocity[index * 3],
 						          &data->particle_vel[nearest.index * 3], sfs->vel_multi);
 					}
@@ -1265,7 +1582,7 @@ static void emit_from_particles_task_cb(
 				const float ly = ((float)y) * data->hr;
 				const float lz = ((float)z) * data->hr;
 
-				const int index = smoke_get_index(
+				const int index = fluid_get_index(
 				                      x - data->min[0], data->res[0], y - data->min[1], data->res[1], z - data->min[2]);
 				const float ray_start[3] = {lx + 0.5f * data->hr, ly + 0.5f * data->hr, lz + 0.5f * data->hr};
 
@@ -1330,12 +1647,12 @@ static void emit_from_particles(
 		particle_vel = MEM_callocN(sizeof(float) * (totpart + totchild) * 3, "smoke_flow_particles");
 
 		/* setup particle radius emission if enabled */
-		if (sfs->flags & MOD_SMOKE_FLOW_USE_PART_SIZE) {
+		if (sfs->flags & FLUID_FLOW_USE_PART_SIZE) {
 			tree = BLI_kdtree_new(psys->totpart + psys->totchild);
 
 			/* check need for high resolution map */
-			if ((sds->flags & MOD_SMOKE_HIGHRES) && (sds->highres_sampling == SM_HRES_FULLSAMPLE)) {
-				hires_multiplier = sds->amplify + 1;
+			if ((sds->flags & FLUID_DOMAIN_USE_NOISE) && (sds->highres_sampling == SM_HRES_FULLSAMPLE)) {
+				hires_multiplier = sds->noise_scale;
 			}
 
 			bounds_margin = (int)ceil(solid + smooth);
@@ -1370,7 +1687,7 @@ static void emit_from_particles(
 			copy_v3_v3(&particle_vel[valid_particles * 3], state.vel);
 			mul_mat3_m4_v3(sds->imat, &particle_vel[valid_particles * 3]);
 
-			if (sfs->flags & MOD_SMOKE_FLOW_USE_PART_SIZE) {
+			if (sfs->flags & FLUID_FLOW_USE_PART_SIZE) {
 				BLI_kdtree_insert(tree, valid_particles, pos);
 			}
 
@@ -1381,9 +1698,9 @@ static void emit_from_particles(
 
 		/* set emission map */
 		clampBoundsInDomain(sds, em->min, em->max, NULL, NULL, bounds_margin, dt);
-		em_allocateData(em, sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY, hires_multiplier);
+		em_allocateData(em, sfs->flags & FLUID_FLOW_INITVELOCITY, hires_multiplier);
 
-		if (!(sfs->flags & MOD_SMOKE_FLOW_USE_PART_SIZE)) {
+		if (!(sfs->flags & FLUID_FLOW_USE_PART_SIZE)) {
 			for (p = 0; p < valid_particles; p++)
 			{
 				int cell[3];
@@ -1405,17 +1722,17 @@ static void emit_from_particles(
 				if (badcell)
 					continue;
 				/* get cell index */
-				index = smoke_get_index(cell[0], em->res[0], cell[1], em->res[1], cell[2]);
+				index = fluid_get_index(cell[0], em->res[0], cell[1], em->res[1], cell[2]);
 				/* Add influence to emission map */
 				em->influence[index] = 1.0f;
 				/* Uses particle velocity as initial velocity for smoke */
-				if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY && (psys->part->phystype != PART_PHYS_NO))
+				if (sfs->flags & FLUID_FLOW_INITVELOCITY && (psys->part->phystype != PART_PHYS_NO))
 				{
 					VECADDFAC(&em->velocity[index * 3], &em->velocity[index * 3], &particle_vel[p * 3], sfs->vel_multi);
 				}
 			}   // particles loop
 		}
-		else if (valid_particles > 0) { // MOD_SMOKE_FLOW_USE_PART_SIZE
+		else if (valid_particles > 0) { // FLUID_FLOW_USE_PART_SIZE
 			int min[3], max[3], res[3];
 			const float hr = 1.0f / ((float)hires_multiplier);
 			/* slightly adjust high res antialias smoothness based on number of divisions
@@ -1446,7 +1763,7 @@ static void emit_from_particles(
 			                        &settings);
 		}
 
-		if (sfs->flags & MOD_SMOKE_FLOW_USE_PART_SIZE) {
+		if (sfs->flags & FLUID_FLOW_USE_PART_SIZE) {
 			BLI_kdtree_free(tree);
 		}
 
@@ -1455,6 +1772,58 @@ static void emit_from_particles(
 			MEM_freeN(particle_pos);
 		if (particle_vel)
 			MEM_freeN(particle_vel);
+	}
+}
+
+/* Calculate map of (minimum) distances to flow/obstacle surface. Distances outside mesh are positive, inside negative */
+static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromMesh *treeData, const float ray_start[3], float surface_thickness) {
+
+	/* First pass: Raycasts in 26 directions (6 main axis + 12 quadrant diagonals (2D) + 8 octant diagonals (3D)) */
+	float ray_dirs[26][3] = { {  1.0f, 0.0f,  0.0f }, { 0.0f,  1.0f,  0.0f }, {  0.0f,  0.0f,  1.0f },
+							  { -1.0f, 0.0f,  0.0f }, { 0.0f, -1.0f,  0.0f }, {  0.0f,  0.0f, -1.0f },
+							  {  1.0f, 1.0f,  0.0f }, { 1.0f, -1.0f,  0.0f }, { -1.0f,  1.0f,  0.0f }, { -1.0f, -1.0f,  0.0f },
+							  {  1.0f, 0.0f,  1.0f }, { 1.0f,  0.0f, -1.0f }, { -1.0f,  0.0f,  1.0f }, { -1.0f,  0.0f, -1.0f },
+							  {  0.0f, 1.0f,  1.0f }, { 0.0f,  1.0f, -1.0f }, {  0.0f, -1.0f,  1.0f }, {  0.0f, -1.0f, -1.0f },
+							  {  1.0f, 1.0f,  1.0f }, { 1.0f, -1.0f,  1.0f }, { -1.0f,  1.0f,  1.0f }, { -1.0f, -1.0f,  1.0f },
+							  {  1.0f, 1.0f, -1.0f }, { 1.0f, -1.0f, -1.0f }, { -1.0f,  1.0f, -1.0f }, { -1.0f, -1.0f, -1.0f } };
+	size_t ray_cnt = sizeof ray_dirs / sizeof ray_dirs[0];
+
+	/* Count for ray misses (no face hit) and cases where ray direction matches face normal direction. */
+	int miss_cnt = 0;
+	int dir_cnt = 0;
+
+	for (int i = 0; i < ray_cnt; i++) {
+		BVHTreeRayHit hit_tree = {0};
+		hit_tree.index = -1;
+		hit_tree.dist = 9999;
+
+		normalize_v3(ray_dirs[i]);
+		BLI_bvhtree_ray_cast(treeData->tree, ray_start, ray_dirs[i], 0.0f, &hit_tree, treeData->raycast_callback, treeData);
+
+		/* Ray did not hit mesh. Current point definitely not inside mesh. Inside mesh all rays have to hit. */
+		if (hit_tree.index == -1) {
+			miss_cnt++; continue;
+		}
+
+		/* Ray and normal are in pointing opposite directions. */
+		if (dot_v3v3(ray_dirs[i], hit_tree.no) <= 0) {
+			dir_cnt++;
+		}
+	}
+
+	/* Initialize grid points to -0.5 inside and 0.5 outside mesh.
+	 * Inside mesh: All rays have to hit (no misses) or all face normals have to match ray direction */
+	if (mesh_distances[index] != -0.5f)
+		mesh_distances[index] = (miss_cnt > 1 || dir_cnt == ray_cnt) ? 0.5f : -0.5f;
+
+	/* Second pass: Ensure that single planes get initialized. */
+	BVHTreeNearest nearest = {0};
+	nearest.index = -1;
+	nearest.dist_sq = surface_thickness * surface_thickness; /* find_nearest uses squared distance */
+
+	if (BLI_bvhtree_find_nearest(treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1) {
+		if (mesh_distances[index] != -0.5f)
+			mesh_distances[index] = -0.5f;
 	}
 }
 
@@ -1520,7 +1889,7 @@ static void sample_mesh(
 		v3 = mloop[mlooptri[f_index].tri[2]].v;
 		interp_weights_tri_v3(weights, mvert[v1].co, mvert[v2].co, mvert[v3].co, nearest.co);
 
-		if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY && velocity_map) {
+		if (sfs->flags & FLUID_FLOW_INITVELOCITY && velocity_map) {
 			/* apply normal directional velocity */
 			if (sfs->vel_normal) {
 				/* interpolate vertex normal vectors to get nearest point normal */
@@ -1544,7 +1913,11 @@ static void sample_mesh(
 				velocity_map[index * 3]   += hit_vel[0] * sfs->vel_multi;
 				velocity_map[index * 3 + 1] += hit_vel[1] * sfs->vel_multi;
 				velocity_map[index * 3 + 2] += hit_vel[2] * sfs->vel_multi;
+//				printf("adding flow object vel: [%f, %f, %f]\n", hit_vel[0], hit_vel[1], hit_vel[2]);
 			}
+			velocity_map[index * 3] += sfs->vel_coord[0];
+			velocity_map[index * 3 + 1] += sfs->vel_coord[1];
+			velocity_map[index * 3 + 2] += sfs->vel_coord[2];
 		}
 
 		/* apply vertex group influence if used */
@@ -1556,11 +1929,11 @@ static void sample_mesh(
 		}
 
 		/* apply emission texture */
-		if ((sfs->flags & MOD_SMOKE_FLOW_TEXTUREEMIT) && sfs->noise_texture) {
+		if ((sfs->flags & FLUID_FLOW_TEXTUREEMIT) && sfs->noise_texture) {
 			float tex_co[3] = {0};
 			TexResult texres;
 
-			if (sfs->texture_type == MOD_SMOKE_FLOW_TEXTURE_MAP_AUTO) {
+			if (sfs->texture_type == FLUID_FLOW_TEXTURE_MAP_AUTO) {
 				tex_co[0] = ((x - flow_center[0]) / base_res[0]) / sfs->texture_size;
 				tex_co[1] = ((y - flow_center[1]) / base_res[1]) / sfs->texture_size;
 				tex_co[2] = ((z - flow_center[2]) / base_res[2] - sfs->texture_offset) / sfs->texture_size;
@@ -1585,7 +1958,7 @@ static void sample_mesh(
 	}
 
 	/* multiply initial velocity by emitter influence */
-	if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY && velocity_map) {
+	if (sfs->flags & FLUID_FLOW_INITVELOCITY && velocity_map) {
 		mul_v3_fl(&velocity_map[index * 3], sample_str);
 	}
 
@@ -1633,15 +2006,19 @@ static void emit_from_mesh_task_cb(
 				const int ly = y / hires_multiplier;
 				const int lz = z / hires_multiplier;
 
-				const int index = smoke_get_index(
+				const int index = fluid_get_index(
 				                      lx - em->min[0], em->res[0], ly - em->min[1], em->res[1], lz - em->min[2]);
 				const float ray_start[3] = {((float)lx) + 0.5f, ((float)ly) + 0.5f, ((float)lz) + 0.5f};
 
+				/* Emission for smoke and fire. Result in em->influence. Also, calculate invels */
 				sample_mesh(
-				        data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
-				        em->influence, em->velocity, index, data->sds->base_res, data->flow_center,
-				        data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
-				        (float)lx, (float)ly, (float)lz);
+						data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
+						em->influence, em->velocity, index, data->sds->base_res, data->flow_center,
+						data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
+						(float)lx, (float)ly, (float)lz);
+
+				/* Calculate levelset from meshes. Result in em->distances */
+				update_mesh_distances(index, em->distances, data->tree, ray_start, data->sfs->surface_distance);
 			}
 
 			/* take high res samples if required */
@@ -1651,16 +2028,19 @@ static void emit_from_mesh_task_cb(
 				const float ly = ((float)y) * data->hr;
 				const float lz = ((float)z) * data->hr;
 
-				const int index = smoke_get_index(
+				const int index = fluid_get_index(
 				                      x - data->min[0], data->res[0], y - data->min[1], data->res[1], z - data->min[2]);
 				const float ray_start[3] = {lx + 0.5f * data->hr, ly + 0.5f * data->hr, lz + 0.5f * data->hr};
 
-				sample_mesh(
-				        data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
-				        em->influence_high, NULL, index, data->sds->base_res, data->flow_center,
-				        data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
-				        /* x,y,z needs to be always lowres */
-				        lx, ly, lz);
+				/* Emission for smoke and fire high. Result in em->influence_high */
+				if (data->sfs->type == FLUID_FLOW_TYPE_SMOKE || data->sfs->type == FLUID_FLOW_TYPE_FIRE || data->sfs->type == FLUID_FLOW_TYPE_SMOKEFIRE) {
+					sample_mesh(
+							data->sfs, data->mvert, data->mloop, data->mlooptri, data->mloopuv,
+							em->influence_high, NULL, index, data->sds->base_res, data->flow_center,
+							data->tree, ray_start, data->vert_vel, data->has_velocity, data->defgrp_index, data->dvert,
+							/* x,y,z needs to be always lowres */
+							lx, ly, lz);
+				}
 			}
 		}
 	}
@@ -1669,19 +2049,20 @@ static void emit_from_mesh_task_cb(
 static void emit_from_mesh(Object *flow_ob, SmokeDomainSettings *sds, SmokeFlowSettings *sfs, EmissionMap *em, float dt)
 {
 	if (sfs->mesh) {
-		Mesh *me;
-		int defgrp_index = sfs->vgroup_density - 1;
-		MDeformVert *dvert = NULL;
+		Mesh *me = NULL;
 		MVert *mvert = NULL;
 		const MLoopTri *mlooptri = NULL;
-		const MLoopUV *mloopuv = NULL;
 		const MLoop *mloop = NULL;
+		const MLoopUV *mloopuv = NULL;
+		MDeformVert *dvert = NULL;
 		BVHTreeFromMesh treeData = {NULL};
-		int numOfVerts, i;
-		float flow_center[3] = {0};
+		int numverts, i;
 
 		float *vert_vel = NULL;
-		int has_velocity = 0;
+		bool has_velocity = false;
+		
+		int defgrp_index = sfs->vgroup_density - 1;
+		float flow_center[3] = {0};
 		int min[3], max[3], res[3];
 		int hires_multiplier = 1;
 
@@ -1698,40 +2079,43 @@ static void emit_from_mesh(Object *flow_ob, SmokeDomainSettings *sds, SmokeFlowS
 
 		BKE_mesh_ensure_normals(me);
 		mvert = me->mvert;
-		numOfVerts = me->totvert;
-		dvert = CustomData_get_layer(&me->vdata, CD_MDEFORMVERT);
-		mloopuv = CustomData_get_layer_named(&me->ldata, CD_MLOOPUV, sfs->uvlayer_name);
 		mloop = me->mloop;
 		mlooptri = BKE_mesh_runtime_looptri_ensure(me);
+		numverts = me->totvert;
+		dvert = CustomData_get_layer(&me->vdata, CD_MDEFORMVERT);
+		mloopuv = CustomData_get_layer_named(&me->ldata, CD_MLOOPUV, sfs->uvlayer_name);
 
-		if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY) {
-			vert_vel = MEM_callocN(sizeof(float) * numOfVerts * 3, "smoke_flow_velocity");
+		if (sfs->flags & FLUID_FLOW_INITVELOCITY) {
+			vert_vel = MEM_callocN(sizeof(float) * numverts * 3, "smoke_flow_velocity");
 
-			if (sfs->numverts != numOfVerts || !sfs->verts_old) {
+			if (sfs->numverts != numverts || !sfs->verts_old) {
 				if (sfs->verts_old) MEM_freeN(sfs->verts_old);
-				sfs->verts_old = MEM_callocN(sizeof(float) * numOfVerts * 3, "smoke_flow_verts_old");
-				sfs->numverts = numOfVerts;
+				sfs->verts_old = MEM_callocN(sizeof(float) * numverts * 3, "smoke_flow_verts_old");
+				sfs->numverts = numverts;
 			}
 			else {
-				has_velocity = 1;
+				has_velocity = true;
 			}
 		}
 
 		/*	Transform mesh vertices to
 		 *   domain grid space for fast lookups */
-		for (i = 0; i < numOfVerts; i++) {
+		for (i = 0; i < numverts; i++) {
 			float n[3];
+
 			/* vert pos */
 			mul_m4_v3(flow_ob->obmat, mvert[i].co);
 			smoke_pos_to_cell(sds, mvert[i].co);
+
 			/* vert normal */
 			normal_short_to_float_v3(n, mvert[i].no);
 			mul_mat3_m4_v3(flow_ob->obmat, n);
 			mul_mat3_m4_v3(sds->imat, n);
 			normalize_v3(n);
 			normal_float_to_short_v3(mvert[i].no, n);
+
 			/* vert velocity */
-			if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY) {
+			if (sfs->flags & FLUID_FLOW_INITVELOCITY) {
 				float co[3];
 				VECADD(co, mvert[i].co, sds->shift);
 				if (has_velocity) {
@@ -1748,13 +2132,13 @@ static void emit_from_mesh(Object *flow_ob, SmokeDomainSettings *sds, SmokeFlowS
 		smoke_pos_to_cell(sds, flow_center);
 
 		/* check need for high resolution map */
-		if ((sds->flags & MOD_SMOKE_HIGHRES) && (sds->highres_sampling == SM_HRES_FULLSAMPLE)) {
-			hires_multiplier = sds->amplify + 1;
+		if ((sds->flags & FLUID_DOMAIN_USE_NOISE) && (sds->highres_sampling == SM_HRES_FULLSAMPLE)) {
+			hires_multiplier = sds->noise_scale;
 		}
 
 		/* set emission map */
 		clampBoundsInDomain(sds, em->min, em->max, NULL, NULL, (int)ceil(sfs->surface_distance), dt);
-		em_allocateData(em, sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY, hires_multiplier);
+		em_allocateData(em, sfs->flags & FLUID_FLOW_INITVELOCITY, hires_multiplier);
 
 		/* setup loop bounds */
 		for (i = 0; i < 3; i++) {
@@ -1785,15 +2169,10 @@ static void emit_from_mesh(Object *flow_ob, SmokeDomainSettings *sds, SmokeFlowS
 		}
 		/* free bvh tree */
 		free_bvhtree_from_mesh(&treeData);
-
-		if (vert_vel) {
-			MEM_freeN(vert_vel);
-		}
-
-		if (me->mvert) {
-			MEM_freeN(me->mvert);
-		}
 		BKE_id_free(NULL, me);
+
+		if (vert_vel) MEM_freeN(vert_vel);
+		if (me->mvert) MEM_freeN(me->mvert);
 	}
 }
 
@@ -1803,22 +2182,22 @@ static void emit_from_mesh(Object *flow_ob, SmokeDomainSettings *sds, SmokeFlowS
 
 static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], EmissionMap *emaps, unsigned int numflowobj, float dt)
 {
-	const int block_size = sds->amplify + 1;
+	const int block_size = sds->noise_scale;
 	int min[3] = {32767, 32767, 32767}, max[3] = {-32767, -32767, -32767}, res[3];
 	int total_cells = 1, res_changed = 0, shift_changed = 0;
 	float min_vel[3], max_vel[3];
 	int x, y, z;
 	float *density = smoke_get_density(sds->fluid);
 	float *fuel = smoke_get_fuel(sds->fluid);
-	float *bigdensity = smoke_turbulence_get_density(sds->wt);
-	float *bigfuel = smoke_turbulence_get_fuel(sds->wt);
-	float *vx = smoke_get_velocity_x(sds->fluid);
-	float *vy = smoke_get_velocity_y(sds->fluid);
-	float *vz = smoke_get_velocity_z(sds->fluid);
+	float *bigdensity = smoke_turbulence_get_density(sds->fluid);
+	float *bigfuel = smoke_turbulence_get_fuel(sds->fluid);
+	float *vx = fluid_get_velocity_x(sds->fluid);
+	float *vy = fluid_get_velocity_y(sds->fluid);
+	float *vz = fluid_get_velocity_z(sds->fluid);
 	int wt_res[3];
 
-	if (sds->flags & MOD_SMOKE_HIGHRES && sds->wt) {
-		smoke_turbulence_get_res(sds->wt, wt_res);
+	if (sds->flags & FLUID_DOMAIN_USE_NOISE && sds->fluid) {
+		smoke_turbulence_get_res(sds->fluid, wt_res);
 	}
 
 	INIT_MINMAX(min_vel, max_vel);
@@ -1838,11 +2217,11 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 				if (xn >= min[0] && xn <= max[0] && yn >= min[1] && yn <= max[1] && zn >= min[2] && zn <= max[2])
 					continue;
 
-				index = smoke_get_index(x - sds->res_min[0], sds->res[0], y - sds->res_min[1], sds->res[1], z - sds->res_min[2]);
+				index = fluid_get_index(x - sds->res_min[0], sds->res[0], y - sds->res_min[1], sds->res[1], z - sds->res_min[2]);
 				max_den = (fuel) ? MAX2(density[index], fuel[index]) : density[index];
 
 				/* check high resolution bounds if max density isnt already high enough */
-				if (max_den < sds->adapt_threshold && sds->flags & MOD_SMOKE_HIGHRES && sds->wt) {
+				if (max_den < sds->adapt_threshold && sds->flags & FLUID_DOMAIN_USE_NOISE && sds->fluid) {
 					int i, j, k;
 					/* high res grid index */
 					int xx = (x - sds->res_min[0]) * block_size;
@@ -1853,7 +2232,7 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 						for (j = 0; j < block_size; j++)
 							for (k = 0; k < block_size; k++)
 							{
-								int big_index = smoke_get_index(xx + i, wt_res[0], yy + j, wt_res[1], zz + k);
+								int big_index = fluid_get_index(xx + i, wt_res[0], yy + j, wt_res[1], zz + k);
 								float den = (bigfuel) ? MAX2(bigdensity[big_index], bigfuel[big_index]) : bigdensity[big_index];
 								if (den > max_den) {
 									max_den = den;
@@ -1888,7 +2267,7 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 			for (y = em->min[1]; y < em->max[1]; y++)
 				for (z = em->min[2]; z < em->max[2]; z++)
 				{
-					int index = smoke_get_index(x - em->min[0], em->res[0], y - em->min[1], em->res[1], z - em->min[2]);
+					int index = fluid_get_index(x - em->min[0], em->res[0], y - em->min[1], em->res[1], z - em->min[2]);
 					float max_den = em->influence[index];
 
 					/* density bounds */
@@ -1933,35 +2312,34 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 	}
 
 	if (res_changed || shift_changed) {
-		struct FLUID_3D *fluid_old = sds->fluid;
-		struct WTURBULENCE *turb_old = sds->wt;
+		struct FLUID *fluid_old = sds->fluid;
+
 		/* allocate new fluid data */
-		smoke_reallocate_fluid(sds, sds->dx, res, 0);
-		if (sds->flags & MOD_SMOKE_HIGHRES) {
-			smoke_reallocate_highres_fluid(sds, sds->dx, res, 0);
+		smoke_reallocate_fluid(sds, res, 0);
+		if (sds->flags & FLUID_DOMAIN_USE_NOISE) {
+			smoke_reallocate_highres_fluid(sds, res);
 		}
 
 		/* copy values from old fluid to new */
 		if (sds->total_cells > 1 && total_cells > 1) {
 			/* low res smoke */
-			float *o_dens, *o_react, *o_flame, *o_fuel, *o_heat, *o_heatold, *o_vx, *o_vy, *o_vz, *o_r, *o_g, *o_b;
-			float *n_dens, *n_react, *n_flame, *n_fuel, *n_heat, *n_heatold, *n_vx, *n_vy, *n_vz, *n_r, *n_g, *n_b;
-			float dummy;
-			unsigned char *dummy_p;
+			float *o_dens, *o_react, *o_flame, *o_fuel, *o_heat, *o_vx, *o_vy, *o_vz, *o_r, *o_g, *o_b;
+			float *n_dens, *n_react, *n_flame, *n_fuel, *n_heat, *n_vx, *n_vy, *n_vz, *n_r, *n_g, *n_b;
+			float dummy, *dummy_s;
+			int *dummy_p;
 			/* high res smoke */
 			int wt_res_old[3];
-			float *o_wt_dens, *o_wt_react, *o_wt_flame, *o_wt_fuel, *o_wt_tcu, *o_wt_tcv, *o_wt_tcw, *o_wt_r, *o_wt_g, *o_wt_b;
-			float *n_wt_dens, *n_wt_react, *n_wt_flame, *n_wt_fuel, *n_wt_tcu, *n_wt_tcv, *n_wt_tcw, *n_wt_r, *n_wt_g, *n_wt_b;
+			float *o_wt_dens, *o_wt_react, *o_wt_flame, *o_wt_fuel, *o_wt_tcu, *o_wt_tcv, *o_wt_tcw, *o_wt_tcu2, *o_wt_tcv2, *o_wt_tcw2, *o_wt_r, *o_wt_g, *o_wt_b;
+			float *n_wt_dens, *n_wt_react, *n_wt_flame, *n_wt_fuel, *n_wt_tcu, *n_wt_tcv, *n_wt_tcw, *n_wt_tcu2, *n_wt_tcv2, *n_wt_tcw2, *n_wt_r, *n_wt_g, *n_wt_b;
 
-			smoke_export(fluid_old, &dummy, &dummy, &o_dens, &o_react, &o_flame, &o_fuel, &o_heat, &o_heatold, &o_vx, &o_vy, &o_vz, &o_r, &o_g, &o_b, &dummy_p);
-			smoke_export(sds->fluid, &dummy, &dummy, &n_dens, &n_react, &n_flame, &n_fuel, &n_heat, &n_heatold, &n_vx, &n_vy, &n_vz, &n_r, &n_g, &n_b, &dummy_p);
+			smoke_export(fluid_old, &dummy, &dummy, &o_dens, &o_react, &o_flame, &o_fuel, &o_heat, &o_vx, &o_vy, &o_vz, &o_r, &o_g, &o_b, &dummy_p, &dummy_s);
+			smoke_export(sds->fluid, &dummy, &dummy, &n_dens, &n_react, &n_flame, &n_fuel, &n_heat, &n_vx, &n_vy, &n_vz, &n_r, &n_g, &n_b, &dummy_p, &dummy_s);
 
-			if (sds->flags & MOD_SMOKE_HIGHRES) {
-				smoke_turbulence_export(turb_old, &o_wt_dens, &o_wt_react, &o_wt_flame, &o_wt_fuel, &o_wt_r, &o_wt_g, &o_wt_b, &o_wt_tcu, &o_wt_tcv, &o_wt_tcw);
-				smoke_turbulence_get_res(turb_old, wt_res_old);
-				smoke_turbulence_export(sds->wt, &n_wt_dens, &n_wt_react, &n_wt_flame, &n_wt_fuel, &n_wt_r, &n_wt_g, &n_wt_b, &n_wt_tcu, &n_wt_tcv, &n_wt_tcw);
+			if (sds->flags & FLUID_DOMAIN_USE_NOISE) {
+				smoke_turbulence_export(fluid_old, &o_wt_dens, &o_wt_react, &o_wt_flame, &o_wt_fuel, &o_wt_r, &o_wt_g, &o_wt_b, &o_wt_tcu, &o_wt_tcv, &o_wt_tcw, &o_wt_tcu2, &o_wt_tcv2, &o_wt_tcw2);
+				smoke_turbulence_get_res(fluid_old, wt_res_old);
+				smoke_turbulence_export(sds->fluid, &n_wt_dens, &n_wt_react, &n_wt_flame, &n_wt_fuel, &n_wt_r, &n_wt_g, &n_wt_b, &n_wt_tcu, &n_wt_tcv, &n_wt_tcw, &n_wt_tcu2, &n_wt_tcv2, &n_wt_tcw2);
 			}
-
 
 			for (x = sds->res_min[0]; x < sds->res_max[0]; x++)
 				for (y = sds->res_min[1]; y < sds->res_max[1]; y++)
@@ -1971,12 +2349,12 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 						int xo = x - sds->res_min[0];
 						int yo = y - sds->res_min[1];
 						int zo = z - sds->res_min[2];
-						int index_old = smoke_get_index(xo, sds->res[0], yo, sds->res[1], zo);
+						int index_old = fluid_get_index(xo, sds->res[0], yo, sds->res[1], zo);
 						/* new grid index */
 						int xn = x - min[0] - new_shift[0];
 						int yn = y - min[1] - new_shift[1];
 						int zn = z - min[2] - new_shift[2];
-						int index_new = smoke_get_index(xn, res[0], yn, res[1], zn);
+						int index_new = fluid_get_index(xn, res[0], yn, res[1], zn);
 
 						/* skip if outside new domain */
 						if (xn < 0 || xn >= res[0] ||
@@ -1989,7 +2367,6 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 						/* heat */
 						if (n_heat && o_heat) {
 							n_heat[index_new] = o_heat[index_old];
-							n_heatold[index_new] = o_heatold[index_old];
 						}
 						/* fuel */
 						if (n_fuel && o_fuel) {
@@ -2007,7 +2384,7 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 						n_vy[index_new] = o_vy[index_old];
 						n_vz[index_new] = o_vz[index_old];
 
-						if (sds->flags & MOD_SMOKE_HIGHRES && turb_old) {
+						if (sds->flags & FLUID_DOMAIN_USE_NOISE && fluid_old) {
 							int i, j, k;
 							/* old grid index */
 							int xx_o = xo * block_size;
@@ -2022,12 +2399,16 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 							n_wt_tcv[index_new] = o_wt_tcv[index_old];
 							n_wt_tcw[index_new] = o_wt_tcw[index_old];
 
+							n_wt_tcu2[index_new] = o_wt_tcu2[index_old];
+							n_wt_tcv2[index_new] = o_wt_tcv2[index_old];
+							n_wt_tcw2[index_new] = o_wt_tcw2[index_old];
+
 							for (i = 0; i < block_size; i++)
 								for (j = 0; j < block_size; j++)
 									for (k = 0; k < block_size; k++)
 									{
-										int big_index_old = smoke_get_index(xx_o + i, wt_res_old[0], yy_o + j, wt_res_old[1], zz_o + k);
-										int big_index_new = smoke_get_index(xx_n + i, sds->res_wt[0], yy_n + j, sds->res_wt[1], zz_n + k);
+										int big_index_old = fluid_get_index(xx_o + i, wt_res_old[0], yy_o + j, wt_res_old[1], zz_o + k);
+										int big_index_new = fluid_get_index(xx_n + i, sds->res_noise[0], yy_n + j, sds->res_noise[1], zz_n + k);
 										/* copy data */
 										n_wt_dens[big_index_new] = o_wt_dens[big_index_old];
 										if (n_wt_flame && o_wt_flame) {
@@ -2044,9 +2425,7 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 						}
 					}
 		}
-		smoke_free(fluid_old);
-		if (turb_old)
-			smoke_turbulence_free(turb_old);
+		fluid_free(fluid_old);
 
 		/* set new domain dimensions */
 		VECCOPY(sds->res_min, min);
@@ -2056,9 +2435,17 @@ static void adjustDomainResolution(SmokeDomainSettings *sds, int new_shift[3], E
 	}
 }
 
-BLI_INLINE void apply_outflow_fields(int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b)
+BLI_INLINE void apply_outflow_fields(int index, float distance_value, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phiout)
 {
-	density[index] = 0.f;
+	/* determine outflow cells - phiout used in smoke and liquids */
+	if (phiout) {
+		phiout[index] = distance_value;
+	}
+
+	/* set smoke outflow */
+	if (density) {
+		density[index] = 0.f;
+	}
 	if (heat) {
 		heat[index] = 0.f;
 	}
@@ -2073,35 +2460,47 @@ BLI_INLINE void apply_outflow_fields(int index, float *density, float *heat, flo
 	}
 }
 
-BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value, int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b)
+BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value, float distance_value, int index, float *density, float *heat, float *fuel, float *react, float *color_r, float *color_g, float *color_b, float *phi, float *emission_in)
 {
-	int absolute_flow = (sfs->flags & MOD_SMOKE_FLOW_ABSOLUTE);
+	/* add liquid inflow */
+	if (phi) {
+		phi[index] = distance_value;
+		return;
+	}
+
+	/* save inflow value for mantaflow standalone */
+	if (emission_in) {
+		emission_in[index] = emission_value;
+	}
+
+	/* add smoke inflow */
+	int absolute_flow = (sfs->flags & FLUID_FLOW_ABSOLUTE);
 	float dens_old = density[index];
 	// float fuel_old = (fuel) ? fuel[index] : 0.0f;  /* UNUSED */
-	float dens_flow = (sfs->type == MOD_SMOKE_FLOW_TYPE_FIRE) ? 0.0f : emission_value * sfs->density;
-	float fuel_flow = emission_value * sfs->fuel_amount;
+	float dens_flow = (sfs->type == FLUID_FLOW_TYPE_FIRE) ? 0.0f : emission_value * sfs->density;
+	float fuel_flow = (fuel) ? emission_value * sfs->fuel_amount : 0.0f;
 	/* add heat */
 	if (heat && emission_value > 0.0f) {
 		heat[index] = ADD_IF_LOWER(heat[index], sfs->temp);
 	}
 	/* absolute */
 	if (absolute_flow) {
-		if (sfs->type != MOD_SMOKE_FLOW_TYPE_FIRE) {
+		if (sfs->type != FLUID_FLOW_TYPE_FIRE) {
 			if (dens_flow > density[index])
 				density[index] = dens_flow;
 		}
-		if (sfs->type != MOD_SMOKE_FLOW_TYPE_SMOKE && fuel && fuel_flow) {
+		if (sfs->type != FLUID_FLOW_TYPE_SMOKE && fuel && fuel_flow) {
 			if (fuel_flow > fuel[index])
 				fuel[index] = fuel_flow;
 		}
 	}
 	/* additive */
 	else {
-		if (sfs->type != MOD_SMOKE_FLOW_TYPE_FIRE) {
+		if (sfs->type != FLUID_FLOW_TYPE_FIRE) {
 			density[index] += dens_flow;
 			CLAMP(density[index], 0.0f, 1.0f);
 		}
-		if (sfs->type != MOD_SMOKE_FLOW_TYPE_SMOKE && fuel && sfs->fuel_amount) {
+		if (sfs->type != FLUID_FLOW_TYPE_SMOKE && fuel && sfs->fuel_amount) {
 			fuel[index] += fuel_flow;
 			CLAMP(fuel[index], 0.0f, 10.0f);
 		}
@@ -2129,18 +2528,94 @@ BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs, float emission_value
 	}
 }
 
-static void update_flowsfluids(
-        Depsgraph *depsgraph, Scene *scene, Object *ob, SmokeDomainSettings *sds, float dt)
+static void update_flowsflags(SmokeDomainSettings *sds, Object **flowobjs, int numflowobj)
 {
-	Object **flowobjs = NULL;
-	EmissionMap *emaps = NULL;
-	unsigned int numflowobj = 0;
-	unsigned int flowIndex;
-	int new_shift[3] = {0};
 	int active_fields = sds->active_fields;
+	unsigned int flowIndex;
+
+	/* Monitor active fields based on flow settings */
+	for (flowIndex = 0; flowIndex < numflowobj; flowIndex++)
+	{
+		Object *collob = flowobjs[flowIndex];
+		SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(collob, eModifierType_Smoke);
+
+		if ((smd2->type & MOD_SMOKE_TYPE_FLOW) && smd2->flow) {
+			SmokeFlowSettings *sfs = smd2->flow;
+			if (!sfs) break;
+			if (sfs->flags & FLUID_FLOW_INITVELOCITY) {
+				active_fields |= FLUID_DOMAIN_ACTIVE_INVEL;
+			}
+			/* activate heat field if flow produces any heat */
+			if (sfs->temp && sds->type == FLUID_DOMAIN_TYPE_GAS) {
+				active_fields |= FLUID_DOMAIN_ACTIVE_HEAT;
+			}
+			/* activate fuel field if flow adds any fuel */
+			if (sfs->fuel_amount && (sfs->type == FLUID_FLOW_TYPE_FIRE || sfs->type == FLUID_FLOW_TYPE_SMOKEFIRE)) {
+				active_fields |= FLUID_DOMAIN_ACTIVE_FIRE;
+			}
+			/* activate color field if flows add smoke with varying colors */
+			if (sfs->density && (sfs->type == FLUID_FLOW_TYPE_SMOKE || sfs->type == FLUID_FLOW_TYPE_SMOKEFIRE)) {
+				if (!(active_fields & FLUID_DOMAIN_ACTIVE_COLOR_SET)) {
+					copy_v3_v3(sds->active_color, sfs->color);
+					active_fields |= FLUID_DOMAIN_ACTIVE_COLOR_SET;
+				}
+				else if (!equals_v3v3(sds->active_color, sfs->color)) {
+					copy_v3_v3(sds->active_color, sfs->color);
+					active_fields |= FLUID_DOMAIN_ACTIVE_COLORS;
+				}
+			}
+		}
+	}
+	/* Monitor active fields based on domain settings */
+	if (active_fields & FLUID_DOMAIN_ACTIVE_FIRE) {
+		/* heat is always needed for fire */
+		active_fields |= FLUID_DOMAIN_ACTIVE_HEAT;
+		/* also activate colors if domain smoke color differs from active color */
+		if (!(active_fields & FLUID_DOMAIN_ACTIVE_COLOR_SET)) {
+			copy_v3_v3(sds->active_color, sds->flame_smoke_color);
+			active_fields |= FLUID_DOMAIN_ACTIVE_COLOR_SET;
+		}
+		else if (!equals_v3v3(sds->active_color, sds->flame_smoke_color)) {
+			copy_v3_v3(sds->active_color, sds->flame_smoke_color);
+			active_fields |= FLUID_DOMAIN_ACTIVE_COLORS;
+		}
+	}
+	/* Finally, initialize new data fields if any */
+	if (active_fields & FLUID_DOMAIN_ACTIVE_INVEL) {
+		fluid_ensure_invelocity(sds->fluid, sds->smd);
+	}
+	if (active_fields & FLUID_DOMAIN_ACTIVE_HEAT) {
+		smoke_ensure_heat(sds->fluid, sds->smd);
+	}
+	if (active_fields & FLUID_DOMAIN_ACTIVE_FIRE) {
+		smoke_ensure_fire(sds->fluid, sds->smd);
+	}
+	if (active_fields & FLUID_DOMAIN_ACTIVE_COLORS) {
+		/* initialize all smoke with "active_color" */
+		smoke_ensure_colors(sds->fluid, sds->smd);
+	}
+	if (sds->type == FLUID_DOMAIN_TYPE_LIQUID && (sds->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY || sds->particle_type & FLUID_DOMAIN_PARTICLE_FOAM || sds->particle_type & FLUID_DOMAIN_PARTICLE_TRACER)) {
+		liquid_ensure_sndparts(sds->fluid, sds->smd);
+	}
+	sds->active_fields = active_fields;
+}
+
+static void update_flowsfluids(
+        struct Depsgraph *depsgraph, Scene *scene, Object *ob,
+		SmokeDomainSettings *sds, float time_per_frame, float frame_length, int frame, bool is_first_frame)
+{
+	EmissionMap *emaps = NULL;
+	int new_shift[3] = {0};
+	Object **flowobjs = NULL;
+	unsigned int numflowobj = 0, flowIndex = 0;
+
+	flowobjs = BKE_collision_objects_create(depsgraph, ob, sds->fluid_group, &numflowobj, eModifierType_Smoke);
+
+	/* Update all flow related flags and ensure that corresponding grids get initialized */
+	update_flowsflags(sds, flowobjs, numflowobj);
 
 	/* calculate domain shift for current frame if using adaptive domain */
-	if (sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN) {
+	if (sds->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN) {
 		int total_shift[3];
 		float frame_shift_f[3];
 		float ob_loc[3] = {0};
@@ -2172,317 +2647,300 @@ static void update_flowsfluids(
 		sds->p1[2] = sds->p0[2] + sds->cell_size[2] * sds->base_res[2];
 	}
 
-	flowobjs = BKE_collision_objects_create(depsgraph, ob, sds->fluid_group, &numflowobj, eModifierType_Smoke);
-
 	/* init emission maps for each flow */
 	emaps = MEM_callocN(sizeof(struct EmissionMap) * numflowobj, "smoke_flow_maps");
 
 	/* Prepare flow emission maps */
 	for (flowIndex = 0; flowIndex < numflowobj; flowIndex++)
 	{
-		Object *collob = flowobjs[flowIndex];
-		SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(collob, eModifierType_Smoke);
+		Object *flowobj = flowobjs[flowIndex];
+		SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(flowobj, eModifierType_Smoke);
 
-		// check for initialized smoke object
-		if ((smd2->type & MOD_SMOKE_TYPE_FLOW) && smd2->flow)
-		{
-			// we got nice flow object
+		/* Check for initialized smoke object */
+		if ((smd2->type & MOD_SMOKE_TYPE_FLOW) && smd2->flow) {
 			SmokeFlowSettings *sfs = smd2->flow;
 			int subframes = sfs->subframes;
 			EmissionMap *em = &emaps[flowIndex];
 
-			/* just sample flow directly to emission map if no subframes */
-			if (!subframes) {
-				if (sfs->source == MOD_SMOKE_FLOW_SOURCE_PARTICLES) {
-					emit_from_particles(collob, sds, sfs, em, depsgraph, scene, dt);
+			/* Length of one frame. If using adaptive stepping, length is smaller than actual frame length */
+			float adaptframe_length = time_per_frame / frame_length;
+
+			/* Further splitting because of emission subframe: If no subframes present, sample_size is 1 */
+			float sample_size = 1.0f / (float)(subframes+1);
+			float sdt = adaptframe_length * sample_size;
+			int hires_multiplier = 1;
+
+			/* First frame cannot have any subframes because there is (obviously) no previous frame from where subframes could come from */
+			if (is_first_frame) subframes = 0;
+
+			int subframe;
+			float prev_frame_pos;
+
+			/* Emission loop. When not using subframes this will loop only once. */
+			for (subframe = 0; subframe <= subframes; subframe++) {
+
+				/* Temporary emission map used when subframes are enabled, i.e. at least one subframe */
+				EmissionMap em_temp = {NULL};
+
+				/* Set scene time */
+				/* Handle emission subframe */
+				if (subframe < subframes && !is_first_frame) {
+					prev_frame_pos = sdt * (float)(subframe+1);
+					scene->r.subframe = prev_frame_pos;
+					scene->r.cfra = frame - 1;
 				}
+				/* Last frame in this loop (subframe == suframes). Can be real end frame or in between frames (adaptive frame) */
 				else {
-					emit_from_mesh(collob, sds, sfs, em, dt);
-				}
-			}
-			/* sample subframes */
-			else {
-#if 0
-				int scene_frame = (int)DEG_get_ctime(depsgraph);
-#endif
-				// float scene_subframe = scene->r.subframe;  // UNUSED
-				int subframe;
-				for (subframe = 0; subframe <= subframes; subframe++) {
-					EmissionMap em_temp = {NULL};
-					float sample_size = 1.0f / (float)(subframes+1);
-#if 0
-					float prev_frame_pos = sample_size * (float)(subframe+1);
-#endif
-					float sdt = dt * sample_size;
-					int hires_multiplier = 1;
-
-					if ((sds->flags & MOD_SMOKE_HIGHRES) && (sds->highres_sampling == SM_HRES_FULLSAMPLE)) {
-						hires_multiplier = sds->amplify + 1;
+					/* Handle adaptive subframe (ie has subframe fraction). Need to set according scene subframe parameter */
+					if (time_per_frame < frame_length) {
+						scene->r.subframe = adaptframe_length;
+						scene->r.cfra = frame - 1;
 					}
+					/* Handle absolute endframe (ie no subframe fraction). Need to set the scene subframe parameter to 0 and advance current scene frame */
+					else {
+						scene->r.subframe = 0.0f;
+						scene->r.cfra = frame;
+					}
+				}
+//				printf("flow: frame (is first: %d): %d // scene current frame: %d // scene current subframe: %f\n", is_first_frame, frame, scene->r.cfra, scene->r.subframe);
 
-					/* TODO: setting the scene frame no longer works with the new depsgraph. */
-#if 0
-					/* set scene frame to match previous frame + subframe
-					 * or use current frame for last sample */
-					if (subframe < subframes) {
-						scene->r.cfra = scene_frame - 1;
-						scene->r.subframe = prev_frame_pos;
+				/* Emission from particles */
+				if (sfs->source == FLUID_FLOW_SOURCE_PARTICLES) {
+					/* emit_from_particles() updates timestep internally */
+					if (subframes) {
+						emit_from_particles(flowobj, sds, sfs, &em_temp, depsgraph, scene, sdt);
 					}
 					else {
-						scene->r.cfra = scene_frame;
-						scene->r.subframe = 0.0f;
-					}
-#endif
-
-					if (sfs->source == MOD_SMOKE_FLOW_SOURCE_PARTICLES) {
-						/* emit_from_particles() updates timestep internally */
-						emit_from_particles(collob, sds, sfs, &em_temp, depsgraph, scene, sdt);
-						if (!(sfs->flags & MOD_SMOKE_FLOW_USE_PART_SIZE)) {
-							hires_multiplier = 1;
-						}
-					}
-					else { /* MOD_SMOKE_FLOW_SOURCE_MESH */
-						/* update flow object frame */
-						BLI_mutex_lock(&object_update_lock);
-						BKE_object_modifier_update_subframe(depsgraph, scene, collob, true, 5, DEG_get_ctime(depsgraph), eModifierType_Smoke);
-						BLI_mutex_unlock(&object_update_lock);
-
-						/* apply flow */
-						emit_from_mesh(collob, sds, sfs, &em_temp, sdt);
+						emit_from_particles(flowobj, sds, sfs, em, depsgraph, scene, sdt);
 					}
 
-					/* combine emission maps */
-					em_combineMaps(em, &em_temp, hires_multiplier, !(sfs->flags & MOD_SMOKE_FLOW_ABSOLUTE), sample_size);
+					if (!(sfs->flags & FLUID_FLOW_USE_PART_SIZE)) {
+						hires_multiplier = 1;
+					}
+				}
+				/* Emission from mesh */
+				else if (sfs->source == FLUID_FLOW_SOURCE_MESH) {
+					/* Update flow object frame */
+					// BLI_mutex_lock() called in smoke_step(), so safe to update subframe here
+					
+					/* TODO (sebbas): Using BKE_scene_frame_get(scene) instead of new DEG_get_ctime(depsgraph) as subframes dont work with the latter yet */
+					BKE_object_modifier_update_subframe(depsgraph, scene, flowobj, true, 5, BKE_scene_frame_get(scene), eModifierType_Smoke);
+
+					/* Apply flow */
+					if (subframes) {
+						emit_from_mesh(flowobj, sds, sfs, &em_temp, sdt);
+					}
+					else {
+						emit_from_mesh(flowobj, sds, sfs, em, sdt);
+					}
+				}
+				else {
+					printf("Error: unknown flow emission source\n");
+				}
+
+				/* If this we emitted with temp emission map in this loop (subframe emission), we combine the temp map with the original emission map */
+				if (subframes) {
+					/* Combine emission maps */
+					em_combineMaps(em, &em_temp, hires_multiplier, !(sfs->flags & FLUID_FLOW_ABSOLUTE), sample_size);
 					em_freeData(&em_temp);
 				}
 			}
-
-			/* update required data fields */
-			if (em->total_cells && sfs->type != MOD_SMOKE_FLOW_TYPE_OUTFLOW) {
-				/* activate heat field if flow produces any heat */
-				if (sfs->temp) {
-					active_fields |= SM_ACTIVE_HEAT;
-				}
-				/* activate fuel field if flow adds any fuel */
-				if (sfs->type != MOD_SMOKE_FLOW_TYPE_SMOKE && sfs->fuel_amount) {
-					active_fields |= SM_ACTIVE_FIRE;
-				}
-				/* activate color field if flows add smoke with varying colors */
-				if (sfs->type != MOD_SMOKE_FLOW_TYPE_FIRE && sfs->density) {
-					if (!(active_fields & SM_ACTIVE_COLOR_SET)) {
-						copy_v3_v3(sds->active_color, sfs->color);
-						active_fields |= SM_ACTIVE_COLOR_SET;
-					}
-					else if (!equals_v3v3(sds->active_color, sfs->color)) {
-						copy_v3_v3(sds->active_color, sfs->color);
-						active_fields |= SM_ACTIVE_COLORS;
-					}
-				}
-			}
-		}
-	}
-
-	/* monitor active fields based on domain settings */
-	/* if domain has fire, activate new fields if required */
-	if (active_fields & SM_ACTIVE_FIRE) {
-		/* heat is always needed for fire */
-		active_fields |= SM_ACTIVE_HEAT;
-		/* also activate colors if domain smoke color differs from active color */
-		if (!(active_fields & SM_ACTIVE_COLOR_SET)) {
-			copy_v3_v3(sds->active_color, sds->flame_smoke_color);
-			active_fields |= SM_ACTIVE_COLOR_SET;
-		}
-		else if (!equals_v3v3(sds->active_color, sds->flame_smoke_color)) {
-			copy_v3_v3(sds->active_color, sds->flame_smoke_color);
-			active_fields |= SM_ACTIVE_COLORS;
 		}
 	}
 
 	/* Adjust domain size if needed */
-	if (sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN) {
-		adjustDomainResolution(sds, new_shift, emaps, numflowobj, dt);
+	if (sds->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN) {
+		adjustDomainResolution(sds, new_shift, emaps, numflowobj, time_per_frame);
 	}
 
-	/* Initialize new data fields if any */
-	if (active_fields & SM_ACTIVE_HEAT) {
-		smoke_ensure_heat(sds->fluid);
+	float *phi_in = liquid_get_phiin(sds->fluid);
+	float *phiout_in = liquid_get_phioutin(sds->fluid);
+	float *density = smoke_get_density(sds->fluid);
+	float *color_r = smoke_get_color_r(sds->fluid);
+	float *color_g = smoke_get_color_g(sds->fluid);
+	float *color_b = smoke_get_color_b(sds->fluid);
+	float *fuel = smoke_get_fuel(sds->fluid);
+	float *heat = smoke_get_heat(sds->fluid);
+	float *react = smoke_get_react(sds->fluid);
+	float *emission_in = smoke_get_emission_in(sds->fluid);
+//	float *bigdensity = smoke_turbulence_get_density(sds->fluid);
+//	float *bigfuel = smoke_turbulence_get_fuel(sds->fluid);
+//	float *bigreact = smoke_turbulence_get_react(sds->fluid);
+//	float *bigcolor_r = smoke_turbulence_get_color_r(sds->fluid);
+//	float *bigcolor_g = smoke_turbulence_get_color_g(sds->fluid);
+//	float *bigcolor_b = smoke_turbulence_get_color_b(sds->fluid);
+	float *velx_initial = fluid_get_in_velocity_x(sds->fluid);
+	float *vely_initial = fluid_get_in_velocity_y(sds->fluid);
+	float *velz_initial = fluid_get_in_velocity_z(sds->fluid);
+	unsigned int z;
+
+	/* Grid reset before writing again */
+	for (z = 0; z < sds->res[0] * sds->res[1] * sds->res[2]; z++)
+	{
+		if (phi_in)
+			phi_in[z] = 9999;
+		if (phiout_in)
+			phiout_in[z] = 9999;
 	}
-	if (active_fields & SM_ACTIVE_FIRE) {
-		smoke_ensure_fire(sds->fluid, sds->wt);
-	}
-	if (active_fields & SM_ACTIVE_COLORS) {
-		/* initialize all smoke with "active_color" */
-		smoke_ensure_colors(sds->fluid, sds->wt, sds->active_color[0], sds->active_color[1], sds->active_color[2]);
-	}
-	sds->active_fields = active_fields;
 
 	/* Apply emission data */
-	if (sds->fluid) {
-		for (flowIndex = 0; flowIndex < numflowobj; flowIndex++)
-		{
-			Object *collob = flowobjs[flowIndex];
-			SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(collob, eModifierType_Smoke);
+	for (flowIndex = 0; flowIndex < numflowobj; flowIndex++)
+	{
+		Object *flowobj = flowobjs[flowIndex];
+		SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(flowobj, eModifierType_Smoke);
 
-			// check for initialized smoke object
-			if ((smd2->type & MOD_SMOKE_TYPE_FLOW) && smd2->flow)
-			{
-				// we got nice flow object
-				SmokeFlowSettings *sfs = smd2->flow;
-				EmissionMap *em = &emaps[flowIndex];
+		// check for initialized smoke object
+		if ((smd2->type & MOD_SMOKE_TYPE_FLOW) && smd2->flow) {
+			SmokeFlowSettings *sfs = smd2->flow;
+			EmissionMap *em = &emaps[flowIndex];
+//			int bigres[3];
+			float *velocity_map = em->velocity;
+			float *emission_map = em->influence;
+//			float *emission_map_high = em->influence_high;
+			float* distance_map = em->distances;
+//			float* distance_map_high = em->distances_high;
 
-				float *density = smoke_get_density(sds->fluid);
-				float *color_r = smoke_get_color_r(sds->fluid);
-				float *color_g = smoke_get_color_g(sds->fluid);
-				float *color_b = smoke_get_color_b(sds->fluid);
-				float *fuel = smoke_get_fuel(sds->fluid);
-				float *react = smoke_get_react(sds->fluid);
-				float *bigdensity = smoke_turbulence_get_density(sds->wt);
-				float *bigfuel = smoke_turbulence_get_fuel(sds->wt);
-				float *bigreact = smoke_turbulence_get_react(sds->wt);
-				float *bigcolor_r = smoke_turbulence_get_color_r(sds->wt);
-				float *bigcolor_g = smoke_turbulence_get_color_g(sds->wt);
-				float *bigcolor_b = smoke_turbulence_get_color_b(sds->wt);
-				float *heat = smoke_get_heat(sds->fluid);
-				float *velocity_x = smoke_get_velocity_x(sds->fluid);
-				float *velocity_y = smoke_get_velocity_y(sds->fluid);
-				float *velocity_z = smoke_get_velocity_z(sds->fluid);
-				//unsigned char *obstacle = smoke_get_obstacle(sds->fluid);
-				// DG TODO UNUSED unsigned char *obstacleAnim = smoke_get_obstacle_anim(sds->fluid);
-				int bigres[3];
-				float *velocity_map = em->velocity;
-				float *emission_map = em->influence;
-				float *emission_map_high = em->influence_high;
+			int gx, gy, gz, ex, ey, ez, dx, dy, dz;
+//			int ii, jj, kk, block_size;
+			size_t e_index, d_index;
+//			size_t index_big;
 
-				int ii, jj, kk, gx, gy, gz, ex, ey, ez, dx, dy, dz, block_size;
-				size_t e_index, d_index, index_big;
+			// loop through every emission map cell
+			for (gx = em->min[0]; gx < em->max[0]; gx++)
+				for (gy = em->min[1]; gy < em->max[1]; gy++)
+					for (gz = em->min[2]; gz < em->max[2]; gz++)
+					{
+						/* get emission map index */
+						ex = gx - em->min[0];
+						ey = gy - em->min[1];
+						ez = gz - em->min[2];
+						e_index = fluid_get_index(ex, em->res[0], ey, em->res[1], ez);
 
-				// loop through every emission map cell
-				for (gx = em->min[0]; gx < em->max[0]; gx++)
-					for (gy = em->min[1]; gy < em->max[1]; gy++)
-						for (gz = em->min[2]; gz < em->max[2]; gz++)
-						{
-							/* get emission map index */
-							ex = gx - em->min[0];
-							ey = gy - em->min[1];
-							ez = gz - em->min[2];
-							e_index = smoke_get_index(ex, em->res[0], ey, em->res[1], ez);
+						/* get domain index */
+						dx = gx - sds->res_min[0];
+						dy = gy - sds->res_min[1];
+						dz = gz - sds->res_min[2];
+						d_index = fluid_get_index(dx, sds->res[0], dy, sds->res[1], dz);
+						/* make sure emission cell is inside the new domain boundary */
+						if (dx < 0 || dy < 0 || dz < 0 || dx >= sds->res[0] || dy >= sds->res[1] || dz >= sds->res[2]) continue;
 
-							/* get domain index */
-							dx = gx - sds->res_min[0];
-							dy = gy - sds->res_min[1];
-							dz = gz - sds->res_min[2];
-							d_index = smoke_get_index(dx, sds->res[0], dy, sds->res[1], dz);
-							/* make sure emission cell is inside the new domain boundary */
-							if (dx < 0 || dy < 0 || dz < 0 || dx >= sds->res[0] || dy >= sds->res[1] || dz >= sds->res[2]) continue;
-
-							if (sfs->type == MOD_SMOKE_FLOW_TYPE_OUTFLOW) { // outflow
-								apply_outflow_fields(d_index, density, heat, fuel, react, color_r, color_g, color_b);
-							}
-							else { // inflow
-								apply_inflow_fields(sfs, emission_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b);
-
+						if (sfs->behavior == FLUID_FLOW_BEHAVIOR_OUTFLOW) { // outflow
+							apply_outflow_fields(d_index, distance_map[e_index], density, heat, fuel, react, color_r, color_g, color_b, phiout_in);
+						}
+						else if (sfs->behavior == FLUID_FLOW_BEHAVIOR_GEOMETRY && smd2->time > 2) {
+							apply_inflow_fields(sfs, 0.0f, 9999.0f, d_index, density, heat, fuel, react, color_r, color_g, color_b, phi_in, emission_in);
+						}
+						else if (sfs->behavior == FLUID_FLOW_BEHAVIOR_INFLOW || sfs->behavior == FLUID_FLOW_BEHAVIOR_GEOMETRY) { // inflow
+							/* only apply inflow if enabled */
+							if (sfs->flags & FLUID_FLOW_USE_INFLOW) {
+								apply_inflow_fields(sfs, emission_map[e_index], distance_map[e_index], d_index, density, heat, fuel, react, color_r, color_g, color_b, phi_in, emission_in);
 								/* initial velocity */
-								if (sfs->flags & MOD_SMOKE_FLOW_INITVELOCITY) {
-									velocity_x[d_index] = ADD_IF_LOWER(velocity_x[d_index], velocity_map[e_index * 3]);
-									velocity_y[d_index] = ADD_IF_LOWER(velocity_y[d_index], velocity_map[e_index * 3 + 1]);
-									velocity_z[d_index] = ADD_IF_LOWER(velocity_z[d_index], velocity_map[e_index * 3 + 2]);
+								if (sfs->flags & FLUID_FLOW_INITVELOCITY) {
+									velx_initial[d_index] = velocity_map[e_index * 3];
+									vely_initial[d_index] = velocity_map[e_index * 3 + 1];
+									velz_initial[d_index] = velocity_map[e_index * 3 + 2];
 								}
 							}
+						}
 
-							/* loop through high res blocks if high res enabled */
-							if (bigdensity) {
-								// neighbor cell emission densities (for high resolution smoke smooth interpolation)
-								float c000, c001, c010, c011,  c100, c101, c110, c111;
+						// TODO (sebbas): For now, just using manta interpolated grids for noise
+						/* loop through high res blocks if high res enabled */
+//						if (bigdensity && sds->noise_scale > 1) {
+//							// neighbor cell emission densities (for high resolution smoke smooth interpolation)
+//							float c000, c001, c010, c011,  c100, c101, c110, c111;
+//
+//							smoke_turbulence_get_res(sds->fluid, bigres);
+//
+//							block_size = sds->noise_scale;  // high res block size
+//
+//							c000 = (ex > 0 && ey > 0 && ez > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey - 1, em->res[1], ez - 1)] : 0;
+//							c001 = (ex > 0 && ey > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey - 1, em->res[1], ez)] : 0;
+//							c010 = (ex > 0 && ez > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey, em->res[1], ez - 1)] : 0;
+//							c011 = (ex > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey, em->res[1], ez)] : 0;
+//
+//							c100 = (ey > 0 && ez > 0) ? emission_map[smoke_get_index(ex, em->res[0], ey - 1, em->res[1], ez - 1)] : 0;
+//							c101 = (ey > 0) ? emission_map[smoke_get_index(ex, em->res[0], ey - 1, em->res[1], ez)] : 0;
+//							c110 = (ez > 0) ? emission_map[smoke_get_index(ex, em->res[0], ey, em->res[1], ez - 1)] : 0;
+//							c111 = emission_map[smoke_get_index(ex, em->res[0], ey, em->res[1], ez)]; // this cell
+//
+//							for (ii = 0; ii < block_size; ii++)
+//								for (jj = 0; jj < block_size; jj++)
+//									for (kk = 0; kk < block_size; kk++)
+//									{
+//
+//										float fx, fy, fz, interpolated_value;
+//										int shift_x = 0, shift_y = 0, shift_z = 0;
+//
+//
+//										/* Use full sample emission map if enabled and available */
+//										if ((sds->highres_sampling == SM_HRES_FULLSAMPLE) && emission_map_high) {
+//											interpolated_value = emission_map_high[smoke_get_index(ex * block_size + ii, em->res[0] * block_size, ey * block_size + jj, em->res[1] * block_size, ez * block_size + kk)]; // this cell
+//										}
+//										else if (sds->highres_sampling == SM_HRES_NEAREST) {
+//											/* without interpolation use same low resolution
+//											 * block value for all hi-res blocks */
+//											interpolated_value = c111;
+//										}
+//										/* Fall back to interpolated */
+//										else
+//										{
+//											/* get relative block position
+//											 * for interpolation smoothing */
+//											fx = (float)ii / block_size + 0.5f / block_size;
+//											fy = (float)jj / block_size + 0.5f / block_size;
+//											fz = (float)kk / block_size + 0.5f / block_size;
+//
+//											/* calculate trilinear interpolation */
+//											interpolated_value = c000 * (1 - fx) * (1 - fy) * (1 - fz) +
+//																 c100 * fx * (1 - fy) * (1 - fz) +
+//																 c010 * (1 - fx) * fy * (1 - fz) +
+//																 c001 * (1 - fx) * (1 - fy) * fz +
+//																 c101 * fx * (1 - fy) * fz +
+//																 c011 * (1 - fx) * fy * fz +
+//																 c110 * fx * fy * (1 - fz) +
+//																 c111 * fx * fy * fz;
+//
+//
+//											/* add some contrast / sharpness
+//											 * depending on hi-res block size */
+//											interpolated_value = (interpolated_value - 0.4f) * (block_size / 2) + 0.4f;
+//											CLAMP(interpolated_value, 0.0f, 1.0f);
+//
+//											/* shift smoke block index
+//											 * (because pixel center is actually
+//											 * in halfway of the low res block) */
+//											shift_x = (dx < 1) ? 0 : block_size / 2;
+//											shift_y = (dy < 1) ? 0 : block_size / 2;
+//											shift_z = (dz < 1) ? 0 : block_size / 2;
+//										}
+//
+//										/* get shifted index for current high resolution block */
+//										index_big = smoke_get_index(block_size * dx + ii - shift_x, bigres[0], block_size * dy + jj - shift_y, bigres[1], block_size * dz + kk - shift_z);
+//
+//										if (sfs->behavior == FLUID_FLOW_BEHAVIOR_OUTFLOW) { // outflow
+//											if (interpolated_value) {
+//												apply_outflow_fields(index_big, distance_map_high[index_big], bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL);
+//											}
+//										}
+//										else if (sfs->behavior == FLUID_FLOW_BEHAVIOR_GEOMETRY && smd2->time > 2) {
+//											apply_inflow_fields(sfs, 0.0f, 0.5f, index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL, NULL);
+//										}
+//										else if (sfs->behavior == FLUID_FLOW_BEHAVIOR_INFLOW || sfs->behavior == FLUID_FLOW_BEHAVIOR_GEOMETRY) { // inflow
+//											// TODO (sebbas) inflow map highres?
+//											apply_inflow_fields(sfs, interpolated_value, distance_map_high[index_big], index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b, NULL, NULL);
+//										}
+//									} // hires loop
+//						}  // bigdensity
+					} // low res loop
 
-								smoke_turbulence_get_res(sds->wt, bigres);
-								block_size = sds->amplify + 1;  // high res block size
+			// free emission maps
+			em_freeData(em);
 
-								c000 = (ex > 0 && ey > 0 && ez > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey - 1, em->res[1], ez - 1)] : 0;
-								c001 = (ex > 0 && ey > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey - 1, em->res[1], ez)] : 0;
-								c010 = (ex > 0 && ez > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey, em->res[1], ez - 1)] : 0;
-								c011 = (ex > 0) ? emission_map[smoke_get_index(ex - 1, em->res[0], ey, em->res[1], ez)] : 0;
-
-								c100 = (ey > 0 && ez > 0) ? emission_map[smoke_get_index(ex, em->res[0], ey - 1, em->res[1], ez - 1)] : 0;
-								c101 = (ey > 0) ? emission_map[smoke_get_index(ex, em->res[0], ey - 1, em->res[1], ez)] : 0;
-								c110 = (ez > 0) ? emission_map[smoke_get_index(ex, em->res[0], ey, em->res[1], ez - 1)] : 0;
-								c111 = emission_map[smoke_get_index(ex, em->res[0], ey, em->res[1], ez)]; // this cell
-
-								for (ii = 0; ii < block_size; ii++)
-									for (jj = 0; jj < block_size; jj++)
-										for (kk = 0; kk < block_size; kk++)
-										{
-
-											float fx, fy, fz, interpolated_value;
-											int shift_x = 0, shift_y = 0, shift_z = 0;
-
-
-											/* Use full sample emission map if enabled and available */
-											if ((sds->highres_sampling == SM_HRES_FULLSAMPLE) && emission_map_high) {
-												interpolated_value = emission_map_high[smoke_get_index(ex * block_size + ii, em->res[0] * block_size, ey * block_size + jj, em->res[1] * block_size, ez * block_size + kk)]; // this cell
-											}
-											else if (sds->highres_sampling == SM_HRES_NEAREST) {
-												/* without interpolation use same low resolution
-												 * block value for all hi-res blocks */
-												interpolated_value = c111;
-											}
-											/* Fall back to interpolated */
-											else
-											{
-												/* get relative block position
-												 * for interpolation smoothing */
-												fx = (float)ii / block_size + 0.5f / block_size;
-												fy = (float)jj / block_size + 0.5f / block_size;
-												fz = (float)kk / block_size + 0.5f / block_size;
-
-												/* calculate trilinear interpolation */
-												interpolated_value = c000 * (1 - fx) * (1 - fy) * (1 - fz) +
-												                     c100 * fx * (1 - fy) * (1 - fz) +
-												                     c010 * (1 - fx) * fy * (1 - fz) +
-												                     c001 * (1 - fx) * (1 - fy) * fz +
-												                     c101 * fx * (1 - fy) * fz +
-												                     c011 * (1 - fx) * fy * fz +
-												                     c110 * fx * fy * (1 - fz) +
-												                     c111 * fx * fy * fz;
-
-
-												/* add some contrast / sharpness
-												 * depending on hi-res block size */
-												interpolated_value = (interpolated_value - 0.4f) * (block_size / 2) + 0.4f;
-												CLAMP(interpolated_value, 0.0f, 1.0f);
-
-												/* shift smoke block index
-												 * (because pixel center is actually
-												 * in halfway of the low res block) */
-												shift_x = (dx < 1) ? 0 : block_size / 2;
-												shift_y = (dy < 1) ? 0 : block_size / 2;
-												shift_z = (dz < 1) ? 0 : block_size / 2;
-											}
-
-											/* get shifted index for current high resolution block */
-											index_big = smoke_get_index(block_size * dx + ii - shift_x, bigres[0], block_size * dy + jj - shift_y, bigres[1], block_size * dz + kk - shift_z);
-
-											if (sfs->type == MOD_SMOKE_FLOW_TYPE_OUTFLOW) { // outflow
-												if (interpolated_value) {
-													apply_outflow_fields(index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b);
-												}
-											}
-											else { // inflow
-												apply_inflow_fields(sfs, interpolated_value, index_big, bigdensity, NULL, bigfuel, bigreact, bigcolor_r, bigcolor_g, bigcolor_b);
-											}
-										} // hires loop
-							}  // bigdensity
-						} // low res loop
-
-				// free emission maps
-				em_freeData(em);
-
-			} // end emission
-		}
+		} // end emission
 	}
 
 	BKE_collision_objects_free(flowobjs);
-	if (emaps)
-		MEM_freeN(emaps);
+	if (emaps) MEM_freeN(emaps);
 }
 
 typedef struct UpdateEffectorsData {
@@ -2498,7 +2956,8 @@ typedef struct UpdateEffectorsData {
 	float *velocity_x;
 	float *velocity_y;
 	float *velocity_z;
-	unsigned char *obstacle;
+	int *flags;
+	float *phiObsIn;
 } UpdateEffectorsData;
 
 static void update_effectors_task_cb(
@@ -2515,17 +2974,21 @@ static void update_effectors_task_cb(
 			EffectedPoint epoint;
 			float mag;
 			float voxelCenter[3] = {0, 0, 0}, vel[3] = {0, 0, 0}, retvel[3] = {0, 0, 0};
-			const unsigned int index = smoke_get_index(x, sds->res[0], y, sds->res[1], z);
+			const unsigned int index = fluid_get_index(x, sds->res[0], y, sds->res[1], z);
 
-			if (((data->fuel ? MAX2(data->density[index], data->fuel[index]) : data->density[index]) < FLT_EPSILON) ||
-			    data->obstacle[index])
+			if ((data->fuel && MAX2(data->density[index], data->fuel[index]) < FLT_EPSILON) ||
+				(data->density && data->density[index] < FLT_EPSILON) ||
+				(data->phiObsIn  && data->phiObsIn[index] < 0.0f) ||
+				 data->flags[index] & 2) // mantaflow convention: 2 == FlagObstacle
 			{
 				continue;
 			}
 
+			/* get velocities from manta grid space and convert to blender units */
 			vel[0] = data->velocity_x[index];
 			vel[1] = data->velocity_y[index];
 			vel[2] = data->velocity_z[index];
+			mul_v3_fl(vel, sds->dx);
 
 			/* convert vel to global space */
 			mag = len_v3(vel);
@@ -2538,6 +3001,7 @@ static void update_effectors_task_cb(
 			voxelCenter[2] = sds->p0[2] + sds->cell_size[2] * ((float)(z + sds->res_min[2]) + 0.5f);
 			mul_m4_v3(sds->obmat, voxelCenter);
 
+			/* do effectors */
 			pd_point_from_loc(data->scene, voxelCenter, vel, index, &epoint);
 			BKE_effectors_apply(data->effectors, NULL, sds->effector_weights, &epoint, retvel, NULL);
 
@@ -2547,7 +3011,7 @@ static void update_effectors_task_cb(
 			normalize_v3(retvel);
 			mul_v3_fl(retvel, mag);
 
-			// TODO dg - do in force!
+			/* constrain forces to interval -1 to 1 */
 			data->force_x[index] = min_ff(max_ff(-1.0f, retvel[0] * 0.2f), 1.0f);
 			data->force_y[index] = min_ff(max_ff(-1.0f, retvel[1] * 0.2f), 1.0f);
 			data->force_z[index] = min_ff(max_ff(-1.0f, retvel[2] * 0.2f), 1.0f);
@@ -2570,13 +3034,14 @@ static void update_effectors(Depsgraph *depsgraph, Scene *scene, Object *ob, Smo
 		data.effectors = effectors;
 		data.density = smoke_get_density(sds->fluid);
 		data.fuel = smoke_get_fuel(sds->fluid);
-		data.force_x = smoke_get_force_x(sds->fluid);
-		data.force_y = smoke_get_force_y(sds->fluid);
-		data.force_z = smoke_get_force_z(sds->fluid);
-		data.velocity_x = smoke_get_velocity_x(sds->fluid);
-		data.velocity_y = smoke_get_velocity_y(sds->fluid);
-		data.velocity_z = smoke_get_velocity_z(sds->fluid);
-		data.obstacle = smoke_get_obstacle(sds->fluid);
+		data.force_x = fluid_get_force_x(sds->fluid);
+		data.force_y = fluid_get_force_y(sds->fluid);
+		data.force_z = fluid_get_force_z(sds->fluid);
+		data.velocity_x = fluid_get_velocity_x(sds->fluid);
+		data.velocity_y = fluid_get_velocity_y(sds->fluid);
+		data.velocity_z = fluid_get_velocity_z(sds->fluid);
+		data.flags = smoke_get_obstacle(sds->fluid);
+		data.phiObsIn = liquid_get_phiobsin(sds->fluid);
 
 		ParallelRangeSettings settings;
 		BLI_parallel_range_settings_defaults(&settings);
@@ -2590,69 +3055,153 @@ static void update_effectors(Depsgraph *depsgraph, Scene *scene, Object *ob, Smo
 	BKE_effectors_free(effectors);
 }
 
-static void step(
-        Depsgraph *depsgraph,
-        Scene *scene, Object *ob, SmokeModifierData *smd, Mesh *domain_me, float fps)
+static Mesh *createLiquidMesh(SmokeDomainSettings *sds, Mesh *orgmesh, Object* ob)
 {
-	SmokeDomainSettings *sds = smd->domain;
-	/* stability values copied from wturbulence.cpp */
-	const int maxSubSteps = 25;
-	float maxVel;
-	// maxVel should be 1.5 (1.5 cell max movement) * dx (cell size)
+	Mesh *me;
+	MVert *mverts;
+	MPoly *mpolys;
+	MLoop *mloops;
+	short *normals, *no_s;
+	float no[3];
+	float min[3];
+	float max[3];
+	float size[3];
+	float cell_size_scaled[3];
 
-	float dt;
-	float maxVelMag = 0.0f;
-	int totalSubsteps;
-	int substep = 0;
-	float dtSubdiv;
-	float gravity[3] = {0.0f, 0.0f, -1.0f};
-	float gravity_mag;
-
-	/* update object state */
-	invert_m4_m4(sds->imat, ob->obmat);
-	copy_m4_m4(sds->obmat, ob->obmat);
-	smoke_set_domain_from_mesh(sds, ob, domain_me, (sds->flags & MOD_SMOKE_ADAPTIVE_DOMAIN) != 0);
-
-	/* use global gravity if enabled */
-	if (scene->physics_settings.flag & PHYS_GLOBAL_GRAVITY) {
-		copy_v3_v3(gravity, scene->physics_settings.gravity);
-		/* map default value to 1.0 */
-		mul_v3_fl(gravity, 1.0f / 9.810f);
+	/* assign material + flags to new dm
+	 * if there's no faces in original dm, keep materials and flags unchanged */
+	MPoly *mpoly;
+	MPoly mp_example = {0};
+	mpoly = orgmesh->mpoly;
+	if (mpoly) {
+		mp_example = *mpoly;
 	}
-	/* convert gravity to domain space */
-	gravity_mag = len_v3(gravity);
-	mul_mat3_m4_v3(sds->imat, gravity);
-	normalize_v3(gravity);
-	mul_v3_fl(gravity, gravity_mag);
+	/* else leave NULL'd */
 
-	/* adapt timestep for different framerates, dt = 0.1 is at 25fps */
-	dt = DT_DEFAULT * (25.0f / fps);
-	// maximum timestep/"CFL" constraint: dt < 5.0 *dx / maxVel
-	maxVel = (sds->dx * 5.0f);
+	const short mp_mat_nr = mp_example.mat_nr;
+	const char mp_flag    = mp_example.flag;
 
-	maxVelMag = sqrtf(maxVelMag) * dt * sds->time_scale;
-	totalSubsteps = (int)((maxVelMag / maxVel) + 1.0f); /* always round up */
-	totalSubsteps = (totalSubsteps < 1) ? 1 : totalSubsteps;
-	totalSubsteps = (totalSubsteps > maxSubSteps) ? maxSubSteps : totalSubsteps;
+	int i;
+	int num_verts, num_normals, num_faces;
 
-	/* Disable substeps for now, since it results in numerical instability */
-	totalSubsteps = 1.0f;
+	if (!sds->fluid)
+		return NULL;
 
-	dtSubdiv = (float)dt / (float)totalSubsteps;
+	num_verts   = liquid_get_num_verts(sds->fluid);
+	num_normals = liquid_get_num_normals(sds->fluid);
+	num_faces   = liquid_get_num_triangles(sds->fluid);
 
-	// printf("totalSubsteps: %d, maxVelMag: %f, dt: %f\n", totalSubsteps, maxVelMag, dt);
+//	printf("num_verts: %d, num_normals: %d, num_faces: %d\n", num_verts, num_normals, num_faces);
 
-	for (substep = 0; substep < totalSubsteps; substep++)
+	if (!num_verts || !num_faces)
+		return NULL;
+
+	me     = BKE_mesh_new_nomain(num_verts, 0, 0, num_faces * 3, num_faces);
+	mverts = me->mvert;
+	mpolys = me->mpoly;
+	mloops = me->mloop;
+	if (!me)
+		return NULL;
+
+	// Get size (dimension) but considering scaling scaling
+	copy_v3_v3(cell_size_scaled, sds->cell_size);
+	mul_v3_v3(cell_size_scaled, ob->size);
+	VECMADD(min, sds->p0, cell_size_scaled, sds->res_min);
+	VECMADD(max, sds->p0, cell_size_scaled, sds->res_max);
+	sub_v3_v3v3(size, max, min);
+
+	// Biggest dimension will be used for upscaling
+	float max_size = MAX3(size[0], size[1], size[2]);
+
+	// Vertices
+	for (i = 0; i < num_verts; i++, mverts++)
 	{
-		// calc animated obstacle velocities
-		update_flowsfluids(depsgraph, scene, ob, sds, dtSubdiv);
-		update_obstacles(depsgraph, ob, sds, dtSubdiv, substep, totalSubsteps);
+		// read raw data. is normalized cube around domain origin
+		mverts->co[0] = liquid_get_vertex_x_at(sds->fluid, i);
+		mverts->co[1] = liquid_get_vertex_y_at(sds->fluid, i);
+		mverts->co[2] = liquid_get_vertex_z_at(sds->fluid, i);
 
-		if (sds->total_cells > 1) {
-			update_effectors(depsgraph, scene, ob, sds, dtSubdiv); // DG TODO? problem --> uses forces instead of velocity, need to check how they need to be changed with variable dt
-			smoke_step(sds->fluid, gravity, dtSubdiv);
+		// if reading raw data directly from manta, normalize now
+		if ((sds->cache_flag & FLUID_DOMAIN_BAKED_MESH) == 0)
+		{
+			// normalize to unit cube around 0
+			mverts->co[0] -= ((float) sds->res[0]*sds->mesh_scale)*0.5f;
+			mverts->co[1] -= ((float) sds->res[1]*sds->mesh_scale)*0.5f;
+			mverts->co[2] -= ((float) sds->res[2]*sds->mesh_scale)*0.5f;
+			mverts->co[0] *= sds->dx / sds->mesh_scale;
+			mverts->co[1] *= sds->dx / sds->mesh_scale;
+			mverts->co[2] *= sds->dx / sds->mesh_scale;
 		}
+
+		mverts->co[0] *= max_size / fabsf(ob->size[0]);
+		mverts->co[1] *= max_size / fabsf(ob->size[1]);
+		mverts->co[2] *= max_size / fabsf(ob->size[2]);
+
+//		printf("mverts->co[0]: %f, mverts->co[1]: %f, mverts->co[2]: %f\n", mverts->co[0], mverts->co[1], mverts->co[2]);
 	}
+
+	// Normals
+	normals = MEM_callocN(sizeof(short) * num_normals * 3, "Fluidmesh_tmp_normals");
+
+	for (i = 0, no_s = normals; i < num_normals; no_s += 3, i++)
+	{
+		no[0] = liquid_get_normal_x_at(sds->fluid, i);
+		no[1] = liquid_get_normal_y_at(sds->fluid, i);
+		no[2] = liquid_get_normal_z_at(sds->fluid, i);
+
+		normal_float_to_short_v3(no_s, no);
+
+//		printf("no_s[0]: %d, no_s[1]: %d, no_s[2]: %d\n", no_s[0], no_s[1], no_s[2]);
+	}
+
+	// Triangles
+	for (i = 0; i < num_faces; i++, mpolys++, mloops += 3)
+	{
+		/* initialize from existing face */
+		mpolys->mat_nr = mp_mat_nr;
+		mpolys->flag =   mp_flag;
+
+		mpolys->loopstart = i * 3;
+		mpolys->totloop = 3;
+
+		mloops[0].v = liquid_get_triangle_x_at(sds->fluid, i);
+		mloops[1].v = liquid_get_triangle_y_at(sds->fluid, i);
+		mloops[2].v = liquid_get_triangle_z_at(sds->fluid, i);
+
+//		printf("mloops[0].v: %d, mloops[1].v: %d, mloops[2].v: %d\n", mloops[0].v, mloops[1].v, mloops[2].v);
+	}
+
+	BKE_mesh_ensure_normals(me);
+	BKE_mesh_calc_edges(me, false, false);
+	BKE_mesh_apply_vert_normals(me, (short (*)[3])normals);
+
+	MEM_freeN(normals);
+
+	/* return early of no mesh vert velocities required */
+	if ((sds->flags & FLUID_DOMAIN_USE_SPEED_VECTORS) == 0)
+		return me;
+
+	if (sds->mesh_velocities)
+		MEM_freeN(sds->mesh_velocities);
+
+	sds->mesh_velocities = MEM_calloc_arrayN(num_verts, sizeof(SmokeVertexVelocity), "Fluidmesh_vertvelocities");
+	sds->totvert = num_verts;
+
+	SmokeVertexVelocity *velarray = NULL;
+	velarray = sds->mesh_velocities;
+
+	float time_mult = 25.f * DT_DEFAULT;
+
+	for (i = 0; i < num_verts; i++, mverts++)
+	{
+		velarray[i].vel[0] = liquid_get_vertvel_x_at(sds->fluid, i) * (sds->dx / time_mult);
+		velarray[i].vel[1] = liquid_get_vertvel_y_at(sds->fluid, i) * (sds->dx / time_mult);
+		velarray[i].vel[2] = liquid_get_vertvel_z_at(sds->fluid, i) * (sds->dx / time_mult);
+
+//		printf("velarray[%d].vel[0]: %f, velarray[%d].vel[1]: %f, velarray[%d].vel[2]: %f\n", i, velarray[i].vel[0], i, velarray[i].vel[1], i, velarray[i].vel[2]);
+	}
+
+	return me;
 }
 
 static Mesh *createDomainGeometry(SmokeDomainSettings *sds, Object *ob)
@@ -2740,6 +3289,74 @@ static Mesh *createDomainGeometry(SmokeDomainSettings *sds, Object *ob)
 	return result;
 }
 
+static void smoke_step(
+        Depsgraph *depsgraph, Scene *scene, Object *ob,
+        Mesh *me, SmokeModifierData *smd, int frame, bool is_first_frame)
+{
+	SmokeDomainSettings *sds = smd->domain;
+	float fps = scene->r.frs_sec / scene->r.frs_sec_base;
+	float dt;
+	float sdt; // dt after adapted timestep
+	float time_per_frame;
+
+	/* TODO (sebbas): Move dissolve smoke code to mantaflow */
+	if (sds->flags & FLUID_DOMAIN_USE_DISSOLVE) {
+		smoke_dissolve(sds->fluid, sds->diss_speed, sds->flags & FLUID_DOMAIN_USE_DISSOLVE_LOG);
+		if (sds->fluid && sds->flags & FLUID_DOMAIN_USE_NOISE) {
+			smoke_dissolve_wavelet(sds->fluid, sds->diss_speed, sds->flags & FLUID_DOMAIN_USE_DISSOLVE_LOG);
+		}
+	}
+
+	/* update object state */
+	invert_m4_m4(sds->imat, ob->obmat);
+	copy_m4_m4(sds->obmat, ob->obmat);
+	smoke_set_domain_from_mesh(sds, ob, me, (sds->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN) != 0);
+
+	/* adapt timestep for different framerates, dt = 0.1 is at 25fps */
+	dt = DT_DEFAULT * (25.0f / fps);
+
+	time_per_frame = 0;
+
+	BLI_mutex_lock(&object_update_lock);
+
+	// loop as long as time_per_frame (sum of sudivdt) does not exceed dt (actual framelength)
+	while (time_per_frame < dt)
+	{
+		fluid_adapt_timestep(sds->fluid);
+		sdt = fluid_get_timestep(sds->fluid);
+		time_per_frame += sdt;
+
+		// Calculate inflow geometry
+		update_flowsfluids(depsgraph, scene, ob, sds, time_per_frame, dt, frame, is_first_frame);
+
+		// Calculate obstacle geometry
+		update_obstacles(depsgraph, scene, ob, sds, time_per_frame, dt, frame, sdt);
+
+		if (sds->total_cells > 1) {
+			update_effectors(depsgraph, scene, ob, sds, sdt); // DG TODO? problem --> uses forces instead of velocity, need to check how they need to be changed with variable dt
+			fluid_bake_data(sds->fluid, smd, frame);
+		}
+	}
+	if (sds->type == FLUID_DOMAIN_TYPE_GAS) {
+		smoke_calc_transparency(sds, DEG_get_evaluated_view_layer(depsgraph));
+	}
+	BLI_mutex_unlock(&object_update_lock);
+}
+
+static void smoke_guiding(Depsgraph *depsgraph, Scene *scene, Object *ob, SmokeModifierData *smd, int frame)
+{
+	SmokeDomainSettings *sds = smd->domain;
+	float fps = scene->r.frs_sec / scene->r.frs_sec_base;
+	float dt = DT_DEFAULT * (25.0f / fps);
+
+	BLI_mutex_lock(&object_update_lock);
+
+	update_obstacles(depsgraph, scene, ob, sds, dt, dt, frame, dt);
+	fluid_bake_guiding(sds->fluid, smd, frame);
+
+	BLI_mutex_unlock(&object_update_lock);
+}
+
 static void smokeModifier_process(
         SmokeModifierData *smd, Depsgraph *depsgraph, Scene *scene, Object *ob, Mesh *me)
 {
@@ -2748,10 +3365,13 @@ static void smokeModifier_process(
 	if ((smd->type & MOD_SMOKE_TYPE_FLOW))
 	{
 		if (scene_framenr >= smd->time)
-			smokeModifier_init(smd, ob, scene_framenr, me);
+			smokeModifier_init(smd, depsgraph, ob, scene_framenr, me);
 
-		if (smd->flow->mesh) BKE_id_free(NULL, smd->flow->mesh);
-		smd->flow->mesh = BKE_mesh_copy_for_eval(me, false);
+		if (smd->flow)
+		{
+			if (smd->flow->mesh) BKE_id_free(NULL, smd->flow->mesh);
+			smd->flow->mesh = BKE_mesh_copy_for_eval(me, false);
+		}
 
 		if (scene_framenr > smd->time)
 		{
@@ -2763,125 +3383,176 @@ static void smokeModifier_process(
 			smokeModifier_reset_ex(smd, false);
 		}
 	}
-	else if (smd->type & MOD_SMOKE_TYPE_COLL)
+	else if (smd->type & MOD_SMOKE_TYPE_EFFEC)
 	{
 		if (scene_framenr >= smd->time)
-			smokeModifier_init(smd, ob, scene_framenr, me);
+			smokeModifier_init(smd, depsgraph, ob, scene_framenr, me);
 
-		if (smd->coll)
+		if (smd->effec)
 		{
-			if (smd->coll->mesh)
-				BKE_id_free(NULL, smd->coll->mesh);
-
-			smd->coll->mesh = BKE_mesh_copy_for_eval(me, false);
+			if (smd->effec->mesh) BKE_id_free(NULL, smd->effec->mesh);
+			smd->effec->mesh = BKE_mesh_copy_for_eval(me, false);
 		}
 
-		smd->time = scene_framenr;
-		if (scene_framenr < smd->time)
+		if (scene_framenr > smd->time)
 		{
+			smd->time = scene_framenr;
+		}
+		else if (scene_framenr < smd->time)
+		{
+			smd->time = scene_framenr;
 			smokeModifier_reset_ex(smd, false);
 		}
 	}
 	else if (smd->type & MOD_SMOKE_TYPE_DOMAIN)
 	{
 		SmokeDomainSettings *sds = smd->domain;
-		PointCache *cache = NULL;
-		PTCacheID pid;
-		int startframe, endframe, framenr;
-		float timescale;
+		int startframe, endframe;
+		Object *guiding_parent = NULL;
+		Object **objs = NULL;
+		unsigned int numobj = 0;
+		SmokeModifierData *smd_parent = NULL;
+		bool is_first_frame;
+		startframe = sds->cache_frame_start;
+		endframe = sds->cache_frame_end;
 
-		framenr = scene_framenr;
+		is_first_frame = (scene_framenr == startframe);
 
-		cache = sds->point_cache[0];
-		BKE_ptcache_id_from_smoke(&pid, ob, smd);
-		BKE_ptcache_id_time(&pid, scene, framenr, &startframe, &endframe, &timescale);
+		bool is_baking = (sds->cache_flag & (FLUID_DOMAIN_BAKING_DATA|FLUID_DOMAIN_BAKING_NOISE|
+											 FLUID_DOMAIN_BAKING_MESH|FLUID_DOMAIN_BAKING_PARTICLES|FLUID_DOMAIN_BAKING_GUIDING));
+		bool is_baked = (sds->cache_flag & (FLUID_DOMAIN_BAKED_DATA|FLUID_DOMAIN_BAKED_NOISE|
+											FLUID_DOMAIN_BAKED_MESH|FLUID_DOMAIN_BAKED_PARTICLES|FLUID_DOMAIN_BAKED_GUIDING));
 
-		if (!smd->domain->fluid || framenr == startframe)
-		{
-			BKE_ptcache_id_reset(scene, &pid, PTCACHE_RESET_OUTDATED);
+		/* Reset fluid if no fluid present (obviously)
+		 * or if timeline gets reset to startframe when no (!) baking is running
+		 * or if no baking is running and also there is no baked data present */
+		if (!sds->fluid || (scene_framenr == startframe && !is_baking) || (!is_baking && !is_baked)) {
 			smokeModifier_reset_ex(smd, false);
-			BKE_ptcache_validate(cache, framenr);
-			cache->flag &= ~PTCACHE_REDO_NEEDED;
 		}
 
-		if (!smd->domain->fluid && (framenr != startframe) && (smd->domain->flags & MOD_SMOKE_FILE_LOAD) == 0 && (cache->flag & PTCACHE_BAKED) == 0)
+		if (!sds->fluid && (scene_framenr != startframe) && (sds->flags & FLUID_DOMAIN_FILE_LOAD) == 0 && !is_baking)
 			return;
 
-		smd->domain->flags &= ~MOD_SMOKE_FILE_LOAD;
-		CLAMP(framenr, startframe, endframe);
+		sds->flags &= ~FLUID_DOMAIN_FILE_LOAD;
 
-		/* If already viewing a pre/after frame, no need to reload */
-		if ((smd->time == framenr) && (framenr != scene_framenr))
+		if (smokeModifier_init(smd, depsgraph, ob, scene, me) == 0)
 			return;
 
-		if (smokeModifier_init(smd, ob, scene_framenr, me) == 0)
+		/* Guiding parent res pointer needs initialization */
+		guiding_parent = sds->guiding_parent;
+		if (guiding_parent) {
+			smd_parent = (SmokeModifierData *)modifiers_findByType(guiding_parent, eModifierType_Smoke);
+			if (smd_parent->domain) {
+				sds->guide_res = smd_parent->domain->res;
+			}
+		}
+
+		/* Read cache. For liquids update data directly (i.e. not via python) */
+		if (!is_baking)
 		{
-			printf("bad smokeModifier_init\n");
-			return;
+			/* Cache does not keep track of active fields yet. So refresh them here */
+			objs = BKE_collision_objects_create(depsgraph, ob, sds->fluid_group, &numobj, eModifierType_Smoke);
+			update_flowsflags(sds, objs, numobj);
+			if (objs) MEM_freeN(objs);
+
+			objs = BKE_collision_objects_create(depsgraph, ob, sds->coll_group, &numobj, eModifierType_Smoke);
+			update_obstacleflags(sds, objs, numobj);
+			if (objs) MEM_freeN(objs);
+
+			if (sds->cache_flag & FLUID_DOMAIN_BAKED_DATA)
+			{
+				if (sds->type == FLUID_DOMAIN_TYPE_GAS)
+					fluid_read_data(sds->fluid, smd, scene_framenr);
+				if (sds->type == FLUID_DOMAIN_TYPE_LIQUID)
+					fluid_update_liquid_structures(sds->fluid, smd, scene_framenr);
+			}
+			if (sds->cache_flag & FLUID_DOMAIN_BAKED_NOISE)
+			{
+				fluid_read_noise(sds->fluid, smd, scene_framenr);
+			}
+			if (sds->cache_flag & FLUID_DOMAIN_BAKED_MESH)
+			{
+				//if (sds->type == FLUID_DOMAIN_TYPE_GAS)
+					// TODO (sebbas): smoke as mesh
+				if (sds->type == FLUID_DOMAIN_TYPE_LIQUID)
+					fluid_update_mesh_structures(sds->fluid, smd, scene_framenr);
+			}
+			if (sds->cache_flag & FLUID_DOMAIN_BAKED_PARTICLES)
+			{
+				//if (sds->type == FLUID_DOMAIN_TYPE_GAS)
+					// TODO (sebbas): fire particles
+				if (sds->type == FLUID_DOMAIN_TYPE_LIQUID)
+					fluid_update_particle_structures(sds->fluid, smd, scene_framenr);
+			}
 		}
 
-		/* only calculate something when we advanced a single frame */
-		/* don't simulate if viewing start frame, but scene frame is not real start frame */
-		bool can_simulate = (framenr == (int)smd->time + 1) && (framenr == scene_framenr);
-
-		/* try to read from cache */
-		if (BKE_ptcache_read(&pid, (float)framenr, can_simulate) == PTCACHE_READ_EXACT) {
-			BKE_ptcache_validate(cache, framenr);
-			smd->time = framenr;
-			return;
-		}
-
-		if (!can_simulate)
-			return;
-
-#ifdef DEBUG_TIME
-		double start = PIL_check_seconds_timer();
-#endif
-
-		/* if on second frame, write cache for first frame */
-		if ((int)smd->time == startframe && (cache->flag & PTCACHE_OUTDATED || cache->last_exact == 0)) {
-			BKE_ptcache_write(&pid, startframe);
-		}
-
-		// set new time
-		smd->time = scene_framenr;
-
-		/* do simulation */
-
-		// simulate the actual smoke (c++ code in intern/smoke)
-		// DG: interesting commenting this line + deactivating loading of noise files
-		if (framenr != startframe)
+		/* Simulate step and write cache. Optionally also read py objects once from previous frame (bake started from resume operator) */
+		if (is_baking)
 		{
-			if (sds->flags & MOD_SMOKE_DISSOLVE) {
-				/* low res dissolve */
-				smoke_dissolve(sds->fluid, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
-				/* high res dissolve */
-				if (sds->wt) {
-					smoke_dissolve_wavelet(sds->wt, sds->diss_speed, sds->flags & MOD_SMOKE_DISSOLVE_LOG);
-				}
+			/* Ensure fresh variables at every animation step */
+			fluid_update_variables(sds->fluid, smd);
 
+			/* Export mantaflow python script on first frame (once only) and for any bake type */
+			if ((sds->flags & FLUID_DOMAIN_EXPORT_MANTA_SCRIPT) && scene_framenr == sds->cache_frame_start)
+			{
+				if (smd->domain && smd->domain->type == FLUID_DOMAIN_TYPE_GAS)
+					smoke_manta_export(smd->domain->fluid, smd);
+
+				if (smd->domain && smd->domain->type == FLUID_DOMAIN_TYPE_LIQUID)
+					liquid_manta_export(smd->domain->fluid, smd);
 			}
 
-			step(depsgraph, scene, ob, smd, me, scene->r.frs_sec / scene->r.frs_sec_base);
+			if (sds->cache_flag & FLUID_DOMAIN_BAKING_DATA)
+			{
+				if (sds->flags & FLUID_DOMAIN_USE_GUIDING)
+				{
+					/* Load guiding vel from flow object (only if baked) or domain object? */
+					if (sds->guiding_source == FLUID_DOMAIN_GUIDING_SRC_EFFECTOR && sds->cache_flag & FLUID_DOMAIN_BAKED_GUIDING) {
+						fluid_read_guiding(sds->fluid, smd, scene_framenr, false);
+					}
+					else if (sds->guiding_source == FLUID_DOMAIN_GUIDING_SRC_DOMAIN && smd_parent) {
+						fluid_read_guiding(sds->fluid, smd_parent, scene_framenr, true);
+					}
+				}
+
+				/* Refresh all objects if we start baking from a resumed frame */
+				if (sds->cache_frame_pause_data == scene_framenr)
+					fluid_read_data(sds->fluid, smd, scene_framenr-1);
+
+				/* Base step needs separated bake and write calls - reason being that transparency calculation is after fluid step */
+				smoke_step(depsgraph, scene, ob, me, smd, scene_framenr, is_first_frame);
+				fluid_write_data(sds->fluid, smd, scene_framenr);
+			}
+			if (sds->cache_flag & FLUID_DOMAIN_BAKING_NOISE)
+			{
+				/* Refresh all objects if we start baking from a resumed frame */
+				if (sds->cache_frame_pause_data == scene_framenr)
+					fluid_read_noise(sds->fluid, smd, scene_framenr-1);
+
+				fluid_bake_noise(sds->fluid, smd, scene_framenr);
+			}
+			if (sds->cache_flag & FLUID_DOMAIN_BAKING_MESH)
+			{
+				/* Note: Mesh bake does not need object refresh from cache */
+				fluid_bake_mesh(sds->fluid, smd, scene_framenr);
+			}
+			if (sds->cache_flag & FLUID_DOMAIN_BAKING_PARTICLES)
+			{
+				/* Refresh all objects if we start baking from a resumed frame */
+				if (sds->cache_frame_pause_data == scene_framenr)
+					fluid_read_particles(sds->fluid, smd, scene_framenr-1);
+
+				fluid_bake_particles(sds->fluid, smd, scene_framenr);
+			}
+			if (sds->cache_flag & FLUID_DOMAIN_BAKING_GUIDING)
+			{
+				smoke_guiding(depsgraph, scene, ob, smd, scene_framenr);
+			}
 		}
-
-		// create shadows before writing cache so they get stored
-		smoke_calc_transparency(sds, DEG_get_evaluated_view_layer(depsgraph));
-
-		if (sds->wt && sds->total_cells > 1) {
-			smoke_turbulence_step(sds->wt, sds->fluid);
-		}
-
-		BKE_ptcache_validate(cache, framenr);
-		if (framenr != startframe)
-			BKE_ptcache_write(&pid, framenr);
-
-#ifdef DEBUG_TIME
-		double end = PIL_check_seconds_timer();
-		printf("Frame: %d, Time: %f\n\n", (int)smd->time, (float)(end - start));
-#endif
+		smd->time = scene_framenr;
 	}
 }
+
 
 struct Mesh *smokeModifier_do(
         SmokeModifierData *smd, Depsgraph *depsgraph, Scene *scene, Object *ob, Mesh *me)
@@ -2897,10 +3568,16 @@ struct Mesh *smokeModifier_do(
 
 	/* return generated geometry for adaptive domain */
 	if (smd->type & MOD_SMOKE_TYPE_DOMAIN && smd->domain &&
-	    smd->domain->flags & MOD_SMOKE_ADAPTIVE_DOMAIN &&
+	    smd->domain->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN &&
 	    smd->domain->base_res[0])
 	{
 		return createDomainGeometry(smd->domain, ob);
+	}
+	else if (smd->type & MOD_SMOKE_TYPE_DOMAIN && smd->domain &&
+		smd->domain->type == FLUID_DOMAIN_TYPE_LIQUID)
+	{
+		Mesh *result = createLiquidMesh(smd->domain, me, ob);
+		return (result) ? result : BKE_mesh_copy_for_eval(me, true);
 	}
 	else {
 		return BKE_mesh_copy_for_eval(me, false);
@@ -2909,7 +3586,7 @@ struct Mesh *smokeModifier_do(
 
 static float calc_voxel_transp(float *result, float *input, int res[3], int *pixel, float *tRay, float correct)
 {
-	const size_t index = smoke_get_index(pixel[0], res[0], pixel[1], res[1], pixel[2]);
+	const size_t index = fluid_get_index(pixel[0], res[0], pixel[1], res[1], pixel[2]);
 
 	// T_ray *= T_vox
 	*tRay *= expf(input[index] * correct);
@@ -3011,6 +3688,7 @@ static void smoke_calc_transparency(SmokeDomainSettings *sds, ViewLayer *view_la
 	float light[3];
 	int a, z, slabsize = sds->res[0] * sds->res[1], size = sds->res[0] * sds->res[1] * sds->res[2];
 	float *density = smoke_get_density(sds->fluid);
+	float *shadow = smoke_get_shadow(sds->fluid);
 	float correct = -7.0f * sds->dx;
 
 	if (!get_lamp(view_layer, light)) return;
@@ -3022,7 +3700,7 @@ static void smoke_calc_transparency(SmokeDomainSettings *sds, ViewLayer *view_la
 	light[2] = (light[2] - sds->p0[2]) / sds->cell_size[2] - 0.5f - (float)sds->res_min[2];
 
 	for (a = 0; a < size; a++)
-		sds->shadow[a] = -1.0f;
+		shadow[a] = -1.0f;
 
 	/* calculate domain bounds in sim cell space */
 	// 0,2,4 = 0.0f
@@ -3043,7 +3721,7 @@ static void smoke_calc_transparency(SmokeDomainSettings *sds, ViewLayer *view_la
 				int cell[3];
 				float tRay = 1.0;
 
-				if (sds->shadow[index] >= 0.0f)
+				if (shadow[index] >= 0.0f)
 					continue;
 				voxelCenter[0] = (float)x;
 				voxelCenter[1] = (float)y;
@@ -3068,10 +3746,10 @@ static void smoke_calc_transparency(SmokeDomainSettings *sds, ViewLayer *view_la
 				CLAMP(cell[1], 0, sds->res[1] - 1);
 				CLAMP(cell[2], 0, sds->res[2] - 1);
 
-				bresenham_linie_3D(cell[0], cell[1], cell[2], x, y, z, &tRay, calc_voxel_transp, sds->shadow, density, sds->res, correct);
+				bresenham_linie_3D(cell[0], cell[1], cell[2], x, y, z, &tRay, calc_voxel_transp, shadow, density, sds->res, correct);
 
 				// convention -> from a RGBA float array, use G value for tRay
-				sds->shadow[index] = tRay;
+				shadow[index] = tRay;
 			}
 	}
 }
@@ -3087,9 +3765,9 @@ float smoke_get_velocity_at(struct Object *ob, float position[3], float velocity
 		SmokeDomainSettings *sds = smd->domain;
 		float time_mult = 25.f * DT_DEFAULT;
 		float vel_mag;
-		float *velX = smoke_get_velocity_x(sds->fluid);
-		float *velY = smoke_get_velocity_y(sds->fluid);
-		float *velZ = smoke_get_velocity_z(sds->fluid);
+		float *velX = fluid_get_velocity_x(sds->fluid);
+		float *velY = fluid_get_velocity_y(sds->fluid);
+		float *velZ = fluid_get_velocity_z(sds->fluid);
 		float density = 0.0f, fuel = 0.0f;
 		float pos[3];
 		copy_v3_v3(pos, position);
@@ -3106,7 +3784,7 @@ float smoke_get_velocity_at(struct Object *ob, float position[3], float velocity
 
 
 		/* check if point is outside active area */
-		if (smd->domain->flags & MOD_SMOKE_ADAPTIVE_DOMAIN) {
+		if (smd->domain->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN) {
 			if (pos[0] < 0.0f || pos[1] < 0.0f || pos[2] < 0.0f) return 0.0f;
 			if (pos[0] > 1.0f || pos[1] > 1.0f || pos[2] > 1.0f) return 0.0f;
 		}
@@ -3138,14 +3816,14 @@ int smoke_get_data_flags(SmokeDomainSettings *sds)
 
 	if (sds->fluid) {
 		if (smoke_has_heat(sds->fluid))
-			flags |= SM_ACTIVE_HEAT;
+			flags |= FLUID_DOMAIN_ACTIVE_HEAT;
 		if (smoke_has_fuel(sds->fluid))
-			flags |= SM_ACTIVE_FIRE;
+			flags |= FLUID_DOMAIN_ACTIVE_FIRE;
 		if (smoke_has_colors(sds->fluid))
-			flags |= SM_ACTIVE_COLORS;
+			flags |= FLUID_DOMAIN_ACTIVE_COLORS;
 	}
 
 	return flags;
 }
 
-#endif /* WITH_SMOKE */
+#endif /* WITH_MANTA */
