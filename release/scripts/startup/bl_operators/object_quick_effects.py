@@ -323,8 +323,8 @@ class QuickSmoke(Operator):
     )
 
     def execute(self, context):
-        if not bpy.app.build_options.mod_smoke:
-            self.report({'ERROR'}, "Built without Smoke modifier support")
+        if not bpy.app.build_options.manta:
+            self.report({'ERROR'}, "Built without Fluid Mantaflow modifier")
             return {'CANCELLED'}
 
         fake_context = context.copy()
@@ -346,6 +346,9 @@ class QuickSmoke(Operator):
             # set type
             obj.modifiers[-1].flow_settings.smoke_flow_type = self.style
 
+            # set flow behavior
+            obj.modifiers[-1].flow_settings.smoke_flow_behavior = 'INFLOW'
+
             if not self.show_flows:
                 obj.display_type = 'WIRE'
 
@@ -365,7 +368,10 @@ class QuickSmoke(Operator):
         bpy.ops.object.modifier_add(type='SMOKE')
         obj.modifiers[-1].smoke_type = 'DOMAIN'
         if self.style == 'FIRE' or self.style == 'BOTH':
-            obj.modifiers[-1].domain_settings.use_high_resolution = True
+            obj.modifiers[-1].domain_settings.use_noise = True
+
+        # set correct cache file format for smoke
+        obj.modifiers[-1].domain_settings.cache_data_format = 'UNI'
 
         # Setup material
 
@@ -538,9 +544,117 @@ class QuickFluid(Operator):
         return {'FINISHED'}
 
 
+class QuickLiquid(Operator):
+    bl_idname = "object.quick_liquid"
+    bl_label = "Quick Liquid"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    show_flows: BoolProperty(
+            name="Render Liquid Objects",
+            description="Keep the liquid objects visible during rendering",
+            default=False,
+            )
+
+    def execute(self, context):
+        fake_context = context.copy()
+        mesh_objects = [obj for obj in context.selected_objects
+                        if obj.type == 'MESH']
+        min_co = Vector((100000.0, 100000.0, 100000.0))
+        max_co = -min_co
+
+        if not mesh_objects:
+            self.report({'ERROR'}, "Select at least one mesh object")
+            return {'CANCELLED'}
+
+        for obj in mesh_objects:
+            fake_context["object"] = obj
+            # make each selected object a liquid flow
+            bpy.ops.object.modifier_add(fake_context, type='SMOKE')
+            obj.modifiers[-1].smoke_type = 'FLOW'
+
+            # set type
+            obj.modifiers[-1].flow_settings.smoke_flow_type = 'LIQUID'
+
+            # set flow behavior
+            obj.modifiers[-1].flow_settings.smoke_flow_behavior = 'GEOMETRY'
+
+            if not self.show_flows:
+                obj.display_type = 'WIRE'
+
+            # store bounding box min/max for the domain object
+            obj_bb_minmax(obj, min_co, max_co)
+
+        # add the liquid domain object
+        bpy.ops.mesh.primitive_cube_add()
+        obj = context.active_object
+        obj.name = "Liquid Domain"
+
+        # give the liquid some room above the flows
+        obj.location = 0.5 * (max_co + min_co) + Vector((0.0, 0.0, -1.0))
+        obj.scale = 0.5 * (max_co - min_co) + Vector((1.0, 1.0, 2.0))
+
+        # setup liquid domain
+        bpy.ops.object.modifier_add(type='SMOKE')
+        obj.modifiers[-1].smoke_type = 'DOMAIN'
+        obj.modifiers[-1].domain_settings.smoke_domain_type = 'LIQUID'
+        # set all domain borders to obstacle
+        obj.modifiers[-1].domain_settings.use_collision_border_front = True
+        obj.modifiers[-1].domain_settings.use_collision_border_back = True
+        obj.modifiers[-1].domain_settings.use_collision_border_right = True
+        obj.modifiers[-1].domain_settings.use_collision_border_left = True
+        obj.modifiers[-1].domain_settings.use_collision_border_top = True
+        obj.modifiers[-1].domain_settings.use_collision_border_bottom = True
+
+        # set correct cache file format for liquid
+        obj.modifiers[-1].domain_settings.cache_mesh_format = 'BOBJECT'
+
+        # allocate and show particle system for FLIP
+        obj.modifiers[-1].domain_settings.use_flip_particles = True
+
+        # make the domain smooth so it renders nicely
+        bpy.ops.object.shade_smooth()
+
+        # create a ray-transparent material for the domain
+        bpy.ops.object.material_slot_add()
+
+        mat = bpy.data.materials.new("Liquid Domain Material")
+        obj.material_slots[0].material = mat
+
+        # Make sure we use nodes
+        mat.use_nodes = True
+
+        # Set node variables and clear the default nodes
+        tree = mat.node_tree
+        nodes = tree.nodes
+        links = tree.links
+
+        nodes.clear()
+
+        # Create shader nodes
+
+        # Material output
+        node_out = nodes.new(type='ShaderNodeOutputMaterial')
+        node_out.location = grid_location(6, 1)
+
+        # Add Glass
+        node_glass = nodes.new(type='ShaderNodeBsdfGlass')
+        node_glass.location = grid_location(4, 1)
+        links.new(node_glass.outputs["BSDF"], node_out.inputs["Surface"])
+        node_glass.inputs["IOR"].default_value = 1.33
+
+        # Add Absorption
+        node_absorption = nodes.new(type='ShaderNodeVolumeAbsorption')
+        node_absorption.location = grid_location(4, 2)
+        links.new(node_absorption.outputs["Volume"], node_out.inputs["Volume"])
+        node_absorption.inputs["Color"].default_value = (0.8, 0.9, 1.0, 1.0)
+
+        return {'FINISHED'}
+
+
 classes = (
     QuickExplode,
     QuickFluid,
     QuickFur,
     QuickSmoke,
+    QuickLiquid,
 )

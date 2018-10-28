@@ -408,6 +408,24 @@ class AddPresetFluid(AddPresetBase, Operator):
     preset_subdir = "fluid"
 
 
+class AddPresetManta(AddPresetBase, Operator):
+    """Add or remove a Mantaflow Preset"""
+    bl_idname = "manta.preset_add"
+    bl_label = "Add Mantaflow Preset"
+    preset_menu = "MANTA_MT_presets"
+
+    preset_defines = [
+        "manta = bpy.context.smoke"
+        ]
+
+    preset_values = [
+        "manta.domain_settings.viscosity_base",
+        "manta.domain_settings.viscosity_exponent",
+        ]
+
+    preset_subdir = "mantaflow"
+
+
 class AddPresetHairDynamics(AddPresetBase, Operator):
     """Add or remove a Hair Dynamics Preset"""
     bl_idname = "particle.hair_dynamics_preset_add"
@@ -742,6 +760,7 @@ classes = (
     AddPresetCamera,
     AddPresetCloth,
     AddPresetFluid,
+    AddPresetManta,
     AddPresetHairDynamics,
     AddPresetInteraction,
     AddPresetInterfaceTheme,
