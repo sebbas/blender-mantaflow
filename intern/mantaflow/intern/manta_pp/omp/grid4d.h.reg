@@ -1,0 +1,32 @@
+#include "grid4d.h"
++Grid4dBase^ static const Pb::Register _R_$IDX$ ("Grid4dBase","Grid4dBase","PbClass"); template<> const char* Namify<Grid4dBase >::S = "Grid4dBase"; 
+>Grid4dBase^
++Grid4dBase^ static const Pb::Register _R_$IDX$ ("Grid4dBase","Grid4dBase",Grid4dBase::_W_0); 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","Grid4d<$CT$>","Grid4dBase"); template<> const char* Namify<Grid4d<$CT$> >::S = "Grid4d<$CT$>"; 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","Grid4d",Grid4d<$CT$>::_W_1); 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","save",Grid4d<$CT$>::_W_2); 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","load",Grid4d<$CT$>::_W_3); 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","clear",Grid4d<$CT$>::_W_4); 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","copyFrom",Grid4d<$CT$>::_W_5); 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","add",Grid4d<$CT$>::_W_6); 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","sub",Grid4d<$CT$>::_W_7); 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","setConst",Grid4d<$CT$>::_W_8); 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","addConst",Grid4d<$CT$>::_W_9); 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","addScaled",Grid4d<$CT$>::_W_10); 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","mult",Grid4d<$CT$>::_W_11); 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","multConst",Grid4d<$CT$>::_W_12); 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","clamp",Grid4d<$CT$>::_W_13); 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","getMaxAbs",Grid4d<$CT$>::_W_14); 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","getMax",Grid4d<$CT$>::_W_15); 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","getMin",Grid4d<$CT$>::_W_16); 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","setBound",Grid4d<$CT$>::_W_17); 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","setBoundNeumann",Grid4d<$CT$>::_W_18); 
++Grid4d^ static const Pb::Register _R_$IDX$ ("Grid4d<$CT$>","printGrid",Grid4d<$CT$>::_W_19); 
+>Grid4d^int
+&static const Pb::Register _R_$IDX$ ("Grid4d<int>","Grid4Int","");
+>Grid4d^Real
+&static const Pb::Register _R_$IDX$ ("Grid4d<Real>","Grid4Real","");
+>Grid4d^Vec3
+&static const Pb::Register _R_$IDX$ ("Grid4d<Vec3>","Grid4Vec3","");
+>Grid4d^Vec4
+&static const Pb::Register _R_$IDX$ ("Grid4d<Vec4>","Grid4Vec4","");

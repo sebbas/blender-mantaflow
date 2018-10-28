@@ -1,0 +1,9 @@
+#include "turbulencepart.h"
++TurbulenceParticleSystem^ static const Pb::Register _R_$IDX$ ("TurbulenceParticleSystem","TurbulenceParticleSystem","ParticleSystem<$BT$>"); template<> const char* Namify<TurbulenceParticleSystem >::S = "TurbulenceParticleSystem"; 
+>TurbulenceParticleSystem^
+@TurbulenceParticleSystem^^ParticleSystem^TurbulenceParticleData
++TurbulenceParticleSystem^ static const Pb::Register _R_$IDX$ ("TurbulenceParticleSystem","TurbulenceParticleSystem",TurbulenceParticleSystem::_W_0); 
++TurbulenceParticleSystem^ static const Pb::Register _R_$IDX$ ("TurbulenceParticleSystem","resetTexCoords",TurbulenceParticleSystem::_W_1); 
++TurbulenceParticleSystem^ static const Pb::Register _R_$IDX$ ("TurbulenceParticleSystem","seed",TurbulenceParticleSystem::_W_2); 
++TurbulenceParticleSystem^ static const Pb::Register _R_$IDX$ ("TurbulenceParticleSystem","synthesize",TurbulenceParticleSystem::_W_3); 
++TurbulenceParticleSystem^ static const Pb::Register _R_$IDX$ ("TurbulenceParticleSystem","deleteInObstacle",TurbulenceParticleSystem::_W_4); 

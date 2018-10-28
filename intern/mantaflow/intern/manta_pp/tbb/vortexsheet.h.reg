@@ -1,0 +1,7 @@
+#include "vortexsheet.h"
++VortexSheetMesh^ static const Pb::Register _R_$IDX$ ("VortexSheetMesh","VortexSheetMesh","Mesh"); template<> const char* Namify<VortexSheetMesh >::S = "VortexSheetMesh"; 
+>VortexSheetMesh^
++VortexSheetMesh^ static const Pb::Register _R_$IDX$ ("VortexSheetMesh","VortexSheetMesh",VortexSheetMesh::_W_0); 
++VortexSheetMesh^ static const Pb::Register _R_$IDX$ ("VortexSheetMesh","calcCirculation",VortexSheetMesh::_W_1); 
++VortexSheetMesh^ static const Pb::Register _R_$IDX$ ("VortexSheetMesh","calcVorticity",VortexSheetMesh::_W_2); 
++VortexSheetMesh^ static const Pb::Register _R_$IDX$ ("VortexSheetMesh","reinitTexCoords",VortexSheetMesh::_W_3); 
