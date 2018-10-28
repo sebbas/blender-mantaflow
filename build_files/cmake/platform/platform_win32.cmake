@@ -537,6 +537,11 @@ if(WITH_SYSTEM_AUDASPACE)
 	set(AUDASPACE_PY_LIBRARIES ${LIBDIR}/audaspace/lib/audaspace-py.lib)
 endif()
 
+if(WITH_MOD_MANTA)
+	set(TBB_LIBRARIES optimized ${LIBDIR}/tbb/lib/tbb.lib debug ${LIBDIR}/tbb/lib/tbb_debug.lib)
+	set(TBB_INCLUDE_DIR ${LIBDIR}/tbb/include)
+endif()
+
 # used in many places so include globally, like OpenGL
 blender_include_dirs_sys("${PTHREADS_INCLUDE_DIRS}")
 

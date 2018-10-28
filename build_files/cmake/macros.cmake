@@ -445,6 +445,9 @@ function(setup_liblinks
 	if(WITH_ALEMBIC)
 		target_link_libraries(${target} ${ALEMBIC_LIBRARIES} ${HDF5_LIBRARIES})
 	endif()
+	if(WITH_MOD_MANTA)
+		target_link_libraries(${target} ${TBB_LIBRARIES})
+	endif()
 	if(WITH_IMAGE_OPENEXR)
 		target_link_libraries(${target} ${OPENEXR_LIBRARIES})
 	endif()
@@ -657,6 +660,7 @@ function(SETUP_BLENDER_SORTED_LIBS)
 		bf_intern_ctr
 		bf_intern_utfconv
 		bf_intern_smoke
+		bf_intern_mantaflow
 		extern_lzma
 		extern_curve_fit_nd
 		bf_intern_moto

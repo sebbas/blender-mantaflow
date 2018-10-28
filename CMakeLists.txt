@@ -303,7 +303,7 @@ endif()
 
 # Modifiers
 option(WITH_MOD_FLUID           "Enable Elbeem Modifier (Fluid Simulation)" ON)
-option(WITH_MOD_SMOKE           "Enable Smoke Modifier (Smoke Simulation)" ON)
+option(WITH_MOD_MANTA           "Enable Mantaflow Fluid Simulation Framework" ON)
 option(WITH_MOD_REMESH          "Enable Remesh Modifier" ON)
 # option(WITH_MOD_CLOTH_ELTOPO    "Enable Experimental cloth solver" OFF)  # this is now only available in a branch
 # mark_as_advanced(WITH_MOD_CLOTH_ELTOPO)
@@ -1226,6 +1226,13 @@ if(WITH_PYTHON_MODULE)
 endif()
 
 #-----------------------------------------------------------------------------
+# Configure mantaflow.
+
+if(WITH_MOD_MANTA)
+	add_definitions(-DWITH_MANTA)
+endif()
+
+#-----------------------------------------------------------------------------
 # Configure GLog/GFlags
 
 if(WITH_LIBMV OR WITH_GTESTS OR (WITH_CYCLES AND WITH_CYCLES_LOGGING))
@@ -1705,6 +1712,7 @@ if(FIRST_RUN)
 	info_cfg_text("Modifiers:")
 	info_cfg_option(WITH_MOD_REMESH)
 	info_cfg_option(WITH_MOD_FLUID)
+	info_cfg_option(WITH_MOD_MANTA)
 	info_cfg_option(WITH_MOD_OCEANSIM)
 
 	info_cfg_text("OpenGL:")
