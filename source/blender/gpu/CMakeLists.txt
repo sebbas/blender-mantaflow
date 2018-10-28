@@ -50,6 +50,7 @@ set(INC
 	../../../intern/glew-mx
 	../../../intern/guardedalloc
 	../../../intern/smoke/extern
+	../../../intern/mantaflow/extern
 )
 
 set(INC_SYS
@@ -244,8 +245,8 @@ data_to_c_simple(shaders/gpu_shader_gpencil_fill_vert.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_gpencil_fill_frag.glsl SRC)
 
 
-if(WITH_MOD_SMOKE)
-	add_definitions(-DWITH_SMOKE)
+if(WITH_MOD_MANTA)
+	add_definitions(-DWITH_MANTA)
 endif()
 
 add_definitions(${GL_DEFINITIONS})

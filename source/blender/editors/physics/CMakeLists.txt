@@ -31,6 +31,7 @@ set(INC
 	../../../../intern/elbeem/extern
 	../../../../intern/guardedalloc
 	../../../../intern/glew-mx
+	../../../../intern/mantaflow/extern
 )
 
 set(INC_SYS
@@ -44,6 +45,7 @@ set(SRC
 	particle_edit_undo.c
 	particle_object.c
 	physics_fluid.c
+	physics_manta.c
 	physics_ops.c
 	physics_pointcache.c
 	rigidbody_constraint.c

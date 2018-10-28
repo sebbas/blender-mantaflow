@@ -178,6 +178,23 @@ static void operatortypes_fluid(void)
 	WM_operatortype_append(FLUID_OT_bake);
 }
 
+/********************************* mantaflow ***********************************/
+
+static void operatortypes_manta(void)
+{
+	WM_operatortype_append(MANTA_OT_bake_data);
+	WM_operatortype_append(MANTA_OT_free_data);
+	WM_operatortype_append(MANTA_OT_bake_noise);
+	WM_operatortype_append(MANTA_OT_free_noise);
+	WM_operatortype_append(MANTA_OT_bake_mesh);
+	WM_operatortype_append(MANTA_OT_free_mesh);
+	WM_operatortype_append(MANTA_OT_bake_particles);
+	WM_operatortype_append(MANTA_OT_free_particles);
+	WM_operatortype_append(MANTA_OT_bake_guiding);
+	WM_operatortype_append(MANTA_OT_free_guiding);
+	WM_operatortype_append(MANTA_OT_pause_bake);
+}
+
 /**************************** point cache **********************************/
 
 static void operatortypes_pointcache(void)
@@ -219,6 +236,7 @@ void ED_operatortypes_physics(void)
 	operatortypes_particle();
 	operatortypes_boids();
 	operatortypes_fluid();
+	operatortypes_manta();
 	operatortypes_pointcache();
 	operatortypes_dynamicpaint();
 }

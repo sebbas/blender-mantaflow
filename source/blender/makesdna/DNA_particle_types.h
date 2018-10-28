@@ -369,10 +369,25 @@ typedef enum eParticleDrawFlag {
 /* part->type */
 /* hair is always baked static in object/geometry space */
 /* other types (normal particles) are in global space and not static baked */
-#define PART_EMITTER		0
-//#define PART_REACTOR		1
-#define PART_HAIR			2
-#define PART_FLUID			3
+#define PART_EMITTER                     (1<<0)
+//#define PART_REACTOR                     (1<<0)
+#define PART_HAIR                        (1<<2)
+#define PART_FLUID                       (1<<3)
+#define PART_MANTA_FLIP                  (1<<4)
+#define PART_MANTA_SPRAY                 (1<<5)
+#define PART_MANTA_BUBBLE                (1<<6)
+#define PART_MANTA_FOAM                  (1<<7)
+#define PART_MANTA_TRACER                (1<<8)
+
+/* mirroring mantaflow particle types from particle.h */
+#define PNONE    (0<<0)
+#define PNEW     (1<<0)
+#define PSPRAY   (1<<1)
+#define PBUBBLE  (1<<2)
+#define PFOAM    (1<<3)
+#define PTRACER  (1<<4)
+#define PDELETE  (1<<10)
+#define PINVALID (1<<30)
 
 /* part->flag */
 #define PART_REACT_STA_END	1

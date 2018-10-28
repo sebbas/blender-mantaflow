@@ -67,7 +67,7 @@ static void initData(ModifierData *md)
 
 	smd->domain = NULL;
 	smd->flow = NULL;
-	smd->coll = NULL;
+	smd->effec = NULL;
 	smd->type = 0;
 	smd->time = -1;
 }
@@ -94,12 +94,12 @@ static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
 	CustomDataMask dataMask = 0;
 
 	if (smd && (smd->type & MOD_SMOKE_TYPE_FLOW) && smd->flow) {
-		if (smd->flow->source == MOD_SMOKE_FLOW_SOURCE_MESH) {
+		if (smd->flow->source == FLUID_FLOW_SOURCE_MESH) {
 			/* vertex groups */
 			if (smd->flow->vgroup_density)
 				dataMask |= CD_MASK_MDEFORMVERT;
 			/* uv layer */
-			if (smd->flow->texture_type == MOD_SMOKE_FLOW_TEXTURE_MAP_UV)
+			if (smd->flow->texture_type == FLUID_FLOW_TEXTURE_MAP_UV)
 				dataMask |= CD_MASK_MTFACE;
 		}
 	}
@@ -111,13 +111,16 @@ static Mesh *applyModifier(
         Mesh *me)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) md;
+	Mesh *result = NULL;
 
 	if (ctx->flag & MOD_APPLY_ORCO) {
 		return me;
 	}
 
 	Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
-	return smokeModifier_do(smd, ctx->depsgraph, scene, ctx->object, me);
+
+	result = smokeModifier_do(smd, ctx->depsgraph, scene, ctx->object, me);
+	return result ? result : me;
 }
 
 static bool dependsOnTime(ModifierData *UNUSED(md))
@@ -134,7 +137,7 @@ static bool is_flow_cb(Object *UNUSED(ob), ModifierData *md)
 static bool is_coll_cb(Object *UNUSED(ob), ModifierData *md)
 {
 	SmokeModifierData *smd = (SmokeModifierData *) md;
-	return (smd->type & MOD_SMOKE_TYPE_COLL) && smd->coll;
+	return (smd->type & MOD_SMOKE_TYPE_EFFEC) && smd->effec;
 }
 
 static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
@@ -145,6 +148,11 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 		DEG_add_collision_relations(ctx->node, ctx->object, smd->domain->fluid_group, eModifierType_Smoke, is_flow_cb, "Smoke Flow");
 		DEG_add_collision_relations(ctx->node, ctx->object, smd->domain->coll_group, eModifierType_Smoke, is_coll_cb, "Smoke Coll");
 		DEG_add_forcefield_relations(ctx->node, ctx->object, smd->domain->effector_weights, true, PFIELD_SMOKEFLOW, "Smoke Force Field");
+
+		if (smd->domain->guiding_parent != NULL) {
+			DEG_add_object_relation(ctx->node, smd->domain->guiding_parent, DEG_OB_COMP_TRANSFORM, "Fluid Guiding Object");
+			DEG_add_object_relation(ctx->node, smd->domain->guiding_parent, DEG_OB_COMP_GEOMETRY, "Fluid Guiding Object");
+		}
 	}
 }
 
@@ -158,6 +166,10 @@ static void foreachIDLink(
 		walk(userData, ob, (ID **)&smd->domain->coll_group, IDWALK_CB_NOP);
 		walk(userData, ob, (ID **)&smd->domain->fluid_group, IDWALK_CB_NOP);
 		walk(userData, ob, (ID **)&smd->domain->eff_group, IDWALK_CB_NOP);
+
+		if (smd->domain->guiding_parent) {
+			walk(userData, ob, (ID **)&smd->domain->guiding_parent, IDWALK_CB_NOP);
+		}
 
 		if (smd->domain->effector_weights) {
 			walk(userData, ob, (ID **)&smd->domain->effector_weights->group, IDWALK_CB_NOP);

@@ -2003,7 +2003,7 @@ static void DRW_shgroup_volume_extra(
 	int slice_axis = -1;
 	line_count *= sds->res[0] * sds->res[1] * sds->res[2];
 
-	if (sds->slice_method == MOD_SMOKE_SLICE_AXIS_ALIGNED &&
+	if (sds->slice_method == FLUID_DOMAIN_SLICE_AXIS_ALIGNED &&
 	    sds->axis_slice_method == AXIS_SLICE_SINGLE)
 	{
 		float invviewmat[4][4];

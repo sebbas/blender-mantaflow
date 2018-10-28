@@ -409,7 +409,7 @@ typedef struct SmokeModifierData {
 
 	struct SmokeDomainSettings *domain;
 	struct SmokeFlowSettings *flow; /* inflow, outflow, smoke objects */
-	struct SmokeCollSettings *coll; /* collision objects */
+	struct SmokeCollSettings *effec; /* effector objects (collision, guiding) */
 	float time;
 	int type;  /* domain, inflow, outflow, ... */
 } SmokeModifierData;
@@ -418,7 +418,7 @@ typedef struct SmokeModifierData {
 enum {
 	MOD_SMOKE_TYPE_DOMAIN = (1 << 0),
 	MOD_SMOKE_TYPE_FLOW   = (1 << 1),
-	MOD_SMOKE_TYPE_COLL   = (1 << 2),
+	MOD_SMOKE_TYPE_EFFEC  = (1 << 2),
 };
 
 typedef struct DisplaceModifierData {

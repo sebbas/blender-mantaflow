@@ -5007,7 +5007,7 @@ static void lib_link_object(FileData *fd, Main *main)
 				SmokeModifierData *smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
 
 				if (smd && (smd->type == MOD_SMOKE_TYPE_DOMAIN) && smd->domain) {
-					smd->domain->flags |= MOD_SMOKE_FILE_LOAD; /* flag for refreshing the simulation after loading */
+					smd->domain->flags |= FLUID_DOMAIN_FILE_LOAD; /* flag for refreshing the simulation after loading */
 				}
 			}
 
@@ -5157,14 +5157,12 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 
 			if (smd->type == MOD_SMOKE_TYPE_DOMAIN) {
 				smd->flow = NULL;
-				smd->coll = NULL;
+				smd->effec = NULL;
 				smd->domain = newdataadr(fd, smd->domain);
 				smd->domain->smd = smd;
 
 				smd->domain->fluid = NULL;
 				smd->domain->fluid_mutex = BLI_rw_mutex_alloc();
-				smd->domain->wt = NULL;
-				smd->domain->shadow = NULL;
 				smd->domain->tex = NULL;
 				smd->domain->tex_shadow = NULL;
 				smd->domain->tex_flame = NULL;
@@ -5175,6 +5173,7 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 				smd->domain->tex_velocity_y = NULL;
 				smd->domain->tex_velocity_z = NULL;
 				smd->domain->tex_wt = NULL;
+				smd->domain->mesh_velocities = NULL;
 				smd->domain->coba = newdataadr(fd, smd->domain->coba);
 
 				smd->domain->effector_weights = newdataadr(fd, smd->domain->effector_weights);
@@ -5201,7 +5200,7 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 			}
 			else if (smd->type == MOD_SMOKE_TYPE_FLOW) {
 				smd->domain = NULL;
-				smd->coll = NULL;
+				smd->effec = NULL;
 				smd->flow = newdataadr(fd, smd->flow);
 				smd->flow->smd = smd;
 				smd->flow->mesh = NULL;
@@ -5209,21 +5208,21 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 				smd->flow->numverts = 0;
 				smd->flow->psys = newdataadr(fd, smd->flow->psys);
 			}
-			else if (smd->type == MOD_SMOKE_TYPE_COLL) {
+			else if (smd->type == MOD_SMOKE_TYPE_EFFEC) {
 				smd->flow = NULL;
 				smd->domain = NULL;
-				smd->coll = newdataadr(fd, smd->coll);
-				if (smd->coll) {
-					smd->coll->smd = smd;
-					smd->coll->verts_old = NULL;
-					smd->coll->numverts = 0;
-					smd->coll->mesh = NULL;
+				smd->effec = newdataadr(fd, smd->effec);
+				if (smd->effec) {
+					smd->effec->smd = smd;
+					smd->effec->verts_old = NULL;
+					smd->effec->numverts = 0;
+					smd->effec->mesh = NULL;
 				}
 				else {
 					smd->type = 0;
 					smd->flow = NULL;
 					smd->domain = NULL;
-					smd->coll = NULL;
+					smd->effec = NULL;
 				}
 			}
 		}

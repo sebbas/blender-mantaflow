@@ -36,6 +36,7 @@ set(INC
 	../../../../intern/guardedalloc
 	../../../../intern/glew-mx
 	../../../../intern/smoke/extern
+	../../../../intern/mantaflow/extern
 )
 
 set(INC_SYS
@@ -91,8 +92,8 @@ if(WITH_FREESTYLE)
 	add_definitions(-DWITH_FREESTYLE)
 endif()
 
-if(WITH_MOD_SMOKE)
-	add_definitions(-DWITH_SMOKE)
+if(WITH_MOD_MANTA)
+	add_definitions(-DWITH_MANTA)
 endif()
 
 blender_add_lib(bf_editor_space_view3d "${SRC}" "${INC}" "${INC_SYS}")

@@ -509,13 +509,14 @@ void EEVEE_volumes_cache_object_add(EEVEE_ViewLayerData *sldata, EEVEE_Data *ved
 		}
 
 		/* Don't show smoke before simulation starts, this could be made an option in the future. */
-		const bool show_smoke = ((int)DEG_get_ctime(draw_ctx->depsgraph) >= sds->point_cache[0]->startframe);
+		/* (sebbas): Always show smoke for manta */
+		/* const bool show_smoke = ((int)DEG_get_ctime(draw_ctx->depsgraph) >= sds->point_cache[0]->startframe); */
 
-		if (sds->fluid && show_smoke) {
-			if (!sds->wt || !(sds->viewsettings & MOD_SMOKE_VIEW_SHOWBIG)) {
+		if (sds->fluid && (sds->type == FLUID_DOMAIN_TYPE_GAS) /* && show_smoke */ ) {
+			if (!(sds->flags & FLUID_DOMAIN_USE_NOISE)) {
 				GPU_create_smoke(smd, 0);
 			}
-			else if (sds->wt && (sds->viewsettings & MOD_SMOKE_VIEW_SHOWBIG)) {
+			else if (sds->flags & FLUID_DOMAIN_USE_NOISE) {
 				GPU_create_smoke(smd, 1);
 			}
 			BLI_addtail(&e_data.smoke_domains, BLI_genericNodeN(smd));

@@ -54,6 +54,7 @@ set(INC
 	../../../intern/clog
 	../../../intern/libmv
 	../../../intern/opensubdiv
+	../../../intern/mantaflow/extern
 	../../../extern/curve_fit_nd
 )
 
@@ -480,8 +481,8 @@ if(WITH_MOD_FLUID)
 	add_definitions(-DWITH_MOD_FLUID)
 endif()
 
-if(WITH_MOD_SMOKE)
-	add_definitions(-DWITH_SMOKE)
+if(WITH_MOD_MANTA)
+	add_definitions(-DWITH_MANTA)
 endif()
 
 if(WITH_MOD_OCEANSIM)

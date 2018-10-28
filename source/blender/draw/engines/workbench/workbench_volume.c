@@ -95,7 +95,7 @@ void workbench_volume_cache_populate(WORKBENCH_Data *vedata, Scene *scene, Objec
 	DRWShadingGroup *grp = NULL;
 
 	/* Don't show smoke before simulation starts, this could be made an option in the future. */
-	if (!sds->fluid || CFRA < sds->point_cache[0]->startframe) {
+	if (!sds->fluid || !(sds->type == FLUID_DOMAIN_TYPE_GAS) /* || CFRA < sds->point_cache[0]->startframe*/ ) {
 		return;
 	}
 
@@ -103,10 +103,10 @@ void workbench_volume_cache_populate(WORKBENCH_Data *vedata, Scene *scene, Objec
 	if (sds->use_coba) {
 		GPU_create_smoke_coba_field(smd);
 	}
-	else if (!sds->wt || !(sds->viewsettings & MOD_SMOKE_VIEW_SHOWBIG)) {
+	else if (!(sds->flags & FLUID_DOMAIN_USE_NOISE)) {
 		GPU_create_smoke(smd, 0);
 	}
-	else if (sds->wt && (sds->viewsettings & MOD_SMOKE_VIEW_SHOWBIG)) {
+	else if (sds->flags & FLUID_DOMAIN_USE_NOISE) {
 		GPU_create_smoke(smd, 1);
 	}
 
@@ -116,7 +116,7 @@ void workbench_volume_cache_populate(WORKBENCH_Data *vedata, Scene *scene, Objec
 		return;
 	}
 
-	const bool use_slice = (sds->slice_method == MOD_SMOKE_SLICE_AXIS_ALIGNED &&
+	const bool use_slice = (sds->slice_method == FLUID_DOMAIN_SLICE_AXIS_ALIGNED &&
 	                        sds->axis_slice_method == AXIS_SLICE_SINGLE);
 
 	if (use_slice) {

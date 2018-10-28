@@ -57,7 +57,9 @@
 #include "BKE_main.h"
 #include "BKE_modifier.h"
 
-#include "smoke_API.h"
+#ifdef WITH_MANTA
+#	include "manta_fluid_API.h"
+#endif
 #include "BPH_mass_spring.h"
 
 #include "DNA_texture_types.h"
@@ -228,7 +230,7 @@ static int read_voxeldata_header(FILE *fp, struct VoxelData *vd)
 
 static void init_frame_smoke(VoxelData *vd, int cfra)
 {
-#ifdef WITH_SMOKE
+#ifdef WITH_MANTA
 	Object *ob;
 	ModifierData *md;
 
@@ -281,9 +283,9 @@ static void init_frame_smoke(VoxelData *vd, int cfra)
 				totRes = vd_resol_size(vd);
 				vd->dataset = MEM_mapallocN(sizeof(float) * (totRes), "smoke data");
 				/* get velocity data */
-				xvel = smoke_get_velocity_x(sds->fluid);
-				yvel = smoke_get_velocity_y(sds->fluid);
-				zvel = smoke_get_velocity_z(sds->fluid);
+				xvel = fluid_get_velocity_x(sds->fluid);
+				yvel = fluid_get_velocity_y(sds->fluid);
+				zvel = fluid_get_velocity_z(sds->fluid);
 
 				/* map velocities between 0 and 0.3f */
 				for (i = 0; i < totRes; i++) {
@@ -295,13 +297,13 @@ static void init_frame_smoke(VoxelData *vd, int cfra)
 				size_t totRes;
 				float *flame;
 
-				if (sds->flags & MOD_SMOKE_HIGHRES) {
-					if (!smoke_turbulence_has_fuel(sds->wt)) {
+				if (sds->flags & FLUID_DOMAIN_USE_NOISE) {
+					if (!smoke_turbulence_has_fuel(sds->fluid)) {
 						BLI_rw_mutex_unlock(sds->fluid_mutex);
 						return;
 					}
-					smoke_turbulence_get_res(sds->wt, vd->resol);
-					flame = smoke_turbulence_get_flame(sds->wt);
+					smoke_turbulence_get_res(sds->fluid, vd->resol);
+					flame = smoke_turbulence_get_flame(sds->fluid);
 				}
 				else {
 					if (!smoke_has_fuel(sds->fluid)) {
@@ -323,8 +325,8 @@ static void init_frame_smoke(VoxelData *vd, int cfra)
 				vd->data_type = TEX_VD_RGBA_PREMUL;
 
 				/* data resolution */
-				if (sds->flags & MOD_SMOKE_HIGHRES) {
-					smoke_turbulence_get_res(sds->wt, vd->resol);
+				if (sds->flags & FLUID_DOMAIN_USE_NOISE) {
+					smoke_turbulence_get_res(sds->fluid, vd->resol);
 				}
 				else {
 					copy_v3_v3_int(vd->resol, sds->res);
@@ -335,12 +337,12 @@ static void init_frame_smoke(VoxelData *vd, int cfra)
 				/* always store copy, as smoke internal data can change */
 				vd->dataset = MEM_mapallocN(sizeof(float) * totCells, "smoke data");
 
-				if (sds->flags & MOD_SMOKE_HIGHRES) {
-					if (smoke_turbulence_has_colors(sds->wt)) {
-						smoke_turbulence_get_rgba(sds->wt, vd->dataset, 1);
+				if (sds->flags & FLUID_DOMAIN_USE_NOISE) {
+					if (smoke_turbulence_has_colors(sds->fluid)) {
+						smoke_turbulence_get_rgba(sds->fluid, vd->dataset, 1);
 					}
 					else {
-						smoke_turbulence_get_rgba_from_density(sds->wt, sds->active_color, vd->dataset, 1);
+						smoke_turbulence_get_rgba_from_density(sds->fluid, sds->active_color, vd->dataset, 1);
 					}
 				}
 				else {
@@ -359,7 +361,7 @@ static void init_frame_smoke(VoxelData *vd, int cfra)
 
 	vd->ok = 1;
 
-#else // WITH_SMOKE
+#else // WITH_MANTA
 	(void)vd;
 	(void)cfra;
 

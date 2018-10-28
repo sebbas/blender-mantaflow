@@ -648,7 +648,7 @@ static void rna_Smoke_set_type(Main *bmain, Scene *scene, PointerRNA *ptr)
 			ob->dt = OB_WIRE;
 			break;
 		case MOD_SMOKE_TYPE_FLOW:
-		case MOD_SMOKE_TYPE_COLL:
+		case MOD_SMOKE_TYPE_EFFEC:
 		case 0:
 		default:
 			break;
@@ -2939,7 +2939,7 @@ static void rna_def_modifier_smoke(BlenderRNA *brna)
 		{0, "NONE", 0, "None", ""},
 		{MOD_SMOKE_TYPE_DOMAIN, "DOMAIN", 0, "Domain", ""},
 		{MOD_SMOKE_TYPE_FLOW, "FLOW", 0, "Flow", "Inflow/Outflow"},
-		{MOD_SMOKE_TYPE_COLL, "COLLISION", 0, "Collision", ""},
+		{MOD_SMOKE_TYPE_EFFEC, "EFFECTOR", 0, "Effector", ""},
 		{0, NULL, 0, NULL, NULL}
 	};
 
@@ -2956,9 +2956,9 @@ static void rna_def_modifier_smoke(BlenderRNA *brna)
 	RNA_def_property_pointer_sdna(prop, NULL, "flow");
 	RNA_def_property_ui_text(prop, "Flow Settings", "");
 
-	prop = RNA_def_property(srna, "coll_settings", PROP_POINTER, PROP_NONE);
-	RNA_def_property_pointer_sdna(prop, NULL, "coll");
-	RNA_def_property_ui_text(prop, "Collision Settings", "");
+	prop = RNA_def_property(srna, "effec_settings", PROP_POINTER, PROP_NONE);
+	RNA_def_property_pointer_sdna(prop, NULL, "effec");
+	RNA_def_property_ui_text(prop, "Effector Settings", "");
 
 	prop = RNA_def_property(srna, "smoke_type", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "type");

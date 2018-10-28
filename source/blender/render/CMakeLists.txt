@@ -42,6 +42,7 @@ set(INC
 	../../../intern/guardedalloc
 	../../../intern/mikktspace
 	../../../intern/smoke/extern
+	../../../intern/mantaflow/extern
 )
 
 set(INC_SYS
@@ -85,8 +86,8 @@ if(WITH_IMAGE_OPENEXR)
 	add_definitions(-DWITH_OPENEXR)
 endif()
 
-if(WITH_MOD_SMOKE)
-	add_definitions(-DWITH_SMOKE)
+if(WITH_MOD_MANTA)
+	add_definitions(-DWITH_MANTA)
 endif()
 
 if(WITH_FREESTYLE)

@@ -243,8 +243,8 @@ if(WITH_FFTW3)
 	add_definitions(-DWITH_FFTW3)
 endif()
 
-if(WITH_MOD_SMOKE)
-	add_definitions(-DWITH_SMOKE)
+if(WITH_MOD_MANTA)
+	add_definitions(-DWITH_MANTA)
 endif()
 
 if(WITH_MOD_OCEANSIM)
@@ -347,6 +347,7 @@ blender_include_dirs(
 	../../../../intern/atomic
 	../../../../intern/memutil
 	../../../../intern/smoke/extern
+	../../../../intern/mantaflow/extern
 )
 
 blender_include_dirs_sys(
