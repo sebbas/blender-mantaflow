@@ -48,10 +48,6 @@ if(WITH_MOD_FLUID)
 	add_subdirectory(elbeem)
 endif()
 
-if(WITH_MOD_SMOKE)
-	add_subdirectory(smoke)
-endif()
-
 if(WITH_IK_SOLVER)
 	add_subdirectory(iksolver)
 endif()
@@ -75,6 +71,10 @@ endif()
 # only windows needs utf16 converter
 if(WIN32)
 	add_subdirectory(utfconv)
+endif()
+
+if(WITH_MOD_MANTA)
+	add_subdirectory(mantaflow)
 endif()
 
 if(WITH_OPENVDB)

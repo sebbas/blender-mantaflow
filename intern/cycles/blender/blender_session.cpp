@@ -1086,7 +1086,7 @@ void BlenderSession::builtin_image_info(const string &builtin_name,
 			return;
 
 		int3 resolution = get_int3(b_domain.domain_resolution());
-		int amplify = (b_domain.use_high_resolution())? b_domain.amplify() + 1: 1;
+		int amplify = (b_domain.use_noise())? b_domain.noise_scale() : 1;
 
 		/* Velocity and heat data is always low-resolution. */
 		if(builtin_name == Attribute::standard_name(ATTR_STD_VOLUME_VELOCITY) ||
@@ -1247,7 +1247,7 @@ bool BlenderSession::builtin_image_float_pixels(const string &builtin_name,
 		}
 
 		int3 resolution = get_int3(b_domain.domain_resolution());
-		int length, amplify = (b_domain.use_high_resolution())? b_domain.amplify() + 1: 1;
+		int length, amplify = (b_domain.use_noise()) ? b_domain.noise_scale() : 1;
 
 		/* Velocity and heat data is always low-resolution. */
 		if(builtin_name == Attribute::standard_name(ATTR_STD_VOLUME_VELOCITY) ||
