@@ -3823,13 +3823,7 @@ static void particles_manta_step(
 		psys->particles = 0;
 		psys->totpart = 0;
 	}
-	if (psys->part) {
-		psys->part->totpart = 0;
-		psys->part->sta = 0;
-		psys->part->lifetime = 0;
-	}
 
-	/* manta sim particle import handling, actual loading of particles from file happens in FLUID helper. Here just pointer exchange */
 #ifdef WITH_MANTA
 	{
 		Object *ob = sim->ob;
@@ -3845,13 +3839,13 @@ static void particles_manta_step(
 			int flagActivePart, activeParts = 0;
 			float posX, posY, posZ, velX, velY, velZ;
 			float resX, resY, resZ;
-			int upres[3] = {1};
+			int upres = 1;
 			char debugStrBuffer[256];
 
-			// Helper for scaling
+			/* Helper variables for scaling */
 			float min[3], max[3], size[3], cell_size_scaled[3], max_size;
 
-			// Sanity check: parts also enabled in fluid domain?
+			/* Sanity check: parts also enabled in fluid domain? */
 			if ((part->type & PART_MANTA_FLIP && (sds->particle_type & FLUID_DOMAIN_PARTICLE_FLIP)==0) ||
 				(part->type & PART_MANTA_SPRAY && (sds->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY)==0) ||
 				(part->type & PART_MANTA_BUBBLE && (sds->particle_type & FLUID_DOMAIN_PARTICLE_BUBBLE)==0) ||
@@ -3862,14 +3856,14 @@ static void particles_manta_step(
 				return;
 			}
 
-			// Count particle amount. tottypepart only important for snd particles
+			/* Count particle amount. tottypepart only important for snd particles */
 			if (part->type & PART_MANTA_FLIP) {
 				tottypepart = totpart = liquid_get_num_flip_particles(sds->fluid);
 			}
 			if (part->type & (PART_MANTA_SPRAY | PART_MANTA_BUBBLE | PART_MANTA_FOAM | PART_MANTA_TRACER)) {
 				totpart = liquid_get_num_snd_particles(sds->fluid);
 
-				// tottypepart is the amount of particles of a snd particle type
+				/* tottypepart is the amount of particles of a snd particle type */
 				for (p=0; p<totpart; p++) {
 					flagActivePart = liquid_get_snd_particle_flag_at(sds->fluid, p);
 					if ((part->type & PART_MANTA_SPRAY) && (flagActivePart & PSPRAY)) tottypepart++;
@@ -3878,62 +3872,76 @@ static void particles_manta_step(
 					if ((part->type & PART_MANTA_TRACER) && (flagActivePart & PTRACER)) tottypepart++;
 				}
 			}
-			// Sanity check: no particle files present yet
-			if (!tottypepart)
+			/* Sanity check: no particles present */
+			if (!totpart || !tottypepart)
 				return;
 
+			/* How many particles to display? */
 			tottypepart = (use_render_params) ? tottypepart : (part->disp*tottypepart) / 100;
 
 			part->totpart = tottypepart;
 			part->sta = part->end = 1.0f;
 			part->lifetime = sim->scene->r.efra + 1;
 
-			/* allocate particles */
+			/* Allocate particles */
 			realloc_particles(sim, part->totpart);
 
+			/* Randomness when choosing which particles to display */
+			srand(123456789); // set seed
+			double r, dispProb = (double) part->disp / 100.0;
+
+			/* Loop over *all* particles. Will break out of loop before tottypepart amount exceeded */
 			for (p=0, pa=psys->particles; p<totpart; p++) {
 
-				if (part->type & PART_MANTA_FLIP) {
+				/* Apply some randomness and determine which particles to skip */
+				r = (double) rand() / (double)RAND_MAX;
+				if (r > dispProb) continue;
+
+				/* flag, res, upres, pos, vel for FLIP and snd particles have different getterss */
+				if (part->type & PART_MANTA_FLIP)
+				{
 					flagActivePart = liquid_get_flip_particle_flag_at(sds->fluid, p);
 
-//					// Upres FLIP have custom (upscaled) res values
-					// TODO (sebbas): Future option might load highres FLIP particle system
-//					if (sds->flags & FLUID_DOMAIN_USE_MESH) {
-//						resX = (float) fluid_get_mesh_res_x(sds->fluid);
-//						resY = (float) fluid_get_mesh_res_y(sds->fluid);
-//						resZ = (float) fluid_get_mesh_res_z(sds->fluid);
-//
-//						upres[0] = upres[1] = upres[2] = fluid_get_mesh_upres(sds->fluid);
-//					}
-//					else
-					{
-						resX = (float) fluid_get_res_x(sds->fluid);
-						resY = (float) fluid_get_res_y(sds->fluid);
-						resZ = (float) fluid_get_res_z(sds->fluid);
+					resX = (float) fluid_get_res_x(sds->fluid);
+					resY = (float) fluid_get_res_y(sds->fluid);
+					resZ = (float) fluid_get_res_z(sds->fluid);
 
-						upres[0] = upres[1] = upres[2] = 1;
-					}
+					upres = 1;
+
+					posX = liquid_get_flip_particle_position_x_at(sds->fluid, p);
+					posY = liquid_get_flip_particle_position_y_at(sds->fluid, p);
+					posZ = liquid_get_flip_particle_position_z_at(sds->fluid, p);
+
+					velX = liquid_get_flip_particle_velocity_x_at(sds->fluid, p);
+					velY = liquid_get_flip_particle_velocity_y_at(sds->fluid, p);
+					velZ = liquid_get_flip_particle_velocity_z_at(sds->fluid, p);
 				}
-				else if (part->type & (PART_MANTA_SPRAY | PART_MANTA_BUBBLE | PART_MANTA_FOAM | PART_MANTA_TRACER)) {
+				else if (part->type & (PART_MANTA_SPRAY | PART_MANTA_BUBBLE | PART_MANTA_FOAM | PART_MANTA_TRACER))
+				{
 					flagActivePart = liquid_get_snd_particle_flag_at(sds->fluid, p);
 
 					resX = (float) liquid_get_particle_res_x(sds->fluid);
 					resY = (float) liquid_get_particle_res_y(sds->fluid);
 					resZ = (float) liquid_get_particle_res_z(sds->fluid);
 
-					upres[0] = upres[1] = upres[2] = liquid_get_particle_upres(sds->fluid);
+					upres = liquid_get_particle_upres(sds->fluid);
+
+					posX = liquid_get_snd_particle_position_x_at(sds->fluid, p);
+					posY = liquid_get_snd_particle_position_y_at(sds->fluid, p);
+					posZ = liquid_get_snd_particle_position_z_at(sds->fluid, p);
+
+					velX = liquid_get_snd_particle_velocity_x_at(sds->fluid, p);
+					velY = liquid_get_snd_particle_velocity_y_at(sds->fluid, p);
+					velZ = liquid_get_snd_particle_velocity_z_at(sds->fluid, p);
 				}
-				else {
+				else
+				{
 					BLI_snprintf(debugStrBuffer, sizeof(debugStrBuffer), "particles_manta_step::error - unknown particle system type\n");
 					return;
 				}
 				// printf("part->type: %d, flagActivePart: %d\n", part->type, flagActivePart);
 
-				// check if type of particle type matches current particle system type (only important for snd particles)
-//				if ((part->type & PART_MANTA_SPRAY) && (flagActivePart & PSPRAY)==0) continue;
-//				if ((part->type & PART_MANTA_BUBBLE) && (flagActivePart & PBUBBLE)==0) continue;
-//				if ((part->type & PART_MANTA_FOAM) && (flagActivePart & PFOAM)==0) continue;
-//				if ((part->type & PART_MANTA_TRACER) && (flagActivePart & PTRACER)==0) continue;
+				/* Type of particle must matche current particle system type (only important for snd particles) */
 				if ((flagActivePart & PSPRAY) && (part->type & PART_MANTA_SPRAY)==0) continue;
 				if ((flagActivePart & PBUBBLE) && (part->type & PART_MANTA_BUBBLE)==0) continue;
 				if ((flagActivePart & PFOAM) && (part->type & PART_MANTA_FOAM)==0) continue;
@@ -3941,64 +3949,51 @@ static void particles_manta_step(
 
 				// printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
 
-				if (part->type & PART_MANTA_FLIP) {
-					posX = liquid_get_flip_particle_position_x_at(sds->fluid, p);
-					posY = liquid_get_flip_particle_position_y_at(sds->fluid, p);
-					posZ = liquid_get_flip_particle_position_z_at(sds->fluid, p);
-					velX = liquid_get_flip_particle_velocity_x_at(sds->fluid, p);
-					velY = liquid_get_flip_particle_velocity_y_at(sds->fluid, p);
-					velZ = liquid_get_flip_particle_velocity_z_at(sds->fluid, p);
-				}
-				else if (part->type & (PART_MANTA_SPRAY | PART_MANTA_BUBBLE | PART_MANTA_FOAM | PART_MANTA_TRACER)) {
-					posX = liquid_get_snd_particle_position_x_at(sds->fluid, p);
-					posY = liquid_get_snd_particle_position_y_at(sds->fluid, p);
-					posZ = liquid_get_snd_particle_position_z_at(sds->fluid, p);
-					velX = liquid_get_snd_particle_velocity_x_at(sds->fluid, p);
-					velY = liquid_get_snd_particle_velocity_y_at(sds->fluid, p);
-					velZ = liquid_get_snd_particle_velocity_z_at(sds->fluid, p);
-				}
+				/* Particle system has allocated tottypeparts particles - so break early before exceeded */
+				if (activeParts >= tottypepart) break;
 
-				// Only show active particles, i.e. filter out dead particles that just Mantaflow needs
-				if ((flagActivePart & PDELETE)==0) { // mantaflow convention: PDELETE == inactive particle
+				/* Only show active particles, i.e. filter out dead particles that just Mantaflow needs
+				 * Mantaflow convention: PDELETE == inactive particle */
+				if ((flagActivePart & PDELETE)==0) {
 					activeParts++;
 
-					// Use particle system settings for particle size
+					/* Use particle system settings for particle size */
 					pa->size = part->size;
 					if (part->randsize > 0.0f)
 						pa->size *= 1.0f - part->randsize * psys_frand(psys, p + 1);
 
-					// Get size (dimension) but considering scaling
+					/* Get size (dimension) but considering scaling */
 					copy_v3_v3(cell_size_scaled, sds->cell_size);
 					mul_v3_v3(cell_size_scaled, ob->size);
 					VECMADD(min, sds->p0, cell_size_scaled, sds->res_min);
 					VECMADD(max, sds->p0, cell_size_scaled, sds->res_max);
 					sub_v3_v3v3(size, max, min);
 
-					// Biggest dimension will be used for upscaling
-					max_size = MAX3(size[0] / (float) upres[0], size[1] / (float) upres[1], size[2] / (float) upres[2]);
+					/* Biggest dimension will be used for upscaling */
+					max_size = MAX3(size[0] / (float) upres, size[1] / (float) upres, size[2] / (float) upres);
 
-					// set particle position
+					/* Set particle position */
 					pa->state.co[0] = posX;
 					pa->state.co[1] = posY;
 					pa->state.co[2] = posZ;
 
-					// normalize to unit cube around 0
+					/* Normalize to unit cube around 0 */
 					pa->state.co[0] -= resX * 0.5f;
 					pa->state.co[1] -= resY * 0.5f;
 					pa->state.co[2] -= resZ * 0.5f;
 					mul_v3_fl(pa->state.co, sds->dx);
 
-					// match domain dimension / size
+					/* Match domain dimension / size */
 					pa->state.co[0] *= max_size / fabsf(ob->size[0]);
 					pa->state.co[1] *= max_size / fabsf(ob->size[1]);
 					pa->state.co[2] *= max_size / fabsf(ob->size[2]);
 
-					// match domain scale
+					/* Match domain scale */
 					mul_m4_v3(ob->obmat, pa->state.co);
 
 					// printf("pa->state.co[0]: %f, pa->state.co[1]: %f, pa->state.co[2]: %f\n", pa->state.co[0], pa->state.co[1], pa->state.co[2]);
 
-					// set particle velocity
+					/* Set particle velocity */
 					pa->state.vel[0] = velX;
 					pa->state.vel[1] = velY;
 					pa->state.vel[2] = velZ;
@@ -4006,7 +4001,7 @@ static void particles_manta_step(
 
 					// printf("pa->state.vel[0]: %f, pa->state.vel[1]: %f, pa->state.vel[2]: %f\n", pa->state.vel[0], pa->state.vel[1], pa->state.vel[2]);
 
-					// set default angular velocity and particle rotation
+					/* Set default angular velocity and particle rotation */
 					zero_v3(pa->state.ave);
 					unit_qt(pa->state.rot);
 
@@ -4014,9 +4009,10 @@ static void particles_manta_step(
 					pa->dietime = sim->scene->r.efra + 1;
 					pa->lifetime = sim->scene->r.efra;
 					pa->alive = PARS_ALIVE;
+
+					/* Increasing particle settings pointer only for active particles */
+					pa++;
 				}
-				// Increase particle setting here. totpart may be larger (snd parts)
-				pa++;
 			}
 			// printf("active parts: %d\n", activeParts);
 			totpart = psys->totpart = part->totpart = activeParts;
@@ -4555,9 +4551,7 @@ void particle_system_update(struct Depsgraph *depsgraph, Scene *scene, Object *o
 					if (part->randsize > 0.0f)
 						pa->size *= 1.0f - part->randsize * psys_frand(psys, p + 1);
 
-					/* free unexisting after resetting particles */
-					if (free_unexisting)
-						free_unexisting_particles(&sim);
+					reset_particle(&sim, pa, 0.0, cfra);
 
 					if (psys_frand(psys, p) > disp)
 						pa->flag |= PARS_NO_DISP;
@@ -4565,7 +4559,7 @@ void particle_system_update(struct Depsgraph *depsgraph, Scene *scene, Object *o
 						pa->flag &= ~PARS_NO_DISP;
 				}
 
-				/* free unexisting after reseting particles */
+				/* free unexisting after resetting particles */
 				if (free_unexisting)
 					free_unexisting_particles(&sim);
 
