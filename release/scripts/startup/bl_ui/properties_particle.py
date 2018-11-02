@@ -196,20 +196,17 @@ class PARTICLE_PT_context_particles(ParticleButtonsPanel, Panel):
 
             split = layout.split(factor=0.32)
             col = split.column()
-            if (part.is_fluid is False) or (part.is_manta is False):
+            if (part.is_fluid is False) and (part.is_manta is False):
                 col.label(text="Settings:")
                 col.label(text="Type:")
 
             col = split.column()
-            if (part.is_fluid is False) or (part.is_manta is False):
+            if (part.is_fluid is False) and (part.is_manta is False):
                 row = col.row()
                 row.enabled = particle_panel_enabled(context, psys)
                 row.template_ID(psys, "settings", new="particle.new")
 
-            if part.is_fluid:
-                layout.label(text=iface_("%d fluid particles for this frame") % part.count, translate=False)
-                return
-            if part.is_manta:
+            if part.is_fluid or part.is_manta:
                 layout.label(text=iface_("%d fluid particles for this frame") % part.count, translate=False)
                 return
 

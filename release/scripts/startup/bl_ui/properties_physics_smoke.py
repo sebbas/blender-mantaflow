@@ -719,7 +719,7 @@ class PHYSICS_PT_manta_particles(PhysicButtonsPanel, Panel):
         using_particles = domain.use_spray_particles or domain.use_foam_particles or domain.use_bubble_particles
 
         flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=False)
-        flow.enabled = not baking_any and not baked_particles
+        flow.enabled = not baking_any
 
         subSpray = flow.column()
         subSpray.enabled = (domain.sndparticle_combined_export == 'OFF') or (domain.sndparticle_combined_export == 'FOAM + BUBBLES')
