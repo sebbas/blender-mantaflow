@@ -2545,6 +2545,9 @@ static void update_flowsflags(SmokeDomainSettings *sds, Object **flowobjs, int n
 			if (sfs->flags & FLUID_FLOW_INITVELOCITY) {
 				active_fields |= FLUID_DOMAIN_ACTIVE_INVEL;
 			}
+			if (sfs->behavior == FLUID_FLOW_BEHAVIOR_OUTFLOW) {
+				active_fields |= FLUID_DOMAIN_ACTIVE_OUTFLOW;
+			}
 			/* activate heat field if flow produces any heat */
 			if (sfs->temp && sds->type == FLUID_DOMAIN_TYPE_GAS) {
 				active_fields |= FLUID_DOMAIN_ACTIVE_HEAT;
@@ -2583,6 +2586,9 @@ static void update_flowsflags(SmokeDomainSettings *sds, Object **flowobjs, int n
 	/* Finally, initialize new data fields if any */
 	if (active_fields & FLUID_DOMAIN_ACTIVE_INVEL) {
 		fluid_ensure_invelocity(sds->fluid, sds->smd);
+	}
+	if (active_fields & FLUID_DOMAIN_ACTIVE_OUTFLOW) {
+		fluid_ensure_outflow(sds->fluid, sds->smd);
 	}
 	if (active_fields & FLUID_DOMAIN_ACTIVE_HEAT) {
 		smoke_ensure_heat(sds->fluid, sds->smd);
