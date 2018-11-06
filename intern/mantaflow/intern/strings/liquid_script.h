@@ -171,7 +171,8 @@ def liquid_adaptive_step_$ID$(framenr):\n\
     if using_obstacle_s$ID$:\n\
         phi_s$ID$.subtract(phiObsIn_s$ID$)\n\
     \n\
-    phiOut_s$ID$.join(phiOutIn_s$ID$)\n\
+    if using_outflow_s$ID$:\n\
+        phiOut_s$ID$.join(phiOutIn_s$ID$)\n\
     \n\
     #updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$) # TODO (sebbas): uncomment for fraction support\n\
     setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$, fractions=fractions_s$ID$)\n\
@@ -183,7 +184,7 @@ def liquid_adaptive_step_$ID$(framenr):\n\
         pVel_pp$ID$.setSource(invel_s$ID$, isMAC=True)\n\
     \n\
     sampleLevelsetWithParticles(phi=phiIn_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, discretization=particleNumber_s$ID$, randomness=randomness_s$ID$, refillEmpty=True)\n\
-    flags_s$ID$.updateFromLevelset(phi_s$ID$, phiObs_s$ID$)\n\
+    flags_s$ID$.updateFromLevelset(phi_s$ID$)\n\
     \n\
     mantaMsg('Liquid step / s$ID$.frame: ' + str(s$ID$.frame))\n\
     liquid_step_$ID$()\n\
@@ -220,7 +221,7 @@ def liquid_step_$ID$():\n\
     extrapolateLsSimple(phi=phi_s$ID$, distance=3)\n\
     phi_s$ID$.setBoundNeumann(0) # make sure no particles are placed at outer boundary\n\
     \n\
-    if doOpen_s$ID$:\n\
+    if doOpen_s$ID$ or using_outflow_s$ID$:\n\
         resetOutflow(flags=flags_s$ID$, phi=phi_s$ID$, parts=pp_s$ID$, index=gpi_s$ID$, indexSys=pindex_s$ID$)\n\
     flags_s$ID$.updateFromLevelset(phi_s$ID$)\n\
     \n\
@@ -319,19 +320,19 @@ def liquid_step_particles_$ID$():\n\
     # with upres: recreate grids\n\
     else:\n\
         # create highres grids by interpolation\n\
-        interpolateMACGrid(target = vel_sp$ID$, source = vel_s$ID$)\n\
-        interpolateGrid(target = phi_sp$ID$, source = phi_s$ID$)\n\
-        flags_sp$ID$.initDomain(boundaryWidth = boundaryWidth_s$ID$, phiWalls = phiObs_sp$ID$, outflow = boundConditions_s$ID$)\n\
+        interpolateMACGrid(target=vel_sp$ID$, source=vel_s$ID$)\n\
+        interpolateGrid(target=phi_sp$ID$, source=phi_s$ID$)\n\
+        flags_sp$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$, phiWalls=phiObs_sp$ID$, outflow=boundConditions_s$ID$)\n\
         flags_sp$ID$.updateFromLevelset(levelset=phi_sp$ID$)\n\
     \n\
     # actual secondary simulation\n\
-    #extrapolateLsSimple(phi = phi_sp$ID$, distance = radius + 1, inside = True)\n\
+    #extrapolateLsSimple(phi=phi_sp$ID$, distance=radius+1, inside=True)\n\
     flipComputeSecondaryParticlePotentials(potTA=trappedAir_sp$ID$, potWC=waveCrest_sp$ID$, potKE=kineticEnergy_sp$ID$, neighborRatio=neighborRatio_sp$ID$, flags=flags_sp$ID$, v=vel_sp$ID$, normal=normal_sp$ID$, phi=phi_sp$ID$, radius=pot_radius_sp$ID$, tauMinTA=tauMin_ta_sp$ID$, tauMaxTA=tauMax_ta_sp$ID$, tauMinWC=tauMin_wc_sp$ID$, tauMaxWC=tauMax_wc_sp$ID$, tauMinKE=tauMin_k_sp$ID$, tauMaxKE=tauMax_k_sp$ID$, scaleFromManta=scaleFromManta_sp$ID$)\n\
     flipSampleSecondaryParticles(mode='single', flags=flags_sp$ID$, v=vel_sp$ID$, pts_sec=ppSnd_sp$ID$, v_sec=pVelSnd_pp$ID$, l_sec=pLifeSnd_pp$ID$, lMin=lMin_sp$ID$, lMax=lMax_sp$ID$, potTA=trappedAir_sp$ID$, potWC=waveCrest_sp$ID$, potKE=kineticEnergy_sp$ID$, neighborRatio=neighborRatio_sp$ID$, c_s=c_s_sp$ID$, c_b=c_b_sp$ID$, k_ta=k_ta_sp$ID$, k_wc=k_wc_sp$ID$, dt=s$ID$.frameLength)\n\
     flipUpdateSecondaryParticles(mode='linear', pts_sec=ppSnd_sp$ID$, v_sec=pVelSnd_pp$ID$, l_sec=pLifeSnd_pp$ID$, f_sec=pForceSnd_pp$ID$, flags=flags_sp$ID$, v=vel_sp$ID$, neighborRatio=neighborRatio_sp$ID$, radius=update_radius_sp$ID$, gravity=gravity_s$ID$, k_b=k_b_sp$ID$, k_d=k_d_sp$ID$, c_s=c_s_sp$ID$, c_b=c_b_sp$ID$, dt=s$ID$.frameLength)\n\
     if $SNDPARTICLE_BOUNDARY_PUSHOUT$:\n\
         pushOutofObs(parts = ppSnd_sp$ID$, flags = flags_sp$ID$, phiObs = phiObs_sp$ID$, shift = 1.0)\n\
-    flipDeleteParticlesInObstacle(pts = ppSnd_sp$ID$, flags = flags_sp$ID$)\n\
+    flipDeleteParticlesInObstacle(pts=ppSnd_sp$ID$, flags=flags_sp$ID$)\n\
     #debugGridInfo(flags = flags_sp$ID$, grid = trappedAir_sp$ID$, name = 'Trapped Air')\n\
     #debugGridInfo(flags = flags_sp$ID$, grid = waveCrest_sp$ID$, name = 'Wave Crest')\n\
     #debugGridInfo(flags = flags_sp$ID$, grid = kineticEnergy_sp$ID$, name = 'Kinetic Energy')\n";

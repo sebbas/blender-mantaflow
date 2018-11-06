@@ -57,6 +57,13 @@ extern "C" void fluid_ensure_invelocity(FLUID *fluid, struct SmokeModifierData *
 		fluid->updatePointers();
 	}
 }
+extern "C" void fluid_ensure_outflow(FLUID *fluid, struct SmokeModifierData *smd)
+{
+	if (fluid) {
+		fluid->initOutflow(smd);
+		fluid->updatePointers();
+	}
+}
 
 extern "C" int fluid_write_data(FLUID* fluid, SmokeModifierData *smd, int framenr)
 {

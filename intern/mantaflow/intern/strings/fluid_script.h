@@ -104,6 +104,7 @@ using_adaptTime_s$ID$    = $USING_ADAPTIVETIME$\n\
 using_obstacle_s$ID$     = $USING_OBSTACLE$\n\
 using_guiding_s$ID$      = $USING_GUIDING$\n\
 using_invel_s$ID$        = $USING_INVEL$\n\
+using_outflow_s$ID$      = $USING_OUTFLOW$\n\
 using_sndparts_s$ID$     = $USING_SNDPARTS$\n\
 using_speedvectors_s$ID$ = $USING_SPEEDVECTORS$\n\
 \n\
@@ -153,6 +154,9 @@ using_guiding_s$ID$ = True\n";
 
 const std::string fluid_with_invel = "\n\
 using_invel_s$ID$ = True\n";
+
+const std::string fluid_with_outflow = "\n\
+using_outflow_s$ID$ = True\n";
 
 const std::string fluid_with_sndparts = "\n\
 using_sndparts_s$ID$ = True\n";
@@ -210,7 +214,6 @@ z_vel_s$ID$       = s$ID$.create(RealGrid)\n\
 pressure_s$ID$    = s$ID$.create(RealGrid)\n\
 phiObs_s$ID$      = s$ID$.create(LevelsetGrid)\n\
 phiOut_s$ID$      = s$ID$.create(LevelsetGrid)\n\
-phiOutIn_s$ID$    = s$ID$.create(LevelsetGrid) # TODO (sebbas): Move phiOutIn to separate init - similarly to phiObsIn\n\
 forces_s$ID$      = s$ID$.create(Vec3Grid)\n\
 x_force_s$ID$     = s$ID$.create(RealGrid)\n\
 y_force_s$ID$     = s$ID$.create(RealGrid)\n\
@@ -257,6 +260,10 @@ invel_s$ID$   = s$ID$.create(MACGrid)\n\
 x_invel_s$ID$ = s$ID$.create(RealGrid)\n\
 y_invel_s$ID$ = s$ID$.create(RealGrid)\n\
 z_invel_s$ID$ = s$ID$.create(RealGrid)\n";
+
+const std::string fluid_alloc_outflow = "\n\
+mantaMsg('Allocating outflow data')\n\
+phiOutIn_s$ID$ = s$ID$.create(LevelsetGrid)\n";
 
 const std::string fluid_alloc_sndparts = "\n\
 mantaMsg('Allocating snd parts low')\n\
@@ -337,7 +344,7 @@ def fluid_post_step_$ID$():\n\
         invelC_s$ID$.clear()\n\
     \n\
     phiObs_s$ID$.setConst(9999)\n\
-    phiOutIn_s$ID$.setConst(9999)\n\
+    phiOut_s$ID$.setConst(9999)\n\
     \n\
     # Copy vel grid to reals grids (which Blender internal will in turn use for vel access)\n\
     copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n";

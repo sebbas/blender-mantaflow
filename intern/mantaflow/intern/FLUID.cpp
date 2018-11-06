@@ -64,6 +64,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mUsingColors   = smd->domain->active_fields & FLUID_DOMAIN_ACTIVE_COLORS;
 	mUsingObstacle = smd->domain->active_fields & FLUID_DOMAIN_ACTIVE_OBSTACLE;
 	mUsingInvel    = smd->domain->active_fields & FLUID_DOMAIN_ACTIVE_INVEL;
+	mUsingOutflow  = smd->domain->active_fields & FLUID_DOMAIN_ACTIVE_OUTFLOW;
 	mUsingNoise    = smd->domain->flags & FLUID_DOMAIN_USE_NOISE;
 	mUsingMesh     = smd->domain->flags & FLUID_DOMAIN_USE_MESH;
 	mUsingMVel     = smd->domain->flags & FLUID_DOMAIN_USE_SPEED_VECTORS;
@@ -167,6 +168,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 		initLiquid(smd);
 		if (mUsingObstacle) initObstacle(smd);
 		if (mUsingInvel)    initInVelocity(smd);
+		if (mUsingOutflow)  initOutflow(smd);
 
 		if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
 			mUpresParticle       = smd->domain->particle_scale;
@@ -209,6 +211,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 		if (mUsingColors)   initColors(smd);
 		if (mUsingObstacle) initObstacle(smd);
 		if (mUsingInvel)    initInVelocity(smd);
+		if (mUsingOutflow)  initOutflow(smd);
 
 		if (mUsingGuiding) {
 			mResGuiding = (smd->domain->guiding_parent) ? smd->domain->guide_res : smd->domain->res;
@@ -483,6 +486,20 @@ void FLUID::initInVelocity(SmokeModifierData *smd)
 	}
 }
 
+void FLUID::initOutflow(SmokeModifierData *smd)
+{
+	if (!mPhiOutIn) {
+		std::vector<std::string> pythonCommands;
+		std::string tmpString = fluid_alloc_outflow
+			+ fluid_with_outflow;
+		std::string finalString = parseScript(tmpString, smd);
+		pythonCommands.push_back(finalString);
+
+		runPythonString(pythonCommands);
+		mUsingOutflow = true;
+	}
+}
+
 void FLUID::initSndParts(SmokeModifierData *smd)
 {
 	std::vector<std::string> pythonCommands;
@@ -619,6 +636,8 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << (smd->domain->flags & FLUID_DOMAIN_USE_GUIDING ? "True" : "False");
 	else if (varName == "USING_INVEL")
 		ss << (smd->domain->active_fields & FLUID_DOMAIN_ACTIVE_INVEL ? "True" : "False");
+	else if (varName == "USING_OUTFLOW")
+		ss << (smd->domain->active_fields & FLUID_DOMAIN_ACTIVE_OUTFLOW ? "True" : "False");
 	else if (varName == "SOLVER_DIM")
 		ss << smd->domain->solver_res;
 	else if (varName == "DO_OPEN") {
@@ -903,6 +922,10 @@ int FLUID::updateFlipStructures(SmokeModifierData *smd, int framenr)
 	if (FLUID::with_debug)
 		std::cout << "FLUID::updateFlipStructures()" << std::endl;
 
+	// Ensure empty data structures at start
+	if (mFlipParticleData) mFlipParticleData->clear();
+	if (mFlipParticleVelocity) mFlipParticleVelocity->clear();
+
 	if (!mUsingLiquid) return 0;
 	if (BLI_path_is_rel(smd->domain->cache_directory)) return 0;
 
@@ -943,6 +966,11 @@ int FLUID::updateMeshStructures(SmokeModifierData *smd, int framenr)
 	if (!mUsingMesh) return 0;
 	if (BLI_path_is_rel(smd->domain->cache_directory)) return 0;
 
+	// Ensure empty data structures at start
+	if (mMeshNodes) mMeshNodes->clear();
+	if (mMeshTriangles) mMeshTriangles->clear();
+	if (mMeshVelocities) mMeshVelocities->clear();
+
 	std::ostringstream ss;
 	char cacheDir[FILE_MAX], targetFile[FILE_MAX];
 	cacheDir[0] = '\0';
@@ -980,6 +1008,11 @@ int FLUID::updateParticleStructures(SmokeModifierData *smd, int framenr)
 
 	if (!mUsingDrops && !mUsingBubbles && !mUsingFloats && !mUsingTracers) return 0;
 	if (BLI_path_is_rel(smd->domain->cache_directory)) return 0;
+
+	// Ensure empty data structures at start
+	if (mSndParticleData) mSndParticleData->clear();
+	if (mSndParticleVelocity) mSndParticleVelocity->clear();
+	if (mSndParticleLife) mSndParticleLife->clear();
 
 	std::ostringstream ss;
 	char cacheDir[FILE_MAX], targetFile[FILE_MAX];
@@ -1749,9 +1782,6 @@ void FLUID::updateMeshFromBobj(const char* filename)
 	int ibuffer[3];
 	int numBuffer = 0;
 
-	mMeshNodes->clear();
-	mMeshTriangles->clear();
-
 	gzf = (gzFile) BLI_gzopen(filename, "rb1"); // do some compression
 	if (!gzf)
 		std::cerr << "updateMeshData: unable to open file: " << filename << std::endl;
@@ -1823,9 +1853,6 @@ void FLUID::updateMeshFromObj(const char* filename)
 	float fbuffer[3];
 	int ibuffer[3];
 	int cntVerts = 0, cntNormals = 0, cntTris = 0;
-
-	mMeshNodes->clear();
-	mMeshTriangles->clear();
 
 	if (!ifs.good())
 		std::cerr << "updateMeshDataFromObj: unable to open file: " << filename << std::endl;
@@ -1900,8 +1927,6 @@ void FLUID::updateMeshFromUni(const char* filename)
 	gzFile gzf;
 	float fbuffer[4];
 	int ibuffer[4];
-
-	mMeshVelocities->clear();
 
 	gzf = (gzFile) BLI_gzopen(filename, "rb1"); // do some compression
 	if (!gzf)
@@ -2006,9 +2031,10 @@ void FLUID::updateParticlesFromUni(const char* filename, bool isSecondarySys, bo
 	}
 
 	// Pointer to FLIP system or to secondary particle system
-	std::vector<pData>* dataPointer;
-	std::vector<pVel>* velocityPointer;
-	std::vector<float>* lifePointer;
+	std::vector<pData>* dataPointer = NULL;
+	std::vector<pVel>* velocityPointer = NULL;
+	std::vector<float>* lifePointer = NULL;
+
 	if (isSecondarySys) {
 		dataPointer = mSndParticleData;
 		velocityPointer = mSndParticleVelocity;
@@ -2120,7 +2146,9 @@ void FLUID::updatePointers()
 	mForceY    = (float*) stringToPointer(pyObjectToString(callPythonFunction("y_force" + solver_ext, func)));
 	mForceZ    = (float*) stringToPointer(pyObjectToString(callPythonFunction("z_force" + solver_ext, func)));
 
-	mPhiOutIn  = (float*) stringToPointer(pyObjectToString(callPythonFunction("phiOutIn"   + solver_ext, func)));
+	if (mUsingOutflow) {
+		mPhiOutIn = (float*) stringToPointer(pyObjectToString(callPythonFunction("phiOutIn" + solver_ext, func)));
+	}
 
 	if (mUsingObstacle) {
 		mPhiObsIn    = (float*) stringToPointer(pyObjectToString(callPythonFunction("phiObsIn" + solver_ext, func)));

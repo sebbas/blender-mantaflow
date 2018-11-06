@@ -42,6 +42,7 @@ void fluid_free(struct FLUID *fluid);
 void fluid_ensure_obstacle(struct FLUID *fluid, struct SmokeModifierData *smd);
 void fluid_ensure_guiding(struct FLUID *fluid, struct SmokeModifierData *smd);
 void fluid_ensure_invelocity(struct FLUID *fluid, struct SmokeModifierData *smd);
+void fluid_ensure_outflow(struct FLUID *fluid, struct SmokeModifierData *smd);
 int fluid_write_data(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_read_data(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_read_noise(struct FLUID* fluid, struct SmokeModifierData *smd, int framenr);

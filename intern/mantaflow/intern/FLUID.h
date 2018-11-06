@@ -62,6 +62,7 @@ public:
 	void initObstacle(SmokeModifierData *smd);
 	void initGuiding(SmokeModifierData *smd);
 	void initInVelocity(SmokeModifierData *smd);
+	void initOutflow(SmokeModifierData *smd);
 	void initSndParts(SmokeModifierData *smd);
 	void initLiquidSndParts(SmokeModifierData *smd);
 
@@ -240,6 +241,7 @@ private:
 	bool mUsingObstacle;
 	bool mUsingGuiding;
 	bool mUsingInvel;
+	bool mUsingOutflow;
 	bool mUsingNoise;
 	bool mUsingMesh;
 	bool mUsingMVel;
