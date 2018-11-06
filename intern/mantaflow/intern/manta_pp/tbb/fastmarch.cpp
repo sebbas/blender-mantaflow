@@ -274,35 +274,36 @@ template class FastMarch<FmHeapEntryOut, +1>;
  struct knExtrapolateIntoBnd : public KernelBase { knExtrapolateIntoBnd(FlagGrid& flags, MACGrid& vel, const MACGrid& velTmp) :  KernelBase(&flags,0) ,flags(flags),vel(vel),velTmp(velTmp)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, const MACGrid& velTmp ) const {
 	int c=0;
 	Vec3 v(0,0,0);
+	const bool isObs = flags.isObstacle(i,j,k);
 	if( i==0 ) { 
 		v = velTmp(i+1,j,k);
-		if(v[0] < 0.) v[0] = 0.;
+		if(isObs && v[0] < 0.) v[0] = 0.;
 		c++;
 	}
 	else if( i==(flags.getSizeX()-1) ) { 
 		v = velTmp(i-1,j,k);
-		if(v[0] > 0.) v[0] = 0.;
+		if(isObs && v[0] > 0.) v[0] = 0.;
 		c++;
 	}
 	if( j==0 ) { 
 		v = velTmp(i,j+1,k);
-		if(v[1] < 0.) v[1] = 0.;
+		if(isObs && v[1] < 0.) v[1] = 0.;
 		c++;
 	}
 	else if( j==(flags.getSizeY()-1) ) { 
 		v = velTmp(i,j-1,k);
-		if(v[1] > 0.) v[1] = 0.;
+		if(isObs && v[1] > 0.) v[1] = 0.;
 		c++;
 	}
 	if(flags.is3D()) {
 	if( k==0 ) { 
 		v = velTmp(i,j,k+1);
-		if(v[2] < 0.) v[2] = 0.;
+		if(isObs && v[2] < 0.) v[2] = 0.;
 		c++;
 	}
 	else if( k==(flags.getSizeZ()-1) ) { 
 		v = velTmp(i,j,k-1);
-		if(v[2] > 0.) v[2] = 0.;
+		if(isObs && v[2] > 0.) v[2] = 0.;
 		c++;
 	} }
 	if(c>0) {

@@ -285,35 +285,36 @@ template class FastMarch<FmHeapEntryOut, +1>;
  struct knExtrapolateIntoBnd : public KernelBase { knExtrapolateIntoBnd(FlagGrid& flags, MACGrid& vel, const MACGrid& velTmp) :  KernelBase(&flags,0) ,flags(flags),vel(vel),velTmp(velTmp)   { runMessage(); run(); }  inline void op(int i, int j, int k, FlagGrid& flags, MACGrid& vel, const MACGrid& velTmp )  {
 	int c=0;
 	Vec3 v(0,0,0);
+	const bool isObs = flags.isObstacle(i,j,k);
 	if( i==0 ) { 
 		v = velTmp(i+1,j,k);
-		if(v[0] < 0.) v[0] = 0.;
+		if(isObs && v[0] < 0.) v[0] = 0.;
 		c++;
 	}
 	else if( i==(flags.getSizeX()-1) ) { 
 		v = velTmp(i-1,j,k);
-		if(v[0] > 0.) v[0] = 0.;
+		if(isObs && v[0] > 0.) v[0] = 0.;
 		c++;
 	}
 	if( j==0 ) { 
 		v = velTmp(i,j+1,k);
-		if(v[1] < 0.) v[1] = 0.;
+		if(isObs && v[1] < 0.) v[1] = 0.;
 		c++;
 	}
 	else if( j==(flags.getSizeY()-1) ) { 
 		v = velTmp(i,j-1,k);
-		if(v[1] > 0.) v[1] = 0.;
+		if(isObs && v[1] > 0.) v[1] = 0.;
 		c++;
 	}
 	if(flags.is3D()) {
 	if( k==0 ) { 
 		v = velTmp(i,j,k+1);
-		if(v[2] < 0.) v[2] = 0.;
+		if(isObs && v[2] < 0.) v[2] = 0.;
 		c++;
 	}
 	else if( k==(flags.getSizeZ()-1) ) { 
 		v = velTmp(i,j,k-1);
-		if(v[2] > 0.) v[2] = 0.;
+		if(isObs && v[2] > 0.) v[2] = 0.;
 		c++;
 	} }
 	if(c>0) {
@@ -371,7 +372,7 @@ inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,flags,vel,phi,maxDist);  } }  } FlagGrid& flags; MACGrid& vel; Grid<Real>& phi; Real maxDist;   };
-#line 320 "fastmarch.cpp"
+#line 321 "fastmarch.cpp"
 
 
 // a simple extrapolation step , used for cases where there's no levelset
@@ -453,7 +454,7 @@ void extrapolateMACSimple(FlagGrid& flags, MACGrid& vel, int distance = 4, Level
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,vel,weight,distance,d,c);  } }  } MACGrid& vel; Grid<Vec3>& weight; int distance; const int d; const int c;   };
-#line 378 "fastmarch.cpp"
+#line 379 "fastmarch.cpp"
 
 
 
@@ -521,7 +522,7 @@ template <class S>  struct knExtrapolateLsSimple : public KernelBase { knExtrapo
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,val,distance,tmp,d,direction);  } }  } Grid<S>& val; int distance; Grid<int>& tmp; const int d; S direction;   };
-#line 440 "fastmarch.cpp"
+#line 441 "fastmarch.cpp"
 
 
 
@@ -540,7 +541,7 @@ template <class S>  struct knSetRemaining : public KernelBase { knSetRemaining(G
  {  
 #pragma omp for  
   for (int j=1; j < _maxY; j++) for (int i=1; i < _maxX; i++) op(i,j,k,phi,tmp,distance);  } }  } Grid<S>& phi; Grid<int>& tmp; S distance;   };
-#line 464 "fastmarch.cpp"
+#line 465 "fastmarch.cpp"
 
 
 
