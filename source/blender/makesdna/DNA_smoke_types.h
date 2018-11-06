@@ -148,6 +148,7 @@ enum {
 #define FLUID_DOMAIN_ACTIVE_OBSTACLE  (1<<4)
 #define FLUID_DOMAIN_ACTIVE_GUIDING   (1<<5)
 #define FLUID_DOMAIN_ACTIVE_INVEL     (1<<6)
+#define FLUID_DOMAIN_ACTIVE_OUTFLOW   (1<<7)
 
 /* particle types */
 #define FLUID_DOMAIN_PARTICLE_FLIP   (1<<0)
