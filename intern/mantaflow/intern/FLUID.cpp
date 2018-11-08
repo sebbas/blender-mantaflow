@@ -291,7 +291,6 @@ void FLUID::initSmoke(SmokeModifierData *smd)
 	std::vector<std::string> pythonCommands;
 	std::string tmpString = smoke_alloc
 		+ smoke_variables
-		+ smoke_bounds
 		+ smoke_adaptive_step
 		+ smoke_save_data
 		+ smoke_load_data
@@ -307,7 +306,6 @@ void FLUID::initSmokeNoise(SmokeModifierData *smd)
 	std::vector<std::string> pythonCommands;
 	std::string tmpString = smoke_alloc_noise
 		+ smoke_variables_noise
-		+ smoke_bounds_noise
 		+ smoke_adaptive_step_noise
 		+ smoke_save_noise
 		+ smoke_load_noise
@@ -728,8 +726,6 @@ std::string FLUID::getRealValue(const std::string& varName,  SmokeModifierData *
 		ss << smd->domain->active_color[1];
 	else if (varName == "COLOR_B")
 		ss << smd->domain->active_color[2];
-	else if (varName == "ADVECT_ORDER")
-		ss << 2;
 	else if (varName == "BUOYANCY_ALPHA")
 		ss << smd->domain->alpha;
 	else if (varName == "BUOYANCY_BETA")
@@ -1476,12 +1472,6 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 		manta_script += fluid_alloc_obstacle;
 	if (invel)
 		manta_script += fluid_alloc_invel;
-
-	// Domain init
-	manta_script += header_gridinit
-		+ smoke_bounds;
-	if (noise)
-		manta_script += smoke_bounds_noise;
 
 	// Time
 	manta_script += header_time

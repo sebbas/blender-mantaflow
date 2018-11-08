@@ -30,26 +30,6 @@
 #include <string>
 
 //////////////////////////////////////////////////////////////////////
-// BOUNDS
-//////////////////////////////////////////////////////////////////////
-
-const std::string smoke_bounds = "\n\
-# Prepare domain\n\
-mantaMsg('Smoke domain')\n\
-flags_s$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$)\n\
-flags_s$ID$.fillGrid()\n\
-if doOpen_s$ID$:\n\
-    setOpenBound(flags=flags_s$ID$, bWidth=boundaryWidth_s$ID$, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty)\n";
-
-const std::string smoke_bounds_noise = "\n\
-# Prepare noise domain\n\
-mantaMsg('Smoke domain noise')\n\
-flags_sn$ID$.initDomain(boundaryWidth=boundaryWidth_s$ID$)\n\
-flags_sn$ID$.fillGrid()\n\
-if doOpen_s$ID$:\n\
-    setOpenBound(flags=flags_sn$ID$, bWidth=boundaryWidth_s$ID$, openBound=boundConditions_s$ID$, type=FlagOutflow|FlagEmpty)\n";
-
-//////////////////////////////////////////////////////////////////////
 // VARIABLES
 //////////////////////////////////////////////////////////////////////
 
@@ -246,6 +226,8 @@ def smoke_adaptive_step_$ID$(framenr):\n\
     \n\
     fluid_pre_step_$ID$()\n\
     \n\
+    flags_s$ID$.initDomain(boundaryWidth=0, phiWalls=phiObs_s$ID$, outflow=boundConditions_s$ID$)\n\
+    \n\
     if using_obstacle_s$ID$:\n\
         mantaMsg('Initializing obstacle levelset')\n\
         phiObsIn_s$ID$.fillHoles(maxsize=3)\n\
@@ -258,7 +240,8 @@ def smoke_adaptive_step_$ID$(framenr):\n\
         extrapolateLsSimple(phi=phiObs_s$ID$, distance=3, inside=True)\n\
         extrapolateLsSimple(phi=phiObs_s$ID$, distance=3, inside=False)\n\
     \n\
-    phiOut_s$ID$.join(phiOutIn_s$ID$)\n\
+    if using_outflow_s$ID$:\n\
+        phiOut_s$ID$.join(phiOutIn_s$ID$)\n\
     \n\
     setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$)\n\
     flags_s$ID$.fillGrid()\n\
@@ -286,6 +269,8 @@ def smoke_adaptive_step_noise_$ID$(framenr):\n\
     \n\
     while sn$ID$.frame == last_frame_s$ID$:\n\
         \n\
+        flags_sn$ID$.initDomain(boundaryWidth=0, phiWalls=phiObs_sn$ID$, outflow=boundConditions_s$ID$)\n\
+        \n\
         mantaMsg('sn.frame is ' + str(sn$ID$.frame))\n\
         setObstacleFlags(flags=flags_sn$ID$, phiObs=phiObs_sn$ID$, phiOut=phiOut_sn$ID$)\n\
         flags_sn$ID$.fillGrid()\n\
@@ -306,25 +291,25 @@ const std::string smoke_step = "\n\
 def smoke_step_$ID$():\n\
     mantaMsg('Smoke step low')\n\
     mantaMsg('Advecting density')\n\
-    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=density_s$ID$, order=$ADVECT_ORDER$)\n\
+    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=density_s$ID$, order=2)\n\
     \n\
     if using_heat_s$ID$:\n\
         mantaMsg('Advecting heat')\n\
-        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=heat_s$ID$, order=$ADVECT_ORDER$)\n\
+        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=heat_s$ID$, order=2)\n\
     \n\
     if using_fire_s$ID$:\n\
         mantaMsg('Advecting fire')\n\
-        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=fuel_s$ID$, order=$ADVECT_ORDER$)\n\
-        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=react_s$ID$, order=$ADVECT_ORDER$)\n\
+        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=fuel_s$ID$, order=2)\n\
+        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=react_s$ID$, order=2)\n\
     \n\
     if using_colors_s$ID$:\n\
         mantaMsg('Advecting colors')\n\
-        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=color_r_s$ID$, order=$ADVECT_ORDER$)\n\
-        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=color_g_s$ID$, order=$ADVECT_ORDER$)\n\
-        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=color_b_s$ID$, order=$ADVECT_ORDER$)\n\
+        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=color_r_s$ID$, order=2)\n\
+        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=color_g_s$ID$, order=2)\n\
+        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=color_b_s$ID$, order=2)\n\
     \n\
     mantaMsg('Advecting velocity')\n\
-    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=vel_s$ID$, order=$ADVECT_ORDER$, openBounds=doOpen_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
+    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=vel_s$ID$, order=2, openBounds=doOpen_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
     \n\
     if doOpen_s$ID$ or using_outflow_s$ID$:\n\
         resetOutflow(flags=flags_s$ID$, real=density_s$ID$)\n\
@@ -383,7 +368,7 @@ def step_noise_$ID$():\n\
     \n\
     for i in range(uvs_s$ID$):\n\
         mantaMsg('Advecting UV')\n\
-        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=uv_s$ID$[i], order=$ADVECT_ORDER$)\n\
+        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=uv_s$ID$[i], order=2)\n\
         mantaMsg('Updating UVWeight')\n\
         updateUvWeight(resetTime=10.0 , index=i, numUvs=uvs_s$ID$, uv=uv_s$ID$[i])\n\
     \n\
@@ -409,17 +394,17 @@ def step_noise_$ID$():\n\
     for substep in range(int(upres_sn$ID$)):\n\
         if using_colors_s$ID$: \n\
             mantaMsg('Advecting colors noise')\n\
-            advectSemiLagrange(flags=flags_sn$ID$, vel=vel_sn$ID$, grid=color_r_sn$ID$, order=$ADVECT_ORDER$, openBounds=doOpen_s$ID$)\n\
-            advectSemiLagrange(flags=flags_sn$ID$, vel=vel_sn$ID$, grid=color_g_sn$ID$, order=$ADVECT_ORDER$, openBounds=doOpen_s$ID$)\n\
-            advectSemiLagrange(flags=flags_sn$ID$, vel=vel_sn$ID$, grid=color_b_sn$ID$, order=$ADVECT_ORDER$, openBounds=doOpen_s$ID$)\n\
+            advectSemiLagrange(flags=flags_sn$ID$, vel=vel_sn$ID$, grid=color_r_sn$ID$, order=2)\n\
+            advectSemiLagrange(flags=flags_sn$ID$, vel=vel_sn$ID$, grid=color_g_sn$ID$, order=2)\n\
+            advectSemiLagrange(flags=flags_sn$ID$, vel=vel_sn$ID$, grid=color_b_sn$ID$, order=2)\n\
         \n\
         if using_fire_s$ID$: \n\
             mantaMsg('Advecting fire noise')\n\
-            advectSemiLagrange(flags=flags_sn$ID$, vel=vel_sn$ID$, grid=fuel_sn$ID$, order=$ADVECT_ORDER$, openBounds=doOpen_s$ID$)\n\
-            advectSemiLagrange(flags=flags_sn$ID$, vel=vel_sn$ID$, grid=react_sn$ID$, order=$ADVECT_ORDER$, openBounds=doOpen_s$ID$)\n\
+            advectSemiLagrange(flags=flags_sn$ID$, vel=vel_sn$ID$, grid=fuel_sn$ID$, order=2)\n\
+            advectSemiLagrange(flags=flags_sn$ID$, vel=vel_sn$ID$, grid=react_sn$ID$, order=2)\n\
         \n\
         mantaMsg('Advecting density noise')\n\
-        advectSemiLagrange(flags=flags_sn$ID$, vel=vel_sn$ID$, grid=density_sn$ID$, order=$ADVECT_ORDER$, openBounds=doOpen_s$ID$)\n\
+        advectSemiLagrange(flags=flags_sn$ID$, vel=vel_sn$ID$, grid=density_sn$ID$, order=2)\n\
 \n\
 def process_burn_noise_$ID$():\n\
     mantaMsg('Process burn noise')\n\
