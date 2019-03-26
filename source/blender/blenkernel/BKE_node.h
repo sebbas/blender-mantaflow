@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,28 +15,22 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Bob Holcomb.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BKE_NODE_H__
 #define __BKE_NODE_H__
 
-/** \file BKE_node.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
-#include "BLI_utildefines.h"
+#include "BLI_compiler_compat.h"
 #include "BLI_ghash.h"
 
 #include "DNA_listBase.h"
 
-/* for FOREACH_NODETREE */
-#include "DNA_lamp_types.h"
+/* for FOREACH_NODETREE_BEGIN */
+#include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_node_types.h"
 #include "DNA_scene_types.h"
@@ -51,35 +43,35 @@
 /* not very important, but the stack solver likes to know a maximum */
 #define MAX_SOCKET	512
 
-struct bContext;
-struct bNode;
-struct bNodeLink;
-struct bNodeSocket;
-struct bNodeStack;
-struct bNodeTree;
-struct bNodeTreeType;
-struct bNodeTreeExec;
-struct bNodeExecContext;
-struct bNodeExecData;
+struct ARegion;
+struct ColorManagedDisplaySettings;
+struct ColorManagedViewSettings;
 struct GPUMaterial;
 struct GPUNodeStack;
 struct ID;
 struct ImBuf;
 struct ImageFormatData;
 struct ListBase;
-struct Main;
-struct uiLayout;
 struct MTex;
+struct Main;
 struct PointerRNA;
 struct RenderData;
 struct Scene;
+struct SpaceNode;
 struct Tex;
 struct ViewRender;
-struct SpaceNode;
-struct ARegion;
-struct ColorManagedViewSettings;
-struct ColorManagedDisplaySettings;
+struct bContext;
+struct bNode;
+struct bNodeExecContext;
+struct bNodeExecData;
 struct bNodeInstanceHash;
+struct bNodeLink;
+struct bNodeSocket;
+struct bNodeStack;
+struct bNodeTree;
+struct bNodeTreeExec;
+struct bNodeTreeType;
+struct uiLayout;
 
 /* -------------------------------------------------------------------- */
 /** \name Node Type Definitions
@@ -332,6 +324,8 @@ struct bNodeTree *ntreeAddTree(struct Main *bmain, const char *name, const char 
 
 /* copy/free funcs, need to manage ID users */
 void              ntreeFreeTree(struct bNodeTree *ntree);
+/* Free tree which is owned byt another datablock. */
+void              ntreeFreeNestedTree(struct bNodeTree *ntree);
 void BKE_node_tree_copy_data(struct Main *bmain, struct bNodeTree *ntree_dst, const struct bNodeTree *ntree_src, const int flag);
 struct bNodeTree *ntreeCopyTree_ex(const struct bNodeTree *ntree, struct Main *bmain, const bool do_id_user);
 struct bNodeTree *ntreeCopyTree(struct Main *bmain, const struct bNodeTree *ntree);
@@ -343,6 +337,8 @@ void              ntreeUserDecrefID(struct bNodeTree *ntree);
 struct bNodeTree *ntreeFromID(const struct ID *id);
 
 void              ntreeMakeLocal(struct Main *bmain, struct bNodeTree *ntree, bool id_in_mainlist, const bool lib_local);
+void              ntreeFreeLocalNode(struct bNodeTree *ntree, struct bNode *node);
+void              ntreeFreeLocalTree(struct bNodeTree *ntree);
 struct bNode     *ntreeFindType(const struct bNodeTree *ntree, int type);
 bool              ntreeHasType(const struct bNodeTree *ntree, int type);
 bool              ntreeHasTree(const struct bNodeTree *ntree, const struct bNodeTree *lookup);
@@ -410,7 +406,7 @@ struct GHashIterator *nodeTypeGetIterator(void);
 #define NODE_TYPES_END \
 	} \
 	BLI_ghashIterator_free(__node_type_iter__); \
-}
+} ((void)0)
 
 struct bNodeSocketType *nodeSocketTypeFind(const char *idname);
 void			nodeRegisterSocketType(struct bNodeSocketType *stype);
@@ -450,9 +446,10 @@ struct bNode	*nodeAddStaticNode(const struct bContext *C, struct bNodeTree *ntre
 void            nodeUnlinkNode(struct bNodeTree *ntree, struct bNode *node);
 void            nodeUniqueName(struct bNodeTree *ntree, struct bNode *node);
 
-void            nodeFreeNode(struct bNodeTree *ntree, struct bNode *node);
+/* Delete node, associated animation data and ID user count. */
+void            nodeRemoveNode(struct Main *bmain, struct bNodeTree *ntree, struct bNode *node, bool do_id_user);
+
 struct bNode    *BKE_node_copy_ex(struct bNodeTree *ntree, struct bNode *node_src, const int flag);
-struct bNode	*nodeCopyNode(struct bNodeTree *ntree, struct bNode *node);
 
 struct bNodeLink *nodeAddLink(struct bNodeTree *ntree, struct bNode *fromnode, struct bNodeSocket *fromsock, struct bNode *tonode, struct bNodeSocket *tosock);
 void            nodeRemLink(struct bNodeTree *ntree, struct bNodeLink *link);
@@ -504,6 +501,7 @@ void            ntreeTagUsedSockets(struct bNodeTree *ntree);
 /* Node Clipboard */
 void                   BKE_node_clipboard_init(struct bNodeTree *ntree);
 void                   BKE_node_clipboard_clear(void);
+void                   BKE_node_clipboard_free(void);
 bool                   BKE_node_clipboard_validate(void);
 void                   BKE_node_clipboard_add_node(struct bNode *node);
 void                   BKE_node_clipboard_add_link(struct bNodeLink *link);
@@ -620,6 +618,7 @@ bool BKE_node_is_connected_to_output(struct bNodeTree *ntree, struct bNode *node
 #define NODE_REROUTE	6
 #define NODE_GROUP_INPUT	7
 #define NODE_GROUP_OUTPUT	8
+#define NODE_CUSTOM_GROUP	9
 
 void BKE_node_tree_unlink_id(ID *id, struct bNodeTree *ntree);
 
@@ -642,17 +641,17 @@ void BKE_node_tree_unlink_id(ID *id, struct bNodeTree *ntree);
  * Examples:
  *
  * \code{.c}
- * FOREACH_NODETREE(bmain, nodetree, id) {
+ * FOREACH_NODETREE_BEGIN(bmain, nodetree, id) {
  *     if (id == nodetree)
  *         printf("This is a linkable node tree");
- * } FOREACH_NODETREE_END
+ * } FOREACH_NODETREE_END;
  *
- * FOREACH_NODETREE(bmain, nodetree, id) {
+ * FOREACH_NODETREE_BEGIN(bmain, nodetree, id) {
  *     if (nodetree->idname == "ShaderNodeTree")
  *         printf("This is a shader node tree);
  *     if (GS(id) == ID_MA)
  *         printf(" and it's owned by a material");
- * } FOREACH_NODETREE_END
+ * } FOREACH_NODETREE_END;
  * \endcode
  *
  * \{
@@ -664,7 +663,7 @@ struct NodeTreeIterStore {
 	Scene *scene;
 	Material *mat;
 	Tex *tex;
-	Lamp *lamp;
+	Light *light;
 	World *world;
 	FreestyleLineStyle *linestyle;
 };
@@ -673,7 +672,7 @@ void BKE_node_tree_iter_init(struct NodeTreeIterStore *ntreeiter, struct Main *b
 bool BKE_node_tree_iter_step(struct NodeTreeIterStore *ntreeiter,
                              struct bNodeTree **r_nodetree, struct ID **r_id);
 
-#define FOREACH_NODETREE(bmain, _nodetree, _id) \
+#define FOREACH_NODETREE_BEGIN(bmain, _nodetree, _id) \
 { \
 	struct NodeTreeIterStore _nstore; \
 	bNodeTree *_nodetree; \
@@ -686,7 +685,7 @@ bool BKE_node_tree_iter_step(struct NodeTreeIterStore *ntreeiter,
 #define FOREACH_NODETREE_END \
 		} \
 	} \
-}
+} ((void)0)
 /** \} */
 
 
@@ -1066,5 +1065,8 @@ struct Depsgraph;
 void BKE_nodetree_shading_params_eval(struct Depsgraph *depsgraph,
                                       struct bNodeTree *ntree_dst,
                                       const struct bNodeTree *ntree_src);
+
+extern struct bNodeType NodeTypeUndefined;
+extern struct bNodeSocketType NodeSocketTypeUndefined;
 
 #endif  /* __BKE_NODE_H__ */

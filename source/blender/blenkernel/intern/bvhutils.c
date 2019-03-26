@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Andr Pinto.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/bvhutils.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include <stdio.h>
@@ -387,7 +379,6 @@ static void mesh_edges_spherecast(void *userdata, int index, const BVHTreeRay *r
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Vertex Builder
  * \{ */
 
@@ -531,9 +522,9 @@ BVHTree *bvhtree_from_editmesh_verts(
 
 /**
  * Builds a bvh tree where nodes are the given vertices (note: does not copy given mverts!).
- * \param vert_allocated if true, vert freeing will be done when freeing data.
- * \param verts_mask if not null, true elements give which vert to add to BVH tree.
- * \param verts_num_active if >= 0, number of active verts to add to BVH tree (else will be computed from mask).
+ * \param vert_allocated: if true, vert freeing will be done when freeing data.
+ * \param verts_mask: if not null, true elements give which vert to add to BVH tree.
+ * \param verts_num_active: if >= 0, number of active verts to add to BVH tree (else will be computed from mask).
  */
 BVHTree *bvhtree_from_mesh_verts_ex(
         BVHTreeFromMesh *data, const MVert *vert, const int verts_num, const bool vert_allocated,
@@ -554,7 +545,6 @@ BVHTree *bvhtree_from_mesh_verts_ex(
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Edge Builder
  * \{ */
 
@@ -712,9 +702,10 @@ BVHTree *bvhtree_from_editmesh_edges(
 
 /**
  * Builds a bvh tree where nodes are the given edges .
- * \param vert/edge_allocated if true, elem freeing will be done when freeing data.
- * \param edges_mask if not null, true elements give which vert to add to BVH tree.
- * \param edges_num_active if >= 0, number of active edges to add to BVH tree (else will be computed from mask).
+ * \param vert, vert_allocated: if true, elem freeing will be done when freeing data.
+ * \param edge, edge_allocated: if true, elem freeing will be done when freeing data.
+ * \param edges_mask: if not null, true elements give which vert to add to BVH tree.
+ * \param edges_num_active: if >= 0, number of active edges to add to BVH tree (else will be computed from mask).
  */
 BVHTree *bvhtree_from_mesh_edges_ex(
         BVHTreeFromMesh *data,
@@ -738,7 +729,6 @@ BVHTree *bvhtree_from_mesh_edges_ex(
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Tessellated Face Builder
  * \{ */
 
@@ -834,7 +824,6 @@ BVHTree *bvhtree_from_mesh_faces_ex(
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name LoopTri Face Builder
  * \{ */
 
@@ -1042,7 +1031,7 @@ static BLI_bitmap *loose_verts_map_get(
         int *r_loose_vert_num)
 {
 	BLI_bitmap *loose_verts_mask = BLI_BITMAP_NEW(verts_num, __func__);
-	BLI_BITMAP_SET_ALL(loose_verts_mask, true, verts_num);
+	BLI_bitmap_set_all(loose_verts_mask, true, verts_num);
 
 	const MEdge *e = medge;
 	int num_linked_verts = 0;
@@ -1111,6 +1100,8 @@ BVHTree *BKE_bvhtree_from_mesh_get(
 			data_cp.vert = mesh->mvert;
 
 			if (data_cp.cached == false) {
+				/* TODO: a global mutex lock held during the expensive operation of
+				 * building the BVH tree is really bad for performance. */
 				BLI_rw_mutex_lock(&cache_rwlock, THREAD_LOCK_WRITE);
 				data_cp.cached = bvhcache_find(
 				        mesh->runtime.bvh_cache, type, &data_cp.tree);
@@ -1307,7 +1298,6 @@ void free_bvhtree_from_mesh(struct BVHTreeFromMesh *data)
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name BVHCache
  * \{ */
 

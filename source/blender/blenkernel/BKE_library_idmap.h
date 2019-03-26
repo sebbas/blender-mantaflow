@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,25 +12,25 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 #ifndef __BKE_LIBRARY_IDMAP_H__
 #define __BKE_LIBRARY_IDMAP_H__
 
-/** \file BKE_library_idmap.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include "BLI_compiler_attrs.h"
 
 struct ID;
-struct Main;
 struct IDNameLib_Map;
+struct Main;
 
 struct IDNameLib_Map *BKE_main_idmap_create(
-        struct Main *bmain)
-        ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
+        struct Main *bmain,
+        const bool create_valid_ids_set,
+        struct Main *old_bmain)
+        ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
 void BKE_main_idmap_destroy(
         struct IDNameLib_Map *id_typemap)
         ATTR_NONNULL();

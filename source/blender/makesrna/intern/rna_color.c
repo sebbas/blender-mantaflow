@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Foundation (2008).
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_color.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 #include <stdlib.h>
@@ -218,7 +212,7 @@ static char *rna_ColorRampElement_path(PointerRNA *ptr)
 	int index;
 
 	/* helper macro for use here to try and get the path
-	 *	- this calls the standard code for getting a path to a texture...
+	 * - this calls the standard code for getting a path to a texture...
 	 */
 
 #define COLRAMP_GETPATH                                                       \
@@ -330,7 +324,7 @@ static void rna_ColorRamp_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *
 			{
 				ParticleSettings *part = ptr->id.data;
 
-				DEG_id_tag_update(&part->id, OB_RECALC_DATA | PSYS_RECALC_REDO);
+				DEG_id_tag_update(&part->id, ID_RECALC_GEOMETRY | ID_RECALC_PSYS_REDO);
 				WM_main_add_notifier(NC_OBJECT | ND_PARTICLE | NA_EDITED, part);
 			}
 			default:
@@ -414,7 +408,7 @@ static const EnumPropertyItem *rna_ColorManagedDisplaySettings_display_device_it
 	return items;
 }
 
-static void rna_ColorManagedDisplaySettings_display_device_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_ColorManagedDisplaySettings_display_device_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
 	ID *id = ptr->id.data;
 
@@ -428,12 +422,17 @@ static void rna_ColorManagedDisplaySettings_display_device_update(Main *UNUSED(b
 
 		DEG_id_tag_update(id, 0);
 		WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, NULL);
+
+		/* Color management can be baked into shaders, need to refresh. */
+		for (Material *ma = bmain->materials.first; ma; ma = ma->id.next) {
+			DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+		}
 	}
 }
 
 static char *rna_ColorManagedDisplaySettings_path(PointerRNA *UNUSED(ptr))
 {
-	return BLI_sprintfN("display_settings");
+	return BLI_strdup("display_settings");
 }
 
 static int rna_ColorManagedViewSettings_view_transform_get(PointerRNA *ptr)
@@ -519,7 +518,7 @@ static void rna_ColorManagedViewSettings_use_curves_set(PointerRNA *ptr, bool va
 
 static char *rna_ColorManagedViewSettings_path(PointerRNA *UNUSED(ptr))
 {
-	return BLI_sprintfN("view_settings");
+	return BLI_strdup("view_settings");
 }
 
 
@@ -628,12 +627,12 @@ static void rna_ColorManagedColorspaceSettings_reload_update(Main *bmain, Scene 
 
 static char *rna_ColorManagedSequencerColorspaceSettings_path(PointerRNA *UNUSED(ptr))
 {
-	return BLI_sprintfN("sequencer_colorspace_settings");
+	return BLI_strdup("sequencer_colorspace_settings");
 }
 
 static char *rna_ColorManagedInputColorspaceSettings_path(PointerRNA *UNUSED(ptr))
 {
-	return BLI_sprintfN("colorspace_settings");
+	return BLI_strdup("colorspace_settings");
 }
 
 static void rna_ColorManagement_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
@@ -673,7 +672,7 @@ static void rna_def_curvemappoint(BlenderRNA *brna)
 		{0, "AUTO", 0, "Auto Handle", ""},
 		{CUMA_HANDLE_AUTO_ANIM, "AUTO_CLAMPED", 0, "Auto Clamped Handle", ""},
 		{CUMA_HANDLE_VECTOR, "VECTOR", 0, "Vector Handle", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "CurveMapPoint", NULL);
@@ -731,7 +730,7 @@ static void rna_def_curvemap(BlenderRNA *brna)
 	static const EnumPropertyItem prop_extend_items[] = {
 		{0, "HORIZONTAL", 0, "Horizontal", ""},
 		{CUMA_EXTEND_EXTRAPOLATE, "EXTRAPOLATED", 0, "Extrapolated", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "CurveMap", NULL);
@@ -766,7 +765,7 @@ static void rna_def_curvemapping(BlenderRNA *brna)
 	static const EnumPropertyItem tone_items[] = {
 		{CURVE_TONE_STANDARD, "STANDARD", 0, "Standard",  ""},
 		{CURVE_TONE_FILMLIKE, "FILMLIKE", 0, "Film like", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "CurveMapping", NULL);
@@ -910,14 +909,14 @@ static void rna_def_color_ramp(BlenderRNA *brna)
 		{COLBAND_INTERP_LINEAR, "LINEAR", 0, "Linear", ""},
 		{COLBAND_INTERP_B_SPLINE, "B_SPLINE", 0, "B-Spline", ""},
 		{COLBAND_INTERP_CONSTANT, "CONSTANT", 0, "Constant", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem prop_mode_items[] = {
 		{COLBAND_BLEND_RGB, "RGB", 0, "RGB", ""},
 		{COLBAND_BLEND_HSV, "HSV", 0, "HSV", ""},
 		{COLBAND_BLEND_HSL, "HSL", 0, "HSL", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem prop_hsv_items[] = {
@@ -925,7 +924,7 @@ static void rna_def_color_ramp(BlenderRNA *brna)
 		{COLBAND_HUE_FAR, "FAR", 0, "Far", ""},
 		{COLBAND_HUE_CW, "CW", 0, "Clockwise", ""},
 		{COLBAND_HUE_CCW, "CCW", 0, "Counter-Clockwise", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "ColorRamp", NULL);
@@ -991,7 +990,7 @@ static void rna_def_histogram(BlenderRNA *brna)
 		{HISTO_MODE_G, "G", 0, "G", "Green"},
 		{HISTO_MODE_B, "B", 0, "B", "Blue"},
 		{HISTO_MODE_ALPHA, "A", 0, "A", "Alpha"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "Histogram", NULL);
@@ -1020,7 +1019,7 @@ static void rna_def_scopes(BlenderRNA *brna)
 		{SCOPES_WAVEFRM_YCC_709, "YCBCR709", ICON_COLOR, "YCbCr (ITU 709)", ""},
 		{SCOPES_WAVEFRM_YCC_JPEG, "YCBCRJPG", ICON_COLOR, "YCbCr (Jpeg)", ""},
 		{SCOPES_WAVEFRM_RGB, "RGB", ICON_COLOR, "Red Green Blue", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "Scopes", NULL);
@@ -1067,22 +1066,22 @@ static void rna_def_colormanage(BlenderRNA *brna)
 
 	static const EnumPropertyItem display_device_items[] = {
 		{0, "DEFAULT", 0, "Default", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem look_items[] = {
 		{0, "NONE", 0, "None", "Do not modify image in an artistic manner"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem view_transform_items[] = {
 		{0, "NONE", 0, "None", "Do not perform any color transform on display, use old non-color managed technique for display"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem color_space_items[] = {
 		{0, "NONE", 0, "None", "Do not perform any color transform on load, treat colors as in scene linear space already"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* ** Display Settings  **  */

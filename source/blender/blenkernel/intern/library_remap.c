@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/library_remap.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  *
  * Contains management of ID's and libraries remap, unlink and free logic.
  */
@@ -30,6 +26,8 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <assert.h>
+
+#include "CLG_log.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -43,7 +41,7 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_ipo_types.h"
 #include "DNA_key_types.h"
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_linestyle_types.h"
 #include "DNA_material_types.h"
@@ -82,7 +80,7 @@
 #include "BKE_image.h"
 #include "BKE_ipo.h"
 #include "BKE_key.h"
-#include "BKE_lamp.h"
+#include "BKE_light.h"
 #include "BKE_lattice.h"
 #include "BKE_layer.h"
 #include "BKE_library.h"
@@ -118,6 +116,8 @@
 #ifdef WITH_PYTHON
 #include "BPY_extern.h"
 #endif
+
+static CLG_LogRef LOG = {"bke.library_remap"};
 
 static BKE_library_free_window_manager_cb free_windowmanager_cb = NULL;
 
@@ -180,6 +180,11 @@ static int foreach_libblock_remap_callback(void *user_data, ID *id_self, ID **id
 	}
 
 	if (*id_p && (*id_p == old_id)) {
+		/* Better remap to NULL than not remapping at all, then we can handle it as a regular remap-to-NULL case... */
+		if ((cb_flag & IDWALK_CB_NEVER_SELF) && (new_id == id_self)) {
+			new_id = NULL;
+		}
+
 		const bool is_reference = (cb_flag & IDWALK_CB_STATIC_OVERRIDE_REFERENCE) != 0;
 		const bool is_indirect = (cb_flag & IDWALK_CB_INDIRECT_USAGE) != 0;
 		const bool skip_indirect = (id_remap_data->flag & ID_REMAP_SKIP_INDIRECT_USAGE) != 0;
@@ -189,7 +194,8 @@ static int foreach_libblock_remap_callback(void *user_data, ID *id_self, ID **id
 		const bool is_obj = (GS(id->name) == ID_OB);
 		const bool is_obj_proxy = (is_obj && (((Object *)id)->proxy || ((Object *)id)->proxy_group));
 		const bool is_obj_editmode = (is_obj && BKE_object_is_in_editmode((Object *)id));
-		const bool is_never_null = ((cb_flag & IDWALK_CB_NEVER_NULL) && (new_id == NULL) &&
+		const bool is_never_null = ((cb_flag & IDWALK_CB_NEVER_NULL) &&
+		                            (new_id == NULL) &&
 		                            (id_remap_data->flag & ID_REMAP_FORCE_NEVER_NULL_USAGE) == 0);
 		const bool skip_reference = (id_remap_data->flag & ID_REMAP_SKIP_STATIC_OVERRIDE) != 0;
 		const bool skip_never_null = (id_remap_data->flag & ID_REMAP_SKIP_NEVER_NULL_USAGE) != 0;
@@ -241,13 +247,23 @@ static int foreach_libblock_remap_callback(void *user_data, ID *id_self, ID **id
 		else {
 			if (!is_never_null) {
 				*id_p = new_id;
-				DEG_id_tag_update_ex(id_remap_data->bmain, id_self, DEG_TAG_TRANSFORM | DEG_TAG_TIME | DEG_TAG_GEOMETRY);
+				DEG_id_tag_update_ex(id_remap_data->bmain, id_self,
+				                     ID_RECALC_COPY_ON_WRITE | ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 			}
 			if (cb_flag & IDWALK_CB_USER) {
-				id_us_min(old_id);
-				/* We do not want to handle LIB_TAG_INDIRECT/LIB_TAG_EXTERN here. */
-				if (new_id)
+				/* NOTE: We don't user-count IDs which are not in the main database.
+				 * This is because in certain conditions we can have datablocks in
+				 * the main which are referencing datablocks outside of it.
+				 * For example, BKE_mesh_new_from_object() called on an evaluated
+				 * object will cause such situation.
+				 */
+				if ((old_id->tag & LIB_TAG_NO_MAIN) == 0) {
+					id_us_min(old_id);
+				}
+				if (new_id != NULL && (new_id->tag & LIB_TAG_NO_MAIN) == 0) {
+					/* We do not want to handle LIB_TAG_INDIRECT/LIB_TAG_EXTERN here. */
 					new_id->us++;
+				}
 			}
 			else if (cb_flag & IDWALK_CB_USER_ONE) {
 				id_us_ensure_real(new_id);
@@ -304,16 +320,16 @@ static void libblock_remap_data_postprocess_object_update(Main *bmain, Object *o
 	BKE_main_collection_sync_remap(bmain);
 
 	if (old_ob == NULL) {
-		for (Object *ob = bmain->object.first; ob != NULL; ob = ob->id.next) {
+		for (Object *ob = bmain->objects.first; ob != NULL; ob = ob->id.next) {
 			if (ob->type == OB_MBALL && BKE_mball_is_basis(ob)) {
-				DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+				DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 			}
 		}
 	}
 	else {
-		for (Object *ob = bmain->object.first; ob != NULL; ob = ob->id.next) {
+		for (Object *ob = bmain->objects.first; ob != NULL; ob = ob->id.next) {
 			if (ob->type == OB_MBALL && BKE_mball_is_basis_for(ob, old_ob)) {
-				DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+				DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 				break;  /* There is only one basis... */
 			}
 		}
@@ -323,20 +339,14 @@ static void libblock_remap_data_postprocess_object_update(Main *bmain, Object *o
 /* Can be called with both old_collection and new_collection being NULL,
  * this means we have to check whole Main database then. */
 static void libblock_remap_data_postprocess_collection_update(
-        Main *bmain, Collection *old_collection, Collection *new_collection)
+        Main *bmain, Collection *UNUSED(old_collection), Collection *new_collection)
 {
 	if (new_collection == NULL) {
-		 /* In case we unlinked old_collection (new_collection is NULL), we need
-		  * to remove any collection children that have been set to NULL in the
-		  * because of pointer replacement. */
-		if (old_collection != NULL) {
-			BKE_collections_child_remove_nulls(bmain, old_collection);
-		}
-		else {
-			for (Collection *collection = bmain->collection.first; collection; collection = collection->id.next) {
-				BKE_collections_child_remove_nulls(bmain, collection);
-			}
-		}
+		/* XXX Complex cases can lead to NULL pointers in other collections than old_collection,
+		 * and BKE_main_collection_sync_remap() does not tolerate any of those, so for now always check whole
+		 * existing collections for NULL pointers.
+		 * I'd consider optimizing that whole collection remapping process a TODO for later. */
+		BKE_collections_child_remove_nulls(bmain, NULL /*old_collection*/);
 	}
 
 	BKE_main_collection_sync_remap(bmain);
@@ -366,10 +376,10 @@ static void libblock_remap_data_postprocess_nodetree_update(Main *bmain, ID *new
 	ntreeVerifyNodes(bmain, new_id);
 
 	/* Update node trees as necessary. */
-	FOREACH_NODETREE(bmain, ntree, id) {
+	FOREACH_NODETREE_BEGIN(bmain, ntree, id) {
 		/* make an update call for the tree */
 		ntreeUpdateTree(bmain, ntree);
-	} FOREACH_NODETREE_END
+	} FOREACH_NODETREE_END;
 }
 
 /**
@@ -394,8 +404,6 @@ ATTR_NONNULL(1) static void libblock_remap_data(
         Main *bmain, ID *id, ID *old_id, ID *new_id, const short remap_flags, IDRemap *r_id_remap_data)
 {
 	IDRemap id_remap_data;
-	ListBase *lb_array[MAX_LIBARRAY];
-	int i;
 	const int foreach_id_flags = (remap_flags & ID_REMAP_NO_INDIRECT_PROXY_DATA_USAGE) != 0 ? IDWALK_NO_INDIRECT_PROXY_DATA_USAGE : IDWALK_NOP;
 
 	if (r_id_remap_data == NULL) {
@@ -420,24 +428,23 @@ ATTR_NONNULL(1) static void libblock_remap_data(
 		BKE_library_foreach_ID_link(NULL, id, foreach_libblock_remap_callback, (void *)r_id_remap_data, foreach_id_flags);
 	}
 	else {
-		i = set_listbasepointers(bmain, lb_array);
-
-		/* Note that this is a very 'bruteforce' approach, maybe we could use some depsgraph to only process
+		/* Note that this is a very 'brute force' approach, maybe we could use some depsgraph to only process
 		 * objects actually using given old_id... sounds rather unlikely currently, though, so this will do for now. */
+		ID *id_curr;
 
-		while (i--) {
-			for (ID *id_curr = lb_array[i]->first; id_curr; id_curr = id_curr->next) {
-				if (BKE_library_id_can_use_idtype(id_curr, GS(old_id->name))) {
-					/* Note that we cannot skip indirect usages of old_id here (if requested), we still need to check it for
-					 * the user count handling...
-					 * XXX No more true (except for debug usage of those skipping counters). */
-					r_id_remap_data->id = id_curr;
-					libblock_remap_data_preprocess(r_id_remap_data);
-					BKE_library_foreach_ID_link(
-					            NULL, id_curr, foreach_libblock_remap_callback, (void *)r_id_remap_data, foreach_id_flags);
-				}
+		FOREACH_MAIN_ID_BEGIN(bmain, id_curr)
+		{
+			if (BKE_library_id_can_use_idtype(id_curr, GS(old_id->name))) {
+				/* Note that we cannot skip indirect usages of old_id here (if requested), we still need to check it for
+				 * the user count handling...
+				 * XXX No more true (except for debug usage of those skipping counters). */
+				r_id_remap_data->id = id_curr;
+				libblock_remap_data_preprocess(r_id_remap_data);
+				BKE_library_foreach_ID_link(
+				            NULL, id_curr, foreach_libblock_remap_callback, (void *)r_id_remap_data, foreach_id_flags);
 			}
 		}
+		FOREACH_MAIN_ID_END;
 	}
 
 	/* XXX We may not want to always 'transfer' fakeuser from old to new id... Think for now it's desired behavior
@@ -501,9 +508,9 @@ void BKE_libblock_remap_locked(
 	}
 
 	if (old_id->us - skipped_refcounted < 0) {
-		printf("Error in remapping process from '%s' (%p) to '%s' (%p): "
-		       "wrong user count in old ID after process (summing up to %d)\n",
-		       old_id->name, old_id, new_id ? new_id->name : "<NULL>", new_id, old_id->us - skipped_refcounted);
+		CLOG_ERROR(&LOG, "Error in remapping process from '%s' (%p) to '%s' (%p): "
+		           "wrong user count in old ID after process (summing up to %d)",
+		           old_id->name, old_id, new_id ? new_id->name : "<NULL>", new_id, old_id->us - skipped_refcounted);
 		BLI_assert(0);
 	}
 
@@ -529,7 +536,7 @@ void BKE_libblock_remap_locked(
 		case ID_CU:
 		case ID_MB:
 			if (new_id) {  /* Only affects us in case obdata was relinked (changed). */
-				for (Object *ob = bmain->object.first; ob; ob = ob->id.next) {
+				for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
 					libblock_remap_data_postprocess_obdata_relink(bmain, ob, new_id);
 				}
 			}
@@ -672,7 +679,7 @@ static int id_relink_to_newid_looper(void *UNUSED(user_data), ID *UNUSED(self_id
 
 /** Similar to libblock_relink_ex, but is remapping IDs to their newid value if non-NULL, in given \a id.
  *
- * Very specific usage, not sure we'll keep it on the long run, currently only used in Object duplication code...
+ * Very specific usage, not sure we'll keep it on the long run, currently only used in Object/Collection duplication code...
  */
 void BKE_libblock_relink_to_newid(ID *id)
 {
@@ -731,7 +738,7 @@ void BKE_libblock_free_datablock(ID *id, const int UNUSED(flag))
 			BKE_lattice_free((Lattice *)id);
 			break;
 		case ID_LA:
-			BKE_lamp_free((Lamp *)id);
+			BKE_light_free((Light *)id);
 			break;
 		case ID_CA:
 			BKE_camera_free((Camera *) id);
@@ -812,7 +819,22 @@ void BKE_libblock_free_datablock(ID *id, const int UNUSED(flag))
 	}
 }
 
-
+/**
+ * Complete ID freeing, extended version for corner cases.
+ * Can override default (and safe!) freeing process, to gain some speed up.
+ *
+ * At that point, given id is assumed to not be used by any other data-block already
+ * (might not be actually true, in case e.g. several inter-related IDs get freed together...).
+ * However, they might still be using (referencing) other IDs, this code takes care of it if
+ * \a LIB_TAG_NO_USER_REFCOUNT is not defined.
+ *
+ * \param bmain: Main database containing the freed ID, can be NULL in case it's a temp ID outside of any Main.
+ * \param idv: Pointer to ID to be freed.
+ * \param flag: Set of \a LIB_ID_FREE_... flags controlling/overriding usual freeing process,
+ * 0 to get default safe behavior.
+ * \param use_flag_from_idtag: Still use freeing info flags from given ID datablock,
+ * even if some overriding ones are passed in \a flag parameter.
+ */
 void BKE_id_free_ex(Main *bmain, void *idv, int flag, const bool use_flag_from_idtag)
 {
 	ID *id = idv;
@@ -851,7 +873,12 @@ void BKE_id_free_ex(Main *bmain, void *idv, int flag, const bool use_flag_from_i
 	}
 
 #ifdef WITH_PYTHON
+#  ifdef WITH_PYTHON_SAFETY
 	BPY_id_release(id);
+#  endif
+	if (id->py_instance) {
+		BPY_DECREF_RNA_INVALIDATE(id->py_instance);
+	}
 #endif
 
 	if ((flag & LIB_ID_FREE_NO_USER_REFCOUNT) == 0) {
@@ -861,7 +888,7 @@ void BKE_id_free_ex(Main *bmain, void *idv, int flag, const bool use_flag_from_i
 	BKE_libblock_free_datablock(id, flag);
 
 	/* avoid notifying on removed data */
-	if (bmain) {
+	if ((flag & LIB_ID_FREE_NO_MAIN) == 0) {
 		BKE_main_lock(bmain);
 	}
 
@@ -882,7 +909,7 @@ void BKE_id_free_ex(Main *bmain, void *idv, int flag, const bool use_flag_from_i
 
 	BKE_libblock_free_data(id, (flag & LIB_ID_FREE_NO_USER_REFCOUNT) == 0);
 
-	if (bmain) {
+	if ((flag & LIB_ID_FREE_NO_MAIN) == 0) {
 		BKE_main_unlock(bmain);
 	}
 
@@ -891,69 +918,23 @@ void BKE_id_free_ex(Main *bmain, void *idv, int flag, const bool use_flag_from_i
 	}
 }
 
+/**
+ * Complete ID freeing, should be usable in most cases (even for out-of-Main IDs).
+ *
+ * See #BKE_id_free_ex description for full details.
+ *
+ * \param bmain: Main database containing the freed ID, can be NULL in case it's a temp ID outside of any Main.
+ * \param idv: Pointer to ID to be freed.
+ */
 void BKE_id_free(Main *bmain, void *idv)
 {
 	BKE_id_free_ex(bmain, idv, 0, true);
 }
 
 /**
- * used in headerbuttons.c image.c mesh.c screen.c sound.c and library.c
- *
- * \param do_id_user: if \a true, try to release other ID's 'references' hold by \a idv.
- *                    (only applies to main database)
- * \param do_ui_user: similar to do_id_user but makes sure UI does not hold references to
- *                    \a id.
+ * Not really a freeing function by itself, it decrements usercount of given id, and only frees it if it reaches 0.
  */
-void BKE_libblock_free_ex(Main *bmain, void *idv, const bool do_id_user, const bool do_ui_user)
-{
-	ID *id = idv;
-	short type = GS(id->name);
-	ListBase *lb = which_libbase(bmain, type);
-
-	DEG_id_type_tag(bmain, type);
-
-#ifdef WITH_PYTHON
-#ifdef WITH_PYTHON_SAFETY
-	BPY_id_release(id);
-#endif
-	if (id->py_instance) {
-		BPY_DECREF_RNA_INVALIDATE(id->py_instance);
-	}
-#endif
-
-	if (do_id_user) {
-		BKE_libblock_relink_ex(bmain, id, NULL, NULL, true);
-	}
-
-	BKE_libblock_free_datablock(id, 0);
-
-	/* avoid notifying on removed data */
-	BKE_main_lock(bmain);
-
-	if (do_ui_user) {
-		if (free_notifier_reference_cb) {
-			free_notifier_reference_cb(id);
-		}
-
-		if (remap_editor_id_reference_cb) {
-			remap_editor_id_reference_cb(id, NULL);
-		}
-	}
-
-	BLI_remlink(lb, id);
-
-	BKE_libblock_free_data(id, do_id_user);
-	BKE_main_unlock(bmain);
-
-	MEM_freeN(id);
-}
-
-void BKE_libblock_free(Main *bmain, void *idv)
-{
-	BKE_libblock_free_ex(bmain, idv, true, true);
-}
-
-void BKE_libblock_free_us(Main *bmain, void *idv)      /* test users */
+void BKE_id_free_us(Main *bmain, void *idv)      /* test users */
 {
 	ID *id = idv;
 
@@ -973,57 +954,155 @@ void BKE_libblock_free_us(Main *bmain, void *idv)      /* test users */
 	if (id->us == 0) {
 		BKE_libblock_unlink(bmain, id, false, false);
 
-		BKE_libblock_free(bmain, id);
+		BKE_id_free(bmain, id);
 	}
 }
 
-void BKE_libblock_delete(Main *bmain, void *idv)
+static void id_delete(Main *bmain, const bool do_tagged_deletion)
 {
+	const int tag = LIB_TAG_DOIT;
 	ListBase *lbarray[MAX_LIBARRAY];
+	Link dummy_link = {0};
 	int base_count, i;
 
+	/* Used by batch tagged deletion, when we call BKE_id_free then, id is no more in Main database,
+	 * and has already properly unlinked its other IDs usages.
+	 * UI users are always cleared in BKE_libblock_remap_locked() call, so we can always skip it. */
+	const int free_flag = LIB_ID_FREE_NO_UI_USER |
+	                      (do_tagged_deletion ? LIB_ID_FREE_NO_MAIN | LIB_ID_FREE_NO_USER_REFCOUNT : 0);
+	ListBase tagged_deleted_ids = {NULL};
+
 	base_count = set_listbasepointers(bmain, lbarray);
-	BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
 
-	/* First tag all datablocks directly from target lib.
-	 * Note that we go forward here, since we want to check dependencies before users (e.g. meshes before objects).
-	 * Avoids to have to loop twice. */
-	for (i = 0; i < base_count; i++) {
-		ListBase *lb = lbarray[i];
-		ID *id;
+	BKE_main_lock(bmain);
+	if (do_tagged_deletion) {
+		/* Main idea of batch deletion is to remove all IDs to be deleted from Main database.
+		 * This means that we won't have to loop over all deleted IDs to remove usages
+		 * of other deleted IDs.
+		 * This gives tremendous speed-up when deleting a large amount of IDs from a Main
+		 * containing thousands of those.
+		 * This also means that we have to be very careful here, as we by-pass many 'common'
+		 * processing, hence risking to 'corrupt' at least user counts, if not IDs themselves. */
+		bool keep_looping = true;
+		while (keep_looping) {
+			ID *id, *id_next;
+			ID *last_remapped_id = tagged_deleted_ids.last;
+			keep_looping = false;
 
-		for (id = lb->first; id; id = id->next) {
-			/* Note: in case we delete a library, we also delete all its datablocks! */
-			if ((id == (ID *)idv) || (id->lib == (Library *)idv) || (id->tag & LIB_TAG_DOIT)) {
-				id->tag |= LIB_TAG_DOIT;
+			/* First tag and remove from Main all datablocks directly from target lib.
+			 * Note that we go forward here, since we want to check dependencies before users
+			 * (e.g. meshes before objects). Avoids to have to loop twice. */
+			for (i = 0; i < base_count; i++) {
+				ListBase *lb = lbarray[i];
+
+				for (id = lb->first; id; id = id_next) {
+					id_next = id->next;
+					/* Note: in case we delete a library, we also delete all its datablocks! */
+					if ((id->tag & tag) || (id->lib != NULL && (id->lib->id.tag & tag))) {
+						BLI_remlink(lb, id);
+						BLI_addtail(&tagged_deleted_ids, id);
+						/* Do not tag as no_main now, we want to unlink it first (lower-level ID management code
+						 * has some specific handling of 'nom main' IDs that would be a problem in that case). */
+						id->tag |= tag;
+						keep_looping = true;
+					}
+				}
+			}
+			if (last_remapped_id == NULL) {
+				dummy_link.next = tagged_deleted_ids.first;
+				last_remapped_id = (ID *)(&dummy_link);
+			}
+			for (id = last_remapped_id->next; id; id = id->next) {
 				/* Will tag 'never NULL' users of this ID too.
 				 * Note that we cannot use BKE_libblock_unlink() here, since it would ignore indirect (and proxy!)
 				 * links, this can lead to nasty crashing here in second, actual deleting loop.
 				 * Also, this will also flag users of deleted data that cannot be unlinked
 				 * (object using deleted obdata, etc.), so that they also get deleted. */
-				BKE_libblock_remap(bmain, id, NULL, ID_REMAP_FLAG_NEVER_NULL_USAGE | ID_REMAP_FORCE_NEVER_NULL_USAGE);
+				BKE_libblock_remap_locked(
+				            bmain, id, NULL,
+				            ID_REMAP_FLAG_NEVER_NULL_USAGE | ID_REMAP_FORCE_NEVER_NULL_USAGE);
+				/* Since we removed ID from Main, we also need to unlink its own other IDs usages ourself. */
+				BKE_libblock_relink_ex(bmain, id, NULL, NULL, true);
+				/* Now we can safely mark that ID as not being in Main database anymore. */
+				id->tag |= LIB_TAG_NO_MAIN;
+				/* This is needed because we may not have remapped usages of that ID by other deleted ones. */
+//				id->us = 0;  /* Is it actually? */
 			}
 		}
 	}
+	else {
+		/* First tag all datablocks directly from target lib.
+		 * Note that we go forward here, since we want to check dependencies before users (e.g. meshes before objects).
+		 * Avoids to have to loop twice. */
+		for (i = 0; i < base_count; i++) {
+			ListBase *lb = lbarray[i];
+			ID *id, *id_next;
+
+			for (id = lb->first; id; id = id_next) {
+				id_next = id->next;
+				/* Note: in case we delete a library, we also delete all its datablocks! */
+				if ((id->tag & tag) || (id->lib != NULL && (id->lib->id.tag & tag))) {
+					id->tag |= tag;
+
+					/* Will tag 'never NULL' users of this ID too.
+					 * Note that we cannot use BKE_libblock_unlink() here, since it would ignore indirect (and proxy!)
+					 * links, this can lead to nasty crashing here in second, actual deleting loop.
+					 * Also, this will also flag users of deleted data that cannot be unlinked
+					 * (object using deleted obdata, etc.), so that they also get deleted. */
+					BKE_libblock_remap_locked(
+					            bmain, id, NULL,
+					            ID_REMAP_FLAG_NEVER_NULL_USAGE | ID_REMAP_FORCE_NEVER_NULL_USAGE);
+				}
+			}
+		}
+	}
+	BKE_main_unlock(bmain);
 
 	/* In usual reversed order, such that all usage of a given ID, even 'never NULL' ones, have been already cleared
 	 * when we reach it (e.g. Objects being processed before meshes, they'll have already released their 'reference'
 	 * over meshes when we come to freeing obdata). */
-	for (i = base_count; i--; ) {
+	for (i = do_tagged_deletion ? 1 : base_count; i--; ) {
 		ListBase *lb = lbarray[i];
 		ID *id, *id_next;
 
-		for (id = lb->first; id; id = id_next) {
+		for (id = do_tagged_deletion ? tagged_deleted_ids.first : lb->first; id; id = id_next) {
 			id_next = id->next;
-			if (id->tag & LIB_TAG_DOIT) {
+			if (id->tag & tag) {
 				if (id->us != 0) {
 #ifdef DEBUG_PRINT
 					printf("%s: deleting %s (%d)\n", __func__, id->name, id->us);
 #endif
 					BLI_assert(id->us == 0);
 				}
-				BKE_libblock_free(bmain, id);
+				BKE_id_free_ex(bmain, id, free_flag, !do_tagged_deletion);
 			}
 		}
 	}
+
+	bmain->is_memfile_undo_written = false;
+}
+
+/**
+ * Properly delete a single ID from given \a bmain database.
+ */
+void BKE_id_delete(Main *bmain, void *idv)
+{
+	BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
+	((ID *)idv)->tag |= LIB_TAG_DOIT;
+
+	id_delete(bmain, false);
+}
+
+/**
+ * Properly delete all IDs tagged with \a LIB_TAG_DOIT, in given \a bmain database.
+ *
+ * This is more efficient than calling #BKE_id_delete repetitively on a large set of IDs
+ * (several times faster when deleting most of the IDs at once)...
+ *
+ * \warning Considered experimental for now, seems to be working OK but this is
+ *          risky code in a complicated area.
+ */
+void BKE_id_multi_tagged_delete(Main *bmain)
+{
+	id_delete(bmain, true);
 }

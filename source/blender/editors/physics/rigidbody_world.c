@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,11 @@
  *
  * The Original Code is Copyright (C) 2013 Blender Foundation
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Joshua Leung, Sergej Reich
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file rigidbody_world.c
- *  \ingroup editor_physics
- *  \brief Rigid Body world editing operators
+/** \file
+ * \ingroup editor_physics
+ * \brief Rigid Body world editing operators
  */
 
 #include <stdlib.h>
@@ -90,7 +82,7 @@ static int rigidbody_world_add_exec(bContext *C, wmOperator *UNUSED(op))
 
 	/* Full rebuild of DEG! */
 	DEG_relations_tag_update(bmain);
-	DEG_id_tag_update_ex(bmain, &scene->id, DEG_TAG_TIME);
+	DEG_id_tag_update_ex(bmain, &scene->id, ID_RECALC_ANIMATION);
 
 	return OPERATOR_FINISHED;
 }
@@ -128,7 +120,7 @@ static int rigidbody_world_remove_exec(bContext *C, wmOperator *op)
 
 	/* Full rebuild of DEG! */
 	DEG_relations_tag_update(bmain);
-	DEG_id_tag_update_ex(bmain, &scene->id, DEG_TAG_TIME);
+	DEG_id_tag_update_ex(bmain, &scene->id, ID_RECALC_ANIMATION);
 
 	/* done */
 	return OPERATOR_FINISHED;

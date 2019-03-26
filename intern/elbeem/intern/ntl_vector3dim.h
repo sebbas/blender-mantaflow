@@ -1,5 +1,5 @@
-/** \file elbeem/intern/ntl_vector3dim.h
- *  \ingroup elbeem
+/** \file
+ * \ingroup elbeem
  */
 /******************************************************************************
  *

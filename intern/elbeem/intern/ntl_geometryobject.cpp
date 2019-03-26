@@ -1,5 +1,5 @@
-/** \file elbeem/intern/ntl_geometryobject.cpp
- *  \ingroup elbeem
+/** \file
+ * \ingroup elbeem
  */
 /******************************************************************************
  *

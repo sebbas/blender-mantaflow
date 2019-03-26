@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_view3d/view3d_toolbar.c
- *  \ingroup spview3d
+/** \file
+ * \ingroup spview3d
  */
 
 #include <string.h>
@@ -53,8 +46,9 @@ static int view3d_toolshelf_toggle_exec(bContext *C, wmOperator *UNUSED(op))
 	ScrArea *sa = CTX_wm_area(C);
 	ARegion *ar = view3d_has_tools_region(sa);
 
-	if (ar)
+	if (ar) {
 		ED_region_toggle_hidden(C, ar);
+	}
 
 	return OPERATOR_FINISHED;
 }

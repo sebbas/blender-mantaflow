@@ -79,7 +79,7 @@ def draw_km(display_keymaps, kc, km, children, layout, level):
         subrow.alignment = 'RIGHT'
 
         if km.is_user_modified:
-            subrow.operator("wm.keymap_restore", text="Restore")
+            subrow.operator("preferences.keymap_restore", text="Restore")
         if km.is_modal:
             subrow.label(text="", icon='LINKED')
         del subrow
@@ -104,7 +104,7 @@ def draw_km(display_keymaps, kc, km, children, layout, level):
             # "Add New" at end of keymap item list
             subcol = _indented_layout(col, kmi_level)
             subcol = subcol.split(factor=0.2).column()
-            subcol.operator("wm.keyitem_add", text="Add New", text_ctxt=i18n_contexts.id_windowmanager,
+            subcol.operator("preferences.keyitem_add", text="Add New", text_ctxt=i18n_contexts.id_windowmanager,
                             icon='ADD')
 
             col.separator()
@@ -159,9 +159,9 @@ def draw_kmi(display_keymaps, kc, km, kmi, layout, level):
         row.label()
 
     if (not kmi.is_user_defined) and kmi.is_user_modified:
-        row.operator("wm.keyitem_restore", text="", icon='BACK').item_id = kmi.id
+        row.operator("preferences.keyitem_restore", text="", icon='BACK').item_id = kmi.id
     else:
-        row.operator("wm.keyitem_remove", text="", icon='X').item_id = kmi.id
+        row.operator("preferences.keyitem_remove", text="", icon='X').item_id = kmi.id
 
     # Expanded, additional event settings
     if kmi.show_expanded:
@@ -190,11 +190,11 @@ def draw_kmi(display_keymaps, kc, km, kmi, layout, level):
 
             subrow = sub.row()
             subrow.scale_x = 0.75
-            subrow.prop(kmi, "any")
-            subrow.prop(kmi, "shift")
-            subrow.prop(kmi, "ctrl")
-            subrow.prop(kmi, "alt")
-            subrow.prop(kmi, "oskey", text="Cmd")
+            subrow.prop(kmi, "any", toggle=True)
+            subrow.prop(kmi, "shift", toggle=True)
+            subrow.prop(kmi, "ctrl", toggle=True)
+            subrow.prop(kmi, "alt", toggle=True)
+            subrow.prop(kmi, "oskey", text="Cmd", toggle=True)
             subrow.prop(kmi, "key_modifier", text="", event=True)
 
         # Operator properties
@@ -340,7 +340,7 @@ def draw_filtered(display_keymaps, filter_type, filter_text, layout):
             row.label()
 
             if km.is_user_modified:
-                row.operator("wm.keymap_restore", text="Restore")
+                row.operator("preferences.keymap_restore", text="Restore")
             else:
                 row.label()
 
@@ -350,54 +350,60 @@ def draw_filtered(display_keymaps, filter_type, filter_text, layout):
             # "Add New" at end of keymap item list
             col = _indented_layout(layout, 1)
             subcol = col.split(factor=0.2).column()
-            subcol.operator("wm.keyitem_add", text="Add New", icon='ADD')
+            subcol.operator("preferences.keyitem_add", text="Add New", icon='ADD')
     return True
 
 
 def draw_hierarchy(display_keymaps, layout):
-    from bpy_extras import keyconfig_utils
-    for entry in keyconfig_utils.km_hierarchy():
+    from bl_keymap_utils import keymap_hierarchy
+    for entry in keymap_hierarchy.generate():
         draw_entry(display_keymaps, entry, layout)
 
 
 def draw_keymaps(context, layout):
-    from bpy_extras import keyconfig_utils
+    from bl_keymap_utils.io import keyconfig_merge
 
     wm = context.window_manager
-    kc = wm.keyconfigs.user
+    kc_user = wm.keyconfigs.user
+    kc_active = wm.keyconfigs.active
     spref = context.space_data
 
-    col = layout.column()
-    sub = col.column()
-
-    subsplit = sub.split()
-    subcol = subsplit.column()
-
-    row = subcol.row(align=True)
-
     # row.prop_search(wm.keyconfigs, "active", wm, "keyconfigs", text="Key Config")
-    text = bpy.path.display_name(wm.keyconfigs.active.name)
+    text = bpy.path.display_name(kc_active.name, has_ext=False)
     if not text:
         text = "Blender (default)"
-    row.menu("USERPREF_MT_keyconfigs", text=text)
-    row.operator("wm.keyconfig_preset_add", text="", icon='ADD')
-    row.operator("wm.keyconfig_preset_add", text="", icon='REMOVE').remove_active = True
+
+    split = layout.split(factor=0.6)
+
+    row = split.row()
+
+    rowsub = row.row(align=True)
+
+    rowsub.menu("USERPREF_MT_keyconfigs", text=text)
+    rowsub.operator("wm.keyconfig_preset_add", text="", icon='ADD')
+    rowsub.operator("wm.keyconfig_preset_add", text="", icon='REMOVE').remove_active = True
+
+    rowsub = split.row(align=True)
+    rowsub.operator("preferences.keyconfig_import", text="Import...", icon='IMPORT')
+    rowsub.operator("preferences.keyconfig_export", text="Export...", icon='EXPORT')
+
+    row = layout.row()
+    col = layout.column()
 
     # layout.context_pointer_set("keyconfig", wm.keyconfigs.active)
-    # row.operator("wm.keyconfig_remove", text="", icon='X')
-    row.separator()
-    rowsub = row.split(factor=0.33, align=True)
+    # row.operator("preferences.keyconfig_remove", text="", icon='X')
+    rowsub = row.split(factor=0.3, align=True)
     # postpone drawing into rowsub, so we can set alert!
 
-    col.separator()
-    display_keymaps = keyconfig_utils.keyconfig_merge(kc, kc)
+    layout.separator()
+    display_keymaps = keyconfig_merge(kc_user, kc_user)
     filter_type = spref.filter_type
     filter_text = spref.filter_text.strip()
     if filter_text:
         filter_text = filter_text.lower()
-        ok = draw_filtered(display_keymaps, filter_type, filter_text, col)
+        ok = draw_filtered(display_keymaps, filter_type, filter_text, layout)
     else:
-        draw_hierarchy(display_keymaps, col)
+        draw_hierarchy(display_keymaps, layout)
         ok = True
 
     # go back and fill in rowsub
@@ -406,3 +412,32 @@ def draw_keymaps(context, layout):
     if not ok:
         rowsubsub.alert = True
     rowsubsub.prop(spref, "filter_text", text="", icon='VIEWZOOM')
+
+    if not filter_text:
+        # When the keyconfig defines it's own preferences.
+        kc_prefs = kc_active.preferences
+        if kc_prefs is not None:
+            box = col.box()
+            row = box.row(align=True)
+
+            pref = context.preferences
+            keymappref = pref.keymap
+            show_ui_keyconfig = keymappref.show_ui_keyconfig
+            row.prop(
+                keymappref,
+                "show_ui_keyconfig",
+                text="",
+                icon='DISCLOSURE_TRI_DOWN' if show_ui_keyconfig else 'DISCLOSURE_TRI_RIGHT',
+                emboss=False,
+            )
+            row.label(text="Preferences")
+
+            if show_ui_keyconfig:
+                # Defined by user preset, may contain mistakes out of our control.
+                try:
+                    kc_prefs.draw(box)
+                except Exception:
+                    import traceback
+                    traceback.print_exc()
+            del box
+        del kc_prefs

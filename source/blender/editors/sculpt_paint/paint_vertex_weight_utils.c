@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/sculpt_paint/paint_vertex_weight_utils.c
- *  \ingroup edsculpt
+/** \file
+ * \ingroup edsculpt
  *
  * Intended for use by `paint_vertex.c` & `paint_vertex_weight_ops.c`.
  */
@@ -44,6 +40,9 @@
 #include "BKE_object_deform.h"
 #include "BKE_report.h"
 #include "BKE_object.h"
+
+/* Only for blend modes. */
+#include "IMB_imbuf.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -148,7 +147,7 @@ int ED_wpaint_mirror_vgroup_ensure(Object *ob, const int vgroup_active)
 		}
 
 		/* curdef should never be NULL unless this is
-		 * a  lamp and BKE_object_defgroup_add_name fails */
+		 * a  light and BKE_object_defgroup_add_name fails */
 		return mirrdef;
 	}
 
@@ -280,31 +279,24 @@ float ED_wpaint_blend_tool(
         const float weight,
         const float paintval, const float alpha)
 {
-	switch (tool) {
-		case PAINT_BLEND_MIX:
-		case PAINT_BLEND_AVERAGE:
-		case PAINT_BLEND_SMEAR:
-		case PAINT_BLEND_BLUR:       return wval_blend(weight, paintval, alpha);
-		case PAINT_BLEND_ADD:        return wval_add(weight, paintval, alpha);
-		case PAINT_BLEND_SUB:        return wval_sub(weight, paintval, alpha);
-		case PAINT_BLEND_MUL:        return wval_mul(weight, paintval, alpha);
-		case PAINT_BLEND_LIGHTEN:    return wval_lighten(weight, paintval, alpha);
-		case PAINT_BLEND_DARKEN:     return wval_darken(weight, paintval, alpha);
+	switch ((IMB_BlendMode)tool) {
+		case IMB_BLEND_MIX:        return wval_blend(weight, paintval, alpha);
+		case IMB_BLEND_ADD:        return wval_add(weight, paintval, alpha);
+		case IMB_BLEND_SUB:        return wval_sub(weight, paintval, alpha);
+		case IMB_BLEND_MUL:        return wval_mul(weight, paintval, alpha);
+		case IMB_BLEND_LIGHTEN:    return wval_lighten(weight, paintval, alpha);
+		case IMB_BLEND_DARKEN:     return wval_darken(weight, paintval, alpha);
 		/* Mostly make sense for color: support anyway. */
-		case PAINT_BLEND_COLORDODGE: return wval_colordodge(weight, paintval, alpha);
-		case PAINT_BLEND_DIFFERENCE: return wval_difference(weight, paintval, alpha);
-		case PAINT_BLEND_SCREEN:     return wval_screen(weight, paintval, alpha);
-		case PAINT_BLEND_HARDLIGHT:  return wval_hardlight(weight, paintval, alpha);
-		case PAINT_BLEND_OVERLAY:    return wval_overlay(weight, paintval, alpha);
-		case PAINT_BLEND_SOFTLIGHT:  return wval_softlight(weight, paintval, alpha);
-		case PAINT_BLEND_EXCLUSION:  return wval_exclusion(weight, paintval, alpha);
+		case IMB_BLEND_COLORDODGE: return wval_colordodge(weight, paintval, alpha);
+		case IMB_BLEND_DIFFERENCE: return wval_difference(weight, paintval, alpha);
+		case IMB_BLEND_SCREEN:     return wval_screen(weight, paintval, alpha);
+		case IMB_BLEND_HARDLIGHT:  return wval_hardlight(weight, paintval, alpha);
+		case IMB_BLEND_OVERLAY:    return wval_overlay(weight, paintval, alpha);
+		case IMB_BLEND_SOFTLIGHT:  return wval_softlight(weight, paintval, alpha);
+		case IMB_BLEND_EXCLUSION:  return wval_exclusion(weight, paintval, alpha);
 		/* Only for color: just use blend. */
-		case PAINT_BLEND_LUMINOCITY:
-		case PAINT_BLEND_SATURATION:
-		case PAINT_BLEND_HUE:
-		case PAINT_BLEND_ALPHA_SUB:
-		case PAINT_BLEND_ALPHA_ADD:
-		default:                     return wval_blend(weight, paintval, alpha);
+		default:
+			return wval_blend(weight, paintval, alpha);
 	}
 }
 

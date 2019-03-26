@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2004 by Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Joseph Eagar
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/mesh/editmesh_extrude_screw.c
- *  \ingroup edmesh
+/** \file
+ * \ingroup edmesh
  */
 
 #include "MEM_guardedalloc.h"
@@ -48,8 +40,6 @@
 #include "ED_mesh.h"
 #include "ED_screen.h"
 #include "ED_view3d.h"
-
-
 
 #include "mesh_intern.h"  /* own include */
 
@@ -76,7 +66,7 @@ static int edbm_screw_exec(bContext *C, wmOperator *op)
 
 	uint objects_len = 0;
 	ViewLayer *view_layer = CTX_data_view_layer(C);
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++)	{
 		Object *obedit = objects[ob_index];
@@ -171,13 +161,12 @@ static int edbm_screw_exec(bContext *C, wmOperator *op)
 static int edbm_screw_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
 	Scene *scene = CTX_data_scene(C);
-	View3D *v3d = CTX_wm_view3d(C);
 	RegionView3D *rv3d = ED_view3d_context_rv3d(C);
 
 	PropertyRNA *prop;
 	prop = RNA_struct_find_property(op->ptr, "center");
 	if (!RNA_property_is_set(op->ptr, prop)) {
-		RNA_property_float_set_array(op->ptr, prop, ED_view3d_cursor3d_get(scene, v3d)->location);
+		RNA_property_float_set_array(op->ptr, prop, scene->cursor.location);
 	}
 	if (rv3d) {
 		prop = RNA_struct_find_property(op->ptr, "axis");
@@ -208,8 +197,8 @@ void MESH_OT_screw(wmOperatorType *ot)
 	RNA_def_int(ot->srna, "steps", 9, 1, 100000, "Steps", "Steps", 3, 256);
 	RNA_def_int(ot->srna, "turns", 1, 1, 100000, "Turns", "Turns", 1, 256);
 
-	RNA_def_float_vector(ot->srna, "center", 3, NULL, -1e12f, 1e12f,
-	                     "Center", "Center in global view space", -1e4f, 1e4f);
+	RNA_def_float_vector_xyz(ot->srna, "center", 3, NULL, -1e12f, 1e12f,
+	                         "Center", "Center in global view space", -1e4f, 1e4f);
 	RNA_def_float_vector(ot->srna, "axis", 3, NULL, -1.0f, 1.0f,
 	                     "Axis", "Axis in global view space", -1.0f, 1.0f);
 }

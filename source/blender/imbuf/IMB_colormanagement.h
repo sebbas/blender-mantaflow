@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,22 +15,13 @@
  *
  * The Original Code is Copyright (C) 2012 by Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Xavier Thomas,
- *                 Lukas Toenne,
- *                 Sergey Sharybin
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
 #ifndef __IMB_COLORMANAGEMENT_H__
 #define __IMB_COLORMANAGEMENT_H__
 
-/** \file blender/imbuf/IMB_colormanagement.h
- *  \ingroup imbuf
+/** \file
+ * \ingroup imbuf
  */
 
 #include "BLI_sys_types.h"
@@ -41,24 +30,24 @@
 #define BCM_CONFIG_FILE "config.ocio"
 
 
-struct bContext;
 struct ColorManagedColorspaceSettings;
 struct ColorManagedDisplaySettings;
 struct ColorManagedViewSettings;
 struct ColormanageProcessor;
 struct EnumPropertyItem;
 struct ImBuf;
-struct Main;
 struct ImageFormatData;
+struct Main;
+struct bContext;
 
-struct ColorSpace;
 struct ColorManagedDisplay;
+struct ColorSpace;
 
 /* ** Generic functions ** */
 
 void IMB_colormanagement_check_file_config(struct Main *bmain);
 
-void IMB_colormanagement_validate_settings(struct ColorManagedDisplaySettings *display_settings,
+void IMB_colormanagement_validate_settings(const struct ColorManagedDisplaySettings *display_settings,
                                            struct ColorManagedViewSettings *view_settings);
 
 const char *IMB_colormanagement_role_colorspace_name_get(int role);
@@ -71,6 +60,8 @@ const char *IMB_colormanagement_get_rect_colorspace(struct ImBuf *ibuf);
 
 BLI_INLINE float IMB_colormanagement_get_luminance(const float rgb[3]);
 BLI_INLINE unsigned char IMB_colormanagement_get_luminance_byte(const unsigned char[3]);
+BLI_INLINE void IMB_colormangement_xyz_to_rgb(float rgb[3], const float xyz[3]);
+BLI_INLINE void IMB_colormangement_rgb_to_xyz(float xyz[3], const float rgb[3]);
 
 /* ** Color space transformation functions ** */
 void IMB_colormanagement_transform(float *buffer, int width, int height, int channels,
@@ -95,6 +86,12 @@ void IMB_colormanagement_colorspace_to_scene_linear_v4(float pixel[4], bool pred
 void IMB_colormanagement_scene_linear_to_colorspace_v3(float pixel[3], struct ColorSpace *colorspace);
 
 void IMB_colormanagement_colorspace_to_scene_linear(float *buffer, int width, int height, int channels, struct ColorSpace *colorspace, bool predivide);
+
+void IMB_colormanagement_scene_linear_to_color_picking_v3(float pixel[3]);
+void IMB_colormanagement_color_picking_to_scene_linear_v3(float pixel[3]);
+
+void IMB_colormanagement_scene_linear_to_srgb_v3(float pixel[3]);
+void IMB_colormanagement_srgb_to_scene_linear_v3(float pixel[3]);
 
 void IMB_colormanagement_scene_linear_to_display_v3(float pixel[3], struct ColorManagedDisplay *display);
 void IMB_colormanagement_display_to_scene_linear_v3(float pixel[3], struct ColorManagedDisplay *display);
@@ -137,18 +134,20 @@ void IMB_display_buffer_transform_apply(unsigned char *display_buffer, float *li
 
 void IMB_display_buffer_release(void *cache_handle);
 
-/* ** Display funcrions ** */
+/* ** Display functions ** */
 int IMB_colormanagement_display_get_named_index(const char *name);
 const char *IMB_colormanagement_display_get_indexed_name(int index);
 const char *IMB_colormanagement_display_get_default_name(void);
 struct ColorManagedDisplay *IMB_colormanagement_display_get_named(const char *name);
 const char *IMB_colormanagement_display_get_none_name(void);
+const char *IMB_colormanagement_display_get_default_view_transform_name(
+        struct ColorManagedDisplay *display);
 
-/* ** View funcrions ** */
+/* ** View functions ** */
 int IMB_colormanagement_view_get_named_index(const char *name);
 const char *IMB_colormanagement_view_get_indexed_name(int index);
 
-/* ** Look funcrions ** */
+/* ** Look functions ** */
 int IMB_colormanagement_look_get_named_index(const char *name);
 const char *IMB_colormanagement_look_get_indexed_name(int index);
 
@@ -157,7 +156,7 @@ int IMB_colormanagement_colorspace_get_named_index(const char *name);
 const char *IMB_colormanagement_colorspace_get_indexed_name(int index);
 const char *IMB_colormanagement_view_get_default_name(const char *display_name);
 
-void IMB_colormanagment_colorspace_from_ibuf_ftype(struct ColorManagedColorspaceSettings *colorspace_settings, struct ImBuf *ibuf);
+void IMB_colormanagement_colorspace_from_ibuf_ftype(struct ColorManagedColorspaceSettings *colorspace_settings, struct ImBuf *ibuf);
 
 /* ** RNA helper functions ** */
 void IMB_colormanagement_display_items_add(struct EnumPropertyItem **items, int *totitem);
@@ -219,6 +218,11 @@ bool IMB_colormanagement_setup_glsl_draw_from_space_ctx(const struct bContext *C
                                                         float dither, bool predivide);
 /* Finish GLSL-based display space conversion */
 void IMB_colormanagement_finish_glsl_draw(void);
+
+/* ** View transform ** */
+void IMB_colormanagement_init_default_view_settings(
+        struct ColorManagedViewSettings *view_settings,
+        const struct ColorManagedDisplaySettings *display_settings);
 
 /* Roles */
 enum {

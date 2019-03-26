@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/render/render_preview.c
- *  \ingroup edrend
+/** \file
+ * \ingroup edrend
  */
 
 
@@ -55,7 +47,7 @@
 #include "DNA_material_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_space_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_brush_types.h"
@@ -69,10 +61,9 @@
 #include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_icons.h"
-#include "BKE_lamp.h"
-#include "BKE_layer.h"
 #include "BKE_library.h"
-#include "BKE_library_remap.h"
+#include "BKE_light.h"
+#include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_node.h"
@@ -166,10 +157,11 @@ typedef struct ShaderPreview {
 	/* datablocks with nodes need full copy during preview render, glsl uses it too */
 	Material *matcopy;
 	Tex *texcopy;
-	Lamp *lampcopy;
+	Light *lampcopy;
 	World *worldcopy;
 
-	float col[4];       /* active object color */
+	/** Copy of the active objects #Object.color */
+	float color[4];
 
 	int sizex, sizey;
 	unsigned int *pr_rect;
@@ -208,7 +200,7 @@ static Main *load_main_from_memory(const void *blend, int blend_size)
 	BlendFileData *bfd;
 
 	G.fileflags |= G_FILE_NO_UI;
-	bfd = BLO_read_from_memory(blend, blend_size, NULL, BLO_READ_SKIP_NONE);
+	bfd = BLO_read_from_memory(blend, blend_size, BLO_READ_SKIP_NONE, NULL);
 	if (bfd) {
 		bmain = bfd->main;
 
@@ -258,7 +250,7 @@ static Scene *preview_get_scene(Main *pr_main)
 {
 	if (pr_main == NULL) return NULL;
 
-	return pr_main->scene.first;
+	return pr_main->scenes.first;
 }
 
 static const char *preview_collection_name(const char pr_type)
@@ -277,7 +269,7 @@ static const char *preview_collection_name(const char pr_type)
 		case MA_TEXTURE:
 			return "Texture";
 		case MA_LAMP:
-			return "Lamp";
+			return "Light";
 		case MA_SKY:
 			return "Sky";
 		case MA_HAIR:
@@ -316,7 +308,7 @@ static World *preview_get_localized_world(ShaderPreview *sp, World *world)
 		return sp->worldcopy;
 	}
 	sp->worldcopy = BKE_world_localize(world);
-	BLI_addtail(&sp->pr_main->world, sp->worldcopy);
+	BLI_addtail(&sp->pr_main->worlds, sp->worldcopy);
 	return sp->worldcopy;
 }
 
@@ -339,7 +331,7 @@ static ID *duplicate_ids(ID *id, Depsgraph *depsgraph)
 		case ID_TE:
 			return (ID *)BKE_texture_localize((Tex *)id_eval);
 		case ID_LA:
-			return (ID *)BKE_lamp_localize((Lamp *)id_eval);
+			return (ID *)BKE_light_localize((Light *)id_eval);
 		case ID_WO:
 			return (ID *)BKE_world_localize((World *)id_eval);
 		case ID_IM:
@@ -368,7 +360,7 @@ static Scene *preview_prepare_scene(Main *bmain, Scene *scene, ID *id, int id_ty
 		/* this flag tells render to not execute depsgraph or ipos etc */
 		sce->r.scemode |= R_BUTS_PREVIEW;
 		/* set world always back, is used now */
-		sce->world = pr_main->world.first;
+		sce->world = pr_main->worlds.first;
 		/* now: exposure copy */
 		if (scene->world) {
 			sce->world->exp = scene->world->exp;
@@ -416,7 +408,7 @@ static Scene *preview_prepare_scene(Main *bmain, Scene *scene, ID *id, int id_ty
 				BLI_assert(sp->id_copy != NULL);
 				mat = sp->matcopy = (Material *)sp->id_copy;
 				sp->id_copy = NULL;
-				BLI_addtail(&pr_main->mat, mat);
+				BLI_addtail(&pr_main->materials, mat);
 
 				/* use current scene world to light sphere */
 				if (mat->pr_type == MA_SPHERE_A && sp->pr_method == PR_BUTS_RENDER) {
@@ -453,7 +445,7 @@ static Scene *preview_prepare_scene(Main *bmain, Scene *scene, ID *id, int id_ty
 			for (Base *base = view_layer->object_bases.first; base; base = base->next) {
 				if (base->object->id.name[2] == 'p') {
 					/* copy over object color, in case material uses it */
-					copy_v4_v4(base->object->col, sp->col);
+					copy_v4_v4(base->object->color, sp->color);
 
 					if (OB_TYPE_SUPPORT_MATERIAL(base->object->type)) {
 						/* don't use assign_material, it changed mat->id.us, which shows in the UI */
@@ -476,7 +468,7 @@ static Scene *preview_prepare_scene(Main *bmain, Scene *scene, ID *id, int id_ty
 				BLI_assert(sp->id_copy != NULL);
 				tex = sp->texcopy = (Tex *)sp->id_copy;
 				sp->id_copy = NULL;
-				BLI_addtail(&pr_main->tex, tex);
+				BLI_addtail(&pr_main->textures, tex);
 			}
 			set_preview_collection(sce, view_layer, MA_TEXTURE);
 
@@ -488,20 +480,20 @@ static Scene *preview_prepare_scene(Main *bmain, Scene *scene, ID *id, int id_ty
 			}
 		}
 		else if (id_type == ID_LA) {
-			Lamp *la = NULL, *origla = (Lamp *)id;
+			Light *la = NULL, *origla = (Light *)id;
 
 			/* work on a copy */
 			if (origla) {
 				BLI_assert(sp->id_copy != NULL);
-				la = sp->lampcopy = (Lamp *)sp->id_copy;
+				la = sp->lampcopy = (Light *)sp->id_copy;
 				sp->id_copy = NULL;
-				BLI_addtail(&pr_main->lamp, la);
+				BLI_addtail(&pr_main->lights, la);
 			}
 
 			set_preview_collection(sce, view_layer, MA_LAMP);
 
 			if (sce->world) {
-				/* Only use lighting from the lamp. */
+				/* Only use lighting from the light. */
 				sce->world->use_nodes = false;
 				sce->world->horr = 0.0f;
 				sce->world->horg = 0.0f;
@@ -529,7 +521,7 @@ static Scene *preview_prepare_scene(Main *bmain, Scene *scene, ID *id, int id_ty
 				BLI_assert(sp->id_copy != NULL);
 				wrld = sp->worldcopy = (World *)sp->id_copy;
 				sp->id_copy = NULL;
-				BLI_addtail(&pr_main->world, wrld);
+				BLI_addtail(&pr_main->worlds, wrld);
 			}
 
 			set_preview_collection(sce, view_layer, MA_SKY);
@@ -633,7 +625,7 @@ void ED_preview_draw(const bContext *C, void *idp, void *parentp, void *slotp, r
 		ID *id = (ID *)idp;
 		ID *parent = (ID *)parentp;
 		MTex *slot = (MTex *)slotp;
-		SpaceButs *sbuts = CTX_wm_space_buts(C);
+		SpaceProperties *sbuts = CTX_wm_space_properties(C);
 		ShaderPreview *sp = WM_jobs_customdata(wm, sa);
 		rcti newrect;
 		int ok;
@@ -714,7 +706,7 @@ static void shader_preview_updatejob(void *spv)
 					ntreeLocalSync(sp->worldcopy->nodetree, wrld->nodetree);
 			}
 			else if (GS(sp->id->name) == ID_LA) {
-				Lamp *la = (Lamp *)sp->id;
+				Light *la = (Light *)sp->id;
 
 				if (sp->lampcopy && la->nodetree && sp->lampcopy->nodetree)
 					ntreeLocalSync(sp->lampcopy->nodetree, la->nodetree);
@@ -909,19 +901,19 @@ static void shader_preview_free(void *customdata)
 
 	if (sp->matcopy) {
 		sp->id_copy = (ID *)sp->matcopy;
-		BLI_remlink(&pr_main->mat, sp->matcopy);
+		BLI_remlink(&pr_main->materials, sp->matcopy);
 	}
 	if (sp->texcopy) {
 		sp->id_copy = (ID *)sp->texcopy;
-		BLI_remlink(&pr_main->tex, sp->texcopy);
+		BLI_remlink(&pr_main->textures, sp->texcopy);
 	}
 	if (sp->worldcopy) {
 		sp->id_copy = (ID *)sp->worldcopy;
-		BLI_remlink(&pr_main->world, sp->worldcopy);
+		BLI_remlink(&pr_main->worlds, sp->worldcopy);
 	}
 	if (sp->lampcopy) {
 		sp->id_copy = (ID *)sp->lampcopy;
-		BLI_remlink(&pr_main->lamp, sp->lampcopy);
+		BLI_remlink(&pr_main->lights, sp->lampcopy);
 	}
 	if (sp->id_copy) {
 		/* node previews */
@@ -932,7 +924,7 @@ static void shader_preview_free(void *customdata)
 		/* get rid of copied ID */
 		properties = IDP_GetProperties(sp->id_copy, false);
 		if (properties) {
-			IDP_FreeProperty(properties);
+			IDP_FreeProperty_ex(properties, false);
 			MEM_freeN(properties);
 		}
 		switch (GS(sp->id_copy->name)) {
@@ -943,7 +935,7 @@ static void shader_preview_free(void *customdata)
 				BKE_texture_free((Tex *)sp->id_copy);
 				break;
 			case ID_LA:
-				BKE_lamp_free((Lamp *)sp->id_copy);
+				BKE_light_free((Light *)sp->id_copy);
 				break;
 			case ID_WO:
 				BKE_world_free((World *)sp->id_copy);
@@ -1373,8 +1365,12 @@ void ED_preview_shader_job(const bContext *C, void *owner, ID *id, ID *parent, M
 		sp->pr_main = G_pr_main_grease_pencil;
 	}
 
-	if (ob && ob->totcol) copy_v4_v4(sp->col, ob->col);
-	else sp->col[0] = sp->col[1] = sp->col[2] = sp->col[3] = 1.0f;
+	if (ob && ob->totcol) {
+		copy_v4_v4(sp->color, ob->color);
+	}
+	else {
+		ARRAY_SET_ITEMS(sp->color, 0.0f, 0.0f, 0.0f, 1.0f);
+	}
 
 	/* setup job */
 	WM_jobs_customdata_set(wm_job, sp, shader_preview_free);

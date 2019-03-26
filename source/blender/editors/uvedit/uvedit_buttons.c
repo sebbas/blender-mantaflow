@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, 2002-2009
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/uvedit/uvedit_buttons.c
- *  \ingroup eduv
+/** \file
+ * \ingroup eduv
  */
 
 #include <string.h>
@@ -48,6 +42,8 @@
 #include "BKE_customdata.h"
 #include "BKE_screen.h"
 #include "BKE_editmesh.h"
+
+#include "DEG_depsgraph.h"
 
 #include "ED_image.h"
 #include "ED_uvedit.h"
@@ -204,6 +200,7 @@ static void do_uvedit_vertex(bContext *C, void *UNUSED(arg), int event)
 	uvedit_translate(scene, obedit, em, ima, delta);
 
 	WM_event_add_notifier(C, NC_IMAGE, sima->image);
+	DEG_id_tag_update((ID *)obedit->data, ID_RECALC_GEOMETRY);
 }
 
 /* Panels */
@@ -234,7 +231,7 @@ void ED_uvedit_buttons_register(ARegionType *art)
 
 	pt = MEM_callocN(sizeof(PanelType), "spacetype image panel uv");
 	strcpy(pt->idname, "IMAGE_PT_uv");
-	strcpy(pt->label, N_("UV Vertex"));  /* XXX C panels are not available through RNA (bpy.types)! */
+	strcpy(pt->label, N_("UV Vertex"));  /* XXX C panels unavailable through RNA bpy.types! */
 	pt->draw = image_panel_uv;
 	pt->poll = image_panel_uv_poll;
 	BLI_addtail(&art->paneltypes, pt);

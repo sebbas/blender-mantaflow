@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/lattice/editlattice_tools.c
- *  \ingroup edlattice
+/** \file
+ * \ingroup edlattice
  */
 
 
@@ -73,11 +67,12 @@ static bool make_regular_poll(bContext *C)
 static int make_regular_exec(bContext *C, wmOperator *UNUSED(op))
 {
 	ViewLayer *view_layer = CTX_data_view_layer(C);
+	View3D *v3d = CTX_wm_view3d(C);
 	const bool is_editmode = CTX_data_edit_object(C) != NULL;
 
 	if (is_editmode) {
 		uint objects_len;
-		Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+		Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 		for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 			Object *ob = objects[ob_index];
 			Lattice *lt = ob->data;
@@ -88,13 +83,13 @@ static int make_regular_exec(bContext *C, wmOperator *UNUSED(op))
 
 			BKE_lattice_resize(lt->editlatt->latt, lt->pntsu, lt->pntsv, lt->pntsw, NULL);
 
-			DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+			DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 			WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
 		}
 		MEM_freeN(objects);
 	}
 	else {
-		FOREACH_SELECTED_OBJECT_BEGIN(view_layer, ob) {
+		FOREACH_SELECTED_OBJECT_BEGIN(view_layer, v3d, ob) {
 			if (ob->type != OB_LATTICE) {
 				continue;
 			}
@@ -102,7 +97,7 @@ static int make_regular_exec(bContext *C, wmOperator *UNUSED(op))
 			Lattice *lt = ob->data;
 			BKE_lattice_resize(lt, lt->pntsu, lt->pntsv, lt->pntsw, NULL);
 
-			DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+			DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 			WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
 		} FOREACH_SELECTED_OBJECT_END;
 	}
@@ -134,7 +129,7 @@ void LATTICE_OT_make_regular(wmOperatorType *ot)
 typedef enum eLattice_FlipAxes {
 	LATTICE_FLIP_U = 0,
 	LATTICE_FLIP_V = 1,
-	LATTICE_FLIP_W = 2
+	LATTICE_FLIP_W = 2,
 } eLattice_FlipAxes;
 
 /**
@@ -218,7 +213,7 @@ static int lattice_flip_exec(bContext *C, wmOperator *op)
 	bool changed = false;
 	const eLattice_FlipAxes axis = RNA_enum_get(op->ptr, "axis");
 
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *obedit = objects[ob_index];
 		Lattice *lt;
@@ -238,7 +233,8 @@ static int lattice_flip_exec(bContext *C, wmOperator *op)
 		numW = lt->pntsw;
 		totP = numU * numV * numW;
 
-		/* First Pass: determine midpoint - used for flipping center verts if there are odd number of points on axis */
+		/* First Pass: determine midpoint - used for flipping center verts if there
+		 * are odd number of points on axis */
 		switch (axis) {
 			case LATTICE_FLIP_U:
 				isOdd = numU & 1;
@@ -335,7 +331,7 @@ static int lattice_flip_exec(bContext *C, wmOperator *op)
 		}
 
 		/* updates */
-		DEG_id_tag_update(&obedit->id, OB_RECALC_DATA);
+		DEG_id_tag_update(&obedit->id, ID_RECALC_GEOMETRY);
 		WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
 		changed = true;
 	}
@@ -350,7 +346,8 @@ void LATTICE_OT_flip(wmOperatorType *ot)
 		{LATTICE_FLIP_U, "U", 0, "U (X) Axis", ""},
 		{LATTICE_FLIP_V, "V", 0, "V (Y) Axis", ""},
 		{LATTICE_FLIP_W, "W", 0, "W (Z) Axis", ""},
-		{0, NULL, 0, NULL, NULL}};
+		{0, NULL, 0, NULL, NULL},
+	};
 
 	/* identifiers */
 	ot->name = "Flip (Distortion Free)";

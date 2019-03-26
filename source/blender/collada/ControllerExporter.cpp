@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,15 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Chingiz Dyussenov, Arystanbek Dyussenov, Jan Diederich, Tod Liverseed,
- *                 Nathan Letwory, Sukhitha Jayathilake
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/collada/ControllerExporter.cpp
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 
 #include "COLLADASWBaseInputElement.h"
@@ -38,11 +31,10 @@
 #include "BKE_armature.h"
 
 extern "C" {
-#include "BKE_main.h"
-#include "BKE_mesh.h"
 #include "BKE_global.h"
-#include "BKE_library.h"
 #include "BKE_idprop.h"
+#include "BKE_library.h"
+#include "BKE_mesh.h"
 }
 
 #include "ED_armature.h"
@@ -56,22 +48,18 @@ extern "C" {
 
 #include "collada_utils.h"
 
-// XXX exporter writes wrong data for shared armatures.  A separate
-// controller should be written for each armature-mesh binding how do
-// we make controller ids then?
-ControllerExporter::ControllerExporter(COLLADASW::StreamWriter *sw, const ExportSettings *export_settings) : COLLADASW::LibraryControllers(sw), export_settings(export_settings) {
-}
 
 bool ControllerExporter::is_skinned_mesh(Object *ob)
 {
 	return bc_get_assigned_armature(ob) != NULL;
 }
 
-
 void ControllerExporter::write_bone_URLs(COLLADASW::InstanceController &ins, Object *ob_arm, Bone *bone)
 {
-	if (bc_is_root_bone(bone, this->export_settings->deform_bones_only))
-		ins.addSkeleton(COLLADABU::URI(COLLADABU::Utils::EMPTY_STRING, get_joint_id(ob_arm, bone)));
+	if (bc_is_root_bone(bone, this->export_settings->deform_bones_only)) {
+		std::string node_id = translate_id(id_name(ob_arm) + "_" + bone->name);
+		ins.addSkeleton(COLLADABU::URI(COLLADABU::Utils::EMPTY_STRING, node_id));
+	}
 	else {
 		for (Bone *child = (Bone *)bone->childbase.first; child; child = child->next) {
 			write_bone_URLs(ins, ob_arm, child);
@@ -104,12 +92,9 @@ bool ControllerExporter::add_instance_controller(Object *ob)
 	return true;
 }
 
-void ControllerExporter::export_controllers(Main *bmain, Depsgraph *depsgraph, Scene *sce)
+void ControllerExporter::export_controllers()
 {
-	this->depsgraph = depsgraph;
-	m_bmain = bmain;
-	scene = sce;
-
+	Scene *sce = blender_context.get_scene();
 	openLibrary();
 
 	GeometryFunctor gf;
@@ -204,12 +189,11 @@ void ControllerExporter::export_skin_controller(Object *ob, Object *ob_arm)
 	}
 
 	me = bc_get_mesh_copy(
-				depsgraph,
-				scene,
-				ob,
-				this->export_settings->export_mesh_type,
-				this->export_settings->apply_modifiers,
-				this->export_settings->triangulate);
+	        blender_context,
+	        ob,
+	        this->export_settings->export_mesh_type,
+	        this->export_settings->apply_modifiers,
+	        this->export_settings->triangulate);
 
 	std::string controller_name = id_name(ob_arm);
 	std::string controller_id = get_controller_id(ob_arm, ob);
@@ -306,8 +290,7 @@ void ControllerExporter::export_morph_controller(Object *ob, Key *key)
 	Mesh *me;
 
 	me = bc_get_mesh_copy(
-				depsgraph,
-				scene,
+				blender_context,
 				ob,
 				this->export_settings->export_mesh_type,
 				this->export_settings->apply_modifiers,
@@ -431,8 +414,13 @@ void ControllerExporter::add_joints_element(ListBase *defbase,
 void ControllerExporter::add_bind_shape_mat(Object *ob)
 {
 	double bind_mat[4][4];
+	float  f_obmat[4][4];
+	BKE_object_matrix_local_get(ob, f_obmat);
 
-	converter.mat4_to_dae_double(bind_mat, ob->obmat);
+	//UnitConverter::mat4_to_dae_double(bind_mat, ob->obmat);
+	UnitConverter::mat4_to_dae_double(bind_mat, f_obmat);
+	if (this->export_settings->limit_precision)
+		bc_sanitize_mat(bind_mat, LIMITTED_PRECISION);
 
 	addBindShapeTransform(bind_mat);
 }
@@ -500,6 +488,9 @@ std::string ControllerExporter::add_inv_bind_mats_source(Object *ob_arm, ListBas
 
 	// put armature in rest position
 	if (!(arm->flag & ARM_RESTPOS)) {
+		Depsgraph *depsgraph = blender_context.get_depsgraph();
+		Scene *scene = blender_context.get_scene();
+
 		arm->flag |= ARM_RESTPOS;
 		BKE_pose_where_is(depsgraph, scene, ob_arm);
 	}
@@ -539,15 +530,17 @@ std::string ControllerExporter::add_inv_bind_mats_source(Object *ob_arm, ListBas
 			mul_m4_m4m4(world, ob_arm->obmat, bind_mat);
 
 			invert_m4_m4(mat, world);
-			converter.mat4_to_dae(inv_bind_mat, mat);
+			UnitConverter::mat4_to_dae(inv_bind_mat, mat);
 			if (this->export_settings->limit_precision)
-				bc_sanitize_mat(inv_bind_mat, 6);
+				bc_sanitize_mat(inv_bind_mat, LIMITTED_PRECISION);
 			source.appendValues(inv_bind_mat);
 		}
 	}
 
 	// back from rest position
 	if (!(flag & ARM_RESTPOS)) {
+		Depsgraph *depsgraph = blender_context.get_depsgraph();
+		Scene *scene = blender_context.get_scene();
 		arm->flag = flag;
 		BKE_pose_where_is(depsgraph, scene, ob_arm);
 	}

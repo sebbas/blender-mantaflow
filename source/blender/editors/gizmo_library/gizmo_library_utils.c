@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2015 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file gizmo_library_utils.c
- *  \ingroup edgizmolib
+/** \file
+ * \ingroup edgizmolib
  *
  * \name Gizmo Library Utilities
  *
@@ -32,7 +26,6 @@
  */
 
 #include "BLI_math.h"
-#include "BLI_listbase.h"
 
 #include "DNA_view3d_types.h"
 #include "DNA_screen_types.h"
@@ -99,7 +92,7 @@ float gizmo_value_from_offset(
 	}
 
 	/* clamp to custom range */
-	if (data->flag & GIZMO_CUSTOM_RANGE_SET) {
+	if (data->is_custom_range_set) {
 		CLAMP(value, data->min, max);
 	}
 
@@ -124,7 +117,7 @@ void gizmo_property_data_update(
 	float value = WM_gizmo_target_property_float_get(gz, gz_prop);
 
 	if (constrained) {
-		if ((data->flag & GIZMO_CUSTOM_RANGE_SET) == 0) {
+		if (data->is_custom_range_set == false) {
 			float range[2];
 			if (WM_gizmo_target_property_float_range_get(gz, gz_prop, range)) {
 				data->range = range[1] - range[0];

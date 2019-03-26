@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Chingiz Dyussenov, Arystanbek Dyussenov, Nathan Letwory, Sukhitha Jayathilake.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file AnimationImporter.h
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 
 #ifndef __ANIMATIONIMPORTER_H__
@@ -42,10 +36,11 @@
 #include "COLLADAFWInstanceGeometry.h"
 
 extern "C" {
+#include "BKE_context.h"
 #include "DNA_anim_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_camera_types.h"
 }
 
@@ -65,7 +60,7 @@ public:
 class AnimationImporter : private TransformReader, public AnimationImporterBase
 {
 private:
-
+	bContext *mContext;
 	ArmatureImporter *armature_importer;
 	Scene *scene;
 
@@ -99,7 +94,7 @@ private:
 //		INANIMATE = 0,
 		LIGHT_COLOR	= 2,
 		LIGHT_FOA = 4,
-		LIGHT_FOE = 8
+		LIGHT_FOE = 8,
 	};
 
 	enum cameraAnim
@@ -110,7 +105,7 @@ private:
 		CAMERA_YFOV = 8,
 		CAMERA_YMAG = 16,
 		CAMERA_ZFAR = 32,
-		CAMERA_ZNEAR = 64
+		CAMERA_ZNEAR = 64,
 	};
 
 	enum matAnim
@@ -119,13 +114,13 @@ private:
 		MATERIAL_SPEC_COLOR = 4,
 		MATERIAL_DIFF_COLOR = 1 << 3,
 		MATERIAL_TRANSPARENCY = 1 << 4,
-		MATERIAL_IOR = 1 << 5
+		MATERIAL_IOR = 1 << 5,
 	};
 
 	enum AnimationType
 		{
-			INANIMATE = 0,
-			NODE_TRANSFORM = 1,
+			BC_INANIMATE = 0,
+			BC_NODE_TRANSFORM = 1,
 		};
 
 	struct AnimMix
@@ -138,7 +133,11 @@ private:
 	};
 public:
 
-	AnimationImporter(UnitConverter *conv, ArmatureImporter *arm, Scene *scene);
+	AnimationImporter(bContext *C, UnitConverter *conv, ArmatureImporter *arm, Scene *scene) :
+		TransformReader(conv),
+		mContext(C),
+		armature_importer(arm),
+		scene(scene) {}
 
 	~AnimationImporter();
 
@@ -153,7 +152,7 @@ public:
 	virtual void change_eul_to_quat(Object *ob, bAction *act);
 #endif
 
-	void translate_Animations(Main *bmain, COLLADAFW::Node * Node,
+	void translate_Animations(COLLADAFW::Node * Node,
 	                          std::map<COLLADAFW::UniqueId, COLLADAFW::Node*>& root_map,
 	                          std::multimap<COLLADAFW::UniqueId, Object*>& object_map,
 	                          std::map<COLLADAFW::UniqueId, const COLLADAFW::Object*> FW_object_map,
@@ -161,10 +160,10 @@ public:
 
 	AnimMix* get_animation_type( const COLLADAFW::Node * node, std::map<COLLADAFW::UniqueId, const COLLADAFW::Object*> FW_object_map );
 
-	void apply_matrix_curves(Main *bmain, Object *ob, std::vector<FCurve*>& animcurves, COLLADAFW::Node* root, COLLADAFW::Node* node,
+	void apply_matrix_curves(Object *ob, std::vector<FCurve*>& animcurves, COLLADAFW::Node* root, COLLADAFW::Node* node,
 	                         COLLADAFW::Transformation * tm );
 
-	void add_bone_animation_sampled(Main *bmain, Object *ob, std::vector<FCurve*>& animcurves, COLLADAFW::Node* root, COLLADAFW::Node* node, COLLADAFW::Transformation * tm);
+	void add_bone_animation_sampled(Object *ob, std::vector<FCurve*>& animcurves, COLLADAFW::Node* root, COLLADAFW::Node* node, COLLADAFW::Transformation * tm);
 
 	void Assign_transform_animations(COLLADAFW::Transformation* transform,
 	                                 const COLLADAFW::AnimationList::AnimationBinding *binding,
@@ -182,9 +181,9 @@ public:
 	// animlist_map - map animlist id -> animlist
 	// curve_map - map anim id -> curve(s)
 	Object *translate_animation_OLD(
-	        Main *bmain, COLLADAFW::Node *node,
-	        std::map<COLLADAFW::UniqueId, Object*>& object_map,
-	        std::map<COLLADAFW::UniqueId, COLLADAFW::Node*>& root_map,
+	        COLLADAFW::Node *node,
+	        std::map<COLLADAFW::UniqueId, Object *>& object_map,
+	        std::map<COLLADAFW::UniqueId, COLLADAFW::Node *>& root_map,
 	        COLLADAFW::Transformation::TransformationType tm_type,
 	        Object *par_job = NULL);
 

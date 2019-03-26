@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,13 +15,10 @@
  *
  * The Original Code is Copyright (C) 2016 Blender Foundation.
  * All rights reserved.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/editors/io/io_cache.c
- *  \ingroup editor/io
+/** \file
+ * \ingroup editor/io
  */
 
 #include "MEM_guardedalloc.h"
@@ -105,8 +100,8 @@ static int cachefile_open_exec(bContext *C, wmOperator *op)
 		/* hook into UI */
 		PropertyPointerRNA *pprop = op->customdata;
 		if (pprop->prop) {
-			/* when creating new ID blocks, use is already 1, but RNA
-			 * pointer se also increases user, so this compensates it */
+			/* When creating new ID blocks, use is already 1, but RNA
+			 * pointer see also increases user, so this compensates it. */
 			id_us_min(&cache_file->id);
 
 			PointerRNA idptr;

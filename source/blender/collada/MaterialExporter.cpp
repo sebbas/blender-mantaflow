@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,18 +12,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Chingiz Dyussenov, Arystanbek Dyussenov, Jan Diederich, Tod Liverseed,
- *                 Nathan Letwory
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/collada/MaterialExporter.cpp
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
-
-
 
 #include "MaterialExporter.h"
 #include "COLLADABUUtils.h"
@@ -68,12 +59,12 @@ bool MaterialsExporter::hasMaterials(Scene *sce)
 
 void MaterialsExporter::operator()(Material *ma, Object *ob)
 {
-	std::string name(id_name(ma));
+	std::string mat_name = encode_xml(id_name(ma));
+	std::string mat_id = get_material_id(ma);
+	std::string eff_id = get_effect_id(ma);
 
-	openMaterial(get_material_id(ma), translate_id(name));
-
-	std::string efid = translate_id(name) + "-effect";
-	addInstanceEffect(COLLADASW::URI(COLLADABU::Utils::EMPTY_STRING, efid));
+	openMaterial(mat_id, mat_name);
+	addInstanceEffect(COLLADASW::URI(COLLADABU::Utils::EMPTY_STRING, eff_id));
 
 	closeMaterial();
 }

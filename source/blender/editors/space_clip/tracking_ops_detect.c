@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2016 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation,
- *                 Sergey Sharybin
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_clip/tracking_ops_detect.c
- *  \ingroup spclip
+/** \file
+ * \ingroup spclip
  */
 
 #include "MEM_guardedalloc.h"
@@ -131,11 +123,11 @@ void CLIP_OT_detect_features(wmOperatorType *ot)
 	static const EnumPropertyItem placement_items[] = {
 		{0, "FRAME",            0, "Whole Frame",
 		 "Place markers across the whole frame"},
-		{1, "INSIDE_GPENCIL",   0, "Inside grease pencil",
-		 "Place markers only inside areas outlined with grease pencil"},
-		{2, "OUTSIDE_GPENCIL",  0, "Outside grease pencil",
-		 "Place markers only outside areas outlined with grease pencil"},
-		{0, NULL, 0, NULL, NULL}
+		{1, "INSIDE_GPENCIL",   0, "Inside Grease Pencil",
+		 "Place markers only inside areas outlined with Grease Pencil"},
+		{2, "OUTSIDE_GPENCIL",  0, "Outside Grease Pencil",
+		 "Place markers only outside areas outlined with Grease Pencil"},
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */

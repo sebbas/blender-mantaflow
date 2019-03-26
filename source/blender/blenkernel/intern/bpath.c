@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Campbell barton, Alex Fraser
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/bpath.c
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 /* TODO,
@@ -81,9 +75,13 @@
 
 #include "BKE_bpath.h"  /* own include */
 
+#include "CLG_log.h"
+
 #ifndef _MSC_VER
 #  include "BLI_strict_flags.h"
 #endif
+
+static CLG_LogRef LOG = {"bke.bpath"};
 
 static bool checkMissingFiles_visit_cb(void *userdata, char *UNUSED(path_dst), const char *path_src)
 {
@@ -141,7 +139,7 @@ void BKE_bpath_relative_convert(Main *bmain, const char *basedir, ReportList *re
 	const int flag = BKE_BPATH_TRAVERSE_SKIP_LIBRARY;
 
 	if (basedir[0] == '\0') {
-		printf("%s: basedir='', this is a bug\n", __func__);
+		CLOG_ERROR(&LOG, "basedir='', this is a bug");
 		return;
 	}
 
@@ -185,7 +183,7 @@ void BKE_bpath_absolute_convert(Main *bmain, const char *basedir, ReportList *re
 	const int flag = BKE_BPATH_TRAVERSE_SKIP_LIBRARY;
 
 	if (basedir[0] == '\0') {
-		printf("%s: basedir='', this is a bug\n", __func__);
+		CLOG_ERROR(&LOG, "basedir='', this is a bug");
 		return;
 	}
 
@@ -213,7 +211,7 @@ static bool missing_files_find__recursive(
         char *filename_new,
         const char *dirname,
         const char *filename,
-        off_t *r_filesize,
+        int64_t *r_filesize,
         int *r_recur_depth)
 {
 	/* file searching stuff */
@@ -221,7 +219,7 @@ static bool missing_files_find__recursive(
 	struct dirent *de;
 	BLI_stat_t status;
 	char path[FILE_MAX];
-	off_t size;
+	int64_t size;
 	bool found = false;
 
 	dir = opendir(dirname);
@@ -277,7 +275,7 @@ static bool missing_files_find__visit_cb(void *userdata, char *path_dst, const c
 	BPathFind_Data *data = (BPathFind_Data *)userdata;
 	char filename_new[FILE_MAX];
 
-	off_t filesize = -1;
+	int64_t filesize = -1;
 	int recur_depth = 0;
 	bool found;
 
@@ -413,13 +411,6 @@ static bool rewrite_path_alloc(char **path, BPathVisitor visit_cb, const char *a
 	}
 }
 
-/* fix the image user "ok" tag after updating paths, so ImBufs get loaded */
-static void bpath_traverse_image_user_cb(Image *ima, ImageUser *iuser, void *customdata)
-{
-	if (ima == customdata)
-		iuser->ok = 1;
-}
-
 /* Run visitor function 'visit' on all paths contained in 'id'. */
 void BKE_bpath_traverse_id(Main *bmain, ID *id, BPathVisitor visit_cb, const int flag, void *bpath_user_data)
 {
@@ -443,7 +434,6 @@ void BKE_bpath_traverse_id(Main *bmain, ID *id, BPathVisitor visit_cb, const int
 							    !BKE_image_is_dirty(ima))
 							{
 								BKE_image_signal(bmain, ima, NULL, IMA_SIGNAL_RELOAD);
-								BKE_image_walk_all_users(bmain, ima, bpath_traverse_image_user_cb);
 							}
 						}
 					}
@@ -616,9 +606,7 @@ void BKE_bpath_traverse_id(Main *bmain, ID *id, BPathVisitor visit_cb, const int
 							rewrite_path_fixed(seq->strip->dir, visit_cb, absbase, bpath_user_data);
 						}
 					}
-
-				}
-				SEQ_END
+				} SEQ_END;
 			}
 			break;
 		}
@@ -686,8 +674,7 @@ bool BKE_bpath_relocate_visitor(void *pathbase_v, char *path_dst, const char *pa
 	const char *base_old = ((char **)pathbase_v)[1];
 
 	if (BLI_path_is_rel(base_old)) {
-		printf("%s: error, old base path '%s' is not absolute.\n",
-		       __func__, base_old);
+		CLOG_ERROR(&LOG, "old base path '%s' is not absolute.", base_old);
 		return false;
 	}
 

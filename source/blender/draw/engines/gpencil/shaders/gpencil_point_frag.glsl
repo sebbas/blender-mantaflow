@@ -23,9 +23,10 @@ void main()
 	float dist_squared = dot(centered, centered);
 	const float rad_squared = 0.25;
 
-	// round point with jaggy edges
-	if ((mode != GPENCIL_MODE_BOX) && (dist_squared > rad_squared))
+	 /* Round point with jaggy edges. */
+	if ((mode != GPENCIL_MODE_BOX) && (dist_squared > rad_squared)) {
 		discard;
+	}
 
 	vec4 tmp_color = texture2D(myTexture, mTexCoord);
 
@@ -46,4 +47,6 @@ void main()
 		/* mult both alpha factor to use strength factor with color alpha limit */
 		fragColor.a = min(text_color.a * mColor.a, mColor.a);
 	}
+	if(fragColor.a < 0.0035)
+		discard;
 }

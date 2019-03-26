@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/bmesh/tools/bmesh_decimate_collapse.c
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * BMesh decimator that uses an edge collapse method.
  */
@@ -37,7 +31,6 @@
 #include "BLI_linklist.h"
 #include "BLI_alloca.h"
 #include "BLI_memarena.h"
-#include "BLI_edgehash.h"
 #include "BLI_polyfill_2d.h"
 #include "BLI_polyfill_2d_beautify.h"
 #include "BLI_utildefines_stack.h"
@@ -58,17 +51,18 @@
 /* defines for testing */
 #define USE_CUSTOMDATA
 #define USE_TRIANGULATE
-#define USE_VERT_NORMAL_INTERP  /* has the advantage that flipped faces don't mess up vertex normals */
+/** Has the advantage that flipped faces don't mess up vertex normals. */
+#define USE_VERT_NORMAL_INTERP
 
-/* if the cost from #BLI_quadric_evaluate is 'noise', fallback to topology */
+/** if the cost from #BLI_quadric_evaluate is 'noise', fallback to topology */
 #define USE_TOPOLOGY_FALLBACK
 #ifdef  USE_TOPOLOGY_FALLBACK
-/* cost is calculated with double precision, it's ok to use a very small epsilon, see T48154. */
+/** cost is calculated with double precision, it's ok to use a very small epsilon, see T48154. */
 #  define   TOPOLOGY_FALLBACK_EPS  1e-12f
 #endif
 
 #define BOUNDARY_PRESERVE_WEIGHT 100.0f
-/* Uses double precision, impacts behavior on near-flat surfaces,
+/** Uses double precision, impacts behavior on near-flat surfaces,
  * cane give issues with very small faces. 1e-2 is too big, see: T48154. */
 #define OPTIMIZE_EPS 1e-8
 #define COST_INVALID FLT_MAX
@@ -76,7 +70,7 @@
 typedef enum CD_UseFlag {
 	CD_DO_VERT = (1 << 0),
 	CD_DO_EDGE = (1 << 1),
-	CD_DO_LOOP = (1 << 2)
+	CD_DO_LOOP = (1 << 2),
 } CD_UseFlag;
 
 
@@ -84,7 +78,7 @@ typedef enum CD_UseFlag {
  * ********************** */
 
 /**
- * \param vquadrics must be calloc'd
+ * \param vquadrics: must be calloc'd
  */
 static void bm_decim_build_quadrics(BMesh *bm, Quadric *vquadrics)
 {
@@ -100,7 +94,7 @@ static void bm_decim_build_quadrics(BMesh *bm, Quadric *vquadrics)
 		double plane_db[4];
 		Quadric q;
 
-		BM_face_calc_center_mean(f, center);
+		BM_face_calc_center_median(f, center);
 		copy_v3db_v3fl(plane_db, f->no);
 		plane_db[3] = -dot_v3db_v3fl(plane_db, center);
 
@@ -157,7 +151,8 @@ static void bm_decim_calc_target_co_db(
 	        &vquadrics[BM_elem_index_get(e->v2)]);
 
 	if (BLI_quadric_optimize(&q, optimize_co, OPTIMIZE_EPS)) {
-		return;  /* all is good */
+		/* all is good */
+		return;
 	}
 	else {
 		optimize_co[0] = 0.5 * ((double)e->v1->co[0] + (double)e->v2->co[0]);
@@ -194,9 +189,12 @@ static bool bm_edge_collapse_is_degenerate_flip(BMEdge *e, const float optimize_
 				float cross_optim[3];
 
 #if 1
-				float vec_other[3];  /* line between the two outer verts, re-use for both cross products */
-				float vec_exist[3];  /* before collapse */
-				float vec_optim[3];  /* after collapse */
+				/* line between the two outer verts, re-use for both cross products */
+				float vec_other[3];
+				/* before collapse */
+				float vec_exist[3];
+				/* after collapse */
+				float vec_optim[3];
 
 				sub_v3_v3v3(vec_other, co_prev, co_next);
 				sub_v3_v3v3(vec_exist, co_prev, v->co);
@@ -369,7 +367,8 @@ static void bm_decim_build_edge_cost(
 	uint i;
 
 	BM_ITER_MESH_INDEX (e, &iter, bm, BM_EDGES_OF_MESH, i) {
-		eheap_table[i] = NULL;  /* keep sanity check happy */
+		/* keep sanity check happy */
+		eheap_table[i] = NULL;
 		bm_decim_build_edge_cost_single(e, vquadrics, vweights, vweight_factor, eheap, eheap_table);
 	}
 }
@@ -425,9 +424,9 @@ static int *bm_edge_symmetry_map(BMesh *bm, uint symmetry_axis, float limit)
 	uint i;
 	int *edge_symmetry_map;
 	const float limit_sq = SQUARE(limit);
-	KDTree *tree;
+	KDTree_3d *tree;
 
-	tree = BLI_kdtree_new(bm->totedge);
+	tree = BLI_kdtree_3d_new(bm->totedge);
 
 	etable = MEM_mallocN(sizeof(*etable) * bm->totedge, __func__);
 	edge_symmetry_map = MEM_mallocN(sizeof(*edge_symmetry_map) * bm->totedge, __func__);
@@ -435,12 +434,12 @@ static int *bm_edge_symmetry_map(BMesh *bm, uint symmetry_axis, float limit)
 	BM_ITER_MESH_INDEX (e, &iter, bm, BM_EDGES_OF_MESH, i) {
 		float co[3];
 		mid_v3_v3v3(co, e->v1->co, e->v2->co);
-		BLI_kdtree_insert(tree, i, co);
+		BLI_kdtree_3d_insert(tree, i, co);
 		etable[i] = e;
 		edge_symmetry_map[i] = -1;
 	}
 
-	BLI_kdtree_balance(tree);
+	BLI_kdtree_3d_balance(tree);
 
 	sym_data.etable = etable;
 	sym_data.limit_sq = limit_sq;
@@ -458,7 +457,7 @@ static int *bm_edge_symmetry_map(BMesh *bm, uint symmetry_axis, float limit)
 			sub_v3_v3v3(sym_data.e_dir, sym_data.e_v2_co, sym_data.e_v1_co);
 			sym_data.e_found_index = -1;
 
-			BLI_kdtree_range_search_cb(tree, co, limit, bm_edge_symmetry_check_cb, &sym_data);
+			BLI_kdtree_3d_range_search_cb(tree, co, limit, bm_edge_symmetry_check_cb, &sym_data);
 
 			if (sym_data.e_found_index != -1) {
 				const int i_other = sym_data.e_found_index;
@@ -469,7 +468,7 @@ static int *bm_edge_symmetry_map(BMesh *bm, uint symmetry_axis, float limit)
 	}
 
 	MEM_freeN(etable);
-	BLI_kdtree_free(tree);
+	BLI_kdtree_3d_free(tree);
 
 	return edge_symmetry_map;
 }
@@ -722,7 +721,8 @@ static void bm_edge_collapse_loop_customdata(
 
 	BLI_assert(l_clear->v == v_clear);
 	BLI_assert(l_other->v == v_other);
-	(void)v_other;  /* quiet warnings for release */
+	/* quiet warnings for release */
+	(void)v_other;
 
 	/* now we have both corners of the face 'l->f' */
 	for (side = 0; side < 2; side++) {
@@ -1147,7 +1147,8 @@ static bool bm_decim_edge_collapse(
 	int e_clear_other[2];
 	BMVert *v_other = e->v1;
 	const int v_other_index = BM_elem_index_get(e->v1);
-	const int v_clear_index = BM_elem_index_get(e->v2);  /* the vert is removed so only store the index */
+	/* the vert is removed so only store the index */
+	const int v_clear_index = BM_elem_index_get(e->v2);
 	float customdata_fac;
 
 #ifdef USE_VERT_NORMAL_INTERP
@@ -1159,7 +1160,8 @@ static bool bm_decim_edge_collapse(
 	if (optimize_co_calc) {
 		/* disallow collapsing which results in degenerate cases */
 		if (UNLIKELY(bm_edge_collapse_is_degenerate_topology(e))) {
-			bm_decim_invalid_edge_cost_single(e, eheap, eheap_table);  /* add back with a high cost */
+			/* add back with a high cost */
+			bm_decim_invalid_edge_cost_single(e, eheap, eheap_table);
 			return false;
 		}
 
@@ -1167,7 +1169,8 @@ static bool bm_decim_edge_collapse(
 
 		/* check if this would result in an overlapping face */
 		if (UNLIKELY(bm_edge_collapse_is_degenerate_flip(e, optimize_co))) {
-			bm_decim_invalid_edge_cost_single(e, eheap, eheap_table);  /* add back with a high cost */
+			/* add back with a high cost */
+			bm_decim_invalid_edge_cost_single(e, eheap, eheap_table);
 			return false;
 		}
 	}
@@ -1203,7 +1206,8 @@ static bool bm_decim_edge_collapse(
 			vweights[v_other_index] = v_other_weight;
 		}
 
-		e = NULL;  /* paranoid safety check */
+		/* paranoid safety check */
+		e = NULL;
 
 		copy_v3_v3(v_other->co, optimize_co);
 
@@ -1281,9 +1285,9 @@ static bool bm_decim_edge_collapse(
 
 /**
  * \brief BM_mesh_decimate
- * \param bm The mesh
- * \param factor face count multiplier [0 - 1]
- * \param vweights Optional array of vertex  aligned weights [0 - 1],
+ * \param bm: The mesh
+ * \param factor: face count multiplier [0 - 1]
+ * \param vweights: Optional array of vertex  aligned weights [0 - 1],
  *        a vertex group is the usual source for this.
  * \param symmetry_axis: Axis of symmetry, -1 to disable mirror decimate.
  * \param symmetry_eps: Threshold when matching mirror verts.
@@ -1295,9 +1299,12 @@ void BM_mesh_decimate_collapse(
         const bool do_triangulate,
         const int symmetry_axis, const float symmetry_eps)
 {
-	Heap *eheap;             /* edge heap */
-	HeapNode **eheap_table;  /* edge index aligned table pointing to the eheap */
-	Quadric *vquadrics;      /* vert index aligned quadrics */
+	/* edge heap */
+	Heap *eheap;
+	/* edge index aligned table pointing to the eheap */
+	HeapNode **eheap_table;
+	/* vert index aligned quadrics */
+	Quadric *vquadrics;
 	int tot_edge_orig;
 	int face_tot_target;
 
@@ -1354,12 +1361,13 @@ void BM_mesh_decimate_collapse(
 		/* simple non-mirror case */
 		while ((bm->totface > face_tot_target) &&
 		       (BLI_heap_is_empty(eheap) == false) &&
-		       (BLI_heap_node_value(BLI_heap_top(eheap)) != COST_INVALID))
+		       (BLI_heap_top_value(eheap) != COST_INVALID))
 		{
 			// const float value = BLI_heap_node_value(BLI_heap_top(eheap));
 			BMEdge *e = BLI_heap_pop_min(eheap);
 			float optimize_co[3];
-			BLI_assert(BM_elem_index_get(e) < tot_edge_orig);  /* handy to detect corruptions elsewhere */
+			/* handy to detect corruptions elsewhere */
+			BLI_assert(BM_elem_index_get(e) < tot_edge_orig);
 
 			/* under normal conditions wont be accessed again,
 			 * but NULL just incase so we don't use freed node */
@@ -1379,7 +1387,7 @@ void BM_mesh_decimate_collapse(
 	else {
 		while ((bm->totface > face_tot_target) &&
 		       (BLI_heap_is_empty(eheap) == false) &&
-		       (BLI_heap_node_value(BLI_heap_top(eheap)) != COST_INVALID))
+		       (BLI_heap_top_value(eheap) != COST_INVALID))
 		{
 			/**
 			 * \note
@@ -1511,5 +1519,6 @@ invalidate:
 	/* testing only */
 	// BM_mesh_validate(bm);
 
-	(void)tot_edge_orig;  /* quiet release build warning */
+	/* quiet release build warning */
+	(void)tot_edge_orig;
 }

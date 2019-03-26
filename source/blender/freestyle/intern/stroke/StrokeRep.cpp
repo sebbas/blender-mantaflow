@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,15 +12,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/freestyle/intern/stroke/StrokeRep.cpp
- *  \ingroup freestyle
- *  \brief Class to define the representation of a stroke (for display purpose)
- *  \author Stephane Grabli
- *  \date 05/03/2003
+/** \file
+ * \ingroup freestyle
+ * \brief Class to define the representation of a stroke (for display purpose)
  */
 
 #include "Stroke.h"
@@ -382,8 +376,8 @@ void Strip::cleanUpSingularities (const vector<StrokeVertex*>& iStrokeVertices)
 	if (iStrokeVertices.size() < 2)
 		return;
 	int i = 0, j;
-	vector<StrokeVertex *>::const_iterator v, vend, v2, vPrev;
-	StrokeVertex *sv, *sv2; //soc unused -  *svPrev;
+	vector<StrokeVertex *>::const_iterator v, vend, v2;
+	StrokeVertex *sv, *sv2;
 
 	bool singu1 = false, singu2 = false;
 	int timeSinceSingu1 = 0, timeSinceSingu2 = 0;

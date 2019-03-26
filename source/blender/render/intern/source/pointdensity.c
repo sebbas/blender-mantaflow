@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributors: Matt Ebb
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/render/intern/source/pointdensity.c
- *  \ingroup render
+/** \file
+ * \ingroup render
  */
 
 
@@ -52,7 +46,6 @@
 #include "BKE_colorband.h"
 #include "BKE_deform.h"
 #include "BKE_lattice.h"
-#include "BKE_main.h"
 #include "BKE_object.h"
 #include "BKE_particle.h"
 #include "BKE_scene.h"
@@ -258,9 +251,9 @@ static void pointdensity_cache_psys(Depsgraph *depsgraph, Scene *scene,
 		BLI_bvhtree_insert(pd->point_tree, i, partco, 1);
 
 		if (data_vel) {
-			data_vel[i*3 + 0] = state.vel[0];
-			data_vel[i*3 + 1] = state.vel[1];
-			data_vel[i*3 + 2] = state.vel[2];
+			data_vel[i * 3 + 0] = state.vel[0];
+			data_vel[i * 3 + 1] = state.vel[1];
+			data_vel[i * 3 + 2] = state.vel[2];
 		}
 		if (data_life) {
 			data_life[i] = state.time;
@@ -316,7 +309,7 @@ static void pointdensity_cache_vertex_color(PointDensity *pd, Object *UNUSED(ob)
 	 */
 	for (i = 0; i < pd->totpoints; i++) {
 		if (mcorners[i] > 0)
-			mul_v3_fl(&data_color[i*3], 1.0f / mcorners[i]);
+			mul_v3_fl(&data_color[i * 3], 1.0f / mcorners[i]);
 	}
 
 	MEM_freeN(mcorners);
@@ -370,18 +363,21 @@ static void pointdensity_cache_object(PointDensity *pd,
 {
 	float *data_color;
 	int i;
-	CustomDataMask mask = CD_MASK_BAREMESH | CD_MASK_MTFACE | CD_MASK_MCOL;
 	MVert *mvert = NULL, *mv;
 	Mesh *mesh = ob->data;
 
+#if 0  /* UNUSED */
+	CustomData_MeshMasks mask = CD_MASK_BAREMESH;
+	mask.fmask |= CD_MASK_MTFACE | CD_MASK_MCOL;
 	switch (pd->ob_color_source) {
 		case TEX_PD_COLOR_VERTCOL:
-			mask |= CD_MASK_MLOOPCOL;
+			mask.lmask |= CD_MASK_MLOOPCOL;
 			break;
 		case TEX_PD_COLOR_VERTWEIGHT:
-			mask |= CD_MASK_MDEFORMVERT;
+			mask.vmask |= CD_MASK_MDEFORMVERT;
 			break;
 	}
+#endif
 
 	mvert = mesh->mvert; /* local object space */
 	pd->totpoints = mesh->totvert;
@@ -570,8 +566,9 @@ static void accum_density(void *userdata, int index, const float co[3], float sq
 }
 
 
-static void init_pointdensityrangedata(PointDensity *pd, PointDensityRangeData *pdr,
-	float *density, float *vec, float *age, float *col, struct CurveMapping *density_curve, float velscale)
+static void init_pointdensityrangedata(
+        PointDensity *pd, PointDensityRangeData *pdr,
+        float *density, float *vec, float *age, float *col, struct CurveMapping *density_curve, float velscale)
 {
 	pdr->squared_radius = pd->radius * pd->radius;
 	pdr->density = density;
@@ -604,9 +601,9 @@ static int pointdensity(PointDensity *pd,
 	texres->tin = 0.0f;
 
 	init_pointdensityrangedata(pd, &pdr, &density, vec, &age, col,
-	        (pd->flag & TEX_PD_FALLOFF_CURVE ? pd->falloff_curve : NULL),
-	        pd->falloff_speed_scale * 0.001f);
-	noise_fac = pd->noise_fac * 0.5f;	/* better default */
+	                           (pd->flag & TEX_PD_FALLOFF_CURVE ? pd->falloff_curve : NULL),
+	                           pd->falloff_speed_scale * 0.001f);
+	noise_fac = pd->noise_fac * 0.5f;   /* better default */
 
 	copy_v3_v3(co, texvec);
 
@@ -630,7 +627,7 @@ static int pointdensity(PointDensity *pd,
 		turb = BLI_gTurbulence(pd->noise_size, texvec[0] + vec[0], texvec[1] + vec[1], texvec[2] + vec[2],
 		                       pd->noise_depth, 0, pd->noise_basis);
 
-		turb -= 0.5f;	/* re-center 0.0-1.0 range around 0 to prevent offsetting result */
+		turb -= 0.5f;   /* re-center 0.0-1.0 range around 0 to prevent offsetting result */
 
 		/* now we have an offset coordinate to use for the density lookup */
 		co[0] = texvec[0] + noise_fac * turb;
@@ -898,8 +895,8 @@ static void point_density_sample_func(
 			pointdensity(pd, texvec, &texres, vec, &age, col);
 			pointdensity_color(pd, &texres, age, vec, col);
 
-			copy_v3_v3(&values[index*4 + 0], &texres.tr);
-			values[index*4 + 3] = texres.tin;
+			copy_v3_v3(&values[index * 4 + 0], &texres.tr);
+			values[index * 4 + 3] = texres.tin;
 		}
 	}
 }

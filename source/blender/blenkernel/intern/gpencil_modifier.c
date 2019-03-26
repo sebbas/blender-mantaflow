@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,11 @@
  *
  * The Original Code is Copyright (C) 2017, Blender Foundation
  * This is a new part of Blender
- *
- * Contributor(s): Antonio Vazquez
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
- /** \file blender/blenkernel/intern/gpencil_modifier.c
-  *  \ingroup bke
-  */
-
+/** \file
+ * \ingroup bke
+ */
 
 #include <stdio.h>
 
@@ -45,7 +38,6 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_gpencil_modifier_types.h"
 
-#include "BKE_global.h"
 #include "BKE_library.h"
 #include "BKE_library_query.h"
 #include "BKE_gpencil.h"
@@ -227,7 +219,7 @@ static void gpencil_rdp_stroke(bGPDstroke *gps, vec2f *points2d, float epsilon)
 		old_dvert = MEM_dupallocN(gps->dvert);
 	}
 	/* resize gps */
-	gps->flag |= GP_STROKE_RECALC_CACHES;
+	gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 	gps->tot_triangles = 0;
 
 	int j = 0;
@@ -275,7 +267,7 @@ void BKE_gpencil_simplify_stroke(bGPDstroke *gps, float factor)
 	MEM_SAFE_FREE(points2d);
 }
 
-/* Simplify alternate vertex of stroke except extrems */
+/* Simplify alternate vertex of stroke except extremes */
 void BKE_gpencil_simplify_fixed(bGPDstroke *gps)
 {
 	if (gps->totpoints < 5) {
@@ -302,7 +294,7 @@ void BKE_gpencil_simplify_fixed(bGPDstroke *gps)
 	if (gps->dvert != NULL) {
 		gps->dvert = MEM_recallocN(gps->dvert, sizeof(*gps->dvert) * newtot);
 	}
-	gps->flag |= GP_STROKE_RECALC_CACHES;
+	gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 	gps->tot_triangles = 0;
 
 	int j = 0;
@@ -433,9 +425,12 @@ void BKE_gpencil_stroke_modifiers(Depsgraph *depsgraph, Object *ob, bGPDlayer *g
 
 			if (mti && mti->deformStroke) {
 				mti->deformStroke(md, depsgraph, ob, gpl, gps);
-
+				/* subdivide allways requires update */
+				if (md->type == eGpencilModifierType_Subdiv) {
+					gps->flag |= GP_STROKE_RECALC_GEOMETRY;
+				}
 				/* some modifiers could require a recalc of fill triangulation data */
-				if (gpd->flag & GP_DATA_STROKE_FORCE_RECALC) {
+				else if (gpd->flag & GP_DATA_STROKE_FORCE_RECALC) {
 					if (ELEM(md->type,
 					         eGpencilModifierType_Armature,
 					         eGpencilModifierType_Hook,
@@ -443,7 +438,7 @@ void BKE_gpencil_stroke_modifiers(Depsgraph *depsgraph, Object *ob, bGPDlayer *g
 					         eGpencilModifierType_Offset))
 					{
 
-						gps->flag |= GP_STROKE_RECALC_CACHES;
+						gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 					}
 				}
 			}
@@ -520,10 +515,10 @@ void BKE_gpencil_eval_geometry(Depsgraph *depsgraph,
 	 * This would be better than inventing our own logic for this stuff...
 	 */
 
-	 /* TODO: Move the following code to "BKE_gpencil_eval_done()" (marked as an exit node)
-	  * later when there's more happening here. For now, let's just keep this in here to avoid
-	  * needing to have one more node slowing down evaluation...
-	  */
+	/* TODO: Move the following code to "BKE_gpencil_eval_done()" (marked as an exit node)
+	 * later when there's more happening here. For now, let's just keep this in here to avoid
+	 * needing to have one more node slowing down evaluation...
+	 */
 	if (DEG_is_active(depsgraph)) {
 		bGPdata *gpd_orig = (bGPdata *)DEG_get_original_id(&gpd->id);
 
@@ -720,47 +715,6 @@ GpencilModifierData *BKE_gpencil_modifiers_findByName(Object *ob, const char *na
 	return BLI_findstring(&(ob->greasepencil_modifiers), name, offsetof(GpencilModifierData, name));
 }
 
-/* helper function for per-instance positioning */
-void BKE_gpencil_instance_modifier_instance_tfm(InstanceGpencilModifierData *mmd, const int elem_idx[3], float r_mat[4][4])
-{
-	float offset[3], rot[3], scale[3];
-	int ri = mmd->rnd[0];
-	float factor;
-
-	offset[0] = mmd->offset[0] * elem_idx[0];
-	offset[1] = mmd->offset[1] * elem_idx[1];
-	offset[2] = mmd->offset[2] * elem_idx[2];
-
-	/* rotation */
-	if (mmd->flag & GP_INSTANCE_RANDOM_ROT) {
-		factor = mmd->rnd_rot * mmd->rnd[ri];
-		mul_v3_v3fl(rot, mmd->rot, factor);
-		add_v3_v3(rot, mmd->rot);
-	}
-	else {
-		copy_v3_v3(rot, mmd->rot);
-	}
-
-	/* scale */
-	if (mmd->flag & GP_INSTANCE_RANDOM_SIZE) {
-		factor = mmd->rnd_size * mmd->rnd[ri];
-		mul_v3_v3fl(scale, mmd->scale, factor);
-		add_v3_v3(scale, mmd->scale);
-	}
-	else {
-		copy_v3_v3(scale, mmd->scale);
-	}
-
-	/* advance random index */
-	mmd->rnd[0]++;
-	if (mmd->rnd[0] > 19) {
-		mmd->rnd[0] = 1;
-	}
-
-	/* calculate matrix */
-	loc_eul_size_to_mat4(r_mat, offset, rot, scale);
-}
-
 void BKE_gpencil_subdivide(bGPDstroke *gps, int level, int flag)
 {
 	bGPDspoint *temp_points;
@@ -784,7 +738,8 @@ void BKE_gpencil_subdivide(bGPDstroke *gps, int level, int flag)
 			temp_dverts = MEM_dupallocN(gps->dvert);
 			gps->dvert = MEM_recallocN(gps->dvert, sizeof(*gps->dvert) * gps->totpoints);
 		}
-		gps->flag |= GP_STROKE_RECALC_CACHES;
+		gps->flag |= GP_STROKE_RECALC_GEOMETRY;
+		gps->tot_triangles = 0;
 
 		/* move points from last to first to new place */
 		i2 = gps->totpoints - 1;

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/nodes/shader/nodes/node_shader_mixRgb.c
- *  \ingroup shdnodes
+/** \file
+ * \ingroup shdnodes
  */
 
 
@@ -37,11 +29,11 @@ static bNodeSocketTemplate sh_node_mix_rgb_in[] = {
 	{	SOCK_FLOAT, 1, N_("Fac"),			0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_FACTOR},
 	{	SOCK_RGBA, 1, N_("Color1"),			0.5f, 0.5f, 0.5f, 1.0f},
 	{	SOCK_RGBA, 1, N_("Color2"),			0.5f, 0.5f, 0.5f, 1.0f},
-	{	-1, 0, ""	}
+	{	-1, 0, ""	},
 };
 static bNodeSocketTemplate sh_node_mix_rgb_out[] = {
 	{	SOCK_RGBA, 0, N_("Color")},
-	{	-1, 0, ""	}
+	{	-1, 0, ""	},
 };
 
 static void node_shader_exec_mix_rgb(void *UNUSED(data), int UNUSED(thread), bNode *node, bNodeExecData *UNUSED(execdata), bNodeStack **in, bNodeStack **out)
@@ -67,10 +59,12 @@ static void node_shader_exec_mix_rgb(void *UNUSED(data), int UNUSED(thread), bNo
 
 static int gpu_shader_mix_rgb(GPUMaterial *mat, bNode *node, bNodeExecData *UNUSED(execdata), GPUNodeStack *in, GPUNodeStack *out)
 {
-	static const char *names[] = {"mix_blend", "mix_add", "mix_mult", "mix_sub",
-		                          "mix_screen", "mix_div", "mix_diff", "mix_dark", "mix_light",
-		                          "mix_overlay", "mix_dodge", "mix_burn", "mix_hue", "mix_sat",
-		                          "mix_val", "mix_color", "mix_soft", "mix_linear"};
+	static const char *names[] = {
+		"mix_blend", "mix_add", "mix_mult", "mix_sub",
+		"mix_screen", "mix_div", "mix_diff", "mix_dark", "mix_light",
+		"mix_overlay", "mix_dodge", "mix_burn", "mix_hue", "mix_sat",
+		"mix_val", "mix_color", "mix_soft", "mix_linear",
+	};
 
 	int ret = GPU_stack_link(mat, node, names[node->custom1], in, out);
 	if (ret && node->custom2 & SHD_MIXRGB_CLAMP) {

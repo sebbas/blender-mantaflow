@@ -1,33 +1,30 @@
 /*
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *
+ * Copyright 1999,2000,2001 David Hodson <hodsond@acm.org>
+ */
+
+/** \file
+ * \ingroup imbcineon
+ *
  * Cineon image file format library definitions.
  * Cineon and DPX common structures.
  *
  * This header file contains private details.
  * User code should generally use cineonlib.h and dpxlib.h only.
  * Hmm. I thought the two formats would have more in common!
- *
- * Copyright 1999,2000,2001 David Hodson <hodsond@acm.org>
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; either version 2 of the License, or (at your option)
- * any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Julien Enche.
- *
- */
-
-/** \file blender/imbuf/intern/cineon/logImageCore.h
- *  \ingroup imbcineon
  */
 
 #ifndef __LOGIMAGECORE_H__
@@ -49,7 +46,7 @@ extern "C" {
 /* There are some differences between DPX and Cineon so we need to know from what type of file the datas come from */
 enum format {
 	format_DPX,
-	format_Cineon
+	format_Cineon,
 };
 
 typedef struct LogImageElement {
@@ -125,7 +122,7 @@ enum transfer {
 	transfer_NTSC,
 	transfer_PAL,
 	transfer_ZLinear,
-	transfer_Homogeneous
+	transfer_Homogeneous,
 };
 
 /* The SMPTE defines this code:
@@ -179,7 +176,7 @@ enum descriptor {
 	descriptor_UserDefined7Elt,
 	descriptor_UserDefined8Elt,
 	/* following descriptors are for internal use only */
-	descriptor_YA
+	descriptor_YA,
 };
 
 /* int functions return 0 for OK */

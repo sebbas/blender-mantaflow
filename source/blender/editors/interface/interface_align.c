@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,21 +15,15 @@
  *
  * The Original Code is Copyright (C) 2015 by Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation 2002-2008, full recode.
- *                 Bastien Montagne 2015, full recode.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/interface/interface_align.c
- *  \ingroup edinterface
+/** \file
+ * \ingroup edinterface
  */
 
 #include "DNA_screen_types.h"
 #include "DNA_userdef_types.h"
 
-#include "BLI_alloca.h"
 #include "BLI_math.h"
 #include "BLI_rect.h"
 
@@ -42,22 +34,25 @@
 #ifdef USE_UIBUT_SPATIAL_ALIGN
 
 /**
- * This struct stores a (simplified) 2D representation of all buttons of a same align group, with their
- * immediate neighbors (if found), and needed value to compute 'stitching' of aligned buttons.
+ * This struct stores a (simplified) 2D representation of all buttons of a same align group,
+ * with their immediate neighbors (if found),
+ * and needed value to compute 'stitching' of aligned buttons.
  *
- * \note This simplistic struct cannot fully represent complex layouts where buttons share some 'align space' with
- *       several others (see schema below), we'd need linked list and more complex code to handle that.
- *       However, looks like we can do without that for now, which is rather lucky!
+ * \note This simplistic struct cannot fully represent complex layouts where buttons share some
+ *       'align space' with several others (see schema below), we'd need linked list and more
+ *       complex code to handle that. However, looks like we can do without that for now,
+ *       which is rather lucky!
  *
  *       <pre>
- *       +-----------+-----------+
- *       |   BUT 1   |   BUT 2   |      BUT 3 has two 'top' neighbors...
- *       |-----------------------|  =>  In practice, we only store one of BUT 1 or 2 (which ones is not
- *       |         BUT 3         |      really deterministic), and assume the other stores a ref to BUT 3.
- *       +-----------------------+
+ *       +--------+-------+
+ *       | BUT 1  | BUT 2 |      BUT 3 has two 'top' neighbors...
+ *       |----------------|  =>  In practice, we only store one of BUT 1 or 2 (which ones is not
+ *       |      BUT 3     |      really deterministic), and assume the other stores a ref to BUT 3.
+ *       +----------------+
  *       </pre>
  *
- *       This will probably not work in all possible cases, but not sure we want to support such exotic cases anyway.
+ *       This will probably not work in all possible cases,
+ *       but not sure we want to support such exotic cases anyway.
  */
 typedef struct ButAlign {
 	uiBut *but;
@@ -71,13 +66,15 @@ typedef struct ButAlign {
 	/* Distances to the neighbors. */
 	float dists[4];
 
-	/* Flags, used to mark whether we should 'stitch' the corners of this button with its neighbors' ones. */
+	/* Flags, used to mark whether we should 'stitch'
+	 * the corners of this button with its neighbors' ones. */
 	char flags[4];
 } ButAlign;
 
 /* Side-related enums and flags. */
 enum {
-	/* Sides (used as indices, order is **crucial**, this allows us to factorize code in a loop over the four sides). */
+	/* Sides (used as indices, order is **crucial**,
+	 * this allows us to factorize code in a loop over the four sides). */
 	LEFT         = 0,
 	TOP          = 1,
 	RIGHT        = 2,
@@ -115,6 +112,22 @@ bool ui_but_can_align(const uiBut *but)
 	return (btype_can_align && (BLI_rctf_size_x(&but->rect) > 0.0f) && (BLI_rctf_size_y(&but->rect) > 0.0f));
 }
 
+int ui_but_align_opposite_to_area_align_get(const ARegion *ar)
+{
+	switch (ar->alignment) {
+		case RGN_ALIGN_TOP:
+			return UI_BUT_ALIGN_DOWN;
+		case RGN_ALIGN_BOTTOM:
+			return UI_BUT_ALIGN_TOP;
+		case RGN_ALIGN_LEFT:
+			return UI_BUT_ALIGN_RIGHT;
+		case RGN_ALIGN_RIGHT:
+			return UI_BUT_ALIGN_LEFT;
+	}
+
+	return 0;
+}
+
 /**
  * This function checks a pair of buttons (assumed in a same align group), and if they are neighbors,
  * set needed data accordingly.
@@ -146,14 +159,17 @@ static void block_align_proximity_compute(ButAlign *butal, ButAlign *butal_other
 	}
 
 	for (side = 0; side < RIGHT; side++) {
-		/* We are only interested in buttons which share a same line (LEFT/RIGHT sides) or column (TOP/DOWN sides). */
+		/* We are only interested in buttons which share a same line
+		 * (LEFT/RIGHT sides) or column (TOP/DOWN sides). */
 		if (buts_share[IS_COLUMN(side)]) {
 			side_opp = OPPOSITE(side);
 
-			/* We check both opposite sides at once, because with very small buttons, delta could be below max_delta for
-			 * the wrong side (that is, in horizontal case, the total width of two buttons can be below max_delta).
-			 * We rely on exact zero value here as an 'already processed' flag, so ensure we never actually
-			 * set a zero value at this stage. FLT_MIN is zero-enough for UI position computing. ;) */
+			/* We check both opposite sides at once, because with very small buttons,
+			 * delta could be below max_delta for the wrong side
+			 * (that is, in horizontal case, the total width of two buttons can be below max_delta).
+			 * We rely on exact zero value here as an 'already processed' flag,
+			 * so ensure we never actually set a zero value at this stage.
+			 * FLT_MIN is zero-enough for UI position computing. ;) */
 			delta = max_ff(fabsf(*butal->borders[side] - *butal_other->borders[side_opp]), FLT_MIN);
 			delta_side_opp = max_ff(fabsf(*butal->borders[side_opp] - *butal_other->borders[side]), FLT_MIN);
 			if (delta_side_opp < delta) {
@@ -162,18 +178,21 @@ static void block_align_proximity_compute(ButAlign *butal, ButAlign *butal_other
 			}
 
 			if (delta < max_delta) {
-				/* We are only interested in neighbors that are at least as close as already found ones. */
+				/* We are only interested in neighbors that are
+				 * at least as close as already found ones. */
 				if (delta <= butal->dists[side]) {
 					{
 						/* We found an as close or closer neighbor.
 						 * If both buttons are alignable, we set them as each other neighbors.
-						 * Else, we have an unalignable one, we need to reset the others matching neighbor to NULL
-						 * if its 'proximity distance' is really lower with current one.
+						 * Else, we have an unalignable one, we need to reset the others matching
+						 * neighbor to NULL if its 'proximity distance'
+						 * is really lower with current one.
 						 *
-						 * NOTE: We cannot only execute that piece of code in case we found a **closer** neighbor,
-						 *       due to the limited way we represent neighbors (buttons only know **one** neighbor
-						 *       on each side, when they can actually have several ones), it would prevent
-						 *       some buttons to be properly 'neighborly-initialized'. */
+						 * NOTE: We cannot only execute that piece of code in case we found a
+						 *       **closer** neighbor, due to the limited way we represent neighbors
+						 *       (buttons only know **one** neighbor on each side, when they can
+						 *       actually have several ones), it would prevent some buttons to be
+						 *       properly 'neighborly-initialized'. */
 						if (butal_can_align && butal_other_can_align) {
 							butal->neighbors[side] = butal_other;
 							butal_other->neighbors[side_opp] = butal;
@@ -201,10 +220,12 @@ static void block_align_proximity_compute(ButAlign *butal, ButAlign *butal_other
 							butal_other->neighbors[side_opp] = butal;
 						}
 
-						/* We have a pair of neighbors, we have to check whether we can stitch their matching corners.
+						/* We have a pair of neighbors, we have to check whether we
+						 *   can stitch their matching corners.
 						 *   E.g. if butal_other is on the left of butal (that is, side == LEFT),
-						 *        if both TOP (side_s1) coordinates of buttons are close enough, we can stitch
-						 *        their upper matching corners, and same for DOWN (side_s2) side. */
+						 *        if both TOP (side_s1) coordinates of buttons are close enough,
+						 *        we can stitch their upper matching corners,
+						 *        and same for DOWN (side_s2) side. */
 						delta = fabsf(*butal->borders[side_s1] - *butal_other->borders[side_s1]);
 						if (delta < max_delta) {
 							butal->flags[side_s1] |= stitch;
@@ -217,7 +238,8 @@ static void block_align_proximity_compute(ButAlign *butal, ButAlign *butal_other
 						}
 					}
 				}
-				/* We assume two buttons can only share one side at most - for until we have sperical UI... */
+				/* We assume two buttons can only share one side at most - for until
+				 * we have sperical UI... */
 				return;
 			}
 		}
@@ -313,9 +335,10 @@ static int ui_block_align_butal_cmp(const void *a, const void *b)
 		return (*butal->borders[LEFT] > *butal_other->borders[LEFT]) ? 1 : -1;
 	}
 
-	/* XXX We cannot actually assert here, since in some very compressed space cases, stupid UI code produces
-	 *     widgets which have the same TOP and LEFT positions...
-	 *     We do not care really, because this happens when UI is way too small to be usable anyway. */
+	/* XXX We cannot actually assert here, since in some very compressed space cases,
+	 *     stupid UI code produces widgets which have the same TOP and LEFT positions...
+	 *     We do not care really,
+	 *     because this happens when UI is way too small to be usable anyway. */
 	/* BLI_assert(0); */
 	return 0;
 }
@@ -325,23 +348,23 @@ static void ui_block_align_but_to_region(uiBut *but, const ARegion *region)
 	rctf *rect = &but->rect;
 	const float but_width = BLI_rctf_size_x(rect);
 	const float but_height = BLI_rctf_size_y(rect);
-	const float outline_with = U.pixelsize; /* This may have to be made more variable. */
+	const float outline_px = U.pixelsize; /* This may have to be made more variable. */
 
 	switch (but->drawflag & UI_BUT_ALIGN) {
 		case UI_BUT_ALIGN_TOP:
-			rect->ymax = region->winy + outline_with;
+			rect->ymax = region->winy + outline_px;
 			rect->ymin = but->rect.ymax - but_height;
 			break;
 		case UI_BUT_ALIGN_DOWN:
-			rect->ymin = -outline_with;
+			rect->ymin = -outline_px;
 			rect->ymax = rect->ymin + but_height;
 			break;
 		case UI_BUT_ALIGN_LEFT:
-			rect->xmin = -outline_with;
+			rect->xmin = -outline_px;
 			rect->xmax = rect->xmin + but_width;
 			break;
 		case UI_BUT_ALIGN_RIGHT:
-			rect->xmax = region->winx + outline_with;
+			rect->xmax = region->winx + outline_px;
 			rect->xmin = rect->xmax - but_width;
 			break;
 		default:
@@ -407,27 +430,29 @@ void ui_block_align_calc(uiBlock *block, const ARegion *region)
 	}
 
 	/* This will give us ButAlign items regrouped by align group, vertical and horizontal location.
-	 * Note that, given how buttons are defined in UI code, butal_array shall already be "nearly sorted"... */
+	 * Note that, given how buttons are defined in UI code,
+	 * butal_array shall already be "nearly sorted"... */
 	qsort(butal_array, (size_t)num_buttons, sizeof(*butal_array), ui_block_align_butal_cmp);
 
-	/* Third loop: for each pair of buttons in the same align group, we compute their potential proximity.
-	 * Note that each pair is checked only once, and that we break early in case we know all remaining pairs will
-	 * always be too far away. */
+	/* Third loop: for each pair of buttons in the same align group,
+	 * we compute their potential proximity. Note that each pair is checked only once, and that we
+	 * break early in case we know all remaining pairs will always be too far away. */
 	for (i = 0, butal = butal_array; i < num_buttons; i++, butal++) {
 		const short alignnr = butal->but->alignnr;
 
 		for (j = i + 1, butal_other = &butal_array[i + 1]; j < num_buttons; j++, butal_other++) {
 			const float max_delta = MAX_DELTA;
 
-			/* Since they are sorted, buttons after current butal can only be of same or higher group, and once
-			 * they are not of same group, we know we can break this sub-loop and start checking with next butal. */
+			/* Since they are sorted, buttons after current butal can only be of same or higher
+			 * group, and once they are not of same group, we know we can break this sub-loop and
+			 * start checking with next butal. */
 			if (butal_other->but->alignnr != alignnr) {
 				break;
 			}
 
-			/* Since they are sorted vertically first, buttons after current butal can only be at same or lower height,
-			 * and once they are lower than a given threshold, we know we can break this sub-loop and
-			 * start checking with next butal. */
+			/* Since they are sorted vertically first, buttons after current butal can only be at
+			 * same or lower height, and once they are lower than a given threshold, we know we can
+			 * break this sub-loop and start checking with next butal. */
 			if ((*butal->borders[DOWN] - *butal_other->borders[TOP]) > max_delta) {
 				break;
 			}
@@ -530,8 +555,12 @@ static void ui_block_align_calc_but(uiBut *first, short nr)
 
 	for (but = first; but && but->alignnr == nr; but = but->next) {
 		if (but->next && but->next->alignnr == nr) {
-			if (buts_are_horiz(but, but->next)) cols++;
-			else rows++;
+			if (buts_are_horiz(but, but->next)) {
+				cols++;
+			}
+			else {
+				rows++;
+			}
 		}
 	}
 
@@ -540,8 +569,9 @@ static void ui_block_align_calc_but(uiBut *first, short nr)
 	/* note;  how it uses 'flag' in loop below (either set it, or OR it) is confusing */
 	for (but = first, prev = NULL; but && but->alignnr == nr; prev = but, but = but->next) {
 		next = but->next;
-		if (next && next->alignnr != nr)
+		if (next && next->alignnr != nr) {
 			next = NULL;
+		}
 
 		/* clear old flag */
 		but->drawflag &= ~UI_BUT_ALIGN;
@@ -549,10 +579,12 @@ static void ui_block_align_calc_but(uiBut *first, short nr)
 		if (flag == 0) {  /* first case */
 			if (next) {
 				if (buts_are_horiz(but, next)) {
-					if (rows == 0)
+					if (rows == 0) {
 						flag = UI_BUT_ALIGN_RIGHT;
-					else
+					}
+					else {
 						flag = UI_BUT_ALIGN_DOWN | UI_BUT_ALIGN_RIGHT;
+					}
 				}
 				else {
 					flag = UI_BUT_ALIGN_DOWN;
@@ -562,10 +594,12 @@ static void ui_block_align_calc_but(uiBut *first, short nr)
 		else if (next == NULL) {  /* last case */
 			if (prev) {
 				if (buts_are_horiz(prev, but)) {
-					if (rows == 0)
+					if (rows == 0) {
 						flag = UI_BUT_ALIGN_LEFT;
-					else
+					}
+					else {
 						flag = UI_BUT_ALIGN_TOP | UI_BUT_ALIGN_LEFT;
+					}
 				}
 				else {
 					flag = UI_BUT_ALIGN_TOP;
@@ -586,7 +620,9 @@ static void ui_block_align_calc_but(uiBut *first, short nr)
 						}
 						bt = bt->next;
 					}
-					if (bt == NULL || bt->alignnr != nr) flag = UI_BUT_ALIGN_TOP | UI_BUT_ALIGN_RIGHT;
+					if (bt == NULL || bt->alignnr != nr) {
+						flag = UI_BUT_ALIGN_TOP | UI_BUT_ALIGN_RIGHT;
+					}
 				}
 			}
 			else {
@@ -599,8 +635,9 @@ static void ui_block_align_calc_but(uiBut *first, short nr)
 			}
 			else {  /* next button switches to new row */
 
-				if (prev && buts_are_horiz(prev, but))
+				if (prev && buts_are_horiz(prev, but)) {
 					flag |= UI_BUT_ALIGN_LEFT;
+				}
 				else {
 					flag &= ~UI_BUT_ALIGN_LEFT;
 					flag |= UI_BUT_ALIGN_TOP;
@@ -608,18 +645,21 @@ static void ui_block_align_calc_but(uiBut *first, short nr)
 
 				if ((flag & UI_BUT_ALIGN_TOP) == 0) {  /* still top row */
 					if (prev) {
-						if (next && buts_are_horiz(but, next))
+						if (next && buts_are_horiz(but, next)) {
 							flag = UI_BUT_ALIGN_DOWN | UI_BUT_ALIGN_LEFT | UI_BUT_ALIGN_RIGHT;
+						}
 						else {
 							/* last button in top row */
 							flag = UI_BUT_ALIGN_DOWN | UI_BUT_ALIGN_LEFT;
 						}
 					}
-					else
+					else {
 						flag |= UI_BUT_ALIGN_DOWN;
+					}
 				}
-				else
+				else {
 					flag |= UI_BUT_ALIGN_TOP;
+				}
 			}
 		}
 
@@ -649,8 +689,9 @@ static void ui_block_align_calc_but(uiBut *first, short nr)
 					prev->rect.ymin = but->rect.ymax;
 
 					but->rect.xmin = prev->rect.xmin;
-					if (next && buts_are_horiz(but, next) == 0)
+					if (next && buts_are_horiz(but, next) == 0) {
 						but->rect.xmax = prev->rect.xmax;
+					}
 				}
 				else {
 					/* the previous button is not a single one in its row */

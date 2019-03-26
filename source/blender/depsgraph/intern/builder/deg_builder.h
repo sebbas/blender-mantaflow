@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,25 +15,35 @@
  *
  * The Original Code is Copyright (C) 2016 Blender Foundation.
  * All rights reserved.
- *
- * Original Author: Sergey Sharybin
- * Contributor(s): None Yet
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/depsgraph/intern/builder/deg_builder.h
- *  \ingroup depsgraph
+/** \file
+ * \ingroup depsgraph
  */
 
 #pragma once
 
+struct Base;
 struct Main;
 
 namespace DEG {
 
 struct Depsgraph;
 
+class DepsgraphBuilder {
+public:
+	bool need_pull_base_into_graph(struct Base *base);
+
+protected:
+	DepsgraphBuilder(Main *bmain, Depsgraph *graph);
+
+	/* State which never changes, same for the whole builder time. */
+	Main *bmain_;
+	Depsgraph *graph_;
+};
+
+bool deg_check_base_available_for_build(const Depsgraph *graph,
+                                        Base *base);
 void deg_graph_build_finalize(struct Main *bmain, struct Depsgraph *graph);
 
 }  // namespace DEG

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Willian P. Germano, Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/python/intern/bpy_driver.c
- *  \ingroup pythonintern
+/** \file
+ * \ingroup pythonintern
  *
  * This file defines the 'BPY_driver_exec' to execute python driver expressions,
  * called by the animation system, there are also some utility functions
@@ -339,7 +333,7 @@ static bool bpy_driver_secure_bytecode_validate(PyObject *expr_code, PyObject *d
 			}
 
 			if (contains_name == false) {
-				fprintf(stderr, "\tBPY_driver_eval() - restructed access disallows name '%s', "
+				fprintf(stderr, "\tBPY_driver_eval() - restricted access disallows name '%s', "
 				                "enable auto-execution to support\n", _PyUnicode_AsString(name));
 				return false;
 			}
@@ -357,7 +351,7 @@ static bool bpy_driver_secure_bytecode_validate(PyObject *expr_code, PyObject *d
 		for (Py_ssize_t i = 0; i < code_len; i++) {
 			const int opcode = _Py_OPCODE(codestr[i]);
 			if (secure_opcodes[opcode] == 0) {
-				fprintf(stderr, "\tBPY_driver_eval() - restructed access disallows opcode '%d', "
+				fprintf(stderr, "\tBPY_driver_eval() - restricted access disallows opcode '%d', "
 				                "enable auto-execution to support\n", opcode);
 				return false;
 			}
@@ -409,9 +403,9 @@ float BPY_driver_exec(struct PathResolvedRNA *anim_rna, ChannelDriver *driver, C
 		return 0.0f;
 
 #ifndef USE_BYTECODE_WHITELIST
-	if (!(G.f & G_SCRIPT_AUTOEXEC)) {
-		if (!(G.f & G_SCRIPT_AUTOEXEC_FAIL_QUIET)) {
-			G.f |= G_SCRIPT_AUTOEXEC_FAIL;
+	if (!(G.f & G_FLAG_SCRIPT_AUTOEXEC)) {
+		if (!(G.f & G_FLAG_SCRIPT_AUTOEXEC_FAIL_QUIET)) {
+			G.f |= G_FLAG_SCRIPT_AUTOEXEC_FAIL;
 			BLI_snprintf(G.autoexec_fail, sizeof(G.autoexec_fail), "Driver '%s'", expr);
 
 			printf("skipping driver '%s', automatic scripts are disabled\n", expr);
@@ -550,7 +544,7 @@ float BPY_driver_exec(struct PathResolvedRNA *anim_rna, ChannelDriver *driver, C
 
 #ifdef USE_BYTECODE_WHITELIST
 	if (is_recompile && expr_code) {
-		if (!(G.f & G_SCRIPT_AUTOEXEC)) {
+		if (!(G.f & G_FLAG_SCRIPT_AUTOEXEC)) {
 			if (!bpy_driver_secure_bytecode_validate(
 			            expr_code, (PyObject *[]){
 			                bpy_pydriver_Dict,
@@ -559,6 +553,11 @@ float BPY_driver_exec(struct PathResolvedRNA *anim_rna, ChannelDriver *driver, C
 			                NULL,}
 			        ))
 			{
+				if (!(G.f & G_FLAG_SCRIPT_AUTOEXEC_FAIL_QUIET)) {
+					G.f |= G_FLAG_SCRIPT_AUTOEXEC_FAIL;
+					BLI_snprintf(G.autoexec_fail, sizeof(G.autoexec_fail), "Driver '%s'", expr);
+				}
+
 				Py_DECREF(expr_code);
 				expr_code = NULL;
 				PyTuple_SET_ITEM(((PyObject *)driver_orig->expr_comp), 0, NULL);

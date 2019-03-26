@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_node/node_buttons.c
- *  \ingroup spnode
+/** \file
+ * \ingroup spnode
  */
 
 #include "MEM_guardedalloc.h"
@@ -83,8 +76,9 @@ static void node_sockets_panel(const bContext *C, Panel *pa)
 	uiLayout *layout = pa->layout, *split;
 	char name[UI_MAX_NAME_STR];
 
-	if (ELEM(NULL, ntree, node))
+	if (ELEM(NULL, ntree, node)) {
 		return;
+	}
 
 	for (sock = node->inputs.first; sock; sock = sock->next) {
 		BLI_snprintf(name, sizeof(name), "%s:", sock->name);
@@ -135,8 +129,9 @@ static void node_tree_interface_panel(const bContext *C, Panel *pa)
 	PointerRNA ptr, sockptr, opptr;
 	wmOperatorType *ot;
 
-	if (!ntree)
+	if (!ntree) {
 		return;
+	}
 
 	RNA_id_pointer_create((ID *)ntree, &ptr);
 
@@ -150,14 +145,14 @@ static void node_tree_interface_panel(const bContext *C, Panel *pa)
 	ot = WM_operatortype_find("NODE_OT_tree_socket_add", false);
 	uiItemL(col, IFACE_("Inputs:"), ICON_NONE);
 	uiTemplateList(col, (bContext *)C, "NODE_UL_interface_sockets", "inputs", &ptr, "inputs", &ptr, "active_input",
-	               NULL, 0, 0, 0, 0, false);
+	               NULL, 0, 0, 0, 0, false, false);
 	uiItemFullO_ptr(col, ot, "", ICON_PLUS, NULL, WM_OP_EXEC_DEFAULT, 0, &opptr);
 	RNA_enum_set(&opptr, "in_out", SOCK_IN);
 
 	col = uiLayoutColumn(split, true);
 	uiItemL(col, IFACE_("Outputs:"), ICON_NONE);
 	uiTemplateList(col, (bContext *)C, "NODE_UL_interface_sockets", "outputs", &ptr, "outputs", &ptr, "active_output",
-	               NULL, 0, 0, 0, 0, false);
+	               NULL, 0, 0, 0, 0, false, false);
 	uiItemFullO_ptr(col, ot, "", ICON_PLUS, NULL, WM_OP_EXEC_DEFAULT, 0, &opptr);
 	RNA_enum_set(&opptr, "in_out", SOCK_OUT);
 
@@ -188,6 +183,7 @@ void node_buttons_register(ARegionType *art)
 
 	pt = MEM_callocN(sizeof(PanelType), "spacetype node panel node sockets");
 	strcpy(pt->idname, "NODE_PT_sockets");
+	strcpy(pt->category, N_("Node"));
 	strcpy(pt->label, N_("Sockets"));
 	strcpy(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
 	pt->draw = node_sockets_panel;
@@ -197,6 +193,7 @@ void node_buttons_register(ARegionType *art)
 
 	pt = MEM_callocN(sizeof(PanelType), "spacetype node panel tree interface");
 	strcpy(pt->idname, "NODE_PT_node_tree_interface");
+	strcpy(pt->category, N_("Node"));
 	strcpy(pt->label, N_("Interface"));
 	strcpy(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
 	pt->draw = node_tree_interface_panel;
@@ -209,8 +206,9 @@ static int node_properties_toggle_exec(bContext *C, wmOperator *UNUSED(op))
 	ScrArea *sa = CTX_wm_area(C);
 	ARegion *ar = node_has_buttons_region(sa);
 
-	if (ar)
+	if (ar) {
 		ED_region_toggle_hidden(C, ar);
+	}
 
 	return OPERATOR_FINISHED;
 }

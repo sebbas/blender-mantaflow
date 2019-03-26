@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,22 +15,16 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation, Joshua Leung
  * All rights reserved.
- *
- * Contributor(s): Joshua Leung (original author)
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BKE_ANIMSYS_H__
 #define __BKE_ANIMSYS_H__
 
-/** \file BKE_animsys.h
- *  \ingroup bke
- *  \author Joshua Leung
+/** \file
+ * \ingroup bke
  */
 
 struct AnimData;
-struct AnimMapper;
 struct ChannelDriver;
 struct Depsgraph;
 struct FCurve;
@@ -41,6 +33,7 @@ struct KS_Path;
 struct KeyingSet;
 struct ListBase;
 struct Main;
+struct NlaKeyframingContext;
 struct PathResolvedRNA;
 struct PointerRNA;
 struct PropertyRNA;
@@ -70,10 +63,10 @@ bool BKE_animdata_set_action(struct ReportList *reports, struct ID *id, struct b
 void BKE_animdata_free(struct ID *id, const bool do_id_user);
 
 /* Copy AnimData */
-struct AnimData *BKE_animdata_copy(struct Main *bmain, struct AnimData *adt, const bool do_action, const bool do_id_user);
+struct AnimData *BKE_animdata_copy(struct Main *bmain, struct AnimData *adt, const int flag);
 
 /* Copy AnimData */
-bool BKE_animdata_copy_id(struct Main *bmain, struct ID *id_to, struct ID *id_from, const bool do_action, const bool do_id_user);
+bool BKE_animdata_copy_id(struct Main *bmain, struct ID *id_to, struct ID *id_from, const int flag);
 
 /* Copy AnimData Actions */
 void BKE_animdata_copy_id_action(struct Main *bmain, struct ID *id, const bool set_newid);
@@ -87,7 +80,7 @@ typedef enum eAnimData_MergeCopy_Modes {
 	ADT_MERGECOPY_SRC_COPY = 1,
 
 	/* Use src action (but just reference the existing version) */
-	ADT_MERGECOPY_SRC_REF  = 2
+	ADT_MERGECOPY_SRC_REF  = 2,
 } eAnimData_MergeCopy_Modes;
 
 void BKE_animdata_merge_copy(
@@ -137,8 +130,9 @@ void BKE_animdata_fix_paths_rename(struct ID *owner_id, struct AnimData *adt, st
 /* Fix all the paths for the entire database... */
 void BKE_animdata_fix_paths_rename_all(struct ID *ref_id, const char *prefix, const char *oldName, const char *newName);
 
-/* Fix the path after removing elements that are not ID (e.g., node) */
-void BKE_animdata_fix_paths_remove(struct ID *id, const char *path);
+/* Fix the path after removing elements that are not ID (e.g., node).
+ * Returen truth if any animation data was affected. */
+bool BKE_animdata_fix_paths_remove(struct ID *id, const char *path);
 
 /* -------------------------------------- */
 
@@ -153,7 +147,7 @@ char *BKE_animdata_driver_path_hack(struct bContext *C, struct PointerRNA *ptr, 
                                     char *base_path);
 
 /* ************************************* */
-/* GPUBatch AnimData API */
+/* Batch AnimData API */
 
 /* Define for callback looper used in BKE_animdata_main_cb */
 typedef void (*ID_AnimData_Edit_Callback)(struct ID *id, struct AnimData *adt, void *user_data);
@@ -168,14 +162,32 @@ void BKE_animdata_main_cb(struct Main *bmain, ID_AnimData_Edit_Callback func, vo
 /* Loop over all datablocks applying callback to all its F-Curves */
 void BKE_fcurves_main_cb(struct Main *bmain, ID_FCurve_Edit_Callback func, void *user_data);
 
+/* Look over all f-curves of a given ID. */
+void BKE_fcurves_id_cb(struct ID *id, ID_FCurve_Edit_Callback func, void *user_data);
+
 /* ************************************* */
 // TODO: overrides, remapping, and path-finding api's
+
+/* ------------ NLA Keyframing --------------- */
+
+typedef struct NlaKeyframingContext NlaKeyframingContext;
+
+struct NlaKeyframingContext *BKE_animsys_get_nla_keyframing_context(struct ListBase *cache, struct Depsgraph *depsgraph, struct PointerRNA *ptr, struct AnimData *adt, float ctime);
+bool BKE_animsys_nla_remap_keyframe_values(struct NlaKeyframingContext *context, struct PointerRNA *prop_ptr, struct PropertyRNA *prop, float *values, int count, int index, bool *r_force_all);
+void BKE_animsys_free_nla_keyframing_context_cache(struct ListBase *cache);
 
 /* ************************************* */
 /* Evaluation API */
 
 /* ------------- Main API -------------------- */
 /* In general, these ones should be called to do all animation evaluation */
+
+/* Flags for recalc parameter, indicating which part to recalculate. */
+typedef enum eAnimData_Recalc {
+	ADT_RECALC_DRIVERS      = (1 << 0),
+	ADT_RECALC_ANIM         = (1 << 1),
+	ADT_RECALC_ALL          = (ADT_RECALC_DRIVERS | ADT_RECALC_ANIM),
+} eAnimData_Recalc;
 
 /* Evaluation loop for evaluating animation data  */
 void BKE_animsys_evaluate_animdata(struct Depsgraph *depsgraph, struct Scene *scene, struct ID *id, struct AnimData *adt, float ctime, short recalc);
@@ -184,21 +196,21 @@ void BKE_animsys_evaluate_animdata(struct Depsgraph *depsgraph, struct Scene *sc
 void BKE_animsys_evaluate_all_animation(struct Main *main, struct Depsgraph *depsgraph, struct Scene *scene, float ctime);
 
 /* TODO(sergey): This is mainly a temp public function. */
-bool BKE_animsys_execute_fcurve(struct PointerRNA *ptr, struct AnimMapper *remap, struct FCurve *fcu, float curval);
+bool BKE_animsys_execute_fcurve(struct PointerRNA *ptr, struct FCurve *fcu, float curval);
 
 /* ------------ Specialized API --------------- */
 /* There are a few special tools which require these following functions. They are NOT to be used
  * for standard animation evaluation UNDER ANY CIRCUMSTANCES!
  *
  * i.e. Pose Library (PoseLib) uses some of these for selectively applying poses, but
- *	    Particles/Sequencer performing funky time manipulation is not ok.
+ *      Particles/Sequencer performing funky time manipulation is not ok.
  */
 
 /* Evaluate Action (F-Curve Bag) */
-void animsys_evaluate_action(struct Depsgraph *depsgraph, struct PointerRNA *ptr, struct bAction *act, struct AnimMapper *remap, float ctime);
+void animsys_evaluate_action(struct Depsgraph *depsgraph, struct PointerRNA *ptr, struct bAction *act, float ctime);
 
 /* Evaluate Action Group */
-void animsys_evaluate_action_group(struct PointerRNA *ptr, struct bAction *act, struct bActionGroup *agrp, struct AnimMapper *remap, float ctime);
+void animsys_evaluate_action_group(struct PointerRNA *ptr, struct bAction *act, struct bActionGroup *agrp, float ctime);
 
 /* ************************************* */
 

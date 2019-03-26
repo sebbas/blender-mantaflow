@@ -1,6 +1,4 @@
 /*
- * Copyright 2016, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,12 +13,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Blender Institute
- *
+ * Copyright 2016, Blender Foundation.
  */
 
-/** \file eevee_effects.c
- *  \ingroup draw_engine
+/** \file
+ * \ingroup draw_engine
  *
  * Gather all screen space effects technique such as Bloom, Motion Blur, DoF, SSAO, SSR, ...
  */
@@ -29,11 +26,10 @@
 
 #include "BKE_global.h" /* for G.debug_value */
 
-#include "BLI_string_utils.h"
-
 #include "eevee_private.h"
 #include "GPU_texture.h"
 #include "GPU_extensions.h"
+#include "GPU_state.h"
 
 static struct {
 	/* Downsample Depth */
@@ -51,9 +47,6 @@ static struct {
 	struct GPUShader *downsample_sh;
 	struct GPUShader *downsample_cube_sh;
 
-	/* Velocity Resolve */
-	struct GPUShader *velocity_resolve_sh;
-
 	/* Theses are just references, not actually allocated */
 	struct GPUTexture *depth_src;
 	struct GPUTexture *color_src;
@@ -65,25 +58,15 @@ static struct {
 extern char datatoc_common_uniforms_lib_glsl[];
 extern char datatoc_common_view_lib_glsl[];
 extern char datatoc_bsdf_common_lib_glsl[];
-extern char datatoc_effect_velocity_resolve_frag_glsl[];
 extern char datatoc_effect_minmaxz_frag_glsl[];
 extern char datatoc_effect_downsample_frag_glsl[];
 extern char datatoc_effect_downsample_cube_frag_glsl[];
 extern char datatoc_lightprobe_vert_glsl[];
 extern char datatoc_lightprobe_geom_glsl[];
 
+
 static void eevee_create_shader_downsample(void)
 {
-	char *frag_str = BLI_string_joinN(
-	    datatoc_common_uniforms_lib_glsl,
-	    datatoc_common_view_lib_glsl,
-	    datatoc_bsdf_common_lib_glsl,
-	    datatoc_effect_velocity_resolve_frag_glsl);
-
-	e_data.velocity_resolve_sh = DRW_shader_create_fullscreen(frag_str, NULL);
-
-	MEM_freeN(frag_str);
-
 	e_data.downsample_sh = DRW_shader_create_fullscreen(datatoc_effect_downsample_frag_glsl, NULL);
 	e_data.downsample_cube_sh = DRW_shader_create(
 	        datatoc_lightprobe_vert_glsl,
@@ -126,7 +109,8 @@ static void eevee_create_shader_downsample(void)
 }
 
 #define SETUP_BUFFER(tex, fb, fb_color) { \
-	DRW_texture_ensure_fullscreen_2D(&tex, GPU_RGBA16F, DRW_TEX_FILTER | DRW_TEX_MIPMAP); \
+	eGPUTextureFormat format = (DRW_state_is_scene_render()) ? GPU_RGBA32F : GPU_RGBA16F; \
+	DRW_texture_ensure_fullscreen_2d(&tex, format, DRW_TEX_FILTER | DRW_TEX_MIPMAP); \
 	GPU_framebuffer_ensure_config(&fb, { \
 		GPU_ATTACHMENT_TEXTURE(dtxl->depth), \
 		GPU_ATTACHMENT_TEXTURE(tex), \
@@ -209,10 +193,10 @@ void EEVEE_effects_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, Object 
 
 	if (GPU_type_matches(GPU_DEVICE_INTEL, GPU_OS_ANY, GPU_DRIVER_ANY)) {
 		/* Intel gpu seems to have problem rendering to only depth format */
-		DRW_texture_ensure_2D(&txl->maxzbuffer, size[0], size[1], GPU_R32F, DRW_TEX_MIPMAP);
+		DRW_texture_ensure_2d(&txl->maxzbuffer, size[0], size[1], GPU_R32F, DRW_TEX_MIPMAP);
 	}
 	else {
-		DRW_texture_ensure_2D(&txl->maxzbuffer, size[0], size[1], GPU_DEPTH_COMPONENT24, DRW_TEX_MIPMAP);
+		DRW_texture_ensure_2d(&txl->maxzbuffer, size[0], size[1], GPU_DEPTH_COMPONENT24, DRW_TEX_MIPMAP);
 	}
 
 	if (fbl->downsample_fb == NULL) {
@@ -233,7 +217,7 @@ void EEVEE_effects_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, Object 
 	 * Normal buffer for deferred passes.
 	 */
 	if ((effects->enabled_effects & EFFECT_NORMAL_BUFFER) != 0)	{
-		effects->ssr_normal_input = DRW_texture_pool_query_2D(size_fs[0], size_fs[1], GPU_RG16,
+		effects->ssr_normal_input = DRW_texture_pool_query_2d(size_fs[0], size_fs[1], GPU_RG16,
 		                                                      &draw_engine_eevee_type);
 
 		GPU_framebuffer_texture_attach(fbl->main_fb, effects->ssr_normal_input, 1, 0);
@@ -246,7 +230,7 @@ void EEVEE_effects_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, Object 
 	 * Motion vector buffer for correct TAA / motion blur.
 	 */
 	if ((effects->enabled_effects & EFFECT_VELOCITY_BUFFER) != 0) {
-		effects->velocity_tx = DRW_texture_pool_query_2D(size_fs[0], size_fs[1], GPU_RG16,
+		effects->velocity_tx = DRW_texture_pool_query_2d(size_fs[0], size_fs[1], GPU_RG16,
 		                                                 &draw_engine_eevee_type);
 
 		/* TODO output objects velocity during the mainpass. */
@@ -265,7 +249,7 @@ void EEVEE_effects_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, Object 
 	 * Setup depth double buffer.
 	 */
 	if ((effects->enabled_effects & EFFECT_DEPTH_DOUBLE_BUFFER) != 0) {
-		DRW_texture_ensure_fullscreen_2D(&txl->depth_double_buffer, GPU_DEPTH24_STENCIL8, 0);
+		DRW_texture_ensure_fullscreen_2d(&txl->depth_double_buffer, GPU_DEPTH24_STENCIL8, 0);
 
 		GPU_framebuffer_ensure_config(&fbl->double_buffer_depth_fb, {
 			GPU_ATTACHMENT_TEXTURE(txl->depth_double_buffer)
@@ -375,7 +359,7 @@ void EEVEE_effects_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 		/* This pass compute camera motions to the non moving objects. */
 		psl->velocity_resolve = DRW_pass_create(
 		        "Velocity Resolve", DRW_STATE_WRITE_COLOR);
-		DRWShadingGroup *grp = DRW_shgroup_create(e_data.velocity_resolve_sh, psl->velocity_resolve);
+		DRWShadingGroup *grp = DRW_shgroup_create(EEVEE_shaders_velocity_resolve_sh_get(), psl->velocity_resolve);
 		DRW_shgroup_uniform_texture_ref(grp, "depthBuffer", &e_data.depth_src);
 		DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
 		DRW_shgroup_uniform_mat4(grp, "currPersinv", effects->velocity_curr_persinv);
@@ -470,11 +454,18 @@ void EEVEE_create_minmax_buffer(EEVEE_Data *vedata, GPUTexture *depth_src, int l
 
 	/* Restore */
 	GPU_framebuffer_bind(fbl->main_fb);
+
+	if (GPU_mip_render_workaround() ||
+	    GPU_type_matches(GPU_DEVICE_INTEL_UHD, GPU_OS_WIN, GPU_DRIVER_ANY))
+	{
+		/* Fix dot corruption on intel HD5XX/HD6XX series. */
+		GPU_flush();
+	}
 }
 
 /**
  * Simple downsampling algorithm. Reconstruct mip chain up to mip level.
- **/
+ */
 void EEVEE_downsample_buffer(EEVEE_Data *vedata, GPUTexture *texture_src, int level)
 {
 	EEVEE_FramebufferList *fbl = vedata->fbl;
@@ -490,7 +481,7 @@ void EEVEE_downsample_buffer(EEVEE_Data *vedata, GPUTexture *texture_src, int le
 
 /**
  * Simple downsampling algorithm for cubemap. Reconstruct mip chain up to mip level.
- **/
+ */
 void EEVEE_downsample_cube_buffer(EEVEE_Data *vedata, GPUTexture *texture_src, int level)
 {
 	EEVEE_FramebufferList *fbl = vedata->fbl;
@@ -567,8 +558,6 @@ void EEVEE_draw_effects(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
 
 void EEVEE_effects_free(void)
 {
-	DRW_SHADER_FREE_SAFE(e_data.velocity_resolve_sh);
-
 	DRW_SHADER_FREE_SAFE(e_data.downsample_sh);
 	DRW_SHADER_FREE_SAFE(e_data.downsample_cube_sh);
 

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,19 +14,17 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2011 by Nicholas Bishop.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/modifiers/intern/MOD_remesh.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math_base.h"
-#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
+
+#include "BLI_math_base.h"
 
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
@@ -45,6 +41,8 @@
 #include <string.h>
 
 #ifdef WITH_MOD_REMESH
+#  include "BLI_math_vector.h"
+
 #  include "dualcon.h"
 #endif
 
@@ -239,4 +237,5 @@ ModifierTypeInfo modifierType_Remesh = {
 	/* dependsOnNormals */	NULL,
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     NULL,
+	/* freeRuntimeData */   NULL,
 };
