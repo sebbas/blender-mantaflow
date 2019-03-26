@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_outliner/outliner_intern.h
- *  \ingroup spoutliner
+/** \file
+ * \ingroup spoutliner
  */
 
 
@@ -37,20 +30,20 @@
 /* internal exports only */
 
 struct ARegion;
+struct EditBone;
+struct ID;
 struct ListBase;
-struct wmOperatorType;
+struct Main;
+struct Object;
+struct Scene;
 struct TreeElement;
 struct TreeStoreElem;
-struct Main;
-struct bContext;
-struct Scene;
 struct ViewLayer;
-struct ID;
-struct Object;
+struct bContext;
 struct bPoseChannel;
-struct EditBone;
 struct wmEvent;
 struct wmKeyConfig;
+struct wmOperatorType;
 
 typedef enum TreeElementInsertType {
 	TE_INSERT_BEFORE,
@@ -92,7 +85,8 @@ typedef struct TreeElementIcon {
 #define TREESTORE_ID_TYPE(_id) \
 	(ELEM(GS((_id)->name), ID_SCE, ID_LI, ID_OB, ID_ME, ID_CU, ID_MB, ID_NT, ID_MA, ID_TE, ID_IM, ID_LT, ID_LA, ID_CA) || \
 	 ELEM(GS((_id)->name), ID_KE, ID_WO, ID_SPK, ID_GR, ID_AR, ID_AC, ID_BR, ID_PA, ID_GD, ID_LS, ID_LP) || \
-	 ELEM(GS((_id)->name), ID_SCR, ID_WM, ID_TXT, ID_VF, ID_SO, ID_CF, ID_PAL, ID_MC, ID_WS))  /* Only in 'blendfile' mode ... :/ */
+	/* Only in 'blendfile' mode ... :/ */ \
+	 ELEM(GS((_id)->name), ID_SCR, ID_WM, ID_TXT, ID_VF, ID_SO, ID_CF, ID_PAL, ID_MC, ID_WS, ID_MSK, ID_PC))
 
 /* TreeElement->flag */
 enum {
@@ -129,12 +123,11 @@ typedef enum {
 /* size constants */
 #define OL_Y_OFFSET 2
 
-#define OL_TOG_HIDEX            (UI_UNIT_X * 4.0f)
-#define OL_TOG_RESTRICT_SELECTX (UI_UNIT_X * 3.0f)
-#define OL_TOG_RESTRICT_VIEWX   (UI_UNIT_X * 2.0f)
-#define OL_TOG_RESTRICT_RENDERX UI_UNIT_X
+#define OL_TOG_RESTRICT_SELECTX (UI_UNIT_X * 3.0f + V2D_SCROLL_WIDTH)
+#define OL_TOG_RESTRICT_VIEWX   (UI_UNIT_X * 2.0f + V2D_SCROLL_WIDTH)
+#define OL_TOG_RESTRICT_RENDERX (UI_UNIT_X + V2D_SCROLL_WIDTH)
 
-#define OL_TOGW OL_TOG_HIDEX
+#define OL_TOGW OL_TOG_RESTRICT_SELECTX
 
 #define OL_RNA_COLX         (UI_UNIT_X * 15)
 #define OL_RNA_COL_SIZEX    (UI_UNIT_X * 7.5f)
@@ -168,13 +161,13 @@ typedef enum {
 /* outliner_tree.c ----------------------------------------------- */
 
 void outliner_free_tree(ListBase *tree);
-void outliner_cleanup_tree(struct SpaceOops *soops);
+void outliner_cleanup_tree(struct SpaceOutliner *soops);
 void outliner_free_tree_element(TreeElement *element, ListBase *parent_subtree);
 
 void outliner_build_tree(
         struct Main *mainvar,
         struct Scene *scene, struct ViewLayer *view_layer,
-        struct SpaceOops *soops, struct ARegion *ar);
+        struct SpaceOutliner *soops, struct ARegion *ar);
 
 typedef struct IDsSelectedData {
 	struct ListBase selected_array;
@@ -186,15 +179,14 @@ TreeTraversalAction outliner_find_selected_objects(struct TreeElement *te, void 
 /* outliner_draw.c ---------------------------------------------- */
 
 void draw_outliner(const struct bContext *C);
-void restrictbutton_gr_restrict_flag(void *poin, void *poin2, int flag);
 
 TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te);
 
 /* outliner_select.c -------------------------------------------- */
 eOLDrawState tree_element_type_active(
-        struct bContext *C, struct Scene *scene, struct ViewLayer *view_layer, struct SpaceOops *soops,
+        struct bContext *C, struct Scene *scene, struct ViewLayer *view_layer, struct SpaceOutliner *soops,
         TreeElement *te, TreeStoreElem *tselem, const eOLSetState set, bool recursive);
-eOLDrawState tree_element_active(struct bContext *C, struct Scene *scene, struct ViewLayer *view_layer, SpaceOops *soops,
+eOLDrawState tree_element_active(struct bContext *C, struct Scene *scene, struct ViewLayer *view_layer, SpaceOutliner *soops,
                                  TreeElement *te, const eOLSetState set, const bool handle_all_types);
 
 void outliner_item_do_activate_from_tree_element(
@@ -205,7 +197,7 @@ int outliner_item_do_activate_from_cursor(
         bool extend, bool recursive);
 
 void outliner_item_select(
-        struct SpaceOops *soops, const struct TreeElement *te,
+        struct SpaceOutliner *soops, const struct TreeElement *te,
         const bool extend, const bool toggle);
 
 void outliner_object_mode_toggle(
@@ -218,10 +210,10 @@ typedef void (*outliner_operation_cb)(
         struct TreeElement *, struct TreeStoreElem *, TreeStoreElem *, void *);
 
 void outliner_do_object_operation_ex(
-        struct bContext *C, struct ReportList *reports, struct Scene *scene, struct SpaceOops *soops,
-        struct ListBase *lb, outliner_operation_cb operation_cb, bool recurse_selected);
+        struct bContext *C, struct ReportList *reports, struct Scene *scene, struct SpaceOutliner *soops,
+        struct ListBase *lb, outliner_operation_cb operation_cb, void *user_data, bool recurse_selected);
 void outliner_do_object_operation(
-        struct bContext *C, struct ReportList *reports, struct Scene *scene, struct SpaceOops *soops,
+        struct bContext *C, struct ReportList *reports, struct Scene *scene, struct SpaceOutliner *soops,
         struct ListBase *lb, outliner_operation_cb operation_cb);
 
 int common_restrict_check(struct bContext *C, struct Object *ob);
@@ -229,17 +221,6 @@ int common_restrict_check(struct bContext *C, struct Object *ob);
 int outliner_flag_is_any_test(ListBase *lb, short flag, const int curlevel);
 bool outliner_flag_set(ListBase *lb, short flag, short set);
 bool outliner_flag_flip(ListBase *lb, short flag);
-
-void object_toggle_visibility_cb(
-        struct bContext *C, struct ReportList *reports, struct Scene *scene,
-        TreeElement *te, struct TreeStoreElem *tsep, struct TreeStoreElem *tselem, void *user_data);
-void object_toggle_selectability_cb(
-        struct bContext *C, struct ReportList *reports, struct Scene *scene,
-        TreeElement *te, struct TreeStoreElem *tsep, struct TreeStoreElem *tselem, void *user_data);
-void object_toggle_renderability_cb(
-        struct bContext *C, struct ReportList *reports, struct Scene *scene,
-        TreeElement *te, struct TreeStoreElem *tsep, struct TreeStoreElem *tselem, void *user_data);
-
 
 void item_rename_cb(
         struct bContext *C, struct ReportList *reports, struct Scene *scene,
@@ -265,7 +246,7 @@ void item_object_mode_exit_cb(
         struct bContext *C, struct ReportList *reports, struct Scene *scene,
         TreeElement *te, struct TreeStoreElem *tsep, struct TreeStoreElem *tselem, void *user_data);
 
-void outliner_set_coordinates(struct ARegion *ar, struct SpaceOops *soops);
+void outliner_set_coordinates(struct ARegion *ar, struct SpaceOutliner *soops);
 
 /* outliner_dragdrop.c */
 void outliner_dropboxes(void);
@@ -316,6 +297,8 @@ void OUTLINER_OT_object_operation(struct wmOperatorType *ot);
 void OUTLINER_OT_lib_operation(struct wmOperatorType *ot);
 void OUTLINER_OT_id_operation(struct wmOperatorType *ot);
 void OUTLINER_OT_id_remap(struct wmOperatorType *ot);
+void OUTLINER_OT_id_copy(struct wmOperatorType *ot);
+void OUTLINER_OT_id_paste(struct wmOperatorType *ot);
 void OUTLINER_OT_data_operation(struct wmOperatorType *ot);
 void OUTLINER_OT_animdata_operation(struct wmOperatorType *ot);
 void OUTLINER_OT_action_set(struct wmOperatorType *ot);
@@ -334,6 +317,7 @@ bool outliner_is_collection_tree_element(const TreeElement *te);
 struct Collection *outliner_collection_from_tree_element(const TreeElement *te);
 
 void OUTLINER_OT_collection_new(struct wmOperatorType *ot);
+void OUTLINER_OT_collection_duplicate_linked(struct wmOperatorType *ot);
 void OUTLINER_OT_collection_duplicate(struct wmOperatorType *ot);
 void OUTLINER_OT_collection_delete(struct wmOperatorType *ot);
 void OUTLINER_OT_collection_objects_select(struct wmOperatorType *ot);
@@ -347,18 +331,30 @@ void OUTLINER_OT_collection_holdout_clear(struct wmOperatorType *ot);
 void OUTLINER_OT_collection_indirect_only_set(struct wmOperatorType *ot);
 void OUTLINER_OT_collection_indirect_only_clear(struct wmOperatorType *ot);
 
+void OUTLINER_OT_collection_isolate(struct wmOperatorType *ot);
+void OUTLINER_OT_collection_show(struct wmOperatorType *ot);
+void OUTLINER_OT_collection_hide(struct wmOperatorType *ot);
+void OUTLINER_OT_collection_show_inside(struct wmOperatorType *ot);
+void OUTLINER_OT_collection_hide_inside(struct wmOperatorType *ot);
+void OUTLINER_OT_collection_enable(struct wmOperatorType *ot);
+void OUTLINER_OT_collection_disable(struct wmOperatorType *ot);
+void OUTLINER_OT_collection_enable_render(struct wmOperatorType *ot);
+void OUTLINER_OT_collection_disable_render(struct wmOperatorType *ot);
+void OUTLINER_OT_hide(struct wmOperatorType *ot);
+void OUTLINER_OT_unhide_all(struct wmOperatorType *ot);
+
 /* outliner_utils.c ---------------------------------------------- */
 
-TreeElement *outliner_find_item_at_y(const SpaceOops *soops, const ListBase *tree, float view_co_y);
-TreeElement *outliner_find_item_at_x_in_row(const SpaceOops *soops, const TreeElement *parent_te, float view_co_x);
-TreeElement *outliner_find_tse(struct SpaceOops *soops, const TreeStoreElem *tse);
+TreeElement *outliner_find_item_at_y(const SpaceOutliner *soops, const ListBase *tree, float view_co_y);
+TreeElement *outliner_find_item_at_x_in_row(const SpaceOutliner *soops, const TreeElement *parent_te, float view_co_x);
+TreeElement *outliner_find_tse(struct SpaceOutliner *soops, const TreeStoreElem *tse);
 TreeElement *outliner_find_tree_element(ListBase *lb, const TreeStoreElem *store_elem);
 TreeElement *outliner_find_parent_element(ListBase *lb, TreeElement *parent_te, const TreeElement *child_te);
-TreeElement *outliner_find_id(struct SpaceOops *soops, ListBase *lb, const struct ID *id);
+TreeElement *outliner_find_id(struct SpaceOutliner *soops, ListBase *lb, const struct ID *id);
 TreeElement *outliner_find_posechannel(ListBase *lb, const struct bPoseChannel *pchan);
 TreeElement *outliner_find_editbone(ListBase *lb, const struct EditBone *ebone);
-struct ID *outliner_search_back(SpaceOops *soops, TreeElement *te, short idcode);
-bool outliner_tree_traverse(const SpaceOops *soops, ListBase *tree, int filter_te_flag, int filter_tselem_flag,
+struct ID *outliner_search_back(SpaceOutliner *soops, TreeElement *te, short idcode);
+bool outliner_tree_traverse(const SpaceOutliner *soops, ListBase *tree, int filter_te_flag, int filter_tselem_flag,
                             TreeTraversalFunc func, void *customdata);
 
 

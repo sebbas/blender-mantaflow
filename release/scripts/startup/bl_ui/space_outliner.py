@@ -90,10 +90,7 @@ class OUTLINER_MT_editor_menus(Menu):
     bl_label = ""
 
     def draw(self, context):
-        self.draw_menus(self.layout, context)
-
-    @staticmethod
-    def draw_menus(layout, context):
+        layout = self.layout
         space = context.space_data
 
         if space.display_mode == 'DATA_API':
@@ -106,17 +103,26 @@ class OUTLINER_MT_context(Menu):
     def draw(self, context):
         layout = self.layout
 
-        layout.operator("outliner.show_one_level", text="Show One Level")
-        layout.operator("outliner.show_one_level", text="Hide One Level").open = False
-        layout.operator("outliner.show_hierarchy")
+        layout.menu("OUTLINER_MT_context_view")
 
         layout.separator()
+
+        layout.menu("INFO_MT_area")
+
+
+class OUTLINER_MT_context_view(Menu):
+    bl_label = "View"
+
+    def draw(self, context):
+        layout = self.layout
 
         layout.operator("outliner.show_active")
 
         layout.separator()
 
-        layout.menu("INFO_MT_area")
+        layout.operator("outliner.show_hierarchy")
+        layout.operator("outliner.show_one_level", text="Show One Level")
+        layout.operator("outliner.show_one_level", text="Hide One Level").open = False
 
 
 class OUTLINER_MT_edit_datablocks(Menu):
@@ -151,6 +157,32 @@ class OUTLINER_MT_collection_view_layer(Menu):
             layout.operator("outliner.collection_holdout_clear")
 
 
+class OUTLINER_MT_collection_visibility(Menu):
+    bl_label = "Visibility"
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.operator("outliner.collection_isolate", text="Isolate")
+
+        layout.separator()
+
+        layout.operator("outliner.collection_show", text="Show", icon="HIDE_OFF")
+        layout.operator("outliner.collection_show_inside", text="Show All Inside")
+        layout.operator("outliner.collection_hide", text="Hide", icon="HIDE_ON")
+        layout.operator("outliner.collection_hide_inside", text="Hide All Inside")
+
+        layout.separator()
+
+        layout.operator("outliner.collection_enable", text="Enable in Viewports", icon="RESTRICT_VIEW_OFF")
+        layout.operator("outliner.collection_disable", text="Disable in Viewports")
+
+        layout.separator()
+
+        layout.operator("outliner.collection_enable_render", text="Enable in Render", icon="RESTRICT_RENDER_OFF")
+        layout.operator("outliner.collection_disable_render", text="Disable in Render")
+
+
 class OUTLINER_MT_collection(Menu):
     bl_label = "Collection"
 
@@ -160,27 +192,39 @@ class OUTLINER_MT_collection(Menu):
         space = context.space_data
 
         layout.operator("outliner.collection_new", text="New").nested = True
-        layout.operator("outliner.collection_duplicate", text="Duplicate")
-        layout.operator("outliner.collection_delete", text="Delete").hierarchy = False
+        layout.operator("outliner.collection_duplicate", text="Duplicate Collection")
+        layout.operator("outliner.collection_duplicate_linked", text="Duplicate Linked")
+        layout.operator("outliner.id_copy", text="Copy", icon='COPYDOWN')
+        layout.operator("outliner.id_paste", text="Paste", icon='PASTEDOWN')
+
+        layout.separator()
+
+        layout.operator("outliner.collection_delete", text="Delete", icon="X").hierarchy = False
         layout.operator("outliner.collection_delete", text="Delete Hierarchy").hierarchy = True
 
         layout.separator()
 
-        layout.operator("outliner.collection_objects_select", text="Select Objects")
+        layout.operator("outliner.collection_objects_select", text="Select Objects", icon="RESTRICT_SELECT_OFF")
         layout.operator("outliner.collection_objects_deselect", text="Deselect Objects")
 
         layout.separator()
 
         layout.operator("outliner.collection_instance", text="Instance to Scene")
+
         if space.display_mode != 'VIEW_LAYER':
             layout.operator("outliner.collection_link", text="Link to Scene")
         layout.operator("outliner.id_operation", text="Unlink").type = 'UNLINK'
 
+        layout.separator()
+
+        layout.menu("OUTLINER_MT_collection_visibility")
+
         if space.display_mode == 'VIEW_LAYER':
             layout.separator()
-            layout.menu("OUTLINER_MT_collection_view_layer")
+            layout.menu("OUTLINER_MT_collection_view_layer", icon='RENDERLAYERS')
 
         layout.separator()
+
         layout.operator_menu_enum("outliner.id_operation", "type", text="ID Data")
 
         layout.separator()
@@ -195,6 +239,7 @@ class OUTLINER_MT_collection_new(Menu):
         layout = self.layout
 
         layout.operator("outliner.collection_new", text="New").nested = False
+        layout.operator("outliner.id_paste", text="Paste", icon='PASTEDOWN')
 
         layout.separator()
 
@@ -211,13 +256,19 @@ class OUTLINER_MT_object(Menu):
         obj = context.active_object
         object_mode = 'OBJECT' if obj is None else obj.mode
 
-        layout.operator("outliner.object_operation", text="Delete").type = 'DELETE'
+        layout.operator("outliner.id_copy", text="Copy", icon='COPYDOWN')
+        layout.operator("outliner.id_paste", text="Paste", icon='PASTEDOWN')
+
+        layout.separator()
+
+        layout.operator("outliner.object_operation", text="Delete", icon="X").type = 'DELETE'
+
         if space.display_mode == 'VIEW_LAYER' and not space.use_filter_collection:
             layout.operator("outliner.object_operation", text="Delete Hierarchy").type = 'DELETE_HIERARCHY'
 
         layout.separator()
 
-        layout.operator("outliner.object_operation", text="Select").type = 'SELECT'
+        layout.operator("outliner.object_operation", text="Select", icon="RESTRICT_SELECT_OFF").type = 'SELECT'
         layout.operator("outliner.object_operation", text="Select Hierarchy").type = 'SELECT_HIERARCHY'
         layout.operator("outliner.object_operation", text="Deselect").type = 'DESELECT'
 
@@ -304,9 +355,11 @@ classes = (
     OUTLINER_MT_edit_datablocks,
     OUTLINER_MT_collection,
     OUTLINER_MT_collection_new,
+    OUTLINER_MT_collection_visibility,
     OUTLINER_MT_collection_view_layer,
     OUTLINER_MT_object,
     OUTLINER_MT_context,
+    OUTLINER_MT_context_view,
     OUTLINER_PT_filter,
 )
 

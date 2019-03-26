@@ -1,5 +1,5 @@
-/** \file smoke/intern/WAVELET_NOISE.h
- *  \ingroup smoke
+/** \file
+ * \ingroup smoke
  */
 //////////////////////////////////////////////////////////////////////
 // This file is part of Wavelet Turbulence.

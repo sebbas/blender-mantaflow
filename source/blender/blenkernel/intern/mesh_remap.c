@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,17 +12,17 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/mesh_remap.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  *
  * Functions for mapping data between meshes.
  */
 
 #include <limits.h>
+
+#include "CLG_log.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -49,9 +47,9 @@
 
 #include "BLI_strict_flags.h"
 
+static CLG_LogRef LOG = {"bke.mesh"};
 
 /* -------------------------------------------------------------------- */
-
 /** \name Some generic helpers.
  * \{ */
 
@@ -304,6 +302,22 @@ void BKE_mesh_remap_find_best_match_from_mesh(
 
 /** \name Mesh to mesh mapping
  * \{ */
+
+void BKE_mesh_remap_calc_source_cddata_masks_from_map_modes(
+        const int UNUSED(vert_mode), const int UNUSED(edge_mode), const int loop_mode, const int UNUSED(poly_mode),
+        CustomData_MeshMasks *cddata_mask)
+{
+	/* vert, edge and poly mapping modes never need extra cddata from source object. */
+	const bool need_lnors_src = (loop_mode & MREMAP_USE_LOOP) && (loop_mode & MREMAP_USE_NORMAL);
+	const bool need_pnors_src = need_lnors_src || ((loop_mode & MREMAP_USE_POLY) && (loop_mode & MREMAP_USE_NORMAL));
+
+	if (need_lnors_src) {
+		cddata_mask->lmask |= CD_MASK_NORMAL;
+	}
+	if (need_pnors_src) {
+		cddata_mask->pmask |= CD_MASK_NORMAL;
+	}
+}
 
 void BKE_mesh_remap_init(MeshPairRemap *map, const int items_num)
 {
@@ -614,7 +628,7 @@ void BKE_mesh_remap_calc_verts_from_mesh(
 			MEM_freeN(weights);
 		}
 		else {
-			printf("WARNING! Unsupported mesh-to-mesh vertex mapping mode (%d)!\n", mode);
+			CLOG_WARN(&LOG, "Unsupported mesh-to-mesh vertex mapping mode (%d)!", mode);
 			memset(r_map->items, 0, sizeof(*r_map->items) * (size_t)numverts_dst);
 		}
 
@@ -941,7 +955,7 @@ void BKE_mesh_remap_calc_edges_from_mesh(
 			MEM_freeN(weights);
 		}
 		else {
-			printf("WARNING! Unsupported mesh-to-mesh edge mapping mode (%d)!\n", mode);
+			CLOG_WARN(&LOG, "Unsupported mesh-to-mesh edge mapping mode (%d)!", mode);
 			memset(r_map->items, 0, sizeof(*r_map->items) * (size_t)numedges_dst);
 		}
 
@@ -1237,18 +1251,13 @@ void BKE_mesh_remap_calc_loops_from_mesh(
 				}
 			}
 			if (need_pnors_src || need_lnors_src) {
-				/* Simpler for now, calcNormals never stores pnors :( */
-				if (!CustomData_has_layer(&me_src->pdata, CD_NORMAL)) {
-					CustomData_add_layer(&me_src->pdata, CD_NORMAL, CD_CALLOC, NULL, me_src->totpoly);
-					CustomData_set_layer_flag(&me_src->pdata, CD_NORMAL, CD_FLAG_TEMPORARY);
-				}
-				BKE_mesh_calc_normals_split(me_src);
-
 				if (need_pnors_src) {
 					poly_nors_src = CustomData_get_layer(&me_src->pdata, CD_NORMAL);
+					BLI_assert(poly_nors_src != NULL);
 				}
 				if (need_lnors_src) {
 					loop_nors_src = CustomData_get_layer(&me_src->ldata, CD_NORMAL);
+					BLI_assert(loop_nors_src != NULL);
 				}
 			}
 		}
@@ -1336,7 +1345,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(
 				for (tindex = 0; tindex < num_trees; tindex++) {
 					MeshElemMap *isld = island_store.islands[tindex];
 					int num_verts_active = 0;
-					BLI_BITMAP_SET_ALL(verts_active, false, (size_t)num_verts_src);
+					BLI_bitmap_set_all(verts_active, false, (size_t)num_verts_src);
 					for (i = 0; i < isld->count; i++) {
 						mp_src = &polys_src[isld->indices[i]];
 						for (lidx_src = mp_src->loopstart; lidx_src < mp_src->loopstart + mp_src->totloop; lidx_src++) {
@@ -1370,7 +1379,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(
 
 				for (tindex = 0; tindex < num_trees; tindex++) {
 					int num_looptri_active = 0;
-					BLI_BITMAP_SET_ALL(looptri_active, false, (size_t)num_looptri_src);
+					BLI_bitmap_set_all(looptri_active, false, (size_t)num_looptri_src);
 					for (i = 0; i < num_looptri_src; i++) {
 						mp_src = &polys_src[looptri_src[i].poly];
 						if (island_store.items_to_islands[mp_src->loopstart] == tindex) {
@@ -2214,7 +2223,7 @@ void BKE_mesh_remap_calc_polys_from_mesh(
 			BLI_rng_free(rng);
 		}
 		else {
-			printf("WARNING! Unsupported mesh-to-mesh poly mapping mode (%d)!\n", mode);
+			CLOG_WARN(&LOG, "Unsupported mesh-to-mesh poly mapping mode (%d)!", mode);
 			memset(r_map->items, 0, sizeof(*r_map->items) * (size_t)numpolys_dst);
 		}
 

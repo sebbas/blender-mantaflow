@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,18 +12,15 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software  Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Miika Hämäläinen
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_dynamicpaint.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 #include <stddef.h>
+
+#include "BLI_utildefines.h"
 
 #include "DNA_dynamicpaint_types.h"
 #include "DNA_object_types.h"
@@ -33,11 +28,8 @@
 #include "DNA_scene_types.h"
 #include "DNA_mesh_types.h"
 
-#include "BLI_utildefines.h"
-
 #include "BKE_dynamicpaint.h"
 #include "BKE_layer.h"
-#include "BKE_library.h"
 #include "BKE_library_query.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
@@ -58,12 +50,21 @@ static void initData(ModifierData *md)
 	pmd->type = MOD_DYNAMICPAINT_TYPE_CANVAS;
 }
 
-static void copyData(const ModifierData *md, ModifierData *target, const int UNUSED(flag))
+static void copyData(const ModifierData *md, ModifierData *target, const int flag)
 {
 	const DynamicPaintModifierData *pmd  = (const DynamicPaintModifierData *)md;
 	DynamicPaintModifierData *tpmd = (DynamicPaintModifierData *)target;
 
-	dynamicPaint_Modifier_copy(pmd, tpmd);
+	dynamicPaint_Modifier_copy(pmd, tpmd, flag);
+}
+
+static void freeRuntimeData(void *runtime_data_v)
+{
+	if (runtime_data_v == NULL) {
+		return;
+	}
+	DynamicPaintRuntime *runtime_data = (DynamicPaintRuntime *)runtime_data_v;
+	dynamicPaint_Modifier_free_runtime(runtime_data);
 }
 
 static void freeData(ModifierData *md)
@@ -72,10 +73,9 @@ static void freeData(ModifierData *md)
 	dynamicPaint_Modifier_free(pmd);
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
 	DynamicPaintModifierData *pmd = (DynamicPaintModifierData *)md;
-	CustomDataMask dataMask = 0;
 
 	if (pmd->canvas) {
 		DynamicPaintSurface *surface = pmd->canvas->surfaces.first;
@@ -84,21 +84,20 @@ static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
 			if (surface->format == MOD_DPAINT_SURFACE_F_IMAGESEQ ||
 			    surface->init_color_type == MOD_DPAINT_INITIAL_TEXTURE)
 			{
-				dataMask |= CD_MASK_MLOOPUV;
+				r_cddata_masks->lmask |= CD_MASK_MLOOPUV;
 			}
 			/* mcol */
 			if (surface->type == MOD_DPAINT_SURFACE_T_PAINT ||
 			    surface->init_color_type == MOD_DPAINT_INITIAL_VERTEXCOLOR)
 			{
-				dataMask |= CD_MASK_MLOOPCOL;
+				r_cddata_masks->lmask |= CD_MASK_MLOOPCOL;
 			}
 			/* CD_MDEFORMVERT */
 			if (surface->type == MOD_DPAINT_SURFACE_T_WEIGHT) {
-				dataMask |= CD_MASK_MDEFORMVERT;
+				r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
 			}
 		}
 	}
-	return dataMask;
 }
 
 static Mesh *applyModifier(
@@ -202,4 +201,5 @@ ModifierTypeInfo modifierType_DynamicPaint = {
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     foreachIDLink,
 	/* foreachTexLink */    foreachTexLink,
+	/* freeRuntimeData */   freeRuntimeData,
 };

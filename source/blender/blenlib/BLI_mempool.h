@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,19 +15,13 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Geoffrey Bantle.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BLI_MEMPOOL_H__
 #define __BLI_MEMPOOL_H__
 
-/** \file BLI_mempool.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #ifdef __cplusplus
@@ -65,7 +57,7 @@ void       *BLI_mempool_as_arrayN(BLI_mempool *pool, const char *allocstr) ATTR_
 void        BLI_mempool_set_memory_debug(void);
 #endif
 
-/** iteration stuff.  note: this may easy to produce bugs with **/
+/** iteration stuff.  note: this may easy to produce bugs with */
 /* private structure */
 typedef struct BLI_mempool_iter {
 	BLI_mempool *pool;

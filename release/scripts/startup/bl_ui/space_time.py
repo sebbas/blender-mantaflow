@@ -30,15 +30,14 @@ class TIME_HT_editor_buttons(Header):
     def draw(self, context):
         pass
 
-    @staticmethod
     def draw_header(context, layout):
         scene = context.scene
-        toolsettings = context.tool_settings
+        tool_settings = context.tool_settings
         screen = context.screen
 
         layout.separator_spacer()
 
-        layout.prop(toolsettings, "use_keyframe_insert_auto", text="", toggle=True)
+        layout.prop(tool_settings, "use_keyframe_insert_auto", text="", toggle=True)
 
         row = layout.row(align=True)
         row.operator("screen.frame_jump", text="", icon='REW').end = False
@@ -47,7 +46,7 @@ class TIME_HT_editor_buttons(Header):
             # if using JACK and A/V sync:
             #   hide the play-reversed button
             #   since JACK transport doesn't support reversed playback
-            if scene.sync_mode == 'AUDIO_SYNC' and context.user_preferences.system.audio_device == 'JACK':
+            if scene.sync_mode == 'AUDIO_SYNC' and context.preferences.system.audio_device == 'JACK':
                 sub = row.row(align=True)
                 sub.scale_x = 1.4
                 sub.operator("screen.animation_play", text="", icon='PLAY')
@@ -87,10 +86,8 @@ class TIME_MT_editor_menus(Menu):
     bl_label = ""
 
     def draw(self, context):
-        self.draw_menus(self.layout, context, horizontal=False)
-
-    @staticmethod
-    def draw_menus(layout, context, horizontal=True):
+        layout = self.layout
+        horizontal = (layout.direction == 'VERTICAL')
         if horizontal:
             row = layout.row()
             sub = row.row(align=True)
@@ -119,7 +116,7 @@ class TIME_MT_marker(Menu):
     def draw(self, context):
         layout = self.layout
 
-        marker_menu_generic(layout)
+        marker_menu_generic(layout, context)
 
 
 class TIME_MT_view(Menu):
@@ -136,6 +133,7 @@ class TIME_MT_view(Menu):
 
         layout.separator()
 
+        layout.prop(st, "show_marker_lines")
         layout.prop(st, "show_frame_indicator")
         layout.prop(scene, "show_keys_from_selected_only")
 
@@ -176,8 +174,7 @@ class TIME_MT_cache(Menu):
         col.prop(st, "cache_rigidbody")
 
 
-def marker_menu_generic(layout):
-    from bpy import context
+def marker_menu_generic(layout, context):
 
     # layout.operator_context = 'EXEC_REGION_WIN'
 
@@ -208,8 +205,8 @@ def marker_menu_generic(layout):
     layout.operator("screen.marker_jump", text="Jump to Previous Marker").next = False
 
     layout.separator()
-    ts = context.tool_settings
-    layout.prop(ts, "lock_markers")
+    tool_settings = context.tool_settings
+    layout.prop(tool_settings, "lock_markers")
 
 ###################################
 
@@ -276,8 +273,8 @@ class TIME_PT_keyframing_settings(TimelinePanelButtons, Panel):
         layout = self.layout
 
         scene = context.scene
-        toolsettings = context.tool_settings
-        userprefs = context.user_preferences
+        tool_settings = context.tool_settings
+        prefs = context.preferences
 
         col = layout.column(align=True)
         col.label(text="Active Keying Set:")
@@ -288,15 +285,17 @@ class TIME_PT_keyframing_settings(TimelinePanelButtons, Panel):
 
         col = layout.column(align=True)
         col.label(text="New Keyframe Type:")
-        col.prop(toolsettings, "keyframe_type", text="")
+        col.prop(tool_settings, "keyframe_type", text="")
 
         col = layout.column(align=True)
         col.label(text="Auto Keyframing:")
         row = col.row()
-        row.prop(toolsettings, "auto_keying_mode", text="")
-        row.prop(toolsettings, "use_keyframe_insert_keyingset", text="")
-        if not userprefs.edit.use_keyframe_insert_available:
-            col.prop(toolsettings, "use_record_with_nla", text="Layered Recording")
+        row.prop(tool_settings, "auto_keying_mode", text="")
+        row.prop(tool_settings, "use_keyframe_insert_keyingset", text="")
+        if not prefs.edit.use_keyframe_insert_available:
+            col.prop(tool_settings, "use_record_with_nla", text="Layered Recording")
+
+        layout.prop(tool_settings, "use_keyframe_cycle_aware")
 
 
 ###################################

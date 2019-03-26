@@ -1,6 +1,4 @@
 /*
- * Copyright 2016, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,22 +13,21 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Blender Institute
- *
+ * Copyright 2016, Blender Foundation.
  */
 
-/** \file blender/draw/intern/draw_instance_data.c
- *  \ingroup draw
+/** \file
+ * \ingroup draw
  */
 
 /**
  * DRW Instance Data Manager
  * This is a special memory manager that keeps memory blocks ready to send as vbo data in one continuous allocation.
  * This way we avoid feeding gawain each instance data one by one and unnecessary memcpy.
- * Since we loose which memory block was used each DRWShadingGroup we need to redistribute them in the same order/size
+ * Since we loose which memory block was used each #DRWShadingGroup we need to redistribute them in the same order/size
  * to avoid to realloc each frame.
- * This is why DRWInstanceDatas are sorted in a list for each different data size.
- **/
+ * This is why #DRWInstanceDatas are sorted in a list for each different data size.
+ */
 
 #include "draw_instance_data.h"
 #include "DRW_engine.h"
@@ -87,7 +84,6 @@ struct DRWInstanceDataList {
 static ListBase g_idatalists = {NULL, NULL};
 
 /* -------------------------------------------------------------------- */
-
 /** \name Instance Buffer Management
  * \{ */
 
@@ -98,10 +94,16 @@ static ListBase g_idatalists = {NULL, NULL};
  * be static so that it's pointer never changes (because we are using
  * this pointer as identifier [we don't want to check the full format
  * that would be too slow]).
- **/
-
+ */
 static void instance_batch_free(GPUBatch *batch, void *UNUSED(user_data))
 {
+	if (batch->verts[0] == NULL) {
+		/** XXX This is a false positive case.
+		 * The batch has been requested but not init yet
+		 * and there is a chance that it might become init.
+		 */
+		return;
+	}
 	/* Free all batches that have the same key before they are reused. */
 	/* TODO: Make it thread safe! Batch freeing can happen from another thread. */
 	/* XXX we need to iterate over all idatalists unless we make some smart
@@ -140,8 +142,9 @@ void DRW_batching_buffer_request(
 	}
 	int new_id = 0; /* Find insertion point. */
 	for (; new_id < chunk->alloc_size; ++new_id) {
-		if (chunk->bbufs[new_id].format == NULL)
+		if (chunk->bbufs[new_id].format == NULL) {
 			break;
+		}
 	}
 	/* If there is no batch left. Allocate more. */
 	if (new_id == chunk->alloc_size) {
@@ -181,8 +184,9 @@ void DRW_instancing_buffer_request(
 	}
 	int new_id = 0; /* Find insertion point. */
 	for (; new_id < chunk->alloc_size; ++new_id) {
-		if (chunk->ibufs[new_id].format == NULL)
+		if (chunk->ibufs[new_id].format == NULL) {
 			break;
+		}
 	}
 	/* If there is no batch left. Allocate more. */
 	if (new_id == chunk->alloc_size) {
@@ -194,12 +198,11 @@ void DRW_instancing_buffer_request(
 	/* Create the batch. */
 	ibuf = chunk->ibufs + new_id;
 	ibuf->vert = *r_vert = GPU_vertbuf_create_with_format_ex(format, GPU_USAGE_DYNAMIC);
-	ibuf->batch = *r_batch = GPU_batch_duplicate(instance);
+	ibuf->batch = *r_batch = MEM_callocN(sizeof(GPUBatch), "GPUBatch");
 	ibuf->format = format;
 	ibuf->shgroup = shgroup;
 	ibuf->instance = instance;
 	GPU_vertbuf_data_alloc(*r_vert, BUFFER_VERTS_CHUNK);
-	GPU_batch_instbuf_set(ibuf->batch, ibuf->vert, false);
 	/* Make sure to free this ibuf if the instance batch gets free. */
 	GPU_batch_callback_free_set(instance, &instance_batch_free, NULL);
 }
@@ -253,6 +256,9 @@ void DRW_instance_buffer_finish(DRWInstanceDataList *idatalist)
 				GPU_vertbuf_data_resize(ibuf->vert, size);
 			}
 			GPU_vertbuf_use(ibuf->vert); /* Send data. */
+			/* Setup batch now that we are sure ibuf->instance is setup. */
+			GPU_batch_copy(ibuf->batch, ibuf->instance);
+			GPU_batch_instbuf_set(ibuf->batch, ibuf->vert, false);
 			ibuf->shgroup = NULL; /* Set as non used for the next round. */
 		}
 		else {
@@ -274,28 +280,27 @@ void DRW_instance_buffer_finish(DRWInstanceDataList *idatalist)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-
 /** \name Instance Data (DRWInstanceData)
  * \{ */
 
-static DRWInstanceData *drw_instance_data_create(DRWInstanceDataList *idatalist, uint attrib_size)
+static DRWInstanceData *drw_instance_data_create(DRWInstanceDataList *idatalist, uint attr_size)
 {
 	DRWInstanceData *idata = MEM_callocN(sizeof(DRWInstanceData), "DRWInstanceData");
 	idata->next = NULL;
 	idata->used = true;
-	idata->data_size = attrib_size;
+	idata->data_size = attr_size;
 	idata->mempool = BLI_mempool_create(sizeof(float) * idata->data_size, 0, 16, 0);
 
-	BLI_assert(attrib_size > 0);
+	BLI_assert(attr_size > 0);
 
 	/* Push to linked list. */
-	if (idatalist->idata_head[attrib_size - 1] == NULL) {
-		idatalist->idata_head[attrib_size - 1] = idata;
+	if (idatalist->idata_head[attr_size - 1] == NULL) {
+		idatalist->idata_head[attr_size - 1] = idata;
 	}
 	else {
-		idatalist->idata_tail[attrib_size - 1]->next = idata;
+		idatalist->idata_tail[attr_size - 1]->next = idata;
 	}
-	idatalist->idata_tail[attrib_size - 1] = idata;
+	idatalist->idata_tail[attr_size - 1] = idata;
 
 	return idata;
 }
@@ -307,17 +312,17 @@ static void DRW_instance_data_free(DRWInstanceData *idata)
 
 /**
  * Return a pointer to the next instance data space.
- **/
+ */
 void *DRW_instance_data_next(DRWInstanceData *idata)
 {
 	return BLI_mempool_alloc(idata->mempool);
 }
 
-DRWInstanceData *DRW_instance_data_request(DRWInstanceDataList *idatalist, uint attrib_size)
+DRWInstanceData *DRW_instance_data_request(DRWInstanceDataList *idatalist, uint attr_size)
 {
-	BLI_assert(attrib_size > 0 && attrib_size <= MAX_INSTANCE_DATA_SIZE);
+	BLI_assert(attr_size > 0 && attr_size <= MAX_INSTANCE_DATA_SIZE);
 
-	DRWInstanceData *idata = idatalist->idata_head[attrib_size - 1];
+	DRWInstanceData *idata = idatalist->idata_head[attr_size - 1];
 
 	/* Search for an unused data chunk. */
 	for (; idata; idata = idata->next) {
@@ -327,13 +332,12 @@ DRWInstanceData *DRW_instance_data_request(DRWInstanceDataList *idatalist, uint 
 		}
 	}
 
-	return drw_instance_data_create(idatalist, attrib_size);
+	return drw_instance_data_create(idatalist, attr_size);
 }
 
 /** \} */
 
 /* -------------------------------------------------------------------- */
-
 /** \name Instance Data List (DRWInstanceDataList)
  * \{ */
 

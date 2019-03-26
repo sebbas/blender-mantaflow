@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/sculpt_paint/paint_utils.c
- *  \ingroup edsculpt
+/** \file
+ * \ingroup edsculpt
  */
 
 #include <math.h>
@@ -217,10 +209,10 @@ void paint_get_tex_pixel_col(
 void paint_stroke_operator_properties(wmOperatorType *ot)
 {
 	static const EnumPropertyItem stroke_mode_items[] = {
-		{BRUSH_STROKE_NORMAL, "NORMAL", 0, "Normal", "Apply brush normally"},
+		{BRUSH_STROKE_NORMAL, "NORMAL", 0, "Regular", "Apply brush normally"},
 		{BRUSH_STROKE_INVERT, "INVERT", 0, "Invert", "Invert action of brush for duration of stroke"},
 		{BRUSH_STROKE_SMOOTH, "SMOOTH", 0, "Smooth", "Switch brush to smooth mode for duration of stroke"},
-		{0}
+		{0},
 	};
 
 	PropertyRNA *prop;
@@ -370,7 +362,7 @@ static int imapaint_pick_face(
 		return 0;
 
 	/* sample only on the exact position */
-	*r_index = ED_view3d_backbuf_sample(vc, mval[0], mval[1]);
+	*r_index = ED_view3d_select_id_sample(vc, mval[0], mval[1]);
 
 	if ((*r_index) == 0 || (*r_index) > (unsigned int)totpoly) {
 		return 0;
@@ -468,8 +460,10 @@ void paint_sample_color(bContext *C, ARegion *ar, int x, int y, bool texpaint_pr
 		bool use_material = (imapaint->mode == IMAGEPAINT_MODE_MATERIAL);
 
 		if (ob) {
+			CustomData_MeshMasks cddata_masks = CD_MASK_BAREMESH;
+			cddata_masks.pmask |= CD_MASK_ORIGINDEX;
 			Mesh *me = (Mesh *)ob->data;
-			Mesh *me_eval = ob_eval->runtime.mesh_eval;
+			Mesh *me_eval = mesh_get_eval_final(depsgraph, scene, ob_eval, &cddata_masks);
 
 			ViewContext vc;
 			const int mval[2] = {x, y};
@@ -594,7 +588,8 @@ void BRUSH_OT_curve_preset(wmOperatorType *ot)
 		{CURVE_PRESET_LINE, "LINE", 0, "Line", ""},
 		{CURVE_PRESET_ROUND, "ROUND", 0, "Round", ""},
 		{CURVE_PRESET_ROOT, "ROOT", 0, "Root", ""},
-		{0, NULL, 0, NULL, NULL}};
+		{0, NULL, 0, NULL, NULL},
+	};
 
 	ot->name = "Preset";
 	ot->description = "Set brush shape";
@@ -655,9 +650,11 @@ void PAINT_OT_face_select_linked_pick(wmOperatorType *ot)
 static int face_select_all_exec(bContext *C, wmOperator *op)
 {
 	Object *ob = CTX_data_active_object(C);
-	paintface_deselect_all_visible(ob, RNA_enum_get(op->ptr, "action"), true);
-	ED_region_tag_redraw(CTX_wm_region(C));
-	return OPERATOR_FINISHED;
+	if (paintface_deselect_all_visible(C, ob, RNA_enum_get(op->ptr, "action"), true)) {
+		ED_region_tag_redraw(CTX_wm_region(C));
+		return OPERATOR_FINISHED;
+	}
+	return OPERATOR_CANCELLED;
 }
 
 
@@ -680,6 +677,7 @@ static int vert_select_all_exec(bContext *C, wmOperator *op)
 {
 	Object *ob = CTX_data_active_object(C);
 	paintvert_deselect_all_visible(ob, RNA_enum_get(op->ptr, "action"), true);
+	paintvert_tag_select_update(C, ob);
 	ED_region_tag_redraw(CTX_wm_region(C));
 	return OPERATOR_FINISHED;
 }
@@ -711,6 +709,7 @@ static int vert_select_ungrouped_exec(bContext *C, wmOperator *op)
 	}
 
 	paintvert_select_ungrouped(ob, RNA_boolean_get(op->ptr, "extend"), true);
+	paintvert_tag_select_update(C, ob);
 	ED_region_tag_redraw(CTX_wm_region(C));
 	return OPERATOR_FINISHED;
 }
@@ -736,7 +735,7 @@ static int face_select_hide_exec(bContext *C, wmOperator *op)
 {
 	const bool unselected = RNA_boolean_get(op->ptr, "unselected");
 	Object *ob = CTX_data_active_object(C);
-	paintface_hide(ob, unselected);
+	paintface_hide(C, ob, unselected);
 	ED_region_tag_redraw(CTX_wm_region(C));
 	return OPERATOR_FINISHED;
 }
@@ -759,7 +758,7 @@ static int face_select_reveal_exec(bContext *C, wmOperator *op)
 {
 	const bool select = RNA_boolean_get(op->ptr, "select");
 	Object *ob = CTX_data_active_object(C);
-	paintface_reveal(ob, select);
+	paintface_reveal(C, ob, select);
 	ED_region_tag_redraw(CTX_wm_region(C));
 	return OPERATOR_FINISHED;
 }

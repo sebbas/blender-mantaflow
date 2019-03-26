@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2013 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Jason Wilkins
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file ghost/intern/GHOST_Context.h
- *  \ingroup GHOST
+/** \file
+ * \ingroup GHOST
  * Declaration of GHOST_Context class.
  */
 
@@ -126,7 +118,7 @@ public:
 		return m_stereoVisual;
 	}
 
-	/** Number of samples used in anti-aliasing, set to 0 if no AA **/
+	/** Number of samples used in anti-aliasing, set to 0 if no AA */
 	inline GHOST_TUns16 getNumOfAASamples() const {
 		return m_numOfAASamples;
 	}
@@ -148,12 +140,15 @@ protected:
 
 #ifdef _WIN32
 bool win32_chk(bool result, const char *file = NULL, int line = 0, const char *text = NULL);
+bool win32_silent_chk(bool result);
 
 #  ifndef NDEBUG
 #    define WIN32_CHK(x) win32_chk((x), __FILE__, __LINE__, #x)
 #  else
 #    define WIN32_CHK(x) win32_chk(x)
 #  endif
+
+#define WIN32_CHK_SILENT(x, silent) ((silent) ? win32_silent_chk(x) : WIN32_CHK(x))
 #endif  /* _WIN32 */
 
 

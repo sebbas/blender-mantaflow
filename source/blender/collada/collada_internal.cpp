@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Chingiz Dyussenov, Arystanbek Dyussenov.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/collada/collada_internal.cpp
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 
 
@@ -30,6 +24,7 @@
 #include "collada_utils.h"
 
 #include "BLI_linklist.h"
+#include "ED_armature.h"
 
 UnitConverter::UnitConverter() : unit(), up_axis(COLLADAFW::FileInfo::Z_UP)
 {
@@ -205,7 +200,7 @@ const unsigned char translate_start_name_map[256] = {
 	224, 225, 226, 227, 228, 229, 230, 231,
 	232, 233, 234, 235, 236, 237, 238, 239,
 	240, 241, 242, 243, 244, 245, 246, 247,
-	248, 249, 250, 251, 252, 253, 254, 255
+	248, 249, 250, 251, 252, 253, 254, 255,
 };
 
 const unsigned char translate_name_map[256] = {
@@ -242,7 +237,7 @@ const unsigned char translate_name_map[256] = {
 	224, 225, 226, 227, 228, 229, 230, 231,
 	232, 233, 234, 235, 236, 237, 238, 239,
 	240, 241, 242, 243, 244, 245, 246, 247,
-	248, 249, 250, 251, 252, 253, 254, 255
+	248, 249, 250, 251, 252, 253, 254, 255,
 };
 
 typedef std::map< std::string, std::vector<std::string> > map_string_list;
@@ -310,6 +305,33 @@ std::string id_name(void *id)
 	return ((ID *)id)->name + 2;
 }
 
+std::string encode_xml(std::string xml)
+{
+	const std::map<char, std::string> escape {
+		{'<' , "&lt;"  },
+		{'>' , "&gt;"  },
+		{'"' , "&quot;"},
+		{'\'', "&apos;"},
+		{'&' , "&amp;" }
+	};
+
+	std::map<char, std::string>::const_iterator it;
+	std::string encoded_xml = "";
+
+	for (unsigned int i = 0; i < xml.size(); i++) {
+		char c = xml.at(i);
+		it = escape.find(c);
+
+		if (it == escape.end()) {
+			encoded_xml += c;
+		}
+		else {
+			encoded_xml += it->second;
+		}
+	}
+	return encoded_xml;
+}
+
 std::string get_geometry_id(Object *ob)
 {
 	return translate_id(id_name(ob->data)) + "-mesh";
@@ -327,12 +349,11 @@ std::string get_light_id(Object *ob)
 	return translate_id(id_name(ob)) + "-light";
 }
 
-std::string get_joint_id(Object *ob, Bone *bone)
-{
-	return translate_id(id_name(ob) + "_" + bone->name);
-}
-
 std::string get_joint_sid(Bone *bone)
+{
+	return translate_id(bone->name);
+}
+std::string get_joint_sid(EditBone *bone)
 {
 	return translate_id(bone->name);
 }
@@ -340,6 +361,11 @@ std::string get_joint_sid(Bone *bone)
 std::string get_camera_id(Object *ob)
 {
 	return translate_id(id_name(ob)) + "-camera";
+}
+
+std::string get_effect_id(Material *mat)
+{
+	return translate_id(id_name(mat)) + "-effect";
 }
 
 std::string get_material_id(Material *mat)

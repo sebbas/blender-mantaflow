@@ -2,7 +2,7 @@
 uniform mat4 ModelViewProjectionMatrix;
 uniform mat4 ModelViewMatrix;
 uniform mat3 WorldNormalMatrix;
-#ifndef ATTRIB
+#ifndef USE_ATTR
 uniform mat4 ModelMatrix;
 uniform mat3 NormalMatrix;
 uniform mat4 ModelMatrixInverse;
@@ -52,6 +52,7 @@ void main()
 	vec3 pos, binor;
 	hair_get_pos_tan_binor_time(
 	        (ProjectionMatrix[3][3] == 0.0),
+	        ModelMatrixInverse,
 	        ViewMatrixInverse[3].xyz, ViewMatrixInverse[2].xyz,
 	        pos, hairTangent, binor, hairTime, hairThickness, hairThickTime);
 
@@ -60,7 +61,7 @@ void main()
 	worldPosition = pos;
 	hairTangent = normalize(hairTangent);
 	worldNormal = cross(binor, hairTangent);
-	viewNormal = normalize(mat3(ViewMatrix) * worldNormal);
+	viewNormal = mat3(ViewMatrix) * worldNormal;
 #else
 	gl_Position = ModelViewProjectionMatrix * vec4(pos, 1.0);
 	viewPosition = (ModelViewMatrix * vec4(pos, 1.0)).xyz;
@@ -72,7 +73,7 @@ void main()
 	/* Used for planar reflections */
 	gl_ClipDistance[0] = dot(vec4(worldPosition, 1.0), ClipPlanes[0]);
 
-#ifdef ATTRIB
-	pass_attrib(pos);
+#ifdef USE_ATTR
+	pass_attr(pos);
 #endif
 }

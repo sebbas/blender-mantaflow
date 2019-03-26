@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2007 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/windowmanager/intern/wm_draw.c
- *  \ingroup wm
+/** \file
+ * \ingroup wm
  *
  * Handle OpenGL buffers for windowing, also paint cursor.
  */
@@ -66,6 +59,7 @@
 #include "GPU_framebuffer.h"
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
+#include "GPU_state.h"
 #include "GPU_texture.h"
 #include "GPU_viewport.h"
 
@@ -73,6 +67,7 @@
 
 #include "WM_api.h"
 #include "WM_types.h"
+#include "WM_toolsystem.h"
 #include "wm.h"
 #include "wm_draw.h"
 #include "wm_window.h"
@@ -131,44 +126,59 @@ static bool wm_draw_region_stereo_set(Main *bmain, ScrArea *sa, ARegion *ar, eSt
 {
 	/* We could detect better when stereo is actually needed, by inspecting the
 	 * image in the image editor and sequencer. */
-	if (ar->regiontype != RGN_TYPE_WINDOW) {
+	if (!ELEM(ar->regiontype, RGN_TYPE_WINDOW, RGN_TYPE_PREVIEW)) {
 		return false;
 	}
 
 	switch (sa->spacetype) {
 		case SPACE_IMAGE:
 		{
-			SpaceImage *sima = sa->spacedata.first;
-			sima->iuser.multiview_eye = sview;
-			return true;
+			if (ar->regiontype == RGN_TYPE_WINDOW) {
+				SpaceImage *sima = sa->spacedata.first;
+				sima->iuser.multiview_eye = sview;
+				return true;
+			}
+			break;
 		}
 		case SPACE_VIEW3D:
 		{
-			View3D *v3d = sa->spacedata.first;
-			if (v3d->camera && v3d->camera->type == OB_CAMERA) {
-				Camera *cam = v3d->camera->data;
-				CameraBGImage *bgpic = cam->bg_images.first;
-				v3d->multiview_eye = sview;
-				if (bgpic) bgpic->iuser.multiview_eye = sview;
-				return true;
+			if (ar->regiontype == RGN_TYPE_WINDOW) {
+				View3D *v3d = sa->spacedata.first;
+				if (v3d->camera && v3d->camera->type == OB_CAMERA) {
+					Camera *cam = v3d->camera->data;
+					CameraBGImage *bgpic = cam->bg_images.first;
+					v3d->multiview_eye = sview;
+					if (bgpic) {
+						bgpic->iuser.multiview_eye = sview;
+					}
+					return true;
+				}
 			}
-			return false;
+			break;
 		}
 		case SPACE_NODE:
 		{
-			SpaceNode *snode = sa->spacedata.first;
-			if ((snode->flag & SNODE_BACKDRAW) && ED_node_is_compositor(snode)) {
-				Image *ima = BKE_image_verify_viewer(bmain, IMA_TYPE_COMPOSITE, "Viewer Node");
-				ima->eye = sview;
-				return true;
+			if (ar->regiontype == RGN_TYPE_WINDOW) {
+				SpaceNode *snode = sa->spacedata.first;
+				if ((snode->flag & SNODE_BACKDRAW) && ED_node_is_compositor(snode)) {
+					Image *ima = BKE_image_verify_viewer(bmain, IMA_TYPE_COMPOSITE, "Viewer Node");
+					ima->eye = sview;
+					return true;
+				}
 			}
-			return false;
+			break;
 		}
 		case SPACE_SEQ:
 		{
 			SpaceSeq *sseq = sa->spacedata.first;
 			sseq->multiview_eye = sview;
-			return true;
+
+			if (ar->regiontype == RGN_TYPE_PREVIEW) {
+				return true;
+			}
+			else if (ar->regiontype == RGN_TYPE_WINDOW) {
+				return (sseq->draw_flag & SEQ_DRAW_BACKDROP) != 0;
+			}
 		}
 	}
 
@@ -212,7 +222,7 @@ static void wm_region_test_render_do_draw(const Scene *scene, struct Depsgraph *
 
 static bool wm_region_use_viewport(ScrArea *sa, ARegion *ar)
 {
-	return (sa->spacetype == SPACE_VIEW3D && ar->regiontype == RGN_TYPE_WINDOW);
+	return (ELEM(sa->spacetype, SPACE_VIEW3D, SPACE_IMAGE) && ar->regiontype == RGN_TYPE_WINDOW);
 }
 
 /********************** draw all **************************/
@@ -454,16 +464,42 @@ void wm_draw_region_blend(ARegion *ar, int view, bool blend)
 
 	if (blend) {
 		/* GL_ONE because regions drawn offscreen have premultiplied alpha. */
-		glEnable(GL_BLEND);
+		GPU_blend(true);
 		glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 	}
 
 	GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_2D_IMAGE_RECT_COLOR);
 	GPU_shader_bind(shader);
 
-	glUniform1i(GPU_shader_get_uniform(shader, "image"), 0);
-	glUniform4f(GPU_shader_get_uniform(shader, "rect_icon"), halfx, halfy, 1.0f + halfx, 1.0f + halfy);
-	glUniform4f(GPU_shader_get_uniform(shader, "rect_geom"), ar->winrct.xmin, ar->winrct.ymin, ar->winrct.xmax + 1, ar->winrct.ymax + 1);
+	rcti rect_geo = ar->winrct;
+	rect_geo.xmax += 1;
+	rect_geo.ymax += 1;
+
+	rctf rect_tex;
+	rect_tex.xmin = halfx;
+	rect_tex.ymin = halfy;
+	rect_tex.xmax = 1.0f + halfx;
+	rect_tex.ymax = 1.0f + halfy;
+
+	float alpha_easing = 1.0f - alpha;
+	alpha_easing = 1.0f - alpha_easing * alpha_easing;
+
+	/* Slide vertical panels */
+	float ofs_x = BLI_rcti_size_x(&ar->winrct) * (1.0f - alpha_easing);
+	if (ar->alignment == RGN_ALIGN_RIGHT) {
+		rect_geo.xmin += ofs_x;
+		rect_tex.xmax *= alpha_easing;
+		alpha = 1.0f;
+	}
+	else if (ar->alignment == RGN_ALIGN_LEFT) {
+		rect_geo.xmax -= ofs_x;
+		rect_tex.xmin += 1.0f - alpha_easing;
+		alpha = 1.0f;
+	}
+
+	glUniform1i(GPU_shader_get_uniform_ensure(shader, "image"), 0);
+	glUniform4f(GPU_shader_get_uniform_ensure(shader, "rect_icon"), rect_tex.xmin, rect_tex.ymin, rect_tex.xmax, rect_tex.ymax);
+	glUniform4f(GPU_shader_get_uniform_ensure(shader, "rect_geom"), rect_geo.xmin, rect_geo.ymin, rect_geo.xmax, rect_geo.ymax);
 	glUniform4f(GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_COLOR), alpha, alpha, alpha, alpha);
 
 	GPU_draw_primitive(GPU_PRIM_TRI_STRIP, 4);
@@ -472,7 +508,7 @@ void wm_draw_region_blend(ARegion *ar, int view, bool blend)
 
 	if (blend) {
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glDisable(GL_BLEND);
+		GPU_blend(false);
 	}
 }
 
@@ -515,6 +551,13 @@ static void wm_draw_window_offscreen(bContext *C, wmWindow *win, bool stereo)
 		}
 
 		ED_area_update_region_sizes(wm, win, sa);
+
+		if (sa->flag & AREA_FLAG_ACTIVE_TOOL_UPDATE) {
+			if ((1 << sa->spacetype) & WM_TOOLSYSTEM_SPACE_MASK) {
+				WM_toolsystem_update_from_context(C, CTX_wm_workspace(C), CTX_data_view_layer(C), sa);
+			}
+			sa->flag &= ~AREA_FLAG_ACTIVE_TOOL_UPDATE;
+		}
 
 		/* Then do actual drawing of regions. */
 		for (ARegion *ar = sa->regionbase.first; ar; ar = ar->next) {
@@ -588,8 +631,14 @@ static void wm_draw_window_onscreen(bContext *C, wmWindow *win, int view)
 
 	/* Draw into the window framebuffer, in full window coordinates. */
 	wmWindowViewport(win);
+
+	/* We draw on all pixels of the windows so we don't need to clear them before.
+	 * Actually this is only a problem when resizing the window.
+	 * If it becomes a problem we should clear only when window size changes. */
+#if 0
 	glClearColor(0, 0, 0, 0);
 	glClear(GL_COLOR_BUFFER_BIT);
+#endif
 
 	/* Blit non-overlapping area regions. */
 	ED_screen_areas_iter(win, screen, sa) {

@@ -18,11 +18,10 @@
 
 # <pep8 compliant>
 
-import bpy
 from bpy.types import (
     Panel,
 )
-from bl_operators.presets import PresetMenu
+from bl_ui.utils import PresetPanel
 
 from .properties_physics_common import (
     point_cache_ui,
@@ -34,7 +33,7 @@ def cloth_panel_enabled(md):
     return md.point_cache.is_baked is False
 
 
-class CLOTH_PT_presets(PresetMenu):
+class CLOTH_PT_presets(PresetPanel, Panel):
     bl_label = "Cloth Presets"
     preset_subdir = "cloth"
     preset_operator = "script.execute_preset"
@@ -54,7 +53,7 @@ class PhysicButtonsPanel:
 
 class PHYSICS_PT_cloth(PhysicButtonsPanel, Panel):
     bl_label = "Cloth"
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw_header_preset(self, context):
         CLOTH_PT_presets.draw_panel_header(self.layout)
@@ -79,7 +78,7 @@ class PHYSICS_PT_cloth(PhysicButtonsPanel, Panel):
 class PHYSICS_PT_cloth_physical_properties(PhysicButtonsPanel, Panel):
     bl_label = "Physical Properties"
     bl_parent_id = 'PHYSICS_PT_cloth'
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -103,7 +102,7 @@ class PHYSICS_PT_cloth_physical_properties(PhysicButtonsPanel, Panel):
 class PHYSICS_PT_cloth_stiffness(PhysicButtonsPanel, Panel):
     bl_label = "Stiffness"
     bl_parent_id = 'PHYSICS_PT_cloth_physical_properties'
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -134,7 +133,7 @@ class PHYSICS_PT_cloth_stiffness(PhysicButtonsPanel, Panel):
 class PHYSICS_PT_cloth_damping(PhysicButtonsPanel, Panel):
     bl_label = "Damping"
     bl_parent_id = 'PHYSICS_PT_cloth_physical_properties'
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -166,7 +165,7 @@ class PHYSICS_PT_cloth_cache(PhysicButtonsPanel, Panel):
     bl_label = "Cache"
     bl_parent_id = 'PHYSICS_PT_cloth'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         md = context.cloth
@@ -177,7 +176,7 @@ class PHYSICS_PT_cloth_shape(PhysicButtonsPanel, Panel):
     bl_label = "Shape"
     bl_parent_id = 'PHYSICS_PT_cloth'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -227,7 +226,7 @@ class PHYSICS_PT_cloth_collision(PhysicButtonsPanel, Panel):
     bl_label = "Collision"
     bl_parent_id = 'PHYSICS_PT_cloth'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -247,7 +246,7 @@ class PHYSICS_PT_cloth_collision(PhysicButtonsPanel, Panel):
 class PHYSICS_PT_cloth_object_collision(PhysicButtonsPanel, Panel):
     bl_label = "Object Collision"
     bl_parent_id = 'PHYSICS_PT_cloth_collision'
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw_header(self, context):
         cloth = context.cloth.collision_settings
@@ -273,13 +272,13 @@ class PHYSICS_PT_cloth_object_collision(PhysicButtonsPanel, Panel):
         col.prop(cloth, "impulse_clamp")
 
         col = flow.column()
-        col.prop(cloth, "group")
+        col.prop(cloth, "collection")
 
 
 class PHYSICS_PT_cloth_self_collision(PhysicButtonsPanel, Panel):
     bl_label = "Self Collision"
     bl_parent_id = 'PHYSICS_PT_cloth_collision'
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw_header(self, context):
         cloth = context.cloth.collision_settings
@@ -316,7 +315,7 @@ class PHYSICS_PT_cloth_property_weights(PhysicButtonsPanel, Panel):
     bl_label = "Property Weights"
     bl_parent_id = 'PHYSICS_PT_cloth'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -370,7 +369,7 @@ class PHYSICS_PT_cloth_field_weights(PhysicButtonsPanel, Panel):
     bl_label = "Field Weights"
     bl_parent_id = 'PHYSICS_PT_cloth'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         cloth = context.cloth.settings

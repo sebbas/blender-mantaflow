@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2012 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/python/bmesh/bmesh_py_types.c
- *  \ingroup pybmesh
+/** \file
+ * \ingroup pybmesh
  */
 
 #include "BLI_math.h"
@@ -37,8 +31,10 @@
 #include "BKE_customdata.h"
 #include "BKE_global.h"
 #include "BKE_library.h"
+#include "BKE_mesh_runtime.h"
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_query.h"
 
 #include "bmesh.h"
 
@@ -64,14 +60,14 @@ PyC_FlagSet bpy_bm_scene_vert_edge_face_flags[] = {
 	{1, "VERT"},
 	{2, "EDGE"},
 	{4, "FACE"},
-	{0, NULL}
+	{0, NULL},
 };
 
 PyC_FlagSet bpy_bm_htype_vert_edge_face_flags[] = {
 	{BM_VERT, "VERT"},
 	{BM_EDGE, "EDGE"},
 	{BM_FACE, "FACE"},
-		{0, NULL}
+	{0, NULL},
 };
 
 PyC_FlagSet bpy_bm_htype_all_flags[] = {
@@ -79,7 +75,7 @@ PyC_FlagSet bpy_bm_htype_all_flags[] = {
 	{BM_LOOP, "EDGE"},
 	{BM_FACE, "FACE"},
 	{BM_LOOP, "LOOP"},
-	{0, NULL}
+	{0, NULL},
 };
 
 #define BPY_BM_HFLAG_ALL_STR "('SELECT', 'HIDE', 'SEAM', 'SMOOTH', 'TAG')"
@@ -90,7 +86,7 @@ PyC_FlagSet bpy_bm_hflag_all_flags[] = {
 	{BM_ELEM_SEAM,    "SEAM"},
 	{BM_ELEM_SMOOTH,  "SMOOTH"},
 	{BM_ELEM_TAG,     "TAG"},
-	{0, NULL}
+	{0, NULL},
 };
 
 /* py-type definitions
@@ -895,7 +891,7 @@ static PyObject *bpy_bmesh_to_mesh(BPy_BMesh *self, PyObject *args)
 	}
 
 	/* we could allow this but its almost certainly _not_ what script authors want */
-	if (me->edit_btmesh) {
+	if (me->edit_mesh) {
 		PyErr_Format(PyExc_ValueError,
 		             "to_mesh(): Mesh '%s' is in editmode", me->id.name + 2);
 		return NULL;
@@ -903,7 +899,7 @@ static PyObject *bpy_bmesh_to_mesh(BPy_BMesh *self, PyObject *args)
 
 	bm = self->bm;
 
-	BLI_assert(BKE_id_is_in_gobal_main(&me->id));
+	BLI_assert(BKE_id_is_in_global_main(&me->id));
 	BM_mesh_bm_to_me(
 	        G_MAIN,  /* XXX UGLY! */
 	        bm, me,
@@ -913,13 +909,13 @@ static PyObject *bpy_bmesh_to_mesh(BPy_BMesh *self, PyObject *args)
 
 	/* we could have the user do this but if they forget blender can easy crash
 	 * since the references arrays for the objects derived meshes are now invalid */
-	DEG_id_tag_update(&me->id, OB_RECALC_DATA);
+	DEG_id_tag_update(&me->id, ID_RECALC_GEOMETRY);
 
 	Py_RETURN_NONE;
 }
 
 PyDoc_STRVAR(bpy_bmesh_from_object_doc,
-".. method:: from_object(object, scene, deform=True, render=False, cage=False, face_normals=True)\n"
+".. method:: from_object(object, depsgraph, deform=True, cage=False, face_normals=True)\n"
 "\n"
 "   Initialize this bmesh from existing object datablock (currently only meshes are supported).\n"
 "\n"
@@ -927,8 +923,6 @@ PyDoc_STRVAR(bpy_bmesh_from_object_doc,
 "   :type object: :class:`Object`\n"
 "   :arg deform: Apply deformation modifiers.\n"
 "   :type deform: boolean\n"
-"   :arg render: Use render settings.\n"
-"   :type render: boolean\n"
 "   :arg cage: Get the mesh as a deformed cage.\n"
 "   :type cage: boolean\n"
 "   :arg face_normals: Calculate face normals.\n"
@@ -936,32 +930,29 @@ PyDoc_STRVAR(bpy_bmesh_from_object_doc,
 );
 static PyObject *bpy_bmesh_from_object(BPy_BMesh *self, PyObject *args, PyObject *kw)
 {
-	/* TODO: This doesn't work currently because of missing depsgraph. */
-#if 0
-	static const char *kwlist[] = {"object", "scene", "deform", "render", "cage", "face_normals", NULL};
+	static const char *kwlist[] = {"object", "depsgraph", "deform", "cage", "face_normals", NULL};
 	PyObject *py_object;
-	PyObject *py_scene;
-	Object *ob;
-	struct Scene *scene;
+	PyObject *py_depsgraph;
+	Object *ob, *ob_eval;
+	struct Depsgraph *depsgraph;
+	struct Scene *scene_eval;
+	Mesh *me_eval;
 	BMesh *bm;
 	bool use_deform = true;
-	bool use_render = false;
 	bool use_cage   = false;
 	bool use_fnorm  = true;
-	DerivedMesh *dm;
-	const int mask = CD_MASK_BMESH;
+	CustomData_MeshMasks data_masks = CD_MASK_BMESH;
 
 	BPY_BM_CHECK_OBJ(self);
 
 	if (!PyArg_ParseTupleAndKeywords(
-	        args, kw, "OO|O&O&O&O&:from_object", (char **)kwlist,
-	        &py_object, &py_scene,
+	        args, kw, "OO|O&O&O&:from_object", (char **)kwlist,
+	        &py_object, &py_depsgraph,
 	        PyC_ParseBool, &use_deform,
-	        PyC_ParseBool, &use_render,
 	        PyC_ParseBool, &use_cage,
 	        PyC_ParseBool, &use_fnorm) ||
-	    !(ob    = PyC_RNA_AsPointer(py_object, "Object")) ||
-	    !(scene = PyC_RNA_AsPointer(py_scene,  "Scene")))
+	    !(ob        = PyC_RNA_AsPointer(py_object, "Object")) ||
+	    !(depsgraph = PyC_RNA_AsPointer(py_depsgraph,  "Depsgraph")))
 	{
 		return NULL;
 	}
@@ -972,52 +963,47 @@ static PyObject *bpy_bmesh_from_object(BPy_BMesh *self, PyObject *args, PyObject
 		return NULL;
 	}
 
+	const bool use_render = DEG_get_mode(depsgraph) == DAG_EVAL_RENDER;
+	scene_eval = DEG_get_evaluated_scene(depsgraph);
+	ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+
 	/* Write the display mesh into the dummy mesh */
 	if (use_deform) {
 		if (use_render) {
 			if (use_cage) {
 				PyErr_SetString(PyExc_ValueError,
-				                "from_object(...): cage arg is unsupported when (render=True)");
+				                "from_object(...): cage arg is unsupported when dependency graph evaluation mode is RENDER");
 				return NULL;
 			}
 			else {
-				dm = mesh_create_derived_render(scene, ob, mask);
+				me_eval = mesh_create_eval_final_render(depsgraph, scene_eval, ob_eval, &data_masks);
 			}
 		}
 		else {
 			if (use_cage) {
-				dm = mesh_get_derived_deform(scene, ob, mask);  /* ob->derivedDeform */
+				me_eval = mesh_get_eval_deform(depsgraph, scene_eval, ob_eval, &data_masks);
 			}
 			else {
-				dm = mesh_get_derived_final(scene, ob, mask);  /* ob->derivedFinal */
+				me_eval = mesh_get_eval_final(depsgraph, scene_eval, ob_eval, &data_masks);
 			}
 		}
 	}
 	else {
 		/* !use_deform */
-		if (use_render) {
-			if (use_cage) {
-				PyErr_SetString(PyExc_ValueError,
-				                "from_object(...): cage arg is unsupported when (render=True)");
-				return NULL;
-			}
-			else {
-				dm = mesh_create_derived_no_deform_render(scene, ob, NULL, mask);
-			}
+		if (use_cage) {
+			PyErr_SetString(PyExc_ValueError,
+			                "from_object(...): cage arg is unsupported when deform=False");
+			return NULL;
+		}
+		else if (use_render) {
+			me_eval = mesh_create_eval_no_deform_render(depsgraph, scene_eval, ob, NULL, &data_masks);
 		}
 		else {
-			if (use_cage) {
-				PyErr_SetString(PyExc_ValueError,
-				                "from_object(...): cage arg is unsupported when (deform=False, render=False)");
-				return NULL;
-			}
-			else {
-				dm = mesh_create_derived_no_deform(scene, ob, NULL, mask);
-			}
+			me_eval = mesh_create_eval_no_deform(depsgraph, scene_eval, ob, NULL, &data_masks);
 		}
 	}
 
-	if (dm == NULL) {
+	if (me_eval == NULL) {
 		PyErr_Format(PyExc_ValueError,
 		             "from_object(...): Object '%s' has no usable mesh data", ob->id.name + 2);
 		return NULL;
@@ -1025,15 +1011,12 @@ static PyObject *bpy_bmesh_from_object(BPy_BMesh *self, PyObject *args, PyObject
 
 	bm = self->bm;
 
-	DM_to_bmesh_ex(dm, bm, use_fnorm);
-
-	dm->release(dm);
+	BM_mesh_bm_from_me(
+	        bm, me_eval, (&(struct BMeshFromMeshParams){
+	            .calc_face_normal = use_fnorm,
+	        }));
 
 	Py_RETURN_NONE;
-#else
-	UNUSED_VARS(self, args, kw);
-#endif
-	return NULL;
 }
 
 
@@ -1880,7 +1863,7 @@ static PyObject *bpy_bmface_calc_tangent_vert_diagonal(BPy_BMFace *self)
 }
 
 
-PyDoc_STRVAR(bpy_bmface_calc_center_mean_doc,
+PyDoc_STRVAR(bpy_bmface_calc_center_median_doc,
 ".. method:: calc_center_median()\n"
 "\n"
 "   Return median center of the face.\n"
@@ -1893,11 +1876,11 @@ static PyObject *bpy_bmface_calc_center_mean(BPy_BMFace *self)
 	float cent[3];
 
 	BPY_BM_CHECK_OBJ(self);
-	BM_face_calc_center_mean(self->f, cent);
+	BM_face_calc_center_median(self->f, cent);
 	return Vector_CreatePyObject(cent, 3, NULL);
 }
 
-PyDoc_STRVAR(bpy_bmface_calc_center_mean_weighted_doc,
+PyDoc_STRVAR(bpy_bmface_calc_center_median_weighted_doc,
 ".. method:: calc_center_median_weighted()\n"
 "\n"
 "   Return median center of the face weighted by edge lengths.\n"
@@ -1905,12 +1888,12 @@ PyDoc_STRVAR(bpy_bmface_calc_center_mean_weighted_doc,
 "   :return: a 3D vector.\n"
 "   :rtype: :class:`mathutils.Vector`\n"
 );
-static PyObject *bpy_bmface_calc_center_mean_weighted(BPy_BMFace *self)
+static PyObject *bpy_bmface_calc_center_median_weighted(BPy_BMFace *self)
 {
 	float cent[3];
 
 	BPY_BM_CHECK_OBJ(self);
-	BM_face_calc_center_mean_weighted(self->f, cent);
+	BM_face_calc_center_median_weighted(self->f, cent);
 	return Vector_CreatePyObject(cent, 3, NULL);
 }
 
@@ -2734,7 +2717,7 @@ static struct PyMethodDef bpy_bmesh_methods[] = {
 	/* calculations */
 	{"calc_volume", (PyCFunction)bpy_bmesh_calc_volume, METH_VARARGS | METH_KEYWORDS, bpy_bmesh_calc_volume_doc},
 	{"calc_loop_triangles", (PyCFunction)bpy_bmesh_calc_loop_triangles, METH_NOARGS, bpy_bmesh_calc_loop_triangles_doc},
-	{NULL, NULL, 0, NULL}
+	{NULL, NULL, 0, NULL},
 };
 
 static struct PyMethodDef bpy_bmvert_methods[] = {
@@ -2749,7 +2732,7 @@ static struct PyMethodDef bpy_bmvert_methods[] = {
 
 	{"normal_update",  (PyCFunction)bpy_bmvert_normal_update,  METH_NOARGS,  bpy_bmvert_normal_update_doc},
 
-	{NULL, NULL, 0, NULL}
+	{NULL, NULL, 0, NULL},
 };
 
 static struct PyMethodDef bpy_bmedge_methods[] = {
@@ -2766,7 +2749,7 @@ static struct PyMethodDef bpy_bmedge_methods[] = {
 
 	{"normal_update",  (PyCFunction)bpy_bmedge_normal_update,  METH_NOARGS,  bpy_bmedge_normal_update_doc},
 
-	{NULL, NULL, 0, NULL}
+	{NULL, NULL, 0, NULL},
 };
 
 static struct PyMethodDef bpy_bmface_methods[] = {
@@ -2784,14 +2767,14 @@ static struct PyMethodDef bpy_bmface_methods[] = {
 	{"calc_tangent_edge_pair", (PyCFunction)bpy_bmface_calc_tangent_edge_pair,   METH_NOARGS, bpy_bmface_calc_tangent_edge_pair_doc},
 	{"calc_tangent_edge_diagonal", (PyCFunction)bpy_bmface_calc_tangent_edge_diagonal,   METH_NOARGS, bpy_bmface_calc_tangent_edge_diagonal_doc},
 	{"calc_tangent_vert_diagonal", (PyCFunction)bpy_bmface_calc_tangent_vert_diagonal,   METH_NOARGS, bpy_bmface_calc_tangent_vert_diagonal_doc},
-	{"calc_center_median", (PyCFunction)bpy_bmface_calc_center_mean,   METH_NOARGS, bpy_bmface_calc_center_mean_doc},
-	{"calc_center_median_weighted", (PyCFunction)bpy_bmface_calc_center_mean_weighted, METH_NOARGS, bpy_bmface_calc_center_mean_weighted_doc},
+	{"calc_center_median", (PyCFunction)bpy_bmface_calc_center_mean,   METH_NOARGS, bpy_bmface_calc_center_median_doc},
+	{"calc_center_median_weighted", (PyCFunction)bpy_bmface_calc_center_median_weighted, METH_NOARGS, bpy_bmface_calc_center_median_weighted_doc},
 	{"calc_center_bounds", (PyCFunction)bpy_bmface_calc_center_bounds, METH_NOARGS, bpy_bmface_calc_center_bounds_doc},
 
 	{"normal_update",  (PyCFunction)bpy_bmface_normal_update,  METH_NOARGS,  bpy_bmface_normal_update_doc},
 	{"normal_flip",  (PyCFunction)bpy_bmface_normal_flip,  METH_NOARGS,  bpy_bmface_normal_flip_doc},
 
-		{NULL, NULL, 0, NULL}
+		{NULL, NULL, 0, NULL},
 };
 
 static struct PyMethodDef bpy_bmloop_methods[] = {
@@ -2801,13 +2784,13 @@ static struct PyMethodDef bpy_bmloop_methods[] = {
 	{"calc_angle",   (PyCFunction)bpy_bmloop_calc_angle,   METH_NOARGS, bpy_bmloop_calc_angle_doc},
 	{"calc_normal",  (PyCFunction)bpy_bmloop_calc_normal,  METH_NOARGS, bpy_bmloop_calc_normal_doc},
 	{"calc_tangent", (PyCFunction)bpy_bmloop_calc_tangent, METH_NOARGS, bpy_bmloop_calc_tangent_doc},
-	{NULL, NULL, 0, NULL}
+	{NULL, NULL, 0, NULL},
 };
 
 static struct PyMethodDef bpy_bmelemseq_methods[] = {
 	/* odd function, initializes index values */
 	{"index_update", (PyCFunction)bpy_bmelemseq_index_update, METH_NOARGS, bpy_bmelemseq_index_update_doc},
-	{NULL, NULL, 0, NULL}
+	{NULL, NULL, 0, NULL},
 };
 
 static struct PyMethodDef bpy_bmvertseq_methods[] = {
@@ -2818,7 +2801,7 @@ static struct PyMethodDef bpy_bmvertseq_methods[] = {
 	{"index_update", (PyCFunction)bpy_bmelemseq_index_update, METH_NOARGS, bpy_bmelemseq_index_update_doc},
 	{"ensure_lookup_table", (PyCFunction)bpy_bmelemseq_ensure_lookup_table, METH_NOARGS, bpy_bmelemseq_ensure_lookup_table_doc},
 	{"sort", (PyCFunction)bpy_bmelemseq_sort, METH_VARARGS | METH_KEYWORDS, bpy_bmelemseq_sort_doc},
-	{NULL, NULL, 0, NULL}
+	{NULL, NULL, 0, NULL},
 };
 
 static struct PyMethodDef bpy_bmedgeseq_methods[] = {
@@ -2831,7 +2814,7 @@ static struct PyMethodDef bpy_bmedgeseq_methods[] = {
 	{"index_update", (PyCFunction)bpy_bmelemseq_index_update, METH_NOARGS, bpy_bmelemseq_index_update_doc},
 	{"ensure_lookup_table", (PyCFunction)bpy_bmelemseq_ensure_lookup_table, METH_NOARGS, bpy_bmelemseq_ensure_lookup_table_doc},
 	{"sort", (PyCFunction)bpy_bmelemseq_sort, METH_VARARGS | METH_KEYWORDS, bpy_bmelemseq_sort_doc},
-	{NULL, NULL, 0, NULL}
+	{NULL, NULL, 0, NULL},
 };
 
 static struct PyMethodDef bpy_bmfaceseq_methods[] = {
@@ -2844,14 +2827,14 @@ static struct PyMethodDef bpy_bmfaceseq_methods[] = {
 	{"index_update", (PyCFunction)bpy_bmelemseq_index_update, METH_NOARGS, bpy_bmelemseq_index_update_doc},
 	{"ensure_lookup_table", (PyCFunction)bpy_bmelemseq_ensure_lookup_table, METH_NOARGS, bpy_bmelemseq_ensure_lookup_table_doc},
 	{"sort", (PyCFunction)bpy_bmelemseq_sort, METH_VARARGS | METH_KEYWORDS, bpy_bmelemseq_sort_doc},
-	{NULL, NULL, 0, NULL}
+	{NULL, NULL, 0, NULL},
 };
 
 static struct PyMethodDef bpy_bmloopseq_methods[] = {
 	/* odd function, initializes index values */
 	/* no: index_update() function since we cant iterate over loops */
 	/* no: sort() function since we cant iterate over loops */
-	{NULL, NULL, 0, NULL}
+	{NULL, NULL, 0, NULL},
 };
 
 /* Sequences
@@ -3275,10 +3258,10 @@ PyDoc_STRVAR(bpy_bmloop_doc,
 "This is normally accessed from :class:`BMFace.loops` where each face loop represents a corner of the face.\n"
 );
 PyDoc_STRVAR(bpy_bmelemseq_doc,
-"General sequence type used for accessing any sequence of \n"
+"General sequence type used for accessing any sequence of\n"
 ":class:`BMVert`, :class:`BMEdge`, :class:`BMFace`, :class:`BMLoop`.\n"
 "\n"
-"When accessed via :class:`BMesh.verts`, :class:`BMesh.edges`, :class:`BMesh.faces` \n"
+"When accessed via :class:`BMesh.verts`, :class:`BMesh.edges`, :class:`BMesh.faces`\n"
 "there are also functions to create/remomove items.\n"
 );
 PyDoc_STRVAR(bpy_bmiter_doc,

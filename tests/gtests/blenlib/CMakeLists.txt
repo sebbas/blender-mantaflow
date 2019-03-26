@@ -16,9 +16,6 @@
 #
 # The Original Code is Copyright (C) 2014, Blender Foundation
 # All rights reserved.
-#
-# Contributor(s): Sergey Sharybin
-#
 # ***** END GPL LICENSE BLOCK *****
 
 set(INC
@@ -44,11 +41,13 @@ endif()
 BLENDER_TEST(BLI_array_store "bf_blenlib")
 BLENDER_TEST(BLI_array_utils "bf_blenlib")
 BLENDER_TEST(BLI_expr_pylike_eval "bf_blenlib")
+BLENDER_TEST(BLI_edgehash "bf_blenlib")
 BLENDER_TEST(BLI_ghash "bf_blenlib")
 BLENDER_TEST(BLI_hash_mm2a "bf_blenlib")
 BLENDER_TEST(BLI_heap "bf_blenlib")
-BLENDER_TEST(BLI_kdopbvh "bf_blenlib")
-BLENDER_TEST(BLI_linklist_lockfree "bf_blenlib")
+BLENDER_TEST(BLI_heap_simple "bf_blenlib")
+BLENDER_TEST(BLI_kdopbvh "bf_blenlib;bf_intern_numaapi")
+BLENDER_TEST(BLI_linklist_lockfree "bf_blenlib;bf_intern_numaapi")
 BLENDER_TEST(BLI_listbase "bf_blenlib")
 BLENDER_TEST(BLI_math_base "bf_blenlib")
 BLENDER_TEST(BLI_math_color "bf_blenlib")
@@ -59,7 +58,7 @@ BLENDER_TEST(BLI_polyfill_2d "bf_blenlib")
 BLENDER_TEST(BLI_stack "bf_blenlib")
 BLENDER_TEST(BLI_string "bf_blenlib")
 BLENDER_TEST(BLI_string_utf8 "bf_blenlib")
-BLENDER_TEST(BLI_task "bf_blenlib")
+BLENDER_TEST(BLI_task "bf_blenlib;bf_intern_numaapi")
 
 BLENDER_TEST_PERFORMANCE(BLI_ghash_performance "bf_blenlib")
 

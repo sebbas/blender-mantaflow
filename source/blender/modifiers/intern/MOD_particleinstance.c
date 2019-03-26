@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,35 +15,25 @@
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Daniel Dunbar
- *                 Ton Roosendaal,
- *                 Ben Batt,
- *                 Brecht Van Lommel,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_particleinstance.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
-
-
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 
 #include "MEM_guardedalloc.h"
+
+#include "BLI_utildefines.h"
 
 #include "BLI_math.h"
 #include "BLI_listbase.h"
 #include "BLI_rand.h"
 #include "BLI_string.h"
-#include "BLI_utildefines.h"
+
+#include "DNA_mesh_types.h"
+#include "DNA_meshdata_types.h"
 
 #include "BKE_effect.h"
-#include "BKE_global.h"
 #include "BKE_lattice.h"
 #include "BKE_library_query.h"
 #include "BKE_mesh.h"
@@ -55,6 +43,8 @@
 
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
+
+#include "MOD_modifiertypes.h"
 
 static void initData(ModifierData *md)
 {
@@ -73,19 +63,15 @@ static void initData(ModifierData *md)
 	STRNCPY(pimd->value_layer_name, "");
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
 	ParticleInstanceModifierData *pimd = (ParticleInstanceModifierData *)md;
-	CustomDataMask dataMask = 0;
 
 	if (pimd->index_layer_name[0] != '\0' ||
 	    pimd->value_layer_name[0] != '\0')
 	{
-		dataMask |= CD_MASK_MLOOPCOL;
+		r_cddata_masks->lmask |= CD_MASK_MLOOPCOL;
 	}
-
-	return dataMask;
-
 }
 
 static bool isDisabled(const struct Scene *scene, ModifierData *md, bool useRenderParams)
@@ -499,7 +485,7 @@ static Mesh *applyModifier(
 					const int ml_index = (ml - mloop);
 					if (mloopcols_index != NULL) {
 						const int part_index = vert_part_index[ml->v];
-						store_float_in_vcol(&mloopcols_index[ml_index], (float)part_index / psys->totpart);
+						store_float_in_vcol(&mloopcols_index[ml_index], (float)part_index / (float)(psys->totpart - 1));
 					}
 					if (mloopcols_value != NULL) {
 						const float part_value = vert_part_value[ml->v];
@@ -560,4 +546,5 @@ ModifierTypeInfo modifierType_ParticleInstance = {
 	/* foreachObjectLink */ foreachObjectLink,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

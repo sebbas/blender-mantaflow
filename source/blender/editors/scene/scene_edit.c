@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/scene/scene_edit.c
- *  \ingroup edscene
+/** \file
+ * \ingroup edscene
  */
 
 #include <stdio.h>
@@ -32,6 +28,7 @@
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_layer.h"
+#include "BKE_library.h"
 #include "BKE_library_remap.h"
 #include "BKE_main.h"
 #include "BKE_node.h"
@@ -77,7 +74,7 @@ Scene *ED_scene_add(Main *bmain, bContext *C, wmWindow *win, eSceneCopyMethod me
 			ED_object_single_users(bmain, scene_new, false, true);
 		}
 		else if (method == SCE_COPY_FULL) {
-			ED_editors_flush_edits(C, false);
+			ED_editors_flush_edits(bmain, false);
 			ED_object_single_users(bmain, scene_new, true, true);
 		}
 	}
@@ -110,12 +107,7 @@ bool ED_scene_delete(bContext *C, Main *bmain, wmWindow *win, Scene *scene)
 
 	WM_window_set_active_scene(bmain, C, win, scene_new);
 
-	BKE_libblock_remap(bmain, scene, scene_new, ID_REMAP_SKIP_INDIRECT_USAGE | ID_REMAP_SKIP_NEVER_NULL_USAGE);
-
-	id_us_clear_real(&scene->id);
-	if (scene->id.us == 0) {
-		BKE_libblock_free(bmain, scene);
-	}
+	BKE_id_delete(bmain, scene);
 
 	return true;
 }
@@ -155,7 +147,7 @@ static void view_layer_remove_unset_nodetrees(const Main *bmain, Scene *scene, V
 {
 	int act_layer_index = BLI_findindex(&scene->view_layers, layer);
 
-	for (Scene *sce = bmain->scene.first; sce; sce = sce->id.next) {
+	for (Scene *sce = bmain->scenes.first; sce; sce = sce->id.next) {
 		if (sce->nodetree) {
 			BKE_nodetree_remove_layer_n(sce->nodetree, scene, act_layer_index);
 		}
@@ -218,7 +210,7 @@ static void SCENE_OT_new(wmOperatorType *ot)
 		{SCE_COPY_LINK_OB, "LINK_OBJECTS", 0, "Link Objects", "Link to the objects from the current scene"},
 		{SCE_COPY_LINK_DATA, "LINK_OBJECT_DATA", 0, "Link Object Data", "Copy objects linked to data from the current scene"},
 		{SCE_COPY_FULL, "FULL_COPY", 0, "Full Copy", "Make a full copy of the current scene"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */
@@ -235,6 +227,12 @@ static void SCENE_OT_new(wmOperatorType *ot)
 
 	/* properties */
 	ot->prop = RNA_def_enum(ot->srna, "type", type_items, 0, "Type", "");
+}
+
+static bool scene_delete_poll(bContext *C)
+{
+	Scene *scene = CTX_data_scene(C);
+	return (scene->id.prev || scene->id.next);
 }
 
 static int scene_delete_exec(bContext *C, wmOperator *UNUSED(op))
@@ -262,6 +260,7 @@ static void SCENE_OT_delete(wmOperatorType *ot)
 
 	/* api callbacks */
 	ot->exec = scene_delete_exec;
+	ot->poll = scene_delete_poll;
 
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;

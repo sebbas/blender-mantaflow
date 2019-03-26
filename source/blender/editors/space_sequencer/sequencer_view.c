@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,11 @@
  *
  * The Original Code is Copyright (C) 2012 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation,
- *                 Sergey Sharybin
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 
-/** \file blender/editors/space_sequencer/sequencer_view.c
- *  \ingroup spseq
+/** \file
+ * \ingroup spseq
  */
 
 #include "MEM_guardedalloc.h"
@@ -107,8 +100,10 @@ static void sample_apply(bContext *C, wmOperator *op, const wmEvent *event)
 
 	UI_view2d_region_to_view(&ar->v2d, event->mval[0], event->mval[1], &fx, &fy);
 
-	fx += (float) ibuf->x / 2.0f;
-	fy += (float) ibuf->y / 2.0f;
+	fx += (float)scene->r.xsch / 2.0f;
+	fy += (float)scene->r.ysch / 2.0f;
+	fx *= (float)ibuf->x / (float)scene->r.xsch;
+	fy *= (float)ibuf->y / (float)scene->r.ysch;
 
 	if (fx >= 0.0f && fy >= 0.0f && fx < ibuf->x && fy < ibuf->y) {
 		const float *fp;
@@ -182,8 +177,9 @@ static int sample_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 	SpaceSeq *sseq = CTX_wm_space_seq(C);
 	ImageSampleInfo *info;
 
-	if (sseq->mainb != SEQ_DRAW_IMG_IMBUF)
+	if (sseq->mainb != SEQ_DRAW_IMG_IMBUF) {
 		return OPERATOR_CANCELLED;
+	}
 
 	info = MEM_callocN(sizeof(ImageSampleInfo), "ImageSampleInfo");
 	info->art = ar->type;

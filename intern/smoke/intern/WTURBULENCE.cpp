@@ -1,5 +1,5 @@
-/** \file smoke/intern/WTURBULENCE.cpp
- *  \ingroup smoke
+/** \file
+ * \ingroup smoke
  */
 //////////////////////////////////////////////////////////////////////
 // This file is part of Wavelet Turbulence.

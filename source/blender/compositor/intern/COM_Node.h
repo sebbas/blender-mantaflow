@@ -1,6 +1,4 @@
 /*
- * Copyright 2011, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,9 +13,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor:
- *		Jeroen Bakker
- *		Monique Dewanchand
+ * Copyright 2011, Blender Foundation.
  */
 
 #ifndef __COM_NODE_H__
@@ -105,13 +101,13 @@ public:
 	/**
 	 * \brief set the reference to the bNode
 	 * \note used in Node instances to receive the storage/settings and complex node for highlight during execution
-	 * \param bNode
+	 * \param bNode:
 	 */
 	void setbNode(bNode *node) {this->m_editorNode = node;}
 
 	/**
 	 * \brief set the reference to the bNodeTree
-	 * \param bNodeTree
+	 * \param bNodeTree:
 	 */
 	void setbNodeTree(bNodeTree *nodetree) {this->m_editorNodeTree = nodetree;}
 
@@ -127,21 +123,21 @@ public:
 
 	/**
 	 * get the reference to a certain outputsocket
-	 * \param index
+	 * \param index:
 	 * the index of the needed outputsocket
 	 */
 	NodeOutput *getOutputSocket(const unsigned int index) const;
 
 	/**
 	 * get the reference to the first outputsocket
-	 * \param index
+	 * \param index:
 	 * the index of the needed outputsocket
 	 */
 	inline NodeOutput *getOutputSocket() const { return getOutputSocket(0); }
 
 	/**
 	 * get the reference to a certain inputsocket
-	 * \param index
+	 * \param index:
 	 * the index of the needed inputsocket
 	 */
 	NodeInput *getInputSocket(const unsigned int index) const;
@@ -153,7 +149,7 @@ public:
 
 	/**
 	 * \brief Is this node in the active group (the group that is being edited)
-	 * \param isInActiveGroup
+	 * \param isInActiveGroup:
 	 */
 	void setIsInActiveGroup(bool value) { this->m_inActiveGroup = value; }
 
@@ -170,8 +166,8 @@ public:
 	 *
 	 * \todo this must be described further
 	 *
-	 * \param system the ExecutionSystem where the operations need to be added
-	 * \param context reference to the CompositorContext
+	 * \param system: the ExecutionSystem where the operations need to be added
+	 * \param context: reference to the CompositorContext
 	 */
 	virtual void convertToOperations(NodeConverter &converter, const CompositorContext &context) const = 0;
 
@@ -193,7 +189,7 @@ protected:
 	/**
 	 * \brief add an NodeInput to the collection of inputsockets
 	 * \note may only be called in an constructor
-	 * \param socket the NodeInput to add
+	 * \param socket: the NodeInput to add
 	 */
 	void addInputSocket(DataType datatype);
 	void addInputSocket(DataType datatype, bNodeSocket *socket);
@@ -201,7 +197,7 @@ protected:
 	/**
 	 * \brief add an NodeOutput to the collection of outputsockets
 	 * \note may only be called in an constructor
-	 * \param socket the NodeOutput to add
+	 * \param socket: the NodeOutput to add
 	 */
 	void addOutputSocket(DataType datatype);
 	void addOutputSocket(DataType datatype, bNodeSocket *socket);

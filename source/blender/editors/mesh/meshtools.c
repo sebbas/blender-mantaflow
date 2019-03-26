@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2004 by Blender Foundation
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/mesh/meshtools.c
- *  \ingroup edmesh
+/** \file
+ * \ingroup edmesh
  *
  * meshtools.c: no editmode (violated already :), mirror & join),
  * tools operating on meshes
@@ -50,22 +42,23 @@
 
 #include "BKE_context.h"
 #include "BKE_deform.h"
+#include "BKE_editmesh.h"
 #include "BKE_key.h"
+#include "BKE_layer.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
+#include "BKE_material.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_iterators.h"
 #include "BKE_mesh_runtime.h"
-#include "BKE_material.h"
+#include "BKE_multires.h"
 #include "BKE_object.h"
 #include "BKE_object_deform.h"
 #include "BKE_report.h"
-#include "BKE_editmesh.h"
-#include "BKE_multires.h"
-#include "BKE_layer.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_query.h"
 
 #include "ED_mesh.h"
 #include "ED_object.h"
@@ -104,7 +97,7 @@ static void join_mesh_single(
 		((Mesh *)ob_dst->data)->cd_flag |= me->cd_flag;
 
 		/* standard data */
-		CustomData_merge(&me->vdata, vdata, CD_MASK_MESH, CD_DEFAULT, totvert);
+		CustomData_merge(&me->vdata, vdata, CD_MASK_MESH.vmask, CD_DEFAULT, totvert);
 		CustomData_copy_data_named(&me->vdata, vdata, 0, *vertofs, me->totvert);
 
 		/* vertex groups */
@@ -138,8 +131,8 @@ static void join_mesh_single(
 			}
 
 			/* for each shapekey in destination mesh:
-			 *	- if there's a matching one, copy it across (will need to transform vertices into new space...)
-			 *	- otherwise, just copy own coordinates of mesh (no need to transform vertex coordinates into new space)
+			 * - if there's a matching one, copy it across (will need to transform vertices into new space...)
+			 * - otherwise, just copy own coordinates of mesh (no need to transform vertex coordinates into new space)
 			 */
 			if (key) {
 				/* if this mesh has any shapekeys, check first, otherwise just copy coordinates */
@@ -150,7 +143,8 @@ static void join_mesh_single(
 					/* check if this mesh has such a shapekey */
 					KeyBlock *okb = me->key ? BKE_keyblock_find_name(me->key, kb->name) : NULL;
 					if (okb) {
-						/* copy this mesh's shapekey to the destination shapekey (need to transform first) */
+						/* copy this mesh's shapekey to the destination shapekey
+						 * (need to transform first) */
 						float (*ocos)[3] = okb->data;
 						for (a = 0; a < me->totvert; a++, cos++, ocos++) {
 							copy_v3_v3(*cos, *ocos);
@@ -168,8 +162,8 @@ static void join_mesh_single(
 		}
 		else {
 			/* for each shapekey in destination mesh:
-			 *	- if it was an 'original', copy the appropriate data from nkey
-			 *	- otherwise, copy across plain coordinates (no need to transform coordinates)
+			 * - if it was an 'original', copy the appropriate data from nkey
+			 * - otherwise, copy across plain coordinates (no need to transform coordinates)
 			 */
 			if (key) {
 				for (KeyBlock *kb = key->block.first; kb; kb = kb->next) {
@@ -197,7 +191,7 @@ static void join_mesh_single(
 	}
 
 	if (me->totedge) {
-		CustomData_merge(&me->edata, edata, CD_MASK_MESH, CD_DEFAULT, totedge);
+		CustomData_merge(&me->edata, edata, CD_MASK_MESH.emask, CD_DEFAULT, totedge);
 		CustomData_copy_data_named(&me->edata, edata, 0, *edgeofs, me->totedge);
 
 		for (a = 0; a < me->totedge; a++, medge++) {
@@ -219,7 +213,7 @@ static void join_mesh_single(
 			}
 		}
 
-		CustomData_merge(&me->ldata, ldata, CD_MASK_MESH, CD_DEFAULT, totloop);
+		CustomData_merge(&me->ldata, ldata, CD_MASK_MESH.lmask, CD_DEFAULT, totloop);
 		CustomData_copy_data_named(&me->ldata, ldata, 0, *loopofs, me->totloop);
 
 		for (a = 0; a < me->totloop; a++, mloop++) {
@@ -243,7 +237,7 @@ static void join_mesh_single(
 			}
 		}
 
-		CustomData_merge(&me->pdata, pdata, CD_MASK_MESH, CD_DEFAULT, totpoly);
+		CustomData_merge(&me->pdata, pdata, CD_MASK_MESH.pmask, CD_DEFAULT, totpoly);
 		CustomData_copy_data_named(&me->pdata, pdata, 0, *polyofs, me->totpoly);
 
 		for (a = 0; a < me->totpoly; a++, mpoly++) {
@@ -399,7 +393,8 @@ int join_mesh_exec(bContext *C, wmOperator *op)
 
 
 			if (me->totvert) {
-				/* Add this object's materials to the base one's if they don't exist already (but only if limits not exceeded yet) */
+				/* Add this object's materials to the base one's if they don't exist already
+				 * (but only if limits not exceeded yet) */
 				if (totcol < MAXMAT) {
 					for (a = 1; a <= ob_iter->totcol; a++) {
 						ma = give_current_material(ob_iter, a);
@@ -422,7 +417,8 @@ int join_mesh_exec(bContext *C, wmOperator *op)
 					}
 				}
 
-				/* if this mesh has shapekeys, check if destination mesh already has matching entries too */
+				/* if this mesh has shapekeys,
+				 * check if destination mesh already has matching entries too */
 				if (me->key && key) {
 					/* for remapping KeyBlock.relative */
 					int      *index_map = MEM_mallocN(sizeof(int)        * me->key->totkey, __func__);
@@ -453,7 +449,8 @@ int join_mesh_exec(bContext *C, wmOperator *op)
 
 					/* remap relative index values */
 					for (kb = me->key->block.first, i = 0; kb; kb = kb->next, i++) {
-						if (LIKELY(kb->relative < me->key->totkey)) {  /* sanity check, should always be true */
+						/* sanity check, should always be true */
+						if (LIKELY(kb->relative < me->key->totkey)) {
 							kb_map[i]->relative = index_map[kb->relative];
 						}
 					}
@@ -487,8 +484,10 @@ int join_mesh_exec(bContext *C, wmOperator *op)
 	/* inverse transform for all selected meshes in this object */
 	invert_m4_m4(imat, ob->obmat);
 
-	/* Add back active mesh first. This allows to keep things similar as they were, as much as possible (i.e. data from
-	 * active mesh will remain first ones in new result of the merge, in same order for CD layers, etc. See also T50084.
+	/* Add back active mesh first.
+	 * This allows to keep things similar as they were, as much as possible
+	 * (i.e. data from active mesh will remain first ones in new result of the merge,
+	 * in same order for CD layers, etc). See also T50084.
 	 */
 	join_mesh_single(
 	            depsgraph, bmain, scene,
@@ -579,7 +578,7 @@ int join_mesh_exec(bContext *C, wmOperator *op)
 	/* free temp copy of destination shapekeys (if applicable) */
 	if (nkey) {
 		/* We can assume nobody is using that ID currently. */
-		BKE_libblock_free_ex(bmain, nkey, false, false);
+		BKE_id_free_ex(bmain, nkey, LIB_ID_FREE_NO_UI_USER, false);
 	}
 
 	/* ensure newly inserted keys are time sorted */
@@ -592,9 +591,9 @@ int join_mesh_exec(bContext *C, wmOperator *op)
 
 	DEG_relations_tag_update(bmain);   /* removed objects, need to rebuild dag */
 
-	DEG_id_tag_update(&ob->id, OB_RECALC_OB | OB_RECALC_DATA);
+	DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 
-	DEG_id_tag_update(&scene->id, DEG_TAG_SELECT_UPDATE);
+	DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
 	WM_event_add_notifier(C, NC_SCENE | ND_OB_ACTIVE, scene);
 
 	return OPERATOR_FINISHED;
@@ -663,7 +662,10 @@ int join_mesh_shapes_exec(bContext *C, wmOperator *op)
 			selme = (Mesh *)ob_iter->data;
 
 			if (selme->totvert == me->totvert) {
-				me_deformed = mesh_get_eval_deform(depsgraph, scene, ob_iter, CD_MASK_BAREMESH);
+				Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
+				Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob_iter);
+
+				me_deformed = mesh_get_eval_deform(depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
 
 				if (!me_deformed) {
 					continue;
@@ -677,7 +679,7 @@ int join_mesh_shapes_exec(bContext *C, wmOperator *op)
 	}
 	CTX_DATA_END;
 
-	DEG_id_tag_update(&scene->id, DEG_TAG_SELECT_UPDATE);
+	DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
 	WM_event_add_notifier(C, NC_SCENE | ND_OB_ACTIVE, scene);
 
 	return OPERATOR_FINISHED;
@@ -821,7 +823,7 @@ BMVert *editbmesh_get_x_mirror_vert(Object *ob, struct BMEditMesh *em, BMVert *e
 int ED_mesh_mirror_get_vert(Object *ob, int index)
 {
 	Mesh *me = ob->data;
-	BMEditMesh *em = me->edit_btmesh;
+	BMEditMesh *em = me->edit_mesh;
 	bool use_topology = (me->editflag & ME_EDIT_MIRROR_TOPO) != 0;
 	int index_mirr;
 
@@ -1012,7 +1014,9 @@ int *mesh_get_x_mirror_faces(Object *ob, BMEditMesh *em, Mesh *me_eval)
  *
  * \return boolean true == Found
  */
-bool ED_mesh_pick_face(bContext *C, Object *ob, const int mval[2], unsigned int *index, int size)
+bool ED_mesh_pick_face(
+        bContext *C, Object *ob, const int mval[2], uint dist_px,
+        uint *r_index)
 {
 	ViewContext vc;
 	Mesh *me = ob->data;
@@ -1024,25 +1028,29 @@ bool ED_mesh_pick_face(bContext *C, Object *ob, const int mval[2], unsigned int 
 
 	ED_view3d_viewcontext_init(C, &vc);
 
-	if (size) {
+	if (dist_px) {
 		/* sample rect to increase chances of selecting, so that when clicking
 		 * on an edge in the backbuf, we can still select a face */
 
-		float dummy_dist;
-		*index = ED_view3d_backbuf_sample_rect(&vc, mval, size, 1, me->totpoly + 1, &dummy_dist);
+		ED_view3d_select_id_validate(&vc);
+
+		*r_index = ED_view3d_select_id_read_nearest(
+		        &vc, mval, 1, me->totpoly + 1, &dist_px);
 	}
 	else {
 		/* sample only on the exact position */
-		*index = ED_view3d_backbuf_sample(&vc, mval[0], mval[1]);
+		*r_index = ED_view3d_select_id_sample(&vc, mval[0], mval[1]);
 	}
 
-	if ((*index) == 0 || (*index) > (unsigned int)me->totpoly)
+	if ((*r_index) == 0 || (*r_index) > (unsigned int)me->totpoly) {
 		return false;
+	}
 
-	(*index)--;
+	(*r_index)--;
 
 	return true;
 }
+
 static void ed_mesh_pick_face_vert__mpoly_find(
         /* context */
         struct ARegion *ar, const float mval[2],
@@ -1071,7 +1079,9 @@ static void ed_mesh_pick_face_vert__mpoly_find(
  * Use when the back buffer stores face index values. but we want a vert.
  * This gets the face then finds the closest vertex to mval.
  */
-bool ED_mesh_pick_face_vert(bContext *C, Object *ob, const int mval[2], unsigned int *index, int size)
+bool ED_mesh_pick_face_vert(
+        bContext *C, Object *ob, const int mval[2], uint dist_px,
+        uint *r_index)
 {
 	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	unsigned int poly_index;
@@ -1079,12 +1089,13 @@ bool ED_mesh_pick_face_vert(bContext *C, Object *ob, const int mval[2], unsigned
 
 	BLI_assert(me && GS(me->id.name) == ID_ME);
 
-	if (ED_mesh_pick_face(C, ob, mval, &poly_index, size)) {
-		Scene *scene = CTX_data_scene(C);
+	if (ED_mesh_pick_face(C, ob, mval, dist_px, &poly_index)) {
+		Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
+		Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
 		struct ARegion *ar = CTX_wm_region(C);
 
 		/* derived mesh to find deformed locations */
-		Mesh *me_eval = mesh_get_eval_final(depsgraph, scene, ob, CD_MASK_BAREMESH | CD_MASK_ORIGINDEX);
+		Mesh *me_eval = mesh_get_eval_final(depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH_ORIGINDEX);
 
 		int v_idx_best = ORIGINDEX_NONE;
 
@@ -1128,7 +1139,7 @@ bool ED_mesh_pick_face_vert(bContext *C, Object *ob, const int mval[2], unsigned
 			}
 		}
 
-		/* map 'dm -> me' index if possible */
+		/* map 'dm -> me' r_index if possible */
 		if (v_idx_best != ORIGINDEX_NONE) {
 			const int *index_mv_to_orig;
 			index_mv_to_orig = CustomData_get_layer(&me_eval->vdata, CD_ORIGINDEX);
@@ -1138,7 +1149,7 @@ bool ED_mesh_pick_face_vert(bContext *C, Object *ob, const int mval[2], unsigned
 		}
 
 		if ((v_idx_best != ORIGINDEX_NONE) && (v_idx_best < me->totvert)) {
-			*index = v_idx_best;
+			*r_index = v_idx_best;
 			return true;
 		}
 	}
@@ -1178,7 +1189,9 @@ static void ed_mesh_pick_vert__mapFunc(void *userData, int index, const float co
 		}
 	}
 }
-bool ED_mesh_pick_vert(bContext *C, Object *ob, const int mval[2], unsigned int *index, int size, bool use_zbuf)
+bool ED_mesh_pick_vert(
+        bContext *C, Object *ob, const int mval[2], uint dist_px, bool use_zbuf,
+        uint *r_index)
 {
 	ViewContext vc;
 	Mesh *me = ob->data;
@@ -1191,26 +1204,32 @@ bool ED_mesh_pick_vert(bContext *C, Object *ob, const int mval[2], unsigned int 
 	ED_view3d_viewcontext_init(C, &vc);
 
 	if (use_zbuf) {
-		if (size > 0) {
+		if (dist_px > 0) {
 			/* sample rect to increase chances of selecting, so that when clicking
 			 * on an face in the backbuf, we can still select a vert */
 
-			float dummy_dist;
-			*index = ED_view3d_backbuf_sample_rect(&vc, mval, size, 1, me->totvert + 1, &dummy_dist);
+			ED_view3d_select_id_validate(&vc);
+
+			*r_index = ED_view3d_select_id_read_nearest(
+			        &vc, mval, 1, me->totvert + 1, &dist_px);
 		}
 		else {
 			/* sample only on the exact position */
-			*index = ED_view3d_backbuf_sample(&vc, mval[0], mval[1]);
+			*r_index = ED_view3d_select_id_sample(&vc, mval[0], mval[1]);
 		}
 
-		if ((*index) == 0 || (*index) > (unsigned int)me->totvert)
+		if ((*r_index) == 0 || (*r_index) > (uint)me->totvert) {
 			return false;
+		}
 
-		(*index)--;
+		(*r_index)--;
 	}
 	else {
+		Scene *scene_eval = DEG_get_evaluated_scene(vc.depsgraph);
+		Object *ob_eval = DEG_get_evaluated_object(vc.depsgraph, ob);
+
 		/* derived mesh to find deformed locations */
-		Mesh *me_eval = mesh_get_eval_final(vc.depsgraph, vc.scene, ob, CD_MASK_BAREMESH);
+		Mesh *me_eval = mesh_get_eval_final(vc.depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
 		ARegion *ar = vc.ar;
 		RegionView3D *rv3d = ar->regiondata;
 
@@ -1239,7 +1258,7 @@ bool ED_mesh_pick_vert(bContext *C, Object *ob, const int mval[2], unsigned int 
 			return false;
 		}
 
-		*index = data.v_idx_best;
+		*r_index = data.v_idx_best;
 	}
 
 	return true;
@@ -1250,7 +1269,7 @@ MDeformVert *ED_mesh_active_dvert_get_em(Object *ob, BMVert **r_eve)
 {
 	if (ob->mode & OB_MODE_EDIT && ob->type == OB_MESH && ob->defbase.first) {
 		Mesh *me = ob->data;
-		BMesh *bm = me->edit_btmesh->bm;
+		BMesh *bm = me->edit_mesh->bm;
 		const int cd_dvert_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
 
 		if (cd_dvert_offset != -1) {

@@ -16,9 +16,6 @@
 #
 # The Original Code is Copyright (C) 2016, Blender Foundation
 # All rights reserved.
-#
-# Contributor(s): Sergey Sharybin.
-#
 # ***** END GPL LICENSE BLOCK *****
 
 # Libraries configuration for Windows.
@@ -173,7 +170,10 @@ if(NOT DEFINED LIBDIR)
 		set(LIBDIR_BASE "windows")
 	endif()
 	# Can be 1910..1912
-	if(MSVC_VERSION GREATER 1909)
+	if(MSVC_VERSION GREATER 1919)
+		message(STATUS "Visual Studio 2019 detected.")
+		set(LIBDIR ${CMAKE_SOURCE_DIR}/../lib/${LIBDIR_BASE}_vc14)
+	elseif(MSVC_VERSION GREATER 1909)
 		message(STATUS "Visual Studio 2017 detected.")
 		set(LIBDIR ${CMAKE_SOURCE_DIR}/../lib/${LIBDIR_BASE}_vc14)
 	elseif(MSVC_VERSION EQUAL 1900)
@@ -225,7 +225,7 @@ if(NOT JPEG_FOUND)
 endif()
 
 set(PTHREADS_INCLUDE_DIRS ${LIBDIR}/pthreads/include)
-set(PTHREADS_LIBRARIES ${LIBDIR}/pthreads/lib/pthreadVC2.lib)
+set(PTHREADS_LIBRARIES ${LIBDIR}/pthreads/lib/pthreadVC3.lib)
 
 set(FREETYPE ${LIBDIR}/freetype)
 set(FREETYPE_INCLUDE_DIRS
@@ -427,6 +427,7 @@ endif()
 
 if(WITH_LLVM)
 	set(LLVM_ROOT_DIR ${LIBDIR}/llvm CACHE PATH	"Path to the LLVM installation")
+	set(LLVM_INCLUDE_DIRS ${LLVM_ROOT_DIR}/$<$<CONFIG:Debug>:Debug>/include CACHE PATH	"Path to the LLVM include directory")
 	file(GLOB LLVM_LIBRARY_OPTIMIZED ${LLVM_ROOT_DIR}/lib/*.lib)
 
 	if(EXISTS ${LLVM_ROOT_DIR}/debug/lib)
@@ -502,7 +503,7 @@ if(WITH_IMAGE_OPENJPEG)
 	set(OPENJPEG_LIBRARIES ${OPENJPEG}/lib/openjp2.lib)
 endif()
 
-if(WITH_OPENSUBDIV OR WITH_CYCLES_OPENSUBDIV)
+if(WITH_OPENSUBDIV)
 	set(OPENSUBDIV_INCLUDE_DIR ${LIBDIR}/opensubdiv/include)
 	set(OPENSUBDIV_LIBPATH ${LIBDIR}/opensubdiv/lib)
 	set(OPENSUBDIV_LIBRARIES
@@ -604,6 +605,33 @@ if(WITH_CYCLES_OSL)
 	else()
 		message(STATUS "OSL not found")
 		set(WITH_CYCLES_OSL OFF)
+	endif()
+endif()
+
+if(WITH_CYCLES_EMBREE)
+	windows_find_package(Embree)
+	if(NOT EMBREE_FOUND)
+		set(EMBREE_INCLUDE_DIRS ${LIBDIR}/embree/include)
+		set(EMBREE_LIBRARIES
+			optimized ${LIBDIR}/embree/lib/embree3.lib
+			optimized ${LIBDIR}/embree/lib/embree_avx2.lib
+			optimized ${LIBDIR}/embree/lib/embree_avx.lib
+			optimized ${LIBDIR}/embree/lib/embree_sse42.lib
+			optimized ${LIBDIR}/embree/lib/lexers.lib
+			optimized ${LIBDIR}/embree/lib/math.lib
+			optimized ${LIBDIR}/embree/lib/simd.lib
+			optimized ${LIBDIR}/embree/lib/sys.lib
+			optimized ${LIBDIR}/embree/lib/tasking.lib
+
+			debug ${LIBDIR}/embree/lib/embree3_d.lib
+			debug ${LIBDIR}/embree/lib/embree_avx2_d.lib
+			debug ${LIBDIR}/embree/lib/embree_avx_d.lib
+			debug ${LIBDIR}/embree/lib/embree_sse42_d.lib
+			debug ${LIBDIR}/embree/lib/lexers_d.lib
+			debug ${LIBDIR}/embree/lib/math_d.lib
+			debug ${LIBDIR}/embree/lib/simd_d.lib
+			debug ${LIBDIR}/embree/lib/sys_d.lib
+			debug ${LIBDIR}/embree/lib/tasking_d.lib)
 	endif()
 endif()
 

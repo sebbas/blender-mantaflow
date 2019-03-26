@@ -1,5 +1,5 @@
-/** \file elbeem/intern/ntl_bsptree.h
- *  \ingroup elbeem
+/** \file
+ * \ingroup elbeem
  */
 /******************************************************************************
  *

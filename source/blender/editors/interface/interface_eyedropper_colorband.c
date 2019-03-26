@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,12 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/interface/interface_eyedropper_colorband.c
- *  \ingroup edinterface
+/** \file
+ * \ingroup edinterface
  *
  * Eyedropper (Color Band).
  *
@@ -31,8 +27,8 @@
  * - Clicking on points, adding each color to the end of the color-band.
  *
  * Defines:
- * - #UI_OT_eyedropper_colorband
- * - #UI_OT_eyedropper_colorband_point
+ * - #UI_OT_eyedropper_colorramp
+ * - #UI_OT_eyedropper_colorramp_point
  */
 
 #include "MEM_guardedalloc.h"
@@ -72,6 +68,8 @@ typedef struct EyedropperColorband {
 	ColorBand *color_band;
 	PointerRNA ptr;
 	PropertyRNA *prop;
+	bool is_undo;
+	bool is_set;
 } EyedropperColorband;
 
 /* For user-data only. */
@@ -83,7 +81,6 @@ struct EyedropperColorband_Context {
 static bool eyedropper_colorband_init(bContext *C, wmOperator *op)
 {
 	ColorBand *band = NULL;
-	EyedropperColorband *eye;
 
 	uiBut *but = UI_context_active_but_get(C);
 
@@ -99,10 +96,18 @@ static bool eyedropper_colorband_init(bContext *C, wmOperator *op)
 		band = (ColorBand *)but->custom_data;
 	}
 
-	if (!band)
-		return false;
+	if (!band) {
+		PointerRNA ptr = CTX_data_pointer_get_type(C, "color_ramp", &RNA_ColorRamp);
+		if (ptr.data != NULL) {
+			band = ptr.data;
+		}
+	}
 
-	op->customdata = eye = MEM_callocN(sizeof(EyedropperColorband), __func__);
+	if (!band) {
+		return false;
+	}
+
+	EyedropperColorband *eye = MEM_callocN(sizeof(EyedropperColorband), __func__);
 	eye->color_buffer_alloc = 16;
 	eye->color_buffer = MEM_mallocN(sizeof(*eye->color_buffer) * eye->color_buffer_alloc, __func__);
 	eye->color_buffer_len = 0;
@@ -110,6 +115,9 @@ static bool eyedropper_colorband_init(bContext *C, wmOperator *op)
 	eye->init_color_band = *eye->color_band;
 	eye->ptr = ((Colorband_RNAUpdateCb *)but->func_argN)->ptr;
 	eye->prop  = ((Colorband_RNAUpdateCb *)but->func_argN)->prop;
+	eye->is_undo = UI_but_flag_is_set(but, UI_BUT_UNDO);
+
+	op->customdata = eye;
 
 	return true;
 }
@@ -128,6 +136,7 @@ static void eyedropper_colorband_sample_point(bContext *C, EyedropperColorband *
 		eye->color_buffer_len += 1;
 		eye->last_x = mx;
 		eye->last_y = my;
+		eye->is_set = true;
 	}
 }
 
@@ -168,14 +177,17 @@ static void eyedropper_colorband_apply(bContext *C, wmOperator *op)
 	/* Always filter, avoids noise in resulting color-band. */
 	bool filter_samples = true;
 	BKE_colorband_init_from_table_rgba(eye->color_band, eye->color_buffer, eye->color_buffer_len, filter_samples);
+	eye->is_set = true;
 	RNA_property_update(C, &eye->ptr, eye->prop);
 }
 
 static void eyedropper_colorband_cancel(bContext *C, wmOperator *op)
 {
 	EyedropperColorband *eye = op->customdata;
-	*eye->color_band = eye->init_color_band;
-	RNA_property_update(C, &eye->ptr, eye->prop);
+	if (eye->is_set) {
+		*eye->color_band = eye->init_color_band;
+		RNA_property_update(C, &eye->ptr, eye->prop);
+	}
 	eyedropper_colorband_exit(C, op);
 }
 
@@ -190,10 +202,14 @@ static int eyedropper_colorband_modal(bContext *C, wmOperator *op, const wmEvent
 				eyedropper_colorband_cancel(C, op);
 				return OPERATOR_CANCELLED;
 			case EYE_MODAL_SAMPLE_CONFIRM:
+			{
+				const bool is_undo = eye->is_undo;
 				eyedropper_colorband_sample_segment(C, eye, event->x, event->y);
 				eyedropper_colorband_apply(C, op);
 				eyedropper_colorband_exit(C, op);
-				return OPERATOR_FINISHED;
+				/* Could support finished & undo-skip. */
+				return is_undo ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
+			}
 			case EYE_MODAL_SAMPLE_BEGIN:
 				/* enable accum and make first sample */
 				eye->sample_start = true;
@@ -266,7 +282,6 @@ static int eyedropper_colorband_invoke(bContext *C, wmOperator *op, const wmEven
 		return OPERATOR_RUNNING_MODAL;
 	}
 	else {
-		eyedropper_colorband_exit(C, op);
 		return OPERATOR_CANCELLED;
 	}
 }
@@ -292,15 +307,22 @@ static int eyedropper_colorband_exec(bContext *C, wmOperator *op)
 static bool eyedropper_colorband_poll(bContext *C)
 {
 	uiBut *but = UI_context_active_but_get(C);
-	return (but && but->type == UI_BTYPE_COLORBAND);
+	if (but && but->type == UI_BTYPE_COLORBAND) {
+		return true;
+	}
+	PointerRNA ptr = CTX_data_pointer_get_type(C, "color_ramp", &RNA_ColorRamp);
+	if (ptr.data != NULL) {
+		return true;
+	}
+	return false;
 }
 
 
-void UI_OT_eyedropper_colorband(wmOperatorType *ot)
+void UI_OT_eyedropper_colorramp(wmOperatorType *ot)
 {
 	/* identifiers */
 	ot->name = "Eyedropper colorband";
-	ot->idname = "UI_OT_eyedropper_colorband";
+	ot->idname = "UI_OT_eyedropper_colorramp";
 	ot->description = "Sample a color band";
 
 	/* api callbacks */
@@ -311,17 +333,17 @@ void UI_OT_eyedropper_colorband(wmOperatorType *ot)
 	ot->poll = eyedropper_colorband_poll;
 
 	/* flags */
-	ot->flag = OPTYPE_BLOCKING | OPTYPE_INTERNAL;
+	ot->flag = OPTYPE_UNDO | OPTYPE_BLOCKING | OPTYPE_INTERNAL;
 
 	/* properties */
 }
 
-void UI_OT_eyedropper_colorband_point(wmOperatorType *ot)
+void UI_OT_eyedropper_colorramp_point(wmOperatorType *ot)
 {
 	/* identifiers */
 	ot->name = "Eyedropper colorband (points)";
-	ot->idname = "UI_OT_eyedropper_colorband_point";
-	ot->description = "Pointsample a color band";
+	ot->idname = "UI_OT_eyedropper_colorramp_point";
+	ot->description = "Point-sample a color band";
 
 	/* api callbacks */
 	ot->invoke = eyedropper_colorband_invoke;
@@ -331,7 +353,7 @@ void UI_OT_eyedropper_colorband_point(wmOperatorType *ot)
 	ot->poll = eyedropper_colorband_poll;
 
 	/* flags */
-	ot->flag = OPTYPE_BLOCKING | OPTYPE_INTERNAL;
+	ot->flag = OPTYPE_UNDO | OPTYPE_BLOCKING | OPTYPE_INTERNAL;
 
 	/* properties */
 }

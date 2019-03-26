@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Joseph Eagar, Geoffrey Bantle, Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/bmesh/intern/bmesh_core.c
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * Core BMesh functions for adding, removing BMesh elements.
  */
@@ -38,6 +32,7 @@
 
 #include "DNA_meshdata_types.h"
 
+#include "BKE_customdata.h"
 #include "BKE_mesh.h"
 
 #include "bmesh.h"
@@ -421,11 +416,11 @@ BLI_INLINE BMFace *bm_face_create__internal(BMesh *bm)
 /**
  * Main face creation function
  *
- * \param bm  The mesh
- * \param verts  A sorted array of verts size of len
- * \param edges  A sorted array of edges size of len
- * \param len  Length of the face
- * \param create_flag  Options for creating the face
+ * \param bm: The mesh
+ * \param verts: A sorted array of verts size of len
+ * \param edges: A sorted array of edges size of len
+ * \param len: Length of the face
+ * \param create_flag: Options for creating the face
  */
 BMFace *BM_face_create(
         BMesh *bm, BMVert **verts, BMEdge **edges, const int len,
@@ -1333,9 +1328,9 @@ BMFace *BM_faces_join(BMesh *bm, BMFace **faces, int totface, const bool do_del)
 		float f_center[3];
 		float (*faces_center)[3] = BLI_array_alloca(faces_center, totface);
 
-		BM_face_calc_center_mean(f_new, f_center);
+		BM_face_calc_center_median(f_new, f_center);
 		for (i = 0; i < totface; i++) {
-			BM_face_calc_center_mean(faces[i], faces_center[i]);
+			BM_face_calc_center_median(faces[i], faces_center[i]);
 		}
 
 		l_iter = l_first = BM_FACE_FIRST_LOOP(f_new);
@@ -2396,7 +2391,7 @@ void bmesh_kernel_vert_separate(
  *
  * Any edges which failed to split off in #bmesh_kernel_vert_separate will be merged back into the original edge.
  *
- * \param edges_separate
+ * \param edges_separate:
  * A list-of-lists, each list is from a single original edge (the first edge is the original),
  * Check for duplicates (not just with the first) but between all.
  * This is O(n2) but radial edges are very rarely >2 and almost never >~10.

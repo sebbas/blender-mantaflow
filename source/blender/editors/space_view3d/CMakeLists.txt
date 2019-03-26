@@ -13,9 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software Foundation,
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Contributor(s): Jacques Beaurain.
-#
 # ***** END GPL LICENSE BLOCK *****
 
 set(INC
@@ -51,27 +48,26 @@ set(SRC
 	view3d_draw_legacy.c
 	view3d_edit.c
 	view3d_fly.c
-	view3d_walk.c
-	view3d_header.c
-	view3d_iterators.c
 	view3d_gizmo_armature.c
 	view3d_gizmo_camera.c
 	view3d_gizmo_empty.c
 	view3d_gizmo_forcefield.c
-	view3d_gizmo_lamp.c
+	view3d_gizmo_light.c
 	view3d_gizmo_navigate.c
 	view3d_gizmo_navigate_type.c
-	view3d_gizmo_ruler.c
 	view3d_gizmo_preselect.c
 	view3d_gizmo_preselect_type.c
+	view3d_gizmo_ruler.c
+	view3d_header.c
+	view3d_iterators.c
 	view3d_ops.c
 	view3d_project.c
-	view3d_ruler.c
 	view3d_select.c
 	view3d_snap.c
 	view3d_toolbar.c
 	view3d_utils.c
 	view3d_view.c
+	view3d_walk.c
 
 	view3d_intern.h
 )

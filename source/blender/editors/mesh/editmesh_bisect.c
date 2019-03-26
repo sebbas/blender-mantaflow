@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2013 by Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/mesh/editmesh_bisect.c
- *  \ingroup edmesh
+/** \file
+ * \ingroup edmesh
  */
 
 #include "MEM_guardedalloc.h"
@@ -130,7 +124,7 @@ static int mesh_bisect_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 	}
 
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *obedit = objects[ob_index];
 		BMEditMesh *em = BKE_editmesh_from_object(obedit);
@@ -242,7 +236,6 @@ static int mesh_bisect_exec(bContext *C, wmOperator *op)
 	Scene *scene = CTX_data_scene(C);
 
 	/* both can be NULL, fallbacks values are used */
-	View3D *v3d = CTX_wm_view3d(C);
 	RegionView3D *rv3d = ED_view3d_context_rv3d(C);
 
 	int ret = OPERATOR_CANCELLED;
@@ -264,7 +257,7 @@ static int mesh_bisect_exec(bContext *C, wmOperator *op)
 		RNA_property_float_get_array(op->ptr, prop_plane_co, plane_co);
 	}
 	else {
-		copy_v3_v3(plane_co, ED_view3d_cursor3d_get(scene, v3d)->location);
+		copy_v3_v3(plane_co, scene->cursor.location);
 		RNA_property_float_set_array(op->ptr, prop_plane_co, plane_co);
 	}
 
@@ -299,7 +292,7 @@ static int mesh_bisect_exec(bContext *C, wmOperator *op)
 	/* -------------------------------------------------------------------- */
 
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(CTX_data_view_layer(C), &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(CTX_data_view_layer(C), CTX_wm_view3d(C), &objects_len);
 
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *obedit = objects[ob_index];
@@ -405,8 +398,8 @@ void MESH_OT_bisect(struct wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
 
-	prop = RNA_def_float_vector(ot->srna, "plane_co", 3, NULL, -1e12f, 1e12f,
-	                            "Plane Point", "A point on the plane", -1e4f, 1e4f);
+	prop = RNA_def_float_vector_xyz(ot->srna, "plane_co", 3, NULL, -1e12f, 1e12f,
+	                                "Plane Point", "A point on the plane", -1e4f, 1e4f);
 	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 	prop = RNA_def_float_vector(ot->srna, "plane_no", 3, NULL, -1.0f, 1.0f,
 	                            "Plane Normal", "The direction the plane points", -1.0f, 1.0f);
@@ -430,7 +423,6 @@ void MESH_OT_bisect(struct wmOperatorType *ot)
 #ifdef USE_GIZMO
 
 /* -------------------------------------------------------------------- */
-
 /** \name Bisect Gizmo
  * \{ */
 

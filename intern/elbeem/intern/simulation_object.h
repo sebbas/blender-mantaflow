@@ -1,5 +1,5 @@
-/** \file elbeem/intern/simulation_object.h
- *  \ingroup elbeem
+/** \file
+ * \ingroup elbeem
  */
 /******************************************************************************
  *

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_info/info_ops.c
- *  \ingroup spinfo
+/** \file
+ * \ingroup spinfo
  */
 
 
@@ -130,12 +123,12 @@ static int autopack_toggle_exec(bContext *C, wmOperator *op)
 {
 	Main *bmain = CTX_data_main(C);
 
-	if (G.fileflags & G_AUTOPACK) {
-		G.fileflags &= ~G_AUTOPACK;
+	if (G.fileflags & G_FILE_AUTOPACK) {
+		G.fileflags &= ~G_FILE_AUTOPACK;
 	}
 	else {
 		packAll(bmain, op->reports, true);
-		G.fileflags |= G_AUTOPACK;
+		G.fileflags |= G_FILE_AUTOPACK;
 	}
 
 	return OPERATOR_FINISHED;
@@ -173,7 +166,7 @@ static int pack_all_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(ev
 	ImBuf *ibuf;
 
 	// first check for dirty images
-	for (ima = bmain->image.first; ima; ima = ima->id.next) {
+	for (ima = bmain->images.first; ima; ima = ima->id.next) {
 		if (BKE_image_has_loaded_ibuf(ima)) { /* XXX FIX */
 			ibuf = BKE_image_acquire_ibuf(ima, NULL, NULL);
 
@@ -218,15 +211,18 @@ static const EnumPropertyItem unpack_all_method_items[] = {
 	{PF_WRITE_ORIGINAL, "WRITE_ORIGINAL", 0, "Write files to original location (overwrite existing files)", ""},
 	{PF_KEEP, "KEEP", 0, "Disable Auto-pack, keep all packed files", ""},
 	/* {PF_ASK, "ASK", 0, "Ask for each file", ""}, */
-	{0, NULL, 0, NULL, NULL}};
+	{0, NULL, 0, NULL, NULL},
+};
 
 static int unpack_all_exec(bContext *C, wmOperator *op)
 {
 	Main *bmain = CTX_data_main(C);
 	int method = RNA_enum_get(op->ptr, "method");
 
-	if (method != PF_KEEP) unpackAll(bmain, op->reports, method);  /* XXX PF_ASK can't work here */
-	G.fileflags &= ~G_AUTOPACK;
+	if (method != PF_KEEP) {
+		unpackAll(bmain, op->reports, method);  /* XXX PF_ASK can't work here */
+	}
+	G.fileflags &= ~G_FILE_AUTOPACK;
 
 	return OPERATOR_FINISHED;
 }
@@ -243,14 +239,16 @@ static int unpack_all_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(
 
 	if (!count) {
 		BKE_report(op->reports, RPT_WARNING, "No packed files to unpack");
-		G.fileflags &= ~G_AUTOPACK;
+		G.fileflags &= ~G_FILE_AUTOPACK;
 		return OPERATOR_CANCELLED;
 	}
 
-	if (count == 1)
+	if (count == 1) {
 		BLI_strncpy(title, IFACE_("Unpack 1 File"), sizeof(title));
-	else
+	}
+	else {
 		BLI_snprintf(title, sizeof(title), IFACE_("Unpack %d Files"), count);
+	}
 
 	pup = UI_popup_menu_begin(C, title, ICON_NONE);
 	layout = UI_popup_menu_layout(pup);
@@ -289,7 +287,8 @@ static const EnumPropertyItem unpack_item_method_items[] = {
 	{PF_USE_ORIGINAL, "USE_ORIGINAL", 0, "Use file in original location (create when necessary)", ""},
 	{PF_WRITE_ORIGINAL, "WRITE_ORIGINAL", 0, "Write file to original location (overwrite existing file)", ""},
 	/* {PF_ASK, "ASK", 0, "Ask for each file", ""}, */
-	{0, NULL, 0, NULL, NULL}};
+	{0, NULL, 0, NULL, NULL},
+};
 
 
 static int unpack_item_exec(bContext *C, wmOperator *op)
@@ -308,10 +307,11 @@ static int unpack_item_exec(bContext *C, wmOperator *op)
 		return OPERATOR_CANCELLED;
 	}
 
-	if (method != PF_KEEP)
+	if (method != PF_KEEP) {
 		BKE_unpack_id(bmain, id, op->reports, method);  /* XXX PF_ASK can't work here */
+	}
 
-	G.fileflags &= ~G_AUTOPACK;
+	G.fileflags &= ~G_FILE_AUTOPACK;
 
 	return OPERATOR_FINISHED;
 }

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/sound.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include <string.h>
@@ -99,7 +91,7 @@ bSound *BKE_sound_new_file_exists_ex(struct Main *bmain, const char *filepath, b
 	BLI_path_abs(str, BKE_main_blendfile_path(bmain));
 
 	/* first search an identical filepath */
-	for (sound = bmain->sound.first; sound; sound = sound->id.next) {
+	for (sound = bmain->sounds.first; sound; sound = sound->id.next) {
 		BLI_strncpy(strtest, sound->name, sizeof(sound->name));
 		BLI_path_abs(strtest, ID_BLEND_PATH(bmain, &sound->id));
 
@@ -155,11 +147,11 @@ void BKE_sound_free(bSound *sound)
 
 /**
  * Only copy internal data of Sound ID from source to already allocated/initialized destination.
- * You probably nerver want to use that directly, use id_copy or BKE_id_copy_ex for typical needs.
+ * You probably never want to use that directly, use BKE_id_copy or BKE_id_copy_ex for typical needs.
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag  Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
  */
 void BKE_sound_copy_data(Main *bmain, bSound *sound_dst, const bSound *UNUSED(sound_src), const int UNUSED(flag))
 {
@@ -200,7 +192,7 @@ static void sound_sync_callback(void *data, int mode, float time)
 	struct Main *bmain = (struct Main *)data;
 	struct Scene *scene;
 
-	scene = bmain->scene.first;
+	scene = bmain->scenes.first;
 	while (scene) {
 		if (scene->audio.flag & AUDIO_SYNC) {
 			if (mode)
@@ -515,7 +507,7 @@ void BKE_sound_update_scene_listener(struct Scene *scene)
 void *BKE_sound_scene_add_scene_sound(struct Scene *scene, struct Sequence *sequence,
                                   int startframe, int endframe, int frameskip)
 {
-	if (scene != sequence->scene) {
+	if (sequence->scene && scene != sequence->scene) {
 		const double fps = FPS;
 		return AUD_Sequence_add(scene->sound_scene, sequence->scene->sound_scene,
 		                       startframe / fps, endframe / fps, frameskip / fps);
@@ -532,6 +524,10 @@ void *BKE_sound_scene_add_scene_sound_defaults(struct Scene *scene, struct Seque
 
 void *BKE_sound_add_scene_sound(struct Scene *scene, struct Sequence *sequence, int startframe, int endframe, int frameskip)
 {
+	/* Happens when sequence's sound datablock was removed. */
+	if (sequence->sound == NULL) {
+		return NULL;
+	}
 	const double fps = FPS;
 	void *handle = AUD_Sequence_add(scene->sound_scene, sequence->sound->playback_handle,
 	                               startframe / fps, endframe / fps, frameskip / fps);
@@ -545,8 +541,8 @@ void *BKE_sound_add_scene_sound(struct Scene *scene, struct Sequence *sequence, 
 void *BKE_sound_add_scene_sound_defaults(struct Scene *scene, struct Sequence *sequence)
 {
 	return BKE_sound_add_scene_sound(scene, sequence,
-	                             sequence->startdisp, sequence->enddisp,
-	                             sequence->startofs + sequence->anim_startofs);
+	                                 sequence->startdisp, sequence->enddisp,
+	                                 sequence->startofs + sequence->anim_startofs);
 }
 
 void BKE_sound_remove_scene_sound(struct Scene *scene, void *handle)
@@ -610,7 +606,7 @@ void BKE_sound_update_sequencer(struct Main *main, bSound *sound)
 {
 	struct Scene *scene;
 
-	for (scene = main->scene.first; scene; scene = scene->id.next) {
+	for (scene = main->scenes.first; scene; scene = scene->id.next) {
 		BKE_sequencer_update_sound(scene, sound);
 	}
 }
@@ -690,7 +686,7 @@ void BKE_sound_seek_scene(struct Main *bmain, struct Scene *scene)
 	}
 
 	animation_playing = 0;
-	for (screen = bmain->screen.first; screen; screen = screen->id.next) {
+	for (screen = bmain->screens.first; screen; screen = screen->id.next) {
 		if (screen->animtimer) {
 			animation_playing = 1;
 			break;
@@ -887,8 +883,8 @@ void BKE_sound_update_scene(Main *bmain, Scene *scene)
 	float quat[4];
 
 	/* cheap test to skip looping over all objects (no speakers is a common case) */
-	if (!BLI_listbase_is_empty(&bmain->speaker)) {
-		BKE_main_id_tag_listbase(&bmain->object, LIB_TAG_DOIT, true);
+	if (!BLI_listbase_is_empty(&bmain->speakers)) {
+		BKE_main_id_tag_listbase(&bmain->objects, LIB_TAG_DOIT, true);
 
 		for (ViewLayer *view_layer = scene->view_layers.first; view_layer; view_layer = view_layer->next) {
 			for (base = view_layer->object_bases.first; base; base = base->next) {

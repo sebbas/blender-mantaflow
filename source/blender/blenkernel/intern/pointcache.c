@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Campbell Barton <ideasman42@gmail.com>
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/pointcache.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 
@@ -33,6 +27,8 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#include "CLG_log.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -48,7 +44,6 @@
 #include "DNA_smoke_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_threads.h"
 #include "BLI_math.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
@@ -63,6 +58,7 @@
 #include "BKE_collection.h"
 #include "BKE_dynamicpaint.h"
 #include "BKE_global.h"
+#include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
@@ -73,8 +69,6 @@
 #include "BKE_softbody.h"
 
 #include "BIK_api.h"
-
-#include "DEG_depsgraph.h"
 
 #ifdef WITH_BULLET
 #  include "RBI_api.h"
@@ -125,6 +119,8 @@
 /* could be made into a pointcache option */
 #define DURIAN_POINTCACHE_LIB_OK 1
 
+static CLG_LogRef LOG = {"bke.pointcache"};
+
 static int ptcache_data_size[] = {
 		sizeof(unsigned int), // BPHYS_DATA_INDEX
 		3 * sizeof(float), // BPHYS_DATA_LOCATION
@@ -133,12 +129,12 @@ static int ptcache_data_size[] = {
 		3 * sizeof(float), // BPHYS_DATA_AVELOCITY / BPHYS_DATA_XCONST
 		sizeof(float), // BPHYS_DATA_SIZE
 		3 * sizeof(float), // BPHYS_DATA_TIMES
-		sizeof(BoidData) // case BPHYS_DATA_BOIDS
+		sizeof(BoidData), // case BPHYS_DATA_BOIDS
 };
 
 static int ptcache_extra_datasize[] = {
 	0,
-	sizeof(ParticleSpring)
+	sizeof(ParticleSpring),
 };
 
 /* forward declarations */
@@ -585,7 +581,7 @@ static int  ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 	SmokeModifierData *smd= (SmokeModifierData *)smoke_v;
 	SmokeDomainSettings *sds = smd->domain;
 	int ret = 0;
-	int fluid_fields = smoke_get_data_flags(sds);
+	int fluid_fields = BKE_smoke_get_data_flags(sds);
 
 	/* version header */
 	ptcache_file_write(pf, SMOKE_CACHE_VERSION, 4, sizeof(char));
@@ -703,7 +699,7 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 		unsigned char *obstacles;
 		float *tmp_array = MEM_callocN(out_len, "Smoke old cache tmp");
 
-		int fluid_fields = smoke_get_data_flags(sds);
+		int fluid_fields = BKE_smoke_get_data_flags(sds);
 
 		/* Part part of the new cache header */
 		sds->active_color[0] = 0.7f;
@@ -772,7 +768,7 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 	char version[4];
 	int ch_res[3];
 	float ch_dx;
-	int fluid_fields = smoke_get_data_flags(sds);
+	int fluid_fields = BKE_smoke_get_data_flags(sds);
 	int cache_fields = 0;
 	int active_fields = 0;
 	int reallocate = 0;
@@ -810,12 +806,12 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 	/* reallocate fluid if needed*/
 	if (reallocate) {
 		sds->active_fields = active_fields | cache_fields;
-		smoke_reallocate_fluid(sds, ch_dx, ch_res, 1);
+		BKE_smoke_reallocate_fluid(sds, ch_dx, ch_res, 1);
 		sds->dx = ch_dx;
-		VECCOPY(sds->res, ch_res);
+		copy_v3_v3_int(sds->res, ch_res);
 		sds->total_cells = ch_res[0]*ch_res[1]*ch_res[2];
 		if (sds->flags & MOD_SMOKE_HIGHRES) {
-			smoke_reallocate_highres_fluid(sds, ch_dx, ch_res, 1);
+			BKE_smoke_reallocate_highres_fluid(sds, ch_dx, ch_res, 1);
 		}
 	}
 
@@ -964,7 +960,7 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
 	OpenVDBWriter_add_meta_v3(writer, "blender/smoke/active_color", sds->active_color);
 	OpenVDBWriter_add_meta_mat4(writer, "blender/smoke/obmat", sds->obmat);
 
-	int fluid_fields = smoke_get_data_flags(sds);
+	int fluid_fields = BKE_smoke_get_data_flags(sds);
 
 	struct OpenVDBFloatGrid *clip_grid = NULL;
 
@@ -1047,7 +1043,7 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 
 	SmokeDomainSettings *sds = smd->domain;
 
-	int fluid_fields = smoke_get_data_flags(sds);
+	int fluid_fields = BKE_smoke_get_data_flags(sds);
 	int active_fields, cache_fields = 0;
 	int cache_res[3];
 	float cache_dx;
@@ -1089,13 +1085,13 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 	/* reallocate fluid if needed*/
 	if (reallocate) {
 		sds->active_fields = active_fields | cache_fields;
-		smoke_reallocate_fluid(sds, cache_dx, cache_res, 1);
+		BKE_smoke_reallocate_fluid(sds, cache_dx, cache_res, 1);
 		sds->dx = cache_dx;
 		copy_v3_v3_int(sds->res, cache_res);
 		sds->total_cells = cache_res[0] * cache_res[1] * cache_res[2];
 
 		if (sds->flags & MOD_SMOKE_HIGHRES) {
-			smoke_reallocate_highres_fluid(sds, cache_dx, cache_res, 1);
+			BKE_smoke_reallocate_highres_fluid(sds, cache_dx, cache_res, 1);
 		}
 	}
 
@@ -1245,7 +1241,7 @@ static int ptcache_dynamicpaint_read(PTCacheFile *pf, void *dp_v)
 	/* version header */
 	ptcache_file_read(pf, version, 1, sizeof(char) * 4);
 	if (!STREQLEN(version, DPAINT_CACHE_VERSION, 4)) {
-		printf("Dynamic Paint: Invalid cache version: '%c%c%c%c'!\n", UNPACK4(version));
+		CLOG_ERROR(&LOG, "Dynamic Paint: Invalid cache version: '%c%c%c%c'!", UNPACK4(version));
 		return 0;
 	}
 
@@ -1671,88 +1667,176 @@ PTCacheID BKE_ptcache_id_find(Object *ob, Scene *scene, PointCache *cache)
 	return result;
 }
 
-void BKE_ptcache_ids_from_object(ListBase *lb, Object *ob, Scene *scene, int duplis)
+/* Callback which is used by point cache foreach() family of functions.
+ *
+ * Receives ID of the point cache.
+ *
+ * NOTE: This ID is owned by foreach() routines and can not be used outside of
+ * the foreach loop. This means that if one wants to store them those are to be
+ * malloced and copied over.
+ *
+ * If the function returns false, then foreach() loop aborts.
+ */
+typedef bool (*ForeachPtcacheCb)(PTCacheID *pid, void *userdata);
+
+static bool foreach_object_particle_ptcache(Object *object,
+                                            ForeachPtcacheCb callback,
+                                            void *callback_user_data)
 {
-	PTCacheID *pid;
-	ParticleSystem *psys;
-	ModifierData *md;
-
-	lb->first= lb->last= NULL;
-
-	if (ob->soft) {
-		pid= MEM_callocN(sizeof(PTCacheID), "PTCacheID");
-		BKE_ptcache_id_from_softbody(pid, ob, ob->soft);
-		BLI_addtail(lb, pid);
+	PTCacheID pid;
+	for (ParticleSystem *psys = object->particlesystem.first;
+	     psys != NULL;
+	     psys = psys->next)
+	{
+		if (psys->part==NULL) {
+			continue;
+		}
+		/* Check to make sure point cache is actually used by the particles. */
+		if (ELEM(psys->part->phystype, PART_PHYS_NO, PART_PHYS_KEYED)) {
+			continue;
+		}
+		/* Hair needs to be included in id-list for cache edit mode to work. */
+#if 0
+		if ((psys->part->type == PART_HAIR) &&
+		    (psys->flag & PSYS_HAIR_DYNAMICS) == 0)
+		{
+			continue;
+		}
+#endif
+		if (psys->part->type == PART_FLUID) {
+			continue;
+		}
+		BKE_ptcache_id_from_particles(&pid, object, psys);
+		if (!callback(&pid, callback_user_data)) {
+			return false;
+		}
 	}
+	return true;
+}
 
-	for (psys=ob->particlesystem.first; psys; psys=psys->next) {
-		if (psys->part==NULL)
-			continue;
-
-		/* check to make sure point cache is actually used by the particles */
-		if (ELEM(psys->part->phystype, PART_PHYS_NO, PART_PHYS_KEYED))
-			continue;
-
-		/* hair needs to be included in id-list for cache edit mode to work */
-		/* if (psys->part->type == PART_HAIR && (psys->flag & PSYS_HAIR_DYNAMICS)==0) */
-		/*	continue; */
-
-		if (psys->part->type == PART_FLUID)
-			continue;
-
-		pid= MEM_callocN(sizeof(PTCacheID), "PTCacheID");
-		BKE_ptcache_id_from_particles(pid, ob, psys);
-		BLI_addtail(lb, pid);
-	}
-
-	for (md=ob->modifiers.first; md; md=md->next) {
+static bool foreach_object_modifier_ptcache(Object *object,
+                                            ForeachPtcacheCb callback,
+                                            void *callback_user_data)
+{
+	PTCacheID pid;
+	for (ModifierData *md = object->modifiers.first; md != NULL; md = md->next) {
 		if (md->type == eModifierType_Cloth) {
-			pid= MEM_callocN(sizeof(PTCacheID), "PTCacheID");
-			BKE_ptcache_id_from_cloth(pid, ob, (ClothModifierData*)md);
-			BLI_addtail(lb, pid);
+			BKE_ptcache_id_from_cloth(&pid, object, (ClothModifierData*)md);
+			if (!callback(&pid, callback_user_data)) {
+				return false;
+			}
 		}
 		else if (md->type == eModifierType_Smoke) {
 			SmokeModifierData *smd = (SmokeModifierData *)md;
 			if (smd->type & MOD_SMOKE_TYPE_DOMAIN) {
-				pid= MEM_callocN(sizeof(PTCacheID), "PTCacheID");
-				BKE_ptcache_id_from_smoke(pid, ob, (SmokeModifierData*)md);
-				BLI_addtail(lb, pid);
+				BKE_ptcache_id_from_smoke(&pid, object, (SmokeModifierData*)md);
+				if (!callback(&pid, callback_user_data)) {
+					return false;
+				}
 			}
 		}
 		else if (md->type == eModifierType_DynamicPaint) {
 			DynamicPaintModifierData *pmd = (DynamicPaintModifierData *)md;
 			if (pmd->canvas) {
 				DynamicPaintSurface *surface = pmd->canvas->surfaces.first;
-
 				for (; surface; surface=surface->next) {
-					pid= MEM_callocN(sizeof(PTCacheID), "PTCacheID");
-					BKE_ptcache_id_from_dynamicpaint(pid, ob, surface);
-					BLI_addtail(lb, pid);
+					BKE_ptcache_id_from_dynamicpaint(&pid, object, surface);
+					if (!callback(&pid, callback_user_data)) {
+						return false;
+					}
 				}
 			}
 		}
 	}
+	return true;
+}
 
-	if (scene && ob->rigidbody_object && scene->rigidbody_world) {
-		pid = MEM_callocN(sizeof(PTCacheID), "PTCacheID");
-		BKE_ptcache_id_from_rigidbody(pid, ob, scene->rigidbody_world);
-		BLI_addtail(lb, pid);
+/* Return false if any of callbacks returned false. */
+static bool foreach_object_ptcache(Scene *scene,
+                                   Object *object,
+                                   int duplis,
+                                   ForeachPtcacheCb callback,
+                                   void *callback_user_data)
+{
+	PTCacheID pid;
+	/* Soft body. */
+	if (object->soft != NULL) {
+		BKE_ptcache_id_from_softbody(&pid, object, object->soft);
+		if (!callback(&pid, callback_user_data)) {
+			return false;
+		}
 	}
-
+	/* Particle systems. */
+	if (!foreach_object_particle_ptcache(object, callback, callback_user_data)) {
+		return false;
+	}
+	/* Modifiers. */
+	if (!foreach_object_modifier_ptcache(object, callback, callback_user_data)) {
+		return false;
+	}
+	/* Rigid body. */
+	if (scene != NULL &&
+	    object->rigidbody_object != NULL &&
+	    scene->rigidbody_world != NULL)
+	{
+		BKE_ptcache_id_from_rigidbody(&pid, object, scene->rigidbody_world);
+		if (!callback(&pid, callback_user_data)) {
+			return false;
+		}
+	}
 	/* Consider all object in dupli groups to be part of the same object,
 	 * for baking with linking dupligroups. Once we have better overrides
 	 * this can be revisited so users select the local objects directly. */
-	if (scene && (duplis-- > 0) && (ob->dup_group)) {
-		FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN(ob->dup_group, object)
+	if (scene != NULL && (duplis-- > 0) && (object->instance_collection != NULL)) {
+		FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN(object->instance_collection,
+		                                          current_object)
 		{
-			if (object != ob) {
-				ListBase lb_dupli_pid;
-				BKE_ptcache_ids_from_object(&lb_dupli_pid, object, scene, duplis);
-				BLI_movelisttolist(lb, &lb_dupli_pid);
+			if (current_object == object) {
+				continue;
 			}
+			foreach_object_ptcache(scene,
+			                       current_object,
+			                       duplis,
+			                       callback,
+			                       callback_user_data);
 		}
 		FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
 	}
+	return true;
+}
+
+typedef struct PTCacheIDsFromObjectData {
+	ListBase *list_base;
+} PTCacheIDsFromObjectData;
+
+static bool ptcache_ids_from_object_cb(PTCacheID *pid, void *userdata)
+{
+	PTCacheIDsFromObjectData *data = userdata;
+	PTCacheID *own_pid = MEM_mallocN(sizeof(PTCacheID), "PTCacheID");
+	*own_pid = *pid;
+	BLI_addtail(data->list_base, own_pid);
+	return true;
+}
+
+void BKE_ptcache_ids_from_object(ListBase *lb, Object *ob, Scene *scene, int duplis)
+{
+	PTCacheIDsFromObjectData data;
+	lb->first = lb->last = NULL;
+	data.list_base = lb;
+	foreach_object_ptcache(
+	        scene, ob, duplis, ptcache_ids_from_object_cb, &data);
+}
+
+static bool ptcache_object_has_cb(PTCacheID *UNUSED(pid),
+                                  void *UNUSED(userdata))
+{
+	return false;
+}
+
+bool BKE_ptcache_object_has(struct Scene *scene, struct Object *ob, int duplis)
+{
+	return !foreach_object_ptcache(
+	        scene, ob, duplis, ptcache_object_has_cb, NULL);
 }
 
 /* File handling */
@@ -2393,7 +2477,7 @@ static int ptcache_mem_frame_to_disk(PTCacheID *pid, PTCacheMem *pm)
 
 	pf = ptcache_file_open(pid, PTCACHE_FILE_WRITE, pm->frame);
 
-	if (pf==NULL) {
+	if (pf == NULL) {
 		if (G.debug & G_DEBUG)
 			printf("Error opening disk cache file for writing\n");
 		return 0;
@@ -3118,7 +3202,7 @@ int  BKE_ptcache_id_exist(PTCacheID *pid, int cfra)
 	if (cfra<pid->cache->startframe || cfra > pid->cache->endframe)
 		return 0;
 
-	if (pid->cache->cached_frames &&	pid->cache->cached_frames[cfra-pid->cache->startframe]==0)
+	if (pid->cache->cached_frames && pid->cache->cached_frames[cfra-pid->cache->startframe]==0)
 		return 0;
 
 	if (pid->cache->flag & PTCACHE_DISK_CACHE) {
@@ -3174,9 +3258,10 @@ void BKE_ptcache_id_time(PTCacheID *pid, Scene *scene, float cfra, int *startfra
 
 	/* verify cached_frames array is up to date */
 	if (cache->cached_frames) {
-		if (MEM_allocN_len(cache->cached_frames) != sizeof(char) * (cache->endframe-cache->startframe+1)) {
+		if (cache->cached_frames_len != (cache->endframe - cache->startframe + 1)) {
 			MEM_freeN(cache->cached_frames);
 			cache->cached_frames = NULL;
+			cache->cached_frames_len = 0;
 		}
 	}
 
@@ -3184,7 +3269,8 @@ void BKE_ptcache_id_time(PTCacheID *pid, Scene *scene, float cfra, int *startfra
 		unsigned int sta=cache->startframe;
 		unsigned int end=cache->endframe;
 
-		cache->cached_frames = MEM_callocN(sizeof(char) * (cache->endframe-cache->startframe+1), "cached frames array");
+		cache->cached_frames_len = cache->endframe - cache->startframe + 1;
+		cache->cached_frames = MEM_callocN(sizeof(char) * cache->cached_frames_len, "cached frames array");
 
 		if (pid->cache->flag & PTCACHE_DISK_CACHE) {
 			/* mode is same as fopen's modes */
@@ -3302,7 +3388,7 @@ int  BKE_ptcache_object_reset(Scene *scene, Object *ob, int mode)
 
 	for (psys=ob->particlesystem.first; psys; psys=psys->next) {
 		/* children or just redo can be calculated without resetting anything */
-		if (psys->recalc & PSYS_RECALC_REDO || psys->recalc & PSYS_RECALC_CHILD)
+		if (psys->recalc & ID_RECALC_PSYS_REDO || psys->recalc & ID_RECALC_PSYS_CHILD)
 			skip = 1;
 		/* Baked cloth hair has to be checked too, because we don't want to reset */
 		/* particles or cloth in that case -jahka */
@@ -3356,7 +3442,6 @@ int  BKE_ptcache_object_reset(Scene *scene, Object *ob, int mode)
 	if (ob->type == OB_ARMATURE)
 		BIK_clear_cache(ob->pose);
 
-	DEG_id_tag_update(&ob->id, DEG_TAG_COPY_ON_WRITE);
 	return reset;
 }
 
@@ -3461,6 +3546,7 @@ static PointCache *ptcache_copy(PointCache *cache, const bool copy_data)
 
 	if (copy_data == false) {
 		ncache->cached_frames = NULL;
+		ncache->cached_frames_len = 0;
 
 		/* flag is a mix of user settings and simulator/baking state */
 		ncache->flag= ncache->flag & (PTCACHE_DISK_CACHE|PTCACHE_EXTERNAL|PTCACHE_IGNORE_LIBPATH);
@@ -3819,7 +3905,8 @@ void BKE_ptcache_toggle_disk_cache(PTCacheID *pid)
 
 	if (cache->cached_frames) {
 		MEM_freeN(cache->cached_frames);
-		cache->cached_frames=NULL;
+		cache->cached_frames = NULL;
+		cache->cached_frames_len = 0;
 	}
 
 	if (cache->flag & PTCACHE_DISK_CACHE)
@@ -3999,7 +4086,8 @@ void BKE_ptcache_load_external(PTCacheID *pid)
 	/* make sure all new frames are loaded */
 	if (cache->cached_frames) {
 		MEM_freeN(cache->cached_frames);
-		cache->cached_frames=NULL;
+		cache->cached_frames = NULL;
+		cache->cached_frames_len = 0;
 	}
 	BKE_ptcache_update_info(pid);
 }

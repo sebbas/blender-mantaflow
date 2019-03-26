@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2007 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Joseph Eagar, Joshua Leung, Howard Trickey,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/mesh/editmesh_knife.c
- *  \ingroup edmesh
+/** \file
+ * \ingroup edmesh
  *
  * Interactive editmesh knife tool.
  */
@@ -54,8 +46,6 @@
 #include "BKE_editmesh_bvh.h"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
-
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
 #include "GPU_state.h"
@@ -76,6 +66,9 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
+#include "DEG_depsgraph.h"
+#include "DEG_depsgraph_query.h"
+
 #include "mesh_intern.h"  /* own include */
 
 /* detect isolated holes and fill them */
@@ -95,12 +88,12 @@
 #define KNIFE_FLT_EPS_PX_FACE  0.05f
 
 typedef struct KnifeColors {
-	unsigned char line[3];
-	unsigned char edge[3];
-	unsigned char curpoint[3];
-	unsigned char curpoint_a[4];
-	unsigned char point[3];
-	unsigned char point_a[4];
+	uchar line[3];
+	uchar edge[3];
+	uchar curpoint[3];
+	uchar curpoint_a[4];
+	uchar point[3];
+	uchar point_a[4];
 } KnifeColors;
 
 /* knifetool operator */
@@ -1026,13 +1019,13 @@ static void knife_init_colors(KnifeColors *colors)
 	/* possible BMESH_TODO: add explicit themes or calculate these by
 	 * figuring out contrasting colors with grid / edges / verts
 	 * a la UI_make_axis_color */
-	UI_GetThemeColor3ubv(TH_NURB_VLINE, colors->line);
-	UI_GetThemeColor3ubv(TH_NURB_ULINE, colors->edge);
-	UI_GetThemeColor3ubv(TH_HANDLE_SEL_VECT, colors->curpoint);
-	UI_GetThemeColor3ubv(TH_HANDLE_SEL_VECT, colors->curpoint_a);
+	UI_GetThemeColorType3ubv(TH_NURB_VLINE, SPACE_VIEW3D, colors->line);
+	UI_GetThemeColorType3ubv(TH_NURB_ULINE, SPACE_VIEW3D, colors->edge);
+	UI_GetThemeColorType3ubv(TH_HANDLE_SEL_VECT, SPACE_VIEW3D, colors->curpoint);
+	UI_GetThemeColorType3ubv(TH_HANDLE_SEL_VECT, SPACE_VIEW3D, colors->curpoint_a);
 	colors->curpoint_a[3] = 102;
-	UI_GetThemeColor3ubv(TH_ACTIVE_SPLINE, colors->point);
-	UI_GetThemeColor3ubv(TH_ACTIVE_SPLINE, colors->point_a);
+	UI_GetThemeColorType3ubv(TH_ACTIVE_SPLINE, SPACE_VIEW3D, colors->point);
+	UI_GetThemeColorType3ubv(TH_ACTIVE_SPLINE, SPACE_VIEW3D, colors->point_a);
 	colors->point_a[3] = 102;
 }
 
@@ -1423,7 +1416,7 @@ static bool bm_ray_cast_cb_elem_not_in_face_check(BMFace *f, void *user_data)
  * Check if \a p is visible (not clipped, not occluded by another face).
  * s in screen projection of p.
  *
- * \param ele_test  Optional vert/edge/face to use when \a p is on the surface of the geometry,
+ * \param ele_test: Optional vert/edge/face to use when \a p is on the surface of the geometry,
  * intersecting faces matching this face (or connected when an vert/edge) will be ignored.
  */
 static bool point_is_visible(
@@ -1456,7 +1449,7 @@ static bool point_is_visible(
 
 		/* avoid projecting behind the viewpoint */
 		if (kcd->is_ortho && (kcd->vc.rv3d->persp != RV3D_CAMOB)) {
-			dist = kcd->vc.v3d->far * 2.0f;
+			dist = kcd->vc.v3d->clip_end * 2.0f;
 		}
 
 		if (kcd->vc.rv3d->rflag & RV3D_CLIPPING) {
@@ -2097,7 +2090,8 @@ static KnifeVert *knife_find_closest_vert(KnifeTool_OpData *kcd, float p[3], flo
 
 				knife_project_v2(kcd, kfv->cageco, kfv->sco);
 
-				/* be strict about angle snapping, the vertex needs to be very close to the angle, or we ignore */
+				/* be strict about angle snapping, the vertex needs to be very close to the angle,
+				 * or we ignore */
 				if (kcd->is_angle_snapping) {
 					if (dist_squared_to_line_segment_v2(kfv->sco, kcd->prev.mval, kcd->curr.mval) > KNIFE_FLT_EPSBIG) {
 						continue;
@@ -2601,7 +2595,12 @@ static void knifetool_init_bmbvh(KnifeTool_OpData *kcd)
 {
 	BM_mesh_elem_index_ensure(kcd->em->bm, BM_VERT);
 
-	kcd->cagecos = (const float (*)[3])BKE_editmesh_vertexCos_get(kcd->vc.depsgraph, kcd->em, kcd->scene, NULL);
+	Scene *scene_eval = (Scene *)DEG_get_evaluated_id(kcd->vc.depsgraph, &kcd->scene->id);
+	Object *obedit_eval = (Object *)DEG_get_evaluated_id(kcd->vc.depsgraph, &kcd->em->ob->id);
+	BMEditMesh *em_eval = BKE_editmesh_from_object(obedit_eval);
+
+	kcd->cagecos = (const float (*)[3])BKE_editmesh_vertexCos_get(
+	        kcd->vc.depsgraph, em_eval, scene_eval, NULL);
 
 	kcd->bmbvh = BKE_bmbvh_new_from_editmesh(
 	        kcd->em,
@@ -2750,7 +2749,7 @@ wmKeyMap *knifetool_modal_keymap(wmKeyConfig *keyconf)
 		{KNF_MODAL_NEW_CUT, "NEW_CUT", 0, "End Current Cut", ""},
 		{KNF_MODAL_ADD_CUT, "ADD_CUT", 0, "Add Cut", ""},
 		{KNF_MODAL_PANNING, "PANNING", 0, "Panning", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	wmKeyMap *keymap = WM_modalkeymap_get(keyconf, "Knife Tool Modal Map");
@@ -2760,30 +2759,6 @@ wmKeyMap *knifetool_modal_keymap(wmKeyConfig *keyconf)
 		return NULL;
 
 	keymap = WM_modalkeymap_add(keyconf, "Knife Tool Modal Map", modal_items);
-
-	/* items for modal map */
-	WM_modalkeymap_add_item(keymap, ESCKEY, KM_PRESS, KM_ANY, 0, KNF_MODAL_CANCEL);
-	WM_modalkeymap_add_item(keymap, MIDDLEMOUSE, KM_ANY, KM_ANY, 0, KNF_MODAL_PANNING);
-	WM_modalkeymap_add_item(keymap, LEFTMOUSE, KM_DBL_CLICK, KM_ANY, 0, KNF_MODAL_ADD_CUT_CLOSED);
-	WM_modalkeymap_add_item(keymap, LEFTMOUSE, KM_ANY, KM_ANY, 0, KNF_MODAL_ADD_CUT);
-	WM_modalkeymap_add_item(keymap, RIGHTMOUSE, KM_PRESS, KM_ANY, 0, KNF_MODAL_CANCEL);
-	WM_modalkeymap_add_item(keymap, RETKEY, KM_PRESS, KM_ANY, 0, KNF_MODAL_CONFIRM);
-	WM_modalkeymap_add_item(keymap, PADENTER, KM_PRESS, KM_ANY, 0, KNF_MODAL_CONFIRM);
-	WM_modalkeymap_add_item(keymap, SPACEKEY, KM_PRESS, KM_ANY, 0, KNF_MODAL_CONFIRM);
-	WM_modalkeymap_add_item(keymap, EKEY, KM_PRESS, 0, 0, KNF_MODAL_NEW_CUT);
-
-	WM_modalkeymap_add_item(keymap, LEFTCTRLKEY, KM_PRESS, KM_ANY, 0, KNF_MODAL_MIDPOINT_ON);
-	WM_modalkeymap_add_item(keymap, LEFTCTRLKEY, KM_RELEASE, KM_ANY, 0, KNF_MODAL_MIDPOINT_OFF);
-	WM_modalkeymap_add_item(keymap, RIGHTCTRLKEY, KM_PRESS, KM_ANY, 0, KNF_MODAL_MIDPOINT_ON);
-	WM_modalkeymap_add_item(keymap, RIGHTCTRLKEY, KM_RELEASE, KM_ANY, 0, KNF_MODAL_MIDPOINT_OFF);
-
-	WM_modalkeymap_add_item(keymap, LEFTSHIFTKEY, KM_PRESS, KM_ANY, 0, KNF_MODEL_IGNORE_SNAP_ON);
-	WM_modalkeymap_add_item(keymap, LEFTSHIFTKEY, KM_RELEASE, KM_ANY, 0, KNF_MODEL_IGNORE_SNAP_OFF);
-	WM_modalkeymap_add_item(keymap, RIGHTSHIFTKEY, KM_PRESS, KM_ANY, 0, KNF_MODEL_IGNORE_SNAP_ON);
-	WM_modalkeymap_add_item(keymap, RIGHTSHIFTKEY, KM_RELEASE, KM_ANY, 0, KNF_MODEL_IGNORE_SNAP_OFF);
-
-	WM_modalkeymap_add_item(keymap, CKEY, KM_PRESS, 0, 0, KNF_MODAL_ANGLE_SNAP_TOGGLE);
-	WM_modalkeymap_add_item(keymap, ZKEY, KM_PRESS, 0, 0, KNF_MODAL_CUT_THROUGH_TOGGLE);
 
 	WM_modalkeymap_assign(keymap, "MESH_OT_knife_tool");
 
@@ -3030,7 +3005,7 @@ static bool edbm_mesh_knife_point_isect(LinkNode *polys, const float cent_ss[2])
 }
 
 /**
- * \param use_tag  When set, tag all faces inside the polylines.
+ * \param use_tag: When set, tag all faces inside the polylines.
  */
 void EDBM_mesh_knife(bContext *C, LinkNode *polys, bool use_tag, bool cut_through)
 {
@@ -3138,7 +3113,8 @@ void EDBM_mesh_knife(bContext *C, LinkNode *polys, bool use_tag, bool cut_throug
 				keep_search = false;
 				BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
 					if (BM_elem_flag_test(f, BM_ELEM_TAG) == false && (F_ISECT_IS_UNKNOWN(f))) {
-						/* am I connected to a tagged face via an un-tagged edge (ie, not across a cut) */
+						/* am I connected to a tagged face via an un-tagged edge
+						 * (ie, not across a cut) */
 						BMLoop *l_first = BM_FACE_FIRST_LOOP(f);
 						BMLoop *l_iter = l_first;
 						bool found = false;

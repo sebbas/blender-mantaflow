@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/blenlib/intern/rct.c
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  *
  * A minimalist lib for functions doing stuff with rectangle structs.
  */
@@ -39,8 +30,10 @@
 #include <limits.h>
 #include <float.h>
 
-#include "DNA_vec_types.h"
 #include "BLI_rect.h"
+#include "BLI_utildefines.h"
+
+#include "DNA_vec_types.h"
 
 /* avoid including BLI_math */
 static void unit_m4(float m[4][4]);
@@ -177,7 +170,8 @@ bool BLI_rcti_inside_rcti(const rcti *rct_a, const rcti *rct_b)
 }
 
 
-/* based closely on 'isect_seg_seg_v2_int', but in modified so corner cases are treated as intersections */
+/* based closely on 'isect_seg_seg_v2_int',
+ * but in modified so corner cases are treated as intersections */
 static int isect_segments_i(const int v1[2], const int v2[2], const int v3[2], const int v4[2])
 {
 	const double div = (double)((v2[0] - v1[0]) * (v4[1] - v3[1]) - (v2[1] - v1[1]) * (v4[0] - v3[0]));

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 by Janne Karhu.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_boid.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 #include <float.h>
@@ -67,7 +59,7 @@ const EnumPropertyItem rna_enum_boidrule_type_items[] = {
 	{eBoidRuleType_FollowWall, "FOLLOW_WALL", 0, "Follow Wall",
 	                           "Move next to a deflector object's in direction of it's tangent"},
 #endif
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 #ifndef RNA_RUNTIME
@@ -77,7 +69,7 @@ static const EnumPropertyItem boidruleset_type_items[] = {
 	                         "fuzziness threshold is evaluated)"},
 	{eBoidRulesetType_Random, "RANDOM", 0, "Random", "A random rule is selected for each boid"},
 	{eBoidRulesetType_Average, "AVERAGE", 0, "Average", "All rules are averaged"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 #endif
 
@@ -97,12 +89,12 @@ static void rna_Boids_reset(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRN
 	if (ptr->type == &RNA_ParticleSystem) {
 		ParticleSystem *psys = (ParticleSystem *)ptr->data;
 
-		psys->recalc = PSYS_RECALC_RESET;
+		psys->recalc = ID_RECALC_PSYS_RESET;
 
-		DEG_id_tag_update(ptr->id.data, OB_RECALC_DATA);
+		DEG_id_tag_update(ptr->id.data, ID_RECALC_GEOMETRY);
 	}
 	else
-		DEG_id_tag_update(ptr->id.data, OB_RECALC_DATA | PSYS_RECALC_RESET);
+		DEG_id_tag_update(ptr->id.data, ID_RECALC_GEOMETRY | ID_RECALC_PSYS_RESET);
 
 	WM_main_add_notifier(NC_OBJECT | ND_PARTICLE | NA_EDITED, NULL);
 }
@@ -111,12 +103,12 @@ static void rna_Boids_reset_deps(Main *bmain, Scene *UNUSED(scene), PointerRNA *
 	if (ptr->type == &RNA_ParticleSystem) {
 		ParticleSystem *psys = (ParticleSystem *)ptr->data;
 
-		psys->recalc = PSYS_RECALC_RESET;
+		psys->recalc = ID_RECALC_PSYS_RESET;
 
-		DEG_id_tag_update(ptr->id.data, OB_RECALC_DATA);
+		DEG_id_tag_update(ptr->id.data, ID_RECALC_GEOMETRY);
 	}
 	else
-		DEG_id_tag_update(ptr->id.data, OB_RECALC_DATA | PSYS_RECALC_RESET);
+		DEG_id_tag_update(ptr->id.data, ID_RECALC_GEOMETRY | ID_RECALC_PSYS_RESET);
 
 	DEG_relations_tag_update(bmain);
 
@@ -215,8 +207,9 @@ static char *rna_BoidSettings_path(PointerRNA *ptr)
 	if (particle_id_check(ptr)) {
 		ParticleSettings *part = (ParticleSettings *)ptr->id.data;
 
-		if (part->boids == boids)
-			return BLI_sprintfN("boids");
+		if (part->boids == boids) {
+			return BLI_strdup("boids");
+		}
 	}
 	return NULL;
 }
@@ -389,7 +382,7 @@ static void rna_def_boidrule_average_speed(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Level", "How much velocity's z-component is kept constant");
 	RNA_def_property_update(prop, 0, "rna_Boids_reset");
 
-	prop = RNA_def_property(srna, "speed", PROP_FLOAT, PROP_NONE);
+	prop = RNA_def_property(srna, "speed", PROP_FLOAT, PROP_FACTOR);
 	RNA_def_property_range(prop, 0.0f, 1.0f);
 	RNA_def_property_ui_text(prop, "Speed", "Percentage of maximum speed");
 	RNA_def_property_update(prop, 0, "rna_Boids_reset");

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,9 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
-/** \file DNA_sequence_types.h
- *  \ingroup DNA
- *  \since mar-2001
- *  \author nzc
+/** \file
+ * \ingroup DNA
  *
  * Structs for use by the 'Sequencer' (Video Editor)
  *
@@ -45,11 +35,12 @@
 #include "DNA_color_types.h"
 #include "DNA_listBase.h"
 #include "DNA_vec_types.h"
+#include "DNA_vfont_types.h"
 
 struct Ipo;
+struct MovieClip;
 struct Scene;
 struct bSound;
-struct MovieClip;
 
 /* strlens; 256= FILE_MAXFILE, 768= FILE_MAXDIR */
 
@@ -80,7 +71,7 @@ typedef struct StripColorBalance {
 	float gamma[3];
 	float gain[3];
 	int flag;
-	int pad;
+	char _pad[4];
 	// float exposure;
 	// float saturation;
 } StripColorBalance;
@@ -101,16 +92,19 @@ typedef struct StripProxy {
 	                       // to build
 	short build_flags;
 	char storage;
-	char pad[5];
+	char _pad[5];
 } StripProxy;
 
 typedef struct Strip {
 	struct Strip *next, *prev;
 	int us, done;
 	int startstill, endstill;
-	StripElem *stripdata;  /* only used as an array in IMAGE sequences(!),
-	                        * and as a 1-element array in MOVIE sequences,
-	                        * NULL for all other strip-types */
+	/**
+	 * Only used as an array in IMAGE sequences(!),
+	 * and as a 1-element array in MOVIE sequences,
+	 * NULL for all other strip-types.
+	 */
+	StripElem *stripdata;
 	char dir[768];
 	StripProxy *proxy;
 	StripCrop *crop;
@@ -133,35 +127,63 @@ typedef struct Strip {
  */
 typedef struct Sequence {
 	struct Sequence *next, *prev;
-	void *tmp; /* tmp var for copying, and tagging for linked selection */
-	void *lib; /* needed (to be like ipo), else it will raise libdata warnings, this should never be used */
-	char name[64]; /* SEQ_NAME_MAXSTR - name, set by default and needs to be unique, for RNA paths */
+	/** Tmp var for copying, and tagging for linked selection. */
+	void *tmp;
+	/** Needed (to be like ipo), else it will raise libdata warnings, this should never be used. */
+	void *lib;
+	/** SEQ_NAME_MAXSTR - name, set by default and needs to be unique, for RNA paths. */
+	char name[64];
 
-	int flag, type; /*flags bitmap (see below) and the type of sequence*/
-	int len; /* the length of the contents of this strip - before handles are applied */
-	int start; /* start frame of contents of strip in absolute frame coordinates. For metastrips start of first strip startdisp */
-	int startofs, endofs; /* frames after the first frame where display starts, frames before the last frame where display ends */
-	int startstill, endstill; /* frames that use the first frame before data begins, frames that use the last frame after data ends */
-	int machine, depth; /*machine - the strip channel, depth - the depth in the sequence when dealing with metastrips */
-	int startdisp, enddisp; /* starting and ending points of the strip in the sequence*/
+	/**fLags bitmap (see below) and the type of sequenc.e*/
+	int flag, type;
+	/** The length of the contents of this strip - before handles are applied. */
+	int len;
+	/**
+	 * Start frame of contents of strip in absolute frame coordinates.
+	 * For metastrips start of first strip startdisp.
+	 */
+	int start;
+	/**
+	 * Frames after the first frame where display starts,
+	 * frames before the last frame where display ends.
+	 */
+	int startofs, endofs;
+	/**
+	 * Frames that use the first frame before data begins,
+	 * frames that use the last frame after data ends.
+	 */
+	int startstill, endstill;
+	/** Machine: the strip channel, depth the depth in the sequence when dealing with metastrips. */
+	int machine, depth;
+	/** Starting and ending points of the strip in the sequenc.e*/
+	int startdisp, enddisp;
 	float sat;
 	float mul, handsize;
 
 	short anim_preseek;
-	short streamindex;    /* streamindex for movie or sound files with several streams */
-	int multicam_source;  /* for multicam source selection */
-	int clip_flag;        /* MOVIECLIP render flags */
+	/** Streamindex for movie or sound files with several streams. */
+	short streamindex;
+	/** For multicam source selection. */
+	int multicam_source;
+	/** MOVIECLIP render flags. */
+	int clip_flag;
 
 	Strip *strip;
 
-	struct Ipo *ipo DNA_DEPRECATED;   /* old animation system, deprecated for 2.5 */
+	/** Old animation system, deprecated for 2.5. */
+	struct Ipo *ipo DNA_DEPRECATED;
 
-	/* these ID vars should never be NULL but can be when linked libs fail to load, so check on access */
+	/** these ID vars should never be NULL but can be when linked libs fail to load,
+	 * so check on access */
 	struct Scene     *scene;
-	struct Object    *scene_camera;  /* override scene camera */
-	struct MovieClip *clip;          /* for MOVIECLIP strips */
-	struct Mask      *mask;          /* for MASK strips */
-	ListBase anims;                  /* for MOVIE strips */
+	/** Override scene camera. */
+	struct Object    *scene_camera;
+	/** For MOVIECLIP strips. */
+	struct MovieClip *clip;
+	/** For MASK strips. */
+	struct Mask      *mask;
+	/** For MOVIE strips. */
+	ListBase anims;
 
 	float effect_fader;
 	float speed_fader;
@@ -169,29 +191,36 @@ typedef struct Sequence {
 	/* pointers for effects: */
 	struct Sequence *seq1, *seq2, *seq3;
 
-	ListBase seqbase;       /* list of strips for metastrips */
+	/** List of strips for metastrips. */
+	ListBase seqbase;
 
-	struct bSound *sound;   /* the linked "bSound" object */
+	/** The linked "bSound" object. */
+	struct bSound *sound;
 	void *scene_sound;
 	float volume;
 
-	float pitch, pan;     /* pitch (-0.1..10), pan -2..2 */
+	/** Pitch (-0.1..10), pan -2..2. */
+	float pitch, pan;
 	float strobe;
 
-	void *effectdata;     /* Struct pointer for effect settings */
+	/** Struct pointer for effect settings. */
+	void *effectdata;
 
-	int anim_startofs;    /* only use part of animation file */
-	int anim_endofs;      /* is subtle different to startofs / endofs */
+	/** Only use part of animation file. */
+	int anim_startofs;
+	/** Is subtle different to startofs / endofs. */
+	int anim_endofs;
 
 
 	int blend_mode;
 	float blend_opacity;
 
 	/* is sfra needed anymore? - it looks like its only used in one place */
-	int sfra;  /* starting frame according to the timeline of the scene. */
+	/** Starting frame according to the timeline of the scene. */
+	int sfra;
 
 	char alpha_mode;
-	char pad[2];
+	char _pad[2];
 
 	/* Multiview */
 	char views_format;
@@ -212,15 +241,20 @@ typedef struct MetaStack {
 } MetaStack;
 
 typedef struct Editing {
-	ListBase *seqbasep; /* pointer to the current list of seq's being edited (can be within a meta strip) */
-	ListBase seqbase;   /* pointer to the top-most seq's */
+	/** Pointer to the current list of seq's being edited (can be within a meta strip). */
+	ListBase *seqbasep;
+	/** Pointer to the top-most seq's. */
+	ListBase seqbase;
 	ListBase metastack;
 
 	/* Context vars, used to be static */
 	Sequence *act_seq;
-	char act_imagedir[1024]; /* 1024 = FILE_MAX */
-	char act_sounddir[1024]; /* 1024 = FILE_MAX */
-	char proxy_dir[1024]; /* 1024 = FILE_MAX */
+	/** 1024 = FILE_MAX. */
+	char act_imagedir[1024];
+	/** 1024 = FILE_MAX. */
+	char act_sounddir[1024];
+	/** 1024 = FILE_MAX. */
+	char proxy_dir[1024];
 
 	int over_ofs, over_cfra;
 	int over_flag, proxy_storage;
@@ -234,12 +268,16 @@ typedef struct WipeVars {
 } WipeVars;
 
 typedef struct GlowVars {
-	float fMini;    /*	Minimum intensity to trigger a glow */
+	/**	Minimum intensity to trigger a glow. */
+	float fMini;
 	float fClamp;
-	float fBoost;   /*	Amount to multiply glow intensity */
-	float dDist;    /*	Radius of glow blurring */
+	/**	Amount to multiply glow intensity. */
+	float fBoost;
+	/**	Radius of glow blurring. */
+	float dDist;
 	int dQuality;
-	int bNoComp;    /*	SHOW/HIDE glow buffer */
+	/**	SHOW/HIDE glow buffer. */
+	int bNoComp;
 } GlowVars;
 
 typedef struct TransformVars {
@@ -250,12 +288,13 @@ typedef struct TransformVars {
 	float rotIni;
 	int percent;
 	int interpolation;
-	int uniform_scale; /* preserve aspect/ratio when scaling */
+	/** Preserve aspect/ratio when scaling. */
+	int uniform_scale;
 } TransformVars;
 
 typedef struct SolidColorVars {
 	float col[3];
-	float pad;
+	char _pad[4];
 } SolidColorVars;
 
 typedef struct SpeedControlVars {
@@ -273,13 +312,15 @@ typedef struct GaussianBlurVars {
 
 typedef struct TextVars {
 	char text[512];
+	VFont *text_font;
+	int text_blf_id;
 	int text_size;
 	float color[4], shadow_color[4];
 	float loc[2];
 	float wrap_width;
 	char flag;
 	char align, align_y;
-	char pad[5];
+	char _pad[1];
 } TextVars;
 
 /* TextVars.flag */
@@ -301,9 +342,13 @@ enum {
 	SEQ_TEXT_ALIGN_Y_BOTTOM = 2,
 };
 
+#define SEQ_FONT_NOT_LOADED -2
+
 typedef struct ColorMixVars {
-	int blend_effect;    /* value from SEQ_TYPE_XXX enumeration */
-	float factor;        /* blend factor [0.0f, 1.0f]           */
+	/** Value from SEQ_TYPE_XXX enumeration. */
+	int blend_effect;
+	/** Blend factor [0.0f, 1.0f]. */
+	float factor;
 } ColorMixVars;
 
 /* ***************** Sequence modifiers ****************** */
@@ -311,7 +356,8 @@ typedef struct ColorMixVars {
 typedef struct SequenceModifierData {
 	struct SequenceModifierData *next, *prev;
 	int type, flag;
-	char name[64]; /* MAX_NAME */
+	/** MAX_NAME. */
+	char name[64];
 
 	/* mask input, either sequence or mask ID */
 	int mask_input_type;
@@ -355,7 +401,7 @@ typedef struct WhiteBalanceModifierData {
 	SequenceModifierData modifier;
 
 	float white_value[3];
-	float pad;
+	char _pad[4];
 } WhiteBalanceModifierData;
 
 typedef struct SequencerTonemapModifierData {
@@ -391,31 +437,30 @@ typedef struct SequencerScopes {
 #define SEQ_EDIT_OVERLAY_SHOW           1
 #define SEQ_EDIT_OVERLAY_ABS            2
 
-#define SEQ_STRIP_OFSBOTTOM     0.2f
-#define SEQ_STRIP_OFSTOP        0.8f
+#define SEQ_STRIP_OFSBOTTOM     0.05f
+#define SEQ_STRIP_OFSTOP        0.95f
 
 /* Editor->proxy_storage */
 /* store proxies in project directory */
 #define SEQ_EDIT_PROXY_DIR_STORAGE 1
 
 /* SpeedControlVars->flags */
-#define SEQ_SPEED_INTEGRATE      1
-/* #define SEQ_SPEED_BLEND          2 */ /* DEPRECATED */
-#define SEQ_SPEED_COMPRESS_IPO_Y 4
+#define SEQ_SPEED_INTEGRATE      (1 << 0)
+#define SEQ_SPEED_UNUSED_1       (1 << 1)  /* cleared */
+#define SEQ_SPEED_COMPRESS_IPO_Y (1 << 2)
 
 /* ***************** SEQUENCE ****************** */
 #define SEQ_NAME_MAXSTR         64
 
 /* seq->flag */
 enum {
+	/* SELECT */
 	SEQ_LEFTSEL                 = (1 << 1),
 	SEQ_RIGHTSEL                = (1 << 2),
 	SEQ_OVERLAP                 = (1 << 3),
 	SEQ_FILTERY                 = (1 << 4),
 	SEQ_MUTE                    = (1 << 5),
-#ifdef DNA_DEPRECATED
-	SEQ_MAKE_PREMUL             = (1 << 6), /* deprecated, used for compatibility code only */
-#endif
+	SEQ_FLAG_UNUSED_6           = (1 << 6),  /* cleared */
 	SEQ_REVERSE_FRAMES          = (1 << 7),
 	SEQ_IPO_FRAME_LOCKED        = (1 << 8),
 	SEQ_EFFECT_NOT_LOADED       = (1 << 9),
@@ -427,10 +472,10 @@ enum {
 	SEQ_USE_PROXY               = (1 << 15),
 	SEQ_USE_TRANSFORM           = (1 << 16),
 	SEQ_USE_CROP                = (1 << 17),
-	/* SEQ_USE_COLOR_BALANCE       = (1 << 18), */ /* DEPRECATED */
-	/* SEQ_USE_PROXY_CUSTOM_DIR    = (1 << 19), */ /* DEPRECATED */
+	SEQ_FLAG_UNUSED_18          = (1 << 18),  /* cleared */
+	SEQ_FLAG_UNUSED_19          = (1 << 19),  /* cleared */
+	SEQ_FLAG_UNUSED_21          = (1 << 21),  /* cleared */
 
-	/* SEQ_USE_PROXY_CUSTOM_FILE   = (1 << 21), */ /* DEPRECATED */
 	SEQ_USE_EFFECT_DEFAULT_FADE = (1 << 22),
 	SEQ_USE_LINEAR_MODIFIERS    = (1 << 23),
 
@@ -488,7 +533,7 @@ enum {
 /* seq->alpha_mode */
 enum {
 	SEQ_ALPHA_STRAIGHT = 0,
-	SEQ_ALPHA_PREMUL   = 1
+	SEQ_ALPHA_PREMUL   = 1,
 };
 
 /* seq->type WATCH IT: SEQ_TYPE_EFFECT BIT is used to determine if this is an effect strip!!! */
@@ -543,7 +588,7 @@ enum {
 	SEQ_TYPE_DIFFERENCE  = 59,
 	SEQ_TYPE_EXCLUSION   = 60,
 
-	SEQ_TYPE_MAX         = 60
+	SEQ_TYPE_MAX         = 60,
 };
 
 #define SEQ_MOVIECLIP_RENDER_UNDISTORTED (1 << 0)
@@ -570,7 +615,7 @@ enum {
 	seqModifierType_WhiteBalance   = 6,
 	seqModifierType_Tonemap        = 7,
 
-	NUM_SEQUENCE_MODIFIER_TYPES
+	NUM_SEQUENCE_MODIFIER_TYPES,
 };
 
 /* SequenceModifierData->flag */
@@ -581,7 +626,7 @@ enum {
 
 enum {
 	SEQUENCE_MASK_INPUT_STRIP   = 0,
-	SEQUENCE_MASK_INPUT_ID      = 1
+	SEQUENCE_MASK_INPUT_ID      = 1,
 };
 
 enum {

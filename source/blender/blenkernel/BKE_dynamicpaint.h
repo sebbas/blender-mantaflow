@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,27 +12,24 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Miika Hämäläinen
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BKE_DYNAMICPAINT_H__
 #define __BKE_DYNAMICPAINT_H__
 
-/** \file BKE_dynamicpaint.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 struct Depsgraph;
 struct DynamicPaintCanvasSettings;
 struct DynamicPaintModifierData;
+struct DynamicPaintRuntime;
 struct Main;
 struct Scene;
 struct ViewLayer;
 
-/* Actual surface point	*/
+/* Actual surface point */
 typedef struct PaintSurfaceData {
 	void *format_data; /* special data for each surface "format" */
 	void *type_data; /* data used by specific surface type */
@@ -45,7 +40,7 @@ typedef struct PaintSurfaceData {
 
 } PaintSurfaceData;
 
-/* Paint type surface point	*/
+/* Paint type surface point */
 typedef struct PaintPoint {
 
 	/* Wet paint is handled at effect layer only
@@ -56,7 +51,7 @@ typedef struct PaintPoint {
 	float color[4];
 } PaintPoint;
 
-/* height field waves	*/
+/* height field waves */
 typedef struct PaintWavePoint {
 
 	float height;
@@ -69,13 +64,17 @@ struct Mesh *dynamicPaint_Modifier_do(
         struct DynamicPaintModifierData *pmd, struct Depsgraph *depsgraph, struct Scene *scene,
         struct Object *ob, struct Mesh *me);
 void dynamicPaint_Modifier_free(struct DynamicPaintModifierData *pmd);
-void dynamicPaint_Modifier_copy(const struct DynamicPaintModifierData *pmd, struct DynamicPaintModifierData *tsmd);
+void dynamicPaint_Modifier_free_runtime(struct DynamicPaintRuntime *runtime);
+void dynamicPaint_Modifier_copy(const struct DynamicPaintModifierData *pmd,
+                                struct DynamicPaintModifierData *tsmd,
+                                int flag);
 
 bool dynamicPaint_createType(struct DynamicPaintModifierData *pmd, int type, struct Scene *scene);
 struct DynamicPaintSurface *dynamicPaint_createNewSurface(struct DynamicPaintCanvasSettings *canvas, struct Scene *scene);
 void dynamicPaint_clearSurface(const struct Scene *scene, struct DynamicPaintSurface *surface);
 bool dynamicPaint_resetSurface(const struct Scene *scene, struct DynamicPaintSurface *surface);
-void dynamicPaint_freeSurface(struct DynamicPaintSurface *surface);
+void dynamicPaint_freeSurface(const struct DynamicPaintModifierData *pmd,
+                              struct DynamicPaintSurface *surface);
 void dynamicPaint_freeCanvas(struct DynamicPaintModifierData *pmd);
 void dynamicPaint_freeBrush(struct DynamicPaintModifierData *pmd);
 void dynamicPaint_freeSurfaceData(struct DynamicPaintSurface *surface);
