@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file DNA_curve_types.h
- *  \ingroup DNA
+/** \file
+ * \ingroup DNA
  */
 
 #ifndef __DNA_CURVE_TYPES_H__
@@ -39,21 +31,22 @@
 
 #define MAXTEXTBOX 256  /* used in readfile.c and editfont.c */
 
+struct AnimData;
 struct BoundBox;
-struct Object;
+struct EditFont;
+struct GHash;
 struct Ipo;
 struct Key;
 struct Material;
+struct Object;
 struct VFont;
-struct AnimData;
-struct EditFont;
-struct GHash;
 
 /* These two Lines with # tell makesdna this struct can be excluded. */
 #
 #
 typedef struct PathPoint {
-	float vec[4]; /* grr, cant get rid of tilt yet */
+	/** Grr, cant get rid of tilt yet. */
+	float vec[4];
 	float quat[4];
 	float radius, weight;
 } PathPoint;
@@ -71,9 +64,11 @@ typedef struct Path {
 #
 #
 typedef struct BevPoint {
-	float vec[3], alfa, radius, weight, offset;
-	float sina, cosa;				/* 2D Only */
-	float dir[3], tan[3], quat[4];	/* 3D Only */
+	float vec[3], tilt, radius, weight, offset;
+	/** 2D Only. */
+	float sina, cosa;
+	/** 3D Only. */
+	float dir[3], tan[3], quat[4];
 	short split_tag, dupe_tag;
 } BevPoint;
 
@@ -92,9 +87,9 @@ typedef struct BevList {
 
 /**
  * Keyframes on F-Curves (allows code reuse of Bezier eval code) and
- * Points on Bezier Curves/Paths are generally BezTriples
+ * Points on Bezier Curves/Paths are generally BezTriples.
  *
- * \note alfa location in struct is abused by Key system
+ * \note #BezTriple.tilt location in struct is abused by Key system.
  *
  * \note vec in BezTriple looks like this:
  * - vec[0][0] = x location of handle 1
@@ -109,29 +104,51 @@ typedef struct BevList {
  */
 typedef struct BezTriple {
 	float vec[3][3];
-	float alfa, weight, radius;	/* alfa: tilt in 3D View, weight: used for softbody goal weight, radius: for bevel tapering */
+	/** Tilt in 3D View. */
+	float tilt;
+	/** Used for softbody goal weight. */
+	float weight;
+	/** For bevel tapering & modifiers. */
+	float radius;
 
-	char ipo;					/* ipo: interpolation mode for segment from this BezTriple to the next */
+	/** Ipo: interpolation mode for segment from this BezTriple to the next. */
+	char ipo;
 
-	char h1, h2; 				/* h1, h2: the handle type of the two handles */
-	char f1, f2, f3;			/* f1, f2, f3: used for selection status */
+	/** H1, h2: the handle type of the two handles. */
+	char h1, h2;
+	/** F1, f2, f3: used for selection status. */
+	char f1, f2, f3;
 
-	char hide;					/* hide: used to indicate whether BezTriple is hidden (3D), type of keyframe (eBezTriple_KeyframeType) */
+	/** Hide: used to indicate whether BezTriple is hidden (3D),
+	 * type of keyframe (eBezTriple_KeyframeType). */
+	char hide;
 
-	char easing;				/* easing: easing type for interpolation mode (eBezTriple_Easing) */
-	float back;					/* BEZT_IPO_BACK */
-	float amplitude, period;	/* BEZT_IPO_ELASTIC */
+	/** Easing: easing type for interpolation mode (eBezTriple_Easing). */
+	char easing;
+	/** BEZT_IPO_BACK. */
+	float back;
+	/** BEZT_IPO_ELASTIC. */
+	float amplitude, period;
 
-	char f5;					/* f5: used for auto handle to distinguish between normal handle and exception (extrema) */
-	char  pad[3];
+	/** F5: used for auto handle to distinguish between normal handle and exception (extrema). */
+	char f5;
+	char _pad[3];
 } BezTriple;
 
-/* note; alfa location in struct is abused by Key system */
+/**
+ * \note #BPoint.tilt location in struct is abused by Key system.
+ */
 typedef struct BPoint {
 	float vec[4];
-	float alfa, weight;		/* alfa: tilt in 3D View, weight: used for softbody goal weight */
-	short f1, hide;			/* f1: selection status,  hide: is point hidden or not */
-	float radius, pad;		/* user-set radius per point for beveling etc */
+	/** Tilt in 3D View. */
+	float tilt;
+	/** Used for softbody goal weight. */
+	float weight;
+	/** F1: selection status,  hide: is point hidden or not. */
+	short f1, hide;
+	/** User-set radius per point for beveling etc. */
+	float radius;
+	char _pad[4];
 } BPoint;
 
 /**
@@ -139,13 +156,17 @@ typedef struct BPoint {
  * also, it should be NURBS (Nurb isn't the singular of Nurbs).
  */
 typedef struct Nurb {
-	struct Nurb *next, *prev;	/* multiple nurbs per curve object are allowed */
+	/** Multiple nurbs per curve object are allowed. */
+	struct Nurb *next, *prev;
 	short type;
-	short mat_nr;		/* index into material list */
+	/** Index into material list. */
+	short mat_nr;
 	short hide, flag;
-	int pntsu, pntsv;		/* number of points in the U or V directions */
-	short pad[2];
-	short resolu, resolv;	/* tessellation resolution in the U or V directions */
+	/** Number of points in the U or V directions. */
+	int pntsu, pntsv;
+	char _pad[4];
+	/** Tessellation resolution in the U or V directions. */
+	short resolu, resolv;
 	short orderu, orderv;
 	short flagu, flagv;
 
@@ -153,7 +174,8 @@ typedef struct Nurb {
 	BPoint *bp;
 	BezTriple *bezt;
 
-	short tilt_interp;	/* KEY_LINEAR, KEY_CARDINAL, KEY_BSPLINE */
+	/** KEY_LINEAR, KEY_CARDINAL, KEY_BSPLINE. */
+	short tilt_interp;
 	short radius_interp;
 
 	/* only used for dynamically generated Nurbs created from OB_FONT's */
@@ -162,10 +184,10 @@ typedef struct Nurb {
 
 typedef struct CharInfo {
 	short kern;
-	short mat_nr; /* index start at 1, unlike mesh & nurbs */
+	/** Index start at 1, unlike mesh & nurbs. */
+	short mat_nr;
 	char flag;
-	char pad;
-	short pad2;
+	char _pad[3];
 } CharInfo;
 
 typedef struct TextBox {
@@ -182,21 +204,25 @@ typedef struct EditNurb {
 	/* shape key being edited */
 	int shapenr;
 
-	char pad[4];
+	char _pad[4];
 } EditNurb;
 
 typedef struct Curve {
 	ID id;
-	struct AnimData *adt;		/* animation data (must be immediately after id for utilities to use it) */
+	/** Animation data (must be immediately after id for utilities to use it). */
+	struct AnimData *adt;
 
 	struct BoundBox *bb;
 
-	ListBase nurb;		/* actual data, called splines in rna */
+	/** Actual data, called splines in rna. */
+	ListBase nurb;
 
-	EditNurb *editnurb;	/* edited data, not in file, use pointer so we can check for it */
+	/** Edited data, not in file, use pointer so we can check for it. */
+	EditNurb *editnurb;
 
 	struct Object *bevobj, *taperobj, *textoncurve;
-	struct Ipo *ipo    DNA_DEPRECATED;  /* old animation system, deprecated for 2.5 */
+	/** Old animation system, deprecated for 2.5. */
+	struct Ipo *ipo    DNA_DEPRECATED;
 	struct Key *key;
 	struct Material **mat;
 
@@ -205,10 +231,13 @@ typedef struct Curve {
 	float size[3];
 	float rot[3];
 
-	short type;	/* creation-time type of curve datablock */
+	/** Creation-time type of curve datablock. */
+	short type;
 
-	short texflag; /* keep a short because of BKE_object_obdata_texspace_get() */
-	short drawflag, twist_mode;
+	/** Keep a short because of BKE_object_obdata_texspace_get(). */
+	short texflag;
+	char _pad0[2];
+	short twist_mode;
 	float twist_smooth, smallcaps_scale;
 
 	int pathlen;
@@ -225,11 +254,12 @@ typedef struct Curve {
 	/* edit, index in active nurb (BPoint or BezTriple) */
 	int actvert;
 
-	char pad[4];
+	char overflow;
+	char spacemode, align_y;
+	char _pad[3];
 
 	/* font part */
 	short lines;
-	char spacemode, align_y;
 	float spacing, linedist, shear, fsize, wordspace, ulpos, ulheight;
 	float xof, yof;
 	float linewidth;
@@ -240,8 +270,10 @@ typedef struct Curve {
 	int selstart, selend;
 
 	/* text data */
-	int len_wchar;  /* number of characters (strinfo) */
-	int len;        /* number of bytes (str - utf8) */
+	/** Number of characters (strinfo). */
+	int len_wchar;
+	/** Number of bytes (str - utf8). */
+	int len;
 	char *str;
 	struct EditFont *editfont;
 
@@ -259,11 +291,13 @@ typedef struct Curve {
 	/* font part end */
 
 
-	float ctime;			/* current evaltime - for use by Objects parented to curves */
+	/** Current evaltime - for use by Objects parented to curves. */
+	float ctime;
 	float bevfac1, bevfac2;
 	char bevfac1_mapping, bevfac2_mapping;
 
-	char pad2[2];
+	char _pad2[6];
+	float fsize_realtime;
 
 	void *batch_cache;
 } Curve;
@@ -300,10 +334,14 @@ enum {
 	CU_FAST               = 1 << 9,  /* Font: no filling inside editmode */
 	/* CU_RETOPO          = 1 << 10, */  /* DEPRECATED */
 	CU_DS_EXPAND          = 1 << 11,
-	CU_PATH_RADIUS        = 1 << 12,  /* make use of the path radius if this is enabled (default for new curves) */
-	CU_DEFORM_FILL        = 1 << 13,  /* fill 2d curve after deformation */
-	CU_FILL_CAPS          = 1 << 14,  /* fill bevel caps */
-	CU_MAP_TAPER          = 1 << 15,  /* map taper object to beveled area */
+	/** make use of the path radius if this is enabled (default for new curves) */
+	CU_PATH_RADIUS        = 1 << 12,
+	/** fill 2d curve after deformation */
+	CU_DEFORM_FILL        = 1 << 13,
+	/** fill bevel caps */
+	CU_FILL_CAPS          = 1 << 14,
+	/** map taper object to beveled area */
+	CU_MAP_TAPER          = 1 << 15,
 };
 
 /* Curve.twist_mode */
@@ -338,6 +376,13 @@ enum {
 	CU_ALIGN_Y_CENTER             = 2,
 	CU_ALIGN_Y_BOTTOM_BASELINE    = 3,
 	CU_ALIGN_Y_BOTTOM             = 4,
+};
+
+/* Curve.overflow. */
+enum {
+	CU_OVERFLOW_NONE              = 0,
+	CU_OVERFLOW_SCALE             = 1,
+	CU_OVERFLOW_TRUNCATE          = 2,
 };
 
 /* Nurb.flag */
@@ -401,7 +446,7 @@ typedef enum eBezTriple_Handle {
 /* f5 (beztriple) */
 typedef enum eBezTriple_Auto_Type {
 	HD_AUTOTYPE_NORMAL = 0,
-	HD_AUTOTYPE_SPECIAL = 1
+	HD_AUTOTYPE_SPECIAL = 1,
 } eBezTriple_Auto_Type;
 
 /* interpolation modes (used only for BezTriple->ipo) */
@@ -445,6 +490,10 @@ typedef enum eBezTriple_KeyframeType {
 /* checks if the given BezTriple is selected */
 #define BEZT_ISSEL_ANY(bezt) \
 	(((bezt)->f2 & SELECT) || ((bezt)->f1 & SELECT) || ((bezt)->f3 & SELECT))
+#define BEZT_ISSEL_ALL(bezt) \
+	(((bezt)->f2 & SELECT) && ((bezt)->f1 & SELECT) && ((bezt)->f3 & SELECT))
+#define BEZT_ISSEL_ALL_HIDDENHANDLES(v3d, bezt) \
+	((((v3d) != NULL) && ((v3d)->overlay.edit_flag & V3D_OVERLAY_EDIT_CU_HANDLES) == 0) ? (bezt)->f2 & SELECT : BEZT_ISSEL_ALL(bezt))
 #define BEZT_ISSEL_ANY_HIDDENHANDLES(v3d, bezt) \
 	((((v3d) != NULL) && ((v3d)->overlay.edit_flag & V3D_OVERLAY_EDIT_CU_HANDLES) == 0) ? (bezt)->f2 & SELECT : BEZT_ISSEL_ANY(bezt))
 
@@ -457,13 +506,17 @@ typedef enum eBezTriple_KeyframeType {
 
 /* CharInfo.flag */
 enum {
-	/* note: CU_CHINFO_WRAP and CU_CHINFO_SMALLCAPS_TEST are set dynamically */
+	/* note: CU_CHINFO_WRAP, CU_CHINFO_SMALLCAPS_TEST and CU_CHINFO_TRUNCATE are set dynamically */
 	CU_CHINFO_BOLD            = 1 << 0,
 	CU_CHINFO_ITALIC          = 1 << 1,
 	CU_CHINFO_UNDERLINE       = 1 << 2,
-	CU_CHINFO_WRAP            = 1 << 3,  /* wordwrap occurred here */
+	/** wordwrap occurred here */
+	CU_CHINFO_WRAP            = 1 << 3,
 	CU_CHINFO_SMALLCAPS       = 1 << 4,
-	CU_CHINFO_SMALLCAPS_CHECK = 1 << 5,  /* set at runtime, checks if case switching is needed */
+	/** set at runtime, checks if case switching is needed */
+	CU_CHINFO_SMALLCAPS_CHECK = 1 << 5,
+	/** Set at runtime, indicates char that doesn't fit in text boxes. */
+	CU_CHINFO_OVERFLOW        = 1 << 6,
 };
 
 /* mixed with KEY_LINEAR but define here since only curve supports */

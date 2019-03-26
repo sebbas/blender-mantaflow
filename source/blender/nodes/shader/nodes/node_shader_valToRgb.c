@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/nodes/shader/nodes/node_shader_valToRgb.c
- *  \ingroup shdnodes
+/** \file
+ * \ingroup shdnodes
  */
 
 
@@ -36,12 +28,12 @@
 /* **************** VALTORGB ******************** */
 static bNodeSocketTemplate sh_node_valtorgb_in[] = {
 	{	SOCK_FLOAT, 1, N_("Fac"),			0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_FACTOR},
-	{	-1, 0, ""	}
+	{	-1, 0, ""	},
 };
 static bNodeSocketTemplate sh_node_valtorgb_out[] = {
 	{	SOCK_RGBA, 0, N_("Color")},
 	{	SOCK_FLOAT, 0, N_("Alpha")},
-	{	-1, 0, ""	}
+	{	-1, 0, ""	},
 };
 
 static void node_shader_exec_valtorgb(void *UNUSED(data), int UNUSED(thread), bNode *node, bNodeExecData *UNUSED(execdata), bNodeStack **in, bNodeStack **out)
@@ -68,6 +60,26 @@ static int gpu_shader_valtorgb(GPUMaterial *mat, bNode *node, bNodeExecData *UNU
 	struct ColorBand *coba = node->storage;
 	float *array, layer;
 	int size;
+
+	/* Common / easy case optimisation. */
+	if ((coba->tot <= 2) && (coba->color_mode == COLBAND_BLEND_RGB)) {
+		float mul_bias[2];
+		switch (coba->ipotype) {
+			case COLBAND_INTERP_LINEAR:
+				mul_bias[0] = 1.0f / (coba->data[1].pos - coba->data[0].pos);
+				mul_bias[1] = -mul_bias[0] * coba->data[0].pos;
+				return GPU_stack_link(mat, node, "valtorgb_opti_linear", in, out, GPU_uniform(mul_bias),
+				                                                                  GPU_uniform(&coba->data[0].r),
+				                                                                  GPU_uniform(&coba->data[1].r));
+			case COLBAND_INTERP_CONSTANT:
+				mul_bias[1] = max_ff(coba->data[0].pos, coba->data[1].pos);
+				return GPU_stack_link(mat, node, "valtorgb_opti_constant", in, out, GPU_uniform(&mul_bias[1]),
+				                                                                    GPU_uniform(&coba->data[0].r),
+				                                                                    GPU_uniform(&coba->data[1].r));
+			default:
+				break;
+		}
+	}
 
 	BKE_colorband_evaluate_table_rgba(coba, &array, &size);
 	GPUNodeLink *tex = GPU_color_band(mat, size, array, &layer);

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,11 @@
  *
  * The Original Code is Copyright (C) 2006 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Ben Batt <benbatt@gmail.com>
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file BKE_cdderivedmesh.h
- *  \ingroup bke
- *  \section aboutcdderivedmesh CDDerivedMesh interface
+/** \file
+ * \ingroup bke
+ * \section aboutcdderivedmesh CDDerivedMesh interface
  *   CDDerivedMesh (CD = Custom Data) is a DerivedMesh backend which stores
  *   mesh elements (vertices, edges and faces) as layers of custom element data.
  */
@@ -38,10 +30,11 @@
 #include "BKE_DerivedMesh.h"
 #include "BKE_customdata.h"
 
-struct DerivedMesh;
 struct BMEditMesh;
-struct Mesh;
+struct CustomData_MeshMasks;
+struct DerivedMesh;
 struct MLoopNorSpaceArray;
+struct Mesh;
 struct Object;
 
 /* creates a new CDDerivedMesh */
@@ -55,7 +48,7 @@ struct DerivedMesh *CDDM_new(int numVerts, int numEdges, int numFaces,
 struct DerivedMesh *CDDM_from_mesh(struct Mesh *mesh);
 
 /* creates a CDDerivedMesh from the given Mesh with custom allocation type. */
-struct DerivedMesh *CDDM_from_mesh_ex(struct Mesh *mesh, eCDAllocType alloctype, CustomDataMask mask);
+struct DerivedMesh *CDDM_from_mesh_ex(struct Mesh *mesh, eCDAllocType alloctype, const struct CustomData_MeshMasks *mask);
 
 
 struct DerivedMesh *CDDM_from_bmesh(struct BMesh *bm, const bool use_mdisps);
@@ -79,11 +72,10 @@ struct DerivedMesh *CDDM_copy(struct DerivedMesh *dm);
  * given DerivedMesh and containing the requested numbers of elements.
  * elements are initialized to all zeros
  */
-struct DerivedMesh *CDDM_from_template_ex(
-        struct DerivedMesh *source,
+struct DerivedMesh *CDDM_from_template_ex(struct DerivedMesh *source,
         int numVerts, int numEdges, int numFaces,
         int numLoops, int numPolys,
-        CustomDataMask mask);
+        const struct CustomData_MeshMasks *mask);
 struct DerivedMesh *CDDM_from_template(
         struct DerivedMesh *source,
         int numVerts, int numEdges, int numFaces,

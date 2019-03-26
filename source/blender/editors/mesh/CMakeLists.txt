@@ -13,9 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software Foundation,
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Contributor(s): Jacques Beaurain.
-#
 # ***** END GPL LICENSE BLOCK *****
 
 set(INC
@@ -48,7 +45,6 @@ set(SRC
 	editmesh_bevel.c
 	editmesh_bisect.c
 	editmesh_extrude.c
-	editmesh_extrude_gizmo.c
 	editmesh_extrude_screw.c
 	editmesh_extrude_spin.c
 	editmesh_extrude_spin_gizmo.c

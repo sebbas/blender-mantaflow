@@ -1,6 +1,4 @@
 /*
- * Copyright 2015, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,23 +13,20 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor:
- *		Jeroen Bakker
- *		Monique Dewanchand
- *		Lukas Tönne
- *		Dalai Felinto
+ * Copyright 2015, Blender Foundation.
  */
 
 #include "COM_OutputFileOperation.h"
 #include "COM_OutputFileMultiViewOperation.h"
 
 #include <string.h>
+
 #include "BLI_listbase.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
-#include "BKE_image.h"
+
 #include "BKE_global.h"
-#include "BKE_library.h"
+#include "BKE_image.h"
 #include "BKE_main.h"
 #include "BKE_scene.h"
 

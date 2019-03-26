@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,19 +12,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __FREESTYLE_PREDICATES_1D_H__
 #define __FREESTYLE_PREDICATES_1D_H__
 
-/** \file blender/freestyle/intern/stroke/Predicates1D.h
- *  \ingroup freestyle
- *  \brief Class gathering stroke creation algorithms
- *  \author Stephane Grabli
- *  \author Emmanuel Turquin
- *  \date 01/07/2003
+/** \file
+ * \ingroup freestyle
+ * \brief Class gathering stroke creation algorithms
  */
 
 #include <string>
@@ -77,7 +70,7 @@ public:
 	}
 
 	/*! The () operator. Must be overload by inherited classes.
-	 *  \param inter
+	 *  \param inter:
 	 *    The Interface1D on  which we wish to evaluate the predicate.
 	 *  \return true if the condition is satisfied, false otherwise.
 	 */
@@ -122,9 +115,9 @@ public:
 
 	/*! The () operator. Must be overload by inherited classes.
 	 *  It evaluates a relation between 2 Interface1D.
-	 *  \param inter1
+	 *  \param inter1:
 	 *    The first Interface1D.
-	 *  \param inter2
+	 *  \param inter2:
 	 *    The second Interface1D.
 	 *  \return true or false.
 	 */
@@ -195,7 +188,7 @@ class QuantitativeInvisibilityUP1D : public UnaryPredicate1D
 {
 public:
 	/*! Builds the Predicate.
-	 *  \param qi
+	 *  \param qi:
 	 *    The Quantitative Invisibility you want the Interface1D to have
 	 */
 	QuantitativeInvisibilityUP1D(unsigned qi = 0) : _qi(qi) {}
@@ -359,9 +352,9 @@ private:
 
 public:
 	/*! Builds the Predicate.
-	 *  \param idFirst
+	 *  \param idFirst:
 	 *    The first Id component.
-	 *  \param idSecond
+	 *  \param idSecond:
 	 *    The second Id component.
 	 */
 	ShapeUP1D(unsigned idFirst, unsigned idSecond = 0) : UnaryPredicate1D()
@@ -400,13 +393,13 @@ private:
 
 public:
 	/*! Builds the Predicate.
-	 *  \param xmin
+	 *  \param xmin:
 	 *    The X lower bound of the image boundary.
-	 *  \param ymin
+	 *  \param ymin:
 	 *    The Y lower bound of the image boundary.
-	 *  \param xmax
+	 *  \param xmax:
 	 *    The X upper bound of the image boundary.
-	 *  \param ymax
+	 *  \param ymax:
 	 *    The Y upper bound of the image boundary.
 	 */
 	WithinImageBoundaryUP1D(const real xmin, const real ymin, const real xmax, const real ymax)

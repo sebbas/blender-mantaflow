@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,9 +15,10 @@
  *
  * The Original Code is Copyright (C) 2016 Kévin Dietrich.
  * All rights reserved.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
+ */
+
+/** \file
+ * \ingroup balembic
  */
 
 #include "abc_customdata.h"
@@ -52,29 +51,6 @@ using Alembic::Abc::V2fArraySample;
 using Alembic::AbcGeom::OV2fGeomParam;
 using Alembic::AbcGeom::OC4fGeomParam;
 
-
-typedef std::unordered_map<uint64_t, int> uv_index_map;
-
-static inline uint64_t uv_to_hash_key(Imath::V2f v)
-{
-	/* Convert -0.0f to 0.0f, so bitwise comparison works. */
-	if (v.x == 0.0f) {
-		v.x = 0.0f;
-	}
-	if (v.y == 0.0f) {
-		v.y = 0.0f;
-	}
-
-	/* Pack floats in 64bit. */
-	union {
-		float xy[2];
-		uint64_t key;
-	} tmp;
-	tmp.xy[0] = v.x;
-	tmp.xy[1] = v.y;
-	return tmp.key;
-}
-
 static void get_uvs(const CDStreamConfig &config,
                     std::vector<Imath::V2f> &uvs,
                     std::vector<uint32_t> &uvidx,
@@ -88,45 +64,59 @@ static void get_uvs(const CDStreamConfig &config,
 
 	const int num_poly = config.totpoly;
 	MPoly *polygons = config.mpoly;
+	MLoop *mloop = config.mloop;
 
 	if (!config.pack_uvs) {
 		int cnt = 0;
 		uvidx.resize(config.totloop);
 		uvs.resize(config.totloop);
 
+		/* Iterate in reverse order to match exported polygons. */
 		for (int i = 0; i < num_poly; ++i) {
 			MPoly &current_poly = polygons[i];
-			MLoopUV *loopuvpoly = mloopuv_array + current_poly.loopstart + current_poly.totloop;
+			MLoopUV *loopuv = mloopuv_array + current_poly.loopstart + current_poly.totloop;
 
 			for (int j = 0; j < current_poly.totloop; ++j, ++cnt) {
-				--loopuvpoly;
+				--loopuv;
 
 				uvidx[cnt] = cnt;
-				uvs[cnt][0] = loopuvpoly->uv[0];
-				uvs[cnt][1] = loopuvpoly->uv[1];
+				uvs[cnt][0] = loopuv->uv[0];
+				uvs[cnt][1] = loopuv->uv[1];
 			}
 		}
 	}
 	else {
-		uv_index_map idx_map;
+		/* Mapping for indexed UVs, deduplicating UV coordinates at vertices. */
+		std::vector<std::vector<uint32_t>> idx_map(config.totvert);
 		int idx_count = 0;
 
 		for (int i = 0; i < num_poly; ++i) {
 			MPoly &current_poly = polygons[i];
-			MLoopUV *loopuvpoly = mloopuv_array + current_poly.loopstart + current_poly.totloop;
+			MLoop *looppoly = mloop + current_poly.loopstart + current_poly.totloop;
+			MLoopUV *loopuv = mloopuv_array + current_poly.loopstart + current_poly.totloop;
 
 			for (int j = 0; j < current_poly.totloop; ++j) {
-				loopuvpoly--;
-				Imath::V2f uv(loopuvpoly->uv[0], loopuvpoly->uv[1]);
-				uint64_t k = uv_to_hash_key(uv);
-				uv_index_map::iterator it = idx_map.find(k);
-				if (it == idx_map.end()) {
-					idx_map[k] = idx_count;
-					uvs.push_back(uv);
-					uvidx.push_back(idx_count++);
+				--looppoly;
+				--loopuv;
+
+				Imath::V2f uv(loopuv->uv[0], loopuv->uv[1]);
+				bool found_same = false;
+
+				/* Find UV already in uvs array. */
+				for (uint32_t uv_idx : idx_map[looppoly->v]) {
+					if (uvs[uv_idx] == uv) {
+						found_same = true;
+						uvidx.push_back(uv_idx);
+						break;
+					}
 				}
-				else {
-					uvidx.push_back(it->second);
+
+				/* UV doesn't exists for this vertex, add it. */
+				if (!found_same) {
+					uint32_t uv_idx = idx_count++;
+					idx_map[looppoly->v].push_back(uv_idx);
+					uvidx.push_back(uv_idx);
+					uvs.push_back(uv);
 				}
 			}
 		}
@@ -151,7 +141,7 @@ const char *get_uv_sample(UVSample &sample, const CDStreamConfig &config, Custom
 /* Convention to write UVs:
  * - V2fGeomParam on the arbGeomParam
  * - set scope as face varying
- * - (optional due to its behaviour) tag as UV using Alembic::AbcGeom::SetIsUV
+ * - (optional due to its behavior) tag as UV using Alembic::AbcGeom::SetIsUV
  */
 static void write_uv(const OCompoundProperty &prop, const CDStreamConfig &config, void *data, const char *name)
 {
@@ -167,9 +157,9 @@ static void write_uv(const OCompoundProperty &prop, const CDStreamConfig &config
 	OV2fGeomParam param(prop, name, true, kFacevaryingScope, 1);
 
 	OV2fGeomParam::Sample sample(
-		V2fArraySample(&uvs.front(), uvs.size()),
-		UInt32ArraySample(&indices.front(), indices.size()),
-		kFacevaryingScope);
+	        V2fArraySample(&uvs.front(), uvs.size()),
+	        UInt32ArraySample(&indices.front(), indices.size()),
+	        kFacevaryingScope);
 
 	param.set(sample);
 }
@@ -215,9 +205,9 @@ static void write_mcol(const OCompoundProperty &prop, const CDStreamConfig &conf
 	OC4fGeomParam param(prop, name, true, kFacevaryingScope, 1);
 
 	OC4fGeomParam::Sample sample(
-		C4fArraySample(&buffer.front(), buffer.size()),
-		UInt32ArraySample(&indices.front(), indices.size()),
-		kVertexScope);
+	        C4fArraySample(&buffer.front(), buffer.size()),
+	        UInt32ArraySample(&indices.front(), indices.size()),
+	        kVertexScope);
 
 	param.set(sample);
 }
@@ -293,6 +283,7 @@ static size_t mcols_out_of_bounds_check(
         const size_t array_size,
         const std::string & iobject_full_name,
         const PropertyHeader &prop_header,
+        bool &r_is_out_of_bounds,
         bool &r_bounds_warning_given)
 {
 	if (color_index < array_size) {
@@ -307,7 +298,7 @@ static size_t mcols_out_of_bounds_check(
 		          << prop_header.getName() << std::endl;
 		r_bounds_warning_given = true;
 	}
-
+	r_is_out_of_bounds = true;
 	return 0;
 }
 
@@ -388,12 +379,15 @@ static void read_custom_data_mcols(const std::string & iobject_full_name,
 				color_index = (*indices)[color_index];
 			}
 			if (use_c3f_ptr) {
+				bool is_mcols_out_of_bounds = false;
 				color_index = mcols_out_of_bounds_check(
 				                  color_index,
 				                  c3f_ptr->size(),
 				                  iobject_full_name, prop_header,
-				                  bounds_warning_given);
-
+				                  is_mcols_out_of_bounds, bounds_warning_given);
+				if (is_mcols_out_of_bounds) {
+					continue;
+				}
 				const Imath::C3f &color = (*c3f_ptr)[color_index];
 				cface->a = unit_float_to_uchar_clamp(color[0]);
 				cface->r = unit_float_to_uchar_clamp(color[1]);
@@ -401,12 +395,15 @@ static void read_custom_data_mcols(const std::string & iobject_full_name,
 				cface->b = 255;
 			}
 			else {
+				bool is_mcols_out_of_bounds = false;
 				color_index = mcols_out_of_bounds_check(
 				                  color_index,
 				                  c4f_ptr->size(),
 				                  iobject_full_name, prop_header,
-				                  bounds_warning_given);
-
+				                  is_mcols_out_of_bounds, bounds_warning_given);
+				if (is_mcols_out_of_bounds) {
+					continue;
+				}
 				const Imath::C4f &color = (*c4f_ptr)[color_index];
 				cface->a = unit_float_to_uchar_clamp(color[0]);
 				cface->r = unit_float_to_uchar_clamp(color[1]);

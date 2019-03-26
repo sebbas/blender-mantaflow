@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/windowmanager/wm_cursors.h
- *  \ingroup wm
+/** \file
+ * \ingroup wm
  */
 
 #ifndef __WM_CURSORS_H__
@@ -47,7 +39,7 @@ enum {
 	CURSOR_STD,
 	CURSOR_NONE,
 	CURSOR_PENCIL,
-	CURSOR_COPY
+	CURSOR_COPY,
 };
 
 
@@ -94,7 +86,14 @@ enum {
 	BC_EW_SCROLLCURSOR,
 	BC_EYEDROPPER_CURSOR,
 	BC_SWAPAREA_CURSOR,
-/* --- ALWAYS LAST ----- */
+	BC_H_SPLITCURSOR,
+	BC_V_SPLITCURSOR,
+	BC_N_ARROWCURSOR,
+	BC_S_ARROWCURSOR,
+	BC_E_ARROWCURSOR,
+	BC_W_ARROWCURSOR,
+	BC_STOPCURSOR,
+	/* --- ALWAYS LAST ----- */
 	BC_NUMCURSORS,
 };
 
@@ -105,11 +104,11 @@ enum {
 	BC_RED,
 	BC_BLUE,
 	BC_GREEN,
-	BC_YELLOW
+	BC_YELLOW,
 };
 
-struct wmWindow;
 struct wmEvent;
+struct wmWindow;
 
 bool wm_cursor_arrow_move(struct wmWindow *win, const struct wmEvent *event);
 

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributors: 2004/2005/2006 Blender Foundation, full recode
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/render/intern/source/initrender.c
- *  \ingroup render
+/** \file
+ * \ingroup render
  */
 
 /* Global includes */
@@ -124,7 +118,7 @@ float RE_filter_value(int type, float x)
 		{
 			const float two_gaussfac2 = 2.0f * gaussfac * gaussfac;
 			x *= 3.0f * gaussfac;
-			return 1.0f / sqrtf((float)M_PI * two_gaussfac2) * expf(-x*x / two_gaussfac2);
+			return 1.0f / sqrtf((float)M_PI * two_gaussfac2) * expf(-x * x / two_gaussfac2);
 		}
 
 		case R_FILTER_MITCH:
@@ -153,8 +147,8 @@ static void re_camera_params_get(Render *re, CameraParams *params)
 {
 	copy_m4_m4(re->winmat, params->winmat);
 
-	re->clipsta = params->clipsta;
-	re->clipend = params->clipend;
+	re->clip_start = params->clip_start;
+	re->clip_end = params->clip_end;
 
 	re->viewplane = params->viewplane;
 }
@@ -193,6 +187,25 @@ void RE_GetCameraWindow(struct Render *re, struct Object *camera, int frame, flo
 	re->r.cfra = frame;
 	RE_SetCamera(re, camera);
 	copy_m4_m4(mat, re->winmat);
+}
+
+/* Must be called after RE_GetCameraWindow(), does not change re->winmat. */
+void RE_GetCameraWindowWithOverscan(struct Render *re, float mat[4][4], float overscan)
+{
+	CameraParams params;
+	params.is_ortho = re->winmat[3][3] != 0.0f;
+	params.clip_start = re->clip_start;
+	params.clip_end = re->clip_end;
+	params.viewplane = re->viewplane;
+
+	overscan *= max_ff(BLI_rctf_size_x(&params.viewplane), BLI_rctf_size_y(&params.viewplane));
+
+	params.viewplane.xmin -= overscan;
+	params.viewplane.xmax += overscan;
+	params.viewplane.ymin -= overscan;
+	params.viewplane.ymax += overscan;
+	BKE_camera_params_compute_matrix(&params);
+	copy_m4_m4(mat, params.winmat);
 }
 
 void RE_GetCameraModelMatrix(Render *re, struct Object *camera, float r_mat[4][4])

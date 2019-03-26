@@ -66,7 +66,7 @@ struct MikkUserData {
 		else {
 			Attribute *attr_uv = attributes.find(ustring(layer_name));
 			if(attr_uv != NULL) {
-				texface = attr_uv->data_float3();
+				texface = attr_uv->data_float2();
 			}
 		}
 	}
@@ -75,7 +75,7 @@ struct MikkUserData {
 	int num_faces;
 
 	float3 *vertex_normal;
-	float3 *texface;
+	float2 *texface;
 	float3 *orco;
 	float3 orco_loc, orco_size;
 
@@ -150,7 +150,7 @@ static void mikk_get_texture_coordinate(const SMikkTSpaceContext *context,
 	const Mesh *mesh = userdata->mesh;
 	if(userdata->texface != NULL) {
 		const int corner_index = mikk_corner_index(mesh, face_num, vert_num);
-		float3 tfuv = userdata->texface[corner_index];
+		float2 tfuv = userdata->texface[corner_index];
 		uv[0] = tfuv.x;
 		uv[1] = tfuv.y;
 	}
@@ -430,18 +430,18 @@ static void attr_create_uv_map(Scene *scene,
 				}
 				else {
 					uv_attr = mesh->attributes.add(uv_name,
-					                               TypeDesc::TypePoint,
+					                               TypeFloat2,
 					                               ATTR_ELEMENT_CORNER);
 				}
 
 				BL::Mesh::loop_triangles_iterator t;
-				float3 *fdata = uv_attr->data_float3();
+				float2 *fdata = uv_attr->data_float2();
 
 				for(b_mesh.loop_triangles.begin(t); t != b_mesh.loop_triangles.end(); ++t) {
 					int3 li = get_int3(t->loops());
-					fdata[0] = get_float3(l->data[li[0]].uv());
-					fdata[1] = get_float3(l->data[li[1]].uv());
-					fdata[2] = get_float3(l->data[li[2]].uv());
+					fdata[0] = get_float2(l->data[li[0]].uv());
+					fdata[1] = get_float2(l->data[li[1]].uv());
+					fdata[2] = get_float2(l->data[li[2]].uv());
 					fdata += 3;
 				}
 			}
@@ -509,19 +509,19 @@ static void attr_create_subd_uv_map(Scene *scene,
 				if(active_render)
 					uv_attr = mesh->subd_attributes.add(uv_std, uv_name);
 				else
-					uv_attr = mesh->subd_attributes.add(uv_name, TypeDesc::TypePoint, ATTR_ELEMENT_CORNER);
+					uv_attr = mesh->subd_attributes.add(uv_name, TypeFloat2, ATTR_ELEMENT_CORNER);
 
 				if(subdivide_uvs) {
 					uv_attr->flags |= ATTR_SUBDIVIDED;
 				}
 
 				BL::Mesh::polygons_iterator p;
-				float3 *fdata = uv_attr->data_float3();
+				float2 *fdata = uv_attr->data_float2();
 
 				for(b_mesh.polygons.begin(p); p != b_mesh.polygons.end(); ++p) {
 					int n = p->loop_total();
 					for(int j = 0; j < n; j++) {
-						*(fdata++) = get_float3(l->data[p->loop_start() + j].uv());
+						*(fdata++) = get_float2(l->data[p->loop_start() + j].uv());
 					}
 				}
 			}
@@ -756,13 +756,11 @@ static void create_mesh(Scene *scene,
 		return;
 	}
 
-	BL::Mesh::vertices_iterator v;
-	BL::Mesh::polygons_iterator p;
-
 	if(!subdivision) {
 		numtris = numfaces;
 	}
 	else {
+		BL::Mesh::polygons_iterator p;
 		for(b_mesh.polygons.begin(p); p != b_mesh.polygons.end(); ++p) {
 			numngons += (p->loop_total() == 4)? 0: 1;
 			numcorners += p->loop_total();
@@ -774,6 +772,7 @@ static void create_mesh(Scene *scene,
 	mesh->reserve_subd_faces(numfaces, numngons, numcorners);
 
 	/* create vertex coordinates and normals */
+	BL::Mesh::vertices_iterator v;
 	for(b_mesh.vertices.begin(v); v != b_mesh.vertices.end(); ++v)
 		mesh->add_vertex(get_float3(v->co()));
 
@@ -808,13 +807,10 @@ static void create_mesh(Scene *scene,
 	}
 
 	/* create faces */
-	vector<int> nverts(numfaces);
-
 	if(!subdivision) {
 		BL::Mesh::loop_triangles_iterator t;
-		int ti = 0;
 
-		for(b_mesh.loop_triangles.begin(t); t != b_mesh.loop_triangles.end(); ++t, ++ti) {
+		for(b_mesh.loop_triangles.begin(t); t != b_mesh.loop_triangles.end(); ++t) {
 			BL::MeshPolygon p = b_mesh.polygons[t->polygon_index()];
 			int3 vi = get_int3(t->vertices());
 
@@ -835,10 +831,10 @@ static void create_mesh(Scene *scene,
 			 * NOTE: Autosmooth is already taken care about.
 			 */
 			mesh->add_triangle(vi[0], vi[1], vi[2], shader, smooth);
-			nverts[ti] = 3;
 		}
 	}
 	else {
+		BL::Mesh::polygons_iterator p;
 		vector<int> vi;
 
 		for(b_mesh.polygons.begin(p); p != b_mesh.polygons.end(); ++p) {
@@ -1016,23 +1012,33 @@ Mesh *BlenderSync::sync_mesh(BL::Depsgraph& b_depsgraph,
                              BL::Object& b_ob,
                              BL::Object& b_ob_instance,
                              bool object_updated,
-                             bool hide_tris)
+                             bool show_self,
+                             bool show_particles)
 {
 	/* test if we can instance or if the object is modified */
 	BL::ID b_ob_data = b_ob.data();
 	BL::ID key = (BKE_object_is_modified(b_ob))? b_ob_instance: b_ob_data;
+	BL::Material material_override = view_layer.material_override;
 
 	/* find shader indices */
 	vector<Shader*> used_shaders;
 
 	BL::Object::material_slots_iterator slot;
 	for(b_ob.material_slots.begin(slot); slot != b_ob.material_slots.end(); ++slot) {
-		BL::ID b_material(slot->material());
-		find_shader(b_material, used_shaders, scene->default_surface);
+		if(material_override) {
+			find_shader(material_override, used_shaders, scene->default_surface);
+		}
+		else {
+			BL::ID b_material(slot->material());
+			find_shader(b_material, used_shaders, scene->default_surface);
+		}
 	}
 
 	if(used_shaders.size() == 0) {
-		used_shaders.push_back(scene->default_surface);
+		if(material_override)
+			find_shader(material_override, used_shaders, scene->default_surface);
+		else
+			used_shaders.push_back(scene->default_surface);
 	}
 
 	/* test if we need to sync */
@@ -1092,35 +1098,27 @@ Mesh *BlenderSync::sync_mesh(BL::Depsgraph& b_depsgraph,
 	mesh->name = ustring(b_ob_data.name().c_str());
 
 	if(requested_geometry_flags != Mesh::GEOMETRY_NONE) {
-		/* mesh objects does have special handle in the dependency graph,
-		 * they're ensured to have properly updated.
-		 *
-		 * updating meshes here will end up having derived mesh referencing
-		 * freed data from the blender side.
-		 */
-		if(preview && b_ob.type() != BL::Object::type_MESH)
-			b_ob.update_from_editmode(b_data);
-
-		bool need_undeformed = mesh->need_attribute(scene, ATTR_STD_GENERATED);
-
-		mesh->subdivision_type = object_subdivision_type(b_ob, preview, experimental);
-
-		/* Disable adaptive subdivision while baking as the baking system
-		 * currently doesnt support the topology and will crash.
-		 */
+		/* Adaptive subdivision setup. Not for baking since that requires
+		 * exact mapping to the Blender mesh. */
 		if(scene->bake_manager->get_baking()) {
 			mesh->subdivision_type = Mesh::SUBDIVISION_NONE;
 		}
+		else {
+			mesh->subdivision_type = object_subdivision_type(b_ob, preview, experimental);
+		}
+
+		/* For some reason, meshes do not need this... */
+		bool need_undeformed = mesh->need_attribute(scene, ATTR_STD_GENERATED);
 
 		BL::Mesh b_mesh = object_to_mesh(b_data,
 		                                 b_ob,
 		                                 b_depsgraph,
-		                                 false,
 		                                 need_undeformed,
 		                                 mesh->subdivision_type);
 
 		if(b_mesh) {
-			if(view_layer.use_surfaces && !hide_tris) {
+			/* Sync mesh itself. */
+			if(view_layer.use_surfaces && show_self) {
 				if(mesh->subdivision_type != Mesh::SUBDIVISION_NONE)
 					create_subd_mesh(scene, mesh, b_ob, b_mesh, used_shaders,
 					                 dicing_rate, max_subdivisions);
@@ -1130,11 +1128,12 @@ Mesh *BlenderSync::sync_mesh(BL::Depsgraph& b_depsgraph,
 				create_mesh_volume_attributes(scene, b_ob, mesh, b_scene.frame_current());
 			}
 
-			if(view_layer.use_hair && mesh->subdivision_type == Mesh::SUBDIVISION_NONE)
+			/* Sync hair curves. */
+			if(view_layer.use_hair && show_particles && mesh->subdivision_type == Mesh::SUBDIVISION_NONE) {
 				sync_curves(mesh, b_mesh, b_ob, false);
+			}
 
-			/* free derived mesh */
-			b_data.meshes.remove(b_mesh, false, true, false);
+			free_object_to_mesh(b_data, b_ob, b_mesh);
 		}
 	}
 	mesh->geometry_flags = requested_geometry_flags;
@@ -1207,7 +1206,6 @@ void BlenderSync::sync_mesh_motion(BL::Depsgraph& b_depsgraph,
 		b_mesh = object_to_mesh(b_data,
 		                        b_ob,
 		                        b_depsgraph,
-		                        false,
 		                        false,
 		                        Mesh::SUBDIVISION_NONE);
 	}
@@ -1319,7 +1317,7 @@ void BlenderSync::sync_mesh_motion(BL::Depsgraph& b_depsgraph,
 		sync_curves(mesh, b_mesh, b_ob, true, motion_step);
 
 	/* free derived mesh */
-	b_data.meshes.remove(b_mesh, false, true, false);
+	free_object_to_mesh(b_data, b_ob, b_mesh);
 }
 
 CCL_NAMESPACE_END

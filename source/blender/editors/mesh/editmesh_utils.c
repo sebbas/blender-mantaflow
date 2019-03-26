@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2004 by Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Joseph Eagar
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/mesh/editmesh_utils.c
- *  \ingroup edmesh
+/** \file
+ * \ingroup edmesh
  */
 
 #include "MEM_guardedalloc.h"
@@ -174,7 +166,7 @@ bool EDBM_op_finish(BMEditMesh *em, BMOperator *bmop, wmOperator *op, const bool
 		}
 
 		if (em->ob) {
-			DEG_id_tag_update(&((Mesh *)em->ob->data)->id, DEG_TAG_COPY_ON_WRITE);
+			DEG_id_tag_update(&((Mesh *)em->ob->data)->id, ID_RECALC_COPY_ON_WRITE);
 		}
 
 		return false;
@@ -305,26 +297,26 @@ void EDBM_mesh_make(Object *ob, const int select_mode, const bool add_key_index)
 	        me, ob, add_key_index,
 	        &((struct BMeshCreateParams){.use_toolflags = true,}));
 
-	if (me->edit_btmesh) {
+	if (me->edit_mesh) {
 		/* this happens when switching shape keys */
-		EDBM_mesh_free(me->edit_btmesh);
-		MEM_freeN(me->edit_btmesh);
+		EDBM_mesh_free(me->edit_mesh);
+		MEM_freeN(me->edit_mesh);
 	}
 
 	/* currently executing operators re-tessellates, so we can avoid doing here
 	 * but at some point it may need to be added back. */
 #if 0
-	me->edit_btmesh = BKE_editmesh_create(bm, true);
+	me->edit_mesh = BKE_editmesh_create(bm, true);
 #else
-	me->edit_btmesh = BKE_editmesh_create(bm, false);
+	me->edit_mesh = BKE_editmesh_create(bm, false);
 #endif
 
-	me->edit_btmesh->selectmode = me->edit_btmesh->bm->selectmode = select_mode;
-	me->edit_btmesh->mat_nr = (ob->actcol > 0) ? ob->actcol - 1 : 0;
-	me->edit_btmesh->ob = ob;
+	me->edit_mesh->selectmode = me->edit_mesh->bm->selectmode = select_mode;
+	me->edit_mesh->mat_nr = (ob->actcol > 0) ? ob->actcol - 1 : 0;
+	me->edit_mesh->ob = ob;
 
 	/* we need to flush selection because the mode may have changed from when last in editmode */
-	EDBM_selectmode_flush(me->edit_btmesh);
+	EDBM_selectmode_flush(me->edit_mesh);
 }
 
 /**
@@ -334,7 +326,7 @@ void EDBM_mesh_make(Object *ob, const int select_mode, const bool add_key_index)
 void EDBM_mesh_load(Main *bmain, Object *ob)
 {
 	Mesh *me = ob->data;
-	BMesh *bm = me->edit_btmesh->bm;
+	BMesh *bm = me->edit_mesh->bm;
 
 	/* Workaround for T42360, 'ob->shapenr' should be 1 in this case.
 	 * however this isn't synchronized between objects at the moment. */
@@ -363,7 +355,7 @@ void EDBM_mesh_load(Main *bmain, Object *ob)
 	 * cycles.
 	 */
 #if 0
-	for (Object *other_object = bmain->object.first;
+	for (Object *other_object = bmain->objects.first;
 	     other_object != NULL;
 	     other_object = other_object->id.next)
 	{
@@ -802,7 +794,8 @@ UvElementMap *BM_uv_element_map_create(
 		island_number = MEM_mallocN(sizeof(*island_number) * totfaces, "uv_island_number_face");
 		copy_vn_i(island_number, totfaces, INVALID_ISLAND);
 
-		/* at this point, every UvElement in vert points to a UvElement sharing the same vertex. Now we should sort uv's in islands. */
+		/* at this point, every UvElement in vert points to a UvElement sharing the same vertex.
+		 * Now we should sort uv's in islands. */
 		for (i = 0; i < totuv; i++) {
 			if (element_map->buf[i].island == INVALID_ISLAND) {
 				element_map->buf[i].island = nislands;
@@ -821,7 +814,8 @@ UvElementMap *BM_uv_element_map_create(
 								initelement = element;
 
 							if (element->l->f == efa) {
-								/* found the uv corresponding to our face and vertex. Now fill it to the buffer */
+								/* found the uv corresponding to our face and vertex.
+								 * Now fill it to the buffer */
 								element->island = nislands;
 								map[element - element_map->buf] = islandbufsize;
 								islandbuf[islandbufsize].l = element->l;
@@ -991,12 +985,12 @@ static BMVert *cache_mirr_intptr_as_bmvert(intptr_t *index_lookup, int index)
 #define BM_SEARCH_MAXDIST_MIRR 0.00002f
 #define BM_CD_LAYER_ID "__mirror_index"
 /**
- * \param em  Editmesh.
- * \param use_self  Allow a vertex to point to its self (middle verts).
- * \param use_select  Restrict to selected verts.
- * \param use_topology  Use topology mirror.
- * \param maxdist  Distance for close point test.
- * \param r_index  Optional array to write into, as an alternative to a customdata layer (length of total verts).
+ * \param em: Editmesh.
+ * \param use_self: Allow a vertex to point to its self (middle verts).
+ * \param use_select: Restrict to selected verts.
+ * \param use_topology: Use topology mirror.
+ * \param maxdist: Distance for close point test.
+ * \param r_index: Optional array to write into, as an alternative to a customdata layer (length of total verts).
  */
 void EDBM_verts_mirror_cache_begin_ex(
         BMEditMesh *em, const int axis, const bool use_self, const bool use_select,
@@ -1012,7 +1006,7 @@ void EDBM_verts_mirror_cache_begin_ex(
 	const float maxdist_sq = SQUARE(maxdist);
 
 	/* one or the other is used depending if topo is enabled */
-	KDTree *tree = NULL;
+	KDTree_3d *tree = NULL;
 	MirrTopoStore_t mesh_topo_store = {NULL, -1, -1, -1};
 
 	BM_mesh_elem_table_ensure(bm, BM_VERT);
@@ -1038,11 +1032,11 @@ void EDBM_verts_mirror_cache_begin_ex(
 		ED_mesh_mirrtopo_init(me, NULL, &mesh_topo_store, true);
 	}
 	else {
-		tree = BLI_kdtree_new(bm->totvert);
+		tree = BLI_kdtree_3d_new(bm->totvert);
 		BM_ITER_MESH_INDEX (v, &iter, bm, BM_VERTS_OF_MESH, i) {
-			BLI_kdtree_insert(tree, i, v->co);
+			BLI_kdtree_3d_insert(tree, i, v->co);
 		}
-		BLI_kdtree_balance(tree);
+		BLI_kdtree_3d_balance(tree);
 	}
 
 #define VERT_INTPTR(_v, _i) r_index ? &r_index[_i] : BM_ELEM_CD_GET_VOID_P(_v, cd_vmirr_offset);
@@ -1068,7 +1062,7 @@ void EDBM_verts_mirror_cache_begin_ex(
 				co[axis] *= -1.0f;
 
 				v_mirr = NULL;
-				i_mirr = BLI_kdtree_find_nearest(tree, co, NULL);
+				i_mirr = BLI_kdtree_3d_find_nearest(tree, co, NULL);
 				if (i_mirr != -1) {
 					BMVert *v_test = BM_vert_at_index(bm, i_mirr);
 					if (len_squared_v3v3(co, v_test->co) < maxdist_sq) {
@@ -1096,7 +1090,7 @@ void EDBM_verts_mirror_cache_begin_ex(
 		ED_mesh_mirrtopo_free(&mesh_topo_store);
 	}
 	else {
-		BLI_kdtree_free(tree);
+		BLI_kdtree_3d_free(tree);
 	}
 }
 
@@ -1204,14 +1198,13 @@ void EDBM_verts_mirror_apply(BMEditMesh *em, const int sel_from, const int sel_t
  * \{ */
 
 /* swap is 0 or 1, if 1 it hides not selected */
-void EDBM_mesh_hide(BMEditMesh *em, bool swap)
+bool EDBM_mesh_hide(BMEditMesh *em, bool swap)
 {
 	BMIter iter;
 	BMElem *ele;
 	int itermode;
 	char hflag_swap = swap ? BM_ELEM_SELECT : 0;
-
-	if (em == NULL) return;
+	bool changed = true;
 
 	if (em->selectmode & SCE_SELECT_VERTEX)
 		itermode = BM_VERTS_OF_MESH;
@@ -1221,14 +1214,22 @@ void EDBM_mesh_hide(BMEditMesh *em, bool swap)
 		itermode = BM_FACES_OF_MESH;
 
 	BM_ITER_MESH (ele, &iter, em->bm, itermode) {
-		if (BM_elem_flag_test(ele, BM_ELEM_SELECT) ^ hflag_swap)
-			BM_elem_hide_set(em->bm, ele, true);
+		if (!BM_elem_flag_test(ele, BM_ELEM_HIDDEN)) {
+			if (BM_elem_flag_test(ele, BM_ELEM_SELECT) ^ hflag_swap) {
+				BM_elem_hide_set(em->bm, ele, true);
+				changed = true;
+			}
+		}
 	}
 
-	EDBM_selectmode_flush(em);
+	if (changed) {
+		EDBM_selectmode_flush(em);
+	}
+	return changed;
 
 	/* original hide flushing comment (OUTDATED):
-	 * hide happens on least dominant select mode, and flushes up, not down! (helps preventing errors in subsurf) */
+	 * hide happens on least dominant select mode, and flushes up, not down!
+	 * (helps preventing errors in subsurf) */
 	/* - vertex hidden, always means edge is hidden too
 	 * - edge hidden, always means face is hidden too
 	 * - face hidden, only set face hide
@@ -1236,7 +1237,7 @@ void EDBM_mesh_hide(BMEditMesh *em, bool swap)
 	 */
 }
 
-void EDBM_mesh_reveal(BMEditMesh *em, bool select)
+bool EDBM_mesh_reveal(BMEditMesh *em, bool select)
 {
 	const char iter_types[3] = {
 		BM_VERTS_OF_MESH,
@@ -1250,6 +1251,7 @@ void EDBM_mesh_reveal(BMEditMesh *em, bool select)
 		(em->selectmode & SCE_SELECT_FACE) != 0,
 	};
 	int i;
+	bool changed = false;
 
 	/* Use tag flag to remember what was hidden before all is revealed.
 	 * BM_ELEM_HIDDEN --> BM_ELEM_TAG */
@@ -1258,8 +1260,18 @@ void EDBM_mesh_reveal(BMEditMesh *em, bool select)
 		BMElem *ele;
 
 		BM_ITER_MESH (ele, &iter, em->bm, iter_types[i]) {
-			BM_elem_flag_set(ele, BM_ELEM_TAG, BM_elem_flag_test(ele, BM_ELEM_HIDDEN));
+			if (BM_elem_flag_test(ele, BM_ELEM_HIDDEN)) {
+				BM_elem_flag_enable(ele, BM_ELEM_TAG);
+				changed = true;
+			}
+			else {
+				BM_elem_flag_disable(ele, BM_ELEM_TAG);
+			}
 		}
+	}
+
+	if (!changed) {
+		return false;
 	}
 
 	/* Reveal everything */
@@ -1285,6 +1297,8 @@ void EDBM_mesh_reveal(BMEditMesh *em, bool select)
 
 	/* hidden faces can have invalid normals */
 	EDBM_mesh_normals_update(em);
+
+	return true;
 }
 
 /** \} */
@@ -1333,7 +1347,7 @@ void EDBM_update_generic(BMEditMesh *em, const bool do_tessface, const bool is_d
 {
 	Object *ob = em->ob;
 	/* order of calling isn't important */
-	DEG_id_tag_update(ob->data, OB_RECALC_DATA);
+	DEG_id_tag_update(ob->data, ID_RECALC_GEOMETRY);
 	WM_main_add_notifier(NC_GEOM | ND_DATA, ob->data);
 
 	if (do_tessface) {

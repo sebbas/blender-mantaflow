@@ -16,11 +16,6 @@
 #
 # The Original Code is Copyright (C) 2006, Blender Foundation
 # All rights reserved.
-#
-# The Original Code is: all of this file.
-#
-# Contributor(s): Jacques Beaurain.
-#
 # ***** END GPL LICENSE BLOCK *****
 
 set(INC
@@ -38,7 +33,6 @@ set(INC_SYS
 )
 
 set(SRC
-	cin_debug_stuff.h
 	cineonlib.h
 	dpxlib.h
 	logImageCore.h

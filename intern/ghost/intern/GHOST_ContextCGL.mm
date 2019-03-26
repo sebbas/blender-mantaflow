@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,12 +15,6 @@
  *
  * The Original Code is Copyright (C) 2013 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Jason Wilkins
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 /** \file ghost/intern/GHOST_ContextCGL.mm
@@ -143,7 +135,7 @@ GHOST_TSuccess GHOST_ContextCGL::getSwapInterval(int &intervalOut)
 
 		NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
-		[m_openGLContext setValues:&interval forParameter:NSOpenGLCPSwapInterval];
+		[m_openGLContext getValues:&interval forParameter:NSOpenGLCPSwapInterval];
 
 		[pool drain];
 
@@ -199,7 +191,7 @@ GHOST_TSuccess GHOST_ContextCGL::updateDrawingContext()
 
 static void makeAttribList(
         std::vector<NSOpenGLPixelFormatAttribute>& attribs,
-        bool coreProfile, 
+        bool coreProfile,
         bool stereoVisual,
         int numOfAASamples,
         bool needAlpha,
@@ -210,7 +202,7 @@ static void makeAttribList(
 
 	attribs.push_back(NSOpenGLPFAOpenGLProfile);
 	attribs.push_back(coreProfile ? NSOpenGLProfileVersion3_2Core : NSOpenGLProfileVersionLegacy);
-	
+
 	// Pixel Format Attributes for the windowed NSOpenGLContext
 	attribs.push_back(NSOpenGLPFADoubleBuffer);
 
@@ -383,7 +375,7 @@ GHOST_TSuccess GHOST_ContextCGL::initializeDrawingContext()
 
 	if (s_sharedCount == 0)
 		s_sharedOpenGLContext = m_openGLContext;
-	
+
 	s_sharedCount++;
 
 

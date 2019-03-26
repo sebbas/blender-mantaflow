@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2017 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_outliner/outliner_utils.c
- *  \ingroup spoutliner
+/** \file
+ * \ingroup spoutliner
  */
 
 #include "BLI_utildefines.h"
@@ -44,7 +38,7 @@
  * Try to find an item under y-coordinate \a view_co_y (view-space).
  * \note Recursive
  */
-TreeElement *outliner_find_item_at_y(const SpaceOops *soops, const ListBase *tree, float view_co_y)
+TreeElement *outliner_find_item_at_y(const SpaceOutliner *soops, const ListBase *tree, float view_co_y)
 {
 	for (TreeElement *te_iter = tree->first; te_iter; te_iter = te_iter->next) {
 		if (view_co_y < (te_iter->ys + UI_UNIT_Y)) {
@@ -71,12 +65,15 @@ TreeElement *outliner_find_item_at_y(const SpaceOops *soops, const ListBase *tre
  *
  * \return a hovered child item or \a parent_te (if no hovered child found).
  */
-TreeElement *outliner_find_item_at_x_in_row(const SpaceOops *soops, const TreeElement *parent_te, float view_co_x)
+TreeElement *outliner_find_item_at_x_in_row(const SpaceOutliner *soops, const TreeElement *parent_te, float view_co_x)
 {
-	if (!TSELEM_OPEN(TREESTORE(parent_te), soops)) { /* if parent_te is opened, it doesn't show childs in row */
+	/* if parent_te is opened, it doesn't show childs in row */
+	if (!TSELEM_OPEN(TREESTORE(parent_te), soops)) {
 		/* no recursion, items can only display their direct children in the row */
 		for (TreeElement *child_te = parent_te->subtree.first;
-		     child_te && view_co_x >= child_te->xs; /* don't look further if co_x is smaller than child position*/
+		     /* don't look further if co_x is smaller than child position*/
+		     child_te && view_co_x >= child_te->xs;
+
 		     child_te = child_te->next)
 		{
 			if ((child_te->flag & TE_ICONROW) && (view_co_x > child_te->xs) && (view_co_x < child_te->xend)) {
@@ -94,9 +91,13 @@ TreeElement *outliner_find_tree_element(ListBase *lb, const TreeStoreElem *store
 {
 	TreeElement *te, *tes;
 	for (te = lb->first; te; te = te->next) {
-		if (te->store_elem == store_elem) return te;
+		if (te->store_elem == store_elem) {
+			return te;
+		}
 		tes = outliner_find_tree_element(&te->subtree, store_elem);
-		if (tes) return tes;
+		if (tes) {
+			return tes;
+		}
 	}
 	return NULL;
 }
@@ -119,22 +120,25 @@ TreeElement *outliner_find_parent_element(ListBase *lb, TreeElement *parent_te, 
 }
 
 /* tse is not in the treestore, we use its contents to find a match */
-TreeElement *outliner_find_tse(SpaceOops *soops, const TreeStoreElem *tse)
+TreeElement *outliner_find_tse(SpaceOutliner *soops, const TreeStoreElem *tse)
 {
 	TreeStoreElem *tselem;
 
-	if (tse->id == NULL) return NULL;
+	if (tse->id == NULL) {
+		return NULL;
+	}
 
 	/* check if 'tse' is in treestore */
 	tselem = BKE_outliner_treehash_lookup_any(soops->treehash, tse->type, tse->nr, tse->id);
-	if (tselem)
+	if (tselem) {
 		return outliner_find_tree_element(&soops->tree, tselem);
+	}
 
 	return NULL;
 }
 
 /* Find treestore that refers to given ID */
-TreeElement *outliner_find_id(SpaceOops *soops, ListBase *lb, const ID *id)
+TreeElement *outliner_find_id(SpaceOutliner *soops, ListBase *lb, const ID *id)
 {
 	for (TreeElement *te = lb->first; te; te = te->next) {
 		TreeStoreElem *tselem = TREESTORE(te);
@@ -188,14 +192,16 @@ TreeElement *outliner_find_editbone(ListBase *lb, const EditBone *ebone)
 	return NULL;
 }
 
-ID *outliner_search_back(SpaceOops *UNUSED(soops), TreeElement *te, short idcode)
+ID *outliner_search_back(SpaceOutliner *UNUSED(soops), TreeElement *te, short idcode)
 {
 	TreeStoreElem *tselem;
 	te = te->parent;
 
 	while (te) {
 		tselem = TREESTORE(te);
-		if (tselem->type == 0 && te->idcode == idcode) return tselem->id;
+		if (tselem->type == 0 && te->idcode == idcode) {
+			return tselem->id;
+		}
 		te = te->parent;
 	}
 	return NULL;
@@ -209,7 +215,7 @@ ID *outliner_search_back(SpaceOops *UNUSED(soops), TreeElement *te, short idcode
  * \param filter_tselem_flag: Same as \a filter_te_flag, but for the TreeStoreElem.
  * \param func: Custom callback to execute for each visited item.
  */
-bool outliner_tree_traverse(const SpaceOops *soops, ListBase *tree, int filter_te_flag, int filter_tselem_flag,
+bool outliner_tree_traverse(const SpaceOutliner *soops, ListBase *tree, int filter_te_flag, int filter_tselem_flag,
                             TreeTraversalFunc func, void *customdata)
 {
 	for (TreeElement *te = tree->first, *te_next; te; te = te_next) {

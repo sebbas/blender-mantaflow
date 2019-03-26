@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,18 +12,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __FREESTYLE_STROKE_H__
 #define __FREESTYLE_STROKE_H__
 
-/** \file blender/freestyle/intern/stroke/Stroke.h
- *  \ingroup freestyle
- *  \brief Classes to define a stroke
- *  \author Stephane Grabli
- *  \date 09/09/2002
+/** \file
+ * \ingroup freestyle
+ * \brief Classes to define a stroke
  */
 
 #include <map>
@@ -72,28 +66,28 @@ public:
 	StrokeAttribute(const StrokeAttribute& iBrother);
 
 	/*! Builds a stroke vertex attribute from a set of parameters.
-	 *    \param iRColor
+	 *    \param iRColor:
 	 *      The Red Component value.
-	 *    \param iGColor
+	 *    \param iGColor:
 	 *      The Green Component value.
-	 *    \param iBColor
+	 *    \param iBColor:
 	 *      The Blue Component value.
-	 *    \param iAlpha
+	 *    \param iAlpha:
 	 *      The transparency value
-	 *    \param iRThickness
+	 *    \param iRThickness:
 	 *      The thickness of the stroke on the right
-	 *    \param iLThickness
+	 *    \param iLThickness:
 	 *      The Thickness of the stroke on the left
 	 */
 	StrokeAttribute(float iRColor, float iGColor, float iBColor, float iAlpha, float iRThickness, float iLThickness);
 
 	/*! Interpolation constructor.
 	 *  Builds a StrokeAttribute from two StrokeAttributes and an interpolation parameter.
-	 *  \param a1
+	 *  \param a1:
 	 *    The first Attribute.
-	 *  \param a2
+	 *  \param a2:
 	 *    The second parameter.
-	 *  \param t
+	 *  \param t:
 	 *    The interpolation parameter.
 	 */
 	StrokeAttribute(const StrokeAttribute& a1, const StrokeAttribute& a2, float t);
@@ -178,19 +172,19 @@ public:
 	}
 
 	/*! Returns an attribute of type real
-	 *  \param iName
+	 *  \param iName:
 	 *    The name of the attribute
 	 */
 	float getAttributeReal(const char *iName) const;
 
 	/*! Returns an attribute of type Vec2f
-	 *  \param iName
+	 *  \param iName:
 	 *    The name of the attribute
 	 */
 	Vec2f getAttributeVec2f(const char *iName) const;
 
 	/*! Returns an attribute of type Vec3f
-	 *  \param iName
+	 *  \param iName:
 	 *    The name of the attribute
 	 */
 	Vec3f getAttributeVec3f(const char *iName) const;
@@ -206,11 +200,11 @@ public:
 
 	/* modifiers */
 	/*! sets the attribute's color.
-	 *    \param r
+	 *    \param r:
 	 *      The new R value.
-	 *    \param g
+	 *    \param g:
 	 *      The new G value.
-	 *    \param b
+	 *    \param b:
 	 *      The new B value.
 	 */
 	inline void setColor(float r, float g, float b)
@@ -221,7 +215,7 @@ public:
 	}
 
 	/*! sets the attribute's color.
-	 *    \param iRGB
+	 *    \param iRGB:
 	 *      The new RGB values.
 	 */
 	inline void setColor(const Vec3f& iRGB)
@@ -232,7 +226,7 @@ public:
 	}
 
 	/*! sets the attribute's alpha value.
-	 *  \param alpha
+	 *  \param alpha:
 	 *    The new alpha value.
 	 */
 	inline void setAlpha(float alpha)
@@ -241,9 +235,9 @@ public:
 	}
 
 	/*! sets the attribute's thickness.
-	 *  \param tr
+	 *  \param tr:
 	 *    The thickness on the right of the vertex when following the stroke.
-	 *  \param tl
+	 *  \param tl:
 	 *    The thickness on the left of the vertex when following the stroke.
 	 */
 	inline void setThickness(float tr, float tl)
@@ -253,7 +247,7 @@ public:
 	}
 
 	/*! sets the attribute's thickness.
-	 *  \param tRL
+	 *  \param tRL:
 	 *    The thickness on the right and on the left of the vertex when following the stroke.
 	 */
 	inline void setThickness(const Vec2f& tRL)
@@ -271,9 +265,9 @@ public:
 	/*! Adds a user defined attribute of type real
 	 *  If there is no attribute of name iName, it is added.
 	 *  Otherwise, the new value replaces the old one.
-	 *  \param iName
+	 *  \param iName:
 	 *    The name of the attribute
-	 *  \param att
+	 *  \param att:
 	 *    The attribute's value
 	 */
 	void setAttributeReal(const char *iName, float att);
@@ -281,9 +275,9 @@ public:
 	/*! Adds a user defined attribute of type Vec2f
 	 *  If there is no attribute of name iName, it is added.
 	 *  Otherwise, the new value replaces the old one.
-	 *  \param iName
+	 *  \param iName:
 	 *    The name of the attribute
-	 *  \param att
+	 *  \param att:
 	 *    The attribute's value
 	 */
 	void setAttributeVec2f(const char *iName, const Vec2f& att);
@@ -291,9 +285,9 @@ public:
 	/*! Adds a user defined attribute of type Vec3f
 	 *  If there is no attribute of name iName, it is added.
 	 *  Otherwise, the new value replaces the old one.
-	 *  \param iName
+	 *  \param iName:
 	 *    The name of the attribute
-	 *  \param att
+	 *  \param att:
 	 *    The attribute's value
 	 */
 	void setAttributeVec3f(const char *iName, const Vec3f& att);
@@ -303,9 +297,12 @@ private:
 	typedef std::map<const char *, Vec2f, StringUtils::ltstr> Vec2fMap;
 	typedef std::map<const char *, Vec3f, StringUtils::ltstr> Vec3fMap;
 
-	float _color[3];      //! the color
-	float _alpha;         //! alpha
-	float _thickness[2];  //! the thickness on the right and on the left of the backbone vertex (the stroke is oriented)
+	//! the color
+	float _color[3];
+	//! alpha
+	float _alpha;
+	//! the thickness on the right and on the left of the backbone vertex (the stroke is oriented)
+	float _thickness[2];
 	bool _visible;
 	realMap *_userAttributesReal;
 	Vec2fMap *_userAttributesVec2f;
@@ -522,7 +519,7 @@ public: // Implementation of Interface1D
 	/*! The different blending modes available to similate the interaction media-medium. */
 	typedef enum {
 		DRY_MEDIUM,     /*!< To simulate a dry medium such as Pencil or Charcoal.*/
-		HUMID_MEDIUM,   /*!< To simulate ink painting (color substraction blending).*/
+		HUMID_MEDIUM,   /*!< To simulate ink painting (color subtraction blending).*/
 		OPAQUE_MEDIUM,  /*!< To simulate an opaque medium (oil, spray...).*/
 	} MediumType;
 
@@ -561,9 +558,9 @@ public:
 	/*! Builds a stroke from a set of StrokeVertex.
 	 *  This constructor is templated by an iterator type.
 	 *  This iterator type must allow the vertices parsing using the ++ operator.
-	 *    \param iBegin
+	 *    \param iBegin:
 	 *      The iterator pointing to the first vertex.
-	 *    \param iEnd
+	 *    \param iEnd:
 	 *      The iterator pointing to the end of the vertex list.
 	 */
 	template<class InputVertexIterator>
@@ -579,7 +576,7 @@ public:
 	/*! Compute the sampling needed to get iNVertices vertices.
 	 *  If the specified number of vertices is less than the actual number of vertices, the actual sampling value
 	 *  is returned. (To remove Vertices, use the RemoveVertex() method of this class).
-	 *  \param iNVertices
+	 *  \param iNVertices:
 	 *    The number of StrokeVertices we eventually want in our Stroke.
 	 *  \return the sampling that must be used in the Resample(float) method.
 	 *  \see Resample(int)
@@ -591,7 +588,7 @@ public:
 	 *  Resamples the curve so that it eventually has iNPoints. That means it is going to add iNPoints-vertices_size,
 	 *  if vertices_size is the number of points we already have.
 	 *  If vertices_size >= iNPoints, no resampling is done.
-	 *  \param iNPoints
+	 *  \param iNPoints:
 	 *    The number of vertices we eventually want in our stroke.
 	 */
 	int Resample(int iNPoints);
@@ -599,7 +596,7 @@ public:
 	/*! Resampling method.
 	 *  Resamples the curve with a given sampling.
 	 *  If this sampling is < to the actual sampling value, no resampling is done.
-	 *  \param iSampling
+	 *  \param iSampling:
 	 *    The new sampling value.
 	 */
 	int Resample(float iSampling);
@@ -617,9 +614,9 @@ public:
 
 	/*! Inserts the stroke vertex iVertex in the stroke before next.
 	 *  The length, curvilinear abscissa are updated consequently.
-	 *  \param iVertex
+	 *  \param iVertex:
 	 *    The StrokeVertex to insert in the Stroke.
-	 *  \param next
+	 *  \param next:
 	 *    A StrokeVertexIterator pointing to the StrokeVeretx before which iVertex must be inserted.
 	 */
 	void InsertVertex(StrokeVertex *iVertex, StrokeInternal::StrokeVertexIterator next);
@@ -836,7 +833,7 @@ public:
 
 	/*! Returns a StrokeVertexIterator pointing on the first StrokeVertex of the Stroke. One can specify a sampling
 	 *  value to resample the Stroke on the fly if needed.
-	 *  \param t
+	 *  \param t:
 	 *    The resampling value with which we want our Stroke to be resampled.
 	 *    If 0 is specified, no resampling is done.
 	 */

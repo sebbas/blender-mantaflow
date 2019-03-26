@@ -1,6 +1,4 @@
 /*
- * Copyright 2016, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,12 +13,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Blender Institute
- *
+ * Copyright 2016, Blender Foundation.
  */
 
-/** \file blender/draw/modes/edit_curve_mode.c
- *  \ingroup draw
+/** \file
+ * \ingroup draw
  */
 
 #include "DRW_engine.h"
@@ -33,25 +30,23 @@
 
 /* If builtin shaders are needed */
 #include "GPU_shader.h"
-#include "GPU_batch.h"
 
 #include "draw_common.h"
-
 #include "draw_mode_engines.h"
 
 /* If needed, contains all global/Theme colors
  * Add needed theme colors / values to DRW_globals_update() and update UBO
  * Not needed for constant color. */
-extern struct GPUUniformBuffer *globals_ubo; /* draw_common.c */
-extern struct GlobalsUboStorage ts; /* draw_common.c */
 
 extern char datatoc_common_globals_lib_glsl[];
 extern char datatoc_edit_curve_overlay_loosevert_vert_glsl[];
+extern char datatoc_edit_curve_overlay_normals_vert_glsl[];
 extern char datatoc_edit_curve_overlay_handle_vert_glsl[];
 extern char datatoc_edit_curve_overlay_handle_geom_glsl[];
 
 extern char datatoc_gpu_shader_point_varying_color_frag_glsl[];
 extern char datatoc_gpu_shader_3D_smooth_color_frag_glsl[];
+extern char datatoc_gpu_shader_uniform_color_frag_glsl[];
 
 /* *********** LISTS *********** */
 /* All lists are per viewport specific datas.
@@ -62,6 +57,7 @@ extern char datatoc_gpu_shader_3D_smooth_color_frag_glsl[];
 
 typedef struct EDIT_CURVE_PassList {
 	struct DRWPass *wire_pass;
+	struct DRWPass *wire_pass_xray;
 	struct DRWPass *overlay_edge_pass;
 	struct DRWPass *overlay_vert_pass;
 } EDIT_CURVE_PassList;
@@ -81,15 +77,24 @@ typedef struct EDIT_CURVE_Data {
 
 /* *********** STATIC *********** */
 
-static struct {
+
+typedef struct EDIT_CURVE_Shaders {
 	GPUShader *wire_sh;
+	GPUShader *wire_normals_sh;
 	GPUShader *overlay_edge_sh;  /* handles and nurbs control cage */
 	GPUShader *overlay_vert_sh;
-} e_data = {NULL}; /* Engine data */
+} EDIT_CURVE_Shaders;
+
+static struct {
+	EDIT_CURVE_Shaders sh_data[GPU_SHADER_CFG_LEN];
+} e_data = {{{NULL}}}; /* Engine data */
 
 typedef struct EDIT_CURVE_PrivateData {
 	/* resulting curve as 'wire' for curves (and optionally normals) */
 	DRWShadingGroup *wire_shgrp;
+	DRWShadingGroup *wire_shgrp_xray;
+	DRWShadingGroup *wire_normals_shgrp;
+	DRWShadingGroup *wire_normals_shgrp_xray;
 
 	DRWShadingGroup *overlay_edge_shgrp;
 	DRWShadingGroup *overlay_vert_shgrp;
@@ -104,24 +109,69 @@ typedef struct EDIT_CURVE_PrivateData {
  * (Optional) */
 static void EDIT_CURVE_engine_init(void *UNUSED(vedata))
 {
-	if (!e_data.wire_sh) {
-		e_data.wire_sh = GPU_shader_get_builtin_shader(GPU_SHADER_3D_UNIFORM_COLOR);
+	const DRWContextState *draw_ctx = DRW_context_state_get();
+	EDIT_CURVE_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+
+	if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
+		DRW_state_clip_planes_set_from_rv3d(draw_ctx->rv3d);
 	}
 
-	if (!e_data.overlay_edge_sh) {
-		e_data.overlay_edge_sh = DRW_shader_create_with_lib(
-		        datatoc_edit_curve_overlay_handle_vert_glsl,
-		        datatoc_edit_curve_overlay_handle_geom_glsl,
-		        datatoc_gpu_shader_3D_smooth_color_frag_glsl,
-		        datatoc_common_globals_lib_glsl, NULL);
+	const GPUShaderConfigData *sh_cfg_data = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+
+	if (!sh_data->wire_sh) {
+		sh_data->wire_sh = GPU_shader_get_builtin_shader_with_config(
+		        GPU_SHADER_3D_UNIFORM_COLOR, draw_ctx->sh_cfg);
 	}
 
-	if (!e_data.overlay_vert_sh) {
-		e_data.overlay_vert_sh = DRW_shader_create_with_lib(
-		        datatoc_edit_curve_overlay_loosevert_vert_glsl, NULL,
-		        datatoc_gpu_shader_point_varying_color_frag_glsl,
-		        datatoc_common_globals_lib_glsl, NULL);
+	if (!sh_data->wire_normals_sh) {
+		sh_data->wire_normals_sh = GPU_shader_create_from_arrays({
+		        .vert = (const char *[]){sh_cfg_data->lib, datatoc_edit_curve_overlay_normals_vert_glsl, NULL},
+		        .frag = (const char *[]){datatoc_gpu_shader_uniform_color_frag_glsl, NULL},
+		        .defs = (const char *[]){sh_cfg_data->def, NULL},
+		});
 	}
+
+	if (!sh_data->overlay_edge_sh) {
+		sh_data->overlay_edge_sh = GPU_shader_create_from_arrays({
+		        .vert = (const char *[]){sh_cfg_data->lib, datatoc_edit_curve_overlay_handle_vert_glsl, NULL},
+		        .geom = (const char *[]){sh_cfg_data->lib, datatoc_common_globals_lib_glsl, datatoc_edit_curve_overlay_handle_geom_glsl, NULL},
+		        .frag = (const char *[]){datatoc_gpu_shader_3D_smooth_color_frag_glsl, NULL},
+		        .defs = (const char *[]){sh_cfg_data->def, NULL},
+		});
+	}
+
+	if (!sh_data->overlay_vert_sh) {
+		sh_data->overlay_vert_sh = GPU_shader_create_from_arrays({
+		        .vert = (const char *[]){sh_cfg_data->lib, datatoc_common_globals_lib_glsl, datatoc_edit_curve_overlay_loosevert_vert_glsl, NULL},
+		        .frag = (const char *[]){datatoc_gpu_shader_point_varying_color_frag_glsl, NULL},
+		        .defs = (const char *[]){sh_cfg_data->def, NULL},
+		});
+
+	}
+}
+
+static void EDIT_CURVE_wire_shgrp_create(
+        EDIT_CURVE_Shaders *sh_data,
+        const View3D *v3d,
+        const RegionView3D *rv3d,
+        DRWPass *pass,
+        DRWShadingGroup **wire_shgrp,
+        DRWShadingGroup **wire_normals_shgrp)
+{
+	DRWShadingGroup *grp = DRW_shgroup_create(sh_data->wire_sh, pass);
+	DRW_shgroup_uniform_vec4(grp, "color", G_draw.block.colorWireEdit, 1);
+	if (rv3d->rflag & RV3D_CLIPPING) {
+		DRW_shgroup_world_clip_planes_from_rv3d(grp, rv3d);
+	}
+	*wire_shgrp = grp;
+
+	grp = DRW_shgroup_create(sh_data->wire_normals_sh, pass);
+	DRW_shgroup_uniform_vec4(grp, "color", G_draw.block.colorWireEdit, 1);
+	DRW_shgroup_uniform_float_copy(grp, "normalSize", v3d->overlay.normals_length);
+	if (rv3d->rflag & RV3D_CLIPPING) {
+		DRW_shgroup_world_clip_planes_from_rv3d(grp, rv3d);
+	}
+	*wire_normals_shgrp = grp;
 }
 
 /* Here init all passes and shading groups
@@ -132,6 +182,8 @@ static void EDIT_CURVE_cache_init(void *vedata)
 	EDIT_CURVE_StorageList *stl = ((EDIT_CURVE_Data *)vedata)->stl;
 	const DRWContextState *draw_ctx = DRW_context_state_get();
 	View3D *v3d = draw_ctx->v3d;
+	const RegionView3D *rv3d = draw_ctx->rv3d;
+	EDIT_CURVE_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
 
 	if (!stl->g_data) {
 		/* Alloc transient pointers */
@@ -147,19 +199,28 @@ static void EDIT_CURVE_cache_init(void *vedata)
 		psl->wire_pass = DRW_pass_create(
 		        "Curve Wire",
 		        DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_WIRE);
+		EDIT_CURVE_wire_shgrp_create(sh_data, v3d, rv3d, psl->wire_pass,
+		                             &stl->g_data->wire_shgrp,
+		                             &stl->g_data->wire_normals_shgrp);
 
-		grp = DRW_shgroup_create(e_data.wire_sh, psl->wire_pass);
-		DRW_shgroup_uniform_vec4(grp, "color", ts.colorWireEdit, 1);
-		stl->g_data->wire_shgrp = grp;
+		psl->wire_pass_xray = DRW_pass_create(
+		        "Curve Wire Xray",
+		        DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS | DRW_STATE_WIRE);
+		EDIT_CURVE_wire_shgrp_create(sh_data, v3d, rv3d, psl->wire_pass_xray,
+		                             &stl->g_data->wire_shgrp_xray,
+		                             &stl->g_data->wire_normals_shgrp_xray);
 
 		psl->overlay_edge_pass = DRW_pass_create(
 		        "Curve Handle Overlay",
 		        DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND);
 
-		grp = DRW_shgroup_create(e_data.overlay_edge_sh, psl->overlay_edge_pass);
-		DRW_shgroup_uniform_block(grp, "globalsBlock", globals_ubo);
+		grp = DRW_shgroup_create(sh_data->overlay_edge_sh, psl->overlay_edge_pass);
+		DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
 		DRW_shgroup_uniform_vec2(grp, "viewportSize", DRW_viewport_size_get(), 1);
 		DRW_shgroup_uniform_bool(grp, "showCurveHandles", &stl->g_data->show_handles, 1);
+		if (rv3d->rflag & RV3D_CLIPPING) {
+			DRW_shgroup_world_clip_planes_from_rv3d(grp, rv3d);
+		}
 		stl->g_data->overlay_edge_shgrp = grp;
 
 
@@ -167,9 +228,11 @@ static void EDIT_CURVE_cache_init(void *vedata)
 		        "Curve Vert Overlay",
 		        DRW_STATE_WRITE_COLOR | DRW_STATE_POINT);
 
-		grp = DRW_shgroup_create(e_data.overlay_vert_sh, psl->overlay_vert_pass);
-		DRW_shgroup_uniform_block(grp, "globalsBlock", globals_ubo);
-		DRW_shgroup_uniform_vec2(grp, "viewportSize", DRW_viewport_size_get(), 1);
+		grp = DRW_shgroup_create(sh_data->overlay_vert_sh, psl->overlay_vert_pass);
+		DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
+		if (rv3d->rflag & RV3D_CLIPPING) {
+			DRW_shgroup_world_clip_planes_from_rv3d(grp, rv3d);
+		}
 		stl->g_data->overlay_vert_shgrp = grp;
 	}
 }
@@ -187,12 +250,24 @@ static void EDIT_CURVE_cache_populate(void *vedata, Object *ob)
 			/* Get geometry cache */
 			struct GPUBatch *geom;
 
+			DRWShadingGroup *wire_shgrp, *wire_normals_shgrp;
+
+			if (ob->dtx & OB_DRAWXRAY) {
+				wire_shgrp = stl->g_data->wire_shgrp_xray;
+				wire_normals_shgrp = stl->g_data->wire_normals_shgrp_xray;
+			}
+			else {
+				wire_shgrp = stl->g_data->wire_shgrp;
+				wire_normals_shgrp = stl->g_data->wire_normals_shgrp;
+			}
+
 			geom = DRW_cache_curve_edge_wire_get(ob);
-			DRW_shgroup_call_add(stl->g_data->wire_shgrp, geom, ob->obmat);
+			DRW_shgroup_call_add(wire_shgrp, geom, ob->obmat);
 
 			if ((cu->flag & CU_3D) && (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_CU_NORMALS) != 0) {
-				geom = DRW_cache_curve_edge_normal_get(ob, v3d->overlay.normals_length);
-				DRW_shgroup_call_add(stl->g_data->wire_shgrp, geom, ob->obmat);
+				static uint instance_len = 2;
+				geom = DRW_cache_curve_edge_normal_get(ob);
+				DRW_shgroup_call_instances_add(wire_normals_shgrp, geom, ob->obmat, &instance_len);
 			}
 
 			geom = DRW_cache_curve_edge_overlay_get(ob);
@@ -233,9 +308,24 @@ static void EDIT_CURVE_draw_scene(void *vedata)
 		MULTISAMPLE_SYNC_DISABLE(dfbl, dtxl)
 	}
 
+	/* Unfortunately this pass cannot be AA'd without
+	 * MULTISAMPLE_SYNC_DISABLE_NO_DEPTH. While it's
+	 * quite unlikely to happen to multi-edit curves
+	 * with a mix of xray enabled/disabled we still
+	 * support this case.  */
+	if (!DRW_pass_is_empty(psl->wire_pass_xray)) {
+		MULTISAMPLE_SYNC_ENABLE(dfbl, dtxl);
+
+		DRW_draw_pass(psl->wire_pass_xray);
+
+		MULTISAMPLE_SYNC_DISABLE_NO_DEPTH(dfbl, dtxl)
+	}
+
 	/* Thoses passes don't write to depth and are AA'ed using other tricks. */
 	DRW_draw_pass(psl->overlay_edge_pass);
 	DRW_draw_pass(psl->overlay_vert_pass);
+
+	DRW_state_clip_planes_reset();
 }
 
 /* Cleanup when destroying the engine.
@@ -243,8 +333,15 @@ static void EDIT_CURVE_draw_scene(void *vedata)
  * Mostly used for freeing shaders */
 static void EDIT_CURVE_engine_free(void)
 {
-	DRW_SHADER_FREE_SAFE(e_data.overlay_edge_sh);
-	DRW_SHADER_FREE_SAFE(e_data.overlay_vert_sh);
+	for (int sh_data_index = 0; sh_data_index < ARRAY_SIZE(e_data.sh_data); sh_data_index++) {
+		EDIT_CURVE_Shaders *sh_data = &e_data.sh_data[sh_data_index];
+		/* Don't free builtins. */
+		sh_data->wire_sh = NULL;
+		GPUShader **sh_data_as_array = (GPUShader **)sh_data;
+		for (int i = 0; i < (sizeof(EDIT_CURVE_Shaders) / sizeof(GPUShader *)); i++) {
+			DRW_SHADER_FREE_SAFE(sh_data_as_array[i]);
+		}
+	}
 }
 
 static const DrawEngineDataSize EDIT_CURVE_data_size = DRW_VIEWPORT_DATA_SIZE(EDIT_CURVE_Data);

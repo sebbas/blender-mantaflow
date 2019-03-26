@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2007 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/sound/sound_ops.c
- *  \ingroup edsnd
+/** \file
+ * \ingroup edsnd
  */
 
 
@@ -49,13 +42,13 @@
 #include "BKE_context.h"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
-#include "BKE_main.h"
-#include "BKE_report.h"
 #include "BKE_library.h"
+#include "BKE_main.h"
 #include "BKE_packedFile.h"
+#include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_sound.h"
 #include "BKE_sequencer.h"
+#include "BKE_sound.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -108,7 +101,7 @@ static int sound_open_exec(bContext *C, wmOperator *op)
 
 	if (sound->playback_handle == NULL) {
 		if (op->customdata) MEM_freeN(op->customdata);
-		BKE_libblock_free(bmain, sound);
+		BKE_id_free(bmain, sound);
 		BKE_report(op->reports, RPT_ERROR, "Unsupported audio format");
 		return OPERATOR_CANCELLED;
 	}
@@ -116,7 +109,7 @@ static int sound_open_exec(bContext *C, wmOperator *op)
 	info = AUD_getInfo(sound->playback_handle);
 
 	if (info.specs.channels == AUD_CHANNELS_INVALID) {
-		BKE_libblock_free(bmain, sound);
+		BKE_id_free(bmain, sound);
 		if (op->customdata) MEM_freeN(op->customdata);
 		BKE_report(op->reports, RPT_ERROR, "Unsupported audio format");
 		return OPERATOR_CANCELLED;
@@ -267,8 +260,7 @@ static void sound_update_animation_flags(Scene *scene)
 	SEQ_BEGIN(scene->ed, seq)
 	{
 		BKE_sequencer_recursive_apply(seq, sound_update_animation_flags_cb, scene);
-	}
-	SEQ_END
+	} SEQ_END;
 
 	fcu = id_data_find_fcurve(&scene->id, scene, &RNA_Scene, "audio_volume", 0, &driven);
 	if (fcu || driven)
@@ -410,7 +402,7 @@ static const EnumPropertyItem container_items[] = {
 #endif
 	{AUD_CONTAINER_OGG, "OGG", 0, "ogg", "Xiph.Org Ogg Container"},
 	{AUD_CONTAINER_WAV, "WAV", 0, "wav", "Waveform Audio File Format"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const char *snd_ext_sound[] = {
@@ -421,7 +413,7 @@ static const char *snd_ext_sound[] = {
 	".mp3",
 	".ogg",
 	".wav",
-	NULL
+	NULL,
 };
 
 static bool sound_mixdown_check(bContext *UNUSED(C), wmOperator *op)
@@ -501,20 +493,20 @@ static void sound_mixdown_draw(bContext *C, wmOperator *op)
 		{AUD_FORMAT_S32, "S32", 0, "S32", "32 bit signed"},
 		{AUD_FORMAT_FLOAT32, "F32", 0, "F32", "32 bit floating point"},
 		{AUD_FORMAT_FLOAT64, "F64", 0, "F64", "64 bit floating point"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem mp3_format_items[] = {
 		{AUD_FORMAT_S16, "S16", 0, "S16", "16 bit signed"},
 		{AUD_FORMAT_S32, "S32", 0, "S32", "32 bit signed"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 #ifdef WITH_SNDFILE
 	static const EnumPropertyItem flac_format_items[] = {
 		{AUD_FORMAT_S16, "S16", 0, "S16", "16 bit signed"},
 		{AUD_FORMAT_S24, "S24", 0, "S24", "24 bit signed"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 #endif
 
@@ -526,13 +518,13 @@ static void sound_mixdown_draw(bContext *C, wmOperator *op)
 		{AUD_CODEC_MP3, "MP3", 0, "MP3", "MPEG-2 Audio Layer III"},
 		{AUD_CODEC_PCM, "PCM", 0, "PCM", "Pulse Code Modulation (RAW)"},
 		{AUD_CODEC_VORBIS, "VORBIS", 0, "Vorbis", "Xiph.Org Vorbis Codec"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem ogg_codec_items[] = {
 		{AUD_CODEC_FLAC, "FLAC", 0, "FLAC", "Free Lossless Audio Codec"},
 		{AUD_CODEC_VORBIS, "VORBIS", 0, "Vorbis", "Xiph.Org Vorbis Codec"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	uiLayout *layout = op->layout;
@@ -635,7 +627,7 @@ static void sound_mixdown_draw(bContext *C, wmOperator *op)
 	RNA_pointer_create(&wm->id, op->type->srna, op->properties, &ptr);
 
 	/* main draw call */
-	uiDefAutoButsRNA(layout, &ptr, sound_mixdown_draw_check_prop, NULL, UI_BUT_LABEL_ALIGN_NONE, false);
+	uiDefAutoButsRNA(layout, &ptr, sound_mixdown_draw_check_prop, NULL, NULL, UI_BUT_LABEL_ALIGN_NONE, false);
 }
 #endif // WITH_AUDASPACE
 
@@ -649,7 +641,7 @@ static void SOUND_OT_mixdown(wmOperatorType *ot)
 		{AUD_FORMAT_S32, "S32", 0, "S32", "32 bit signed"},
 		{AUD_FORMAT_FLOAT32, "F32", 0, "F32", "32 bit floating point"},
 		{AUD_FORMAT_FLOAT64, "F64", 0, "F64", "64 bit floating point"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem codec_items[] = {
@@ -664,7 +656,7 @@ static void SOUND_OT_mixdown(wmOperatorType *ot)
 #endif
 		{AUD_CODEC_PCM, "PCM", 0, "PCM", "Pulse Code Modulation (RAW)"},
 		{AUD_CODEC_VORBIS, "VORBIS", 0, "Vorbis", "Xiph.Org Vorbis Codec"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 #endif // WITH_AUDASPACE
@@ -761,13 +753,13 @@ static int sound_unpack_exec(bContext *C, wmOperator *op)
 	if (RNA_struct_property_is_set(op->ptr, "id")) {
 		char sndname[MAX_ID_NAME - 2];
 		RNA_string_get(op->ptr, "id", sndname);
-		sound = BLI_findstring(&bmain->sound, sndname, offsetof(ID, name) + 2);
+		sound = BLI_findstring(&bmain->sounds, sndname, offsetof(ID, name) + 2);
 	}
 
 	if (!sound || !sound->packedfile)
 		return OPERATOR_CANCELLED;
 
-	if (G.fileflags & G_AUTOPACK)
+	if (G.fileflags & G_FILE_AUTOPACK)
 		BKE_report(op->reports, RPT_WARNING, "AutoPack is enabled, so image will be packed again on file save");
 
 	unpackSound(bmain, op->reports, sound, method);
@@ -791,7 +783,7 @@ static int sound_unpack_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSE
 	if (!sound || !sound->packedfile)
 		return OPERATOR_CANCELLED;
 
-	if (G.fileflags & G_AUTOPACK)
+	if (G.fileflags & G_FILE_AUTOPACK)
 		BKE_report(op->reports, RPT_WARNING, "AutoPack is enabled, so image will be packed again on file save");
 
 	unpack_menu(C, "SOUND_OT_unpack", sound->id.name + 2, sound->name, "sounds", sound->packedfile);
@@ -816,7 +808,8 @@ static void SOUND_OT_unpack(wmOperatorType *ot)
 
 	/* properties */
 	RNA_def_enum(ot->srna, "method", rna_enum_unpack_method_items, PF_USE_LOCAL, "Method", "How to unpack");
-	RNA_def_string(ot->srna, "id", NULL, MAX_ID_NAME - 2, "Sound Name", "Sound data-block name to unpack"); /* XXX, weark!, will fail with library, name collisions */
+	/* XXX, weark!, will fail with library, name collisions */
+	RNA_def_string(ot->srna, "id", NULL, MAX_ID_NAME - 2, "Sound Name", "Sound data-block name to unpack");
 }
 
 /* ******************************************************* */

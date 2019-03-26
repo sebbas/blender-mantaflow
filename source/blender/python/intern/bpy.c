@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/python/intern/bpy.c
- *  \ingroup pythonintern
+/** \file
+ * \ingroup pythonintern
  *
  * This file defines the '_bpy' module which is used by python's 'bpy' package
  * to access C defined builtin functions.
@@ -173,10 +167,7 @@ static PyObject *bpy_user_resource(PyObject *UNUSED(self), PyObject *args, PyObj
 	}
 
 	/* same logic as BKE_appdir_folder_id_create(), but best leave it up to the script author to create */
-	path = BKE_appdir_folder_id(folder_id, subdir);
-
-	if (!path)
-		path = BKE_appdir_folder_id_user_notest(folder_id, subdir);
+	path = BKE_appdir_folder_id_user_notest(folder_id, subdir);
 
 	return PyC_UnicodeFromByte(path ? path : "");
 }
@@ -300,7 +291,6 @@ static PyObject *bpy_import_test(const char *modname)
  ******************************************************************************/
 void BPy_init_modules(void)
 {
-	extern BPy_StructRNA *bpy_context_module;
 	PointerRNA ctx_ptr;
 	PyObject *mod;
 

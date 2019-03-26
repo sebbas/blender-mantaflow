@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2016 by Mike Erwin.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/gpu/intern/gpu_batch.c
- *  \ingroup gpu
+/** \file
+ * \ingroup gpu
  *
  * GPU geometry batch
  * Contains VAOs + VBOs + Shader representing a drawable entity.
@@ -114,19 +108,22 @@ void GPU_batch_init_ex(
 }
 
 /* This will share the VBOs with the new batch. */
-GPUBatch *GPU_batch_duplicate(GPUBatch *batch_src)
+void GPU_batch_copy(GPUBatch *batch_dst, GPUBatch *batch_src)
 {
-	GPUBatch *batch = GPU_batch_create_ex(GPU_PRIM_POINTS, batch_src->verts[0], batch_src->elem, 0);
+	GPU_batch_init_ex(batch_dst, GPU_PRIM_POINTS, batch_src->verts[0], batch_src->elem, 0);
 
-	batch->gl_prim_type = batch_src->gl_prim_type;
+	batch_dst->gl_prim_type = batch_src->gl_prim_type;
 	for (int v = 1; v < GPU_BATCH_VBO_MAX_LEN; ++v) {
-		batch->verts[v] = batch_src->verts[v];
+		batch_dst->verts[v] = batch_src->verts[v];
 	}
-	return batch;
 }
 
-void GPU_batch_discard(GPUBatch *batch)
+void GPU_batch_clear(GPUBatch *batch)
 {
+	if (batch->free_callback) {
+		batch->free_callback(batch, batch->callback_data);
+	}
+
 	if (batch->owns_flag & GPU_BATCH_OWNS_INDEX) {
 		GPU_indexbuf_discard(batch->elem);
 	}
@@ -144,10 +141,11 @@ void GPU_batch_discard(GPUBatch *batch)
 		}
 	}
 	GPU_batch_vao_cache_clear(batch);
+}
 
-	if (batch->free_callback) {
-		batch->free_callback(batch, batch->callback_data);
-	}
+void GPU_batch_discard(GPUBatch *batch)
+{
+	GPU_batch_clear(batch);
 	MEM_freeN(batch);
 }
 
@@ -193,7 +191,7 @@ int GPU_batch_vertbuf_add_ex(
 			assert(verts->vertex_len == batch->verts[0]->vertex_len);
 #endif
 			batch->verts[v] = verts;
-			/* TODO: mark dirty so we can keep attrib bindings up-to-date */
+			/* TODO: mark dirty so we can keep attribute bindings up-to-date */
 			if (own_vbo)
 				batch->owns_flag |= (1 << v);
 			return v;
@@ -347,7 +345,7 @@ static void create_bindings(
 	GPU_vertbuf_use(verts);
 
 	for (uint a_idx = 0; a_idx < attr_len; ++a_idx) {
-		const GPUVertAttr *a = format->attribs + a_idx;
+		const GPUVertAttr *a = &format->attrs[a_idx];
 		const GLvoid *pointer = (const GLubyte *)0 + a->offset + v_first * stride;
 
 		for (uint n_idx = 0; n_idx < a->name_len; ++n_idx) {
@@ -424,9 +422,9 @@ void GPU_batch_program_use_end(GPUBatch *batch)
 }
 
 #if TRUST_NO_ONE
-#  define GET_UNIFORM const GPUShaderInput *uniform = GPU_shaderinterface_uniform(batch->interface, name); assert(uniform);
+#  define GET_UNIFORM const GPUShaderInput *uniform = GPU_shaderinterface_uniform_ensure(batch->interface, name); assert(uniform);
 #else
-#  define GET_UNIFORM const GPUShaderInput *uniform = GPU_shaderinterface_uniform(batch->interface, name);
+#  define GET_UNIFORM const GPUShaderInput *uniform = GPU_shaderinterface_uniform_ensure(batch->interface, name);
 #endif
 
 void GPU_batch_uniform_1ui(GPUBatch *batch, const char *name, int value)
@@ -666,10 +664,21 @@ void GPU_draw_primitive(GPUPrimType prim_type, int v_count)
 /** \name Utilities
  * \{ */
 
-void GPU_batch_program_set_builtin(GPUBatch *batch, GPUBuiltinShader shader_id)
+void GPU_batch_program_set_shader(GPUBatch *batch, GPUShader *shader)
 {
-	GPUShader *shader = GPU_shader_get_builtin_shader(shader_id);
 	GPU_batch_program_set(batch, shader->program, shader->interface);
+}
+
+void GPU_batch_program_set_builtin_with_config(
+        GPUBatch *batch, eGPUBuiltinShader shader_id, eGPUShaderConfig sh_cfg)
+{
+	GPUShader *shader = GPU_shader_get_builtin_shader_with_config(shader_id, sh_cfg);
+	GPU_batch_program_set(batch, shader->program, shader->interface);
+}
+
+void GPU_batch_program_set_builtin(GPUBatch *batch, eGPUBuiltinShader shader_id)
+{
+	GPU_batch_program_set_builtin_with_config(batch, shader_id, GPU_SHADER_CFG_DEFAULT);
 }
 
 /** \} */

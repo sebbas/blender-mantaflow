@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,15 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software  Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file DNA_lightprobe_types.h
- *  \ingroup DNA
+/** \file
+ * \ingroup DNA
  */
 
 #ifndef __DNA_LIGHTPROBE_TYPES_H__
@@ -36,41 +29,55 @@
 extern "C" {
 #endif
 
-struct Object;
 struct AnimData;
+struct Object;
 
 typedef struct LightProbe {
 	ID id;
-	struct AnimData *adt;		/* animation data (must be immediately after id for utilities to use it) */
+	/** Animation data (must be immediately after id for utilities to use it). */
+	struct AnimData *adt;
 
-	char type;        /* For realtime probe objects */
-	char flag;        /* General purpose flags for probes */
-	char attenuation_type; /* Attenuation type */
-	char parallax_type;    /* Parallax type */
+	/** For realtime probe objects. */
+	char type;
+	/** General purpose flags for probes. */
+	char flag;
+	/** Attenuation type. */
+	char attenuation_type;
+	/** Parallax type. */
+	char parallax_type;
 
-	float distinf;    /* Influence Radius */
-	float distpar;    /* Parallax Radius */
-	float falloff;    /* Influence falloff */
+	/** Influence Radius. */
+	float distinf;
+	/** Parallax Radius. */
+	float distpar;
+	/** Influence falloff. */
+	float falloff;
 
 	float clipsta, clipend;
 
-	float vis_bias, vis_bleedbias; /* VSM visibility biases */
+	/** VSM visibility biases. */
+	float vis_bias, vis_bleedbias;
 	float vis_blur;
 
-	float intensity; /* Intensity multiplier */
+	/** Intensity multiplier. */
+	float intensity;
 
-	int grid_resolution_x;  /* Irradiance grid resolution */
+	/** Irradiance grid resolution. */
+	int grid_resolution_x;
 	int grid_resolution_y;
 	int grid_resolution_z;
-	int pad1;
+	char _pad1[4];
 
-	struct Object *parallax_ob;    /* Object to use as a parallax origin */
-	struct Image *image;           /* Image to use on as lighting data */
-	struct Collection *visibility_grp;  /* Object visibility group, inclusive or exclusive */
+	/** Object to use as a parallax origin. */
+	struct Object *parallax_ob;
+	/** Image to use on as lighting data. */
+	struct Image *image;
+	/** Object visibility group, inclusive or exclusive. */
+	struct Collection *visibility_grp;
 
 	/* Runtime display data */
 	float distfalloff, distgridinf;
-	float pad[2];
+	char _pad[8];
 } LightProbe;
 
 /* Probe->type */
@@ -108,23 +115,30 @@ enum {
 /* Needs to be there because written to file
  * with the lightcache. */
 
+/* IMPORTANT Padding in these structs is essential. It must match
+ * GLSL struct definition in lightprobe_lib.glsl. */
+
+/* Must match CubeData. */
 typedef struct LightProbeCache {
 	float position[3], parallax_type;
 	float attenuation_fac;
 	float attenuation_type;
-	float pad3[2];
+	float _pad3[2];
 	float attenuationmat[4][4];
 	float parallaxmat[4][4];
 } LightProbeCache;
 
+/* Must match GridData. */
 typedef struct LightGridCache {
 	float mat[4][4];
-	int resolution[3], offset; /* offset to the first irradiance sample in the pool. */
+	/** Offset to the first irradiance sample in the pool. */
+	int resolution[3], offset;
 	float corner[3], attenuation_scale;
-	float increment_x[3], attenuation_bias; /* world space vector between 2 opposite cells */
+	/** World space vector between 2 opposite cells. */
+	float increment_x[3], attenuation_bias;
 	float increment_y[3], level_bias;
-	float increment_z[3], pad4;
-	float visibility_bias, visibility_bleed, visibility_range, pad5;
+	float increment_z[3], _pad4;
+	float visibility_bias, visibility_bleed, visibility_range, _pad5;
 } LightGridCache;
 
 /* ------ Eevee Lightcache ------- */
@@ -136,22 +150,27 @@ typedef struct LightCacheTexture {
 	int tex_size[3];
 	char data_type;
 	char components;
-	char pad[2];
+	char _pad[2];
 } LightCacheTexture;
 
 typedef struct LightCache {
 	int flag;
 	/* only a single cache for now */
-	int cube_len, grid_len;          /* Number of probes to use for rendering. */
-	int mips_len;                    /* Number of mipmap level to use. */
-	int vis_res, ref_res;            /* Size of a visibility/reflection sample. */
-	int pad[2];
+	/** Number of probes to use for rendering. */
+	int cube_len, grid_len;
+	/** Number of mipmap level to use. */
+	int mips_len;
+	/** Size of a visibility/reflection sample. */
+	int vis_res, ref_res;
+	char _pad[4][2];
 	/* In the future, we could create a bigger texture containing
 	 * multiple caches (for animation) and interpolate between the
 	 * caches overtime to another texture. */
 	LightCacheTexture grid_tx;
-	LightCacheTexture cube_tx;        /* Contains data for mipmap level 0. */
-	LightCacheTexture *cube_mips;     /* Does not contains valid GPUTexture, only data. */
+	/** Contains data for mipmap level 0. */
+	LightCacheTexture cube_tx;
+	/** Does not contains valid GPUTexture, only data. */
+	LightCacheTexture *cube_mips;
 	/* All lightprobes data contained in the cache. */
 	LightProbeCache *cube_data;
 	LightGridCache  *grid_data;

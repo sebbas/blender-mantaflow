@@ -192,13 +192,13 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
     samples: IntProperty(
         name="Samples",
         description="Number of samples to render for each pixel",
-        min=1, max=2147483647,
+        min=1, max=(1 << 24),
         default=128,
     )
     preview_samples: IntProperty(
         name="Preview Samples",
         description="Number of samples to render in the viewport, unlimited if 0",
-        min=0, max=2147483647,
+        min=0, max=(1 << 24),
         default=32,
     )
     preview_pause: BoolProperty(
@@ -272,7 +272,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
 
     use_layer_samples: EnumProperty(
         name="Layer Samples",
-        description="How to use per render layer sample settings",
+        description="How to use per view layer sample settings",
         items=enum_use_layer_samples,
         default='USE',
     )
@@ -360,7 +360,8 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         description="Distance between volume shader samples when rendering the volume "
         "(lower values give more accurate and detailed results, but also increased render time)",
         default=0.1,
-        min=0.0000001, max=100000.0, soft_min=0.01, soft_max=1.0, precision=4
+        min=0.0000001, max=100000.0, soft_min=0.01, soft_max=1.0, precision=4,
+        unit='LENGTH'
     )
 
     volume_max_steps: IntProperty(
@@ -376,14 +377,14 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         description="Size of a micropolygon in pixels",
         min=0.1, max=1000.0, soft_min=0.5,
         default=1.0,
-        subtype="PIXEL"
+        subtype='PIXEL'
     )
     preview_dicing_rate: FloatProperty(
         name="Preview Dicing Rate",
         description="Size of a micropolygon in pixels during preview render",
         min=0.1, max=1000.0, soft_min=0.5,
         default=8.0,
-        subtype="PIXEL"
+        subtype='PIXEL'
     )
 
     max_subdivisions: IntProperty(
@@ -456,6 +457,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         description="Pixel filter width",
         min=0.01, max=10.0,
         default=1.5,
+        subtype='PIXEL'
     )
 
     seed: IntProperty(
@@ -502,6 +504,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         "progressively increasing it to the full viewport size",
         min=8, max=16384,
         default=64,
+        subtype='PIXEL'
     )
 
     debug_reset_timeout: FloatProperty(
@@ -528,6 +531,11 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         description="Choose between faster updates, or faster render",
         items=enum_bvh_types,
         default='DYNAMIC_BVH',
+    )
+    use_bvh_embree: BoolProperty(
+        name="Use Embree",
+        description="Use Embree as ray accelerator",
+        default=False,
     )
     debug_use_spatial_splits: BoolProperty(
         name="Use Spatial Splits",
@@ -591,7 +599,8 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         name="Camera Cull Margin",
         description="Margin for the camera space culling",
         default=0.1,
-        min=0.0, max=5.0
+        min=0.0, max=5.0,
+        subtype='FACTOR'
     )
 
     use_distance_cull: BoolProperty(
@@ -604,7 +613,8 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         name="Cull Distance",
         description="Cull objects which are further away from camera than this distance",
         default=50,
-        min=0.0
+        min=0.0,
+        unit='LENGTH'
     )
 
     motion_blur_position: EnumProperty(
@@ -634,6 +644,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         description="Scanline \"exposure\" time for the rolling shutter effect",
         default=0.1,
         min=0.0, max=1.0,
+        subtype='FACTOR',
     )
 
     texture_limit: EnumProperty(
@@ -711,11 +722,6 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         update=_devices_update_callback
     )
 
-    debug_opencl_kernel_single_program: BoolProperty(
-        name="Single Program",
-        default=True,
-        update=_devices_update_callback,
-    )
     del _devices_update_callback
 
     debug_use_opencl_debug: BoolProperty(name="Debug OpenCL", default=False)
@@ -834,8 +840,6 @@ class CyclesCameraSettings(bpy.types.PropertyGroup):
 
     @classmethod
     def register(cls):
-        import math
-
         bpy.types.Camera.cycles = PointerProperty(
             name="Cycles Camera Settings",
             description="Cycles camera settings",
@@ -886,7 +890,7 @@ class CyclesMaterialSettings(bpy.types.PropertyGroup):
         name="Displacement Method",
         description="Method to use for the displacement",
         items=enum_displacement_methods,
-        default='DISPLACEMENT',
+        default='BUMP',
     )
 
     @classmethod
@@ -1126,7 +1130,7 @@ class CyclesObjectSettings(bpy.types.PropertyGroup):
 
     dicing_rate: FloatProperty(
         name="Dicing Scale",
-        description="Multiplier for scene dicing rate (located in the Geometry Panel)",
+        description="Multiplier for scene dicing rate (located in the Subdivision panel)",
         min=0.1, max=1000.0, soft_min=0.5,
         default=1.0,
     )
@@ -1141,7 +1145,7 @@ class CyclesObjectSettings(bpy.types.PropertyGroup):
         name="Holdout",
         description="Render objects as a holdout or matte, creating a "
         "hole in the image with zero alpha, to fill out in "
-        "compositing with real footange or another render",
+        "compositing with real footage or another render",
         default=False,
     )
 
@@ -1193,12 +1197,14 @@ class CyclesCurveRenderSettings(bpy.types.PropertyGroup):
         description="Minimal pixel width for strands (0 - deactivated)",
         min=0.0, max=100.0,
         default=0.0,
+        subtype='PIXEL'
     )
     maximum_width: FloatProperty(
         name="Maximal width",
         description="Maximum extension that strand radius can be increased by",
         min=0.0, max=100.0,
         default=0.1,
+        subtype='PIXEL'
     )
     subdivisions: IntProperty(
         name="Subdivisions",
@@ -1221,8 +1227,6 @@ class CyclesCurveRenderSettings(bpy.types.PropertyGroup):
 
 
 def update_render_passes(self, context):
-    scene = context.scene
-    rd = scene.render
     view_layer = context.view_layer
     view_layer.update_render_passes()
 
@@ -1335,6 +1339,7 @@ class CyclesRenderLayerSettings(bpy.types.PropertyGroup):
         description="Size of the image area that's used to denoise a pixel (higher values are smoother, but might lose detail and are slower)",
         min=1, max=25,
         default=8,
+        subtype="PIXEL",
     )
     denoising_relative_pca: BoolProperty(
         name="Relative filter",
@@ -1347,6 +1352,42 @@ class CyclesRenderLayerSettings(bpy.types.PropertyGroup):
         default=False,
         update=update_render_passes,
     )
+    denoising_neighbor_frames: IntProperty(
+        name="Neighbor Frames",
+        description="Number of neighboring frames to use for denoising animations (more frames produce smoother results at the cost of performance)",
+        min=0, max=7,
+        default=0,
+    )
+    use_pass_crypto_object: BoolProperty(
+        name="Cryptomatte Object",
+        description="Render cryptomatte object pass, for isolating objects in compositing",
+        default=False,
+        update=update_render_passes,
+        )
+    use_pass_crypto_material: BoolProperty(
+        name="Cryptomatte Material",
+        description="Render cryptomatte material pass, for isolating materials in compositing",
+        default=False,
+        update=update_render_passes,
+        )
+    use_pass_crypto_asset: BoolProperty(
+        name="Cryptomatte Asset",
+        description="Render cryptomatte asset pass, for isolating groups of objects with the same parent",
+        default=False,
+        update=update_render_passes,
+        )
+    pass_crypto_depth: IntProperty(
+        name="Cryptomatte Levels",
+        description="Sets how many unique objects can be distinguished per pixel",
+        default=6, min=2, max=16, step=2,
+        update=update_render_passes,
+        )
+    pass_crypto_accurate: BoolProperty(
+        name="Cryptomatte Accurate",
+        description="Generate a more accurate Cryptomatte pass. CPU only, may render slower and use more memory",
+        default=True,
+        update=update_render_passes,
+        )
 
     @classmethod
     def register(cls):
@@ -1412,10 +1453,11 @@ class CyclesPreferences(bpy.types.AddonPreferences):
                 # Update name in case it changed
                 entry.name = device[0]
 
-    def get_devices(self):
+    # Gets all devices types by default.
+    def get_devices(self, compute_device_type=''):
         import _cycles
         # Layout of the device tuples: (Name, Type, Persistent ID)
-        device_list = _cycles.available_devices()
+        device_list = _cycles.available_devices(compute_device_type)
         # Make sure device entries are up to date and not referenced before
         # we know we don't add new devices. This way we guarantee to not
         # hold pointers to a resized array.
@@ -1439,7 +1481,7 @@ class CyclesPreferences(bpy.types.AddonPreferences):
 
     def get_num_gpu_devices(self):
         import _cycles
-        device_list = _cycles.available_devices()
+        device_list = _cycles.available_devices(self.compute_device_type)
         num = 0
         for device in device_list:
             if device[1] != self.compute_device_type:
@@ -1452,22 +1494,32 @@ class CyclesPreferences(bpy.types.AddonPreferences):
     def has_active_device(self):
         return self.get_num_gpu_devices() > 0
 
+    def _draw_devices(self, layout, device_type, devices):
+        box = layout.box()
+
+        found_device = False
+        for device in devices:
+            if device.type == device_type:
+                found_device = True
+                break
+
+        if not found_device:
+            box.label(text="No compatible GPUs found", icon='INFO')
+            return
+
+        for device in devices:
+            box.prop(device, "use", text=device.name)
+
     def draw_impl(self, layout, context):
-        layout.label(text="Cycles Compute Device:")
-        layout.row().prop(self, "compute_device_type", expand=True)
-
-        cuda_devices, opencl_devices = self.get_devices()
         row = layout.row()
+        row.prop(self, "compute_device_type", expand=True)
 
-        if self.compute_device_type == 'CUDA' and cuda_devices:
-            box = row.box()
-            for device in cuda_devices:
-                box.prop(device, "use", text=device.name)
-
-        if self.compute_device_type == 'OPENCL' and opencl_devices:
-            box = row.box()
-            for device in opencl_devices:
-                box.prop(device, "use", text=device.name)
+        cuda_devices, opencl_devices = self.get_devices(self.compute_device_type)
+        row = layout.row()
+        if self.compute_device_type == 'CUDA':
+            self._draw_devices(row, 'CUDA', cuda_devices)
+        elif self.compute_device_type == 'OPENCL':
+            self._draw_devices(row, 'OPENCL', opencl_devices)
 
     def draw(self, context):
         self.draw_impl(self.layout, context)

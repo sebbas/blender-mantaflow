@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,36 +12,34 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BKE_PBVH_H__
 #define __BKE_PBVH_H__
 
-/** \file BKE_pbvh.h
- *  \ingroup bke
- *  \brief A BVH for high poly meshes.
+/** \file
+ * \ingroup bke
+ * \brief A BVH for high poly meshes.
  */
 
 #include "BLI_bitmap.h"
 #include "BLI_ghash.h"
 #include "BLI_utildefines.h"
 
-struct GPUBatch;
+struct BMLog;
+struct BMesh;
+struct CCGDerivedMesh;
 struct CCGElem;
 struct CCGKey;
-struct CCGDerivedMesh;
 struct CustomData;
 struct DMFlagMat;
-struct MPoly;
+struct GPUBatch;
 struct MLoop;
 struct MLoopTri;
+struct MPoly;
 struct MVert;
 struct PBVH;
 struct PBVHNode;
-struct BMesh;
-struct BMLog;
 
 typedef struct PBVH PBVH;
 typedef struct PBVHNode PBVHNode;
@@ -108,7 +104,7 @@ bool BKE_pbvh_node_raycast(
 bool BKE_pbvh_bmesh_node_raycast_detail(
         PBVHNode *node,
         const float ray_start[3], const float ray_normal[3],
-        float *depth, float *r_detail);
+        float *depth, float *r_edge_length);
 
 /* for orthographic cameras, project the far away ray segment points to the root node so
  * we can have better precision. */
@@ -129,7 +125,7 @@ bool BKE_pbvh_node_find_nearest_to_ray(
 /* Drawing */
 
 void BKE_pbvh_draw_cb(
-        PBVH *bvh, float (*planes)[4], float (*fnors)[3], bool fast, bool only_mask,
+        PBVH *bvh, float (*planes)[4], float (*fnors)[3], bool fast, bool wires, bool only_mask,
         void (*draw_fn)(void *user_data, struct GPUBatch *batch), void *user_data);
 
 /* PBVH Access */

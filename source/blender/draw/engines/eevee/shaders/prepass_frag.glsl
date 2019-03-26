@@ -11,14 +11,13 @@ float hash3d(vec3 a) {
 }
 
 uniform float hashAlphaOffset;
+uniform float hashAlphaScale = 1.0; /* Roughly in pixel */
 
 float hashed_alpha_threshold(vec3 co)
 {
-	const float hash_scale = 1.0; /* Roughly in pixel */
-
 	/* Find the discretized derivatives of our coordinates. */
 	float max_deriv = max(length(dFdx(co)), length(dFdy(co)));
-	float pix_scale = 1.0 / (hash_scale * max_deriv);
+	float pix_scale = 1.0 / (hashAlphaScale * max_deriv);
 
 	/* Find two nearest log-discretized noise scales. */
 	float pix_scale_log = log2(pix_scale);
@@ -76,12 +75,14 @@ void main()
 
 #if defined(USE_ALPHA_HASH)
 	/* Hashed Alpha Testing */
-	if (cl.opacity < hashed_alpha_threshold(worldPosition))
+	if (cl.opacity < hashed_alpha_threshold(worldPosition)) {
 		discard;
+	}
 #elif defined(USE_ALPHA_CLIP)
 	/* Alpha clip */
-	if (cl.opacity <= alphaThreshold)
+	if (cl.opacity <= alphaThreshold) {
 		discard;
+	}
 #endif
 #endif
 }

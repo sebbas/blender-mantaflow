@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/key.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 
@@ -55,7 +47,6 @@
 #include "BKE_curve.h"
 #include "BKE_customdata.h"
 #include "BKE_deform.h"
-#include "BKE_global.h"
 #include "BKE_key.h"
 #include "BKE_lattice.h"
 #include "BKE_library.h"
@@ -63,7 +54,6 @@
 #include "BKE_mesh.h"
 #include "BKE_editmesh.h"
 #include "BKE_scene.h"
-
 
 #include "RNA_access.h"
 
@@ -162,11 +152,11 @@ Key *BKE_key_add(Main *bmain, ID *id)    /* common function */
 
 /**
  * Only copy internal data of ShapeKey ID from source to already allocated/initialized destination.
- * You probably nerver want to use that directly, use id_copy or BKE_id_copy_ex for typical needs.
+ * You probably never want to use that directly, use BKE_id_copy or BKE_id_copy_ex for typical needs.
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag  Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
  */
 void BKE_key_copy_data(Main *UNUSED(bmain), Key *key_dst, const Key *key_src, const int UNUSED(flag))
 {
@@ -189,7 +179,7 @@ void BKE_key_copy_data(Main *UNUSED(bmain), Key *key_dst, const Key *key_src, co
 Key *BKE_key_copy(Main *bmain, const Key *key)
 {
 	Key *key_copy;
-	BKE_id_copy_ex(bmain, &key->id, (ID **)&key_copy, 0, false);
+	BKE_id_copy(bmain, &key->id, (ID **)&key_copy);
 	return key_copy;
 }
 
@@ -525,11 +515,11 @@ static char *key_block_get_data(Key *key, KeyBlock *actkb, KeyBlock *kb, char **
 
 			me = (Mesh *)key->from;
 
-			if (me->edit_btmesh && me->edit_btmesh->bm->totvert == kb->totelem) {
+			if (me->edit_mesh && me->edit_mesh->bm->totvert == kb->totelem) {
 				a = 0;
-				co = MEM_mallocN(sizeof(float) * 3 * me->edit_btmesh->bm->totvert, "key_block_get_data");
+				co = MEM_mallocN(sizeof(float) * 3 * me->edit_mesh->bm->totvert, "key_block_get_data");
 
-				BM_ITER_MESH (eve, &iter, me->edit_btmesh->bm, BM_VERTS_OF_MESH) {
+				BM_ITER_MESH (eve, &iter, me->edit_mesh->bm, BM_VERTS_OF_MESH) {
 					copy_v3_v3(co[a], eve->co);
 					a++;
 				}
@@ -1063,8 +1053,8 @@ static float *get_weights_array(Object *ob, char *vgroup, WeightsArrayCache *cac
 		dvert = me->dvert;
 		totvert = me->totvert;
 
-		if (me->edit_btmesh && me->edit_btmesh->bm->totvert == totvert)
-			em = me->edit_btmesh;
+		if (me->edit_mesh && me->edit_mesh->bm->totvert == totvert)
+			em = me->edit_mesh;
 	}
 	else if (ob->type == OB_LATTICE) {
 		Lattice *lt = ob->data;
@@ -1333,9 +1323,6 @@ float *BKE_key_evaluate_object_ex(
 		out = (char *)arr;
 	}
 
-	/* prevent python from screwing this up? anyhoo, the from pointer could be dropped */
-	key->from = (ID *)ob->data;
-
 	if (ob->shapeflag & OB_SHAPE_LOCK) {
 		/* shape locked, copy the locked shape instead of blending */
 		KeyBlock *kb = BLI_findlink(&key->block, ob->shapenr - 1);
@@ -1377,6 +1364,18 @@ float *BKE_key_evaluate_object(Object *ob, int *r_totelem)
 	return BKE_key_evaluate_object_ex(ob, r_totelem, NULL, 0);
 }
 
+bool BKE_key_idtype_support(const short id_type)
+{
+	switch (id_type) {
+		case ID_ME:
+		case ID_CU:
+		case ID_LT:
+			return true;
+		default:
+			return false;
+	}
+}
+
 Key **BKE_key_from_id_p(ID *id)
 {
 	switch (GS(id->name)) {
@@ -1416,7 +1415,7 @@ Key *BKE_key_from_id(ID *id)
 	return NULL;
 }
 
-Key **BKE_key_from_object_p(Object *ob)
+Key **BKE_key_from_object_p(const Object *ob)
 {
 	if (ob == NULL || ob->data == NULL)
 		return NULL;
@@ -1424,7 +1423,7 @@ Key **BKE_key_from_object_p(Object *ob)
 	return BKE_key_from_id_p(ob->data);
 }
 
-Key *BKE_key_from_object(Object *ob)
+Key *BKE_key_from_object(const Object *ob)
 {
 	Key **key_p;
 	key_p = BKE_key_from_object_p(ob);
@@ -1481,9 +1480,9 @@ KeyBlock *BKE_keyblock_add(Key *key, const char *name)
  * \note sorting is a problematic side effect in some cases,
  * better only do this explicitly by having its own function,
  *
- * \param key The key datablock to add to.
- * \param name Optional name for the new keyblock.
- * \param do_force always use ctime even for relative keys.
+ * \param key: The key datablock to add to.
+ * \param name: Optional name for the new keyblock.
+ * \param do_force: always use ctime even for relative keys.
  */
 KeyBlock *BKE_keyblock_add_ctime(Key *key, const char *name, const bool do_force)
 {
@@ -1689,7 +1688,7 @@ void BKE_keyblock_update_from_curve(Curve *UNUSED(cu), KeyBlock *kb, ListBase *n
 				for (int i = 0; i < 3; i++) {
 					copy_v3_v3(&fp[i * 3], bezt->vec[i]);
 				}
-				fp[9] = bezt->alfa;
+				fp[9] = bezt->tilt;
 				fp[10] = bezt->radius;
 				fp += KEYELEM_FLOAT_LEN_BEZTRIPLE;
 			}
@@ -1697,7 +1696,7 @@ void BKE_keyblock_update_from_curve(Curve *UNUSED(cu), KeyBlock *kb, ListBase *n
 		else {
 			for (a = nu->pntsu * nu->pntsv, bp = nu->bp; a; a--, bp++) {
 				copy_v3_v3(fp, bp->vec);
-				fp[3] = bp->alfa;
+				fp[3] = bp->tilt;
 				fp[4] = bp->radius;
 				fp += KEYELEM_FLOAT_LEN_BPOINT;
 			}
@@ -1739,7 +1738,7 @@ void BKE_keyblock_convert_to_curve(KeyBlock *kb, Curve *UNUSED(cu), ListBase *nu
 				for (int i = 0; i < 3; i++) {
 					copy_v3_v3(bezt->vec[i], &fp[i * 3]);
 				}
-				bezt->alfa = fp[9];
+				bezt->tilt = fp[9];
 				bezt->radius = fp[10];
 				fp += KEYELEM_FLOAT_LEN_BEZTRIPLE;
 			}
@@ -1747,7 +1746,7 @@ void BKE_keyblock_convert_to_curve(KeyBlock *kb, Curve *UNUSED(cu), ListBase *nu
 		else {
 			for (a = nu->pntsu * nu->pntsv, bp = nu->bp; a && (tot -= KEYELEM_ELEM_LEN_BPOINT) >= 0; a--, bp++) {
 				copy_v3_v3(bp->vec, fp);
-				bp->alfa = fp[3];
+				bp->tilt = fp[3];
 				bp->radius = fp[4];
 				fp += KEYELEM_FLOAT_LEN_BPOINT;
 			}
@@ -1807,11 +1806,11 @@ void BKE_keyblock_convert_to_mesh(KeyBlock *kb, Mesh *me)
 /**
  * Computes normals (vertices, polygons and/or loops ones) of given mesh for given shape key.
  *
- * \param kb the KeyBlock to use to compute normals.
- * \param mesh the Mesh to apply keyblock to.
- * \param r_vertnors if non-NULL, an array of vectors, same length as number of vertices.
- * \param r_polynors if non-NULL, an array of vectors, same length as number of polygons.
- * \param r_loopnors if non-NULL, an array of vectors, same length as number of loops.
+ * \param kb: the KeyBlock to use to compute normals.
+ * \param mesh: the Mesh to apply keyblock to.
+ * \param r_vertnors: if non-NULL, an array of vectors, same length as number of vertices.
+ * \param r_polynors: if non-NULL, an array of vectors, same length as number of polygons.
+ * \param r_loopnors: if non-NULL, an array of vectors, same length as number of loops.
  */
 void BKE_keyblock_mesh_calc_normals(
         struct KeyBlock *kb, struct Mesh *mesh,
@@ -2053,7 +2052,7 @@ void BKE_keyblock_update_from_offset(Object *ob, KeyBlock *kb, float (*ofs)[3])
  * the object's active shape index, the 'frame' value in case of absolute keys, etc.
  * Note indices are expected in real values (not 'fake' shapenr +1 ones).
  *
- * \param org_index if < 0, current object's active shape will be used as skey to move.
+ * \param org_index: if < 0, current object's active shape will be used as skey to move.
  * \return true if something was done, else false.
  */
 bool BKE_keyblock_move(Object *ob, int org_index, int new_index)

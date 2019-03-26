@@ -1,5 +1,5 @@
-/** \file smoke/intern/tnt/tnt_subscript.h
- *  \ingroup smoke
+/** \file
+ * \ingroup smoke
  */
 /*
 *

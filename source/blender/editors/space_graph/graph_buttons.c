@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation, Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_graph/graph_buttons.c
- *  \ingroup spgraph
+/** \file
+ * \ingroup spgraph
  */
 
 
@@ -116,7 +109,7 @@ static bool graph_panel_poll(const bContext *C, PanelType *UNUSED(pt))
 static void graph_panel_view(const bContext *C, Panel *pa)
 {
 	bScreen *sc = CTX_wm_screen(C);
-	SpaceIpo *sipo = CTX_wm_space_graph(C);
+	SpaceGraph *sipo = CTX_wm_space_graph(C);
 	Scene *scene = CTX_data_scene(C);
 	PointerRNA spaceptr, sceneptr;
 	uiLayout *col, *sub, *row;
@@ -231,14 +224,14 @@ static short get_active_fcurve_keyframe_edit(FCurve *fcu, BezTriple **bezt, BezT
 		return 0;
 
 	/* find first selected keyframe for now, and call it the active one
-	 *	- this is a reasonable assumption, given that whenever anyone
-	 *	  wants to edit numerically, there is likely to only be 1 vert selected
+	 * - this is a reasonable assumption, given that whenever anyone
+	 *   wants to edit numerically, there is likely to only be 1 vert selected
 	 */
 	for (i = 0, b = fcu->bezt; i < fcu->totvert; i++, b++) {
 		if (BEZT_ISSEL_ANY(b)) {
 			/* found
-			 *	- 'previous' is either the one before, of the keyframe itself (which is still fine)
-			 *		XXX: we can just make this null instead if needed
+			 * - 'previous' is either the one before, of the keyframe itself (which is still fine)
+			 *   XXX: we can just make this null instead if needed
 			 */
 			*prevbezt = (i > 0) ? b - 1 : b;
 			*bezt = b;
@@ -390,8 +383,8 @@ static void graph_panel_key_properties(const bContext *C, Panel *pa)
 		}
 
 		/* numerical coordinate editing
-		 *  - we use the button-versions of the calls so that we can attach special update handlers
-		 *    and unit conversion magic that cannot be achieved using a purely RNA-approach
+		 * - we use the button-versions of the calls so that we can attach special update handlers
+		 *   and unit conversion magic that cannot be achieved using a purely RNA-approach
 		 */
 		col = uiLayoutColumn(layout, true);
 		/* keyframe itself */
@@ -495,13 +488,13 @@ static void do_graph_region_driver_buttons(bContext *C, void *id_v, int event)
 
 			/* rebuild depsgraph for the new deps, and ensure COW copies get flushed. */
 			DEG_relations_tag_update(bmain);
-			DEG_id_tag_update_ex(bmain, id, DEG_TAG_COPY_ON_WRITE);
+			DEG_id_tag_update_ex(bmain, id, ID_RECALC_COPY_ON_WRITE);
 			if (adt != NULL) {
 				if (adt->action != NULL) {
-					DEG_id_tag_update_ex(bmain, &adt->action->id, DEG_TAG_COPY_ON_WRITE);
+					DEG_id_tag_update_ex(bmain, &adt->action->id, ID_RECALC_COPY_ON_WRITE);
 				}
 				if (adt->tmpact != NULL) {
-					DEG_id_tag_update_ex(bmain, &adt->tmpact->id, DEG_TAG_COPY_ON_WRITE);
+					DEG_id_tag_update_ex(bmain, &adt->tmpact->id, ID_RECALC_COPY_ON_WRITE);
 				}
 			}
 
@@ -584,7 +577,7 @@ static void driver_update_flags_cb(bContext *UNUSED(C), void *fcu_v, void *UNUSE
 /* drivers panel poll */
 static bool graph_panel_drivers_poll(const bContext *C, PanelType *UNUSED(pt))
 {
-	SpaceIpo *sipo = CTX_wm_space_graph(C);
+	SpaceGraph *sipo = CTX_wm_space_graph(C);
 
 	if (sipo->mode != SIPO_MODE_DRIVERS)
 		return 0;
@@ -687,7 +680,9 @@ static void graph_panel_driverVar__locDiff(uiLayout *layout, ID *id, DriverVar *
 		uiItemPointerR(col, &dtar_ptr, "bone_target", &tar_ptr, "bones", IFACE_("Bone"), ICON_BONE_DATA);
 	}
 
-	uiLayoutSetRedAlert(col, false); /* we can clear it again now - it's only needed when creating the ID/Bone fields */
+	/* we can clear it again now - it's only needed when creating the ID/Bone fields */
+	uiLayoutSetRedAlert(col, false);
+
 	uiItemR(col, &dtar_ptr, "transform_space", 0, NULL, ICON_NONE);
 
 	/* Object 2 */
@@ -702,7 +697,9 @@ static void graph_panel_driverVar__locDiff(uiLayout *layout, ID *id, DriverVar *
 		uiItemPointerR(col, &dtar2_ptr, "bone_target", &tar_ptr, "bones", IFACE_("Bone"), ICON_BONE_DATA);
 	}
 
-	uiLayoutSetRedAlert(col, false); /* we can clear it again now - it's only needed when creating the ID/Bone fields */
+	/* we can clear it again now - it's only needed when creating the ID/Bone fields */
+	uiLayoutSetRedAlert(col, false);
+
 	uiItemR(col, &dtar2_ptr, "transform_space", 0, NULL, ICON_NONE);
 }
 
@@ -821,7 +818,7 @@ static void graph_draw_driver_settings_panel(uiLayout *layout, ID *id, FCurve *f
 			uiItemL(col, IFACE_("ERROR: Invalid Python expression"), ICON_CANCEL);
 		}
 		else if (!BKE_driver_has_simple_expression(driver)) {
-			if ((G.f & G_SCRIPT_AUTOEXEC) == 0) {
+			if ((G.f & G_FLAG_SCRIPT_AUTOEXEC) == 0) {
 				/* TODO: Add button to enable? */
 				uiItemL(col, IFACE_("WARNING: Python expressions limited for security"), ICON_ERROR);
 			}
@@ -922,14 +919,22 @@ static void graph_draw_driver_settings_panel(uiLayout *layout, ID *id, FCurve *f
 		subrow = uiLayoutRow(row, true);
 
 		/* 1.1.1) variable type */
-		sub = uiLayoutRow(subrow, true);                     /* HACK: special group just for the enum, otherwise we */
-		uiLayoutSetAlignment(sub, UI_LAYOUT_ALIGN_LEFT);  /*       we get ugly layout with text included too...  */
+
+		/* HACK: special group just for the enum,
+		 * otherwise we get ugly layout with text included too... */
+		sub = uiLayoutRow(subrow, true);
+
+		uiLayoutSetAlignment(sub, UI_LAYOUT_ALIGN_LEFT);
 
 		uiItemR(sub, &dvar_ptr, "type", UI_ITEM_R_ICON_ONLY, "", ICON_NONE);
 
 		/* 1.1.2) variable name */
-		sub = uiLayoutRow(subrow, true);                       /* HACK: special group to counteract the effects of the previous */
-		uiLayoutSetAlignment(sub, UI_LAYOUT_ALIGN_EXPAND);  /*       enum, which now pushes everything too far right         */
+
+		/* HACK: special group to counteract the effects of the previous enum,
+		 * which now pushes everything too far right */
+		sub = uiLayoutRow(subrow, true);
+
+		uiLayoutSetAlignment(sub, UI_LAYOUT_ALIGN_EXPAND);
 
 		uiItemR(sub, &dvar_ptr, "name", 0, "", ICON_NONE);
 
@@ -993,7 +998,8 @@ static void graph_draw_driver_settings_panel(uiLayout *layout, ID *id, FCurve *f
 	uiItemS(layout);
 	uiItemS(layout);
 
-	/* XXX: This should become redundant. But sometimes the flushing fails, so keep this around for a while longer as a "last resort" */
+	/* XXX: This should become redundant. But sometimes the flushing fails,
+	 * so keep this around for a while longer as a "last resort" */
 	row = uiLayoutRow(layout, true);
 	block = uiLayoutGetBlock(row);
 	but = uiDefIconTextBut(block, UI_BTYPE_BUT, B_IPO_DEPCHANGE, ICON_FILE_REFRESH, IFACE_("Update Dependencies"),
@@ -1020,7 +1026,8 @@ static void graph_panel_driven_property(const bContext *C, Panel *pa)
 	MEM_freeN(ale);
 }
 
-/* driver settings for active F-Curve (only for 'Drivers' mode in Graph Editor, i.e. the full "Drivers Editor") */
+/* driver settings for active F-Curve
+ * (only for 'Drivers' mode in Graph Editor, i.e. the full "Drivers Editor") */
 static void graph_panel_drivers(const bContext *C, Panel *pa)
 {
 	bAnimListElem *ale;
@@ -1142,7 +1149,7 @@ static void graph_panel_modifiers(const bContext *C, Panel *pa)
 		col = uiLayoutColumn(pa->layout, true);
 		uiLayoutSetActive(col, active);
 
-		ANIM_uiTemplate_fmodifier_draw(col, ale->id, &fcu->modifiers, fcm);
+		ANIM_uiTemplate_fmodifier_draw(col, ale->fcurve_owner_id, &fcu->modifiers, fcm);
 	}
 
 	MEM_freeN(ale);
@@ -1198,7 +1205,9 @@ void graph_buttons_register(ARegionType *art)
 	pt->draw = graph_panel_drivers_popover;
 	pt->poll = graph_panel_drivers_popover_poll;
 	BLI_addtail(&art->paneltypes, pt);
-	WM_paneltype_add(pt); /* This panel isn't used in this region. Add explicitly to global list (so popovers work). */
+	/* This panel isn't used in this region.
+	 * Add explicitly to global list (so popovers work). */
+	WM_paneltype_add(pt);
 
 	pt = MEM_callocN(sizeof(PanelType), "spacetype graph panel modifiers");
 	strcpy(pt->idname, "GRAPH_PT_modifiers");

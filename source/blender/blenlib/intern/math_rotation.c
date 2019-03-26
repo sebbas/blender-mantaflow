@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,12 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
-
- * The Original Code is: some of this file.
  *
- * ***** END GPL LICENSE BLOCK *****
- * */
+ * The Original Code is: some of this file.
+ */
 
-/** \file blender/blenlib/intern/math_rotation.c
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #include <assert.h>
@@ -193,14 +189,39 @@ void sub_qt_qtqt(float q[4], const float q1[4], const float q2[4])
 	mul_qt_qtqt(q, q1, nq2);
 }
 
-/* angular mult factor */
-void mul_fac_qt_fl(float q[4], const float fac)
+/* raise a unit quaternion to the specified power */
+void pow_qt_fl_normalized(float q[4], const float fac)
 {
-	const float angle = fac * saacos(q[0]); /* quat[0] = cos(0.5 * angle), but now the 0.5 and 2.0 rule out */
+	BLI_ASSERT_UNIT_QUAT(q);
+	const float angle = fac * saacos(q[0]); /* quat[0] = cos(0.5 * angle),
+	                                         * but now the 0.5 and 2.0 rule out */
 	const float co = cosf(angle);
 	const float si = sinf(angle);
 	q[0] = co;
 	normalize_v3_length(q + 1, si);
+}
+
+/**
+ * Apply the rotation of \a a to \a q keeping the values compatible with \a old.
+ * Avoid axis flipping for animated f-curves for eg.
+ */
+void quat_to_compatible_quat(float q[4], const float a[4], const float old[4])
+{
+	const float eps = 1e-4f;
+	BLI_ASSERT_UNIT_QUAT(a);
+	float old_unit[4];
+	/* Skips `!finite_v4(old)` case too. */
+	if (normalize_qt_qt(old_unit, old) > eps) {
+		float delta[4];
+		rotation_between_quats_to_quat(delta, old_unit, a);
+		mul_qt_qtqt(q, old, delta);
+		if ((q[0] < 0.0f) != (old[0] < 0.0f)) {
+			negate_v4(q);
+		}
+	}
+	else {
+		copy_qt_qt(q, a);
+	}
 }
 
 /* skip error check, currently only needed by mat3_to_quat_is_ok */
@@ -292,7 +313,7 @@ void quat_to_mat4(float m[4][4], const float q[4])
 	m[3][3] = 1.0f;
 }
 
-void mat3_normalized_to_quat(float q[4], float mat[3][3])
+void mat3_normalized_to_quat(float q[4], const float mat[3][3])
 {
 	double tr, s;
 
@@ -340,7 +361,7 @@ void mat3_normalized_to_quat(float q[4], float mat[3][3])
 
 	normalize_qt(q);
 }
-void mat3_to_quat(float q[4], float m[3][3])
+void mat3_to_quat(float q[4], const float m[3][3])
 {
 	float unit_mat[3][3];
 
@@ -350,7 +371,7 @@ void mat3_to_quat(float q[4], float m[3][3])
 	mat3_normalized_to_quat(q, unit_mat);
 }
 
-void mat4_normalized_to_quat(float q[4], float m[4][4])
+void mat4_normalized_to_quat(float q[4], const float m[4][4])
 {
 	float mat3[3][3];
 
@@ -358,7 +379,7 @@ void mat4_normalized_to_quat(float q[4], float m[4][4])
 	mat3_normalized_to_quat(q, mat3);
 }
 
-void mat4_to_quat(float q[4], float m[4][4])
+void mat4_to_quat(float q[4], const float m[4][4])
 {
 	float mat3[3][3];
 
@@ -366,7 +387,7 @@ void mat4_to_quat(float q[4], float m[4][4])
 	mat3_to_quat(q, mat3);
 }
 
-void mat3_to_quat_is_ok(float q[4], float wmat[3][3])
+void mat3_to_quat_is_ok(float q[4], const float wmat[3][3])
 {
 	float mat[3][3], matr[3][3], matn[3][3], q1[4], q2[4], angle, si, co, nor[3];
 
@@ -939,6 +960,9 @@ void quat_to_axis_angle(float axis[3], float *angle, const float q[4])
 	axis[0] = q[1] / si;
 	axis[1] = q[2] / si;
 	axis[2] = q[3] / si;
+	if (is_zero_v3(axis)) {
+		axis[1] = 1.0f;
+	}
 }
 
 /* Axis Angle to Euler Rotation */
@@ -966,9 +990,9 @@ void eulO_to_axis_angle(float axis[3], float *angle, const float eul[3], const s
  *
  * This takes the angle with sin/cos applied so we can avoid calculating it in some cases.
  *
- * \param axis rotation axis (must be normalized).
- * \param angle_sin sin(angle)
- * \param angle_cos cos(angle)
+ * \param axis: rotation axis (must be normalized).
+ * \param angle_sin: sin(angle)
+ * \param angle_cos: cos(angle)
  */
 void axis_angle_normalized_to_mat3_ex(float mat[3][3], const float axis[3],
                                       const float angle_sin, const float angle_cos)
@@ -1034,7 +1058,7 @@ void axis_angle_to_mat4(float mat[4][4], const float axis[3], const float angle)
 }
 
 /* 3x3 matrix to axis angle */
-void mat3_normalized_to_axis_angle(float axis[3], float *angle, float mat[3][3])
+void mat3_normalized_to_axis_angle(float axis[3], float *angle, const float mat[3][3])
 {
 	float q[4];
 
@@ -1043,7 +1067,7 @@ void mat3_normalized_to_axis_angle(float axis[3], float *angle, float mat[3][3])
 	mat3_normalized_to_quat(q, mat);
 	quat_to_axis_angle(axis, angle, q);
 }
-void mat3_to_axis_angle(float axis[3], float *angle, float mat[3][3])
+void mat3_to_axis_angle(float axis[3], float *angle, const float mat[3][3])
 {
 	float q[4];
 
@@ -1054,7 +1078,7 @@ void mat3_to_axis_angle(float axis[3], float *angle, float mat[3][3])
 }
 
 /* 4x4 matrix to axis angle */
-void mat4_normalized_to_axis_angle(float axis[3], float *angle, float mat[4][4])
+void mat4_normalized_to_axis_angle(float axis[3], float *angle, const float mat[4][4])
 {
 	float q[4];
 
@@ -1065,7 +1089,7 @@ void mat4_normalized_to_axis_angle(float axis[3], float *angle, float mat[4][4])
 }
 
 /* 4x4 matrix to axis angle */
-void mat4_to_axis_angle(float axis[3], float *angle, float mat[4][4])
+void mat4_to_axis_angle(float axis[3], float *angle, const float mat[4][4])
 {
 	float q[4];
 
@@ -1280,7 +1304,7 @@ static void mat3_normalized_to_eul2(const float mat[3][3], float eul1[3], float 
 }
 
 /* XYZ order */
-void mat3_normalized_to_eul(float eul[3], float mat[3][3])
+void mat3_normalized_to_eul(float eul[3], const float mat[3][3])
 {
 	float eul1[3], eul2[3];
 
@@ -1294,7 +1318,7 @@ void mat3_normalized_to_eul(float eul[3], float mat[3][3])
 		copy_v3_v3(eul, eul1);
 	}
 }
-void mat3_to_eul(float eul[3], float mat[3][3])
+void mat3_to_eul(float eul[3], const float mat[3][3])
 {
 	float unit_mat[3][3];
 	normalize_m3_m3(unit_mat, mat);
@@ -1302,13 +1326,13 @@ void mat3_to_eul(float eul[3], float mat[3][3])
 }
 
 /* XYZ order */
-void mat4_normalized_to_eul(float eul[3], float m[4][4])
+void mat4_normalized_to_eul(float eul[3], const float m[4][4])
 {
 	float mat3[3][3];
 	copy_m3_m4(mat3, m);
 	mat3_normalized_to_eul(eul, mat3);
 }
-void mat4_to_eul(float eul[3], float m[4][4])
+void mat4_to_eul(float eul[3], const float m[4][4])
 {
 	float mat3[3][3];
 	copy_m3_m4(mat3, m);
@@ -1477,7 +1501,7 @@ static const RotOrderInfo rotOrders[] = {
 
 /* Get relevant pointer to rotation order set from the array
  * NOTE: since we start at 1 for the values, but arrays index from 0,
- *		 there is -1 factor involved in this process...
+ *       there is -1 factor involved in this process...
  */
 static const RotOrderInfo *get_rotation_order_info(const short order)
 {
@@ -1577,7 +1601,7 @@ void eulO_to_mat3(float M[3][3], const float e[3], const short order)
 }
 
 /* returns two euler calculation methods, so we can pick the best */
-static void mat3_normalized_to_eulo2(float mat[3][3], float eul1[3], float eul2[3], const short order)
+static void mat3_normalized_to_eulo2(const float mat[3][3], float eul1[3], float eul2[3], const short order)
 {
 	const RotOrderInfo *R = get_rotation_order_info(order);
 	short i = R->axis[0], j = R->axis[1], k = R->axis[2];
@@ -1621,7 +1645,7 @@ void eulO_to_mat4(float mat[4][4], const float e[3], const short order)
 }
 
 /* Convert 3x3 matrix to Euler angles (in radians). */
-void mat3_normalized_to_eulO(float eul[3], const short order, float m[3][3])
+void mat3_normalized_to_eulO(float eul[3], const short order, const float m[3][3])
 {
 	float eul1[3], eul2[3];
 	float d1, d2;
@@ -1639,7 +1663,7 @@ void mat3_normalized_to_eulO(float eul[3], const short order, float m[3][3])
 		copy_v3_v3(eul, eul1);
 	}
 }
-void mat3_to_eulO(float eul[3], const short order, float m[3][3])
+void mat3_to_eulO(float eul[3], const short order, const float m[3][3])
 {
 	float unit_mat[3][3];
 	normalize_m3_m3(unit_mat, m);
@@ -1647,7 +1671,7 @@ void mat3_to_eulO(float eul[3], const short order, float m[3][3])
 }
 
 /* Convert 4x4 matrix to Euler angles (in radians). */
-void mat4_normalized_to_eulO(float eul[3], const short order, float m[4][4])
+void mat4_normalized_to_eulO(float eul[3], const short order, const float m[4][4])
 {
 	float mat3[3][3];
 
@@ -1656,7 +1680,7 @@ void mat4_normalized_to_eulO(float eul[3], const short order, float m[4][4])
 	mat3_normalized_to_eulO(eul, order, mat3);
 }
 
-void mat4_to_eulO(float eul[3], const short order, float m[4][4])
+void mat4_to_eulO(float eul[3], const short order, const float m[4][4])
 {
 	float mat3[3][3];
 	copy_m3_m4(mat3, m);
@@ -1666,7 +1690,8 @@ void mat4_to_eulO(float eul[3], const short order, float m[4][4])
 
 
 /* uses 2 methods to retrieve eulers, and picks the closest */
-void mat3_normalized_to_compatible_eulO(float eul[3], float oldrot[3], const short order, float mat[3][3])
+void mat3_normalized_to_compatible_eulO(
+        float eul[3], const float oldrot[3], const short order, const float mat[3][3])
 {
 	float eul1[3], eul2[3];
 	float d1, d2;
@@ -1687,7 +1712,8 @@ void mat3_normalized_to_compatible_eulO(float eul[3], float oldrot[3], const sho
 		copy_v3_v3(eul, eul1);
 	}
 }
-void mat3_to_compatible_eulO(float eul[3], float oldrot[3], const short order, float mat[3][3])
+void mat3_to_compatible_eulO(
+        float eul[3], const float oldrot[3], const short order, const float mat[3][3])
 {
 	float unit_mat[3][3];
 
@@ -1695,7 +1721,8 @@ void mat3_to_compatible_eulO(float eul[3], float oldrot[3], const short order, f
 	mat3_normalized_to_compatible_eulO(eul, oldrot, order, unit_mat);
 }
 
-void mat4_normalized_to_compatible_eulO(float eul[3], float oldrot[3], const short order, float m[4][4])
+void mat4_normalized_to_compatible_eulO(
+        float eul[3], const float oldrot[3], const short order, const float m[4][4])
 {
 	float mat3[3][3];
 
@@ -1703,7 +1730,8 @@ void mat4_normalized_to_compatible_eulO(float eul[3], float oldrot[3], const sho
 	copy_m3_m4(mat3, m);
 	mat3_normalized_to_compatible_eulO(eul, oldrot, order, mat3);
 }
-void mat4_to_compatible_eulO(float eul[3], float oldrot[3], const short order, float m[4][4])
+void mat4_to_compatible_eulO(
+        float eul[3], const float oldrot[3], const short order, const float m[4][4])
 {
 	float mat3[3][3];
 
@@ -1713,7 +1741,8 @@ void mat4_to_compatible_eulO(float eul[3], float oldrot[3], const short order, f
 	mat3_normalized_to_compatible_eulO(eul, oldrot, order, mat3);
 }
 
-void quat_to_compatible_eulO(float eul[3], float oldrot[3], const short order, const float quat[4])
+void quat_to_compatible_eulO(
+        float eul[3], const float oldrot[3], const short order, const float quat[4])
 {
 	float unit_mat[3][3];
 
@@ -1797,15 +1826,12 @@ void eulO_to_gimbal_axis(float gmat[3][3], const float eul[3], const short order
  * 2. Altered source versions must be plainly marked as such, and must not be
  *    misrepresented as being the original software.
  * 3. This notice may not be removed or altered from any source distribution.
- *
- * \author Ladislav Kavan, kavanl@cs.tcd.ie
- *
  * Changes for Blender:
  * - renaming, style changes and optimization's
  * - added support for scaling
  */
 
-void mat4_to_dquat(DualQuat *dq, float basemat[4][4], float mat[4][4])
+void mat4_to_dquat(DualQuat *dq, const float basemat[4][4], const float mat[4][4])
 {
 	float *t, *q, dscale[3], scale[3], basequat[4], mat3[3][3];
 	float baseRS[4][4], baseinv[4][4], baseR[4][4], baseRinv[4][4];
@@ -1872,19 +1898,24 @@ void dquat_to_mat4(float mat[4][4], const DualQuat *dq)
 
 	/* normalize */
 	len = sqrtf(dot_qtqt(q0, q0));
-	if (len != 0.0f)
-		mul_qt_fl(q0, 1.0f / len);
+	if (len != 0.0f) {
+		len = 1.0f / len;
+	}
+	mul_qt_fl(q0, len);
 
 	/* rotation */
 	quat_to_mat4(mat, q0);
 
 	/* translation */
 	t = dq->trans;
-	mat[3][0] = 2.0f * (-t[0] * q0[1] + t[1] * q0[0] - t[2] * q0[3] + t[3] * q0[2]);
-	mat[3][1] = 2.0f * (-t[0] * q0[2] + t[1] * q0[3] + t[2] * q0[0] - t[3] * q0[1]);
-	mat[3][2] = 2.0f * (-t[0] * q0[3] - t[1] * q0[2] + t[2] * q0[1] + t[3] * q0[0]);
+	mat[3][0] = 2.0f * (-t[0] * q0[1] + t[1] * q0[0] - t[2] * q0[3] + t[3] * q0[2]) * len;
+	mat[3][1] = 2.0f * (-t[0] * q0[2] + t[1] * q0[3] + t[2] * q0[0] - t[3] * q0[1]) * len;
+	mat[3][2] = 2.0f * (-t[0] * q0[3] - t[1] * q0[2] + t[2] * q0[1] + t[3] * q0[0]) * len;
 
-	/* note: this does not handle scaling */
+	/* scaling */
+	if (dq->scale_weight) {
+		mul_m4_m4m4(mat, mat, dq->scale);
+	}
 }
 
 void add_weighted_dq_dq(DualQuat *dqsum, const DualQuat *dq, float weight)
@@ -2005,12 +2036,18 @@ void quat_apply_track(float quat[4], short axis, short upflag)
 	/* rotations are hard coded to match vec_to_quat */
 	const float sqrt_1_2 = (float)M_SQRT1_2;
 	const float quat_track[][4] = {
-		{sqrt_1_2, 0.0, -sqrt_1_2, 0.0}, /* pos-y90 */
-		{0.5, 0.5, 0.5, 0.5}, /* Quaternion((1,0,0), radians(90)) * Quaternion((0,1,0), radians(90)) */
-		{sqrt_1_2, 0.0, 0.0, sqrt_1_2}, /* pos-z90 */
-		{sqrt_1_2, 0.0, sqrt_1_2, 0.0}, /* neg-y90 */
-		{0.5, -0.5, -0.5, 0.5}, /* Quaternion((1,0,0), radians(-90)) * Quaternion((0,1,0), radians(-90)) */
-		{0.0, sqrt_1_2, sqrt_1_2, 0.0} /* no rotation */
+		/* pos-y90 */
+		{sqrt_1_2, 0.0, -sqrt_1_2, 0.0},
+		/* Quaternion((1,0,0), radians(90)) * Quaternion((0,1,0), radians(90)) */
+		{0.5, 0.5, 0.5, 0.5},
+		/* pos-z90 */
+		{sqrt_1_2, 0.0, 0.0, sqrt_1_2},
+		/* neg-y90 */
+		{sqrt_1_2, 0.0, sqrt_1_2, 0.0},
+		/* Quaternion((1,0,0), radians(-90)) * Quaternion((0,1,0), radians(-90)) */
+		{0.5, -0.5, -0.5, 0.5},
+		/* no rotation */
+		{0.0, sqrt_1_2, sqrt_1_2, 0.0},
 	};
 
 	assert(axis >= 0 && axis <= 5);

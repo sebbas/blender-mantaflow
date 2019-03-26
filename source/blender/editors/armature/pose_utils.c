@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009, Blender Foundation, Joshua Leung
  * This is a new part of Blender
- *
- * Contributor(s): Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/armature/pose_utils.c
- *  \ingroup edarmature
+/** \file
+ * \ingroup edarmature
  */
 
 #include "MEM_guardedalloc.h"
@@ -41,7 +35,6 @@
 #include "BKE_armature.h"
 #include "BKE_idprop.h"
 #include "BKE_layer.h"
-#include "BKE_main.h"
 #include "BKE_object.h"
 
 #include "BKE_context.h"
@@ -132,7 +125,7 @@ static void fcurves_to_pchan_links_get(ListBase *pfLinks, Object *ob, bAction *a
 
 /**
  *  Returns a valid pose armature for this object, else returns NULL.
- **/
+ */
 Object *poseAnim_object_get(Object *ob_)
 {
 	Object *ob = BKE_object_pose_armature_get(ob_);
@@ -236,15 +229,16 @@ void poseAnim_mapping_refresh(bContext *C, Scene *scene, Object *ob)
 	bArmature *arm = (bArmature *)ob->data;
 
 	/* old optimize trick... this enforces to bypass the depgraph
-	 *	- note: code copied from transform_generics.c -> recalcData()
+	 * - note: code copied from transform_generics.c -> recalcData()
 	 */
 	/* FIXME: shouldn't this use the builtin stuff? */
 	if ((arm->flag & ARM_DELAYDEFORM) == 0)
-		DEG_id_tag_update(&ob->id, OB_RECALC_DATA);  /* sets recalc flags */
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);  /* sets recalc flags */
 	else
 		BKE_pose_where_is(depsgraph, scene, ob);
 
-	DEG_id_tag_update(&ob->id, DEG_TAG_COPY_ON_WRITE); /* otherwise animation doesn't get updated */
+	/* otherwise animation doesn't get updated */
+	DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
 	WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
 }
 
@@ -287,9 +281,10 @@ void poseAnim_mapping_reset(ListBase *pfLinks)
 void poseAnim_mapping_autoKeyframe(bContext *C, Scene *scene, ListBase *pfLinks, float cframe)
 {
 	ViewLayer *view_layer = CTX_data_view_layer(C);
+	View3D *v3d = CTX_wm_view3d(C);
 	bool skip = true;
 
-	FOREACH_OBJECT_IN_MODE_BEGIN(view_layer, OB_MODE_POSE, ob) {
+	FOREACH_OBJECT_IN_MODE_BEGIN(view_layer, v3d, OB_ARMATURE, OB_MODE_POSE, ob) {
 		ob->id.tag &= ~LIB_TAG_DOIT;
 		ob = poseAnim_object_get(ob);
 
@@ -338,10 +333,10 @@ void poseAnim_mapping_autoKeyframe(bContext *C, Scene *scene, ListBase *pfLinks,
 	BLI_freelistN(&dsources);
 
 	/* do the bone paths
-	 *	- only do this if keyframes should have been added
-	 *	- do not calculate unless there are paths already to update...
+	 * - only do this if keyframes should have been added
+	 * - do not calculate unless there are paths already to update...
 	 */
-	FOREACH_OBJECT_IN_MODE_BEGIN(view_layer, OB_MODE_POSE, ob) {
+	FOREACH_OBJECT_IN_MODE_BEGIN(view_layer, v3d, OB_ARMATURE, OB_MODE_POSE, ob) {
 		if (ob->id.tag & LIB_TAG_DOIT) {
 			if (ob->pose->avs.path_bakeflag & MOTIONPATH_BAKE_HAS_PATHS) {
 				//ED_pose_clear_paths(C, ob); // XXX for now, don't need to clear
@@ -354,7 +349,7 @@ void poseAnim_mapping_autoKeyframe(bContext *C, Scene *scene, ListBase *pfLinks,
 /* ------------------------- */
 
 /* find the next F-Curve for a PoseChannel with matching path...
- *	- path is not just the pfl rna_path, since that path doesn't have property info yet
+ * - path is not just the pfl rna_path, since that path doesn't have property info yet
  */
 LinkData *poseAnim_mapping_getNextFCurve(ListBase *fcuLinks, LinkData *prev, const char *path)
 {

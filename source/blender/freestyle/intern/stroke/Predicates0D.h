@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,19 +12,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __FREESTYLE_PREDICATES_0D_H__
 #define __FREESTYLE_PREDICATES_0D_H__
 
-/** \file blender/freestyle/intern/stroke/Predicates0D.h
- *  \ingroup freestyle
- *  \brief Class gathering stroke creation algorithms
- *  \author Stephane Grabli
- *  \author Emmanuel Turquin
- *  \date 01/07/2003
+/** \file
+ * \ingroup freestyle
+ * \brief Class gathering stroke creation algorithms
  */
 
 #include "../view_map/Functions0D.h"
@@ -70,7 +63,7 @@ public:
 	}
 
 	/*! The () operator. Must be overload by inherited classes.
-	 *  \param it
+	 *  \param it:
 	 *    The Interface0DIterator pointing onto the Interface0D at which we wish to evaluate the predicate.
 	 *  \return true if the condition is satisfied, false otherwise.
 	 */
@@ -115,9 +108,9 @@ public:
 
 	/*! The () operator. Must be overload by inherited classes.
 	 *  It evaluates a relation between 2 Interface0D.
-	 *  \param inter1
+	 *  \param inter1:
 	 *    The first Interface0D.
-	 *  \param inter2
+	 *  \param inter2:
 	 *    The second Interface0D.
 	 *  \return true or false.
 	 */

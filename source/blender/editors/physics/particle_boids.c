@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 Janne Karhu.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/physics/particle_boids.c
- *  \ingroup edphys
+/** \file
+ * \ingroup edphys
  */
 
 
@@ -77,7 +71,7 @@ static int rule_add_exec(bContext *C, wmOperator *op)
 
 	BLI_addtail(&state->rules, rule);
 
-	DEG_id_tag_update(&part->id, OB_RECALC_DATA | PSYS_RECALC_RESET);
+	DEG_id_tag_update(&part->id, ID_RECALC_GEOMETRY | ID_RECALC_PSYS_RESET);
 
 	return OPERATOR_FINISHED;
 }
@@ -124,7 +118,7 @@ static int rule_del_exec(bContext *C, wmOperator *UNUSED(op))
 		rule->flag |= BOIDRULE_CURRENT;
 
 	DEG_relations_tag_update(bmain);
-	DEG_id_tag_update(&part->id, OB_RECALC_DATA | PSYS_RECALC_RESET);
+	DEG_id_tag_update(&part->id, ID_RECALC_GEOMETRY | ID_RECALC_PSYS_RESET);
 
 	return OPERATOR_FINISHED;
 }
@@ -160,7 +154,7 @@ static int rule_move_up_exec(bContext *C, wmOperator *UNUSED(op))
 			BLI_remlink(&state->rules, rule);
 			BLI_insertlinkbefore(&state->rules, rule->prev, rule);
 
-			DEG_id_tag_update(&part->id, OB_RECALC_DATA | PSYS_RECALC_RESET);
+			DEG_id_tag_update(&part->id, ID_RECALC_GEOMETRY | ID_RECALC_PSYS_RESET);
 			break;
 		}
 	}
@@ -196,7 +190,7 @@ static int rule_move_down_exec(bContext *C, wmOperator *UNUSED(op))
 			BLI_remlink(&state->rules, rule);
 			BLI_insertlinkafter(&state->rules, rule->next, rule);
 
-			DEG_id_tag_update(&part->id, OB_RECALC_DATA | PSYS_RECALC_RESET);
+			DEG_id_tag_update(&part->id, ID_RECALC_GEOMETRY | ID_RECALC_PSYS_RESET);
 			break;
 		}
 	}
@@ -280,7 +274,7 @@ static int state_del_exec(bContext *C, wmOperator *UNUSED(op))
 	state->flag |= BOIDSTATE_CURRENT;
 
 	DEG_relations_tag_update(bmain);
-	DEG_id_tag_update(&part->id, OB_RECALC_DATA | PSYS_RECALC_RESET);
+	DEG_id_tag_update(&part->id, ID_RECALC_GEOMETRY | ID_RECALC_PSYS_RESET);
 
 	return OPERATOR_FINISHED;
 }
@@ -351,7 +345,7 @@ static int state_move_down_exec(bContext *C, wmOperator *UNUSED(op))
 		if (state->flag & BOIDSTATE_CURRENT && state->next) {
 			BLI_remlink(&boids->states, state);
 			BLI_insertlinkafter(&boids->states, state->next, state);
-			DEG_id_tag_update(&part->id, OB_RECALC_DATA | PSYS_RECALC_RESET);
+			DEG_id_tag_update(&part->id, ID_RECALC_GEOMETRY | ID_RECALC_PSYS_RESET);
 			break;
 		}
 	}

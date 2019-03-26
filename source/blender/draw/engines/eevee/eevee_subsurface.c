@@ -1,6 +1,4 @@
 /*
- * Copyright 2016, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,12 +13,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Blender Institute
- *
+ * Copyright 2016, Blender Foundation.
  */
 
-/** \file eevee_subsurface.c
- *  \ingroup draw_engine
+/** \file
+ * \ingroup draw_engine
  *
  * Screen space subsurface scattering technique.
  */
@@ -80,11 +77,6 @@ int EEVEE_subsurface_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 		effects->sss_separate_albedo = (scene_eval->eevee.flag & SCE_EEVEE_SSS_SEPARATE_ALBEDO) != 0;
 		common_data->sss_jitter_threshold = scene_eval->eevee.sss_jitter_threshold;
 
-		/* Force separate albedo for final render */
-		if (DRW_state_is_image_render()) {
-			effects->sss_separate_albedo = true;
-		}
-
 		/* Shaders */
 		if (!e_data.sss_sh[0]) {
 			eevee_create_shader_subsurface();
@@ -94,11 +86,11 @@ int EEVEE_subsurface_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 		 * as the depth buffer we are sampling from. This could be avoided if the stencil is
 		 * a separate texture but that needs OpenGL 4.4 or ARB_texture_stencil8.
 		 * OR OpenGL 4.3 / ARB_ES3_compatibility if using a renderbuffer instead */
-		effects->sss_stencil = DRW_texture_pool_query_2D(fs_size[0], fs_size[1], GPU_DEPTH24_STENCIL8,
+		effects->sss_stencil = DRW_texture_pool_query_2d(fs_size[0], fs_size[1], GPU_DEPTH24_STENCIL8,
 		                                                 &draw_engine_eevee_type);
-		effects->sss_blur =    DRW_texture_pool_query_2D(fs_size[0], fs_size[1], GPU_RGBA16F,
+		effects->sss_blur =    DRW_texture_pool_query_2d(fs_size[0], fs_size[1], GPU_RGBA16F,
 		                                                 &draw_engine_eevee_type);
-		effects->sss_data =    DRW_texture_pool_query_2D(fs_size[0], fs_size[1], GPU_RGBA16F,
+		effects->sss_data =    DRW_texture_pool_query_2d(fs_size[0], fs_size[1], GPU_RGBA16F,
 		                                                 &draw_engine_eevee_type);
 
 		GPUTexture *stencil_tex = effects->sss_stencil;
@@ -131,7 +123,7 @@ int EEVEE_subsurface_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 		});
 
 		if (effects->sss_separate_albedo) {
-			effects->sss_albedo = DRW_texture_pool_query_2D(fs_size[0], fs_size[1], GPU_R11F_G11F_B10F,
+			effects->sss_albedo = DRW_texture_pool_query_2d(fs_size[0], fs_size[1], GPU_R11F_G11F_B10F,
 			                                                &draw_engine_eevee_type);
 		}
 		else {
@@ -168,8 +160,8 @@ void EEVEE_subsurface_output_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Dat
 	const Scene *scene_eval = DEG_get_evaluated_scene(draw_ctx->depsgraph);
 
 	if (scene_eval->eevee.flag & SCE_EEVEE_SSS_ENABLED) {
-		DRW_texture_ensure_fullscreen_2D(&txl->sss_dir_accum, GPU_RGBA16F, 0);
-		DRW_texture_ensure_fullscreen_2D(&txl->sss_col_accum, GPU_RGBA16F, 0);
+		DRW_texture_ensure_fullscreen_2d(&txl->sss_dir_accum, GPU_RGBA16F, 0);
+		DRW_texture_ensure_fullscreen_2d(&txl->sss_col_accum, GPU_RGBA16F, 0);
 
 		GPUTexture *stencil_tex = effects->sss_stencil;
 
@@ -293,6 +285,7 @@ void EEVEE_subsurface_data_render(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Dat
 
 		GPU_framebuffer_bind(fbl->main_fb);
 		DRW_draw_pass(psl->sss_pass);
+		DRW_draw_pass(psl->sss_pass_cull);
 
 		/* Restore */
 		GPU_framebuffer_ensure_config(&fbl->main_fb, {

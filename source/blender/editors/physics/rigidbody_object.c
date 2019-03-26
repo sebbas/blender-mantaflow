@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,11 @@
  *
  * The Original Code is Copyright (C) 2013 Blender Foundation
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Joshua Leung, Sergej Reich
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file rigidbody_object.c
- *  \ingroup editor_physics
- *  \brief Rigid Body object editing operators
+/** \file
+ * \ingroup editor_physics
+ * \brief Rigid Body object editing operators
  */
 
 #include <stdlib.h>
@@ -44,12 +36,14 @@
 
 #include "BKE_collection.h"
 #include "BKE_context.h"
+#include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
 #include "BKE_rigidbody.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_query.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -124,8 +118,8 @@ bool ED_rigidbody_object_add(Main *bmain, Scene *scene, Object *ob, int type, Re
 	BKE_collection_object_add(bmain, rbw->group, ob);
 
 	DEG_relations_tag_update(bmain);
-	DEG_id_tag_update(&ob->id, OB_RECALC_OB);
-	DEG_id_tag_update(&rbw->group->id, DEG_TAG_COPY_ON_WRITE);
+	DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
+	DEG_id_tag_update(&rbw->group->id, ID_RECALC_COPY_ON_WRITE);
 
 	return true;
 }
@@ -135,7 +129,7 @@ void ED_rigidbody_object_remove(Main *bmain, Scene *scene, Object *ob)
 	BKE_rigidbody_remove_object(bmain, scene, ob);
 
 	DEG_relations_tag_update(bmain);
-	DEG_id_tag_update(&ob->id, OB_RECALC_OB);
+	DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
 }
 
 /* ********************************************** */
@@ -344,7 +338,7 @@ static int rigidbody_objects_shape_change_exec(bContext *C, wmOperator *op)
 			RNA_pointer_create(&ob->id, &RNA_RigidBodyObject, ob->rigidbody_object, &ptr);
 			RNA_enum_set(&ptr, "collision_shape", shape);
 
-			DEG_id_tag_update(&ob->id, OB_RECALC_OB);
+			DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
 
 			changed = true;
 		}
@@ -445,7 +439,7 @@ static rbMaterialDensityItem RB_MATERIAL_DENSITY_TABLE[] = {
 	{N_("Steel"), 7860.0f},
 	{N_("Stone"), 2515.0f},
 	{N_("Stone (Crushed)"), 1602.0f},
-	{N_("Timber"), 610.0f}
+	{N_("Timber"), 610.0f},
 };
 static const int NUM_RB_MATERIAL_PRESETS = sizeof(RB_MATERIAL_DENSITY_TABLE) / sizeof(rbMaterialDensityItem);
 
@@ -489,6 +483,7 @@ static const EnumPropertyItem *rigidbody_materials_itemf(bContext *UNUSED(C), Po
 
 static int rigidbody_objects_calc_mass_exec(bContext *C, wmOperator *op)
 {
+	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	int material = RNA_enum_get(op->ptr, "material");
 	float density;
 	bool changed = false;
@@ -519,14 +514,15 @@ static int rigidbody_objects_calc_mass_exec(bContext *C, wmOperator *op)
 			/* mass is calculated from the approximate volume of the object,
 			 * and the density of the material we're simulating
 			 */
-			BKE_rigidbody_calc_volume(ob, &volume);
+			Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+			BKE_rigidbody_calc_volume(ob_eval, &volume);
 			mass = volume * density;
 
 			/* use RNA-system to change the property and perform all necessary changes */
 			RNA_pointer_create(&ob->id, &RNA_RigidBodyObject, ob->rigidbody_object, &ptr);
 			RNA_float_set(&ptr, "mass", mass);
 
-			DEG_id_tag_update(&ob->id, OB_RECALC_OB);
+			DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
 
 			changed = true;
 		}
@@ -560,7 +556,7 @@ void RIGIDBODY_OT_mass_calculate(wmOperatorType *ot)
 	ot->poll = ED_operator_scene_editable;
 
 	/* flags */
-	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_USE_EVAL_DATA;
 
 	/* properties */
 	ot->prop = prop = RNA_def_enum(ot->srna, "material",
