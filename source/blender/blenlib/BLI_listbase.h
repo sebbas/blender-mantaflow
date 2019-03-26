@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,19 +15,13 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BLI_LISTBASE_H__
 #define __BLI_LISTBASE_H__
 
-/** \file BLI_listbase.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #include "BLI_compiler_attrs.h"
@@ -133,7 +125,13 @@ if ((lb)->last && (lb_init || (lb_init = (lb)->last))) { \
 #define LISTBASE_FOREACH(type, var, list) \
 	for (type var = (type)((list)->first); \
 	     var != NULL; \
-	     var = (type)(((Link*)(var))->next))
+	     var = (type)(((Link *)(var))->next))
+
+/** A verion of #LISTBASE_FOREACH that supports removing the item we're looping over. */
+#define LISTBASE_FOREACH_MUTABLE(type, var, list) \
+	for (type var = (type)((list)->first), *var##_iter_next; \
+	     ((var != NULL) ? ((void)(var##_iter_next = (type)(((Link *)(var))->next)), 1) : 0); \
+	     var = var##_iter_next)
 
 #ifdef __cplusplus
 }

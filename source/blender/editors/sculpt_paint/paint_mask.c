@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,10 @@
  *
  * The Original Code is Copyright (C) 2012 by Nicholas Bishop
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s):
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/editors/sculpt_paint/paint_mask.c
- *  \ingroup edsculpt
+/** \file
+ * \ingroup edsculpt
  */
 
 #include "MEM_guardedalloc.h"
@@ -258,7 +249,7 @@ static void mask_box_select_task_cb(
 	} BKE_pbvh_vertex_iter_end;
 }
 
-int ED_sculpt_mask_box_select(struct bContext *C, ViewContext *vc, const rcti *rect, bool select)
+bool ED_sculpt_mask_box_select(struct bContext *C, ViewContext *vc, const rcti *rect, bool select)
 {
 	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	Sculpt *sd = vc->scene->toolsettings->sculpt;
@@ -330,7 +321,7 @@ int ED_sculpt_mask_box_select(struct bContext *C, ViewContext *vc, const rcti *r
 
 	WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
 
-	return OPERATOR_FINISHED;
+	return true;
 }
 
 typedef struct LassoMaskData {
@@ -484,7 +475,8 @@ static int paint_mask_gesture_lasso_exec(bContext *C, wmOperator *op)
 
 				data.symmpass = symmpass;
 
-				/* gather nodes inside lasso's enclosing rectangle (should greatly help with bigger meshes) */
+				/* gather nodes inside lasso's enclosing rectangle
+				 * (should greatly help with bigger meshes) */
 				BKE_pbvh_search_gather(pbvh, BKE_pbvh_node_planes_contain_AABB, clip_planes_final, &nodes, &totnode);
 
 				data.task_data.ob = ob;
@@ -534,7 +526,7 @@ void PAINT_OT_mask_lasso_gesture(wmOperatorType *ot)
 
 	ot->poll = sculpt_mode_poll;
 
-	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+	ot->flag = OPTYPE_REGISTER;
 
 	/* properties */
 	WM_operator_properties_gesture_lasso(ot);

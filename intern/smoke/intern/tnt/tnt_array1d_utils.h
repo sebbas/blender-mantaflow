@@ -1,5 +1,5 @@
-/** \file smoke/intern/tnt/tnt_array1d_utils.h
- *  \ingroup smoke
+/** \file
+ * \ingroup smoke
  */
 /*
 *

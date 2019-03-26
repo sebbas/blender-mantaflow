@@ -1,6 +1,4 @@
 /*
- * Copyright 2011, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,9 +13,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor:
- *		Jeroen Bakker
- *		Monique Dewanchand
+ * Copyright 2011, Blender Foundation.
  */
 
 #ifndef __COM_COMPOSITOR_H__
@@ -68,8 +64,6 @@ extern "C" {
  * The main issue is the type of memory model to use. Blender is used by consumers and professionals.
  * Ranging from low-end machines to very high-end machines.
  * The system should work on high-end machines and on low-end machines.
- *
- *
  * \page executing Executing
  * \section prepare Prepare execution
  *
@@ -281,13 +275,13 @@ extern "C" {
  * It can be executed during editing (blenkernel/node.c) or rendering
  * (renderer/pipeline.c)
  *
- * \param rd [struct RenderData]
+ * \param rd: [struct RenderData]
  *   Render data for this composite, this won't always belong to a scene.
  *
- * \param editingtree [struct bNodeTree]
+ * \param editingtree: [struct bNodeTree]
  *   reference to the compositor editing tree
  *
- * \param rendering [true false]
+ * \param rendering: [true false]
  *    This parameter determines whether the function is called from rendering (true) or editing (false).
  *    based on this setting the system will work differently:
  *     - during rendering only Composite & the File output node will be calculated
@@ -304,10 +298,10 @@ extern "C" {
  *     - output nodes can have different priorities in the WorkScheduler.
  * This is implemented in the COM_execute function.
  *
- * \param viewSettings
+ * \param viewSettings:
  *   reference to view settings used for color management
  *
- * \param displaySettings
+ * \param displaySettings:
  *   reference to display settings used for color management
  *
  * OCIO_TODO: this options only used in rare cases, namely in output file node,

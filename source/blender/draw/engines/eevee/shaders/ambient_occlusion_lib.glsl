@@ -177,16 +177,15 @@ void integrate_slice(vec3 normal, vec2 t_phi, vec2 horizons, inout float visibil
 
 	visibility += vis;
 
-	/* Finding Bent normal */
+	/* O. Klehm, T. Ritschel, E. Eisemann, H.-P. Seidel
+	 * Bent Normals and Cones in Screen-space
+	 * Sec. 3.1 : Bent normals */
 	float b_angle = (h.x + h.y) * 0.5;
-	/* The 0.5 factor below is here to equilibrate the accumulated vectors.
-	 * (sin(b_angle) * -t_phi) will accumulate to (phi_step * result_nor.xy * 0.5).
-	 * (cos(b_angle) * 0.5) will accumulate to (phi_step * result_nor.z * 0.5). */
-	bent_normal += vec3(sin(b_angle) * -t_phi, cos(b_angle) * 0.5);
+	bent_normal += vec3(sin(b_angle) * -t_phi, cos(b_angle)) * vis;
 }
 
 void gtao_deferred(
-        vec3 normal, vec3 position, vec4 noise, float frag_depth, out float visibility, out vec3 bent_normal)
+        vec3 normal, vec4 noise, float frag_depth, out float visibility, out vec3 bent_normal)
 {
 	/* Fetch early, hide latency! */
 	vec4 horizons = texelFetch(horizonBuffer, ivec2(gl_FragCoord.xy), 0);
@@ -194,7 +193,6 @@ void gtao_deferred(
 	vec4 dirs;
 	dirs.xy = get_ao_dir(noise.x * 0.5);
 	dirs.zw = get_ao_dir(noise.x * 0.5 + 0.5);
-	vec2 uvs = get_uvs_from_view(position);
 
 	bent_normal = vec3(0.0);
 	visibility = 0.0;
@@ -204,9 +202,9 @@ void gtao_deferred(
 	integrate_slice(normal, dirs.xy, horizons.xy, visibility, bent_normal);
 	integrate_slice(normal, dirs.zw, horizons.zw, visibility, bent_normal);
 
-	visibility *= 0.5; /* We integrated 2 slices. */
+	bent_normal = normalize(bent_normal / visibility);
 
-	bent_normal = normalize(bent_normal);
+	visibility *= 0.5; /* We integrated 2 slices. */
 }
 
 void gtao(vec3 normal, vec3 position, vec4 noise, out float visibility, out vec3 bent_normal)
@@ -223,7 +221,7 @@ void gtao(vec3 normal, vec3 position, vec4 noise, out float visibility, out vec3
 	vec2 horizons = search_horizon_sweep(dir, position, uvs, noise.y, max_dir);
 	integrate_slice(normal, dir, horizons, visibility, bent_normal);
 
-	bent_normal = normalize(bent_normal);
+	bent_normal = normalize(bent_normal / visibility);
 }
 
 /* Multibounce approximation base on surface albedo.
@@ -252,7 +250,7 @@ float occlusion_compute(vec3 N, vec3 vpos, float user_occlusion, vec4 rand, out 
 		vec3 vnor = mat3(ViewMatrix) * N;
 
 #ifdef ENABLE_DEFERED_AO
-		gtao_deferred(vnor, vpos, rand, gl_FragCoord.z, visibility, bent_normal);
+		gtao_deferred(vnor, rand, gl_FragCoord.z, visibility, bent_normal);
 #else
 		gtao(vnor, vpos, rand, visibility, bent_normal);
 #endif
@@ -262,7 +260,7 @@ float occlusion_compute(vec3 N, vec3 vpos, float user_occlusion, vec4 rand, out 
 
 		if ((int(aoSettings) & USE_BENT_NORMAL) != 0) {
 			/* The bent normal will show the facet look of the mesh. Try to minimize this. */
-			float mix_fac = visibility * visibility;
+			float mix_fac = visibility * visibility * visibility;
 			bent_normal = normalize(mix(bent_normal, vnor, mix_fac));
 
 			bent_normal = transform_direction(ViewMatrixInverse, bent_normal);

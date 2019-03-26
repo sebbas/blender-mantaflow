@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_sequencer/space_sequencer.c
- *  \ingroup spseq
+/** \file
+ * \ingroup spseq
  */
 
 
@@ -42,10 +35,10 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
+#include "BKE_global.h"
 #include "BKE_library.h"
 #include "BKE_screen.h"
 #include "BKE_sequencer.h"
-#include "BKE_global.h"
 
 #include "ED_space_api.h"
 #include "ED_screen.h"
@@ -81,13 +74,17 @@ ARegion *sequencer_has_buttons_region(ScrArea *sa)
 	ARegion *ar, *arnew;
 
 	ar = BKE_area_find_region_type(sa, RGN_TYPE_UI);
-	if (ar) return ar;
+	if (ar) {
+		return ar;
+	}
 
 	/* add subdiv level; after header */
 	ar = BKE_area_find_region_type(sa, RGN_TYPE_HEADER);
 
 	/* is error! */
-	if (ar == NULL) return NULL;
+	if (ar == NULL) {
+		return NULL;
+	}
 
 	arnew = MEM_callocN(sizeof(ARegion), "buttons for sequencer");
 
@@ -104,9 +101,11 @@ static ARegion *sequencer_find_region(ScrArea *sa, short type)
 {
 	ARegion *ar = NULL;
 
-	for (ar = sa->regionbase.first; ar; ar = ar->next)
-		if (ar->regiontype == type)
+	for (ar = sa->regionbase.first; ar; ar = ar->next) {
+		if (ar->regiontype == type) {
 			return ar;
+		}
+	}
 
 	return ar;
 }
@@ -123,14 +122,14 @@ static SpaceLink *sequencer_new(const ScrArea *UNUSED(sa), const Scene *scene)
 	sseq->chanshown = 0;
 	sseq->view = SEQ_VIEW_SEQUENCE;
 	sseq->mainb = SEQ_DRAW_IMG_IMBUF;
-	sseq->flag = SEQ_SHOW_GPENCIL | SEQ_USE_ALPHA;
+	sseq->flag = SEQ_SHOW_GPENCIL | SEQ_USE_ALPHA | SEQ_SHOW_MARKER_LINES;
 
 	/* header */
 	ar = MEM_callocN(sizeof(ARegion), "header for sequencer");
 
 	BLI_addtail(&sseq->regionbase, ar);
 	ar->regiontype = RGN_TYPE_HEADER;
-	ar->alignment = RGN_ALIGN_TOP;
+	ar->alignment = (U.uiflag & USER_HEADER_BOTTOM) ? RGN_ALIGN_BOTTOM : RGN_ALIGN_TOP;
 
 	/* buttons/list view */
 	ar = MEM_callocN(sizeof(ARegion), "buttons for sequencer");
@@ -206,20 +205,25 @@ static void sequencer_free(SpaceLink *sl)
 
 // XXX	if (sseq->gpd) BKE_gpencil_free(sseq->gpd);
 
-	if (scopes->zebra_ibuf)
+	if (scopes->zebra_ibuf) {
 		IMB_freeImBuf(scopes->zebra_ibuf);
+	}
 
-	if (scopes->waveform_ibuf)
+	if (scopes->waveform_ibuf) {
 		IMB_freeImBuf(scopes->waveform_ibuf);
+	}
 
-	if (scopes->sep_waveform_ibuf)
+	if (scopes->sep_waveform_ibuf) {
 		IMB_freeImBuf(scopes->sep_waveform_ibuf);
+	}
 
-	if (scopes->vector_ibuf)
+	if (scopes->vector_ibuf) {
 		IMB_freeImBuf(scopes->vector_ibuf);
+	}
 
-	if (scopes->histogram_ibuf)
+	if (scopes->histogram_ibuf) {
 		IMB_freeImBuf(scopes->histogram_ibuf);
+	}
 }
 
 
@@ -354,12 +358,14 @@ static void sequencer_listener(
 			break;
 		case NC_WINDOW:
 		case NC_SPACE:
-			if (wmn->data == ND_SPACE_SEQUENCER)
+			if (wmn->data == ND_SPACE_SEQUENCER) {
 				sequencer_scopes_tag_refresh(sa);
+			}
 			break;
 		case NC_GPENCIL:
-			if (wmn->data & ND_GPENCIL_EDITMODE)
+			if (wmn->data & ND_GPENCIL_EDITMODE) {
 				ED_area_tag_redraw(sa);
+			}
 			break;
 	}
 }
@@ -372,10 +378,13 @@ static bool image_drop_poll(bContext *C, wmDrag *drag, const wmEvent *event, con
 	Scene *scene = CTX_data_scene(C);
 	int hand;
 
-	if (drag->type == WM_DRAG_PATH)
-		if (ELEM(drag->icon, ICON_FILE_IMAGE, ICON_FILE_BLANK)) /* rule might not work? */
-			if (find_nearest_seq(scene, &ar->v2d, &hand, event->mval) == NULL)
+	if (drag->type == WM_DRAG_PATH) {
+		if (ELEM(drag->icon, ICON_FILE_IMAGE, ICON_FILE_BLANK)) { /* rule might not work? */
+			if (find_nearest_seq(scene, &ar->v2d, &hand, event->mval) == NULL) {
 				return 1;
+			}
+		}
+	}
 
 	return 0;
 }
@@ -386,10 +395,13 @@ static bool movie_drop_poll(bContext *C, wmDrag *drag, const wmEvent *event, con
 	Scene *scene = CTX_data_scene(C);
 	int hand;
 
-	if (drag->type == WM_DRAG_PATH)
-		if (ELEM(drag->icon, 0, ICON_FILE_MOVIE, ICON_FILE_BLANK)) /* rule might not work? */
-			if (find_nearest_seq(scene, &ar->v2d, &hand, event->mval) == NULL)
+	if (drag->type == WM_DRAG_PATH) {
+		if (ELEM(drag->icon, 0, ICON_FILE_MOVIE, ICON_FILE_BLANK)) { /* rule might not work? */
+			if (find_nearest_seq(scene, &ar->v2d, &hand, event->mval) == NULL) {
 				return 1;
+			}
+		}
+	}
 	return 0;
 }
 
@@ -399,18 +411,22 @@ static bool sound_drop_poll(bContext *C, wmDrag *drag, const wmEvent *event, con
 	Scene *scene = CTX_data_scene(C);
 	int hand;
 
-	if (drag->type == WM_DRAG_PATH)
-		if (ELEM(drag->icon, ICON_FILE_SOUND, ICON_FILE_BLANK)) /* rule might not work? */
-			if (find_nearest_seq(scene, &ar->v2d, &hand, event->mval) == NULL)
+	if (drag->type == WM_DRAG_PATH) {
+		if (ELEM(drag->icon, ICON_FILE_SOUND, ICON_FILE_BLANK)) { /* rule might not work? */
+			if (find_nearest_seq(scene, &ar->v2d, &hand, event->mval) == NULL) {
 				return 1;
+			}
+		}
+	}
 	return 0;
 }
 
 static void sequencer_drop_copy(wmDrag *drag, wmDropBox *drop)
 {
 	/* copy drag path to properties */
-	if (RNA_struct_find_property(drop->ptr, "filepath"))
+	if (RNA_struct_find_property(drop->ptr, "filepath")) {
 		RNA_string_set(drop->ptr, "filepath", drag->path);
+	}
 
 	if (RNA_struct_find_property(drop->ptr, "directory")) {
 		PointerRNA itemptr;
@@ -439,6 +455,7 @@ static void sequencer_dropboxes(void)
 /* ************* end drop *********** */
 
 /* DO NOT make this static, this hides the symbol and breaks API generation script. */
+extern const char *sequencer_context_dir[];  /* quiet warning. */
 const char *sequencer_context_dir[] = {"edit_mask", NULL};
 
 static int sequencer_context(const bContext *C, const char *member, bContextDataResult *result)
@@ -520,16 +537,19 @@ static void sequencer_main_region_listener(
 			}
 			break;
 		case NC_SPACE:
-			if (wmn->data == ND_SPACE_SEQUENCER)
+			if (wmn->data == ND_SPACE_SEQUENCER) {
 				ED_region_tag_redraw(ar);
+			}
 			break;
 		case NC_ID:
-			if (wmn->action == NA_RENAME)
+			if (wmn->action == NA_RENAME) {
 				ED_region_tag_redraw(ar);
+			}
 			break;
 		case NC_SCREEN:
-			if (ELEM(wmn->data, ND_ANIMPLAY))
+			if (ELEM(wmn->data, ND_ANIMPLAY)) {
 				ED_region_tag_redraw(ar);
+			}
 			break;
 	}
 }
@@ -537,12 +557,9 @@ static void sequencer_main_region_listener(
 static void sequencer_main_region_message_subscribe(
         const struct bContext *UNUSED(C),
         struct WorkSpace *UNUSED(workspace), struct Scene *scene,
-        struct bScreen *screen, struct ScrArea *sa, struct ARegion *ar,
+        struct bScreen *UNUSED(screen), struct ScrArea *UNUSED(sa), struct ARegion *ar,
         struct wmMsgBus *mbus)
 {
-	PointerRNA ptr;
-	RNA_pointer_create(&screen->id, &RNA_SpaceSequenceEditor, sa->spacedata.first, &ptr);
-
 	wmMsgSubscribeValue msg_sub_value_region_tag_redraw = {
 		.owner = ar,
 		.user_data = ar,
@@ -570,6 +587,24 @@ static void sequencer_main_region_message_subscribe(
 
 		for (int i = 0; i < ARRAY_SIZE(props); i++) {
 			WM_msg_subscribe_rna(mbus, &idptr, props[i], &msg_sub_value_region_tag_redraw, __func__);
+		}
+	}
+
+	{
+		StructRNA *type_array[] = {
+			&RNA_SequenceEditor,
+
+			&RNA_Sequence,
+			/* Members of 'Sequence'. */
+			&RNA_SequenceCrop,
+			&RNA_SequenceTransform,
+			&RNA_SequenceModifier,
+			&RNA_SequenceColorBalanceData,
+		};
+		wmMsgParams_RNA msg_key_params = {{{0}}};
+		for (int i = 0; i < ARRAY_SIZE(type_array); i++) {
+			msg_key_params.ptr.type = type_array[i];
+			WM_msg_subscribe_rna_params(mbus, &msg_key_params, &msg_sub_value_region_tag_redraw, __func__);
 		}
 	}
 }
@@ -618,27 +653,35 @@ static void sequencer_preview_region_draw(const bContext *C, ARegion *ar)
 	        (sseq->mainb == SEQ_DRAW_IMG_IMBUF));
 
 	/* XXX temp fix for wrong setting in sseq->mainb */
-	if (sseq->mainb == SEQ_DRAW_SEQUENCE) sseq->mainb = SEQ_DRAW_IMG_IMBUF;
+	if (sseq->mainb == SEQ_DRAW_SEQUENCE) {
+		sseq->mainb = SEQ_DRAW_IMG_IMBUF;
+	}
 
-	if (!show_split || sseq->overlay_type != SEQ_DRAW_OVERLAY_REFERENCE)
-		draw_image_seq(C, scene, ar, sseq, scene->r.cfra, 0, false, false);
+	if (!show_split || sseq->overlay_type != SEQ_DRAW_OVERLAY_REFERENCE) {
+		sequencer_draw_preview(C, scene, ar, sseq, scene->r.cfra, 0, false, false);
+	}
 
 	if (show_split && sseq->overlay_type != SEQ_DRAW_OVERLAY_CURRENT) {
 		int over_cfra;
 
-		if (scene->ed->over_flag & SEQ_EDIT_OVERLAY_ABS)
+		if (scene->ed->over_flag & SEQ_EDIT_OVERLAY_ABS) {
 			over_cfra = scene->ed->over_cfra;
-		else
+		}
+		else {
 			over_cfra = scene->r.cfra + scene->ed->over_ofs;
+		}
 
-		if (over_cfra != scene->r.cfra || sseq->overlay_type != SEQ_DRAW_OVERLAY_RECT)
-			draw_image_seq(C, scene, ar, sseq, scene->r.cfra, over_cfra - scene->r.cfra, true, false);
+		if (over_cfra != scene->r.cfra || sseq->overlay_type != SEQ_DRAW_OVERLAY_RECT) {
+			sequencer_draw_preview(C, scene, ar, sseq, scene->r.cfra, over_cfra - scene->r.cfra, true, false);
+		}
 	}
 
 	if ((U.uiflag & USER_SHOW_FPS) && ED_screen_animation_no_scrub(wm)) {
 		rcti rect;
 		ED_region_visible_rect(ar, &rect);
-		ED_scene_draw_fps(scene, &rect);
+		int xoffset = rect.xmin + U.widget_unit;
+		int yoffset = rect.ymax;
+		ED_scene_draw_fps(scene, xoffset, &yoffset);
 	}
 }
 
@@ -674,8 +717,9 @@ static void sequencer_preview_region_listener(
 			}
 			break;
 		case NC_SPACE:
-			if (wmn->data == ND_SPACE_SEQUENCER)
+			if (wmn->data == ND_SPACE_SEQUENCER) {
 				ED_region_tag_redraw(ar);
+			}
 			break;
 		case NC_ID:
 			switch (wmn->data) {
@@ -730,12 +774,14 @@ static void sequencer_buttons_region_listener(
 			}
 			break;
 		case NC_SPACE:
-			if (wmn->data == ND_SPACE_SEQUENCER)
+			if (wmn->data == ND_SPACE_SEQUENCER) {
 				ED_region_tag_redraw(ar);
+			}
 			break;
 		case NC_ID:
-			if (wmn->action == NA_RENAME)
+			if (wmn->action == NA_RENAME) {
 				ED_region_tag_redraw(ar);
+			}
 			break;
 	}
 }

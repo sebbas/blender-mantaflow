@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/texture.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 
@@ -57,8 +49,6 @@
 
 #include "BKE_colorband.h"
 #include "BKE_library.h"
-#include "BKE_library_query.h"
-#include "BKE_library_remap.h"
 #include "BKE_image.h"
 #include "BKE_material.h"
 #include "BKE_texture.h"
@@ -205,7 +195,7 @@ void BKE_texture_free(Tex *tex)
 
 	/* is no lib link block, but texture extension */
 	if (tex->nodetree) {
-		ntreeFreeTree(tex->nodetree);
+		ntreeFreeNestedTree(tex->nodetree);
 		MEM_freeN(tex->nodetree);
 		tex->nodetree = NULL;
 	}
@@ -220,7 +210,7 @@ void BKE_texture_free(Tex *tex)
 
 void BKE_texture_default(Tex *tex)
 {
-	/* BLI_assert(MEMCMP_STRUCT_OFS_IS_ZERO(tex, id)); */  /* Not here, can be called with some pointers set. :/ */
+	/* BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(tex, id)); */  /* Not here, can be called with some pointers set. :/ */
 
 	tex->type = TEX_IMAGE;
 	tex->ima = NULL;
@@ -309,7 +299,6 @@ void BKE_texture_mtex_default(MTex *mtex)
 	mtex->size[1] = 1.0;
 	mtex->size[2] = 1.0;
 	mtex->tex = NULL;
-	mtex->texflag = MTEX_3TAP_BUMP | MTEX_BUMP_OBJECTSPACE | MTEX_MAPTO_BOUNDS;
 	mtex->colormodel = 0;
 	mtex->r = 1.0;
 	mtex->g = 0.0;
@@ -422,11 +411,11 @@ MTex *BKE_texture_mtex_add_id(ID *id, int slot)
 
 /**
  * Only copy internal data of Texture ID from source to already allocated/initialized destination.
- * You probably nerver want to use that directly, use id_copy or BKE_id_copy_ex for typical needs.
+ * You probably never want to use that directly, use BKE_id_copy or BKE_id_copy_ex for typical needs.
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag  Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
  */
 void BKE_texture_copy_data(Main *bmain, Tex *tex_dst, const Tex *tex_src, const int flag)
 {
@@ -443,7 +432,7 @@ void BKE_texture_copy_data(Main *bmain, Tex *tex_dst, const Tex *tex_src, const 
 		}
 		/* Note: nodetree is *not* in bmain, however this specific case is handled at lower level
 		 *       (see BKE_libblock_copy_ex()). */
-		BKE_id_copy_ex(bmain, (ID *)tex_src->nodetree, (ID **)&tex_dst->nodetree, flag, false);
+		BKE_id_copy_ex(bmain, (ID *)tex_src->nodetree, (ID **)&tex_dst->nodetree, flag);
 	}
 
 	if ((flag & LIB_ID_COPY_NO_PREVIEW) == 0) {
@@ -457,23 +446,26 @@ void BKE_texture_copy_data(Main *bmain, Tex *tex_dst, const Tex *tex_src, const 
 Tex *BKE_texture_copy(Main *bmain, const Tex *tex)
 {
 	Tex *tex_copy;
-	BKE_id_copy_ex(bmain, &tex->id, (ID **)&tex_copy, 0, false);
+	BKE_id_copy(bmain, &tex->id, (ID **)&tex_copy);
 	return tex_copy;
 }
 
 /* texture copy without adding to main dbase */
 Tex *BKE_texture_localize(Tex *tex)
 {
-	/* TODO replace with something like
-	 * 	Tex *tex_copy;
-	 * 	BKE_id_copy_ex(bmain, &tex->id, (ID **)&tex_copy, LIB_ID_COPY_NO_MAIN | LIB_ID_COPY_NO_PREVIEW | LIB_ID_COPY_NO_USER_REFCOUNT, false);
-	 * 	return tex_copy;
+	/* TODO(bastien): Replace with something like:
 	 *
-	 * ... Once f*** nodes are fully converted to that too :( */
+	 *   Tex *tex_copy;
+	 *   BKE_id_copy_ex(bmain, &tex->id, (ID **)&tex_copy,
+	 *                  LIB_ID_COPY_NO_MAIN | LIB_ID_COPY_NO_PREVIEW | LIB_ID_COPY_NO_USER_REFCOUNT,
+	 *                  false);
+	 *   return tex_copy;
+	 *
+	 * NOTE: Only possible once nested node trees are fully converted to that too. */
 
 	Tex *texn;
 
-	texn = BKE_libblock_copy_nolib(&tex->id, false);
+	texn = BKE_libblock_copy_for_localize(&tex->id);
 
 	/* image texture: BKE_texture_free also doesn't decrease */
 
@@ -484,6 +476,8 @@ Tex *BKE_texture_localize(Tex *tex)
 	if (tex->nodetree) {
 		texn->nodetree = ntreeLocalize(tex->nodetree);
 	}
+
+	texn->id.tag |= LIB_TAG_LOCALIZED;
 
 	return texn;
 }

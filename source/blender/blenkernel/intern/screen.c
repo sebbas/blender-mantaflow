@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/screen.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #ifdef WIN32
@@ -308,6 +300,30 @@ void BKE_spacedata_draw_locks(int set)
 		}
 	}
 }
+
+/**
+ * Version of #BKE_area_find_region_type that also works if \a slink is not the active space of \a sa.
+ */
+ARegion *BKE_spacedata_find_region_type(const SpaceLink *slink, const ScrArea *sa, int region_type)
+{
+	const bool is_slink_active = slink == sa->spacedata.first;
+	const ListBase *regionbase = (is_slink_active) ?
+	                           &sa->regionbase : &slink->regionbase;
+	ARegion *ar = NULL;
+
+	BLI_assert(BLI_findindex(&sa->spacedata, slink) != -1);
+	for (ar = regionbase->first; ar; ar = ar->next) {
+		if (ar->regiontype == region_type) {
+			break;
+		}
+	}
+
+	/* Should really unit test this instead. */
+	BLI_assert(!is_slink_active || ar == BKE_area_find_region_type(sa, region_type));
+
+	return ar;
+}
+
 
 static void (*spacedata_id_remap_cb)(struct ScrArea *sa, struct SpaceLink *sl, ID *old_id, ID *new_id) = NULL;
 
@@ -644,17 +660,21 @@ void BKE_screen_remove_unused_scrverts(bScreen *sc)
 
 /* ***************** Utilities ********************** */
 
-/* Find a region of the specified type from the given area */
-ARegion *BKE_area_find_region_type(ScrArea *sa, int type)
+/**
+ * Find a region of type \a region_type in the currently active space of \a sa.
+ *
+ * \note This does _not_ work if the region to look up is not in the active
+ *       space. Use #BKE_spacedata_find_region_type if that may be the case.
+ */
+ARegion *BKE_area_find_region_type(const ScrArea *sa, int region_type)
 {
 	if (sa) {
-		ARegion *ar;
-
-		for (ar = sa->regionbase.first; ar; ar = ar->next) {
-			if (ar->regiontype == type)
+		for (ARegion *ar = sa->regionbase.first; ar; ar = ar->next) {
+			if (ar->regiontype == region_type)
 				return ar;
 		}
 	}
+
 	return NULL;
 }
 
@@ -787,13 +807,15 @@ void BKE_screen_view3d_shading_init(View3DShading *shading)
 
 	shading->type = OB_SOLID;
 	shading->prev_type = OB_SOLID;
-	shading->flag = V3D_SHADING_SPECULAR_HIGHLIGHT | V3D_SHADING_XRAY_WIREFRAME;
+	shading->flag = V3D_SHADING_SPECULAR_HIGHLIGHT | V3D_SHADING_XRAY_BONE;
 	shading->light = V3D_LIGHTING_STUDIO;
 	shading->shadow_intensity = 0.5f;
 	shading->xray_alpha = 0.5f;
 	shading->xray_alpha_wire = 0.5f;
 	shading->cavity_valley_factor = 1.0f;
 	shading->cavity_ridge_factor = 1.0f;
+	shading->curvature_ridge_factor = 1.0f;
+	shading->curvature_valley_factor = 1.0f;
 	copy_v3_fl(shading->single_color, 0.8f);
 	copy_v3_fl(shading->background_color, 0.05f);
 }
@@ -824,4 +846,21 @@ bool BKE_screen_is_fullscreen_area(const bScreen *screen)
 bool BKE_screen_is_used(const bScreen *screen)
 {
 	return (screen->winid != 0);
+}
+
+void BKE_screen_header_alignment_reset(bScreen *screen)
+{
+	int alignment = (U.uiflag & USER_HEADER_BOTTOM) ? RGN_ALIGN_BOTTOM : RGN_ALIGN_TOP;
+	for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+		for (ARegion *ar = sa->regionbase.first; ar; ar = ar->next) {
+			if (ar->regiontype == RGN_TYPE_HEADER) {
+				if (ELEM(sa->spacetype, SPACE_FILE, SPACE_USERPREF, SPACE_OUTLINER, SPACE_PROPERTIES)) {
+					ar->alignment = RGN_ALIGN_TOP;
+					continue;
+				}
+				ar->alignment = alignment;
+			}
+		}
+	}
+	screen->do_refresh = true;
 }

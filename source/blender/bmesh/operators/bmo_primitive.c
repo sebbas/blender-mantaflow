@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Joseph Eagar.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/bmesh/operators/bmo_primitive.c
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * Primitive shapes.
  */
@@ -52,7 +46,7 @@ static const float icovert[12][3] = {
 	{-144.72f, 105.144f, 89.443f},
 	{55.277f, 170.128f, 89.443f},
 	{178.885f, 0.0f, 89.443f},
-	{0.0f, 0.0f, 200.0f}
+	{0.0f, 0.0f, 200.0f},
 };
 
 static const short icoface[20][3] = {
@@ -75,7 +69,7 @@ static const short icoface[20][3] = {
 	{7, 6, 11},
 	{8, 7, 11},
 	{9, 8, 11},
-	{10, 9, 11}
+	{10, 9, 11},
 };
 
 static const float icouvs[60][2] =
@@ -99,7 +93,7 @@ static const float icouvs[60][2] =
 	{1.000000f, 0.314921f}, {0.818181f, 0.314921f}, {0.909090f, 0.472382f},
 	{0.272727f, 0.314921f}, {0.090909f, 0.314921f}, {0.181818f, 0.472382f},
 	{0.454545f, 0.314921f}, {0.272727f, 0.314921f}, {0.363636f, 0.472382f},
-	{0.636363f, 0.314921f}, {0.454545f, 0.314921f}, {0.545454f, 0.472382f}
+	{0.636363f, 0.314921f}, {0.454545f, 0.314921f}, {0.545454f, 0.472382f},
 };
 
 
@@ -744,7 +738,7 @@ static const float monkeyuvs[] =
 	0.620420f, 0.565675f, 0.671403f, 0.592656f, 0.484068f, 0.628776f, 0.498072f, 0.552315f,
 	0.276936f, 0.625067f, 0.092820f, 0.589862f, 0.145041f, 0.562595f, 0.264218f, 0.550140f,
 	0.391039f, 0.611891f, 0.498072f, 0.552315f, 0.484068f, 0.628776f, 0.434803f, 0.658882f,
-	0.276936f, 0.625067f, 0.264218f, 0.550140f, 0.369913f, 0.610196f, 0.325318f, 0.656224f
+	0.276936f, 0.625067f, 0.264218f, 0.550140f, 0.369913f, 0.610196f, 0.325318f, 0.656224f,
 };
 
 #define VERT_MARK   1
@@ -823,10 +817,10 @@ void bmo_create_grid_exec(BMesh *bm, BMOperator *op)
 /**
  * Fills first available UVmap with grid-like UVs for all faces OpFlag-ged by given flag.
  *
- * \param bm The BMesh to operate on
- * \param x_segments The x-resolution of the grid
- * \param y_segments The y-resolution of the grid
- * \param oflag The flag to check faces with.
+ * \param bm: The BMesh to operate on
+ * \param x_segments: The x-resolution of the grid
+ * \param y_segments: The y-resolution of the grid
+ * \param oflag: The flag to check faces with.
  */
 void BM_mesh_calc_uvs_grid(
         BMesh *bm, const uint x_segments, const uint y_segments,
@@ -1099,7 +1093,7 @@ static void bm_mesh_calc_uvs_sphere_face(BMFace *f, const int cd_loop_uv_offset)
 	BLI_assert(f->len <= 4);
 
 	/* If face has 3 vertices, it's a polar face, in which case we need to
-	 * compute a nearbye to determine its latitude. */
+	 * compute a nearby to determine its latitude. */
 	float avgx = 0.0f, avgy = 0.0f;
 	BM_ITER_ELEM_INDEX (l, &iter, f, BM_LOOPS_OF_FACE, loop_index) {
 		if (f->len == 3) {
@@ -1159,8 +1153,8 @@ static void bm_mesh_calc_uvs_sphere_face(BMFace *f, const int cd_loop_uv_offset)
 /**
  * Fills first available UVmap with spherical projected UVs for all faces OpFlag-ged by given flag.
  *
- * \param bm The BMesh to operate on
- * \param oflag The flag to check faces with.
+ * \param bm: The BMesh to operate on
+ * \param oflag: The flag to check faces with.
  */
 void BM_mesh_calc_uvs_sphere(
         BMesh *bm,
@@ -1365,10 +1359,10 @@ void bmo_create_circle_exec(BMesh *bm, BMOperator *op)
 /**
  * Fills first available UVmap with 2D projected UVs for all faces OpFlag-ged by given flag.
  *
- * \param bm The BMesh to operate on.
- * \param mat The transform matrix applied to the created circle.
- * \param radius The size of the circle.
- * \param oflag The flag to check faces with.
+ * \param bm: The BMesh to operate on.
+ * \param mat: The transform matrix applied to the created circle.
+ * \param radius: The size of the circle.
+ * \param oflag: The flag to check faces with.
  */
 void BM_mesh_calc_uvs_circle(
         BMesh *bm, float mat[4][4], const float radius,
@@ -1530,13 +1524,13 @@ void bmo_create_cone_exec(BMesh *bm, BMOperator *op)
 /**
  * Fills first available UVmap with cylinder/cone-like UVs for all faces OpFlag-ged by given flag.
  *
- * \param bm The BMesh to operate on.
- * \param mat The transform matrix applied to the created cone/cylinder.
- * \param radius_top The size of the top end of the cone/cylinder.
- * \param radius_bottom The size of the bottom end of the cone/cylinder.
- * \param segments The number of subdivisions in the sides of the cone/cylinder.
- * \param cap_ends Whether the ends of the cone/cylinder are filled or not.
- * \param oflag The flag to check faces with.
+ * \param bm: The BMesh to operate on.
+ * \param mat: The transform matrix applied to the created cone/cylinder.
+ * \param radius_top: The size of the top end of the cone/cylinder.
+ * \param radius_bottom: The size of the bottom end of the cone/cylinder.
+ * \param segments: The number of subdivisions in the sides of the cone/cylinder.
+ * \param cap_ends: Whether the ends of the cone/cylinder are filled or not.
+ * \param oflag: The flag to check faces with.
  */
 void BM_mesh_calc_uvs_cone(
         BMesh *bm, float mat[4][4],
@@ -1696,8 +1690,8 @@ void bmo_create_cube_exec(BMesh *bm, BMOperator *op)
  * \note Expects tagged faces to be six quads.
  * \note Caller must order faces for correct alignment.
  *
- * \param bm The BMesh to operate on.
- * \param oflag The flag to check faces with.
+ * \param bm: The BMesh to operate on.
+ * \param oflag: The flag to check faces with.
  */
 void BM_mesh_calc_uvs_cube(BMesh *bm, const short oflag)
 {

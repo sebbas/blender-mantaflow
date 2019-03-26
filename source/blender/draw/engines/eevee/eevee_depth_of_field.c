@@ -1,6 +1,4 @@
 /*
- * Copyright 2016, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,44 +13,30 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Blender Institute
- *
+ * Copyright 2016, Blender Foundation.
  */
 
-/** \file eevee_depth_of_field.c
- *  \ingroup draw_engine
+/** \file
+ * \ingroup draw_engine
  *
  * Depth of field post process effect.
  */
 
 #include "DRW_render.h"
 
-#include "BLI_dynstr.h"
-#include "BLI_rand.h"
-
-#include "DNA_anim_types.h"
 #include "DNA_camera_types.h"
-#include "DNA_object_force_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
 #include "DNA_world_types.h"
 
-#include "BKE_global.h" /* for G.debug_value */
 #include "BKE_camera.h"
-#include "BKE_mesh.h"
-#include "BKE_object.h"
-#include "BKE_animsys.h"
-#include "BKE_screen.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
 #include "eevee_private.h"
-#include "GPU_extensions.h"
 #include "GPU_framebuffer.h"
 #include "GPU_texture.h"
-
-#include "ED_screen.h"
 
 static struct {
 	/* Depth Of Field */
@@ -106,18 +90,18 @@ int EEVEE_depth_of_field_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *v
 			Camera *cam = (Camera *)camera->data;
 
 			/* Retrieve Near and Far distance */
-			effects->dof_near_far[0] = -cam->clipsta;
-			effects->dof_near_far[1] = -cam->clipend;
+			effects->dof_near_far[0] = -cam->clip_start;
+			effects->dof_near_far[1] = -cam->clip_end;
 
 			int buffer_size[2] = {(int)viewport_size[0] / 2, (int)viewport_size[1] / 2};
 
-			GPUTextureFormat down_format = DRW_state_draw_background() ? GPU_R11F_G11F_B10F : GPU_RGBA16F;
+			eGPUTextureFormat down_format = DRW_state_draw_background() ? GPU_R11F_G11F_B10F : GPU_RGBA16F;
 
-			effects->dof_down_near = DRW_texture_pool_query_2D(buffer_size[0], buffer_size[1], down_format,
+			effects->dof_down_near = DRW_texture_pool_query_2d(buffer_size[0], buffer_size[1], down_format,
 			                                                   &draw_engine_eevee_type);
-			effects->dof_down_far =  DRW_texture_pool_query_2D(buffer_size[0], buffer_size[1], down_format,
+			effects->dof_down_far =  DRW_texture_pool_query_2d(buffer_size[0], buffer_size[1], down_format,
 			                                                   &draw_engine_eevee_type);
-			effects->dof_coc =       DRW_texture_pool_query_2D(buffer_size[0], buffer_size[1], GPU_RG16F,
+			effects->dof_coc =       DRW_texture_pool_query_2d(buffer_size[0], buffer_size[1], GPU_RG16F,
 			                                                   &draw_engine_eevee_type);
 
 			GPU_framebuffer_ensure_config(&fbl->dof_down_fb, {
@@ -128,9 +112,9 @@ int EEVEE_depth_of_field_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *v
 			});
 
 			/* Go full 32bits for rendering and reduce the color artifacts. */
-			GPUTextureFormat fb_format = DRW_state_is_image_render() ? GPU_RGBA32F : GPU_RGBA16F;
+			eGPUTextureFormat fb_format = DRW_state_is_image_render() ? GPU_RGBA32F : GPU_RGBA16F;
 
-			effects->dof_blur = DRW_texture_pool_query_2D(buffer_size[0] * 2, buffer_size[1], fb_format,
+			effects->dof_blur = DRW_texture_pool_query_2d(buffer_size[0] * 2, buffer_size[1], fb_format,
 			                                              &draw_engine_eevee_type);
 
 			GPU_framebuffer_ensure_config(&fbl->dof_scatter_fb, {
@@ -139,7 +123,7 @@ int EEVEE_depth_of_field_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *v
 			});
 
 			if (!DRW_state_draw_background()) {
-				effects->dof_blur_alpha = DRW_texture_pool_query_2D(buffer_size[0] * 2, buffer_size[1], GPU_R32F,
+				effects->dof_blur_alpha = DRW_texture_pool_query_2d(buffer_size[0] * 2, buffer_size[1], GPU_R32F,
 				                                                    &draw_engine_eevee_type);
 				GPU_framebuffer_texture_attach(fbl->dof_scatter_fb, effects->dof_blur_alpha, 1, 0);
 			}
@@ -169,18 +153,19 @@ int EEVEE_depth_of_field_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *v
 				sensor_scaled *= rv3d->viewcamtexcofac[0];
 			}
 
-			effects->dof_params[0] = aperture * fabsf(focal_len_scaled / (focus_dist - focal_len_scaled));
-			effects->dof_params[1] = -focus_dist;
-			effects->dof_params[2] = viewport_size[0] / sensor_scaled;
+			effects->dof_params[1] = aperture * fabsf(focal_len_scaled / (focus_dist - focal_len_scaled));
+			effects->dof_params[1] *= viewport_size[0] / sensor_scaled;
+			effects->dof_params[0] = -focus_dist * effects->dof_params[1];
+
 			effects->dof_bokeh[0] = rotation;
 			effects->dof_bokeh[1] = ratio;
 			effects->dof_bokeh[2] = scene_eval->eevee.bokeh_max_size;
 
 			/* Precompute values to save instructions in fragment shader. */
 			effects->dof_bokeh_sides[0] = blades;
-			effects->dof_bokeh_sides[1] = 2.0f * M_PI / blades;
+			effects->dof_bokeh_sides[1] = blades > 0.0f ? 2.0f * M_PI / blades : 0.0f;
 			effects->dof_bokeh_sides[2] = blades / (2.0f * M_PI);
-			effects->dof_bokeh_sides[3] = cosf(M_PI / blades);
+			effects->dof_bokeh_sides[3] = blades > 0.0f ? cosf(M_PI / blades) : 0.0f;
 
 			return EFFECT_DOF | EFFECT_POST_BUFFER;
 		}
@@ -209,7 +194,7 @@ void EEVEE_depth_of_field_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_
 		 * - Shoot quads for every pixel and expand it depending on the CoC.
 		 *   Do one pass for near Dof and one pass for far Dof.
 		 * - Finally composite the 2 blurred buffers with the original render.
-		 **/
+		 */
 		DRWShadingGroup *grp;
 		struct GPUBatch *quad = DRW_cache_fullscreen_quad_get();
 		const bool use_alpha = !DRW_state_draw_background();
@@ -220,7 +205,7 @@ void EEVEE_depth_of_field_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_
 		DRW_shgroup_uniform_texture_ref(grp, "colorBuffer", &effects->source_buffer);
 		DRW_shgroup_uniform_texture_ref(grp, "depthBuffer", &dtxl->depth);
 		DRW_shgroup_uniform_vec2(grp, "nearFar", effects->dof_near_far, 1);
-		DRW_shgroup_uniform_vec3(grp, "dofParams", effects->dof_params, 1);
+		DRW_shgroup_uniform_vec2(grp, "dofParams", effects->dof_params, 1);
 		DRW_shgroup_call_add(grp, quad, NULL);
 
 		psl->dof_scatter = DRW_pass_create("DoF Scatter", DRW_STATE_WRITE_COLOR | DRW_STATE_ADDITIVE_FULL);
@@ -242,7 +227,7 @@ void EEVEE_depth_of_field_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_
 		DRW_shgroup_uniform_texture_ref(grp, "colorBuffer", &effects->source_buffer);
 		DRW_shgroup_uniform_texture_ref(grp, "depthBuffer", &dtxl->depth);
 		DRW_shgroup_uniform_vec2(grp, "nearFar", effects->dof_near_far, 1);
-		DRW_shgroup_uniform_vec3(grp, "dofParams", effects->dof_params, 1);
+		DRW_shgroup_uniform_vec2(grp, "dofParams", effects->dof_params, 1);
 		DRW_shgroup_call_add(grp, quad, NULL);
 
 		if (use_alpha) {

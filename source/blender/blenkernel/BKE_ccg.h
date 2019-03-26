@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,23 +15,17 @@
  *
  * The Original Code is Copyright (C) 2012 by Nicholas Bishop.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BKE_CCG_H__
 #define __BKE_CCG_H__
 
-/** \file BKE_ccg.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 /* defines BLI_INLINE */
-#include "BLI_utildefines.h"
+#include "BLI_compiler_compat.h"
 
 /* declares fprintf() and abort(), needed for BLI_assert */
 #include <stdio.h>

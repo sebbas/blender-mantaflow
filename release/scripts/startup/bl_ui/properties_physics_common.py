@@ -60,13 +60,13 @@ def physics_add_special(self, layout, data, name, addop, removeop, typeicon):
 class PHYSICS_PT_add(PhysicButtonsPanel, Panel):
     bl_label = ""
     bl_options = {'HIDE_HEADER'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
 
         row = layout.row(align=True)
-        row.alignment = 'RIGHT'
+        row.alignment = 'LEFT'
         row.label(text="Enable physics for:")
 
         flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=True)
@@ -188,12 +188,12 @@ def point_cache_ui(self, context, cache, enabled, cachetype):
             flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=True)
             flow.enabled = enabled and is_saved
 
-            col = flow.column()
+            col = flow.column(align=True)
             col.prop(cache, "use_disk_cache")
 
             subcol = col.column()
             subcol.active = cache.use_disk_cache
-            subcol.prop(cache, "use_library_path", text="Use Lib Path")
+            subcol.prop(cache, "use_library_path", text="Use Library Path")
 
             col = flow.column()
             col.active = cache.use_disk_cache
@@ -216,7 +216,7 @@ def point_cache_ui(self, context, cache, enabled, cachetype):
         col.active = can_bake
 
         if cache.is_baked is True:
-            col.operator("ptcache.free_bake", text="Free Bake")
+            col.operator("ptcache.free_bake", text="Delete Bake")
         else:
             col.operator("ptcache.bake", text="Bake").bake = True
 
@@ -230,7 +230,7 @@ def point_cache_ui(self, context, cache, enabled, cachetype):
 
         col = flow.column()
         col.operator("ptcache.bake_all", text="Bake All Dynamics").bake = True
-        col.operator("ptcache.free_bake_all", text="Free All Bakes")
+        col.operator("ptcache.free_bake_all", text="Delete All Bakes")
         col.operator("ptcache.bake_all", text="Update All To Frame").bake = False
 
 
@@ -241,7 +241,7 @@ def effector_weights_ui(self, context, weights, weight_type):
     # NOTE: TODO temporarly used until the animate properties are properly skipped.
     layout.use_property_decorate = False  # No animation (remove this later on).
 
-    layout.prop(weights, "group")
+    layout.prop(weights, "collection")
 
     flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=True)
 
@@ -305,7 +305,7 @@ def basic_force_field_settings_ui(self, context, field):
         col.prop(field, "flow")
 
     col.prop(field, "apply_to_location", text="Affect Location")
-    col.prop(field, "apply_to_rotation", text="Rotation")
+    col.prop(field, "apply_to_rotation", text="Affect Rotation")
 
     col = flow.column()
     sub = col.column(align=True)

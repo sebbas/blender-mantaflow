@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,11 @@
  *
  * The Original Code is Copyright (C) 2013 Blender Foundation
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Sergej Reich
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file rigidbody_constraint.c
- *  \ingroup editor_physics
- *  \brief Rigid Body constraint editing operators
+/** \file
+ * \ingroup editor_physics
+ * \brief Rigid Body constraint editing operators
  */
 
 #include <stdlib.h>
@@ -39,6 +31,7 @@
 
 #include "BKE_collection.h"
 #include "BKE_context.h"
+#include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
 #include "BKE_rigidbody.h"
@@ -88,14 +81,13 @@ bool ED_rigidbody_constraint_add(Main *bmain, Scene *scene, Object *ob, int type
 	}
 	/* make rigidbody constraint settings */
 	ob->rigidbody_constraint = BKE_rigidbody_create_constraint(scene, ob, type);
-	ob->rigidbody_constraint->flag |= RBC_FLAG_NEEDS_VALIDATE;
 
 	/* add constraint to rigid body constraint group */
 	BKE_collection_object_add(bmain, rbw->constraints, ob);
 
 	DEG_relations_tag_update(bmain);
-	DEG_id_tag_update(&ob->id, OB_RECALC_OB);
-	DEG_id_tag_update(&rbw->constraints->id, DEG_TAG_COPY_ON_WRITE);
+	DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
+	DEG_id_tag_update(&rbw->constraints->id, ID_RECALC_COPY_ON_WRITE);
 
 	return true;
 }
@@ -107,11 +99,11 @@ void ED_rigidbody_constraint_remove(Main *bmain, Scene *scene, Object *ob)
 	BKE_rigidbody_remove_constraint(scene, ob);
 	if (rbw) {
 		BKE_collection_object_remove(bmain, rbw->constraints, ob, false);
-		DEG_id_tag_update(&rbw->constraints->id, DEG_TAG_COPY_ON_WRITE);
+		DEG_id_tag_update(&rbw->constraints->id, ID_RECALC_COPY_ON_WRITE);
 	}
 
 	DEG_relations_tag_update(bmain);
-	DEG_id_tag_update(&ob->id, OB_RECALC_OB);
+	DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
 }
 
 /* ********************************************** */

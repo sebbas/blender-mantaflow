@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,29 +15,21 @@
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Daniel Dunbar
- *                 Ton Roosendaal,
- *                 Ben Batt,
- *                 Brecht Van Lommel,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_collision.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
+
+#include "BLI_utildefines.h"
+
+#include "BLI_math.h"
 
 #include "DNA_object_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
 #include "MEM_guardedalloc.h"
-
-#include "BLI_math.h"
-#include "BLI_utildefines.h"
 
 #include "BKE_collision.h"
 #include "BKE_global.h"
@@ -105,7 +95,7 @@ static void deformVerts(
         ModifierData *md, const ModifierEvalContext *ctx,
         Mesh *mesh,
         float (*vertexCos)[3],
-        int UNUSED(numVerts))
+        int numVerts)
 {
 	CollisionModifierData *collmd = (CollisionModifierData *) md;
 	Mesh *mesh_src;
@@ -113,18 +103,12 @@ static void deformVerts(
 	Object *ob = ctx->object;
 
 	if (mesh == NULL) {
-		mesh_src = MOD_get_mesh_eval(ob, NULL, NULL, NULL, false, false);
+		mesh_src = MOD_deform_mesh_eval_get(ob, NULL, NULL, NULL, numVerts, false, false);
 	}
 	else {
 		/* Not possible to use get_mesh() in this case as we'll modify its vertices
 		 * and get_mesh() would return 'mesh' directly. */
-		BKE_id_copy_ex(
-		        NULL, (ID *)mesh, (ID **)&mesh_src,
-		        LIB_ID_CREATE_NO_MAIN |
-		        LIB_ID_CREATE_NO_USER_REFCOUNT |
-		        LIB_ID_CREATE_NO_DEG_TAG |
-		        LIB_ID_COPY_NO_PREVIEW,
-		        false);
+		BKE_id_copy_ex(NULL, (ID *)mesh, (ID **)&mesh_src, LIB_ID_COPY_LOCALIZE);
 	}
 
 	if (!ob->pd) {
@@ -141,8 +125,9 @@ static void deformVerts(
 
 		current_time = DEG_get_ctime(ctx->depsgraph);
 
-		if (G.debug_value > 0)
+		if (G.debug & G_DEBUG_SIMDATA) {
 			printf("current_time %f, collmd->time_xnew %f\n", current_time, collmd->time_xnew);
+		}
 
 		mvert_num = mesh_src->totvert;
 
@@ -288,4 +273,5 @@ ModifierTypeInfo modifierType_Collision = {
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenlib/intern/BLI_ghash.c
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  *
  * A general (pointer -> pointer) chaining hash table
  * for 'Abstract Data Types' (known as an ADT Hash Table).
@@ -62,12 +54,14 @@
  *
  * \note Also used by: `BLI_edgehash` & `BLI_smallhash`.
  */
-const uint hashsizes[] = {
+extern const uint BLI_ghash_hash_sizes[];  /* Quiet warning, this is only used by smallhash.c */
+const uint BLI_ghash_hash_sizes[] = {
 	5, 11, 17, 37, 67, 131, 257, 521, 1031, 2053, 4099, 8209,
 	16411, 32771, 65537, 131101, 262147, 524309, 1048583, 2097169,
 	4194319, 8388617, 16777259, 33554467, 67108879, 134217757,
-	268435459
+	268435459,
 };
+#define hashsizes BLI_ghash_hash_sizes
 
 #ifdef GHASH_USE_MODULO_BUCKETS
 #  define GHASH_MAX_SIZE 27
@@ -242,8 +236,8 @@ static void ghash_buckets_resize(GHash *gh, const uint nbuckets)
 					buckets_new[bucket_index] = e;
 				}
 #else
-				/* No need to recompute hashes in this case, since our mask is just smaller, all items in old bucket i
-				 * will go in same new bucket (i & new_mask)! */
+				/* No need to recompute hashes in this case, since our mask is just smaller,
+				 * all items in old bucket 'i' will go in same new bucket (i & new_mask)! */
 				const unsigned bucket_index = ghash_bucket_index(gh, i);
 				BLI_assert(!buckets_old[i] || (bucket_index == ghash_bucket_index(gh, ghash_entryhash(gh, buckets_old[i]))));
 				Entry *e;
@@ -614,8 +608,9 @@ static Entry *ghash_pop(GHash *gh, GHashIterState *state)
 		return NULL;
 	}
 
-	/* Note: using first_bucket_index here allows us to avoid potential huge number of loops over buckets,
-	 *       in case we are popping from a large ghash with few items in it... */
+	/* Note: using first_bucket_index here allows us to avoid potential
+	 * huge number of loops over buckets,
+	 * in case we are popping from a large ghash with few items in it... */
 	curr_bucket = ghash_find_next_bucket_index(gh, curr_bucket);
 
 	Entry *e = gh->buckets[curr_bucket];
@@ -681,7 +676,8 @@ static GHash *ghash_copy(GHash *gh, GHashKeyCopyFP keycopyfp, GHashValCopyFP val
 			 * This means entries in buckets in new copy will be in reversed order!
 			 * This shall not be an issue though, since order should never be assumed in ghash. */
 
-			/* Note: We can use 'i' here, since we are sure that 'gh' and 'gh_new' have the same number of buckets! */
+			/* Note: We can use 'i' here, since we are sure that
+			 * 'gh' and 'gh_new' have the same number of buckets! */
 			e_new->next = gh_new->buckets[i];
 			gh_new->buckets[i] = e_new;
 		}
@@ -700,10 +696,10 @@ static GHash *ghash_copy(GHash *gh, GHashKeyCopyFP keycopyfp, GHashValCopyFP val
 /**
  * Creates a new, empty GHash.
  *
- * \param hashfp  Hash callback.
- * \param cmpfp  Comparison callback.
- * \param info  Identifier string for the GHash.
- * \param nentries_reserve  Optionally reserve the number of members that the hash will hold.
+ * \param hashfp: Hash callback.
+ * \param cmpfp: Comparison callback.
+ * \param info: Identifier string for the GHash.
+ * \param nentries_reserve: Optionally reserve the number of members that the hash will hold.
  * Use this to avoid resizing buckets if the size is known or can be closely approximated.
  * \return  An empty GHash.
  */
@@ -796,7 +792,7 @@ void *BLI_ghash_replace_key(GHash *gh, void *key)
 /**
  * Lookup the value of \a key in \a gh.
  *
- * \param key  The key to lookup.
+ * \param key: The key to lookup.
  * \returns the value for \a key or NULL.
  *
  * \note When NULL is a valid value, use #BLI_ghash_lookup_p to differentiate a missing key
@@ -822,7 +818,7 @@ void *BLI_ghash_lookup_default(GHash *gh, const void *key, void *val_default)
 /**
  * Lookup a pointer to the value of \a key in \a gh.
  *
- * \param key  The key to lookup.
+ * \param key: The key to lookup.
  * \returns the pointer to value for \a key or NULL.
  *
  * \note This has 2 main benefits over #BLI_ghash_lookup.
@@ -895,9 +891,9 @@ bool BLI_ghash_ensure_p_ex(
 /**
  * Remove \a key from \a gh, or return false if the key wasn't found.
  *
- * \param key  The key to remove.
- * \param keyfreefp  Optional callback to free the key.
- * \param valfreefp  Optional callback to free the value.
+ * \param key: The key to remove.
+ * \param keyfreefp: Optional callback to free the key.
+ * \param valfreefp: Optional callback to free the value.
  * \return true if \a key was removed from \a gh.
  */
 bool BLI_ghash_remove(GHash *gh, const void *key, GHashKeyFreeFP keyfreefp, GHashValFreeFP valfreefp)
@@ -919,8 +915,8 @@ bool BLI_ghash_remove(GHash *gh, const void *key, GHashKeyFreeFP keyfreefp, GHas
 /**
  * Remove \a key from \a gh, returning the value or NULL if the key wasn't found.
  *
- * \param key  The key to remove.
- * \param keyfreefp  Optional callback to free the key.
+ * \param key: The key to remove.
+ * \param keyfreefp: Optional callback to free the key.
  * \return the value of \a key int \a gh or NULL.
  */
 void *BLI_ghash_popkey(GHash *gh, const void *key, GHashKeyFreeFP keyfreefp)
@@ -979,9 +975,9 @@ bool BLI_ghash_pop(
 /**
  * Reset \a gh clearing all entries.
  *
- * \param keyfreefp  Optional callback to free the key.
- * \param valfreefp  Optional callback to free the value.
- * \param nentries_reserve  Optionally reserve the number of members that the hash will hold.
+ * \param keyfreefp: Optional callback to free the key.
+ * \param valfreefp: Optional callback to free the value.
+ * \param nentries_reserve: Optionally reserve the number of members that the hash will hold.
  */
 void BLI_ghash_clear_ex(
         GHash *gh, GHashKeyFreeFP keyfreefp, GHashValFreeFP valfreefp,
@@ -1005,9 +1001,9 @@ void BLI_ghash_clear(GHash *gh, GHashKeyFreeFP keyfreefp, GHashValFreeFP valfree
 /**
  * Frees the GHash and its members.
  *
- * \param gh  The GHash to free.
- * \param keyfreefp  Optional callback to free the key.
- * \param valfreefp  Optional callback to free the value.
+ * \param gh: The GHash to free.
+ * \param keyfreefp: Optional callback to free the key.
+ * \param valfreefp: Optional callback to free the value.
  */
 void BLI_ghash_free(GHash *gh, GHashKeyFreeFP keyfreefp, GHashValFreeFP valfreefp)
 {
@@ -1047,7 +1043,7 @@ void BLI_ghash_flag_clear(GHash *gh, uint flag)
  * while the iterator is in use, and the iterator will step exactly
  * BLI_ghash_len(gh) times before becoming done.
  *
- * \param gh The GHash to iterate over.
+ * \param gh: The GHash to iterate over.
  * \return Pointer to a new DynStr.
  */
 GHashIterator *BLI_ghashIterator_new(GHash *gh)
@@ -1062,8 +1058,8 @@ GHashIterator *BLI_ghashIterator_new(GHash *gh)
  * be mutated while the iterator is in use, and the iterator will
  * step exactly BLI_ghash_len(gh) times before becoming done.
  *
- * \param ghi The GHashIterator to initialize.
- * \param gh The GHash to iterate over.
+ * \param ghi: The GHashIterator to initialize.
+ * \param gh: The GHash to iterate over.
  */
 void BLI_ghashIterator_init(GHashIterator *ghi, GHash *gh)
 {
@@ -1083,7 +1079,7 @@ void BLI_ghashIterator_init(GHashIterator *ghi, GHash *gh)
 /**
  * Steps the iterator to the next index.
  *
- * \param ghi The iterator.
+ * \param ghi: The iterator.
  */
 void BLI_ghashIterator_step(GHashIterator *ghi)
 {
@@ -1101,7 +1097,7 @@ void BLI_ghashIterator_step(GHashIterator *ghi)
 /**
  * Free a GHashIterator.
  *
- * \param ghi The iterator to free.
+ * \param ghi: The iterator to free.
  */
 void BLI_ghashIterator_free(GHashIterator *ghi)
 {

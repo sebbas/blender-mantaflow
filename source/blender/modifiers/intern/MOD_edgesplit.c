@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,19 +15,10 @@
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Daniel Dunbar
- *                 Ton Roosendaal,
- *                 Ben Batt,
- *                 Brecht Van Lommel,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_edgesplit.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  *
  * EdgeSplit modifier
  *
@@ -38,28 +27,30 @@
  */
 
 #include "BLI_utildefines.h"
+
 #include "BLI_math.h"
 
-#include "BKE_library.h"
+#include "DNA_mesh_types.h"
+#include "DNA_object_types.h"
+
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
 
-#include "DNA_mesh_types.h"
-#include "DNA_object_types.h"
-
 #include "MOD_modifiertypes.h"
 
-static Mesh *doEdgeSplit(Mesh *mesh, EdgeSplitModifierData *emd, const ModifierEvalContext *ctx)
+static Mesh *doEdgeSplit(Mesh *mesh, EdgeSplitModifierData *emd)
 {
 	Mesh *result;
 	BMesh *bm;
 	BMIter iter;
 	BMEdge *e;
-	float threshold = cosf(emd->split_angle + 0.000000175f);
-	const bool calc_face_normals = (emd->flags & MOD_EDGESPLIT_FROMANGLE) != 0;
+	const float threshold = cosf(emd->split_angle + 0.000000175f);
+	const bool do_split_angle = (emd->flags & MOD_EDGESPLIT_FROMANGLE) != 0 && emd->split_angle < (float)M_PI;
+	const bool do_split_all = do_split_angle && emd->split_angle < FLT_EPSILON;
+	const bool calc_face_normals = do_split_angle && !do_split_all;
 
 	bm = BKE_mesh_to_bmesh_ex(
 	        mesh,
@@ -67,12 +58,12 @@ static Mesh *doEdgeSplit(Mesh *mesh, EdgeSplitModifierData *emd, const ModifierE
 	        &(struct BMeshFromMeshParams){
 	            .calc_face_normal = calc_face_normals,
 	            .add_key_index = false,
-	            .use_shapekey = true,
-	            .active_shapekey = ctx->object->shapenr,
-	            .cd_mask_extra = CD_MASK_ORIGINDEX,
+	            .use_shapekey = false,
+	            .active_shapekey = 0,
+	            .cd_mask_extra = {.vmask = CD_MASK_ORIGINDEX, .emask = CD_MASK_ORIGINDEX, .pmask = CD_MASK_ORIGINDEX},
 	        });
 
-	if (emd->flags & MOD_EDGESPLIT_FROMANGLE) {
+	if (do_split_angle) {
 		BM_ITER_MESH (e, &iter, bm, BM_EDGES_OF_MESH) {
 			/* check for 1 edge having 2 face users */
 			BMLoop *l1, *l2;
@@ -81,6 +72,8 @@ static Mesh *doEdgeSplit(Mesh *mesh, EdgeSplitModifierData *emd, const ModifierE
 			{
 				if (/* 3+ faces on this edge, always split */
 				    UNLIKELY(l1 != l2->radial_next) ||
+				    /* O° angle setting, we want to split on all edges. */
+				    do_split_all ||
 				    /* 2 face edge - check angle*/
 				    (dot_v3v3(l1->f->no, l2->f->no) < threshold))
 				{
@@ -107,7 +100,7 @@ static Mesh *doEdgeSplit(Mesh *mesh, EdgeSplitModifierData *emd, const ModifierE
 
 	/* BM_mesh_validate(bm); */ /* for troubleshooting */
 
-	result = BKE_mesh_from_bmesh_for_eval_nomain(bm, 0);
+	result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL);
 	BM_mesh_free(bm);
 
 	result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
@@ -125,7 +118,7 @@ static void initData(ModifierData *md)
 
 static Mesh *applyModifier(
         ModifierData *md,
-        const ModifierEvalContext *ctx,
+        const ModifierEvalContext *UNUSED(ctx),
         Mesh *mesh)
 {
 	Mesh *result;
@@ -134,7 +127,7 @@ static Mesh *applyModifier(
 	if (!(emd->flags & (MOD_EDGESPLIT_FROMANGLE | MOD_EDGESPLIT_FROMFLAG)))
 		return mesh;
 
-	result = doEdgeSplit(mesh, emd, ctx);
+	result = doEdgeSplit(mesh, emd);
 
 	return result;
 }
@@ -175,4 +168,5 @@ ModifierTypeInfo modifierType_EdgeSplit = {
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

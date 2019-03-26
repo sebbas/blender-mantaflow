@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,18 +12,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __IMAGEPYRAMID_H__
 #define __IMAGEPYRAMID_H__
 
-/** \file blender/freestyle/intern/image/ImagePyramid.h
- *  \ingroup freestyle
- *  \brief Class to represent a pyramid of images
- *  \author Stephane Grabli
- *  \date 25/12/2003
+/** \file
+ * \ingroup freestyle
+ * \brief Class to represent a pyramid of images
  */
 
 #include <vector>
@@ -62,11 +56,11 @@ public:
 
 	virtual GrayImage *getLevel(int l);
 	/*! Returns the pixel x,y using bilinear interpolation.
-	 *  \param x
+	 *  \param x:
 	 *    the abscissa specified in the finest level coordinate system
-	 *  \param y
+	 *  \param y:
 	 *    the ordinate specified in the finest level coordinate system
-	 *  \param level
+	 *  \param level:
 	 *    the level from which we want the pixel to be evaluated
 	 */
 	virtual float pixel(int x, int y, int level=0);

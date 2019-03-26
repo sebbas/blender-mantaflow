@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2014 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/windowmanager/gizmo/intern/wm_gizmo_group.c
- *  \ingroup wm
+/** \file
+ * \ingroup wm
  *
  * \name Gizmo-Group
  *
@@ -196,7 +190,7 @@ void wm_gizmogroup_intersectable_gizmos_to_list(const wmGizmoGroup *gzgroup, Lis
 	}
 }
 
-void wm_gizmogroup_ensure_initialized(wmGizmoGroup *gzgroup, const bContext *C)
+void WM_gizmogroup_ensure_init(const bContext *C, wmGizmoGroup *gzgroup)
 {
 	/* prepare for first draw */
 	if (UNLIKELY((gzgroup->init_flag & WM_GIZMOGROUP_INIT_SETUP) == 0)) {
@@ -403,7 +397,7 @@ static bool gizmo_tweak_start_and_finish(
 				gz->parent_gzgroup->type->invoke_prepare(C, gz->parent_gzgroup, gz);
 			}
 			/* Allow for 'button' gizmos, single click to run an action. */
-			WM_operator_name_call_ptr(C, gzop->type, WM_OP_INVOKE_DEFAULT, &gzop->ptr);
+			WM_gizmo_operator_invoke(C, gz, gzop);
 		}
 		return true;
 	}
@@ -445,7 +439,7 @@ static int gizmo_tweak_modal(bContext *C, wmOperator *op, const wmEvent *event)
 	wmGizmoMap *gzmap = mtweak->gzmap;
 	if (mtweak->drag_state == DRAG_DETECT) {
 		if (ELEM(event->type, MOUSEMOVE, INBETWEEN_MOUSEMOVE)) {
-			if (len_manhattan_v2v2_int(&event->x, gzmap->gzmap_context.event_xy) > 2) {
+			if (len_manhattan_v2v2_int(&event->x, gzmap->gzmap_context.event_xy) >= WM_EVENT_CURSOR_CLICK_DRAG_THRESHOLD) {
 				mtweak->drag_state = DRAG_IDLE;
 				gz->highlight_part = gz->drag_part;
 			}
@@ -634,7 +628,7 @@ static wmKeyMap *gizmogroup_tweak_modal_keymap(wmKeyConfig *keyconf, const char 
 		{TWEAK_MODAL_PRECISION_OFF, "PRECISION_OFF", 0, "Disable Precision", ""},
 		{TWEAK_MODAL_SNAP_ON, "SNAP_ON", 0, "Enable Snap", ""},
 		{TWEAK_MODAL_SNAP_OFF, "SNAP_OFF", 0, "Disable Snap", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 
@@ -693,16 +687,26 @@ wmKeyMap *WM_gizmogroup_keymap_common_select(
 {
 	/* Use area and region id since we might have multiple gizmos with the same name in different areas/regions */
 	wmKeyMap *km = WM_keymap_ensure(config, gzgt->name, gzgt->gzmap_params.spaceid, gzgt->gzmap_params.regionid);
+	/* FIXME(campbell) */
+#if 0
+	const int select_mouse = (U.flag & USER_LMOUSESELECT) ? LEFTMOUSE : RIGHTMOUSE;
+	const int select_tweak = (U.flag & USER_LMOUSESELECT) ? EVT_TWEAK_L : EVT_TWEAK_R;
+	const int action_mouse = (U.flag & USER_LMOUSESELECT) ? RIGHTMOUSE : LEFTMOUSE;
+#else
+	const int select_mouse = RIGHTMOUSE;
+	const int select_tweak = EVT_TWEAK_R;
+	const int action_mouse = LEFTMOUSE;
+#endif
 
-	WM_keymap_add_item(km, "GIZMOGROUP_OT_gizmo_tweak", ACTIONMOUSE, KM_PRESS, KM_ANY, 0);
-	WM_keymap_add_item(km, "GIZMOGROUP_OT_gizmo_tweak", EVT_TWEAK_S, KM_ANY, 0, 0);
+	WM_keymap_add_item(km, "GIZMOGROUP_OT_gizmo_tweak", action_mouse, KM_PRESS, KM_ANY, 0);
+	WM_keymap_add_item(km, "GIZMOGROUP_OT_gizmo_tweak", select_tweak, KM_ANY, 0, 0);
 	gizmogroup_tweak_modal_keymap(config, gzgt->name);
 
-	wmKeyMapItem *kmi = WM_keymap_add_item(km, "GIZMOGROUP_OT_gizmo_select", SELECTMOUSE, KM_PRESS, 0, 0);
+	wmKeyMapItem *kmi = WM_keymap_add_item(km, "GIZMOGROUP_OT_gizmo_select", select_mouse, KM_PRESS, 0, 0);
 	RNA_boolean_set(kmi->ptr, "extend", false);
 	RNA_boolean_set(kmi->ptr, "deselect", false);
 	RNA_boolean_set(kmi->ptr, "toggle", false);
-	kmi = WM_keymap_add_item(km, "GIZMOGROUP_OT_gizmo_select", SELECTMOUSE, KM_PRESS, KM_SHIFT, 0);
+	kmi = WM_keymap_add_item(km, "GIZMOGROUP_OT_gizmo_select", select_mouse, KM_PRESS, KM_SHIFT, 0);
 	RNA_boolean_set(kmi->ptr, "extend", false);
 	RNA_boolean_set(kmi->ptr, "deselect", false);
 	RNA_boolean_set(kmi->ptr, "toggle", true);
@@ -781,19 +785,20 @@ void WM_gizmomaptype_group_init_runtime(
         const Main *bmain, wmGizmoMapType *gzmap_type,
         wmGizmoGroupType *gzgt)
 {
+	/* Tools add themselves. */
+	if (gzgt->flag & WM_GIZMOGROUPTYPE_TOOL_INIT) {
+		return;
+	}
+
 	/* now create a gizmo for all existing areas */
-	for (bScreen *sc = bmain->screen.first; sc; sc = sc->id.next) {
+	for (bScreen *sc = bmain->screens.first; sc; sc = sc->id.next) {
 		for (ScrArea *sa = sc->areabase.first; sa; sa = sa->next) {
 			for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
 				ListBase *lb = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
 				for (ARegion *ar = lb->first; ar; ar = ar->next) {
 					wmGizmoMap *gzmap = ar->gizmo_map;
 					if (gzmap && gzmap->type == gzmap_type) {
-						wm_gizmogroup_new_from_type(gzmap, gzgt);
-
-						/* just add here, drawing will occur on next update */
-						wm_gizmomap_highlight_set(gzmap, NULL, NULL, 0);
-						ED_region_tag_redraw(ar);
+						WM_gizmomaptype_group_init_runtime_with_region(gzmap_type, gzgt, ar);
 					}
 				}
 			}
@@ -801,6 +806,22 @@ void WM_gizmomaptype_group_init_runtime(
 	}
 }
 
+wmGizmoGroup *WM_gizmomaptype_group_init_runtime_with_region(
+        wmGizmoMapType *gzmap_type,
+        wmGizmoGroupType *gzgt, ARegion *ar)
+{
+	wmGizmoMap *gzmap = ar->gizmo_map;
+	BLI_assert(gzmap && gzmap->type == gzmap_type);
+	UNUSED_VARS_NDEBUG(gzmap_type);
+
+	wmGizmoGroup *gzgroup = wm_gizmogroup_new_from_type(gzmap, gzgt);
+
+	wm_gizmomap_highlight_set(gzmap, NULL, NULL, 0);
+
+	ED_region_tag_redraw(ar);
+
+	return gzgroup;
+}
 
 /**
  * Unlike #WM_gizmomaptype_group_unlink this doesn't maintain correct state, simply free.
@@ -815,7 +836,7 @@ void WM_gizmomaptype_group_unlink(
         const wmGizmoGroupType *gzgt)
 {
 	/* Free instances. */
-	for (bScreen *sc = bmain->screen.first; sc; sc = sc->id.next) {
+	for (bScreen *sc = bmain->screens.first; sc; sc = sc->id.next) {
 		for (ScrArea *sa = sc->areabase.first; sa; sa = sa->next) {
 			for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
 				ListBase *lb = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;

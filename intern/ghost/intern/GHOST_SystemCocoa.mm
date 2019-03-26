@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,6 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributors: Maarten Gribnau 05/2001
- *               Damien Plisson 09/2009
- *               Jens Verwiebe   10/2014
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #include "GHOST_SystemCocoa.h"
@@ -94,7 +84,7 @@ static GHOST_TButtonMask convertButton(int button)
  * \param recvChar the character ignoring modifiers (except for shift)
  * \return Ghost key code
  */
-static GHOST_TKey convertKey(int rawCode, unichar recvChar, UInt16 keyAction) 
+static GHOST_TKey convertKey(int rawCode, unichar recvChar, UInt16 keyAction)
 {
 	//printf("\nrecvchar %c 0x%x",recvChar,recvChar);
 	switch (rawCode) {
@@ -236,7 +226,7 @@ static GHOST_TKey convertKey(int rawCode, unichar recvChar, UInt16 keyAction)
 				if (uchrHandle) {
 					UInt32 deadKeyState=0;
 					UniCharCount actualStrLength=0;
-					
+
 					UCKeyTranslate((UCKeyboardLayout*)CFDataGetBytePtr(uchrHandle), rawCode, keyAction, 0,
 					               LMGetKbdType(), kUCKeyTranslateNoDeadKeysBit, &deadKeyState, 1, &actualStrLength, &recvChar);
 				}
@@ -287,11 +277,14 @@ extern "C" int GHOST_HACK_getFirstFile(char buf[FIRSTFILEBUFLG])
 /**
  * CocoaAppDelegate
  * ObjC object to capture applicationShouldTerminate, and send quit event
- **/
+ */
 @interface CocoaAppDelegate : NSObject <NSApplicationDelegate> {
 
 	GHOST_SystemCocoa *systemCocoa;
 }
+
+- (id)init;
+- (void)dealloc;
 - (void)setSystemCocoa:(GHOST_SystemCocoa *)sysCocoa;
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification;
 - (BOOL)application:(NSApplication *)theApplication openFile:(NSString *)filename;
@@ -299,9 +292,28 @@ extern "C" int GHOST_HACK_getFirstFile(char buf[FIRSTFILEBUFLG])
 - (void)applicationWillTerminate:(NSNotification *)aNotification;
 - (void)applicationWillBecomeActive:(NSNotification *)aNotification;
 - (void)toggleFullScreen:(NSNotification *)notification;
+- (void)windowWillClose:(NSNotification*)notification;
 @end
 
 @implementation CocoaAppDelegate : NSObject
+- (id)init {
+	self = [super init];
+	if (self) {
+		NSNotificationCenter* center = [NSNotificationCenter defaultCenter];
+		[center addObserver:self
+		           selector:@selector(windowWillClose:)
+		               name:NSWindowWillCloseNotification
+		             object:nil];
+	}
+	return self;
+}
+
+- (void)dealloc {
+	NSNotificationCenter* center = [NSNotificationCenter defaultCenter];
+	[center removeObserver:self name:NSWindowWillCloseNotification object:nil];
+	[super dealloc];
+}
+
 -(void)setSystemCocoa:(GHOST_SystemCocoa *)sysCocoa
 {
 	systemCocoa = sysCocoa;
@@ -349,6 +361,53 @@ extern "C" int GHOST_HACK_getFirstFile(char buf[FIRSTFILEBUFLG])
 
 - (void)toggleFullScreen:(NSNotification *)notification
 {
+}
+
+// The purpose of this function is to make sure closing "About" window does not
+// leave Blender with no key windows. This is needed due to a custom event loop
+// nature of the application: for some reason only using [NSApp run] will ensure
+// correct behavior in this case.
+//
+// This is similar to an issue solved in SDL:
+//   https://bugzilla.libsdl.org/show_bug.cgi?id=1825
+//
+// Our solution is different, since we want Blender to keep track of what is
+// the key window during normal operation. In order to do so we exploit the
+// fact that "About" window is never in the orderedWindows array: we only force
+// key window from here if the closing one is not in the orderedWindows. This
+// saves lack of key windows when closing "About", but does not interfere with
+// Blender's window manager when closing Blender's windows.
+- (void)windowWillClose:(NSNotification*)notification {
+	NSWindow* closing_window = (NSWindow*)[notification object];
+	NSInteger index = [[NSApp orderedWindows] indexOfObject:closing_window];
+	if (index != NSNotFound) {
+		return;
+	}
+	// Find first suitable window from the current space.
+	for (NSWindow* current_window in [NSApp orderedWindows]) {
+		if (current_window == closing_window) {
+			continue;
+		}
+		if ([current_window isOnActiveSpace] &&
+		    [current_window canBecomeKeyWindow])
+		{
+			[current_window makeKeyAndOrderFront:nil];
+			return;
+		}
+	}
+	// If that didn't find any windows, we try to find any suitable window of
+	// the application.
+	for (NSNumber* window_number in [NSWindow windowNumbersWithOptions:0]) {
+		NSWindow* current_window =
+		          [NSApp windowWithWindowNumber:[window_number integerValue]];
+		if (current_window == closing_window) {
+			continue;
+		}
+		if ([current_window canBecomeKeyWindow]) {
+			[current_window makeKeyAndOrderFront:nil];
+			return;
+		}
+	}
 }
 
 @end
@@ -481,7 +540,7 @@ GHOST_TSuccess GHOST_SystemCocoa::init()
 		}
 
 		[NSApp finishLaunching];
-		
+
 		[pool drain];
 	}
 	return success;
@@ -539,7 +598,7 @@ void GHOST_SystemCocoa::getAllDisplayDimensions(GHOST_TUns32& width, GHOST_TUns3
 }
 
 GHOST_IWindow* GHOST_SystemCocoa::createWindow(
-	const STR_String& title, 
+	const STR_String& title,
 	GHOST_TInt32 left,
 	GHOST_TInt32 top,
 	GHOST_TUns32 width,
@@ -962,7 +1021,7 @@ GHOST_TSuccess GHOST_SystemCocoa::handleDraggingEvent(GHOST_TEventType eventType
 						droppedStr = [droppedArray objectAtIndex:i];
 
 						pastedTextSize = [droppedStr lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
-						temp_buff = (GHOST_TUns8*) malloc(pastedTextSize+1); 
+						temp_buff = (GHOST_TUns8*) malloc(pastedTextSize+1);
 
 						if (!temp_buff) {
 							strArray->count = i;
@@ -982,7 +1041,7 @@ GHOST_TSuccess GHOST_SystemCocoa::handleDraggingEvent(GHOST_TEventType eventType
 					droppedStr = (NSString*)data;
 					pastedTextSize = [droppedStr lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 
-					temp_buff = (GHOST_TUns8*) malloc(pastedTextSize+1); 
+					temp_buff = (GHOST_TUns8*) malloc(pastedTextSize+1);
 
 					if (temp_buff == NULL) {
 						return GHOST_kFailure;
@@ -1045,10 +1104,10 @@ GHOST_TSuccess GHOST_SystemCocoa::handleDraggingEvent(GHOST_TEventType eventType
 
 						/* First get RGB values w/o Alpha to avoid pre-multiplication, 32bit but last byte is unused */
 						blBitmapFormatImageRGB = [[NSBitmapImageRep alloc] initWithBitmapDataPlanes:NULL
-						                                                                 pixelsWide:imgSize.width 
+						                                                                 pixelsWide:imgSize.width
 						                                                                 pixelsHigh:imgSize.height
 						                                                              bitsPerSample:8 samplesPerPixel:3 hasAlpha:NO isPlanar:NO
-						                                                             colorSpaceName:NSDeviceRGBColorSpace 
+						                                                             colorSpaceName:NSDeviceRGBColorSpace
 						                                                               bitmapFormat:(NSBitmapFormat)0
 						                                                                bytesPerRow:4*imgSize.width
 						                                                               bitsPerPixel:32/*RGB format padded to 32bits*/];
@@ -1180,7 +1239,7 @@ bool GHOST_SystemCocoa::handleOpenDocumentRequest(void *filepathStr)
 
 	if (!window) {
 		return NO;
-	}	
+	}
 
 	//Discard event if we are in cursor grab sequence, it'll lead to "stuck cursor" situation if the alert panel is raised
 	if (window && window->getCursorGrabModeIsWarp())
@@ -1204,7 +1263,7 @@ bool GHOST_SystemCocoa::handleOpenDocumentRequest(void *filepathStr)
 	{
 		filenameTextSize = [filepath lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 
-		temp_buff = (char*) malloc(filenameTextSize+1); 
+		temp_buff = (char*) malloc(filenameTextSize+1);
 
 		if (temp_buff == NULL) {
 			return GHOST_kFailure;
@@ -1273,7 +1332,7 @@ GHOST_TSuccess GHOST_SystemCocoa::handleTabletEvent(void *eventPtr, short eventT
 				ct.Active = GHOST_kTabletModeNone;
 			}
 			break;
-		
+
 		default:
 			GHOST_ASSERT(FALSE,"GHOST_SystemCocoa::handleTabletEvent : unknown event received");
 			return GHOST_kFailure;
@@ -1352,7 +1411,7 @@ GHOST_TSuccess GHOST_SystemCocoa::handleMouseEvent(void *eventPtr)
 			//Handle tablet events combined with mouse events
 			handleTabletEvent(event);
 
-		case NSMouseMoved: 
+		case NSMouseMoved:
 			{
 				GHOST_TGrabCursorMode grab_mode = window->getCursorGrabMode();
 
@@ -1602,9 +1661,9 @@ GHOST_TSuccess GHOST_SystemCocoa::handleKeyEvent(void *eventPtr)
 			m_ignoreMomentumScroll = true;
 			break;
 
-		case NSFlagsChanged: 
+		case NSFlagsChanged:
 			modifiers = [event modifierFlags];
-			
+
 			if ((modifiers & NSShiftKeyMask) != (m_modifierMask & NSShiftKeyMask)) {
 				pushEvent(new GHOST_EventKey([event timestamp] * 1000, (modifiers & NSShiftKeyMask) ? GHOST_kEventKeyDown : GHOST_kEventKeyUp, window, GHOST_kKeyLeftShift));
 			}
@@ -1666,7 +1725,7 @@ GHOST_TUns8* GHOST_SystemCocoa::getClipboard(bool selection) const
 
 	pastedTextSize = [textPasted lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 
-	temp_buff = (GHOST_TUns8*) malloc(pastedTextSize+1); 
+	temp_buff = (GHOST_TUns8*) malloc(pastedTextSize+1);
 
 	if (temp_buff == NULL) {
 		[pool drain];

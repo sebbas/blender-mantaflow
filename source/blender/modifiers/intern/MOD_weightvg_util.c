@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,21 +15,17 @@
  *
  * The Original Code is Copyright (C) 2011 by Bastien Montagne.
  * All rights reserved.
- *
- * Contributor(s): None yet.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_weightvg_util.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
+
+#include "BLI_utildefines.h"
 
 #include "BLI_math.h"
 #include "BLI_rand.h"
 #include "BLI_string.h"
-#include "BLI_utildefines.h"
 
 #include "DNA_color_types.h"      /* CurveMapping. */
 #include "DNA_mesh_types.h"
@@ -47,6 +41,7 @@
 #include "BKE_texture.h"          /* Texture masking. */
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_query.h"
 
 #include "MEM_guardedalloc.h"
 #include "MOD_util.h"
@@ -124,7 +119,6 @@ void weightvg_do_mask(
         Scene *scene, Tex *texture, const int tex_use_channel, const int tex_mapping,
         Object *tex_map_object, const char *tex_uvlayer_name)
 {
-	Depsgraph *depsgraph = ctx->depsgraph;
 	int ref_didx;
 	int i;
 
@@ -132,7 +126,8 @@ void weightvg_do_mask(
 	if (fact == 0.0f) return;
 
 	/* If we want to mask vgroup weights from a texture. */
-	if (texture) {
+	if (texture != NULL) {
+		texture = (Tex *)DEG_get_evaluated_id(ctx->depsgraph, &texture->id);
 		/* The texture coordinates. */
 		float (*tex_co)[3];
 		/* See mapping note below... */
@@ -150,9 +145,9 @@ void weightvg_do_mask(
 		t_map.texmapping = tex_mapping;
 
 		tex_co = MEM_calloc_arrayN(numVerts, sizeof(*tex_co), "WeightVG Modifier, TEX mode, tex_co");
-		MOD_get_texture_coords(&t_map, ob, mesh, NULL, tex_co);
+		MOD_get_texture_coords(&t_map, ctx, ob, mesh, NULL, tex_co);
 
-		MOD_init_texture(depsgraph, texture);
+		MOD_init_texture(&t_map, ctx);
 
 		/* For each weight (vertex), make the mix between org and new weights. */
 		for (i = 0; i < num; ++i) {

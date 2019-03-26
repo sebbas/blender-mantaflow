@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,10 +15,6 @@
  *
  * The Original Code is Copyright (C) 2012 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Sergey Sharybin
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __OCIO_IMPL_H__
@@ -59,6 +53,7 @@ public:
 	virtual const char *configGetDisplayColorSpaceName(OCIO_ConstConfigRcPtr *config, const char *display, const char *view) = 0;
 
 	virtual void configGetDefaultLumaCoefs(OCIO_ConstConfigRcPtr *config, float *rgb) = 0;
+	virtual void configGetXYZtoRGB(OCIO_ConstConfigRcPtr *config, float xyz_to_rgb[3][3]) = 0;
 
 	virtual int                  configGetNumLooks(OCIO_ConstConfigRcPtr *config) = 0;
 	virtual const char          *configGetLookNameByIndex(OCIO_ConstConfigRcPtr *config, int index) = 0;
@@ -148,6 +143,7 @@ public:
 	const char *configGetDisplayColorSpaceName(OCIO_ConstConfigRcPtr *config, const char *display, const char *view);
 
 	void configGetDefaultLumaCoefs(OCIO_ConstConfigRcPtr *config, float *rgb);
+	void configGetXYZtoRGB(OCIO_ConstConfigRcPtr *config, float xyz_to_rgb[3][3]);
 
 	int                  configGetNumLooks(OCIO_ConstConfigRcPtr *config);
 	const char          *configGetLookNameByIndex(OCIO_ConstConfigRcPtr *config, int index);
@@ -238,6 +234,7 @@ public:
 	const char *configGetDisplayColorSpaceName(OCIO_ConstConfigRcPtr *config, const char *display, const char *view);
 
 	void configGetDefaultLumaCoefs(OCIO_ConstConfigRcPtr *config, float *rgb);
+	void configGetXYZtoRGB(OCIO_ConstConfigRcPtr *config, float xyz_to_rgb[3][3]);
 
 	int                  configGetNumLooks(OCIO_ConstConfigRcPtr *config);
 	const char          *configGetLookNameByIndex(OCIO_ConstConfigRcPtr *config, int index);

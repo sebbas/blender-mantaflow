@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/bmesh/intern/bmesh_log.c
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * The BMLog is an interface for storing undo/redo steps as a BMesh is
  * modified. It only stores changes to the BMesh, not full copies.
@@ -655,7 +651,7 @@ void BM_log_mesh_elems_reorder(BMesh *bm, BMLog *log)
 BMLogEntry *BM_log_entry_add(BMLog *log)
 {
 	/* WARNING: this is now handled by the UndoSystem: BKE_UNDOSYS_TYPE_SCULPT
-	 * freeing here causes unnecesssary complications. */
+	 * freeing here causes unnecessary complications. */
 	BMLogEntry *entry;
 #if 0
 	/* Delete any entries after the current one */
@@ -1130,10 +1126,10 @@ void bm_log_print(const BMLog *log, const char *description)
 
 	printf("%s:\n", description);
 	printf("    % 2d: [ initial ]%s\n", 0,
-		   (!log->current_entry) ? current : "");
+	       (!log->current_entry) ? current : "");
 	for (entry = log->entries.first, i = 1; entry; entry = entry->next, i++) {
 		printf("    % 2d: [%p]%s\n", i, entry,
-			   (entry == log->current_entry) ? current : "");
+		       (entry == log->current_entry) ? current : "");
 	}
 }
 #endif

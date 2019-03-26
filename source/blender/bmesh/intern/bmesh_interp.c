@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2007 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Geoffrey Bantle.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/bmesh/intern/bmesh_interp.c
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * Functions for interpolating data across the surface of a mesh.
  */
@@ -253,7 +245,7 @@ static int compute_mdisp_quad(
 	{
 		float cent[3];
 		/* computer center */
-		BM_face_calc_center_mean(l->f, cent);
+		BM_face_calc_center_median(l->f, cent);
 		BLI_assert(equals_v3v3(cent, l_f_center));
 	}
 #endif
@@ -508,7 +500,7 @@ void BM_loop_interp_multires_ex(
 		.cd_loop_mdisp_offset = cd_loop_mdisp_offset,
 		.md_dst = md_dst, .f_src_center = f_src_center,
 		.axis_x = axis_x, .axis_y = axis_y, .v1 = v1, .v4 = v4, .e1 = e1, .e2 = e2,
-		.res = res, .d = 1.0f / (float)(res - 1)
+		.res = res, .d = 1.0f / (float)(res - 1),
 	};
 	ParallelRangeSettings settings;
 	BLI_parallel_range_settings_defaults(&settings);
@@ -527,8 +519,8 @@ void BM_loop_interp_multires(BMesh *bm, BMLoop *l_dst, const BMFace *f_src)
 		float f_dst_center[3];
 		float f_src_center[3];
 
-		BM_face_calc_center_mean(l_dst->f, f_dst_center);
-		BM_face_calc_center_mean(f_src,    f_src_center);
+		BM_face_calc_center_median(l_dst->f, f_dst_center);
+		BM_face_calc_center_median(f_src,    f_src_center);
 
 		BM_loop_interp_multires_ex(bm, l_dst, f_src, f_dst_center, f_src_center, cd_loop_mdisp_offset);
 	}
@@ -555,8 +547,8 @@ void BM_face_interp_multires(BMesh *bm, BMFace *f_dst, const BMFace *f_src)
 		float f_dst_center[3];
 		float f_src_center[3];
 
-		BM_face_calc_center_mean(f_dst, f_dst_center);
-		BM_face_calc_center_mean(f_src, f_src_center);
+		BM_face_calc_center_median(f_dst, f_dst_center);
+		BM_face_calc_center_median(f_src, f_src_center);
 
 		BM_face_interp_multires_ex(bm, f_dst, f_src, f_dst_center, f_src_center, cd_loop_mdisp_offset);
 	}

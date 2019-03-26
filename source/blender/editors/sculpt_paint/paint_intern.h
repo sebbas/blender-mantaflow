@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/sculpt_paint/paint_intern.h
- *  \ingroup edsculpt
+/** \file
+ * \ingroup edsculpt
  */
 
 
@@ -33,28 +26,28 @@
 #define __PAINT_INTERN_H__
 
 struct ARegion;
-struct bContext;
 struct Brush;
-struct ImagePool;
-struct ColorSpace;
 struct ColorManagedDisplay;
+struct ColorSpace;
+struct ImagePool;
 struct ListBase;
 struct MTex;
 struct Object;
-struct PaintStroke;
 struct Paint;
 struct PaintCurve;
+struct PaintStroke;
 struct PointerRNA;
-struct rcti;
-struct Scene;
 struct RegionView3D;
+struct Scene;
+struct UndoStep;
 struct VPaint;
 struct ViewContext;
+struct bContext;
+struct rcti;
 struct wmEvent;
 struct wmOperator;
 struct wmOperatorType;
 struct wmWindowManager;
-struct UndoStep;
 enum ePaintMode;
 
 typedef struct CoNo {
@@ -88,6 +81,7 @@ int paint_stroke_modal(struct bContext *C, struct wmOperator *op, const struct w
 int paint_stroke_exec(struct bContext *C, struct wmOperator *op);
 void paint_stroke_cancel(struct bContext *C, struct wmOperator *op);
 bool paint_stroke_flipped(struct PaintStroke *stroke);
+bool paint_stroke_inverted(struct PaintStroke *stroke);
 struct ViewContext *paint_stroke_view_context(struct PaintStroke *stroke);
 void *paint_stroke_mode_data(struct PaintStroke *stroke);
 float paint_stroke_distance_get(struct PaintStroke *stroke);
@@ -113,7 +107,7 @@ void PAINT_OT_weight_set(struct wmOperatorType *ot);
 
 enum {
 	WPAINT_GRADIENT_TYPE_LINEAR,
-	WPAINT_GRADIENT_TYPE_RADIAL
+	WPAINT_GRADIENT_TYPE_RADIAL,
 };
 void PAINT_OT_weight_gradient(struct wmOperatorType *ot);
 
@@ -306,20 +300,6 @@ typedef enum BrushStrokeMode {
 	BRUSH_STROKE_SMOOTH
 } BrushStrokeMode;
 
-/* paint_ops.c */
-typedef enum {
-	RC_COLOR    = 1,
-	RC_ROTATION = 2,
-	RC_ZOOM     = 4,
-	RC_WEIGHT   = 8,
-	RC_SECONDARY_ROTATION = 16,
-	RC_COLOR_OVERRIDE = 32,
-} RCFlags;
-
-void set_brush_rc_props(
-        struct PointerRNA *ptr, const char *paint, const char *prop, const char *secondary_prop,
-        RCFlags flags);
-
 /* paint_hide.c */
 
 typedef enum {
@@ -355,9 +335,6 @@ void PAINTCURVE_OT_select(struct wmOperatorType *ot);
 void PAINTCURVE_OT_slide(struct wmOperatorType *ot);
 void PAINTCURVE_OT_draw(struct wmOperatorType *ot);
 void PAINTCURVE_OT_cursor(struct wmOperatorType *ot);
-
-/* paint_curve_undo.c */
-void ED_paintcurve_undo_push(struct bContext *C, struct wmOperator *op, struct PaintCurve *pc);
 
 /* image painting blur kernel */
 typedef struct {

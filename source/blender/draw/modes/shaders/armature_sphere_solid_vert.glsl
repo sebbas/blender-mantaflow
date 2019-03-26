@@ -2,10 +2,10 @@
 uniform mat4 ViewMatrix;
 uniform mat4 ProjectionMatrix;
 
-/* ---- Instantiated Attribs ---- */
+/* ---- Instantiated Attrs ---- */
 in vec2 pos;
 
-/* ---- Per instance Attribs ---- */
+/* ---- Per instance Attrs ---- */
 in mat4 InstanceModelMatrix;
 in vec3 stateColor;
 in vec3 boneColor;
@@ -73,10 +73,16 @@ void main()
 	/* Camera oriented position (but still in local space) */
 	vec3 cam_pos = x_axis * pos.x + y_axis * pos.y + z_axis * z_ofs;
 
-	vec4 V = model_view_matrix * vec4(cam_pos, 1.0);
+	vec4 pos_4d = vec4(cam_pos, 1.0);
+	vec4 V = model_view_matrix * pos_4d;
 	gl_Position = ProjectionMatrix * V;
 	viewPosition = V.xyz;
 
 	finalStateColor = stateColor;
 	finalBoneColor = boneColor;
+
+#ifdef USE_WORLD_CLIP_PLANES
+	vec4 worldPosition = InstanceModelMatrix * pos_4d;
+	world_clip_planes_calc_clip_distance(worldPosition.xyz);
+#endif
 }

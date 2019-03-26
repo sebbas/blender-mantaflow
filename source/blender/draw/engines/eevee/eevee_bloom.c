@@ -1,6 +1,4 @@
 /*
- * Copyright 2016, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,23 +13,17 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Blender Institute
- *
+ * Copyright 2016, Blender Foundation.
  */
 
-/** \file eevee_bloom.c
- *  \ingroup draw_engine
+/** \file
+ * \ingroup draw_engine
  *
  * Eevee's bloom shader.
  */
 
 #include "DRW_render.h"
 
-#include "BLI_dynstr.h"
-
-#include "BKE_global.h" /* for G.debug_value */
-
-#include "GPU_extensions.h"
 #include "GPU_texture.h"
 
 #include "DEG_depsgraph_query.h"
@@ -113,7 +105,7 @@ int EEVEE_bloom_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
 		effects->blit_texel_size[0] = 1.0f / (float)blitsize[0];
 		effects->blit_texel_size[1] = 1.0f / (float)blitsize[1];
 
-		effects->bloom_blit = DRW_texture_pool_query_2D(blitsize[0], blitsize[1], GPU_R11F_G11F_B10F,
+		effects->bloom_blit = DRW_texture_pool_query_2d(blitsize[0], blitsize[1], GPU_R11F_G11F_B10F,
 		                                                &draw_engine_eevee_type);
 
 		GPU_framebuffer_ensure_config(&fbl->bloom_blit_fb, {
@@ -155,7 +147,7 @@ int EEVEE_bloom_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
 			effects->downsamp_texel_size[i][0] = 1.0f / (float)texsize[0];
 			effects->downsamp_texel_size[i][1] = 1.0f / (float)texsize[1];
 
-			effects->bloom_downsample[i] = DRW_texture_pool_query_2D(texsize[0], texsize[1], GPU_R11F_G11F_B10F,
+			effects->bloom_downsample[i] = DRW_texture_pool_query_2d(texsize[0], texsize[1], GPU_R11F_G11F_B10F,
 			                                                         &draw_engine_eevee_type);
 			GPU_framebuffer_ensure_config(&fbl->bloom_down_fb[i], {
 				GPU_ATTACHMENT_NONE,
@@ -171,7 +163,7 @@ int EEVEE_bloom_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
 			texsize[0] = MAX2(texsize[0], 2);
 			texsize[1] = MAX2(texsize[1], 2);
 
-			effects->bloom_upsample[i] = DRW_texture_pool_query_2D(texsize[0], texsize[1], GPU_R11F_G11F_B10F,
+			effects->bloom_upsample[i] = DRW_texture_pool_query_2d(texsize[0], texsize[1], GPU_R11F_G11F_B10F,
 			                                                       &draw_engine_eevee_type);
 			GPU_framebuffer_ensure_config(&fbl->bloom_accum_fb[i], {
 				GPU_ATTACHMENT_NONE,
@@ -227,7 +219,7 @@ void EEVEE_bloom_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *ved
 		 *   and do an upsample blur for each new accumulated layer.
 		 * - Finally add accumulation buffer onto the source color buffer.
 		 *
-		 *  [1/1] is original copy resolution (can be half or quater res for performance)
+		 *  [1/1] is original copy resolution (can be half or quarter res for performance)
 		 *
 		 *                                [DOWNSAMPLE CHAIN]                      [UPSAMPLE CHAIN]
 		 *
@@ -246,7 +238,7 @@ void EEVEE_bloom_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *ved
 		 *                                   [Downsample]                            [Upsample]
 		 *                                        v                                      |
 		 *                              Color Downsampled [1/N] ─────────────────────────┘
-		 **/
+		 */
 		DRWShadingGroup *grp;
 		const bool use_highres = true;
 		const bool use_antiflicker = true;

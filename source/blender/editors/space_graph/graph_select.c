@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,14 +14,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation
- *
- * Contributor(s): Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_graph/graph_select.c
- *  \ingroup spgraph
+/** \file
+ * \ingroup spgraph
  */
 
 
@@ -69,20 +63,20 @@
 
 /* ******************** Deselect All Operator ***************************** */
 /* This operator works in one of three ways:
- *	1) (de)select all (AKEY) - test if select all or deselect all
- *	2) invert all (CTRL-IKEY) - invert selection of all keyframes
- *	3) (de)select all - no testing is done; only for use internal tools as normal function...
+ * 1) (de)select all (AKEY) - test if select all or deselect all
+ * 2) invert all (CTRL-IKEY) - invert selection of all keyframes
+ * 3) (de)select all - no testing is done; only for use internal tools as normal function...
  */
 
 /* Deselects keyframes in the Graph Editor
- *	- This is called by the deselect all operator, as well as other ones!
+ * - This is called by the deselect all operator, as well as other ones!
  *
- *  - test: check if select or deselect all
- *	- sel: how to select keyframes
- *		0 = deselect
- *		1 = select
- *		2 = invert
- *	- do_channels: whether to affect selection status of channels
+ * - test: check if select or deselect all
+ * - sel: how to select keyframes
+ *   0 = deselect
+ *   1 = select
+ *   2 = invert
+ * - do_channels: whether to affect selection status of channels
  */
 void deselect_graph_keys(bAnimContext *ac, bool test, short sel, bool do_channels)
 {
@@ -90,7 +84,7 @@ void deselect_graph_keys(bAnimContext *ac, bool test, short sel, bool do_channel
 	bAnimListElem *ale;
 	int filter;
 
-	SpaceIpo *sipo = (SpaceIpo *)ac->sl;
+	SpaceGraph *sipo = (SpaceGraph *)ac->sl;
 	KeyframeEditData ked = {{NULL}};
 	KeyframeEditFunc test_cb, sel_cb;
 
@@ -221,10 +215,10 @@ void GRAPH_OT_select_all(wmOperatorType *ot)
 
 /* ******************** Box Select Operator **************************** */
 /* This operator currently works in one of three ways:
- *	-> BKEY     - 1) all keyframes within region are selected (validation with BEZT_OK_REGION)
- *	-> ALT-BKEY - depending on which axis of the region was larger...
- *		-> 2) x-axis, so select all frames within frame range (validation with BEZT_OK_FRAMERANGE)
- *		-> 3) y-axis, so select all frames within channels that region included (validation with BEZT_OK_VALUERANGE)
+ * -> BKEY     - 1) all keyframes within region are selected (validation with BEZT_OK_REGION)
+ * -> ALT-BKEY - depending on which axis of the region was larger...
+ *    -> 2) x-axis, so select all frames within frame range (validation with BEZT_OK_FRAMERANGE)
+ *    -> 3) y-axis, so select all frames within channels that region included (validation with BEZT_OK_VALUERANGE)
  *
  * The selection backend is also reused for the Lasso and Circle select operators.
  */
@@ -242,7 +236,7 @@ static void box_select_graphkeys(
 	bAnimListElem *ale;
 	int filter, mapping_flag;
 
-	SpaceIpo *sipo = (SpaceIpo *)ac->sl;
+	SpaceGraph *sipo = (SpaceGraph *)ac->sl;
 	KeyframeEditData ked;
 	KeyframeEditFunc ok_cb, select_cb;
 	View2D *v2d = &ac->ar->v2d;
@@ -345,31 +339,20 @@ static int graphkeys_box_select_exec(bContext *C, wmOperator *op)
 	bAnimContext ac;
 	rcti rect;
 	rctf rect_fl;
-	short mode = 0, selectmode = 0;
-	bool incl_handles;
-	const bool select = !RNA_boolean_get(op->ptr, "deselect");
-	const bool extend = RNA_boolean_get(op->ptr, "extend");
+	short mode = 0;
 
 	/* get editor data */
 	if (ANIM_animdata_get_context(C, &ac) == 0)
 		return OPERATOR_CANCELLED;
 
-	/* clear all selection if not extending selection */
-
-	if (!extend)
+	const eSelectOp sel_op = RNA_enum_get(op->ptr, "mode");
+	const int selectmode = (sel_op != SEL_OP_SUB) ? SELECT_ADD : SELECT_SUBTRACT;
+	if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
 		deselect_graph_keys(&ac, 1, SELECT_SUBTRACT, true);
-
-	/* get select mode
-	 *	- 'include_handles' from the operator specifies whether to include handles in the selection
-	 */
-	if (select) {
-		selectmode = SELECT_ADD;
-	}
-	else {
-		selectmode = SELECT_SUBTRACT;
 	}
 
-	incl_handles = RNA_boolean_get(op->ptr, "include_handles");
+	/* 'include_handles' from the operator specifies whether to include handles in the selection. */
+	const bool incl_handles = RNA_boolean_get(op->ptr, "include_handles");
 
 	/* get settings from operator */
 	WM_operator_properties_border_to_rcti(op, &rect);
@@ -377,9 +360,9 @@ static int graphkeys_box_select_exec(bContext *C, wmOperator *op)
 	/* selection 'mode' depends on whether box_select region only matters on one axis */
 	if (RNA_boolean_get(op->ptr, "axis_range")) {
 		/* mode depends on which axis of the range is larger to determine which axis to use
-		 *	- checking this in region-space is fine, as it's fundamentally still going to be a different rect size
-		 *	- the frame-range select option is favored over the channel one (x over y), as frame-range one is often
-		 *	  used for tweaking timing when "blocking", while channels is not that useful...
+		 * - checking this in region-space is fine, as it's fundamentally still going to be a different rect size
+		 * - the frame-range select option is favored over the channel one (x over y), as frame-range one is often
+		 *   used for tweaking timing when "blocking", while channels is not that useful...
 		 */
 		if ((BLI_rcti_size_x(&rect)) >= (BLI_rcti_size_y(&rect)))
 			mode = BEZT_OK_FRAMERANGE;
@@ -418,11 +401,12 @@ void GRAPH_OT_select_box(wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-	/* rna */
-	WM_operator_properties_gesture_box_select(ot);
-
+	/* properties */
 	ot->prop = RNA_def_boolean(ot->srna, "axis_range", 0, "Axis Range", "");
 	RNA_def_boolean(ot->srna, "include_handles", 0, "Include Handles", "Are handles tested individually against the selection criteria");
+
+	WM_operator_properties_gesture_box(ot);
+	WM_operator_properties_select_operation_simple(ot);
 }
 
 
@@ -436,9 +420,7 @@ static int graphkeys_lassoselect_exec(bContext *C, wmOperator *op)
 	rcti rect;
 	rctf rect_fl;
 
-	short selectmode;
 	bool incl_handles;
-	bool extend;
 
 	/* get editor data */
 	if (ANIM_animdata_get_context(C, &ac) == 0)
@@ -449,18 +431,14 @@ static int graphkeys_lassoselect_exec(bContext *C, wmOperator *op)
 	if (data_lasso.mcords == NULL)
 		return OPERATOR_CANCELLED;
 
-	/* clear all selection if not extending selection */
-	extend = RNA_boolean_get(op->ptr, "extend");
-	if (!extend)
-		deselect_graph_keys(&ac, 1, SELECT_SUBTRACT, true);
-
-	if (!RNA_boolean_get(op->ptr, "deselect"))
-		selectmode = SELECT_ADD;
-	else
-		selectmode = SELECT_SUBTRACT;
+	const eSelectOp sel_op = RNA_enum_get(op->ptr, "mode");
+	const short selectmode = (sel_op != SEL_OP_SUB) ? SELECT_ADD : SELECT_SUBTRACT;
+	if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
+		deselect_graph_keys(&ac, 0, SELECT_SUBTRACT, true);
+	}
 
 	{
-		SpaceIpo *sipo = (SpaceIpo *)ac.sl;
+		SpaceGraph *sipo = (SpaceGraph *)ac.sl;
 		if (selectmode == SELECT_ADD) {
 			incl_handles = ((sipo->flag & SIPO_SELVHANDLESONLY) ||
 			                (sipo->flag & SIPO_NOHANDLES)) == 0;
@@ -503,7 +481,8 @@ void GRAPH_OT_select_lasso(wmOperatorType *ot)
 	ot->flag = OPTYPE_UNDO;
 
 	/* properties */
-	WM_operator_properties_gesture_lasso_select(ot);
+	WM_operator_properties_gesture_lasso(ot);
+	WM_operator_properties_select_operation_simple(ot);
 }
 
 /* ------------------- */
@@ -511,8 +490,6 @@ void GRAPH_OT_select_lasso(wmOperatorType *ot)
 static int graph_circle_select_exec(bContext *C, wmOperator *op)
 {
 	bAnimContext ac;
-	const bool select = !RNA_boolean_get(op->ptr, "deselect");
-	const short selectmode = select ? SELECT_ADD : SELECT_SUBTRACT;
 	bool incl_handles = false;
 
 	KeyframeEdit_CircleData data = {0};
@@ -526,6 +503,13 @@ static int graph_circle_select_exec(bContext *C, wmOperator *op)
 	if (ANIM_animdata_get_context(C, &ac) == 0)
 		return OPERATOR_CANCELLED;
 
+	const eSelectOp sel_op = ED_select_op_modal(
+	        RNA_enum_get(op->ptr, "mode"), WM_gesture_is_modal_first(op->customdata));
+	const short selectmode = (sel_op != SEL_OP_SUB) ? SELECT_ADD : SELECT_SUBTRACT;
+	if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
+		deselect_graph_keys(&ac, 0, SELECT_SUBTRACT, true);
+	}
+
 	data.mval[0] = x;
 	data.mval[1] = y;
 	data.radius_squared = radius * radius;
@@ -537,7 +521,7 @@ static int graph_circle_select_exec(bContext *C, wmOperator *op)
 	rect_fl.ymax = y + radius;
 
 	{
-		SpaceIpo *sipo = (SpaceIpo *)ac.sl;
+		SpaceGraph *sipo = (SpaceGraph *)ac.sl;
 		if (selectmode == SELECT_ADD) {
 			incl_handles = ((sipo->flag & SIPO_SELVHANDLESONLY) ||
 			                (sipo->flag & SIPO_NOHANDLES)) == 0;
@@ -572,15 +556,16 @@ void GRAPH_OT_select_circle(wmOperatorType *ot)
 	ot->flag = OPTYPE_UNDO;
 
 	/* properties */
-	WM_operator_properties_gesture_circle_select(ot);
+	WM_operator_properties_gesture_circle(ot);
+	WM_operator_properties_select_operation_simple(ot);
 }
 
 /* ******************** Column Select Operator **************************** */
 /* This operator works in one of four ways:
- *	- 1) select all keyframes in the same frame as a selected one  (KKEY)
- *	- 2) select all keyframes in the same frame as the current frame marker (CTRL-KKEY)
- *	- 3) select all keyframes in the same frame as a selected markers (SHIFT-KKEY)
- *	- 4) select all keyframes that occur between selected markers (ALT-KKEY)
+ * - 1) select all keyframes in the same frame as a selected one  (KKEY)
+ * - 2) select all keyframes in the same frame as the current frame marker (CTRL-KKEY)
+ * - 3) select all keyframes in the same frame as a selected markers (SHIFT-KKEY)
+ * - 4) select all keyframes that occur between selected markers (ALT-KKEY)
  */
 
 /* defines for column-select mode */
@@ -589,7 +574,7 @@ static const EnumPropertyItem prop_column_select_types[] = {
 	{GRAPHKEYS_COLUMNSEL_CFRA, "CFRA", 0, "On Current Frame", ""},
 	{GRAPHKEYS_COLUMNSEL_MARKERS_COLUMN, "MARKERS_COLUMN", 0, "On Selected Markers", ""},
 	{GRAPHKEYS_COLUMNSEL_MARKERS_BETWEEN, "MARKERS_BETWEEN", 0, "Between Min/Max Selected Markers", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 /* ------------------- */
@@ -699,7 +684,7 @@ static void columnselect_graph_keys(bAnimContext *ac, short mode)
 		AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 
 		/* loop over cfraelems (stored in the KeyframeEditData->list)
-		 *	- we need to do this here, as we can apply fewer NLA-mapping conversions
+		 * - we need to do this here, as we can apply fewer NLA-mapping conversions
 		 */
 		for (ce = ked.list.first; ce; ce = ce->next) {
 			/* set frame for validation callback to refer to */
@@ -933,7 +918,7 @@ static const EnumPropertyItem prop_graphkeys_leftright_select_types[] = {
 	{GRAPHKEYS_LRSEL_TEST, "CHECK", 0, "Check if Select Left or Right", ""},
 	{GRAPHKEYS_LRSEL_LEFT, "LEFT", 0, "Before current frame", ""},
 	{GRAPHKEYS_LRSEL_RIGHT, "RIGHT", 0, "After current frame", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 /* --------------------------------- */
@@ -1079,9 +1064,9 @@ void GRAPH_OT_select_leftright(wmOperatorType *ot)
 
 /* ******************** Mouse-Click Select Operator *********************** */
 /* This operator works in one of three ways:
- *	- 1) keyframe under mouse - no special modifiers
- *	- 2) all keyframes on the same side of current frame indicator as mouse - ALT modifier
- *	- 3) column select all keyframes in frame under mouse - CTRL modifier
+ * - 1) keyframe under mouse - no special modifiers
+ * - 2) all keyframes on the same side of current frame indicator as mouse - ALT modifier
+ * - 3) column select all keyframes in frame under mouse - CTRL modifier
  *
  * In addition to these basic options, the SHIFT modifier can be used to toggle the
  * selection mode between replacing the selection (without) and inverting the selection (with).
@@ -1120,7 +1105,7 @@ typedef enum eGraphVertIndex {
 
 /* check if its ok to select a handle */
 // XXX also need to check for int-values only?
-static bool fcurve_handle_sel_check(SpaceIpo *sipo, BezTriple *bezt)
+static bool fcurve_handle_sel_check(SpaceGraph *sipo, BezTriple *bezt)
 {
 	if (sipo->flag & SIPO_NOHANDLES) return 0;
 	if ((sipo->flag & SIPO_SELVHANDLESONLY) && BEZT_ISSEL_ANY(bezt) == 0) return 0;
@@ -1190,13 +1175,13 @@ static void get_nearest_fcurve_verts_list(bAnimContext *ac, const int mval[2], L
 	bAnimListElem *ale;
 	int filter;
 
-	SpaceIpo *sipo = (SpaceIpo *)ac->sl;
+	SpaceGraph *sipo = (SpaceGraph *)ac->sl;
 	View2D *v2d = &ac->ar->v2d;
 	short mapping_flag = 0;
 
 	/* get curves to search through
-	 *	- if the option to only show keyframes that belong to selected F-Curves is enabled,
-	 *	  include the 'only selected' flag...
+	 * - if the option to only show keyframes that belong to selected F-Curves is enabled,
+	 *   include the 'only selected' flag...
 	 */
 	filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_NODUPLIS);
 	if (sipo->flag & SIPO_SELCUVERTSONLY)   // FIXME: this should really be check for by the filtering code...
@@ -1271,7 +1256,7 @@ static tNearestVertInfo *get_best_nearest_fcurve_vert(ListBase *matches)
 		/* which mode of search are we in: find first selected, or find vert? */
 		if (found) {
 			/* just take this vert now that we've found the selected one
-			 *	- we'll need to remove this from the list so that it can be returned to the original caller
+			 * - we'll need to remove this from the list so that it can be returned to the original caller
 			 */
 			BLI_remlink(matches, nvi);
 			return nvi;
@@ -1314,7 +1299,7 @@ static tNearestVertInfo *find_nearest_fcurve_vert(bAnimContext *ac, const int mv
 /* option 1) select keyframe directly under mouse */
 static void mouse_graph_keys(bAnimContext *ac, const int mval[2], short select_mode, short curves_only)
 {
-	SpaceIpo *sipo = (SpaceIpo *)ac->sl;
+	SpaceGraph *sipo = (SpaceGraph *)ac->sl;
 	tNearestVertInfo *nvi;
 	BezTriple *bezt = NULL;
 
@@ -1421,7 +1406,8 @@ static void mouse_graph_keys(bAnimContext *ac, const int mval[2], short select_m
 	}
 
 	/* set active F-Curve (NOTE: sync the filter flags with findnearest_fcurve_vert) */
-	/* needs to be called with (sipo->flag & SIPO_SELCUVERTSONLY) otherwise the active flag won't be set [#26452] */
+	/* needs to be called with (sipo->flag & SIPO_SELCUVERTSONLY)
+	 * otherwise the active flag won't be set T26452. */
 	if (nvi->fcu->flag & FCURVE_SELECTED) {
 		int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_NODUPLIS);
 		ANIM_set_active_channel(ac, ac->data, ac->datatype, filter, nvi->fcu, nvi->ctype);
@@ -1431,7 +1417,8 @@ static void mouse_graph_keys(bAnimContext *ac, const int mval[2], short select_m
 	MEM_freeN(nvi);
 }
 
-/* Option 2) Selects all the keyframes on either side of the current frame (depends on which side the mouse is on) */
+/* Option 2) Selects all the keyframes on either side of the current frame
+ * (depends on which side the mouse is on) */
 /* (see graphkeys_select_leftright) */
 
 /* Option 3) Selects all visible keyframes in the same frame as the mouse click */

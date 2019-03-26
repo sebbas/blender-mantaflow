@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,15 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Chingiz Dyussenov, Arystanbek Dyussenov, Jan Diederich, Tod Liverseed,
- *                 Nathan Letwory
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/collada/CameraExporter.cpp
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 
 
@@ -74,8 +67,8 @@ void CamerasExporter::operator()(Object *ob, Scene *sce)
 			COLLADASW::PerspectiveOptic persp(mSW);
 			persp.setXFov(RAD2DEGF(focallength_to_fov(cam->lens, cam->sensor_x)), "xfov");
 			persp.setAspectRatio((float)(sce->r.xsch) / (float)(sce->r.ysch), false, "aspect_ratio");
-			persp.setZFar(cam->clipend, false, "zfar");
-			persp.setZNear(cam->clipsta, false, "znear");
+			persp.setZFar(cam->clip_end, false, "zfar");
+			persp.setZNear(cam->clip_start, false, "znear");
 			COLLADASW::Camera ccam(mSW, &persp, cam_id, cam_name);
 			exportBlenderProfile(ccam, cam);
 			addCamera(ccam);
@@ -88,8 +81,8 @@ void CamerasExporter::operator()(Object *ob, Scene *sce)
 			COLLADASW::OrthographicOptic ortho(mSW);
 			ortho.setXMag(cam->ortho_scale / 2, "xmag");
 			ortho.setAspectRatio((float)(sce->r.xsch) / (float)(sce->r.ysch), false, "aspect_ratio");
-			ortho.setZFar(cam->clipend, false, "zfar");
-			ortho.setZNear(cam->clipsta, false, "znear");
+			ortho.setZFar(cam->clip_end, false, "zfar");
+			ortho.setZNear(cam->clip_start, false, "znear");
 			COLLADASW::Camera ccam(mSW, &ortho, cam_id, cam_name);
 			exportBlenderProfile(ccam, cam);
 			addCamera(ccam);
@@ -101,7 +94,7 @@ bool CamerasExporter::exportBlenderProfile(COLLADASW::Camera &cm,Camera *cam)
 {
 	cm.addExtraTechniqueParameter("blender","shiftx",cam->shiftx);
 	cm.addExtraTechniqueParameter("blender","shifty",cam->shifty);
-	cm.addExtraTechniqueParameter("blender","YF_dofdist",cam->YF_dofdist);
+	cm.addExtraTechniqueParameter("blender","dof_distance",cam->dof_distance);
 	return true;
 
 }

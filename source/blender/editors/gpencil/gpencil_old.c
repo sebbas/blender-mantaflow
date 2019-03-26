@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,11 @@
  *
  * The Original Code is Copyright (C) 2018, Blender Foundation,
  * This is a new part of Blender
- *
- * Contributor(s): Antonio Vazquez
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  * Use deprecated data to convert old 2.7x files
  */
 
-/** \file blender/editors/gpencil/gpencil_old.c
- *  \ingroup edgpencil
+/** \file
+ * \ingroup edgpencil
  */
 
  /* allow to use deprecated functionality */
@@ -105,7 +98,6 @@ static int gpencil_convert_old_files_exec(bContext *C, wmOperator *UNUSED(op))
 {
 	Main *bmain = CTX_data_main(C);
 	Scene *scene = CTX_data_scene(C);
-	ToolSettings *ts = CTX_data_tool_settings(C);
 	ViewLayer *view_layer = CTX_data_view_layer(C);
 
 	/* Convert grease pencil scene datablock to GP object */
@@ -114,28 +106,30 @@ static int gpencil_convert_old_files_exec(bContext *C, wmOperator *UNUSED(op))
 		ob = BKE_object_add_for_data(bmain, view_layer, OB_GPENCIL, "GP_Scene", &scene->gpd->id, false);
 		zero_v3(ob->loc);
 
-		Paint *paint = BKE_brush_get_gpencil_paint(ts);
-		/* if not exist, create a new one */
-		if (paint->brush == NULL) {
-			/* create new brushes */
-			BKE_brush_gpencil_presets(C);
-		}
-
 		/* convert grease pencil palettes (version >= 2.78)  to materials and weights */
 		bGPdata *gpd = scene->gpd;
 		for (const bGPDpalette *palette = gpd->palettes.first; palette; palette = palette->next) {
 			for (bGPDpalettecolor *palcolor = palette->colors.first; palcolor; palcolor = palcolor->next) {
 
 				/* create material slot */
-				BKE_object_material_slot_add(bmain, ob);
-				Material *ma = BKE_material_add_gpencil(bmain, palcolor->info);
-				assign_material(bmain, ob, ma, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
+				Material *ma = BKE_gpencil_handle_new_material(bmain, ob, palcolor->info, NULL);
 
 				/* copy color settings */
 				MaterialGPencilStyle *gp_style = ma->gp_style;
 				copy_v4_v4(gp_style->stroke_rgba, palcolor->color);
 				copy_v4_v4(gp_style->fill_rgba, palcolor->fill);
-				gp_style->flag = palcolor->flag;
+
+				/* set basic settings */
+				gp_style->pattern_gridsize = 0.1f;
+				gp_style->gradient_radius = 0.5f;
+				ARRAY_SET_ITEMS(gp_style->mix_rgba, 1.0f, 1.0f, 1.0f, 0.2f);
+				ARRAY_SET_ITEMS(gp_style->gradient_scale, 1.0f, 1.0f);
+				ARRAY_SET_ITEMS(gp_style->texture_scale, 1.0f, 1.0f);
+				gp_style->texture_opacity = 1.0f;
+				gp_style->texture_pixsize = 100.0f;
+
+				gp_style->flag |= GP_STYLE_STROKE_SHOW;
+				gp_style->flag |= GP_STYLE_FILL_SHOW;
 
 				/* fix strokes */
 				for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
@@ -169,7 +163,7 @@ static int gpencil_convert_old_files_exec(bContext *C, wmOperator *UNUSED(op))
 
 #if 0 /* GPXX */
 	/* Handle object-linked grease pencil datablocks */
-	for (Object *ob = bmain->object.first; ob; ob = ob->id.next) {
+	for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
 		if (ob->gpd) {
 			if (ob->type == OB_GPENCIL) {
 				/* GP Object - remap the links */
@@ -191,7 +185,7 @@ static int gpencil_convert_old_files_exec(bContext *C, wmOperator *UNUSED(op))
 				 * to put them into from here...
 				 */
 				printf("WARNING: Old Grease Pencil data ('%s') still exists on Object '%s'\n",
-					ob->gpd->id.name + 2, ob->id.name + 2);
+				       ob->gpd->id.name + 2, ob->id.name + 2);
 			}
 		}
 	}

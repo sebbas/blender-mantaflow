@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,28 +15,19 @@
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Daniel Dunbar
- *                 Ton Roosendaal,
- *                 Ben Batt,
- *                 Brecht Van Lommel,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_fluidsim.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
+
+#include "BLI_utildefines.h"
 
 #include "DNA_mesh_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_object_fluidsim_types.h"
 #include "DNA_object_types.h"
-
-#include "BLI_utildefines.h"
 
 #include "BKE_layer.h"
 #include "BKE_modifier.h"
@@ -171,4 +160,5 @@ ModifierTypeInfo modifierType_Fluidsim = {
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

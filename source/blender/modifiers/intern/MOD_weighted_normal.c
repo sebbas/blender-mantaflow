@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,16 +12,16 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software  Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_weighted_normal.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 #include "MEM_guardedalloc.h"
+
+#include "BLI_linklist.h"
+#include "BLI_math.h"
 
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
@@ -32,11 +30,7 @@
 #include "BKE_cdderivedmesh.h"
 #include "BKE_deform.h"
 #include "BKE_library.h"
-#include "BKE_library_query.h"
 #include "BKE_mesh.h"
-
-#include "BLI_math.h"
-#include "BLI_linklist.h"
 
 #include "MOD_modifiertypes.h"
 #include "MOD_util.h"
@@ -496,13 +490,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 	}
 
 	Mesh *result;
-	BKE_id_copy_ex(
-		NULL, &mesh->id, (ID **)&result,
-		LIB_ID_CREATE_NO_MAIN |
-		LIB_ID_CREATE_NO_USER_REFCOUNT |
-		LIB_ID_CREATE_NO_DEG_TAG |
-		LIB_ID_COPY_NO_PREVIEW,
-		false);
+	BKE_id_copy_ex(NULL, &mesh->id, (ID **)&result, LIB_ID_COPY_LOCALIZE);
 
 	const int numVerts = result->totvert;
 	const int numEdges = result->totedge;
@@ -535,6 +523,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 	float (*polynors)[3] = CustomData_get_layer(pdata, CD_NORMAL);
 	if (!polynors) {
 		polynors = CustomData_add_layer(pdata, CD_NORMAL, CD_CALLOC, NULL, numPolys);
+		CustomData_set_layer_flag(pdata, CD_NORMAL, CD_FLAG_TEMPORARY);
 	}
 	BKE_mesh_calc_normals_poly(mvert, NULL, numVerts, mloop, mpoly, numLoops, numPolys, polynors, false);
 
@@ -548,7 +537,6 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 	const bool has_clnors = clnors != NULL;
 	if (!clnors) {
 		clnors = CustomData_add_layer(ldata, CD_CUSTOMLOOPNORMAL, CD_CALLOC, NULL, numLoops);
-		clnors = CustomData_get_layer(ldata, CD_CUSTOMLOOPNORMAL);
 	}
 
 	MDeformVert *dvert;
@@ -599,6 +587,8 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 	MEM_SAFE_FREE(wn_data.mode_pair);
 	MEM_SAFE_FREE(wn_data.items_data);
 
+	/* Currently Modifier stack assumes there is no poly normal data passed around... */
+	CustomData_free_layers(pdata, CD_NORMAL, numPolys);
 	return result;
 }
 
@@ -611,20 +601,19 @@ static void initData(ModifierData *md)
 	wnmd->flag = 0;
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
 	WeightedNormalModifierData *wnmd = (WeightedNormalModifierData *)md;
-	CustomDataMask dataMask = CD_MASK_CUSTOMLOOPNORMAL;
 
-	if (wnmd->defgrp_name[0]) {
-		dataMask |= CD_MASK_MDEFORMVERT;
+	r_cddata_masks->lmask = CD_MASK_CUSTOMLOOPNORMAL;
+
+	if (wnmd->defgrp_name[0] != '\0') {
+		r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
 	}
 
 	if (wnmd->flag & MOD_WEIGHTEDNORMAL_FACE_INFLUENCE) {
-		dataMask |= CD_MASK_PROP_INT;
+		r_cddata_masks->pmask |= CD_MASK_PROP_INT;
 	}
-
-	return dataMask;
 }
 
 static bool dependsOnNormals(ModifierData *UNUSED(md))
@@ -666,4 +655,5 @@ ModifierTypeInfo modifierType_WeightedNormal = {
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

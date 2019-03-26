@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,18 +15,10 @@
  *
  * The Original Code is Copyright (C) 2007 by Janne Karhu.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Raul Fernandez Hernandez (Farsthary),
- *                 Stephen Swhitehorn,
- *                 Lukas Toenne
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/particle_distribute.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include <string.h>
@@ -325,7 +315,7 @@ static void hammersley_create(float *out, int n, int seed, float amount)
 	BLI_rng_free(rng);
 
 	for (int k = 0; k < n; k++) {
-		BLI_hammersley_1D(k, &t);
+		BLI_hammersley_1d(k, &t);
 
 		out[2*k + 0] = fmod((double)k/(double)n + offs[0], 1.0);
 		out[2*k + 1] = fmod(t + offs[1], 1.0);
@@ -474,12 +464,12 @@ static void distribute_from_verts_exec(ParticleTask *thread, ParticleData *pa, i
 
 #if ONLY_WORKING_WITH_PA_VERTS
 	if (ctx->tree) {
-		KDTreeNearest ptn[3];
+		KDTreeNearest_3d ptn[3];
 		int w, maxw;
 
 		psys_particle_on_dm(ctx->mesh,from,pa->num,pa->num_dmcache,pa->fuv,pa->foffset,co1,0,0,0,orco1,0);
 		BKE_mesh_orco_verts_transform(ob->data, &orco1, 1, 1);
-		maxw = BLI_kdtree_find_nearest_n(ctx->tree,orco1,ptn,3);
+		maxw = BLI_kdtree_3d_find_nearest_n(ctx->tree,orco1,ptn,3);
 
 		for (w=0; w<maxw; w++) {
 			pa->verts[w]=ptn->num;
@@ -487,7 +477,7 @@ static void distribute_from_verts_exec(ParticleTask *thread, ParticleData *pa, i
 	}
 #endif
 
-	BLI_assert(rng_skip_tot > 0);  /* should never be below zero */
+	BLI_assert(rng_skip_tot >= 0);  /* should never be below zero */
 	if (rng_skip_tot > 0) {
 		BLI_rng_skip(thread->rng, rng_skip_tot);
 	}
@@ -531,7 +521,7 @@ static void distribute_from_faces_exec(ParticleTask *thread, ParticleData *pa, i
 	}
 	pa->foffset= 0.0f;
 
-	BLI_assert(rng_skip_tot > 0);  /* should never be below zero */
+	BLI_assert(rng_skip_tot >= 0);  /* should never be below zero */
 	if (rng_skip_tot > 0) {
 		BLI_rng_skip(thread->rng, rng_skip_tot);
 	}
@@ -628,7 +618,7 @@ static void distribute_from_volume_exec(ParticleTask *thread, ParticleData *pa, 
 		}
 	}
 
-	BLI_assert(rng_skip_tot > 0); /* should never be below zero */
+	BLI_assert(rng_skip_tot >= 0); /* should never be below zero */
 	if (rng_skip_tot > 0) {
 		BLI_rng_skip(thread->rng, rng_skip_tot);
 	}
@@ -664,7 +654,7 @@ static void distribute_children_exec(ParticleTask *thread, ChildParticle *cpa, i
 	cpa->num = ctx->index[p];
 
 	if (ctx->tree) {
-		KDTreeNearest ptn[10];
+		KDTreeNearest_3d ptn[10];
 		int w,maxw;//, do_seams;
 		float maxd /*, mind,dd */, totw= 0.0f;
 		int parent[10];
@@ -672,7 +662,7 @@ static void distribute_children_exec(ParticleTask *thread, ChildParticle *cpa, i
 
 		psys_particle_on_dm(mesh,cfrom,cpa->num,DMCACHE_ISCHILD,cpa->fuv,cpa->foffset,co1,nor1,NULL,NULL,orco1);
 		BKE_mesh_orco_verts_transform(ob->data, &orco1, 1, 1);
-		maxw = BLI_kdtree_find_nearest_n(ctx->tree,orco1,ptn,3);
+		maxw = BLI_kdtree_3d_find_nearest_n(ctx->tree,orco1,ptn,3);
 
 		maxd=ptn[maxw-1].dist;
 		/* mind=ptn[0].dist; */ /* UNUSED */
@@ -819,7 +809,7 @@ static int psys_thread_context_init_distribute(ParticleThreadContext *ctx, Parti
 	ParticleData *pa=0, *tpars= 0;
 	ParticleSettings *part;
 	ParticleSeam *seams= 0;
-	KDTree *tree=0;
+	KDTree_3d *tree=0;
 	Mesh *mesh = NULL;
 	float *jit= NULL;
 	int i, p=0;
@@ -868,13 +858,7 @@ static int psys_thread_context_init_distribute(ParticleThreadContext *ctx, Parti
 				mesh = final_mesh;
 			}
 			else {
-				BKE_id_copy_ex(
-				        NULL, ob->data, (ID **)&mesh,
-				        LIB_ID_CREATE_NO_MAIN |
-				        LIB_ID_CREATE_NO_USER_REFCOUNT |
-				        LIB_ID_CREATE_NO_DEG_TAG |
-				        LIB_ID_COPY_NO_PREVIEW,
-				        false);
+				BKE_id_copy_ex(NULL, ob->data, (ID **)&mesh, LIB_ID_COPY_LOCALIZE);
 			}
 			BKE_mesh_tessface_ensure(mesh);
 
@@ -899,15 +883,15 @@ static int psys_thread_context_init_distribute(ParticleThreadContext *ctx, Parti
 
 		children=1;
 
-		tree=BLI_kdtree_new(totpart);
+		tree=BLI_kdtree_3d_new(totpart);
 
 		for (p=0,pa=psys->particles; p<totpart; p++,pa++) {
 			psys_particle_on_dm(mesh,part->from,pa->num,pa->num_dmcache,pa->fuv,pa->foffset,co,nor,0,0,orco);
 			BKE_mesh_orco_verts_transform(ob->data, &orco, 1, 1);
-			BLI_kdtree_insert(tree, p, orco);
+			BLI_kdtree_3d_insert(tree, p, orco);
 		}
 
-		BLI_kdtree_balance(tree);
+		BLI_kdtree_3d_balance(tree);
 
 		totpart = psys_get_tot_child(scene, psys, use_render_params);
 		cfrom = from = PART_FROM_FACE;
@@ -920,26 +904,24 @@ static int psys_thread_context_init_distribute(ParticleThreadContext *ctx, Parti
 		if (psys->part->use_modifier_stack)
 			mesh = final_mesh;
 		else
-			BKE_id_copy_ex(
-			            NULL, ob->data, (ID **)&mesh,
-			            LIB_ID_CREATE_NO_MAIN |
-			            LIB_ID_CREATE_NO_USER_REFCOUNT |
-			            LIB_ID_CREATE_NO_DEG_TAG |
-			            LIB_ID_COPY_NO_PREVIEW,
-			            false);
+			BKE_id_copy_ex(NULL, ob->data, (ID **)&mesh, LIB_ID_COPY_LOCALIZE);
 
 		BKE_mesh_tessface_ensure(mesh);
 
 		/* we need orco for consistent distributions */
-		if (!CustomData_has_layer(&mesh->vdata, CD_ORCO))
-			CustomData_add_layer(&mesh->vdata, CD_ORCO, CD_ASSIGN, BKE_mesh_orco_verts_get(ob), mesh->totvert);
+		if (!CustomData_has_layer(&mesh->vdata, CD_ORCO)) {
+			/* Orcos are stored in normalized 0..1 range by convention. */
+			float (*orcodata)[3] = BKE_mesh_orco_verts_get(ob);
+			BKE_mesh_orco_verts_transform(mesh, orcodata, mesh->totvert, false);
+			CustomData_add_layer(&mesh->vdata, CD_ORCO, CD_ASSIGN, orcodata, mesh->totvert);
+		}
 
 		if (from == PART_FROM_VERT) {
 			MVert *mv = mesh->mvert;
 			float (*orcodata)[3] = CustomData_get_layer(&mesh->vdata, CD_ORCO);
 			int totvert = mesh->totvert;
 
-			tree=BLI_kdtree_new(totvert);
+			tree=BLI_kdtree_3d_new(totvert);
 
 			for (p=0; p<totvert; p++) {
 				if (orcodata) {
@@ -948,10 +930,10 @@ static int psys_thread_context_init_distribute(ParticleThreadContext *ctx, Parti
 				}
 				else
 					copy_v3_v3(co,mv[p].co);
-				BLI_kdtree_insert(tree, p, co);
+				BLI_kdtree_3d_insert(tree, p, co);
 			}
 
-			BLI_kdtree_balance(tree);
+			BLI_kdtree_3d_balance(tree);
 		}
 	}
 
@@ -966,7 +948,7 @@ static int psys_thread_context_init_distribute(ParticleThreadContext *ctx, Parti
 
 		if (mesh != final_mesh) BKE_id_free(NULL, mesh);
 
-		BLI_kdtree_free(tree);
+		BLI_kdtree_3d_free(tree);
 		BLI_rng_free(rng);
 
 		return 0;
@@ -988,6 +970,7 @@ static int psys_thread_context_init_distribute(ParticleThreadContext *ctx, Parti
 			MFace *mf = &mesh->mface[i];
 
 			if (orcodata) {
+				/* Transform orcos from normalized 0..1 to object space. */
 				copy_v3_v3(co1, orcodata[mf->v1]);
 				copy_v3_v3(co2, orcodata[mf->v2]);
 				copy_v3_v3(co3, orcodata[mf->v3]);

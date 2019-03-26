@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,13 +15,7 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s):	Maarten Gribnau	09/2001
 					Damien Plisson	10/2009
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #include <Cocoa/Cocoa.h>
@@ -42,9 +34,9 @@ GHOST_DisplayManagerCocoa::GHOST_DisplayManagerCocoa(void)
 GHOST_TSuccess GHOST_DisplayManagerCocoa::getNumDisplays(GHOST_TUns8& numDisplays) const
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-	
+
 	numDisplays = (GHOST_TUns8) [[NSScreen screens] count];
-	
+
 	[pool drain];
 	return GHOST_kSuccess;
 }
@@ -53,7 +45,7 @@ GHOST_TSuccess GHOST_DisplayManagerCocoa::getNumDisplays(GHOST_TUns8& numDisplay
 GHOST_TSuccess GHOST_DisplayManagerCocoa::getNumDisplaySettings(GHOST_TUns8 display, GHOST_TInt32& numSettings) const
 {
 	numSettings = (GHOST_TInt32)3; //Width, Height, BitsPerPixel
-	
+
 	return GHOST_kSuccess;
 }
 
@@ -61,27 +53,27 @@ GHOST_TSuccess GHOST_DisplayManagerCocoa::getNumDisplaySettings(GHOST_TUns8 disp
 GHOST_TSuccess GHOST_DisplayManagerCocoa::getDisplaySetting(GHOST_TUns8 display, GHOST_TInt32 index, GHOST_DisplaySetting& setting) const
 {
 	NSScreen *askedDisplay;
-	
+
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-	
+
 	if (display == kMainDisplay) //Screen #0 may not be the main one
 		askedDisplay = [NSScreen mainScreen];
 	else
 		askedDisplay = [[NSScreen screens] objectAtIndex:display];
-	
+
 	if (askedDisplay == nil) {
 		[pool drain];
 		return GHOST_kFailure;
 	}
-	
+
 	NSRect frame = [askedDisplay visibleFrame];
 	setting.xPixels = frame.size.width;
 	setting.yPixels = frame.size.height;
-	
+
 	setting.bpp = NSBitsPerPixelFromDepth([askedDisplay depth]);
-	
+
 	setting.frequency = 0; //No more CRT display...
-				
+
 #ifdef GHOST_DEBUG
 	printf("display mode: width=%d, height=%d, bpp=%d, frequency=%d\n", setting.xPixels, setting.yPixels, setting.bpp, setting.frequency);
 #endif // GHOST_DEBUG
@@ -94,7 +86,7 @@ GHOST_TSuccess GHOST_DisplayManagerCocoa::getDisplaySetting(GHOST_TUns8 display,
 GHOST_TSuccess GHOST_DisplayManagerCocoa::getCurrentDisplaySetting(GHOST_TUns8 display, GHOST_DisplaySetting& setting) const
 {
 	NSScreen *askedDisplay;
-	
+
 	GHOST_ASSERT((display==kMainDisplay), "GHOST_DisplayManagerCocoa::getCurrentDisplaySetting(): only main display is supported");
 
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -103,18 +95,18 @@ GHOST_TSuccess GHOST_DisplayManagerCocoa::getCurrentDisplaySetting(GHOST_TUns8 d
 		askedDisplay = [NSScreen mainScreen];
 	else
 		askedDisplay = [[NSScreen screens] objectAtIndex:display];
-	
+
 	if (askedDisplay == nil) {
 		[pool drain];
 		return GHOST_kFailure;
 	}
-	
+
 	NSRect frame = [askedDisplay visibleFrame];
 	setting.xPixels = frame.size.width;
 	setting.yPixels = frame.size.height;
-	
+
 	setting.bpp = NSBitsPerPixelFromDepth([askedDisplay depth]);
-	
+
 	setting.frequency = 0; //No more CRT display...
 
 #ifdef GHOST_DEBUG
@@ -139,7 +131,7 @@ GHOST_TSuccess GHOST_DisplayManagerCocoa::setCurrentDisplaySetting(GHOST_TUns8 d
 #endif // GHOST_DEBUG
 
 	//Display configuration is no more available in 10.6
-	
+
 /*	CFDictionaryRef displayModeValues = ::CGDisplayBestModeForParametersAndRefreshRate(
 		m_displayIDs[display],
 		(size_t)setting.bpp,

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2007 by Janne Karhu.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/physics/particle_edit_undo.c
- *  \ingroup edphys
+/** \file
+ * \ingroup edphys
  */
 
 #include <stdlib.h>
@@ -41,7 +33,6 @@
 #include "DNA_windowmanager_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
@@ -237,7 +228,7 @@ static bool particle_undosys_poll(struct bContext *C)
 	return (edit != NULL);
 }
 
-static bool particle_undosys_step_encode(struct bContext *C, UndoStep *us_p)
+static bool particle_undosys_step_encode(struct bContext *C, struct Main *UNUSED(bmain), UndoStep *us_p)
 {
 	ParticleUndoStep *us = (ParticleUndoStep *)us_p;
 	ViewLayer *view_layer = CTX_data_view_layer(C);
@@ -248,7 +239,7 @@ static bool particle_undosys_step_encode(struct bContext *C, UndoStep *us_p)
 	return true;
 }
 
-static void particle_undosys_step_decode(struct bContext *C, UndoStep *us_p, int UNUSED(dir))
+static void particle_undosys_step_decode(struct bContext *C, struct Main *UNUSED(bmain), UndoStep *us_p, int UNUSED(dir))
 {
 	/* TODO(campbell): undo_system: use low-level API to set mode. */
 	ED_object_mode_set(C, OB_MODE_PARTICLE_EDIT);
@@ -260,7 +251,7 @@ static void particle_undosys_step_decode(struct bContext *C, UndoStep *us_p, int
 	PTCacheEdit *edit = PE_get_current(scene, ob);
 	if (edit) {
 		undoptcache_to_editcache(&us->data, edit);
-		DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 	}
 	else {
 		BLI_assert(0);
@@ -292,7 +283,6 @@ void ED_particle_undosys_type(UndoType *ut)
 
 	ut->step_foreach_ID_ref = particle_undosys_foreach_ID_ref;
 
-	ut->mode = BKE_UNDOTYPE_MODE_STORE;
 	ut->use_context = true;
 
 	ut->step_size = sizeof(ParticleUndoStep);

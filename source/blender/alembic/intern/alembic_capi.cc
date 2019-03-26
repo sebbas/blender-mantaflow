@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,10 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Esteban Tovagliari, Cedric Paille, Kevin Dietrich
- *
- * ***** END GPL LICENSE BLOCK *****
+ */
+
+/** \file
+ * \ingroup balembic
  */
 
 #include "../ABC_alembic.h"
@@ -51,7 +49,6 @@ extern "C" {
 #include "BKE_global.h"
 #include "BKE_layer.h"
 #include "BKE_library.h"
-#include "BKE_main.h"
 #include "BKE_scene.h"
 
 #include "DEG_depsgraph.h"
@@ -341,7 +338,7 @@ bool ABC_export(
 	job->settings.scene = scene;
 	job->settings.depsgraph = DEG_graph_new(scene, job->view_layer, DAG_EVAL_RENDER);
 
-	/* Sybren: for now we only export the active scene layer.
+	/* TODO(Sybren): for now we only export the active scene layer.
 	 * Later in the 2.8 development process this may be replaced by using
 	 * a specific collection for Alembic I/O, which can then be toggled
 	 * between "real" objects and cached Alembic files. */
@@ -354,7 +351,7 @@ bool ABC_export(
 	job->settings.shutter_open = params->shutter_open;
 	job->settings.shutter_close = params->shutter_close;
 
-	/* Sybren: For now this is ignored, until we can get selection
+	/* TODO(Sybren): For now this is ignored, until we can get selection
 	 * detection working through Base pointers (instead of ob->flags). */
 	job->settings.selected_only = params->selected_only;
 
@@ -365,9 +362,10 @@ bool ABC_export(
 	job->settings.export_hair = params->export_hair;
 	job->settings.export_particles = params->export_particles;
 	job->settings.apply_subdiv = params->apply_subdiv;
+	job->settings.curves_as_mesh = params->curves_as_mesh;
 	job->settings.flatten_hierarchy = params->flatten_hierarchy;
 
-	/* Sybren: visible_layer & renderable only is ignored for now,
+	/* TODO(Sybren): visible_layer & renderable only is ignored for now,
 	 * to be replaced with collections later in the 2.8 dev process
 	 * (also see note above). */
 	job->settings.visible_layers_only = params->visible_layers_only;
@@ -421,11 +419,11 @@ bool ABC_export(
 /**
  * Generates an AbcObjectReader for this Alembic object and its children.
  *
- * \param object The Alembic IObject to visit.
- * \param readers The created AbcObjectReader * will be appended to this vector.
- * \param settings Import settings, not used directly but passed to the
+ * \param object: The Alembic IObject to visit.
+ * \param readers: The created AbcObjectReader * will be appended to this vector.
+ * \param settings: Import settings, not used directly but passed to the
  *                 AbcObjectReader subclass constructors.
- * \param r_assign_as_parent Return parameter, contains a list of reader
+ * \param r_assign_as_parent: Return parameter, contains a list of reader
  *                 pointers, whose parent pointer should still be set.
  *                 This is filled when this call to visit_object() didn't create
  *                 a reader that should be the parent.
@@ -633,6 +631,7 @@ struct ImportJobData {
 	Main *bmain;
 	Scene *scene;
 	ViewLayer *view_layer;
+	wmWindowManager *wm;
 
 	char filename[1024];
 	ImportSettings settings;
@@ -657,6 +656,8 @@ static void import_startjob(void *user_data, short *stop, short *do_update, floa
 	data->stop = stop;
 	data->do_update = do_update;
 	data->progress = progress;
+
+	WM_set_locked_interface(data->wm, true);
 
 	ArchiveReader *archive = new ArchiveReader(data->filename);
 
@@ -797,7 +798,7 @@ static void import_endjob(void *user_data)
 			 * the reader and the creation of the Blender object. */
 			if (ob == NULL) continue;
 
-			BKE_libblock_free_us(data->bmain, ob);
+			BKE_id_free_us(data->bmain, ob);
 		}
 	}
 	else {
@@ -816,14 +817,15 @@ static void import_endjob(void *user_data)
 			BKE_collection_object_add(data->bmain, lc->collection, ob);
 
 			base = BKE_view_layer_base_find(view_layer, ob);
-			BKE_view_layer_base_select(view_layer, base);
+			/* TODO: is setting active needed? */
+			BKE_view_layer_base_select_and_set_active(view_layer, base);
 
-			DEG_id_tag_update(&lc->collection->id, DEG_TAG_COPY_ON_WRITE);
+			DEG_id_tag_update(&lc->collection->id, ID_RECALC_COPY_ON_WRITE);
 			DEG_id_tag_update_ex(data->bmain, &ob->id,
-			                     OB_RECALC_OB | OB_RECALC_DATA | OB_RECALC_TIME | DEG_TAG_BASE_FLAGS_UPDATE);
+			                     ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION | ID_RECALC_BASE_FLAGS);
 		}
 
-		DEG_id_tag_update(&data->scene->id, DEG_TAG_BASE_FLAGS_UPDATE);
+		DEG_id_tag_update(&data->scene->id, ID_RECALC_BASE_FLAGS);
 		DEG_relations_tag_update(data->bmain);
 	}
 
@@ -835,6 +837,8 @@ static void import_endjob(void *user_data)
 			delete reader;
 		}
 	}
+
+	WM_set_locked_interface(data->wm, false);
 
 	switch (data->error_code) {
 		default:
@@ -868,6 +872,7 @@ bool ABC_import(bContext *C, const char *filepath, float scale, bool is_sequence
 	job->bmain = CTX_data_main(C);
 	job->scene = CTX_data_scene(C);
 	job->view_layer = CTX_data_view_layer(C);
+	job->wm = CTX_wm_manager(C);
 	job->import_ok = false;
 	BLI_strncpy(job->filename, filepath, 1024);
 

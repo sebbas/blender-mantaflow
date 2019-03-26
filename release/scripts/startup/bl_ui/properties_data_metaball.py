@@ -58,20 +58,23 @@ class DATA_PT_metaball(DataButtonsPanel, Panel):
 
         mball = context.meta_ball
 
-        col = layout.column()
-        col.label(text="Resolution:")
-        sub = col.column(align=True)
-        sub.prop(mball, "resolution", text="Resolution View")
-        sub.prop(mball, "render_resolution", text="Render")
+        col = layout.column(align=True)
+        col.prop(mball, "resolution", text="Resolution Viewport")
+        col.prop(mball, "render_resolution", text="Render")
 
-        col.prop(mball, "threshold", text="Threshold")
-        col.prop(mball, "update_method")
+        col.separator()
+
+        col.prop(mball, "threshold", text="Influence Threshold")
+
+        col.separator()
+
+        col.prop(mball, "update_method", text="Update on Edit")
 
 
 class DATA_PT_mball_texture_space(DataButtonsPanel, Panel):
     bl_label = "Texture Space"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -126,7 +129,7 @@ class DATA_PT_metaball_element(DataButtonsPanel, Panel):
 
 
 class DATA_PT_custom_props_metaball(DataButtonsPanel, PropertyPanel, Panel):
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
     _context_path = "object.data"
     _property_type = bpy.types.MetaBall
 

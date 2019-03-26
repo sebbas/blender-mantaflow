@@ -1,35 +1,64 @@
 # This example adds an object mode tool to the toolbar.
-# This is just the circle-select tool.
+# This is just the circle-select and lasso tools tool.
 import bpy
-from bpy.utils.toolsystem import ToolDef
+from bpy.types import WorkSpaceTool
 
-@ToolDef.from_fn
-def my_tool():
+class MyTool(WorkSpaceTool):
+    bl_space_type='VIEW_3D'
+    bl_context_mode='OBJECT'
+
+    # The prefix of the idname should be your add-on name.
+    bl_idname = "my_template.my_circle_select"
+    bl_label = "My Circle Select"
+    bl_description = (
+        "This is a tooltip\n"
+        "with multiple lines"
+    )
+    bl_icon = "ops.generic.select_circle"
+    bl_widget = None
+    bl_keymap = (
+        ("view3d.select_circle", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+         {"properties": [("wait_for_input", False)]}),
+        ("view3d.select_circle", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+         {"properties": [("mode", 'SUB'), ("wait_for_input", False)]}),
+    )
+
     def draw_settings(context, layout, tool):
         props = tool.operator_properties("view3d.select_circle")
+        layout.prop(props, "mode")
         layout.prop(props, "radius")
-    return dict(
-        text="My Circle Select",
-        description=(
-            "This is a tooltip\n"
-            "with multiple lines"
-        ),
-        icon="ops.generic.select_circle",
-        widget=None,
-        keymap=(
-            ("view3d.select_circle", dict(deselect=False), dict(type='ACTIONMOUSE', value='PRESS')),
-            ("view3d.select_circle", dict(deselect=True), dict(type='ACTIONMOUSE', value='PRESS', ctrl=True)),
-        ),
-        draw_settings=draw_settings,
+
+
+class MyOtherTool(WorkSpaceTool):
+    bl_space_type='VIEW_3D'
+    bl_context_mode='OBJECT'
+
+    bl_idname = "my_template.my_other_select"
+    bl_label = "My Lasso Tool Select"
+    bl_description = (
+        "This is a tooltip\n"
+        "with multiple lines"
     )
+    bl_icon = "ops.generic.select_lasso"
+    bl_widget = None
+    bl_keymap = (
+        ("view3d.select_lasso", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        ("view3d.select_lasso", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+         {"properties": [("mode", 'SUB')]}),
+    )
+
+    def draw_settings(context, layout, tool):
+        props = tool.operator_properties("view3d.select_lasso")
+        layout.prop(props, "mode")
 
 
 def register():
-    bpy.utils.register_tool('VIEW_3D', 'OBJECT', my_tool)
-
+    bpy.utils.register_tool(MyTool, after={"builtin.scale_cage"}, separator=True, group=True)
+    bpy.utils.register_tool(MyOtherTool, after={MyTool.bl_idname})
 
 def unregister():
-    bpy.utils.unregister_tool('VIEW_3D', 'OBJECT', my_tool)
+    bpy.utils.unregister_tool(MyTool)
+    bpy.utils.unregister_tool(MyOtherTool)
 
 if __name__ == "__main__":
     register()

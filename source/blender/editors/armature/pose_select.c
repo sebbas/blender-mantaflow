@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, 2002-2009 full recode.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/armature/pose_select.c
- *  \ingroup edarmature
+/** \file
+ * \ingroup edarmature
  */
 
 #include <string.h>
@@ -104,11 +98,10 @@ void ED_pose_bone_select_tag_update(Object *ob)
 
 	if (arm->flag & ARM_HAS_VIZ_DEPS) {
 		/* mask modifier ('armature' mode), etc. */
-		DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 	}
 
-	/* copy on write tag is needed (for the armature), or else no refresh happens */
-	DEG_id_tag_update(&arm->id, DEG_TAG_COPY_ON_WRITE);
+	DEG_id_tag_update(&arm->id, ID_RECALC_SELECT);
 }
 
 
@@ -144,7 +137,7 @@ void ED_pose_bone_select(Object *ob, bPoseChannel *pchan, bool select)
 /* called from editview.c, for mode-less pose selection */
 /* assumes scene obact and basact is still on old situation */
 bool ED_armature_pose_select_pick_with_buffer(
-        ViewLayer *view_layer, Base *base, const unsigned int *buffer, short hits,
+        ViewLayer *view_layer, View3D *v3d, Base *base, const unsigned int *buffer, short hits,
         bool extend, bool deselect, bool toggle, bool do_nearest)
 {
 	Object *ob = base->object;
@@ -179,10 +172,10 @@ bool ED_armature_pose_select_pick_with_buffer(
 
 		if (!extend && !deselect && !toggle) {
 			{
-				uint objects_len = 0;
-				Object **objects = BKE_object_pose_array_get_unique(view_layer, &objects_len);
-				ED_pose_deselect_all_multi(objects, objects_len, SEL_DESELECT, true);
-				MEM_freeN(objects);
+				uint bases_len = 0;
+				Base **bases = BKE_object_pose_base_array_get_unique(view_layer, v3d, &bases_len);
+				ED_pose_deselect_all_multi_ex(bases, bases_len, SEL_DESELECT, true);
+				MEM_freeN(bases);
 			}
 			nearBone->flag |= (BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
 			arm->act_bone = nearBone;
@@ -217,7 +210,7 @@ bool ED_armature_pose_select_pick_with_buffer(
 			if (ob_act->mode & OB_MODE_WEIGHT_PAINT) {
 				if (nearBone == arm->act_bone) {
 					ED_vgroup_select_by_name(ob_act, nearBone->name);
-					DEG_id_tag_update(&ob_act->id, OB_RECALC_DATA);
+					DEG_id_tag_update(&ob_act->id, ID_RECALC_GEOMETRY);
 				}
 			}
 			/* if there are some dependencies for visualizing armature state
@@ -227,11 +220,11 @@ bool ED_armature_pose_select_pick_with_buffer(
 				/* NOTE: ob not ob_act here is intentional - it's the source of the
 				 *       bones being selected  [T37247]
 				 */
-				DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+				DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 			}
 
 			/* tag armature for copy-on-write update (since act_bone is in armature not object) */
-			DEG_id_tag_update(&arm->id, DEG_TAG_COPY_ON_WRITE);
+			DEG_id_tag_update(&arm->id, ID_RECALC_COPY_ON_WRITE);
 		}
 	}
 
@@ -239,7 +232,8 @@ bool ED_armature_pose_select_pick_with_buffer(
 }
 
 /* 'select_mode' is usual SEL_SELECT/SEL_DESELECT/SEL_TOGGLE/SEL_INVERT.
- * When true, 'ignore_visibility' makes this func also affect invisible bones (hidden or on hidden layers). */
+ * When true, 'ignore_visibility' makes this func also affect invisible bones
+ * (hidden or on hidden layers). */
 bool ED_pose_deselect_all(Object *ob, int select_mode, const bool ignore_visibility)
 {
 	bArmature *arm = ob->data;
@@ -289,10 +283,10 @@ static bool ed_pose_is_any_selected(Object *ob, bool ignore_visibility)
 	return false;
 }
 
-static bool ed_pose_is_any_selected_multi(Object **objects, uint objects_len, bool ignore_visibility)
+static bool ed_pose_is_any_selected_multi(Base **bases, uint bases_len, bool ignore_visibility)
 {
-	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-		Object *ob_iter = objects[ob_index];
+	for (uint base_index = 0; base_index < bases_len; base_index++) {
+		Object *ob_iter = bases[base_index]->object;
 		if (ed_pose_is_any_selected(ob_iter, ignore_visibility)) {
 			return true;
 		}
@@ -300,19 +294,34 @@ static bool ed_pose_is_any_selected_multi(Object **objects, uint objects_len, bo
 	return false;
 }
 
-void ED_pose_deselect_all_multi(Object **objects, uint objects_len, int select_mode, const bool ignore_visibility)
+bool ED_pose_deselect_all_multi_ex(Base **bases, uint bases_len, int select_mode, const bool ignore_visibility)
 {
 	if (select_mode == SEL_TOGGLE) {
 		select_mode = ed_pose_is_any_selected_multi(
-		        objects, objects_len, ignore_visibility) ? SEL_DESELECT : SEL_SELECT;
+		        bases, bases_len, ignore_visibility) ? SEL_DESELECT : SEL_SELECT;
 	}
 
-	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-		Object *ob_iter = objects[ob_index];
+	bool changed_multi = false;
+	for (uint base_index = 0; base_index < bases_len; base_index++) {
+		Object *ob_iter = bases[base_index]->object;
 		if (ED_pose_deselect_all(ob_iter, select_mode, ignore_visibility)) {
 			ED_pose_bone_select_tag_update(ob_iter);
+			changed_multi = true;
 		}
 	}
+	return changed_multi;
+}
+
+
+bool ED_pose_deselect_all_multi(bContext *C, int select_mode, const bool ignore_visibility)
+{
+	ViewContext vc;
+	ED_view3d_viewcontext_init(C, &vc);
+	uint bases_len = 0;
+	Base **bases = BKE_view_layer_array_from_bases_in_mode(vc.view_layer, vc.v3d, &bases_len, {.object_mode = OB_MODE_POSE,});
+	bool changed_multi = ED_pose_deselect_all_multi_ex(bases, bases_len, select_mode, ignore_visibility);
+	MEM_freeN(bases);
+	return changed_multi;
 }
 
 /* ***************** Selections ********************** */
@@ -424,10 +433,10 @@ static int pose_de_select_all_exec(bContext *C, wmOperator *op)
 		if (ob_prev != ob) {
 			/* weightpaint or mask modifiers need depsgraph updates */
 			if (multipaint || (arm->flag & ARM_HAS_VIZ_DEPS)) {
-				DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+				DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 			}
 			/* need to tag armature for cow updates, or else selection doesn't update */
-			DEG_id_tag_update(&arm->id, DEG_TAG_COPY_ON_WRITE);
+			DEG_id_tag_update(&arm->id, ID_RECALC_COPY_ON_WRITE);
 			ob_prev = ob;
 		}
 	}
@@ -643,7 +652,7 @@ void POSE_OT_select_hierarchy(wmOperatorType *ot)
 	static const EnumPropertyItem direction_items[] = {
 		{BONE_SELECT_PARENT, "PARENT", 0, "Select Parent", ""},
 		{BONE_SELECT_CHILD, "CHILD", 0, "Select Child", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */
@@ -683,7 +692,7 @@ static bool pose_select_same_group(bContext *C, bool extend)
 	uint ob_index;
 
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_mode_unique_data(view_layer, &objects_len, OB_MODE_POSE);
+	Object **objects = BKE_view_layer_array_from_objects_in_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len, OB_MODE_POSE);
 	for (ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *ob = BKE_object_pose_armature_get(objects[ob_index]);
 		bArmature *arm = (ob) ? ob->data : NULL;
@@ -705,8 +714,8 @@ static bool pose_select_same_group(bContext *C, bool extend)
 	}
 
 	/* alloc a small array to keep track of the groups to use
-	 *  - each cell stores on/off state for whether group should be used
-	 *	- size is (groups_len + 1), since (index = 0) is used for no-group
+	 * - each cell stores on/off state for whether group should be used
+	 * - size is (groups_len + 1), since (index = 0) is used for no-group
 	 */
 	groups_len++;
 	group_flags_array = MEM_callocN(objects_len * groups_len * sizeof(bool), "pose_select_same_group");
@@ -784,7 +793,7 @@ static bool pose_select_same_layer(bContext *C, bool extend)
 	bool changed = false;
 
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_mode_unique_data(view_layer, &objects_len, OB_MODE_POSE);
+	Object **objects = BKE_view_layer_array_from_objects_in_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len, OB_MODE_POSE);
 	for (ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *ob = objects[ob_index];
 		ob->id.tag &= ~LIB_TAG_DOIT;
@@ -896,7 +905,7 @@ static bool pose_select_same_keyingset(bContext *C, ReportList *reports, bool ex
 	}
 
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_mode_unique_data(view_layer, &objects_len, OB_MODE_POSE);
+	Object **objects = BKE_view_layer_array_from_objects_in_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len, OB_MODE_POSE);
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *ob = BKE_object_pose_armature_get(objects[ob_index]);
 		bArmature *arm = (ob) ? ob->data : NULL;
@@ -988,7 +997,7 @@ void POSE_OT_select_grouped(wmOperatorType *ot)
 		{POSE_SEL_SAME_LAYER, "LAYER", 0, "Layer", "Shared layers"},
 		{POSE_SEL_SAME_GROUP, "GROUP", 0, "Group", "Shared group"},
 		{POSE_SEL_SAME_KEYINGSET, "KEYINGSET", 0, "Keying Set", "All bones affected by active Keying Set"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */
@@ -1024,7 +1033,7 @@ static int pose_select_mirror_exec(bContext *C, wmOperator *op)
 	const bool extend = RNA_boolean_get(op->ptr, "extend");
 
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_mode_unique_data(view_layer, &objects_len, OB_MODE_POSE);
+	Object **objects = BKE_view_layer_array_from_objects_in_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len, OB_MODE_POSE);
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *ob = objects[ob_index];
 		bArmature *arm = ob->data;
@@ -1066,14 +1075,14 @@ static int pose_select_mirror_exec(bContext *C, wmOperator *op)
 			/* In weightpaint we select the associated vertex group too. */
 			if (is_weight_paint) {
 				ED_vgroup_select_by_name(ob, pchan_mirror_act->name);
-				DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+				DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 			}
 		}
 
 		WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, ob);
 
 		/* Need to tag armature for cow updates, or else selection doesn't update. */
-		DEG_id_tag_update(&arm->id, DEG_TAG_COPY_ON_WRITE);
+		DEG_id_tag_update(&arm->id, ID_RECALC_COPY_ON_WRITE);
 	}
 	MEM_freeN(objects);
 

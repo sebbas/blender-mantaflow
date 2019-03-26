@@ -1,6 +1,4 @@
 /*
- * Copyright 2011, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,9 +13,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor:
- *		Jeroen Bakker
- *		Monique Dewanchand
+ * Copyright 2011, Blender Foundation.
  */
 
 #include "COM_OpenCLDevice.h"
@@ -26,15 +22,15 @@
 typedef enum COM_VendorID  {NVIDIA = 0x10DE, AMD = 0x1002} COM_VendorID;
 const cl_image_format IMAGE_FORMAT_COLOR = {
 	CL_RGBA,
-	CL_FLOAT
+	CL_FLOAT,
 };
 const cl_image_format IMAGE_FORMAT_VECTOR = {
 	CL_RGB,
-	CL_FLOAT
+	CL_FLOAT,
 };
 const cl_image_format IMAGE_FORMAT_VALUE = {
 	CL_R,
-	CL_FLOAT
+	CL_FLOAT,
 };
 
 OpenCLDevice::OpenCLDevice(cl_context context, cl_device_id device, cl_program program, cl_int vendorId)

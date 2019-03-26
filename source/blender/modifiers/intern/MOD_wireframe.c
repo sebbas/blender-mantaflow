@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,19 +12,16 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software  Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_wireframe.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
+
+#include "BLI_utildefines.h"
 
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
-
-#include "BLI_utildefines.h"
 
 #include "BKE_deform.h"
 #include "BKE_mesh.h"
@@ -44,16 +39,14 @@ static void initData(ModifierData *md)
 	wmd->crease_weight = 1.0f;
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
 	WireframeModifierData *wmd = (WireframeModifierData *)md;
-	CustomDataMask dataMask = 0;
 
 	/* ask for vertexgroups if we need them */
-	if (wmd->defgrp_name[0]) dataMask |= CD_MASK_MDEFORMVERT;
-
-	return dataMask;
-
+	if (wmd->defgrp_name[0] != '\0') {
+		r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
+	}
 }
 
 static bool dependsOnNormals(ModifierData *UNUSED(md))
@@ -74,9 +67,9 @@ static Mesh *WireframeModifier_do(WireframeModifierData *wmd, Object *ob, Mesh *
 	        &(struct BMeshFromMeshParams){
 	            .calc_face_normal = true,
 	            .add_key_index = false,
-	            .use_shapekey = true,
-	            .active_shapekey = ob->shapenr,
-	            .cd_mask_extra = CD_MASK_ORIGINDEX,
+	            .use_shapekey = false,
+	            .active_shapekey = 0,
+	            .cd_mask_extra = {.vmask = CD_MASK_ORIGINDEX, .emask = CD_MASK_ORIGINDEX, .pmask = CD_MASK_ORIGINDEX},
 	        });
 
 	BM_mesh_wireframe(
@@ -94,7 +87,7 @@ static Mesh *WireframeModifier_do(WireframeModifierData *wmd, Object *ob, Mesh *
 	       MAX2(ob->totcol - 1, 0),
 	       false);
 
-	result = BKE_mesh_from_bmesh_for_eval_nomain(bm, 0);
+	result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL);
 	BM_mesh_free(bm);
 
 	result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
@@ -144,4 +137,5 @@ ModifierTypeInfo modifierType_Wireframe = {
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

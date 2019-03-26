@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,17 +12,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_view3d/view3d_gizmo_forcefield.c
- *  \ingroup spview3d
+/** \file
+ * \ingroup spview3d
  */
 
 
-#include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
@@ -48,7 +42,6 @@
 #include "view3d_intern.h"  /* own include */
 
 /* -------------------------------------------------------------------- */
-
 /** \name Force Field Gizmos
  * \{ */
 
@@ -56,15 +49,21 @@ static bool WIDGETGROUP_forcefield_poll(const bContext *C, wmGizmoGroupType *UNU
 {
 	View3D *v3d = CTX_wm_view3d(C);
 
-	if ((v3d->flag2 & V3D_RENDER_OVERRIDE) ||
+	if ((v3d->flag2 & V3D_HIDE_OVERLAYS) ||
 	    (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_CONTEXT)))
 	{
 		return false;
 	}
 
-	Object *ob = CTX_data_active_object(C);
-
-	return (ob && ob->pd && ob->pd->forcefield);
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	Base *base = BASACT(view_layer);
+	if (base && BASE_SELECTABLE(v3d, base)) {
+		Object *ob = base->object;
+		if (ob->pd && ob->pd->forcefield) {
+			return true;
+		}
+	}
+	return false;
 }
 
 static void WIDGETGROUP_forcefield_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgroup)
@@ -87,7 +86,8 @@ static void WIDGETGROUP_forcefield_refresh(const bContext *C, wmGizmoGroup *gzgr
 {
 	wmGizmoWrapper *wwrapper = gzgroup->customdata;
 	wmGizmo *gz = wwrapper->gizmo;
-	Object *ob = CTX_data_active_object(C);
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	Object *ob = OBACT(view_layer);
 	PartDeflect *pd = ob->pd;
 
 	if (pd->forcefield == PFIELD_WIND) {

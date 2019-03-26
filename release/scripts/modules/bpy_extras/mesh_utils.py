@@ -239,7 +239,7 @@ def edge_loops_from_edges(mesh, edges=None):
     return line_polys
 
 
-def ngon_tessellate(from_data, indices, fix_loops=True):
+def ngon_tessellate(from_data, indices, fix_loops=True, debug_print=True):
     """
     Takes a polyline of indices (fgon) and returns a list of face
     index lists. Designed to be used for importers that need indices for an
@@ -405,7 +405,8 @@ def ngon_tessellate(from_data, indices, fix_loops=True):
         fill = [[vert_map[i] for i in reversed(f)] for f in fill]
 
     if not fill:
-        print('Warning Cannot scanfill, fallback on a triangle fan.')
+        if debug_print:
+            print('Warning Cannot scanfill, fallback on a triangle fan.')
         fill = [[0, i - 1, i] for i in range(2, len(indices))]
     else:
         # Use real scanfill.
@@ -442,7 +443,6 @@ def triangle_random_points(num_points, loop_triangles):
     """
 
     from random import random
-    from mathutils.geometry import area_tri
 
     # For each triangle, generate the required number of random points
     sampled_points = [None] * (num_points * len(loop_triangles))
@@ -453,19 +453,6 @@ def triangle_random_points(num_points, loop_triangles):
         tv = (verts[ltv[0]].co, verts[ltv[1]].co, verts[ltv[2]].co)
 
         for k in range(num_points):
-            # If this is a quad, we need to weight its 2 tris by their area
-            if len(tv) != 1:
-                area1 = area_tri(*tv[0])
-                area2 = area_tri(*tv[1])
-                area_tot = area1 + area2
-
-                area1 = area1 / area_tot
-                area2 = area2 / area_tot
-
-                vecs = tv[0 if (random() < area1) else 1]
-            else:
-                vecs = tv[0]
-
             u1 = random()
             u2 = random()
             u_tot = u1 + u2
@@ -474,10 +461,10 @@ def triangle_random_points(num_points, loop_triangles):
                 u1 = 1.0 - u1
                 u2 = 1.0 - u2
 
-            side1 = vecs[1] - vecs[0]
-            side2 = vecs[2] - vecs[0]
+            side1 = tv[1] - tv[0]
+            side2 = tv[2] - tv[0]
 
-            p = vecs[0] + u1 * side1 + u2 * side2
+            p = tv[0] + u1 * side1 + u2 * side2
 
             sampled_points[num_points * i + k] = p
 

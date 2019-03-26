@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,19 +15,13 @@
  *
  * The Original Code is Copyright (C) 2007 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/windowmanager/intern/wm_files_link.c
- *  \ingroup wm
+/** \file
+ * \ingroup wm
  *
  * Functions for dealing with append/link operators and helpers.
  */
-
 
 #include <float.h>
 #include <string.h>
@@ -46,8 +38,6 @@
 #include "DNA_scene_types.h"
 #include "DNA_windowmanager_types.h"
 
-
-
 #include "BLI_blenlib.h"
 #include "BLI_bitmap.h"
 #include "BLI_linklist.h"
@@ -59,10 +49,10 @@
 #include "BLO_readfile.h"
 
 #include "BKE_context.h"
+#include "BKE_global.h"
 #include "BKE_layer.h"
 #include "BKE_library.h"
 #include "BKE_library_remap.h"
-#include "BKE_global.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -210,7 +200,8 @@ static WMLinkAppendDataItem *wm_link_append_data_item_add(
 }
 
 static void wm_link_do(
-        WMLinkAppendData *lapp_data, ReportList *reports, Main *bmain, Scene *scene, ViewLayer *view_layer)
+        WMLinkAppendData *lapp_data, ReportList *reports, Main *bmain,
+        Scene *scene, ViewLayer *view_layer, const View3D *v3d)
 {
 	Main *mainl;
 	BlendHandle *bh;
@@ -262,17 +253,17 @@ static void wm_link_do(
 				continue;
 			}
 
-			new_id = BLO_library_link_named_part_ex(mainl, &bh, item->idcode, item->name, flag, bmain, scene, view_layer);
+			new_id = BLO_library_link_named_part_ex(mainl, &bh, item->idcode, item->name, flag);
 
 			if (new_id) {
 				/* If the link is successful, clear item's libs 'todo' flags.
 				 * This avoids trying to link same item with other libraries to come. */
-				BLI_BITMAP_SET_ALL(item->libraries, false, lapp_data->num_libraries);
+				BLI_bitmap_set_all(item->libraries, false, lapp_data->num_libraries);
 				item->new_id = new_id;
 			}
 		}
 
-		BLO_library_link_end(mainl, &bh, flag, bmain, scene, view_layer);
+		BLO_library_link_end(mainl, &bh, flag, bmain, scene, view_layer, v3d);
 		BLO_blendhandle_close(bh);
 	}
 }
@@ -449,7 +440,7 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
 	/* XXX We'd need re-entrant locking on Main for this to work... */
 	/* BKE_main_lock(bmain); */
 
-	wm_link_do(lapp_data, op->reports, bmain, scene, view_layer);
+	wm_link_do(lapp_data, op->reports, bmain, scene, view_layer, CTX_wm_view3d(C));
 
 	/* BKE_main_unlock(bmain); */
 
@@ -630,7 +621,7 @@ static void lib_relocate_do(
 				/* Note that non-linkable IDs (like e.g. shapekeys) are also explicitly linked here... */
 				BLI_remlink(lbarray[lba_idx], id);
 				item = wm_link_append_data_item_add(lapp_data, id->name + 2, idcode, id);
-				BLI_BITMAP_SET_ALL(item->libraries, true, lapp_data->num_libraries);
+				BLI_bitmap_set_all(item->libraries, true, lapp_data->num_libraries);
 
 #ifdef PRINT_DEBUG
 				printf("\tdatablock to seek for: %s\n", id->name);
@@ -647,7 +638,7 @@ static void lib_relocate_do(
 	BKE_main_id_tag_all(bmain, LIB_TAG_PRE_EXISTING, true);
 
 	/* We do not want any instantiation here! */
-	wm_link_do(lapp_data, reports, bmain, NULL, NULL);
+	wm_link_do(lapp_data, reports, bmain, NULL, NULL, NULL);
 
 	BKE_main_lock(bmain);
 
@@ -744,7 +735,7 @@ static void lib_relocate_do(
 		ID *old_id = item->customdata;
 
 		if (old_id->us == 0) {
-			BKE_libblock_free(bmain, old_id);
+			BKE_id_free(bmain, old_id);
 		}
 	}
 
@@ -757,7 +748,7 @@ static void lib_relocate_do(
 			id_next = id->next;
 			/* XXX That check may be a bit to generic/permissive? */
 			if (id->lib && (id->flag & LIB_TAG_PRE_EXISTING) && id->us == 0) {
-				BKE_libblock_free(bmain, id);
+				BKE_id_free(bmain, id);
 			}
 		}
 	}
@@ -779,7 +770,7 @@ static void lib_relocate_do(
 		if (lib->id.tag & LIB_TAG_DOIT) {
 			id_us_clear_real(&lib->id);
 			if (lib->id.us == 0) {
-				BKE_libblock_free(bmain, (ID *)lib);
+				BKE_id_free(bmain, (ID *)lib);
 			}
 		}
 	}

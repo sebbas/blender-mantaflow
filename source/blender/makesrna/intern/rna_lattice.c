@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Foundation (2008).
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_lattice.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 #include <stdlib.h>
@@ -136,7 +130,7 @@ static void rna_Lattice_update_size(Main *bmain, Scene *scene, PointerRNA *ptr)
 	neww = (lt->opntsw > 0) ? lt->opntsw : lt->pntsw;
 
 	/* BKE_lattice_resize needs an object, any object will have the same result */
-	for (ob = bmain->object.first; ob; ob = ob->id.next) {
+	for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 		if (ob->data == lt) {
 			BKE_lattice_resize(lt, newu, newv, neww, ob);
 			if (lt->editlatt)

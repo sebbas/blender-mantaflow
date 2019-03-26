@@ -104,7 +104,7 @@ def source_list(path, filename_check=None):
 
 def load_addons():
     modules = addon_modules_sorted()
-    addons = bpy.context.user_preferences.addons
+    addons = bpy.context.preferences.addons
 
     # first disable all
     for mod_name in list(addons.keys()):
@@ -197,7 +197,7 @@ def load_modules():
                     assert(os.path.samefile(mod_imp.__file__, submod_full))
 
                     modules.append(mod_imp)
-                except Exception as e:
+                except Exception:
                     import traceback
                     # Module might fail to import, but we don't want whole test to fail here.
                     # Reasoning:
