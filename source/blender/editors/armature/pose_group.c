@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,11 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation
  * All rights reserved.
- *
- * Contributor(s): Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  * Implementation of Bone Groups operators and editing API's
  */
 
-/** \file blender/editors/armature/pose_group.c
- *  \ingroup edarmature
+/** \file
+ * \ingroup edarmature
  */
 
 #include <string.h>
@@ -107,7 +100,7 @@ static int pose_group_remove_exec(bContext *C, wmOperator *UNUSED(op))
 
 	/* notifiers for updates */
 	WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
-	DEG_id_tag_update(&ob->id, DEG_TAG_COPY_ON_WRITE);
+	DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
 
 	return OPERATOR_FINISHED;
 }
@@ -164,7 +157,7 @@ static int pose_groups_menu_invoke(bContext *C, wmOperator *op, const wmEvent *U
 		layout = UI_popup_menu_layout(pup);
 
 		/* special entry - allow to create new group, then use that
-		 *	(not to be used for removing though)
+		 * (not to be used for removing though)
 		 */
 		if (strstr(op->idname, "assign")) {
 			uiItemIntO(layout, "New Group", ICON_NONE, op->idname, "type", 0);
@@ -201,7 +194,7 @@ static int pose_group_assign_exec(bContext *C, wmOperator *op)
 	pose = ob->pose;
 
 	/* set the active group number to the one from operator props
-	 *  - if 0 after this, make a new group...
+	 * - if 0 after this, make a new group...
 	 */
 	pose->active_group = RNA_int_get(op->ptr, "type");
 	if (pose->active_group == 0)
@@ -217,7 +210,7 @@ static int pose_group_assign_exec(bContext *C, wmOperator *op)
 
 	/* notifiers for updates */
 	WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
-	DEG_id_tag_update(&ob->id, DEG_TAG_COPY_ON_WRITE);
+	DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
 
 	/* report done status */
 	if (done)
@@ -267,7 +260,7 @@ static int pose_group_unassign_exec(bContext *C, wmOperator *UNUSED(op))
 
 	/* notifiers for updates */
 	WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
-	DEG_id_tag_update(&ob->id, DEG_TAG_COPY_ON_WRITE);
+	DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
 
 	/* report done status */
 	if (done)
@@ -337,7 +330,7 @@ void POSE_OT_group_move(wmOperatorType *ot)
 	static const EnumPropertyItem group_slot_move[] = {
 		{-1, "UP", 0, "Up", ""},
 		{1, "DOWN", 0, "Down", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */
@@ -419,7 +412,7 @@ static int group_sort_exec(bContext *C, wmOperator *UNUSED(op))
 
 	/* notifiers for updates */
 	WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
-	DEG_id_tag_update(&ob->id, DEG_TAG_COPY_ON_WRITE);
+	DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
 
 	return OPERATOR_FINISHED;
 }

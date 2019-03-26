@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,32 +15,24 @@
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Daniel Dunbar
- *                 Ton Roosendaal,
- *                 Ben Batt,
- *                 Brecht Van Lommel,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_explode.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
+
+#include "BLI_utildefines.h"
+
+#include "BLI_edgehash.h"
+#include "BLI_kdtree.h"
+#include "BLI_math.h"
+#include "BLI_rand.h"
 
 #include "DNA_meshdata_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_object_types.h"
 #include "DNA_mesh_types.h"
-
-#include "BLI_utildefines.h"
-#include "BLI_kdtree.h"
-#include "BLI_rand.h"
-#include "BLI_math.h"
-#include "BLI_edgehash.h"
 
 #include "BKE_deform.h"
 #include "BKE_lattice.h"
@@ -86,15 +76,13 @@ static bool dependsOnTime(ModifierData *UNUSED(md))
 {
 	return true;
 }
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
 	ExplodeModifierData *emd = (ExplodeModifierData *) md;
-	CustomDataMask dataMask = 0;
 
-	if (emd->vgroup)
-		dataMask |= CD_MASK_MDEFORMVERT;
-
-	return dataMask;
+	if (emd->vgroup) {
+		r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
+	}
 }
 
 static void createFacepa(
@@ -106,7 +94,7 @@ static void createFacepa(
 	MFace *fa = NULL, *mface = NULL;
 	MVert *mvert = NULL;
 	ParticleData *pa;
-	KDTree *tree;
+	KDTree_3d *tree;
 	RNG *rng;
 	float center[3], co[3];
 	int *facepa = NULL, *vertpa = NULL, totvert = 0, totface = 0, totpart = 0;
@@ -150,12 +138,12 @@ static void createFacepa(
 	}
 
 	/* make tree of emitter locations */
-	tree = BLI_kdtree_new(totpart);
+	tree = BLI_kdtree_3d_new(totpart);
 	for (p = 0, pa = psys->particles; p < totpart; p++, pa++) {
 		psys_particle_on_emitter(psmd, psys->part->from, pa->num, pa->num_dmcache, pa->fuv, pa->foffset, co, NULL, NULL, NULL, NULL);
-		BLI_kdtree_insert(tree, p, co);
+		BLI_kdtree_3d_insert(tree, p, co);
 	}
-	BLI_kdtree_balance(tree);
+	BLI_kdtree_3d_balance(tree);
 
 	/* set face-particle-indexes to nearest particle to face center */
 	for (i = 0, fa = mface; i < totface; i++, fa++) {
@@ -169,7 +157,7 @@ static void createFacepa(
 			mul_v3_fl(center, 1.0f / 3.0f);
 		}
 
-		p = BLI_kdtree_find_nearest(tree, center, NULL);
+		p = BLI_kdtree_3d_find_nearest(tree, center, NULL);
 
 		v1 = vertpa[fa->v1];
 		v2 = vertpa[fa->v2];
@@ -199,7 +187,7 @@ static void createFacepa(
 	if (vertpa) {
 		MEM_freeN(vertpa);
 	}
-	BLI_kdtree_free(tree);
+	BLI_kdtree_3d_free(tree);
 
 	BLI_rng_free(rng);
 }
@@ -214,7 +202,7 @@ static const short add_faces[24] = {
 	0,
 	0, 0, 2, 0, 1, 2, 2, 0, 2, 1,
 	2, 2, 2, 2, 3, 0, 0, 0, 1, 0,
-	1, 1, 2
+	1, 1, 2,
 };
 
 static MFace *get_dface(Mesh *mesh, Mesh *split, int cur, int i, MFace *mf)
@@ -1118,4 +1106,5 @@ ModifierTypeInfo modifierType_Explode = {
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

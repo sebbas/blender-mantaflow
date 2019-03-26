@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_nla/space_nla.c
- *  \ingroup spnla
+/** \file
+ * \ingroup spnla
  */
 
 
@@ -42,8 +35,6 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
-#include "BKE_global.h"
-#include "BKE_main.h"
 #include "BKE_screen.h"
 
 #include "ED_space_api.h"
@@ -51,7 +42,6 @@
 #include "ED_markers.h"
 #include "ED_screen.h"
 
-#include "BIF_gl.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -115,7 +105,7 @@ static SpaceLink *nla_new(const ScrArea *sa, const Scene *scene)
 
 	BLI_addtail(&snla->regionbase, ar);
 	ar->regiontype = RGN_TYPE_HEADER;
-	ar->alignment = RGN_ALIGN_TOP;
+	ar->alignment = (U.uiflag & USER_HEADER_BOTTOM) ? RGN_ALIGN_BOTTOM : RGN_ALIGN_TOP;
 
 	/* channel list region */
 	ar = MEM_callocN(sizeof(ARegion), "channel list for nla");
@@ -311,7 +301,9 @@ static void nla_main_region_draw(const bContext *C, ARegion *ar)
 
 	/* markers */
 	UI_view2d_view_orthoSpecial(ar, v2d, 1);
-	ED_markers_draw(C, DRAW_MARKERS_MARGIN);
+	int marker_draw_flag = DRAW_MARKERS_MARGIN;
+	if (snla->flag & SNLA_SHOW_MARKER_LINES) marker_draw_flag |= DRAW_MARKERS_LINES;
+	ED_markers_draw(C, marker_draw_flag);
 
 	/* preview range */
 	UI_view2d_view_ortho(v2d);

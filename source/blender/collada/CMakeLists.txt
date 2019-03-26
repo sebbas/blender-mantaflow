@@ -16,14 +16,23 @@
 #
 # The Original Code is Copyright (C) 2006, Blender Foundation
 # All rights reserved.
-#
-# The Original Code is: all of this file.
-#
-# Contributor(s): Jacques Beaurain.
-#
 # ***** END GPL LICENSE BLOCK *****
 
 remove_strict_flags()
+FIND_FILE(OPENCOLLADA_ANIMATION_CLIP
+      NAMES
+        COLLADAFWAnimationClip.h
+      PATHS
+        ${OPENCOLLADA_INCLUDE_DIRS}
+      NO_DEFAULT_PATH
+    )
+
+IF(OPENCOLLADA_ANIMATION_CLIP)
+   message(STATUS "Found opencollada: ${OPENCOLLADA_ANIMATION_CLIP} ")
+   add_definitions(-DWITH_OPENCOLLADA_ANIMATION_CLIP)
+ELSE()
+   message(STATUS "opencollada: Build without animation clip support")
+ENDIF()
 
 set(INC
 	.
@@ -47,10 +56,15 @@ set(INC_SYS
 )
 
 set(SRC
-	AnimationImporter.cpp
+	AnimationClipExporter.cpp
 	AnimationExporter.cpp
+	AnimationImporter.cpp
 	ArmatureExporter.cpp
 	ArmatureImporter.cpp
+	BCAnimationCurve.cpp
+	BCAnimationSampler.cpp
+	BCSampleData.cpp
+	BlenderContext.cpp
 	CameraExporter.cpp
 	ControllerExporter.cpp
 	DocumentExporter.cpp
@@ -58,27 +72,33 @@ set(SRC
 	EffectExporter.cpp
 	ErrorHandler.cpp
 	ExportSettings.cpp
-	ImportSettings.cpp
 	ExtraHandler.cpp
 	ExtraTags.cpp
 	GeometryExporter.cpp
 	ImageExporter.cpp
+	ImportSettings.cpp
 	InstanceWriter.cpp
 	LightExporter.cpp
 	MaterialExporter.cpp
+	Materials.cpp
 	MeshImporter.cpp
-	SkinInfo.cpp
 	SceneExporter.cpp
+	SkinInfo.cpp
 	TransformReader.cpp
 	TransformWriter.cpp
 	collada.cpp
 	collada_internal.cpp
 	collada_utils.cpp
 
-	AnimationImporter.h
+	AnimationClipExporter.h
 	AnimationExporter.h
+	AnimationImporter.h
 	ArmatureExporter.h
 	ArmatureImporter.h
+	BCAnimationCurve.h
+	BCAnimationSampler.h
+	BCSampleData.h
+	BlenderContext.h
 	CameraExporter.h
 	ControllerExporter.h
 	DocumentExporter.h
@@ -86,17 +106,18 @@ set(SRC
 	EffectExporter.h
 	ErrorHandler.h
 	ExportSettings.h
-	ImportSettings.h
 	ExtraHandler.h
 	ExtraTags.h
 	GeometryExporter.h
 	ImageExporter.h
+	ImportSettings.h
 	InstanceWriter.h
 	LightExporter.h
 	MaterialExporter.h
+	Materials.h
 	MeshImporter.h
-	SkinInfo.h
 	SceneExporter.h
+	SkinInfo.h
 	TransformReader.h
 	TransformWriter.h
 	collada.h

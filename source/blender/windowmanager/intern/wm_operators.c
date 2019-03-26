@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2007 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/windowmanager/intern/wm_operators.c
- *  \ingroup wm
+/** \file
+ * \ingroup wm
  *
  * Functions for dealing with wmOperator, adding, removing, calling
  * as well as some generic operators and shared operator properties.
@@ -65,7 +58,6 @@
 #include "BLI_dynstr.h" /*for WM_operator_pystring */
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
-#include "BLI_ghash.h"
 
 #include "BLO_readfile.h"
 
@@ -73,12 +65,12 @@
 #include "BKE_blender_version.h"
 #include "BKE_brush.h"
 #include "BKE_context.h"
+#include "BKE_global.h"
 #include "BKE_icons.h"
 #include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_library.h"
 #include "BKE_library_query.h"
-#include "BKE_global.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_report.h"
@@ -93,6 +85,7 @@
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_matrix.h"
+#include "GPU_state.h"
 
 #include "IMB_imbuf_types.h"
 #include "IMB_imbuf.h"
@@ -440,7 +433,6 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
 		switch (GS(((ID *)ptr->id.data)->name)) {
 			case ID_SCE:
 			{
-				CTX_TEST_PTR_DATA_TYPE(C, "active_gpencil_brush", RNA_Brush, ptr, CTX_data_active_gpencil_brush(C));
 				CTX_TEST_PTR_ID(C, "scene", ptr->id.data);
 				break;
 			}
@@ -486,7 +478,7 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
 				CTX_TEST_SPACE_TYPE(SPACE_IMAGE, "space_data.uv_editor", space_data);
 				CTX_TEST_SPACE_TYPE(SPACE_VIEW3D, "space_data.fx_settings", &(CTX_wm_view3d(C)->fx_settings));
 				CTX_TEST_SPACE_TYPE(SPACE_NLA, "space_data.dopesheet", CTX_wm_space_nla(C)->ads);
-				CTX_TEST_SPACE_TYPE(SPACE_IPO, "space_data.dopesheet", CTX_wm_space_graph(C)->ads);
+				CTX_TEST_SPACE_TYPE(SPACE_GRAPH, "space_data.dopesheet", CTX_wm_space_graph(C)->ads);
 				CTX_TEST_SPACE_TYPE(SPACE_ACTION, "space_data.dopesheet", &(CTX_wm_space_action(C)->ads));
 				CTX_TEST_SPACE_TYPE(SPACE_FILE, "space_data.params", CTX_wm_space_file(C)->params);
 				break;
@@ -613,7 +605,7 @@ void WM_operator_properties_sanitize(PointerRNA *ptr, const bool no_context)
 
 
 /** set all props to their default,
- * \param do_update Only update un-initialized props.
+ * \param do_update: Only update un-initialized props.
  *
  * \note, there's nothing specific to operators here.
  * this could be made a general function.
@@ -798,7 +790,9 @@ static uiBlock *wm_enum_search_menu(bContext *C, ARegion *ar, void *arg)
 	/* fake button, it holds space for search items */
 	uiDefBut(block, UI_BTYPE_LABEL, 0, "", 10, 10 - UI_searchbox_size_y(), width, height, NULL, 0, 0, 0, 0, NULL);
 
-	UI_block_bounds_set_popup(block, 6, 0, -UI_UNIT_Y); /* move it downwards, mouse over button */
+	/* Move it downwards, mouse over button. */
+	UI_block_bounds_set_popup(block, 6, (const int[2]){0, -UI_UNIT_Y});
+
 	UI_but_focus_on_enter_event(win, but);
 
 	return block;
@@ -862,6 +856,18 @@ int WM_operator_confirm(bContext *C, wmOperator *op, const wmEvent *UNUSED(event
 {
 	return WM_operator_confirm_message(C, op, NULL);
 }
+
+int WM_operator_confirm_or_exec(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+{
+	const bool confirm = RNA_boolean_get(op->ptr, "confirm");
+	if (confirm) {
+		return WM_operator_confirm_message(C, op, NULL);
+	}
+	else {
+		return op->type->exec(C, op);
+	}
+}
+
 
 /* op->invoke, opens fileselect if path property not set, otherwise executes */
 int WM_operator_filesel(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
@@ -1059,7 +1065,7 @@ static uiBlock *wm_block_create_redo(bContext *C, ARegion *ar, void *arg_op)
 		        UI_TEMPLATE_OP_PROPS_SHOW_TITLE);
 	}
 
-	UI_block_bounds_set_popup(block, 4, 0, 0);
+	UI_block_bounds_set_popup(block, 4, NULL);
 
 	return block;
 }
@@ -1147,7 +1153,9 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *ar, void *userData)
 	}
 
 	/* center around the mouse */
-	UI_block_bounds_set_popup(block, 4, data->width / -2, data->height / 2);
+	UI_block_bounds_set_popup(block, 4, (const int[2]){data->width / -2, data->height / 2});
+
+	UI_block_active_only_flagged_buttons(C, ar, block);
 
 	return block;
 }
@@ -1172,7 +1180,9 @@ static uiBlock *wm_operator_ui_create(bContext *C, ARegion *ar, void *userData)
 
 	UI_block_func_set(block, NULL, NULL, NULL);
 
-	UI_block_bounds_set_popup(block, 4, 0, 0);
+	UI_block_bounds_set_popup(block, 4, NULL);
+
+	UI_block_active_only_flagged_buttons(C, ar, block);
 
 	return block;
 }
@@ -1210,8 +1220,8 @@ int WM_operator_ui_popup(bContext *C, wmOperator *op, int width, int height)
 {
 	wmOpPopUp *data = MEM_callocN(sizeof(wmOpPopUp), "WM_operator_ui_popup");
 	data->op = op;
-	data->width = width;
-	data->height = height;
+	data->width = width * U.dpi_fac;
+	data->height = height * U.dpi_fac;
 	data->free_op = true; /* if this runs and gets registered we may want not to free it */
 	UI_popup_block_ex(C, wm_operator_ui_create, NULL, wm_operator_ui_popup_cancel, data, op);
 	return OPERATOR_RUNNING_MODAL;
@@ -1241,7 +1251,7 @@ static int wm_operator_props_popup_ex(bContext *C, wmOperator *op,
 	/* if we don't have global undo, we can't do undo push for automatic redo,
 	 * so we require manual OK clicking in this popup */
 	if (!do_redo || !(U.uiflag & USER_GLOBALUNDO))
-		return WM_operator_props_dialog_popup(C, op, 15 * UI_UNIT_X, UI_UNIT_Y);
+		return WM_operator_props_dialog_popup(C, op, 300, 20);
 
 	UI_popup_block_ex(C, wm_block_create_redo, NULL, wm_block_redo_cancel_cb, op, op);
 
@@ -1280,8 +1290,8 @@ int WM_operator_props_dialog_popup(bContext *C, wmOperator *op, int width, int h
 	wmOpPopUp *data = MEM_callocN(sizeof(wmOpPopUp), "WM_operator_props_dialog_popup");
 
 	data->op = op;
-	data->width = width;
-	data->height = height;
+	data->width = width * U.dpi_fac;
+	data->height = height * U.dpi_fac;
 	data->free_op = true; /* if this runs and gets registered we may want not to free it */
 
 	/* op is not executed until popup OK but is clicked */
@@ -1322,7 +1332,7 @@ static int wm_debug_menu_exec(bContext *C, wmOperator *op)
 static int wm_debug_menu_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
 	RNA_int_set(op->ptr, "debug_value", G.debug_value);
-	return WM_operator_props_dialog_popup(C, op, 9 * UI_UNIT_X, UI_UNIT_Y);
+	return WM_operator_props_dialog_popup(C, op, 180, 20);
 }
 
 static void WM_OT_debug_menu(wmOperatorType *ot)
@@ -1385,7 +1395,6 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *ar, void *UNUSED(ar
 	uiBlock *block;
 	uiBut *but;
 	uiStyle *style = UI_style_get();
-	const char *version_suffix = NULL;
 
 #ifndef WITH_HEADLESS
 	extern char datatoc_splash_png[];
@@ -1417,11 +1426,11 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *ar, void *UNUSED(ar
 
 #ifndef WITH_HEADLESS
 	if (U.dpi_fac > 1.0) {
-		ibuf = IMB_ibImageFromMemory((unsigned char *)datatoc_splash_2x_png,
+		ibuf = IMB_ibImageFromMemory((const uchar *)datatoc_splash_2x_png,
 		                             datatoc_splash_2x_png_size, IB_rect, NULL, "<splash screen>");
 	}
 	else {
-		ibuf = IMB_ibImageFromMemory((unsigned char *)datatoc_splash_png,
+		ibuf = IMB_ibImageFromMemory((const uchar *)datatoc_splash_png,
 		                             datatoc_splash_png_size, IB_rect, NULL, "<splash screen>");
 	}
 
@@ -1441,7 +1450,7 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *ar, void *UNUSED(ar
 			ibuf_template = IMB_loadiffname(splash_filepath, IB_rect, NULL);
 			if (ibuf_template) {
 				const int x_expect = ibuf->x;
-				const int y_expect = 282 * (int)U.dpi_fac;
+				const int y_expect = 250 * (int)U.dpi_fac;
 				/* don't cover the header text */
 				if (ibuf_template->x == x_expect && ibuf_template->y == y_expect) {
 					memcpy(ibuf->rect, ibuf_template->rect, ibuf_template->x * ibuf_template->y * sizeof(char[4]));
@@ -1465,55 +1474,63 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *ar, void *UNUSED(ar
 	UI_block_flag_enable(block, UI_BLOCK_LOOP | UI_BLOCK_KEEP_OPEN | UI_BLOCK_NO_WIN_CLIP);
 	UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
-	but = uiDefBut(block, UI_BTYPE_IMAGE, 0, "", 0, 0.5f * U.widget_unit, U.dpi_fac * 501, U.dpi_fac * 282, ibuf, 0.0, 0.0, 0, 0, ""); /* button owns the imbuf now */
+	but = uiDefBut(block, UI_BTYPE_IMAGE, 0, "", 0, 0.5f * U.widget_unit, U.dpi_fac * 501, U.dpi_fac * 250, ibuf, 0.0, 0.0, 0, 0, ""); /* button owns the imbuf now */
 	UI_but_func_set(but, wm_block_splash_close, block, NULL);
 	UI_block_func_set(block, wm_block_splash_refreshmenu, block, NULL);
 
 	/* label for 'a' bugfix releases, or 'Release Candidate 1'...
 	 * avoids recreating splash for version updates */
+	const char *version_suffix = NULL;
+
 	if (STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "alpha")) {
-		version_suffix = "Alpha 2";
+		version_suffix = " Alpha";
 	}
 	else if (STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "beta")) {
-		version_suffix = "Beta";
+		version_suffix = " Beta";
 	}
 	else if (STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "rc")) {
-		version_suffix = "Release Candidate";
+		version_suffix = " Release Candidate";
 	}
 	else if (STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "release")) {
 		version_suffix = STRINGIFY(BLENDER_VERSION_CHAR);
 	}
-	if (version_suffix != NULL && version_suffix[0]) {
+
+	char *version = BLI_sprintfN("Version %d.%d%s", BLENDER_VERSION / 100, BLENDER_VERSION % 100, version_suffix);
+
+	if (version != NULL && version[0]) {
 		/* placed after the version number in the image,
 		 * placing y is tricky to match baseline */
-		int x = 234 * U.dpi_fac;
-		int y = 235 * U.dpi_fac;
-		int w = 240 * U.dpi_fac;
-
 		/* hack to have text draw 'text_sel' */
 		UI_block_emboss_set(block, UI_EMBOSS_NONE);
-		but = uiDefBut(block, UI_BTYPE_LABEL, 0, version_suffix, x, y, w, UI_UNIT_Y, NULL, 0, 0, 0, 0, NULL);
+		int x = 202 * U.dpi_fac;
+		int y = 130 * U.dpi_fac;
+		int w = 240 * U.dpi_fac;
+
+
+		but = uiDefBut(block, UI_BTYPE_LABEL, 0, version, x, y, w, UI_UNIT_Y, NULL, 0, 0, 0, 0, NULL);
 		/* XXX, set internal flag - UI_SELECT */
 		UI_but_flag_enable(but, 1);
 		UI_block_emboss_set(block, UI_EMBOSS);
 	}
 
+	MEM_freeN(version);
+
 #ifdef WITH_BUILDINFO
 	if (build_commit_timestamp != 0) {
 		but = uiDefBut(
 		          block, UI_BTYPE_LABEL, 0, date_buf,
-		          U.dpi_fac * 502 - date_width, U.dpi_fac * 267,
+		          U.dpi_fac * 502 - date_width, U.dpi_fac * 237,
 		          date_width, UI_UNIT_Y, NULL, 0, 0, 0, 0, NULL);
 		/* XXX, set internal flag - UI_SELECT */
-		UI_but_flag_enable(but, 1);
+		UI_but_flag_enable(but, 0);
 		label_delta = 12;
 	}
 	but = uiDefBut(
 	          block, UI_BTYPE_LABEL, 0, hash_buf,
-	          U.dpi_fac * 502 - hash_width, U.dpi_fac * (267 - label_delta),
+	          U.dpi_fac * 502 - hash_width, U.dpi_fac * (237 - label_delta),
 	          hash_width, UI_UNIT_Y, NULL, 0, 0, 0, 0, NULL);
 	/* XXX, set internal flag - UI_SELECT */
-	UI_but_flag_enable(but, 1);
+	UI_but_flag_enable(but, 0);
 
 	if (!STREQ(build_branch, "master")) {
 		char branch_buf[128] = "\0";
@@ -1522,16 +1539,16 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *ar, void *UNUSED(ar
 		branch_width = (int)BLF_width(style->widgetlabel.uifont_id, branch_buf, sizeof(branch_buf)) + U.widget_unit;
 		but = uiDefBut(
 		          block, UI_BTYPE_LABEL, 0, branch_buf,
-		          U.dpi_fac * 502 - branch_width, U.dpi_fac * (255 - label_delta),
+		          U.dpi_fac * 502 - branch_width, U.dpi_fac * (225 - label_delta),
 		          branch_width, UI_UNIT_Y, NULL, 0, 0, 0, 0, NULL);
 		/* XXX, set internal flag - UI_SELECT */
-		UI_but_flag_enable(but, 1);
+		UI_but_flag_enable(but, 0);
 	}
 #endif  /* WITH_BUILDINFO */
 
 	uiLayout *layout = UI_block_layout(
-	        block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 10, 2,
-	        U.dpi_fac * 480, U.dpi_fac * 110, 0, style);
+	        block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, U.dpi_fac * 40, 0,
+	        U.dpi_fac * 450, U.dpi_fac * 110, 0, style);
 
 	MenuType *mt = WM_menutype_find("WM_MT_splash", true);
 	if (mt) {
@@ -1571,8 +1588,6 @@ static uiBlock *wm_block_search_menu(bContext *C, ARegion *ar, void *userdata)
 {
 	const struct SearchPopupInit_Data *init_data = userdata;
 	static char search[256] = "";
-	wmEvent event;
-	wmWindow *win = CTX_wm_window(C);
 	uiBlock *block;
 	uiBut *but;
 
@@ -1582,19 +1597,14 @@ static uiBlock *wm_block_search_menu(bContext *C, ARegion *ar, void *userdata)
 
 	but = uiDefSearchBut(block, search, 0, ICON_VIEWZOOM, sizeof(search), 10, 10, init_data->size[0], UI_UNIT_Y, 0, 0, "");
 	UI_but_func_operator_search(but);
+	UI_but_flag_enable(but, UI_BUT_ACTIVATE_ON_INIT);
 
 	/* fake button, it holds space for search items */
 	uiDefBut(block, UI_BTYPE_LABEL, 0, "", 10, 10 - init_data->size[1],
 	         init_data->size[0], init_data->size[1], NULL, 0, 0, 0, 0, NULL);
 
-	UI_block_bounds_set_popup(block, 6, 0, -UI_UNIT_Y); /* move it downwards, mouse over button */
-
-	wm_event_init_from_window(win, &event);
-	event.type = EVT_BUT_OPEN;
-	event.val = KM_PRESS;
-	event.customdata = but;
-	event.customdatafree = false;
-	wm_event_add(win, &event);
+	/* Move it downwards, mouse over button. */
+	UI_block_bounds_set_popup(block, 6, (const int[2]){0, -UI_UNIT_Y});
 
 	return block;
 }
@@ -1604,38 +1614,42 @@ static int wm_search_menu_exec(bContext *UNUSED(C), wmOperator *UNUSED(op))
 	return OPERATOR_FINISHED;
 }
 
-static int wm_search_menu_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
+static int wm_search_menu_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *event)
 {
-	struct SearchPopupInit_Data data = {
-		.size = {
-		    UI_searchbox_size_x() * 2,
-		    UI_searchbox_size_y(),
-		},
-	};
+	/* Exception for launching via spacebar */
+	if (event->type == SPACEKEY) {
+		bool ok = true;
+		ScrArea *sa = CTX_wm_area(C);
+		if (sa) {
+			if (sa->spacetype == SPACE_CONSOLE) {
+				/* So we can use the shortcut in the console. */
+				ok = false;
+			}
+			else if (sa->spacetype == SPACE_TEXT) {
+				/* So we can use the spacebar in the text editor. */
+				ok = false;
+			}
+		}
+		else {
+			Object *editob = CTX_data_edit_object(C);
+			if (editob && editob->type == OB_FONT) {
+				/* So we can use the spacebar for entering text. */
+				ok = false;
+			}
+		}
+		if (!ok) {
+			return OPERATOR_PASS_THROUGH;
+		}
+	}
+
+
+	static struct SearchPopupInit_Data data;
+	data.size[0] = UI_searchbox_size_x() * 2;
+	data.size[1] = UI_searchbox_size_y();
 
 	UI_popup_block_invoke(C, wm_block_search_menu, &data);
 
 	return OPERATOR_INTERFACE;
-}
-
-/* op->poll */
-static bool wm_search_menu_poll(bContext *C)
-{
-	if (CTX_wm_window(C) == NULL) {
-		return 0;
-	}
-	else {
-		ScrArea *sa = CTX_wm_area(C);
-		if (sa) {
-			if (sa->spacetype == SPACE_CONSOLE) return 0;  /* XXX - so we can use the shortcut in the console */
-			if (sa->spacetype == SPACE_TEXT) return 0;     /* XXX - so we can use the spacebar in the text editor */
-		}
-		else {
-			Object *editob = CTX_data_edit_object(C);
-			if (editob && editob->type == OB_FONT) return 0;  /* XXX - so we can use the spacebar for entering text */
-		}
-	}
-	return 1;
 }
 
 static void WM_OT_search_menu(wmOperatorType *ot)
@@ -1646,7 +1660,7 @@ static void WM_OT_search_menu(wmOperatorType *ot)
 
 	ot->invoke = wm_search_menu_invoke;
 	ot->exec = wm_search_menu_exec;
-	ot->poll = wm_search_menu_poll;
+	ot->poll = WM_operator_winactive;
 }
 
 static int wm_call_menu_exec(bContext *C, wmOperator *op)
@@ -1790,18 +1804,19 @@ static void WM_OT_window_fullscreen_toggle(wmOperatorType *ot)
 
 static int wm_exit_blender_exec(bContext *C, wmOperator *UNUSED(op))
 {
-	wm_quit_with_optional_confirmation_prompt(C, CTX_wm_window(C));
+	wm_exit_schedule_delayed(C);
 	return OPERATOR_FINISHED;
 }
 
-static int wm_exit_blender_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int wm_exit_blender_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
 {
-	if (U.uiflag & USER_QUIT_PROMPT) {
-		return wm_exit_blender_exec(C, op);
+	if (U.uiflag & USER_SAVE_PROMPT) {
+		wm_quit_with_optional_confirmation_prompt(C, CTX_wm_window(C));
 	}
 	else {
-		return WM_operator_confirm(C, op, event);
+		wm_exit_schedule_delayed(C);
 	}
+	return OPERATOR_FINISHED;
 }
 
 static void WM_OT_quit_blender(wmOperatorType *ot)
@@ -2044,17 +2059,17 @@ static void radial_control_paint_tex(RadialControl *rc, float radius, float alph
 		GLint swizzleMask[] = {GL_ZERO, GL_ZERO, GL_ZERO, GL_RED};
 		glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
 
-		immBindBuiltinProgram(GPU_SHADER_2D_IMAGE_MASK_UNIFORM_COLOR);
-
-		immUniformColor3fvAlpha(col, alpha);
-		immUniform1i("image", 0);
-
 		/* set up rotation if available */
 		if (rc->rot_prop) {
 			rot = RNA_property_float_get(&rc->rot_ptr, rc->rot_prop);
 			GPU_matrix_push();
 			GPU_matrix_rotate_2d(RAD2DEGF(rot));
 		}
+
+		immBindBuiltinProgram(GPU_SHADER_2D_IMAGE_MASK_UNIFORM_COLOR);
+
+		immUniformColor3fvAlpha(col, alpha);
+		immUniform1i("image", 0);
 
 		/* draw textured quad */
 		immBegin(GPU_PRIM_TRI_FAN, 4);
@@ -2144,8 +2159,8 @@ static void radial_control_paint_cursor(bContext *UNUSED(C), int x, int y, void 
 	y = rc->initial_mouse[1];
 	GPU_matrix_translate_2f((float)x, (float)y);
 
-	glEnable(GL_BLEND);
-	glEnable(GL_LINE_SMOOTH);
+	GPU_blend(true);
+	GPU_line_smooth(true);
 
 	/* apply zoom if available */
 	if (rc->zoom_prop) {
@@ -2170,14 +2185,14 @@ static void radial_control_paint_cursor(bContext *UNUSED(C), int x, int y, void 
 		GPU_matrix_push();
 
 		/* draw original angle line */
-		GPU_matrix_rotate_2d(RAD2DEGF(rc->initial_value));
+		GPU_matrix_rotate_3f(RAD2DEGF(rc->initial_value), 0.0f, 0.0f, 1.0f);
 		immBegin(GPU_PRIM_LINES, 2);
 		immVertex2f(pos, (float)WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE, 0.0f);
 		immVertex2f(pos, (float)WM_RADIAL_CONTROL_DISPLAY_SIZE, 0.0f);
 		immEnd();
 
 		/* draw new angle line */
-		GPU_matrix_rotate_2d(RAD2DEGF(rc->current_value - rc->initial_value));
+		GPU_matrix_rotate_3f(RAD2DEGF(rc->current_value - rc->initial_value), 0.0f, 0.0f, 1.0f);
 		immBegin(GPU_PRIM_LINES, 2);
 		immVertex2f(pos, (float)WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE, 0.0f);
 		immVertex2f(pos, (float)WM_RADIAL_CONTROL_DISPLAY_SIZE, 0.0f);
@@ -2205,8 +2220,8 @@ static void radial_control_paint_cursor(bContext *UNUSED(C), int x, int y, void 
 
 	BLF_disable(fontid, BLF_SHADOW);
 
-	glDisable(GL_BLEND);
-	glDisable(GL_LINE_SMOOTH);
+	GPU_blend(false);
+	GPU_line_smooth(false);
 
 }
 
@@ -2775,7 +2790,7 @@ static const EnumPropertyItem redraw_timer_type_items[] = {
 	{eRTAnimationStep, "ANIM_STEP", 0, "Anim Step", "Animation Steps"},
 	{eRTAnimationPlay, "ANIM_PLAY", 0, "Anim Play", "Animation Playback"},
 	{eRTUndo, "UNDO", 0, "Undo/Redo", "Undo/Redo"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 
@@ -2969,7 +2984,7 @@ static int previews_id_ensure_callback(void *userdata, ID *UNUSED(self_id), ID *
 static int previews_ensure_exec(bContext *C, wmOperator *UNUSED(op))
 {
 	Main *bmain = CTX_data_main(C);
-	ListBase *lb[] = {&bmain->mat, &bmain->tex, &bmain->image, &bmain->world, &bmain->lamp, NULL};
+	ListBase *lb[] = {&bmain->materials, &bmain->textures, &bmain->images, &bmain->worlds, &bmain->lights, NULL};
 	PreviewsIDEnsureData preview_id_data;
 	Scene *scene;
 	ID *id;
@@ -2982,7 +2997,7 @@ static int previews_ensure_exec(bContext *C, wmOperator *UNUSED(op))
 	}
 
 	preview_id_data.C = C;
-	for (scene = bmain->scene.first; scene; scene = scene->id.next) {
+	for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
 		preview_id_data.scene = scene;
 		id = (ID *)scene;
 
@@ -3028,14 +3043,14 @@ static const EnumPropertyItem preview_id_type_items[] = {
 #if 0  /* XXX TODO */
     {FILTER_ID_BR, "BRUSH", 0, "Brushes", ""},
 #endif
-    {0, NULL, 0, NULL, NULL}
+    {0, NULL, 0, NULL, NULL},
 };
 
 static int previews_clear_exec(bContext *C, wmOperator *op)
 {
 	Main *bmain = CTX_data_main(C);
-	ListBase *lb[] = {&bmain->object, &bmain->collection,
-	                  &bmain->mat, &bmain->world, &bmain->lamp, &bmain->tex, &bmain->image, NULL};
+	ListBase *lb[] = {&bmain->objects, &bmain->collections,
+	                  &bmain->materials, &bmain->worlds, &bmain->lights, &bmain->textures, &bmain->images, NULL};
 	int i;
 
 	const int id_filters = RNA_enum_get(op->ptr, "id_type");
@@ -3203,7 +3218,7 @@ static void gesture_circle_modal_keymap(wmKeyConfig *keyconf)
 		{GESTURE_MODAL_DESELECT, "DESELECT", 0, "DeSelect", ""},
 		{GESTURE_MODAL_NOP, "NOP", 0, "No Operation", ""},
 
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* WARNING - name is incorrect, use for non-3d views */
@@ -3214,31 +3229,6 @@ static void gesture_circle_modal_keymap(wmKeyConfig *keyconf)
 
 	keymap = WM_modalkeymap_add(keyconf, "View3D Gesture Circle", modal_items);
 
-	/* items for modal map */
-	WM_modalkeymap_add_item(keymap, ESCKEY,    KM_PRESS, KM_ANY, 0, GESTURE_MODAL_CANCEL);
-	WM_modalkeymap_add_item(keymap, RIGHTMOUSE, KM_ANY, KM_ANY, 0, GESTURE_MODAL_CANCEL);
-
-	WM_modalkeymap_add_item(keymap, RETKEY, KM_PRESS, KM_ANY, 0, GESTURE_MODAL_CONFIRM);
-	WM_modalkeymap_add_item(keymap, PADENTER, KM_PRESS, 0, 0, GESTURE_MODAL_CONFIRM);
-
-	WM_modalkeymap_add_item(keymap, LEFTMOUSE, KM_PRESS, 0, 0, GESTURE_MODAL_SELECT);
-
-	/* Note: use 'KM_ANY' for release, so the circle exits on any mouse release,
-	 * this is needed when circle select is activated as a tool. */
-
-	/* left mouse shift for deselect too */
-	WM_modalkeymap_add_item(keymap, LEFTMOUSE, KM_PRESS, KM_SHIFT, 0, GESTURE_MODAL_DESELECT);
-	WM_modalkeymap_add_item(keymap, LEFTMOUSE, KM_RELEASE, KM_ANY, 0, GESTURE_MODAL_NOP);
-
-	WM_modalkeymap_add_item(keymap, MIDDLEMOUSE, KM_PRESS, 0, 0, GESTURE_MODAL_DESELECT); //  default 2.4x
-	WM_modalkeymap_add_item(keymap, MIDDLEMOUSE, KM_RELEASE, KM_ANY, 0, GESTURE_MODAL_NOP); //  default 2.4x
-
-	WM_modalkeymap_add_item(keymap, WHEELUPMOUSE, KM_PRESS, 0, 0, GESTURE_MODAL_CIRCLE_SUB);
-	WM_modalkeymap_add_item(keymap, PADMINUS, KM_PRESS, 0, 0, GESTURE_MODAL_CIRCLE_SUB);
-	WM_modalkeymap_add_item(keymap, WHEELDOWNMOUSE, KM_PRESS, 0, 0, GESTURE_MODAL_CIRCLE_ADD);
-	WM_modalkeymap_add_item(keymap, PADPLUSKEY, KM_PRESS, 0, 0, GESTURE_MODAL_CIRCLE_ADD);
-	WM_modalkeymap_add_item(keymap, MOUSEPAN, 0, 0, 0, GESTURE_MODAL_CIRCLE_SIZE);
-
 	/* assign map to operators */
 	WM_modalkeymap_assign(keymap, "VIEW3D_OT_select_circle");
 	WM_modalkeymap_assign(keymap, "UV_OT_select_circle");
@@ -3248,7 +3238,6 @@ static void gesture_circle_modal_keymap(wmKeyConfig *keyconf)
 	WM_modalkeymap_assign(keymap, "GPENCIL_OT_select_circle");
 	WM_modalkeymap_assign(keymap, "GRAPH_OT_select_circle");
 	WM_modalkeymap_assign(keymap, "ACTION_OT_select_circle");
-
 }
 
 /* straight line modal operators */
@@ -3258,7 +3247,7 @@ static void gesture_straightline_modal_keymap(wmKeyConfig *keyconf)
 		{GESTURE_MODAL_CANCEL,  "CANCEL", 0, "Cancel", ""},
 		{GESTURE_MODAL_SELECT,  "SELECT", 0, "Select", ""},
 		{GESTURE_MODAL_BEGIN,   "BEGIN", 0, "Begin", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	wmKeyMap *keymap = WM_modalkeymap_get(keyconf, "Gesture Straight Line");
@@ -3267,13 +3256,6 @@ static void gesture_straightline_modal_keymap(wmKeyConfig *keyconf)
 	if (keymap && keymap->modal_items) return;
 
 	keymap = WM_modalkeymap_add(keyconf, "Gesture Straight Line", modal_items);
-
-	/* items for modal map */
-	WM_modalkeymap_add_item(keymap, ESCKEY,    KM_PRESS, KM_ANY, 0, GESTURE_MODAL_CANCEL);
-	WM_modalkeymap_add_item(keymap, RIGHTMOUSE, KM_ANY, KM_ANY, 0, GESTURE_MODAL_CANCEL);
-
-	WM_modalkeymap_add_item(keymap, LEFTMOUSE, KM_PRESS, 0, 0, GESTURE_MODAL_BEGIN);
-	WM_modalkeymap_add_item(keymap, LEFTMOUSE, KM_RELEASE, KM_ANY, 0, GESTURE_MODAL_SELECT);
 
 	/* assign map to operators */
 	WM_modalkeymap_assign(keymap, "IMAGE_OT_sample_line");
@@ -3290,7 +3272,7 @@ static void gesture_box_modal_keymap(wmKeyConfig *keyconf)
 		{GESTURE_MODAL_SELECT,  "SELECT", 0, "Select", ""},
 		{GESTURE_MODAL_DESELECT, "DESELECT", 0, "DeSelect", ""},
 		{GESTURE_MODAL_BEGIN,   "BEGIN", 0, "Begin", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	wmKeyMap *keymap = WM_modalkeymap_get(keyconf, "Gesture Box");
@@ -3299,24 +3281,6 @@ static void gesture_box_modal_keymap(wmKeyConfig *keyconf)
 	if (keymap && keymap->modal_items) return;
 
 	keymap = WM_modalkeymap_add(keyconf, "Gesture Box", modal_items);
-
-	/* items for modal map */
-	WM_modalkeymap_add_item(keymap, ESCKEY,    KM_PRESS, KM_ANY, 0, GESTURE_MODAL_CANCEL);
-
-	/* Note: cancel only on press otherwise you cannot map this to RMB-gesture */
-	WM_modalkeymap_add_item(keymap, RIGHTMOUSE, KM_PRESS, KM_ANY, 0, GESTURE_MODAL_CANCEL);
-	WM_modalkeymap_add_item(keymap, RIGHTMOUSE, KM_RELEASE, KM_ANY, 0, GESTURE_MODAL_SELECT);
-
-	/* allow shift leftclick for deselect too */
-	WM_modalkeymap_add_item(keymap, LEFTMOUSE, KM_PRESS, KM_SHIFT, 0, GESTURE_MODAL_BEGIN);
-	WM_modalkeymap_add_item(keymap, LEFTMOUSE, KM_RELEASE, KM_SHIFT, 0, GESTURE_MODAL_DESELECT);
-
-	/* any unhandled leftclick release handles select */
-	WM_modalkeymap_add_item(keymap, LEFTMOUSE, KM_PRESS, 0, 0, GESTURE_MODAL_BEGIN);
-	WM_modalkeymap_add_item(keymap, LEFTMOUSE, KM_RELEASE, KM_ANY, 0, GESTURE_MODAL_SELECT);
-
-	WM_modalkeymap_add_item(keymap, MIDDLEMOUSE, KM_PRESS, 0, 0, GESTURE_MODAL_BEGIN);
-	WM_modalkeymap_add_item(keymap, MIDDLEMOUSE, KM_RELEASE, 0, 0, GESTURE_MODAL_DESELECT);
 
 	/* assign map to operators */
 	WM_modalkeymap_assign(keymap, "ACTION_OT_select_box");
@@ -3356,7 +3320,7 @@ static void gesture_zoom_border_modal_keymap(wmKeyConfig *keyconf)
 		{GESTURE_MODAL_IN,  "IN", 0, "In", ""},
 		{GESTURE_MODAL_OUT, "OUT", 0, "Out", ""},
 		{GESTURE_MODAL_BEGIN, "BEGIN", 0, "Begin", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	wmKeyMap *keymap = WM_modalkeymap_get(keyconf, "Gesture Zoom Border");
@@ -3365,16 +3329,6 @@ static void gesture_zoom_border_modal_keymap(wmKeyConfig *keyconf)
 	if (keymap && keymap->modal_items) return;
 
 	keymap = WM_modalkeymap_add(keyconf, "Gesture Zoom Border", modal_items);
-
-	/* items for modal map */
-	WM_modalkeymap_add_item(keymap, ESCKEY,    KM_PRESS, KM_ANY, 0, GESTURE_MODAL_CANCEL);
-	WM_modalkeymap_add_item(keymap, RIGHTMOUSE, KM_ANY, KM_ANY, 0, GESTURE_MODAL_CANCEL);
-
-	WM_modalkeymap_add_item(keymap, LEFTMOUSE, KM_PRESS, 0, 0, GESTURE_MODAL_BEGIN);
-	WM_modalkeymap_add_item(keymap, LEFTMOUSE, KM_RELEASE, 0, 0, GESTURE_MODAL_IN);
-
-	WM_modalkeymap_add_item(keymap, MIDDLEMOUSE, KM_PRESS, 0, 0, GESTURE_MODAL_BEGIN);
-	WM_modalkeymap_add_item(keymap, MIDDLEMOUSE, KM_RELEASE, 0, 0, GESTURE_MODAL_OUT);
 
 	/* assign map to operators */
 	WM_modalkeymap_assign(keymap, "VIEW2D_OT_zoom_border");
@@ -3385,142 +3339,15 @@ static void gesture_zoom_border_modal_keymap(wmKeyConfig *keyconf)
 /* default keymap for windows and screens, only call once per WM */
 void wm_window_keymap(wmKeyConfig *keyconf)
 {
-	wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Window", 0, 0);
-	wmKeyMapItem *kmi;
-
-	/* note, this doesn't replace existing keymap items */
-#ifdef USE_WM_KEYMAP_27X
-	WM_keymap_verify_item(keymap, "WM_OT_window_new", WKEY, KM_PRESS, KM_CTRL | KM_ALT, 0);
-#endif
-
-#ifdef __APPLE__
-	WM_keymap_add_item(keymap, "WM_OT_read_homefile", NKEY, KM_PRESS, KM_OSKEY, 0);
-	WM_keymap_add_menu(keymap, "TOPBAR_MT_file_open_recent", OKEY, KM_PRESS, KM_SHIFT | KM_OSKEY, 0);
-	WM_keymap_add_item(keymap, "WM_OT_open_mainfile", OKEY, KM_PRESS, KM_OSKEY, 0);
-	WM_keymap_add_item(keymap, "WM_OT_save_mainfile", SKEY, KM_PRESS, KM_OSKEY, 0);
-	WM_keymap_add_item(keymap, "WM_OT_save_as_mainfile", SKEY, KM_PRESS, KM_SHIFT | KM_OSKEY, 0);
-	WM_keymap_add_item(keymap, "WM_OT_quit_blender", QKEY, KM_PRESS, KM_OSKEY, 0);
-#endif
-	WM_keymap_add_item(keymap, "WM_OT_read_homefile", NKEY, KM_PRESS, KM_CTRL, 0);
-#ifdef USE_WM_KEYMAP_27X
-	WM_keymap_add_item(keymap, "WM_OT_save_homefile", UKEY, KM_PRESS, KM_CTRL, 0);
-#endif
-	WM_keymap_add_menu(keymap, "TOPBAR_MT_file_open_recent", OKEY, KM_PRESS, KM_SHIFT | KM_CTRL, 0);
-	WM_keymap_add_item(keymap, "WM_OT_open_mainfile", OKEY, KM_PRESS, KM_CTRL, 0);
-#ifdef USE_WM_KEYMAP_27X
-	WM_keymap_add_item(keymap, "WM_OT_open_mainfile", F1KEY, KM_PRESS, 0, 0);
-	WM_keymap_add_item(keymap, "WM_OT_link", OKEY, KM_PRESS, KM_CTRL | KM_ALT, 0);
-	WM_keymap_add_item(keymap, "WM_OT_append", F1KEY, KM_PRESS, KM_SHIFT, 0);
-#endif
-
-	WM_keymap_add_item(keymap, "WM_OT_save_mainfile", SKEY, KM_PRESS, KM_CTRL, 0);
-#ifdef USE_WM_KEYMAP_27X
-	WM_keymap_add_item(keymap, "WM_OT_save_mainfile", WKEY, KM_PRESS, KM_CTRL, 0);
-#endif
-	WM_keymap_add_item(keymap, "WM_OT_save_as_mainfile", SKEY, KM_PRESS, KM_SHIFT | KM_CTRL, 0);
-#ifdef USE_WM_KEYMAP_27X
-	WM_keymap_add_item(keymap, "WM_OT_save_as_mainfile", F2KEY, KM_PRESS, 0, 0);
-	kmi = WM_keymap_add_item(keymap, "WM_OT_save_as_mainfile", SKEY, KM_PRESS, KM_ALT | KM_CTRL, 0);
-	RNA_boolean_set(kmi->ptr, "copy", true);
-
-	WM_keymap_verify_item(keymap, "WM_OT_window_fullscreen_toggle", F11KEY, KM_PRESS, KM_ALT, 0);
-#endif
-
-	WM_keymap_add_item(keymap, "WM_OT_quit_blender", QKEY, KM_PRESS, KM_CTRL, 0);
-
-	/* F-Keys are a hassle on some macos systems. */
-#ifdef __APPLE__
-	WM_keymap_add_item(keymap, "WM_OT_search_menu", FKEY, KM_PRESS, KM_OSKEY, 0);
-#endif
-
-#ifdef USE_WM_KEYMAP_27X
-	WM_keymap_add_item(keymap, "WM_OT_doc_view_manual_ui_context", F1KEY, KM_PRESS, KM_ALT, 0);
-
-	/* debug/testing */
-	WM_keymap_verify_item(keymap, "WM_OT_redraw_timer", TKEY, KM_PRESS, KM_ALT | KM_CTRL, 0);
-	WM_keymap_verify_item(keymap, "WM_OT_debug_menu", DKEY, KM_PRESS, KM_ALT | KM_CTRL, 0);
-#else
-	WM_keymap_add_item(keymap, "WM_OT_doc_view_manual_ui_context", F1KEY, KM_PRESS, 0, 0);
-	WM_keymap_add_menu(keymap, "TOPBAR_MT_file_specials", F2KEY, KM_PRESS, 0, 0);
-	WM_keymap_add_item(keymap, "WM_OT_search_menu", F3KEY, KM_PRESS, 0, 0);
-	WM_keymap_add_menu(keymap, "TOPBAR_MT_window_specials", F4KEY, KM_PRESS, 0, 0);
-#endif
-
-	/* menus that can be accessed anywhere in blender */
-	WM_keymap_add_menu(keymap, "SCREEN_MT_user_menu", QKEY, KM_PRESS, 0, 0);
-
-#ifdef WITH_INPUT_NDOF
-	WM_keymap_add_menu(keymap, "USERPREF_MT_ndof_settings", NDOF_BUTTON_MENU, KM_PRESS, 0, 0);
-#endif
-
-	WM_keymap_add_item(keymap, "WM_OT_toolbar", SPACEKEY, KM_PRESS, 0, 0);
-
-	/* Space switching */
-	kmi = WM_keymap_add_item(keymap, "WM_OT_context_set_enum", F3KEY, KM_PRESS, KM_SHIFT, 0);
-	RNA_string_set(kmi->ptr, "data_path", "area.type");
-	RNA_string_set(kmi->ptr, "value", "NODE_EDITOR");
-
-	kmi = WM_keymap_add_item(keymap, "WM_OT_context_set_enum", F4KEY, KM_PRESS, KM_SHIFT, 0); /* new in 2.5x, was data browser */
-	RNA_string_set(kmi->ptr, "data_path", "area.type");
-	RNA_string_set(kmi->ptr, "value", "CONSOLE");
-
-	kmi = WM_keymap_add_item(keymap, "WM_OT_context_set_enum", F5KEY, KM_PRESS, KM_SHIFT, 0);
-	RNA_string_set(kmi->ptr, "data_path", "area.type");
-	RNA_string_set(kmi->ptr, "value", "VIEW_3D");
-
-	kmi = WM_keymap_add_item(keymap, "WM_OT_context_set_enum", F6KEY, KM_PRESS, KM_SHIFT, 0);
-	RNA_string_set(kmi->ptr, "data_path", "area.type");
-	RNA_string_set(kmi->ptr, "value", "GRAPH_EDITOR");
-
-	kmi = WM_keymap_add_item(keymap, "WM_OT_context_set_enum", F7KEY, KM_PRESS, KM_SHIFT, 0);
-	RNA_string_set(kmi->ptr, "data_path", "area.type");
-	RNA_string_set(kmi->ptr, "value", "PROPERTIES");
-
-	kmi = WM_keymap_add_item(keymap, "WM_OT_context_set_enum", F8KEY, KM_PRESS, KM_SHIFT, 0);
-	RNA_string_set(kmi->ptr, "data_path", "area.type");
-	RNA_string_set(kmi->ptr, "value", "SEQUENCE_EDITOR");
-
-	kmi = WM_keymap_add_item(keymap, "WM_OT_context_set_enum", F9KEY, KM_PRESS, KM_SHIFT, 0);
-	RNA_string_set(kmi->ptr, "data_path", "area.type");
-	RNA_string_set(kmi->ptr, "value", "OUTLINER");
-
-	kmi = WM_keymap_add_item(keymap, "WM_OT_context_set_enum", F10KEY, KM_PRESS, KM_SHIFT, 0);
-	RNA_string_set(kmi->ptr, "data_path", "area.type");
-	RNA_string_set(kmi->ptr, "value", "IMAGE_EDITOR");
-
-	kmi = WM_keymap_add_item(keymap, "WM_OT_context_set_enum", F11KEY, KM_PRESS, KM_SHIFT, 0);
-	RNA_string_set(kmi->ptr, "data_path", "area.type");
-	RNA_string_set(kmi->ptr, "value", "TEXT_EDITOR");
-
-	kmi = WM_keymap_add_item(keymap, "WM_OT_context_set_enum", F12KEY, KM_PRESS, KM_SHIFT, 0);
-	RNA_string_set(kmi->ptr, "data_path", "area.type");
-	RNA_string_set(kmi->ptr, "value", "DOPESHEET_EDITOR");
-
-#ifdef WITH_INPUT_NDOF
-	/* ndof speed */
-	const char *data_path = "user_preferences.inputs.ndof_sensitivity";
-	kmi = WM_keymap_add_item(keymap, "WM_OT_context_scale_float", NDOF_BUTTON_PLUS, KM_PRESS, 0, 0);
-	RNA_string_set(kmi->ptr, "data_path", data_path);
-	RNA_float_set(kmi->ptr, "value", 1.1f);
-
-	kmi = WM_keymap_add_item(keymap, "WM_OT_context_scale_float", NDOF_BUTTON_MINUS, KM_PRESS, 0, 0);
-	RNA_string_set(kmi->ptr, "data_path", data_path);
-	RNA_float_set(kmi->ptr, "value", 1.0f / 1.1f);
-
-	kmi = WM_keymap_add_item(keymap, "WM_OT_context_scale_float", NDOF_BUTTON_PLUS, KM_PRESS, KM_SHIFT, 0);
-	RNA_string_set(kmi->ptr, "data_path", data_path);
-	RNA_float_set(kmi->ptr, "value", 1.5f);
-
-	kmi = WM_keymap_add_item(keymap, "WM_OT_context_scale_float", NDOF_BUTTON_MINUS, KM_PRESS, KM_SHIFT, 0);
-	RNA_string_set(kmi->ptr, "data_path", data_path);
-	RNA_float_set(kmi->ptr, "value", 1.0f / 1.5f);
-#endif /* WITH_INPUT_NDOF */
+	WM_keymap_ensure(keyconf, "Window", 0, 0);
 
 	wm_gizmos_keymap(keyconf);
 	gesture_circle_modal_keymap(keyconf);
 	gesture_box_modal_keymap(keyconf);
 	gesture_zoom_border_modal_keymap(keyconf);
 	gesture_straightline_modal_keymap(keyconf);
+
+	WM_keymap_fix_linking();
 }
 
 /**
@@ -3563,7 +3390,7 @@ static const EnumPropertyItem *rna_id_itemf(
 /* can add more as needed */
 const EnumPropertyItem *RNA_action_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->action.first : NULL, false, NULL, NULL);
+	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->actions.first : NULL, false, NULL, NULL);
 }
 #if 0 /* UNUSED */
 const EnumPropertyItem *RNA_action_local_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
@@ -3574,51 +3401,51 @@ const EnumPropertyItem *RNA_action_local_itemf(bContext *C, PointerRNA *ptr, Pro
 
 const EnumPropertyItem *RNA_collection_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->collection.first : NULL, false, NULL, NULL);
+	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->collections.first : NULL, false, NULL, NULL);
 }
 const EnumPropertyItem *RNA_collection_local_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->collection.first : NULL, true, NULL, NULL);
+	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->collections.first : NULL, true, NULL, NULL);
 }
 
 const EnumPropertyItem *RNA_image_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->image.first : NULL, false, NULL, NULL);
+	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->images.first : NULL, false, NULL, NULL);
 }
 const EnumPropertyItem *RNA_image_local_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->image.first : NULL, true, NULL, NULL);
+	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->images.first : NULL, true, NULL, NULL);
 }
 
 const EnumPropertyItem *RNA_scene_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->scene.first : NULL, false, NULL, NULL);
+	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->scenes.first : NULL, false, NULL, NULL);
 }
 const EnumPropertyItem *RNA_scene_local_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->scene.first : NULL, true, NULL, NULL);
+	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->scenes.first : NULL, true, NULL, NULL);
 }
 const EnumPropertyItem *RNA_scene_without_active_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
 {
 	Scene *scene_active = C ? CTX_data_scene(C) : NULL;
 	return rna_id_itemf(
-	        C, ptr, r_free, C ? (ID *)CTX_data_main(C)->scene.first : NULL, true,
+	        C, ptr, r_free, C ? (ID *)CTX_data_main(C)->scenes.first : NULL, true,
 	        rna_id_enum_filter_single, scene_active);
 }
 const EnumPropertyItem *RNA_movieclip_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->movieclip.first : NULL, false, NULL, NULL);
+	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->movieclips.first : NULL, false, NULL, NULL);
 }
 const EnumPropertyItem *RNA_movieclip_local_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->movieclip.first : NULL, true, NULL, NULL);
+	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->movieclips.first : NULL, true, NULL, NULL);
 }
 
 const EnumPropertyItem *RNA_mask_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->mask.first : NULL, false, NULL, NULL);
+	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->masks.first : NULL, false, NULL, NULL);
 }
 const EnumPropertyItem *RNA_mask_local_itemf(bContext *C, PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
 {
-	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->mask.first : NULL, true, NULL, NULL);
+	return rna_id_itemf(C, ptr, r_free, C ? (ID *)CTX_data_main(C)->masks.first : NULL, true, NULL, NULL);
 }

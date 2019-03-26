@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,24 +15,22 @@
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Daniel Dunbar
- *                 Ton Roosendaal,
- *                 Ben Batt,
- *                 Brecht Van Lommel,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_fluidsim_util.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 
 #include <stddef.h>
 #include <zlib.h>
+
+#include "BLI_utildefines.h"
+
+#ifdef WITH_MOD_FLUID
+#  include "BLI_blenlib.h"
+#  include "BLI_math.h"
+#endif
 
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -42,15 +38,11 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_fluidsim_types.h"
 
-#include "BLI_blenlib.h"
-#include "BLI_math.h"
-#include "BLI_utildefines.h"
-
 #include "BKE_fluidsim.h" /* ensure definitions here match */
-#include "BKE_main.h"
 #include "BKE_mesh.h"
 #ifdef WITH_MOD_FLUID
 #  include "BKE_global.h"
+#  include "BKE_library.h"
 #endif
 
 #include "DEG_depsgraph.h"

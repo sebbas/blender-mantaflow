@@ -1,7 +1,4 @@
-
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -18,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/object_facemap.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include <string.h>
@@ -35,12 +27,10 @@
 #include "DNA_mesh_types.h"
 
 #include "BLI_utildefines.h"
-#include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
 #include "BLI_listbase.h"
 
-#include "BKE_context.h"
 #include "BKE_customdata.h"
 #include "BKE_editmesh.h"
 #include "BKE_object.h"
@@ -142,8 +132,8 @@ static void object_fmap_remove_edit_mode(Object *ob, bFaceMap *fmap, bool do_sel
 	if (ob->type == OB_MESH) {
 		Mesh *me = ob->data;
 
-		if (me->edit_btmesh) {
-			BMEditMesh *em = me->edit_btmesh;
+		if (me->edit_mesh) {
+			BMEditMesh *em = me->edit_mesh;
 			const int cd_fmap_offset = CustomData_get_offset(&em->bm->pdata, CD_FACEMAP);
 
 			if (cd_fmap_offset != -1) {

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file DNA_camera_types.h
- *  \ingroup DNA
+/** \file
+ * \ingroup DNA
  */
 
 #ifndef __DNA_CAMERA_TYPES_H__
@@ -42,9 +34,9 @@
 extern "C" {
 #endif
 
-struct Object;
 struct AnimData;
 struct Ipo;
+struct Object;
 
 /* ------------------------------------------- */
 /* Stereo Settings */
@@ -54,7 +46,7 @@ typedef struct CameraStereoSettings {
 	short convergence_mode;
 	short pivot;
 	short flag;
-	short pad;
+	char _pad[2];
 	/* Cut-off angle at which interocular distance start to fade down. */
 	float pole_merge_angle_from;
 	/* Cut-off angle at which interocular distance stops to fade down. */
@@ -75,25 +67,34 @@ typedef struct CameraBGImage {
 	short source;
 } CameraBGImage;
 
+typedef struct Camera_Runtime {
+	/* For draw manager. */
+	float drw_corners[2][4][2];
+	float drw_tria[2][2];
+	float drw_depth[2];
+	float drw_focusmat[4][4];
+	float drw_normalmat[4][4];
+} Camera_Runtime;
+
 typedef struct Camera {
 	ID id;
-	struct AnimData *adt;	/* animation data (must be immediately after id for utilities to use it) */
+	/** Animation data (must be immediately after id for utilities to use it). */
+	struct AnimData *adt;
 
-	char type; /* CAM_PERSP, CAM_ORTHO or CAM_PANO */
-	char dtx; /* draw type extra */
+	/** CAM_PERSP, CAM_ORTHO or CAM_PANO. */
+	char type;
+	/** Draw type extra. */
+	char dtx;
 	short flag;
 	float passepartalpha;
-	float clipsta, clipend;
+	float clip_start, clip_end;
 	float lens, ortho_scale, drawsize;
 	float sensor_x, sensor_y;
 	float shiftx, shifty;
+	float dof_distance;
 
-	/* yafray: dof params */
-	/* qdn: yafray var 'YF_dofdist' now enabled for defocus composite node as well.
-	 * The name was not changed so that no other files need to be modified */
-	float YF_dofdist;
-
-	struct Ipo *ipo  DNA_DEPRECATED; /* old animation system, deprecated for 2.5 */
+	/** Old animation system, deprecated for 2.5. */
+	struct Ipo *ipo  DNA_DEPRECATED;
 
 	struct Object *dof_ob;
 	struct GPUDOFSettings gpu_dof;
@@ -102,17 +103,13 @@ typedef struct Camera {
 	struct ListBase bg_images;
 
 	char sensor_fit;
-	char pad[7];
-
-	/* runtime only, used for drawing */
-	float drwcorners[4][2];
-	float drwtria[2][2];
-	float drwdepth, pad1;
-	float drwfocusmat[4][4];
-	float drwnormalmat[4][4];
+	char _pad[7];
 
 	/* Stereo settings */
 	struct CameraStereoSettings stereo;
+
+	/** Runtime data (keep last). */
+	Camera_Runtime runtime;
 } Camera;
 
 /* **************** CAMERA ********************* */
@@ -152,9 +149,6 @@ enum {
 	CAM_SHOW_SAFE_CENTER    = (1 << 9),
 	CAM_SHOW_BG_IMAGE       = (1 << 10),
 };
-
-/* yafray: dof sampling switch */
-/* #define CAM_YF_NO_QMC	512 */ /* deprecated */
 
 /* Sensor fit */
 enum {
@@ -202,8 +196,6 @@ enum {
 	CAM_BGIMG_FLAG_FLIP_X        = (1 << 7),
 	CAM_BGIMG_FLAG_FLIP_Y        = (1 << 8),
 };
-
-#define CAM_BGIMG_FLAG_EXPANDED (CAM_BGIMG_FLAG_EXPANDED | CAM_BGIMG_FLAG_CAMERACLIP)
 
 /* CameraBGImage->source */
 /* may want to use 1 for select ?*/

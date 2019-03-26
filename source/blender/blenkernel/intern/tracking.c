@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2011 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation,
- *                 Sergey Sharybin
- *                 Keir Mierle
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/tracking.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include <stddef.h>
@@ -399,7 +391,7 @@ MovieTrackingReconstruction *BKE_tracking_get_active_reconstruction(MovieTrackin
 /* Get transformation matrix for a given object which is used
  * for parenting motion tracker reconstruction to 3D world.
  */
-void BKE_tracking_get_camera_object_matrix(struct Depsgraph *depsgraph, Scene *scene, Object *ob, float mat[4][4])
+void BKE_tracking_get_camera_object_matrix(Scene *scene, Object *ob, float mat[4][4])
 {
 	if (!ob) {
 		if (scene->camera)
@@ -409,7 +401,7 @@ void BKE_tracking_get_camera_object_matrix(struct Depsgraph *depsgraph, Scene *s
 	}
 
 	if (ob)
-		BKE_object_where_is_calc_mat4(depsgraph, scene, ob, mat);
+		BKE_object_where_is_calc_mat4(ob, mat);
 	else
 		unit_m4(mat);
 }
@@ -3006,7 +2998,7 @@ void BKE_tracking_get_rna_path_prefix_for_track(
 	MovieTrackingObject *object =
 	        BKE_tracking_find_object_for_track(tracking, track);
 	if (object == NULL) {
-		BLI_snprintf(rna_path, rna_path_len, "tracking.tracks");
+		BLI_strncpy(rna_path, "tracking.tracks", rna_path_len);
 	}
 	else {
 		char object_name_esc[MAX_NAME * 2];
@@ -3051,7 +3043,7 @@ void BKE_tracking_get_rna_path_prefix_for_plane_track(
 	MovieTrackingObject *object =
 	        BKE_tracking_find_object_for_plane_track(tracking, plane_track);
 	if (object == NULL) {
-		BLI_snprintf(rna_path, rna_path_len, "tracking.plane_tracks");
+		BLI_strncpy(rna_path, "tracking.plane_tracks", rna_path_len);
 	}
 	else {
 		char object_name_esc[MAX_NAME * 2];

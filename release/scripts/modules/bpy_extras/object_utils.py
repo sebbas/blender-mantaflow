@@ -33,7 +33,6 @@ import bpy
 
 from bpy.props import (
     BoolProperty,
-    BoolVectorProperty,
     FloatVectorProperty,
 )
 
@@ -61,16 +60,13 @@ def add_object_align_init(context, operator):
     if operator and properties.is_property_set("location"):
         location = Matrix.Translation(Vector(properties.location))
     else:
-        if space_data:  # local view cursor is detected below
-            location = Matrix.Translation(space_data.cursor_location)
-        else:
-            location = Matrix.Translation(context.scene.cursor_location)
+        location = Matrix.Translation(context.scene.cursor.location)
 
         if operator:
             properties.location = location.to_translation()
 
     # rotation
-    view_align = (context.user_preferences.edit.object_align == 'VIEW')
+    view_align = (context.preferences.edit.object_align == 'VIEW')
     view_align_force = False
     if operator:
         if properties.is_property_set("view_align"):
@@ -121,17 +117,11 @@ def object_data_add(context, obdata, operator=None, name=None):
     """
     scene = context.scene
     layer = context.view_layer
-    layer_collection = context.layer_collection
+    layer_collection = context.layer_collection or layer.active_layer_collection
+    scene_collection = layer_collection.collection
 
     for ob in layer.objects:
-        ob.select_set(action='DESELECT')
-
-    if not layer_collection:
-        # when there is no collection linked to this view_layer create one
-        scene_collection = scene.master_collection.collections.new("")
-        layer_collection = layer.collections.link(scene_collection)
-    else:
-        scene_collection = layer_collection.collection
+        ob.select_set(False)
 
     if name is None:
         name = "Object" if obdata is None else obdata.name
@@ -139,32 +129,20 @@ def object_data_add(context, obdata, operator=None, name=None):
     obj_act = layer.objects.active
     obj_new = bpy.data.objects.new(name, obdata)
     scene_collection.objects.link(obj_new)
-    obj_new.select_set(action='SELECT')
+    obj_new.select_set(True)
     obj_new.matrix_world = add_object_align_init(context, operator)
 
-    # XXX
-    # caused because entering edit-mode does not add a empty undo slot!
-    if context.user_preferences.edit.use_enter_edit_mode:
-        if not (obj_act and
-                obj_act.mode == 'EDIT' and
-                obj_act.type == obj_new.type):
-
-            _obdata = bpy.data.meshes.new(name)
-            obj_act = bpy.data.objects.new(_obdata.name, _obdata)
-            obj_act.matrix_world = obj_new.matrix_world
-            scene_collection.objects.link(obj_act)
-            layer.objects.active = obj_act
-            bpy.ops.object.mode_set(mode='EDIT')
-            # need empty undo step
-            bpy.ops.ed.undo_push(message="Enter Editmode")
-    # XXX
+    space_data = context.space_data
+    if space_data.type == 'VIEW_3D':
+        if space_data.local_view:
+            obj_new.local_view_set(space_data, True)
 
     if obj_act and obj_act.mode == 'EDIT' and obj_act.type == obj_new.type:
         bpy.ops.mesh.select_all(action='DESELECT')
-        obj_act.select_set(action='SELECT')
+        obj_act.select_set(True)
         bpy.ops.object.mode_set(mode='OBJECT')
 
-        obj_act.select_set(action='SELECT')
+        obj_act.select_set(True)
         scene.update()  # apply location
         # layer.objects.active = obj_new
 
@@ -183,7 +161,7 @@ def object_data_add(context, obdata, operator=None, name=None):
         bpy.ops.object.mode_set(mode='EDIT')
     else:
         layer.objects.active = obj_new
-        if context.user_preferences.edit.use_enter_edit_mode:
+        if context.preferences.edit.use_enter_edit_mode:
             bpy.ops.object.mode_set(mode='EDIT')
 
     return obj_new

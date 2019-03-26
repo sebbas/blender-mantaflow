@@ -1,6 +1,4 @@
 /*
- * Copyright 2011, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,9 +13,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor:
- *		Jeroen Bakker
- *		Monique Dewanchand
+ * Copyright 2011, Blender Foundation.
  */
 
 class MemoryBuffer;
@@ -44,7 +40,7 @@ typedef enum MemoryBufferState {
 	/** \brief memory is available for use, content has been created */
 	COM_MB_AVAILABLE = 2,
 	/** \brief chunk is consolidated from other chunks. special state.*/
-	COM_MB_TEMPORARILY = 6
+	COM_MB_TEMPORARILY = 6,
 } MemoryBufferState;
 
 typedef enum MemoryBufferExtend {
@@ -279,7 +275,7 @@ public:
 
 	/**
 	 * \brief add the content from otherBuffer to this MemoryBuffer
-	 * \param otherBuffer source buffer
+	 * \param otherBuffer: source buffer
 	 *
 	 * \note take care when running this on a new buffer since it wont fill in
 	 *       uninitialized values in areas where the buffers don't overlap.

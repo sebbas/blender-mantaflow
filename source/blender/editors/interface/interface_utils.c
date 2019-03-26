@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/interface/interface_utils.c
- *  \ingroup edinterface
+/** \file
+ * \ingroup edinterface
  */
 
 
@@ -67,25 +61,25 @@ uiBut *uiDefAutoButR(uiBlock *block, PointerRNA *ptr, PropertyRNA *prop, int ind
 	switch (RNA_property_type(prop)) {
 		case PROP_BOOLEAN:
 		{
-			int arraylen = RNA_property_array_length(ptr, prop);
-
-			if (arraylen && index == -1)
+			if (RNA_property_array_check(prop) && index == -1) {
 				return NULL;
+			}
 
-			if (icon && name && name[0] == '\0')
+			if (icon && name && name[0] == '\0') {
 				but = uiDefIconButR_prop(block, UI_BTYPE_ICON_TOGGLE, 0, icon, x1, y1, x2, y2, ptr, prop, index, 0, 0, -1, -1, NULL);
-			else if (icon)
+			}
+			else if (icon) {
 				but = uiDefIconTextButR_prop(block, UI_BTYPE_ICON_TOGGLE, 0, icon, name, x1, y1, x2, y2, ptr, prop, index, 0, 0, -1, -1, NULL);
-			else
+			}
+			else {
 				but = uiDefButR_prop(block, UI_BTYPE_CHECKBOX, 0, name, x1, y1, x2, y2, ptr, prop, index, 0, 0, -1, -1, NULL);
+			}
 			break;
 		}
 		case PROP_INT:
 		case PROP_FLOAT:
 		{
-			int arraylen = RNA_property_array_length(ptr, prop);
-
-			if (arraylen && index == -1) {
+			if (RNA_property_array_check(prop) && index == -1) {
 				if (ELEM(RNA_property_subtype(prop), PROP_COLOR, PROP_COLOR_GAMMA)) {
 					but = uiDefButR_prop(block, UI_BTYPE_COLOR, 0, name, x1, y1, x2, y2, ptr, prop, -1, 0, 0, -1, -1, NULL);
 				}
@@ -93,10 +87,12 @@ uiBut *uiDefAutoButR(uiBlock *block, PointerRNA *ptr, PropertyRNA *prop, int ind
 					return NULL;
 				}
 			}
-			else if (RNA_property_subtype(prop) == PROP_PERCENTAGE || RNA_property_subtype(prop) == PROP_FACTOR)
+			else if (RNA_property_subtype(prop) == PROP_PERCENTAGE || RNA_property_subtype(prop) == PROP_FACTOR) {
 				but = uiDefButR_prop(block, UI_BTYPE_NUM_SLIDER, 0, name, x1, y1, x2, y2, ptr, prop, index, 0, 0, -1, -1, NULL);
-			else
+			}
+			else {
 				but = uiDefButR_prop(block, UI_BTYPE_NUM, 0, name, x1, y1, x2, y2, ptr, prop, index, 0, 0, -1, -1, NULL);
+			}
 
 			if (RNA_property_flag(prop) & PROP_TEXTEDIT_UPDATE) {
 				UI_but_flag_enable(but, UI_BUT_TEXTEDIT_UPDATE);
@@ -104,20 +100,26 @@ uiBut *uiDefAutoButR(uiBlock *block, PointerRNA *ptr, PropertyRNA *prop, int ind
 			break;
 		}
 		case PROP_ENUM:
-			if (icon && name && name[0] == '\0')
+			if (icon && name && name[0] == '\0') {
 				but = uiDefIconButR_prop(block, UI_BTYPE_MENU, 0, icon, x1, y1, x2, y2, ptr, prop, index, 0, 0, -1, -1, NULL);
-			else if (icon)
+			}
+			else if (icon) {
 				but = uiDefIconTextButR_prop(block, UI_BTYPE_MENU, 0, icon, NULL, x1, y1, x2, y2, ptr, prop, index, 0, 0, -1, -1, NULL);
-			else
+			}
+			else {
 				but = uiDefButR_prop(block, UI_BTYPE_MENU, 0, name, x1, y1, x2, y2, ptr, prop, index, 0, 0, -1, -1, NULL);
+			}
 			break;
 		case PROP_STRING:
-			if (icon && name && name[0] == '\0')
+			if (icon && name && name[0] == '\0') {
 				but = uiDefIconButR_prop(block, UI_BTYPE_TEXT, 0, icon, x1, y1, x2, y2, ptr, prop, index, 0, 0, -1, -1, NULL);
-			else if (icon)
+			}
+			else if (icon) {
 				but = uiDefIconTextButR_prop(block, UI_BTYPE_TEXT, 0, icon, name, x1, y1, x2, y2, ptr, prop, index, 0, 0, -1, -1, NULL);
-			else
+			}
+			else {
 				but = uiDefButR_prop(block, UI_BTYPE_TEXT, 0, name, x1, y1, x2, y2, ptr, prop, index, 0, 0, -1, -1, NULL);
+			}
 
 			if (RNA_property_flag(prop) & PROP_TEXTEDIT_UPDATE) {
 				/* TEXTEDIT_UPDATE is usually used for search buttons. For these we also want
@@ -131,8 +133,9 @@ uiBut *uiDefAutoButR(uiBlock *block, PointerRNA *ptr, PropertyRNA *prop, int ind
 				PointerRNA pptr = RNA_property_pointer_get(ptr, prop);
 				icon = RNA_struct_ui_icon(pptr.type ? pptr.type : RNA_property_pointer_type(ptr, prop));
 			}
-			if (icon == ICON_DOT)
+			if (icon == ICON_DOT) {
 				icon = 0;
+			}
 
 			but = uiDefIconTextButR_prop(block, UI_BTYPE_SEARCH_MENU, 0, icon, name, x1, y1, x2, y2, ptr, prop, index, 0, 0, -1, -1, NULL);
 			break;
@@ -156,20 +159,22 @@ uiBut *uiDefAutoButR(uiBlock *block, PointerRNA *ptr, PropertyRNA *prop, int ind
 /**
  * \a check_prop callback filters functions to avoid drawing certain properties,
  * in cases where PROP_HIDDEN flag can't be used for a property.
+ *
+ * \param prop_activate_init: Property to activate on initial popup (#UI_BUT_ACTIVATE_ON_INIT).
  */
 eAutoPropButsReturn uiDefAutoButsRNA(
         uiLayout *layout, PointerRNA *ptr,
         bool (*check_prop)(PointerRNA *ptr, PropertyRNA *prop, void *user_data), void *user_data,
+        PropertyRNA *prop_activate_init,
         const eButLabelAlign label_align, const bool compact)
 {
 	eAutoPropButsReturn return_info = UI_PROP_BUTS_NONE_ADDED;
 	uiLayout *split, *col;
-	int flag;
 	const char *name;
 
 	RNA_STRUCT_BEGIN (ptr, prop)
 	{
-		flag = RNA_property_flag(prop);
+		const int flag = RNA_property_flag(prop);
 
 		if (flag & PROP_HIDDEN) {
 			continue;
@@ -179,11 +184,11 @@ eAutoPropButsReturn uiDefAutoButsRNA(
 			continue;
 		}
 
+		const PropertyType type = RNA_property_type(prop);
 		switch (label_align) {
 			case UI_BUT_LABEL_ALIGN_COLUMN:
 			case UI_BUT_LABEL_ALIGN_SPLIT_COLUMN:
 			{
-				PropertyType type = RNA_property_type(prop);
 				const bool is_boolean = (type == PROP_BOOLEAN && !RNA_property_array_check(prop));
 
 				name = RNA_property_ui_name(prop);
@@ -191,8 +196,9 @@ eAutoPropButsReturn uiDefAutoButsRNA(
 				if (label_align == UI_BUT_LABEL_ALIGN_COLUMN) {
 					col = uiLayoutColumn(layout, true);
 
-					if (!is_boolean)
+					if (!is_boolean) {
 						uiItemL(col, name, ICON_NONE);
+					}
 				}
 				else {
 					BLI_assert(label_align == UI_BUT_LABEL_ALIGN_SPLIT_COLUMN);
@@ -218,8 +224,22 @@ eAutoPropButsReturn uiDefAutoButsRNA(
 				break;
 		}
 
+		/* Only buttons that can be edited as text. */
+		const bool use_activate_init = (
+		        (prop == prop_activate_init) &&
+		        (ELEM(type, PROP_STRING, PROP_INT, PROP_FLOAT)));
+
+		if (use_activate_init) {
+			uiLayoutSetActivateInit(col, true);
+		}
+
 		uiItemFullR(col, ptr, prop, -1, 0, compact ? UI_ITEM_R_COMPACT : 0, name, ICON_NONE);
 		return_info &= ~UI_PROP_BUTS_NONE_ADDED;
+
+		if (use_activate_init) {
+			uiLayoutSetActivateInit(col, false);
+		}
+
 	}
 	RNA_STRUCT_END;
 
@@ -241,10 +261,12 @@ static int sort_search_items_list(const void *a, const void *b)
 	const CollItemSearch *cis1 = a;
 	const CollItemSearch *cis2 = b;
 
-	if (BLI_strcasecmp(cis1->name, cis2->name) > 0)
+	if (BLI_strcasecmp(cis1->name, cis2->name) > 0) {
 		return 1;
-	else
+	}
+	else {
 		return 0;
+	}
 }
 
 void ui_rna_collection_search_cb(const struct bContext *C, void *arg, const char *str, uiSearchItems *items)
@@ -254,20 +276,23 @@ void ui_rna_collection_search_cb(const struct bContext *C, void *arg, const char
 	int i = 0, iconid = 0, flag = RNA_property_flag(data->target_prop);
 	ListBase *items_list = MEM_callocN(sizeof(ListBase), "items_list");
 	CollItemSearch *cis;
-	const bool skip_filter = !(data->but_changed && *data->but_changed);
+	const bool skip_filter = (data->but_changed && !(*data->but_changed));
 
 	/* build a temporary list of relevant items first */
 	RNA_PROP_BEGIN (&data->search_ptr, itemptr, data->search_prop)
 	{
 
-		if (flag & PROP_ID_SELF_CHECK)
-			if (itemptr.data == data->target_ptr.id.data)
+		if (flag & PROP_ID_SELF_CHECK) {
+			if (itemptr.data == data->target_ptr.id.data) {
 				continue;
+			}
+		}
 
 		/* use filter */
 		if (RNA_property_type(data->target_prop) == PROP_POINTER) {
-			if (RNA_property_pointer_poll(&data->target_ptr, data->target_prop, &itemptr) == 0)
+			if (RNA_property_pointer_poll(&data->target_ptr, data->target_prop, &itemptr) == 0) {
 				continue;
+			}
 		}
 
 		name = RNA_struct_name_get_alloc(&itemptr, NULL, 0, NULL); /* could use the string length here */
@@ -316,8 +341,9 @@ int UI_icon_from_id(ID *id)
 	PointerRNA ptr;
 	short idcode;
 
-	if (id == NULL)
+	if (id == NULL) {
 		return ICON_NONE;
+	}
 
 	idcode = GS(id->name);
 
@@ -325,10 +351,12 @@ int UI_icon_from_id(ID *id)
 	if (idcode == ID_OB) {
 		ob = (Object *)id;
 
-		if (ob->type == OB_EMPTY)
+		if (ob->type == OB_EMPTY) {
 			return ICON_EMPTY_DATA;
-		else
+		}
+		else {
 			return UI_icon_from_id(ob->data);
+		}
 	}
 
 	/* otherwise get it through RNA, creating the pointer
@@ -341,14 +369,18 @@ int UI_icon_from_id(ID *id)
 /* see: report_type_str */
 int UI_icon_from_report_type(int type)
 {
-	if (type & RPT_ERROR_ALL)
+	if (type & RPT_ERROR_ALL) {
 		return ICON_ERROR;
-	else if (type & RPT_WARNING_ALL)
+	}
+	else if (type & RPT_WARNING_ALL) {
 		return ICON_ERROR;
-	else if (type & RPT_INFO_ALL)
+	}
+	else if (type & RPT_INFO_ALL) {
 		return ICON_INFO;
-	else
+	}
+	else {
 		return ICON_NONE;
+	}
 }
 
 /********************************** Misc **************************************/
@@ -592,8 +624,9 @@ void UI_butstore_update(uiBlock *block)
 		}
 	}
 
-	if (LIKELY(block->butstore.first == NULL))
+	if (LIKELY(block->butstore.first == NULL)) {
 		return;
+	}
 
 	/* warning, loop-in-loop, in practice we only store <10 buttons at a time,
 	 * so this isn't going to be a problem, if that changes old-new mapping can be cached first */

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_buttons/buttons_intern.h
- *  \ingroup spbuttons
+/** \file
+ * \ingroup spbuttons
  */
 
 #ifndef __BUTTONS_INTERN_H__
@@ -36,7 +29,7 @@
 
 struct ARegionType;
 struct ID;
-struct SpaceButs;
+struct SpaceProperties;
 struct Tex;
 struct bContext;
 struct bContextDataResult;
@@ -44,6 +37,9 @@ struct bNode;
 struct bNodeTree;
 struct uiLayout;
 struct wmOperatorType;
+
+/* Display the context path in the header instead of the main window */
+#define USE_HEADER_CONTEXT_PATH
 
 /* context data */
 
@@ -84,7 +80,7 @@ typedef struct ButsContextTexture {
 /* internal exports only */
 
 /* buttons_context.c */
-void buttons_context_compute(const struct bContext *C, struct SpaceButs *sbuts);
+void buttons_context_compute(const struct bContext *C, struct SpaceProperties *sbuts);
 int buttons_context(const struct bContext *C, const char *member, struct bContextDataResult *result);
 void buttons_context_draw(const struct bContext *C, struct uiLayout *layout);
 void buttons_context_register(struct ARegionType *art);
@@ -93,7 +89,7 @@ struct ID *buttons_context_id_path(const struct bContext *C);
 extern const char *buttons_context_dir[]; /* doc access */
 
 /* buttons_texture.c */
-void buttons_texture_context_compute(const struct bContext *C, struct SpaceButs *sbuts);
+void buttons_texture_context_compute(const struct bContext *C, struct SpaceProperties *sbuts);
 
 /* buttons_ops.c */
 void BUTTONS_OT_file_browse(struct wmOperatorType *ot);

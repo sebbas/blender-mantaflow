@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation, Nathan Letwory
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_node/node_view.c
- *  \ingroup spnode
+/** \file
+ * \ingroup spnode
  */
 
 #include "DNA_node_types.h"
@@ -588,8 +581,9 @@ static int sample_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 	ARegion *ar = CTX_wm_region(C);
 	ImageSampleInfo *info;
 
-	if (!ED_node_is_compositor(snode) || !(snode->flag & SNODE_BACKDRAW))
+	if (!ED_node_is_compositor(snode) || !(snode->flag & SNODE_BACKDRAW)) {
 		return OPERATOR_CANCELLED;
+	}
 
 	info = MEM_callocN(sizeof(ImageSampleInfo), "ImageSampleInfo");
 	info->art = ar->type;

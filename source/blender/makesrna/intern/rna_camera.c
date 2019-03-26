@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Foundation (2008).
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_camera.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 #include <stdlib.h>
@@ -146,20 +140,20 @@ static void rna_def_camera_background_image(BlenderRNA *brna)
 	static const EnumPropertyItem bgpic_source_items[] = {
 		{CAM_BGIMG_SOURCE_IMAGE, "IMAGE", 0, "Image", ""},
 		{CAM_BGIMG_SOURCE_MOVIE, "MOVIE_CLIP", 0, "Movie Clip", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem bgpic_camera_frame_items[] = {
 		{0, "STRETCH", 0, "Stretch", ""},
 		{CAM_BGIMG_FLAG_CAMERA_ASPECT, "FIT", 0, "Fit", ""},
 		{CAM_BGIMG_FLAG_CAMERA_ASPECT | CAM_BGIMG_FLAG_CAMERA_CROP, "CROP", 0, "Crop", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem bgpic_display_depth_items[] = {
 		{0, "BACK", 0, "Back", ""},
 		{CAM_BGIMG_FLAG_FOREGROUND, "FRONT", 0, "Front", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "CameraBackgroundImage", NULL);
@@ -233,7 +227,7 @@ static void rna_def_camera_background_image(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "show_expanded", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", CAM_BGIMG_FLAG_EXPANDED);
 	RNA_def_property_ui_text(prop, "Show Expanded", "Show the expanded in the user interface");
-	RNA_def_property_ui_icon(prop, ICON_TRIA_RIGHT, 1);
+	RNA_def_property_ui_icon(prop, ICON_DISCLOSURE_TRI_RIGHT, 1);
 
 	prop = RNA_def_property(srna, "use_camera_clip", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", CAM_BGIMG_FLAG_CAMERACLIP);
@@ -302,14 +296,14 @@ static void rna_def_camera_stereo_data(BlenderRNA *brna)
 		{CAM_S3D_OFFAXIS, "OFFAXIS", 0, "Off-Axis", "Off-axis frustums converging in a plane"},
 		{CAM_S3D_PARALLEL, "PARALLEL", 0, "Parallel", "Parallel cameras with no convergence"},
 		{CAM_S3D_TOE, "TOE", 0, "Toe-in", "Rotated cameras, looking at the convergence distance"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem pivot_items[] = {
 		{CAM_S3D_PIVOT_LEFT, "LEFT", 0, "Left", ""},
 		{CAM_S3D_PIVOT_RIGHT, "RIGHT", 0, "Right", ""},
 		{CAM_S3D_PIVOT_CENTER, "CENTER", 0, "Center", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "CameraStereoData", NULL);
@@ -376,29 +370,18 @@ void RNA_def_camera(BlenderRNA *brna)
 		{CAM_PERSP, "PERSP", 0, "Perspective", ""},
 		{CAM_ORTHO, "ORTHO", 0, "Orthographic", ""},
 		{CAM_PANO, "PANO", 0, "Panoramic", ""},
-		{0, NULL, 0, NULL, NULL}
-	};
-	static const EnumPropertyItem prop_display_type_extra_items[] = {
-		{CAM_DTX_CENTER, "CENTER", 0, "Center", ""},
-		{CAM_DTX_CENTER_DIAG, "CENTER_DIAGONAL", 0, "Center Diagonal", ""},
-		{CAM_DTX_THIRDS, "THIRDS", 0, "Thirds", ""},
-		{CAM_DTX_GOLDEN, "GOLDEN", 0, "Golden", ""},
-		{CAM_DTX_GOLDEN_TRI_A, "GOLDEN_TRIANGLE_A", 0, "Golden Triangle A", ""},
-		{CAM_DTX_GOLDEN_TRI_B, "GOLDEN_TRIANGLE_B", 0, "Golden Triangle B", ""},
-		{CAM_DTX_HARMONY_TRI_A, "HARMONY_TRIANGLE_A", 0, "Harmonious Triangle A", ""},
-		{CAM_DTX_HARMONY_TRI_B, "HARMONY_TRIANGLE_B", 0, "Harmonious Triangle B", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 	static const EnumPropertyItem prop_lens_unit_items[] = {
 		{0, "MILLIMETERS", 0, "Millimeters", "Specify the lens in millimeters"},
 		{CAM_ANGLETOGGLE, "FOV", 0, "Field of View", "Specify the lens as the field of view's angle"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 	static const EnumPropertyItem sensor_fit_items[] = {
 		{CAMERA_SENSOR_FIT_AUTO, "AUTO", 0, "Auto", "Fit to the sensor width or height depending on image resolution"},
 		{CAMERA_SENSOR_FIT_HOR, "HORIZONTAL", 0, "Horizontal", "Fit to the sensor width"},
 		{CAMERA_SENSOR_FIT_VERT, "VERTICAL", 0, "Vertical", "Fit to the sensor height"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "Camera", "ID");
@@ -410,13 +393,6 @@ void RNA_def_camera(BlenderRNA *brna)
 	RNA_def_property_enum_items(prop, prop_type_items);
 	RNA_def_property_ui_text(prop, "Type", "Camera types");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
-
-	prop = RNA_def_property(srna, "show_guide", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "dtx");
-	RNA_def_property_enum_items(prop, prop_display_type_extra_items);
-	RNA_def_property_flag(prop, PROP_ENUM_FLAG);
-	RNA_def_property_ui_text(prop, "Composition Guides",  "Display overlay");
-	RNA_def_property_update(prop, NC_CAMERA | ND_DRAW_RENDER_VIEWPORT, NULL);
 
 	prop = RNA_def_property(srna, "sensor_fit", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "sensor_fit");
@@ -454,7 +430,6 @@ void RNA_def_camera(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
 
 	prop = RNA_def_property(srna, "clip_start", PROP_FLOAT, PROP_DISTANCE);
-	RNA_def_property_float_sdna(prop, NULL, "clipsta");
 	RNA_def_property_float_default(prop, 0.1f);
 	RNA_def_property_range(prop, 1e-6f, FLT_MAX);
 	RNA_def_property_ui_range(prop, 0.001f, FLT_MAX, 10, 3);
@@ -462,7 +437,6 @@ void RNA_def_camera(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
 	prop = RNA_def_property(srna, "clip_end", PROP_FLOAT, PROP_DISTANCE);
-	RNA_def_property_float_sdna(prop, NULL, "clipend");
 	RNA_def_property_float_default(prop, 1000.0f);
 	RNA_def_property_range(prop, 1e-6f, FLT_MAX);
 	RNA_def_property_ui_range(prop, 0.001f, FLT_MAX, 10, 3);
@@ -524,7 +498,6 @@ void RNA_def_camera(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
 
 	prop = RNA_def_property(srna, "dof_distance", PROP_FLOAT, PROP_DISTANCE);
-	RNA_def_property_float_sdna(prop, NULL, "YF_dofdist");
 	RNA_def_property_range(prop, 0.0f, FLT_MAX);
 	RNA_def_property_ui_range(prop, 0.0f, 5000.0f, 1, 2);
 	RNA_def_property_ui_text(prop, "DOF Distance", "Distance to the focus point for depth of field");
@@ -586,6 +559,47 @@ void RNA_def_camera(BlenderRNA *brna)
 	RNA_def_property_enum_bitflag_sdna(prop, NULL, "flag");
 	RNA_def_property_enum_items(prop, prop_lens_unit_items);
 	RNA_def_property_ui_text(prop, "Lens Unit", "Unit to edit lens in for the user interface");
+
+	/* dtx */
+	prop = RNA_def_property(srna, "show_composition_center", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "dtx", CAM_DTX_CENTER);
+	RNA_def_property_ui_text(prop, "Center", "Display center composition guide inside the camera view");
+	RNA_def_property_update(prop, NC_CAMERA | ND_DRAW_RENDER_VIEWPORT, NULL);
+
+	prop = RNA_def_property(srna, "show_composition_center_diagonal", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "dtx", CAM_DTX_CENTER_DIAG);
+	RNA_def_property_ui_text(prop, "Center Diagonal", "Display diagonal center composition guide inside the camera view");
+	RNA_def_property_update(prop, NC_CAMERA | ND_DRAW_RENDER_VIEWPORT, NULL);
+
+	prop = RNA_def_property(srna, "show_composition_thirds", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "dtx", CAM_DTX_THIRDS);
+	RNA_def_property_ui_text(prop, "Thirds", "Display rule of thirds composition guide inside the camera view");
+	RNA_def_property_update(prop, NC_CAMERA | ND_DRAW_RENDER_VIEWPORT, NULL);
+
+	prop = RNA_def_property(srna, "show_composition_golden", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "dtx", CAM_DTX_GOLDEN);
+	RNA_def_property_ui_text(prop, "Golden Ratio", "Display golden ratio composition guide inside the camera view");
+	RNA_def_property_update(prop, NC_CAMERA | ND_DRAW_RENDER_VIEWPORT, NULL);
+
+	prop = RNA_def_property(srna, "show_composition_golden_tria_a", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "dtx", CAM_DTX_GOLDEN_TRI_A);
+	RNA_def_property_ui_text(prop, "Golden Triangle A", "Display golden triangle A composition guide inside the camera view");
+	RNA_def_property_update(prop, NC_CAMERA | ND_DRAW_RENDER_VIEWPORT, NULL);
+
+	prop = RNA_def_property(srna, "show_composition_golden_tria_b", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "dtx", CAM_DTX_GOLDEN_TRI_B);
+	RNA_def_property_ui_text(prop, "Golden Triangle B", "Display golden triangle B composition guide inside the camera view");
+	RNA_def_property_update(prop, NC_CAMERA | ND_DRAW_RENDER_VIEWPORT, NULL);
+
+	prop = RNA_def_property(srna, "show_composition_harmony_tri_a", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "dtx", CAM_DTX_HARMONY_TRI_A);
+	RNA_def_property_ui_text(prop, "Harmonious Triangle A", "Display harmony A composition guide inside the camera view");
+	RNA_def_property_update(prop, NC_CAMERA | ND_DRAW_RENDER_VIEWPORT, NULL);
+
+	prop = RNA_def_property(srna, "show_composition_harmony_tri_b", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "dtx", CAM_DTX_HARMONY_TRI_B);
+	RNA_def_property_ui_text(prop, "Harmonious Triangle B", "Display harmony B composition guide inside the camera view");
+	RNA_def_property_update(prop, NC_CAMERA | ND_DRAW_RENDER_VIEWPORT, NULL);
 
 	/* pointers */
 	prop = RNA_def_property(srna, "dof_object", PROP_POINTER, PROP_NONE);

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Joseph Gilbert, Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/python/mathutils/mathutils.c
- *  \ingroup pymathutils
+/** \file
+ * \ingroup pymathutils
  */
 
 #include <Python.h>
@@ -586,7 +580,7 @@ void BaseMathObject_dealloc(BaseMathObject *self)
 
 /*----------------------------MODULE INIT-------------------------*/
 static struct PyMethodDef M_Mathutils_methods[] = {
-	{NULL, NULL, 0, NULL}
+	{NULL, NULL, 0, NULL},
 };
 
 static struct PyModuleDef M_Mathutils_module_def = {
@@ -661,7 +655,7 @@ PyMODINIT_FUNC PyInit_mathutils(void)
 	PyModule_AddObject(mod, "bvhtree", (submodule = PyInit_mathutils_bvhtree()));
 	PyDict_SetItem(sys_modules, PyModule_GetNameObject(submodule), submodule);
 
-	/* KDTree submodule */
+	/* KDTree_3d submodule */
 	PyModule_AddObject(mod, "kdtree", (submodule = PyInit_mathutils_kdtree()));
 	PyDict_SetItem(sys_modules, PyModule_GetNameObject(submodule), submodule);
 #endif

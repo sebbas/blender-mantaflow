@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,19 +12,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __FREESTYLE_FUNCTIONS_1D_H__
 #define __FREESTYLE_FUNCTIONS_1D_H__
 
-/** \file blender/freestyle/intern/view_map/Functions1D.h
- *  \ingroup freestyle
- *  \brief Functions taking 1D input
- *  \author Stephane Grabli
- *  \author Emmanuel Turquin
- *  \date 01/07/2003
+/** \file
+ * \ingroup freestyle
+ * \brief Functions taking 1D input
  */
 
 #include "Functions0D.h"
@@ -52,7 +45,7 @@ namespace Freestyle {
 
 /*! Base class for Unary Functions (functors) working on Interface1D.
  *  A unary function will be used by calling its operator() on an Interface1D.
- *  \attention In the scripting language, there exists several prototypes depending on the returned value type.
+ * \attention In the scripting language, there exists several prototypes depending on the returned value type.
  *  For example, you would inherit from a UnaryFunction1DDouble if you wish to define a function that returns a double.
  *  The different existing prototypes are:
  *    - UnaryFunction1DDouble
@@ -81,7 +74,7 @@ public:
 	}
 
 	/*! Builds a UnaryFunction1D from an integration type.
-	 *  \param iType
+	 *  \param iType:
 	 *    In case the result for the Interface1D would be obtained by evaluating a 0D function over the different
 	 *    Interface0D of the Interface1D, \a iType tells which integration method to use.
 	 *    The default integration method is the MEAN.
@@ -101,7 +94,7 @@ public:
 	}
 
 	/*! The operator ().
-	 *  \param inter
+	 *  \param inter:
 	 *    The Interface1D on which we wish to evaluate the function.
 	 *  \return the result of the function of type T.
 	 */
@@ -195,7 +188,7 @@ private:
 
 public:
 	/*! Builds the functor.
-	 *  \param iType
+	 *  \param iType:
 	 *    The integration method used to compute a single value from a set of values.
 	 */
 	GetXF1D(IntegrationType iType) : UnaryFunction1D<double>(iType) {}
@@ -219,7 +212,7 @@ Functions0D::GetYF0D _func;
 
 public:
 	/*! Builds the functor.
-	 *  \param iType
+	 *  \param iType:
 	 *    The integration method used to compute a single value from a set of values.
 	 */
 	GetYF1D(IntegrationType iType = MEAN) : UnaryFunction1D<double>(iType) {}
@@ -243,7 +236,7 @@ private:
 
 public:
 	/*! Builds the functor.
-	 *  \param iType
+	 *  \param iType:
 	 *    The integration method used to compute a single value from a set of values.
 	 */
 	GetZF1D(IntegrationType iType = MEAN) : UnaryFunction1D<double>(iType) {}
@@ -267,7 +260,7 @@ private:
 
 public:
 	/*! Builds the functor.
-	 *  \param iType
+	 *  \param iType:
 	 *    The integration method used to compute a single value from a set of values.
 	 */
 	GetProjectedXF1D(IntegrationType iType = MEAN) : UnaryFunction1D<double>(iType) {}
@@ -291,7 +284,7 @@ private:
 
 public:
 	/*! Builds the functor.
-	 *  \param iType
+	 *  \param iType:
 	 *    The integration method used to compute a single value from a set of values.
 	 */
 	GetProjectedYF1D(IntegrationType iType = MEAN) : UnaryFunction1D<double>(iType) {}
@@ -315,7 +308,7 @@ private:
 
 public:
 	/*! Builds the functor.
-	 *  \param iType
+	 *  \param iType:
 	 *    The integration method used to compute a single value from a set of values.
 	 */
 	GetProjectedZF1D(IntegrationType iType = MEAN) : UnaryFunction1D<double>(iType) {}
@@ -339,7 +332,7 @@ private:
 
 public:
 	/*! Builds the functor.
-	 *  \param iType
+	 *  \param iType:
 	 *    The integration method used to compute a single value from a set of values.
 	 */
 	Orientation2DF1D(IntegrationType iType = MEAN) : UnaryFunction1D<Vec2f>(iType) {}
@@ -363,7 +356,7 @@ private:
 
 public:
 	/*! Builds the functor.
-	 *  \param iType
+	 *  \param iType:
 	 *    The integration method used to compute a single value from a set of values.
 	 */
 	Orientation3DF1D(IntegrationType iType = MEAN) : UnaryFunction1D<Vec3f>(iType) {}
@@ -390,7 +383,7 @@ private:
 
 public:
 	/*! Builds the functor.
-	 *  \param iType
+	 *  \param iType:
 	 *    The integration method used to compute a single value from a set of values.
 	 */
 	ZDiscontinuityF1D(IntegrationType iType = MEAN) : UnaryFunction1D<double>(iType) {}
@@ -418,7 +411,7 @@ private:
 
 public:
 	/*! Builds the functor.
-	 *  \param iType
+	 *  \param iType:
 	 *    The integration method used to compute a single value from a set of values.
 	 */
 	QuantitativeInvisibilityF1D(IntegrationType iType = MEAN) : UnaryFunction1D<unsigned int>(iType) {}
@@ -446,7 +439,7 @@ private:
 
 public:
 	/*! Builds the functor.
-	 *  \param iType
+	 *  \param iType:
 	 *    The integration method used to compute a single value from a set of values.
 	 */
 	CurveNatureF1D(IntegrationType iType = MEAN) : UnaryFunction1D<Nature::EdgeNature>(iType) {}
@@ -513,7 +506,7 @@ class Curvature2DAngleF1D : public UnaryFunction1D<double>
 {
 public:
 	/*! Builds the functor.
-	 *  \param iType
+	 *  \param iType:
 	 *    The integration method used to compute a single value from a set of values.
 	 */
 	Curvature2DAngleF1D(IntegrationType iType = MEAN) : UnaryFunction1D<double>(iType) {}
@@ -541,7 +534,7 @@ class Normal2DF1D : public UnaryFunction1D<Vec2f>
 {
 public:
 	/*! Builds the functor.
-	 *  \param iType
+	 *  \param iType:
 	 *    The integration method used to compute a single value from a set of values.
 	 */
 	Normal2DF1D(IntegrationType iType = MEAN) : UnaryFunction1D<Vec2f>(iType) {}

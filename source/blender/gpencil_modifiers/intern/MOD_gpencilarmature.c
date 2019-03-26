@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,18 +15,17 @@
  *
  * The Original Code is Copyright (C) 2018, Blender Foundation
  * This is a new part of Blender
- *
- * Contributor(s): Antonio Vazquez
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/gpencil_modifiers/intern/MOD_gpencilarmature.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 #include <stdio.h>
+
+#include "BLI_utildefines.h"
+
+#include "BLI_math.h"
 
 #include "DNA_armature_types.h"
 #include "DNA_meshdata_types.h"
@@ -37,14 +34,8 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_gpencil_modifier_types.h"
 #include "DNA_modifier_types.h"
-#include "BLI_math.h"
-
-#include "BLI_listbase.h"
-#include "BLI_task.h"
-#include "BLI_utildefines.h"
 
 #include "BKE_lattice.h"
-#include "BKE_context.h"
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_modifier.h"
 #include "BKE_modifier.h"
@@ -128,9 +119,11 @@ static void bakeModifier(
         Main *bmain, Depsgraph *depsgraph,
         GpencilModifierData *md, Object *ob)
 {
-	ArmatureGpencilModifierData *mmd = (ArmatureGpencilModifierData *)md;
 	Scene *scene = DEG_get_evaluated_scene(depsgraph);
-	bGPdata *gpd = ob->data;
+	Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
+	ArmatureGpencilModifierData *mmd = (ArmatureGpencilModifierData *)md;
+	GpencilModifierData *md_eval = BKE_gpencil_modifiers_findByName(object_eval, md->name);
+	bGPdata *gpd = (bGPdata *)ob->data;
 	int oldframe = (int)DEG_get_ctime(depsgraph);
 
 	if (mmd->object == NULL)
@@ -146,7 +139,7 @@ static void bakeModifier(
 
 			/* compute armature effects on this frame */
 			for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
-				deformStroke(md, depsgraph, ob, gpl, gps);
+				deformStroke(md_eval, depsgraph, object_eval, gpl, gps);
 			}
 		}
 	}
@@ -187,7 +180,7 @@ GpencilModifierTypeInfo modifierType_Gpencil_Armature = {
 	/* structName */        "ArmatureGpencilModifierData",
 	/* structSize */        sizeof(ArmatureGpencilModifierData),
 	/* type */              eGpencilModifierTypeType_Gpencil,
-	/* flags */             0,
+	/* flags */             eGpencilModifierTypeFlag_SupportsEditmode,
 
 	/* copyData */          copyData,
 
@@ -203,4 +196,5 @@ GpencilModifierTypeInfo modifierType_Gpencil_Armature = {
 	/* foreachObjectLink */ foreachObjectLink,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* getDuplicationFactor */ NULL,
 };

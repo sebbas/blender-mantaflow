@@ -194,16 +194,16 @@ void CLOSURE_NAME(
 	vec4 rand = texelFetch(utilTex, ivec3(ivec2(gl_FragCoord.xy) % LUT_SIZE, 2.0), 0);
 
 	/* ---------------------------------------------------------------- */
-	/* -------------------- SCENE LAMPS LIGHTING ---------------------- */
+	/* -------------------- SCENE LIGHTS LIGHTING --------------------- */
 	/* ---------------------------------------------------------------- */
 
 #ifdef CLOSURE_GLOSSY
-	vec2 lut_uv = lut_coords(dot(N, V), roughness);
+	vec2 lut_uv = lut_coords_ltc(dot(N, V), roughness);
 	vec4 ltc_mat = texture(utilTex, vec3(lut_uv, 0.0)).rgba;
 #endif
 
 #ifdef CLOSURE_CLEARCOAT
-	vec2 lut_uv_clear = lut_coords(dot(C_N, V), C_roughness);
+	vec2 lut_uv_clear = lut_coords_ltc(dot(C_N, V), C_roughness);
 	vec4 ltc_mat_clear = texture(utilTex, vec3(lut_uv_clear, 0.0)).rgba;
 	vec3 out_spec_clear = vec3(0.0);
 #endif
@@ -215,7 +215,13 @@ void CLOSURE_NAME(
 		l_vector.xyz = ld.l_position - worldPosition;
 		l_vector.w = length(l_vector.xyz);
 
-		vec3 l_color_vis = ld.l_color * light_visibility(ld, worldPosition, viewPosition, viewNormal, l_vector);
+		float l_vis = light_visibility(ld, worldPosition, viewPosition, viewNormal, l_vector);
+
+		if (l_vis < 1e-8) {
+			continue;
+		}
+
+		vec3 l_color_vis = ld.l_color * l_vis;
 
 	#ifdef CLOSURE_DIFFUSE
 		out_diff += l_color_vis * light_diffuse(ld, N, V, l_vector);
@@ -235,13 +241,13 @@ void CLOSURE_NAME(
 	}
 
 #ifdef CLOSURE_GLOSSY
-	vec3 brdf_lut_lamps = texture(utilTex, vec3(lut_uv, 1.0)).rgb;
-	out_spec *= F_area(f0, brdf_lut_lamps.xy) * brdf_lut_lamps.z;
+	vec2 brdf_lut_lights = texture(utilTex, vec3(lut_uv, 1.0)).ba;
+	out_spec *= F_area(f0, brdf_lut_lights.xy);
 #endif
 
 #ifdef CLOSURE_CLEARCOAT
-	vec3 brdf_lut_lamps_clear = texture(utilTex, vec3(lut_uv_clear, 1.0)).rgb;
-	out_spec_clear *= F_area(vec3(0.04), brdf_lut_lamps_clear.xy) * brdf_lut_lamps_clear.z;
+	vec2 brdf_lut_lights_clear = texture(utilTex, vec3(lut_uv_clear, 1.0)).ba;
+	out_spec_clear *= F_area(vec3(0.04), brdf_lut_lights_clear.xy);
 	out_spec += out_spec_clear * C_intensity;
 #endif
 
@@ -330,37 +336,55 @@ void CLOSURE_NAME(
 	/* ---------------------------- */
 #if defined(CLOSURE_GLOSSY) || defined(CLOSURE_REFRACTION)
 
-	#ifdef CLOSURE_REFRACTION
-		#define ACCUM refr_accum
+	#if defined(CLOSURE_GLOSSY) && defined(CLOSURE_REFRACTION)
+		#define GLASS_ACCUM 1
+		#define ACCUM min(refr_accum.a, spec_accum.a)
+	#elif defined(CLOSURE_REFRACTION)
+		#define GLASS_ACCUM 0
+		#define ACCUM refr_accum.a
 	#else
-		#define ACCUM spec_accum
+		#define GLASS_ACCUM 0
+		#define ACCUM spec_accum.a
 	#endif
 
 	/* Starts at 1 because 0 is world probe */
-	for (int i = 1; ACCUM.a < 0.999 && i < prbNumRenderCube && i < MAX_PROBE; ++i) {
+	for (int i = 1; ACCUM < 0.999 && i < prbNumRenderCube && i < MAX_PROBE; ++i) {
 		float fade = probe_attenuation_cube(i, worldPosition);
 
 		if (fade > 0.0) {
 
-	#ifdef CLOSURE_GLOSSY
-			if (!(ssrToggle && ssr_id == outputSsrId)) {
-				vec3 spec = probe_evaluate_cube(i, worldPosition, spec_dir, roughness);
-				accumulate_light(spec, fade, spec_accum);
+	#if GLASS_ACCUM
+			if (spec_accum.a < 0.999) {
+	#endif
+		#ifdef CLOSURE_GLOSSY
+				if (!(ssrToggle && ssr_id == outputSsrId)) {
+					vec3 spec = probe_evaluate_cube(i, worldPosition, spec_dir, roughness);
+					accumulate_light(spec, fade, spec_accum);
+				}
+		#endif
+
+		#ifdef CLOSURE_CLEARCOAT
+				vec3 C_spec = probe_evaluate_cube(i, worldPosition, C_spec_dir, C_roughness);
+				accumulate_light(C_spec, fade, C_spec_accum);
+		#endif
+	#if GLASS_ACCUM
 			}
 	#endif
 
-	#ifdef CLOSURE_CLEARCOAT
-			vec3 C_spec = probe_evaluate_cube(i, worldPosition, C_spec_dir, C_roughness);
-			accumulate_light(C_spec, fade, C_spec_accum);
+	#if GLASS_ACCUM
+			if (refr_accum.a < 0.999) {
 	#endif
-
-	#ifdef CLOSURE_REFRACTION
-			vec3 trans = probe_evaluate_cube(i, refr_pos, refr_dir, roughnessSquared);
-			accumulate_light(trans, fade, refr_accum);
+		#ifdef CLOSURE_REFRACTION
+				vec3 trans = probe_evaluate_cube(i, refr_pos, refr_dir, roughnessSquared);
+				accumulate_light(trans, fade, refr_accum);
+		#endif
+	#if GLASS_ACCUM
+			}
 	#endif
 		}
 	}
 
+	#undef GLASS_ACCUM
 	#undef ACCUM
 
 	/* ---------------------------- */

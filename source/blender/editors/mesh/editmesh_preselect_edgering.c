@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/mesh/editmesh_preselect_edgering.c
- *  \ingroup edmesh
+/** \file
+ * \ingroup edmesh
  */
 
 #include "MEM_guardedalloc.h"
@@ -34,6 +30,8 @@
 #include "GPU_state.h"
 
 #include "ED_mesh.h"
+
+#include "UI_resources.h"
 
 /* -------------------------------------------------------------------- */
 /** \name Mesh Edge Ring Pre-Select
@@ -174,7 +172,7 @@ void EDBM_preselect_edgering_draw(
 	uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
 
 	immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-	immUniformColor3ub(255, 0, 255);
+	immUniformThemeColor3(TH_GIZMO_PRIMARY);
 
 	if (psel->edges_len > 0) {
 		immBegin(GPU_PRIM_LINES, psel->edges_len * 2);

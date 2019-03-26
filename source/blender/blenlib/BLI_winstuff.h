@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,20 +15,14 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BLI_WINSTUFF_H__
 #define __BLI_WINSTUFF_H__
 
-/** \file BLI_winstuff.h
- *  \ingroup bli
- *  \brief Compatibility-like things for windows.
+/** \file
+ * \ingroup bli
+ * \brief Compatibility-like things for windows.
  */
 
 #ifndef _WIN32
@@ -58,9 +50,6 @@
 #undef rect
 #undef rct1
 #undef rct2
-
-#define near clipsta
-#define far clipend
 
 #undef small
 

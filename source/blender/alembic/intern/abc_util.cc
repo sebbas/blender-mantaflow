@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,10 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Esteban Tovagliari, Cedric Paille, Kevin Dietrich
- *
- * ***** END GPL LICENSE BLOCK *****
+ */
+
+/** \file
+ * \ingroup balembic
  */
 
 #include "abc_util.h"
@@ -62,13 +60,13 @@ std::string get_id_name(const ID * const id)
 }
 
 /**
- * @brief get_object_dag_path_name returns the name under which the object
+ * \brief get_object_dag_path_name returns the name under which the object
  *  will be exported in the Alembic file. It is of the form
  *  "[../grandparent/]parent/object" if dupli_parent is NULL, or
  *  "dupli_parent/[../grandparent/]parent/object" otherwise.
- * @param ob
- * @param dupli_parent
- * @return
+ * \param ob:
+ * \param dupli_parent:
+ * \return
  */
 std::string get_object_dag_path_name(const Object * const ob, Object *dupli_parent)
 {

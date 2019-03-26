@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,13 @@
  *
  * The Original Code is Copyright (C) 2014 by Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Bastien Montagne.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/data_transfer.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
+
+#include "CLG_log.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -37,12 +31,10 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BLI_array.h"
 #include "BLI_math.h"
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
 #include "BKE_customdata.h"
 #include "BKE_data_transfer.h"
 #include "BKE_deform.h"
@@ -50,19 +42,18 @@
 #include "BKE_mesh_mapping.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_mesh_remap.h"
+#include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_object_deform.h"
 #include "BKE_report.h"
 
 #include "data_transfer_intern.h"
 
+static CLG_LogRef LOG = {"bke.data_transfer"};
 
-CustomDataMask BKE_object_data_transfer_dttypes_to_cdmask(const int dtdata_types)
+void BKE_object_data_transfer_dttypes_to_cdmask(const int dtdata_types, CustomData_MeshMasks *r_data_masks)
 {
-	CustomDataMask cddata_mask = 0;
-	int i;
-
-	for (i = 0; i < DT_TYPE_MAX; i++) {
+	for (int i = 0; i < DT_TYPE_MAX; i++) {
 		const int dtdata_type = 1 << i;
 		int cddata_type;
 
@@ -72,20 +63,30 @@ CustomDataMask BKE_object_data_transfer_dttypes_to_cdmask(const int dtdata_types
 
 		cddata_type = BKE_object_data_transfer_dttype_to_cdtype(dtdata_type);
 		if (!(cddata_type & CD_FAKE)) {
-			cddata_mask |= 1LL << cddata_type;
+			if (DT_DATATYPE_IS_VERT(dtdata_type)) {
+				r_data_masks->vmask |= 1LL << cddata_type;
+			}
+			else if (DT_DATATYPE_IS_EDGE(dtdata_type)) {
+				r_data_masks->emask |= 1LL << cddata_type;
+			}
+			else if (DT_DATATYPE_IS_LOOP(dtdata_type)) {
+				r_data_masks->lmask |= 1LL << cddata_type;
+			}
+			else if (DT_DATATYPE_IS_POLY(dtdata_type)) {
+				r_data_masks->pmask |= 1LL << cddata_type;
+			}
 		}
 		else if (cddata_type == CD_FAKE_MDEFORMVERT) {
-			cddata_mask |= CD_MASK_MDEFORMVERT;  /* Exception for vgroups :/ */
+			r_data_masks->vmask |= CD_MASK_MDEFORMVERT;  /* Exception for vgroups :/ */
 		}
 		else if (cddata_type == CD_FAKE_UV) {
-			cddata_mask |= CD_MASK_MLOOPUV;
+			r_data_masks->lmask |= CD_MASK_MLOOPUV;
 		}
 		else if (cddata_type == CD_FAKE_LNOR) {
-			cddata_mask |= CD_MASK_NORMAL | CD_MASK_CUSTOMLOOPNORMAL;
+			r_data_masks->vmask |= CD_MASK_NORMAL;
+			r_data_masks->lmask |= CD_MASK_NORMAL | CD_MASK_CUSTOMLOOPNORMAL;
 		}
 	}
-
-	return cddata_mask;
 }
 
 /* Check what can do each layer type (if it is actually handled by transferdata, if it supports advanced mixing... */
@@ -274,7 +275,10 @@ static void data_transfer_dtdata_type_preprocess(
 		const bool use_split_nors_dst = (me_dst->flag & ME_AUTOSMOOTH) != 0;
 		const float split_angle_dst = me_dst->smoothresh;
 
-		BKE_mesh_calc_normals_split(me_src);
+		/* This should be ensured by cddata_masks we pass to code generating/giving us me_src now. */
+		BLI_assert(CustomData_get_layer(&me_src->ldata, CD_NORMAL) != NULL);
+		BLI_assert(CustomData_get_layer(&me_src->pdata, CD_NORMAL) != NULL);
+		(void)me_src;
 
 		float (*poly_nors_dst)[3];
 		float (*loop_nors_dst)[3];
@@ -509,12 +513,15 @@ static bool data_transfer_layersmapping_cdlayers_multisrc_to_dst(
 			idx_src++;
 
 			if (idx_dst < idx_src) {
-				if (!use_create) {
-					return true;
+				if (use_create) {
+					/* Create as much data layers as necessary! */
+					for (; idx_dst < idx_src; idx_dst++) {
+						CustomData_add_layer(cd_dst, cddata_type, CD_CALLOC, NULL, num_elem_dst);
+					}
 				}
-				/* Create as much data layers as necessary! */
-				for (; idx_dst < idx_src; idx_dst++) {
-					CustomData_add_layer(cd_dst, cddata_type, CD_CALLOC, NULL, num_elem_dst);
+				else {
+					/* Otherwise, just try to map what we can with existing dst data layers. */
+					idx_src = idx_dst;
 				}
 			}
 			else if (use_delete && idx_dst > idx_src) {
@@ -559,14 +566,14 @@ static bool data_transfer_layersmapping_cdlayers_multisrc_to_dst(
 				data_src = CustomData_get_layer_n(cd_src, cddata_type, idx_src);
 
 				if ((idx_dst = CustomData_get_named_layer(cd_dst, cddata_type, name)) == -1) {
-					if (!use_create) {
-						if (r_map) {
-							BLI_freelistN(r_map);
-						}
-						return true;
+					if (use_create) {
+						CustomData_add_layer_named(cd_dst, cddata_type, CD_CALLOC, NULL, num_elem_dst, name);
+						idx_dst = CustomData_get_named_layer(cd_dst, cddata_type, name);
 					}
-					CustomData_add_layer_named(cd_dst, cddata_type, CD_CALLOC, NULL, num_elem_dst, name);
-					idx_dst = CustomData_get_named_layer(cd_dst, cddata_type, name);
+					else {
+						/* If we are not allowed to create missing dst data layers, just skip matching src one. */
+						continue;
+					}
 				}
 				else if (data_dst_to_delete) {
 					data_dst_to_delete[idx_dst] = false;
@@ -993,15 +1000,15 @@ void BKE_object_data_transfer_layout(
 
 	const bool use_create = true;  /* We always create needed layers here. */
 
-	CustomDataMask me_src_mask = CD_MASK_BAREMESH;
+	CustomData_MeshMasks me_src_mask = CD_MASK_BAREMESH;
 
 	BLI_assert((ob_src != ob_dst) && (ob_src->type == OB_MESH) && (ob_dst->type == OB_MESH));
 
 	me_dst = ob_dst->data;
 
 	/* Get source evaluated mesh.*/
-	me_src_mask |= BKE_object_data_transfer_dttypes_to_cdmask(data_types);
-	me_src = mesh_get_eval_final(depsgraph, scene, ob_src, me_src_mask);
+	BKE_object_data_transfer_dttypes_to_cdmask(data_types, &me_src_mask);
+	me_src = mesh_get_eval_final(depsgraph, scene, ob_src, &me_src_mask);
 	if (!me_src) {
 		return;
 	}
@@ -1087,10 +1094,11 @@ bool BKE_object_data_transfer_ex(
 	bool geom_map_init[DATAMAX] = {0};
 	ListBase lay_map = {NULL};
 	bool changed = false;
+	bool is_modifier = false;
 
 	const bool use_delete = false;  /* We never delete data layers from destination here. */
 
-	CustomDataMask me_src_mask = CD_MASK_BAREMESH;
+	CustomData_MeshMasks me_src_mask = CD_MASK_BAREMESH;
 
 	BLI_assert((ob_src != ob_dst) && (ob_src->type == OB_MESH) && (ob_dst->type == OB_MESH));
 
@@ -1099,6 +1107,7 @@ bool BKE_object_data_transfer_ex(
 		/* Never create needed custom layers on passed destination mesh
 		 * (assumed to *not* be ob_dst->data, aka modifier case). */
 		use_create = false;
+		is_modifier = true;
 	}
 	else {
 		me_dst = ob_dst->data;
@@ -1112,8 +1121,20 @@ bool BKE_object_data_transfer_ex(
 	}
 
 	/* Get source evaluated mesh.*/
-	me_src_mask |= BKE_object_data_transfer_dttypes_to_cdmask(data_types);
-	me_src = mesh_get_eval_final(depsgraph, scene, ob_src, me_src_mask);
+	BKE_object_data_transfer_dttypes_to_cdmask(data_types, &me_src_mask);
+	BKE_mesh_remap_calc_source_cddata_masks_from_map_modes(
+	            map_vert_mode, map_edge_mode, map_loop_mode, map_poly_mode, &me_src_mask);
+	if (is_modifier) {
+		me_src = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_src, false);
+
+		if (me_src == NULL || !CustomData_MeshMasks_are_matching(&ob_src->runtime.last_data_mask, &me_src_mask)) {
+			CLOG_WARN(&LOG, "Data Transfer: source mesh data is not ready - dependency cycle?");
+			return changed;
+		}
+	}
+	else {
+		me_src = mesh_get_eval_final(depsgraph, scene, ob_src, &me_src_mask);
+	}
 	if (!me_src) {
 		return changed;
 	}

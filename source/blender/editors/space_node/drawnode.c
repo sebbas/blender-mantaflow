@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,11 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): David Millan Escriva, Juho Vepsäläinen, Bob Holcomb, Thomas Dinges
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_node/drawnode.c
- *  \ingroup spnode
- *  \brief lower level node drawing for nodes (boarders, headers etc), also node layout.
+/** \file
+ * \ingroup spnode
+ * \brief lower level node drawing for nodes (boarders, headers etc), also node layout.
  */
 
 #include "BLI_blenlib.h"
@@ -123,8 +115,9 @@ static void node_buts_mix_rgb(uiLayout *layout, bContext *UNUSED(C), PointerRNA 
 	col = uiLayoutColumn(layout, false);
 	row = uiLayoutRow(col, true);
 	uiItemR(row, ptr, "blend_type", 0, "", ICON_NONE);
-	if (ELEM(ntree->type, NTREE_COMPOSIT, NTREE_TEXTURE))
+	if (ELEM(ntree->type, NTREE_COMPOSIT, NTREE_TEXTURE)) {
 		uiItemR(row, ptr, "use_alpha", 0, "", ICON_IMAGE_RGB_ALPHA);
+	}
 
 	uiItemR(col, ptr, "use_clamp", 0, NULL, ICON_NONE);
 }
@@ -162,7 +155,8 @@ static void node_buts_curvevec(uiLayout *layout, bContext *UNUSED(C), PointerRNA
 }
 
 #define SAMPLE_FLT_ISNONE FLT_MAX
-static float _sample_col[4] = {SAMPLE_FLT_ISNONE};  /* bad bad, 2.5 will do better?... no it won't... */
+/* bad bad, 2.5 will do better?... no it won't... */
+static float _sample_col[4] = {SAMPLE_FLT_ISNONE};
 void ED_node_sample_set(const float col[4])
 {
 	if (col) {
@@ -264,20 +258,24 @@ static int node_resize_area_default(bNode *node, int x, int y)
 		rctf totr = node->totr;
 		/* right part of node */
 		totr.xmin = node->totr.xmax - 20.0f;
-		if (BLI_rctf_isect_pt(&totr, x, y))
+		if (BLI_rctf_isect_pt(&totr, x, y)) {
 			return NODE_RESIZE_RIGHT;
-		else
+		}
+		else {
 			return 0;
+		}
 	}
 	else {
-		const float size = 10.0f;
+		const float size = NODE_RESIZE_MARGIN;
 		rctf totr = node->totr;
 		int dir = 0;
 
-		if (x >= totr.xmax - size && x < totr.xmax && y >= totr.ymin && y < totr.ymax)
+		if (x >= totr.xmax - size && x < totr.xmax && y >= totr.ymin && y < totr.ymax) {
 			dir |= NODE_RESIZE_RIGHT;
-		if (x >= totr.xmin && x < totr.xmin + size && y >= totr.ymin && y < totr.ymax)
+		}
+		if (x >= totr.xmin && x < totr.xmin + size && y >= totr.ymin && y < totr.ymax) {
 			dir |= NODE_RESIZE_LEFT;
+		}
 		return dir;
 	}
 }
@@ -313,8 +311,9 @@ static void node_draw_frame_prepare(const bContext *UNUSED(C), bNodeTree *ntree,
 	bbinit = (data->flag & NODE_FRAME_SHRINK);
 	/* fit bounding box to all children */
 	for (tnode = ntree->nodes.first; tnode; tnode = tnode->next) {
-		if (tnode->parent != node)
+		if (tnode->parent != node) {
 			continue;
+		}
 
 		/* add margin to node rect */
 		noderect = tnode->totr;
@@ -329,8 +328,9 @@ static void node_draw_frame_prepare(const bContext *UNUSED(C), bNodeTree *ntree,
 			rect = noderect;
 			data->flag &= ~NODE_FRAME_RESIZEABLE;
 		}
-		else
+		else {
 			BLI_rctf_union(&rect, &noderect);
+		}
 	}
 
 	/* now adjust the frame size from view-space bounding box */
@@ -362,7 +362,8 @@ static void node_draw_frame_label(bNodeTree *ntree, bNode *node, const float asp
 
 	BLF_enable(fontid, BLF_ASPECT);
 	BLF_aspect(fontid, aspect, aspect, 1.0f);
-	BLF_size(fontid, MIN2(24, font_size), U.dpi); /* clamp otherwise it can suck up a LOT of memory */
+	/* clamp otherwise it can suck up a LOT of memory */
+	BLF_size(fontid, MIN2(24, font_size), U.dpi);
 
 	/* title color */
 	UI_GetThemeColorBlendShade3ubv(TH_TEXT, color_id, 0.4f, 10, color);
@@ -451,18 +452,21 @@ static void node_draw_frame(const bContext *C, ARegion *ar, SpaceNode *snode,
 	if (node->flag & NODE_CUSTOM_COLOR) {
 		rgba_float_args_set(color, node->color[0], node->color[1], node->color[2], alpha);
 	}
-	else
+	else {
 		UI_GetThemeColor4fv(TH_NODE_FRAME, color);
+	}
 
 	UI_draw_roundbox_corner_set(UI_CNR_ALL);
 	UI_draw_roundbox_aa(true, rct->xmin, rct->ymin, rct->xmax, rct->ymax, BASIS_RAD, color);
 
 	/* outline active and selected emphasis */
 	if (node->flag & SELECT) {
-		if (node->flag & NODE_ACTIVE)
+		if (node->flag & NODE_ACTIVE) {
 			UI_GetThemeColorShadeAlpha4fv(TH_ACTIVE, 0, -40, color);
-		else
+		}
+		else {
 			UI_GetThemeColorShadeAlpha4fv(TH_SELECT, 0, -40, color);
+		}
 
 		UI_draw_roundbox_aa(false, rct->xmin, rct->ymin, rct->xmax, rct->ymax, BASIS_RAD, color);
 	}
@@ -485,17 +489,22 @@ static int node_resize_area_frame(bNode *node, int x, int y)
 	int dir = 0;
 
 	/* shrinking frame size is determined by child nodes */
-	if (!(data->flag & NODE_FRAME_RESIZEABLE))
+	if (!(data->flag & NODE_FRAME_RESIZEABLE)) {
 		return 0;
+	}
 
-	if (x >= totr.xmax - size && x < totr.xmax && y >= totr.ymin && y < totr.ymax)
+	if (x >= totr.xmax - size && x < totr.xmax && y >= totr.ymin && y < totr.ymax) {
 		dir |= NODE_RESIZE_RIGHT;
-	if (x >= totr.xmin && x < totr.xmin + size && y >= totr.ymin && y < totr.ymax)
+	}
+	if (x >= totr.xmin && x < totr.xmin + size && y >= totr.ymin && y < totr.ymax) {
 		dir |= NODE_RESIZE_LEFT;
-	if (x >= totr.xmin && x < totr.xmax && y >= totr.ymax - size && y < totr.ymax)
+	}
+	if (x >= totr.xmin && x < totr.xmax && y >= totr.ymax - size && y < totr.ymax) {
 		dir |= NODE_RESIZE_TOP;
-	if (x >= totr.xmin && x < totr.xmax && y >= totr.ymin && y < totr.ymin + size)
+	}
+	if (x >= totr.xmin && x < totr.xmax && y >= totr.ymin && y < totr.ymin + size) {
 		dir |= NODE_RESIZE_BOTTOM;
+	}
 
 	return dir;
 }
@@ -642,8 +651,9 @@ static void node_buts_image_user(uiLayout *layout, bContext *C, PointerRNA *ptr,
 	uiLayout *col;
 	int source;
 
-	if (!imaptr->data)
+	if (!imaptr->data) {
 		return;
+	}
 
 	col = uiLayoutColumn(layout, false);
 
@@ -652,7 +662,8 @@ static void node_buts_image_user(uiLayout *layout, bContext *C, PointerRNA *ptr,
 	source = RNA_enum_get(imaptr, "source");
 
 	if (source == IMA_SRC_SEQUENCE) {
-		/* don't use iuser->framenr directly because it may not be updated if auto-refresh is off */
+		/* don't use iuser->framenr directly
+		 * because it may not be updated if auto-refresh is off */
 		Scene *scene = CTX_data_scene(C);
 		ImageUser *iuser = iuserptr->data;
 		/* Image *ima = imaptr->data; */  /* UNUSED */
@@ -795,8 +806,9 @@ static void node_shader_buts_tex_environment_ex(uiLayout *layout, bContext *C, P
 	        layout, C, ptr, "image",
 	        "IMAGE_OT_new", "IMAGE_OT_open", NULL, UI_TEMPLATE_ID_FILTER_ALL, false);
 
-	if (!ima)
+	if (!ima) {
 		return;
+	}
 
 	uiItemR(layout, &imaptr, "source", 0, IFACE_("Source"), ICON_NONE);
 
@@ -804,10 +816,12 @@ static void node_shader_buts_tex_environment_ex(uiLayout *layout, bContext *C, P
 		uiLayout *row = uiLayoutRow(layout, true);
 		const bool is_packed = BKE_image_has_packedfile(ima);
 
-		if (is_packed)
+		if (is_packed) {
 			uiItemO(row, "", ICON_PACKAGE, "image.unpack");
-		else
+		}
+		else {
 			uiItemO(row, "", ICON_UGLYPACKAGE, "image.pack");
+		}
 
 		row = uiLayoutRow(row, true);
 		uiLayoutSetEnabled(row, !is_packed);
@@ -834,8 +848,9 @@ static void node_shader_buts_tex_sky(uiLayout *layout, bContext *UNUSED(C), Poin
 	uiItemR(layout, ptr, "sun_direction", 0, "", ICON_NONE);
 	uiItemR(layout, ptr, "turbidity", 0, NULL, ICON_NONE);
 
-	if (RNA_enum_get(ptr, "sky_type") == SHD_SKY_NEW)
+	if (RNA_enum_get(ptr, "sky_type") == SHD_SKY_NEW) {
 		uiItemR(layout, ptr, "ground_albedo", 0, NULL, ICON_NONE);
+	}
 }
 
 static void node_shader_buts_tex_gradient(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
@@ -908,12 +923,14 @@ static void node_shader_buts_tex_pointdensity(uiLayout *layout, bContext *UNUSED
 	else {
 		uiItemR(layout, ptr, "vertex_color_source", 0, NULL, ICON_NONE);
 		if (shader_point_density->ob_color_source == SHD_POINTDENSITY_COLOR_VERTWEIGHT) {
-			if (ob_ptr.data)
+			if (ob_ptr.data) {
 				uiItemPointerR(layout, ptr, "vertex_attribute_name", &ob_ptr, "vertex_groups", "", ICON_NONE);
+			}
 		}
 		if (shader_point_density->ob_color_source == SHD_POINTDENSITY_COLOR_VERTCOL) {
-			if (obdata_ptr.data)
+			if (obdata_ptr.data) {
 				uiItemPointerR(layout, ptr, "vertex_attribute_name", &obdata_ptr, "vertex_colors", "", ICON_NONE);
+			}
 		}
 	}
 }
@@ -921,7 +938,7 @@ static void node_shader_buts_tex_pointdensity(uiLayout *layout, bContext *UNUSED
 static void node_shader_buts_tex_coord(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
 {
 	uiItemR(layout, ptr, "object", 0, NULL, 0);
-	uiItemR(layout, ptr, "from_dupli", 0, NULL, 0);
+	uiItemR(layout, ptr, "from_instancer", 0, NULL, 0);
 }
 
 static void node_shader_buts_bump(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
@@ -931,9 +948,9 @@ static void node_shader_buts_bump(uiLayout *layout, bContext *UNUSED(C), Pointer
 
 static void node_shader_buts_uvmap(uiLayout *layout, bContext *C, PointerRNA *ptr)
 {
-	uiItemR(layout, ptr, "from_dupli", 0, NULL, 0);
+	uiItemR(layout, ptr, "from_instancer", 0, NULL, 0);
 
-	if (!RNA_boolean_get(ptr, "from_dupli")) {
+	if (!RNA_boolean_get(ptr, "from_instancer")) {
 		PointerRNA obptr = CTX_data_pointer_get(C, "active_object");
 
 		if (obptr.data && RNA_enum_get(&obptr, "type") == OB_MESH) {
@@ -959,8 +976,9 @@ static void node_shader_buts_normal_map(uiLayout *layout, bContext *C, PointerRN
 			PointerRNA dataptr = RNA_pointer_get(&obptr, "data");
 			uiItemPointerR(layout, ptr, "uv_map", &dataptr, "uv_layers", "", ICON_NONE);
 		}
-		else
+		else {
 			uiItemR(layout, ptr, "uv_map", 0, "", 0);
+		}
 	}
 }
 
@@ -986,11 +1004,13 @@ static void node_shader_buts_tangent(uiLayout *layout, bContext *C, PointerRNA *
 			PointerRNA dataptr = RNA_pointer_get(&obptr, "data");
 			uiItemPointerR(row, ptr, "uv_map", &dataptr, "uv_layers", "", ICON_NONE);
 		}
-		else
+		else {
 			uiItemR(row, ptr, "uv_map", 0, "", 0);
+		}
 	}
-	else
+	else {
 		uiItemR(row, ptr, "axis", UI_ITEM_R_EXPAND, NULL, 0);
+	}
 }
 
 static void node_shader_buts_glossy(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
@@ -1039,10 +1059,12 @@ static void node_shader_buts_ies(uiLayout *layout, bContext *UNUSED(C), PointerR
 
 	row = uiLayoutRow(layout, true);
 
-	if (RNA_enum_get(ptr, "mode") == NODE_IES_INTERNAL)
+	if (RNA_enum_get(ptr, "mode") == NODE_IES_INTERNAL) {
 		uiItemR(row, ptr, "ies", 0, "", ICON_NONE);
-	else
+	}
+	else {
 		uiItemR(row, ptr, "filepath", 0, "", ICON_NONE);
+	}
 }
 
 static void node_shader_buts_script(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
@@ -1054,10 +1076,12 @@ static void node_shader_buts_script(uiLayout *layout, bContext *UNUSED(C), Point
 
 	row = uiLayoutRow(layout, true);
 
-	if (RNA_enum_get(ptr, "mode") == NODE_SCRIPT_INTERNAL)
+	if (RNA_enum_get(ptr, "mode") == NODE_SCRIPT_INTERNAL) {
 		uiItemR(row, ptr, "script", 0, "", ICON_NONE);
-	else
+	}
+	else {
 		uiItemR(row, ptr, "filepath", 0, "", ICON_NONE);
+	}
 
 	uiItemO(row, "", ICON_FILE_REFRESH, "node.shader_script_update");
 }
@@ -1252,16 +1276,19 @@ static void node_buts_image_views(uiLayout *layout, bContext *UNUSED(C), Pointer
 {
 	uiLayout *col;
 
-	if (!imaptr->data)
+	if (!imaptr->data) {
 		return;
+	}
 
 	col = uiLayoutColumn(layout, false);
 
 	if (RNA_boolean_get(ptr, "has_views")) {
-		if (RNA_enum_get(ptr, "view") == 0)
+		if (RNA_enum_get(ptr, "view") == 0) {
 			uiItemR(col, ptr, "view", 0, NULL, ICON_CAMERA_STEREO);
-		else
+		}
+		else {
 			uiItemR(col, ptr, "view", 0, NULL, ICON_SCENE);
+		}
 	}
 }
 
@@ -1275,7 +1302,9 @@ static void node_composit_buts_image(uiLayout *layout, bContext *C, PointerRNA *
 	uiTemplateID(
 	        layout, C, ptr, "image",
 	        "IMAGE_OT_new", "IMAGE_OT_open", NULL, UI_TEMPLATE_ID_FILTER_ALL, false);
-	if (!node->id) return;
+	if (!node->id) {
+		return;
+	}
 
 	imaptr = RNA_pointer_get(ptr, "image");
 
@@ -1306,15 +1335,18 @@ static void node_composit_buts_viewlayers(uiLayout *layout, bContext *C, Pointer
 
 	uiTemplateID(layout, C, ptr, "scene", NULL, NULL, NULL, UI_TEMPLATE_ID_FILTER_ALL, false);
 
-	if (!node->id) return;
+	if (!node->id) {
+		return;
+	}
 
 	col = uiLayoutColumn(layout, false);
 	row = uiLayoutRow(col, true);
 	uiItemR(row, ptr, "layer", 0, "", ICON_NONE);
 
 	prop = RNA_struct_find_property(ptr, "layer");
-	if (!(RNA_property_enum_identifier(C, ptr, prop, RNA_property_enum_get(ptr, prop), &layer_name)))
+	if (!(RNA_property_enum_identifier(C, ptr, prop, RNA_property_enum_get(ptr, prop), &layer_name))) {
 		return;
+	}
 
 	scn_ptr = RNA_pointer_get(ptr, "scene");
 	RNA_string_get(&scn_ptr, "name", scene_name);
@@ -1436,8 +1468,9 @@ static void node_composit_buts_glare(uiLayout *layout, bContext *UNUSED(C), Poin
 	if (RNA_enum_get(ptr, "glare_type") != 1) {
 		uiItemR(layout, ptr, "iterations", 0, NULL, ICON_NONE);
 
-		if (RNA_enum_get(ptr, "glare_type") != 0)
+		if (RNA_enum_get(ptr, "glare_type") != 0) {
 			uiItemR(layout, ptr, "color_modulation", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+		}
 	}
 
 	uiItemR(layout, ptr, "mix", 0, NULL, ICON_NONE);
@@ -1450,8 +1483,9 @@ static void node_composit_buts_glare(uiLayout *layout, bContext *UNUSED(C), Poin
 	if (RNA_enum_get(ptr, "glare_type") == 0 || RNA_enum_get(ptr, "glare_type") == 2) {
 		uiItemR(layout, ptr, "fade", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
 
-		if (RNA_enum_get(ptr, "glare_type") == 0)
+		if (RNA_enum_get(ptr, "glare_type") == 0) {
 			uiItemR(layout, ptr, "use_rotate_45", 0, NULL, ICON_NONE);
+		}
 	}
 	if (RNA_enum_get(ptr, "glare_type") == 1) {
 		uiItemR(layout, ptr, "size", 0, NULL, ICON_NONE);
@@ -1759,10 +1793,12 @@ static void node_composit_buts_file_output(uiLayout *layout, bContext *UNUSED(C)
 	PointerRNA imfptr = RNA_pointer_get(ptr, "format");
 	const bool multilayer = RNA_enum_get(&imfptr, "file_format") == R_IMF_IMTYPE_MULTILAYER;
 
-	if (multilayer)
+	if (multilayer) {
 		uiItemL(layout, IFACE_("Path:"), ICON_NONE);
-	else
+	}
+	else {
 		uiItemL(layout, IFACE_("Base Path:"), ICON_NONE);
+	}
 	uiItemR(layout, ptr, "base_path", 0, "", ICON_NONE);
 }
 static void node_composit_buts_file_output_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
@@ -1781,8 +1817,9 @@ static void node_composit_buts_file_output_ex(uiLayout *layout, bContext *C, Poi
 
 	/* disable stereo output for multilayer, too much work for something that no one will use */
 	/* if someone asks for that we can implement it */
-	if (is_multiview)
+	if (is_multiview) {
 		uiTemplateImageFormatViews(layout, &imfptr, NULL);
+	}
 
 	uiItemS(layout);
 
@@ -1795,17 +1832,18 @@ static void node_composit_buts_file_output_ex(uiLayout *layout, bContext *C, Poi
 	/* using different collection properties if multilayer format is enabled */
 	if (multilayer) {
 		uiTemplateList(col, C, "UI_UL_list", "file_output_node", ptr, "layer_slots", ptr, "active_input_index",
-		               NULL, 0, 0, 0, 0, false);
+		               NULL, 0, 0, 0, 0, false, false);
 		RNA_property_collection_lookup_int(ptr, RNA_struct_find_property(ptr, "layer_slots"),
 		                                   active_index, &active_input_ptr);
 	}
 	else {
 		uiTemplateList(col, C, "UI_UL_list", "file_output_node", ptr, "file_slots", ptr, "active_input_index",
-		               NULL, 0, 0, 0, 0, false);
+		               NULL, 0, 0, 0, 0, false, false);
 		RNA_property_collection_lookup_int(ptr, RNA_struct_find_property(ptr, "file_slots"),
 		                                   active_index, &active_input_ptr);
 	}
-	/* XXX collection lookup does not return the ID part of the pointer, setting this manually here */
+	/* XXX collection lookup does not return the ID part of the pointer,
+	 * setting this manually here */
 	active_input_ptr.id.data = ptr->id.data;
 
 	col = uiLayoutColumn(row, true);
@@ -1845,8 +1883,9 @@ static void node_composit_buts_file_output_ex(uiLayout *layout, bContext *C, Poi
 			uiLayoutSetActive(col, RNA_boolean_get(&active_input_ptr, "use_node_format") == false);
 			uiTemplateImageSettings(col, &imfptr, false);
 
-			if (is_multiview)
+			if (is_multiview) {
 				uiTemplateImageFormatViews(layout, &imfptr, NULL);
+			}
 		}
 	}
 }
@@ -1995,8 +2034,9 @@ static void node_composit_buts_movieclip_ex(uiLayout *layout, bContext *C, Point
 
 	uiTemplateID(layout, C, ptr, "clip", NULL, "CLIP_OT_open", NULL, UI_TEMPLATE_ID_FILTER_ALL, false);
 
-	if (!node->id)
+	if (!node->id) {
 		return;
+	}
 
 	clipptr = RNA_pointer_get(ptr, "clip");
 
@@ -2009,8 +2049,9 @@ static void node_composit_buts_stabilize2d(uiLayout *layout, bContext *C, Pointe
 
 	uiTemplateID(layout, C, ptr, "clip", NULL, "CLIP_OT_open", NULL, UI_TEMPLATE_ID_FILTER_ALL, false);
 
-	if (!node->id)
+	if (!node->id) {
 		return;
+	}
 
 	uiItemR(layout, ptr, "filter_type", 0, "", ICON_NONE);
 	uiItemR(layout, ptr, "invert", 0, NULL, ICON_NONE);
@@ -2033,8 +2074,9 @@ static void node_composit_buts_moviedistortion(uiLayout *layout, bContext *C, Po
 
 	uiTemplateID(layout, C, ptr, "clip", NULL, "CLIP_OT_open", NULL, UI_TEMPLATE_ID_FILTER_ALL, false);
 
-	if (!node->id)
+	if (!node->id) {
 		return;
+	}
 
 	uiItemR(layout, ptr, "distortion_type", 0, "", ICON_NONE);
 }
@@ -2903,7 +2945,7 @@ static void node_texture_set_butfunc(bNodeType *ntype)
 	}
 }
 
-/* ******* init draw callbacks for all tree types, only called in usiblender.c, once ************* */
+/* ****** init draw callbacks for all tree types, only called in usiblender.c, once ************ */
 
 static void node_property_update_default(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
@@ -2917,8 +2959,9 @@ static void node_socket_template_properties_update(bNodeType *ntype, bNodeSocket
 	StructRNA *srna = ntype->ext.srna;
 	PropertyRNA *prop = RNA_struct_type_find_property(srna, stemp->identifier);
 
-	if (prop)
+	if (prop) {
 		RNA_def_property_update_runtime(prop, node_property_update_default);
+	}
 }
 
 static void node_template_properties_update(bNodeType *ntype)
@@ -2926,12 +2969,14 @@ static void node_template_properties_update(bNodeType *ntype)
 	bNodeSocketTemplate *stemp;
 
 	if (ntype->inputs) {
-		for (stemp = ntype->inputs; stemp->type >= 0; ++stemp)
+		for (stemp = ntype->inputs; stemp->type >= 0; ++stemp) {
 			node_socket_template_properties_update(ntype, stemp);
+		}
 	}
 	if (ntype->outputs) {
-		for (stemp = ntype->outputs; stemp->type >= 0; ++stemp)
+		for (stemp = ntype->outputs; stemp->type >= 0; ++stemp) {
 			node_socket_template_properties_update(ntype, stemp);
+		}
 	}
 }
 
@@ -2967,9 +3012,6 @@ void ED_node_init_butfuncs(void)
 	/* Fallback types for undefined tree, nodes, sockets
 	 * Defined in blenkernel, but not registered in type hashes.
 	 */
-	/*extern bNodeTreeType NodeTreeTypeUndefined;*/
-	extern bNodeType NodeTypeUndefined;
-	extern bNodeSocketType NodeSocketTypeUndefined;
 
 	/* default ui functions */
 	NodeTypeUndefined.draw_nodetype = node_draw_default;
@@ -2986,7 +3028,7 @@ void ED_node_init_butfuncs(void)
 	NodeSocketTypeUndefined.interface_draw_color = node_socket_undefined_interface_draw_color;
 
 	/* node type ui functions */
-	NODE_TYPES_BEGIN(ntype)
+	NODE_TYPES_BEGIN(ntype) {
 		/* default ui functions */
 		ntype->draw_nodetype = node_draw_default;
 		ntype->draw_nodetype_prepare = node_update_default;
@@ -3004,7 +3046,7 @@ void ED_node_init_butfuncs(void)
 
 		/* define update callbacks for socket properties */
 		node_template_properties_update(ntype);
-	NODE_TYPES_END
+	} NODE_TYPES_END;
 
 	/* tree type icons */
 	ntreeType_Composite->ui_icon = ICON_NODE_COMPOSITING;
@@ -3054,7 +3096,8 @@ static void std_node_socket_interface_draw_color(bContext *UNUSED(C), PointerRNA
 	copy_v4_v4(r_color, std_node_socket_colors[type]);
 }
 
-/* draw function for file output node sockets, displays only sub-path and format, no value button */
+/* draw function for file output node sockets,
+ * displays only sub-path and format, no value button */
 static void node_file_output_socket_draw(bContext *C, uiLayout *layout, PointerRNA *ptr, PointerRNA *node_ptr)
 {
 	bNodeTree *ntree = ptr->id.data;
@@ -3083,8 +3126,9 @@ static void node_file_output_socket_draw(bContext *C, uiLayout *layout, PointerR
 
 		uiItemL(row, input->path, ICON_NONE);
 
-		if (!RNA_boolean_get(&inputptr, "use_node_format"))
+		if (!RNA_boolean_get(&inputptr, "use_node_format")) {
 			imfptr = RNA_pointer_get(&inputptr, "format");
+		}
 
 		imtype_prop = RNA_struct_find_property(&imfptr, "file_format");
 		RNA_property_enum_name((bContext *)C, &imfptr, imtype_prop,
@@ -3212,11 +3256,13 @@ void draw_nodespace_back_pix(const bContext *C, ARegion *ar, SpaceNode *snode, b
 	void *lock;
 	ImBuf *ibuf;
 
-	if (!(snode->flag & SNODE_BACKDRAW) || !ED_node_is_compositor(snode))
+	if (!(snode->flag & SNODE_BACKDRAW) || !ED_node_is_compositor(snode)) {
 		return;
+	}
 
-	if (parent_key.value != active_viewer_key.value)
+	if (parent_key.value != active_viewer_key.value) {
 		return;
+	}
 
 	ima = BKE_image_verify_viewer(bmain, IMA_TYPE_COMPOSITE, "Viewer Node");
 	ibuf = BKE_image_acquire_ibuf(ima, NULL, &lock);
@@ -3240,17 +3286,21 @@ void draw_nodespace_back_pix(const bContext *C, ARegion *ar, SpaceNode *snode, b
 
 				display_buffer = IMB_display_buffer_acquire_ctx(C, ibuf, &cache_handle);
 
-				if (snode->flag & SNODE_SHOW_R)
+				if (snode->flag & SNODE_SHOW_R) {
 					shuffle[0] = 1.0f;
-				else if (snode->flag & SNODE_SHOW_G)
+				}
+				else if (snode->flag & SNODE_SHOW_G) {
 					shuffle[1] = 1.0f;
-				else if (snode->flag & SNODE_SHOW_B)
+				}
+				else if (snode->flag & SNODE_SHOW_B) {
 					shuffle[2] = 1.0f;
-				else
+				}
+				else {
 					shuffle[3] = 1.0f;
+				}
 
 				IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_2D_IMAGE_SHUFFLE_COLOR);
-				GPU_shader_uniform_vector(state.shader, GPU_shader_get_uniform(state.shader, "shuffle"), 4, 1, shuffle);
+				GPU_shader_uniform_vector(state.shader, GPU_shader_get_uniform_ensure(state.shader, "shuffle"), 4, 1, shuffle);
 
 				immDrawPixelsTex(&state, x, y, ibuf->x, ibuf->y, GL_RGBA, GL_UNSIGNED_BYTE, GL_NEAREST,
 				                 display_buffer, snode->zoom, snode->zoom, NULL);
@@ -3269,8 +3319,9 @@ void draw_nodespace_back_pix(const bContext *C, ARegion *ar, SpaceNode *snode, b
 				glaDrawImBuf_glsl_ctx(C, ibuf, x, y, GL_NEAREST, snode->zoom, snode->zoom);
 			}
 
-			if (cache_handle)
+			if (cache_handle) {
 				IMB_display_buffer_release(cache_handle);
+			}
 		}
 
 		/** \note draw selected info on backdrop */
@@ -3336,7 +3387,9 @@ static bool node_link_bezier_handles(View2D *v2d, SpaceNode *snode, bNodeLink *l
 		fromreroute = (link->fromnode && link->fromnode->type == NODE_REROUTE);
 	}
 	else {
-		if (snode == NULL) return 0;
+		if (snode == NULL) {
+			return 0;
+		}
 		copy_v2_v2(vec[0], cursor);
 		fromreroute = 0;
 	}
@@ -3346,7 +3399,9 @@ static bool node_link_bezier_handles(View2D *v2d, SpaceNode *snode, bNodeLink *l
 		toreroute = (link->tonode && link->tonode->type == NODE_REROUTE);
 	}
 	else {
-		if (snode == NULL) return 0;
+		if (snode == NULL) {
+			return 0;
+		}
 		copy_v2_v2(vec[3], cursor);
 		toreroute = 0;
 	}
@@ -3483,8 +3538,9 @@ static void nodelink_batch_init(void)
 		float exp[2] = {0.0f, 1.0f};
 
 		/* restart */
-		if (k == 1)
+		if (k == 1) {
 			set_nodelink_vertex(vbo, uv_id, pos_id, expand_id, v++, uv, pos, exp);
+		}
 
 		/* curve strip */
 		for (int i = 0; i < LINK_RESOL; ++i) {
@@ -3514,8 +3570,9 @@ static void nodelink_batch_init(void)
 		}
 
 		/* restart */
-		if (k == 0)
+		if (k == 0) {
 			set_nodelink_vertex(vbo, uv_id, pos_id, expand_id, v++, uv, pos, exp);
+		}
 	}
 
 	g_batch_link.batch = GPU_batch_create_ex(GPU_PRIM_TRI_STRIP, vbo, NULL, GPU_BATCH_OWNS_VBO);
@@ -3532,7 +3589,8 @@ static void nodelink_batch_init(void)
 	g_batch_link.p3_id = GPU_vertformat_attr_add(&format_inst, "P3", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 	g_batch_link.colid_id = GPU_vertformat_attr_add(&format_inst, "colid_doarrow", GPU_COMP_U8, 4, GPU_FETCH_INT);
 	g_batch_link.inst_vbo = GPU_vertbuf_create_with_format_ex(&format_inst, GPU_USAGE_STREAM);
-	GPU_vertbuf_data_alloc(g_batch_link.inst_vbo, NODELINK_GROUP_SIZE); /* Alloc max count but only draw the range we need. */
+	/* Alloc max count but only draw the range we need. */
+	GPU_vertbuf_data_alloc(g_batch_link.inst_vbo, NODELINK_GROUP_SIZE);
 
 	GPU_batch_instbuf_set(g_batch_link.batch, g_batch_link.inst_vbo, true);
 
@@ -3553,8 +3611,9 @@ static char nodelink_get_color_id(int th_col)
 
 static void nodelink_batch_draw(SpaceNode *snode)
 {
-	if (g_batch_link.count == 0)
+	if (g_batch_link.count == 0) {
 		return;
+	}
 
 	GPU_blend(true);
 
@@ -3565,7 +3624,7 @@ static void nodelink_batch_draw(SpaceNode *snode)
 	UI_GetThemeColor4fv(TH_EDGE_SELECT, colors[nodelink_get_color_id(TH_EDGE_SELECT)]);
 	UI_GetThemeColor4fv(TH_REDALERT,    colors[nodelink_get_color_id(TH_REDALERT)]);
 
-	GPU_vertbuf_vertex_count_set(g_batch_link.inst_vbo, g_batch_link.count);
+	GPU_vertbuf_data_len_set(g_batch_link.inst_vbo, g_batch_link.count);
 	GPU_vertbuf_use(g_batch_link.inst_vbo); /* force update. */
 
 	GPU_batch_program_set_builtin(g_batch_link.batch, GPU_SHADER_2D_NODELINK_INST);
@@ -3660,8 +3719,9 @@ void node_draw_link(View2D *v2d, SpaceNode *snode, bNodeLink *link)
 {
 	int th_col1 = TH_WIRE_INNER, th_col2 = TH_WIRE_INNER, th_col3 = TH_WIRE;
 
-	if (link->fromsock == NULL && link->tosock == NULL)
+	if (link->fromsock == NULL && link->tosock == NULL) {
 		return;
+	}
 
 	/* new connection */
 	if (!link->fromsock || !link->tosock) {
@@ -3669,10 +3729,12 @@ void node_draw_link(View2D *v2d, SpaceNode *snode, bNodeLink *link)
 	}
 	else {
 		/* going to give issues once... */
-		if (link->tosock->flag & SOCK_UNAVAIL)
+		if (link->tosock->flag & SOCK_UNAVAIL) {
 			return;
-		if (link->fromsock->flag & SOCK_UNAVAIL)
+		}
+		if (link->fromsock->flag & SOCK_UNAVAIL) {
 			return;
+		}
 
 		if (link->flag & NODE_LINK_VALID) {
 			/* special indicated link, on drop-node */
@@ -3681,10 +3743,12 @@ void node_draw_link(View2D *v2d, SpaceNode *snode, bNodeLink *link)
 			}
 			else {
 				/* regular link */
-				if (link->fromnode && link->fromnode->flag & SELECT)
+				if (link->fromnode && link->fromnode->flag & SELECT) {
 					th_col1 = TH_EDGE_SELECT;
-				if (link->tonode && link->tonode->flag & SELECT)
+				}
+				if (link->tonode && link->tonode->flag & SELECT) {
 					th_col2 = TH_EDGE_SELECT;
+				}
 			}
 		}
 		else {

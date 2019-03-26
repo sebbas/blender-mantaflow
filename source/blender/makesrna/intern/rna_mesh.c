@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,18 +12,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Foundation (2008).
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 /* note: the original vertex color stuff is now just used for
  * getting info on the layers themselves, accessing the data is
  * done through the (not yet written) mpoly interfaces.*/
 
-/** \file blender/makesrna/intern/rna_mesh.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 #include <stdlib.h>
@@ -53,7 +47,7 @@
 #include "WM_types.h"
 
 const EnumPropertyItem rna_enum_mesh_delimit_mode_items[] = {
-	{BMO_DELIM_NORMAL, "NORMAL", 0, "Normal", "Delimit by face directions"},
+	{BMO_DELIM_NORMAL, "NORMAL", 0, "Regular", "Delimit by face directions"},
 	{BMO_DELIM_MATERIAL, "MATERIAL", 0, "Material", "Delimit by face material"},
 	{BMO_DELIM_SEAM, "SEAM", 0, "Seam", "Delimit by edge seams"},
 	{BMO_DELIM_SHARP, "SHARP", 0, "Sharp", "Delimit by sharp edges"},
@@ -93,27 +87,27 @@ static Mesh *rna_mesh(PointerRNA *ptr)
 
 static CustomData *rna_mesh_vdata_helper(Mesh *me)
 {
-	return (me->edit_btmesh) ? &me->edit_btmesh->bm->vdata : &me->vdata;
+	return (me->edit_mesh) ? &me->edit_mesh->bm->vdata : &me->vdata;
 }
 
 static CustomData *rna_mesh_edata_helper(Mesh *me)
 {
-	return (me->edit_btmesh) ? &me->edit_btmesh->bm->edata : &me->edata;
+	return (me->edit_mesh) ? &me->edit_mesh->bm->edata : &me->edata;
 }
 
 static CustomData *rna_mesh_pdata_helper(Mesh *me)
 {
-	return (me->edit_btmesh) ? &me->edit_btmesh->bm->pdata : &me->pdata;
+	return (me->edit_mesh) ? &me->edit_mesh->bm->pdata : &me->pdata;
 }
 
 static CustomData *rna_mesh_ldata_helper(Mesh *me)
 {
-	return (me->edit_btmesh) ? &me->edit_btmesh->bm->ldata : &me->ldata;
+	return (me->edit_mesh) ? &me->edit_mesh->bm->ldata : &me->ldata;
 }
 
 static CustomData *rna_mesh_fdata_helper(Mesh *me)
 {
-	return (me->edit_btmesh) ? NULL : &me->fdata;
+	return (me->edit_mesh) ? NULL : &me->fdata;
 }
 
 static CustomData *rna_mesh_vdata(PointerRNA *ptr)
@@ -677,13 +671,13 @@ static void rna_MeshUVLoopLayer_data_begin(CollectionPropertyIterator *iter, Poi
 {
 	Mesh *me = rna_mesh(ptr);
 	CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
-	rna_iterator_array_begin(iter, layer->data, sizeof(MLoopUV), (me->edit_btmesh) ? 0 : me->totloop, 0, NULL);
+	rna_iterator_array_begin(iter, layer->data, sizeof(MLoopUV), (me->edit_mesh) ? 0 : me->totloop, 0, NULL);
 }
 
 static int rna_MeshUVLoopLayer_data_length(PointerRNA *ptr)
 {
 	Mesh *me = rna_mesh(ptr);
-	return (me->edit_btmesh) ? 0 : me->totloop;
+	return (me->edit_mesh) ? 0 : me->totloop;
 }
 
 static bool rna_MeshUVLoopLayer_active_render_get(PointerRNA *ptr)
@@ -726,13 +720,13 @@ static void rna_MeshLoopColorLayer_data_begin(CollectionPropertyIterator *iter, 
 {
 	Mesh *me = rna_mesh(ptr);
 	CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
-	rna_iterator_array_begin(iter, layer->data, sizeof(MLoopCol), (me->edit_btmesh) ? 0 : me->totloop, 0, NULL);
+	rna_iterator_array_begin(iter, layer->data, sizeof(MLoopCol), (me->edit_mesh) ? 0 : me->totloop, 0, NULL);
 }
 
 static int rna_MeshLoopColorLayer_data_length(PointerRNA *ptr)
 {
 	Mesh *me = rna_mesh(ptr);
-	return (me->edit_btmesh) ? 0 : me->totloop;
+	return (me->edit_mesh) ? 0 : me->totloop;
 }
 
 static bool rna_MeshLoopColorLayer_active_render_get(PointerRNA *ptr)
@@ -964,7 +958,7 @@ static void rna_Mesh_face_map_remove(struct Mesh *me, ReportList *reports, struc
 	}
 
 	if (BKE_mesh_clear_facemap_customdata(me) == false) {
-		BKE_reportf(reports, RPT_ERROR, "Error removing face-map");
+		BKE_report(reports, RPT_ERROR, "Error removing face-map");
 	}
 }
 
@@ -1108,7 +1102,7 @@ static char *rna_VertCustomData_data_path(PointerRNA *ptr, const char *collectio
 	CustomDataLayer *cdl;
 	Mesh *me = rna_mesh(ptr);
 	CustomData *vdata = rna_mesh_vdata(ptr);
-	int a, b, totvert = (me->edit_btmesh) ? 0 : me->totvert;
+	int a, b, totvert = (me->edit_mesh) ? 0 : me->totvert;
 
 	for (cdl = vdata->layers, a = 0; a < vdata->totlayer; cdl++, a++) {
 		if (cdl->type == type) {
@@ -1129,7 +1123,7 @@ static char *rna_PolyCustomData_data_path(PointerRNA *ptr, const char *collectio
 	CustomDataLayer *cdl;
 	Mesh *me = rna_mesh(ptr);
 	CustomData *pdata = rna_mesh_pdata(ptr);
-	int a, b, totpoly = (me->edit_btmesh) ? 0 : me->totpoly;
+	int a, b, totpoly = (me->edit_mesh) ? 0 : me->totpoly;
 
 	for (cdl = pdata->layers, a = 0; a < pdata->totlayer; cdl++, a++) {
 		if (cdl->type == type) {
@@ -1150,7 +1144,7 @@ static char *rna_LoopCustomData_data_path(PointerRNA *ptr, const char *collectio
 	CustomDataLayer *cdl;
 	Mesh *me = rna_mesh(ptr);
 	CustomData *ldata = rna_mesh_ldata(ptr);
-	int a, b, totloop = (me->edit_btmesh) ? 0 : me->totloop;
+	int a, b, totloop = (me->edit_mesh) ? 0 : me->totloop;
 
 	for (cdl = ldata->layers, a = 0; a < ldata->totlayer; cdl++, a++) {
 		if (cdl->type == type) {
@@ -1361,25 +1355,25 @@ static char *rna_MeshFaceMap_path(PointerRNA *ptr)
 static int rna_Mesh_tot_vert_get(PointerRNA *ptr)
 {
 	Mesh *me = rna_mesh(ptr);
-	return me->edit_btmesh ? me->edit_btmesh->bm->totvertsel : 0;
+	return me->edit_mesh ? me->edit_mesh->bm->totvertsel : 0;
 }
 static int rna_Mesh_tot_edge_get(PointerRNA *ptr)
 {
 	Mesh *me = rna_mesh(ptr);
-	return me->edit_btmesh ? me->edit_btmesh->bm->totedgesel : 0;
+	return me->edit_mesh ? me->edit_mesh->bm->totedgesel : 0;
 }
 static int rna_Mesh_tot_face_get(PointerRNA *ptr)
 {
 	Mesh *me = rna_mesh(ptr);
-	return me->edit_btmesh ? me->edit_btmesh->bm->totfacesel : 0;
+	return me->edit_mesh ? me->edit_mesh->bm->totfacesel : 0;
 }
 
-static PointerRNA rna_Mesh_vertex_color_new(struct Mesh *me, const char *name)
+static PointerRNA rna_Mesh_vertex_color_new(struct Mesh *me, const char *name, const bool do_init)
 {
 	PointerRNA ptr;
 	CustomData *ldata;
 	CustomDataLayer *cdl = NULL;
-	int index = ED_mesh_color_add(me, name, false);
+	int index = ED_mesh_color_add(me, name, false, do_init);
 
 	if (index != -1) {
 		ldata = rna_mesh_ldata_helper(me);
@@ -1421,12 +1415,12 @@ DEFINE_CUSTOMDATA_PROPERTY_API(polygon, int, CD_PROP_INT, pdata, totpoly, MeshPo
 DEFINE_CUSTOMDATA_PROPERTY_API(polygon, string, CD_PROP_STR, pdata, totpoly, MeshPolygonStringPropertyLayer)
 #undef DEFINE_CUSTOMDATA_PROPERTY_API
 
-static PointerRNA rna_Mesh_uv_layers_new(struct Mesh *me, const char *name)
+static PointerRNA rna_Mesh_uv_layers_new(struct Mesh *me, const char *name, const bool do_init)
 {
 	PointerRNA ptr;
 	CustomData *ldata;
 	CustomDataLayer *cdl = NULL;
-	int index = ED_mesh_uv_texture_add(me, name, false);
+	int index = ED_mesh_uv_texture_add(me, name, false, do_init);
 
 	if (index != -1) {
 		ldata = rna_mesh_ldata_helper(me);
@@ -1447,7 +1441,7 @@ static void rna_Mesh_uv_layers_remove(struct Mesh *me, ReportList *reports, Cust
 static bool rna_Mesh_is_editmode_get(PointerRNA *ptr)
 {
 	Mesh *me = rna_mesh(ptr);
-	return (me->edit_btmesh != NULL);
+	return (me->edit_mesh != NULL);
 }
 
 /* only to quiet warnings */
@@ -2219,6 +2213,8 @@ static void rna_def_loop_colors(BlenderRNA *brna, PropertyRNA *cprop)
 	func = RNA_def_function(srna, "new", "rna_Mesh_vertex_color_new");
 	RNA_def_function_ui_description(func, "Add a vertex color layer to Mesh");
 	RNA_def_string(func, "name", "Col", 0, "", "Vertex color name");
+	RNA_def_boolean(func, "do_init", true, "",
+	                "Whether new layer's data should be initialized by copying current active one");
 	parm = RNA_def_pointer(func, "layer", "MeshLoopColorLayer", "", "The newly created layer");
 	RNA_def_parameter_flags(parm, 0, PARM_RNAPTR);
 	RNA_def_function_return(func, parm);
@@ -2261,6 +2257,9 @@ static void rna_def_uv_layers(BlenderRNA *brna, PropertyRNA *cprop)
 	func = RNA_def_function(srna, "new", "rna_Mesh_uv_layers_new");
 	RNA_def_function_ui_description(func, "Add a UV map layer to Mesh");
 	RNA_def_string(func, "name", "UVMap", 0, "", "UV map name");
+	RNA_def_boolean(func, "do_init", true, "",
+	                "Whether new layer's data should be initialized by copying current active one, "
+	                "or if none is active, with a default UVmap");
 	parm = RNA_def_pointer(func, "layer", "MeshUVLoopLayer", "", "The newly created layer");
 	RNA_def_parameter_flags(parm, 0, PARM_RNAPTR);
 	RNA_def_function_return(func, parm);
@@ -2643,6 +2642,7 @@ static void rna_def_mesh(BlenderRNA *brna)
 	RNA_def_property_int_funcs(prop, "rna_Mesh_uv_layer_stencil_index_get",
 	                           "rna_Mesh_uv_layer_stencil_index_set", "rna_Mesh_uv_layer_index_range");
 	RNA_def_property_ui_text(prop, "Mask UV loop layer Index", "Mask UV loop layer index");
+	RNA_def_property_update(prop, 0, "rna_Mesh_update_data");
 
 	/* Vertex colors */
 
@@ -2776,6 +2776,7 @@ static void rna_def_mesh(BlenderRNA *brna)
 	RNA_def_property_boolean_sdna(prop, NULL, "texflag", ME_AUTOSPACE);
 	RNA_def_property_ui_text(prop, "Auto Texture Space",
 	                         "Adjust active object's texture space automatically when transforming object");
+	RNA_def_property_update(prop, 0, "rna_Mesh_update_data");
 
 #if 0
 	prop = RNA_def_property(srna, "texspace_location", PROP_FLOAT, PROP_TRANSLATION);

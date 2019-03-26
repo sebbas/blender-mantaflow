@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,15 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Chingiz Dyussenov, Arystanbek Dyussenov, Jan Diederich, Tod Liverseed,
- *                 Nathan Letwory
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file ArmatureExporter.h
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 
 #ifndef __ARMATUREEXPORTER_H__
@@ -57,20 +50,26 @@ class SceneExporter;
 class ArmatureExporter : public COLLADASW::LibraryControllers, protected TransformWriter, protected InstanceWriter
 {
 public:
-	ArmatureExporter(COLLADASW::StreamWriter *sw, const ExportSettings *export_settings);
 
-	// write bone nodes
-	void add_armature_bones(bContext *C, struct Depsgraph *depsgraph, Object *ob_arm, Scene *sce, SceneExporter *se,
-	                        std::list<Object *>& child_objects);
+	// XXX exporter writes wrong data for shared armatures.  A separate
+	// controller should be written for each armature-mesh binding how do
+	// we make controller ids then?
+	ArmatureExporter(BlenderContext &blender_context, COLLADASW::StreamWriter *sw, const ExportSettings *export_settings) :
+		COLLADASW::LibraryControllers(sw),
+		blender_context(blender_context),
+		export_settings(export_settings)
+	{}
+
+	void add_armature_bones(
+	        Object *ob_arm,
+	        ViewLayer *view_layer,
+	        SceneExporter *se,
+	        std::vector<Object *>& child_objects);
 
 	bool add_instance_controller(Object *ob);
 
-	//void export_controllers(Scene *sce);*/
-
-	//void operator()(Object *ob);
-
 private:
-	UnitConverter converter;
+	BlenderContext &blender_context;
 	const ExportSettings *export_settings;
 
 #if 0
@@ -85,8 +84,11 @@ private:
 
 	// Scene, SceneExporter and the list of child_objects
 	// are required for writing bone parented objects
-	void add_bone_node(bContext *C, struct Depsgraph *depsgraph, Bone *bone, Object *ob_arm, Scene *sce, SceneExporter *se,
-	                   std::list<Object *>& child_objects);
+	void add_bone_node(
+	        Bone *bone,
+	        Object *ob_arm,
+	        SceneExporter *se,
+	        std::vector<Object *>& child_objects);
 
 	void add_bone_transform(Object *ob_arm, Bone *bone, COLLADASW::Node& node);
 

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Foundation, Dalai Felinto
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_outliner/outliner_collections.c
- *  \ingroup spoutliner
+/** \file
+ * \ingroup spoutliner
  */
 
 #include <string.h>
@@ -35,6 +29,7 @@
 #include "BKE_context.h"
 #include "BKE_collection.h"
 #include "BKE_layer.h"
+#include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
 
@@ -47,6 +42,7 @@
 
 #include "WM_api.h"
 #include "WM_types.h"
+#include "WM_message.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -139,10 +135,15 @@ TreeTraversalAction outliner_find_selected_objects(TreeElement *te, void *custom
 
 bool ED_outliner_collections_editor_poll(bContext *C)
 {
-	SpaceOops *so = CTX_wm_space_outliner(C);
+	SpaceOutliner *so = CTX_wm_space_outliner(C);
 	return (so != NULL) && ELEM(so->outlinevis, SO_VIEW_LAYER, SO_SCENES, SO_LIBRARIES);
 }
 
+static bool outliner_view_layer_collections_editor_poll(bContext *C)
+{
+	SpaceOutliner *so = CTX_wm_space_outliner(C);
+	return (so != NULL) && (so->outlinevis == SO_VIEW_LAYER);
+}
 
 /********************************* New Collection ****************************/
 
@@ -172,7 +173,7 @@ static TreeTraversalAction collection_find_selected_to_add(TreeElement *te, void
 
 static int collection_new_exec(bContext *C, wmOperator *op)
 {
-	SpaceOops *soops = CTX_wm_space_outliner(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 	ARegion *ar = CTX_wm_region(C);
 	Main *bmain = CTX_data_main(C);
 	Scene *scene = CTX_data_scene(C);
@@ -194,8 +195,13 @@ static int collection_new_exec(bContext *C, wmOperator *op)
 		}
 	}
 
-	if (!data.collection && (soops->outlinevis == SO_VIEW_LAYER)) {
+	if (data.collection == NULL || ID_IS_LINKED(data.collection)) {
 		data.collection = BKE_collection_master(scene);
+	}
+
+	if (ID_IS_LINKED(scene)) {
+		BKE_report(op->reports, RPT_ERROR, "Can't add a new collection to linked scene/collection");
+		return OPERATOR_CANCELLED;
 	}
 
 	BKE_collection_add(
@@ -203,7 +209,7 @@ static int collection_new_exec(bContext *C, wmOperator *op)
 	            data.collection,
 	            NULL);
 
-	DEG_id_tag_update(&data.collection->id, DEG_TAG_COPY_ON_WRITE);
+	DEG_id_tag_update(&data.collection->id, ID_RECALC_COPY_ON_WRITE);
 	DEG_relations_tag_update(bmain);
 
 	outliner_cleanup_tree(soops);
@@ -234,7 +240,7 @@ void OUTLINER_OT_collection_new(wmOperatorType *ot)
 
 struct CollectionEditData {
 	Scene *scene;
-	SpaceOops *soops;
+	SpaceOutliner *soops;
 	GSet *collections_to_edit;
 };
 
@@ -247,7 +253,7 @@ static TreeTraversalAction collection_find_data_to_edit(TreeElement *te, void *c
 		return TRAVERSE_SKIP_CHILDS;
 	}
 
-	if (collection == BKE_collection_master(data->scene)) {
+	if (collection->flag & COLLECTION_IS_MASTER) {
 		/* skip - showing warning/error message might be misleading
 		 * when deleting multiple collections, so just do nothing */
 	}
@@ -263,10 +269,13 @@ static TreeTraversalAction collection_find_data_to_edit(TreeElement *te, void *c
 
 static int collection_delete_exec(bContext *C, wmOperator *op)
 {
+	struct wmMsgBus *mbus = CTX_wm_message_bus(C);
 	Main *bmain = CTX_data_main(C);
 	Scene *scene = CTX_data_scene(C);
-	SpaceOops *soops = CTX_wm_space_outliner(C);
-	struct CollectionEditData data = {.scene = scene, .soops = soops};
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	const Base *basact_prev = BASACT(view_layer);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
+	struct CollectionEditData data = {.scene = scene, .soops = soops,};
 	bool hierarchy = RNA_boolean_get(op->ptr, "hierarchy");
 
 	data.collections_to_edit = BLI_gset_ptr_new(__func__);
@@ -280,17 +289,53 @@ static int collection_delete_exec(bContext *C, wmOperator *op)
 		Collection *collection = BLI_gsetIterator_getKey(&collections_to_edit_iter);
 
 		/* Test in case collection got deleted as part of another one. */
-		if (BLI_findindex(&bmain->collection, collection) != -1) {
-			BKE_collection_delete(bmain, collection, hierarchy);
+		if (BLI_findindex(&bmain->collections, collection) != -1) {
+			/* We cannot allow to delete collections that are indirectly linked, or that are used by (linked to...)
+			 * other linked scene/collection. */
+			bool skip = false;
+			if (ID_IS_LINKED(collection)) {
+				if (collection->id.tag & LIB_TAG_INDIRECT) {
+					skip = true;
+				}
+				else {
+					for (CollectionParent *cparent = collection->parents.first; cparent; cparent = cparent->next) {
+						Collection *parent = cparent->collection;
+						if (ID_IS_LINKED(parent)) {
+							skip = true;
+							break;
+						}
+						else if (parent->flag & COLLECTION_IS_MASTER) {
+							Scene *parent_scene = BKE_collection_master_scene_search(bmain, parent);
+							if (ID_IS_LINKED(parent_scene)) {
+								skip = true;
+								break;
+							}
+						}
+					}
+				}
+			}
+
+			if (!skip) {
+				BKE_collection_delete(bmain, collection, hierarchy);
+			}
+			else {
+				BKE_reportf(op->reports, RPT_WARNING,
+				            "Cannot delete linked collection '%s', it is used by other linked scenes/collections",
+				            collection->id.name + 2);
+			}
 		}
 	}
 
 	BLI_gset_free(data.collections_to_edit, NULL);
 
-	DEG_id_tag_update(&scene->id, DEG_TAG_COPY_ON_WRITE);
+	DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
 	DEG_relations_tag_update(bmain);
 
 	WM_main_add_notifier(NC_SCENE | ND_LAYER, NULL);
+
+	if (basact_prev != BASACT(view_layer)) {
+		WM_msg_publish_rna_prop(mbus, &scene->id, view_layer, LayerObjects, active);
+	}
 
 	return OPERATOR_FINISHED;
 }
@@ -341,7 +386,7 @@ static TreeTraversalAction outliner_find_first_selected_layer_collection(TreeEle
 
 static LayerCollection *outliner_active_layer_collection(bContext *C)
 {
-	SpaceOops *soops = CTX_wm_space_outliner(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 
 	struct CollectionObjectsSelectData data = {
 		.layer_collection = NULL,
@@ -364,7 +409,7 @@ static int collection_objects_select_exec(bContext *C, wmOperator *op)
 	BKE_layer_collection_objects_select(view_layer, layer_collection, deselect);
 
 	Scene *scene = CTX_data_scene(C);
-	DEG_id_tag_update(&scene->id, DEG_TAG_SELECT_UPDATE);
+	DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
 	WM_main_add_notifier(NC_SCENE | ND_OB_SELECT, scene);
 
 	return OPERATOR_FINISHED;
@@ -425,7 +470,7 @@ static TreeTraversalAction outliner_find_first_selected_collection(TreeElement *
 
 static TreeElement *outliner_active_collection(bContext *C)
 {
-	SpaceOops *soops = CTX_wm_space_outliner(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 
 	struct CollectionDuplicateData data = {
 		.te = NULL,
@@ -438,25 +483,46 @@ static TreeElement *outliner_active_collection(bContext *C)
 static int collection_duplicate_exec(bContext *C, wmOperator *op)
 {
 	Main *bmain = CTX_data_main(C);
-	SpaceOops *soops = CTX_wm_space_outliner(C);
 	TreeElement *te = outliner_active_collection(C);
-	BLI_assert(te != NULL);
+	const bool linked = strstr(op->idname, "linked") != NULL;
+
+	/* Can happen when calling from a key binding. */
+	if (te == NULL) {
+		BKE_report(op->reports, RPT_ERROR, "No active collection");
+		return OPERATOR_CANCELLED;
+	}
 
 	Collection *collection = outliner_collection_from_tree_element(te);
 	Collection *parent = (te->parent) ? outliner_collection_from_tree_element(te->parent) : NULL;
+
+	/* We are allowed to duplicated linked collections (they will become local IDs then),
+	 * but we should not allow its parent to be a linked ID, ever.
+	 * This can happen when a whole scene is linked e.g. */
+	if (parent != NULL && ID_IS_LINKED(parent)) {
+		Scene *scene = CTX_data_scene(C);
+		parent = ID_IS_LINKED(scene) ? NULL : BKE_collection_master(scene);
+	}
+	else if (parent != NULL && (parent->flag & COLLECTION_IS_MASTER) != 0) {
+		Scene *scene = BKE_collection_master_scene_search(bmain, parent);
+		BLI_assert(scene != NULL);
+		if (ID_IS_LINKED(scene)) {
+			scene = CTX_data_scene(C);
+			parent = ID_IS_LINKED(scene) ? NULL : BKE_collection_master(scene);
+		}
+	}
 
 	if (collection->flag & COLLECTION_IS_MASTER) {
 		BKE_report(op->reports, RPT_ERROR, "Can't duplicate the master collection");
 		return OPERATOR_CANCELLED;
 	}
 
-	switch (soops->outlinevis) {
-		case SO_SCENES:
-		case SO_VIEW_LAYER:
-		case SO_LIBRARIES:
-			BKE_collection_copy(bmain, parent, collection);
-			break;
+	if (parent == NULL) {
+		BKE_report(op->reports, RPT_WARNING,
+		           "Could not find a valid parent collection for the new duplicate, "
+		           "it won't be linked to any view layer");
 	}
+
+	BKE_collection_duplicate(bmain, parent, collection, true, true, !linked);
 
 	DEG_relations_tag_update(bmain);
 	WM_main_add_notifier(NC_SCENE | ND_LAYER, CTX_data_scene(C));
@@ -464,12 +530,27 @@ static int collection_duplicate_exec(bContext *C, wmOperator *op)
 	return OPERATOR_FINISHED;
 }
 
+void OUTLINER_OT_collection_duplicate_linked(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Duplicate Linked Collection";
+	ot->idname = "OUTLINER_OT_collection_duplicate_linked";
+	ot->description = "Recursively duplicate the collection, all its children and objects, with linked object data";
+
+	/* api callbacks */
+	ot->exec = collection_duplicate_exec;
+	ot->poll = ED_outliner_collections_editor_poll;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
 void OUTLINER_OT_collection_duplicate(wmOperatorType *ot)
 {
 	/* identifiers */
 	ot->name = "Duplicate Collection";
 	ot->idname = "OUTLINER_OT_collection_duplicate";
-	ot->description = "Duplicate selected collections";
+	ot->description = "Recursively duplicate the collection, all its children, objects and object data";
 
 	/* api callbacks */
 	ot->exec = collection_duplicate_exec;
@@ -481,13 +562,20 @@ void OUTLINER_OT_collection_duplicate(wmOperatorType *ot)
 
 /**************************** Link Collection ******************************/
 
-static int collection_link_exec(bContext *C, wmOperator *UNUSED(op))
+static int collection_link_exec(bContext *C, wmOperator *op)
 {
 	Main *bmain = CTX_data_main(C);
 	Scene *scene = CTX_data_scene(C);
 	Collection *active_collection = CTX_data_layer_collection(C)->collection;
-	SpaceOops *soops = CTX_wm_space_outliner(C);
-	struct CollectionEditData data = {.scene = scene, .soops = soops};
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
+	struct CollectionEditData data = {.scene = scene, .soops = soops,};
+
+	if (ID_IS_LINKED(active_collection) ||
+	    ((active_collection->flag & COLLECTION_IS_MASTER) && ID_IS_LINKED(scene)))
+	{
+		BKE_report(op->reports, RPT_ERROR, "Cannot add a colection to a linked collection/scene");
+		return OPERATOR_CANCELLED;
+	}
 
 	data.collections_to_edit = BLI_gset_ptr_new(__func__);
 
@@ -504,7 +592,7 @@ static int collection_link_exec(bContext *C, wmOperator *UNUSED(op))
 
 	BLI_gset_free(data.collections_to_edit, NULL);
 
-	DEG_id_tag_update(&active_collection->id, DEG_TAG_COPY_ON_WRITE);
+	DEG_id_tag_update(&active_collection->id, ID_RECALC_COPY_ON_WRITE);
 	DEG_relations_tag_update(bmain);
 
 	WM_main_add_notifier(NC_SCENE | ND_LAYER, NULL);
@@ -534,8 +622,8 @@ static int collection_instance_exec(bContext *C, wmOperator *UNUSED(op))
 	Main *bmain = CTX_data_main(C);
 	Scene *scene = CTX_data_scene(C);
 	ViewLayer *view_layer = CTX_data_view_layer(C);
-	SpaceOops *soops = CTX_wm_space_outliner(C);
-	struct CollectionEditData data = {.scene = scene, .soops = soops};
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
+	struct CollectionEditData data = {.scene = scene, .soops = soops,};
 
 	data.collections_to_edit = BLI_gset_ptr_new(__func__);
 
@@ -557,8 +645,8 @@ static int collection_instance_exec(bContext *C, wmOperator *UNUSED(op))
 	/* Effectively instance the collections. */
 	GSET_ITER(collections_to_edit_iter, data.collections_to_edit) {
 		Collection *collection = BLI_gsetIterator_getKey(&collections_to_edit_iter);
-		Object *ob = ED_object_add_type(C, OB_EMPTY, collection->id.name + 2, scene->cursor.location, NULL, false);
-		ob->dup_group = collection;
+		Object *ob = ED_object_add_type(C, OB_EMPTY, collection->id.name + 2, scene->cursor.location, NULL, false, 0);
+		ob->instance_collection = collection;
 		ob->transflag |= OB_DUPLICOLLECTION;
 		id_lib_extern(&collection->id);
 	}
@@ -616,13 +704,13 @@ static TreeTraversalAction layer_collection_find_data_to_edit(TreeElement *te, v
 static bool collections_view_layer_poll(bContext *C, bool clear, int flag)
 {
 	/* Poll function so the right click menu show current state of selected collections. */
-	SpaceOops *soops = CTX_wm_space_outliner(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 	if (!(soops && soops->outlinevis == SO_VIEW_LAYER)) {
 		return false;
 	}
 
 	Scene *scene = CTX_data_scene(C);
-	struct CollectionEditData data = {.scene = scene, .soops = soops};
+	struct CollectionEditData data = {.scene = scene, .soops = soops,};
 	data.collections_to_edit = BLI_gset_ptr_new(__func__);
 	bool result = false;
 
@@ -693,8 +781,8 @@ static int collection_view_layer_exec(bContext *C, wmOperator *op)
 	Main *bmain = CTX_data_main(C);
 	Scene *scene = CTX_data_scene(C);
 	ViewLayer *view_layer = CTX_data_view_layer(C);
-	SpaceOops *soops = CTX_wm_space_outliner(C);
-	struct CollectionEditData data = {.scene = scene, .soops = soops};
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
+	struct CollectionEditData data = {.scene = scene, .soops = soops,};
 	bool clear = strstr(op->idname, "clear") != NULL;
 	int flag = strstr(op->idname, "holdout") ?       LAYER_COLLECTION_HOLDOUT :
 	           strstr(op->idname, "indirect_only") ? LAYER_COLLECTION_INDIRECT_ONLY :
@@ -708,16 +796,14 @@ static int collection_view_layer_exec(bContext *C, wmOperator *op)
 	GSET_ITER(collections_to_edit_iter, data.collections_to_edit) {
 		LayerCollection *lc = BLI_gsetIterator_getKey(&collections_to_edit_iter);
 
-		if (!(lc->collection->flag & COLLECTION_IS_MASTER)) {
-			if (clear) {
-				lc->flag &= ~flag;
-			}
-			else {
-				lc->flag |= flag;
-			}
-
-			layer_collection_flag_recursive_set(lc, flag);
+		if (clear) {
+			lc->flag &= ~flag;
 		}
+		else {
+			lc->flag |= flag;
+		}
+
+		layer_collection_flag_recursive_set(lc, flag);
 	}
 
 	BLI_gset_free(data.collections_to_edit, NULL);
@@ -820,14 +906,486 @@ void OUTLINER_OT_collection_indirect_only_clear(wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
+/************************** Visibility Operators ******************************/
+
+static int collection_isolate_exec(bContext *C, wmOperator *op)
+{
+	Scene *scene = CTX_data_scene(C);
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
+	const bool extend = RNA_boolean_get(op->ptr, "extend");
+	bool depsgraph_changed = false;
+	struct CollectionEditData data = {.scene = scene, .soops = soops,};
+	data.collections_to_edit = BLI_gset_ptr_new(__func__);
+
+	/* Hide all collections before the isolate function - needed in order to support multiple selected collections. */
+	if (!extend) {
+		LayerCollection *lc_master = view_layer->layer_collections.first;
+		for (LayerCollection *lc_iter = lc_master->layer_collections.first; lc_iter; lc_iter = lc_iter->next) {
+			lc_iter->flag |= LAYER_COLLECTION_RESTRICT_VIEW;
+			layer_collection_flag_recursive_set(lc_iter, LAYER_COLLECTION_RESTRICT_VIEW);
+		}
+	}
+
+	outliner_tree_traverse(soops, &soops->tree, 0, TSE_SELECTED, layer_collection_find_data_to_edit, &data);
+
+	GSetIterator collections_to_edit_iter;
+	GSET_ITER(collections_to_edit_iter, data.collections_to_edit) {
+		LayerCollection *layer_collection = BLI_gsetIterator_getKey(&collections_to_edit_iter);
+		depsgraph_changed |= BKE_layer_collection_isolate(scene, view_layer, layer_collection, true);
+	}
+	BLI_gset_free(data.collections_to_edit, NULL);
+
+	BKE_layer_collection_sync(scene, view_layer);
+	DEG_id_tag_update(&scene->id, ID_RECALC_BASE_FLAGS);
+
+	if (depsgraph_changed) {
+		DEG_relations_tag_update(CTX_data_main(C));
+	}
+
+	WM_main_add_notifier(NC_SCENE | ND_LAYER_CONTENT, NULL);
+	return OPERATOR_FINISHED;
+}
+
+static int collection_isolate_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+	PropertyRNA *prop = RNA_struct_find_property(op->ptr, "extend");
+	if (!RNA_property_is_set(op->ptr, prop) && (event->shift)) {
+		RNA_property_boolean_set(op->ptr, prop, true);
+	}
+	return collection_isolate_exec(C, op);
+}
+
+void OUTLINER_OT_collection_isolate(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Isolate Collection";
+	ot->idname = "OUTLINER_OT_collection_isolate";
+	ot->description = "Hide all but this collection and its parents";
+
+	/* api callbacks */
+	ot->exec = collection_isolate_exec;
+	ot->invoke = collection_isolate_invoke;
+	ot->poll = ED_outliner_collections_editor_poll;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+	/* properties */
+	PropertyRNA *prop = RNA_def_boolean(ot->srna, "extend", false, "Extend", "Extend current visible collections");
+	RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+}
+
+static bool collection_show_poll(bContext *C)
+{
+	return collections_view_layer_poll(C, true, LAYER_COLLECTION_RESTRICT_VIEW);
+}
+
+static bool collection_hide_poll(bContext *C)
+{
+	return collections_view_layer_poll(C, false, LAYER_COLLECTION_RESTRICT_VIEW);
+}
+
+static bool collection_inside_poll(bContext *C)
+{
+	if (!ED_outliner_collections_editor_poll(C)) {
+		return false;
+	}
+	return outliner_active_layer_collection(C) != NULL;
+}
+
+static int collection_visibility_exec(bContext *C, wmOperator *op)
+{
+	Scene *scene = CTX_data_scene(C);
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
+	const bool is_inside = strstr(op->idname, "inside") != NULL;
+	const bool show = strstr(op->idname, "show") != NULL;
+	bool depsgraph_changed = false;
+	struct CollectionEditData data = {.scene = scene, .soops = soops,};
+	data.collections_to_edit = BLI_gset_ptr_new(__func__);
+
+	outliner_tree_traverse(soops, &soops->tree, 0, TSE_SELECTED, layer_collection_find_data_to_edit, &data);
+
+	GSetIterator collections_to_edit_iter;
+	GSET_ITER(collections_to_edit_iter, data.collections_to_edit) {
+		LayerCollection *layer_collection = BLI_gsetIterator_getKey(&collections_to_edit_iter);
+		depsgraph_changed |= BKE_layer_collection_set_visible(view_layer, layer_collection, show, is_inside);
+	}
+	BLI_gset_free(data.collections_to_edit, NULL);
+
+	BKE_layer_collection_sync(scene, view_layer);
+	DEG_id_tag_update(&scene->id, ID_RECALC_BASE_FLAGS);
+
+	if (depsgraph_changed) {
+		DEG_relations_tag_update(CTX_data_main(C));
+	}
+
+	WM_main_add_notifier(NC_SCENE | ND_LAYER_CONTENT, NULL);
+	return OPERATOR_FINISHED;
+}
+
+void OUTLINER_OT_collection_show(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Show Collection";
+	ot->idname = "OUTLINER_OT_collection_show";
+	ot->description = "Show the collection in this view layer";
+
+	/* api callbacks */
+	ot->exec = collection_visibility_exec;
+	ot->poll = collection_show_poll;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+void OUTLINER_OT_collection_hide(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Hide Collection";
+	ot->idname = "OUTLINER_OT_collection_hide";
+	ot->description = "Hide the collection in this view layer";
+
+	/* api callbacks */
+	ot->exec = collection_visibility_exec;
+	ot->poll = collection_hide_poll;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+void OUTLINER_OT_collection_show_inside(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Show Inside Collection";
+	ot->idname = "OUTLINER_OT_collection_show_inside";
+	ot->description = "Show all the objects and collections inside the collection";
+
+	/* api callbacks */
+	ot->exec = collection_visibility_exec;
+	ot->poll = collection_inside_poll;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+void OUTLINER_OT_collection_hide_inside(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Hide Inside Collection";
+	ot->idname = "OUTLINER_OT_collection_hide_inside";
+	ot->description = "Hide all the objects and collections inside the collection";
+
+	/* api callbacks */
+	ot->exec = collection_visibility_exec;
+	ot->poll = collection_inside_poll;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+static bool collection_flag_poll(bContext *C, bool clear, int flag)
+{
+	if (!ED_outliner_collections_editor_poll(C)) {
+		return false;
+	}
+
+	TreeElement *te = outliner_active_collection(C);
+	if (te == NULL) {
+		return false;
+	}
+
+	Collection *collection = outliner_collection_from_tree_element(te);
+	if (collection == NULL) {
+		return false;
+	}
+
+	if (clear && (collection->flag & flag)) {
+		return true;
+	}
+	else if (!clear && !(collection->flag & flag)) {
+		return true;
+	}
+
+	return false;
+}
+
+static bool collection_enable_poll(bContext *C)
+{
+	return collection_flag_poll(C, true, COLLECTION_RESTRICT_VIEW);
+}
+
+static bool collection_disable_poll(bContext *C)
+{
+	return collection_flag_poll(C, false, COLLECTION_RESTRICT_VIEW);
+}
+
+static bool collection_enable_render_poll(bContext *C)
+{
+	return collection_flag_poll(C, true, COLLECTION_RESTRICT_RENDER);
+}
+
+static bool collection_disable_render_poll(bContext *C)
+{
+	return collection_flag_poll(C, false, COLLECTION_RESTRICT_RENDER);
+}
+
+static int collection_flag_exec(bContext *C, wmOperator *op)
+{
+	Scene *scene = CTX_data_scene(C);
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
+	const bool is_render = strstr(op->idname, "render");
+	const bool clear = strstr(op->idname, "show") || strstr(op->idname, "enable");
+	int flag = is_render ? COLLECTION_RESTRICT_RENDER : COLLECTION_RESTRICT_VIEW;
+	struct CollectionEditData data = {.scene = scene, .soops = soops,};
+	data.collections_to_edit = BLI_gset_ptr_new(__func__);
+	const bool has_layer_collection = soops->outlinevis == SO_VIEW_LAYER;
+
+	if (has_layer_collection) {
+		outliner_tree_traverse(soops, &soops->tree, 0, TSE_SELECTED, layer_collection_find_data_to_edit, &data);
+		GSetIterator collections_to_edit_iter;
+		GSET_ITER(collections_to_edit_iter, data.collections_to_edit) {
+			LayerCollection *layer_collection = BLI_gsetIterator_getKey(&collections_to_edit_iter);
+			Collection *collection = layer_collection->collection;
+			if (ID_IS_LINKED(collection)) {
+				continue;
+			}
+			if (clear) {
+				collection->flag &= ~flag;
+			}
+			else {
+				collection->flag |= flag;
+			}
+
+			/* Make sure (at least for this view layer) the collection is visible. */
+			if (clear && !is_render) {
+				layer_collection->flag &= ~LAYER_COLLECTION_RESTRICT_VIEW;
+			}
+		}
+		BLI_gset_free(data.collections_to_edit, NULL);
+	}
+	else {
+		outliner_tree_traverse(soops, &soops->tree, 0, TSE_SELECTED, collection_find_data_to_edit, &data);
+		GSetIterator collections_to_edit_iter;
+		GSET_ITER(collections_to_edit_iter, data.collections_to_edit) {
+			Collection *collection = BLI_gsetIterator_getKey(&collections_to_edit_iter);
+
+			if (clear) {
+				collection->flag &= ~flag;
+			}
+			else {
+				collection->flag |= flag;
+			}
+		}
+		BLI_gset_free(data.collections_to_edit, NULL);
+	}
+
+	BKE_layer_collection_sync(scene, view_layer);
+	DEG_id_tag_update(&scene->id, ID_RECALC_BASE_FLAGS);
+
+	if (!is_render) {
+		DEG_relations_tag_update(CTX_data_main(C));
+	}
+
+	WM_main_add_notifier(NC_SCENE | ND_LAYER_CONTENT, NULL);
+	return OPERATOR_FINISHED;
+}
+
+void OUTLINER_OT_collection_enable(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Enable Collection";
+	ot->idname = "OUTLINER_OT_collection_enable";
+	ot->description = "Enable viewport drawing in the view layers";
+
+	/* api callbacks */
+	ot->exec = collection_flag_exec;
+	ot->poll = collection_enable_poll;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+void OUTLINER_OT_collection_disable(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Disable Collection";
+	ot->idname = "OUTLINER_OT_collection_disable";
+	ot->description = "Disable viewport drawing in the view layers";
+
+	/* api callbacks */
+	ot->exec = collection_flag_exec;
+	ot->poll = collection_disable_poll;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+void OUTLINER_OT_collection_enable_render(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Enable Collection in Render";
+	ot->idname = "OUTLINER_OT_collection_enable_render";
+	ot->description = "Render the collection";
+
+	/* api callbacks */
+	ot->exec = collection_flag_exec;
+	ot->poll = collection_enable_render_poll;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+void OUTLINER_OT_collection_disable_render(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Disable Collection in Render";
+	ot->idname = "OUTLINER_OT_collection_disable_render";
+	ot->description = "Do not render this collection";
+
+	/* api callbacks */
+	ot->exec = collection_flag_exec;
+	ot->poll = collection_disable_render_poll;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+struct OutlinerHideEditData {
+	Scene *scene;
+	ViewLayer *view_layer;
+	SpaceOutliner *soops;
+	GSet *collections_to_edit;
+	GSet *bases_to_edit;
+};
+
+static TreeTraversalAction outliner_hide_find_data_to_edit(TreeElement *te, void *customdata)
+{
+	struct OutlinerHideEditData *data = customdata;
+	TreeStoreElem *tselem = TREESTORE(te);
+
+	if (tselem == NULL) {
+		return TRAVERSE_CONTINUE;
+	}
+
+	if (tselem->type == TSE_LAYER_COLLECTION) {
+		LayerCollection *lc = te->directdata;
+
+		if (lc->collection->flag & COLLECTION_IS_MASTER) {
+			/* Skip - showing warning/error message might be misleading
+			 * when deleting multiple collections, so just do nothing. */
+		}
+		else {
+			/* Delete, duplicate and link don't edit children,
+			 * those will come along with the parents. */
+			BLI_gset_add(data->collections_to_edit, lc);
+		}
+	}
+	else if (tselem->type == 0 && te->idcode == ID_OB) {
+		Object *ob = (Object *)tselem->id;
+		Base *base = BKE_view_layer_base_find(data->view_layer, ob);
+		BLI_gset_add(data->bases_to_edit, base);
+	}
+
+	return TRAVERSE_CONTINUE;
+}
+
+static int outliner_hide_exec(bContext *C, wmOperator *UNUSED(op))
+{
+	Scene *scene = CTX_data_scene(C);
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
+	struct OutlinerHideEditData data = {.scene = scene, .view_layer = view_layer, .soops = soops,};
+	data.collections_to_edit = BLI_gset_ptr_new("outliner_hide_exec__collections_to_edit");
+	data.bases_to_edit = BLI_gset_ptr_new("outliner_hide_exec__bases_to_edit");
+
+	outliner_tree_traverse(soops, &soops->tree, 0, TSE_SELECTED, outliner_hide_find_data_to_edit, &data);
+
+	GSetIterator collections_to_edit_iter;
+	GSET_ITER(collections_to_edit_iter, data.collections_to_edit) {
+		LayerCollection *layer_collection = BLI_gsetIterator_getKey(&collections_to_edit_iter);
+		BKE_layer_collection_set_visible(view_layer, layer_collection, false, false);
+	}
+	BLI_gset_free(data.collections_to_edit, NULL);
+
+	GSetIterator bases_to_edit_iter;
+	GSET_ITER(bases_to_edit_iter, data.bases_to_edit) {
+		Base *base = BLI_gsetIterator_getKey(&bases_to_edit_iter);
+		base->flag |= BASE_HIDDEN;
+	}
+	BLI_gset_free(data.bases_to_edit, NULL);
+
+	BKE_layer_collection_sync(scene, view_layer);
+	DEG_id_tag_update(&scene->id, ID_RECALC_BASE_FLAGS);
+
+	WM_main_add_notifier(NC_SCENE | ND_LAYER_CONTENT, NULL);
+	return OPERATOR_FINISHED;
+}
+
+void OUTLINER_OT_hide(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Hide";
+	ot->idname = "OUTLINER_OT_hide";
+	ot->description = "Hide selected objects and collections";
+
+	/* api callbacks */
+	ot->exec = outliner_hide_exec;
+	ot->poll = outliner_view_layer_collections_editor_poll;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+static int outliner_unhide_all_exec(bContext *C, wmOperator *UNUSED(op))
+{
+	Scene *scene = CTX_data_scene(C);
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+
+	/* Unhide all the collections. */
+	LayerCollection *lc_master = view_layer->layer_collections.first;
+	for (LayerCollection *lc_iter = lc_master->layer_collections.first; lc_iter; lc_iter = lc_iter->next) {
+		lc_iter->flag &= ~LAYER_COLLECTION_RESTRICT_VIEW;
+		layer_collection_flag_recursive_set(lc_iter, LAYER_COLLECTION_RESTRICT_VIEW);
+	}
+
+	/* Unhide all objects. */
+	for (Base *base = view_layer->object_bases.first; base; base = base->next) {
+		base->flag &= ~BASE_HIDDEN;
+	}
+
+	BKE_layer_collection_sync(scene, view_layer);
+	DEG_id_tag_update(&scene->id, ID_RECALC_BASE_FLAGS);
+
+	WM_main_add_notifier(NC_SCENE | ND_LAYER_CONTENT, NULL);
+	return OPERATOR_FINISHED;
+}
+
+void OUTLINER_OT_unhide_all(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Unhide All";
+	ot->idname = "OUTLINER_OT_unhide_all";
+	ot->description = "Unhide all objects and collections";
+
+	/* api callbacks */
+	ot->exec = outliner_unhide_all_exec;
+	ot->poll = outliner_view_layer_collections_editor_poll;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
 /**
- * Populates the \param objects ListBase with all the outliner selected objects
+ * Populates the \param objects: ListBase with all the outliner selected objects
  * We store it as (Object *)LinkData->data
- * \param objects expected to be empty
+ * \param objects: expected to be empty
  */
 void ED_outliner_selected_objects_get(const bContext *C, ListBase *objects)
 {
-	SpaceOops *soops = CTX_wm_space_outliner(C);
+	SpaceOutliner *soops = CTX_wm_space_outliner(C);
 	struct IDsSelectedData data = {{NULL}};
 	outliner_tree_traverse(soops, &soops->tree, 0, TSE_SELECTED, outliner_find_selected_objects, &data);
 	LISTBASE_FOREACH (LinkData *, link, &data.selected_array) {

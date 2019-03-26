@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -20,14 +18,13 @@
  *
  * The Original Code is: some of this file.
  *
- * ***** END GPL LICENSE BLOCK *****
  * */
 
 #ifndef __BLI_MATH_GEOM_H__
 #define __BLI_MATH_GEOM_H__
 
-/** \file BLI_math_geom.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #ifdef __cplusplus
@@ -113,9 +110,9 @@ float dist_signed_squared_to_corner_v3v3v3(
         const float p[3],
         const float v1[3], const float v2[3], const float v3[3],
         const float axis_ref[3]);
-float dist_squared_to_ray_v3(
+float dist_squared_to_ray_v3_normalized(
         const float ray_origin[3], const float ray_direction[3],
-        const float co[3], float *r_depth);
+        const float co[3]);
 float dist_squared_ray_to_seg_v3(
         const float ray_origin[3], const float ray_direction[3],
         const float v0[3], const float v1[3],
@@ -443,6 +440,11 @@ void window_translate_m4(float winmat[4][4], float perspmat[4][4],
 
 void planes_from_projmat(float mat[4][4], float left[4], float right[4], float top[4], float bottom[4],
                          float front[4], float back[4]);
+
+void projmat_dimensions(const float projmat[4][4],
+                        float *r_left, float *r_right,
+                        float *r_bottom, float *r_top,
+                        float *r_near, float *r_far);
 
 int box_clip_bounds_m4(float boundbox[2][3],
                        const float bounds[4], float winmat[4][4]);

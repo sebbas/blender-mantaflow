@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2006 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/render/intern/source/external_engine.c
- *  \ingroup render
+/** \file
+ * \ingroup render
  */
 
 #include <stddef.h>
@@ -150,6 +142,8 @@ RenderEngine *RE_engine_create_ex(RenderEngineType *type, bool use_for_viewport)
 		BLI_threaded_malloc_begin();
 	}
 
+	BLI_mutex_init(&engine->update_render_passes_mutex);
+
 	return engine;
 }
 
@@ -164,6 +158,8 @@ void RE_engine_free(RenderEngine *engine)
 	if (engine->flag & RE_ENGINE_USED_FOR_VIEWPORT) {
 		BLI_threaded_malloc_end();
 	}
+
+	BLI_mutex_end(&engine->update_render_passes_mutex);
 
 	MEM_freeN(engine);
 }
@@ -277,7 +273,7 @@ void RE_engine_end_result(RenderEngine *engine, RenderResult *result, bool cance
 		RenderPart *pa = get_part_from_result(re, result);
 
 		if (pa) {
-			pa->status = (!cancel && merge_results)? PART_STATUS_MERGED: PART_STATUS_RENDERED;
+			pa->status = (!cancel && merge_results) ? PART_STATUS_MERGED : PART_STATUS_RENDERED;
 		}
 		else if (re->result->do_exr_tile) {
 			/* if written result does not match any tile and we are using save
@@ -436,7 +432,7 @@ bool RE_engine_get_spherical_stereo(RenderEngine *engine, Object *camera)
 	return BKE_camera_multiview_spherical_stereo(re ? &re->r : NULL, camera) ? 1 : 0;
 }
 
-rcti* RE_engine_get_current_tiles(Render *re, int *r_total_tiles, bool *r_needs_free)
+rcti *RE_engine_get_current_tiles(Render *re, int *r_total_tiles, bool *r_needs_free)
 {
 	static rcti tiles_static[BLENDER_MAX_THREADS];
 	const int allocation_step = BLENDER_MAX_THREADS;
@@ -509,7 +505,7 @@ static void engine_depsgraph_free(RenderEngine *engine)
 
 void RE_engine_frame_set(RenderEngine *engine, int frame, float subframe)
 {
-	if(!engine->depsgraph) {
+	if (!engine->depsgraph) {
 		return;
 	}
 
@@ -711,7 +707,7 @@ int RE_engine_render(Render *re, int do_all)
 	engine->tile_y = re->party;
 
 	if (re->result->do_exr_tile)
-		render_result_exr_file_begin(re);
+		render_result_exr_file_begin(re, engine);
 
 	/* Clear UI drawing locks. */
 	if (re->draw_lock) {
@@ -738,8 +734,13 @@ int RE_engine_render(Render *re, int do_all)
 
 			type->render(engine, engine->depsgraph);
 
-			/* grease pencil render over previous render result */
-			if (!RE_engine_test_break(engine)) {
+			/* Grease pencil render over previous render result.
+			 *
+			 * NOTE: External engine might have been requested to free its
+			 * dependency graph, which is only allowed if there is no grease
+			 * pencil (pipeline is taking care of that).
+			 */
+			if (!RE_engine_test_break(engine) && engine->depsgraph != NULL) {
 				DRW_render_gpencil(engine, engine->depsgraph);
 			}
 
@@ -760,17 +761,14 @@ int RE_engine_render(Render *re, int do_all)
 
 	BLI_rw_mutex_lock(&re->partsmutex, THREAD_LOCK_WRITE);
 
+	if (re->result->do_exr_tile) {
+		render_result_exr_file_end(re, engine);
+	}
+
 	/* re->engine becomes zero if user changed active render engine during render */
 	if (!persistent_data || !re->engine) {
 		RE_engine_free(engine);
 		re->engine = NULL;
-	}
-
-	if (re->result->do_exr_tile) {
-		BLI_rw_mutex_lock(&re->resultmutex, THREAD_LOCK_WRITE);
-		render_result_save_empty_result_tiles(re);
-		render_result_exr_file_end(re);
-		BLI_rw_mutex_unlock(&re->resultmutex);
 	}
 
 	if (re->r.scemode & R_EXR_CACHE_FILE) {
@@ -793,23 +791,45 @@ int RE_engine_render(Render *re, int do_all)
 	return 1;
 }
 
-void RE_engine_register_pass(struct RenderEngine *engine, struct Scene *scene, struct ViewLayer *view_layer,
-                             const char *name, int UNUSED(channels), const char *UNUSED(chanid), int type)
+void RE_engine_update_render_passes(struct RenderEngine *engine, struct Scene *scene, struct ViewLayer *view_layer,
+                                    update_render_passes_cb_t callback, void *callback_data)
 {
-	/* The channel information is currently not used, but is part of the API in case it's needed in the future. */
-
-	if (!(scene && view_layer && engine)) {
+	if (!(scene && view_layer && engine && callback && engine->type->update_render_passes)) {
 		return;
 	}
 
-	/* Register the pass in all scenes that have a render layer node for this layer.
-	 * Since multiple scenes can be used in the compositor, the code must loop over all scenes
-	 * and check whether their nodetree has a node that needs to be updated. */
-	/* NOTE: using G_MAIN seems valid here,
-	 * unless we want to register that for every other temp Main we could generate??? */
-	for (Scene *sce = G_MAIN->scene.first; sce; sce = sce->id.next) {
-		if (sce->nodetree) {
-			ntreeCompositRegisterPass(sce->nodetree, scene, view_layer, name, type);
-		}
+	BLI_mutex_lock(&engine->update_render_passes_mutex);
+
+	engine->update_render_passes_cb = callback;
+	engine->update_render_passes_data = callback_data;
+	engine->type->update_render_passes(engine, scene, view_layer);
+	engine->update_render_passes_cb = NULL;
+	engine->update_render_passes_data = NULL;
+
+	BLI_mutex_unlock(&engine->update_render_passes_mutex);
+}
+
+void RE_engine_register_pass(struct RenderEngine *engine, struct Scene *scene, struct ViewLayer *view_layer,
+                             const char *name, int channels, const char *chanid, int type)
+{
+	if (!(scene && view_layer && engine && engine->update_render_passes_cb)) {
+		return;
 	}
+
+	engine->update_render_passes_cb(engine->update_render_passes_data, scene, view_layer, name, channels, chanid, type);
+}
+
+void RE_engine_free_blender_memory(RenderEngine *engine)
+{
+	/* Weak way to save memory, but not crash grease pencil.
+	 *
+	 * TODO(sergey): Find better solution for this.
+	 * TODO(sergey): Try to find solution which does not involve looping over
+	 * all the objects.
+	 */
+	if (DRW_render_check_grease_pencil(engine->depsgraph)) {
+		return;
+	}
+	DEG_graph_free(engine->depsgraph);
+	engine->depsgraph = NULL;
 }

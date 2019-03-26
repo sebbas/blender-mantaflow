@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/interface/interface_region_popup.c
- *  \ingroup edinterface
+/** \file
+ * \ingroup edinterface
  *
  * PopUp Region (Generic)
  */
@@ -75,6 +69,10 @@ void ui_popup_translate(ARegion *ar, const int mdiff[2])
 
 	/* update blocks */
 	for (block = ar->uiblocks.first; block; block = block->next) {
+		uiPopupBlockHandle *handle = block->handle;
+		/* Make empty, will be initialized on next use, see T60608. */
+		BLI_rctf_init(&handle->prev_block_rect, 0, 0, 0, 0);
+
 		uiSafetyRct *saferct;
 		for (saferct = block->saferct.first; saferct; saferct = saferct->next) {
 			BLI_rctf_translate(&saferct->parent, UNPACK2(mdiff));
@@ -97,10 +95,12 @@ static void ui_popup_block_position(wmWindow *window, ARegion *butregion, uiBut 
 
 		/* widget_roundbox_set has this correction too, keep in sync */
 		if (but->type != UI_BTYPE_PULLDOWN) {
-			if (but->drawflag & UI_BUT_ALIGN_TOP)
+			if (but->drawflag & UI_BUT_ALIGN_TOP) {
 				butrct.ymax += U.pixelsize;
-			if (but->drawflag & UI_BUT_ALIGN_LEFT)
+			}
+			if (but->drawflag & UI_BUT_ALIGN_LEFT) {
 				butrct.xmin -= U.pixelsize;
+			}
 		}
 
 		handle->prev_butrct = butrct;
@@ -150,44 +150,46 @@ static void ui_popup_block_position(wmWindow *window, ARegion *butregion, uiBut 
 		const float max_size_y = max_ff(size_y, handle->max_size_y);
 
 		/* check if there's space at all */
-		if (butrct.xmin - max_size_x + center_x > 0.0f) left = 1;
-		if (butrct.xmax + max_size_x - center_x < win_x) right = 1;
-		if (butrct.ymin - max_size_y + center_y > 0.0f) down = 1;
-		if (butrct.ymax + max_size_y - center_y < win_y) top = 1;
+		if (butrct.xmin - max_size_x + center_x > 0.0f)  { left = 1; }
+		if (butrct.xmax + max_size_x - center_x < win_x) { right = 1; }
+		if (butrct.ymin - max_size_y + center_y > 0.0f)  { down = 1; }
+		if (butrct.ymax + max_size_y - center_y < win_y) { top = 1; }
 
 		if (top == 0 && down == 0) {
-			if (butrct.ymin - max_size_y < win_y - butrct.ymax - max_size_y)
+			if (butrct.ymin - max_size_y < win_y - butrct.ymax - max_size_y) {
 				top = 1;
-			else
+			}
+			else {
 				down = 1;
+			}
 		}
 
 		dir1 = (block->direction & UI_DIR_ALL);
 
 		/* Secondary directions. */
 		if (dir1 & (UI_DIR_UP | UI_DIR_DOWN)) {
-			if      (dir1 & UI_DIR_LEFT)  dir2 = UI_DIR_LEFT;
-			else if (dir1 & UI_DIR_RIGHT) dir2 = UI_DIR_RIGHT;
+			if      (dir1 & UI_DIR_LEFT)  { dir2 = UI_DIR_LEFT; }
+			else if (dir1 & UI_DIR_RIGHT) { dir2 = UI_DIR_RIGHT; }
 			dir1 &= (UI_DIR_UP | UI_DIR_DOWN);
 		}
 
-		if ((dir2 == 0) && (dir1 == UI_DIR_LEFT || dir1 == UI_DIR_RIGHT)) dir2 = UI_DIR_DOWN;
-		if ((dir2 == 0) && (dir1 == UI_DIR_UP   || dir1 == UI_DIR_DOWN))  dir2 = UI_DIR_LEFT;
+		if ((dir2 == 0) && (dir1 == UI_DIR_LEFT || dir1 == UI_DIR_RIGHT)) { dir2 = UI_DIR_DOWN; }
+		if ((dir2 == 0) && (dir1 == UI_DIR_UP   || dir1 == UI_DIR_DOWN))  { dir2 = UI_DIR_LEFT; }
 
 		/* no space at all? don't change */
 		if (left || right) {
-			if (dir1 == UI_DIR_LEFT  && left == 0)  dir1 = UI_DIR_RIGHT;
-			if (dir1 == UI_DIR_RIGHT && right == 0) dir1 = UI_DIR_LEFT;
+			if (dir1 == UI_DIR_LEFT  && left == 0)  { dir1 = UI_DIR_RIGHT; }
+			if (dir1 == UI_DIR_RIGHT && right == 0) { dir1 = UI_DIR_LEFT; }
 			/* this is aligning, not append! */
-			if (dir2 == UI_DIR_LEFT  && right == 0) dir2 = UI_DIR_RIGHT;
-			if (dir2 == UI_DIR_RIGHT && left == 0)  dir2 = UI_DIR_LEFT;
+			if (dir2 == UI_DIR_LEFT  && right == 0) { dir2 = UI_DIR_RIGHT; }
+			if (dir2 == UI_DIR_RIGHT && left == 0)  { dir2 = UI_DIR_LEFT; }
 		}
 		if (down || top) {
-			if (dir1 == UI_DIR_UP   && top == 0)  dir1 = UI_DIR_DOWN;
-			if (dir1 == UI_DIR_DOWN && down == 0) dir1 = UI_DIR_UP;
+			if (dir1 == UI_DIR_UP   && top == 0)  { dir1 = UI_DIR_DOWN; }
+			if (dir1 == UI_DIR_DOWN && down == 0) { dir1 = UI_DIR_UP; }
 			BLI_assert(dir2 != UI_DIR_UP);
-//			if (dir2 == UI_DIR_UP   && top == 0)  dir2 = UI_DIR_DOWN;
-			if (dir2 == UI_DIR_DOWN && down == 0) dir2 = UI_DIR_UP;
+//			if (dir2 == UI_DIR_UP   && top == 0)  { dir2 = UI_DIR_DOWN; }
+			if (dir2 == UI_DIR_DOWN && down == 0) { dir2 = UI_DIR_UP; }
 		}
 
 		handle->prev_dir1 = dir1;
@@ -205,18 +207,18 @@ static void ui_popup_block_position(wmWindow *window, ARegion *butregion, uiBut 
 
 	if (dir1 == UI_DIR_LEFT) {
 		offset_x = butrct.xmin - block->rect.xmax;
-		if (dir2 == UI_DIR_UP) offset_y = butrct.ymin - block->rect.ymin - center_y - MENU_PADDING;
-		else                   offset_y = butrct.ymax - block->rect.ymax + center_y + MENU_PADDING;
+		if (dir2 == UI_DIR_UP) { offset_y = butrct.ymin - block->rect.ymin - center_y - UI_MENU_PADDING; }
+			else                   { offset_y = butrct.ymax - block->rect.ymax + center_y + UI_MENU_PADDING; }
 	}
 	else if (dir1 == UI_DIR_RIGHT) {
 		offset_x = butrct.xmax - block->rect.xmin;
-		if (dir2 == UI_DIR_UP) offset_y = butrct.ymin - block->rect.ymin - center_y - MENU_PADDING;
-		else                   offset_y = butrct.ymax - block->rect.ymax + center_y + MENU_PADDING;
+		if (dir2 == UI_DIR_UP) { offset_y = butrct.ymin - block->rect.ymin - center_y - UI_MENU_PADDING; }
+		else                   { offset_y = butrct.ymax - block->rect.ymax + center_y + UI_MENU_PADDING; }
 	}
 	else if (dir1 == UI_DIR_UP) {
 		offset_y = butrct.ymax - block->rect.ymin;
-		if (dir2 == UI_DIR_RIGHT) offset_x = butrct.xmax - block->rect.xmax + center_x;
-		else                      offset_x = butrct.xmin - block->rect.xmin - center_x;
+		if (dir2 == UI_DIR_RIGHT) { offset_x = butrct.xmax - block->rect.xmax + center_x; }
+		else                      { offset_x = butrct.xmin - block->rect.xmin - center_x; }
 		/* changed direction? */
 		if ((dir1 & block->direction) == 0) {
 			/* TODO: still do */
@@ -225,8 +227,8 @@ static void ui_popup_block_position(wmWindow *window, ARegion *butregion, uiBut 
 	}
 	else if (dir1 == UI_DIR_DOWN) {
 		offset_y = butrct.ymin - block->rect.ymax;
-		if (dir2 == UI_DIR_RIGHT) offset_x = butrct.xmax - block->rect.xmax + center_x;
-		else                      offset_x = butrct.xmin - block->rect.xmin - center_x;
+		if (dir2 == UI_DIR_RIGHT) { offset_x = butrct.xmax - block->rect.xmax + center_x; }
+		else                      { offset_x = butrct.xmin - block->rect.xmin - center_x; }
 		/* changed direction? */
 		if ((dir1 & block->direction) == 0) {
 			/* TODO: still do */
@@ -259,23 +261,43 @@ static void ui_popup_block_position(wmWindow *window, ARegion *butregion, uiBut 
 		/* when you are outside parent button, safety there should be smaller */
 
 		/* parent button to left */
-		if (midx < block->rect.xmin) block->safety.xmin = block->rect.xmin - 3;
-		else block->safety.xmin = block->rect.xmin - 40;
+		if (midx < block->rect.xmin) {
+			block->safety.xmin = block->rect.xmin - 3;
+		}
+		else {
+			block->safety.xmin = block->rect.xmin - 40;
+		}
 		/* parent button to right */
-		if (midx > block->rect.xmax) block->safety.xmax = block->rect.xmax + 3;
-		else block->safety.xmax = block->rect.xmax + 40;
+		if (midx > block->rect.xmax) {
+			block->safety.xmax = block->rect.xmax + 3;
+		}
+		else {
+			block->safety.xmax = block->rect.xmax + 40;
+		}
 
 		/* parent button on bottom */
-		if (midy < block->rect.ymin) block->safety.ymin = block->rect.ymin - 3;
-		else block->safety.ymin = block->rect.ymin - 40;
+		if (midy < block->rect.ymin) {
+			block->safety.ymin = block->rect.ymin - 3;
+		}
+		else {
+			block->safety.ymin = block->rect.ymin - 40;
+		}
 		/* parent button on top */
-		if (midy > block->rect.ymax) block->safety.ymax = block->rect.ymax + 3;
-		else block->safety.ymax = block->rect.ymax + 40;
+		if (midy > block->rect.ymax) {
+			block->safety.ymax = block->rect.ymax + 3;
+		}
+		else {
+			block->safety.ymax = block->rect.ymax + 40;
+		}
 
 		/* exception for switched pulldowns... */
 		if (dir1 && (dir1 & block->direction) == 0) {
-			if (dir2 == UI_DIR_RIGHT) block->safety.xmax = block->rect.xmax + 3;
-			if (dir2 == UI_DIR_LEFT)  block->safety.xmin = block->rect.xmin - 3;
+			if (dir2 == UI_DIR_RIGHT) {
+				block->safety.xmax = block->rect.xmax + 3;
+			}
+			if (dir2 == UI_DIR_LEFT) {
+				block->safety.xmin = block->rect.xmin - 3;
+			}
 		}
 		block->direction = dir1;
 	}
@@ -337,8 +359,9 @@ static void ui_block_region_draw(const bContext *C, ARegion *ar)
 {
 	uiBlock *block;
 
-	for (block = ar->uiblocks.first; block; block = block->next)
+	for (block = ar->uiblocks.first; block; block = block->next) {
 		UI_block_draw(C, block);
+	}
 }
 
 /**
@@ -366,8 +389,8 @@ static void ui_block_region_popup_window_listener(
 static void ui_popup_block_clip(wmWindow *window, uiBlock *block)
 {
 	uiBut *bt;
-	float xofs = 0.0f;
-	int width = UI_SCREEN_MARGIN;
+	const float xmin_orig = block->rect.xmin;
+	const int margin = UI_SCREEN_MARGIN;
 	int winx, winy;
 
 	if (block->flag & UI_BLOCK_NO_WIN_CLIP) {
@@ -377,30 +400,32 @@ static void ui_popup_block_clip(wmWindow *window, uiBlock *block)
 	winx = WM_window_pixels_x(window);
 	winy = WM_window_pixels_y(window);
 
-	/* shift menus to right if outside of view */
-	if (block->rect.xmin < width) {
-		xofs = (width - block->rect.xmin);
+	/* shift to left if outside of view */
+	if (block->rect.xmax > winx - margin) {
+		const float xofs = winx - margin - block->rect.xmax;
 		block->rect.xmin += xofs;
 		block->rect.xmax += xofs;
 	}
-	/* or shift to left if outside of view */
-	if (block->rect.xmax > winx - width) {
-		xofs = winx - width - block->rect.xmax;
+	/* shift menus to right if outside of view */
+	if (block->rect.xmin < margin) {
+		const float xofs = (margin - block->rect.xmin);
 		block->rect.xmin += xofs;
 		block->rect.xmax += xofs;
 	}
 
-	if (block->rect.ymin < width)
-		block->rect.ymin = width;
-	if (block->rect.ymax > winy - UI_POPUP_MENU_TOP)
+	if (block->rect.ymin < margin) {
+		block->rect.ymin = margin;
+	}
+	if (block->rect.ymax > winy - UI_POPUP_MENU_TOP) {
 		block->rect.ymax = winy - UI_POPUP_MENU_TOP;
+	}
 
 	/* ensure menu items draw inside left/right boundary */
+	const float xofs = block->rect.xmin - xmin_orig;
 	for (bt = block->buttons.first; bt; bt = bt->next) {
 		bt->rect.xmin += xofs;
 		bt->rect.xmax += xofs;
 	}
-
 }
 
 void ui_popup_block_scrolltest(uiBlock *block)
@@ -409,11 +434,13 @@ void ui_popup_block_scrolltest(uiBlock *block)
 
 	block->flag &= ~(UI_BLOCK_CLIPBOTTOM | UI_BLOCK_CLIPTOP);
 
-	for (bt = block->buttons.first; bt; bt = bt->next)
+	for (bt = block->buttons.first; bt; bt = bt->next) {
 		bt->flag &= ~UI_SCROLLED;
+	}
 
-	if (block->buttons.first == block->buttons.last)
+	if (block->buttons.first == block->buttons.last) {
 		return;
+	}
 
 	/* mark buttons that are outside boundary */
 	for (bt = block->buttons.first; bt; bt = bt->next) {
@@ -430,12 +457,14 @@ void ui_popup_block_scrolltest(uiBlock *block)
 	/* mark buttons overlapping arrows, if we have them */
 	for (bt = block->buttons.first; bt; bt = bt->next) {
 		if (block->flag & UI_BLOCK_CLIPBOTTOM) {
-			if (bt->rect.ymin < block->rect.ymin + UI_MENU_SCROLL_ARROW)
+			if (bt->rect.ymin < block->rect.ymin + UI_MENU_SCROLL_ARROW) {
 				bt->flag |= UI_SCROLLED;
+			}
 		}
 		if (block->flag & UI_BLOCK_CLIPTOP) {
-			if (bt->rect.ymax > block->rect.ymax - UI_MENU_SCROLL_ARROW)
+			if (bt->rect.ymax > block->rect.ymax - UI_MENU_SCROLL_ARROW) {
 				bt->flag |= UI_SCROLLED;
+			}
 		}
 	}
 }
@@ -454,8 +483,9 @@ static void ui_popup_block_remove(bContext *C, uiPopupBlockHandle *handle)
 		WM_event_add_mousemove(C);
 	}
 
-	if (handle->scrolltimer)
+	if (handle->scrolltimer) {
 		WM_event_remove_timer(CTX_wm_manager(C), win, handle->scrolltimer);
+	}
 }
 
 /**
@@ -485,10 +515,12 @@ uiBlock *ui_popup_block_refresh(
 #endif
 
 	/* create ui block */
-	if (create_func)
+	if (create_func) {
 		block = create_func(C, ar, arg);
-	else
+	}
+	else {
 		block = handle_create_func(C, handle, arg);
+	}
 
 	/* callbacks _must_ leave this for us, otherwise we can't call UI_block_update_from_old */
 	BLI_assert(!block->endblock);
@@ -503,8 +535,9 @@ uiBlock *ui_popup_block_refresh(
 		MEM_freeN(handle);
 		handle = block->handle;
 	}
-	else
+	else {
 		block->handle = handle;
+	}
 
 	ar->regiondata = handle;
 
@@ -550,13 +583,21 @@ uiBlock *ui_popup_block_refresh(
 
 		/* only try translation if area is large enough */
 		if (BLI_rctf_size_x(&block->rect) < winx - (2.0f * win_width)) {
-			if (block->rect.xmin < win_width )   x_offset += win_width - block->rect.xmin;
-			if (block->rect.xmax > winx - win_width) x_offset += winx - win_width - block->rect.xmax;
+			if (block->rect.xmin < win_width ) {
+				x_offset += win_width - block->rect.xmin;
+			}
+			if (block->rect.xmax > winx - win_width) {
+				x_offset += winx - win_width - block->rect.xmax;
+			}
 		}
 
 		if (BLI_rctf_size_y(&block->rect) < winy - (2.0f * win_width)) {
-			if (block->rect.ymin < win_width )   y_offset += win_width - block->rect.ymin;
-			if (block->rect.ymax > winy - win_width) y_offset += winy - win_width - block->rect.ymax;
+			if (block->rect.ymin < win_width ) {
+				y_offset += win_width - block->rect.ymin;
+			}
+			if (block->rect.ymax > winy - win_width) {
+				y_offset += winy - win_width - block->rect.ymax;
+			}
 		}
 		/* if we are offsetting set up initial data for timeout functionality */
 
@@ -566,8 +607,9 @@ uiBlock *ui_popup_block_refresh(
 
 			UI_block_translate(block, x_offset, y_offset);
 
-			if (U.pie_initial_timeout > 0)
+			if (U.pie_initial_timeout > 0) {
 				block->pie_data.flags |= UI_PIE_INITIAL_DIRECTION;
+			}
 		}
 
 		ar->winrct.xmin = 0;

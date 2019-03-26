@@ -127,6 +127,11 @@ def orientation_helper(axis_forward='Y', axis_up='Z'):
     with specified default values (axes).
     """
     def wrapper(cls):
+        # Without that, we may end up adding those fields to some **parent** class' __annotations__ property
+        # (like the ImportHelper or ExportHelper ones)! See T58772.
+        if "__annotations__" not in cls.__dict__:
+            setattr(cls, "__annotations__", {})
+
         def _update_axis_forward(self, context):
             if self.axis_forward[-1] == self.axis_up[-1]:
                 self.axis_up = (self.axis_up[0:-1] +
@@ -341,10 +346,10 @@ def axis_conversion_ensure(operator, forward_attr, up_attr):
 # return a tuple (free, object list), free is True if memory should be freed
 # later with free_derived_objects()
 def create_derived_objects(scene, ob):
-    if ob.parent and ob.parent.dupli_type in {'VERTS', 'FACES'}:
+    if ob.parent and ob.parent.instance_type in {'VERTS', 'FACES'}:
         return False, None
 
-    if ob.dupli_type != 'NONE':
+    if ob.instance_type != 'NONE':
         ob.dupli_list_create(scene)
         return True, [(dob.object, dob.matrix) for dob in ob.dupli_list]
     else:
