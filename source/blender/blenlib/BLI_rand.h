@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,20 +15,14 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BLI_RAND_H__
 #define __BLI_RAND_H__
 
-/** \file BLI_rand.h
- *  \ingroup bli
- *  \brief Random number functions.
+/** \file
+ * \ingroup bli
+ * \brief Random number functions.
  */
 
 /* RNG is an abstract random number generator type that avoids using globals.
@@ -45,6 +37,7 @@ typedef struct RNG_THREAD_ARRAY RNG_THREAD_ARRAY;
 
 struct RNG *BLI_rng_new(unsigned int seed);
 struct RNG *BLI_rng_new_srandom(unsigned int seed);
+struct RNG *BLI_rng_copy(struct RNG *rng) ATTR_NONNULL(1);
 void        BLI_rng_free(struct RNG *rng) ATTR_NONNULL(1);
 
 void        BLI_rng_seed(struct RNG *rng, unsigned int seed) ATTR_NONNULL(1);
@@ -94,16 +87,16 @@ RNG_THREAD_ARRAY *BLI_rng_threaded_new(void);
 void  BLI_rng_threaded_free(struct RNG_THREAD_ARRAY *rngarr) ATTR_NONNULL(1);
 int   BLI_rng_thread_rand(RNG_THREAD_ARRAY *rngarr, int thread) ATTR_WARN_UNUSED_RESULT;
 
-/** Low-discrepancy sequences **/
+/* Low-discrepancy sequences. */
 
 /** Return the _n_th number of the given low-discrepancy sequence. */
-void BLI_halton_1D(unsigned int prime, double offset, int n, double *r);
-void BLI_halton_2D(unsigned int prime[2], double offset[2], int n, double *r);
-void BLI_halton_3D(unsigned int prime[3], double offset[3], int n, double *r);
-void BLI_hammersley_1D(unsigned int n, double *r);
+void BLI_halton_1d(unsigned int prime, double offset, int n, double *r);
+void BLI_halton_2d(unsigned int prime[2], double offset[2], int n, double *r);
+void BLI_halton_3d(unsigned int prime[3], double offset[3], int n, double *r);
+void BLI_hammersley_1d(unsigned int n, double *r);
 
 /** Return the whole low-discrepancy sequence up to _n_. */
-void BLI_halton_2D_sequence(unsigned int prime[2], double offset[2], int n, double *r);
-void BLI_hammersley_2D_sequence(unsigned int n, double *r);
+void BLI_halton_2d_sequence(unsigned int prime[2], double offset[2], int n, double *r);
+void BLI_hammersley_2d_sequence(unsigned int n, double *r);
 
 #endif  /* __BLI_RAND_H__ */

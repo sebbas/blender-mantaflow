@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): 2008,2009 Joshua Leung (IPO System cleanup, Animation System Recode)
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/ipo.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 
@@ -49,7 +41,7 @@
 #include "DNA_anim_types.h"
 #include "DNA_constraint_types.h"
 #include "DNA_camera_types.h"
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_ipo_types.h"
 #include "DNA_key_types.h"
 #include "DNA_material_types.h"
@@ -77,11 +69,15 @@
 #include "BKE_nla.h"
 #include "BKE_sequencer.h"
 
+#include "CLG_log.h"
+
 #include "MEM_guardedalloc.h"
 
 #ifdef WIN32
 #  include "BLI_math_base.h"  /* M_PI */
 #endif
+
+static CLG_LogRef LOG = {"bke.ipo"};
 
 /* *************************************************** */
 /* Old-Data Freeing Tools */
@@ -142,7 +138,7 @@ static AdrBit2Path ob_layer_bits[] = {
 	{(1 << 16), "layers", 16},
 	{(1 << 17), "layers", 17},
 	{(1 << 18), "layers", 18},
-	{(1 << 19), "layers", 19}
+	{(1 << 19), "layers", 19},
 };
 
 /* ----------------- */
@@ -292,7 +288,7 @@ static const char *pchan_adrcodes_to_paths(int adrcode, int *array_index)
 	}
 
 	/* for debugging only */
-	printf("ERROR: unmatched PoseChannel setting (code %d)\n", adrcode);
+	CLOG_ERROR(&LOG, "unmatched PoseChannel setting (code %d)", adrcode);
 	return NULL;
 }
 
@@ -605,7 +601,7 @@ static const char *camera_adrcodes_to_paths(int adrcode, int *array_index)
 		case CAM_YF_APERT:
 			poin = &(ca->YF_aperture); break;
 		case CAM_YF_FDIST:
-			poin = &(ca->YF_dofdist); break;
+			poin = &(ca->dof_distance); break;
 #endif // XXX these are not defined in RNA
 
 		case CAM_SHIFT_X:
@@ -614,12 +610,12 @@ static const char *camera_adrcodes_to_paths(int adrcode, int *array_index)
 			return "shift_y";
 	}
 
-	/* unrecognised adrcode, or not-yet-handled ones! */
+	/* unrecognized adrcode, or not-yet-handled ones! */
 	return NULL;
 }
 
-/* Lamp Types */
-static const char *lamp_adrcodes_to_paths(int adrcode, int *array_index)
+/* Light Types */
+static const char *light_adrcodes_to_paths(int adrcode, int *array_index)
 {
 	/* set array index like this in-case nothing sets it correctly  */
 	*array_index = 0;
@@ -656,7 +652,7 @@ static const char *lamp_adrcodes_to_paths(int adrcode, int *array_index)
 			return mtex_adrcodes_to_paths(adrcode, array_index);
 	}
 
-	/* unrecognised adrcode, or not-yet-handled ones! */
+	/* unrecognized adrcode, or not-yet-handled ones! */
 	return NULL;
 }
 
@@ -681,7 +677,7 @@ static const char *sound_adrcodes_to_paths(int adrcode, int *array_index)
 			return "attenuation";
 	}
 
-	/* unrecognised adrcode, or not-yet-handled ones! */
+	/* unrecognized adrcode, or not-yet-handled ones! */
 	return NULL;
 }
 
@@ -796,13 +792,13 @@ static const char *particle_adrcodes_to_paths(int adrcode, int *array_index)
 /* ------- */
 
 /* Allocate memory for RNA-path for some property given a blocktype, adrcode, and 'root' parts of path
- *	Input:
- *		- id					- the datablock that the curve's IPO block is attached to and/or which the new paths will start from
- *		- blocktype, adrcode	- determines setting to get
- *		- actname, constname,seq - used to build path
- *	Output:
- *		- array_index			- index in property's array (if applicable) to use
- *		- return				- the allocated path...
+ * Input:
+ *     - id                    - the datablock that the curve's IPO block is attached to and/or which the new paths will start from
+ *     - blocktype, adrcode    - determines setting to get
+ *     - actname, constname,seq - used to build path
+ * Output:
+ *     - array_index           - index in property's array (if applicable) to use
+ *     - return                - the allocated path...
  */
 static char *get_rna_access(ID *id, int blocktype, int adrcode, char actname[], char constname[], Sequence *seq, int *array_index)
 {
@@ -846,8 +842,8 @@ static char *get_rna_access(ID *id, int blocktype, int adrcode, char actname[], 
 			propname = camera_adrcodes_to_paths(adrcode, &dummy_index);
 			break;
 
-		case ID_LA: /* lamp */
-			propname = lamp_adrcodes_to_paths(adrcode, &dummy_index);
+		case ID_LA: /* light */
+			propname = light_adrcodes_to_paths(adrcode, &dummy_index);
 			break;
 
 		case ID_SO: /* sound */
@@ -893,12 +889,12 @@ static char *get_rna_access(ID *id, int blocktype, int adrcode, char actname[], 
 
 		/* TODO... add other blocktypes... */
 		default:
-			printf("IPO2ANIMATO WARNING: No path for blocktype %d, adrcode %d yet\n", blocktype, adrcode);
+			CLOG_WARN(&LOG, "No path for blocktype %d, adrcode %d yet", blocktype, adrcode);
 			break;
 	}
 
 	/* check if any property found
-	 *	- blocktype < 0 is special case for a specific type of driver, where we don't need a property name...
+	 * - blocktype < 0 is special case for a specific type of driver, where we don't need a property name...
 	 */
 	if ((propname == NULL) && (blocktype > 0)) {
 		/* nothing was found, so exit */
@@ -1080,7 +1076,7 @@ static ChannelDriver *idriver_to_cdriver(IpoDriver *idriver)
 }
 
 /* Add F-Curve to the correct list
- *	- grpname is needed to be used as group name where relevant, and is usually derived from actname
+ * - grpname is needed to be used as group name where relevant, and is usually derived from actname
  */
 static void fcurve_add_to_list(ListBase *groups, ListBase *list, FCurve *fcu, char *grpname, int muteipo)
 {
@@ -1138,8 +1134,8 @@ static void fcurve_add_to_list(ListBase *groups, ListBase *list, FCurve *fcu, ch
 
 /* Convert IPO-Curve to F-Curve (including Driver data), and free any of the old data that
  * is not relevant, BUT do not free the IPO-Curve itself...
- *	actname: name of Action-Channel (if applicable) that IPO-Curve's IPO-block belonged to
- *	constname: name of Constraint-Channel (if applicable) that IPO-Curve's IPO-block belonged to
+ *  actname: name of Action-Channel (if applicable) that IPO-Curve's IPO-block belonged to
+ *  constname: name of Constraint-Channel (if applicable) that IPO-Curve's IPO-block belonged to
  *      seq: sequencer-strip (if applicable) that IPO-Curve's IPO-block belonged to
  */
 static void icu_to_fcurves(ID *id, ListBase *groups, ListBase *list, IpoCurve *icu, char *actname, char *constname, Sequence *seq, int muteipo)
@@ -1222,8 +1218,8 @@ static void icu_to_fcurves(ID *id, ListBase *groups, ListBase *list, IpoCurve *i
 			fcurve->array_index = abp->array_index;
 
 			/* convert keyframes
-			 *	- beztriples and bpoints are mutually exclusive, so we won't have both at the same time
-			 *	- beztriples are more likely to be encountered as they are keyframes (the other type wasn't used yet)
+			 * - beztriples and bpoints are mutually exclusive, so we won't have both at the same time
+			 * - beztriples are more likely to be encountered as they are keyframes (the other type wasn't used yet)
 			 */
 			fcurve->totvert = icu->totvert;
 
@@ -1271,15 +1267,15 @@ static void icu_to_fcurves(ID *id, ListBase *groups, ListBase *list, IpoCurve *i
 		unsigned int i = 0;
 
 		/* get rna-path
-		 *	- we will need to set the 'disabled' flag if no path is able to be made (for now)
+		 * - we will need to set the 'disabled' flag if no path is able to be made (for now)
 		 */
 		fcu->rna_path = get_rna_access(id, icu->blocktype, icu->adrcode, actname, constname, seq, &fcu->array_index);
 		if (fcu->rna_path == NULL)
 			fcu->flag |= FCURVE_DISABLED;
 
 		/* convert keyframes
-		 *	- beztriples and bpoints are mutually exclusive, so we won't have both at the same time
-		 *	- beztriples are more likely to be encountered as they are keyframes (the other type wasn't used yet)
+		 * - beztriples and bpoints are mutually exclusive, so we won't have both at the same time
+		 * - beztriples are more likely to be encountered as they are keyframes (the other type wasn't used yet)
 		 */
 		fcu->totvert = icu->totvert;
 
@@ -1308,8 +1304,8 @@ static void icu_to_fcurves(ID *id, ListBase *groups, ListBase *list, IpoCurve *i
 				}
 
 				/* correct values for euler rotation curves
-				 *	- they were degrees/10
-				 *	- we need radians for RNA to do the right thing
+				 * - they were degrees/10
+				 * - we need radians for RNA to do the right thing
 				 */
 				if ( ((icu->blocktype == ID_OB) && ELEM(icu->adrcode, OB_ROT_X, OB_ROT_Y, OB_ROT_Z)) ||
 				     ((icu->blocktype == ID_PO) && ELEM(icu->adrcode, AC_EUL_X, AC_EUL_Y, AC_EUL_Z)) )
@@ -1322,8 +1318,8 @@ static void icu_to_fcurves(ID *id, ListBase *groups, ListBase *list, IpoCurve *i
 				}
 
 				/* correct values for path speed curves
-				 *	- their values were 0-1
-				 *	- we now need as 'frames'
+				 * - their values were 0-1
+				 * - we now need as 'frames'
 				 */
 				if ( (id) && (icu->blocktype == GS(id->name)) &&
 				     (fcu->rna_path && STREQ(fcu->rna_path, "eval_time")) )
@@ -1336,9 +1332,9 @@ static void icu_to_fcurves(ID *id, ListBase *groups, ListBase *list, IpoCurve *i
 				}
 
 				/* correct times for rotation drivers
-				 *	- need to go from degrees to radians...
-				 *  - there's only really 1 target to worry about
-				 *  - were also degrees/10
+				 * - need to go from degrees to radians...
+				 * - there's only really 1 target to worry about
+				 * - were also degrees/10
 				 */
 				if (fcu->driver && fcu->driver->variables.first) {
 					DriverVar *dvar = fcu->driver->variables.first;
@@ -1397,10 +1393,10 @@ static void ipo_to_animato(ID *id, Ipo *ipo, char actname[], char constname[], S
 	if (G.debug & G_DEBUG) printf("ipo_to_animato\n");
 
 	/* validate actname and constname
-	 *	- clear actname if it was one of the generic <builtin> ones (i.e. 'Object', or 'Shapes')
-	 *	- actname can then be used to assign F-Curves in Action to Action Groups
-	 *	  (i.e. thus keeping the benefits that used to be provided by Action Channels for grouping
-	 *		F-Curves for bones). This may be added later... for now let's just dump without them...
+	 * - clear actname if it was one of the generic <builtin> ones (i.e. 'Object', or 'Shapes')
+	 * - actname can then be used to assign F-Curves in Action to Action Groups
+	 *   (i.e. thus keeping the benefits that used to be provided by Action Channels for grouping
+	 *   F-Curves for bones). This may be added later... for now let's just dump without them...
 	 */
 	if (actname) {
 		if ((ipo->blocktype == ID_OB) && STREQ(actname, "Object"))
@@ -1519,7 +1515,7 @@ static void ipo_to_animdata(Main *bmain, ID *id, Ipo *ipo, char actname[], char 
 	if (ELEM(NULL, id, ipo))
 		return;
 	if (adt == NULL) {
-		printf("ERROR ipo_to_animdata(): adt invalid\n");
+		CLOG_ERROR(&LOG, "adt invalid");
 		return;
 	}
 
@@ -1608,8 +1604,8 @@ static void nlastrips_to_animdata(ID *id, ListBase *strips)
 			/* create a new-style NLA-strip which references this Action, then copy over relevant settings */
 			{
 				/* init a new strip, and assign the action to it
-				 *	- no need to muck around with the user-counts, since this is just
-				 *	  passing over the ref to the new owner, not creating an additional ref
+				 * - no need to muck around with the user-counts, since this is just
+				 *   passing over the ref to the new owner, not creating an additional ref
 				 */
 				strip = MEM_callocN(sizeof(NlaStrip), "NlaStrip");
 				strip->act = as->act;
@@ -1686,13 +1682,13 @@ void do_versions_ipos_to_animato(Main *bmain)
 	ID *id;
 
 	if (bmain == NULL) {
-		printf("Argh! Main is NULL in do_versions_ipos_to_animato()\n");
+		CLOG_ERROR(&LOG, "Argh! Main is NULL");
 		return;
 	}
 
 	/* only convert if version is right */
 	if (bmain->versionfile >= 250) {
-		printf("WARNING: Animation data too new to convert (Version %d)\n", bmain->versionfile);
+		CLOG_WARN(&LOG, "Animation data too new to convert (Version %d)", bmain->versionfile);
 		return;
 	}
 	else if (G.debug & G_DEBUG)
@@ -1701,7 +1697,7 @@ void do_versions_ipos_to_animato(Main *bmain)
 	/* ----------- Animation Attached to Data -------------- */
 
 	/* objects */
-	for (id = bmain->object.first; id; id = id->next) {
+	for (id = bmain->objects.first; id; id = id->next) {
 		Object *ob = (Object *)id;
 		bPoseChannel *pchan;
 		bConstraint *con;
@@ -1828,7 +1824,7 @@ void do_versions_ipos_to_animato(Main *bmain)
 	}
 
 	/* shapekeys */
-	for (id = bmain->key.first; id; id = id->next) {
+	for (id = bmain->shapekeys.first; id; id = id->next) {
 		Key *key = (Key *)id;
 
 		if (G.debug & G_DEBUG) printf("\tconverting key %s\n", id->name + 2);
@@ -1853,7 +1849,7 @@ void do_versions_ipos_to_animato(Main *bmain)
 	}
 
 	/* materials */
-	for (id = bmain->mat.first; id; id = id->next) {
+	for (id = bmain->materials.first; id; id = id->next) {
 		Material *ma = (Material *)id;
 
 		if (G.debug & G_DEBUG) printf("\tconverting material %s\n", id->name + 2);
@@ -1875,7 +1871,7 @@ void do_versions_ipos_to_animato(Main *bmain)
 	}
 
 	/* worlds */
-	for (id = bmain->world.first; id; id = id->next) {
+	for (id = bmain->worlds.first; id; id = id->next) {
 		World *wo = (World *)id;
 
 		if (G.debug & G_DEBUG) printf("\tconverting world %s\n", id->name + 2);
@@ -1897,7 +1893,7 @@ void do_versions_ipos_to_animato(Main *bmain)
 	}
 
 	/* sequence strips */
-	for (id = bmain->scene.first; id; id = id->next) {
+	for (id = bmain->scenes.first; id; id = id->next) {
 		Scene *scene = (Scene *)id;
 		Editing *ed = scene->ed;
 		if (ed && ed->seqbasep) {
@@ -1944,14 +1940,13 @@ void do_versions_ipos_to_animato(Main *bmain)
 
 				id_us_min(&seq->ipo->id);
 				seq->ipo = NULL;
-			}
-			SEQ_END
+			} SEQ_END;
 		}
 	}
 
 
 	/* textures */
-	for (id = bmain->tex.first; id; id = id->next) {
+	for (id = bmain->textures.first; id; id = id->next) {
 		Tex *te = (Tex *)id;
 
 		if (G.debug & G_DEBUG) printf("\tconverting texture %s\n", id->name + 2);
@@ -1973,7 +1968,7 @@ void do_versions_ipos_to_animato(Main *bmain)
 	}
 
 	/* cameras */
-	for (id = bmain->camera.first; id; id = id->next) {
+	for (id = bmain->cameras.first; id; id = id->next) {
 		Camera *ca = (Camera *)id;
 
 		if (G.debug & G_DEBUG) printf("\tconverting camera %s\n", id->name + 2);
@@ -1994,9 +1989,9 @@ void do_versions_ipos_to_animato(Main *bmain)
 		}
 	}
 
-	/* lamps */
-	for (id = bmain->lamp.first; id; id = id->next) {
-		Lamp *la = (Lamp *)id;
+	/* lights */
+	for (id = bmain->lights.first; id; id = id->next) {
+		Light *la = (Light *)id;
 
 		if (G.debug & G_DEBUG) printf("\tconverting light %s\n", id->name + 2);
 
@@ -2005,7 +2000,7 @@ void do_versions_ipos_to_animato(Main *bmain)
 			/* Add AnimData block */
 			AnimData *adt = BKE_animdata_add_id(id);
 
-			/* Convert Lamp data... */
+			/* Convert Light data... */
 			ipo_to_animdata(bmain, id, la->ipo, NULL, NULL, NULL);
 
 			if (adt->action)
@@ -2017,7 +2012,7 @@ void do_versions_ipos_to_animato(Main *bmain)
 	}
 
 	/* curves */
-	for (id = bmain->curve.first; id; id = id->next) {
+	for (id = bmain->curves.first; id; id = id->next) {
 		Curve *cu = (Curve *)id;
 
 		if (G.debug & G_DEBUG) printf("\tconverting curve %s\n", id->name + 2);
@@ -2050,7 +2045,7 @@ void do_versions_ipos_to_animato(Main *bmain)
 	 */
 
 	/* actions */
-	for (id = bmain->action.first; id; id = id->next) {
+	for (id = bmain->actions.first; id; id = id->next) {
 		bAction *act = (bAction *)id;
 
 		if (G.debug & G_DEBUG) printf("\tconverting action %s\n", id->name + 2);

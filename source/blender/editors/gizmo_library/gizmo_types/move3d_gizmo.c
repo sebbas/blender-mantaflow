@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file move3d_gizmo.c
- *  \ingroup edgizmolib
+/** \file
+ * \ingroup edgizmolib
  *
  * \name Move Gizmo
  *
@@ -30,7 +26,6 @@
  * - `matrix[0]` is derived from Y and Z.
  * - `matrix[1]` currently not used.
  * - `matrix[2]` is the widget direction (for all gizmos).
- *
  */
 
 #include "MEM_guardedalloc.h"
@@ -39,8 +34,6 @@
 
 #include "BKE_context.h"
 
-#include "BIF_gl.h"
-#include "BIF_glutil.h"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
@@ -111,7 +104,11 @@ static void move_geom_draw(
 	wm_gizmo_geometryinfo_draw(&wm_gizmo_geom_data_move3d, select);
 #else
 	const int draw_style = RNA_enum_get(gz->ptr, "draw_style");
-	const bool filled = (draw_options & ED_GIZMO_MOVE_DRAW_FLAG_FILL) != 0;
+	const bool filled = (
+	        (draw_options &
+	         (select ?
+	          (ED_GIZMO_MOVE_DRAW_FLAG_FILL | ED_GIZMO_MOVE_DRAW_FLAG_FILL_SELECT) :
+	          ED_GIZMO_MOVE_DRAW_FLAG_FILL)));
 
 	GPU_line_width(gz->line_width);
 
@@ -443,12 +440,13 @@ static void GIZMO_GT_move_3d(wmGizmoType *gzt)
 	static EnumPropertyItem rna_enum_draw_style[] = {
 		{ED_GIZMO_MOVE_STYLE_RING_2D, "RING_2D", 0, "Ring", ""},
 		{ED_GIZMO_MOVE_STYLE_CROSS_2D, "CROSS_2D", 0, "Ring", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 	static EnumPropertyItem rna_enum_draw_options[] = {
 		{ED_GIZMO_MOVE_DRAW_FLAG_FILL, "FILL", 0, "Filled", ""},
+		{ED_GIZMO_MOVE_DRAW_FLAG_FILL_SELECT, "FILL_SELECT", 0, "Use fill for selection test", ""},
 		{ED_GIZMO_MOVE_DRAW_FLAG_ALIGN_VIEW, "ALIGN_VIEW", 0, "Align View", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	RNA_def_enum(gzt->srna, "draw_style", rna_enum_draw_style, ED_GIZMO_MOVE_STYLE_RING_2D, "Draw Style", "");

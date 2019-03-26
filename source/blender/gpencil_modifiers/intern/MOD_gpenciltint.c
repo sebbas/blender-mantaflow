@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,31 +15,25 @@
  *
  * The Original Code is Copyright (C) 2017, Blender Foundation
  * This is a new part of Blender
- *
- * Contributor(s): Antonio Vazquez
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/gpencil_modifiers/intern/MOD_gpenciltint.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 #include <stdio.h>
+
+#include "BLI_utildefines.h"
+
+#include "BLI_blenlib.h"
+#include "BLI_ghash.h"
+#include "BLI_math_vector.h"
 
 #include "DNA_scene_types.h"
 #include "DNA_object_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_gpencil_modifier_types.h"
 
-#include "BLI_blenlib.h"
-#include "BLI_ghash.h"
-#include "BLI_math_vector.h"
-#include "BLI_utildefines.h"
-
-#include "BKE_context.h"
-#include "BKE_global.h"
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_modifier.h"
 #include "BKE_material.h"
@@ -75,10 +67,11 @@ static void deformStroke(
 {
 	TintGpencilModifierData *mmd = (TintGpencilModifierData *)md;
 
-	if (!is_stroke_affected_by_modifier(ob,
-	        mmd->layername, mmd->pass_index, mmd->layer_pass, 1, gpl, gps,
-	        mmd->flag & GP_TINT_INVERT_LAYER, mmd->flag & GP_TINT_INVERT_PASS,
-			mmd->flag & GP_TINT_INVERT_LAYERPASS))
+	if (!is_stroke_affected_by_modifier(
+	            ob,
+	            mmd->layername, mmd->pass_index, mmd->layer_pass, 1, gpl, gps,
+	            mmd->flag & GP_TINT_INVERT_LAYER, mmd->flag & GP_TINT_INVERT_PASS,
+	            mmd->flag & GP_TINT_INVERT_LAYERPASS))
 	{
 		return;
 	}
@@ -171,4 +164,5 @@ GpencilModifierTypeInfo modifierType_Gpencil_Tint = {
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* getDuplicationFactor */ NULL,
 };

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file DNA_image_types.h
- *  \ingroup DNA
+/** \file
+ * \ingroup DNA
  */
 
 #ifndef __DNA_IMAGE_TYPES_H__
@@ -36,29 +28,36 @@
 #include "DNA_ID.h"
 #include "DNA_color_types.h"  /* for color management */
 
+struct GPUTexture;
+struct MovieCache;
 struct PackedFile;
+struct RenderResult;
 struct Scene;
 struct anim;
-struct MovieCache;
-struct RenderResult;
-struct GPUTexture;
 
 /* ImageUser is in Texture, in Nodes, Background Image, Image Window, .... */
 /* should be used in conjunction with an ID * to Image. */
 typedef struct ImageUser {
-	struct Scene *scene;		/* to retrieve render result */
+	/** To retrieve render result. */
+	struct Scene *scene;
 
-	int framenr;				/* movies, sequences: current to display */
-	int frames;					/* total amount of frames to use */
-	int offset, sfra;			/* offset within movie, start frame in global time */
-	char _pad, cycl;		/* cyclic flag */
+	/** Movies, sequences: current to display. */
+	int framenr;
+	/** Total amount of frames to use. */
+	int frames;
+	/** Offset within movie, start frame in global time. */
+	int offset, sfra;
+	/** Cyclic flag. */
+	char _pad0, cycl;
 	char ok;
 
-	char multiview_eye;			/* multiview current eye - for internal use of drawing routines */
+	/** Multiview current eye - for internal use of drawing routines. */
+	char multiview_eye;
 	short pass;
-	short pad;
+	char _pad1[2];
 
-	short multi_index, view, layer;	 /* listbase indices, for menu browsing or retrieve buffer */
+	/** Listbase indices, for menu browsing or retrieve buffer. */
+	short multi_index, view, layer;
 	short flag;
 } ImageUser;
 
@@ -69,42 +68,49 @@ typedef struct ImageAnim {
 
 typedef struct ImageView {
 	struct ImageView *next, *prev;
-	char name[64];			/* MAX_NAME */
-	char filepath[1024];	/* 1024 = FILE_MAX */
+	/** MAX_NAME. */
+	char name[64];
+	/** 1024 = FILE_MAX. */
+	char filepath[1024];
 } ImageView;
 
 typedef struct ImagePackedFile {
 	struct ImagePackedFile *next, *prev;
 	struct PackedFile *packedfile;
-	char filepath[1024];	/* 1024 = FILE_MAX */
+	/** 1024 = FILE_MAX. */
+	char filepath[1024];
 } ImagePackedFile;
 
 typedef struct RenderSlot {
 	struct RenderSlot *next, *prev;
-	char name[64];  /* 64 = MAX_NAME */
+	/** 64 = MAX_NAME. */
+	char name[64];
 	struct RenderResult *render;
 } RenderSlot;
 
 /* iuser->flag */
-#define	IMA_ANIM_ALWAYS		1
-#define IMA_ANIM_REFRESHED	2
-/* #define IMA_DO_PREMUL	4 */
-#define IMA_NEED_FRAME_RECALC	8
-#define IMA_SHOW_STEREO		16
+#define IMA_ANIM_ALWAYS         (1 << 0)
+/* #define IMA_UNUSED_1         (1 << 1) */
+/* #define IMA_UNUSED_2         (1 << 2) */
+#define IMA_NEED_FRAME_RECALC   (1 << 3)
+#define IMA_SHOW_STEREO         (1 << 4)
 
 enum {
 	TEXTARGET_TEXTURE_2D = 0,
 	TEXTARGET_TEXTURE_CUBE_MAP = 1,
-	TEXTARGET_COUNT = 2
+	TEXTARGET_COUNT = 2,
 };
 
 typedef struct Image {
 	ID id;
 
-	char name[1024];			/* file path, 1024 = FILE_MAX */
+	/** File path, 1024 = FILE_MAX. */
+	char name[1024];
 
-	struct MovieCache *cache;	/* not written in file */
-	struct GPUTexture *gputexture[2]; /* not written in file 2 = TEXTARGET_COUNT */
+	/** Not written in file. */
+	struct MovieCache *cache;
+	/** Not written in file 2 = TEXTARGET_COUNT. */
+	struct GPUTexture *gputexture[2];
 
 	/* sources from: */
 	ListBase anims;
@@ -117,18 +123,18 @@ typedef struct Image {
 	short source, type;
 	int lastframe;
 
-	/* texture page */
-	short tpageflag;
-	short pad2;
-	unsigned int pad3;
+	/* GPU texture flag. */
+	short gpuflag;
+	char _pad2[6];
 
-	struct PackedFile *packedfile DNA_DEPRECATED; /* deprecated */
+	/** Deprecated. */
+	struct PackedFile *packedfile DNA_DEPRECATED;
 	struct ListBase packedfiles;
 	struct PreviewImage *preview;
 
 	int lastused;
 	short ok;
-	short pad4[3];
+	char _pad4[6];
 
 	/* for generated images */
 	int gen_x, gen_y;
@@ -143,12 +149,14 @@ typedef struct Image {
 	ColorManagedColorspaceSettings colorspace_settings;
 	char alpha_mode;
 
-	char pad[5];
+	char _pad[5];
 
 	/* Multiview */
-	char eye; /* for viewer node stereoscopy */
+	/** For viewer node stereoscopy. */
+	char eye;
 	char views_format;
-	ListBase views;  /* ImageView */
+	/** ImageView. */
+	ListBase views;
 	struct Stereo3dFormat *stereo3d_format;
 } Image;
 
@@ -157,40 +165,41 @@ typedef struct Image {
 
 /* Image.flag */
 enum {
-	// IMA_FIELDS              = (1 << 0),
-	// IMA_STD_FIELD           = (1 << 1),
+	IMA_FLAG_UNUSED_0   = (1 << 0),  /* cleared */
+	IMA_FLAG_UNUSED_1   = (1 << 1),  /* cleared */
 #ifdef DNA_DEPRECATED
-	IMA_DO_PREMUL           = (1 << 2),  /* deprecated, should not be used */
+	IMA_DO_PREMUL           = (1 << 2),
 #endif
-	//IMA_REFLECT             = (1 << 4), /* deprecated */
+	IMA_FLAG_UNUSED_4   = (1 << 4),  /* cleared */
 	IMA_NOCOLLECT           = (1 << 5),
-	//IMA_DONE_TAG          = (1 << 6),  // UNUSED
+	IMA_FLAG_UNUSED_6   = (1 << 6),  /* cleared */
 	IMA_OLD_PREMUL          = (1 << 7),
-	// IMA_CM_PREDIVIDE     = (1 << 8),  /* deprecated, should not be used */
+	IMA_FLAG_UNUSED_8   = (1 << 8),  /* cleared */
 	IMA_USED_FOR_RENDER     = (1 << 9),
-	IMA_USER_FRAME_IN_RANGE = (1 << 10), /* for image user, but these flags are mixed */
+	/** For image user, but these flags are mixed. */
+	IMA_USER_FRAME_IN_RANGE = (1 << 10),
 	IMA_VIEW_AS_RENDER      = (1 << 11),
 	IMA_IGNORE_ALPHA        = (1 << 12),
 	IMA_DEINTERLACE         = (1 << 13),
 	IMA_USE_VIEWS           = (1 << 14),
-	// IMA_IS_STEREO        = (1 << 15), /* deprecated */
-	// IMA_IS_MULTIVIEW     = (1 << 16), /* deprecated */
+	IMA_FLAG_UNUSED_15  = (1 << 15),  /* cleared */
+	IMA_FLAG_UNUSED_16  = (1 << 16),  /* cleared */
 };
 
-/* Image.tpageflag */
-//#define IMA_TILES			1 /* Deprecated */
-//#define IMA_TWINANIM		2 /* Deprecated */
-#define IMA_COLCYCLE		4	/* Deprecated */
-#define IMA_MIPMAP_COMPLETE 8   /* all mipmap levels in OpenGL texture set? */
-//#define IMA_CLAMP_U			16 /* Deprecated */
-//#define IMA_CLAMP_V			32 /* Deprecated */
-#define IMA_TPAGE_REFRESH	64
-#define IMA_GLBIND_IS_DATA	128 /* opengl image texture bound as non-color data */
+/* Image.gpuflag */
+enum {
+	/** GPU texture needs to be refreshed. */
+	IMA_GPU_REFRESH =                 (1 << 0),
+	/** All mipmap levels in OpenGL texture set? */
+	IMA_GPU_MIPMAP_COMPLETE =         (1 << 1),
+	/** OpenGL image texture bound as non-color data. */
+	IMA_GPU_IS_DATA =                 (1 << 2),
+};
 
 /* ima->type and ima->source moved to BKE_image.h, for API */
 
 /* render */
-#define IMA_MAX_RENDER_TEXT		512
+#define IMA_MAX_RENDER_TEXT		(1 << 9)
 
 /* gen_flag */
 #define IMA_GEN_FLOAT		1

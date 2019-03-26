@@ -45,7 +45,7 @@ FORCE_PEP8_ALL = False
 
 
 def file_list_py(path):
-    for dirpath, dirnames, filenames in os.walk(path):
+    for dirpath, _dirnames, filenames in os.walk(path):
         for filename in filenames:
             if filename.endswith((".py", ".cfg")):
                 yield os.path.join(dirpath, filename)
@@ -62,7 +62,7 @@ def is_pep8(path):
             return 1
 
     f = open(path, 'r', encoding="utf8")
-    for i in range(PEP8_SEEK_COMMENT):
+    for _ in range(PEP8_SEEK_COMMENT):
         line = f.readline()
         if line.startswith("# <pep8"):
             if line.startswith("# <pep8 compliant>"):

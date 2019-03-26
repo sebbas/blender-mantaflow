@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Chingiz Dyussenov, Arystanbek Dyussenov, Nathan Letwory.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file ArmatureImporter.h
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 
 #ifndef __ARMATUREIMPORTER_H__
@@ -106,8 +100,9 @@ private:
 	JointData *get_joint_data(COLLADAFW::Node *node);
 #endif
 
-	int create_bone(SkinInfo* skin, COLLADAFW::Node *node, EditBone *parent, int totchild,
-		float parent_mat[4][4], bArmature *arm, std::vector<std::string> &layer_labels);
+	int create_bone(
+	        SkinInfo* skin, COLLADAFW::Node *node, EditBone *parent, int totchild,
+	        float parent_mat[4][4], bArmature *arm, std::vector<std::string> &layer_labels);
 
 	BoneExtended &add_bone_extended(EditBone *bone, COLLADAFW::Node * node, int sibcount, std::vector<std::string> &layer_labels, BoneExtensionMap &extended_bones);
 

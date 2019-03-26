@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/interface/interface_eyedropper_driver.c
- *  \ingroup edinterface
+/** \file
+ * \ingroup edinterface
  *
  * Eyedropper (Animation Driver Targets).
  *
@@ -38,7 +32,6 @@
 #include "DNA_screen_types.h"
 #include "DNA_object_types.h"
 
-#include "BLI_math_vector.h"
 
 #include "BKE_context.h"
 #include "BKE_animsys.h"
@@ -64,18 +57,16 @@ typedef struct DriverDropper {
 	PointerRNA ptr;
 	PropertyRNA *prop;
 	int index;
+	bool is_undo;
 
 	// TODO: new target?
 } DriverDropper;
 
 static bool driverdropper_init(bContext *C, wmOperator *op)
 {
-	DriverDropper *ddr;
-	uiBut *but;
+	DriverDropper *ddr = MEM_callocN(sizeof(DriverDropper), __func__);
 
-	op->customdata = ddr = MEM_callocN(sizeof(DriverDropper), "DriverDropper");
-
-	but = UI_context_active_but_prop_get(C, &ddr->ptr, &ddr->prop, &ddr->index);
+	uiBut *but = UI_context_active_but_prop_get(C, &ddr->ptr, &ddr->prop, &ddr->index);
 
 	if ((ddr->ptr.data == NULL) ||
 	    (ddr->prop == NULL) ||
@@ -83,8 +74,12 @@ static bool driverdropper_init(bContext *C, wmOperator *op)
 	    (RNA_property_animateable(&ddr->ptr, ddr->prop) == false) ||
 	    (but->flag & UI_BUT_DRIVEN))
 	{
+		MEM_freeN(ddr);
 		return false;
 	}
+	op->customdata = ddr;
+
+	ddr->is_undo = UI_but_flag_is_set(but, UI_BUT_UNDO);
 
 	return true;
 }
@@ -133,16 +128,18 @@ static void driverdropper_sample(bContext *C, wmOperator *op, const wmEvent *eve
 				/* send updates */
 				UI_context_update_anim_flag(C);
 				DEG_relations_tag_update(CTX_data_main(C));
-				DEG_id_tag_update(ddr->ptr.id.data, OB_RECALC_OB | OB_RECALC_DATA);
+				DEG_id_tag_update(ddr->ptr.id.data, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 				WM_event_add_notifier(C, NC_ANIMATION | ND_FCURVES_ORDER, NULL);  // XXX
 			}
 		}
 
 		/* cleanup */
-		if (target_path)
+		if (target_path) {
 			MEM_freeN(target_path);
-		if (dst_path)
+		}
+		if (dst_path) {
 			MEM_freeN(dst_path);
+		}
 	}
 }
 
@@ -154,18 +151,24 @@ static void driverdropper_cancel(bContext *C, wmOperator *op)
 /* main modal status check */
 static int driverdropper_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
+	DriverDropper *ddr = op->customdata;
+
 	/* handle modal keymap */
 	if (event->type == EVT_MODAL_MAP) {
 		switch (event->val) {
 			case EYE_MODAL_CANCEL:
+			{
 				driverdropper_cancel(C, op);
 				return OPERATOR_CANCELLED;
-
+			}
 			case EYE_MODAL_SAMPLE_CONFIRM:
+			{
+				const bool is_undo = ddr->is_undo;
 				driverdropper_sample(C, op, event);
 				driverdropper_exit(C, op);
-
-				return OPERATOR_FINISHED;
+				/* Could support finished & undo-skip. */
+				return is_undo ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
+			}
 		}
 	}
 
@@ -185,7 +188,6 @@ static int driverdropper_invoke(bContext *C, wmOperator *op, const wmEvent *UNUS
 		return OPERATOR_RUNNING_MODAL;
 	}
 	else {
-		driverdropper_exit(C, op);
 		return OPERATOR_CANCELLED;
 	}
 }
@@ -207,8 +209,12 @@ static int driverdropper_exec(bContext *C, wmOperator *op)
 
 static bool driverdropper_poll(bContext *C)
 {
-	if (!CTX_wm_window(C)) return 0;
-	else return 1;
+	if (!CTX_wm_window(C)) {
+		return 0;
+	}
+	else {
+		return 1;
+	}
 }
 
 void UI_OT_eyedropper_driver(wmOperatorType *ot)
@@ -226,7 +232,7 @@ void UI_OT_eyedropper_driver(wmOperatorType *ot)
 	ot->poll = driverdropper_poll;
 
 	/* flags */
-	ot->flag = OPTYPE_BLOCKING | OPTYPE_INTERNAL | OPTYPE_UNDO;
+	ot->flag = OPTYPE_UNDO | OPTYPE_BLOCKING | OPTYPE_INTERNAL;
 
 	/* properties */
 	RNA_def_enum(ot->srna, "mapping_type", prop_driver_create_mapping_types, 0,

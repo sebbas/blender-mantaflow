@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Willian P. Germano, Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/python/generic/bpy_internal_import.c
- *  \ingroup pygen
+/** \file
+ * \ingroup pygen
  *
  * This file defines replacements for pythons '__import__' and 'imp.reload'
  * functions which can import from blender textblocks.
@@ -43,9 +37,9 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
+#include "BKE_main.h"
 /* UNUSED */
 #include "BKE_text.h"  /* txt_to_buf */
-#include "BKE_main.h"
 
 #include "py_capi_utils.h"
 
@@ -192,7 +186,7 @@ PyObject *bpy_text_import_name(const char *name, int *found)
 	memcpy(txtname, name, namelen);
 	memcpy(&txtname[namelen], ".py", 4);
 
-	text = BLI_findstring(&maggie->text, txtname, offsetof(ID, name) + 2);
+	text = BLI_findstring(&maggie->texts, txtname, offsetof(ID, name) + 2);
 
 	if (text) {
 		*found = 1;
@@ -202,7 +196,7 @@ PyObject *bpy_text_import_name(const char *name, int *found)
 	/* If we still haven't found the module try additional modules form bpy_import_main_list */
 	maggie = bpy_import_main_list.first;
 	while (maggie && !text) {
-		text = BLI_findstring(&maggie->text, txtname, offsetof(ID, name) + 2);
+		text = BLI_findstring(&maggie->texts, txtname, offsetof(ID, name) + 2);
 		maggie = maggie->next;
 	}
 
@@ -251,7 +245,7 @@ PyObject *bpy_text_reimport(PyObject *module, int *found)
 	}
 
 	/* look up the text object */
-	text = BLI_findstring(&maggie->text, BLI_path_basename(filepath), offsetof(ID, name) + 2);
+	text = BLI_findstring(&maggie->texts, BLI_path_basename(filepath), offsetof(ID, name) + 2);
 
 	/* uh-oh.... didn't find it */
 	if (!text)

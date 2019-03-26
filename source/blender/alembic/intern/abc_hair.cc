@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,10 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Esteban Tovagliari, Cedric Paille, Kevin Dietrich
- *
- * ***** END GPL LICENSE BLOCK *****
+ */
+
+/** \file
+ * \ingroup balembic
  */
 
 #include "abc_hair.h"
@@ -37,7 +35,6 @@ extern "C" {
 #include "BLI_listbase.h"
 #include "BLI_math_geom.h"
 
-#include "BKE_library.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_object.h"
@@ -72,7 +69,7 @@ void AbcHairWriter::do_write()
 	if (!m_psys) {
 		return;
 	}
-	Mesh *mesh = mesh_get_eval_final(m_settings.depsgraph, m_settings.scene, m_object, CD_MASK_MESH);
+	Mesh *mesh = mesh_get_eval_final(m_settings.depsgraph, m_settings.scene, m_object, &CD_MASK_MESH);
 	BKE_mesh_tessface_ensure(mesh);
 
 	std::vector<Imath::V3f> verts;

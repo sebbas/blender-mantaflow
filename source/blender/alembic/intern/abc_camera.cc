@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,10 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Esteban Tovagliari, Cedric Paille, Kevin Dietrich
- *
- * ***** END GPL LICENSE BLOCK *****
+ */
+
+/** \file
+ * \ingroup balembic
  */
 
 #include "abc_camera.h"
@@ -79,8 +77,8 @@ void AbcCameraWriter::do_write()
 	m_camera_sample.setVerticalAperture(apperture_y);
 	m_camera_sample.setHorizontalFilmOffset(apperture_x * cam->shiftx);
 	m_camera_sample.setVerticalFilmOffset(apperture_y * cam->shifty * film_aspect);
-	m_camera_sample.setNearClippingPlane(cam->clipsta);
-	m_camera_sample.setFarClippingPlane(cam->clipend);
+	m_camera_sample.setNearClippingPlane(cam->clip_start);
+	m_camera_sample.setFarClippingPlane(cam->clip_end);
 
 	if (cam->dof_ob) {
 		Imath::V3f v(m_object->loc[0] - cam->dof_ob->loc[0],
@@ -165,8 +163,8 @@ void AbcCameraReader::readObjectData(Main *bmain, const ISampleSelector &sample_
 	bcam->sensor_y = apperture_y * 10;
 	bcam->shiftx = h_film_offset / apperture_x;
 	bcam->shifty = v_film_offset / apperture_y / film_aspect;
-	bcam->clipsta = max_ff(0.1f, static_cast<float>(cam_sample.getNearClippingPlane()));
-	bcam->clipend = static_cast<float>(cam_sample.getFarClippingPlane());
+	bcam->clip_start = max_ff(0.1f, static_cast<float>(cam_sample.getNearClippingPlane()));
+	bcam->clip_end = static_cast<float>(cam_sample.getFarClippingPlane());
 	bcam->gpu_dof.focus_distance = static_cast<float>(cam_sample.getFocusDistance());
 	bcam->gpu_dof.fstop = static_cast<float>(cam_sample.getFStop());
 

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,12 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/colorband.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include "MEM_guardedalloc.h"
@@ -78,7 +74,9 @@ void BKE_colorband_init(ColorBand *coba, bool rangetype)
 	}
 
 	coba->tot = 2;
+	coba->cur = 0;
 	coba->color_mode = COLBAND_BLEND_RGB;
+	coba->ipotype = COLBAND_INTERP_LINEAR;
 }
 
 static void colorband_init_from_table_rgba_simple(
@@ -208,7 +206,7 @@ static void colorband_init_from_table_rgba_resample(
 	}
 
 	while ((carr_len > 1 && !BLI_heap_is_empty(heap)) &&
-	       ((carr_len >= MAXCOLORBAND) || (BLI_heap_node_value(BLI_heap_top(heap)) <= eps_2x)))
+	       ((carr_len >= MAXCOLORBAND) || (BLI_heap_top_value(heap) <= eps_2x)))
 	{
 		c = BLI_heap_pop_min(heap);
 		struct ColorResampleElem *c_next = c->next, *c_prev = c->prev;
@@ -352,7 +350,9 @@ static float colorband_hue_interp(
 		}
 		case COLBAND_HUE_FAR:
 		{
-			if      ((h1 < h2) && (h2 - h1) < +0.5f) mode = 1;
+			/* Do full loop in Hue space in case both stops are the same... */
+			if      (h1 == h2)                       mode = 1;
+			else if ((h1 < h2) && (h2 - h1) < +0.5f) mode = 1;
 			else if ((h1 > h2) && (h2 - h1) > -0.5f) mode = 2;
 			else                                     mode = 0;
 			break;
@@ -404,6 +404,8 @@ bool BKE_colorband_evaluate(const ColorBand *coba, float in, float out[4])
 
 	cbd1 = coba->data;
 
+	/* Note: when ipotype >= COLBAND_INTERP_B_SPLINE, we cannot do early-out with a constant color before
+	 * first color stop and after last one, because interpolation starts before and ends after those... */
 	ipotype = (coba->color_mode == COLBAND_BLEND_RGB) ? coba->ipotype : COLBAND_INTERP_LINEAR;
 
 	if (coba->tot == 1) {
@@ -412,7 +414,8 @@ bool BKE_colorband_evaluate(const ColorBand *coba, float in, float out[4])
 		out[2] = cbd1->b;
 		out[3] = cbd1->a;
 	}
-	else if ((in <= cbd1->pos) && ELEM(ipotype, COLBAND_INTERP_LINEAR, COLBAND_INTERP_EASE)) {
+	else if ((in <= cbd1->pos) && ELEM(ipotype, COLBAND_INTERP_LINEAR, COLBAND_INTERP_EASE, COLBAND_INTERP_CONSTANT)) {
+		/* We are before first color stop. */
 		out[0] = cbd1->r;
 		out[1] = cbd1->g;
 		out[2] = cbd1->b;
@@ -443,14 +446,21 @@ bool BKE_colorband_evaluate(const ColorBand *coba, float in, float out[4])
 			cbd2 = cbd1 - 1;
 		}
 
-		if ((in >= cbd1->pos) && ELEM(ipotype, COLBAND_INTERP_LINEAR, COLBAND_INTERP_EASE)) {
-			out[0] = cbd1->r;
-			out[1] = cbd1->g;
-			out[2] = cbd1->b;
-			out[3] = cbd1->a;
+		if ((a == coba->tot) && ELEM(ipotype, COLBAND_INTERP_LINEAR, COLBAND_INTERP_EASE, COLBAND_INTERP_CONSTANT)) {
+			/* We are after last color stop. */
+			out[0] = cbd2->r;
+			out[1] = cbd2->g;
+			out[2] = cbd2->b;
+			out[3] = cbd2->a;
+		}
+		else if (ipotype == COLBAND_INTERP_CONSTANT) {
+			/* constant */
+			out[0] = cbd2->r;
+			out[1] = cbd2->g;
+			out[2] = cbd2->b;
+			out[3] = cbd2->a;
 		}
 		else {
-
 			if (cbd2->pos != cbd1->pos) {
 				fac = (in - cbd1->pos) / (cbd2->pos - cbd1->pos);
 			}
@@ -460,14 +470,7 @@ bool BKE_colorband_evaluate(const ColorBand *coba, float in, float out[4])
 				fac = (a != coba->tot) ? 0.0f : 1.0f;
 			}
 
-			if (ipotype == COLBAND_INTERP_CONSTANT) {
-				/* constant */
-				out[0] = cbd2->r;
-				out[1] = cbd2->g;
-				out[2] = cbd2->b;
-				out[3] = cbd2->a;
-			}
-			else if (ipotype >= COLBAND_INTERP_B_SPLINE) {
+			if (ELEM(ipotype, COLBAND_INTERP_B_SPLINE, COLBAND_INTERP_CARDINAL)) {
 				/* ipo from right to left: 3 2 1 0 */
 				float t[4];
 
@@ -495,14 +498,11 @@ bool BKE_colorband_evaluate(const ColorBand *coba, float in, float out[4])
 				CLAMP(out[3], 0.0f, 1.0f);
 			}
 			else {
-				float mfac;
-
 				if (ipotype == COLBAND_INTERP_EASE) {
-					mfac = fac * fac;
-					fac = 3.0f * mfac - 2.0f * mfac * fac;
+					const float fac2 = fac * fac;
+					fac = 3.0f * fac2 - 2.0f * fac2 * fac;
 				}
-
-				mfac = 1.0f - fac;
+				const float mfac = 1.0f - fac;
 
 				if (UNLIKELY(coba->color_mode == COLBAND_BLEND_HSV)) {
 					float col1[3], col2[3];
@@ -540,6 +540,7 @@ bool BKE_colorband_evaluate(const ColorBand *coba, float in, float out[4])
 			}
 		}
 	}
+
 	return true;   /* OK */
 }
 

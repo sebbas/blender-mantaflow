@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/imbuf/IMB_imbuf.h
- *  \ingroup imbuf
+/** \file
+ * \ingroup imbuf
  */
 
 /**
@@ -36,8 +28,6 @@
  * \ingroup imbuf
  *
  * \page IMB Imbuf module external interface
- *
- *
  * \section imb_about About the IMB module
  *
  * External interface of the IMage Buffer module. This module offers
@@ -105,7 +95,9 @@ void IMB_exit(void);
  *
  * \attention Defined in readimage.c
  */
-struct ImBuf *IMB_ibImageFromMemory(unsigned char *mem, size_t size, int flags, char colorspace[IM_MAX_SPACE], const char *descr);
+struct ImBuf *IMB_ibImageFromMemory(
+        const unsigned char *mem, size_t size, int flags,
+        char colorspace[IM_MAX_SPACE], const char *descr);
 
 /**
  *
@@ -209,7 +201,7 @@ typedef enum IMB_BlendMode {
 
 	IMB_BLEND_COPY = 1000,
 	IMB_BLEND_COPY_RGB = 1001,
-	IMB_BLEND_COPY_ALPHA = 1002
+	IMB_BLEND_COPY_ALPHA = 1002,
 } IMB_BlendMode;
 
 void IMB_blend_color_byte(unsigned char dst[4], unsigned char src1[4],
@@ -249,7 +241,7 @@ typedef enum IMB_Timecode_Type {
 	                                            * device (*every* consumer camcorder can do
 	                                            * that :) )*/
 	IMB_TC_RECORD_RUN_NO_GAPS = 8,
-	IMB_TC_MAX_SLOT   = 4
+	IMB_TC_MAX_SLOT   = 4,
 } IMB_Timecode_Type;
 
 typedef enum IMB_Proxy_Size {
@@ -258,7 +250,7 @@ typedef enum IMB_Proxy_Size {
 	IMB_PROXY_50 = 2,
 	IMB_PROXY_75 = 4,
 	IMB_PROXY_100 = 8,
-	IMB_PROXY_MAX_SLOT = 4
+	IMB_PROXY_MAX_SLOT = 4,
 } IMB_Proxy_Size;
 
 /* defaults to BL_proxy within the directory of the animation */
@@ -425,12 +417,6 @@ int imb_get_anim_type(const char *name);
  * \attention Defined in util.c
  */
 bool IMB_isfloat(struct ImBuf *ibuf);
-
-/**
- *
- * \attention Defined in divers.c
- */
-void IMB_de_interlace(struct ImBuf *ibuf);
 
 /* create char buffer, color corrected if necessary, for ImBufs that lack one */
 void IMB_rect_from_float(struct ImBuf *ibuf);

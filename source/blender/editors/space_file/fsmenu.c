@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Andrea Weikert (c) 2008 Blender Foundation.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_file/fsmenu.c
- *  \ingroup spfile
+/** \file
+ * \ingroup spfile
  */
 
 
@@ -45,9 +37,11 @@
 #include "ED_fileselect.h"
 
 #ifdef WIN32
-#  include <windows.h> /* need to include windows.h so _WIN32_IE is defined  */
-#  include <shlobj.h>  /* for SHGetSpecialFolderPath, has to be done before BLI_winstuff
-                        * because 'near' is disabled through BLI_windstuff */
+   /* Need to include windows.h so _WIN32_IE is defined. */
+#  include <windows.h>
+   /* For SHGetSpecialFolderPath, has to be done before BLI_winstuff
+    * because 'near' is disabled through BLI_windstuff. */
+#  include <shlobj.h>
 #  include "BLI_winstuff.h"
 #endif
 
@@ -57,6 +51,7 @@
 
 #ifdef __linux__
 #include <mntent.h>
+#include "BLI_fileops_types.h"
 #endif
 
 #include "fsmenu.h"  /* include ourselves */
@@ -509,7 +504,9 @@ void fsmenu_read_system(struct FSMenu *fsmenu, int read_bookmarks)
 	{
 		/* Get mounted volumes better method OSX 10.6 and higher, see: */
 		/*https://developer.apple.com/library/mac/#documentation/CoreFOundation/Reference/CFURLRef/Reference/reference.html*/
-		/* we get all volumes sorted including network and do not relay on user-defined finder visibility, less confusing */
+
+		/* we get all volumes sorted including network and do not relay
+		 * on user-defined finder visibility, less confusing */
 
 		CFURLRef cfURL = NULL;
 		CFURLEnumeratorResult result = kCFURLEnumeratorSuccess;
@@ -596,13 +593,22 @@ void fsmenu_read_system(struct FSMenu *fsmenu, int read_bookmarks)
 
 			fp = setmntent(MOUNTED, "r");
 			if (fp == NULL) {
-				fprintf(stderr, "could not get a list of mounted filesystemts\n");
+				fprintf(stderr, "could not get a list of mounted filesystems\n");
 			}
 			else {
 				while ((mnt = getmntent(fp))) {
-					/* not sure if this is right, but seems to give the relevant mnts */
-					if (!STREQLEN(mnt->mnt_fsname, "/dev", 4))
+					if (STRPREFIX(mnt->mnt_dir, "/boot")) {
+						/* Hide share not usable to the user. */
 						continue;
+					}
+					else if (!STRPREFIX(mnt->mnt_fsname, "/dev")) {
+						continue;
+					}
+					else if (STRPREFIX(mnt->mnt_fsname, "/dev/loop")) {
+						/* The dev/loop* entries are SNAPS used by desktop environment
+						 * (Gnome) no need for them to show up in the list. */
+						continue;
+					}
 
 					len = strlen(mnt->mnt_dir);
 					if (len && mnt->mnt_dir[len - 1] != '/') {
@@ -616,8 +622,36 @@ void fsmenu_read_system(struct FSMenu *fsmenu, int read_bookmarks)
 					found = 1;
 				}
 				if (endmntent(fp) == 0) {
-					fprintf(stderr, "could not close the list of mounted filesystemts\n");
+					fprintf(stderr, "could not close the list of mounted filesystems\n");
 				}
+			}
+			/* Check gvfs shares. */
+			const char * const xdg_runtime_dir = BLI_getenv("XDG_RUNTIME_DIR");
+			if (xdg_runtime_dir != NULL) {
+				struct direntry *dir;
+				char name[FILE_MAX];
+				BLI_join_dirfile(name, sizeof(name), xdg_runtime_dir, "gvfs/");
+				const uint dir_len = BLI_filelist_dir_contents(name, &dir);
+				for (uint i = 0; i < dir_len; i++) {
+					if ((dir[i].type & S_IFDIR)) {
+						const char *dirname = dir[i].relname;
+						if (dirname[0] != '.') {
+							/* Dir names contain a lot of unwanted text.
+							 * Assuming every entry ends with the share name */
+							const char *label = strstr(dirname, "share=");
+							if (label != NULL) {
+								/* Move pointer so "share=" is trimmed off
+								 * or use full dirname as label. */
+								const char *label_test = label + 6;
+								label = *label_test ? label_test : dirname;
+							}
+							BLI_snprintf(line, sizeof(line), "%s%s/", name, dirname);
+							fsmenu_insert_entry(fsmenu, FS_CATEGORY_SYSTEM, line, label, FS_INSERT_SORTED);
+							found = 1;
+						}
+					}
+				}
+				BLI_filelist_free(dir, dir_len);
 			}
 #endif
 

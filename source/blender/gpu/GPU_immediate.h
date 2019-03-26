@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2016 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Mike Erwin
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/gpu/GPU_immediate.h
- *  \ingroup gpu
+/** \file
+ * \ingroup gpu
  *
  * GPU immediate mode work-alike
  */
@@ -40,13 +33,18 @@
 #include "GPU_immediate_util.h"
 #include "GPU_shader.h"
 
-GPUVertFormat *immVertexFormat(void); /* returns a cleared vertex format, ready for add_attrib. */
+/** Returns a cleared vertex format, ready for #add_attr. */
+GPUVertFormat *immVertexFormat(void);
 
-void immBindProgram(uint32_t program, const GPUShaderInterface *); /* every immBegin must have a program bound first. */
-void immUnbindProgram(void); /* call after your last immEnd, or before binding another program. */
+/** Every immBegin must have a program bound first. */
+void immBindProgram(uint32_t program, const GPUShaderInterface *);
+/** Call after your last immEnd, or before binding another program. */
+void immUnbindProgram(void);
 
-void immBegin(GPUPrimType, uint vertex_len); /* must supply exactly vertex_len vertices. */
-void immBeginAtMost(GPUPrimType, uint max_vertex_len); /* can supply fewer vertices. */
+/** Must supply exactly vertex_len vertices. */
+void immBegin(GPUPrimType, uint vertex_len);
+/** Can supply fewer vertices. */
+void immBeginAtMost(GPUPrimType, uint max_vertex_len);
 void immEnd(void); /* finishes and draws. */
 
 /* ImmBegin a batch, then use standard immFunctions as usual. */
@@ -76,7 +74,7 @@ void immAttr4fv(uint attr_id, const float data[4]);
 void immAttr3ub(uint attr_id, unsigned char r, unsigned char g, unsigned char b);
 void immAttr4ub(uint attr_id, unsigned char r, unsigned char g, unsigned char b, unsigned char a);
 
-void immAttr3ubv(uint attr_id, const unsigned char data[4]);
+void immAttr3ubv(uint attr_id, const unsigned char data[3]);
 void immAttr4ubv(uint attr_id, const unsigned char data[4]);
 
 /* Explicitly skip an attribute. */
@@ -128,7 +126,7 @@ void immUniformColor4ubv(const unsigned char rgba[4]);
 
 /* Extend immBindProgram to use Blender’s library of built-in shader programs.
  * Use immUnbindProgram() when done. */
-void immBindBuiltinProgram(GPUBuiltinShader shader_id);
+void immBindBuiltinProgram(eGPUBuiltinShader shader_id);
 
 /* Extend immUniformColor to take Blender's themes */
 void immUniformThemeColor(int color_id);

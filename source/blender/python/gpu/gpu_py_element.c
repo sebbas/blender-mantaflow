@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/python/gpu/gpu_py_element.c
- *  \ingroup bpygpu
+/** \file
+ * \ingroup bpygpu
  *
  * - Use ``bpygpu_`` for local API.
  * - Use ``BPyGPU`` for public API.
@@ -36,17 +32,18 @@
 #include "../generic/py_capi_utils.h"
 #include "../generic/python_utildefines.h"
 
-#include "gpu_py_primitive.h"
+#include "gpu_py_api.h"
 #include "gpu_py_element.h" /* own include */
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name IndexBuf Type
  * \{ */
 
 static PyObject *bpygpu_IndexBuf_new(PyTypeObject *UNUSED(type), PyObject *args, PyObject *kwds)
 {
+	BPYGPU_IS_INIT_OR_ERROR_OBJ;
+
 	const char *error_prefix = "IndexBuf.__new__";
 	bool ok = true;
 
@@ -196,19 +193,20 @@ static void bpygpu_IndexBuf_dealloc(BPyGPUIndexBuf *self)
 }
 
 PyDoc_STRVAR(py_gpu_element_doc,
-"GPUIndexBuf(type, seq)\n"
+".. class:: GPUIndexBuf(type, seq)\n"
 "\n"
-"Contains a VBO."
+"   Contains an index buffer.\n"
 "\n"
-"   :param prim_type:\n"
-"      One of these primitive types: {\n"
-"      'POINTS',\n"
-"      'LINES',\n"
-"      'TRIS',\n"
-"      'LINE_STRIP_ADJ'}\n"
+"   :param type: One of these primitive types: {\n"
+"      `POINTS`,\n"
+"      `LINES`,\n"
+"      `TRIS`,\n"
+"      `LINE_STRIP_ADJ` }\n"
 "   :type type: `str`\n"
-"   :param seq: Sequence of integers.\n"
-"   :type buf: `Any 1D or 2D Sequence`\n"
+"   :param seq: Indices this index buffer will contain.\n"
+"      Whether a 1D or 2D sequence is required depends on the type.\n"
+"      Optionally the sequence can support the buffer protocol.\n"
+"   :type seq: 1D or 2D sequence\n"
 );
 PyTypeObject BPyGPUIndexBuf_Type = {
 	PyVarObject_HEAD_INIT(NULL, 0)
@@ -224,7 +222,6 @@ PyTypeObject BPyGPUIndexBuf_Type = {
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Public API
  * \{ */
 

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2016 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/windowmanager/gizmo/wm_gizmo_wmapi.h
- *  \ingroup wm
+/** \file
+ * \ingroup wm
  *
  * \name Gizmos Window Manager API
  * API for usage in window manager code only. It should contain all functionality
@@ -39,9 +33,11 @@
 #define __WM_GIZMO_WMAPI_H__
 
 struct wmEventHandler;
+struct wmEventHandler_Gizmo;
+struct wmEventHandler_Op;
 struct wmGizmoMap;
-struct wmOperatorType;
 struct wmOperator;
+struct wmOperatorType;
 
 
 /* -------------------------------------------------------------------- */
@@ -71,8 +67,9 @@ void wm_gizmomap_remove(struct wmGizmoMap *gzmap);
 void wm_gizmos_keymap(struct wmKeyConfig *keyconf);
 
 void wm_gizmomaps_handled_modal_update(
-        bContext *C, struct wmEvent *event, struct wmEventHandler *handler);
-void wm_gizmomap_handler_context(bContext *C, struct wmEventHandler *handler);
+        bContext *C, struct wmEvent *event, struct wmEventHandler_Op *handler);
+void wm_gizmomap_handler_context_op(bContext *C, struct wmEventHandler_Op *handler);
+void wm_gizmomap_handler_context_gizmo(bContext *C, struct wmEventHandler_Gizmo *handler);
 
 struct wmGizmo *wm_gizmomap_highlight_find(
         struct wmGizmoMap *gzmap, bContext *C, const struct wmEvent *event,

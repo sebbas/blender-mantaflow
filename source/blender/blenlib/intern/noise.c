@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/blenlib/intern/noise.c
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #include <math.h>
@@ -154,10 +145,11 @@ static const float hashpntf[768] = {
 	0.500001, 0.267322, 0.909654, 0.206176, 0.223987, 0.937698, 0.323423,
 	0.117501, 0.490308, 0.474372, 0.689943, 0.168671, 0.719417, 0.188928,
 	0.330464, 0.265273, 0.446271, 0.171933, 0.176133, 0.474616, 0.140182,
-	0.114246, 0.905043, 0.713870, 0.555261, 0.951333
+	0.114246, 0.905043, 0.713870, 0.555261, 0.951333,
 };
 
-const unsigned char hash[512] = {
+extern const unsigned char BLI_noise_hash_uchar_512[512];  /* Quiet warning. */
+const unsigned char BLI_noise_hash_uchar_512[512] = {
 	0xA2, 0xA0, 0x19, 0x3B, 0xF8, 0xEB, 0xAA, 0xEE, 0xF3, 0x1C, 0x67, 0x28, 0x1D, 0xED, 0x0,  0xDE, 0x95, 0x2E, 0xDC,
 	0x3F, 0x3A, 0x82, 0x35, 0x4D, 0x6C, 0xBA, 0x36, 0xD0, 0xF6, 0xC,  0x79, 0x32, 0xD1, 0x59, 0xF4, 0x8,  0x8B, 0x63,
 	0x89, 0x2F, 0xB8, 0xB4, 0x97, 0x83, 0xF2, 0x8F, 0x18, 0xC7, 0x51, 0x14, 0x65, 0x87, 0x48, 0x20, 0x42, 0xA8, 0x80,
@@ -186,9 +178,10 @@ const unsigned char hash[512] = {
 	0xE5, 0xAF, 0x53, 0x7,  0xE0, 0x29, 0xA6, 0xC5, 0xE3, 0xF5, 0xF7, 0x4A, 0x41, 0x26, 0x6A, 0x16, 0x5E, 0x52, 0x2D,
 	0x21, 0xAD, 0xF0, 0x91, 0xFF, 0xEA, 0x54, 0xFA, 0x66, 0x1A, 0x45, 0x39, 0xCF, 0x75, 0xA4, 0x88, 0xFB, 0x5D,
 };
+#define hash BLI_noise_hash_uchar_512
 
 
-const float hashvectf[768] = {
+static const float hashvectf[768] = {
 	0.33783, 0.715698, -0.611206, -0.944031, -0.326599, -0.045624, -0.101074, -0.416443, -0.903503, 0.799286, 0.49411,
 	-0.341949, -0.854645, 0.518036, 0.033936, 0.42514, -0.437866, -0.792114, -0.358948, 0.597046, 0.717377, -0.985413,
 	0.144714, 0.089294, -0.601776, -0.33728, -0.723907, -0.449921, 0.594513, 0.666382, 0.208313, -0.10791, 0.972076,
@@ -288,7 +281,9 @@ static float newPerlin(float x, float y, float z)
 {
 	int A, AA, AB, B, BA, BB;
 	float u = floor(x), v = floor(y), w = floor(z);
-	int X = ((int)u) & 255, Y = ((int)v) & 255, Z = ((int)w) & 255;   /* FIND UNIT CUBE THAT CONTAINS POINT */
+	int X = ((int)u) & 255;
+	int Y = ((int)v) & 255;
+	int Z = ((int)w) & 255;   /* FIND UNIT CUBE THAT CONTAINS POINT */
 	x -= u;             /* FIND RELATIVE X,Y,Z */
 	y -= v;             /* OF POINT IN CUBE. */
 	z -= w;
@@ -495,7 +490,7 @@ static const char g_perlin_data_ub[512 + 2] = {
 	0xD,  0x60, 0x8A, 0x4,  0x2C, 0x3E, 0x92, 0xE5, 0xAF, 0x53, 0x7,  0xE0,
 	0x29, 0xA6, 0xC5, 0xE3, 0xF5, 0xF7, 0x4A, 0x41, 0x26, 0x6A, 0x16, 0x5E,
 	0x52, 0x2D, 0x21, 0xAD, 0xF0, 0x91, 0xFF, 0xEA, 0x54, 0xFA, 0x66, 0x1A,
-	0x45, 0x39, 0xCF, 0x75, 0xA4, 0x88, 0xFB, 0x5D, 0xA2, 0xA0
+	0x45, 0x39, 0xCF, 0x75, 0xA4, 0x88, 0xFB, 0x5D, 0xA2, 0xA0,
 };
 
 
@@ -1304,7 +1299,8 @@ static float voronoi_Cr(float x, float y, float z)
 }
 
 
-/* Signed version of all 6 of the above, just 2x-1, not really correct though (range is potentially (0, sqrt(6)).
+/* Signed version of all 6 of the above, just 2x-1, not really correct though
+ * (range is potentially (0, sqrt(6)).
  * Used in the musgrave functions */
 static float voronoi_F1S(float x, float y, float z)
 {

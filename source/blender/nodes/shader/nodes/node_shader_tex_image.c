@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,12 +15,6 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #include "../node_shader_util.h"
@@ -31,13 +23,13 @@
 
 static bNodeSocketTemplate sh_node_tex_image_in[] = {
 	{	SOCK_VECTOR, 1, N_("Vector"),		0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_NONE, SOCK_HIDE_VALUE},
-	{	-1, 0, ""	}
+	{	-1, 0, ""	},
 };
 
 static bNodeSocketTemplate sh_node_tex_image_out[] = {
 	{	SOCK_RGBA, 0, N_("Color"),		0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_NONE, SOCK_NO_INTERNAL_LINK},
 	{	SOCK_FLOAT, 0, N_("Alpha"),		0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_NONE, SOCK_NO_INTERNAL_LINK},
-	{	-1, 0, ""	}
+	{	-1, 0, ""	},
 };
 
 static void node_shader_init_tex_image(bNodeTree *UNUSED(ntree), bNode *node)
@@ -59,24 +51,46 @@ static int node_shader_gpu_tex_image(GPUMaterial *mat, bNode *node, bNodeExecDat
 	    "node_tex_image_linear",
 	    "node_tex_image_nearest",
 	    "node_tex_image_cubic",
-	    "node_tex_image_smart"
+	    "node_tex_image_smart",
 	};
 	static const char *names_box[] = {
 	    "tex_box_sample_linear",
 	    "tex_box_sample_nearest",
 	    "tex_box_sample_cubic",
-	    "tex_box_sample_smart"
+	    "tex_box_sample_smart",
+	};
+	static const char *names_clip[] = {
+	    "tex_clip_linear",
+	    "tex_clip_nearest",
+	    "tex_clip_cubic",
+	    "tex_clip_smart",
 	};
 
 	Image *ima = (Image *)node->id;
-	ImageUser *iuser = NULL;
 	NodeTexImage *tex = node->storage;
+
+	/* We get the image user from the original node, since GPU image keeps
+	 * a pointer to it and the dependency refreshes the original. */
+	bNode *node_original = node->original ? node->original : node;
+	NodeTexImage *tex_original = node_original->storage;
+	ImageUser *iuser = &tex_original->iuser;
+
 	const char *gpu_node_name = (tex->projection == SHD_PROJ_BOX)
 	                             ? names_box[tex->interpolation]
 	                             : names[tex->interpolation];
 	bool do_color_correction = false;
+	bool do_texco_extend = (tex->extension != SHD_IMAGE_EXTENSION_REPEAT);
+	const bool do_texco_clip = (tex->extension == SHD_IMAGE_EXTENSION_CLIP);
 
-	GPUNodeLink *norm, *col1, *col2, *col3;
+	if (do_texco_extend && (tex->projection != SHD_PROJ_BOX) &&
+	    ELEM(tex->interpolation, SHD_INTERP_CUBIC, SHD_INTERP_SMART))
+	{
+		gpu_node_name = "node_tex_image_cubic_extend";
+		/* We do it inside the sampling function */
+		do_texco_extend = false;
+	}
+
+	GPUNodeLink *norm, *col1, *col2, *col3, *input_coords;
 
 	int isdata = tex->color_space == SHD_COLORSPACE_NONE;
 	float blend = tex->projection_blend;
@@ -100,6 +114,12 @@ static int node_shader_gpu_tex_image(GPUMaterial *mat, bNode *node, bNodeExecDat
 
 	switch (tex->projection) {
 		case SHD_PROJ_FLAT:
+			if (do_texco_clip) {
+				GPU_link(mat, "set_rgb", in[0].link, &input_coords);
+			}
+			if (do_texco_extend) {
+				GPU_link(mat, "point_texco_clamp", in[0].link, GPU_image(ima, iuser, isdata), &in[0].link);
+			}
 			GPU_stack_link(mat, node, gpu_node_name, in, out, GPU_image(ima, iuser, isdata));
 			break;
 		case SHD_PROJ_BOX:
@@ -124,20 +144,38 @@ static int node_shader_gpu_tex_image(GPUMaterial *mat, bNode *node, bNodeExecDat
 			                                    norm,
 			                                    col1, col2, col3,
 			                                    GPU_image(ima, iuser, isdata),
-			                                    GPU_constant(&blend),
+			                                    GPU_uniform(&blend),
 			                                    &out[0].link,
 			                                    &out[1].link);
 			break;
 		case SHD_PROJ_SPHERE:
 			GPU_link(mat, "point_texco_remap_square", in[0].link, &in[0].link);
 			GPU_link(mat, "point_map_to_sphere", in[0].link, &in[0].link);
+			if (do_texco_clip) {
+				GPU_link(mat, "set_rgb", in[0].link, &input_coords);
+			}
+			if (do_texco_extend) {
+				GPU_link(mat, "point_texco_clamp", in[0].link, GPU_image(ima, iuser, isdata), &in[0].link);
+			}
 			GPU_stack_link(mat, node, gpu_node_name, in, out, GPU_image(ima, iuser, isdata));
 			break;
 		case SHD_PROJ_TUBE:
 			GPU_link(mat, "point_texco_remap_square", in[0].link, &in[0].link);
 			GPU_link(mat, "point_map_to_tube", in[0].link, &in[0].link);
+			if (do_texco_clip) {
+				GPU_link(mat, "set_rgb", in[0].link, &input_coords);
+			}
+			if (do_texco_extend) {
+				GPU_link(mat, "point_texco_clamp", in[0].link, GPU_image(ima, iuser, isdata), &in[0].link);
+			}
 			GPU_stack_link(mat, node, gpu_node_name, in, out, GPU_image(ima, iuser, isdata));
 			break;
+	}
+
+	if (do_texco_clip && (tex->projection != SHD_PROJ_BOX)) {
+		GPU_link(mat, names_clip[tex->interpolation],
+		         input_coords, GPU_image(ima, iuser, isdata), out[0].link,
+		         &out[0].link, &out[1].link);
 	}
 
 	if (do_color_correction && (tex->projection != SHD_PROJ_BOX)) {

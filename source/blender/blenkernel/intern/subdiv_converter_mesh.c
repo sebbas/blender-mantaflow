@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2018 by Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Sergey Sharybin.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/subdiv_converter_mesh.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include "subdiv_converter.h"
@@ -36,7 +30,6 @@
 
 #include "BLI_utildefines.h"
 #include "BLI_bitmap.h"
-#include "BLI_math_vector.h"
 
 #include "BKE_customdata.h"
 #include "BKE_mesh_mapping.h"
@@ -46,6 +39,10 @@
 
 #include "opensubdiv_capi.h"
 #include "opensubdiv_converter_capi.h"
+
+/* Enable work-around for non-working CPU evaluator when using bilinear scheme.
+ * This forces Catmark scheme with all edges marked as infinitely sharp. */
+#define BUGGY_SIMPLE_SCHEME_WORKAROUND 1
 
 typedef struct ConverterStorage {
 	SubdivSettings settings;
@@ -78,6 +75,10 @@ typedef struct ConverterStorage {
 static OpenSubdiv_SchemeType get_scheme_type(
         const OpenSubdiv_Converter *converter)
 {
+#if BUGGY_SIMPLE_SCHEME_WORKAROUND
+	(void) converter;
+	return OSD_SCHEME_CATMARK;
+#else
 	ConverterStorage *storage = converter->user_data;
 	if (storage->settings.is_simple) {
 		return OSD_SCHEME_BILINEAR;
@@ -85,6 +86,14 @@ static OpenSubdiv_SchemeType get_scheme_type(
 	else {
 		return OSD_SCHEME_CATMARK;
 	}
+#endif
+}
+
+static OpenSubdiv_VtxBoundaryInterpolation get_vtx_boundary_interpolation(
+        const struct OpenSubdiv_Converter *converter) {
+	ConverterStorage *storage = converter->user_data;
+	return BKE_subdiv_converter_vtx_boundary_interpolation_from_settings(
+	        &storage->settings);
 }
 
 static OpenSubdiv_FVarLinearInterpolation get_fvar_linear_interpolation(
@@ -154,6 +163,11 @@ static float get_edge_sharpness(const OpenSubdiv_Converter *converter,
                                 int manifold_edge_index)
 {
 	ConverterStorage *storage = converter->user_data;
+#if BUGGY_SIMPLE_SCHEME_WORKAROUND
+	if (storage->settings.is_simple) {
+		return 10.0f;
+	}
+#endif
 	const int edge_index =
 	        storage->manifold_edge_index_reverse[manifold_edge_index];
 	const MEdge *medge = storage->mesh->medge;
@@ -161,11 +175,15 @@ static float get_edge_sharpness(const OpenSubdiv_Converter *converter,
 	return edge_crease * edge_crease * 10.0f;
 }
 
-
 static bool is_infinite_sharp_vertex(const OpenSubdiv_Converter *converter,
                                      int manifold_vertex_index)
 {
 	ConverterStorage *storage = converter->user_data;
+#if BUGGY_SIMPLE_SCHEME_WORKAROUND
+	if (storage->settings.is_simple) {
+		return true;
+	}
+#endif
 	const int vertex_index =
 	        storage->manifold_vertex_index_reverse[manifold_vertex_index];
 	return BLI_BITMAP_TEST_BOOL(storage->infinite_sharp_vertices_map,
@@ -264,6 +282,7 @@ static void free_user_data(const OpenSubdiv_Converter *converter)
 static void init_functions(OpenSubdiv_Converter *converter)
 {
 	converter->getSchemeType = get_scheme_type;
+	converter->getVtxBoundaryInterpolation = get_vtx_boundary_interpolation;
 	converter->getFVarLinearInterpolation = get_fvar_linear_interpolation;
 	converter->specifiesFullTopology = specifies_full_topology;
 
@@ -305,12 +324,12 @@ static void initialize_manifold_index_array(const BLI_bitmap *used_map,
 	int *indices = NULL;
 	if (indices_r != NULL) {
 		indices = MEM_malloc_arrayN(
-	        num_elements, sizeof(int), "manifold indices");
+		        num_elements, sizeof(int), "manifold indices");
 	}
 	int *indices_reverse = NULL;
 	if (indices_reverse_r != NULL) {
 		indices_reverse = MEM_malloc_arrayN(
-	        num_elements, sizeof(int), "manifold indices reverse");
+		        num_elements, sizeof(int), "manifold indices reverse");
 	}
 	int offset = 0;
 	for (int i = 0; i < num_elements; i++) {

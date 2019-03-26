@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,22 +12,18 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/modifiers/intern/MOD_meshcache_pc2.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
 
-#include "BLI_sys_types.h"
 #include "BLI_utildefines.h"
+
 #include "BLI_fileops.h"
 #ifdef __BIG_ENDIAN__
 #  include "BLI_endian_switch.h"
@@ -39,9 +33,9 @@
 #  include "BLI_winstuff.h"
 #endif
 
-#include "MOD_meshcache_util.h"  /* own include */
-
 #include "DNA_modifier_types.h"
+
+#include "MOD_meshcache_util.h"  /* own include */
 
 typedef struct PC2Head {
 	char    header[12];  /* 'POINTCACHE2\0' */

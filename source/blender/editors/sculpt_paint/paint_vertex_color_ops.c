@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/sculpt_paint/paint_vertex_color_ops.c
- *  \ingroup edsculpt
+/** \file
+ * \ingroup edsculpt
  */
 
 #include "MEM_guardedalloc.h"
@@ -55,6 +51,15 @@ static bool vertex_weight_paint_mode_poll(bContext *C)
 	Mesh *me = BKE_mesh_from_object(ob);
 	return (ob && (ob->mode == OB_MODE_VERTEX_PAINT || ob->mode == OB_MODE_WEIGHT_PAINT)) &&
 	       (me && me->totpoly && me->dvert);
+}
+
+static void tag_object_after_update(Object *object)
+{
+	BLI_assert(object->type == OB_MESH);
+	Mesh *mesh = object->data;
+	DEG_id_tag_update(&mesh->id, ID_RECALC_COPY_ON_WRITE);
+	/* NOTE: Original mesh is used for display, so tag it directly here. */
+	BKE_mesh_batch_cache_dirty_tag(mesh, BKE_MESH_BATCH_DIRTY_ALL);
 }
 
 /* -------------------------------------------------------------------- */
@@ -98,7 +103,7 @@ static bool vertex_color_set(Object *ob, uint paintcol)
 	/* remove stale me->mcol, will be added later */
 	BKE_mesh_tessface_clear(me);
 
-	DEG_id_tag_update(&me->id, 0);
+	tag_object_after_update(ob);
 
 	return true;
 }
@@ -170,7 +175,7 @@ static bool vertex_paint_from_weight(Object *ob)
 		} while (j < mp->totloop);
 	}
 
-	DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+	tag_object_after_update(ob);
 
 	return true;
 }
@@ -306,7 +311,7 @@ static bool vertex_color_smooth(Object *ob)
 
 	MEM_freeN(mlooptag);
 
-	DEG_id_tag_update(&me->id, 0);
+	tag_object_after_update(ob);
 
 	return true;
 }

@@ -1,21 +1,17 @@
-
-uniform mat4 ViewProjectionMatrix;
-uniform vec2 aspect;
-
-/* ---- Instantiated Attribs ---- */
-in vec2 texCoord;
-in vec2 pos;
-/* ---- Per instance Attribs ---- */
-in mat4 InstanceModelMatrix;
-
+uniform mat4 ModelViewProjectionMatrix;
+uniform mat4 ModelMatrix;
+uniform float aspectX;
+uniform float aspectY;
+uniform float size;
+uniform vec2 offset;
 #ifdef USE_WIRE
-in vec3 color;
+uniform vec3 color;
 #else
-in vec4 objectColor;
+uniform vec4 objectColor;
 #endif
 
-in float size;
-in vec2 offset;
+in vec2 texCoord;
+in vec2 pos;
 
 flat out vec4 finalColor;
 
@@ -25,14 +21,17 @@ out vec2 texCoord_interp;
 
 void main()
 {
-	gl_Position = ViewProjectionMatrix * InstanceModelMatrix * vec4(
-		(pos[0] + offset[0]) * (size * aspect[0]),
-		(pos[1] + offset[1]) * (size * aspect[1]),
-		0.0, 1.0);
+	vec4 pos_4d = vec4((pos + offset) * (size * vec2(aspectX, aspectY)), 0.0, 1.0);
+	gl_Position = ModelViewProjectionMatrix * pos_4d;
 #ifdef USE_WIRE
+	gl_Position.z -= 1e-5;
 	finalColor = vec4(color, 1.0);
 #else
 	texCoord_interp = texCoord;
 	finalColor = objectColor;
+#endif
+
+#ifdef USE_WORLD_CLIP_PLANES
+	world_clip_planes_calc_clip_distance((ModelMatrix * pos_4d).xyz);
 #endif
 }

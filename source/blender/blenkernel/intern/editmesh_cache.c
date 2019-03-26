@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/editmesh_cache.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  *
  * Manage edit mesh cache: #EditMeshData
  */
@@ -28,7 +24,6 @@
 
 #include "DNA_mesh_types.h"
 
-#include "BLI_math.h"
 
 #include "BKE_editmesh.h"
 #include "BKE_editmesh_cache.h"  /* own include */
@@ -107,12 +102,12 @@ void BKE_editmesh_cache_ensure_poly_centers(BMEditMesh *em, EditMeshData *emd)
 		BM_mesh_elem_index_ensure(bm, BM_VERT);
 
 		BM_ITER_MESH_INDEX (efa, &fiter, bm, BM_FACES_OF_MESH, i) {
-			BM_face_calc_center_mean_vcos(bm, efa, polyCos[i], vertexCos);
+			BM_face_calc_center_median_vcos(bm, efa, polyCos[i], vertexCos);
 		}
 	}
 	else {
 		BM_ITER_MESH_INDEX (efa, &fiter, bm, BM_FACES_OF_MESH, i) {
-			BM_face_calc_center_mean(efa, polyCos[i]);
+			BM_face_calc_center_median(efa, polyCos[i]);
 		}
 	}
 

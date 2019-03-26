@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2004 by Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Joseph Eagar
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/mesh/editmesh_rip.c
- *  \ingroup edmesh
+/** \file
+ * \ingroup edmesh
  */
 
 #include "MEM_guardedalloc.h"
@@ -59,7 +51,7 @@
 /**
  * helper to find edge for edge_rip,
  *
- * \param inset is used so we get some useful distance
+ * \param inset: is used so we get some useful distance
  * when comparing multiple edges that meet at the same
  * point and would result in the same distance.
  */
@@ -313,7 +305,8 @@ static EdgeLoopPair *edbm_ripsel_looptag_helper(BMesh *bm)
 		uid = uid_end + bm->totedge;
 
 		lp = BLI_array_append_ret(eloop_pairs);
-		BM_edge_loop_pair(e_last, &lp->l_a, &lp->l_b); /* no need to check, we know this will be true */
+		/* no need to check, we know this will be true */
+		BM_edge_loop_pair(e_last, &lp->l_a, &lp->l_b);
 
 
 		BLI_assert(tot == uid_end - uid_start);
@@ -408,7 +401,7 @@ typedef struct UnorderedLoopPair {
 } UnorderedLoopPair;
 enum {
 	ULP_FLIP_0 = (1 << 0),
-	ULP_FLIP_1 = (1 << 1)
+	ULP_FLIP_1 = (1 << 1),
 };
 
 static UnorderedLoopPair *edbm_tagged_loop_pairs_to_fill(BMesh *bm)
@@ -795,7 +788,8 @@ static int edbm_rip_invoke__vert(bContext *C, const wmEvent *event, Object *obed
 
 					if (do_fill) {
 						/* Only needed when filling...
-						 * Also, we never want to tag best edge, that one won't change during split. See T44618. */
+						 * Also, we never want to tag best edge,
+						 * that one won't change during split. See T44618. */
 						if (larr[larr_len]->e == e_best) {
 							BM_elem_flag_enable(larr[larr_len]->prev->e, BM_ELEM_TAG);
 						}
@@ -1011,7 +1005,7 @@ static int edbm_rip_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
 	ViewLayer *view_layer = CTX_data_view_layer(C);
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 	const bool do_fill = RNA_boolean_get(op->ptr, "use_fill");
 
 	bool no_vertex_selected = true;

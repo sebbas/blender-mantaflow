@@ -16,11 +16,6 @@
 #
 # The Original Code is Copyright (C) 2006, Blender Foundation
 # All rights reserved.
-#
-# The Original Code is: all of this file.
-#
-# Contributor(s): Jacques Beaurain.
-#
 # ***** END GPL LICENSE BLOCK *****
 
 # message(STATUS "Configuring makesdna")
@@ -38,7 +33,13 @@ blender_include_dirs(
 # -----------------------------------------------------------------------------
 # Build makesdna executable
 set(SRC
+	dna_utils.c
 	makesdna.c
+	../../blenlib/intern/BLI_ghash.c
+	../../blenlib/intern/BLI_ghash_utils.c
+	../../blenlib/intern/BLI_memarena.c
+	../../blenlib/intern/BLI_mempool.c
+	../../blenlib/intern/hash_mm2a.c  # needed by 'BLI_ghash_utils.c', not used directly.
 	../../../../intern/guardedalloc/intern/mallocn.c
 	../../../../intern/guardedalloc/intern/mallocn_guarded_impl.c
 	../../../../intern/guardedalloc/intern/mallocn_lockfree_impl.c
@@ -82,9 +83,12 @@ set(INC_SYS
 )
 
 set(SRC
+	dna_utils.c
 	dna_genfile.c
 	${CMAKE_CURRENT_BINARY_DIR}/dna.c
 	${SRC_DNA_INC}
+
+	dna_utils.h
 )
 
 set_source_files_properties(
@@ -109,6 +113,8 @@ set(INC_SYS
 set(SRC
 	../../blenlib/intern/BLI_ghash.c
 	../../blenlib/intern/BLI_ghash_utils.c
+	../../blenlib/intern/BLI_linklist.c
+	../../blenlib/intern/BLI_memarena.c
 	../../blenlib/intern/BLI_mempool.c
 	../../blenlib/intern/endian_switch.c
 	../../blenlib/intern/hash_mm2a.c

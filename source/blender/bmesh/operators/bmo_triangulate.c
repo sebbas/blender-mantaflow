@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Joseph Eagar.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/bmesh/operators/bmo_triangulate.c
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * Triangulate faces, also defines triangle fill.
  */
@@ -53,7 +47,7 @@ void bmo_triangulate_exec(BMesh *bm, BMOperator *op)
 	BM_mesh_elem_hflag_disable_all(bm, BM_FACE | BM_EDGE, BM_ELEM_TAG, false);
 	BMO_slot_buffer_hflag_enable(bm, op->slots_in, "faces", BM_FACE, BM_ELEM_TAG, false);
 
-	BM_mesh_triangulate(bm, quad_method, ngon_method, true, op, slot_facemap_out, slot_facemap_double_out);
+	BM_mesh_triangulate(bm, quad_method, ngon_method, 4, true, op, slot_facemap_out, slot_facemap_double_out);
 
 	BMO_slot_buffer_from_enabled_hflag(bm, op, op->slots_out, "edges.out", BM_EDGE, BM_ELEM_TAG);
 	BMO_slot_buffer_from_enabled_hflag(bm, op, op->slots_out, "faces.out", BM_FACE, BM_ELEM_TAG);
@@ -267,7 +261,7 @@ void bmo_triangle_fill_exec(BMesh *bm, BMOperator *op)
 				}
 				else {
 					/* Edges with 1 or 3+ faces attached,
-					 * most likely caused by a degeneratge mesh. */
+					 * most likely caused by a degenerate mesh. */
 				}
 			}
 		}

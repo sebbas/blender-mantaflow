@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2017, Blender Foundation
  * This is a new part of Blender
- *
- * Contributor(s): Antonio Vazquez
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/gpencil_modifiers/intern/MOD_gpencil_util.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 
@@ -32,12 +26,11 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_utildefines.h"
+
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_utildefines.h"
 #include "BLI_math_vector.h"
-#include "BLI_math_color.h"
-#include "BLI_rand.h"
 
 #include "DNA_meshdata_types.h"
 #include "DNA_scene_types.h"
@@ -46,7 +39,6 @@
 #include "DNA_gpencil_modifier_types.h"
 
 #include "BKE_deform.h"
-#include "BKE_global.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
 #include "BKE_lattice.h"
@@ -69,7 +61,7 @@ void gpencil_modifier_type_init(GpencilModifierTypeInfo *types[])
 	INIT_GP_TYPE(Thick);
 	INIT_GP_TYPE(Tint);
 	INIT_GP_TYPE(Color);
-	INIT_GP_TYPE(Instance);
+	INIT_GP_TYPE(Array);
 	INIT_GP_TYPE(Build);
 	INIT_GP_TYPE(Opacity);
 	INIT_GP_TYPE(Lattice);
@@ -193,7 +185,7 @@ void gpencil_apply_modifier_material(
 			copy_v4_v4(newmat->gp_style->fill_rgba, gps->runtime.tmp_fill_rgba);
 
 			BLI_ghash_insert(gh_color, mat->id.name, newmat);
-			DEG_id_tag_update(&newmat->id, DEG_TAG_COPY_ON_WRITE);
+			DEG_id_tag_update(&newmat->id, ID_RECALC_COPY_ON_WRITE);
 		}
 		/* reasign color index */
 		int idx = BKE_gpencil_get_material_index(ob, newmat);
@@ -211,6 +203,6 @@ void gpencil_apply_modifier_material(
 			mat->preview->flag[ICON_SIZE_ICON] |= PRV_CHANGED;
 			mat->preview->flag[ICON_SIZE_PREVIEW] |= PRV_CHANGED;
 		}
-		DEG_id_tag_update(&mat->id, DEG_TAG_COPY_ON_WRITE);
+		DEG_id_tag_update(&mat->id, ID_RECALC_COPY_ON_WRITE);
 	}
 }

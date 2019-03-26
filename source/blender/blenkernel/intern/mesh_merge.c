@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/mesh_merge.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 #include <string.h> // for memcpy
 
@@ -219,15 +213,15 @@ static bool poly_gset_compare_fn(const void *k1, const void *k2)
  *
  * This frees the given mesh and returns a new mesh.
  *
- * \param vtargetmap  The table that maps vertices to target vertices.  a value of -1
+ * \param vtargetmap: The table that maps vertices to target vertices.  a value of -1
  * indicates a vertex is a target, and is to be kept.
  * This array is aligned with 'mesh->totvert'
  * \warning \a vtargetmap must **not** contain any chained mapping (v1 -> v2 -> v3 etc.), this is not supported
  * and will likely generate corrupted geometry.
  *
- * \param tot_vtargetmap  The number of non '-1' values in vtargetmap. (not the size)
+ * \param tot_vtargetmap: The number of non '-1' values in vtargetmap. (not the size)
  *
- * \param merge_mode enum with two modes.
+ * \param merge_mode: enum with two modes.
  * - #MESH_MERGE_VERTS_DUMP_IF_MAPPED
  * When called by the Mirror Modifier,
  * In this mode it skips any faces that have all vertices merged (to avoid creating pairs

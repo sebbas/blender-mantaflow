@@ -24,12 +24,12 @@ uniform sampler2DArray planarDepth;
 
 /* ------ Lights ----- */
 struct LightData {
-	vec4 position_influence;      /* w : InfluenceRadius */
+	vec4 position_influence;      /* w : InfluenceRadius (inversed and squared) */
 	vec4 color_spec;              /* w : Spec Intensity */
 	vec4 spotdata_radius_shadow;  /* x : spot size, y : spot blend, z : radius, w: shadow id */
 	vec4 rightvec_sizex;          /* xyz: Normalized up vector, w: area size X or spot scale X */
 	vec4 upvec_sizey;             /* xyz: Normalized right vector, w: area size Y or spot scale Y */
-	vec4 forwardvec_type;         /* xyz: Normalized forward vector, w: Lamp Type */
+	vec4 forwardvec_type;         /* xyz: Normalized forward vector, w: Light Type */
 };
 
 /* convenience aliases */
@@ -244,8 +244,9 @@ float line_unit_sphere_intersect_dist(vec3 lineorigin, vec3 linedirection)
 
 	float dist = 1e15;
 	float determinant = b * b - a * c;
-	if (determinant >= 0)
+	if (determinant >= 0) {
 		dist = (sqrt(determinant) - b) / a;
+	}
 
 	return dist;
 }
@@ -266,6 +267,14 @@ vec2 lut_coords(float cosTheta, float roughness)
 {
 	float theta = acos(cosTheta);
 	vec2 coords = vec2(roughness, theta / M_PI_2);
+
+	/* scale and bias coordinates, for correct filtered lookup */
+	return coords * (LUT_SIZE - 1.0) / LUT_SIZE + 0.5 / LUT_SIZE;
+}
+
+vec2 lut_coords_ltc(float cosTheta, float roughness)
+{
+	vec2 coords = vec2(roughness, sqrt(1.0 - cosTheta));
 
 	/* scale and bias coordinates, for correct filtered lookup */
 	return coords * (LUT_SIZE - 1.0) / LUT_SIZE + 0.5 / LUT_SIZE;
@@ -571,11 +580,9 @@ vec3 F_schlick(vec3 f0, float cos_theta)
 /* Fresnel approximation for LTC area lights (not MRP) */
 vec3 F_area(vec3 f0, vec2 lut)
 {
-	vec2 fac = normalize(lut.xy); /* XXX FIXME this does not work!!! */
-
 	/* Unreal specular matching : if specular color is below 2% intensity,
 	 * treat as shadowning */
-	return saturate(50.0 * dot(f0, vec3(0.3, 0.6, 0.1))) * fac.y + fac.x * f0;
+	return saturate(50.0 * dot(f0, vec3(0.3, 0.6, 0.1))) * lut.y + lut.x * f0;
 }
 
 /* Fresnel approximation for IBL */
@@ -719,7 +726,6 @@ Closure closure_mix(Closure cl1, Closure cl2, float fac)
 	Closure cl;
 
 	if (cl1.ssr_id == TRANSPARENT_CLOSURE_FLAG) {
-		cl1.radiance = cl2.radiance;
 		cl1.ssr_normal = cl2.ssr_normal;
 		cl1.ssr_data = cl2.ssr_data;
 		cl1.ssr_id = cl2.ssr_id;
@@ -731,7 +737,6 @@ Closure closure_mix(Closure cl1, Closure cl2, float fac)
 #  endif
 	}
 	if (cl2.ssr_id == TRANSPARENT_CLOSURE_FLAG) {
-		cl2.radiance = cl1.radiance;
 		cl2.ssr_normal = cl1.ssr_normal;
 		cl2.ssr_data = cl1.ssr_data;
 		cl2.ssr_id = cl1.ssr_id;
@@ -742,18 +747,26 @@ Closure closure_mix(Closure cl1, Closure cl2, float fac)
 #    endif
 #  endif
 	}
+
+	/* When mixing SSR don't blend roughness.
+	 *
+	 * It makes no sense to mix them really, so we take either one of them and
+	 * tone down its specularity (ssr_data.xyz) while keeping its roughness (ssr_data.w).
+	 */
 	if (cl1.ssr_id == outputSsrId) {
-		cl.ssr_data = mix(cl1.ssr_data.xyzw, vec4(vec3(0.0), cl1.ssr_data.w), fac); /* do not blend roughness */
+		cl.ssr_data = mix(cl1.ssr_data.xyzw, vec4(vec3(0.0), cl1.ssr_data.w), fac);
 		cl.ssr_normal = cl1.ssr_normal;
 		cl.ssr_id = cl1.ssr_id;
 	}
 	else {
-		cl.ssr_data = mix(vec4(vec3(0.0), cl2.ssr_data.w), cl2.ssr_data.xyzw, fac); /* do not blend roughness */
+		cl.ssr_data = mix(vec4(vec3(0.0), cl2.ssr_data.w), cl2.ssr_data.xyzw, fac);
 		cl.ssr_normal = cl2.ssr_normal;
 		cl.ssr_id = cl2.ssr_id;
 	}
-	cl.radiance = mix(cl1.radiance, cl2.radiance, fac);
+
 	cl.opacity = mix(cl1.opacity, cl2.opacity, fac);
+	cl.radiance = mix(cl1.radiance * cl1.opacity, cl2.radiance * cl2.opacity, fac);
+	cl.radiance /= max(1e-8, cl.opacity);
 
 #  ifdef USE_SSS
 	cl.sss_data.rgb = mix(cl1.sss_data.rgb, cl2.sss_data.rgb, fac);
@@ -770,14 +783,16 @@ Closure closure_mix(Closure cl1, Closure cl2, float fac)
 Closure closure_add(Closure cl1, Closure cl2)
 {
 	Closure cl = (cl1.ssr_id == outputSsrId) ? cl1 : cl2;
+	cl.radiance = cl1.radiance + cl2.radiance;
 #  ifdef USE_SSS
 	cl.sss_data = (cl1.sss_data.a > 0.0) ? cl1.sss_data : cl2.sss_data;
+	/* Add radiance that was supposed to be filtered but was rejected. */
+	cl.radiance += (cl1.sss_data.a > 0.0) ? cl2.sss_data.rgb : cl1.sss_data.rgb;
 #    ifdef USE_SSS_ALBEDO
 	/* TODO Find a solution to this. Dither? */
 	cl.sss_albedo = (cl1.sss_data.a > 0.0) ? cl1.sss_albedo : cl2.sss_albedo;
 #    endif
 #  endif
-	cl.radiance = cl1.radiance + cl2.radiance;
 	cl.opacity = saturate(cl1.opacity + cl2.opacity);
 	return cl;
 }
@@ -819,7 +834,8 @@ void main()
 #    if defined(USE_ALPHA_BLEND_VOLUMETRICS)
 	/* XXX fragile, better use real viewport resolution */
 	vec2 uvs = gl_FragCoord.xy / vec2(2 * textureSize(maxzBuffer, 0).xy);
-	fragColor = volumetric_resolve(vec4(cl.radiance, cl.opacity), uvs, gl_FragCoord.z);
+	fragColor.rgb = volumetric_resolve(vec4(cl.radiance, cl.opacity), uvs, gl_FragCoord.z).rgb;
+	fragColor.a = cl.opacity;
 #    else
 	fragColor = vec4(cl.radiance, cl.opacity);
 #    endif

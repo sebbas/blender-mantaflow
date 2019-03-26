@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,17 +12,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Dalai Felinto
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BKE_COLLECTION_H__
 #define __BKE_COLLECTION_H__
 
-/** \file blender/blenkernel/BKE_collection.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include "BLI_compiler_compat.h"
@@ -38,8 +32,8 @@ extern "C" {
 
 /* Structs */
 
-struct Base;
 struct BLI_Iterator;
+struct Base;
 struct Collection;
 struct Depsgraph;
 struct ID;
@@ -60,21 +54,25 @@ void               BKE_collection_free(struct Collection *collection);
 bool               BKE_collection_delete(struct Main *bmain, struct Collection *collection, bool hierarchy);
 
 struct Collection *BKE_collection_copy(struct Main *bmain, struct Collection *parent, struct Collection *collection);
-struct Collection *BKE_collection_copy_master(struct Main *bmain, struct Collection *collection, const int flag);
 void               BKE_collection_copy_data(struct Main *bmain, struct Collection *collection_dst, const struct Collection *collection_src, const int flag);
-void               BKE_collection_copy_full(struct Main *bmain, struct Collection *collection);
 void               BKE_collection_make_local(struct Main *bmain, struct Collection *collection, const bool lib_local);
+
+struct Collection *BKE_collection_duplicate(
+        struct Main *bmain, struct Collection *parent, struct Collection *collection,
+        const bool do_hierarchy, const bool do_objects, const bool do_obdata);
+struct Collection *BKE_collection_copy_master(struct Main *bmain, struct Collection *collection, const int flag);
 
 /* Master Collection for Scene */
 
 struct Collection *BKE_collection_master(const struct Scene *scene);
 struct Collection *BKE_collection_master_add(void);
+struct Scene *BKE_collection_master_scene_search(const struct Main *bmain, const struct Collection *master_collection);
 
 /* Collection Objects */
 
 bool               BKE_collection_has_object(struct Collection *collection, struct Object *ob);
 bool               BKE_collection_has_object_recursive(struct Collection *collection, struct Object *ob);
-struct Collection *BKE_collection_object_find(struct Main *bmain, struct Collection *collection, struct Object *ob);
+struct Collection *BKE_collection_object_find(struct Main *bmain, struct Scene *scene, struct Collection *collection, struct Object *ob);
 bool               BKE_collection_is_empty(struct Collection *collection);
 
 bool BKE_collection_object_add(struct Main *bmain, struct Collection *collection, struct Object *ob);
@@ -103,6 +101,7 @@ struct Base *BKE_collection_or_layer_objects(const struct ViewLayer *view_layer,
 
 struct Collection *BKE_collection_from_index(struct Scene *scene, const int index);
 void BKE_collection_new_name_get(struct Collection *collection_parent, char *rname);
+const char *BKE_collection_ui_name_get(struct Collection *collection);
 bool BKE_collection_objects_select(struct ViewLayer *view_layer, struct Collection *collection, bool deselect);
 
 /* Collection children */
@@ -130,9 +129,6 @@ bool BKE_collection_find_cycle(struct Collection *new_ancestor,
 
 typedef void (*BKE_scene_objects_Cb)(struct Object *ob, void *data);
 typedef void (*BKE_scene_collections_Cb)(struct Collection *ob, void *data);
-
-void BKE_scene_collections_callback(struct Scene *scene, BKE_scene_collections_Cb callback, void *data);
-void BKE_scene_objects_callback(struct Scene *scene, BKE_scene_objects_Cb callback, void *data);
 
 /* Iteratorion over objects in collection. */
 
@@ -182,6 +178,32 @@ void BKE_scene_objects_iterator_end(struct BLI_Iterator *iter);
 
 #define FOREACH_SCENE_COLLECTION_END                                          \
 	ITER_END
+
+#define FOREACH_COLLECTION_BEGIN(_bmain, _scene, Type, _instance)             \
+{                                                                             \
+	Type _instance;                                                           \
+	Collection *_instance_next;                                               \
+	bool is_scene_collection = (_scene) != NULL;                              \
+                                                                              \
+	if (_scene) {                                                             \
+		_instance_next = BKE_collection_master(_scene);                       \
+	}                                                                         \
+	else {                                                                    \
+		_instance_next = (_bmain)->collections.first;                         \
+	}                                                                         \
+                                                                              \
+	while ((_instance = _instance_next)) {                                    \
+		if (is_scene_collection) {                                            \
+			_instance_next = (_bmain)->collections.first;                     \
+			is_scene_collection = false;                                      \
+		}                                                                     \
+		else {                                                                \
+			_instance_next = _instance->id.next;                              \
+		}
+
+#define FOREACH_COLLECTION_END                                                \
+	}                                                                         \
+}
 
 #define FOREACH_SCENE_OBJECT_BEGIN(scene, _instance)                          \
 	ITER_BEGIN(BKE_scene_objects_iterator_begin,                              \

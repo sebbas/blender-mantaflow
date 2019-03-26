@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,11 @@
  *
  * The Original Code is Copyright (C) 2018, Blender Foundation
  * This is a new part of Blender
- *
- * Contributor(s): Antonio Vazquez
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  * Operators for dealing with armatures and GP datablocks
  */
 
-/** \file blender/editors/gpencil/gpencil_armature.c
- *  \ingroup edgpencil
+/** \file
+ * \ingroup edgpencil
  */
 
 
@@ -40,9 +33,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
-#include "BLI_ghash.h"
 #include "BLI_math.h"
-#include "BLI_string_utils.h"
 
 #include "BLT_translation.h"
 
@@ -79,7 +70,7 @@
 
 enum {
 	GP_ARMATURE_NAME = 0,
-	GP_ARMATURE_AUTO = 1
+	GP_ARMATURE_AUTO = 1,
 };
 
 #define DEFAULT_RATIO 0.10f
@@ -323,7 +314,7 @@ static void gpencil_add_verts_to_dgroups(
 			{
 				if (bone->segments > 1) {
 					segments = bone->segments;
-					b_bone_spline_setup(pchan, 1, bbone_array);
+					BKE_pchan_bbone_spline_setup(pchan, true, bbone_array);
 					bbone = bbone_array;
 				}
 			}
@@ -491,6 +482,10 @@ bool ED_gpencil_add_armature_weights(
 	Main *bmain = CTX_data_main(C);
 	Scene *scene = CTX_data_scene(C);
 
+	if (ob == NULL) {
+		return false;
+	}
+
 	/* if no armature modifier, add a new one */
 	GpencilModifierData *md = BKE_gpencil_modifiers_findByType(ob, eGpencilModifierType_Armature);
 	if (md == NULL) {
@@ -502,7 +497,7 @@ bool ED_gpencil_add_armature_weights(
 			           "Unable to add a new Armature modifier to object");
 			return false;
 		}
-		DEG_id_tag_update(&ob->id, OB_RECALC_OB | OB_RECALC_DATA);
+		DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 	}
 
 	/* verify armature */
@@ -527,6 +522,10 @@ bool ED_gpencil_add_armature_weights(
 static bool gpencil_generate_weights_poll(bContext *C)
 {
 	Object *ob = CTX_data_active_object(C);
+
+	if (ob == NULL) {
+		return false;
+	}
 
 	if (ob->type != OB_GPENCIL) {
 		return false;
@@ -577,14 +576,14 @@ static int gpencil_generate_weights_exec(bContext *C, wmOperator *op)
 		GpencilModifierData *md = BKE_gpencil_modifiers_findByType(ob_eval, eGpencilModifierType_Armature);
 		if (md == NULL) {
 			BKE_report(op->reports, RPT_ERROR,
-				"The grease pencil object need an Armature modifier");
+			           "The grease pencil object need an Armature modifier");
 			return OPERATOR_CANCELLED;
 		}
 
 		ArmatureGpencilModifierData *mmd = (ArmatureGpencilModifierData *)md;
 		if (mmd->object == NULL) {
 			BKE_report(op->reports, RPT_ERROR,
-				"Armature modifier is not valid or wrong defined");
+			           "Armature modifier is not valid or wrong defined");
 			return OPERATOR_CANCELLED;
 		}
 
@@ -600,7 +599,7 @@ static int gpencil_generate_weights_exec(bContext *C, wmOperator *op)
 	gpencil_object_vgroup_calc_from_armature(C, ob, ob_arm, mode, ratio, decay);
 
 	/* notifiers */
-	DEG_id_tag_update(&gpd->id, OB_RECALC_OB | OB_RECALC_DATA);
+	DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 	WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
 
 	return OPERATOR_FINISHED;
@@ -647,7 +646,7 @@ void GPENCIL_OT_generate_weights(wmOperatorType *ot)
 	static const EnumPropertyItem mode_type[] = {
 		{GP_ARMATURE_NAME, "NAME", 0, "Empty Groups", ""},
 		{GP_ARMATURE_AUTO, "AUTO", 0, "Automatic Weights", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	PropertyRNA *prop;

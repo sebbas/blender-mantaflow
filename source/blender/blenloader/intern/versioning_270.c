@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,15 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/blenloader/intern/versioning_270.c
- *  \ingroup blenloader
+/** \file
+ * \ingroup blenloader
  */
 
 #include "BLI_utildefines.h"
@@ -63,7 +56,6 @@
 #include "BKE_colortools.h"
 #include "BKE_fcurve.h"
 #include "BKE_gpencil.h"
-#include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_mask.h"
 #include "BKE_modifier.h"
@@ -113,7 +105,7 @@ static bGPDpalette *BKE_gpencil_palette_addnew(bGPdata *gpd, const char *name)
 	/* auto-name */
 	BLI_strncpy(palette->info, name, sizeof(palette->info));
 	BLI_uniquename(&gpd->palettes, palette, DATA_("GP_Palette"), '.', offsetof(bGPDpalette, info),
-		sizeof(palette->info));
+	               sizeof(palette->info));
 
 	/* return palette */
 	return palette;
@@ -142,7 +134,7 @@ static bGPDpalettecolor *BKE_gpencil_palettecolor_addnew(bGPDpalette *palette, c
 	/* auto-name */
 	BLI_strncpy(palcolor->info, name, sizeof(palcolor->info));
 	BLI_uniquename(&palette->colors, palcolor, DATA_("Color"), '.', offsetof(bGPDpalettecolor, info),
-		sizeof(palcolor->info));
+	               sizeof(palcolor->info));
 
 	/* return palette color */
 	return palcolor;
@@ -378,7 +370,7 @@ static void do_version_bbone_easing_fcurve_fix(ID *UNUSED(id), FCurve *fcu, void
 	/* Driver -> Driver Vars (for bbone_in/out) */
 	if (fcu->driver) {
 		for (DriverVar *dvar = fcu->driver->variables.first; dvar; dvar = dvar->next) {
-			DRIVER_TARGETS_LOOPER(dvar)
+			DRIVER_TARGETS_LOOPER_BEGIN(dvar)
 			{
 				if (dtar->rna_path) {
 					dtar->rna_path = replace_bbone_easing_rnapath(dtar->rna_path);
@@ -414,7 +406,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		if (!DNA_struct_elem_find(fd->filesdna, "BevelModifierData", "float", "profile")) {
 			Object *ob;
 
-			for (ob = bmain->object.first; ob; ob = ob->id.next) {
+			for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 				ModifierData *md;
 				for (md = ob->modifiers.first; md; md = md->next) {
 					if (md->type == eModifierType_Bevel) {
@@ -427,7 +419,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		}
 
 		/* nodes don't use fixed node->id any more, clean up */
-		FOREACH_NODETREE(bmain, ntree, id) {
+		FOREACH_NODETREE_BEGIN(bmain, ntree, id) {
 			if (ntree->type == NTREE_COMPOSIT) {
 				bNode *node;
 				for (node = ntree->nodes.first; node; node = node->next) {
@@ -436,18 +428,18 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 					}
 				}
 			}
-		} FOREACH_NODETREE_END
+		} FOREACH_NODETREE_END;
 
 		{
 			bScreen *screen;
 
-			for (screen = bmain->screen.first; screen; screen = screen->id.next) {
+			for (screen = bmain->screens.first; screen; screen = screen->id.next) {
 				ScrArea *area;
 				for (area = screen->areabase.first; area; area = area->next) {
 					SpaceLink *space_link;
 					for (space_link = area->spacedata.first; space_link; space_link = space_link->next) {
 						if (space_link->spacetype == SPACE_CLIP) {
-							SpaceClip *space_clip = (SpaceClip *) space_link;
+							SpaceClip *space_clip = (SpaceClip *)space_link;
 							if (space_clip->mode != SC_MODE_MASKEDIT) {
 								space_clip->mode = SC_MODE_TRACKING;
 							}
@@ -459,7 +451,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 		if (!DNA_struct_elem_find(fd->filesdna, "MovieTrackingSettings", "float", "default_weight")) {
 			MovieClip *clip;
-			for (clip = bmain->movieclip.first; clip; clip = clip->id.next) {
+			for (clip = bmain->movieclips.first; clip; clip = clip->id.next) {
 				clip->tracking.settings.default_weight = 1.0f;
 			}
 		}
@@ -469,7 +461,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		Object *ob;
 
 		/* Update Transform constraint (another deg -> rad stuff). */
-		for (ob = bmain->object.first; ob; ob = ob->id.next) {
+		for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 			do_version_constraints_radians_degrees_270_1(&ob->constraints);
 
 			if (ob->pose) {
@@ -486,7 +478,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		Mesh *me;
 
 		/* Mesh smoothresh deg->rad. */
-		for (me = bmain->mesh.first; me; me = me->id.next) {
+		for (me = bmain->meshes.first; me; me = me->id.next) {
 			me->smoothresh = DEG2RADF(me->smoothresh);
 		}
 	}
@@ -494,7 +486,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 	if (!MAIN_VERSION_ATLEAST(bmain, 270, 3)) {
 		FreestyleLineStyle *linestyle;
 
-		for (linestyle = bmain->linestyle.first; linestyle; linestyle = linestyle->id.next) {
+		for (linestyle = bmain->linestyles.first; linestyle; linestyle = linestyle->id.next) {
 			linestyle->flag |= LS_NO_SORTING;
 			linestyle->sort_key = LS_SORT_KEY_DISTANCE_FROM_CAMERA;
 			linestyle->integration_type = LS_INTEGRATION_MEAN;
@@ -507,7 +499,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		 */
 		bScreen *sc;
 
-		for (sc = bmain->screen.first; sc; sc = sc->id.next) {
+		for (sc = bmain->screens.first; sc; sc = sc->id.next) {
 			ScrArea *sa;
 			for (sa = sc->areabase.first; sa; sa = sa->next) {
 				SpaceLink *sl;
@@ -528,7 +520,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		Object *ob;
 
 		/* Update Transform constraint (again :|). */
-		for (ob = bmain->object.first; ob; ob = ob->id.next) {
+		for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 			do_version_constraints_radians_degrees_270_5(&ob->constraints);
 
 			if (ob->pose) {
@@ -545,7 +537,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		if (!DNA_struct_elem_find(fd->filesdna, "RenderData", "BakeData", "bake")) {
 			Scene *sce;
 
-			for (sce = bmain->scene.first; sce; sce = sce->id.next) {
+			for (sce = bmain->scenes.first; sce; sce = sce->id.next) {
 				sce->r.bake.flag = R_BAKE_CLEAR;
 				sce->r.bake.width = 512;
 				sce->r.bake.height = 512;
@@ -567,7 +559,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		if (!DNA_struct_elem_find(fd->filesdna, "FreestyleLineStyle", "float", "texstep")) {
 			FreestyleLineStyle *linestyle;
 
-			for (linestyle = bmain->linestyle.first; linestyle; linestyle = linestyle->id.next) {
+			for (linestyle = bmain->linestyles.first; linestyle; linestyle = linestyle->id.next) {
 				linestyle->flag |= LS_TEXTURE;
 				linestyle->texstep = 1.0;
 			}
@@ -575,7 +567,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 		{
 			Scene *scene;
-			for (scene = bmain->scene.first; scene; scene = scene->id.next) {
+			for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
 				int num_layers = BLI_listbase_count(&scene->r.layers);
 				scene->r.actlay = min_ff(scene->r.actlay, num_layers - 1);
 			}
@@ -586,7 +578,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		if (!DNA_struct_elem_find(fd->filesdna, "Material", "float", "line_col[4]")) {
 			Material *mat;
 
-			for (mat = bmain->mat.first; mat; mat = mat->id.next) {
+			for (mat = bmain->materials.first; mat; mat = mat->id.next) {
 				mat->line_col[0] = mat->line_col[1] = mat->line_col[2] = 0.0f;
 				mat->line_col[3] = mat->alpha;
 			}
@@ -594,7 +586,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 		if (!DNA_struct_elem_find(fd->filesdna, "RenderData", "int", "preview_start_resolution")) {
 			Scene *scene;
-			for (scene = bmain->scene.first; scene; scene = scene->id.next) {
+			for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
 				scene->r.preview_start_resolution = 64;
 			}
 		}
@@ -603,13 +595,13 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 	if (!MAIN_VERSION_ATLEAST(bmain, 271, 3)) {
 		Brush *br;
 
-		for (br = bmain->brush.first; br; br = br->id.next) {
+		for (br = bmain->brushes.first; br; br = br->id.next) {
 			br->fill_threshold = 0.2f;
 		}
 
 		if (!DNA_struct_elem_find(fd->filesdna, "BevelModifierData", "int", "mat")) {
 			Object *ob;
-			for (ob = bmain->object.first; ob; ob = ob->id.next) {
+			for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 				ModifierData *md;
 
 				for (md = ob->modifiers.first; md; md = md->next) {
@@ -624,7 +616,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 	if (!MAIN_VERSION_ATLEAST(bmain, 271, 6)) {
 		Object *ob;
-		for (ob = bmain->object.first; ob; ob = ob->id.next) {
+		for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 			ModifierData *md;
 
 			for (md = ob->modifiers.first; md; md = md->next) {
@@ -641,7 +633,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 	if (!MAIN_VERSION_ATLEAST(bmain, 272, 0)) {
 		if (!DNA_struct_elem_find(fd->filesdna, "RenderData", "int", "preview_start_resolution")) {
 			Scene *scene;
-			for (scene = bmain->scene.first; scene; scene = scene->id.next) {
+			for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
 				scene->r.preview_start_resolution = 64;
 			}
 		}
@@ -649,7 +641,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 	if (!MAIN_VERSION_ATLEAST(bmain, 272, 1)) {
 		Brush *br;
-		for (br = bmain->brush.first; br; br = br->id.next) {
+		for (br = bmain->brushes.first; br; br = br->id.next) {
 			if ((br->ob_mode & OB_MODE_SCULPT) && ELEM(br->sculpt_tool, SCULPT_TOOL_GRAB, SCULPT_TOOL_SNAKE_HOOK))
 				br->alpha = 1.0f;
 		}
@@ -658,7 +650,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 	if (!MAIN_VERSION_ATLEAST(bmain, 272, 2)) {
 		if (!DNA_struct_elem_find(fd->filesdna, "Image", "float", "gen_color")) {
 			Image *image;
-			for (image = bmain->image.first; image != NULL; image = image->id.next) {
+			for (image = bmain->images.first; image != NULL; image = image->id.next) {
 				image->gen_color[3] = 1.0f;
 			}
 		}
@@ -667,7 +659,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			Object *ob;
 
 			/* Update Transform constraint (again :|). */
-			for (ob = bmain->object.first; ob; ob = ob->id.next) {
+			for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 				do_version_constraints_stretch_to_limits(&ob->constraints);
 
 				if (ob->pose) {
@@ -682,12 +674,12 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 	}
 
 	if (!MAIN_VERSION_ATLEAST(bmain, 273, 1)) {
-#define	BRUSH_RAKE (1 << 7)
+#define BRUSH_RAKE (1 << 7)
 #define BRUSH_RANDOM_ROTATION (1 << 25)
 
 		Brush *br;
 
-		for (br = bmain->brush.first; br; br = br->id.next) {
+		for (br = bmain->brushes.first; br; br = br->id.next) {
 			if (br->flag & BRUSH_RAKE) {
 				br->mtex.brush_angle_mode |= MTEX_ANGLE_RAKE;
 				br->mask_mtex.brush_angle_mode |= MTEX_ANGLE_RAKE;
@@ -709,7 +701,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		if (!DNA_struct_elem_find(fd->filesdna, "Scene", "DisplaySafeAreas", "safe_areas")) {
 			Scene *scene;
 
-			for (scene = bmain->scene.first; scene; scene = scene->id.next) {
+			for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
 				copy_v2_fl2(scene->safe_areas.title, 3.5f / 100.0f, 3.5f / 100.0f);
 				copy_v2_fl2(scene->safe_areas.action, 10.0f / 100.0f, 5.0f / 100.0f);
 				copy_v2_fl2(scene->safe_areas.title_center, 17.5f / 100.0f, 5.0f / 100.0f);
@@ -720,7 +712,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 	if (!MAIN_VERSION_ATLEAST(bmain, 273, 3)) {
 		ParticleSettings *part;
-		for (part = bmain->particle.first; part; part = part->id.next) {
+		for (part = bmain->particles.first; part; part = part->id.next) {
 			if (part->clumpcurve)
 				part->child_flag |= PART_CHILD_USE_CLUMP_CURVE;
 			if (part->roughcurve)
@@ -732,7 +724,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		if (!DNA_struct_elem_find(fd->filesdna, "ClothSimSettings", "float", "bending_damping")) {
 			Object *ob;
 			ModifierData *md;
-			for (ob = bmain->object.first; ob; ob = ob->id.next) {
+			for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 				for (md = ob->modifiers.first; md; md = md->next) {
 					if (md->type == eModifierType_Cloth) {
 						ClothModifierData *clmd = (ClothModifierData *)md;
@@ -750,21 +742,21 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 		if (!DNA_struct_elem_find(fd->filesdna, "ParticleSettings", "float", "clump_noise_size")) {
 			ParticleSettings *part;
-			for (part = bmain->particle.first; part; part = part->id.next) {
+			for (part = bmain->particles.first; part; part = part->id.next) {
 				part->clump_noise_size = 1.0f;
 			}
 		}
 
 		if (!DNA_struct_elem_find(fd->filesdna, "ParticleSettings", "int", "kink_extra_steps")) {
 			ParticleSettings *part;
-			for (part = bmain->particle.first; part; part = part->id.next) {
+			for (part = bmain->particles.first; part; part = part->id.next) {
 				part->kink_extra_steps = 4;
 			}
 		}
 
 		if (!DNA_struct_elem_find(fd->filesdna, "MTex", "float", "kinkampfac")) {
 			ParticleSettings *part;
-			for (part = bmain->particle.first; part; part = part->id.next) {
+			for (part = bmain->particles.first; part; part = part->id.next) {
 				int a;
 				for (a = 0; a < MAX_MTEX; a++) {
 					MTex *mtex = part->mtex[a];
@@ -778,7 +770,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		if (!DNA_struct_elem_find(fd->filesdna, "HookModifierData", "char", "flag")) {
 			Object *ob;
 
-			for (ob = bmain->object.first; ob; ob = ob->id.next) {
+			for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 				ModifierData *md;
 				for (md = ob->modifiers.first; md; md = md->next) {
 					if (md->type == eModifierType_Hook) {
@@ -790,7 +782,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		}
 
 		if (!DNA_struct_elem_find(fd->filesdna, "NodePlaneTrackDeformData", "char", "flag")) {
-			FOREACH_NODETREE(bmain, ntree, id) {
+			FOREACH_NODETREE_BEGIN(bmain, ntree, id) {
 				if (ntree->type == NTREE_COMPOSIT) {
 					bNode *node;
 					for (node = ntree->nodes.first; node; node = node->next) {
@@ -803,12 +795,12 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 					}
 				}
 			}
-			FOREACH_NODETREE_END
+			FOREACH_NODETREE_END;
 		}
 
 		if (!DNA_struct_elem_find(fd->filesdna, "Camera", "GPUDOFSettings", "gpu_dof")) {
 			Camera *ca;
-			for (ca = bmain->camera.first; ca; ca = ca->id.next) {
+			for (ca = bmain->cameras.first; ca; ca = ca->id.next) {
 				ca->gpu_dof.fstop = 128.0f;
 				ca->gpu_dof.focal_length = 1.0f;
 				ca->gpu_dof.focus_distance = 1.0f;
@@ -819,7 +811,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 	if (!MAIN_VERSION_ATLEAST(bmain, 273, 8)) {
 		Object *ob;
-		for (ob = bmain->object.first; ob != NULL; ob = ob->id.next) {
+		for (ob = bmain->objects.first; ob != NULL; ob = ob->id.next) {
 			ModifierData *md;
 			for (md = ob->modifiers.last; md != NULL; md = md->prev) {
 				if (modifier_unique_name(&ob->modifiers, md)) {
@@ -838,7 +830,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		ARegion *ar;
 
 		/* Make sure sequencer preview area limits zoom */
-		for (scr = bmain->screen.first; scr; scr = scr->id.next) {
+		for (scr = bmain->screens.first; scr; scr = scr->id.next) {
 			for (sa = scr->areabase.first; sa; sa = sa->next) {
 				for (sl = sa->spacedata.first; sl; sl = sl->next) {
 					if (sl->spacetype == SPACE_SEQ) {
@@ -861,10 +853,10 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		{
 			Object *ob;
 			ParticleSystem *psys;
-			for (ob = bmain->object.first; ob; ob = ob->id.next) {
+			for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 				for (psys = ob->particlesystem.first; psys; psys = psys->next) {
 					if ((psys->pointcache->flag & PTCACHE_BAKED) == 0) {
-						psys->recalc |= PSYS_RECALC_RESET;
+						psys->recalc |= ID_RECALC_PSYS_RESET;
 					}
 				}
 			}
@@ -873,7 +865,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		/* hysteresis setted to 10% but not actived */
 		if (!DNA_struct_elem_find(fd->filesdna, "LodLevel", "int", "obhysteresis")) {
 			Object *ob;
-			for (ob = bmain->object.first; ob; ob = ob->id.next) {
+			for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 				LodLevel *level;
 				for (level = ob->lodlevels.first; level; level = level->next) {
 					level->obhysteresis = 10;
@@ -891,7 +883,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		Camera *cam;
 		Image *ima;
 
-		for (scene = bmain->scene.first; scene; scene = scene->id.next) {
+		for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
 			Sequence *seq;
 
 			BKE_scene_add_render_view(scene, STEREO_LEFT_NAME);
@@ -917,11 +909,10 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 #undef SEQ_USE_PROXY_CUSTOM_DIR
 #undef SEQ_USE_PROXY_CUSTOM_FILE
 
-			}
-			SEQ_END
+			} SEQ_END;
 		}
 
-		for (screen = bmain->screen.first; screen; screen = screen->id.next) {
+		for (screen = bmain->screens.first; screen; screen = screen->id.next) {
 			ScrArea *sa;
 			for (sa = screen->areabase.first; sa; sa = sa->next) {
 				SpaceLink *sl;
@@ -939,7 +930,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 						}
 						case SPACE_IMAGE:
 						{
-							SpaceImage *sima = (SpaceImage *) sl;
+							SpaceImage *sima = (SpaceImage *)sl;
 							sima->iuser.flag |= IMA_SHOW_STEREO;
 							break;
 						}
@@ -948,12 +939,12 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			}
 		}
 
-		for (cam = bmain->camera.first; cam; cam = cam->id.next) {
+		for (cam = bmain->cameras.first; cam; cam = cam->id.next) {
 			cam->stereo.interocular_distance = 0.065f;
 			cam->stereo.convergence_distance = 30.0f * 0.065f;
 		}
 
-		for (ima = bmain->image.first; ima; ima = ima->id.next) {
+		for (ima = bmain->images.first; ima; ima = ima->id.next) {
 			ima->stereo3d_format = MEM_callocN(sizeof(Stereo3dFormat), "Image Stereo 3d Format");
 
 			if (ima->packedfile) {
@@ -977,7 +968,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		bScreen *screen;
 
 		if (!DNA_struct_elem_find(fd->filesdna, "FileSelectParams", "int", "thumbnail_size")) {
-			for (screen = bmain->screen.first; screen; screen = screen->id.next) {
+			for (screen = bmain->screens.first; screen; screen = screen->id.next) {
 				ScrArea *sa;
 
 				for (sa = screen->areabase.first; sa; sa = sa->next) {
@@ -998,7 +989,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 		if (!DNA_struct_elem_find(fd->filesdna, "RenderData", "short", "simplify_subsurf_render")) {
 			Scene *scene;
-			for (scene = bmain->scene.first; scene != NULL; scene = scene->id.next) {
+			for (scene = bmain->scenes.first; scene != NULL; scene = scene->id.next) {
 				scene->r.simplify_subsurf_render = scene->r.simplify_subsurf;
 				scene->r.simplify_particles_render = scene->r.simplify_particles;
 			}
@@ -1007,7 +998,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		if (!DNA_struct_elem_find(fd->filesdna, "DecimateModifierData", "float", "defgrp_factor")) {
 			Object *ob;
 
-			for (ob = bmain->object.first; ob; ob = ob->id.next) {
+			for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 				ModifierData *md;
 				for (md = ob->modifiers.first; md; md = md->next) {
 					if (md->type == eModifierType_Decimate) {
@@ -1022,7 +1013,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 	if (!MAIN_VERSION_ATLEAST(bmain, 275, 3)) {
 		Brush *br;
 #define BRUSH_TORUS (1 << 1)
-		for (br = bmain->brush.first; br; br = br->id.next) {
+		for (br = bmain->brushes.first; br; br = br->id.next) {
 			br->flag &= ~BRUSH_TORUS;
 		}
 #undef BRUSH_TORUS
@@ -1032,7 +1023,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		if (!DNA_struct_elem_find(fd->filesdna, "bPoseChannel", "float", "custom_scale")) {
 			Object *ob;
 
-			for (ob = bmain->object.first; ob; ob = ob->id.next) {
+			for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 				if (ob->pose) {
 					bPoseChannel *pchan;
 					for (pchan = ob->pose->chanbase.first; pchan; pchan = pchan->next) {
@@ -1044,8 +1035,8 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 		{
 			bScreen *screen;
-#define RV3D_VIEW_PERSPORTHO	 7
-			for (screen = bmain->screen.first; screen; screen = screen->id.next) {
+#define RV3D_VIEW_PERSPORTHO     7
+			for (screen = bmain->screens.first; screen; screen = screen->id.next) {
 				ScrArea *sa;
 				for (sa = screen->areabase.first; sa; sa = sa->next) {
 					SpaceLink *sl;
@@ -1072,11 +1063,10 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		}
 
 		{
-			Lamp *lamp;
-#define LA_YF_PHOTON	5
-			for (lamp = bmain->lamp.first; lamp; lamp = lamp->id.next) {
-				if (lamp->type == LA_YF_PHOTON) {
-					lamp->type = LA_LOCAL;
+#define LA_YF_PHOTON    5
+			for (Light *la = bmain->lights.first; la; la = la->id.next) {
+				if (la->type == LA_YF_PHOTON) {
+					la->type = LA_LOCAL;
 				}
 			}
 #undef LA_YF_PHOTON
@@ -1086,7 +1076,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 	if (!MAIN_VERSION_ATLEAST(bmain, 276, 3)) {
 		if (!DNA_struct_elem_find(fd->filesdna, "RenderData", "CurveMapping", "mblur_shutter_curve")) {
 			Scene *scene;
-			for (scene = bmain->scene.first; scene != NULL; scene = scene->id.next) {
+			for (scene = bmain->scenes.first; scene != NULL; scene = scene->id.next) {
 				CurveMapping *curve_mapping = &scene->r.mblur_shutter_curve;
 				curvemapping_set_defaults(curve_mapping, 1, 0.0f, 0.0f, 1.0f, 1.0f);
 				curvemapping_initialize(curve_mapping);
@@ -1099,49 +1089,49 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 	}
 
 	if (!MAIN_VERSION_ATLEAST(bmain, 276, 4)) {
-		for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
+		for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
 			ToolSettings *ts = scene->toolsettings;
 
 			if (ts->gp_sculpt.brush[0].size == 0) {
-				GP_BrushEdit_Settings *gset = &ts->gp_sculpt;
-				GP_EditBrush_Data *brush;
+				GP_Sculpt_Settings *gset = &ts->gp_sculpt;
+				GP_Sculpt_Data *brush;
 
-				brush = &gset->brush[GP_EDITBRUSH_TYPE_SMOOTH];
+				brush = &gset->brush[GP_SCULPT_TYPE_SMOOTH];
 				brush->size = 25;
 				brush->strength = 0.3f;
-				brush->flag = GP_EDITBRUSH_FLAG_USE_FALLOFF | GP_EDITBRUSH_FLAG_SMOOTH_PRESSURE;
+				brush->flag = GP_SCULPT_FLAG_USE_FALLOFF | GP_SCULPT_FLAG_SMOOTH_PRESSURE;
 
-				brush = &gset->brush[GP_EDITBRUSH_TYPE_THICKNESS];
+				brush = &gset->brush[GP_SCULPT_TYPE_THICKNESS];
 				brush->size = 25;
 				brush->strength = 0.5f;
-				brush->flag = GP_EDITBRUSH_FLAG_USE_FALLOFF;
+				brush->flag = GP_SCULPT_FLAG_USE_FALLOFF;
 
-				brush = &gset->brush[GP_EDITBRUSH_TYPE_GRAB];
+				brush = &gset->brush[GP_SCULPT_TYPE_GRAB];
 				brush->size = 50;
 				brush->strength = 0.3f;
-				brush->flag = GP_EDITBRUSH_FLAG_USE_FALLOFF;
+				brush->flag = GP_SCULPT_FLAG_USE_FALLOFF;
 
-				brush = &gset->brush[GP_EDITBRUSH_TYPE_PUSH];
+				brush = &gset->brush[GP_SCULPT_TYPE_PUSH];
 				brush->size = 25;
 				brush->strength = 0.3f;
-				brush->flag = GP_EDITBRUSH_FLAG_USE_FALLOFF;
+				brush->flag = GP_SCULPT_FLAG_USE_FALLOFF;
 
-				brush = &gset->brush[GP_EDITBRUSH_TYPE_TWIST];
+				brush = &gset->brush[GP_SCULPT_TYPE_TWIST];
 				brush->size = 50;
 				brush->strength = 0.3f; // XXX?
-				brush->flag = GP_EDITBRUSH_FLAG_USE_FALLOFF;
+				brush->flag = GP_SCULPT_FLAG_USE_FALLOFF;
 
-				brush = &gset->brush[GP_EDITBRUSH_TYPE_PINCH];
+				brush = &gset->brush[GP_SCULPT_TYPE_PINCH];
 				brush->size = 50;
 				brush->strength = 0.5f; // XXX?
-				brush->flag = GP_EDITBRUSH_FLAG_USE_FALLOFF;
+				brush->flag = GP_SCULPT_FLAG_USE_FALLOFF;
 
-				brush = &gset->brush[GP_EDITBRUSH_TYPE_RANDOMIZE];
+				brush = &gset->brush[GP_SCULPT_TYPE_RANDOMIZE];
 				brush->size = 25;
 				brush->strength = 0.5f;
-				brush->flag = GP_EDITBRUSH_FLAG_USE_FALLOFF;
+				brush->flag = GP_SCULPT_FLAG_USE_FALLOFF;
 
-				brush = &gset->brush[GP_EDITBRUSH_TYPE_CLONE];
+				brush = &gset->brush[GP_SCULPT_TYPE_CLONE];
 				brush->size = 50;
 				brush->strength = 1.0f;
 			}
@@ -1174,7 +1164,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			}
 		}
 
-		for (bGPdata *gpd = bmain->gpencil.first; gpd; gpd = gpd->id.next) {
+		for (bGPdata *gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
 			bool enabled = false;
 
 			/* Ensure that the datablock's onionskinning toggle flag
@@ -1208,13 +1198,13 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 	if (!MAIN_VERSION_ATLEAST(bmain, 276, 7)) {
 		Scene *scene;
-		for (scene = bmain->scene.first; scene != NULL; scene = scene->id.next) {
+		for (scene = bmain->scenes.first; scene != NULL; scene = scene->id.next) {
 			scene->r.bake.pass_filter = R_BAKE_PASS_FILTER_ALL;
 		}
 	}
 
 	if (!MAIN_VERSION_ATLEAST(bmain, 277, 1)) {
-		for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
+		for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
 			ParticleEditSettings *pset = &scene->toolsettings->particle;
 			for (int a = 0; a < ARRAY_SIZE(pset->brush); a++) {
 				if (pset->brush[a].strength > 1.0f) {
@@ -1223,7 +1213,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			}
 		}
 
-		for (bScreen *screen = bmain->screen.first; screen; screen = screen->id.next) {
+		for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
 			for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
 				for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
 					ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
@@ -1256,7 +1246,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			}
 		}
 
-		for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
+		for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
 			CurvePaintSettings *cps = &scene->toolsettings->curve_paint_settings;
 			if (cps->error_threshold == 0) {
 				cps->curve_type = CU_BEZIER;
@@ -1267,7 +1257,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			}
 		}
 
-		for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
+		for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
 			Sequence *seq;
 
 			SEQ_BEGIN (scene->ed, seq)
@@ -1286,12 +1276,11 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 					copy_v4_fl(data->color, 1.0f);
 					data->shadow_color[3] = 1.0f;
 				}
-			}
-			SEQ_END
+			} SEQ_END;
 		}
 
 		/* Adding "Properties" region to DopeSheet */
-		for (bScreen *screen = bmain->screen.first; screen; screen = screen->id.next) {
+		for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
 			for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
 				/* handle pushed-back space data first */
 				for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
@@ -1311,12 +1300,12 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 	if (!MAIN_VERSION_ATLEAST(bmain, 277, 2)) {
 		if (!DNA_struct_elem_find(fd->filesdna, "Bone", "float", "scaleIn")) {
-			for (bArmature *arm = bmain->armature.first; arm; arm = arm->id.next) {
+			for (bArmature *arm = bmain->armatures.first; arm; arm = arm->id.next) {
 				do_version_bones_super_bbone(&arm->bonebase);
 			}
 		}
 		if (!DNA_struct_elem_find(fd->filesdna, "bPoseChannel", "float", "scaleIn")) {
-			for (Object *ob = bmain->object.first; ob; ob = ob->id.next) {
+			for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
 				if (ob->pose) {
 					for (bPoseChannel *pchan = ob->pose->chanbase.first; pchan; pchan = pchan->next) {
 						/* see do_version_bones_super_bbone()... */
@@ -1336,7 +1325,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			}
 		}
 
-		for (Camera *camera = bmain->camera.first; camera != NULL; camera = camera->id.next) {
+		for (Camera *camera = bmain->cameras.first; camera != NULL; camera = camera->id.next) {
 			if (camera->stereo.pole_merge_angle_from == 0.0f &&
 			    camera->stereo.pole_merge_angle_to == 0.0f)
 			{
@@ -1348,7 +1337,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		if (!DNA_struct_elem_find(fd->filesdna, "NormalEditModifierData", "float", "mix_limit")) {
 			Object *ob;
 
-			for (ob = bmain->object.first; ob; ob = ob->id.next) {
+			for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 				ModifierData *md;
 				for (md = ob->modifiers.first; md; md = md->next) {
 					if (md->type == eModifierType_NormalEdit) {
@@ -1361,7 +1350,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 		if (!DNA_struct_elem_find(fd->filesdna, "BooleanModifierData", "float", "double_threshold")) {
 			Object *ob;
-			for (ob = bmain->object.first; ob; ob = ob->id.next) {
+			for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 				ModifierData *md;
 				for (md = ob->modifiers.first; md; md = md->next) {
 					if (md->type == eModifierType_Boolean) {
@@ -1372,7 +1361,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			}
 		}
 
-		for (Brush *br = bmain->brush.first; br; br = br->id.next) {
+		for (Brush *br = bmain->brushes.first; br; br = br->id.next) {
 			if (br->sculpt_tool == SCULPT_TOOL_FLATTEN) {
 				br->flag |= BRUSH_ACCUMULATE;
 			}
@@ -1381,7 +1370,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		if (!DNA_struct_elem_find(fd->filesdna, "ClothSimSettings", "float", "time_scale")) {
 			Object *ob;
 			ModifierData *md;
-			for (ob = bmain->object.first; ob; ob = ob->id.next) {
+			for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 				for (md = ob->modifiers.first; md; md = md->next) {
 					if (md->type == eModifierType_Cloth) {
 						ClothModifierData *clmd = (ClothModifierData *)md;
@@ -1401,26 +1390,26 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 	if (!MAIN_VERSION_ATLEAST(bmain, 277, 3)) {
 		/* ------- init of grease pencil initialization --------------- */
 		if (!DNA_struct_elem_find(fd->filesdna, "bGPDstroke", "bGPDpalettecolor", "*palcolor")) {
-			for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
+			for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
 				ToolSettings *ts = scene->toolsettings;
 				/* initialize use position for sculpt brushes */
-				ts->gp_sculpt.flag |= GP_BRUSHEDIT_FLAG_APPLY_POSITION;
+				ts->gp_sculpt.flag |= GP_SCULPT_SETT_FLAG_APPLY_POSITION;
 
 				/* new strength sculpt brush */
 				if (ts->gp_sculpt.brush[0].size >= 11) {
-					GP_BrushEdit_Settings *gset = &ts->gp_sculpt;
-					GP_EditBrush_Data *brush;
+					GP_Sculpt_Settings *gset = &ts->gp_sculpt;
+					GP_Sculpt_Data *brush;
 
-					brush = &gset->brush[GP_EDITBRUSH_TYPE_STRENGTH];
+					brush = &gset->brush[GP_SCULPT_TYPE_STRENGTH];
 					brush->size = 25;
 					brush->strength = 0.5f;
-					brush->flag = GP_EDITBRUSH_FLAG_USE_FALLOFF;
+					brush->flag = GP_SCULPT_FLAG_USE_FALLOFF;
 				}
 			}
 			/* Convert Grease Pencil to new palettes/brushes
 			 * Loop all strokes and create the palette and all colors
 			 */
-			for (bGPdata *gpd = bmain->gpencil.first; gpd; gpd = gpd->id.next) {
+			for (bGPdata *gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
 				if (BLI_listbase_is_empty(&gpd->palettes)) {
 					/* create palette */
 					bGPDpalette *palette = BKE_gpencil_palette_addnew(gpd, "GP_Palette");
@@ -1467,7 +1456,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 	if (!MAIN_VERSION_ATLEAST(bmain, 278, 0)) {
 		if (!DNA_struct_elem_find(fd->filesdna, "MovieTrackingTrack", "float", "weight_stab")) {
 			MovieClip *clip;
-			for (clip = bmain->movieclip.first; clip; clip = clip->id.next) {
+			for (clip = bmain->movieclips.first; clip; clip = clip->id.next) {
 				MovieTracking *tracking = &clip->tracking;
 				MovieTrackingObject *tracking_object;
 				for (tracking_object = tracking->objects.first;
@@ -1488,7 +1477,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 		if (!DNA_struct_elem_find(fd->filesdna, "MovieTrackingStabilization", "int", "tot_rot_track")) {
 			MovieClip *clip;
-			for (clip = bmain->movieclip.first; clip != NULL; clip = clip->id.next) {
+			for (clip = bmain->movieclips.first; clip != NULL; clip = clip->id.next) {
 				if (clip->tracking.stabilization.rot_track) {
 					migrate_single_rot_stabilization_track_settings(&clip->tracking.stabilization);
 				}
@@ -1510,14 +1499,14 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 	}
 	if (!MAIN_VERSION_ATLEAST(bmain, 278, 2)) {
 		if (!DNA_struct_elem_find(fd->filesdna, "FFMpegCodecData", "int", "ffmpeg_preset")) {
-			for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
+			for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
 				/* "medium" is the preset FFmpeg uses when no presets are given. */
 				scene->r.ffcodecdata.ffmpeg_preset = FFM_PRESET_MEDIUM;
 			}
 		}
 		if (!DNA_struct_elem_find(fd->filesdna, "FFMpegCodecData", "int", "constant_rate_factor")) {
-			for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
-				/* fall back to behaviour from before we introduced CRF for old files */
+			for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+				/* fall back to behavior from before we introduced CRF for old files */
 				scene->r.ffcodecdata.constant_rate_factor = FFM_CRF_NONE;
 			}
 		}
@@ -1526,7 +1515,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			Object *ob;
 			ModifierData *md;
 
-			for (ob = bmain->object.first; ob; ob = ob->id.next) {
+			for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 				for (md = ob->modifiers.first; md; md = md->next) {
 					if (md->type == eModifierType_Smoke) {
 						SmokeModifierData *smd = (SmokeModifierData *)md;
@@ -1542,7 +1531,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 	}
 
 	if (!MAIN_VERSION_ATLEAST(bmain, 278, 3)) {
-		for (Scene *scene = bmain->scene.first; scene != NULL; scene = scene->id.next) {
+		for (Scene *scene = bmain->scenes.first; scene != NULL; scene = scene->id.next) {
 			if (scene->toolsettings != NULL) {
 				ToolSettings *ts = scene->toolsettings;
 				ParticleEditSettings *pset = &ts->particle;
@@ -1556,7 +1545,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 		if (!DNA_struct_elem_find(fd->filesdna, "RigidBodyCon", "float", "spring_stiffness_ang_x")) {
 			Object *ob;
-			for (ob = bmain->object.first; ob; ob = ob->id.next) {
+			for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 				RigidBodyCon *rbc = ob->rigidbody_constraint;
 				if (rbc) {
 					rbc->spring_stiffness_ang_x = 10.0;
@@ -1571,7 +1560,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 		/* constant detail for sculpting is now a resolution value instead of
 		 * a percentage, we reuse old DNA struct member but convert it */
-		for (Scene *scene = bmain->scene.first; scene != NULL; scene = scene->id.next) {
+		for (Scene *scene = bmain->scenes.first; scene != NULL; scene = scene->id.next) {
 			if (scene->toolsettings != NULL) {
 				ToolSettings *ts = scene->toolsettings;
 				if (ts->sculpt && ts->sculpt->constant_detail != 0.0f) {
@@ -1583,14 +1572,14 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 	if (!MAIN_VERSION_ATLEAST(bmain, 278, 4)) {
 		const float sqrt_3 = (float)M_SQRT3;
-		for (Brush *br = bmain->brush.first; br; br = br->id.next) {
+		for (Brush *br = bmain->brushes.first; br; br = br->id.next) {
 			br->fill_threshold /= sqrt_3;
 		}
 
 		/* Custom motion paths */
 		if (!DNA_struct_elem_find(fd->filesdna, "bMotionPath", "int", "line_thickness")) {
 			Object *ob;
-			for (ob = bmain->object.first; ob; ob = ob->id.next) {
+			for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 				bMotionPath *mpath;
 				bPoseChannel *pchan;
 				mpath = ob->mpath;
@@ -1620,7 +1609,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 	if (!MAIN_VERSION_ATLEAST(bmain, 278, 5)) {
 		/* Mask primitive adding code was not initializing correctly id_type of its points' parent. */
-		for (Mask *mask = bmain->mask.first; mask; mask = mask->id.next) {
+		for (Mask *mask = bmain->masks.first; mask; mask = mask->id.next) {
 			for (MaskLayer *mlayer = mask->masklayers.first; mlayer; mlayer = mlayer->next) {
 				for (MaskSpline *mspline = mlayer->splines.first; mspline; mspline = mspline->next) {
 					int i = 0;
@@ -1635,7 +1624,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 		/* Fix for T50736, Glare comp node using same var for two different things. */
 		if (!DNA_struct_elem_find(fd->filesdna, "NodeGlare", "char", "star_45")) {
-			FOREACH_NODETREE(bmain, ntree, id) {
+			FOREACH_NODETREE_BEGIN(bmain, ntree, id) {
 				if (ntree->type == NTREE_COMPOSIT) {
 					ntreeSetTypes(NULL, ntree);
 					for (bNode *node = ntree->nodes.first; node; node = node->next) {
@@ -1654,11 +1643,11 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 						}
 					}
 				}
-			} FOREACH_NODETREE_END
+			} FOREACH_NODETREE_END;
 		}
 
 		if (!DNA_struct_elem_find(fd->filesdna, "SurfaceDeformModifierData", "float", "mat[4][4]")) {
-			for (Object *ob = bmain->object.first; ob; ob = ob->id.next) {
+			for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
 				for (ModifierData *md = ob->modifiers.first; md; md = md->next) {
 					if (md->type == eModifierType_SurfaceDeform) {
 						SurfaceDeformModifierData *smd = (SurfaceDeformModifierData *)md;
@@ -1668,22 +1657,22 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			}
 		}
 
-		FOREACH_NODETREE(bmain, ntree, id) {
+		FOREACH_NODETREE_BEGIN(bmain, ntree, id) {
 			if (ntree->type == NTREE_COMPOSIT) {
 				do_versions_compositor_render_passes(ntree);
 			}
-		} FOREACH_NODETREE_END
+		} FOREACH_NODETREE_END;
 	}
 
 	if (!MAIN_VERSION_ATLEAST(bmain, 279, 0)) {
-		for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
+		for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
 			if (scene->r.im_format.exr_codec == R_IMF_EXR_CODEC_DWAB) {
 				scene->r.im_format.exr_codec = R_IMF_EXR_CODEC_DWAA;
 			}
 		}
 
 		/* Fix related to VGroup modifiers creating named defgroup CD layers! See T51520. */
-		for (Mesh *me = bmain->mesh.first; me; me = me->id.next) {
+		for (Mesh *me = bmain->meshes.first; me; me = me->id.next) {
 			CustomData_set_layer_name(&me->vdata, CD_MDEFORMVERT, 0, "");
 		}
 	}
@@ -1693,7 +1682,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			Object *ob;
 			ModifierData *md;
 
-			for (ob = bmain->object.first; ob; ob = ob->id.next) {
+			for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 				for (md = ob->modifiers.first; md; md = md->next) {
 					if (md->type == eModifierType_Smoke) {
 						SmokeModifierData *smd = (SmokeModifierData *)md;
@@ -1708,7 +1697,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
 	if (!MAIN_VERSION_ATLEAST(bmain, 279, 4)) {
 		/* Fix for invalid state of screen due to bug in older versions. */
-		for (bScreen *sc = bmain->screen.first; sc; sc = sc->id.next) {
+		for (bScreen *sc = bmain->screens.first; sc; sc = sc->id.next) {
 			for (ScrArea *sa = sc->areabase.first; sa; sa = sa->next) {
 				if (sa->full && sc->state == SCREENNORMAL) {
 					sa->full = NULL;
@@ -1717,15 +1706,15 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		}
 
 		if (!DNA_struct_elem_find(fd->filesdna, "Brush", "float", "falloff_angle")) {
-			for (Brush *br = bmain->brush.first; br; br = br->id.next) {
+			for (Brush *br = bmain->brushes.first; br; br = br->id.next) {
 				br->falloff_angle = DEG2RADF(80);
 				br->flag &= ~(
-				        BRUSH_FLAG_DEPRECATED_1 | BRUSH_FLAG_DEPRECATED_2 |
-				        BRUSH_FLAG_DEPRECATED_3 | BRUSH_FLAG_DEPRECATED_4 |
+				        BRUSH_FLAG_UNUSED_1 | BRUSH_FLAG_UNUSED_6 |
+				        BRUSH_FLAG_UNUSED_7 | BRUSH_FLAG_UNUSED_17 |
 				        BRUSH_FRONTFACE_FALLOFF);
 			}
 
-			for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
+			for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
 				ToolSettings *ts = scene->toolsettings;
 				for (int i = 0; i < 2; i++) {
 					VPaint *vp = i ? ts->vpaint : ts->wpaint;
@@ -1740,7 +1729,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		/* Simple deform modifier no longer assumes Z axis (X for bend type).
 		 * Must set previous defaults. */
 		if (!DNA_struct_elem_find(fd->filesdna, "SimpleDeformModifierData", "char", "deform_axis")) {
-			for (Object *ob = bmain->object.first; ob; ob = ob->id.next) {
+			for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
 				for (ModifierData *md = ob->modifiers.first; md; md = md->next) {
 					if (md->type == eModifierType_SimpleDeform) {
 						SimpleDeformModifierData *smd = (SimpleDeformModifierData *)md;
@@ -1750,7 +1739,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			}
 		}
 
-		for (Scene *scene = bmain->scene.first; scene; scene = scene->id.next) {
+		for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
 			int preset = scene->r.ffcodecdata.ffmpeg_preset;
 			if (preset == FFM_PRESET_NONE || preset >= FFM_PRESET_GOOD) {
 				continue;
@@ -1768,7 +1757,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		}
 
 		if (!DNA_struct_elem_find(fd->filesdna, "ParticleInstanceModifierData", "float", "particle_amount")) {
-			for (Object *ob = bmain->object.first; ob; ob = ob->id.next) {
+			for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
 				for (ModifierData *md = ob->modifiers.first; md; md = md->next) {
 					if (md->type == eModifierType_ParticleInstance) {
 						ParticleInstanceModifierData *pimd = (ParticleInstanceModifierData *)md;
@@ -1785,7 +1774,7 @@ void do_versions_after_linking_270(Main *bmain)
 {
 	/* To be added to next subversion bump! */
 	if (!MAIN_VERSION_ATLEAST(bmain, 279, 0)) {
-		FOREACH_NODETREE(bmain, ntree, id) {
+		FOREACH_NODETREE_BEGIN(bmain, ntree, id) {
 			if (ntree->type == NTREE_COMPOSIT) {
 				ntreeSetTypes(NULL, ntree);
 				for (bNode *node = ntree->nodes.first; node; node = node->next) {
@@ -1794,7 +1783,7 @@ void do_versions_after_linking_270(Main *bmain)
 					}
 				}
 			}
-		} FOREACH_NODETREE_END
+		} FOREACH_NODETREE_END;
 	}
 
 	if (!MAIN_VERSION_ATLEAST(bmain, 279, 2)) {

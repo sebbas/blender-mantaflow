@@ -15,9 +15,15 @@ uniform int texture_mix;
 uniform int texture_flip;
 uniform float texture_opacity;
 uniform int xraymode;
+uniform int drawmode;
+uniform float layer_opacity;
 
 uniform sampler2D myTexture;
 uniform int texture_clamp;
+
+uniform int viewport_xray;
+uniform int shading_type[2];
+uniform vec4 wire_color;
 
 /* keep this list synchronized with list in gpencil_draw_utils.c */
 #define SOLID 0
@@ -29,7 +35,15 @@ uniform int texture_clamp;
 
 #define GP_XRAY_FRONT 0
 #define GP_XRAY_3DSPACE 1
-#define GP_XRAY_BACK  2
+
+#define GP_DRAWMODE_2D 0
+#define GP_DRAWMODE_3D 1
+
+#define OB_WIRE  2
+#define OB_SOLID 3
+
+#define	V3D_SHADING_MATERIAL_COLOR 0
+#define	V3D_SHADING_TEXTURE_COLOR  3
 
 in vec4 finalColor;
 in vec2 texCoord_interp;
@@ -66,6 +80,7 @@ void set_color(in vec4 color, in vec4 color2, in vec4 tcolor, in float mixv, in 
 			ocolor = (flip == 0) ? mix(color, color2, factor) : mix(color2, color, factor);
 		}
 	}
+	ocolor.a *= layer_opacity;
 }
 
 void main()
@@ -77,6 +92,11 @@ void main()
 	tmp_color = (texture_clamp == 0) ? texture2D(myTexture, rot_tex * texture_scale) : texture2D(myTexture, clamp(rot_tex * texture_scale, 0.0, 1.0));
 	vec4 text_color = vec4(tmp_color[0], tmp_color[1], tmp_color[2], tmp_color[3] * texture_opacity);
 	vec4 chesscolor;
+
+	/* wireframe with x-ray discard */
+	if ((viewport_xray == 1) && (shading_type[0] == OB_WIRE)) {
+		discard;
+	}
 
 	/* solid fill */
 	if (fill_type == SOLID) {
@@ -115,15 +135,17 @@ void main()
 			}
 			/* mix with texture */
 			fragColor = (texture_mix == 1) ? mix(chesscolor, text_color, mix_factor) : chesscolor;
+			fragColor.a *= layer_opacity;
 		}
 		/* texture */
 		if (fill_type == TEXTURE) {
 			fragColor = (texture_mix == 1) ? mix(text_color, finalColor, mix_factor) : text_color;
+			fragColor.a *= layer_opacity;
 		}
 		/* pattern */
 		if (fill_type == PATTERN) {
 			fragColor = finalColor;
-			fragColor.a = min(text_color.a, finalColor.a);
+			fragColor.a = min(text_color.a, finalColor.a) * layer_opacity;
 		}
 	}
 
@@ -132,12 +154,31 @@ void main()
 		gl_FragDepth = 0.000001;
 	}
 	else if (xraymode == GP_XRAY_3DSPACE) {
-		gl_FragDepth = gl_FragCoord.z;
-	}
-	else if  (xraymode == GP_XRAY_BACK) {
-		gl_FragDepth = 0.999999;
+	/* if 3D mode, move slightly the fill to avoid z-fighting between stroke and fill on same stroke */
+		if (drawmode == GP_DRAWMODE_3D) {
+			gl_FragDepth = gl_FragCoord.z * 1.0001;
+		}
+		else {
+			gl_FragDepth = gl_FragCoord.z;
+		}
 	}
 	else {
 		gl_FragDepth = 0.000001;
 	}
+
+	/* if wireframe override colors */
+	if (shading_type[0] == OB_WIRE) {
+		fragColor = wire_color;
+	}
+
+	/* for solid override color */
+	if (shading_type[0] == OB_SOLID) {
+		if ((shading_type[1] != V3D_SHADING_MATERIAL_COLOR) && (shading_type[1] != V3D_SHADING_TEXTURE_COLOR)) {
+			fragColor = wire_color;
+		}
+		if (viewport_xray == 1) {
+			fragColor.a *= 0.5;
+		}
+	}
+
 }

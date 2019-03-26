@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/transform/transform_gizmo_2d.c
- *  \ingroup edtransform
+/** \file
+ * \ingroup edtransform
  *
  * \name 2D Transform Gizmo
  *
@@ -28,7 +24,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_listbase.h"
 #include "BLI_math.h"
 
 #include "DNA_meshdata_types.h"
@@ -168,7 +163,7 @@ static void gizmo2d_calc_bounds(const bContext *C, float *r_center, float *r_min
 		Image *ima = ED_space_image(sima);
 		uint objects_len = 0;
 		Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
-		        view_layer, &objects_len);
+		        view_layer, NULL, &objects_len);
 		if (!ED_uvedit_minmax_multi(CTX_data_scene(C), ima, objects, objects_len, r_min, r_max)) {
 			zero_v2(r_min);
 			zero_v2(r_max);

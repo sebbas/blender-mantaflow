@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL/BL DUAL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/colortools.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 
@@ -283,6 +275,7 @@ void curvemap_reset(CurveMap *cuma, const rctf *clipr, int preset, int slope)
 		case CURVE_PRESET_ROUND: cuma->totpoint = 4; break;
 		case CURVE_PRESET_ROOT: cuma->totpoint = 4; break;
 		case CURVE_PRESET_GAUSS: cuma->totpoint = 7; break;
+		case CURVE_PRESET_BELL: cuma->totpoint = 3; break;
 	}
 
 	cuma->curve = MEM_callocN(cuma->totpoint * sizeof(CurveMapPoint), "curve points");
@@ -370,6 +363,16 @@ void curvemap_reset(CurveMap *cuma, const rctf *clipr, int preset, int slope)
 			cuma->curve[5].y = 0.135f;
 			cuma->curve[6].x = 1.0f;
 			cuma->curve[6].y = 0.025f;
+			break;
+		case CURVE_PRESET_BELL:
+			cuma->curve[0].x = 0;
+			cuma->curve[0].y = 0.025f;
+
+			cuma->curve[1].x = 0.50f;
+			cuma->curve[1].y = 1.0f;
+
+			cuma->curve[2].x = 1.0f;
+			cuma->curve[2].y = 0.025f;
 			break;
 	}
 
@@ -960,8 +963,8 @@ static void curvemapping_evaluateRGBF_filmlike(const CurveMapping *cumap, float 
  *
  * Use in conjunction with #curvemapping_set_black_white_ex
  *
- * \param black Use instead of cumap->black
- * \param bwmul Use instead of cumap->bwmul
+ * \param black: Use instead of cumap->black
+ * \param bwmul: Use instead of cumap->bwmul
  */
 void curvemapping_evaluate_premulRGBF_ex(
         const CurveMapping *cumap, float vecout[3], const float vecin[3],
@@ -1569,17 +1572,38 @@ void BKE_color_managed_display_settings_copy(ColorManagedDisplaySettings *new_se
 	BLI_strncpy(new_settings->display_device, settings->display_device, sizeof(new_settings->display_device));
 }
 
-void BKE_color_managed_view_settings_init(ColorManagedViewSettings *settings)
+void BKE_color_managed_view_settings_init_render(
+        ColorManagedViewSettings *view_settings,
+        const ColorManagedDisplaySettings *display_settings,
+        const char *view_transform)
 {
-	/* OCIO_TODO: use default view transform here when OCIO is completely integrated
-	 *            and proper versioning stuff is added.
-	 *            for now use NONE to be compatible with all current files
-	 */
-	BLI_strncpy(settings->view_transform, "Default", sizeof(settings->view_transform));
-	BLI_strncpy(settings->look, "None", sizeof(settings->look));
+	struct ColorManagedDisplay *display =
+	        IMB_colormanagement_display_get_named(
+	                display_settings->display_device);
 
-	settings->gamma = 1.0f;
-	settings->exposure = 0.0f;
+	if (!view_transform) {
+		view_transform = IMB_colormanagement_display_get_default_view_transform_name(display);
+	}
+
+	/* TODO(sergey): Find a way to make look query more reliable with non
+	 * default configuration. */
+	STRNCPY(view_settings->view_transform, view_transform);
+	STRNCPY(view_settings->look, "None");
+
+	view_settings->flag = 0;
+	view_settings->gamma = 1.0f;
+	view_settings->exposure = 0.0f;
+	view_settings->curve_mapping = NULL;
+
+	IMB_colormanagement_validate_settings(display_settings, view_settings);
+}
+
+void BKE_color_managed_view_settings_init_default(
+        struct ColorManagedViewSettings *view_settings,
+        const struct ColorManagedDisplaySettings *display_settings)
+{
+	IMB_colormanagement_init_default_view_settings(
+	        view_settings, display_settings);
 }
 
 void BKE_color_managed_view_settings_copy(ColorManagedViewSettings *new_settings,

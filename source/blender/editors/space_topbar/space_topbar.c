@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2017 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_topbar/space_topbar.c
- *  \ingroup sptopbar
+/** \file
+ * \ingroup sptopbar
  */
 
 
@@ -78,15 +72,11 @@ static SpaceLink *topbar_new(const ScrArea *UNUSED(area), const Scene *UNUSED(sc
 	ar->alignment = RGN_ALIGN_RIGHT | RGN_SPLIT_PREV;
 
 	/* main regions */
-	ar = MEM_callocN(sizeof(ARegion), "left aligned main region for topbar");
-	BLI_addtail(&stopbar->regionbase, ar);
-	ar->regiontype = RGN_TYPE_WINDOW;
-	ar->alignment = RGN_ALIGN_LEFT;
 	ar = MEM_callocN(sizeof(ARegion), "right aligned main region for topbar");
 	BLI_addtail(&stopbar->regionbase, ar);
 	ar->regiontype = RGN_TYPE_WINDOW;
 	ar->alignment = RGN_ALIGN_RIGHT;
-	ar = MEM_callocN(sizeof(ARegion), "center main region for topbar");
+	ar = MEM_callocN(sizeof(ARegion), "main region of topbar");
 	BLI_addtail(&stopbar->regionbase, ar);
 	ar->regiontype = RGN_TYPE_WINDOW;
 
@@ -123,7 +113,7 @@ static void topbar_main_region_init(wmWindowManager *wm, ARegion *region)
 	wmKeyMap *keymap;
 
 	/* force delayed UI_view2d_region_reinit call */
-	if (ELEM(region->alignment, RGN_ALIGN_LEFT, RGN_ALIGN_RIGHT)) {
+	if (ELEM(region->alignment, RGN_ALIGN_RIGHT)) {
 		region->flag |= RGN_FLAG_DYNAMIC_SIZE;
 	}
 	UI_view2d_region_reinit(&region->v2d, V2D_COMMONVIEW_HEADER, region->winx, region->winy);
@@ -157,20 +147,24 @@ static void topbar_main_region_listener(wmWindow *UNUSED(win), ScrArea *UNUSED(s
 	/* context changes */
 	switch (wmn->category) {
 		case NC_WM:
-			if (wmn->data == ND_HISTORY)
+			if (wmn->data == ND_HISTORY) {
 				ED_region_tag_redraw(ar);
+			}
 			break;
 		case NC_SCENE:
-			if (wmn->data == ND_MODE)
+			if (wmn->data == ND_MODE) {
 				ED_region_tag_redraw(ar);
+			}
 			break;
 		case NC_SPACE:
-			if (wmn->data == ND_SPACE_VIEW3D)
+			if (wmn->data == ND_SPACE_VIEW3D) {
 				ED_region_tag_redraw(ar);
+			}
 			break;
 		case NC_GPENCIL:
-			if (wmn->data == ND_DATA)
+			if (wmn->data == ND_DATA) {
 				ED_region_tag_redraw(ar);
+			}
 			break;
 	}
 }
@@ -180,13 +174,25 @@ static void topbar_header_listener(wmWindow *UNUSED(win), ScrArea *UNUSED(sa), A
 {
 	/* context changes */
 	switch (wmn->category) {
-		case NC_SCREEN:
-			if (wmn->data == ND_LAYER)
+		case NC_WM:
+			if (wmn->data == ND_JOB) {
 				ED_region_tag_redraw(ar);
+			}
+			break;
+		case NC_SPACE:
+			if (wmn->data == ND_SPACE_INFO) {
+				ED_region_tag_redraw(ar);
+			}
+			break;
+		case NC_SCREEN:
+			if (wmn->data == ND_LAYER) {
+				ED_region_tag_redraw(ar);
+			}
 			break;
 		case NC_SCENE:
-			if (wmn->data == ND_SCENEBROWSE)
+			if (wmn->data == ND_SCENEBROWSE) {
 				ED_region_tag_redraw(ar);
+			}
 			break;
 	}
 }
@@ -231,7 +237,7 @@ static void recent_files_menu_register(void)
 
 	mt = MEM_callocN(sizeof(MenuType), "spacetype info menu recent files");
 	strcpy(mt->idname, "TOPBAR_MT_file_open_recent");
-	strcpy(mt->label, N_("Open Recent..."));
+	strcpy(mt->label, N_("Open Recent"));
 	strcpy(mt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
 	mt->draw = recent_files_menu_draw;
 	WM_menutype_add(mt);

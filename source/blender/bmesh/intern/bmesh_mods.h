@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,17 +12,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Joseph Eagar.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BMESH_MODS_H__
 #define __BMESH_MODS_H__
 
-/** \file blender/bmesh/intern/bmesh_mods.h
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  */
 
 bool BM_vert_dissolve(BMesh *bm, BMVert *v);
@@ -62,6 +56,8 @@ BMVert *BM_edge_collapse(
 BMVert *BM_edge_split(BMesh *bm, BMEdge *e, BMVert *v, BMEdge **r_e, float percent);
 
 BMVert *BM_edge_split_n(BMesh *bm, BMEdge *e, int numcuts, BMVert **r_varr);
+
+void BM_edge_verts_swap(BMEdge *e);
 
 bool    BM_face_validate(BMFace *face, FILE *err);
 

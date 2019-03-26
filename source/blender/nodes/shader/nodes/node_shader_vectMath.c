@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/nodes/shader/nodes/node_shader_vectMath.c
- *  \ingroup shdnodes
+/** \file
+ * \ingroup shdnodes
  */
 
 #include "node_shader_util.h"
@@ -101,9 +93,11 @@ static void node_shader_exec_vect_math(void *UNUSED(data), int UNUSED(thread), b
 
 static int gpu_shader_vect_math(GPUMaterial *mat, bNode *node, bNodeExecData *UNUSED(execdata), GPUNodeStack *in, GPUNodeStack *out)
 {
-	static const char *names[] = {"vec_math_add", "vec_math_sub",
+	static const char *names[] = {
+		"vec_math_add", "vec_math_sub",
 		"vec_math_average", "vec_math_dot", "vec_math_cross",
-		"vec_math_normalize"};
+		"vec_math_normalize",
+	};
 
 	switch (node->custom1) {
 		case 0:

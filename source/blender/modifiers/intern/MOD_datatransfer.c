@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,18 +15,14 @@
  *
  * The Original Code is Copyright (C) 2014 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): None yet.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_datatransfer.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 #include "BLI_utildefines.h"
+
 #include "BLI_math.h"
 
 #include "DNA_mesh_types.h"
@@ -81,19 +75,16 @@ static void initData(ModifierData *md)
 	dtmd->flags              = MOD_DATATRANSFER_OBSRC_TRANSFORM;
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
 	DataTransferModifierData *dtmd = (DataTransferModifierData *) md;
-	CustomDataMask dataMask = 0;
 
-	if (dtmd->defgrp_name[0]) {
+	if (dtmd->defgrp_name[0] != '\0') {
 		/* We need vertex groups! */
-		dataMask |= CD_MASK_MDEFORMVERT;
+		r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
 	}
 
-	dataMask |= BKE_object_data_transfer_dttypes_to_cdmask(dtmd->data_types);
-
-	return dataMask;
+	BKE_object_data_transfer_dttypes_to_cdmask(dtmd->data_types, r_cddata_masks);
 }
 
 static bool dependsOnNormals(ModifierData *md)
@@ -129,9 +120,18 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 {
 	DataTransferModifierData *dtmd = (DataTransferModifierData *) md;
 	if (dtmd->ob_source != NULL) {
-		CustomDataMask mask = BKE_object_data_transfer_dttypes_to_cdmask(dtmd->data_types);
+		CustomData_MeshMasks cddata_masks = {0};
+		BKE_object_data_transfer_dttypes_to_cdmask(dtmd->data_types, &cddata_masks);
+		BKE_mesh_remap_calc_source_cddata_masks_from_map_modes(
+		            dtmd->vmap_mode, dtmd->emap_mode, dtmd->lmap_mode, dtmd->pmap_mode, &cddata_masks);
 
-		DEG_add_object_relation_with_customdata(ctx->node, dtmd->ob_source, DEG_OB_COMP_GEOMETRY, mask, "DataTransfer Modifier");
+		DEG_add_object_relation(ctx->node, dtmd->ob_source, DEG_OB_COMP_GEOMETRY, "DataTransfer Modifier");
+		DEG_add_customdata_mask(ctx->node, dtmd->ob_source, &cddata_masks);
+
+		if (dtmd->flags & MOD_DATATRANSFER_OBSRC_TRANSFORM) {
+			DEG_add_object_relation(ctx->node, dtmd->ob_source, DEG_OB_COMP_TRANSFORM, "DataTransfer Modifier");
+			DEG_add_modifier_to_transform_relation(ctx->node, "DataTransfer Modifier");
+		}
 	}
 }
 
@@ -160,6 +160,8 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 	/* Only used to check wehther we are operating on org data or not... */
 	Mesh *me = ctx->object->data;
 
+	Object *ob_source = DEG_get_evaluated_object(ctx->depsgraph, dtmd->ob_source);
+
 	const bool invert_vgroup = (dtmd->flags & MOD_DATATRANSFER_INVERT_VGROUP) != 0;
 
 	const float max_dist = (dtmd->flags & MOD_DATATRANSFER_MAP_MAXDIST) ? dtmd->map_max_distance : FLT_MAX;
@@ -168,27 +170,21 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 	SpaceTransform *space_transform = (dtmd->flags & MOD_DATATRANSFER_OBSRC_TRANSFORM) ? &space_transform_data : NULL;
 
 	if (space_transform) {
-		BLI_SPACE_TRANSFORM_SETUP(space_transform, ctx->object, dtmd->ob_source);
+		BLI_SPACE_TRANSFORM_SETUP(space_transform, ctx->object, ob_source);
 	}
 
-	if ((result == me_mod || (me->mvert == result->mvert) || (me->medge == result->medge)) &&
+	if (((result == me) || (me->mvert == result->mvert) || (me->medge == result->medge)) &&
 	    (dtmd->data_types & DT_TYPES_AFFECT_MESH))
 	{
 		/* We need to duplicate data here, otherwise setting custom normals, edges' shaprness, etc., could
 		 * modify org mesh, see T43671. */
-		BKE_id_copy_ex(
-		        NULL, &me_mod->id, (ID **)&result,
-		        LIB_ID_CREATE_NO_MAIN |
-		        LIB_ID_CREATE_NO_USER_REFCOUNT |
-		        LIB_ID_CREATE_NO_DEG_TAG |
-		        LIB_ID_COPY_NO_PREVIEW,
-		        false);
+		BKE_id_copy_ex(NULL, &me_mod->id, (ID **)&result, LIB_ID_COPY_LOCALIZE);
 	}
 
 	BKE_reports_init(&reports, RPT_STORE);
 
 	/* Note: no islands precision for now here. */
-	BKE_object_data_transfer_ex(ctx->depsgraph, scene, dtmd->ob_source, ctx->object, result, dtmd->data_types, false,
+	BKE_object_data_transfer_ex(ctx->depsgraph, scene, ob_source, ctx->object, result, dtmd->data_types, false,
 	                     dtmd->vmap_mode, dtmd->emap_mode, dtmd->lmap_mode, dtmd->pmap_mode,
 	                     space_transform, false, max_dist, dtmd->map_ray_radius, 0.0f,
 	                     dtmd->layers_select_src, dtmd->layers_select_dst,
@@ -200,7 +196,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 	else if ((dtmd->data_types & DT_TYPE_LNOR) && !(me->flag & ME_AUTOSMOOTH)) {
 		modifier_setError((ModifierData *)dtmd, "Enable 'Auto Smooth' option in mesh settings");
 	}
-	else if (result->totvert > HIGH_POLY_WARNING || ((Mesh *)(dtmd->ob_source->data))->totvert > HIGH_POLY_WARNING) {
+	else if (result->totvert > HIGH_POLY_WARNING || ((Mesh *)(ob_source->data))->totvert > HIGH_POLY_WARNING) {
 		modifier_setError(md, "You are using a rather high poly as source or destination, computation might be slow");
 	}
 
@@ -244,4 +240,5 @@ ModifierTypeInfo modifierType_DataTransfer = {
 	/* foreachObjectLink */ foreachObjectLink,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

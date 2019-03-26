@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/windowmanager/intern/wm_menu_type.c
- *  \ingroup wm
+/** \file
+ * \ingroup wm
  *
  * Menu Registry.
  */
@@ -35,7 +31,6 @@
 #include "BLI_ghash.h"
 
 #include "BKE_context.h"
-#include "BKE_library.h"
 #include "BKE_screen.h"
 #include "BKE_workspace.h"
 
@@ -62,6 +57,7 @@ MenuType *WM_menutype_find(const char *idname, bool quiet)
 
 bool WM_menutype_add(MenuType *mt)
 {
+	BLI_assert((mt->description == NULL) || (mt->description[0]));
 	BLI_ghash_insert(menutypes_hash, mt->idname, mt);
 	return true;
 }

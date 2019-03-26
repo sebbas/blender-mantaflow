@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_mesh_api.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 
@@ -39,7 +32,6 @@
 #include "BLI_sys_types.h"
 
 #include "BLI_utildefines.h"
-#include "BLI_math.h"
 
 #include "rna_internal.h"  /* own include */
 
@@ -120,43 +112,11 @@ static void rna_Mesh_calc_smooth_groups(Mesh *mesh, bool use_bitflags, int *r_po
 
 static void rna_Mesh_normals_split_custom_do(Mesh *mesh, float (*custom_loopnors)[3], const bool use_vertices)
 {
-	float (*polynors)[3];
-	short (*clnors)[2];
-	const int numloops = mesh->totloop;
-	bool free_polynors = false;
-
-	clnors = CustomData_get_layer(&mesh->ldata, CD_CUSTOMLOOPNORMAL);
-	if (clnors) {
-		memset(clnors, 0, sizeof(*clnors) * numloops);
-	}
-	else {
-		clnors = CustomData_add_layer(&mesh->ldata, CD_CUSTOMLOOPNORMAL, CD_DEFAULT, NULL, numloops);
-	}
-
-	if (CustomData_has_layer(&mesh->pdata, CD_NORMAL)) {
-		polynors = CustomData_get_layer(&mesh->pdata, CD_NORMAL);
-	}
-	else {
-		polynors = MEM_mallocN(sizeof(float[3]) * mesh->totpoly, __func__);
-		BKE_mesh_calc_normals_poly(
-		            mesh->mvert, NULL, mesh->totvert,
-		            mesh->mloop, mesh->mpoly, mesh->totloop, mesh->totpoly, polynors, false);
-		free_polynors = true;
-	}
-
 	if (use_vertices) {
-		BKE_mesh_normals_loop_custom_from_vertices_set(
-		        mesh->mvert, custom_loopnors, mesh->totvert, mesh->medge, mesh->totedge, mesh->mloop, mesh->totloop,
-		        mesh->mpoly, (const float (*)[3])polynors, mesh->totpoly, clnors);
+		BKE_mesh_set_custom_normals_from_vertices(mesh, custom_loopnors);
 	}
 	else {
-		BKE_mesh_normals_loop_custom_set(
-		        mesh->mvert, mesh->totvert, mesh->medge, mesh->totedge, mesh->mloop, custom_loopnors, mesh->totloop,
-		        mesh->mpoly, (const float (*)[3])polynors, mesh->totpoly, clnors);
-	}
-
-	if (free_polynors) {
-		MEM_freeN(polynors);
+		BKE_mesh_set_custom_normals(mesh, custom_loopnors);
 	}
 }
 
@@ -220,6 +180,11 @@ static void rna_Mesh_split_faces(Mesh *mesh, bool free_loop_normals)
 static void rna_Mesh_update_gpu_tag(Mesh *mesh)
 {
 	BKE_mesh_batch_cache_dirty_tag(mesh, BKE_MESH_BATCH_DIRTY_ALL);
+}
+
+static void rna_Mesh_count_selected_items(Mesh *mesh, int r_count[3])
+{
+	BKE_mesh_count_selected_items(mesh, r_count);
 }
 
 
@@ -332,6 +297,11 @@ void RNA_api_mesh(StructRNA *srna)
 	                                "invalid indices corrected (to default 0)");
 	parm = RNA_def_boolean(func, "result", 0, "Result", "");
 	RNA_def_function_return(func, parm);
+
+	func = RNA_def_function(srna, "count_selected_items", "rna_Mesh_count_selected_items ");
+	RNA_def_function_ui_description(func, "Return the number of selected items (vert, edge, face)");
+	parm = RNA_def_int_vector(func, "result", 3, NULL, 0, INT_MAX, "Result", NULL, 0, INT_MAX);
+	RNA_def_function_output(func, parm);
 }
 
 #endif

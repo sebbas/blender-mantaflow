@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_graph/space_graph.c
- *  \ingroup spgraph
+/** \file
+ * \ingroup spgraph
  */
 
 
@@ -43,8 +36,6 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
-#include "BKE_global.h"
-#include "BKE_main.h"
 #include "BKE_fcurve.h"
 #include "BKE_screen.h"
 
@@ -102,11 +93,11 @@ ARegion *graph_has_buttons_region(ScrArea *sa)
 static SpaceLink *graph_new(const ScrArea *UNUSED(sa), const Scene *scene)
 {
 	ARegion *ar;
-	SpaceIpo *sipo;
+	SpaceGraph *sipo;
 
 	/* Graph Editor - general stuff */
-	sipo = MEM_callocN(sizeof(SpaceIpo), "init graphedit");
-	sipo->spacetype = SPACE_IPO;
+	sipo = MEM_callocN(sizeof(SpaceGraph), "init graphedit");
+	sipo->spacetype = SPACE_GRAPH;
 
 	sipo->autosnap = SACTSNAP_FRAME;
 
@@ -123,7 +114,7 @@ static SpaceLink *graph_new(const ScrArea *UNUSED(sa), const Scene *scene)
 
 	BLI_addtail(&sipo->regionbase, ar);
 	ar->regiontype = RGN_TYPE_HEADER;
-	ar->alignment = RGN_ALIGN_TOP;
+	ar->alignment = (U.uiflag & USER_HEADER_BOTTOM) ? RGN_ALIGN_BOTTOM : RGN_ALIGN_TOP;
 
 	/* channels */
 	ar = MEM_callocN(sizeof(ARegion), "channels region for graphedit");
@@ -172,22 +163,23 @@ static SpaceLink *graph_new(const ScrArea *UNUSED(sa), const Scene *scene)
 /* not spacelink itself */
 static void graph_free(SpaceLink *sl)
 {
-	SpaceIpo *si = (SpaceIpo *)sl;
+	SpaceGraph *si = (SpaceGraph *)sl;
 
 	if (si->ads) {
 		BLI_freelistN(&si->ads->chanbase);
 		MEM_freeN(si->ads);
 	}
 
-	if (si->ghostCurves.first)
-		free_fcurves(&si->ghostCurves);
+	if (si->runtime.ghost_curves.first) {
+		free_fcurves(&si->runtime.ghost_curves);
+	}
 }
 
 
 /* spacetype; init callback */
 static void graph_init(struct wmWindowManager *wm, ScrArea *sa)
 {
-	SpaceIpo *sipo = (SpaceIpo *)sa->spacedata.first;
+	SpaceGraph *sipo = (SpaceGraph *)sa->spacedata.first;
 
 	/* init dopesheet data if non-existent (i.e. for old files) */
 	if (sipo->ads == NULL) {
@@ -205,10 +197,10 @@ static void graph_init(struct wmWindowManager *wm, ScrArea *sa)
 
 static SpaceLink *graph_duplicate(SpaceLink *sl)
 {
-	SpaceIpo *sipon = MEM_dupallocN(sl);
+	SpaceGraph *sipon = MEM_dupallocN(sl);
 
 	/* clear or remove stuff from old */
-	BLI_duplicatelist(&sipon->ghostCurves, &((SpaceIpo *)sl)->ghostCurves);
+	BLI_duplicatelist(&sipon->runtime.ghost_curves, &((SpaceGraph *)sl)->runtime.ghost_curves);
 	sipon->ads = MEM_dupallocN(sipon->ads);
 
 	return (SpaceLink *)sipon;
@@ -222,16 +214,16 @@ static void graph_main_region_init(wmWindowManager *wm, ARegion *ar)
 	UI_view2d_region_reinit(&ar->v2d, V2D_COMMONVIEW_CUSTOM, ar->winx, ar->winy);
 
 	/* own keymap */
-	keymap = WM_keymap_ensure(wm->defaultconf, "Graph Editor", SPACE_IPO, 0);
+	keymap = WM_keymap_ensure(wm->defaultconf, "Graph Editor", SPACE_GRAPH, 0);
 	WM_event_add_keymap_handler_bb(&ar->handlers, keymap, &ar->v2d.mask, &ar->winrct);
-	keymap = WM_keymap_ensure(wm->defaultconf, "Graph Editor Generic", SPACE_IPO, 0);
+	keymap = WM_keymap_ensure(wm->defaultconf, "Graph Editor Generic", SPACE_GRAPH, 0);
 	WM_event_add_keymap_handler(&ar->handlers, keymap);
 }
 
 static void graph_main_region_draw(const bContext *C, ARegion *ar)
 {
 	/* draw entirely, view changes should be handled here */
-	SpaceIpo *sipo = CTX_wm_space_graph(C);
+	SpaceGraph *sipo = CTX_wm_space_graph(C);
 	Scene *scene = CTX_data_scene(C);
 	bAnimContext ac;
 	View2D *v2d = &ar->v2d;
@@ -305,7 +297,8 @@ static void graph_main_region_draw(const bContext *C, ARegion *ar)
 			/* cursor x-value */
 			float x = sipo->cursorTime;
 
-			/* to help differentiate this from the current frame, draw slightly darker like the horizontal one */
+			/* to help differentiate this from the current frame,
+			 * draw slightly darker like the horizontal one */
 			immUniformThemeColorShadeAlpha(TH_CFRAME, -40, -50);
 			GPU_blend(true);
 			GPU_line_width(2.0);
@@ -329,7 +322,11 @@ static void graph_main_region_draw(const bContext *C, ARegion *ar)
 
 	/* markers */
 	UI_view2d_view_orthoSpecial(ar, v2d, 1);
-	ED_markers_draw(C, DRAW_MARKERS_MARGIN);
+	int marker_draw_flag = DRAW_MARKERS_MARGIN;
+	if (sipo->flag & SIPO_MARKER_LINES) {
+		marker_draw_flag |= DRAW_MARKERS_LINES;
+	}
+	ED_markers_draw(C, marker_draw_flag);
 
 	/* preview range */
 	UI_view2d_view_ortho(v2d);
@@ -361,7 +358,10 @@ static void graph_channel_region_init(wmWindowManager *wm, ARegion *ar)
 
 	/* make sure we keep the hide flags */
 	ar->v2d.scroll |= V2D_SCROLL_RIGHT;
-	ar->v2d.scroll &= ~(V2D_SCROLL_LEFT | V2D_SCROLL_TOP | V2D_SCROLL_BOTTOM);	/* prevent any noise of past */
+
+	/* prevent any noise of past */
+	ar->v2d.scroll &= ~(V2D_SCROLL_LEFT | V2D_SCROLL_TOP | V2D_SCROLL_BOTTOM);
+
 	ar->v2d.scroll |= V2D_SCROLL_HORIZONTAL_HIDE;
 	ar->v2d.scroll |= V2D_SCROLL_VERTICAL_HIDE;
 
@@ -370,7 +370,7 @@ static void graph_channel_region_init(wmWindowManager *wm, ARegion *ar)
 	/* own keymap */
 	keymap = WM_keymap_ensure(wm->defaultconf, "Animation Channels", 0, 0);
 	WM_event_add_keymap_handler_bb(&ar->handlers, keymap, &ar->v2d.mask, &ar->winrct);
-	keymap = WM_keymap_ensure(wm->defaultconf, "Graph Editor Generic", SPACE_IPO, 0);
+	keymap = WM_keymap_ensure(wm->defaultconf, "Graph Editor Generic", SPACE_GRAPH, 0);
 	WM_event_add_keymap_handler(&ar->handlers, keymap);
 }
 
@@ -420,7 +420,7 @@ static void graph_buttons_region_init(wmWindowManager *wm, ARegion *ar)
 
 	ED_region_panels_init(wm, ar);
 
-	keymap = WM_keymap_ensure(wm->defaultconf, "Graph Editor Generic", SPACE_IPO, 0);
+	keymap = WM_keymap_ensure(wm->defaultconf, "Graph Editor Generic", SPACE_GRAPH, 0);
 	WM_event_add_keymap_handler_bb(&ar->handlers, keymap, &ar->v2d.mask, &ar->winrct);
 }
 
@@ -570,12 +570,13 @@ static void graph_region_message_subscribe(
 /* editor level listener */
 static void graph_listener(wmWindow *UNUSED(win), ScrArea *sa, wmNotifier *wmn, Scene *UNUSED(scene))
 {
-	SpaceIpo *sipo = (SpaceIpo *)sa->spacedata.first;
+	SpaceGraph *sipo = (SpaceGraph *)sa->spacedata.first;
 
 	/* context changes */
 	switch (wmn->category) {
 		case NC_ANIMATION:
-			/* for selection changes of animation data, we can just redraw... otherwise autocolor might need to be done again */
+			/* for selection changes of animation data, we can just redraw...
+			 * otherwise autocolor might need to be done again */
 			if (ELEM(wmn->data, ND_KEYFRAME, ND_ANIMCHAN) && (wmn->action == NA_SELECTED))
 				ED_area_tag_redraw(sa);
 			else
@@ -583,9 +584,10 @@ static void graph_listener(wmWindow *UNUSED(win), ScrArea *sa, wmNotifier *wmn, 
 			break;
 		case NC_SCENE:
 			switch (wmn->data) {
-				case ND_OB_ACTIVE:  /* selection changed, so force refresh to flush (needs flag set to do syncing)  */
+				case ND_OB_ACTIVE:  /* selection changed, so force refresh to flush
+				                     * (needs flag set to do syncing)  */
 				case ND_OB_SELECT:
-					sipo->flag |= SIPO_TEMP_NEEDCHANSYNC;
+					sipo->runtime.flag |= SIPO_RUNTIME_FLAG_NEED_CHAN_SYNC;
 					ED_area_tag_refresh(sa);
 					break;
 
@@ -596,9 +598,10 @@ static void graph_listener(wmWindow *UNUSED(win), ScrArea *sa, wmNotifier *wmn, 
 			break;
 		case NC_OBJECT:
 			switch (wmn->data) {
-				case ND_BONE_SELECT:    /* selection changed, so force refresh to flush (needs flag set to do syncing) */
+				case ND_BONE_SELECT:    /* selection changed, so force refresh to flush
+				                         * (needs flag set to do syncing) */
 				case ND_BONE_ACTIVE:
-					sipo->flag |= SIPO_TEMP_NEEDCHANSYNC;
+					sipo->runtime.flag |= SIPO_RUNTIME_FLAG_NEED_CHAN_SYNC;
 					ED_area_tag_refresh(sa);
 					break;
 				case ND_TRANSFORM:
@@ -612,7 +615,7 @@ static void graph_listener(wmWindow *UNUSED(win), ScrArea *sa, wmNotifier *wmn, 
 		case NC_NODE:
 			if (wmn->action == NA_SELECTED) {
 				/* selection changed, so force refresh to flush (needs flag set to do syncing) */
-				sipo->flag |= SIPO_TEMP_NEEDCHANSYNC;
+				sipo->runtime.flag |= SIPO_RUNTIME_FLAG_NEED_CHAN_SYNC;
 				ED_area_tag_refresh(sa);
 			}
 			break;
@@ -621,7 +624,7 @@ static void graph_listener(wmWindow *UNUSED(win), ScrArea *sa, wmNotifier *wmn, 
 				ED_area_tag_redraw(sa);
 			break;
 		case NC_WINDOW:
-			if (sipo->flag & SIPO_TEMP_NEEDCHANSYNC) {
+			if (sipo->runtime.flag & (SIPO_RUNTIME_FLAG_NEED_CHAN_SYNC | SIPO_RUNTIME_FLAG_NEED_CHAN_SYNC_COLOR)) {
 				/* force redraw/refresh after undo/redo - prevents "black curve" problem */
 				ED_area_tag_refresh(sa);
 			}
@@ -648,11 +651,11 @@ static void graph_refresh_fcurve_colors(const bContext *C)
 	if (ANIM_animdata_get_context(C, &ac) == false)
 		return;
 
-	UI_SetTheme(SPACE_IPO, RGN_TYPE_WINDOW);
+	UI_SetTheme(SPACE_GRAPH, RGN_TYPE_WINDOW);
 
 	/* build list of F-Curves which will be visible as channels in channel-region
-	 *  - we don't include ANIMFILTER_CURVEVISIBLE filter, as that will result in a
-	 *    mismatch between channel-colors and the drawn curves
+	 * - we don't include ANIMFILTER_CURVEVISIBLE filter, as that will result in a
+	 *   mismatch between channel-colors and the drawn curves
 	 */
 	filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_NODUPLIS);
 	items = ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
@@ -757,7 +760,7 @@ static void graph_refresh_fcurve_colors(const bContext *C)
 
 static void graph_refresh(const bContext *C, ScrArea *sa)
 {
-	SpaceIpo *sipo = (SpaceIpo *)sa->spacedata.first;
+	SpaceGraph *sipo = (SpaceGraph *)sa->spacedata.first;
 
 	/* updates to data needed depends on Graph Editor mode... */
 	switch (sipo->mode) {
@@ -778,9 +781,18 @@ static void graph_refresh(const bContext *C, ScrArea *sa)
 	/* update the state of the animchannels in response to changes from the data they represent
 	 * NOTE: the temp flag is used to indicate when this needs to be done, and will be cleared once handled
 	 */
-	if (sipo->flag & SIPO_TEMP_NEEDCHANSYNC) {
+	if (sipo->runtime.flag & SIPO_RUNTIME_FLAG_NEED_CHAN_SYNC) {
 		ANIM_sync_animchannels_to_data(C);
-		sipo->flag &= ~SIPO_TEMP_NEEDCHANSYNC;
+		sipo->runtime.flag &= ~SIPO_RUNTIME_FLAG_NEED_CHAN_SYNC;
+		ED_area_tag_redraw(sa);
+	}
+
+	/* We could check 'SIPO_RUNTIME_FLAG_NEED_CHAN_SYNC_COLOR', but color is recalculated anyway. */
+	if (sipo->runtime.flag & SIPO_RUNTIME_FLAG_NEED_CHAN_SYNC_COLOR) {
+		sipo->runtime.flag &= ~SIPO_RUNTIME_FLAG_NEED_CHAN_SYNC_COLOR;
+#if 0	/* Done below. */
+		graph_refresh_fcurve_colors(C);
+#endif
 		ED_area_tag_redraw(sa);
 	}
 
@@ -790,7 +802,7 @@ static void graph_refresh(const bContext *C, ScrArea *sa)
 
 static void graph_id_remap(ScrArea *UNUSED(sa), SpaceLink *slink, ID *old_id, ID *new_id)
 {
-	SpaceIpo *sgraph = (SpaceIpo *)slink;
+	SpaceGraph *sgraph = (SpaceGraph *)slink;
 
 	if (sgraph->ads) {
 		if ((ID *)sgraph->ads->filter_grp == old_id) {
@@ -804,13 +816,13 @@ static void graph_id_remap(ScrArea *UNUSED(sa), SpaceLink *slink, ID *old_id, ID
 
 static int graph_space_subtype_get(ScrArea *sa)
 {
-	SpaceIpo *sgraph = sa->spacedata.first;
+	SpaceGraph *sgraph = sa->spacedata.first;
 	return sgraph->mode;
 }
 
 static void graph_space_subtype_set(ScrArea *sa, int value)
 {
-	SpaceIpo *sgraph = sa->spacedata.first;
+	SpaceGraph *sgraph = sa->spacedata.first;
 	sgraph->mode = value;
 }
 
@@ -826,7 +838,7 @@ void ED_spacetype_ipo(void)
 	SpaceType *st = MEM_callocN(sizeof(SpaceType), "spacetype ipo");
 	ARegionType *art;
 
-	st->spaceid = SPACE_IPO;
+	st->spaceid = SPACE_GRAPH;
 	strncpy(st->name, "Graph", BKE_ST_MAXNAME);
 
 	st->new = graph_new;
@@ -867,7 +879,8 @@ void ED_spacetype_ipo(void)
 	/* regions: channels */
 	art = MEM_callocN(sizeof(ARegionType), "spacetype graphedit region");
 	art->regionid = RGN_TYPE_CHANNELS;
-	art->prefsizex = 200 + V2D_SCROLL_WIDTH; /* 200 is the 'standard', but due to scrollers, we want a bit more to fit the lock icons in */
+	/* 200 is the 'standard', but due to scrollers, we want a bit more to fit the lock icons in */
+	art->prefsizex = 200 + V2D_SCROLL_WIDTH;
 	art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_VIEW2D | ED_KEYMAP_FRAMES;
 	art->listener = graph_region_listener;
 	art->message_subscribe = graph_region_message_subscribe;

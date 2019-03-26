@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,24 +15,19 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file DNA_gpu_types.h
- *  \ingroup DNA
+/** \file
+ * \ingroup DNA
  */
 
 #ifndef __DNA_GPU_TYPES_H__
 #define __DNA_GPU_TYPES_H__
 
-/* properties for dof effect */
+/** Properties for dof effect. */
 typedef struct GPUDOFSettings {
-	float focus_distance; /* focal distance for depth of field */
+	/** Focal distance for depth of field. */
+	float focus_distance;
 	float fstop;
 	float focal_length;
 	float sensor;
@@ -44,21 +37,23 @@ typedef struct GPUDOFSettings {
 	int high_quality;
 } GPUDOFSettings;
 
-/* properties for SSAO effect */
+/** Properties for SSAO effect. */
 typedef struct GPUSSAOSettings {
 	float factor;
 	float color[3];
 	float distance_max;
 	float attenuation;
-	int samples; /* ray samples, we use presets here for easy control instead of */
-	int pad;
+	/** Ray samples, we use presets here for easy control instead of. */
+	int samples;
+	char _pad[4];
 } GPUSSAOSettings;
 
 typedef struct GPUFXSettings {
 	GPUDOFSettings *dof;
 	GPUSSAOSettings *ssao;
-	char fx_flag;  /* eGPUFXFlags */
-	char pad[7];
+	/** #eGPUFXFlags. */
+	char fx_flag;
+	char _pad[7];
 } GPUFXSettings;
 
 /* shaderfx enables */

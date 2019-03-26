@@ -1,6 +1,4 @@
 /*
- * Copyright 2016, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,12 +13,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Blender Institute
- *
+ * Copyright 2016, Blender Foundation.
  */
 
-/** \file draw_manager_profiling.c
- *  \ingroup draw
+/** \file
+ * \ingroup draw
  */
 
 #include "BLI_rect.h"
@@ -34,13 +31,10 @@
 
 #include "draw_manager.h"
 
-#include "GPU_glew.h"
 #include "GPU_texture.h"
 
 #include "UI_resources.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
 
 #include "draw_manager_profiling.h"
 
@@ -126,6 +120,7 @@ static void drw_stats_timer_start_ex(const char *name, const bool is_query)
 				glGenQueries(1, timer->query);
 			}
 
+			glFinish();
 			/* Issue query for the next frame */
 			glBeginQuery(GL_TIME_ELAPSED, timer->query[0]);
 			DTP.is_querying = true;
@@ -322,7 +317,7 @@ void DRW_stats_draw(rcti *rect)
 	v += 1;
 
 	/* GPU Timings */
-	BLI_snprintf(stat_string, sizeof(stat_string), "GPU Render Timings");
+	BLI_strncpy(stat_string, "GPU Render Timings", sizeof(stat_string));
 	draw_stat(rect, 0, v++, stat_string, sizeof(stat_string));
 
 	for (int i = 0; i < DTP.timer_increment; ++i) {
